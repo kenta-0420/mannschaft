@@ -38,6 +38,18 @@ export interface PeriodTransition {
   minute: number | null
 }
 
+/**
+ * 指定状態から advance したとき次状態が COMPLETED になるか。
+ * live.vue が「advance ではなく completeMatch を呼ぶべき」か判定するために使う。
+ * EXTRA_SECOND / PENALTY_SHOOTOUT が該当（SECOND_HALF は延長への分岐があるため除外）。
+ */
+export function isNextCompleted(state: TimerState): boolean {
+  return (
+    (state === 'EXTRA_SECOND' || state === 'PENALTY_SHOOTOUT') &&
+    NEXT_STATE[state] === 'COMPLETED'
+  )
+}
+
 /** 状態が「タイマー動作中（経過を刻む）」か。 */
 export function isRunningState(state: TimerState): boolean {
   return (

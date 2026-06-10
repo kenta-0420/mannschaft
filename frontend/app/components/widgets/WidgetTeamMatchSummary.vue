@@ -19,7 +19,7 @@ const props = defineProps<{
   teamId: string
 }>()
 
-const { resolveOrgId } = useMatchOrgContext()
+const { resolveContext } = useMatchOrgContext()
 const analytics = useMatchAnalytics()
 const matchApi = useMatchApi()
 const { captureQuiet } = useErrorReport()
@@ -51,17 +51,16 @@ function formResultClass(result: string): string {
 async function load(): Promise<void> {
   loading.value = true
   try {
-    const resolved = await resolveOrgId(props.teamId)
-    orgId.value = resolved
-    if (resolved === null) {
+    const ctx = await resolveContext(props.teamId)
+    orgId.value = ctx?.orgId ?? null
+    if (ctx === null) {
       stats.value = null
       inProgressMatch.value = null
       return
     }
-    const teamIdNum = Number(props.teamId)
     const [statsResult, inProgressResult] = await Promise.allSettled([
-      analytics.getTeamStats(resolved, teamIdNum),
-      matchApi.listMatches(resolved, teamIdNum, { status: 'IN_PROGRESS', size: 1 }),
+      analytics.getTeamStats(ctx.orgId, ctx.teamId),
+      matchApi.listMatches(ctx.orgId, ctx.teamId, { status: 'IN_PROGRESS', size: 1 }),
     ])
     stats.value = statsResult.status === 'fulfilled' ? statsResult.value : null
     const page = inProgressResult.status === 'fulfilled' ? inProgressResult.value : null

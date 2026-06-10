@@ -81,17 +81,20 @@ const form = ref({
   orgType: 'OTHER',
 })
 
+const { t } = useI18n()
+
 const visibilityOptions = computed(() => {
   if (isTeam.value) {
     return [
-      { label: '公開', value: 'PUBLIC' },
-      { label: 'チーム内のみ', value: 'ORGANIZATION_ONLY' },
-      { label: '非公開', value: 'PRIVATE' },
+      { label: t('team_visibility.PUBLIC'), value: 'PUBLIC' },
+      { label: t('team_visibility.GUESTS_AND_ABOVE'), value: 'GUESTS_AND_ABOVE' },
+      { label: t('team_visibility.SUPPORTERS_AND_ABOVE'), value: 'SUPPORTERS_AND_ABOVE' },
+      { label: t('team_visibility.MEMBERS_AND_ABOVE'), value: 'MEMBERS_AND_ABOVE' },
     ]
   }
   return [
-    { label: '公開', value: 'PUBLIC' },
-    { label: '非公開', value: 'PRIVATE' },
+    { label: t('team_visibility.PUBLIC'), value: 'PUBLIC' },
+    { label: t('team_visibility.MEMBERS_AND_ABOVE'), value: 'MEMBERS_AND_ABOVE' },
   ]
 })
 

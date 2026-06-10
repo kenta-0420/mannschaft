@@ -1519,5 +1519,11 @@
       "cancel": "Cancelar",
       "saveError": "Error al guardar el orden de visualización"
     }
+  },
+  "team_visibility": {
+    "PUBLIC": "Público",
+    "GUESTS_AND_ABOVE": "Invitados y superiores",
+    "SUPPORTERS_AND_ABOVE": "Seguidores y superiores",
+    "MEMBERS_AND_ABOVE": "Miembros y superiores"
   }
 }

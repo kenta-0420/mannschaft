@@ -207,8 +207,10 @@
         "period_boundary_failed": {
           "title": "Aufzeichnung der Periodengrenze fehlgeschlagen",
           "detail": "Der Periodenwechsel konnte nicht auf dem Server gespeichert werden. Spielstand und Einsatzzeiten können ungenau sein. Bitte den Timer erneut auslösen, um es noch einmal aufzuzeichnen."
-        }
-      }
+        },
+        "complete_failed": "Spielende konnte nicht gespeichert werden"
+      },
+      "read_only_notice": "Nur Ansicht. Nur Admins, Stellvertreter und Protokollführer können erfassen"
     },
     "analytics": {
       "my_title": "Spielanalyse",
@@ -358,6 +360,14 @@
       "DF": "Verteidiger",
       "MF": "Mittelfeldspieler",
       "FW": "Stürmer"
+    },
+    "org_context": {
+      "resolve_failed": "Team-/Organisationsinfo konnte nicht aufgelöst werden. Bitte prüfe deine Mitgliedschaften"
+    },
+    "entry": {
+      "record_from_schedule": "Dieses Spiel aufzeichnen",
+      "record_from_schedule_hint": "Beginne mit der Aufzeichnung des Spiels für diesen Termin",
+      "resolving": "Spielaufzeichnung wird vorbereitet…"
     }
   }
 }

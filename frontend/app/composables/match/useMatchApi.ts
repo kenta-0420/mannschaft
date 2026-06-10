@@ -17,6 +17,7 @@
  */
 import type {
   PagedResponseMatchSummaryResponse,
+  MatchSummaryResponse,
   MatchResponse,
   CreateMatchRequest,
   UpdateMatchRequest,
@@ -59,6 +60,27 @@ export function useMatchApi() {
     try {
       const res = await api<{ data: MatchResponse }>(`${base(orgId, teamId)}/${matchId}`)
       return res.data
+    } catch (err) {
+      notification.error(t('match.list.error.load_failed'))
+      throw err
+    }
+  }
+
+  /**
+   * カレンダー予定（入口④）に紐づく既存試合を解決する。
+   * 既存があれば live を開き・無ければ作成する二重起票防止の判定に用いる。
+   * BE は存在しない場合 200 + data:null を返すため、戻り値も `MatchSummaryResponse | null`。
+   */
+  async function resolveMatchBySchedule(
+    orgId: number,
+    teamId: number,
+    scheduleId: number,
+  ): Promise<MatchSummaryResponse | null> {
+    try {
+      const res = await api<{ data: MatchSummaryResponse | null }>(
+        `${base(orgId, teamId)}/by-schedule/${scheduleId}`,
+      )
+      return res.data ?? null
     } catch (err) {
       notification.error(t('match.list.error.load_failed'))
       throw err
@@ -175,6 +197,7 @@ export function useMatchApi() {
   return {
     listMatches,
     getMatch,
+    resolveMatchBySchedule,
     createMatch,
     updateMatch,
     changeStatus,

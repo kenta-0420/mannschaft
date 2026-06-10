@@ -14,7 +14,7 @@ definePageMeta({ middleware: 'auth' })
 const { t } = useI18n()
 const authStore = useAuthStore()
 const scopeTabApi = useScopeTabApi()
-const { resolveOrgId } = useMatchOrgContext()
+const { resolveContext } = useMatchOrgContext()
 const analytics = useMatchAnalytics()
 
 const currentUserId = computed<number>(() => authStore.user?.id ?? 0)
@@ -51,13 +51,13 @@ async function loadStats(): Promise<void> {
   if (selectedTeamId.value === null || currentUserId.value === 0) return
   loadingStats.value = true
   try {
-    const resolvedOrgId = await resolveOrgId(selectedTeamId.value)
-    orgId.value = resolvedOrgId
-    if (resolvedOrgId === null) {
+    const ctx = await resolveContext(selectedTeamId.value)
+    orgId.value = ctx?.orgId ?? null
+    if (ctx === null) {
       stats.value = null
       return
     }
-    stats.value = await analytics.getUserStats(resolvedOrgId, currentUserId.value)
+    stats.value = await analytics.getUserStats(ctx.orgId, currentUserId.value)
   } finally {
     loadingStats.value = false
   }

@@ -130,6 +130,22 @@ public class MatchRecordController {
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
     }
 
+    @GetMapping("/by-schedule/{scheduleId}")
+    @Operation(summary = "カレンダー予定から既存試合を解決（入口④・二重起票防止）")
+    @PreAuthorize("@accessGuard.isScopeMember(authentication, #teamId, 'TEAM')")
+    public ResponseEntity<ApiResponse<MatchSummaryResponse>> resolveBySchedule(
+            @PathVariable Long orgId,
+            @PathVariable Long teamId,
+            @PathVariable Long scheduleId) {
+        Long actor = SecurityUtils.getCurrentUserId();
+        // 既存があれば FE は live を開く・無ければ作成する。存在しない場合は 200 + data:null を返し、
+        // FE が単純に null 判定できるようにする（404 を正常フローとして扱わせない・症状を隠さない）。
+        MatchSummaryResponse summary = matchService
+                .resolveByScheduleId(orgId, teamId, actor, scheduleId)
+                .orElse(null);
+        return ResponseEntity.ok(ApiResponse.of(summary));
+    }
+
     @GetMapping("/{matchId}")
     @Operation(summary = "試合詳細")
     public ResponseEntity<ApiResponse<MatchResponse>> getMatch(

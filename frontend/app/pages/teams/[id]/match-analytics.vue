@@ -13,10 +13,9 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
 const teamIdStr = String(route.params.id)
-const teamId = Number(teamIdStr)
 const { t } = useI18n()
 
-const { resolveOrgId } = useMatchOrgContext()
+const { resolveContext } = useMatchOrgContext()
 const analytics = useMatchAnalytics()
 
 const orgId = ref<number | null>(null)
@@ -29,13 +28,13 @@ const isEmpty = computed(() => (stats.value?.totalMatches ?? 0) === 0)
 async function load(): Promise<void> {
   loading.value = true
   try {
-    const resolvedOrgId = await resolveOrgId(teamIdStr)
-    orgId.value = resolvedOrgId
-    if (resolvedOrgId === null) {
+    const ctx = await resolveContext(teamIdStr)
+    orgId.value = ctx?.orgId ?? null
+    if (ctx === null) {
       stats.value = null
       return
     }
-    stats.value = await analytics.getTeamStats(resolvedOrgId, teamId)
+    stats.value = await analytics.getTeamStats(ctx.orgId, ctx.teamId)
   } catch {
     // エラーは composable 内で通知済み
     stats.value = null

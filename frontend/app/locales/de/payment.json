@@ -71,6 +71,46 @@
           "EXPIRED": "Abgelaufen"
         }
       }
+    },
+    "guardianBulkPayment": {
+      "title": "Vormund-Sammelzahlung",
+      "subtitle": "Bezahle ausstehende Beiträge für von dir verwaltete Kinder auf einmal",
+      "noItems": "Keine ausstehenden Beiträge",
+      "beneficiary": "Begünstigter",
+      "scope": "Zugehörigkeit",
+      "itemName": "Beitragsname",
+      "amount": "Betrag",
+      "dueDate": "Fälligkeitsdatum",
+      "alreadyPaid": "Bereits bezahlt",
+      "paidBy": "Von {name} bezahlt",
+      "kind": {
+        "ONE_TIME": "Einmalzahlung",
+        "RECURRING": "Wiederkehrende Zahlung",
+        "TERM": "Periodenzahlung"
+      },
+      "via": {
+        "SELF": "Selbst",
+        "GUARDIAN": "Vormund",
+        "GUARDIAN_PROXY": "Vormund-Stellvertreter",
+        "PROXY_GRANT": "Vollmacht"
+      },
+      "selectAll": "Alle auswählen",
+      "deselectAll": "Alle abwählen",
+      "paySelected": "{count} Posten bezahlen",
+      "totalAmount": "Gesamt: ¥{amount}",
+      "processing": "Wird verarbeitet...",
+      "result": {
+        "title": "Zahlungsergebnis",
+        "checkedOut": "Zahlung abgeschlossen",
+        "skipped": "Übersprungen",
+        "skipReasons": {
+          "ALREADY_PAID": "Bereits bezahlt",
+          "NOT_AUTHORIZED": "Keine Zahlungsberechtigung",
+          "CONNECT_NOT_READY": "Empfangskonto nicht eingerichtet",
+          "ITEM_NOT_FOUND": "Beitragsposten nicht gefunden",
+          "ERROR": "Fehler"
+        }
+      }
     }
   }
 }

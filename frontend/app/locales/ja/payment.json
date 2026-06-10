@@ -71,6 +71,46 @@
           "EXPIRED": "期限切れ"
         }
       }
+    },
+    "guardianBulkPayment": {
+      "title": "後見まとめ払い",
+      "subtitle": "管理する子どもの未払い会費をまとめて決済できます",
+      "noItems": "未払いの会費はありません",
+      "beneficiary": "受益者",
+      "scope": "所属",
+      "itemName": "会費名",
+      "amount": "金額",
+      "dueDate": "期日",
+      "alreadyPaid": "支払い済み",
+      "paidBy": "{name}さんが支払済み",
+      "kind": {
+        "ONE_TIME": "一時払い",
+        "RECURRING": "継続払い",
+        "TERM": "期間払い"
+      },
+      "via": {
+        "SELF": "本人",
+        "GUARDIAN": "後見人",
+        "GUARDIAN_PROXY": "後見代理",
+        "PROXY_GRANT": "代理権"
+      },
+      "selectAll": "全て選択",
+      "deselectAll": "全て解除",
+      "paySelected": "{count}件を支払う",
+      "totalAmount": "合計: ¥{amount}",
+      "processing": "処理中...",
+      "result": {
+        "title": "支払い結果",
+        "checkedOut": "支払い完了",
+        "skipped": "スキップ",
+        "skipReasons": {
+          "ALREADY_PAID": "支払い済み",
+          "NOT_AUTHORIZED": "支払い権限なし",
+          "CONNECT_NOT_READY": "受領口座未設定",
+          "ITEM_NOT_FOUND": "会費項目なし",
+          "ERROR": "エラー"
+        }
+      }
     }
   }
 }

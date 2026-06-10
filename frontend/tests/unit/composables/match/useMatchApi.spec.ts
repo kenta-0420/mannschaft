@@ -135,6 +135,25 @@ describe('useMatchApi', () => {
     expect(mockSuccess).toHaveBeenCalledWith('match.list.delete_success')
   })
 
+  it('MATCH-API-010: resolveMatchBySchedule は GET .../matches/by-schedule/{scheduleId} で既存サマリを返す', async () => {
+    mockFetch.mockResolvedValueOnce({ data: { id: 'm-1' } })
+    const api = useMatchApi()
+    const res = await api.resolveMatchBySchedule(ORG, TEAM, 555)
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      `/api/v1/organizations/${ORG}/teams/${TEAM}/matches/by-schedule/555`,
+    )
+    expect(res).toEqual({ id: 'm-1' })
+  })
+
+  it('MATCH-API-011: resolveMatchBySchedule は data:null（既存なし）で null を返す', async () => {
+    mockFetch.mockResolvedValueOnce({ data: null })
+    const api = useMatchApi()
+    const res = await api.resolveMatchBySchedule(ORG, TEAM, 556)
+
+    expect(res).toBeNull()
+  })
+
   it('MATCH-API-009: 失敗時は notification.error を呼び再 throw する', async () => {
     mockFetch.mockRejectedValueOnce(new Error('boom'))
     const api = useMatchApi()

@@ -44,9 +44,18 @@ const { t } = useI18n()
       <Button :label="t('match.live.timer.complete')" severity="secondary" @click="emit('complete')" />
       <Button :label="t('match.live.timer.to_extra')" text @click="emit('extra')" />
     </template>
-    <template v-else-if="state === 'EXTRA_FIRST' || state === 'EXTRA_SECOND'">
+    <template v-else-if="state === 'EXTRA_FIRST'">
       <Button :label="t('match.live.timer.advance')" severity="secondary" @click="emit('advance')" />
       <Button :label="t('match.live.timer.to_penalty')" text @click="emit('penalty')" />
+    </template>
+    <template v-else-if="state === 'EXTRA_SECOND'">
+      <!-- EXTRA_SECOND からの advance は次状態が COMPLETED → handleAdvance が completeMatch を呼ぶ -->
+      <Button :label="t('match.live.timer.complete')" severity="secondary" @click="emit('advance')" />
+      <Button :label="t('match.live.timer.to_penalty')" text @click="emit('penalty')" />
+    </template>
+    <template v-else-if="state === 'PENALTY_SHOOTOUT'">
+      <!-- PK 戦終了 → handleAdvance が completeMatch を呼ぶ -->
+      <Button :label="t('match.live.timer.complete')" severity="secondary" @click="emit('advance')" />
     </template>
     <Button
       v-if="running"
