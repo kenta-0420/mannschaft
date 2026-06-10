@@ -21,7 +21,7 @@
  *   - e2e-user@test.mannschaft.local / e2e-admin@test.mannschaft.local が DB に存在
  */
 
-import { test, expect, request as pwRequest, type APIRequestContext, type Page } from '@playwright/test'
+import { test, expect, type APIRequestContext, type Page } from '@playwright/test'
 import { waitForHydration } from '../../helpers/wait'
 
 // 各テスト自前ログイン（storageState に依存しない）
