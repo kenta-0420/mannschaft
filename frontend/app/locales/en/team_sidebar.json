@@ -3,6 +3,7 @@
     "category": {
       "home": "Home",
       "schedule": "Schedule",
+      "match": "Matches",
       "member": "Members",
       "ops": "Operations",
       "facility": "Facility",
@@ -19,6 +20,8 @@
       "shifts": "Shifts",
       "duties": "Duties",
       "annual_plan": "Annual Plan",
+      "matches": "Match Records",
+      "matchAnalytics": "Match Analytics",
       "members": "Members",
       "circulation": "Circulation",
       "safety_check": "Safety Check",

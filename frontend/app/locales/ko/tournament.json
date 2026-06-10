@@ -245,5 +245,18 @@
     "empty_team_record": "참가한 대회가 아직 없습니다",
     "empty_org_summary": "주최 중인 대회가 아직 없습니다",
     "empty_division_standings": "현재 참가 중인 대회가 없습니다"
+  },
+  "tournamentFee": {
+    "pageTitle": "대회 참가비",
+    "myFees": "내 참가비 목록",
+    "noFees": "현재 대회 참가비가 없습니다",
+    "payNow": "지금 결제",
+    "paid": "결제완료",
+    "paidAt": "결제일시",
+    "dueDate": "결제기한",
+    "faceAmount": "참가비",
+    "totalCharge": "총 청구액",
+    "checkoutSuccess": "체크아웃 완료",
+    "checkoutError": "체크아웃 실패"
   }
 }

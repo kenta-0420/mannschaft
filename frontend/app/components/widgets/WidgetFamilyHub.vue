@@ -83,7 +83,7 @@ watch(familyTeams, (newVal, oldVal) => {
   <DashboardWidgetCard
     title="家族"
     icon="pi pi-home"
-    to="/teams"
+    :to="selectedFamily ? `/teams/${selectedFamily.teamId}` : '/teams'"
     :loading="loading"
     :col-span="2"
     refreshable

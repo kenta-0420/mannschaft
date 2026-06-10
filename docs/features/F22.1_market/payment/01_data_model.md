@@ -101,11 +101,14 @@ INDEX idx_ca_payouts (payouts_enabled)
 
 **status 値（状態遷移）**
 
-> **モード別の初期 status**: エスクローモード（RECRUITMENT・`capture_mode=MANUAL`）は `AUTHORIZED`（onboarding 未完なら `HELD`）から開始。即時モード（MEMBERSHIP・`capture_mode=AUTOMATIC`）は INSERT 時点で **`CAPTURED`**（与信フェーズなし・即 transfer）。
+> **モード別の初期 status**: エスクローモード（RECRUITMENT・`capture_mode=MANUAL`）は **`PENDING_CONFIRMATION`**（PI 作成済・札主未 confirm。onboarding 未完なら `HELD`）から開始。即時モード（MEMBERSHIP・`capture_mode=AUTOMATIC`）は INSERT 時点で **`CAPTURED`**（与信フェーズなし・即 transfer）。
+>
+> **第一陣 status 意味論の根治（2026-06-10・V80.001）**: manual-capture PaymentIntent は札主が Stripe.js で confirm するまで真の与信（`amount_capturable`）が立たない。PI 作成直後に `AUTHORIZED` にすると capture が未確認 PI で失敗するため、PI 作成済・札主未 confirm の中間状態 `PENDING_CONFIRMATION` を新設した。`AUTHORIZED`（capture 可能）への昇格は `payment_intent.amount_capturable_updated` webhook 受信時のみ行う。
 
 | 値 | 意味 |
 |---|---|
-| `AUTHORIZED` | 与信済（資金未移動・エスクロー保持中）。エスクローモードのみ |
+| `PENDING_CONFIRMATION` | 与信前段: manual-capture PI 作成済だが札主未 confirm（真の与信未確定）。エスクローモードのみ |
+| `AUTHORIZED` | 与信済（資金未移動・エスクロー保持中・真の与信確定＝capture 可能）。エスクローモードのみ |
 | `HELD` | 払出保留（受領者 onboarding 未完了で capture 待ち。§02 §5） |
 | `CAPTURED` | capture 済（払出確定・受領者へ transfer 完了） |
 | `PARTIALLY_REFUNDED` | 部分返金済 |
@@ -114,9 +117,11 @@ INDEX idx_ca_payouts (payouts_enabled)
 | `DISPUTED` | 係争中（最終認証未了で hold 失効回避のため先 capture が必要になりうる。F13.1 §8.9 戦略） |
 
 ```
-                ┌─ HELD ──(onboarding完了)──┐
-AUTHORIZED ─────┤                            ├──▶ CAPTURED ──▶ PARTIALLY_REFUNDED / REFUNDED
-                └─(payouts_enabled)──────────┘
+PENDING_CONFIRMATION ──(札主confirm: amount_capturable_updated)──▶ AUTHORIZED
+PENDING_CONFIRMATION ──(confirm前 cancel/payment_failed)──▶ CANCELLED
+                ┌─ HELD ──(onboarding完了→confirm)──┐
+AUTHORIZED ─────┤                                    ├──▶ CAPTURED ──▶ PARTIALLY_REFUNDED / REFUNDED
+                └─(payouts_enabled・札主confirm)──────┘
 AUTHORIZED ──(札下げ/期限切れ/hold失効)──▶ CANCELLED
 AUTHORIZED ──(最終認証未了でhold接近)──▶ DISPUTED ──(先capture)──▶ CAPTURED ──(仲裁結果)──▶ REFUNDED/確定
 ```

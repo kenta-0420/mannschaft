@@ -122,7 +122,30 @@
         },
         "submit": "Rückerstattung veranlassen",
         "confirmTitle": "Rückerstattung bestätigen",
-        "confirmPayee": "Dies ist eine vom Empfänger getragene Rückerstattung. Dem Zahler wird der volle Betrag erstattet und Sie tragen die Bearbeitungsgebühr. Fortfahren?"
+        "confirmPayee": "Dies ist eine vom Empfänger getragene Rückerstattung. Dem Zahler wird der volle Betrag erstattet und Sie tragen die Bearbeitungsgebühr. Fortfahren?",
+        "amountLabel": "Erstattungsbetrag",
+        "amountFull": "Vollständige Erstattung",
+        "amountPartial": "Teilerstattung",
+        "amountRequired": "Bitte gib den Erstattungsbetrag ein.",
+        "amountTooLarge": "Der Erstattungsbetrag übersteigt den erstattungsfähigen Betrag.",
+        "reasonLabel": "Grund (optional)",
+        "failed": "Erstattung fehlgeschlagen."
+      },
+      "connect": {
+        "title": "Auszahlungskonto (Belohnungen erhalten)",
+        "loading": "Wird geladen…",
+        "statusLabel": "Status",
+        "status": {
+          "ready": "Abgeschlossen",
+          "onboarding": "In Prüfung",
+          "restricted": "Weitere Angaben erforderlich",
+          "notRegistered": "Nicht registriert"
+        },
+        "registrationRequired": "Zum Erhalt von Belohnungen ist ein Auszahlungskonto erforderlich.",
+        "register": "Auszahlungskonto registrieren",
+        "continue": "Registrierung fortsetzen",
+        "redirecting": "Weiterleitung…",
+        "linkFailed": "Der Registrierungslink für das Auszahlungskonto konnte nicht abgerufen werden."
       }
     }
   }

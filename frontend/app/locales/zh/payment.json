@@ -71,6 +71,46 @@
           "EXPIRED": "已过期"
         }
       }
+    },
+    "guardianBulkPayment": {
+      "title": "监护人批量付款",
+      "subtitle": "可以一次性支付您管理的孩子的未缴会费",
+      "noItems": "没有未缴的会费",
+      "beneficiary": "受益人",
+      "scope": "所属",
+      "itemName": "会费名称",
+      "amount": "金额",
+      "dueDate": "截止日期",
+      "alreadyPaid": "已支付",
+      "paidBy": "{name}已支付",
+      "kind": {
+        "ONE_TIME": "一次性",
+        "RECURRING": "持续付款",
+        "TERM": "期间付款"
+      },
+      "via": {
+        "SELF": "本人",
+        "GUARDIAN": "监护人",
+        "GUARDIAN_PROXY": "监护代理",
+        "PROXY_GRANT": "代理权"
+      },
+      "selectAll": "全部选择",
+      "deselectAll": "全部取消",
+      "paySelected": "支付{count}件",
+      "totalAmount": "合计: ¥{amount}",
+      "processing": "处理中...",
+      "result": {
+        "title": "支付结果",
+        "checkedOut": "支付完成",
+        "skipped": "已跳过",
+        "skipReasons": {
+          "ALREADY_PAID": "已支付",
+          "NOT_AUTHORIZED": "无支付权限",
+          "CONNECT_NOT_READY": "收款账户未设置",
+          "ITEM_NOT_FOUND": "会费项目不存在",
+          "ERROR": "错误"
+        }
+      }
     }
   }
 }

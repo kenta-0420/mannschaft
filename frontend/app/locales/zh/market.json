@@ -122,7 +122,30 @@
         },
         "submit": "退款",
         "confirmTitle": "退款确认",
-        "confirmPayee": "这是由收款方承担手续费的退款。支付者将获得全额退款，支付手续费由您承担。确定吗？"
+        "confirmPayee": "这是由收款方承担手续费的退款。支付者将获得全额退款，支付手续费由您承担。确定吗？",
+        "amountLabel": "退款金额",
+        "amountFull": "全额退款",
+        "amountPartial": "部分退款",
+        "amountRequired": "请输入退款金额。",
+        "amountTooLarge": "退款金额超过了可退款金额。",
+        "reasonLabel": "理由（可选）",
+        "failed": "退款失败。"
+      },
+      "connect": {
+        "title": "收款账户（接收谢礼）",
+        "loading": "加载中…",
+        "statusLabel": "状态",
+        "status": {
+          "ready": "已完成",
+          "onboarding": "审核中",
+          "restricted": "需要补充信息",
+          "notRegistered": "未注册"
+        },
+        "registrationRequired": "接收谢礼需要先注册收款账户。",
+        "register": "注册收款账户",
+        "continue": "继续注册",
+        "redirecting": "跳转中…",
+        "linkFailed": "无法获取收款账户注册链接。"
       }
     }
   }

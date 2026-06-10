@@ -10,7 +10,7 @@ import com.mannschaft.app.team.entity.TeamEntity;
  * <p>抑制版 ({@link TeamPublicSummaryResponse}) の全フィールドに加え、
  * 組織メンバーのみに公開する以下のフィールドを含む:
  * <ul>
- *   <li>{@code visibility} — チーム公開範囲（{@code PUBLIC} / {@code ORGANIZATION_ONLY}）</li>
+ *   <li>{@code visibility} — チーム公開範囲（{@code PUBLIC} / {@code GUESTS_AND_ABOVE} / {@code SUPPORTERS_AND_ABOVE} / {@code MEMBERS_AND_ABOVE}）</li>
  *   <li>{@code bannerUrl} — バナー画像URL</li>
  *   <li>{@code supporterEnabled} — サポーター受け入れ可否</li>
  *   <li>{@code memberCount} — チーム所属メンバー数（Phase 4 で {@code teams.member_count} 集約カラム経由で反映）</li>

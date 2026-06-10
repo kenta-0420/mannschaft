@@ -13,6 +13,7 @@
  *         POST /api/v1/recruitment-listings/{id}/applications
  */
 import type { MarketListingRegion, MarketListingResponse } from '~/types/market'
+import type { ScopeKind } from '~/types/marketPayment'
 
 definePageMeta({
   layout: 'default',
@@ -123,6 +124,25 @@ function regionLabel(region: MarketListingRegion): string {
     ? `${region.prefectureName} ${region.cityName}`
     : region.prefectureName
 }
+
+/**
+ * F22.1 謝礼受取（Connect onboarding）導線の対象 scope。
+ * 公開札 owner（TEAM/ORGANIZATION）を Connect の ScopeKind（TEAM/ORG）へ写像する。
+ * 謝礼あり札（paymentEnabled）かつログイン済みのときのみ表示し、実際の認可（受取側 scope ADMIN）は
+ * BE 側で担保する（権限不足は BE が 403/404 を返す）。
+ */
+const payeeScope = computed<{ kind: ScopeKind, id: number } | null>(() => {
+  const l = listing.value
+  if (!l || !l.paymentEnabled || !isAuthenticated.value) {
+    return null
+  }
+  const kind: ScopeKind = l.owner.scopeType === 'ORGANIZATION' ? 'ORG' : 'TEAM'
+  const id = Number(l.owner.scopeId)
+  if (!Number.isFinite(id)) {
+    return null
+  }
+  return { kind, id }
+})
 </script>
 
 <template>
@@ -260,6 +280,15 @@ function regionLabel(region: MarketListingRegion): string {
           />
         </div>
       </div>
+
+      <!-- 謝礼あり札の受取口座（Stripe Connect）登録導線（受取側・F22.1） -->
+      <MarketConnectOnboarding
+        v-if="payeeScope"
+        class="mt-4"
+        data-testid="market-connect-onboarding"
+        :scope-kind="payeeScope.kind"
+        :scope-id="payeeScope.id"
+      />
     </template>
   </div>
 </template>

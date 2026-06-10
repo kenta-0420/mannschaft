@@ -3,6 +3,7 @@
     "category": {
       "home": "홈",
       "schedule": "일정",
+      "match": "경기",
       "member": "멤버",
       "ops": "업무 운영",
       "facility": "시설 관리",
@@ -19,6 +20,8 @@
       "shifts": "교대 근무",
       "duties": "당번",
       "annual_plan": "연간 계획",
+      "matches": "경기 기록",
+      "matchAnalytics": "경기 분석",
       "members": "멤버",
       "circulation": "회람",
       "safety_check": "안전 확인",

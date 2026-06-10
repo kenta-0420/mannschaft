@@ -137,8 +137,15 @@ onMounted(async () => {
     <div class="mb-4 flex items-center justify-between gap-3">
       <BackButton :to="`/organizations/${orgId}/tournaments`" label="大会一覧に戻る" />
       <NuxtLink
-        :to="`/organizations/${orgId}/tournaments/${tId}/rosters`"
+        :to="`/organizations/${orgId}/tournaments/${tId}/fixtures`"
         class="ml-auto flex items-center gap-1.5 rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-600 transition hover:border-primary-400 hover:text-primary"
+      >
+        <i class="pi pi-sitemap" />
+        {{ $t('match.fixtures.title') }}
+      </NuxtLink>
+      <NuxtLink
+        :to="`/organizations/${orgId}/tournaments/${tId}/rosters`"
+        class="flex items-center gap-1.5 rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-600 transition hover:border-primary-400 hover:text-primary"
       >
         <i class="pi pi-list-check" />
         {{ $t('tournament.roster.title') }}

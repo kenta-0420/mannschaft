@@ -624,6 +624,20 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
     }
 
     @Override
+    public PaymentIntentInfo retrievePaymentIntentClientSecret(String paymentIntentId) {
+        try {
+            PaymentIntent intent = PaymentIntent.retrieve(paymentIntentId);
+            // clientSecret はログに出さない（PCI・03 §10）。status のみ記録する。
+            log.info("Stripe PaymentIntent retrieve（札主の決済確認用・clientSecret 非ログ）: id={}, status={}",
+                    intent.getId(), intent.getStatus());
+            return new PaymentIntentInfo(intent.getId(), intent.getClientSecret(), intent.getStatus());
+        } catch (StripeException e) {
+            log.error("Stripe PaymentIntent retrieve 失敗: id={}", paymentIntentId, e);
+            throw new BusinessException(ConnectPaymentErrorCode.STRIPE_API_ERROR, e);
+        }
+    }
+
+    @Override
     public ConnectRefundInfo createConnectRefund(String paymentIntentId, long amountMinor, String reason,
                                                  boolean reverseTransfer, boolean refundApplicationFee,
                                                  String idempotencyKey) {

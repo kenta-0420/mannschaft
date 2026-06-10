@@ -263,6 +263,26 @@ public interface StripePaymentProvider {
     PaymentIntentInfo captureManualPaymentIntent(String paymentIntentId, String idempotencyKey);
 
     /**
+     * 既存 PaymentIntent を retrieve し、支払者本人へ返すための {@code clientSecret} を取得する
+     * （F22.1 第二陣・札主の決済確認 EP・設計書 02 §1 行#8 / 03 §1）。
+     *
+     * <p>謝礼の与信（{@link #createDestinationPaymentIntent}）は応募成立リスナが事前起票するため、札主の
+     * 決済確認画面（同期 GET）が {@code clientSecret} を後から取得するには、escrow が保持する PaymentIntent ID
+     * から Stripe で {@code PaymentIntent.retrieve} して {@code client_secret} を引く必要がある（escrow には
+     * {@code client_secret} を保存しない・PCI SAQ-A・03 §1）。返り値の {@code clientSecret} は<b>支払者本人のみ</b>へ
+     * 返し、ログに出さない（03 §10）。</p>
+     *
+     * <p>{@code status} も併せて返し、呼び出し側が「未 confirm（{@code requires_confirmation}/
+     * {@code requires_action}）か、既に与信確定（{@code requires_capture}）か、capture 済み（{@code succeeded}）か」を
+     * 判断できるようにする（与信確定後に確認画面を出さないなどの分岐）。Stripe 通信失敗は症状を隠さず
+     * {@link com.mannschaft.app.payment.connect.ConnectPaymentErrorCode#STRIPE_API_ERROR}（500）で投げる。</p>
+     *
+     * @param paymentIntentId 対象 PaymentIntent ID（{@code pi_xxx}）
+     * @return PaymentIntent 情報（id / clientSecret / status）
+     */
+    PaymentIntentInfo retrievePaymentIntentClientSecret(String paymentIntentId);
+
+    /**
      * 与信を取消す（capture 前の PaymentIntent.cancel・設計書 02 §6 / §8）。
      *
      * <p>札下げ / hold 失効 / 72h 猶予超過などで与信を取り消す。capture 後は対象外（返金で対応）。</p>

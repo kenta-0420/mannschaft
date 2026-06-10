@@ -3,6 +3,7 @@
     "category": {
       "home": "Inicio",
       "schedule": "Horario",
+      "match": "Partidos",
       "member": "Miembros",
       "ops": "Operaciones",
       "facility": "Instalaciones",
@@ -19,6 +20,8 @@
       "shifts": "Turnos",
       "duties": "Guardias",
       "annual_plan": "Plan anual",
+      "matches": "Registros de partidos",
+      "matchAnalytics": "Análisis de partidos",
       "members": "Miembros",
       "circulation": "Circulación",
       "safety_check": "Control de seguridad",
