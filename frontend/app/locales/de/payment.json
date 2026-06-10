@@ -85,13 +85,38 @@
       }
     },
     "admin": {
+      "pageTitle": "Zahlungsverwaltung",
       "itemsTitle": "Zahlungsposten",
       "selectItem": "Bitte einen Zahlungsposten auswählen",
       "remindUnpaid": "Offene Zahlungen erinnern",
       "loadItemsError": "Zahlungsposten konnten nicht geladen werden",
       "loadPaymentsError": "Zahlungsstatus konnte nicht geladen werden",
       "remindSuccess": "Erinnerung gesendet",
-      "remindError": "Senden fehlgeschlagen"
+      "remindError": "Senden fehlgeschlagen",
+      "status": {
+        "PAID": "Bezahlt",
+        "UNPAID": "Unbezahlt",
+        "EXPIRED": "Abgelaufen",
+        "PENDING": "Ausstehend",
+        "REFUNDED": "Erstattet",
+        "CANCELLED": "Storniert"
+      }
+    },
+    "receipt": {
+      "title": "Quittungen",
+      "download": "Herunterladen",
+      "issuedBy": "Aussteller",
+      "amount": "Betrag",
+      "issuedDate": "Ausstellungsdatum",
+      "pending": "In Vorbereitung",
+      "noReceipts": "Keine Quittungen",
+      "loadError": "Zahlungsdatensätze konnten nicht geladen werden",
+      "loadReceiptError": "Quittung konnte nicht geladen werden"
+    },
+    "summary": {
+      "expired": "Abgelaufen",
+      "payer": "Zahler",
+      "beneficiary": "Begünstigter"
     },
     "guardianBulkPayment": {
       "title": "Vormund-Sammelzahlung",
