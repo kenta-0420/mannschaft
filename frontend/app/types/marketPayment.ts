@@ -1,0 +1,91 @@
+/**
+ * F22.1 市の謝礼決済 FE 型定義。
+ *
+ * BE 実 DTO（camelCase）と 1:1 で対応させる（手書き snake 禁止・casing 前科回避）。
+ * 一次ソース:
+ *   - payment/connect/dto/OnboardingLinkRequest.java
+ *   - payment/connect/dto/OnboardingLinkResponse.java
+ *   - payment/connect/dto/ConnectStatusResponse.java
+ *   - payment/connect/ScopeKind.java / OnboardingStatus.java / EscrowStatus.java
+ *   - payment/escrow/dto/RefundRequest.java
+ *   - payment/escrow/dto/RefundResponse.java
+ *   - payment/escrow/FeeBearer.java
+ *
+ * 注意（generated 型を使わない理由）:
+ *   生成型 `RefundRequest`（types/generated/index.ts）はチケット課金ドメインの
+ *   `{refundType, refundAmount, adjustedRemaining, note}` と**スキーマ名が衝突**しており、
+ *   F22.1 エスクロー返金の `{amount, feeBearer, reason, reasonDetail}` とは別物になる。
+ *   そのため返金リクエストは本ファイルで Java record と 1:1 に手書きする。
+ *   onboarding/status/RefundResponse の生成型は正しいが、参照の一貫性のため本ファイルに集約する。
+ */
+
+/** 受領/支払主体の種別（payment/connect/ScopeKind.java）。 */
+export type ScopeKind = 'USER' | 'TEAM' | 'ORG'
+
+/** Connect アカウントの onboarding 状態（payment/connect/OnboardingStatus.java）。 */
+export type OnboardingStatus = 'PENDING' | 'ONBOARDING' | 'READY' | 'RESTRICTED' | 'DISABLED'
+
+/** エスクロー取引の状態（payment/escrow/EscrowStatus.java）。 */
+export type EscrowStatus =
+  | 'AUTHORIZED'
+  | 'HELD'
+  | 'CAPTURED'
+  | 'PARTIALLY_REFUNDED'
+  | 'REFUNDED'
+  | 'CANCELLED'
+  | 'DISPUTED'
+
+/** 返金時の決済手数料の負担者（payment/escrow/FeeBearer.java）。 */
+export type FeeBearer = 'PAYER' | 'PAYEE'
+
+/**
+ * Connect onboarding リンク発行リクエスト（OnboardingLinkRequest.java）。
+ * scopeId は TEAM/ORG 時必須・USER 時は無視され本人に固定される。
+ */
+export interface OnboardingLinkRequest {
+  scopeKind: ScopeKind
+  scopeId?: number | null
+  returnUrl: string
+  refreshUrl: string
+}
+
+/** Connect onboarding リンク発行レスポンス（OnboardingLinkResponse.java）。 */
+export interface OnboardingLinkResponse {
+  connectAccountId: string
+  stripeAccountId: string
+  onboardingStatus: OnboardingStatus
+  onboardingUrl: string
+  expiresAt: string
+}
+
+/** Connect 状態照会レスポンス（ConnectStatusResponse.java）。 */
+export interface ConnectStatusResponse {
+  connectAccountId: string
+  scopeKind: ScopeKind
+  scopeId: number | null
+  onboardingStatus: OnboardingStatus
+  chargesEnabled: boolean
+  payoutsEnabled: boolean
+  requirementsDue: string[]
+}
+
+/**
+ * エスクロー返金リクエスト（payment/escrow/dto/RefundRequest.java）。
+ *   - amount: 精算額（transferAmount ベース・null=全額）。
+ *   - feeBearer: 手数料負担者（null=既定 PAYER）。
+ *   - reason / reasonDetail: 任意。
+ */
+export interface MarketRefundRequest {
+  amount?: number | null
+  feeBearer?: FeeBearer | null
+  reason?: string | null
+  reasonDetail?: string | null
+}
+
+/** エスクロー返金レスポンス（payment/escrow/dto/RefundResponse.java）。 */
+export interface MarketRefundResponse {
+  escrowId: string
+  status: EscrowStatus
+  refundedAmount: number
+  residualAmount: number
+}

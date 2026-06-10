@@ -122,7 +122,30 @@
         },
         "submit": "Issue refund",
         "confirmTitle": "Confirm refund",
-        "confirmPayee": "This is a recipient-borne refund. The payer will be refunded in full, and the processing fee will be borne by you. Proceed?"
+        "confirmPayee": "This is a recipient-borne refund. The payer will be refunded in full, and the processing fee will be borne by you. Proceed?",
+        "amountLabel": "Refund amount",
+        "amountFull": "Full refund",
+        "amountPartial": "Partial refund",
+        "amountRequired": "Please enter the refund amount.",
+        "amountTooLarge": "The refund amount exceeds the refundable amount.",
+        "reasonLabel": "Reason (optional)",
+        "failed": "Refund failed."
+      },
+      "connect": {
+        "title": "Payout account (receiving rewards)",
+        "loading": "Loading…",
+        "statusLabel": "Status",
+        "status": {
+          "ready": "Completed",
+          "onboarding": "Under review",
+          "restricted": "More info required",
+          "notRegistered": "Not registered"
+        },
+        "registrationRequired": "You need to register a payout account to receive rewards.",
+        "register": "Register payout account",
+        "continue": "Continue registration",
+        "redirecting": "Redirecting…",
+        "linkFailed": "Failed to obtain the payout account registration link."
       }
     }
   }

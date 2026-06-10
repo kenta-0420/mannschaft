@@ -122,7 +122,30 @@
         },
         "submit": "返金する",
         "confirmTitle": "返金の確認",
-        "confirmPayee": "受取側負担での返金です。支払者へ満額が返金され、決済手数料はこちらの負担となります。よろしいですか？"
+        "confirmPayee": "受取側負担での返金です。支払者へ満額が返金され、決済手数料はこちらの負担となります。よろしいですか？",
+        "amountLabel": "返金額",
+        "amountFull": "全額返金",
+        "amountPartial": "一部返金",
+        "amountRequired": "返金額を入力してください。",
+        "amountTooLarge": "返金額が返金可能額を超えています。",
+        "reasonLabel": "理由（任意）",
+        "failed": "返金に失敗しました。"
+      },
+      "connect": {
+        "title": "受取口座（謝礼の受け取り）",
+        "loading": "読み込み中…",
+        "statusLabel": "状態",
+        "status": {
+          "ready": "登録完了",
+          "onboarding": "審査中",
+          "restricted": "追加情報が必要",
+          "notRegistered": "未登録"
+        },
+        "registrationRequired": "謝礼を受け取るには受取口座の登録が必要です。",
+        "register": "受取口座を登録する",
+        "continue": "登録を続ける",
+        "redirecting": "遷移中…",
+        "linkFailed": "受取口座の登録リンクを取得できませんでした。"
       }
     }
   }
