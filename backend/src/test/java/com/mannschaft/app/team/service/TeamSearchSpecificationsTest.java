@@ -1,6 +1,5 @@
 package com.mannschaft.app.team.service;
 
-import com.mannschaft.app.common.util.SlugGenerator;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
@@ -56,6 +55,8 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
 
     @PersistenceContext
     private EntityManager em;
+
+    private static final java.util.concurrent.atomic.AtomicInteger SLUG_SEQ = new java.util.concurrent.atomic.AtomicInteger(0);
 
     private static final Long ORG_A = 1001L;
     private static final Long ORG_B = 1002L;
@@ -720,7 +721,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
         TeamEntity team = TeamEntity.builder()
                 .name(name)
                 .nameKana(kana)
-                .slug(SlugGenerator.generate(name))
+                .slug("t-" + SLUG_SEQ.incrementAndGet())
                 .visibility(v)
                 .supporterEnabled(false)
                 .prefecture(prefecture)
@@ -735,7 +736,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
         TeamEntity team = TeamEntity.builder()
                 .name(name)
                 .nameKana(kana)
-                .slug(SlugGenerator.generate(name))
+                .slug("t-" + SLUG_SEQ.incrementAndGet())
                 .visibility(v)
                 .supporterEnabled(false)
                 .prefecture(prefecture)
@@ -751,7 +752,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
         TeamEntity team = TeamEntity.builder()
                 .name(name)
                 .nameKana(kana)
-                .slug(SlugGenerator.generate(name))
+                .slug("t-" + SLUG_SEQ.incrementAndGet())
                 .visibility(TeamEntity.Visibility.PUBLIC)
                 .supporterEnabled(false)
                 .build();
@@ -766,7 +767,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
         TeamEntity team = TeamEntity.builder()
                 .name(name)
                 .nameKana(kana)
-                .slug(SlugGenerator.generate(name))
+                .slug("t-" + SLUG_SEQ.incrementAndGet())
                 .visibility(TeamEntity.Visibility.PUBLIC)
                 .supporterEnabled(false)
                 .prefecture(prefecture)
@@ -781,7 +782,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
         TeamEntity team = TeamEntity.builder()
                 .name(name)
                 .nameKana(kana)
-                .slug(SlugGenerator.generate(name))
+                .slug("t-" + SLUG_SEQ.incrementAndGet())
                 .visibility(TeamEntity.Visibility.PUBLIC)
                 .supporterEnabled(false)
                 .deletedAt(LocalDateTime.now())
@@ -794,7 +795,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
         TeamEntity team = TeamEntity.builder()
                 .name(name)
                 .nameKana(kana)
-                .slug(SlugGenerator.generate(name))
+                .slug("t-" + SLUG_SEQ.incrementAndGet())
                 .visibility(TeamEntity.Visibility.PUBLIC)
                 .supporterEnabled(false)
                 .archivedAt(LocalDateTime.now())
