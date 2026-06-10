@@ -135,8 +135,12 @@ test('FIX-001: matchdays API で fixture リストが取得できる（fixtures.
     }>
   }
   expect(json.data.length, '1 節以上が存在する').toBeGreaterThanOrEqual(1)
-  const match = json.data[0].matches[0]
+  const matchday0 = json.data[0]
+  expect(matchday0, '第1節が存在する').toBeTruthy()
+  if (!matchday0) return
+  const match = matchday0.matches[0]
   expect(match, '第1節に対戦カードが存在する').toBeTruthy()
+  if (!match) return
   expect(match.participants.homeParticipantId, 'home は FC東京U-18 (participant 9)').toBe(
     PARTICIPANT_U18_ID,
   )
@@ -371,8 +375,12 @@ test('FIX-010: matchdays API で試合結果（COMPLETED・HOME_WIN）が確認�
       }>
     }>
   }
-  const match = json.data[0]?.matches[0]
+  const matchday0 = json.data[0]
+  expect(matchday0, '第1節が存在する').toBeTruthy()
+  if (!matchday0) return
+  const match = matchday0.matches[0]
   expect(match, '対戦カードが存在する').toBeTruthy()
+  if (!match) return
   expect(match.score.homeScore, 'homeScore=1 が fixtures.vue データに反映される').toBe(1)
   expect(match.score.awayScore, 'awayScore=0 が fixtures.vue データに反映される').toBe(0)
   expect(match.info.result, 'result=HOME_WIN が反映される').toBe('HOME_WIN')
