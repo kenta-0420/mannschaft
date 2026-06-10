@@ -59,7 +59,7 @@ class PaymentItemServiceTest {
         void 正常作成() {
             CreatePaymentItemRequest request = new CreatePaymentItemRequest(
                     "年会費", "2026年度", "ANNUAL_FEE", new BigDecimal("5000"), "JPY",
-                    true, (short) 0, (short) 0, null);
+                    true, (short) 0, (short) 0, null, null, null);
 
             PaymentItemEntity saved = PaymentItemEntity.builder()
                     .teamId(TEAM_ID).name("年会費").type(PaymentItemType.ANNUAL_FEE)
