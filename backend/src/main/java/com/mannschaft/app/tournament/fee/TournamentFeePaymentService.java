@@ -10,6 +10,7 @@ import com.mannschaft.app.payment.entity.PaymentItemEntity;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import com.mannschaft.app.payment.service.MemberPaymentService;
 import com.mannschaft.app.payment.service.PaymentItemService;
+import com.mannschaft.app.tournament.TournamentErrorCode;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
 import com.mannschaft.app.tournament.fee.dto.MyTournamentFeeItem;
 import com.mannschaft.app.tournament.fee.dto.MyTournamentFeesResponse;
