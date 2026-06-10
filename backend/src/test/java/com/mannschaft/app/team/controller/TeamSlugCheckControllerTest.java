@@ -2,6 +2,7 @@ package com.mannschaft.app.team.controller;
 
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.common.security.AccessGuard;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
@@ -11,6 +12,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -20,7 +24,6 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import com.mannschaft.app.common.security.AccessGuard;
 
 /**
  * {@link TeamSlugCheckController} の MockMvc 結合テスト。
@@ -37,8 +40,15 @@ import com.mannschaft.app.common.security.AccessGuard;
  */
 @WebMvcTest(TeamSlugCheckController.class)
 @AutoConfigureMockMvc(addFilters = false)
+@Import(TeamSlugCheckControllerTest.MethodSecurityConfig.class)
 @DisplayName("TeamSlugCheckController 結合テスト")
 class TeamSlugCheckControllerTest {
+
+    /** @PreAuthorize が @WebMvcTest コンテキストで動作するように @EnableMethodSecurity を有効化。 */
+    @TestConfiguration
+    @EnableMethodSecurity(prePostEnabled = true)
+    static class MethodSecurityConfig {
+    }
 
     @Autowired
     private MockMvc mockMvc;
