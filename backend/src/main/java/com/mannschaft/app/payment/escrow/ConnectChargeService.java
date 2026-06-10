@@ -119,6 +119,36 @@ public class ConnectChargeService {
         boolean payoutsEnabled = Boolean.TRUE.equals(payee.getPayoutsEnabled());
         LocalDateTime now = LocalDateTime.now();
 
+        // 第三陣-b「7日超 fallback」（マスター裁可・02 §5.1）: 成立〜役務日が7日超の謝礼は、カード与信が
+        // 役務完了前に失効するため成立時に与信（manual-capture PI）を立てない。即時モード（AUTOMATIC）の DEFERRED
+        // 行を PaymentIntent 未作成で起票し、最終認証時に即時払い（chargeDeferred）へフォールバックする。
+        // captureMode=AUTOMATIC（会費の即時 charge と一貫）。clientSecret は返さない（PI 未作成）。
+        if (cmd.deferred()) {
+            EscrowTransactionEntity deferred = EscrowTransactionEntity.builder()
+                    .sourceKind(cmd.sourceKind())
+                    .captureMode(EscrowCaptureMode.AUTOMATIC)
+                    .sourceId(cmd.sourceId())
+                    .sourceParticipantId(cmd.sourceParticipantId())
+                    .payerScopeKind(cmd.payerScopeKind())
+                    .payerScopeId(cmd.payerScopeId())
+                    .payerStripeCustomerId(cmd.payerStripeCustomerId())
+                    .payeeKind(cmd.payeeKind())
+                    .payeeConnectAccountId(payee.getId())
+                    .organizationId(cmd.organizationId())
+                    .faceAmount(fee.faceAmount())
+                    .amount(fee.chargeAmount())
+                    .currency(currency)
+                    .applicationFeeAmount(fee.applicationFeeAmount())
+                    .feePolicyKey(policy.policyKey()) // 適用パターンを焼き付け（遡及防止・R1・01 §3.2）。
+                    .status(EscrowStatus.DEFERRED)
+                    .build();
+            deferred = escrowTransactionRepository.save(deferred);
+            log.info("与信を DEFERRED で記録（7日超 fallback・成立時は与信せず完了時即時払い予定・PI 未作成）: "
+                            + "escrowId={}, payeeAccount={}, charge={}, appFee={}",
+                    deferred.getId(), payee.getStripeAccountId(), fee.chargeAmount(), fee.applicationFeeAmount());
+            return toResult(deferred, null);
+        }
+
         EscrowTransactionEntity.EscrowTransactionEntityBuilder builder = EscrowTransactionEntity.builder()
                 .sourceKind(cmd.sourceKind())
                 .captureMode(EscrowCaptureMode.MANUAL)
@@ -238,10 +268,17 @@ public class ConnectChargeService {
                 && actorUserId.equals(escrow.getPayerScopeId());
 
         if (isPayer) {
-            // 支払者本人: PENDING_CONFIRMATION のときのみ clientSecret を Stripe から retrieve して返す。
-            // AUTHORIZED 以降（確認済み）/HELD（PI 未作成）は clientSecret 不要のため null（再 confirm させない）。
+            // 支払者本人へ clientSecret を返す条件は「PI 作成済・札主の confirm 待ち」:
+            //   (1) 従来 escrow（MANUAL）: PENDING_CONFIRMATION（amount_capturable_updated 前）。
+            //   (2) 完了時即時払い（第三陣-b・AUTOMATIC）: AUTHORIZED かつ未 capture（succeeded webhook 前）。
+            //       DEFERRED→chargeDeferred で AUTOMATIC PI を作成し AUTHORIZED へ置いた直後の confirm 待ち状態
+            //       （第二陣 EP 同型再利用）。capture_method=automatic ゆえ amount_capturable 段はなく、confirm で
+            //       直接 succeeded→CAPTURED。CAPTURED 以降/HELD（PI 未作成）/DEFERRED（PI 未作成）は clientSecret 不要。
+            boolean awaitingManualConfirm = escrow.getStatus() == EscrowStatus.PENDING_CONFIRMATION;
+            boolean awaitingImmediateConfirm = escrow.getStatus() == EscrowStatus.AUTHORIZED
+                    && escrow.getCaptureMode() == EscrowCaptureMode.AUTOMATIC;
             String clientSecret = null;
-            if (escrow.getStatus() == EscrowStatus.PENDING_CONFIRMATION
+            if ((awaitingManualConfirm || awaitingImmediateConfirm)
                     && escrow.getStripePaymentIntentId() != null) {
                 clientSecret = stripePaymentProvider
                         .retrievePaymentIntentClientSecret(escrow.getStripePaymentIntentId())
@@ -537,6 +574,98 @@ public class ConnectChargeService {
     }
 
     /**
+     * 完了時即時払い（7日超 fallback）の謝礼を最終認証時に即時 charge する（第三陣-b・マスター裁可・02 §5.3 / §5.1）。
+     *
+     * <p>成立〜役務日が7日超で成立時に与信を立てず {@link EscrowStatus#DEFERRED} で起票した escrow を、最終認証
+     * （役務完了）時にここで即時払い（{@link CaptureMethod#AUTOMATIC} の Destination PaymentIntent）へフォールバック
+     * する。会費（F08.9）の即時 charge 作法を流用し、{@code transfer_data.destination}＝受領側 Connect 口座・
+     * {@code application_fee_amount}＝折半分・Customer＝札主。PaymentIntent を作成して escrow を
+     * {@link EscrowStatus#AUTHORIZED}（PI 作成済・succeeded webhook 待ち＝会費 charge() と一貫）にし、
+     * {@code clientSecret} を返す。札主は<b>第二陣の決済確認 EP</b>（{@link #getRecruitmentPaymentView}/
+     * {@link #getEscrowView}）で clientSecret を受け取り Stripe.js で confirm する（同型再利用）。confirm すると
+     * AUTOMATIC PI は {@code payment_intent.succeeded} を発火し、{@link EscrowWebhookService} が AUTHORIZED→
+     * {@link EscrowStatus#CAPTURED} 化＋複式記帳する（charge() と同じく本メソッドでは ledger を起票しない・二重記帳防止）。</p>
+     *
+     * <p><b>なぜ PENDING_CONFIRMATION でなく AUTHORIZED か（第三陣バッチ非干渉・根治）:</b> DEFERRED の最終認証は
+     * 成立から7日超後（しばしば72h超）に起きる。{@code captureMode=AUTOMATIC} の即時 charge を会費と同様
+     * {@code status=AUTHORIZED}＋{@code hold_expires_at=NULL} で起票すれば、第三陣の自動取消バッチの
+     * PENDING_CONFIRMATION 抽出（{@code created_at}＜now−72h）にも HELD/AUTHORIZED 抽出
+     * （{@code hold_expires_at≦now+2h}・NULL は不一致）にも掛からず、誤って自動取消されない。manual 与信の
+     * PENDING_CONFIRMATION（{@code created_at} 基準で 72h 猶予）とは性質が異なるため、即時モードは AUTHORIZED に
+     * 倣う（既存バッチ・webhook の意味論を変えずに共存）。</p>
+     *
+     * <p><b>冪等:</b> 既に AUTHORIZED（PI 作成済・再フック）/CAPTURED/CANCELLED 等の後段状態なら no-op で既存の
+     * clientSecret（AUTHORIZED かつ PI 有時のみ retrieve）を返す。Stripe へも {@code idempotencyKey} を渡し
+     * 二重 PI 作成を Stripe 側でも拒否する（02 §9）。行ロック（{@code PESSIMISTIC_WRITE}）で並行フックを直列化する。</p>
+     *
+     * <p><b>口座 READY 必須（即時モードゆえ HELD にしない・会費 charge と一貫）:</b> 受領側 Connect 口座が
+     * {@code payouts_enabled=false}（onboarding 未完）なら {@link ConnectPaymentErrorCode#ONBOARDING_NOT_READY}
+     * （409）で拒否する（症状を隠さない）。</p>
+     *
+     * <p><b>不正状態:</b> {@link EscrowStatus#DEFERRED} 以外（AUTHORIZED/HELD 等の従来 escrow 経路）からの本メソッド
+     * 呼び出しは {@link ConnectPaymentErrorCode#INVALID_ESCROW_STATE}（409）で拒否する（従来 escrow は capture を使う）。</p>
+     *
+     * @param escrowId 完了時即時払い対象（DEFERRED）のエスクロー取引 ID
+     * @return 即時 charge 結果（PENDING_CONFIRMATION＋clientSecret・札主の confirm 用）
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public AuthorizeChargeResult chargeDeferred(UUID escrowId) {
+        EscrowTransactionEntity escrow = escrowTransactionRepository.findByIdForUpdate(escrowId)
+                .orElseThrow(() -> new BusinessException(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND));
+
+        // 冪等: 既に即時 charge 起票済み（AUTHORIZED・PI 有）/確定/取消なら再作成しない。
+        if (escrow.getStatus() == EscrowStatus.AUTHORIZED
+                || escrow.getStatus() == EscrowStatus.CAPTURED
+                || escrow.getStatus() == EscrowStatus.CANCELLED
+                || escrow.getStatus() == EscrowStatus.REFUNDED
+                || escrow.getStatus() == EscrowStatus.PARTIALLY_REFUNDED) {
+            log.info("完了時即時払いは既に起票/確定済み（冪等・no-op）: escrowId={}, status={}", escrowId, escrow.getStatus());
+            String clientSecret = (escrow.getStatus() == EscrowStatus.AUTHORIZED
+                    && escrow.getStripePaymentIntentId() != null)
+                    ? stripePaymentProvider.retrievePaymentIntentClientSecret(escrow.getStripePaymentIntentId())
+                            .clientSecret()
+                    : null;
+            return toResult(escrow, clientSecret);
+        }
+
+        // DEFERRED 以外（従来 escrow の AUTHORIZED/HELD 等）からの即時 charge 要求は誤り。従来 escrow は capture を使う。
+        if (escrow.getStatus() != EscrowStatus.DEFERRED) {
+            log.warn("完了時即時払い不能な状態からの chargeDeferred 要求を拒否: escrowId={}, status={}",
+                    escrowId, escrow.getStatus());
+            throw new BusinessException(ConnectPaymentErrorCode.INVALID_ESCROW_STATE);
+        }
+
+        ConnectAccountEntity payee = connectAccountRepository.findById(escrow.getPayeeConnectAccountId())
+                .orElseThrow(() -> new BusinessException(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND));
+
+        // 即時モードゆえ口座未 READY は HELD にせずエラー（会費 charge と一貫・02 §1.1 注記）。
+        if (!Boolean.TRUE.equals(payee.getPayoutsEnabled())) {
+            log.warn("完了時即時払い拒否（受領口座が未 READY・即時モードゆえ HELD にしない）: escrowId={}, payeeAccount={}",
+                    escrowId, payee.getStripeAccountId());
+            throw new BusinessException(ConnectPaymentErrorCode.ONBOARDING_NOT_READY);
+        }
+
+        // AUTOMATIC（即時 capture）の Destination PaymentIntent を作成（会費 charge と同型・idempotencyKey を Stripe へ橋渡し）。
+        String idempotencyKey = "deferred-" + escrow.getSourceId() + "-" + escrow.getSourceParticipantId();
+        StripePaymentProvider.PaymentIntentInfo pi = stripePaymentProvider.createDestinationPaymentIntent(
+                escrow.getAmount(), escrow.getCurrency(), escrow.getPayerStripeCustomerId(),
+                escrow.getApplicationFeeAmount(), payee.getStripeAccountId(), CaptureMethod.AUTOMATIC, idempotencyKey);
+
+        // AUTHORIZED（PI 作成済・succeeded webhook 待ち＝会費 charge() と一貫）へ遷移し clientSecret を返す。
+        // hold_expires_at=NULL（即時モード・与信フェーズなし＝第三陣バッチの自動取消対象外）。confirm→succeeded webhook で
+        // 既存 applySucceeded の AUTHORIZED 経路が CAPTURED 化＋複式記帳する（本メソッドでは記帳しない・二重記帳防止）。
+        escrow.setStatus(EscrowStatus.AUTHORIZED);
+        escrow.setStripePaymentIntentId(pi.paymentIntentId());
+        escrow.setAuthorizedAt(LocalDateTime.now());
+        escrow.setHoldExpiresAt(null);
+        escrowTransactionRepository.save(escrow);
+        log.info("完了時即時払いを起票 DEFERRED→AUTHORIZED（AUTOMATIC・succeeded webhook で CAPTURED+記帳）: "
+                        + "escrowId={}, piId={}, charge={}, appFee={}",
+                escrowId, pi.paymentIntentId(), escrow.getAmount(), escrow.getApplicationFeeAmount());
+        return toResult(escrow, pi.clientSecret());
+    }
+
+    /**
      * 謝礼/会費の返金または与信取消を行う（設計書 02 §6.1・設定A・マスター確定）。
      *
      * <p><b>操作主体＝受取側 scope（payee の TEAM/ORG）の ADMIN</b>（Mannschaft 運営は関与しない）。
@@ -609,9 +738,11 @@ public class ConnectChargeService {
             return new RefundResult(escrowId, escrow.getStatus(), 0L, 0L);
         }
 
-        // capture 前（PENDING_CONFIRMATION/AUTHORIZED/HELD）は返金でなく与信取消（支払者に課金なし・02 §6.1）。
+        // capture 前（DEFERRED/PENDING_CONFIRMATION/AUTHORIZED/HELD）は返金でなく与信取消（支払者に課金なし・02 §6.1）。
         // PENDING_CONFIRMATION（札主未 confirm）も真の与信が立つ前のため、課金は起きておらず取消で足りる。
-        if (escrow.getStatus() == EscrowStatus.PENDING_CONFIRMATION
+        // DEFERRED（7日超 fallback・成立時に与信せず PI 未作成）も課金前のため取消で足りる（PI 未作成なら Stripe 呼ばず）。
+        if (escrow.getStatus() == EscrowStatus.DEFERRED
+                || escrow.getStatus() == EscrowStatus.PENDING_CONFIRMATION
                 || escrow.getStatus() == EscrowStatus.AUTHORIZED
                 || escrow.getStatus() == EscrowStatus.HELD) {
             cancelAuthorizationForRefund(escrow);

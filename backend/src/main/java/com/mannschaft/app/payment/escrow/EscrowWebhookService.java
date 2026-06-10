@@ -264,6 +264,12 @@ public class EscrowWebhookService {
      * 二重記帳を避け no-op（冪等）。AUTHORIZED/HELD（webhook 先着・即時モード等）なら CAPTURED 化し、
      * {@code captured_at} と CAPTURE/TRANSFER_OUT/FEE を記帳する（借方合計＝貸方合計・01 §3.3）。</p>
      *
+     * <p><b>完了時即時払い（第三陣-b 7日超 fallback・02 §5.1）:</b> {@link EscrowStatus#DEFERRED} から最終認証で
+     * 起票した即時払いは {@link EscrowCaptureMode#AUTOMATIC} の PaymentIntent で、会費 charge() と同じく
+     * {@link EscrowStatus#AUTHORIZED}（PI 作成済・succeeded 待ち）に置かれる。AUTOMATIC PI は札主が confirm すると
+     * （manual の amount_capturable 段を経ず）直接 {@code payment_intent.succeeded} を発火するため、本ハンドラの
+     * 既存 AUTHORIZED 経路がそのまま CAPTURED 化＋記帳する（追加分岐は不要）。</p>
+     *
      * <p><b>会費の PAID 反映（F08.9 P1 Wave4・02 §1.1 / §4.2）:</b> CAPTURED へ遷移したとき
      * {@link EscrowCapturedEvent} を発火する。本イベントは {@code member_payments} を知らない escrow ドメインと
      * 会費ドメイン（{@link MembershipPaymentCaptureListener}）の境界を保つための結節点であり、リスナが

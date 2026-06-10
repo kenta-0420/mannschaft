@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -78,4 +79,28 @@ public interface EscrowTransactionRepository
 
     /** 状態ごとの取引を取得する（自動 capture/cancel バッチ用）。 */
     List<EscrowTransactionEntity> findByStatus(EscrowStatus status);
+
+    /**
+     * 指定状態かつ {@code created_at} が基準時刻より前（=確認猶予超過）の取引を取得する（escrow ライフサイクル
+     * バッチ用・第三陣）。{@link EscrowStatus#PENDING_CONFIRMATION}（札主未 confirm 放置）の自動取消抽出に用いる。
+     *
+     * <p>{@code hold_expires_at} は AUTHORIZED 昇格時（札主 confirm 後）にのみ刻まれ PENDING_CONFIRMATION では
+     * NULL のため、確認放置は {@code created_at} 起点の経過時間で判定する（第一陣 status 意味論の根治と整合）。</p>
+     */
+    List<EscrowTransactionEntity> findByStatusAndCreatedAtBefore(EscrowStatus status, LocalDateTime createdBefore);
+
+    /**
+     * 指定状態かつ {@code hold_expires_at} が基準時刻以前（=hold 失効/間近）の取引を取得する（escrow ライフサイクル
+     * バッチ用・第三陣・設計書 02 §5.2 / §5.4）。{@link EscrowStatus#HELD}（onboarding 未完で 72h 超過）および
+     * {@link EscrowStatus#AUTHORIZED}（与信失効間近で未 capture）の抽出に用いる。
+     */
+    List<EscrowTransactionEntity> findByStatusAndHoldExpiresAtLessThanEqual(
+            EscrowStatus status, LocalDateTime threshold);
+
+    /**
+     * 受取側 Connect 口座（{@code payee_connect_account_id} 論理参照）に紐づく指定状態の取引を取得する
+     * （HELD 昇格用・第三陣・設計書 02 §5.2）。{@code account.updated} で payouts_enabled が true へ遷移した
+     * connect_account を payee とする {@link EscrowStatus#HELD} escrow を昇格対象として引く。
+     */
+    List<EscrowTransactionEntity> findByPayeeConnectAccountIdAndStatus(UUID payeeConnectAccountId, EscrowStatus status);
 }
