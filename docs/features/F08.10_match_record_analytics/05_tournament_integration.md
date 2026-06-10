@@ -15,7 +15,31 @@
 
 ---
 
+## H.0 入口① 第一陣 BE の採用方針 — 中道（既存 tournament 非破壊・改称は後続フェーズ）【マスター御裁可・実装済】
+
+> **状態**: 入口①の第一陣 BE（順位連携リスナー）を本方針で実装済み。Phase 5 の full Fixture 改称（H.1）は**後続フェーズに延期**。
+
+入口①（大会の対戦表からの記録合流）の**順位連携**は、以下の **中道** を採用する（H.1〜H.4 の full Fixture 改称＝物理改称・スコア正本移管は**後続フェーズ Phase 5 へ延期**）。
+
+- **既存 `tournament_matches` を物理改称しない**（`tournament_fixtures` への rename・スコア列削除・スナップショット列追加は行わない）。スコア正本の移管（H.2.3）も後続。
+- 入口① は match ドメインの `MatchCompletedEvent`（COMPLETED 遷移時に発火・受信ゼロだった）を、**tournament 側に新設したリスナー `MatchScoreFixtureListener` が `@TransactionalEventListener(phase=AFTER_COMMIT)` で受信**する。
+- リスナーは fixtureId（= 既存 `tournament_matches.id`・BIGINT）で fixture を引当て、**既存 `tournament.service.MatchService.updateScore` を再利用**してスコアを反映する。これにより:
+  - `updateScore` 内で `determineResult` / `winnerParticipantId` 確定 / `match.updateScore()`（status=COMPLETED 自動化）/ 既存 `StandingsRecalculationEvent` 発火 がそのまま走る。
+  - **既存 `StandingsCalculationService` の `@Async @EventListener` 順位再計算（冪等・全消し再計算）は切り替えない**（二重発火・既存テスト破壊のリスク回避）。新リスナーは「`MatchCompletedEvent`(AFTER_COMMIT) を受けて既存 `updateScore`＋既存 StandingsRecalc 経路を起動するだけ」の薄い橋渡しに徹する。
+- **participant ⇔ side は home participant = HOME 固定**（H.1.2）。リスナーはイベントの `homeScore` を fixture の HOME 側（`home_participant_id`）へ、`awayScore` を AWAY 側へ入替えずに渡す。
+- **延長 PK 値整合**: イベントの `homeScore`/`awayScore` は**本戦合算済み**（延長得点は本戦に合算・sports/01 §4.1）であり、リスナーは延長別スコア（`homeExtraScore`/`awayExtraScore`）を**使わない（null を渡す）**。PK 戦は `homePenaltyScore`/`awayPenaltyScore` を**分離値のまま**渡す（合算 home_score ＋ PK 分離）。
+- **AFTER_COMMIT**: match 側トランザクションがコミット済みのスコアに対してのみ反映する（未コミットのスコアで順位を誤更新しない）。リスナーは新規 `@Transactional` を張る（AFTER_COMMIT は元トランザクション外で走るため）。発火元 match ドメインの `@Transactional` を跨がない（原則 5・H.5）。
+- **冪等**: COMPLETED 後の訂正による再発火でも `updateScore` は全列上書き（加算ではなく置換）＝冪等。
+- **fixture 引当不能の許容**: fixtureId で引けない / tournamentId 解決不能の場合は**例外を投げず警告ログのみ**でスキップ（match 側は既コミット・tournament を越境で壊さない・H.2 (b)）。
+- **div/tournament の順引き**: 既存 `updateScore` が要求する `tournamentId`/`divisionId` 発火経路に合わせるため、fixture の `matchday → division` を ID 順引きして `tournamentId` を得る。
+
+なぜ中道か（根治の範囲を限定）: H.1 の full Fixture 改称は既存 F08.7（tournament）全体への最も侵襲的な作り替え（Entity/Controller/Service/enum/DTO 改称・スコア列移管・既存テスト大量追従）であり、入口①の順位連携という単一の価値提供には不要。**疎結合イベント駆動（`MatchCompletedEvent` 購読）だけで順位連携を成立させ**、改称は Phase 5 として独立に判断する。下記 **H.1〜H.4 は full Fixture 改称（Phase 5）前提の記述**であり、※ 印で「中道採用・改称は後続」を注記する。
+
+---
+
 ## H.1 中核思想 — `tournament_matches` を fixture へ縮退（BIGINT 据え置き）
+
+> ※ **中道採用・改称は後続（H.0）**: 以下 H.1〜H.4 の物理改称（`tournament_matches`→`tournament_fixtures`）・スコア正本移管は **Phase 5（後続フェーズ）に延期**。入口①第一陣は H.0 の中道（既存 `tournament_matches`＋`updateScore` 再利用・リスナーで順位連携）で実装済み。
 
 既存 `tournament_matches` は実体が「**対戦カード(fixture)**」である。スコア（`homeScore`/`awayScore`/`homeExtraScore`/`awayExtraScore`/`homePenaltyScore`/`awayPenaltyScore`/`winnerParticipantId`/`result`）を持つが、これは新 `matches` が正本化すべき情報である（二重持ち解消）。延長別スコア（`homeExtraScore`/`awayExtraScore`）は本戦スコアへ合算し延長別列は廃止する（H.1 移行表・01 §B.1）。
 
@@ -52,10 +76,13 @@ fixture は「**参加チーム(participant)**」を `home_participant_id` / `aw
 
 ## H.2 順位表・個人ランキングの導出元を matches へ移す
 
+> ※ **中道採用・改称は後続（H.0）**: H.2.1〜H.2.3 のスコア正本移管・fixture スナップショット・既存 `@Async @EventListener` の `MatchCompletedEvent` 受信への切替は **Phase 5 に延期**。入口①第一陣では既存 `StandingsCalculationService`（`@Async @EventListener`・`tournament_matches` 由来の全消し再計算）を**切り替えず**、新リスナー `MatchScoreFixtureListener` が `MatchCompletedEvent`(AFTER_COMMIT) を受けて既存 `updateScore` → 既存 `StandingsRecalculationEvent` 発火に乗せるのみ（H.0）。下記の (a) AFTER_COMMIT・(b) リスナー例外許容・(d) 冪等は中道でも遵守。
+
 ### H.2.1 StandingsCalculationService
 
 - 現状: `StandingsRecalculationEvent` を受けて `tournament_matches` のスコア（`homeScore`/`awayScore`/`result`）から勝点・順位を計算（`@Async @EventListener`）。
-- 作り替え: **スコアの源泉を `matches` へ変更**。トリガーは match の COMPLETED 遷移（`MatchCompletedEvent`・match ドメイン発火）を tournament ドメインが受信 → 当該 fixture の division の順位を再計算（原則 5: ドメインをまたぐ更新はイベント駆動で分離）。
+- 作り替え（※ Phase 5）: **スコアの源泉を `matches` へ変更**。トリガーは match の COMPLETED 遷移（`MatchCompletedEvent`・match ドメイン発火）を tournament ドメインが受信 → 当該 fixture の division の順位を再計算（原則 5: ドメインをまたぐ更新はイベント駆動で分離）。
+- **入口①第一陣（中道・実装済）**: `StandingsCalculationService` は不変。`MatchScoreFixtureListener` が `MatchCompletedEvent`(AFTER_COMMIT) を受けて既存 `tournament.service.MatchService.updateScore(tournamentId, fixtureId, ...)` を呼ぶ → 既存 `StandingsRecalculationEvent`(divisionId, tournamentId) が発火し既存 `@Async` 再計算（冪等）が走る。
 
 ```
 [match ドメイン]  match.status=COMPLETED  →  publish MatchCompletedEvent(matchId, fixtureId, homeScore, awayScore, homePenaltyScore, awayPenaltyScore, result, winnerParticipantId, status, ...)
