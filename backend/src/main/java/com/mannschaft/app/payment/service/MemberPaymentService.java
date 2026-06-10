@@ -488,7 +488,7 @@ public class MemberPaymentService {
 
         PaymentItemEntity paymentItem = paymentItemService.findByIdOrThrow(payment.getPaymentItemId());
         LocalDate validFrom = LocalDate.now();
-        LocalDate validUntil = calculateValidUntil(paymentItem.getType(), validFrom);
+        LocalDate validUntil = calculateValidUntilWithItem(paymentItem, validFrom);
         payment.markAsPaidByEscrowCapture(validFrom, validUntil);
         memberPaymentRepository.save(payment);
         log.info("会費 PAID 反映完了（escrow CAPTURED 連動）: paymentId={}, escrowId={}, validUntil={}, subscriptionId={}",
@@ -639,7 +639,7 @@ public class MemberPaymentService {
                 && entity.getStatus() == PaymentStatus.PENDING) {
             PaymentItemEntity paymentItem = paymentItemService.findByIdOrThrow(entity.getPaymentItemId());
             LocalDate validFrom = LocalDate.now();
-            LocalDate validUntil = calculateValidUntil(paymentItem.getType(), validFrom);
+            LocalDate validUntil = calculateValidUntilWithItem(paymentItem, validFrom);
             entity.markAsPaid(statusInfo.paymentIntentId(), entity.getAmountPaid(),
                     validFrom, validUntil, null);
             reconciled = true;
@@ -694,12 +694,26 @@ public class MemberPaymentService {
 
     /**
      * 有効期限を計算する。
+     *
+     * <p>TERM 型の場合は {@code termEndsOn} を返す（単発 destination charge の有効期間は期別設定値）。
+     * TERM 型で {@code termEndsOn} が設定されていない場合は null（通常はバリデーションで防ぐ）。</p>
      */
     private LocalDate calculateValidUntil(PaymentItemType type, LocalDate validFrom) {
         return switch (type) {
             case ANNUAL_FEE -> validFrom.plusDays(365);
             case MONTHLY_FEE -> validFrom.plusDays(31);
             case ITEM, DONATION -> null;
+            case TERM -> null; // TERM は paymentItem.termEndsOn を使う（calculateValidUntilWithItem で解決）
         };
+    }
+
+    /**
+     * 有効期限を PaymentItemEntity の情報を含めて計算する。TERM 型は {@code termEndsOn} を返す。
+     */
+    private LocalDate calculateValidUntilWithItem(PaymentItemEntity paymentItem, LocalDate validFrom) {
+        if (paymentItem.getType() == PaymentItemType.TERM) {
+            return paymentItem.getTermEndsOn(); // null の場合はバリデーションで防止済み
+        }
+        return calculateValidUntil(paymentItem.getType(), validFrom);
     }
 }
