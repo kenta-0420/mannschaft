@@ -4,6 +4,7 @@ import type {
   CheckoutSessionResponse,
   PaymentSummaryResponse,
   MyPaymentResponse,
+  MemberPaymentReceiptResponse,
 } from '~/types/payment'
 
 export function usePaymentApi() {
@@ -158,6 +159,15 @@ export function usePaymentApi() {
     )
   }
 
+  // === Receipt ===
+  /**
+   * F08.9 P8: 領収書取得。
+   * BE: GET /api/v1/member-payments/{memberPaymentId}/receipt
+   */
+  async function getReceipt(memberPaymentId: number) {
+    return api<{ data: MemberPaymentReceiptResponse }>(`/api/v1/member-payments/${memberPaymentId}/receipt`)
+  }
+
   // === Subscriptions ===
   async function cancelSubscription(itemId: number, subscriptionId: number) {
     return api(`/api/v1/payment-items/${itemId}/subscriptions/${subscriptionId}`, {
@@ -192,5 +202,6 @@ export function usePaymentApi() {
     refundPayment,
     cancelSubscription,
     resumeSubscription,
+    getReceipt,
   }
 }

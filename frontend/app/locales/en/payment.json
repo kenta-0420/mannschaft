@@ -85,13 +85,38 @@
       }
     },
     "admin": {
+      "pageTitle": "Payment management",
       "itemsTitle": "Payment items",
       "selectItem": "Select a payment item",
       "remindUnpaid": "Remind unpaid",
       "loadItemsError": "Failed to load payment items",
       "loadPaymentsError": "Failed to load payment status",
       "remindSuccess": "Reminder sent",
-      "remindError": "Failed to send reminder"
+      "remindError": "Failed to send reminder",
+      "status": {
+        "PAID": "Paid",
+        "UNPAID": "Unpaid",
+        "EXPIRED": "Expired",
+        "PENDING": "Pending",
+        "REFUNDED": "Refunded",
+        "CANCELLED": "Cancelled"
+      }
+    },
+    "receipt": {
+      "title": "Receipts",
+      "download": "Download",
+      "issuedBy": "Issuer",
+      "amount": "Amount",
+      "issuedDate": "Issue Date",
+      "pending": "Pending",
+      "noReceipts": "No receipts",
+      "loadError": "Failed to load payment records",
+      "loadReceiptError": "Failed to load receipt"
+    },
+    "summary": {
+      "expired": "Expired",
+      "payer": "Payer",
+      "beneficiary": "Beneficiary"
     },
     "guardianBulkPayment": {
       "title": "Guardian Bulk Payment",
