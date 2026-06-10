@@ -25,8 +25,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.willReturn;
-import static org.mockito.Mockito.willThrow;
+import static org.mockito.BDDMockito.willReturn;
+import static org.mockito.BDDMockito.willThrow;
 
 /**
  * F22.1 第三陣: {@link EscrowLifecycleBatch} 単体テスト。
