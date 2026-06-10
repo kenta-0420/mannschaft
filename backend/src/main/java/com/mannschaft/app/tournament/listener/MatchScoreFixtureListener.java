@@ -99,8 +99,8 @@ public class MatchScoreFixtureListener {
         // 既存 updateScore を再利用（determineResult / winner 判定 / status=COMPLETED 自動化 / StandingsRecalc 発火）。
         // 延長はイベントで本戦合算済みゆえ extra は null（05 §H.1 移行表・sports/01_soccer.md §4.1）。
         // PK は分離値をそのまま渡す。participant⇔side は home participant=HOME 固定（05 §H.1.2）。
-        // version は楽観ロック用だが、本経路は順位連携の派生反映であり最新エンティティに対して上書きする
-        // （冪等＝全列置換）。fixture の現在 version を渡し更新整合を保つ。
+        // version 引数は現行 updateScore / TournamentMatchEntity.updateScore では未使用。
+        // 楽観ロックは @Version フィールドを JPA が自動管理するため、ここで渡す値は実際には参照されない。
         ScoreUpdateRequest scoreReq = new ScoreUpdateRequest(
                 event.getHomeScore(),
                 event.getAwayScore(),
