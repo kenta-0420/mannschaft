@@ -11,6 +11,7 @@ import com.mannschaft.app.tournament.service.MatchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -47,10 +48,11 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * <p><b>冪等</b>: COMPLETED 後の訂正による再発火でも {@code updateScore} は全列上書き（加算ではなく置換）
  * のため冪等（05 §H.2 (d)）。</p>
  *
- * <p><b>トランザクション境界</b>: AFTER_COMMIT 後に tournament 側の書込が要るため、本リスナーは新規
- * {@code @Transactional} を張る（{@code TransactionPhase.AFTER_COMMIT} のリスナーは元トランザクション外で
- * 走るため、明示しないと {@code updateScore} の保存がトランザクション無しになる）。match ドメインの
- * {@code @Transactional} は跨がない（原則 5・05 §H.5）。</p>
+ * <p><b>トランザクション境界</b>: AFTER_COMMIT 後はアクティブTXが無いため、本リスナーは
+ * {@code REQUIRES_NEW} で新規TXを開始してtournament_matchesを更新する。
+ * Spring は {@code @TransactionalEventListener} に {@code @Transactional(REQUIRED)} を付けることを
+ * 禁じているため（起動時バリデーション失敗・ApplicationContext全滅）、{@code REQUIRES_NEW} が正道。
+ * match ドメインの {@code @Transactional} は跨がない（原則 5・05 §H.5）。</p>
  *
  * <p>設計: docs/features/F08.10_match_record_analytics/05_tournament_integration.md §H.2 / 06 §I.2</p>
  */
@@ -71,7 +73,7 @@ public class MatchScoreFixtureListener {
      * （未コミットのスコアで順位を誤更新しない・05 §H.2 (a)）。</p>
      */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onMatchCompleted(MatchCompletedEvent event) {
         Long fixtureId = event.getTournamentFixtureId();
         if (fixtureId == null) {
