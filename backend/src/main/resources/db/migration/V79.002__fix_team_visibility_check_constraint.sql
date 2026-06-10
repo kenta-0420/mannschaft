@@ -1,7 +1,8 @@
 -- teams.visibility の CHECK 制約を新しい ENUM 値に合わせて更新する
--- V79.001 で ENUM 型は変更済みだが CHECK 制約が古い値（ORGANIZATION_ONLY/PRIVATE）のまま残っているため修正する
+-- V79.001 の MODIFY COLUMN ENUM(...) で MySQL が CHECK 制約を自動削除した環境と
+-- 残存している環境の両方に対応するため IF EXISTS で保護する
 
-ALTER TABLE teams DROP CHECK chk_teams_visibility;
+ALTER TABLE teams DROP CHECK IF EXISTS chk_teams_visibility;
 
 ALTER TABLE teams
     ADD CONSTRAINT chk_teams_visibility
