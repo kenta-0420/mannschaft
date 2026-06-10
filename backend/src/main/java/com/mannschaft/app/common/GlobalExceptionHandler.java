@@ -634,6 +634,7 @@ public class GlobalExceptionHandler {
             Map.entry("PAYMENT_C041", HttpStatus.CONFLICT),                  // AUTHORIZATION_FAILED
             Map.entry("PAYMENT_C042", HttpStatus.CONFLICT),                  // INVALID_ESCROW_STATE（払出不能状態）
             Map.entry("PAYMENT_C043", HttpStatus.CONFLICT),                  // CAPTURE_FAILED（払出失敗）
+            Map.entry("PAYMENT_C044", HttpStatus.CONFLICT),                  // AUTHORIZATION_NOT_CONFIRMED（札主 confirm 前の capture 拒否・第一陣）
             Map.entry("PAYMENT_C060", HttpStatus.UNPROCESSABLE_ENTITY),      // FEE_EXCEEDS_FACE_AMOUNT（安全ガード・R1・C050/C051-3 と衝突回避）
             Map.entry("PAYMENT_C051", HttpStatus.NOT_FOUND),                 // FEE_POLICY_NOT_FOUND（シスアド CRUD・R2・§11）
             Map.entry("PAYMENT_C052", HttpStatus.CONFLICT),                  // FEE_POLICY_DEFAULT_IMMUTABLE（DEFAULT 削除/無効化禁止・R2）

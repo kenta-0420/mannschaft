@@ -23,6 +23,19 @@ import org.springframework.transaction.event.TransactionalEventListener;
  *
  * <p><b>本波の範囲は与信（authorize）まで。</b> capture（払出）・返金は次Phase（P2-c）。</p>
  *
+ * <p><b>第一陣 status 意味論の根治におけるリスナの扱い（2026-06-10・決定(a)・温存）:</b>
+ * 確定設計では「成立＋与信を札主アクションで結合」（札主が成立時に同期でカード確認＝confirm）する。本リスナは
+ * その前段として escrow 行と manual-capture PaymentIntent を<b>事前起票</b>する役割に整理した。
+ * {@link ConnectChargeService#authorize} の根治により、本リスナ経由でも escrow は
+ * {@link EscrowStatus#AUTHORIZED} ではなく {@link EscrowStatus#PENDING_CONFIRMATION}（PI 作成済・札主未 confirm）
+ * で起票される。リスナは {@code @Async} ゆえ {@code clientSecret} を呼出元へ返せないが、これは設計上の問題ではない:
+ * 札主への {@code clientSecret} 返却は<b>第二陣の同期 Controller</b> が担い（同一応募の冪等再取得で既存
+ * PENDING_CONFIRMATION 行と PI を引き当て、{@code clientSecret} を再生成して札主に返す）、札主の confirm 完了は
+ * {@code payment_intent.amount_capturable_updated} webhook が {@link EscrowStatus#AUTHORIZED} へ昇格させる。
+ * リスナを廃止せず温存するのは、成立時点で escrow を物理化しておくことで第二陣 Controller・自動 capture バッチ・
+ * webhook の各経路が「成立した応募には必ず escrow 行が存在する」前提で動けるためである（事前起票＝結合の起点）。
+ * 受取側 onboarding 未完（{@code payouts_enabled=false}）の {@link EscrowStatus#HELD} 経路は不変（PI 未作成）。</p>
+ *
  * <p><b>与信失敗の救済（設計書 02 §5.1 / PAYMENT_041・根治）:</b> 本リスナは {@code AFTER_COMMIT} 後ゆえ
  * 応募のロールバックは不可。{@link ConnectChargeService#authorize} が失敗した場合に例外を {@code @Async} 既定
  * ハンドラのログに埋もれさせると「観測も後続アクションも不能」になる（握り潰し・対処療法）。これを避けるため、
