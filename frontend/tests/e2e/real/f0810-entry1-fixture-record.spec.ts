@@ -57,7 +57,6 @@ const ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD ?? 'TestPass2026!'
 
 // ── テスト用固定値（事前作成済みデータ） ──────────────────────────
 const ORG_ID = 1 // 日本サッカー協会（テスト）
-const ORG_PUBLIC_ID = '11f16422-c03c-1a2a-bf03-faf58ae07fdb' // org id=1 の publicId
 const TOURNAMENT_ID = 12 // F08.10 E2E実機検証大会 2026
 const DIVISION_ID = 10 // Division 1
 const PARTICIPANT_U18_ID = 9 // FC東京U-18
