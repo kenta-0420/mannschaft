@@ -167,10 +167,12 @@ class FlywayExistingDataTeamVisibilityMigrationTest {
     /** 旧スキーマ（VARCHAR(20)+旧CHECK）の teams へ最小列で 1 行 INSERT する SQL を組み立てる。 */
     private static String insertTeam(long id, String visibility, boolean softDeleted) {
         String deletedAt = softDeleted ? "NOW()" : "NULL";
+        // public_id は V77.001 で NOT NULL（default なし・BINARY(16)・UNIQUE）化されたため、
+        // 既存データ環境を再現する seed でも一意な値を明示的に与える必要がある。
         return "INSERT INTO teams "
-                + "(id, name, visibility, supporter_enabled, version, "
+                + "(id, name, public_id, visibility, supporter_enabled, version, "
                 + " archived_at, deleted_at, created_at, updated_at) VALUES ("
-                + id + ", 'team" + id + "', '" + visibility + "', 1, 0, "
+                + id + ", 'team" + id + "', UUID_TO_BIN(UUID(), 1), '" + visibility + "', 1, 0, "
                 + "NULL, " + deletedAt + ", NOW(), NOW())";
     }
 
