@@ -245,5 +245,18 @@
     "empty_team_record": "Noch an keinem Turnier teilgenommen",
     "empty_org_summary": "Noch keine Turniere ausgerichtet",
     "empty_division_standings": "Derzeit an keinem Turnier beteiligt"
+  },
+  "tournamentFee": {
+    "pageTitle": "Turniergebühren",
+    "myFees": "Meine Gebühren",
+    "noFees": "Keine Turniergebühren vorhanden",
+    "payNow": "Jetzt bezahlen",
+    "paid": "Bezahlt",
+    "paidAt": "Bezahlt am",
+    "dueDate": "Fälligkeitsdatum",
+    "faceAmount": "Gebühr",
+    "totalCharge": "Gesamtbetrag",
+    "checkoutSuccess": "Zahlung abgeschlossen",
+    "checkoutError": "Zahlung fehlgeschlagen"
   }
 }
