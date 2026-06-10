@@ -107,7 +107,11 @@
     "payment": {
       "breakdown": {
         "includesFeeNote": "* Der Gesamtbetrag enthält die Zahlungsbearbeitungsgebühr.",
-        "refundFeeConditionalNote": "* Im Falle einer Rückerstattung wird die Bearbeitungsgebühr möglicherweise nicht erstattet (die Rückerstattungsbedingungen hängen von den Einstellungen des Ausschreibenden ab)."
+        "refundFeeConditionalNote": "* Im Falle einer Rückerstattung wird die Bearbeitungsgebühr möglicherweise nicht erstattet (die Rückerstattungsbedingungen hängen von den Einstellungen des Ausschreibenden ab).",
+        "title": "Zahlungsaufschlüsselung",
+        "faceAmountLabel": "Belohnung (Nennwert)",
+        "feeLabel": "Zahlungsgebühr",
+        "totalLabel": "Gesamtbetrag"
       },
       "refund": {
         "title": "Rückerstattung",
@@ -146,6 +150,21 @@
         "continue": "Registrierung fortsetzen",
         "redirecting": "Weiterleitung…",
         "linkFailed": "Der Registrierungslink für das Auszahlungskonto konnte nicht abgerufen werden."
+      },
+      "confirm": {
+        "title": "Belohnungszahlung bestätigen",
+        "intro": "Bitte bestätigen Sie vor der Bestätigung des Bewerbers die Belohnungszahlung (Kartenautorisierung).",
+        "expiryNotice": "Diese Autorisierung ist etwa 7 Tage gültig. Innerhalb von 7 Tagen ist die endgültige Bestätigung des Leistungsabschlusses erforderlich (danach wird bei Abschluss erneut abgebucht).",
+        "deferredNotice": "Da zwischen Bestätigung und Leistung mehr als 7 Tage liegen, wird jetzt keine Autorisierung vorgenommen. Sie zahlen erneut bei der endgültigen Bestätigung des Leistungsabschlusses.",
+        "alreadyAuthorized": "Diese Zahlung wurde bereits bestätigt.",
+        "preparing": "Zahlungsdaten werden vorbereitet. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
+        "retry": "Neu laden",
+        "submit": "Zahlung bestätigen",
+        "processing": "Wird verarbeitet…",
+        "succeeded": "Zahlungsbestätigung abgeschlossen.",
+        "loadFailed": "Zahlungsdaten konnten nicht abgerufen werden.",
+        "payeeNotReady": "Der Empfänger hat noch kein Auszahlungskonto registriert, daher ist keine Zahlung möglich.",
+        "proceed": "Weiter zur Bestätigung"
       }
     }
   }

@@ -6,11 +6,22 @@ const route = useRoute()
 const { t } = useI18n()
 const api = useRecruitmentApi()
 const { success, error } = useNotification()
+const authStore = useAuthStore()
 
 const listingId = computed(() => Number(route.params.id))
 const listing = ref<RecruitmentListingResponse | null>(null)
 const loading = ref(false)
 const myParticipantId = ref<number | null>(null)
+
+/**
+ * 自分が札主（募集主）か。USER scope の作成者本人を判定する。
+ * TEAM/ORG scope の ADMIN 委任は BE 認可で担保され、応募者管理 EP が 403/404 を返す。
+ */
+const isOwner = computed(
+  () => !!listing.value
+    && authStore.currentUser?.id != null
+    && listing.value.createdBy === authStore.currentUser.id,
+)
 
 async function load() {
   loading.value = true
@@ -129,5 +140,13 @@ onMounted(() => load())
         @cancelled="load"
       />
     </div>
+
+    <!-- 札主の応募者管理（成立＋謝礼決済確認＋返金・F22.1） -->
+    <RecruitmentParticipantManager
+      v-if="isOwner"
+      class="mt-6 border-t border-gray-200 pt-6"
+      :listing-id="listingId"
+      :payment-enabled="listing.paymentEnabled"
+    />
   </div>
 </template>

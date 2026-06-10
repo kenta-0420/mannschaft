@@ -107,7 +107,11 @@
     "payment": {
       "breakdown": {
         "includesFeeNote": "※결제 총액에는 결제 수수료가 포함되어 있습니다.",
-        "refundFeeConditionalNote": "※환불 시 결제 수수료가 환불되지 않을 수 있습니다(환불 조건은 모집자의 설정에 따릅니다)."
+        "refundFeeConditionalNote": "※환불 시 결제 수수료가 환불되지 않을 수 있습니다(환불 조건은 모집자의 설정에 따릅니다).",
+        "title": "결제 내역",
+        "faceAmountLabel": "사례금(액면)",
+        "feeLabel": "결제 수수료",
+        "totalLabel": "결제 합계"
       },
       "refund": {
         "title": "환불",
@@ -146,6 +150,21 @@
         "continue": "등록 계속하기",
         "redirecting": "이동 중…",
         "linkFailed": "수령 계좌 등록 링크를 가져오지 못했습니다."
+      },
+      "confirm": {
+        "title": "사례금 결제 확인",
+        "intro": "지원자를 확정하기 전에 사례금 결제(카드 승인)를 확인해 주세요.",
+        "expiryNotice": "이 승인은 약 7일간 유효합니다. 7일 이내에 용역 완료 최종 인증이 필요합니다(초과 시 완료 시점에 다시 결제됩니다).",
+        "deferredNotice": "확정부터 용역 완료까지 7일을 초과하므로 지금은 승인하지 않습니다. 용역 완료 최종 인증 시 다시 결제됩니다.",
+        "alreadyAuthorized": "이 결제는 이미 확인되었습니다.",
+        "preparing": "결제 정보를 준비 중입니다. 잠시 후 다시 시도해 주세요.",
+        "retry": "다시 불러오기",
+        "submit": "결제 확인",
+        "processing": "처리 중…",
+        "succeeded": "결제 확인이 완료되었습니다.",
+        "loadFailed": "결제 정보를 가져오지 못했습니다.",
+        "payeeNotReady": "수취 측의 수취 계좌가 미등록 상태여서 아직 결제할 수 없습니다.",
+        "proceed": "확정 진행"
       }
     }
   }

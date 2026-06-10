@@ -71,6 +71,7 @@ export default {
       "cancelMyApplication": "取消我的申请",
       "joinWaitlist": "加入候补",
       "viewDetails": "查看详情",
+      "confirmApplication": "确认成立",
       "createPolicy": "创建政策"
     },
     "confirmModal": {
