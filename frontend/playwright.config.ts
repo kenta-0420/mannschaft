@@ -4,7 +4,7 @@ import path from 'path'
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.test') })
 
-const BASE_URL = process.env.BASE_URL ?? 'http://localhost:3000'
+const BASE_URL = process.env.BASE_URL ?? 'http://localhost:8081'
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -94,7 +94,7 @@ export default defineConfig({
 
   // テスト実行前に dev サーバーを起動する場合は有効化
   webServer: {
-    command: 'npm run dev',
+    command: `npm run dev -- --port ${new URL(BASE_URL).port || '8081'}`,
     url: BASE_URL,
     reuseExistingServer: true,
     timeout: 240_000,
