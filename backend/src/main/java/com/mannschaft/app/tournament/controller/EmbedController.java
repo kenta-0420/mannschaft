@@ -1,6 +1,7 @@
 package com.mannschaft.app.tournament.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.tournament.dto.IndividualRankingResponse;
 import com.mannschaft.app.tournament.dto.MatchResponse;
 import com.mannschaft.app.tournament.dto.StandingResponse;
@@ -52,7 +53,11 @@ public class EmbedController {
     @Operation(summary = "埋め込み用個人ランキング")
     public ResponseEntity<ApiResponse<List<IndividualRankingResponse>>> getEmbedRankings(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable String statKey) {
+        // F08.7 項目①: 埋め込みは多くが未ログイン閲覧。閲覧者 ID を伝播し F19.1 本人可視性で名前解決する
+        // （未ログインなら汎用ラベル、ログイン中メンバーなら相応の表示名）。
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
         return ResponseEntity.ok(ApiResponse.of(
-                rankingsCalculationService.getRankings(tId, statKey, PageRequest.of(0, 50)).getContent()));
+                rankingsCalculationService.getRankings(tId, statKey, PageRequest.of(0, 50), viewerUserId)
+                        .getContent()));
     }
 }
