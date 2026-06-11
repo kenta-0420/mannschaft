@@ -5,7 +5,9 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.GlobalExceptionHandler;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
+import com.mannschaft.app.payment.connect.ScopeKind;
 import com.mannschaft.app.payment.escrow.ConnectChargeService;
+import com.mannschaft.app.payment.escrow.EscrowCaptureMode;
 import com.mannschaft.app.payment.escrow.EscrowSourceKind;
 import com.mannschaft.app.payment.escrow.EscrowStatus;
 import org.junit.jupiter.api.AfterEach;
@@ -23,10 +25,16 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -128,5 +136,89 @@ class EscrowPaymentControllerTest {
 
         mockMvc.perform(get("/api/v1/payment/escrow/recruitment/100/200/payment-intent"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("GET 受取側一覧: USER 本人→200・ページ＋camelCase・clientSecret フィールド非含有")
+    void receivedList_userSelf_returnsPagedCamelCase() throws Exception {
+        ConnectChargeService.ReceivedEscrow row = new ConnectChargeService.ReceivedEscrow(
+                ESCROW_ID, EscrowSourceKind.RECRUITMENT, 100L, 200L, EscrowCaptureMode.MANUAL,
+                EscrowStatus.CAPTURED, 10_000L, 10_250L, 500L, 0L,
+                LocalDateTime.of(2026, 6, 11, 12, 0, 0));
+        // 引数個数を Controller の呼び出し（scopeKind, scopeId, status, actorUserId, pageable の 5 個）に一致させる。
+        given(connectChargeService.listReceivedEscrows(
+                eq(ScopeKind.USER), eq(PAYER_USER_ID), isNull(), eq(PAYER_USER_ID), any()))
+                .willReturn(new PageImpl<>(List.of(row), PageRequest.of(0, 20), 1));
+
+        mockMvc.perform(get("/api/v1/payment/escrow/received")
+                        .param("scopeKind", "USER")
+                        .param("scopeId", String.valueOf(PAYER_USER_ID)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].escrowTransactionId").value(ESCROW_ID.toString()))
+                .andExpect(jsonPath("$.data[0].sourceKind").value("RECRUITMENT"))
+                .andExpect(jsonPath("$.data[0].sourceId").value(100))
+                .andExpect(jsonPath("$.data[0].sourceParticipantId").value(200))
+                .andExpect(jsonPath("$.data[0].captureMode").value("MANUAL"))
+                .andExpect(jsonPath("$.data[0].status").value("CAPTURED"))
+                .andExpect(jsonPath("$.data[0].faceAmount").value(10_000))
+                .andExpect(jsonPath("$.data[0].chargeAmount").value(10_250))
+                .andExpect(jsonPath("$.data[0].applicationFeeAmount").value(500))
+                .andExpect(jsonPath("$.data[0].refundedAmount").value(0))
+                .andExpect(jsonPath("$.meta.total").value(1))
+                .andExpect(jsonPath("$.meta.page").value(0))
+                .andExpect(jsonPath("$.meta.size").value(20))
+                // PCI 禁則: 受取側一覧に clientSecret / acct_ / pi_ は一切載せない。
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("clientSecret"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("acct_"))));
+    }
+
+    @Test
+    @DisplayName("GET 受取側一覧: TEAM ADMin→200・status フィルタを Service へ伝播")
+    void receivedList_teamAdmin_withStatusFilter() throws Exception {
+        ConnectChargeService.ReceivedEscrow row = new ConnectChargeService.ReceivedEscrow(
+                ESCROW_ID, EscrowSourceKind.RECRUITMENT, 100L, 200L, EscrowCaptureMode.MANUAL,
+                EscrowStatus.PARTIALLY_REFUNDED, 10_000L, 10_250L, 500L, 4_000L,
+                LocalDateTime.of(2026, 6, 11, 12, 0, 0));
+        given(connectChargeService.listReceivedEscrows(
+                eq(ScopeKind.TEAM), eq(55L), eq(EscrowStatus.PARTIALLY_REFUNDED), eq(PAYER_USER_ID), any()))
+                .willReturn(new PageImpl<>(List.of(row), PageRequest.of(0, 20), 1));
+
+        mockMvc.perform(get("/api/v1/payment/escrow/received")
+                        .param("scopeKind", "TEAM")
+                        .param("scopeId", "55")
+                        .param("status", "PARTIALLY_REFUNDED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].status").value("PARTIALLY_REFUNDED"))
+                .andExpect(jsonPath("$.data[0].refundedAmount").value(4_000));
+    }
+
+    @Test
+    @DisplayName("GET 受取側一覧: 非 ADMin/他人 scope→403（PAYMENT_C001）")
+    void receivedList_unrelated_forbidden() throws Exception {
+        given(connectChargeService.listReceivedEscrows(any(), any(), any(), any(), any()))
+                .willThrow(new BusinessException(ConnectPaymentErrorCode.PAYMENT_FORBIDDEN));
+
+        mockMvc.perform(get("/api/v1/payment/escrow/received")
+                        .param("scopeKind", "TEAM")
+                        .param("scopeId", "77"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("GET 受取側一覧: 受取実績ゼロ→200・空ページ")
+    void receivedList_empty_returnsEmptyPage() throws Exception {
+        given(connectChargeService.listReceivedEscrows(
+                eq(ScopeKind.ORG), eq(33L), isNull(), eq(PAYER_USER_ID), any()))
+                .willReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
+
+        mockMvc.perform(get("/api/v1/payment/escrow/received")
+                        .param("scopeKind", "ORG")
+                        .param("scopeId", "33"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data").isEmpty())
+                .andExpect(jsonPath("$.meta.total").value(0));
     }
 }

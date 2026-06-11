@@ -30,8 +30,9 @@ public enum EscrowStatus {
      * 与信せず本状態で escrow を起票し（PaymentIntent 未作成・{@link EscrowCaptureMode#AUTOMATIC}）、最終認証
      * （役務完了）時に<b>即時払い</b>（会費 F08.9 と同型の destination charge・即 capture）へフォールバックする。</p>
      *
-     * <p>最終認証で即時 charge を起こすと AUTOMATIC の PaymentIntent を作成して {@link #PENDING_CONFIRMATION}
-     * へ遷移し（札主に clientSecret を返す＝第二陣の決済確認 EP を再利用）、札主が Stripe.js で confirm して
+     * <p>最終認証で即時 charge を起こすと AUTOMATIC の PaymentIntent を作成して {@link #AUTHORIZED}
+     * へ遷移し（{@code hold_expires_at=NULL}・第三陣バッチ非干渉のため意図的に PENDING_CONFIRMATION ではなく
+     * AUTHORIZED にする・札主に clientSecret を返す＝第二陣の決済確認 EP を再利用）、札主が Stripe.js で confirm して
      * {@code payment_intent.succeeded} が届くと {@link #CAPTURED} へ確定する。confirm 前の cancel/失効は
      * {@link #CANCELLED}。エスクローモードの謝礼（RECRUITMENT）専用で、7日以内は従来どおり与信（MANUAL）を立てる。</p>
      */
