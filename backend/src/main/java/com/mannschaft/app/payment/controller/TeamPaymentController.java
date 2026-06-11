@@ -8,6 +8,7 @@ import com.mannschaft.app.payment.dto.CreateManualPaymentRequest;
 import com.mannschaft.app.payment.dto.MemberPaymentResponse;
 import com.mannschaft.app.payment.dto.RemindResponse;
 import com.mannschaft.app.payment.dto.UpdatePaymentRequest;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.payment.service.MemberPaymentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -45,6 +46,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class TeamPaymentController {
 
     private final MemberPaymentService memberPaymentService;
+    private final AccessControlService accessControlService;
 
 
     /**
@@ -128,6 +130,7 @@ public class TeamPaymentController {
     public ResponseEntity<ApiResponse<RemindResponse>> sendRemind(
             @PathVariable Long id,
             @PathVariable Long itemId) {
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, "TEAM");
         RemindResponse response = memberPaymentService.sendRemind(itemId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
