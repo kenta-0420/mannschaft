@@ -1,5 +1,7 @@
 package com.mannschaft.app.tournament;
 
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.tournament.dto.TeamTournamentHistoryResponse;
 import com.mannschaft.app.tournament.dto.TeamTournamentStatsResponse;
 import com.mannschaft.app.tournament.entity.TournamentDivisionEntity;
@@ -24,7 +26,8 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 /**
@@ -40,9 +43,19 @@ class StandingsQueryServiceTest {
     @Mock private TournamentRepository tournamentRepository;
     @Mock private TournamentMatchRepository matchRepository;
     @Mock private TournamentMapper mapper;
+    @Mock private ContentVisibilityChecker contentVisibilityChecker;
 
     @InjectMocks
     private StandingsQueryService service;
+
+    /**
+     * 正常系テストは「閲覧者が当該大会を閲覧できる」前提なので、可視性チェックを true に固定する。
+     * フィルタが効いて不可視大会が除外される挙動は {@code StandingsQueryServiceVisibilityTest}（B-2b 番人）で担保する。
+     */
+    private void allowAllTournaments() {
+        when(contentVisibilityChecker.canView(eq(ReferenceType.TOURNAMENT), any(), any()))
+                .thenReturn(true);
+    }
 
     // ---- テスト用ヘルパー ----
 
@@ -100,6 +113,7 @@ class StandingsQueryServiceTest {
         @DisplayName("正常系: チームが2大会に参加しており、それぞれの履歴が返る")
         void チーム2大会の履歴() {
             Long teamId = 10L;
+            allowAllTournaments();
 
             // participant1: divisionId=1, participant2: divisionId=2
             TournamentParticipantEntity p1 = buildParticipant(1L, 1L, teamId);
@@ -145,6 +159,7 @@ class StandingsQueryServiceTest {
         @DisplayName("正常系: 順位表がまだ存在しない場合は finalRank=null・played=0 で返る")
         void 順位表なしの場合ゼロ値() {
             Long teamId = 20L;
+            allowAllTournaments();
 
             TournamentParticipantEntity p = buildParticipant(1L, 1L, teamId);
             when(participantRepository.findAllByTeamId(teamId)).thenReturn(List.of(p));
@@ -206,6 +221,7 @@ class StandingsQueryServiceTest {
         @DisplayName("正常系: 複数大会の合計成績が正しく集計される")
         void 複数大会合計集計() {
             Long teamId = 10L;
+            allowAllTournaments();
 
             TournamentParticipantEntity p1 = buildParticipant(1L, 1L, teamId);
             TournamentParticipantEntity p2 = buildParticipant(2L, 2L, teamId);
@@ -254,6 +270,7 @@ class StandingsQueryServiceTest {
         @DisplayName("正常系: 同一大会の複数ディビジョンに参加しても大会数は1カウント")
         void 同一大会複数ディビジョンは1カウント() {
             Long teamId = 30L;
+            allowAllTournaments();
 
             // 同一 tournamentId=100 に2ディビジョン参加
             TournamentParticipantEntity p1 = buildParticipant(1L, 1L, teamId);
