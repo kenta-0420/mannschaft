@@ -54,6 +54,20 @@ import java.util.List;
  * 従来は MatchService にもコントローラーにも認可が無く、認証さえあれば他組織の試合結果を改竄できる
  * セキュリティ穴になっていた。</p>
  *
+ * <p>F08.7 順位UI 項目③（スコア入力編集権限の細分化）: スコア入力系 EP の認可を主催組織 ADMIN のみから
+ * <strong>3-way</strong>（ORG 管理者 / 当該大会の指名スコアキーパー / その試合の参加チーム ADMIN）へ拡張した。
+ * 判定は {@link com.mannschaft.app.tournament.scorekeeper.TournamentMatchAccessService}（bean 名
+ * {@code tournamentScoreGuard}）に集約し、SpEL では解決できない {@code matchId → participant → teamId} を
+ * サービス層で導出する（method-security 維持）。</p>
+ * <ul>
+ *   <li>単発のスコア入力／個人成績／ステータス変更（{@code #matchId} あり）:
+ *       {@code @tournamentScoreGuard.canEnterScore(authentication, #orgId, #tId, #matchId)}（3-way）。</li>
+ *   <li>節一括入力／CSV インポート（複数試合横断・{@code #matchId} なし）:
+ *       {@code @tournamentScoreGuard.canEnterScoreTournamentWide(authentication, #orgId, #tId)}
+ *       （ORG 管理者 / 指名スコアキーパーのみ。参加チーム ADMIN は混在不可ゆえ対象外＝単発入力で対応）。</li>
+ * </ul>
+ * <p>節作成・対戦カード生成・出場メンバー登録/削除は項目③の対象外（従来どおり主催組織 ADMIN）。</p>
+ *
  * <p>F08.7 順位UI Wave0 検分フォロー（B-2a）: GET 系（節一覧・試合詳細・出場メンバー一覧）に
  * F00 共通可視性ガード（{@code contentVisibilityChecker.canView(TOURNAMENT, tId, currentUserId)}・
  * 不可視は IDOR 防止のため 404）を付与した。{@link StandingsController#verifyTournamentVisible} と同流儀。
@@ -123,7 +137,7 @@ public class MatchController {
 
     @PatchMapping("/matches/{matchId}/score")
     @Operation(summary = "スコア入力・更新")
-    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
+    @PreAuthorize("@tournamentScoreGuard.canEnterScore(authentication, #orgId, #tId, #matchId)")
     public ResponseEntity<ApiResponse<MatchResponse>> updateScore(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long matchId,
             @Valid @RequestBody ScoreUpdateRequest request) {
@@ -132,7 +146,7 @@ public class MatchController {
 
     @PatchMapping("/matches/{matchId}/player-stats")
     @Operation(summary = "個人成績一括入力")
-    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
+    @PreAuthorize("@tournamentScoreGuard.canEnterScore(authentication, #orgId, #tId, #matchId)")
     public ResponseEntity<ApiResponse<MatchResponse>> updatePlayerStats(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long matchId,
             @Valid @RequestBody PlayerStatBatchRequest request) {
@@ -141,7 +155,7 @@ public class MatchController {
 
     @PatchMapping("/matches/{matchId}/status")
     @Operation(summary = "試合ステータス変更")
-    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
+    @PreAuthorize("@tournamentScoreGuard.canEnterScore(authentication, #orgId, #tId, #matchId)")
     public ResponseEntity<Void> changeMatchStatus(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long matchId,
             @Valid @RequestBody StatusChangeRequest request) {
@@ -151,7 +165,7 @@ public class MatchController {
 
     @PostMapping("/divisions/{divId}/matchdays/{mdId}/scores/batch")
     @Operation(summary = "節内全試合スコア一括入力")
-    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
+    @PreAuthorize("@tournamentScoreGuard.canEnterScoreTournamentWide(authentication, #orgId, #tId)")
     public ResponseEntity<Void> batchUpdateScores(
             @PathVariable Long orgId, @PathVariable Long tId,
             @PathVariable Long divId, @PathVariable Long mdId,
@@ -162,7 +176,7 @@ public class MatchController {
 
     @PostMapping("/divisions/{divId}/matchdays/{mdId}/scores/import")
     @Operation(summary = "CSVアップロードによるスコア一括インポート")
-    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
+    @PreAuthorize("@tournamentScoreGuard.canEnterScoreTournamentWide(authentication, #orgId, #tId)")
     public ResponseEntity<Void> importScores(
             @PathVariable Long orgId, @PathVariable Long tId,
             @PathVariable Long divId, @PathVariable Long mdId,
