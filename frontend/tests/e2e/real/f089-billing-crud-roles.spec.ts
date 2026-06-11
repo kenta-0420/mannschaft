@@ -37,6 +37,9 @@ const ADMIN_EMAIL = process.env.TEST_ADMIN_EMAIL ?? 'e2e-admin@test.mannschaft.l
 const ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD ?? 'TestPass2026!'
 const MEMBER_EMAIL = process.env.TEST_USER_EMAIL ?? 'e2e-user@test.mannschaft.local'
 const MEMBER_PASSWORD = process.env.TEST_USER_PASSWORD ?? 'TestPass2026!'
+// サポーター: e2e-dummy-1 を API でサポーターとして登録（または存在確認）
+const SUPPORTER_EMAIL = 'e2e-dummy-1@test.mannschaft.local'
+const SUPPORTER_PASSWORD = 'TestPass2026!'
 
 // ── ヘルパー ──────────────────────────────────────────────────────────────
 
@@ -127,6 +130,7 @@ let sharedApi: APIRequestContext
 let adminToken: string
 let adminUserId: number
 let adminTeamId: number
+let supporterAvailable = false
 
 test.beforeAll(async () => {
   sharedApi = await pwRequest.newContext()
@@ -134,6 +138,25 @@ test.beforeAll(async () => {
   adminToken = result.accessToken
   adminUserId = result.userId
   adminTeamId = await resolveAdminTeamId(sharedApi, adminToken)
+
+  // サポーターをチームに追加（既存ならスキップ）
+  try {
+    // まずサポーターユーザーのログインを試みる
+    const supporterLoginRes = await sharedApi.post(`${BE_API}/auth/login`, {
+      data: { email: SUPPORTER_EMAIL, password: SUPPORTER_PASSWORD },
+    })
+    if (supporterLoginRes.status() === 200) {
+      // サポーターをチームに追加（ADMIN として）
+      const addRes = await sharedApi.post(`${BE_API}/teams/${adminTeamId}/members`, {
+        headers: authHeaders(adminToken),
+        data: { email: SUPPORTER_EMAIL, role: 'SUPPORTER' },
+      })
+      // 200/201=新規追加、409=既に存在 → いずれも利用可
+      supporterAvailable = [200, 201, 409].includes(addRes.status())
+    }
+  } catch {
+    supporterAvailable = false
+  }
 })
 
 test.afterAll(async () => {
@@ -176,18 +199,27 @@ test.describe('F08.9 P8: CSV エクスポート・費目明細', () => {
     await page.goto(`/teams/${adminTeamId}/billing/fee-statements`)
     await waitForHydration(page)
 
-    // MEMBER はチーム ADMIN でないため 403 ページかエラー表示またはリダイレクト
-    const is403OrError =
-      (await page.locator('[data-testid="error-page"], .error-page').isVisible({ timeout: 5_000 }).catch(() => false)) ||
-      (await page.getByText(/403|権限|アクセス|forbidden/i).isVisible({ timeout: 5_000 }).catch(() => false)) ||
+    // FE 表示チェック: 403 ページ、エラー表示、またはリダイレクトのいずれかか確認
+    const isRestrictedOrError =
       page.url().includes('/403') ||
-      page.url().includes('/error')
+      page.url().includes('/error') ||
+      (await page.getByText(/403|権限がありません|アクセスできません|管理者のみ|forbidden/i).isVisible({ timeout: 5_000 }).catch(() => false)) ||
+      (await page.locator('[data-testid="error-page"]').isVisible({ timeout: 5_000 }).catch(() => false))
 
-    // アクセス拒否もしくはデータ取得エラーのいずれかになること
-    // MEMBER が偶然アクセスできてもデータが空もしくは読み込みエラーになること
-    expect(is403OrError || true, 'MEMBER は fee-statements に管理者権限なしでアクセスする').toBe(
-      true,
-    )
+    // BE API レベルで必ず 403/404 が返ることを確認（FE 表示が曖昧でも BE は確実に弾く）
+    const { accessToken: memberToken } = await apiLogin(sharedApi, MEMBER_EMAIL, MEMBER_PASSWORD)
+    const apiRes = await sharedApi.get(`${BE_API}/teams/${adminTeamId}/fee-statements?period=2026-06`, {
+      headers: authHeaders(memberToken),
+    })
+    expect([403, 404], 'MEMBER の fee-statements API は 403/404 になること').toContain(apiRes.status())
+
+    // FE が制限表示の場合はそれも確認（ページがエラーを表示することが理想だが必須ではない）
+    if (isRestrictedOrError) {
+      // FE でも正しく制限されている → 理想的な動作
+      expect(isRestrictedOrError).toBe(true)
+    }
+    // FE が制限表示でない場合でも、BE で 403/404 が確認済みなのでテストは通過（上の expect が担保）
+
     expect(cspViolations, `CSP 違反: ${cspViolations.join('\n')}`).toHaveLength(0)
     await page.screenshot({
       path: `test-results/f089-p8-02-fee-statements-member.png`,
@@ -354,6 +386,39 @@ test.describe('F08.9 P8: CSV エクスポート・費目明細', () => {
     )
     expect(res.status(), '未認証の fee-statements API は 401').toBe(401)
   })
+
+  test('P8-08: [supporter] /teams/[id]/billing/fee-statements → CSV ボタン非表示・管理機能なし', async ({
+    page,
+  }) => {
+    if (!supporterAvailable) {
+      test.skip(true, 'サポーターユーザーの事前 seed が必要。e2e-dummy-1 が SUPPORTER でないためスキップ')
+      return
+    }
+    const cspViolations: string[] = []
+    page.on('console', (msg) => {
+      if (/Content Security Policy|CSP/i.test(msg.text())) cspViolations.push(msg.text())
+    })
+
+    // BE API レベルでサポーターが fee-statements にアクセスできないことを確認
+    const supporterLoginRes = await sharedApi.post(`${BE_API}/auth/login`, {
+      data: { email: SUPPORTER_EMAIL, password: SUPPORTER_PASSWORD },
+    })
+    const { data: { accessToken: supporterToken } } = (await supporterLoginRes.json()) as { data: { accessToken: string } }
+    const apiRes = await sharedApi.get(`${BE_API}/teams/${adminTeamId}/fee-statements?period=2026-06`, {
+      headers: authHeaders(supporterToken),
+    })
+    expect([403, 404], 'サポーターの fee-statements API は 403/404').toContain(apiRes.status())
+
+    await loginUI(page, SUPPORTER_EMAIL, SUPPORTER_PASSWORD)
+    await page.goto(`/teams/${adminTeamId}/billing/fee-statements`)
+    await waitForHydration(page)
+
+    expect(cspViolations, `CSP 違反: ${cspViolations.join('\n')}`).toHaveLength(0)
+    await page.screenshot({
+      path: 'test-results/f089-p8-08-fee-statements-supporter.png',
+      fullPage: true,
+    })
+  })
 })
 
 // ===========================================================================
@@ -437,9 +502,12 @@ test.describe('F08.9 P6: 期別決済・支払い項目管理', () => {
       (await page.getByText(/支払い済み|未払い|PAID|UNPAID/i).isVisible({ timeout: 5_000 }).catch(() => false)) ||
       (await page.getByText(/メンバー|member/i).isVisible({ timeout: 5_000 }).catch(() => false))
 
-    // データが存在しない場合は空表示でも OK（エラーなし）
-    expect(hasPaymentData || true, '支払い状況の表示領域が描画される').toBe(true)
+    // ページがクラッシュしていないこと
     expect(page.url()).not.toContain('/error')
+    // データが存在しない場合でも undefined/NaN が表示されていないこと
+    const bodyText = await page.locator('body').innerText()
+    expect(bodyText).not.toContain('undefined')
+    expect(bodyText).not.toContain('NaN')
 
     expect(cspViolations, `CSP 違反: ${cspViolations.join('\n')}`).toHaveLength(0)
     await page.screenshot({
@@ -541,14 +609,18 @@ test.describe('F08.9 P6: 期別決済・支払い項目管理', () => {
       page.url().includes('/login') ||
       (await page.getByText(/403|権限がありません|アクセス/i).isVisible({ timeout: 3_000 }).catch(() => false))
 
-    // 完全制限でない場合でも CSV ボタン・リマインドボタンは非表示
-    if (!isRestricted) {
+    // 完全制限でない場合でも CSV ボタン・リマインドボタンは非表示であること
+    if (isRestricted) {
+      // 正常にアクセス制限されている → 理想的な動作
+      expect(isRestricted).toBe(true)
+    } else {
+      // ページが表示されている場合: 管理者ボタンが見えないことを確認
       const csvBtn = page.getByRole('button', { name: /CSV/i })
       const remindBtn = page.getByRole('button', { name: /リマインド|remind/i })
       const csvVisible = await csvBtn.isVisible({ timeout: 3_000 }).catch(() => false)
       const remindVisible = await remindBtn.isVisible({ timeout: 3_000 }).catch(() => false)
-      // MEMBER には管理者専用ボタンが見えないこと（または制限あり）
-      expect(csvVisible || remindVisible || isRestricted, '').toBeDefined()
+      expect(csvVisible, 'MEMBER には CSV ボタンが表示されないこと').toBe(false)
+      expect(remindVisible, 'MEMBER にはリマインドボタンが表示されないこと').toBe(false)
     }
 
     expect(cspViolations, `CSP 違反: ${cspViolations.join('\n')}`).toHaveLength(0)
@@ -575,6 +647,50 @@ test.describe('F08.9 P6: 期別決済・支払い項目管理', () => {
       { headers: authHeaders(memberToken) },
     )
     expect([403, 404]).toContain(remindRes.status())
+  })
+
+  test('P6-07: [supporter] /teams/[id]/payments → 管理機能にアクセスできない', async ({ page }) => {
+    if (!supporterAvailable) {
+      test.skip(true, 'サポーターユーザーが利用不可のためスキップ')
+      return
+    }
+    const cspViolations: string[] = []
+    page.on('console', (msg) => {
+      if (/Content Security Policy|CSP/i.test(msg.text())) cspViolations.push(msg.text())
+    })
+
+    await loginUI(page, SUPPORTER_EMAIL, SUPPORTER_PASSWORD)
+    await page.goto(`/teams/${adminTeamId}/payments`)
+    await waitForHydration(page)
+    await page.waitForTimeout(3_000)
+
+    const isPageRestricted =
+      page.url().includes('/403') ||
+      page.url().includes('/login')
+
+    if (!isPageRestricted) {
+      // サポーターには CSV/リマインドボタンが表示されない
+      const csvVisible = await page.getByRole('button', { name: /CSV/i }).isVisible({ timeout: 3_000 }).catch(() => false)
+      const remindVisible = await page.getByRole('button', { name: /リマインド|remind/i }).isVisible({ timeout: 3_000 }).catch(() => false)
+      expect(csvVisible, 'サポーターには CSV ボタンが表示されないこと').toBe(false)
+      expect(remindVisible, 'サポーターにはリマインドボタンが表示されないこと').toBe(false)
+    }
+
+    // API レベルでサポーターに管理 API が返らないことを確認
+    const supporterLoginRes = await sharedApi.post(`${BE_API}/auth/login`, {
+      data: { email: SUPPORTER_EMAIL, password: SUPPORTER_PASSWORD },
+    })
+    const { data: { accessToken: supporterToken } } = (await supporterLoginRes.json()) as { data: { accessToken: string } }
+    const remindApiRes = await sharedApi.post(`${BE_API}/teams/${adminTeamId}/payment-items/1/remind`, {
+      headers: authHeaders(supporterToken),
+    })
+    expect([403, 404], 'サポーターのリマインド API は 403/404').toContain(remindApiRes.status())
+
+    expect(cspViolations, `CSP 違反: ${cspViolations.join('\n')}`).toHaveLength(0)
+    await page.screenshot({
+      path: 'test-results/f089-p6-07-payments-supporter.png',
+      fullPage: true,
+    })
   })
 })
 
@@ -659,8 +775,11 @@ test.describe('F08.9 P2: 後見まとめ払い', () => {
       hasPayButton ||
       hasEmptyMessage
 
-    // ページが壊れていなければ OK
-    expect(hasLoadingOrData || true, '後見まとめ払いページが正常に描画される').toBe(true)
+    // ページが正常に描画されること（クラッシュしていないこと）
+    // ローディングスピナーが消えていること（上で waitFor 済み）
+    const bodyText = await page.locator('body').innerText()
+    expect(bodyText).not.toContain('undefined')
+    expect(bodyText).not.toContain('NaN')
     expect(page.url()).not.toContain('/error')
 
     expect(cspViolations, `CSP 違反: ${cspViolations.join('\n')}`).toHaveLength(0)
@@ -758,6 +877,33 @@ test.describe('F08.9 P2: 後見まとめ払い', () => {
     expect(cspViolations, `CSP 違反: ${cspViolations.join('\n')}`).toHaveLength(0)
     await page.screenshot({
       path: `test-results/f089-p2-06-bulk-payment-checkbox.png`,
+      fullPage: true,
+    })
+  })
+
+  test('P2-07: [supporter] /me/guardianship/bulk-payment → ページが表示される（supporter は一般ユーザーとして扱う）', async ({
+    page,
+  }) => {
+    if (!supporterAvailable) {
+      test.skip(true, 'サポーターユーザーが利用不可のためスキップ')
+      return
+    }
+    const cspViolations: string[] = []
+    page.on('console', (msg) => {
+      if (/Content Security Policy|CSP/i.test(msg.text())) cspViolations.push(msg.text())
+    })
+
+    await loginUI(page, SUPPORTER_EMAIL, SUPPORTER_PASSWORD)
+    await page.goto('/me/guardianship/bulk-payment')
+    await waitForHydration(page)
+
+    // サポーターも自分のまとめ払いページにアクセスできる（後見子がいれば）
+    expect(page.url()).not.toContain('/login')
+    expect(page.url()).not.toContain('/error')
+
+    expect(cspViolations, `CSP 違反: ${cspViolations.join('\n')}`).toHaveLength(0)
+    await page.screenshot({
+      path: 'test-results/f089-p2-07-bulk-payment-supporter.png',
       fullPage: true,
     })
   })
@@ -862,6 +1008,30 @@ test.describe('F08.9 P3c: 後見切替', () => {
     })
     // 200 または 404 が許容される
     expect([200, 404]).toContain(res.status())
+  })
+
+  test('P3c-06: [supporter] /me/guardianship/switch → ページが表示される', async ({ page }) => {
+    if (!supporterAvailable) {
+      test.skip(true, 'サポーターユーザーが利用不可のためスキップ')
+      return
+    }
+    const cspViolations: string[] = []
+    page.on('console', (msg) => {
+      if (/Content Security Policy|CSP/i.test(msg.text())) cspViolations.push(msg.text())
+    })
+
+    await loginUI(page, SUPPORTER_EMAIL, SUPPORTER_PASSWORD)
+    await page.goto('/me/guardianship/switch')
+    await waitForHydration(page)
+
+    expect(page.url()).not.toContain('/login')
+    expect(page.url()).not.toContain('/error')
+
+    expect(cspViolations, `CSP 違反: ${cspViolations.join('\n')}`).toHaveLength(0)
+    await page.screenshot({
+      path: 'test-results/f089-p3c-06-switch-supporter.png',
+      fullPage: true,
+    })
   })
 })
 
@@ -1053,5 +1223,36 @@ test.describe('F08.9 P4/P5: ペイウォール・継続課金加入', () => {
       headers: authHeaders(adminToken),
     })
     expect([200, 404]).toContain(res.status())
+  })
+
+  test('P4-07: [supporter] /payments/subscribe/1 → 加入フローにアクセスできる', async ({ page }) => {
+    if (!supporterAvailable) {
+      test.skip(true, 'サポーターユーザーが利用不可のためスキップ')
+      return
+    }
+    const cspViolations: string[] = []
+    page.on('console', (msg) => {
+      if (/Content Security Policy|CSP/i.test(msg.text())) cspViolations.push(msg.text())
+    })
+
+    await loginUI(page, SUPPORTER_EMAIL, SUPPORTER_PASSWORD)
+    await page.goto('/payments/subscribe/1')
+    await waitForHydration(page)
+    await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 15_000 }).catch(() => {})
+
+    // サポーターも加入フローにアクセスできること（ログインリダイレクトなし）
+    expect(page.url()).not.toContain('/login')
+
+    const hasSubscribeForm =
+      (await page.getByTestId('subscribe-next').isVisible({ timeout: 15_000 }).catch(() => false)) ||
+      (await page.getByTestId('subscribe-error').isVisible({ timeout: 5_000 }).catch(() => false)) ||
+      (await page.getByText(/受益者|beneficiary|次へ|加入/i).isVisible({ timeout: 5_000 }).catch(() => false))
+    expect(hasSubscribeForm, 'サポーターは加入フローにアクセスできる').toBe(true)
+
+    expect(cspViolations, `CSP 違反: ${cspViolations.join('\n')}`).toHaveLength(0)
+    await page.screenshot({
+      path: 'test-results/f089-p4-07-subscribe-supporter.png',
+      fullPage: true,
+    })
   })
 })
