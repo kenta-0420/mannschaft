@@ -44,8 +44,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("Flyway 既存データ tournament visibility 6 値移行 番人テスト")
 class FlywayExistingDataTournamentVisibilityMigrationTest {
 
-    /** 6 値拡張マイグレーションの直前バージョン。ここまで適用してから旧値をシードする。 */
-    private static final String PRE_TARGET = "9.20260603000006";
+    /**
+     * 6 値拡張マイグレーション（{@code V82.001}）の直前バージョン。ここまで適用してから旧値をシードする。
+     * <p>visibility migration を {@code V9.20260611091634} → {@code V82.001} へリネームしたため、
+     * PRE_TARGET も {@code V82.001} 直前の現行最大 versioned migration（{@code V81.001}）へ追従させる。
+     * 旧採番（{@code V9.x}）のままだと V10〜V81 を飛ばした早期地点で停止し、repeatable
+     * {@code R__seed_visibility_template_presets.sql} が必要テーブル未作成の状態で走って失敗する。
+     */
+    private static final String PRE_TARGET = "81.001";
 
     @SuppressWarnings("resource")
     private static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0")
