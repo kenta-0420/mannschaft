@@ -337,5 +337,36 @@
         "description": "이 대회에 참가하는 팀 관계자만 볼 수 있습니다."
       }
     }
+  },
+  "scoreEntry": {
+    "title": "점수 입력",
+    "navLink": "점수 입력 (관리자)",
+    "back": "대회 상세로 돌아가기",
+    "matchday": "라운드",
+    "home": "홈",
+    "away": "원정",
+    "homeScore": "홈 점수",
+    "awayScore": "원정 점수",
+    "save": "일괄 저장",
+    "saved": "점수를 저장했습니다",
+    "saveFailed": "점수 저장에 실패했습니다",
+    "conflict": "다른 편집과 충돌했습니다. 최신 상태를 다시 불러왔습니다. 다시 입력해 주세요.",
+    "invalidInput": "입력값이 올바르지 않습니다(점수는 0 이상의 정수여야 하며 홈·원정 모두 입력해야 합니다).",
+    "nothingToSave": "저장할 점수가 없습니다",
+    "standingsHint": "점수를 저장했습니다. 순위는 자동으로 재계산됩니다.",
+    "forbidden": "이 대회의 점수를 편집할 권한이 없습니다",
+    "loadFailed": "데이터를 불러오지 못했습니다",
+    "noDivisions": "등록된 부문이 없습니다",
+    "noMatchdays": "등록된 라운드가 없습니다",
+    "noMatches": "대진이 없습니다",
+    "csv": {
+      "title": "CSV로 일괄 가져오기",
+      "formatHint": "matchId,homeScore,awayScore 순서로 작성한 CSV를 업로드하세요(첫 행은 헤더). 점수가 확정되지 않은 경기는 비워 둡니다.",
+      "import": "가져오기",
+      "imported": "CSV를 가져왔습니다",
+      "importFailed": "CSV 가져오기에 실패했습니다",
+      "invalidFormat": "CSV 형식이 올바르지 않습니다. 점수는 정수로 입력하세요.",
+      "downloadTemplate": "템플릿 다운로드"
+    }
   }
 }

@@ -337,5 +337,36 @@
         "description": "仅参加此赛事的球队相关人员可查看。"
       }
     }
+  },
+  "scoreEntry": {
+    "title": "比分录入",
+    "navLink": "比分录入（管理员）",
+    "back": "返回赛事详情",
+    "matchday": "轮次",
+    "home": "主场",
+    "away": "客场",
+    "homeScore": "主场得分",
+    "awayScore": "客场得分",
+    "save": "批量保存",
+    "saved": "已保存比分",
+    "saveFailed": "保存比分失败",
+    "conflict": "与其他编辑发生冲突。已重新加载最新状态，请重新录入。",
+    "invalidInput": "输入值无效（得分须为不小于0的整数，且主客场均需填写）。",
+    "nothingToSave": "没有可保存的比分",
+    "standingsHint": "已保存比分。排名将自动重新计算。",
+    "forbidden": "您无权编辑此赛事的比分",
+    "loadFailed": "数据获取失败",
+    "noDivisions": "尚未登记分区",
+    "noMatchdays": "尚未登记轮次",
+    "noMatches": "没有对阵",
+    "csv": {
+      "title": "通过CSV批量导入",
+      "formatHint": "请按 matchId,homeScore,awayScore 的顺序上传CSV（第一行为表头）。未决出比分的比赛请留空。",
+      "import": "导入",
+      "imported": "已导入CSV",
+      "importFailed": "CSV导入失败",
+      "invalidFormat": "CSV格式无效。得分须为整数。",
+      "downloadTemplate": "下载模板"
+    }
   }
 }

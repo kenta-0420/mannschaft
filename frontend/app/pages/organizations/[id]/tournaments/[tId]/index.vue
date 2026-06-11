@@ -250,6 +250,15 @@ onMounted(async () => {
         <i class="pi pi-money-bill text-sm" />
         <span>{{ $t('tournament.fees.title') }}</span>
       </NuxtLink>
+      <NuxtLink
+        v-if="isAdminOrDeputy"
+        :to="`/organizations/${orgId}/tournaments/${tId}/score-entry`"
+        class="flex items-center gap-1.5 rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-600 transition hover:border-primary-400 hover:text-primary-600"
+        data-testid="score-entry-nav-link"
+      >
+        <i class="pi pi-pencil text-sm" />
+        <span>{{ $t('tournament.scoreEntry.navLink') }}</span>
+      </NuxtLink>
       <button
         v-if="isAdminOrDeputy"
         type="button"

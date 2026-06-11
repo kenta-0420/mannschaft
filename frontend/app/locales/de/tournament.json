@@ -337,5 +337,36 @@
         "description": "Nur Personen aus teilnehmenden Teams dieses Turniers konnen es sehen."
       }
     }
+  },
+  "scoreEntry": {
+    "title": "Ergebniserfassung",
+    "navLink": "Ergebniserfassung (Admin)",
+    "back": "Zuruck zum Turnier",
+    "matchday": "Spieltag",
+    "home": "Heim",
+    "away": "Auswarts",
+    "homeScore": "Heim-Tore",
+    "awayScore": "Auswarts-Tore",
+    "save": "Alle speichern",
+    "saved": "Ergebnisse gespeichert",
+    "saveFailed": "Ergebnisse konnten nicht gespeichert werden",
+    "conflict": "Konflikt mit einer anderen Bearbeitung. Der aktuelle Stand wurde neu geladen. Bitte erneut eingeben.",
+    "invalidInput": "Ungultige Eingabe (Ergebnisse mussen nicht negative ganze Zahlen sein und sowohl Heim als auch Auswarts mussen ausgefullt werden).",
+    "nothingToSave": "Keine Ergebnisse zum Speichern",
+    "standingsHint": "Ergebnisse gespeichert. Die Tabelle wird automatisch neu berechnet.",
+    "forbidden": "Sie haben keine Berechtigung, Ergebnisse fur dieses Turnier zu bearbeiten",
+    "loadFailed": "Daten konnten nicht geladen werden",
+    "noDivisions": "Keine Divisionen registriert",
+    "noMatchdays": "Keine Spieltage registriert",
+    "noMatches": "Keine Begegnungen",
+    "csv": {
+      "title": "Massenimport per CSV",
+      "formatHint": "Laden Sie eine CSV in der Reihenfolge matchId,homeScore,awayScore hoch (erste Zeile ist die Kopfzeile). Lassen Sie noch nicht entschiedene Spiele leer.",
+      "import": "Importieren",
+      "imported": "CSV importiert",
+      "importFailed": "CSV-Import fehlgeschlagen",
+      "invalidFormat": "Ungultiges CSV-Format. Ergebnisse mussen ganze Zahlen sein.",
+      "downloadTemplate": "Vorlage herunterladen"
+    }
   }
 }
