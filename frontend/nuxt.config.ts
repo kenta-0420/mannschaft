@@ -271,7 +271,7 @@ export default defineNuxtConfig({
         //   /api/v1/public/** — 未ログイン公開閲覧用エンドポイント（F19.1 等）
         //   /api/v1/recruitment-categories — 未ログイン参照可能なカテゴリ一覧
         {
-          urlPattern: /\/api\/v1\/(public\/.*|recruitment-categories(?:\?.*)?)/,
+          urlPattern: /\/api\/v1\/(public\/.*|recruitment-categories(?=[?#]|$))/,
           handler: 'StaleWhileRevalidate' as const,
           method: 'GET',
           options: {
@@ -328,6 +328,11 @@ export default defineNuxtConfig({
     internalApiBase: process.env.NUXT_INTERNAL_API_BASE ?? 'http://localhost:8080',
     public: {
       apiBase: process.env.NUXT_PUBLIC_API_BASE ?? 'http://localhost:8080',
+      // フロントエンドのベース URL（canonical / hreflang / JSON-LD 等の SEO 用）。
+      // NUXT_PUBLIC_API_BASE=''（同一オリジン構成）では apiBase から FE の origin を
+      // 逆算できないため、専用の環境変数で明示する。
+      // 設計書: docs/security/03_security_headers_and_csp.md §4.1 / useSeoPublicPage.ts
+      baseUrl: process.env.NUXT_PUBLIC_BASE_URL ?? '',
       // F18 SELF_ISSUED_BALANCE 機能フラグ（2026-05-17 マスター御裁可で凍結）。
       // 資金決済法（前払式支払手段＝自家型）対応のため法務整備が整うまで一時凍結。
       // 設計書: docs/features/F18_point_card_wallet.md §1.4 / §16 / §17

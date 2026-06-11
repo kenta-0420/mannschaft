@@ -77,18 +77,18 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async setUser(user: AuthUser) {
-      // ユーザー切替を検知: localStorage に保存された旧ユーザーの id と
-      // 新ユーザーの id が異なる場合のみ api-cache を破棄する。
-      // 同一ユーザーのページリロード（復元）では破棄しない
-      // → オフライン機能が毎回のリロードで殺されることを防ぐ。
+      // 処理順: 旧ユーザー ID を先読み → state/localStorage を即時設定 → 非同期破棄を後置。
+      // state 先行により、直後の isSystemAdmin 等の getter が新ユーザーの値で正しく評価される。
+      // キャッシュ破棄はその後に実行されるため、破棄中の Dexie 書き込み競合も発生しない。
+      let needsCacheClear = false
       if (import.meta.client) {
         try {
           const savedRaw = localStorage.getItem('currentUser')
           if (savedRaw) {
             const savedUser = JSON.parse(savedRaw) as AuthUser
             if (savedUser.id !== user.id) {
-              // 別ユーザーへの切替: 旧ユーザーの個人データキャッシュを破棄
-              await this.clearUserCaches()
+              // 別ユーザーへの切替: 旧ユーザーの個人データキャッシュを後で破棄する
+              needsCacheClear = true
             }
           }
         } catch {
@@ -96,9 +96,15 @@ export const useAuthStore = defineStore('auth', {
         }
       }
 
+      // state と localStorage を同期的に即時設定（直後の getter が新ユーザーで評価されるよう先行）
       this.user = user
       if (import.meta.client) {
         localStorage.setItem('currentUser', JSON.stringify(user))
+      }
+
+      // キャッシュ破棄は state 設定後に行う（state 先行・破棄後置）
+      if (needsCacheClear) {
+        await this.clearUserCaches()
       }
     },
 

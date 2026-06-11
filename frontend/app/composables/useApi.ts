@@ -20,7 +20,7 @@ export function useApi() {
   const t = (key: string) => nuxtApp.$i18n.t(key)
 
   const api = ofetch.create({
-    baseURL: config.public.apiBase as string,
+    baseURL: resolveApiBaseUrl(config),
     // HttpOnly Cookie を自動送信するために credentials: 'include' を設定する。
     // これにより access_token Cookie がすべての API リクエストに付与される。
     credentials: 'include',
@@ -145,7 +145,7 @@ export function useApi() {
         const data = await ofetch<{ data: { accessToken: string; refreshToken: string } }>(
           '/api/v1/auth/refresh',
           {
-            baseURL: config.public.apiBase as string,
+            baseURL: resolveApiBaseUrl(config),
             method: 'POST',
             credentials: 'include',
           },

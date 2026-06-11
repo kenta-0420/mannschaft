@@ -33,8 +33,8 @@
 | `style-src` | `'self' 'unsafe-inline' https://fonts.googleapis.com` | PrimeVue/Tailwind の動的インラインスタイル + Google Fonts CSS。`'unsafe-inline'` は当面維持（§4） |
 | `font-src` | `'self' https://fonts.gstatic.com data:` | Noto Sans JP フォントファイル |
 | `img-src` | `'self' data: blob:` + R2 エンドポイント + CDN Workers ドメイン | アバター・アップロード画像・OGP。R2/CDN は環境変数から動的構成 |
-| `connect-src` | `'self'` + `NUXT_PUBLIC_API_BASE`（空文字時は含めない） + `https://fonts.googleapis.com https://fonts.gstatic.com` + `ws: wss:` | API 通信 + フォント preconnect + WebSocket。本番（NUXT_PUBLIC_API_BASE=''）時は 'self' で足りるため apiBase は含めない |
-| `frame-src` | `https://www.google.com` | `PublicMapEmbed.vue` の Google Maps 埋め込み |
+| `connect-src` | `'self'` + `NUXT_PUBLIC_API_BASE`（空文字時は含めない） + `https://fonts.googleapis.com https://fonts.gstatic.com` + `ws: wss:` + `https://api.stripe.com` | API 通信 + フォント preconnect + WebSocket + Stripe.js（SetupIntent confirm / Elements の XHR/fetch）。本番（NUXT_PUBLIC_API_BASE=''）時は 'self' で足りるため apiBase は含めない |
+| `frame-src` | `https://www.google.com` + `https://js.stripe.com` + `https://hooks.stripe.com` | `PublicMapEmbed.vue` の Google Maps 埋め込み + Stripe PaymentElement iframe / 3DS 認証チャレンジ iframe（F08.9 P5）|
 | `worker-src` | `'self' blob:` | `@vite-pwa/nuxt` の service worker |
 | `manifest-src` | `'self'` | PWA マニフェスト |
 | `frame-ancestors` | `'none'` | クリックジャッキング防止（自サイトの iframe 埋め込み禁止） |
@@ -186,9 +186,12 @@ CSP 違反を収集できるよう、`report-uri` ディレクティブを追加
 | 環境変数 | スコープ | 用途 | 本番推奨値 |
 |---|---|---|---|
 | `NUXT_PUBLIC_API_BASE` | ブラウザ + サーバー（public） | ブラウザからの API 通信 | `''`（同一オリジン・相対パス） |
-| `NUXT_INTERNAL_API_BASE` | サーバーサイドのみ（非 public） | Nitro server plugins（`ssr-error-logger.ts` 等）からの BE 呼び出し | `http://backend:8080`（コンテナ内部名等） |
+| `NUXT_INTERNAL_API_BASE` | サーバーサイドのみ（非 public） | Nitro SSR（`useApi` / `useActivityPublicApi` 等）からの BE 呼び出し | `http://backend:8080`（コンテナ内部名等） |
+| `NUXT_PUBLIC_BASE_URL` | ブラウザ + サーバー（public） | SEO 用 canonical / hreflang / JSON-LD のベース URL（`useSeoPublicPage`） | `https://mannschaft.example.com` |
 
-`server/plugins/ssr-error-logger.ts` は `config.internalApiBase` を参照する（`config.public.apiBase` は参照しない）。
+- `server/plugins/ssr-error-logger.ts` は `config.internalApiBase` を参照する（`config.public.apiBase` は参照しない）。
+- `useApi` / `useActivityPublicApi` 等の公開 API composable は `resolveApiBaseUrl()` で二層解決する（SSR 時 `internalApiBase` → クライアント時 `public.apiBase`）。
+- `NUXT_PUBLIC_BASE_URL` は `NUXT_PUBLIC_API_BASE=''` 運用時に `useSeoPublicPage` が canonical / hreflang を絶対 URL で出力するために必要。未設定時は `useRequestURL().origin` にフォールバックする（SSR の Host ヘッダー由来）。
 
 ---
 

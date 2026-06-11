@@ -19,7 +19,10 @@ export function useActivityPublicApi() {
       const res = await ofetch<{ data: PublicActivityResponse }>(
         `/api/v1/public/activities/${id}`,
         {
-          baseURL: config.public.apiBase as string,
+          // SSR 時は NUXT_INTERNAL_API_BASE（絶対 URL）を優先する。
+          // 本番 NUXT_PUBLIC_API_BASE='' では Nitro サーバーが相対パスで BE に到達できないため。
+          // 詳細: docs/security/03_security_headers_and_csp.md §4.1
+          baseURL: resolveApiBaseUrl(config),
         },
       )
       return res.data
