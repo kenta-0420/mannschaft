@@ -1,4 +1,5 @@
 import { ofetch } from 'ofetch'
+import { resolveApiBaseUrl } from '~/composables/useApiBaseUrl'
 
 let refreshPromise: Promise<boolean> | null = null
 

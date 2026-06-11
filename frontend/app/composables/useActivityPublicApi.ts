@@ -1,5 +1,6 @@
 import { ofetch, type FetchError } from 'ofetch'
 import type { PublicActivityResponse } from '~/types/activity'
+import { resolveApiBaseUrl } from '~/composables/useApiBaseUrl'
 
 /**
  * 公開活動記録 API Composable
