@@ -4,8 +4,11 @@ import type { PaymentItemResponse, MemberPaymentResponse, PaymentItemType, Payme
 const props = defineProps<{ scopeType: 'team' | 'organization'; scopeId: string }>()
 
 const { t } = useI18n()
-const { getPaymentItems, getMemberPayments, sendReminder, getPaymentSummary } = usePaymentApi()
+const { getPaymentItems, getMemberPayments, sendReminder, getPaymentSummary, exportPayments } = usePaymentApi()
 const { showSuccess, showError } = useNotification()
+
+/** F08.9 P8: CSV ダウンロード中フラグ */
+const csvDownloading = ref(false)
 
 /**
  * 支払い種別バッジのスタイルクラスを返す。
@@ -74,6 +77,25 @@ async function onRemind() {
     await sendReminder(props.scopeType, props.scopeId, selectedItem.value.id)
     showSuccess(t('payment.admin.remindSuccess'))
   } catch { showError(t('payment.admin.remindError')) }
+}
+
+/**
+ * F08.9 P8: 支払い一覧を CSV としてダウンロードする。
+ * BE: GET /api/v1/teams/{id}/payment-items/{itemId}/payments/export
+ */
+async function onExportCsv() {
+  if (!selectedItem.value) return
+  csvDownloading.value = true
+  try {
+    const blob = await exportPayments(props.scopeType, props.scopeId, selectedItem.value.id)
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `payments_${selectedItem.value.id}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  } catch { showError(t('payment.admin.exportError')) }
+  finally { csvDownloading.value = false }
 }
 
 /**
@@ -156,7 +178,10 @@ onMounted(() => loadItems())
             />
           </div>
         </div>
-        <Button :label="t('payment.admin.remindUnpaid')" icon="pi pi-bell" text size="small" @click="onRemind" />
+        <div class="flex items-center gap-2">
+          <Button :label="t('payment.exportCsv')" icon="pi pi-download" text size="small" :loading="csvDownloading" @click="onExportCsv" />
+          <Button :label="t('payment.admin.remindUnpaid')" icon="pi pi-bell" text size="small" @click="onRemind" />
+        </div>
       </div>
       <div v-if="loading" class="flex justify-center py-8"><LoadingBounce /></div>
       <div v-else-if="selectedItem" class="flex flex-col gap-1">

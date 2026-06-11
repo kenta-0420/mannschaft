@@ -93,6 +93,7 @@
       "loadPaymentsError": "Zahlungsstatus konnte nicht geladen werden",
       "remindSuccess": "Erinnerung gesendet",
       "remindError": "Senden fehlgeschlagen",
+      "exportError": "CSV-Download fehlgeschlagen",
       "status": {
         "PAID": "Bezahlt",
         "UNPAID": "Unbezahlt",
@@ -117,6 +118,15 @@
       "expired": "Abgelaufen",
       "payer": "Zahler",
       "beneficiary": "Begünstigter"
+    },
+    "exportCsv": "CSV herunterladen",
+    "feeStatements": {
+      "title": "Gebührenabrechnung",
+      "period": "Abrechnungsmonat",
+      "totalFeeAmount": "Gesamtgebühr",
+      "issuerName": "Aussteller",
+      "noData": "Keine Daten für den ausgewählten Monat",
+      "loadError": "Gebührenabrechnung konnte nicht geladen werden"
     },
     "guardianBulkPayment": {
       "title": "Vormund-Sammelzahlung",

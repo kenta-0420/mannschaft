@@ -5,6 +5,7 @@ import type {
   PaymentSummaryResponse,
   MyPaymentResponse,
   MemberPaymentReceiptResponse,
+  FeeStatementResponse,
 } from '~/types/payment'
 
 export function usePaymentApi() {
@@ -168,6 +169,17 @@ export function usePaymentApi() {
     return api<{ data: MemberPaymentReceiptResponse }>(`/api/v1/member-payments/${memberPaymentId}/receipt`)
   }
 
+  // === Fee Statements ===
+  /**
+   * F08.9 P8: チーム月次手数料明細を取得する。
+   * BE: GET /api/v1/teams/{teamId}/fee-statements?period=YYYY-MM
+   */
+  async function getFeeStatement(teamId: string, period: string) {
+    return api<{ data: FeeStatementResponse }>(`/api/v1/teams/${teamId}/fee-statements`, {
+      query: { period },
+    })
+  }
+
   // === Subscriptions ===
   async function cancelSubscription(itemId: number, subscriptionId: number) {
     return api(`/api/v1/payment-items/${itemId}/subscriptions/${subscriptionId}`, {
@@ -203,5 +215,6 @@ export function usePaymentApi() {
     cancelSubscription,
     resumeSubscription,
     getReceipt,
+    getFeeStatement,
   }
 }

@@ -93,6 +93,7 @@
       "loadPaymentsError": "결제 상태를 불러오지 못했습니다",
       "remindSuccess": "알림을 전송했습니다",
       "remindError": "전송에 실패했습니다",
+      "exportError": "CSV 다운로드에 실패했습니다",
       "status": {
         "PAID": "납부 완료",
         "UNPAID": "미납",
@@ -117,6 +118,15 @@
       "expired": "만료됨",
       "payer": "결제자",
       "beneficiary": "수혜자"
+    },
+    "exportCsv": "CSV 다운로드",
+    "feeStatements": {
+      "title": "수수료 명세",
+      "period": "대상 월",
+      "totalFeeAmount": "수수료 합계",
+      "issuerName": "발행자",
+      "noData": "선택한 월의 데이터가 없습니다",
+      "loadError": "수수료 명세를 가져오지 못했습니다"
     },
     "guardianBulkPayment": {
       "title": "보호자 일괄 결제",
