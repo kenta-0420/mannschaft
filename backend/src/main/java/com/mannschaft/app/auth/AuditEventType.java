@@ -94,6 +94,8 @@ public enum AuditEventType {
     // ─── PAYMENT (Phase 3+) ───────────────────────────────────
     PAYMENT_COMPLETED(AuditEventCategory.PAYMENT),
     PAYMENT_REFUNDED(AuditEventCategory.PAYMENT),
+    /** F08.9 P8: 支払い明細 CSV をエクスポートした（チーム ADMIN 操作）。 */
+    PAYMENT_CSV_EXPORTED(AuditEventCategory.PAYMENT),
 
     // ─── SCHEDULE (Phase 3+) ──────────────────────────────────
     SCHEDULE_CREATED(AuditEventCategory.SCHEDULE),

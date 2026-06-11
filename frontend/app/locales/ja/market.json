@@ -165,6 +165,52 @@
         "loadFailed": "決済情報の取得に失敗しました。",
         "payeeNotReady": "受取側の受取口座が未登録のため、まだお支払いできません。",
         "proceed": "成立を続行する"
+      },
+      "received": {
+        "pageTitle": "謝礼の受け取り・返金管理",
+        "pageSubtitle": "受け取った謝礼を確認し、必要に応じて返金できます。",
+        "scopeLabel": "受取先",
+        "scope": {
+          "self": "自分（個人）",
+          "team": "チーム",
+          "org": "組織"
+        },
+        "statusFilterLabel": "状態で絞り込む",
+        "statusFilterAll": "すべて",
+        "loading": "読み込み中…",
+        "empty": "受け取った謝礼はまだありません。",
+        "loadFailed": "受取一覧の取得に失敗しました。",
+        "noScope": "受取先がありません。チーム/組織の管理者になると、その受取一覧を確認できます。",
+        "col": {
+          "source": "出所",
+          "status": "状態",
+          "faceAmount": "額面",
+          "chargeAmount": "請求額",
+          "fee": "手数料",
+          "refunded": "返金済",
+          "createdAt": "受取日",
+          "actions": "操作"
+        },
+        "sourceKind": {
+          "RECRUITMENT": "謝礼（市の札）",
+          "MEMBERSHIP": "会費",
+          "JOBMATCHING": "ジョブマッチング",
+          "FLEAMARKET": "フリマ"
+        },
+        "refundButton": "返金",
+        "refundUnavailable": "返金不可",
+        "refundSucceeded": "返金を受け付けました。",
+        "status": {
+          "PENDING_CONFIRMATION": "確認待ち",
+          "DEFERRED": "完了時払い予定",
+          "AUTHORIZED": "与信済",
+          "HELD": "払出保留",
+          "CAPTURED": "受取確定",
+          "PARTIALLY_REFUNDED": "一部返金済",
+          "REFUNDED": "全額返金済",
+          "CANCELLED": "取消",
+          "DISPUTED": "係争中"
+        }
       }
     }
   }

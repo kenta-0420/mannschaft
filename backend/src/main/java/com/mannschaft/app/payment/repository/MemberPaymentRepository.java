@@ -149,6 +149,14 @@ public interface MemberPaymentRepository extends JpaRepository<MemberPaymentEnti
     List<MemberPaymentEntity> findByPaymentItemId(Long paymentItemId);
 
     /**
+     * 支払い項目に対する全支払い記録を作成日時降順で取得する（CSV エクスポート用）。
+     *
+     * <p>F08.9 P8 CSV エクスポートで使用する。ページング不要（全件出力）のため
+     * {@link #findByPaymentItemId(Long, Pageable)} ではなく専用クエリを用意する。</p>
+     */
+    List<MemberPaymentEntity> findByPaymentItemIdOrderByCreatedAtDesc(Long paymentItemId);
+
+    /**
      * 支払い項目の未払い（PENDING）ユーザーIDリストを取得する。
      */
     @Query("SELECT mp.userId FROM MemberPaymentEntity mp WHERE mp.paymentItemId = :paymentItemId AND mp.status = 'PENDING'")

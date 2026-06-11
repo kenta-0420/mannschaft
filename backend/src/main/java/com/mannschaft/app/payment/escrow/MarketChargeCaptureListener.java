@@ -82,7 +82,8 @@ public class MarketChargeCaptureListener {
             } else if (escrow.getStatus() == EscrowStatus.DEFERRED) {
                 // 7日超 fallback（第三陣-b）: 成立時に与信せず DEFERRED で起票した謝礼を、最終認証時に即時払い
                 // （AUTOMATIC の destination charge）へフォールバックする。chargeDeferred が PI を作成し
-                // PENDING_CONFIRMATION へ遷移＝札主は第二陣の決済確認 EP で clientSecret を受け取り confirm する。
+                // AUTHORIZED（hold_expires_at=NULL・バッチ非干渉）へ遷移＝札主は第二陣の決済確認 EP で
+                // clientSecret を受け取り confirm する。
                 chargeDeferredOne(escrow, event.listingId());
             } else {
                 // PENDING_CONFIRMATION（札主未 confirm・真の与信未確定）/HELD（onboarding 未完で payout 不能）/
@@ -114,8 +115,9 @@ public class MarketChargeCaptureListener {
      * 単一 DEFERRED escrow の完了時即時払い（chargeDeferred）を起こす（第三陣-b 7日超 fallback・02 §5.1）。
      *
      * <p>{@link ConnectChargeService#chargeDeferred} が AUTOMATIC の Destination PaymentIntent を作成し
-     * {@link EscrowStatus#DEFERRED}→{@link EscrowStatus#PENDING_CONFIRMATION} へ遷移させる（札主は第二陣の決済確認 EP で
-     * clientSecret を受け取り confirm・succeeded webhook で CAPTURED）。capture と同様、失敗は握り潰さず ERROR ログ＋
+     * {@link EscrowStatus#DEFERRED}→{@link EscrowStatus#AUTHORIZED}（{@code hold_expires_at=NULL}・第三陣バッチ非干渉の
+     * ため意図的に AUTHORIZED）へ遷移させる（札主は第二陣の決済確認 EP で clientSecret を受け取り confirm・succeeded
+     * webhook で CAPTURED）。capture と同様、失敗は握り潰さず ERROR ログ＋
      * {@link ChargeCaptureFailedEvent} で観測可能にし、1 件の失敗が他 escrow を巻き込まないよう例外をここで処理し終える。
      * AFTER_COMMIT ゆえ確定（COMPLETED）はロールバック不可。</p>
      */

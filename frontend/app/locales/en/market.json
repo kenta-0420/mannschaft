@@ -165,6 +165,52 @@
         "loadFailed": "Failed to retrieve payment details.",
         "payeeNotReady": "The recipient has not registered a payout account yet, so payment is not possible.",
         "proceed": "Proceed to confirm"
+      },
+      "received": {
+        "pageTitle": "Received payments & refunds",
+        "pageSubtitle": "Review payments you have received and issue refunds when needed.",
+        "scopeLabel": "Recipient",
+        "scope": {
+          "self": "Myself (individual)",
+          "team": "Team",
+          "org": "Organization"
+        },
+        "statusFilterLabel": "Filter by status",
+        "statusFilterAll": "All",
+        "loading": "Loading…",
+        "empty": "No payments received yet.",
+        "loadFailed": "Failed to load the received list.",
+        "noScope": "No recipients available. Become a team/organization admin to view its received list.",
+        "col": {
+          "source": "Source",
+          "status": "Status",
+          "faceAmount": "Face amount",
+          "chargeAmount": "Charged",
+          "fee": "Fee",
+          "refunded": "Refunded",
+          "createdAt": "Received on",
+          "actions": "Actions"
+        },
+        "sourceKind": {
+          "RECRUITMENT": "Reward (market listing)",
+          "MEMBERSHIP": "Membership fee",
+          "JOBMATCHING": "Job matching",
+          "FLEAMARKET": "Flea market"
+        },
+        "refundButton": "Refund",
+        "refundUnavailable": "Not refundable",
+        "refundSucceeded": "Refund accepted.",
+        "status": {
+          "PENDING_CONFIRMATION": "Awaiting confirmation",
+          "DEFERRED": "Pay on completion",
+          "AUTHORIZED": "Authorized",
+          "HELD": "Payout held",
+          "CAPTURED": "Received",
+          "PARTIALLY_REFUNDED": "Partially refunded",
+          "REFUNDED": "Fully refunded",
+          "CANCELLED": "Cancelled",
+          "DISPUTED": "Disputed"
+        }
       }
     }
   }

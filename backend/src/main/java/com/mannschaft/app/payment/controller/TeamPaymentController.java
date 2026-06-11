@@ -15,9 +15,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,10 +31,12 @@ import com.mannschaft.app.common.SecurityUtils;
 /**
  * チーム支払い記録コントローラー。チーム単位の支払い記録管理 API を提供する。
  * <p>
- * エンドポイント数: 9（GET payments, POST payments, PATCH payments/{paymentId},
+ * エンドポイント数: 8（GET payments, POST payments, PATCH payments/{paymentId},
  *                     POST payments/bulk, DELETE payments/{paymentId},
- *                     POST remind, GET payments/export, GET payment-summary,
+ *                     POST remind, GET payment-summary,
  *                     POST payments/{paymentId}/refund）
+ * <p>
+ * CSV エクスポート（GET payments/export）は {@link TeamPaymentExportController} に委譲。
  */
 @RestController
 @RequestMapping("/api/v1/teams/{id}/payment-items/{itemId}")
@@ -130,21 +130,6 @@ public class TeamPaymentController {
             @PathVariable Long itemId) {
         RemindResponse response = memberPaymentService.sendRemind(itemId);
         return ResponseEntity.ok(ApiResponse.of(response));
-    }
-
-    /**
-     * 支払い状況を CSV エクスポートする。
-     */
-    @GetMapping("/payments/export")
-    @Operation(summary = "支払い状況 CSV エクスポート")
-    public ResponseEntity<byte[]> exportPayments(
-            @PathVariable Long id,
-            @PathVariable Long itemId) {
-        byte[] csv = memberPaymentService.exportPaymentsCsv(itemId);
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.parseMediaType("text/csv; charset=UTF-8"));
-        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"payments_export.csv\"");
-        return ResponseEntity.ok().headers(headers).body(csv);
     }
 
     /**

@@ -165,6 +165,52 @@
         "loadFailed": "No se pudieron obtener los datos de pago.",
         "payeeNotReady": "El destinatario aún no ha registrado una cuenta de cobro, por lo que el pago no es posible.",
         "proceed": "Continuar para confirmar"
+      },
+      "received": {
+        "pageTitle": "Pagos recibidos y reembolsos",
+        "pageSubtitle": "Revisa los pagos que has recibido y emite reembolsos cuando sea necesario.",
+        "scopeLabel": "Destinatario",
+        "scope": {
+          "self": "Yo (individual)",
+          "team": "Equipo",
+          "org": "Organización"
+        },
+        "statusFilterLabel": "Filtrar por estado",
+        "statusFilterAll": "Todos",
+        "loading": "Cargando…",
+        "empty": "Aún no has recibido pagos.",
+        "loadFailed": "No se pudo cargar la lista de pagos recibidos.",
+        "noScope": "No hay destinatarios disponibles. Conviértete en administrador de un equipo/organización para ver su lista de pagos recibidos.",
+        "col": {
+          "source": "Origen",
+          "status": "Estado",
+          "faceAmount": "Importe nominal",
+          "chargeAmount": "Cobrado",
+          "fee": "Comisión",
+          "refunded": "Reembolsado",
+          "createdAt": "Recibido el",
+          "actions": "Acciones"
+        },
+        "sourceKind": {
+          "RECRUITMENT": "Recompensa (anuncio del mercado)",
+          "MEMBERSHIP": "Cuota de membresía",
+          "JOBMATCHING": "Búsqueda de empleo",
+          "FLEAMARKET": "Mercadillo"
+        },
+        "refundButton": "Reembolsar",
+        "refundUnavailable": "No reembolsable",
+        "refundSucceeded": "Reembolso aceptado.",
+        "status": {
+          "PENDING_CONFIRMATION": "Pendiente de confirmación",
+          "DEFERRED": "Pago al completar",
+          "AUTHORIZED": "Autorizado",
+          "HELD": "Pago retenido",
+          "CAPTURED": "Recibido",
+          "PARTIALLY_REFUNDED": "Reembolsado parcialmente",
+          "REFUNDED": "Reembolsado totalmente",
+          "CANCELLED": "Cancelado",
+          "DISPUTED": "En disputa"
+        }
       }
     }
   }

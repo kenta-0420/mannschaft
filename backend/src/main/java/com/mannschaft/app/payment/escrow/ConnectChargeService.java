@@ -15,6 +15,8 @@ import com.mannschaft.app.payment.stripe.CaptureMethod;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -253,6 +255,121 @@ public class ConnectChargeService {
                 .orElseThrow(() -> new BusinessException(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND));
         return buildPaymentView(escrow, actorUserId);
     }
+
+    /**
+     * 受取側（payee）が受け取ったエスクロー取引を一覧する（フォロー Wave A・設計書 02 §1 / 03 §1）。
+     *
+     * <p>返金は受取側（応じ手＝payee 本人 or そのチーム/組織 ADMIN）が操作する設計だが、対象 escrow を引き当てる
+     * 一覧 EP が無かった（従来は単一照会のみ）。本メソッドは「自分（USER）が受取」または「自分が ADMIN の TEAM/ORG が
+     * 受取」のエスクローを一覧し、本格的な返金管理画面を支える。</p>
+     *
+     * <p><b>認可/IDOR（03 §3/§4）:</b> 指定 scope（{@code scopeKind}×{@code scopeId}）に対し、
+     * USER は<b>本人のみ</b>（{@code scopeId == actorUserId}）、TEAM は {@link AccessControlService#checkPermission}、
+     * ORG は {@link AccessControlService#checkAdminOrHasPermission}（権限 {@link #PERMISSION_MANAGE_PAYMENT}）で
+     * 検証する。無関係者は {@link ConnectPaymentErrorCode#PAYMENT_FORBIDDEN}（403）。これにより他人の受取エスクローを
+     * 覗けない。</p>
+     *
+     * <p><b>scope→escrow の解決:</b> 受取主体は {@code escrow.payee_connect_account_id}（{@code connect_accounts} 論理
+     * 参照）で表現される。指定 scope の Connect 口座を {@code findByScopeKindAndScopeIdAndDeletedAtIsNull} で解決し、
+     * その口座 ID に紐づく escrow をページングで引く。Connect 口座が未登録（onboarding 未着手で受取実績ゼロ）の場合は
+     * 空ページを返す（症状を隠さず「まだ何も受け取っていない」を 200＋空で表現）。</p>
+     *
+     * <p><b>PCI（03 §10）:</b> 本一覧は受取側向けであり {@code clientSecret} を一切載せない（{@link ReceivedEscrow} に
+     * フィールド自体が無い）。{@code pi_xxx}/{@code acct_xxx} 等の Stripe 生 ID も返さない。</p>
+     *
+     * @param scopeKind     受取 scope 種別（USER/TEAM/ORG）
+     * @param scopeId       受取 scope ID（USER は users.id・TEAM は teams.id・ORG は organizations.id）
+     * @param statusFilter  状態フィルタ（任意・null は全状態）
+     * @param actorUserId   照会者ユーザー ID（本人 or scope ADMIN・認可/IDOR）
+     * @param pageable      ページング（既存作法・created_at 降順）
+     * @return 受取エスクローの 1 ページ
+     */
+    @Transactional(readOnly = true)
+    public Page<ReceivedEscrow> listReceivedEscrows(ScopeKind scopeKind, Long scopeId,
+                                                    EscrowStatus statusFilter, Long actorUserId,
+                                                    Pageable pageable) {
+        authorizeScopeForReceivedList(scopeKind, scopeId, actorUserId);
+
+        // 受取 scope の Connect 口座を解決する。未登録（受取実績ゼロ）なら空ページ（症状を隠さず 200＋空）。
+        ConnectAccountEntity payee = connectAccountRepository
+                .findByScopeKindAndScopeIdAndDeletedAtIsNull(scopeKind, scopeId)
+                .orElse(null);
+        if (payee == null) {
+            return Page.empty(pageable);
+        }
+
+        Page<EscrowTransactionEntity> page = (statusFilter == null)
+                ? escrowTransactionRepository
+                        .findByPayeeConnectAccountIdOrderByCreatedAtDesc(payee.getId(), pageable)
+                : escrowTransactionRepository
+                        .findByPayeeConnectAccountIdAndStatusOrderByCreatedAtDesc(
+                                payee.getId(), statusFilter, pageable);
+        return page.map(this::toReceivedEscrow);
+    }
+
+    /**
+     * 受取エスクロー一覧の scope 認可を検証する（USER=本人のみ / TEAM=checkPermission / ORG=checkAdminOrHasPermission）。
+     *
+     * <p>USER は scope 認可の対象外（本人固定）のため {@code scopeId == actorUserId} を直接照合し、不一致は 403。
+     * TEAM/ORG は {@link AccessControlService} の認可エラーを Connect 系 403 へ正規化する。返金 EP の
+     * {@link #authorizePayeeAdmin} と同じ認可基準（受取側 ADMIN・本人）だが、一覧は scope を引数で受け取るため
+     * scope→escrow ではなく scope を直接検証する点が異なる。</p>
+     */
+    private void authorizeScopeForReceivedList(ScopeKind scopeKind, Long scopeId, Long actorUserId) {
+        if (scopeKind == ScopeKind.USER) {
+            if (actorUserId == null || !actorUserId.equals(scopeId)) {
+                throw new BusinessException(ConnectPaymentErrorCode.PAYMENT_FORBIDDEN);
+            }
+            return;
+        }
+        try {
+            switch (scopeKind) {
+                case TEAM -> accessControlService.checkPermission(actorUserId, scopeId,
+                        payeeScopeResolver.toAccessControlScopeType(scopeKind), PERMISSION_MANAGE_PAYMENT);
+                case ORG -> accessControlService.checkAdminOrHasPermission(actorUserId, scopeId,
+                        payeeScopeResolver.toAccessControlScopeType(scopeKind), PERMISSION_MANAGE_PAYMENT);
+                default -> throw new BusinessException(ConnectPaymentErrorCode.PAYMENT_FORBIDDEN);
+            }
+        } catch (BusinessException e) {
+            if (e.getErrorCode() instanceof ConnectPaymentErrorCode) {
+                throw e;
+            }
+            throw new BusinessException(ConnectPaymentErrorCode.PAYMENT_FORBIDDEN, e);
+        }
+    }
+
+    /** escrow を受取側一覧の行ビューへ写す（clientSecret は含めない・返金累計を集計）。 */
+    private ReceivedEscrow toReceivedEscrow(EscrowTransactionEntity e) {
+        long refundedAmount = sumRefundedTransferAmount(e.getId());
+        return new ReceivedEscrow(
+                e.getId(), e.getSourceKind(), e.getSourceId(), e.getSourceParticipantId(),
+                e.getCaptureMode(), e.getStatus(), e.getFaceAmount(), e.getAmount(),
+                e.getApplicationFeeAmount(), refundedAmount, e.getCreatedAt());
+    }
+
+    /**
+     * 受取側（payee）が受け取ったエスクロー 1 件分の内部ビュー（フォロー Wave A・設計書 02 §1 / 03 §1）。
+     *
+     * <p><b>clientSecret を持たない</b>（受取側向け・PCI）。Controller がこの record を DTO
+     * （{@code ReceivedEscrowResponse}）へ写す。金額は最小通貨単位（円整数）。{@code refundedAmount} は
+     * transferAmount ベースの返金累計（FAILED 除く）。</p>
+     *
+     * @param escrowId             エスクロー取引 ID
+     * @param sourceKind           出所種別
+     * @param sourceId             出所 ID
+     * @param sourceParticipantId  応募 ID（謝礼のみ・会費は null）
+     * @param captureMode          capture モード
+     * @param status               エスクロー状態
+     * @param faceAmount           額面（円整数）
+     * @param chargeAmount         課金額（円整数）
+     * @param applicationFeeAmount Mannschaft 徴収手数料（円整数）
+     * @param refundedAmount       返金累計（transferAmount ベース・円整数）
+     * @param createdAt            起票日時
+     */
+    public record ReceivedEscrow(UUID escrowId, EscrowSourceKind sourceKind, Long sourceId,
+                                 Long sourceParticipantId, EscrowCaptureMode captureMode, EscrowStatus status,
+                                 long faceAmount, long chargeAmount, long applicationFeeAmount,
+                                 long refundedAmount, LocalDateTime createdAt) {}
 
     /**
      * escrow の照会ビューを認可出し分けで組み立てる（{@link #getRecruitmentPaymentView}/{@link #getEscrowView} 共通）。
@@ -606,7 +723,7 @@ public class ConnectChargeService {
      * 呼び出しは {@link ConnectPaymentErrorCode#INVALID_ESCROW_STATE}（409）で拒否する（従来 escrow は capture を使う）。</p>
      *
      * @param escrowId 完了時即時払い対象（DEFERRED）のエスクロー取引 ID
-     * @return 即時 charge 結果（PENDING_CONFIRMATION＋clientSecret・札主の confirm 用）
+     * @return 即時 charge 結果（AUTHORIZED＋clientSecret・hold_expires_at=NULL・札主の confirm 用）
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public AuthorizeChargeResult chargeDeferred(UUID escrowId) {
