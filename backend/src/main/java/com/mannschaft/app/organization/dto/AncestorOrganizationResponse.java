@@ -24,7 +24,7 @@ public class AncestorOrganizationResponse {
     private final Long id;
 
     /** 祖先組織スラッグ（URL に使用。hidden=false のとき返す） */
-    private final String publicId;
+    private final String slug;
 
     /** 組織名 */
     private final String name;

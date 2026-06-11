@@ -90,7 +90,16 @@ public enum PaymentErrorCode implements ErrorCode {
     PAYMENT_ITEM_DELETED("PAYMENT_026", "この支払い項目は削除されています", Severity.WARN),
 
     /** 対象ユーザーがメンバーでない */
-    USER_NOT_MEMBER("PAYMENT_027", "対象ユーザーはこのスコープのメンバーではありません", Severity.WARN);
+    USER_NOT_MEMBER("PAYMENT_027", "対象ユーザーはこのスコープのメンバーではありません", Severity.WARN),
+
+    /** TERM 型で終了日が未設定 */
+    TERM_END_DATE_REQUIRED("PAYMENT_028", "期別決済には有効期間終了日（termEndsOn）の指定が必要です", Severity.WARN),
+
+    /** 会費支払い記録が見つからない（F08.9 P8 領収書） */
+    MEMBER_PAYMENT_NOT_FOUND("PAYMENT_029", "会費支払い記録が見つかりません", Severity.WARN),
+
+    /** 領収書へのアクセスが拒否された（払い手・受益者以外）（F08.9 P8 領収書） */
+    PAYMENT_ACCESS_DENIED("PAYMENT_030", "この支払い記録へのアクセス権限がありません", Severity.WARN);
 
     private final String code;
     private final String message;

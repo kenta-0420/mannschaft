@@ -245,5 +245,97 @@
     "empty_team_record": "참가한 대회가 아직 없습니다",
     "empty_org_summary": "주최 중인 대회가 아직 없습니다",
     "empty_division_standings": "현재 참가 중인 대회가 없습니다"
+  },
+  "tournamentFee": {
+    "pageTitle": "대회 참가비",
+    "myFees": "내 참가비 목록",
+    "noFees": "현재 대회 참가비가 없습니다",
+    "payNow": "지금 결제",
+    "paid": "결제완료",
+    "paidAt": "결제일시",
+    "dueDate": "결제기한",
+    "faceAmount": "참가비",
+    "totalCharge": "총 청구액",
+    "checkoutSuccess": "체크아웃 완료",
+    "checkoutError": "체크아웃 실패"
+  },
+  "standings": {
+    "title": "순위표",
+    "back": "대회로 돌아가기",
+    "rank": "순위",
+    "team": "팀",
+    "played": "경기수",
+    "winDrawLoss": "승/무/패",
+    "goalDiff": "득실차",
+    "points": "승점",
+    "form": "최근 폼",
+    "recalculate": "재계산",
+    "recalculated": "순위표를 재계산했습니다",
+    "recalculateFailed": "순위표 재계산에 실패했습니다",
+    "downloadPdf": "PDF 출력",
+    "pdfFailed": "PDF 출력에 실패했습니다",
+    "empty": "순위 데이터가 없습니다",
+    "noDivisions": "등록된 부문이 없습니다",
+    "loadFailed": "순위표를 불러오지 못했습니다",
+    "forbidden": "이 대회를 볼 권한이 없습니다"
+  },
+  "rankings": {
+    "title": "랭킹",
+    "back": "대회로 돌아가기",
+    "rank": "순위",
+    "player": "선수",
+    "matchesPlayed": "출전",
+    "value": "기록",
+    "downloadPdf": "PDF 출력",
+    "pdfFailed": "PDF 출력에 실패했습니다",
+    "empty": "랭킹 데이터가 없습니다",
+    "noCategories": "랭킹 항목이 없습니다",
+    "loadFailed": "랭킹을 불러오지 못했습니다",
+    "forbidden": "이 대회를 볼 권한이 없습니다"
+  },
+  "matrix": {
+    "title": "대전 매트릭스",
+    "back": "대회로 돌아가기",
+    "homeAway": "홈＼원정",
+    "notPlayed": "미대전",
+    "downloadPdf": "PDF 출력",
+    "pdfFailed": "PDF 출력에 실패했습니다",
+    "empty": "매트릭스 데이터가 없습니다",
+    "noDivisions": "등록된 부문이 없습니다",
+    "loadFailed": "매트릭스를 불러오지 못했습니다",
+    "forbidden": "이 대회를 볼 권한이 없습니다"
+  },
+  "visibility": {
+    "title": "공개 범위 설정",
+    "description": "이 대회의 순위·성적을 누구에게 공개할지 설정합니다.",
+    "save": "저장",
+    "saved": "공개 범위를 변경했습니다",
+    "saveFailed": "공개 범위 변경에 실패했습니다",
+    "levels": {
+      "PUBLIC": {
+        "label": "전체 공개",
+        "description": "로그인하지 않은 사람을 포함해 누구나 볼 수 있습니다."
+      },
+      "SUPPORTERS_AND_ABOVE": {
+        "label": "응원자 이상",
+        "description": "응원자·멤버·관리자가 볼 수 있습니다."
+      },
+      "MEMBERS_AND_ABOVE": {
+        "label": "멤버 이상",
+        "description": "멤버와 관리자만 볼 수 있습니다(응원자 제외)."
+      },
+      "ADMINS_AND_ABOVE": {
+        "label": "관리자 전용",
+        "description": "조직 관리자·부관리자만 볼 수 있습니다."
+      },
+      "SCOPE_AFFILIATED": {
+        "label": "소속자 전용",
+        "description": "조직에 직접 소속된 사람(응원자 포함)만 볼 수 있습니다."
+      },
+      "PARTICIPANTS_ONLY": {
+        "label": "참가자 전용",
+        "description": "이 대회에 참가하는 팀 관계자만 볼 수 있습니다."
+      }
+    }
   }
 }

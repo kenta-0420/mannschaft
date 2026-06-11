@@ -23,6 +23,11 @@ import com.mannschaft.app.payment.connect.ScopeKind;
  *   <li>{@code subKey} — 手数料パターン解決の細分キー（R1・助っ人＝{@code recruitment_category} 値 等）。
  *       {@link com.mannschaft.app.payment.FeePolicyResolver} に渡す。{@code null}＝source_kind の既定割当を引く
  *       （設計書 02 §3.5.1）。</li>
+ *   <li>{@code deferred} — 第三陣-b「7日超 fallback」フラグ（マスター裁可）。{@code true}＝成立〜役務日が7日超で
+ *       カード与信が役務完了前に失効するため、成立時に与信（manual-capture PI）を立てず
+ *       {@link EscrowStatus#DEFERRED}（PI 未作成・完了時即時払い予定）で起票する。最終認証時に即時払い
+ *       （{@link EscrowCaptureMode#AUTOMATIC} の destination charge）へフォールバックする。{@code false}（既定）＝
+ *       7日以内 or 役務日不明（安全側）で従来どおり与信（MANUAL）を立てる（設計書 02 §5.1）。</li>
  * </ul>
  */
 public record AuthorizeChargeCommand(
@@ -38,10 +43,11 @@ public record AuthorizeChargeCommand(
         String currency,
         Long organizationId,
         Long actorUserId,
-        String subKey) {
+        String subKey,
+        boolean deferred) {
 
     /**
-     * 後方互換コンストラクタ（{@code subKey=null}＝source_kind の既定手数料パターンを引く）。
+     * 後方互換コンストラクタ（{@code subKey=null}＝source_kind の既定手数料パターン・{@code deferred=false}＝従来与信）。
      * 既存のイベント駆動経路・テストはこちらを用い、R1 で手数料パターンの細分（sub_key）を渡す場合のみ
      * 全引数コンストラクタを使う。
      */
@@ -59,6 +65,28 @@ public record AuthorizeChargeCommand(
             Long organizationId,
             Long actorUserId) {
         this(sourceKind, sourceId, sourceParticipantId, payerScopeKind, payerScopeId, payerStripeCustomerId,
-                payeeKind, payeeScopeId, faceAmount, currency, organizationId, actorUserId, null);
+                payeeKind, payeeScopeId, faceAmount, currency, organizationId, actorUserId, null, false);
+    }
+
+    /**
+     * 後方互換コンストラクタ（{@code subKey} 指定あり・{@code deferred=false}＝従来与信）。
+     * 手数料細分キーを渡しつつ従来の与信（7日以内 or 役務日不明）を行う経路向け。
+     */
+    public AuthorizeChargeCommand(
+            EscrowSourceKind sourceKind,
+            Long sourceId,
+            Long sourceParticipantId,
+            ScopeKind payerScopeKind,
+            Long payerScopeId,
+            String payerStripeCustomerId,
+            ScopeKind payeeKind,
+            Long payeeScopeId,
+            long faceAmount,
+            String currency,
+            Long organizationId,
+            Long actorUserId,
+            String subKey) {
+        this(sourceKind, sourceId, sourceParticipantId, payerScopeKind, payerScopeId, payerStripeCustomerId,
+                payeeKind, payeeScopeId, faceAmount, currency, organizationId, actorUserId, subKey, false);
     }
 }

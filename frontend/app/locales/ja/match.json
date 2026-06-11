@@ -363,6 +363,31 @@
     },
     "org_context": {
       "resolve_failed": "チーム・組織の情報を解決できませんでした。所属を確認してください"
+    },
+    "entry": {
+      "record_from_schedule": "この試合を記録",
+      "record_from_schedule_hint": "この予定の試合記録を開始します",
+      "resolving": "試合記録を準備中…"
+    },
+    "fixtures": {
+      "title": "対戦表",
+      "back": "大会トップに戻る",
+      "round": "第{n}節",
+      "record": "記録",
+      "venue_tbd": "会場未定",
+      "date_tbd": "日付未定",
+      "tbd_participant": "未定",
+      "no_score": "対戦予定",
+      "empty": "対戦カードがまだありません",
+      "load_failed": "対戦表の取得に失敗しました",
+      "record_not_participant": "このカードに自チームが参加していないため記録できません",
+      "status": {
+        "SCHEDULED": "予定",
+        "IN_PROGRESS": "進行中",
+        "COMPLETED": "終了",
+        "POSTPONED": "延期",
+        "CANCELLED": "中止"
+      }
     }
   }
 }

@@ -363,6 +363,31 @@
     },
     "org_context": {
       "resolve_failed": "Team-/Organisationsinfo konnte nicht aufgelöst werden. Bitte prüfe deine Mitgliedschaften"
+    },
+    "entry": {
+      "record_from_schedule": "Dieses Spiel aufzeichnen",
+      "record_from_schedule_hint": "Beginne mit der Aufzeichnung des Spiels für diesen Termin",
+      "resolving": "Spielaufzeichnung wird vorbereitet…"
+    },
+    "fixtures": {
+      "title": "Spielplan",
+      "back": "Zurück zum Turnier",
+      "round": "Spieltag {n}",
+      "record": "Aufzeichnen",
+      "venue_tbd": "Ort offen",
+      "date_tbd": "Datum offen",
+      "tbd_participant": "Offen",
+      "no_score": "Geplant",
+      "empty": "Noch keine Spielpaarungen",
+      "load_failed": "Spielplan konnte nicht geladen werden",
+      "record_not_participant": "Dein Team nimmt an dieser Paarung nicht teil und kann daher nicht aufgezeichnet werden",
+      "status": {
+        "SCHEDULED": "Geplant",
+        "IN_PROGRESS": "Läuft",
+        "COMPLETED": "Beendet",
+        "POSTPONED": "Verschoben",
+        "CANCELLED": "Abgesagt"
+      }
     }
   }
 }

@@ -1,26 +1,12 @@
 <script setup lang="ts">
-import { useTeamMembers } from '~/composables/team/useTeamMembers'
-
 definePageMeta({ middleware: 'auth' })
 const route = useRoute()
-const teamSlug = String(route.params.slug)
-const authStore = useAuthStore()
-const { getMembers } = useTeamMembers()
-
-const isMember = ref(false)
+const teamId = String(route.params.slug)
+// メンバー判定はロールシステムに委譲する（全メンバー取得→線形探索のアンチパターンを排除）
+const { isMember, loadPermissions } = useRoleAccess('team', teamId)
 
 onMounted(async () => {
-  const currentUserId = authStore.currentUser?.id
-  if (!currentUserId) {
-    isMember.value = false
-    return
-  }
-  try {
-    const res = await getMembers(teamSlug, { size: 500 })
-    isMember.value = res.data.some((m: { userId: number }) => m.userId === currentUserId)
-  } catch {
-    isMember.value = false
-  }
+  await loadPermissions()
 })
 </script>
 
@@ -30,6 +16,6 @@ onMounted(async () => {
       <BackButton />
       <PageHeader title="ブログ・お知らせ" />
     </div>
-    <BlogPostList scope-type="TEAM" :scope-id="teamSlug" :can-create="isMember" />
+    <BlogPostList scope-type="TEAM" :scope-id="teamId" :can-create="isMember" />
   </div>
 </template>

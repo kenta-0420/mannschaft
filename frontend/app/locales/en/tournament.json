@@ -245,5 +245,97 @@
     "empty_team_record": "No tournaments joined yet",
     "empty_org_summary": "No tournaments hosted yet",
     "empty_division_standings": "Not currently in any tournament"
+  },
+  "tournamentFee": {
+    "pageTitle": "Tournament Entry Fees",
+    "myFees": "My Entry Fees",
+    "noFees": "No entry fees found",
+    "payNow": "Pay Now",
+    "paid": "Paid",
+    "paidAt": "Paid At",
+    "dueDate": "Due Date",
+    "faceAmount": "Entry Fee",
+    "totalCharge": "Total Charge",
+    "checkoutSuccess": "Checkout completed",
+    "checkoutError": "Checkout failed"
+  },
+  "standings": {
+    "title": "Standings",
+    "back": "Back to tournament",
+    "rank": "Rank",
+    "team": "Team",
+    "played": "Played",
+    "winDrawLoss": "W/D/L",
+    "goalDiff": "GD",
+    "points": "Pts",
+    "form": "Recent form",
+    "recalculate": "Recalculate",
+    "recalculated": "Standings recalculated",
+    "recalculateFailed": "Failed to recalculate standings",
+    "downloadPdf": "Export PDF",
+    "pdfFailed": "Failed to export PDF",
+    "empty": "No standings data",
+    "noDivisions": "No divisions registered",
+    "loadFailed": "Failed to load standings",
+    "forbidden": "You do not have permission to view this tournament"
+  },
+  "rankings": {
+    "title": "Rankings",
+    "back": "Back to tournament",
+    "rank": "Rank",
+    "player": "Player",
+    "matchesPlayed": "Apps",
+    "value": "Value",
+    "downloadPdf": "Export PDF",
+    "pdfFailed": "Failed to export PDF",
+    "empty": "No ranking data",
+    "noCategories": "No ranking categories",
+    "loadFailed": "Failed to load rankings",
+    "forbidden": "You do not have permission to view this tournament"
+  },
+  "matrix": {
+    "title": "Match Matrix",
+    "back": "Back to tournament",
+    "homeAway": "Home \\ Away",
+    "notPlayed": "Not played",
+    "downloadPdf": "Export PDF",
+    "pdfFailed": "Failed to export PDF",
+    "empty": "No matrix data",
+    "noDivisions": "No divisions registered",
+    "loadFailed": "Failed to load matrix",
+    "forbidden": "You do not have permission to view this tournament"
+  },
+  "visibility": {
+    "title": "Visibility",
+    "description": "Choose who can view the standings and results of this tournament.",
+    "save": "Save",
+    "saved": "Visibility updated",
+    "saveFailed": "Failed to update visibility",
+    "levels": {
+      "PUBLIC": {
+        "label": "Public",
+        "description": "Anyone can view, including signed-out visitors."
+      },
+      "SUPPORTERS_AND_ABOVE": {
+        "label": "Supporters and above",
+        "description": "Supporters, members and admins can view."
+      },
+      "MEMBERS_AND_ABOVE": {
+        "label": "Members and above",
+        "description": "Only members and admins can view (supporters excluded)."
+      },
+      "ADMINS_AND_ABOVE": {
+        "label": "Admins only",
+        "description": "Only organization admins and deputy admins can view."
+      },
+      "SCOPE_AFFILIATED": {
+        "label": "Affiliated only",
+        "description": "Only those directly affiliated with the organization (including supporters) can view."
+      },
+      "PARTICIPANTS_ONLY": {
+        "label": "Participants only",
+        "description": "Only people from teams participating in this tournament can view."
+      }
+    }
   }
 }

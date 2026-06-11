@@ -16,7 +16,7 @@ public class ChildOrganizationResponse {
     private final Long id;
 
     /** 子組織スラッグ（URL に使用） */
-    private final String publicId;
+    private final String slug;
 
     private final String name;
 

@@ -13,12 +13,14 @@ import com.mannschaft.app.tournament.repository.TournamentMatchPlayerStatReposit
 import com.mannschaft.app.tournament.repository.TournamentStatDefRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -43,10 +45,17 @@ public class RankingsCalculationService {
 
     /**
      * ランキング再計算イベントを受信する。
+     *
+     * <p><b>レース条件根治（05 §H.0 訂正・順位表と同根）</b>: 以前は {@code @Async @EventListener}
+     * だったため発火元TX（{@link MatchService#updatePlayerStats} の {@code @Transactional}）の
+     * <b>コミット前</b>に別スレッドで実行され、未コミットの選手スタッツを読んでランキングが
+     * 自動反映されなかった。{@link TransactionalEventListener}(AFTER_COMMIT) に切り替え、確定後に
+     * 再計算する。{@code @Async} 併存でコミット後の非同期実行を維持する。
+     * AFTER_COMMIT 後はアクティブTXが無いため {@code REQUIRES_NEW}（{@code REQUIRED} は起動時禁止）。</p>
      */
     @Async
-    @EventListener
-    @Transactional
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onRankingsRecalculation(RankingsRecalculationEvent event) {
         recalculateAll(event.getTournamentId());
     }

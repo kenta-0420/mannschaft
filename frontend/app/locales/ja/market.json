@@ -107,7 +107,11 @@
     "payment": {
       "breakdown": {
         "includesFeeNote": "※お支払い合計には決済手数料が含まれます。",
-        "refundFeeConditionalNote": "※ご返金の場合、決済手数料が返金されないことがあります（返金条件は募集主の設定によります）。"
+        "refundFeeConditionalNote": "※ご返金の場合、決済手数料が返金されないことがあります（返金条件は募集主の設定によります）。",
+        "title": "お支払い内訳",
+        "faceAmountLabel": "謝礼（額面）",
+        "feeLabel": "支払手数料",
+        "totalLabel": "お支払い合計"
       },
       "refund": {
         "title": "返金",
@@ -122,7 +126,91 @@
         },
         "submit": "返金する",
         "confirmTitle": "返金の確認",
-        "confirmPayee": "受取側負担での返金です。支払者へ満額が返金され、決済手数料はこちらの負担となります。よろしいですか？"
+        "confirmPayee": "受取側負担での返金です。支払者へ満額が返金され、決済手数料はこちらの負担となります。よろしいですか？",
+        "amountLabel": "返金額",
+        "amountFull": "全額返金",
+        "amountPartial": "一部返金",
+        "amountRequired": "返金額を入力してください。",
+        "amountTooLarge": "返金額が返金可能額を超えています。",
+        "reasonLabel": "理由（任意）",
+        "failed": "返金に失敗しました。"
+      },
+      "connect": {
+        "title": "受取口座（謝礼の受け取り）",
+        "loading": "読み込み中…",
+        "statusLabel": "状態",
+        "status": {
+          "ready": "登録完了",
+          "onboarding": "審査中",
+          "restricted": "追加情報が必要",
+          "notRegistered": "未登録"
+        },
+        "registrationRequired": "謝礼を受け取るには受取口座の登録が必要です。",
+        "register": "受取口座を登録する",
+        "continue": "登録を続ける",
+        "redirecting": "遷移中…",
+        "linkFailed": "受取口座の登録リンクを取得できませんでした。"
+      },
+      "confirm": {
+        "title": "謝礼のお支払い確認",
+        "intro": "応募者を成立させる前に、謝礼のお支払い（カード与信）を確認してください。",
+        "expiryNotice": "この与信は約7日間有効です。7日以内に役務完了の最終認証が必要です（超過時は完了時に改めてお支払いいただきます）。",
+        "deferredNotice": "成立から役務完了まで7日を超えるため、いまは与信を行いません。役務完了の最終認証時に改めてお支払いいただきます。",
+        "alreadyAuthorized": "このお支払いは確認済みです。",
+        "preparing": "決済情報を準備しています。少し待ってから再度お試しください。",
+        "retry": "再読み込み",
+        "submit": "お支払いを確認する",
+        "processing": "処理中…",
+        "succeeded": "お支払いの確認が完了しました。",
+        "loadFailed": "決済情報の取得に失敗しました。",
+        "payeeNotReady": "受取側の受取口座が未登録のため、まだお支払いできません。",
+        "proceed": "成立を続行する"
+      },
+      "received": {
+        "pageTitle": "謝礼の受け取り・返金管理",
+        "pageSubtitle": "受け取った謝礼を確認し、必要に応じて返金できます。",
+        "scopeLabel": "受取先",
+        "scope": {
+          "self": "自分（個人）",
+          "team": "チーム",
+          "org": "組織"
+        },
+        "statusFilterLabel": "状態で絞り込む",
+        "statusFilterAll": "すべて",
+        "loading": "読み込み中…",
+        "empty": "受け取った謝礼はまだありません。",
+        "loadFailed": "受取一覧の取得に失敗しました。",
+        "noScope": "受取先がありません。チーム/組織の管理者になると、その受取一覧を確認できます。",
+        "col": {
+          "source": "出所",
+          "status": "状態",
+          "faceAmount": "額面",
+          "chargeAmount": "請求額",
+          "fee": "手数料",
+          "refunded": "返金済",
+          "createdAt": "受取日",
+          "actions": "操作"
+        },
+        "sourceKind": {
+          "RECRUITMENT": "謝礼（市の札）",
+          "MEMBERSHIP": "会費",
+          "JOBMATCHING": "ジョブマッチング",
+          "FLEAMARKET": "フリマ"
+        },
+        "refundButton": "返金",
+        "refundUnavailable": "返金不可",
+        "refundSucceeded": "返金を受け付けました。",
+        "status": {
+          "PENDING_CONFIRMATION": "確認待ち",
+          "DEFERRED": "完了時払い予定",
+          "AUTHORIZED": "与信済",
+          "HELD": "払出保留",
+          "CAPTURED": "受取確定",
+          "PARTIALLY_REFUNDED": "一部返金済",
+          "REFUNDED": "全額返金済",
+          "CANCELLED": "取消",
+          "DISPUTED": "係争中"
+        }
       }
     }
   }

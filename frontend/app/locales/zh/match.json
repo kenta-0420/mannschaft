@@ -363,6 +363,31 @@
     },
     "org_context": {
       "resolve_failed": "无法解析球队/组织信息。请确认你的所属"
+    },
+    "entry": {
+      "record_from_schedule": "记录这场比赛",
+      "record_from_schedule_hint": "开始记录该日程的比赛",
+      "resolving": "正在准备比赛记录…"
+    },
+    "fixtures": {
+      "title": "对阵表",
+      "back": "返回赛事首页",
+      "round": "第{n}轮",
+      "record": "记录",
+      "venue_tbd": "场地待定",
+      "date_tbd": "日期待定",
+      "tbd_participant": "待定",
+      "no_score": "待赛",
+      "empty": "暂无对阵",
+      "load_failed": "加载对阵表失败",
+      "record_not_participant": "本队未参加此对阵，无法记录",
+      "status": {
+        "SCHEDULED": "预定",
+        "IN_PROGRESS": "进行中",
+        "COMPLETED": "已结束",
+        "POSTPONED": "延期",
+        "CANCELLED": "取消"
+      }
     }
   }
 }

@@ -245,5 +245,97 @@
     "empty_team_record": "Noch an keinem Turnier teilgenommen",
     "empty_org_summary": "Noch keine Turniere ausgerichtet",
     "empty_division_standings": "Derzeit an keinem Turnier beteiligt"
+  },
+  "tournamentFee": {
+    "pageTitle": "Turniergebühren",
+    "myFees": "Meine Gebühren",
+    "noFees": "Keine Turniergebühren vorhanden",
+    "payNow": "Jetzt bezahlen",
+    "paid": "Bezahlt",
+    "paidAt": "Bezahlt am",
+    "dueDate": "Fälligkeitsdatum",
+    "faceAmount": "Gebühr",
+    "totalCharge": "Gesamtbetrag",
+    "checkoutSuccess": "Zahlung abgeschlossen",
+    "checkoutError": "Zahlung fehlgeschlagen"
+  },
+  "standings": {
+    "title": "Tabelle",
+    "back": "Zuruck zum Turnier",
+    "rank": "Pl.",
+    "team": "Team",
+    "played": "Sp.",
+    "winDrawLoss": "S/U/N",
+    "goalDiff": "Diff.",
+    "points": "Pkt.",
+    "form": "Aktuelle Form",
+    "recalculate": "Neu berechnen",
+    "recalculated": "Tabelle neu berechnet",
+    "recalculateFailed": "Tabelle konnte nicht neu berechnet werden",
+    "downloadPdf": "PDF exportieren",
+    "pdfFailed": "PDF-Export fehlgeschlagen",
+    "empty": "Keine Tabellendaten",
+    "noDivisions": "Keine Divisionen registriert",
+    "loadFailed": "Tabelle konnte nicht geladen werden",
+    "forbidden": "Du hast keine Berechtigung, dieses Turnier anzusehen"
+  },
+  "rankings": {
+    "title": "Ranglisten",
+    "back": "Zuruck zum Turnier",
+    "rank": "Pl.",
+    "player": "Spieler",
+    "matchesPlayed": "Einsatze",
+    "value": "Wert",
+    "downloadPdf": "PDF exportieren",
+    "pdfFailed": "PDF-Export fehlgeschlagen",
+    "empty": "Keine Ranglistendaten",
+    "noCategories": "Keine Ranglistenkategorien",
+    "loadFailed": "Ranglisten konnten nicht geladen werden",
+    "forbidden": "Du hast keine Berechtigung, dieses Turnier anzusehen"
+  },
+  "matrix": {
+    "title": "Spielmatrix",
+    "back": "Zuruck zum Turnier",
+    "homeAway": "Heim \\ Auswarts",
+    "notPlayed": "Nicht gespielt",
+    "downloadPdf": "PDF exportieren",
+    "pdfFailed": "PDF-Export fehlgeschlagen",
+    "empty": "Keine Matrixdaten",
+    "noDivisions": "Keine Divisionen registriert",
+    "loadFailed": "Matrix konnte nicht geladen werden",
+    "forbidden": "Du hast keine Berechtigung, dieses Turnier anzusehen"
+  },
+  "visibility": {
+    "title": "Sichtbarkeit",
+    "description": "Lege fest, wer die Tabelle und Ergebnisse dieses Turniers sehen darf.",
+    "save": "Speichern",
+    "saved": "Sichtbarkeit aktualisiert",
+    "saveFailed": "Sichtbarkeit konnte nicht aktualisiert werden",
+    "levels": {
+      "PUBLIC": {
+        "label": "Offentlich",
+        "description": "Jeder kann es sehen, auch nicht angemeldete Besucher."
+      },
+      "SUPPORTERS_AND_ABOVE": {
+        "label": "Unterstutzer und hoher",
+        "description": "Unterstutzer, Mitglieder und Admins konnen es sehen."
+      },
+      "MEMBERS_AND_ABOVE": {
+        "label": "Mitglieder und hoher",
+        "description": "Nur Mitglieder und Admins konnen es sehen (Unterstutzer ausgeschlossen)."
+      },
+      "ADMINS_AND_ABOVE": {
+        "label": "Nur Admins",
+        "description": "Nur Organisations-Admins und stellvertretende Admins konnen es sehen."
+      },
+      "SCOPE_AFFILIATED": {
+        "label": "Nur Zugehorige",
+        "description": "Nur direkt der Organisation Zugehorige (inkl. Unterstutzer) konnen es sehen."
+      },
+      "PARTICIPANTS_ONLY": {
+        "label": "Nur Teilnehmer",
+        "description": "Nur Personen aus teilnehmenden Teams dieses Turniers konnen es sehen."
+      }
+    }
   }
 }

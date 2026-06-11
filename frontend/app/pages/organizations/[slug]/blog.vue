@@ -1,24 +1,12 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
-const orgSlug = String(route.params.slug)
-const authStore = useAuthStore()
-const { getMembers } = useOrganizationApi()
-
-const isMember = ref(false)
+const orgId = String(route.params.slug)
+// メンバー判定はロールシステムに委譲する（全メンバー取得→線形探索のアンチパターンを排除）
+const { isMember, loadPermissions } = useRoleAccess('organization', orgId)
 
 onMounted(async () => {
-  const currentUserId = authStore.currentUser?.id
-  if (!currentUserId) {
-    isMember.value = false
-    return
-  }
-  try {
-    const res = await getMembers(orgSlug, { size: 500 })
-    isMember.value = res.data.some((m) => m.userId === currentUserId)
-  } catch {
-    isMember.value = false
-  }
+  await loadPermissions()
 })
 </script>
 
@@ -28,6 +16,6 @@ onMounted(async () => {
       <BackButton />
       <PageHeader title="ブログ・お知らせ" />
     </div>
-    <BlogPostList scope-type="ORGANIZATION" :scope-id="orgSlug" :can-create="isMember" />
+    <BlogPostList scope-type="ORGANIZATION" :scope-id="orgId" :can-create="isMember" />
   </div>
 </template>

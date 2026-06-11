@@ -71,6 +71,7 @@ export default {
       "cancelMyApplication": "내 신청 취소",
       "joinWaitlist": "대기열에 등록",
       "viewDetails": "자세히 보기",
+      "confirmApplication": "확정",
       "createPolicy": "정책 작성"
     },
     "confirmModal": {

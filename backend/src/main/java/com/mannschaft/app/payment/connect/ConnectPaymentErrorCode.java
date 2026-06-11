@@ -58,6 +58,18 @@ public enum ConnectPaymentErrorCode implements ErrorCode {
     /** capture（払出）不可な状態からの payout 要求（CANCELLED/REFUNDED 等の後段状態）。409。 */
     INVALID_ESCROW_STATE("PAYMENT_C042", "この取引は払出できない状態です", Severity.WARN),
 
+    /**
+     * 札主の confirm 前（{@code PENDING_CONFIRMATION}）からの capture 要求を拒否する。409。
+     *
+     * <p>第一陣 status 意味論の根治（2026-06-10）。manual-capture PI は札主が Stripe.js で confirm するまで
+     * 真の与信（amount_capturable）が立たないため、{@code PENDING_CONFIRMATION} からの capture は必ず Stripe で
+     * 失敗する。これを Stripe へ到達させず（症状を隠さず）アプリ境界で 409 拒否する。confirm 後の
+     * {@code payment_intent.amount_capturable_updated} で {@code AUTHORIZED} へ昇格してから capture すること。
+     * {@code GlobalExceptionHandler.ERROR_CODE_STATUS_MAP} に 409 で登録する（登録漏れは既定 400/500 へ
+     * フォールバックするため・#1279 前科）。</p>
+     */
+    AUTHORIZATION_NOT_CONFIRMED("PAYMENT_C044", "札主のカード確認（与信確定）がまだ完了していません", Severity.WARN),
+
     /** capture 失敗（Stripe 側エラー）。409。 */
     CAPTURE_FAILED("PAYMENT_C043", "払出に失敗しました", Severity.WARN),
 

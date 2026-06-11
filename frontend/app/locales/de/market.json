@@ -107,7 +107,11 @@
     "payment": {
       "breakdown": {
         "includesFeeNote": "* Der Gesamtbetrag enthält die Zahlungsbearbeitungsgebühr.",
-        "refundFeeConditionalNote": "* Im Falle einer Rückerstattung wird die Bearbeitungsgebühr möglicherweise nicht erstattet (die Rückerstattungsbedingungen hängen von den Einstellungen des Ausschreibenden ab)."
+        "refundFeeConditionalNote": "* Im Falle einer Rückerstattung wird die Bearbeitungsgebühr möglicherweise nicht erstattet (die Rückerstattungsbedingungen hängen von den Einstellungen des Ausschreibenden ab).",
+        "title": "Zahlungsaufschlüsselung",
+        "faceAmountLabel": "Belohnung (Nennwert)",
+        "feeLabel": "Zahlungsgebühr",
+        "totalLabel": "Gesamtbetrag"
       },
       "refund": {
         "title": "Rückerstattung",
@@ -122,7 +126,91 @@
         },
         "submit": "Rückerstattung veranlassen",
         "confirmTitle": "Rückerstattung bestätigen",
-        "confirmPayee": "Dies ist eine vom Empfänger getragene Rückerstattung. Dem Zahler wird der volle Betrag erstattet und Sie tragen die Bearbeitungsgebühr. Fortfahren?"
+        "confirmPayee": "Dies ist eine vom Empfänger getragene Rückerstattung. Dem Zahler wird der volle Betrag erstattet und Sie tragen die Bearbeitungsgebühr. Fortfahren?",
+        "amountLabel": "Erstattungsbetrag",
+        "amountFull": "Vollständige Erstattung",
+        "amountPartial": "Teilerstattung",
+        "amountRequired": "Bitte gib den Erstattungsbetrag ein.",
+        "amountTooLarge": "Der Erstattungsbetrag übersteigt den erstattungsfähigen Betrag.",
+        "reasonLabel": "Grund (optional)",
+        "failed": "Erstattung fehlgeschlagen."
+      },
+      "connect": {
+        "title": "Auszahlungskonto (Belohnungen erhalten)",
+        "loading": "Wird geladen…",
+        "statusLabel": "Status",
+        "status": {
+          "ready": "Abgeschlossen",
+          "onboarding": "In Prüfung",
+          "restricted": "Weitere Angaben erforderlich",
+          "notRegistered": "Nicht registriert"
+        },
+        "registrationRequired": "Zum Erhalt von Belohnungen ist ein Auszahlungskonto erforderlich.",
+        "register": "Auszahlungskonto registrieren",
+        "continue": "Registrierung fortsetzen",
+        "redirecting": "Weiterleitung…",
+        "linkFailed": "Der Registrierungslink für das Auszahlungskonto konnte nicht abgerufen werden."
+      },
+      "confirm": {
+        "title": "Belohnungszahlung bestätigen",
+        "intro": "Bitte bestätigen Sie vor der Bestätigung des Bewerbers die Belohnungszahlung (Kartenautorisierung).",
+        "expiryNotice": "Diese Autorisierung ist etwa 7 Tage gültig. Innerhalb von 7 Tagen ist die endgültige Bestätigung des Leistungsabschlusses erforderlich (danach wird bei Abschluss erneut abgebucht).",
+        "deferredNotice": "Da zwischen Bestätigung und Leistung mehr als 7 Tage liegen, wird jetzt keine Autorisierung vorgenommen. Sie zahlen erneut bei der endgültigen Bestätigung des Leistungsabschlusses.",
+        "alreadyAuthorized": "Diese Zahlung wurde bereits bestätigt.",
+        "preparing": "Zahlungsdaten werden vorbereitet. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
+        "retry": "Neu laden",
+        "submit": "Zahlung bestätigen",
+        "processing": "Wird verarbeitet…",
+        "succeeded": "Zahlungsbestätigung abgeschlossen.",
+        "loadFailed": "Zahlungsdaten konnten nicht abgerufen werden.",
+        "payeeNotReady": "Der Empfänger hat noch kein Auszahlungskonto registriert, daher ist keine Zahlung möglich.",
+        "proceed": "Weiter zur Bestätigung"
+      },
+      "received": {
+        "pageTitle": "Erhaltene Zahlungen & Erstattungen",
+        "pageSubtitle": "Sieh dir erhaltene Zahlungen an und erstatte sie bei Bedarf.",
+        "scopeLabel": "Empfänger",
+        "scope": {
+          "self": "Ich selbst (privat)",
+          "team": "Team",
+          "org": "Organisation"
+        },
+        "statusFilterLabel": "Nach Status filtern",
+        "statusFilterAll": "Alle",
+        "loading": "Wird geladen…",
+        "empty": "Noch keine Zahlungen erhalten.",
+        "loadFailed": "Die Liste der erhaltenen Zahlungen konnte nicht geladen werden.",
+        "noScope": "Keine Empfänger verfügbar. Werde Team-/Organisationsadministrator, um deren erhaltene Zahlungen zu sehen.",
+        "col": {
+          "source": "Quelle",
+          "status": "Status",
+          "faceAmount": "Nennbetrag",
+          "chargeAmount": "Berechnet",
+          "fee": "Gebühr",
+          "refunded": "Erstattet",
+          "createdAt": "Erhalten am",
+          "actions": "Aktionen"
+        },
+        "sourceKind": {
+          "RECRUITMENT": "Belohnung (Markt-Anzeige)",
+          "MEMBERSHIP": "Mitgliedsbeitrag",
+          "JOBMATCHING": "Jobvermittlung",
+          "FLEAMARKET": "Flohmarkt"
+        },
+        "refundButton": "Erstatten",
+        "refundUnavailable": "Nicht erstattbar",
+        "refundSucceeded": "Erstattung angenommen.",
+        "status": {
+          "PENDING_CONFIRMATION": "Bestätigung ausstehend",
+          "DEFERRED": "Zahlung bei Abschluss",
+          "AUTHORIZED": "Autorisiert",
+          "HELD": "Auszahlung zurückgehalten",
+          "CAPTURED": "Erhalten",
+          "PARTIALLY_REFUNDED": "Teilweise erstattet",
+          "REFUNDED": "Vollständig erstattet",
+          "CANCELLED": "Storniert",
+          "DISPUTED": "Strittig"
+        }
       }
     }
   }

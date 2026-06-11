@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -99,6 +100,71 @@ public class MatchService {
         return matchRepository.findTeamMatches(
                         orgId, teamId, f.getStatus(), f.getKind(), f.getSport(),
                         f.getFrom(), f.getTo(), pageable)
+                .map(MatchSummaryResponse::from);
+    }
+
+    // ─────────────────────────────────────────────
+    // 予定からの解決（入口④・二重起票防止・04 §G.1a-2）
+    // ─────────────────────────────────────────────
+
+    /**
+     * カレンダー予定（入口④）に紐づく既存試合を解決する（04 §G.1a-2）。
+     *
+     * <p>FE はカレンダー予定詳細の「この試合を記録」押下時に本メソッドを呼び、
+     * <b>既存があれば live 画面を開き・無ければ作成</b>するために用いる（同一予定への二重起票防止）。</p>
+     *
+     * <p><b>認可（第一防御・Service 層）</b>: 当該チームのメンバー以上であることを
+     * {@link MatchAccessService#assertCanListTeamMatches} で明示検証する（一覧と同水準・03 §C.3.1）。
+     * <b>テナント絞り込み（IDOR）</b>: リポジトリ層で {@code organization_id} ＋ {@code team_id} を強制し、
+     * パス帰属外の予定参照は結果に含めない。論理削除は Entity の {@code @SQLRestriction} で常に除外される。</p>
+     *
+     * <p><b>ドメイン境界</b>: 本メソッドは match ドメイン内の {@code schedule_id}（保持済み BIGINT 参照）のみを引く。
+     * schedule ドメイン（予定本体）は参照しない（原則1）。予定のプリフィル（日時・相手名・種別）は FE が
+     * 予定データから createMatch に渡す。</p>
+     *
+     * @param orgId       テナント organization_id（パス由来）
+     * @param teamId      主体チーム team_id（パス由来）
+     * @param actorUserId 操作者ユーザー ID（認可・サーバー導出）
+     * @param scheduleId  カレンダー予定 ID
+     * @return 既存試合のサマリ（無ければ {@link Optional#empty()}）
+     */
+    public Optional<MatchSummaryResponse> resolveByScheduleId(Long orgId, Long teamId,
+                                                              Long actorUserId, Long scheduleId) {
+        // 第一防御: 当該チームのメンバー以上であること（非メンバーは 403）
+        matchAccessService.assertCanListTeamMatches(actorUserId, teamId);
+        return matchRepository
+                .findFirstByOrganizationIdAndTeamIdAndScheduleIdOrderByKickoffAtDescIdDesc(orgId, teamId, scheduleId)
+                .map(MatchSummaryResponse::from);
+    }
+
+    /**
+     * 大会の対戦カード（fixture）に紐づく既存試合を解決する（入口①・04 §G.1a-2 / 06 §I.2）。
+     *
+     * <p>FE は大会の対戦表ページでカード押下時に本メソッドを呼び、<b>既存があれば live 画面を開き・無ければ作成</b>
+     * するために用いる（同一カードへの二重起票防止）。入口④の {@link #resolveByScheduleId} と完全対称の解決経路。</p>
+     *
+     * <p><b>認可（第一防御・Service 層）</b>: 当該チームのメンバー以上であることを
+     * {@link MatchAccessService#assertCanListTeamMatches} で明示検証する（一覧・入口④と同水準・03 §C.3.1）。
+     * <b>テナント絞り込み（IDOR）</b>: リポジトリ層で {@code organization_id} ＋ {@code team_id} を強制し、
+     * パス帰属外のカード参照は結果に含めない。論理削除は Entity の {@code @SQLRestriction} で常に除外される。</p>
+     *
+     * <p><b>ドメイン境界</b>: 本メソッドは match ドメイン内の {@code tournament_fixture_id}（保持済み BIGINT 参照）
+     * のみを引く。tournament ドメイン（fixture 本体・participant）は参照しない（原則1）。カードのプリフィル
+     * （相手・日時）は FE が fixture データから createMatch に渡す。</p>
+     *
+     * @param orgId               テナント organization_id（パス由来）
+     * @param teamId              主体チーム team_id（パス由来）
+     * @param actorUserId         操作者ユーザー ID（認可・サーバー導出）
+     * @param tournamentFixtureId 大会の対戦カード ID
+     * @return 既存試合のサマリ（無ければ {@link Optional#empty()}）
+     */
+    public Optional<MatchSummaryResponse> resolveByFixtureId(Long orgId, Long teamId,
+                                                             Long actorUserId, Long tournamentFixtureId) {
+        // 第一防御: 当該チームのメンバー以上であること（非メンバーは 403）
+        matchAccessService.assertCanListTeamMatches(actorUserId, teamId);
+        return matchRepository
+                .findFirstByOrganizationIdAndTeamIdAndTournamentFixtureIdOrderByKickoffAtDescIdDesc(
+                        orgId, teamId, tournamentFixtureId)
                 .map(MatchSummaryResponse::from);
     }
 

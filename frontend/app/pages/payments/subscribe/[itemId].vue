@@ -1,15 +1,21 @@
 <script setup lang="ts">
 import type { SwitchableChild } from '~/types/guardianship'
 import type { SubscribeRequest } from '~/types/membershipSubscription'
+import type { PaymentItemResponse } from '~/types/payment'
 
 /**
- * F08.9 P5 継続課金 加入ページ（専用ページ方式・殿裁定 / 設計書 04 §2）。
+ * F08.9 P5/P6 継続課金・期別課金 加入ページ（専用ページ方式・殿裁定 / 設計書 04 §2）。
  *
  * フロー（多段）:
  *   ①受益者選択（既定=自分／後見下の子は switchable-children から）
+ *     ↳ TERM 型の場合は有効期間を表示する（P6 対応）
  *   ②カード入力（StripePaymentForm: SetupIntent を confirmSetup）
  *   ③確認・実行（confirmPaymentMethod で attach → subscribe）
  *   ④完了（subscriptions 一覧への導線）
+ *
+ * TERM 型（P6）:
+ *   type=TERM の項目は期別課金（有効期限つき単発）。有効期間（termStartsOn〜termEndsOn）を
+ *   受益者選択ステップに表示する。決済フローはカード/継続と同様（checkout エンドポイントを使用）。
  *
  * 3DS 復帰（同一ページで完結）:
  *   3DS が必要なカードは confirmSetup がブラウザを returnUrl へ遷移させる。
@@ -22,13 +28,50 @@ import type { SubscribeRequest } from '~/types/membershipSubscription'
  */
 definePageMeta({ middleware: 'auth' })
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const subscriptionApi = useMembershipSubscriptionApi()
 const guardianshipApi = useGuardianshipApi()
+const paymentApi = usePaymentApi()
 const { retrieveSetupIntent } = useStripeSetup()
+
+// ── 支払い項目情報（TERM 型の有効期間表示に使用） ────────────────
+const paymentItem = ref<PaymentItemResponse | null>(null)
+
+/** 項目が TERM 型か。null（未取得）の場合は false を返す。 */
+const isTermType = computed(() => paymentItem.value?.meta.type === 'TERM')
+
+/** TERM 有効期間開始日（ロケールに合わせてフォーマット）。 */
+const termStartsOnFormatted = computed<string | null>(() => {
+  const d = paymentItem.value?.term?.termStartsOn
+  if (!d) return null
+  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(new Date(d))
+})
+
+/** TERM 有効期間終了日（ロケールに合わせてフォーマット）。 */
+const termEndsOnFormatted = computed<string | null>(() => {
+  const d = paymentItem.value?.term?.termEndsOn
+  if (!d) return null
+  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(new Date(d))
+})
+
+/**
+ * 支払い項目を取得する（TERM 型の有効期間表示に使用）。
+ * BE エンドポイント未実装の間は取得失敗を許容し、ページ機能は継続する（UI 上は期間非表示）。
+ * 症状を隠さない原則：エラー時は WARN でログに出す（ユーザー向けエラー表示はしない）。
+ */
+async function loadPaymentItem() {
+  if (itemId.value === null) return
+  try {
+    const res = await paymentApi.getPaymentItemById(itemId.value)
+    paymentItem.value = res.data
+  } catch (err) {
+    // P6 BE 未実装の間は 404/500 が返るため WARN のみ（加入フロー自体は継続可能）。
+    console.warn('[subscribe] 支払い項目の取得に失敗（TERM 型表示は省略）', { itemId: itemId.value, err })
+  }
+}
 
 /** 会費項目 ID（数値）。不正な場合は後続フローを止めてエラー表示する。 */
 const itemId = computed(() => {
@@ -306,6 +349,8 @@ onMounted(async () => {
     pageError.value = t('payment.membership.subscribe.invalidItem')
     return
   }
+  // 支払い項目情報（TERM 型の有効期間表示用）を並行で取得する。失敗しても加入フローは続行可能。
+  void loadPaymentItem()
   // 3DS 復帰クエリがある場合は復帰処理を優先する。
   if (route.query.setup_intent_client_secret) {
     await handleRedirectReturn()
@@ -357,6 +402,29 @@ onMounted(async () => {
         <h2 class="text-lg font-semibold">
           {{ $t('payment.membership.subscribe.stepBeneficiary') }}
         </h2>
+
+        <!-- F08.9 P6: TERM 型の有効期間表示 -->
+        <div
+          v-if="isTermType && (termStartsOnFormatted || termEndsOnFormatted)"
+          class="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm"
+          role="note"
+          :aria-label="$t('payment.term.periodLabel')"
+        >
+          <i class="pi pi-calendar text-blue-500" aria-hidden="true" />
+          <span class="font-medium text-blue-700">{{ $t('payment.term.periodLabel') }}:</span>
+          <span class="text-blue-900">
+            <template v-if="termStartsOnFormatted && termEndsOnFormatted">
+              {{ termStartsOnFormatted }} 〜 {{ termEndsOnFormatted }}
+            </template>
+            <template v-else-if="termStartsOnFormatted">
+              {{ $t('payment.term.from') }} {{ termStartsOnFormatted }}
+            </template>
+            <template v-else-if="termEndsOnFormatted">
+              {{ $t('payment.term.until') }} {{ termEndsOnFormatted }}
+            </template>
+          </span>
+        </div>
+
         <p class="text-sm text-surface-500">
           {{ $t('payment.membership.subscribe.beneficiaryHelp') }}
         </p>

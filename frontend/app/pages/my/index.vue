@@ -78,6 +78,13 @@ const cards: MyPageCard[] = [
     icon: 'pi pi-file-pdf',
     to: '/my/resume',
   },
+  {
+    // F22.1 謝礼の受け取り・返金管理（受取側 ADMIN/本人）。
+    label: t('market.payment.received.pageTitle'),
+    description: t('market.payment.received.pageSubtitle'),
+    icon: 'pi pi-wallet',
+    to: '/me/recruitment-payments',
+  },
 ]
 
 onMounted(async () => {

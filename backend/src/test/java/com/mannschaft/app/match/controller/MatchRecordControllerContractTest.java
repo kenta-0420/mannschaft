@@ -157,6 +157,84 @@ class MatchRecordControllerContractTest {
                 .andExpect(status().isOk());
     }
 
+    // ─── 予定からの解決（入口④・二重起票防止） ──────────────────
+
+    @Test
+    @DisplayName("by-schedule: 既存試合があれば 200・data にサマリを返す")
+    void resolveBySchedule_existing_200() throws Exception {
+        long scheduleId = 555L;
+        given(matchService.resolveByScheduleId(eq(ORG), eq(TEAM), eq(ACTOR), eq(scheduleId)))
+                .willReturn(java.util.Optional.of(summaryRow()));
+
+        mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/{teamId}/matches/by-schedule/{scheduleId}",
+                        ORG, TEAM, scheduleId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(MATCH_ID.toString()));
+    }
+
+    @Test
+    @DisplayName("by-schedule: 既存が無ければ 200・data:null（FE は作成へ分岐）")
+    void resolveBySchedule_none_200NullData() throws Exception {
+        long scheduleId = 556L;
+        given(matchService.resolveByScheduleId(eq(ORG), eq(TEAM), eq(ACTOR), eq(scheduleId)))
+                .willReturn(java.util.Optional.empty());
+
+        mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/{teamId}/matches/by-schedule/{scheduleId}",
+                        ORG, TEAM, scheduleId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("by-schedule: 非メンバー（Service 第一防御 403）は 403 を返す")
+    void resolveBySchedule_nonMember_403() throws Exception {
+        org.mockito.Mockito.doThrow(new BusinessException(MatchErrorCode.MATCH_010))
+                .when(matchService).resolveByScheduleId(eq(ORG), eq(TEAM), eq(ACTOR), eq(557L));
+
+        mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/{teamId}/matches/by-schedule/{scheduleId}",
+                        ORG, TEAM, 557L))
+                .andExpect(status().isForbidden());
+    }
+
+    // ─── 大会の対戦カードからの解決（入口①・二重起票防止） ──────────────
+
+    @Test
+    @DisplayName("by-fixture: 既存試合があれば 200・data にサマリを返す")
+    void resolveByFixture_existing_200() throws Exception {
+        long fixtureId = 8801L;
+        given(matchService.resolveByFixtureId(eq(ORG), eq(TEAM), eq(ACTOR), eq(fixtureId)))
+                .willReturn(java.util.Optional.of(summaryRow()));
+
+        mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/{teamId}/matches/by-fixture/{fixtureId}",
+                        ORG, TEAM, fixtureId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(MATCH_ID.toString()));
+    }
+
+    @Test
+    @DisplayName("by-fixture: 既存が無ければ 200・data:null（FE は作成へ分岐）")
+    void resolveByFixture_none_200NullData() throws Exception {
+        long fixtureId = 8802L;
+        given(matchService.resolveByFixtureId(eq(ORG), eq(TEAM), eq(ACTOR), eq(fixtureId)))
+                .willReturn(java.util.Optional.empty());
+
+        mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/{teamId}/matches/by-fixture/{fixtureId}",
+                        ORG, TEAM, fixtureId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("by-fixture: 非メンバー（Service 第一防御 403）は 403 を返す")
+    void resolveByFixture_nonMember_403() throws Exception {
+        org.mockito.Mockito.doThrow(new BusinessException(MatchErrorCode.MATCH_010))
+                .when(matchService).resolveByFixtureId(eq(ORG), eq(TEAM), eq(ACTOR), eq(8803L));
+
+        mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/{teamId}/matches/by-fixture/{fixtureId}",
+                        ORG, TEAM, 8803L))
+                .andExpect(status().isForbidden());
+    }
+
     // ─── 一覧（コレクション GET・Phase2C） ────────────────────────
 
     private MatchSummaryResponse summaryRow() {

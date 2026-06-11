@@ -15,6 +15,8 @@ import com.mannschaft.app.payment.stripe.CaptureMethod;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,8 +64,8 @@ public class ConnectChargeService {
     /** HELD（受取側 onboarding 未完了）の与信保持期限（72h・設計書 02 §5.2）。 */
     static final long HELD_GRACE_HOURS = 72L;
 
-    /** AUTHORIZED（与信成立）の hold 期限（最大7日・設計書 02 §5.1）。 */
-    static final long AUTHORIZED_HOLD_DAYS = 7L;
+    // 第一陣 status 意味論の根治: AUTHORIZED の hold 失効基準（最大7日）は、与信が真に立つ webhook
+    // （amount_capturable_updated）昇格時に刻むため EscrowWebhookService 側へ移設した（authorize 時には立てない）。
 
     /** TEAM/ORG scope ADMIN 判定に用いる権限名（Connect onboarding と同等の管理権限）。 */
     static final String PERMISSION_MANAGE_PAYMENT = "MANAGE_RECRUITMENTS";
@@ -119,6 +121,36 @@ public class ConnectChargeService {
         boolean payoutsEnabled = Boolean.TRUE.equals(payee.getPayoutsEnabled());
         LocalDateTime now = LocalDateTime.now();
 
+        // 第三陣-b「7日超 fallback」（マスター裁可・02 §5.1）: 成立〜役務日が7日超の謝礼は、カード与信が
+        // 役務完了前に失効するため成立時に与信（manual-capture PI）を立てない。即時モード（AUTOMATIC）の DEFERRED
+        // 行を PaymentIntent 未作成で起票し、最終認証時に即時払い（chargeDeferred）へフォールバックする。
+        // captureMode=AUTOMATIC（会費の即時 charge と一貫）。clientSecret は返さない（PI 未作成）。
+        if (cmd.deferred()) {
+            EscrowTransactionEntity deferred = EscrowTransactionEntity.builder()
+                    .sourceKind(cmd.sourceKind())
+                    .captureMode(EscrowCaptureMode.AUTOMATIC)
+                    .sourceId(cmd.sourceId())
+                    .sourceParticipantId(cmd.sourceParticipantId())
+                    .payerScopeKind(cmd.payerScopeKind())
+                    .payerScopeId(cmd.payerScopeId())
+                    .payerStripeCustomerId(cmd.payerStripeCustomerId())
+                    .payeeKind(cmd.payeeKind())
+                    .payeeConnectAccountId(payee.getId())
+                    .organizationId(cmd.organizationId())
+                    .faceAmount(fee.faceAmount())
+                    .amount(fee.chargeAmount())
+                    .currency(currency)
+                    .applicationFeeAmount(fee.applicationFeeAmount())
+                    .feePolicyKey(policy.policyKey()) // 適用パターンを焼き付け（遡及防止・R1・01 §3.2）。
+                    .status(EscrowStatus.DEFERRED)
+                    .build();
+            deferred = escrowTransactionRepository.save(deferred);
+            log.info("与信を DEFERRED で記録（7日超 fallback・成立時は与信せず完了時即時払い予定・PI 未作成）: "
+                            + "escrowId={}, payeeAccount={}, charge={}, appFee={}",
+                    deferred.getId(), payee.getStripeAccountId(), fee.chargeAmount(), fee.applicationFeeAmount());
+            return toResult(deferred, null);
+        }
+
         EscrowTransactionEntity.EscrowTransactionEntityBuilder builder = EscrowTransactionEntity.builder()
                 .sourceKind(cmd.sourceKind())
                 .captureMode(EscrowCaptureMode.MANUAL)
@@ -155,17 +187,288 @@ public class ConnectChargeService {
                 fee.chargeAmount(), currency, cmd.payerStripeCustomerId(), fee.applicationFeeAmount(),
                 payee.getStripeAccountId(), CaptureMethod.MANUAL, idempotencyKey);
 
-        EscrowTransactionEntity authorized = builder
-                .status(EscrowStatus.AUTHORIZED)
+        // 第一陣 status 意味論の根治: manual-capture PI は札主が Stripe.js で confirm するまで真の与信
+        // （amount_capturable）が立たない。よってこの時点で AUTHORIZED にするのは誤りで、capture 失敗の温床だった。
+        // PI 作成済・札主未 confirm の中間状態 PENDING_CONFIRMATION で起票し、真の与信確定（AUTHORIZED 昇格）は
+        // payment_intent.amount_capturable_updated webhook 受信時のみ行う（EscrowWebhookService）。
+        // authorized_at/hold_expires_at（hold 失効基準）も与信が立つまで未確定のため、ここでは設定しない
+        // （webhook 昇格時に authorized_at を刻む）。
+        EscrowTransactionEntity pendingConfirmation = builder
+                .status(EscrowStatus.PENDING_CONFIRMATION)
                 .stripePaymentIntentId(pi.paymentIntentId())
-                .authorizedAt(now)
-                .holdExpiresAt(now.plusDays(AUTHORIZED_HOLD_DAYS))
                 .build();
-        authorized = escrowTransactionRepository.save(authorized);
+        pendingConfirmation = escrowTransactionRepository.save(pendingConfirmation);
         clientSecret = pi.clientSecret();
-        log.info("与信を AUTHORIZED で記録: escrowId={}, paymentIntentId={}, charge={}, appFee={}",
-                authorized.getId(), pi.paymentIntentId(), fee.chargeAmount(), fee.applicationFeeAmount());
-        return toResult(authorized, clientSecret);
+        log.info("与信を PENDING_CONFIRMATION で記録（PI 作成済・札主 confirm 待ち）: escrowId={}, paymentIntentId={}, "
+                        + "charge={}, appFee={}",
+                pendingConfirmation.getId(), pi.paymentIntentId(), fee.chargeAmount(), fee.applicationFeeAmount());
+        return toResult(pendingConfirmation, clientSecret);
+    }
+
+    /**
+     * 札主（支払者本人）の決済確認ビューを取得する（謝礼・第二陣・設計書 02 §1 行#8 / 03 §1）。
+     *
+     * <p>成立リスナ（{@link RecruitmentChargeAuthorizationListener}）が成立時に escrow＋manual-capture PaymentIntent を
+     * <b>事前起票</b>（{@link EscrowStatus#PENDING_CONFIRMATION}）するため、本メソッドは<b>新規 authorize を呼ばず</b>
+     * 既存 escrow を引き当てて札主へ {@code clientSecret}＋手数料内訳を返す（二重与信回避）。GET 由来の照会であり
+     * <b>副作用を起こさない</b>（authorize/PI 作成をここでは行わない）。{@code clientSecret} は PI に保存していないため
+     * {@link StripePaymentProvider#retrievePaymentIntentClientSecret} で Stripe から retrieve する（PCI・03 §1）。</p>
+     *
+     * <p><b>リスナ競合（@Async 遅延）の扱い:</b> 成立直後は本リスナが {@code @Async} で escrow を起票する前に札主が
+     * 確認画面を開きうる。その場合 escrow が未存在のため {@link ConnectPaymentErrorCode#PAYMENT_RESOURCE_NOT_FOUND}
+     * （404・「準備中」）を返す。GET で副作用（新規 authorize）を起こさない方針ゆえ、FE はリトライ（ポーリング）で
+     * 起票完了を待つ（症状を隠さず「準備中」として 404 を返し、握りつぶさない）。</p>
+     *
+     * <p><b>認可/IDOR（PCI）:</b> {@code clientSecret} は<b>支払者本人</b>（{@code payer_scope_kind=USER} かつ
+     * {@code payer_scope_id == actorUserId}）にのみ返す。受取側（payee）scope の ADMIN は状態・金額のみ（clientSecret は
+     * 含めない）。いずれにも該当しない無関係者は存在を漏らさず 404 秘匿（03 §3/§4）。</p>
+     *
+     * @param sourceKind    出所種別（通常 {@link EscrowSourceKind#RECRUITMENT}）
+     * @param sourceId      札 ID（escrow の source_id）
+     * @param participantId 応募 ID（escrow の source_participant_id）
+     * @param actorUserId   照会者ユーザー ID（札主本人 or 受取側 ADMIN・認可/IDOR）
+     * @return 決済確認ビュー（札主本人 × PENDING_CONFIRMATION 時のみ clientSecret 同梱）
+     */
+    @Transactional(readOnly = true)
+    public PaymentView getRecruitmentPaymentView(EscrowSourceKind sourceKind, Long sourceId,
+                                                 Long participantId, Long actorUserId) {
+        EscrowTransactionEntity escrow = escrowTransactionRepository
+                .findBySourceKindAndSourceIdAndSourceParticipantId(sourceKind, sourceId, participantId)
+                .orElseThrow(() -> new BusinessException(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND));
+        return buildPaymentView(escrow, actorUserId);
+    }
+
+    /**
+     * エスクロー取引の状態を照会する（汎用・設計書 02 §1 行#8 / §8）。
+     *
+     * <p>認可で出し分ける: 支払者本人なら {@code clientSecret} を含む（PENDING_CONFIRMATION 時）、受取側 scope の
+     * ADMIN は状態・金額のみ（{@code clientSecret} 除外）、無関係者は 404 秘匿。{@link #getRecruitmentPaymentView} と
+     * 認可・出し分けロジックを共有する（{@link #buildPaymentView}）。GET 由来で副作用を起こさない。</p>
+     *
+     * @param escrowId    エスクロー取引 ID
+     * @param actorUserId 照会者ユーザー ID（支払者本人 or 受取側 ADMIN・認可/IDOR）
+     * @return 照会ビュー（支払者本人 × PENDING_CONFIRMATION 時のみ clientSecret 同梱）
+     */
+    @Transactional(readOnly = true)
+    public PaymentView getEscrowView(UUID escrowId, Long actorUserId) {
+        EscrowTransactionEntity escrow = escrowTransactionRepository.findById(escrowId)
+                .orElseThrow(() -> new BusinessException(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND));
+        return buildPaymentView(escrow, actorUserId);
+    }
+
+    /**
+     * 受取側（payee）が受け取ったエスクロー取引を一覧する（フォロー Wave A・設計書 02 §1 / 03 §1）。
+     *
+     * <p>返金は受取側（応じ手＝payee 本人 or そのチーム/組織 ADMIN）が操作する設計だが、対象 escrow を引き当てる
+     * 一覧 EP が無かった（従来は単一照会のみ）。本メソッドは「自分（USER）が受取」または「自分が ADMIN の TEAM/ORG が
+     * 受取」のエスクローを一覧し、本格的な返金管理画面を支える。</p>
+     *
+     * <p><b>認可/IDOR（03 §3/§4）:</b> 指定 scope（{@code scopeKind}×{@code scopeId}）に対し、
+     * USER は<b>本人のみ</b>（{@code scopeId == actorUserId}）、TEAM は {@link AccessControlService#checkPermission}、
+     * ORG は {@link AccessControlService#checkAdminOrHasPermission}（権限 {@link #PERMISSION_MANAGE_PAYMENT}）で
+     * 検証する。無関係者は {@link ConnectPaymentErrorCode#PAYMENT_FORBIDDEN}（403）。これにより他人の受取エスクローを
+     * 覗けない。</p>
+     *
+     * <p><b>scope→escrow の解決:</b> 受取主体は {@code escrow.payee_connect_account_id}（{@code connect_accounts} 論理
+     * 参照）で表現される。指定 scope の Connect 口座を {@code findByScopeKindAndScopeIdAndDeletedAtIsNull} で解決し、
+     * その口座 ID に紐づく escrow をページングで引く。Connect 口座が未登録（onboarding 未着手で受取実績ゼロ）の場合は
+     * 空ページを返す（症状を隠さず「まだ何も受け取っていない」を 200＋空で表現）。</p>
+     *
+     * <p><b>PCI（03 §10）:</b> 本一覧は受取側向けであり {@code clientSecret} を一切載せない（{@link ReceivedEscrow} に
+     * フィールド自体が無い）。{@code pi_xxx}/{@code acct_xxx} 等の Stripe 生 ID も返さない。</p>
+     *
+     * @param scopeKind     受取 scope 種別（USER/TEAM/ORG）
+     * @param scopeId       受取 scope ID（USER は users.id・TEAM は teams.id・ORG は organizations.id）
+     * @param statusFilter  状態フィルタ（任意・null は全状態）
+     * @param actorUserId   照会者ユーザー ID（本人 or scope ADMIN・認可/IDOR）
+     * @param pageable      ページング（既存作法・created_at 降順）
+     * @return 受取エスクローの 1 ページ
+     */
+    @Transactional(readOnly = true)
+    public Page<ReceivedEscrow> listReceivedEscrows(ScopeKind scopeKind, Long scopeId,
+                                                    EscrowStatus statusFilter, Long actorUserId,
+                                                    Pageable pageable) {
+        authorizeScopeForReceivedList(scopeKind, scopeId, actorUserId);
+
+        // 受取 scope の Connect 口座を解決する。未登録（受取実績ゼロ）なら空ページ（症状を隠さず 200＋空）。
+        ConnectAccountEntity payee = connectAccountRepository
+                .findByScopeKindAndScopeIdAndDeletedAtIsNull(scopeKind, scopeId)
+                .orElse(null);
+        if (payee == null) {
+            return Page.empty(pageable);
+        }
+
+        Page<EscrowTransactionEntity> page = (statusFilter == null)
+                ? escrowTransactionRepository
+                        .findByPayeeConnectAccountIdOrderByCreatedAtDesc(payee.getId(), pageable)
+                : escrowTransactionRepository
+                        .findByPayeeConnectAccountIdAndStatusOrderByCreatedAtDesc(
+                                payee.getId(), statusFilter, pageable);
+        return page.map(this::toReceivedEscrow);
+    }
+
+    /**
+     * 受取エスクロー一覧の scope 認可を検証する（USER=本人のみ / TEAM=checkPermission / ORG=checkAdminOrHasPermission）。
+     *
+     * <p>USER は scope 認可の対象外（本人固定）のため {@code scopeId == actorUserId} を直接照合し、不一致は 403。
+     * TEAM/ORG は {@link AccessControlService} の認可エラーを Connect 系 403 へ正規化する。返金 EP の
+     * {@link #authorizePayeeAdmin} と同じ認可基準（受取側 ADMIN・本人）だが、一覧は scope を引数で受け取るため
+     * scope→escrow ではなく scope を直接検証する点が異なる。</p>
+     */
+    private void authorizeScopeForReceivedList(ScopeKind scopeKind, Long scopeId, Long actorUserId) {
+        if (scopeKind == ScopeKind.USER) {
+            if (actorUserId == null || !actorUserId.equals(scopeId)) {
+                throw new BusinessException(ConnectPaymentErrorCode.PAYMENT_FORBIDDEN);
+            }
+            return;
+        }
+        try {
+            switch (scopeKind) {
+                case TEAM -> accessControlService.checkPermission(actorUserId, scopeId,
+                        payeeScopeResolver.toAccessControlScopeType(scopeKind), PERMISSION_MANAGE_PAYMENT);
+                case ORG -> accessControlService.checkAdminOrHasPermission(actorUserId, scopeId,
+                        payeeScopeResolver.toAccessControlScopeType(scopeKind), PERMISSION_MANAGE_PAYMENT);
+                default -> throw new BusinessException(ConnectPaymentErrorCode.PAYMENT_FORBIDDEN);
+            }
+        } catch (BusinessException e) {
+            if (e.getErrorCode() instanceof ConnectPaymentErrorCode) {
+                throw e;
+            }
+            throw new BusinessException(ConnectPaymentErrorCode.PAYMENT_FORBIDDEN, e);
+        }
+    }
+
+    /** escrow を受取側一覧の行ビューへ写す（clientSecret は含めない・返金累計を集計）。 */
+    private ReceivedEscrow toReceivedEscrow(EscrowTransactionEntity e) {
+        long refundedAmount = sumRefundedTransferAmount(e.getId());
+        return new ReceivedEscrow(
+                e.getId(), e.getSourceKind(), e.getSourceId(), e.getSourceParticipantId(),
+                e.getCaptureMode(), e.getStatus(), e.getFaceAmount(), e.getAmount(),
+                e.getApplicationFeeAmount(), refundedAmount, e.getCreatedAt());
+    }
+
+    /**
+     * 受取側（payee）が受け取ったエスクロー 1 件分の内部ビュー（フォロー Wave A・設計書 02 §1 / 03 §1）。
+     *
+     * <p><b>clientSecret を持たない</b>（受取側向け・PCI）。Controller がこの record を DTO
+     * （{@code ReceivedEscrowResponse}）へ写す。金額は最小通貨単位（円整数）。{@code refundedAmount} は
+     * transferAmount ベースの返金累計（FAILED 除く）。</p>
+     *
+     * @param escrowId             エスクロー取引 ID
+     * @param sourceKind           出所種別
+     * @param sourceId             出所 ID
+     * @param sourceParticipantId  応募 ID（謝礼のみ・会費は null）
+     * @param captureMode          capture モード
+     * @param status               エスクロー状態
+     * @param faceAmount           額面（円整数）
+     * @param chargeAmount         課金額（円整数）
+     * @param applicationFeeAmount Mannschaft 徴収手数料（円整数）
+     * @param refundedAmount       返金累計（transferAmount ベース・円整数）
+     * @param createdAt            起票日時
+     */
+    public record ReceivedEscrow(UUID escrowId, EscrowSourceKind sourceKind, Long sourceId,
+                                 Long sourceParticipantId, EscrowCaptureMode captureMode, EscrowStatus status,
+                                 long faceAmount, long chargeAmount, long applicationFeeAmount,
+                                 long refundedAmount, LocalDateTime createdAt) {}
+
+    /**
+     * escrow の照会ビューを認可出し分けで組み立てる（{@link #getRecruitmentPaymentView}/{@link #getEscrowView} 共通）。
+     *
+     * <p>(1) 支払者本人（{@code payer_scope_kind=USER} かつ {@code payer_scope_id == actorUserId}）→ 全情報＋
+     * {@code clientSecret}（PENDING_CONFIRMATION のときのみ Stripe から retrieve）。
+     * (2) 受取側 scope の ADMIN → 状態・金額のみ（{@code clientSecret=null}）。
+     * (3) いずれでもない → 404 秘匿（IDOR）。</p>
+     */
+    private PaymentView buildPaymentView(EscrowTransactionEntity escrow, Long actorUserId) {
+        boolean isPayer = escrow.getPayerScopeKind() == ScopeKind.USER
+                && actorUserId != null
+                && actorUserId.equals(escrow.getPayerScopeId());
+
+        if (isPayer) {
+            // 支払者本人へ clientSecret を返す条件は「PI 作成済・札主の confirm 待ち」:
+            //   (1) 従来 escrow（MANUAL）: PENDING_CONFIRMATION（amount_capturable_updated 前）。
+            //   (2) 完了時即時払い（第三陣-b・AUTOMATIC）: AUTHORIZED かつ未 capture（succeeded webhook 前）。
+            //       DEFERRED→chargeDeferred で AUTOMATIC PI を作成し AUTHORIZED へ置いた直後の confirm 待ち状態
+            //       （第二陣 EP 同型再利用）。capture_method=automatic ゆえ amount_capturable 段はなく、confirm で
+            //       直接 succeeded→CAPTURED。CAPTURED 以降/HELD（PI 未作成）/DEFERRED（PI 未作成）は clientSecret 不要。
+            boolean awaitingManualConfirm = escrow.getStatus() == EscrowStatus.PENDING_CONFIRMATION;
+            boolean awaitingImmediateConfirm = escrow.getStatus() == EscrowStatus.AUTHORIZED
+                    && escrow.getCaptureMode() == EscrowCaptureMode.AUTOMATIC;
+            String clientSecret = null;
+            if ((awaitingManualConfirm || awaitingImmediateConfirm)
+                    && escrow.getStripePaymentIntentId() != null) {
+                clientSecret = stripePaymentProvider
+                        .retrievePaymentIntentClientSecret(escrow.getStripePaymentIntentId())
+                        .clientSecret();
+            }
+            return PaymentView.forPayer(escrow, clientSecret);
+        }
+
+        // 支払者本人でなければ受取側 scope ADMIN を検証（無関係者は 404 秘匿）。clientSecret は含めない（PCI）。
+        authorizePayeeAdminForView(escrow, actorUserId);
+        return PaymentView.forPayee(escrow);
+    }
+
+    /**
+     * 照会者が受取側 scope（payee の TEAM/ORG）の ADMIN であることを検証する（出し分け用）。
+     *
+     * <p>{@link #authorizePayeeAdmin} と同じ認可基準だが、照会（read）の IDOR 秘匿では認可失敗も<b>404 へ統一</b>する
+     * （支払者本人でない無関係者と受取側でない他人の挙動を区別させない・存在秘匿）。USER 受領（個人）は scope 認可の
+     * 対象外であり、本照会では受取者本人の clientSecret 経路（payer=USER と別枠）を本波で提供しないため 404 秘匿で拒否する。</p>
+     */
+    private void authorizePayeeAdminForView(EscrowTransactionEntity escrow, Long actorUserId) {
+        ConnectAccountEntity payee = connectAccountRepository.findById(escrow.getPayeeConnectAccountId())
+                .orElseThrow(() -> new BusinessException(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND));
+
+        ScopeKind payeeKind = payee.getScopeKind();
+        if (payeeKind == ScopeKind.USER) {
+            // 個人受領の照会は本波未提供。存在を漏らさず 404 秘匿で拒否する（IDOR）。
+            throw new BusinessException(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND);
+        }
+        try {
+            switch (payeeKind) {
+                case TEAM -> accessControlService.checkPermission(actorUserId, payee.getScopeId(),
+                        payeeScopeResolver.toAccessControlScopeType(payeeKind), PERMISSION_MANAGE_PAYMENT);
+                case ORG -> accessControlService.checkAdminOrHasPermission(actorUserId, payee.getScopeId(),
+                        payeeScopeResolver.toAccessControlScopeType(payeeKind), PERMISSION_MANAGE_PAYMENT);
+                default -> throw new BusinessException(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND);
+            }
+        } catch (BusinessException e) {
+            // 既に Connect 系（404/秘匿）ならそのまま。それ以外（認可失敗）も照会では存在秘匿のため 404 へ統一する。
+            if (e.getErrorCode() instanceof ConnectPaymentErrorCode) {
+                throw e;
+            }
+            throw new BusinessException(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND, e);
+        }
+    }
+
+    /**
+     * 札主の決済確認 / エスクロー照会の内部ビュー（設計書 02 §1 行#8 / 03 §1）。
+     *
+     * <p>{@code clientSecret} は支払者本人 × PENDING_CONFIRMATION のときのみ非 null。受取側 ADMIN の照会では null。
+     * 金額は最小通貨単位（円整数）。Controller がこの record を DTO（{@code RecruitmentPaymentResponse}）へ写す。</p>
+     *
+     * @param escrowId             エスクロー取引 ID
+     * @param status               エスクロー状態
+     * @param clientSecret         PaymentIntent の client_secret（支払者本人 × PENDING_CONFIRMATION 時のみ非 null）
+     * @param faceAmount           額面（円整数）
+     * @param chargeAmount         課金額（額面 + 2.5% 上乗せ・円整数）
+     * @param applicationFeeAmount Mannschaft 徴収手数料（円整数）
+     */
+    public record PaymentView(UUID escrowId, EscrowStatus status, String clientSecret,
+                              long faceAmount, long chargeAmount, long applicationFeeAmount) {
+
+        /** 支払者本人向け（clientSecret 同梱可）。 */
+        static PaymentView forPayer(EscrowTransactionEntity e, String clientSecret) {
+            return new PaymentView(e.getId(), e.getStatus(), clientSecret,
+                    e.getFaceAmount(), e.getAmount(), e.getApplicationFeeAmount());
+        }
+
+        /** 受取側 ADMIN 向け（clientSecret 除外・状態/金額のみ）。 */
+        static PaymentView forPayee(EscrowTransactionEntity e) {
+            return new PaymentView(e.getId(), e.getStatus(), null,
+                    e.getFaceAmount(), e.getAmount(), e.getApplicationFeeAmount());
+        }
     }
 
     /**
@@ -345,8 +648,16 @@ public class ConnectChargeService {
             return;
         }
 
-        // AUTHORIZED 以外（HELD/CANCELLED/REFUNDED/DISPUTED 等）は払出不能。HELD は payout 不能のため
-        // capture せず、onboarding 完了→AUTHORIZED 化（§5.2 webhook）を待つ。症状を隠さず 409 で拒否する。
+        // 第一陣 status 意味論の根治: PENDING_CONFIRMATION（札主未 confirm）は真の与信が立っておらず、
+        // capture を呼んでも Stripe で必ず失敗する。Stripe へ到達させず専用コード 409 で拒否する（症状を隠さない）。
+        // 札主が confirm し payment_intent.amount_capturable_updated で AUTHORIZED へ昇格してから capture すること。
+        if (escrow.getStatus() == EscrowStatus.PENDING_CONFIRMATION) {
+            log.warn("札主の confirm 前（PENDING_CONFIRMATION）からの capture 要求を拒否: escrowId={}", escrowId);
+            throw new BusinessException(ConnectPaymentErrorCode.AUTHORIZATION_NOT_CONFIRMED);
+        }
+
+        // AUTHORIZED（真に与信確定済）以外（HELD/CANCELLED/REFUNDED/DISPUTED 等）は払出不能。HELD は payout 不能の
+        // ため capture せず、onboarding 完了→AUTHORIZED 化（§5.2 webhook）を待つ。症状を隠さず 409 で拒否する。
         if (escrow.getStatus() != EscrowStatus.AUTHORIZED || escrow.getStripePaymentIntentId() == null) {
             log.warn("払出不能な状態からの capture 要求を拒否: escrowId={}, status={}, hasPi={}",
                     escrowId, escrow.getStatus(), escrow.getStripePaymentIntentId() != null);
@@ -377,6 +688,98 @@ public class ConnectChargeService {
 
         log.info("謝礼の払出を確定 CAPTURED: escrowId={}, piId={}, capture={}, transfer={}, fee={}",
                 escrowId, pi.paymentIntentId(), captureAmount, transferOut, feeAmount);
+    }
+
+    /**
+     * 完了時即時払い（7日超 fallback）の謝礼を最終認証時に即時 charge する（第三陣-b・マスター裁可・02 §5.3 / §5.1）。
+     *
+     * <p>成立〜役務日が7日超で成立時に与信を立てず {@link EscrowStatus#DEFERRED} で起票した escrow を、最終認証
+     * （役務完了）時にここで即時払い（{@link CaptureMethod#AUTOMATIC} の Destination PaymentIntent）へフォールバック
+     * する。会費（F08.9）の即時 charge 作法を流用し、{@code transfer_data.destination}＝受領側 Connect 口座・
+     * {@code application_fee_amount}＝折半分・Customer＝札主。PaymentIntent を作成して escrow を
+     * {@link EscrowStatus#AUTHORIZED}（PI 作成済・succeeded webhook 待ち＝会費 charge() と一貫）にし、
+     * {@code clientSecret} を返す。札主は<b>第二陣の決済確認 EP</b>（{@link #getRecruitmentPaymentView}/
+     * {@link #getEscrowView}）で clientSecret を受け取り Stripe.js で confirm する（同型再利用）。confirm すると
+     * AUTOMATIC PI は {@code payment_intent.succeeded} を発火し、{@link EscrowWebhookService} が AUTHORIZED→
+     * {@link EscrowStatus#CAPTURED} 化＋複式記帳する（charge() と同じく本メソッドでは ledger を起票しない・二重記帳防止）。</p>
+     *
+     * <p><b>なぜ PENDING_CONFIRMATION でなく AUTHORIZED か（第三陣バッチ非干渉・根治）:</b> DEFERRED の最終認証は
+     * 成立から7日超後（しばしば72h超）に起きる。{@code captureMode=AUTOMATIC} の即時 charge を会費と同様
+     * {@code status=AUTHORIZED}＋{@code hold_expires_at=NULL} で起票すれば、第三陣の自動取消バッチの
+     * PENDING_CONFIRMATION 抽出（{@code created_at}＜now−72h）にも HELD/AUTHORIZED 抽出
+     * （{@code hold_expires_at≦now+2h}・NULL は不一致）にも掛からず、誤って自動取消されない。manual 与信の
+     * PENDING_CONFIRMATION（{@code created_at} 基準で 72h 猶予）とは性質が異なるため、即時モードは AUTHORIZED に
+     * 倣う（既存バッチ・webhook の意味論を変えずに共存）。</p>
+     *
+     * <p><b>冪等:</b> 既に AUTHORIZED（PI 作成済・再フック）/CAPTURED/CANCELLED 等の後段状態なら no-op で既存の
+     * clientSecret（AUTHORIZED かつ PI 有時のみ retrieve）を返す。Stripe へも {@code idempotencyKey} を渡し
+     * 二重 PI 作成を Stripe 側でも拒否する（02 §9）。行ロック（{@code PESSIMISTIC_WRITE}）で並行フックを直列化する。</p>
+     *
+     * <p><b>口座 READY 必須（即時モードゆえ HELD にしない・会費 charge と一貫）:</b> 受領側 Connect 口座が
+     * {@code payouts_enabled=false}（onboarding 未完）なら {@link ConnectPaymentErrorCode#ONBOARDING_NOT_READY}
+     * （409）で拒否する（症状を隠さない）。</p>
+     *
+     * <p><b>不正状態:</b> {@link EscrowStatus#DEFERRED} 以外（AUTHORIZED/HELD 等の従来 escrow 経路）からの本メソッド
+     * 呼び出しは {@link ConnectPaymentErrorCode#INVALID_ESCROW_STATE}（409）で拒否する（従来 escrow は capture を使う）。</p>
+     *
+     * @param escrowId 完了時即時払い対象（DEFERRED）のエスクロー取引 ID
+     * @return 即時 charge 結果（AUTHORIZED＋clientSecret・hold_expires_at=NULL・札主の confirm 用）
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public AuthorizeChargeResult chargeDeferred(UUID escrowId) {
+        EscrowTransactionEntity escrow = escrowTransactionRepository.findByIdForUpdate(escrowId)
+                .orElseThrow(() -> new BusinessException(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND));
+
+        // 冪等: 既に即時 charge 起票済み（AUTHORIZED・PI 有）/確定/取消なら再作成しない。
+        if (escrow.getStatus() == EscrowStatus.AUTHORIZED
+                || escrow.getStatus() == EscrowStatus.CAPTURED
+                || escrow.getStatus() == EscrowStatus.CANCELLED
+                || escrow.getStatus() == EscrowStatus.REFUNDED
+                || escrow.getStatus() == EscrowStatus.PARTIALLY_REFUNDED) {
+            log.info("完了時即時払いは既に起票/確定済み（冪等・no-op）: escrowId={}, status={}", escrowId, escrow.getStatus());
+            String clientSecret = (escrow.getStatus() == EscrowStatus.AUTHORIZED
+                    && escrow.getStripePaymentIntentId() != null)
+                    ? stripePaymentProvider.retrievePaymentIntentClientSecret(escrow.getStripePaymentIntentId())
+                            .clientSecret()
+                    : null;
+            return toResult(escrow, clientSecret);
+        }
+
+        // DEFERRED 以外（従来 escrow の AUTHORIZED/HELD 等）からの即時 charge 要求は誤り。従来 escrow は capture を使う。
+        if (escrow.getStatus() != EscrowStatus.DEFERRED) {
+            log.warn("完了時即時払い不能な状態からの chargeDeferred 要求を拒否: escrowId={}, status={}",
+                    escrowId, escrow.getStatus());
+            throw new BusinessException(ConnectPaymentErrorCode.INVALID_ESCROW_STATE);
+        }
+
+        ConnectAccountEntity payee = connectAccountRepository.findById(escrow.getPayeeConnectAccountId())
+                .orElseThrow(() -> new BusinessException(ConnectPaymentErrorCode.PAYMENT_RESOURCE_NOT_FOUND));
+
+        // 即時モードゆえ口座未 READY は HELD にせずエラー（会費 charge と一貫・02 §1.1 注記）。
+        if (!Boolean.TRUE.equals(payee.getPayoutsEnabled())) {
+            log.warn("完了時即時払い拒否（受領口座が未 READY・即時モードゆえ HELD にしない）: escrowId={}, payeeAccount={}",
+                    escrowId, payee.getStripeAccountId());
+            throw new BusinessException(ConnectPaymentErrorCode.ONBOARDING_NOT_READY);
+        }
+
+        // AUTOMATIC（即時 capture）の Destination PaymentIntent を作成（会費 charge と同型・idempotencyKey を Stripe へ橋渡し）。
+        String idempotencyKey = "deferred-" + escrow.getSourceId() + "-" + escrow.getSourceParticipantId();
+        StripePaymentProvider.PaymentIntentInfo pi = stripePaymentProvider.createDestinationPaymentIntent(
+                escrow.getAmount(), escrow.getCurrency(), escrow.getPayerStripeCustomerId(),
+                escrow.getApplicationFeeAmount(), payee.getStripeAccountId(), CaptureMethod.AUTOMATIC, idempotencyKey);
+
+        // AUTHORIZED（PI 作成済・succeeded webhook 待ち＝会費 charge() と一貫）へ遷移し clientSecret を返す。
+        // hold_expires_at=NULL（即時モード・与信フェーズなし＝第三陣バッチの自動取消対象外）。confirm→succeeded webhook で
+        // 既存 applySucceeded の AUTHORIZED 経路が CAPTURED 化＋複式記帳する（本メソッドでは記帳しない・二重記帳防止）。
+        escrow.setStatus(EscrowStatus.AUTHORIZED);
+        escrow.setStripePaymentIntentId(pi.paymentIntentId());
+        escrow.setAuthorizedAt(LocalDateTime.now());
+        escrow.setHoldExpiresAt(null);
+        escrowTransactionRepository.save(escrow);
+        log.info("完了時即時払いを起票 DEFERRED→AUTHORIZED（AUTOMATIC・succeeded webhook で CAPTURED+記帳）: "
+                        + "escrowId={}, piId={}, charge={}, appFee={}",
+                escrowId, pi.paymentIntentId(), escrow.getAmount(), escrow.getApplicationFeeAmount());
+        return toResult(escrow, pi.clientSecret());
     }
 
     /**
@@ -452,8 +855,13 @@ public class ConnectChargeService {
             return new RefundResult(escrowId, escrow.getStatus(), 0L, 0L);
         }
 
-        // capture 前（AUTHORIZED/HELD）は返金でなく与信取消（支払者に課金なし・02 §6.1）。
-        if (escrow.getStatus() == EscrowStatus.AUTHORIZED || escrow.getStatus() == EscrowStatus.HELD) {
+        // capture 前（DEFERRED/PENDING_CONFIRMATION/AUTHORIZED/HELD）は返金でなく与信取消（支払者に課金なし・02 §6.1）。
+        // PENDING_CONFIRMATION（札主未 confirm）も真の与信が立つ前のため、課金は起きておらず取消で足りる。
+        // DEFERRED（7日超 fallback・成立時に与信せず PI 未作成）も課金前のため取消で足りる（PI 未作成なら Stripe 呼ばず）。
+        if (escrow.getStatus() == EscrowStatus.DEFERRED
+                || escrow.getStatus() == EscrowStatus.PENDING_CONFIRMATION
+                || escrow.getStatus() == EscrowStatus.AUTHORIZED
+                || escrow.getStatus() == EscrowStatus.HELD) {
             cancelAuthorizationForRefund(escrow);
             return new RefundResult(escrowId, EscrowStatus.CANCELLED, 0L, 0L);
         }
