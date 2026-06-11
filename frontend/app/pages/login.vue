@@ -57,7 +57,7 @@ async function handleLogin() {
           navigateTo('/parental-consent/pending')
           return
         }
-        authStore.setUser({
+        await authStore.setUser({
           id: profile.data.id,
           email: profile.data.email,
           fullName: profile.data.lastName + ' ' + profile.data.firstName,
@@ -70,7 +70,7 @@ async function handleLogin() {
         }
       } catch {
         // プロフィール取得失敗時はログインレスポンスの基本情報で続行
-        authStore.setUser({
+        await authStore.setUser({
           id: data.data.userId,
           email: data.data.email,
           fullName: data.data.fullName,
