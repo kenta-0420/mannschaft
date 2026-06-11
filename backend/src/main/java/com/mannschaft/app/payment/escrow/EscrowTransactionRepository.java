@@ -103,4 +103,22 @@ public interface EscrowTransactionRepository
      * connect_account を payee とする {@link EscrowStatus#HELD} escrow を昇格対象として引く。
      */
     List<EscrowTransactionEntity> findByPayeeConnectAccountIdAndStatus(UUID payeeConnectAccountId, EscrowStatus status);
+
+    /**
+     * 受取側 Connect 口座（{@code payee_connect_account_id} 論理参照）に紐づく取引をページングで取得する
+     * （受取側エスクロー一覧 EP・フォロー Wave A・設計書 02 §1 / 03 §1）。{@code created_at} 降順で返す
+     * （新しい取引が先頭）。返金管理画面が「受け取った謝礼」を一覧するための finder。
+     */
+    org.springframework.data.domain.Page<EscrowTransactionEntity>
+            findByPayeeConnectAccountIdOrderByCreatedAtDesc(
+                    UUID payeeConnectAccountId, org.springframework.data.domain.Pageable pageable);
+
+    /**
+     * 受取側 Connect 口座＋状態でフィルタした取引をページングで取得する（受取側エスクロー一覧 EP の status
+     * フィルタ・フォロー Wave A）。{@code created_at} 降順で返す。
+     */
+    org.springframework.data.domain.Page<EscrowTransactionEntity>
+            findByPayeeConnectAccountIdAndStatusOrderByCreatedAtDesc(
+                    UUID payeeConnectAccountId, EscrowStatus status,
+                    org.springframework.data.domain.Pageable pageable);
 }
