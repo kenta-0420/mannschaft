@@ -2,6 +2,20 @@ const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
+/** チーム/組織名から URL スラッグを生成する（BE SlugGenerator と同ロジック）。
+ * 日本語名など ASCII 英数字が 3 文字未満の場合は MD5 ハッシュのプレフィックスを使い
+ * 一意性を担保する（seed の重複実行でも同じ名前から同じスラッグを生成）。 */
+function generateSlug(name) {
+  const base = name.toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .substring(0, 30);
+  if (base.length >= 3) return base;
+  // 非 ASCII 主体の名前: MD5 ハッシュで一意な 8 文字を生成（決定論的）
+  const hash = crypto.createHash('md5').update(name).digest('hex').substring(0, 8);
+  return 's-' + hash;
+}
+
 // ============================================================
 // F18 ポイントカードウォレット用 AES-256-GCM 暗号化ヘルパー
 // ------------------------------------------------------------
@@ -119,12 +133,13 @@ function encryptForTest(plain) {
   const orgs = {};
 
   async function createOrg(name, orgType, parentId, pref, city) {
+    const slug = generateSlug(name);
     await conn.execute(
       `INSERT IGNORE INTO organizations
-        (name, org_type, parent_organization_id, prefecture, city,
+        (slug, name, org_type, parent_organization_id, prefecture, city,
          visibility, hierarchy_visibility, supporter_enabled, version, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,1,?,?)`,
-      [name, orgType, parentId, pref, city, 'PUBLIC', 'FULL', 1, now, now]
+       VALUES (?,?,?,?,?,?,?,?,?,1,?,?)`,
+      [slug, name, orgType, parentId, pref, city, 'PUBLIC', 'FULL', 1, now, now]
     );
     const [[r]] = await conn.execute('SELECT id FROM organizations WHERE name = ?', [name]);
     return Number(r.id);
@@ -154,11 +169,12 @@ function encryptForTest(plain) {
   const teams = {};
 
   async function createTeam(name, template, pref, city) {
+    const slug = generateSlug(name);
     await conn.execute(
       `INSERT IGNORE INTO teams
-        (name, template, prefecture, city, visibility, supporter_enabled, version, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,1,?,?)`,
-      [name, template, pref, city, 'PUBLIC', 1, now, now]
+        (slug, name, template, prefecture, city, visibility, supporter_enabled, version, created_at, updated_at)
+       VALUES (?,?,?,?,?,?,?,1,?,?)`,
+      [slug, name, template, pref, city, 'PUBLIC', 1, now, now]
     );
     const [[r]] = await conn.execute('SELECT id FROM teams WHERE name = ?', [name]);
     return Number(r.id);

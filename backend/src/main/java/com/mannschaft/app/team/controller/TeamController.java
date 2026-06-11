@@ -51,7 +51,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.UUID;
 import com.mannschaft.app.common.SecurityUtils;
 
 /**
@@ -97,27 +96,27 @@ public class TeamController {
         return ResponseEntity.ok(teamService.searchTeams(keyword, pageable));
     }
 
-    @GetMapping("/{publicId}")
+    @GetMapping("/{slug}")
     @Operation(summary = "チーム取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<TeamResponse>> getTeam(@PathVariable UUID publicId) {
-        return ResponseEntity.ok(teamService.getTeam(publicId));
+    public ResponseEntity<ApiResponse<TeamResponse>> getTeam(@PathVariable String slug) {
+        return ResponseEntity.ok(teamService.getTeam(slug));
     }
 
-    @PatchMapping("/{publicId}")
+    @PatchMapping("/{slug}")
     @Operation(summary = "チーム更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<TeamResponse>> updateTeam(
-            @PathVariable UUID publicId, @Valid @RequestBody UpdateTeamRequest req) {
-        Long id = teamService.resolveTeamId(publicId);
+            @PathVariable String slug, @Valid @RequestBody UpdateTeamRequest req) {
+        Long id = teamService.resolveTeamId(slug);
         return ResponseEntity.ok(teamService.updateTeam(id, req));
     }
 
-    @DeleteMapping("/{publicId}")
+    @DeleteMapping("/{slug}")
     @Operation(summary = "チーム削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
-    public ResponseEntity<Void> deleteTeam(@PathVariable UUID publicId) {
-        Long id = teamService.resolveTeamId(publicId);
+    public ResponseEntity<Void> deleteTeam(@PathVariable String slug) {
+        Long id = teamService.resolveTeamId(slug);
         Long userId = SecurityUtils.getCurrentUserIdOrNull();
         teamService.deleteTeam(id, userId);
         return ResponseEntity.noContent().build();
@@ -127,32 +126,32 @@ public class TeamController {
     // メンバー管理
     // ========================================
 
-    @GetMapping("/{publicId}/members")
+    @GetMapping("/{slug}/members")
     @Operation(summary = "チームメンバー一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<MemberResponse>> getMembers(
-            @PathVariable UUID publicId, Pageable pageable) {
-        Long id = teamService.resolveTeamId(publicId);
+            @PathVariable String slug, Pageable pageable) {
+        Long id = teamService.resolveTeamId(slug);
         return ResponseEntity.ok(teamService.getMembers(id, pageable));
     }
 
-    @PatchMapping("/{publicId}/members/{userId}/role")
+    @PatchMapping("/{slug}/members/{userId}/role")
     @Operation(summary = "メンバーロール変更")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "変更成功")
     public ResponseEntity<Void> changeRole(
-            @PathVariable UUID publicId, @PathVariable Long userId,
+            @PathVariable String slug, @PathVariable Long userId,
             @Valid @RequestBody RoleChangeRequest req) {
-        Long id = teamService.resolveTeamId(publicId);
+        Long id = teamService.resolveTeamId(slug);
         roleService.changeRole(id, SCOPE_TYPE, userId, req, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok().build();
     }
 
-    @DeleteMapping("/{publicId}/members/{userId}")
+    @DeleteMapping("/{slug}/members/{userId}")
     @Operation(summary = "メンバー除名")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "除名成功")
     public ResponseEntity<Void> removeMember(
-            @PathVariable UUID publicId, @PathVariable Long userId) {
-        Long id = teamService.resolveTeamId(publicId);
+            @PathVariable String slug, @PathVariable Long userId) {
+        Long id = teamService.resolveTeamId(slug);
         roleService.removeMember(id, SCOPE_TYPE, userId);
         return ResponseEntity.noContent().build();
     }
@@ -161,20 +160,20 @@ public class TeamController {
     // アーカイブ
     // ========================================
 
-    @PatchMapping("/{publicId}/archive")
+    @PatchMapping("/{slug}/archive")
     @Operation(summary = "チームアーカイブ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "アーカイブ成功")
-    public ResponseEntity<Void> archiveTeam(@PathVariable UUID publicId) {
-        Long id = teamService.resolveTeamId(publicId);
+    public ResponseEntity<Void> archiveTeam(@PathVariable String slug) {
+        Long id = teamService.resolveTeamId(slug);
         teamService.archiveTeam(id);
         return ResponseEntity.ok().build();
     }
 
-    @PatchMapping("/{publicId}/unarchive")
+    @PatchMapping("/{slug}/unarchive")
     @Operation(summary = "チームアーカイブ解除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "アーカイブ解除成功")
-    public ResponseEntity<Void> unarchiveTeam(@PathVariable UUID publicId) {
-        Long id = teamService.resolveTeamId(publicId);
+    public ResponseEntity<Void> unarchiveTeam(@PathVariable String slug) {
+        Long id = teamService.resolveTeamId(slug);
         teamService.unarchiveTeam(id);
         return ResponseEntity.ok().build();
     }
@@ -183,29 +182,29 @@ public class TeamController {
     // フォロー（SUPPORTER）
     // ========================================
 
-    @PostMapping("/{publicId}/follow")
+    @PostMapping("/{slug}/follow")
     @Operation(summary = "チームサポーター申請（自動承認ON→即時承認、OFF→PENDING申請作成）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "申請/承認成功")
-    public ResponseEntity<ApiResponse<FollowStatusResponse>> followTeam(@PathVariable UUID publicId) {
-        Long id = teamService.resolveTeamId(publicId);
+    public ResponseEntity<ApiResponse<FollowStatusResponse>> followTeam(@PathVariable String slug) {
+        Long id = teamService.resolveTeamId(slug);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(supporterService.follow(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, id));
     }
 
-    @DeleteMapping("/{publicId}/follow")
+    @DeleteMapping("/{slug}/follow")
     @Operation(summary = "チームサポーター解除・申請取消（APPROVED/PENDING どちらも取消可）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "解除成功")
-    public ResponseEntity<Void> unfollowTeam(@PathVariable UUID publicId) {
-        Long id = teamService.resolveTeamId(publicId);
+    public ResponseEntity<Void> unfollowTeam(@PathVariable String slug) {
+        Long id = teamService.resolveTeamId(slug);
         supporterService.unfollow(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, id);
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/{publicId}/follow/status")
+    @GetMapping("/{slug}/follow/status")
     @Operation(summary = "チームサポーター申請状態取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<FollowStatusResponse>> getFollowStatus(@PathVariable UUID publicId) {
-        Long id = teamService.resolveTeamId(publicId);
+    public ResponseEntity<ApiResponse<FollowStatusResponse>> getFollowStatus(@PathVariable String slug) {
+        Long id = teamService.resolveTeamId(slug);
         return ResponseEntity.ok(
                 supporterService.getFollowStatus(SecurityUtils.getCurrentUserId(), SCOPE_TYPE, id));
     }
@@ -214,68 +213,68 @@ public class TeamController {
     // サポーター管理（管理者向け）
     // ========================================
 
-    @GetMapping("/{publicId}/supporters")
+    @GetMapping("/{slug}/supporters")
     @Operation(summary = "承認済みサポーター一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<SupporterResponse>> getSupporters(
-            @PathVariable UUID publicId, Pageable pageable) {
-        Long id = teamService.resolveTeamId(publicId);
+            @PathVariable String slug, Pageable pageable) {
+        Long id = teamService.resolveTeamId(slug);
         return ResponseEntity.ok(supporterService.getSupporters(SCOPE_TYPE, id, pageable));
     }
 
-    @GetMapping("/{publicId}/supporter-applications")
+    @GetMapping("/{slug}/supporter-applications")
     @Operation(summary = "サポーター申請一覧（全ステータス）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<SupporterApplicationResponse>> getSupporterApplications(
-            @PathVariable UUID publicId, Pageable pageable) {
-        Long id = teamService.resolveTeamId(publicId);
+            @PathVariable String slug, Pageable pageable) {
+        Long id = teamService.resolveTeamId(slug);
         return ResponseEntity.ok(supporterService.getApplications(SCOPE_TYPE, id, pageable));
     }
 
-    @PostMapping("/{publicId}/supporter-applications/{applicationId}/approve")
+    @PostMapping("/{slug}/supporter-applications/{applicationId}/approve")
     @Operation(summary = "サポーター申請を個別承認")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "承認成功")
     public ResponseEntity<Void> approveSupporterApplication(
-            @PathVariable UUID publicId, @PathVariable Long applicationId) {
-        Long id = teamService.resolveTeamId(publicId);
+            @PathVariable String slug, @PathVariable Long applicationId) {
+        Long id = teamService.resolveTeamId(slug);
         supporterService.approve(applicationId, SCOPE_TYPE, id);
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{publicId}/supporter-applications/{applicationId}/reject")
+    @PostMapping("/{slug}/supporter-applications/{applicationId}/reject")
     @Operation(summary = "サポーター申請を個別却下")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "却下成功")
     public ResponseEntity<Void> rejectSupporterApplication(
-            @PathVariable UUID publicId, @PathVariable Long applicationId) {
-        Long id = teamService.resolveTeamId(publicId);
+            @PathVariable String slug, @PathVariable Long applicationId) {
+        Long id = teamService.resolveTeamId(slug);
         supporterService.reject(applicationId, SCOPE_TYPE, id);
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{publicId}/supporter-applications/bulk-approve")
+    @PostMapping("/{slug}/supporter-applications/bulk-approve")
     @Operation(summary = "サポーター申請を一括承認")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "一括承認成功")
     public ResponseEntity<Void> bulkApproveSupporterApplications(
-            @PathVariable UUID publicId, @Valid @RequestBody BulkApproveRequest request) {
-        Long id = teamService.resolveTeamId(publicId);
+            @PathVariable String slug, @Valid @RequestBody BulkApproveRequest request) {
+        Long id = teamService.resolveTeamId(slug);
         supporterService.bulkApprove(request, SCOPE_TYPE, id);
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/{publicId}/supporter-settings")
+    @GetMapping("/{slug}/supporter-settings")
     @Operation(summary = "サポーター設定取得（自動承認ON/OFF）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<SupporterSettingsResponse>> getSupporterSettings(@PathVariable UUID publicId) {
-        Long id = teamService.resolveTeamId(publicId);
+    public ResponseEntity<ApiResponse<SupporterSettingsResponse>> getSupporterSettings(@PathVariable String slug) {
+        Long id = teamService.resolveTeamId(slug);
         return ResponseEntity.ok(ApiResponse.of(supporterService.getSettings(SCOPE_TYPE, id)));
     }
 
-    @PutMapping("/{publicId}/supporter-settings")
+    @PutMapping("/{slug}/supporter-settings")
     @Operation(summary = "サポーター設定更新（自動承認ON/OFF）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<SupporterSettingsResponse>> updateSupporterSettings(
-            @PathVariable UUID publicId, @RequestBody UpdateSupporterSettingsRequest request) {
-        Long id = teamService.resolveTeamId(publicId);
+            @PathVariable String slug, @RequestBody UpdateSupporterSettingsRequest request) {
+        Long id = teamService.resolveTeamId(slug);
         return ResponseEntity.ok(ApiResponse.of(supporterService.updateSettings(SCOPE_TYPE, id, request)));
     }
 
@@ -283,29 +282,29 @@ public class TeamController {
     // 招待トークン
     // ========================================
 
-    @PostMapping("/{publicId}/invite-tokens")
+    @PostMapping("/{slug}/invite-tokens")
     @Operation(summary = "招待トークン作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<InviteTokenResponse>> createInviteToken(
-            @PathVariable UUID publicId, @Valid @RequestBody CreateInviteTokenRequest req) {
-        Long id = teamService.resolveTeamId(publicId);
+            @PathVariable String slug, @Valid @RequestBody CreateInviteTokenRequest req) {
+        Long id = teamService.resolveTeamId(slug);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(inviteService.createInviteToken(id, SCOPE_TYPE, req, SecurityUtils.getCurrentUserId()));
     }
 
-    @GetMapping("/{publicId}/invite-tokens")
+    @GetMapping("/{slug}/invite-tokens")
     @Operation(summary = "招待トークン一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<List<InviteTokenResponse>>> getInviteTokens(@PathVariable UUID publicId) {
-        Long id = teamService.resolveTeamId(publicId);
+    public ResponseEntity<ApiResponse<List<InviteTokenResponse>>> getInviteTokens(@PathVariable String slug) {
+        Long id = teamService.resolveTeamId(slug);
         return ResponseEntity.ok(ApiResponse.of(inviteService.getInviteTokens(id, SCOPE_TYPE)));
     }
 
-    @DeleteMapping("/{publicId}/invite-tokens/{tokenId}")
+    @DeleteMapping("/{slug}/invite-tokens/{tokenId}")
     @Operation(summary = "招待トークン失効")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "失効成功")
     public ResponseEntity<Void> revokeInviteToken(
-            @PathVariable UUID publicId, @PathVariable Long tokenId) {
+            @PathVariable String slug, @PathVariable Long tokenId) {
         inviteService.revokeInviteToken(tokenId);
         return ResponseEntity.noContent().build();
     }
@@ -314,51 +313,51 @@ public class TeamController {
     // 権限グループ
     // ========================================
 
-    @GetMapping("/{publicId}/permission-groups")
+    @GetMapping("/{slug}/permission-groups")
     @Operation(summary = "権限グループ一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<PermissionGroupResponse>>> getPermissionGroups(
-            @PathVariable UUID publicId) {
-        Long id = teamService.resolveTeamId(publicId);
+            @PathVariable String slug) {
+        Long id = teamService.resolveTeamId(slug);
         return ResponseEntity.ok(ApiResponse.of(
                 permissionGroupService.getPermissionGroups(id, SCOPE_TYPE)));
     }
 
-    @PostMapping("/{publicId}/permission-groups")
+    @PostMapping("/{slug}/permission-groups")
     @Operation(summary = "権限グループ作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<PermissionGroupResponse>> createPermissionGroup(
-            @PathVariable UUID publicId, @Valid @RequestBody PermissionGroupRequest req) {
-        Long id = teamService.resolveTeamId(publicId);
+            @PathVariable String slug, @Valid @RequestBody PermissionGroupRequest req) {
+        Long id = teamService.resolveTeamId(slug);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(permissionGroupService.createPermissionGroup(id, SCOPE_TYPE, req, SecurityUtils.getCurrentUserId()));
     }
 
-    @PatchMapping("/{publicId}/permission-groups/{groupId}")
+    @PatchMapping("/{slug}/permission-groups/{groupId}")
     @Operation(summary = "権限グループ更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<PermissionGroupResponse>> updatePermissionGroup(
-            @PathVariable UUID publicId, @PathVariable Long groupId,
+            @PathVariable String slug, @PathVariable Long groupId,
             @Valid @RequestBody PermissionGroupRequest req) {
         return ResponseEntity.ok(permissionGroupService.updatePermissionGroup(groupId, req));
     }
 
-    @DeleteMapping("/{publicId}/permission-groups/{groupId}")
+    @DeleteMapping("/{slug}/permission-groups/{groupId}")
     @Operation(summary = "権限グループ削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deletePermissionGroup(
-            @PathVariable UUID publicId, @PathVariable Long groupId) {
+            @PathVariable String slug, @PathVariable Long groupId) {
         permissionGroupService.deletePermissionGroup(groupId);
         return ResponseEntity.noContent().build();
     }
 
-    @PutMapping("/{publicId}/members/{userId}/permission-groups")
+    @PutMapping("/{slug}/members/{userId}/permission-groups")
     @Operation(summary = "ユーザー権限グループ割当")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "割当成功")
     public ResponseEntity<Void> assignUserPermissionGroups(
-            @PathVariable UUID publicId, @PathVariable Long userId,
+            @PathVariable String slug, @PathVariable Long userId,
             @Valid @RequestBody UserPermissionGroupAssignRequest req) {
-        Long id = teamService.resolveTeamId(publicId);
+        Long id = teamService.resolveTeamId(slug);
         permissionGroupService.assignUserPermissionGroups(
                 userId, id, SCOPE_TYPE, req, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok().build();
@@ -368,30 +367,30 @@ public class TeamController {
     // ブロック
     // ========================================
 
-    @GetMapping("/{publicId}/blocks")
+    @GetMapping("/{slug}/blocks")
     @Operation(summary = "ブロック一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<List<BlockResponse>>> getBlocks(@PathVariable UUID publicId) {
-        Long id = teamService.resolveTeamId(publicId);
+    public ResponseEntity<ApiResponse<List<BlockResponse>>> getBlocks(@PathVariable String slug) {
+        Long id = teamService.resolveTeamId(slug);
         return ResponseEntity.ok(ApiResponse.of(blockService.getBlocks(id, SCOPE_TYPE)));
     }
 
-    @PostMapping("/{publicId}/blocks")
+    @PostMapping("/{slug}/blocks")
     @Operation(summary = "ユーザーブロック")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "ブロック成功")
     public ResponseEntity<ApiResponse<BlockResponse>> blockUser(
-            @PathVariable UUID publicId, @Valid @RequestBody BlockRequest req) {
-        Long id = teamService.resolveTeamId(publicId);
+            @PathVariable String slug, @Valid @RequestBody BlockRequest req) {
+        Long id = teamService.resolveTeamId(slug);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(blockService.blockUser(id, SCOPE_TYPE, req, SecurityUtils.getCurrentUserId()));
     }
 
-    @DeleteMapping("/{publicId}/blocks/{userId}")
+    @DeleteMapping("/{slug}/blocks/{userId}")
     @Operation(summary = "ユーザーブロック解除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "ブロック解除成功")
     public ResponseEntity<Void> unblockUser(
-            @PathVariable UUID publicId, @PathVariable Long userId) {
-        Long id = teamService.resolveTeamId(publicId);
+            @PathVariable String slug, @PathVariable Long userId) {
+        Long id = teamService.resolveTeamId(slug);
         Long unblockedBy = SecurityUtils.getCurrentUserIdOrNull();
         blockService.unblockUser(id, SCOPE_TYPE, userId, unblockedBy);
         return ResponseEntity.noContent().build();
@@ -401,33 +400,33 @@ public class TeamController {
     // 自分の権限・退会・オーナー譲渡
     // ========================================
 
-    @GetMapping("/{publicId}/me/permissions")
+    @GetMapping("/{slug}/me/permissions")
     @Operation(summary = "自分の有効権限取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<EffectivePermissionsResponse>> getMyPermissions(
-            @PathVariable UUID publicId) {
-        Long id = teamService.resolveTeamId(publicId);
+            @PathVariable String slug) {
+        Long id = teamService.resolveTeamId(slug);
         Long userId = SecurityUtils.getCurrentUserId();
         List<String> permissions = roleService.resolveEffectivePermissions(userId, id, SCOPE_TYPE);
         String roleName = accessControlService.getRoleName(userId, id, SCOPE_TYPE);
         return ResponseEntity.ok(ApiResponse.of(new EffectivePermissionsResponse(roleName, permissions)));
     }
 
-    @PostMapping("/{publicId}/transfer-ownership")
+    @PostMapping("/{slug}/transfer-ownership")
     @Operation(summary = "オーナー譲渡")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "譲渡成功")
     public ResponseEntity<Void> transferOwnership(
-            @PathVariable UUID publicId, @RequestParam Long targetUserId) {
-        Long id = teamService.resolveTeamId(publicId);
+            @PathVariable String slug, @RequestParam Long targetUserId) {
+        Long id = teamService.resolveTeamId(slug);
         roleService.transferOwnership(id, SCOPE_TYPE, SecurityUtils.getCurrentUserId(), targetUserId);
         return ResponseEntity.ok().build();
     }
 
-    @DeleteMapping("/{publicId}/me")
+    @DeleteMapping("/{slug}/me")
     @Operation(summary = "チーム退会")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "退会成功")
-    public ResponseEntity<Void> leaveTeam(@PathVariable UUID publicId) {
-        Long id = teamService.resolveTeamId(publicId);
+    public ResponseEntity<Void> leaveTeam(@PathVariable String slug) {
+        Long id = teamService.resolveTeamId(slug);
         roleService.leaveScope(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
         return ResponseEntity.noContent().build();
     }
@@ -436,11 +435,11 @@ public class TeamController {
     // チーム所属組織一覧
     // ========================================
 
-    @GetMapping("/{publicId}/organizations")
+    @GetMapping("/{slug}/organizations")
     @Operation(summary = "チーム所属組織一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<List<TeamOrgSummaryResponse>>> getOrganizations(@PathVariable UUID publicId) {
-        Long id = teamService.resolveTeamId(publicId);
+    public ResponseEntity<ApiResponse<List<TeamOrgSummaryResponse>>> getOrganizations(@PathVariable String slug) {
+        Long id = teamService.resolveTeamId(slug);
         return ResponseEntity.ok(ApiResponse.of(teamService.getOrganizations(id)));
     }
 
@@ -448,11 +447,11 @@ public class TeamController {
     // チームの復元（SYSTEM_ADMIN専用）
     // ========================================
 
-    @PatchMapping("/{publicId}/restore")
+    @PatchMapping("/{slug}/restore")
     @Operation(summary = "チーム復元（SYSTEM_ADMINのみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "復元成功")
-    public ResponseEntity<Void> restoreTeam(@PathVariable UUID publicId) {
-        Long id = teamService.resolveTeamId(publicId);
+    public ResponseEntity<Void> restoreTeam(@PathVariable String slug) {
+        Long id = teamService.resolveTeamId(slug);
         teamService.restoreTeam(id);
         return ResponseEntity.noContent().build();
     }
@@ -464,13 +463,13 @@ public class TeamController {
     /**
      * チームのフォロワー一覧を取得する。
      */
-    @GetMapping("/{publicId}/followers")
+    @GetMapping("/{slug}/followers")
     @Operation(summary = "チームフォロワー一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<FollowResponse>>> getTeamFollowers(
-            @PathVariable UUID publicId,
+            @PathVariable String slug,
             @RequestParam(defaultValue = "20") int size) {
-        Long id = teamService.resolveTeamId(publicId);
+        Long id = teamService.resolveTeamId(slug);
         List<FollowResponse> followers = followService.getTeamFollowers(id, size);
         return ResponseEntity.ok(ApiResponse.of(followers));
     }

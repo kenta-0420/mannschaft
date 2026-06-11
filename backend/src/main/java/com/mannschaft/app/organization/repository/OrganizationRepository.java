@@ -12,7 +12,6 @@ import org.springframework.data.repository.query.Param;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * 組織リポジトリ。
@@ -20,12 +19,20 @@ import java.util.UUID;
 public interface OrganizationRepository extends JpaRepository<OrganizationEntity, Long> {
 
     /**
-     * URL 公開用 publicId で組織を取得する（列挙攻撃対策）。
+     * カスタムスラッグで組織を取得する（URL識別子）。
      *
-     * @param publicId URL に公開する UUID
+     * @param slug URL に使用するカスタムスラッグ
      * @return 対応する組織エンティティ
      */
-    Optional<OrganizationEntity> findByPublicId(UUID publicId);
+    Optional<OrganizationEntity> findBySlugAndDeletedAtIsNull(String slug);
+
+    /**
+     * 指定スラッグが既に使用中かどうか確認する（一意性チェック用）。
+     *
+     * @param slug チェック対象のスラッグ
+     * @return 使用中の場合 true
+     */
+    boolean existsBySlugAndDeletedAtIsNull(String slug);
 
     List<OrganizationEntity> findByVisibility(OrganizationEntity.Visibility visibility);
 

@@ -23,8 +23,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
-
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -222,7 +220,7 @@ class PublicDiscoverControllerTest {
     private PublicTeamSearchResultResponse sampleTeam(Long id, String name) {
         return new PublicTeamSearchResultResponse(
                 id,
-                UUID.randomUUID(),
+                "team-slug-" + id,
                 name,
                 "https://cdn.example.com/icons/" + id + ".png",
                 10,

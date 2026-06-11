@@ -62,7 +62,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 
 /**
  * ダッシュボードコントローラー。
@@ -382,7 +381,7 @@ public class DashboardController {
     @GetMapping("/team/{teamPublicId}")
     @Operation(summary = "チームダッシュボード一括取得", description = "チーム全体の活動状況・お知らせ・イベント等を一括取得")
     public ResponseEntity<ApiResponse<TeamDashboardResponse>> getTeamDashboard(
-            @PathVariable UUID teamPublicId,
+            @PathVariable String teamPublicId,
             @Parameter(description = "統計期間（TODAY / WEEK / MONTH）") @RequestParam(defaultValue = "WEEK") String statsPeriod) {
         Long teamId = teamService.resolveTeamId(teamPublicId);
         Long userId = SecurityUtils.getCurrentUserId();
@@ -396,7 +395,7 @@ public class DashboardController {
     @GetMapping("/organization/{orgPublicId}")
     @Operation(summary = "組織ダッシュボード一括取得", description = "傘下チーム一覧・組織全体の統計等を一括取得")
     public ResponseEntity<ApiResponse<OrgDashboardResponse>> getOrgDashboard(
-            @PathVariable UUID orgPublicId,
+            @PathVariable String orgPublicId,
             @Parameter(description = "統計期間（TODAY / WEEK / MONTH）") @RequestParam(defaultValue = "WEEK") String statsPeriod) {
         Long orgId = organizationService.resolveOrgId(orgPublicId);
         Long userId = SecurityUtils.getCurrentUserId();
@@ -416,7 +415,7 @@ public class DashboardController {
     @Operation(summary = "チーム統合「要対応」集計",
             description = "回覧板/アンケート/出欠の未対応を集約。横スワイプ・ダッシュボードのビューポート進入時に遅延取得")
     public ResponseEntity<ApiResponse<com.mannschaft.app.dashboard.dto.ActionRequiredSummaryResponse>>
-            getTeamActionRequired(@PathVariable UUID teamPublicId) {
+            getTeamActionRequired(@PathVariable String teamPublicId) {
         Long teamId = teamService.resolveTeamId(teamPublicId);
         Long userId = SecurityUtils.getCurrentUserId();
         com.mannschaft.app.dashboard.dto.ActionRequiredSummaryResponse response =
@@ -432,7 +431,7 @@ public class DashboardController {
     @Operation(summary = "組織統合「要対応」集計",
             description = "回覧板/アンケート/出欠の未対応を集約（組織スコープ）")
     public ResponseEntity<ApiResponse<com.mannschaft.app.dashboard.dto.ActionRequiredSummaryResponse>>
-            getOrgActionRequired(@PathVariable UUID orgPublicId) {
+            getOrgActionRequired(@PathVariable String orgPublicId) {
         Long orgId = organizationService.resolveOrgId(orgPublicId);
         Long userId = SecurityUtils.getCurrentUserId();
         com.mannschaft.app.dashboard.dto.ActionRequiredSummaryResponse response =

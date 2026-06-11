@@ -4,7 +4,6 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 /**
  * 組織詳細レスポンス。
@@ -17,7 +16,8 @@ import java.util.UUID;
 @Getter
 public class OrganizationResponse {
 
-    private UUID id;
+    /** URL 識別子（カスタムスラッグ）。 */
+    private String id;
     private OrgBasicInfoDto basicInfo;
     private OrgHierarchyDto hierarchy;
     private OrgLocationDto location;

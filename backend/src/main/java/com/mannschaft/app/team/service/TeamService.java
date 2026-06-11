@@ -25,6 +25,7 @@ import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.role.dto.MemberResponse;
+import com.mannschaft.app.common.util.SlugGenerator;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.team.dto.CreateTeamRequest;
@@ -39,7 +40,6 @@ import com.mannschaft.app.social.repository.TeamFriendRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.mannschaft.app.team.service.TeamShiftSettingsService;
@@ -83,8 +83,10 @@ public class TeamService {
     // TODO: teamドメインがroleドメイン(RoleRepository/UserRoleRepository)・socialドメイン(TeamFriendRepository)・membershipドメイン(MembershipRepository/MembershipService)・shiftドメイン(TeamShiftSettingsService)をまたいでいる。将来はTeamCreatedEventで分離予定
     @CacheEvict(value = "team-search", allEntries = true)
     public ApiResponse<TeamResponse> createTeam(Long userId, CreateTeamRequest req) {
+        String slug = createUniqueSlug(req.getName());
         TeamEntity team = TeamEntity.builder()
                 .name(req.getName())
+                .slug(slug)
                 .template(req.getTemplate())
                 .prefecture(req.getPrefecture())
                 .city(req.getCity())
@@ -198,13 +200,13 @@ public class TeamService {
     }
 
     /**
-     * チームを publicId（URL公開ID）で取得する。
+     * チームを slug（URL識別子）で取得する。
      *
      * <p>Phase 4-E: Valkey にて 10 分キャッシュ。更新・削除時に自動無効化される。</p>
      */
-    @Cacheable(value = "team-detail", key = "#publicId")
-    public ApiResponse<TeamResponse> getTeam(UUID publicId) {
-        TeamEntity team = findTeamByPublicIdOrThrow(publicId);
+    @Cacheable(value = "team-detail", key = "#slug")
+    public ApiResponse<TeamResponse> getTeam(String slug) {
+        TeamEntity team = findTeamBySlugOrThrow(slug);
         Long teamId = team.getId();
         int memberCount = (int) userRoleRepository.countByTeamId(teamId);
         long teamFriendCount = teamFriendRepository.countFriendsByTeamId(teamId);
@@ -215,13 +217,36 @@ public class TeamService {
     }
 
     /**
-     * publicId から内部 BIGINT ID を解決する（Controller から他の Service メソッドに渡す用）。
+     * slug から内部 BIGINT ID を解決する（Controller から他の Service メソッドに渡す用）。
      *
-     * @param publicId URL 公開用 UUID
+     * @param slug URL 識別子（カスタムスラッグ）
      * @return 内部 BIGINT ID
      */
-    public Long resolveTeamId(UUID publicId) {
-        return findTeamByPublicIdOrThrow(publicId).getId();
+    public Long resolveTeamId(String slug) {
+        return findTeamBySlugOrThrow(slug).getId();
+    }
+
+    /**
+     * チーム名から一意スラッグを生成する。
+     *
+     * <p>ベーススラッグが既に使用中の場合は数値サフィックス (-1, -2, ...) を付与して一意化する。
+     * 100 回試行しても一意にならない場合はタイムスタンプベースのサフィックスを使用する。</p>
+     *
+     * @param name チーム名
+     * @return 一意なスラッグ
+     */
+    public String createUniqueSlug(String name) {
+        String base = SlugGenerator.generate(name);
+        if (!teamRepository.existsBySlugAndDeletedAtIsNull(base)) {
+            return base;
+        }
+        for (int i = 1; i <= 100; i++) {
+            String candidate = SlugGenerator.withSuffix(base, i);
+            if (!teamRepository.existsBySlugAndDeletedAtIsNull(candidate)) {
+                return candidate;
+            }
+        }
+        return SlugGenerator.withSuffix(base, (int) (System.currentTimeMillis() % 10000));
     }
 
     /**
@@ -330,7 +355,7 @@ public class TeamService {
                     long supporterCount = membershipRepository.countActiveByScopeAndRoleKind(
                             ScopeType.TEAM, team.getId(), RoleKind.SUPPORTER);
                     return new TeamSummaryResponse(
-                            team.getPublicId(), team.getName(), team.getTemplate(),
+                            team.getSlug(), team.getName(), team.getTemplate(),
                             team.getVisibility().name(), memberCount,
                             teamFriendCount, supporterCount);
                 })
@@ -456,7 +481,7 @@ public class TeamService {
                 .map(m -> organizationRepository.findById(m.getOrganizationId()).orElse(null))
                 .filter(org -> org != null)
                 .map(org -> new TeamOrgSummaryResponse(
-                        org.getPublicId(),
+                        org.getSlug(),
                         org.getName(),
                         null,
                         org.getVisibility().name(),
@@ -493,13 +518,13 @@ public class TeamService {
     }
 
     /**
-     * publicId でチームを取得する。存在しない場合は 404 例外を投げる（IDOR 対策）。
+     * slug でチームを取得する。存在しない場合は 404 例外を投げる（IDOR 対策）。
      *
-     * @param publicId URL 公開用 UUID
+     * @param slug URL 識別子（カスタムスラッグ）
      * @return チームエンティティ
      */
-    private TeamEntity findTeamByPublicIdOrThrow(UUID publicId) {
-        return teamRepository.findByPublicId(publicId)
+    private TeamEntity findTeamBySlugOrThrow(String slug) {
+        return teamRepository.findBySlugAndDeletedAtIsNull(slug)
                 .orElseThrow(() -> new BusinessException(TeamErrorCode.TEAM_001));
     }
 
@@ -512,7 +537,7 @@ public class TeamService {
     private TeamResponse toResponse(TeamEntity team, int memberCount,
                                      long teamFriendCount, long supporterCount) {
         return TeamResponse.builder()
-                .id(team.getPublicId())
+                .id(team.getSlug())
                 .basicInfo(new TeamResponse.TeamBasicInfoDto(
                         team.getName(), team.getNameKana(),
                         team.getNickname1(), team.getNickname2()))

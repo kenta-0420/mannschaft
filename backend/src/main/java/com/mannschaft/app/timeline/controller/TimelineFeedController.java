@@ -39,9 +39,9 @@ public class TimelineFeedController {
      * <p>scopeType=VILLAGE の場合は scopeVillageId を指定すること。
      * scopeVillageId が省略された場合は空リストを返す。</p>
      *
-     * <p>scopeId はチーム/組織ページの URL で使われる publicId（UUID文字列）または
-     * 内部 Long ID 文字列を受け付ける。UUID の場合は {@link TeamRepository#findByPublicId} /
-     * {@link OrganizationRepository#findByPublicId} で内部 ID に変換する。</p>
+     * <p>scopeId はチーム/組織ページの URL で使われる slug 文字列または
+     * 内部 Long ID 文字列を受け付ける。slug の場合は {@link TeamRepository#findBySlugAndDeletedAtIsNull} /
+     * {@link OrganizationRepository#findBySlugAndDeletedAtIsNull} で内部 ID に変換する。</p>
      */
     @GetMapping("/feed")
     @Operation(summary = "タイムラインフィード取得")
@@ -57,16 +57,17 @@ public class TimelineFeedController {
     }
 
     /**
-     * スコープID文字列（UUID文字列 or Long文字列）を内部Long IDに解決する。
+     * スコープID文字列（slug または Long文字列）を内部Long IDに解決する。
      *
-     * <p>TEAM/ORGANIZATION スコープの場合: Long 文字列はそのまま返し、UUID 文字列は
-     * {@link TeamRepository#findByPublicId} / {@link OrganizationRepository#findByPublicId}
-     * で publicId から内部 ID を引く。不正な形式や未存在の場合は {@link BusinessException} をスローする。</p>
+     * <p>TEAM/ORGANIZATION スコープの場合: Long 文字列はそのまま返し、それ以外は slug として
+     * {@link TeamRepository#findBySlugAndDeletedAtIsNull} /
+     * {@link OrganizationRepository#findBySlugAndDeletedAtIsNull} で内部 ID を引く。
+     * 未存在の場合は {@link BusinessException} をスローする。</p>
      *
      * <p>その他のスコープ: Long 文字列はそのまま返し、変換不能な場合は {@code 0L} を返す。</p>
      *
      * @param scopeType    スコープ種別（例: "TEAM", "ORGANIZATION", "PUBLIC"）
-     * @param scopeIdStr   スコープID文字列（UUID文字列または Long 文字列）
+     * @param scopeIdStr   スコープID文字列（slug または Long 文字列）
      * @return 内部Long ID
      */
     private Long resolveScopeId(String scopeType, String scopeIdStr) {
@@ -80,19 +81,15 @@ public class TimelineFeedController {
         try {
             return Long.parseLong(scopeIdStr);
         } catch (NumberFormatException e) {
-            try {
-                UUID uuid = UUID.fromString(scopeIdStr);
-                if ("TEAM".equals(scopeType)) {
-                    return teamRepository.findByPublicId(uuid)
-                            .orElseThrow(() -> new BusinessException(TimelineErrorCode.POST_NOT_FOUND))
-                            .getId();
-                } else {
-                    return organizationRepository.findByPublicId(uuid)
-                            .orElseThrow(() -> new BusinessException(TimelineErrorCode.POST_NOT_FOUND))
-                            .getId();
-                }
-            } catch (IllegalArgumentException iae) {
-                throw new BusinessException(TimelineErrorCode.POST_NOT_FOUND);
+            // 数値でない場合はスラッグとして解決する
+            if ("TEAM".equals(scopeType)) {
+                return teamRepository.findBySlugAndDeletedAtIsNull(scopeIdStr)
+                        .orElseThrow(() -> new BusinessException(TimelineErrorCode.POST_NOT_FOUND))
+                        .getId();
+            } else {
+                return organizationRepository.findBySlugAndDeletedAtIsNull(scopeIdStr)
+                        .orElseThrow(() -> new BusinessException(TimelineErrorCode.POST_NOT_FOUND))
+                        .getId();
             }
         }
     }

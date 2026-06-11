@@ -32,7 +32,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -59,7 +58,7 @@ class TeamServiceTest {
 
     private static final Long USER_ID = 1L;
     private static final Long TEAM_ID = 10L;
-    private static final UUID TEAM_PUBLIC_ID = UUID.randomUUID();
+    private static final String TEAM_SLUG = "test-team";
 
     @Nested
     @DisplayName("createTeam")
@@ -109,10 +108,10 @@ class TeamServiceTest {
         @DisplayName("異常系: チーム不在でTEAM_001例外")
         void 取得_不在_例外() {
             // Given
-            given(teamRepository.findByPublicId(TEAM_PUBLIC_ID)).willReturn(Optional.empty());
+            given(teamRepository.findBySlugAndDeletedAtIsNull(TEAM_SLUG)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.getTeam(TEAM_PUBLIC_ID))
+            assertThatThrownBy(() -> service.getTeam(TEAM_SLUG))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TEAM_001"));

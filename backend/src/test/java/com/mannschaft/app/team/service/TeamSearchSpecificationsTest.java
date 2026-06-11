@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -55,6 +56,12 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
 
     @PersistenceContext
     private EntityManager em;
+
+    private static final AtomicInteger slugCounter = new AtomicInteger(0);
+
+    private static String nextSlug() {
+        return "t-" + slugCounter.incrementAndGet();
+    }
 
     private static final Long ORG_A = 1001L;
     private static final Long ORG_B = 1002L;
@@ -717,6 +724,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
     private Long persistTeam(String name, String kana, TeamEntity.Visibility v,
                              String prefecture, String city) {
         TeamEntity team = TeamEntity.builder()
+                .slug(nextSlug())
                 .name(name)
                 .nameKana(kana)
                 .visibility(v)
@@ -731,6 +739,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
     private Long persistTeamFull(String name, String kana, TeamEntity.Visibility v,
                                   String prefecture, String city, String template) {
         TeamEntity team = TeamEntity.builder()
+                .slug(nextSlug())
                 .name(name)
                 .nameKana(kana)
                 .visibility(v)
@@ -746,6 +755,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
     /** F22.1: 地域コード（名称なし）でチームを作る。 */
     private Long persistTeamWithCodes(String name, String kana, String prefectureCode, String cityCode) {
         TeamEntity team = TeamEntity.builder()
+                .slug(nextSlug())
                 .name(name)
                 .nameKana(kana)
                 .visibility(TeamEntity.Visibility.PUBLIC)
@@ -760,6 +770,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
     private Long persistTeamFullWithCodes(String name, String kana, String prefecture, String city,
                                           String prefectureCode, String cityCode) {
         TeamEntity team = TeamEntity.builder()
+                .slug(nextSlug())
                 .name(name)
                 .nameKana(kana)
                 .visibility(TeamEntity.Visibility.PUBLIC)
@@ -774,6 +785,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
 
     private Long persistDeletedTeam(String name, String kana) {
         TeamEntity team = TeamEntity.builder()
+                .slug(nextSlug())
                 .name(name)
                 .nameKana(kana)
                 .visibility(TeamEntity.Visibility.PUBLIC)
@@ -786,6 +798,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
 
     private Long persistArchivedTeam(String name, String kana) {
         TeamEntity team = TeamEntity.builder()
+                .slug(nextSlug())
                 .name(name)
                 .nameKana(kana)
                 .visibility(TeamEntity.Visibility.PUBLIC)
