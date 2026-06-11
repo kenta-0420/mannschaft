@@ -6,6 +6,8 @@ import type {
   MarketRefundRequest,
   MarketRefundResponse,
   RecruitmentPaymentResponse,
+  ReceivedEscrowPage,
+  EscrowStatus,
 } from '~/types/marketPayment'
 
 /**
@@ -17,16 +19,16 @@ import type {
  *   - GET  /api/v1/payment/escrow/recruitment/{listingId}/{participantId}/payment-intent
  *                                                                                    （札主の決済確認・第二陣 #1443）
  *   - GET  /api/v1/payment/escrow/{id}                                              （エスクロー状態照会・第二陣 #1443）
+ *   - GET  /api/v1/payment/escrow/received                                          （受取側のエスクロー一覧・Wave A #1452）
  *   - POST /api/v1/payment/escrow/{id}/refund                                       （エスクロー返金・受取側 ADMIN）
  *
  * 第二陣（EscrowPaymentController）で札主の決済確認 EP が実装されたため、従来「BE 欠落」として
  * 対象外にしていた謝礼決済確認 UI（札主のカード confirm）を本配線で有効化する。
  * clientSecret は GET payment-intent が支払者本人 × PENDING_CONFIRMATION 時のみ返す。
  *
- * BE 欠落（未実装・報告対象）:
- *   受取側 scope（応じ手/チーム/組織）が「受け取った謝礼エスクローの一覧」を取得する EP は存在しない。
- *   返金管理 UI は単一エスクロー照会（recruitment payment-intent で escrowTransactionId を解決）で
- *   最小配線する（一覧 EP は別途 BE 実装が必要・誤魔化さず報告・根治原則）。
+ * フォロー Wave A（#1452）で受取側のエスクロー一覧 EP（GET /escrow/received）が実装されたため、
+ * 受取側 ADMIN 向けの返金管理画面（一覧→返金）を本格化できる。一覧は scopeKind/scopeId で受取 scope を
+ * 指定し、PagedResponse<ReceivedEscrowResponse>（camelCase・clientSecret 非含有）を返す。
  */
 export function useMarketPaymentApi() {
   const api = useApi()
@@ -62,6 +64,30 @@ export function useMarketPaymentApi() {
     )
   }
 
+  /**
+   * 受取側（payee）が受け取ったエスクロー一覧を取得する（Wave A #1452）。
+   *
+   * scopeKind/scopeId で受取 scope を指定する（USER=本人 / TEAM=ADMIN / ORG=ADMIN・認可と IDOR は BE が担保）。
+   * status は任意（未指定で全状態）。レスポンスは PagedResponse<ReceivedEscrowResponse>（camelCase・
+   * clientSecret 非含有）。返却型は ReceivedEscrowPage（{ data, meta:{total,page,size,totalPages} }）。
+   */
+  async function getReceivedEscrows(
+    scopeKind: ScopeKind,
+    scopeId: number,
+    opts: { status?: EscrowStatus | null, page?: number, size?: number } = {},
+  ) {
+    const query: Record<string, string | number> = {
+      scopeKind,
+      scopeId,
+      page: opts.page ?? 0,
+      size: opts.size ?? 20,
+    }
+    if (opts.status != null) {
+      query.status = opts.status
+    }
+    return api<ReceivedEscrowPage>('/api/v1/payment/escrow/received', { query })
+  }
+
   /** エスクロー状態を照会する（支払者本人=clientSecret 含む / 受取側 ADMIN=状態・金額のみ）。 */
   async function getEscrow(escrowId: string) {
     return api<{ data: RecruitmentPaymentResponse }>(
@@ -81,6 +107,7 @@ export function useMarketPaymentApi() {
     createOnboardingLink,
     getConnectStatus,
     getRecruitmentPaymentIntent,
+    getReceivedEscrows,
     getEscrow,
     refund,
   }
