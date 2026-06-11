@@ -13,8 +13,10 @@
 --   2) 旧 MEMBERS_ONLY 行を SCOPE_AFFILIATED へ UPDATE
 --   3) ENUM を最終 6 値へ MODIFY し、DEFAULT を PUBLIC に確定（旧 MEMBERS_ONLY を物理的に削除）
 --
--- 採番: tournaments は V8.038 で作成、本系列（V9.2026*）の最新が V9.20260603000006。
---       本ファイルはそれより後のタイムスタンプ。tournaments 系列内で末尾に位置する。
+-- 採番: tournaments は V8.038 で作成済み。本マイグレーションは全体最大 major（origin/main は V81 系まで）
+--       の次として V82.001 を採番する（[[feedback_flyway_version_sort_after_global_max]] 準拠）。
+--       V82 は V8.038 含む全先行マイグレーションより後にソートされるため、from-scratch でも
+--       tournaments テーブル生成（V8.038）後に本 ALTER が走る正しい順序が保証される。
 
 -- 1) 過渡的 ENUM（新 6 値 + 旧 MEMBERS_ONLY）。NOT NULL は維持、DEFAULT は最終確定まで据え置き。
 ALTER TABLE tournaments

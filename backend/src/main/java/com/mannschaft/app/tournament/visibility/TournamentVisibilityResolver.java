@@ -26,9 +26,11 @@ import java.util.List;
  * <p>設計書: {@code docs/features/F00_content_visibility_resolver.md} §4.6 / §5.1 / §7.5 / §11.6
  * / §15 D-13/D-14/D-16。
  *
- * <p>機能 enum {@link TournamentVisibility} は {@code PUBLIC / MEMBERS_ONLY} の 2 値のみで、
- * CUSTOM / FOLLOWERS_ONLY / CUSTOM_TEMPLATE は持たない。{@link TournamentVisibilityMapper}
- * 経由で {@link StandardVisibility} に正規化し、status 軸は {@link TournamentStatusMapper}
+ * <p>機能 enum {@link TournamentVisibility} は F08.7 順位UI Wave0 で 6 値
+ * （{@code PUBLIC / SUPPORTERS_AND_ABOVE / MEMBERS_AND_ABOVE / ADMINS_AND_ABOVE /
+ * SCOPE_AFFILIATED / PARTICIPANTS_ONLY}）に拡張された。{@link TournamentVisibilityMapper}
+ * 経由で {@link StandardVisibility} に正規化し（PARTICIPANTS_ONLY は CUSTOM 軸へ写像し
+ * {@link #evaluateCustom} で参加チーム関係者判定）、status 軸は {@link TournamentStatusMapper}
  * で {@link ContentStatus} に正規化する。
  *
  * <p>Tournament は組織配下のコンテンツであり、スコープは常に {@code "ORGANIZATION"} 固定。
@@ -91,6 +93,11 @@ public class TournamentVisibilityResolver
      * <p>判定は {@link TournamentParticipantRepository#countActiveMemberOfAnyParticipantTeam}
      * を流用する（{@code tournament_participants × tournament_divisions × memberships} を 1 SQL で JOIN、
      * 連絡可能ステータス REGISTERED/ACTIVE の参加チームに限定）。クロスドメインは ID 参照 JOIN のみ（原則1）。</p>
+     *
+     * <p>観点5（意図確認・現状維持で正）: 当該 JOIN は {@code scope_type='TEAM'} のメンバーシップを
+     * ロールで絞らないため、参加チームの <b>SUPPORTER も可視</b>になる。これは PARTICIPANTS_ONLY の意図
+     * 「参加チーム関係者＝応援者を含む内輪」に合致するため、敢えてロール制限を入れない（_AND_ABOVE ラダーの
+     * MEMBERS_AND_ABOVE が応援者を除外するのとは別軸の、大会専用 CUSTOM 軸である点に注意）。</p>
      *
      * <p>未認証（{@code viewerUserId == null}）は不可視（fail-closed）。SystemAdmin は基底側の
      * 高速パスで本メソッドに到達しないため考慮不要。</p>

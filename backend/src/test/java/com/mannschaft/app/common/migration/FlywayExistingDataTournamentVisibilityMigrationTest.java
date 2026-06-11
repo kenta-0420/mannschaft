@@ -22,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * <b>既存データ（旧 visibility 値 MEMBERS_ONLY）を持つ MySQL に対し、
  * tournaments.visibility 6 値拡張マイグレーション
- * （{@code V9.20260611091634__alter_tournaments_visibility_six_levels.sql}）を含む
+ * （{@code V82.001__alter_tournaments_visibility_six_levels.sql}）を含む
  * 全マイグレーションがクラッシュせず最後まで成功すること</b>を検証する番人テスト。
  *
  * <h2>このテストが守る不変条件 / 背景</h2>

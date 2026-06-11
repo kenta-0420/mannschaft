@@ -16,6 +16,9 @@ import org.mockito.InjectMocks;
 import org.mockito.MockedStatic;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.prepost.PreAuthorize;
+
+import java.lang.reflect.Method;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -185,6 +188,34 @@ class StandingsControllerVisibilityTest {
 
                 verify(standingsCalculationService).recalculate(DIV_ID, T_ID);
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("認可（B-1/🟡）: 書込系 recalculate は org admin 限定の SpEL ガードを宣言している")
+    class RecalculateAuthorization {
+
+        @Test
+        @DisplayName("recalculate は @accessGuard.isScopeAdmin(..., #orgId, 'ORGANIZATION') を宣言している")
+        void recalculate_declares_org_admin_guard() throws NoSuchMethodException {
+            Method m = StandingsController.class.getMethod(
+                    "recalculate", Long.class, Long.class, Long.class);
+            PreAuthorize annotation = m.getAnnotation(PreAuthorize.class);
+            assertThat(annotation)
+                    .as("recalculate に @PreAuthorize が無いと読取権限だけで再計算を起動できてしまう")
+                    .isNotNull();
+            assertThat(annotation.value())
+                    .isEqualTo("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')");
+        }
+
+        @Test
+        @DisplayName("読取系（getStandings 等）には org admin ガードを付けない（一般会員の閲覧を塞がない）")
+        void read_handlers_not_admin_gated() throws NoSuchMethodException {
+            Method standings = StandingsController.class.getMethod(
+                    "getStandings", Long.class, Long.class, Long.class);
+            assertThat(standings.getAnnotation(PreAuthorize.class))
+                    .as("順位表 GET に org admin ガードが付くと一般会員が順位を見られなくなる")
+                    .isNull();
         }
     }
 }
