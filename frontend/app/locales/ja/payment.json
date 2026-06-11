@@ -93,6 +93,7 @@
       "loadPaymentsError": "支払い状況の取得に失敗しました",
       "remindSuccess": "リマインドを送信しました",
       "remindError": "送信に失敗しました",
+      "exportError": "CSVダウンロードに失敗しました",
       "status": {
         "PAID": "支払い済み",
         "UNPAID": "未払い",
@@ -117,6 +118,15 @@
       "expired": "期限切れ",
       "payer": "支払い者",
       "beneficiary": "対象会員"
+    },
+    "exportCsv": "CSVダウンロード",
+    "feeStatements": {
+      "title": "手数料明細",
+      "period": "対象月",
+      "totalFeeAmount": "手数料合計",
+      "issuerName": "発行者",
+      "noData": "対象月のデータがありません",
+      "loadError": "手数料明細の取得に失敗しました"
     },
     "guardianBulkPayment": {
       "title": "後見まとめ払い",
