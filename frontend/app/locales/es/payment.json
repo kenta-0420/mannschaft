@@ -93,6 +93,7 @@
       "loadPaymentsError": "Error al cargar el estado de pago",
       "remindSuccess": "Recordatorio enviado",
       "remindError": "Error al enviar el recordatorio",
+      "exportError": "Error al descargar el CSV",
       "status": {
         "PAID": "Pagado",
         "UNPAID": "Impagado",
@@ -117,6 +118,15 @@
       "expired": "Vencido",
       "payer": "Pagador",
       "beneficiary": "Beneficiario"
+    },
+    "exportCsv": "Descargar CSV",
+    "feeStatements": {
+      "title": "Extracto de comisiones",
+      "period": "Mes de facturación",
+      "totalFeeAmount": "Comisión total",
+      "issuerName": "Emisor",
+      "noData": "No hay datos para el mes seleccionado",
+      "loadError": "No se pudo cargar el extracto de comisiones"
     },
     "guardianBulkPayment": {
       "title": "Pago masivo del tutor",

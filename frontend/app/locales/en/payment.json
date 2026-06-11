@@ -93,6 +93,7 @@
       "loadPaymentsError": "Failed to load payment status",
       "remindSuccess": "Reminder sent",
       "remindError": "Failed to send reminder",
+      "exportError": "Failed to download CSV",
       "status": {
         "PAID": "Paid",
         "UNPAID": "Unpaid",
@@ -117,6 +118,15 @@
       "expired": "Expired",
       "payer": "Payer",
       "beneficiary": "Beneficiary"
+    },
+    "exportCsv": "Download CSV",
+    "feeStatements": {
+      "title": "Fee Statement",
+      "period": "Billing Month",
+      "totalFeeAmount": "Total Fee",
+      "issuerName": "Issuer",
+      "noData": "No data for the selected month",
+      "loadError": "Failed to load fee statement"
     },
     "guardianBulkPayment": {
       "title": "Guardian Bulk Payment",
