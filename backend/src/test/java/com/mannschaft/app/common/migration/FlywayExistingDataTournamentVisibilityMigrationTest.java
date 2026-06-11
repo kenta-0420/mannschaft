@@ -102,13 +102,17 @@ class FlywayExistingDataTournamentVisibilityMigrationTest {
                     .as("移行前は MEMBERS_ONLY を含む旧 ENUM であること")
                     .contains("MEMBERS_ONLY");
 
-            // FK 充足のため org / user を 1 件ずつ seed
+            // FK 充足のため organization を 1 件 seed する。
+            // organizations は seed migration を持たないため id=1 は未使用＝衝突しない。
             st.executeUpdate(
                     "INSERT INTO organizations (id, name, org_type, visibility, hierarchy_visibility, "
                             + "supporter_enabled, version, created_at, updated_at, public_id) VALUES "
                             + "(1, 'TN移行組織', 'OTHER', 'PUBLIC', 'NONE', 1, 0, NOW(), NOW(), "
                             + "UUID_TO_BIN(UUID(), 1))");
-            st.executeUpdate(insertUser(1, "tn.migr1@example.com"));
+            // created_by 用ユーザーは V1.012__seed_system_user.sql が id=1 を既に投入済み。
+            // ここで insertUser(1, ...) すると users.PRIMARY が重複し
+            // SQLIntegrityConstraintViolationException で落ちるため自前 seed はしない
+            // （insertTournament は created_by=1 を参照するので FK は充足される）。
 
             // 旧値 MEMBERS_ONLY と PUBLIC をそれぞれ seed（旧 ENUM が実効しているため
             // ここで旧2値以外を入れようとすると失敗する＝旧スキーマの証明）。
@@ -157,18 +161,6 @@ class FlywayExistingDataTournamentVisibilityMigrationTest {
                     .as("旧 MEMBERS_ONLY は ENUM から削除されていること")
                     .doesNotContain("'MEMBERS_ONLY'");
         }
-    }
-
-    private static String insertUser(long id, String email) {
-        return "INSERT INTO users ("
-                + "id, email, last_name, first_name, display_name, status, "
-                + "is_searchable, handle_searchable, contact_approval_required, "
-                + "online_visibility, dm_receive_from, encryption_key_version, "
-                + "locale, timezone, reporting_restricted, follow_list_visibility, "
-                + "care_notification_enabled, offline_only, created_at, updated_at) VALUES ("
-                + id + ", '" + email + "', '姓', '名', '姓 名', 'ACTIVE', "
-                + "1, 1, 1, 'NOBODY', 'ANYONE', 1, 'ja', 'Asia/Tokyo', 0, 'PUBLIC', 1, 0, "
-                + "NOW(), NOW())";
     }
 
     private static String insertTournament(long id, String visibility, String status, boolean softDeleted) {
