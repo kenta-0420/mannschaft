@@ -13,6 +13,7 @@ import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,9 +43,17 @@ public class IcalService {
     private static final int ICAL_MONTHS_PAST = 2;
     private static final int ICAL_MONTHS_FUTURE = 12;
     private static final int ICAL_MAX_EVENTS = 500;
-    private static final String ICAL_BASE_URL = "/ical/";
+    private static final String ICAL_BASE_PATH = "/ical/";
     private static final DateTimeFormatter ICAL_DATE_FORMAT =
             DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss");
+
+    /**
+     * フロントエンド / iCal URL の基底 URL。
+     * 正準プロパティ {@code app.base-url}（環境変数 {@code APP_BASE_URL}）から注入。
+     * webcal URL 生成時は {@link #buildWebcalUrl(String)} でスキームを変換して使用する。
+     */
+    @Value("${app.base-url}")
+    private String appBaseUrl;
 
     private final UserIcalTokenRepository icalTokenRepository;
     private final ScheduleRepository scheduleRepository;
@@ -314,12 +323,40 @@ public class IcalService {
     }
 
     /**
+     * {@code https://} または {@code http://} で始まる URL を {@code webcal://} スキームに変換する。
+     *
+     * <p>本番（Cloudflare 同一オリジン構成）では base-url のホストがそのまま webcal ホストになるため、
+     * ホスト:ポート部分は base-url のものをそのまま使用する。</p>
+     *
+     * <p>例:</p>
+     * <ul>
+     *   <li>{@code https://app.example.com/ical/abc.ics} → {@code webcal://app.example.com/ical/abc.ics}</li>
+     *   <li>{@code http://localhost:3000/ical/abc.ics} → {@code webcal://localhost:3000/ical/abc.ics}</li>
+     * </ul>
+     *
+     * @param httpsUrl {@code https://} または {@code http://} で始まる URL
+     * @return {@code webcal://} スキームに変換した URL
+     */
+    public String buildWebcalUrl(String httpsUrl) {
+        if (httpsUrl == null) return null;
+        if (httpsUrl.startsWith("https://")) {
+            return "webcal://" + httpsUrl.substring("https://".length());
+        }
+        if (httpsUrl.startsWith("http://")) {
+            return "webcal://" + httpsUrl.substring("http://".length());
+        }
+        // 想定外のスキームはそのまま返す（フォールバック）
+        return httpsUrl;
+    }
+
+    /**
      * トークンエンティティからレスポンスDTOを構築する。
      */
     private IcalTokenResponse buildTokenResponse(UserIcalTokenEntity entity) {
         String token = entity.getToken();
-        String baseUrl = ICAL_BASE_URL + token + ".ics";
-        String webcalUrl = "webcal://localhost" + baseUrl;
+        // ical エンドポイントの完全 URL（https://app.example.com/ical/{token}.ics）
+        String icalUrl = appBaseUrl + ICAL_BASE_PATH + token + ".ics";
+        String webcalUrl = buildWebcalUrl(icalUrl);
 
         Long userId = entity.getUserId();
         List<ScopedUrlItem> scopedUrls = new ArrayList<>();
@@ -329,7 +366,7 @@ public class IcalService {
             Set<Long> teamIds = teamRoles.stream().map(UserRoleEntity::getTeamId).collect(Collectors.toSet());
             Map<Long, String> teamNames = nameResolverService.resolveTeamNames(teamIds);
             for (Long teamId : teamIds) {
-                String scopedUrl = baseUrl + "?scope=team&scopeId=" + teamId;
+                String scopedUrl = icalUrl + "?scope=team&scopeId=" + teamId;
                 scopedUrls.add(new ScopedUrlItem("TEAM", teamId,
                         teamNames.getOrDefault(teamId, "チーム " + teamId),
                         scopedUrl, scopedUrl + "&action=subscribe"));
@@ -341,21 +378,21 @@ public class IcalService {
             Set<Long> orgIds = orgRoles.stream().map(UserRoleEntity::getOrganizationId).collect(Collectors.toSet());
             Map<Long, String> orgNames = nameResolverService.resolveOrganizationNames(orgIds);
             for (Long orgId : orgIds) {
-                String scopedUrl = baseUrl + "?scope=organization&scopeId=" + orgId;
+                String scopedUrl = icalUrl + "?scope=organization&scopeId=" + orgId;
                 scopedUrls.add(new ScopedUrlItem("ORGANIZATION", orgId,
                         orgNames.getOrDefault(orgId, "組織 " + orgId),
                         scopedUrl, scopedUrl + "&action=subscribe"));
             }
         }
 
-        String personalUrl = baseUrl + "?scope=personal";
+        String personalUrl = icalUrl + "?scope=personal";
         scopedUrls.add(new ScopedUrlItem("PERSONAL", userId, "個人",
                 personalUrl, personalUrl + "&action=subscribe"));
 
         return new IcalTokenResponse(
                 token,
-                baseUrl,
-                baseUrl + "?action=subscribe",
+                icalUrl,
+                icalUrl + "?action=subscribe",
                 webcalUrl,
                 scopedUrls,
                 entity.getIsActive(),

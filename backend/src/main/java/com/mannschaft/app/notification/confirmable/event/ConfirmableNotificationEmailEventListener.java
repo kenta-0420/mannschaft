@@ -29,7 +29,7 @@ import java.util.Map;
  * <p>{@link ConfirmableNotificationCreatedEvent} をトランザクションコミット後に受け取り、
  * 各受信者へ確認URLを含むメールを非同期で送信する。</p>
  *
- * <p>確認URL形式: {@code {frontendUrl}/notifications/confirm/{confirmToken}}</p>
+ * <p>確認URL形式: {@code {baseUrl}/notifications/confirm/{confirmToken}}</p>
  *
  * <p><b>LazyLoad 回避設計</b>: {@code @TransactionalEventListener(AFTER_COMMIT)} + {@code @Async} の
  * 組み合わせでは元のトランザクションがすでに終了しているため、{@code REQUIRES_NEW} で
@@ -50,8 +50,8 @@ public class ConfirmableNotificationEmailEventListener {
     private final UserRepository userRepository;
     private final TemplateEngine templateEngine;
 
-    @Value("${mannschaft.email.frontend-url:http://localhost:3000}")
-    private String frontendUrl;
+    @Value("${app.base-url}")
+    private String baseUrl;
 
     /**
      * 確認通知作成イベントを処理し、各受信者にメールを送信する。
@@ -96,7 +96,7 @@ public class ConfirmableNotificationEmailEventListener {
 
             try {
                 Locale locale = resolveLocale(user);
-                String confirmUrl = frontendUrl + "/notifications/confirm/" + confirmToken;
+                String confirmUrl = baseUrl + "/notifications/confirm/" + confirmToken;
                 String subject = getMessage("email.confirmableNotification.subject", locale);
                 String htmlBody = renderEmailTemplate(confirmUrl, subject, locale);
                 emailOutboxService.enqueue(new EmailOutboxRequest(

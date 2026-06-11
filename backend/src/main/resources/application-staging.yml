@@ -29,6 +29,11 @@ logging:
     # Hibernate 統計初期化ログを INFO で表示
     org.hibernate.stat.internal.StatisticsInitiator: INFO
 
+app:
+  # staging 環境の APP_BASE_URL。デフォルト値は staging 想定のダミー値。
+  # 実運用では環境変数 APP_BASE_URL を設定すること。
+  base-url: ${APP_BASE_URL:https://staging.mannschaft.example}
+
 # 認証 Cookie の Secure 属性。staging も HTTPS 前提のためデフォルト true。
 # 設計書: docs/security/02_cookie_and_session.md §2.1
 mannschaft:
