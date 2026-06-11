@@ -104,11 +104,13 @@ class FlywayExistingDataTournamentVisibilityMigrationTest {
 
             // FK 充足のため organization を 1 件 seed する。
             // organizations は seed migration を持たないため id=1 は未使用＝衝突しない。
+            // public_id は V71.20260609125253 で slug に置換済み（DROP）のため、
+            // PRE_TARGET(81.001) 時点で実在する NOT NULL UNIQUE 列 slug を与える。
             st.executeUpdate(
                     "INSERT INTO organizations (id, name, org_type, visibility, hierarchy_visibility, "
-                            + "supporter_enabled, version, created_at, updated_at, public_id) VALUES "
+                            + "supporter_enabled, version, created_at, updated_at, slug) VALUES "
                             + "(1, 'TN移行組織', 'OTHER', 'PUBLIC', 'NONE', 1, 0, NOW(), NOW(), "
-                            + "UUID_TO_BIN(UUID(), 1))");
+                            + "'tn-existingdata-org')");
             // created_by 用ユーザーは V1.012__seed_system_user.sql が id=1 を既に投入済み。
             // ここで insertUser(1, ...) すると users.PRIMARY が重複し
             // SQLIntegrityConstraintViolationException で落ちるため自前 seed はしない
