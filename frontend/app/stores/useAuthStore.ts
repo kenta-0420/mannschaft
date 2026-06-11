@@ -41,7 +41,61 @@ export const useAuthStore = defineStore('auth', {
       this.refreshToken = refreshToken
     },
 
-    setUser(user: AuthUser) {
+    /**
+     * PWA キャッシュ（Cache Storage + IndexedDB）を破棄する共通処理。
+     * ログアウト時とユーザー切替時の両方から呼ばれる。
+     * 個人データが Service Worker キャッシュに残存するリスクを根治する。
+     */
+    async clearUserCaches(): Promise<void> {
+      if (!import.meta.client) return
+
+      // PWA: api-cache を削除（認証付き API レスポンスの情報漏洩防止）
+      if ('caches' in window) {
+        try {
+          await caches.delete('api-cache')
+        } catch {
+          // キャッシュ削除失敗は処理継続（ログアウト/切替自体をブロックしない）
+        }
+      }
+
+      // PWA: IndexedDB (Dexie) のオフライン DB をクリア
+      try {
+        const { offlineDb } = await import('~/composables/useOfflineDb')
+        await offlineDb.delete()
+      } catch {
+        // DB 削除失敗は処理継続
+      }
+
+      // F18 ウォレット: オフラインキャッシュ DB をクリア（鍵ごと削除）
+      // 設計書 §7.4「ログアウト時に鍵を破棄 + IndexedDB の全レコードを削除」
+      try {
+        const { deleteWalletOfflineDb } = await import('~/utils/walletOfflineStore')
+        await deleteWalletOfflineDb()
+      } catch {
+        // DB 削除失敗は処理継続
+      }
+    },
+
+    async setUser(user: AuthUser) {
+      // ユーザー切替を検知: localStorage に保存された旧ユーザーの id と
+      // 新ユーザーの id が異なる場合のみ api-cache を破棄する。
+      // 同一ユーザーのページリロード（復元）では破棄しない
+      // → オフライン機能が毎回のリロードで殺されることを防ぐ。
+      if (import.meta.client) {
+        try {
+          const savedRaw = localStorage.getItem('currentUser')
+          if (savedRaw) {
+            const savedUser = JSON.parse(savedRaw) as AuthUser
+            if (savedUser.id !== user.id) {
+              // 別ユーザーへの切替: 旧ユーザーの個人データキャッシュを破棄
+              await this.clearUserCaches()
+            }
+          }
+        } catch {
+          // JSON パースエラー等は無視して続行
+        }
+      }
+
       this.user = user
       if (import.meta.client) {
         localStorage.setItem('currentUser', JSON.stringify(user))
@@ -75,7 +129,9 @@ export const useAuthStore = defineStore('auth', {
         localStorage.removeItem('refreshToken')
         localStorage.removeItem('currentUser')
 
-        // PWA: Cache Storage をクリア
+        // PWA: Cache Storage を全クリア（api-cache + その他全エントリ）
+        // api-cache の破棄は clearUserCaches でも行われるが、
+        // ログアウト時はあらゆるキャッシュを完全消去するため全削除する。
         if ('caches' in window) {
           try {
             const names = await caches.keys()
@@ -85,22 +141,8 @@ export const useAuthStore = defineStore('auth', {
           }
         }
 
-        // PWA: IndexedDB (Dexie) のオフライン DB をクリア
-        try {
-          const { offlineDb } = await import('~/composables/useOfflineDb')
-          await offlineDb.delete()
-        } catch {
-          // DB 削除失敗は握りつぶす
-        }
-
-        // F18 ウォレット: オフラインキャッシュ DB をクリア（鍵ごと削除）
-        // 設計書 §7.4「ログアウト時に鍵を破棄 + IndexedDB の全レコードを削除」
-        try {
-          const { deleteWalletOfflineDb } = await import('~/utils/walletOfflineStore')
-          await deleteWalletOfflineDb()
-        } catch {
-          // DB 削除失敗は握りつぶす（ログアウト自体は継続）
-        }
+        // PWA: IndexedDB (Dexie) + F18 ウォレット DB をクリア（clearUserCaches と共通化）
+        await this.clearUserCaches()
       }
       useChatTabsStore().clearAll()
       navigateTo('/login')

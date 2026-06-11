@@ -33,7 +33,7 @@
 | `style-src` | `'self' 'unsafe-inline' https://fonts.googleapis.com` | PrimeVue/Tailwind の動的インラインスタイル + Google Fonts CSS。`'unsafe-inline'` は当面維持（§4） |
 | `font-src` | `'self' https://fonts.gstatic.com data:` | Noto Sans JP フォントファイル |
 | `img-src` | `'self' data: blob:` + R2 エンドポイント + CDN Workers ドメイン | アバター・アップロード画像・OGP。R2/CDN は環境変数から動的構成 |
-| `connect-src` | `'self'` + `NUXT_PUBLIC_API_BASE` + `https://fonts.googleapis.com https://fonts.gstatic.com` | API 通信 + フォント preconnect |
+| `connect-src` | `'self'` + `NUXT_PUBLIC_API_BASE`（空文字時は含めない） + `https://fonts.googleapis.com https://fonts.gstatic.com` + `ws: wss:` | API 通信 + フォント preconnect + WebSocket。本番（NUXT_PUBLIC_API_BASE=''）時は 'self' で足りるため apiBase は含めない |
 | `frame-src` | `https://www.google.com` | `PublicMapEmbed.vue` の Google Maps 埋め込み |
 | `worker-src` | `'self' blob:` | `@vite-pwa/nuxt` の service worker |
 | `manifest-src` | `'self'` | PWA マニフェスト |
@@ -177,6 +177,19 @@ CSP 違反を収集できるよう、`report-uri` ディレクティブを追加
 - 強制モード（`contentSecurityPolicyReportOnly: false`）は維持する。Report-Only への切替は
   §2.2 のとおり観測が必要になった場合に行う。
 
+#### apiBase 二層化（NUXT_PUBLIC_API_BASE vs NUXT_INTERNAL_API_BASE）
+
+本番は Cloudflare 経由の FE/BE 同一オリジン構成のため、ブラウザ用 API ベース URL は `NUXT_PUBLIC_API_BASE=''`（空文字・相対パス）で運用する。このとき `'self'` で API 通信がカバーされるため connect-src への apiBase 追加は不要（空文字が混入しないよう `nuxt.config.ts` でガード済み）。
+
+一方、Nitro サーバーサイド（SSR / server plugins）は相対パスではバックエンドに到達できない。そのため **サーバー専用の絶対 URL を `internalApiBase`（`NUXT_INTERNAL_API_BASE`）として別途管理**する。
+
+| 環境変数 | スコープ | 用途 | 本番推奨値 |
+|---|---|---|---|
+| `NUXT_PUBLIC_API_BASE` | ブラウザ + サーバー（public） | ブラウザからの API 通信 | `''`（同一オリジン・相対パス） |
+| `NUXT_INTERNAL_API_BASE` | サーバーサイドのみ（非 public） | Nitro server plugins（`ssr-error-logger.ts` 等）からの BE 呼び出し | `http://backend:8080`（コンテナ内部名等） |
+
+`server/plugins/ssr-error-logger.ts` は `config.internalApiBase` を参照する（`config.public.apiBase` は参照しない）。
+
 ---
 
 ## 5. TLS / HTTPS 強制（方針確定）
@@ -238,3 +251,4 @@ CSP 違反を収集できるよう、`report-uri` ディレクティブを追加
 | 2026-05-26 | 新規作成。nuxt-security による nonce CSP・各ヘッダー・責務分担を定義 |
 | 2026-05-26 | フロント実装（`feature/security-fe-csp`）。`nuxt-security@2.6.0` 導入、`frontend/nuxt.config.ts` に `security: {...}` を追加。nonce 有効・CSRF/rateLimiter/xssValidator/corsHandler 等は無効化（API 防御はバックエンド責務）。Permissions-Policy は実コード棚卸し結果（geolocation/camera/screen-wake-lock/publickey-credentials-get/web-share/fullscreen を `self` 許可、その他無効化）を反映。devtools を本番無効化。実機 CSP 検証（PrimeVue ダイアログ・Google Maps 埋め込み・画像表示・PWA SW 登録）は残課題 |
 | 2026-05-26 | CSP 精緻化（`feature/security-fe-csp-refine`）。①style-src の nonce 化可否を実地検証し「現状不可（PrimeVue 4.5.4 のクライアント実行時 `useStyle` 注入 vs nuxt-security の per-request nonce 不一致）」と結論、`'unsafe-inline'` 維持を確定（§4.0）。②CSP `report-uri` を追加（`/api/v1/security/csp-reports`、受信 EP は未実装＝別途起票、§4.1）。`report-to` は companion ヘッダー不在のため見送り。③SRI は外部 JS なし・Google Fonts は SRI 非推奨で現状 N/A、自オリジンバンドルは nuxt-security `sri:true` が自動付与済みと整理（§8.1） |
+| 2026-06-11 | apiBase 二層化（§4.1 末尾追記）。`NUXT_PUBLIC_API_BASE=''`（本番同一オリジン相対パス）と `NUXT_INTERNAL_API_BASE`（Nitro サーバー用絶対 URL）を分離。connect-src の空文字ガード対応（§2.1 connect-src 更新）。`ssr-error-logger.ts` が `config.internalApiBase` を参照するよう変更 |
