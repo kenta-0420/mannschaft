@@ -9,6 +9,10 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.payment.connect.dto.ConnectStatusResponse;
 import com.mannschaft.app.payment.connect.dto.OnboardingLinkRequest;
 import com.mannschaft.app.payment.connect.dto.OnboardingLinkResponse;
+import com.mannschaft.app.payment.escrow.EscrowLifecycleService;
+import com.mannschaft.app.payment.escrow.EscrowStatus;
+import com.mannschaft.app.payment.escrow.EscrowTransactionEntity;
+import com.mannschaft.app.payment.escrow.EscrowTransactionRepository;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +51,8 @@ public class ConnectAccountService {
     private final AccessControlService accessControlService;
     private final PayeeScopeResolver payeeScopeResolver;
     private final ObjectMapper objectMapper;
+    private final EscrowTransactionRepository escrowTransactionRepository;
+    private final EscrowLifecycleService escrowLifecycleService;
 
     /**
      * Connect onboarding リンクを発行する（設計書 02 §2.1）。
@@ -142,6 +148,8 @@ public class ConnectAccountService {
             return;
         }
         ConnectAccountEntity account = found.get();
+        // 昇格判定: payouts_enabled が false→true へ遷移したか（鏡像更新の前に旧値を退避）。
+        boolean wasPayoutsEnabled = Boolean.TRUE.equals(account.getPayoutsEnabled());
         account.setChargesEnabled(chargesEnabled);
         account.setPayoutsEnabled(payoutsEnabled);
         account.setRequirementsDue(serializeRequirements(requirementsDue));
@@ -149,6 +157,41 @@ public class ConnectAccountService {
         connectAccountRepository.save(account);
         log.info("Connect 鏡像更新: stripeAccountId={}, payoutsEnabled={}, status={}",
                 stripeAccountId, payoutsEnabled, account.getOnboardingStatus());
+
+        // 第三陣: payouts_enabled が false→true に遷移したら、この口座を payee とする HELD escrow を昇格する
+        // （設計書 02 §5.2）。鏡像更新（既存処理）は壊さず、その後段に昇格を足す。
+        if (!wasPayoutsEnabled && payoutsEnabled) {
+            promoteHeldEscrowsForPayee(account);
+        }
+    }
+
+    /**
+     * 受取口座（payee）の onboarding 完了（payouts_enabled=true）に伴い、当該 connect_account を payee とする
+     * {@link com.mannschaft.app.payment.escrow.EscrowStatus#HELD} escrow を順に昇格する（設計書 02 §5.2・第三陣）。
+     *
+     * <p>各 escrow は {@link EscrowLifecycleService#promoteHeldEscrow}（{@code REQUIRES_NEW}＋行ロック＋冪等）で
+     * 個別に処理する。1 件の失敗（Stripe 例外等）は握りつぶさず ERROR ログに残し、他件の昇格を継続する
+     * （複数 HELD escrow で 1 件が他を巻き込まない・症状を隠さない＝CLAUDE.md 根治原則）。</p>
+     */
+    private void promoteHeldEscrowsForPayee(ConnectAccountEntity account) {
+        List<EscrowTransactionEntity> held = escrowTransactionRepository
+                .findByPayeeConnectAccountIdAndStatus(account.getId(), EscrowStatus.HELD);
+        if (held.isEmpty()) {
+            return;
+        }
+        log.info("HELD escrow の昇格を開始: payeeAccountId={}, 対象={}件", account.getId(), held.size());
+        int promoted = 0;
+        for (EscrowTransactionEntity escrow : held) {
+            try {
+                if (escrowLifecycleService.promoteHeldEscrow(escrow.getId())) {
+                    promoted++;
+                }
+            } catch (RuntimeException ex) {
+                log.error("HELD escrow の昇格に失敗（他件は継続）: escrowId={}, reason={}",
+                        escrow.getId(), ex.getMessage(), ex);
+            }
+        }
+        log.info("HELD escrow の昇格完了: payeeAccountId={}, 昇格={}/{}件", account.getId(), promoted, held.size());
     }
 
     /**

@@ -71,6 +71,7 @@ export default {
       "cancelMyApplication": "Cancel my application",
       "joinWaitlist": "Join waitlist",
       "viewDetails": "View details",
+      "confirmApplication": "Confirm",
       "createPolicy": "Create policy"
     },
     "confirmModal": {

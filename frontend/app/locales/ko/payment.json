@@ -72,6 +72,52 @@
         }
       }
     },
+    "term": {
+      "periodLabel": "유효 기간",
+      "from": "시작",
+      "until": "종료",
+      "typeLabel": {
+        "ANNUAL_FEE": "연액",
+        "MONTHLY_FEE": "월액",
+        "ITEM": "단품",
+        "DONATION": "기부",
+        "TERM": "기간 요금"
+      }
+    },
+    "admin": {
+      "pageTitle": "결제 관리",
+      "itemsTitle": "결제 항목",
+      "selectItem": "결제 항목을 선택해 주세요",
+      "remindUnpaid": "미납 알림",
+      "loadItemsError": "결제 항목을 불러오지 못했습니다",
+      "loadPaymentsError": "결제 상태를 불러오지 못했습니다",
+      "remindSuccess": "알림을 전송했습니다",
+      "remindError": "전송에 실패했습니다",
+      "status": {
+        "PAID": "납부 완료",
+        "UNPAID": "미납",
+        "EXPIRED": "만료됨",
+        "PENDING": "보류 중",
+        "REFUNDED": "환불됨",
+        "CANCELLED": "취소됨"
+      }
+    },
+    "receipt": {
+      "title": "영수증",
+      "download": "다운로드",
+      "issuedBy": "발행자",
+      "amount": "금액",
+      "issuedDate": "발행일",
+      "pending": "준비 중",
+      "noReceipts": "영수증 없음",
+      "loadError": "결제 내역을 불러오지 못했습니다",
+      "loadReceiptError": "영수증을 불러오지 못했습니다"
+    },
+    "summary": {
+      "expired": "만료됨",
+      "payer": "결제자",
+      "beneficiary": "수혜자"
+    },
     "guardianBulkPayment": {
       "title": "보호자 일괄 결제",
       "subtitle": "관리하는 자녀의 미납 회비를 한 번에 결제할 수 있습니다",

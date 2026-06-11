@@ -72,6 +72,52 @@
         }
       }
     },
+    "term": {
+      "periodLabel": "有效期间",
+      "from": "开始",
+      "until": "结束",
+      "typeLabel": {
+        "ANNUAL_FEE": "年费",
+        "MONTHLY_FEE": "月费",
+        "ITEM": "单品",
+        "DONATION": "捐款",
+        "TERM": "期间费用"
+      }
+    },
+    "admin": {
+      "pageTitle": "支付管理",
+      "itemsTitle": "支付项目",
+      "selectItem": "请选择支付项目",
+      "remindUnpaid": "催缴未付款",
+      "loadItemsError": "获取支付项目失败",
+      "loadPaymentsError": "获取支付状态失败",
+      "remindSuccess": "催缴通知已发送",
+      "remindError": "发送失败",
+      "status": {
+        "PAID": "已支付",
+        "UNPAID": "未支付",
+        "EXPIRED": "已过期",
+        "PENDING": "待处理",
+        "REFUNDED": "已退款",
+        "CANCELLED": "已取消"
+      }
+    },
+    "receipt": {
+      "title": "收据",
+      "download": "下载",
+      "issuedBy": "发行方",
+      "amount": "金额",
+      "issuedDate": "发行日期",
+      "pending": "准备中",
+      "noReceipts": "暂无收据",
+      "loadError": "获取支付记录失败",
+      "loadReceiptError": "获取收据失败"
+    },
+    "summary": {
+      "expired": "已过期",
+      "payer": "付款方",
+      "beneficiary": "受益人"
+    },
     "guardianBulkPayment": {
       "title": "监护人批量付款",
       "subtitle": "可以一次性支付您管理的孩子的未缴会费",

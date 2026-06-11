@@ -8,6 +8,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
  *   MKT-PAY-002: getConnectStatus → GET /api/v1/payment/connect/status（USER は scopeId 省略）
  *   MKT-PAY-003: getConnectStatus → scopeId 指定時は query に載せる
  *   MKT-PAY-004: refund → POST /api/v1/payment/escrow/{id}/refund に camelCase body
+ *   MKT-PAY-005: getRecruitmentPaymentIntent → GET .../recruitment/{listingId}/{participantId}/payment-intent
+ *   MKT-PAY-006: getEscrow → GET /api/v1/payment/escrow/{id}
  */
 
 const mockFetch = vi.fn()
@@ -100,5 +102,41 @@ describe('useMarketPaymentApi', () => {
       method: 'POST',
       body,
     })
+  })
+
+  it('MKT-PAY-005: getRecruitmentPaymentIntent は GET recruitment/{listingId}/{participantId}/payment-intent を呼ぶ', async () => {
+    mockFetch.mockResolvedValueOnce({
+      data: {
+        clientSecret: 'pi_123_secret_abc',
+        escrowTransactionId: '0190-uuid',
+        status: 'PENDING_CONFIRMATION',
+        faceAmount: 10000,
+        chargeAmount: 10250,
+        applicationFeeAmount: 250,
+      },
+    })
+    const api = useMarketPaymentApi()
+    await api.getRecruitmentPaymentIntent(11, 22)
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/v1/payment/escrow/recruitment/11/22/payment-intent',
+    )
+  })
+
+  it('MKT-PAY-006: getEscrow は GET /api/v1/payment/escrow/{id} を呼ぶ', async () => {
+    mockFetch.mockResolvedValueOnce({
+      data: {
+        clientSecret: null,
+        escrowTransactionId: '0190-uuid',
+        status: 'AUTHORIZED',
+        faceAmount: 10000,
+        chargeAmount: 10250,
+        applicationFeeAmount: 250,
+      },
+    })
+    const api = useMarketPaymentApi()
+    await api.getEscrow('0190-uuid')
+
+    expect(mockFetch).toHaveBeenCalledWith('/api/v1/payment/escrow/0190-uuid')
   })
 })

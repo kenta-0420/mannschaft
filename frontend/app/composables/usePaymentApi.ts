@@ -4,6 +4,7 @@ import type {
   CheckoutSessionResponse,
   PaymentSummaryResponse,
   MyPaymentResponse,
+  MemberPaymentReceiptResponse,
 } from '~/types/payment'
 
 export function usePaymentApi() {
@@ -101,6 +102,14 @@ export function usePaymentApi() {
     })
   }
 
+  /**
+   * F08.9 P6: 支払い項目を ID で取得する（TERM 型の有効期間表示等に使用）。
+   * BE エンドポイント: GET /api/v1/payment-items/{itemId}（P6 実装待ち）
+   */
+  async function getPaymentItemById(itemId: number) {
+    return api<{ data: PaymentItemResponse }>(`/api/v1/payment-items/${itemId}`)
+  }
+
   // === Update Payment ===
   async function updatePayment(
     scopeType: 'team' | 'organization',
@@ -150,6 +159,15 @@ export function usePaymentApi() {
     )
   }
 
+  // === Receipt ===
+  /**
+   * F08.9 P8: 領収書取得。
+   * BE: GET /api/v1/member-payments/{memberPaymentId}/receipt
+   */
+  async function getReceipt(memberPaymentId: number) {
+    return api<{ data: MemberPaymentReceiptResponse }>(`/api/v1/member-payments/${memberPaymentId}/receipt`)
+  }
+
   // === Subscriptions ===
   async function cancelSubscription(itemId: number, subscriptionId: number) {
     return api(`/api/v1/payment-items/${itemId}/subscriptions/${subscriptionId}`, {
@@ -175,6 +193,7 @@ export function usePaymentApi() {
     sendReminder,
     getPaymentSummary,
     createCheckoutSession,
+    getPaymentItemById,
     getMyPayments,
     getMySubscriptions,
     getPaymentRequirements,
@@ -183,5 +202,6 @@ export function usePaymentApi() {
     refundPayment,
     cancelSubscription,
     resumeSubscription,
+    getReceipt,
   }
 }

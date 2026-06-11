@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -56,12 +57,17 @@ public class PaymentSummaryService {
         long paidCount = memberPaymentRepository.countByPaymentItemIdAndStatus(item.getId(), PaymentStatus.PAID);
         var totalCollected = memberPaymentRepository.sumPaidAmountByPaymentItemId(item.getId());
 
+        // F08.9 P8: 期限切れ PAID 件数（valid_until < TODAY の PAID レコード数）
+        long expiredCount = memberPaymentRepository.countExpiredPaidByPaymentItemId(
+                item.getId(), LocalDate.now());
+
         long unpaidCount = Math.max(0, totalMembers - paidCount);
         return new PaymentSummaryResponse.ItemSummary(
                 item.getId(), item.getName(), item.getType().name(),
                 item.getAmount(), item.getCurrency(),
                 paidCount, unpaidCount, totalCollected,
-                item.getIsActive(), item.getDisplayOrder()
+                item.getIsActive(), item.getDisplayOrder(),
+                expiredCount
         );
     }
 }

@@ -20,10 +20,12 @@ import com.mannschaft.app.tournament.repository.TournamentStandingRepository;
 import com.mannschaft.app.tournament.repository.TournamentTiebreakerRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -50,10 +52,25 @@ public class StandingsCalculationService {
 
     /**
      * 順位表再計算イベントを受信する。
+     *
+     * <p><b>レース条件根治（05 §H.0 訂正）</b>: 以前は {@code @Async @EventListener} だったため、
+     * 発火元TX（{@link MatchService#updateScore} の {@code @Transactional}、および入口①
+     * {@code MatchScoreFixtureListener} の {@code REQUIRES_NEW}）の<b>コミット前</b>に別スレッドで
+     * 即時実行され、未コミットのスコア（{@code played=0} 等）を読んで順位表が自動反映されなかった。
+     * これを {@link TransactionalEventListener}(AFTER_COMMIT) に切り替え、発火元TXの
+     * <b>コミット後</b>に確定データを読んで再計算する（手動再計算なしで自動反映が確定する）。</p>
+     *
+     * <p><b>{@code @Async} は併存可</b>: {@code @TransactionalEventListener}(AFTER_COMMIT) が
+     * コミット後にリスナー呼び出しを発生させ、その呼び出しを {@code @Async} が別スレッドへ逃がす。
+     * したがって「コミット後」かつ「非同期（呼び出し元をブロックしない）」が両立する。</p>
+     *
+     * <p><b>TX境界</b>: AFTER_COMMIT 後はアクティブTXが無いため {@code REQUIRES_NEW} で新規TXを開始する。
+     * Spring は {@code @TransactionalEventListener} に {@code @Transactional(REQUIRED)} を付けることを
+     * 禁じている（起動時バリデーション失敗・ApplicationContext全滅）ため {@code REQUIRES_NEW} が正道。</p>
      */
     @Async
-    @EventListener
-    @Transactional
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onStandingsRecalculation(StandingsRecalculationEvent event) {
         recalculate(event.getDivisionId(), event.getTournamentId());
     }

@@ -104,6 +104,20 @@ public interface MemberPaymentRepository extends JpaRepository<MemberPaymentEnti
     long countByPaymentItemIdAndStatus(Long paymentItemId, PaymentStatus status);
 
     /**
+     * 支払い項目の期限切れ PAID 件数を取得する（F08.9 P8 サマリー拡張）。
+     *
+     * <p>valid_until が過去日（&lt; 指定日）かつ status = PAID の件数を返す。
+     * valid_until が NULL の場合（ITEM/DONATION 等の永続タイプ）は期限切れに該当しない。</p>
+     */
+    @Query("SELECT COUNT(mp) FROM MemberPaymentEntity mp " +
+            "WHERE mp.paymentItemId = :paymentItemId " +
+            "AND mp.status = 'PAID' " +
+            "AND mp.validUntil IS NOT NULL " +
+            "AND mp.validUntil < :referenceDate")
+    long countExpiredPaidByPaymentItemId(@Param("paymentItemId") Long paymentItemId,
+                                         @Param("referenceDate") java.time.LocalDate referenceDate);
+
+    /**
      * ユーザーの全支払い記録を取得する（チーム/組織横断）。
      */
     List<MemberPaymentEntity> findByUserId(Long userId);

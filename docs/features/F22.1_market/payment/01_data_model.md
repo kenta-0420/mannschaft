@@ -104,11 +104,14 @@ INDEX idx_ca_payouts (payouts_enabled)
 > **モード別の初期 status**: エスクローモード（RECRUITMENT・`capture_mode=MANUAL`）は **`PENDING_CONFIRMATION`**（PI 作成済・札主未 confirm。onboarding 未完なら `HELD`）から開始。即時モード（MEMBERSHIP・`capture_mode=AUTOMATIC`）は INSERT 時点で **`CAPTURED`**（与信フェーズなし・即 transfer）。
 >
 > **第一陣 status 意味論の根治（2026-06-10・V80.001）**: manual-capture PaymentIntent は札主が Stripe.js で confirm するまで真の与信（`amount_capturable`）が立たない。PI 作成直後に `AUTHORIZED` にすると capture が未確認 PI で失敗するため、PI 作成済・札主未 confirm の中間状態 `PENDING_CONFIRMATION` を新設した。`AUTHORIZED`（capture 可能）への昇格は `payment_intent.amount_capturable_updated` webhook 受信時のみ行う。
+>
+> **第三陣-b「7日超 fallback（完了時即時払い）」（2026-06-10・V81.001・マスター裁可）**: カード与信は Stripe 仕様で約7日で失効する。成立〜役務完了（札の `start_at`）が7日を超える謝礼は、成立時に与信を立てると役務完了前に失効するため、成立時には与信せず `DEFERRED`（PI 未作成・`capture_mode=AUTOMATIC`）で起票する。最終認証（役務完了）時に即時払い（会費 F08.9 と同型の destination charge・即 capture）へフォールバックし、`DEFERRED → AUTHORIZED`（PI 作成済・`hold_expires_at=NULL`・succeeded webhook 待ち）→ 札主の confirm で `payment_intent.succeeded` → `CAPTURED`。札主への `clientSecret` 返却は第二陣の決済確認 EP を再利用する。`AUTHORIZED`＋`hold_expires_at=NULL` に置くことで第三陣の自動取消バッチ（PENDING_CONFIRMATION の `created_at` 猶予・HELD/AUTHORIZED の `hold_expires_at` 失効）に掛からず誤取消されない。成立〜役務日が7日以内、または役務日不明（`start_at` 未設定・助っ人等）は安全側で従来どおり与信（`MANUAL`）を立て、与信の失効ハンドリングは第三陣バッチに委ねる。
 
 | 値 | 意味 |
 |---|---|
 | `PENDING_CONFIRMATION` | 与信前段: manual-capture PI 作成済だが札主未 confirm（真の与信未確定）。エスクローモードのみ |
-| `AUTHORIZED` | 与信済（資金未移動・エスクロー保持中・真の与信確定＝capture 可能）。エスクローモードのみ |
+| `DEFERRED` | 完了時即時払い予定（成立〜役務日が7日超で成立時に与信せず・PI 未作成。最終認証時に即時払いへフォールバック）。エスクローモードのみ |
+| `AUTHORIZED` | 与信済（資金未移動・エスクロー保持中・真の与信確定＝capture 可能）。エスクローモードのみ。第三陣-b では完了時即時払いの AUTOMATIC PI 作成済・succeeded 待ちもこの状態 |
 | `HELD` | 払出保留（受領者 onboarding 未完了で capture 待ち。§02 §5） |
 | `CAPTURED` | capture 済（払出確定・受領者へ transfer 完了） |
 | `PARTIALLY_REFUNDED` | 部分返金済 |
@@ -119,6 +122,8 @@ INDEX idx_ca_payouts (payouts_enabled)
 ```
 PENDING_CONFIRMATION ──(札主confirm: amount_capturable_updated)──▶ AUTHORIZED
 PENDING_CONFIRMATION ──(confirm前 cancel/payment_failed)──▶ CANCELLED
+DEFERRED ──(最終認証=完了時即時払い: AUTOMATIC PI作成)──▶ AUTHORIZED ──(札主confirm: succeeded)──▶ CAPTURED   ※第三陣-b 7日超fallback
+DEFERRED ──(最終認証前の札下げ/取消)──▶ CANCELLED
                 ┌─ HELD ──(onboarding完了→confirm)──┐
 AUTHORIZED ─────┤                                    ├──▶ CAPTURED ──▶ PARTIALLY_REFUNDED / REFUNDED
                 └─(payouts_enabled・札主confirm)──────┘
@@ -133,7 +138,8 @@ CONSTRAINT chk_et_capture_mode CHECK (capture_mode IN ('MANUAL','AUTOMATIC'))
 CONSTRAINT chk_et_payee_kind  CHECK (payee_kind IN ('USER','TEAM','ORG'))
 CONSTRAINT chk_et_payer_kind  CHECK (payer_scope_kind IN ('USER','TEAM','ORG'))
 CONSTRAINT chk_et_status CHECK (status IN
-  ('AUTHORIZED','HELD','CAPTURED','PARTIALLY_REFUNDED','REFUNDED','CANCELLED','DISPUTED'))
+  ('PENDING_CONFIRMATION','DEFERRED','AUTHORIZED','HELD','CAPTURED','PARTIALLY_REFUNDED','REFUNDED','CANCELLED','DISPUTED'))
+  -- V80.001 で PENDING_CONFIRMATION、V81.001 で DEFERRED を許容集合へ追加（既存行非破壊・DROP→ADD で原子的張替）。
 CONSTRAINT chk_et_fee CHECK (application_fee_amount <= amount)
 UNIQUE KEY uk_et_pi (stripe_payment_intent_id)
 INDEX idx_et_source (source_kind, source_id)

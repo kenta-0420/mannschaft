@@ -107,7 +107,11 @@
     "payment": {
       "breakdown": {
         "includesFeeNote": "* El total del pago incluye la comisión de procesamiento del pago.",
-        "refundFeeConditionalNote": "* En caso de reembolso, es posible que la comisión de procesamiento no se reembolse (las condiciones de reembolso dependen de la configuración del organizador)."
+        "refundFeeConditionalNote": "* En caso de reembolso, es posible que la comisión de procesamiento no se reembolse (las condiciones de reembolso dependen de la configuración del organizador).",
+        "title": "Desglose del pago",
+        "faceAmountLabel": "Recompensa (valor nominal)",
+        "feeLabel": "Comisión de pago",
+        "totalLabel": "Total a pagar"
       },
       "refund": {
         "title": "Reembolso",
@@ -146,6 +150,21 @@
         "continue": "Continuar registro",
         "redirecting": "Redirigiendo…",
         "linkFailed": "No se pudo obtener el enlace de registro de la cuenta de cobro."
+      },
+      "confirm": {
+        "title": "Confirmar pago de recompensa",
+        "intro": "Antes de confirmar al solicitante, confirma el pago de la recompensa (autorización de la tarjeta).",
+        "expiryNotice": "Esta autorización es válida durante unos 7 días. Se requiere la aprobación final de la finalización del servicio en un plazo de 7 días (después se vuelve a cobrar al finalizar).",
+        "deferredNotice": "Como pasan más de 7 días entre la confirmación y el servicio, ahora no se realiza ninguna autorización. Pagarás de nuevo en la aprobación final de la finalización del servicio.",
+        "alreadyAuthorized": "Este pago ya ha sido confirmado.",
+        "preparing": "Preparando los datos de pago. Espera un momento e inténtalo de nuevo.",
+        "retry": "Recargar",
+        "submit": "Confirmar pago",
+        "processing": "Procesando…",
+        "succeeded": "Confirmación de pago completada.",
+        "loadFailed": "No se pudieron obtener los datos de pago.",
+        "payeeNotReady": "El destinatario aún no ha registrado una cuenta de cobro, por lo que el pago no es posible.",
+        "proceed": "Continuar para confirmar"
       }
     }
   }

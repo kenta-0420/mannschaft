@@ -210,7 +210,10 @@ public class RecruitmentParticipantService {
                     listing.getScopeId(),
                     listing.getPayeeKind(),
                     listing.getPayeeUserId(),
-                    listing.getPrice().longValue()));
+                    listing.getPrice().longValue(),
+                    // 役務日（役務完了の見込み＝札の start_at）。第三陣-b で「成立〜役務日 > 7日」なら成立時に与信せず
+                    // 完了時即時払い（DEFERRED）へフォールバックする判定に使う。start_at 未設定の札は null（安全側で従来与信）。
+                    listing.getStartAt()));
         }
 
         // F22.1 市: この申込で FULL に到達したら最終認証の確認通知を送る（§6.1）。
