@@ -103,4 +103,25 @@ public interface EscrowTransactionRepository
      * connect_account を payee とする {@link EscrowStatus#HELD} escrow を昇格対象として引く。
      */
     List<EscrowTransactionEntity> findByPayeeConnectAccountIdAndStatus(UUID payeeConnectAccountId, EscrowStatus status);
+
+    /**
+     * 受取側 Connect アカウント（{@code payee_connect_account_id}）の指定月における
+     * {@code application_fee_amount} の合計を返す（月次手数料明細用）。
+     *
+     * <p>F08.9 P8 月次手数料明細: チームが受取側として関与した謝礼取引の手数料を当月単位で集計する。
+     * {@code escrow_transactions} は {@code deleted_at} を持たない（監査証跡として物理保持）ため、
+     * 全ステータスの取引を対象とする。Connect アカウント UUID への解決は呼び出し側（Service 層）で行う。</p>
+     *
+     * @param payeeConnectAccountId 受取側 Connect アカウントの UUID
+     * @param year                  集計対象年（西暦）
+     * @param month                 集計対象月（1〜12）
+     * @return 当月合計手数料（件数が 0 件の場合は 0）
+     */
+    @Query("SELECT COALESCE(SUM(e.applicationFeeAmount), 0) FROM EscrowTransactionEntity e " +
+           "WHERE e.payeeConnectAccountId = :payeeConnectAccountId " +
+           "AND YEAR(e.createdAt) = :year AND MONTH(e.createdAt) = :month")
+    Long sumApplicationFeeByPayeeConnectAccountAndPeriod(
+            @Param("payeeConnectAccountId") UUID payeeConnectAccountId,
+            @Param("year") int year,
+            @Param("month") int month);
 }
