@@ -337,5 +337,36 @@
         "description": "Solo personas de los equipos participantes en este torneo pueden verlo."
       }
     }
+  },
+  "scoreEntry": {
+    "title": "Registro de marcadores",
+    "navLink": "Registro de marcadores (admin)",
+    "back": "Volver al torneo",
+    "matchday": "Jornada",
+    "home": "Local",
+    "away": "Visitante",
+    "homeScore": "Marcador local",
+    "awayScore": "Marcador visitante",
+    "save": "Guardar todo",
+    "saved": "Marcadores guardados",
+    "saveFailed": "No se pudieron guardar los marcadores",
+    "conflict": "Conflicto con otra edición. Se ha recargado el estado más reciente. Vuelve a introducir los datos.",
+    "invalidInput": "Entrada no válida (los marcadores deben ser enteros no negativos y deben rellenarse tanto local como visitante).",
+    "nothingToSave": "No hay marcadores que guardar",
+    "standingsHint": "Marcadores guardados. La clasificación se recalculará automáticamente.",
+    "forbidden": "No tienes permiso para editar los marcadores de este torneo",
+    "loadFailed": "No se pudieron cargar los datos",
+    "noDivisions": "No hay divisiones registradas",
+    "noMatchdays": "No hay jornadas registradas",
+    "noMatches": "No hay enfrentamientos",
+    "csv": {
+      "title": "Importación masiva por CSV",
+      "formatHint": "Sube un CSV en el orden matchId,homeScore,awayScore (la primera fila es el encabezado). Deja en blanco los partidos aún sin resultado.",
+      "import": "Importar",
+      "imported": "CSV importado",
+      "importFailed": "No se pudo importar el CSV",
+      "invalidFormat": "Formato de CSV no válido. Los marcadores deben ser enteros.",
+      "downloadTemplate": "Descargar plantilla"
+    }
   }
 }

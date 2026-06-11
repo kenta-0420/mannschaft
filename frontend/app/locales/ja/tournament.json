@@ -337,5 +337,36 @@
         "description": "この大会に参加しているチームの関係者のみ閲覧できます。"
       }
     }
+  },
+  "scoreEntry": {
+    "title": "スコア入力",
+    "navLink": "スコア入力（管理者）",
+    "back": "大会詳細に戻る",
+    "matchday": "節",
+    "home": "ホーム",
+    "away": "アウェイ",
+    "homeScore": "ホーム得点",
+    "awayScore": "アウェイ得点",
+    "save": "一括保存",
+    "saved": "スコアを保存しました",
+    "saveFailed": "スコアの保存に失敗しました",
+    "conflict": "他の編集と競合しました。最新の状態を再取得しました。もう一度入力してください。",
+    "invalidInput": "入力値が不正です（得点は0以上の整数で、ホーム・アウェイ両方を入力してください）",
+    "nothingToSave": "保存対象のスコアがありません",
+    "standingsHint": "スコアを保存しました。順位は自動で再計算されます。",
+    "forbidden": "この大会のスコアを編集する権限がありません",
+    "loadFailed": "データの取得に失敗しました",
+    "noDivisions": "部門が登録されていません",
+    "noMatchdays": "節が登録されていません",
+    "noMatches": "対戦カードがありません",
+    "csv": {
+      "title": "CSVで一括取込",
+      "formatHint": "matchId,homeScore,awayScore の順で記述したCSVをアップロードしてください（1行目はヘッダー）。得点未確定の試合は空欄のままにします。",
+      "import": "取込",
+      "imported": "CSVを取り込みました",
+      "importFailed": "CSVの取込に失敗しました",
+      "invalidFormat": "CSVの形式が不正です。得点は整数で記述してください。",
+      "downloadTemplate": "テンプレートをダウンロード"
+    }
   }
 }
