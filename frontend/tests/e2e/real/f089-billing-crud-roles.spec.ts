@@ -128,7 +128,6 @@ async function getFirstPaymentItemId(
 // ===========================================================================
 let sharedApi: APIRequestContext
 let adminToken: string
-let adminUserId: number
 let adminTeamId: number
 let supporterAvailable = false
 
@@ -136,7 +135,6 @@ test.beforeAll(async () => {
   sharedApi = await pwRequest.newContext()
   const result = await apiLogin(sharedApi, ADMIN_EMAIL, ADMIN_PASSWORD)
   adminToken = result.accessToken
-  adminUserId = result.userId
   adminTeamId = await resolveAdminTeamId(sharedApi, adminToken)
 
   // サポーターをチームに追加（既存ならスキップ）
@@ -496,11 +494,6 @@ test.describe('F08.9 P6: 期別決済・支払い項目管理', () => {
 
     // メンバー支払い状況が読み込まれること（テーブルまたはリスト）
     await page.waitForTimeout(2_000)
-    const hasPaymentData =
-      (await page.locator('table').isVisible({ timeout: 10_000 }).catch(() => false)) ||
-      (await page.locator('[class*="payment-row"], [class*="member-row"]').isVisible({ timeout: 5_000 }).catch(() => false)) ||
-      (await page.getByText(/支払い済み|未払い|PAID|UNPAID/i).isVisible({ timeout: 5_000 }).catch(() => false)) ||
-      (await page.getByText(/メンバー|member/i).isVisible({ timeout: 5_000 }).catch(() => false))
 
     // ページがクラッシュしていないこと
     expect(page.url()).not.toContain('/error')
@@ -637,11 +630,7 @@ test.describe('F08.9 P6: 期別決済・支払い項目管理', () => {
       MEMBER_EMAIL,
       MEMBER_PASSWORD,
     )
-    const res = await sharedApi.get(`${BE_API}/teams/${adminTeamId}/payment-items`, {
-      headers: authHeaders(memberToken),
-    })
-    // 403 または 200（閲覧許可制になっている場合）を受け入れる
-    // 重要: リマインドは ADMIN のみ
+    // MEMBER は payment-items 一覧は閲覧可の設計もあるが、リマインドは ADMIN のみ
     const remindRes = await sharedApi.post(
       `${BE_API}/teams/${adminTeamId}/payment-items/1/remind`,
       { headers: authHeaders(memberToken) },
@@ -770,13 +759,11 @@ test.describe('F08.9 P2: 後見まとめ払い', () => {
       .getByText(/対象なし|未払い|支払うべき会費がありません|no.*due|payable/i)
       .isVisible({ timeout: 5_000 })
       .catch(() => false)
-    const hasLoadingOrData =
-      (await page.locator('.p-checkbox, input[type="checkbox"]').isVisible({ timeout: 5_000 }).catch(() => false)) ||
-      hasPayButton ||
-      hasEmptyMessage
-
     // ページが正常に描画されること（クラッシュしていないこと）
     // ローディングスピナーが消えていること（上で waitFor 済み）
+    // hasPayButton / hasEmptyMessage は参考情報（スクリーンショットで確認）
+    void hasPayButton
+    void hasEmptyMessage
     const bodyText = await page.locator('body').innerText()
     expect(bodyText).not.toContain('undefined')
     expect(bodyText).not.toContain('NaN')
