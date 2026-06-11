@@ -7,10 +7,12 @@ import com.mannschaft.app.common.visibility.FollowBatchService;
 import com.mannschaft.app.common.visibility.MembershipBatchQueryService;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.common.visibility.StandardVisibility;
+import com.mannschaft.app.common.visibility.UserScopeRoleSnapshot;
 import com.mannschaft.app.common.visibility.VisibilityMetrics;
 import com.mannschaft.app.common.visibility.mapping.TournamentStatusMapper;
 import com.mannschaft.app.common.visibility.mapping.TournamentVisibilityMapper;
 import com.mannschaft.app.tournament.TournamentVisibility;
+import com.mannschaft.app.tournament.repository.TournamentParticipantRepository;
 import com.mannschaft.app.tournament.repository.TournamentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -46,6 +48,7 @@ public class TournamentVisibilityResolver
         extends AbstractContentVisibilityResolver<TournamentVisibility, TournamentVisibilityProjection> {
 
     private final TournamentRepository tournamentRepository;
+    private final TournamentParticipantRepository participantRepository;
 
     public TournamentVisibilityResolver(
             MembershipBatchQueryService membershipBatchQueryService,
@@ -53,10 +56,12 @@ public class TournamentVisibilityResolver
             com.mannschaft.app.visibility.service.VisibilityTemplateEvaluator templateEvaluator,
             @Autowired(required = false) FollowBatchService followBatchService,
             @Autowired(required = false) AuditLogService auditLogService,
-            TournamentRepository tournamentRepository) {
+            TournamentRepository tournamentRepository,
+            TournamentParticipantRepository participantRepository) {
         super(membershipBatchQueryService, templateEvaluator, visibilityMetrics,
                 followBatchService, auditLogService);
         this.tournamentRepository = tournamentRepository;
+        this.participantRepository = participantRepository;
     }
 
     @Override
@@ -77,5 +82,31 @@ public class TournamentVisibilityResolver
     @Override
     protected ContentStatus toContentStatus(TournamentVisibilityProjection row) {
         return TournamentStatusMapper.toStandard(row.status());
+    }
+
+    /**
+     * {@link StandardVisibility#CUSTOM}（= 機能 enum {@link TournamentVisibility#PARTICIPANTS_ONLY}）の
+     * 個別判定: 閲覧者が当該大会の参加チームのいずれかにアクティブメンバーとして所属しているか。
+     *
+     * <p>判定は {@link TournamentParticipantRepository#countActiveMemberOfAnyParticipantTeam}
+     * を流用する（{@code tournament_participants × tournament_divisions × memberships} を 1 SQL で JOIN、
+     * 連絡可能ステータス REGISTERED/ACTIVE の参加チームに限定）。クロスドメインは ID 参照 JOIN のみ（原則1）。</p>
+     *
+     * <p>未認証（{@code viewerUserId == null}）は不可視（fail-closed）。SystemAdmin は基底側の
+     * 高速パスで本メソッドに到達しないため考慮不要。</p>
+     *
+     * @param row          判定対象の Projection（{@code id()} が tournament_id）
+     * @param viewerUserId 閲覧者 user_id（{@code null} 可）
+     * @param snapshot     メンバーシップスナップショット（本判定では未使用）
+     * @return 参加チーム関係者なら {@code true}
+     */
+    @Override
+    protected boolean evaluateCustom(
+            TournamentVisibilityProjection row, Long viewerUserId, UserScopeRoleSnapshot snapshot) {
+        if (viewerUserId == null || row == null || row.id() == null) {
+            return false;
+        }
+        return participantRepository
+                .countActiveMemberOfAnyParticipantTeam(row.id(), viewerUserId) > 0;
     }
 }

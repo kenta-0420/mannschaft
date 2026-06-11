@@ -32,12 +32,39 @@ class TournamentVisibilityMapperTest {
     }
 
     @Test
-    @DisplayName("MEMBERS_ONLY → StandardVisibility.MEMBERS_AND_ABOVE（W5 内輪・応援者除外）")
-    void members_only_maps_to_MEMBERS_AND_ABOVE() {
-        // 判定根拠: 設計書 F08.7 §権限と役割で SUPPORTER は「公開設定の大会の...閲覧のみ」。
-        // MEMBERS_ONLY 大会は応援者に見せない内輪 → 応援者除外の MEMBERS_AND_ABOVE。
-        // 挙動変更: SUPPORTER は MEMBERS_ONLY の大会を閲覧できなくなる。
-        assertThat(TournamentVisibilityMapper.toStandard(TournamentVisibility.MEMBERS_ONLY))
+    @DisplayName("SUPPORTERS_AND_ABOVE → StandardVisibility.SUPPORTERS_AND_ABOVE（同名写像）")
+    void supporters_maps_to_SUPPORTERS_AND_ABOVE() {
+        assertThat(TournamentVisibilityMapper.toStandard(TournamentVisibility.SUPPORTERS_AND_ABOVE))
+            .isEqualTo(StandardVisibility.SUPPORTERS_AND_ABOVE);
+    }
+
+    @Test
+    @DisplayName("MEMBERS_AND_ABOVE → StandardVisibility.MEMBERS_AND_ABOVE（同名写像・応援者除外）")
+    void members_maps_to_MEMBERS_AND_ABOVE() {
+        assertThat(TournamentVisibilityMapper.toStandard(TournamentVisibility.MEMBERS_AND_ABOVE))
             .isEqualTo(StandardVisibility.MEMBERS_AND_ABOVE);
+    }
+
+    @Test
+    @DisplayName("ADMINS_AND_ABOVE → StandardVisibility.ADMINS_AND_ABOVE（同名写像）")
+    void admins_maps_to_ADMINS_AND_ABOVE() {
+        assertThat(TournamentVisibilityMapper.toStandard(TournamentVisibility.ADMINS_AND_ABOVE))
+            .isEqualTo(StandardVisibility.ADMINS_AND_ABOVE);
+    }
+
+    @Test
+    @DisplayName("SCOPE_AFFILIATED → StandardVisibility.SCOPE_AFFILIATED（旧 MEMBERS_ONLY 相当の正準値）")
+    void scope_affiliated_maps_to_SCOPE_AFFILIATED() {
+        assertThat(TournamentVisibilityMapper.toStandard(TournamentVisibility.SCOPE_AFFILIATED))
+            .isEqualTo(StandardVisibility.SCOPE_AFFILIATED);
+    }
+
+    @Test
+    @DisplayName("PARTICIPANTS_ONLY → StandardVisibility.CUSTOM（大会専用軸・正準対応値なし）")
+    void participants_only_maps_to_CUSTOM() {
+        // PARTICIPANTS_ONLY は「参加チーム関係者のみ」という大会専用セマンティクスのため
+        // 正準に対応値が無く CUSTOM に写像し、Resolver の evaluateCustom で個別判定する。
+        assertThat(TournamentVisibilityMapper.toStandard(TournamentVisibility.PARTICIPANTS_ONLY))
+            .isEqualTo(StandardVisibility.CUSTOM);
     }
 }

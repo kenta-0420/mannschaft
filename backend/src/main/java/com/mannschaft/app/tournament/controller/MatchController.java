@@ -18,6 +18,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -41,6 +42,12 @@ import java.util.List;
  *               Match 5 (GET detail, PATCH score, PATCH player-stats, PATCH status, POST batch, POST import) +
  *               Roster 3 (GET list, POST create, DELETE)
  *               = technically the POST import is a stub so 12 total
+ *
+ * <p>F08.7 順位UI Wave0: 書き込み系（節作成・対戦カード生成・スコア入力・個人成績・試合ステータス・
+ * 一括スコア・CSV インポート・出場メンバー登録/削除）に主催組織 ADMIN/DEPUTY_ADMIN の編集権限ガードを
+ * 付与した（{@code @accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')}・SYSTEM_ADMIN は常に許可）。
+ * 従来は MatchService にもコントローラーにも認可が無く、認証さえあれば他組織の試合結果を改竄できる
+ * セキュリティ穴になっていた。GET 系（参照）は別途 F00 可視性（{@code StandingsController}）で扱う。</p>
  */
 @RestController
 @RequestMapping("/api/v1/organizations/{orgId}/tournaments/{tId}")
@@ -61,6 +68,7 @@ public class MatchController {
 
     @PostMapping("/divisions/{divId}/matchdays")
     @Operation(summary = "節作成")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
     public ResponseEntity<ApiResponse<MatchdayResponse>> createMatchday(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long divId,
             @Valid @RequestBody CreateMatchdayRequest request) {
@@ -70,6 +78,7 @@ public class MatchController {
 
     @PostMapping("/divisions/{divId}/matchdays/generate")
     @Operation(summary = "対戦カード自動生成")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
     public ResponseEntity<ApiResponse<List<MatchdayResponse>>> generateMatchdays(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long divId) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -87,6 +96,7 @@ public class MatchController {
 
     @PatchMapping("/matches/{matchId}/score")
     @Operation(summary = "スコア入力・更新")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
     public ResponseEntity<ApiResponse<MatchResponse>> updateScore(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long matchId,
             @Valid @RequestBody ScoreUpdateRequest request) {
@@ -95,6 +105,7 @@ public class MatchController {
 
     @PatchMapping("/matches/{matchId}/player-stats")
     @Operation(summary = "個人成績一括入力")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
     public ResponseEntity<ApiResponse<MatchResponse>> updatePlayerStats(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long matchId,
             @Valid @RequestBody PlayerStatBatchRequest request) {
@@ -103,6 +114,7 @@ public class MatchController {
 
     @PatchMapping("/matches/{matchId}/status")
     @Operation(summary = "試合ステータス変更")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
     public ResponseEntity<Void> changeMatchStatus(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long matchId,
             @Valid @RequestBody StatusChangeRequest request) {
@@ -112,6 +124,7 @@ public class MatchController {
 
     @PostMapping("/divisions/{divId}/matchdays/{mdId}/scores/batch")
     @Operation(summary = "節内全試合スコア一括入力")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
     public ResponseEntity<Void> batchUpdateScores(
             @PathVariable Long orgId, @PathVariable Long tId,
             @PathVariable Long divId, @PathVariable Long mdId,
@@ -122,6 +135,7 @@ public class MatchController {
 
     @PostMapping("/divisions/{divId}/matchdays/{mdId}/scores/import")
     @Operation(summary = "CSVアップロードによるスコア一括インポート")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
     public ResponseEntity<Void> importScores(
             @PathVariable Long orgId, @PathVariable Long tId,
             @PathVariable Long divId, @PathVariable Long mdId,
@@ -179,6 +193,7 @@ public class MatchController {
 
     @PostMapping("/matches/{matchId}/rosters")
     @Operation(summary = "出場メンバー一括登録")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
     public ResponseEntity<ApiResponse<List<RosterResponse>>> createRosters(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long matchId,
             @Valid @RequestBody CreateRosterRequest request) {
@@ -188,6 +203,7 @@ public class MatchController {
 
     @DeleteMapping("/matches/{matchId}/rosters/{rosterId}")
     @Operation(summary = "出場メンバー削除")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
     public ResponseEntity<Void> deleteRoster(
             @PathVariable Long orgId, @PathVariable Long tId,
             @PathVariable Long matchId, @PathVariable Long rosterId) {
