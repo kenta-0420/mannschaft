@@ -258,5 +258,84 @@
     "totalCharge": "总费用",
     "checkoutSuccess": "结账完成",
     "checkoutError": "结账失败"
+  },
+  "standings": {
+    "title": "积分榜",
+    "back": "返回赛事",
+    "rank": "排名",
+    "team": "球队",
+    "played": "场次",
+    "winDrawLoss": "胜/平/负",
+    "goalDiff": "净胜",
+    "points": "积分",
+    "form": "近期战绩",
+    "recalculate": "重新计算",
+    "recalculated": "积分榜已重新计算",
+    "recalculateFailed": "重新计算积分榜失败",
+    "downloadPdf": "导出PDF",
+    "pdfFailed": "导出PDF失败",
+    "empty": "暂无积分数据",
+    "noDivisions": "未登记分组",
+    "loadFailed": "加载积分榜失败",
+    "forbidden": "您没有权限查看此赛事"
+  },
+  "rankings": {
+    "title": "排行榜",
+    "back": "返回赛事",
+    "rank": "排名",
+    "player": "球员",
+    "matchesPlayed": "出场",
+    "value": "数据",
+    "downloadPdf": "导出PDF",
+    "pdfFailed": "导出PDF失败",
+    "empty": "暂无排行数据",
+    "noCategories": "暂无排行项目",
+    "loadFailed": "加载排行榜失败",
+    "forbidden": "您没有权限查看此赛事"
+  },
+  "matrix": {
+    "title": "对战矩阵",
+    "back": "返回赛事",
+    "homeAway": "主＼客",
+    "notPlayed": "未对战",
+    "downloadPdf": "导出PDF",
+    "pdfFailed": "导出PDF失败",
+    "empty": "暂无矩阵数据",
+    "noDivisions": "未登记分组",
+    "loadFailed": "加载矩阵失败",
+    "forbidden": "您没有权限查看此赛事"
+  },
+  "visibility": {
+    "title": "可见性设置",
+    "description": "设置谁可以查看此赛事的积分与成绩。",
+    "save": "保存",
+    "saved": "已更新可见性",
+    "saveFailed": "更新可见性失败",
+    "levels": {
+      "PUBLIC": {
+        "label": "公开",
+        "description": "任何人均可查看，包括未登录访客。"
+      },
+      "SUPPORTERS_AND_ABOVE": {
+        "label": "应援者及以上",
+        "description": "应援者、成员和管理员可查看。"
+      },
+      "MEMBERS_AND_ABOVE": {
+        "label": "成员及以上",
+        "description": "仅成员和管理员可查看（应援者不可）。"
+      },
+      "ADMINS_AND_ABOVE": {
+        "label": "仅管理员",
+        "description": "仅组织管理员和副管理员可查看。"
+      },
+      "SCOPE_AFFILIATED": {
+        "label": "仅所属者",
+        "description": "仅直接隶属于组织的人（含应援者）可查看。"
+      },
+      "PARTICIPANTS_ONLY": {
+        "label": "仅参赛者",
+        "description": "仅参加此赛事的球队相关人员可查看。"
+      }
+    }
   }
 }

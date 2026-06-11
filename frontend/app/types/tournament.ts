@@ -195,14 +195,20 @@ export interface StandingScoreDto {
   setsLost?: number | null
 }
 
+export interface StandingStatusDto {
+  promotionZone?: string | null
+  lastCalculatedAt?: string | null
+}
+
 export interface TournamentStanding {
   id?: number
   meta?: StandingMetaDto
   team?: StandingTeamDto
   record?: StandingRecordDto
   score?: StandingScoreDto
-  form?: unknown[]
-  status?: string
+  /** 直近フォーム（例: "WWLDW"）。BE は文字列で返す。 */
+  form?: string | null
+  status?: StandingStatusDto
 }
 
 // ===== IndividualRanking ネスト化 DTO =====
@@ -219,7 +225,8 @@ export interface IndividualRankingStatDto {
   rankingLabel?: string | null
   totalValueInt?: number | null
   totalValueDecimal?: number | null
-  totalValueTime?: number | null
+  /** BE は LocalTime を JSON 文字列 "HH:mm:ss" で返す（数値ではない）。 */
+  totalValueTime?: string | null
 }
 
 export interface IndividualRanking {
@@ -228,6 +235,21 @@ export interface IndividualRanking {
   stat?: IndividualRankingStatDto
   rank?: number
   lastCalculatedAt?: string | null
+}
+
+// ===== 全ランキング一覧（RankingSummaryResponse 整合） =====
+// BE: RankingSummaryResponse { categories: RankingCategory[] }
+
+export interface RankingCategory {
+  statKey: string
+  name: string
+  rankingLabel: string
+  unit: string
+  leader: IndividualRanking | null
+}
+
+export interface RankingSummary {
+  categories: RankingCategory[]
 }
 
 export interface TournamentTemplate {
@@ -255,12 +277,26 @@ export interface TournamentPreset {
   statDefs: Array<{ key: string; label: string; aggregationType: string }>
 }
 
+// ===== 対戦マトリクス（BE MatrixResponse 整合） =====
+// BE: MatrixResponse { participants: ParticipantSummary[], cells: Map<String, MatrixCell> }
+// cells のキーは `${homeParticipantId}_${awayParticipantId}`（JSON では Record<string, ...> として届く）。
+
+export interface MatrixParticipantSummary {
+  participantId: number
+  teamId: number
+  teamName: string
+}
+
+export interface MatrixCell {
+  matchId: number | null
+  homeScore: number | null
+  awayScore: number | null
+  result: string
+}
+
 export interface TournamentMatrix {
-  divisionId: number
-  participants: Array<{ id: number; teamName: string }>
-  results: Array<
-    Array<{ homeScore: number | null; awayScore: number | null; matchId: number | null }>
-  >
+  participants: MatrixParticipantSummary[]
+  cells: Record<string, MatrixCell>
 }
 
 // ===== PromotionRecord ネスト化 DTO =====

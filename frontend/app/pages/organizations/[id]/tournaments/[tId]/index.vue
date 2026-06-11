@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import type {
-  TournamentResponse,
   TournamentParticipant,
   EntryMemberSummary,
+  TournamentResponse,
 } from '~/types/tournament'
+import {
+  TOURNAMENT_VISIBILITY_LEVELS,
+  isTournamentVisibility,
+  type TournamentVisibility,
+} from '~/utils/tournamentStandings'
 
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
@@ -13,7 +18,7 @@ const orgId = String(route.params.id)
 const tId = Number(route.params.tId)
 
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
-const { getTournament, getParticipants, getEntrySummary } = useTournamentApi()
+const { getTournament, getParticipants, getEntrySummary, updateTournament } = useTournamentApi()
 const notification = useNotification()
 
 const tournament = ref<TournamentResponse | null>(null)
@@ -116,6 +121,52 @@ async function onEntrySaved() {
   }
 }
 
+// ===== 可視性設定（org 管理者のみ） =====
+
+const showVisibilityDialog = ref(false)
+const savingVisibility = ref(false)
+const visibilityForm = ref<TournamentVisibility>('PUBLIC')
+
+/** 可視性 6 レベルのセレクタ選択肢（ラベル＋説明は i18n）。 */
+const visibilityOptions = computed(() =>
+  TOURNAMENT_VISIBILITY_LEVELS.map((level) => ({
+    value: level,
+    label: t(`tournament.visibility.levels.${level}.label`),
+    description: t(`tournament.visibility.levels.${level}.description`),
+  })),
+)
+
+function openVisibilityDialog() {
+  const current = tournament.value?.structure?.visibility
+  visibilityForm.value = isTournamentVisibility(current) ? current : 'PUBLIC'
+  showVisibilityDialog.value = true
+}
+
+async function saveVisibility() {
+  if (savingVisibility.value) return
+  const version = tournament.value?.audit?.version
+  if (version == null) {
+    notification.error(t('tournament.visibility.saveFailed'))
+    return
+  }
+  savingVisibility.value = true
+  try {
+    await updateTournament(orgId, tId, {
+      visibility: visibilityForm.value,
+      version,
+    })
+    // 楽観ロックの version を更新するため大会情報を再取得する。
+    const res = await getTournament(orgId, tId)
+    tournament.value = res.data
+    notification.success(t('tournament.visibility.saved'))
+    showVisibilityDialog.value = false
+  } catch {
+    notification.error(t('tournament.visibility.saveFailed'))
+  } finally {
+    savingVisibility.value = false
+  }
+}
+
 onMounted(async () => {
   try {
     await loadPermissions()
@@ -137,8 +188,29 @@ onMounted(async () => {
     <div class="mb-4 flex items-center justify-between gap-3">
       <BackButton :to="`/organizations/${orgId}/tournaments`" label="大会一覧に戻る" />
       <NuxtLink
-        :to="`/organizations/${orgId}/tournaments/${tId}/fixtures`"
+        :to="`/organizations/${orgId}/tournaments/${tId}/standings`"
         class="ml-auto flex items-center gap-1.5 rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-600 transition hover:border-primary-400 hover:text-primary"
+      >
+        <i class="pi pi-list" />
+        {{ $t('tournament.standings.title') }}
+      </NuxtLink>
+      <NuxtLink
+        :to="`/organizations/${orgId}/tournaments/${tId}/rankings`"
+        class="flex items-center gap-1.5 rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-600 transition hover:border-primary-400 hover:text-primary"
+      >
+        <i class="pi pi-chart-bar" />
+        {{ $t('tournament.rankings.title') }}
+      </NuxtLink>
+      <NuxtLink
+        :to="`/organizations/${orgId}/tournaments/${tId}/matrix`"
+        class="flex items-center gap-1.5 rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-600 transition hover:border-primary-400 hover:text-primary"
+      >
+        <i class="pi pi-table" />
+        {{ $t('tournament.matrix.title') }}
+      </NuxtLink>
+      <NuxtLink
+        :to="`/organizations/${orgId}/tournaments/${tId}/fixtures`"
+        class="flex items-center gap-1.5 rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-600 transition hover:border-primary-400 hover:text-primary"
       >
         <i class="pi pi-sitemap" />
         {{ $t('match.fixtures.title') }}
@@ -178,6 +250,16 @@ onMounted(async () => {
         <i class="pi pi-money-bill text-sm" />
         <span>{{ $t('tournament.fees.title') }}</span>
       </NuxtLink>
+      <button
+        v-if="isAdminOrDeputy"
+        type="button"
+        class="flex items-center gap-1.5 rounded-lg border border-surface-300 px-3 py-1.5 text-sm text-surface-600 transition hover:border-primary-400 hover:text-primary-600"
+        data-testid="visibility-settings-button"
+        @click="openVisibilityDialog"
+      >
+        <i class="pi pi-eye text-sm" />
+        <span>{{ $t('tournament.visibility.title') }}</span>
+      </button>
     </div>
 
     <PageLoading v-if="loading" size="40px" />
@@ -282,5 +364,50 @@ onMounted(async () => {
       @close="selectedParticipant = null"
       @saved="onEntrySaved"
     />
+
+    <!-- 可視性設定ダイアログ（org 管理者のみ） -->
+    <Dialog
+      v-model:visible="showVisibilityDialog"
+      modal
+      :header="$t('tournament.visibility.title')"
+      :style="{ width: '32rem' }"
+    >
+      <div class="flex flex-col gap-4 py-2">
+        <p class="text-sm text-surface-500">{{ $t('tournament.visibility.description') }}</p>
+        <Select
+          v-model="visibilityForm"
+          :options="visibilityOptions"
+          option-label="label"
+          option-value="value"
+          class="w-full"
+          data-testid="visibility-select"
+        >
+          <template #option="{ option }">
+            <div class="flex flex-col">
+              <span class="font-medium">{{ option.label }}</span>
+              <span class="text-xs text-surface-500">{{ option.description }}</span>
+            </div>
+          </template>
+        </Select>
+        <p class="rounded bg-surface-50 px-3 py-2 text-xs text-surface-600 dark:bg-surface-800">
+          {{ $t(`tournament.visibility.levels.${visibilityForm}.description`) }}
+        </p>
+      </div>
+      <template #footer>
+        <Button
+          :label="$t('common.cancel')"
+          text
+          :disabled="savingVisibility"
+          @click="showVisibilityDialog = false"
+        />
+        <Button
+          :label="$t('tournament.visibility.save')"
+          icon="pi pi-check"
+          :loading="savingVisibility"
+          data-testid="visibility-save-button"
+          @click="saveVisibility"
+        />
+      </template>
+    </Dialog>
   </div>
 </template>

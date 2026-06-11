@@ -258,5 +258,84 @@
     "totalCharge": "合計請求額",
     "checkoutSuccess": "決済チェックアウトを完了しました",
     "checkoutError": "決済チェックアウトに失敗しました"
+  },
+  "standings": {
+    "title": "順位表",
+    "back": "大会詳細に戻る",
+    "rank": "順位",
+    "team": "チーム",
+    "played": "試合数",
+    "winDrawLoss": "勝/分/敗",
+    "goalDiff": "得失点差",
+    "points": "勝点",
+    "form": "直近フォーム",
+    "recalculate": "再計算",
+    "recalculated": "順位表を再計算しました",
+    "recalculateFailed": "順位表の再計算に失敗しました",
+    "downloadPdf": "PDF出力",
+    "pdfFailed": "PDFの出力に失敗しました",
+    "empty": "順位データがありません",
+    "noDivisions": "部門が登録されていません",
+    "loadFailed": "順位表の取得に失敗しました",
+    "forbidden": "この大会を閲覧する権限がありません"
+  },
+  "rankings": {
+    "title": "ランキング",
+    "back": "大会詳細に戻る",
+    "rank": "順位",
+    "player": "選手",
+    "matchesPlayed": "出場",
+    "value": "記録",
+    "downloadPdf": "PDF出力",
+    "pdfFailed": "PDFの出力に失敗しました",
+    "empty": "ランキングデータがありません",
+    "noCategories": "ランキング項目がありません",
+    "loadFailed": "ランキングの取得に失敗しました",
+    "forbidden": "この大会を閲覧する権限がありません"
+  },
+  "matrix": {
+    "title": "対戦マトリクス",
+    "back": "大会詳細に戻る",
+    "homeAway": "ホーム＼アウェイ",
+    "notPlayed": "未対戦",
+    "downloadPdf": "PDF出力",
+    "pdfFailed": "PDFの出力に失敗しました",
+    "empty": "マトリクスデータがありません",
+    "noDivisions": "部門が登録されていません",
+    "loadFailed": "マトリクスの取得に失敗しました",
+    "forbidden": "この大会を閲覧する権限がありません"
+  },
+  "visibility": {
+    "title": "可視性設定",
+    "description": "この大会の順位・成績を誰に公開するかを設定します。",
+    "save": "保存",
+    "saved": "可視性を変更しました",
+    "saveFailed": "可視性の変更に失敗しました",
+    "levels": {
+      "PUBLIC": {
+        "label": "一般公開",
+        "description": "ログインしていない人を含め、誰でも閲覧できます。"
+      },
+      "SUPPORTERS_AND_ABOVE": {
+        "label": "応援者以上",
+        "description": "応援者・メンバー・管理者が閲覧できます。"
+      },
+      "MEMBERS_AND_ABOVE": {
+        "label": "メンバー以上",
+        "description": "メンバーと管理者のみ閲覧できます（応援者は閲覧不可）。"
+      },
+      "ADMINS_AND_ABOVE": {
+        "label": "管理者のみ",
+        "description": "組織の管理者・副管理者のみ閲覧できます。"
+      },
+      "SCOPE_AFFILIATED": {
+        "label": "所属者のみ",
+        "description": "組織に直接所属する人（応援者を含む）のみ閲覧できます。"
+      },
+      "PARTICIPANTS_ONLY": {
+        "label": "参加者のみ",
+        "description": "この大会に参加しているチームの関係者のみ閲覧できます。"
+      }
+    }
   }
 }

@@ -7,11 +7,30 @@ import type {
   TournamentStanding,
   PromotionRecord,
   IndividualRanking,
+  RankingSummary,
 } from '~/types/tournament'
+
+/** ページネーション付きレスポンス（BE PagedResponse 整合）。 */
+interface PagedResult<T> {
+  data: T[]
+  meta: { total: number; page: number; size: number; totalPages: number }
+}
 
 export function useTournamentBracket() {
   const api = useApi()
   const b = (orgId: string) => `/api/v1/organizations/${orgId}`
+
+  // PDF（Blob）取得は ofetch インスタンスの型が responseType:'json' に固定されるため、
+  // 既存の Blob ダウンロード作法（usePropertyWorkPackageApi）と同様に生の $fetch を使う。
+  async function fetchBlob(path: string): Promise<Blob> {
+    const config = useRuntimeConfig()
+    const { accessToken } = useAuthStore()
+    return $fetch<Blob>(`${config.public.apiBase as string}${path}`, {
+      responseType: 'blob',
+      credentials: 'include',
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+    })
+  }
 
   // === Matchdays ===
   async function getMatchdays(orgId: string, tId: number, divId: number) {
@@ -67,7 +86,7 @@ export function useTournamentBracket() {
     )
   }
   async function getMatrixPdf(orgId: string, tId: number, divId: number) {
-    return api<Blob>(`${b(orgId)}/tournaments/${tId}/divisions/${divId}/matrix/pdf`)
+    return fetchBlob(`${b(orgId)}/tournaments/${tId}/divisions/${divId}/matrix/pdf`)
   }
 
   // === Matches ===
@@ -135,7 +154,7 @@ export function useTournamentBracket() {
     )
   }
   async function getStandingsPdf(orgId: string, tId: number, divId: number) {
-    return api<Blob>(`${b(orgId)}/tournaments/${tId}/divisions/${divId}/standings/pdf`)
+    return fetchBlob(`${b(orgId)}/tournaments/${tId}/divisions/${divId}/standings/pdf`)
   }
   async function recalculateStandings(orgId: string, tId: number, divId: number) {
     return api(`${b(orgId)}/tournaments/${tId}/divisions/${divId}/standings/recalculate`, {
@@ -158,19 +177,32 @@ export function useTournamentBracket() {
   }
 
   // === Rankings ===
+  // 全ランキング一覧（カテゴリ別サマリ）。BE は RankingSummaryResponse を {data} で返す。
   async function getRankings(orgId: string, tId: number) {
-    return api<{ data: IndividualRanking[] }>(`${b(orgId)}/tournaments/${tId}/rankings`)
+    return api<{ data: RankingSummary }>(`${b(orgId)}/tournaments/${tId}/rankings`)
   }
-  async function getIndividualRankings(orgId: string, tId: number, statKey: string) {
-    return api<{ data: IndividualRanking[] }>(`${b(orgId)}/tournaments/${tId}/rankings/${statKey}`)
+  // statKey 別の個人ランキング。BE は PagedResponse（{data, meta}）で返す。
+  async function getIndividualRankings(
+    orgId: string,
+    tId: number,
+    statKey: string,
+    params?: { page?: number; size?: number },
+  ) {
+    const q = new URLSearchParams()
+    if (params?.page != null) q.set('page', String(params.page))
+    if (params?.size != null) q.set('size', String(params.size))
+    const suffix = q.toString() ? `?${q}` : ''
+    return api<PagedResult<IndividualRanking>>(
+      `${b(orgId)}/tournaments/${tId}/rankings/${statKey}${suffix}`,
+    )
   }
   async function getRankingsPdf(orgId: string, tId: number, statKey: string) {
-    return api<Blob>(`${b(orgId)}/tournaments/${tId}/rankings/${statKey}/pdf`)
+    return fetchBlob(`${b(orgId)}/tournaments/${tId}/rankings/${statKey}/pdf`)
   }
 
   // === Bracket PDF ===
   async function getBracketPdf(orgId: string, tId: number) {
-    return api<Blob>(`${b(orgId)}/tournaments/${tId}/bracket/pdf`)
+    return fetchBlob(`${b(orgId)}/tournaments/${tId}/bracket/pdf`)
   }
 
   return {
