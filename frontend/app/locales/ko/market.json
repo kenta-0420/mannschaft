@@ -165,6 +165,52 @@
         "loadFailed": "결제 정보를 가져오지 못했습니다.",
         "payeeNotReady": "수취 측의 수취 계좌가 미등록 상태여서 아직 결제할 수 없습니다.",
         "proceed": "확정 진행"
+      },
+      "received": {
+        "pageTitle": "수령 사례금·환불 관리",
+        "pageSubtitle": "받은 사례금을 확인하고 필요 시 환불할 수 있습니다.",
+        "scopeLabel": "수령처",
+        "scope": {
+          "self": "본인(개인)",
+          "team": "팀",
+          "org": "조직"
+        },
+        "statusFilterLabel": "상태로 필터",
+        "statusFilterAll": "전체",
+        "loading": "불러오는 중…",
+        "empty": "아직 받은 사례금이 없습니다.",
+        "loadFailed": "수령 목록을 불러오지 못했습니다.",
+        "noScope": "수령처가 없습니다. 팀/조직 관리자가 되면 해당 수령 목록을 볼 수 있습니다.",
+        "col": {
+          "source": "출처",
+          "status": "상태",
+          "faceAmount": "액면가",
+          "chargeAmount": "청구액",
+          "fee": "수수료",
+          "refunded": "환불됨",
+          "createdAt": "수령일",
+          "actions": "작업"
+        },
+        "sourceKind": {
+          "RECRUITMENT": "사례금(마켓 모집)",
+          "MEMBERSHIP": "회비",
+          "JOBMATCHING": "잡 매칭",
+          "FLEAMARKET": "벼룩시장"
+        },
+        "refundButton": "환불",
+        "refundUnavailable": "환불 불가",
+        "refundSucceeded": "환불이 접수되었습니다.",
+        "status": {
+          "PENDING_CONFIRMATION": "확인 대기",
+          "DEFERRED": "완료 시 결제 예정",
+          "AUTHORIZED": "승인됨",
+          "HELD": "지급 보류",
+          "CAPTURED": "수령 확정",
+          "PARTIALLY_REFUNDED": "부분 환불",
+          "REFUNDED": "전액 환불",
+          "CANCELLED": "취소",
+          "DISPUTED": "분쟁 중"
+        }
       }
     }
   }

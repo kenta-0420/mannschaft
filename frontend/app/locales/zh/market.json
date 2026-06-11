@@ -165,6 +165,52 @@
         "loadFailed": "获取支付信息失败。",
         "payeeNotReady": "收款方尚未登记收款账户，暂时无法付款。",
         "proceed": "继续确认成立"
+      },
+      "received": {
+        "pageTitle": "已收报酬与退款管理",
+        "pageSubtitle": "查看已收到的报酬，并在需要时进行退款。",
+        "scopeLabel": "收款方",
+        "scope": {
+          "self": "本人（个人）",
+          "team": "团队",
+          "org": "组织"
+        },
+        "statusFilterLabel": "按状态筛选",
+        "statusFilterAll": "全部",
+        "loading": "加载中…",
+        "empty": "尚未收到任何报酬。",
+        "loadFailed": "获取收款列表失败。",
+        "noScope": "没有可用的收款方。成为团队/组织管理员后即可查看其收款列表。",
+        "col": {
+          "source": "来源",
+          "status": "状态",
+          "faceAmount": "面额",
+          "chargeAmount": "收费额",
+          "fee": "手续费",
+          "refunded": "已退款",
+          "createdAt": "收款日",
+          "actions": "操作"
+        },
+        "sourceKind": {
+          "RECRUITMENT": "报酬（市集招募）",
+          "MEMBERSHIP": "会费",
+          "JOBMATCHING": "工作匹配",
+          "FLEAMARKET": "跳蚤市场"
+        },
+        "refundButton": "退款",
+        "refundUnavailable": "不可退款",
+        "refundSucceeded": "退款已受理。",
+        "status": {
+          "PENDING_CONFIRMATION": "待确认",
+          "DEFERRED": "完成时付款",
+          "AUTHORIZED": "已授权",
+          "HELD": "暂缓付款",
+          "CAPTURED": "已到账",
+          "PARTIALLY_REFUNDED": "部分退款",
+          "REFUNDED": "全额退款",
+          "CANCELLED": "已取消",
+          "DISPUTED": "争议中"
+        }
       }
     }
   }
