@@ -30,9 +30,10 @@ logging:
     org.hibernate.stat.internal.StatisticsInitiator: INFO
 
 app:
-  # staging 環境の APP_BASE_URL。デフォルト値は staging 想定のダミー値。
-  # 実運用では環境変数 APP_BASE_URL を設定すること。
-  base-url: ${APP_BASE_URL:https://staging.mannschaft.example}
+  # staging 環境では APP_BASE_URL を必ず設定すること（デフォルト値なし = 未設定時は起動失敗）。
+  # prod と同様に fail-fast 設計で統一（ダミードメインへのサイレント誤設定を防止）。
+  # ⚠️ 末尾スラッシュなしで設定すること。URL 連結側が "/" を先頭に付加するため二重スラッシュになる。
+  base-url: ${APP_BASE_URL}
 
 # 認証 Cookie の Secure 属性。staging も HTTPS 前提のためデフォルト true。
 # 設計書: docs/security/02_cookie_and_session.md §2.1

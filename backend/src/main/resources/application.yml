@@ -339,6 +339,8 @@ app:
   # 全サービスで共通利用するベース URL（正準プロパティ: app.base-url / 環境変数: APP_BASE_URL）。
   # sitemap.xml・各種メールリンク・webcal URL 等、フロントエンド / iCal 系の URL 組み立てに使用する。
   # 本番環境では環境変数 APP_BASE_URL を必ず設定すること（設定なしは起動失敗: application-prod.yml 参照）。
+  # ⚠️ APP_BASE_URL は末尾スラッシュなしで設定すること（例: https://app.mannschaft.com）。
+  #    URL 連結側が "/" を先頭に付加するため、末尾スラッシュがあると "//" の二重スラッシュになる。
   # 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §9.2 / §9.3
   # 以前は mannschaft.email.frontend-url / mannschaft.app-base-url / app.frontend-url と
   # 分散していたものをこの 1 プロパティに統一した（2026-06-11 本番移行前修正）。
