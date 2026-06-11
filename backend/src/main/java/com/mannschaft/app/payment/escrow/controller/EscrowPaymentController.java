@@ -1,17 +1,24 @@
 package com.mannschaft.app.payment.escrow.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.payment.connect.ScopeKind;
 import com.mannschaft.app.payment.escrow.ConnectChargeService;
 import com.mannschaft.app.payment.escrow.EscrowSourceKind;
+import com.mannschaft.app.payment.escrow.EscrowStatus;
+import com.mannschaft.app.payment.escrow.dto.ReceivedEscrowResponse;
 import com.mannschaft.app.payment.escrow.dto.RecruitmentPaymentResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
@@ -27,7 +34,7 @@ import java.util.UUID;
  * 本 GET は<b>新規 authorize を呼ばず</b>既存 escrow を引き当てて {@code clientSecret}（PI から retrieve）を返す。
  * リスナ未起票（@Async 遅延）の競合では 404（準備中）を返し、FE はリトライで起票完了を待つ。</p>
  *
- * <p>エンドポイント数: 2（決済確認 GET / 汎用照会 GET）。</p>
+ * <p>エンドポイント数: 3（決済確認 GET / 汎用照会 GET / 受取側一覧 GET）。</p>
  */
 @RestController
 @RequestMapping("/api/v1/payment/escrow")
@@ -74,6 +81,46 @@ public class EscrowPaymentController {
         Long actorUserId = SecurityUtils.getCurrentUserId();
         ConnectChargeService.PaymentView view = connectChargeService.getEscrowView(id, actorUserId);
         return ResponseEntity.ok(ApiResponse.of(toResponse(view)));
+    }
+
+    /**
+     * 受取側（payee）が受け取ったエスクロー一覧を取得する（フォロー Wave A・設計書 02 §1 / 03 §1）。
+     *
+     * <p>受取側（応じ手＝payee 本人 or そのチーム/組織 ADMIN）が、自分が受け取った謝礼/会費のエスクローを一覧し、
+     * 返金管理の対象を選ぶための EP。{@code scopeKind}/{@code scopeId} で受取 scope を指定し、サービス層
+     * {@link ConnectChargeService#listReceivedEscrows} が認可（USER=本人のみ / TEAM=ADMIN / ORG=ADMIN）・IDOR
+     * （無関係 scope は 403）を担保する。レスポンスに {@code clientSecret}/{@code pi_}/{@code acct_} 等の PCI 機密は
+     * 含めない（受取側向け・03 §10）。</p>
+     *
+     * @param scopeKind 受取 scope 種別（USER/TEAM/ORG）
+     * @param scopeId   受取 scope ID（USER は users.id・TEAM は teams.id・ORG は organizations.id）
+     * @param status    状態フィルタ（任意・未指定は全状態）
+     * @param page      ページ番号（既定 0）
+     * @param size      ページサイズ（既定 20）
+     * @return 受取エスクローの 1 ページ（camelCase・clientSecret 非含有）
+     */
+    @GetMapping("/received")
+    @Operation(summary = "受取側のエスクロー一覧（payee 本人 or scope ADMIN・返金管理用・clientSecret 非含有）")
+    public ResponseEntity<PagedResponse<ReceivedEscrowResponse>> listReceivedEscrows(
+            @RequestParam ScopeKind scopeKind,
+            @RequestParam Long scopeId,
+            @RequestParam(required = false) EscrowStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        Page<ConnectChargeService.ReceivedEscrow> result = connectChargeService.listReceivedEscrows(
+                scopeKind, scopeId, status, actorUserId, PageRequest.of(page, size));
+        PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
+                result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
+        return ResponseEntity.ok(PagedResponse.of(
+                result.getContent().stream().map(this::toReceivedResponse).toList(), meta));
+    }
+
+    private ReceivedEscrowResponse toReceivedResponse(ConnectChargeService.ReceivedEscrow r) {
+        return new ReceivedEscrowResponse(
+                r.escrowId(), r.sourceKind(), r.sourceId(), r.sourceParticipantId(),
+                r.captureMode(), r.status(), r.faceAmount(), r.chargeAmount(),
+                r.applicationFeeAmount(), r.refundedAmount(), r.createdAt());
     }
 
     private RecruitmentPaymentResponse toResponse(ConnectChargeService.PaymentView view) {
