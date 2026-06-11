@@ -100,6 +100,13 @@ class WidgetDefaultMinRoleMapTest {
             assertThat(WidgetDefaultMinRoleMap.getDefault(WidgetKey.TEAM_DIVISION_STANDINGS))
                     .isEqualTo(MinRole.SUPPORTER);
         }
+
+        @Test
+        @DisplayName("TEAM_MATCH_SUMMARY → MEMBER（F08.10）")
+        void teamMatchSummary_MEMBER() {
+            assertThat(WidgetDefaultMinRoleMap.getDefault(WidgetKey.TEAM_MATCH_SUMMARY))
+                    .isEqualTo(MinRole.MEMBER);
+        }
     }
 
     // ========================================
@@ -253,7 +260,7 @@ class WidgetDefaultMinRoleMapTest {
             assertThat(result.keySet())
                     .allSatisfy(key -> assertThat(key.getScopeType()).isEqualTo(ScopeType.TEAM));
 
-            // 想定 10 キーを網羅（F08.7.1 で 2 件追加）
+            // 想定 11 キーを網羅（F08.7.1 で 2 件 + F08.10 で 1 件追加）
             assertThat(result.keySet()).containsExactlyInAnyOrder(
                     WidgetKey.TEAM_NOTICES,
                     WidgetKey.TEAM_UPCOMING_EVENTS,
@@ -264,7 +271,8 @@ class WidgetDefaultMinRoleMapTest {
                     WidgetKey.TEAM_UNREAD_THREADS,
                     WidgetKey.TEAM_MEMBER_ATTENDANCE,
                     WidgetKey.TEAM_TOURNAMENT_RECORD,
-                    WidgetKey.TEAM_DIVISION_STANDINGS);
+                    WidgetKey.TEAM_DIVISION_STANDINGS,
+                    WidgetKey.TEAM_MATCH_SUMMARY);
 
             // ADMIN 限定は含まれない
             assertThat(result).doesNotContainKey(WidgetKey.TEAM_BILLING);
@@ -326,11 +334,11 @@ class WidgetDefaultMinRoleMapTest {
     class AllKeys {
 
         @Test
-        @DisplayName("全管理対象キーを返す（16 件）")
-        void getAllConfigurableKeys_16件() {
+        @DisplayName("全管理対象キーを返す（17 件）")
+        void getAllConfigurableKeys_17件() {
             Set<WidgetKey> all = WidgetDefaultMinRoleMap.getAllConfigurableKeys();
-            // TEAM 10 件 + ORG 6 件 = 16 件（F08.7.1 で 3 件追加）
-            assertThat(all).hasSize(16);
+            // TEAM 11 件 + ORG 6 件 = 17 件（F08.7.1 で 3 件 + F08.10 で 1 件追加）
+            assertThat(all).hasSize(17);
         }
 
         @Test

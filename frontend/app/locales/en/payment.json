@@ -71,6 +71,102 @@
           "EXPIRED": "Expired"
         }
       }
+    },
+    "term": {
+      "periodLabel": "Valid Period",
+      "from": "From",
+      "until": "Until",
+      "typeLabel": {
+        "ANNUAL_FEE": "Annual",
+        "MONTHLY_FEE": "Monthly",
+        "ITEM": "Item",
+        "DONATION": "Donation",
+        "TERM": "Term"
+      }
+    },
+    "admin": {
+      "pageTitle": "Payment management",
+      "itemsTitle": "Payment items",
+      "selectItem": "Select a payment item",
+      "remindUnpaid": "Remind unpaid",
+      "loadItemsError": "Failed to load payment items",
+      "loadPaymentsError": "Failed to load payment status",
+      "remindSuccess": "Reminder sent",
+      "remindError": "Failed to send reminder",
+      "exportError": "Failed to download CSV",
+      "status": {
+        "PAID": "Paid",
+        "UNPAID": "Unpaid",
+        "EXPIRED": "Expired",
+        "PENDING": "Pending",
+        "REFUNDED": "Refunded",
+        "CANCELLED": "Cancelled"
+      }
+    },
+    "receipt": {
+      "title": "Receipts",
+      "download": "Download",
+      "issuedBy": "Issuer",
+      "amount": "Amount",
+      "issuedDate": "Issue Date",
+      "pending": "Pending",
+      "noReceipts": "No receipts",
+      "loadError": "Failed to load payment records",
+      "loadReceiptError": "Failed to load receipt"
+    },
+    "summary": {
+      "expired": "Expired",
+      "payer": "Payer",
+      "beneficiary": "Beneficiary"
+    },
+    "exportCsv": "Download CSV",
+    "feeStatements": {
+      "title": "Fee Statement",
+      "period": "Billing Month",
+      "totalFeeAmount": "Total Fee",
+      "issuerName": "Issuer",
+      "noData": "No data for the selected month",
+      "loadError": "Failed to load fee statement"
+    },
+    "guardianBulkPayment": {
+      "title": "Guardian Bulk Payment",
+      "subtitle": "Pay outstanding fees for children you manage all at once",
+      "noItems": "No outstanding fees",
+      "beneficiary": "Beneficiary",
+      "scope": "Affiliation",
+      "itemName": "Fee name",
+      "amount": "Amount",
+      "dueDate": "Due date",
+      "alreadyPaid": "Already paid",
+      "paidBy": "Paid by {name}",
+      "kind": {
+        "ONE_TIME": "One-time",
+        "RECURRING": "Recurring",
+        "TERM": "Term"
+      },
+      "via": {
+        "SELF": "Self",
+        "GUARDIAN": "Guardian",
+        "GUARDIAN_PROXY": "Guardian proxy",
+        "PROXY_GRANT": "Proxy grant"
+      },
+      "selectAll": "Select all",
+      "deselectAll": "Deselect all",
+      "paySelected": "Pay {count} item(s)",
+      "totalAmount": "Total: ¥{amount}",
+      "processing": "Processing...",
+      "result": {
+        "title": "Payment result",
+        "checkedOut": "Payment complete",
+        "skipped": "Skipped",
+        "skipReasons": {
+          "ALREADY_PAID": "Already paid",
+          "NOT_AUTHORIZED": "Not authorized",
+          "CONNECT_NOT_READY": "Receiving account not set up",
+          "ITEM_NOT_FOUND": "Fee item not found",
+          "ERROR": "Error"
+        }
+      }
     }
   }
 }

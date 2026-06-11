@@ -107,7 +107,11 @@
     "payment": {
       "breakdown": {
         "includesFeeNote": "* The total payment includes the payment processing fee.",
-        "refundFeeConditionalNote": "* In the event of a refund, the processing fee may not be refunded (refund terms depend on the listing owner's settings)."
+        "refundFeeConditionalNote": "* In the event of a refund, the processing fee may not be refunded (refund terms depend on the listing owner's settings).",
+        "title": "Payment breakdown",
+        "faceAmountLabel": "Reward (face value)",
+        "feeLabel": "Payment fee",
+        "totalLabel": "Total to pay"
       },
       "refund": {
         "title": "Refund",
@@ -122,7 +126,91 @@
         },
         "submit": "Issue refund",
         "confirmTitle": "Confirm refund",
-        "confirmPayee": "This is a recipient-borne refund. The payer will be refunded in full, and the processing fee will be borne by you. Proceed?"
+        "confirmPayee": "This is a recipient-borne refund. The payer will be refunded in full, and the processing fee will be borne by you. Proceed?",
+        "amountLabel": "Refund amount",
+        "amountFull": "Full refund",
+        "amountPartial": "Partial refund",
+        "amountRequired": "Please enter the refund amount.",
+        "amountTooLarge": "The refund amount exceeds the refundable amount.",
+        "reasonLabel": "Reason (optional)",
+        "failed": "Refund failed."
+      },
+      "connect": {
+        "title": "Payout account (receiving rewards)",
+        "loading": "Loading…",
+        "statusLabel": "Status",
+        "status": {
+          "ready": "Completed",
+          "onboarding": "Under review",
+          "restricted": "More info required",
+          "notRegistered": "Not registered"
+        },
+        "registrationRequired": "You need to register a payout account to receive rewards.",
+        "register": "Register payout account",
+        "continue": "Continue registration",
+        "redirecting": "Redirecting…",
+        "linkFailed": "Failed to obtain the payout account registration link."
+      },
+      "confirm": {
+        "title": "Confirm reward payment",
+        "intro": "Before confirming the applicant, please confirm the reward payment (card authorization).",
+        "expiryNotice": "This authorization is valid for about 7 days. Final approval of service completion is required within 7 days (after that, payment is taken again at completion).",
+        "deferredNotice": "Because more than 7 days pass between confirmation and service, no authorization is taken now. You will pay again at final approval of service completion.",
+        "alreadyAuthorized": "This payment has already been confirmed.",
+        "preparing": "Preparing payment details. Please wait a moment and try again.",
+        "retry": "Reload",
+        "submit": "Confirm payment",
+        "processing": "Processing…",
+        "succeeded": "Payment confirmation completed.",
+        "loadFailed": "Failed to retrieve payment details.",
+        "payeeNotReady": "The recipient has not registered a payout account yet, so payment is not possible.",
+        "proceed": "Proceed to confirm"
+      },
+      "received": {
+        "pageTitle": "Received payments & refunds",
+        "pageSubtitle": "Review payments you have received and issue refunds when needed.",
+        "scopeLabel": "Recipient",
+        "scope": {
+          "self": "Myself (individual)",
+          "team": "Team",
+          "org": "Organization"
+        },
+        "statusFilterLabel": "Filter by status",
+        "statusFilterAll": "All",
+        "loading": "Loading…",
+        "empty": "No payments received yet.",
+        "loadFailed": "Failed to load the received list.",
+        "noScope": "No recipients available. Become a team/organization admin to view its received list.",
+        "col": {
+          "source": "Source",
+          "status": "Status",
+          "faceAmount": "Face amount",
+          "chargeAmount": "Charged",
+          "fee": "Fee",
+          "refunded": "Refunded",
+          "createdAt": "Received on",
+          "actions": "Actions"
+        },
+        "sourceKind": {
+          "RECRUITMENT": "Reward (market listing)",
+          "MEMBERSHIP": "Membership fee",
+          "JOBMATCHING": "Job matching",
+          "FLEAMARKET": "Flea market"
+        },
+        "refundButton": "Refund",
+        "refundUnavailable": "Not refundable",
+        "refundSucceeded": "Refund accepted.",
+        "status": {
+          "PENDING_CONFIRMATION": "Awaiting confirmation",
+          "DEFERRED": "Pay on completion",
+          "AUTHORIZED": "Authorized",
+          "HELD": "Payout held",
+          "CAPTURED": "Received",
+          "PARTIALLY_REFUNDED": "Partially refunded",
+          "REFUNDED": "Fully refunded",
+          "CANCELLED": "Cancelled",
+          "DISPUTED": "Disputed"
+        }
       }
     }
   }

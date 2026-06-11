@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -84,6 +85,42 @@ public class PaymentItemEntity extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "billing_interval", length = 8)
     private BillingInterval billingInterval;
+
+    /**
+     * F08.9 P6: 期別有効開始日（{@link PaymentItemType#TERM} のみ使用）。
+     */
+    @Column(name = "term_starts_on")
+    private LocalDate termStartsOn;
+
+    /**
+     * F08.9 P6: 期別有効終了日（{@link PaymentItemType#TERM} のみ使用）。
+     * TERM 型のチェックアウト完了時に {@code member_payments.valid_until} として設定される。
+     */
+    @Column(name = "term_ends_on")
+    private LocalDate termEndsOn;
+
+    // === F08.9 P8: 税からくり列（将来の国別TaxPolicy実装まで null のまま）===
+
+    /**
+     * F08.9 P8: 税区分（例: STANDARD_10 / REDUCED_8 / EXEMPT）。
+     * 税理士確認後に設定する。現時点では NULL。
+     */
+    @Column(name = "tax_category", length = 30)
+    private String taxCategory;
+
+    /**
+     * F08.9 P8: 税率（0.1000=10%）。
+     * 税理士確認後に設定する。現時点では NULL。
+     */
+    @Column(name = "tax_rate", precision = 5, scale = 4)
+    private BigDecimal taxRate;
+
+    /**
+     * F08.9 P8: 税込み価格フラグ。TRUE の場合 amount は税込み価格を示す。
+     * 税理士確認後に設定する。現時点では NULL。
+     */
+    @Column(name = "price_includes_tax")
+    private Boolean priceIncludesTax;
 
     private Long createdBy;
 

@@ -61,6 +61,7 @@ public class DashboardWidgetService {
             Map.entry("TEAM_MEMBER_ATTENDANCE", "メンバー出欠状況"),
             Map.entry("TEAM_TOURNAMENT_RECORD", "大会成績"),
             Map.entry("TEAM_DIVISION_STANDINGS", "順位表"),
+            Map.entry("TEAM_MATCH_SUMMARY", "試合サマリ"),
             Map.entry("TEAM_BILLING", "課金サマリー"),
             Map.entry("TEAM_PAGE_VIEWS", "アクセス解析"),
             Map.entry("ORG_TEAM_LIST", "傘下チーム一覧"),

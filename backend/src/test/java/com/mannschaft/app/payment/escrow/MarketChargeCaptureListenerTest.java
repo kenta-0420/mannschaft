@@ -115,6 +115,72 @@ class MarketChargeCaptureListenerTest {
         verify(connectChargeService, never()).capture(held);
     }
 
+    private EscrowTransactionEntity deferredEscrow(UUID id) {
+        EscrowTransactionEntity e = EscrowTransactionEntity.builder()
+                .sourceKind(EscrowSourceKind.RECRUITMENT).sourceId(100L).sourceParticipantId(200L)
+                .captureMode(EscrowCaptureMode.AUTOMATIC)
+                .payerScopeKind(ScopeKind.USER).payerScopeId(999L)
+                .payeeKind(ScopeKind.TEAM).payeeConnectAccountId(UUID.randomUUID())
+                .faceAmount(10_000L).amount(10_250L).applicationFeeAmount(500L)
+                .currency("JPY").status(EscrowStatus.DEFERRED)
+                .build();
+        e.setId(id);
+        return e;
+    }
+
+    @Test
+    @DisplayName("7日超 fallback: DEFERRED escrow の最終認証→chargeDeferred（即時払い）を呼び capture は呼ばない")
+    void deferredEscrow_chargesDeferred() {
+        UUID escrowId = UUID.fromString("019607a0-0000-7000-8000-0000000000d1");
+        given(escrowTransactionRepository.findBySourceKindAndSourceId(EscrowSourceKind.RECRUITMENT, 100L))
+                .willReturn(List.of(deferredEscrow(escrowId)));
+
+        listener.onListingFinalized(new MarketListingFinalizedEvent(100L, true));
+
+        verify(connectChargeService).chargeDeferred(escrowId);
+        verify(connectChargeService, never()).capture(any());
+    }
+
+    @Test
+    @DisplayName("混在: AUTHORIZED は capture・DEFERRED は chargeDeferred・PENDING_CONFIRMATION はスキップ")
+    void mixedEscrows_routedByStatus() {
+        UUID auth = UUID.fromString("019607a0-0000-7000-8000-0000000000d2");
+        UUID def = UUID.fromString("019607a0-0000-7000-8000-0000000000d3");
+        UUID pending = UUID.fromString("019607a0-0000-7000-8000-0000000000d4");
+        given(escrowTransactionRepository.findBySourceKindAndSourceId(EscrowSourceKind.RECRUITMENT, 100L))
+                .willReturn(List.of(
+                        escrow(EscrowStatus.AUTHORIZED, auth),
+                        deferredEscrow(def),
+                        escrow(EscrowStatus.PENDING_CONFIRMATION, pending)));
+
+        listener.onListingFinalized(new MarketListingFinalizedEvent(100L, true));
+
+        verify(connectChargeService).capture(auth);
+        verify(connectChargeService).chargeDeferred(def);
+        verify(connectChargeService, never()).capture(def);
+        verify(connectChargeService, never()).chargeDeferred(auth);
+        verify(connectChargeService, never()).capture(pending);
+        verify(connectChargeService, never()).chargeDeferred(pending);
+    }
+
+    @Test
+    @DisplayName("chargeDeferred 失敗→握り潰さず ChargeCaptureFailedEvent 発火（確定は巻き戻せない）")
+    void chargeDeferredFails_publishesFailureEvent() {
+        UUID escrowId = UUID.fromString("019607a0-0000-7000-8000-0000000000d5");
+        given(escrowTransactionRepository.findBySourceKindAndSourceId(EscrowSourceKind.RECRUITMENT, 100L))
+                .willReturn(List.of(deferredEscrow(escrowId)));
+        willThrow(new RuntimeException("stripe deferred charge failed"))
+                .given(connectChargeService).chargeDeferred(escrowId);
+
+        assertThatCode(() -> listener.onListingFinalized(new MarketListingFinalizedEvent(100L, true)))
+                .doesNotThrowAnyException();
+
+        ArgumentCaptor<ChargeCaptureFailedEvent> captor = ArgumentCaptor.forClass(ChargeCaptureFailedEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().escrowId()).isEqualTo(escrowId);
+        assertThat(captor.getValue().reason()).contains("stripe deferred charge failed");
+    }
+
     @Test
     @DisplayName("capture 失敗→握り潰さず ERROR ＋ ChargeCaptureFailedEvent 発火（AFTER_COMMIT ゆえ確定は巻き戻せない）")
     void captureFails_publishesFailureEventAndDoesNotThrow() {

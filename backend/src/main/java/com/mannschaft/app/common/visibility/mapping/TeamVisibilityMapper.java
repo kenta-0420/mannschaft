@@ -8,18 +8,18 @@ import com.mannschaft.app.team.entity.TeamEntity;
  *
  * <p>設計書: {@code docs/features/F00_content_visibility_resolver.md} §5.2 / Phase D-3。</p>
  *
- * <p>マッピング:
+ * <p>マッピング（ロールベース設計）:
  * <ul>
  *   <li>{@link TeamEntity.Visibility#PUBLIC} → {@link StandardVisibility#PUBLIC}
  *       （未認証ユーザーも閲覧可）</li>
- *   <li>{@link TeamEntity.Visibility#ORGANIZATION_ONLY} → {@link StandardVisibility#ORGANIZATION_WIDE}
- *       （スコープの親 ORG 所属メンバーまで公開。親 ORG 連鎖ガードは §11.6 参照）</li>
- *   <li>{@link TeamEntity.Visibility#PRIVATE} → {@link StandardVisibility#SCOPE_AFFILIATED}
- *       （招待制・非公開チーム。{@code TeamEntity} に {@code created_by} が存在しないため
- *       {@link StandardVisibility#PRIVATE}（作者本人のみ）へのマッピングは実質 fail-closed
- *       となり誰も閲覧できなくなる。チームの PRIVATE の意図は「メンバーだけ見える」であるため
- *       {@link StandardVisibility#SCOPE_AFFILIATED}（直接所属）を使用する）</li>
+ *   <li>{@link TeamEntity.Visibility#GUESTS_AND_ABOVE} → {@link StandardVisibility#SCOPE_AFFILIATED}
+ *       （GUEST 以上の所属メンバーすべてが閲覧可。直接所属ユーザー＋サポーター含む）</li>
+ *   <li>{@link TeamEntity.Visibility#SUPPORTERS_AND_ABOVE} → {@link StandardVisibility#SUPPORTERS_AND_ABOVE}
+ *       （サポーター以上のロールを持つメンバーが閲覧可）</li>
+ *   <li>{@link TeamEntity.Visibility#MEMBERS_AND_ABOVE} → {@link StandardVisibility#MEMBERS_AND_ABOVE}
+ *       （正規メンバー以上のロールを持つメンバーのみ閲覧可。サポーター・ゲストは除外）</li>
  * </ul>
+ * </p>
  */
 public final class TeamVisibilityMapper {
 
@@ -36,9 +36,9 @@ public final class TeamVisibilityMapper {
     public static StandardVisibility toStandard(TeamEntity.Visibility v) {
         return switch (v) {
             case PUBLIC -> StandardVisibility.PUBLIC;
-            case ORGANIZATION_ONLY -> StandardVisibility.ORGANIZATION_WIDE;
-            // 挙動不変・名称正準化（W3）: SCOPE_AFFILIATED = isMemberOf = 旧 MEMBERS_ONLY と同一判定。
-            case PRIVATE -> StandardVisibility.SCOPE_AFFILIATED;
+            case GUESTS_AND_ABOVE -> StandardVisibility.SCOPE_AFFILIATED;
+            case SUPPORTERS_AND_ABOVE -> StandardVisibility.SUPPORTERS_AND_ABOVE;
+            case MEMBERS_AND_ABOVE -> StandardVisibility.MEMBERS_AND_ABOVE;
         };
     }
 }

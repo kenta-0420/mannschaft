@@ -96,14 +96,14 @@ class PersonalTimetableShareTargetServiceTest {
         familyTeam = TeamEntity.builder()
                 .name("我が家")
                 .template("family")
-                .visibility(TeamEntity.Visibility.PRIVATE)
+                .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE)
                 .supporterEnabled(false)
                 .build();
 
         nonFamilyTeam = TeamEntity.builder()
                 .name("塾")
                 .template("school")
-                .visibility(TeamEntity.Visibility.PRIVATE)
+                .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE)
                 .supporterEnabled(false)
                 .build();
     }

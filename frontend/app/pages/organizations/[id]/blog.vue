@@ -2,23 +2,11 @@
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 const route = useRoute()
 const orgId = String(route.params.id)
-const authStore = useAuthStore()
-const { getMembers } = useOrganizationApi()
-
-const isMember = ref(false)
+// メンバー判定はロールシステムに委譲する（全メンバー取得→線形探索のアンチパターンを排除）
+const { isMember, loadPermissions } = useRoleAccess('organization', orgId)
 
 onMounted(async () => {
-  const currentUserId = authStore.currentUser?.id
-  if (!currentUserId) {
-    isMember.value = false
-    return
-  }
-  try {
-    const res = await getMembers(orgId, { size: 500 })
-    isMember.value = res.data.some((m) => m.userId === currentUserId)
-  } catch {
-    isMember.value = false
-  }
+  await loadPermissions()
 })
 </script>
 

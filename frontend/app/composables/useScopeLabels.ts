@@ -29,8 +29,9 @@ export function useScopeLabels() {
 
   const visibilityLabel: Record<string, string> = {
     PUBLIC: '公開',
-    ORGANIZATION_ONLY: 'チーム内のみ',
-    PRIVATE: '非公開',
+    GUESTS_AND_ABOVE: 'ゲスト以上',
+    SUPPORTERS_AND_ABOVE: 'サポーター以上',
+    MEMBERS_AND_ABOVE: 'メンバー以上',
   }
 
   return { templateLabel, orgTypeLabel, visibilityLabel }

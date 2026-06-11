@@ -35,6 +35,47 @@ const { t } = useI18n()
 const scheduleApi = useScheduleApi()
 const notification = useNotification()
 
+// F08.10 入口④: カレンダー予定（TEAM スコープ）から試合記録へ合流する。
+// 予定の publicId(scopeId) を数値 orgId/teamId に解決し、既存 match があれば live を開く・
+// 無ければ予定情報をプリフィルして作成 → live へ遷移する（二重起票防止）。
+const { resolveContext } = useMatchOrgContext()
+const { resolveMatchBySchedule, createMatch } = useMatchApi()
+// TEAM スコープ予定のみ記録ボタンを出す（teamId 文脈が要るため・organization/personal では非表示）。
+const canRecordMatch = computed(() => props.scopeType === 'team')
+const recordingMatch = ref(false)
+
+async function recordMatch(): Promise<void> {
+  if (!canRecordMatch.value || recordingMatch.value) return
+  recordingMatch.value = true
+  try {
+    const ctx = await resolveContext(props.scopeId)
+    if (!ctx) return // 解決失敗時は composable 内で通知済み
+
+    // 1) この予定に紐づく既存 match があれば live を開く
+    const existing = await resolveMatchBySchedule(ctx.orgId, ctx.teamId, props.event.id)
+    if (existing?.id) {
+      await navigateTo(`/teams/${props.scopeId}/matches/${existing.id}/live`)
+      return
+    }
+
+    // 2) 無ければ予定情報をプリフィルして作成（kind 既定=PRACTICE・相手名/日時/会場は取れる範囲）
+    const created = await createMatch(ctx.orgId, ctx.teamId, {
+      kind: 'PRACTICE',
+      opponentName: props.event.title,
+      scheduleId: props.event.id,
+      kickoffAt: props.event.startAt,
+      venue: props.event.location ?? undefined,
+    })
+    if (created.id) {
+      await navigateTo(`/teams/${props.scopeId}/matches/${created.id}/live`)
+    }
+  } catch {
+    // エラーは composable 内で通知済み（症状は隠さない）
+  } finally {
+    recordingMatch.value = false
+  }
+}
+
 function formatDateTime(dateStr: string, allDay: boolean): string {
   if (allDay) return formatDate(dateStr)
   return isoFormatDateTime(dateStr)
@@ -162,6 +203,20 @@ onMounted(async () => {
         <i class="pi pi-user text-surface-400" />
         <span>作成: {{ event.createdBy.displayName }}</span>
       </div>
+    </div>
+
+    <!-- F08.10 入口④: TEAM スコープ予定のみ「この試合を記録」ボタンを出す -->
+    <div v-if="canRecordMatch">
+      <Button
+        :label="$t('match.entry.record_from_schedule')"
+        icon="pi pi-play"
+        outlined
+        size="small"
+        class="w-full"
+        :loading="recordingMatch"
+        @click="recordMatch"
+      />
+      <p class="mt-1 text-xs text-surface-400">{{ $t('match.entry.record_from_schedule_hint') }}</p>
     </div>
 
     <!-- 説明 -->

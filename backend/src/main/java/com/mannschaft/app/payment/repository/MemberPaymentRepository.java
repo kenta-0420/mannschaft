@@ -65,6 +65,21 @@ public interface MemberPaymentRepository extends JpaRepository<MemberPaymentEnti
                                                        @Param("paymentItemId") Long paymentItemId);
 
     /**
+     * 受益者×項目の有効な PAID レコードを 1 件取得する（F08.9 P2 後見まとめ払いの paidBy 解決用）。
+     *
+     * <p>{@link #existsValidPaidPayment(Long, Long)} が真のとき、誰が払ったか（payer_user_id）・いつ払ったか
+     * （paid_at）を表示するために用いる。有効期限（validUntil）が切れていない PAID を支払い日時の新しい順で 1 件返す。
+     * 複数の有効 PAID が存在しうる不整合データでは最新の支払いを採る。</p>
+     */
+    @Query("SELECT mp FROM MemberPaymentEntity mp " +
+            "WHERE mp.userId = :userId AND mp.paymentItemId = :paymentItemId " +
+            "AND mp.status = 'PAID' " +
+            "AND (mp.validUntil IS NULL OR mp.validUntil >= CURRENT_DATE) " +
+            "ORDER BY mp.paidAt DESC, mp.createdAt DESC")
+    List<MemberPaymentEntity> findValidPaidPayments(@Param("userId") Long userId,
+                                                    @Param("paymentItemId") Long paymentItemId);
+
+    /**
      * Stripe Checkout Session ID で支払い記録を取得する（ロック付き）。
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -87,6 +102,20 @@ public interface MemberPaymentRepository extends JpaRepository<MemberPaymentEnti
      * 支払い項目の PAID 件数を取得する。
      */
     long countByPaymentItemIdAndStatus(Long paymentItemId, PaymentStatus status);
+
+    /**
+     * 支払い項目の期限切れ PAID 件数を取得する（F08.9 P8 サマリー拡張）。
+     *
+     * <p>valid_until が過去日（&lt; 指定日）かつ status = PAID の件数を返す。
+     * valid_until が NULL の場合（ITEM/DONATION 等の永続タイプ）は期限切れに該当しない。</p>
+     */
+    @Query("SELECT COUNT(mp) FROM MemberPaymentEntity mp " +
+            "WHERE mp.paymentItemId = :paymentItemId " +
+            "AND mp.status = 'PAID' " +
+            "AND mp.validUntil IS NOT NULL " +
+            "AND mp.validUntil < :referenceDate")
+    long countExpiredPaidByPaymentItemId(@Param("paymentItemId") Long paymentItemId,
+                                         @Param("referenceDate") java.time.LocalDate referenceDate);
 
     /**
      * ユーザーの全支払い記録を取得する（チーム/組織横断）。
@@ -118,6 +147,14 @@ public interface MemberPaymentRepository extends JpaRepository<MemberPaymentEnti
      * 支払い項目に対する全支払い記録を取得する。
      */
     List<MemberPaymentEntity> findByPaymentItemId(Long paymentItemId);
+
+    /**
+     * 支払い項目に対する全支払い記録を作成日時降順で取得する（CSV エクスポート用）。
+     *
+     * <p>F08.9 P8 CSV エクスポートで使用する。ページング不要（全件出力）のため
+     * {@link #findByPaymentItemId(Long, Pageable)} ではなく専用クエリを用意する。</p>
+     */
+    List<MemberPaymentEntity> findByPaymentItemIdOrderByCreatedAtDesc(Long paymentItemId);
 
     /**
      * 支払い項目の未払い（PENDING）ユーザーIDリストを取得する。

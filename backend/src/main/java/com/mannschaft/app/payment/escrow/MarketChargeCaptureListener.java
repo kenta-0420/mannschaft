@@ -76,13 +76,21 @@ public class MarketChargeCaptureListener {
         }
 
         for (EscrowTransactionEntity escrow : escrows) {
-            if (escrow.getStatus() != EscrowStatus.AUTHORIZED) {
-                // HELD（onboarding 未完で payout 不能）/CANCELLED/CAPTURED 済み等は capture 対象外。
-                log.info("F22.1 払出スキップ（AUTHORIZED 以外）: escrowId={}, status={}",
+            if (escrow.getStatus() == EscrowStatus.AUTHORIZED) {
+                // 7日以内（従来 escrow・MANUAL）: 既存与信を capture（払出）する（不変）。
+                captureOne(escrow, event.listingId());
+            } else if (escrow.getStatus() == EscrowStatus.DEFERRED) {
+                // 7日超 fallback（第三陣-b）: 成立時に与信せず DEFERRED で起票した謝礼を、最終認証時に即時払い
+                // （AUTOMATIC の destination charge）へフォールバックする。chargeDeferred が PI を作成し
+                // AUTHORIZED（hold_expires_at=NULL・バッチ非干渉）へ遷移＝札主は第二陣の決済確認 EP で
+                // clientSecret を受け取り confirm する。
+                chargeDeferredOne(escrow, event.listingId());
+            } else {
+                // PENDING_CONFIRMATION（札主未 confirm・真の与信未確定）/HELD（onboarding 未完で payout 不能）/
+                // CANCELLED/CAPTURED 済み等は払出対象外（第一陣 status 意味論の根治）。
+                log.info("F22.1 払出スキップ（AUTHORIZED/DEFERRED 以外）: escrowId={}, status={}",
                         escrow.getId(), escrow.getStatus());
-                continue;
             }
-            captureOne(escrow, event.listingId());
         }
     }
 
@@ -96,6 +104,28 @@ public class MarketChargeCaptureListener {
             connectChargeService.capture(escrow.getId());
         } catch (RuntimeException e) {
             log.error("F22.1 謝礼の払出失敗（救済イベント発火・確定はロールバック不可・webhook 安全網に委ねる）: "
+                            + "escrowId={}, listingId={}, reason={}",
+                    escrow.getId(), listingId, e.getMessage(), e);
+            eventPublisher.publishEvent(new ChargeCaptureFailedEvent(
+                    escrow.getId(), EscrowSourceKind.RECRUITMENT, listingId, e.getMessage()));
+        }
+    }
+
+    /**
+     * 単一 DEFERRED escrow の完了時即時払い（chargeDeferred）を起こす（第三陣-b 7日超 fallback・02 §5.1）。
+     *
+     * <p>{@link ConnectChargeService#chargeDeferred} が AUTOMATIC の Destination PaymentIntent を作成し
+     * {@link EscrowStatus#DEFERRED}→{@link EscrowStatus#AUTHORIZED}（{@code hold_expires_at=NULL}・第三陣バッチ非干渉の
+     * ため意図的に AUTHORIZED）へ遷移させる（札主は第二陣の決済確認 EP で clientSecret を受け取り confirm・succeeded
+     * webhook で CAPTURED）。capture と同様、失敗は握り潰さず ERROR ログ＋
+     * {@link ChargeCaptureFailedEvent} で観測可能にし、1 件の失敗が他 escrow を巻き込まないよう例外をここで処理し終える。
+     * AFTER_COMMIT ゆえ確定（COMPLETED）はロールバック不可。</p>
+     */
+    private void chargeDeferredOne(EscrowTransactionEntity escrow, Long listingId) {
+        try {
+            connectChargeService.chargeDeferred(escrow.getId());
+        } catch (RuntimeException e) {
+            log.error("F22.1 完了時即時払い（7日超 fallback）の起票失敗（救済イベント発火・確定はロールバック不可）: "
                             + "escrowId={}, listingId={}, reason={}",
                     escrow.getId(), listingId, e.getMessage(), e);
             eventPublisher.publishEvent(new ChargeCaptureFailedEvent(

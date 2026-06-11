@@ -189,9 +189,9 @@ class TournamentVisibilityResolverIntegrationTest extends AbstractMySqlIntegrati
     }
 
     @Test
-    @DisplayName("MEMBERS_ONLY × OPEN は所属組織メンバーのみ閲覧可")
-    void members_only_open_visible_to_member_only() {
-        Long tnId = insertTournament("tn-members-open", memberUserId, "OPEN", "MEMBERS_ONLY");
+    @DisplayName("SCOPE_AFFILIATED × OPEN は所属組織メンバーのみ閲覧可（旧 MEMBERS_ONLY 相当）")
+    void scope_affiliated_open_visible_to_member_only() {
+        Long tnId = insertTournament("tn-members-open", memberUserId, "OPEN", "SCOPE_AFFILIATED");
         em.flush();
         em.clear();
 
@@ -245,10 +245,10 @@ class TournamentVisibilityResolverIntegrationTest extends AbstractMySqlIntegrati
     }
 
     @Test
-    @DisplayName("filterAccessible は MEMBERS_ONLY と PUBLIC を所属メンバー視点で正しくフィルタ")
+    @DisplayName("filterAccessible は SCOPE_AFFILIATED と PUBLIC を所属メンバー視点で正しくフィルタ")
     void filterAccessible_mixed_visibility_for_member() {
         Long t1 = insertTournament("tn-flt-1", memberUserId, "OPEN", "PUBLIC");
-        Long t2 = insertTournament("tn-flt-2", memberUserId, "IN_PROGRESS", "MEMBERS_ONLY");
+        Long t2 = insertTournament("tn-flt-2", memberUserId, "IN_PROGRESS", "SCOPE_AFFILIATED");
         Long t3 = insertTournament("tn-flt-3", memberUserId, "DRAFT", "PUBLIC");
         em.flush();
         em.clear();

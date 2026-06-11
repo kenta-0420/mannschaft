@@ -30,7 +30,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * F00 Phase D-3 — {@link TeamVisibilityResolver} 単体テスト。
+ * F00 Phase D-3 — {@link TeamVisibilityResolver} 単体テスト（ロールベース設計）。
  *
  * <p>{@code @ConditionalOnProperty} を使う {@link TeamVisibilityResolver} は
  * {@code @SpringBootTest} なしの Mockito ユニットテストでは Bean 自動登録されないため、
@@ -38,14 +38,15 @@ import static org.mockito.Mockito.when;
  *
  * <p>抽象基底側の挙動（status × visibility 合成・SystemAdmin 高速パス）は
  * {@code AbstractContentVisibilityResolverTest} で網羅済のため、本テストでは
- * Team 固有の正規化（PUBLIC / ORGANIZATION_ONLY / PRIVATE → StandardVisibility）と
+ * Team 固有の正規化（PUBLIC / GUESTS_AND_ABOVE / SUPPORTERS_AND_ABOVE / MEMBERS_AND_ABOVE → StandardVisibility）と
  * status 軸（archivedAt / deletedAt）の変換に焦点を当てる。</p>
  *
- * <p>D-3 マッピング:
+ * <p>D-3 マッピング（ロールベース設計）:
  * <ul>
  *   <li>PUBLIC → StandardVisibility.PUBLIC</li>
- *   <li>ORGANIZATION_ONLY → StandardVisibility.ORGANIZATION_WIDE（親 ORG メンバーまで公開）</li>
- *   <li>PRIVATE → StandardVisibility.SCOPE_AFFILIATED（招待制・非公開チームはメンバー閲覧可）</li>
+ *   <li>GUESTS_AND_ABOVE → StandardVisibility.SCOPE_AFFILIATED（GUEST以上の全所属メンバー閲覧可）</li>
+ *   <li>SUPPORTERS_AND_ABOVE → StandardVisibility.SUPPORTERS_AND_ABOVE</li>
+ *   <li>MEMBERS_AND_ABOVE → StandardVisibility.MEMBERS_AND_ABOVE</li>
  * </ul>
  */
 @ExtendWith(MockitoExtension.class)
@@ -105,52 +106,14 @@ class TeamVisibilityResolverTest {
     }
 
     // -------------------------------------------------------------------------
-    // ORGANIZATION_ONLY チームは親 ORG メンバーのみ
+    // GUESTS_AND_ABOVE チームはチームメンバー（ゲスト以上）に可視
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("canView_ORGANIZATION_ONLYチームは親ORGメンバーに可視")
-    void canView_ORGANIZATION_ONLYチームは親ORGメンバーに可視() {
-        // チーム(id=1)の親ORGがorg(id=100)という想定
+    @DisplayName("canView_GUESTS_AND_ABOVEチームはチームメンバーに可視")
+    void canView_GUESTS_AND_ABOVEチームはチームメンバーに可視() {
         TeamVisibilityProjection projection = projection(
-                1L, 1L, TeamEntity.Visibility.ORGANIZATION_ONLY, null, null);
-        when(teamRepository.findVisibilityProjectionsByIdIn(any()))
-                .thenReturn(List.of(projection));
-        // 親ORG=100のメンバー
-        when(membershipBatchQueryService.snapshotForUser(eq(5L), anySet(), anySet()))
-                .thenReturn(new UserScopeRoleSnapshot(false,
-                        Map.of(),
-                        Map.of(new ScopeKey("TEAM", 1L), 100L),
-                        Set.of(new ScopeKey("ORGANIZATION", 100L)),
-                        Set.of()));
-
-        assertThat(resolver.canView(1L, 5L)).isTrue();
-    }
-
-    @Test
-    @DisplayName("canView_ORGANIZATION_ONLYチームは非ORGメンバーに不可視")
-    void canView_ORGANIZATION_ONLYチームは非ORGメンバーに不可視() {
-        TeamVisibilityProjection projection = projection(
-                1L, 1L, TeamEntity.Visibility.ORGANIZATION_ONLY, null, null);
-        when(teamRepository.findVisibilityProjectionsByIdIn(any()))
-                .thenReturn(List.of(projection));
-        // 親ORG非所属ユーザー
-        when(membershipBatchQueryService.snapshotForUser(eq(99L), anySet(), anySet()))
-                .thenReturn(UserScopeRoleSnapshot.empty());
-
-        assertThat(resolver.canView(1L, 99L)).isFalse();
-    }
-
-    // -------------------------------------------------------------------------
-    // PRIVATE チームは MEMBERS_ONLY にマップ（招待制・非公開チームはメンバー閲覧可）
-    // -------------------------------------------------------------------------
-
-    @Test
-    @DisplayName("canView_PRIVATEチームはチームメンバーに可視")
-    void canView_PRIVATEチームはチームメンバーに可視() {
-        // PRIVATE → MEMBERS_ONLY: チームメンバー（memberScopes に TEAM:1 を持つ）は閲覧可
-        TeamVisibilityProjection projection = projection(
-                1L, 1L, TeamEntity.Visibility.PRIVATE, null, null);
+                1L, 1L, TeamEntity.Visibility.GUESTS_AND_ABOVE, null, null);
         when(teamRepository.findVisibilityProjectionsByIdIn(any()))
                 .thenReturn(List.of(projection));
         when(membershipBatchQueryService.snapshotForUser(eq(10L), anySet(), anySet()))
@@ -164,11 +127,10 @@ class TeamVisibilityResolverTest {
     }
 
     @Test
-    @DisplayName("canView_PRIVATEチームは非メンバーに不可視")
-    void canView_PRIVATEチームは非メンバーに不可視() {
-        // PRIVATE → MEMBERS_ONLY: チーム非メンバーは閲覧不可
+    @DisplayName("canView_GUESTS_AND_ABOVEチームは非メンバーに不可視")
+    void canView_GUESTS_AND_ABOVEチームは非メンバーに不可視() {
         TeamVisibilityProjection projection = projection(
-                1L, 1L, TeamEntity.Visibility.PRIVATE, null, null);
+                1L, 1L, TeamEntity.Visibility.GUESTS_AND_ABOVE, null, null);
         when(teamRepository.findVisibilityProjectionsByIdIn(any()))
                 .thenReturn(List.of(projection));
         when(membershipBatchQueryService.snapshotForUser(eq(99L), anySet(), anySet()))
@@ -178,10 +140,57 @@ class TeamVisibilityResolverTest {
     }
 
     @Test
-    @DisplayName("canView_PRIVATEチームはSystemAdminに可視（高速パス）")
-    void canView_PRIVATEチームはSystemAdminに可視() {
+    @DisplayName("canView_GUESTS_AND_ABOVEチームはSystemAdminに可視（高速パス）")
+    void canView_GUESTS_AND_ABOVEチームはSystemAdminに可視() {
         TeamVisibilityProjection projection = projection(
-                1L, 1L, TeamEntity.Visibility.PRIVATE, null, null);
+                1L, 1L, TeamEntity.Visibility.GUESTS_AND_ABOVE, null, null);
+        when(teamRepository.findVisibilityProjectionsByIdIn(any()))
+                .thenReturn(List.of(projection));
+        when(membershipBatchQueryService.snapshotForUser(eq(1L), anySet(), anySet()))
+                .thenReturn(UserScopeRoleSnapshot.forSystemAdmin());
+
+        assertThat(resolver.canView(1L, 1L)).isTrue();
+    }
+
+    // -------------------------------------------------------------------------
+    // MEMBERS_AND_ABOVE チームは正規メンバー以上に可視
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("canView_MEMBERS_AND_ABOVEチームはチームメンバーに可視")
+    void canView_MEMBERS_AND_ABOVEチームはチームメンバーに可視() {
+        TeamVisibilityProjection projection = projection(
+                1L, 1L, TeamEntity.Visibility.MEMBERS_AND_ABOVE, null, null);
+        when(teamRepository.findVisibilityProjectionsByIdIn(any()))
+                .thenReturn(List.of(projection));
+        when(membershipBatchQueryService.snapshotForUser(eq(10L), anySet(), anySet()))
+                .thenReturn(new UserScopeRoleSnapshot(false,
+                        Map.of(new ScopeKey("TEAM", 1L), "MEMBER"),
+                        Map.of(),
+                        Set.of(new ScopeKey("TEAM", 1L)),
+                        Set.of()));
+
+        assertThat(resolver.canView(1L, 10L)).isTrue();
+    }
+
+    @Test
+    @DisplayName("canView_MEMBERS_AND_ABOVEチームは非メンバーに不可視")
+    void canView_MEMBERS_AND_ABOVEチームは非メンバーに不可視() {
+        TeamVisibilityProjection projection = projection(
+                1L, 1L, TeamEntity.Visibility.MEMBERS_AND_ABOVE, null, null);
+        when(teamRepository.findVisibilityProjectionsByIdIn(any()))
+                .thenReturn(List.of(projection));
+        when(membershipBatchQueryService.snapshotForUser(eq(99L), anySet(), anySet()))
+                .thenReturn(UserScopeRoleSnapshot.empty());
+
+        assertThat(resolver.canView(1L, 99L)).isFalse();
+    }
+
+    @Test
+    @DisplayName("canView_MEMBERS_AND_ABOVEチームはSystemAdminに可視（高速パス）")
+    void canView_MEMBERS_AND_ABOVEチームはSystemAdminに可視() {
+        TeamVisibilityProjection projection = projection(
+                1L, 1L, TeamEntity.Visibility.MEMBERS_AND_ABOVE, null, null);
         when(teamRepository.findVisibilityProjectionsByIdIn(any()))
                 .thenReturn(List.of(projection));
         when(membershipBatchQueryService.snapshotForUser(eq(1L), anySet(), anySet()))
@@ -258,10 +267,10 @@ class TeamVisibilityResolverTest {
     }
 
     @Test
-    @DisplayName("userId=null で ORGANIZATION_ONLY チームは false")
-    void canView_nullUserIdでORGANIZATION_ONLYはfalse() {
+    @DisplayName("userId=null で GUESTS_AND_ABOVE チームは false")
+    void canView_nullUserIdでGUESTS_AND_ABOVEはfalse() {
         TeamVisibilityProjection projection = projection(
-                1L, 1L, TeamEntity.Visibility.ORGANIZATION_ONLY, null, null);
+                1L, 1L, TeamEntity.Visibility.GUESTS_AND_ABOVE, null, null);
         when(teamRepository.findVisibilityProjectionsByIdIn(any()))
                 .thenReturn(List.of(projection));
         when(membershipBatchQueryService.snapshotForUser(eq(null), anySet(), anySet()))

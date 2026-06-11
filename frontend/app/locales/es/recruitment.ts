@@ -71,6 +71,7 @@ export default {
       "cancelMyApplication": "Cancelar mi inscripción",
       "joinWaitlist": "Unirse a la lista de espera",
       "viewDetails": "Ver detalles",
+      "confirmApplication": "Confirmar",
       "createPolicy": "Crear política"
     },
     "confirmModal": {

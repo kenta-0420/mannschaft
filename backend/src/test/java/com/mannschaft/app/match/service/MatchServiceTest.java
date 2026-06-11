@@ -333,6 +333,112 @@ class MatchServiceTest {
                 eq(ORG), eq(TEAM), isNull(), isNull(), isNull(), isNull(), isNull(), eq(pageable));
     }
 
+    // ─── resolveByScheduleId（入口④・予定からの解決・二重起票防止） ────
+
+    @Test
+    @DisplayName("resolveByScheduleId: 既存試合があれば認可委譲のうえサマリ DTO を返す")
+    void resolveByScheduleIdReturnsExisting() {
+        long scheduleId = 9001L;
+        MatchEntity existing = MatchEntity.builder()
+                .organizationId(ORG).teamId(TEAM).sport(Sport.SOCCER)
+                .kind(MatchKind.PRACTICE).status(MatchStatus.SCHEDULED).createdBy(ACTOR)
+                .scheduleId(scheduleId).opponentName("相手FC").build();
+        existing.setId(UUID.randomUUID());
+        when(matchRepository
+                .findFirstByOrganizationIdAndTeamIdAndScheduleIdOrderByKickoffAtDescIdDesc(ORG, TEAM, scheduleId))
+                .thenReturn(Optional.of(existing));
+
+        var result = service.resolveByScheduleId(ORG, TEAM, ACTOR, scheduleId);
+
+        // 認可委譲（一覧と同水準のメンバー以上）
+        verify(matchAccessService).assertCanListTeamMatches(ACTOR, TEAM);
+        assertThat(result).isPresent();
+        assertThat(result.get().getId()).isEqualTo(existing.getId());
+        assertThat(result.get().getOpponentName()).isEqualTo("相手FC");
+    }
+
+    @Test
+    @DisplayName("resolveByScheduleId: 既存が無ければ Optional.empty（FE は作成へ分岐）")
+    void resolveByScheduleIdEmptyWhenNone() {
+        long scheduleId = 9002L;
+        when(matchRepository
+                .findFirstByOrganizationIdAndTeamIdAndScheduleIdOrderByKickoffAtDescIdDesc(ORG, TEAM, scheduleId))
+                .thenReturn(Optional.empty());
+
+        var result = service.resolveByScheduleId(ORG, TEAM, ACTOR, scheduleId);
+
+        verify(matchAccessService).assertCanListTeamMatches(ACTOR, TEAM);
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("resolveByScheduleId: 非メンバー（認可 403）ならリポジトリを呼ばずに伝播する")
+    void resolveByScheduleIdNonMemberThrows() {
+        doThrow(new BusinessException(MatchErrorCode.MATCH_010))
+                .when(matchAccessService).assertCanListTeamMatches(ACTOR, TEAM);
+
+        assertThatThrownBy(() -> service.resolveByScheduleId(ORG, TEAM, ACTOR, 9003L))
+                .isInstanceOf(BusinessException.class);
+
+        verify(matchRepository, never())
+                .findFirstByOrganizationIdAndTeamIdAndScheduleIdOrderByKickoffAtDescIdDesc(any(), any(), any());
+    }
+
+    // ─── resolveByFixtureId（入口①・大会の対戦カードからの解決・二重起票防止） ────
+
+    @Test
+    @DisplayName("resolveByFixtureId: 既存試合があれば認可委譲のうえサマリ DTO を返す")
+    void resolveByFixtureIdReturnsExisting() {
+        long fixtureId = 8001L;
+        MatchEntity existing = MatchEntity.builder()
+                .organizationId(ORG).teamId(TEAM).sport(Sport.SOCCER)
+                .kind(MatchKind.TOURNAMENT).status(MatchStatus.SCHEDULED).createdBy(ACTOR)
+                .tournamentFixtureId(fixtureId).opponentName("相手FC").build();
+        existing.setId(UUID.randomUUID());
+        when(matchRepository
+                .findFirstByOrganizationIdAndTeamIdAndTournamentFixtureIdOrderByKickoffAtDescIdDesc(
+                        ORG, TEAM, fixtureId))
+                .thenReturn(Optional.of(existing));
+
+        var result = service.resolveByFixtureId(ORG, TEAM, ACTOR, fixtureId);
+
+        // 認可委譲（一覧・入口④と同水準のメンバー以上）
+        verify(matchAccessService).assertCanListTeamMatches(ACTOR, TEAM);
+        assertThat(result).isPresent();
+        assertThat(result.get().getId()).isEqualTo(existing.getId());
+        assertThat(result.get().getKind()).isEqualTo(MatchKind.TOURNAMENT);
+        assertThat(result.get().getOpponentName()).isEqualTo("相手FC");
+    }
+
+    @Test
+    @DisplayName("resolveByFixtureId: 既存が無ければ Optional.empty（FE は作成へ分岐）")
+    void resolveByFixtureIdEmptyWhenNone() {
+        long fixtureId = 8002L;
+        when(matchRepository
+                .findFirstByOrganizationIdAndTeamIdAndTournamentFixtureIdOrderByKickoffAtDescIdDesc(
+                        ORG, TEAM, fixtureId))
+                .thenReturn(Optional.empty());
+
+        var result = service.resolveByFixtureId(ORG, TEAM, ACTOR, fixtureId);
+
+        verify(matchAccessService).assertCanListTeamMatches(ACTOR, TEAM);
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("resolveByFixtureId: 非メンバー（認可 403）ならリポジトリを呼ばずに伝播する")
+    void resolveByFixtureIdNonMemberThrows() {
+        doThrow(new BusinessException(MatchErrorCode.MATCH_010))
+                .when(matchAccessService).assertCanListTeamMatches(ACTOR, TEAM);
+
+        assertThatThrownBy(() -> service.resolveByFixtureId(ORG, TEAM, ACTOR, 8003L))
+                .isInstanceOf(BusinessException.class);
+
+        verify(matchRepository, never())
+                .findFirstByOrganizationIdAndTeamIdAndTournamentFixtureIdOrderByKickoffAtDescIdDesc(
+                        any(), any(), any());
+    }
+
     @Test
     @DisplayName("getMatchOrThrow: 不在・テナント越境は 404（MATCH_001）")
     void getMatchNotFound404() {

@@ -1,0 +1,142 @@
+package com.mannschaft.app.tournament.listener;
+
+import com.mannschaft.app.match.MatchCompletedEvent;
+import com.mannschaft.app.tournament.dto.ScoreUpdateRequest;
+import com.mannschaft.app.tournament.entity.TournamentMatchEntity;
+import com.mannschaft.app.tournament.entity.TournamentMatchdayEntity;
+import com.mannschaft.app.tournament.repository.TournamentDivisionRepository;
+import com.mannschaft.app.tournament.repository.TournamentMatchRepository;
+import com.mannschaft.app.tournament.repository.TournamentMatchdayRepository;
+import com.mannschaft.app.tournament.service.MatchService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
+
+/**
+ * F08.10 入口①の順位連携リスナー（match → tournament 疎結合・05 §H.2）。
+ *
+ * <p><b>中道（既存 tournament 非破壊）の採用</b>: 05 §H.1 の full Fixture 改称
+ * （{@code tournament_matches}→{@code tournament_fixtures} 物理改称・スコア正本移管）は
+ * <b>後続フェーズ（Phase 5）に延期</b>する。入口①は本リスナーが {@link MatchCompletedEvent} を
+ * {@link TransactionalEventListener}(AFTER_COMMIT) で受信し、<b>既存 {@code tournament_matches} の
+ * {@link MatchService#updateScore} を再利用</b>してスコア反映＋既存の
+ * {@code StandingsRecalculationEvent} 発火（既存の非同期順位再計算・冪等）に乗せるだけとする。</p>
+ *
+ * <p><b>順位再計算経路（第三陣でレース根治済み・05 §H.0.1）</b>: 当初は既存
+ * {@code StandingsCalculationService} の {@code @Async @EventListener} 経路を<b>切り替えない</b>方針
+ * だったが、{@code @Async @EventListener} は発火元 TX の<b>コミット前</b>に別スレッドで即時実行され、
+ * 未コミットのスコアを読んで順位が自動反映されないレース条件が実機 E2E で判明した。第三陣で同サービスの
+ * {@code onStandingsRecalculation} を {@code @Async @TransactionalEventListener}(AFTER_COMMIT) /
+ * {@code REQUIRES_NEW} へ<b>切替済み</b>（コミット後に確定データを読んで再計算）。詳細は
+ * docs/features/F08.10_match_record_analytics/05_tournament_integration.md §H.0.1 を参照。</p>
+ *
+ * <h3>処理（05 §H.2 / 06 §I.2 第一陣）</h3>
+ * <ol>
+ *   <li>{@code tournamentFixtureId == null}（単独試合＝練習/親善）→ 何もしない。</li>
+ *   <li>fixtureId（= {@code tournament_matches.id}・BIGINT）で fixture を引当。無ければ警告ログのみで
+ *       終了（例外を投げない＝tournament を越境で壊さない・05 §H.2 (b)）。</li>
+ *   <li>fixture の matchday → division から {@code tournamentId} を順引きし、既存
+ *       {@link MatchService#updateScore} を呼ぶ。スコアはイベントのスナップショット（本戦合算済み
+ *       {@code homeScore}/{@code awayScore}＋分離 PK）をそのまま渡す。
+ *       <b>延長はイベントで本戦に合算済みゆえ extra は使わない（null）</b>。
+ *       determineResult / winnerParticipantId は既存ロジックに委ねる。
+ *       <b>participant ⇔ side は home participant = HOME 固定</b>（05 §H.1.2）であり、
+ *       fixture の {@code home_participant_id} がそのまま本戦 {@code homeScore} を受ける。</li>
+ *   <li>{@link MatchService#updateScore} 内で {@code match.updateScore} により status=COMPLETED が
+ *       自動化され、既存の {@code StandingsRecalculationEvent}（division/tournament 指定）が発火する。
+ *       順位再計算は既存 {@code @Async}・冪等経路を流用する。</li>
+ * </ol>
+ *
+ * <p><b>冪等</b>: COMPLETED 後の訂正による再発火でも {@code updateScore} は全列上書き（加算ではなく置換）
+ * のため冪等（05 §H.2 (d)）。</p>
+ *
+ * <p><b>トランザクション境界</b>: AFTER_COMMIT 後はアクティブTXが無いため、本リスナーは
+ * {@code REQUIRES_NEW} で新規TXを開始してtournament_matchesを更新する。
+ * Spring は {@code @TransactionalEventListener} に {@code @Transactional(REQUIRED)} を付けることを
+ * 禁じているため（起動時バリデーション失敗・ApplicationContext全滅）、{@code REQUIRES_NEW} が正道。
+ * match ドメインの {@code @Transactional} は跨がない（原則 5・05 §H.5）。</p>
+ *
+ * <p>設計: docs/features/F08.10_match_record_analytics/05_tournament_integration.md §H.2 / 06 §I.2</p>
+ */
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class MatchScoreFixtureListener {
+
+    private final TournamentMatchRepository fixtureRepository;
+    private final TournamentMatchdayRepository matchdayRepository;
+    private final TournamentDivisionRepository divisionRepository;
+    private final MatchService tournamentMatchService;
+
+    /**
+     * 試合完了イベントを受信し、リンクする大会の対戦カードへスコアを反映して順位連携する。
+     *
+     * <p>AFTER_COMMIT 発火により、match 側トランザクションがコミット済みのスコアに対してのみ反映する
+     * （未コミットのスコアで順位を誤更新しない・05 §H.2 (a)）。</p>
+     */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void onMatchCompleted(MatchCompletedEvent event) {
+        Long fixtureId = event.getTournamentFixtureId();
+        if (fixtureId == null) {
+            // 単独試合（練習/親善）は順位連携の対象外（05 §H.2）
+            return;
+        }
+
+        TournamentMatchEntity fixture = fixtureRepository.findById(fixtureId).orElse(null);
+        if (fixture == null) {
+            // 引当不能でも例外を投げない（match 側は既コミット・tournament を越境で壊さない・05 §H.2 (b)）。
+            // 症状は握りつぶさず警告ログに残す（フェイルセーフは手動順位再計算 API・05 §H.2 (c)）。
+            log.warn("順位連携: fixture 引当不能のためスキップ matchId={}, tournamentFixtureId={}",
+                    event.getMatchId(), fixtureId);
+            return;
+        }
+
+        // matchday → division → tournament を順引きして既存 updateScore の発火経路（divisionId/tournamentId）に合わせる
+        Long tournamentId = resolveTournamentId(fixture);
+        if (tournamentId == null) {
+            log.warn("順位連携: tournamentId 解決不能のためスキップ matchId={}, tournamentFixtureId={}, matchdayId={}",
+                    event.getMatchId(), fixtureId, fixture.getMatchdayId());
+            return;
+        }
+
+        // 既存 updateScore を再利用（determineResult / winner 判定 / status=COMPLETED 自動化 / StandingsRecalc 発火）。
+        // 延長はイベントで本戦合算済みゆえ extra は null（05 §H.1 移行表・sports/01_soccer.md §4.1）。
+        // PK は分離値をそのまま渡す。participant⇔side は home participant=HOME 固定（05 §H.1.2）。
+        // version 引数は現行 updateScore / TournamentMatchEntity.updateScore では未使用。
+        // 楽観ロックは @Version フィールドを JPA が自動管理するため、ここで渡す値は実際には参照されない。
+        ScoreUpdateRequest scoreReq = new ScoreUpdateRequest(
+                event.getHomeScore(),
+                event.getAwayScore(),
+                null,
+                null,
+                event.getHomePenaltyScore(),
+                event.getAwayPenaltyScore(),
+                null,
+                fixture.getVersion(),
+                null);
+
+        tournamentMatchService.updateScore(tournamentId, fixtureId, scoreReq);
+        log.info("順位連携: fixture へスコア反映完了 matchId={}, tournamentFixtureId={}, tournamentId={}, home={}, away={}",
+                event.getMatchId(), fixtureId, tournamentId, event.getHomeScore(), event.getAwayScore());
+    }
+
+    /**
+     * fixture の matchday → division 経由で tournamentId を順引きする（クロスドメイン JOIN ではなく ID 順引き）。
+     *
+     * @return tournamentId（matchday / division が引けない場合は {@code null}）
+     */
+    private Long resolveTournamentId(TournamentMatchEntity fixture) {
+        TournamentMatchdayEntity matchday = matchdayRepository.findById(fixture.getMatchdayId()).orElse(null);
+        if (matchday == null) {
+            return null;
+        }
+        return divisionRepository.findById(matchday.getDivisionId())
+                .map(d -> d.getTournamentId())
+                .orElse(null);
+    }
+}

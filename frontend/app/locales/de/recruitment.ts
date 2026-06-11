@@ -71,6 +71,7 @@ export default {
       "cancelMyApplication": "Meine Bewerbung zurückziehen",
       "joinWaitlist": "Auf Warteliste setzen",
       "viewDetails": "Details anzeigen",
+      "confirmApplication": "Bestätigen",
       "createPolicy": "Bedingungen erstellen"
     },
     "confirmModal": {

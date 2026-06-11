@@ -1,5 +1,7 @@
 package com.mannschaft.app.recruitment.event;
 
+import java.time.LocalDateTime;
+
 /**
  * F22.1 市: 謝礼有効な札に応募が確定（CONFIRMED）したことを表すドメインイベント（設計書 02 §5.1）。
  *
@@ -16,6 +18,9 @@ package com.mannschaft.app.recruitment.event;
  *   <li>{@code payeeKind} — 受領主体種別（{@code "USER"}/{@code "TEAM"}/{@code "ORG"}）。</li>
  *   <li>{@code payeeUserId} — {@code payeeKind="USER"} の受領者 users.id（それ以外 null）。</li>
  *   <li>{@code faceAmount} — 額面（円整数・札の price）。</li>
+ *   <li>{@code serviceDate} — 役務日（役務完了の見込み日時＝札の {@code start_at}・第三陣-b 7日判定の基準）。
+ *       {@code null}（役務日不明な札・助っ人等で {@code start_at} 未設定）の場合は安全側で従来 escrow（与信）に倒し、
+ *       与信の失効ハンドリングは第三陣のライフサイクルバッチに委ねる（設計書 02 §5.1）。</li>
  * </ul>
  */
 public record RecruitmentParticipantConfirmedEvent(
@@ -26,5 +31,23 @@ public record RecruitmentParticipantConfirmedEvent(
         Long listingScopeId,
         String payeeKind,
         Long payeeUserId,
-        long faceAmount) {
+        long faceAmount,
+        LocalDateTime serviceDate) {
+
+    /**
+     * 後方互換コンストラクタ（{@code serviceDate=null}＝役務日不明・従来 escrow に倒す）。
+     * 役務日を運ばない既存テスト・経路はこちらを用いる（第三陣-b の 7日判定対象外＝安全側で従来与信）。
+     */
+    public RecruitmentParticipantConfirmedEvent(
+            Long listingId,
+            Long participantId,
+            Long payerUserId,
+            String listingScopeType,
+            Long listingScopeId,
+            String payeeKind,
+            Long payeeUserId,
+            long faceAmount) {
+        this(listingId, participantId, payerUserId, listingScopeType, listingScopeId, payeeKind, payeeUserId,
+                faceAmount, null);
+    }
 }

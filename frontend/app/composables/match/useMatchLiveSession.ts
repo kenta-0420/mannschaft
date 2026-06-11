@@ -17,17 +17,26 @@ import { useMatchTimer, stateToPeriod, type PeriodTransition } from '~/composabl
 
 export interface MatchLiveSessionContext {
   orgId: Ref<number | null>
+  /** 数値 teamId（試合終了の status 永続化に必要・publicId ではない）。 */
+  teamId: Ref<number | null>
   matchId: string
   ownTeamSide: Ref<'HOME' | 'AWAY'>
 }
 
 export function useMatchLiveSession(sessionCtx: MatchLiveSessionContext) {
   const eventApi = useMatchEventApi()
+  const matchApi = useMatchApi()
   const offlineQueue = useMatchOfflineQueue()
   const notification = useNotification()
   const { t } = useI18n()
 
-  const { orgId, matchId, ownTeamSide } = sessionCtx
+  const { orgId, teamId, matchId, ownTeamSide } = sessionCtx
+
+  /** 現在の試合ステータス（COMPLETED 冪等判定用・live.vue から同期される）。 */
+  const matchStatus = ref<string | null>(null)
+  function setMatchStatus(status: string | null): void {
+    matchStatus.value = status
+  }
 
   // === 導出スコア（イベント由来） ===
   const homeScore = ref(0)
@@ -185,11 +194,37 @@ export function useMatchLiveSession(sessionCtx: MatchLiveSessionContext) {
     applyDerivedScore(res)
   }
 
+  /**
+   * 試合終了。タイマーを COMPLETED に遷移させたうえで、status を BE に永続化する
+   * （旧実装はローカル timer 状態のみで status が未永続化＝再訪時に IN_PROGRESS のまま
+   * 残るバグがあった・04 §G.2 / §G.4）。
+   *
+   * - 冪等: 既に COMPLETED（matchStatus 同期値）なら status PATCH を再送しない。
+   * - orgId/teamId 未解決時は status PATCH をスキップ（ガード）。
+   * - PATCH 失敗時は症状を隠さず警告し、再 throw はしない（タイマー UI は終了済み）。
+   */
+  async function completeMatch(): Promise<void> {
+    await timer.complete()
+    if (matchStatus.value === 'COMPLETED') return
+    if (orgId.value === null || teamId.value === null) return
+    try {
+      await matchApi.changeStatus(orgId.value, teamId.value, matchId, { status: 'COMPLETED' })
+      matchStatus.value = 'COMPLETED'
+    } catch {
+      // changeStatus は composable 内でトースト済みだが、終了の永続化失敗は
+      // 集計に直結するため明示的に警告する（症状を隠さない・根治原則）。
+      notification.warn(t('match.live.error.complete_failed'))
+    }
+  }
+
   return {
     homeScore,
     awayScore,
     timer,
     recorder,
+    matchStatus,
+    setMatchStatus,
+    completeMatch,
     applyDerivedScore,
     refreshScore,
     recordGoal,

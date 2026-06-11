@@ -65,7 +65,7 @@ public class TeamSearchService {
      * @param currentUserId ログインユーザー ID（未ログインの場合 {@code null}）
      * @param pageable      ページング・ソート指定
      * @return 検索結果（権限スコープに合った可視性のチームのみ）
-     * @throws OrganizationNotFoundException 組織が存在しない／論理削除済み／PRIVATE で未ログイン
+     * @throws OrganizationNotFoundException 組織が存在しない／論理削除済み／非 PUBLIC 組織で未ログイン・非メンバー
      * @throws IllegalArgumentException      sort カラムがホワイトリスト外
      *
      * <p><b>Phase 3 — Valkey キャッシュ（設計書 §6.5）:</b><br>
@@ -120,8 +120,11 @@ public class TeamSearchService {
         }
 
         // 3. 許可 visibility 集合の決定
+        // 組織メンバーは PUBLIC および GUESTS_AND_ABOVE / SUPPORTERS_AND_ABOVE / MEMBERS_AND_ABOVE を閲覧可能。
+        // 未ログイン・非メンバーは PUBLIC のみ。
         Set<TeamEntity.Visibility> allowedVisibilities = isMember
-                ? EnumSet.of(TeamEntity.Visibility.PUBLIC, TeamEntity.Visibility.ORGANIZATION_ONLY)
+                ? EnumSet.of(TeamEntity.Visibility.PUBLIC, TeamEntity.Visibility.GUESTS_AND_ABOVE,
+                        TeamEntity.Visibility.SUPPORTERS_AND_ABOVE, TeamEntity.Visibility.MEMBERS_AND_ABOVE)
                 : EnumSet.of(TeamEntity.Visibility.PUBLIC);
 
         // 4. 地域フィルタ（F22.1 dual-support）: code 指定があれば code を優先、無ければ名称にフォールバック。

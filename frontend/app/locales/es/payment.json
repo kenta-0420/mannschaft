@@ -71,6 +71,102 @@
           "EXPIRED": "Caducado"
         }
       }
+    },
+    "term": {
+      "periodLabel": "Período válido",
+      "from": "Desde",
+      "until": "Hasta",
+      "typeLabel": {
+        "ANNUAL_FEE": "Anual",
+        "MONTHLY_FEE": "Mensual",
+        "ITEM": "Artículo",
+        "DONATION": "Donación",
+        "TERM": "Por período"
+      }
+    },
+    "admin": {
+      "pageTitle": "Gestión de pagos",
+      "itemsTitle": "Conceptos de pago",
+      "selectItem": "Selecciona un concepto de pago",
+      "remindUnpaid": "Recordar impagados",
+      "loadItemsError": "Error al cargar los conceptos de pago",
+      "loadPaymentsError": "Error al cargar el estado de pago",
+      "remindSuccess": "Recordatorio enviado",
+      "remindError": "Error al enviar el recordatorio",
+      "exportError": "Error al descargar el CSV",
+      "status": {
+        "PAID": "Pagado",
+        "UNPAID": "Impagado",
+        "EXPIRED": "Vencido",
+        "PENDING": "Pendiente",
+        "REFUNDED": "Reembolsado",
+        "CANCELLED": "Cancelado"
+      }
+    },
+    "receipt": {
+      "title": "Recibos",
+      "download": "Descargar",
+      "issuedBy": "Emisor",
+      "amount": "Monto",
+      "issuedDate": "Fecha de emisión",
+      "pending": "En preparación",
+      "noReceipts": "Sin recibos",
+      "loadError": "Error al cargar los registros de pago",
+      "loadReceiptError": "Error al cargar el recibo"
+    },
+    "summary": {
+      "expired": "Vencido",
+      "payer": "Pagador",
+      "beneficiary": "Beneficiario"
+    },
+    "exportCsv": "Descargar CSV",
+    "feeStatements": {
+      "title": "Extracto de comisiones",
+      "period": "Mes de facturación",
+      "totalFeeAmount": "Comisión total",
+      "issuerName": "Emisor",
+      "noData": "No hay datos para el mes seleccionado",
+      "loadError": "No se pudo cargar el extracto de comisiones"
+    },
+    "guardianBulkPayment": {
+      "title": "Pago masivo del tutor",
+      "subtitle": "Paga todas las cuotas pendientes de los niños que gestionas de una vez",
+      "noItems": "No hay cuotas pendientes",
+      "beneficiary": "Beneficiario",
+      "scope": "Afiliación",
+      "itemName": "Nombre de la cuota",
+      "amount": "Importe",
+      "dueDate": "Fecha límite",
+      "alreadyPaid": "Ya pagado",
+      "paidBy": "Pagado por {name}",
+      "kind": {
+        "ONE_TIME": "Pago único",
+        "RECURRING": "Pago recurrente",
+        "TERM": "Pago por período"
+      },
+      "via": {
+        "SELF": "Propio",
+        "GUARDIAN": "Tutor",
+        "GUARDIAN_PROXY": "Tutor delegado",
+        "PROXY_GRANT": "Delegación"
+      },
+      "selectAll": "Seleccionar todo",
+      "deselectAll": "Deseleccionar todo",
+      "paySelected": "Pagar {count} elemento(s)",
+      "totalAmount": "Total: ¥{amount}",
+      "processing": "Procesando...",
+      "result": {
+        "title": "Resultado del pago",
+        "checkedOut": "Pago completado",
+        "skipped": "Omitido",
+        "skipReasons": {
+          "ALREADY_PAID": "Ya pagado",
+          "NOT_AUTHORIZED": "Sin autorización de pago",
+          "CONNECT_NOT_READY": "Cuenta receptora no configurada",
+          "ITEM_NOT_FOUND": "Concepto de cuota no encontrado",
+          "ERROR": "Error"
+        }
+      }
     }
   }
 }
