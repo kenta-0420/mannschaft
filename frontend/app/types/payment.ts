@@ -208,3 +208,18 @@ export interface MemberPaymentReceiptResponse {
   receiptUrl: string | null
   taxInfo: MemberPaymentTaxBreakdown | null
 }
+
+/**
+ * F08.9 P8: チーム月次手数料明細レスポンス。
+ * BE: GET /api/v1/teams/{id}/fee-statements?period=YYYY-MM
+ */
+export interface FeeStatementResponse {
+  /** 対象月。"2026-06" 形式（YearMonth → JSON string） */
+  period: string
+  /** 手数料合計（円整数） */
+  totalFeeAmount: number
+  /** 通貨コード（例: "JPY"） */
+  currency: string
+  /** 発行者名（例: "Mannschaft"） */
+  issuerName: string
+}

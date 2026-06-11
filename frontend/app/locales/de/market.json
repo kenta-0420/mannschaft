@@ -165,6 +165,52 @@
         "loadFailed": "Zahlungsdaten konnten nicht abgerufen werden.",
         "payeeNotReady": "Der Empfänger hat noch kein Auszahlungskonto registriert, daher ist keine Zahlung möglich.",
         "proceed": "Weiter zur Bestätigung"
+      },
+      "received": {
+        "pageTitle": "Erhaltene Zahlungen & Erstattungen",
+        "pageSubtitle": "Sieh dir erhaltene Zahlungen an und erstatte sie bei Bedarf.",
+        "scopeLabel": "Empfänger",
+        "scope": {
+          "self": "Ich selbst (privat)",
+          "team": "Team",
+          "org": "Organisation"
+        },
+        "statusFilterLabel": "Nach Status filtern",
+        "statusFilterAll": "Alle",
+        "loading": "Wird geladen…",
+        "empty": "Noch keine Zahlungen erhalten.",
+        "loadFailed": "Die Liste der erhaltenen Zahlungen konnte nicht geladen werden.",
+        "noScope": "Keine Empfänger verfügbar. Werde Team-/Organisationsadministrator, um deren erhaltene Zahlungen zu sehen.",
+        "col": {
+          "source": "Quelle",
+          "status": "Status",
+          "faceAmount": "Nennbetrag",
+          "chargeAmount": "Berechnet",
+          "fee": "Gebühr",
+          "refunded": "Erstattet",
+          "createdAt": "Erhalten am",
+          "actions": "Aktionen"
+        },
+        "sourceKind": {
+          "RECRUITMENT": "Belohnung (Markt-Anzeige)",
+          "MEMBERSHIP": "Mitgliedsbeitrag",
+          "JOBMATCHING": "Jobvermittlung",
+          "FLEAMARKET": "Flohmarkt"
+        },
+        "refundButton": "Erstatten",
+        "refundUnavailable": "Nicht erstattbar",
+        "refundSucceeded": "Erstattung angenommen.",
+        "status": {
+          "PENDING_CONFIRMATION": "Bestätigung ausstehend",
+          "DEFERRED": "Zahlung bei Abschluss",
+          "AUTHORIZED": "Autorisiert",
+          "HELD": "Auszahlung zurückgehalten",
+          "CAPTURED": "Erhalten",
+          "PARTIALLY_REFUNDED": "Teilweise erstattet",
+          "REFUNDED": "Vollständig erstattet",
+          "CANCELLED": "Storniert",
+          "DISPUTED": "Strittig"
+        }
       }
     }
   }

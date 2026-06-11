@@ -6,11 +6,14 @@ import com.mannschaft.app.event.EventDelegationRateLimitFilter;
 import com.mannschaft.app.proxy.ProxyInputContextFilter;
 import com.mannschaft.app.publicview.filter.PublicApiRateLimitFilter;
 import com.mannschaft.app.schedule.ScheduleDelegationRateLimitFilter;
+import com.mannschaft.app.team.filter.SlugCheckRateLimitFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.boot.actuate.health.HealthEndpoint;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -45,6 +48,7 @@ public class SecurityConfig {
     private final ScheduleDelegationRateLimitFilter scheduleDelegationRateLimitFilter;
     private final EventDelegationRateLimitFilter eventDelegationRateLimitFilter;
     private final DashboardScopeTabRateLimitFilter dashboardScopeTabRateLimitFilter;
+    private final ObjectProvider<SlugCheckRateLimitFilter> slugCheckRateLimitFilterProvider;
 
     /**
      * ProxyInputContextFilter の @Component によるサーブレットフィルター自動登録を無効化。
@@ -133,6 +137,23 @@ public class SecurityConfig {
             dashboardScopeTabRateLimitFilterRegistration() {
         FilterRegistrationBean<DashboardScopeTabRateLimitFilter> registration =
                 new FilterRegistrationBean<>(dashboardScopeTabRateLimitFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    /**
+     * スラッグ可用性チェック: {@link SlugCheckRateLimitFilter} の @Component による
+     * サーブレットフィルター自動登録を無効化。
+     * Spring Security フィルターチェーン経由（addFilterAfter）のみで動作させ、
+     * JWT 認証後の確定した SecurityContext から userId を解決できるようにする。
+     */
+    @Bean
+    @ConditionalOnBean(SlugCheckRateLimitFilter.class)
+    public FilterRegistrationBean<SlugCheckRateLimitFilter>
+            slugCheckRateLimitFilterRegistration() {
+        SlugCheckRateLimitFilter filter = slugCheckRateLimitFilterProvider.getIfAvailable();
+        FilterRegistrationBean<SlugCheckRateLimitFilter> registration =
+                new FilterRegistrationBean<>(filter);
         registration.setEnabled(false);
         return registration;
     }
@@ -319,7 +340,13 @@ public class SecurityConfig {
             .addFilterAfter(scheduleDelegationRateLimitFilter, JwtAuthenticationFilter.class)
             .addFilterAfter(eventDelegationRateLimitFilter, JwtAuthenticationFilter.class)
             // F22.1 scope-tabs 並べ替え連打防止（§5・30req/分/ユーザー）。JWT 認証後に動かす。
-            .addFilterAfter(dashboardScopeTabRateLimitFilter, JwtAuthenticationFilter.class);
+            .addFilterAfter(dashboardScopeTabRateLimitFilter, JwtAuthenticationFilter.class)
+            // スラッグ可用性チェック（60 req/分/ユーザー）。JWT 認証後に動かし、userId を解決する。
+            ;
+        SlugCheckRateLimitFilter slugCheckFilter = slugCheckRateLimitFilterProvider.getIfAvailable();
+        if (slugCheckFilter != null) {
+            http.addFilterAfter(slugCheckFilter, JwtAuthenticationFilter.class);
+        }
         return http.build();
     }
 }

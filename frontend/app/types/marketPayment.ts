@@ -45,6 +45,12 @@ export type EscrowStatus =
 /** 返金時の決済手数料の負担者（payment/escrow/FeeBearer.java）。 */
 export type FeeBearer = 'PAYER' | 'PAYEE'
 
+/** エスクローの出所種別（payment/escrow/EscrowSourceKind.java・全4値と 1:1）。 */
+export type EscrowSourceKind = 'RECRUITMENT' | 'MEMBERSHIP' | 'JOBMATCHING' | 'FLEAMARKET'
+
+/** エスクローの capture モード（payment/escrow/EscrowCaptureMode.java）。 */
+export type EscrowCaptureMode = 'MANUAL' | 'AUTOMATIC'
+
 /**
  * Connect onboarding リンク発行リクエスト（OnboardingLinkRequest.java）。
  * scopeId は TEAM/ORG 時必須・USER 時は無視され本人に固定される。
@@ -87,6 +93,57 @@ export interface MarketRefundRequest {
   feeBearer?: FeeBearer | null
   reason?: string | null
   reasonDetail?: string | null
+}
+
+/**
+ * 受取側（payee）が受け取ったエスクロー一覧の 1 件分（payment/escrow/dto/ReceivedEscrowResponse.java と 1:1）。
+ *
+ * BE は受取側向けに PCI 機密（clientSecret/pi_/acct_）を一切含めず、状態・金額・出所・返金累計のみを返す。
+ * 金額はすべて最小通貨単位（円整数・BE は long）。
+ *   - escrowTransactionId: エスクロー取引 ID（UUID 文字列）。返金 EP の {id} に渡す。
+ *   - sourceKind: 出所種別（RECRUITMENT=謝礼 / MEMBERSHIP=会費）。
+ *   - sourceId: 出所 ID（謝礼は札 ID・会費は payment_item_id/team_id 等）。
+ *   - sourceParticipantId: 応募 ID（謝礼のみ・会費は null）。
+ *   - captureMode: capture モード（MANUAL=与信後 capture / AUTOMATIC=即時）。
+ *   - status: エスクロー状態（返金可否の判断に用いる）。
+ *   - faceAmount: 額面（受取側が設定した謝礼/会費の元値）。
+ *   - chargeAmount: 課金額（支払者への実請求額＝額面 + 2.5% 上乗せ）。
+ *   - applicationFeeAmount: Mannschaft 徴収手数料。
+ *   - refundedAmount: 返金累計（transferAmount ベース・FAILED 除く）。
+ *   - createdAt: 起票日時（ISO 文字列）。
+ */
+export interface ReceivedEscrowResponse {
+  escrowTransactionId: string
+  sourceKind: EscrowSourceKind
+  sourceId: number
+  sourceParticipantId: number | null
+  captureMode: EscrowCaptureMode
+  status: EscrowStatus
+  faceAmount: number
+  chargeAmount: number
+  applicationFeeAmount: number
+  refundedAmount: number
+  createdAt: string
+}
+
+/**
+ * 受取側エスクロー一覧のページメタ（common/PagedResponse.PageMeta.java と 1:1）。
+ *
+ * 注意: BE `PagedResponse.PageMeta` は `{ total, page, size, totalPages }` を直列化する
+ * （`total` は件数。app/types/api.ts の汎用 `PageMeta` は `totalElements` を使っており BE 実装と
+ * 名称が異なるため、本ドメインでは BE 実フィールドと 1:1 のローカル型を用いる）。
+ */
+export interface ReceivedEscrowPageMeta {
+  total: number
+  page: number
+  size: number
+  totalPages: number
+}
+
+/** 受取側エスクロー一覧のページレスポンス（PagedResponse<ReceivedEscrowResponse> と 1:1）。 */
+export interface ReceivedEscrowPage {
+  data: ReceivedEscrowResponse[]
+  meta: ReceivedEscrowPageMeta
 }
 
 /** エスクロー返金レスポンス（payment/escrow/dto/RefundResponse.java）。 */

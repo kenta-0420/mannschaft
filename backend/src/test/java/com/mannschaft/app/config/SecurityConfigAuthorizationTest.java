@@ -242,6 +242,24 @@ class SecurityConfigAuthorizationTest {
                 "GET /api/v1/some/unmapped/endpoint");
     }
 
+    /**
+     * チーム URL スラッグ移行: スラッグ可用性チェック API は認証必須。
+     *
+     * <p>{@code GET /api/v1/teams/slug-check} は permitAll リストに無いため
+     * {@code .anyRequest().authenticated()} 配下に入り、未認証ではフィルタチェーン層で
+     * 401 になる。これが本番で実際に効いている保護層であり、Controller の
+     * {@code @PreAuthorize("isAuthenticated()")} はその冗長な多層防御。
+     * {@code TeamSlugCheckControllerTest}（@WebMvcTest スライス）はフィルタチェーンを
+     * 載せないため認証を検証できず、認証ガードの正準検証は本テストが担う。</p>
+     */
+    @Test
+    @WithAnonymousUser
+    @DisplayName("匿名: GET /api/v1/teams/slug-check は 401/403（認証必須・スラッグ移行）")
+    void anonymous_team_slug_check_is_auth_rejected() throws Exception {
+        expectAuthRejected(mockMvc.perform(get("/api/v1/teams/slug-check").param("slug", "my-team")),
+                "GET /api/v1/teams/slug-check");
+    }
+
     // ---- ロール必須: 一般ユーザーで 403 ----
 
     @Test

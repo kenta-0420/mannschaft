@@ -93,6 +93,7 @@
       "loadPaymentsError": "获取支付状态失败",
       "remindSuccess": "催缴通知已发送",
       "remindError": "发送失败",
+      "exportError": "CSV下载失败",
       "status": {
         "PAID": "已支付",
         "UNPAID": "未支付",
@@ -117,6 +118,15 @@
       "expired": "已过期",
       "payer": "付款方",
       "beneficiary": "受益人"
+    },
+    "exportCsv": "下载CSV",
+    "feeStatements": {
+      "title": "手续费明细",
+      "period": "账单月份",
+      "totalFeeAmount": "手续费合计",
+      "issuerName": "发行方",
+      "noData": "所选月份无数据",
+      "loadError": "手续费明细获取失败"
     },
     "guardianBulkPayment": {
       "title": "监护人批量付款",
