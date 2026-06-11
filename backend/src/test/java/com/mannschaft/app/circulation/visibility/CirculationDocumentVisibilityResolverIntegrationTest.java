@@ -134,8 +134,8 @@ class CirculationDocumentVisibilityResolverIntegrationTest extends AbstractMySql
 
     private Long insertTeam(String name) {
         em.createNativeQuery(
-                "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, created_at, updated_at, public_id) "
-                        + "VALUES (:name, 'PUBLIC', 1, 0, 0, NOW(), NOW(), UUID_TO_BIN(UUID(), 1))")
+                "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, slug, created_at, updated_at) "
+                        + "VALUES (:name, 'PUBLIC', 1, 0, 0, CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
                 .setParameter("name", name)
                 .executeUpdate();
         return ((Number) em.createNativeQuery(

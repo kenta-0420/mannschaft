@@ -4,7 +4,6 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 /**
  * チーム詳細レスポンス。
@@ -14,7 +13,8 @@ import java.util.UUID;
 @Getter
 public class TeamResponse {
 
-    private UUID id;
+    /** URL 識別子（カスタムスラッグ）。 */
+    private String id;
     private TeamBasicInfoDto basicInfo;
     private TeamLocationDto location;
     private TeamVisibilityDto visibility;

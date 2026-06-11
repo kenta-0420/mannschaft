@@ -253,8 +253,8 @@ class DisclosureFormDraftControllerIntegrationTest extends AbstractDisclosureInt
         // BIGINT UNSIGNED PK で id を明示的に指定
         em.createNativeQuery(
                 "INSERT INTO organizations (id, name, org_type, visibility, hierarchy_visibility, "
-                        + "supporter_enabled, version, created_at, updated_at, public_id) "
-                        + "VALUES (:id, :name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, NOW(), NOW(), UUID_TO_BIN(UUID(), 1))")
+                        + "supporter_enabled, version, slug, created_at, updated_at) "
+                        + "VALUES (:id, :name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
                 .setParameter("id", id)
                 .setParameter("name", name)
                 .executeUpdate();

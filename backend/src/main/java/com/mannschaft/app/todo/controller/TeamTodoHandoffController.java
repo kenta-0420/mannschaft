@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.UUID;
 
 /**
  * チームスコープ TODO キャッチボール API（F02.3.1 Phase 2）。
@@ -42,7 +41,7 @@ public class TeamTodoHandoffController {
     @Operation(summary = "TODO キャッチボール（引き渡し）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "引き渡し成功（履歴行を新規作成）")
     public ResponseEntity<ApiResponse<TodoHandoffResponse>> handoff(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @PathVariable Long todoId,
             @Valid @RequestBody TodoHandoffRequest request) {
         Long internalTeamId = teamService.resolveTeamId(teamId);
@@ -58,7 +57,7 @@ public class TeamTodoHandoffController {
     @Operation(summary = "TODO キャッチボール履歴")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TodoHandoffResponse>>> listHistory(
-            @PathVariable UUID teamId,
+            @PathVariable String teamId,
             @PathVariable Long todoId) {
         Long internalTeamId = teamService.resolveTeamId(teamId);
         return ResponseEntity.ok(handoffService.listHistory(

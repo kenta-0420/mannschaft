@@ -152,7 +152,7 @@ public class OrganizationMembershipService {
                 .map(m -> teamRepository.findById(m.getTeamId()).orElse(null))
                 .filter(team -> team != null)
                 .map(team -> new OrgTeamSummaryResponse(
-                        team.getPublicId(),
+                        team.getSlug(),
                         team.getName(),
                         null,
                         team.getVisibility().name(),

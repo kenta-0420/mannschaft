@@ -16,7 +16,6 @@ import com.mannschaft.app.survey.service.SurveyService;
 import com.mannschaft.app.team.service.TeamService;
 
 import java.util.List;
-import java.util.UUID;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -263,21 +262,20 @@ public class SurveyController {
     }
 
     /**
-     * scopeType と scopeId（UUID 文字列）から内部 BIGINT ID を解決する。
+     * scopeType と scopeId（スラッグ文字列）から内部 BIGINT ID を解決する。
      *
-     * <p>PR #1331 対応: FE から UUID publicId が渡るため、scopeType に応じて
+     * <p>slug 形式のスコープIDを、scopeType に応じて
      * OrganizationService または TeamService 経由で内部 ID に変換する。</p>
      *
      * @param scopeType "organizations" または "teams"
-     * @param scopeId   UUID 文字列（publicId）
+     * @param scopeId   スラッグ文字列
      * @return 内部 BIGINT ID
      */
     private Long resolveScopeId(String scopeType, String scopeId) {
-        UUID publicId = UUID.fromString(scopeId);
         if ("organizations".equalsIgnoreCase(scopeType)) {
-            return organizationService.resolveOrgId(publicId);
+            return organizationService.resolveOrgId(scopeId);
         } else if ("teams".equalsIgnoreCase(scopeType)) {
-            return teamService.resolveTeamId(publicId);
+            return teamService.resolveTeamId(scopeId);
         }
         throw new IllegalArgumentException("不明な scopeType: " + scopeType);
     }

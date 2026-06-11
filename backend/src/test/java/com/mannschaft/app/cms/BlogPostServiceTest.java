@@ -136,27 +136,26 @@ class BlogPostServiceTest {
         }
 
         @Test
-        @DisplayName("正常系: UUID文字列でチーム別記事一覧が返却される")
-        void チーム別一覧_UUID文字列_正常() {
+        @DisplayName("正常系: スラッグ文字列でチーム別記事一覧が返却される")
+        void チーム別一覧_スラッグ文字列_正常() {
             // Given
-            String teamUuid = "01961234-5678-7000-9abc-def012345678";
-            java.util.UUID uuid = java.util.UUID.fromString(teamUuid);
+            String teamSlug = "fc-tokyo";  // スラッグ文字列
             Pageable pageable = PageRequest.of(0, 10);
             BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
             Page<BlogPostEntity> page = new PageImpl<>(List.of(entity));
 
             TeamEntity mockTeam = TeamEntity.builder().build();
             org.springframework.test.util.ReflectionTestUtils.setField(mockTeam, "id", TEAM_ID);
-            given(teamRepository.findByPublicId(uuid)).willReturn(java.util.Optional.of(mockTeam));
+            given(teamRepository.findBySlugAndDeletedAtIsNull(teamSlug)).willReturn(java.util.Optional.of(mockTeam));
             given(postRepository.findByTeamIdOrderByPinnedDescCreatedAtDesc(TEAM_ID, pageable)).willReturn(page);
             given(cmsMapper.toBlogPostResponse(any(BlogPostEntity.class))).willReturn(createPostResponse());
 
-            // When: UUID文字列で渡す
-            Page<BlogPostResponse> result = service.listByTeam(teamUuid, pageable);
+            // When: スラッグ文字列で渡す
+            Page<BlogPostResponse> result = service.listByTeam(teamSlug, pageable);
 
             // Then
             assertThat(result).hasSize(1);
-            verify(teamRepository).findByPublicId(uuid);
+            verify(teamRepository).findBySlugAndDeletedAtIsNull(teamSlug);
         }
     }
 

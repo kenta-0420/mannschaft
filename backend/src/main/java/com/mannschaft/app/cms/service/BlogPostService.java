@@ -41,7 +41,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -578,54 +577,44 @@ public class BlogPostService {
     }
 
     /**
-     * チームID文字列（UUID文字列 or Long文字列）を内部Long IDに解決する。
+     * チームID文字列（スラッグ or Long文字列）を内部Long IDに解決する。
      *
      * <p>後方互換のため Long 文字列（数値文字列）も受け入れる。
-     * UUID形式の場合は {@link TeamRepository#findByPublicId} で publicId から内部IDを引く。</p>
+     * 数値でない場合はスラッグとして {@link com.mannschaft.app.team.repository.TeamRepository#findBySlugAndDeletedAtIsNull}
+     * から内部IDを引く。</p>
      *
-     * @param idStr チームの公開ID（UUID文字列）または内部Long ID文字列
+     * @param idStr チームのスラッグまたは内部Long ID文字列
      * @return 内部Long ID
      * @throws BusinessException チームが見つからない場合（CMS_024）
-     * @throws BusinessException 不正なID形式の場合（CMS_024）
      */
     private Long resolveTeamId(String idStr) {
         try {
             return Long.parseLong(idStr);
         } catch (NumberFormatException e) {
-            try {
-                UUID uuid = UUID.fromString(idStr);
-                return teamRepository.findByPublicId(uuid)
-                        .orElseThrow(() -> new BusinessException(CmsErrorCode.TEAM_NOT_FOUND))
-                        .getId();
-            } catch (IllegalArgumentException iae) {
-                throw new BusinessException(CmsErrorCode.TEAM_NOT_FOUND);
-            }
+            return teamRepository.findBySlugAndDeletedAtIsNull(idStr)
+                    .orElseThrow(() -> new BusinessException(CmsErrorCode.TEAM_NOT_FOUND))
+                    .getId();
         }
     }
 
     /**
-     * 組織ID文字列（UUID文字列 or Long文字列）を内部Long IDに解決する。
+     * 組織ID文字列（スラッグ or Long文字列）を内部Long IDに解決する。
      *
      * <p>後方互換のため Long 文字列（数値文字列）も受け入れる。
-     * UUID形式の場合は {@link OrganizationRepository#findByPublicId} で publicId から内部IDを引く。</p>
+     * 数値でない場合はスラッグとして {@link com.mannschaft.app.organization.repository.OrganizationRepository#findBySlugAndDeletedAtIsNull}
+     * から内部IDを引く。</p>
      *
-     * @param idStr 組織の公開ID（UUID文字列）または内部Long ID文字列
+     * @param idStr 組織のスラッグまたは内部Long ID文字列
      * @return 内部Long ID
      * @throws BusinessException 組織が見つからない場合（CMS_025）
-     * @throws BusinessException 不正なID形式の場合（CMS_025）
      */
     private Long resolveOrganizationId(String idStr) {
         try {
             return Long.parseLong(idStr);
         } catch (NumberFormatException e) {
-            try {
-                UUID uuid = UUID.fromString(idStr);
-                return organizationRepository.findByPublicId(uuid)
-                        .orElseThrow(() -> new BusinessException(CmsErrorCode.ORG_NOT_FOUND))
-                        .getId();
-            } catch (IllegalArgumentException iae) {
-                throw new BusinessException(CmsErrorCode.ORG_NOT_FOUND);
-            }
+            return organizationRepository.findBySlugAndDeletedAtIsNull(idStr)
+                    .orElseThrow(() -> new BusinessException(CmsErrorCode.ORG_NOT_FOUND))
+                    .getId();
         }
     }
 }
