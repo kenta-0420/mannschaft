@@ -194,6 +194,70 @@ class TournamentServiceTest {
     }
 
     @Nested
+    @DisplayName("updateTournament")
+    class UpdateTournament {
+
+        /**
+         * F08.7 順位UI Wave1 回帰テスト。
+         * 可視性のみ指定した部分 PATCH で {@code setsToWin} / {@code bonusPointRules} が
+         * null 上書きで消失しないことを保証する番人。
+         * （TournamentService#updateTournament で当該2フィールドの coalesce を外すと落ちる）
+         */
+        @Test
+        @DisplayName("正常系: 可視性のみ更新で setsToWin/bonusPointRules が既存値のまま保持される")
+        void 可視性のみ更新で既存値保持() {
+            // Given: setsToWin=3, bonusPointRules="..." を持つ既存大会
+            TournamentEntity entity = TournamentEntity.builder()
+                    .organizationId(ORG_ID)
+                    .name("既存大会")
+                    .setsToWin(3)
+                    .bonusPointRules("{\"win3sets\":1}")
+                    .build();
+            setVisibility(entity, TournamentVisibility.MEMBERS_AND_ABOVE);
+            given(tournamentRepository.findById(TOURNAMENT_ID)).willReturn(Optional.of(entity));
+            given(tournamentRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(tiebreakerRepository.findByTournamentIdOrderByPriorityAsc(TOURNAMENT_ID)).willReturn(List.of());
+            given(statDefRepository.findByTournamentIdOrderBySortOrderAsc(TOURNAMENT_ID)).willReturn(List.of());
+            given(mapper.toTournamentResponse(any(), any(), any())).willReturn(null);
+
+            // When: visibility と version のみ指定（他フィールドは全て null）の部分 PATCH
+            com.mannschaft.app.tournament.dto.UpdateTournamentRequest request =
+                    new com.mannschaft.app.tournament.dto.UpdateTournamentRequest(
+                            null, // name
+                            null, // description
+                            null, // format
+                            null, // season
+                            null, // startDate
+                            null, // endDate
+                            null, // winPoints
+                            null, // drawPoints
+                            null, // lossPoints
+                            null, // hasDraw
+                            null, // hasSets
+                            null, // setsToWin ← 送らない
+                            null, // hasExtraTime
+                            null, // hasPenalties
+                            null, // scoreUnitLabel
+                            null, // bonusPointRules ← 送らない
+                            null, // leagueRoundType
+                            null, // knockoutLegs
+                            "PUBLIC", // visibility
+                            1L, // version
+                            null, // tiebreakers
+                            null // statDefs
+                    );
+
+            service.updateTournament(TOURNAMENT_ID, request);
+
+            // Then: setsToWin / bonusPointRules は既存値のまま（null 上書きされていない）
+            assertThat(entity.getSetsToWin()).isEqualTo(3);
+            assertThat(entity.getBonusPointRules()).isEqualTo("{\"win3sets\":1}");
+            // visibility は要求どおり更新されている
+            assertThat(entity.getVisibility()).isEqualTo(TournamentVisibility.PUBLIC);
+        }
+    }
+
+    @Nested
     @DisplayName("listPublicTournaments")
     class ListPublicTournaments {
 

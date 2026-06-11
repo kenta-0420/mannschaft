@@ -225,7 +225,8 @@ export interface IndividualRankingStatDto {
   rankingLabel?: string | null
   totalValueInt?: number | null
   totalValueDecimal?: number | null
-  totalValueTime?: number | null
+  /** BE は LocalTime を JSON 文字列 "HH:mm:ss" で返す（数値ではない）。 */
+  totalValueTime?: string | null
 }
 
 export interface IndividualRanking {

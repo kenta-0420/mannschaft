@@ -8,6 +8,7 @@ import {
   buildRankingChartData,
   rankingValue,
   rankingValueText,
+  parseTimeToSeconds,
 } from '~/utils/tournamentStandings'
 import type { TournamentMatrix, IndividualRanking } from '~/types/tournament'
 
@@ -111,7 +112,8 @@ describe('rankingValue / rankingValueText', () => {
   it('RK-001: int > decimal > time の優先で値を採用する', () => {
     expect(rankingValue(r({ totalValueInt: 5, totalValueDecimal: 9 }))).toBe(5)
     expect(rankingValue(r({ totalValueDecimal: 3.5 }))).toBe(3.5)
-    expect(rankingValue(r({ totalValueTime: 90 }))).toBe(90)
+    // time 系は "HH:mm:ss" 文字列 → 秒換算（00:01:30 = 90 秒）
+    expect(rankingValue(r({ totalValueTime: '00:01:30' }))).toBe(90)
   })
 
   it('RK-002: すべて null / stat 無しは 0', () => {
@@ -122,6 +124,41 @@ describe('rankingValue / rankingValueText', () => {
   it('RK-003: 単位付きテキストを生成する', () => {
     expect(rankingValueText(r({ totalValueInt: 7 }), '点')).toBe('7点')
     expect(rankingValueText(r({ totalValueInt: 7 }))).toBe('7')
+  })
+
+  it('RK-006: time 系 stat はチャート値を秒換算し、テキストは "HH:mm:ss" 文字列をそのまま表示する', () => {
+    // 最速タイム 1分23.456秒 = 83.456 秒
+    const timeRanking = r({ totalValueTime: '00:01:23.456' })
+    expect(rankingValue(timeRanking)).toBeCloseTo(83.456, 3)
+    // テキストは秒数ではなく人間可読のタイム表記（単位は付けない）
+    expect(rankingValueText(timeRanking, '秒')).toBe('00:01:23.456')
+
+    // 1時間 = 3600 秒
+    expect(rankingValue(r({ totalValueTime: '01:00:00' }))).toBe(3600)
+  })
+
+  it('RK-007: time 文字列が壊れている場合は 0（チャートを NaN で壊さない）', () => {
+    expect(rankingValue(r({ totalValueTime: 'not-a-time' }))).toBe(0)
+    expect(rankingValue(r({ totalValueTime: '12:34' }))).toBe(0) // 3 セグメントでない
+  })
+})
+
+describe('parseTimeToSeconds', () => {
+  it('TIME-001: "HH:mm:ss" を秒へ変換する', () => {
+    expect(parseTimeToSeconds('00:00:00')).toBe(0)
+    expect(parseTimeToSeconds('00:01:30')).toBe(90)
+    expect(parseTimeToSeconds('01:02:03')).toBe(3723)
+  })
+
+  it('TIME-002: 小数秒（"HH:mm:ss.SSS"）も吸収する', () => {
+    expect(parseTimeToSeconds('00:00:01.500')).toBeCloseTo(1.5, 3)
+  })
+
+  it('TIME-003: null / 不正値は null を返す', () => {
+    expect(parseTimeToSeconds(null)).toBeNull()
+    expect(parseTimeToSeconds(undefined)).toBeNull()
+    expect(parseTimeToSeconds('1:2')).toBeNull()
+    expect(parseTimeToSeconds('aa:bb:cc')).toBeNull()
   })
 })
 

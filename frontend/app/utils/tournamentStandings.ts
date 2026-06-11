@@ -159,23 +159,60 @@ export function buildRankingChartData(
 }
 
 /**
- * 個人ランキングの集計値を数値で取り出す。
- * int > decimal > time（秒） の優先で採用。すべて null なら 0。
+ * BE の LocalTime JSON 文字列（"HH:mm:ss" / "HH:mm:ss.SSS"）を秒数へ変換する。
+ *
+ * BE は time 系 stat（最速タイム等）を数値ではなく文字列で返すため、チャートの
+ * 数値軸に載せるには秒換算が必要。パースできない値は null を返す（呼び出し側で 0 扱い）。
+ */
+export function parseTimeToSeconds(value: string | null | undefined): number | null {
+  if (value == null) return null
+  const parts = value.split(':')
+  if (parts.length !== 3) return null
+  const hours = Number(parts[0])
+  const minutes = Number(parts[1])
+  const seconds = Number(parts[2]) // 小数秒（"SS.SSS"）も Number で吸収
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes) || !Number.isFinite(seconds)) {
+    return null
+  }
+  return hours * 3600 + minutes * 60 + seconds
+}
+
+/**
+ * 個人ランキングの集計値をチャート用の数値で取り出す。
+ * int > decimal > time（秒換算） の優先で採用。すべて null / パース不能なら 0。
+ *
+ * time 系（totalValueTime）は "HH:mm:ss" 文字列なので秒数へ換算してから数値化する。
+ * 文字列をそのまま数値扱いすると NaN になりチャートが破綻するため、必ず換算を通す。
  */
 export function rankingValue(r: IndividualRanking): number {
   const stat = r.stat
   if (!stat) return 0
   if (stat.totalValueInt != null) return stat.totalValueInt
   if (stat.totalValueDecimal != null) return stat.totalValueDecimal
-  if (stat.totalValueTime != null) return stat.totalValueTime
+  if (stat.totalValueTime != null) {
+    return parseTimeToSeconds(stat.totalValueTime) ?? 0
+  }
   return 0
 }
 
 /**
  * ランキング集計値の表示用テキスト（単位付き）。
- * time 系（totalValueTime のみ存在）は秒数をそのまま表示する（呼び出し側で必要なら整形）。
+ *
+ * - time 系（totalValueTime のみ存在）は BE の "HH:mm:ss" 文字列をそのまま表示する
+ *   （秒換算した数値ではなく、人間可読のタイム表記を維持する）。time の場合 unit は付けない。
+ * - int / decimal 系は数値 ＋ 単位で表示する。
  */
 export function rankingValueText(r: IndividualRanking, unit?: string): string {
+  const stat = r.stat
+  // time 系は文字列をそのまま表示（int/decimal が無く time のみのケース）
+  if (
+    stat &&
+    stat.totalValueInt == null &&
+    stat.totalValueDecimal == null &&
+    stat.totalValueTime != null
+  ) {
+    return stat.totalValueTime
+  }
   const v = rankingValue(r)
   return unit ? `${v}${unit}` : String(v)
 }
