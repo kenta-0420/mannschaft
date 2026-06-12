@@ -58,7 +58,7 @@ class ConfirmableNotificationEmailEventListenerTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(listener, "frontendUrl", "http://localhost:3000");
+        ReflectionTestUtils.setField(listener, "baseUrl", "http://localhost:3000");
         // MessageSource: キーをそのまま返すデフォルトスタブ
         // lenient: スキップ系テスト(skipUserWithBlankEmail等)では renderEmailTemplate が呼ばれないため
         lenient().when(messageSource.getMessage(anyString(), any(), anyString(), any(Locale.class)))
@@ -138,7 +138,7 @@ class ConfirmableNotificationEmailEventListenerTest {
         }
 
         @Test
-        @DisplayName("正常系: 確認URLにfrontendUrlとconfirmTokenが含まれる")
+        @DisplayName("正常系: 確認URLにbaseUrlとconfirmTokenが含まれる")
         void confirmUrlContainsTokenAndFrontendUrl() {
             // Arrange
             Long notificationId = 2L;

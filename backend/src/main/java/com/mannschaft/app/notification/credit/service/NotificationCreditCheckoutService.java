@@ -43,7 +43,7 @@ public class NotificationCreditCheckoutService {
     private final AuditLogService auditLogService;
     private final UserRepository userRepository;
 
-    @Value("${app.base-url:http://localhost:3000}")
+    @Value("${app.base-url}")
     private String appBaseUrl;
 
     // ─────────────────────────────────────────────────────────

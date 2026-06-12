@@ -61,8 +61,8 @@ import java.util.UUID;
 @Slf4j
 public class InviteService {
 
-    @Value("${app.frontend-url:http://localhost:3000}")
-    private String frontendUrl;
+    @Value("${app.base-url}")
+    private String baseUrl;
 
     private static final int QR_DEFAULT_SIZE = 300;
     private static final int QR_MIN_SIZE = 64;
@@ -386,7 +386,7 @@ public class InviteService {
             throw new BusinessException(RoleErrorCode.ROLE_008);
         }
 
-        String inviteUrl = frontendUrl + "/invite/" + tokenStr;
+        String inviteUrl = baseUrl + "/invite/" + tokenStr;
 
         try {
             Map<EncodeHintType, Object> hints = new EnumMap<>(EncodeHintType.class);
