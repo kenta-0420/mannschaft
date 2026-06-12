@@ -739,3 +739,35 @@ export interface TournamentFeeCheckoutResponse {
   memberPaymentId: number
   escrowTransactionId: string
 }
+
+// ──────────────────────────────────────────────────
+// F08.7 順位UI Wave B-3: 大会スコアキーパー指名管理
+// 主催組織 ADMIN が「当該大会のスコア入力を許可するユーザー」を指名・解除・一覧する。
+// BE: TournamentScorekeeperController（#1464）。
+//   GET    /api/v1/organizations/{orgId}/tournaments/{tId}/scorekeepers      → ScorekeeperResponse[]
+//   POST   /api/v1/organizations/{orgId}/tournaments/{tId}/scorekeepers      → 201（既存指名は冪等）
+//   DELETE /api/v1/organizations/{orgId}/tournaments/{tId}/scorekeepers/{skId} → 204
+// すべて主催組織 ADMIN / SYSTEM_ADMIN 限定。
+// NOTE: BE の ScorekeeperResponse は displayName を返さないため、表示名は userId フォールバック。
+//       openapi.json に未掲載（BE 再生成漏れ）のため手動型として定義する。
+// ──────────────────────────────────────────────────
+
+/** スコアキーパー指名（BE ScorekeeperResponse 整合）。id は UUIDv7 を文字列で受ける。 */
+export interface ScorekeeperResponse {
+  /** 指名 ID（UUIDv7） */
+  id: string
+  /** 対象大会 ID */
+  tournamentId: number
+  /** スコアキーパーに指名されたユーザー ID */
+  userId: number
+  /** 指名した主催組織 ADMIN の user_id */
+  createdBy: number
+  /** 指名日時（ISO-8601） */
+  createdAt: string
+}
+
+/** スコアキーパー指名追加リクエスト（BE CreateScorekeeperRequest 整合）。 */
+export interface CreateScorekeeperRequest {
+  /** スコアキーパーに指名するユーザー ID */
+  userId: number
+}

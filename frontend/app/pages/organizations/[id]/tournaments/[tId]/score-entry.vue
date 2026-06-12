@@ -100,13 +100,21 @@ onMounted(load)
       :message="$t('tournament.scoreEntry.loadFailed')"
     />
 
-    <ScoreEntryGrid
-      v-else
-      :org-id="orgId"
-      :tournament-id="tId"
-      :divisions="divisions"
-      :scoring="tournament?.scoring ?? null"
-      @saved="onSaved"
-    />
+    <template v-else>
+      <!-- スコアキーパー指名管理（主催組織 ADMIN のみ。load() で isAdminOrDeputy を確認済み）。 -->
+      <ScorekeeperManager
+        class="mb-6"
+        :org-id="orgId"
+        :tournament-id="tId"
+      />
+
+      <ScoreEntryGrid
+        :org-id="orgId"
+        :tournament-id="tId"
+        :divisions="divisions"
+        :scoring="tournament?.scoring ?? null"
+        @saved="onSaved"
+      />
+    </template>
   </div>
 </template>

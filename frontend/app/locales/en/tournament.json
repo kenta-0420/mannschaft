@@ -374,5 +374,25 @@
       "invalidFormat": "Invalid CSV format. Scores must be integers.",
       "downloadTemplate": "Download template"
     }
+  },
+  "scorekeeper": {
+    "title": "Scorekeeper Assignment",
+    "description": "Assigned users can enter scores for this tournament (single, bulk, and CSV import). Only administrators of the host organization can assign scorekeepers.",
+    "userIdLabel": "User ID",
+    "userIdPlaceholder": "e.g. 12345",
+    "add": "Assign",
+    "remove": "Remove",
+    "empty": "No scorekeepers assigned yet",
+    "addSuccess": "Scorekeeper assigned",
+    "removeSuccess": "Scorekeeper assignment removed",
+    "alreadyAssigned": "This user is already assigned",
+    "userDisplay": "User ID: {userId}",
+    "error": {
+      "loadFailed": "Failed to load the scorekeeper list",
+      "addFailed": "Failed to assign scorekeeper ({status})",
+      "removeFailed": "Failed to remove scorekeeper assignment",
+      "forbidden": "You do not have permission to manage scorekeepers (host organization administrators only)",
+      "invalidUserId": "User ID must be a positive integer"
+    }
   }
 }

@@ -374,5 +374,25 @@
       "invalidFormat": "Formato de CSV no válido. Los marcadores deben ser enteros.",
       "downloadTemplate": "Descargar plantilla"
     }
+  },
+  "scorekeeper": {
+    "title": "Asignación de anotador",
+    "description": "Los usuarios asignados pueden registrar resultados de este torneo (individual, en lote e importación CSV). Solo los administradores de la organización anfitriona pueden asignar anotadores.",
+    "userIdLabel": "ID de usuario",
+    "userIdPlaceholder": "ej. 12345",
+    "add": "Asignar",
+    "remove": "Quitar",
+    "empty": "Aún no hay anotadores asignados",
+    "addSuccess": "Anotador asignado",
+    "removeSuccess": "Asignación de anotador eliminada",
+    "alreadyAssigned": "Este usuario ya está asignado",
+    "userDisplay": "ID de usuario: {userId}",
+    "error": {
+      "loadFailed": "No se pudo cargar la lista de anotadores",
+      "addFailed": "No se pudo asignar el anotador ({status})",
+      "removeFailed": "No se pudo eliminar la asignación de anotador",
+      "forbidden": "No tienes permiso para gestionar anotadores (solo administradores de la organización anfitriona)",
+      "invalidUserId": "El ID de usuario debe ser un entero positivo"
+    }
   }
 }
