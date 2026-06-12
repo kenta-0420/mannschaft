@@ -66,7 +66,7 @@ updates:
 
 ### 4.1. 初回スキャン結果（2026-05-26）→ 全件解消済み（2026-06-13）
 
-> **ステータス（2026-06-13）**: 下表の high 11 件は **全て解消済み**。Nuxt 系の継続的な更新（serialize-javascript 7.0.5 / node-forge 1.4.0 / vite 7.3.5 / lodash 4.18.1 / h3 1.15.11 / simple-git 3.36.0 等の安全版への引き上げ）により high/critical はゼロになった。残っていた moderate 3 件（`@nuxt/nitro-server` / `@nuxt/vite-builder` 由来の `__nuxt_island` shared-cache poisoning / route middleware バイパス）も `nuxt` を 3.21.2 → 3.21.8 へ patch 更新して解消し、`npm audit`（全レベル）は **0 件** となった。下表は当時の記録として保持する。
+> **ステータス（2026-06-13）**: 下表の high 11 件は **全て解消済み**。Nuxt 系の継続的な更新（serialize-javascript 7.0.5 / node-forge 1.4.0 / vite 7.3.5 / lodash 4.18.1 / h3 1.15.11 / simple-git 3.36.0 等の安全版への引き上げ）により high/critical はゼロになった。残っていた moderate 3 件（`@nuxt/nitro-server` / `@nuxt/vite-builder` 由来の `__nuxt_island` shared-cache poisoning / route middleware バイパス）も `nuxt` を 3.21.2 → **3.21.6** へ patch 更新して解消し、`npm audit`（全レベル）は **0 件** となった。両 GHSA（`GHSA-g8wj-3cr3-6w7v` / `GHSA-hg3f-28rg-4jxj`）の first patched version は 3.21.6 であり、これが脆弱性を解消する最小バージョンである。なお 3.21.7 以降は `ssr: false`（SPA モード）での dev サーバー起動が `No entry found in rollupOptions.input` でクラッシュするリグレッションを含むため（[nuxt#35033](https://github.com/nuxt/nuxt/issues/35033)）、本プロジェクトの CI（`CI=true` で `ssr: false`）と両立する 3.21.6 を採用した。下表は当時の記録として保持する。
 
 `frontend/` で `npm audit --audit-level=high` を実行した結果、high レベルの脆弱性は以下の 11 件（いずれも transitive 依存。`npm audit fix` で修正可能と表示されるが、Nuxt/Vite 系のメジャー更新を含むため別 PR で慎重に解消する）:
 
@@ -127,7 +127,8 @@ updates:
 
 | 日付 | 変更 |
 |---|---|
-| 2026-06-13 | high/critical 11 件の全件解消を確認し、残存 moderate 3 件も `nuxt` 3.21.2→3.21.8 patch 更新で解消（`npm audit` 全レベル 0 件）。§2/§4/§4.1/§4.2/§6 のステータスを「解消済み・ブロッキング化済み」へ更新 |
+| 2026-06-13 | 残存 moderate 3 件の解消バージョンを `nuxt` 3.21.8 → **3.21.6** に修正。3.21.8 は CI（`ssr: false`）の dev サーバー起動が `No entry found in rollupOptions.input` でクラッシュするリグレッション（[nuxt#35033](https://github.com/nuxt/nuxt/issues/35033)）を含むため。両 GHSA の first patched version である 3.21.6 で `npm audit` 全レベル 0 件かつ dev/CI 起動可能を両立 |
+| 2026-06-13 | high/critical 11 件の全件解消を確認し、残存 moderate 3 件も `nuxt` patch 更新で解消（`npm audit` 全レベル 0 件）。§2/§4/§4.1/§4.2/§6 のステータスを「解消済み・ブロッキング化済み」へ更新 |
 | 2026-06-02 | §4.2「脆弱性解消の優先順位」を追加。セキュリティ精査結果（2026-06-02）に基づき 11 件を優先度別に分類。serialize-javascript/simple-git を最優先として対応方針を明示。high 0 件達成により frontend-ci.yml の `npm audit` を `continue-on-error` 削除でブロッキング化 |
 | 2026-05-26 | 新規作成。Dependabot 導入・npm audit 方針・脆弱性対応フローを定義 |
 | 2026-05-26 | frontend-ci.yml に `npm audit --audit-level=high` を警告のみ（`continue-on-error`）で追加。初回スキャン結果（high 11 件）を §4.1 に記録 |
