@@ -1,23 +1,13 @@
 package com.mannschaft.app.auth;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
+import com.mannschaft.app.common.ratelimit.AbstractRateLimitFilter;
+import com.mannschaft.app.common.ratelimit.RateLimitRule;
+import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
 import java.time.Duration;
-import java.util.EnumMap;
-import java.util.Map;
 
 /**
  * F10.3 監査ログ API のユーザー別レートリミットフィルタ。
@@ -30,11 +20,12 @@ import java.util.Map;
  *   <li>{@code GET /api/v1/organizations/{orgId}/audit-logs}  — 30 req/分（組織ADMIN向け）</li>
  * </ul>
  *
- * <p><b>キャッシュ戦略</b>: Caffeine の {@code expireAfterAccess=10分} + {@code maximumSize=10000}。
- * {@link com.mannschaft.app.memberinfo.MemberInfoRateLimitFilter} と同一パターン。</p>
+ * <p><b>Valkey 化（第二陣A）</b>: 旧実装の Bucket4j + Caffeine（プロセス内カウント）は
+ * ECS 複数タスク構成でタスク数に比例して実効上限が緩むため、
+ * {@link ValkeyRateLimiter}（docs/security/06 §4.3）に移行した。</p>
  */
 @Component
-public class AuditLogRateLimitFilter extends OncePerRequestFilter {
+public class AuditLogRateLimitFilter extends AbstractRateLimitFilter {
 
     /** エンドポイント別の設定 */
     private enum Endpoint {
@@ -68,26 +59,14 @@ public class AuditLogRateLimitFilter extends OncePerRequestFilter {
         }
     }
 
-    /** バケット保持期間（非アクセス時）。レート窓（1分）より十分長く、OOM は防ぐ。 */
-    private static final Duration BUCKET_TTL = Duration.ofMinutes(10);
+    /** ウィンドウ長（旧 Bucket4j Bandwidth と同じ 1 分）。 */
+    private static final Duration WINDOW = Duration.ofMinutes(1);
 
-    /** キャッシュ最大エントリ数。想定外のキー爆発時に LRU で古いものから淘汰する。 */
-    private static final long MAX_BUCKETS = 10_000L;
+    /** Valkey zone 接頭辞。 */
+    private static final String ZONE_PREFIX = "audit-log:";
 
-    /**
-     * エンドポイント別のバケットキャッシュ。エンドポイント間で LRU 淘汰が干渉しないよう
-     * それぞれ独立した Cache として保持する。
-     */
-    private final Map<Endpoint, Cache<String, Bucket>> bucketsByEndpoint;
-
-    public AuditLogRateLimitFilter() {
-        this.bucketsByEndpoint = new EnumMap<>(Endpoint.class);
-        for (Endpoint ep : Endpoint.values()) {
-            this.bucketsByEndpoint.put(ep, Caffeine.<String, Bucket>newBuilder()
-                    .expireAfterAccess(BUCKET_TTL)
-                    .maximumSize(MAX_BUCKETS)
-                    .build());
-        }
+    public AuditLogRateLimitFilter(ObjectProvider<ValkeyRateLimiter> rateLimiterProvider) {
+        super(rateLimiterProvider);
     }
 
     @Override
@@ -101,54 +80,12 @@ public class AuditLogRateLimitFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                     HttpServletResponse response,
-                                     FilterChain chain) throws ServletException, IOException {
-        Endpoint endpoint = resolveEndpoint(request);
-        if (endpoint == null) {
-            chain.doFilter(request, response);
-            return;
-        }
-
-        String userKey = resolveUserKey(request);
-        Cache<String, Bucket> cache = bucketsByEndpoint.get(endpoint);
-        Bucket bucket = cache.get(userKey, k -> newBucket(endpoint.capacityPerMinute));
-
-        if (bucket.tryConsume(1)) {
-            chain.doFilter(request, response);
-        } else {
-            response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-            response.setHeader("Retry-After", "60");
-            response.setContentType("application/json");
-            response.setCharacterEncoding("UTF-8");
-            response.getWriter().write("{\"message\": \"リクエストが多すぎます。しばらく経ってから再試行してください。\"}");
-        }
-    }
-
-    private Endpoint resolveEndpoint(HttpServletRequest request) {
+    protected RateLimitRule resolveRule(HttpServletRequest request) {
         for (Endpoint ep : Endpoint.values()) {
             if (ep.matches(request)) {
-                return ep;
+                return new RateLimitRule(ZONE_PREFIX + ep.name(), ep.capacityPerMinute, WINDOW);
             }
         }
         return null;
-    }
-
-    /**
-     * 認証済みなら "u:{userId}" を、未認証なら "ip:{remoteAddr}" をキーにする。
-     */
-    private String resolveUserKey(HttpServletRequest request) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated()
-                && !"anonymousUser".equals(auth.getPrincipal())) {
-            return "u:" + auth.getName();
-        }
-        return "ip:" + request.getRemoteAddr();
-    }
-
-    private Bucket newBucket(int capacityPerMinute) {
-        return Bucket.builder()
-                .addLimit(Bandwidth.simple(capacityPerMinute, Duration.ofMinutes(1)))
-                .build();
     }
 }

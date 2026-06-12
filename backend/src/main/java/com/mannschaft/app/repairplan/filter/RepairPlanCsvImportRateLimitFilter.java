@@ -1,20 +1,12 @@
 package com.mannschaft.app.repairplan.filter;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
+import com.mannschaft.app.common.ratelimit.AbstractRateLimitFilter;
+import com.mannschaft.app.common.ratelimit.RateLimitRule;
+import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
 import java.time.Duration;
 
 /**
@@ -26,33 +18,28 @@ import java.time.Duration;
  * <p>5MB の CSV アップロード処理が連続して発生するとサーバー負荷が高いため、
  * 人間が手動で操作する現実的なペースを十分上回らない値（人力で 1 分に 5 回は無理）に絞っている。</p>
  *
- * <p>キャッシュ戦略は {@link com.mannschaft.app.actionmemo.ActionMemoRateLimitFilter}
- * と同等：{@code expireAfterAccess=10分} + {@code maximumSize=10000} の Caffeine で OOM を防ぐ。</p>
+ * <p><b>Valkey 化（第二陣B）</b>: 旧実装の Bucket4j + Caffeine（プロセス内カウント）は
+ * ECS 複数タスク構成でタスク数に比例して実効上限が緩むため、
+ * {@link ValkeyRateLimiter}（docs/security/06 §4.3）に移行した。
+ * カウント・§4.3 標準ヘッダー・429 応答は {@link AbstractRateLimitFilter} が担う。</p>
  */
 @Component
-public class RepairPlanCsvImportRateLimitFilter extends OncePerRequestFilter {
+public class RepairPlanCsvImportRateLimitFilter extends AbstractRateLimitFilter {
 
-    /** 分あたりの許容リクエスト数 */
+    /** 分あたりの許容リクエスト数（旧実装から不変）*/
     private static final int CAPACITY_PER_MINUTE = 5;
 
-    /** バケット保持期間（非アクセス時）。レート窓より十分長く、OOM を防ぐ */
-    private static final Duration BUCKET_TTL = Duration.ofMinutes(10);
-
-    /** キャッシュ最大エントリ数 */
-    private static final long MAX_BUCKETS = 10_000L;
+    private static final Duration WINDOW = Duration.ofMinutes(1);
 
     /** マッチ対象のパス末尾（複数のスコープ階層に対応するため endsWith で判定） */
     private static final String IMPORT_PATH_SUFFIX = "/repair-plan/items/import-csv";
 
     private static final String CONFIRM_PATH_SUFFIX = "/repair-plan/items/import-csv/confirm";
 
-    private final Cache<String, Bucket> buckets;
+    private static final String ZONE = "repairplan:csv-import";
 
-    public RepairPlanCsvImportRateLimitFilter() {
-        this.buckets = Caffeine.<String, Bucket>newBuilder()
-                .expireAfterAccess(BUCKET_TTL)
-                .maximumSize(MAX_BUCKETS)
-                .build();
+    public RepairPlanCsvImportRateLimitFilter(ObjectProvider<ValkeyRateLimiter> rateLimiterProvider) {
+        super(rateLimiterProvider);
     }
 
     @Override
@@ -67,32 +54,12 @@ public class RepairPlanCsvImportRateLimitFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                     HttpServletResponse response,
-                                     FilterChain chain) throws ServletException, IOException {
-        String userKey = resolveUserKey(request);
-        Bucket bucket = buckets.get(userKey, k -> newBucket());
-
-        if (bucket.tryConsume(1)) {
-            chain.doFilter(request, response);
-        } else {
-            response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-            response.setHeader("Retry-After", "60");
+    protected RateLimitRule resolveRule(HttpServletRequest request) {
+        String path = request.getServletPath();
+        if (path == null) return null;
+        if (path.endsWith(IMPORT_PATH_SUFFIX) || path.endsWith(CONFIRM_PATH_SUFFIX)) {
+            return new RateLimitRule(ZONE, CAPACITY_PER_MINUTE, WINDOW);
         }
-    }
-
-    private String resolveUserKey(HttpServletRequest request) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated()
-                && !"anonymousUser".equals(auth.getPrincipal())) {
-            return "u:" + auth.getName();
-        }
-        return "ip:" + request.getRemoteAddr();
-    }
-
-    private Bucket newBucket() {
-        return Bucket.builder()
-                .addLimit(Bandwidth.simple(CAPACITY_PER_MINUTE, Duration.ofMinutes(1)))
-                .build();
+        return null;
     }
 }
