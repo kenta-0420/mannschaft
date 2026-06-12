@@ -76,6 +76,12 @@
         "vs": "vs {opponent}",
         "penalty": "승부차기 {home}-{away}"
       },
+      "penalty": {
+        "title": "승부차기 스코어",
+        "home_label": "우리 팀 성공 횟수",
+        "away_label": "상대 팀 성공 횟수",
+        "hint": "성공한 횟수를 입력하세요. 경기 종료 시 확정되어 대회 순위에 반영됩니다."
+      },
       "timer": {
         "state": {
           "WAITING": "경기 전",
