@@ -218,6 +218,18 @@ export interface IndividualRankingContextDto {
   userId?: number
   participantId?: number
   matchesPlayed?: number
+  /**
+   * F08.7 順位UI 項目①（BE #1466）: F19.1 本人可視性経由で解決した表示名。
+   * MINOR 保護・退会済み・本名/サポーター開示規約に従う（無条件 displayName ではない）。
+   */
+  displayName?: string | null
+  /**
+   * 汎用ラベル（「投稿者」「退会済みユーザー」「匿名のユーザー#…」等・BE がサーバ側日本語固定値で返す）に
+   * フォールバックしたか。true のとき FE は i18n のローカライズ済み匿名ラベルを表示する。
+   */
+  anonymized?: boolean
+  /** 表示するアバター URL（開示許可時は実 URL、不可視時は汎用プレースホルダパス）。 */
+  avatarUrl?: string | null
 }
 
 export interface IndividualRankingStatDto {

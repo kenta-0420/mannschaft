@@ -9,6 +9,7 @@ import type {
   TournamentMatrix,
   MatrixCell,
   IndividualRanking,
+  IndividualRankingContextDto,
 } from '~/types/tournament'
 
 // ──────────────────────────────────────────────────
@@ -111,6 +112,36 @@ export function matrixCellScoreText(cell: MatrixCell | null): string {
   if (!cell) return ''
   if (cell.homeScore == null || cell.awayScore == null) return ''
   return `${cell.homeScore}-${cell.awayScore}`
+}
+
+// ──────────────────────────────────────────────────
+// 個人ランキング 選手名表示（F08.7 順位UI 項目① / BE #1466）
+// ──────────────────────────────────────────────────
+
+/**
+ * ランキング行の選手表示名を解決する（B-1）。
+ *
+ * BE #1466 は F19.1 本人可視性を経由して解決済みで、匿名化フォールバック時には
+ * displayName にサーバ側日本語固定値（「投稿者」「退会済みユーザー」「匿名のユーザー#…」等）を
+ * 詰めて返す。en/zh 等で日本語が露出しないよう、{@code anonymized === true} のときは
+ * 呼び出し側がローカライズ済みの汎用匿名ラベルを渡し、それを優先表示する。
+ *
+ * - anonymized === true → ローカライズ匿名ラベル（具体種別の出し分けは BE がキーを返さないため一括）
+ * - anonymized !== true かつ displayName あり → displayName
+ * - いずれも無い → #userId（userId 不在なら "-"）
+ *
+ * @param context ランキング行のコンテキスト（displayName / anonymized / userId）
+ * @param anonymousLabel i18n 済みの匿名汎用ラベル（例 t('tournament.rankings.anonymousPlayer')）
+ */
+export function resolveRankingPlayerName(
+  context: IndividualRankingContextDto | null | undefined,
+  anonymousLabel: string,
+): string {
+  if (context?.anonymized === true) return anonymousLabel
+  const name = context?.displayName
+  if (name != null && name.trim() !== '') return name
+  const userId = context?.userId
+  return userId != null ? `#${userId}` : '-'
 }
 
 // ──────────────────────────────────────────────────

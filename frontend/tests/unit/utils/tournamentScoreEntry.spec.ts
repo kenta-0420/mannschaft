@@ -6,6 +6,7 @@ import {
   parseScoreInput,
   isRowValid,
   buildBatchScorePayload,
+  deriveScoreEntryColumnFlags,
   extractStatus,
   isConflictError,
   isForbiddenError,
@@ -21,9 +22,26 @@ import type { TournamentMatch, TournamentMatrix } from '~/types/tournament'
  * 重点:
  *  - バッチペイロードに楽観ロック version が必ず同梱されること
  *  - 両方未入力の行はスキップ・片方のみ入力は不正として保存中断（null）
+ *  - フラグ有効時のみ延長/PK を同梱する（Wave B-2）
  *  - 409 衝突・403/404 権限のステータス判定
  *  - CSV テンプレ生成（matchId 入りひな形）
  */
+
+/** 延長/PK 欄を含む完全な ScoreEntryRow を組み立てるヘルパ（欠けた欄は空文字）。 */
+function makeRow(over: Partial<ScoreEntryRow> & { matchId: number }): ScoreEntryRow {
+  return {
+    matchId: over.matchId,
+    version: over.version ?? 0,
+    homeName: over.homeName ?? 'A',
+    awayName: over.awayName ?? 'B',
+    homeScore: over.homeScore ?? '',
+    awayScore: over.awayScore ?? '',
+    homeExtraScore: over.homeExtraScore ?? '',
+    awayExtraScore: over.awayExtraScore ?? '',
+    homePenaltyScore: over.homePenaltyScore ?? '',
+    awayPenaltyScore: over.awayPenaltyScore ?? '',
+  }
+}
 
 function fx(overrides: Partial<TournamentMatch> & { id: number }): TournamentMatch {
   return {
@@ -61,13 +79,20 @@ describe('buildParticipantNameMap / resolveParticipantName', () => {
 })
 
 describe('buildScoreEntryRows', () => {
-  it('version を audit.version から採用し、既存スコアを入力欄初期値にする', () => {
+  it('version を audit.version から採用し、既存スコア（延長/PK含む）を入力欄初期値にする', () => {
     const m = buildParticipantNameMap(matrix)
     const matches = [
       fx({
         id: 1,
         participants: { homeParticipantId: 10, awayParticipantId: 20 },
-        score: { homeScore: 2, awayScore: 1 },
+        score: {
+          homeScore: 2,
+          awayScore: 1,
+          homeExtraScore: 1,
+          awayExtraScore: 0,
+          homePenaltyScore: 4,
+          awayPenaltyScore: 3,
+        },
         audit: { version: 5 },
       }),
     ]
@@ -80,10 +105,14 @@ describe('buildScoreEntryRows', () => {
       awayName: 'Bravo',
       homeScore: '2',
       awayScore: '1',
+      homeExtraScore: '1',
+      awayExtraScore: '0',
+      homePenaltyScore: '4',
+      awayPenaltyScore: '3',
     })
   })
 
-  it('version 不在は 0、スコア null は空文字', () => {
+  it('version 不在は 0、スコア null は空文字（延長/PK も空文字）', () => {
     const m = buildParticipantNameMap(matrix)
     const matches = [
       fx({ id: 2, participants: { homeParticipantId: 10, awayParticipantId: 20 } }),
@@ -92,6 +121,8 @@ describe('buildScoreEntryRows', () => {
     expect(rows[0]!.version).toBe(0)
     expect(rows[0]!.homeScore).toBe('')
     expect(rows[0]!.awayScore).toBe('')
+    expect(rows[0]!.homeExtraScore).toBe('')
+    expect(rows[0]!.awayPenaltyScore).toBe('')
   })
 })
 
@@ -108,14 +139,7 @@ describe('parseScoreInput', () => {
 })
 
 describe('isRowValid', () => {
-  const base: ScoreEntryRow = {
-    matchId: 1,
-    version: 0,
-    homeName: 'A',
-    awayName: 'B',
-    homeScore: '',
-    awayScore: '',
-  }
+  const base = makeRow({ matchId: 1 })
   it('両方空・両方整数は有効', () => {
     expect(isRowValid({ ...base })).toBe(true)
     expect(isRowValid({ ...base, homeScore: '2', awayScore: '1' })).toBe(true)
@@ -128,19 +152,50 @@ describe('isRowValid', () => {
     expect(isRowValid({ ...base, homeScore: '1.5', awayScore: '0' })).toBe(false)
     expect(isRowValid({ ...base, homeScore: 'x', awayScore: '0' })).toBe(false)
   })
+
+  it('延長/PK 欄はフラグ有効時のみ検証する', () => {
+    const flags = { showExtraTime: true, showPenalties: true }
+    const full = {
+      ...base,
+      homeScore: '1',
+      awayScore: '1',
+      homeExtraScore: '0',
+      awayExtraScore: '0',
+      homePenaltyScore: '5',
+      awayPenaltyScore: '4',
+    }
+    expect(isRowValid(full, flags)).toBe(true)
+    // 延長片方のみは不正
+    expect(isRowValid({ ...full, homeExtraScore: '1', awayExtraScore: '' }, flags)).toBe(false)
+    // PK 非数値は不正
+    expect(isRowValid({ ...full, homePenaltyScore: 'x' }, flags)).toBe(false)
+    // フラグ無効なら延長/PK の不正値は無視される（本戦のみ検証）
+    expect(
+      isRowValid({ ...full, homeExtraScore: 'x', homePenaltyScore: '-1' }),
+    ).toBe(true)
+  })
+})
+
+describe('deriveScoreEntryColumnFlags', () => {
+  it('hasExtraTime/hasPenalties を真偽フラグへ写す（null/未指定は false）', () => {
+    expect(deriveScoreEntryColumnFlags(null)).toEqual({
+      showExtraTime: false,
+      showPenalties: false,
+    })
+    expect(deriveScoreEntryColumnFlags({ hasExtraTime: true })).toEqual({
+      showExtraTime: true,
+      showPenalties: false,
+    })
+    expect(
+      deriveScoreEntryColumnFlags({ hasExtraTime: true, hasPenalties: true }),
+    ).toEqual({ showExtraTime: true, showPenalties: true })
+  })
 })
 
 describe('buildBatchScorePayload', () => {
-  const row = (over: Partial<ScoreEntryRow> & { matchId: number }): ScoreEntryRow => ({
-    matchId: over.matchId,
-    version: over.version ?? 0,
-    homeName: 'A',
-    awayName: 'B',
-    homeScore: over.homeScore ?? '',
-    awayScore: over.awayScore ?? '',
-  })
+  const row = makeRow
 
-  it('両方入力済みの行のみ抽出し version を必ず同梱する', () => {
+  it('両方入力済みの行のみ抽出し version を必ず同梱する（フラグ無効時 extra/penalty は null）', () => {
     const rows = [
       row({ matchId: 1, version: 3, homeScore: '2', awayScore: '1' }),
       row({ matchId: 2, version: 7 }), // 両方未入力 → スキップ
@@ -148,7 +203,16 @@ describe('buildBatchScorePayload', () => {
     const payload = buildBatchScorePayload(rows)
     expect(payload).not.toBeNull()
     expect(payload!.scores).toEqual([
-      { matchId: 1, homeScore: 2, awayScore: 1, version: 3 },
+      {
+        matchId: 1,
+        homeScore: 2,
+        awayScore: 1,
+        homeExtraScore: null,
+        awayExtraScore: null,
+        homePenaltyScore: null,
+        awayPenaltyScore: null,
+        version: 3,
+      },
     ])
   })
 
@@ -156,8 +220,75 @@ describe('buildBatchScorePayload', () => {
     const rows = [row({ matchId: 1, version: 1, homeScore: '0', awayScore: '0' })]
     const payload = buildBatchScorePayload(rows)
     expect(payload!.scores).toEqual([
-      { matchId: 1, homeScore: 0, awayScore: 0, version: 1 },
+      {
+        matchId: 1,
+        homeScore: 0,
+        awayScore: 0,
+        homeExtraScore: null,
+        awayExtraScore: null,
+        homePenaltyScore: null,
+        awayPenaltyScore: null,
+        version: 1,
+      },
     ])
+  })
+
+  it('フラグ有効時のみ延長/PK を同梱する（version は常に同梱）', () => {
+    const rows = [
+      row({
+        matchId: 1,
+        version: 9,
+        homeScore: '1',
+        awayScore: '1',
+        homeExtraScore: '0',
+        awayExtraScore: '0',
+        homePenaltyScore: '5',
+        awayPenaltyScore: '4',
+      }),
+    ]
+    const payload = buildBatchScorePayload(rows, {
+      showExtraTime: true,
+      showPenalties: true,
+    })
+    expect(payload!.scores).toEqual([
+      {
+        matchId: 1,
+        homeScore: 1,
+        awayScore: 1,
+        homeExtraScore: 0,
+        awayExtraScore: 0,
+        homePenaltyScore: 5,
+        awayPenaltyScore: 4,
+        version: 9,
+      },
+    ])
+  })
+
+  it('延長のみ有効なら PK は null のまま同梱しない', () => {
+    const rows = [
+      row({
+        matchId: 1,
+        version: 2,
+        homeScore: '2',
+        awayScore: '2',
+        homeExtraScore: '1',
+        awayExtraScore: '0',
+        // PK は入力されていてもフラグ無効なら無視され null
+        homePenaltyScore: '5',
+        awayPenaltyScore: '3',
+      }),
+    ]
+    const payload = buildBatchScorePayload(rows, {
+      showExtraTime: true,
+      showPenalties: false,
+    })
+    expect(payload!.scores[0]).toMatchObject({
+      homeExtraScore: 1,
+      awayExtraScore: 0,
+      homePenaltyScore: null,
+      awayPenaltyScore: null,
+      version: 2,
+    })
   })
 
   it('不正行が 1 つでもあれば null（保存中断）', () => {
@@ -194,8 +325,8 @@ describe('extractStatus / isConflictError / isForbiddenError', () => {
 describe('buildCsvTemplate', () => {
   it('ヘッダー＋matchId入り行を出力する', () => {
     const rows: ScoreEntryRow[] = [
-      { matchId: 1, version: 0, homeName: 'A', awayName: 'B', homeScore: '2', awayScore: '1' },
-      { matchId: 2, version: 0, homeName: 'C', awayName: 'D', homeScore: '', awayScore: '' },
+      makeRow({ matchId: 1, homeScore: '2', awayScore: '1' }),
+      makeRow({ matchId: 2, homeName: 'C', awayName: 'D' }),
     ]
     const csv = buildCsvTemplate(rows)
     const lines = csv.trimEnd().split('\n')
