@@ -44,7 +44,7 @@ export interface MatchOrgContextByTeamId extends MatchOrgContext {
 
 interface MyTeamItem {
   id: number
-  publicId: string
+  slug: string
   /** 親組織の数値 ID（BE MyTeamResponse.organizationId・null 許容）。 */
   organizationId: number | null
 }
@@ -69,7 +69,7 @@ export function useMatchOrgContext() {
 
     try {
       const res = await api<{ data: MyTeamItem[] }>('/api/v1/me/teams')
-      const myTeam = (res.data ?? []).find((tm) => tm.publicId === teamPublicId)
+      const myTeam = (res.data ?? []).find((tm) => tm.slug === teamPublicId)
       if (!myTeam || typeof myTeam.organizationId !== 'number') {
         // チーム未所属 or 親組織未解決（試合 API は親組織コンテキスト必須）。
         notification.warn(t('match.org_context.resolve_failed'))
@@ -112,7 +112,7 @@ export function useMatchOrgContext() {
       const ctx: MatchOrgContextByTeamId = {
         orgId: myTeam.organizationId,
         teamId: myTeam.id,
-        teamPublicId: myTeam.publicId,
+        teamPublicId: myTeam.slug,
       }
       contextByTeamIdCache.set(teamId, ctx)
       return ctx

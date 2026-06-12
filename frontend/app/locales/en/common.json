@@ -1520,6 +1520,14 @@
       "saveError": "Failed to save display order"
     }
   },
+  "slug": {
+    "label": "URL Slug",
+    "hint": "Used in your team/organization public URL (e.g. my-team)",
+    "available": "Available",
+    "unavailable": "This slug is already taken",
+    "checking": "Checking...",
+    "format": "Lowercase letters, numbers, and hyphens only (3-30 chars)"
+  },
   "team_visibility": {
     "PUBLIC": "Public",
     "GUESTS_AND_ABOVE": "Guests and above",

@@ -46,11 +46,11 @@ async function load() {
       familyTeams.value.map(async (team) => {
         const name = team.nickname1 || team.name
         const [announcementsRes, todosRes] = await Promise.allSettled([
-          getScopedThreads('teams', team.publicId, { page: 0, size: 4 }),
-          listTodos('team', team.publicId, { size: 5 }),
+          getScopedThreads('teams', team.slug, { page: 0, size: 4 }),
+          listTodos('team', team.slug, { size: 5 }),
         ])
         return {
-          teamId: team.publicId,
+          teamId: team.slug,
           familyName: name,
           announcements: announcementsRes.status === 'fulfilled' ? announcementsRes.value.data : [],
           todos:
