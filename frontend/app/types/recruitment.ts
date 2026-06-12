@@ -5,6 +5,9 @@
 
 export type RecruitmentScopeType = 'TEAM' | 'ORGANIZATION'
 
+/** F22.1 市 謝礼決済: 受領主体種別（BE ConnectPaymentErrorCode PAYEE_REQUIRED 参照） */
+export type RecruitmentPayeeKind = 'USER' | 'TEAM' | 'ORG'
+
 export type RecruitmentParticipationType = 'INDIVIDUAL' | 'TEAM'
 
 export type RecruitmentVisibility = 'PUBLIC' | 'SCOPE_ONLY' | 'SUPPORTERS_ONLY' | 'FRIEND_TEAMS_ONLY'
@@ -75,6 +78,10 @@ export interface RecruitmentListingResponse {
   waitlistMax: number
   paymentEnabled: boolean
   price: number | null
+  /** F22.1 市 謝礼決済: 受領主体種別（USER/TEAM/ORG）。決済無効札は null。 */
+  payeeKind: RecruitmentPayeeKind | null
+  /** F22.1 市 謝礼決済: payeeKind=USER の受領者ユーザーID。それ以外は null。 */
+  payeeUserId: number | null
   visibility: RecruitmentVisibility
   status: RecruitmentListingStatus
   location: string | null
@@ -203,6 +210,10 @@ export interface RecruitmentFeedItem {
   imageUrl: string | null
   paymentEnabled: boolean
   price: number | null
+  /** F22.1 市 謝礼決済: 受領主体種別。決済無効札は null。 */
+  payeeKind: RecruitmentPayeeKind | null
+  /** F22.1 市 謝礼決済: payeeKind=USER の受領者ユーザーID。それ以外は null。 */
+  payeeUserId: number | null
   createdAt: string
 }
 
@@ -244,6 +255,19 @@ export interface CreateRecruitmentListingRequest {
   regions?: import('~/types/market').RegionInput[]
   /** F22.1 市（Market）— フレンド宛先（visibility=FRIEND_TEAMS_ONLY のとき1件以上必須） */
   friendTargets?: import('~/types/market').FriendTargetInput[]
+  /**
+   * F22.1 市 謝礼決済: 受領主体種別（USER/TEAM/ORG）。
+   * paymentEnabled=true のとき必須（未指定は BE が PAYMENT_C011 を返す）。
+   * USER は札主 scope の所属メンバーが受領（payeeUserId 必須）。
+   * TEAM/ORG は札主自身の scope が受領（payeeUserId 不要）。
+   */
+  payeeKind?: RecruitmentPayeeKind | null
+  /**
+   * F22.1 市 謝礼決済: payeeKind=USER の受領者ユーザーID（users.id）。
+   * payeeKind=USER のとき必須（未指定は BE が PAYMENT_C012 を返す）。
+   * payeeKind=TEAM/ORG のときは null を送る（BE が強制 null 化）。
+   */
+  payeeUserId?: number | null
 }
 
 export interface UpdateRecruitmentListingRequest {
@@ -263,6 +287,10 @@ export interface UpdateRecruitmentListingRequest {
   reservationLineId?: number | null
   imageUrl?: string | null
   cancellationPolicyId?: number | null
+  /** F22.1 市 謝礼決済: 受領主体種別（編集時に変更可）。null は変更なし。 */
+  payeeKind?: RecruitmentPayeeKind | null
+  /** F22.1 市 謝礼決済: payeeKind=USER の受領者ユーザーID（編集時に変更可）。null は変更なし。 */
+  payeeUserId?: number | null
 }
 
 export interface CancelRecruitmentListingRequest {
