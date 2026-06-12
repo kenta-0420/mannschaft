@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -131,16 +132,9 @@ class RepairPlanSimulateRateLimitFilterTest {
         @Test
         @DisplayName("スコープ制限（100/分）で 429 になる — scope:teams:1 キーで制限")
         void exceedsScopeLimitReturns429() throws Exception {
-            // ユーザー制限（20/分）を回避するため複数ユーザーで 100 回消費
-            // スコープは同一（teams/1）なので scope zone がカウントアップされる
-            for (int i = 0; i < 100; i++) {
-                authenticateAs("user-" + i);  // 各リクエストで別ユーザー（ユーザー制限回避）
-                SecurityContextHolder.clearContext();
-                // ユーザー制限を回避するため直接カウンタに積む
-                counters.computeIfAbsent("repairplan:simulate:scope|scope:teams:1", k -> new AtomicLong())
-                        .set(100);  // スコープ上限に達した状態にする
-            }
-            // スコープカウンタが上限に達した状態でリクエスト
+            // スコープカウンタを上限到達済みにする（ユーザー制限 20/分 は user-new の初回なので通過する）
+            counters.computeIfAbsent("repairplan:simulate:scope|scope:teams:1", k -> new AtomicLong())
+                    .set(100);
             authenticateAs("user-new");
             MockHttpServletResponse overLimit = invoke(postSimulate("teams", "1", "10.0.0.1"));
             assertThat(overLimit.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
@@ -170,6 +164,23 @@ class RepairPlanSimulateRateLimitFilterTest {
             authenticateAs("user-alice");
             assertThat(invoke(postSimulate("teams", "1", "10.0.0.1")).getStatus())
                     .isEqualTo(HttpStatus.OK.value());
+        }
+
+        @Test
+        @DisplayName("ユーザー超過時はスコープ側を消費しない（短絡評価 — 同一スコープ他ユーザーの巻き添え防止）")
+        void userExceeded_doesNotConsumeScope() throws Exception {
+            authenticateAs("user-alice");
+            // ユーザーカウンタを上限到達済みにする
+            counters.computeIfAbsent("repairplan:simulate:user|u:user-alice", k -> new AtomicLong())
+                    .set(20);
+
+            MockHttpServletResponse overLimit = invoke(postSimulate("teams", "1", "10.0.0.1"));
+            assertThat(overLimit.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+            // user 側（limit=20）のヘッダーが返る
+            assertThat(overLimit.getHeader("X-RateLimit-Limit")).isEqualTo("20");
+            // scope zone は一切消費されない（旧 Bucket4j 実装の短絡意味論を維持）
+            verify(rateLimiter, never()).tryConsume(
+                    eq("repairplan:simulate:scope"), anyString(), anyInt(), any());
         }
     }
 

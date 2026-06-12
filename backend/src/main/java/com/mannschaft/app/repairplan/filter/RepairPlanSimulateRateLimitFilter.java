@@ -36,7 +36,7 @@ import java.time.Duration;
  * かつ {@code doFilterInternal} が {@code final} のためオーバーライド不可。
  * 本フィルタはユーザー単位とスコープ単位の 2 種類の制限を持つため、
  * {@link OncePerRequestFilter} を直接継承し、{@link ValkeyRateLimiter#tryConsume} を
- * user/scope の 2 zone で 2 回呼ぶ実装にする。
+ * user → scope の順に短絡評価で呼ぶ実装にする（user 超過時は scope を消費しない）。
  * 両方が allowed の場合のみリクエストを通過させる。どちらかが超過した場合は 429 を返す。
  * §4.3 標準ヘッダー付与・429 書き出しは {@link AbstractRateLimitFilter} と同一実装で準拠する。</p>
  *
@@ -90,8 +90,14 @@ public class RepairPlanSimulateRateLimitFilter extends OncePerRequestFilter {
     }
 
     /**
-     * ユーザーキーとスコープキーの両方に対して {@link ValkeyRateLimiter#tryConsume} を呼び、
+     * ユーザーキー → スコープキーの順に {@link ValkeyRateLimiter#tryConsume} を短絡評価で呼び、
      * 両方 allowed の場合のみリクエストを通過させる。どちらかが超過したら 429 を返す。
+     *
+     * <p>ユーザー制限超過時はスコープ側を消費しない（旧 Bucket4j 実装の
+     * {@code userBucket.tryConsume() && scopeBucket.tryConsume()} と同じ短絡意味論）。
+     * 無条件に両方消費すると、1 ユーザーの連打中もスコープカウンタ（100/分）が増え続け、
+     * 同一スコープの他ユーザーが巻き添えで 429 になるため。</p>
+     *
      * §4.3 標準ヘッダー・429 書き出しは {@link AbstractRateLimitFilter} と同一実装で準拠する。
      */
     @Override
@@ -106,23 +112,28 @@ public class RepairPlanSimulateRateLimitFilter extends OncePerRequestFilter {
         }
 
         String userKey = resolveClientKey(request);
-        String scopeKey = resolveScopeKey(request);
 
         RateLimitResult userResult = rateLimiter.tryConsume(
                 ZONE_USER, userKey, USER_CAPACITY_PER_MINUTE, WINDOW);
+        if (!userResult.allowed()) {
+            // ユーザー制限超過 — スコープ側は消費せず即 429（短絡評価）
+            applyRateLimitHeaders(response, userResult);
+            writeTooManyRequests(response, userResult);
+            return;
+        }
+
+        String scopeKey = resolveScopeKey(request);
         RateLimitResult scopeResult = rateLimiter.tryConsume(
                 ZONE_SCOPE, scopeKey, SCOPE_CAPACITY_PER_MINUTE, WINDOW);
-
-        if (userResult.allowed() && scopeResult.allowed()) {
-            // 両方の制限を通過 — ユーザー制限のヘッダーを付与（より厳しい側）
-            applyRateLimitHeaders(response, userResult);
-            chain.doFilter(request, response);
-        } else {
-            // どちらかが超過 — 超過したほうのヘッダーを返す
-            RateLimitResult exceeded = !userResult.allowed() ? userResult : scopeResult;
-            applyRateLimitHeaders(response, exceeded);
-            writeTooManyRequests(response, exceeded);
+        if (!scopeResult.allowed()) {
+            applyRateLimitHeaders(response, scopeResult);
+            writeTooManyRequests(response, scopeResult);
+            return;
         }
+
+        // 両方の制限を通過 — ユーザー制限のヘッダーを付与（より厳しい側）
+        applyRateLimitHeaders(response, userResult);
+        chain.doFilter(request, response);
     }
 
     /** §4.3 標準ヘッダーを付与する（AbstractRateLimitFilter と同一実装）。 */
