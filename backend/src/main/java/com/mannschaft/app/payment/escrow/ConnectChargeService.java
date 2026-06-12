@@ -1018,18 +1018,24 @@ public class ConnectChargeService {
 
         ledgerEntryRepository.saveAll(entries);
 
-        // §6.3 第二陣 C1: ModeB のみ、元 charge の実 Stripe 決済手数料を受取側からの未回収残高として計上する。
-        // 既存の返金会計（D PAYER / C PAYEE / C PLATFORM_FEE）は上で確定済みで一切触らず、ここでは
-        // 自己完結した RECOVERY 仕訳（D PLATFORM_FEE = C PAYEE = 実手数料相当）を別バッチで追記し、
-        // fee_recovery_balances.outstanding_amount を同額だけ積む（残高計上のみ・実回収は後続 A 陣）。
+        // §6.3 検分🔴根治: 自己返金（A で回収を上乗せした charge を ModeB 返金）時の回収金消失を、
+        //   ① recovery_kind による峻別（sumAppliedRecoveryNetOnEscrow が A 経路のみ集計）と
+        //   ② 順序（再計上を C1 発生計上より先に呼ぶ）の二重防御で防ぐ。
+        // 順序の意図: recapitalize は当該 escrow の A 回収実行純額を読む。C1 を先に saveAll すると Hibernate AUTO フラッシュで
+        // C1 行が同一クエリに混入しうるため、recovery_kind で除外していても、念のため先に recapitalize（A 純額の確定読み取り）を
+        // 済ませてから C1（C PAYEE）を積む。両者は同一 payee 残高に正しく加算合成される（A 再計上の +applied と C1 の +recoverable）。
         if (effectiveBearer == FeeBearer.PAYEE) {
-            recordModeBStripeFeeRecovery(escrow, modeBGrossRefund, refundInfo.refundId());
             // §6.3 第四陣 A（回収分の再返金エッジ・家老指摘の最小安全策）: この escrow 自身が A 陣で「回収を上乗せされた
             // charge」だった場合、ModeB 返金は refund_application_fee:true で application_fee 全体（self totalFee＋recovery）を
             // 払い戻すため、上乗せした回収が消えてしまう。よって当該 escrow に計上済みの回収実行分（純額）を outstanding へ
-            // 再計上し、回収が無かったことにして次回再回収できるようにする。ModeA（refund_application_fee:false・recovery 据置）
+            // 先に再計上し、回収が無かったことにして次回再回収できるようにする。ModeA（refund_application_fee:false・recovery 据置）
             // では再計上しない（recovery 維持）。終端 REFUNDED への二重返金は上の冪等 no-op で防がれ、純額判定で二重再計上も防ぐ。
             recapitalizeAppliedRecoveryOnRefund(escrow, refundInfo.refundId());
+            // §6.3 第二陣 C1: ModeB のみ、元 charge の実 Stripe 決済手数料を受取側からの未回収残高として計上する。
+            // 既存の返金会計（D PAYER / C PAYEE / C PLATFORM_FEE）は上で確定済みで一切触らず、ここでは
+            // 自己完結した RECOVERY 仕訳（C1_ACCRUAL・D PLATFORM_FEE = C PAYEE = 実手数料相当）を別バッチで追記し、
+            // fee_recovery_balances.outstanding_amount を同額だけ積む（残高計上のみ・実回収は後続 A 陣）。
+            recordModeBStripeFeeRecovery(escrow, modeBGrossRefund, refundInfo.refundId());
         }
 
         log.info("返金を受付 status={}: escrowId={}, refundId={}, feeBearer={}, R={}（transferベース）, 累計={}/{}",
@@ -1115,10 +1121,11 @@ public class ConnectChargeService {
             return;
         }
 
-        // 自己完結 RECOVERY 仕訳（D PLATFORM_FEE = C PAYEE = recoverable）を別バッチで追記（既存返金バッチは不変）。
+        // 自己完結 RECOVERY 仕訳（C1 発生計上・D PLATFORM_FEE = C PAYEE = recoverable）を別バッチで追記（既存返金バッチは不変）。
+        // recovery_kind=C1_ACCRUAL を焼き付け、A 回収実行/再計上の純額計算（sumAppliedRecoveryNetOnEscrow）から確実に除外する。
         List<LedgerEntryEntity> recoveryEntries = LedgerEntryBuilder.forTransaction(escrow.getId(), escrow.getCurrency())
-                .debit(LedgerEntryType.RECOVERY, LedgerAccount.PLATFORM_FEE, recoverable, refundId)
-                .credit(LedgerEntryType.RECOVERY, LedgerAccount.PAYEE, recoverable, refundId)
+                .recoveryPair(RecoveryKind.C1_ACCRUAL, LedgerAccount.PLATFORM_FEE, LedgerAccount.PAYEE,
+                        recoverable, refundId)
                 .build();
         ledgerEntryRepository.saveAll(recoveryEntries);
 
@@ -1168,6 +1175,13 @@ public class ConnectChargeService {
      * <p>残高行が無ければ 0（通常 charge と完全不変＝後方互換）。{@code chk_et_fee} 不可侵は
      * {@link FeeRecoveryCalculator#recoveryToApply} の headroom クランプで保証される。</p>
      *
+     * <p><b>冪等順序（🟠1・PI 二重上乗せ防止）:</b> 本計算は新規 escrow 起票経路でのみ呼ばれる
+     * （{@code authorize}/{@code charge} の冒頭で同一冪等キーの既存 escrow は早期 return し、ここへ到達しない）。
+     * よって「既に回収適用済みの escrow を再 charge」しても本計算は再実行されず PI に二重上乗せされない。さらに
+     * PI 作成は Stripe 冪等キー（{@code idempotencyKey}）で同一 PI を再取得し（上乗せは 1 度のみ）、回収の記帳・
+     * {@code outstanding} 減算は {@link #recordRecoveryExecution} の純額ガード（A 経路純額 &gt; 0 なら skip）で二重適用
+     * されない。上乗せ・outstanding 減算・RECOVERY 記帳が同一冪等境界（escrow 起票トランザクション）の内側に閉じる。</p>
+     *
      * @param connectAccountId 受取側 Connect 口座 ID（残高の主体）
      * @param currency         escrow 通貨（小文字へ正規化して残高と突合）
      * @param amount           今回 charge の請求額（{@code escrow_transactions.amount}）
@@ -1212,10 +1226,10 @@ public class ConnectChargeService {
             return;
         }
 
-        // 回収実行 RECOVERY 仕訳（D PAYEE = C PLATFORM_FEE = recovery）を self-balancing な別バッチで追記。
+        // 回収実行 RECOVERY 仕訳（A_EXECUTION・D PAYEE = C PLATFORM_FEE = recovery）を self-balancing な別バッチで追記。
         List<LedgerEntryEntity> entries = LedgerEntryBuilder.forTransaction(escrow.getId(), escrow.getCurrency())
-                .debit(LedgerEntryType.RECOVERY, LedgerAccount.PAYEE, recovery, piId)
-                .credit(LedgerEntryType.RECOVERY, LedgerAccount.PLATFORM_FEE, recovery, piId)
+                .recoveryPair(RecoveryKind.A_EXECUTION, LedgerAccount.PAYEE, LedgerAccount.PLATFORM_FEE,
+                        recovery, piId)
                 .build();
         ledgerEntryRepository.saveAll(entries);
 
@@ -1250,10 +1264,10 @@ public class ConnectChargeService {
             return; // 回収実行なし or 既に再計上済み（純額 0）。二重再計上しない。
         }
 
-        // 逆仕訳（D PLATFORM_FEE = C PAYEE = applied）で回収実行を打ち消す（self-balancing 別バッチ）。
+        // 逆仕訳（A_RECAPITALIZE・D PLATFORM_FEE = C PAYEE = applied）で回収実行を打ち消す（self-balancing 別バッチ）。
         List<LedgerEntryEntity> entries = LedgerEntryBuilder.forTransaction(escrow.getId(), escrow.getCurrency())
-                .debit(LedgerEntryType.RECOVERY, LedgerAccount.PLATFORM_FEE, applied, stripeObjectIdRef)
-                .credit(LedgerEntryType.RECOVERY, LedgerAccount.PAYEE, applied, stripeObjectIdRef)
+                .recoveryPair(RecoveryKind.A_RECAPITALIZE, LedgerAccount.PLATFORM_FEE, LedgerAccount.PAYEE,
+                        applied, stripeObjectIdRef)
                 .build();
         ledgerEntryRepository.saveAll(entries);
 

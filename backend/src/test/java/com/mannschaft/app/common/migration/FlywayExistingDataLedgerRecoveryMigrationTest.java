@@ -24,8 +24,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * <b>既存データ（V72.006 の旧 CHECK で許可された 6 種の entry_type を含む ledger_entries 行）を持つ
- * MySQL に対し、V84.002（{@code chk_le_entry_type} に RECOVERY を追加）を含む全マイグレーションが
- * クラッシュせず適用でき、既存行が生存し、かつ新値 RECOVERY も INSERT できること</b>を検証する番人テスト。
+ * MySQL に対し、V84.002（{@code chk_le_entry_type} に RECOVERY 追加）＋ V84.003（{@code recovery_kind} 列と
+ * {@code chk_le_recovery_kind} 追加）を含む全マイグレーションがクラッシュせず適用でき、既存行が生存し、
+ * かつ新値 RECOVERY と recovery_kind 付き RECOVERY 行も INSERT でき、非 RECOVERY 行の recovery_kind が
+ * CHECK で弾かれること</b>を検証する番人テスト。
  *
  * <h2>このテストが守る不変条件 / 背景</h2>
  * <p>V84.002 は旧 CHECK 制約 {@code chk_le_entry_type}（6値）を DROP してから 7 値
@@ -128,10 +130,10 @@ class FlywayExistingDataLedgerRecoveryMigrationTest {
         assertThat(restResult.success).as("V84.002 を含む残りのマイグレーションが成功すること").isTrue();
 
         try (Connection c = conn()) {
-            // then-1: 既存 6 行は ALTER 後も全て生存している
+            // then-1: 既存 6 行は ALTER 後も全て生存している（V84.003 の recovery_kind 列追加・新 CHECK でも生存）
             assertThat(countLedgerEntries(c)).as("既存 6 行が ALTER 後も生存していること").isEqualTo(6);
 
-            // then-2: 新値 RECOVERY を INSERT できる（旧 CHECK の DROP→7値 ADD が効いている）
+            // then-2: 新値 RECOVERY を INSERT できる（旧 CHECK の DROP→7値 ADD が効いている・recovery_kind は後方互換 NULL）
             insertLedgerEntry(c, UUID.randomUUID(), escrowId, "RECOVERY");
             assertThat(countLedgerEntries(c)).as("RECOVERY 行が追加され計 7 行になること").isEqualTo(7);
 
@@ -139,6 +141,54 @@ class FlywayExistingDataLedgerRecoveryMigrationTest {
             assertThat(checkConstraintExists(c, "chk_le_entry_type"))
                     .as("V84.002 適用後も chk_le_entry_type（7値）が存在すること")
                     .isTrue();
+
+            // then-4（V84.003）: recovery_kind 列と chk_le_recovery_kind が存在する
+            assertThat(checkConstraintExists(c, "chk_le_recovery_kind"))
+                    .as("V84.003 適用後 chk_le_recovery_kind が存在すること")
+                    .isTrue();
+
+            // then-5（V84.003）: RECOVERY 行に有効な recovery_kind（A_EXECUTION）を持つ行を INSERT できる
+            insertRecoveryEntry(c, UUID.randomUUID(), escrowId, "A_EXECUTION");
+            assertThat(countLedgerEntries(c)).as("recovery_kind 付き RECOVERY 行が追加され計 8 行になること").isEqualTo(8);
+
+            // then-6（V84.003）: 非 RECOVERY 行に recovery_kind を持たせると CHECK 違反で弾かれる（NULL 強制）
+            assertThat(insertNonRecoveryWithKindFails(c, escrowId))
+                    .as("非 RECOVERY 行に recovery_kind を入れると chk_le_recovery_kind 違反で弾かれること")
+                    .isTrue();
+            assertThat(countLedgerEntries(c)).as("弾かれた行は挿入されず計 8 行のままであること").isEqualTo(8);
+        }
+    }
+
+    /** RECOVERY 行を recovery_kind 付きで 1 行 INSERT する（V84.003 検証用）。 */
+    private void insertRecoveryEntry(Connection c, UUID id, UUID escrowId, String recoveryKind)
+            throws SQLException {
+        try (PreparedStatement ps = c.prepareStatement("""
+                INSERT INTO ledger_entries
+                    (id, escrow_transaction_id, entry_type, account, direction,
+                     amount, running_balance, recovery_kind)
+                VALUES (?, ?, 'RECOVERY', 'PAYEE', 'D', 100, 100, ?)
+                """)) {
+            ps.setBytes(1, toBytes(id));
+            ps.setBytes(2, toBytes(escrowId));
+            ps.setString(3, recoveryKind);
+            ps.executeUpdate();
+        }
+    }
+
+    /** 非 RECOVERY 行に recovery_kind を持たせて INSERT し、chk_le_recovery_kind 違反で弾かれたら true。 */
+    private boolean insertNonRecoveryWithKindFails(Connection c, UUID escrowId) throws SQLException {
+        try (PreparedStatement ps = c.prepareStatement("""
+                INSERT INTO ledger_entries
+                    (id, escrow_transaction_id, entry_type, account, direction,
+                     amount, running_balance, recovery_kind)
+                VALUES (?, ?, 'FEE', 'PLATFORM_FEE', 'C', 100, 100, 'A_EXECUTION')
+                """)) {
+            ps.setBytes(1, toBytes(UUID.randomUUID()));
+            ps.setBytes(2, toBytes(escrowId));
+            ps.executeUpdate();
+            return false; // 挿入できてしまった＝CHECK が効いていない
+        } catch (SQLException expected) {
+            return true; // CHECK 違反で弾かれた（期待どおり）
         }
     }
 

@@ -56,8 +56,37 @@ public final class LedgerEntryBuilder {
         return add(LedgerDirection.C, entryType, account, amount, stripeObjectId);
     }
 
+    /**
+     * RECOVERY 仕訳の借貸ペア（{@code debit} → {@code credit}）に経路識別（{@link RecoveryKind}）を焼き付けて追加する
+     * （§6.3 検分🔴根治）。
+     *
+     * <p>RECOVERY×PAYEE は勘定の向きだけでは C1/C2 発生計上と A 回収実行/再計上を峻別できず、自己返金時に純額計算へ
+     * 混入して回収金が消失する。各 RECOVERY 行に {@code recovery_kind} を持たせ、A 経路だけの純額導出を可能にする。
+     * 借貸の {@link LedgerAccount} は呼び出し側が経路ごとに正しく指定する（C1/C2/再計上＝{@code D PLATFORM_FEE / C PAYEE}・
+     * 回収実行＝{@code D PAYEE / C PLATFORM_FEE}）。</p>
+     *
+     * @param kind         RECOVERY 経路識別
+     * @param debitAccount 借方勘定
+     * @param creditAccount 貸方勘定
+     * @param amount       金額（minor・正値）
+     * @param stripeObjectId 突合用 ID（{@code re_xxx}/{@code pi_xxx}/{@code cancel-<id>}）
+     * @return このビルダ
+     */
+    public LedgerEntryBuilder recoveryPair(RecoveryKind kind, LedgerAccount debitAccount,
+                                           LedgerAccount creditAccount, long amount, String stripeObjectId) {
+        add(LedgerDirection.D, LedgerEntryType.RECOVERY, debitAccount, amount, stripeObjectId, kind);
+        add(LedgerDirection.C, LedgerEntryType.RECOVERY, creditAccount, amount, stripeObjectId, kind);
+        return this;
+    }
+
     private LedgerEntryBuilder add(LedgerDirection direction, LedgerEntryType entryType,
                                    LedgerAccount account, long amount, String stripeObjectId) {
+        return add(direction, entryType, account, amount, stripeObjectId, null);
+    }
+
+    private LedgerEntryBuilder add(LedgerDirection direction, LedgerEntryType entryType,
+                                   LedgerAccount account, long amount, String stripeObjectId,
+                                   RecoveryKind recoveryKind) {
         if (amount <= 0) {
             throw new IllegalArgumentException("記帳金額は正の整数（最小通貨単位）でなければなりません: " + amount);
         }
@@ -73,6 +102,7 @@ public final class LedgerEntryBuilder {
                 .currency(currency)
                 .runningBalance(runningBalance)
                 .stripeObjectId(stripeObjectId)
+                .recoveryKind(recoveryKind)
                 .build());
         return this;
     }

@@ -9,6 +9,7 @@ import com.mannschaft.app.payment.escrow.LedgerEntryBuilder;
 import com.mannschaft.app.payment.escrow.LedgerEntryEntity;
 import com.mannschaft.app.payment.escrow.LedgerEntryRepository;
 import com.mannschaft.app.payment.escrow.LedgerEntryType;
+import com.mannschaft.app.payment.escrow.RecoveryKind;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -118,11 +119,12 @@ public class FeeReconciliationService {
             if (recoverable <= 0L) {
                 continue;
             }
-            // C1 と同一の自己完結 RECOVERY 仕訳（D PLATFORM_FEE = C PAYEE = recoverable）。借貸一致は build() が検算。
+            // C1 と同一会計の自己完結 RECOVERY 仕訳（C2 補完・D PLATFORM_FEE = C PAYEE = recoverable）。借貸一致は build() が検算。
+            // recovery_kind=C2_COMPLETION を焼き付け、A 回収実行/再計上の純額計算から確実に除外する（C1 と同列の発生計上）。
             List<LedgerEntryEntity> recoveryEntries =
                     LedgerEntryBuilder.forTransaction(escrowId, escrow.getCurrency())
-                            .debit(LedgerEntryType.RECOVERY, LedgerAccount.PLATFORM_FEE, recoverable, refundId)
-                            .credit(LedgerEntryType.RECOVERY, LedgerAccount.PAYEE, recoverable, refundId)
+                            .recoveryPair(RecoveryKind.C2_COMPLETION, LedgerAccount.PLATFORM_FEE,
+                                    LedgerAccount.PAYEE, recoverable, refundId)
                             .build();
             ledgerEntryRepository.saveAll(recoveryEntries);
             totalRecovered += recoverable;
@@ -271,10 +273,15 @@ public class FeeReconciliationService {
     }
 
     /**
-     * 当該取引の Stripe 実手数料（FEE）が既に台帳記帳済みかを判定する（二重 FEE 記帳の冪等ガード）。
+     * 当該取引の Stripe 実手数料（FEE）が既に台帳記帳済みかを判定する（二重 FEE 記帳の冪等ガード・🟠2）。
      *
-     * <p>本サービスの FEE 記帳は {@code stripe_object_id=piId} の {@code FEE/D/PLATFORM_FEE} 行を立てる。
-     * 同一取引・同一 PI で既に立っていれば再記帳しない（リコンシリの複数回実行で FEE が増殖しない）。</p>
+     * <p><b>capture 時 FEE との確実な突合峻別:</b> capture 時の複式記帳（{@code ConnectChargeService.capture}）が立てる
+     * FEE 行は <b>貸方</b>（{@code FEE/C/PLATFORM_FEE}・設定手数料 application_fee）であり、本サービスの実手数料 FEE 記帳は
+     * <b>借方</b>（{@code FEE/D/PLATFORM_FEE = C PAYEE = stripeFee}）である。両者は {@code stripe_object_id=piId}（同一 PI）
+     * を共有するが、<b>direction（D/C）が異なる</b>ため取り違えない。本ガードは「自身が立てる借方 FEE が同一 PI で既にあるか」
+     * のみを判定するので、capture 時の貸方 FEE を「実手数料記帳済み」と誤認することはなく、かつリコンシリの複数回実行でも
+     * 実手数料 FEE が増殖しない（冪等）。{@code stripe_object_id} 規約: capture も実手数料記帳も同一 escrow の PaymentIntent ID
+     * （{@code pi_xxx}）で一貫し、本突合が成立する。</p>
      */
     private boolean hasStripeFeeLedgerRecorded(UUID escrowId, String piId) {
         return ledgerEntryRepository.findByEscrowTransactionIdOrderByCreatedAtAsc(escrowId).stream()
