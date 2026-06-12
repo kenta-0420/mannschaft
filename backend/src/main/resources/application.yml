@@ -108,7 +108,6 @@ mannschaft:
     endpoint: ${MANNSCHAFT_SES_ENDPOINT:}
   email:
     from-address: ${MANNSCHAFT_EMAIL_FROM:noreply@mannschaft.app}
-    frontend-url: ${MANNSCHAFT_FRONTEND_URL:http://localhost:3000}
   # F09.18 メール配信基盤 (Phase 18-a で導入)
   # 設計書: docs/features/F09.18_email_delivery_infrastructure.md §4 / §10 / §14
   # - worker.enabled: EmailOutboxWorker の @Scheduled 起動フラグ（test/openapi-gen で false 推奨）
@@ -288,7 +287,7 @@ mannschaft.error-report:
     enabled: ${ERROR_REPORT_GITHUB_ENABLED:false}
 
 # F12.5 Phase 2-D — GitHub Issue 本文の「内部管理画面」リンクの基底 URL
-mannschaft.app-base-url: ${APP_BASE_URL:http://localhost:3000}
+# ※ mannschaft.app-base-url は廃止。app.base-url に統一済み（2026-06-11）。
 
 # F10.5 Phase 10-β — パフォーマンス監視のアラート閾値
 # 設計書: docs/features/F10.5_performance_monitoring.md §5.2.3
@@ -337,10 +336,15 @@ mannschaft.system-log:
 # 本番でリードレプリカを有効化する場合は環境変数 DB_REPLICA_URL / DB_REPLICA_USER / DB_REPLICA_PASSWORD を設定し、
 # application-prod.yml（または環境変数）で app.datasource.replica.enabled=true に変更すること。
 app:
-  # F19.1 Phase 3 SEO: sitemap.xml / robots.txt で使用するフロントエンドのベース URL。
-  # 本番環境では環境変数 APP_BASE_URL を設定すること。
+  # 全サービスで共通利用するベース URL（正準プロパティ: app.base-url / 環境変数: APP_BASE_URL）。
+  # sitemap.xml・各種メールリンク・webcal URL 等、フロントエンド / iCal 系の URL 組み立てに使用する。
+  # 本番環境では環境変数 APP_BASE_URL を必ず設定すること（設定なしは起動失敗: application-prod.yml 参照）。
+  # ⚠️ APP_BASE_URL は末尾スラッシュなしで設定すること（例: https://app.mannschaft.com）。
+  #    URL 連結側が "/" を先頭に付加するため、末尾スラッシュがあると "//" の二重スラッシュになる。
   # 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §9.2 / §9.3
-  base-url: ${APP_BASE_URL:https://mannschaft.example}
+  # 以前は mannschaft.email.frontend-url / mannschaft.app-base-url / app.frontend-url と
+  # 分散していたものをこの 1 プロパティに統一した（2026-06-11 本番移行前修正）。
+  base-url: ${APP_BASE_URL:http://localhost:3000}
   datasource:
     replica:
       enabled: false

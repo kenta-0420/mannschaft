@@ -61,7 +61,7 @@ public class AdEmailChannelService {
     private final AdOpenPixelJwtService openPixelJwtService;
     private final AdEmailDeliveryRepository deliveryRepository;
 
-    /** SPA 配信元のベース URL。{@code mannschaft.app-base-url} と統一。 */
+    /** SPA 配信元のベース URL。{@code app.base-url}（環境変数 {@code APP_BASE_URL}）から取得。 */
     private final String appBaseUrl;
 
     public AdEmailChannelService(
@@ -71,7 +71,7 @@ public class AdEmailChannelService {
             AdUnsubscribeJwtService unsubscribeJwtService,
             AdOpenPixelJwtService openPixelJwtService,
             AdEmailDeliveryRepository deliveryRepository,
-            @Value("${mannschaft.app-base-url:http://localhost:3000}") String appBaseUrl) {
+            @Value("${app.base-url}") String appBaseUrl) {
         this.directMailService = directMailService;
         this.userRepository = userRepository;
         this.userAdPreferenceService = userAdPreferenceService;

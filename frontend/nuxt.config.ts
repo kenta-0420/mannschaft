@@ -5,8 +5,9 @@ import Aura from '@primeuix/themes/aura'
 // 設計書: docs/security/03_security_headers_and_csp.md §2.1 / §3 / §7
 // ──────────────────────────────────────────────────────────────────────────
 
-// API ベース URL。connect-src に追加する必要がある（同一オリジンでない場合）。
+// ブラウザ用 API ベース URL。connect-src に追加する必要がある（同一オリジンでない場合）。
 // E2E プロキシ（NUXT_API_PROXY=true）時は API が Nuxt 同一オリジン経由になるため 'self' で足りる。
+// 本番（Cloudflare 経由 FE/BE 同一オリジン構成）では NUXT_PUBLIC_API_BASE='' (空文字) で運用する。
 const apiBase = process.env.NUXT_PUBLIC_API_BASE ?? 'http://localhost:8080'
 
 // CSP 違反レポートの送信先（report-uri）。
@@ -25,9 +26,12 @@ const cspReportUri = process.env.NUXT_PUBLIC_CSP_REPORT_URI ?? '/api/v1/security
 // - apiBase（バックエンド API オリジン。プロキシ時も無害なので含める）
 // - Google Fonts（preconnect / CSS 取得）
 // - ws:/wss:（STOMP WebSocket / dev HMR。apiBase 由来の ws もカバー）
+// apiBase が空文字（本番同一オリジン構成: NUXT_PUBLIC_API_BASE=''）のとき、
+// connectSrc に '' が混入しないようガードする。
+// 同一オリジン時は 'self' で API 通信がカバーされるため apiBase の追加は不要。
 const connectSrc = [
   "'self'",
-  apiBase,
+  ...(apiBase ? [apiBase] : []),
   'https://fonts.googleapis.com',
   'https://fonts.gstatic.com',
   // STOMP WebSocket（@stomp/stompjs）と dev サーバ HMR。
@@ -249,8 +253,25 @@ export default defineNuxtConfig({
       navigateFallback: '/',
       globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2}'],
       runtimeCaching: [
+        // ─────────────────────────────────────────────────────────────────
+        // API キャッシュポリシー（セキュリティ上重要）
+        //
+        // 認証付き API レスポンスを Service Worker キャッシュに残すと、
+        // ログアウト後・ユーザー切替後に別ユーザーが旧ユーザーのデータを
+        // 閲覧できる情報漏洩リスクが生じる。
+        // そのため /api/v1/** のキャッシュは「認証不要な公開 API のみ」に
+        // 限定し、それ以外は必ず NetworkOnly（キャッシュ禁止）とする。
+        //
+        // workbox は先勝ちマッチのため、以下の順序が重要:
+        //   1. /api/v1/public/** と /api/v1/recruitment-categories → SWR
+        //   2. その他 /api/v1/** → NetworkOnly（セーフガード）
+        // ─────────────────────────────────────────────────────────────────
+
+        // 公開 API（認証不要）のみ StaleWhileRevalidate でキャッシュ:
+        //   /api/v1/public/** — 未ログイン公開閲覧用エンドポイント（F19.1 等）
+        //   /api/v1/recruitment-categories — 未ログイン参照可能なカテゴリ一覧
         {
-          urlPattern: /^https?:\/\/.*\/api\/v1\/.*$/,
+          urlPattern: /\/api\/v1\/(public\/.*|recruitment-categories(?=[?#]|$))/,
           handler: 'StaleWhileRevalidate' as const,
           method: 'GET',
           options: {
@@ -258,6 +279,15 @@ export default defineNuxtConfig({
             expiration: { maxEntries: 200, maxAgeSeconds: 86400 },
             cacheableResponse: { statuses: [0, 200] },
           },
+        },
+        // 認証付き API は NetworkOnly（キャッシュ禁止）。
+        // 上の公開 API 用エントリがマッチしなかった /api/v1/** 全体に適用。
+        // 将来誰かが「全 API をキャッシュしたい」という設定を追加しても、
+        // workbox の先勝ちマッチによりこのエントリが防波堤として機能する。
+        {
+          urlPattern: /\/api\/v1\//,
+          handler: 'NetworkOnly' as const,
+          method: 'GET',
         },
         {
           urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/,
@@ -291,8 +321,18 @@ export default defineNuxtConfig({
   runtimeConfig: {
     // F10.6 Phase 10-γ-③-b: SSRエラー転送用内部トークン（サーバーサイドのみ）
     internalLogToken: process.env.NUXT_INTERNAL_LOG_TOKEN || 'dev-internal-token',
+    // Nitro サーバー（SSR）側からバックエンドを叩く際の内部 API ベース URL（サーバーサイドのみ）。
+    // ブラウザ用 NUXT_PUBLIC_API_BASE は本番で '' (空文字・相対パス) にできるが、
+    // Nitro サーバーは相対パスでは BE に到達できないため、絶対 URL を別途保持する。
+    // 設計書: docs/security/03_security_headers_and_csp.md §2.1（apiBase 二層構成）
+    internalApiBase: process.env.NUXT_INTERNAL_API_BASE ?? 'http://localhost:8080',
     public: {
       apiBase: process.env.NUXT_PUBLIC_API_BASE ?? 'http://localhost:8080',
+      // フロントエンドのベース URL（canonical / hreflang / JSON-LD 等の SEO 用）。
+      // NUXT_PUBLIC_API_BASE=''（同一オリジン構成）では apiBase から FE の origin を
+      // 逆算できないため、専用の環境変数で明示する。
+      // 設計書: docs/security/03_security_headers_and_csp.md §4.1 / useSeoPublicPage.ts
+      baseUrl: process.env.NUXT_PUBLIC_BASE_URL ?? '',
       // F18 SELF_ISSUED_BALANCE 機能フラグ（2026-05-17 マスター御裁可で凍結）。
       // 資金決済法（前払式支払手段＝自家型）対応のため法務整備が整うまで一時凍結。
       // 設計書: docs/features/F18_point_card_wallet.md §1.4 / §16 / §17
@@ -328,7 +368,11 @@ export default defineNuxtConfig({
         ? {}
         : {
             '/api/v1/security/csp-reports': {
-              target: `${apiBase}/api/v1/security/csp-reports`,
+              // devProxy は dev 専用（本番には適用されない）。
+              // apiBase が空文字（本番同一オリジン構成）の場合もフォールバックとして
+              // localhost:8080 を使う（dev で NUXT_PUBLIC_API_BASE='' のケースは想定しないが、
+              // 空文字が target に混入して無効な URL になる事故を防ぐ）。
+              target: `${apiBase || 'http://localhost:8080'}/api/v1/security/csp-reports`,
               changeOrigin: true,
             },
           },
