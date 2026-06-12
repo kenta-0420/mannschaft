@@ -152,7 +152,7 @@ class TournamentScorekeeperControllerTest {
         @DisplayName("200: 正常取得")
         void returns200_whenSuccess() throws Exception {
             ScorekeeperResponse response = new ScorekeeperResponse(
-                    UUID.randomUUID(), T_ID, 50L, USER_ID, LocalDateTime.now());
+                    UUID.randomUUID(), T_ID, 50L, "佐藤 花子", USER_ID, LocalDateTime.now());
             given(scorekeeperService.listScorekeepers(eq(ORG_ID), eq(T_ID), eq(USER_ID)))
                     .willReturn(List.of(response));
 
@@ -160,7 +160,8 @@ class TournamentScorekeeperControllerTest {
                             ORG_ID, T_ID))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data").isArray())
-                    .andExpect(jsonPath("$.data[0].userId").value(50));
+                    .andExpect(jsonPath("$.data[0].userId").value(50))
+                    .andExpect(jsonPath("$.data[0].displayName").value("佐藤 花子"));
         }
 
         @Test
@@ -202,7 +203,7 @@ class TournamentScorekeeperControllerTest {
         @DisplayName("201: 正常追加")
         void returns201_whenSuccess() throws Exception {
             ScorekeeperResponse response = new ScorekeeperResponse(
-                    UUID.randomUUID(), T_ID, 50L, USER_ID, LocalDateTime.now());
+                    UUID.randomUUID(), T_ID, 50L, "佐藤 花子", USER_ID, LocalDateTime.now());
             given(scorekeeperService.addScorekeeper(eq(ORG_ID), eq(T_ID), eq(USER_ID), eq(50L)))
                     .willReturn(response);
 
@@ -211,7 +212,8 @@ class TournamentScorekeeperControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"userId\": 50}"))
                     .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.data.userId").value(50));
+                    .andExpect(jsonPath("$.data.userId").value(50))
+                    .andExpect(jsonPath("$.data.displayName").value("佐藤 花子"));
         }
 
         @Test
