@@ -20,7 +20,7 @@ OSS ライブラリの既知脆弱性（OWASP A06）への対応方針を定義�
 | OWASP Dependency-Check（Gradle プラグイン `org.owasp.dependencycheck`） | 導入済み | バックエンド依存の CVE スキャン |
 | `.github/workflows/security-scan.yml` | 存在 | CI でのセキュリティスキャン |
 | Dependabot（`.github/dependabot.yml`） | **未導入** ★本 Phase で追加 | 自動更新 PR |
-| フロント `npm audit` の CI 組み込み | **導入済み（警告のみ）** | §4 参照。`frontend-ci.yml` に `--audit-level=high` を `continue-on-error` で追加 |
+| フロント `npm audit` の CI 組み込み | **導入済み（ブロッキング）** | §4 参照。`frontend-ci.yml` に `--audit-level=high` を `continue-on-error` なしで実行。high/critical 0 件達成済み（2026-06-13）|
 
 ---
 
@@ -58,13 +58,15 @@ updates:
 ## 4. フロント `npm audit`
 
 - フロントエンド CI（`frontend-ci.yml`）に `npm audit --audit-level=high` ステップを追加済み（依存インストール `npm ci` の直後に実行）
-- **現状の CI 扱いは「警告のみ（非ブロッキング）」**: ステップに `continue-on-error: true` を付与し、脆弱性検出時も CI を落とさない
-  - **理由**: 2026-05-26 時点の初回スキャンで high レベルの脆弱性が **11 件**（moderate 14・low 1・total 26）存在するため、いきなりブロッキング化すると全 PR の CI が即座に落ちる。設計書 §6 の段階導入方針（API ドリフトチェックと同方針）に従い、まず警告のみで導入する
-  - **ブロッキング化の条件**: high/critical の脆弱性をゼロに解消した後、`continue-on-error: true` を削除してブロッキング（門番）へ昇格する。`--audit-level` を `critical` 等へ安易に緩めて症状を隠すことは禁止
+- **現状の CI 扱いは「ブロッキング（門番）」**: `continue-on-error` を付けずに実行し、high/critical の脆弱性が 1 件でも検出されると CI を落とす
+  - **経緯**: 2026-05-26 の初回スキャンでは high 11 件（moderate 14・low 1・total 26）が存在したため、段階導入方針に従い当初は警告のみ（`continue-on-error: true`）で導入した。その後 Nuxt 系の更新で high が全て解消され、2026-06-02 に `continue-on-error` を削除してブロッキング化した
+  - **現状（2026-06-13）**: high/critical のみならず moderate も含め `npm audit` は **0 件**。`--audit-level` を `critical` 等へ安易に緩めて症状を隠すことは引き続き禁止
 - 既知の誤検知・修正不可能な transitive 依存は `package.json` の `overrides` または audit の除外設定で管理し、理由をコメントで残す
 - Dependabot と役割が重複するが、audit は「（脆弱性解消後は）CI を落とす門番」、Dependabot は「更新 PR の自動生成」と位置づけ、両輪で運用する
 
-### 4.1. 初回スキャン結果（2026-05-26）
+### 4.1. 初回スキャン結果（2026-05-26）→ 全件解消済み（2026-06-13）
+
+> **ステータス（2026-06-13）**: 下表の high 11 件は **全て解消済み**。Nuxt 系の継続的な更新（serialize-javascript 7.0.5 / node-forge 1.4.0 / vite 7.3.5 / lodash 4.18.1 / h3 1.15.11 / simple-git 3.36.0 等の安全版への引き上げ）により high/critical はゼロになった。残っていた moderate 3 件（`@nuxt/nitro-server` / `@nuxt/vite-builder` 由来の `__nuxt_island` shared-cache poisoning / route middleware バイパス）も `nuxt` を 3.21.2 → 3.21.8 へ patch 更新して解消し、`npm audit`（全レベル）は **0 件** となった。下表は当時の記録として保持する。
 
 `frontend/` で `npm audit --audit-level=high` を実行した結果、high レベルの脆弱性は以下の 11 件（いずれも transitive 依存。`npm audit fix` で修正可能と表示されるが、Nuxt/Vite 系のメジャー更新を含むため別 PR で慎重に解消する）:
 
@@ -84,7 +86,9 @@ updates:
 
 > moderate（14 件）・low（1 件）は `--audit-level=high` では CI 出力に含めない（門番の閾値外）。脆弱性解消は本 PR のスコープ外とし、Dependabot PR / 個別の更新 PR で順次対応する。
 
-### 4.2. 脆弱性解消の優先順位（2026-06-02 精査）
+### 4.2. 脆弱性解消の優先順位（2026-06-02 精査）→ 全件解消済み（2026-06-13）
+
+> **ステータス（2026-06-13）**: 下表の優先度別 11 件は **全て解消済み**。`serialize-javascript` / `simple-git` / `node-forge` / `vite` / `lodash` / `h3` 等はいずれも安全版へ更新済みで、`npm audit --audit-level=high` は 0 件。下表は対応経緯の記録として保持する。
 
 以下の優先度で解消すること（2026-05-26 時点で 11 件全て未解消）:
 
@@ -98,7 +102,7 @@ updates:
 | 🟠 中 | `h3` | SSE バイパス / パストラバーサル | 間接依存 → Nuxt アップデートで解消期待 |
 | 🟡 低 | `fast-uri`, `picomatch`, `js-cookie`, `devalue` | 各種 | Dependabot PR で対応 |
 
-**解消後のアクション**: `continue-on-error: true` を削除して CI ブロッキング化する（§6 参照）。
+**解消後のアクション**: `continue-on-error: true` を削除して CI ブロッキング化する（§6 参照）。→ **実施済み（2026-06-02 にブロッキング化、2026-06-13 に moderate も含め 0 件達成）**。
 
 ---
 
@@ -114,7 +118,7 @@ updates:
 
 ## 6. 今後の拡張（スコープ外・意思決定済み）
 
-- **`npm audit` の CI 扱い**: 初期は **警告のみ（非ブロッキング）** とする（`--audit-level=high` を `continue-on-error` で実行）。**2026-05-26 に frontend-ci.yml へ導入済み**（§4 / §4.1 参照）。現状 high が 11 件存在するため警告のみで開始し、これらを解消したうえで `high` 以上をブロッキング条件へ昇格する（API ドリフトチェックの段階導入と同方針）
+- **`npm audit` の CI 扱い**: 段階導入は完了。初期は警告のみ（`--audit-level=high` を `continue-on-error` で実行・2026-05-26 導入）で開始し、high 11 件を解消したうえで **2026-06-02 に `continue-on-error` を削除してブロッキング（門番）へ昇格済み**（§4 / §4.1 参照）。2026-06-13 時点で high/critical/moderate すべて 0 件
 - **Dependabot グルーピング**: 関連依存をまとめる `groups` 設定は PR 数が過多になった場合に導入する（初期は未使用で開始）
 
 ---
@@ -123,6 +127,7 @@ updates:
 
 | 日付 | 変更 |
 |---|---|
-| 2026-06-02 | §4.2「脆弱性解消の優先順位」を追加。セキュリティ精査結果（2026-06-02）に基づき 11 件を優先度別に分類。serialize-javascript/simple-git を最優先として対応方針を明示 |
+| 2026-06-13 | high/critical 11 件の全件解消を確認し、残存 moderate 3 件も `nuxt` 3.21.2→3.21.8 patch 更新で解消（`npm audit` 全レベル 0 件）。§2/§4/§4.1/§4.2/§6 のステータスを「解消済み・ブロッキング化済み」へ更新 |
+| 2026-06-02 | §4.2「脆弱性解消の優先順位」を追加。セキュリティ精査結果（2026-06-02）に基づき 11 件を優先度別に分類。serialize-javascript/simple-git を最優先として対応方針を明示。high 0 件達成により frontend-ci.yml の `npm audit` を `continue-on-error` 削除でブロッキング化 |
 | 2026-05-26 | 新規作成。Dependabot 導入・npm audit 方針・脆弱性対応フローを定義 |
 | 2026-05-26 | frontend-ci.yml に `npm audit --audit-level=high` を警告のみ（`continue-on-error`）で追加。初回スキャン結果（high 11 件）を §4.1 に記録 |
