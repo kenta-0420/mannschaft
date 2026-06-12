@@ -76,6 +76,12 @@
         "vs": "vs {opponent}",
         "penalty": "PK {home}-{away}"
       },
+      "penalty": {
+        "title": "Penalty Shootout Score",
+        "home_label": "Our successful penalties",
+        "away_label": "Opponent successful penalties",
+        "hint": "Enter the number of successful kicks. Finalized when the match ends and reflected in tournament standings."
+      },
       "timer": {
         "state": {
           "WAITING": "Pre-match",

@@ -1,5 +1,7 @@
 import type {
   MemberCard,
+  MemberCardListItem,
+  MemberCardStatus,
   MemberCardQr,
   CheckinRecord,
   CheckinStats,
@@ -79,6 +81,25 @@ export function useMemberCardApi() {
     return res.data
   }
 
+  /**
+   * 組織の会員証一覧を氏名検索付きで取得する（メンバー選択 UI 向け）。
+   * BE: GET /api/v1/organizations/{orgId}/member-cards?status=&q=（MemberCardListResponse[]・displayName 同梱）。
+   * status 既定は ACTIVE。q は会員名/カード番号の部分一致検索。
+   */
+  async function searchOrgMembers(
+    orgId: string,
+    params?: { q?: string; status?: MemberCardStatus },
+  ) {
+    const query = new URLSearchParams()
+    if (params?.status) query.set('status', params.status)
+    if (params?.q != null && params.q.trim() !== '') query.set('q', params.q.trim())
+    const qs = query.toString()
+    const res = await api<{ data: MemberCardListItem[] }>(
+      `/api/v1/organizations/${orgId}/member-cards${qs ? `?${qs}` : ''}`,
+    )
+    return res.data
+  }
+
   async function getTeamCheckins(teamId: string, params?: { from?: string; to?: string }) {
     const query = new URLSearchParams()
     if (params?.from) query.set('from', params.from)
@@ -139,6 +160,7 @@ export function useMemberCardApi() {
     reactivate,
     listByTeam,
     listByOrg,
+    searchOrgMembers,
     getTeamCheckins,
     getTeamCheckinStats,
     listLocations,

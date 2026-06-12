@@ -102261,8 +102261,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
-            200: {
+            /** @description 指名追加成功 */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -144361,8 +144361,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
-            200: {
+            /** @description 指名解除成功 */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };

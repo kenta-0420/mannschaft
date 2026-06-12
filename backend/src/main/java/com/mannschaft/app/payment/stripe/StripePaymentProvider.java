@@ -339,6 +339,38 @@ public interface StripePaymentProvider {
     String resolveTransferIdFromPaymentIntent(String paymentIntentId);
 
     /**
+     * {@link #retrieveChargeProcessingFee} が「balance_transaction が未確定（{@code pending}）で実手数料を
+     * まだ取得できない」ことを表す番兵値（{@code -1}・F22.1 §6.3 第二陣 C1）。
+     *
+     * <p>capture 後の charge は通常即座に balance_transaction が確定（{@code available}）し正の {@code fee} が
+     * 立つが、返金直後や少額・特殊カードでごく稀に確定が遅延する。その場合に 0（手数料ゼロ）と誤認すると
+     * 未回収残高を取りこぼすため、0 と明確に区別できる負の番兵を返す（症状を隠さない・後続バッチで補完可能）。
+     * 呼び出し側は本値を検知したら残高計上をスキップしリコンシリエーション（§6.3）に委ねる。</p>
+     */
+    long PROCESSING_FEE_PENDING = -1L;
+
+    /**
+     * 元 charge（Destination Charge）の Stripe 決済手数料（{@code balance_transaction.fee}・minor・正値）を取得する
+     * （F22.1 §6.3 第二陣 C1・ModeB 返金の真値台帳化）。
+     *
+     * <p>ModeB 返金では支払者へ満額返金し {@code refund_application_fee:true} で application_fee を返金するため、
+     * <b>Stripe は元取引の決済手数料（≈369・minor）を返さない</b>。これが Mannschaft の真の一時負担額であり、
+     * 受取側（payee）から回収すべき額である。{@code PaymentIntent.retrieve(id, expand=[latest_charge.balance_transaction])}
+     * で展開した {@code charge.balance_transaction.fee} を返す（Destination Charge は platform 上に balance_transaction が
+     * 立つため platform 文脈の retrieve でよい）。</p>
+     *
+     * <p><b>未確定（pending）の扱い（症状を隠さない・正直設計）:</b> balance_transaction がまだ確定していない
+     * （{@code status='pending'}）／latest_charge・balance_transaction が解決できない場合は、0（手数料ゼロ）と
+     * 誤認させず {@link #PROCESSING_FEE_PENDING}（{@code -1}）を返す。呼び出し側は残高計上をスキップし、後続の
+     * リコンシリエーション（§6.3）で補完する。Stripe 通信失敗は握り潰さず
+     * {@link com.mannschaft.app.payment.connect.ConnectPaymentErrorCode#STRIPE_API_ERROR}（500）で上申する。</p>
+     *
+     * @param paymentIntentId 元取引の PaymentIntent ID（{@code pi_xxx}・capture 済み）
+     * @return Stripe 決済手数料（minor・正値）。未確定/未取得なら {@link #PROCESSING_FEE_PENDING}（{@code -1}）
+     */
+    long retrieveChargeProcessingFee(String paymentIntentId);
+
+    /**
      * 受取側 Connect 口座への送金を<b>明示的に</b>巻き戻す（{@code TransferReversal}・支払者負担モデル・設計書 02 §6.1）。
      *
      * <p>{@link #createConnectRefund}（{@code reverse_transfer=false}）で支払者へ返金した額と<b>同額</b>を

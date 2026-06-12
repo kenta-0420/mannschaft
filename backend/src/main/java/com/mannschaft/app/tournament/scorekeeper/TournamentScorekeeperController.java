@@ -61,6 +61,7 @@ public class TournamentScorekeeperController {
 
     @PostMapping
     @Operation(summary = "スコアキーパー指名の追加", description = "主催組織 ADMIN のみ。既に指名済みの場合は冪等に既存を返す")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "指名追加成功")
     @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
     public ResponseEntity<ApiResponse<ScorekeeperResponse>> addScorekeeper(
             @PathVariable Long orgId, @PathVariable Long tId,
@@ -72,6 +73,7 @@ public class TournamentScorekeeperController {
 
     @DeleteMapping("/{skId}")
     @Operation(summary = "スコアキーパー指名の解除", description = "主催組織 ADMIN のみ。物理削除")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "指名解除成功")
     @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')")
     public ResponseEntity<Void> removeScorekeeper(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable UUID skId) {

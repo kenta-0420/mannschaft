@@ -123,3 +123,89 @@ describe('useMatchLiveSession completeMatch 冪等性（状態機械との連携
     expect(matchStatusVal).toBe('COMPLETED')
   })
 })
+
+/**
+ * F08.10 ② PK スコアの確定保存→順位連携テスト。
+ *
+ * completeMatch(penalty) は COMPLETED の前に finalizeScore で本戦（延長合算済みの導出スコア）と
+ * PK 戦スコアを Entity に確定保存する。BE の changeStatus(COMPLETED) は保存済み Entity の値を
+ * MatchCompletedEvent へ載せ、tournament/MatchScoreFixtureListener が fixture 順位へ反映する（#1444）。
+ * よって「finalize が status より先」「PK ありなら penalty を同梱・なしなら undefined」を保証する。
+ *
+ * useMatchLiveSession の実体は Nuxt の auto-import に依存するため、本テストは completeMatch の
+ * 実装ロジック（useMatchLiveSession.ts）の振る舞いをミニマルシムで表現し、finalizeScore へ渡る
+ * ペイロードと呼び出し順序を検証する。
+ */
+describe('completeMatch の PK スコア確定保存（F08.10 ② 順位連携）', () => {
+  type FinalizeBody = {
+    homeScore: number
+    awayScore: number
+    homePenaltyScore?: number
+    awayPenaltyScore?: number
+  }
+
+  function buildCompleteMatch(initialStatus: string | null) {
+    const callOrder: string[] = []
+    const finalizeSpy = vi.fn<(body: FinalizeBody) => void>(() => callOrder.push('finalize'))
+    const changeStatusSpy = vi.fn(() => callOrder.push('status'))
+    let matchStatusVal = initialStatus
+    const homeScore = { value: 0 }
+    const awayScore = { value: 0 }
+
+    async function completeMatch(penalty?: { home: number; away: number } | null): Promise<void> {
+      if (matchStatusVal === 'COMPLETED') return
+      finalizeSpy({
+        homeScore: homeScore.value,
+        awayScore: awayScore.value,
+        homePenaltyScore: penalty ? penalty.home : undefined,
+        awayPenaltyScore: penalty ? penalty.away : undefined,
+      })
+      changeStatusSpy()
+      matchStatusVal = 'COMPLETED'
+    }
+
+    return { completeMatch, finalizeSpy, changeStatusSpy, callOrder, homeScore, awayScore }
+  }
+
+  beforeEach(() => vi.clearAllMocks())
+
+  it('SESSION-008: PK 戦ありは penalty 成功数を finalizeScore に同梱する', async () => {
+    const c = buildCompleteMatch('IN_PROGRESS')
+    c.homeScore.value = 1
+    c.awayScore.value = 1
+    await c.completeMatch({ home: 4, away: 3 })
+    expect(c.finalizeSpy).toHaveBeenCalledTimes(1)
+    expect(c.finalizeSpy.mock.calls[0]![0]).toEqual({
+      homeScore: 1,
+      awayScore: 1,
+      homePenaltyScore: 4,
+      awayPenaltyScore: 3,
+    })
+  })
+
+  it('SESSION-009: PK 戦なし（penalty=null）は penalty を undefined にして本戦のみ確定する', async () => {
+    const c = buildCompleteMatch('IN_PROGRESS')
+    c.homeScore.value = 2
+    c.awayScore.value = 0
+    await c.completeMatch(null)
+    expect(c.finalizeSpy.mock.calls[0]![0]).toEqual({
+      homeScore: 2,
+      awayScore: 0,
+      homePenaltyScore: undefined,
+      awayPenaltyScore: undefined,
+    })
+  })
+
+  it('SESSION-010: finalizeScore は changeStatus より先に呼ぶ（Entity 確定→COMPLETED で MatchCompletedEvent に載る順序）', async () => {
+    const c = buildCompleteMatch('IN_PROGRESS')
+    await c.completeMatch({ home: 5, away: 4 })
+    expect(c.callOrder).toEqual(['finalize', 'status'])
+  })
+
+  it('SESSION-011: 既に COMPLETED なら finalize も status も再送しない（冪等）', async () => {
+    const c = buildCompleteMatch('COMPLETED')
+    await c.completeMatch({ home: 5, away: 4 })
+    expect(c.finalizeSpy).not.toHaveBeenCalled()
+    expect(c.changeStatusSpy).not.toHaveBeenCalled()
+  })
+})

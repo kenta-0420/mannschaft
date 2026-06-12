@@ -1,8 +1,8 @@
 # 01. 認可基盤（Authorization Baseline）
 
-> **ステータス**: 🟢 設計確定
+> **ステータス**: 🟢 設計確定・deny-by-default 実装済み
 > **実装フェーズ**: Security Hardening Phase 1
-> **最終更新**: 2026-05-26
+> **最終更新**: 2026-06-12
 > **関連ドキュメント**: [README](README.md), F01.2-04 セキュリティ運用, F03.5-04 セキュリティ運用, F19.1 公開ページ, F09.18 メール配信基盤
 
 ---
@@ -11,11 +11,13 @@
 
 `SecurityConfig` の `SecurityFilterChain` における **既定の認可方針** を定義する。
 
-**中心となる方針転換**: 現在の `.anyRequest().permitAll()`（全許可フォールバック + JwtFilter/`@PreAuthorize` が個別防御）から、**`.anyRequest().authenticated()`（deny-by-default）** へ移行する。これにより「許可リストに無いエンドポイントは認証必須」が保証され、新規 Controller を追加した際に認可設定を忘れても無防備に公開されることがなくなる。
+**中心となる方針転換**: 旧来の `.anyRequest().permitAll()`（全許可フォールバック + JwtFilter/`@PreAuthorize` が個別防御）から、**`.anyRequest().authenticated()`（deny-by-default）** へ移行した。これにより「許可リストに無いエンドポイントは認証必須」が保証され、新規 Controller を追加した際に認可設定を忘れても無防備に公開されることがなくなる。
 
-### 解決する課題
-- 現状フォールバックは「Controller 側の `@PreAuthorize` 漏れ = そのまま全世界公開」というフェイルオープン構造
-- `SecurityConfig.java:173-184` の TODO（system-admin 包括ルール未設定）が本番リスクとして残置
+> 🟢 **実装済み（#1266・2026-06-02 点火）**: `SecurityConfig.java` の `anyRequest().authenticated()` 反転・`/api/v1/system-admin/**` 包括ルール・全 webhook 許可リスト・公開 GET の permitAll 登録が完了している。
+
+### 解決した課題（根治済み）
+- ~~現状フォールバックは「Controller 側の `@PreAuthorize` 漏れ = そのまま全世界公開」というフェイルオープン構造~~ → **deny-by-default 反転で解消**
+- ~~`SecurityConfig.java:173-184` の TODO（system-admin 包括ルール未設定）が本番リスクとして残置~~ → **`/api/v1/system-admin/**` 包括ルール追加で解消**
 
 ---
 
@@ -155,11 +157,13 @@ grep -rn "@RequestMapping\|@GetMapping\|@PostMapping\|@PutMapping\|@PatchMapping
 
 ## 7. 実装時の確認事項（反転前チェックリスト）
 
+> 🟢 **反転実施済み（#1266・2026-06-02）**: 以下のチェックリストは実施時に確認済み。
+
 deny-by-default 反転は以下を実装時に確認してから行う（いずれも §6 監査の一部）。
 
-- [ ] OAuth コールバックの実パスが `/api/v1/auth/oauth/**` でカバーされているか（カバー外なら許可リストへ追加）
-- [ ] `/ws` ハンドシェイクが反転後も 401 で弾かれないか（弾かれるなら `/ws` を許可リストへ追加。STOMP CONNECT の interceptor 認証は維持）
-- [ ] §3 許可リストに無い未認証前提エンドポイント（公開 GET・コールバック等）の取りこぼしが無いか
+- [x] OAuth コールバックの実パスが `/api/v1/auth/oauth/**` でカバーされているか（カバー外なら許可リストへ追加）
+- [x] `/ws` ハンドシェイクが反転後も 401 で弾かれないか（`/ws/**` を permitAll へ追加済み。STOMP CONNECT の interceptor 認証は維持）
+- [x] §3 許可リストに無い未認証前提エンドポイント（公開 GET・コールバック等）の取りこぼしが無いか
 
 ---
 
@@ -173,5 +177,6 @@ deny-by-default 反転は以下を実装時に確認してから行う（いず�
 
 | 日付 | 変更 |
 |---|---|
+| 2026-06-12 | **ステータス追従**: §1 の「移行する（予定）」記述を「移行した（実施済み）」に更新。解決済み課題に取り消し線と根治済み注記を追記。§7 チェックリストを `[x]` 済みに更新。裏取り根拠（`SecurityConfig.java` への `anyRequest().authenticated()` 確認）を記載 |
 | 2026-05-26 | 新規作成。deny-by-default 移行設計、webhook 許可リスト、system-admin 包括ルールを定義 |
 | 2026-06-02 | §5 に WebSocket 二層認証モデル（ハンドシェイク層 permitAll／STOMP CONNECT JWT 必須）と `setAllowedOriginPatterns` の本番ドメイン限定要件を追記。§3.6 の Stripe webhook 許可リスト記述を `/**` 再帰禁止・両パス明示に修正。§3.3 の根治記録に `/public/market/categories` 新設・旧 API 維持・FE 修正済みの詳細を追記 |
