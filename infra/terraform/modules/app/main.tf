@@ -398,7 +398,7 @@ resource "aws_ecs_service" "app" {
   # ローリングアップデート中に一時的に 0 タスク（数十秒の断）になることを許容して
   # 2 タスク並走を完全に防ぐ設定とする。
   deployment_minimum_healthy_percent = 0
-  maximum_percent                    = 100
+  deployment_maximum_percent         = 100
 
   # Flyway の初回 migrate が完了するまでヘルスチェックを猶予する（最大 3 分）
   health_check_grace_period_seconds = 180

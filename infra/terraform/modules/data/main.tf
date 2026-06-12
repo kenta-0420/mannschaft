@@ -104,12 +104,12 @@ resource "aws_db_parameter_group" "mysql8" {
 # RDS インスタンス（MySQL 8.0）
 # -----------------------------------------------------------------------------
 resource "aws_db_instance" "main" {
-  identifier        = "${var.prefix}-mysql"
-  engine            = "mysql"
-  engine_version    = "8.0"
-  instance_class    = var.db_instance_class
-  db_name           = "mannschaft"
-  username          = "admin"
+  identifier     = "${var.prefix}-mysql"
+  engine         = "mysql"
+  engine_version = "8.0"
+  instance_class = var.db_instance_class
+  db_name        = "mannschaft"
+  username       = "admin"
 
   # パスワードは Secrets Manager で自動管理（Terraform state に平文を残さない）
   manage_master_user_password = true
@@ -173,9 +173,9 @@ resource "aws_elasticache_replication_group" "valkey" {
   replication_group_id = "${var.prefix}-valkey"
   description          = "Mannschaft Valkey（Redis 互換）キャッシュ"
 
-  engine       = "valkey"
-  node_type    = var.cache_node_type
-  port         = 6379
+  engine             = "valkey"
+  node_type          = var.cache_node_type
+  port               = 6379
   num_cache_clusters = 1
 
   # 自動フェイルオーバー: ノード 1 台構成のため無効（最小構成）
