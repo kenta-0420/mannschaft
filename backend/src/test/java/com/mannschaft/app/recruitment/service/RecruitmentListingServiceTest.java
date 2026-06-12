@@ -69,6 +69,10 @@ class RecruitmentListingServiceTest {
     @Mock
     private com.mannschaft.app.recruitment.repository.RecruitmentFriendTargetRepository friendTargetRepository;
 
+    // F22.1 市 Phase 2 D: 複数地域（N:N）中間表（create happy-path で replaceListingRegions が使用）
+    @Mock
+    private com.mannschaft.app.recruitment.repository.RecruitmentListingRegionRepository listingRegionRepository;
+
     // F22.1 市 Phase 2 足場C: 札立て地域の team 既定補完
     @Mock
     private com.mannschaft.app.team.service.TeamService teamService;
