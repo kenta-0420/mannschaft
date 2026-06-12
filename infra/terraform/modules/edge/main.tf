@@ -72,15 +72,12 @@ resource "cloudflare_record" "origin_cname" {
 # =============================================================================
 resource "cloudflare_pages_project" "frontend" {
   account_id        = var.cloudflare_account_id
-  name              = "${var.cloudflare_account_id != "" ? replace(var.domain_name, ".", "-") : "mannschaft-frontend"}"
+  name              = replace(var.domain_name, ".", "-")
   production_branch = "main"
 
-  build_config {
-    # wrangler デプロイ（CI が npx wrangler pages deploy で直接デプロイする）を前提とした
-    # 最小構成。Cloudflare Pages の Git 連携ビルドは使用しない。
-    build_command   = ""
-    destination_dir = ""
-  }
+  # build_config は省略: wrangler デプロイ（CI が npx wrangler pages deploy で直接デプロイ）
+  # を前提とするため、Cloudflare Pages の Git 連携ビルドは使用しない。
+  # build_config ブロックを省略すると provider デフォルト（ビルドなし）が適用される。
 
   deployment_configs {
     production {
