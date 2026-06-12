@@ -33,7 +33,17 @@ variable "domain_name" {
 }
 
 variable "db_endpoint" {
-  description = "RDS MySQL のエンドポイント（data module の db_endpoint。SPRING_DATASOURCE_URL の組み立てに使用）"
+  description = "RDS MySQL のエンドポイント（data module の db_endpoint。host:3306 形式。SPRING_DATASOURCE_URL の組み立てに使用）"
+  type        = string
+}
+
+variable "db_name" {
+  description = "接続先 DB 名（data module の db_name。SPRING_DATASOURCE_URL に組み込む）"
+  type        = string
+}
+
+variable "db_username" {
+  description = "RDS マスターユーザー名（data module の db_username。SPRING_DATASOURCE_USERNAME として注入）"
   type        = string
 }
 
@@ -43,7 +53,12 @@ variable "db_master_user_secret_arn" {
 }
 
 variable "valkey_endpoint" {
-  description = "ElastiCache Valkey のプライマリエンドポイント（data module の valkey_primary_endpoint）"
+  description = "ElastiCache Valkey のプライマリエンドポイント（data module の valkey_primary_endpoint。ホスト名のみ。ポートは 6379 固定）"
+  type        = string
+}
+
+variable "listener_certificate_arn" {
+  description = "ALB HTTPS リスナーにアタッチする ACM 証明書 ARN。ルートの aws_acm_certificate_validation.certificate_arn（検証済み）を渡すこと。検証未完了の証明書を直接渡さないよう注意"
   type        = string
 }
 

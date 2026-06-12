@@ -68,6 +68,8 @@ module "data" {
 
 # -----------------------------------------------------------------------------
 # app: ALB + ACM + ECR + ECS Fargate（Spring Boot）
+# 注意: listener_certificate_arn は下記の acm_certificate_validation から渡す。
+#       module.edge（検証 CNAME 作成）より後に解決されるため apply の順序は自動制御される。
 # -----------------------------------------------------------------------------
 module "app" {
   source = "../../modules/app"
@@ -79,11 +81,14 @@ module "app" {
   app_sg_id                 = module.network.app_sg_id
   domain_name               = var.domain_name
   db_endpoint               = module.data.db_endpoint
+  db_name                   = module.data.db_name
+  db_username               = module.data.db_username
   db_master_user_secret_arn = module.data.db_master_user_secret_arn
   valkey_endpoint           = module.data.valkey_primary_endpoint
   app_env                   = local.app_env
   task_cpu                  = var.task_cpu
   task_memory               = var.task_memory
+  listener_certificate_arn  = aws_acm_certificate_validation.this.certificate_arn
 }
 
 # -----------------------------------------------------------------------------
@@ -98,4 +103,25 @@ module "edge" {
   alb_dns_name                  = module.app.alb_dns_name
   acm_domain_validation_options = module.app.acm_domain_validation_options
   pages_env                     = local.pages_env
+}
+
+# -----------------------------------------------------------------------------
+# ACM 証明書の検証完了待機（B8 根治）
+# -----------------------------------------------------------------------------
+# 依存グラフ（循環なし）:
+#   module.app → aws_acm_certificate（証明書作成・domain_validation_options 出力）
+#   module.edge → cloudflare_record.acm_validation（検証 CNAME 作成）
+#              → acm_validation_record_fqdns 出力
+#   本リソース → 上記 CNAME が伝播したことを ACM が確認するまで待機
+#   module.app.listener_certificate_arn ← 本リソースの certificate_arn（検証済み）
+#
+# この構成により一発 apply で:
+#   1. ACM 証明書作成
+#   2. Cloudflare に検証 CNAME 作成
+#   3. ACM が検証完了を確認（最大数分）
+#   4. 検証済み証明書 ARN を ALB HTTPS リスナーにアタッチ
+# が自動的に順序通り実行される。
+resource "aws_acm_certificate_validation" "this" {
+  certificate_arn         = module.app.acm_certificate_arn
+  validation_record_fqdns = module.edge.acm_validation_record_fqdns
 }

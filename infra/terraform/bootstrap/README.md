@@ -112,7 +112,82 @@ gh variable set INFRA_CI_ENABLED --body "true"
 > `INFRA_CI_ENABLED` を **最後** に設定するのが重要。これより前に infra/terraform を
 > 触る PR が出ても、CI ジョブは `if:` 条件でスキップされるだけで失敗にはならない。
 
-## 6. state（terraform.tfstate）の扱い
+## 6. 初回 apply の順序について（ACM 証明書検証）
+
+envs/prod の apply は **一発で完了する**。以下の順序が自動的に解決される:
+
+1. `module.app` が `aws_acm_certificate` を作成し `domain_validation_options` を出力
+2. `module.edge` が Cloudflare に検証 CNAME（proxied=false）を作成
+3. `aws_acm_certificate_validation.this` が DNS 伝播を確認するまで待機（通常 1〜5 分）
+4. 検証済み証明書 ARN が `module.app` の HTTPS リスナーにアタッチ
+
+> Terraform は依存グラフを自動解析するため `-target` による手動分割は不要。
+> ただし初回 apply では ACM 検証の待機により apply が数分間ブロックされる（正常動作）。
+
+## 7. Secrets Manager への値投入（apply 後に必須）
+
+envs/prod の apply 完了後、以下の 4 箱に値を投入する。
+`<region>` は ap-northeast-1 等、`<prefix>` は terraform.tfvars の prefix（既定: mannschaft）。
+
+### 7-1. JWT 署名秘密鍵
+
+```powershell
+# 256bit 以上のランダム鍵を生成して投入
+$jwtSecret = [Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 -Minimum 0 }) -as [byte[]])
+aws secretsmanager put-secret-value `
+  --secret-id "<prefix>/jwt-secret" `
+  --secret-string $jwtSecret
+```
+
+> ECS タスク定義は `MANNSCHAFT_JWT_SECRET` として直接この値を参照する（JSON キーなし）。
+
+### 7-2. Stripe API キー
+
+```powershell
+# stripe シークレットは JSON 形式（secret_key / webhook_secret / connect_webhook_secret の 3 キー）
+$stripeJson = @{
+  secret_key             = "sk_live_xxxx"
+  webhook_secret         = "whsec_xxxx"        # F08.2 platform webhook
+  connect_webhook_secret = "whsec_yyyy"        # F22.1 Connect webhook
+} | ConvertTo-Json -Compress
+
+aws secretsmanager put-secret-value `
+  --secret-id "<prefix>/stripe" `
+  --secret-string $stripeJson
+```
+
+> タスク定義は `:secret_key::` / `:webhook_secret::` / `:connect_webhook_secret::` でキー指定参照。
+
+### 7-3. 内部トークン類
+
+```powershell
+# 用途: MANNSCHAFT_AD_UNSUBSCRIBE_SECRET / MANNSCHAFT_AD_OPEN_PIXEL_SECRET 等
+$internalJson = @{
+  ad_unsubscribe_secret  = "<256bit random>"
+  ad_open_pixel_secret   = "<256bit random>"
+  internal_signing_key   = "<256bit random>"   # F12.1 §5.14 QR 署名
+} | ConvertTo-Json -Compress
+
+aws secretsmanager put-secret-value `
+  --secret-id "<prefix>/internal-tokens" `
+  --secret-string $internalJson
+```
+
+### 7-4. その他アプリキー
+
+```powershell
+# 用途: MANNSCHAFT_ENCRYPTION_KEY / MANNSCHAFT_HMAC_KEY 等
+$appKeysJson = @{
+  encryption_key = "<256bit random>"
+  hmac_key       = "<256bit random>"
+} | ConvertTo-Json -Compress
+
+aws secretsmanager put-secret-value `
+  --secret-id "<prefix>/app-keys" `
+  --secret-string $appKeysJson
+```
+
+## 8. state（terraform.tfstate）の扱い
 
 - bootstrap の state は **このディレクトリのローカルファイル** `terraform.tfstate`（gitignore 済み）
 - 中に IAM ロール等の管理情報が入っている。**消さないこと**。PC バックアップ対象に含めると安心
@@ -138,6 +213,7 @@ terraform import aws_iam_role_policy.tf_plan_state mannschaft-tf-plan:mannschaft
 terraform import aws_iam_role_policy_attachment.tf_plan_readonly mannschaft-tf-plan/arn:aws:iam::aws:policy/ReadOnlyAccess
 terraform import aws_iam_role.tf_apply mannschaft-tf-apply
 terraform import aws_iam_role_policy.tf_apply_iam mannschaft-tf-apply:mannschaft-tf-apply-iam-and-state
+terraform import aws_iam_role_policy.tf_apply_deny_escalation mannschaft-tf-apply:mannschaft-tf-apply-deny-privilege-escalation
 terraform import aws_iam_role_policy_attachment.tf_apply_poweruser mannschaft-tf-apply/arn:aws:iam::aws:policy/PowerUserAccess
 terraform import aws_iam_role.app_deploy mannschaft-app-deploy
 terraform import aws_iam_role_policy.app_deploy mannschaft-app-deploy:mannschaft-app-deploy-access

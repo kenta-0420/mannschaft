@@ -9,8 +9,9 @@
 # | CLOUDFLARE_API_TOKEN               | GitHub secret / ローカル環境変数           | cloudflare provider が環境変数から自動読込              |
 # | DB マスターパスワード              | AWS Secrets Manager（RDS 自動管理）        | data module の db_master_user_secret_arn → app module が |
 # |                                    |                                            | ECS タスク定義の secrets で注入（平文を経由しない）     |
-# | アプリ秘密（JWT 鍵 / Stripe 鍵等） | AWS SSM Parameter Store (SecureString)     | app module が ECS タスク定義の secrets で参照。値の登録 |
-# |                                    |                                            | は Terraform 管理外（aws ssm put-parameter で手動）     |
+# | アプリ秘密（JWT 鍵 / Stripe 鍵等） | AWS Secrets Manager（箱は Terraform 作成）  | app module が ECS タスク定義の secrets で参照。値の投入 |
+# |                                    |                                            | は Terraform 管理外（aws secretsmanager     |
+# |                                    |                                            | put-secret-value で手動。手順は bootstrap/README §7） |
 # | AWS 認証（CI）                     | なし（GitHub OIDC で短期クレデンシャル）   | bootstrap 層の IAM ロール 3 種                           |
 # | SES SMTP/API 認証                  | ECS タスクロール（IAM ロール）             | 鍵不要。タスクロールに ses:SendEmail を付与             |
 #

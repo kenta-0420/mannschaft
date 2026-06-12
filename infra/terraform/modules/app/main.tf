@@ -1,27 +1,21 @@
 # =============================================================================
-# app module — 契約スタブ（二番隊実装範囲）
+# app module — 実装済み
 # =============================================================================
 # 責務: アプリ実行層（ALB + ACM + ECR + ECS Fargate / Spring Boot desired 1）。
 #
-# 二番隊が実装する主要リソース:
-#   - aws_acm_certificate（var.domain_name / DNS 検証）
-#       * 検証レコードの作成は edge module（Cloudflare DNS）側。
-#         本 module は domain_validation_options を出力するだけ。
-#       * aws_acm_certificate_validation で検証完了を待ってから ALB リスナーに紐付け
-#   - aws_lb（public subnet ×2）+ HTTPS リスナー（ACM）+ HTTP→HTTPS リダイレクト
-#   - aws_lb_target_group（port 8080 / target_type "ip" / health check /actuator/health）
-#   - aws_ecr_repository（${var.prefix}-backend。scan_on_push 推奨）
-#   - aws_ecs_cluster + aws_ecs_task_definition + aws_ecs_service（desired_count = 1）
-#       * タスクは public subnet + public IP 付与で起動（NAT Gateway 代を節約）
-#       * 環境変数: var.app_env（非秘密）+ DB/Valkey 接続情報から組み立て
-#       * 秘密: container_definitions の secrets で
-#         var.db_master_user_secret_arn / SSM Parameter Store を参照（平文を経由しない）
-#   - IAM: タスク実行ロール（ECR pull / CloudWatch Logs / secrets 読取）と
-#          タスクロール（SES 送信等）。名前は mannschaft-* プレフィクス必須
-#          （bootstrap の tf-apply ロールが mannschaft-* しか IAM 操作できないため）
-#   - aws_cloudwatch_log_group（アプリログ）
+# ACM 証明書の検証フロー:
+#   1. 本 module が aws_acm_certificate を作成し domain_validation_options を出力
+#   2. edge module がその情報で Cloudflare に検証 CNAME を作成し、
+#      acm_validation_record_fqdns を出力
+#   3. ルート（envs/prod/main.tf）が aws_acm_certificate_validation で
+#      検証完了を待ち、その certificate_arn を var.listener_certificate_arn として
+#      本 module に渡す
+#   → HTTPS リスナーは検証済み証明書を参照するため循環依存なし
 #
-# 契約（variables.tf / outputs.tf）は確定済み。勝手に増減しないこと。
+# 依存グラフ（循環なし）:
+#   app（cert 作成）→ edge（DNS 検証レコード作成）
+#   → ルートの validation リソース（検証完了待機）
+#   → app（var.listener_certificate_arn としてリスナーへ渡す）
 # =============================================================================
 
 terraform {
@@ -92,11 +86,12 @@ resource "aws_acm_certificate" "this" {
   }
 }
 
-# 注意: aws_acm_certificate_validation は**使わない**。
-# 検証 CNAME は edge module が Cloudflare 側で作成する非同期構成のため、
-# Terraform の apply 中に検証完了を待つと Cloudflare 側の apply が完了するまで
-# タイムアウトしてしまう。ALB リスナーは証明書 ARN で参照し、
-# ACM の検証完了は Cloudflare DNS が伝播してから自動的に行われる。
+# 注意: aws_acm_certificate_validation はこの module では定義しない。
+# 理由: edge module（Cloudflare）が同一 apply 内で検証 CNAME を作成するため、
+# ルート（envs/prod/main.tf）で validation リソースを定義することで
+# 一発 apply 中に検証完了を待てる。
+# HTTPS リスナーは var.listener_certificate_arn（ルートが validation 完了後に渡す値）
+# を使うことで、検証済み証明書のみが ALB にアタッチされることを保証する。
 
 # =============================================================================
 # ALB / ターゲットグループ / リスナー
@@ -128,12 +123,16 @@ resource "aws_lb_target_group" "app" {
 }
 
 # HTTPS リスナー（TLS 1.2 以上のみ許可。Cloudflare がオリジンへ HTTPS で接続する）
+# certificate_arn は var.listener_certificate_arn を使う。
+# これはルートの aws_acm_certificate_validation.certificate_arn（検証済み）が渡される。
+# 直接 aws_acm_certificate.this.arn を参照しないのは、検証未完了の証明書が
+# リスナーにアタッチされて ALB が HTTPS を受け付けられない状態を防ぐため。
 resource "aws_lb_listener" "https" {
   load_balancer_arn = aws_lb.this.arn
   port              = 443
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
-  certificate_arn   = aws_acm_certificate.this.arn
+  certificate_arn   = var.listener_certificate_arn
 
   default_action {
     type             = "forward"
@@ -187,8 +186,12 @@ resource "aws_iam_role_policy" "task_exec_secrets" {
           "secretsmanager:GetSecretValue",
           "secretsmanager:DescribeSecret"
         ]
-        # 同一プレフィクス配下のシークレットのみに絞る
-        Resource = "arn:aws:secretsmanager:*:*:secret:${var.prefix}/*"
+        # mannschaft/* プレフィクス配下のシークレット（JWT / Stripe / 内部トークン等）
+        # + RDS 管理シークレット（rds!db-... 名で mannschaft/* プレフィクス外）を許可
+        Resource = [
+          "arn:aws:secretsmanager:*:*:secret:${var.prefix}/*",
+          var.db_master_user_secret_arn,
+        ]
       }
     ]
   })
@@ -318,17 +321,29 @@ resource "aws_ecs_task_definition" "app" {
       environment = concat(
         [for k, v in var.app_env : { name = k, value = v }],
         [
+          # A1 修正: db_endpoint は "host:3306" 形式のため ":3306" を追記しない
+          # A6 追加: SPRING_PROFILES_ACTIVE は tfvars 任せにせず常に prod を設定
+          {
+            name  = "SPRING_PROFILES_ACTIVE"
+            value = "prod"
+          },
           {
             name  = "SPRING_DATASOURCE_URL"
-            value = "jdbc:mysql://${var.db_endpoint}:3306/${var.prefix}?serverTimezone=UTC&characterEncoding=UTF-8"
+            value = "jdbc:mysql://${var.db_endpoint}/${var.db_name}?serverTimezone=UTC&characterEncoding=UTF-8"
+          },
+          # A2 追加: SPRING_DATASOURCE_USERNAME を注入（application-prod.yml:6 で必須）
+          {
+            name  = "SPRING_DATASOURCE_USERNAME"
+            value = var.db_username
+          },
+          # A3 修正: application-prod.yml:11-12 は SPRING_REDIS_HOST / SPRING_REDIS_PORT を参照
+          {
+            name  = "SPRING_REDIS_HOST"
+            value = var.valkey_endpoint
           },
           {
-            name  = "SPRING_DATA_REDIS_HOST"
-            value = split(":", var.valkey_endpoint)[0]
-          },
-          {
-            name  = "SPRING_DATA_REDIS_PORT"
-            value = try(split(":", var.valkey_endpoint)[1], "6379")
+            name  = "SPRING_REDIS_PORT"
+            value = "6379"
           }
         ]
       )
@@ -336,21 +351,28 @@ resource "aws_ecs_task_definition" "app" {
       # 秘密はタスク定義の secrets で参照（平文を state に残さない）
       secrets = [
         {
-          # RDS マスターユーザーパスワード（Secrets Manager の :password:: キー参照）
+          # RDS マスターユーザーパスワード（RDS 管理シークレットの :password:: キー参照）
           name      = "SPRING_DATASOURCE_PASSWORD"
           valueFrom = "${var.db_master_user_secret_arn}:password::"
         },
+        # A4 修正: application-prod.yml:35 は MANNSCHAFT_JWT_SECRET を参照
         {
-          name      = "APP_JWT_SECRET"
+          name      = "MANNSCHAFT_JWT_SECRET"
           valueFrom = aws_secretsmanager_secret.jwt_secret.arn
         },
+        # A5 修正: application.yml:159,161 は MANNSCHAFT_STRIPE_SECRET_KEY / MANNSCHAFT_STRIPE_WEBHOOK_SECRET
         {
-          name      = "STRIPE_SECRET_KEY"
+          name      = "MANNSCHAFT_STRIPE_SECRET_KEY"
           valueFrom = "${aws_secretsmanager_secret.stripe.arn}:secret_key::"
         },
         {
-          name      = "STRIPE_WEBHOOK_SECRET"
+          name      = "MANNSCHAFT_STRIPE_WEBHOOK_SECRET"
           valueFrom = "${aws_secretsmanager_secret.stripe.arn}:webhook_secret::"
+        },
+        # A5 追加: application.yml:163 STRIPE_CONNECT_WEBHOOK_SECRET も必要
+        {
+          name      = "STRIPE_CONNECT_WEBHOOK_SECRET"
+          valueFrom = "${aws_secretsmanager_secret.stripe.arn}:connect_webhook_secret::"
         }
       ]
 
@@ -392,6 +414,10 @@ resource "aws_ecs_service" "app" {
     container_name   = "${var.prefix}-app"
     container_port   = 8080
   }
+
+  # B9: HTTPS リスナーがターゲットグループを関連付けた後にサービスを作成する。
+  # リスナーが存在しない状態で CreateService すると ALB 結合に失敗するため。
+  depends_on = [aws_lb_listener.https]
 
   # minimum 0 / maximum 100: WebSocket インメモリブローカー（SockJS/STOMP）を使用しているため
   # 同時に 2 タスクが動くとセッションが別タスクに分散してしまい接続が切れる。

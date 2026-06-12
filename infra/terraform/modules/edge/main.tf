@@ -53,18 +53,23 @@ resource "cloudflare_record" "acm_validation" {
 # =============================================================================
 # オリジン用 DNS（ALB への CNAME）
 # =============================================================================
-# origin.${var.domain_name} → ALB（Cloudflare プロキシ経由）
+# origin.${var.domain_name} → ALB への直接 CNAME。
 # /api/** ・ /ws の Origin Rule がこの CNAME をオリジンホストとして使用する。
-# proxied = true にして Cloudflare WAF / DDoS 保護を有効にする。
+#
+# B10 修正: proxied = false（グレー雲）にする。
+# proxied = true（オレンジ雲）だと Origin Rule の向き先が Cloudflare 自身になり
+# ループ（Cloudflare エラー 1000）が発生する。
+# WAF / DDoS 保護はエンドユーザー向けの apex/origin レコード（proxied=true）で有効になるため
+# このオリジン用 CNAME は素通しで問題ない。
 resource "cloudflare_record" "origin_cname" {
   zone_id = var.cloudflare_zone_id
   name    = "origin.${var.domain_name}"
   type    = "CNAME"
   content = var.alb_dns_name
-  proxied = true
-  ttl     = 1 # proxied=true の場合は TTL を 1（自動）にする
+  proxied = false
+  ttl     = 60 # proxied=false の場合は TTL を明示（1=自動は proxied=true 専用）
 
-  comment = "ALB オリジン CNAME（API・WS 用。Cloudflare Origin Rule が参照）"
+  comment = "ALB オリジン CNAME（API・WS 用。Origin Rule 参照。proxied=false 必須 — true だと CF ループ 1000）"
 }
 
 # =============================================================================

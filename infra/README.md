@@ -28,10 +28,10 @@ infra/terraform/
 |---|---|---|---|
 | 1 | **bootstrap** | マスターの手元で 1 回 apply（`bootstrap/README.md` の手順）| 手順書あり |
 | 2 | **CI 有効化** | bootstrap output を GitHub variables/secrets に設定 → `INFRA_CI_ENABLED=true` | 手順書あり |
-| 3 | **network** | VPC・サブネット・SG（module 実装 → PR plan → マージ apply）| 契約スタブ |
-| 4 | **data** | RDS + Valkey | 契約スタブ |
-| 5 | **app** | ALB + ACM + ECR + ECS Fargate | 契約スタブ |
-| 6 | **edge** | Cloudflare DNS / Pages / R2・同一オリジン入口の完成 | 契約スタブ |
+| 3 | **network** | VPC・サブネット・SG（module 実装 → PR plan → マージ apply）| 実装済み |
+| 4 | **data** | RDS + Valkey | 実装済み |
+| 5 | **app** | ALB + ACM + ECR + ECS Fargate | 実装済み |
+| 6 | **edge** | Cloudflare DNS / Pages / R2・同一オリジン入口の完成 | 実装済み |
 
 module は 3→6 の順に依存する（network の出力を data/app が使い、app の出力を edge が使う）。
 契約（各 module の variables/outputs）は `envs/prod/main.tf` で確定済み。実装時に勝手に変えないこと。
@@ -66,7 +66,11 @@ module は 3→6 の順に依存する（network の出力を data/app が使い
 |---|---|
 | Cloudflare API トークン | GitHub secret / ローカル環境変数 `CLOUDFLARE_API_TOKEN` |
 | DB マスターパスワード | AWS Secrets Manager（RDS の自動管理。Terraform state にも平文を残さない） |
-| アプリ秘密（JWT 鍵 / Stripe 鍵 等） | AWS SSM Parameter Store（SecureString）。ECS タスク定義の secrets で参照 |
+| アプリ秘密（JWT 鍵 / Stripe 鍵 等） | **AWS Secrets Manager**（app module が箱だけ作成。値は手動投入。ECS タスク定義の secrets で参照） |
 | AWS 認証（CI） | なし（GitHub OIDC の短期クレデンシャル） |
+
+> 注意: 旧ドキュメントに「SSM Parameter Store」とあったが、実装は **Secrets Manager** を使用。
+> app module に `aws_secretsmanager_secret` リソースが 4 箱（jwt-secret / stripe / internal-tokens / app-keys）あり、
+> 値の投入手順は `infra/terraform/bootstrap/README.md` §7 を参照。
 
 詳細は `infra/terraform/envs/prod/variables.tf` 先頭の一覧表を参照。

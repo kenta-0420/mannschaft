@@ -40,6 +40,10 @@ resource "aws_db_subnet_group" "main" {
 # RDS パラメータグループ（MySQL 8.0 / ローカル docker-compose.yml の MySQL 設定と整合）
 #
 # docker-compose.yml との差異:
+#   - time_zone: C12 修正 — docker では TZ=Asia/Tokyo だが RDS 本番では UTC に統一。
+#     アプリ（Spring Boot）は UTC 正準・FE で表示変換の設計のため、
+#     JDBC URL の serverTimezone=UTC と一致させる。
+#     docker-compose.yml の MySQL コンテナも UTC に合わせることを推奨する。
 #   - collation_server: docker では utf8mb4_unicode_ci（MySQL 5.x 互換）だが
 #     MySQL 8.0 では utf8mb4_0900_ai_ci が推奨デフォルト（ICU ベースで照合精度向上）。
 #     RDS 本番では 8.0 標準の 0900_ai_ci を採用する。
@@ -65,10 +69,11 @@ resource "aws_db_parameter_group" "mysql8" {
     value = "utf8mb4_0900_ai_ci"
   }
 
-  # タイムゾーン: ローカル docker（+09:00）と同様に JST に設定
+  # C12 修正: JDBC URL の serverTimezone=UTC と整合させるため UTC に統一
+  # アプリは UTC 正準設計のため RDS 側も UTC にする（docker-compose も UTC 推奨）
   parameter {
     name  = "time_zone"
-    value = "Asia/Tokyo"
+    value = "UTC"
   }
 
   # スロークエリログ: ローカル docker と同様に有効化

@@ -349,6 +349,39 @@ resource "aws_iam_role_policy" "tf_apply_iam" {
   policy = data.aws_iam_policy_document.tf_apply_iam.json
 }
 
+# C13: tf-apply ロールの自己昇格対策
+# PowerUserAccess は IAM 操作を含まないが、上記インラインポリシーで mannschaft-* ロールへの
+# AttachRolePolicy / PutRolePolicy を許可している。悪意あるコードや誤操作で
+# AdministratorAccess / IAMFullAccess / PowerUserAccess をアタッチすることを
+# 明示 Deny で防止する。Deny は Allow より優先されるため確実に防御できる。
+data "aws_iam_policy_document" "tf_apply_privilege_escalation_deny" {
+  statement {
+    sid    = "DenyHighPrivilegedPolicyAttach"
+    effect = "Deny"
+    actions = [
+      "iam:AttachRolePolicy",
+      "iam:PutRolePolicy",
+    ]
+    resources = ["*"]
+
+    condition {
+      test     = "ArnLike"
+      variable = "iam:PolicyARN"
+      values = [
+        "arn:aws:iam::aws:policy/AdministratorAccess",
+        "arn:aws:iam::aws:policy/IAMFullAccess",
+        "arn:aws:iam::aws:policy/PowerUserAccess",
+      ]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "tf_apply_deny_escalation" {
+  name   = "mannschaft-tf-apply-deny-privilege-escalation"
+  role   = aws_iam_role.tf_apply.id
+  policy = data.aws_iam_policy_document.tf_apply_privilege_escalation_deny.json
+}
+
 # -----------------------------------------------------------------------------
 # 3-c. mannschaft-app-deploy ロール（アプリデプロイ用: ECR push + ECS 更新）
 # -----------------------------------------------------------------------------

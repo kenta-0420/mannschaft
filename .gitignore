@@ -52,3 +52,6 @@ scripts/poc/out/
 *.tfplan
 *.auto.tfvars
 infra/terraform/envs/*/prod.tfvars
+# C11: bootstrap の tfvars にはアカウントID・メールアドレス等が入るため除外
+# bootstrap/README.md §2 が「gitignore 済み」と謳う通りに実装
+infra/terraform/bootstrap/terraform.tfvars
