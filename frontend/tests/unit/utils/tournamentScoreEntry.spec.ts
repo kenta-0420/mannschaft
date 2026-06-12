@@ -3,6 +3,9 @@ import {
   buildParticipantNameMap,
   resolveParticipantName,
   buildScoreEntryRows,
+  buildScoreEntrySets,
+  maxSetCount,
+  collectFilledSets,
   parseScoreInput,
   isRowValid,
   buildBatchScorePayload,
@@ -12,7 +15,9 @@ import {
   isForbiddenError,
   buildCsvTemplate,
   SCORE_CSV_HEADER,
+  DEFAULT_COLUMN_FLAGS,
   type ScoreEntryRow,
+  type ScoreEntrySet,
 } from '~/utils/tournamentScoreEntry'
 import type { TournamentMatch, TournamentMatrix } from '~/types/tournament'
 
@@ -27,7 +32,7 @@ import type { TournamentMatch, TournamentMatrix } from '~/types/tournament'
  *  - CSV テンプレ生成（matchId 入りひな形）
  */
 
-/** 延長/PK 欄を含む完全な ScoreEntryRow を組み立てるヘルパ（欠けた欄は空文字）。 */
+/** 延長/PK/セット 欄を含む完全な ScoreEntryRow を組み立てるヘルパ（欠けた欄は空文字）。 */
 function makeRow(over: Partial<ScoreEntryRow> & { matchId: number }): ScoreEntryRow {
   return {
     matchId: over.matchId,
@@ -40,7 +45,13 @@ function makeRow(over: Partial<ScoreEntryRow> & { matchId: number }): ScoreEntry
     awayExtraScore: over.awayExtraScore ?? '',
     homePenaltyScore: over.homePenaltyScore ?? '',
     awayPenaltyScore: over.awayPenaltyScore ?? '',
+    sets: over.sets ?? [],
   }
+}
+
+/** セット入力 1 つを組み立てるヘルパ。 */
+function set(setNumber: number, home: string, away: string): ScoreEntrySet {
+  return { setNumber, home, away }
 }
 
 function fx(overrides: Partial<TournamentMatch> & { id: number }): TournamentMatch {
@@ -48,6 +59,7 @@ function fx(overrides: Partial<TournamentMatch> & { id: number }): TournamentMat
     id: overrides.id,
     participants: overrides.participants,
     score: overrides.score,
+    sets: overrides.sets,
     audit: overrides.audit,
   }
 }
@@ -154,7 +166,7 @@ describe('isRowValid', () => {
   })
 
   it('延長/PK 欄はフラグ有効時のみ検証する', () => {
-    const flags = { showExtraTime: true, showPenalties: true }
+    const flags = { ...DEFAULT_COLUMN_FLAGS, showExtraTime: true, showPenalties: true }
     const full = {
       ...base,
       homeScore: '1',
@@ -177,18 +189,116 @@ describe('isRowValid', () => {
 })
 
 describe('deriveScoreEntryColumnFlags', () => {
-  it('hasExtraTime/hasPenalties を真偽フラグへ写す（null/未指定は false）', () => {
+  it('hasExtraTime/hasPenalties を真偽フラグへ写す（null/未指定は false・setsToWin 既定 1）', () => {
     expect(deriveScoreEntryColumnFlags(null)).toEqual({
       showExtraTime: false,
       showPenalties: false,
+      showSets: false,
+      setsToWin: 1,
     })
     expect(deriveScoreEntryColumnFlags({ hasExtraTime: true })).toEqual({
       showExtraTime: true,
       showPenalties: false,
+      showSets: false,
+      setsToWin: 1,
     })
     expect(
       deriveScoreEntryColumnFlags({ hasExtraTime: true, hasPenalties: true }),
-    ).toEqual({ showExtraTime: true, showPenalties: true })
+    ).toEqual({ showExtraTime: true, showPenalties: true, showSets: false, setsToWin: 1 })
+  })
+
+  it('hasSets のとき showSets を立て setsToWin を載せる', () => {
+    expect(deriveScoreEntryColumnFlags({ hasSets: true, setsToWin: 3 })).toEqual({
+      showExtraTime: false,
+      showPenalties: false,
+      showSets: true,
+      setsToWin: 3,
+    })
+  })
+
+  it('セット制では延長/PK を折る（勝敗はセット数で決まるため）', () => {
+    expect(
+      deriveScoreEntryColumnFlags({
+        hasSets: true,
+        setsToWin: 2,
+        hasExtraTime: true,
+        hasPenalties: true,
+      }),
+    ).toEqual({
+      showExtraTime: false,
+      showPenalties: false,
+      showSets: true,
+      setsToWin: 2,
+    })
+  })
+
+  it('setsToWin が未指定/不正（0・負数・小数）のときは安全側で 1 にフォールバックする', () => {
+    expect(deriveScoreEntryColumnFlags({ hasSets: true }).setsToWin).toBe(1)
+    expect(deriveScoreEntryColumnFlags({ hasSets: true, setsToWin: null }).setsToWin).toBe(1)
+    expect(deriveScoreEntryColumnFlags({ hasSets: true, setsToWin: 0 }).setsToWin).toBe(1)
+    expect(deriveScoreEntryColumnFlags({ hasSets: true, setsToWin: -2 }).setsToWin).toBe(1)
+    expect(deriveScoreEntryColumnFlags({ hasSets: true, setsToWin: 2.5 }).setsToWin).toBe(1)
+  })
+})
+
+describe('maxSetCount', () => {
+  it('先取制の最大セット数は 2*setsToWin-1', () => {
+    expect(maxSetCount(1)).toBe(1)
+    expect(maxSetCount(2)).toBe(3)
+    expect(maxSetCount(3)).toBe(5)
+  })
+  it('不正な setsToWin は 1 にフォールバック（最大 1 セット）', () => {
+    expect(maxSetCount(0)).toBe(1)
+    expect(maxSetCount(-3)).toBe(1)
+    expect(maxSetCount(2.5)).toBe(1)
+  })
+})
+
+describe('buildScoreEntrySets', () => {
+  it('先取制の枠数（2*setsToWin-1）を初期化し、既存セットを setNumber 昇順で埋める', () => {
+    const sets = buildScoreEntrySets(
+      [
+        { setNumber: 2, homeScore: 25, awayScore: 20 },
+        { setNumber: 1, homeScore: 23, awayScore: 25 },
+      ],
+      3,
+    )
+    expect(sets).toHaveLength(5)
+    expect(sets[0]).toEqual({ setNumber: 1, home: '23', away: '25' })
+    expect(sets[1]).toEqual({ setNumber: 2, home: '25', away: '20' })
+    expect(sets[2]).toEqual({ setNumber: 3, home: '', away: '' })
+  })
+
+  it('既存セットが枠数を超える場合は末尾まで残す（取りこぼし防止）', () => {
+    const sets = buildScoreEntrySets(
+      [{ setNumber: 7, homeScore: 11, awayScore: 9 }],
+      1, // 枠数 1 だが setNumber 7 がある
+    )
+    expect(sets).toHaveLength(7)
+    expect(sets[6]).toEqual({ setNumber: 7, home: '11', away: '9' })
+  })
+
+  it('既存セット無し・null でも枠だけ作る', () => {
+    expect(buildScoreEntrySets(null, 2)).toEqual([
+      { setNumber: 1, home: '', away: '' },
+      { setNumber: 2, home: '', away: '' },
+      { setNumber: 3, home: '', away: '' },
+    ])
+  })
+})
+
+describe('collectFilledSets', () => {
+  it('home/away 両方入力済みのセットのみを setNumber 昇順で抽出する', () => {
+    const filled = collectFilledSets([
+      set(3, '15', '13'),
+      set(1, '25', '20'),
+      set(2, '', ''), // 空セット → 除外
+      set(4, '10', ''), // 片方のみ → 除外
+    ])
+    expect(filled).toEqual([
+      { setNumber: 1, homeScore: 25, awayScore: 20 },
+      { setNumber: 3, homeScore: 15, awayScore: 13 },
+    ])
   })
 })
 
@@ -247,6 +357,7 @@ describe('buildBatchScorePayload', () => {
       }),
     ]
     const payload = buildBatchScorePayload(rows, {
+      ...DEFAULT_COLUMN_FLAGS,
       showExtraTime: true,
       showPenalties: true,
     })
@@ -279,6 +390,7 @@ describe('buildBatchScorePayload', () => {
       }),
     ]
     const payload = buildBatchScorePayload(rows, {
+      ...DEFAULT_COLUMN_FLAGS,
       showExtraTime: true,
       showPenalties: false,
     })
@@ -333,5 +445,125 @@ describe('buildCsvTemplate', () => {
     expect(lines[0]).toBe(SCORE_CSV_HEADER)
     expect(lines[1]).toBe('1,2,1')
     expect(lines[2]).toBe('2,,')
+  })
+})
+
+// ──────────────────────────────────────────────────
+// セット制（hasSets）— Wave2 追加分
+// ──────────────────────────────────────────────────
+
+const SETS_FLAGS = { ...DEFAULT_COLUMN_FLAGS, showSets: true, setsToWin: 2 }
+
+describe('buildScoreEntryRows（セット制）', () => {
+  it('flags.showSets のとき既存セットを枠へ埋めて行に載せる', () => {
+    const m = buildParticipantNameMap(matrix)
+    const matches = [
+      fx({
+        id: 1,
+        participants: { homeParticipantId: 10, awayParticipantId: 20 },
+        audit: { version: 4 },
+        sets: [
+          { setNumber: 1, homeScore: 25, awayScore: 22 },
+          { setNumber: 2, homeScore: 20, awayScore: 25 },
+        ],
+      }),
+    ]
+    const rows = buildScoreEntryRows(matches, m, SETS_FLAGS)
+    expect(rows[0]!.version).toBe(4)
+    // setsToWin=2 → 枠 3 セット
+    expect(rows[0]!.sets).toHaveLength(3)
+    expect(rows[0]!.sets[0]).toEqual({ setNumber: 1, home: '25', away: '22' })
+    expect(rows[0]!.sets[2]).toEqual({ setNumber: 3, home: '', away: '' })
+  })
+
+  it('flags.showSets が false のときは sets 空配列（既存 sets があっても初期化しない）', () => {
+    const m = buildParticipantNameMap(matrix)
+    const matches = [
+      fx({ id: 1, sets: [{ setNumber: 1, homeScore: 25, awayScore: 20 }] }),
+    ]
+    const rows = buildScoreEntryRows(matches, m, DEFAULT_COLUMN_FLAGS)
+    expect(rows[0]!.sets).toEqual([])
+  })
+})
+
+describe('isRowValid（セット制）', () => {
+  it('セット制では各セットを検証し、本戦欄は使わない', () => {
+    // 本戦欄が空でもセットが妥当なら有効
+    const ok = makeRow({ matchId: 1, sets: [set(1, '25', '20'), set(2, '', '')] })
+    expect(isRowValid(ok, SETS_FLAGS)).toBe(true)
+    // 片方のみ入力のセットは不正
+    const bad = makeRow({ matchId: 1, sets: [set(1, '25', '')] })
+    expect(isRowValid(bad, SETS_FLAGS)).toBe(false)
+    // 非数値・負数も不正
+    expect(isRowValid(makeRow({ matchId: 1, sets: [set(1, '-1', '0')] }), SETS_FLAGS)).toBe(false)
+    expect(isRowValid(makeRow({ matchId: 1, sets: [set(1, 'x', '0')] }), SETS_FLAGS)).toBe(false)
+  })
+
+  it('セット制では本戦 home/away の不正値は無視される（セットのみ検証）', () => {
+    const row = makeRow({
+      matchId: 1,
+      homeScore: 'x',
+      awayScore: '-3',
+      sets: [set(1, '25', '20')],
+    })
+    expect(isRowValid(row, SETS_FLAGS)).toBe(true)
+  })
+})
+
+describe('buildBatchScorePayload（セット制）', () => {
+  it('入力済みセットを setNumber 昇順で sets 同梱し、本戦は合計を自動算出・version 維持', () => {
+    const rows = [
+      makeRow({
+        matchId: 1,
+        version: 11,
+        sets: [set(2, '20', '25'), set(1, '25', '22'), set(3, '15', '13')],
+      }),
+    ]
+    const payload = buildBatchScorePayload(rows, SETS_FLAGS)
+    expect(payload).not.toBeNull()
+    expect(payload!.scores).toHaveLength(1)
+    const entry = payload!.scores[0]!
+    // sets は setNumber 昇順
+    expect(entry.sets).toEqual([
+      { setNumber: 1, homeScore: 25, awayScore: 22 },
+      { setNumber: 2, homeScore: 20, awayScore: 25 },
+      { setNumber: 3, homeScore: 15, awayScore: 13 },
+    ])
+    // 本戦合計（25+20+15 / 22+25+13）
+    expect(entry.homeScore).toBe(60)
+    expect(entry.awayScore).toBe(60)
+    // 楽観ロック version 維持
+    expect(entry.version).toBe(11)
+    // 延長/PK はセット制では常に null
+    expect(entry.homeExtraScore).toBeNull()
+    expect(entry.homePenaltyScore).toBeNull()
+  })
+
+  it('空セット・片方のみセットは送信対象から除外する', () => {
+    const rows = [
+      makeRow({
+        matchId: 1,
+        version: 1,
+        sets: [set(1, '25', '20'), set(2, '', ''), set(3, '15', '')],
+      }),
+    ]
+    const payload = buildBatchScorePayload(rows, SETS_FLAGS)
+    // 片方のみ(set3)があるため行全体が不正 → null
+    expect(payload).toBeNull()
+  })
+
+  it('セットが 1 つも入力されていない試合はスキップ（未消化を確定させない）', () => {
+    const rows = [
+      makeRow({ matchId: 1, version: 1, sets: [set(1, '', ''), set(2, '', '')] }),
+    ]
+    const payload = buildBatchScorePayload(rows, SETS_FLAGS)
+    expect(payload).not.toBeNull()
+    expect(payload!.scores).toEqual([])
+  })
+
+  it('非セット制では sets を同梱しない（undefined）', () => {
+    const rows = [makeRow({ matchId: 1, version: 2, homeScore: '2', awayScore: '1' })]
+    const payload = buildBatchScorePayload(rows)
+    expect(payload!.scores[0]!.sets).toBeUndefined()
   })
 })

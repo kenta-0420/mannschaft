@@ -267,6 +267,7 @@
     "played": "Played",
     "winDrawLoss": "W/D/L",
     "goalDiff": "GD",
+    "setsWonLost": "Sets W/L",
     "points": "Pts",
     "form": "Recent form",
     "recalculate": "Recalculate",
@@ -304,7 +305,8 @@
     "empty": "No matrix data",
     "noDivisions": "No divisions registered",
     "loadFailed": "Failed to load matrix",
-    "forbidden": "You do not have permission to view this tournament"
+    "forbidden": "You do not have permission to view this tournament",
+    "setsNote": "This tournament uses sets, so each cell shows the total points across all sets. The winner is decided by the number of sets won."
   },
   "visibility": {
     "title": "Visibility",
@@ -353,6 +355,10 @@
     "homePenaltyScore": "Home (PK)",
     "awayPenaltyScore": "Away (PK)",
     "extraPenaltyHint": "Extra time is added to the regulation score to decide the result. Penalties only matter when the score is still level after regulation and extra time. Leave fields blank for anything not played.",
+    "setHeader": "Set {n}",
+    "setHomeAria": "Set {n} home score",
+    "setAwayAria": "Set {n} away score",
+    "setsHint": "First to {n} sets wins. Enter scores only for sets that were played and leave unplayed sets blank. The winner is decided by the number of sets won.",
     "save": "Save All",
     "saved": "Scores saved",
     "saveFailed": "Failed to save scores",

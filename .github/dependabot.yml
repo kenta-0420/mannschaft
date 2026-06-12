@@ -22,3 +22,15 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 3
+  # Terraform（本番インフラ envs/prod — modules は root から参照されるため root のみ監視）
+  - package-ecosystem: "terraform"
+    directory: "/infra/terraform/envs/prod"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+  # Terraform（bootstrap 層）
+  - package-ecosystem: "terraform"
+    directory: "/infra/terraform/bootstrap"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
