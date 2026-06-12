@@ -30,7 +30,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 
 /**
  * F15.4: 組織内チーム（店舗）検索コントローラ。
@@ -75,7 +74,7 @@ public class OrganizationTeamSearchController {
      *   <li>未ログイン／非メンバー → {@link TeamPublicSummaryResponse}（抑制版）</li>
      * </ul>
      *
-     * <p>組織が PRIVATE/ORGANIZATION_ONLY で非メンバー／未ログインの場合は
+     * <p>組織が PUBLIC 以外で非メンバー／未ログインの場合は
      * エニュメレーション対策で 404 を返す（{@code TeamSearchService} 内部判定）。
      *
      * @param orgPublicId    組織の公開 UUID
@@ -95,7 +94,7 @@ public class OrganizationTeamSearchController {
             description = "未ログインでも実行可能。組織メンバーには詳細版、非メンバー／未ログインには抑制版 DTO を返す。"
                     + "F22.1: prefectureCode/cityCode 指定時はコード優先、未指定なら名称（prefecture/city）にフォールバック（dual-support）。")
     public ResponseEntity<PagedResponse<?>> search(
-            @PathVariable UUID orgPublicId,
+            @PathVariable String orgPublicId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String prefecture,
             @RequestParam(required = false) String city,

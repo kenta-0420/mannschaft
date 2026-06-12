@@ -1,5 +1,6 @@
 package com.mannschaft.app.organization.service;
 
+import com.mannschaft.app.common.util.SlugGenerator;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.OrgErrorCode;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
@@ -38,7 +39,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.UUID;
 
 /**
  * 組織管理サービス（ファサード）。
@@ -74,8 +74,10 @@ public class OrganizationService {
             throw new BusinessException(OrgErrorCode.ORG_002);
         }
 
+        String slug = createUniqueSlug(req.getName());
         OrganizationEntity org = OrganizationEntity.builder()
                 .name(req.getName())
+                .slug(slug)
                 .orgType(OrganizationEntity.OrgType.valueOf(req.getOrgType()))
                 .prefecture(req.getPrefecture())
                 .city(req.getCity())
@@ -118,26 +120,49 @@ public class OrganizationService {
     }
 
     /**
-     * 組織を publicId（URL公開ID）で取得する。
+     * 組織を slug（URL識別子）で取得する。
      *
      * <p>Phase 4-E: Valkey にて 10 分キャッシュ。更新・削除時に自動無効化される。</p>
      */
-    @Cacheable(value = "org-detail", key = "#publicId")
-    public ApiResponse<OrganizationResponse> getOrganization(UUID publicId) {
-        OrganizationEntity org = findOrganizationByPublicIdOrThrow(publicId);
+    @Cacheable(value = "org-detail", key = "#slug")
+    public ApiResponse<OrganizationResponse> getOrganization(String slug) {
+        OrganizationEntity org = findOrganizationBySlugOrThrow(slug);
         Long orgId = org.getId();
         int memberCount = (int) userRoleRepository.countByOrganizationId(orgId);
         return ApiResponse.of(toResponse(org, memberCount));
     }
 
     /**
-     * publicId から内部 BIGINT ID を解決する（Controller から他の Service メソッドに渡す用）。
+     * slug から内部 BIGINT ID を解決する（Controller から他の Service メソッドに渡す用）。
      *
-     * @param publicId URL 公開用 UUID
+     * @param slug URL 識別子（カスタムスラッグ）
      * @return 内部 BIGINT ID
      */
-    public Long resolveOrgId(UUID publicId) {
-        return findOrganizationByPublicIdOrThrow(publicId).getId();
+    public Long resolveOrgId(String slug) {
+        return findOrganizationBySlugOrThrow(slug).getId();
+    }
+
+    /**
+     * 組織名から一意スラッグを生成する。
+     *
+     * <p>ベーススラッグが既に使用中の場合は数値サフィックス (-1, -2, ...) を付与して一意化する。
+     * 100 回試行しても一意にならない場合はタイムスタンプベースのサフィックスを使用する。</p>
+     *
+     * @param name 組織名
+     * @return 一意なスラッグ
+     */
+    public String createUniqueSlug(String name) {
+        String base = SlugGenerator.generate(name);
+        if (!organizationRepository.existsBySlugAndDeletedAtIsNull(base)) {
+            return base;
+        }
+        for (int i = 1; i <= 100; i++) {
+            String candidate = SlugGenerator.withSuffix(base, i);
+            if (!organizationRepository.existsBySlugAndDeletedAtIsNull(candidate)) {
+                return candidate;
+            }
+        }
+        return SlugGenerator.withSuffix(base, (int) (System.currentTimeMillis() % 10000));
     }
 
     /**
@@ -227,7 +252,7 @@ public class OrganizationService {
                 .map(org -> {
                     int memberCount = (int) userRoleRepository.countByOrganizationId(org.getId());
                     return new OrganizationSummaryResponse(
-                            org.getPublicId(), org.getName(), org.getOrgType().name(),
+                            org.getSlug(), org.getName(), org.getOrgType().name(),
                             org.getVisibility().name(), memberCount);
                 })
                 .toList();
@@ -334,13 +359,13 @@ public class OrganizationService {
     }
 
     /**
-     * publicId で組織を取得する。存在しない場合は 404 例外を投げる（IDOR 対策）。
+     * slug で組織を取得する。存在しない場合は 404 例外を投げる（IDOR 対策）。
      *
-     * @param publicId URL 公開用 UUID
+     * @param slug URL 識別子（カスタムスラッグ）
      * @return 組織エンティティ
      */
-    private OrganizationEntity findOrganizationByPublicIdOrThrow(UUID publicId) {
-        return organizationRepository.findByPublicId(publicId)
+    private OrganizationEntity findOrganizationBySlugOrThrow(String slug) {
+        return organizationRepository.findBySlugAndDeletedAtIsNull(slug)
                 .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001));
     }
 
@@ -352,7 +377,7 @@ public class OrganizationService {
 
     private OrganizationResponse toResponse(OrganizationEntity org, int memberCount) {
         return OrganizationResponse.builder()
-                .id(org.getPublicId())
+                .id(org.getSlug())
                 .basicInfo(new OrganizationResponse.OrgBasicInfoDto(
                         org.getName(), org.getNameKana(),
                         org.getNickname1(), org.getNickname2()))

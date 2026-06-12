@@ -1,5 +1,7 @@
 package com.mannschaft.app.payment.stripe;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.payment.PaymentErrorCode;
 import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
@@ -69,6 +71,17 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
     /** F22.1 Connect Webhook 用の別署名シークレット（platform 用と分離・設計書 03 §2）。 */
     @Value("${mannschaft.stripe.connect-webhook-secret:}")
     private String connectWebhookSecret;
+
+    /**
+     * Webhook raw JSON フォールバック解決（basil 黙殺の根治）用の最小パーサ。
+     *
+     * <p>Stripe 口座の既定 API バージョンが SDK 固定（{@code 2025-02-24.acacia}）と異なる basil 系
+     * （{@code 2025-03-31} 以降）の場合、{@link EventDataObjectDeserializer#getObject()} が
+     * バージョン不一致で {@code Optional.empty()} を返し、{@code data.object} の型解決が成立しない。
+     * その際は raw JSON から {@code id}/{@code object} のみ抽出する用途に限定して使う（業務オブジェクトの
+     * 全フィールドは retrieve で再取得するため、ここでの schema 不一致は問題にならない）。</p>
+     */
+    private final ObjectMapper webhookObjectMapper = new ObjectMapper();
 
     @Override
     public String createProduct(String name, Long paymentItemId) {
@@ -324,7 +337,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
         log.info("Stripe Webhook イベント受信: type={}", eventType);
 
         EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
-        StripeObject stripeObject = deserializer.getObject().orElse(null);
+        StripeObject stripeObject = resolveStripeObject(deserializer);
 
         String sessionId = null;
         String paymentIntentId = null;
@@ -460,7 +473,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
         log.info("Stripe Connect Webhook イベント受信: id={}, type={}", event.getId(), eventType);
 
         EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
-        StripeObject stripeObject = deserializer.getObject().orElse(null);
+        StripeObject stripeObject = resolveStripeObject(deserializer);
 
         String stripeAccountId = null;
         boolean chargesEnabled = false;
@@ -620,6 +633,20 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
         } catch (StripeException e) {
             log.error("Stripe PaymentIntent capture 失敗: id={}", paymentIntentId, e);
             throw new BusinessException(ConnectPaymentErrorCode.CAPTURE_FAILED, e);
+        }
+    }
+
+    @Override
+    public PaymentIntentInfo retrievePaymentIntentClientSecret(String paymentIntentId) {
+        try {
+            PaymentIntent intent = PaymentIntent.retrieve(paymentIntentId);
+            // clientSecret はログに出さない（PCI・03 §10）。status のみ記録する。
+            log.info("Stripe PaymentIntent retrieve（札主の決済確認用・clientSecret 非ログ）: id={}, status={}",
+                    intent.getId(), intent.getStatus());
+            return new PaymentIntentInfo(intent.getId(), intent.getClientSecret(), intent.getStatus());
+        } catch (StripeException e) {
+            log.error("Stripe PaymentIntent retrieve 失敗: id={}", paymentIntentId, e);
+            throw new BusinessException(ConnectPaymentErrorCode.STRIPE_API_ERROR, e);
         }
     }
 
@@ -887,7 +914,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
         boolean livemode = Boolean.TRUE.equals(event.getLivemode());
 
         EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
-        StripeObject stripeObject = deserializer.getObject().orElse(null);
+        StripeObject stripeObject = resolveStripeObject(deserializer);
 
         String subscriptionId = null;
         String invoiceId = null;
@@ -957,7 +984,7 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
         boolean livemode = Boolean.TRUE.equals(event.getLivemode());
 
         EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
-        StripeObject stripeObject = deserializer.getObject().orElse(null);
+        StripeObject stripeObject = resolveStripeObject(deserializer);
 
         String paymentIntentId = null;
         String paymentIntentStatus = null;
@@ -983,6 +1010,93 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
                 event.getId(), eventType, paymentIntentStatus, refundId);
         return new EscrowWebhookEventInfo(event.getId(), eventType, livemode, paymentIntentId, paymentIntentStatus,
                 refundId, refundedAmountMinor, chargeAmountMinor);
+    }
+
+    // ========================================
+    // Webhook data.object 解決（basil 黙殺の根治・raw-JSON フォールバック）
+    // ========================================
+
+    /**
+     * Webhook の {@code data.object} を {@link StripeObject} として解決する（4 経路共通）。
+     *
+     * <p>本プロジェクトは stripe-java 28.2.0（API {@code 2025-02-24.acacia} 固定）。Stripe 口座の既定 API
+     * バージョンが basil 系（{@code 2025-03-31} 以降）だと {@link EventDataObjectDeserializer#getObject()} が
+     * バージョン不一致で {@code Optional.empty()} を返し、{@code payment_intent.*}/{@code charge.refunded}/
+     * {@code invoice.*}/{@code account.updated} 等が <b>黙殺</b>される（HTTP 200 受信のみで escrow が昇格しない・
+     * 実機検出 2026-06）。</p>
+     *
+     * <p><b>後方互換:</b> {@code getObject()} が非空なら従来どおりそのオブジェクトを返す（完全不変）。<b>空のときのみ</b>
+     * raw JSON から {@code id}/{@code object} を最小抽出し、対応する型の {@code retrieve} で実体を Stripe から
+     * 再取得して返す（最新 API バージョンの schema で確実にデシリアライズされる）。retrieve の失敗は
+     * <b>症状を隠さず例外で上申</b>し、Stripe 再送に委ねる既存方針に倣う。</p>
+     *
+     * @param deserializer Webhook イベントの {@code data.object} デシリアライザ
+     * @return 解決された {@link StripeObject}（型不明・retrieve 不能時は {@code null}）
+     */
+    StripeObject resolveStripeObject(EventDataObjectDeserializer deserializer) {
+        java.util.Optional<StripeObject> fromGetObject = deserializer.getObject();
+        if (fromGetObject.isPresent()) {
+            // API バージョン一致（acacia）: 従来パス。完全不変。
+            return fromGetObject.get();
+        }
+        // バージョン不一致（basil 等）: raw JSON から id/object を抽出し retrieve で再取得する。
+        return resolveFromRawJson(deserializer.getRawJson());
+    }
+
+    /**
+     * Webhook の {@code data.object} の raw JSON から {@code id}/{@code object}（型判別子）を抽出し、
+     * 対応する Stripe API の {@code retrieve} で実体を再取得する（basil 黙殺フォールバックの中核・テスト容易化のため分離）。
+     *
+     * <p>抽出するのは {@code id}（取得キー）と {@code object}（{@code payment_intent}/{@code charge}/
+     * {@code refund}/{@code checkout.session}/{@code invoice}/{@code subscription}/{@code account} 等の型判別子）のみ。
+     * 業務フィールドは retrieve 結果（最新 schema）から読むため、raw JSON の schema 差異の影響を受けない。</p>
+     *
+     * @param rawJson {@code data.object} の生 JSON 文字列
+     * @return retrieve で再取得した {@link StripeObject}。{@code object} 判別不能 / {@code id} 欠落時は {@code null}
+     */
+    StripeObject resolveFromRawJson(String rawJson) {
+        if (rawJson == null || rawJson.isBlank()) {
+            log.warn("Stripe Webhook data.object の raw JSON が空のためフォールバック解決を中断");
+            return null;
+        }
+        String objectType;
+        String id;
+        try {
+            JsonNode node = webhookObjectMapper.readTree(rawJson);
+            objectType = node.path("object").asText(null);
+            id = node.path("id").asText(null);
+        } catch (Exception e) {
+            // 握り潰さず上申（Stripe 再送に委ねる）。
+            log.error("Stripe Webhook data.object の raw JSON パース失敗（basil フォールバック）", e);
+            throw new BusinessException(ConnectPaymentErrorCode.STRIPE_API_ERROR, e);
+        }
+        if (objectType == null || id == null || id.isBlank()) {
+            log.warn("Stripe Webhook data.object に object/id が無くフォールバック解決不能: object={}, idPresent={}",
+                    objectType, id != null);
+            return null;
+        }
+        log.info("Stripe Webhook data.object を raw JSON フォールバックで解決: object={}, id={}", objectType, id);
+        try {
+            return switch (objectType) {
+                case "payment_intent" -> PaymentIntent.retrieve(id);
+                case "charge" -> Charge.retrieve(id);
+                case "refund" -> Refund.retrieve(id);
+                case "checkout.session" -> Session.retrieve(id);
+                case "invoice" -> Invoice.retrieve(id);
+                case "subscription" -> Subscription.retrieve(id);
+                case "account" -> Account.retrieve(id);
+                default -> {
+                    // 未対応 object は従来同様 null（各経路の if 連鎖が黙ってスキップ）。
+                    log.warn("Stripe Webhook data.object のフォールバック retrieve 対象外 object: object={}, id={}",
+                            objectType, id);
+                    yield null;
+                }
+            };
+        } catch (StripeException e) {
+            // retrieve 失敗は症状を隠さず上申（呼び出し側が Stripe 再送に委ねる）。
+            log.error("Stripe Webhook data.object のフォールバック retrieve 失敗: object={}, id={}", objectType, id, e);
+            throw new BusinessException(ConnectPaymentErrorCode.STRIPE_API_ERROR, e);
+        }
     }
 
     /**

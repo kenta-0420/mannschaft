@@ -54,6 +54,12 @@ export default {
       "location": "Location",
       "price": "Price",
       "paymentEnabled": "Payment enabled",
+      "payeeKind": "Payee type",
+      "payeeKindUser": "Individual (user)",
+      "payeeKindTeam": "Team",
+      "payeeKindOrg": "Organization",
+      "payeeUser": "Payee",
+      "payeeUserPlaceholder": "Select payee",
       "cancellationPolicy": "Cancellation policy",
       "imageUrl": "Image URL",
       "note": "Note",
@@ -71,6 +77,7 @@ export default {
       "cancelMyApplication": "Cancel my application",
       "joinWaitlist": "Join waitlist",
       "viewDetails": "View details",
+      "confirmApplication": "Confirm",
       "createPolicy": "Create policy"
     },
     "confirmModal": {
@@ -177,6 +184,13 @@ export default {
       "applying": "Applying",
       "individual": "Individual",
       "team": "Team"
+    },
+    "payee": {
+      "required": "Please select a payee type",
+      "userRequired": "Please select a payee user",
+      "PAYMENT_C011": "Payee type (payeeKind) is not specified",
+      "PAYMENT_C012": "Payee user is not specified",
+      "PAYMENT_C013": "Specified payee is not a member of this scope"
     },
     "error": {
       "RECRUITMENT_001": "Recruitment not found",

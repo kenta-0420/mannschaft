@@ -23,8 +23,11 @@ import java.util.List;
  *
  * <p>本波で扱うイベント:</p>
  * <ul>
- *   <li>{@code payment_intent.amount_capturable_updated} → 与信確定（{@link EscrowStatus#AUTHORIZED} を確認/確定）。</li>
- *   <li>{@code payment_intent.canceled} → {@link EscrowStatus#CANCELLED}。</li>
+ *   <li>{@code payment_intent.amount_capturable_updated} → <b>真の与信確定</b>（札主が confirm した＝カード上の
+ *       ホールドが立った）。{@link EscrowStatus#PENDING_CONFIRMATION} → {@link EscrowStatus#AUTHORIZED} へ昇格し、
+ *       {@code authorized_at} と hold 失効基準 {@code hold_expires_at} を確定する（第一陣 status 意味論の根治）。</li>
+ *   <li>{@code payment_intent.canceled} / {@code payment_intent.payment_failed} → {@link EscrowStatus#CANCELLED}
+ *       （confirm 前の取消・カード拒否等）。</li>
  *   <li>{@code payment_intent.succeeded} → capture 確定（{@link EscrowStatus#CAPTURED}・{@code captured_at}・
  *       複式記帳 CAPTURE/TRANSFER_OUT/FEE。P2-c 第一波で実装）。</li>
  * </ul>
@@ -39,6 +42,14 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional
 public class EscrowWebhookService {
+
+    /**
+     * AUTHORIZED（真の与信確定）の hold 失効基準（最大7日・設計書 02 §5.1）。
+     *
+     * <p>第一陣 status 意味論の根治: hold は札主の confirm（amount_capturable_updated）で初めて立つため、
+     * {@code hold_expires_at} は authorize 時ではなく本 webhook の AUTHORIZED 昇格時に刻む。</p>
+     */
+    static final long AUTHORIZED_HOLD_DAYS = 7L;
 
     private final StripePaymentProvider stripePaymentProvider;
     private final WebhookIdempotencyService idempotencyService;
@@ -168,7 +179,7 @@ public class EscrowWebhookService {
     private WebhookProcessStatus dispatch(StripePaymentProvider.EscrowWebhookEventInfo event) {
         return switch (event.type()) {
             case "payment_intent.amount_capturable_updated" -> applyAmountCapturable(event.paymentIntentId());
-            case "payment_intent.canceled" -> applyCanceled(event.paymentIntentId());
+            case "payment_intent.canceled", "payment_intent.payment_failed" -> applyCanceled(event.paymentIntentId());
             case "payment_intent.succeeded" -> applySucceeded(event.paymentIntentId());
             default -> {
                 log.info("未対応の Escrow Webhook イベント: type={}", event.type());
@@ -178,21 +189,36 @@ public class EscrowWebhookService {
     }
 
     /**
-     * {@code payment_intent.amount_capturable_updated}（与信額確定）→ AUTHORIZED を確定する。
+     * {@code payment_intent.amount_capturable_updated}（札主が confirm し<b>真の与信が立った</b>）→ AUTHORIZED へ昇格する。
+     *
+     * <p>第一陣 status 意味論の根治: manual-capture PI は札主の confirm で初めて amount_capturable が立つ。
+     * 本イベントが「confirm 完了＝真の与信確定」のシグナルであり、{@link EscrowStatus#PENDING_CONFIRMATION}
+     * （PI 作成済・confirm 待ち）を {@link EscrowStatus#AUTHORIZED}（capture 可能）へ昇格させる。HELD から
+     * onboarding 完了で confirm に至ったケースもここで AUTHORIZED 化する。昇格時に {@code authorized_at} と
+     * hold 失効基準 {@code hold_expires_at} を確定する（authorize 時には立てない・与信が立つまで未確定のため）。
+     * 既に AUTHORIZED（再送）も冪等に AUTHORIZED のまま。CAPTURED 等の後段状態は触らない。</p>
      */
     private WebhookProcessStatus applyAmountCapturable(String paymentIntentId) {
         EscrowTransactionEntity escrow = findEscrowOrNull(paymentIntentId);
         if (escrow == null) {
             return WebhookProcessStatus.IGNORED;
         }
-        // 与信確定の鏡像: HELD から確定したケース等で AUTHORIZED を確定する（CAPTURED 等の後段状態は触らない）。
-        if (escrow.getStatus() == EscrowStatus.AUTHORIZED || escrow.getStatus() == EscrowStatus.HELD) {
+        // PENDING_CONFIRMATION（confirm 待ち）/HELD（onboarding 完了）/AUTHORIZED（再送・冪等）から AUTHORIZED を確定。
+        if (escrow.getStatus() == EscrowStatus.PENDING_CONFIRMATION
+                || escrow.getStatus() == EscrowStatus.HELD
+                || escrow.getStatus() == EscrowStatus.AUTHORIZED) {
+            LocalDateTime now = LocalDateTime.now();
             escrow.setStatus(EscrowStatus.AUTHORIZED);
             if (escrow.getAuthorizedAt() == null) {
-                escrow.setAuthorizedAt(LocalDateTime.now());
+                escrow.setAuthorizedAt(now);
+            }
+            if (escrow.getHoldExpiresAt() == null) {
+                // hold は confirm（真の与信）で立つため、ここで失効基準（最大7日）を刻む（02 §5.1）。
+                escrow.setHoldExpiresAt(now.plusDays(AUTHORIZED_HOLD_DAYS));
             }
             escrowTransactionRepository.save(escrow);
-            log.info("与信確定（amount_capturable_updated）: escrowId={}, piId={}", escrow.getId(), paymentIntentId);
+            log.info("真の与信確定（amount_capturable_updated・札主 confirm 完了）: escrowId={}, piId={}",
+                    escrow.getId(), paymentIntentId);
         } else {
             log.info("amount_capturable_updated だが対象 escrow は後段状態のため無視: escrowId={}, status={}",
                     escrow.getId(), escrow.getStatus());
@@ -201,7 +227,11 @@ public class EscrowWebhookService {
     }
 
     /**
-     * {@code payment_intent.canceled} → CANCELLED へ遷移する。
+     * {@code payment_intent.canceled} / {@code payment_intent.payment_failed} → CANCELLED へ遷移する。
+     *
+     * <p>capture 前（{@link EscrowStatus#PENDING_CONFIRMATION}＝confirm 前のキャンセル/カード拒否、
+     * {@link EscrowStatus#AUTHORIZED}＝与信成立後の札下げ/失効、{@link EscrowStatus#HELD}）からのみ取消する。
+     * 課金は起きていないため refunds には記録しない（与信取消・02 §6.1）。CAPTURED 等の後段状態は触らない。</p>
      */
     private WebhookProcessStatus applyCanceled(String paymentIntentId) {
         EscrowTransactionEntity escrow = findEscrowOrNull(paymentIntentId);
@@ -212,13 +242,16 @@ public class EscrowWebhookService {
             // 既に取消済み（冪等）。
             return WebhookProcessStatus.PROCESSED;
         }
-        if (escrow.getStatus() == EscrowStatus.AUTHORIZED || escrow.getStatus() == EscrowStatus.HELD) {
+        if (escrow.getStatus() == EscrowStatus.PENDING_CONFIRMATION
+                || escrow.getStatus() == EscrowStatus.AUTHORIZED
+                || escrow.getStatus() == EscrowStatus.HELD) {
             escrow.setStatus(EscrowStatus.CANCELLED);
             escrow.setCancelledAt(LocalDateTime.now());
             escrowTransactionRepository.save(escrow);
-            log.info("与信取消（payment_intent.canceled）: escrowId={}, piId={}", escrow.getId(), paymentIntentId);
+            log.info("与信取消（payment_intent.canceled/payment_failed）: escrowId={}, piId={}",
+                    escrow.getId(), paymentIntentId);
         } else {
-            log.info("payment_intent.canceled だが対象 escrow は後段状態のため無視: escrowId={}, status={}",
+            log.info("payment_intent.canceled/payment_failed だが対象 escrow は後段状態のため無視: escrowId={}, status={}",
                     escrow.getId(), escrow.getStatus());
         }
         return WebhookProcessStatus.PROCESSED;
@@ -230,6 +263,12 @@ public class EscrowWebhookService {
      * <p>既に {@link EscrowStatus#CAPTURED}（MarketFinalize フックの同期 capture が先着済み等）なら ledger
      * 二重記帳を避け no-op（冪等）。AUTHORIZED/HELD（webhook 先着・即時モード等）なら CAPTURED 化し、
      * {@code captured_at} と CAPTURE/TRANSFER_OUT/FEE を記帳する（借方合計＝貸方合計・01 §3.3）。</p>
+     *
+     * <p><b>完了時即時払い（第三陣-b 7日超 fallback・02 §5.1）:</b> {@link EscrowStatus#DEFERRED} から最終認証で
+     * 起票した即時払いは {@link EscrowCaptureMode#AUTOMATIC} の PaymentIntent で、会費 charge() と同じく
+     * {@link EscrowStatus#AUTHORIZED}（PI 作成済・succeeded 待ち）に置かれる。AUTOMATIC PI は札主が confirm すると
+     * （manual の amount_capturable 段を経ず）直接 {@code payment_intent.succeeded} を発火するため、本ハンドラの
+     * 既存 AUTHORIZED 経路がそのまま CAPTURED 化＋記帳する（追加分岐は不要）。</p>
      *
      * <p><b>会費の PAID 反映（F08.9 P1 Wave4・02 §1.1 / §4.2）:</b> CAPTURED へ遷移したとき
      * {@link EscrowCapturedEvent} を発火する。本イベントは {@code member_payments} を知らない escrow ドメインと

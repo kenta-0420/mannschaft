@@ -15,13 +15,16 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -216,6 +219,87 @@ class MemberPaymentServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(PaymentErrorCode.STRIPE_PRICE_NOT_SET);
+        }
+    }
+
+    @Nested
+    @DisplayName("F08.9 P6: TERM 型 valid_until 設定")
+    class TermTypeValidUntil {
+
+        private static final LocalDate TERM_ENDS_ON = LocalDate.of(2026, 12, 31);
+        private static final UUID ESCROW_ID = UUID.randomUUID();
+
+        @Test
+        @DisplayName("正常系: TERM 型の applyMembershipPaidByEscrow では valid_until = termEndsOn が設定される")
+        void createConnectCheckout_termType_setsValidUntil() {
+            // Arrange: TERM 型の payment item（termEndsOn 設定済み）
+            PaymentItemEntity paymentItem = PaymentItemEntity.builder()
+                    .type(PaymentItemType.TERM)
+                    .termEndsOn(TERM_ENDS_ON)
+                    .currency("JPY")
+                    .amount(new BigDecimal("10000"))
+                    .build();
+
+            MemberPaymentEntity pendingPayment = MemberPaymentEntity.builder()
+                    .userId(USER_ID)
+                    .paymentItemId(PAYMENT_ITEM_ID)
+                    .amountPaid(new BigDecimal("10000"))
+                    .currency("JPY")
+                    .paymentMethod(PaymentMethod.STRIPE)
+                    .status(PaymentStatus.PENDING)
+                    .escrowTransactionId(ESCROW_ID)
+                    .build();
+
+            given(memberPaymentRepository.findByEscrowTransactionId(ESCROW_ID))
+                    .willReturn(Optional.of(pendingPayment));
+            given(paymentItemService.findByIdOrThrow(PAYMENT_ITEM_ID)).willReturn(paymentItem);
+
+            ArgumentCaptor<MemberPaymentEntity> captor = ArgumentCaptor.forClass(MemberPaymentEntity.class);
+            given(memberPaymentRepository.save(captor.capture())).willReturn(pendingPayment);
+
+            // Act
+            service.applyMembershipPaidByEscrow(ESCROW_ID);
+
+            // Assert: valid_until が termEndsOn と一致する
+            MemberPaymentEntity saved = captor.getValue();
+            assertThat(saved.getValidUntil()).isEqualTo(TERM_ENDS_ON);
+            assertThat(saved.getStatus()).isEqualTo(PaymentStatus.PAID);
+        }
+
+        @Test
+        @DisplayName("正常系: ITEM 型の applyMembershipPaidByEscrow では valid_until = null のまま")
+        void createConnectCheckout_itemType_validUntilIsNull() {
+            // Arrange: ITEM 型の payment item（termEndsOn なし）
+            PaymentItemEntity paymentItem = PaymentItemEntity.builder()
+                    .type(PaymentItemType.ITEM)
+                    .currency("JPY")
+                    .amount(new BigDecimal("1000"))
+                    .build();
+
+            MemberPaymentEntity pendingPayment = MemberPaymentEntity.builder()
+                    .userId(USER_ID)
+                    .paymentItemId(PAYMENT_ITEM_ID)
+                    .amountPaid(new BigDecimal("1000"))
+                    .currency("JPY")
+                    .paymentMethod(PaymentMethod.STRIPE)
+                    .status(PaymentStatus.PENDING)
+                    .escrowTransactionId(ESCROW_ID)
+                    .build();
+
+            given(memberPaymentRepository.findByEscrowTransactionId(ESCROW_ID))
+                    .willReturn(Optional.of(pendingPayment));
+            given(paymentItemService.findByIdOrThrow(PAYMENT_ITEM_ID)).willReturn(paymentItem);
+
+            ArgumentCaptor<MemberPaymentEntity> captor = ArgumentCaptor.forClass(MemberPaymentEntity.class);
+            given(memberPaymentRepository.save(captor.capture())).willReturn(pendingPayment);
+
+            // Act
+            service.applyMembershipPaidByEscrow(ESCROW_ID);
+
+            // Assert: valid_until は null のまま
+            MemberPaymentEntity saved = captor.getValue();
+            assertThat(saved.getValidUntil()).isNull();
+            assertThat(saved.getStatus()).isEqualTo(PaymentStatus.PAID);
         }
     }
 }

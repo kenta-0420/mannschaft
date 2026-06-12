@@ -2,8 +2,6 @@ package com.mannschaft.app.team.dto;
 
 import com.mannschaft.app.team.entity.TeamEntity;
 
-import java.util.UUID;
-
 /**
  * F15.4: 組織内チーム検索の組織メンバー向け詳細版レスポンス。
  *
@@ -12,7 +10,7 @@ import java.util.UUID;
  * <p>抑制版 ({@link TeamPublicSummaryResponse}) の全フィールドに加え、
  * 組織メンバーのみに公開する以下のフィールドを含む:
  * <ul>
- *   <li>{@code visibility} — チーム公開範囲（{@code PUBLIC} / {@code ORGANIZATION_ONLY}）</li>
+ *   <li>{@code visibility} — チーム公開範囲（{@code PUBLIC} / {@code GUESTS_AND_ABOVE} / {@code SUPPORTERS_AND_ABOVE} / {@code MEMBERS_AND_ABOVE}）</li>
  *   <li>{@code bannerUrl} — バナー画像URL</li>
  *   <li>{@code supporterEnabled} — サポーター受け入れ可否</li>
  *   <li>{@code memberCount} — チーム所属メンバー数（Phase 4 で {@code teams.member_count} 集約カラム経由で反映）</li>
@@ -28,7 +26,7 @@ import java.util.UUID;
  * 意図的に含めない（連絡先・番地・メンバー規模は組織内情報のため）。
  */
 public record TeamSearchResultResponse(
-        UUID id,
+        String id,
         String name,
         String nameKana,
         String prefecture,
@@ -54,7 +52,7 @@ public record TeamSearchResultResponse(
      */
     public static TeamSearchResultResponse from(TeamEntity team) {
         return new TeamSearchResultResponse(
-                team.getPublicId(),
+                team.getSlug(),
                 team.getName(),
                 team.getNameKana(),
                 team.getPrefecture(),

@@ -245,5 +245,154 @@
     "empty_team_record": "Aún no ha participado en ningún torneo",
     "empty_org_summary": "Aún no ha organizado ningún torneo",
     "empty_division_standings": "Actualmente no participa en ningún torneo"
+  },
+  "tournamentFee": {
+    "pageTitle": "Cuotas de Inscripción",
+    "myFees": "Mis Cuotas",
+    "noFees": "No hay cuotas de inscripción",
+    "payNow": "Pagar Ahora",
+    "paid": "Pagado",
+    "paidAt": "Fecha de Pago",
+    "dueDate": "Fecha Límite",
+    "faceAmount": "Cuota",
+    "totalCharge": "Total",
+    "checkoutSuccess": "Pago completado",
+    "checkoutError": "Error en el pago"
+  },
+  "standings": {
+    "title": "Clasificacion",
+    "back": "Volver al torneo",
+    "rank": "Pos.",
+    "team": "Equipo",
+    "played": "PJ",
+    "winDrawLoss": "G/E/P",
+    "goalDiff": "DG",
+    "points": "Pts",
+    "form": "Forma reciente",
+    "recalculate": "Recalcular",
+    "recalculated": "Clasificacion recalculada",
+    "recalculateFailed": "No se pudo recalcular la clasificacion",
+    "downloadPdf": "Exportar PDF",
+    "pdfFailed": "No se pudo exportar el PDF",
+    "empty": "Sin datos de clasificacion",
+    "noDivisions": "No hay divisiones registradas",
+    "loadFailed": "No se pudo cargar la clasificacion",
+    "forbidden": "No tienes permiso para ver este torneo"
+  },
+  "rankings": {
+    "title": "Rankings",
+    "back": "Volver al torneo",
+    "rank": "Pos.",
+    "player": "Jugador",
+    "anonymousPlayer": "Jugador anonimo",
+    "matchesPlayed": "PJ",
+    "value": "Valor",
+    "downloadPdf": "Exportar PDF",
+    "pdfFailed": "No se pudo exportar el PDF",
+    "empty": "Sin datos de ranking",
+    "noCategories": "Sin categorias de ranking",
+    "loadFailed": "No se pudieron cargar los rankings",
+    "forbidden": "No tienes permiso para ver este torneo"
+  },
+  "matrix": {
+    "title": "Matriz de enfrentamientos",
+    "back": "Volver al torneo",
+    "homeAway": "Local \\ Visitante",
+    "notPlayed": "No jugado",
+    "downloadPdf": "Exportar PDF",
+    "pdfFailed": "No se pudo exportar el PDF",
+    "empty": "Sin datos de matriz",
+    "noDivisions": "No hay divisiones registradas",
+    "loadFailed": "No se pudo cargar la matriz",
+    "forbidden": "No tienes permiso para ver este torneo"
+  },
+  "visibility": {
+    "title": "Visibilidad",
+    "description": "Elige quien puede ver la clasificacion y los resultados de este torneo.",
+    "save": "Guardar",
+    "saved": "Visibilidad actualizada",
+    "saveFailed": "No se pudo actualizar la visibilidad",
+    "levels": {
+      "PUBLIC": {
+        "label": "Publico",
+        "description": "Cualquiera puede verlo, incluso visitantes no registrados."
+      },
+      "SUPPORTERS_AND_ABOVE": {
+        "label": "Seguidores y superiores",
+        "description": "Seguidores, miembros y administradores pueden verlo."
+      },
+      "MEMBERS_AND_ABOVE": {
+        "label": "Miembros y superiores",
+        "description": "Solo miembros y administradores pueden verlo (seguidores excluidos)."
+      },
+      "ADMINS_AND_ABOVE": {
+        "label": "Solo administradores",
+        "description": "Solo administradores y subadministradores de la organizacion pueden verlo."
+      },
+      "SCOPE_AFFILIATED": {
+        "label": "Solo afiliados",
+        "description": "Solo quienes estan directamente afiliados a la organizacion (incluidos seguidores) pueden verlo."
+      },
+      "PARTICIPANTS_ONLY": {
+        "label": "Solo participantes",
+        "description": "Solo personas de los equipos participantes en este torneo pueden verlo."
+      }
+    }
+  },
+  "scoreEntry": {
+    "title": "Registro de marcadores",
+    "navLink": "Registro de marcadores (admin)",
+    "back": "Volver al torneo",
+    "matchday": "Jornada",
+    "home": "Local",
+    "away": "Visitante",
+    "homeScore": "Marcador local",
+    "awayScore": "Marcador visitante",
+    "homeExtraScore": "Local (PR)",
+    "awayExtraScore": "Visitante (PR)",
+    "homePenaltyScore": "Local (PEN)",
+    "awayPenaltyScore": "Visitante (PEN)",
+    "extraPenaltyHint": "La prorroga se suma al marcador reglamentario para decidir el resultado. Los penaltis solo cuentan si persiste el empate tras el tiempo reglamentario y la prorroga. Deja en blanco lo que no se haya disputado.",
+    "save": "Guardar todo",
+    "saved": "Marcadores guardados",
+    "saveFailed": "No se pudieron guardar los marcadores",
+    "conflict": "Conflicto con otra edición. Se ha recargado el estado más reciente. Vuelve a introducir los datos.",
+    "invalidInput": "Entrada no válida (los marcadores deben ser enteros no negativos y deben rellenarse tanto local como visitante).",
+    "nothingToSave": "No hay marcadores que guardar",
+    "standingsHint": "Marcadores guardados. La clasificación se recalculará automáticamente.",
+    "forbidden": "No tienes permiso para editar los marcadores de este torneo",
+    "loadFailed": "No se pudieron cargar los datos",
+    "noDivisions": "No hay divisiones registradas",
+    "noMatchdays": "No hay jornadas registradas",
+    "noMatches": "No hay enfrentamientos",
+    "csv": {
+      "title": "Importación masiva por CSV",
+      "formatHint": "Sube un CSV en el orden matchId,homeScore,awayScore (la primera fila es el encabezado). Deja en blanco los partidos aún sin resultado.",
+      "import": "Importar",
+      "imported": "CSV importado",
+      "importFailed": "No se pudo importar el CSV",
+      "invalidFormat": "Formato de CSV no válido. Los marcadores deben ser enteros.",
+      "downloadTemplate": "Descargar plantilla"
+    }
+  },
+  "scorekeeper": {
+    "title": "Asignación de anotador",
+    "description": "Los usuarios asignados pueden registrar resultados de este torneo (individual, en lote e importación CSV). Solo los administradores de la organización anfitriona pueden asignar anotadores.",
+    "userIdLabel": "ID de usuario",
+    "userIdPlaceholder": "ej. 12345",
+    "add": "Asignar",
+    "remove": "Quitar",
+    "empty": "Aún no hay anotadores asignados",
+    "addSuccess": "Anotador asignado",
+    "removeSuccess": "Asignación de anotador eliminada",
+    "alreadyAssigned": "Este usuario ya está asignado",
+    "userDisplay": "ID de usuario: {userId}",
+    "error": {
+      "loadFailed": "No se pudo cargar la lista de anotadores",
+      "addFailed": "No se pudo asignar el anotador ({status})",
+      "removeFailed": "No se pudo eliminar la asignación de anotador",
+      "forbidden": "No tienes permiso para gestionar anotadores (solo administradores de la organización anfitriona)",
+      "invalidUserId": "El ID de usuario debe ser un entero positivo"
+    }
   }
 }

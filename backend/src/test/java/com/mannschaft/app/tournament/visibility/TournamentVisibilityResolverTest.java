@@ -8,6 +8,7 @@ import com.mannschaft.app.common.visibility.UserScopeRoleSnapshot;
 import com.mannschaft.app.common.visibility.VisibilityMetrics;
 import com.mannschaft.app.tournament.TournamentStatus;
 import com.mannschaft.app.tournament.TournamentVisibility;
+import com.mannschaft.app.tournament.repository.TournamentParticipantRepository;
 import com.mannschaft.app.tournament.repository.TournamentRepository;
 import com.mannschaft.app.visibility.service.VisibilityTemplateEvaluator;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -44,6 +45,10 @@ import static org.mockito.Mockito.when;
  * {@code AbstractContentVisibilityResolverTest} で網羅済のため、本テストでは
  * Tournament 固有の正規化（PUBLIC/MEMBERS_ONLY × DRAFT/OPEN/IN_PROGRESS/COMPLETED/CANCELLED/ARCHIVED）
  * のみを重点的に確認する。Tournament は組織配下のため scope は常に "ORGANIZATION"。</p>
+ *
+ * <p>F08.7 順位UI Wave0: 6 値拡張に追従。旧 MEMBERS_ONLY は撤去され、所属軸は SCOPE_AFFILIATED
+ * （StandardVisibility.SCOPE_AFFILIATED・isMemberOf 判定）になった。大会専用軸 PARTICIPANTS_ONLY
+ * （CUSTOM 経由 evaluateCustom）の判定もここで検証する。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("TournamentVisibilityResolver — 単体テスト")
@@ -61,6 +66,9 @@ class TournamentVisibilityResolverTest {
     @Mock
     private TournamentRepository tournamentRepository;
 
+    @Mock
+    private TournamentParticipantRepository participantRepository;
+
     private VisibilityMetrics visibilityMetrics;
     private TournamentVisibilityResolver resolver;
 
@@ -73,7 +81,8 @@ class TournamentVisibilityResolverTest {
                 templateEvaluator,
                 null,            // FollowBatchService 不要
                 auditLogService,
-                tournamentRepository);
+                tournamentRepository,
+                participantRepository);
     }
 
     @Test
@@ -140,10 +149,10 @@ class TournamentVisibilityResolverTest {
         }
 
         @Test
-        @DisplayName("MEMBERS_ONLY × IN_PROGRESS は所属メンバーのみ可視")
-        void members_only_in_progress_visible_to_member() {
+        @DisplayName("SCOPE_AFFILIATED × IN_PROGRESS は所属メンバーのみ可視")
+        void scope_affiliated_in_progress_visible_to_member() {
             TournamentVisibilityProjection p = projection(1L, 100L, 99L,
-                    TournamentStatus.IN_PROGRESS, TournamentVisibility.MEMBERS_ONLY);
+                    TournamentStatus.IN_PROGRESS, TournamentVisibility.SCOPE_AFFILIATED);
             when(tournamentRepository.findVisibilityProjectionsByIdIn(any()))
                     .thenReturn(List.of(p));
             when(membershipBatchQueryService.snapshotForUser(eq(5L), anySet(), anySet()))
@@ -155,10 +164,10 @@ class TournamentVisibilityResolverTest {
         }
 
         @Test
-        @DisplayName("MEMBERS_ONLY × COMPLETED は非メンバーには不可視")
-        void members_only_completed_invisible_to_non_member() {
+        @DisplayName("SCOPE_AFFILIATED × COMPLETED は非メンバーには不可視")
+        void scope_affiliated_completed_invisible_to_non_member() {
             TournamentVisibilityProjection p = projection(1L, 100L, 99L,
-                    TournamentStatus.COMPLETED, TournamentVisibility.MEMBERS_ONLY);
+                    TournamentStatus.COMPLETED, TournamentVisibility.SCOPE_AFFILIATED);
             when(tournamentRepository.findVisibilityProjectionsByIdIn(any()))
                     .thenReturn(List.of(p));
             when(membershipBatchQueryService.snapshotForUser(any(), anySet(), anySet()))
@@ -168,16 +177,85 @@ class TournamentVisibilityResolverTest {
         }
 
         @Test
-        @DisplayName("SystemAdmin は MEMBERS_ONLY もすべて可視")
+        @DisplayName("SystemAdmin は SCOPE_AFFILIATED もすべて可視")
         void system_admin_can_see_all() {
             TournamentVisibilityProjection p = projection(1L, 100L, 99L,
-                    TournamentStatus.OPEN, TournamentVisibility.MEMBERS_ONLY);
+                    TournamentStatus.OPEN, TournamentVisibility.SCOPE_AFFILIATED);
             when(tournamentRepository.findVisibilityProjectionsByIdIn(any()))
                     .thenReturn(List.of(p));
             when(membershipBatchQueryService.snapshotForUser(eq(5L), anySet(), anySet()))
                     .thenReturn(UserScopeRoleSnapshot.forSystemAdmin());
 
             assertThat(resolver.canView(1L, 5L)).isTrue();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // PARTICIPANTS_ONLY（大会専用軸・CUSTOM 経由 evaluateCustom）
+    // -------------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("PARTICIPANTS_ONLY（参加チーム関係者のみ）")
+    class ParticipantsOnly {
+
+        @Test
+        @DisplayName("参加チームのアクティブメンバーは可視")
+        void participant_member_visible() {
+            TournamentVisibilityProjection p = projection(1L, 100L, 99L,
+                    TournamentStatus.IN_PROGRESS, TournamentVisibility.PARTICIPANTS_ONLY);
+            when(tournamentRepository.findVisibilityProjectionsByIdIn(any()))
+                    .thenReturn(List.of(p));
+            when(membershipBatchQueryService.snapshotForUser(eq(5L), anySet(), anySet()))
+                    .thenReturn(UserScopeRoleSnapshot.empty());
+            // 大会 1 の参加チームに user 5 がアクティブメンバーとして所属している
+            when(participantRepository.countActiveMemberOfAnyParticipantTeam(eq(1L), eq(5L)))
+                    .thenReturn(1);
+
+            assertThat(resolver.canView(1L, 5L)).isTrue();
+        }
+
+        @Test
+        @DisplayName("非参加チームのユーザーは不可視")
+        void non_participant_invisible() {
+            TournamentVisibilityProjection p = projection(1L, 100L, 99L,
+                    TournamentStatus.IN_PROGRESS, TournamentVisibility.PARTICIPANTS_ONLY);
+            when(tournamentRepository.findVisibilityProjectionsByIdIn(any()))
+                    .thenReturn(List.of(p));
+            when(membershipBatchQueryService.snapshotForUser(eq(5L), anySet(), anySet()))
+                    .thenReturn(UserScopeRoleSnapshot.empty());
+            when(participantRepository.countActiveMemberOfAnyParticipantTeam(eq(1L), eq(5L)))
+                    .thenReturn(0);
+
+            assertThat(resolver.canView(1L, 5L)).isFalse();
+        }
+
+        @Test
+        @DisplayName("未認証は不可視（fail-closed・参加チーム照会も走らない）")
+        void anonymous_invisible() {
+            TournamentVisibilityProjection p = projection(1L, 100L, 99L,
+                    TournamentStatus.IN_PROGRESS, TournamentVisibility.PARTICIPANTS_ONLY);
+            when(tournamentRepository.findVisibilityProjectionsByIdIn(any()))
+                    .thenReturn(List.of(p));
+            when(membershipBatchQueryService.snapshotForUser(any(), anySet(), anySet()))
+                    .thenReturn(UserScopeRoleSnapshot.empty());
+
+            assertThat(resolver.canView(1L, null)).isFalse();
+            // 未認証は evaluateCustom 内で early-return するため参加チーム照会は呼ばれない
+            verifyNoInteractions(participantRepository);
+        }
+
+        @Test
+        @DisplayName("SystemAdmin は参加チーム照会なしで可視（基底の高速パス）")
+        void system_admin_visible_without_participant_lookup() {
+            TournamentVisibilityProjection p = projection(1L, 100L, 99L,
+                    TournamentStatus.IN_PROGRESS, TournamentVisibility.PARTICIPANTS_ONLY);
+            when(tournamentRepository.findVisibilityProjectionsByIdIn(any()))
+                    .thenReturn(List.of(p));
+            when(membershipBatchQueryService.snapshotForUser(eq(5L), anySet(), anySet()))
+                    .thenReturn(UserScopeRoleSnapshot.forSystemAdmin());
+
+            assertThat(resolver.canView(1L, 5L)).isTrue();
+            verifyNoInteractions(participantRepository);
         }
     }
 
@@ -264,7 +342,7 @@ class TournamentVisibilityResolverTest {
                     TournamentStatus.IN_PROGRESS,
                     TournamentStatus.COMPLETED)) {
                 TournamentVisibilityProjection p = projection(1L, 100L, 99L,
-                        s, TournamentVisibility.MEMBERS_ONLY);
+                        s, TournamentVisibility.SCOPE_AFFILIATED);
                 when(tournamentRepository.findVisibilityProjectionsByIdIn(any()))
                         .thenReturn(List.of(p));
                 when(membershipBatchQueryService.snapshotForUser(eq(5L), anySet(), anySet()))
@@ -293,7 +371,7 @@ class TournamentVisibilityResolverTest {
             TournamentVisibilityProjection p1 = projection(1L, 100L, 99L,
                     TournamentStatus.OPEN, TournamentVisibility.PUBLIC);
             TournamentVisibilityProjection p2 = projection(2L, 100L, 99L,
-                    TournamentStatus.IN_PROGRESS, TournamentVisibility.MEMBERS_ONLY);
+                    TournamentStatus.IN_PROGRESS, TournamentVisibility.SCOPE_AFFILIATED);
             when(tournamentRepository.findVisibilityProjectionsByIdIn(any()))
                     .thenReturn(List.of(p1, p2));
             when(membershipBatchQueryService.snapshotForUser(eq(5L), anySet(), anySet()))

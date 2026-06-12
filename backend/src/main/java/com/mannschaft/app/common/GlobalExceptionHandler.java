@@ -22,6 +22,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
@@ -73,7 +74,8 @@ public class GlobalExceptionHandler {
      * ErrorCode ごとの HttpStatus 個別マッピング。
      * Severity ベースのデフォルトマッピングを上書きしたい場合にここへ追加する。
      */
-    private static final Map<String, HttpStatus> ERROR_CODE_STATUS_MAP = Map.ofEntries(
+    // 型推論限界回避のため明示型指定（エントリ数増加に伴う javac 推論破綻を根治）
+    private static final Map<String, HttpStatus> ERROR_CODE_STATUS_MAP = Map.<String, HttpStatus>ofEntries(
             // F00 共通可視性基盤（Severity.WARN デフォルト 400 を設計書 §7.4 の正しい status に上書き）
             Map.entry("VISIBILITY_001", HttpStatus.FORBIDDEN),   // 認可拒否（権限不足）→ 403
             Map.entry("VISIBILITY_004", HttpStatus.NOT_FOUND),  // コンテンツ不在 → 404
@@ -388,6 +390,11 @@ public class GlobalExceptionHandler {
             // F08.8 修繕長期計画ダッシュボード — テンプレ/モジュール判定（足軽5）
             Map.entry("REPAIR_PLAN_013", HttpStatus.UNPROCESSABLE_ENTITY),   // TEMPLATE_NOT_APARTMENT
             Map.entry("REPAIR_PLAN_014", HttpStatus.UNPROCESSABLE_ENTITY),   // MODULE_NOT_ENABLED
+            // F08.7 大会基本（IDOR 対策で 404 に統一）
+            Map.entry("TOUR_001", HttpStatus.NOT_FOUND),              // TOURNAMENT_NOT_FOUND (IDOR対策で404)
+            // F08.7 順位UI 項目③ スコアキーパー指名（TOUR_059/060）
+            Map.entry("TOUR_059", HttpStatus.FORBIDDEN),              // SCOREKEEPER_MANAGE_FORBIDDEN (管理権限不足→403)
+            Map.entry("TOUR_060", HttpStatus.NOT_FOUND),              // SCOREKEEPER_NOT_FOUND (IDOR対策で404)
             // F08.7 Phase 9/9-B エントリー表・テンプレート
             Map.entry("TOUR_019", HttpStatus.NOT_FOUND),              // ENTRY_MEMBER_NOT_FOUND (IDOR対策で404)
             Map.entry("TOUR_020", HttpStatus.CONFLICT),               // ENTRY_LOCKED
@@ -634,6 +641,7 @@ public class GlobalExceptionHandler {
             Map.entry("PAYMENT_C041", HttpStatus.CONFLICT),                  // AUTHORIZATION_FAILED
             Map.entry("PAYMENT_C042", HttpStatus.CONFLICT),                  // INVALID_ESCROW_STATE（払出不能状態）
             Map.entry("PAYMENT_C043", HttpStatus.CONFLICT),                  // CAPTURE_FAILED（払出失敗）
+            Map.entry("PAYMENT_C044", HttpStatus.CONFLICT),                  // AUTHORIZATION_NOT_CONFIRMED（札主 confirm 前の capture 拒否・第一陣）
             Map.entry("PAYMENT_C060", HttpStatus.UNPROCESSABLE_ENTITY),      // FEE_EXCEEDS_FACE_AMOUNT（安全ガード・R1・C050/C051-3 と衝突回避）
             Map.entry("PAYMENT_C051", HttpStatus.NOT_FOUND),                 // FEE_POLICY_NOT_FOUND（シスアド CRUD・R2・§11）
             Map.entry("PAYMENT_C052", HttpStatus.CONFLICT),                  // FEE_POLICY_DEFAULT_IMMUTABLE（DEFAULT 削除/無効化禁止・R2）
@@ -891,6 +899,26 @@ public class GlobalExceptionHandler {
      */
     public ResponseEntity<ErrorResponse> handleIllegalState(IllegalStateException ex) {
         return handleIllegalState(ex, null);
+    }
+
+    /**
+     * Spring Security の @PreAuthorize / @PostAuthorize が返す認可拒否例外。
+     *
+     * <p>Spring Security 6.x では {@code @PreAuthorize} が失敗すると
+     * {@code AuthorizationDeniedException}（{@code AccessDeniedException} のサブクラス）が投げられる。
+     * {@code ExceptionTranslationFilter} より前に Spring MVC の {@code @RestControllerAdvice} が
+     * 捕捉すると 500 になる既知問題のため、ここで明示的に 403 に変換する。</p>
+     *
+     * <p>SecurityConfig の {@code accessDeniedHandler} はフィルターチェーン外の例外には到達しないため
+     * 二重防御として本ハンドラーが必要。</p>
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDeniedException(
+            AccessDeniedException ex, HttpServletRequest request) {
+        log.debug("Access denied: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(ErrorResponse.of(CommonErrorCode.COMMON_002));
     }
 
     /**

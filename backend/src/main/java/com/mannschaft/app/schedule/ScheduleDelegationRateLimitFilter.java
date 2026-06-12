@@ -1,20 +1,12 @@
 package com.mannschaft.app.schedule;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
+import com.mannschaft.app.common.ratelimit.AbstractRateLimitFilter;
+import com.mannschaft.app.common.ratelimit.RateLimitRule;
+import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.util.regex.Pattern;
 
@@ -24,33 +16,35 @@ import java.util.regex.Pattern;
  * <p>{@code POST /api/v1/schedules/{scheduleId}/delegations} をユーザー単位で 1 分間に 10 回に制限する。
  * 不正なメンバー ID を試行する攻撃（§6-6）への対策。超過時は 429 Too Many Requests を返す。</p>
  *
- * <p>手本: {@link com.mannschaft.app.actionmemo.ActionMemoRateLimitFilter}（Bucket4j + Caffeine）。
- * 本フィルタは対象パスがパス変数（{@code {scheduleId}}）を含むため、固定文字列比較ではなく
- * 正規表現でマッチする点が異なる。{@code @Component} 登録のままサーブレットフィルターとして動作させる。</p>
+ * <p>対象パスがパス変数（{@code {scheduleId}}）を含むため、固定文字列比較ではなく
+ * 正規表現でマッチする。</p>
  *
- * <p>キャッシュ戦略は手本に倣い Caffeine の {@code expireAfterAccess=10分} + {@code maximumSize=10000}。
- * レート窓（1分）は Bucket4j の Bandwidth が管理し、10分 TTL はメモリ保持上限である。</p>
+ * <p>登録方式: {@link com.mannschaft.app.config.SecurityConfig#scheduleDelegationRateLimitFilterRegistration}
+ * で @Component 自動登録を無効化し、SecurityConfig の {@code addFilterAfter} 経由のみで動作させる。
+ * JWT 認証後に動かし、確定した SecurityContext から userId を解決できるようにする。</p>
+ *
+ * <p><b>Valkey 化（第二陣B）</b>: 旧実装の Bucket4j + Caffeine（プロセス内カウント）は
+ * ECS 複数タスク構成でタスク数に比例して実効上限が緩むため、
+ * {@link ValkeyRateLimiter}（docs/security/06 §4.3）に移行した。
+ * カウント・§4.3 標準ヘッダー・429 応答は {@link AbstractRateLimitFilter} が担う。</p>
  */
 @Component
-public class ScheduleDelegationRateLimitFilter extends OncePerRequestFilter {
+public class ScheduleDelegationRateLimitFilter extends AbstractRateLimitFilter {
 
     /** 対象: POST /api/v1/schedules/{scheduleId}/delegations（末尾 /me を含まない）。 */
     private static final Pattern TARGET_PATH =
             Pattern.compile("^/api/v1/schedules/\\d+/delegations/?$");
 
-    /** 1 分間あたりの上限回数（§6-6）。 */
+    /** 1 分間あたりの上限回数（§6-6・旧実装から不変）。 */
     private static final int CAPACITY_PER_MINUTE = 10;
 
-    /** バケット保持期間（非アクセス時）。レート窓（1分）より十分長く、OOM は防ぐ。 */
-    private static final Duration BUCKET_TTL = Duration.ofMinutes(10);
+    private static final Duration WINDOW = Duration.ofMinutes(1);
 
-    /** キャッシュ最大エントリ数。想定外のキー爆発時に LRU で古いものから淘汰する。 */
-    private static final long MAX_BUCKETS = 10_000L;
+    private static final String ZONE = "schedule:delegation";
 
-    private final Cache<String, Bucket> buckets = Caffeine.<String, Bucket>newBuilder()
-            .expireAfterAccess(BUCKET_TTL)
-            .maximumSize(MAX_BUCKETS)
-            .build();
+    public ScheduleDelegationRateLimitFilter(ObjectProvider<ValkeyRateLimiter> rateLimiterProvider) {
+        super(rateLimiterProvider);
+    }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -58,45 +52,15 @@ public class ScheduleDelegationRateLimitFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain chain) throws ServletException, IOException {
+    protected RateLimitRule resolveRule(HttpServletRequest request) {
         if (!isTarget(request)) {
-            chain.doFilter(request, response);
-            return;
+            return null;
         }
-
-        String userKey = resolveUserKey(request);
-        Bucket bucket = buckets.get(userKey, k -> newBucket());
-
-        if (bucket.tryConsume(1)) {
-            chain.doFilter(request, response);
-        } else {
-            response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-            response.setHeader("Retry-After", "60");
-        }
+        return new RateLimitRule(ZONE, CAPACITY_PER_MINUTE, WINDOW);
     }
 
     private boolean isTarget(HttpServletRequest request) {
         return "POST".equalsIgnoreCase(request.getMethod())
                 && TARGET_PATH.matcher(request.getServletPath()).matches();
-    }
-
-    /**
-     * 認証済みなら userId を、未認証なら IP をキーにする。
-     */
-    private String resolveUserKey(HttpServletRequest request) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated()
-                && !"anonymousUser".equals(auth.getPrincipal())) {
-            return "u:" + auth.getName();
-        }
-        return "ip:" + request.getRemoteAddr();
-    }
-
-    private Bucket newBucket() {
-        return Bucket.builder()
-                .addLimit(Bandwidth.simple(CAPACITY_PER_MINUTE, Duration.ofMinutes(1)))
-                .build();
     }
 }

@@ -97,7 +97,10 @@ public class MarketResponseEnricher {
                 entity.getCityCode(),
                 region,
                 regions,
-                friendTargets);
+                friendTargets,
+                // F22.1 謝礼決済: 受領主体（編集フォーム表示用）。entity を正準として保持する。
+                entity.getPayeeKind(),
+                entity.getPayeeUserId());
     }
 
     /**

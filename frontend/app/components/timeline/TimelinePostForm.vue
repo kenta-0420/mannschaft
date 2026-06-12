@@ -124,7 +124,7 @@ async function onSubmit() {
       })
     }
 
-    // 2. 添付リスト（画像 + 動画ファイル）を構築
+    // 2. 添付リスト（画像 + 動画ファイル + 動画リンク）を構築
     const attachments: Record<string, unknown>[] = [...imageAttachments]
     if (videoFileKey.value) {
       attachments.push({
@@ -136,6 +136,13 @@ async function onSubmit() {
         videoProcessingStatus: 'PENDING',
       })
     }
+    if (videoUrl.value.trim()) {
+      // 外部動画URL（YouTube等）は VIDEO_LINK attachment として送信
+      attachments.push({
+        attachmentType: 'VIDEO_LINK',
+        videoUrl: videoUrl.value.trim(),
+      })
+    }
 
     // 3. JSON ボディを構築して送信
     const body: Record<string, unknown> = {
@@ -145,7 +152,6 @@ async function onSubmit() {
       ...(isVillage && props.scopeId ? { scope_village_id: String(props.scopeId) } : {}),
       content: content.value.trim(),
       ...(attachments.length ? { attachments } : {}),
-      ...(videoUrl.value.trim() ? { video_urls: [videoUrl.value.trim()] } : {}),
       ...(poll.value ? { poll: poll.value } : {}),
     }
 

@@ -65,9 +65,9 @@ interface RawActionRequiredSummary {
 function toScopeTabItem(r: RawScopeTabItem): ScopeTabItem {
   return {
     // scopeId は BIGINT のまま保持する（PUT /scope-tabs/order の scopeId は Long 型）。
-    // ダッシュボード API の pathVariable には publicId（UUID）を使用する。
+    // ダッシュボード API の pathVariable には slug（カスタムスラッグ）を使用する。
     scopeId: String(r.scope_id),
-    publicId: r.public_id ?? null,
+    slug: r.public_id ?? null,
     scopeType: r.scope_type,
     name: r.name,
     avatarUrl: r.avatar_url,

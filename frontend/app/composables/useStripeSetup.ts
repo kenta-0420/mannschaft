@@ -4,6 +4,7 @@ import type {
   StripeElements,
   StripePaymentElement,
   SetupIntent,
+  PaymentIntent,
   StripeError,
 } from '@stripe/stripe-js'
 
@@ -33,6 +34,17 @@ export type StripeSetupResult =
 /** retrieveSetupIntent の戻り値（3DS 復帰時に状態を確認する）。 */
 export type RetrieveSetupIntentResult =
   | { status: 'ok'; setupIntent: SetupIntent }
+  | { status: 'error'; message: string }
+
+/**
+ * confirmPayment の戻り値（F22.1 謝礼エスクローの manual-capture PaymentIntent 用）。
+ *   - succeeded: 与信（amount_capturable）確定。manual capture では PaymentIntent.status は
+ *     'requires_capture' になる（capture は BE が webhook 後に行う）。
+ *   - error: Stripe の error.message を含む（握り潰さない）。
+ *   - リダイレクト（3DS）発生時は本関数が解決せずブラウザが returnUrl へ遷移する。
+ */
+export type StripePaymentResult =
+  | { status: 'succeeded'; paymentIntentStatus: PaymentIntent['status'] }
   | { status: 'error'; message: string }
 
 export function useStripeSetup() {
@@ -140,10 +152,44 @@ export function useStripeSetup() {
     return { status: 'ok', setupIntent: result.setupIntent }
   }
 
+  /**
+   * PaymentIntent を確定する（F22.1 謝礼エスクローの manual-capture・redirect:'if_required'）。
+   *   - 成功（非リダイレクト）: { status:'succeeded', paymentIntentStatus } を返す。
+   *     manual capture では通常 'requires_capture'（与信のみ・資金未移動）。
+   *   - 3DS 等のリダイレクト発生時: ブラウザが returnUrl へ遷移し本関数は解決しない（戻り値なし）。
+   *   - エラー: Stripe の error.message を含む { status:'error' } を返す（握り潰さない）。
+   */
+  async function confirmPayment(params: {
+    stripe: Stripe
+    elements: StripeElements
+    returnUrl: string
+  }): Promise<StripePaymentResult> {
+    const { stripe, elements, returnUrl } = params
+    const result = await stripe.confirmPayment({
+      elements,
+      confirmParams: { return_url: returnUrl },
+      redirect: 'if_required',
+    })
+
+    if (result.error) {
+      return {
+        status: 'error',
+        message: result.error.message ?? t('payment.membership.subscribe.genericError'),
+      }
+    }
+
+    if (!result.paymentIntent) {
+      // 成功なのに PaymentIntent が取れない = 想定外の状態。隠さず明示エラーにする。
+      return { status: 'error', message: t('payment.membership.subscribe.genericError') }
+    }
+    return { status: 'succeeded', paymentIntentStatus: result.paymentIntent.status }
+  }
+
   return {
     getStripe,
     mountPaymentElement,
     confirmSetup,
+    confirmPayment,
     retrieveSetupIntent,
   }
 }

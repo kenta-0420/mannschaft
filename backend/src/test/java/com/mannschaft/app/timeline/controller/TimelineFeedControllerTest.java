@@ -21,7 +21,6 @@ import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -55,8 +54,8 @@ class TimelineFeedControllerTest {
 
     private static final Long TEAM_INTERNAL_ID = 10L;
     private static final Long ORG_INTERNAL_ID = 20L;
-    private static final UUID TEAM_PUBLIC_ID = UUID.randomUUID();
-    private static final UUID ORG_PUBLIC_ID = UUID.randomUUID();
+    private static final String TEAM_SLUG = "test-team";
+    private static final String ORG_SLUG = "test-org";
 
     @Nested
     @DisplayName("getFeed - scopeId 解決")
@@ -76,47 +75,47 @@ class TimelineFeedControllerTest {
         }
 
         @Test
-        @DisplayName("TEAM + UUID文字列 scopeId → publicId から内部ID を解決して getFeed を呼ぶ")
+        @DisplayName("TEAM + スラッグ文字列 scopeId → slug から内部ID を解決して getFeed を呼ぶ")
         void team_uuidStringScopeId_resolvesViaPublicId() {
             // @NoArgsConstructor(PROTECTED) のため mock() を使用
             TeamEntity teamEntity = mock(TeamEntity.class);
             given(teamEntity.getId()).willReturn(TEAM_INTERNAL_ID);
-            given(teamRepository.findByPublicId(TEAM_PUBLIC_ID)).willReturn(Optional.of(teamEntity));
+            given(teamRepository.findBySlugAndDeletedAtIsNull(TEAM_SLUG)).willReturn(Optional.of(teamEntity));
             given(postService.getFeed(eq("TEAM"), eq(TEAM_INTERNAL_ID), any(), anyInt()))
                     .willReturn(List.of());
 
             ResponseEntity<ApiResponse<List<PostResponse>>> response =
-                    controller.getFeed("TEAM", TEAM_PUBLIC_ID.toString(), null, 20);
+                    controller.getFeed("TEAM", TEAM_SLUG, null, 20);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            verify(teamRepository).findByPublicId(TEAM_PUBLIC_ID);
+            verify(teamRepository).findBySlugAndDeletedAtIsNull(TEAM_SLUG);
             verify(postService).getFeed("TEAM", TEAM_INTERNAL_ID, null, 20);
         }
 
         @Test
-        @DisplayName("ORGANIZATION + UUID文字列 scopeId → publicId から内部ID を解決して getFeed を呼ぶ")
+        @DisplayName("ORGANIZATION + スラッグ文字列 scopeId → slug から内部ID を解決して getFeed を呼ぶ")
         void organization_uuidStringScopeId_resolvesViaPublicId() {
             // @NoArgsConstructor(PROTECTED) のため mock() を使用
             OrganizationEntity orgEntity = mock(OrganizationEntity.class);
             given(orgEntity.getId()).willReturn(ORG_INTERNAL_ID);
-            given(organizationRepository.findByPublicId(ORG_PUBLIC_ID)).willReturn(Optional.of(orgEntity));
+            given(organizationRepository.findBySlugAndDeletedAtIsNull(ORG_SLUG)).willReturn(Optional.of(orgEntity));
             given(postService.getFeed(eq("ORGANIZATION"), eq(ORG_INTERNAL_ID), any(), anyInt()))
                     .willReturn(List.of());
 
             ResponseEntity<ApiResponse<List<PostResponse>>> response =
-                    controller.getFeed("ORGANIZATION", ORG_PUBLIC_ID.toString(), null, 20);
+                    controller.getFeed("ORGANIZATION", ORG_SLUG, null, 20);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            verify(organizationRepository).findByPublicId(ORG_PUBLIC_ID);
+            verify(organizationRepository).findBySlugAndDeletedAtIsNull(ORG_SLUG);
             verify(postService).getFeed("ORGANIZATION", ORG_INTERNAL_ID, null, 20);
         }
 
         @Test
-        @DisplayName("TEAM + UUID文字列 で対象チームが存在しない → BusinessException (POST_NOT_FOUND)")
+        @DisplayName("TEAM + スラッグ文字列 で対象チームが存在しない → BusinessException (POST_NOT_FOUND)")
         void team_uuidStringScopeId_teamNotFound_throwsBusinessException() {
-            given(teamRepository.findByPublicId(TEAM_PUBLIC_ID)).willReturn(Optional.empty());
+            given(teamRepository.findBySlugAndDeletedAtIsNull(TEAM_SLUG)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> controller.getFeed("TEAM", TEAM_PUBLIC_ID.toString(), null, 20))
+            assertThatThrownBy(() -> controller.getFeed("TEAM", TEAM_SLUG, null, 20))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(TimelineErrorCode.POST_NOT_FOUND));

@@ -32,7 +32,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -59,7 +58,7 @@ class TeamServiceTest {
 
     private static final Long USER_ID = 1L;
     private static final Long TEAM_ID = 10L;
-    private static final UUID TEAM_PUBLIC_ID = UUID.randomUUID();
+    private static final String TEAM_SLUG = "test-team";
 
     @Nested
     @DisplayName("createTeam")
@@ -109,10 +108,10 @@ class TeamServiceTest {
         @DisplayName("異常系: チーム不在でTEAM_001例外")
         void 取得_不在_例外() {
             // Given
-            given(teamRepository.findByPublicId(TEAM_PUBLIC_ID)).willReturn(Optional.empty());
+            given(teamRepository.findBySlugAndDeletedAtIsNull(TEAM_SLUG)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.getTeam(TEAM_PUBLIC_ID))
+            assertThatThrownBy(() -> service.getTeam(TEAM_SLUG))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TEAM_001"));
@@ -193,12 +192,12 @@ class TeamServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: visibility=ORGANIZATION_ONLY → TEAM_001（IDOR 対策で 404）")
-        void 公開取得_organizationOnly_404() {
+        @DisplayName("異常系: visibility=GUESTS_AND_ABOVE → TEAM_001（IDOR 対策で 404）")
+        void 公開取得_guestsAndAbove_404() {
             TeamEntity team = TeamEntity.builder()
                     .name("組織内店舗")
                     .template("salon")
-                    .visibility(TeamEntity.Visibility.ORGANIZATION_ONLY)
+                    .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE)
                     .supporterEnabled(true)
                     .build();
             given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
@@ -210,12 +209,12 @@ class TeamServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: visibility=PRIVATE → TEAM_001（IDOR 対策で 404）")
-        void 公開取得_private_404() {
+        @DisplayName("異常系: visibility=MEMBERS_AND_ABOVE → TEAM_001（IDOR 対策で 404）")
+        void 公開取得_membersAndAbove_404() {
             TeamEntity team = TeamEntity.builder()
                     .name("非公開店舗")
                     .template("salon")
-                    .visibility(TeamEntity.Visibility.PRIVATE)
+                    .visibility(TeamEntity.Visibility.MEMBERS_AND_ABOVE)
                     .supporterEnabled(false)
                     .build();
             given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
@@ -236,7 +235,7 @@ class TeamServiceTest {
         void アーカイブ_既済_例外() {
             // Given
             TeamEntity team = TeamEntity.builder().name("テスト").template("sports")
-                    .visibility(TeamEntity.Visibility.PRIVATE).build();
+                    .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE).build();
             team.archive(); // archivedAtをセット
             given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
 
@@ -315,7 +314,7 @@ class TeamServiceTest {
         void フォロー_ブロック_例外() {
             // Given
             TeamEntity team = TeamEntity.builder().name("テスト").template("sports")
-                    .visibility(TeamEntity.Visibility.PRIVATE).build();
+                    .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE).build();
             given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
             given(teamBlockRepository.existsByTeamIdAndUserId(TEAM_ID, USER_ID)).willReturn(true);
 
@@ -331,7 +330,7 @@ class TeamServiceTest {
         void フォロー_既所属_例外() {
             // Given
             TeamEntity team = TeamEntity.builder().name("テスト").template("sports")
-                    .visibility(TeamEntity.Visibility.PRIVATE).build();
+                    .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE).build();
             given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
             given(teamBlockRepository.existsByTeamIdAndUserId(TEAM_ID, USER_ID)).willReturn(false);
             // F00.5 Phase 5: memberships ベースの重複チェック
@@ -350,7 +349,7 @@ class TeamServiceTest {
         void フォロー_正常_入会() {
             // Given
             TeamEntity team = TeamEntity.builder().name("テスト").template("sports")
-                    .visibility(TeamEntity.Visibility.PRIVATE).build();
+                    .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE).build();
             given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
             given(teamBlockRepository.existsByTeamIdAndUserId(TEAM_ID, USER_ID)).willReturn(false);
             given(membershipRepository.existsActiveByUserAndScopeAndRoleKind(

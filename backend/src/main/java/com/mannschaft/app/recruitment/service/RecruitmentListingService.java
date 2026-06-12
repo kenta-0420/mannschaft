@@ -6,6 +6,7 @@ import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
 import com.mannschaft.app.recruitment.RecruitmentDistributionTargetType;
 import com.mannschaft.app.recruitment.RecruitmentErrorCode;
 import com.mannschaft.app.recruitment.RecruitmentListingStatus;
@@ -174,6 +175,15 @@ public class RecruitmentListingService {
                 request.getCapacity(), request.getMinCapacity(),
                 request.getPaymentEnabled(), request.getPrice());
 
+        // F22.1 市 謝礼決済: 受領主体（payeeKind/payeeUserId）の検証・正規化（02_api_design §3）。
+        //   payment_enabled=true ⇒ payee_kind 必須（PAYMENT_C011）／payee_kind=USER ⇒ payee_user_id 必須（C012）
+        //   ＆札主 scope 所属者に限定（C013・IDOR 防止）／非 USER は payee_user_id を NULL に正規化。
+        boolean paymentEnabled = Boolean.TRUE.equals(request.getPaymentEnabled());
+        String effectivePayeeKind = paymentEnabled ? request.getPayeeKind() : null;
+        Long effectivePayeeUserId = validateAndNormalizePayee(
+                scopeType, scopeId, paymentEnabled,
+                request.getPayeeKind(), request.getPayeeUserId());
+
         // §5.6 予約ライン衝突チェック (Phase 4 で本実装、Phase 1 はスタブ)
         if (request.getReservationLineId() != null && checkLineCollision(
                 request.getReservationLineId(), request.getStartAt(), request.getEndAt())) {
@@ -212,8 +222,10 @@ public class RecruitmentListingService {
                 .autoCancelAt(request.getAutoCancelAt())
                 .capacity(request.getCapacity())
                 .minCapacity(request.getMinCapacity())
-                .paymentEnabled(Boolean.TRUE.equals(request.getPaymentEnabled()))
+                .paymentEnabled(paymentEnabled)
                 .price(request.getPrice())
+                .payeeKind(effectivePayeeKind)
+                .payeeUserId(effectivePayeeUserId)
                 .visibility(request.getVisibility())
                 .location(request.getLocation())
                 .prefectureCode(representative.prefectureCode())
@@ -287,7 +299,11 @@ public class RecruitmentListingService {
                 autoCancelAt,
                 request.getCapacity() != null ? request.getCapacity() : template.getDefaultCapacity(),
                 request.getMinCapacity() != null ? request.getMinCapacity() : template.getDefaultMinCapacity(),
-                template.getDefaultPaymentEnabled(),
+                // F22.1 市 謝礼決済: テンプレートには受領主体（payee）の既定列が無いため、テンプレート経由作成では
+                // 謝礼決済を無効固定にする（保守的既定）。template.default_payment_enabled=true でも payee 未指定では
+                // CHECK（chk_rl_payee）を満たせないため、payment_enabled=true で起票せず DRAFT は決済無効で作る。
+                // 謝礼決済を有効にしたい札は通常の create/update で payeeKind を指定して設定する。
+                false,
                 template.getDefaultPrice(),
                 template.getDefaultVisibility(),
                 template.getDefaultLocation(),
@@ -299,7 +315,12 @@ public class RecruitmentListingService {
                 null,   // cityCode
                 null,   // friendTargets
                 null,   // distributionTargets
-                null    // regions（複数地域・Phase2 D）
+                null,   // regions（複数地域・Phase2 D）
+                // F22.1 市 謝礼決済: テンプレートに payee 既定列が無いため受領主体は未指定（payee null）。
+                // テンプレート default_payment_enabled=true が来ても、payeeKind 未指定では検証で弾かれるため、
+                // create() 側で payment_enabled を payeeKind 整合に倒さず素直に検証へ通す（CHECK 違反を起こさない）。
+                null,   // payeeKind
+                null    // payeeUserId
         );
 
         RecruitmentListingResponse response = create(scopeType, scopeId, userId, createReq);
@@ -329,6 +350,20 @@ public class RecruitmentListingService {
             throw new BusinessException(RecruitmentErrorCode.CAPACITY_BELOW_CONFIRMED);
         }
 
+        // F22.1 市 謝礼決済: 受領主体の編集検証（PATCH・02_api_design §3）。
+        //   effective 値（リクエスト未指定なら現状維持）で検証する。payee_kind=USER の受領者は札主 scope 所属者に
+        //   限定（C013・IDOR 防止）。entity.updateForEdit も防御的に再検証するが、所属検証（repository 要）は Service。
+        boolean effectivePaymentEnabled = request.getPaymentEnabled() != null
+                ? request.getPaymentEnabled() : entity.getPaymentEnabled();
+        String effectivePayeeKind = request.getPayeeKind() != null
+                ? request.getPayeeKind() : entity.getPayeeKind();
+        Long effectivePayeeUserId = request.getPayeeUserId() != null
+                ? request.getPayeeUserId() : entity.getPayeeUserId();
+        validateAndNormalizePayee(
+                entity.getScopeType(), entity.getScopeId(),
+                Boolean.TRUE.equals(effectivePaymentEnabled),
+                effectivePayeeKind, effectivePayeeUserId);
+
         try {
             entity.updateForEdit(
                     request.getTitle(),
@@ -346,7 +381,9 @@ public class RecruitmentListingService {
                     request.getLocation(),
                     request.getReservationLineId(),
                     request.getImageUrl(),
-                    request.getCancellationPolicyId()
+                    request.getCancellationPolicyId(),
+                    request.getPayeeKind(),
+                    request.getPayeeUserId()
             );
         } catch (IllegalStateException e) {
             log.warn("F03.11 募集枠編集失敗: id={}, reason={}", listingId, e.getMessage());
@@ -875,6 +912,69 @@ public class RecruitmentListingService {
         }
         if (Boolean.TRUE.equals(paymentEnabled) && price == null) {
             throw new BusinessException(RecruitmentErrorCode.PRICE_REQUIRED);
+        }
+    }
+
+    /**
+     * F22.1 市 謝礼決済: 受領主体（payeeKind/payeeUserId）を検証し、正規化した {@code payeeUserId} を返す
+     * （02_api_design §3 / 01_data_model §4.1・DB chk_rl_payee / chk_rl_payee_user 相当）。
+     *
+     * <p>検証規約:</p>
+     * <ul>
+     *   <li>{@code paymentEnabled=true} かつ {@code payeeKind} 未指定 → {@code PAYMENT_C011 PAYEE_REQUIRED}</li>
+     *   <li>{@code payeeKind=USER} かつ {@code payeeUserId} 未指定 → {@code PAYMENT_C012 PAYEE_USER_REQUIRED}</li>
+     *   <li>{@code payeeKind=USER} の {@code payeeUserId} が札主 scope 非所属 → {@code PAYMENT_C013 PAYEE_NOT_IN_SCOPE}
+     *       （個人受領者は札主に紐づく者に限定・IDOR 防止）</li>
+     *   <li>{@code payeeKind=TEAM/ORG} が札主 scope_type と不一致（例: TEAM 札に ORG 指定）→ {@code PAYMENT_C013}
+     *       （TEAM/ORG は札主自身の scope が受領するため scope_type と一致必須・01 §4.1）</li>
+     * </ul>
+     *
+     * <p>{@code paymentEnabled=false} のとき payee は無視する（呼出側で payeeKind=null に倒す）。
+     * 戻り値は CHECK 整合を取った {@code payeeUserId}（非 USER は常に {@code null}）。</p>
+     *
+     * @param scopeType      札主スコープ種別（{@code TEAM}/{@code ORGANIZATION}）
+     * @param scopeId        札主スコープ ID
+     * @param paymentEnabled 実効 payment_enabled
+     * @param payeeKind      受領主体種別（{@code USER}/{@code TEAM}/{@code ORG}・null 可）
+     * @param payeeUserId    {@code payeeKind=USER} の受領者（null 可）
+     * @return CHECK 整合を取った {@code payeeUserId}（非 USER または決済無効なら {@code null}）
+     */
+    private Long validateAndNormalizePayee(
+            RecruitmentScopeType scopeType, Long scopeId,
+            boolean paymentEnabled, String payeeKind, Long payeeUserId) {
+        // 決済無効札では payee を保持しない（CHECK: payment_enabled=FALSE ⇒ 制約なし。安全側で全 null）。
+        if (!paymentEnabled) {
+            return null;
+        }
+        if (payeeKind == null || payeeKind.isBlank()) {
+            throw new BusinessException(ConnectPaymentErrorCode.PAYEE_REQUIRED);
+        }
+        switch (payeeKind) {
+            case "USER" -> {
+                if (payeeUserId == null) {
+                    throw new BusinessException(ConnectPaymentErrorCode.PAYEE_USER_REQUIRED);
+                }
+                // IDOR 防止: 個人受領者は札主 scope の所属者に限定する（02 §3 PAYMENT_C013）。
+                if (!accessControlService.isMember(payeeUserId, scopeId, scopeType.name())) {
+                    throw new BusinessException(ConnectPaymentErrorCode.PAYEE_NOT_IN_SCOPE);
+                }
+                return payeeUserId;
+            }
+            case "TEAM" -> {
+                // TEAM 受領は札主自身の scope が TEAM のときのみ整合する（01 §4.1）。
+                if (scopeType != RecruitmentScopeType.TEAM) {
+                    throw new BusinessException(ConnectPaymentErrorCode.PAYEE_NOT_IN_SCOPE);
+                }
+                return null; // 非 USER は payee_user_id を NULL に正規化（chk_rl_payee_user）
+            }
+            case "ORG" -> {
+                // payee_kind=ORG は RecruitmentScopeType.ORGANIZATION に対応（文字列不一致・設計書 §4.1 実装注意）。
+                if (scopeType != RecruitmentScopeType.ORGANIZATION) {
+                    throw new BusinessException(ConnectPaymentErrorCode.PAYEE_NOT_IN_SCOPE);
+                }
+                return null;
+            }
+            default -> throw new BusinessException(ConnectPaymentErrorCode.PAYEE_REQUIRED);
         }
     }
 }

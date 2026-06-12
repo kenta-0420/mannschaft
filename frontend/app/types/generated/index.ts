@@ -1950,7 +1950,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/supporter-settings": {
+    "/api/v1/teams/{slug}/supporter-settings": {
         parameters: {
             query?: never;
             header?: never;
@@ -1968,7 +1968,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/officers/reorder": {
+    "/api/v1/teams/{slug}/officers/reorder": {
         parameters: {
             query?: never;
             header?: never;
@@ -1985,7 +1985,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/members/{userId}/permission-groups": {
+    "/api/v1/teams/{slug}/members/{userId}/permission-groups": {
         parameters: {
             query?: never;
             header?: never;
@@ -2002,7 +2002,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/custom-fields/reorder": {
+    "/api/v1/teams/{slug}/custom-fields/reorder": {
         parameters: {
             query?: never;
             header?: never;
@@ -2724,7 +2724,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/supporter-settings": {
+    "/api/v1/organizations/{slug}/supporter-settings": {
         parameters: {
             query?: never;
             header?: never;
@@ -2742,7 +2742,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/officers/reorder": {
+    "/api/v1/organizations/{slug}/officers/reorder": {
         parameters: {
             query?: never;
             header?: never;
@@ -2759,7 +2759,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/members/{userId}/permission-groups": {
+    "/api/v1/organizations/{slug}/members/{userId}/permission-groups": {
         parameters: {
             query?: never;
             header?: never;
@@ -2776,7 +2776,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/custom-fields/reorder": {
+    "/api/v1/organizations/{slug}/custom-fields/reorder": {
         parameters: {
             query?: never;
             header?: never;
@@ -6671,6 +6671,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournament-fees/{feeId}/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 大会参加費 Connect 決済チェックアウト
+         * @description 指定した参加費を Stripe Connect 経由で支払う。clientSecret を返すので Stripe.js で confirm する
+         */
+        post: operations["checkout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/todos": {
         parameters: {
             query?: never;
@@ -6861,6 +6881,23 @@ export interface paths {
         put?: never;
         /** 動画アップロード Presigned URL 発行 */
         post: operations["getVideoUploadUrl"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/timeline/attachments/upload-image-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 画像アップロード Presigned URL 発行 */
+        post: operations["getImageUploadUrl"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10650,7 +10687,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/transfer-ownership": {
+    "/api/v1/teams/{slug}/transfer-ownership": {
         parameters: {
             query?: never;
             header?: never;
@@ -10667,7 +10704,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/supporter-applications/{applicationId}/reject": {
+    "/api/v1/teams/{slug}/supporter-applications/{applicationId}/reject": {
         parameters: {
             query?: never;
             header?: never;
@@ -10684,7 +10721,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/supporter-applications/{applicationId}/approve": {
+    "/api/v1/teams/{slug}/supporter-applications/{applicationId}/approve": {
         parameters: {
             query?: never;
             header?: never;
@@ -10701,7 +10738,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/supporter-applications/bulk-approve": {
+    "/api/v1/teams/{slug}/supporter-applications/bulk-approve": {
         parameters: {
             query?: never;
             header?: never;
@@ -10718,7 +10755,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/permission-groups": {
+    "/api/v1/teams/{slug}/permission-groups": {
         parameters: {
             query?: never;
             header?: never;
@@ -10736,7 +10773,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/officers": {
+    "/api/v1/teams/{slug}/officers": {
         parameters: {
             query?: never;
             header?: never;
@@ -10754,7 +10791,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/invite-tokens": {
+    "/api/v1/teams/{slug}/invite-tokens": {
         parameters: {
             query?: never;
             header?: never;
@@ -10772,7 +10809,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/follow": {
+    "/api/v1/teams/{slug}/follow": {
         parameters: {
             query?: never;
             header?: never;
@@ -10790,7 +10827,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/custom-fields": {
+    "/api/v1/teams/{slug}/custom-fields": {
         parameters: {
             query?: never;
             header?: never;
@@ -10808,7 +10845,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/blocks": {
+    "/api/v1/teams/{slug}/blocks": {
         parameters: {
             query?: never;
             header?: never;
@@ -13466,7 +13503,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/transfer-ownership": {
+    "/api/v1/organizations/{slug}/transfer-ownership": {
         parameters: {
             query?: never;
             header?: never;
@@ -13483,7 +13520,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/supporter-applications/{applicationId}/reject": {
+    "/api/v1/organizations/{slug}/supporter-applications/{applicationId}/reject": {
         parameters: {
             query?: never;
             header?: never;
@@ -13500,7 +13537,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/supporter-applications/{applicationId}/approve": {
+    "/api/v1/organizations/{slug}/supporter-applications/{applicationId}/approve": {
         parameters: {
             query?: never;
             header?: never;
@@ -13517,7 +13554,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/supporter-applications/bulk-approve": {
+    "/api/v1/organizations/{slug}/supporter-applications/bulk-approve": {
         parameters: {
             query?: never;
             header?: never;
@@ -13534,7 +13571,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/permission-groups": {
+    "/api/v1/organizations/{slug}/permission-groups": {
         parameters: {
             query?: never;
             header?: never;
@@ -13552,7 +13589,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/officers": {
+    "/api/v1/organizations/{slug}/officers": {
         parameters: {
             query?: never;
             header?: never;
@@ -13570,7 +13607,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/invite-tokens": {
+    "/api/v1/organizations/{slug}/invite-tokens": {
         parameters: {
             query?: never;
             header?: never;
@@ -13588,7 +13625,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/follow": {
+    "/api/v1/organizations/{slug}/follow": {
         parameters: {
             query?: never;
             header?: never;
@@ -13606,7 +13643,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/custom-fields": {
+    "/api/v1/organizations/{slug}/custom-fields": {
         parameters: {
             query?: never;
             header?: never;
@@ -13624,7 +13661,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/blocks": {
+    "/api/v1/organizations/{slug}/blocks": {
         parameters: {
             query?: never;
             header?: never;
@@ -14416,7 +14453,31 @@ export interface paths {
          * 自チーム分の参加費支払い（Stripe Checkout）
          * @description 自チーム ADMIN/DEPUTY_ADMIN のみ。実処理は F08.2 の checkout フローに委譲
          */
-        post: operations["checkout"];
+        post: operations["checkout_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgId}/tournaments/{tId}/scorekeepers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * スコアキーパー指名一覧
+         * @description 主催組織 ADMIN のみ
+         */
+        get: operations["listScorekeepers"];
+        put?: never;
+        /**
+         * スコアキーパー指名の追加
+         * @description 主催組織 ADMIN のみ。既に指名済みの場合は冪等に既存を返す
+         */
+        post: operations["addScorekeeper"];
         delete?: never;
         options?: never;
         head?: never;
@@ -17219,6 +17280,23 @@ export interface paths {
         put?: never;
         /** 支払い方法 confirm（F08.9 P5・attach＋既定設定） */
         post: operations["confirmPaymentMethod"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/payable-dues/bulk-checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 後見まとめ払い 一括チェックアウト */
+        post: operations["bulkCheckout"];
         delete?: never;
         options?: never;
         head?: never;
@@ -23086,7 +23164,7 @@ export interface paths {
         patch: operations["togglePin_3"];
         trace?: never;
     };
-    "/api/v1/teams/{publicId}": {
+    "/api/v1/teams/{slug}": {
         parameters: {
             query?: never;
             header?: never;
@@ -23105,7 +23183,7 @@ export interface paths {
         patch: operations["updateTeam"];
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/unarchive": {
+    "/api/v1/teams/{slug}/unarchive": {
         parameters: {
             query?: never;
             header?: never;
@@ -23122,7 +23200,7 @@ export interface paths {
         patch: operations["unarchiveTeam"];
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/shift-settings": {
+    "/api/v1/teams/{slug}/shift-settings": {
         parameters: {
             query?: never;
             header?: never;
@@ -23140,7 +23218,7 @@ export interface paths {
         patch: operations["updateSettings_12"];
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/restore": {
+    "/api/v1/teams/{slug}/restore": {
         parameters: {
             query?: never;
             header?: never;
@@ -23157,7 +23235,7 @@ export interface paths {
         patch: operations["restoreTeam"];
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/profile": {
+    "/api/v1/teams/{slug}/profile": {
         parameters: {
             query?: never;
             header?: never;
@@ -23175,7 +23253,7 @@ export interface paths {
         patch: operations["updateProfile"];
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/permission-groups/{groupId}": {
+    "/api/v1/teams/{slug}/permission-groups/{groupId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -23193,7 +23271,7 @@ export interface paths {
         patch: operations["updatePermissionGroup_1"];
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/officers/{officerId}": {
+    "/api/v1/teams/{slug}/officers/{officerId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -23211,7 +23289,7 @@ export interface paths {
         patch: operations["updateOfficer"];
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/members/{userId}/role": {
+    "/api/v1/teams/{slug}/members/{userId}/role": {
         parameters: {
             query?: never;
             header?: never;
@@ -23228,7 +23306,7 @@ export interface paths {
         patch: operations["changeRole_1"];
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/custom-fields/{fieldId}": {
+    "/api/v1/teams/{slug}/custom-fields/{fieldId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -23246,7 +23324,7 @@ export interface paths {
         patch: operations["updateCustomField_1"];
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/archive": {
+    "/api/v1/teams/{slug}/archive": {
         parameters: {
             query?: never;
             header?: never;
@@ -24424,7 +24502,7 @@ export interface paths {
         patch: operations["resumeSubscription"];
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}": {
+    "/api/v1/organizations/{slug}": {
         parameters: {
             query?: never;
             header?: never;
@@ -24443,7 +24521,7 @@ export interface paths {
         patch: operations["updateOrganization"];
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/unarchive": {
+    "/api/v1/organizations/{slug}/unarchive": {
         parameters: {
             query?: never;
             header?: never;
@@ -24460,7 +24538,7 @@ export interface paths {
         patch: operations["unarchiveOrganization"];
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/restore": {
+    "/api/v1/organizations/{slug}/restore": {
         parameters: {
             query?: never;
             header?: never;
@@ -24477,7 +24555,7 @@ export interface paths {
         patch: operations["restoreOrganization"];
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/profile": {
+    "/api/v1/organizations/{slug}/profile": {
         parameters: {
             query?: never;
             header?: never;
@@ -24495,7 +24573,7 @@ export interface paths {
         patch: operations["updateProfile_2"];
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/permission-groups/{groupId}": {
+    "/api/v1/organizations/{slug}/permission-groups/{groupId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -24513,7 +24591,7 @@ export interface paths {
         patch: operations["updatePermissionGroup_2"];
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/officers/{officerId}": {
+    "/api/v1/organizations/{slug}/officers/{officerId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -24531,7 +24609,7 @@ export interface paths {
         patch: operations["updateOfficer_1"];
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/members/{userId}/role": {
+    "/api/v1/organizations/{slug}/members/{userId}/role": {
         parameters: {
             query?: never;
             header?: never;
@@ -24548,7 +24626,7 @@ export interface paths {
         patch: operations["changeRole_2"];
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/custom-fields/{fieldId}": {
+    "/api/v1/organizations/{slug}/custom-fields/{fieldId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -24566,7 +24644,7 @@ export interface paths {
         patch: operations["updateCustomField_2"];
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/archive": {
+    "/api/v1/organizations/{slug}/archive": {
         parameters: {
             query?: never;
             header?: never;
@@ -28048,6 +28126,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tournament-fees/my": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 自分の大会参加費一覧
+         * @description 認証ユーザーが属する組織／チームを対象とした参加費を返す。支払い済みフラグ付き
+         */
+        get: operations["getMyTournamentFees"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/todos/{id}/children": {
         parameters: {
             query?: never;
@@ -29213,6 +29311,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/payment-items/{itemId}/payments/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 支払い明細 CSV エクスポート（F08.9 P8） */
+        get: operations["exportPaymentsCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/payment-advances": {
         parameters: {
             query?: never;
@@ -29916,6 +30031,23 @@ export interface paths {
         };
         /** 子フォルダ一覧 */
         get: operations["listChildFolders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/fee-statements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 月次手数料明細（Mannschaft 名義） */
+        get: operations["getFeeStatement"];
         put?: never;
         post?: never;
         delete?: never;
@@ -30789,7 +30921,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/supporters": {
+    "/api/v1/teams/{slug}/supporters": {
         parameters: {
             query?: never;
             header?: never;
@@ -30806,7 +30938,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/supporter-applications": {
+    "/api/v1/teams/{slug}/supporter-applications": {
         parameters: {
             query?: never;
             header?: never;
@@ -30823,7 +30955,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/organizations": {
+    "/api/v1/teams/{slug}/organizations": {
         parameters: {
             query?: never;
             header?: never;
@@ -30840,7 +30972,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/members": {
+    "/api/v1/teams/{slug}/members": {
         parameters: {
             query?: never;
             header?: never;
@@ -30857,7 +30989,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/me/permissions": {
+    "/api/v1/teams/{slug}/me/permissions": {
         parameters: {
             query?: never;
             header?: never;
@@ -30874,7 +31006,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/followers": {
+    "/api/v1/teams/{slug}/followers": {
         parameters: {
             query?: never;
             header?: never;
@@ -30891,7 +31023,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/follow/status": {
+    "/api/v1/teams/{slug}/follow/status": {
         parameters: {
             query?: never;
             header?: never;
@@ -30917,23 +31049,6 @@ export interface paths {
         };
         /** チーム支払いサマリー */
         get: operations["getPaymentSummary"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/teams/{id}/payment-items/{itemId}/payments/export": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 支払い状況 CSV エクスポート */
-        get: operations["exportPayments"];
         put?: never;
         post?: never;
         delete?: never;
@@ -33139,7 +33254,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/public/teams/{publicId}": {
+    "/api/v1/public/teams/{slug}": {
         parameters: {
             query?: never;
             header?: never;
@@ -33796,6 +33911,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/payment/escrow/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** エスクロー状態照会（支払者本人=clientSecret 含む / 受取側 ADMIN=状態・金額のみ） */
+        get: operations["getEscrow"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payment/escrow/recruitment/{listingId}/{participantId}/payment-intent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 札主の決済確認（謝礼エスクローの clientSecret＋手数料内訳・支払者本人のみ clientSecret） */
+        get: operations["getRecruitmentPaymentIntent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payment/escrow/received": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 受取側のエスクロー一覧（payee 本人 or scope ADMIN・返金管理用・clientSecret 非含有） */
+        get: operations["listReceivedEscrows"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/payment/connect/status": {
         parameters: {
             query?: never;
@@ -33853,7 +34019,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/teams": {
+    "/api/v1/organizations/{slug}/teams": {
         parameters: {
             query?: never;
             header?: never;
@@ -33870,7 +34036,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/supporters": {
+    "/api/v1/organizations/{slug}/supporters": {
         parameters: {
             query?: never;
             header?: never;
@@ -33887,7 +34053,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/supporter-applications": {
+    "/api/v1/organizations/{slug}/supporter-applications": {
         parameters: {
             query?: never;
             header?: never;
@@ -33904,7 +34070,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/members": {
+    "/api/v1/organizations/{slug}/members": {
         parameters: {
             query?: never;
             header?: never;
@@ -33921,7 +34087,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/members/all": {
+    "/api/v1/organizations/{slug}/members/all": {
         parameters: {
             query?: never;
             header?: never;
@@ -33938,7 +34104,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/me/permissions": {
+    "/api/v1/organizations/{slug}/me/permissions": {
         parameters: {
             query?: never;
             header?: never;
@@ -33955,7 +34121,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/follow/status": {
+    "/api/v1/organizations/{slug}/follow/status": {
         parameters: {
             query?: never;
             header?: never;
@@ -33972,7 +34138,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/children": {
+    "/api/v1/organizations/{slug}/children": {
         parameters: {
             query?: never;
             header?: never;
@@ -33992,7 +34158,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/ancestors": {
+    "/api/v1/organizations/{slug}/ancestors": {
         parameters: {
             query?: never;
             header?: never;
@@ -34755,6 +34921,40 @@ export interface paths {
         };
         /** 組織TODOガントバー一覧 */
         get: operations["getGanttTodos_2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/by-schedule/{scheduleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** カレンダー予定から既存試合を解決（入口④・二重起票防止） */
+        get: operations["resolveBySchedule"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/by-fixture/{fixtureId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 大会の対戦カードから既存試合を解決（入口①・二重起票防止） */
+        get: operations["resolveByFixture"];
         put?: never;
         post?: never;
         delete?: never;
@@ -35661,7 +35861,7 @@ export interface paths {
             cookie?: never;
         };
         /** 組織支払い状況 CSV エクスポート */
-        get: operations["exportPayments_1"];
+        get: operations["exportPayments"];
         put?: never;
         post?: never;
         delete?: never;
@@ -35916,6 +36116,22 @@ export interface paths {
         };
         /** メンション一覧取得 */
         get: operations["getMentions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/member-payments/{memberPaymentId}/receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getReceipt_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -36357,6 +36573,23 @@ export interface paths {
         };
         /** 未払い項目一覧 */
         get: operations["getPaymentRequirements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/payable-dues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 払える未払い会費一覧（後見まとめ払い） */
+        get: operations["getPayableDues"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38720,7 +38953,7 @@ export interface paths {
             cookie?: never;
         };
         /** 領収書詳細 */
-        get: operations["getReceipt_1"];
+        get: operations["getReceipt_2"];
         put?: never;
         post?: never;
         delete?: never;
@@ -39658,7 +39891,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/members/{userId}": {
+    "/api/v1/teams/{slug}/members/{userId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -39675,7 +39908,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/me": {
+    "/api/v1/teams/{slug}/me": {
         parameters: {
             query?: never;
             header?: never;
@@ -39692,7 +39925,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/invite-tokens/{tokenId}": {
+    "/api/v1/teams/{slug}/invite-tokens/{tokenId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -39709,7 +39942,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{publicId}/blocks/{userId}": {
+    "/api/v1/teams/{slug}/blocks/{userId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -40074,7 +40307,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/members/{userId}": {
+    "/api/v1/organizations/{slug}/members/{userId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -40091,7 +40324,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/me": {
+    "/api/v1/organizations/{slug}/me": {
         parameters: {
             query?: never;
             header?: never;
@@ -40108,7 +40341,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/invite-tokens/{tokenId}": {
+    "/api/v1/organizations/{slug}/invite-tokens/{tokenId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -40125,7 +40358,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{publicId}/blocks/{userId}": {
+    "/api/v1/organizations/{slug}/blocks/{userId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -40224,6 +40457,26 @@ export interface paths {
          * @description 主催組織 ADMIN のみ。論理削除
          */
         delete: operations["deleteFee"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgId}/tournaments/{tId}/scorekeepers/{skId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * スコアキーパー指名の解除
+         * @description 主催組織 ADMIN のみ。物理削除
+         */
+        delete: operations["removeScorekeeper"];
         options?: never;
         head?: never;
         patch?: never;
@@ -42026,11 +42279,6 @@ export interface components {
             hierarchy?: components["schemas"]["TodoHierarchyDto"];
             audit?: components["schemas"]["TodoAuditDto"];
             /**
-             * Format: int64
-             * @deprecated
-             */
-            daysRemaining?: number;
-            /**
              * Format: int32
              * @deprecated
              */
@@ -42042,6 +42290,11 @@ export interface components {
              * @deprecated
              */
             descendantTotalCount?: number;
+            /**
+             * Format: int64
+             * @deprecated
+             */
+            daysRemaining?: number;
             /** @deprecated */
             title?: string;
             /** @deprecated */
@@ -42070,11 +42323,6 @@ export interface components {
              * @deprecated
              */
             depth?: number;
-            /**
-             * Format: int64
-             * @deprecated
-             */
-            projectId?: number;
             /** @deprecated */
             progressRate?: number;
             /**
@@ -42121,6 +42369,11 @@ export interface components {
              * @example 14:30:00
              */
             dueTime?: string;
+            /**
+             * Format: int64
+             * @deprecated
+             */
+            projectId?: number;
             /** @deprecated */
             progressManual?: boolean;
             /**
@@ -48530,6 +48783,19 @@ export interface components {
             /** Format: uuid */
             defaultUniformSetId?: string;
         };
+        TournamentFeeCheckoutRequest: {
+            idempotencyKey?: string;
+        };
+        ApiResponseTournamentFeeCheckoutResponse: {
+            data?: components["schemas"]["TournamentFeeCheckoutResponse"];
+        };
+        TournamentFeeCheckoutResponse: {
+            clientSecret?: string;
+            /** Format: int64 */
+            memberPaymentId?: number;
+            /** Format: uuid */
+            escrowTransactionId?: string;
+        };
         CreateTodoRequest: {
             title?: string;
             description?: string;
@@ -48830,6 +49096,21 @@ export interface components {
             /** Format: int64 */
             expiresInSeconds?: number;
         };
+        ImageUploadUrlRequest: {
+            contentType?: string;
+            scopeType?: string;
+            /** Format: int64 */
+            scopeId?: number;
+        };
+        ApiResponseImageUploadUrlResponse: {
+            data?: components["schemas"]["ImageUploadUrlResponse"];
+        };
+        ImageUploadUrlResponse: {
+            uploadUrl?: string;
+            fileKey?: string;
+            /** Format: int32 */
+            expiresInSeconds?: number;
+        };
         DigestRegenerateRequest: {
             digestStyle?: string;
             customPromptSuffix?: string;
@@ -48925,7 +49206,6 @@ export interface components {
             mapEmbedUrl?: string;
         };
         TeamResponse: {
-            /** Format: uuid */
             id?: string;
             basicInfo?: components["schemas"]["TeamBasicInfoDto"];
             location?: components["schemas"]["TeamLocationDto"];
@@ -50074,6 +50354,9 @@ export interface components {
             friendTargets?: components["schemas"]["FriendTargetRequest"][];
             distributionTargets?: ("MEMBERS" | "SUPPORTERS" | "FOLLOWERS" | "PUBLIC_FEED")[];
             regions?: components["schemas"]["RegionInput"][];
+            payeeKind?: string;
+            /** Format: int64 */
+            payeeUserId?: number;
         };
         FriendTargetRequest: {
             /** @enum {string} */
@@ -50158,6 +50441,9 @@ export interface components {
             region?: components["schemas"]["RecruitmentRegionView"];
             regions?: components["schemas"]["RecruitmentRegionView"][];
             friendTargets?: components["schemas"]["FriendTargetView"][];
+            payeeKind?: string;
+            /** Format: int64 */
+            payeeUserId?: number;
         };
         RecruitmentRegionView: {
             prefectureCode?: string;
@@ -52275,6 +52561,10 @@ export interface components {
             /** Format: int32 */
             displayOrder?: number;
             stripePriceId?: string;
+            /** Format: date */
+            termStartsOn?: string;
+            /** Format: date */
+            termEndsOn?: string;
         };
         ApiResponsePaymentItemResponse: {
             data?: components["schemas"]["PaymentItemResponse"];
@@ -52302,10 +52592,17 @@ export interface components {
             money?: components["schemas"]["PaymentMoneyDto"];
             stripe?: components["schemas"]["StripeIntegrationDto"];
             audit?: components["schemas"]["PaymentItemAuditDto"];
+            term?: components["schemas"]["TermPeriodDto"];
         };
         PaymentMoneyDto: {
             amount?: number;
             currency?: string;
+        };
+        TermPeriodDto: {
+            /** Format: date */
+            termStartsOn?: string;
+            /** Format: date */
+            termEndsOn?: string;
         };
         CreateManualPaymentRequest: {
             /** Format: int64 */
@@ -54243,7 +54540,7 @@ export interface components {
             /** Format: uuid */
             escrowId?: string;
             /** @enum {string} */
-            status?: "AUTHORIZED" | "HELD" | "CAPTURED" | "PARTIALLY_REFUNDED" | "REFUNDED" | "CANCELLED" | "DISPUTED";
+            status?: "PENDING_CONFIRMATION" | "DEFERRED" | "AUTHORIZED" | "HELD" | "CAPTURED" | "PARTIALLY_REFUNDED" | "REFUNDED" | "CANCELLED" | "DISPUTED";
             /** Format: int64 */
             refundedAmount?: number;
             /** Format: int64 */
@@ -54385,7 +54682,6 @@ export interface components {
             supporterEnabled?: boolean;
         };
         OrganizationResponse: {
-            /** Format: uuid */
             id?: string;
             basicInfo?: components["schemas"]["OrgBasicInfoDto"];
             hierarchy?: components["schemas"]["OrgHierarchyDto"];
@@ -54637,6 +54933,25 @@ export interface components {
             currency?: string;
             /** Format: date-time */
             paymentDue?: string;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        CreateScorekeeperRequest: {
+            /** Format: int64 */
+            userId: number;
+        };
+        ApiResponseScorekeeperResponse: {
+            data?: components["schemas"]["ScorekeeperResponse"];
+        };
+        ScorekeeperResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: int64 */
+            tournamentId?: number;
+            /** Format: int64 */
+            userId?: number;
+            /** Format: int64 */
+            createdBy?: number;
             /** Format: date-time */
             createdAt?: string;
         };
@@ -56036,6 +56351,23 @@ export interface components {
         PaymentMethodResponse: {
             defaultPaymentMethod?: string;
             saved?: boolean;
+        };
+        BulkCheckoutRequest: {
+            /** Format: int64 */
+            beneficiaryUserId: number;
+            paymentItemIds?: number[];
+        };
+        ApiResponseBulkCheckoutResponse: {
+            data?: components["schemas"]["BulkCheckoutResponse"];
+        };
+        BulkCheckoutResponse: {
+            results?: components["schemas"]["BulkCheckoutResultItem"][];
+        };
+        BulkCheckoutResultItem: {
+            /** Format: int64 */
+            paymentItemId?: number;
+            status?: string;
+            skipReason?: string;
         };
         ApiResponseIcalTokenResponse: {
             data?: components["schemas"]["IcalTokenResponse"];
@@ -59713,6 +60045,9 @@ export interface components {
             prefectureCode?: string;
             cityCode?: string;
             regions?: components["schemas"]["RegionInput"][];
+            payeeKind?: string;
+            /** Format: int64 */
+            payeeUserId?: number;
         };
         FinalizeRequest: {
             force?: boolean;
@@ -60935,11 +61270,11 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         PageableObject: {
@@ -61344,6 +61679,36 @@ export interface components {
         PagedResponsePresetResponse: {
             data?: components["schemas"]["PresetResponse"][];
             meta?: components["schemas"]["PageMeta"];
+        };
+        ApiResponseMyTournamentFeesResponse: {
+            data?: components["schemas"]["MyTournamentFeesResponse"];
+        };
+        MyTournamentFeeItem: {
+            /** Format: uuid */
+            feeId?: string;
+            /** Format: int64 */
+            tournamentId?: number;
+            tournamentName?: string;
+            /** Format: int64 */
+            divisionId?: number;
+            divisionName?: string;
+            title?: string;
+            /** Format: int64 */
+            paymentItemId?: number;
+            /** Format: int32 */
+            faceAmount?: number;
+            /** Format: int32 */
+            payerSurcharge?: number;
+            /** Format: int32 */
+            totalCharge?: number;
+            /** Format: date-time */
+            dueDate?: string;
+            alreadyPaid?: boolean;
+            /** Format: date-time */
+            paidAt?: string;
+        };
+        MyTournamentFeesResponse: {
+            fees?: components["schemas"]["MyTournamentFeeItem"][];
         };
         ApiResponseListTodoResponse: {
             data?: components["schemas"]["TodoResponse"][];
@@ -62853,6 +63218,17 @@ export interface components {
             id?: number;
             name?: string;
         };
+        ApiResponseFeeStatementResponse: {
+            data?: components["schemas"]["FeeStatementResponse"];
+        };
+        FeeStatementResponse: {
+            /** @example 2025-03 */
+            period?: string;
+            /** Format: int64 */
+            totalFeeAmount?: number;
+            currency?: string;
+            issuerName?: string;
+        };
         PagedResponseFacilityResponse: {
             data?: components["schemas"]["FacilityResponse"][];
             meta?: components["schemas"]["PageMeta"];
@@ -63637,7 +64013,6 @@ export interface components {
             data?: components["schemas"]["TeamOrgSummaryResponse"][];
         };
         TeamOrgSummaryResponse: {
-            /** Format: uuid */
             id?: string;
             name?: string;
             iconUrl?: string;
@@ -63686,6 +64061,8 @@ export interface components {
             isActive?: boolean;
             /** Format: int32 */
             displayOrder?: number;
+            /** Format: int64 */
+            expiredCount?: number;
         };
         PaymentSummaryResponse: {
             /** Format: int64 */
@@ -63743,11 +64120,11 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         FriendForwardExportListResponse: {
@@ -64044,11 +64421,11 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         PurgeStatusRow: {
@@ -64265,11 +64642,11 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         ApiResponseEmailOutboxDetailResponse: {
@@ -64350,11 +64727,11 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         UserEntity: {
@@ -64439,11 +64816,11 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         TeamEntity: {
@@ -64453,8 +64830,7 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
-            /** Format: uuid */
-            publicId?: string;
+            slug?: string;
             name?: string;
             nameKana?: string;
             nickname1?: string;
@@ -64465,7 +64841,7 @@ export interface components {
             prefectureCode?: string;
             cityCode?: string;
             /** @enum {string} */
-            visibility?: "PUBLIC" | "ORGANIZATION_ONLY" | "PRIVATE";
+            visibility?: "PUBLIC" | "GUESTS_AND_ABOVE" | "SUPPORTERS_AND_ABOVE" | "MEMBERS_AND_ABOVE";
             supporterEnabled?: boolean;
             /** Format: int64 */
             version?: number;
@@ -64500,8 +64876,7 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
-            /** Format: uuid */
-            publicId?: string;
+            slug?: string;
             name?: string;
             nameKana?: string;
             nickname1?: string;
@@ -64549,11 +64924,11 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         ApiResponseListBatchEndpointSummary: {
@@ -65496,11 +65871,11 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         PublicUserPostSummaryResponse: {
@@ -65524,11 +65899,11 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         PublicScopeRef: {
@@ -65556,11 +65931,11 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         PublicAuthorIdentity: {
@@ -65607,11 +65982,11 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         PublicEventResponse: {
@@ -65635,7 +66010,6 @@ export interface components {
             data?: components["schemas"]["ActivityResultEntity"][];
         };
         TeamPublicDetailResponse: {
-            /** Format: uuid */
             id?: string;
             name?: string;
             nameKana?: string;
@@ -65668,17 +66042,16 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         PublicTeamSearchResultResponse: {
             /** Format: int64 */
             id?: number;
-            /** Format: uuid */
             publicId?: string;
             name?: string;
             iconUrl?: string;
@@ -65724,6 +66097,9 @@ export interface components {
             participantId?: number;
             /** Format: int32 */
             matchesPlayed?: number;
+            displayName?: string;
+            anonymized?: boolean;
+            avatarUrl?: string;
         };
         IndividualRankingResponse: {
             /** Format: int64 */
@@ -65863,11 +66239,11 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         PublicOrganizationSearchResultResponse: {
@@ -65957,11 +66333,11 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         PagedResponseSessionListResponse: {
@@ -66137,6 +66513,50 @@ export interface components {
             teamName?: string;
             metrics?: components["schemas"]["MetricSummary"][];
         };
+        ApiResponseRecruitmentPaymentResponse: {
+            data?: components["schemas"]["RecruitmentPaymentResponse"];
+        };
+        RecruitmentPaymentResponse: {
+            clientSecret?: string;
+            /** Format: uuid */
+            escrowTransactionId?: string;
+            /** @enum {string} */
+            status?: "PENDING_CONFIRMATION" | "DEFERRED" | "AUTHORIZED" | "HELD" | "CAPTURED" | "PARTIALLY_REFUNDED" | "REFUNDED" | "CANCELLED" | "DISPUTED";
+            /** Format: int64 */
+            faceAmount?: number;
+            /** Format: int64 */
+            chargeAmount?: number;
+            /** Format: int64 */
+            applicationFeeAmount?: number;
+        };
+        PagedResponseReceivedEscrowResponse: {
+            data?: components["schemas"]["ReceivedEscrowResponse"][];
+            meta?: components["schemas"]["PageMeta"];
+        };
+        ReceivedEscrowResponse: {
+            /** Format: uuid */
+            escrowTransactionId?: string;
+            /** @enum {string} */
+            sourceKind?: "RECRUITMENT" | "MEMBERSHIP" | "JOBMATCHING" | "FLEAMARKET";
+            /** Format: int64 */
+            sourceId?: number;
+            /** Format: int64 */
+            sourceParticipantId?: number;
+            /** @enum {string} */
+            captureMode?: "MANUAL" | "AUTOMATIC";
+            /** @enum {string} */
+            status?: "PENDING_CONFIRMATION" | "DEFERRED" | "AUTHORIZED" | "HELD" | "CAPTURED" | "PARTIALLY_REFUNDED" | "REFUNDED" | "CANCELLED" | "DISPUTED";
+            /** Format: int64 */
+            faceAmount?: number;
+            /** Format: int64 */
+            chargeAmount?: number;
+            /** Format: int64 */
+            applicationFeeAmount?: number;
+            /** Format: int64 */
+            refundedAmount?: number;
+            /** Format: date-time */
+            createdAt?: string;
+        };
         ApiResponseConnectStatusResponse: {
             data?: components["schemas"]["ConnectStatusResponse"];
         };
@@ -66191,7 +66611,6 @@ export interface components {
             data?: components["schemas"]["OrgTeamSummaryResponse"][];
         };
         OrgTeamSummaryResponse: {
-            /** Format: uuid */
             id?: string;
             name?: string;
             iconUrl?: string;
@@ -66223,7 +66642,6 @@ export interface components {
         ChildOrganizationResponse: {
             /** Format: int64 */
             id?: number;
-            /** Format: uuid */
             publicId?: string;
             name?: string;
             nickname1?: string;
@@ -66240,7 +66658,6 @@ export interface components {
         AncestorOrganizationResponse: {
             /** Format: int64 */
             id?: number;
-            /** Format: uuid */
             publicId?: string;
             name?: string;
             nickname1?: string;
@@ -66409,6 +66826,9 @@ export interface components {
             /** Format: int64 */
             resolvedTargetOrganizationId?: number;
         };
+        ApiResponseListScorekeeperResponse: {
+            data?: components["schemas"]["ScorekeeperResponse"][];
+        };
         ApiResponseRankingSummaryResponse: {
             data?: components["schemas"]["RankingSummaryResponse"];
         };
@@ -66510,6 +66930,9 @@ export interface components {
         PagedResponseMatchSummaryResponse: {
             data?: components["schemas"]["MatchSummaryResponse"][];
             meta?: components["schemas"]["PageMeta"];
+        };
+        ApiResponseMatchSummaryResponse: {
+            data?: components["schemas"]["MatchSummaryResponse"];
         };
         ApiResponseTeamMatchStatsResponse: {
             data?: components["schemas"]["TeamMatchStatsResponse"];
@@ -66642,11 +67065,11 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         ApiResponseListOrgWideSafetyCheckDto: {
@@ -66719,11 +67142,11 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         ApiResponseListPointCardProviderResponse: {
@@ -66750,11 +67173,11 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         PagedResponsePaymentRequestResponse: {
@@ -66876,15 +67299,14 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         OrganizationSummaryResponse: {
-            /** Format: uuid */
             id?: string;
             name?: string;
             orgType?: string;
@@ -67200,8 +67622,9 @@ export interface components {
         MyTeamResponse: {
             /** Format: int64 */
             id?: number;
-            /** Format: uuid */
             publicId?: string;
+            /** Format: int64 */
+            organizationId?: number;
             name?: string;
             iconUrl?: string;
             visibility?: string;
@@ -67337,6 +67760,40 @@ export interface components {
             overdueSince?: string;
             overdue?: boolean;
         };
+        ApiResponsePayableDuesResponse: {
+            data?: components["schemas"]["PayableDuesResponse"];
+        };
+        PayableDueItem: {
+            /** Format: int64 */
+            beneficiaryUserId?: number;
+            beneficiaryDisplayName?: string;
+            scopeType?: string;
+            /** Format: int64 */
+            scopeId?: number;
+            scopeName?: string;
+            /** Format: int64 */
+            paymentItemId?: number;
+            itemName?: string;
+            /** Format: int32 */
+            faceAmount?: number;
+            /** Format: int32 */
+            payerSurcharge?: number;
+            /** Format: int32 */
+            totalCharge?: number;
+            /** Format: date */
+            dueDate?: string;
+            kind?: string;
+            authorizationVia?: string;
+            alreadyPaid?: boolean;
+            /** Format: int64 */
+            paidByUserId?: number;
+            paidByDisplayName?: string;
+            /** Format: date-time */
+            paidAt?: string;
+        };
+        PayableDuesResponse: {
+            items?: components["schemas"]["PayableDueItem"][];
+        };
         CursorPagedResponseMyOrganizationResponse: {
             data?: components["schemas"]["MyOrganizationResponse"][];
             meta?: components["schemas"]["CursorMeta"];
@@ -67344,7 +67801,6 @@ export interface components {
         MyOrganizationResponse: {
             /** Format: int64 */
             id?: number;
-            /** Format: uuid */
             publicId?: string;
             name?: string;
             iconUrl?: string;
@@ -68057,7 +68513,6 @@ export interface components {
         ScopeTabItemResponse: {
             /** Format: int64 */
             scope_id?: number;
-            /** Format: uuid */
             public_id?: string;
             scope_type?: string;
             name?: string;
@@ -68306,11 +68761,11 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         ApiResponseExportStatusResponse: {
@@ -68807,11 +69262,11 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         NameDisclosureChangeLogResponse: {
@@ -68992,11 +69447,11 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         UserRoleEntity: {
@@ -69805,7 +70260,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
                 threadId: number;
             };
             cookie?: never;
@@ -69829,7 +70284,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
                 threadId: number;
             };
             cookie?: never;
@@ -69857,7 +70312,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
                 threadId: number;
             };
             cookie?: never;
@@ -69879,7 +70334,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
                 threadId: number;
                 replyId: number;
             };
@@ -69908,7 +70363,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
                 threadId: number;
                 replyId: number;
             };
@@ -69931,7 +70386,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
                 categoryId: number;
             };
             cookie?: never;
@@ -69955,7 +70410,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
                 categoryId: number;
             };
             cookie?: never;
@@ -69983,7 +70438,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
                 categoryId: number;
             };
             cookie?: never;
@@ -70007,7 +70462,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
                 folderId: string;
             };
             cookie?: never;
@@ -70035,7 +70490,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
                 folderId: string;
             };
             cookie?: never;
@@ -75228,7 +75683,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -75250,7 +75705,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -75276,7 +75731,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -75300,7 +75755,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 userId: number;
             };
             cookie?: never;
@@ -75325,7 +75780,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -77260,7 +77715,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -77282,7 +77737,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -77308,7 +77763,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -77332,7 +77787,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 userId: number;
             };
             cookie?: never;
@@ -77357,7 +77812,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -84008,7 +84463,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
             };
             cookie?: never;
         };
@@ -84031,7 +84486,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
             };
             cookie?: never;
         };
@@ -84061,7 +84516,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
                 threadId: number;
             };
             cookie?: never;
@@ -84085,7 +84540,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
                 threadId: number;
             };
             cookie?: never;
@@ -84115,7 +84570,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
                 threadId: number;
             };
             cookie?: never;
@@ -84139,7 +84594,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
                 threadId: number;
             };
             cookie?: never;
@@ -84161,7 +84616,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
                 threadId: number;
             };
             cookie?: never;
@@ -84185,7 +84640,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
                 threadId: number;
             };
             cookie?: never;
@@ -84209,7 +84664,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
                 threadId: number;
             };
             cookie?: never;
@@ -84237,7 +84692,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
             };
             cookie?: never;
         };
@@ -84260,7 +84715,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
             };
             cookie?: never;
         };
@@ -84287,7 +84742,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
             };
             cookie?: never;
         };
@@ -84310,7 +84765,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
             };
             cookie?: never;
         };
@@ -86410,6 +86865,32 @@ export interface operations {
             };
         };
     };
+    checkout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                feeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TournamentFeeCheckoutRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTournamentFeeCheckoutResponse"];
+                };
+            };
+        };
+    };
     createPersonalTodo: {
         parameters: {
             query?: never;
@@ -86801,6 +87282,30 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseVideoUploadUrlResponse"];
+                };
+            };
+        };
+    };
+    getImageUploadUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImageUploadUrlRequest"];
+            };
+        };
+        responses: {
+            /** @description URL 発行成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseImageUploadUrlResponse"];
                 };
             };
         };
@@ -94508,7 +95013,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -94528,7 +95033,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 applicationId: number;
             };
             cookie?: never;
@@ -94549,7 +95054,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 applicationId: number;
             };
             cookie?: never;
@@ -94570,7 +95075,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -94594,7 +95099,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -94616,7 +95121,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -94644,7 +95149,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -94666,7 +95171,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -94692,7 +95197,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -94714,7 +95219,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -94740,7 +95245,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -94762,7 +95267,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -94784,7 +95289,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -94806,7 +95311,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -94832,7 +95337,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -94854,7 +95359,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -99677,7 +100182,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -99697,7 +100202,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 applicationId: number;
             };
             cookie?: never;
@@ -99718,7 +100223,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 applicationId: number;
             };
             cookie?: never;
@@ -99739,7 +100244,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -99763,7 +100268,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -99785,7 +100290,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -99813,7 +100318,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -99835,7 +100340,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -99861,7 +100366,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -99883,7 +100388,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -99909,7 +100414,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -99931,7 +100436,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -99953,7 +100458,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -99975,7 +100480,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -100001,7 +100506,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -100023,7 +100528,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -101674,7 +102179,7 @@ export interface operations {
             };
         };
     };
-    checkout: {
+    checkout_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -101695,6 +102200,56 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseCheckoutResponse"];
+                };
+            };
+        };
+    };
+    listScorekeepers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                tId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListScorekeeperResponse"];
+                };
+            };
+        };
+    };
+    addScorekeeper: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                tId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateScorekeeperRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScorekeeperResponse"];
                 };
             };
         };
@@ -107094,6 +107649,30 @@ export interface operations {
             };
         };
     };
+    bulkCheckout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkCheckoutRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBulkCheckoutResponse"];
+                };
+            };
+        };
+    };
     regenerateToken: {
         parameters: {
             query?: never;
@@ -110918,7 +111497,7 @@ export interface operations {
         parameters: {
             query: {
                 scope_type: string;
-                scope_id: number;
+                scope_id: string;
                 scope_village_id?: string;
                 category_id?: number;
                 page?: number;
@@ -111189,7 +111768,7 @@ export interface operations {
         parameters: {
             query: {
                 scope_type: string;
-                scope_id: number;
+                scope_id: string;
                 scope_village_id?: string;
             };
             header?: never;
@@ -114582,7 +115161,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
                 threadId: number;
             };
             cookie?: never;
@@ -117952,7 +118531,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -117974,7 +118553,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -117994,7 +118573,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -118020,7 +118599,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -118040,7 +118619,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -118062,7 +118641,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -118088,7 +118667,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -118108,7 +118687,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -118130,7 +118709,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -118156,7 +118735,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 groupId: number;
             };
             cookie?: never;
@@ -118177,7 +118756,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 groupId: number;
             };
             cookie?: never;
@@ -118204,7 +118783,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 officerId: number;
             };
             cookie?: never;
@@ -118225,7 +118804,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 officerId: number;
             };
             cookie?: never;
@@ -118252,7 +118831,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 userId: number;
             };
             cookie?: never;
@@ -118277,7 +118856,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 fieldId: number;
             };
             cookie?: never;
@@ -118298,7 +118877,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 fieldId: number;
             };
             cookie?: never;
@@ -118325,7 +118904,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -120435,7 +121014,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -120457,7 +121036,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -120477,7 +121056,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -120503,7 +121082,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -120523,7 +121102,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -120543,7 +121122,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -120565,7 +121144,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -120591,7 +121170,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 groupId: number;
             };
             cookie?: never;
@@ -120612,7 +121191,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 groupId: number;
             };
             cookie?: never;
@@ -120639,7 +121218,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 officerId: number;
             };
             cookie?: never;
@@ -120660,7 +121239,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 officerId: number;
             };
             cookie?: never;
@@ -120687,7 +121266,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 userId: number;
             };
             cookie?: never;
@@ -120712,7 +121291,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 fieldId: number;
             };
             cookie?: never;
@@ -120733,7 +121312,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 fieldId: number;
             };
             cookie?: never;
@@ -120760,7 +121339,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -125929,7 +126508,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
             };
             cookie?: never;
         };
@@ -125956,7 +126535,7 @@ export interface operations {
             header?: never;
             path: {
                 scopeType: string;
-                scopeId: number;
+                scopeId: string;
             };
             cookie?: never;
         };
@@ -126942,6 +127521,26 @@ export interface operations {
             };
         };
     };
+    getMyTournamentFees: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMyTournamentFeesResponse"];
+                };
+            };
+        };
+    };
     getChildTodos: {
         parameters: {
             query?: never;
@@ -127171,7 +127770,7 @@ export interface operations {
         parameters: {
             query?: {
                 scopeType?: string;
-                scopeId?: number;
+                scopeId?: string;
                 scopeVillageId?: string;
                 size?: number;
             };
@@ -128595,6 +129194,29 @@ export interface operations {
             };
         };
     };
+    exportPaymentsCsv: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                itemId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+        };
+    };
     list_64: {
         parameters: {
             query?: never;
@@ -129617,6 +130239,30 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListFolderResponse"];
+                };
+            };
+        };
+    };
+    getFeeStatement: {
+        parameters: {
+            query?: {
+                period?: string;
+            };
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFeeStatementResponse"];
                 };
             };
         };
@@ -130813,7 +131459,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -130837,7 +131483,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -130859,7 +131505,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -130883,7 +131529,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -130905,7 +131551,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -130929,7 +131575,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -130951,7 +131597,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -130986,29 +131632,6 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponsePaymentSummaryResponse"];
-                };
-            };
-        };
-    };
-    exportPayments: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-                itemId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": string;
                 };
             };
         };
@@ -133966,7 +134589,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -134814,6 +135437,77 @@ export interface operations {
             };
         };
     };
+    getEscrow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRecruitmentPaymentResponse"];
+                };
+            };
+        };
+    };
+    getRecruitmentPaymentIntent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                listingId: number;
+                participantId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRecruitmentPaymentResponse"];
+                };
+            };
+        };
+    };
+    listReceivedEscrows: {
+        parameters: {
+            query: {
+                scopeKind: "USER" | "TEAM" | "ORG";
+                scopeId: number;
+                status?: "PENDING_CONFIRMATION" | "DEFERRED" | "AUTHORIZED" | "HELD" | "CAPTURED" | "PARTIALLY_REFUNDED" | "REFUNDED" | "CANCELLED" | "DISPUTED";
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseReceivedEscrowResponse"];
+                };
+            };
+        };
+    };
     getStatus_6: {
         parameters: {
             query: {
@@ -134882,7 +135576,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -134906,7 +135600,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -134930,7 +135624,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -134954,7 +135648,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -134979,7 +135673,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -135001,7 +135695,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -135023,7 +135717,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -135048,7 +135742,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -135097,7 +135791,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -136237,6 +136931,54 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListGanttTodoResponse"];
+                };
+            };
+        };
+    };
+    resolveBySchedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                teamId: number;
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchSummaryResponse"];
+                };
+            };
+        };
+    };
+    resolveByFixture: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                teamId: number;
+                fixtureId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchSummaryResponse"];
                 };
             };
         };
@@ -137457,7 +138199,7 @@ export interface operations {
             };
         };
     };
-    exportPayments_1: {
+    exportPayments: {
         parameters: {
             query?: never;
             header?: never;
@@ -137807,6 +138549,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListMentionResponse"];
+                };
+            };
+        };
+    };
+    getReceipt_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                memberPaymentId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReceiptResponse"];
                 };
             };
         };
@@ -138366,6 +139130,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListPaymentRequirementResponse"];
+                };
+            };
+        };
+    };
+    getPayableDues: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePayableDuesResponse"];
                 };
             };
         };
@@ -141617,7 +142401,7 @@ export interface operations {
             };
         };
     };
-    getReceipt_1: {
+    getReceipt_2: {
         parameters: {
             query: {
                 scopeType: string;
@@ -142869,7 +143653,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 userId: number;
             };
             cookie?: never;
@@ -142890,7 +143674,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -142910,7 +143694,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 tokenId: number;
             };
             cookie?: never;
@@ -142931,7 +143715,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 userId: number;
             };
             cookie?: never;
@@ -143361,7 +144145,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 userId: number;
             };
             cookie?: never;
@@ -143382,7 +144166,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
             };
             cookie?: never;
         };
@@ -143402,7 +144186,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 tokenId: number;
             };
             cookie?: never;
@@ -143423,7 +144207,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                publicId: string;
+                slug: string;
                 userId: number;
             };
             cookie?: never;
@@ -143532,6 +144316,28 @@ export interface operations {
                 orgId: number;
                 tournamentId: number;
                 feeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    removeScorekeeper: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                tId: number;
+                skId: string;
             };
             cookie?: never;
         };

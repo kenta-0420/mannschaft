@@ -54,6 +54,12 @@ export default {
       "location": "Lugar",
       "price": "Precio",
       "paymentEnabled": "Pago habilitado",
+      "payeeKind": "Tipo de destinatario",
+      "payeeKindUser": "Individual (usuario)",
+      "payeeKindTeam": "Equipo",
+      "payeeKindOrg": "Organización",
+      "payeeUser": "Destinatario",
+      "payeeUserPlaceholder": "Seleccionar destinatario",
       "cancellationPolicy": "Política de cancelación",
       "imageUrl": "URL de imagen",
       "note": "Nota",
@@ -71,6 +77,7 @@ export default {
       "cancelMyApplication": "Cancelar mi inscripción",
       "joinWaitlist": "Unirse a la lista de espera",
       "viewDetails": "Ver detalles",
+      "confirmApplication": "Confirmar",
       "createPolicy": "Crear política"
     },
     "confirmModal": {
@@ -177,6 +184,13 @@ export default {
       "applying": "Solicitando",
       "individual": "Individual",
       "team": "Equipo"
+    },
+    "payee": {
+      "required": "Por favor seleccione un tipo de destinatario",
+      "userRequired": "Por favor seleccione un usuario destinatario",
+      "PAYMENT_C011": "No se ha especificado el tipo de destinatario (payeeKind)",
+      "PAYMENT_C012": "No se ha especificado el usuario destinatario",
+      "PAYMENT_C013": "El destinatario especificado no es miembro de este ámbito"
     },
     "error": {
       "RECRUITMENT_001": "Convocatoria no encontrada",

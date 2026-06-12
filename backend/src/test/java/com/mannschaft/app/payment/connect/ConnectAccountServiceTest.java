@@ -48,6 +48,8 @@ class ConnectAccountServiceTest {
     @Mock private ConnectAccountRepository connectAccountRepository;
     @Mock private StripePaymentProvider stripePaymentProvider;
     @Mock private AccessControlService accessControlService;
+    @Mock private com.mannschaft.app.payment.escrow.EscrowTransactionRepository escrowTransactionRepository;
+    @Mock private com.mannschaft.app.payment.escrow.EscrowLifecycleService escrowLifecycleService;
 
     private ConnectAccountService service;
 
@@ -59,7 +61,7 @@ class ConnectAccountServiceTest {
         ObjectMapper objectMapper = new ObjectMapper();
         service = new ConnectAccountService(
                 connectAccountRepository, stripePaymentProvider, accessControlService,
-                resolver, objectMapper);
+                resolver, objectMapper, escrowTransactionRepository, escrowLifecycleService);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(String.valueOf(ME), null,
                         List.of(new SimpleGrantedAuthority("ROLE_USER"))));
@@ -208,5 +210,89 @@ class ConnectAccountServiceTest {
         verify(stripePaymentProvider, never()).createConnectAccount(any(), any(), anyLong());
         assertThat(response.onboardingStatus()).isEqualTo(OnboardingStatus.ONBOARDING);
         assertThat(response.stripeAccountId()).isEqualTo("acct_existing");
+    }
+
+    // ── F22.1 第三陣: account.updated による HELD 昇格 ──
+
+    @Test
+    @DisplayName("第三陣: payouts_enabled false→true で HELD escrow を各件昇格へ委譲する")
+    void accountUpdated_promotesHeldEscrowsOnPayoutsEnabled() {
+        ConnectAccountEntity acct = account(ScopeKind.TEAM, 42L);
+        acct.setPayoutsEnabled(false); // 旧値 false
+        UUID acctId = UUID.fromString("019607a0-0000-7000-8000-0000000000c1");
+        acct.setId(acctId);
+        given(connectAccountRepository.findByStripeAccountId("acct_existing"))
+                .willReturn(Optional.of(acct));
+        given(connectAccountRepository.save(any())).willAnswer(i -> i.getArgument(0));
+
+        UUID e1 = UUID.randomUUID();
+        UUID e2 = UUID.randomUUID();
+        var held1 = heldEscrow(e1, acctId);
+        var held2 = heldEscrow(e2, acctId);
+        given(escrowTransactionRepository.findByPayeeConnectAccountIdAndStatus(
+                eq(acctId), eq(com.mannschaft.app.payment.escrow.EscrowStatus.HELD)))
+                .willReturn(List.of(held1, held2));
+
+        service.applyAccountUpdated("acct_existing", true, true, List.of());
+
+        // 鏡像更新は壊さず（payouts_enabled=true 反映）、HELD escrow を各件昇格へ委譲する。
+        assertThat(acct.getPayoutsEnabled()).isTrue();
+        verify(escrowLifecycleService).promoteHeldEscrow(e1);
+        verify(escrowLifecycleService).promoteHeldEscrow(e2);
+    }
+
+    @Test
+    @DisplayName("第三陣: payouts_enabled が変化しない（true→true）と昇格しない")
+    void accountUpdated_noPromotionWhenPayoutsUnchanged() {
+        ConnectAccountEntity acct = account(ScopeKind.TEAM, 42L);
+        acct.setPayoutsEnabled(true); // 旧値 true
+        given(connectAccountRepository.findByStripeAccountId("acct_existing"))
+                .willReturn(Optional.of(acct));
+        given(connectAccountRepository.save(any())).willAnswer(i -> i.getArgument(0));
+
+        service.applyAccountUpdated("acct_existing", true, true, List.of());
+
+        verify(escrowTransactionRepository, never())
+                .findByPayeeConnectAccountIdAndStatus(any(), any());
+        verify(escrowLifecycleService, never()).promoteHeldEscrow(any());
+    }
+
+    @Test
+    @DisplayName("第三陣: 1 件の昇格失敗でも他件の昇格は継続する（個別失敗分離）")
+    void accountUpdated_promotionFailureDoesNotStopOthers() {
+        ConnectAccountEntity acct = account(ScopeKind.TEAM, 42L);
+        acct.setPayoutsEnabled(false);
+        UUID acctId = UUID.fromString("019607a0-0000-7000-8000-0000000000c2");
+        acct.setId(acctId);
+        given(connectAccountRepository.findByStripeAccountId("acct_existing"))
+                .willReturn(Optional.of(acct));
+        given(connectAccountRepository.save(any())).willAnswer(i -> i.getArgument(0));
+
+        UUID bad = UUID.randomUUID();
+        UUID good = UUID.randomUUID();
+        given(escrowTransactionRepository.findByPayeeConnectAccountIdAndStatus(
+                eq(acctId), eq(com.mannschaft.app.payment.escrow.EscrowStatus.HELD)))
+                .willReturn(List.of(heldEscrow(bad, acctId), heldEscrow(good, acctId)));
+        doThrow(new RuntimeException("stripe down"))
+                .when(escrowLifecycleService).promoteHeldEscrow(bad);
+
+        service.applyAccountUpdated("acct_existing", true, true, List.of());
+
+        // bad で例外でも good は昇格される（握りつぶさず継続）。
+        verify(escrowLifecycleService).promoteHeldEscrow(good);
+    }
+
+    private com.mannschaft.app.payment.escrow.EscrowTransactionEntity heldEscrow(UUID id, UUID payeeAccountId) {
+        var e = com.mannschaft.app.payment.escrow.EscrowTransactionEntity.builder()
+                .sourceKind(com.mannschaft.app.payment.escrow.EscrowSourceKind.RECRUITMENT)
+                .sourceId(1L).sourceParticipantId(2L)
+                .captureMode(com.mannschaft.app.payment.escrow.EscrowCaptureMode.MANUAL)
+                .payerScopeKind(ScopeKind.USER).payerScopeId(9L)
+                .payeeKind(ScopeKind.TEAM).payeeConnectAccountId(payeeAccountId)
+                .faceAmount(10_000L).amount(10_250L).applicationFeeAmount(500L)
+                .currency("JPY").status(com.mannschaft.app.payment.escrow.EscrowStatus.HELD)
+                .build();
+        e.setId(id);
+        return e;
     }
 }

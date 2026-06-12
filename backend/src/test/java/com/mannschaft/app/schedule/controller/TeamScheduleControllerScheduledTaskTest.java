@@ -66,7 +66,7 @@ class TeamScheduleControllerScheduledTaskTest {
     private MockMvc mockMvc;
 
     private static final Long USER_ID = 100L;
-    private static final UUID TEAM_UUID = UUID.fromString("00000000-0000-7000-8000-00000000000a");
+    private static final String TEAM_SLUG = "test-team-0a";
     private static final Long TEAM_ID = 10L;
     private static final Long SCHEDULE_ID = 200L;
     private static final UUID TASK_ID = UUID.fromString("019607a0-0000-7000-8000-000000000099");
@@ -85,7 +85,7 @@ class TeamScheduleControllerScheduledTaskTest {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(String.valueOf(USER_ID), null,
                         List.of(new SimpleGrantedAuthority("ROLE_USER"))));
-        given(teamService.resolveTeamId(TEAM_UUID)).willReturn(TEAM_ID);
+        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
     }
 
     @AfterEach
@@ -113,7 +113,7 @@ class TeamScheduleControllerScheduledTaskTest {
                     eq(TASK_ID), eq(CalendarSyncScopeType.TEAM), eq(TEAM_ID));
 
             mockMvc.perform(delete("/api/v1/teams/{teamId}/schedules/{scheduleId}/scheduled-tasks/{taskId}",
-                            TEAM_UUID, SCHEDULE_ID, TASK_ID))
+                            TEAM_SLUG, SCHEDULE_ID, TASK_ID))
                     .andExpect(status().isNoContent());
         }
 
@@ -126,7 +126,7 @@ class TeamScheduleControllerScheduledTaskTest {
                     .when(scheduledTaskService).cancelTask(any(UUID.class), any(), anyLong());
 
             mockMvc.perform(delete("/api/v1/teams/{teamId}/schedules/{scheduleId}/scheduled-tasks/{taskId}",
-                            TEAM_UUID, SCHEDULE_ID, TASK_ID))
+                            TEAM_SLUG, SCHEDULE_ID, TASK_ID))
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.error.code").value("SCHEDULE_092"));
         }
@@ -140,7 +140,7 @@ class TeamScheduleControllerScheduledTaskTest {
                     .when(scheduledTaskService).cancelTask(any(UUID.class), any(), anyLong());
 
             mockMvc.perform(delete("/api/v1/teams/{teamId}/schedules/{scheduleId}/scheduled-tasks/{taskId}",
-                            TEAM_UUID, SCHEDULE_ID, TASK_ID))
+                            TEAM_SLUG, SCHEDULE_ID, TASK_ID))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("SCHEDULE_091"));
         }

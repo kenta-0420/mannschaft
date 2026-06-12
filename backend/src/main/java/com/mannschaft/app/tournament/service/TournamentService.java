@@ -257,11 +257,11 @@ public class TournamentService {
                 request.getLossPoints() != null ? request.getLossPoints() : tournament.getLossPoints(),
                 request.getHasDraw() != null ? request.getHasDraw() : tournament.getHasDraw(),
                 request.getHasSets() != null ? request.getHasSets() : tournament.getHasSets(),
-                request.getSetsToWin(),
+                request.getSetsToWin() != null ? request.getSetsToWin() : tournament.getSetsToWin(),
                 request.getHasExtraTime() != null ? request.getHasExtraTime() : tournament.getHasExtraTime(),
                 request.getHasPenalties() != null ? request.getHasPenalties() : tournament.getHasPenalties(),
                 request.getScoreUnitLabel() != null ? request.getScoreUnitLabel() : tournament.getScoreUnitLabel(),
-                request.getBonusPointRules(),
+                request.getBonusPointRules() != null ? request.getBonusPointRules() : tournament.getBonusPointRules(),
                 request.getLeagueRoundType() != null ? LeagueRoundType.valueOf(request.getLeagueRoundType()) : tournament.getLeagueRoundType(),
                 request.getKnockoutLegs() != null ? request.getKnockoutLegs() : tournament.getKnockoutLegs(),
                 request.getVisibility() != null ? TournamentVisibility.valueOf(request.getVisibility()) : tournament.getVisibility());

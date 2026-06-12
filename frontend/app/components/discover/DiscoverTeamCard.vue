@@ -55,7 +55,7 @@ function formatDate(isoDate: string | null): string {
       </div>
 
       <div class="mt-4">
-        <NuxtLink :to="team.publicId ? `/public/teams/${team.publicId}` : undefined">
+        <NuxtLink :to="team.slug ? `/public/teams/${team.slug}` : undefined">
           <Button
             :label="t('public.discover.card.viewDetail')"
             severity="secondary"

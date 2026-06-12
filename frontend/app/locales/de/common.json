@@ -1519,5 +1519,19 @@
       "cancel": "Abbrechen",
       "saveError": "Anzeigereihenfolge konnte nicht gespeichert werden"
     }
+  },
+  "slug": {
+    "label": "URL-Slug",
+    "hint": "Wird in der öffentlichen URL des Teams/der Organisation verwendet (z.B. mein-team)",
+    "available": "Verfügbar",
+    "unavailable": "Dieser Slug ist bereits vergeben",
+    "checking": "Wird geprüft...",
+    "format": "Nur Kleinbuchstaben, Zahlen und Bindestriche (3-30 Zeichen)"
+  },
+  "team_visibility": {
+    "PUBLIC": "Öffentlich",
+    "GUESTS_AND_ABOVE": "Gäste und höher",
+    "SUPPORTERS_AND_ABOVE": "Unterstützer und höher",
+    "MEMBERS_AND_ABOVE": "Mitglieder und höher"
   }
 }

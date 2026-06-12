@@ -4,8 +4,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.util.UUID;
-
 /**
  * 祖先組織1件のレスポンス DTO。
  *
@@ -25,8 +23,8 @@ public class AncestorOrganizationResponse {
     /** 祖先組織 ID（常に返す） */
     private final Long id;
 
-    /** 祖先組織 UUID（URL に使用。hidden=false のとき返す） */
-    private final UUID publicId;
+    /** 祖先組織スラッグ（URL に使用。hidden=false のとき返す） */
+    private final String slug;
 
     /** 組織名 */
     private final String name;

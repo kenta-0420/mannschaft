@@ -207,8 +207,10 @@
         "period_boundary_failed": {
           "title": "Aufzeichnung der Periodengrenze fehlgeschlagen",
           "detail": "Der Periodenwechsel konnte nicht auf dem Server gespeichert werden. Spielstand und Einsatzzeiten können ungenau sein. Bitte den Timer erneut auslösen, um es noch einmal aufzuzeichnen."
-        }
-      }
+        },
+        "complete_failed": "Spielende konnte nicht gespeichert werden"
+      },
+      "read_only_notice": "Nur Ansicht. Nur Admins, Stellvertreter und Protokollführer können erfassen"
     },
     "analytics": {
       "my_title": "Spielanalyse",
@@ -261,6 +263,40 @@
       },
       "error": {
         "load_failed": "Statistiken konnten nicht geladen werden"
+      },
+      "team_title": "Team-Spielanalyse",
+      "team_subtitle": "Visualisiert Sieg/Niederlage, Tore, Spielerranglisten und aktuelle Form",
+      "team": {
+        "metric": {
+          "total_matches": "Spiele",
+          "win_draw_loss": "S/U/N",
+          "goals_for": "Tore",
+          "goals_against": "Gegentore",
+          "goal_difference": "Tordifferenz"
+        },
+        "series": {
+          "points": "Punkte (kumulativ)",
+          "player_goals": "Tore",
+          "matches_by_kind": "Spiele"
+        },
+        "chart": {
+          "result_title": "Ergebnisübersicht",
+          "player_goals_title": "Torschützenrangliste",
+          "recent_form_title": "Aktuelle Form (Punktetrend)",
+          "matches_by_kind_title": "Spiele nach Typ"
+        }
+      },
+      "widget": {
+        "summary": {
+          "title": "Spielzusammenfassung",
+          "wdl_label": "S/U/N",
+          "goals_label": "T/GT",
+          "recent_form": "Aktuelle Form",
+          "in_progress_label": "Laufend",
+          "resume_recording": "Aufzeichnung fortsetzen",
+          "no_matches": "Noch keine Spielaufzeichnungen",
+          "view_analytics": "Detailanalyse anzeigen"
+        }
       }
     },
     "kind": {
@@ -324,6 +360,34 @@
       "DF": "Verteidiger",
       "MF": "Mittelfeldspieler",
       "FW": "Stürmer"
+    },
+    "org_context": {
+      "resolve_failed": "Team-/Organisationsinfo konnte nicht aufgelöst werden. Bitte prüfe deine Mitgliedschaften"
+    },
+    "entry": {
+      "record_from_schedule": "Dieses Spiel aufzeichnen",
+      "record_from_schedule_hint": "Beginne mit der Aufzeichnung des Spiels für diesen Termin",
+      "resolving": "Spielaufzeichnung wird vorbereitet…"
+    },
+    "fixtures": {
+      "title": "Spielplan",
+      "back": "Zurück zum Turnier",
+      "round": "Spieltag {n}",
+      "record": "Aufzeichnen",
+      "venue_tbd": "Ort offen",
+      "date_tbd": "Datum offen",
+      "tbd_participant": "Offen",
+      "no_score": "Geplant",
+      "empty": "Noch keine Spielpaarungen",
+      "load_failed": "Spielplan konnte nicht geladen werden",
+      "record_not_participant": "Dein Team nimmt an dieser Paarung nicht teil und kann daher nicht aufgezeichnet werden",
+      "status": {
+        "SCHEDULED": "Geplant",
+        "IN_PROGRESS": "Läuft",
+        "COMPLETED": "Beendet",
+        "POSTPONED": "Verschoben",
+        "CANCELLED": "Abgesagt"
+      }
     }
   }
 }

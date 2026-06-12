@@ -1519,5 +1519,19 @@
       "cancel": "取消",
       "saveError": "保存显示顺序失败"
     }
+  },
+  "slug": {
+    "label": "URL标识",
+    "hint": "用于团队/组织的公开URL（例如：my-team）",
+    "available": "可使用",
+    "unavailable": "此标识已被使用",
+    "checking": "确认中...",
+    "format": "只能使用小写字母、数字和连字符（3〜30个字符）"
+  },
+  "team_visibility": {
+    "PUBLIC": "公开",
+    "GUESTS_AND_ABOVE": "访客及以上",
+    "SUPPORTERS_AND_ABOVE": "支持者及以上",
+    "MEMBERS_AND_ABOVE": "成员及以上"
   }
 }

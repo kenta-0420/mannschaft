@@ -23,6 +23,13 @@ feature:
     enabled: ${FEATURE_SHIFT_BUDGET_ENABLED:false}
     monthly-close-cron-enabled: ${FEATURE_SHIFT_BUDGET_MONTHLY_CRON_ENABLED:false}
 
+app:
+  # 本番環境では APP_BASE_URL を必ず設定すること（デフォルト値なし = 未設定時は起動失敗）。
+  # 例: https://app.mannschaft.com
+  # ⚠️ 末尾スラッシュなしで設定すること。URL 連結側が "/" を先頭に付加するため二重スラッシュになる。
+  # 用途: sitemap.xml・各種メールリンク・webcal URL 等の URL 組み立て
+  base-url: ${APP_BASE_URL}
+
 mannschaft:
   jwt:
     secret: ${MANNSCHAFT_JWT_SECRET}

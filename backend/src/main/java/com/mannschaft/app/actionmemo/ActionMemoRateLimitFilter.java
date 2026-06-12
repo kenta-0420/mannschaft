@@ -1,23 +1,13 @@
 package com.mannschaft.app.actionmemo;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
+import com.mannschaft.app.common.ratelimit.AbstractRateLimitFilter;
+import com.mannschaft.app.common.ratelimit.RateLimitRule;
+import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
 import java.time.Duration;
-import java.util.EnumMap;
-import java.util.Map;
 
 /**
  * F02.5 行動メモ機能のユーザー別レートリミットフィルタ。
@@ -34,25 +24,18 @@ import java.util.Map;
  * ADHD ユーザーの「思いついた瞬間に書く」摩擦ゼロ原則に矛盾しないよう、
  * ボット・スクリプト・連打バグの防御のみを目的とする。</p>
  *
- * <p><b>キャッシュ戦略</b>: Caffeine の {@code expireAfterAccess=10分} + {@code maximumSize=10000}。
- * 旧実装の {@code ConcurrentHashMap} は Eviction ポリシーが無く、ユーザー/IP ごとにバケットが
- * 永続化されるため長期稼働で OOM を引き起こす懸念があった。
- * {@link com.mannschaft.app.sync.SyncRateLimitFilter} と同一パターンで統一している。</p>
- * <ul>
- *   <li>10 分間アクセスが無いバケットは自動削除される（非アクティブなキーはメモリから消える）</li>
- *   <li>最大 10000 エントリを超えると LRU で淘汰される（想定外のキー爆発を防ぐ）</li>
- *   <li>レートリミット窓は Bucket4j の Bandwidth（1分）側が管理するため、
- *       10 分の TTL はメモリ保持期間に関する上限であって仕様に影響しない</li>
- * </ul>
- *
- * <p>エンドポイントごとに Cache を分離しているのは、片方のトラフィックが
- * もう片方のエントリを LRU で押し出すのを避けるため
- * （{@link com.mannschaft.app.sync.SyncRateLimitFilter} と同じ方針）。</p>
+ * <p><b>Valkey 化（Phase 2 第一陣）</b>: 旧実装の Bucket4j + Caffeine（プロセス内カウント）は
+ * ECS 複数タスク構成でタスク数に比例して実効上限が緩むため、
+ * {@link ValkeyRateLimiter}（docs/security/06 §4.3）に移行した。
+ * エンドポイント判定と (zone, limit, window) 宣言のみ本クラスが持ち、
+ * カウント・§4.3 標準ヘッダー・429 応答は {@link AbstractRateLimitFilter} が担う。
+ * エンドポイントごとに zone を分離しているのは旧実装の「エンドポイント別 Cache 分離」と
+ * 同じ趣旨（互いのカウントが干渉しない）。</p>
  */
 @Component
-public class ActionMemoRateLimitFilter extends OncePerRequestFilter {
+public class ActionMemoRateLimitFilter extends AbstractRateLimitFilter {
 
-    /** エンドポイント別の設定 */
+    /** エンドポイント別の設定（パス・メソッド・上限値は旧実装から不変）。 */
     private enum Endpoint {
         CREATE_MEMO("/api/v1/action-memos", "POST", 60),
         PUBLISH_DAILY("/api/v1/action-memos/publish-daily", "POST", 5),
@@ -75,26 +58,14 @@ public class ActionMemoRateLimitFilter extends OncePerRequestFilter {
         }
     }
 
-    /** バケット保持期間（非アクセス時）。レート窓（1分）より十分長く、OOM は防ぐ。 */
-    private static final Duration BUCKET_TTL = Duration.ofMinutes(10);
+    /** ウィンドウ長（旧 Bucket4j Bandwidth と同じ 1 分）。 */
+    private static final Duration WINDOW = Duration.ofMinutes(1);
 
-    /** キャッシュ最大エントリ数。想定外のキー爆発時に LRU で古いものから淘汰する。 */
-    private static final long MAX_BUCKETS = 10_000L;
+    /** Valkey zone 接頭辞。エンドポイント名と組み合わせてバケット名前空間を一意化する。 */
+    private static final String ZONE_PREFIX = "action-memo:";
 
-    /**
-     * エンドポイント別のバケットキャッシュ。エンドポイント間で LRU 淘汰が干渉しないよう
-     * それぞれ独立した Cache として保持する。
-     */
-    private final Map<Endpoint, Cache<String, Bucket>> bucketsByEndpoint;
-
-    public ActionMemoRateLimitFilter() {
-        this.bucketsByEndpoint = new EnumMap<>(Endpoint.class);
-        for (Endpoint ep : Endpoint.values()) {
-            this.bucketsByEndpoint.put(ep, Caffeine.<String, Bucket>newBuilder()
-                    .expireAfterAccess(BUCKET_TTL)
-                    .maximumSize(MAX_BUCKETS)
-                    .build());
-        }
+    public ActionMemoRateLimitFilter(ObjectProvider<ValkeyRateLimiter> rateLimiterProvider) {
+        super(rateLimiterProvider);
     }
 
     @Override
@@ -108,51 +79,12 @@ public class ActionMemoRateLimitFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                     HttpServletResponse response,
-                                     FilterChain chain) throws ServletException, IOException {
-        Endpoint endpoint = resolveEndpoint(request);
-        if (endpoint == null) {
-            chain.doFilter(request, response);
-            return;
-        }
-
-        String userKey = resolveUserKey(request);
-        Cache<String, Bucket> cache = bucketsByEndpoint.get(endpoint);
-        Bucket bucket = cache.get(userKey, k -> newBucket(endpoint.capacityPerMinute));
-
-        if (bucket.tryConsume(1)) {
-            chain.doFilter(request, response);
-        } else {
-            response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-            response.setHeader("Retry-After", "60");
-        }
-    }
-
-    private Endpoint resolveEndpoint(HttpServletRequest request) {
+    protected RateLimitRule resolveRule(HttpServletRequest request) {
         for (Endpoint ep : Endpoint.values()) {
             if (ep.matches(request)) {
-                return ep;
+                return new RateLimitRule(ZONE_PREFIX + ep.name(), ep.capacityPerMinute, WINDOW);
             }
         }
         return null;
-    }
-
-    /**
-     * 認証済みなら userId を、未認証なら IP をキーにする。
-     */
-    private String resolveUserKey(HttpServletRequest request) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated()
-                && !"anonymousUser".equals(auth.getPrincipal())) {
-            return "u:" + auth.getName();
-        }
-        return "ip:" + request.getRemoteAddr();
-    }
-
-    private Bucket newBucket(int capacityPerMinute) {
-        return Bucket.builder()
-                .addLimit(Bandwidth.simple(capacityPerMinute, Duration.ofMinutes(1)))
-                .build();
     }
 }

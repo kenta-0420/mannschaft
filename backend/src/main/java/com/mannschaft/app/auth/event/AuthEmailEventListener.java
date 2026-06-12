@@ -27,15 +27,15 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AuthEmailEventListener {
 
-    @Value("${mannschaft.email.frontend-url:http://localhost:3000}")
-    private String frontendUrl;
+    @Value("${app.base-url}")
+    private String baseUrl;
 
     private final EmailOutboxService emailOutboxService;
 
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleUserRegistered(UserRegisteredEvent event) {
-        String verifyUrl = frontendUrl + "/verify-email?token=" + event.getRawToken();
+        String verifyUrl = baseUrl + "/verify-email?token=" + event.getRawToken();
         emailOutboxService.enqueue(new EmailOutboxRequest(
                 "VERIFICATION",
                 "ja",
@@ -56,7 +56,7 @@ public class AuthEmailEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleEmailVerificationResent(EmailVerificationResentEvent event) {
-        String verifyUrl = frontendUrl + "/verify-email?token=" + event.getRawToken();
+        String verifyUrl = baseUrl + "/verify-email?token=" + event.getRawToken();
         // 再送時は displayName が取れないため空文字、ソースイベントは「再送ごとに新規 nonce」で衝突回避
         emailOutboxService.enqueue(new EmailOutboxRequest(
                 "VERIFICATION",
@@ -78,7 +78,7 @@ public class AuthEmailEventListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handlePasswordResetRequested(PasswordResetRequestedEvent event) {
-        String resetUrl = frontendUrl + "/reset-password?token=" + event.getRawToken();
+        String resetUrl = baseUrl + "/reset-password?token=" + event.getRawToken();
         emailOutboxService.enqueue(new EmailOutboxRequest(
                 "PASSWORD_RESET",
                 "ja",

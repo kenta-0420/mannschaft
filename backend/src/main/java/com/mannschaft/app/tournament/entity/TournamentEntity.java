@@ -104,10 +104,11 @@ public class TournamentEntity extends BaseEntity {
     @Builder.Default
     private Integer knockoutLegs = 1;
 
+    // F08.7 順位UI Wave0: 新規大会の既定は PUBLIC（マスター裁可済）。
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
-    private TournamentVisibility visibility = TournamentVisibility.MEMBERS_ONLY;
+    private TournamentVisibility visibility = TournamentVisibility.PUBLIC;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

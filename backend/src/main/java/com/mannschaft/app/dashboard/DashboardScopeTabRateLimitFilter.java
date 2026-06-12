@@ -1,20 +1,12 @@
 package com.mannschaft.app.dashboard;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
+import com.mannschaft.app.common.ratelimit.AbstractRateLimitFilter;
+import com.mannschaft.app.common.ratelimit.RateLimitRule;
+import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
 import java.time.Duration;
 
 /**
@@ -26,25 +18,28 @@ import java.time.Duration;
  *
  * <p>JWT 認証後に確定した SecurityContext から userId を解決するため、SecurityConfig では
  * {@code addFilterAfter(..., JwtAuthenticationFilter.class)} で登録する
- * （{@link com.mannschaft.app.actionmemo.ActionMemoRateLimitFilter} と同方針）。</p>
+ * （{@link com.mannschaft.app.actionmemo.ActionMemoRateLimitFilter} と同方針）。
+ * {@link com.mannschaft.app.config.SecurityConfig#dashboardScopeTabRateLimitFilterRegistration}
+ * で @Component 自動登録を無効化し、二重登録を防ぐ。</p>
  *
- * <p>キャッシュ戦略: Caffeine の {@code expireAfterAccess=10分} + {@code maximumSize=10000}。
- * 非アクティブなバケットは自動削除され、OOM を防ぐ。</p>
+ * <p><b>Valkey 化（第二陣B）</b>: 旧実装の Bucket4j + Caffeine（プロセス内カウント）は
+ * ECS 複数タスク構成でタスク数に比例して実効上限が緩むため、
+ * {@link ValkeyRateLimiter}（docs/security/06 §4.3）に移行した。
+ * エンドポイント判定と (zone, limit, window) 宣言のみ本クラスが持ち、
+ * カウント・§4.3 標準ヘッダー・429 応答は {@link AbstractRateLimitFilter} が担う。</p>
  */
 @Component
-public class DashboardScopeTabRateLimitFilter extends OncePerRequestFilter {
+public class DashboardScopeTabRateLimitFilter extends AbstractRateLimitFilter {
 
     private static final String PATH = "/api/v1/dashboard/scope-tabs/order";
     private static final String METHOD = "PUT";
     private static final int CAPACITY_PER_MINUTE = 30;
+    private static final Duration WINDOW = Duration.ofMinutes(1);
+    private static final String ZONE = "dashboard:scope-tabs-order";
 
-    private static final Duration BUCKET_TTL = Duration.ofMinutes(10);
-    private static final long MAX_BUCKETS = 10_000L;
-
-    private final Cache<String, Bucket> buckets = Caffeine.<String, Bucket>newBuilder()
-            .expireAfterAccess(BUCKET_TTL)
-            .maximumSize(MAX_BUCKETS)
-            .build();
+    public DashboardScopeTabRateLimitFilter(ObjectProvider<ValkeyRateLimiter> rateLimiterProvider) {
+        super(rateLimiterProvider);
+    }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -52,35 +47,10 @@ public class DashboardScopeTabRateLimitFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain chain) throws ServletException, IOException {
-        String userKey = resolveUserKey(request);
-        Bucket bucket = buckets.get(userKey, k -> newBucket());
-
-        if (bucket.tryConsume(1)) {
-            chain.doFilter(request, response);
-        } else {
-            response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-            response.setHeader("Retry-After", "60");
+    protected RateLimitRule resolveRule(HttpServletRequest request) {
+        if (PATH.equals(request.getServletPath()) && METHOD.equalsIgnoreCase(request.getMethod())) {
+            return new RateLimitRule(ZONE, CAPACITY_PER_MINUTE, WINDOW);
         }
-    }
-
-    /**
-     * 認証済みなら userId を、未認証なら IP をキーにする。
-     */
-    private String resolveUserKey(HttpServletRequest request) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated()
-                && !"anonymousUser".equals(auth.getPrincipal())) {
-            return "u:" + auth.getName();
-        }
-        return "ip:" + request.getRemoteAddr();
-    }
-
-    private Bucket newBucket() {
-        return Bucket.builder()
-                .addLimit(Bandwidth.simple(CAPACITY_PER_MINUTE, Duration.ofMinutes(1)))
-                .build();
+        return null;
     }
 }

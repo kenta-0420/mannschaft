@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -55,6 +56,12 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
 
     @PersistenceContext
     private EntityManager em;
+
+    private static final AtomicInteger slugCounter = new AtomicInteger(0);
+
+    private static String nextSlug() {
+        return "t-" + slugCounter.incrementAndGet();
+    }
 
     private static final Long ORG_A = 1001L;
     private static final Long ORG_B = 1002L;
@@ -193,8 +200,8 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
         @DisplayName("許可集合に含まれる可視性のみ返す")
         void onlyAllowedVisibilities() {
             Long publicTeam = persistTeam("公開", "こうかい", TeamEntity.Visibility.PUBLIC, null, null);
-            Long orgOnly = persistTeam("組織のみ", "そしきのみ", TeamEntity.Visibility.ORGANIZATION_ONLY, null, null);
-            Long priv = persistTeam("非公開", "ひこうかい", TeamEntity.Visibility.PRIVATE, null, null);
+            Long guestsAndAbove = persistTeam("ゲスト以上", "げすといじょう", TeamEntity.Visibility.GUESTS_AND_ABOVE, null, null);
+            Long membersAndAbove = persistTeam("メンバー以上", "めんばーいじょう", TeamEntity.Visibility.MEMBERS_AND_ABOVE, null, null);
 
             em.flush();
             em.clear();
@@ -206,35 +213,35 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
             assertThat(result.getContent())
                     .extracting(TeamEntity::getId)
                     .contains(publicTeam)
-                    .doesNotContain(orgOnly, priv);
+                    .doesNotContain(guestsAndAbove, membersAndAbove);
         }
 
         @Test
-        @DisplayName("PUBLIC + ORGANIZATION_ONLY 集合: PRIVATE のみ除外")
-        void publicAndOrgOnly_excludesPrivate() {
+        @DisplayName("PUBLIC + GUESTS_AND_ABOVE 集合: MEMBERS_AND_ABOVE のみ除外")
+        void publicAndGuestsAndAbove_excludesMembersAndAbove() {
             Long publicTeam = persistTeam("公開", "こうかい", TeamEntity.Visibility.PUBLIC, null, null);
-            Long orgOnly = persistTeam("組織のみ", "そしきのみ", TeamEntity.Visibility.ORGANIZATION_ONLY, null, null);
-            Long priv = persistTeam("非公開", "ひこうかい", TeamEntity.Visibility.PRIVATE, null, null);
+            Long guestsAndAbove = persistTeam("ゲスト以上", "げすといじょう", TeamEntity.Visibility.GUESTS_AND_ABOVE, null, null);
+            Long membersAndAbove = persistTeam("メンバー以上", "めんばーいじょう", TeamEntity.Visibility.MEMBERS_AND_ABOVE, null, null);
 
             em.flush();
             em.clear();
 
             Page<TeamEntity> result = teamRepository.findAll(
                     TeamSearchSpecifications.visibilityIn(
-                            EnumSet.of(TeamEntity.Visibility.PUBLIC, TeamEntity.Visibility.ORGANIZATION_ONLY)),
+                            EnumSet.of(TeamEntity.Visibility.PUBLIC, TeamEntity.Visibility.GUESTS_AND_ABOVE)),
                     pageable);
 
             assertThat(result.getContent())
                     .extracting(TeamEntity::getId)
-                    .contains(publicTeam, orgOnly)
-                    .doesNotContain(priv);
+                    .contains(publicTeam, guestsAndAbove)
+                    .doesNotContain(membersAndAbove);
         }
 
         @Test
         @DisplayName("null: 全件パススルー（恒真）")
         void nullAllowed_passesThroughAll() {
             Long publicTeam = persistTeam("公開", "こうかい", TeamEntity.Visibility.PUBLIC, null, null);
-            Long priv = persistTeam("非公開", "ひこうかい", TeamEntity.Visibility.PRIVATE, null, null);
+            Long guestsAndAbove = persistTeam("ゲスト以上", "げすといじょう", TeamEntity.Visibility.GUESTS_AND_ABOVE, null, null);
 
             em.flush();
             em.clear();
@@ -244,7 +251,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
 
             assertThat(result.getContent())
                     .extracting(TeamEntity::getId)
-                    .contains(publicTeam, priv);
+                    .contains(publicTeam, guestsAndAbove);
         }
 
         @Test
@@ -675,39 +682,39 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
         // ORG_A 配下に複数チームを配置
         Long publicHit = persistTeamFull("整骨院公開", "せいこついんこうかい",
                 TeamEntity.Visibility.PUBLIC, "東京都", "渋谷区", "salon");
-        Long orgOnlyHit = persistTeamFull("整骨院組織のみ", "せいこついんそしき",
-                TeamEntity.Visibility.ORGANIZATION_ONLY, "東京都", "渋谷区", "salon");
-        Long privateMiss = persistTeamFull("整骨院非公開", "せいこついんひこうかい",
-                TeamEntity.Visibility.PRIVATE, "東京都", "渋谷区", "salon");
+        Long guestsAndAboveHit = persistTeamFull("整骨院ゲスト以上", "せいこついんげすと",
+                TeamEntity.Visibility.GUESTS_AND_ABOVE, "東京都", "渋谷区", "salon");
+        Long membersAndAboveMiss = persistTeamFull("整骨院メンバー以上", "せいこついんめんばー",
+                TeamEntity.Visibility.MEMBERS_AND_ABOVE, "東京都", "渋谷区", "salon");
         Long unrelated = persistTeamFull("無関係", "むかんけい",
                 TeamEntity.Visibility.PUBLIC, "東京都", "渋谷区", "salon");
         Long orgBMiss = persistTeamFull("整骨院組織B", "せいこついんびー",
                 TeamEntity.Visibility.PUBLIC, "東京都", "渋谷区", "salon");
 
         persistMembership(publicHit, ORG_A, TeamOrgMembershipEntity.Status.ACTIVE);
-        persistMembership(orgOnlyHit, ORG_A, TeamOrgMembershipEntity.Status.ACTIVE);
-        persistMembership(privateMiss, ORG_A, TeamOrgMembershipEntity.Status.ACTIVE);
+        persistMembership(guestsAndAboveHit, ORG_A, TeamOrgMembershipEntity.Status.ACTIVE);
+        persistMembership(membersAndAboveMiss, ORG_A, TeamOrgMembershipEntity.Status.ACTIVE);
         persistMembership(unrelated, ORG_A, TeamOrgMembershipEntity.Status.ACTIVE);
         persistMembership(orgBMiss, ORG_B, TeamOrgMembershipEntity.Status.ACTIVE);
 
         em.flush();
         em.clear();
 
-        // メンバー視点: PUBLIC + ORGANIZATION_ONLY を許可、キーワード "整骨院"
+        // メンバー視点: PUBLIC + GUESTS_AND_ABOVE を許可、キーワード "整骨院"
         Specification<TeamEntity> spec = Specification
                 .where(TeamSearchSpecifications.notDeleted())
                 .and(TeamSearchSpecifications.notArchived())
                 .and(TeamSearchSpecifications.belongsToOrganization(ORG_A))
                 .and(TeamSearchSpecifications.visibilityIn(
-                        EnumSet.of(TeamEntity.Visibility.PUBLIC, TeamEntity.Visibility.ORGANIZATION_ONLY)))
+                        EnumSet.of(TeamEntity.Visibility.PUBLIC, TeamEntity.Visibility.GUESTS_AND_ABOVE)))
                 .and(TeamSearchSpecifications.nameOrKanaContains("整骨院"));
 
         Page<TeamEntity> result = teamRepository.findAll(spec, pageable);
 
         assertThat(result.getContent())
                 .extracting(TeamEntity::getId)
-                .containsExactlyInAnyOrder(publicHit, orgOnlyHit)
-                .doesNotContain(privateMiss, unrelated, orgBMiss);
+                .containsExactlyInAnyOrder(publicHit, guestsAndAboveHit)
+                .doesNotContain(membersAndAboveMiss, unrelated, orgBMiss);
     }
 
     // ════════════════════════════════════════════════════════════
@@ -717,6 +724,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
     private Long persistTeam(String name, String kana, TeamEntity.Visibility v,
                              String prefecture, String city) {
         TeamEntity team = TeamEntity.builder()
+                .slug(nextSlug())
                 .name(name)
                 .nameKana(kana)
                 .visibility(v)
@@ -731,6 +739,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
     private Long persistTeamFull(String name, String kana, TeamEntity.Visibility v,
                                   String prefecture, String city, String template) {
         TeamEntity team = TeamEntity.builder()
+                .slug(nextSlug())
                 .name(name)
                 .nameKana(kana)
                 .visibility(v)
@@ -746,6 +755,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
     /** F22.1: 地域コード（名称なし）でチームを作る。 */
     private Long persistTeamWithCodes(String name, String kana, String prefectureCode, String cityCode) {
         TeamEntity team = TeamEntity.builder()
+                .slug(nextSlug())
                 .name(name)
                 .nameKana(kana)
                 .visibility(TeamEntity.Visibility.PUBLIC)
@@ -760,6 +770,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
     private Long persistTeamFullWithCodes(String name, String kana, String prefecture, String city,
                                           String prefectureCode, String cityCode) {
         TeamEntity team = TeamEntity.builder()
+                .slug(nextSlug())
                 .name(name)
                 .nameKana(kana)
                 .visibility(TeamEntity.Visibility.PUBLIC)
@@ -774,6 +785,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
 
     private Long persistDeletedTeam(String name, String kana) {
         TeamEntity team = TeamEntity.builder()
+                .slug(nextSlug())
                 .name(name)
                 .nameKana(kana)
                 .visibility(TeamEntity.Visibility.PUBLIC)
@@ -786,6 +798,7 @@ class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
 
     private Long persistArchivedTeam(String name, String kana) {
         TeamEntity team = TeamEntity.builder()
+                .slug(nextSlug())
                 .name(name)
                 .nameKana(kana)
                 .visibility(TeamEntity.Visibility.PUBLIC)

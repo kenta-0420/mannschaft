@@ -59,6 +59,22 @@ public class ConnectAccountEntity extends UuidV7Entity {
     @Column(name = "payouts_enabled", nullable = false)
     private Boolean payoutsEnabled;
 
+    // === F08.9 P8: 税からくり列（将来の税務確定後に埋める）===
+
+    /**
+     * F08.9 P8: 適格請求書登録番号（インボイス制度）。
+     * 税務確認後に設定する。現時点では NULL。
+     */
+    @Column(name = "tax_registration_number", length = 20)
+    private String taxRegistrationNumber;
+
+    /**
+     * F08.9 P8: 税務ステータス（PENDING / REGISTERED / EXEMPT）。
+     * 税務確認後に設定する。現時点では NULL。
+     */
+    @Column(name = "tax_status", length = 20)
+    private String taxStatus;
+
     @Column(name = "requirements_due", columnDefinition = "JSON")
     private String requirementsDue;
 

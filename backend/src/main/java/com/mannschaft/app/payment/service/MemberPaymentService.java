@@ -71,8 +71,8 @@ public class MemberPaymentService {
     private final ConnectChargeService connectChargeService;
     private final ConnectAccountRepository connectAccountRepository;
 
-    @Value("${app.frontend-url:http://localhost:3000}")
-    private String frontendUrl;
+    @Value("${app.base-url}")
+    private String baseUrl;
 
     /**
      * 支払い項目ごとの支払い記録をページング取得する。
@@ -121,7 +121,7 @@ public class MemberPaymentService {
                 : request.getPaidAt().toLocalDate();
         LocalDate validUntil = request.getValidUntil() != null
                 ? request.getValidUntil()
-                : calculateValidUntil(paymentItem.getType(), validFrom);
+                : calculateValidUntilWithItem(paymentItem, validFrom);
 
         MemberPaymentEntity entity = MemberPaymentEntity.builder()
                 .userId(request.getUserId())
@@ -202,7 +202,7 @@ public class MemberPaymentService {
                         : payment.getPaidAt().toLocalDate();
                 LocalDate validUntil = payment.getValidUntil() != null
                         ? payment.getValidUntil()
-                        : calculateValidUntil(paymentItem.getType(), validFrom);
+                        : calculateValidUntilWithItem(paymentItem, validFrom);
 
                 MemberPaymentEntity entity = MemberPaymentEntity.builder()
                         .userId(payment.getUserId())
@@ -290,8 +290,8 @@ public class MemberPaymentService {
         payment = memberPaymentRepository.save(payment);
 
         // Checkout Session を作成
-        String successUrl = frontendUrl + "/payment/complete?session_id={CHECKOUT_SESSION_ID}";
-        String cancelUrl = frontendUrl + "/payment/cancelled";
+        String successUrl = baseUrl + "/payment/complete?session_id={CHECKOUT_SESSION_ID}";
+        String cancelUrl = baseUrl + "/payment/cancelled";
 
         StripePaymentProvider.CheckoutSessionInfo sessionInfo =
                 stripePaymentProvider.createCheckoutSession(
@@ -488,7 +488,7 @@ public class MemberPaymentService {
 
         PaymentItemEntity paymentItem = paymentItemService.findByIdOrThrow(payment.getPaymentItemId());
         LocalDate validFrom = LocalDate.now();
-        LocalDate validUntil = calculateValidUntil(paymentItem.getType(), validFrom);
+        LocalDate validUntil = calculateValidUntilWithItem(paymentItem, validFrom);
         payment.markAsPaidByEscrowCapture(validFrom, validUntil);
         memberPaymentRepository.save(payment);
         log.info("会費 PAID 反映完了（escrow CAPTURED 連動）: paymentId={}, escrowId={}, validUntil={}, subscriptionId={}",
@@ -639,7 +639,7 @@ public class MemberPaymentService {
                 && entity.getStatus() == PaymentStatus.PENDING) {
             PaymentItemEntity paymentItem = paymentItemService.findByIdOrThrow(entity.getPaymentItemId());
             LocalDate validFrom = LocalDate.now();
-            LocalDate validUntil = calculateValidUntil(paymentItem.getType(), validFrom);
+            LocalDate validUntil = calculateValidUntilWithItem(paymentItem, validFrom);
             entity.markAsPaid(statusInfo.paymentIntentId(), entity.getAmountPaid(),
                     validFrom, validUntil, null);
             reconciled = true;
@@ -694,12 +694,26 @@ public class MemberPaymentService {
 
     /**
      * 有効期限を計算する。
+     *
+     * <p>TERM 型の場合は {@code termEndsOn} を返す（単発 destination charge の有効期間は期別設定値）。
+     * TERM 型で {@code termEndsOn} が設定されていない場合は null（通常はバリデーションで防ぐ）。</p>
      */
     private LocalDate calculateValidUntil(PaymentItemType type, LocalDate validFrom) {
         return switch (type) {
             case ANNUAL_FEE -> validFrom.plusDays(365);
             case MONTHLY_FEE -> validFrom.plusDays(31);
             case ITEM, DONATION -> null;
+            case TERM -> null; // TERM は paymentItem.termEndsOn を使う（calculateValidUntilWithItem で解決）
         };
+    }
+
+    /**
+     * 有効期限を PaymentItemEntity の情報を含めて計算する。TERM 型は {@code termEndsOn} を返す。
+     */
+    private LocalDate calculateValidUntilWithItem(PaymentItemEntity paymentItem, LocalDate validFrom) {
+        if (paymentItem.getType() == PaymentItemType.TERM) {
+            return paymentItem.getTermEndsOn(); // null の場合はバリデーションで防止済み
+        }
+        return calculateValidUntil(paymentItem.getType(), validFrom);
     }
 }

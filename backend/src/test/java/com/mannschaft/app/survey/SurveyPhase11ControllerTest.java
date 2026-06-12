@@ -31,8 +31,6 @@ import org.springframework.http.ResponseEntity;
 import com.mannschaft.app.team.service.TeamService;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -81,7 +79,7 @@ class SurveyPhase11ControllerTest {
         void 正常系_200OKとCSVバイト列を返す() {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
-                given(teamService.resolveTeamId(UUID.fromString(SCOPE_ID))).willReturn(SCOPE_ID_LONG);
+                given(teamService.resolveTeamId(SCOPE_ID)).willReturn(SCOPE_ID_LONG);
                 byte[] csv = "回答日時,回答者\n2026-01-01,田中".getBytes();
                 given(surveyResultService.exportResultsCsv(SCOPE_TYPE, SCOPE_ID_LONG, SURVEY_ID, USER_ID))
                         .willReturn(csv);
@@ -100,7 +98,7 @@ class SurveyPhase11ControllerTest {
         void 認可エラー_例外伝播() {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
-                given(teamService.resolveTeamId(UUID.fromString(SCOPE_ID))).willReturn(SCOPE_ID_LONG);
+                given(teamService.resolveTeamId(SCOPE_ID)).willReturn(SCOPE_ID_LONG);
                 willThrow(new BusinessException(SurveyErrorCode.RESULT_ACCESS_DENIED))
                         .given(surveyResultService)
                         .exportResultsCsv(SCOPE_TYPE, SCOPE_ID_LONG, SURVEY_ID, USER_ID);
@@ -132,7 +130,7 @@ class SurveyPhase11ControllerTest {
         void 正常系_201Created() {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
-                given(teamService.resolveTeamId(UUID.fromString(SCOPE_ID))).willReturn(SCOPE_ID_LONG);
+                given(teamService.resolveTeamId(SCOPE_ID)).willReturn(SCOPE_ID_LONG);
                 SurveyDetailResponse detail = new SurveyDetailResponse(null, List.of());
                 given(surveyService.duplicateSurvey(
                         org.mockito.ArgumentMatchers.eq(SCOPE_TYPE),
@@ -173,7 +171,7 @@ class SurveyPhase11ControllerTest {
         void 正常系_200OK() {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
-                given(teamService.resolveTeamId(UUID.fromString(SCOPE_ID))).willReturn(SCOPE_ID_LONG);
+                given(teamService.resolveTeamId(SCOPE_ID)).willReturn(SCOPE_ID_LONG);
                 LocalDateTime newDeadline = LocalDateTime.now().plusDays(30);
                 SurveyResponse response = org.mockito.Mockito.mock(SurveyResponse.class);
                 given(surveyService.extendDeadline(SCOPE_TYPE, SCOPE_ID_LONG, SURVEY_ID, newDeadline, USER_ID))
@@ -192,7 +190,7 @@ class SurveyPhase11ControllerTest {
         void 短縮試行_例外伝播() {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
-                given(teamService.resolveTeamId(UUID.fromString(SCOPE_ID))).willReturn(SCOPE_ID_LONG);
+                given(teamService.resolveTeamId(SCOPE_ID)).willReturn(SCOPE_ID_LONG);
                 LocalDateTime shorter = LocalDateTime.now().minusDays(1);
                 willThrow(new BusinessException(SurveyErrorCode.INVALID_NEW_DEADLINE))
                         .given(surveyService)

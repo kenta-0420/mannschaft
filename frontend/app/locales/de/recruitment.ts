@@ -54,6 +54,12 @@ export default {
       "location": "Ort",
       "price": "Preis",
       "paymentEnabled": "Zahlung aktiviert",
+      "payeeKind": "Empfängertyp",
+      "payeeKindUser": "Einzelperson (Benutzer)",
+      "payeeKindTeam": "Team",
+      "payeeKindOrg": "Organisation",
+      "payeeUser": "Empfänger",
+      "payeeUserPlaceholder": "Empfänger auswählen",
       "cancellationPolicy": "Stornierungsbedingungen",
       "imageUrl": "Bild-URL",
       "note": "Notiz",
@@ -71,6 +77,7 @@ export default {
       "cancelMyApplication": "Meine Bewerbung zurückziehen",
       "joinWaitlist": "Auf Warteliste setzen",
       "viewDetails": "Details anzeigen",
+      "confirmApplication": "Bestätigen",
       "createPolicy": "Bedingungen erstellen"
     },
     "confirmModal": {
@@ -177,6 +184,13 @@ export default {
       "applying": "Anmeldend",
       "individual": "Einzelperson",
       "team": "Team"
+    },
+    "payee": {
+      "required": "Bitte wählen Sie einen Empfängertyp aus",
+      "userRequired": "Bitte wählen Sie einen Empfänger-Benutzer aus",
+      "PAYMENT_C011": "Der Empfängertyp (payeeKind) wurde nicht angegeben",
+      "PAYMENT_C012": "Der Empfänger-Benutzer wurde nicht angegeben",
+      "PAYMENT_C013": "Der angegebene Empfänger ist kein Mitglied dieses Bereichs"
     },
     "error": {
       "RECRUITMENT_001": "Ausschreibung nicht gefunden",

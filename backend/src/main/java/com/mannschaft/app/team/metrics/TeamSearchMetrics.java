@@ -34,7 +34,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class TeamSearchMetrics {
 
-    /** 検索結果が組織メンバー視点（PUBLIC + ORGANIZATION_ONLY）であることを示す tag 値。 */
+    /** 検索結果が組織メンバー視点（PUBLIC + 非公開系すべて）であることを示す tag 値。 */
     public static final String SCOPE_MEMBER = "MEMBER";
 
     /** 検索結果が公開チーム視点（PUBLIC のみ）であることを示す tag 値。 */
@@ -72,7 +72,7 @@ public class TeamSearchMetrics {
         this.requestsMemberAuthenticatedCounter = Counter.builder(METRIC_REQUESTS)
                 .tag(TAG_VISIBILITY_SCOPE, SCOPE_MEMBER)
                 .tag(TAG_AUTHENTICATED, "true")
-                .description("組織内チーム検索の実行回数（組織メンバー・PUBLIC + ORGANIZATION_ONLY 可視）")
+                .description("組織内チーム検索の実行回数（組織メンバー・PUBLIC + 非公開系すべて可視）")
                 .register(meterRegistry);
 
         this.latencyTimer = Timer.builder(METRIC_LATENCY)

@@ -144,57 +144,68 @@ class ActuatorEndpointSecurityTest {
         @Bean
         @SuppressWarnings("unchecked")
         PublicApiRateLimitFilter publicApiRateLimitFilter() {
+            // Valkey 化第一陣: ValkeyRateLimiter は空 Provider（getIfAvailable()=null）→ フィルタは素通し
+            org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.common.ratelimit.ValkeyRateLimiter> rateLimiterProvider =
+                    mock(org.springframework.beans.factory.ObjectProvider.class);
             org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.auth.service.AuditLogService> auditProvider =
                     mock(org.springframework.beans.factory.ObjectProvider.class);
             // F19.1 Phase 5: MeterRegistry ObjectProvider も渡す（何もしない Empty Provider）
             org.springframework.beans.factory.ObjectProvider<io.micrometer.core.instrument.MeterRegistry> meterProvider =
                     mock(org.springframework.beans.factory.ObjectProvider.class);
-            return new PublicApiRateLimitFilter(auditProvider, meterProvider);
+            return new PublicApiRateLimitFilter(rateLimiterProvider, auditProvider, meterProvider);
         }
 
         /**
-         * F09.17 Phase 11-b: SecurityConfig が依存する AdPublicEndpointRateLimitFilter の
-         * 本物インスタンス。引数なしコンストラクタで、内部の Caffeine キャッシュ + Bucket4j
-         * は localhost 単発リクエストの本テストでは枯渇しないため、本物のフィルタを使って問題ない。
+         * Valkey 化第二陣B: AdPublicEndpointRateLimitFilter の本物インスタンス。
+         * ValkeyRateLimiter は空 Provider（getIfAvailable()=null）→ フィルタは素通し。
          * 本テストは /actuator/** のみを叩くため、対象パス
-         * （/api/v1/ads/unsubscribe, /api/v1/ads/pixels/open）と一致せず、
-         * 何もせず chain.doFilter に通す挙動になる。
+         * （/api/v1/ads/unsubscribe, /api/v1/ads/pixels/open）と一致せず素通しする。
          */
         @Bean
+        @SuppressWarnings("unchecked")
         AdPublicEndpointRateLimitFilter adPublicEndpointRateLimitFilter() {
-            return new AdPublicEndpointRateLimitFilter();
+            org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.common.ratelimit.ValkeyRateLimiter> rateLimiterProvider =
+                    mock(org.springframework.beans.factory.ObjectProvider.class);
+            return new AdPublicEndpointRateLimitFilter(rateLimiterProvider);
         }
 
         /**
-         * F03.10 第三陣: SecurityConfig が依存する ScheduleDelegationRateLimitFilter の
-         * 本物インスタンス。引数なしコンストラクタで、内部の Caffeine + Bucket4j は
-         * 本テストの localhost 単発リクエストでは枯渇しない。本テストは /actuator/** のみを
-         * 叩くため、対象パス（POST /api/v1/schedules/{id}/delegations）に一致せず、
-         * 何もせず chain.doFilter に通す挙動になる。
+         * Valkey 化第二陣B: ScheduleDelegationRateLimitFilter の本物インスタンス。
+         * ValkeyRateLimiter は空 Provider（素通し）。本テストは /actuator/** のみを
+         * 叩くため、対象パス（POST /api/v1/schedules/{id}/delegations）に一致せず素通しする。
          */
         @Bean
+        @SuppressWarnings("unchecked")
         com.mannschaft.app.schedule.ScheduleDelegationRateLimitFilter scheduleDelegationRateLimitFilter() {
-            return new com.mannschaft.app.schedule.ScheduleDelegationRateLimitFilter();
+            org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.common.ratelimit.ValkeyRateLimiter> rateLimiterProvider =
+                    mock(org.springframework.beans.factory.ObjectProvider.class);
+            return new com.mannschaft.app.schedule.ScheduleDelegationRateLimitFilter(rateLimiterProvider);
         }
 
         /**
-         * F03.10 第三陣: SecurityConfig が依存する EventDelegationRateLimitFilter の
-         * 本物インスタンス。スケジュール側と同型で、本テストは対象パス
+         * Valkey 化第二陣B: EventDelegationRateLimitFilter の本物インスタンス。
+         * ValkeyRateLimiter は空 Provider（素通し）。本テストは対象パス
          * （POST /api/v1/events/{id}/delegations）に一致せず素通しする。
          */
         @Bean
+        @SuppressWarnings("unchecked")
         com.mannschaft.app.event.EventDelegationRateLimitFilter eventDelegationRateLimitFilter() {
-            return new com.mannschaft.app.event.EventDelegationRateLimitFilter();
+            org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.common.ratelimit.ValkeyRateLimiter> rateLimiterProvider =
+                    mock(org.springframework.beans.factory.ObjectProvider.class);
+            return new com.mannschaft.app.event.EventDelegationRateLimitFilter(rateLimiterProvider);
         }
 
         /**
-         * F22.1: SecurityConfig が依存する DashboardScopeTabRateLimitFilter の
-         * 本物インスタンス。スケジュール/イベント側と同型で、本テストは対象パス
+         * Valkey 化第二陣B: DashboardScopeTabRateLimitFilter の本物インスタンス。
+         * ValkeyRateLimiter は空 Provider（素通し）。本テストは対象パス
          * （PUT /api/v1/dashboard/scope-tabs/order）に一致せず素通しする。
          */
         @Bean
+        @SuppressWarnings("unchecked")
         com.mannschaft.app.dashboard.DashboardScopeTabRateLimitFilter dashboardScopeTabRateLimitFilter() {
-            return new com.mannschaft.app.dashboard.DashboardScopeTabRateLimitFilter();
+            org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.common.ratelimit.ValkeyRateLimiter> rateLimiterProvider =
+                    mock(org.springframework.beans.factory.ObjectProvider.class);
+            return new com.mannschaft.app.dashboard.DashboardScopeTabRateLimitFilter(rateLimiterProvider);
         }
     }
 

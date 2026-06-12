@@ -3,8 +3,6 @@ package com.mannschaft.app.organization.dto;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.util.UUID;
-
 /**
  * 子組織1件のレスポンス DTO（GET /api/v1/organizations/{id}/children 用）。
  *
@@ -17,8 +15,8 @@ public class ChildOrganizationResponse {
 
     private final Long id;
 
-    /** 子組織 UUID（URL に使用） */
-    private final UUID publicId;
+    /** 子組織スラッグ（URL に使用） */
+    private final String slug;
 
     private final String name;
 

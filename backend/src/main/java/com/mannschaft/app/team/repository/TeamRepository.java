@@ -3,7 +3,6 @@ package com.mannschaft.app.team.repository;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.visibility.TeamVisibilityProjection;
 import org.springframework.data.domain.Page;
-import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -22,12 +21,20 @@ public interface TeamRepository
         extends JpaRepository<TeamEntity, Long>, JpaSpecificationExecutor<TeamEntity> {
 
     /**
-     * URL 公開用 publicId でチームを取得する（列挙攻撃対策）。
+     * カスタムスラッグでチームを取得する（URL識別子）。
      *
-     * @param publicId URL に公開する UUID
+     * @param slug URL に使用するカスタムスラッグ
      * @return 対応するチームエンティティ
      */
-    Optional<TeamEntity> findByPublicId(UUID publicId);
+    Optional<TeamEntity> findBySlugAndDeletedAtIsNull(String slug);
+
+    /**
+     * 指定スラッグが既に使用中かどうか確認する（一意性チェック用）。
+     *
+     * @param slug チェック対象のスラッグ
+     * @return 使用中の場合 true
+     */
+    boolean existsBySlugAndDeletedAtIsNull(String slug);
 
     List<TeamEntity> findByVisibility(TeamEntity.Visibility visibility);
 

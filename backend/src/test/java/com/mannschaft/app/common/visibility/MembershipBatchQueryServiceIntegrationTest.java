@@ -124,15 +124,15 @@ class MembershipBatchQueryServiceIntegrationTest extends AbstractMySqlIntegratio
         if (deleted) {
             em.createNativeQuery(
                     "INSERT INTO organizations (name, org_type, visibility, hierarchy_visibility, " +
-                            "supporter_enabled, version, deleted_at, created_at, updated_at, public_id) " +
-                            "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, NOW(), NOW(), NOW(), UUID_TO_BIN(UUID(), 1))")
+                            "supporter_enabled, version, deleted_at, slug, created_at, updated_at) " +
+                            "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, NOW(), CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
                     .setParameter("name", name)
                     .executeUpdate();
         } else {
             em.createNativeQuery(
                     "INSERT INTO organizations (name, org_type, visibility, hierarchy_visibility, " +
-                    "supporter_enabled, version, created_at, updated_at, public_id) " +
-                    "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, NOW(), NOW(), UUID_TO_BIN(UUID(), 1))")
+                    "supporter_enabled, version, slug, created_at, updated_at) " +
+                    "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
                     .setParameter("name", name)
                     .executeUpdate();
         }
@@ -145,8 +145,8 @@ class MembershipBatchQueryServiceIntegrationTest extends AbstractMySqlIntegratio
 
     private Long insertTeam(String name) {
         em.createNativeQuery(
-                "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, created_at, updated_at, public_id) " +
-                        "VALUES (:name, 'PUBLIC', 1, 0, 0, NOW(), NOW(), UUID_TO_BIN(UUID(), 1))")
+                "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, slug, created_at, updated_at) " +
+                        "VALUES (:name, 'PUBLIC', 1, 0, 0, CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
                 .setParameter("name", name)
                 .executeUpdate();
         return ((Number) em.createNativeQuery(

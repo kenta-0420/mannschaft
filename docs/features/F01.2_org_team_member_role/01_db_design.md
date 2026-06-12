@@ -115,7 +115,7 @@ INDEX idx_org_name (name)               -- 検索用
 | `established_date_precision` | ENUM('YEAR', 'YEAR_MONTH', 'FULL') | YES | NULL | 設立日の精度。`established_date` が NULL のときは本カラムも NULL |
 | `philosophy` | TEXT | YES | NULL | チーム理念・フィロソフィー（最大2000文字はアプリ層でバリデーション）|
 | `profile_visibility` | JSON | YES | NULL | プロフィール項目ごとの公開可否フラグ（組織と同じ構造）。NULL は全項目非公開扱い |
-| `visibility` | ENUM('PUBLIC', 'ORGANIZATION_ONLY', 'PRIVATE') | NO | 'PRIVATE' | 情報公開レベル |
+| `visibility` | ENUM('PUBLIC', 'GUESTS_AND_ABOVE', 'SUPPORTERS_AND_ABOVE', 'MEMBERS_AND_ABOVE') | NO | 'GUESTS_AND_ABOVE' | 情報公開レベル（ロールベース設計）|
 | `supporter_enabled` | BOOLEAN | NO | FALSE | サポーター（フォロー）登録機能の有効化フラグ。TRUE かつ visibility=PUBLIC の場合のみ招待コード不要でフォロー可能 |
 | `supporter_name_disclosure` | ENUM('DISPLAY_NAME','REAL_NAME') | NO | 'DISPLAY_NAME' | サポーター向け氏名表示モード（**実装: F19.1**）。詳細: `F19.1_public_pages_identity_disclosure.md` §5.1.1 |
 | `public_events_enabled` | BOOLEAN | NO | FALSE | 公開ページでチームイベント一覧を表示するか（**実装: F19.1**） |
@@ -137,11 +137,15 @@ INDEX idx_team_name (name)
 - 論理削除: `deleted_at DATETIME nullable`
 - `slug`: 英小文字・数字・ハイフンのみ（パターン: `^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$` または 3 文字以上）。アプリ層で正規表現バリデーション。チーム作成時に未指定の場合は `name` から自動生成（ASCII 変換 + スペース→ハイフン + 重複回避の数値サフィックス）
 - 組織との多対多所属関係は `team_org_memberships` テーブルで管理する。チームは複数の組織に同時所属可能
-- `visibility = 'ORGANIZATION_ONLY'` は `team_org_memberships` に ACTIVE なエントリが1件以上存在する場合のみ有効（アプリ層でバリデーション。所属組織がない状態での設定は 422）
+- `visibility` は以下のロールベース設計を採用（V79.001 マイグレーションで ORGANIZATION_ONLY / PRIVATE から移行）:
+  - `PUBLIC`: 未認証ユーザーも含め誰でも閲覧可
+  - `GUESTS_AND_ABOVE`: GUEST 以上の所属メンバーすべてが閲覧可（直接所属ユーザー＋サポーター含む）
+  - `SUPPORTERS_AND_ABOVE`: サポーター以上のロールを持つメンバーが閲覧可
+  - `MEMBERS_AND_ABOVE`: 正規メンバー以上のロールを持つメンバーのみ閲覧可（サポーター・ゲストは除外）
 - アーカイブトリガー: 全メンバーの最終ログインのうち最新が12ヶ月経過（README §アーカイブ規約参照）
 - `template`: Phase 2 は VARCHAR(50) で運用（アプリ層 enum 定数でバリデーション）。`team_templates` への FK 移行は「テンプレートごとのメタデータが必要になった段階」でテンプレート管理 feature doc にて設計・実施する
-- `homepage_url` / `established_date` / `philosophy` / `profile_visibility` の制約は `organizations` テーブルと同一。`profile_visibility` の JSON 構造・既知キー・PRIVATE 時の強制非公開ルールも同じ
-- チームが `visibility = 'ORGANIZATION_ONLY'` の場合、プロフィール拡張項目は所属組織のメンバーに対してのみ公開（`profile_visibility` の各項目フラグと AND 条件）
+- `homepage_url` / `established_date` / `philosophy` / `profile_visibility` の制約は `organizations` テーブルと同一。`profile_visibility` の JSON 構造・既知キー・非公開時の強制非公開ルールも同じ
+- チームが `visibility = 'GUESTS_AND_ABOVE'` 以上の非公開設定の場合、プロフィール拡張項目は所属メンバーに対してのみ公開（`profile_visibility` の各項目フラグと AND 条件）
 
 ---
 

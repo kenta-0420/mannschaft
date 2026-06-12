@@ -37,7 +37,6 @@ import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -60,7 +59,7 @@ class OrganizationServiceTest {
 
     private static final Long USER_ID = 1L;
     private static final Long ORG_ID = 10L;
-    private static final UUID ORG_PUBLIC_ID = UUID.fromString("00000000-0000-0000-0000-000000000010");
+    private static final String ORG_SLUG = "test-org";
     private static final Long ADMIN_ROLE_ID = 100L;
 
     @Mock
@@ -222,11 +221,11 @@ class OrganizationServiceTest {
         @DisplayName("正常取得_組織情報が返される")
         void 正常取得_組織情報が返される() {
             OrganizationEntity org = createOrganization();
-            given(organizationRepository.findByPublicId(ORG_PUBLIC_ID)).willReturn(Optional.of(org));
+            given(organizationRepository.findBySlugAndDeletedAtIsNull(ORG_SLUG)).willReturn(Optional.of(org));
             given(userRoleRepository.countByOrganizationId(ORG_ID)).willReturn(5L);
 
             ApiResponse<OrganizationResponse> response =
-                    organizationService.getOrganization(ORG_PUBLIC_ID);
+                    organizationService.getOrganization(ORG_SLUG);
 
             assertThat(response.getData().getBasicInfo().name()).isEqualTo("テスト組織");
             assertThat(response.getData().getMetadata().memberCount()).isEqualTo(5);
@@ -235,10 +234,10 @@ class OrganizationServiceTest {
         @Test
         @DisplayName("組織不在_ORG_001例外")
         void 組織不在_ORG_001例外() {
-            UUID unknownId = UUID.fromString("00000000-0000-0000-0000-000000000999");
-            given(organizationRepository.findByPublicId(unknownId)).willReturn(Optional.empty());
+            String unknownSlug = "unknown-org-999";
+            given(organizationRepository.findBySlugAndDeletedAtIsNull(unknownSlug)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> organizationService.getOrganization(unknownId))
+            assertThatThrownBy(() -> organizationService.getOrganization(unknownSlug))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ORG_001"));

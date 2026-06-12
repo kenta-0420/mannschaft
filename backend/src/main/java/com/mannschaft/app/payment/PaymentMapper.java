@@ -19,6 +19,7 @@ public interface PaymentMapper {
     @Mapping(target = "money", expression = "java(new com.mannschaft.app.payment.dto.PaymentItemResponse.PaymentMoneyDto(entity.getAmount(), entity.getCurrency()))")
     @Mapping(target = "stripe", expression = "java(new com.mannschaft.app.payment.dto.PaymentItemResponse.StripeIntegrationDto(entity.getStripeProductId(), entity.getStripePriceId()))")
     @Mapping(target = "audit", expression = "java(new com.mannschaft.app.payment.dto.PaymentItemResponse.PaymentItemAuditDto(entity.getIsActive(), entity.getCreatedAt(), entity.getUpdatedAt()))")
+    @Mapping(target = "term", expression = "java(entity.getTermStartsOn() != null || entity.getTermEndsOn() != null ? new com.mannschaft.app.payment.dto.PaymentItemResponse.TermPeriodDto(entity.getTermStartsOn(), entity.getTermEndsOn()) : null)")
     PaymentItemResponse toPaymentItemResponse(PaymentItemEntity entity);
 
     List<PaymentItemResponse> toPaymentItemResponseList(List<PaymentItemEntity> entities);
