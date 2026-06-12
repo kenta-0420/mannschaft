@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
 import type {
   CreateRecruitmentListingRequest,
   RecruitmentCategoryResponse,
   RecruitmentParticipationType,
+  RecruitmentPayeeKind,
+  RecruitmentScopeType,
   RecruitmentVisibility,
 } from '~/types/recruitment'
+import type { MemberResponse } from '~/types/member'
 
 interface Props {
   initial?: Partial<CreateRecruitmentListingRequest>
@@ -18,12 +21,25 @@ interface Props {
    * デフォルト false（従来挙動を維持）。
    */
   hideVisibility?: boolean
+  /**
+   * F22.1 市 謝礼決済: スコープ種別（TEAM / ORGANIZATION）。
+   * payeeKind=USER 選択時に所属メンバー一覧を取得するために使用。
+   * 未指定時はメンバー一覧取得を省略する。
+   */
+  scopeType?: RecruitmentScopeType
+  /**
+   * F22.1 市 謝礼決済: スコープID。
+   * payeeKind=USER 選択時に所属メンバー一覧を取得するために使用。
+   */
+  scopeId?: string
 }
 const props = withDefaults(defineProps<Props>(), {
   initial: () => ({}),
   submitLabel: undefined,
   loading: false,
   hideVisibility: false,
+  scopeType: undefined,
+  scopeId: undefined,
 })
 
 const emit = defineEmits<{
@@ -47,7 +63,126 @@ const price = ref<number | null>(props.initial.price ?? null)
 const visibility = ref<RecruitmentVisibility>(props.initial.visibility ?? 'SCOPE_ONLY')
 const location = ref(props.initial.location ?? '')
 
+// F22.1 市 謝礼決済: 受領主体
+const payeeKind = ref<RecruitmentPayeeKind | null>(
+  (props.initial.payeeKind as RecruitmentPayeeKind | null | undefined) ?? null,
+)
+const payeeUserId = ref<number | null>(props.initial.payeeUserId ?? null)
+
+// payeeKind=USER のとき表示するメンバー一覧
+const scopeMembers = ref<MemberResponse[]>([])
+const membersLoading = ref(false)
+
+// クライアントサイドバリデーションエラー
+const payeeKindError = ref<string | null>(null)
+const payeeUserError = ref<string | null>(null)
+
 const submitButtonLabel = computed(() => props.submitLabel ?? t('recruitment.action.create'))
+
+/**
+ * scopeType によって選択肢を絞る。
+ *   TEAM スコープ        → USER, TEAM（ORG は送信すると BE PAYMENT_C013 になるため除外）
+ *   ORGANIZATION スコープ → USER, ORG（TEAM は送信すると BE PAYMENT_C013 になるため除外）
+ *   未指定              → 全 3 択（後方互換）
+ */
+const payeeKindOptions = computed(() => {
+  const all: { value: RecruitmentPayeeKind; label: string }[] = [
+    { value: 'USER', label: t('recruitment.field.payeeKindUser') },
+    { value: 'TEAM', label: t('recruitment.field.payeeKindTeam') },
+    { value: 'ORG', label: t('recruitment.field.payeeKindOrg') },
+  ]
+  if (props.scopeType === 'TEAM') {
+    return all.filter((o) => o.value === 'USER' || o.value === 'TEAM')
+  }
+  if (props.scopeType === 'ORGANIZATION') {
+    return all.filter((o) => o.value === 'USER' || o.value === 'ORG')
+  }
+  return all
+})
+
+// scopeType 変更または payeeKindOptions 絞り込みで現在選択中の値が消えた場合にリセット
+watch(payeeKindOptions, (opts) => {
+  if (payeeKind.value !== null && !opts.some((o) => o.value === payeeKind.value)) {
+    payeeKind.value = null
+    payeeUserId.value = null
+    payeeKindError.value = null
+    payeeUserError.value = null
+  }
+})
+
+async function loadMembers() {
+  if (!props.scopeType || !props.scopeId) return
+  membersLoading.value = true
+  try {
+    if (props.scopeType === 'TEAM') {
+      const { useTeamMembers } = await import('~/composables/team/useTeamMembers')
+      const teamMembers = useTeamMembers()
+      // size=100 で十分な件数を取得（受領者は 1 名選択のため）
+      const result = await teamMembers.getMembers(props.scopeId, { size: 100 })
+      scopeMembers.value = result.data
+    }
+    else if (props.scopeType === 'ORGANIZATION') {
+      const orgApi = useOrganizationApi()
+      const result = await orgApi.getMembers(props.scopeId, { size: 100 })
+      scopeMembers.value = result.data
+    }
+  }
+  catch {
+    // メンバー一覧取得失敗は警告のみ（手動入力にフォールバック不要・選択UIは空表示）
+  }
+  finally {
+    membersLoading.value = false
+  }
+}
+
+// payeeKind が USER に切り替わったタイミングでメンバー一覧を取得
+watch(payeeKind, (newKind) => {
+  if (newKind === 'USER') {
+    loadMembers()
+  }
+  else {
+    // USER 以外に切り替えたら受領者選択をリセット
+    payeeUserId.value = null
+    payeeUserError.value = null
+  }
+  payeeKindError.value = null
+})
+
+// paymentEnabled が false になったら payeeKind/payeeUserId をリセット
+watch(paymentEnabled, (enabled) => {
+  if (!enabled) {
+    payeeKind.value = null
+    payeeUserId.value = null
+    payeeKindError.value = null
+    payeeUserError.value = null
+  }
+})
+
+onMounted(() => {
+  // 初期値で payeeKind=USER の場合はメンバーを事前ロード
+  if (payeeKind.value === 'USER') {
+    loadMembers()
+  }
+})
+
+function validatePayee(): boolean {
+  payeeKindError.value = null
+  payeeUserError.value = null
+
+  if (!paymentEnabled.value) return true
+
+  if (!payeeKind.value) {
+    payeeKindError.value = t('recruitment.payee.required')
+    return false
+  }
+
+  if (payeeKind.value === 'USER' && !payeeUserId.value) {
+    payeeUserError.value = t('recruitment.payee.userRequired')
+    return false
+  }
+
+  return true
+}
 
 function onSubmit() {
   if (!categoryId.value || !title.value || !startAt.value || !endAt.value
@@ -55,6 +190,9 @@ function onSubmit() {
       || capacity.value == null || minCapacity.value == null) {
     return
   }
+
+  if (!validatePayee()) return
+
   emit('submit', {
     categoryId: categoryId.value,
     title: title.value,
@@ -70,6 +208,9 @@ function onSubmit() {
     price: paymentEnabled.value ? price.value : null,
     visibility: visibility.value,
     location: location.value || null,
+    // F22.1 市 謝礼決済
+    payeeKind: paymentEnabled.value ? payeeKind.value : null,
+    payeeUserId: paymentEnabled.value && payeeKind.value === 'USER' ? payeeUserId.value : null,
   })
 }
 </script>
@@ -155,10 +296,49 @@ function onSubmit() {
       <label for="paymentEnabled">{{ t('recruitment.field.paymentEnabled') }}</label>
     </div>
 
-    <div v-if="paymentEnabled" class="flex flex-col gap-2">
-      <label for="price">{{ t('recruitment.field.price') }}</label>
-      <InputNumber id="price" v-model="price" :min="0" required />
-    </div>
+    <template v-if="paymentEnabled">
+      <div class="flex flex-col gap-2">
+        <label for="price">{{ t('recruitment.field.price') }}</label>
+        <InputNumber id="price" v-model="price" :min="0" required />
+      </div>
+
+      <!-- F22.1 市 謝礼決済: 受領者種別 -->
+      <div class="flex flex-col gap-2">
+        <label for="payeeKind">
+          {{ t('recruitment.field.payeeKind') }}
+          <span class="ml-1 text-red-500">*</span>
+        </label>
+        <Select
+          id="payeeKind"
+          v-model="payeeKind"
+          :options="payeeKindOptions"
+          option-label="label"
+          option-value="value"
+          :placeholder="t('recruitment.field.payeeKind')"
+          :invalid="!!payeeKindError"
+        />
+        <small v-if="payeeKindError" class="text-red-500">{{ payeeKindError }}</small>
+      </div>
+
+      <!-- F22.1 市 謝礼決済: 受領者ユーザー（payeeKind=USER のときのみ表示） -->
+      <div v-if="payeeKind === 'USER'" class="flex flex-col gap-2">
+        <label for="payeeUserId">
+          {{ t('recruitment.field.payeeUser') }}
+          <span class="ml-1 text-red-500">*</span>
+        </label>
+        <Select
+          id="payeeUserId"
+          v-model="payeeUserId"
+          :options="scopeMembers"
+          option-label="displayName"
+          option-value="userId"
+          :placeholder="t('recruitment.field.payeeUserPlaceholder')"
+          :loading="membersLoading"
+          :invalid="!!payeeUserError"
+        />
+        <small v-if="payeeUserError" class="text-red-500">{{ payeeUserError }}</small>
+      </div>
+    </template>
 
     <div v-if="!hideVisibility" class="flex flex-col gap-2">
       <label for="visibility">{{ t('recruitment.field.visibility') }}</label>
