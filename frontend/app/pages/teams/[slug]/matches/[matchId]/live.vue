@@ -124,6 +124,25 @@ onBeforeUnmount(() => {
 })
 
 /**
+ * PK 戦を経た試合か（PENALTY_SHOOTOUT を通過した／通過中）。
+ * completeMatch へ PK スコアを渡すか判定する。PK なしの試合では penalty を null で渡し、
+ * BE 側で homePenaltyScore/awayPenaltyScore を未設定（NULL=PK なし）のまま確定させる。
+ */
+const isPenaltyShootout = computed(() => timer.state.value === 'PENALTY_SHOOTOUT')
+
+/** 完了時に completeMatch へ渡す PK スコア（PK 戦なしなら null）。 */
+function penaltyPayload(): { home: number; away: number } | null {
+  return isPenaltyShootout.value
+    ? { home: homePenaltyScore.value, away: awayPenaltyScore.value }
+    : null
+}
+
+/** 試合終了確定（PK 戦中なら入力された PK スコアを同梱）。 */
+async function complete(): Promise<void> {
+  await session.completeMatch(penaltyPayload())
+}
+
+/**
  * @advance の集約ハンドラ。
  * 次状態が COMPLETED になる遷移（EXTRA_SECOND / PENALTY_SHOOTOUT からの advance）は
  * 必ず session.completeMatch() を経由させて BE の status を永続化する。
@@ -132,7 +151,7 @@ onBeforeUnmount(() => {
  */
 async function handleAdvance(): Promise<void> {
   if (isNextCompleted(timer.state.value)) {
-    await session.completeMatch()
+    await complete()
   } else {
     await timer.advance()
   }
@@ -173,10 +192,48 @@ function back(): void {
         :current-minute="timer.currentMinute.value"
         :running="timer.isRunning.value"
         @advance="handleAdvance()"
-        @complete="session.completeMatch()"
+        @complete="complete()"
         @extra="timer.goExtra()"
         @penalty="timer.goPenaltyShootout()"
       />
+
+      <!-- PK 戦スコア入力（PENALTY_SHOOTOUT 中・記録権限あり時のみ）。
+           ここで入力した成功数が completeMatch → finalizeScore で確定保存され、
+           MatchCompletedEvent 経由で大会順位連携に反映される（F08.10 ②）。 -->
+      <div
+        v-if="canRecord && timer.state.value === 'PENALTY_SHOOTOUT'"
+        class="mb-3 rounded-lg border border-surface-200 bg-surface-50 p-3"
+      >
+        <p class="mb-2 text-sm font-medium">{{ t('match.live.penalty.title') }}</p>
+        <div class="flex items-center justify-center gap-4">
+          <div class="flex flex-col items-center gap-1">
+            <span class="text-xs text-surface-500">{{ t('match.live.scoreboard.home') }}</span>
+            <InputNumber
+              v-model="homePenaltyScore"
+              show-buttons
+              button-layout="horizontal"
+              :min="0"
+              :max="99"
+              :input-style="{ width: '3rem', textAlign: 'center' }"
+              :aria-label="t('match.live.penalty.home_label')"
+            />
+          </div>
+          <span class="text-lg font-bold text-surface-400">-</span>
+          <div class="flex flex-col items-center gap-1">
+            <span class="text-xs text-surface-500">{{ opponentName ?? t('match.live.scoreboard.away') }}</span>
+            <InputNumber
+              v-model="awayPenaltyScore"
+              show-buttons
+              button-layout="horizontal"
+              :min="0"
+              :max="99"
+              :input-style="{ width: '3rem', textAlign: 'center' }"
+              :aria-label="t('match.live.penalty.away_label')"
+            />
+          </div>
+        </div>
+        <p class="mt-2 text-center text-xs text-surface-500">{{ t('match.live.penalty.hint') }}</p>
+      </div>
 
       <!-- 閲覧専用案内（記録権限なし・§G.9 認可連動） -->
       <p

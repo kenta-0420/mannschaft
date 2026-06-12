@@ -76,6 +76,12 @@
         "vs": "vs {opponent}",
         "penalty": "Elfm. {home}-{away}"
       },
+      "penalty": {
+        "title": "Elfmeterschießen-Stand",
+        "home_label": "Verwandelte Elfmeter (wir)",
+        "away_label": "Verwandelte Elfmeter (Gegner)",
+        "hint": "Gib die Anzahl der verwandelten Elfmeter ein. Wird bei Spielende bestätigt und in der Turniertabelle berücksichtigt."
+      },
       "timer": {
         "state": {
           "WAITING": "Vor dem Spiel",

@@ -76,6 +76,12 @@
         "vs": "vs {opponent}",
         "penalty": "Penales {home}-{away}"
       },
+      "penalty": {
+        "title": "Marcador de penales",
+        "home_label": "Penales convertidos (nosotros)",
+        "away_label": "Penales convertidos (rival)",
+        "hint": "Introduce los penales anotados. Se confirma al finalizar el partido y se refleja en la clasificación del torneo."
+      },
       "timer": {
         "state": {
           "WAITING": "Pre-partido",
