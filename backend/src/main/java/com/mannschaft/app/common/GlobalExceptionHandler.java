@@ -73,7 +73,8 @@ public class GlobalExceptionHandler {
      * ErrorCode ごとの HttpStatus 個別マッピング。
      * Severity ベースのデフォルトマッピングを上書きしたい場合にここへ追加する。
      */
-    private static final Map<String, HttpStatus> ERROR_CODE_STATUS_MAP = Map.ofEntries(
+    // 型推論限界回避のため明示型指定（エントリ数増加に伴う javac 推論破綻を根治）
+    private static final Map<String, HttpStatus> ERROR_CODE_STATUS_MAP = Map.<String, HttpStatus>ofEntries(
             // F00 共通可視性基盤（Severity.WARN デフォルト 400 を設計書 §7.4 の正しい status に上書き）
             Map.entry("VISIBILITY_001", HttpStatus.FORBIDDEN),   // 認可拒否（権限不足）→ 403
             Map.entry("VISIBILITY_004", HttpStatus.NOT_FOUND),  // コンテンツ不在 → 404
@@ -388,6 +389,11 @@ public class GlobalExceptionHandler {
             // F08.8 修繕長期計画ダッシュボード — テンプレ/モジュール判定（足軽5）
             Map.entry("REPAIR_PLAN_013", HttpStatus.UNPROCESSABLE_ENTITY),   // TEMPLATE_NOT_APARTMENT
             Map.entry("REPAIR_PLAN_014", HttpStatus.UNPROCESSABLE_ENTITY),   // MODULE_NOT_ENABLED
+            // F08.7 大会基本（IDOR 対策で 404 に統一）
+            Map.entry("TOUR_001", HttpStatus.NOT_FOUND),              // TOURNAMENT_NOT_FOUND (IDOR対策で404)
+            // F08.7 順位UI 項目③ スコアキーパー指名（TOUR_059/060）
+            Map.entry("TOUR_059", HttpStatus.FORBIDDEN),              // SCOREKEEPER_MANAGE_FORBIDDEN (管理権限不足→403)
+            Map.entry("TOUR_060", HttpStatus.NOT_FOUND),              // SCOREKEEPER_NOT_FOUND (IDOR対策で404)
             // F08.7 Phase 9/9-B エントリー表・テンプレート
             Map.entry("TOUR_019", HttpStatus.NOT_FOUND),              // ENTRY_MEMBER_NOT_FOUND (IDOR対策で404)
             Map.entry("TOUR_020", HttpStatus.CONFLICT),               // ENTRY_LOCKED

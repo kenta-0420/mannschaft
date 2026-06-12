@@ -26,12 +26,16 @@ const cspReportUri = process.env.NUXT_PUBLIC_CSP_REPORT_URI ?? '/api/v1/security
 // - apiBase（バックエンド API オリジン。プロキシ時も無害なので含める）
 // - Google Fonts（preconnect / CSS 取得）
 // - ws:/wss:（STOMP WebSocket / dev HMR。apiBase 由来の ws もカバー）
-// apiBase が空文字（本番同一オリジン構成: NUXT_PUBLIC_API_BASE=''）のとき、
-// connectSrc に '' が混入しないようガードする。
-// 同一オリジン時は 'self' で API 通信がカバーされるため apiBase の追加は不要。
+// upgrade-insecure-requests が http:// → https:// に昇格させるため両方を許可する
+// apiBase が空文字（本番同一オリジン構成: NUXT_PUBLIC_API_BASE=''）のとき connectSrc に混入しないようガードする
+const apiBaseSrc = apiBase
+  ? apiBase.startsWith('http://')
+    ? [apiBase, apiBase.replace('http://', 'https://')]
+    : [apiBase]
+  : []
 const connectSrc = [
   "'self'",
-  ...(apiBase ? [apiBase] : []),
+  ...apiBaseSrc,
   'https://fonts.googleapis.com',
   'https://fonts.gstatic.com',
   // STOMP WebSocket（@stomp/stompjs）と dev サーバ HMR。
@@ -164,7 +168,8 @@ export default defineNuxtConfig({
         'frame-ancestors': ["'none'"],
         'base-uri': ["'self'"],
         'form-action': ["'self'"],
-        'upgrade-insecure-requests': true,
+        // 本番（HTTPS）では有効。dev（HTTP）では BE が HTTP のため false にする。
+        'upgrade-insecure-requests': process.env.NODE_ENV === 'production',
         // report-uri: CSP 違反レポートの送信先。将来の収集基盤（F12.5 エラー追跡）へ向ける。
         // report-uri は非推奨化されつつあるが広範なブラウザ互換のため採用する。
         // report-to（後継）は CSP ディレクティブ単体では機能せず、別途
@@ -350,7 +355,7 @@ export default defineNuxtConfig({
   // E2E テスト時（NUXT_API_PROXY=true 環境変数）は API を Nuxt サーバー経由でプロキシする。
   // これにより CORS プリフライト問題を回避し、Playwright のルートインターセプトが確実に機能する。
   routeRules: process.env.NUXT_API_PROXY === 'true' ? {
-    '/api/v1/**': { proxy: 'http://localhost:8080/api/v1/**' },
+    '/api/v1/**': { proxy: `${apiBase}/api/v1/**` },
   } : {},
 
   // ──────────────────────────────────────────────────────────────────────
