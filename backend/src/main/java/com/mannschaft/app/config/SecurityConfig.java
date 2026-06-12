@@ -211,6 +211,33 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*/events").permitAll()
                 // F19.1 Phase 7: 組織タイムライン投稿公開 API（認証不要・レート制限あり）
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*/timeline-posts").permitAll()
+                // F08.7 項目① 公開大会参照 API（認証不要）。
+                // PublicTournamentController（visibility=PUBLIC のみ verifyPublicAccess で 404 ガード）と
+                // EmbedController（埋め込みウィジェット・未ログイン前提）の全 GET パスを permitAll する。
+                // これを怠ると deny-by-default の .anyRequest().authenticated() が未認証を 401 で弾き、
+                // PUBLIC 大会が未ログイン者に見えない（PUBLIC=誰でも閲覧の約束違反）+ viewer=null 名前解決経路が
+                // production で dead code になる。
+                // 設計書 §7.4 / F19.1 §17.8 案 B 統合の流儀どおり、IDOR 防止のため `*`（1 階層厳格）で限定。
+                // `/**`（再帰）は使わず、POST/PATCH/DELETE（書込）は permitAll しない。
+                // 非 PUBLIC 大会は Service 層 canView(TOURNAMENT, tId, null) が PUBLIC のみ true のため 404 で隠蔽。
+                // 設計書: docs/features/F08.7_tournament_league.md（順位UI 項目①）
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*/tournaments").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/*/tournaments/*").permitAll()
+                .requestMatchers(HttpMethod.GET,
+                    "/api/v1/public/organizations/*/tournaments/*/divisions/*/standings").permitAll()
+                .requestMatchers(HttpMethod.GET,
+                    "/api/v1/public/organizations/*/tournaments/*/divisions/*/matrix").permitAll()
+                .requestMatchers(HttpMethod.GET,
+                    "/api/v1/public/organizations/*/tournaments/*/rankings/*").permitAll()
+                .requestMatchers(HttpMethod.GET,
+                    "/api/v1/public/organizations/*/tournaments/*/bracket").permitAll()
+                // F08.7 項目① 埋め込みウィジェット（EmbedController・未ログイン前提）。
+                .requestMatchers(HttpMethod.GET,
+                    "/api/v1/embed/organizations/*/tournaments/*/standings/*").permitAll()
+                .requestMatchers(HttpMethod.GET,
+                    "/api/v1/embed/organizations/*/tournaments/*/bracket").permitAll()
+                .requestMatchers(HttpMethod.GET,
+                    "/api/v1/embed/organizations/*/tournaments/*/rankings/*").permitAll()
                 // F21.1 §5.5 公開FAQ API（認証不要・レート制限あり）
                 // 設計書: docs/features/F21.1_geo_optimization.md §5.5.6
                 // IDOR 防止のため `*`（1 階層厳格）で限定。回答済み FAQ のみ返す。

@@ -38,7 +38,7 @@ class AuthEmailEventListenerTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(listener, "frontendUrl", "http://localhost:3000");
+        ReflectionTestUtils.setField(listener, "baseUrl", "http://localhost:3000");
         when(emailOutboxService.enqueue(any(EmailOutboxRequest.class))).thenReturn(UUID.randomUUID());
     }
 

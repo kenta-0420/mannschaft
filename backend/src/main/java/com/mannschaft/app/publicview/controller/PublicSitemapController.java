@@ -41,7 +41,7 @@ public class PublicSitemapController {
     private final SitemapQueryService sitemapQueryService;
     private final SitemapXmlGenerator sitemapXmlGenerator;
 
-    @Value("${app.base-url:https://mannschaft.example}")
+    @Value("${app.base-url}")
     private String baseUrl;
 
     /**

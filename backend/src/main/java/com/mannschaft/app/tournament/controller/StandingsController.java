@@ -93,8 +93,10 @@ public class StandingsController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
         verifyTournamentVisible(tId);
+        // F08.7 項目①: 閲覧者 ID を伝播し、ランキング選手名を F19.1 本人可視性経由で解決する。
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
         Page<IndividualRankingResponse> result =
-                rankingsCalculationService.getRankings(tId, statKey, PageRequest.of(page, size));
+                rankingsCalculationService.getRankings(tId, statKey, PageRequest.of(page, size), viewerUserId);
         return ResponseEntity.ok(PagedResponse.of(result.getContent(),
                 new PagedResponse.PageMeta(result.getTotalElements(), page, size, result.getTotalPages())));
     }
@@ -104,7 +106,10 @@ public class StandingsController {
     public ResponseEntity<ApiResponse<RankingSummaryResponse>> getRankingSummary(
             @PathVariable Long orgId, @PathVariable Long tId) {
         verifyTournamentVisible(tId);
-        return ResponseEntity.ok(ApiResponse.of(rankingsCalculationService.getRankingSummary(tId)));
+        // F08.7 項目①: 閲覧者 ID を伝播し、リーダーの選手名を F19.1 本人可視性経由で解決する。
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        return ResponseEntity.ok(ApiResponse.of(
+                rankingsCalculationService.getRankingSummary(tId, viewerUserId)));
     }
 
     @PostMapping("/api/v1/organizations/{orgId}/tournaments/{tId}/divisions/{divId}/standings/recalculate")

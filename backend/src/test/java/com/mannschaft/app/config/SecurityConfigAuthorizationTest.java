@@ -347,4 +347,143 @@ class SecurityConfigAuthorizationTest {
         expectNotAuthRejected(mockMvc.perform(post("/api/v1/auth/login")),
                 "POST /api/v1/auth/login");
     }
+
+    // ---- F08.7 項目① 公開大会参照 API（PublicTournamentController）が permitAll であること ----
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("匿名: GET /api/v1/public/organizations/{id}/tournaments は認証で弾かれない")
+    void anonymous_public_tournament_list_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(
+                mockMvc.perform(get("/api/v1/public/organizations/1/tournaments")),
+                "GET /api/v1/public/organizations/{id}/tournaments");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("匿名: GET /api/v1/public/organizations/{id}/tournaments/{tId} は認証で弾かれない")
+    void anonymous_public_tournament_detail_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(
+                mockMvc.perform(get("/api/v1/public/organizations/1/tournaments/100")),
+                "GET /api/v1/public/organizations/{id}/tournaments/{tId}");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("匿名: GET 公開順位表は認証で弾かれない")
+    void anonymous_public_standings_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(
+                mockMvc.perform(get(
+                        "/api/v1/public/organizations/1/tournaments/100/divisions/2/standings")),
+                "GET 公開順位表");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("匿名: GET 公開対戦マトリクスは認証で弾かれない")
+    void anonymous_public_matrix_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(
+                mockMvc.perform(get(
+                        "/api/v1/public/organizations/1/tournaments/100/divisions/2/matrix")),
+                "GET 公開対戦マトリクス");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("匿名: GET 公開個人ランキングは認証で弾かれない")
+    void anonymous_public_rankings_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(
+                mockMvc.perform(get(
+                        "/api/v1/public/organizations/1/tournaments/100/rankings/goals")),
+                "GET 公開個人ランキング");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("匿名: GET 公開トーナメント表(bracket)は認証で弾かれない")
+    void anonymous_public_bracket_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(
+                mockMvc.perform(get(
+                        "/api/v1/public/organizations/1/tournaments/100/bracket")),
+                "GET 公開トーナメント表(bracket)");
+    }
+
+    // ---- F08.7 項目① 埋め込みウィジェット（EmbedController）が permitAll であること ----
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("匿名: GET 埋め込み順位表は認証で弾かれない")
+    void anonymous_embed_standings_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(
+                mockMvc.perform(get(
+                        "/api/v1/embed/organizations/1/tournaments/100/standings/2")),
+                "GET 埋め込み順位表");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("匿名: GET 埋め込みトーナメント表は認証で弾かれない")
+    void anonymous_embed_bracket_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(
+                mockMvc.perform(get(
+                        "/api/v1/embed/organizations/1/tournaments/100/bracket")),
+                "GET 埋め込みトーナメント表");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("匿名: GET 埋め込み個人ランキングは認証で弾かれない")
+    void anonymous_embed_rankings_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(
+                mockMvc.perform(get(
+                        "/api/v1/embed/organizations/1/tournaments/100/rankings/goals")),
+                "GET 埋め込み個人ランキング");
+    }
+
+    // ---- 漏洩面の精査: 書込/非public 系は permitAll で開いていないこと ----
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("匿名: POST 公開大会再計算系パスは認証必須（書込は permitAll しない）")
+    void anonymous_public_tournament_post_is_auth_rejected() throws Exception {
+        // 公開 GET と同じ前置詞でも POST は permitAll の HttpMethod.GET に含まれないため
+        // deny-by-default で 401/403 になること（書込面を開いていない証左）。
+        expectAuthRejected(
+                mockMvc.perform(post(
+                        "/api/v1/public/organizations/1/tournaments/100/bracket")),
+                "POST /api/v1/public/organizations/{id}/tournaments/{tId}/bracket");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("匿名: GET 認証必須(非public) 大会順位表は 401/403（公開閲覧は /public/ 経由限定）")
+    void anonymous_authenticated_standings_is_auth_rejected() throws Exception {
+        // StandingsController の /api/v1/organizations/... 系は permitAll しておらず、
+        // 公開閲覧は /public/ 経由に限定する設計。未認証は deny-by-default で弾かれること。
+        expectAuthRejected(
+                mockMvc.perform(get(
+                        "/api/v1/organizations/1/tournaments/100/divisions/2/standings")),
+                "GET /api/v1/organizations/{id}/tournaments/{tId}/divisions/{divId}/standings");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("匿名: GET 認証必須(非public) 個人ランキングは 401/403")
+    void anonymous_authenticated_rankings_is_auth_rejected() throws Exception {
+        expectAuthRejected(
+                mockMvc.perform(get(
+                        "/api/v1/organizations/1/tournaments/100/rankings/goals")),
+                "GET /api/v1/organizations/{id}/tournaments/{tId}/rankings/{statKey}");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("匿名: GET 公開大会パスの 2 階層余分は permitAll に含まれない（* は 1 階層厳格）")
+    void anonymous_public_tournament_extra_segment_is_auth_rejected() throws Exception {
+        // `*` は 1 階層厳格のため、想定外の深いパスは permitAll にマッチせず deny-by-default。
+        expectAuthRejected(
+                mockMvc.perform(get(
+                        "/api/v1/public/organizations/1/tournaments/100/divisions/2/standings/extra")),
+                "GET 公開順位表 + 余分階層");
+    }
 }

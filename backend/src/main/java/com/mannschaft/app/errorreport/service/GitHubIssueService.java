@@ -78,7 +78,7 @@ public class GitHubIssueService {
     @Value("${GH_REPO:}")
     private String repo;
 
-    @Value("${mannschaft.app-base-url:http://localhost:3000}")
+    @Value("${app.base-url}")
     private String appBaseUrl;
 
     private final RestClient restClient = RestClient.create();
@@ -243,7 +243,7 @@ public class GitHubIssueService {
     }
 
     /**
-     * Markdown リンク {@code [text](url)} のうち、自ドメイン（{@code mannschaft.app-base-url}）
+     * Markdown リンク {@code [text](url)} のうち、自ドメイン（{@code app.base-url}）
      * 以外のリンクを {@code [text]} に縮約する。
      *
      * <p>NULL は NULL を返す。</p>
