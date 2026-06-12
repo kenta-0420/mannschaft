@@ -2,6 +2,8 @@ package com.mannschaft.app.publicview.filter;
 
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.ratelimit.RateLimitResult;
+import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.servlet.FilterChain;
@@ -18,21 +20,28 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.util.function.Consumer;
-
+import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
- * {@link PublicApiRateLimitFilter} のレート制限検証。
+ * {@link PublicApiRateLimitFilter} のレート制限検証（Valkey 化後）。
  *
  * <p>設計書 {@code docs/features/F15.4_team_store_search_within_org.md §3.5 / §6 / §6.6}
  *      および {@code docs/features/F15.4_phase5_team_public_detail.md §4.4} に従い以下を検証する:</p>
@@ -40,30 +49,53 @@ import static org.mockito.Mockito.verify;
  *   <li>(検索) 未ログイン: 30 回まで成功、31 回目で 429（IP ベース）</li>
  *   <li>(検索) ログイン: 120 回まで成功、121 回目で 429（userId ベース）</li>
  *   <li>(詳細) 未ログイン: 60 回まで成功、61 回目で 429（IP ベース、Phase 5-α）</li>
- *   <li>異なる IP / 異なるユーザー間でバケットが隔離されている</li>
- *   <li>検索パスと詳細パスは別バケット（Target enum で名前空間分離）</li>
+ *   <li>異なる IP / 異なるユーザー間でカウントが隔離されている</li>
+ *   <li>検索パスと詳細パスは別 zone（Target enum で名前空間分離）</li>
  *   <li>対象パス外（{@code GET /api/v1/organizations/{orgId}/teams}）は透過する</li>
  *   <li>非 GET メソッドは透過する</li>
- *   <li>429 レスポンスに {@code Retry-After: 60} ヘッダーと JSON ボディが返る</li>
+ *   <li>429 レスポンスに {@code Retry-After} ヘッダー・§4.3 標準ヘッダー・JSON ボディが返る</li>
  *   <li>§6.6: レート違反時に対象に応じた AuditEventType（TEAM_SEARCH_RATE_LIMITED /
  *       PUBLIC_TEAM_DETAIL_RATE_LIMIT_EXCEEDED）が記録される</li>
  * </ul>
  *
- * <p><b>実装アプローチ</b>: 既存 {@link com.mannschaft.app.pointcard.filter.PointCardRateLimitFilter}
- * のテストと同形で、Filter を直接呼び出し Bucket4j のトークン消費を検証する。</p>
+ * <p><b>実装アプローチ（Valkey 化第一陣）</b>: {@link ValkeyRateLimiter} はモックし、
+ * (zone, key) ごとの簡易カウンタで N 回目まで allowed / N+1 回目 denied を再現する。
+ * 実カウント・TTL・ウィンドウ境界の検証は
+ * {@code ValkeyRateLimiterIntegrationTest}（Testcontainers 実 Redis）の責務に移った。</p>
  */
 @DisplayName("PublicApiRateLimitFilter レート制限検証")
 class PublicApiRateLimitFilterTest {
 
     private static final String TARGET_PATH = "/api/v1/organizations/100/teams/search";
 
+    private static final long RESET_EPOCH = 1_750_000_020L;
+    private static final long RETRY_AFTER = 20L;
+
     private PublicApiRateLimitFilter filter;
+    private ValkeyRateLimiter rateLimiter;
     private AuditLogService auditLogService;
     private MeterRegistry meterRegistry;
+    /** (zone|key) ごとの呼び出し回数。モックがこの値と limit を比較して allowed を決める。 */
+    private final Map<String, AtomicLong> counters = new ConcurrentHashMap<>();
 
     @BeforeEach
     @SuppressWarnings("unchecked")
     void setUp() {
+        rateLimiter = mock(ValkeyRateLimiter.class);
+        when(rateLimiter.tryConsume(anyString(), anyString(), anyInt(), any(Duration.class)))
+                .thenAnswer(inv -> {
+                    String zone = inv.getArgument(0);
+                    String key = inv.getArgument(1);
+                    int limit = inv.getArgument(2);
+                    long count = counters
+                            .computeIfAbsent(zone + "|" + key, k -> new AtomicLong())
+                            .incrementAndGet();
+                    return new RateLimitResult(
+                            count <= limit, limit, Math.max(0, limit - count), RESET_EPOCH, RETRY_AFTER);
+                });
+        ObjectProvider<ValkeyRateLimiter> rateLimiterProvider = mock(ObjectProvider.class);
+        when(rateLimiterProvider.getIfAvailable()).thenReturn(rateLimiter);
+
         auditLogService = mock(AuditLogService.class);
         ObjectProvider<AuditLogService> auditProvider = mock(ObjectProvider.class);
         // ifAvailable(Consumer) は AuditLogService が利用可能なときに Consumer を実行する。
@@ -83,12 +115,13 @@ class PublicApiRateLimitFilterTest {
             return null;
         }).when(meterRegistryProvider).ifAvailable(any());
 
-        filter = new PublicApiRateLimitFilter(auditProvider, meterRegistryProvider);
+        filter = new PublicApiRateLimitFilter(rateLimiterProvider, auditProvider, meterRegistryProvider);
     }
 
     @AfterEach
     void tearDown() {
         SecurityContextHolder.clearContext();
+        counters.clear();
     }
 
     @Test
@@ -115,11 +148,18 @@ class PublicApiRateLimitFilterTest {
         filter.doFilter(request, response, chain);
 
         assertThat(response.getStatus()).isEqualTo(429);
-        assertThat(response.getHeader("Retry-After")).isEqualTo("60");
+        assertThat(response.getHeader("Retry-After")).isEqualTo(String.valueOf(RETRY_AFTER));
+        assertThat(response.getHeader("X-RateLimit-Limit")).isEqualTo("30");
+        assertThat(response.getHeader("X-RateLimit-Remaining")).isEqualTo("0");
+        assertThat(response.getHeader("X-RateLimit-Reset")).isEqualTo(String.valueOf(RESET_EPOCH));
         assertThat(response.getContentType()).startsWith("application/json");
         assertThat(response.getContentAsString()).contains("Too many requests");
         // chain は 30 回目までしか呼ばれていない
         verify(chain, times(30)).doFilter(any(), any());
+
+        // zone / key / limit が宣言どおり（未認証は IP キー・30/min）
+        verify(rateLimiter, atLeastOnce()).tryConsume(
+                eq("public-api:ORG_TEAM_SEARCH"), eq("ip:198.51.100.10"), eq(30), eq(Duration.ofMinutes(1)));
     }
 
     @Test
@@ -144,11 +184,15 @@ class PublicApiRateLimitFilterTest {
         filter.doFilter(request, response, chain);
 
         assertThat(response.getStatus()).isEqualTo(429);
-        assertThat(response.getHeader("Retry-After")).isEqualTo("60");
+        assertThat(response.getHeader("Retry-After")).isEqualTo(String.valueOf(RETRY_AFTER));
+
+        // 認証済みは u:{userId} キー・120/min
+        verify(rateLimiter, atLeastOnce()).tryConsume(
+                eq("public-api:ORG_TEAM_SEARCH"), eq("u:100"), eq(120), eq(Duration.ofMinutes(1)));
     }
 
     @Test
-    @DisplayName("未ログイン: 異なる IP のバケットは隔離される")
+    @DisplayName("未ログイン: 異なる IP のカウントは隔離される")
     void anonymous_separateIp_separateBuckets() throws Exception {
         SecurityContextHolder.clearContext();
         FilterChain chain = mock(FilterChain.class);
@@ -168,7 +212,7 @@ class PublicApiRateLimitFilterTest {
         filter.doFilter(requestA, responseA, chain);
         assertThat(responseA.getStatus()).isEqualTo(429);
 
-        // IP-B は独立バケットを持つので 200 を返す
+        // IP-B は独立カウントを持つので 200 を返す
         MockHttpServletRequest requestB = buildRequest(TARGET_PATH, "GET");
         requestB.setRemoteAddr("198.51.100.2");
         MockHttpServletResponse responseB = new MockHttpServletResponse();
@@ -177,7 +221,7 @@ class PublicApiRateLimitFilterTest {
     }
 
     @Test
-    @DisplayName("ログイン: 異なる userId のバケットは隔離される")
+    @DisplayName("ログイン: 異なる userId のカウントは隔離される")
     void authenticated_separateUser_separateBuckets() throws Exception {
         FilterChain chain = mock(FilterChain.class);
 
@@ -195,7 +239,7 @@ class PublicApiRateLimitFilterTest {
         filter.doFilter(req100, res100, chain);
         assertThat(res100.getStatus()).isEqualTo(429);
 
-        // user=200 は独立バケットを持つので 200 を返す
+        // user=200 は独立カウントを持つので 200 を返す
         setAuthenticated("200");
         MockHttpServletRequest req200 = buildRequest(TARGET_PATH, "GET");
         MockHttpServletResponse res200 = new MockHttpServletResponse();
@@ -214,8 +258,9 @@ class PublicApiRateLimitFilterTest {
 
         filter.doFilter(request, response, chain);
 
-        // shouldNotFilter() が true となり Bucket4j を消費せず素通り
+        // shouldNotFilter() が true となり Valkey を消費せず素通り
         verify(chain, times(1)).doFilter(any(), any());
+        verify(rateLimiter, never()).tryConsume(anyString(), anyString(), anyInt(), any());
         assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
     }
 
@@ -231,6 +276,7 @@ class PublicApiRateLimitFilterTest {
         filter.doFilter(request, response, chain);
 
         verify(chain, times(1)).doFilter(any(), any());
+        verify(rateLimiter, never()).tryConsume(anyString(), anyString(), anyInt(), any());
         assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
     }
 
@@ -389,7 +435,11 @@ class PublicApiRateLimitFilterTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         filter.doFilter(request, response, chain);
         assertThat(response.getStatus()).isEqualTo(429);
-        assertThat(response.getHeader("Retry-After")).isEqualTo("60");
+        assertThat(response.getHeader("Retry-After")).isEqualTo(String.valueOf(RETRY_AFTER));
+
+        // PUBLIC_API zone・未認証 60/min
+        verify(rateLimiter, atLeastOnce()).tryConsume(
+                eq("public-api:PUBLIC_API"), eq("ip:198.51.100.70"), eq(60), eq(Duration.ofMinutes(1)));
     }
 
     @Test
@@ -412,10 +462,13 @@ class PublicApiRateLimitFilterTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         filter.doFilter(request, response, chain);
         assertThat(response.getStatus()).isEqualTo(429);
+
+        verify(rateLimiter, atLeastOnce()).tryConsume(
+                eq("public-api:PUBLIC_API"), eq("u:555"), eq(200), eq(Duration.ofMinutes(1)));
     }
 
     @Test
-    @DisplayName("(詳細) 検索パスのバケットとは独立: 検索を 30 回消費しても詳細は影響なし")
+    @DisplayName("(詳細) 検索パスの zone とは独立: 検索を 30 回消費しても詳細は影響なし")
     void detail_separateBucketFromSearch() throws Exception {
         SecurityContextHolder.clearContext();
         FilterChain chain = mock(FilterChain.class);
@@ -435,7 +488,7 @@ class PublicApiRateLimitFilterTest {
         filter.doFilter(searchOver, searchOverRes, chain);
         assertThat(searchOverRes.getStatus()).isEqualTo(429);
 
-        // 詳細パスは独立バケットなので 200 を返す
+        // 詳細パスは独立 zone なので 200 を返す
         MockHttpServletRequest detailReq = buildRequest(DETAIL_PATH, "GET");
         detailReq.setRemoteAddr(ip);
         MockHttpServletResponse detailRes = new MockHttpServletResponse();
@@ -498,6 +551,7 @@ class PublicApiRateLimitFilterTest {
         filter.doFilter(request, response, chain);
 
         verify(chain, times(1)).doFilter(any(), any());
+        verify(rateLimiter, never()).tryConsume(anyString(), anyString(), anyInt(), any());
         assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
     }
 
@@ -580,8 +634,10 @@ class PublicApiRateLimitFilterTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         filter.doFilter(request, response, chain);
         assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
-        // chain が呼ばれた = shouldNotFilter で弾かれず、Filter が動作した
+        // Valkey 消費が行われた = shouldNotFilter で弾かれず、Filter が動作した
         verify(chain, times(1)).doFilter(any(), any());
+        verify(rateLimiter, times(1)).tryConsume(
+                eq("public-api:PUBLIC_API"), anyString(), anyInt(), any());
     }
 
     @Test
@@ -596,6 +652,8 @@ class PublicApiRateLimitFilterTest {
         filter.doFilter(request, response, chain);
         assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
         verify(chain, times(1)).doFilter(any(), any());
+        verify(rateLimiter, times(1)).tryConsume(
+                eq("public-api:PUBLIC_API"), anyString(), anyInt(), any());
     }
 
     @Test
@@ -610,10 +668,12 @@ class PublicApiRateLimitFilterTest {
         filter.doFilter(request, response, chain);
         assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
         verify(chain, times(1)).doFilter(any(), any());
+        verify(rateLimiter, times(1)).tryConsume(
+                eq("public-api:PUBLIC_API"), anyString(), anyInt(), any());
     }
 
     @Test
-    @DisplayName("(F19.1) 公開ページ全体で同一 IP は 60 件で 429 — teams 系と organizations 系が同じ PUBLIC_API バケットを共有")
+    @DisplayName("(F19.1) 公開ページ全体で同一 IP は 60 件で 429 — teams 系と organizations 系が同じ PUBLIC_API zone を共有")
     void f19_publicApi_singleBucketAcrossScopes() throws Exception {
         SecurityContextHolder.clearContext();
         FilterChain chain = mock(FilterChain.class);
