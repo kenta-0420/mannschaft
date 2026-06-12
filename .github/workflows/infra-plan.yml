@@ -1,0 +1,140 @@
+name: Infra — Terraform Plan
+
+# PR 上で terraform fmt / validate / plan を実行し、plan 結果を PR コメントに貼る。
+# bootstrap（infra/terraform/bootstrap/README.md）が完了して GitHub variable
+# INFRA_CI_ENABLED=true が設定されるまで、ジョブは if: 条件でスキップされる（眠っている）。
+#
+# 必要な GitHub variables / secrets（一覧は infra/README.md 参照）:
+#   vars.INFRA_CI_ENABLED            — 'true' で CI 起動
+#   vars.INFRA_TF_PLAN_ROLE_ARN      — bootstrap output tf_plan_role_arn
+#   vars.INFRA_DOMAIN_NAME           — 本番ドメイン名（TF_VAR_domain_name として注入）
+#   vars.INFRA_CLOUDFLARE_ACCOUNT_ID — Cloudflare アカウント ID
+#   vars.INFRA_CLOUDFLARE_ZONE_ID    — Cloudflare ゾーン ID
+#   secrets.CLOUDFLARE_API_TOKEN     — cloudflare provider の認証トークン
+
+on:
+  pull_request:
+    paths:
+      - "infra/terraform/**"
+      - ".github/workflows/infra-plan.yml"
+      - ".github/workflows/infra-apply.yml"
+
+# OIDC（id-token）+ PR コメント（pull-requests: write）
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: infra-plan-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  plan:
+    name: Terraform Plan (envs/prod)
+    # bootstrap 完了まで眠らせるゲート
+    if: vars.INFRA_CI_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/terraform/envs/prod
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      # 必須変数は GitHub variables から TF_VAR_ 経由で注入（prod.tfvars は gitignore のため CI に存在しない）
+      TF_VAR_domain_name: ${{ vars.INFRA_DOMAIN_NAME }}
+      TF_VAR_cloudflare_account_id: ${{ vars.INFRA_CLOUDFLARE_ACCOUNT_ID }}
+      TF_VAR_cloudflare_zone_id: ${{ vars.INFRA_CLOUDFLARE_ZONE_ID }}
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.6"
+
+      - name: Configure AWS credentials (OIDC / plan role)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.INFRA_TF_PLAN_ROLE_ARN }}
+          aws-region: ap-northeast-1
+
+      # infra/terraform 全体（modules / bootstrap 含む）の整形チェック
+      - name: Terraform fmt check
+        id: fmt
+        run: terraform fmt -check -recursive ../..
+
+      - name: Terraform init
+        id: init
+        run: terraform init -input=false
+
+      - name: Terraform validate
+        id: validate
+        run: terraform validate -no-color
+
+      - name: Terraform plan
+        id: plan
+        run: terraform plan -no-color -input=false
+        continue-on-error: true
+
+      # plan 結果を PR コメントに貼る（同 workflow の旧コメントがあれば更新）
+      - name: Comment plan result on PR
+        uses: actions/github-script@v7
+        if: always()
+        env:
+          PLAN_STDOUT: ${{ steps.plan.outputs.stdout }}
+          PLAN_STDERR: ${{ steps.plan.outputs.stderr }}
+        with:
+          script: |
+            const marker = '<!-- infra-plan-comment -->';
+            const plan = (process.env.PLAN_STDOUT || '') + '\n' + (process.env.PLAN_STDERR || '');
+            // GitHub コメント上限（65536 文字）対策で末尾を切り詰める
+            const truncated = plan.length > 60000
+              ? plan.slice(0, 60000) + '\n...（長すぎるため切り詰め。全文は Actions ログ参照）'
+              : plan;
+            const body = `${marker}
+            #### Infra — Terraform Plan
+            | step | result |
+            |---|---|
+            | fmt | \`${{ steps.fmt.outcome }}\` |
+            | init | \`${{ steps.init.outcome }}\` |
+            | validate | \`${{ steps.validate.outcome }}\` |
+            | plan | \`${{ steps.plan.outcome }}\` |
+
+            <details><summary>Plan 結果を表示</summary>
+
+            \`\`\`
+            ${truncated}
+            \`\`\`
+
+            </details>
+
+            *Workflow: \`${{ github.workflow }}\` / Commit: \`${{ github.event.pull_request.head.sha }}\`*`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      # plan が失敗していたらジョブ全体を失敗させる（continue-on-error の後始末）
+      - name: Fail if plan failed
+        if: steps.plan.outcome == 'failure'
+        run: exit 1

@@ -43,3 +43,15 @@ k6/*.csv
 
 # --- F08.9 P5 Stripe PoC 出力 (API レスポンス JSON。秘密を含み得るため除外) ---
 scripts/poc/out/
+
+# --- Terraform (infra/terraform) ---
+# 注: .terraform.lock.hcl はプロバイダ固定のため除外しない（コミット対象）
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.auto.tfvars
+infra/terraform/envs/*/prod.tfvars
+# C11: bootstrap の tfvars にはアカウントID・メールアドレス等が入るため除外
+# bootstrap/README.md §2 が「gitignore 済み」と謳う通りに実装
+infra/terraform/bootstrap/terraform.tfvars
