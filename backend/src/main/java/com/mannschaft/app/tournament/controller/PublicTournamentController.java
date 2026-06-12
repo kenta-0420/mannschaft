@@ -2,6 +2,7 @@ package com.mannschaft.app.tournament.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.tournament.dto.IndividualRankingResponse;
 import com.mannschaft.app.tournament.dto.MatrixResponse;
 import com.mannschaft.app.tournament.dto.MatchResponse;
@@ -73,8 +74,11 @@ public class PublicTournamentController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
         tournamentService.verifyPublicAccess(orgId, tId);
+        // F08.7 項目①: 公開SSR経路。閲覧者 ID を伝播し F19.1 本人可視性で名前解決する
+        // （未ログインなら汎用ラベル、ログイン中メンバーなら相応の表示名）。
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
         Page<IndividualRankingResponse> result =
-                rankingsCalculationService.getRankings(tId, statKey, PageRequest.of(page, size));
+                rankingsCalculationService.getRankings(tId, statKey, PageRequest.of(page, size), viewerUserId);
         return ResponseEntity.ok(PagedResponse.of(result.getContent(),
                 new PagedResponse.PageMeta(result.getTotalElements(), page, size, result.getTotalPages())));
     }
