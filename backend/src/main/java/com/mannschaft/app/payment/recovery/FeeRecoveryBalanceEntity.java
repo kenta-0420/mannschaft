@@ -6,6 +6,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -39,7 +40,15 @@ import java.util.UUID;
  * <p>設計書: docs/features/F22.1_market/payment/02_api_design.md §6.1-6.3</p>
  */
 @Entity
-@Table(name = "fee_recovery_balances")
+// UNIQUE(connect_account_id, currency) は V84.001 の DDL（uk_frb_account_currency）と等価。
+// テストプロファイルは ddl-auto:create かつ Flyway 無効で Hibernate がエンティティ注釈から
+// スキーマを生成するため、ここに UNIQUE を宣言しないと auto-DDL の表に制約が乗らず、
+// 重複拒否の番人テストが空振りする（マイグレーション DDL とエンティティ写像のドリフト防止）。
+@Table(
+        name = "fee_recovery_balances",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_frb_account_currency",
+                columnNames = {"connect_account_id", "currency"}))
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

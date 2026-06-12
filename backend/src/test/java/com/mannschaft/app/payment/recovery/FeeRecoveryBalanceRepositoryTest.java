@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -31,6 +33,9 @@ class FeeRecoveryBalanceRepositoryTest extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private FeeRecoveryBalanceRepository repository;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     private static FeeRecoveryBalanceEntity newBalance(UUID connectAccountId, Long orgId,
                                                         long outstanding, String currency) {
@@ -66,10 +71,22 @@ class FeeRecoveryBalanceRepositoryTest extends AbstractMySqlIntegrationTest {
     @DisplayName("UNIQUE(connect_account_id, currency) 違反で重複 INSERT は拒否される")
     void uniqueConstraint_重複は拒否される() {
         UUID accountId = UUID.randomUUID();
-        repository.saveAndFlush(newBalance(accountId, 1101L, 100L, "jpy"));
 
+        // 本クラスは @Transactional ではないため saveAndFlush をトランザクション外で呼ぶと
+        // flush 自体が TransactionRequiredException で失敗してしまう。UNIQUE 違反を DB まで
+        // 到達させるには flush が必要で、その flush にはトランザクション境界が要る。
+        // そこで TransactionTemplate でトランザクション内 flush を行い、UNIQUE 制約が DB レベルで
+        // 重複 INSERT を本当に拒否することを検証する（RepairPlanAuditLogIntegrationTest 等で確立済みの作法）。
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+
+        // 1 件目は独立トランザクションでコミットし、DB に実在させる。
+        tx.executeWithoutResult(status ->
+                repository.saveAndFlush(newBalance(accountId, 1101L, 100L, "jpy")));
+
+        // 2 件目はトランザクション内 flush 時に UNIQUE(connect_account_id, currency) 違反となる。
         assertThatThrownBy(() ->
-                repository.saveAndFlush(newBalance(accountId, 1101L, 200L, "jpy")))
+                tx.executeWithoutResult(status ->
+                        repository.saveAndFlush(newBalance(accountId, 1101L, 200L, "jpy"))))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
