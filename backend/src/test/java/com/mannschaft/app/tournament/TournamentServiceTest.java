@@ -307,6 +307,40 @@ class TournamentServiceTest {
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
         }
+
+        @Test
+        @DisplayName("漏洩スモーク: 非PUBLIC大会は未認証(viewer=null)で 404 隠蔽される")
+        void 非PUBLIC大会は未認証で404隠蔽() {
+            // 組織は一致するが、匿名閲覧者では canView(TOURNAMENT, tId, null) が false（PUBLIC 以外）。
+            // PUBLIC=誰でも閲覧の約束を破らず、非公開大会の存在自体を 404 で隠す（IDOR 防止）。
+            TournamentEntity entity = TournamentEntity.builder()
+                    .organizationId(ORG_ID).name("非公開大会").build();
+            setVisibility(entity, TournamentVisibility.MEMBERS_AND_ABOVE);
+            given(tournamentRepository.findById(TOURNAMENT_ID)).willReturn(Optional.of(entity));
+            given(contentVisibilityChecker.canView(
+                    com.mannschaft.app.common.visibility.ReferenceType.TOURNAMENT, TOURNAMENT_ID, null))
+                    .willReturn(false);
+
+            assertThatThrownBy(() -> service.verifyPublicAccess(ORG_ID, TOURNAMENT_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("漏洩スモーク: PUBLIC大会は未認証(viewer=null)で閲覧可（例外を投げない）")
+        void PUBLIC大会は未認証で閲覧可() {
+            TournamentEntity entity = TournamentEntity.builder()
+                    .organizationId(ORG_ID).name("公開大会").build();
+            setVisibility(entity, TournamentVisibility.PUBLIC);
+            given(tournamentRepository.findById(TOURNAMENT_ID)).willReturn(Optional.of(entity));
+            given(contentVisibilityChecker.canView(
+                    com.mannschaft.app.common.visibility.ReferenceType.TOURNAMENT, TOURNAMENT_ID, null))
+                    .willReturn(true);
+
+            // 例外を投げずに通過すること（PUBLIC=誰でも閲覧）。
+            service.verifyPublicAccess(ORG_ID, TOURNAMENT_ID);
+        }
     }
 
     private void setStatus(TournamentEntity entity, TournamentStatus status) {
