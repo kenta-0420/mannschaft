@@ -130,24 +130,43 @@ class AuthorizationIntegrationTest {
             return new PublicApiRateLimitFilter(rateLimiterProvider, auditProvider, meterProvider);
         }
 
+        /**
+         * Valkey 化第二陣B: ValkeyRateLimiter は空 Provider（素通し）。
+         * IP のみキー / addFilterBefore 登録方式は不変。
+         */
         @Bean
+        @SuppressWarnings("unchecked")
         AdPublicEndpointRateLimitFilter adPublicEndpointRateLimitFilter() {
-            return new AdPublicEndpointRateLimitFilter();
+            org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.common.ratelimit.ValkeyRateLimiter> rateLimiterProvider =
+                    mock(org.springframework.beans.factory.ObjectProvider.class);
+            return new AdPublicEndpointRateLimitFilter(rateLimiterProvider);
         }
 
+        /** Valkey 化第二陣B: ValkeyRateLimiter は空 Provider（素通し）。addFilterAfter 登録方式は不変。 */
         @Bean
+        @SuppressWarnings("unchecked")
         ScheduleDelegationRateLimitFilter scheduleDelegationRateLimitFilter() {
-            return new ScheduleDelegationRateLimitFilter();
+            org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.common.ratelimit.ValkeyRateLimiter> rateLimiterProvider =
+                    mock(org.springframework.beans.factory.ObjectProvider.class);
+            return new ScheduleDelegationRateLimitFilter(rateLimiterProvider);
         }
 
+        /** Valkey 化第二陣B: ValkeyRateLimiter は空 Provider（素通し）。addFilterAfter 登録方式は不変。 */
         @Bean
+        @SuppressWarnings("unchecked")
         EventDelegationRateLimitFilter eventDelegationRateLimitFilter() {
-            return new EventDelegationRateLimitFilter();
+            org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.common.ratelimit.ValkeyRateLimiter> rateLimiterProvider =
+                    mock(org.springframework.beans.factory.ObjectProvider.class);
+            return new EventDelegationRateLimitFilter(rateLimiterProvider);
         }
 
+        /** Valkey 化第二陣B: ValkeyRateLimiter は空 Provider（素通し）。addFilterAfter 登録方式は不変。 */
         @Bean
+        @SuppressWarnings("unchecked")
         DashboardScopeTabRateLimitFilter dashboardScopeTabRateLimitFilter() {
-            return new DashboardScopeTabRateLimitFilter();
+            org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.common.ratelimit.ValkeyRateLimiter> rateLimiterProvider =
+                    mock(org.springframework.beans.factory.ObjectProvider.class);
+            return new DashboardScopeTabRateLimitFilter(rateLimiterProvider);
         }
     }
 
