@@ -123,6 +123,16 @@ async function apiLogin(
 }
 
 /**
+ * seed サマリーから指定 visibility の大会情報を取得する。
+ * 存在しない場合は明示的にエラーを投げる（undefinedのままプロパティアクセスを防ぐ）。
+ */
+function getTournament(visibility: string): SeedSummary['tournaments'][string] {
+  const t = seed.tournaments[visibility]
+  if (!t) throw new Error(`seed に visibility=${visibility} の大会が存在しません`)
+  return t
+}
+
+/**
  * 試合の現在の version を取得する（楽観的排他ロック対応）。
  * スコア入力時は最新 version を渡さないと 409 になる。
  */
@@ -252,11 +262,12 @@ test.describe('F08.7 可視性6×ロール6マトリクス', () => {
   })
 
   for (const [vis, expected] of Object.entries(VISIBILITY_MATRIX)) {
-    const t = seed.tournaments[vis]
-    if (!t) {
+    const tournamentEntry = seed.tournaments[vis]
+    if (!tournamentEntry) {
       test.skip(true, `seed に ${vis} 大会がありません`)
       continue
     }
+    const t = tournamentEntry
 
     for (const [role, expectedStatus] of Object.entries(expected) as [string, number][]) {
       test(`visibility=${vis} role=${role} → standings ${expectedStatus}`, async () => {
@@ -281,7 +292,7 @@ test.describe('F08.7 可視性6×ロール6マトリクス', () => {
 
   // rankings エンドポイントの代表サンプル（PUBLIC × 全ロール）
   test.describe('rankings endpoint - PUBLIC大会', () => {
-    const t = seed.tournaments['PUBLIC']
+    const t = getTournament('PUBLIC')
 
     for (const role of ['admin', 'member', 'supporter', 'guest', 'participant', 'outsider'] as const) {
       test(`rankings PUBLIC role=${role} → 200`, async () => {
@@ -304,7 +315,7 @@ test.describe('F08.7 可視性6×ロール6マトリクス', () => {
 
   // matrix エンドポイントの代表サンプル（ADMINS_AND_ABOVE）
   test.describe('matrix endpoint - ADMINS_AND_ABOVE大会', () => {
-    const t = seed.tournaments['ADMINS_AND_ABOVE']
+    const t = getTournament('ADMINS_AND_ABOVE')
 
     test('matrix ADMINS_AND_ABOVE role=admin → 200', async () => {
       const res = await api.get(
@@ -339,7 +350,7 @@ test.describe('F08.7 スコア入力権限境界', () => {
   })
 
   test('スコア更新 admin=200', async () => {
-    const t = seed.tournaments[vis]
+    const t = getTournament(vis)
     const adminToken = await apiLogin(api, seed.users.admin.email, seed.users.admin.password)
 
     // 楽観的排他ロック対応: 最新 version を取得してからスコア入力
@@ -360,7 +371,7 @@ test.describe('F08.7 スコア入力権限境界', () => {
   })
 
   test('スコア更新 指名scorekeeper=200', async () => {
-    const t = seed.tournaments[vis]
+    const t = getTournament(vis)
     const adminToken = await apiLogin(api, seed.users.admin.email, seed.users.admin.password)
     const skToken = await apiLogin(
       api,
@@ -386,7 +397,7 @@ test.describe('F08.7 スコア入力権限境界', () => {
   })
 
   test('スコア更新 非関係ユーザー=403', async () => {
-    const t = seed.tournaments[vis]
+    const t = getTournament(vis)
     const adminToken = await apiLogin(api, seed.users.admin.email, seed.users.admin.password)
     const outsiderToken = await apiLogin(
       api,
@@ -413,7 +424,7 @@ test.describe('F08.7 スコア入力権限境界', () => {
   })
 
   test('スコア更新 参加チームADMIN=200（3-way核心: 参加チームADMINが自チーム関与試合のスコアを入力できる）', async () => {
-    const t = seed.tournaments[vis]
+    const t = getTournament(vis)
     const adminToken = await apiLogin(api, seed.users.admin.email, seed.users.admin.password)
     const teamAdminToken = await apiLogin(
       api,
@@ -441,7 +452,7 @@ test.describe('F08.7 スコア入力権限境界', () => {
   })
 
   test('batch スコア admin=204', async () => {
-    const t = seed.tournaments[vis]
+    const t = getTournament(vis)
     const adminToken = await apiLogin(api, seed.users.admin.email, seed.users.admin.password)
 
     // 楽観的排他ロック対応: 最新 version を取得
@@ -469,7 +480,7 @@ test.describe('F08.7 スコア入力権限境界', () => {
   })
 
   test('batch スコア scorekeeper=204', async () => {
-    const t = seed.tournaments[vis]
+    const t = getTournament(vis)
     const adminToken = await apiLogin(api, seed.users.admin.email, seed.users.admin.password)
     const skToken = await apiLogin(
       api,
@@ -500,7 +511,7 @@ test.describe('F08.7 スコア入力権限境界', () => {
   })
 
   test('batch スコア 参加チームMember(非admin)=403', async () => {
-    const t = seed.tournaments[vis]
+    const t = getTournament(vis)
     const adminToken = await apiLogin(api, seed.users.admin.email, seed.users.admin.password)
     const participantToken = await apiLogin(
       api,
@@ -531,7 +542,7 @@ test.describe('F08.7 スコア入力権限境界', () => {
   })
 
   test('batch スコア 参加チームADMIN=403（batch はORG-admin/指名scorekeeperのみ許可）', async () => {
-    const t = seed.tournaments[vis]
+    const t = getTournament(vis)
     const adminToken = await apiLogin(api, seed.users.admin.email, seed.users.admin.password)
     const teamAdminToken = await apiLogin(
       api,
@@ -578,7 +589,7 @@ test.describe('F08.7 順位反映の一気通貫', () => {
   })
 
   test('admin でスコア入力 → standings に反映される', async () => {
-    const t = seed.tournaments[vis]
+    const t = getTournament(vis)
     const adminToken = await apiLogin(api, seed.users.admin.email, seed.users.admin.password)
 
     // 楽観的排他ロック対応: 最新 version を取得
