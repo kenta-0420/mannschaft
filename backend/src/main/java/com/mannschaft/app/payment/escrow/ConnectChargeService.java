@@ -13,6 +13,7 @@ import com.mannschaft.app.payment.connect.PayeeScopeResolver;
 import com.mannschaft.app.payment.connect.ScopeKind;
 import com.mannschaft.app.payment.recovery.FeeRecoveryBalanceEntity;
 import com.mannschaft.app.payment.recovery.FeeRecoveryBalanceRepository;
+import com.mannschaft.app.payment.recovery.FeeRecoveryCalculator;
 import com.mannschaft.app.payment.stripe.CaptureMethod;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import lombok.RequiredArgsConstructor;
@@ -154,6 +155,22 @@ public class ConnectChargeService {
             return toResult(deferred, null);
         }
 
+        // §6.3 第四陣 A（次回入金相殺）: 当該 payee の未回収残高を、本 charge の application_fee に上乗せして実回収する。
+        // 隔離原則（最重要）: 上乗せは「他者債務の回収」という別概念であり、本 escrow 自身の
+        // face/totalFee/transferAmount には一切混ぜない。具体的には
+        //   ・escrow.application_fee_amount は self の totalFee のまま据え置く（返金の transferAmount = amount − totalFee を温存）。
+        //   ・回収分は PI の application_fee_amount にのみ上乗せ（Stripe 上で payee の送金から余分に控除＝payee が負担）。
+        //   ・回収の事実は独立した RECOVERY 仕訳（D PAYEE = C PLATFORM_FEE）＋ outstanding 減算で別管理する。
+        // これにより capture/返金の既存会計は self の totalFee 基準のまま不変で、recovery は self-balancing な別バッチに閉じる。
+        // chk_et_fee 不可侵: recovery ≤ amount − totalFee より PI の application_fee = totalFee + recovery ≤ amount。
+        // 回収の outstanding 減算＋RECOVERY 仕訳は「charge 成立（実際に課金できた段）」で行う:
+        //   ・manual-capture（謝礼）は capture() で送金が動くため、本メソッドでは PI に上乗せのみ行い記帳は capture() に委ねる。
+        long selfFee = fee.applicationFeeAmount();
+        long recovery = (payoutsEnabled)
+                ? computeRecoveryUplift(payee.getId(), currency, fee.chargeAmount(), selfFee)
+                : 0L; // HELD（PI 未作成）は上乗せしない。onboarding 完了→PI 作成時の経路で改めて回収する。
+        long piApplicationFee = selfFee + recovery;
+
         EscrowTransactionEntity.EscrowTransactionEntityBuilder builder = EscrowTransactionEntity.builder()
                 .sourceKind(cmd.sourceKind())
                 .captureMode(EscrowCaptureMode.MANUAL)
@@ -168,7 +185,7 @@ public class ConnectChargeService {
                 .faceAmount(fee.faceAmount())
                 .amount(fee.chargeAmount())
                 .currency(currency)
-                .applicationFeeAmount(fee.applicationFeeAmount())
+                .applicationFeeAmount(selfFee) // 隔離: escrow 列は self の totalFee のまま（recovery は混ぜない）。
                 .feePolicyKey(policy.policyKey()); // 適用パターンを焼き付け（遡及防止・R1・01 §3.2）。
 
         String clientSecret;
@@ -185,9 +202,10 @@ public class ConnectChargeService {
         }
 
         // 受取側 onboarding 完了 → manual-capture の Destination PaymentIntent を作成（02 §5.1 step5）。
+        // PI の application_fee_amount のみ recovery を上乗せ（payee 送金から回収）。escrow 列・返金計算は self 基準のまま不変。
         String idempotencyKey = "escrow-" + cmd.sourceId() + "-" + cmd.sourceParticipantId();
         StripePaymentProvider.PaymentIntentInfo pi = stripePaymentProvider.createDestinationPaymentIntent(
-                fee.chargeAmount(), currency, cmd.payerStripeCustomerId(), fee.applicationFeeAmount(),
+                fee.chargeAmount(), currency, cmd.payerStripeCustomerId(), piApplicationFee,
                 payee.getStripeAccountId(), CaptureMethod.MANUAL, idempotencyKey);
 
         // 第一陣 status 意味論の根治: manual-capture PI は札主が Stripe.js で confirm するまで真の与信
@@ -201,10 +219,13 @@ public class ConnectChargeService {
                 .stripePaymentIntentId(pi.paymentIntentId())
                 .build();
         pendingConfirmation = escrowTransactionRepository.save(pendingConfirmation);
+        // §6.3 第四陣 A: PI に上乗せした回収を outstanding 減算＋RECOVERY 仕訳で記帳（冪等・self-balancing 別バッチ）。
+        // 与信が後で取消（CANCELLED）/ModeB 返金で巻き戻る場合は再計上（recapitalizeRecovery）で残高へ戻す。
+        recordRecoveryExecution(pendingConfirmation, recovery, pi.paymentIntentId());
         clientSecret = pi.clientSecret();
         log.info("与信を PENDING_CONFIRMATION で記録（PI 作成済・札主 confirm 待ち）: escrowId={}, paymentIntentId={}, "
-                        + "charge={}, appFee={}",
-                pendingConfirmation.getId(), pi.paymentIntentId(), fee.chargeAmount(), fee.applicationFeeAmount());
+                        + "charge={}, selfFee={}, recovery={}",
+                pendingConfirmation.getId(), pi.paymentIntentId(), fee.chargeAmount(), selfFee, recovery);
         return toResult(pendingConfirmation, clientSecret);
     }
 
@@ -552,6 +573,13 @@ public class ConnectChargeService {
             throw new BusinessException(ConnectPaymentErrorCode.ONBOARDING_NOT_READY);
         }
 
+        // §6.3 第四陣 A（次回入金相殺）: 当該 payee の未回収残高を本 charge の application_fee に上乗せして実回収する。
+        // 隔離: escrow 列は self の totalFee のまま据え置き、PI の application_fee_amount にのみ recovery を上乗せする
+        // （payee 送金から回収）。記帳・残高減算は self-balancing な RECOVERY 別バッチ。chk_et_fee 不可侵。
+        long selfFee = fee.applicationFeeAmount();
+        long recovery = computeRecoveryUplift(payee.getId(), currency, fee.chargeAmount(), selfFee);
+        long piApplicationFee = selfFee + recovery;
+
         // AUTOMATIC（即時 capture）の Destination PaymentIntent を作成（idempotencyKey を Stripe へ橋渡し）。
         // R2-1: confirmImmediately=true（P5 継続課金の初回会費・払い手不在）なら、保存済み既定 PM で
         // server-side off-session 即時確定する（succeeded webhook が CAPTURED 化＋記帳）。false（P1/P7）は従来どおり
@@ -564,11 +592,11 @@ public class ConnectChargeService {
                         "confirmImmediately=true requires a non-blank paymentMethodId (off-session confirm)");
             }
             pi = stripePaymentProvider.createAndConfirmDestinationPaymentIntent(
-                    fee.chargeAmount(), currency, cmd.payerStripeCustomerId(), fee.applicationFeeAmount(),
+                    fee.chargeAmount(), currency, cmd.payerStripeCustomerId(), piApplicationFee,
                     payee.getStripeAccountId(), CaptureMethod.AUTOMATIC, cmd.paymentMethodId(), cmd.idempotencyKey());
         } else {
             pi = stripePaymentProvider.createDestinationPaymentIntent(
-                    fee.chargeAmount(), currency, cmd.payerStripeCustomerId(), fee.applicationFeeAmount(),
+                    fee.chargeAmount(), currency, cmd.payerStripeCustomerId(), piApplicationFee,
                     payee.getStripeAccountId(), CaptureMethod.AUTOMATIC, cmd.idempotencyKey());
         }
 
@@ -603,10 +631,12 @@ public class ConnectChargeService {
                 .holdExpiresAt(null)
                 .build();
         charged = escrowTransactionRepository.save(charged);
+        // §6.3 第四陣 A: PI に上乗せした回収を outstanding 減算＋RECOVERY 仕訳で記帳（冪等・self-balancing 別バッチ）。
+        recordRecoveryExecution(charged, recovery, pi.paymentIntentId());
 
         log.info("会費 charge を作成（即時 AUTOMATIC・succeeded webhook で CAPTURED+記帳）: escrowId={}, piId={}, "
-                        + "charge={}, appFee={}",
-                charged.getId(), pi.paymentIntentId(), fee.chargeAmount(), fee.applicationFeeAmount());
+                        + "charge={}, selfFee={}, recovery={}",
+                charged.getId(), pi.paymentIntentId(), fee.chargeAmount(), selfFee, recovery);
         return new MembershipChargeResult(charged.getId(), pi.clientSecret(), pi.paymentIntentId(), charged.getStatus());
     }
 
@@ -765,11 +795,17 @@ public class ConnectChargeService {
             throw new BusinessException(ConnectPaymentErrorCode.ONBOARDING_NOT_READY);
         }
 
+        // §6.3 第四陣 A（次回入金相殺）: DEFERRED の即時 charge も payee の未回収残高を application_fee に上乗せして回収する。
+        // 隔離: escrow.application_fee_amount（self の totalFee）は据え置き、PI の application_fee_amount にのみ recovery を上乗せ。
+        long selfFee = escrow.getApplicationFeeAmount();
+        long recovery = computeRecoveryUplift(payee.getId(), escrow.getCurrency(), escrow.getAmount(), selfFee);
+        long piApplicationFee = selfFee + recovery;
+
         // AUTOMATIC（即時 capture）の Destination PaymentIntent を作成（会費 charge と同型・idempotencyKey を Stripe へ橋渡し）。
         String idempotencyKey = "deferred-" + escrow.getSourceId() + "-" + escrow.getSourceParticipantId();
         StripePaymentProvider.PaymentIntentInfo pi = stripePaymentProvider.createDestinationPaymentIntent(
                 escrow.getAmount(), escrow.getCurrency(), escrow.getPayerStripeCustomerId(),
-                escrow.getApplicationFeeAmount(), payee.getStripeAccountId(), CaptureMethod.AUTOMATIC, idempotencyKey);
+                piApplicationFee, payee.getStripeAccountId(), CaptureMethod.AUTOMATIC, idempotencyKey);
 
         // AUTHORIZED（PI 作成済・succeeded webhook 待ち＝会費 charge() と一貫）へ遷移し clientSecret を返す。
         // hold_expires_at=NULL（即時モード・与信フェーズなし＝第三陣バッチの自動取消対象外）。confirm→succeeded webhook で
@@ -779,9 +815,11 @@ public class ConnectChargeService {
         escrow.setAuthorizedAt(LocalDateTime.now());
         escrow.setHoldExpiresAt(null);
         escrowTransactionRepository.save(escrow);
+        // §6.3 第四陣 A: PI に上乗せした回収を outstanding 減算＋RECOVERY 仕訳で記帳（冪等・self-balancing 別バッチ）。
+        recordRecoveryExecution(escrow, recovery, pi.paymentIntentId());
         log.info("完了時即時払いを起票 DEFERRED→AUTHORIZED（AUTOMATIC・succeeded webhook で CAPTURED+記帳）: "
-                        + "escrowId={}, piId={}, charge={}, appFee={}",
-                escrowId, pi.paymentIntentId(), escrow.getAmount(), escrow.getApplicationFeeAmount());
+                        + "escrowId={}, piId={}, charge={}, selfFee={}, recovery={}",
+                escrowId, pi.paymentIntentId(), escrow.getAmount(), selfFee, recovery);
         return toResult(escrow, pi.clientSecret());
     }
 
@@ -986,6 +1024,12 @@ public class ConnectChargeService {
         // fee_recovery_balances.outstanding_amount を同額だけ積む（残高計上のみ・実回収は後続 A 陣）。
         if (effectiveBearer == FeeBearer.PAYEE) {
             recordModeBStripeFeeRecovery(escrow, modeBGrossRefund, refundInfo.refundId());
+            // §6.3 第四陣 A（回収分の再返金エッジ・家老指摘の最小安全策）: この escrow 自身が A 陣で「回収を上乗せされた
+            // charge」だった場合、ModeB 返金は refund_application_fee:true で application_fee 全体（self totalFee＋recovery）を
+            // 払い戻すため、上乗せした回収が消えてしまう。よって当該 escrow に計上済みの回収実行分（純額）を outstanding へ
+            // 再計上し、回収が無かったことにして次回再回収できるようにする。ModeA（refund_application_fee:false・recovery 据置）
+            // では再計上しない（recovery 維持）。終端 REFUNDED への二重返金は上の冪等 no-op で防がれ、純額判定で二重再計上も防ぐ。
+            recapitalizeAppliedRecoveryOnRefund(escrow, refundInfo.refundId());
         }
 
         log.info("返金を受付 status={}: escrowId={}, refundId={}, feeBearer={}, R={}（transferベース）, 累計={}/{}",
@@ -1110,6 +1154,142 @@ public class ConnectChargeService {
         return (currency == null || currency.isBlank()) ? "jpy" : currency.toLowerCase(java.util.Locale.ROOT);
     }
 
+    // ============================================================================
+    // §6.3 第四陣 A: 次回入金相殺（未回収 Stripe 手数料の自動回収）。
+    //   ・computeRecoveryUplift          — charge 起票直前に上乗せ回収額を求める（純粋計算 FeeRecoveryCalculator へ委譲）。
+    //   ・recordRecoveryExecution        — PI 作成後に outstanding 減算＋RECOVERY(回収実行) 仕訳を記帳（冪等）。
+    //   ・recapitalizeAppliedRecoveryOnRefund — 回収済み charge の取消/ModeB 返金で回収を outstanding へ再計上（逆仕訳）。
+    // ============================================================================
+
+    /**
+     * 当該 payee×通貨の未回収残高から、本 charge の application_fee に上乗せできる回収額を求める
+     * （§6.3 第四陣 A・{@link FeeRecoveryCalculator} 純粋計算へ委譲）。
+     *
+     * <p>残高行が無ければ 0（通常 charge と完全不変＝後方互換）。{@code chk_et_fee} 不可侵は
+     * {@link FeeRecoveryCalculator#recoveryToApply} の headroom クランプで保証される。</p>
+     *
+     * @param connectAccountId 受取側 Connect 口座 ID（残高の主体）
+     * @param currency         escrow 通貨（小文字へ正規化して残高と突合）
+     * @param amount           今回 charge の請求額（{@code escrow_transactions.amount}）
+     * @param selfFee          今回 charge 自身の総手数料（self の {@code application_fee_amount}）
+     * @return 上乗せして実回収する額（{@code 0 ≤ recovery ≤ amount − selfFee}）
+     */
+    private long computeRecoveryUplift(UUID connectAccountId, String currency, long amount, long selfFee) {
+        String normalized = normalizeRecoveryCurrency(currency);
+        long outstanding = feeRecoveryBalanceRepository
+                .findByConnectAccountIdAndCurrencyAndDeletedAtIsNull(connectAccountId, normalized)
+                .map(b -> b.getOutstandingAmount() != null ? b.getOutstandingAmount() : 0L)
+                .orElse(0L);
+        return FeeRecoveryCalculator.recoveryToApply(outstanding, amount, selfFee);
+    }
+
+    /**
+     * PI に上乗せした回収を「回収実行」として確定する（§6.3 第四陣 A・PI 作成成立後に呼ぶ）。
+     *
+     * <p><b>会計（C1/C2 と逆向き）:</b> C1/C2 の RECOVERY は「未回収の発生」で {@code D PLATFORM_FEE = C PAYEE}。
+     * 本「回収実行」は payee の送金から余分に控除した分を Mannschaft が回収する事実であり向きが逆になる:</p>
+     * <pre>
+     *   D PAYEE        = recovery   (payee 送金から余分徴収＝payee 負担)
+     *   C PLATFORM_FEE = recovery   (Mannschaft が回収＝未回収の解消)
+     * </pre>
+     * <p>既存の capture/会費の複式記帳（self の totalFee 基準・不変）とは独立した self-balancing 別バッチで、
+     * {@code stripe_object_id=piId}。同時に {@code outstanding_amount −= recovery}（payee×通貨）する。</p>
+     *
+     * <p><b>冪等（二重回収しない）:</b> 当該 escrow に既に回収実行（{@code RECOVERY/PAYEE} 純額 &gt; 0）があれば skip。
+     * これにより同一 escrow への二重 charge/二重適用・並行フックでも 1 回しか回収しない。{@code recovery ≤ 0} も no-op。</p>
+     *
+     * @param escrow   回収を上乗せした charge の escrow（payee/organization/currency を保持）
+     * @param recovery 上乗せした回収額（{@code computeRecoveryUplift} の結果・0 なら no-op）
+     * @param piId     対象 PaymentIntent ID（{@code pi_xxx}・ledger の stripe_object_id 突合用）
+     */
+    private void recordRecoveryExecution(EscrowTransactionEntity escrow, long recovery, String piId) {
+        if (recovery <= 0L) {
+            return;
+        }
+        // 冪等: 既に回収実行が立っている escrow には二重に回収しない（純額 > 0 なら適用済み）。
+        if (ledgerEntryRepository.sumAppliedRecoveryNetOnEscrow(escrow.getId()) > 0L) {
+            log.info("回収実行は既に計上済み（冪等・skip）: escrowId={}, recovery={}", escrow.getId(), recovery);
+            return;
+        }
+
+        // 回収実行 RECOVERY 仕訳（D PAYEE = C PLATFORM_FEE = recovery）を self-balancing な別バッチで追記。
+        List<LedgerEntryEntity> entries = LedgerEntryBuilder.forTransaction(escrow.getId(), escrow.getCurrency())
+                .debit(LedgerEntryType.RECOVERY, LedgerAccount.PAYEE, recovery, piId)
+                .credit(LedgerEntryType.RECOVERY, LedgerAccount.PLATFORM_FEE, recovery, piId)
+                .build();
+        ledgerEntryRepository.saveAll(entries);
+
+        // outstanding を recovery 分だけ減算（payee×通貨）。残高行は ModeB 返金時に作られている前提だが、防御的に upsert する。
+        adjustOutstanding(escrow.getPayeeConnectAccountId(), escrow.getOrganizationId(),
+                escrow.getCurrency(), -recovery);
+
+        log.info("未回収 Stripe 手数料を次回入金相殺で回収（§6.3 A・回収実行）: escrowId={}, payeeAccountId={}, piId={}, recovery={}",
+                escrow.getId(), escrow.getPayeeConnectAccountId(), piId, recovery);
+    }
+
+    /**
+     * 回収を上乗せした charge が取消/ModeB 返金で巻き戻る際、当該 escrow の回収実行分（純額）を outstanding へ再計上する
+     * （§6.3 第四陣 A・回収分の再返金エッジの最小安全策・家老指摘）。
+     *
+     * <p>ModeB 返金（{@code refund_application_fee:true}）や与信取消（PI 巻き戻し）では、上乗せした回収が消える/未成立に
+     * なるため、回収が無かったことにして次回再回収できるよう残高へ戻す。逆仕訳で打ち消す:</p>
+     * <pre>
+     *   D PLATFORM_FEE = applied   (回収実行の取消＝Mannschaft の回収を戻す)
+     *   C PAYEE        = applied   (payee への戻り＝未回収の再発生)
+     * </pre>
+     * <p>これは {@link #recordRecoveryExecution} の {@code D PAYEE = C PLATFORM_FEE} の逆であり、
+     * {@code sumAppliedRecoveryNetOnEscrow}（{@code RECOVERY×PAYEE} の {@code D − C}）が 0 に戻る。よって二重再計上は
+     * 起きない（既に 0 なら no-op）。ModeA 返金では本メソッドを呼ばない（recovery 維持）。</p>
+     *
+     * @param escrow            巻き戻し対象の escrow（回収を上乗せした charge）
+     * @param stripeObjectIdRef 突合用の参照 ID（返金は refundId・取消は cancel キー）
+     */
+    private void recapitalizeAppliedRecoveryOnRefund(EscrowTransactionEntity escrow, String stripeObjectIdRef) {
+        long applied = ledgerEntryRepository.sumAppliedRecoveryNetOnEscrow(escrow.getId());
+        if (applied <= 0L) {
+            return; // 回収実行なし or 既に再計上済み（純額 0）。二重再計上しない。
+        }
+
+        // 逆仕訳（D PLATFORM_FEE = C PAYEE = applied）で回収実行を打ち消す（self-balancing 別バッチ）。
+        List<LedgerEntryEntity> entries = LedgerEntryBuilder.forTransaction(escrow.getId(), escrow.getCurrency())
+                .debit(LedgerEntryType.RECOVERY, LedgerAccount.PLATFORM_FEE, applied, stripeObjectIdRef)
+                .credit(LedgerEntryType.RECOVERY, LedgerAccount.PAYEE, applied, stripeObjectIdRef)
+                .build();
+        ledgerEntryRepository.saveAll(entries);
+
+        // outstanding を再計上（+applied）。次回 charge で再び回収を試みる。
+        adjustOutstanding(escrow.getPayeeConnectAccountId(), escrow.getOrganizationId(),
+                escrow.getCurrency(), applied);
+
+        log.info("回収を上乗せした charge が巻き戻ったため未回収残高へ再計上（§6.3 A・再返金/取消エッジ）: "
+                        + "escrowId={}, payeeAccountId={}, ref={}, 再計上額={}",
+                escrow.getId(), escrow.getPayeeConnectAccountId(), stripeObjectIdRef, applied);
+    }
+
+    /**
+     * payee×通貨の未回収残高を {@code delta} 分だけ加減算（upsert）する（§6.3 第四陣 A 共通）。
+     *
+     * <p>残高行が無ければ作成（{@code organization_id} も埋める）。既存行で {@code organization_id} 未設定なら補完する
+     * （過去データの是正・症状を隠さない）。{@code delta} は減算（回収実行）で負・再計上で正。</p>
+     */
+    private void adjustOutstanding(UUID connectAccountId, Long organizationId, String currency, long delta) {
+        String normalized = normalizeRecoveryCurrency(currency);
+        FeeRecoveryBalanceEntity balance = feeRecoveryBalanceRepository
+                .findByConnectAccountIdAndCurrencyAndDeletedAtIsNull(connectAccountId, normalized)
+                .orElseGet(() -> FeeRecoveryBalanceEntity.builder()
+                        .connectAccountId(connectAccountId)
+                        .organizationId(organizationId)
+                        .currency(normalized)
+                        .outstandingAmount(0L)
+                        .build());
+        long current = balance.getOutstandingAmount() != null ? balance.getOutstandingAmount() : 0L;
+        balance.setOutstandingAmount(current + delta);
+        if (balance.getOrganizationId() == null && organizationId != null) {
+            balance.setOrganizationId(organizationId);
+        }
+        feeRecoveryBalanceRepository.save(balance);
+    }
+
     /**
      * 返金/与信取消の結果（設計書 02 §6.1）。
      *
@@ -1135,6 +1315,9 @@ public class ConnectChargeService {
         escrow.setStatus(EscrowStatus.CANCELLED);
         escrow.setCancelledAt(LocalDateTime.now());
         escrowTransactionRepository.save(escrow);
+        // §6.3 第四陣 A: 与信取消で PI が巻き戻る（capture されず payee 送金が起きない）ため、A 陣で上乗せ済みの回収は
+        // 実際には回収できていない。当該 escrow に計上済みの回収実行分（純額）を outstanding へ再計上し、次回再回収に回す。
+        recapitalizeAppliedRecoveryOnRefund(escrow, "cancel-" + escrow.getId());
         log.info("capture 前のため返金でなく与信取消 CANCELLED: escrowId={}, hasPi={}",
                 escrow.getId(), escrow.getStripePaymentIntentId() != null);
     }

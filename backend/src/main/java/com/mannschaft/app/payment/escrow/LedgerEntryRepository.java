@@ -67,4 +67,32 @@ public interface LedgerEntryRepository extends JpaRepository<LedgerEntryEntity, 
             + "AND l.account = com.mannschaft.app.payment.escrow.LedgerAccount.PAYER "
             + "GROUP BY l.stripeObjectId")
     List<Object[]> findModeBGrossRefundByRefundId(@Param("escrowId") UUID escrowId);
+
+    /**
+     * 当該 escrow に既に立っている <b>回収実行（A 陣）</b>の純額（{@code RECOVERY/D/PAYEE} − {@code RECOVERY/C/PAYEE}）を返す
+     * （§6.3 第四陣 A・冪等判定＋再返金時の再計上額）。
+     *
+     * <p><b>仕訳の向きで C1/C2 と峻別する:</b> C1/C2 の RECOVERY は「未回収の発生」で {@code D PLATFORM_FEE = C PAYEE}
+     * （C PAYEE 側）。A 陣の RECOVERY は「回収の実行」で {@code D PAYEE = C PLATFORM_FEE}（D PAYEE 側）。さらに A 陣で
+     * 回収した charge が ModeB 返金されたときの<b>再計上（回収を無かったことにする）</b>は逆仕訳
+     * {@code D PLATFORM_FEE = C PAYEE}（C PAYEE 側）で打ち消す。よって本 escrow の「今いくら回収済みで残っているか」は
+     * {@code RECOVERY×PAYEE} の {@code D 合計 − C 合計} で求まる:</p>
+     * <ul>
+     *   <li>回収実行のみ（未返金）→ {@code D PAYEE} のみ → 正値（= 現在回収中の額）。</li>
+     *   <li>回収後に再計上（ModeB 返金で打ち消し済み）→ {@code D − C = 0} → 二重再計上しない。</li>
+     *   <li>回収実行なし（通常 charge・outstanding=0）→ 0 → 上乗せ未適用＝冪等で再回収しない。</li>
+     * </ul>
+     *
+     * <p>{@code COALESCE} で 0 を返し null を避ける（行が 1 件もない escrow でも 0）。
+     * JPQL 本体には注記を書かない（HQL パース事故回避・コメントは本 Javadoc に集約）。</p>
+     *
+     * @param escrowId 対象 escrow
+     * @return 当該 escrow に現在計上されている回収実行の純額（minor・0 なら未回収/打ち消し済み）
+     */
+    @Query("SELECT COALESCE(SUM(CASE WHEN l.direction = com.mannschaft.app.payment.escrow.LedgerDirection.D "
+            + "THEN l.amount ELSE -l.amount END), 0) FROM LedgerEntryEntity l "
+            + "WHERE l.escrowTransactionId = :escrowId "
+            + "AND l.entryType = com.mannschaft.app.payment.escrow.LedgerEntryType.RECOVERY "
+            + "AND l.account = com.mannschaft.app.payment.escrow.LedgerAccount.PAYEE")
+    long sumAppliedRecoveryNetOnEscrow(@Param("escrowId") UUID escrowId);
 }
