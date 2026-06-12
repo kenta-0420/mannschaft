@@ -8,7 +8,7 @@ import type { FriendTargetInput, RegionInput } from '~/types/market'
 
 const route = useRoute()
 const router = useRouter()
-const { t } = useI18n()
+const { t, te } = useI18n()
 const api = useRecruitmentApi()
 const { success, error } = useNotification()
 
@@ -23,13 +23,27 @@ const marketRegions = ref<RegionInput[]>([])
 const marketVisibility = ref<'PUBLIC' | 'FRIEND_TEAMS_ONLY'>('PUBLIC')
 const marketFriendTargets = ref<FriendTargetInput[]>([])
 
+/**
+ * BE エラーレスポンスから payee 系エラーコードを取り出し i18n メッセージにマップする。
+ * PAYMENT_C011/012/013 以外は null を返し、呼び出し側で汎用エラーにフォールバックさせる。
+ */
+function resolvePayeeErrorMessage(e: unknown): string | null {
+  const code = (e as { data?: { error?: { code?: string } } })?.data?.error?.code
+  if (!code) return null
+  // PAYMENT_C011〜013 のみ payee 専用メッセージにマップ
+  if (code === 'PAYMENT_C011' || code === 'PAYMENT_C012' || code === 'PAYMENT_C013') {
+    return t(`recruitment.payee.${code}`)
+  }
+  return null
+}
+
 async function loadCategories() {
   try {
     const result = await api.listCategories()
     categories.value = result.data
   }
-  catch (e) {
-    error(String(e))
+  catch {
+    error(t('error.unknown'))
   }
 }
 
@@ -57,7 +71,17 @@ async function onSubmit(body: CreateRecruitmentListingRequest) {
     router.push(`/recruitment-listings/${result.data.id}`)
   }
   catch (e) {
-    error(String(e))
+    // payee 系エラー（PAYMENT_C011/012/013）は専用 i18n メッセージで表示
+    const payeeMsg = resolvePayeeErrorMessage(e)
+    if (payeeMsg) {
+      error(payeeMsg)
+    }
+    else {
+      // その他のエラーは汎用ハンドラへ（エラーを握り潰さない）
+      const code = (e as { data?: { error?: { code?: string } } })?.data?.error?.code
+      const errKey = `recruitment.error.${code}`
+      error(code && te(errKey) ? t(errKey) : t('error.unknown'))
+    }
   }
   finally {
     loading.value = false

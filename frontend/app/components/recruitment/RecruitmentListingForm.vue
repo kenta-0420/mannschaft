@@ -79,11 +79,36 @@ const payeeUserError = ref<string | null>(null)
 
 const submitButtonLabel = computed(() => props.submitLabel ?? t('recruitment.action.create'))
 
-const payeeKindOptions = computed(() => [
-  { value: 'USER' as RecruitmentPayeeKind, label: t('recruitment.field.payeeKindUser') },
-  { value: 'TEAM' as RecruitmentPayeeKind, label: t('recruitment.field.payeeKindTeam') },
-  { value: 'ORG' as RecruitmentPayeeKind, label: t('recruitment.field.payeeKindOrg') },
-])
+/**
+ * scopeType によって選択肢を絞る。
+ *   TEAM スコープ        → USER, TEAM（ORG は送信すると BE PAYMENT_C013 になるため除外）
+ *   ORGANIZATION スコープ → USER, ORG（TEAM は送信すると BE PAYMENT_C013 になるため除外）
+ *   未指定              → 全 3 択（後方互換）
+ */
+const payeeKindOptions = computed(() => {
+  const all: { value: RecruitmentPayeeKind; label: string }[] = [
+    { value: 'USER', label: t('recruitment.field.payeeKindUser') },
+    { value: 'TEAM', label: t('recruitment.field.payeeKindTeam') },
+    { value: 'ORG', label: t('recruitment.field.payeeKindOrg') },
+  ]
+  if (props.scopeType === 'TEAM') {
+    return all.filter((o) => o.value === 'USER' || o.value === 'TEAM')
+  }
+  if (props.scopeType === 'ORGANIZATION') {
+    return all.filter((o) => o.value === 'USER' || o.value === 'ORG')
+  }
+  return all
+})
+
+// scopeType 変更または payeeKindOptions 絞り込みで現在選択中の値が消えた場合にリセット
+watch(payeeKindOptions, (opts) => {
+  if (payeeKind.value !== null && !opts.some((o) => o.value === payeeKind.value)) {
+    payeeKind.value = null
+    payeeUserId.value = null
+    payeeKindError.value = null
+    payeeUserError.value = null
+  }
+})
 
 async function loadMembers() {
   if (!props.scopeType || !props.scopeId) return
