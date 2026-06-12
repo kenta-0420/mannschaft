@@ -14460,6 +14460,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{orgId}/tournaments/{tId}/scorekeepers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * スコアキーパー指名一覧
+         * @description 主催組織 ADMIN のみ
+         */
+        get: operations["listScorekeepers"];
+        put?: never;
+        /**
+         * スコアキーパー指名の追加
+         * @description 主催組織 ADMIN のみ。既に指名済みの場合は冪等に既存を返す
+         */
+        post: operations["addScorekeeper"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{orgId}/tournaments/{tId}/promotions": {
         parameters: {
             query?: never;
@@ -40438,6 +40462,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{orgId}/tournaments/{tId}/scorekeepers/{skId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * スコアキーパー指名の解除
+         * @description 主催組織 ADMIN のみ。物理削除
+         */
+        delete: operations["removeScorekeeper"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{orgId}/tournaments/{tId}/matches/{matchId}/rosters/{rosterId}": {
         parameters: {
             query?: never;
@@ -50310,6 +50354,9 @@ export interface components {
             friendTargets?: components["schemas"]["FriendTargetRequest"][];
             distributionTargets?: ("MEMBERS" | "SUPPORTERS" | "FOLLOWERS" | "PUBLIC_FEED")[];
             regions?: components["schemas"]["RegionInput"][];
+            payeeKind?: string;
+            /** Format: int64 */
+            payeeUserId?: number;
         };
         FriendTargetRequest: {
             /** @enum {string} */
@@ -50394,6 +50441,9 @@ export interface components {
             region?: components["schemas"]["RecruitmentRegionView"];
             regions?: components["schemas"]["RecruitmentRegionView"][];
             friendTargets?: components["schemas"]["FriendTargetView"][];
+            payeeKind?: string;
+            /** Format: int64 */
+            payeeUserId?: number;
         };
         RecruitmentRegionView: {
             prefectureCode?: string;
@@ -54883,6 +54933,25 @@ export interface components {
             currency?: string;
             /** Format: date-time */
             paymentDue?: string;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        CreateScorekeeperRequest: {
+            /** Format: int64 */
+            userId: number;
+        };
+        ApiResponseScorekeeperResponse: {
+            data?: components["schemas"]["ScorekeeperResponse"];
+        };
+        ScorekeeperResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: int64 */
+            tournamentId?: number;
+            /** Format: int64 */
+            userId?: number;
+            /** Format: int64 */
+            createdBy?: number;
             /** Format: date-time */
             createdAt?: string;
         };
@@ -59976,6 +60045,9 @@ export interface components {
             prefectureCode?: string;
             cityCode?: string;
             regions?: components["schemas"]["RegionInput"][];
+            payeeKind?: string;
+            /** Format: int64 */
+            payeeUserId?: number;
         };
         FinalizeRequest: {
             force?: boolean;
@@ -66025,6 +66097,9 @@ export interface components {
             participantId?: number;
             /** Format: int32 */
             matchesPlayed?: number;
+            displayName?: string;
+            anonymized?: boolean;
+            avatarUrl?: string;
         };
         IndividualRankingResponse: {
             /** Format: int64 */
@@ -66750,6 +66825,9 @@ export interface components {
             finalRank?: number;
             /** Format: int64 */
             resolvedTargetOrganizationId?: number;
+        };
+        ApiResponseListScorekeeperResponse: {
+            data?: components["schemas"]["ScorekeeperResponse"][];
         };
         ApiResponseRankingSummaryResponse: {
             data?: components["schemas"]["RankingSummaryResponse"];
@@ -102122,6 +102200,56 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseCheckoutResponse"];
+                };
+            };
+        };
+    };
+    listScorekeepers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                tId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListScorekeeperResponse"];
+                };
+            };
+        };
+    };
+    addScorekeeper: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                tId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateScorekeeperRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScorekeeperResponse"];
                 };
             };
         };
@@ -144188,6 +144316,28 @@ export interface operations {
                 orgId: number;
                 tournamentId: number;
                 feeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    removeScorekeeper: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                tId: number;
+                skId: string;
             };
             cookie?: never;
         };
