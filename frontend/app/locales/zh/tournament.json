@@ -374,5 +374,25 @@
       "invalidFormat": "CSV格式无效。得分须为整数。",
       "downloadTemplate": "下载模板"
     }
+  },
+  "scorekeeper": {
+    "title": "记分员指派",
+    "description": "被指派的用户可为本赛事录入比分（单场、批量及 CSV 导入）。仅主办组织的管理员可指派记分员。",
+    "userIdLabel": "用户 ID",
+    "userIdPlaceholder": "例如：12345",
+    "add": "指派",
+    "remove": "解除",
+    "empty": "尚未指派记分员",
+    "addSuccess": "已指派记分员",
+    "removeSuccess": "已解除记分员指派",
+    "alreadyAssigned": "该用户已被指派",
+    "userDisplay": "用户 ID：{userId}",
+    "error": {
+      "loadFailed": "获取记分员列表失败",
+      "addFailed": "指派记分员失败（{status}）",
+      "removeFailed": "解除记分员指派失败",
+      "forbidden": "您没有管理记分员的权限（仅限主办组织管理员）",
+      "invalidUserId": "用户 ID 必须为正整数"
+    }
   }
 }
