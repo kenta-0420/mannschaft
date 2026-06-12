@@ -136,7 +136,7 @@ let teamId: string
 async function navigateTo2026April(page: Page): Promise<void> {
   for (let i = 0; i < 12; i++) {
     const monthHeader = page.locator('h2').filter({ hasText: /2026年?[0-9]{1,2}月/ }).first()
-    const headerText = await monthHeader.textContent({ timeout: 3_000 }).catch(() => '')
+    const headerText = (await monthHeader.textContent({ timeout: 3_000 }).catch(() => '')) ?? ''
     if (headerText.includes('2026') && headerText.includes('4月')) break
 
     // 現在月から 2026年4月 の方向へ移動
@@ -389,38 +389,26 @@ test('ENTRY4-002: 予定をクリックすると EventDetailPanel に「この�
     ? eventCard
     : altEventCard
 
+  // 根治後はカレンダーにイベントが描画されるため、見つからなければ skip ではなく失敗させる。
   const hasEvent = await cardToClick.isVisible({ timeout: 8_000 }).catch(() => false)
-  if (!hasEvent) {
-    test.skip(true, '2026年4月にもカレンダーイベントが存在しない（seed再投入が必要）')
-    return
-  }
+  expect(hasEvent, '2026年4月のカレンダーに seed イベントが描画されていること').toBe(true)
 
   await cardToClick.click()
   await page.waitForTimeout(1_500)
 
-  // EventDetailPanel がサイドパネルとして表示される
+  // EventDetailPanel がサイドパネルとして表示される（予定タイトル見出し）
   const recordBtn = page.getByRole('button', { name: 'この試合を記録' }).first()
   const panelTitle = page.getByRole('heading').first()
-  const panelVisible = await panelTitle.isVisible({ timeout: 10_000 }).catch(() => false)
+  await expect(panelTitle, 'EventDetailPanel のサイドパネルが表示されること').toBeVisible({
+    timeout: 10_000,
+  })
 
-  if (!panelVisible) {
-    test.skip(true, 'サイドパネルが表示されなかった（カレンダーUI実装の差異）')
-    return
-  }
-
-  // TEAM スコープ予定のみ「この試合を記録」ボタンが出る（canRecordMatch=true）
-  const recordBtnVisible = await recordBtn.isVisible({ timeout: 8_000 }).catch(() => false)
-  // ボタンが表示されているなら TEAM スコープ予定として検証
-  if (recordBtnVisible) {
-    await expect(recordBtn).toBeVisible()
-    // ボタンのラベルが正しいこと
-    await expect(recordBtn).toHaveText('この試合を記録')
-  }
-  // ヒント文（「この予定の試合記録を開始します」）も検証
+  // TEAM スコープ予定なので「この試合を記録」ボタンが必ず表示される（canRecordMatch=true）
+  await expect(recordBtn).toBeVisible({ timeout: 8_000 })
+  await expect(recordBtn).toHaveText('この試合を記録')
+  // ヒント文（「この予定の試合記録を開始します」）も表示される
   const hint = page.getByText('この予定の試合記録を開始します').first()
-  if (recordBtnVisible) {
-    await expect(hint).toBeVisible({ timeout: 5_000 })
-  }
+  await expect(hint).toBeVisible({ timeout: 5_000 })
 
   // 予定クリックで 4xx/5xx が出ていないこと
   const panelErrors = errs.network.filter((e) => /\/schedules/.test(e))
@@ -466,25 +454,18 @@ test('ENTRY4-003: 「この試合を記録」ボタン押下 → by-schedule 解
     ? eventCard
     : altEventCard
 
+  // 根治後はイベントが描画されるため、見つからなければ失敗させる。
   const hasEvent = await cardToUse.isVisible({ timeout: 8_000 }).catch(() => false)
-  if (!hasEvent) {
-    test.skip(true, '2026年4月にカレンダーイベントが存在しない（seed再投入が必要）')
-    return
-  }
+  expect(hasEvent, '2026年4月のカレンダーに seed イベントが描画されていること').toBe(true)
 
   await cardToUse.click()
   await page.waitForTimeout(1_500)
 
-  // 「この試合を記録」ボタンが表示されるのを待つ
+  // 「この試合を記録」ボタンが表示されること（TEAM スコープ予定・管理者）
   const recordBtn = page.getByRole('button', { name: 'この試合を記録' }).first()
-  const hasBtnVisible = await recordBtn.isVisible({ timeout: 10_000 }).catch(() => false)
-  if (!hasBtnVisible) {
-    test.skip(
-      true,
-      '「この試合を記録」ボタンが未表示。TEAM スコープ予定でないか、管理者権限が解決されていない可能性。',
-    )
-    return
-  }
+  await expect(recordBtn, '「この試合を記録」ボタンが表示されること').toBeVisible({
+    timeout: 10_000,
+  })
 
   // --- ボタンをクリック ---
   await recordBtn.click()
@@ -547,21 +528,17 @@ test('ENTRY4-004: 同じ予定の「この試合を記録」を二度押し → 
     ? eventCardIdm
     : altEventCardIdm
 
+  // 根治後はイベントが描画されるため、見つからなければ失敗させる。
   const hasEvent = await idmCard.isVisible({ timeout: 8_000 }).catch(() => false)
-  if (!hasEvent) {
-    test.skip(true, '2026年4月にカレンダーイベントが存在しない（seed再投入が必要）')
-    return
-  }
+  expect(hasEvent, '2026年4月のカレンダーに seed イベントが描画されていること').toBe(true)
 
   await idmCard.click()
   await page.waitForTimeout(1_500)
 
   const recordBtn = page.getByRole('button', { name: 'この試合を記録' }).first()
-  const hasBtnVisible = await recordBtn.isVisible({ timeout: 10_000 }).catch(() => false)
-  if (!hasBtnVisible) {
-    test.skip(true, '「この試合を記録」ボタンが未表示（TEAM スコープ予定でないか管理者権限解決前）')
-    return
-  }
+  await expect(recordBtn, '「この試合を記録」ボタンが表示されること').toBeVisible({
+    timeout: 10_000,
+  })
 
   // --- 1回目クリック → live へ遷移 ---
   await recordBtn.click()
@@ -624,7 +601,6 @@ test('ENTRY4-005: 月を移動して 2026年4月 の MATCH タイプ予定「プ
   await page.waitForTimeout(1_500)
 
   // 現在月が 2026年4月 でない場合は月移動を試みる
-  const currentUrl = page.url()
   const matchSeedTitle = 'プリンスリーグ'
 
   // まず現在月で検索
@@ -679,13 +655,11 @@ test('ENTRY4-005: 月を移動して 2026年4月 の MATCH タイプ予定「プ
     }
   }
 
-  if (!seedEventVisible) {
-    test.skip(
-      true,
-      `seed の「${matchSeedTitle}」予定が現在月に見つからず・月移動でも見つからない（seed 再投入が必要）`,
-    )
-    return
-  }
+  // 根治後はカレンダーに予定タイトルが描画されるため、見つからなければ失敗させる。
+  expect(
+    seedEventVisible,
+    `seed の「${matchSeedTitle}」予定が 2026年4月 のカレンダーに描画されていること`,
+  ).toBe(true)
 
   await expect(
     page.getByText(matchSeedTitle, { exact: false }).first(),
@@ -723,33 +697,27 @@ test('ENTRY4-006: EventDetailPanel に日時・場所・「この試合を記録
     ? eventCard006
     : altEventCard006
 
+  // 根治後はイベントが描画されるため、見つからなければ失敗させる。
   const hasEvent = await card006.isVisible({ timeout: 8_000 }).catch(() => false)
-  if (!hasEvent) {
-    test.skip(true, 'カレンダーにクリック可能なイベントが存在しない（seed再投入確認）')
-    return
-  }
+  expect(hasEvent, '2026年4月のカレンダーに seed イベントが描画されていること').toBe(true)
 
   await card006.click()
   await page.waitForTimeout(1_500)
 
   // サイドパネルに日時情報が表示される（EventDetailPanel の date/time 行）
   const calIcon = page.locator('.pi-calendar').first()
-  const hasDateInfo = await calIcon.isVisible({ timeout: 8_000 }).catch(() => false)
-  if (hasDateInfo) {
-    await expect(calIcon).toBeVisible()
-  }
+  await expect(calIcon, 'EventDetailPanel に日時アイコンが表示されること').toBeVisible({
+    timeout: 8_000,
+  })
 
-  // TEAM スコープの予定なので「この試合を記録」ボタンが表示される
+  // TEAM スコープの予定なので「この試合を記録」ボタンが必ず表示される
   const recordBtn = page.getByRole('button', { name: 'この試合を記録' }).first()
-  const hasBtnVisible = await recordBtn.isVisible({ timeout: 8_000 }).catch(() => false)
-  if (hasBtnVisible) {
-    await expect(recordBtn).toBeVisible()
-    // ヒント文
-    const hint = page.getByText('この予定の試合記録を開始します').first()
-    await expect(hint).toBeVisible({ timeout: 5_000 })
-    // ボタンが Loading 状態でないこと（クリック前は enabled）
-    await expect(recordBtn).toBeEnabled()
-  }
+  await expect(recordBtn).toBeVisible({ timeout: 8_000 })
+  // ヒント文
+  const hint = page.getByText('この予定の試合記録を開始します').first()
+  await expect(hint).toBeVisible({ timeout: 5_000 })
+  // ボタンが Loading 状態でないこと（クリック前は enabled）
+  await expect(recordBtn).toBeEnabled()
 
   // パネルにエラーページへの遷移がないこと
   expect(page.url()).not.toContain('/error')
