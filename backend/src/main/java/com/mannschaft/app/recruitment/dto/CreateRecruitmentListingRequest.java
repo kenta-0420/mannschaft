@@ -3,6 +3,7 @@ package com.mannschaft.app.recruitment.dto;
 import com.mannschaft.app.recruitment.RecruitmentDistributionTargetType;
 import com.mannschaft.app.recruitment.RecruitmentParticipationType;
 import com.mannschaft.app.recruitment.RecruitmentVisibility;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -125,6 +126,7 @@ public class CreateRecruitmentListingRequest {
      * {@code USER} は審判/助っ人個人を受領者にする（{@code payeeUserId} 必須）。{@code TEAM}/{@code ORG} は
      * 札主自身の scope が受領するため個人 ID 不要。{@code paymentEnabled=false} のときは指定しても無視する。</p>
      */
+    @Schema(description = "受領主体種別（paymentEnabled=true のとき必須）", allowableValues = {"USER", "TEAM", "ORG"}, example = "USER")
     @Pattern(regexp = "USER|TEAM|ORG", message = "payee_kind は USER / TEAM / ORG のいずれかで指定してください")
     private final String payeeKind;
 
@@ -135,6 +137,7 @@ public class CreateRecruitmentListingRequest {
      * 対象は札主 scope の所属者に限定する（非所属は {@code PAYMENT_C013 PAYEE_NOT_IN_SCOPE}・IDOR 防止）。
      * {@code payeeKind} が {@code TEAM}/{@code ORG}/未指定のときは無視（Service で NULL 強制）。</p>
      */
+    @Schema(description = "payeeKind=USER のとき必須の受領者ユーザー ID（users.id）", example = "123")
     private final Long payeeUserId;
 
     /**
