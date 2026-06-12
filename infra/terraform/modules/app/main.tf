@@ -48,7 +48,7 @@ resource "aws_ecr_lifecycle_policy" "backend" {
     rules = [
       {
         rulePriority = 1
-        description  = "直近10イメージを保持してそれ以前を削除"
+        description  = "Keep last 10 images and expire older ones"
         selection = {
           tagStatus   = "any"
           countType   = "imageCountMoreThan"
@@ -243,27 +243,28 @@ resource "aws_iam_role_policy" "task_ses" {
 #       箱（aws_secretsmanager_secret）を作るだけにして、値は AWS コンソール
 #       または aws secretsmanager put-secret-value コマンドで手動投入すること。
 
+# AWS リソースの description は非 ASCII を拒否するものがある（IAM で実証）ため英語で統一
 resource "aws_secretsmanager_secret" "jwt_secret" {
   name                    = "${var.prefix}/jwt-secret"
-  description             = "Spring Boot JWT 署名用秘密鍵"
+  description             = "Spring Boot JWT signing secret"
   recovery_window_in_days = 7
 }
 
 resource "aws_secretsmanager_secret" "stripe" {
   name                    = "${var.prefix}/stripe"
-  description             = "Stripe API キー（Secret Key / Webhook Secret）"
+  description             = "Stripe API keys (secret key / webhook secrets)"
   recovery_window_in_days = 7
 }
 
 resource "aws_secretsmanager_secret" "internal_tokens" {
   name                    = "${var.prefix}/internal-tokens"
-  description             = "サービス間通信用の内部トークン類"
+  description             = "Internal tokens for service-to-service communication"
   recovery_window_in_days = 7
 }
 
 resource "aws_secretsmanager_secret" "app_keys" {
   name                    = "${var.prefix}/app-keys"
-  description             = "その他アプリケーション用シークレット（暗号化キー等）"
+  description             = "Other application secrets (encryption keys etc.)"
   recovery_window_in_days = 7
 }
 
