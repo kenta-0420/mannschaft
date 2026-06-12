@@ -150,7 +150,10 @@ if (!current.canTransitionTo(requested)) {
 ### 4.3 実装方針
 
 ```
-Valkey (Redis 互換) を使用したスライディングウィンドウ方式:
+Valkey (Redis 互換) を使用した固定ウィンドウ方式:
+（旧記述は「スライディングウィンドウ」としていたが、擬似コード・実装とも
+windowStart 切り捨てキーによる固定ウィンドウであり、文言を実態に合わせて訂正。
+ウィンドウ境界での最大2倍バーストは固定ウィンドウの既知特性として許容する）
 
 1. INCR  mannschaft:rate:{userId}:{windowStart}
 2. EXPIRE mannschaft:rate:{userId}:{windowStart}  60
@@ -166,7 +169,7 @@ Retry-After: 18  （429/423 の場合のみ）
 - 将来的には Gateway 層（Spring Cloud Gateway 等）への集約を検討
 - 現在の `RateLimitFilter` 実装の閾値を本テーブルに揃えるリファクタリングを推奨
 
-#### 4.3.1 実装状況（Valkey 化 第一陣 — 2026-06-12 完了）
+#### 4.3.1 実装状況（Valkey 化 全陣完了 — 2026-06-12 / PR #1470・#1471・#1472）
 
 共通基盤を `com.mannschaft.app.common.ratelimit` パッケージに実装した。
 
@@ -185,13 +188,32 @@ auth 系の既存 Valkey fail-open（`AuthService` / `AuthTokenService`）と同
 依存解決は `ObjectProvider` の遅延解決で統一（`StringRedisTemplate` / `ValkeyRateLimiter` とも）。
 `@WebMvcTest` 等の最小テストコンテキストで Redis Bean が無くてもフィルタ生成・コンテキストロードを阻害しない。
 
-**移行状況（18 フィルタ中 2 つ移行済み）**:
+**移行状況: 全 18 フィルタ移行完了（Bucket4j + Caffeine のプロセス内カウントは全廃）**:
 
-| フィルタ | 状態 |
+| 陣 | フィルタ |
 |---|---|
-| `ActionMemoRateLimitFilter`（標準形の代表） | ✅ 第一陣で移行済み |
-| `PublicApiRateLimitFilter`（複雑形の代表: 認証/未認証別閾値 + 監査ログ連携） | ✅ 第一陣で移行済み |
-| 残り 16 フィルタ（Bucket4j + Caffeine のまま） | ⏳ 第二陣で移行予定 |
+| 第一陣 (#1470) | `ActionMemoRateLimitFilter` / `PublicApiRateLimitFilter` |
+| 第二陣A (#1471) | `SyncRateLimitFilter` / `AuditLogRateLimitFilter` / `FavoriteRateLimitFilter` / `PointCardRateLimitFilter` / `QuickMemoRateLimitFilter` / `AuthWebAuthnReauthRateLimitFilter` / `VisibilityTemplateRateLimitFilter` / `MemberInfoRateLimitFilter` |
+| 第二陣B (#1472) | `DashboardScopeTabRateLimitFilter` / `ErrorReportRateLimitFilter` / `BroadcastRateLimitFilter` / `AdPublicEndpointRateLimitFilter` / `RepairPlanCsvImportRateLimitFilter` / `RepairPlanSimulateRateLimitFilter` / `ScheduleDelegationRateLimitFilter` / `EventDelegationRateLimitFilter` |
+
+注: Bucket4j 依存自体は `ResumeExportService` / 天気 API クライアント等のフィルタ外用途で
+正当に使用が残るため build.gradle からは除去しない。
+
+**移行に伴う意図的な挙動変更（互換性注記）**:
+
+- **429 応答の統一**: 各フィルタ独自の JSON / 固定 `Retry-After` → §4.3 標準形
+  （`{"error":"Too many requests"}` + 動的 `Retry-After` + `X-RateLimit-*` 3 ヘッダー）。
+  `RepairPlanSimulateRateLimitFilter` の旧 `errorCode: REPAIR_PLAN_009` ボディも標準形に
+  統一した（FE 参照ゼロを確認済み）。
+- **`SyncRateLimitFilter` のキーを per-IP → per-user に統一**: 同期 API は認証必須であり、
+  NAT/プロキシ配下の複数ユーザーが同一 IP で巻き添え制限される問題を解消。
+- **`RepairPlanSimulateRateLimitFilter` の二重制限は短絡評価**: user 制限（20/分）超過時は
+  scope 制限（100/分）を消費しない。1 ユーザーの連打で同一スコープの他ユーザーが
+  巻き添え 429 になることを防ぐ（旧 Bucket4j 実装と同じ意味論）。
+- **IP 解決は §4.4 の X-Forwarded-For 先頭値優先に統一**: XFF 先頭値はクライアント詐称可能
+  という全社横断の既知トレードオフがある（§4.4 注記）。本番の Cloudflare 経由構成では
+  エッジが XFF を実クライアント IP で付与するため緩和されるが、信頼ホップ数を考慮した
+  右端値方式への根治は別課題として残す。
 
 テスト: `ValkeyRateLimiterTest`（純 Mockito: キー/TTL 計算・fail-open）+
 `ValkeyRateLimiterIntegrationTest`（Testcontainers 実 Redis: 実カウント・ウィンドウ境界・TTL）。
@@ -335,3 +357,4 @@ void 不正な状態遷移は422を返す(CirculationStatus from, CirculationSta
 | 2026-06-02 | 新規作成（Security Hardening Phase 3 ビジネスロジック攻撃防止）。Mannschaft 固有の攻撃面マップ・共通対策パターン・レートリミット統一戦略（[02 §5](02_cookie_and_session.md) と数値統一）・ドメイン別実装ガイド・テスト戦略を定義 |
 | 2026-06-02 | §7 JWT Refresh Token 競合制御を追加（Valkey SET NX 分散ロック・リプレイ攻撃対応） |
 | 2026-06-12 | §4.3.1 追加: レートリミット共通基盤の Valkey 化 第一陣完了。`com.mannschaft.app.common.ratelimit`（`ValkeyRateLimiter` + `AbstractRateLimitFilter`）新設、Lua で INCR+EXPIRE 原子化、fail-open（`mannschaft.ratelimit.failopen` メトリクス）。18 フィルタ中 `ActionMemoRateLimitFilter` / `PublicApiRateLimitFilter` の 2 つを移行（残 16 は第二陣） |
+| 2026-06-12 | §4.3.1 更新: 第二陣A (#1471)・第二陣B (#1472) マージで**全 18 フィルタの Valkey 移行完了**（Bucket4j+Caffeine プロセス内カウント全廃・ECS 複数タスクで実効上限が正確に）。§4.3 の「スライディングウィンドウ」文言を実態（固定ウィンドウ）に訂正。意図的挙動変更（429 標準形統一 / Sync per-user 化 / RepairPlanSimulate 短絡評価 / XFF 統一）を互換性注記として明文化 |
