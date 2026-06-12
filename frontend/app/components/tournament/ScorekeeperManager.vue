@@ -1,20 +1,29 @@
 <script setup lang="ts">
 /**
- * F08.7 順位UI Wave B-3: 大会スコアキーパー指名管理 UI（主催組織 ADMIN 向け）。
+ * F08.7 順位UI ③: 大会スコアキーパー指名管理 UI（主催組織 ADMIN 向け）。
  *
  * 主催組織 ADMIN が「当該大会のスコア入力を許可するユーザー」を指名・解除・一覧する。
  * 指名されたユーザーは単発入力に加え batch/import も操作可能になる（最終防衛は BE @PreAuthorize）。
  *
  * 認可: 本コンポーネントは org 管理者（ADMIN/DEPUTY_ADMIN）にのみ表示される前提（親が v-if で制御）。
- * BE は ScorekeeperResponse に displayName を返さないため、表示名は userId フォールバック。
  *
- * ユーザー選択: BE が会員検索 API を提供していないため、MVP は確実に動く userId 直接指定方式。
- * 入力値は parseUserIdInput で正の整数のみ許可し、不正値は i18n で案内する。
+ * 表示名: BE は ScorekeeperResponse に displayName（NameResolverService 解決）を同梱する。
+ *   退会済み/不明ユーザーは BE 既定フォールバック名。FE は displayName ?? '#userId' で安全に表示する。
+ *
+ * メンバー選択: org 会員証一覧 API（member-cards?q=&status=ACTIVE）を候補ソースに氏名検索オートコンプリート。
+ *   q 入力（debounce）→候補取得→既指名/重複を除外→クリックで userId 確定→add。
+ *   会員証未発行/緊急指名のフォールバックとして userId 直接入力欄も併存させる。
  * 成功/失敗（403/404/冪等）は症状を隠さず i18n で提示する。
  */
+import { useDebounceFn } from '@vueuse/core'
 import type { ScorekeeperResponse } from '~/types/tournament'
+import type { MemberCardListItem } from '~/types/member-card'
 import { extractStatus, isForbiddenError } from '~/utils/tournamentScoreEntry'
-import { parseUserIdInput, isAlreadyScorekeeper } from '~/utils/tournamentScorekeeper'
+import {
+  parseUserIdInput,
+  isAlreadyScorekeeper,
+  filterMemberCandidates,
+} from '~/utils/tournamentScorekeeper'
 
 const props = defineProps<{
   orgId: string
@@ -24,6 +33,7 @@ const props = defineProps<{
 const { t } = useI18n()
 const notification = useNotification()
 const { listScorekeepers, addScorekeeper, removeScorekeeper } = useTournamentScorekeepers()
+const { searchOrgMembers } = useMemberCardApi()
 
 const scorekeepers = ref<ScorekeeperResponse[]>([])
 const loading = ref(true)
@@ -32,8 +42,20 @@ const adding = ref(false)
 /** 解除処理中の指名 ID（ボタン二度押し防止 + スピナー表示）。 */
 const removingId = ref<string | null>(null)
 
-/** ユーザー ID 入力（直接指定方式）。 */
+/** 氏名検索（オートコンプリート）。 */
+const searchKeyword = ref<string>('')
+const searching = ref(false)
+const candidates = ref<MemberCardListItem[]>([])
+/** 候補リストを表示中か（フォーカス中かつ入力あり）。 */
+const showCandidates = ref(false)
+
+/** ユーザー ID 直接入力（フォールバック）。 */
 const userIdInput = ref<string>('')
+
+/** 既指名・userId 重複を除いた表示用候補。 */
+const filteredCandidates = computed(() =>
+  filterMemberCandidates(candidates.value, scorekeepers.value),
+)
 
 async function load() {
   loading.value = true
@@ -56,22 +78,77 @@ async function load() {
   }
 }
 
-async function onAdd() {
+/** 指名済みユーザーの表示名（displayName 優先・なければ #userId）。 */
+function skLabel(sk: ScorekeeperResponse): string {
+  return sk.displayName ?? `#${sk.userId}`
+}
+
+/** 候補の表示名（displayName 優先・なければ #userId）。 */
+function candidateLabel(c: MemberCardListItem): string {
+  return c.displayName ?? `#${c.userId}`
+}
+
+const runSearch = useDebounceFn(async () => {
+  const kw = searchKeyword.value.trim()
+  if (kw === '') {
+    candidates.value = []
+    searching.value = false
+    return
+  }
+  searching.value = true
+  try {
+    candidates.value = await searchOrgMembers(props.orgId, { q: kw, status: 'ACTIVE' })
+  }
+  catch (e) {
+    candidates.value = []
+    if (isForbiddenError(e)) {
+      notification.error(t('tournament.scorekeeper.error.forbidden'))
+    }
+    else {
+      notification.error(t('tournament.scorekeeper.error.searchFailed'))
+    }
+  }
+  finally {
+    searching.value = false
+  }
+}, 300)
+
+function onSearchInput() {
+  showCandidates.value = true
+  void runSearch()
+}
+
+/** 候補をクリックして指名する。 */
+async function onSelectCandidate(c: MemberCardListItem) {
+  showCandidates.value = false
+  searchKeyword.value = ''
+  candidates.value = []
+  await doAdd(c.userId)
+}
+
+/** userId 直接入力（フォールバック）で指名する。 */
+async function onAddByUserId() {
   const userId = parseUserIdInput(userIdInput.value)
   if (userId === null) {
     notification.warn(t('tournament.scorekeeper.error.invalidUserId'))
     return
   }
+  const ok = await doAdd(userId)
+  if (ok) userIdInput.value = ''
+}
+
+/** 指名の共通処理。重複は info で弾く。成功で true。 */
+async function doAdd(userId: number): Promise<boolean> {
   if (isAlreadyScorekeeper(scorekeepers.value, userId)) {
     notification.info(t('tournament.scorekeeper.alreadyAssigned'))
-    return
+    return false
   }
   adding.value = true
   try {
     await addScorekeeper(props.orgId, props.tournamentId, userId)
     notification.success(t('tournament.scorekeeper.addSuccess'))
-    userIdInput.value = ''
     await load()
+    return true
   }
   catch (e) {
     if (isForbiddenError(e)) {
@@ -83,6 +160,7 @@ async function onAdd() {
         t('tournament.scorekeeper.error.addFailed', { status: status ?? '' }),
       )
     }
+    return false
   }
   finally {
     adding.value = false
@@ -124,8 +202,54 @@ onMounted(load)
       {{ $t('tournament.scorekeeper.description') }}
     </p>
 
-    <!-- 追加フォーム（userId 直接指定） -->
-    <form class="mb-4 flex flex-wrap items-end gap-2" @submit.prevent="onAdd">
+    <!-- 追加: 氏名検索オートコンプリート（主経路） -->
+    <div class="mb-3">
+      <label for="scorekeeper-search" class="mb-1 block text-xs text-surface-500">
+        {{ $t('tournament.scorekeeper.searchLabel') }}
+      </label>
+      <div class="relative">
+        <input
+          id="scorekeeper-search"
+          v-model="searchKeyword"
+          type="text"
+          autocomplete="off"
+          class="w-full rounded-lg border border-surface-300 px-3 py-1.5 text-sm focus:border-primary-400 focus:outline-none"
+          :placeholder="$t('tournament.scorekeeper.searchPlaceholder')"
+          :disabled="adding"
+          @input="onSearchInput"
+          @focus="showCandidates = true"
+        >
+        <!-- 候補リスト -->
+        <ul
+          v-if="showCandidates && searchKeyword.trim() !== ''"
+          class="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-surface-200 bg-white shadow-lg"
+        >
+          <li v-if="searching" class="px-3 py-2 text-sm text-surface-400">
+            <i class="pi pi-spinner pi-spin mr-1" />
+            {{ $t('tournament.scorekeeper.searching') }}
+          </li>
+          <li
+            v-else-if="filteredCandidates.length === 0"
+            class="px-3 py-2 text-sm text-surface-400"
+          >
+            {{ $t('tournament.scorekeeper.noCandidates') }}
+          </li>
+          <li
+            v-for="c in filteredCandidates"
+            v-else
+            :key="c.id"
+            class="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-sm hover:bg-primary-50"
+            @mousedown.prevent="onSelectCandidate(c)"
+          >
+            <span>{{ candidateLabel(c) }}</span>
+            <span class="text-xs text-surface-400">#{{ c.userId }}</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 追加: userId 直接指定（フォールバック） -->
+    <form class="mb-4 flex flex-wrap items-end gap-2" @submit.prevent="onAddByUserId">
       <div class="flex flex-col gap-1">
         <label for="scorekeeper-user-id" class="text-xs text-surface-500">
           {{ $t('tournament.scorekeeper.userIdLabel') }}
@@ -169,8 +293,9 @@ onMounted(load)
         :key="sk.id"
         class="flex items-center justify-between gap-3 py-2"
       >
-        <span class="text-sm">
-          {{ $t('tournament.scorekeeper.userDisplay', { userId: sk.userId }) }}
+        <span class="flex items-center gap-2 text-sm">
+          <span class="font-medium">{{ skLabel(sk) }}</span>
+          <span class="text-xs text-surface-400">#{{ sk.userId }}</span>
         </span>
         <button
           type="button"

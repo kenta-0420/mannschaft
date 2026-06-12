@@ -386,6 +386,11 @@
     "description": "Zugewiesene Benutzer können für dieses Turnier Ergebnisse erfassen (einzeln, im Stapel und per CSV-Import). Nur Administratoren der ausrichtenden Organisation können Anschreiber zuweisen.",
     "userIdLabel": "Benutzer-ID",
     "userIdPlaceholder": "z. B. 12345",
+    "searchLabel": "Mitglieder nach Namen suchen und zuweisen",
+    "searchPlaceholder": "Nach Name oder Kartennummer suchen",
+    "searching": "Suche läuft…",
+    "noCandidates": "Keine passenden Mitglieder gefunden",
+    "selectMember": "Dieses Mitglied zuweisen",
     "add": "Zuweisen",
     "remove": "Entfernen",
     "empty": "Noch keine Anschreiber zugewiesen",
@@ -398,7 +403,8 @@
       "addFailed": "Anschreiber konnte nicht zugewiesen werden ({status})",
       "removeFailed": "Anschreiber-Zuweisung konnte nicht entfernt werden",
       "forbidden": "Sie haben keine Berechtigung, Anschreiber zu verwalten (nur Administratoren der ausrichtenden Organisation)",
-      "invalidUserId": "Die Benutzer-ID muss eine positive ganze Zahl sein"
+      "invalidUserId": "Die Benutzer-ID muss eine positive ganze Zahl sein",
+      "searchFailed": "Mitgliedersuche fehlgeschlagen"
     }
   }
 }

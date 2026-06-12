@@ -16,6 +16,22 @@ export interface MemberCard {
   createdAt: string
 }
 
+/**
+ * チーム/組織の会員証一覧アイテム（BE MemberCardListResponse 整合）。
+ * org/team スコープの会員証一覧 EP が返す。`displayName` を持つため、
+ * 会員氏名でのメンバー選択（例: スコアキーパー指名 UI）に流用できる。
+ */
+export interface MemberCardListItem {
+  id: number
+  userId: number
+  cardNumber: string
+  displayName: string
+  status: MemberCardStatus
+  issuedAt: string
+  lastCheckinAt: string | null
+  checkinCount: number
+}
+
 export interface MemberCardQr {
   token: string
   expiresAt: string

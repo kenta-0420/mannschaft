@@ -2,6 +2,7 @@ package com.mannschaft.app.tournament.scorekeeper;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.tournament.TournamentErrorCode;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
 import com.mannschaft.app.tournament.repository.TournamentRepository;
@@ -16,12 +17,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -48,6 +51,8 @@ class TournamentScorekeeperServiceTest {
     private TournamentRepository tournamentRepository;
     @Mock
     private AccessControlService accessControlService;
+    @Mock
+    private NameResolverService nameResolverService;
 
     @InjectMocks
     private TournamentScorekeeperService service;
@@ -74,7 +79,7 @@ class TournamentScorekeeperServiceTest {
     class Add {
 
         @Test
-        @DisplayName("ADMIN は新規指名できる")
+        @DisplayName("ADMIN は新規指名でき、displayName が同梱される")
         void admin_adds() {
             asAdmin(ADMIN);
             when(scorekeeperRepository.findByTournamentIdAndUserId(T_ID, TARGET)).thenReturn(Optional.empty());
@@ -83,16 +88,18 @@ class TournamentScorekeeperServiceTest {
                 e.setId(UUID.randomUUID());
                 return e;
             });
+            when(nameResolverService.resolveUserDisplayName(TARGET)).thenReturn("山田 太郎");
 
             ScorekeeperResponse res = service.addScorekeeper(ORG_ID, T_ID, ADMIN, TARGET);
 
             assertThat(res.userId()).isEqualTo(TARGET);
             assertThat(res.createdBy()).isEqualTo(ADMIN);
+            assertThat(res.displayName()).isEqualTo("山田 太郎");
             verify(scorekeeperRepository).save(any());
         }
 
         @Test
-        @DisplayName("既に指名済みなら冪等に既存を返し save しない")
+        @DisplayName("既に指名済みなら冪等に既存を返し save しない（displayName は再解決して同梱）")
         void admin_idempotent() {
             asAdmin(ADMIN);
             TournamentScorekeeperEntity existing = TournamentScorekeeperEntity.builder()
@@ -100,10 +107,12 @@ class TournamentScorekeeperServiceTest {
             existing.setId(UUID.randomUUID());
             when(scorekeeperRepository.findByTournamentIdAndUserId(T_ID, TARGET))
                     .thenReturn(Optional.of(existing));
+            when(nameResolverService.resolveUserDisplayName(TARGET)).thenReturn("山田 太郎");
 
             ScorekeeperResponse res = service.addScorekeeper(ORG_ID, T_ID, ADMIN, TARGET);
 
             assertThat(res.userId()).isEqualTo(TARGET);
+            assertThat(res.displayName()).isEqualTo("山田 太郎");
             verify(scorekeeperRepository, never()).save(any());
         }
 
@@ -133,15 +142,38 @@ class TournamentScorekeeperServiceTest {
     class ListScorekeepers {
 
         @Test
-        @DisplayName("ADMIN は一覧取得できる")
+        @DisplayName("ADMIN は一覧取得でき、各 userId が NameResolver でバッチ解決された displayName を持つ")
         void admin_lists() {
             asAdmin(ADMIN);
             TournamentScorekeeperEntity e = TournamentScorekeeperEntity.builder()
                     .tournamentId(T_ID).userId(TARGET).createdBy(ADMIN).build();
             e.setId(UUID.randomUUID());
             when(scorekeeperRepository.findByTournamentIdOrderByCreatedAtAsc(T_ID)).thenReturn(List.of(e));
+            when(nameResolverService.resolveUserDisplayNames(anyCollection()))
+                    .thenReturn(Map.of(TARGET, "山田 太郎"));
 
-            assertThat(service.listScorekeepers(ORG_ID, T_ID, ADMIN)).hasSize(1);
+            List<ScorekeeperResponse> result = service.listScorekeepers(ORG_ID, T_ID, ADMIN);
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).userId()).isEqualTo(TARGET);
+            assertThat(result.get(0).displayName()).isEqualTo("山田 太郎");
+        }
+
+        @Test
+        @DisplayName("退会済みユーザー（NameResolver の map に不在）は既定フォールバック名になる")
+        void admin_lists_withdrawnFallback() {
+            asAdmin(ADMIN);
+            TournamentScorekeeperEntity e = TournamentScorekeeperEntity.builder()
+                    .tournamentId(T_ID).userId(TARGET).createdBy(ADMIN).build();
+            e.setId(UUID.randomUUID());
+            when(scorekeeperRepository.findByTournamentIdOrderByCreatedAtAsc(T_ID)).thenReturn(List.of(e));
+            // 退会済み: resolveUserDisplayNames は該当 ID を map に含めない
+            when(nameResolverService.resolveUserDisplayNames(anyCollection())).thenReturn(Map.of());
+
+            List<ScorekeeperResponse> result = service.listScorekeepers(ORG_ID, T_ID, ADMIN);
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).displayName()).isEqualTo("不明なユーザー");
         }
 
         @Test

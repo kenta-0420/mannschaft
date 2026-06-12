@@ -386,6 +386,11 @@
     "description": "指名したユーザーは、この大会のスコア入力（単発・一括・CSV取込）が可能になります。指名できるのは主催組織の管理者のみです。",
     "userIdLabel": "ユーザーID",
     "userIdPlaceholder": "例: 12345",
+    "searchLabel": "会員を氏名で検索して指名",
+    "searchPlaceholder": "氏名・カード番号で検索",
+    "searching": "検索中…",
+    "noCandidates": "該当する会員が見つかりません",
+    "selectMember": "この会員を指名",
     "add": "指名する",
     "remove": "解除",
     "empty": "まだスコアキーパーは指名されていません",
@@ -398,7 +403,8 @@
       "addFailed": "スコアキーパーの指名に失敗しました（{status}）",
       "removeFailed": "スコアキーパーの指名解除に失敗しました",
       "forbidden": "スコアキーパーを管理する権限がありません（主催組織の管理者のみ）",
-      "invalidUserId": "ユーザーIDは正の整数で入力してください"
+      "invalidUserId": "ユーザーIDは正の整数で入力してください",
+      "searchFailed": "会員検索に失敗しました"
     }
   }
 }

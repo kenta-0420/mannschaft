@@ -386,6 +386,11 @@
     "description": "Assigned users can enter scores for this tournament (single, bulk, and CSV import). Only administrators of the host organization can assign scorekeepers.",
     "userIdLabel": "User ID",
     "userIdPlaceholder": "e.g. 12345",
+    "searchLabel": "Search members by name to assign",
+    "searchPlaceholder": "Search by name or card number",
+    "searching": "Searching…",
+    "noCandidates": "No matching members found",
+    "selectMember": "Assign this member",
     "add": "Assign",
     "remove": "Remove",
     "empty": "No scorekeepers assigned yet",
@@ -398,7 +403,8 @@
       "addFailed": "Failed to assign scorekeeper ({status})",
       "removeFailed": "Failed to remove scorekeeper assignment",
       "forbidden": "You do not have permission to manage scorekeepers (host organization administrators only)",
-      "invalidUserId": "User ID must be a positive integer"
+      "invalidUserId": "User ID must be a positive integer",
+      "searchFailed": "Failed to search members"
     }
   }
 }

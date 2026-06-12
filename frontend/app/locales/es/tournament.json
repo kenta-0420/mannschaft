@@ -386,6 +386,11 @@
     "description": "Los usuarios asignados pueden registrar resultados de este torneo (individual, en lote e importación CSV). Solo los administradores de la organización anfitriona pueden asignar anotadores.",
     "userIdLabel": "ID de usuario",
     "userIdPlaceholder": "ej. 12345",
+    "searchLabel": "Buscar miembros por nombre para asignar",
+    "searchPlaceholder": "Buscar por nombre o número de tarjeta",
+    "searching": "Buscando…",
+    "noCandidates": "No se encontraron miembros coincidentes",
+    "selectMember": "Asignar este miembro",
     "add": "Asignar",
     "remove": "Quitar",
     "empty": "Aún no hay anotadores asignados",
@@ -398,7 +403,8 @@
       "addFailed": "No se pudo asignar el anotador ({status})",
       "removeFailed": "No se pudo eliminar la asignación de anotador",
       "forbidden": "No tienes permiso para gestionar anotadores (solo administradores de la organización anfitriona)",
-      "invalidUserId": "El ID de usuario debe ser un entero positivo"
+      "invalidUserId": "El ID de usuario debe ser un entero positivo",
+      "searchFailed": "No se pudo buscar miembros"
     }
   }
 }
