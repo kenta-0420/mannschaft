@@ -1,20 +1,12 @@
 package com.mannschaft.app.pointcard.filter;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
+import com.mannschaft.app.common.ratelimit.AbstractRateLimitFilter;
+import com.mannschaft.app.common.ratelimit.RateLimitRule;
+import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.util.regex.Pattern;
 
@@ -49,10 +41,13 @@ import java.util.regex.Pattern;
  * <p>パターンは「具体度の高いものから順に」評価する。たとえば
  * {@code /point-cards/{id}/used} を {@code /point-cards/{id}} より先に判定すること。
  *
- * <p>キャッシュ戦略: Caffeine の expireAfterAccess=2 時間 + maximumSize=10000。
+ * <p><b>Valkey 化（第二陣A）</b>: 旧実装の Bucket4j + Caffeine（プロセス内カウント）は
+ * ECS 複数タスク構成でタスク数に比例して実効上限が緩むため、
+ * {@link ValkeyRateLimiter}（docs/security/06 §4.3）に移行した。
+ * 分ウィンドウ / 時間ウィンドウの混在は {@link RateLimitRule} の window フィールドで表現する。</p>
  */
 @Component
-public class PointCardRateLimitFilter extends OncePerRequestFilter {
+public class PointCardRateLimitFilter extends AbstractRateLimitFilter {
 
     // ──── レート定義 ─────────────────────────────
     private static final int PROVIDERS_RATE_PER_MINUTE = 60;
@@ -76,8 +71,8 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
     private static final int BALANCE_POST_RATE_PER_HOUR = 300;
     private static final int BALANCE_LIST_RATE_PER_MINUTE = 120;
 
-    private static final Duration BUCKET_TTL = Duration.ofHours(2);
-    private static final long MAX_BUCKETS = 10_000L;
+    private static final Duration WINDOW_MINUTE = Duration.ofMinutes(1);
+    private static final Duration WINDOW_HOUR = Duration.ofHours(1);
 
     // ──── パスパターン ───────────────────────────
     private static final Pattern PROVIDERS_PATH =
@@ -113,6 +108,7 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
     /** Org プロバイダー個別操作（編集 / 停止）パス。S2B 追加。 */
     private static final Pattern ORG_PROVIDER_ID_PATH =
             Pattern.compile("^/api/v1/organizations/[0-9]+/point-cards/providers/[0-9a-fA-F-]{36}$");
+
     /** 組織配下: 単一カードへのスタンプ押印 / 履歴。具体度が高いので組織一覧パターンより先に判定。 */
     private static final Pattern ORG_STAMP_CARD_PATH =
             Pattern.compile("^/api/v1/organizations/\\d+/point-cards/[0-9a-fA-F-]{36}/stamps$");
@@ -128,6 +124,7 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
     /** P3 2A: 店主側 一時トークン resolve。 */
     private static final Pattern SHARE_TOKEN_RESOLVE_PATH =
             Pattern.compile("^/api/v1/organizations/\\d+/point-cards/resolve-by-token$");
+
     /** 組織配下: 単一カードの残高イベント記録 / 履歴。具体度高いので組織一覧パターンより先に判定。 */
     private static final Pattern ORG_BALANCE_CARD_PATH =
             Pattern.compile("^/api/v1/organizations/\\d+/point-cards/[0-9a-fA-F-]{36}/balance-events$");
@@ -136,58 +133,15 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
     private static final Pattern ORG_BALANCE_LIST_PATH =
             Pattern.compile("^/api/v1/organizations/\\d+/point-cards/balance-events$");
 
-    // ──── バケット ──────────────────────────────
-    private final Cache<String, Bucket> providersBuckets;
-    private final Cache<String, Bucket> settingsBuckets;
-    private final Cache<String, Bucket> createCardBuckets;
-    private final Cache<String, Bucket> getDetailBuckets;
-    private final Cache<String, Bucket> recordUsedBuckets;
-    private final Cache<String, Bucket> listGroupsBuckets;
-    private final Cache<String, Bucket> createGroupBuckets;
-    private final Cache<String, Bucket> presentationBuckets;
-    /** S2B Org プロバイダー CUD（POST/PATCH/DELETE）共通バケット。 */
-    private final Cache<String, Bucket> orgProviderCudBuckets;
-    private final Cache<String, Bucket> stampPostBuckets;
-    private final Cache<String, Bucket> stampCardListBuckets;
-    private final Cache<String, Bucket> stampOrgListBuckets;
-    /** P3 2A: 顧客側 一時トークン発行（60/h）。 */
-    private final Cache<String, Bucket> shareTokenGenerateBuckets;
-    /** P3 2A: 店主側 一時トークン resolve（600/h）。 */
-    private final Cache<String, Bucket> shareTokenResolveBuckets;
-    private final Cache<String, Bucket> balancePostBuckets;
-    private final Cache<String, Bucket> balanceCardListBuckets;
-    private final Cache<String, Bucket> balanceOrgListBuckets;
+    /** Valkey zone 接頭辞。 */
+    private static final String ZONE_PREFIX = "pointcard:";
 
-    public PointCardRateLimitFilter() {
-        this.providersBuckets = newCache();
-        this.settingsBuckets = newCache();
-        this.createCardBuckets = newCache();
-        this.getDetailBuckets = newCache();
-        this.recordUsedBuckets = newCache();
-        this.listGroupsBuckets = newCache();
-        this.createGroupBuckets = newCache();
-        this.presentationBuckets = newCache();
-        this.orgProviderCudBuckets = newCache();
-        this.stampPostBuckets = newCache();
-        this.stampCardListBuckets = newCache();
-        this.stampOrgListBuckets = newCache();
-        this.shareTokenGenerateBuckets = newCache();
-        this.shareTokenResolveBuckets = newCache();
-        this.balancePostBuckets = newCache();
-        this.balanceCardListBuckets = newCache();
-        this.balanceOrgListBuckets = newCache();
-    }
-
-    private static Cache<String, Bucket> newCache() {
-        return Caffeine.<String, Bucket>newBuilder()
-                .expireAfterAccess(BUCKET_TTL)
-                .maximumSize(MAX_BUCKETS)
-                .build();
+    public PointCardRateLimitFilter(ObjectProvider<ValkeyRateLimiter> rateLimiterProvider) {
+        super(rateLimiterProvider);
     }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        // 本フィルタの管理対象パスのみ通す（その他のリクエストは初期段階で除外）
         String method = request.getMethod();
         String path = request.getServletPath();
 
@@ -253,108 +207,68 @@ public class PointCardRateLimitFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain chain) throws ServletException, IOException {
+    protected RateLimitRule resolveRule(HttpServletRequest request) {
         String method = request.getMethod();
         String path = request.getServletPath();
-        String userKey = resolveUserKey(request);
-
-        Bucket bucket;
-        String retryAfter;
 
         // 評価順序: より具体的なものから判定する
         // S2B Org プロバイダー個別操作（PATCH / DELETE）— /{id} 形式の方が ROOT より具体度高
         if (("PATCH".equalsIgnoreCase(method) || "DELETE".equalsIgnoreCase(method))
                 && ORG_PROVIDER_ID_PATH.matcher(path).matches()) {
-            bucket = orgProviderCudBuckets.get(userKey, k -> newBucketPerHour(ORG_PROVIDER_CUD_RATE_PER_HOUR));
-            retryAfter = "3600";
-        } else if ("POST".equalsIgnoreCase(method) && ORG_PROVIDERS_ROOT_PATH.matcher(path).matches()) {
-            bucket = orgProviderCudBuckets.get(userKey, k -> newBucketPerHour(ORG_PROVIDER_CUD_RATE_PER_HOUR));
-            retryAfter = "3600";
-        } else if ("POST".equalsIgnoreCase(method) && ORG_STAMP_CARD_PATH.matcher(path).matches()) {
-            bucket = stampPostBuckets.get(userKey, k -> newBucketPerHour(STAMP_POST_RATE_PER_HOUR));
-            retryAfter = "3600";
-        } else if ("GET".equalsIgnoreCase(method) && ORG_STAMP_CARD_PATH.matcher(path).matches()) {
-            bucket = stampCardListBuckets.get(userKey, k -> newBucketPerMinute(STAMP_LIST_RATE_PER_MINUTE));
-            retryAfter = "60";
-        } else if ("GET".equalsIgnoreCase(method) && ORG_STAMP_LIST_PATH.matcher(path).matches()) {
-            bucket = stampOrgListBuckets.get(userKey, k -> newBucketPerMinute(STAMP_LIST_RATE_PER_MINUTE));
-            retryAfter = "60";
-        } else if ("POST".equalsIgnoreCase(method) && ORG_BALANCE_CARD_PATH.matcher(path).matches()) {
-            bucket = balancePostBuckets.get(userKey, k -> newBucketPerHour(BALANCE_POST_RATE_PER_HOUR));
-            retryAfter = "3600";
-        } else if ("GET".equalsIgnoreCase(method) && ORG_BALANCE_CARD_PATH.matcher(path).matches()) {
-            bucket = balanceCardListBuckets.get(userKey, k -> newBucketPerMinute(BALANCE_LIST_RATE_PER_MINUTE));
-            retryAfter = "60";
-        } else if ("GET".equalsIgnoreCase(method) && ORG_BALANCE_LIST_PATH.matcher(path).matches()) {
-            bucket = balanceOrgListBuckets.get(userKey, k -> newBucketPerMinute(BALANCE_LIST_RATE_PER_MINUTE));
-            retryAfter = "60";
-        } else if ("POST".equalsIgnoreCase(method) && GROUP_PRESENTATION_PATH.matcher(path).matches()) {
-            bucket = presentationBuckets.get(userKey, k -> newBucketPerHour(PRESENTATION_RATE_PER_HOUR));
-            retryAfter = "3600";
-        } else if ("POST".equalsIgnoreCase(method) && GROUPS_ROOT_PATH.matcher(path).matches()) {
-            bucket = createGroupBuckets.get(userKey, k -> newBucketPerHour(CREATE_GROUP_RATE_PER_HOUR));
-            retryAfter = "3600";
-        } else if ("GET".equalsIgnoreCase(method) && GROUPS_ROOT_PATH.matcher(path).matches()) {
-            bucket = listGroupsBuckets.get(userKey, k -> newBucketPerMinute(LIST_GROUPS_RATE_PER_MINUTE));
-            retryAfter = "60";
-        } else if ("POST".equalsIgnoreCase(method) && SHARE_TOKEN_GENERATE_PATH.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_PREFIX + "ORG_PROVIDER_CUD", ORG_PROVIDER_CUD_RATE_PER_HOUR, WINDOW_HOUR);
+        }
+        if ("POST".equalsIgnoreCase(method) && ORG_PROVIDERS_ROOT_PATH.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_PREFIX + "ORG_PROVIDER_CUD", ORG_PROVIDER_CUD_RATE_PER_HOUR, WINDOW_HOUR);
+        }
+        if ("POST".equalsIgnoreCase(method) && ORG_STAMP_CARD_PATH.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_PREFIX + "STAMP_POST", STAMP_POST_RATE_PER_HOUR, WINDOW_HOUR);
+        }
+        if ("GET".equalsIgnoreCase(method) && ORG_STAMP_CARD_PATH.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_PREFIX + "STAMP_CARD_LIST", STAMP_LIST_RATE_PER_MINUTE, WINDOW_MINUTE);
+        }
+        if ("GET".equalsIgnoreCase(method) && ORG_STAMP_LIST_PATH.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_PREFIX + "STAMP_ORG_LIST", STAMP_LIST_RATE_PER_MINUTE, WINDOW_MINUTE);
+        }
+        if ("POST".equalsIgnoreCase(method) && ORG_BALANCE_CARD_PATH.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_PREFIX + "BALANCE_POST", BALANCE_POST_RATE_PER_HOUR, WINDOW_HOUR);
+        }
+        if ("GET".equalsIgnoreCase(method) && ORG_BALANCE_CARD_PATH.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_PREFIX + "BALANCE_CARD_LIST", BALANCE_LIST_RATE_PER_MINUTE, WINDOW_MINUTE);
+        }
+        if ("GET".equalsIgnoreCase(method) && ORG_BALANCE_LIST_PATH.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_PREFIX + "BALANCE_ORG_LIST", BALANCE_LIST_RATE_PER_MINUTE, WINDOW_MINUTE);
+        }
+        if ("POST".equalsIgnoreCase(method) && GROUP_PRESENTATION_PATH.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_PREFIX + "PRESENTATION", PRESENTATION_RATE_PER_HOUR, WINDOW_HOUR);
+        }
+        if ("POST".equalsIgnoreCase(method) && GROUPS_ROOT_PATH.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_PREFIX + "CREATE_GROUP", CREATE_GROUP_RATE_PER_HOUR, WINDOW_HOUR);
+        }
+        if ("GET".equalsIgnoreCase(method) && GROUPS_ROOT_PATH.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_PREFIX + "LIST_GROUPS", LIST_GROUPS_RATE_PER_MINUTE, WINDOW_MINUTE);
+        }
+        if ("POST".equalsIgnoreCase(method) && SHARE_TOKEN_GENERATE_PATH.matcher(path).matches()) {
             // /share-tokens は CARD_USED_PATH（/used）と同じく CARD_ID_PATH より具体度が高い。
-            // パス末尾文字列が異なるので衝突しないが、CARD_USED_PATH と同じ精度なので近傍に配置する。
-            bucket = shareTokenGenerateBuckets.get(userKey, k -> newBucketPerHour(SHARE_TOKEN_GENERATE_RATE_PER_HOUR));
-            retryAfter = "3600";
-        } else if ("POST".equalsIgnoreCase(method) && SHARE_TOKEN_RESOLVE_PATH.matcher(path).matches()) {
-            // /resolve-by-token は固定文字列のため他のパターンと衝突しないが、
-            // 評価順序として ORG_STAMP_CARD_PATH などより先に判定して安全側に倒す。
-            bucket = shareTokenResolveBuckets.get(userKey, k -> newBucketPerHour(SHARE_TOKEN_RESOLVE_RATE_PER_HOUR));
-            retryAfter = "3600";
-        } else if ("POST".equalsIgnoreCase(method) && CARD_USED_PATH.matcher(path).matches()) {
-            bucket = recordUsedBuckets.get(userKey, k -> newBucketPerHour(RECORD_USED_RATE_PER_HOUR));
-            retryAfter = "3600";
-        } else if ("GET".equalsIgnoreCase(method) && CARD_ID_PATH.matcher(path).matches()) {
-            bucket = getDetailBuckets.get(userKey, k -> newBucketPerMinute(GET_DETAIL_RATE_PER_MINUTE));
-            retryAfter = "60";
-        } else if ("POST".equalsIgnoreCase(method) && CARDS_ROOT_PATH.matcher(path).matches()) {
-            bucket = createCardBuckets.get(userKey, k -> newBucketPerHour(CREATE_CARD_RATE_PER_HOUR));
-            retryAfter = "3600";
-        } else if ("GET".equalsIgnoreCase(method) && PROVIDERS_PATH.matcher(path).matches()) {
-            bucket = providersBuckets.get(userKey, k -> newBucketPerMinute(PROVIDERS_RATE_PER_MINUTE));
-            retryAfter = "60";
-        } else if ("PUT".equalsIgnoreCase(method) && SETTINGS_PATH.matcher(path).matches()) {
-            bucket = settingsBuckets.get(userKey, k -> newBucketPerHour(SETTINGS_PUT_RATE_PER_HOUR));
-            retryAfter = "3600";
-        } else {
-            chain.doFilter(request, response);
-            return;
+            return new RateLimitRule(ZONE_PREFIX + "SHARE_TOKEN_GENERATE", SHARE_TOKEN_GENERATE_RATE_PER_HOUR, WINDOW_HOUR);
         }
-
-        if (bucket.tryConsume(1)) {
-            chain.doFilter(request, response);
-        } else {
-            response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-            response.setHeader("Retry-After", retryAfter);
+        if ("POST".equalsIgnoreCase(method) && SHARE_TOKEN_RESOLVE_PATH.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_PREFIX + "SHARE_TOKEN_RESOLVE", SHARE_TOKEN_RESOLVE_RATE_PER_HOUR, WINDOW_HOUR);
         }
-    }
-
-    private String resolveUserKey(HttpServletRequest request) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated()
-                && !"anonymousUser".equals(auth.getPrincipal())) {
-            return "u:" + auth.getName();
+        if ("POST".equalsIgnoreCase(method) && CARD_USED_PATH.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_PREFIX + "RECORD_USED", RECORD_USED_RATE_PER_HOUR, WINDOW_HOUR);
         }
-        return "ip:" + request.getRemoteAddr();
-    }
-
-    private Bucket newBucketPerMinute(int capacity) {
-        return Bucket.builder()
-                .addLimit(Bandwidth.simple(capacity, Duration.ofMinutes(1)))
-                .build();
-    }
-
-    private Bucket newBucketPerHour(int capacity) {
-        return Bucket.builder()
-                .addLimit(Bandwidth.simple(capacity, Duration.ofHours(1)))
-                .build();
+        if ("GET".equalsIgnoreCase(method) && CARD_ID_PATH.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_PREFIX + "GET_DETAIL", GET_DETAIL_RATE_PER_MINUTE, WINDOW_MINUTE);
+        }
+        if ("POST".equalsIgnoreCase(method) && CARDS_ROOT_PATH.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_PREFIX + "CREATE_CARD", CREATE_CARD_RATE_PER_HOUR, WINDOW_HOUR);
+        }
+        if ("GET".equalsIgnoreCase(method) && PROVIDERS_PATH.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_PREFIX + "PROVIDERS", PROVIDERS_RATE_PER_MINUTE, WINDOW_MINUTE);
+        }
+        if ("PUT".equalsIgnoreCase(method) && SETTINGS_PATH.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_PREFIX + "SETTINGS_PUT", SETTINGS_PUT_RATE_PER_HOUR, WINDOW_HOUR);
+        }
+        return null;
     }
 }

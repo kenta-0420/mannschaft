@@ -114,6 +114,29 @@ public class CreateRecruitmentListingRequest {
     @Valid
     private final List<RegionInput> regions;
 
+    // ===========================================
+    // F22.1 市 謝礼決済: 受領主体（02_api_design §3 / 01_data_model §4.1）
+    // ===========================================
+
+    /**
+     * 受領主体種別 {@code USER} / {@code TEAM} / {@code ORG}（札ごと選択・札主が作成時に固定指定）。
+     *
+     * <p>{@code paymentEnabled=true} のとき必須（未指定は {@code PAYMENT_C011 PAYEE_REQUIRED}）。
+     * {@code USER} は審判/助っ人個人を受領者にする（{@code payeeUserId} 必須）。{@code TEAM}/{@code ORG} は
+     * 札主自身の scope が受領するため個人 ID 不要。{@code paymentEnabled=false} のときは指定しても無視する。</p>
+     */
+    @Pattern(regexp = "USER|TEAM|ORG", message = "payee_kind は USER / TEAM / ORG のいずれかで指定してください")
+    private final String payeeKind;
+
+    /**
+     * {@code payeeKind=USER} の受領者ユーザー（審判/助っ人個人・users.id）。
+     *
+     * <p>{@code payeeKind=USER} のとき必須（未指定は {@code PAYMENT_C012 PAYEE_USER_REQUIRED}）。
+     * 対象は札主 scope の所属者に限定する（非所属は {@code PAYMENT_C013 PAYEE_NOT_IN_SCOPE}・IDOR 防止）。
+     * {@code payeeKind} が {@code TEAM}/{@code ORG}/未指定のときは無視（Service で NULL 強制）。</p>
+     */
+    private final Long payeeUserId;
+
     /**
      * F22.1 Phase2 D: 複数地域募集の地域 1 件分の入力（02_api_design §4）。
      *

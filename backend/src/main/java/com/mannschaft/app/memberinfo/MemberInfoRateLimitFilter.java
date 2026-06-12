@@ -1,20 +1,12 @@
 package com.mannschaft.app.memberinfo;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
+import com.mannschaft.app.common.ratelimit.AbstractRateLimitFilter;
+import com.mannschaft.app.common.ratelimit.RateLimitRule;
+import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.util.regex.Pattern;
 
@@ -23,30 +15,24 @@ import java.util.regex.Pattern;
  *
  * <p>{@code PUT /api/v1/teams/{teamId}/member-info/responses/me} に対して 10 req/分 の制限を適用する。</p>
  *
- * <p><b>キャッシュ戦略</b>: Caffeine の {@code expireAfterAccess=10分} + {@code maximumSize=10000}。
- * {@link com.mannschaft.app.actionmemo.ActionMemoRateLimitFilter} と同一パターン。</p>
+ * <p><b>Valkey 化（第二陣A）</b>: 旧実装の Bucket4j + Caffeine（プロセス内カウント）は
+ * ECS 複数タスク構成でタスク数に比例して実効上限が緩むため、
+ * {@link ValkeyRateLimiter}（docs/security/06 §4.3）に移行した。</p>
  */
 @Component
-public class MemberInfoRateLimitFilter extends OncePerRequestFilter {
+public class MemberInfoRateLimitFilter extends AbstractRateLimitFilter {
 
     private static final Pattern UPSERT_RESPONSES_PATTERN =
             Pattern.compile("^/api/v1/teams/[^/]+/member-info/responses/me$");
 
     private static final int RATE_PER_MINUTE = 10;
+    private static final Duration WINDOW = Duration.ofMinutes(1);
 
-    /** バケット保持期間（非アクセス時）。レート窓（1分）より十分長く、OOM は防ぐ。 */
-    private static final Duration BUCKET_TTL = Duration.ofMinutes(10);
+    /** Valkey zone 接頭辞。 */
+    private static final String ZONE_PREFIX = "memberinfo:";
 
-    /** キャッシュ最大エントリ数。想定外のキー爆発時に LRU で古いものから淘汰する。 */
-    private static final long MAX_BUCKETS = 10_000L;
-
-    private final Cache<String, Bucket> buckets;
-
-    public MemberInfoRateLimitFilter() {
-        this.buckets = Caffeine.<String, Bucket>newBuilder()
-                .expireAfterAccess(BUCKET_TTL)
-                .maximumSize(MAX_BUCKETS)
-                .build();
+    public MemberInfoRateLimitFilter(ObjectProvider<ValkeyRateLimiter> rateLimiterProvider) {
+        super(rateLimiterProvider);
     }
 
     @Override
@@ -56,38 +42,11 @@ public class MemberInfoRateLimitFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                     HttpServletResponse response,
-                                     FilterChain chain) throws ServletException, IOException {
-        String userKey = resolveUserKey(request);
-        Bucket bucket = buckets.get(userKey, k -> newBucket());
-
-        if (bucket.tryConsume(1)) {
-            chain.doFilter(request, response);
-        } else {
-            response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-            response.setHeader("Retry-After", "60");
-            response.setContentType("application/json");
-            response.setCharacterEncoding("UTF-8");
-            response.getWriter().write("{\"message\": \"リクエストが多すぎます。しばらく経ってから再試行してください。\"}");
+    protected RateLimitRule resolveRule(HttpServletRequest request) {
+        if ("PUT".equalsIgnoreCase(request.getMethod())
+                && UPSERT_RESPONSES_PATTERN.matcher(request.getServletPath()).matches()) {
+            return new RateLimitRule(ZONE_PREFIX + "UPSERT_RESPONSES", RATE_PER_MINUTE, WINDOW);
         }
-    }
-
-    /**
-     * 認証済みなら userId を、未認証なら IP をキーにする。
-     */
-    private String resolveUserKey(HttpServletRequest request) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated()
-                && !"anonymousUser".equals(auth.getPrincipal())) {
-            return "u:" + auth.getName();
-        }
-        return "ip:" + request.getRemoteAddr();
-    }
-
-    private Bucket newBucket() {
-        return Bucket.builder()
-                .addLimit(Bandwidth.simple(RATE_PER_MINUTE, Duration.ofMinutes(1)))
-                .build();
+        return null;
     }
 }
