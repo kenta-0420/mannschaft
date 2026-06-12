@@ -79,4 +79,22 @@ public class UpdateRecruitmentListingRequest {
      */
     @Valid
     private final List<CreateRecruitmentListingRequest.RegionInput> regions;
+
+    // ===========================================
+    // F22.1 市 謝礼決済: 受領主体（02_api_design §3）
+    // ===========================================
+
+    /**
+     * 受領主体種別 {@code USER} / {@code TEAM} / {@code ORG}（編集で変更可・null は変更なし）。
+     *
+     * <p>編集後の実効 {@code paymentEnabled=true} のとき必須（{@code PAYMENT_C011}）。{@code USER} は
+     * {@code payeeUserId} 必須（{@code PAYMENT_C012}・所属検証 {@code PAYMENT_C013}）。検証規約は作成と同一。</p>
+     */
+    @Pattern(regexp = "USER|TEAM|ORG", message = "payee_kind は USER / TEAM / ORG のいずれかで指定してください")
+    private final String payeeKind;
+
+    /**
+     * {@code payeeKind=USER} の受領者ユーザー（null は変更なし）。検証規約は作成と同一（IDOR 防止）。
+     */
+    private final Long payeeUserId;
 }
