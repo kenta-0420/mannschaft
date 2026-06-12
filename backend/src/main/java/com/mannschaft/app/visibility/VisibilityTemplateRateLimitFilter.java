@@ -1,23 +1,13 @@
 package com.mannschaft.app.visibility;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
+import com.mannschaft.app.common.ratelimit.AbstractRateLimitFilter;
+import com.mannschaft.app.common.ratelimit.RateLimitRule;
+import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
 import java.time.Duration;
-import java.util.EnumMap;
-import java.util.Map;
 
 /**
  * F01.7 カスタム公開範囲テンプレートのユーザー別レートリミットフィルタ。
@@ -35,16 +25,23 @@ import java.util.Map;
  * evaluate は閲覧時に頻繁に呼ばれるため余裕を持った上限を設定。
  * ボット・スクリプト・連打バグの防御のみを目的とする。</p>
  *
- * <p><b>キャッシュ戦略</b>: Caffeine の {@code expireAfterAccess=70分} + {@code maximumSize=10000}。
- * レートリミット窓（1時間）より少し長い TTL を設定して、
- * 非アクティブなキーはメモリから自動削除される。</p>
+ * <p><b>認証必須 / 未認証透過</b>: 未認証ユーザーはセキュリティフィルタで弾かれるため、
+ * {@link #resolveRule} で null を返して透過させる。
+ * 基底 {@link AbstractRateLimitFilter#resolveClientKey} は認証済みの場合
+ * {@code "u:{userId}"} を返すが、このフィルタでは未認証リクエストをそもそも対象外にする
+ * ことで旧実装の挙動（userId null の場合は透過）を維持する。</p>
  *
- * <p>エンドポイントごとに Cache を分離しているのは、片方のトラフィックが
- * もう片方のエントリを LRU で押し出すのを避けるため
- * ({@link com.mannschaft.app.actionmemo.ActionMemoRateLimitFilter} と同じ方針)。</p>
+ * <p><b>X-RateLimit-Remaining ヘッダー</b>: 旧実装は手動で付与していたが、
+ * 基底 {@link AbstractRateLimitFilter#applyRateLimitHeaders} が §4.3 標準ヘッダー
+ * （X-RateLimit-Limit / X-RateLimit-Remaining / X-RateLimit-Reset）を成功・失敗共通で付与するため、
+ * 旧実装の手動付与と同等以上の情報が提供される。</p>
+ *
+ * <p><b>Valkey 化（第二陣A）</b>: 旧実装の Bucket4j + Caffeine（プロセス内カウント）は
+ * ECS 複数タスク構成でタスク数に比例して実効上限が緩むため、
+ * {@link ValkeyRateLimiter}（docs/security/06 §4.3）に移行した。</p>
  */
 @Component
-public class VisibilityTemplateRateLimitFilter extends OncePerRequestFilter {
+public class VisibilityTemplateRateLimitFilter extends AbstractRateLimitFilter {
 
     private static final String BASE_PATH = "/api/v1/visibility-templates";
 
@@ -109,26 +106,14 @@ public class VisibilityTemplateRateLimitFilter extends OncePerRequestFilter {
         }
     }
 
-    /** バケット保持期間（非アクセス時）。レート窓（1時間）より少し長く設定。 */
-    private static final Duration BUCKET_TTL = Duration.ofMinutes(70);
+    /** ウィンドウ長（時間ウィンドウ）。 */
+    private static final Duration WINDOW = Duration.ofHours(1);
 
-    /** キャッシュ最大エントリ数。想定外のキー爆発時に LRU で古いものから淘汰する。 */
-    private static final long MAX_BUCKETS = 10_000L;
+    /** Valkey zone 接頭辞。 */
+    private static final String ZONE_PREFIX = "visibility-template:";
 
-    /**
-     * エンドポイント別のバケットキャッシュ。エンドポイント間で LRU 淘汰が干渉しないよう
-     * それぞれ独立した Cache として保持する。
-     */
-    private final Map<Endpoint, Cache<String, Bucket>> bucketsByEndpoint;
-
-    public VisibilityTemplateRateLimitFilter() {
-        this.bucketsByEndpoint = new EnumMap<>(Endpoint.class);
-        for (Endpoint ep : Endpoint.values()) {
-            this.bucketsByEndpoint.put(ep, Caffeine.<String, Bucket>newBuilder()
-                    .expireAfterAccess(BUCKET_TTL)
-                    .maximumSize(MAX_BUCKETS)
-                    .build());
-        }
+    public VisibilityTemplateRateLimitFilter(ObjectProvider<ValkeyRateLimiter> rateLimiterProvider) {
+        super(rateLimiterProvider);
     }
 
     @Override
@@ -142,37 +127,13 @@ public class VisibilityTemplateRateLimitFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                     HttpServletResponse response,
-                                     FilterChain chain) throws ServletException, IOException {
-        Endpoint endpoint = resolveEndpoint(request);
-        if (endpoint == null) {
-            chain.doFilter(request, response);
-            return;
+    protected RateLimitRule resolveRule(HttpServletRequest request) {
+        // 未認証の場合はレート制限をスキップ（セキュリティフィルタで弾かれる）
+        // 旧実装の "userId == null ならチェーン透過" の挙動を維持する
+        if (!isAuthenticated()) {
+            return null;
         }
 
-        String userKey = resolveUserKey(request);
-        if (userKey == null) {
-            // 未認証の場合はレート制限をスキップ（セキュリティフィルタで弾かれる）
-            chain.doFilter(request, response);
-            return;
-        }
-
-        Cache<String, Bucket> cache = bucketsByEndpoint.get(endpoint);
-        Bucket bucket = cache.get(userKey, k -> newBucket(endpoint.capacityPerHour));
-
-        long remainingTokens = bucket.getAvailableTokens();
-        if (bucket.tryConsume(1)) {
-            response.setHeader("X-RateLimit-Remaining", String.valueOf(remainingTokens - 1));
-            chain.doFilter(request, response);
-        } else {
-            response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-            response.setHeader("X-RateLimit-Remaining", "0");
-            response.setHeader("Retry-After", "3600");
-        }
-    }
-
-    private Endpoint resolveEndpoint(HttpServletRequest request) {
         // 優先度順にマッチング（より具体的なパターンを先に評価）
         // evaluate と resolved-members は PUT/DELETE より先に判定する必要がある
         for (Endpoint ep : new Endpoint[]{
@@ -183,30 +144,9 @@ public class VisibilityTemplateRateLimitFilter extends OncePerRequestFilter {
                 Endpoint.DELETE_TEMPLATE
         }) {
             if (ep.matches(request)) {
-                return ep;
+                return new RateLimitRule(ZONE_PREFIX + ep.name(), ep.capacityPerHour, WINDOW);
             }
         }
         return null;
-    }
-
-    /**
-     * 認証済みなら userId を返す。未認証なら null を返す。
-     */
-    private String resolveUserKey(HttpServletRequest request) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated()
-                && !"anonymousUser".equals(auth.getPrincipal())) {
-            return "u:" + auth.getName();
-        }
-        return null;
-    }
-
-    private Bucket newBucket(int capacityPerHour) {
-        return Bucket.builder()
-                .addLimit(Bandwidth.builder()
-                        .capacity(capacityPerHour)
-                        .refillGreedy(capacityPerHour, Duration.ofHours(1))
-                        .build())
-                .build();
     }
 }
