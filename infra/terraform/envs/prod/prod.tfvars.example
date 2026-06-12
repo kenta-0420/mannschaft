@@ -1,0 +1,28 @@
+# =============================================================================
+# prod.tfvars の記入例
+# =============================================================================
+# 実ファイルは `prod.tfvars` という名前でこのディレクトリに置く（gitignore 済み）。
+# ローカル実行: terraform plan -var-file=prod.tfvars
+# CI 実行: GitHub variables（INFRA_DOMAIN_NAME 等）が TF_VAR_ 環境変数として注入される
+#          ため、CI に prod.tfvars は不要。
+#
+# 注意: 秘密（API トークン・パスワード類）はこのファイルにも書かない。
+#       CLOUDFLARE_API_TOKEN は環境変数、DB パスワードは Secrets Manager 自動管理。
+
+# --- 必須 ---
+domain_name           = "mannschaft.example.com"
+cloudflare_account_id = "0123456789abcdef0123456789abcdef"
+cloudflare_zone_id    = "fedcba9876543210fedcba9876543210"
+
+# --- 任意（既定値あり。負荷が増えたらここで上げる）---
+# db_instance_class = "db.t4g.micro"
+# cache_node_type   = "cache.t4g.micro"
+# task_cpu          = 512
+# task_memory       = 1024
+# vpc_cidr          = "10.0.0.0/16"
+
+# --- 非秘密 env の追加・上書き（標準セットは envs/prod/main.tf の locals 参照）---
+# app_env_extra = {
+#   SPRING_PROFILES_ACTIVE = "prod"
+# }
+# pages_env_extra = {}

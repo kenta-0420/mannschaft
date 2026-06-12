@@ -43,3 +43,12 @@ k6/*.csv
 
 # --- F08.9 P5 Stripe PoC 出力 (API レスポンス JSON。秘密を含み得るため除外) ---
 scripts/poc/out/
+
+# --- Terraform (infra/terraform) ---
+# 注: .terraform.lock.hcl はプロバイダ固定のため除外しない（コミット対象）
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.auto.tfvars
+infra/terraform/envs/*/prod.tfvars
