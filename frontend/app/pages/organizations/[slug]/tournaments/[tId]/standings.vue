@@ -46,6 +46,9 @@ const activeStandings = computed<TournamentStanding[]>(() =>
   activeDivisionId.value != null ? (standingsMap.value[activeDivisionId.value] ?? []) : [],
 )
 
+// セット制大会か（順位表に勝セット/敗セット列を出すかの出し分け）。
+const hasSets = computed(() => tournament.value?.scoring?.hasSets === true)
+
 // ===== 表示ヘルパー =====
 
 /** 直近フォーム文字列（例 "WWLDW"）を1文字ずつ配列化（Tag 表示用）。 */
@@ -254,6 +257,16 @@ onMounted(load)
                 <Column :header="$t('tournament.standings.goalDiff')" style="width: 5rem">
                   <template #body="{ data }">
                     {{ data.score?.scoreDifference ?? 0 }}
+                  </template>
+                </Column>
+                <!-- セット制大会のみ: 勝セット/敗セット -->
+                <Column
+                  v-if="hasSets"
+                  :header="$t('tournament.standings.setsWonLost')"
+                  style="width: 6rem"
+                >
+                  <template #body="{ data }">
+                    {{ data.score?.setsWon ?? 0 }}/{{ data.score?.setsLost ?? 0 }}
                   </template>
                 </Column>
                 <Column :header="$t('tournament.standings.points')" style="width: 4rem">

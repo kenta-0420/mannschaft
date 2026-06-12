@@ -267,6 +267,7 @@
     "played": "Sp.",
     "winDrawLoss": "S/U/N",
     "goalDiff": "Diff.",
+    "setsWonLost": "Satze G/V",
     "points": "Pkt.",
     "form": "Aktuelle Form",
     "recalculate": "Neu berechnen",
@@ -304,7 +305,8 @@
     "empty": "Keine Matrixdaten",
     "noDivisions": "Keine Divisionen registriert",
     "loadFailed": "Matrix konnte nicht geladen werden",
-    "forbidden": "Du hast keine Berechtigung, dieses Turnier anzusehen"
+    "forbidden": "Du hast keine Berechtigung, dieses Turnier anzusehen",
+    "setsNote": "Dieses Turnier wird in Satzen gespielt, daher zeigt jede Zelle die Gesamtpunkte aller Satze. Der Sieger wird anhand der Anzahl gewonnener Satze ermittelt."
   },
   "visibility": {
     "title": "Sichtbarkeit",
@@ -353,6 +355,10 @@
     "homePenaltyScore": "Heim (Elfm.)",
     "awayPenaltyScore": "Auswarts (Elfm.)",
     "extraPenaltyHint": "Die Verlangerung wird zum regularen Ergebnis addiert, um den Sieger zu ermitteln. Das Elfmeterschiessen zahlt nur, wenn es nach regularer Spielzeit und Verlangerung weiterhin unentschieden steht. Lass nicht ausgetragene Felder leer.",
+    "setHeader": "Satz {n}",
+    "setHomeAria": "Satz {n} Heimpunkte",
+    "setAwayAria": "Satz {n} Auswartspunkte",
+    "setsHint": "Wer zuerst {n} Satze gewinnt, gewinnt das Spiel. Gib nur die Ergebnisse der gespielten Satze ein und lass nicht gespielte Satze leer. Der Sieger wird anhand der Anzahl gewonnener Satze ermittelt.",
     "save": "Alle speichern",
     "saved": "Ergebnisse gespeichert",
     "saveFailed": "Ergebnisse konnten nicht gespeichert werden",

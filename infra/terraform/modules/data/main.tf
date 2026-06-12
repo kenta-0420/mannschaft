@@ -176,7 +176,8 @@ resource "aws_elasticache_subnet_group" "main" {
 # -----------------------------------------------------------------------------
 resource "aws_elasticache_replication_group" "valkey" {
   replication_group_id = "${var.prefix}-valkey"
-  description          = "Mannschaft Valkey（Redis 互換）キャッシュ"
+  # AWS リソースの description は非 ASCII を拒否するものがある（IAM で実証）ため英語で統一
+  description = "Mannschaft Valkey (Redis-compatible) cache"
 
   engine             = "valkey"
   node_type          = var.cache_node_type

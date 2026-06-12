@@ -171,8 +171,9 @@ data "aws_iam_policy_document" "tf_plan_trust" {
 }
 
 resource "aws_iam_role" "tf_plan" {
-  name               = "mannschaft-tf-plan"
-  description        = "GitHub Actions (PR) からの terraform plan 用。読み取り専用 + state 読取 + S3 ネイティブロック"
+  name = "mannschaft-tf-plan"
+  # IAM ロールの description は ASCII/Latin-1 のみ許可（日本語不可）のため英語で記述する
+  description        = "Terraform plan from GitHub Actions (PR): read-only + state read + S3 native lock"
   assume_role_policy = data.aws_iam_policy_document.tf_plan_trust.json
 }
 
@@ -255,8 +256,9 @@ data "aws_iam_policy_document" "tf_apply_trust" {
 }
 
 resource "aws_iam_role" "tf_apply" {
-  name               = "mannschaft-tf-apply"
-  description        = "GitHub Actions (main) からの terraform apply 用。PowerUser + mannschaft-* 限定の IAM 操作 + state RW"
+  name = "mannschaft-tf-apply"
+  # IAM ロールの description は ASCII/Latin-1 のみ許可（日本語不可）のため英語で記述する
+  description        = "Terraform apply from GitHub Actions (main): PowerUser + IAM ops limited to mannschaft-* + state RW"
   assume_role_policy = data.aws_iam_policy_document.tf_apply_trust.json
 }
 
@@ -412,8 +414,9 @@ data "aws_iam_policy_document" "app_deploy_trust" {
 }
 
 resource "aws_iam_role" "app_deploy" {
-  name               = "mannschaft-app-deploy"
-  description        = "GitHub Actions (main) からのアプリデプロイ用。ECR push + ECS タスク定義更新 + 限定 PassRole"
+  name = "mannschaft-app-deploy"
+  # IAM ロールの description は ASCII/Latin-1 のみ許可（日本語不可）のため英語で記述する
+  description        = "App deploy from GitHub Actions (main): ECR push + ECS task definition update + scoped PassRole"
   assume_role_policy = data.aws_iam_policy_document.app_deploy_trust.json
 }
 

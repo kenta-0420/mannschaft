@@ -267,6 +267,7 @@
     "played": "PJ",
     "winDrawLoss": "G/E/P",
     "goalDiff": "DG",
+    "setsWonLost": "Sets G/P",
     "points": "Pts",
     "form": "Forma reciente",
     "recalculate": "Recalcular",
@@ -304,7 +305,8 @@
     "empty": "Sin datos de matriz",
     "noDivisions": "No hay divisiones registradas",
     "loadFailed": "No se pudo cargar la matriz",
-    "forbidden": "No tienes permiso para ver este torneo"
+    "forbidden": "No tienes permiso para ver este torneo",
+    "setsNote": "Este torneo usa sets, por lo que cada celda muestra los puntos totales de todos los sets. El ganador se decide por el numero de sets ganados."
   },
   "visibility": {
     "title": "Visibilidad",
@@ -353,6 +355,10 @@
     "homePenaltyScore": "Local (PEN)",
     "awayPenaltyScore": "Visitante (PEN)",
     "extraPenaltyHint": "La prorroga se suma al marcador reglamentario para decidir el resultado. Los penaltis solo cuentan si persiste el empate tras el tiempo reglamentario y la prorroga. Deja en blanco lo que no se haya disputado.",
+    "setHeader": "Set {n}",
+    "setHomeAria": "Set {n} puntos local",
+    "setAwayAria": "Set {n} puntos visitante",
+    "setsHint": "Gana quien llegue primero a {n} sets. Introduce el marcador solo de los sets disputados y deja en blanco los no disputados. El ganador se decide por el numero de sets ganados.",
     "save": "Guardar todo",
     "saved": "Marcadores guardados",
     "saveFailed": "No se pudieron guardar los marcadores",

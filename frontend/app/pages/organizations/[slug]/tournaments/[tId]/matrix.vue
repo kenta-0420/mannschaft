@@ -49,6 +49,9 @@ const activeGrid = computed<MatrixGrid>(() => {
   return buildMatrixGrid(matrixMap.value[activeDivisionId.value])
 })
 
+// セット制大会か（セルが本戦合計＝セット得点合計を示す旨の注記を出す）。
+const hasSets = computed(() => tournament.value?.scoring?.hasSets === true)
+
 function cellText(c: MatrixGridCell): string {
   if (c.isDiagonal) return '—'
   const text = matrixCellScoreText(c.cell)
@@ -181,8 +184,16 @@ onMounted(load)
                 icon="pi pi-table"
                 :message="$t('tournament.matrix.empty')"
               />
-              <div v-else class="overflow-x-auto">
-                <table class="min-w-full border-collapse text-center text-sm" data-testid="matrix-table">
+              <template v-else>
+                <p
+                  v-if="hasSets"
+                  class="mb-2 text-xs text-surface-500"
+                  data-testid="matrix-sets-note"
+                >
+                  {{ $t('tournament.matrix.setsNote') }}
+                </p>
+                <div class="overflow-x-auto">
+                  <table class="min-w-full border-collapse text-center text-sm" data-testid="matrix-table">
                   <thead>
                     <tr>
                       <th class="sticky left-0 z-10 border border-surface-200 bg-surface-50 px-2 py-1.5 text-left dark:border-surface-700 dark:bg-surface-800">
@@ -213,7 +224,8 @@ onMounted(load)
                     </tr>
                   </tbody>
                 </table>
-              </div>
+                </div>
+              </template>
             </template>
           </TabPanel>
         </TabPanels>
