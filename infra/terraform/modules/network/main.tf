@@ -138,11 +138,12 @@ resource "aws_route_table_association" "public_1c" {
 # -----------------------------------------------------------------------------
 resource "aws_security_group" "alb" {
   name        = "${var.prefix}-alb-sg"
-  description = "ALB インバウンド: HTTPS 443 を 0.0.0.0/0 から許可"
+  description = "ALB: allow HTTPS 443 inbound from 0.0.0.0/0"
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description = "HTTPS from anywhere（本番後に Cloudflare IP 範囲に限定予定）"
+    # TODO: 本番切替後は Cloudflare IP レンジに絞る（edge 陣の仕上げで実施予定）
+    description = "HTTPS 443 from anywhere - restrict to Cloudflare IPs after go-live"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
@@ -150,7 +151,7 @@ resource "aws_security_group" "alb" {
   }
 
   egress {
-    description = "全アウトバウンド許可"
+    description = "Allow all outbound"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -168,7 +169,7 @@ resource "aws_security_group" "alb" {
 # -----------------------------------------------------------------------------
 resource "aws_security_group" "app" {
   name        = "${var.prefix}-app-sg"
-  description = "ECS タスク: 8080 を ALB SG からのみ許可"
+  description = "ECS task: allow 8080 from ALB SG only"
   vpc_id      = aws_vpc.main.id
 
   ingress {
@@ -180,7 +181,7 @@ resource "aws_security_group" "app" {
   }
 
   egress {
-    description = "全アウトバウンド許可（ECR pull / Secrets Manager / SES 等）"
+    description = "Allow all outbound - ECR pull / Secrets Manager / SES etc."
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -198,7 +199,7 @@ resource "aws_security_group" "app" {
 # -----------------------------------------------------------------------------
 resource "aws_security_group" "db" {
   name        = "${var.prefix}-db-sg"
-  description = "RDS MySQL: 3306 を ECS アプリ SG からのみ許可"
+  description = "RDS MySQL: allow 3306 from ECS app SG only"
   vpc_id      = aws_vpc.main.id
 
   ingress {
@@ -210,7 +211,7 @@ resource "aws_security_group" "db" {
   }
 
   egress {
-    description = "全アウトバウンド許可"
+    description = "Allow all outbound"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -228,7 +229,7 @@ resource "aws_security_group" "db" {
 # -----------------------------------------------------------------------------
 resource "aws_security_group" "cache" {
   name        = "${var.prefix}-cache-sg"
-  description = "ElastiCache Valkey: 6379 を ECS アプリ SG からのみ許可"
+  description = "ElastiCache Valkey: allow 6379 from ECS app SG only"
   vpc_id      = aws_vpc.main.id
 
   ingress {
@@ -240,7 +241,7 @@ resource "aws_security_group" "cache" {
   }
 
   egress {
-    description = "全アウトバウンド許可"
+    description = "Allow all outbound"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
