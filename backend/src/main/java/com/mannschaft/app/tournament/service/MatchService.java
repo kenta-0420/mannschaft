@@ -14,6 +14,7 @@ import com.mannschaft.app.tournament.dto.BatchScoreRequest;
 import com.mannschaft.app.tournament.dto.CreateMatchdayRequest;
 import com.mannschaft.app.tournament.dto.CreateRosterRequest;
 import com.mannschaft.app.tournament.dto.MatchResponse;
+import com.mannschaft.app.tournament.dto.MatchSetRequest;
 import com.mannschaft.app.tournament.dto.MatchSetResponse;
 import com.mannschaft.app.tournament.dto.MatchdayResponse;
 import com.mannschaft.app.tournament.dto.PlayerStatBatchRequest;
@@ -304,9 +305,16 @@ public class MatchService {
         if (request.getAwayScore() != null && request.getAwayScore() < 0) {
             throw new BusinessException(TournamentErrorCode.INVALID_SCORE);
         }
+        // セット別スコアの検証（記録のみ・MVP）: home/away を非負整数のみ検証する。
+        // 25点上限/デュース等は競技ごとに可変のため検証しない（F08.7 セット制①）。
+        validateSets(request.getSets());
+
+        // 大会フラグ（hasSets/setsToWin/hasDraw）を取得して結果判定へ渡す（F08.7 セット制①）。
+        // 大会未取得（通常は起こらないが防御的）の場合は hasSets=false 相当（従来の本戦合算判定）に倒れる。
+        TournamentEntity tournament = tournamentRepository.findById(tournamentId).orElse(null);
 
         // 結果判定
-        MatchResult result = determineResult(request, match);
+        MatchResult result = determineResult(request, match, tournament);
 
         Long winnerId = null;
         if (result == MatchResult.HOME_WIN || result == MatchResult.FORFEIT_HOME_WIN) {
@@ -346,6 +354,9 @@ public class MatchService {
     @Transactional
     public void batchUpdateScores(Long tournamentId, Long divisionId, Long matchdayId,
                                   BatchScoreRequest request) {
+        // 大会フラグ（hasSets/setsToWin/hasDraw）はバッチ内で不変のため一括で1回取得する（F08.7 セット制①）。
+        TournamentEntity tournament = tournamentRepository.findById(tournamentId).orElse(null);
+
         for (BatchScoreRequest.MatchScoreEntry entry : request.getScores()) {
             TournamentMatchEntity match = findMatchOrThrow(entry.getMatchId());
 
@@ -353,12 +364,15 @@ public class MatchService {
             // 例外を投げ、@Transactional により一括ロールバック（部分適用しない）（F08.7 Wave3a）
             checkOptimisticLock(match, entry.getVersion());
 
+            // セット別スコアの検証（記録のみ・MVP・F08.7 セット制①）
+            validateSets(entry.getSets());
+
             ScoreUpdateRequest scoreReq = new ScoreUpdateRequest(
                     entry.getHomeScore(), entry.getAwayScore(),
                     entry.getHomeExtraScore(), entry.getAwayExtraScore(),
                     entry.getHomePenaltyScore(), entry.getAwayPenaltyScore(),
                     entry.getNotes(), entry.getVersion(), entry.getSets());
-            MatchResult result = determineResult(scoreReq, match);
+            MatchResult result = determineResult(scoreReq, match, tournament);
             Long winnerId = null;
             if (result == MatchResult.HOME_WIN) winnerId = match.getHomeParticipantId();
             else if (result == MatchResult.AWAY_WIN) winnerId = match.getAwayParticipantId();
@@ -463,7 +477,33 @@ public class MatchService {
 
     // ===== Private =====
 
-    private MatchResult determineResult(ScoreUpdateRequest request, TournamentMatchEntity match) {
+    /**
+     * 試合結果（勝敗）を判定する（F08.7 セット制①）。
+     *
+     * <p><b>セット制（hasSets=true）</b>: バレーボール等のセット制大会では本戦合計点ではなく
+     * <b>勝セット数</b>で勝敗を決める。各セットの home/away を比較して勝セット数を数え、多い方を勝者とする。
+     * 同数（勝敗つかず）の場合は {@code hasDraw} に従い、DRAW を許容するなら DRAW、許容しないなら
+     * セットの合計点で判定する安全な既定に倒れる（バレー等は通常 hasDraw=false 運用ゆえ基本的に発生しない）。</p>
+     *
+     * <p><b>入口①非破壊（最重要回帰）</b>: hasSets=true 大会であっても、{@code sets} が null/空の場合
+     * （例: {@code MatchScoreFixtureListener} はサッカー前提で sets=null で委譲する）は<b>セット判定を行わず</b>、
+     * 従来どおり本戦/延長合算→PK→DRAW のスコアベース判定にフォールバックする。例外は投げない。</p>
+     *
+     * <p><b>非セット制（hasSets=false / 大会未取得）</b>: 従来どおり本戦＋延長の合算で判定し、同点なら PK、
+     * それでも同点なら DRAW を返す（延長・PK ロジックは温存・#1473）。</p>
+     */
+    private MatchResult determineResult(ScoreUpdateRequest request, TournamentMatchEntity match,
+                                        TournamentEntity tournament) {
+        boolean hasSets = tournament != null && Boolean.TRUE.equals(tournament.getHasSets());
+        List<MatchSetRequest> sets = request.getSets();
+
+        // セット制かつセット入力がある場合のみ勝セット数で判定する。
+        // sets が null/空のときは入口①（サッカー委譲）等の非破壊フォールバックとしてスコアベース判定へ落とす。
+        if (hasSets && sets != null && !sets.isEmpty()) {
+            return determineResultBySets(sets, tournament);
+        }
+
+        // 以下、非セット制（または sets 未入力）の従来ロジック。
         if (request.getHomeScore() == null || request.getAwayScore() == null) {
             return MatchResult.PENDING;
         }
@@ -484,6 +524,70 @@ public class MatchService {
         }
 
         return MatchResult.DRAW;
+    }
+
+    /**
+     * セット制大会の勝敗を勝セット数で判定する（F08.7 セット制① MVP）。
+     *
+     * <p>各セットの home/away を比較して勝セット数を集計し、多い方を勝者とする。
+     * {@code setsToWin}（先取制の目標セット数）が設定されている場合、いずれかが到達すれば勝者を確定する。</p>
+     *
+     * <p>勝セット数が同数の場合は {@code hasDraw} に従う。hasDraw=true なら DRAW を返す。
+     * hasDraw=false（バレー等）なら本来発生しないが、安全な既定としてセット内の合計得点で判定し、
+     * それも同点なら DRAW を返す（症状を隠さず、確定不能を握りつぶさない）。</p>
+     */
+    private MatchResult determineResultBySets(List<MatchSetRequest> sets, TournamentEntity tournament) {
+        int homeSetsWon = 0;
+        int awaySetsWon = 0;
+        for (MatchSetRequest set : sets) {
+            if (set.getHomeScore() == null || set.getAwayScore() == null) continue;
+            if (set.getHomeScore() > set.getAwayScore()) homeSetsWon++;
+            else if (set.getAwayScore() > set.getHomeScore()) awaySetsWon++;
+        }
+
+        // 先取制（setsToWin 到達で確定）。多い方が勝者である点は素朴な比較と一致するが、
+        // 設計意図（先取制）を明示するために setsToWin 到達を優先評価する。
+        Integer setsToWin = tournament.getSetsToWin();
+        if (setsToWin != null && setsToWin > 0) {
+            if (homeSetsWon >= setsToWin && homeSetsWon > awaySetsWon) return MatchResult.HOME_WIN;
+            if (awaySetsWon >= setsToWin && awaySetsWon > homeSetsWon) return MatchResult.AWAY_WIN;
+        }
+
+        if (homeSetsWon > awaySetsWon) return MatchResult.HOME_WIN;
+        if (awaySetsWon > homeSetsWon) return MatchResult.AWAY_WIN;
+
+        // 勝セット数同数: hasDraw を許容するなら DRAW、そうでなければセット内合計点で判定する。
+        if (Boolean.TRUE.equals(tournament.getHasDraw())) {
+            return MatchResult.DRAW;
+        }
+        int homePoints = 0;
+        int awayPoints = 0;
+        for (MatchSetRequest set : sets) {
+            if (set.getHomeScore() != null) homePoints += set.getHomeScore();
+            if (set.getAwayScore() != null) awayPoints += set.getAwayScore();
+        }
+        if (homePoints > awayPoints) return MatchResult.HOME_WIN;
+        if (awayPoints > homePoints) return MatchResult.AWAY_WIN;
+        return MatchResult.DRAW;
+    }
+
+    /**
+     * セット別スコアを検証する（記録のみ・MVP・F08.7 セット制①）。
+     *
+     * <p>home/away が負値の場合のみ {@link TournamentErrorCode#INVALID_SCORE} を投げる。
+     * 25点上限・デュース等の競技固有ルールは可変のため検証しない。{@code sets} が null の場合は何もしない
+     * （入口①のセット非対応経路を壊さない）。</p>
+     */
+    private void validateSets(List<MatchSetRequest> sets) {
+        if (sets == null) return;
+        for (MatchSetRequest set : sets) {
+            if (set.getHomeScore() != null && set.getHomeScore() < 0) {
+                throw new BusinessException(TournamentErrorCode.INVALID_SCORE);
+            }
+            if (set.getAwayScore() != null && set.getAwayScore() < 0) {
+                throw new BusinessException(TournamentErrorCode.INVALID_SCORE);
+            }
+        }
     }
 
     /**
