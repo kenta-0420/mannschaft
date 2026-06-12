@@ -9,8 +9,13 @@ import {
   rankingValue,
   rankingValueText,
   parseTimeToSeconds,
+  resolveRankingPlayerName,
 } from '~/utils/tournamentStandings'
-import type { TournamentMatrix, IndividualRanking } from '~/types/tournament'
+import type {
+  TournamentMatrix,
+  IndividualRanking,
+  IndividualRankingContextDto,
+} from '~/types/tournament'
 
 /**
  * F08.7 順位UI Wave1: 順位表 / マトリクス / ランキング表示の純関数ユニットテスト。
@@ -159,6 +164,36 @@ describe('parseTimeToSeconds', () => {
     expect(parseTimeToSeconds(undefined)).toBeNull()
     expect(parseTimeToSeconds('1:2')).toBeNull()
     expect(parseTimeToSeconds('aa:bb:cc')).toBeNull()
+  })
+})
+
+describe('resolveRankingPlayerName', () => {
+  const ANON = '匿名の選手' // i18n 済み匿名ラベル想定
+
+  function ctx(over: Partial<IndividualRankingContextDto>): IndividualRankingContextDto {
+    return { ...over }
+  }
+
+  it('RK-NAME-001: anonymized=true はローカライズ匿名ラベルを返す（BE 日本語固定値は無視）', () => {
+    // BE は anonymized 時 displayName にサーバ側日本語固定値を詰めるが、FE は露出させない
+    const c = ctx({ anonymized: true, displayName: '退会済みユーザー', userId: 99 })
+    expect(resolveRankingPlayerName(c, ANON)).toBe(ANON)
+  })
+
+  it('RK-NAME-002: anonymized=false は displayName を返す', () => {
+    expect(resolveRankingPlayerName(ctx({ anonymized: false, displayName: '山田太郎', userId: 5 }), ANON))
+      .toBe('山田太郎')
+  })
+
+  it('RK-NAME-003: anonymized 未指定でも displayName があればそれを返す', () => {
+    expect(resolveRankingPlayerName(ctx({ displayName: '佐藤', userId: 7 }), ANON)).toBe('佐藤')
+  })
+
+  it('RK-NAME-004: displayName が無ければ #userId、userId も無ければ "-"', () => {
+    expect(resolveRankingPlayerName(ctx({ userId: 42 }), ANON)).toBe('#42')
+    expect(resolveRankingPlayerName(ctx({ displayName: '   ', userId: 42 }), ANON)).toBe('#42')
+    expect(resolveRankingPlayerName(ctx({}), ANON)).toBe('-')
+    expect(resolveRankingPlayerName(null, ANON)).toBe('-')
   })
 })
 

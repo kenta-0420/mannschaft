@@ -16,11 +16,13 @@ import type {
   TournamentDivision,
   TournamentMatchday,
   TournamentMatrix,
+  TournamentScoringDto,
 } from '~/types/tournament'
 import {
   buildParticipantNameMap,
   buildScoreEntryRows,
   buildBatchScorePayload,
+  deriveScoreEntryColumnFlags,
   isConflictError,
   isForbiddenError,
   type ScoreEntryRow,
@@ -30,7 +32,12 @@ const props = defineProps<{
   orgId: string
   tournamentId: number
   divisions: TournamentDivision[]
+  /** 大会の採点設定。延長/PK 入力欄の出し分けに使う（セット制は今回対象外）。 */
+  scoring?: TournamentScoringDto | null
 }>()
+
+// 延長/PK 入力欄の出し分けフラグ（hasExtraTime / hasPenalties 由来）。
+const columnFlags = computed(() => deriveScoreEntryColumnFlags(props.scoring))
 
 const emit = defineEmits<{
   /** 一括保存が成功し順位が再計算された（親で順位表/マトリクスを再取得する用）。 */
@@ -95,7 +102,7 @@ function onDivisionChange(divId: number) {
 
 async function onSave() {
   if (saving.value || activeDivisionId.value == null || activeMatchdayId.value == null) return
-  const payload = buildBatchScorePayload(rows.value)
+  const payload = buildBatchScorePayload(rows.value, columnFlags.value)
   if (payload === null) {
     // 不正入力（片方のみ・非数値・負数等）。症状を隠さず明示的に弾く。
     notification.error(t('tournament.scoreEntry.invalidInput'))
@@ -261,7 +268,74 @@ onMounted(() => {
                         {{ data.awayName }}
                       </template>
                     </Column>
+                    <!-- 延長スコア（hasExtraTime 大会のみ） -->
+                    <Column
+                      v-if="columnFlags.showExtraTime"
+                      :header="$t('tournament.scoreEntry.homeExtraScore')"
+                      style="width: 7rem"
+                    >
+                      <template #body="{ data }">
+                        <InputText
+                          v-model="data.homeExtraScore"
+                          inputmode="numeric"
+                          class="w-16 text-center"
+                          data-testid="score-entry-home-extra-input"
+                        />
+                      </template>
+                    </Column>
+                    <Column
+                      v-if="columnFlags.showExtraTime"
+                      :header="$t('tournament.scoreEntry.awayExtraScore')"
+                      style="width: 7rem"
+                    >
+                      <template #body="{ data }">
+                        <InputText
+                          v-model="data.awayExtraScore"
+                          inputmode="numeric"
+                          class="w-16 text-center"
+                          data-testid="score-entry-away-extra-input"
+                        />
+                      </template>
+                    </Column>
+                    <!-- PK スコア（hasPenalties 大会のみ） -->
+                    <Column
+                      v-if="columnFlags.showPenalties"
+                      :header="$t('tournament.scoreEntry.homePenaltyScore')"
+                      style="width: 7rem"
+                    >
+                      <template #body="{ data }">
+                        <InputText
+                          v-model="data.homePenaltyScore"
+                          inputmode="numeric"
+                          class="w-16 text-center"
+                          data-testid="score-entry-home-penalty-input"
+                        />
+                      </template>
+                    </Column>
+                    <Column
+                      v-if="columnFlags.showPenalties"
+                      :header="$t('tournament.scoreEntry.awayPenaltyScore')"
+                      style="width: 7rem"
+                    >
+                      <template #body="{ data }">
+                        <InputText
+                          v-model="data.awayPenaltyScore"
+                          inputmode="numeric"
+                          class="w-16 text-center"
+                          data-testid="score-entry-away-penalty-input"
+                        />
+                      </template>
+                    </Column>
                   </DataTable>
+
+                  <!-- 延長/PK の入力補助（PK は本戦同点時のみ意味を持つ等） -->
+                  <p
+                    v-if="columnFlags.showExtraTime || columnFlags.showPenalties"
+                    class="mt-2 text-xs text-surface-500"
+                    data-testid="score-entry-extra-penalty-hint"
+                  >
+                    {{ $t('tournament.scoreEntry.extraPenaltyHint') }}
+                  </p>
 
                   <div class="mt-4 flex items-center justify-end gap-2">
                     <Button
