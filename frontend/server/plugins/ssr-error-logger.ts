@@ -6,7 +6,10 @@ export default defineNitroPlugin((nitroApp) => {
 
     const config = useRuntimeConfig()
     const internalToken = config.internalLogToken || 'dev-internal-token'
-    const apiBase = config.public.apiBase || 'http://localhost:8080'
+    // ブラウザ用 apiBase（config.public.apiBase）は本番で '' になり得るため、
+    // Nitro サーバーサイド専用の internalApiBase を使用する。
+    // 設計書: docs/security/03_security_headers_and_csp.md §2.1（apiBase 二層構成）
+    const apiBase = config.internalApiBase || 'http://localhost:8080'
 
     // PIIマスキング（メールアドレス）
     const mask = (text: string) =>
