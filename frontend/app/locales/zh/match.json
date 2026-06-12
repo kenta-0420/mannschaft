@@ -76,6 +76,12 @@
         "vs": "对 {opponent}",
         "penalty": "点球 {home}-{away}"
       },
+      "penalty": {
+        "title": "点球大战比分",
+        "home_label": "我方点球命中数",
+        "away_label": "对方点球命中数",
+        "hint": "请输入命中的点球数。比赛结束时确定，并反映到赛事排名中。"
+      },
       "timer": {
         "state": {
           "WAITING": "赛前",
