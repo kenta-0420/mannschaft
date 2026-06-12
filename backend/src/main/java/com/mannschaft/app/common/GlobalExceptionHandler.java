@@ -388,6 +388,11 @@ public class GlobalExceptionHandler {
             // F08.8 修繕長期計画ダッシュボード — テンプレ/モジュール判定（足軽5）
             Map.entry("REPAIR_PLAN_013", HttpStatus.UNPROCESSABLE_ENTITY),   // TEMPLATE_NOT_APARTMENT
             Map.entry("REPAIR_PLAN_014", HttpStatus.UNPROCESSABLE_ENTITY),   // MODULE_NOT_ENABLED
+            // F08.7 大会基本（IDOR 対策で 404 に統一）
+            Map.entry("TOUR_001", HttpStatus.NOT_FOUND),              // TOURNAMENT_NOT_FOUND (IDOR対策で404)
+            // F08.7 順位UI 項目③ スコアキーパー指名（TOUR_059/060）
+            Map.entry("TOUR_059", HttpStatus.FORBIDDEN),              // SCOREKEEPER_MANAGE_FORBIDDEN (管理権限不足→403)
+            Map.entry("TOUR_060", HttpStatus.NOT_FOUND),              // SCOREKEEPER_NOT_FOUND (IDOR対策で404)
             // F08.7 Phase 9/9-B エントリー表・テンプレート
             Map.entry("TOUR_019", HttpStatus.NOT_FOUND),              // ENTRY_MEMBER_NOT_FOUND (IDOR対策で404)
             Map.entry("TOUR_020", HttpStatus.CONFLICT),               // ENTRY_LOCKED
