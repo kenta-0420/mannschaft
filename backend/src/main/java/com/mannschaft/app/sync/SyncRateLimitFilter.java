@@ -23,10 +23,12 @@ import java.time.Duration;
  * エンドポイント判定と (zone, limit, window) 宣言のみ本クラスが持ち、
  * カウント・§4.3 標準ヘッダー・429 応答は {@link AbstractRateLimitFilter} が担う。</p>
  *
- * <p>キーは IP ベース（認証不要エンドポイントのため）。
- * 基底の {@link AbstractRateLimitFilter#resolveClientKey} は認証済みなら "u:{userId}"、
- * 未認証なら "ip:{ip}" を返すが、同期 API は未認証リクエストもあり得るため
- * IP ベースフォールバックが正常に動作する。</p>
+ * <p>キーは基底 {@link AbstractRateLimitFilter#resolveClientKey} に従い、
+ * 認証済みなら "u:{userId}"、未認証なら "ip:{ip}" となる。
+ * 旧 Bucket4j 実装は認証有無に関わらず IP 単位でカウントしていたが、
+ * 同期 API は認証必須エンドポイントであり、NAT/プロキシ配下の複数ユーザーが
+ * 同一 IP で巻き添え制限される問題があったため、Valkey 化に合わせて
+ * ユーザー単位カウント（基底の標準動作）へ意図的に統一した。</p>
  */
 @Component
 public class SyncRateLimitFilter extends AbstractRateLimitFilter {
