@@ -87,6 +87,8 @@ onMounted(() => loadCategories())
       :categories="categories"
       :loading="loading"
       :hide-visibility="true"
+      scope-type="TEAM"
+      :scope-id="teamId"
       @submit="onSubmit"
     />
   </div>

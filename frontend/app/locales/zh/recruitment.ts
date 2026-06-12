@@ -54,6 +54,12 @@ export default {
       "location": "举办地点",
       "price": "费用",
       "paymentEnabled": "启用支付",
+      "payeeKind": "收款方类型",
+      "payeeKindUser": "个人（用户）",
+      "payeeKindTeam": "团队",
+      "payeeKindOrg": "组织",
+      "payeeUser": "收款方",
+      "payeeUserPlaceholder": "选择收款方",
       "cancellationPolicy": "取消政策",
       "imageUrl": "图片URL",
       "note": "备注",
@@ -178,6 +184,13 @@ export default {
       "applying": "申请中",
       "individual": "个人",
       "team": "团队"
+    },
+    "payee": {
+      "required": "请选择收款方类型",
+      "userRequired": "请选择收款方用户",
+      "PAYMENT_C011": "未指定收款主体（payeeKind）",
+      "PAYMENT_C012": "未指定收款方用户",
+      "PAYMENT_C013": "指定的收款方不是此范围的成员"
     },
     "error": {
       "RECRUITMENT_001": "未找到招募",
