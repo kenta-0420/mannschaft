@@ -96,7 +96,8 @@ async function loginAndNavigate(
   await loginUI(page, email, password)
   // 現在の Vue app からルーターを取得してクライアントサイドナビゲーション
   await page.evaluate((path) => {
-    const el = document.querySelector('#__nuxt') as any
+    type VueApp = { config: { globalProperties?: { $router?: { push: (p: string) => void } } } }
+    const el = document.querySelector('#__nuxt') as (Element & { __vue_app__?: VueApp }) | null
     const router = el?.__vue_app__?.config?.globalProperties?.$router
     if (router) return router.push(path)
     // フォールバック: location.href は SSR を引き起こすが仕方ない
