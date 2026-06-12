@@ -284,6 +284,7 @@
     "back": "Volver al torneo",
     "rank": "Pos.",
     "player": "Jugador",
+    "anonymousPlayer": "Jugador anonimo",
     "matchesPlayed": "PJ",
     "value": "Valor",
     "downloadPdf": "Exportar PDF",
@@ -336,6 +337,62 @@
         "label": "Solo participantes",
         "description": "Solo personas de los equipos participantes en este torneo pueden verlo."
       }
+    }
+  },
+  "scoreEntry": {
+    "title": "Registro de marcadores",
+    "navLink": "Registro de marcadores (admin)",
+    "back": "Volver al torneo",
+    "matchday": "Jornada",
+    "home": "Local",
+    "away": "Visitante",
+    "homeScore": "Marcador local",
+    "awayScore": "Marcador visitante",
+    "homeExtraScore": "Local (PR)",
+    "awayExtraScore": "Visitante (PR)",
+    "homePenaltyScore": "Local (PEN)",
+    "awayPenaltyScore": "Visitante (PEN)",
+    "extraPenaltyHint": "La prorroga se suma al marcador reglamentario para decidir el resultado. Los penaltis solo cuentan si persiste el empate tras el tiempo reglamentario y la prorroga. Deja en blanco lo que no se haya disputado.",
+    "save": "Guardar todo",
+    "saved": "Marcadores guardados",
+    "saveFailed": "No se pudieron guardar los marcadores",
+    "conflict": "Conflicto con otra edición. Se ha recargado el estado más reciente. Vuelve a introducir los datos.",
+    "invalidInput": "Entrada no válida (los marcadores deben ser enteros no negativos y deben rellenarse tanto local como visitante).",
+    "nothingToSave": "No hay marcadores que guardar",
+    "standingsHint": "Marcadores guardados. La clasificación se recalculará automáticamente.",
+    "forbidden": "No tienes permiso para editar los marcadores de este torneo",
+    "loadFailed": "No se pudieron cargar los datos",
+    "noDivisions": "No hay divisiones registradas",
+    "noMatchdays": "No hay jornadas registradas",
+    "noMatches": "No hay enfrentamientos",
+    "csv": {
+      "title": "Importación masiva por CSV",
+      "formatHint": "Sube un CSV en el orden matchId,homeScore,awayScore (la primera fila es el encabezado). Deja en blanco los partidos aún sin resultado.",
+      "import": "Importar",
+      "imported": "CSV importado",
+      "importFailed": "No se pudo importar el CSV",
+      "invalidFormat": "Formato de CSV no válido. Los marcadores deben ser enteros.",
+      "downloadTemplate": "Descargar plantilla"
+    }
+  },
+  "scorekeeper": {
+    "title": "Asignación de anotador",
+    "description": "Los usuarios asignados pueden registrar resultados de este torneo (individual, en lote e importación CSV). Solo los administradores de la organización anfitriona pueden asignar anotadores.",
+    "userIdLabel": "ID de usuario",
+    "userIdPlaceholder": "ej. 12345",
+    "add": "Asignar",
+    "remove": "Quitar",
+    "empty": "Aún no hay anotadores asignados",
+    "addSuccess": "Anotador asignado",
+    "removeSuccess": "Asignación de anotador eliminada",
+    "alreadyAssigned": "Este usuario ya está asignado",
+    "userDisplay": "ID de usuario: {userId}",
+    "error": {
+      "loadFailed": "No se pudo cargar la lista de anotadores",
+      "addFailed": "No se pudo asignar el anotador ({status})",
+      "removeFailed": "No se pudo eliminar la asignación de anotador",
+      "forbidden": "No tienes permiso para gestionar anotadores (solo administradores de la organización anfitriona)",
+      "invalidUserId": "El ID de usuario debe ser un entero positivo"
     }
   }
 }

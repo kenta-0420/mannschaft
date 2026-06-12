@@ -284,6 +284,7 @@
     "back": "Back to tournament",
     "rank": "Rank",
     "player": "Player",
+    "anonymousPlayer": "Anonymous player",
     "matchesPlayed": "Apps",
     "value": "Value",
     "downloadPdf": "Export PDF",
@@ -336,6 +337,62 @@
         "label": "Participants only",
         "description": "Only people from teams participating in this tournament can view."
       }
+    }
+  },
+  "scoreEntry": {
+    "title": "Score Entry",
+    "navLink": "Score Entry (Admin)",
+    "back": "Back to tournament",
+    "matchday": "Matchday",
+    "home": "Home",
+    "away": "Away",
+    "homeScore": "Home Score",
+    "awayScore": "Away Score",
+    "homeExtraScore": "Home (ET)",
+    "awayExtraScore": "Away (ET)",
+    "homePenaltyScore": "Home (PK)",
+    "awayPenaltyScore": "Away (PK)",
+    "extraPenaltyHint": "Extra time is added to the regulation score to decide the result. Penalties only matter when the score is still level after regulation and extra time. Leave fields blank for anything not played.",
+    "save": "Save All",
+    "saved": "Scores saved",
+    "saveFailed": "Failed to save scores",
+    "conflict": "Conflicted with another edit. The latest state has been reloaded. Please re-enter.",
+    "invalidInput": "Invalid input (scores must be non-negative integers, and both home and away must be filled).",
+    "nothingToSave": "No scores to save",
+    "standingsHint": "Scores saved. Standings will be recalculated automatically.",
+    "forbidden": "You do not have permission to edit scores for this tournament",
+    "loadFailed": "Failed to load data",
+    "noDivisions": "No divisions registered",
+    "noMatchdays": "No matchdays registered",
+    "noMatches": "No fixtures",
+    "csv": {
+      "title": "Bulk import via CSV",
+      "formatHint": "Upload a CSV in the order matchId,homeScore,awayScore (first row is the header). Leave scores blank for fixtures not yet decided.",
+      "import": "Import",
+      "imported": "CSV imported",
+      "importFailed": "Failed to import CSV",
+      "invalidFormat": "Invalid CSV format. Scores must be integers.",
+      "downloadTemplate": "Download template"
+    }
+  },
+  "scorekeeper": {
+    "title": "Scorekeeper Assignment",
+    "description": "Assigned users can enter scores for this tournament (single, bulk, and CSV import). Only administrators of the host organization can assign scorekeepers.",
+    "userIdLabel": "User ID",
+    "userIdPlaceholder": "e.g. 12345",
+    "add": "Assign",
+    "remove": "Remove",
+    "empty": "No scorekeepers assigned yet",
+    "addSuccess": "Scorekeeper assigned",
+    "removeSuccess": "Scorekeeper assignment removed",
+    "alreadyAssigned": "This user is already assigned",
+    "userDisplay": "User ID: {userId}",
+    "error": {
+      "loadFailed": "Failed to load the scorekeeper list",
+      "addFailed": "Failed to assign scorekeeper ({status})",
+      "removeFailed": "Failed to remove scorekeeper assignment",
+      "forbidden": "You do not have permission to manage scorekeepers (host organization administrators only)",
+      "invalidUserId": "User ID must be a positive integer"
     }
   }
 }

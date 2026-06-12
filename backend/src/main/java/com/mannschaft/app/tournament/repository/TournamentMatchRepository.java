@@ -40,4 +40,16 @@ public interface TournamentMatchRepository extends JpaRepository<TournamentMatch
            "JOIN TournamentMatchdayEntity md ON m.matchdayId = md.id " +
            "WHERE md.divisionId = :divisionId AND m.status != 'COMPLETED' AND m.status != 'CANCELLED'")
     long countIncompleteByDivisionId(@Param("divisionId") Long divisionId);
+
+    /**
+     * 指定 match が指定 tournament 配下に属するか判定する（F08.7 項目③・IDOR 対策）。
+     *
+     * <p>{@code match → matchday → division → tournament} を JOIN し、一致件数を返す。
+     * スコア入力認可で「path の tId と matchId が同一大会か」を検証する用途。</p>
+     */
+    @Query("SELECT COUNT(m) FROM TournamentMatchEntity m " +
+           "JOIN TournamentMatchdayEntity md ON m.matchdayId = md.id " +
+           "JOIN TournamentDivisionEntity d ON md.divisionId = d.id " +
+           "WHERE m.id = :matchId AND d.tournamentId = :tournamentId")
+    long countByIdAndTournamentId(@Param("matchId") Long matchId, @Param("tournamentId") Long tournamentId);
 }

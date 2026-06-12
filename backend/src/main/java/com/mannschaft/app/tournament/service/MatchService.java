@@ -39,12 +39,14 @@ import com.mannschaft.app.tournament.repository.TournamentStatDefRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * 対戦カード・スコア・出場メンバー・個人成績管理サービス。
@@ -292,6 +294,9 @@ public class MatchService {
     public MatchResponse updateScore(Long tournamentId, Long matchId, ScoreUpdateRequest request) {
         TournamentMatchEntity match = findMatchOrThrow(matchId);
 
+        // 楽観ロック: client が最後に見た版とロードした版を突合し、stale client を弾く（F08.7 Wave3a）
+        checkOptimisticLock(match, request.getVersion());
+
         // スコアのバリデーション
         if (request.getHomeScore() != null && request.getHomeScore() < 0) {
             throw new BusinessException(TournamentErrorCode.INVALID_SCORE);
@@ -343,6 +348,11 @@ public class MatchService {
                                   BatchScoreRequest request) {
         for (BatchScoreRequest.MatchScoreEntry entry : request.getScores()) {
             TournamentMatchEntity match = findMatchOrThrow(entry.getMatchId());
+
+            // 楽観ロック: 各 fixture ごとに client 版とロード版を突合。1件でも不一致なら
+            // 例外を投げ、@Transactional により一括ロールバック（部分適用しない）（F08.7 Wave3a）
+            checkOptimisticLock(match, entry.getVersion());
+
             ScoreUpdateRequest scoreReq = new ScoreUpdateRequest(
                     entry.getHomeScore(), entry.getAwayScore(),
                     entry.getHomeExtraScore(), entry.getAwayExtraScore(),
@@ -497,5 +507,26 @@ public class MatchService {
     private TournamentMatchEntity findMatchOrThrow(Long matchId) {
         return matchRepository.findById(matchId)
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.MATCH_NOT_FOUND));
+    }
+
+    /**
+     * 楽観ロックの実効化（F08.7 順位UI Wave3a）。
+     *
+     * <p>client が最後に見た版（{@code expectedVersion}）と、ロードしたエンティティの現在版を突合する。
+     * 不一致なら別の編集者が先に保存して版が進んでいる＝stale client であり、サイレントな上書きを防ぐため
+     * {@link ObjectOptimisticLockingFailureException} を投げる。これは
+     * {@link com.mannschaft.app.common.GlobalExceptionHandler} で HTTP 409（CONFLICT）に変換され、
+     * FE（ScoreEntryGrid）が {@code isConflictError} で検知できる。</p>
+     *
+     * <p>JPA の {@code @Version} はロード直後の自己版としか比較しないため、これ単独では
+     * 「古い版を握ったまま POST してきた並行編集者」を弾けない。client 版との明示突合で根治する。</p>
+     *
+     * <p>後方互換: {@code expectedVersion} が {@code null}（版を送らない旧来呼出）の場合は版チェックを行わず
+     * 従来挙動とする。FE は常に版を送るため実運用では必ずチェックされる（DTO 側 {@code @NotNull} で必須化済み）。</p>
+     */
+    private void checkOptimisticLock(TournamentMatchEntity match, Long expectedVersion) {
+        if (expectedVersion != null && !Objects.equals(match.getVersion(), expectedVersion)) {
+            throw new ObjectOptimisticLockingFailureException(TournamentMatchEntity.class, match.getId());
+        }
     }
 }

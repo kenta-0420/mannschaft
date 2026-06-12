@@ -54,6 +54,12 @@ export default {
       "location": "開催場所",
       "price": "料金",
       "paymentEnabled": "決済を有効化",
+      "payeeKind": "受領者種別",
+      "payeeKindUser": "個人（ユーザー）",
+      "payeeKindTeam": "チーム",
+      "payeeKindOrg": "組織",
+      "payeeUser": "受領者",
+      "payeeUserPlaceholder": "受領者を選択",
       "cancellationPolicy": "キャンセルポリシー",
       "imageUrl": "画像URL",
       "note": "メモ",
@@ -178,6 +184,13 @@ export default {
       "applying": "申込中",
       "individual": "個人",
       "team": "チーム"
+    },
+    "payee": {
+      "required": "受領者種別を選択してください",
+      "userRequired": "受領者ユーザーを選択してください",
+      "PAYMENT_C011": "受領主体（payeeKind）が指定されていません",
+      "PAYMENT_C012": "受領者ユーザーが指定されていません",
+      "PAYMENT_C013": "指定された受領者はこのスコープの所属メンバーではありません"
     },
     "error": {
       "RECRUITMENT_001": "募集が見つかりません",

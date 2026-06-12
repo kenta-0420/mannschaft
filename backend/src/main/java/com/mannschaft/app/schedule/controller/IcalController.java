@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import org.springframework.beans.factory.annotation.Value;
 import com.mannschaft.app.common.SecurityUtils;
 
 /**
@@ -30,6 +31,13 @@ import com.mannschaft.app.common.SecurityUtils;
 public class IcalController {
 
     private static final MediaType TEXT_CALENDAR = MediaType.parseMediaType("text/calendar; charset=UTF-8");
+
+    /**
+     * フロントエンド / iCal URL の基底 URL。webcal:// リダイレクト先の組み立てに使用する。
+     * 正準プロパティ {@code app.base-url}（環境変数 {@code APP_BASE_URL}）から注入。
+     */
+    @Value("${app.base-url}")
+    private String appBaseUrl;
 
     private final IcalService icalService;
 
@@ -82,8 +90,10 @@ public class IcalController {
             @RequestParam(required = false) Long id) {
 
         // webcal:// リダイレクト
+        // app.base-url（https:// or http://）のスキームを webcal:// に変換して本番ホストを使用する
         if ("subscribe".equals(action)) {
-            String webcalUrl = "webcal://localhost/ical/" + token + ".ics";
+            String icalHttpUrl = appBaseUrl + "/ical/" + token + ".ics";
+            String webcalUrl = icalService.buildWebcalUrl(icalHttpUrl);
             if (scope != null) {
                 webcalUrl += "?scope=" + scope;
                 if (id != null) {

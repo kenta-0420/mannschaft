@@ -54,6 +54,12 @@ export default {
       "location": "개최 장소",
       "price": "요금",
       "paymentEnabled": "결제 활성화",
+      "payeeKind": "수령인 유형",
+      "payeeKindUser": "개인（사용자）",
+      "payeeKindTeam": "팀",
+      "payeeKindOrg": "조직",
+      "payeeUser": "수령인",
+      "payeeUserPlaceholder": "수령인 선택",
       "cancellationPolicy": "취소 정책",
       "imageUrl": "이미지 URL",
       "note": "메모",
@@ -178,6 +184,13 @@ export default {
       "applying": "신청 중",
       "individual": "개인",
       "team": "팀"
+    },
+    "payee": {
+      "required": "수령인 유형을 선택해주세요",
+      "userRequired": "수령인 사용자를 선택해주세요",
+      "PAYMENT_C011": "수령 주체（payeeKind）가 지정되지 않았습니다",
+      "PAYMENT_C012": "수령인 사용자가 지정되지 않았습니다",
+      "PAYMENT_C013": "지정된 수령인이 이 스코프의 소속 멤버가 아닙니다"
     },
     "error": {
       "RECRUITMENT_001": "모집을 찾을 수 없습니다",

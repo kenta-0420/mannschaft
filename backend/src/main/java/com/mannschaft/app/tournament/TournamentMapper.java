@@ -1,5 +1,6 @@
 package com.mannschaft.app.tournament;
 
+import com.mannschaft.app.publicview.visibility.DisplayIdentity;
 import com.mannschaft.app.tournament.dto.DivisionResponse;
 import com.mannschaft.app.tournament.dto.IndividualRankingResponse;
 import com.mannschaft.app.tournament.dto.MatchResponse;
@@ -261,13 +262,26 @@ public interface TournamentMapper {
 
     // ===== Individual Ranking =====
 
+    /**
+     * 個人ランキング Entity を DTO に変換する。
+     *
+     * <p>F08.7 順位UI 項目①: 選手の表示名は F19.1 本人可視性経由で解決済みの {@link DisplayIdentity}
+     * を受け取り、{@code displayName} / {@code anonymized} / {@code avatarUrl} を context に詰める。
+     * MINOR 保護・退会済み・本名/サポーター開示規約の判定は呼び出し側
+     * （{@code RankingsCalculationService} → {@code IdentityVisibilityResolver}）で済んでいる前提。</p>
+     *
+     * @param entity       ランキング Entity
+     * @param rankingLabel 成績項目のランキングラベル（{@code null} 可）
+     * @param identity     F19.1 経由で解決済みの表示識別（{@code null} 不可）
+     */
     default IndividualRankingResponse toIndividualRankingResponse(
-            TournamentIndividualRankingEntity entity, String rankingLabel) {
+            TournamentIndividualRankingEntity entity, String rankingLabel, DisplayIdentity identity) {
         return IndividualRankingResponse.builder()
                 .id(entity.getId())
                 .context(new IndividualRankingResponse.IndividualRankingContextDto(
                         entity.getTournamentId(), entity.getUserId(),
-                        entity.getParticipantId(), entity.getMatchesPlayed()))
+                        entity.getParticipantId(), entity.getMatchesPlayed(),
+                        identity.displayLabel(), identity.anonymized(), identity.avatarUrl()))
                 .stat(new IndividualRankingResponse.IndividualRankingStatDto(
                         entity.getStatKey(), rankingLabel,
                         entity.getTotalValueInt(), entity.getTotalValueDecimal(),

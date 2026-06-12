@@ -66,16 +66,19 @@ export function useTournamentBracket() {
       body,
     })
   }
+  // CSV スコア取込。BE は multipart/form-data の @RequestParam("file") を受ける。
+  // ofetch は FormData を渡すと Content-Type を自動付与（boundary 込み）するため、
+  // ここでは FormData をそのまま body に渡す（手動で Content-Type を設定すると boundary が欠落して壊れる）。
   async function importScores(
     orgId: string,
     tId: number,
     divId: number,
     mdId: number,
-    body: Record<string, unknown>,
+    formData: FormData,
   ) {
     return api(
       `${b(orgId)}/tournaments/${tId}/divisions/${divId}/matchdays/${mdId}/scores/import`,
-      { method: 'POST', body },
+      { method: 'POST', body: formData },
     )
   }
 

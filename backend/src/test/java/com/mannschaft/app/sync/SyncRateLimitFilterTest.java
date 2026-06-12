@@ -1,34 +1,81 @@
 package com.mannschaft.app.sync;
 
+import com.mannschaft.app.common.ratelimit.RateLimitResult;
+import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import jakarta.servlet.FilterChain;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.lang.reflect.Field;
+import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
- * {@link SyncRateLimitFilter} のユニットテスト。
+ * {@link SyncRateLimitFilter} のユニットテスト（Valkey 化後）。
  *
- * <p>Caffeine キャッシュ化によるメモリリーク修正の回帰防止を兼ねる。
- * Bucket4j のバケット使用率は本体の振る舞いでカバーし、
- * Caffeine の TTL は {@link com.github.benmanes.caffeine.cache.Cache#invalidateAll()} で
- * 経過後の挙動をシミュレートする。</p>
+ * <p>{@link ValkeyRateLimiter} はモックし、フィルタの責務である
+ * 「エンドポイント判定 / (zone, limit, window) 宣言 / キー解決 / 429 応答・§4.3 ヘッダー」を検証する。</p>
  */
 class SyncRateLimitFilterTest {
 
+    private static final long RESET_EPOCH = 1_750_000_020L;
+    private static final long RETRY_AFTER = 20L;
+
     private SyncRateLimitFilter filter;
+    private ValkeyRateLimiter rateLimiter;
+    private final Map<String, AtomicLong> counters = new ConcurrentHashMap<>();
 
     @BeforeEach
+    @SuppressWarnings("unchecked")
     void setUp() {
-        filter = new SyncRateLimitFilter();
+        rateLimiter = mock(ValkeyRateLimiter.class);
+        when(rateLimiter.tryConsume(anyString(), anyString(), anyInt(), any(Duration.class)))
+                .thenAnswer(inv -> {
+                    String zone = inv.getArgument(0);
+                    String key = inv.getArgument(1);
+                    int limit = inv.getArgument(2);
+                    long count = counters
+                            .computeIfAbsent(zone + "|" + key, k -> new AtomicLong())
+                            .incrementAndGet();
+                    return new RateLimitResult(
+                            count <= limit, limit, Math.max(0, limit - count), RESET_EPOCH, RETRY_AFTER);
+                });
+
+        ObjectProvider<ValkeyRateLimiter> provider = mock(ObjectProvider.class);
+        when(provider.getIfAvailable()).thenReturn(rateLimiter);
+        filter = new SyncRateLimitFilter(provider);
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+        counters.clear();
+    }
+
+    private MockHttpServletResponse invoke(MockHttpServletRequest request) throws Exception {
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        FilterChain chain = new MockFilterChain();
+        filter.doFilter(request, response, chain);
+        return response;
     }
 
     private MockHttpServletRequest syncPost(String ip) {
@@ -45,23 +92,15 @@ class SyncRateLimitFilterTest {
         return request;
     }
 
-    private MockHttpServletResponse invoke(MockHttpServletRequest request) throws Exception {
-        MockHttpServletResponse response = new MockHttpServletResponse();
-        FilterChain chain = new MockFilterChain();
-        filter.doFilterInternal(request, response, chain);
-        return response;
-    }
-
     @Nested
     @DisplayName("POST /api/v1/sync — 1分10回制限")
     class SyncPostLimit {
 
         @Test
-        @DisplayName("同一 IP から 10 回までは通過、11 回目で 429")
+        @DisplayName("同一 IP から 10 回までは通過、11 回目で 429 / 標準ヘッダー付与")
         void syncPostExceedsLimit() throws Exception {
             String ip = "10.0.0.1";
 
-            // 10 回までは全て OK
             for (int i = 0; i < 10; i++) {
                 MockHttpServletResponse response = invoke(syncPost(ip));
                 assertThat(response.getStatus())
@@ -69,9 +108,26 @@ class SyncRateLimitFilterTest {
                         .isEqualTo(HttpStatus.OK.value());
             }
 
-            // 11 回目で 429
             MockHttpServletResponse overLimit = invoke(syncPost(ip));
             assertThat(overLimit.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+            assertThat(overLimit.getHeader("Retry-After")).isEqualTo(String.valueOf(RETRY_AFTER));
+            assertThat(overLimit.getHeader("X-RateLimit-Limit")).isEqualTo("10");
+            assertThat(overLimit.getHeader("X-RateLimit-Remaining")).isEqualTo("0");
+            assertThat(overLimit.getHeader("X-RateLimit-Reset")).isEqualTo(String.valueOf(RESET_EPOCH));
+
+            verify(rateLimiter, atLeastOnce()).tryConsume(
+                    eq("sync:POST"), eq("ip:" + ip), eq(10), eq(Duration.ofMinutes(1)));
+        }
+
+        @Test
+        @DisplayName("§4.3: 通過時にも X-RateLimit-* ヘッダーが付与される")
+        void standardHeadersOnSuccess() throws Exception {
+            MockHttpServletResponse response = invoke(syncPost("10.0.0.8"));
+            assertThat(response.getStatus()).isEqualTo(HttpStatus.OK.value());
+            assertThat(response.getHeader("X-RateLimit-Limit")).isEqualTo("10");
+            assertThat(response.getHeader("X-RateLimit-Remaining")).isEqualTo("9");
+            assertThat(response.getHeader("X-RateLimit-Reset")).isEqualTo(String.valueOf(RESET_EPOCH));
+            assertThat(response.getHeader("Retry-After")).isNull();
         }
 
         @Test
@@ -80,23 +136,17 @@ class SyncRateLimitFilterTest {
             String ipA = "10.0.0.2";
             String ipB = "10.0.0.3";
 
-            // ipA を限界まで消費
             for (int i = 0; i < 10; i++) {
                 assertThat(invoke(syncPost(ipA)).getStatus()).isEqualTo(HttpStatus.OK.value());
             }
             assertThat(invoke(syncPost(ipA)).getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
 
-            // ipB は独立して 10 回まで通過する
-            for (int i = 0; i < 10; i++) {
-                assertThat(invoke(syncPost(ipB)).getStatus())
-                        .as("ipB sync POST #%d should pass", i + 1)
-                        .isEqualTo(HttpStatus.OK.value());
-            }
+            assertThat(invoke(syncPost(ipB)).getStatus()).isEqualTo(HttpStatus.OK.value());
         }
     }
 
     @Nested
-    @DisplayName("GET /api/v1/sync/conflicts — 1分60回制限")
+    @DisplayName("conflicts 系 — 1分60回制限")
     class ConflictsLimit {
 
         @Test
@@ -105,70 +155,52 @@ class SyncRateLimitFilterTest {
             String ip = "10.0.1.1";
 
             for (int i = 0; i < 60; i++) {
-                MockHttpServletResponse response = invoke(conflictGet(ip));
-                assertThat(response.getStatus())
+                assertThat(invoke(conflictGet(ip)).getStatus())
                         .as("conflicts GET #%d should pass", i + 1)
                         .isEqualTo(HttpStatus.OK.value());
             }
 
-            assertThat(invoke(conflictGet(ip)).getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+            MockHttpServletResponse overLimit = invoke(conflictGet(ip));
+            assertThat(overLimit.getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+            verify(rateLimiter, atLeastOnce()).tryConsume(
+                    eq("sync:CONFLICTS"), eq("ip:" + ip), eq(60), eq(Duration.ofMinutes(1)));
         }
 
         @Test
-        @DisplayName("sync POST と conflicts GET のバケットは別キーで管理される")
+        @DisplayName("sync POST と conflicts のゾーンは独立している")
         void syncAndConflictsAreSeparate() throws Exception {
             String ip = "10.0.1.2";
 
-            // sync POST を使い切る
             for (int i = 0; i < 10; i++) {
                 assertThat(invoke(syncPost(ip)).getStatus()).isEqualTo(HttpStatus.OK.value());
             }
             assertThat(invoke(syncPost(ip)).getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
 
-            // conflicts は独立しているため引き続き通過する
+            // conflicts は zone が異なるため独立して通過する
             assertThat(invoke(conflictGet(ip)).getStatus()).isEqualTo(HttpStatus.OK.value());
         }
     }
 
     @Nested
-    @DisplayName("バケット寿命（Caffeine キャッシュ）")
-    class BucketEviction {
+    @DisplayName("ValkeyRateLimiter Bean 不在（最小テストコンテキスト互換）")
+    class LimiterBeanAbsent {
 
-        /**
-         * {@code invalidateAll()} で TTL 経過後のエントリ消失を模擬し、
-         * 新しいバケットが再生成されてカウンタがリセットされることを確認する。
-         */
         @Test
-        @DisplayName("キャッシュが無効化されるとバケットがリセットされる（TTL 経過相当）")
-        void bucketResetsAfterCacheEviction() throws Exception {
-            String ip = "10.0.2.1";
-
-            // 限界まで消費
-            for (int i = 0; i < 10; i++) {
-                assertThat(invoke(syncPost(ip)).getStatus()).isEqualTo(HttpStatus.OK.value());
-            }
-            assertThat(invoke(syncPost(ip)).getStatus()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
-
-            // TTL 経過を invalidateAll() で模擬
-            invalidateAllBuckets();
-
-            // 新しいバケットが払い出され、再び通過できる
-            assertThat(invoke(syncPost(ip)).getStatus()).isEqualTo(HttpStatus.OK.value());
-        }
-
+        @DisplayName("ValkeyRateLimiter が解決できない場合は素通しする（@WebMvcTest スライス互換）")
         @SuppressWarnings("unchecked")
-        private void invalidateAllBuckets() throws Exception {
-            Field syncField = SyncRateLimitFilter.class.getDeclaredField("syncBuckets");
-            syncField.setAccessible(true);
-            com.github.benmanes.caffeine.cache.Cache<String, ?> syncCache =
-                    (com.github.benmanes.caffeine.cache.Cache<String, ?>) syncField.get(filter);
-            syncCache.invalidateAll();
+        void passesThroughWhenLimiterUnavailable() throws Exception {
+            ObjectProvider<ValkeyRateLimiter> emptyProvider = mock(ObjectProvider.class);
+            when(emptyProvider.getIfAvailable()).thenReturn(null);
+            SyncRateLimitFilter beanlessFilter = new SyncRateLimitFilter(emptyProvider);
 
-            Field conflictField = SyncRateLimitFilter.class.getDeclaredField("conflictBuckets");
-            conflictField.setAccessible(true);
-            com.github.benmanes.caffeine.cache.Cache<String, ?> conflictCache =
-                    (com.github.benmanes.caffeine.cache.Cache<String, ?>) conflictField.get(filter);
-            conflictCache.invalidateAll();
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            beanlessFilter.doFilter(syncPost("10.0.7.1"), response, new MockFilterChain());
+            assertThat(response.getStatus()).isEqualTo(HttpStatus.OK.value());
         }
+    }
+
+    // Mockito verify ヘルパー（static import なし回避用）
+    private static <T> T verify(T mock, org.mockito.verification.VerificationMode mode) {
+        return org.mockito.Mockito.verify(mock, mode);
     }
 }

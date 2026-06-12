@@ -1,20 +1,12 @@
 package com.mannschaft.app.event;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
+import com.mannschaft.app.common.ratelimit.AbstractRateLimitFilter;
+import com.mannschaft.app.common.ratelimit.RateLimitRule;
+import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.util.regex.Pattern;
 
@@ -26,29 +18,33 @@ import java.util.regex.Pattern;
  * 代理チェックイン（{@code .../checkin}）はパスがさらに深いため、本フィルタの対象外（末尾が
  * {@code /delegations} で終わる POST のみ対象）。</p>
  *
- * <p>手本: {@link com.mannschaft.app.actionmemo.ActionMemoRateLimitFilter}。スケジュール側
- * {@link com.mannschaft.app.schedule.ScheduleDelegationRateLimitFilter} と同型。</p>
+ * <p>スケジュール側 {@link com.mannschaft.app.schedule.ScheduleDelegationRateLimitFilter} と同型。</p>
+ *
+ * <p>登録方式: {@link com.mannschaft.app.config.SecurityConfig#eventDelegationRateLimitFilterRegistration}
+ * で @Component 自動登録を無効化し、SecurityConfig の {@code addFilterAfter} 経由のみで動作させる。</p>
+ *
+ * <p><b>Valkey 化（第二陣B）</b>: 旧実装の Bucket4j + Caffeine（プロセス内カウント）は
+ * ECS 複数タスク構成でタスク数に比例して実効上限が緩むため、
+ * {@link ValkeyRateLimiter}（docs/security/06 §4.3）に移行した。
+ * カウント・§4.3 標準ヘッダー・429 応答は {@link AbstractRateLimitFilter} が担う。</p>
  */
 @Component
-public class EventDelegationRateLimitFilter extends OncePerRequestFilter {
+public class EventDelegationRateLimitFilter extends AbstractRateLimitFilter {
 
     /** 対象: POST /api/v1/events/{eventId}/delegations（末尾 /me や /{id}/checkin を含まない）。 */
     private static final Pattern TARGET_PATH =
             Pattern.compile("^/api/v1/events/\\d+/delegations/?$");
 
-    /** 1 分間あたりの上限回数（§6-6）。 */
+    /** 1 分間あたりの上限回数（§6-6・旧実装から不変）。 */
     private static final int CAPACITY_PER_MINUTE = 10;
 
-    /** バケット保持期間（非アクセス時）。レート窓（1分）より十分長く、OOM は防ぐ。 */
-    private static final Duration BUCKET_TTL = Duration.ofMinutes(10);
+    private static final Duration WINDOW = Duration.ofMinutes(1);
 
-    /** キャッシュ最大エントリ数。想定外のキー爆発時に LRU で古いものから淘汰する。 */
-    private static final long MAX_BUCKETS = 10_000L;
+    private static final String ZONE = "event:delegation";
 
-    private final Cache<String, Bucket> buckets = Caffeine.<String, Bucket>newBuilder()
-            .expireAfterAccess(BUCKET_TTL)
-            .maximumSize(MAX_BUCKETS)
-            .build();
+    public EventDelegationRateLimitFilter(ObjectProvider<ValkeyRateLimiter> rateLimiterProvider) {
+        super(rateLimiterProvider);
+    }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -56,45 +52,15 @@ public class EventDelegationRateLimitFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain chain) throws ServletException, IOException {
+    protected RateLimitRule resolveRule(HttpServletRequest request) {
         if (!isTarget(request)) {
-            chain.doFilter(request, response);
-            return;
+            return null;
         }
-
-        String userKey = resolveUserKey(request);
-        Bucket bucket = buckets.get(userKey, k -> newBucket());
-
-        if (bucket.tryConsume(1)) {
-            chain.doFilter(request, response);
-        } else {
-            response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-            response.setHeader("Retry-After", "60");
-        }
+        return new RateLimitRule(ZONE, CAPACITY_PER_MINUTE, WINDOW);
     }
 
     private boolean isTarget(HttpServletRequest request) {
         return "POST".equalsIgnoreCase(request.getMethod())
                 && TARGET_PATH.matcher(request.getServletPath()).matches();
-    }
-
-    /**
-     * 認証済みなら userId を、未認証なら IP をキーにする。
-     */
-    private String resolveUserKey(HttpServletRequest request) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated()
-                && !"anonymousUser".equals(auth.getPrincipal())) {
-            return "u:" + auth.getName();
-        }
-        return "ip:" + request.getRemoteAddr();
-    }
-
-    private Bucket newBucket() {
-        return Bucket.builder()
-                .addLimit(Bandwidth.simple(CAPACITY_PER_MINUTE, Duration.ofMinutes(1)))
-                .build();
     }
 }
