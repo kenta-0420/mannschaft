@@ -25,6 +25,14 @@ export interface ScoreEntryRow {
   homeScore: string
   /** アウェイスコア入力値。 */
   awayScore: string
+  /** ホーム延長スコア入力値（hasExtraTime 大会のみ表示・送信）。 */
+  homeExtraScore: string
+  /** アウェイ延長スコア入力値。 */
+  awayExtraScore: string
+  /** ホーム PK スコア入力値（hasPenalties 大会のみ表示・送信）。 */
+  homePenaltyScore: string
+  /** アウェイ PK スコア入力値。 */
+  awayPenaltyScore: string
 }
 
 /** BatchScoreRequest の 1 エントリ（BE BatchScoreRequest.MatchScoreEntry 整合）。 */
@@ -32,7 +40,24 @@ export interface BatchScoreEntryPayload {
   matchId: number
   homeScore: number | null
   awayScore: number | null
+  /** 延長スコア（hasExtraTime 大会のみ。未入力 / 対象外は null）。 */
+  homeExtraScore: number | null
+  awayExtraScore: number | null
+  /** PK スコア（hasPenalties 大会のみ。未入力 / 対象外は null）。 */
+  homePenaltyScore: number | null
+  awayPenaltyScore: number | null
   version: number
+}
+
+/**
+ * スコア入力欄の出し分けフラグ（大会の TournamentScoringDto 由来）。
+ * セット制（hasSets）は BE の勝敗判定が未対応のため今回対象外＝入力欄を出さない。
+ */
+export interface ScoreEntryColumnFlags {
+  /** 延長スコア欄（home/away）を表示するか。 */
+  showExtraTime: boolean
+  /** PK スコア欄（home/away）を表示するか。 */
+  showPenalties: boolean
 }
 
 /** BatchScoreRequest 全体（BE は { scores: [...] } を期待する）。 */
@@ -90,6 +115,10 @@ export function buildScoreEntryRows(
     awayName: resolveParticipantName(m.participants?.awayParticipantId, nameMap),
     homeScore: scoreToInput(m.score?.homeScore),
     awayScore: scoreToInput(m.score?.awayScore),
+    homeExtraScore: scoreToInput(m.score?.homeExtraScore),
+    awayExtraScore: scoreToInput(m.score?.awayExtraScore),
+    homePenaltyScore: scoreToInput(m.score?.homePenaltyScore),
+    awayPenaltyScore: scoreToInput(m.score?.awayPenaltyScore),
   }))
 }
 
@@ -109,43 +138,83 @@ export function parseScoreInput(raw: string): number | null {
   return Number(trimmed)
 }
 
-/**
- * 1 行が送信可能か（home/away ともに「空 or 非負整数」）を判定する。
- * 片方だけ入力されている／非数値・負数・小数が含まれる行は不正とする。
- */
-export function isRowValid(row: ScoreEntryRow): boolean {
-  const h = row.homeScore.trim()
-  const a = row.awayScore.trim()
+/** 1 組のスコア欄（home/away）が「両方空 or 両方非負整数」かを判定する。 */
+function isScorePairValid(home: string, away: string): boolean {
+  const h = home.trim()
+  const a = away.trim()
   const valid = (s: string) => s === '' || /^\d+$/.test(s)
   if (!valid(h) || !valid(a)) return false
   // 片方のみ入力は不正（両方入力 or 両方未入力のみ許可）
-  if ((h === '') !== (a === '')) return false
+  return (h === '') === (a === '')
+}
+
+/**
+ * 1 行が送信可能かを判定する。
+ *
+ * - 本戦 home/away は「両方空 or 両方非負整数」。
+ * - flags で延長/PK 欄が有効な場合は、その欄も同じ規則（両方空 or 両方非負整数）で検証する。
+ *   無効な欄（フラグ false）の入力は送信対象外なので検証しない。
+ * - 片方だけ入力／非数値・負数・小数が含まれる行は不正とする。
+ */
+export function isRowValid(
+  row: ScoreEntryRow,
+  flags: ScoreEntryColumnFlags = { showExtraTime: false, showPenalties: false },
+): boolean {
+  if (!isScorePairValid(row.homeScore, row.awayScore)) return false
+  if (flags.showExtraTime && !isScorePairValid(row.homeExtraScore, row.awayExtraScore)) {
+    return false
+  }
+  if (flags.showPenalties && !isScorePairValid(row.homePenaltyScore, row.awayPenaltyScore)) {
+    return false
+  }
   return true
 }
 
 /**
- * 入力行から送信対象（home/away 両方入力済みの行）だけを抽出してバッチペイロードを組み立てる。
+ * 入力行から送信対象（本戦 home/away 両方入力済みの行）だけを抽出してバッチペイロードを組み立てる。
  *
  * - 両方未入力の行はスキップ（未消化の試合を 0-0 で確定させない）。
- * - 各エントリに version を必ず同梱する（楽観ロック）。
+ * - 各エントリに version を必ず同梱する（楽観ロック・Wave3a #1459 を壊さない）。
+ * - flags で延長/PK が有効な大会のみ extra/penalty を同梱する。フラグ false の欄は常に null。
  * - 不正行（片方のみ・非数値等）が 1 つでもあれば null を返す（呼び出し側で保存を中断する）。
  */
-export function buildBatchScorePayload(rows: ScoreEntryRow[]): BatchScorePayload | null {
+export function buildBatchScorePayload(
+  rows: ScoreEntryRow[],
+  flags: ScoreEntryColumnFlags = { showExtraTime: false, showPenalties: false },
+): BatchScorePayload | null {
   const scores: BatchScoreEntryPayload[] = []
   for (const row of rows) {
-    if (!isRowValid(row)) return null
+    if (!isRowValid(row, flags)) return null
     const home = parseScoreInput(row.homeScore)
     const away = parseScoreInput(row.awayScore)
-    // 両方未入力はスキップ（送信対象外）
+    // 本戦が両方未入力はスキップ（送信対象外）
     if (home == null && away == null) continue
     scores.push({
       matchId: row.matchId,
       homeScore: home,
       awayScore: away,
+      homeExtraScore: flags.showExtraTime ? parseScoreInput(row.homeExtraScore) : null,
+      awayExtraScore: flags.showExtraTime ? parseScoreInput(row.awayExtraScore) : null,
+      homePenaltyScore: flags.showPenalties ? parseScoreInput(row.homePenaltyScore) : null,
+      awayPenaltyScore: flags.showPenalties ? parseScoreInput(row.awayPenaltyScore) : null,
       version: row.version,
     })
   }
   return { scores }
+}
+
+/**
+ * 大会の採点設定（TournamentScoringDto）から延長/PK 入力欄の出し分けフラグを導く。
+ * セット制（hasSets）は BE 勝敗判定未対応のため対象外（フラグに含めない）。
+ */
+export function deriveScoreEntryColumnFlags(scoring: {
+  hasExtraTime?: boolean
+  hasPenalties?: boolean
+} | null | undefined): ScoreEntryColumnFlags {
+  return {
+    showExtraTime: scoring?.hasExtraTime === true,
+    showPenalties: scoring?.hasPenalties === true,
+  }
 }
 
 // ──────────────────────────────────────────────────
