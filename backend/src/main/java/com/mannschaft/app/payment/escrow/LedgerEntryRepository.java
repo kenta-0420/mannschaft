@@ -42,19 +42,45 @@ public interface LedgerEntryRepository extends JpaRepository<LedgerEntryEntity, 
      * 立っている escrow（他者債務を回収した charge が自己 ModeB 返金された等）でも、自身の C1 が pending で未計上なら
      * 正しく補完候補に拾える。balance_transaction が確定し次第、C1 と同一会計で補完する。</p>
      *
-     * <p>JPQL 本体には注記を書かない（HQL パース事故回避・コメントは本 Javadoc に集約）。</p>
+     * <p><b>NULL 安全（{@code NOT IN} ではなく {@code NOT EXISTS} 相関サブクエリ・実 MySQL 冪等）:</b>
+     * {@code NOT IN (... サブクエリ ...)} は SQL 三値論理によりサブクエリ結果に 1 件でも NULL が含まれると
+     * 全行で UNKNOWN となり「除外が効かず候補に残り続ける」二重補完の温床になる。本クエリは外側の補完済み行を
+     * {@code EXISTS} で相関判定し {@code NOT EXISTS} で除外する（NULL を比較値に取らないため三値論理の罠を回避）。
+     * これにより C2_COMPLETION 補完後の escrow は確実に候補から外れ、二重補完しない。
+     * JPQL 本体には注記を書かない（HQL パース事故回避・コメントは本 Javadoc に集約）。</p>
      */
     @Query("SELECT DISTINCT l.escrowTransactionId FROM LedgerEntryEntity l "
             + "WHERE l.entryType = com.mannschaft.app.payment.escrow.LedgerEntryType.REFUND "
             + "AND l.direction = com.mannschaft.app.payment.escrow.LedgerDirection.D "
             + "AND l.account = com.mannschaft.app.payment.escrow.LedgerAccount.PAYER "
-            + "AND l.escrowTransactionId NOT IN ("
-            + "  SELECT r.escrowTransactionId FROM LedgerEntryEntity r "
-            + "  WHERE r.entryType = com.mannschaft.app.payment.escrow.LedgerEntryType.RECOVERY "
+            + "AND NOT EXISTS ("
+            + "  SELECT 1 FROM LedgerEntryEntity r "
+            + "  WHERE r.escrowTransactionId = l.escrowTransactionId "
+            + "  AND r.entryType = com.mannschaft.app.payment.escrow.LedgerEntryType.RECOVERY "
             + "  AND r.recoveryKind IN ("
             + "    com.mannschaft.app.payment.escrow.RecoveryKind.C1_ACCRUAL, "
             + "    com.mannschaft.app.payment.escrow.RecoveryKind.C2_COMPLETION))")
     List<UUID> findModeBRefundEscrowsWithoutRecovery();
+
+    /**
+     * 当該 escrow に既に C1/C2 発生計上の {@link LedgerEntryType#RECOVERY} 行が存在するかを返す
+     * （{@code completePendingRecovery} のメソッド単位 冪等ガード・§6.3 (a)）。
+     *
+     * <p>{@link #findModeBRefundEscrowsWithoutRecovery} はバッチ抽出（母集合フィルタ）であり、補完単位処理
+     * （{@code completePendingRecovery}）を抽出を経ずに直接呼んだ場合（再実行・テスト・将来の別経路）には
+     * 効かない。補完が二重計上しない冪等性を <b>メソッド自身</b>でも担保するため、書込前に「自身が立てる
+     * C1_ACCRUAL/C2_COMPLETION の RECOVERY 行が既にあるか」を本クエリで確認し、あれば SKIP する。
+     * 抽出条件（C1/C2 発生計上の有無）と同一述語で揃え、抽出側除外と単位処理ガードのズレを作らない。</p>
+     *
+     * <p>JPQL 本体には注記を書かない（HQL パース事故回避・コメントは本 Javadoc に集約）。</p>
+     */
+    @Query("SELECT CASE WHEN COUNT(r) > 0 THEN true ELSE false END FROM LedgerEntryEntity r "
+            + "WHERE r.escrowTransactionId = :escrowId "
+            + "AND r.entryType = com.mannschaft.app.payment.escrow.LedgerEntryType.RECOVERY "
+            + "AND r.recoveryKind IN ("
+            + "com.mannschaft.app.payment.escrow.RecoveryKind.C1_ACCRUAL, "
+            + "com.mannschaft.app.payment.escrow.RecoveryKind.C2_COMPLETION)")
+    boolean existsAccrualRecovery(@Param("escrowId") UUID escrowId);
 
     /**
      * 指定取引の ModeB 返金で支払者へ戻したグロス額（{@code REFUND/D/PAYER} の金額）を Stripe Refund ID 単位で返す

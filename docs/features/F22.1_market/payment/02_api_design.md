@@ -445,7 +445,8 @@ ModeB（受取側負担）返金では Mannschaft が支払者へ `grossRefund` 
 | **A 再計上** | `A_RECAPITALIZE` | `D PLATFORM_FEE` / `C PAYEE` | `re_xxx` または `cancel-<id>` | A で回収を上乗せした charge が ModeB 返金/取消で巻き戻った際、回収実行を打ち消す逆仕訳 |
 
 - 「当該 escrow に上乗せ適用した回収の純額」は **A 経路のみ**（`A_EXECUTION` の `D PAYEE` − `A_RECAPITALIZE` の `C PAYEE`）で導出する（`LedgerEntryRepository.sumAppliedRecoveryNetOnEscrow`）。C1/C2 の発生計上は除外する。
-- C2 補完候補（`findModeBRefundEscrowsWithoutRecovery`）は「ModeB 返金記帳あり（`REFUND/D/PAYER`）かつ **C1/C2 発生計上なし**」で判定する（A 経路の RECOVERY が立っている escrow でも自身の C1 が pending なら拾える）。
+- C2 補完候補（`findModeBRefundEscrowsWithoutRecovery`）は「ModeB 返金記帳あり（`REFUND/D/PAYER`）かつ **C1/C2 発生計上なし**」で判定する（A 経路の RECOVERY が立っている escrow でも自身の C1 が pending なら拾える）。除外は **`NOT EXISTS` 相関サブクエリ**で行う（`NOT IN` は SQL 三値論理によりサブクエリ結果に NULL が混じると全行 UNKNOWN になり「補完済み escrow が候補に残り続けて二重補完する」温床になるため、NULL 安全な `NOT EXISTS` を正準とする・実 MySQL 冪等）。
+- 補完単位処理 `completePendingRecovery` は **メソッド自身でも冪等**にする。バッチ抽出（候補フィルタ）を経ずに直接呼ばれた場合（再実行・テスト・将来の別経路）でも二重補完しないよう、for-update ロック獲得直後に「自身が立てる C1/C2 発生計上 RECOVERY が既にあるか」（`existsAccrualRecovery`・抽出条件と同一述語）を確認し、あれば `SKIPPED` で打ち切る。
 
 **自己返金時の合成規則（不変条件・🔴根治）:**
 

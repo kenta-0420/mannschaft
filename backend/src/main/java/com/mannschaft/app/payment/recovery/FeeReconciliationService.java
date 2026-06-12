@@ -88,6 +88,15 @@ public class FeeReconciliationService {
             return CompletionOutcome.SKIPPED;
         }
         EscrowTransactionEntity escrow = found.get();
+
+        // メソッド単位の冪等ガード（§6.3 (a)・抽出を経ない直接呼び出し/再実行でも二重補完しない）。
+        // findModeBRefundEscrowsWithoutRecovery はバッチ抽出のフィルタであり単位処理には効かないため、
+        // for-update ロック獲得後に「C1/C2 発生計上 RECOVERY が既にあるか」を確認し、あれば補完済みとして SKIP する。
+        if (ledgerEntryRepository.existsAccrualRecovery(escrowId)) {
+            log.info("補完済み（C1/C2 発生計上 RECOVERY が既存）のため二重補完しない: escrowId={}", escrowId);
+            return CompletionOutcome.SKIPPED;
+        }
+
         String piId = escrow.getStripePaymentIntentId();
         if (piId == null || piId.isBlank()) {
             // PI 未作成では実手数料を取得できない。補完不能として観測可能化（握りつぶさない）。
