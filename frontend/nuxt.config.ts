@@ -781,10 +781,20 @@ export default defineNuxtConfig({
     transpile: ['frappe-gantt'],
   },
 
-  // GitHub Actions (CI=true) では SSR バンドルロード自体が 4GB OOM を引き起こすため
-  // SPA モード（ssr: false）で Nitro SSR バンドルをスキップする。
-  // nuxt generate が index.html + クライアント資産のみ生成し Lighthouse CI で計測可能。
-  ...(process.env.CI === 'true' ? { ssr: false } : {}),
+  // Lighthouse CI（nuxt generate）では SSR バンドルロード自体が 4GB OOM を引き起こすため
+  // SPA モード（ssr: false）で Nitro SSR バンドルをスキップし、index.html + クライアント資産
+  // のみ生成して計測可能にする。専用フラグ NUXT_GENERATE_SPA=true（lighthouse-ci.yml が付与）
+  // のときだけ適用する。
+  //
+  // 【重要】かつては `process.env.CI === 'true'` で分岐していたが、これは Smoke E2E
+  // （playwright が CI=true 下で `npm run dev` を起動）も巻き込んでいた。nuxt 3.21.6+ では
+  // vite-node IPC が socket ベースに変更され、`ssr: false` の dev サーバーは
+  // `vite:serverCreated` の SSR サーバーフックが発火しないため NUXT_VITE_NODE_OPTIONS.socketPath
+  // が設定されず、SSR レンダリングが「Vite Node IPC socket path not configured」で 500 を返す。
+  // その結果 playwright webServer が応答待ちのまま 240s timeout していた
+  // （nuxt#35033 系のリグレッション。3.21.7+ では先に rollupOptions.input でクラッシュ）。
+  // Smoke E2E は SSR を有効にすれば正常起動するため、SPA 化は Lighthouse 限定に戻す。
+  ...(process.env.NUXT_GENERATE_SPA === 'true' ? { ssr: false } : {}),
 
   vite: {
     server: {
