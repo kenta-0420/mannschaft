@@ -15,8 +15,8 @@ export type ScopeTabType = 'TEAM' | 'ORGANIZATION'
 export interface ScopeTabItem {
   /** 内部 BIGINT（表示順管理・PUT /scope-tabs/order の scopeId に使用） */
   scopeId: string
-  /** 公開 UUID（ダッシュボード API の pathVariable /team/{publicId} 等に使用）。BE が返さない場合は null */
-  publicId: string | null
+  /** カスタムスラッグ（ダッシュボード API の pathVariable /team/{slug} 等に使用）。BE が返さない場合は null */
+  slug: string | null
   scopeType: ScopeTabType
   name: string
   avatarUrl: string | null

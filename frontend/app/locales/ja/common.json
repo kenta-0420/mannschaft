@@ -1520,6 +1520,14 @@
       "saveError": "表示順の保存に失敗しました"
     }
   },
+  "slug": {
+    "label": "URLスラッグ",
+    "hint": "チーム・組織の公開URLに使われます（例: my-team）",
+    "available": "使用可能",
+    "unavailable": "このスラッグは既に使われています",
+    "checking": "確認中...",
+    "format": "英小文字・数字・ハイフンのみ（3〜30文字）"
+  },
   "team_visibility": {
     "PUBLIC": "公開",
     "GUESTS_AND_ABOVE": "ゲスト以上",

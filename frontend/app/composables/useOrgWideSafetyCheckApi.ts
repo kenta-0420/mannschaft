@@ -3,16 +3,16 @@ import type { OrgWideSafetyCheckResponse } from '~/types/residenceStatus'
 export function useOrgWideSafetyCheckApi() {
   const api = useApi()
 
-  async function triggerSafetyCheck(orgId: string, triggerReason: string) {
+  async function triggerSafetyCheck(orgSlug: string, triggerReason: string) {
     return api<{ data: OrgWideSafetyCheckResponse }>(
-      `/api/v1/organizations/${orgId}/residence-status/org-wide-safety-checks`,
-      { method: 'POST', body: { organizationId: orgId, triggerReason } },
+      `/api/v1/organizations/${orgSlug}/residence-status/org-wide-safety-checks`,
+      { method: 'POST', body: { organizationId: orgSlug, triggerReason } },
     )
   }
 
-  async function listActiveChecks(orgId: string) {
+  async function listActiveChecks(orgSlug: string) {
     return api<{ data: OrgWideSafetyCheckResponse[] }>(
-      `/api/v1/organizations/${orgId}/residence-status/org-wide-safety-checks/active`,
+      `/api/v1/organizations/${orgSlug}/residence-status/org-wide-safety-checks/active`,
     )
   }
 

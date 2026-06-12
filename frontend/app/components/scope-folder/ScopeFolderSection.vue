@@ -4,7 +4,7 @@ import type { ScopeFolder } from '~/types/scopeFolder'
 interface ScopeItem {
   id: number
   /** チーム/組織 UUID（ルートナビゲーションに使用） */
-  publicId?: string
+  slug?: string
   name: string
   nickname1: string | null
   iconUrl: string | null
@@ -301,7 +301,7 @@ onUnmounted(() => {
                 shape="circle"
                 size="normal"
               />
-              <div class="min-w-0 flex-1" @click="item.publicId ? navigateTo(scopeType === 'TEAM' ? `/teams/${item.publicId}` : `/organizations/${item.publicId}`) : undefined">
+              <div class="min-w-0 flex-1" @click="item.slug ? navigateTo(scopeType === 'TEAM' ? `/teams/${item.slug}` : `/organizations/${item.slug}`) : undefined">
                 <span class="block truncate font-semibold">{{ item.nickname1 || item.name }}</span>
                 <span class="text-xs text-surface-400">
                   <i class="pi pi-users mr-1" />{{ item.memberCount }}
@@ -385,7 +385,7 @@ onUnmounted(() => {
                 shape="circle"
                 size="normal"
               />
-              <div class="min-w-0 flex-1" @click="item.publicId ? navigateTo(scopeType === 'TEAM' ? `/teams/${item.publicId}` : `/organizations/${item.publicId}`) : undefined">
+              <div class="min-w-0 flex-1" @click="item.slug ? navigateTo(scopeType === 'TEAM' ? `/teams/${item.slug}` : `/organizations/${item.slug}`) : undefined">
                 <span class="block truncate font-semibold">{{ item.nickname1 || item.name }}</span>
                 <span class="text-xs text-surface-400">
                   <i class="pi pi-users mr-1" />{{ item.memberCount }}

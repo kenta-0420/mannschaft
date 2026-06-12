@@ -13,7 +13,7 @@ const notification = useNotification()
 const followedOrgIds = ref<string[]>([])
 const followingOrgIds = ref<string[]>([])
 
-const myOrgPublicIds = computed(() => new Set(orgStore.myOrganizations.map((org) => org.publicId)))
+const myOrgSlugs = computed(() => new Set(orgStore.myOrganizations.map((org) => org.slug)))
 
 async function followOrg(orgId: string, event: Event) {
   event.stopPropagation()
@@ -160,7 +160,7 @@ onMounted(() => {
             <span><i class="pi pi-users mr-1" />{{ $t('orgHub.memberCount', { count: org.memberCount }) }}</span>
           </div>
           <div
-            v-if="org.supporterEnabled && !myOrgPublicIds.has(org.id)"
+            v-if="org.supporterEnabled && !myOrgSlugs.has(org.id)"
             class="mt-3 border-t border-surface-100 pt-3"
           >
             <span

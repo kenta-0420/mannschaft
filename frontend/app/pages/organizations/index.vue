@@ -170,7 +170,7 @@ const isManageView = computed(() => currentFolderId.value === 'manage')
           v-for="org in filteredOrgs"
           :key="org.id"
           class="cursor-pointer rounded-lg border-2 border-surface-400 bg-surface-0 p-4 transition-shadow hover:shadow-md"
-          @click="org.publicId ? navigateTo(`/organizations/${org.publicId}`) : undefined"
+          @click="org.slug ? navigateTo(`/organizations/${org.slug}`) : undefined"
         >
           <div class="mb-3 flex items-center gap-3">
             <Avatar
@@ -199,7 +199,7 @@ const isManageView = computed(() => currentFolderId.value === 'manage')
           v-for="org in filteredOrgs"
           :key="org.id"
           class="flex cursor-pointer items-center gap-4 rounded-lg border border-surface-200 bg-surface-0 px-4 py-3 transition-shadow hover:shadow-sm"
-          @click="org.publicId ? navigateTo(`/organizations/${org.publicId}`) : undefined"
+          @click="org.slug ? navigateTo(`/organizations/${org.slug}`) : undefined"
         >
           <Avatar
             :image="org.iconUrl ?? undefined"

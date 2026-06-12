@@ -83,8 +83,8 @@ export function useOrganizationApi() {
   const { handleApiError } = useErrorHandler()
 
   // === CRUD ===
-  async function getOrganization(orgId: string) {
-    return api<{ data: OrganizationResponse }>(`/api/v1/organizations/${orgId}`)
+  async function getOrganization(orgSlug: string) {
+    return api<{ data: OrganizationResponse }>(`/api/v1/organizations/${orgSlug}`)
   }
 
   async function searchOrganizations(params: {
@@ -105,232 +105,232 @@ export function useOrganizationApi() {
     return api<{ data: OrganizationResponse }>('/api/v1/organizations', { method: 'POST', body })
   }
 
-  async function updateOrganization(orgId: string, body: Record<string, unknown>) {
-    return api<{ data: OrganizationResponse }>(`/api/v1/organizations/${orgId}`, {
+  async function updateOrganization(orgSlug: string, body: Record<string, unknown>) {
+    return api<{ data: OrganizationResponse }>(`/api/v1/organizations/${orgSlug}`, {
       method: 'PATCH',
       body,
     })
   }
 
-  async function deleteOrganization(orgId: string) {
-    return api(`/api/v1/organizations/${orgId}`, { method: 'DELETE' })
+  async function deleteOrganization(orgSlug: string) {
+    return api(`/api/v1/organizations/${orgSlug}`, { method: 'DELETE' })
   }
 
   // === メンバー管理 ===
-  async function getMembers(orgId: string, params?: { page?: number; size?: number }) {
+  async function getMembers(orgSlug: string, params?: { page?: number; size?: number }) {
     const query = new URLSearchParams()
     query.set('page', String(params?.page ?? 0))
     query.set('size', String(params?.size ?? 20))
-    return api<PagedData<MemberResponse>>(`/api/v1/organizations/${orgId}/members?${query}`)
+    return api<PagedData<MemberResponse>>(`/api/v1/organizations/${orgSlug}/members?${query}`)
   }
 
-  async function changeRole(orgId: string, userId: number, roleId: number) {
-    return api(`/api/v1/organizations/${orgId}/members/${userId}/role`, {
+  async function changeRole(orgSlug: string, userId: number, roleId: number) {
+    return api(`/api/v1/organizations/${orgSlug}/members/${userId}/role`, {
       method: 'PATCH',
       body: { roleId },
     })
   }
 
-  async function removeMember(orgId: string, userId: number) {
-    return api(`/api/v1/organizations/${orgId}/members/${userId}`, { method: 'DELETE' })
+  async function removeMember(orgSlug: string, userId: number) {
+    return api(`/api/v1/organizations/${orgSlug}/members/${userId}`, { method: 'DELETE' })
   }
 
-  async function leaveOrganization(orgId: string) {
-    return api(`/api/v1/organizations/${orgId}/me`, { method: 'DELETE' })
+  async function leaveOrganization(orgSlug: string) {
+    return api(`/api/v1/organizations/${orgSlug}/me`, { method: 'DELETE' })
   }
 
   // === 招待トークン ===
   async function createInviteToken(
-    orgId: string,
+    orgSlug: string,
     body: { roleId: number; expiresIn: string | null; maxUses: number | null },
   ) {
-    return api<{ data: InviteTokenResponse }>(`/api/v1/organizations/${orgId}/invite-tokens`, {
+    return api<{ data: InviteTokenResponse }>(`/api/v1/organizations/${orgSlug}/invite-tokens`, {
       method: 'POST',
       body,
     })
   }
 
-  async function getInviteTokens(orgId: string) {
-    return api<{ data: InviteTokenResponse[] }>(`/api/v1/organizations/${orgId}/invite-tokens`)
+  async function getInviteTokens(orgSlug: string) {
+    return api<{ data: InviteTokenResponse[] }>(`/api/v1/organizations/${orgSlug}/invite-tokens`)
   }
 
-  async function deleteInviteToken(orgId: string, tokenId: number) {
-    return api(`/api/v1/organizations/${orgId}/invite-tokens/${tokenId}`, { method: 'DELETE' })
+  async function deleteInviteToken(orgSlug: string, tokenId: number) {
+    return api(`/api/v1/organizations/${orgSlug}/invite-tokens/${tokenId}`, { method: 'DELETE' })
   }
 
   // === アーカイブ ===
-  async function archiveOrganization(orgId: string) {
-    return api(`/api/v1/organizations/${orgId}/archive`, { method: 'PATCH' })
+  async function archiveOrganization(orgSlug: string) {
+    return api(`/api/v1/organizations/${orgSlug}/archive`, { method: 'PATCH' })
   }
 
-  async function unarchiveOrganization(orgId: string) {
-    return api(`/api/v1/organizations/${orgId}/unarchive`, { method: 'PATCH' })
+  async function unarchiveOrganization(orgSlug: string) {
+    return api(`/api/v1/organizations/${orgSlug}/unarchive`, { method: 'PATCH' })
   }
 
-  async function restoreOrganization(orgId: string) {
-    return api(`/api/v1/organizations/${orgId}/restore`, { method: 'PATCH' })
+  async function restoreOrganization(orgSlug: string) {
+    return api(`/api/v1/organizations/${orgSlug}/restore`, { method: 'PATCH' })
   }
 
   // === 全メンバー一覧 ===
-  async function getAllMembers(orgId: string) {
-    return api<{ data: MemberResponse[] }>(`/api/v1/organizations/${orgId}/members/all`)
+  async function getAllMembers(orgSlug: string) {
+    return api<{ data: MemberResponse[] }>(`/api/v1/organizations/${orgSlug}/members/all`)
   }
 
   // === フォロー（SUPPORTER） ===
-  async function followOrganization(orgId: string) {
-    return api(`/api/v1/organizations/${orgId}/follow`, { method: 'POST' })
+  async function followOrganization(orgSlug: string) {
+    return api(`/api/v1/organizations/${orgSlug}/follow`, { method: 'POST' })
   }
 
-  async function unfollowOrganization(orgId: string) {
-    return api(`/api/v1/organizations/${orgId}/follow`, { method: 'DELETE' })
+  async function unfollowOrganization(orgSlug: string) {
+    return api(`/api/v1/organizations/${orgSlug}/follow`, { method: 'DELETE' })
   }
 
-  async function getFollowStatus(orgId: string) {
-    return api<{ data: FollowStatusResponse }>(`/api/v1/organizations/${orgId}/follow/status`)
+  async function getFollowStatus(orgSlug: string) {
+    return api<{ data: FollowStatusResponse }>(`/api/v1/organizations/${orgSlug}/follow/status`)
   }
 
   // === サポーター管理（管理者） ===
-  async function getSupporters(orgId: string, params?: { page?: number; size?: number }) {
+  async function getSupporters(orgSlug: string, params?: { page?: number; size?: number }) {
     const query = new URLSearchParams()
     query.set('page', String(params?.page ?? 0))
     query.set('size', String(params?.size ?? 50))
-    return api<PagedData<SupporterResponse>>(`/api/v1/organizations/${orgId}/supporters?${query}`)
+    return api<PagedData<SupporterResponse>>(`/api/v1/organizations/${orgSlug}/supporters?${query}`)
   }
 
   async function getSupporterApplications(
-    orgId: string,
+    orgSlug: string,
     params?: { page?: number; size?: number },
   ) {
     const query = new URLSearchParams()
     query.set('page', String(params?.page ?? 0))
     query.set('size', String(params?.size ?? 50))
     return api<PagedData<SupporterApplicationResponse>>(
-      `/api/v1/organizations/${orgId}/supporter-applications?${query}`,
+      `/api/v1/organizations/${orgSlug}/supporter-applications?${query}`,
     )
   }
 
-  async function approveSupporterApplication(orgId: string, applicationId: number) {
-    return api(`/api/v1/organizations/${orgId}/supporter-applications/${applicationId}/approve`, {
+  async function approveSupporterApplication(orgSlug: string, applicationId: number) {
+    return api(`/api/v1/organizations/${orgSlug}/supporter-applications/${applicationId}/approve`, {
       method: 'POST',
     })
   }
 
-  async function rejectSupporterApplication(orgId: string, applicationId: number) {
-    return api(`/api/v1/organizations/${orgId}/supporter-applications/${applicationId}/reject`, {
+  async function rejectSupporterApplication(orgSlug: string, applicationId: number) {
+    return api(`/api/v1/organizations/${orgSlug}/supporter-applications/${applicationId}/reject`, {
       method: 'POST',
     })
   }
 
-  async function bulkApproveSupporterApplications(orgId: string, applicationIds: number[]) {
-    return api(`/api/v1/organizations/${orgId}/supporter-applications/bulk-approve`, {
+  async function bulkApproveSupporterApplications(orgSlug: string, applicationIds: number[]) {
+    return api(`/api/v1/organizations/${orgSlug}/supporter-applications/bulk-approve`, {
       method: 'POST',
       body: { applicationIds },
     })
   }
 
-  async function getSupporterSettings(orgId: string) {
-    return api<{ data: SupporterSettings }>(`/api/v1/organizations/${orgId}/supporter-settings`)
+  async function getSupporterSettings(orgSlug: string) {
+    return api<{ data: SupporterSettings }>(`/api/v1/organizations/${orgSlug}/supporter-settings`)
   }
 
-  async function updateSupporterSettings(orgId: string, body: Partial<SupporterSettings>) {
-    return api<{ data: SupporterSettings }>(`/api/v1/organizations/${orgId}/supporter-settings`, {
+  async function updateSupporterSettings(orgSlug: string, body: Partial<SupporterSettings>) {
+    return api<{ data: SupporterSettings }>(`/api/v1/organizations/${orgSlug}/supporter-settings`, {
       method: 'PUT',
       body,
     })
   }
 
   // === 権限グループ管理 ===
-  async function getPermissionGroups(orgId: string) {
+  async function getPermissionGroups(orgSlug: string) {
     return api<{ data: PermissionGroupResponse[] }>(
-      `/api/v1/organizations/${orgId}/permission-groups`,
+      `/api/v1/organizations/${orgSlug}/permission-groups`,
     )
   }
 
   async function createPermissionGroup(
-    orgId: string,
+    orgSlug: string,
     body: { name: string; description?: string; permissions: string[] },
   ) {
     return api<{ data: PermissionGroupResponse }>(
-      `/api/v1/organizations/${orgId}/permission-groups`,
+      `/api/v1/organizations/${orgSlug}/permission-groups`,
       { method: 'POST', body },
     )
   }
 
   async function updatePermissionGroup(
-    orgId: string,
+    orgSlug: string,
     groupId: number,
     body: { name?: string; description?: string; permissions?: string[] },
   ) {
     return api<{ data: PermissionGroupResponse }>(
-      `/api/v1/organizations/${orgId}/permission-groups/${groupId}`,
+      `/api/v1/organizations/${orgSlug}/permission-groups/${groupId}`,
       { method: 'PATCH', body },
     )
   }
 
-  async function deletePermissionGroup(orgId: string, groupId: number) {
-    return api(`/api/v1/organizations/${orgId}/permission-groups/${groupId}`, { method: 'DELETE' })
+  async function deletePermissionGroup(orgSlug: string, groupId: number) {
+    return api(`/api/v1/organizations/${orgSlug}/permission-groups/${groupId}`, { method: 'DELETE' })
   }
 
-  async function assignPermissionGroups(orgId: string, userId: number, groupIds: number[]) {
-    return api(`/api/v1/organizations/${orgId}/members/${userId}/permission-groups`, {
+  async function assignPermissionGroups(orgSlug: string, userId: number, groupIds: number[]) {
+    return api(`/api/v1/organizations/${orgSlug}/members/${userId}/permission-groups`, {
       method: 'PUT',
       body: { groupIds },
     })
   }
 
   // === ブロック管理 ===
-  async function getBlocks(orgId: string) {
-    return api<{ data: BlockResponse[] }>(`/api/v1/organizations/${orgId}/blocks`)
+  async function getBlocks(orgSlug: string) {
+    return api<{ data: BlockResponse[] }>(`/api/v1/organizations/${orgSlug}/blocks`)
   }
 
-  async function createBlock(orgId: string, body: { userId: number; reason?: string }) {
-    return api<{ data: BlockResponse }>(`/api/v1/organizations/${orgId}/blocks`, {
+  async function createBlock(orgSlug: string, body: { userId: number; reason?: string }) {
+    return api<{ data: BlockResponse }>(`/api/v1/organizations/${orgSlug}/blocks`, {
       method: 'POST',
       body,
     })
   }
 
-  async function removeBlock(orgId: string, blockId: number) {
-    return api(`/api/v1/organizations/${orgId}/blocks/${blockId}`, { method: 'DELETE' })
+  async function removeBlock(orgSlug: string, blockId: number) {
+    return api(`/api/v1/organizations/${orgSlug}/blocks/${blockId}`, { method: 'DELETE' })
   }
 
   // === オーナー移譲 ===
-  async function transferOwnership(orgId: string, newAdminUserId: number) {
-    return api(`/api/v1/organizations/${orgId}/transfer-ownership`, {
+  async function transferOwnership(orgSlug: string, newAdminUserId: number) {
+    return api(`/api/v1/organizations/${orgSlug}/transfer-ownership`, {
       method: 'POST',
       body: { newAdminUserId },
     })
   }
 
   // === アクセス要件 ===
-  async function getAccessRequirements(orgId: string) {
+  async function getAccessRequirements(orgSlug: string) {
     return api<{ data: Record<string, unknown> }>(
-      `/api/v1/organizations/${orgId}/access-requirements`,
+      `/api/v1/organizations/${orgSlug}/access-requirements`,
     )
   }
 
-  async function updateAccessRequirements(orgId: string, body: Record<string, unknown>) {
+  async function updateAccessRequirements(orgSlug: string, body: Record<string, unknown>) {
     return api<{ data: Record<string, unknown> }>(
-      `/api/v1/organizations/${orgId}/access-requirements`,
+      `/api/v1/organizations/${orgSlug}/access-requirements`,
       { method: 'PUT', body },
     )
   }
 
   // === コンテンツ有料化設定 ===
-  async function getContentPaymentGates(orgId: string) {
+  async function getContentPaymentGates(orgSlug: string) {
     return api<{
       data: Record<string, unknown>[]
       meta: { page: number; size: number; totalElements: number; totalPages: number }
-    }>(`/api/v1/organizations/${orgId}/content-payment-gates`)
+    }>(`/api/v1/organizations/${orgSlug}/content-payment-gates`)
   }
 
-  async function updateContentPaymentGates(orgId: string, body: Record<string, unknown>) {
-    return api(`/api/v1/organizations/${orgId}/content-payment-gates`, { method: 'PUT', body })
+  async function updateContentPaymentGates(orgSlug: string, body: Record<string, unknown>) {
+    return api(`/api/v1/organizations/${orgSlug}/content-payment-gates`, { method: 'PUT', body })
   }
 
   // === 組織内チーム一覧 ===
-  async function getTeamsInOrg(orgId: string) {
-    return api<{ data: TeamSummaryResponse[] }>(`/api/v1/organizations/${orgId}/teams`)
+  async function getTeamsInOrg(orgSlug: string) {
+    return api<{ data: TeamSummaryResponse[] }>(`/api/v1/organizations/${orgSlug}/teams`)
   }
 
   return {

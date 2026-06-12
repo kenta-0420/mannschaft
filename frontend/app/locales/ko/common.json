@@ -1520,6 +1520,14 @@
       "saveError": "표시 순서 저장에 실패했습니다"
     }
   },
+  "slug": {
+    "label": "URL 슬러그",
+    "hint": "팀/조직의 공개 URL에 사용됩니다（예: my-team）",
+    "available": "사용 가능",
+    "unavailable": "이미 사용 중인 슬러그입니다",
+    "checking": "확인 중...",
+    "format": "영소문자, 숫자, 하이픈만 사용 가능（3~30자）"
+  },
   "team_visibility": {
     "PUBLIC": "공개",
     "GUESTS_AND_ABOVE": "게스트 이상",
