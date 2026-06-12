@@ -397,7 +397,6 @@
     "addSuccess": "Anotador asignado",
     "removeSuccess": "Asignación de anotador eliminada",
     "alreadyAssigned": "Este usuario ya está asignado",
-    "userDisplay": "ID de usuario: {userId}",
     "error": {
       "loadFailed": "No se pudo cargar la lista de anotadores",
       "addFailed": "No se pudo asignar el anotador ({status})",

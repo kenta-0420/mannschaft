@@ -24,16 +24,6 @@ public record ScorekeeperResponse(
         LocalDateTime createdAt
 ) {
     /**
-     * エンティティからレスポンスを組み立てる（表示名なし・後方互換）。
-     *
-     * <p>表示名が不要な内部用途のためのフォールバック。一覧・追加 EP では
-     * {@link #of(TournamentScorekeeperEntity, String)} を使い displayName を同梱すること。</p>
-     */
-    public static ScorekeeperResponse of(TournamentScorekeeperEntity entity) {
-        return of(entity, null);
-    }
-
-    /**
      * エンティティと解決済み表示名からレスポンスを組み立てる。
      *
      * @param entity      指名エンティティ

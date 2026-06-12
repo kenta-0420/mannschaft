@@ -397,7 +397,6 @@
     "addSuccess": "Scorekeeper assigned",
     "removeSuccess": "Scorekeeper assignment removed",
     "alreadyAssigned": "This user is already assigned",
-    "userDisplay": "User ID: {userId}",
     "error": {
       "loadFailed": "Failed to load the scorekeeper list",
       "addFailed": "Failed to assign scorekeeper ({status})",

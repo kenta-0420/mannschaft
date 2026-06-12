@@ -397,7 +397,6 @@
     "addSuccess": "스코어키퍼를 지정했습니다",
     "removeSuccess": "스코어키퍼 지정을 해제했습니다",
     "alreadyAssigned": "이미 지정된 사용자입니다",
-    "userDisplay": "사용자 ID: {userId}",
     "error": {
       "loadFailed": "스코어키퍼 목록을 불러오지 못했습니다",
       "addFailed": "스코어키퍼 지정에 실패했습니다 ({status})",

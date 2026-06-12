@@ -239,6 +239,8 @@ onMounted(load)
             v-else
             :key="c.id"
             class="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-sm hover:bg-primary-50"
+            role="button"
+            :aria-label="$t('tournament.scorekeeper.selectMember')"
             @mousedown.prevent="onSelectCandidate(c)"
           >
             <span>{{ candidateLabel(c) }}</span>

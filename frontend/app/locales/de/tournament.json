@@ -397,7 +397,6 @@
     "addSuccess": "Anschreiber zugewiesen",
     "removeSuccess": "Anschreiber-Zuweisung entfernt",
     "alreadyAssigned": "Dieser Benutzer ist bereits zugewiesen",
-    "userDisplay": "Benutzer-ID: {userId}",
     "error": {
       "loadFailed": "Die Anschreiberliste konnte nicht geladen werden",
       "addFailed": "Anschreiber konnte nicht zugewiesen werden ({status})",

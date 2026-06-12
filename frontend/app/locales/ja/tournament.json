@@ -397,7 +397,6 @@
     "addSuccess": "スコアキーパーを指名しました",
     "removeSuccess": "スコアキーパーの指名を解除しました",
     "alreadyAssigned": "このユーザーは既に指名済みです",
-    "userDisplay": "ユーザーID: {userId}",
     "error": {
       "loadFailed": "スコアキーパー一覧の取得に失敗しました",
       "addFailed": "スコアキーパーの指名に失敗しました（{status}）",
