@@ -71,8 +71,8 @@ public class MemberPaymentService {
     private final ConnectChargeService connectChargeService;
     private final ConnectAccountRepository connectAccountRepository;
 
-    @Value("${app.frontend-url:http://localhost:3000}")
-    private String frontendUrl;
+    @Value("${app.base-url}")
+    private String baseUrl;
 
     /**
      * 支払い項目ごとの支払い記録をページング取得する。
@@ -290,8 +290,8 @@ public class MemberPaymentService {
         payment = memberPaymentRepository.save(payment);
 
         // Checkout Session を作成
-        String successUrl = frontendUrl + "/payment/complete?session_id={CHECKOUT_SESSION_ID}";
-        String cancelUrl = frontendUrl + "/payment/cancelled";
+        String successUrl = baseUrl + "/payment/complete?session_id={CHECKOUT_SESSION_ID}";
+        String cancelUrl = baseUrl + "/payment/cancelled";
 
         StripePaymentProvider.CheckoutSessionInfo sessionInfo =
                 stripePaymentProvider.createCheckoutSession(

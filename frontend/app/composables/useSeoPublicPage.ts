@@ -40,16 +40,30 @@ export const useSeoPublicPage = (options: {
     | ((ctx?: SeoJsonLdContext) => Record<string, unknown> | undefined)
 }) => {
   const config = useRuntimeConfig()
+  // useRequestURL() は SSR/CSR 両対応の Nuxt 標準 composable。
+  // リクエスト Host ヘッダーから origin を取得するため、NUXT_PUBLIC_BASE_URL 未設定でも
+  // 絶対 URL を確実に得るための最終フォールバックとして使用する。
+  const requestUrl = useRequestURL()
 
   /**
-   * フロントエンドのベース URL を解決する。
-   * apiBase = http://localhost:8080/api/v1 → http://localhost:8080
-   * NUXT_PUBLIC_BASE_URL が設定されている場合はそちらを優先する。
+   * フロントエンドのベース URL を解決する（優先順位）。
+   * 1. NUXT_PUBLIC_BASE_URL（環境変数で明示した絶対 URL）
+   * 2. NUXT_PUBLIC_API_BASE から /api/v1 を除去したホスト（dev 環境向け互換）
+   * 3. useRequestURL().origin（SSR リクエストの Host ヘッダー由来の絶対 URL）
+   *
+   * NUXT_PUBLIC_API_BASE=''（本番同一オリジン構成）では 2 が '' になるため
+   * NUXT_PUBLIC_BASE_URL を明示するか 3 のフォールバックが機能する。
+   * 設計書: docs/security/03_security_headers_and_csp.md §4.1
    */
   const resolvedBaseUrl = computed((): string => {
-    const explicit = (config.public as Record<string, unknown>).baseUrl as string | undefined
+    // 1. NUXT_PUBLIC_BASE_URL
+    const explicit = config.public.baseUrl as string | undefined
     if (explicit) return explicit.replace(/\/$/, '')
-    return String(config.public.apiBase).replace(/\/api\/v1$/, '')
+    // 2. apiBase から /api/v1 を除去（dev: http://localhost:8080）
+    const fromApiBase = String(config.public.apiBase).replace(/\/api\/v1$/, '')
+    if (fromApiBase) return fromApiBase
+    // 3. リクエスト Host 由来の origin（''・空文字フォールバック）
+    return requestUrl.origin
   })
 
   const resolvedPath = computed((): string => {

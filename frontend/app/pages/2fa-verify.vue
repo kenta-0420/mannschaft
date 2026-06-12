@@ -39,7 +39,7 @@ async function handleVerify() {
       },
     })
     authStore.setTokens(data.data.accessToken, data.data.refreshToken)
-    authStore.setUser(data.data.user)
+    await authStore.setUser(data.data.user)
 
     // フルプロフィール（timezone・locale 等）を取得して store を更新
     try {
@@ -55,7 +55,7 @@ async function handleVerify() {
           timezone: string | null
         }
       }>('/api/v1/users/me')
-      authStore.setUser({
+      await authStore.setUser({
         id: profile.data.id,
         email: profile.data.email,
         fullName: profile.data.lastName + ' ' + profile.data.firstName,

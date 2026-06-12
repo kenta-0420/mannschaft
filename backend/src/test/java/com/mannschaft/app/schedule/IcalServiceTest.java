@@ -1,6 +1,7 @@
 package com.mannschaft.app.schedule;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.entity.UserIcalTokenEntity;
@@ -18,6 +19,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -43,6 +47,9 @@ class IcalServiceTest {
     @Mock
     private UserRoleRepository userRoleRepository;
 
+    @Mock
+    private NameResolverService nameResolverService;
+
     @InjectMocks
     private IcalService icalService;
 
@@ -52,6 +59,12 @@ class IcalServiceTest {
 
     private static final Long USER_ID = 100L;
     private static final String TOKEN = "test-secure-token-abc123";
+
+    @BeforeEach
+    void setUp() {
+        // @Value("${app.base-url}") は @InjectMocks では注入されないため ReflectionTestUtils で設定する
+        ReflectionTestUtils.setField(icalService, "appBaseUrl", "http://localhost:3000");
+    }
 
     private UserIcalTokenEntity createActiveToken() {
         return UserIcalTokenEntity.builder()
@@ -294,6 +307,35 @@ class IcalServiceTest {
 
             // then
             verify(icalTokenRepository).updateLastPolledAt(eq(TOKEN), any(LocalDateTime.class));
+        }
+    }
+
+    // ========================================
+    // buildWebcalUrl
+    // ========================================
+
+    @Nested
+    @DisplayName("buildWebcalUrl")
+    class BuildWebcalUrl {
+
+        @Test
+        @DisplayName("https:// → webcal:// に変換される")
+        void httpsSchemeConvertedToWebcal() {
+            String result = icalService.buildWebcalUrl("https://app.example.com/ical/abc.ics");
+            assertThat(result).isEqualTo("webcal://app.example.com/ical/abc.ics");
+        }
+
+        @Test
+        @DisplayName("http://localhost:3000 → webcal://localhost:3000 に変換される")
+        void httpLocalhostConvertedToWebcal() {
+            String result = icalService.buildWebcalUrl("http://localhost:3000/ical/abc.ics");
+            assertThat(result).isEqualTo("webcal://localhost:3000/ical/abc.ics");
+        }
+
+        @Test
+        @DisplayName("null → null を返す")
+        void nullReturnsNull() {
+            assertThat(icalService.buildWebcalUrl(null)).isNull();
         }
     }
 }

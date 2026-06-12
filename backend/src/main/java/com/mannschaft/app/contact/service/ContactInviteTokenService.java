@@ -42,8 +42,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ContactInviteTokenService {
 
-    @Value("${app.frontend-url:http://localhost:3000}")
-    private String frontendUrl;
+    @Value("${app.base-url}")
+    private String baseUrl;
 
     private final ContactInviteTokenRepository tokenRepository;
     private final UserRepository userRepository;
@@ -176,7 +176,7 @@ public class ContactInviteTokenService {
                 .orElseThrow(() -> new BusinessException(ContactErrorCode.CONTACT_014));
 
         // URLはサーバー側で組み立て（ユーザー入力値を含めない）
-        String inviteUrl = frontendUrl + "/contact-invite/" + token;
+        String inviteUrl = baseUrl + "/contact-invite/" + token;
 
         try {
             QRCodeWriter writer = new QRCodeWriter();
@@ -195,7 +195,7 @@ public class ContactInviteTokenService {
     }
 
     private ContactInviteTokenResponse toResponse(ContactInviteTokenEntity entity) {
-        String inviteUrl = frontendUrl + "/contact-invite/" + entity.getToken();
+        String inviteUrl = baseUrl + "/contact-invite/" + entity.getToken();
         String qrCodeUrl = "/api/v1/contact-invite-tokens/" + entity.getToken() + "/qr";
         return ContactInviteTokenResponse.builder()
                 .id(entity.getId())
