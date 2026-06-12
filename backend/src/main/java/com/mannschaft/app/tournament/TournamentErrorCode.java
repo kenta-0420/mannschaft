@@ -201,7 +201,17 @@ public enum TournamentErrorCode implements ErrorCode {
     SUBMISSION_PAYMENT_REQUIRED("TOUR_057", "大会参加費の支払いが完了していません", Severity.WARN),
 
     /** 提出枠に指定された form_template が主催組織に属していない（F08.7.1/06 §3・スコープ不一致） */
-    SUBMISSION_TEMPLATE_SCOPE_MISMATCH("TOUR_058", "指定された書類テンプレートが主催組織に属していません", Severity.WARN);
+    SUBMISSION_TEMPLATE_SCOPE_MISMATCH("TOUR_058", "指定された書類テンプレートが主催組織に属していません", Severity.WARN),
+
+    // ========================================================================
+    // F08.7 順位UI 項目③ スコアキーパー指名（scorekeeper）
+    // ========================================================================
+
+    /** スコアキーパー指名の管理（一覧/追加/削除）権限がない（主催組織 ADMIN 限定） */
+    SCOREKEEPER_MANAGE_FORBIDDEN("TOUR_059", "スコアキーパーを管理する権限がありません", Severity.WARN),
+
+    /** スコアキーパー指名が見つからない（IDOR 対策で 404 に統一） */
+    SCOREKEEPER_NOT_FOUND("TOUR_060", "スコアキーパー指名が見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;
