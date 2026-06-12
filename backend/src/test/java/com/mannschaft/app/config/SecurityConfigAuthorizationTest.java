@@ -106,11 +106,14 @@ class SecurityConfigAuthorizationTest {
         @Bean
         @SuppressWarnings("unchecked")
         PublicApiRateLimitFilter publicApiRateLimitFilter() {
+            // Valkey 化第一陣: ValkeyRateLimiter は空 Provider（getIfAvailable()=null）→ フィルタは素通し
+            org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.common.ratelimit.ValkeyRateLimiter> rateLimiterProvider =
+                    mock(org.springframework.beans.factory.ObjectProvider.class);
             org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.auth.service.AuditLogService> auditProvider =
                     mock(org.springframework.beans.factory.ObjectProvider.class);
             org.springframework.beans.factory.ObjectProvider<io.micrometer.core.instrument.MeterRegistry> meterProvider =
                     mock(org.springframework.beans.factory.ObjectProvider.class);
-            return new PublicApiRateLimitFilter(auditProvider, meterProvider);
+            return new PublicApiRateLimitFilter(rateLimiterProvider, auditProvider, meterProvider);
         }
 
         @Bean

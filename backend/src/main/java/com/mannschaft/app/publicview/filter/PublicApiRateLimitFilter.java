@@ -1,28 +1,20 @@
 package com.mannschaft.app.publicview.filter;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.ratelimit.AbstractRateLimitFilter;
+import com.mannschaft.app.common.ratelimit.RateLimitResult;
+import com.mannschaft.app.common.ratelimit.RateLimitRule;
+import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import com.mannschaft.app.common.util.SessionHashUtil;
-import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
-import io.github.bucket4j.Refill;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Duration;
@@ -54,14 +46,18 @@ import java.util.regex.Pattern;
  *   <li>{@code GET /api/v1/public/organizations/{id}/events}（F19.1 Phase 4 で活性化）</li>
  * </ul>
  *
- * <p>レート上限（パス分類ごとに独立したバケットを持つ）:</p>
+ * <p>レート上限（パス分類ごとに独立した zone を持つ）:</p>
  * <table>
  *   <tr><th>パス</th><th>未ログイン</th><th>ログイン</th></tr>
  *   <tr><td>{@code /search}（F15.4 Phase 1）</td><td>30 req/min/IP</td><td>120 req/min/userId</td></tr>
  *   <tr><td>{@code /public/(teams|organizations)/...}</td><td>60 req/min/IP</td><td>200 req/min/userId</td></tr>
  * </table>
  *
- * <p>キャッシュ戦略: Caffeine の {@code expireAfterAccess=2 時間} + {@code maximumSize=10_000}。</p>
+ * <p><b>Valkey 化（Phase 2 第一陣）</b>: 旧実装の Bucket4j + Caffeine（プロセス内カウント）は
+ * ECS 複数タスク構成でタスク数に比例して実効上限が緩むため、
+ * {@link ValkeyRateLimiter}（docs/security/06 §4.3）に移行した。
+ * Target enum ごとの zone 分離が旧実装の「Target 名前空間付きバケットキー」に相当する。
+ * 実カウント・§4.3 標準ヘッダー・429 応答は {@link AbstractRateLimitFilter} が担う。</p>
  *
  * <p>監査ログ: 検索側は {@link AuditEventType#TEAM_SEARCH_RATE_LIMITED}、公開系は
  * {@link AuditEventType#PUBLIC_API_RATE_LIMIT_EXCEEDED}（F19.1 で導入、F15.4 Phase 5-α の
@@ -73,7 +69,7 @@ import java.util.regex.Pattern;
  * を含む新規パス、および organizations 系）は {@link AuditEventType#PUBLIC_API_RATE_LIMIT_EXCEEDED} を使う。</p>
  */
 @Component
-public class PublicApiRateLimitFilter extends OncePerRequestFilter {
+public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
 
     // ──── レート定義 ─────────────────────────────
     /** 検索エンドポイント（F15.4 Phase 1）の認証済み上限。 */
@@ -85,8 +81,11 @@ public class PublicApiRateLimitFilter extends OncePerRequestFilter {
     /** 公開ページ API の未認証上限（F15.4 Phase 5-α / F19.1 共通）。 */
     private static final int PUBLIC_ANONYMOUS_RATE_PER_MINUTE = 60;
 
-    private static final Duration BUCKET_TTL = Duration.ofHours(2);
-    private static final long MAX_BUCKETS = 10_000L;
+    /** ウィンドウ長（旧 Bucket4j intervally refill と同じ 1 分）。 */
+    private static final Duration WINDOW = Duration.ofMinutes(1);
+
+    /** Valkey zone 接頭辞。Target 名と組み合わせてバケット名前空間を一意化する。 */
+    private static final String ZONE_PREFIX = "public-api:";
 
     // ──── パスパターン ───────────────────────────
     /** {@code /api/v1/organizations/{orgId}/teams/search} の GET のみマッチ。orgId を capture する。 */
@@ -133,7 +132,7 @@ public class PublicApiRateLimitFilter extends OncePerRequestFilter {
     private static final Pattern PUBLIC_TEAM_DETAIL_PATH =
             Pattern.compile("^/api/v1/public/teams/([^/]+)$");
 
-    /** レート制限の種別。バケット名前空間の隔離と監査ログ種別の分岐に用いる。 */
+    /** レート制限の種別。zone 名前空間の隔離と監査ログ種別の分岐に用いる。 */
     private enum Target {
         /** 組織内チーム検索（F15.4 Phase 1）。 */
         ORG_TEAM_SEARCH(SEARCH_AUTHENTICATED_RATE_PER_MINUTE, SEARCH_ANONYMOUS_RATE_PER_MINUTE),
@@ -148,12 +147,6 @@ public class PublicApiRateLimitFilter extends OncePerRequestFilter {
             this.anonymousRate = anonymousRate;
         }
     }
-
-    // ──── バケット ──────────────────────────────
-    /** 認証済みユーザーのバケット（キー: {@code "<target>:u:" + userId}）。 */
-    private final Cache<String, Bucket> authenticatedBuckets;
-    /** 未認証アクセスのバケット（キー: {@code "<target>:ip:" + remoteAddr}）。 */
-    private final Cache<String, Bucket> anonymousBuckets;
 
     /**
      * 監査ログ記録用（fire-and-forget）。
@@ -173,19 +166,12 @@ public class PublicApiRateLimitFilter extends OncePerRequestFilter {
     private final ObjectProvider<MeterRegistry> meterRegistryProvider;
 
     public PublicApiRateLimitFilter(
+            ObjectProvider<ValkeyRateLimiter> rateLimiterProvider,
             ObjectProvider<AuditLogService> auditLogServiceProvider,
             ObjectProvider<MeterRegistry> meterRegistryProvider) {
-        this.authenticatedBuckets = newCache();
-        this.anonymousBuckets = newCache();
+        super(rateLimiterProvider);
         this.auditLogServiceProvider = auditLogServiceProvider;
         this.meterRegistryProvider = meterRegistryProvider;
-    }
-
-    private static Cache<String, Bucket> newCache() {
-        return Caffeine.<String, Bucket>newBuilder()
-                .expireAfterAccess(BUCKET_TTL)
-                .maximumSize(MAX_BUCKETS)
-                .build();
     }
 
     @Override
@@ -194,70 +180,53 @@ public class PublicApiRateLimitFilter extends OncePerRequestFilter {
         if (!"GET".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
-        String path = request.getServletPath();
-        return !ORG_TEAM_SEARCH_PATH.matcher(path).matches()
-                && !PUBLIC_API_PATH.matcher(path).matches()
-                && !PUBLIC_SEARCH_PATH.matcher(path).matches()
-                && !MARKET_API_PATH.matcher(path).matches();
+        return resolveTarget(request.getServletPath()) == null;
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain chain) throws ServletException, IOException {
-        String path = request.getServletPath();
-        Target target;
-        Matcher orgMatcher = ORG_TEAM_SEARCH_PATH.matcher(path);
-        Matcher publicMatcher = PUBLIC_API_PATH.matcher(path);
-        Matcher searchMatcher = PUBLIC_SEARCH_PATH.matcher(path);
-        Matcher marketMatcher = MARKET_API_PATH.matcher(path);
-        if (orgMatcher.matches()) {
-            target = Target.ORG_TEAM_SEARCH;
-        } else if (publicMatcher.matches() || searchMatcher.matches() || marketMatcher.matches()) {
-            target = Target.PUBLIC_API;
-        } else {
-            // shouldNotFilter で弾いているので通常到達しないが、念のため透過
-            chain.doFilter(request, response);
-            return;
+    protected RateLimitRule resolveRule(HttpServletRequest request) {
+        Target target = resolveTarget(request.getServletPath());
+        if (target == null) {
+            return null;
         }
+        int limit = isAuthenticated() ? target.authenticatedRate : target.anonymousRate;
+        return new RateLimitRule(ZONE_PREFIX + target.name(), limit, WINDOW);
+    }
 
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        boolean authenticated = auth != null
-                && auth.isAuthenticated()
-                && !"anonymousUser".equals(auth.getPrincipal());
+    /** パスから Target 種別を解決する。対象外なら null。 */
+    private static Target resolveTarget(String path) {
+        if (ORG_TEAM_SEARCH_PATH.matcher(path).matches()) {
+            return Target.ORG_TEAM_SEARCH;
+        }
+        if (PUBLIC_API_PATH.matcher(path).matches()
+                || PUBLIC_SEARCH_PATH.matcher(path).matches()
+                || MARKET_API_PATH.matcher(path).matches()) {
+            return Target.PUBLIC_API;
+        }
+        return null;
+    }
 
-        Bucket bucket;
+    /** F19.1 Phase 5: リクエスト通過時にリクエストカウンターを記録する。 */
+    @Override
+    protected void onRequestPassed(HttpServletRequest request, HttpServletResponse response) {
+        recordRequestMetric(request.getServletPath(), request.getMethod(), response.getStatus());
+    }
+
+    /** レート超過時: 監査ログ（fire-and-forget）+ 超過メトリクスを記録する。 */
+    @Override
+    protected void onRateLimitExceeded(HttpServletRequest request, RateLimitResult result) {
+        Target target = resolveTarget(request.getServletPath());
         Long userId = null;
-        if (authenticated) {
-            String name = auth.getName();
-            String key = target.name() + ":u:" + name;
-            bucket = authenticatedBuckets.get(key,
-                    k -> newBucketPerMinute(target.authenticatedRate));
-            userId = parseUserIdOrNull(name);
-        } else {
-            String key = target.name() + ":ip:" + request.getRemoteAddr();
-            bucket = anonymousBuckets.get(key,
-                    k -> newBucketPerMinute(target.anonymousRate));
+        if (isAuthenticated()) {
+            Authentication auth = currentAuthentication();
+            userId = parseUserIdOrNull(auth.getName());
         }
+        Matcher orgMatcher = ORG_TEAM_SEARCH_PATH.matcher(request.getServletPath());
+        Matcher publicMatcher = PUBLIC_API_PATH.matcher(request.getServletPath());
+        recordRateLimitAudit(request, target, userId, orgMatcher, publicMatcher);
 
-        if (bucket.tryConsume(1)) {
-            // リクエスト通過時: doFilter 後にレスポンスステータスを取得してカウンターに記録
-            chain.doFilter(request, response);
-            // F19.1 Phase 5: リクエストカウンター記録
-            recordRequestMetric(path, request.getMethod(), response.getStatus());
-        } else {
-            // レート違反時の AuditEvent 記録（非同期 fire-and-forget）
-            recordRateLimitAudit(request, target, userId, orgMatcher, publicMatcher);
-
-            response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-            response.setHeader("Retry-After", "60");
-            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-            response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-            response.getWriter().write("{\"error\":\"Too many requests\"}");
-
-            // F19.1 Phase 5: レート超過カウンター記録
-            recordRateLimitExceededMetric(path, request.getRemoteAddr());
-        }
+        // F19.1 Phase 5: レート超過カウンター記録
+        recordRateLimitExceededMetric(request.getServletPath(), request.getRemoteAddr());
     }
 
     /**
@@ -466,23 +435,5 @@ public class PublicApiRateLimitFilter extends OncePerRequestFilter {
 
     private static Long parseUserIdOrNull(String s) {
         return parseLongOrNull(s);
-    }
-
-    /**
-     * 1 分間に {@code capacity} トークンが <strong>一括補充</strong>される Bucket を生成する
-     * （{@link Refill#intervally(long, Duration) intervally refill}）。
-     *
-     * <p>{@code Bandwidth.simple} の greedy refill ではテスト実時間が長引くと連続的にトークンが
-     * 補充されてしまい、60 件消費直後の 61 件目が 200 を返してしまう問題があるため、
-     * F19.1 Phase 1 では intervally refill に統一した。挙動上は「1 分間に最大 capacity 件まで処理、
-     * 1 分経過時点で一斉にリセット」となる。本番運用での体感差は許容範囲（設計書 §10.2 と整合）。</p>
-     */
-    private Bucket newBucketPerMinute(int capacity) {
-        Bandwidth limit = Bandwidth.classic(
-                capacity,
-                Refill.intervally(capacity, Duration.ofMinutes(1)));
-        return Bucket.builder()
-                .addLimit(limit)
-                .build();
     }
 }
