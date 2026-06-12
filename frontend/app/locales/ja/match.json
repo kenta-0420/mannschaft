@@ -76,6 +76,12 @@
         "vs": "vs {opponent}",
         "penalty": "PK {home}-{away}"
       },
+      "penalty": {
+        "title": "PK戦スコア",
+        "home_label": "自チームのPK成功数",
+        "away_label": "相手チームのPK成功数",
+        "hint": "成功した本数を入力してください。試合終了時に確定し、大会の順位に反映されます。"
+      },
       "timer": {
         "state": {
           "WAITING": "開始前",

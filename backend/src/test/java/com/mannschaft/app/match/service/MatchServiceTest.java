@@ -111,6 +111,10 @@ class MatchServiceTest {
         match.setTournamentFixtureId(777L);
         match.setHomeScore(2);
         match.setAwayScore(1);
+        // 延長同点後の PK 戦（本戦 2-1 だが PK は別軸・F08.10 ② 順位連携）。
+        // changeStatus(COMPLETED) は保存済み Entity の PK を MatchCompletedEvent に載せる必要がある。
+        match.setHomePenaltyScore(5);
+        match.setAwayPenaltyScore(4);
 
         service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED);
 
@@ -124,6 +128,10 @@ class MatchServiceTest {
         assertThat(ev.getTournamentFixtureId()).isEqualTo(777L);
         assertThat(ev.getHomeScore()).isEqualTo(2);
         assertThat(ev.getAwayScore()).isEqualTo(1);
+        // PK 戦スコアが本戦と分離して event に載る（tournament/MatchScoreFixtureListener #1444 が
+        // PK 勝敗を fixture 順位へ反映する経路の前提）。
+        assertThat(ev.getHomePenaltyScore()).isEqualTo(5);
+        assertThat(ev.getAwayPenaltyScore()).isEqualTo(4);
         assertThat(ev.getStatus()).isEqualTo(MatchStatus.COMPLETED);
     }
 
