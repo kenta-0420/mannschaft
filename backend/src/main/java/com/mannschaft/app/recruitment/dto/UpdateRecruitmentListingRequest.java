@@ -1,6 +1,7 @@
 package com.mannschaft.app.recruitment.dto;
 
 import com.mannschaft.app.recruitment.RecruitmentVisibility;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
@@ -90,11 +91,13 @@ public class UpdateRecruitmentListingRequest {
      * <p>編集後の実効 {@code paymentEnabled=true} のとき必須（{@code PAYMENT_C011}）。{@code USER} は
      * {@code payeeUserId} 必須（{@code PAYMENT_C012}・所属検証 {@code PAYMENT_C013}）。検証規約は作成と同一。</p>
      */
+    @Schema(description = "受領主体種別（編集で変更可・null は変更なし）", allowableValues = {"USER", "TEAM", "ORG"}, example = "USER")
     @Pattern(regexp = "USER|TEAM|ORG", message = "payee_kind は USER / TEAM / ORG のいずれかで指定してください")
     private final String payeeKind;
 
     /**
      * {@code payeeKind=USER} の受領者ユーザー（null は変更なし）。検証規約は作成と同一（IDOR 防止）。
      */
+    @Schema(description = "payeeKind=USER のとき必須の受領者ユーザー ID（users.id・null は変更なし）", example = "123")
     private final Long payeeUserId;
 }

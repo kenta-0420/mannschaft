@@ -1668,6 +1668,10 @@
       "description": "F03.4+ 臨時休業一括通知"
     },
     {
+      "name": "大会スコアキーパー指名",
+      "description": "F08.7 順位UI 項目③ スコア入力編集権限の細分化"
+    },
+    {
       "name": "確認通知テンプレート",
       "description": "F04.9 チーム確認通知テンプレート CRUD"
     },
@@ -55897,6 +55901,98 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseCheckoutResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgId}/tournaments/{tId}/scorekeepers": {
+      "get": {
+        "tags": [
+          "大会スコアキーパー指名"
+        ],
+        "summary": "スコアキーパー指名一覧",
+        "description": "主催組織 ADMIN のみ",
+        "operationId": "listScorekeepers",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "tId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListScorekeeperResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "大会スコアキーパー指名"
+        ],
+        "summary": "スコアキーパー指名の追加",
+        "description": "主催組織 ADMIN のみ。既に指名済みの場合は冪等に既存を返す",
+        "operationId": "addScorekeeper",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "tId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateScorekeeperRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseScorekeeperResponse"
                 }
               }
             }
@@ -127185,6 +127281,50 @@
         }
       }
     },
+    "/api/v1/organizations/{orgId}/tournaments/{tId}/scorekeepers/{skId}": {
+      "delete": {
+        "tags": [
+          "大会スコアキーパー指名"
+        ],
+        "summary": "スコアキーパー指名の解除",
+        "description": "主催組織 ADMIN のみ。物理削除",
+        "operationId": "removeScorekeeper",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "tId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "skId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{orgId}/tournaments/{tId}/matches/{matchId}/rosters/{rosterId}": {
       "delete": {
         "tags": [
@@ -153528,6 +153668,14 @@
             "items": {
               "$ref": "#/components/schemas/RegionInput"
             }
+          },
+          "payeeKind": {
+            "type": "string",
+            "pattern": "USER|TEAM|ORG"
+          },
+          "payeeUserId": {
+            "type": "integer",
+            "format": "int64"
           }
         },
         "required": [
@@ -153751,6 +153899,13 @@
             "items": {
               "$ref": "#/components/schemas/FriendTargetView"
             }
+          },
+          "payeeKind": {
+            "type": "string"
+          },
+          "payeeUserId": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -166336,6 +166491,51 @@
           "paymentDue": {
             "type": "string",
             "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreateScorekeeperRequest": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "userId"
+        ]
+      },
+      "ApiResponseScorekeeperResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ScorekeeperResponse"
+          }
+        }
+      },
+      "ScorekeeperResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tournamentId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "createdBy": {
+            "type": "integer",
+            "format": "int64"
           },
           "createdAt": {
             "type": "string",
@@ -180686,6 +180886,14 @@
             "items": {
               "$ref": "#/components/schemas/RegionInput"
             }
+          },
+          "payeeKind": {
+            "type": "string",
+            "pattern": "USER|TEAM|ORG"
+          },
+          "payeeUserId": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -197326,6 +197534,15 @@
           "matchesPlayed": {
             "type": "integer",
             "format": "int32"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "anonymized": {
+            "type": "boolean"
+          },
+          "avatarUrl": {
+            "type": "string"
           }
         }
       },
@@ -199257,6 +199474,17 @@
           "resolvedTargetOrganizationId": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "ApiResponseListScorekeeperResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScorekeeperResponse"
+            }
           }
         }
       },
