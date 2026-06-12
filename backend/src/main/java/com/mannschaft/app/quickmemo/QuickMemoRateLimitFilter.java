@@ -1,20 +1,12 @@
 package com.mannschaft.app.quickmemo;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
+import com.mannschaft.app.common.ratelimit.AbstractRateLimitFilter;
+import com.mannschaft.app.common.ratelimit.RateLimitRule;
+import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.util.regex.Pattern;
 
@@ -28,11 +20,14 @@ import java.util.regex.Pattern;
  *   <li>タグ操作 ({@code /api/v1/me/tags}, {@code /api/v1/teams/{id}/tags}, {@code /api/v1/organizations/{id}/tags}): 20 req/分</li>
  * </ul>
  *
- * <p><b>キャッシュ戦略</b>: Caffeine の expireAfterAccess=10分 + maximumSize=10000。
- * {@link com.mannschaft.app.actionmemo.ActionMemoRateLimitFilter} と同一パターン。</p>
+ * <p><b>Valkey 化（第二陣A）</b>: 旧実装の Bucket4j + Caffeine（プロセス内カウント）は
+ * ECS 複数タスク構成でタスク数に比例して実効上限が緩むため、
+ * {@link ValkeyRateLimiter}（docs/security/06 §4.3）に移行した。
+ * 旧 Bucket4j greedy refill 由来のフレーク（{@code QuickMemoControllerTest}）は
+ * Valkey 固定ウィンドウ方式への移行で根治される。</p>
  */
 @Component
-public class QuickMemoRateLimitFilter extends OncePerRequestFilter {
+public class QuickMemoRateLimitFilter extends AbstractRateLimitFilter {
 
     /** CRUD操作のレート制限 (req/分) */
     private static final int CRUD_RATE_PER_MINUTE = 60;
@@ -43,11 +38,7 @@ public class QuickMemoRateLimitFilter extends OncePerRequestFilter {
     /** タグ操作のレート制限 (req/分) */
     private static final int TAG_RATE_PER_MINUTE = 20;
 
-    /** バケット保持期間（非アクセス時）。レート窓（1分）より十分長く、OOM は防ぐ。 */
-    private static final Duration BUCKET_TTL = Duration.ofMinutes(10);
-
-    /** キャッシュ最大エントリ数。LRU で古いものから淘汰する。 */
-    private static final long MAX_BUCKETS = 10_000L;
+    private static final Duration WINDOW = Duration.ofMinutes(1);
 
     /** 添付ファイル操作を判定するパターン */
     private static final Pattern ATTACHMENT_PATTERN =
@@ -61,28 +52,11 @@ public class QuickMemoRateLimitFilter extends OncePerRequestFilter {
     private static final Pattern CRUD_PATTERN =
             Pattern.compile("^/api/v1/quick-memos(/.*)?$");
 
-    /** 添付ファイル操作用バケットキャッシュ */
-    private final Cache<String, Bucket> attachmentBuckets;
+    /** Valkey zone 接頭辞。 */
+    private static final String ZONE_PREFIX = "quickmemo:";
 
-    /** タグ操作用バケットキャッシュ */
-    private final Cache<String, Bucket> tagBuckets;
-
-    /** CRUD用バケットキャッシュ */
-    private final Cache<String, Bucket> crudBuckets;
-
-    public QuickMemoRateLimitFilter() {
-        this.attachmentBuckets = Caffeine.<String, Bucket>newBuilder()
-                .expireAfterAccess(BUCKET_TTL)
-                .maximumSize(MAX_BUCKETS)
-                .build();
-        this.tagBuckets = Caffeine.<String, Bucket>newBuilder()
-                .expireAfterAccess(BUCKET_TTL)
-                .maximumSize(MAX_BUCKETS)
-                .build();
-        this.crudBuckets = Caffeine.<String, Bucket>newBuilder()
-                .expireAfterAccess(BUCKET_TTL)
-                .maximumSize(MAX_BUCKETS)
-                .build();
+    public QuickMemoRateLimitFilter(ObjectProvider<ValkeyRateLimiter> rateLimiterProvider) {
+        super(rateLimiterProvider);
     }
 
     @Override
@@ -102,44 +76,19 @@ public class QuickMemoRateLimitFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                     HttpServletResponse response,
-                                     FilterChain chain) throws ServletException, IOException {
+    protected RateLimitRule resolveRule(HttpServletRequest request) {
         String path = request.getServletPath();
-        String userKey = resolveUserKey(request);
 
-        Bucket bucket;
+        // 評価順序: より具体的なものから判定する（ATTACHMENT は CRUD より先に）
         if (ATTACHMENT_PATTERN.matcher(path).matches()) {
-            bucket = attachmentBuckets.get(userKey, k -> newBucket(ATTACHMENT_RATE_PER_MINUTE));
-        } else if (TAG_PATTERN.matcher(path).matches()) {
-            bucket = tagBuckets.get(userKey, k -> newBucket(TAG_RATE_PER_MINUTE));
-        } else {
-            bucket = crudBuckets.get(userKey, k -> newBucket(CRUD_RATE_PER_MINUTE));
+            return new RateLimitRule(ZONE_PREFIX + "ATTACHMENT", ATTACHMENT_RATE_PER_MINUTE, WINDOW);
         }
-
-        if (bucket.tryConsume(1)) {
-            chain.doFilter(request, response);
-        } else {
-            response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-            response.setHeader("Retry-After", "60");
+        if (TAG_PATTERN.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_PREFIX + "TAG", TAG_RATE_PER_MINUTE, WINDOW);
         }
-    }
-
-    /**
-     * 認証済みなら userId を、未認証なら IP をキーにする。
-     */
-    private String resolveUserKey(HttpServletRequest request) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated()
-                && !"anonymousUser".equals(auth.getPrincipal())) {
-            return "u:" + auth.getName();
+        if (CRUD_PATTERN.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_PREFIX + "CRUD", CRUD_RATE_PER_MINUTE, WINDOW);
         }
-        return "ip:" + request.getRemoteAddr();
-    }
-
-    private Bucket newBucket(int capacityPerMinute) {
-        return Bucket.builder()
-                .addLimit(Bandwidth.simple(capacityPerMinute, Duration.ofMinutes(1)))
-                .build();
+        return null;
     }
 }

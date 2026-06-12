@@ -1,20 +1,12 @@
 package com.mannschaft.app.favorite.filter;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
+import com.mannschaft.app.common.ratelimit.AbstractRateLimitFilter;
+import com.mannschaft.app.common.ratelimit.RateLimitRule;
+import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.util.regex.Pattern;
 
@@ -32,17 +24,16 @@ import java.util.regex.Pattern;
  *   <li>{@code PATCH  /api/v1/me/favorites/reorder} ─ 30 req/時</li>
  * </ul>
  *
- * <p>check API はトグルボタンマウント時に各ページで頻繁に呼ばれるため、
- * 一覧 GET の倍程度（240 req/分）を許容する。
- *
  * <p>パターンは「具体度の高いものから順に」評価する。
  * {@code /reorder} と {@code /check} を {@code /{id}} より先に判定すること。
  *
- * <p>キャッシュ戦略: Caffeine の expireAfterAccess=2 時間 + maximumSize=10000。
- * {@link com.mannschaft.app.pointcard.filter.PointCardRateLimitFilter} と同一パターン。
+ * <p><b>Valkey 化（第二陣A）</b>: 旧実装の Bucket4j + Caffeine（プロセス内カウント）は
+ * ECS 複数タスク構成でタスク数に比例して実効上限が緩むため、
+ * {@link ValkeyRateLimiter}（docs/security/06 §4.3）に移行した。
+ * 分ウィンドウ / 時間ウィンドウの混在は {@link RateLimitRule} の window フィールドで表現する。</p>
  */
 @Component
-public class FavoriteRateLimitFilter extends OncePerRequestFilter {
+public class FavoriteRateLimitFilter extends AbstractRateLimitFilter {
 
     // ──── レート定義 ─────────────────────────────
     private static final int LIST_RATE_PER_MINUTE = 120;
@@ -51,8 +42,8 @@ public class FavoriteRateLimitFilter extends OncePerRequestFilter {
     private static final int DELETE_RATE_PER_HOUR = 60;
     private static final int REORDER_RATE_PER_HOUR = 30;
 
-    private static final Duration BUCKET_TTL = Duration.ofHours(2);
-    private static final long MAX_BUCKETS = 10_000L;
+    private static final Duration WINDOW_MINUTE = Duration.ofMinutes(1);
+    private static final Duration WINDOW_HOUR = Duration.ofHours(1);
 
     // ──── パスパターン ───────────────────────────
 
@@ -72,31 +63,15 @@ public class FavoriteRateLimitFilter extends OncePerRequestFilter {
     private static final Pattern FAVORITE_ID_PATH =
             Pattern.compile("^/api/v1/me/favorites/[0-9a-fA-F-]{36}$");
 
-    // ──── バケット ──────────────────────────────
-    private final Cache<String, Bucket> listBuckets;
-    private final Cache<String, Bucket> checkBuckets;
-    private final Cache<String, Bucket> addBuckets;
-    private final Cache<String, Bucket> deleteBuckets;
-    private final Cache<String, Bucket> reorderBuckets;
+    /** Valkey zone 接頭辞。 */
+    private static final String ZONE_PREFIX = "favorite:";
 
-    public FavoriteRateLimitFilter() {
-        this.listBuckets = newCache();
-        this.checkBuckets = newCache();
-        this.addBuckets = newCache();
-        this.deleteBuckets = newCache();
-        this.reorderBuckets = newCache();
-    }
-
-    private static Cache<String, Bucket> newCache() {
-        return Caffeine.<String, Bucket>newBuilder()
-                .expireAfterAccess(BUCKET_TTL)
-                .maximumSize(MAX_BUCKETS)
-                .build();
+    public FavoriteRateLimitFilter(ObjectProvider<ValkeyRateLimiter> rateLimiterProvider) {
+        super(rateLimiterProvider);
     }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        // 本フィルタの管理対象パスのみ通す（その他のリクエストは除外）
         String method = request.getMethod();
         String path = request.getServletPath();
 
@@ -117,63 +92,26 @@ public class FavoriteRateLimitFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain chain) throws ServletException, IOException {
+    protected RateLimitRule resolveRule(HttpServletRequest request) {
         String method = request.getMethod();
         String path = request.getServletPath();
-        String userKey = resolveUserKey(request);
-
-        Bucket bucket;
-        String retryAfter;
 
         // 評価順序: より具体的なものから判定する（reorder/check を /{id} より先に）
         if ("PATCH".equalsIgnoreCase(method) && REORDER_PATH.matcher(path).matches()) {
-            bucket = reorderBuckets.get(userKey, k -> newBucketPerHour(REORDER_RATE_PER_HOUR));
-            retryAfter = "3600";
-        } else if ("GET".equalsIgnoreCase(method) && CHECK_PATH.matcher(path).matches()) {
-            bucket = checkBuckets.get(userKey, k -> newBucketPerMinute(CHECK_RATE_PER_MINUTE));
-            retryAfter = "60";
-        } else if ("DELETE".equalsIgnoreCase(method) && FAVORITE_ID_PATH.matcher(path).matches()) {
-            bucket = deleteBuckets.get(userKey, k -> newBucketPerHour(DELETE_RATE_PER_HOUR));
-            retryAfter = "3600";
-        } else if ("POST".equalsIgnoreCase(method) && FAVORITES_ROOT_PATH.matcher(path).matches()) {
-            bucket = addBuckets.get(userKey, k -> newBucketPerHour(ADD_RATE_PER_HOUR));
-            retryAfter = "3600";
-        } else if ("GET".equalsIgnoreCase(method) && FAVORITES_ROOT_PATH.matcher(path).matches()) {
-            bucket = listBuckets.get(userKey, k -> newBucketPerMinute(LIST_RATE_PER_MINUTE));
-            retryAfter = "60";
-        } else {
-            chain.doFilter(request, response);
-            return;
+            return new RateLimitRule(ZONE_PREFIX + "REORDER", REORDER_RATE_PER_HOUR, WINDOW_HOUR);
         }
-
-        if (bucket.tryConsume(1)) {
-            chain.doFilter(request, response);
-        } else {
-            response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-            response.setHeader("Retry-After", retryAfter);
+        if ("GET".equalsIgnoreCase(method) && CHECK_PATH.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_PREFIX + "CHECK", CHECK_RATE_PER_MINUTE, WINDOW_MINUTE);
         }
-    }
-
-    private String resolveUserKey(HttpServletRequest request) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated()
-                && !"anonymousUser".equals(auth.getPrincipal())) {
-            return "u:" + auth.getName();
+        if ("DELETE".equalsIgnoreCase(method) && FAVORITE_ID_PATH.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_PREFIX + "DELETE", DELETE_RATE_PER_HOUR, WINDOW_HOUR);
         }
-        return "ip:" + request.getRemoteAddr();
-    }
-
-    private Bucket newBucketPerMinute(int capacity) {
-        return Bucket.builder()
-                .addLimit(Bandwidth.simple(capacity, Duration.ofMinutes(1)))
-                .build();
-    }
-
-    private Bucket newBucketPerHour(int capacity) {
-        return Bucket.builder()
-                .addLimit(Bandwidth.simple(capacity, Duration.ofHours(1)))
-                .build();
+        if ("POST".equalsIgnoreCase(method) && FAVORITES_ROOT_PATH.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_PREFIX + "ADD", ADD_RATE_PER_HOUR, WINDOW_HOUR);
+        }
+        if ("GET".equalsIgnoreCase(method) && FAVORITES_ROOT_PATH.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_PREFIX + "LIST", LIST_RATE_PER_MINUTE, WINDOW_MINUTE);
+        }
+        return null;
     }
 }
