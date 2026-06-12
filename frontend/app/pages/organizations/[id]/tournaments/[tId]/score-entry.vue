@@ -105,6 +105,7 @@ onMounted(load)
       :org-id="orgId"
       :tournament-id="tId"
       :divisions="divisions"
+      :scoring="tournament?.scoring ?? null"
       @saved="onSaved"
     />
   </div>

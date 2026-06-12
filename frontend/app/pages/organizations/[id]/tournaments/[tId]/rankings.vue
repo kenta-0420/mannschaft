@@ -15,7 +15,11 @@ import type {
   RankingCategory,
   IndividualRanking,
 } from '~/types/tournament'
-import { buildRankingChartData, rankingValueText } from '~/utils/tournamentStandings'
+import {
+  buildRankingChartData,
+  rankingValueText,
+  resolveRankingPlayerName,
+} from '~/utils/tournamentStandings'
 import { downloadBlob } from '~/utils/downloadBlob'
 
 definePageMeta({ layout: 'organization', middleware: 'auth' })
@@ -47,10 +51,17 @@ const activeRankings = computed<IndividualRanking[]>(() =>
   activeStatKey.value != null ? (rankingsMap.value[activeStatKey.value] ?? []) : [],
 )
 
-// userId → 表示名の解決手段が BE に無いため、現状は #userId 表示にフォールバックする。
-// Wave2 で displayName が提供されたらここを差し替える。
-function resolveName(): string | undefined {
-  return undefined
+// 行の選手表示名（B-1 / BE #1466）。anonymized 時はローカライズ匿名ラベル、
+// それ以外は F19.1 経由で解決済みの displayName を表示する。
+function playerName(r: IndividualRanking): string {
+  return resolveRankingPlayerName(r.context, t('tournament.rankings.anonymousPlayer'))
+}
+
+// チャートの userId → 表示名解決。現在のランキング配列から行を引いて name を返す。
+function resolveName(userId: number | undefined): string | undefined {
+  if (userId == null) return undefined
+  const row = activeRankings.value.find((r) => r.context?.userId === userId)
+  return row ? playerName(row) : undefined
 }
 
 const chartData = computed(() =>
@@ -216,7 +227,15 @@ onMounted(load)
                   </Column>
                   <Column :header="$t('tournament.rankings.player')">
                     <template #body="{ data }">
-                      {{ data.context?.userId != null ? `#${data.context.userId}` : '-' }}
+                      <div class="flex items-center gap-2">
+                        <img
+                          v-if="data.context?.avatarUrl"
+                          :src="data.context.avatarUrl"
+                          :alt="playerName(data)"
+                          class="h-6 w-6 rounded-full object-cover"
+                        >
+                        <span>{{ playerName(data) }}</span>
+                      </div>
                     </template>
                   </Column>
                   <Column :header="$t('tournament.rankings.matchesPlayed')" style="width: 6rem">
