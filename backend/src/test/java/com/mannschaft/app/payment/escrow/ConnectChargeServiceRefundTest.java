@@ -52,6 +52,7 @@ class ConnectChargeServiceRefundTest {
     @Mock private LedgerEntryRepository ledgerEntryRepository;
     @Mock private RefundRepository refundRepository;
     @Mock private com.mannschaft.app.payment.FeePolicyResolver feePolicyResolver;
+    @Mock private com.mannschaft.app.payment.recovery.FeeRecoveryBalanceRepository feeRecoveryBalanceRepository;
 
     private final PaymentFeeCalculator feeCalculator = new PaymentFeeCalculator();
 
@@ -65,7 +66,7 @@ class ConnectChargeServiceRefundTest {
         return new ConnectChargeService(
                 escrowTransactionRepository, connectAccountRepository,
                 feeCalculator, stripePaymentProvider, accessControlService, ledgerEntryRepository,
-                refundRepository, new PayeeScopeResolver(), feePolicyResolver);
+                refundRepository, new PayeeScopeResolver(), feePolicyResolver, feeRecoveryBalanceRepository);
     }
 
     private EscrowTransactionEntity escrow(EscrowStatus status) {
@@ -154,6 +155,10 @@ class ConnectChargeServiceRefundTest {
         assertThat(debit).isEqualTo(credit).isEqualTo(9_750L);
         assertThat(entries).allMatch(e -> e.getEntryType() == LedgerEntryType.REFUND);
         assertThat(entries).allMatch(e -> ESCROW_ID.equals(e.getEscrowTransactionId()));
+
+        // ③ ModeA（PAYER）は実 Stripe 手数料の取得も未回収残高計上も一切行わない（§6.3 C1 の隔離・不変）。
+        verify(stripePaymentProvider, never()).retrieveChargeProcessingFee(anyString());
+        verify(feeRecoveryBalanceRepository, never()).save(any());
     }
 
     @Test
@@ -449,6 +454,11 @@ class ConnectChargeServiceRefundTest {
         given(stripePaymentProvider.createConnectRefund(eq("pi_abc"), eq(10_250L), eq("cancellation"),
                 eq(true), eq(true), anyString()))
                 .willReturn(new StripePaymentProvider.ConnectRefundInfo("re_b1", "pending"));
+        // §6.3 C1: 元 charge の実 Stripe 手数料 369（minor・正値）。全額返金なので比例計上額＝369 をそのまま受取側へ計上。
+        given(stripePaymentProvider.retrieveChargeProcessingFee("pi_abc")).willReturn(369L);
+        given(feeRecoveryBalanceRepository.findByConnectAccountIdAndCurrencyAndDeletedAtIsNull(PAYEE_ACCOUNT_ID, "jpy"))
+                .willReturn(Optional.empty());
+        given(feeRecoveryBalanceRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(escrowTransactionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(refundRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(ledgerEntryRepository.saveAll(any())).willAnswer(inv -> inv.getArgument(0));
@@ -477,11 +487,14 @@ class ConnectChargeServiceRefundTest {
         assertThat(refundCaptor.getValue().getAmount()).isEqualTo(9_750L);
         assertThat(refundCaptor.getValue().getStripeRefundId()).isEqualTo("re_b1");
 
-        // ledger 借貸一致: D PAYER 10,250（支払者満額）= C PAYEE 9,750（送金巻き戻し）+ C PLATFORM_FEE 500（Mannschaft 放棄/一時負担）。
+        // ledger は 2 バッチ: (1) 既存の返金バッチ（不変・借貸一致）、(2) §6.3 C1 の RECOVERY バッチ（実手数料）。
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<LedgerEntryEntity>> ledgerCaptor = ArgumentCaptor.forClass(List.class);
-        verify(ledgerEntryRepository).saveAll(ledgerCaptor.capture());
-        List<LedgerEntryEntity> entries = ledgerCaptor.getValue();
+        verify(ledgerEntryRepository, org.mockito.Mockito.times(2)).saveAll(ledgerCaptor.capture());
+        List<List<LedgerEntryEntity>> allBatches = ledgerCaptor.getAllValues();
+
+        // (1) 既存返金バッチ（不変）: D PAYER 10,250 = C PAYEE 9,750 + C PLATFORM_FEE 500。借貸一致。
+        List<LedgerEntryEntity> entries = allBatches.get(0);
         long debit = entries.stream().filter(e -> e.getDirection() == LedgerDirection.D)
                 .mapToLong(LedgerEntryEntity::getAmount).sum();
         long credit = entries.stream().filter(e -> e.getDirection() == LedgerDirection.C)
@@ -494,11 +507,37 @@ class ConnectChargeServiceRefundTest {
                 .filter(e -> e.getDirection() == LedgerDirection.C && e.getAccount() == LedgerAccount.PAYEE)
                 .mapToLong(LedgerEntryEntity::getAmount).sum();
         long platformCredit = entries.stream()
-                .filter(e -> e.getDirection() == LedgerDirection.C && e.getAccount() == LedgerAccount.PLATFORM_FEE)
+                .filter(e -> e.getDirection() == LedgerDirection.C && e.getAccount() == LedgerAccount.PLATFORM_FEE
+                        && e.getEntryType() == LedgerEntryType.FEE)
                 .mapToLong(LedgerEntryEntity::getAmount).sum();
         assertThat(payerDebit).isEqualTo(10_250L);   // 支払者満額返金
         assertThat(payeeCredit).isEqualTo(9_750L);    // 受取側送金巻き戻し（R）
-        assertThat(platformCredit).isEqualTo(500L);   // Mannschaft が放棄/一時負担する margin（application_fee 分）
+        assertThat(platformCredit).isEqualTo(500L);   // Mannschaft が放棄/一時負担する margin（application_fee 分・FEE 種別）
+        assertThat(entries).allMatch(e -> e.getEntryType() == LedgerEntryType.REFUND
+                || e.getEntryType() == LedgerEntryType.FEE);
+
+        // (2) §6.3 C1 RECOVERY バッチ（実手数料 369 を別仕訳で計上・自己完結で借貸一致）。
+        List<LedgerEntryEntity> recovery = allBatches.get(1);
+        assertThat(recovery).allMatch(e -> e.getEntryType() == LedgerEntryType.RECOVERY);
+        long recDebit = recovery.stream().filter(e -> e.getDirection() == LedgerDirection.D)
+                .mapToLong(LedgerEntryEntity::getAmount).sum();
+        long recCredit = recovery.stream().filter(e -> e.getDirection() == LedgerDirection.C)
+                .mapToLong(LedgerEntryEntity::getAmount).sum();
+        // 借貸一致: D PLATFORM_FEE 369 = C PAYEE 369（受取側からの未回収＝receivable）。
+        assertThat(recDebit).isEqualTo(recCredit).isEqualTo(369L);
+        assertThat(recovery).anyMatch(e -> e.getDirection() == LedgerDirection.D
+                && e.getAccount() == LedgerAccount.PLATFORM_FEE && e.getAmount() == 369L);
+        assertThat(recovery).anyMatch(e -> e.getDirection() == LedgerDirection.C
+                && e.getAccount() == LedgerAccount.PAYEE && e.getAmount() == 369L);
+
+        // 未回収残高: 新規行を作成し outstanding_amount=369（payee×jpy・organization_id 埋め込み）。
+        ArgumentCaptor<com.mannschaft.app.payment.recovery.FeeRecoveryBalanceEntity> balCaptor =
+                ArgumentCaptor.forClass(com.mannschaft.app.payment.recovery.FeeRecoveryBalanceEntity.class);
+        verify(feeRecoveryBalanceRepository).save(balCaptor.capture());
+        assertThat(balCaptor.getValue().getOutstandingAmount()).isEqualTo(369L);
+        assertThat(balCaptor.getValue().getConnectAccountId()).isEqualTo(PAYEE_ACCOUNT_ID);
+        assertThat(balCaptor.getValue().getCurrency()).isEqualTo("jpy");
+        assertThat(balCaptor.getValue().getOrganizationId()).isEqualTo(5L);
     }
 
     @Test
@@ -512,6 +551,11 @@ class ConnectChargeServiceRefundTest {
         given(stripePaymentProvider.createConnectRefund(eq("pi_abc"), eq(5_125L), anyString(),
                 eq(true), eq(true), anyString()))
                 .willReturn(new StripePaymentProvider.ConnectRefundInfo("re_b2", "pending"));
+        // §6.3 C1: 実手数料 369。部分返金（gross=5,125 / charge=10,250）→ 比例計上 round(369×5,125/10,250)=185。
+        given(stripePaymentProvider.retrieveChargeProcessingFee("pi_abc")).willReturn(369L);
+        given(feeRecoveryBalanceRepository.findByConnectAccountIdAndCurrencyAndDeletedAtIsNull(PAYEE_ACCOUNT_ID, "jpy"))
+                .willReturn(Optional.empty());
+        given(feeRecoveryBalanceRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(escrowTransactionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(refundRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(ledgerEntryRepository.saveAll(any())).willAnswer(inv -> inv.getArgument(0));
@@ -533,18 +577,36 @@ class ConnectChargeServiceRefundTest {
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<LedgerEntryEntity>> ledgerCaptor = ArgumentCaptor.forClass(List.class);
-        verify(ledgerEntryRepository).saveAll(ledgerCaptor.capture());
-        List<LedgerEntryEntity> entries = ledgerCaptor.getValue();
+        verify(ledgerEntryRepository, org.mockito.Mockito.times(2)).saveAll(ledgerCaptor.capture());
+        List<List<LedgerEntryEntity>> allBatches = ledgerCaptor.getAllValues();
+
+        // (1) 既存返金バッチ（不変）: D PAYER 5,125 = C PAYEE 4,875（R）+ C PLATFORM_FEE 250（gross−R＝Mannschaft 放棄分）。
+        List<LedgerEntryEntity> entries = allBatches.get(0);
         long debit = entries.stream().filter(e -> e.getDirection() == LedgerDirection.D)
                 .mapToLong(LedgerEntryEntity::getAmount).sum();
         long credit = entries.stream().filter(e -> e.getDirection() == LedgerDirection.C)
                 .mapToLong(LedgerEntryEntity::getAmount).sum();
-        // 借貸一致: D PAYER 5,125 = C PAYEE 4,875（R）+ C PLATFORM_FEE 250（gross−R＝Mannschaft 放棄分）。
         assertThat(debit).isEqualTo(credit).isEqualTo(5_125L);
         long platformCredit = entries.stream()
-                .filter(e -> e.getDirection() == LedgerDirection.C && e.getAccount() == LedgerAccount.PLATFORM_FEE)
+                .filter(e -> e.getDirection() == LedgerDirection.C && e.getAccount() == LedgerAccount.PLATFORM_FEE
+                        && e.getEntryType() == LedgerEntryType.FEE)
                 .mapToLong(LedgerEntryEntity::getAmount).sum();
         assertThat(platformCredit).isEqualTo(250L);
+
+        // (2) §6.3 C1 RECOVERY バッチ: 比例計上 185 を自己完結仕訳（D PLATFORM_FEE = C PAYEE = 185）。
+        List<LedgerEntryEntity> recovery = allBatches.get(1);
+        assertThat(recovery).allMatch(e -> e.getEntryType() == LedgerEntryType.RECOVERY);
+        long recDebit = recovery.stream().filter(e -> e.getDirection() == LedgerDirection.D)
+                .mapToLong(LedgerEntryEntity::getAmount).sum();
+        long recCredit = recovery.stream().filter(e -> e.getDirection() == LedgerDirection.C)
+                .mapToLong(LedgerEntryEntity::getAmount).sum();
+        assertThat(recDebit).isEqualTo(recCredit).isEqualTo(185L);
+
+        // 未回収残高 outstanding_amount=185（比例計上）。
+        ArgumentCaptor<com.mannschaft.app.payment.recovery.FeeRecoveryBalanceEntity> balCaptor =
+                ArgumentCaptor.forClass(com.mannschaft.app.payment.recovery.FeeRecoveryBalanceEntity.class);
+        verify(feeRecoveryBalanceRepository).save(balCaptor.capture());
+        assertThat(balCaptor.getValue().getOutstandingAmount()).isEqualTo(185L);
     }
 
     @Test
@@ -569,5 +631,89 @@ class ConnectChargeServiceRefundTest {
         verify(stripePaymentProvider).reverseTransfer(eq("tr_xyz"), eq(9_750L), anyString());
         verify(stripePaymentProvider).createConnectRefund(eq("pi_abc"), eq(9_750L), anyString(),
                 eq(false), eq(false), anyString());
+
+        // ③ 既定 ModeA でも実手数料取得/残高計上はしない（§6.3 C1 の隔離・不変）。
+        verify(stripePaymentProvider, never()).retrieveChargeProcessingFee(anyString());
+        verify(feeRecoveryBalanceRepository, never()).save(any());
+    }
+
+    // ============================================================================
+    // §6.3 第二陣 C1: ModeB 実 Stripe 手数料の未回収残高計上（追加テスト）。
+    // ============================================================================
+
+    @Test
+    @DisplayName("§6.3 C1: 既存残高への加算（upsert）— 既に outstanding=1,000 の payee 行へ実手数料 369 を加算し 1,369 にする（複式整合維持・既存 organization_id 温存）")
+    void modeBFeeRecovery_upsertExistingBalance_accumulates() {
+        ConnectChargeService svc = service();
+        givenPayeeResolves();
+        given(escrowTransactionRepository.findByIdForUpdate(ESCROW_ID)).willReturn(Optional.of(escrow(EscrowStatus.CAPTURED)));
+        given(refundRepository.findByEscrowTransactionId(ESCROW_ID)).willReturn(List.of());
+        given(stripePaymentProvider.createConnectRefund(eq("pi_abc"), eq(10_250L), anyString(),
+                eq(true), eq(true), anyString()))
+                .willReturn(new StripePaymentProvider.ConnectRefundInfo("re_b3", "pending"));
+        given(stripePaymentProvider.retrieveChargeProcessingFee("pi_abc")).willReturn(369L);
+        // 既存残高 1,000（同 payee×jpy）。加算で 1,369 になるべき。
+        com.mannschaft.app.payment.recovery.FeeRecoveryBalanceEntity existing =
+                com.mannschaft.app.payment.recovery.FeeRecoveryBalanceEntity.builder()
+                        .connectAccountId(PAYEE_ACCOUNT_ID).organizationId(5L).currency("jpy")
+                        .outstandingAmount(1_000L).build();
+        given(feeRecoveryBalanceRepository.findByConnectAccountIdAndCurrencyAndDeletedAtIsNull(PAYEE_ACCOUNT_ID, "jpy"))
+                .willReturn(Optional.of(existing));
+        given(feeRecoveryBalanceRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+        given(escrowTransactionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+        given(refundRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+        given(ledgerEntryRepository.saveAll(any())).willAnswer(inv -> inv.getArgument(0));
+
+        svc.refund(ESCROW_ID, null, FeeBearer.PAYEE, "cancellation", null, ACTOR_USER_ID);
+
+        // 既存行へ 369 加算 → 1,369。新規行は作らない（同一 entity を save）。
+        ArgumentCaptor<com.mannschaft.app.payment.recovery.FeeRecoveryBalanceEntity> balCaptor =
+                ArgumentCaptor.forClass(com.mannschaft.app.payment.recovery.FeeRecoveryBalanceEntity.class);
+        verify(feeRecoveryBalanceRepository).save(balCaptor.capture());
+        assertThat(balCaptor.getValue().getOutstandingAmount()).isEqualTo(1_369L);
+        assertThat(balCaptor.getValue().getOrganizationId()).isEqualTo(5L);
+        // RECOVERY 仕訳も借貸一致で記帳される（既存返金バッチ＋RECOVERY バッチ＝2 回）。
+        verify(ledgerEntryRepository, org.mockito.Mockito.times(2)).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("§6.3 C1: 実手数料が pending（未確定）の場合は残高計上をスキップし RECOVERY 仕訳も追記しない（0 で握り潰さない・既存返金会計は不変）")
+    void modeBFeeRecovery_pendingFee_skipsBalanceAndRecoveryLedger() {
+        ConnectChargeService svc = service();
+        givenPayeeResolves();
+        given(escrowTransactionRepository.findByIdForUpdate(ESCROW_ID)).willReturn(Optional.of(escrow(EscrowStatus.CAPTURED)));
+        given(refundRepository.findByEscrowTransactionId(ESCROW_ID)).willReturn(List.of());
+        given(stripePaymentProvider.createConnectRefund(eq("pi_abc"), eq(10_250L), anyString(),
+                eq(true), eq(true), anyString()))
+                .willReturn(new StripePaymentProvider.ConnectRefundInfo("re_b4", "pending"));
+        // balance_transaction 未確定 → PROCESSING_FEE_PENDING を返す。
+        given(stripePaymentProvider.retrieveChargeProcessingFee("pi_abc"))
+                .willReturn(StripePaymentProvider.PROCESSING_FEE_PENDING);
+        given(escrowTransactionRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+        given(refundRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+        given(ledgerEntryRepository.saveAll(any())).willAnswer(inv -> inv.getArgument(0));
+
+        svc.refund(ESCROW_ID, null, FeeBearer.PAYEE, "cancellation", null, ACTOR_USER_ID);
+
+        // 残高計上なし・balance 行を引きにいかない・RECOVERY 仕訳も追記しない（既存返金バッチ 1 回のみ）。
+        verify(feeRecoveryBalanceRepository, never()).save(any());
+        verify(feeRecoveryBalanceRepository, never())
+                .findByConnectAccountIdAndCurrencyAndDeletedAtIsNull(any(), anyString());
+        verify(ledgerEntryRepository, org.mockito.Mockito.times(1)).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("§6.3 C1: 冪等 — 既 REFUNDED の二重返金は no-op で実手数料取得も残高計上も走らない（同一返金で二重計上しない）")
+    void modeBFeeRecovery_alreadyRefunded_noDoubleCount() {
+        ConnectChargeService svc = service();
+        givenPayeeResolves();
+        given(escrowTransactionRepository.findByIdForUpdate(ESCROW_ID)).willReturn(Optional.of(escrow(EscrowStatus.REFUNDED)));
+
+        svc.refund(ESCROW_ID, null, FeeBearer.PAYEE, "cancellation", null, ACTOR_USER_ID);
+
+        // 終端状態冪等 → Stripe も残高計上も一切呼ばない（二重計上の根本防止）。
+        verify(stripePaymentProvider, never()).retrieveChargeProcessingFee(anyString());
+        verify(feeRecoveryBalanceRepository, never()).save(any());
+        verify(ledgerEntryRepository, never()).saveAll(any());
     }
 }

@@ -11,6 +11,8 @@ import com.mannschaft.app.payment.connect.ConnectAccountRepository;
 import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
 import com.mannschaft.app.payment.connect.PayeeScopeResolver;
 import com.mannschaft.app.payment.connect.ScopeKind;
+import com.mannschaft.app.payment.recovery.FeeRecoveryBalanceEntity;
+import com.mannschaft.app.payment.recovery.FeeRecoveryBalanceRepository;
 import com.mannschaft.app.payment.stripe.CaptureMethod;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import lombok.RequiredArgsConstructor;
@@ -79,6 +81,7 @@ public class ConnectChargeService {
     private final RefundRepository refundRepository;
     private final PayeeScopeResolver payeeScopeResolver;
     private final FeePolicyResolver feePolicyResolver;
+    private final FeeRecoveryBalanceRepository feeRecoveryBalanceRepository;
 
     /**
      * 謝礼の与信を開始する（設計書 02 §5.1）。
@@ -900,6 +903,9 @@ public class ConnectChargeService {
 
         StripePaymentProvider.ConnectRefundInfo refundInfo;
         List<LedgerEntryEntity> entries;
+        // ModeB（受取側負担）でこの返金が支払者へ戻したグロス額（§6.3 第二陣 C1: 実 Stripe 手数料の比例計上に用いる）。
+        // ModeA では 0（残高計上しない・不変）。
+        long modeBGrossRefund = 0L;
         if (effectiveBearer == FeeBearer.PAYER) {
             // ── モードA＝支払者負担（decouple 方式・比例 reverse の取りこぼし回避・02 §6.1）──
             // (1) 受取側送金から R を明示的に巻き戻す（先に実行。失敗時は支払者返金へ進まず Mannschaft の持ち出しも防ぐ）。
@@ -930,6 +936,7 @@ public class ConnectChargeService {
             // ── モードB＝受取側負担（支払者満額返金＋application_fee 返金・02 §6.1）──
             // 支払者へ戻すグロス額: 全額（R==残額全部）なら chargeAmount、部分なら R を支払者上乗せ込みにグロスアップ。
             long grossRefund = grossRefundForPayee(escrow, refundAmount, residualBefore);
+            modeBGrossRefund = grossRefund;
             // Refund.create(amount=grossRefund, reverse_transfer=true, refund_application_fee=true)。
             // reverse_transfer=true: 送金を（比例）巻き戻し受取側から回収。refund_application_fee=true: 1.4% を放棄し中立化。
             // ⚠️ Stripe 仕様: 元取引の決済手数料は返金されず標準フローでは Mannschaft 負担。明示 TransferReversal は呼ばない
@@ -973,6 +980,14 @@ public class ConnectChargeService {
 
         ledgerEntryRepository.saveAll(entries);
 
+        // §6.3 第二陣 C1: ModeB のみ、元 charge の実 Stripe 決済手数料を受取側からの未回収残高として計上する。
+        // 既存の返金会計（D PAYER / C PAYEE / C PLATFORM_FEE）は上で確定済みで一切触らず、ここでは
+        // 自己完結した RECOVERY 仕訳（D PLATFORM_FEE = C PAYEE = 実手数料相当）を別バッチで追記し、
+        // fee_recovery_balances.outstanding_amount を同額だけ積む（残高計上のみ・実回収は後続 A 陣）。
+        if (effectiveBearer == FeeBearer.PAYEE) {
+            recordModeBStripeFeeRecovery(escrow, modeBGrossRefund, refundInfo.refundId());
+        }
+
         log.info("返金を受付 status={}: escrowId={}, refundId={}, feeBearer={}, R={}（transferベース）, 累計={}/{}",
                 escrow.getStatus(), escrowId, refundInfo.refundId(), effectiveBearer, refundAmount, newTotal, transferAmount);
         return new RefundResult(escrowId, escrow.getStatus(), refundAmount, transferAmount - newTotal);
@@ -1006,6 +1021,93 @@ public class ConnectChargeService {
             return refundAmount;
         }
         return Math.round((double) chargeAmount * refundAmount / transferAmount);
+    }
+
+    /**
+     * ModeB（受取側負担）返金で Mannschaft が一時負担した <b>元 charge の実 Stripe 決済手数料</b>を、
+     * 受取側（payee）から回収すべき未回収残高として計上する（§6.3 第二陣 C1・残高計上のみ）。
+     *
+     * <p><b>会計の隔離（複式整合を崩さない）:</b> 呼び出し元の既存返金会計
+     * （{@code D PAYER=grossRefund / C PAYEE=R / C PLATFORM_FEE=grossRefund−R}）は確定済みで一切触らない。
+     * 本メソッドは<b>別バッチ</b>で自己完結した RECOVERY 仕訳のみを追記する:</p>
+     * <pre>
+     *   D PLATFORM_FEE = stripeFeeRecoverable   (Mannschaft が一時負担＝費用計上)
+     *   C PAYEE        = stripeFeeRecoverable   (受取側からの未回収＝receivable)
+     * </pre>
+     * <p>この仕訳は借方=貸方が常に成立し（{@code LedgerEntryBuilder.build()} で検算）、既存返金バッチの
+     * 借貸一致にも影響しない。{@code C PAYEE} の額と同額を {@code fee_recovery_balances.outstanding_amount}
+     * に積む。現行 {@code C PLATFORM_FEE}（margin 放棄＝{@code grossRefund−R}）と本仕訳（実手数料）は
+     * {@link LedgerEntryType} が {@code FEE} と {@code RECOVERY} で峻別され、意味のズレ（家老指摘）を排する。</p>
+     *
+     * <p><b>比例計上（部分返金の二重計上回避）:</b> 元 charge の Stripe 手数料は charge 1 件に対する固定費だが、
+     * 部分 ModeB 返金が複数回起こりうる。各回でグロス返金の比率
+     * {@code round(stripeFee × thisGrossRefund / chargeAmount)} を計上することで、全返金にわたる積み上げ合計が
+     * 元手数料を超えない（≤1 円の丸め誤差）。同一返金の二重起票は escrow の終端状態冪等（REFUNDED→no-op）と
+     * 1 返金=1 呼び出しで防がれる。</p>
+     *
+     * <p><b>pending の扱い（症状を隠さない）:</b> balance_transaction 未確定で実手数料が取れない
+     * （{@link StripePaymentProvider#PROCESSING_FEE_PENDING}）場合は残高計上を<b>スキップ</b>し、
+     * リコンシリエーション（§6.3）での補完に委ねる（0 円で握り潰さない）。</p>
+     *
+     * @param escrow      返金対象 escrow（payeeConnectAccountId / organizationId / amount=chargeAmount を保持）
+     * @param grossRefund 今回 ModeB で支払者へ戻したグロス額（比例計上の分子）
+     * @param refundId    対象 Stripe Refund ID（{@code re_xxx}・ledger の stripe_object_id 突合用）
+     */
+    private void recordModeBStripeFeeRecovery(EscrowTransactionEntity escrow, long grossRefund, String refundId) {
+        long stripeFee = stripePaymentProvider.retrieveChargeProcessingFee(escrow.getStripePaymentIntentId());
+        if (stripeFee == StripePaymentProvider.PROCESSING_FEE_PENDING) {
+            // 実手数料未確定。0 と誤認させず計上をスキップし、§6.3 リコンシリで補完する（症状を隠さない）。
+            log.warn("ModeB 実手数料が未確定（pending）のため未回収残高計上をスキップ（§6.3 で補完）: escrowId={}, refundId={}",
+                    escrow.getId(), refundId);
+            return;
+        }
+        long chargeAmount = escrow.getAmount();
+        // 比例計上: 全額返金なら stripeFee 全部、部分なら gross 比率。chargeAmount<=0 は理論上ないが除算保護。
+        long recoverable = (chargeAmount <= 0L) ? stripeFee
+                : Math.round((double) stripeFee * grossRefund / chargeAmount);
+        if (recoverable <= 0L) {
+            log.info("ModeB 実手数料の比例計上額が 0（計上なし）: escrowId={}, stripeFee={}, gross={}, charge={}",
+                    escrow.getId(), stripeFee, grossRefund, chargeAmount);
+            return;
+        }
+
+        // 自己完結 RECOVERY 仕訳（D PLATFORM_FEE = C PAYEE = recoverable）を別バッチで追記（既存返金バッチは不変）。
+        List<LedgerEntryEntity> recoveryEntries = LedgerEntryBuilder.forTransaction(escrow.getId(), escrow.getCurrency())
+                .debit(LedgerEntryType.RECOVERY, LedgerAccount.PLATFORM_FEE, recoverable, refundId)
+                .credit(LedgerEntryType.RECOVERY, LedgerAccount.PAYEE, recoverable, refundId)
+                .build();
+        ledgerEntryRepository.saveAll(recoveryEntries);
+
+        // 未回収残高を payee（connect_account）×currency で upsert（無ければ作成・organization_id も埋める）。
+        String currency = normalizeRecoveryCurrency(escrow.getCurrency());
+        FeeRecoveryBalanceEntity balance = feeRecoveryBalanceRepository
+                .findByConnectAccountIdAndCurrencyAndDeletedAtIsNull(escrow.getPayeeConnectAccountId(), currency)
+                .orElseGet(() -> FeeRecoveryBalanceEntity.builder()
+                        .connectAccountId(escrow.getPayeeConnectAccountId())
+                        .organizationId(escrow.getOrganizationId())
+                        .currency(currency)
+                        .outstandingAmount(0L)
+                        .build());
+        long current = balance.getOutstandingAmount() != null ? balance.getOutstandingAmount() : 0L;
+        balance.setOutstandingAmount(current + recoverable);
+        // 既存行で organization_id 未設定なら補完（過去の不完全データの是正・症状を隠さない）。
+        if (balance.getOrganizationId() == null && escrow.getOrganizationId() != null) {
+            balance.setOrganizationId(escrow.getOrganizationId());
+        }
+        feeRecoveryBalanceRepository.save(balance);
+
+        log.info("ModeB 実 Stripe 手数料を未回収残高に計上（§6.3 C1）: escrowId={}, payeeAccountId={}, currency={}, "
+                        + "stripeFee={}, gross={}, charge={}, 計上額={}, 計上後残高={}",
+                escrow.getId(), escrow.getPayeeConnectAccountId(), currency,
+                stripeFee, grossRefund, chargeAmount, recoverable, balance.getOutstandingAmount());
+    }
+
+    /**
+     * 残高表の通貨表現を正規化する。{@code fee_recovery_balances.currency} は minor 母数として小文字
+     * （既定 {@code jpy}）で持つため、escrow（{@code JPY} 等大文字）から小文字へ揃える（UNIQUE 突合の安定化）。
+     */
+    private String normalizeRecoveryCurrency(String currency) {
+        return (currency == null || currency.isBlank()) ? "jpy" : currency.toLowerCase(java.util.Locale.ROOT);
     }
 
     /**
