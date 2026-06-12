@@ -22,6 +22,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
@@ -898,6 +899,26 @@ public class GlobalExceptionHandler {
      */
     public ResponseEntity<ErrorResponse> handleIllegalState(IllegalStateException ex) {
         return handleIllegalState(ex, null);
+    }
+
+    /**
+     * Spring Security の @PreAuthorize / @PostAuthorize が返す認可拒否例外。
+     *
+     * <p>Spring Security 6.x では {@code @PreAuthorize} が失敗すると
+     * {@code AuthorizationDeniedException}（{@code AccessDeniedException} のサブクラス）が投げられる。
+     * {@code ExceptionTranslationFilter} より前に Spring MVC の {@code @RestControllerAdvice} が
+     * 捕捉すると 500 になる既知問題のため、ここで明示的に 403 に変換する。</p>
+     *
+     * <p>SecurityConfig の {@code accessDeniedHandler} はフィルターチェーン外の例外には到達しないため
+     * 二重防御として本ハンドラーが必要。</p>
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDeniedException(
+            AccessDeniedException ex, HttpServletRequest request) {
+        log.debug("Access denied: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(ErrorResponse.of(CommonErrorCode.COMMON_002));
     }
 
     /**
