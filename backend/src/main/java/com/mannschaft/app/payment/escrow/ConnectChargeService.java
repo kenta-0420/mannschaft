@@ -1018,12 +1018,14 @@ public class ConnectChargeService {
 
         ledgerEntryRepository.saveAll(entries);
 
-        // §6.3 検分🔴根治: 自己返金（A で回収を上乗せした charge を ModeB 返金）時の回収金消失を、
-        //   ① recovery_kind による峻別（sumAppliedRecoveryNetOnEscrow が A 経路のみ集計）と
-        //   ② 順序（再計上を C1 発生計上より先に呼ぶ）の二重防御で防ぐ。
-        // 順序の意図: recapitalize は当該 escrow の A 回収実行純額を読む。C1 を先に saveAll すると Hibernate AUTO フラッシュで
-        // C1 行が同一クエリに混入しうるため、recovery_kind で除外していても、念のため先に recapitalize（A 純額の確定読み取り）を
-        // 済ませてから C1（C PAYEE）を積む。両者は同一 payee 残高に正しく加算合成される（A 再計上の +applied と C1 の +recoverable）。
+        // §6.3 検分🔴根治: 自己返金（A で回収を上乗せした charge を ModeB 返金）時の回収金消失を防ぐ正準対策は
+        //   ① recovery_kind による峻別（sumAppliedRecoveryNetOnEscrow が A 経路 A_EXECUTION−A_RECAPITALIZE のみを集計し
+        //      C1_ACCRUAL/C2_COMPLETION の C PAYEE を構造的に排除する）。これ単独で消失バグは根治しており、
+        //   集計は C1 を後で積もうが先に積もうが結果が変わらない＝順序非依存である。
+        // 以下の「recapitalize を C1 より先に呼ぶ」順序は、kind 限定で論理上不要になった保険を冗長に残すだけのもので、
+        //   万全性の不足を補うものではない。仮に kind フィルタを将来うっかり緩めても A 純額を確定読みできるよう、
+        //   C1（C PAYEE）を saveAll する前に recapitalize（A 純額の確定読み取り）を済ませておく念のための二重防御である。
+        //   両者は同一 payee 残高に正しく加算合成される（A 再計上の +applied と C1 の +recoverable）。
         if (effectiveBearer == FeeBearer.PAYEE) {
             // §6.3 第四陣 A（回収分の再返金エッジ・家老指摘の最小安全策）: この escrow 自身が A 陣で「回収を上乗せされた
             // charge」だった場合、ModeB 返金は refund_application_fee:true で application_fee 全体（self totalFee＋recovery）を

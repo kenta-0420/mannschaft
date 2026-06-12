@@ -26,7 +26,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <b>既存データ（V72.006 の旧 CHECK で許可された 6 種の entry_type を含む ledger_entries 行）を持つ
  * MySQL に対し、V84.002（{@code chk_le_entry_type} に RECOVERY 追加）＋ V84.003（{@code recovery_kind} 列と
  * {@code chk_le_recovery_kind} 追加）を含む全マイグレーションがクラッシュせず適用でき、既存行が生存し、
- * かつ新値 RECOVERY と recovery_kind 付き RECOVERY 行も INSERT でき、非 RECOVERY 行の recovery_kind が
+ * かつ新値 RECOVERY と recovery_kind 付き RECOVERY 行も INSERT でき、<b>RECOVERY 行で recovery_kind=NULL が
+ * 厳格 CHECK で弾かれ（静かな金銭ドロップ防止・4 値必須）、4 値はいずれも通り、非 RECOVERY 行の recovery_kind が
  * CHECK で弾かれること</b>を検証する番人テスト。
  *
  * <h2>このテストが守る不変条件 / 背景</h2>
@@ -147,15 +148,45 @@ class FlywayExistingDataLedgerRecoveryMigrationTest {
                     .as("V84.003 適用後 chk_le_recovery_kind が存在すること")
                     .isTrue();
 
-            // then-5（V84.003）: RECOVERY 行に有効な recovery_kind（A_EXECUTION）を持つ行を INSERT できる
-            insertRecoveryEntry(c, UUID.randomUUID(), escrowId, "A_EXECUTION");
-            assertThat(countLedgerEntries(c)).as("recovery_kind 付き RECOVERY 行が追加され計 8 行になること").isEqualTo(8);
+            // then-5（V84.003 厳格 CHECK）: RECOVERY 行は 4 値（C1_ACCRUAL/C2_COMPLETION/A_EXECUTION/A_RECAPITALIZE）が
+            // いずれも通る。4 経路すべてが kind を設定するため、4 値全てを INSERT できることを担保する。
+            String[] validKinds = {"C1_ACCRUAL", "C2_COMPLETION", "A_EXECUTION", "A_RECAPITALIZE"};
+            for (String kind : validKinds) {
+                insertRecoveryEntry(c, UUID.randomUUID(), escrowId, kind);
+            }
+            assertThat(countLedgerEntries(c))
+                    .as("4 値の recovery_kind 付き RECOVERY 行が追加され計 12 行になること")
+                    .isEqualTo(12);
 
-            // then-6（V84.003）: 非 RECOVERY 行に recovery_kind を持たせると CHECK 違反で弾かれる（NULL 強制）
+            // then-6（V84.003 厳格 CHECK・静かな金銭ドロップ防止）: RECOVERY 行で recovery_kind=NULL は弾かれる。
+            // NULL 許容を残すと峻別が曖昧になり回収金消失の穴が再発するため、NOT NULL 相当を CHECK で強制する。
+            assertThat(insertRecoveryWithNullKindFails(c, escrowId))
+                    .as("RECOVERY 行で recovery_kind=NULL は chk_le_recovery_kind 違反で弾かれること")
+                    .isTrue();
+            assertThat(countLedgerEntries(c)).as("弾かれた行は挿入されず計 12 行のままであること").isEqualTo(12);
+
+            // then-7（V84.003）: 非 RECOVERY 行に recovery_kind を持たせると CHECK 違反で弾かれる（NULL 強制）
             assertThat(insertNonRecoveryWithKindFails(c, escrowId))
                     .as("非 RECOVERY 行に recovery_kind を入れると chk_le_recovery_kind 違反で弾かれること")
                     .isTrue();
-            assertThat(countLedgerEntries(c)).as("弾かれた行は挿入されず計 8 行のままであること").isEqualTo(8);
+            assertThat(countLedgerEntries(c)).as("弾かれた行は挿入されず計 12 行のままであること").isEqualTo(12);
+        }
+    }
+
+    /** RECOVERY 行を recovery_kind=NULL で INSERT し、厳格 CHECK 違反で弾かれたら true（4 値必須の担保）。 */
+    private boolean insertRecoveryWithNullKindFails(Connection c, UUID escrowId) throws SQLException {
+        try (PreparedStatement ps = c.prepareStatement("""
+                INSERT INTO ledger_entries
+                    (id, escrow_transaction_id, entry_type, account, direction,
+                     amount, running_balance, recovery_kind)
+                VALUES (?, ?, 'RECOVERY', 'PAYEE', 'D', 100, 100, NULL)
+                """)) {
+            ps.setBytes(1, toBytes(UUID.randomUUID()));
+            ps.setBytes(2, toBytes(escrowId));
+            ps.executeUpdate();
+            return false; // 挿入できてしまった＝CHECK が緩く NULL を許している
+        } catch (SQLException expected) {
+            return true; // CHECK 違反で弾かれた（期待どおり）
         }
     }
 

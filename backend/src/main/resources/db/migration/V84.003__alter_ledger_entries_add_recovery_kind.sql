@@ -13,10 +13,11 @@
 -- 根治: RECOVERY 仕訳に明示の識別（recovery_kind）を持たせ、「当該 escrow に上乗せ適用した回収の純額」を
 --   A 経路（C1_ACCRUAL/C2_COMPLETION を除外）だけで導出する。勘定の向きだけに依存しない確実な峻別とする。
 --
--- 既存データ非破壊: 既存 RECOVERY 行（V84.002 投入後の本ブランチ内データ）には recovery_kind が無いが、
---   本機構は本 PR で初導入のため運用環境に既存 RECOVERY 行は存在しない（V84.001/002 と同一リリース）。
---   NULL 許容で追加し、CHECK は「RECOVERY 以外は NULL・RECOVERY は 4 値のいずれか（または後方互換で NULL）」を許す。
---   非 RECOVERY 行（AUTHORIZE/CAPTURE/TRANSFER_OUT/FEE/REFUND/CANCEL）は recovery_kind=NULL のまま。
+-- 既存データ非破壊: 本機構は本 PR で初導入のため運用環境に既存 RECOVERY 行は存在しない（V84.001/002/003 と同一
+--   リリースで未マージ）。よって recovery_kind=NULL の RECOVERY 行は本ブランチ内にも存在せず、CHECK を厳格化しても
+--   既存データを壊さない。非 RECOVERY 行（AUTHORIZE/CAPTURE/TRANSFER_OUT/FEE/REFUND/CANCEL）は recovery_kind=NULL のまま生存する。
+--
+-- 列自体は NULL 許容（非 RECOVERY 行が NULL を保持するため）。RECOVERY 行の NOT NULL は CHECK で担保する。
 --
 -- 設計書: docs/features/F22.1_market/payment/01_data_model.md §3.3 / 02_api_design.md §6.3
 ALTER TABLE ledger_entries
@@ -24,10 +25,13 @@ ALTER TABLE ledger_entries
         COMMENT 'RECOVERY 仕訳の経路識別（C1_ACCRUAL/C2_COMPLETION/A_EXECUTION/A_RECAPITALIZE・非 RECOVERY は NULL）'
         AFTER stripe_object_id;
 
--- 非 RECOVERY 行は recovery_kind=NULL を強制し、RECOVERY 行は 4 値のいずれか（後方互換で NULL も許容）に限定する。
+-- 静かな金銭ドロップの穴を塞ぐ厳格 CHECK:
+--   ・RECOVERY 行は recovery_kind が 4 値（C1_ACCRUAL/C2_COMPLETION/A_EXECUTION/A_RECAPITALIZE）のいずれか必須（NULL 不可）。
+--     RECOVERY を書く 4 経路（recordModeBStripeFeeRecovery / completePendingRecovery / recordRecoveryExecution /
+--     recapitalizeAppliedRecoveryOnRefund）は必ず kind を設定するため、NULL 許容は峻別を曖昧にする穴でしかない。
+--   ・非 RECOVERY 行は recovery_kind=NULL を強制する。
 ALTER TABLE ledger_entries
     ADD CONSTRAINT chk_le_recovery_kind CHECK (
         (entry_type = 'RECOVERY'
-            AND (recovery_kind IS NULL
-                 OR recovery_kind IN ('C1_ACCRUAL','C2_COMPLETION','A_EXECUTION','A_RECAPITALIZE')))
+            AND recovery_kind IN ('C1_ACCRUAL','C2_COMPLETION','A_EXECUTION','A_RECAPITALIZE'))
         OR (entry_type <> 'RECOVERY' AND recovery_kind IS NULL));
