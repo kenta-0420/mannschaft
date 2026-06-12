@@ -2,7 +2,7 @@
 
 > **ステータス**: 🟢 設計確定
 > **実装フェーズ**: Security Hardening Phase 1
-> **最終更新**: 2026-05-26
+> **最終更新**: 2026-06-12
 > **関連ドキュメント**: F01.1 認証, F01.2-04 セキュリティ運用, F03.5-04 セキュリティ運用, F10.3 監査ログ, F12.3 GDPR, F12.4 セッション管理, docs/architecture/db_scalability.md
 
 ---
@@ -33,10 +33,10 @@
 
 | OWASP カテゴリ | 主な対策 | 文書 |
 |---|---|---|
-| A01 アクセス制御の不備 | deny-by-default 認可 / ロール・権限モデル（SYSTEM_ADMIN を JWT・per-scope は SpEL ガード）/ `AbstractTenantAwareRepository` によるテナント絞り込み / IDOR 防止（`*` 1 階層厳格パターン） ⚠️ **Phase 1〜3 未着手（本番前必須）** | [01](01_authorization_baseline.md), [03 ロール・権限](03_role_authority_model.md), F01.2-04, F03.5-04 |
+| A01 アクセス制御の不備 | deny-by-default 認可 / ロール・権限モデル（SYSTEM_ADMIN を JWT・per-scope は SpEL ガード）/ `AbstractTenantAwareRepository` によるテナント絞り込み / IDOR 防止（`*` 1 階層厳格パターン） 🟢 **Phase 1〜3 実装済み（#1266・2026-06-02 点火）** | [01](01_authorization_baseline.md), [03 ロール・権限](03_role_authority_model.md), F01.2-04, F03.5-04 |
 | A02 暗号化の失敗 | TLS/HSTS / AES-256-GCM（`birth_date` 等）/ JWT HMAC-SHA256 / 機密は環境変数 | [03](03_security_headers_and_csp.md) §TLS, [§6 本書](#6-シークレット管理ポリシー現状記録), F01.1 |
 | A03 インジェクション | JPA パラメータバインディング / DOMPurify / CSP | [05](05_injection_and_input_validation.md) |
-| A04 安全が考慮されない設計 | レートリミット（公開 API/ログイン）/ 退会時匿名化 / モジュラーモノリスのドメイン境界 🔴 **ビジネスロジック設計書未整備→[06](06_business_logic_and_abuse_prevention.md)参照** | F01.2-04, F19.1, CLAUDE.md, [06](06_business_logic_and_abuse_prevention.md) |
+| A04 安全が考慮されない設計 | レートリミット（公開 API/ログイン）/ 退会時匿名化 / モジュラーモノリスのドメイン境界。レートリミット Valkey 化 全 18 フィルタ完了（🟢 #1470/#1471/#1472・2026-06-12）/ ビジネスロジック設計書は [06](06_business_logic_and_abuse_prevention.md) に整備済み | F01.2-04, F19.1, CLAUDE.md, [06](06_business_logic_and_abuse_prevention.md) |
 | A05 セキュリティの設定ミス | CSP / セキュリティヘッダー / CORS / devtools 本番無効化 / Actuator は SYSTEM_ADMIN 限定 | [03](03_security_headers_and_csp.md) |
 | A06 脆弱で古いコンポーネント | Dependabot / OWASP Dependency-Check / npm audit | [04](04_dependency_and_supply_chain.md) |
 | A07 識別と認証の失敗 | BCrypt(12) / アカウントロック / トークンローテーション / HttpOnly+Secure+SameSite Cookie | [02](02_cookie_and_session.md), F01.1, F12.4 |
@@ -52,7 +52,7 @@
 |---|---|---|
 | [01_authorization_baseline.md](01_authorization_baseline.md) | 認可の既定値・公開エンドポイント許可リスト・webhook・WebSocket 二層認証 | 🟢 設計確定 |
 | [02_cookie_and_session.md](02_cookie_and_session.md) | Cookie 属性・セッション無効化・access_token roles claim・Valkey Fail-Open 方針 | 🟢 設計確定 |
-| [03_role_authority_model.md](03_role_authority_model.md) | **ロール・権限モデル（認可基盤完全根治）**。JWT への SYSTEM_ADMIN 搭載・per-scope SpEL ガード・`@PreAuthorize` カタログ・段階計画 Phase 0〜6 | 🟡 設計確定（実装 Phase 0〜5 未着手）⚠️ **本番前必須** |
+| [03_role_authority_model.md](03_role_authority_model.md) | **ロール・権限モデル（認可基盤完全根治）**。JWT への SYSTEM_ADMIN 搭載・per-scope SpEL ガード・`@PreAuthorize` カタログ・段階計画 Phase 0〜6 | 🟢 Phase 1〜3 実装済み（#1266・2026-06-02 点火）。Phase 4（ShiftPdf 負論理）・Phase 5（統合テスト）は未着手 |
 | [03_security_headers_and_csp.md](03_security_headers_and_csp.md) | CSP・セキュリティヘッダー・CORS・TLS | 🟢 設計確定 |
 | [04_dependency_and_supply_chain.md](04_dependency_and_supply_chain.md) | Dependabot・脆弱性管理。npm high 脆弱性 11 件未解消（2026-06-02） | 🟢 設計確定 |
 | [05_injection_and_input_validation.md](05_injection_and_input_validation.md) | SQL/XSS/入力検証・マスアサインメント・ログインジェクション | 🟢 設計確定 |
@@ -138,11 +138,13 @@
 
 セキュリティ精査（2026-06-02）で判明した未実装・未解消の重大ギャップ。本番稼働前に全て対処すること。
 
-| ID | 内容 | 深刻度 | 設計書 |
-|---|---|---|---|
-| 🔴 C-1 | 認可基盤根治（Phase 1〜5）— JWT roles 固定・`@EnableMethodSecurity` 未有効・97 個の `@PreAuthorize` が no-op | **Critical** | [03](03_role_authority_model.md) |
-| 🔴 C-2 | npm high 脆弱性 × 11 件未解消（serialize-javascript RCE 等）。CI は `continue-on-error: true` で通過中 | **Critical** | [04](04_dependency_and_supply_chain.md) |
-| 🔴 C-3 | CSP 違反レポート受信エンドポイント未実装（`POST /api/v1/security/csp-reports`）— CSP を設定しても違反を検知できない | **High** | [03 CSP](03_security_headers_and_csp.md) |
+| ID | 内容 | 深刻度 | 設計書 | 状態 |
+|---|---|---|---|---|
+| C-1 | 認可基盤根治（Phase 1〜5）— JWT roles 固定・`@EnableMethodSecurity` 未有効・97 個の `@PreAuthorize` が no-op | **Critical** | [03](03_role_authority_model.md) | 🟢 **Phase 1〜3 根治済み（#1266・2026-06-02 点火）**。残: Phase 4（ShiftPdf 負論理 SUPPORTER 排除）・Phase 5（統合テスト） |
+| 🔴 C-2 | npm high 脆弱性 × 11 件未解消（serialize-javascript RCE 等）。CI は `continue-on-error: true` で通過中 | **Critical** | [04](04_dependency_and_supply_chain.md) | ⏳ 未着手（別部隊担当） |
+| 🔴 C-3 | CSP 違反レポート受信エンドポイント未実装（`POST /api/v1/security/csp-reports`）— CSP を設定しても違反を検知できない | **High** | [03 CSP](03_security_headers_and_csp.md) | 未確認のため据え置き |
+
+> ※C-1 の裏取り根拠: `SecurityConfig.java` に `@EnableMethodSecurity(prePostEnabled = true)` が付与済みであることを grep で確認（2026-06-12）。また `git log --oneline --grep="#1266"` で `feat(authz): @EnableMethodSecurity 有効化 — 認可基盤根治 Phase 3 点火 (#1266)` コミットを確認。
 
 ---
 
@@ -150,6 +152,7 @@
 
 | 日付 | 変更 |
 |---|---|
+| 2026-06-12 | **ステータス追従**: 認可基盤根治 Phase 1〜3 完了（#1266・2026-06-02 点火）・レートリミット Valkey 化 全 18 フィルタ完了（#1470/1471/1472・2026-06-12）を反映。OWASP A01/A04 の未着手警告を根治済みに更新。文書一覧の 03 ステータス更新。§8 実装待機テーブルに「状態」列を追加し C-1 を根治済みに更新。 |
 | 2026-06-02 | セキュリティ精査ギャップ反映。文書一覧に 06〜09 を追加。OWASP A01 に未着手警告・A04 にビジネスロジック設計書参照を追加。§8「実装待機」セクションを新設（C-1/C-2/C-3 の 3 件を明示）。 |
 | 2026-05-26 | 新規作成（Security Hardening Phase 1）。横断セキュリティ設計を集約 |
 | 2026-05-30 | [03 ロール・権限モデル](03_role_authority_model.md) を新設（認可基盤完全根治）。文書一覧・OWASP A01・原則 2（多層防御）に参照を追加 |
