@@ -55987,8 +55987,8 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK",
+          "201": {
+            "description": "指名追加成功",
             "content": {
               "*/*": {
                 "schema": {
@@ -127319,8 +127319,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK"
+          "204": {
+            "description": "指名解除成功"
           }
         }
       }
