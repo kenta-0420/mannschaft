@@ -1,6 +1,7 @@
 package com.mannschaft.app.tournament.controller;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.pdf.PdfFileNameBuilder;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.common.pdf.PdfResponseHelper;
@@ -100,7 +101,9 @@ public class TournamentPdfController {
         TournamentEntity tournament = findTournamentOrThrow(tId);
 
         // 全件取得（PDF用なのでページネーション不要、上限1000件）
-        var rankingsPage = rankingsCalculationService.getRankings(tId, statKey, PageRequest.of(0, 1000));
+        // F08.7 項目①: 閲覧者 ID を伝播し F19.1 本人可視性で名前解決する。
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        var rankingsPage = rankingsCalculationService.getRankings(tId, statKey, PageRequest.of(0, 1000), viewerUserId);
         var rankings = rankingsPage.getContent();
 
         // statKey のラベルを先頭レコードから取得（なければ statKey をそのまま使用）
