@@ -73,7 +73,8 @@ public class GlobalExceptionHandler {
      * ErrorCode ごとの HttpStatus 個別マッピング。
      * Severity ベースのデフォルトマッピングを上書きしたい場合にここへ追加する。
      */
-    private static final Map<String, HttpStatus> ERROR_CODE_STATUS_MAP = Map.ofEntries(
+    // 型推論限界回避のため明示型指定（エントリ数増加に伴う javac 推論破綻を根治）
+    private static final Map<String, HttpStatus> ERROR_CODE_STATUS_MAP = Map.<String, HttpStatus>ofEntries(
             // F00 共通可視性基盤（Severity.WARN デフォルト 400 を設計書 §7.4 の正しい status に上書き）
             Map.entry("VISIBILITY_001", HttpStatus.FORBIDDEN),   // 認可拒否（権限不足）→ 403
             Map.entry("VISIBILITY_004", HttpStatus.NOT_FOUND),  // コンテンツ不在 → 404
