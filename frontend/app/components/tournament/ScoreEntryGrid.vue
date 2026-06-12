@@ -36,8 +36,17 @@ const props = defineProps<{
   scoring?: TournamentScoringDto | null
 }>()
 
-// 延長/PK 入力欄の出し分けフラグ（hasExtraTime / hasPenalties 由来）。
+// 延長/PK/セット 入力欄の出し分けフラグ（hasExtraTime / hasPenalties / hasSets 由来）。
 const columnFlags = computed(() => deriveScoreEntryColumnFlags(props.scoring))
+
+// セット入力列の本数（行ごとのセット枠数の最大。通常は全行同数だが取りこぼし行に追従）。
+const setColumnCount = computed(() =>
+  rows.value.reduce((max, r) => Math.max(max, r.sets.length), 0),
+)
+// 0..setColumnCount-1 の列インデックス配列（v-for 用）。
+const setColumnIndexes = computed(() =>
+  Array.from({ length: setColumnCount.value }, (_, i) => i),
+)
 
 const emit = defineEmits<{
   /** 一括保存が成功し順位が再計算された（親で順位表/マトリクスを再取得する用）。 */
@@ -90,7 +99,7 @@ function selectMatchday(mdId: number) {
   activeMatchdayId.value = mdId
   const md = matchdays.value.find((m) => m.id === mdId)
   const nameMap = buildParticipantNameMap(matrix.value)
-  rows.value = buildScoreEntryRows(md?.matches ?? [], nameMap)
+  rows.value = buildScoreEntryRows(md?.matches ?? [], nameMap, columnFlags.value)
 }
 
 function onDivisionChange(divId: number) {
@@ -243,7 +252,12 @@ onMounted(() => {
                         {{ data.homeName }}
                       </template>
                     </Column>
-                    <Column :header="$t('tournament.scoreEntry.homeScore')" style="width: 7rem">
+                    <!-- 本戦 home/away 得点欄（セット制では非表示＝合計はセットから自動算出） -->
+                    <Column
+                      v-if="!columnFlags.showSets"
+                      :header="$t('tournament.scoreEntry.homeScore')"
+                      style="width: 7rem"
+                    >
                       <template #body="{ data }">
                         <InputText
                           v-model="data.homeScore"
@@ -253,7 +267,11 @@ onMounted(() => {
                         />
                       </template>
                     </Column>
-                    <Column :header="$t('tournament.scoreEntry.awayScore')" style="width: 7rem">
+                    <Column
+                      v-if="!columnFlags.showSets"
+                      :header="$t('tournament.scoreEntry.awayScore')"
+                      style="width: 7rem"
+                    >
                       <template #body="{ data }">
                         <InputText
                           v-model="data.awayScore"
@@ -261,6 +279,37 @@ onMounted(() => {
                           class="w-16 text-center"
                           data-testid="score-entry-away-input"
                         />
+                      </template>
+                    </Column>
+                    <!-- セット得点欄（hasSets 大会のみ・先取制ゆえ可変本数） -->
+                    <Column
+                      v-for="si in setColumnIndexes"
+                      :key="`set-col-${si}`"
+                      :header="$t('tournament.scoreEntry.setHeader', { n: si + 1 })"
+                      style="width: 9rem"
+                    >
+                      <template #body="{ data }">
+                        <div
+                          v-if="data.sets[si]"
+                          class="flex items-center justify-center gap-1"
+                        >
+                          <InputText
+                            v-model="data.sets[si].home"
+                            inputmode="numeric"
+                            class="w-12 text-center"
+                            :aria-label="$t('tournament.scoreEntry.setHomeAria', { n: si + 1 })"
+                            data-testid="score-entry-set-home-input"
+                          />
+                          <span class="text-surface-400">-</span>
+                          <InputText
+                            v-model="data.sets[si].away"
+                            inputmode="numeric"
+                            class="w-12 text-center"
+                            :aria-label="$t('tournament.scoreEntry.setAwayAria', { n: si + 1 })"
+                            data-testid="score-entry-set-away-input"
+                          />
+                        </div>
+                        <span v-else class="text-surface-300">-</span>
                       </template>
                     </Column>
                     <Column :header="$t('tournament.scoreEntry.away')">
@@ -336,6 +385,14 @@ onMounted(() => {
                   >
                     {{ $t('tournament.scoreEntry.extraPenaltyHint') }}
                   </p>
+                  <!-- セット制の入力補助（勝敗は勝セット数で判定・空セットは送信しない） -->
+                  <p
+                    v-if="columnFlags.showSets"
+                    class="mt-2 text-xs text-surface-500"
+                    data-testid="score-entry-sets-hint"
+                  >
+                    {{ $t('tournament.scoreEntry.setsHint', { n: columnFlags.setsToWin }) }}
+                  </p>
 
                   <div class="mt-4 flex items-center justify-end gap-2">
                     <Button
@@ -347,9 +404,9 @@ onMounted(() => {
                     />
                   </div>
 
-                  <!-- CSV 取込（同じ節に対して） -->
+                  <!-- CSV 取込（同じ節に対して。セット制は CSV 様式が未対応のため非表示） -->
                   <ScoreCsvImport
-                    v-if="activeDivisionId != null && activeMatchdayId != null"
+                    v-if="!columnFlags.showSets && activeDivisionId != null && activeMatchdayId != null"
                     :org-id="orgId"
                     :tournament-id="tournamentId"
                     :division-id="activeDivisionId"

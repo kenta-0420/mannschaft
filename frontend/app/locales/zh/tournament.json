@@ -267,6 +267,7 @@
     "played": "场次",
     "winDrawLoss": "胜/平/负",
     "goalDiff": "净胜",
+    "setsWonLost": "胜局/负局",
     "points": "积分",
     "form": "近期战绩",
     "recalculate": "重新计算",
@@ -304,7 +305,8 @@
     "empty": "暂无矩阵数据",
     "noDivisions": "未登记分组",
     "loadFailed": "加载矩阵失败",
-    "forbidden": "您没有权限查看此赛事"
+    "forbidden": "您没有权限查看此赛事",
+    "setsNote": "本赛事采用局制，每个单元格显示所有局的总得分。胜负由获胜局数决定。"
   },
   "visibility": {
     "title": "可见性设置",
@@ -353,6 +355,10 @@
     "homePenaltyScore": "主队点球",
     "awayPenaltyScore": "客队点球",
     "extraPenaltyHint": "加时赛得分将计入常规时间合并判定胜负。点球仅在常规时间及加时赛后仍打平时才有意义。未进行的项目请留空。",
+    "setHeader": "第{n}局",
+    "setHomeAria": "第{n}局 主队得分",
+    "setAwayAria": "第{n}局 客队得分",
+    "setsHint": "先赢{n}局者获胜。仅填写已进行局的得分，未进行的局请留空。胜负由获胜局数决定。",
     "save": "批量保存",
     "saved": "已保存比分",
     "saveFailed": "保存比分失败",
