@@ -2,6 +2,7 @@ package com.mannschaft.app.tournament;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.tournament.dto.BatchScoreRequest;
+import com.mannschaft.app.tournament.dto.MatchSetRequest;
 import com.mannschaft.app.tournament.dto.ScoreUpdateRequest;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
 import com.mannschaft.app.tournament.entity.TournamentMatchEntity;
@@ -22,9 +23,11 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -205,6 +208,176 @@ class MatchServiceTest {
             service.batchUpdateScores(TOURNAMENT_ID, DIVISION_ID, MATCHDAY_ID, request);
 
             verify(eventPublisher).publishEvent(any(StandingsRecalculationEvent.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("セット制の勝敗判定（F08.7 セット制①）")
+    class SetScoring {
+
+        private static final Long HOME_ID = 1L;
+        private static final Long AWAY_ID = 2L;
+
+        /** updateScore が getMatch でレスポンス構築する際に必要な共通モックを設定する。 */
+        private void stubResponseChain() {
+            given(matchRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            TournamentMatchdayEntity md = TournamentMatchdayEntity.builder().divisionId(5L).build();
+            given(matchdayRepository.findById(any())).willReturn(Optional.of(md));
+            lenient().when(matchSetRepository.findByMatchIdOrderBySetNumberAsc(any())).thenReturn(List.of());
+            given(playerStatRepository.findByMatchId(any())).willReturn(List.of());
+            given(mapper.toMatchResponse(any(), any(), any())).willReturn(null);
+        }
+
+        private TournamentEntity setTournament(boolean hasSets, Integer setsToWin, boolean hasDraw) {
+            return TournamentEntity.builder()
+                    .organizationId(1L)
+                    .name("セット制大会")
+                    .format(TournamentFormat.LEAGUE)
+                    .hasSets(hasSets)
+                    .setsToWin(setsToWin)
+                    .hasDraw(hasDraw)
+                    .createdBy(1L)
+                    .build();
+        }
+
+        @Test
+        @DisplayName("正常系: hasSets大会で home 3-1（勝セット数）→ HOME_WIN・勝者=home")
+        void セット制_ホーム3勝1敗で勝利() {
+            TournamentMatchEntity match = TournamentMatchEntity.builder()
+                    .homeParticipantId(HOME_ID).awayParticipantId(AWAY_ID).build();
+            given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
+            given(tournamentRepository.findById(TOURNAMENT_ID))
+                    .willReturn(Optional.of(setTournament(true, 3, false)));
+            stubResponseChain();
+
+            // 本戦合計点は home の方が少ない（65 vs 80）が、勝セット数は home 3 / away 1 → HOME_WIN
+            List<MatchSetRequest> sets = List.of(
+                    new MatchSetRequest(1, 25, 20),
+                    new MatchSetRequest(2, 10, 25),
+                    new MatchSetRequest(3, 25, 15),
+                    new MatchSetRequest(4, 25, 20));
+            service.updateScore(TOURNAMENT_ID, MATCH_ID,
+                    new ScoreUpdateRequest(65, 80, null, null, null, null, null, null, sets));
+
+            assertThat(match.getResult()).isEqualTo(MatchResult.HOME_WIN);
+            assertThat(match.getWinnerParticipantId()).isEqualTo(HOME_ID);
+        }
+
+        @Test
+        @DisplayName("正常系: hasSets大会で away が setsToWin(2) 到達 → AWAY_WIN")
+        void セット制_setsToWin到達で勝利() {
+            TournamentMatchEntity match = TournamentMatchEntity.builder()
+                    .homeParticipantId(HOME_ID).awayParticipantId(AWAY_ID).build();
+            given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
+            given(tournamentRepository.findById(TOURNAMENT_ID))
+                    .willReturn(Optional.of(setTournament(true, 2, false)));
+            stubResponseChain();
+
+            // away が 2 セット先取（home 1 / away 2）→ AWAY_WIN
+            List<MatchSetRequest> sets = List.of(
+                    new MatchSetRequest(1, 25, 20),
+                    new MatchSetRequest(2, 18, 25),
+                    new MatchSetRequest(3, 22, 25));
+            service.updateScore(TOURNAMENT_ID, MATCH_ID,
+                    new ScoreUpdateRequest(65, 70, null, null, null, null, null, null, sets));
+
+            assertThat(match.getResult()).isEqualTo(MatchResult.AWAY_WIN);
+            assertThat(match.getWinnerParticipantId()).isEqualTo(AWAY_ID);
+        }
+
+        @Test
+        @DisplayName("境界系: hasSets大会で勝セット数同数・hasDraw=true → DRAW")
+        void セット制_勝セット数同数_hasDrawありでDRAW() {
+            TournamentMatchEntity match = TournamentMatchEntity.builder()
+                    .homeParticipantId(HOME_ID).awayParticipantId(AWAY_ID).build();
+            given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
+            given(tournamentRepository.findById(TOURNAMENT_ID))
+                    .willReturn(Optional.of(setTournament(true, null, true)));
+            stubResponseChain();
+
+            // 1-1 の勝セット同数 → hasDraw=true なので DRAW
+            List<MatchSetRequest> sets = List.of(
+                    new MatchSetRequest(1, 25, 20),
+                    new MatchSetRequest(2, 20, 25));
+            service.updateScore(TOURNAMENT_ID, MATCH_ID,
+                    new ScoreUpdateRequest(45, 45, null, null, null, null, null, null, sets));
+
+            assertThat(match.getResult()).isEqualTo(MatchResult.DRAW);
+            assertThat(match.getWinnerParticipantId()).isNull();
+        }
+
+        @Test
+        @DisplayName("境界系: hasSets大会で勝セット数同数・hasDraw=false → 合計点で判定（home合計多→HOME_WIN）")
+        void セット制_勝セット数同数_hasDrawなしで合計点判定() {
+            TournamentMatchEntity match = TournamentMatchEntity.builder()
+                    .homeParticipantId(HOME_ID).awayParticipantId(AWAY_ID).build();
+            given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
+            given(tournamentRepository.findById(TOURNAMENT_ID))
+                    .willReturn(Optional.of(setTournament(true, null, false)));
+            stubResponseChain();
+
+            // 勝セット 1-1 同数。合計点 home 50 / away 45 → HOME_WIN（確定不能を握りつぶさない安全既定）
+            List<MatchSetRequest> sets = List.of(
+                    new MatchSetRequest(1, 25, 20),
+                    new MatchSetRequest(2, 25, 25));
+            service.updateScore(TOURNAMENT_ID, MATCH_ID,
+                    new ScoreUpdateRequest(50, 45, null, null, null, null, null, null, sets));
+
+            assertThat(match.getResult()).isEqualTo(MatchResult.HOME_WIN);
+            assertThat(match.getWinnerParticipantId()).isEqualTo(HOME_ID);
+        }
+
+        @Test
+        @DisplayName("入口①非破壊: hasSets大会でも sets=null なら従来の本戦スコア判定にフォールバック（home 2-1→HOME_WIN）")
+        void セット制大会_setsNullで本戦スコアにフォールバック() {
+            TournamentMatchEntity match = TournamentMatchEntity.builder()
+                    .homeParticipantId(HOME_ID).awayParticipantId(AWAY_ID).build();
+            given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
+            given(tournamentRepository.findById(TOURNAMENT_ID))
+                    .willReturn(Optional.of(setTournament(true, 3, false)));
+            stubResponseChain();
+
+            // sets=null。hasSets=true でもセット判定せず本戦スコア 2-1 で HOME_WIN（例外を投げない）
+            service.updateScore(TOURNAMENT_ID, MATCH_ID,
+                    new ScoreUpdateRequest(2, 1, null, null, null, null, null, null, null));
+
+            assertThat(match.getResult()).isEqualTo(MatchResult.HOME_WIN);
+            assertThat(match.getWinnerParticipantId()).isEqualTo(HOME_ID);
+        }
+
+        @Test
+        @DisplayName("従来ロジック温存: hasSets=false大会では本戦＋延長合算＋PKで判定（延長同点→PKでHOME_WIN）")
+        void 非セット制_延長PKの従来ロジック温存() {
+            TournamentMatchEntity match = TournamentMatchEntity.builder()
+                    .homeParticipantId(HOME_ID).awayParticipantId(AWAY_ID).build();
+            given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
+            given(tournamentRepository.findById(TOURNAMENT_ID))
+                    .willReturn(Optional.of(setTournament(false, null, false)));
+            stubResponseChain();
+
+            // 本戦1-1＋延長1-1（合算2-2）→ PK 5-4 で HOME_WIN（#1473 延長PKロジック温存）
+            service.updateScore(TOURNAMENT_ID, MATCH_ID,
+                    new ScoreUpdateRequest(1, 1, 1, 1, 5, 4, null, null, null));
+
+            assertThat(match.getResult()).isEqualTo(MatchResult.HOME_WIN);
+            assertThat(match.getWinnerParticipantId()).isEqualTo(HOME_ID);
+        }
+
+        @Test
+        @DisplayName("異常系: 負のセットスコアは INVALID_SCORE")
+        void セット負値はエラー() {
+            TournamentMatchEntity match = TournamentMatchEntity.builder()
+                    .homeParticipantId(HOME_ID).awayParticipantId(AWAY_ID).build();
+            given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
+
+            List<MatchSetRequest> sets = List.of(new MatchSetRequest(1, -1, 20));
+            assertThatThrownBy(() -> service.updateScore(TOURNAMENT_ID, MATCH_ID,
+                    new ScoreUpdateRequest(0, 0, null, null, null, null, null, null, sets)))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(TournamentErrorCode.INVALID_SCORE);
+
+            verify(matchRepository, never()).save(any());
         }
     }
 

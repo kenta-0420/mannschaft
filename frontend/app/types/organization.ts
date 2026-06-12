@@ -36,8 +36,10 @@ export interface OrgTimestampsDto {
 }
 
 export interface OrganizationResponse {
-  /** UUID（public_id）。URLに使用する string 型。BE PR #1331 対応 */
+  /** BIGINT 内部 ID（数値を string で表現）。 */
   id: string
+  /** カスタムスラッグ。URLに使用する string 型。BE slug 移行対応 */
+  slug: string
   basicInfo?: OrgBasicInfoDto
   hierarchy?: OrgHierarchyDto
   location?: OrgLocationDto
@@ -61,6 +63,8 @@ export interface OrganizationSummaryResponse {
 // === リクエスト ===
 export interface CreateOrganizationRequest {
   name: string
+  /** カスタムスラッグ（英小文字・数字・ハイフン、3〜30文字）。省略時は名前から自動生成される */
+  slug?: string
   nameKana?: string
   nickname1?: string
   nickname2?: string
@@ -192,8 +196,8 @@ export interface ReorderRequest {
  */
 export interface AncestorOrganization {
   id: number
-  /** 祖先組織 UUID（URL に使用。hidden=false のとき返る） */
-  publicId?: string | null
+  /** 祖先組織スラッグ（URL に使用。hidden=false のとき返る） */
+  slug?: string | null
   name?: string | null
   nickname1?: string | null
   description?: string | null
@@ -209,8 +213,8 @@ export interface AncestorsResponse {
 
 export interface ChildOrganization {
   id: number
-  /** 子組織 UUID（URL に使用） */
-  publicId?: string | null
+  /** 子組織スラッグ（URL に使用） */
+  slug?: string | null
   name: string
   nickname1?: string | null
   iconUrl?: string | null

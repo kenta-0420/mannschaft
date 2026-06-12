@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 public class MyOrganizationResponse {
 
     private final Long id;
-    private final String publicId;
+    private final String slug;
     private final String name;
     /** アイコンURL（DB未実装のため常にnull）。 */
     private final String iconUrl;

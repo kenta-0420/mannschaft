@@ -9,13 +9,13 @@ export interface OrgModuleItem {
 export function useOrganizationModuleApi() {
   const api = useApi()
 
-  async function getOrganizationModules(orgId: string): Promise<OrgModuleItem[]> {
-    const res = await api<{ data: OrgModuleItem[] }>(`/api/v1/organizations/${orgId}/modules`)
+  async function getOrganizationModules(orgSlug: string): Promise<OrgModuleItem[]> {
+    const res = await api<{ data: OrgModuleItem[] }>(`/api/v1/organizations/${orgSlug}/modules`)
     return res.data
   }
 
-  async function toggleOrganizationModule(orgId: string, moduleId: number, enabled: boolean): Promise<void> {
-    await api(`/api/v1/organizations/${orgId}/modules/${moduleId}/toggle`, {
+  async function toggleOrganizationModule(orgSlug: string, moduleId: number, enabled: boolean): Promise<void> {
+    await api(`/api/v1/organizations/${orgSlug}/modules/${moduleId}/toggle`, {
       method: 'PATCH',
       body: { moduleId, enabled },
     })

@@ -40,6 +40,7 @@ function makePublicTeam(
 ): TeamPublicDetailResponse {
   return {
     id: '8001',
+    slug: 'test-team',
     name: '本店',
     nameKana: null,
     nickname1: null,

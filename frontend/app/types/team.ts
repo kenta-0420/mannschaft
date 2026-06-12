@@ -68,8 +68,10 @@ export interface TeamTimestampsDto {
 }
 
 export interface TeamResponse {
-  /** UUID（public_id）。URLに使用する string 型。BE PR #1331 対応 */
+  /** BIGINT 内部 ID（数値を string で表現）。 */
   id: string
+  /** カスタムスラッグ。URLに使用する string 型。BE slug 移行対応 */
+  slug: string
   basicInfo?: TeamBasicInfoDto
   location?: TeamLocationDto
   visibility?: TeamVisibilityDto
@@ -94,6 +96,8 @@ export interface TeamSummaryResponse {
 
 export interface CreateTeamRequest {
   name: string
+  /** カスタムスラッグ（英小文字・数字・ハイフン、3〜30文字）。省略時は名前から自動生成される */
+  slug?: string
   nameKana?: string
   nickname1?: string
   nickname2?: string
@@ -121,8 +125,10 @@ export interface CreateTeamRequest {
  * 内部状態は含めない（バックエンド `TeamPublicDetailResponse` と一致）。
  */
 export interface TeamPublicDetailResponse {
-  /** UUID（public_id）。URLに使用する string 型。BE PR #1331 対応 */
+  /** BIGINT 内部 ID。 */
   id: string
+  /** カスタムスラッグ。URLに使用する string 型。 */
+  slug: string
   name: string
   nameKana: string | null
   nickname1: string | null
