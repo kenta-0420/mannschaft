@@ -61,7 +61,8 @@ class ConnectChargePaymentViewTest {
         return new ConnectChargeService(
                 escrowTransactionRepository, connectAccountRepository,
                 feeCalculator, stripePaymentProvider, accessControlService, ledgerEntryRepository,
-                refundRepository, new PayeeScopeResolver(), feePolicyResolver);
+                refundRepository, new PayeeScopeResolver(), feePolicyResolver,
+                org.mockito.Mockito.mock(com.mannschaft.app.payment.recovery.FeeRecoveryBalanceRepository.class));
     }
 
     private EscrowTransactionEntity escrow(EscrowStatus status, String piId) {
