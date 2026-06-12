@@ -52,10 +52,11 @@ function encryptForTest(plain) {
   // 1. 新規ユーザー4種
   // ============================================================
   const newUsers = [
-    { email: "f087-supporter@test.mannschaft.local",    last: "F087", first: "サポーター",   display: "F087サポーター" },
-    { email: "f087-participant@test.mannschaft.local",  last: "F087", first: "参加者",       display: "F087参加チームMember" },
-    { email: "f087-outsider@test.mannschaft.local",     last: "F087", first: "部外者",       display: "F087非所属ユーザー" },
-    { email: "f087-scorekeeper@test.mannschaft.local",  last: "F087", first: "スコアキーパー", display: "F087スコアキーパー" },
+    { email: "f087-supporter@test.mannschaft.local",       last: "F087", first: "サポーター",         display: "F087サポーター" },
+    { email: "f087-participant@test.mannschaft.local",     last: "F087", first: "参加者",             display: "F087参加チームMember" },
+    { email: "f087-outsider@test.mannschaft.local",        last: "F087", first: "部外者",             display: "F087非所属ユーザー" },
+    { email: "f087-scorekeeper@test.mannschaft.local",     last: "F087", first: "スコアキーパー",     display: "F087スコアキーパー" },
+    { email: "f087-team-admin@test.mannschaft.local",      last: "F087", first: "チームADMIN",        display: "F087参加チームADMIN" },
   ];
 
   const userIdMap = {};
@@ -133,11 +134,14 @@ function encryptForTest(plain) {
   const supporterId   = userIdMap["f087-supporter@test.mannschaft.local"];
   const participantId = userIdMap["f087-participant@test.mannschaft.local"];
   const scorekeeperId = userIdMap["f087-scorekeeper@test.mannschaft.local"];
+  const teamAdminId   = userIdMap["f087-team-admin@test.mannschaft.local"];
 
   // ③ ORG SUPPORTER: org1 role_id=5
   await assignRole(supporterId, 5, null, ORG1_ID);
   // ⑤ 参加チームMEMBER: PARTICIPANT_TEAM MEMBER (role_id=4)
   await assignRole(participantId, 4, PARTICIPANT_TEAM_ID, null);
+  // ⑦ 参加チームADMIN: PARTICIPANT_TEAM ADMIN (role_id=2)
+  await assignRole(teamAdminId, 2, PARTICIPANT_TEAM_ID, null);
   // scorekeeper-user: org1への明示的ロールなし（後でスコアキーパー指名のみ）
   // outsider: ロールなし（何も付与しない）
   console.log("Roles assigned");
@@ -328,6 +332,7 @@ function encryptForTest(plain) {
   console.log(`  ⑤ 参加チームMember: f087-participant@test.mannschaft.local id=${participantId} (team ${PARTICIPANT_TEAM_ID} role_id=4)`);
   console.log(`  ⑥ 非所属の他者  : f087-outsider@test.mannschaft.local id=${userIdMap["f087-outsider@test.mannschaft.local"]} (ロールなし)`);
   console.log(`  scorekeeper     : f087-scorekeeper@test.mannschaft.local id=${scorekeeperId}`);
+  console.log(`  ⑦ 参加チームADMIN: f087-team-admin@test.mannschaft.local id=${teamAdminId} (team ${PARTICIPANT_TEAM_ID} role_id=2)`);
   console.log("\n大会:");
   for (const vis of visibilities) {
     console.log(`  ${vis}: tournamentId=${tournamentIdMap[vis]}, divId=${divisionIdMap[vis]}, matchId=${matchIdMap[vis]}`);
@@ -346,6 +351,7 @@ function encryptForTest(plain) {
       participant: { email: "f087-participant@test.mannschaft.local", password: "TestPass2026!" },
       outsider: { email: "f087-outsider@test.mannschaft.local", password: "TestPass2026!" },
       scorekeeper: { email: "f087-scorekeeper@test.mannschaft.local", password: "TestPass2026!" },
+      teamAdmin: { email: "f087-team-admin@test.mannschaft.local", password: "TestPass2026!" },
     },
     orgId: ORG1_ID,
     participantTeamId: PARTICIPANT_TEAM_ID,

@@ -48,6 +48,7 @@ interface SeedSummary {
     participant: { email: string; password: string }
     outsider: { email: string; password: string }
     scorekeeper: { email: string; password: string }
+    teamAdmin: { email: string; password: string }
   }
   orgId: number
   participantTeamId: number
@@ -86,6 +87,7 @@ function loadSeed(): SeedSummary {
       participant: { email: 'f087-participant@test.mannschaft.local', password: 'TestPass2026!' },
       outsider: { email: 'f087-outsider@test.mannschaft.local', password: 'TestPass2026!' },
       scorekeeper: { email: 'f087-scorekeeper@test.mannschaft.local', password: 'TestPass2026!' },
+      teamAdmin: { email: 'f087-team-admin@test.mannschaft.local', password: 'TestPass2026!' },
     },
     orgId: 1,
     participantTeamId: 146,
@@ -336,11 +338,6 @@ test.describe('F08.7 スコア入力権限境界', () => {
     await api.dispose()
   })
 
-  // 参加チームADMINを動的に準備（f087-participant は PARTICIPANT_TEAM の MEMBER なので
-  // ここでは admin を使い参加チームに ADMIN ロールを持たせるシナリオはseed外のため
-  // 現 seed 構成では「参加チームADMIN」= e2e-admin（org全体ADMIN）を使う。
-  // IDOR境界の「自チーム試合のみ200、他チーム403」は別シナリオで検証）
-
   test('スコア更新 admin=200', async () => {
     const t = seed.tournaments[vis]
     const adminToken = await apiLogin(api, seed.users.admin.email, seed.users.admin.password)
@@ -412,14 +409,35 @@ test.describe('F08.7 スコア入力権限境界', () => {
         },
       },
     )
-    // 現状: AccessDeniedException が GlobalExceptionHandler で 403 に変換されていないため 500
-    // 根治: GlobalExceptionHandler に AccessDeniedException ハンドラーを追加済み（BE再起動後に 403 になる）
-    // TODO: BE 再起動後は 403 に変更
-    const actualStatus = res.status()
-    expect(
-      [403, 500].includes(actualStatus),
-      `無関係ユーザーのスコア更新は 403 (または BE 再起動前の 500)`,
-    ).toBe(true)
+    expect(res.status(), `無関係ユーザーのスコア更新は 403`).toBe(403)
+  })
+
+  test('スコア更新 参加チームADMIN=200（3-way核心: 参加チームADMINが自チーム関与試合のスコアを入力できる）', async () => {
+    const t = seed.tournaments[vis]
+    const adminToken = await apiLogin(api, seed.users.admin.email, seed.users.admin.password)
+    const teamAdminToken = await apiLogin(
+      api,
+      seed.users.teamAdmin.email,
+      seed.users.teamAdmin.password,
+    )
+
+    // 楽観的排他ロック対応: admin tokenで最新 version を取得
+    const currentVersion = await getMatchVersion(api, adminToken, seed.orgId, t.tournamentId, t.matchId)
+
+    const res = await api.patch(
+      `${BE_API}/organizations/${seed.orgId}/tournaments/${t.tournamentId}/matches/${t.matchId}/score`,
+      {
+        headers: { Authorization: `Bearer ${teamAdminToken}` },
+        data: {
+          homeScore: 2,
+          awayScore: 1,
+          version: currentVersion,
+        },
+      },
+    )
+    // 参加チームADMINは自チームが関与する試合のスコアを入力できる（200）
+    // これがWave C 3-way権限細分化の核心テスト
+    expect(res.status(), `参加チームADMINのスコア更新は 200`).toBe(200)
   })
 
   test('batch スコア admin=204', async () => {
@@ -509,13 +527,39 @@ test.describe('F08.7 スコア入力権限境界', () => {
         },
       },
     )
-    // 現状: AccessDeniedException が GlobalExceptionHandler で処理されていないため 500
-    // 根治: GlobalExceptionHandler に AccessDeniedException ハンドラーを追加済み（BE再起動後に 403 になる）
-    const actualStatus = res.status()
-    expect(
-      [403, 500].includes(actualStatus),
-      `参加チームMember の batch スコアは 403 (または BE 再起動前の 500)`,
-    ).toBe(true)
+    expect(res.status(), `参加チームMember の batch スコアは 403`).toBe(403)
+  })
+
+  test('batch スコア 参加チームADMIN=403（batch はORG-admin/指名scorekeeperのみ許可）', async () => {
+    const t = seed.tournaments[vis]
+    const adminToken = await apiLogin(api, seed.users.admin.email, seed.users.admin.password)
+    const teamAdminToken = await apiLogin(
+      api,
+      seed.users.teamAdmin.email,
+      seed.users.teamAdmin.password,
+    )
+
+    // 楽観的排他ロック対応: admin tokenで最新 version を取得
+    const currentVersion = await getMatchVersion(api, adminToken, seed.orgId, t.tournamentId, t.matchId)
+
+    const res = await api.post(
+      `${BE_API}/organizations/${seed.orgId}/tournaments/${t.tournamentId}/divisions/${t.divisionId}/matchdays/${t.matchdayId}/scores/batch`,
+      {
+        headers: { Authorization: `Bearer ${teamAdminToken}` },
+        data: {
+          scores: [
+            {
+              matchId: t.matchId,
+              homeScore: 1,
+              awayScore: 1,
+              version: currentVersion,
+            },
+          ],
+        },
+      },
+    )
+    // 参加チームADMINは単発スコア更新は可能だが、batch はORG-admin/指名scorekeeper専用のため403
+    expect(res.status(), `参加チームADMIN の batch スコアは 403`).toBe(403)
   })
 })
 
