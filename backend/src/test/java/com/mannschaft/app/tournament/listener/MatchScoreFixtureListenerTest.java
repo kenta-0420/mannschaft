@@ -187,6 +187,20 @@ class MatchScoreFixtureListenerTest {
         assertThat(fixture.getAwayParticipantId()).isEqualTo(22L);
     }
 
+    // ─── 入口①非破壊: セット制大会でも sets=null で委譲（セット判定に巻き込まれない） ──
+
+    @Test
+    @DisplayName("入口①非破壊: リスナーは常に sets=null で updateScore へ委譲する（hasSets大会でも本戦スコア判定にフォールバックさせる）")
+    void delegatesWithNullSetsAlways() {
+        // サッカー等の単一スコア試合完了イベント。リスナーはセット概念を持たないため sets=null で渡す。
+        // 受け側 determineResult は hasSets=true 大会でも sets=null なら本戦スコア判定へフォールバックし無害。
+        listener.onMatchCompleted(event(FIXTURE_ID, 2, 1, null, null));
+
+        ArgumentCaptor<ScoreUpdateRequest> captor = ArgumentCaptor.forClass(ScoreUpdateRequest.class);
+        verify(tournamentMatchService).updateScore(eq(TOURNAMENT_ID), eq(FIXTURE_ID), captor.capture());
+        assertThat(captor.getValue().getSets()).isNull();
+    }
+
     // ─── 引当不能（fixture なし）は例外を投げずスキップ（越境で壊さない） ──
 
     @Test

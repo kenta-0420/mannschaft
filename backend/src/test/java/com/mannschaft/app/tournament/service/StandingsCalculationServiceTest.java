@@ -298,6 +298,55 @@ class StandingsCalculationServiceTest {
         }
 
         @Test
+        @DisplayName("正常系: hasSets大会でセット勝者(result=HOME_WIN)が勝点・wins・setsWonに正しく反映される")
+        void recalculate_セット制_勝敗が勝点と勝セット数に反映() {
+            // Given: hasSets 大会。MatchService.determineResult がセット勝敗で result=HOME_WIN を設定済みの前提。
+            // 本戦合計点は home(65) < away(70) だが、勝セット数 3-1 で home 勝利 → result=HOME_WIN。
+            TournamentEntity tournament = TournamentEntity.builder()
+                    .organizationId(1L)
+                    .name("セット制リーグ")
+                    .format(TournamentFormat.LEAGUE)
+                    .winPoints(3).drawPoints(1).lossPoints(0)
+                    .hasSets(true).setsToWin(3).hasDraw(false)
+                    .createdBy(1L)
+                    .build();
+            TournamentDivisionEntity division = createDivision(0, 0, 0);
+            List<TournamentParticipantEntity> participants = List.of(
+                    createParticipant(PARTICIPANT_A),
+                    createParticipant(PARTICIPANT_B)
+            );
+            TournamentMatchEntity match = createMatch(PARTICIPANT_A, PARTICIPANT_B, 65, 70, MatchResult.HOME_WIN);
+            List<TournamentMatchSetEntity> sets = List.of(
+                    TournamentMatchSetEntity.builder().matchId(1L).setNumber(1).homeScore(25).awayScore(20).build(),
+                    TournamentMatchSetEntity.builder().matchId(1L).setNumber(2).homeScore(15).awayScore(25).build(),
+                    TournamentMatchSetEntity.builder().matchId(1L).setNumber(3).homeScore(25).awayScore(15).build(),
+                    TournamentMatchSetEntity.builder().matchId(1L).setNumber(4).homeScore(25).awayScore(10).build()
+            );
+
+            setupBasicMocks(tournament, division, participants, List.of(match));
+            given(matchSetRepository.findByMatchIdOrderBySetNumberAsc(any())).willReturn(sets);
+
+            // When
+            standingsCalculationService.recalculate(DIVISION_ID, TOURNAMENT_ID);
+
+            // Then: home(A) は勝点3・1勝0敗・3セット獲得、away(B) は勝点0・0勝1敗・1セット獲得を実アサート
+            verify(standingRepository).save(argThat(s ->
+                    PARTICIPANT_A.equals(s.getParticipantId())
+                            && s.getPoints() == 3
+                            && s.getWins() == 1
+                            && s.getLosses() == 0
+                            && s.getSetsWon() == 3
+                            && s.getSetsLost() == 1));
+            verify(standingRepository).save(argThat(s ->
+                    PARTICIPANT_B.equals(s.getParticipantId())
+                            && s.getPoints() == 0
+                            && s.getWins() == 0
+                            && s.getLosses() == 1
+                            && s.getSetsWon() == 1
+                            && s.getSetsLost() == 3));
+        }
+
+        @Test
         @DisplayName("正常系: セット別スコアが集計される")
         void recalculate_セット別スコア_集計される() {
             // Given
