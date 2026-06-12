@@ -115,6 +115,8 @@ class FeeReconciliationBatchTest {
         Method m = FeeReconciliationBatch.class.getMethod("reconcileEvery15Min");
         assertThat(m.getAnnotation(Scheduled.class)).isNotNull();
         assertThat(m.getAnnotation(Scheduled.class).fixedDelay()).isEqualTo(900_000L);
+        // initialDelay を設定し起動直後の即時発火を避ける（@SpringBootTest 中のリコンシリ暴発・ShedLock ノイズ防止）。
+        assertThat(m.getAnnotation(Scheduled.class).initialDelay()).isEqualTo(900_000L);
         assertThat(m.getAnnotation(SchedulerLock.class)).isNotNull();
         assertThat(m.getAnnotation(BatchEndpoint.class)).isNotNull();
         assertThat(m.getAnnotation(BatchEndpoint.class).name()).isEqualTo("payment-fee-reconciliation");

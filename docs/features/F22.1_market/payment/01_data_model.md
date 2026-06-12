@@ -176,10 +176,10 @@ CONSTRAINT fk_le_escrow FOREIGN KEY (escrow_transaction_id)
 CONSTRAINT chk_le_direction CHECK (direction IN ('D','C'))
 CONSTRAINT chk_le_entry_type CHECK (entry_type IN     -- V84.002 で RECOVERY を追加
   ('AUTHORIZE','CAPTURE','TRANSFER_OUT','FEE','REFUND','CANCEL','RECOVERY'))
-CONSTRAINT chk_le_recovery_kind CHECK (               -- V84.003: 非 RECOVERY は NULL・RECOVERY は 4 値（後方互換で NULL 可）
+CONSTRAINT chk_le_recovery_kind CHECK (               -- V84.003（🟠-A 厳格化）: 非 RECOVERY は NULL・RECOVERY は 4 値必須（NULL 不可）
   (entry_type = 'RECOVERY'
-     AND (recovery_kind IS NULL
-          OR recovery_kind IN ('C1_ACCRUAL','C2_COMPLETION','A_EXECUTION','A_RECAPITALIZE')))
+     AND recovery_kind IS NOT NULL                     -- 三値論理: IS NOT NULL を明示しないと NULL が UNKNOWN で素通りする
+     AND recovery_kind IN ('C1_ACCRUAL','C2_COMPLETION','A_EXECUTION','A_RECAPITALIZE'))
   OR (entry_type <> 'RECOVERY' AND recovery_kind IS NULL))
 INDEX idx_le_escrow (escrow_transaction_id, created_at)
 INDEX idx_le_stripe_obj (stripe_object_id)

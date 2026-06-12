@@ -50,7 +50,11 @@ public class FeeReconciliationBatch {
      */
     @BatchEndpoint(name = "payment-fee-reconciliation",
             description = "謝礼決済リコンシリ: ModeB 実手数料の pending 補完＋ledger 複式検算（不一致/滞留はログ上申）")
-    @Scheduled(fixedDelay = 900_000)
+    // initialDelay を設けて起動直後の即時発火を避ける。@Scheduled(fixedDelay) は initialDelay 既定 0 ＝
+    // コンテキスト起動と同時に 1 回目が走るため、@SpringBootTest の統合テスト中にリコンシリが暴発し
+    // ロック未保持の ShedLock ノイズや未ウォームアップ実行を招く。15 分後の初回＝EscrowLifecycleBatch
+    // （fixedDelay=1h で起動中に発火しない）と同じく「テスト実行時間内には発火しない」作法へ揃える。
+    @Scheduled(initialDelay = 900_000, fixedDelay = 900_000)
     @SchedulerLock(name = "paymentFeeReconciliation", lockAtLeastFor = "PT2M", lockAtMostFor = "PT14M")
     public void reconcileEvery15Min() {
         LocalDateTime now = LocalDateTime.now(clock);

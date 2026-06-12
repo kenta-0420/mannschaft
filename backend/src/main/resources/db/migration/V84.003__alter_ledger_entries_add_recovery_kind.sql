@@ -30,8 +30,15 @@ ALTER TABLE ledger_entries
 --     RECOVERY を書く 4 経路（recordModeBStripeFeeRecovery / completePendingRecovery / recordRecoveryExecution /
 --     recapitalizeAppliedRecoveryOnRefund）は必ず kind を設定するため、NULL 許容は峻別を曖昧にする穴でしかない。
 --   ・非 RECOVERY 行は recovery_kind=NULL を強制する。
+--
+-- 注意（SQL 三値論理の落とし穴・根治の要）:
+--   CHECK は結果が FALSE のときのみ違反となり、UNKNOWN(NULL) は「満たされた」と扱われ INSERT を通す。
+--   `recovery_kind IN (...)` は recovery_kind=NULL だと UNKNOWN を返すため、左枝を
+--   `recovery_kind IS NOT NULL AND recovery_kind IN (...)` と書かないと NULL の RECOVERY 行が
+--   素通りしてしまい「NOT NULL を CHECK で担保」が実効しない。明示の IS NOT NULL で FALSE 化して弾く。
 ALTER TABLE ledger_entries
     ADD CONSTRAINT chk_le_recovery_kind CHECK (
         (entry_type = 'RECOVERY'
+            AND recovery_kind IS NOT NULL
             AND recovery_kind IN ('C1_ACCRUAL','C2_COMPLETION','A_EXECUTION','A_RECAPITALIZE'))
         OR (entry_type <> 'RECOVERY' AND recovery_kind IS NULL));

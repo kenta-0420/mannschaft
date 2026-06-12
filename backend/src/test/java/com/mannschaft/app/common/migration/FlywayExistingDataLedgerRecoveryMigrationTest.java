@@ -134,8 +134,10 @@ class FlywayExistingDataLedgerRecoveryMigrationTest {
             // then-1: 既存 6 行は ALTER 後も全て生存している（V84.003 の recovery_kind 列追加・新 CHECK でも生存）
             assertThat(countLedgerEntries(c)).as("既存 6 行が ALTER 後も生存していること").isEqualTo(6);
 
-            // then-2: 新値 RECOVERY を INSERT できる（旧 CHECK の DROP→7値 ADD が効いている・recovery_kind は後方互換 NULL）
-            insertLedgerEntry(c, UUID.randomUUID(), escrowId, "RECOVERY");
+            // then-2: 新値 RECOVERY を INSERT できる（旧 CHECK の DROP→7値 ADD が効いている）。
+            // V84.003 の厳格 CHECK 下では RECOVERY 行は recovery_kind 必須（NULL 不可）のため、
+            // 有効な kind（C1_ACCRUAL）を付与して INSERT が通ることを確認する。
+            insertRecoveryEntry(c, UUID.randomUUID(), escrowId, "C1_ACCRUAL");
             assertThat(countLedgerEntries(c)).as("RECOVERY 行が追加され計 7 行になること").isEqualTo(7);
 
             // then-3: CHECK 制約自体は引き続き存在する（DROP しっぱなしになっていない）
@@ -154,22 +156,23 @@ class FlywayExistingDataLedgerRecoveryMigrationTest {
             for (String kind : validKinds) {
                 insertRecoveryEntry(c, UUID.randomUUID(), escrowId, kind);
             }
+            // 既存 6 ＋ then-2 の RECOVERY(C1_ACCRUAL) 1 ＋ ここで 4 値 4 行 ＝ 計 11 行。
             assertThat(countLedgerEntries(c))
-                    .as("4 値の recovery_kind 付き RECOVERY 行が追加され計 12 行になること")
-                    .isEqualTo(12);
+                    .as("4 値の recovery_kind 付き RECOVERY 行が追加され計 11 行になること")
+                    .isEqualTo(11);
 
             // then-6（V84.003 厳格 CHECK・静かな金銭ドロップ防止）: RECOVERY 行で recovery_kind=NULL は弾かれる。
             // NULL 許容を残すと峻別が曖昧になり回収金消失の穴が再発するため、NOT NULL 相当を CHECK で強制する。
             assertThat(insertRecoveryWithNullKindFails(c, escrowId))
                     .as("RECOVERY 行で recovery_kind=NULL は chk_le_recovery_kind 違反で弾かれること")
                     .isTrue();
-            assertThat(countLedgerEntries(c)).as("弾かれた行は挿入されず計 12 行のままであること").isEqualTo(12);
+            assertThat(countLedgerEntries(c)).as("弾かれた行は挿入されず計 11 行のままであること").isEqualTo(11);
 
             // then-7（V84.003）: 非 RECOVERY 行に recovery_kind を持たせると CHECK 違反で弾かれる（NULL 強制）
             assertThat(insertNonRecoveryWithKindFails(c, escrowId))
                     .as("非 RECOVERY 行に recovery_kind を入れると chk_le_recovery_kind 違反で弾かれること")
                     .isTrue();
-            assertThat(countLedgerEntries(c)).as("弾かれた行は挿入されず計 12 行のままであること").isEqualTo(12);
+            assertThat(countLedgerEntries(c)).as("弾かれた行は挿入されず計 11 行のままであること").isEqualTo(11);
         }
     }
 
