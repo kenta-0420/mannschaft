@@ -3,22 +3,27 @@ import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { flushPromises } from '@vue/test-utils'
 import ScorekeeperManager from '~/components/tournament/ScorekeeperManager.vue'
 import type { ScorekeeperResponse } from '~/types/tournament'
+import type { MemberCardListItem } from '~/types/member-card'
 
 /**
- * F08.7 順位UI Wave B-3: ScorekeeperManager.vue ユニットテスト。
+ * F08.7 順位UI ③: ScorekeeperManager.vue ユニットテスト。
  *
  * 検証観点:
  *   SK-UI-001: マウント時に一覧を取得して各 userId を表示する
  *   SK-UI-002: 一覧 0 件で空状態メッセージを出す
- *   SK-UI-003: userId を入力して指名すると addScorekeeper → 再取得
+ *   SK-UI-003: userId 直接入力（フォールバック）で指名すると addScorekeeper → 再取得
  *   SK-UI-004: 不正な userId 入力では addScorekeeper を呼ばず warn する
  *   SK-UI-005: 既存指名済み userId は重複として info を出し POST しない
  *   SK-UI-006: 解除ボタンで removeScorekeeper を呼ぶ
+ *   SK-UI-007: 一覧に displayName を表示する（userId フォールバックでない本格氏名表示）
+ *   SK-UI-008: 氏名検索で候補を取得し、候補クリックで該当 userId を addScorekeeper
+ *   SK-UI-009: 候補リストから既指名ユーザーは除外される
  */
 
 const listScorekeepers = vi.fn()
 const addScorekeeper = vi.fn()
 const removeScorekeeper = vi.fn()
+const searchOrgMembers = vi.fn()
 const notifySuccess = vi.fn()
 const notifyError = vi.fn()
 const notifyInfo = vi.fn()
@@ -26,6 +31,10 @@ const notifyWarn = vi.fn()
 
 vi.mock('~/composables/tournament/useTournamentScorekeepers', () => ({
   useTournamentScorekeepers: () => ({ listScorekeepers, addScorekeeper, removeScorekeeper }),
+}))
+
+vi.mock('~/composables/useMemberCardApi', () => ({
+  useMemberCardApi: () => ({ searchOrgMembers }),
 }))
 
 vi.mock('~/composables/useNotification', () => ({
@@ -37,8 +46,21 @@ vi.mock('~/composables/useNotification', () => ({
   }),
 }))
 
-function sk(userId: number, id = `sk-${userId}`): ScorekeeperResponse {
-  return { id, tournamentId: 100, userId, createdBy: 1, createdAt: '2026-06-12T00:00:00' }
+function sk(userId: number, id = `sk-${userId}`, displayName?: string): ScorekeeperResponse {
+  return { id, tournamentId: 100, userId, displayName, createdBy: 1, createdAt: '2026-06-12T00:00:00' }
+}
+
+function card(id: number, userId: number, displayName: string): MemberCardListItem {
+  return {
+    id,
+    userId,
+    cardNumber: `C-${id}`,
+    displayName,
+    status: 'ACTIVE',
+    issuedAt: '2026-01-01T00:00:00',
+    lastCheckinAt: null,
+    checkinCount: 0,
+  }
 }
 
 const PROPS = { orgId: 'org-1', tournamentId: 100 }
@@ -48,6 +70,7 @@ describe('ScorekeeperManager.vue', () => {
     listScorekeepers.mockReset()
     addScorekeeper.mockReset()
     removeScorekeeper.mockReset()
+    searchOrgMembers.mockReset()
     notifySuccess.mockReset()
     notifyError.mockReset()
     notifyInfo.mockReset()
@@ -55,6 +78,7 @@ describe('ScorekeeperManager.vue', () => {
     listScorekeepers.mockResolvedValue({ data: [] })
     addScorekeeper.mockResolvedValue({ data: sk(42) })
     removeScorekeeper.mockResolvedValue(undefined)
+    searchOrgMembers.mockResolvedValue([])
   })
 
   it('SK-UI-001: マウント時に一覧を取得して各 userId を表示する', async () => {
@@ -63,24 +87,21 @@ describe('ScorekeeperManager.vue', () => {
     await flushPromises()
 
     expect(listScorekeepers).toHaveBeenCalledWith('org-1', 100)
-    // 取得した指名 1 件ごとに行（li）が描画される。
-    // 表示名は i18n interpolation（{userId}）に依存するため行数で検証する。
-    const items = wrapper.findAll('li')
+    // 指名一覧の各行（解除ボタンを持つ li）。候補リストは別 ul のため button 有無で区別する。
+    const items = wrapper.findAll('li').filter((li) => li.find('button').exists())
     expect(items).toHaveLength(2)
-    // 各行に解除ボタンが存在する
-    expect(wrapper.findAll('li button')).toHaveLength(2)
   })
 
   it('SK-UI-002: 一覧 0 件で空状態メッセージを出す', async () => {
     const wrapper = await mountSuspended(ScorekeeperManager, { props: PROPS })
     await flushPromises()
 
-    expect(wrapper.findAll('li')).toHaveLength(0)
-    // 空状態テキスト（i18n キー or 翻訳文）が描画される
+    const items = wrapper.findAll('li').filter((li) => li.find('button').exists())
+    expect(items).toHaveLength(0)
     expect(wrapper.text().length).toBeGreaterThan(0)
   })
 
-  it('SK-UI-003: userId を入力して指名すると addScorekeeper → 再取得', async () => {
+  it('SK-UI-003: userId 直接入力で指名すると addScorekeeper → 再取得', async () => {
     const wrapper = await mountSuspended(ScorekeeperManager, { props: PROPS })
     await flushPromises()
     listScorekeepers.mockClear()
@@ -91,7 +112,6 @@ describe('ScorekeeperManager.vue', () => {
 
     expect(addScorekeeper).toHaveBeenCalledWith('org-1', 100, 42)
     expect(notifySuccess).toHaveBeenCalled()
-    // 追加後に一覧を再取得する
     expect(listScorekeepers).toHaveBeenCalledWith('org-1', 100)
   })
 
@@ -125,10 +145,61 @@ describe('ScorekeeperManager.vue', () => {
     const wrapper = await mountSuspended(ScorekeeperManager, { props: PROPS })
     await flushPromises()
 
-    await wrapper.find('li button').trigger('click')
+    const removeBtn = wrapper.findAll('li').find((li) => li.find('button').exists())!.find('button')
+    await removeBtn.trigger('click')
     await flushPromises()
 
     expect(removeScorekeeper).toHaveBeenCalledWith('org-1', 100, 'sk-id-9')
     expect(notifySuccess).toHaveBeenCalled()
+  })
+
+  it('SK-UI-007: 一覧に displayName を本格氏名として表示する', async () => {
+    listScorekeepers.mockResolvedValueOnce({ data: [sk(9, 'sk-9', '田中 一郎')] })
+    const wrapper = await mountSuspended(ScorekeeperManager, { props: PROPS })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('田中 一郎')
+  })
+
+  it('SK-UI-008: 氏名検索で候補を取得し、候補クリックで該当 userId を addScorekeeper', async () => {
+    searchOrgMembers.mockResolvedValueOnce([card(1, 55, '鈴木 次郎')])
+    const wrapper = await mountSuspended(ScorekeeperManager, { props: PROPS })
+    await flushPromises()
+
+    await wrapper.find('input#scorekeeper-search').setValue('鈴木')
+    await wrapper.find('input#scorekeeper-search').trigger('input')
+    // debounce(300ms) を待つ
+    await new Promise((r) => setTimeout(r, 350))
+    await flushPromises()
+
+    expect(searchOrgMembers).toHaveBeenCalledWith('org-1', { q: '鈴木', status: 'ACTIVE' })
+    expect(wrapper.text()).toContain('鈴木 次郎')
+
+    // 候補（mousedown でクリック）
+    const candidate = wrapper.findAll('li').find((li) => li.text().includes('鈴木 次郎'))!
+    await candidate.trigger('mousedown')
+    await flushPromises()
+
+    expect(addScorekeeper).toHaveBeenCalledWith('org-1', 100, 55)
+    expect(notifySuccess).toHaveBeenCalled()
+  })
+
+  it('SK-UI-009: 候補リストから既指名ユーザーを除外する', async () => {
+    listScorekeepers.mockResolvedValueOnce({ data: [sk(55, 'sk-55', '鈴木 次郎')] })
+    searchOrgMembers.mockResolvedValueOnce([card(1, 55, '鈴木 次郎'), card(2, 66, '高橋 三郎')])
+    const wrapper = await mountSuspended(ScorekeeperManager, { props: PROPS })
+    await flushPromises()
+
+    await wrapper.find('input#scorekeeper-search').setValue('郎')
+    await wrapper.find('input#scorekeeper-search').trigger('input')
+    await new Promise((r) => setTimeout(r, 350))
+    await flushPromises()
+
+    // 既指名の 55 は候補から消え、66 のみ候補として残る
+    const candidateItems = wrapper.findAll('li').filter((li) => li.text().includes('#66'))
+    expect(candidateItems.length).toBeGreaterThan(0)
+    const dupCandidate = wrapper.findAll('li').filter((li) => li.text().includes('#55'))
+    // #55 を含むのは「指名一覧」行のみ（候補からは除外）→ 1 件だけ
+    expect(dupCandidate).toHaveLength(1)
   })
 })

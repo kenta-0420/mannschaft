@@ -2,6 +2,7 @@ package com.mannschaft.app.tournament.scorekeeper;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.tournament.TournamentErrorCode;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
 import com.mannschaft.app.tournament.repository.TournamentRepository;
@@ -11,7 +12,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * 大会スコアキーパー指名の管理サービス（F08.7 項目③）。
@@ -39,9 +43,17 @@ public class TournamentScorekeeperService {
 
     private static final String SCOPE_ORGANIZATION = "ORGANIZATION";
 
+    /**
+     * 退会済み・存在しないユーザーの表示名フォールバック。
+     * バッチ解決 {@link NameResolverService#resolveUserDisplayNames} は該当なしの ID を map に含めないため、
+     * 単一解決 {@link NameResolverService#resolveUserDisplayName}（"不明なユーザー" を返す）と同じ値で補う。
+     */
+    private static final String UNKNOWN_USER_NAME = "不明なユーザー";
+
     private final TournamentScorekeeperRepository scorekeeperRepository;
     private final TournamentRepository tournamentRepository;
     private final AccessControlService accessControlService;
+    private final NameResolverService nameResolverService;
 
     /**
      * 大会の指名スコアキーパー一覧を取得する（主催組織 ADMIN）。
@@ -52,8 +64,17 @@ public class TournamentScorekeeperService {
         findTournamentInOrgOrThrow(organizationId, tournamentId);
         requireOrganizerAdmin(actorUserId, organizationId);
 
-        return scorekeeperRepository.findByTournamentIdOrderByCreatedAtAsc(tournamentId).stream()
-                .map(ScorekeeperResponse::of)
+        List<TournamentScorekeeperEntity> entities =
+                scorekeeperRepository.findByTournamentIdOrderByCreatedAtAsc(tournamentId);
+
+        // userId 集合をバッチ解決（N+1 回避）。退会済み等は map に含まれないため後段でフォールバックする。
+        Set<Long> userIds = entities.stream()
+                .map(TournamentScorekeeperEntity::getUserId)
+                .collect(Collectors.toSet());
+        Map<Long, String> nameMap = nameResolverService.resolveUserDisplayNames(userIds);
+
+        return entities.stream()
+                .map(e -> ScorekeeperResponse.of(e, resolveName(nameMap, e.getUserId())))
                 .toList();
     }
 
@@ -69,16 +90,17 @@ public class TournamentScorekeeperService {
         requireOrganizerAdmin(actorUserId, organizationId);
 
         // 冪等: 既に指名済みなら既存を返す（UNIQUE(tournament_id,user_id) 制約違反による 500 化を防ぐ）
-        return scorekeeperRepository.findByTournamentIdAndUserId(tournamentId, targetUserId)
-                .map(ScorekeeperResponse::of)
-                .orElseGet(() -> {
-                    TournamentScorekeeperEntity entity = TournamentScorekeeperEntity.builder()
-                            .tournamentId(tournamentId)
-                            .userId(targetUserId)
-                            .createdBy(actorUserId)
-                            .build();
-                    return ScorekeeperResponse.of(scorekeeperRepository.save(entity));
-                });
+        TournamentScorekeeperEntity entity = scorekeeperRepository
+                .findByTournamentIdAndUserId(tournamentId, targetUserId)
+                .orElseGet(() -> scorekeeperRepository.save(TournamentScorekeeperEntity.builder()
+                        .tournamentId(tournamentId)
+                        .userId(targetUserId)
+                        .createdBy(actorUserId)
+                        .build()));
+
+        // 1 件分の表示名を解決（退会済み等は既定フォールバック）。
+        String displayName = nameResolverService.resolveUserDisplayName(targetUserId);
+        return ScorekeeperResponse.of(entity, displayName);
     }
 
     /**
@@ -101,6 +123,11 @@ public class TournamentScorekeeperService {
     // ========================================================================
     // ヘルパー
     // ========================================================================
+
+    /** バッチ解決結果から表示名を取り出す。map に無い（退会済み等）場合は既定フォールバック。 */
+    private String resolveName(Map<Long, String> nameMap, Long userId) {
+        return nameMap.getOrDefault(userId, UNKNOWN_USER_NAME);
+    }
 
     /** 大会が指定組織に属することを確認して返す。属さない／存在しない場合は 404（IDOR 対策）。 */
     private TournamentEntity findTournamentInOrgOrThrow(Long organizationId, Long tournamentId) {

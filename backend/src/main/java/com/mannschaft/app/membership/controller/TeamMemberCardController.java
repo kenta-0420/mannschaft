@@ -62,7 +62,7 @@ public class TeamMemberCardController {
             @RequestParam(required = false) String q) {
         CardStatus cardStatus = CardStatus.valueOf(status);
         return ResponseEntity.ok(memberCardService.getScopeMemberCards(
-                ScopeType.TEAM, teamId, cardStatus, q));
+                SecurityUtils.getCurrentUserId(), ScopeType.TEAM, teamId, cardStatus, q));
     }
 
     /**
