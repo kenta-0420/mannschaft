@@ -66,4 +66,15 @@ public class RecruitmentListingResponse {
 
     /** フレンド宛先（{@code FRIEND_TEAMS_ONLY} のときのみ非空。札主 ADMIN 向け）。 */
     private final List<FriendTargetView> friendTargets;
+
+    // ===========================================
+    // F22.1 市 謝礼決済: 受領主体（編集フォーム表示用・02_api_design §3）
+    // entity の payeeKind/payeeUserId と同名のため MapStruct が自動マッピングする。
+    // ===========================================
+
+    /** 受領主体種別 {@code USER} / {@code TEAM} / {@code ORG}。決済無効札は null。 */
+    private final String payeeKind;
+
+    /** {@code payeeKind=USER} の受領者ユーザー（users.id）。それ以外は null。 */
+    private final Long payeeUserId;
 }
