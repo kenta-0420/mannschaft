@@ -759,7 +759,9 @@ class MemberCardServiceTest {
         @Test
         @DisplayName("正常系: スコープの会員証一覧が返却される（検索なし）")
         void 取得_正常_一覧返却() {
-            // Given
+            // Given: 操作者がスコープ ADMIN（checkAdminOrAbove が通る）
+            doNothing().when(accessControlService)
+                    .checkAdminOrAbove(ADMIN_USER_ID, SCOPE_ID, ScopeType.TEAM.name());
             MemberCardEntity card = createActiveCard();
             given(memberCardRepository.findByScopeAndStatus(ScopeType.TEAM, SCOPE_ID, CardStatus.ACTIVE))
                     .willReturn(List.of(card));
@@ -768,7 +770,7 @@ class MemberCardServiceTest {
 
             // When
             Map<String, Object> result = memberCardService.getScopeMemberCards(
-                    ScopeType.TEAM, SCOPE_ID, CardStatus.ACTIVE, null);
+                    ADMIN_USER_ID, ScopeType.TEAM, SCOPE_ID, CardStatus.ACTIVE, null);
 
             // Then
             @SuppressWarnings("unchecked")
@@ -780,7 +782,9 @@ class MemberCardServiceTest {
         @Test
         @DisplayName("正常系: 検索クエリ付きで一覧返却")
         void 取得_検索あり_フィルタ済み一覧返却() {
-            // Given
+            // Given: 操作者がスコープ ADMIN
+            doNothing().when(accessControlService)
+                    .checkAdminOrAbove(ADMIN_USER_ID, SCOPE_ID, ScopeType.TEAM.name());
             MemberCardEntity card = createActiveCard();
             given(memberCardRepository.findByScopeAndStatusWithSearch(
                     ScopeType.TEAM, SCOPE_ID, CardStatus.ACTIVE, "山田"))
@@ -790,12 +794,54 @@ class MemberCardServiceTest {
 
             // When
             Map<String, Object> result = memberCardService.getScopeMemberCards(
-                    ScopeType.TEAM, SCOPE_ID, CardStatus.ACTIVE, "山田");
+                    ADMIN_USER_ID, ScopeType.TEAM, SCOPE_ID, CardStatus.ACTIVE, "山田");
 
             // Then
             @SuppressWarnings("unchecked")
             List<MemberCardListResponse> data = (List<MemberCardListResponse>) result.get("data");
             assertThat(data).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("異常系: 非管理者は COMMON_002（403）— 会員氏名/カード番号を列挙できない")
+        void 取得_非管理者_403() {
+            // Given: checkAdminOrAbove が COMMON_002 を投げる（非メンバー/非管理者）
+            org.mockito.BDDMockito.willThrow(
+                    new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002))
+                    .given(accessControlService)
+                    .checkAdminOrAbove(USER_ID, SCOPE_ID, ScopeType.TEAM.name());
+
+            // When / Then: 認可チェックで弾かれ、リポジトリ照会には到達しない
+            assertThatThrownBy(() -> memberCardService.getScopeMemberCards(
+                    USER_ID, ScopeType.TEAM, SCOPE_ID, CardStatus.ACTIVE, "山田"))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+            verify(memberCardRepository, org.mockito.Mockito.never())
+                    .findByScopeAndStatus(any(), any(), any());
+            verify(memberCardRepository, org.mockito.Mockito.never())
+                    .findByScopeAndStatusWithSearch(any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("異常系: 他スコープ指定でも認可チェックが当該 scopeId で行われ横断列挙を拒否")
+        void 取得_他スコープ指定_認可で拒否() {
+            // Given: 操作者は SCOPE_ID の管理者だが、別スコープ(999)の会員を要求
+            Long otherScopeId = 999L;
+            org.mockito.BDDMockito.willThrow(
+                    new BusinessException(com.mannschaft.app.common.CommonErrorCode.COMMON_002))
+                    .given(accessControlService)
+                    .checkAdminOrAbove(ADMIN_USER_ID, otherScopeId, ScopeType.ORGANIZATION.name());
+
+            // When / Then: 要求された scopeId(999) で認可チェックが行われ 403
+            assertThatThrownBy(() -> memberCardService.getScopeMemberCards(
+                    ADMIN_USER_ID, ScopeType.ORGANIZATION, otherScopeId, CardStatus.ACTIVE, null))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+            // 認可が要求 scopeId で行われたことを確認（横断列挙防止）
+            verify(accessControlService)
+                    .checkAdminOrAbove(ADMIN_USER_ID, otherScopeId, ScopeType.ORGANIZATION.name());
         }
     }
 

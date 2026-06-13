@@ -267,6 +267,7 @@
     "played": "场次",
     "winDrawLoss": "胜/平/负",
     "goalDiff": "净胜",
+    "setsWonLost": "胜局/负局",
     "points": "积分",
     "form": "近期战绩",
     "recalculate": "重新计算",
@@ -304,7 +305,8 @@
     "empty": "暂无矩阵数据",
     "noDivisions": "未登记分组",
     "loadFailed": "加载矩阵失败",
-    "forbidden": "您没有权限查看此赛事"
+    "forbidden": "您没有权限查看此赛事",
+    "setsNote": "本赛事采用局制，每个单元格显示所有局的总得分。胜负由获胜局数决定。"
   },
   "visibility": {
     "title": "可见性设置",
@@ -353,6 +355,10 @@
     "homePenaltyScore": "主队点球",
     "awayPenaltyScore": "客队点球",
     "extraPenaltyHint": "加时赛得分将计入常规时间合并判定胜负。点球仅在常规时间及加时赛后仍打平时才有意义。未进行的项目请留空。",
+    "setHeader": "第{n}局",
+    "setHomeAria": "第{n}局 主队得分",
+    "setAwayAria": "第{n}局 客队得分",
+    "setsHint": "先赢{n}局者获胜。仅填写已进行局的得分，未进行的局请留空。胜负由获胜局数决定。",
     "save": "批量保存",
     "saved": "已保存比分",
     "saveFailed": "保存比分失败",
@@ -380,19 +386,24 @@
     "description": "被指派的用户可为本赛事录入比分（单场、批量及 CSV 导入）。仅主办组织的管理员可指派记分员。",
     "userIdLabel": "用户 ID",
     "userIdPlaceholder": "例如：12345",
+    "searchLabel": "按姓名搜索会员以指派",
+    "searchPlaceholder": "按姓名或卡号搜索",
+    "searching": "搜索中…",
+    "noCandidates": "未找到匹配的会员",
+    "selectMember": "指派该会员",
     "add": "指派",
     "remove": "解除",
     "empty": "尚未指派记分员",
     "addSuccess": "已指派记分员",
     "removeSuccess": "已解除记分员指派",
     "alreadyAssigned": "该用户已被指派",
-    "userDisplay": "用户 ID：{userId}",
     "error": {
       "loadFailed": "获取记分员列表失败",
       "addFailed": "指派记分员失败（{status}）",
       "removeFailed": "解除记分员指派失败",
       "forbidden": "您没有管理记分员的权限（仅限主办组织管理员）",
-      "invalidUserId": "用户 ID 必须为正整数"
+      "invalidUserId": "用户 ID 必须为正整数",
+      "searchFailed": "会员搜索失败"
     }
   }
 }

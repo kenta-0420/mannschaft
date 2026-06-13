@@ -267,6 +267,7 @@
     "played": "경기수",
     "winDrawLoss": "승/무/패",
     "goalDiff": "득실차",
+    "setsWonLost": "승세트/패세트",
     "points": "승점",
     "form": "최근 폼",
     "recalculate": "재계산",
@@ -304,7 +305,8 @@
     "empty": "매트릭스 데이터가 없습니다",
     "noDivisions": "등록된 부문이 없습니다",
     "loadFailed": "매트릭스를 불러오지 못했습니다",
-    "forbidden": "이 대회를 볼 권한이 없습니다"
+    "forbidden": "이 대회를 볼 권한이 없습니다",
+    "setsNote": "세트제 대회이므로 각 셀의 점수는 모든 세트 득점의 합계를 나타냅니다. 승부는 승리한 세트 수로 결정됩니다."
   },
   "visibility": {
     "title": "공개 범위 설정",
@@ -353,6 +355,10 @@
     "homePenaltyScore": "홈 승부차기",
     "awayPenaltyScore": "원정 승부차기",
     "extraPenaltyHint": "연장전은 본 경기 점수에 합산하여 승부를 가립니다. 승부차기는 본 경기와 연장 후에도 동점일 때만 의미가 있습니다. 진행하지 않은 항목은 비워 두세요.",
+    "setHeader": "{n}세트",
+    "setHomeAria": "{n}세트 홈 득점",
+    "setAwayAria": "{n}세트 원정 득점",
+    "setsHint": "{n}세트 선취 시 승리합니다. 진행한 세트의 점수만 입력하고 진행하지 않은 세트는 비워 두세요. 승부는 승리한 세트 수로 결정됩니다.",
     "save": "일괄 저장",
     "saved": "점수를 저장했습니다",
     "saveFailed": "점수 저장에 실패했습니다",
@@ -380,19 +386,24 @@
     "description": "지정된 사용자는 이 대회의 점수 입력(단건·일괄·CSV 가져오기)이 가능합니다. 지정은 주최 조직의 관리자만 할 수 있습니다.",
     "userIdLabel": "사용자 ID",
     "userIdPlaceholder": "예: 12345",
+    "searchLabel": "이름으로 회원을 검색하여 지정",
+    "searchPlaceholder": "이름 또는 카드 번호로 검색",
+    "searching": "검색 중…",
+    "noCandidates": "일치하는 회원을 찾을 수 없습니다",
+    "selectMember": "이 회원 지정",
     "add": "지정",
     "remove": "해제",
     "empty": "아직 지정된 스코어키퍼가 없습니다",
     "addSuccess": "스코어키퍼를 지정했습니다",
     "removeSuccess": "스코어키퍼 지정을 해제했습니다",
     "alreadyAssigned": "이미 지정된 사용자입니다",
-    "userDisplay": "사용자 ID: {userId}",
     "error": {
       "loadFailed": "스코어키퍼 목록을 불러오지 못했습니다",
       "addFailed": "스코어키퍼 지정에 실패했습니다 ({status})",
       "removeFailed": "스코어키퍼 지정 해제에 실패했습니다",
       "forbidden": "스코어키퍼를 관리할 권한이 없습니다 (주최 조직 관리자 전용)",
-      "invalidUserId": "사용자 ID는 양의 정수로 입력하세요"
+      "invalidUserId": "사용자 ID는 양의 정수로 입력하세요",
+      "searchFailed": "회원 검색에 실패했습니다"
     }
   }
 }

@@ -44,6 +44,9 @@ k6/*.csv
 # --- F08.9 P5 Stripe PoC 出力 (API レスポンス JSON。秘密を含み得るため除外) ---
 scripts/poc/out/
 
+# --- F08.7 E2E seed 実行サマリ（seed-f087-visibility-e2e.js が実行時に生成。環境固有 ID のため除外） ---
+backend/scripts/f087-e2e-seed-summary.json
+
 # --- Terraform (infra/terraform) ---
 # 注: .terraform.lock.hcl はプロバイダ固定のため除外しない（コミット対象）
 **/.terraform/

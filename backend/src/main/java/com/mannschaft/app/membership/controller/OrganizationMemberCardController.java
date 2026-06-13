@@ -1,5 +1,6 @@
 package com.mannschaft.app.membership.controller;
 
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.membership.CardStatus;
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.membership.service.MemberCardService;
@@ -38,6 +39,6 @@ public class OrganizationMemberCardController {
             @RequestParam(required = false) String q) {
         CardStatus cardStatus = CardStatus.valueOf(status);
         return ResponseEntity.ok(memberCardService.getScopeMemberCards(
-                ScopeType.ORGANIZATION, orgId, cardStatus, q));
+                SecurityUtils.getCurrentUserId(), ScopeType.ORGANIZATION, orgId, cardStatus, q));
     }
 }

@@ -195,18 +195,43 @@ export function useMatchLiveSession(sessionCtx: MatchLiveSessionContext) {
   }
 
   /**
-   * 試合終了。タイマーを COMPLETED に遷移させたうえで、status を BE に永続化する
+   * 試合終了。タイマーを COMPLETED に遷移させたうえで、本戦スコア（延長合算済みの導出値）と
+   * PK 戦スコアを BE に確定保存してから status を COMPLETED に永続化する
    * （旧実装はローカル timer 状態のみで status が未永続化＝再訪時に IN_PROGRESS のまま
    * 残るバグがあった・04 §G.2 / §G.4）。
    *
-   * - 冪等: 既に COMPLETED（matchStatus 同期値）なら status PATCH を再送しない。
-   * - orgId/teamId 未解決時は status PATCH をスキップ（ガード）。
+   * <p><b>順位連携の要（F08.10 ②）:</b> BE の {@code changeStatus(COMPLETED)} は保存済み
+   * Entity の {@code home_score}/{@code away_score}/{@code home_penalty_score}/
+   * {@code away_penalty_score} を読んで {@code MatchCompletedEvent} に載せる
+   * （MatchService.changeStatus）。したがって COMPLETED の前に {@code finalizeScore} で
+   * これらを Entity に確定保存しておかないと、延長/PK の結果が大会 fixture の順位連携
+   * （tournament/MatchScoreFixtureListener #1444）に乗らない。本戦は延長得点を含むタイムライン
+   * 由来の導出スコア（{@code homeScore}/{@code awayScore}）、PK は引数で受けた成功数を渡す。</p>
+   *
+   * - 冪等: 既に COMPLETED（matchStatus 同期値）なら finalize/status を再送しない。
+   * - orgId/teamId 未解決時はスキップ（ガード）。
+   * - finalize 失敗時も status 遷移は試みる（changeStatus は内部でトースト済み）。
    * - PATCH 失敗時は症状を隠さず警告し、再 throw はしない（タイマー UI は終了済み）。
+   *
+   * @param penalty PK 戦スコア（成功数・絶対 home/away）。PK 戦なしの試合は null。
    */
-  async function completeMatch(): Promise<void> {
+  async function completeMatch(penalty?: { home: number; away: number } | null): Promise<void> {
     await timer.complete()
     if (matchStatus.value === 'COMPLETED') return
     if (orgId.value === null || teamId.value === null) return
+    try {
+      // 本戦（延長得点合算済みの導出スコア）＋ PK 戦スコアを Entity に確定保存。
+      // これが COMPLETED 時に MatchCompletedEvent へ載り、大会順位連携に反映される（#1444）。
+      await matchApi.finalizeScore(orgId.value, teamId.value, matchId, {
+        homeScore: homeScore.value,
+        awayScore: awayScore.value,
+        homePenaltyScore: penalty ? penalty.home : undefined,
+        awayPenaltyScore: penalty ? penalty.away : undefined,
+      })
+    } catch {
+      // finalizeScore は composable 内でトースト済み。スコア確定に失敗しても
+      // status 遷移自体は試みる（タイマー UI は既に終了状態）。症状は隠さない。
+    }
     try {
       await matchApi.changeStatus(orgId.value, teamId.value, matchId, { status: 'COMPLETED' })
       matchStatus.value = 'COMPLETED'

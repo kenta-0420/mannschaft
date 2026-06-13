@@ -363,14 +363,24 @@ public class MemberCardService {
     /**
      * チーム/組織の会員証一覧を取得する。
      *
-     * @param scopeType スコープ種別
-     * @param scopeId   スコープID
-     * @param status    ステータスフィルタ
-     * @param q         検索クエリ
+     * <p>会員証一覧は会員氏名（displayName）とカード番号を含む機微情報であり、
+     * スコープの ADMIN/DEPUTY_ADMIN（会員管理権限を持つ管理者）のみ閲覧できる。
+     * 任意の認証ユーザーが任意スコープの会員情報を {@code ?q=} で列挙することを防ぐため、
+     * 取得処理の冒頭で操作者がスコープ管理者であることを必須とする（違反時は 403 COMMON_002）。
+     * これにより他スコープ ID を指定した横断列挙も拒否される。</p>
+     *
+     * @param currentUserId 操作者ユーザーID（認可検証に使用）
+     * @param scopeType     スコープ種別
+     * @param scopeId       スコープID
+     * @param status        ステータスフィルタ
+     * @param q             検索クエリ
      * @return 会員証一覧とメタ情報
      */
-    public Map<String, Object> getScopeMemberCards(ScopeType scopeType, Long scopeId,
+    public Map<String, Object> getScopeMemberCards(Long currentUserId, ScopeType scopeType, Long scopeId,
                                                     CardStatus status, String q) {
+        // 認可: スコープの ADMIN/DEPUTY_ADMIN のみ。非管理者・非メンバー・他スコープ指定は 403。
+        accessControlService.checkAdminOrAbove(currentUserId, scopeId, scopeType.name());
+
         List<MemberCardEntity> cards;
         if (q != null && !q.isBlank()) {
             cards = memberCardRepository.findByScopeAndStatusWithSearch(scopeType, scopeId, status, q);

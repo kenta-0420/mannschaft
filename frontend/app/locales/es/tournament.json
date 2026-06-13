@@ -267,6 +267,7 @@
     "played": "PJ",
     "winDrawLoss": "G/E/P",
     "goalDiff": "DG",
+    "setsWonLost": "Sets G/P",
     "points": "Pts",
     "form": "Forma reciente",
     "recalculate": "Recalcular",
@@ -304,7 +305,8 @@
     "empty": "Sin datos de matriz",
     "noDivisions": "No hay divisiones registradas",
     "loadFailed": "No se pudo cargar la matriz",
-    "forbidden": "No tienes permiso para ver este torneo"
+    "forbidden": "No tienes permiso para ver este torneo",
+    "setsNote": "Este torneo usa sets, por lo que cada celda muestra los puntos totales de todos los sets. El ganador se decide por el numero de sets ganados."
   },
   "visibility": {
     "title": "Visibilidad",
@@ -353,6 +355,10 @@
     "homePenaltyScore": "Local (PEN)",
     "awayPenaltyScore": "Visitante (PEN)",
     "extraPenaltyHint": "La prorroga se suma al marcador reglamentario para decidir el resultado. Los penaltis solo cuentan si persiste el empate tras el tiempo reglamentario y la prorroga. Deja en blanco lo que no se haya disputado.",
+    "setHeader": "Set {n}",
+    "setHomeAria": "Set {n} puntos local",
+    "setAwayAria": "Set {n} puntos visitante",
+    "setsHint": "Gana quien llegue primero a {n} sets. Introduce el marcador solo de los sets disputados y deja en blanco los no disputados. El ganador se decide por el numero de sets ganados.",
     "save": "Guardar todo",
     "saved": "Marcadores guardados",
     "saveFailed": "No se pudieron guardar los marcadores",
@@ -380,19 +386,24 @@
     "description": "Los usuarios asignados pueden registrar resultados de este torneo (individual, en lote e importación CSV). Solo los administradores de la organización anfitriona pueden asignar anotadores.",
     "userIdLabel": "ID de usuario",
     "userIdPlaceholder": "ej. 12345",
+    "searchLabel": "Buscar miembros por nombre para asignar",
+    "searchPlaceholder": "Buscar por nombre o número de tarjeta",
+    "searching": "Buscando…",
+    "noCandidates": "No se encontraron miembros coincidentes",
+    "selectMember": "Asignar este miembro",
     "add": "Asignar",
     "remove": "Quitar",
     "empty": "Aún no hay anotadores asignados",
     "addSuccess": "Anotador asignado",
     "removeSuccess": "Asignación de anotador eliminada",
     "alreadyAssigned": "Este usuario ya está asignado",
-    "userDisplay": "ID de usuario: {userId}",
     "error": {
       "loadFailed": "No se pudo cargar la lista de anotadores",
       "addFailed": "No se pudo asignar el anotador ({status})",
       "removeFailed": "No se pudo eliminar la asignación de anotador",
       "forbidden": "No tienes permiso para gestionar anotadores (solo administradores de la organización anfitriona)",
-      "invalidUserId": "El ID de usuario debe ser un entero positivo"
+      "invalidUserId": "El ID de usuario debe ser un entero positivo",
+      "searchFailed": "No se pudo buscar miembros"
     }
   }
 }

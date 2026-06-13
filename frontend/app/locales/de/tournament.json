@@ -267,6 +267,7 @@
     "played": "Sp.",
     "winDrawLoss": "S/U/N",
     "goalDiff": "Diff.",
+    "setsWonLost": "Satze G/V",
     "points": "Pkt.",
     "form": "Aktuelle Form",
     "recalculate": "Neu berechnen",
@@ -304,7 +305,8 @@
     "empty": "Keine Matrixdaten",
     "noDivisions": "Keine Divisionen registriert",
     "loadFailed": "Matrix konnte nicht geladen werden",
-    "forbidden": "Du hast keine Berechtigung, dieses Turnier anzusehen"
+    "forbidden": "Du hast keine Berechtigung, dieses Turnier anzusehen",
+    "setsNote": "Dieses Turnier wird in Satzen gespielt, daher zeigt jede Zelle die Gesamtpunkte aller Satze. Der Sieger wird anhand der Anzahl gewonnener Satze ermittelt."
   },
   "visibility": {
     "title": "Sichtbarkeit",
@@ -353,6 +355,10 @@
     "homePenaltyScore": "Heim (Elfm.)",
     "awayPenaltyScore": "Auswarts (Elfm.)",
     "extraPenaltyHint": "Die Verlangerung wird zum regularen Ergebnis addiert, um den Sieger zu ermitteln. Das Elfmeterschiessen zahlt nur, wenn es nach regularer Spielzeit und Verlangerung weiterhin unentschieden steht. Lass nicht ausgetragene Felder leer.",
+    "setHeader": "Satz {n}",
+    "setHomeAria": "Satz {n} Heimpunkte",
+    "setAwayAria": "Satz {n} Auswartspunkte",
+    "setsHint": "Wer zuerst {n} Satze gewinnt, gewinnt das Spiel. Gib nur die Ergebnisse der gespielten Satze ein und lass nicht gespielte Satze leer. Der Sieger wird anhand der Anzahl gewonnener Satze ermittelt.",
     "save": "Alle speichern",
     "saved": "Ergebnisse gespeichert",
     "saveFailed": "Ergebnisse konnten nicht gespeichert werden",
@@ -380,19 +386,24 @@
     "description": "Zugewiesene Benutzer können für dieses Turnier Ergebnisse erfassen (einzeln, im Stapel und per CSV-Import). Nur Administratoren der ausrichtenden Organisation können Anschreiber zuweisen.",
     "userIdLabel": "Benutzer-ID",
     "userIdPlaceholder": "z. B. 12345",
+    "searchLabel": "Mitglieder nach Namen suchen und zuweisen",
+    "searchPlaceholder": "Nach Name oder Kartennummer suchen",
+    "searching": "Suche läuft…",
+    "noCandidates": "Keine passenden Mitglieder gefunden",
+    "selectMember": "Dieses Mitglied zuweisen",
     "add": "Zuweisen",
     "remove": "Entfernen",
     "empty": "Noch keine Anschreiber zugewiesen",
     "addSuccess": "Anschreiber zugewiesen",
     "removeSuccess": "Anschreiber-Zuweisung entfernt",
     "alreadyAssigned": "Dieser Benutzer ist bereits zugewiesen",
-    "userDisplay": "Benutzer-ID: {userId}",
     "error": {
       "loadFailed": "Die Anschreiberliste konnte nicht geladen werden",
       "addFailed": "Anschreiber konnte nicht zugewiesen werden ({status})",
       "removeFailed": "Anschreiber-Zuweisung konnte nicht entfernt werden",
       "forbidden": "Sie haben keine Berechtigung, Anschreiber zu verwalten (nur Administratoren der ausrichtenden Organisation)",
-      "invalidUserId": "Die Benutzer-ID muss eine positive ganze Zahl sein"
+      "invalidUserId": "Die Benutzer-ID muss eine positive ganze Zahl sein",
+      "searchFailed": "Mitgliedersuche fehlgeschlagen"
     }
   }
 }

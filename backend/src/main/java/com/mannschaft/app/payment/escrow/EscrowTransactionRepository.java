@@ -81,6 +81,17 @@ public interface EscrowTransactionRepository
     List<EscrowTransactionEntity> findByStatus(EscrowStatus status);
 
     /**
+     * 指定状態かつ {@code captured_at} が期間 {@code [from, to)} に入る取引を取得する
+     * （日次純益突合バッチ用・第三陣 C2・設計書 02 §6.3）。
+     *
+     * <p>{@code application_fee_amount}（5% 徴収）と Stripe 実手数料（{@code balance_transaction.fee}）の差＝
+     * Mannschaft 純益を日次集計する母集合。capture 済（CAPTURED 以降）取引のみが純益確定対象のため
+     * {@code captured_at} で窓を切る。{@code escrow_transactions} は {@code deleted_at} を持たない（物理保持）。</p>
+     */
+    List<EscrowTransactionEntity> findByStatusAndCapturedAtGreaterThanEqualAndCapturedAtLessThan(
+            EscrowStatus status, LocalDateTime from, LocalDateTime to);
+
+    /**
      * 指定状態かつ {@code created_at} が基準時刻より前（=確認猶予超過）の取引を取得する（escrow ライフサイクル
      * バッチ用・第三陣）。{@link EscrowStatus#PENDING_CONFIRMATION}（札主未 confirm 放置）の自動取消抽出に用いる。
      *

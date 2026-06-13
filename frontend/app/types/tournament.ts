@@ -748,7 +748,8 @@ export interface TournamentFeeCheckoutResponse {
 //   POST   /api/v1/organizations/{orgId}/tournaments/{tId}/scorekeepers      → 201（既存指名は冪等）
 //   DELETE /api/v1/organizations/{orgId}/tournaments/{tId}/scorekeepers/{skId} → 204
 // すべて主催組織 ADMIN / SYSTEM_ADMIN 限定。
-// NOTE: BE の ScorekeeperResponse は displayName を返さないため、表示名は userId フォールバック。
+// NOTE: BE の ScorekeeperResponse は displayName を同梱する（F08.7 ③・NameResolverService 解決）。
+//       退会済み/不明ユーザーは BE 側で既定フォールバック名（「不明なユーザー」等）が入る。
 //       openapi.json に未掲載（BE 再生成漏れ）のため手動型として定義する。
 // ──────────────────────────────────────────────────
 
@@ -760,6 +761,11 @@ export interface ScorekeeperResponse {
   tournamentId: number
   /** スコアキーパーに指名されたユーザー ID */
   userId: number
+  /**
+   * 指名されたユーザーの表示名（BE NameResolverService 解決）。
+   * 退会済み/不明ユーザーは BE 既定フォールバック名。後方互換のため optional。
+   */
+  displayName?: string
   /** 指名した主催組織 ADMIN の user_id */
   createdBy: number
   /** 指名日時（ISO-8601） */
