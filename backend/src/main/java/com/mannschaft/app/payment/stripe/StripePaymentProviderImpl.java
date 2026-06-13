@@ -10,6 +10,7 @@ import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Account;
 import com.stripe.model.AccountLink;
+import com.stripe.model.BalanceTransaction;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
 import com.stripe.model.Event;
@@ -34,6 +35,7 @@ import com.stripe.param.CustomerUpdateParams;
 import com.stripe.param.PaymentIntentCancelParams;
 import com.stripe.param.PaymentIntentCaptureParams;
 import com.stripe.param.PaymentIntentCreateParams;
+import com.stripe.param.PaymentIntentRetrieveParams;
 import com.stripe.param.PaymentMethodAttachParams;
 import com.stripe.param.PriceCreateParams;
 import com.stripe.param.PriceUpdateParams;
@@ -692,6 +694,44 @@ public class StripePaymentProviderImpl implements StripePaymentProvider {
             return transferId;
         } catch (StripeException e) {
             log.error("Transfer 解決失敗: piId={}", paymentIntentId, e);
+            throw new BusinessException(ConnectPaymentErrorCode.STRIPE_API_ERROR, e);
+        }
+    }
+
+    @Override
+    public long retrieveChargeProcessingFee(String paymentIntentId) {
+        try {
+            // latest_charge.balance_transaction を一度の retrieve で展開し、追加往復を避ける（§6.3）。
+            PaymentIntentRetrieveParams params = PaymentIntentRetrieveParams.builder()
+                    .addExpand("latest_charge.balance_transaction")
+                    .build();
+            PaymentIntent intent = PaymentIntent.retrieve(paymentIntentId, params, null);
+
+            Charge charge = intent.getLatestChargeObject();
+            if (charge == null) {
+                // latest_charge 未解決（capture 前/異常）。0 と誤認させず pending 番兵で上申する。
+                log.warn("実手数料未取得（latest_charge なし・pending 扱い）: piId={}", paymentIntentId);
+                return PROCESSING_FEE_PENDING;
+            }
+            BalanceTransaction bt = charge.getBalanceTransactionObject();
+            if (bt == null || bt.getFee() == null) {
+                // balance_transaction 未展開/未確定。後続バッチで補完できるよう pending 番兵を返す。
+                log.warn("実手数料未取得（balance_transaction 未確定・pending 扱い）: piId={}, chargeId={}",
+                        paymentIntentId, charge.getId());
+                return PROCESSING_FEE_PENDING;
+            }
+            // status='pending' の間は fee が暫定/未確定でありうるため、available 確定まで pending 番兵を返す。
+            if (!"available".equals(bt.getStatus())) {
+                log.warn("実手数料未確定（balance_transaction.status={}・pending 扱い）: piId={}, fee={}",
+                        bt.getStatus(), paymentIntentId, bt.getFee());
+                return PROCESSING_FEE_PENDING;
+            }
+            long fee = bt.getFee();
+            log.info("Stripe 実手数料取得: piId={}, chargeId={}, btId={}, fee={}（minor）",
+                    paymentIntentId, charge.getId(), bt.getId(), fee);
+            return fee;
+        } catch (StripeException e) {
+            log.error("Stripe 実手数料取得失敗: piId={}", paymentIntentId, e);
             throw new BusinessException(ConnectPaymentErrorCode.STRIPE_API_ERROR, e);
         }
     }

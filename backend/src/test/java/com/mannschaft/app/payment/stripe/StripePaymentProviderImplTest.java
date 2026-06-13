@@ -5,6 +5,7 @@ import com.mannschaft.app.payment.connect.ConnectPaymentErrorCode;
 import com.stripe.exception.ApiException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Account;
+import com.stripe.model.BalanceTransaction;
 import com.stripe.model.Charge;
 import com.stripe.model.EventDataObjectDeserializer;
 import com.stripe.model.Invoice;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 import org.mockito.MockedStatic;
 
 import java.util.Optional;
@@ -282,6 +284,126 @@ class StripePaymentProviderImplTest {
                 piStatic.when(() -> PaymentIntent.retrieve("pi_fail")).thenThrow(stripeError);
 
                 assertThatThrownBy(() -> provider.resolveFromRawJson(objectJson("payment_intent", "pi_fail")))
+                        .isInstanceOf(BusinessException.class)
+                        .extracting("errorCode")
+                        .isEqualTo(ConnectPaymentErrorCode.STRIPE_API_ERROR);
+            }
+        }
+    }
+
+    /**
+     * §6.3 第二陣 C1: {@link StripePaymentProviderImpl#retrieveChargeProcessingFee} 単体テスト。
+     *
+     * <p>{@code PaymentIntent.retrieve(id, params, options)}（expand 付き）を {@code mockStatic} で差し替え、
+     * latest_charge.balance_transaction を展開した結果から実手数料（{@code fee}・正値）を取り出すこと、
+     * balance_transaction 未確定（pending）/未解決時に {@code PROCESSING_FEE_PENDING}（-1・0 と区別）を返すこと、
+     * Stripe 通信失敗時に {@link ConnectPaymentErrorCode#STRIPE_API_ERROR} で上申することを検証する。</p>
+     */
+    @Nested
+    @DisplayName("retrieveChargeProcessingFee — 実 Stripe 手数料取得（§6.3 C1）")
+    class RetrieveChargeProcessingFee {
+
+        private PaymentIntent piWithCharge(BalanceTransaction bt) {
+            Charge charge = new Charge();
+            charge.setId("ch_fee_001");
+            if (bt != null) {
+                charge.setBalanceTransactionObject(bt);
+            }
+            PaymentIntent pi = new PaymentIntent();
+            pi.setId("pi_fee_001");
+            pi.setLatestChargeObject(charge);
+            return pi;
+        }
+
+        private BalanceTransaction bt(String status, Long fee) {
+            BalanceTransaction t = new BalanceTransaction();
+            t.setId("txn_001");
+            t.setStatus(status);
+            t.setFee(fee);
+            return t;
+        }
+
+        @Test
+        @DisplayName("available な balance_transaction.fee（369）を正値で返す")
+        void returnsFeeWhenAvailable() throws StripeException {
+            PaymentIntent pi = piWithCharge(bt("available", 369L));
+            try (MockedStatic<PaymentIntent> piStatic = mockStatic(PaymentIntent.class)) {
+                piStatic.when(() -> PaymentIntent.retrieve(
+                                ArgumentMatchers.eq("pi_fee_001"),
+                                ArgumentMatchers.any(com.stripe.param.PaymentIntentRetrieveParams.class),
+                                ArgumentMatchers.isNull()))
+                        .thenReturn(pi);
+
+                long fee = provider.retrieveChargeProcessingFee("pi_fee_001");
+
+                assertThat(fee).isEqualTo(369L);
+            }
+        }
+
+        @Test
+        @DisplayName("balance_transaction.status=pending は PROCESSING_FEE_PENDING(-1) を返す（0 と区別・握り潰さない）")
+        void returnsPendingWhenStatusPending() throws StripeException {
+            PaymentIntent pi = piWithCharge(bt("pending", 369L));
+            try (MockedStatic<PaymentIntent> piStatic = mockStatic(PaymentIntent.class)) {
+                piStatic.when(() -> PaymentIntent.retrieve(
+                                ArgumentMatchers.eq("pi_fee_001"),
+                                ArgumentMatchers.any(com.stripe.param.PaymentIntentRetrieveParams.class),
+                                ArgumentMatchers.isNull()))
+                        .thenReturn(pi);
+
+                long fee = provider.retrieveChargeProcessingFee("pi_fee_001");
+
+                assertThat(fee).isEqualTo(StripePaymentProvider.PROCESSING_FEE_PENDING);
+            }
+        }
+
+        @Test
+        @DisplayName("balance_transaction 未展開（null）は PROCESSING_FEE_PENDING(-1) を返す")
+        void returnsPendingWhenBalanceTxnNull() throws StripeException {
+            PaymentIntent pi = piWithCharge(null);
+            try (MockedStatic<PaymentIntent> piStatic = mockStatic(PaymentIntent.class)) {
+                piStatic.when(() -> PaymentIntent.retrieve(
+                                ArgumentMatchers.eq("pi_fee_001"),
+                                ArgumentMatchers.any(com.stripe.param.PaymentIntentRetrieveParams.class),
+                                ArgumentMatchers.isNull()))
+                        .thenReturn(pi);
+
+                long fee = provider.retrieveChargeProcessingFee("pi_fee_001");
+
+                assertThat(fee).isEqualTo(StripePaymentProvider.PROCESSING_FEE_PENDING);
+            }
+        }
+
+        @Test
+        @DisplayName("latest_charge 未解決（null）は PROCESSING_FEE_PENDING(-1) を返す")
+        void returnsPendingWhenChargeNull() throws StripeException {
+            PaymentIntent pi = new PaymentIntent();
+            pi.setId("pi_fee_001");
+            try (MockedStatic<PaymentIntent> piStatic = mockStatic(PaymentIntent.class)) {
+                piStatic.when(() -> PaymentIntent.retrieve(
+                                ArgumentMatchers.eq("pi_fee_001"),
+                                ArgumentMatchers.any(com.stripe.param.PaymentIntentRetrieveParams.class),
+                                ArgumentMatchers.isNull()))
+                        .thenReturn(pi);
+
+                long fee = provider.retrieveChargeProcessingFee("pi_fee_001");
+
+                assertThat(fee).isEqualTo(StripePaymentProvider.PROCESSING_FEE_PENDING);
+            }
+        }
+
+        @Test
+        @DisplayName("retrieve が StripeException で失敗→症状を隠さず BusinessException(STRIPE_API_ERROR) で上申")
+        void retrieveFailureThrows() {
+            StripeException stripeError = new ApiException("retrieve 失敗", "req_2", "code", 500, null);
+            try (MockedStatic<PaymentIntent> piStatic = mockStatic(PaymentIntent.class)) {
+                piStatic.when(() -> PaymentIntent.retrieve(
+                                ArgumentMatchers.eq("pi_fee_001"),
+                                ArgumentMatchers.any(com.stripe.param.PaymentIntentRetrieveParams.class),
+                                ArgumentMatchers.isNull()))
+                        .thenThrow(stripeError);
+
+                assertThatThrownBy(() -> provider.retrieveChargeProcessingFee("pi_fee_001"))
                         .isInstanceOf(BusinessException.class)
                         .extracting("errorCode")
                         .isEqualTo(ConnectPaymentErrorCode.STRIPE_API_ERROR);

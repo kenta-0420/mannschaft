@@ -416,6 +416,56 @@ R = 精算額（transferAmount ベース・null=残額全部）
 - 1 取引の借方合計＝貸方合計の検算（01 §3.3）。不一致は**握りつぶさずアラート**（CLAUDE.md 根治原則）。
 - **純益の微変動可視化**: `ledger_entries`(FEE) に **Stripe Webhook（`balance_transaction.fee`）の実手数料**を記録し、`application_fee_amount`（5%徴収）− Stripe 実手数料＝Mannschaft 純益（≈額面の1.31%）を日次集計。グロスアップ後課金額に対する Stripe 手数料の実額が想定（0.036）からブレた場合も台帳で可視化し、症状を隠さない（README §3.4）。
 
+#### 6.3.1 ModeB 返金で一時負担した実 Stripe 手数料の自動回収（相殺回収）
+
+ModeB（受取側負担）返金では Mannschaft が支払者へ `grossRefund` を満額返金し `refund_application_fee:true` で application_fee を返金するため、元 charge の **実 Stripe 手数料（`grossRefund − R`）を Mannschaft が一時負担**する。この未回収額を payee（受取側 Connect アカウント）×通貨単位の残高表に積み、後続の同 payee 決済の `application_fee_amount` に上乗せして実回収する。
+
+**残高表 `fee_recovery_balances`（V84.001・01 §3.3）:**
+
+| 列 | 型 | 説明 |
+|---|---|---|
+| `id` | BINARY(16) | PK（UUIDv7・原則6） |
+| `connect_account_id` | BINARY(16) | 受取側 Connect 口座（論理参照・FK なし・原則1） |
+| `organization_id` | BIGINT UNSIGNED NULL | テナント絞り込み（`AbstractTenantAwareRepository`・原則7） |
+| `outstanding_amount` | BIGINT | 未回収残高（minor・署名付き） |
+| `currency` | CHAR(3) | minor 母数（既定 `jpy`） |
+| `deleted_at` | DATETIME(6) NULL | 論理削除（連結口座切離し時の残高リセット） |
+
+- **UNIQUE**: `uk_frb_account_currency (connect_account_id, currency)`（payee×通貨で物理 1 行・upsert）。
+
+**`RECOVERY` 仕訳の 4 経路（`ledger_entries.entry_type='RECOVERY'`・`recovery_kind` で峻別・V84.002/V84.003）:**
+
+勘定の向き（D/C）だけでは C1/C2 発生計上と A 回収実行/再計上を峻別できない（C1 と A 再計上はともに `D PLATFORM_FEE / C PAYEE / re_`）。各 RECOVERY 行に `recovery_kind` を焼き付け、確実に分離する。
+
+| 経路 | `recovery_kind` | 仕訳（account/direction） | `stripe_object_id` | 意味 |
+|---|---|---|---|---|
+| **C1 発生計上** | `C1_ACCRUAL` | `D PLATFORM_FEE` / `C PAYEE` | `re_xxx`（Refund ID） | その escrow 自身の ModeB 返金で被った実 Stripe 手数料を未回収残高に計上 |
+| **C2 補完** | `C2_COMPLETION` | `D PLATFORM_FEE` / `C PAYEE` | `re_xxx`（Refund ID） | C1 が balance_transaction 未確定（pending）で先送りした分をリコンシリで後追い計上（C1 と同一会計） |
+| **A 回収実行** | `A_EXECUTION` | `D PAYEE` / `C PLATFORM_FEE` | `pi_xxx`（PaymentIntent ID） | 他者債務（未回収残高）を当該 charge の application_fee に上乗せして実回収（payee 送金から控除） |
+| **A 再計上** | `A_RECAPITALIZE` | `D PLATFORM_FEE` / `C PAYEE` | `re_xxx` または `cancel-<id>` | A で回収を上乗せした charge が ModeB 返金/取消で巻き戻った際、回収実行を打ち消す逆仕訳 |
+
+- 「当該 escrow に上乗せ適用した回収の純額」は **A 経路のみ**（`A_EXECUTION` の `D PAYEE` − `A_RECAPITALIZE` の `C PAYEE`）で導出する（`LedgerEntryRepository.sumAppliedRecoveryNetOnEscrow`）。C1/C2 の発生計上は除外する。
+- C2 補完候補（`findModeBRefundEscrowsWithoutRecovery`）は「ModeB 返金記帳あり（`REFUND/D/PAYER`）かつ **C1/C2 発生計上なし**」で判定する（A 経路の RECOVERY が立っている escrow でも自身の C1 が pending なら拾える）。除外は **`NOT EXISTS` 相関サブクエリ**で行う（`NOT IN` は SQL 三値論理によりサブクエリ結果に NULL が混じると全行 UNKNOWN になり「補完済み escrow が候補に残り続けて二重補完する」温床になるため、NULL 安全な `NOT EXISTS` を正準とする・実 MySQL 冪等）。
+- 補完単位処理 `completePendingRecovery` は **メソッド自身でも冪等**にする。バッチ抽出（候補フィルタ）を経ずに直接呼ばれた場合（再実行・テスト・将来の別経路）でも二重補完しないよう、for-update ロック獲得直後に「自身が立てる C1/C2 発生計上 RECOVERY が既にあるか」（`existsAccrualRecovery`・抽出条件と同一述語）を確認し、あれば `SKIPPED` で打ち切る。
+
+**自己返金時の合成規則（不変条件・🔴根治）:**
+
+「A で回収を上乗せした charge X が、後で自己 ModeB 返金される」自己返金では、同一返金処理内で次の 2 つが**同一 payee 残高に加算合成**される。
+
+1. **A 再計上**: X に乗っていた回収（A_EXECUTION 純額）を `outstanding` へ戻す（`+applied`）。
+2. **C1 発生計上**: X 自身の実 Stripe 手数料を `outstanding` へ計上する（`+recoverable`）。
+
+→ `outstanding += applied + recoverable`（IT シナリオ4: 回収 360 + 自身手数料 400 = **760**）。
+
+二重防御で回収金消失を防ぐ:
+- **① 峻別**: `recovery_kind` により `sumAppliedRecoveryNetOnEscrow` が A 経路のみ集計し、C1 の `C PAYEE` が純額に混入しない（旧実装は `360 − 400 = −40 ≤ 0` で A 再計上が早期 return → 回収金消失していた）。
+- **② 順序**: `refund()` 内で **A 再計上を C1 発生計上より先に**呼び、Hibernate AUTO フラッシュで C1 行が A 純額の読み取りに混入する余地を断つ。
+
+**不変条件:**
+- **`chk_et_fee` 不可侵**: PI の `application_fee = totalFee + recovery ≤ amount`（`recovery ≤ headroom = amount − totalFee` を `FeeRecoveryCalculator` の headroom クランプで保証）。escrow 列の `application_fee_amount` は self の totalFee のまま据え置き、PI の application_fee にのみ上乗せ（隔離原則）。
+- **部分回収＋繰越**: `outstanding > headroom` のときは headroom 分のみ回収し、残りを次回に繰り越す。
+- **冪等**: 回収実行は当該 escrow の A 純額 > 0 なら skip。新規 charge 経路（既存 escrow は冪等キーで早期 return）でのみ上乗せ計算を行い、Stripe 冪等キーで同一 PI を再取得するため PI への二重上乗せが起きない。
+
 ---
 
 ## 7. エラーコード一覧（`ConnectPaymentErrorCode`＝`PAYMENT_C0xx` 系・実装正典）

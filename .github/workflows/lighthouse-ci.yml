@@ -55,6 +55,9 @@ jobs:
           NUXT_PUBLIC_API_BASE_URL: http://localhost:8080
           # CI の GitHub Actions runner (7GB RAM) でも OOM しないようヒープ上限を引き上げる
           NODE_OPTIONS: --max-old-space-size=6144
+          # nuxt.config.ts でこのフラグのときだけ ssr:false（SPA 化）にし、Nitro SSR バンドルを
+          # スキップして OOM を回避する。Smoke E2E（npm run dev）には影響させないための専用フラグ。
+          NUXT_GENERATE_SPA: 'true'
 
       - name: Lighthouse CI 実行
         working-directory: frontend

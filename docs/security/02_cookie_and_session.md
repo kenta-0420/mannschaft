@@ -67,18 +67,20 @@ ResponseCookie.from("access_token", "")
 
 > **整合に関する注記（2026-05-26 更新・実装済み）**: refresh_token も access_token と同様、サーバーが `ResponseCookie` として明示発行・削除する一元管理に移行した（`AuthLoginController#buildRefreshTokenCookie` / `#clearRefreshTokenCookie`）。F01.1 §203 のデュアルモード設計に合わせ、**login/refresh 成功時は Set-Cookie とレスポンスボディの両方**で返し（Web は Cookie・モバイルは body を使用）、**logout で maxAge=0 のクリア Cookie** を返す。Cookie の maxAge は DB トークンの有効期限（`getRefreshTokenExpirationSeconds()`）と一致させる。属性は access_token と統一（HttpOnly / Secure=`mannschaft.cookie.secure` / SameSite=Strict / Path=/）。
 
-### 3.1 access_token の roles claim（現状と改善）
+### 3.1 access_token の roles claim（実装済み）
 
 access_token（JWT）の `roles` claim は **認可（authority）の起点**である。`JwtAuthenticationFilter` がこの claim を `ROLE_*` authority に変換し、SecurityFilterChain の `hasRole(...)` とメソッド層の `@PreAuthorize` がそれを評価する。
 
-| 項目 | 現状（病巣） | 改善（認可基盤完全根治） |
+> ※2026-05-30 時点の「現状（病巣）」と「改善（根治後）」の対比表として記録。その後 Phase 1〜3 の実装（#1266・2026-06-02 点火）で根治済み。
+
+| 項目 | 調査時（2026-05-29）の病巣 | 根治後（2026-06-02 実装済み） |
 |---|---|---|
 | 発行内容 | **全 5 経路（login/2FA/OAuth/WebAuthn/refresh）で `["MEMBER"]` 固定** | 基底 `MEMBER` ＋ SYSTEM_ADMIN ユーザーは `["MEMBER","SYSTEM_ADMIN"]`。発行時に `user_roles` から判定（`existsSystemAdminByUserId`） |
 | SYSTEM_ADMIN | 誰の JWT にも載らない → SecurityConfig の `hasRole("SYSTEM_ADMIN")` 4 系統が全員 403（機能不全） | **roles 配列に `"SYSTEM_ADMIN"` を追加**（boolean claim ではない）。フィルタの既存 `ROLE_+role` 変換にそのまま乗り、`hasRole` がコード変更なしで機能 |
 | per-scope ロール | — | team/org の ADMIN/DEPUTY_ADMIN は **JWT に載せず**リクエスト毎に DB 判定（マルチテナントでの肥大化回避） |
 | 失効 | — | SYSTEM_ADMIN 剥奪時は §4 の全デバイス無効化タイムスタンプを発火し即時失効。最悪でもリフレッシュ（最長 15 分）で再判定 |
 
-> 詳細・段階計画・`@PreAuthorize` カタログは [03 ロール・権限モデル](03_role_authority_model.md) を正典とする。本書は「access_token に何が載るか」の現状記録に留める。
+> 詳細・段階計画・`@PreAuthorize` カタログは [03 ロール・権限モデル](03_role_authority_model.md) を正典とする。
 
 ---
 
@@ -134,6 +136,7 @@ access_token（JWT）の `roles` claim は **認可（authority）の起点**で
 
 | 日付 | 変更 |
 |---|---|
+| 2026-06-12 | §3.1 の「現状（病巣）/改善」対比表の列ヘッダーを「調査時（病巣）/根治後（実装済み）」に更新し、Phase 1〜3 根治済み（#1266・2026-06-02 点火）であることを注記 |
 | 2026-05-26 | 新規作成。`MANNSCHAFT_COOKIE_SECURE` 環境変数化と Cookie 属性統一を定義 |
 | 2026-05-26 | 認証コア強化: Argon2id 段階移行（`DelegatingPasswordEncoder`・ログイン時透過 upgrade）と refresh_token Cookie 発行一元化（デュアルモード）を実装。§3/§5/§6 を実装済みに更新 |
 | 2026-05-30 | §3.1 を新設。access_token の roles claim の現状（`["MEMBER"]` 固定）と SYSTEM_ADMIN を roles 配列に載せる改善を追記。詳細は [03](03_role_authority_model.md) を正典として参照 |

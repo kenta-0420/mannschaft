@@ -70,7 +70,8 @@ class ConnectChargeServiceDeferredTest {
         return new ConnectChargeService(
                 escrowTransactionRepository, connectAccountRepository,
                 feeCalculator, stripePaymentProvider, accessControlService, ledgerEntryRepository,
-                refundRepository, new com.mannschaft.app.payment.connect.PayeeScopeResolver(), feePolicyResolver);
+                refundRepository, new com.mannschaft.app.payment.connect.PayeeScopeResolver(), feePolicyResolver,
+                org.mockito.Mockito.mock(com.mannschaft.app.payment.recovery.FeeRecoveryBalanceRepository.class));
     }
 
     private ConnectAccountEntity payeeAccount(boolean payoutsEnabled) {
