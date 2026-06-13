@@ -78,9 +78,11 @@ SecurityFilterChain は「最低限のゲート」、所有権の最終判定は
 | `/api/v1/webhooks/stripe` | `/api/v1/webhooks/stripe` | POST | `payment/StripeWebhookController`（`@PostMapping("/stripe")`） | `Stripe-Signature` ヘッダー |
 | `/api/v1/webhooks/stripe/ad-invoices` | `/api/v1/webhooks/stripe/*` | POST | `advertising/StripeAdInvoiceWebhookController`（`@PostMapping("/ad-invoices")`） | `Stripe-Signature` ヘッダー |
 | `/api/v1/webhooks/stripe/connect` | `/api/v1/webhooks/stripe/*`（**既存 `*` で被覆済・新規許可不要・SecurityConfig 変更不要**） | POST | `payment/StripeWebhookController`（`@PostMapping("/stripe/connect")`・F22.1 謝礼決済 P2-a 実装済） | `Stripe-Signature` ヘッダー（Connect 用シークレット `STRIPE_CONNECT_WEBHOOK_SECRET` で**別シークレット**として検証） |
-| `/api/v1/webhooks/ses` | `/api/v1/webhooks/ses` | POST | `directmail/SesWebhookController` | SNS メッセージ署名 |
+| ~~`/api/v1/webhooks/ses`~~ | **廃止（F09.6 Phase 8a）** | — | — | **SQS 内部認証へ移行**（下記注記参照） |
 | `/api/v1/line/webhook/{webhookSecret}` | `/api/v1/line/webhook/*` | POST | `line/LineWebhookController`（`@PostMapping("/{webhookSecret}")`） | LINE 署名（`X-Line-Signature`）+ パスシークレット |
 | `/incoming/{token}` | `/incoming/*` | POST | `webhook/IncomingWebhookController`（`@PostMapping("/incoming/{token}")`） | パストークン（DB 照合）。**トップレベルパス（`/api/` 配下でない）に注意** |
+
+> **SES バウンス/苦情通知の SQS 移行（F09.6 Phase 8a）**: 旧 `POST /api/v1/webhooks/ses`（permitAll・SNS 署名検証なし）は廃止し、`SES → SNS Topic → SQS Queue → @SqsListener`（`directmail/listener/SesNotificationSqsListener`）方式へ移行した。HTTP 受け口を排したことで偽造バウンス注入・SubscribeURL の SSRF が構造的に不可能になり、アプリ側の SNS 署名検証も不要化した。SQS は AWS 内部認証（SigV4）+ キューアクセスポリシー（送信元 SNS Topic を限定）で認証する。SecurityConfig の当該 permitAll 行は撤去済み（deny-by-default 対象に復帰）。
 
 > 実装注記: Stripe 系は 2 つの異なるパス（`/stripe` と `/stripe/ad-invoices`）があるため、`POST /api/v1/webhooks/stripe` と `POST /api/v1/webhooks/stripe/*` の**両方を明示的に**許可する（`/**` 再帰は使わない）。LINE と incoming はパス末尾にシークレット/トークンを持つため `*`（1 階層）で許可する。**F22.1 謝礼決済（Phase 2 後半）の Connect Webhook `/api/v1/webhooks/stripe/connect` は、この `/api/v1/webhooks/stripe/*`（1 階層 `*`）許可で被覆されるため、許可リストへの新規追記は不要**（署名検証は Connect 用シークレットで別途実施）。
 
@@ -146,7 +148,7 @@ grep -rn "@RequestMapping\|@GetMapping\|@PostMapping\|@PutMapping\|@PatchMapping
 で全マッピングを抽出し、§3 許可リストに無いものは全て認証必須であることを確認する。
 
 ### 6.2 担保するテスト（統合テスト）
-- **公開到達**: webhook 4 系統・主要な `/api/v1/public/**` GET が **未認証で 2xx/正常系** に到達すること
+- **公開到達**: webhook 3 系統（Stripe / LINE / incoming。SES は F09.6 Phase 8a で SQS 移行・HTTP 廃止）・主要な `/api/v1/public/**` GET が **未認証で 2xx/正常系** に到達すること
 - **保護**: 代表的な認証必須エンドポイント（例: `/api/v1/users/me`、適当な org/team API）が **未認証で 401/403** になること
 - **ロール**: `/api/v1/system-admin/**` が一般ユーザートークンで **403** になること
 
@@ -180,3 +182,4 @@ deny-by-default 反転は以下を実装時に確認してから行う（いず�
 | 2026-06-12 | **ステータス追従**: §1 の「移行する（予定）」記述を「移行した（実施済み）」に更新。解決済み課題に取り消し線と根治済み注記を追記。§7 チェックリストを `[x]` 済みに更新。裏取り根拠（`SecurityConfig.java` への `anyRequest().authenticated()` 確認）を記載 |
 | 2026-05-26 | 新規作成。deny-by-default 移行設計、webhook 許可リスト、system-admin 包括ルールを定義 |
 | 2026-06-02 | §5 に WebSocket 二層認証モデル（ハンドシェイク層 permitAll／STOMP CONNECT JWT 必須）と `setAllowedOriginPatterns` の本番ドメイン限定要件を追記。§3.6 の Stripe webhook 許可リスト記述を `/**` 再帰禁止・両パス明示に修正。§3.3 の根治記録に `/public/market/categories` 新設・旧 API 維持・FE 修正済みの詳細を追記 |
+| 2026-06-13 | §3.6: SES バウンス/苦情通知を HTTP webhook（`/api/v1/webhooks/ses`・permitAll・SNS 署名検証なし）から SQS 内部認証方式（SES→SNS→SQS→@SqsListener）へ移行（F09.6 Phase 8a）。HTTP 受け口廃止・permitAll 撤去・SSRF/偽造注入の構造的排除。webhook 系統を 4→3（Stripe/LINE/incoming）に更新 |
