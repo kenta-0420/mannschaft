@@ -98,7 +98,7 @@ defineExpose({ refresh: loadSurveys })
         <div class="text-right">
           <div class="text-sm font-medium">{{ survey.stats?.responseCount }}{{ survey.stats?.targetCount ? `/${survey.stats.targetCount}` : '' }}</div>
           <div class="text-xs text-surface-400">{{ t('surveys.list.responseCountUnit') }}</div>
-          <Badge v-if="(survey as any).hasResponded" :value="t('surveys.list.answeredBadge')" severity="success" class="mt-1" />
+          <Badge v-if="survey.hasResponded" :value="t('surveys.list.answeredBadge')" severity="success" class="mt-1" />
         </div>
       </button>
 
