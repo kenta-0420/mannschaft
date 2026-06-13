@@ -39,11 +39,28 @@ public enum MatchErrorCode implements ErrorCode {
     /** linked_event_id が同一 match に属さない（越境・親子不一致は 404 で統一・03 §C.4a）。 */
     MATCH_022("MATCH_022", "連鎖先のイベントが見つかりません", Severity.WARN),
 
-    /** COMPLETED 遷移時に duration_minutes が未設定（必須化・400・02 §E.3）。 */
+    /** COMPLETED 遷移時に duration_minutes が未設定（連続時間制の必須化・400・02 §E.3）。 */
     MATCH_023("MATCH_023", "試合を終了するには試合時間（分）の設定が必要です", Severity.WARN),
 
     /** 入力値が業務範囲外 / 制約違反（400）。 */
     MATCH_024("MATCH_024", "入力内容に不備があります", Severity.WARN),
+
+    /**
+     * COMPLETED 遷移時にセット制（バレー）のセット結果が確定していない（400・01 §D.6 / sports/04_volleyball.md §4.3）。
+     *
+     * <p>セット制は獲得セット数（home/away_score）が両方確定し、かつ勝者がセット先取で決着している
+     * （引分けなし）必要がある。未確定/同数のまま COMPLETED にはできない（症状を隠さない）。</p>
+     */
+    MATCH_026("MATCH_026", "試合を終了するには全セットの結果確定が必要です", Severity.WARN),
+
+    /**
+     * COMPLETED 遷移時にターン制（将棋/囲碁）の勝敗が確定していない（400・01 §D.6 / §B.1.2）。
+     *
+     * <p>ターン制は勝敗（home/away_score=1-0/0-1/0-0）が確定している必要がある。
+     * 勝ち（1-0/0-1）または引分（0-0・千日手/持将棋/持碁）のいずれかでスコアが揃っていなければ終了できない。
+     * 勝ち方（win_method）は引分以外で別途保持する（責務分離・§D.7）。</p>
+     */
+    MATCH_027("MATCH_027", "試合を終了するには勝敗の確定が必要です", Severity.WARN),
 
     /**
      * team_side と recorded_by_team_id の不整合（自サイド以外を自名義で記録できない・403・03 §C.4a）。

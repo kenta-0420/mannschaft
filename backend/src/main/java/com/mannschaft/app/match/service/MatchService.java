@@ -9,6 +9,7 @@ import com.mannschaft.app.match.domain.HomeAway;
 import com.mannschaft.app.match.domain.MatchKind;
 import com.mannschaft.app.match.domain.MatchStatus;
 import com.mannschaft.app.match.domain.Sport;
+import com.mannschaft.app.match.domain.StateModel;
 import com.mannschaft.app.match.dto.MatchSummaryResponse;
 import com.mannschaft.app.match.entity.MatchEntity;
 import com.mannschaft.app.match.live.MatchLiveUpdateEvent;
@@ -194,10 +195,13 @@ public class MatchService {
             throw new BusinessException(MatchErrorCode.MATCH_024);
         }
 
+        Sport sport = command.getSport() != null ? command.getSport() : Sport.SOCCER;
         MatchEntity match = MatchEntity.builder()
                 .organizationId(command.getOrganizationId())
                 .teamId(command.getTeamId())
-                .sport(command.getSport() != null ? command.getSport() : Sport.SOCCER)
+                .sport(sport)
+                // state_model は sport から導出する（冪等な分岐用に列保持・01 §D.6）。
+                .stateModel(sport.stateModel())
                 .kind(command.getKind())
                 .tournamentFixtureId(command.getTournamentFixtureId())
                 .scheduleId(command.getScheduleId())
@@ -315,10 +319,9 @@ public class MatchService {
 
         MatchStatus before = match.getStatus();
         if (newStatus == MatchStatus.COMPLETED) {
-            if (match.getDurationMinutes() == null) {
-                // duration 未設定では出場記録を確定できない（必須化・症状を隠さない・02 §E.3）
-                throw new BusinessException(MatchErrorCode.MATCH_023);
-            }
+            // COMPLETED 遷移の必須条件は状態モデル類型ごとに異なる（01 §D.6・02 §E.3）。
+            // DDL は緩め（NULL 許容）にして Service で締める（症状を隠さず根治）。
+            assertCompletable(match);
         }
 
         match.setStatus(newStatus);
@@ -348,6 +351,50 @@ public class MatchService {
                     .build());
         }
         return saved;
+    }
+
+    /**
+     * COMPLETED 遷移の必須条件を状態モデル類型ごとに検証する（01 §D.6・02 §E.3）。
+     *
+     * <p>DDL はスコア列/duration を NULL 許容にして「器」としては全競技共通にし、
+     * 終了に必要な条件は Service で類型別に締める（症状を隠さず根治）。{@code state_model} が
+     * 未設定（古いレコード等）の場合は sport から導出してフォールバックする。</p>
+     *
+     * <ul>
+     *   <li><b>CONTINUOUS_TIME</b>（サッカー/フットサル/バスケ）: {@code duration_minutes} 必須
+     *       （出場記録の区間を閉じるため・未設定は MATCH_023）。</li>
+     *   <li><b>SET_BASED</b>（バレー）: 獲得セット数（home/away_score）が両方確定し、引分けでない
+     *       （バレーに D なし）こと。未確定/同数は MATCH_026。</li>
+     *   <li><b>TURN_BASED</b>（将棋/囲碁）: 勝敗（home/away_score）が両方確定していること
+     *       （勝ち 1-0/0-1・引分 0-0 を許容）。{@code duration_minutes} は不要。未確定は MATCH_027。</li>
+     * </ul>
+     */
+    private void assertCompletable(MatchEntity match) {
+        StateModel stateModel = match.getStateModel() != null
+                ? match.getStateModel()
+                : (match.getSport() != null ? match.getSport().stateModel() : StateModel.CONTINUOUS_TIME);
+        switch (stateModel) {
+            case CONTINUOUS_TIME -> {
+                if (match.getDurationMinutes() == null) {
+                    // duration 未設定では出場記録を確定できない（必須化・症状を隠さない・02 §E.3）
+                    throw new BusinessException(MatchErrorCode.MATCH_023);
+                }
+            }
+            case SET_BASED -> {
+                // 獲得セット数が両方確定し、勝者がセット先取で決着している（引分けなし）こと
+                if (match.getHomeScore() == null || match.getAwayScore() == null
+                        || match.getHomeScore().equals(match.getAwayScore())) {
+                    throw new BusinessException(MatchErrorCode.MATCH_026);
+                }
+            }
+            case TURN_BASED -> {
+                // 勝敗（1-0/0-1/0-0）が両方確定していること（引分=0-0 は許容・§B.1.2）
+                if (match.getHomeScore() == null || match.getAwayScore() == null) {
+                    throw new BusinessException(MatchErrorCode.MATCH_027);
+                }
+            }
+            default -> throw new BusinessException(MatchErrorCode.MATCH_024);
+        }
     }
 
     // ─────────────────────────────────────────────

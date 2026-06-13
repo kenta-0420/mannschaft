@@ -224,4 +224,58 @@ class PlayingTimeCalculationServiceTest {
         // appearance は保存されるが、matches は本サービスでは保存しない（version 非依存・02 §E.2）
         verify(appearanceRepo).save(any());
     }
+
+    // ─── 状態モデル類型分岐: TURN_BASED は出場時間算出をスキップ（01 §D.6） ──────
+
+    @Test
+    @DisplayName("recalculate: TURN_BASED（将棋）は算出を起動しない（イベント取得も appearance 操作もしない）")
+    void recalcSkipsTurnBased() {
+        UUID matchId = UUID.randomUUID();
+        MatchEntity match = MatchEntity.builder()
+                .sport(com.mannschaft.app.match.domain.Sport.SHOGI)
+                .stateModel(com.mannschaft.app.match.domain.StateModel.TURN_BASED)
+                .build();
+        match.setId(matchId);
+
+        service.recalculate(match, null);
+
+        // ターン制は STARTER/SUB が存在せず区間が組み立たないため、リポジトリに一切触れない
+        verify(eventRepo, never()).findByMatchIdOrderByPeriodAscMinuteAscSortSeqAsc(any());
+        verify(appearanceRepo, never()).findByMatchId(any());
+        verify(appearanceRepo, never()).save(any());
+        verify(appearanceRepo, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("recalculate: state_model 未設定でも sport=GO から TURN_BASED を導出してスキップ")
+    void recalcSkipsTurnBasedDerivedFromSport() {
+        UUID matchId = UUID.randomUUID();
+        MatchEntity match = MatchEntity.builder()
+                .sport(com.mannschaft.app.match.domain.Sport.GO)
+                .build(); // state_model 明示なし（古いレコード相当）
+        match.setId(matchId);
+
+        service.recalculate(match, null);
+
+        verify(eventRepo, never()).findByMatchIdOrderByPeriodAscMinuteAscSortSeqAsc(any());
+        verify(appearanceRepo, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("recalculate: CONTINUOUS_TIME（サッカー）は通常どおり算出を起動する")
+    void recalcRunsForContinuousTime() {
+        UUID matchId = UUID.randomUUID();
+        MatchEntity match = MatchEntity.builder()
+                .sport(com.mannschaft.app.match.domain.Sport.SOCCER)
+                .stateModel(com.mannschaft.app.match.domain.StateModel.CONTINUOUS_TIME)
+                .durationMinutes(90)
+                .build();
+        match.setId(matchId);
+        when(eventRepo.findByMatchIdOrderByPeriodAscMinuteAscSortSeqAsc(matchId)).thenReturn(List.of());
+        when(appearanceRepo.findByMatchId(matchId)).thenReturn(List.of());
+
+        service.recalculate(match, null);
+
+        verify(eventRepo).findByMatchIdOrderByPeriodAscMinuteAscSortSeqAsc(matchId);
+    }
 }

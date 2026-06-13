@@ -5,6 +5,7 @@ import com.mannschaft.app.match.domain.HomeAway;
 import com.mannschaft.app.match.domain.MatchKind;
 import com.mannschaft.app.match.domain.MatchStatus;
 import com.mannschaft.app.match.domain.Sport;
+import com.mannschaft.app.match.domain.StateModel;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -111,6 +112,17 @@ public class MatchEntity extends UuidV7Entity {
     @Column(name = "status", nullable = false, length = 16)
     private MatchStatus status;
 
+    /**
+     * 状態モデル類型（01 §D.6・CONTINUOUS_TIME/SET_BASED/TURN_BASED）。
+     *
+     * <p>{@link Sport} から導出可能（{@link Sport#stateModel()}）だが、Service/FE の分岐
+     * （タイマー・出場時間算出スキップ・COMPLETED バリデーション）を冪等かつ高速に行うため列として保持する。
+     * INSERT 時に sport から導出してセットする（{@link #onCreate()}）。</p>
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "state_model", nullable = false, length = 16)
+    private StateModel stateModel;
+
     /** 記録係ユーザー（公式戦・user ドメイン ID 参照・FK なし） */
     @Column(name = "scorekeeper_user_id")
     private Long scorekeeperUserId;
@@ -155,6 +167,10 @@ public class MatchEntity extends UuidV7Entity {
         }
         if (this.status == null) {
             this.status = MatchStatus.SCHEDULED;
+        }
+        // state_model は sport から導出してセットする（明示指定があればそれを尊重・01 §D.6）。
+        if (this.stateModel == null) {
+            this.stateModel = this.sport.stateModel();
         }
     }
 

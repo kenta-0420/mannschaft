@@ -199,4 +199,49 @@ class MatchSchemaFlywayTest {
                 .as("matches から他ドメインへの FK は張らない（原則1）")
                 .isEmpty();
     }
+
+    private boolean columnIsNullable(String table, String column) throws Exception {
+        try (Connection c = conn(); Statement st = c.createStatement();
+             ResultSet rs = st.executeQuery(
+                     "SELECT is_nullable FROM information_schema.columns"
+                             + " WHERE table_schema = DATABASE()"
+                             + " AND table_name = '" + table + "'"
+                             + " AND column_name = '" + column + "'")) {
+            rs.next();
+            return "YES".equalsIgnoreCase(rs.getString(1));
+        }
+    }
+
+    private String columnDefault(String table, String column) throws Exception {
+        try (Connection c = conn(); Statement st = c.createStatement();
+             ResultSet rs = st.executeQuery(
+                     "SELECT column_default FROM information_schema.columns"
+                             + " WHERE table_schema = DATABASE()"
+                             + " AND table_name = '" + table + "'"
+                             + " AND column_name = '" + column + "'")) {
+            rs.next();
+            return rs.getString(1);
+        }
+    }
+
+    @Test
+    @DisplayName("matches.state_model は NOT NULL DEFAULT 'CONTINUOUS_TIME'（V85.001・01 §D.6）")
+    void matchesHasStateModelColumn() throws Exception {
+        assertThat(columnExists("matches", "state_model"))
+                .as("matches.state_model が存在すること（V85.001）").isTrue();
+        assertThat(columnType("matches", "state_model").toLowerCase())
+                .as("state_model は varchar(16)").isEqualTo("varchar(16)");
+        assertThat(columnIsNullable("matches", "state_model"))
+                .as("state_model は NOT NULL").isFalse();
+        assertThat(columnDefault("matches", "state_model"))
+                .as("state_model の DEFAULT は CONTINUOUS_TIME（既存 SOCCER 行の後方互換充填）")
+                .isEqualTo("CONTINUOUS_TIME");
+    }
+
+    @Test
+    @DisplayName("match_events.period は NULL 許容（V85.001・ターン制は NULL・01 §B.2/§D.6）")
+    void matchEventsPeriodIsNullable() throws Exception {
+        assertThat(columnIsNullable("match_events", "period"))
+                .as("period は NULL 許容（ターン制＝将棋/囲碁は period を使わない）").isTrue();
+    }
 }
