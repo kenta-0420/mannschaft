@@ -1,7 +1,7 @@
 # F08.10 / sports / 05: 将棋競技カタログ（SHOGI）
 
 > **ステータス**: 🟢 設計完了
-> **最終更新**: 2026-06-13
+> **最終更新**: 2026-06-13（**二重検分反映: 勝敗格納を home_score/away_score に統一＝個人戦 1-0/0-1/0-0・matches.result 記述を全廃（コア §B.1.2）・団体戦引分け畳み込み §4.3・period NULL 確定 §3**）
 > **位置づけ**: **F08.10 コアを継承する将棋競技カタログ**。状態モデル類型は **ターン制（TURN_BASED・コア §D.6）**。盤上競技は**記録粒度＝中間**（勝敗＋勝ち方＋総手数＋任意の局面写真/コメント。**棋譜フル（KIF）エンジンは持たない**）。個人戦＋団体戦の両対応（コア §B.6 `parent_match_id`/`board_number`）を最初に用いる競技。
 > **関連機能番号**: F08.10（試合記録・分析）／ F08.7 ／ F08.7.1 ／ F19.1
 > **関連ドキュメント（コア）**:
@@ -32,7 +32,7 @@
 
 ```
 // コア MatchEventType に追加（器・ターン制共通。球技は使わない）
-GAME_RESULT,     // 対局結果確定（勝者サイド・勝ち方を card_reason_code 相当 or detail に）
+GAME_RESULT,     // 対局結果確定（勝者サイド＝matches.home_score/away_score の 1-0/0-1・勝ち方＝matches.win_method・コア §B.1.2/§D.7）
 MOVE_COUNT,      // 総手数記録（total_moves へ反映・任意）
 POSITION_PHOTO,  // 局面写真添付（presign 添付・§B.7）
 COMMENT          // 局面コメント（note へ自由記述）
@@ -48,14 +48,14 @@ Sport.SHOGI, EnumSet.of(GAME_RESULT, MOVE_COUNT, POSITION_PHOTO, COMMENT, OTHER)
 ### §2.1 出場時間・スコアへの影響（将棋）
 
 - **出場時間（分）概念なし**: `player_appearances.computed_minutes` は**ターン制では NULL**（コア 02 §E.1 の汎用 NULL 扱いに従い握りつぶさない）。出場時間自動算出ロジックは**ターン制では起動しない**（コア §D.6 で `state_model=TURN_BASED` のときフル再計算をスキップ＝STARTER/SUB イベントが存在しないため区間が組み立たない）。
-- **スコア（連続量）なし**: `matches.home_score`/`away_score` は将棋では使わない（NULL）。**勝敗は `matches.result`（勝者 side）＋勝ち方（`win_method`・§4）で表現**する。個人戦の `result` は子ボード集計ではなく直接確定。
+- **連続量のスコアはない**が、**勝敗は `matches.home_score`/`away_score` に 1-0 / 0-1 / 0-0 で格納**する（コア §B.1.2 勝敗格納規約＝全競技でスコア列大小から W/D/L を導出し `MatchStatsAggregationService.resolveResult()` を再利用）。勝者側のスコア列に 1、敗者側に 0、引分（千日手/持将棋）は両方 0。勝ち方は `win_method`（§4）が保持する（「どう勝ったか」と「どちらが勝ったか」を分離・`result`/`winner_side` 列は持たない）。個人戦の勝敗は子ボード集計ではなく当該 match に直接確定（先手＝HOME side のスコア列、後手＝AWAY side のスコア列）。
 - 局面写真（POSITION_PHOTO）・コメント（COMMENT）は記録の付随情報でスコア・出場時間に影響しない。
 
 ---
 
 ## §3 period モデル（将棋）— ピリオド無し・総手数
 
-- 将棋に**ピリオドはない**。`match_events.period` は NULL（コア §D.6 でターン制は period 必須を解除＝NOT NULL 制約をターン制で許容するか、`period='NONE'` 固定値を入れるかは実装時に統一。本設計は `period` をターン制で NULL 許容とする方針＝コア §B.2 の `period NOT NULL` をターン制例外として §D.6 で明記）。
+- 将棋に**ピリオドはない**。`match_events.period` は **NULL とする（確定）**。コア §B.2 で `period` 列を NULL 許容に変更済（連続時間制/セット制では Service が必須化・ターン制は NULL を許容）＝コア §D.6 のターン制例外として明記済。`period='NONE'` のような固定ダミー値は使わない（NULL で素直に「ピリオド無し」を表す）。
 - **`PERIOD_START`/`PERIOD_END` は不要**（タイマー無し・コア §D.6）。
 - 進行の量的指標は**総手数 `matches.total_moves`（SMALLINT UNSIGNED NULL・コア §B.1 拡張）**で表現する。`MOVE_COUNT` イベント or 直接 `total_moves` 入力のいずれでも記録可（MVP は試合詳細で `total_moves` を直接入力＝任意）。
 
@@ -67,7 +67,7 @@ Sport.SHOGI, EnumSet.of(GAME_RESULT, MOVE_COUNT, POSITION_PHOTO, COMMENT, OTHER)
 
 ### §4.1 勝ち方カタログ（`ShogiWinMethod`）
 
-コア §D.7 の「ターン制の勝ち方 enum（競技別カタログ）」に対する将棋の具体値。`matches.win_method`（VARCHAR・コア §B.1 拡張）or `GAME_RESULT` イベントの `card_reason_code` 相当列に保持する（実装は §D.7 で `win_method` 列に統一）。
+コア §D.7 の「ターン制の勝ち方 enum（競技別カタログ）」に対する将棋の具体値。**`matches.win_method`（VARCHAR(32)・コア §B.1 拡張）に保持する**（勝ち方の正準は `win_method` 列に統一・コア §D.7）。勝敗（どちらが勝ったか）は `home_score`/`away_score`（§4.2）、勝ち方（どう勝ったか）は `win_method` の責務分離。
 
 ```java
 // 将棋固有: 勝ち方（日本将棋連盟の対局規定 標準）
@@ -96,15 +96,16 @@ public enum ShogiWinMethod {
 
 ### §4.2 勝敗・引き分け
 
-- 勝者 side（HOME=先手 / AWAY=後手）を `matches.result` 相当に保持。
-- **千日手（REPETITION）・持将棋（IMPASSE）は引き分け（DRAW）になり得る**（指し直しをせず大会レギュレーションで引き分け扱いの場合）。W/D/L の D が将棋では発生する（球技と異なる）。
+- 勝者 side（HOME=先手 / AWAY=後手）を **`matches.home_score`/`away_score` に 1-0 / 0-1 で格納**する（コア §B.1.2 勝敗格納規約）。勝者側のスコア列に 1、敗者側に 0。`result`/`winner_side` 専用列は持たない（スコア列大小から `resolveResult()` で W/D/L 導出）。
+- **千日手（REPETITION）・持将棋（IMPASSE）は引き分け（DRAW）になり得る**（指し直しをせず大会レギュレーションで引き分け扱いの場合）。引分けは **`home_score`=0／`away_score`=0（両方 0）＋`win_method`=NULL** で表現する。W/D/L の D が将棋では発生する（球技と異なる）。
 - `card_reason_code`（球技のカード理由コード）は将棋では使わず、**`win_method` で勝ち方を構造化**する（コア §D.7 で `win_method` を別列として定義）。
 
 ### §4.3 団体戦の勝敗導出（親 match）
 
 - **団体戦の親 match（`parent_match_id=NULL`・複数ボードを束ねる）の勝敗は、子ボード（各 1 局）の勝ち星集計から導出**する（コア §B.6）。
-- 例: 5 人制団体戦で 3 勝 2 敗 → 親 match の勝者 = 3 勝した側。`matches.home_score`/`away_score` には**勝ち星数**（3-2）を集計して入れる（団体戦に限りスコア列を「勝ち星数」として再利用＝セット制が獲得セット数を入れるのと同じ思想）。
-- 子ボードの `result`/`win_method` を集計して親の `result` を確定。親の勝敗確定は `MatchCompletedEvent`（コア 05）で順位連携にも乗せられる（リーグ戦の団体戦）。
+- 例: 5 人制団体戦で 3 勝 2 敗 → 親 match の勝者 = 3 勝した側。`matches.home_score`/`away_score` には**勝ち星数**（3-2）を集計して入れる（団体戦に限りスコア列を「勝ち星数」として再利用＝セット制が獲得セット数を入れるのと同じ思想・コア §B.1.2）。
+- **引分けボードの畳み込み（確定）**: 子ボードが引分け（千日手/持将棋＝子の `home_score`=0/`away_score`=0）の場合、**既定で両者に 0.5 勝ずつ**を加算する（大会レギュレーション準拠・コア §B.6）。整数格納のため「勝ち=2・引分=各 1」スケールで集計し UI で 0.5 換算表示する（コア §B.6）。
+- 子ボードの勝敗（`home_score`/`away_score`）を集計して親の `home_score`/`away_score`（勝ち星数）を確定し、**その大小で親の W/D/L を導出**（コア §B.1.2・§B.6）。**親の勝ち星同数のときは親 DRAW**（`win_method`=NULL・タイブレークは大会規定依存で将来余地・ブロッカーではない）。親の勝敗確定は `MatchCompletedEvent`（コア 05）で順位連携にも乗せられる（リーグ戦の団体戦）。
 - IDOR: 親子ボードのテナント・所属検証はコア §C.4（団体戦の親子ボード IDOR・コア 03 で明記）に従う。
 
 ---
@@ -123,7 +124,7 @@ public enum ShogiWinMethod {
 | 指標 | 算出元（将棋） |
 |------|--------|
 | totalGames | 対局数（個人戦＋団体戦の出場ボード数） |
-| wins / losses / draws | result から（千日手/持将棋は draw・§4.2） |
+| wins / losses / draws | `home_score`/`away_score` の大小から W/D/L 導出（`resolveResult()`・千日手/持将棋は 0-0=draw・§4.2・コア §B.1.2） |
 | winRate | wins / totalGames（分母 0 は NULL） |
 | winsByMethod[] | 勝ち方別内訳（投了/詰み/時間切れ/反則勝ち 等・§4.1） |
 | avgMoves | 平均総手数（`total_moves` の平均・NULL は除外） |

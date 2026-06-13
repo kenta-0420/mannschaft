@@ -1,7 +1,7 @@
 # F08.10: 多競技ライブ記録・分析（Match Record & Analytics — GoalNote 上位互換）
 
-> **ステータス**: 🟢 設計完了
-> **最終更新**: 2026-06-13（多競技 6 種＝SOCCER/FUTSAL/BASKETBALL/VOLLEYBALL/SHOGI/GO・3 状態モデル類型・球技セット制・盤上ターン制・団体戦・WebSocket ライブ観戦を確定。先送り事項を決着）
+> **ステータス**: 🟢 設計完了（未解決ブロッカー ゼロ）
+> **最終更新**: 2026-06-13（多競技 6 種＝SOCCER/FUTSAL/BASKETBALL/VOLLEYBALL/SHOGI/GO・3 状態モデル類型・球技セット制・盤上ターン制・団体戦・WebSocket ライブ観戦を確定。先送り事項を決着。**二重検分の指摘 12 件を反映＝ターン制勝敗格納を home/away_score に統一（result/winner_side 列なし）・盤上個人戦の本人記録権限・sport/state_model 事後変更不可・団体戦引分け畳み込み・ボード記録分担/進捗一覧・完全オフライン明示・バスケ §8.4 ファウルコード表示・バレー period 正本統一・ReferenceType.MATCH 実装済追従・SimpleBroker 後追い切断の限界明記・win_method VARCHAR(32)・観戦 read-only バッジ**）
 > **モジュール種別**: 選択式モジュール #14（大会・リーグ管理）の中核拡張 ／ 全試合の記録核
 > **関連機能番号**: F08.7（大会・リーグ管理）／ F08.7.1（トーナメント機能拡張）／ F07.2（パフォーマンス管理）／ F06.4 活動記録 ／ F02.2 ダッシュボード ／ F00（コンテンツ可視性・ロール基盤）／ F19.1（個人プロフィール公開）／ F02.2.1（ウィジェット min_role）
 
@@ -182,7 +182,7 @@ GoalNote（サッカー個人記録アプリ）は「個人が自分の出場・
 - **共同記録モードの編集競合** — 解決済み（殿裁可）: 楽観ロック粒度は**イベント行単位**を優先。スコアキャッシュは matches.version 非依存のアトミック増減 or 読取時 GOAL 集計導出。フル再計算は matches.version に触れず appearances のみ更新（[02](./02_playing_time_and_aggregation.md) §E.2・[03](./03_permissions_and_recording_modes.md) §未解決・[04](./04_frontend_and_ux.md) §G.2 409 UX）。
 - **個人統計の他者閲覧プライバシー** — 解決済み（殿裁可）: 他者閲覧は **teamId 必須パスパラメータ + `AccessControlService.isAdminOrAbove(viewer, teamId, "TEAM")` + 対象 user の当該 team 所属** の二重検証。公開可否は **F19.1 プロフィール公開設定を正本**に連動。チーム横断集計は本人限定（[02](./02_playing_time_and_aggregation.md) §F.1・[03](./03_permissions_and_recording_modes.md) §C.4・[04](./04_frontend_and_ux.md) §G.9）。
 - **@EnableMethodSecurity の有効状態** — 解決済み（事実訂正）: 「現状無効」は誤り。**Phase 3（#1266）で既に有効化済**。ただし per-scope ロールは JWT 非搭載のため `hasRole('ADMIN')` は使えず、**AccessControlService / @accessGuard SpEL** を使う（[03](./03_permissions_and_recording_modes.md) §C.3）。
-- **F00 可視性の具体実装** — 解決済み（殿裁可）: `MatchVisibilityResolver implements ContentVisibilityResolver` を新設し `ReferenceType.MATCH`(idKind=UUID_V7) を追加。独自 visibility 述語は書かず F00 正準経由（[03](./03_permissions_and_recording_modes.md) §C.3）。
+- **F00 可視性の具体実装** — 解決済み（殿裁可・一部実装済）: `MatchVisibilityResolver implements ContentVisibilityResolver` を新設（本機能で実装）。`ReferenceType.MATCH`(idKind=UUID_V7) は **既に現行 main の `ReferenceType.java` に配線済**（`idKind()` の switch に `MATCH -> UUID_V7` あり）。独自 visibility 述語は書かず F00 正準経由（[03](./03_permissions_and_recording_modes.md) §C.3）。
 - **ライブ入力のオフライン対応 Phase** — 解決済み（殿裁可）: 屋外会場前提のため **MVP でも最低限のローカルキュー＋再送（dexie 軽量版）・入力データ一時保持**を組み込む。フル同期は後段 Phase（[04](./04_frontend_and_ux.md) §G.11・[06](./06_implementation_plan.md) §I.1）。殿よりマスターへリスク提示済。
 - **WidgetTeamMatchSummary の min_role** — 解決済み（殿裁可）: **MEMBER 以上（SUPPORTER 除外）**で確定し F02.2.1 min_role 正本に登録（[02](./02_playing_time_and_aggregation.md) §F.1・[04](./04_frontend_and_ux.md) §G.9・§G.1 画面一覧 min_role 欄・[06](./06_implementation_plan.md) §I.4）。
 - **scheduleId（カレンダー連携）の移管** — 解決済み（殿裁可）: 試合実体は matches なので `matches.schedule_id`（BIGINT NULL）へ移管（既存 `TournamentMatchEntity.scheduleId` 由来・[01](./01_domain_and_ddl.md) §B.1・[05](./05_tournament_integration.md) §H.4）。
@@ -192,6 +192,21 @@ GoalNote（サッカー個人記録アプリ）は「個人が自分の出場・
 - **ターン制（盤上競技）の記録モデル** — 解決済み（マスター御裁可・本設計）: SHOGI/GO を**ターン制（TURN_BASED・[01](./01_domain_and_ddl.md) §D.6）**として確定。記録粒度＝中間（勝敗＋勝ち方＋総手数＋局面写真・**棋譜フルエンジンは持たない**）。`total_moves`/`win_method` 列・勝ち方カタログ（§D.7）・ターン制最小 UI（[04](./04_frontend_and_ux.md) §G.16a）を確定（[sports/05_shogi.md](./sports/05_shogi.md)・[sports/06_go.md](./sports/06_go.md)）。
 - **団体戦対応** — 解決済み（マスター御裁可・本設計）: 個人戦＋団体戦の両対応。団体戦は `matches.parent_match_id`（自己参照・同一ドメイン FK＋CASCADE）＋`board_number` で表現し、親の勝敗は子ボードの勝ち星集計から導出（[01](./01_domain_and_ddl.md) §B.6）。親子ボードの IDOR・テナント検証は [03](./03_permissions_and_recording_modes.md) §C.4。
 - **WebSocket ライブ観戦** — 解決済み（マスター御裁可・本設計）: STOMP トピック `/topic/matches/{id}/live` で記録者入力を **AFTER_COMMIT 配信**（正本は HTTP・観戦者は read-only）。**購読時に F00 可視性を検証する STOMP 購読インターセプタ**を新設し可視性なしは購読拒否（大会は F08.7 6 レベルと整合・[03](./03_permissions_and_recording_modes.md) §C.8・[07](./07_realtime_spectator.md)）。
+
+#### 二重検分（不備/保守性・セキュリティ・UX）の追加指摘 12 件 — 全て解決済（殿裁可）
+
+- **ターン制個人戦の勝敗格納** — 解決済み: 個人戦（TURN_BASED かつ `parent_match_id=NULL`）も `home_score`/`away_score` に勝敗を格納（勝ち=1-0/0-1・引分=0-0）。既存 `MatchStatsAggregationService.resolveResult()` を全競技で再利用。**`result`/`winner_side` 列は追加しない**。勝ち方は `win_method` が保持（[01](./01_domain_and_ddl.md) §B.1.2・§D.7・[sports/05_shogi.md](./sports/05_shogi.md) §2.1/§4.2・[sports/06_go.md](./sports/06_go.md) §4.2）。
+- **盤上個人戦の記録権限** — 解決済み: TURN_BASED 個人戦は**対局者本人**が自分の対局結果を記録・訂正可（team ADMIN/DEPUTY・記録係に加え本人を許可）。`canRecordTimeline` に類型分岐を追加・team 中心権限表と接続（[03](./03_permissions_and_recording_modes.md) §C.2a）。
+- **sport/state_model の事後変更可否** — 解決済み: `match_events` 0 件時のみ変更可、記録開始後は変更不可（誤選択は削除→再作成）。記録後の変更要求は 409（[03](./03_permissions_and_recording_modes.md) §C.2b）。
+- **団体戦の引分け畳み込み** — 解決済み: 子ボード DRAW（千日手/持将棋/持碁）は大会レギュレーション準拠（既定=両者 0.5 勝ずつ・整数スケール格納）。親の勝ち星同数→親 DRAW（[01](./01_domain_and_ddl.md) §B.6・[sports/05_shogi.md](./sports/05_shogi.md) §4.3）。
+- **団体戦のボード記録分担・進捗一覧** — 解決済み: ボード進捗一覧（n/N 確定状況）＋記録担当（親作成者 / 各ボード担当 team ADMIN / 個人戦ボードは対局者本人）の導線（[04](./04_frontend_and_ux.md) §G.16a）。
+- **完全オフライン観戦の明示** — 解決済み: HTTP 不通時は最後のスナップショットを表示し「オフライン・最新でない可能性」を明示（[04](./04_frontend_and_ux.md) §G.17）。
+- **バスケのタイムライン ファウル理由コード表示** — 解決済み: color 非依存・形状/アイコン併用でファウルコード（PF/SF/OF/TF/UF/DF）を選手とともに表示（コア §G.12 準拠・[sports/03_basketball.md](./sports/03_basketball.md) §8.4）。
+- **バレーの period 正本** — 解決済み: `match_sets.set_number` を正本・`period` には SET_1..5 を補助格納（表示用）に統一（[sports/04_volleyball.md](./sports/04_volleyball.md) §3）。
+- **`ReferenceType.MATCH`** — 解決済み（実装済追従）: `ReferenceType.java` に `MATCH=UUID_V7` が**配線済**（[03](./03_permissions_and_recording_modes.md) §C.3.2）。
+- **SimpleBroker の後追い切断ギャップ** — 解決済み（限界明記）: 購読後の可視性降格は次回再接続まで差分配信が届きうるが、ペイロード最小化（機微情報を元々含まない）の二重防御で実害を限定（[07](./07_realtime_spectator.md) §J.3.3）。
+- **`win_method` 列長** — 解決済み: VARCHAR(24)→**VARCHAR(32)**（将来 competition の長い enum 名の余地・[01](./01_domain_and_ddl.md) §B.1）。
+- **観戦者の read-only バッジ** — 解決済み: 「観戦のみ・記録権限なし」バッジ表示（[04](./04_frontend_and_ux.md) §G.17）。
 
 ### 7.2 先送り決定（MVP 外・後段 Phase で決定／ブロッカーではない）
 

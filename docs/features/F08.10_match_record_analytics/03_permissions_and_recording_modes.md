@@ -1,7 +1,7 @@
 # F08.10 / 03: 記録モード・編集権限・セキュリティ・IDOR・F00 可視性
 
 > **ステータス**: 🟢 設計完了
-> **最終更新**: 2026-06-13（団体戦の親子ボード IDOR §C.4・局面写真添付 §C.7a・WebSocket 購読認可 §C.8 を追補）
+> **最終更新**: 2026-06-13（団体戦の親子ボード IDOR §C.4・局面写真添付 §C.7a・WebSocket 購読認可 §C.8 を追補。**二重検分反映: 盤上個人戦の本人記録権限 §C.2a・sport/state_model 事後変更不可 §C.2b・ReferenceType.MATCH 実装済追従 §C.3.2・AuditEventCategory MATCH 新設確定 §C.7**）
 > **関連機能番号**: F08.10（試合記録・分析）／ F00（コンテンツ可視性・ロール基盤）／ F19.1 個人プロフィール公開
 > **関連ドキュメント**:
 > - [01_domain_and_ddl.md](./01_domain_and_ddl.md) — `recorded_by_team_id` / `owning_team_id` / `scorekeeper_user_id` / `has_scorekeeper` / 二段アクセス（§A.4）
@@ -49,6 +49,38 @@
 - イベントの得点（GOAL）を相手チームが入れたい場合（共同記録で相手の得点を記録）も、`recorded_by_team_id` は記録した側のチームを保持し、訂正権限は記録した側＋作成者に限定する。
 - 閲覧は 1 試合として統合表示し、両チーム・各選手にスタッツを共有する。**DB の所有（owning_team_id 等）はユーザーに不可視**（UI には「自分が編集できるか」だけを露出）。
 
+#### C.2a 盤上個人戦（ターン制・`parent_match_id=NULL`）の記録権限【類型分岐・確定】
+
+上記 §C.2 の権限表は**チーム中心（`team_id NOT NULL`・両チームの ADMIN/DEPUTY が記録）**を前提とするが、盤上競技（将棋/囲碁）の**個人戦**（`state_model=TURN_BASED` かつ `parent_match_id=NULL`・1 対 1 の対局）は「会場の記録係」や「チーム ADMIN 主導」よりも、**対局者本人が自分の対局結果を入力する**のが自然である。よって以下の類型分岐を追加する。
+
+| 対象（TURN_BASED 個人戦） | 記録・訂正できる者 | 判定 |
+|---------------------------|--------------------|------|
+| 対局結果（勝者・勝ち方・総手数・局面写真・コメント） | **(a) 当該 match の参加者本人**（自分が先手/後手＝HOME/AWAY side の対局者）、**(b) 主体チーム（`team_id`）の ADMIN/DEPUTY**、**(c) 記録係**（`has_scorekeeper=TRUE` 時の `scorekeeper_user_id`） | 下記の判定式 |
+
+- **「参加者本人」の判定**: 当該 match の `match_events.player_user_id` または対局者として登録された `player_user_id`（先手＝HOME side / 後手＝AWAY side の対局者）が認証ユーザーと一致すること。個人戦は 1 局＝1 match で対局者が明確なため、本人が自分の結果を記録・訂正できる。
+- **`canRecordTimeline` の TURN_BASED 個人戦ケース**（C.3.2 の判定 API に類型分岐を追加）:
+
+  ```
+  canRecordTimeline(userId, match):
+    if match.state_model == TURN_BASED and match.parent_match_id == NULL:   // 盤上個人戦
+        return isParticipant(userId, match)                                  // (a) 対局者本人
+            or accessControlService.isAdminOrAbove(userId, match.team_id, "TEAM")  // (b) 主体チーム ADMIN/DEPUTY
+            or (match.has_scorekeeper and match.scorekeeper_user_id == userId)     // (c) 記録係
+    else:
+        ... 既存の公式戦=記録係 / 共同=両チーム ADMIN 分岐（§C.2 権限表）...
+  ```
+
+- **チーム中心権限表との接続**: 盤上個人戦も `matches.team_id`（主体＝自分の所属チーム・`NOT NULL`・01 §B.1）を持つため、(b) のチーム ADMIN/DEPUTY 経路は §C.2 の team 中心権限とそのまま接続する。本人許可（a）は team 中心の上に**「対局者本人も自分の結果を記録可」を上乗せ**するもので、IDOR チェーン（§C.4）・テナント検証（01 §A.4 二段アクセス）は球技と同一に通す。
+- **団体戦の子ボード（個人戦ボード）**: 団体戦（親 `parent_match_id=NULL`・子ボード `parent_match_id` 設定済）の**各子ボードも個人戦**であるため、子ボードの記録権限は同様に「**当該ボードの対局者本人** or 親作成者 or 各ボード担当チーム ADMIN」とする（記録分担の UX は [04](./04_frontend_and_ux.md) §G.16a）。
+- **閲覧（`canView`）は球技と同一**に F00（`MatchVisibilityResolver`・§C.3.2）へ委譲する（記録権限の類型分岐は書き込み側のみ）。
+
+#### C.2b `sport`/`state_model` の事後変更可否【確定】
+
+- **`matches.sport` および `matches.state_model` は、当該 match に `match_events` が 1 件でも記録された後は変更不可**とする。`match_events` が 0 件のとき（イベント未記録）に限り変更を許容する。
+- 誤って競技を選択した場合（例: 将棋の対局をサッカーで起票してしまった）は、**当該 match を削除して再作成**する（`sport`/`state_model` を後から付け替えない）。
+- **なぜ変更不可か**: `sport`/`state_model` は event_type カタログ（01 §D.3）・スコア合算ルール・出場時間算出の起動可否・COMPLETED バリデーション（01 §D.6 類型分岐）の前提であり、イベント記録後に切り替えると既存イベントが新カタログで不正値になる（カタログ検証 400 の温床）・スコア/出場時間の再計算前提が崩れる。**症状を隠す対処（不整合のまま保持）を避けるため、記録開始後は固定**し、誤選択は削除→再作成で根治する。
+- **実装**: `PATCH /matches/{matchId}` で `sport`/`state_model` の変更を受けた場合、`matchEventRepository.countByMatchId(matchId) > 0` なら **409（記録開始後は変更不可）**を返す（症状を隠さず明示エラー）。0 件なら変更可。状態遷移の監査（§C.7）には含めない（記録前の訂正のため）。
+
 ### C.3 認可基盤への実装方針【@EnableMethodSecurity の事実訂正・F00 具体実装】
 
 #### C.3.1 @EnableMethodSecurity は既に有効（事実訂正）
@@ -72,7 +104,7 @@
 
 - **`MatchVisibilityResolver implements ContentVisibilityResolver<…>` を新設**（`com.mannschaft.app.match`・実装は `backend/.../common/visibility/ContentVisibilityResolver.java` の規約に沿う）。
 - **`ReferenceType.MATCH`（idKind=`UUID_V7`）を追加**（matches の PK は UUIDv7 / BINARY(16)）。
-  - **実装注記**: `ReferenceType.idKind()` の switch に `MATCH = UUID_V7` ケースを追加する必要がある（漏れると idKind 解決が `fail-closed` になり可視性判定が機能しない）。なお **match はコルクボード（引用・ピン留め）の対象外**のため、引用先 ID を保持する `reference_id_uuid` カラムの追加は**当面不要**（コルクボード引用が match を対象に含める要件が顕在化したら追加する）。
+  - **実装注記（追加済）**: `ReferenceType.java` には既に `MATCH` 値が定義され、`ReferenceType.idKind()` の switch に `MATCH -> IdKind.UUID_V7` ケースが**配線済み**である（`backend/src/main/java/com/mannschaft/app/common/visibility/ReferenceType.java`・現行 main）。したがって idKind 解決の追加作業は不要（漏れると idKind 解決が `fail-closed` になり可視性判定が機能しないが、その懸念は既に解消済）。なお **match はコルクボード（引用・ピン留め）の対象外**のため、引用先 ID を保持する `reference_id_uuid` カラムの追加は**当面不要**（コルクボード引用が match を対象に含める要件が顕在化したら追加する）。`MatchVisibilityResolver`（`ContentVisibilityResolver` 実装・Spring Bean 自動登録）は別途新設する（本機能で実装）。
 - matches は UUIDv7 主キーなので、`ContentVisibilityResolver` の **UUID 経路** `canViewUuid(UUID, Long)` / `filterAccessibleUuid(Collection<UUID>, Long)` を実装する（Long 経路はデフォルトのまま `UnsupportedOperationException`）。
 - `ContentVisibilityChecker` のコンストラクタ・ディスパッチ表に `MatchVisibilityResolver` を**自動登録**（Spring Bean として注入され `referenceType()` をキーに登録される）。
 - **`MatchAccessService.canView` は必ずこの Resolver / Checker へ委譲**する（独自述語禁止）。
@@ -81,9 +113,10 @@
 ```java
 // MatchAccessService の判定 API（概念）
 boolean canEditMeta(Long userId, MatchEntity match);        // 作成者/記録係/主体チームADMIN（@accessGuard）
-boolean canRecordTimeline(Long userId, MatchEntity match);  // 公式戦=記録係 / 共同=両チームADMIN
+boolean canRecordTimeline(Long userId, MatchEntity match);  // 公式戦=記録係 / 共同=両チームADMIN ／ TURN_BASED個人戦=対局者本人 or チームADMIN or 記録係（§C.2a）
 boolean canEditTeamData(Long userId, MatchEntity match, Long owningTeamId); // 自チームADMIN かつ owning==自チーム
 boolean canView(Long userId, UUID matchId);                 // F00 MatchVisibilityResolver.canViewUuid へ委譲
+boolean isParticipant(Long userId, MatchEntity match);      // TURN_BASED個人戦の対局者本人判定（§C.2a・先手/後手の player_user_id 突合）
 ```
 
 #### C.3.3 メンバーシップ・ロール判定
@@ -158,7 +191,7 @@ boolean canView(Long userId, UUID matchId);                 // F00 MatchVisibili
   - `MATCH_RECORDING_MODE_CHANGED`（記録モード切替）
   - **`MATCH_SCOREKEEPER_CHANGED`（記録係変更）**
 - **スコア確定監査の metadata には before/after・matchId・操作者・チーム**を含める（誰がいつどのスコアにしたか追跡可能に）。
-- `AuditEventCategory` に **`MATCH` カテゴリ新設を検討**（採番後の正式名は実装時に確定）。
+- `AuditEventCategory` に **`MATCH` カテゴリを新設する**（試合記録ドメインの監査を既存カテゴリに混ぜず独立させる）。enum 定数名は `MATCH` で確定（既存カテゴリの命名規約に合わせる・採番は実装時のマージ直前に既存定数と衝突しないことを確認するのみで、設計判断としては `MATCH` カテゴリ新設で決定済）。
 - イベントの大量追加（ライブ記録）は監査ログに individ で残すとノイズになるため、**1 試合の記録セッション単位**でのサマリ監査（誰がいつ何件記録したか）に留める。
 - **403（認可失敗）/ 404（不在・テナント越境・親子不一致）のマッピングを明文化**（C.4）。エラーレスポンスで存在を漏らさない。
 

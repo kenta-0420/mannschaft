@@ -1,7 +1,7 @@
 # F08.10 / sports / 04: バレーボール競技カタログ（VOLLEYBALL）
 
 > **ステータス**: 🟢 設計完了
-> **最終更新**: 2026-06-13
+> **最終更新**: 2026-06-13（**二重検分反映: §3 period 二択の揺れを解消＝match_sets.set_number を正本・period には SET_1..5 を補助格納（表示用）に統一**）
 > **位置づけ**: **F08.10 コアを継承するバレーボール競技カタログ**。状態モデル類型は **セット制（SET_BASED・コア §D.6）**。本書で初めて **`match_sets` 子表（コア §B.5 で確定）** を用いる。サッカー（連続時間制）とはスコア表現が根本的に異なるため、差分が大きい。
 > **関連機能番号**: F08.10（試合記録・分析）／ F08.7 ／ F08.7.1 ／ F07.2 ／ F19.1
 > **関連ドキュメント（コア）**:
@@ -72,7 +72,7 @@ Sport.VOLLEYBALL, EnumSet.of(STARTER, SUB_IN, SUB_OUT,
 | セット勝者 | `match_sets.winner_side`（HOME/AWAY・SET_END で確定） |
 | 獲得セット数（試合の本戦スコア） | `matches.home_score`/`away_score`（= 勝ちセット数の集計） |
 
-- `match_events.period` には便宜上 `SET_1`〜`SET_5` を入れる（コア `PeriodType` にセット制拡張値 `SET_1`〜`SET_5` を追加・コア §D.1）。または `period` は NULL とし `match_sets.set_number` を正本にする（実装時にどちらかへ統一・MVP は `match_sets.set_number` を正本とし `period` は補助）。
+- **セットの正本は `match_sets.set_number`（1〜5）に統一する**（確定）。`match_events.period` には**表示用の補助として `SET_1`〜`SET_5` を併せて格納**する（コア `PeriodType` のセット制拡張値・コア §D.1）。すなわち **`match_sets.set_number` = 正本（セット構造・スコア・勝者の根拠）、`period`（SET_N）= タイムライン表示用の補助ラベル**であり、両者は冗長だが役割が分かれる（イベントがどのセットで起きたかを `period` で素早く表示・セット確定/獲得セット数の計算は `match_sets` を正本に行う）。「どちらか一方に統一」ではなく**両方を用途別に保持**する（正本＝`set_number`・補助＝`period`）。
 - `matches.period_format` に `'BEST_OF_5'`（5 セットマッチ）を入れる。3 セットマッチは `'BEST_OF_3'`。
 - `duration_minutes` はバレーでは意味を持たない（NULL 可）。COMPLETED 遷移時の `duration_minutes` 必須化（コア 02 §E.3）は**セット制では適用しない**（コアの COMPLETED バリデーションは `state_model` 別に分岐＝セット制は「全セット確定」を必須条件にする・コア 02 §E.3 を §D.6 で類型別に拡張）。
 
