@@ -170,7 +170,7 @@ fixture は「**参加チーム(participant)**」を `home_participant_id` / `aw
 | `MatchService`（tournament） | **`FixtureService` へ改称**。スコア更新ロジックを match ドメインへ移設 |
 | `MatchStatus`/`MatchResult`/`MatchSlot`（tournament enum） | status は match 側へ寄せる（POSTPONED 含む 5 値で一致・01 §B.1.1）。`MatchResult` → `FixtureResult`、`MatchSlot`（トーナメント進行）→ `FixtureSlot` へ改称し fixture 側に残す |
 | `StandingsCalculationService` / `RankingsCalculationService` | スコア源泉を matches/fixture スナップショットへ（H.2）。`MatchCompletedEvent` 受信に切替 |
-| `MatchSetRepository` / `TournamentMatchSetEntity`（セット制スコア） | セットスコアは MVP ではスカラ home/away_score＋PK score に縮退。バレー等のセット制は将来 `match_periods`/`match_sets`（match ドメイン子テーブル）で吸収する余地を残す（§未解決 3）。既存 `TournamentMatchSetEntity` は当面 fixture 側に残置 or `detail JSON` 退避を実装時に選定 |
+| `MatchSetRepository` / `TournamentMatchSetEntity`（セット制スコア） | **本設計でセット制を match ドメインの `match_sets`（01 §B.5）に正本化**（バレー MVP 競技化に伴う §未解決 3 の解決）。tournament 側 fixture のセット系は match の `match_sets` を参照する形へ寄せる（Phase 5 の fixture 化で移管・順位のセット率タイブレークは fixture スナップショットにセット得点合計をコピー・[sports/04_volleyball.md](./sports/04_volleyball.md) §4.3）。既存 `TournamentMatchSetEntity` は Phase 5 で `match_sets` へ統合 or fixture スナップショットへ退避を実装時に選定 |
 | DTO（`MatchResponse`/`ScoreUpdateRequest`/`BatchScoreRequest` 等） | スコア系は match ドメイン DTO へ移管（`FixtureResponse` と名前衝突回避）。fixture DTO は対戦カード構造＋スナップショットのみ |
 | `TournamentMapper` | fixture ↔ match のマッピング追加 |
 | `matches.schedule_id` | fixture の `scheduleId`（F03.1 連携）を matches へ移管（H.1 表・01 §B.1） |
@@ -202,5 +202,5 @@ fixture は「**参加チーム(participant)**」を `home_participant_id` / `aw
 
 1. **物理改称の可否** — 解決済み（殿裁可）: グリーンフィールドゆえ `tournament_matches` → `tournament_fixtures` の物理リネーム（縮退・スコア列削除＋スナップショット列追加）を採用。`Match*`→`Fixture*` 改称で名前衝突を回避（H.1・H.4）。
 2. **大会固有の任意 statKey の残置** — 解決済み（殿裁可）: 基本スタッツは match へ統合。大会固有の独自 statKey のみ tournament 側 `tournament_fixture_stat`（EAV）に残す（H.6・01 §未解決 1）。
-3. **セット制スコア（バレー等）の表現**: MVP はスカラ home/away_score＋PK score に縮退で確定。将来 `match_periods`/`match_sets`（match ドメイン子テーブル）で吸収する余地（多競技 01 §D.3 と整合・**多競技拡張時に判断する先送り決定＝ブロッカーではない**）。延長別スコアも同じ `match_periods` で将来吸収する（01 §B.1 延長戦スコアの扱い）。
+3. **セット制スコア（バレー等）の表現** — **解決済み（本設計・マスター御裁可）**: VOLLEYBALL を MVP 競技に含めたため、**`match_sets`（match ドメイン子テーブル）を確定版 DDL へ昇格**（01 §B.5・[sports/04_volleyball.md](./sports/04_volleyball.md) §3）。セット制競技は `match_sets` にセット内得点を保持し、`matches.home_score`/`away_score` に獲得セット数を集計する。順位寄与のセット率タイブレークは fixture スナップショットにセット得点合計を含める余地を残す（バレー大会の fixture 連携時・MVP の Phase 5 で具体化・[sports/04_volleyball.md](./sports/04_volleyball.md) §4.3）。延長別スコア（サッカー）は引き続き本戦合算で表現（`match_periods` 別表は採らない・01 §B.1）。
 4. **scheduleId（カレンダー連携）の移管** — 解決済み（殿裁可）: 試合実体は matches なので **`matches.schedule_id`（BIGINT NULL）へ移管**（H.1 表・01 §B.1）。

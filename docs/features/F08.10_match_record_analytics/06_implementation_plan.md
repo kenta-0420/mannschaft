@@ -1,7 +1,7 @@
 # F08.10 / 06: 段階実装計画・部隊割り・テスト方針
 
 > **ステータス**: 🟢 設計完了
-> **最終更新**: 2026-06-08
+> **最終更新**: 2026-06-13（多競技 Phase 6・WebSocket 観戦 Phase 7 を MVP として追加）
 > **関連機能番号**: F08.10（試合記録・分析）
 > **関連ドキュメント**:
 > - [01_domain_and_ddl.md](./01_domain_and_ddl.md) 〜 [05_tournament_integration.md](./05_tournament_integration.md)
@@ -25,8 +25,16 @@
 | **Phase 3** | FE 単独試合 CRUD ＋ ライブ記録 UI（導線・クイックスタート・タイマー状態機械・**オフライン最低限**） | Phase 2（API 確定後） | ✅ MVP |
 | **Phase 4** | 個人/チーム分析チャート ＋ ダッシュボードウィジェット（min_role 登録） | Phase 2・3 | ✅ MVP |
 | **Phase 5** | tournament 移行（fixture 化・BIGINT 据え置き／Match*→Fixture* 改称／順位導出スナップショット） | Phase 1〜4＋御裁可 | ⏸ MVP 外（分離リリース可） |
+| **Phase 6（多競技）** | 状態モデル類型抽象化（`StateModel`・01 §D.6）＋競技別カタログ・composable（FUTSAL/BASKETBALL/VOLLEYBALL/SHOGI/GO）＋セット制 DDL（`match_sets`）＋ターン制・団体戦 | Phase 1〜4 | ✅ MVP（マスター御裁可で多競技を MVP 化・サブフェーズ 6-①〜④で段階） |
+| **Phase 7（WebSocket 観戦）** | STOMP ライブ観戦（`/topic/matches/{id}/live`・AFTER_COMMIT 配信・購読認可インターセプタ・観戦者ビュー・07） | Phase 2（記録経路）・Phase 3 | ✅ MVP（マスター御裁可で観戦を MVP 化） |
 
-> **【MVP 範囲の明記・致命的指摘の根治】 Phase 1〜4 で MVP が成立する**（単独試合の記録＋個人/チーム分析）。大会連携（Phase 5）は MVP に含めず、**Phase 1〜4 を先行リリース可能**とする。Phase 5（tournament 作り替え）は最も侵襲的（既存 F08.7 改称）なので、御裁可を経てから分離して着手する。
+> **【MVP 範囲の明記】 Phase 1〜4 で単独試合記録＋個人/チーム分析の MVP が成立**する。**マスター御裁可により多競技（Phase 6）と WebSocket 観戦（Phase 7）も MVP に含める**（サッカー以外の 5 競技＋ライブ観戦）。大会連携（Phase 5＝tournament 作り替え）は最も侵襲的（既存 F08.7 改称）なので御裁可を経て分離着手する MVP 外。多競技（Phase 6）は Phase 5 に依存しない（単独試合での多競技記録が先行可能）。
+
+> **多競技（Phase 6）のサブフェーズ**:
+> - **6-①（状態モデル抽象化＆Sport 拡張）**: `Sport` enum 拡張（6 競技）・`StateModel` 類型（01 §D.6）・`Sport→StateModel` マッピング・出場時間算出/COMPLETED バリデーションの類型分岐。`period` NULL 許容（ターン制）。
+> - **6-②（競技別カタログ＆composable）**: 各競技の `SportEventCatalog` 集合・規律/勝ち方カタログ（catalog パッケージ）＋FE 競技別 composable（動的 import・04 §G.16）＋カタログ駆動イベント入力シート＋i18n namespace。FUTSAL/BASKETBALL（連続時間制）先行。
+> - **6-③（セット制 DDL＆UI）**: `match_sets`（01 §B.5・Flyway 追加）＋`useMatchSetTracker`＋簡易/詳細記録 UI（VOLLEYBALL・[sports/04_volleyball.md](./sports/04_volleyball.md)）。
+> - **6-④（ターン制＆団体戦）**: `total_moves`/`win_method`/`parent_match_id`/`board_number` 列追加（01 §B.1・Flyway 追加）＋`useMatchTurnTracker`＋局面写真添付（既存基盤流用）＋団体戦の親子ボード（SHOGI/GO・[sports/05_shogi.md](./sports/05_shogi.md)・[sports/06_go.md](./sports/06_go.md)）。
 
 - Phase 1→2 は BE が直列依存（Entity/Repo が無いと Service が書けない）。
 - Phase 3/4 は API 契約（Phase 2 の Controller/DTO）が確定してから着手。FE は API モックでなく実 BE で実機 E2E まで踏む（feedback_e2e_real_full_crud）。
@@ -86,6 +94,25 @@
 | 5-D | FE 追従 | tournament スコア入力 → match ライブ記録/結果入力へ・ウィジェット表示元変更 |
 | 5-T | テスト | 順位導出 IT（match スコア → スナップショット → 順位）・既存 tournament テスト全面追従・Flyway 往復 |
 
+#### Phase 6（多競技・MVP）
+
+| 隊 | 担当 | 成果物 |
+|----|------|--------|
+| 6-① | 状態モデル抽象化 | `Sport`（6 値）・`StateModel`（01 §D.6）・`Map<Sport,StateModel>`・`PeriodType` 拡張（QUARTER/SET）・出場時間算出/COMPLETED バリデーションの類型分岐（CONTINUOUS_TIME/SET_BASED/TURN_BASED）・`period` NULL 許容（ターン制・Flyway ALTER）。**Flyway 採番は全体最大 major の次（マージ直前再確認）** |
+| 6-② | 競技カタログ＋FE composable | `catalog/`（FutsalCatalog/BasketballCatalog/VolleyballCatalog/ShogiCatalog/GoCatalog・規律 BasketballFoulCode・勝ち方 ShogiWinMethod/GoWinMethod）＋FE `useMatchTimerBasketball`/カタログ駆動入力シート（動的 import・04 §G.16）＋i18n（競技別 namespace・6 言語） |
+| 6-③ | セット制 | `match_sets`（01 §B.5・Flyway CREATE）＋`MatchSetEntity`/Repository＋`useMatchSetTracker`＋簡易/詳細記録 UI（[sports/04_volleyball.md](./sports/04_volleyball.md)） |
+| 6-④ | ターン制＋団体戦 | `matches` 列追加（total_moves/win_method/parent_match_id/board_number・Flyway ALTER）＋自己参照 FK＋`useMatchTurnTracker`＋局面写真添付（既存 presign 基盤流用・SVG 除外/サイズ上限/IDOR・03 §C.7a）＋団体戦の親子ボード勝ち星集計（[sports/05_shogi.md](./sports/05_shogi.md) §4.3） |
+| 6-T | テスト | 競技別カタログ検証 UT（各競技の event_type 集合・他競技値の 400・規律/勝ち方カタログ）・セット制スコア/デュース UT・ターン制勝敗/団体戦勝ち星集計 UT・出場時間算出の類型分岐 UT（連続時間制のみ算出/ターン制スキップ）・Flyway from-scratch（追加列・match_sets・自己参照 FK CASCADE）・各競技の記録 E2E（実 BE） |
+
+#### Phase 7（WebSocket ライブ観戦・MVP）
+
+| 隊 | 担当 | 成果物 |
+|----|------|--------|
+| 7-A | 配信 | `MatchLiveUpdateEvent`＋`@TransactionalEventListener(AFTER_COMMIT)` 配信リスナー（`SimpMessagingTemplate.convertAndSend("/topic/matches/{id}/live", payload)`・07 §J.2）＋差分ペイロード DTO（serverSeq・機微情報除外・07 §J.2.1/J.3.3）。`MatchEventService` の記録経路に publish 1 行追加 |
+| 7-B | 購読認可 | **STOMP SUBSCRIBE 認可インターセプタ**（match live 宛先のみ・`MatchAccessService.canView`→`MatchVisibilityResolver` 委譲・他テナント/可視性なしは購読拒否・未認証は PUBLIC のみ・07 §J.3・03 §C.8）。既存 `WebSocketAuthChannelInterceptor`（CONNECT）は不変 |
+| 7-C | FE 観戦ビュー | 観戦者ビュー（read-only・STOMP 購読・初期スナップショット HTTP＋差分追従・再接続スナップショット再取得・接続状態インジケーター・04 §G.17）。`live.vue` の権限分岐（記録 UI / 観戦ビュー） |
+| 7-T | テスト | 購読認可 UT（canView true/false・他テナント・未認証 PUBLIC）・配信リスナー UT（純 Mockito・convertAndSend 検証・機微情報除外）・実 WS E2E（記録→配信→観戦・可視性なし購読拒否・再接続スナップショット復帰・07 §J.6） |
+
 #### 入口①（大会の対戦表からの記録合流）の段階出陣【中道・05 §H.0】
 
 入口①は full Fixture 改称（Phase 5）に依存させず、**既存 tournament 非破壊の中道（05 §H.0）**で段階出陣する。
@@ -127,4 +154,4 @@
 
 1. **Phase 5 着手条件** — 解決済み（殿裁可）: 05 §H.1（物理改称・BIGINT 据え置き）の御裁可済。**Phase 1〜4（単独試合の記録・分析）だけで MVP として成立**し、Phase 5 を切り離して先行リリース可能（§I.1）。Phase 5 着手は別途タイミング判断。
 2. **test-first の適用度** — 解決済み（殿裁可）: 出場時間算出・集計の純ロジックは test-first。tournament 作り替え（Phase 5）は既存テストの大量追従を伴うため Phase 5 のみ従来順（実装→テスト追従）に戻してよい。
-3. **MVP スコープ** — 解決済み（殿裁可）: ライブ記録のオフラインは**最低限を MVP に含む**（04 §G.11）。多競技（サッカー以外・案 A 拡張）・大会固有 statKey 残置（05 §H.6）・フル同期・セット制スコアは MVP 外として後段 Phase。
+3. **MVP スコープ** — 解決済み（マスター御裁可・本設計で更新）: ライブ記録のオフラインは**最低限を MVP に含む**（04 §G.11）。**多競技（FUTSAL/BASKETBALL/VOLLEYBALL/SHOGI/GO・Phase 6）・WebSocket ライブ観戦（Phase 7）も MVP に含める**（マスター御裁可）。セット制スコア（`match_sets`）・ターン制・団体戦は Phase 6 で MVP 化。**MVP 外として残るのは**: 大会固有 statKey 残置（05 §H.6・Phase 5 内）・オフラインフル同期・大会連携（Phase 5＝tournament 改称・最も侵襲的なので分離）・3 類型外の競技（採点競技等）・WS マルチインスタンスブローカー（07 §J.5・WS 基盤別軍議）。これらは**ブロッカーではない**（理由は各文書の §未解決に明記）。

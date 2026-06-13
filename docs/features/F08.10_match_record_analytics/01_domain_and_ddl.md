@@ -1,7 +1,7 @@
 # F08.10 / 01: ドメイン配置・DDL・enum・多競技対応
 
 > **ステータス**: 🟢 設計完了
-> **最終更新**: 2026-06-08
+> **最終更新**: 2026-06-13（多競技 6 種＝SOCCER/FUTSAL/BASKETBALL/VOLLEYBALL/SHOGI/GO・3 状態モデル類型・`match_sets` 子表昇格・団体戦・ターン制の追補。**二重検分反映: 勝敗格納規約 §B.1.2 新設（全競技 home/away_score 統一・result/winner_side 列なし）・団体戦引分け畳み込み §B.6・win_method VARCHAR(32)・period NULL 許容確定・home_away ENUM 確定**）
 > **関連機能番号**: F08.10（試合記録・分析）／ F08.7 ／ F08.7.1
 > **関連ドキュメント**:
 > - [README.md](./README.md) — 機能概要・GoalNote 比較・機能番号 F08.10 の経緯
@@ -27,16 +27,24 @@ com.mannschaft.app.match/
 ├── TeamSide.java                  (enum: HOME/AWAY)
 ├── MatchStatus.java               (enum: SCHEDULED/IN_PROGRESS/COMPLETED/POSTPONED/CANCELLED)
 ├── PeriodType.java                (enum: FIRST_HALF/SECOND_HALF/EXTRA_FIRST/EXTRA_SECOND/PENALTY_SHOOTOUT/QUARTER_1.. 等)
-├── MatchEventType.java            (enum: GOAL/ASSIST/SUB_IN/.../OTHER サッカー基本セット＋その他)
-├── Sport.java                     (enum: SOCCER/FUTSAL/...（将来拡張）)
+├── MatchEventType.java            (enum: 全競技の値を保持する器・GOAL/.../FIELD_GOAL_2/POINT/GAME_RESULT/OTHER 等)
+├── Sport.java                     (enum: SOCCER/FUTSAL/BASKETBALL/VOLLEYBALL/SHOGI/GO（＋将来拡張）)
+├── StateModel.java                (enum: CONTINUOUS_TIME/SET_BASED/TURN_BASED・§D.6)
+├── catalog/                       (競技別カタログ＝案 A・コード定数。Sport→許容 event_type/理由コード/勝ち方)
+│   ├── SportEventCatalog.java               (Map<Sport, Set<MatchEventType>>・§D.3)
+│   ├── SoccerCatalog.java / FutsalCatalog / BasketballCatalog / VolleyballCatalog / ShogiCatalog / GoCatalog
+│   ├── CautionCode/SendingOffCode（サッカー C/S）/ BasketballFoulCode 等（規律＝競技別・§D.5）
+│   └── ShogiWinMethod / GoWinMethod（勝ち方＝ターン制競技別・§D.7）
 ├── entity/
-│   ├── MatchEntity.java
+│   ├── MatchEntity.java                      (state_model/total_moves/win_method/parent_match_id/board_number 含む)
 │   ├── MatchEventEntity.java
-│   └── PlayerAppearanceEntity.java
+│   ├── PlayerAppearanceEntity.java
+│   └── MatchSetEntity.java                   (セット制スコア子表・§B.5・バレー)
 ├── repository/
-│   ├── MatchRepository.java                 (AbstractTenantAwareRepository 継承)
+│   ├── MatchRepository.java                 (AbstractTenantAwareRepository 継承・団体戦の子ボード取得 findByParentMatchId 等)
 │   ├── MatchEventRepository.java            (テナント絞り込み無し・match_id スコープ専用)
-│   └── PlayerAppearanceRepository.java      (テナント絞り込み無し・match_id スコープ専用)
+│   ├── PlayerAppearanceRepository.java      (テナント絞り込み無し・match_id スコープ専用)
+│   └── MatchSetRepository.java              (テナント絞り込み無し・match_id スコープ専用・§B.5)
 ├── service/
 │   ├── MatchService.java                     (試合 CRUD・status 遷移)
 │   ├── MatchEventService.java                (イベント記録・lineup・substitution)
@@ -101,6 +109,7 @@ com.mannschaft.app.match/
 **Flyway 採番は origin/main の全体最大バージョンの次の major を採る**（Flyway は major 数値比較でソートするため。例: 全体最大が V75 系なら V76 系）。
 > ⚠️ **訂正（採番ガイドの誤り根治）**: 起草時の「実体の最新 `V9.20260603000006` の次にタイムスタンプ式 `V9.YYYYMMDDHHMMSS` で採番する」は<b>誤り</b>である。`V9.*` は major=9 として V10〜V75 より<b>前</b>にソートされ、後発テーブルの ALTER が from-scratch 適用で先に走って死ぬ（メモリ教訓 `feedback_flyway_version_sort_after_global_max`）。新規テーブルの DDL は必ず全体最大 major の次（V76 系など）を採ること。マージ直前に origin/main 最大番号を再確認しリネームする（並行 PR 衝突回避）。
 > **Phase 1 では実際に `V76.001`〜`V76.003`（matches / match_events / player_appearances）を採用済**。
+> **多競技拡張の追加マイグレーション（本設計分）**: `matches` への列追加（`state_model`/`total_moves`/`win_method`/`parent_match_id`/`board_number`・§B.1）と `match_sets` 新規テーブル（§B.5）は **ALTER／CREATE を実装時の origin/main 全体最大 major の次の major で採番**する（起草時点の全体最大は V84 系＝次は V85 系の見込みだが、**マージ直前に origin/main 最大番号を必ず再確認しリネーム**する＝並行 PR 衝突回避・[[feedback_migration_version_collision]]）。**既存 matches テーブルへの ALTER は from-scratch で matches CREATE（V76）より後の番号でなければ死ぬ**ため、必ず全体最大の次の major を採ること（[[feedback_flyway_version_sort_after_global_max]]）。
 
 ### B.1 `matches`（汎用試合）
 
@@ -121,13 +130,21 @@ CREATE TABLE matches (
     venue VARCHAR(200) NULL,                      -- 会場
     duration_minutes SMALLINT UNSIGNED NULL,      -- 試合長（分・前後半90＋延長の試合通算・出場時間 out 既定値に使用・02 §E）
     period_format VARCHAR(32) NULL,               -- 試合形式（'HALVES_45'/'QUARTERS_10' 等・D §PeriodType と対応）
-    home_score SMALLINT UNSIGNED NULL,            -- ホーム本戦スコア（正本・延長得点も合算・GOAL 集計と整合チェック・02 §E.2a）
-    away_score SMALLINT UNSIGNED NULL,            -- アウェイ本戦スコア（正本・延長得点も合算）
+    home_score SMALLINT UNSIGNED NULL,            -- ホーム本戦スコア（正本・延長得点も合算・GOAL 集計と整合チェック・02 §E.2a）。【ターン制の勝敗格納規約】将棋/囲碁の個人戦（TURN_BASED かつ parent_match_id=NULL）も勝敗をここに格納する＝勝ち 1 / 負け 0 / 引分 0（勝者側=1・敗者側=0・引分=両方 0）。団体戦（親）は子ボードの勝ち星数。セット制は獲得セット数。result/winner_side 列は持たない（§B.1.2）
+    away_score SMALLINT UNSIGNED NULL,            -- アウェイ本戦スコア（正本・延長得点も合算）。ターン制個人戦も勝敗を 1-0/0-1/0-0 で格納（§B.1.2）
     home_penalty_score SMALLINT UNSIGNED NULL,    -- ホーム PK 戦スコア（本戦と分離・02 §E.2a）
     away_penalty_score SMALLINT UNSIGNED NULL,    -- アウェイ PK 戦スコア（本戦と分離）
     status VARCHAR(16) NOT NULL DEFAULT 'SCHEDULED', -- SCHEDULED/IN_PROGRESS/COMPLETED/POSTPONED/CANCELLED
     scorekeeper_user_id BIGINT NULL,              -- 記録係ユーザー（公式戦・user ドメイン ID 参照・03 §C）
     has_scorekeeper BOOLEAN NOT NULL DEFAULT FALSE, -- 記録モード判定（TRUE=公式戦/FALSE=共同記録・03 §C）
+    -- --- 多競技（状態モデル類型）対応カラム（§D.6） ---
+    state_model VARCHAR(16) NOT NULL DEFAULT 'CONTINUOUS_TIME', -- 状態モデル類型（CONTINUOUS_TIME/SET_BASED/TURN_BASED・Sport から導出可だが冪等な分岐用に保持・§D.6）
+    -- --- ターン制（将棋/囲碁）対応カラム（§D.7・sports/05_shogi.md・06_go.md） ---
+    total_moves SMALLINT UNSIGNED NULL,           -- 総手数（ターン制のみ・球技では NULL・sports/05_shogi.md §3）
+    win_method VARCHAR(32) NULL,                  -- 勝ち方（ターン制のみ・競技別カタログ enum 文字列・投了/目数差/時間切れ 等・§D.7・球技では NULL）。VARCHAR(32)＝将来 competition の長い enum 名（例 INPUT_VALIDATION 系）の余地を確保
+    -- --- 団体戦対応カラム（§B.6・同一 match ドメイン内の自己参照） ---
+    parent_match_id BINARY(16) NULL,              -- 団体戦の親 match（個人戦=NULL／団体戦の子ボードのみ設定・自己参照 FK＋CASCADE 可＝同一ドメイン・§B.6）
+    board_number SMALLINT UNSIGNED NULL,          -- ボード順（団体戦の子のみ・1=大将/主将 等・将棋/囲碁・§B.6）
     notes TEXT NULL,                              -- 備考
     created_by BIGINT NOT NULL,                   -- 作成者（user ドメイン ID 参照）
     version BIGINT NOT NULL DEFAULT 0,            -- 楽観ロック（@Version・メタ更新専用。イベント/appearances 再計算では触れない・02 §E.2）
@@ -139,9 +156,17 @@ CREATE TABLE matches (
     INDEX idx_matches_team (team_id, kickoff_at),
     INDEX idx_matches_fixture (tournament_fixture_id),
     INDEX idx_matches_schedule (schedule_id),
-    INDEX idx_matches_kind (organization_id, kind, kickoff_at)
+    INDEX idx_matches_kind (organization_id, kind, kickoff_at),
+    INDEX idx_matches_sport (organization_id, sport, kickoff_at),
+    INDEX idx_matches_parent (parent_match_id, board_number),  -- 団体戦の子ボード取得（§B.6）
+    CONSTRAINT fk_matches_parent FOREIGN KEY (parent_match_id)
+      REFERENCES matches (id) ON DELETE CASCADE  -- 同一 match ドメイン内の自己参照（原則 2／親団体戦削除で子ボードも消える）
 );
 ```
+
+> **団体戦の自己参照 FK が CASCADE 可な理由**: `parent_match_id` は **matches → matches の同一テーブル自己参照**（同一 match ドメイン内）であり、CLAUDE.md 原則 2「CASCADE DELETE は同一ドメイン内のみ許可」に合致する（クロスドメインではない）。親団体戦を物理削除すると子ボードも消えるのが正しいセマンティクス。個人戦は `parent_match_id=NULL`（CASCADE 対象外）。論理削除（`deleted_at`）は親で行い、子ボードは親の論理削除に追従する（A.4 二段アクセスと同じ思想・子ボードも matches なので自身の `deleted_at`/`organization_id` を持つ＝子ボードは独立した試合実体）。
+
+> **state_model の保持理由**: `Sport` から導出可能（SOCCER→CONTINUOUS_TIME 等）だが、Service/FE の分岐（タイマー起動可否・出場時間算出スキップ・COMPLETED バリデーション・§D.6）を**冪等かつ高速に行うため列としても保持**する。実装は `Sport` → `StateModel` のマッピング（コード定数）から DEFAULT を導出して INSERT 時にセットする（マスタテーブル例外ではなく、Sport 拡張時にマッピングへ 1 行追加するだけ）。
 
 | カラム | 型 | 説明 | ドメイン境界 |
 |--------|----|----|-------------|
@@ -162,7 +187,7 @@ CREATE TABLE matches (
 
 > **fixture が BIGINT である理由**: tournament ドメインは全テーブルが `BaseEntity`（BIGINT AUTO_INCREMENT）で構成されており、CLAUDE.md 原則 6 は「**既存テーブルの BIGINT ID は変更しない**」と定める。本機能のために tournament を UUID 全面移行することは超侵襲かつ原則違反になるため、fixture（旧 `tournament_matches` の縮退形）は BIGINT のまま。**matches からは BIGINT で fixture を ID 参照する**（`tournament_fixture_id BIGINT NULL`）。新規 match ドメインは原則 6 に従い UUIDv7、tournament は据え置き、という非対称はクロスドメイン ID 参照（原則 1・FK なし）なので問題ない。
 
-> **enum の保持方式**: 既存 tournament ドメインは `@Enumerated(EnumType.STRING)`（`VARCHAR`）を採用している。本機能もそれに揃え `kind`/`status`/`sport` は `VARCHAR`＋`@Enumerated(STRING)` とする（MySQL `ENUM` 型はマイグレーション拡張時の `ALTER` コストが高いため、拡張が見込まれる列は VARCHAR を採る）。`home_away` のみ値が固定的なので `ENUM` でも可（実装時に統一方針へ寄せる）。
+> **enum の保持方式**: 既存 tournament ドメインは `@Enumerated(EnumType.STRING)`（`VARCHAR`）を採用している。本機能もそれに揃え `kind`/`status`/`sport` は `VARCHAR`＋`@Enumerated(STRING)` とする（MySQL `ENUM` 型はマイグレーション拡張時の `ALTER` コストが高いため、拡張が見込まれる列は VARCHAR を採る）。`home_away` のみ値が固定的（HOME/AWAY/NEUTRAL の 3 値で拡張余地が小さい）なので **`ENUM` を採用**する（DDL §B.1 のとおり `ENUM('HOME','AWAY','NEUTRAL')`）。拡張が見込まれる `kind`/`status`/`sport` は VARCHAR、固定的な `home_away` は ENUM、という使い分けで確定。
 
 > **延長戦スコアの扱い（MVP 方針・延長別カラムは持たない）**: 既存 `TournamentMatchEntity` は `homeExtraScore`/`awayExtraScore` を本戦と別管理していたが、新 `matches` は**延長別カラムを持たない**。延長中の `GOAL`/`PENALTY_GOAL` イベントは本戦スコア（`home_score`/`away_score`）に**合算**する（サッカーの最終スコア「延長の末 3-2」は 3-2 が正＝合算が正しいセマンティクス）。**PK 戦のみ** `home_penalty_score`/`away_penalty_score` で本戦と別管理する。延長別の内訳が必要になった場合は将来 `match_periods`（ピリオド別スコア子テーブル）で吸収する余地を残す（[05](./05_tournament_integration.md) §H.1 移行表・§未解決 3）。
 
@@ -178,6 +203,21 @@ CREATE TABLE matches (
 | **POSTPONED** | **POSTPONED** | 延期（再日程待ち・順位導出対象外） |
 | CANCELLED | CANCELLED | 中止（順位導出対象外） |
 
+### B.1.2 勝敗の格納規約 — 全競技で `home_score`/`away_score` に統一（`result`/`winner_side` 列は持たない）【確定】
+
+勝敗は**全競技で `matches.home_score`/`away_score` に格納し、`result`（W/D/L）や `winner_side` といった専用列は `matches` に追加しない**。これにより既存 `MatchStatsAggregationService.resolveResult()`（`home_score`/`away_score` の大小から W/D/L を導出する確立済みロジック）を**全競技でそのまま再利用**でき、勝敗の正準を 1 か所（スコア列の大小）に集約してドリフトを防ぐ。
+
+| 状態モデル類型 | `home_score`/`away_score` に入る値 | W/D/L 導出（`resolveResult()` 共通） |
+|----------------|------------------------------------|--------------------------------------|
+| **連続時間制**（サッカー/フットサル/バスケ） | 得点（合算スコア。PK 戦は別列 `home/away_penalty_score`） | home>away=W / 同点=D / home<away=L（サッカー PK 決着は PK 列で最終判定・[sports/01_soccer.md](./sports/01_soccer.md) §4） |
+| **セット制**（バレー） | 獲得セット数（例 3-1） | セット数の大小で W/L（バレーに D なし・[sports/04_volleyball.md](./sports/04_volleyball.md) §4.3） |
+| **ターン制 個人戦**（将棋/囲碁・`parent_match_id=NULL`） | **勝敗を 1-0 / 0-1 / 0-0 で格納**（勝者側=1・敗者側=0・引分=両方 0） | 1-0=HOME 勝ち / 0-1=AWAY 勝ち / 0-0=引分（千日手/持将棋/持碁） |
+| **ターン制 団体戦（親）**（`parent_match_id=NULL`・子ボードを束ねる） | 子ボードの**勝ち星数**を集計（例 3-2・§B.6） | 勝ち星数の大小で W / 同数=D（親 DRAW・[sports/05_shogi.md](./sports/05_shogi.md) §4.3） |
+
+- **勝ち方は `win_method`（§B.1 拡張列・§D.7）が保持**する（ターン制の投了/詰み/目数差/時間切れ 等）。`win_method` は「**どう勝ったか**」の分類であり、「**どちらが勝ったか**」は `home_score`/`away_score` の大小で表す（責務分離）。引分（0-0 / 親の勝ち星同数）のとき `win_method` は NULL。
+- ターン制個人戦の勝者 side は **HOME=先手/黒・AWAY=後手/白**（[sports/05_shogi.md](./sports/05_shogi.md) §4.2・[sports/06_go.md](./sports/06_go.md) §4.2）。勝者 side のスコア列に 1、敗者 side に 0 を書く。
+- **`result`/`winner_side` 列を持たない理由**: 専用列を追加すると `home_score`/`away_score` との二重持ち（不整合源）になり、`resolveResult()` を競技別に分岐させる必要が生じる。スコア列大小への統一で集計コード（順位導出・個人/チーム統計）を全競技横断で単一化できる。なお `match_sets.winner_side`（セット単位の勝者・§B.5）は別物（セット内の勝敗確定であり試合勝敗ではない）であり、これは保持する。
+
 ### B.2 `match_events`（時系列イベント）
 
 ```sql
@@ -188,7 +228,7 @@ CREATE TABLE match_events (
     match_id BINARY(16) NOT NULL,                 -- matches(id)（同一ドメイン → FK CASCADE 可）
     minute SMALLINT UNSIGNED NULL,                -- 経過分（タイマー連動・手動訂正可・NULL=分不明）
     stoppage_minute SMALLINT UNSIGNED NULL,       -- アディショナルタイム（例 45+2 の "2"・NULL=なし）
-    period VARCHAR(24) NOT NULL,                  -- PeriodType（器は競技非依存・具体値は競技別＝サッカーは sports/01_soccer.md §3 の前半/後半/延長/PK 等）
+    period VARCHAR(24) NULL,                      -- PeriodType（器は競技非依存・具体値は競技別＝サッカー sports/01_soccer.md §3／バスケ QUARTER／バレー SET）。【§D.6 改訂】ターン制（将棋/囲碁）は period を使わないため NULL 許容に変更。連続時間制/セット制では Service が必須化する
     event_type VARCHAR(24) NOT NULL,             -- MatchEventType（器は競技非依存・許容値は競技別カタログ＝サッカーは sports/01_soccer.md §2 の GOAL/ASSIST/SUB_IN/.../OTHER）
     card_reason_code VARCHAR(8) NULL,            -- 警告/退場の標準理由コード（競技別カタログの列挙値・値の具体はサッカー＝sports/01_soccer.md §5 の C1〜C8 / S1〜S6 / CS）。集計・絞り込み可能にする構造化カラム（器は競技非依存・note は補足の自由記述として併存）。警告/退場系 event_type 以外では NULL
     custom_label VARCHAR(64) NULL,                -- event_type=OTHER（その他）時の自由ラベル名（D・04 §G.2）
@@ -261,9 +301,60 @@ CREATE TABLE player_appearances (
 
 | 種別 | テーブル | 主キー | 親 FK | organization_id / deleted_at | 原則 |
 |------|---------|--------|-------|------------------------------|------|
-| 新規 | `matches` | UUIDv7 / BINARY(16) | なし（全クロスドメインは ID 参照・fixture は BIGINT） | あり / あり（AbstractTenantAwareRepository 継承） | 1・3・6・7 |
+| 新規 | `matches` | UUIDv7 / BINARY(16) | `parent_match_id` → matches 自己参照 CASCADE（団体戦・§B.6） | あり / あり（AbstractTenantAwareRepository 継承） | 1・2・3・6・7 |
 | 新規 | `match_events` | UUIDv7 / BINARY(16) | `match_id` → matches CASCADE ／ `linked_event_id` → match_events 自己参照 SET NULL | **なし / なし**（親 matches で分離・A.4） | 1・2・6 |
 | 新規 | `player_appearances` | UUIDv7 / BINARY(16) | `match_id` → matches CASCADE | **なし / なし**（親 matches で分離・A.4） | 1・2・6 |
+| 新規 | `match_sets` | UUIDv7 / BINARY(16) | `match_id` → matches CASCADE | **なし / なし**（親 matches で分離・A.4） | 1・2・6 |
+
+---
+
+## B.5 `match_sets`（セット制スコア子表）【先送り解決・実装へ昇格】
+
+> **先送り決定の昇格**: README §7.2・05 §未解決 3 で「セット制スコアは多競技拡張時に判断する先送り」としていたが、本設計で **VOLLEYBALL を MVP 競技に含める（マスター御裁可）ため `match_sets` を確定版 DDL へ昇格**する（[sports/04_volleyball.md](./sports/04_volleyball.md) §3 が正準利用）。連続時間制（サッカー/バスケ）・ターン制（将棋/囲碁）の試合は `match_sets` 行を持たない（セット制競技のみ使用）。
+
+```sql
+-- セット制スコア（match ドメイン内 → 親 matches へ CASCADE 可／原則 2）
+-- organization_id / deleted_at は持たない（テナント分離は親 matches・A.4 二段アクセス）
+CREATE TABLE match_sets (
+    id BINARY(16) NOT NULL,                       -- UUIDv7
+    match_id BINARY(16) NOT NULL,                 -- matches(id)（同一ドメイン → FK CASCADE 可）
+    set_number SMALLINT UNSIGNED NOT NULL,        -- セット番号（1〜5・best-of-5）
+    home_points SMALLINT UNSIGNED NOT NULL DEFAULT 0, -- 当該セットのホーム得点
+    away_points SMALLINT UNSIGNED NOT NULL DEFAULT 0, -- 当該セットのアウェイ得点
+    winner_side ENUM('HOME','AWAY') NULL,         -- セット勝者（SET_END 確定時にセット・デュース条件達成で確定・sports/04 §4.2）
+    is_final_set BOOLEAN NOT NULL DEFAULT FALSE,  -- 最終第 5 セット（15 点制・デュース）フラグ
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_match_sets (match_id, set_number),  -- 1 試合 1 セット番号は 1 行
+    INDEX idx_match_sets_match (match_id, set_number),
+    CONSTRAINT fk_match_sets_match FOREIGN KEY (match_id)
+      REFERENCES matches (id) ON DELETE CASCADE   -- 同一 match ドメイン内（原則 2）
+);
+```
+
+- セット制競技（バレー）では `matches.home_score`/`away_score` には**獲得セット数**（例 3-1）を集計して入れる（セット内の点数は `match_sets`・[sports/04_volleyball.md](./sports/04_volleyball.md) §4.1）。
+- セット勝利条件（25 点・デュース・最終 15 点）の検証は Service が行い、満たさない `winner_side` 確定は 400（症状を隠さない・[sports/04_volleyball.md](./sports/04_volleyball.md) §4.2）。
+- `match_sets` も子テーブルなので `organization_id`/`deleted_at` を持たず、親 matches の二段アクセス（A.4）でアクセスする。
+
+## B.6 団体戦（`parent_match_id` / `board_number`）— 個人戦＋団体戦の両対応【先送り解決】
+
+> **先送り決定の昇格**: 盤上競技（将棋/囲碁）を MVP 競技に含めるため、団体戦（複数ボード）対応を確定する。
+
+- **1 局 = 1 match を基本**とする（個人戦は `parent_match_id=NULL`）。
+- **団体戦**は親 match（`parent_match_id=NULL`・複数ボードを束ねる）＋子 match（各ボード・`parent_match_id`=親 ID・`board_number`=1〜N の連番）で表現する（§B.1 DDL の自己参照 FK＋CASCADE・同一ドメインゆえ可）。
+- **親 match（団体戦）の勝敗は子ボードの勝ち星集計から導出**する（[sports/05_shogi.md](./sports/05_shogi.md) §4.3）。親の `home_score`/`away_score` に勝ち星数（例 3-2）を集計。
+- **子ボードの引分け畳み込みルール（確定）**: 子ボードが個別に引分け（将棋の千日手/持将棋・囲碁の持碁＝`home_score`=0/`away_score`=0）になった場合の勝ち星換算は**大会レギュレーション準拠**とし、**既定は「引分けボードは両者に 0.5 勝ずつ」**を採用する（多くの団体戦規定の標準）。
+  - 親の勝ち星集計: HOME 側勝ち星 = HOME 勝ちボード数 ＋ 0.5×引分ボード数、AWAY 側も同様。`home_score`/`away_score` は SMALLINT UNSIGNED（整数）のため、**0.5 勝が生じ得る場合は「ボード数×2」スケール（勝ち=2・引分=各 1）で整数格納**するか、表示時に 0.5 換算する（実装は整数スケールで格納し UI で 0.5 表示を推奨。例: 5 ボードで 2 勝 2 敗 1 分 → HOME 5・AWAY 5＝同点）。
+  - **親の勝敗導出**: 親の勝ち星（上記スケール後）が **HOME>AWAY=親 HOME 勝ち / 同数=親 DRAW / HOME<AWAY=親 AWAY 勝ち**（§B.1.2 の勝敗格納規約に従い `home_score`/`away_score` の大小で W/D/L）。**親の勝ち星同数のとき親は DRAW**（団体戦の引分け＝`win_method`=NULL）。大会によっては「主将戦の勝者で決着」等のタイブレークがあるが、**MVP は勝ち星同数=親 DRAW を既定**とし、タイブレーク規定は将来余地（ブロッカーではない・理由: アマチュア団体戦では引分け扱いが一般的でタイブレークは大会規定依存のため後段で設定化）。
+- **同一性・テナント分離**: 子ボードも matches なので自身の `organization_id`/`deleted_at`/`team_id` を持つ（独立した試合実体＝親と同一テナント）。子ボードへのアクセスも親をテナント取得してから `parent_match_id`/`board_number` で取得する二段アクセス（A.4 と同じ思想）。子ボード直引きの IDOR 検証は [03](./03_permissions_and_recording_modes.md) §C.4（団体戦の親子ボード IDOR）に従う。
+- **球技でも団体戦の余地**: 構造（親子 match）は競技非依存の器であり、将来「複数試合を束ねる」要件（例: 総当たりの 1 ラウンド）に流用できる。MVP の主用途は盤上の団体戦。
+
+## B.7 局面写真の保存（既存添付基盤の流用）【盤上競技】
+
+- 盤上競技（将棋/囲碁）の**局面写真**は、**新規ストレージ機構を作らず既存の添付基盤（presign 方式・`bulletin_attachments` と同方式）を流用**する（[sports/05_shogi.md](./sports/05_shogi.md) §8.2・[03](./03_permissions_and_recording_modes.md) §C.7）。
+- 既存実装（`com.mannschaft.app.bulletin` の `AttachmentPresignRequest`/`AttachmentPresignResponse`/`BulletinAttachmentService`）の **presign アップロード・SVG 除外・サイズ上限（10MB）・IDOR 逆引き**の実装パターンを踏襲し、match スコープの添付（`match_id` 帰属確認）として実装する。
+- 写真は match に紐づく添付（match_id スコープ・A.4 二段アクセス）として保持する。MVP は match 単位の任意添付（複数枚可・上限件数は既存基盤に合わせる）。**専用の重い棋譜エンジン（KIF/SGF パース）は持たない**（記録粒度＝中間・[../README.md](./README.md) §1.0a）。
 
 ---
 
@@ -280,19 +371,31 @@ public enum TeamSide { HOME, AWAY }
 public enum MatchStatus { SCHEDULED, IN_PROGRESS, COMPLETED, POSTPONED, CANCELLED }
 
 // 試合形式に応じてピリオドを表す（器は競技非依存）。どの period 値を使うかは競技別カタログが定義する。
-//   サッカーが使う具体値（FIRST_HALF/SECOND_HALF/EXTRA_FIRST/EXTRA_SECOND/PENALTY_SHOOTOUT）→ sports/01_soccer.md §3 参照。
-//   多競技拡張（バスケの QUARTER_1..4/OVERTIME 等）は各競技カタログが使う。
+//   サッカー/フットサルが使う具体値（FIRST_HALF/SECOND_HALF/EXTRA_FIRST/EXTRA_SECOND/PENALTY_SHOOTOUT）→ sports/01_soccer.md §3・sports/02_futsal.md §3 参照。
+//   バスケの QUARTER_1..4/OVERTIME → sports/03_basketball.md §3。
+//   バレーの SET_1..5（セット制）→ sports/04_volleyball.md §3。
+//   ターン制（将棋/囲碁）は period を使わない（NULL・§D.6・sports/05_shogi.md §3）。
 public enum PeriodType {
-    // サッカー（競技固有の利用は sports/01_soccer.md §3）
+    // サッカー/フットサル（competition 固有の利用は sports/01_soccer.md §3・sports/02_futsal.md §3）
     FIRST_HALF, SECOND_HALF,
     EXTRA_FIRST, EXTRA_SECOND,
     PENALTY_SHOOTOUT,
-    // 多競技拡張（バスケ等・各競技カタログが使う period 値）
-    QUARTER_1, QUARTER_2, QUARTER_3, QUARTER_4, OVERTIME
+    // 連続時間制・クォーター（バスケ・sports/03_basketball.md §3）
+    QUARTER_1, QUARTER_2, QUARTER_3, QUARTER_4, OVERTIME,
+    // セット制（バレー・sports/04_volleyball.md §3）
+    SET_1, SET_2, SET_3, SET_4, SET_5
 }
 
-// 多競技カタログは案 A（enum＋定数）で確定（§D.3 拡張点）。まず SOCCER を実装し、将来 enum を追加する。
-public enum Sport { SOCCER /*, FUTSAL, BASKETBALL ...（将来）*/ }
+// 多競技カタログは案 A（enum＋定数）で確定（§D.3 拡張点）。
+// MVP は SOCCER に加え FUTSAL/BASKETBALL/VOLLEYBALL/SHOGI/GO を追加。将来競技は enum＋カタログ追加のみで足りる（§D.3・sports/01_soccer.md §10）。
+public enum Sport { SOCCER, FUTSAL, BASKETBALL, VOLLEYBALL, SHOGI, GO /*, 将来競技 ...*/ }
+
+// 状態モデル類型（competition 非依存の器・§D.6）。Sport から導出 or 列保持。
+public enum StateModel {
+    CONTINUOUS_TIME, // 連続時間制: SOCCER/FUTSAL（前後半）・BASKETBALL（4Q＋OT）。タイマー＋ピリオド
+    SET_BASED,       // セット制: VOLLEYBALL（best-of-5・デュース）。match_sets 子表（§B.5）
+    TURN_BASED       // ターン制: SHOGI/GO（総手数・ピリオド無・勝敗＝勝ち方）。§B.6 団体戦・§D.7 勝ち方
+}
 ```
 
 > **競技固有 → [sports/01_soccer.md](./sports/01_soccer.md) §3 参照**: サッカーがどの `PeriodType` 値を使うか（前半/後半/延長前後半/PK 戦）の具体は競技カタログ側で定義する。`PeriodType` enum 自体（器）はコアに残し、多競技のクォーター等も enum 値として保持する。
@@ -328,8 +431,12 @@ public enum Sport { SOCCER /*, FUTSAL, BASKETBALL ...（将来）*/ }
 public final class SportEventCatalog {
     public static final Map<Sport, Set<MatchEventType>> CATALOG = Map.of(
         // 各競技の具体集合（正準）は競技別カタログ文書で定義する。ここでは値を列挙しない。
-        Sport.SOCCER, SoccerCatalog.EVENT_TYPES   // → 正準: sports/01_soccer.md §2
-        // 将来: Sport.BASKETBALL, Sport.FUTSAL ...（各競技カタログ文書が定義・sports/01_soccer.md §10 手順）
+        Sport.SOCCER,     SoccerCatalog.EVENT_TYPES,      // → 正準: sports/01_soccer.md §2
+        Sport.FUTSAL,     FutsalCatalog.EVENT_TYPES,      // → 正準: sports/02_futsal.md §2（サッカーと同一集合）
+        Sport.BASKETBALL, BasketballCatalog.EVENT_TYPES,  // → 正準: sports/03_basketball.md §2（FIELD_GOAL_2/3/FREE_THROW 等）
+        Sport.VOLLEYBALL, VolleyballCatalog.EVENT_TYPES,  // → 正準: sports/04_volleyball.md §2（SET_START/POINT 等）
+        Sport.SHOGI,      ShogiCatalog.EVENT_TYPES,       // → 正準: sports/05_shogi.md §2（GAME_RESULT 等・ターン制）
+        Sport.GO,         GoCatalog.EVENT_TYPES           // → 正準: sports/06_go.md §2（将棋と同一集合・ターン制）
     );
 }
 ```
@@ -359,7 +466,32 @@ public final class SportEventCatalog {
 > - `event_type`↔コード群の対応（`YELLOW_CARD`→C 系／`RED_CARD`→S1〜S6／`SECOND_YELLOW`→CS）
 > - JFA 競技規則（出典 <https://www.jfa.jp/laws/>）への準拠・公式改定追従の保守方針
 >
-> **多競技拡張時は競技ごとに別カタログ（理由コード集合）を持つ**こと（バスケのテクニカルファウル等は別体系・[sports/01_soccer.md](./sports/01_soccer.md) §10）。
+> **多競技拡張時は競技ごとに別カタログ（理由コード集合）を持つ**こと（バスケのテクニカルファウル等は別体系・[sports/03_basketball.md](./sports/03_basketball.md) §5・[sports/01_soccer.md](./sports/01_soccer.md) §10）。
+
+### D.6 状態モデル類型（`StateModel`）— 3 類型への抽象化【多競技の中核機構】
+
+多競技を「競技ごとに個別実装」するのではなく、**3 つの状態モデル類型に抽象化**し、コアの分岐（タイマー起動可否・出場時間算出・COMPLETED バリデーション・FE composable 選択）を**類型単位**で行う。新競技は所属類型を宣言するだけでコアの大半を再利用できる（保守性の核）。
+
+| 類型 | 対象競技（MVP） | 試合進行 | スコア表現 | 出場時間算出 | period | FE composable（04 §G.16） |
+|------|------------------|----------|------------|--------------|--------|----------------------------|
+| **CONTINUOUS_TIME** | SOCCER / FUTSAL / BASKETBALL | タイマー＋ピリオド | スカラ `home/away_score`（＋PK） | 区間合計（02 §E.1） | FIRST_HALF.. / QUARTER_1.. | `useMatchTimerSoccer` / `useMatchTimerBasketball` |
+| **SET_BASED** | VOLLEYBALL | セット進行（デュース） | `match_sets`＋獲得セット数 | セット出場（分概念希薄・§B.5・04 §G.16） | SET_1..SET_5（補助） | `useMatchSetTracker` |
+| **TURN_BASED** | SHOGI / GO | 手番の応酬（総手数） | スコア無・勝敗＋勝ち方（§D.7） | **算出しない**（出場交代概念なし） | **NULL**（ピリオド無） | `useMatchTurnTracker` |
+
+- **`matches.state_model`（VARCHAR・§B.1）で類型を保持**（`Sport` から DEFAULT を導出）。`Sport` → `StateModel` のマッピングはコード定数（`Map<Sport, StateModel>`）でコアに置く。
+- **類型別のコア分岐**:
+  - **出場時間算出（02 §E）**: `CONTINUOUS_TIME` のみフル区間算出。`SET_BASED` は出場セット概念（computed_minutes は NULL 許容）。`TURN_BASED` は**算出を起動しない**（STARTER/SUB イベントが存在せず区間が組み立たないため）。
+  - **`period` の NULL 許容（§B.2・確定）**: `TURN_BASED` は period を使わないため、**`match_events.period` 列を NULL 許容とする（確定）**。連続時間制/セット制では **Service が period を必須化（バリデーション）**し、ターン制では NULL を許容する。`period='NONE'` のようなダミー固定値は使わない（NULL で「ピリオド無し」を素直に表現）。§B.2 の DDL は既に `period VARCHAR(24) NULL` に変更済。
+  - **COMPLETED バリデーション（02 §E.3）**: `CONTINUOUS_TIME` は `duration_minutes` 必須。`SET_BASED` は「全セット確定（勝者 3 セット先取）」必須。`TURN_BASED` は「勝者＋勝ち方確定」必須（`duration_minutes` 不要）。
+- **新競技の追加（保守性）**: 新競技は (1) `Sport` enum に追加、(2) `StateModel` マッピングに 1 行追加、(3) 競技カタログ文書（sports/0N）を雛形複製、の 3 ステップ。**3 類型のどれかに属する限り、コアのタイマー/出場時間/集計/権限/IDOR/F00 可視性/WebSocket 観戦は再実装不要**（[sports/01_soccer.md](./sports/01_soccer.md) §10）。3 類型のいずれにも当てはまらない競技（例: 採点競技＝体操/フィギュア）は新類型の追加を検討するが、MVP の 6 競技は 3 類型で網羅される。
+
+### D.7 ターン制の勝ち方カタログ（機構＝コア／具体コード＝競技固有）
+
+ターン制（将棋/囲碁）はスコア（連続量）がなく、**勝敗＝勝者 side ＋勝ち方**で確定する。勝ち方は `matches.win_method`（VARCHAR・§B.1）に保持する。
+
+- **競技非依存（コア）の確定事項**: (1) `win_method` は**ターン制競技のみ**使用（球技では NULL）。(2) 勝ち方カタログは `SportEventCatalog`（§D.3・案 A）と同じく**競技別カタログ**（`Map<Sport, WinMethodCatalog>`）として `match.sport` に紐づける。(3) 検証規約は「**その競技カタログの列挙値であること**」（列挙外は 400・症状を隠さない）。(4) 引き分け（千日手/持将棋＝将棋・持碁＝囲碁）は **`home_score`=0／`away_score`=0（個人戦）or 親の勝ち星同数（団体戦）＋`win_method`=NULL** で表現する（§B.1.2 勝敗格納規約・`result` 列は持たない）。勝敗（どちらが勝ったか）は `home_score`/`away_score` の大小、勝ち方（どう勝ったか）は `win_method`、の責務分離。
+- **競技固有 → [sports/05_shogi.md](./sports/05_shogi.md) §4.1（`ShogiWinMethod`: 投了/詰み/時間切れ/反則勝ち/千日手/持将棋/不戦勝）・[sports/06_go.md](./sports/06_go.md) §4.1（`GoWinMethod`: 投了〔中押し〕/目数差勝ち/時間切れ/反則勝ち/不戦勝）参照**。
+- `card_reason_code`（球技のカード理由）はターン制では使わない（NULL のみ・03 §C.4b の検証規約で当該競技カタログに理由コード集合を登録しない＝付けると 400）。反則は `win_method=FOUL_WIN`＋`note` で表現する。
 
 ---
 
