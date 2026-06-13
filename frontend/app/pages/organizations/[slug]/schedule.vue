@@ -1,5 +1,11 @@
 <script setup lang="ts">
 import type { CalendarEventItem } from '~/composables/useCalendarEvents'
+import {
+  toCalendarEventItems,
+  toFlatScheduleEvent,
+  type FlatScheduleEvent,
+  type NestedScheduleResponse,
+} from '~/utils/scheduleCalendar'
 
 definePageMeta({ layout: 'organization', middleware: 'auth' })
 
@@ -8,40 +14,18 @@ const orgSlug = String(route.params.slug)
 const scheduleApi = useScheduleApi()
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
 
-interface ScheduleEventDetail {
-  id: number
-  title: string
-  description: string | null
-  location: string | null
-  startAt: string
-  endAt: string
-  allDay: boolean
-  status: string
-  categoryName: string | null
-  categoryColor: string | null
-  createdBy: { displayName: string }
-  attendanceRequired: boolean
-  myAttendance: string | null
-  attendanceStats: { yes: number; no: number; maybe: number; pending: number; total: number } | null
-}
-
 const refreshing = ref(false)
 const showCreateDialog = ref(false)
 const selectedDate = ref<string | undefined>(undefined)
 const selectedEventId = ref<number | undefined>(undefined)
-const selectedEvent = ref<ScheduleEventDetail | null>(null)
+const selectedEvent = ref<FlatScheduleEvent | null>(null)
 const showDetailPanel = ref(false)
 const showEditDialog = ref(false)
 
 const fetcher = async (from: string, to: string): Promise<CalendarEventItem[]> => {
   const res = await scheduleApi.listSchedules('organization', orgSlug, { from, to, size: 100 })
-  return (res.data as CalendarEventItem[]).map((e) => ({
-    ...e,
-    allDay: e.allDay ?? false,
-    color: e.color ?? null,
-    isPersonal: false,
-    scopeType: 'ORGANIZATION',
-  }))
+  // BE はネスト ScheduleResponse を返すため、平坦な CalendarEventItem へ変換する。
+  return toCalendarEventItems(res.data as NestedScheduleResponse[], 'ORGANIZATION')
 }
 
 const { currentYear, currentMonth, events, loading, loadEvents, refresh, onPrevMonth, onNextMonth } =
@@ -60,7 +44,8 @@ function onAddButtonClick() {
 async function onEventClick(eventId: number) {
   try {
     const res = await scheduleApi.getSchedule('organization', orgSlug, eventId)
-    selectedEvent.value = res.data as ScheduleEventDetail
+    // 詳細 GET もネスト ScheduleResponse のため平坦化してから EventDetailPanel へ渡す。
+    selectedEvent.value = toFlatScheduleEvent(res.data as NestedScheduleResponse)
     selectedEventId.value = eventId
     showDetailPanel.value = true
   } catch {
