@@ -16,6 +16,7 @@ import com.mannschaft.app.repairplan.repository.TeamMemberTermRepository;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,7 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -341,7 +343,7 @@ class BoardHandoverPackControllerTest extends AbstractRepairPlanPhase5Integratio
 
     @Test
     @DisplayName("generatePack 後 PACK_GENERATED 監査ログが記録される")
-    void generatePack_logsAuditEvent() throws InterruptedException {
+    void generatePack_logsAuditEvent() {
         UUID termId = insertActiveTerm(adminUserId, "ORGANIZATION", ORG_ID, ORG_ID);
         em.flush();
 
@@ -349,15 +351,16 @@ class BoardHandoverPackControllerTest extends AbstractRepairPlanPhase5Integratio
                 new GenerateHandoverPackRequest(termId, null, "STANDARD"));
         em.flush();
 
-        // 監査ログは非同期（@Async）のため少し待つ
-        Thread.sleep(500);
-        TransactionTemplate newTx = new TransactionTemplate(txManager);
-        newTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        Boolean auditRecorded = newTx.execute(status ->
-                auditLogRepository.findAll().stream()
-                        .anyMatch(log -> "PACK_GENERATED".equals(log.getEventType())
-                                && ORG_ID.equals(log.getOrganizationId())));
-        assertThat(auditRecorded).isTrue();
+        // 監査ログは非同期（@Async）のため記録されるまで待機する。
+        Awaitility.await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            TransactionTemplate newTx = new TransactionTemplate(txManager);
+            newTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            Boolean auditRecorded = newTx.execute(status ->
+                    auditLogRepository.findAll().stream()
+                            .anyMatch(log -> "PACK_GENERATED".equals(log.getEventType())
+                                    && ORG_ID.equals(log.getOrganizationId())));
+            assertThat(auditRecorded).isTrue();
+        });
     }
 
     // ─────────────────────────────────────────────────────────────────────

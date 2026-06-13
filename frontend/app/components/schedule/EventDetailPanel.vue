@@ -59,11 +59,14 @@ async function recordMatch(): Promise<void> {
     }
 
     // 2) 無ければ予定情報をプリフィルして作成（kind 既定=PRACTICE・相手名/日時/会場は取れる範囲）
+    // BE CreateMatchRequest.kickoffAt は LocalDateTime（タイムゾーンなし）のため、
+    // ScheduleResponse.time.startAt の OffsetDateTime 形式（"+09:00" 等）のオフセットを除去する。
+    const kickoffAtLocal = props.event.startAt.replace(/[+-]\d{2}:\d{2}$/, '')
     const created = await createMatch(ctx.orgId, ctx.teamId, {
       kind: 'PRACTICE',
       opponentName: props.event.title,
       scheduleId: props.event.id,
-      kickoffAt: props.event.startAt,
+      kickoffAt: kickoffAtLocal,
       venue: props.event.location ?? undefined,
     })
     if (created.id) {
