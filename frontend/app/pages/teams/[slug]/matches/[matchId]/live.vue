@@ -1,10 +1,14 @@
 <script setup lang="ts">
-// F08.10 ライブ記録（本機能の肝・04_frontend_and_ux.md §G.2）。
-// 薄いオーケストレータ: 状態・ロジックは composable へ委譲（useMatchLiveSession が sender/recorder/
-// timer/offline/score を結線）。ここではヘッダ(スコアボード)・タイマー操作・大ボタン行・
-// ボトムシート・タイムライン・undo/offline/相手記録案内 を束ねるだけ。
+// F08.10 ライブ記録 共通シェル（多競技対応・04_frontend_and_ux.md §G.2 / §G.16）。
+//
+// 【6-②b 共通シェル化】薄いオーケストレータ。競技非依存の骨格（スコアボード・タイマー操作の枠・
+// 大ボタン・undo・タイムライン・相手記録案内・PK スコア入力）を持ち、競技固有の差分
+// （タイマー状態機械・イベント入力シート）は `matches.sport` に応じて**競技モジュールを
+// 動的 import（lazy-load）**して差し替える。サッカーしか開かないユーザーはバスケのロジック・
+// 入力シートを初期バンドルに同梱しない（Vite コード分割・マスター懸念「重くなる」の解消）。
+import { effectScope } from 'vue'
 import type { MatchEventResponse } from '~/types/match'
-import { isNextCompleted } from '~/composables/match/useMatchTimer'
+import { resolveSportModule, type SportLiveModule } from '~/composables/match/sport/sportModuleRegistry'
 
 definePageMeta({ layout: 'team', middleware: 'auth' })
 
@@ -31,11 +35,21 @@ const canRecord = ref(false)
 const homePenaltyScore = ref(0)
 const awayPenaltyScore = ref(0)
 
-const session = useMatchLiveSession({ orgId, teamId, matchId, ownTeamSide })
-const { timer, recorder } = session
+/** 解決済みの競技モジュール（動的 import の結果）。null=ロード前/未対応。 */
+const sportModule = ref<SportLiveModule | null>(null)
+/** 共通シェルが扱う「前後半系（サッカー/フットサル）」か「クォーター系（バスケ）」か。 */
+const isBasketball = computed(() => sportModule.value?.sport === 'BASKETBALL')
 
+// セッションは競技モジュールの createTimer を注入して結線する。
+// モジュール解決（動的 import）は非同期＝setup 同期スコープ外で composable を作るため、
+// onScopeDispose 等のスコープ依存 API が確実に効くよう専用の effectScope を管理する。
+type Session = ReturnType<typeof useMatchLiveSession>
+const session = shallowRef<Session | null>(null)
+let sessionScope: ReturnType<typeof effectScope> | null = null
+
+const timerState = computed(() => session.value?.timer.state.value ?? 'WAITING')
 const isCompleted = computed(
-  () => matchStatus.value === 'COMPLETED' || timer.state.value === 'COMPLETED',
+  () => matchStatus.value === 'COMPLETED' || timerState.value === 'COMPLETED',
 )
 
 // === UI 状態 ===
@@ -46,20 +60,23 @@ const loading = ref(true)
 
 // === undo / 削除 / 編集試行 ===
 async function undo(): Promise<void> {
+  const s = session.value
+  if (!s) return
   try {
-    await recorder.undoLast()
+    await s.recorder.undoLast()
     notification.success(t('match.live.undo.done'))
-    await session.refreshScore()
+    await s.refreshScore()
   } catch {
     notification.error(t('match.live.error.undo_failed'))
   }
 }
 async function onTimelineDelete(ev: MatchEventResponse): Promise<void> {
-  if (!ev.id) return
+  const s = session.value
+  if (!s || !ev.id) return
   if (!window.confirm(t('match.live.timeline.delete_confirm'))) return
   try {
-    await recorder.deleteEvent(ev.id)
-    await session.refreshScore()
+    await s.recorder.deleteEvent(ev.id)
+    await s.refreshScore()
   } catch {
     // 通知済み
   }
@@ -93,68 +110,101 @@ onMounted(async () => {
     loading.value = false
     return
   }
+  let sport: string | null = null
   try {
     const match = await matchApi.getMatch(orgId.value, teamId.value, matchId)
     matchStatus.value = match.status ?? null
-    session.setMatchStatus(match.status ?? null)
     canRecord.value = match.canRecordTimeline ?? false
     ownTeamSide.value = match.homeAway === 'AWAY' ? 'AWAY' : 'HOME'
     opponentName.value = match.opponentName ?? null
     homePenaltyScore.value = match.homePenaltyScore ?? 0
     awayPenaltyScore.value = match.awayPenaltyScore ?? 0
+    sport = match.sport ?? null
   } catch {
     notification.error(t('match.live.error.load_match_failed'))
   }
+
+  // 競技モジュールを動的 import（lazy-load）で解決し、その createTimer をセッションへ注入。
+  const mod = await resolveSportModule(sport)
+  sportModule.value = mod
+  sessionScope = effectScope()
+  const s = sessionScope.run(() =>
+    useMatchLiveSession({
+      orgId,
+      teamId,
+      matchId,
+      ownTeamSide,
+      createTimer: mod?.createTimer,
+    }),
+  )
+  if (!s) {
+    loading.value = false
+    return
+  }
+  s.setMatchStatus(matchStatus.value)
+  session.value = s
+
   try {
     const res = await eventApi.listEvents(orgId.value, matchId)
-    recorder.setEvents(res.events ?? [])
-    session.applyDerivedScore(res)
+    s.recorder.setEvents(res.events ?? [])
+    s.applyDerivedScore(res)
   } catch {
     // 通知済み
   }
   await grid.loadPlayers(teamIdStr).catch(() => undefined)
   await wakeLock.acquireWakeLock().catch(() => undefined)
-  window.addEventListener('online', session.flushOffline)
+  window.addEventListener('online', flushOffline)
   loading.value = false
 })
 
 onBeforeUnmount(() => {
   wakeLock.releaseWakeLock()
-  window.removeEventListener('online', session.flushOffline)
+  window.removeEventListener('online', flushOffline)
+  sessionScope?.stop()
 })
 
-/**
- * PK 戦を経た試合か（PENALTY_SHOOTOUT を通過した／通過中）。
- * completeMatch へ PK スコアを渡すか判定する。PK なしの試合では penalty を null で渡し、
- * BE 側で homePenaltyScore/awayPenaltyScore を未設定（NULL=PK なし）のまま確定させる。
- */
-const isPenaltyShootout = computed(() => timer.state.value === 'PENALTY_SHOOTOUT')
+function flushOffline(): void {
+  void session.value?.flushOffline()
+}
 
-/** 完了時に completeMatch へ渡す PK スコア（PK 戦なしなら null）。 */
+/** PK 戦中か（前後半系のみ・completeMatch へ PK スコアを渡すか判定）。 */
+const isPenaltyShootout = computed(() => timerState.value === 'PENALTY_SHOOTOUT')
+
 function penaltyPayload(): { home: number; away: number } | null {
   return isPenaltyShootout.value
     ? { home: homePenaltyScore.value, away: awayPenaltyScore.value }
     : null
 }
 
-/** 試合終了確定（PK 戦中なら入力された PK スコアを同梱）。 */
 async function complete(): Promise<void> {
-  await session.completeMatch(penaltyPayload())
+  await session.value?.completeMatch(penaltyPayload())
 }
 
 /**
- * @advance の集約ハンドラ。
- * 次状態が COMPLETED になる遷移（EXTRA_SECOND / PENALTY_SHOOTOUT からの advance）は
- * 必ず session.completeMatch() を経由させて BE の status を永続化する。
- * それ以外の通常 advance（WAITING→FIRST_HALF 等）は timer.advance() に委譲。
- * これにより「COMPLETED への到達は completeMatch() 経路のみ」を保証する（二重発火しない）。
+ * @advance の集約ハンドラ（競技非依存）。
+ * 次状態が COMPLETED になる遷移は completeMatch() を経由させ BE status を永続化する
+ * （競技モジュールの isNextCompleted で判定＝サッカーは EXTRA_SECOND/PK、バスケは Q4/OT）。
+ * それ以外の通常 advance は timer.advance() に委譲（COMPLETED 到達は completeMatch 経路のみ）。
  */
 async function handleAdvance(): Promise<void> {
-  if (isNextCompleted(timer.state.value)) {
+  const s = session.value
+  const mod = sportModule.value
+  if (!s || !mod) return
+  if (mod.isNextCompleted(s.timer.state.value)) {
     await complete()
   } else {
-    await timer.advance()
+    await s.timer.advance()
   }
+}
+
+function goExtra(): void {
+  void session.value?.timer.goExtra?.()
+}
+function goPenalty(): void {
+  void session.value?.timer.goPenaltyShootout?.()
+}
+function goOvertime(): void {
+  void session.value?.timer.goOvertime?.()
 }
 
 function back(): void {
@@ -169,7 +219,7 @@ function back(): void {
       <PageHeader :title="t('match.live.title')" size="sm" />
     </div>
 
-    <PageLoading v-if="loading" size="40px" />
+    <PageLoading v-if="loading || !session" size="40px" />
 
     <template v-else>
       <MatchScoreboard
@@ -178,30 +228,40 @@ function back(): void {
         :home-penalty-score="homePenaltyScore"
         :away-penalty-score="awayPenaltyScore"
         :opponent-name="opponentName"
-        :state="timer.state.value"
-        :clock="timer.displayClock.value"
-        :running="timer.isRunning.value"
+        :state="session.timer.state.value"
+        :clock="session.timer.displayClock.value"
+        :running="session.timer.isRunning.value"
         class="mb-3"
       />
 
-      <!-- 記録権限がある場合のみタイマー操作を出す（閲覧専用は非表示）。 -->
-      <MatchTimerControls
-        v-if="canRecord"
-        class="mb-3"
-        :state="timer.state.value"
-        :current-minute="timer.currentMinute.value"
-        :running="timer.isRunning.value"
-        @advance="handleAdvance()"
-        @complete="complete()"
-        @extra="timer.goExtra()"
-        @penalty="timer.goPenaltyShootout()"
-      />
+      <!-- タイマー操作（記録権限がある場合のみ）。競技で出し分け（前後半系 / クォーター系）。 -->
+      <template v-if="canRecord">
+        <MatchTimerControlsBasketball
+          v-if="isBasketball"
+          class="mb-3"
+          :state="session.timer.state.value"
+          :current-minute="session.timer.currentMinute.value"
+          :running="session.timer.isRunning.value"
+          @advance="handleAdvance()"
+          @complete="complete()"
+          @overtime="goOvertime()"
+        />
+        <MatchTimerControls
+          v-else
+          class="mb-3"
+          :state="session.timer.state.value"
+          :current-minute="session.timer.currentMinute.value"
+          :running="session.timer.isRunning.value"
+          @advance="handleAdvance()"
+          @complete="complete()"
+          @extra="goExtra()"
+          @penalty="goPenalty()"
+        />
+      </template>
 
-      <!-- PK 戦スコア入力（PENALTY_SHOOTOUT 中・記録権限あり時のみ）。
-           ここで入力した成功数が completeMatch → finalizeScore で確定保存され、
-           MatchCompletedEvent 経由で大会順位連携に反映される（F08.10 ②）。 -->
+      <!-- PK 戦スコア入力（前後半系・PENALTY_SHOOTOUT 中・記録権限あり時のみ）。 -->
       <div
-        v-if="canRecord && timer.state.value === 'PENALTY_SHOOTOUT'"
+        v-if="canRecord && !isBasketball && session.timer.state.value === 'PENALTY_SHOOTOUT'"
         class="mb-3 rounded-lg border border-surface-200 bg-surface-50 p-3"
       >
         <p class="mb-2 text-sm font-medium">{{ t('match.live.penalty.title') }}</p>
@@ -267,7 +327,7 @@ function back(): void {
       </div>
 
       <!-- undo 帯（記録権限がある場合のみ） -->
-      <div v-if="canRecord && recorder.canUndo.value" class="mb-3 flex justify-end">
+      <div v-if="canRecord && session.recorder.canUndo.value" class="mb-3 flex justify-end">
         <Button
           text
           severity="secondary"
@@ -278,7 +338,7 @@ function back(): void {
       </div>
 
       <MatchTimeline
-        :events="recorder.events.value"
+        :events="session.recorder.events.value"
         :own-team-side="ownTeamSide"
         @select="onTimelineSelect"
         @delete="onTimelineDelete"
@@ -297,17 +357,29 @@ function back(): void {
         />
       </Dialog>
 
-      <!-- ボトムシート（記録 3 タップ）— 記録権限がある場合のみマウント。 -->
-      <MatchEventSheet
-        v-if="canRecord"
-        v-model:visible="sheetVisible"
-        :players="grid.players.value"
-        @goal="session.recordGoal"
-        @assist="session.recordAssist"
-        @card="session.recordCard"
-        @substitution="session.recordSub"
-        @other="session.recordOther"
-      />
+      <!-- ボトムシート（記録 3 タップ）— 競技別シートを動的 import で出し分け。記録権限がある場合のみ。 -->
+      <template v-if="canRecord">
+        <MatchEventSheetBasketball
+          v-if="isBasketball"
+          v-model:visible="sheetVisible"
+          :players="grid.players.value"
+          @score="session.recordBasketScore"
+          @stat="session.recordBasketStat"
+          @foul="session.recordBasketFoul"
+          @substitution="session.recordSub"
+          @other="session.recordOther"
+        />
+        <MatchEventSheet
+          v-else
+          v-model:visible="sheetVisible"
+          :players="grid.players.value"
+          @goal="session.recordGoal"
+          @assist="session.recordAssist"
+          @card="session.recordCard"
+          @substitution="session.recordSub"
+          @other="session.recordOther"
+        />
+      </template>
 
       <!-- スタメン設定シート（記録権限がある場合のみマウント） -->
       <MatchStarterSetup

@@ -91,7 +91,15 @@
           "EXTRA_FIRST": "延長前半",
           "EXTRA_SECOND": "延長後半",
           "PENALTY_SHOOTOUT": "PK戦",
-          "COMPLETED": "試合終了"
+          "COMPLETED": "試合終了",
+          "QUARTER_1": "第1Q",
+          "BREAK_1": "インターバル",
+          "QUARTER_2": "第2Q",
+          "HALF_TIME_BREAK": "ハーフタイム",
+          "QUARTER_3": "第3Q",
+          "BREAK_3": "インターバル",
+          "QUARTER_4": "第4Q",
+          "OVERTIME": "オーバータイム"
         },
         "start_first_half": "前半開始",
         "to_half_time": "ハーフタイムへ",
@@ -106,14 +114,28 @@
         "pause": "一時停止",
         "resume": "再開",
         "running": "計測中",
-        "stopped": "停止中"
+        "stopped": "停止中",
+        "start_quarter_1": "第1Q開始",
+        "end_quarter_1": "第1Q終了",
+        "start_quarter_2": "第2Q開始",
+        "end_quarter_2": "第2Q終了",
+        "start_quarter_3": "第3Q開始",
+        "end_quarter_3": "第3Q終了",
+        "start_quarter_4": "第4Q開始",
+        "to_overtime": "オーバータイムへ",
+        "to_overtime_again": "もう一度OTへ"
       },
       "preset": {
         "goal": "得点",
         "assist": "アシスト",
         "card": "警告/退場",
         "substitution": "交代",
-        "other": "その他"
+        "other": "その他",
+        "field_goal_2": "2P",
+        "field_goal_3": "3P",
+        "free_throw": "フリースロー",
+        "rebound": "リバウンド",
+        "foul": "ファウル"
       },
       "flow": {
         "select_player": "選手を選択",
@@ -140,7 +162,8 @@
         "card_red": "退場（赤）",
         "card_second_yellow": "2枚目の警告",
         "team_side_label": "記録対象",
-        "other_label_placeholder": "イベント名（例: ファウル）"
+        "other_label_placeholder": "イベント名（例: ファウル）",
+        "foul_type_label": "ファウルの種類"
       },
       "team_side": {
         "HOME": "自チーム",
@@ -337,7 +360,18 @@
       "INJURY": "負傷",
       "PERIOD_START": "ピリオド開始",
       "PERIOD_END": "ピリオド終了",
-      "OTHER": "その他"
+      "OTHER": "その他",
+      "FIELD_GOAL_2": "2P",
+      "FIELD_GOAL_3": "3P",
+      "FREE_THROW": "フリースロー",
+      "SHOT_MISS": "シュート失敗",
+      "REBOUND": "リバウンド",
+      "STEAL": "スティール",
+      "BLOCK": "ブロック",
+      "TURNOVER": "ターンオーバー",
+      "PERSONAL_FOUL": "パーソナルファウル",
+      "TECHNICAL_FOUL": "テクニカルファウル",
+      "FOUL_OUT": "退場（ファウルアウト）"
     },
     "card_type": {
       "YELLOW": "警告",
@@ -359,13 +393,27 @@
       "S4": "得点機会阻止（手）",
       "S5": "得点機会阻止（その他）",
       "S6": "侮辱",
-      "CS": "警告2回"
+      "CS": "警告2回",
+      "PF": "パーソナルファウル",
+      "SF": "シューティングファウル",
+      "OF": "オフェンスファウル",
+      "TF": "テクニカルファウル",
+      "UF": "アンスポーツマンライクファウル",
+      "DF": "ディスクォリファイングファウル"
     },
     "position": {
       "GK": "ゴールキーパー",
       "DF": "ディフェンダー",
       "MF": "ミッドフィルダー",
-      "FW": "フォワード"
+      "FW": "フォワード",
+      "FIXO": "フィクソ",
+      "ALA": "アラ",
+      "PIVO": "ピヴォ",
+      "PG": "ポイントガード",
+      "SG": "シューティングガード",
+      "SF": "スモールフォワード",
+      "PF": "パワーフォワード",
+      "C": "センター"
     },
     "org_context": {
       "resolve_failed": "チーム・組織の情報を解決できませんでした。所属を確認してください"
@@ -394,6 +442,10 @@
         "POSTPONED": "延期",
         "CANCELLED": "中止"
       }
+    },
+    "foul_type": {
+      "PERSONAL_FOUL": "パーソナルファウル",
+      "TECHNICAL_FOUL": "テクニカルファウル"
     }
   }
 }

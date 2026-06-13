@@ -91,7 +91,15 @@
           "EXTRA_FIRST": "Extra 1st",
           "EXTRA_SECOND": "Extra 2nd",
           "PENALTY_SHOOTOUT": "Penalties",
-          "COMPLETED": "Full time"
+          "COMPLETED": "Full time",
+          "QUARTER_1": "Q1",
+          "BREAK_1": "Break",
+          "QUARTER_2": "Q2",
+          "HALF_TIME_BREAK": "Halftime",
+          "QUARTER_3": "Q3",
+          "BREAK_3": "Break",
+          "QUARTER_4": "Q4",
+          "OVERTIME": "Overtime"
         },
         "start_first_half": "Start 1st half",
         "to_half_time": "To half time",
@@ -106,14 +114,28 @@
         "pause": "Pause",
         "resume": "Resume",
         "running": "Running",
-        "stopped": "Stopped"
+        "stopped": "Stopped",
+        "start_quarter_1": "Start Q1",
+        "end_quarter_1": "End Q1",
+        "start_quarter_2": "Start Q2",
+        "end_quarter_2": "End Q2",
+        "start_quarter_3": "Start Q3",
+        "end_quarter_3": "End Q3",
+        "start_quarter_4": "Start Q4",
+        "to_overtime": "Go to overtime",
+        "to_overtime_again": "Another overtime"
       },
       "preset": {
         "goal": "Goal",
         "assist": "Assist",
         "card": "Card",
         "substitution": "Sub",
-        "other": "Other"
+        "other": "Other",
+        "field_goal_2": "2P",
+        "field_goal_3": "3P",
+        "free_throw": "Free throw",
+        "rebound": "Rebound",
+        "foul": "Foul"
       },
       "flow": {
         "select_player": "Select player",
@@ -140,7 +162,8 @@
         "card_red": "Red",
         "card_second_yellow": "Second yellow",
         "team_side_label": "Recording for",
-        "other_label_placeholder": "Event name (e.g. foul)"
+        "other_label_placeholder": "Event name (e.g. foul)",
+        "foul_type_label": "Foul type"
       },
       "team_side": {
         "HOME": "Our team",
@@ -337,7 +360,18 @@
       "INJURY": "Injury",
       "PERIOD_START": "Period Start",
       "PERIOD_END": "Period End",
-      "OTHER": "Other"
+      "OTHER": "Other",
+      "FIELD_GOAL_2": "2-pointer",
+      "FIELD_GOAL_3": "3-pointer",
+      "FREE_THROW": "Free throw",
+      "SHOT_MISS": "Missed shot",
+      "REBOUND": "Rebound",
+      "STEAL": "Steal",
+      "BLOCK": "Block",
+      "TURNOVER": "Turnover",
+      "PERSONAL_FOUL": "Personal foul",
+      "TECHNICAL_FOUL": "Technical foul",
+      "FOUL_OUT": "Foul out"
     },
     "card_type": {
       "YELLOW": "Caution",
@@ -359,13 +393,27 @@
       "S4": "Denying a goal (handball)",
       "S5": "Denying a goal (other)",
       "S6": "Offensive language/gestures",
-      "CS": "Two cautions"
+      "CS": "Two cautions",
+      "PF": "Personal foul",
+      "SF": "Shooting foul",
+      "OF": "Offensive foul",
+      "TF": "Technical foul",
+      "UF": "Unsportsmanlike foul",
+      "DF": "Disqualifying foul"
     },
     "position": {
       "GK": "Goalkeeper",
       "DF": "Defender",
       "MF": "Midfielder",
-      "FW": "Forward"
+      "FW": "Forward",
+      "FIXO": "Fixo",
+      "ALA": "Ala",
+      "PIVO": "Pivo",
+      "PG": "Point guard",
+      "SG": "Shooting guard",
+      "SF": "Small forward",
+      "PF": "Power forward",
+      "C": "Center"
     },
     "org_context": {
       "resolve_failed": "Could not resolve team/organization info. Please check your memberships"
@@ -394,6 +442,10 @@
         "POSTPONED": "Postponed",
         "CANCELLED": "Cancelled"
       }
+    },
+    "foul_type": {
+      "PERSONAL_FOUL": "Personal foul",
+      "TECHNICAL_FOUL": "Technical foul"
     }
   }
 }

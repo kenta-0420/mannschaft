@@ -91,7 +91,15 @@
           "EXTRA_FIRST": "Prórroga 1",
           "EXTRA_SECOND": "Prórroga 2",
           "PENALTY_SHOOTOUT": "Penales",
-          "COMPLETED": "Finalizado"
+          "COMPLETED": "Finalizado",
+          "QUARTER_1": "Q1",
+          "BREAK_1": "Descanso",
+          "QUARTER_2": "Q2",
+          "HALF_TIME_BREAK": "Descanso",
+          "QUARTER_3": "Q3",
+          "BREAK_3": "Descanso",
+          "QUARTER_4": "Q4",
+          "OVERTIME": "Prórroga"
         },
         "start_first_half": "Iniciar 1er tiempo",
         "to_half_time": "Al descanso",
@@ -106,14 +114,28 @@
         "pause": "Pausar",
         "resume": "Reanudar",
         "running": "En marcha",
-        "stopped": "Detenido"
+        "stopped": "Detenido",
+        "start_quarter_1": "Iniciar Q1",
+        "end_quarter_1": "Fin Q1",
+        "start_quarter_2": "Iniciar Q2",
+        "end_quarter_2": "Fin Q2",
+        "start_quarter_3": "Iniciar Q3",
+        "end_quarter_3": "Fin Q3",
+        "start_quarter_4": "Iniciar Q4",
+        "to_overtime": "Ir a prórroga",
+        "to_overtime_again": "Otra prórroga"
       },
       "preset": {
         "goal": "Gol",
         "assist": "Asistencia",
         "card": "Tarjeta",
         "substitution": "Cambio",
-        "other": "Otro"
+        "other": "Otro",
+        "field_goal_2": "2P",
+        "field_goal_3": "3P",
+        "free_throw": "Tiro libre",
+        "rebound": "Rebote",
+        "foul": "Falta"
       },
       "flow": {
         "select_player": "Seleccionar jugador",
@@ -140,7 +162,8 @@
         "card_red": "Roja",
         "card_second_yellow": "Segunda amarilla",
         "team_side_label": "Registrar para",
-        "other_label_placeholder": "Nombre del evento (p. ej. falta)"
+        "other_label_placeholder": "Nombre del evento (p. ej. falta)",
+        "foul_type_label": "Tipo de falta"
       },
       "team_side": {
         "HOME": "Nuestro equipo",
@@ -337,7 +360,18 @@
       "INJURY": "Lesión",
       "PERIOD_START": "Inicio del periodo",
       "PERIOD_END": "Fin del periodo",
-      "OTHER": "Otro"
+      "OTHER": "Otro",
+      "FIELD_GOAL_2": "2 puntos",
+      "FIELD_GOAL_3": "3 puntos",
+      "FREE_THROW": "Tiro libre",
+      "SHOT_MISS": "Tiro fallado",
+      "REBOUND": "Rebote",
+      "STEAL": "Robo",
+      "BLOCK": "Tapón",
+      "TURNOVER": "Pérdida",
+      "PERSONAL_FOUL": "Falta personal",
+      "TECHNICAL_FOUL": "Falta técnica",
+      "FOUL_OUT": "Eliminación por faltas"
     },
     "card_type": {
       "YELLOW": "Amonestación",
@@ -359,13 +393,27 @@
       "S4": "Impedir un gol (mano)",
       "S5": "Impedir un gol (otro)",
       "S6": "Lenguaje o gestos ofensivos",
-      "CS": "Dos amonestaciones"
+      "CS": "Dos amonestaciones",
+      "PF": "Falta personal",
+      "SF": "Falta en tiro",
+      "OF": "Falta en ataque",
+      "TF": "Falta técnica",
+      "UF": "Falta antideportiva",
+      "DF": "Falta descalificante"
     },
     "position": {
       "GK": "Portero",
       "DF": "Defensa",
       "MF": "Centrocampista",
-      "FW": "Delantero"
+      "FW": "Delantero",
+      "FIXO": "Fijo",
+      "ALA": "Ala",
+      "PIVO": "Pívot",
+      "PG": "Base",
+      "SG": "Escolta",
+      "SF": "Alero",
+      "PF": "Ala-pívot",
+      "C": "Pívot"
     },
     "org_context": {
       "resolve_failed": "No se pudo resolver la información del equipo/organización. Verifica tus membresías"
@@ -394,6 +442,10 @@
         "POSTPONED": "Aplazado",
         "CANCELLED": "Cancelado"
       }
+    },
+    "foul_type": {
+      "PERSONAL_FOUL": "Falta personal",
+      "TECHNICAL_FOUL": "Falta técnica"
     }
   }
 }

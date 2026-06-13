@@ -91,7 +91,15 @@
           "EXTRA_FIRST": "연장 전반",
           "EXTRA_SECOND": "연장 후반",
           "PENALTY_SHOOTOUT": "승부차기",
-          "COMPLETED": "경기 종료"
+          "COMPLETED": "경기 종료",
+          "QUARTER_1": "1쿼터",
+          "BREAK_1": "휴식",
+          "QUARTER_2": "2쿼터",
+          "HALF_TIME_BREAK": "하프타임",
+          "QUARTER_3": "3쿼터",
+          "BREAK_3": "휴식",
+          "QUARTER_4": "4쿼터",
+          "OVERTIME": "연장"
         },
         "start_first_half": "전반 시작",
         "to_half_time": "하프타임으로",
@@ -106,14 +114,28 @@
         "pause": "일시정지",
         "resume": "재개",
         "running": "측정 중",
-        "stopped": "정지됨"
+        "stopped": "정지됨",
+        "start_quarter_1": "1쿼터 시작",
+        "end_quarter_1": "1쿼터 종료",
+        "start_quarter_2": "2쿼터 시작",
+        "end_quarter_2": "2쿼터 종료",
+        "start_quarter_3": "3쿼터 시작",
+        "end_quarter_3": "3쿼터 종료",
+        "start_quarter_4": "4쿼터 시작",
+        "to_overtime": "연장으로",
+        "to_overtime_again": "추가 연장"
       },
       "preset": {
         "goal": "득점",
         "assist": "어시스트",
         "card": "카드",
         "substitution": "교체",
-        "other": "기타"
+        "other": "기타",
+        "field_goal_2": "2점",
+        "field_goal_3": "3점",
+        "free_throw": "자유투",
+        "rebound": "리바운드",
+        "foul": "파울"
       },
       "flow": {
         "select_player": "선수 선택",
@@ -140,7 +162,8 @@
         "card_red": "퇴장",
         "card_second_yellow": "두 번째 경고",
         "team_side_label": "기록 대상",
-        "other_label_placeholder": "이벤트 이름 (예: 파울)"
+        "other_label_placeholder": "이벤트 이름 (예: 파울)",
+        "foul_type_label": "파울 종류"
       },
       "team_side": {
         "HOME": "우리 팀",
@@ -337,7 +360,18 @@
       "INJURY": "부상",
       "PERIOD_START": "피리어드 시작",
       "PERIOD_END": "피리어드 종료",
-      "OTHER": "기타"
+      "OTHER": "기타",
+      "FIELD_GOAL_2": "2점슛",
+      "FIELD_GOAL_3": "3점슛",
+      "FREE_THROW": "자유투",
+      "SHOT_MISS": "슛 실패",
+      "REBOUND": "리바운드",
+      "STEAL": "스틸",
+      "BLOCK": "블록",
+      "TURNOVER": "턴오버",
+      "PERSONAL_FOUL": "개인 파울",
+      "TECHNICAL_FOUL": "테크니컬 파울",
+      "FOUL_OUT": "파울 아웃"
     },
     "card_type": {
       "YELLOW": "경고",
@@ -359,13 +393,27 @@
       "S4": "득점 기회 저지 (핸드볼)",
       "S5": "득점 기회 저지 (기타)",
       "S6": "모욕적 언행",
-      "CS": "경고 2회"
+      "CS": "경고 2회",
+      "PF": "개인 파울",
+      "SF": "슈팅 파울",
+      "OF": "오펜스 파울",
+      "TF": "테크니컬 파울",
+      "UF": "스포츠맨답지 않은 파울",
+      "DF": "실격 파울"
     },
     "position": {
       "GK": "골키퍼",
       "DF": "수비수",
       "MF": "미드필더",
-      "FW": "공격수"
+      "FW": "공격수",
+      "FIXO": "픽소",
+      "ALA": "알라",
+      "PIVO": "피보",
+      "PG": "포인트 가드",
+      "SG": "슈팅 가드",
+      "SF": "스몰 포워드",
+      "PF": "파워 포워드",
+      "C": "센터"
     },
     "org_context": {
       "resolve_failed": "팀·조직 정보를 해결할 수 없습니다. 소속을 확인해 주세요"
@@ -394,6 +442,10 @@
         "POSTPONED": "연기",
         "CANCELLED": "취소"
       }
+    },
+    "foul_type": {
+      "PERSONAL_FOUL": "개인 파울",
+      "TECHNICAL_FOUL": "테크니컬 파울"
     }
   }
 }
