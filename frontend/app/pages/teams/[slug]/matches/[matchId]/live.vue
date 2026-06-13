@@ -357,29 +357,29 @@ function back(): void {
         />
       </Dialog>
 
-      <!-- ボトムシート（記録 3 タップ）— 競技別シートを動的 import で出し分け。記録権限がある場合のみ。 -->
-      <template v-if="canRecord">
-        <MatchEventSheetBasketball
-          v-if="isBasketball"
-          v-model:visible="sheetVisible"
-          :players="grid.players.value"
-          @score="session.recordBasketScore"
-          @stat="session.recordBasketStat"
-          @foul="session.recordBasketFoul"
-          @substitution="session.recordSub"
-          @other="session.recordOther"
-        />
-        <MatchEventSheet
-          v-else
-          v-model:visible="sheetVisible"
-          :players="grid.players.value"
-          @goal="session.recordGoal"
-          @assist="session.recordAssist"
-          @card="session.recordCard"
-          @substitution="session.recordSub"
-          @other="session.recordOther"
-        />
-      </template>
+      <!--
+        ボトムシート（記録 3 タップ）— 競技別シートを動的 import で出し分け（§G.16 完全準拠）。
+        静的 auto-import の直書きをやめ、解決済み競技モジュールの eventSheet
+        （defineAsyncComponent）を <component :is> で描画する。これによりサッカーユーザーは
+        バスケシート Vue を初期バンドルに同梱しない（Vite コード分割に乗る）。
+        emit はサッカー（goal/assist/card）とバスケ（score/stat/foul）で異なるが、各シートは
+        自分が emit するイベントだけを発火するため、両系統のハンドラを束ねて結線して問題ない。
+        記録権限がある場合のみマウント。
+      -->
+      <component
+        :is="sportModule.eventSheet"
+        v-if="canRecord && sportModule"
+        v-model:visible="sheetVisible"
+        :players="grid.players.value"
+        @goal="session.recordGoal"
+        @assist="session.recordAssist"
+        @card="session.recordCard"
+        @score="session.recordBasketScore"
+        @stat="session.recordBasketStat"
+        @foul="session.recordBasketFoul"
+        @substitution="session.recordSub"
+        @other="session.recordOther"
+      />
 
       <!-- スタメン設定シート（記録権限がある場合のみマウント） -->
       <MatchStarterSetup

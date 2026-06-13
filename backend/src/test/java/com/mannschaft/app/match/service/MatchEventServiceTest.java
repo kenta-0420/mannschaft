@@ -160,6 +160,89 @@ class MatchEventServiceTest {
                 baseGoal().eventType(MatchEventType.YELLOW_CARD).cardReasonCode(null).build());
     }
 
+    // ─── sport 別 理由コード ディスパッチ（03 §C.4b・バスケ配線） ──
+
+    /** バスケ試合（連続時間制・4Q）。 */
+    private MatchEntity basketballMatch() {
+        MatchEntity m = MatchEntity.builder()
+                .organizationId(ORG)
+                .teamId(TEAM_HOME)
+                .sport(Sport.BASKETBALL)
+                .hasScorekeeper(true)
+                .scorekeeperUserId(ACTOR)
+                .build();
+        m.setId(matchId);
+        lenient().when(matchService.getMatchOrThrow(matchId, ORG)).thenReturn(m);
+        return m;
+    }
+
+    private MatchEventService.EventCommand.EventCommandBuilder baseBasketballFoul() {
+        return MatchEventService.EventCommand.builder()
+                .eventType(MatchEventType.PERSONAL_FOUL)
+                .period(PeriodType.QUARTER_1)
+                .teamSide(TeamSide.HOME)
+                .minute(5)
+                .recordedByTeamId(TEAM_HOME);
+    }
+
+    @Test
+    @DisplayName("バスケ: PERSONAL_FOUL に PF は整合（OK・BasketballFoulReasonCatalog 配線）")
+    void basketballPersonalFoulWithPfOk() {
+        basketballMatch();
+        when(matchEventRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        service.record(matchId, ORG, ACTOR, baseBasketballFoul().cardReasonCode("PF").build());
+    }
+
+    @Test
+    @DisplayName("バスケ: PERSONAL_FOUL に TF（テクニカル専用コード）は不整合 → 400（MATCH_021）")
+    void basketballPersonalFoulWithTf400() {
+        basketballMatch();
+        assertThatThrownBy(() -> service.record(matchId, ORG, ACTOR,
+                baseBasketballFoul().eventType(MatchEventType.PERSONAL_FOUL).cardReasonCode("TF").build()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("理由コード");
+    }
+
+    @Test
+    @DisplayName("バスケ: TECHNICAL_FOUL に TF は整合（OK）")
+    void basketballTechnicalFoulWithTfOk() {
+        basketballMatch();
+        when(matchEventRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        service.record(matchId, ORG, ACTOR,
+                baseBasketballFoul().eventType(MatchEventType.TECHNICAL_FOUL).cardReasonCode("TF").build());
+    }
+
+    @Test
+    @DisplayName("バスケ: FOUL_OUT に DF は整合（OK）/ NULL も OK（5 ファウル累積退場）")
+    void basketballFoulOutCodes() {
+        basketballMatch();
+        when(matchEventRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        service.record(matchId, ORG, ACTOR,
+                baseBasketballFoul().eventType(MatchEventType.FOUL_OUT).cardReasonCode("DF").build());
+        service.record(matchId, ORG, ACTOR,
+                baseBasketballFoul().eventType(MatchEventType.FOUL_OUT).cardReasonCode(null).build());
+    }
+
+    @Test
+    @DisplayName("バスケ: サッカーの警告コード C2 をバスケに付けると 400（C/S 流用禁止・03 §5）")
+    void basketballWithSoccerCautionCode400() {
+        basketballMatch();
+        assertThatThrownBy(() -> service.record(matchId, ORG, ACTOR,
+                baseBasketballFoul().eventType(MatchEventType.PERSONAL_FOUL).cardReasonCode("C2").build()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("理由コード");
+    }
+
+    @Test
+    @DisplayName("サッカー: バスケのファウルコード PF をサッカーの YELLOW_CARD に付けると 400（逆流用禁止）")
+    void soccerWithBasketballFoulCode400() {
+        // setUp の match は SOCCER
+        assertThatThrownBy(() -> service.record(matchId, ORG, ACTOR,
+                baseGoal().eventType(MatchEventType.YELLOW_CARD).cardReasonCode("PF").build()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("理由コード");
+    }
+
     // ─── linked_event_id 同一 match 帰属（03 §C.4a） ──────────
 
     @Test
