@@ -7,13 +7,18 @@
  * 各専用 composable（useMatchTimer/useMatchLiveRecorder/useMatchOfflineQueue 等）に委譲する。
  */
 import type {
+  BasketballEventType,
+  BasketballFoulCode,
   CardReasonCode,
+  CatalogEventType,
   MatchEventRequest,
   MatchEventResponse,
   MatchEventType,
 } from '~/types/match'
 import { useMatchLiveRecorder, type RecorderPlayer } from '~/composables/match/useMatchLiveRecorder'
-import { useMatchTimer, stateToPeriod, type PeriodTransition } from '~/composables/match/useMatchTimer'
+import { useMatchTimer, type PeriodTransition } from '~/composables/match/useMatchTimer'
+import type { SportTimer } from '~/composables/match/sport/sportModuleRegistry'
+import type { UseMatchTimerCoreOptions } from '~/composables/match/sport/useMatchTimerCore'
 
 export interface MatchLiveSessionContext {
   orgId: Ref<number | null>
@@ -21,6 +26,12 @@ export interface MatchLiveSessionContext {
   teamId: Ref<number | null>
   matchId: string
   ownTeamSide: Ref<'HOME' | 'AWAY'>
+  /**
+   * 競技別タイマーのファクトリ（04 §G.16・動的 import で解決した SportLiveModule.createTimer）。
+   * 未指定時はサッカー用タイマー（前後半・延長・PK）を使う（既存挙動の互換）。
+   * これにより共通シェル（live.vue）は競技に応じて注入を差し替えるだけで多競技に対応する。
+   */
+  createTimer?: (options?: UseMatchTimerCoreOptions) => SportTimer
 }
 
 export function useMatchLiveSession(sessionCtx: MatchLiveSessionContext) {
@@ -78,7 +89,10 @@ export function useMatchLiveSession(sessionCtx: MatchLiveSessionContext) {
       await safeRecord({ eventType: 'PERIOD_START', period: tr.startingPeriod, teamSide: side, minute: tr.minute ?? undefined })
     }
   }
-  const timer = useMatchTimer({ onPeriodTransition })
+  // 競技別タイマー（注入があればそれを・無ければサッカー＝既存挙動の互換）。
+  const timer: SportTimer = sessionCtx.createTimer
+    ? sessionCtx.createTimer({ onPeriodTransition })
+    : useMatchTimer({ onPeriodTransition })
 
   const recorder = useMatchLiveRecorder({
     sender: resilientSender,
@@ -139,7 +153,8 @@ export function useMatchLiveSession(sessionCtx: MatchLiveSessionContext) {
    */
   function currentCtx(teamSide: 'HOME' | 'AWAY' = ownTeamSide.value) {
     const s = timer.state.value
-    const concrete = stateToPeriod(s)
+    // 競技別の写像（注入タイマーは自身の stateToPeriod を持つ・無ければサッカー）。
+    const concrete = timer.stateToPeriod(s)
     const period = concrete ?? timer.lastActivePeriod.value ?? 'FIRST_HALF'
     return {
       period: period as MatchEventRequest['period'],
@@ -175,6 +190,68 @@ export function useMatchLiveSession(sessionCtx: MatchLiveSessionContext) {
   }
   async function recordOther(p: { label: string; note: string | null }): Promise<void> {
     await recorder.recordSingle('OTHER', currentCtx(), null, { customLabel: p.label, note: p.note })
+  }
+
+  // ============================================================
+  // バスケ用の高レベル記録ハンドラ（MatchEventSheetBasketball からの emit を受ける）
+  // ============================================================
+  //
+  // 【FE→BE 器の境界・正直な説明】バスケ固有 event_type（FIELD_GOAL_2 等・03 §2）は
+  // BE の `MatchEventType` enum（器・全競技横断）へ後続の BE 波で追加される想定であり、
+  // 現時点の生成型 `MatchEventRequest.eventType` には含まれない。FE は本波で UI・タイマー・
+  // カタログの基盤を先行実装するため、唯一この一箇所（POST 直前の器への載せ替え）で
+  // カタログ型 → 生成型へ寄せる（拡張点は明示・他に散らさない・他箇所は生成型のまま厳格）。
+  // BE が enum を拡張・型再生成したらこの境界は不要になる（recordSingle へ統合）。
+
+  /** カタログ event_type を生成型の器へ載せて 1 イベント記録する（バスケ専用の境界）。 */
+  async function recordCatalogSingle(
+    eventType: CatalogEventType,
+    player: { playerUserId?: number | null; playerName?: string | null; jerseyNumber?: number | null } | null,
+    extra?: { note?: string | null; reasonCode?: string | null; linkedEventId?: string | null },
+  ): Promise<MatchEventResponse> {
+    const ctx = currentCtx()
+    const body: MatchEventRequest = {
+      // 境界の載せ替え（後続 BE 波で生成型へ統合され不要になる）。
+      eventType: eventType as MatchEventRequest['eventType'],
+      period: ctx.period,
+      teamSide: ctx.teamSide,
+    }
+    if (ctx.minute != null) body.minute = ctx.minute
+    if (ctx.stoppageMinute != null) body.stoppageMinute = ctx.stoppageMinute
+    if (player?.playerUserId != null) body.playerUserId = player.playerUserId
+    if (player?.playerName) body.playerName = player.playerName
+    if (player?.jerseyNumber != null) body.jerseyNumber = player.jerseyNumber
+    if (extra?.note) body.note = extra.note
+    if (extra?.reasonCode) body.cardReasonCode = extra.reasonCode
+    if (extra?.linkedEventId) body.linkedEventId = extra.linkedEventId
+    const ev = await resilientSender(body)
+    recorder.events.value = [ev, ...recorder.events.value]
+    return ev
+  }
+
+  /** バスケ得点（2P/3P/FT）＋任意アシスト連鎖（§8.2）。 */
+  async function recordBasketScore(p: {
+    scorer: RecorderPlayer
+    assist: RecorderPlayer | null
+    scoreType: BasketballEventType
+    note: string | null
+    assistNote: string | null
+  }): Promise<void> {
+    const goal = await recordCatalogSingle(p.scoreType, p.scorer, { note: p.note })
+    if (p.assist && (p.assist.playerUserId != null || p.assist.playerName)) {
+      await recordCatalogSingle('ASSIST', p.assist, { note: p.assistNote, linkedEventId: goal.id })
+    }
+    await refreshScore()
+  }
+
+  /** バスケ単発スタッツ（リバウンド等・選手のみ・スコア非影響）。 */
+  async function recordBasketStat(p: { player: RecorderPlayer; eventType: BasketballEventType; note: string | null }): Promise<void> {
+    await recordCatalogSingle(p.eventType, p.player, { note: p.note })
+  }
+
+  /** バスケ ファウル（PF/TF）＋理由コード（§8.3）。 */
+  async function recordBasketFoul(p: { player: RecorderPlayer; foulType: BasketballEventType; reasonCode: BasketballFoulCode | null; note: string | null }): Promise<void> {
+    await recordCatalogSingle(p.foulType, p.player, { note: p.note, reasonCode: p.reasonCode })
   }
 
   // === オフライン flush（online 復帰時） ===
@@ -257,6 +334,9 @@ export function useMatchLiveSession(sessionCtx: MatchLiveSessionContext) {
     recordCard,
     recordSub,
     recordOther,
+    recordBasketScore,
+    recordBasketStat,
+    recordBasketFoul,
     flushOffline,
     reloadEvents,
   }

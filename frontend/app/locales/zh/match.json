@@ -91,7 +91,15 @@
           "EXTRA_FIRST": "加时上半场",
           "EXTRA_SECOND": "加时下半场",
           "PENALTY_SHOOTOUT": "点球大战",
-          "COMPLETED": "比赛结束"
+          "COMPLETED": "比赛结束",
+          "QUARTER_1": "第1节",
+          "BREAK_1": "休息",
+          "QUARTER_2": "第2节",
+          "HALF_TIME_BREAK": "中场休息",
+          "QUARTER_3": "第3节",
+          "BREAK_3": "休息",
+          "QUARTER_4": "第4节",
+          "OVERTIME": "加时"
         },
         "start_first_half": "开始上半场",
         "to_half_time": "进入中场",
@@ -106,14 +114,28 @@
         "pause": "暂停",
         "resume": "继续",
         "running": "计时中",
-        "stopped": "已停止"
+        "stopped": "已停止",
+        "start_quarter_1": "第1节开始",
+        "end_quarter_1": "第1节结束",
+        "start_quarter_2": "第2节开始",
+        "end_quarter_2": "第2节结束",
+        "start_quarter_3": "第3节开始",
+        "end_quarter_3": "第3节结束",
+        "start_quarter_4": "第4节开始",
+        "to_overtime": "进入加时",
+        "to_overtime_again": "再次加时"
       },
       "preset": {
         "goal": "进球",
         "assist": "助攻",
         "card": "纸牌",
         "substitution": "换人",
-        "other": "其他"
+        "other": "其他",
+        "field_goal_2": "2分",
+        "field_goal_3": "3分",
+        "free_throw": "罚球",
+        "rebound": "篮板",
+        "foul": "犯规"
       },
       "flow": {
         "select_player": "选择球员",
@@ -140,7 +162,8 @@
         "card_red": "红牌",
         "card_second_yellow": "第二张黄牌",
         "team_side_label": "记录对象",
-        "other_label_placeholder": "事件名称（例如：犯规）"
+        "other_label_placeholder": "事件名称（例如：犯规）",
+        "foul_type_label": "犯规类型"
       },
       "team_side": {
         "HOME": "本队",
@@ -337,7 +360,18 @@
       "INJURY": "受伤",
       "PERIOD_START": "时段开始",
       "PERIOD_END": "时段结束",
-      "OTHER": "其他"
+      "OTHER": "其他",
+      "FIELD_GOAL_2": "2分球",
+      "FIELD_GOAL_3": "3分球",
+      "FREE_THROW": "罚球",
+      "SHOT_MISS": "投篮不中",
+      "REBOUND": "篮板",
+      "STEAL": "抢断",
+      "BLOCK": "盖帽",
+      "TURNOVER": "失误",
+      "PERSONAL_FOUL": "个人犯规",
+      "TECHNICAL_FOUL": "技术犯规",
+      "FOUL_OUT": "犯满离场"
     },
     "card_type": {
       "YELLOW": "警告",
@@ -359,13 +393,27 @@
       "S4": "阻止进球（手球）",
       "S5": "阻止进球（其他）",
       "S6": "侮辱言行",
-      "CS": "两次警告"
+      "CS": "两次警告",
+      "PF": "个人犯规",
+      "SF": "投篮犯规",
+      "OF": "进攻犯规",
+      "TF": "技术犯规",
+      "UF": "违体犯规",
+      "DF": "取消比赛资格犯规"
     },
     "position": {
       "GK": "门将",
       "DF": "后卫",
       "MF": "中场",
-      "FW": "前锋"
+      "FW": "前锋",
+      "FIXO": "后卫(Fixo)",
+      "ALA": "边锋(Ala)",
+      "PIVO": "中锋(Pivo)",
+      "PG": "控球后卫",
+      "SG": "得分后卫",
+      "SF": "小前锋",
+      "PF": "大前锋",
+      "C": "中锋"
     },
     "org_context": {
       "resolve_failed": "无法解析球队/组织信息。请确认你的所属"
@@ -394,6 +442,10 @@
         "POSTPONED": "延期",
         "CANCELLED": "取消"
       }
+    },
+    "foul_type": {
+      "PERSONAL_FOUL": "个人犯规",
+      "TECHNICAL_FOUL": "技术犯规"
     }
   }
 }

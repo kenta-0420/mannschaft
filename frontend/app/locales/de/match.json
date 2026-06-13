@@ -91,7 +91,15 @@
           "EXTRA_FIRST": "Verl. 1",
           "EXTRA_SECOND": "Verl. 2",
           "PENALTY_SHOOTOUT": "Elfmeterschießen",
-          "COMPLETED": "Spielende"
+          "COMPLETED": "Spielende",
+          "QUARTER_1": "Q1",
+          "BREAK_1": "Pause",
+          "QUARTER_2": "Q2",
+          "HALF_TIME_BREAK": "Halbzeit",
+          "QUARTER_3": "Q3",
+          "BREAK_3": "Pause",
+          "QUARTER_4": "Q4",
+          "OVERTIME": "Verlängerung"
         },
         "start_first_half": "1. Halbzeit starten",
         "to_half_time": "Zur Halbzeit",
@@ -106,14 +114,28 @@
         "pause": "Pause",
         "resume": "Fortsetzen",
         "running": "Läuft",
-        "stopped": "Gestoppt"
+        "stopped": "Gestoppt",
+        "start_quarter_1": "Q1 starten",
+        "end_quarter_1": "Q1 beenden",
+        "start_quarter_2": "Q2 starten",
+        "end_quarter_2": "Q2 beenden",
+        "start_quarter_3": "Q3 starten",
+        "end_quarter_3": "Q3 beenden",
+        "start_quarter_4": "Q4 starten",
+        "to_overtime": "Zur Verlängerung",
+        "to_overtime_again": "Weitere Verlängerung"
       },
       "preset": {
         "goal": "Tor",
         "assist": "Vorlage",
         "card": "Karte",
         "substitution": "Wechsel",
-        "other": "Sonstiges"
+        "other": "Sonstiges",
+        "field_goal_2": "2P",
+        "field_goal_3": "3P",
+        "free_throw": "Freiwurf",
+        "rebound": "Rebound",
+        "foul": "Foul"
       },
       "flow": {
         "select_player": "Spieler wählen",
@@ -140,7 +162,8 @@
         "card_red": "Rot",
         "card_second_yellow": "Gelb-Rot",
         "team_side_label": "Erfassen für",
-        "other_label_placeholder": "Ereignisname (z. B. Foul)"
+        "other_label_placeholder": "Ereignisname (z. B. Foul)",
+        "foul_type_label": "Foul-Art"
       },
       "team_side": {
         "HOME": "Unser Team",
@@ -337,7 +360,18 @@
       "INJURY": "Verletzung",
       "PERIOD_START": "Spielabschnitt-Beginn",
       "PERIOD_END": "Spielabschnitt-Ende",
-      "OTHER": "Sonstiges"
+      "OTHER": "Sonstiges",
+      "FIELD_GOAL_2": "2-Punkte-Wurf",
+      "FIELD_GOAL_3": "3-Punkte-Wurf",
+      "FREE_THROW": "Freiwurf",
+      "SHOT_MISS": "Fehlwurf",
+      "REBOUND": "Rebound",
+      "STEAL": "Steal",
+      "BLOCK": "Block",
+      "TURNOVER": "Ballverlust",
+      "PERSONAL_FOUL": "Persönliches Foul",
+      "TECHNICAL_FOUL": "Technisches Foul",
+      "FOUL_OUT": "Foul-Out"
     },
     "card_type": {
       "YELLOW": "Verwarnung",
@@ -359,13 +393,27 @@
       "S4": "Verhindern eines Tores (Handspiel)",
       "S5": "Verhindern eines Tores (sonstiges)",
       "S6": "Beleidigende Äußerungen/Gesten",
-      "CS": "Zwei Verwarnungen"
+      "CS": "Zwei Verwarnungen",
+      "PF": "Persönliches Foul",
+      "SF": "Wurffoul",
+      "OF": "Offensivfoul",
+      "TF": "Technisches Foul",
+      "UF": "Unsportliches Foul",
+      "DF": "Disqualifizierendes Foul"
     },
     "position": {
       "GK": "Torwart",
       "DF": "Verteidiger",
       "MF": "Mittelfeldspieler",
-      "FW": "Stürmer"
+      "FW": "Stürmer",
+      "FIXO": "Fixo",
+      "ALA": "Ala",
+      "PIVO": "Pivo",
+      "PG": "Point Guard",
+      "SG": "Shooting Guard",
+      "SF": "Small Forward",
+      "PF": "Power Forward",
+      "C": "Center"
     },
     "org_context": {
       "resolve_failed": "Team-/Organisationsinfo konnte nicht aufgelöst werden. Bitte prüfe deine Mitgliedschaften"
@@ -394,6 +442,10 @@
         "POSTPONED": "Verschoben",
         "CANCELLED": "Abgesagt"
       }
+    },
+    "foul_type": {
+      "PERSONAL_FOUL": "Persönliches Foul",
+      "TECHNICAL_FOUL": "Technisches Foul"
     }
   }
 }

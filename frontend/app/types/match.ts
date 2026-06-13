@@ -73,6 +73,17 @@ export type MatchEventRequest = Schemas['MatchEventRequest']
 
 /** 競技（生成型 CreateMatchRequest.sport から導出） */
 export type Sport = NonNullable<CreateMatchRequest['sport']>
+
+/**
+ * FE が多競技ライブ記録で扱う競技の器（04 §G.16）。
+ *
+ * 生成型 `Sport`（現時点 BE OpenAPI は 'SOCCER' のみ）は、BE の多競技カタログ波で
+ * FUTSAL/BASKETBALL/… へ順次拡張される。FE 共通シェル＋競技別動的 import 機構は
+ * **生成型の拡張を待たずに先行実装**するため、本波で対応する連続時間制競技を
+ * FE 側の前向きユニオンとして定義する（生成型 Sport は LiveSport の部分集合）。
+ * BE が Sport を拡張したら本ユニオンは生成型へ寄せて段階移行する。
+ */
+export type LiveSport = 'SOCCER' | 'FUTSAL' | 'BASKETBALL'
 /** 試合種別（生成型 CreateMatchRequest.kind から導出） */
 export type MatchKind = NonNullable<CreateMatchRequest['kind']>
 /** ホーム/アウェイ（生成型 CreateMatchRequest.homeAway から導出） */
@@ -100,6 +111,43 @@ export type SendingOffCode = 'S1' | 'S2' | 'S3' | 'S4' | 'S5' | 'S6' | 'CS'
 export type CardReasonCode = CautionCode | SendingOffCode
 /** サッカーのポジション大分類（§7） */
 export type SoccerPosition = 'GK' | 'DF' | 'MF' | 'FW'
+/** フットサルのポジション大分類（sports/02_futsal.md §7） */
+export type FutsalPosition = 'GK' | 'FIXO' | 'ALA' | 'PIVO'
+/** バスケのポジション大分類（sports/03_basketball.md §7） */
+export type BasketballPosition = 'PG' | 'SG' | 'SF' | 'PF' | 'C'
+
+// ===== バスケ固有イベント種別・ファウルコード（sports/03_basketball.md §2/§5） =====
+// BE の `MatchEventType` enum（器・全競技横断）はバスケ固有値の追加が後続の BE 波で行われる
+// 想定であり、現時点の生成型（MatchEventRequest.eventType）には FIELD_GOAL_2 等が**まだ無い**。
+// FE はカタログ駆動 UI のためにバスケの値を型として定義し、API 送出時は生成型の器へ載せる
+// （BE 受理は後続波・本波は FE 共通シェル＋カタログ＋タイマーの基盤が主眼・04 §G.16）。
+
+/** バスケ固有の event_type（コア MatchEventType の器へ後続波で追加される・§2）。 */
+export type BasketballEventType =
+  | 'FIELD_GOAL_2'
+  | 'FIELD_GOAL_3'
+  | 'FREE_THROW'
+  | 'SHOT_MISS'
+  | 'REBOUND'
+  | 'STEAL'
+  | 'BLOCK'
+  | 'TURNOVER'
+  | 'PERSONAL_FOUL'
+  | 'TECHNICAL_FOUL'
+  | 'FOUL_OUT'
+
+/**
+ * 全競技の event_type を保持するカタログ用ユニオン（FE 側の器）。
+ * 生成型 `MatchEventType`（サッカー/共通）＋ バスケ固有値（後続 BE 波で生成型に統合予定）。
+ * カタログ定数・競技別シート・i18n キーの型付けに用いる。
+ */
+export type CatalogEventType = MatchEventType | BasketballEventType
+
+/** バスケのファウル理由コード（FIBA 標準・sports/03_basketball.md §5）。 */
+export type BasketballFoulCode = 'PF' | 'SF' | 'OF' | 'TF' | 'UF' | 'DF'
+
+/** 競技横断のポジション語彙ユニオン（i18n 引きの型付け用）。 */
+export type CatalogPosition = SoccerPosition | FutsalPosition | BasketballPosition
 
 /** 試合種別の全候補（フィルタ/作成フォームの選択肢） */
 export const MATCH_KINDS: readonly MatchKind[] = [
