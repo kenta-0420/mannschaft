@@ -1,5 +1,5 @@
 import { test as setup } from '@playwright/test'
-import { loginAs } from '../fixtures/auth'
+import { loginViaApi } from '../fixtures/auth'
 
 /**
  * 実機テスト用: 一般ユーザーログイン setup
@@ -15,6 +15,6 @@ setup('実機: 一般ユーザーログイン', async ({ page }) => {
   const email = process.env.TEST_USER_EMAIL ?? 'e2e-user@test.mannschaft.local'
   const password = process.env.TEST_USER_PASSWORD ?? 'TestPass2026!'
 
-  await loginAs(page, { email, password })
+  await loginViaApi(page, { email, password })
   await page.context().storageState({ path: 'tests/e2e/.auth/real-user.json' })
 })
