@@ -46,5 +46,8 @@ class EntityUuidV7ConventionArchTest {
                 .should().beAssignableTo(UuidV7Entity.class)
                 .because("CLAUDE.md DB 設計の原則 #6 — 新規 Entity は UuidV7Entity を"
                     + "継承し主キーを UUIDv7 にすること。既存 BIGINT Entity は凍結し、"
-                    + "新規追加された @Entity のみ fail させる"));
+                    + "新規追加された @Entity のみ fail させる")
+                // 凍結ストアの照合キー（rule description）を固定し、僅かな文言差で
+                // 別ルール扱い＝新規ストア生成（＝新規違反の取りこぼし）になるのを防ぐ。
+                .as("entities should extend UuidV7Entity (D-2b)"));
 }

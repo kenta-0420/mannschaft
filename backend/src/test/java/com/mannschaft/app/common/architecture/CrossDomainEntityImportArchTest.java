@@ -72,7 +72,9 @@ class CrossDomainEntityImportArchTest {
                 .because("CLAUDE.md ドメイン境界の原則 — 異なるドメインの Entity を"
                     + "直接参照してはならない（ID のみ保持し、データ取得は Service 経由）。"
                     + "enum（..entity.enums..）と common 基盤は除外。"
-                    + "既存違反は凍結し、新規違反のみ fail させる"));
+                    + "既存違反は凍結し、新規違反のみ fail させる")
+                // 凍結ストアの照合キー（rule description）を固定する。
+                .as("no cross-domain entity dependency (D-1)"));
 
     // -----------------------------------------------------------------------
     // ヘルパー
