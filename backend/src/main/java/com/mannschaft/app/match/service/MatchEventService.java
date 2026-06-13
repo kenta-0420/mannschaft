@@ -2,7 +2,7 @@ package com.mannschaft.app.match.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.match.MatchErrorCode;
-import com.mannschaft.app.match.catalog.CardReasonCatalog;
+import com.mannschaft.app.match.catalog.ReasonCodeCatalog;
 import com.mannschaft.app.match.catalog.SportEventCatalog;
 import com.mannschaft.app.match.domain.MatchEventType;
 import com.mannschaft.app.match.domain.PeriodType;
@@ -104,7 +104,7 @@ public class MatchEventService {
         matchAccessService.assertCanRecordTimeline(actorUserId, match);
 
         validateEventType(match, command.getEventType());
-        validateCardReasonCode(command.getEventType(), command.getCardReasonCode());
+        validateCardReasonCode(match, command.getEventType(), command.getCardReasonCode());
         validateNumericRanges(command);
         validateSideOwnership(match, command.getTeamSide(), command.getRecordedByTeamId());
         validateLinkedEvent(matchId, command.getTeamSide(), command.getLinkedEventId());
@@ -153,7 +153,7 @@ public class MatchEventService {
         matchAccessService.assertCanRecordTimeline(actorUserId, match);
 
         validateEventType(match, command.getEventType());
-        validateCardReasonCode(command.getEventType(), command.getCardReasonCode());
+        validateCardReasonCode(match, command.getEventType(), command.getCardReasonCode());
         validateNumericRanges(command);
         // 更新では recorded_by_team_id は不変（作成時のサーバー導出値を維持）。
         // 新しい team_side が既存名義と整合するか検証し、サイドの付け替えによる相手分捏造を遮断する（03 §C.4a）。
@@ -240,16 +240,19 @@ public class MatchEventService {
     }
 
     /**
-     * card_reason_code の二段検証（03 §C.4b）。
+     * card_reason_code の二段検証（03 §C.4b・<b>競技別ディスパッチ</b>）。
+     *
+     * <p>理由コードの体系は競技ごとに異なる（サッカー/フットサル＝C/S コード、バスケ＝FIBA ファウルコード）。
+     * {@code match.sport} に応じて {@link ReasonCodeCatalog} が当該競技のカタログへ委譲し、
+     * 競技間の流用（サッカー C/S をバスケへ／バスケファウルコードをサッカーへ）を弾く（03 §5・症状を隠さず根治）。</p>
      *
      * <ul>
      *   <li>{@code code==null}: 理由コードは任意ゆえ常に OK（後から補完可能）。</li>
-     *   <li>{@code code!=null}: 当該 event_type の許容コード集合に含まれること
-     *       （警告→C 系/退場→S 系/CS・非対象イベントへの付与は 400）。</li>
+     *   <li>{@code code!=null}: 当該競技カタログの列挙値かつ event_type 整合（非整合は 400・MATCH_021）。</li>
      * </ul>
      */
-    private void validateCardReasonCode(MatchEventType eventType, String code) {
-        if (!CardReasonCatalog.isValid(eventType, code)) {
+    private void validateCardReasonCode(MatchEntity match, MatchEventType eventType, String code) {
+        if (!ReasonCodeCatalog.isValid(match.getSport(), eventType, code)) {
             throw new BusinessException(MatchErrorCode.MATCH_021);
         }
     }

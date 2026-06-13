@@ -68,6 +68,19 @@ describe('sportModuleRegistry（動的 import 選択）', () => {
     scope.stop()
   })
 
+  it('MOD-006: 各モジュールは eventSheet（遅延コンポ）を必ず提供する（live.vue の <component :is> 結線契約）', async () => {
+    // live.vue は sportModule.eventSheet を <component :is> で描画するため、
+    // 各競技モジュールが eventSheet を持つことが結線の前提（欠けると初期バンドル同梱の静的参照に逆戻り）。
+    const soccer = await resolveSportModule('SOCCER')
+    const futsal = await resolveSportModule('FUTSAL')
+    const basket = await resolveSportModule('BASKETBALL')
+    for (const mod of [soccer, futsal, basket]) {
+      expect(mod?.eventSheet).toBeDefined()
+      // defineAsyncComponent は object もしくは関数のコンポーネント定義を返す
+      expect(['object', 'function']).toContain(typeof mod?.eventSheet)
+    }
+  })
+
   it('MOD-005: isNextCompleted が競技別に正しい（サッカー PK / バスケ Q4・OT）', async () => {
     const soccer = await resolveSportModule('SOCCER')
     const basket = await resolveSportModule('BASKETBALL')
