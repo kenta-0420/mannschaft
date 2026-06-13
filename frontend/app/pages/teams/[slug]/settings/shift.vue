@@ -8,6 +8,7 @@ const route = useRoute()
 const teamSlug = String(route.params.slug)
 
 const notification = useNotification()
+const { getShiftSettings, updateShiftSettings } = useTeamShiftSettingsApi()
 
 const settings = ref<TeamShiftSettings | null>(null)
 const loading = ref(false)
@@ -24,9 +25,7 @@ const form = ref<UpdateTeamShiftSettingsRequest>({
 async function loadSettings() {
   loading.value = true
   try {
-    const res = await $fetch<TeamShiftSettings>(
-      `/api/v1/teams/${teamSlug}/shift-settings`,
-    )
+    const res = await getShiftSettings(teamSlug)
     settings.value = res
     form.value = {
       reminder48hEnabled: res.reminder48hEnabled,
@@ -58,13 +57,7 @@ async function saveSettings() {
 
   saving.value = true
   try {
-    const res = await $fetch<TeamShiftSettings>(
-      `/api/v1/teams/${teamSlug}/shift-settings`,
-      {
-        method: 'PATCH',
-        body: form.value,
-      },
-    )
+    const res = await updateShiftSettings(teamSlug, form.value)
     settings.value = res
     notification.success(t('teamShiftSettings.saved'))
   } catch {

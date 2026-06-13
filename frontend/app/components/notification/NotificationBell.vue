@@ -17,6 +17,9 @@ const mentionCount = ref(0)
 const totalCount = computed(() => notifCount.value + chatCount.value + mentionCount.value)
 
 async function fetchCounts() {
+  // バッジ件数取得（60 秒ポーリング）。3 種は独立しており、1 つが失敗しても
+  // 他の件数は表示すべきなので allSettled + 各 catch で個別に握りつぶす（非クリティカル）。
+  // 5xx は useApi() がトースト集約・エラー報告するため、ここでの通知は不要。
   await Promise.allSettled([
     getUnreadCount()
       .then((r) => {
