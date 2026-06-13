@@ -48,6 +48,8 @@ class MatchEventServiceTest {
     private MatchAccessService matchAccessService;
     @Mock
     private PlayingTimeCalculationService playingTimeCalculationService;
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private MatchEventService service;
