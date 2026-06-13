@@ -73,6 +73,35 @@
 - Entity の `@PrePersist` / `@PreUpdate`（結合テストで自然にカバーされる）
 - 設定クラス（`@Configuration`）の Bean 登録（起動テストでカバー）
 
+### 2.4 時刻依存テスト（date-pin）の禁則と正攻法
+
+実時刻（`Instant.now()` / `LocalDate.now()` / `LocalDateTime.now()` 等）に依存するテストは、
+**固定した過去日付（例: `Instant.parse("2026-06-01T...")`）を実時刻と直接比較しない**こと。
+固定日付が「今日」を跨いだ瞬間に `isBefore` / `isAfter` / 期限判定の真偽が反転し、テストが
+将来日付で flaky に壊れる（実例: `JobQrTokenServiceTest` の date-pin → `Clock` 注入で根治）。
+
+**安全な書き方（いずれか）:**
+
+1. **本番コードに `Clock` を注入する** — 時刻を参照する Service は `Clock` を DI し、テストでは
+   `Clock.fixed(NOW, ZoneOffset.UTC)` を渡す。`now()` は `Instant.now(clock)` 等 `Clock` 経由にする。
+   （例: `JobCheckInService` / `JobQrTokenService` は注入済み）
+2. **入力・期待値の両方を相対化する** — 固定基準を使わず `now().plusDays(7)` / `now().minusMonths(1)`
+   のように「現在からの相対」で組み、アサートも相対値で行う。両辺が同じ時刻軸で動くため日跨ぎで壊れない。
+3. **固定入力に対する相対アサート** — メソッドへ固定日時を **明示的に引数で渡し**、その固定入力に対する
+   出力を固定値でアサートする（実時刻を参照しないため安全。例: `SlaPolicy.calcDueAt(base)`）。
+
+**禁則パターン（書いてはいけない）:**
+
+```java
+// NG: 固定の過去日付を実時刻と比較 — 日跨ぎで判定が反転して壊れる
+assertThat(entity.getDeadline()).isAfter(LocalDateTime.now());        // deadline が固定2026なら将来falseに
+assertThat(LocalDate.now()).isBefore(LocalDate.of(2026, 12, 31));     // 2026/12/31を過ぎたら壊れる
+```
+
+> 監査記録（2026-06-13 / Phase3a B-4）: `backend/src/test` 配下の固定 2026 リテラルと `now()` を併用する
+> 約70ファイルを精査した結果、「固定過去日付 vs 実時刻」の破壊パターンは **0 件**（上記 1〜3 の安全形のみ）。
+> 既知の `JobQrTokenServiceTest` は `Clock` 注入済みのため対象外。本節は再発防止の規約として明文化したもの。
+
 ---
 
 ## 3. 結合テスト設計方針
