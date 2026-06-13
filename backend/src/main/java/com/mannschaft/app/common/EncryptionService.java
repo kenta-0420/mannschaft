@@ -95,6 +95,64 @@ public class EncryptionService {
     }
 
     /**
+     * 暗号文として復号を試み、当サービスの暗号文フォーマットでない値（暗号化導入前に
+     * 平文のまま保存されたレガシーデータ / シードデータ等）はそのまま平文として返す。
+     *
+     * <p>背景: PII カラムは {@code V9.053} で暗号化対応（VARCHAR → TEXT + Base64 暗号文格納）に
+     * 移行したが、システムユーザー（id=1）・退会センチネル（id=0）など一部のシードデータは
+     * 平文のまま {@code last_name='システム'} のように挿入されている。これらの行を
+     * {@link #decrypt(String)} で素朴に復号すると Base64 デコードに失敗して例外となり、
+     * 当該ユーザーを参照する全ての読み取り経路（例: 予定詳細 GET の作成者表示名解決）が
+     * 500 を返してしまう。</p>
+     *
+     * <p>判定方針（症状を隠さない安全な切り分け）:</p>
+     * <ul>
+     *   <li>当サービスの暗号文は必ず「厳密 Base64」かつ「デコード後 28 バイト以上
+     *       （IV 12 + GCM 認証タグ 16 + 平文 0 以上）」になる。この形を満たさない値は
+     *       {@link #encrypt(String)} が生成し得ない＝暗号化前のレガシー平文と断定できるため、
+     *       そのまま返す。</li>
+     *   <li>形は暗号文だが GCM 認証に失敗する値（改竄・鍵不一致など真の異常）は
+     *       従来どおり {@link EncryptionException} を送出し、症状を握り潰さない。</li>
+     * </ul>
+     *
+     * @param storedValue DB から読み出した値（null の場合は null を返す）
+     * @return 復号された平文、またはレガシー平文の場合はその値そのもの
+     */
+    public String decryptLegacyAware(String storedValue) {
+        if (storedValue == null) {
+            return null;
+        }
+        if (!looksLikeCiphertext(storedValue)) {
+            // 当サービスの暗号文フォーマットではない＝暗号化導入前のレガシー平文。
+            // そのまま返す（これはレガシー平文の「復号結果」そのものであり、症状隠しではない）。
+            return storedValue;
+        }
+        // 形は暗号文。GCM 認証失敗（改竄・鍵不一致）は EncryptionException として正しく送出する。
+        return decrypt(storedValue);
+    }
+
+    /**
+     * 値が当サービスの暗号文フォーマット（厳密 Base64 かつデコード後 IV+タグ長以上）かを判定する。
+     *
+     * @param value 判定対象（null 不可）
+     * @return 暗号文フォーマットを満たすなら true
+     */
+    private boolean looksLikeCiphertext(String value) {
+        if (value.isEmpty()) {
+            return false;
+        }
+        final byte[] decoded;
+        try {
+            // getDecoder() は厳密 Base64。レガシー平文（日本語等の非 Base64 文字）はここで弾かれる。
+            decoded = Base64.getDecoder().decode(value);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+        // encrypt("") でも IV(12) + GCM タグ(16) = 28 バイトになる。これ未満は暗号文ではない。
+        return decoded.length >= GCM_IV_LENGTH + (GCM_TAG_LENGTH / 8);
+    }
+
+    /**
      * バイト列をAES-256-GCMで暗号化する。
      *
      * @param plainBytes 平文バイト列（nullの場合はnullを返す）
