@@ -368,3 +368,125 @@ test('BLOG-AUTOSAVE-001: 自動保存トグルUIが存在しデフォルトでON
   })
   console.log(`クリーンアップ削除: HTTP ${delRes.status()}`)
 })
+
+// ===========================================================================
+// BLOG-TOC-001: 目次ブロックの重複挿入防止（本陣救出 blog-fixes.spec.ts BLOG-003 由来）
+//
+// MarkdownEditor は本文に <details> ブロックが存在する間（hasTocBlock=true）、
+// 目次挿入ボタンを disabled にして二重挿入を防ぐ（useMarkdownEditor.insertTocBlock も
+// hasTocBlock で早期 return する二重防御）。本テストはその回帰を固定する。
+// ===========================================================================
+test('BLOG-TOC-001: 目次ブロック挿入後は再挿入が無効化され <details> が重複しない', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(60_000)
+
+  const { accessToken } = await loginApi(request, USER_EMAIL, USER_PASS)
+
+  // 見出し入りのテスト記事を API で作成
+  const createRes = await request.post(`${BE_API}/users/me/blog/posts`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    data: {
+      title: `TOC_TEST_${Date.now()}`,
+      body: '# 見出し1\n\n本文A\n\n## 見出し2\n\n本文B',
+    },
+  })
+  expect(createRes.status(), 'ブログ記事作成は201').toBe(201)
+  const postJson = (await createRes.json()) as { data: { id: number } }
+  const postId = postJson.data?.id
+  expect(postId, 'postId が取得できる').toBeTruthy()
+
+  try {
+    await loginUI(page, USER_EMAIL, USER_PASS)
+    await page.goto(`/blog/posts/${postId}/edit`)
+    await waitForHydration(page)
+
+    const bodyTextarea = page.locator('textarea').first()
+    await expect(bodyTextarea, '本文テキストエリアが表示される').toBeVisible({ timeout: 15_000 })
+
+    // 目次挿入ボタン（MarkdownEditor の toolbar item）をクリック
+    const tocInsertBtn = page.locator('button[title="目次ブロックを挿入（現在の見出しから自動生成）"]')
+    await expect(tocInsertBtn, '目次挿入ボタンが存在する').toBeVisible({ timeout: 10_000 })
+    await expect(tocInsertBtn, '挿入前は活性').toBeEnabled()
+    await tocInsertBtn.click()
+
+    // <details> ブロックが本文に挿入される
+    await expect
+      .poll(async () => await bodyTextarea.inputValue(), { timeout: 5_000 })
+      .toContain('<details>')
+
+    // hasTocBlock=true により再挿入ボタンが disabled になる（重複挿入防止）
+    await expect(tocInsertBtn, '挿入後は再挿入ボタンが無効化される').toBeDisabled()
+
+    // <details> ブロックは 1 つだけ
+    const bodyValue = await bodyTextarea.inputValue()
+    const detailsCount = (bodyValue.match(/<details>/gi) ?? []).length
+    expect(detailsCount, '目次ブロックが重複挿入されない').toBe(1)
+
+    await page.screenshot({ path: 'test-results/blog-toc-001.png', fullPage: false })
+    console.log('BLOG-TOC-001: PASS')
+  } finally {
+    const delRes = await request.delete(`${BE_API}/users/me/blog/posts/${postId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    console.log(`クリーンアップ削除: HTTP ${delRes.status()}`)
+  }
+})
+
+// ===========================================================================
+// BLOG-CTRLS-001: Ctrl+S キーボードショートカット保存（本陣救出 blog-fixes.spec.ts BLOG-004 由来）
+//
+// edit.vue の onKeydown（@keydown / e.ctrlKey && e.key === 's'）が
+// ブラウザ既定の「ページ保存」を preventDefault して記事保存 PUT を発火することを固定する。
+// ===========================================================================
+test('BLOG-CTRLS-001: Ctrl+S ショートカットで記事保存 PUT が発火し 200 が返る', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(60_000)
+
+  const { accessToken } = await loginApi(request, USER_EMAIL, USER_PASS)
+
+  const createRes = await request.post(`${BE_API}/users/me/blog/posts`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    data: {
+      title: `CTRLS_TEST_${Date.now()}`,
+      body: 'Ctrl+S 保存テスト用の本文です。',
+    },
+  })
+  expect(createRes.status(), 'ブログ記事作成は201').toBe(201)
+  const postJson = (await createRes.json()) as { data: { id: number } }
+  const postId = postJson.data?.id
+  expect(postId, 'postId が取得できる').toBeTruthy()
+
+  try {
+    await loginUI(page, USER_EMAIL, USER_PASS)
+    await page.goto(`/blog/posts/${postId}/edit`)
+    await waitForHydration(page)
+
+    const bodyTextarea = page.locator('textarea').first()
+    await expect(bodyTextarea, '本文テキストエリアが表示される').toBeVisible({ timeout: 15_000 })
+
+    // 本文を追記してから Ctrl+S（@keydown は編集画面ルート div にあるため textarea フォーカスで届く）
+    await bodyTextarea.click()
+    await bodyTextarea.pressSequentially('\n\nCtrl+S で保存される追記。', { delay: 5 })
+
+    const savePromise = page.waitForResponse(
+      (r) => /\/api\/v1\/users\/me\/blog\/posts\/\d+$/.test(r.url()) && r.request().method() === 'PUT',
+      { timeout: 20_000 },
+    )
+    await bodyTextarea.press('Control+s')
+
+    const saveResp = await savePromise
+    expect(saveResp.status(), 'Ctrl+S で発火した PUT が 200 を返す').toBe(200)
+
+    await page.screenshot({ path: 'test-results/blog-ctrls-001.png', fullPage: false })
+    console.log('BLOG-CTRLS-001: PASS')
+  } finally {
+    const delRes = await request.delete(`${BE_API}/users/me/blog/posts/${postId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    console.log(`クリーンアップ削除: HTTP ${delRes.status()}`)
+  }
+})
