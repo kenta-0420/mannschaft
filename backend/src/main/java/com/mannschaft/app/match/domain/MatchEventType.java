@@ -45,6 +45,34 @@ public enum MatchEventType {
     /** 2 枚目の警告＝退場（out=その分） */
     SECOND_YELLOW,
 
+    // --- バスケットボール固有: 得点（sports/03_basketball.md §2）---
+    /** 2 点シュート成功（バスケ・スコア +2） */
+    FIELD_GOAL_2,
+    /** 3 点シュート成功（バスケ・スコア +3） */
+    FIELD_GOAL_3,
+    /** フリースロー成功（バスケ・スコア +1） */
+    FREE_THROW,
+    /** シュート失敗（バスケ・任意記録・スコア非影響） */
+    SHOT_MISS,
+
+    // --- バスケットボール固有: 技術統計（sports/03_basketball.md §2）---
+    /** リバウンド */
+    REBOUND,
+    /** スティール */
+    STEAL,
+    /** ブロック */
+    BLOCK,
+    /** ターンオーバー */
+    TURNOVER,
+
+    // --- バスケットボール固有: 反則（sports/03_basketball.md §2 / §5）---
+    /** パーソナルファウル（5 個で FOUL_OUT・BasketballFoulCode: PF/SF/OF/UF） */
+    PERSONAL_FOUL,
+    /** テクニカルファウル（BasketballFoulCode: TF） */
+    TECHNICAL_FOUL,
+    /** 5 ファウル退場 / ディスクォリファイ（out 確定・BasketballFoulCode: DF または NULL） */
+    FOUL_OUT,
+
     // --- その他 ---
     /** GK セーブ */
     SAVE,

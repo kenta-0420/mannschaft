@@ -30,10 +30,18 @@ public final class SportEventCatalog {
     private SportEventCatalog() {
     }
 
-    /** 競技 → 利用可能 event_type 集合（中身は各競技カタログを参照）。 */
-    public static final Map<Sport, Set<MatchEventType>> CATALOG = Map.of(
-            Sport.SOCCER, SoccerCatalog.EVENT_TYPES
-            // 将来: Sport.BASKETBALL, Sport.FUTSAL ...（各競技カタログクラスを参照）
+    /**
+     * 競技 → 利用可能 event_type 集合（中身は各競技カタログを参照）。
+     *
+     * <p>{@code Map.ofEntries} を用いる（Phase 6-②a で 3 エントリ。後続波 6-③/6-④ で
+     * VOLLEYBALL/SHOGI/GO が加わり最大 6 エントリになるため、型推論の限界を避けるため
+     * {@code Map.of} ではなく {@code Map.ofEntries} に切り替え済み）。</p>
+     */
+    public static final Map<Sport, Set<MatchEventType>> CATALOG = Map.ofEntries(
+            Map.entry(Sport.SOCCER, SoccerCatalog.EVENT_TYPES),
+            Map.entry(Sport.FUTSAL, FutsalCatalog.EVENT_TYPES),
+            Map.entry(Sport.BASKETBALL, BasketballCatalog.EVENT_TYPES)
+            // 後続波: Sport.VOLLEYBALL, Sport.SHOGI, Sport.GO ...（各競技カタログクラスを参照）
     );
 
     /**

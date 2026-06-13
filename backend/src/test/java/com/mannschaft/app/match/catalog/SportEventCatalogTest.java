@@ -14,6 +14,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * {@link SportEventCatalog}（多競技カタログの機構・コア）と {@link SoccerCatalog}（SOCCER の中身）の整合テスト。
  *
+ * <p>Phase 6-②a（FutsalCatalog/BasketballCatalog追加）でバスケ固有 event_type
+ * （FIELD_GOAL_2 等）を MatchEventType に追加。SOCCER カタログはバスケ固有値を含まないため
+ * "全 MatchEventType を SOCCER が許容する" テストは廃止し、
+ * SOCCER が正準値のみ許容する点の検証に切り替えた。</p>
+ *
  * <p>設計: sports/01_soccer.md §2（SOCCER カタログ正準）/ 01_domain_and_ddl.md §D.3</p>
  */
 @DisplayName("SportEventCatalog / SoccerCatalog 整合テスト")
@@ -52,15 +57,21 @@ class SportEventCatalogTest {
     }
 
     @Test
-    @DisplayName("isAllowed: 全ての MatchEventType がサッカーで許容される（器とカタログの欠落検出）")
-    void everyEventTypeCoveredBySoccer() {
-        // 現状サッカーは全 MatchEventType を許容する設計（sports/01 §2）。
-        // 将来 enum へ「サッカー非対応の他競技専用イベント」を追加した場合は本テストを更新する。
-        for (MatchEventType type : MatchEventType.values()) {
-            assertThat(SoccerCatalog.EVENT_TYPES)
-                    .as("MatchEventType.%s が SOCCER カタログに含まれること", type)
-                    .contains(type);
-        }
+    @DisplayName("SOCCER カタログ: バスケ固有 event_type は含まない（境界テスト）")
+    void soccerCatalogExcludesBasketballOnlyTypes() {
+        // Phase 6-②a でバスケ固有の event_type を MatchEventType に追加した。
+        // SOCCER カタログはこれらを含まない（sports/01 §2 の正準通り）。
+        assertThat(SoccerCatalog.EVENT_TYPES).doesNotContain(MatchEventType.FIELD_GOAL_2);
+        assertThat(SoccerCatalog.EVENT_TYPES).doesNotContain(MatchEventType.FIELD_GOAL_3);
+        assertThat(SoccerCatalog.EVENT_TYPES).doesNotContain(MatchEventType.FREE_THROW);
+        assertThat(SoccerCatalog.EVENT_TYPES).doesNotContain(MatchEventType.SHOT_MISS);
+        assertThat(SoccerCatalog.EVENT_TYPES).doesNotContain(MatchEventType.REBOUND);
+        assertThat(SoccerCatalog.EVENT_TYPES).doesNotContain(MatchEventType.STEAL);
+        assertThat(SoccerCatalog.EVENT_TYPES).doesNotContain(MatchEventType.BLOCK);
+        assertThat(SoccerCatalog.EVENT_TYPES).doesNotContain(MatchEventType.TURNOVER);
+        assertThat(SoccerCatalog.EVENT_TYPES).doesNotContain(MatchEventType.PERSONAL_FOUL);
+        assertThat(SoccerCatalog.EVENT_TYPES).doesNotContain(MatchEventType.TECHNICAL_FOUL);
+        assertThat(SoccerCatalog.EVENT_TYPES).doesNotContain(MatchEventType.FOUL_OUT);
     }
 
     @Test
@@ -73,13 +84,20 @@ class SportEventCatalogTest {
     @Test
     @DisplayName("isAllowed: カタログ未登録の競技（null）は常に false（否定経路・NPE を投げない）")
     void isAllowedFalseForUnregisteredSport() {
-        // Sport は現状 SOCCER のみ・サッカーは全 enum を許容するため、競技未登録の否定経路は
-        // null 競技で代表検証する（CATALOG.get(null)==null → false）。将来サッカー非対応イベントを
-        // 持つ競技を追加したら、その競技×非対応 event_type で false を直接検証すること。
+        // CATALOG.get(null)==null → false（null 安全チェック）
         for (MatchEventType type : MatchEventType.values()) {
             assertThat(SportEventCatalog.isAllowed(null, type))
                     .as("未登録競技(null)では %s は許容されない", type).isFalse();
         }
+    }
+
+    @Test
+    @DisplayName("CATALOG は SOCCER / FUTSAL / BASKETBALL の 3 競技を登録している（Phase 6-②a）")
+    void catalogContainsThreeCompetitions() {
+        assertThat(SportEventCatalog.CATALOG)
+                .as("Phase 6-②a 登録済み競技: SOCCER/FUTSAL/BASKETBALL")
+                .containsKeys(Sport.SOCCER, Sport.FUTSAL, Sport.BASKETBALL)
+                .hasSize(3);
     }
 
     @Test
