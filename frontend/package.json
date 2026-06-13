@@ -92,6 +92,7 @@
   "overrides": {
     "cac": "^6.7.14",
     "commander": "^13.1.0",
+    "esbuild": "^0.28.1",
     "h3": "^1.15.11",
     "crossws": "^0.4.5",
     "simple-git": "^3.36.0"
