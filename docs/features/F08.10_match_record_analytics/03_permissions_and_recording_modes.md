@@ -1,7 +1,7 @@
 # F08.10 / 03: 記録モード・編集権限・セキュリティ・IDOR・F00 可視性
 
 > **ステータス**: 🟢 設計完了
-> **最終更新**: 2026-06-08
+> **最終更新**: 2026-06-13（団体戦の親子ボード IDOR §C.4・局面写真添付 §C.7a・WebSocket 購読認可 §C.8 を追補）
 > **関連機能番号**: F08.10（試合記録・分析）／ F00（コンテンツ可視性・ロール基盤）／ F19.1 個人プロフィール公開
 > **関連ドキュメント**:
 > - [01_domain_and_ddl.md](./01_domain_and_ddl.md) — `recorded_by_team_id` / `owning_team_id` / `scorekeeper_user_id` / `has_scorekeeper` / 二段アクセス（§A.4）
@@ -10,6 +10,7 @@
 > - [docs/features/F00_content_visibility_resolver.md](../F00_content_visibility_resolver.md) — `ContentVisibilityResolver` / `ReferenceType` / `ContentVisibilityChecker`
 > - 実装基盤: `com.mannschaft.app.common.AccessControlService`（メンバーシップ検証・ロール判定）／ `com.mannschaft.app.common.visibility.ContentVisibilityResolver`
 > - [sports/01_soccer.md](./sports/01_soccer.md) — サッカーの理由コード具体値（C/S）と event_type↔コード対応（§5.3・本書 §C.4b の検証規約が参照する競技カタログ）
+> - [07_realtime_spectator.md](./07_realtime_spectator.md) — **WebSocket ライブ観戦の購読認可（F00 可視性・§C.8 が連動）**
 
 本書は **C（記録モードと権限）** を具体化する。最重要章。
 本書（記録モード・編集権限・IDOR・F00 可視性・テナント分離・入力検証の**枠組み**）は**ほぼ全てが競技非依存のコア**である。唯一、`card_reason_code` の**具体コード一覧**だけが競技依存のため [sports/01_soccer.md](./sports/01_soccer.md) §5 を参照する形にし、検証規約は「**その競技カタログの列挙値かつ event_type 整合**」という汎用表現で本書に残す（§C.4b）。
@@ -102,6 +103,8 @@ boolean canView(Long userId, UUID matchId);                 // F00 MatchVisibili
 | `POST /matches/{matchId}/events` | 親 match をテナント取得 → `canRecordTimeline` → （共同記録時）`event.recorded_by_team_id` が自チーム |
 | `PATCH/DELETE /matches/{matchId}/events/{eventId}` | 親 match をテナント取得 → `event.match_id == matchId`（不一致 404） → `recorded_by_team_id` が自チーム or 記録係 |
 | `PATCH /matches/{matchId}/appearances/{apId}` | 親 match をテナント取得 → `appearance.match_id == matchId`（不一致 404） → `owning_team_id` が自チーム ADMIN |
+| **団体戦の子ボード** `GET/PATCH /matches/{boardMatchId}`（`parent_match_id` 設定済の子・01 §B.6） | 子ボードも matches なので `findByIdAndOrganizationIdAndDeletedAtIsNull(boardMatchId, テナント)`（子ボード自身がテナント帰属）→ さらに `board.parent_match_id` の親も同一テナントであることを検証（親子テナント整合）→ `canView`/`canEditMeta`。**親 ID から子一覧** `GET /matches/{parentMatchId}/boards` は親をテナント取得 → `findByParentMatchId(parentMatchId)`（子直引き禁止・A.4 と同思想） |
+| **局面写真添付** `POST /matches/{matchId}/attachments`（presign）・`GET/DELETE .../attachments/{attId}`（盤上競技・01 §B.7） | 親 match をテナント取得 → `canEditTeamData`/記録権限（添付追加は記録者/自チーム ADMIN）。`attachment.match_id == matchId`（不一致 404・子 ID 直引き禁止）。詳細は §C.7a |
 | `GET /users/{userId}/match-stats` | `userId == self`（本人のみ・チーム横断） |
 | `GET /users/{userId}/teams/{teamId}/match-stats` | `isAdminOrAbove(viewer, teamId)` ＋ 対象 userId が teamId 所属（F19.1 公開設定連動・02 §F.1） |
 | `GET /teams/{teamId}/match-stats` | `teamId` のメンバー以上（playerRankings は MEMBER 以上＝SUPPORTER 除外・02 §F.3） |
@@ -158,6 +161,27 @@ boolean canView(Long userId, UUID matchId);                 // F00 MatchVisibili
 - `AuditEventCategory` に **`MATCH` カテゴリ新設を検討**（採番後の正式名は実装時に確定）。
 - イベントの大量追加（ライブ記録）は監査ログに individ で残すとノイズになるため、**1 試合の記録セッション単位**でのサマリ監査（誰がいつ何件記録したか）に留める。
 - **403（認可失敗）/ 404（不在・テナント越境・親子不一致）のマッピングを明文化**（C.4）。エラーレスポンスで存在を漏らさない。
+
+### C.7a 局面写真添付のセキュリティ（盤上競技・既存添付基盤流用）【SVG 除外・サイズ上限・IDOR】
+
+盤上競技（将棋/囲碁）の局面写真（01 §B.7・[sports/05_shogi.md](./sports/05_shogi.md) §8.2）は**既存添付基盤（presign 方式・`com.mannschaft.app.bulletin` の `BulletinAttachmentService` パターン）を流用**するため、その確立済みセキュリティ規約を**そのまま踏襲**する（独自実装を作らない＝攻撃面を増やさない）。
+
+- **IDOR 逆引き**: 添付は match スコープ（`match_id` 帰属確認）。`GET/DELETE /matches/{matchId}/attachments/{attId}` は親 match をテナント取得 → `attachment.match_id == matchId`（不一致 404・子 ID 直引き禁止・A.4 二段アクセス）。
+- **SVG 除外**: アップロード許可 MIME を画像（JPEG/PNG/WebP 等）に限定し、**SVG は除外**（XSS ベクタ・既存 bulletin 添付と同じ除外規約）。
+- **サイズ上限**: 既存基盤の上限（10MB 等）を踏襲。上限超過は 400。
+- **presign の濫用防止**: presign 発行時に上記の添付権限（記録者/自チーム ADMIN）を検証し、key は server 採番（クライアント任意 key を信用しない＝マスアサインメント防止・C.4a と同思想）。
+- **GDPR**: 局面写真に第三者が写り込む可能性は低いが、写り込んだ場合の削除は記録チーム ADMIN 経由の削除フロー（C.6 の player_name 削除要求と同じ運用導線）に乗せる。
+
+### C.8 WebSocket ライブ観戦の購読認可（F00 可視性）【セキュリティ最重要・07 と連動】
+
+WebSocket ライブ観戦（[07_realtime_spectator.md](./07_realtime_spectator.md)）の**購読認可は本機能のセキュリティ最重要点**である。設計の正準は 07 §J.3 にあり、本節は権限モデル側からの要点を示す。
+
+- **STOMP SUBSCRIBE フレームの宛先別認可**: `/topic/matches/{matchId}/live` の購読要求を `ChannelInterceptor`（inbound channel）が検査し、**`MatchAccessService.canView(userId, matchId)`（→ `MatchVisibilityResolver`・F00 正準・C.3.2）が false なら購読を拒否**する（ERROR フレーム返却・購読不成立）。独自 visibility 述語は書かない（メモリ教訓）。
+- **テナント検証込み**: `canView` は親 matches をテナント取得（A.4 二段アクセス）してから判定するため、他テナントの match トピック購読は遮断（IDOR/越境防止）。
+- **既存基盤のギャップ是正は本機能に閉じる**: 既存 `WebSocketAuthChannelInterceptor` は CONNECT 時の JWT 検証のみ（SUBSCRIBE 認可なし・無効トークンでも接続許可のフェイルオープン）。本機能は **match live 宛先に限り SUBSCRIBE 認可を新設インターセプタで追加**し、CONNECT が緩くても購読時点で `canView` を必ず通すため可視性の穴は生じない。新設インターセプタは match live 宛先以外（chat/lobby）には介入しない（既存購読を壊さない・07 §J.3.2）。
+- **大会可視性 6 レベルとの整合**: 大会公式戦（`kind=TOURNAMENT/LEAGUE`）の観戦購読は F08.7 の可視性 6 レベル（PUBLIC〜参加チーム関係者のみ）と整合する（match 可視性が F08.7 連動・§未解決 3）。未ログイン（userId=null）の購読は F00 の PUBLIC 可視性 match のみ許可。
+- **配信ペイロードの最小化（二重防御）**: 購読認可が第一防御。万一購読が成立しても機微情報（owning_team_id 等の DB 所有・編集権限・内部 ID）を**配信ペイロードに含めない**（公開可能な試合進行情報のみ＝得点/イベント種別/選手表示名・C.2「DB 所有はユーザー不可視」と整合・07 §J.3.3）。
+- **書き込み経路にしない**: 観戦者は `/app/**`（SEND）宛先を持たず、記録は HTTP のみ（正本は HTTP・07 §J.1）。STOMP インバウンドでの書き込み詐称経路が存在しない。
 
 ---
 

@@ -21,7 +21,7 @@ F08.10 は**競技ごとに「記録すべき内容」が異なる**（サッカ
 - **コア（F08.10）** = 競技非依存の土台（`matches`/`match_events`/`player_appearances` の汎用カラム・汎用 enum・出場時間算出の枠組み・集計 API の枠組み・記録モード/権限/IDOR/F00 可視性/入力検証の枠組み・ライブ入力 UX の骨格）＋**拡張点 `SportEventCatalog` の定義**。
 - **本書（sports/01_soccer.md）** = サッカー固有のカタログ（コアの拡張点に差し込む具体値）。
 
-本書はコアの **拡張点 `SportEventCatalog`（[../01_domain_and_ddl.md](../01_domain_and_ddl.md) §D.3・案 A＝enum＋コード定数カタログ）の `Sport.SOCCER` 実体**である。サッカーを F08.10 の最初の具体実装（MVP の対象競技）とし、本書を雛形に他競技（02_basketball.md 等）を複製・差分記述することで多競技拡張する（§10 新競技の追加手順）。
+本書はコアの **拡張点 `SportEventCatalog`（[../01_domain_and_ddl.md](../01_domain_and_ddl.md) §D.3・案 A＝enum＋コード定数カタログ）の `Sport.SOCCER` 実体**である。サッカーを F08.10 の最初の具体実装（最初の MVP 対象競技）とし、本書を雛形に他競技を複製・差分記述することで多競技拡張する（§10 新競技の追加手順）。**MVP では本書を雛形に [02_futsal.md](./02_futsal.md)（連続時間制）・[03_basketball.md](./03_basketball.md)（連続時間制・クォーター）・[04_volleyball.md](./04_volleyball.md)（セット制）・[05_shogi.md](./05_shogi.md)・[06_go.md](./06_go.md)（ターン制）を作成済**（状態モデル類型は [../01_domain_and_ddl.md](../01_domain_and_ddl.md) §D.6）。
 
 `matches.sport`（VARCHAR・既定 `'SOCCER'`）で競技を識別し、Service は `event_type ∈ SportEventCatalog.CATALOG.get(match.sport)` を検証する（コア [../01_domain_and_ddl.md](../01_domain_and_ddl.md) §D.3）。本書で定義する event_type／period／規律コードは、すべてこの `Sport.SOCCER` カタログに紐づく。
 
@@ -377,7 +377,7 @@ UI 文字列の i18n はコアの枠組み（`app/locales/{ja,en,zh,ko,es,de}/ma
 1. **`Sport` enum に競技を追加**（コア §D.1・例 `Sport.BASKETBALL`）。
 2. **§2 event_type カタログ**: その競技の `event_type` 集合を `SportEventCatalog.CATALOG` に追加（コア `MatchEventType` enum に不足する値があれば enum へ追加。汎用の器 `match_events.event_type` VARCHAR は不変）。
 3. **§3 period モデル**: その競技のピリオド（バスケ＝`QUARTER_1..4`/`OVERTIME` 等）を定義（コア `PeriodType` enum の該当値を使う／不足すれば追加）。
-4. **§4 スコア計算・勝敗判定**: その競技のスコア合算ルール（バスケ＝得点の重み 1/2/3 点等）を定義。セット制（バレー等）は将来 `match_periods`/`match_sets` で吸収（コア 05 §未解決 3）。
+4. **§4 スコア計算・勝敗判定**: その競技のスコア合算ルール（バスケ＝得点の重み 1/2/3 点等）を定義。セット制（バレー）は `match_sets` 子表（コア [../01_domain_and_ddl.md](../01_domain_and_ddl.md) §B.5）で吸収。ターン制（将棋/囲碁）はスコア無＝勝敗＋勝ち方（コア §D.7）。
 5. **§5 規律コード**: その競技の反則体系（バスケ＝テクニカルファウル等）を別カタログ（`Map<Sport, CardReasonCatalog>`）として定義。サッカー用 C/S コードは流用しない。
 6. **§6 統計定義**: その競技固有の指標（バスケ＝リバウンド/アシスト/スティール等）を定義。
 7. **§7 ポジション語彙**: その競技のポジション（バスケ＝PG/SG/SF/PF/C 等）を定義。

@@ -1,7 +1,7 @@
 # F08.10 / 04: フロントエンド画面・導線・UX・チャート・composable・i18n
 
 > **ステータス**: 🟢 設計完了
-> **最終更新**: 2026-06-08
+> **最終更新**: 2026-06-13（多競技対応＝競技別 composable の動的 import §G.16・ターン制最小 UI §G.16a・観戦者ビュー §G.17 を追補）
 > **関連機能番号**: F08.10（試合記録・分析）／ F02.2 ダッシュボード ／ F02.2.1 ウィジェット min_role ／ F19.1 個人プロフィール公開
 > **関連ドキュメント**:
 > - [02_playing_time_and_aggregation.md](./02_playing_time_and_aggregation.md) — 集計 API・チャート種別対応・空状態
@@ -228,7 +228,45 @@ ADHD 配慮（入力摩擦ゼロ）として、試合作成の**必須は `kind`
 - 型は `types/match.ts` に集約（**`any` 禁止**・CLAUDE.md）。生成型（`types/generated`）が整備されたら優先利用し、手動型は段階移行。
 - composable のエラーは握りつぶさず `useNotification` で表示し再 throw（既存 `useMatchRoster` パターン踏襲）。
 
-`MatchEventType` 等のユニオン型は**全競技のイベント値を保持する器（コア）**であり、各競技がどの値を使うかは `SportEventCatalog`（01 §D.3）で定義される（サッカーの具体集合は [sports/01_soccer.md](./sports/01_soccer.md) §2）。
+### G.16 競技別 composable の分割と動的 import（lazy-load）【多競技の保守性・バンドル肥大化回避】
+
+多競技の進行管理（タイマー/セット/ターン）は状態モデルが根本的に異なるため、**共通シェル（`live.vue`）＋競技別 composable** に分割し、**競技モジュールを動的 import（lazy-load）で遅延読込**してバンドル肥大化を防ぐ。
+
+- **共通シェル**: `live.vue` は薄いオーケストレータ（既存設計踏襲）。イベント記録 API・選手グリッド・undo・オフラインキュー・観戦配信受信（G.17）等の**競技非依存の骨格**を持つ。
+- **競技別 composable（状態モデル類型ごと・01 §D.6）**:
+
+  | composable | 状態モデル類型 | 対象競技 | 役割 |
+  |------------|----------------|----------|------|
+  | `useMatchTimerSoccer` | CONTINUOUS_TIME | SOCCER / FUTSAL | 前後半・延長・PK のタイマー状態機械（既存・[sports/01_soccer.md](./sports/01_soccer.md) §8.5。フットサルは流用＝[sports/02_futsal.md](./sports/02_futsal.md) §8.5） |
+  | `useMatchTimerBasketball` | CONTINUOUS_TIME | BASKETBALL | 4 クォーター＋OT（複数回 OT）の状態機械（[sports/03_basketball.md](./sports/03_basketball.md) §8.5） |
+  | `useMatchSetTracker` | SET_BASED | VOLLEYBALL | セット進行・デュース判定・獲得セット数・試合終了判定（[sports/04_volleyball.md](./sports/04_volleyball.md) §8.5。タイマーではない） |
+  | `useMatchTurnTracker` | TURN_BASED | SHOGI / GO | 最小遷移（WAITING→IN_PROGRESS→COMPLETED）・手数/勝者/勝ち方/写真/コメント管理（タイマー無し・[sports/05_shogi.md](./sports/05_shogi.md) §8.5・[sports/06_go.md](./sports/06_go.md) §8.5） |
+
+- **動的 import（バンドル肥大化回避）**: `live.vue` は `matches.sport`／`state_model`（01 §D.6）に応じて**競技モジュールを `import()` で遅延読込**する（例: `const { useTimer } = await import(\`~/composables/match/sport/\${moduleName}\`)`）。全競技の composable・イベント入力シート・i18n を初期バンドルに同梱しない（サッカーしか使わないユーザーがバスケ/将棋のロジックを読込まない）。Nuxt の動的 import（コード分割）に乗せる。
+- **競技別イベント入力シート（カタログ駆動）**: イベント種別のプリセットボタン（コア 04 §G.2 の「プリセット＋その他」骨格）は、`SportEventCatalog`（01 §D.3）由来の競技別プリセット定義（FE 側のカタログ定数 or BE から取得）で**カタログ駆動**で描画する。各競技固有のプリセット並びは sports/0N §8.1 が正準（サッカー＝得点/アシスト/警告/交代、バスケ＝2P/3P/FT/リバウンド/ファウル/交代 等）。入力シート本体も動的 import で遅延読込。
+- **保守性**: 新競技追加時は (1) 競技 composable を 1 つ追加、(2) カタログ定数に競技を追加、(3) sports/0N 文書を雛形複製、で済む。共通シェル `live.vue` は変更不要（状態モデル類型のいずれかに属する限り）。
+
+### G.16a ターン制（将棋/囲碁）の最小 UI
+
+ターン制は球技のライブタイムライン UI を流用しない（タイマー・選手グリッド・3 タップタイムラインを表示しない）。**最小の結果入力 UI**とする（[sports/05_shogi.md](./sports/05_shogi.md) §8.1）。
+
+- **個人戦**: 対局者（先手/後手・黒/白）→ 勝者選択 → 勝ち方選択（競技別カタログ・01 §D.7）→ 任意で総手数・目数差（囲碁）・局面写真・コメント。タイマー無し・手数任意。
+- **団体戦**: ボード数 → 各ボードの対戦カード入力 → 各ボード勝者＋勝ち方 → 親 match 勝敗をボード勝ち星から自動導出（01 §B.6・[sports/05_shogi.md](./sports/05_shogi.md) §4.3）。
+- **局面写真**: 既存添付基盤（presign・SVG 除外・サイズ上限・IDOR）を流用（01 §B.7・03 §C.7a）。
+
+### G.17 観戦者ビュー（STOMP 購読・read-only）【WebSocket ライブ観戦】
+
+WebSocket ライブ観戦（[07_realtime_spectator.md](./07_realtime_spectator.md)）の観戦者側 UX。
+
+- **観戦専用ビュー**: 試合詳細/ライブ画面を**観戦モード（read-only）**で開くと、`/topic/matches/{matchId}/live` を STOMP 購読し、記録者の HTTP 書き込みがコミット後に配信される差分でタイムライン/スコアをリアルタイム更新する。観戦者は記録ボタン・編集 UI を**一切持たない**（書き込みは記録者の HTTP のみ・07 §J.1）。
+- **初期スナップショット＋差分追従**: 購読確立後にまず HTTP で現在状態を取得（`GET /matches/{matchId}`＋`/events`・02 §F.4）→ 以後 topic の差分（`serverSeq` 付き・07 §J.2.1）で追従。**再接続時は HTTP スナップショット再取得**してから差分購読を再開（取りこぼし回復・07 §J.4）。`serverSeq` の飛びを検知したらスナップショット再取得。
+- **購読拒否のフィードバック**: 可視性が無い試合（F00・03 §C.8）の購読は BE が拒否する（ERROR フレーム）。FE は「この試合は観戦できません（公開範囲外）」を表示し、HTTP の閲覧可否（`canView`）と一貫した見え方にする。
+- **接続状態インジケーター**: 「ライブ接続中／再接続中／オフライン（HTTP 表示）」を表示。WebSocket が落ちても HTTP の最新スナップショットで閲覧は継続（グレースフルデグレード・07 §J.1）。
+- **記録者と観戦者の同一画面**: 記録権限のあるユーザーは記録 UI、無いユーザーは観戦ビュー、を `canView`/`canRecordTimeline`（03 §C.3.2）で出し分ける（同じ `live.vue` の権限分岐）。
+
+---
+
+`MatchEventType` 等のユニオン型は**全競技のイベント値を保持する器（コア）**であり、各競技がどの値を使うかは `SportEventCatalog`（01 §D.3）で定義される（各競技の具体集合は sports/0N §2＝サッカーは [sports/01_soccer.md](./sports/01_soccer.md) §2、バスケは [sports/03_basketball.md](./sports/03_basketball.md) §2 等）。**competition 別 namespace の i18n 拡張方針は G.6**（競技を判別してラベルを引く）。
 
 ```ts
 // types/match.ts（抜粋・any 禁止）
@@ -287,7 +325,12 @@ namespace（competition-common と sport-specific の所在）:
 | `match.event_type` | **競技固有** | イベント種別ラベル（GOAL→「得点」・OTHER→「その他」等）。**サッカーのラベル群 → [sports/01_soccer.md](./sports/01_soccer.md) §9 参照** |
 | `match.card_type` | **競技固有** | カード種別ラベル（YELLOW→「警告」等・形状ラベル併用）。**→ [sports/01_soccer.md](./sports/01_soccer.md) §9 参照** |
 | `match.card_reason` | **競技固有** | 警告/退場の理由コード短ラベル（`C1`…`C8`/`S1`…`S6`/`CS`・01 §D.5）。コード記号は言語非依存・固定、説明文を 6 言語翻訳。**サッカーのラベル群 → [sports/01_soccer.md](./sports/01_soccer.md) §9 参照** |
-| `match.position` | **競技固有** | ポジション語彙ラベル（GK/DF/MF/FW 等）。**サッカーのラベル群 → [sports/01_soccer.md](./sports/01_soccer.md) §7・§9 参照** |
+| `match.position` | **競技固有** | ポジション語彙ラベル（サッカー GK/DF/MF/FW・バスケ PG/SG/SF/PF/C・バレー OH/OP/MB/S/L・フットサル GK/FIXO/ALA/PIVO 等）。**各競技のラベル群 → sports/0N §7・§9 参照**（盤上は不使用） |
+| `match.win_method` | **競技固有（ターン制共通 namespace）** | 勝ち方ラベル（将棋＝投了/詰み/千日手 等・囲碁＝投了〔中押し〕/目数差勝ち 等）。**→ [sports/05_shogi.md](./sports/05_shogi.md) §9・[sports/06_go.md](./sports/06_go.md) §9 参照** |
+| `match.set` | 共通（セット制） | セット制共通ラベル（「第 N セット」・デュース・セット確定・獲得セット数）。**バレー → [sports/04_volleyball.md](./sports/04_volleyball.md) §9** |
+| `match.board` | 共通（団体戦） | 団体戦のボード順ラベル（大将/副将/主将 等・board_number 表示）。**将棋/囲碁 → sports/05_shogi.md §9・06_go.md §9** |
+
+> **competition 別 namespace の拡張方針**: 競技固有 namespace（`match.event_type`/`match.card_reason`/`match.position`/`match.win_method`）は、**競技を判別してラベルを引く**（例 `match.event_type.{sport}.{key}` または `match.sport='BASKETBALL'` 時にバスケのラベル集合を引く FE マッピング）。**`match.json` ファイル自体は競技共通**（コアが新設・新規ファイル登録不要）であり、namespace の中身が競技別。新競技追加時は当該競技のラベル群を `match.json` の namespace に追記する（6 言語・i18n ルール）。
 
 ---
 
