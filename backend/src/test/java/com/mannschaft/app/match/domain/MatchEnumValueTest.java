@@ -67,9 +67,18 @@ class MatchEnumValueTest {
     }
 
     @Test
-    @DisplayName("Sport はまず SOCCER を含む")
+    @DisplayName("Sport は MVP 6 競技（SOCCER/FUTSAL/BASKETBALL/VOLLEYBALL/SHOGI/GO・01 §D.1）")
     void sport() {
-        assertThat(names(Sport.values())).contains("SOCCER");
+        assertThat(names(Sport.values()))
+                .containsExactlyInAnyOrder(
+                        "SOCCER", "FUTSAL", "BASKETBALL", "VOLLEYBALL", "SHOGI", "GO");
+    }
+
+    @Test
+    @DisplayName("StateModel は CONTINUOUS_TIME/SET_BASED/TURN_BASED の 3 類型（01 §D.6）")
+    void stateModel() {
+        assertThat(names(StateModel.values()))
+                .containsExactlyInAnyOrder("CONTINUOUS_TIME", "SET_BASED", "TURN_BASED");
     }
 
     @Test

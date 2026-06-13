@@ -8,6 +8,7 @@ import com.mannschaft.app.match.MatchErrorCode;
 import com.mannschaft.app.match.domain.MatchKind;
 import com.mannschaft.app.match.domain.MatchStatus;
 import com.mannschaft.app.match.domain.Sport;
+import com.mannschaft.app.match.domain.StateModel;
 import com.mannschaft.app.match.dto.MatchSummaryResponse;
 import com.mannschaft.app.match.entity.MatchEntity;
 import com.mannschaft.app.match.repository.MatchRepository;
@@ -152,6 +153,94 @@ class MatchServiceTest {
     void changeStatusDelegatesAuthz() {
         service.changeStatus(matchId, ORG, ACTOR, MatchStatus.POSTPONED);
         verify(matchAccessService).assertCanEditMeta(ACTOR, match);
+    }
+
+    // ─── (b2) COMPLETED 遷移の必須条件は状態モデル類型ごとに異なる（01 §D.6） ──────
+
+    @Test
+    @DisplayName("(b2) SET_BASED（バレー）: 獲得セット数が確定し引分けでなければ COMPLETED 可（duration 不要）")
+    void setBasedCompletedWithSetCounts() {
+        match.setSport(Sport.VOLLEYBALL);
+        match.setStateModel(StateModel.SET_BASED);
+        match.setDurationMinutes(null); // セット制は duration 不要
+        match.setHomeScore(3);
+        match.setAwayScore(1);
+
+        service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED);
+
+        verify(playingTimeCalculationService).recalculate(eq(match), isNull());
+        verify(eventPublisher).publishEvent(any(MatchCompletedEvent.class));
+    }
+
+    @Test
+    @DisplayName("(b2) SET_BASED: セット数同数（引分け）は 400（MATCH_026・バレーに D なし）")
+    void setBasedDrawIsRejected() {
+        match.setSport(Sport.VOLLEYBALL);
+        match.setStateModel(StateModel.SET_BASED);
+        match.setHomeScore(2);
+        match.setAwayScore(2);
+
+        assertThatThrownBy(() -> service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("セット");
+        verify(playingTimeCalculationService, never()).recalculate(any(), any());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    @DisplayName("(b2) SET_BASED: セット数未確定（NULL）は 400（MATCH_026）")
+    void setBasedNullScoreIsRejected() {
+        match.setSport(Sport.VOLLEYBALL);
+        match.setStateModel(StateModel.SET_BASED);
+        match.setHomeScore(null);
+        match.setAwayScore(null);
+
+        assertThatThrownBy(() -> service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED))
+                .isInstanceOf(BusinessException.class);
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    @DisplayName("(b2) TURN_BASED（将棋）: 勝敗 1-0 が確定すれば COMPLETED 可（duration 不要・MATCH_023 を要求しない）")
+    void turnBasedCompletedWithWinLoss() {
+        match.setSport(Sport.SHOGI);
+        match.setStateModel(StateModel.TURN_BASED);
+        match.setDurationMinutes(null); // ターン制は duration 不要
+        match.setHomeScore(1);
+        match.setAwayScore(0);
+
+        service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED);
+
+        // ターン制でも recalculate は呼ばれる（PlayingTimeCalculationService 側で TURN_BASED をスキップする）
+        verify(playingTimeCalculationService).recalculate(eq(match), isNull());
+        verify(eventPublisher).publishEvent(any(MatchCompletedEvent.class));
+    }
+
+    @Test
+    @DisplayName("(b2) TURN_BASED: 引分け 0-0（千日手/持碁）も勝敗確定として COMPLETED 可")
+    void turnBasedDrawIsCompletable() {
+        match.setSport(Sport.GO);
+        match.setStateModel(StateModel.TURN_BASED);
+        match.setHomeScore(0);
+        match.setAwayScore(0);
+
+        service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED);
+
+        verify(eventPublisher).publishEvent(any(MatchCompletedEvent.class));
+    }
+
+    @Test
+    @DisplayName("(b2) TURN_BASED: 勝敗未確定（スコア NULL）は 400（MATCH_027）")
+    void turnBasedNullScoreIsRejected() {
+        match.setSport(Sport.SHOGI);
+        match.setStateModel(StateModel.TURN_BASED);
+        match.setHomeScore(null);
+        match.setAwayScore(0);
+
+        assertThatThrownBy(() -> service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("勝敗");
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     // ─── (c) finalizeScore の認可委譲＋before/after 監査 ──────────
