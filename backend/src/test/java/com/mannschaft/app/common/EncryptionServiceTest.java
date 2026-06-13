@@ -180,6 +180,86 @@ class EncryptionServiceTest {
     }
 
     // ========================================
+    // decryptLegacyAware（暗号化導入前のレガシー平文に耐える復号）
+    // ========================================
+
+    @Nested
+    @DisplayName("decryptLegacyAware")
+    class DecryptLegacyAware {
+
+        @Test
+        @DisplayName("正常系: 正規の暗号文は通常どおり復号される")
+        void decryptLegacyAware_正規暗号文_復号される() {
+            // Given
+            String encrypted = encryptionService.encrypt(TEST_PLAIN_TEXT);
+
+            // When
+            String result = encryptionService.decryptLegacyAware(encrypted);
+
+            // Then
+            assertThat(result).isEqualTo(TEST_PLAIN_TEXT);
+        }
+
+        @Test
+        @DisplayName("回帰防止: 暗号化導入前に平文保存された非Base64値（システムユーザー等）はそのまま返る")
+        void decryptLegacyAware_レガシー平文_そのまま返る() {
+            // Given: V12.004 / V1.012 シードが last_name に直接入れる平文。
+            // 日本語は厳密 Base64 ではないため、従来の decrypt() は IllegalArgument<base64 char> で死ぬ。
+            String legacyPlainText = "システム";
+
+            // When
+            String result = encryptionService.decryptLegacyAware(legacyPlainText);
+
+            // Then: 例外にせず平文をそのまま返す（これがレガシー平文の復号結果そのもの）
+            assertThat(result).isEqualTo(legacyPlainText);
+        }
+
+        @Test
+        @DisplayName("回帰防止: 空文字のレガシー平文（退会センチネル）はそのまま返る")
+        void decryptLegacyAware_空文字レガシー_そのまま返る() {
+            // Given: V12.004 退会センチネル（id=0）は last_name='' / first_name='' を平文挿入する
+            // When
+            String result = encryptionService.decryptLegacyAware("");
+
+            // Then
+            assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("境界値: null入力でnullを返す")
+        void decryptLegacyAware_null_nullを返す() {
+            assertThat(encryptionService.decryptLegacyAware(null)).isNull();
+        }
+
+        @Test
+        @DisplayName("異常系: 暗号文の形だがGCM認証に失敗する値は症状を隠さず例外送出")
+        void decryptLegacyAware_改竄暗号文_例外送出() {
+            // Given: 形（Base64・28バイト以上）は暗号文だが auth tag を改竄した値
+            String encrypted = encryptionService.encrypt(TEST_PLAIN_TEXT);
+            byte[] decoded = java.util.Base64.getDecoder().decode(encrypted);
+            decoded[decoded.length - 1] ^= 0xFF;
+            String tampered = java.util.Base64.getEncoder().encodeToString(decoded);
+
+            // When / Then: 真の異常はレガシー平文扱いで握り潰さず、従来どおり例外
+            assertThatThrownBy(() -> encryptionService.decryptLegacyAware(tampered))
+                    .isInstanceOf(EncryptionService.EncryptionException.class);
+        }
+
+        @Test
+        @DisplayName("正常系: 暗号化導入前のASCII平文（短い英字）もそのまま返る")
+        void decryptLegacyAware_短いASCII平文_そのまま返る() {
+            // Given: "abc" は Base64 としては妥当だがデコードすると2バイト→28バイト未満なので暗号文ではない
+            String legacy = "abc";
+
+            // When
+            String result = encryptionService.decryptLegacyAware(legacy);
+
+            // Then
+            assertThat(result).isEqualTo(legacy);
+        }
+    }
+
+    // ========================================
     // encryptBytes / decryptBytes
     // ========================================
 
