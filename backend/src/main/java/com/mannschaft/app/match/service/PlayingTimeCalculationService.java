@@ -1,6 +1,7 @@
 package com.mannschaft.app.match.service;
 
 import com.mannschaft.app.match.domain.MatchEventType;
+import com.mannschaft.app.match.domain.StateModel;
 import com.mannschaft.app.match.domain.TeamSide;
 import com.mannschaft.app.match.entity.MatchEntity;
 import com.mannschaft.app.match.entity.MatchEventEntity;
@@ -74,6 +75,12 @@ public class PlayingTimeCalculationService {
      */
     @Transactional
     public void recalculate(MatchEntity match, Set<TeamSide> editableTeamSides) {
+        // ターン制（将棋/囲碁）は STARTER/SUB イベントが存在せず出場区間が組み立たないため、
+        // 出場時間算出を起動しない（01 §D.6・症状を隠さず「概念が無い」を素直に表現）。
+        StateModel stateModel = resolveStateModel(match);
+        if (stateModel == StateModel.TURN_BASED) {
+            return;
+        }
         UUID matchId = match.getId();
         List<MatchEventEntity> events =
                 matchEventRepository.findByMatchIdOrderByPeriodAscMinuteAscSortSeqAsc(matchId);
@@ -185,6 +192,16 @@ public class PlayingTimeCalculationService {
 
         Integer computed = unknown ? null : total;
         return new AppearanceResult(starter, firstIn, lastOut, computed, side);
+    }
+
+    /**
+     * 試合の状態モデル類型を解決する（列保持値を優先・未設定は sport から導出・01 §D.6）。
+     */
+    private StateModel resolveStateModel(MatchEntity match) {
+        if (match.getStateModel() != null) {
+            return match.getStateModel();
+        }
+        return match.getSport() != null ? match.getSport().stateModel() : StateModel.CONTINUOUS_TIME;
     }
 
     /**
