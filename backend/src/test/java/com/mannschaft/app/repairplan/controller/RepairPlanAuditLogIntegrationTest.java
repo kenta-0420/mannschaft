@@ -63,7 +63,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * </ul>
  *
  * <p>{@code @Async} で記録される監査ログは {@link RepairPlanQuoteKanbanControllerTest} で
- * 確立済みの {@code Thread.sleep(500) + REQUIRES_NEW TransactionTemplate} パターンで検証する。</p>
+ * 確立済みの {@code Awaitility + REQUIRES_NEW TransactionTemplate} パターンで検証する。</p>
  */
 @DisplayName("RepairPlan 監査ログ統合確認テスト（F08.8 Phase 6）")
 @Transactional
@@ -351,7 +351,8 @@ class RepairPlanAuditLogIntegrationTest extends AbstractRepairPlanPhase5Integrat
 
     /**
      * 非同期記録される監査ログのイベントタイプが ORG_ID に対して記録されているかを検証する。
-     * {@code @Async} で記録されるため、500ms 待機 + REQUIRES_NEW トランザクションで確認する。
+     * {@code @Async} で記録されるため、Awaitility で最大 5 秒待機しつつ毎回 REQUIRES_NEW
+     * トランザクションを開いて確認する（条件成立まで複数回評価）。
      */
     private void assertAuditEventRecorded(String eventType, Long organizationId) {
         // @Async で記録されるため、記録されるまで Awaitility で待機する（毎回 REQUIRES_NEW で再評価）。
