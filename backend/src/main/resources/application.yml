@@ -150,6 +150,11 @@ mannschaft:
     token-uri: https://api.line.me/oauth2/v2.1/token
     profile-uri: https://api.line.me/v2/profile
     redirect-uri: ${MANNSCHAFT_LINE_REDIRECT_URI:https://app.mannschaft.com/auth/oauth/callback/line}
+    # F09.4 §6: Webhook 署名検証（X-Line-Signature / channel secret の HMAC-SHA256）の段階導入フラグ。
+    # off=検証なし / log-only=不一致でも処理継続しWARNログのみ / enforce=不一致なら処理スキップ（200返却）。
+    # 移行期間中の既定は log-only。本番で失敗率を観測してから enforce へ昇格する。
+    signature-verify:
+      mode: ${MANNSCHAFT_LINE_SIGNATURE_VERIFY_MODE:log-only}
   apple:
     client-id: ${MANNSCHAFT_APPLE_CLIENT_ID:}
     client-secret: ${MANNSCHAFT_APPLE_CLIENT_SECRET:}
