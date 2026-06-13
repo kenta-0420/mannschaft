@@ -16,6 +16,7 @@ import com.mannschaft.app.advertising.repository.AdInvoiceRepository;
 import com.mannschaft.app.advertising.repository.AdvertiserAccountRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -48,6 +49,7 @@ public class MonthlyInvoiceBatchService {
      */
     @BatchEndpoint(name = "advertising-invoice-monthly-generate", description = "前月分の広告主月次請求書を毎月 1 日 05:00 に生成する")
     @Scheduled(cron = "0 0 5 1 * *", zone = "Asia/Tokyo")
+    @SchedulerLock(name = "monthlyInvoiceGenerate", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
     @Transactional
     public void generateMonthlyInvoices() {
         YearMonth lastMonth = YearMonth.now().minusMonths(1);
