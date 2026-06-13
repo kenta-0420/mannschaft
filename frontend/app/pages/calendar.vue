@@ -261,6 +261,8 @@ function prefetchAdjacentMonths(year: number, month: number) {
     const y = d.getFullYear()
     const m = d.getMonth() + 1
     if (!ganttCache.has(ganttCacheKey(y, m))) {
+      // 隣接月の先読み（prefetch）。失敗してもユーザーがその月へ移動した際に
+      // 再取得されるため、ここでのエラーは非クリティカルとして握りつぶす。
       fetchGanttMonth(y, m).catch(() => {})
     }
   }

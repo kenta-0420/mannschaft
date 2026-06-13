@@ -324,7 +324,7 @@ export function useChatWebSocket() {
           callback(frame.body)
         })
       })
-      .catch(() => {})
+      .catch(() => {}) // WebSocket 接続失敗時のサイレント失敗（在席等の補助機能・非クリティカル）
     return () => {
       subscription?.unsubscribe()
       subscription = null
@@ -340,7 +340,7 @@ export function useChatWebSocket() {
         if (_stompClient === null || !_stompClient.connected) return
         _stompClient.publish({ destination, body })
       })
-      .catch(() => {})
+      .catch(() => {}) // WebSocket 接続失敗時のサイレント失敗（在席等の補助機能・非クリティカル）
   }
 
   return {

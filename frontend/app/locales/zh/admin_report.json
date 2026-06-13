@@ -1,0 +1,90 @@
+{
+  "admin_report": {
+    "title": "举报管理",
+    "empty": "暂无举报",
+    "status_options": {
+      "all": "全部",
+      "pending": "未处理",
+      "reviewing": "处理中",
+      "escalated": "已升级",
+      "resolved": "已解决",
+      "dismissed": "已驳回"
+    },
+    "messages": {
+      "load_failed": "获取举报失败",
+      "note_added": "已添加备注",
+      "note_add_failed": "添加备注失败",
+      "review_started": "已开始审核",
+      "review_failed": "开始审核失败",
+      "resolved": "已解决举报",
+      "resolve_failed": "解决失败",
+      "dismissed": "已驳回举报",
+      "dismiss_failed": "驳回失败",
+      "escalated": "已升级",
+      "escalate_failed": "升级失败",
+      "reopened": "已重新打开举报",
+      "reopen_failed": "重新打开失败",
+      "content_hidden": "已隐藏内容",
+      "hide_failed": "隐藏失败",
+      "content_restored": "已恢复内容",
+      "restore_failed": "恢复失败"
+    },
+    "stats": {
+      "pending": "未处理",
+      "reviewing": "处理中",
+      "escalated": "已升级",
+      "resolved": "已解决",
+      "dismissed": "已驳回",
+      "total": "合计"
+    },
+    "table": {
+      "status": "状态",
+      "target_type": "对象类型",
+      "reason": "理由",
+      "reported_at": "举报日期",
+      "actions": "操作",
+      "status_placeholder": "状态"
+    },
+    "actions": {
+      "review": "审核",
+      "resolve": "解决",
+      "dismiss": "驳回",
+      "escalate": "升级",
+      "reopen": "重新打开"
+    },
+    "detail": {
+      "header": "举报详情",
+      "target_type": "对象类型",
+      "status": "状态",
+      "reason": "理由",
+      "reported_at": "举报日期",
+      "description": "详情",
+      "hide_content": "隐藏内容",
+      "restore_content": "恢复内容",
+      "internal_notes": "内部备注",
+      "no_notes": "暂无备注",
+      "note_placeholder": "输入备注...",
+      "add_note": "添加"
+    },
+    "resolve": {
+      "header": "解决举报",
+      "action_type": "操作类型",
+      "note": "备注",
+      "guideline_section": "准则章节",
+      "cancel": "取消",
+      "submit": "解决",
+      "action": {
+        "warning": "警告",
+        "content_delete": "删除内容",
+        "account_freeze": "冻结账户"
+      }
+    },
+    "escalate": {
+      "header": "升级",
+      "reason": "理由",
+      "guideline_section": "准则章节",
+      "cancel": "取消",
+      "submit": "升级"
+    }
+  }
+}

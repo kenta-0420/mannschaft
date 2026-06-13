@@ -2,7 +2,7 @@
 import type { SystemLogFileResponse, SystemLogType } from '~/types/system-log'
 
 export function useSystemLogApi() {
-  const { apiBase } = useRuntimeConfig().public
+  const api = useApi()
 
   const fetchLogFiles = async (
     type?: SystemLogType,
@@ -11,9 +11,9 @@ export function useSystemLogApi() {
     const params: Record<string, string> = {}
     if (type) params.type = type
     if (date) params.date = date
-    const res = await $fetch<{ data: SystemLogFileResponse[] }>(
-      `${apiBase}/api/v1/system-admin/system-logs`,
-      { params, credentials: 'include' },
+    const res = await api<{ data: SystemLogFileResponse[] }>(
+      `/api/v1/system-admin/system-logs`,
+      { params },
     )
     return res.data
   }

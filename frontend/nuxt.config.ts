@@ -442,6 +442,7 @@ export default defineNuxtConfig({
           'ja/schedule.json',
           'ja/payment.json',
           'ja/match.json',
+          'ja/admin_report.json',
         ],
       },
       {
@@ -501,6 +502,7 @@ export default defineNuxtConfig({
           'en/schedule.json',
           'en/payment.json',
           'en/match.json',
+          'en/admin_report.json',
         ],
       },
       {
@@ -560,6 +562,7 @@ export default defineNuxtConfig({
           'zh/schedule.json',
           'zh/payment.json',
           'zh/match.json',
+          'zh/admin_report.json',
         ],
       },
       {
@@ -619,6 +622,7 @@ export default defineNuxtConfig({
           'ko/schedule.json',
           'ko/payment.json',
           'ko/match.json',
+          'ko/admin_report.json',
         ],
       },
       {
@@ -678,6 +682,7 @@ export default defineNuxtConfig({
           'es/schedule.json',
           'es/payment.json',
           'es/match.json',
+          'es/admin_report.json',
         ],
       },
       {
@@ -737,6 +742,7 @@ export default defineNuxtConfig({
           'de/schedule.json',
           'de/payment.json',
           'de/match.json',
+          'de/admin_report.json',
         ],
       },
     ],

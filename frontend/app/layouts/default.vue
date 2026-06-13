@@ -58,6 +58,8 @@ let inboxPollTimer: ReturnType<typeof setInterval> | null = null
 
 onMounted(() => {
   isMounted.value = true
+  // fetchSummary はストア内部で _handleError 済み（バッジ件数取得）。
+  // 60 秒ごとのポーリングで毎回トーストを出さないよう、ここでは再 throw のみ握りつぶす。
   inboxStore.fetchSummary().catch(() => {})
   inboxPollTimer = setInterval(() => {
     inboxStore.fetchSummary().catch(() => {})

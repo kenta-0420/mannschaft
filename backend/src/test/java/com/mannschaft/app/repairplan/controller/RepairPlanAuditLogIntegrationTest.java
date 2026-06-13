@@ -22,6 +22,7 @@ import com.mannschaft.app.repairplan.repository.TeamMemberTermRepository;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
@@ -38,6 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -61,7 +63,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * </ul>
  *
  * <p>{@code @Async} で記録される監査ログは {@link RepairPlanQuoteKanbanControllerTest} で
- * 確立済みの {@code Thread.sleep(500) + REQUIRES_NEW TransactionTemplate} パターンで検証する。</p>
+ * 確立済みの {@code Awaitility + REQUIRES_NEW TransactionTemplate} パターンで検証する。</p>
  */
 @DisplayName("RepairPlan 監査ログ統合確認テスト（F08.8 Phase 6）")
 @Transactional
@@ -349,19 +351,22 @@ class RepairPlanAuditLogIntegrationTest extends AbstractRepairPlanPhase5Integrat
 
     /**
      * 非同期記録される監査ログのイベントタイプが ORG_ID に対して記録されているかを検証する。
-     * {@code @Async} で記録されるため、500ms 待機 + REQUIRES_NEW トランザクションで確認する。
+     * {@code @Async} で記録されるため、Awaitility で最大 5 秒待機しつつ毎回 REQUIRES_NEW
+     * トランザクションを開いて確認する（条件成立まで複数回評価）。
      */
-    private void assertAuditEventRecorded(String eventType, Long organizationId) throws InterruptedException {
-        Thread.sleep(500);
-        TransactionTemplate newTx = new TransactionTemplate(txManager);
-        newTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        Boolean recorded = newTx.execute(status ->
-                auditLogRepository.findAll().stream()
-                        .anyMatch(log -> eventType.equals(log.getEventType())
-                                && organizationId.equals(log.getOrganizationId())));
-        assertThat(recorded)
-                .as("監査ログに " + eventType + " が organizationId=" + organizationId + " で記録されていること")
-                .isTrue();
+    private void assertAuditEventRecorded(String eventType, Long organizationId) {
+        // @Async で記録されるため、記録されるまで Awaitility で待機する（毎回 REQUIRES_NEW で再評価）。
+        Awaitility.await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            TransactionTemplate newTx = new TransactionTemplate(txManager);
+            newTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            Boolean recorded = newTx.execute(status ->
+                    auditLogRepository.findAll().stream()
+                            .anyMatch(log -> eventType.equals(log.getEventType())
+                                    && organizationId.equals(log.getOrganizationId())));
+            assertThat(recorded)
+                    .as("監査ログに " + eventType + " が organizationId=" + organizationId + " で記録されていること")
+                    .isTrue();
+        });
     }
 
     private Long insertUser(String email) {

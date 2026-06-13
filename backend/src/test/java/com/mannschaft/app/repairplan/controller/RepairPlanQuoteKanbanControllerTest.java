@@ -20,6 +20,7 @@ import com.mannschaft.app.repairplan.repository.RepairQuoteKanbanRepository;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,6 +36,7 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -256,7 +258,7 @@ class RepairPlanQuoteKanbanControllerTest extends AbstractRepairPlanKanbanIntegr
 
     @Test
     @DisplayName("SHORTLISTED → SELECTED → 正常 + BID_VENDOR_SELECTED 監査ログ記録")
-    void moveCard_shortlistedToSelected_logsAuditEvent() throws InterruptedException {
+    void moveCard_shortlistedToSelected_logsAuditEvent() {
         UUID kanbanId = createKanban("駐車場整備工事", ORG_ID);
         UUID cardId = createCard(kanbanId, vendorId, ORG_ID);
 
@@ -275,17 +277,18 @@ class RepairPlanQuoteKanbanControllerTest extends AbstractRepairPlanKanbanIntegr
 
         em.flush();
 
-        // 監査ログ: BID_VENDOR_SELECTED が非同期（@Async）で記録される（少し待機）
+        // 監査ログ: BID_VENDOR_SELECTED が非同期（@Async）で記録されるまで待機する。
         // @Transactional テストでは REPEATABLE_READ により @Async スレッドの commit が見えないため
-        // REQUIRES_NEW で新トランザクションを開いて検証する
-        Thread.sleep(500);
-        TransactionTemplate newTx2 = new TransactionTemplate(txManager);
-        newTx2.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        Boolean auditRecorded2 = newTx2.execute(status ->
-                auditLogRepository.findAll().stream()
-                        .anyMatch(log -> "BID_VENDOR_SELECTED".equals(log.getEventType())
-                                && ORG_ID.equals(log.getOrganizationId())));
-        assertThat(auditRecorded2).isTrue();
+        // 毎回 REQUIRES_NEW で新トランザクションを開いて検証する（Awaitility が条件成立まで複数回評価）。
+        Awaitility.await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            TransactionTemplate newTx2 = new TransactionTemplate(txManager);
+            newTx2.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            Boolean auditRecorded2 = newTx2.execute(status ->
+                    auditLogRepository.findAll().stream()
+                            .anyMatch(log -> "BID_VENDOR_SELECTED".equals(log.getEventType())
+                                    && ORG_ID.equals(log.getOrganizationId())));
+            assertThat(auditRecorded2).isTrue();
+        });
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -399,24 +402,25 @@ class RepairPlanQuoteKanbanControllerTest extends AbstractRepairPlanKanbanIntegr
 
     @Test
     @DisplayName("カード追加後 BID_CARD_CREATED 監査ログが記録される")
-    void addCard_logsAuditEvent() throws InterruptedException {
+    void addCard_logsAuditEvent() {
         UUID kanbanId = createKanban("駐輪場改修工事", ORG_ID);
 
         AddCardRequest req = new AddCardRequest(vendorId, "テスト建設株式会社", 8_000_000L, null);
         controller.addCard("ORGANIZATION", ORG_ID, kanbanId, ORG_ID, req);
         em.flush();
 
-        // 監査ログは非同期（@Async）のため少し待つ
+        // 監査ログは非同期（@Async）のため記録されるまで待機する。
         // @Transactional テストでは REPEATABLE_READ により @Async スレッドの commit が見えないため
-        // REQUIRES_NEW で新トランザクションを開いて検証する
-        Thread.sleep(500);
-        TransactionTemplate newTx = new TransactionTemplate(txManager);
-        newTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        Boolean auditRecorded = newTx.execute(status ->
-                auditLogRepository.findAll().stream()
-                        .anyMatch(log -> "BID_CARD_CREATED".equals(log.getEventType())
-                                && ORG_ID.equals(log.getOrganizationId())));
-        assertThat(auditRecorded).isTrue();
+        // 毎回 REQUIRES_NEW で新トランザクションを開いて検証する。
+        Awaitility.await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            TransactionTemplate newTx = new TransactionTemplate(txManager);
+            newTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            Boolean auditRecorded = newTx.execute(status ->
+                    auditLogRepository.findAll().stream()
+                            .anyMatch(log -> "BID_CARD_CREATED".equals(log.getEventType())
+                                    && ORG_ID.equals(log.getOrganizationId())));
+            assertThat(auditRecorded).isTrue();
+        });
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -425,7 +429,7 @@ class RepairPlanQuoteKanbanControllerTest extends AbstractRepairPlanKanbanIntegr
 
     @Test
     @DisplayName("カンバン作成（bidDeadlineAt あり）後 BID_DEADLINE_OPENED 監査ログが記録される")
-    void createKanban_withBidDeadline_logsAuditEvent() throws InterruptedException {
+    void createKanban_withBidDeadline_logsAuditEvent() {
         CreateKanbanRequest req = new CreateKanbanRequest(
                 "入札締切ログテスト相見積もり",
                 null,
@@ -437,15 +441,16 @@ class RepairPlanQuoteKanbanControllerTest extends AbstractRepairPlanKanbanIntegr
         controller.createKanban("ORGANIZATION", ORG_ID, ORG_ID, req);
         em.flush();
 
-        // 監査ログは非同期（@Async）のため少し待つ
-        Thread.sleep(500);
-        TransactionTemplate newTx = new TransactionTemplate(txManager);
-        newTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        Boolean auditRecorded = newTx.execute(status ->
-                auditLogRepository.findAll().stream()
-                        .anyMatch(log -> "BID_DEADLINE_OPENED".equals(log.getEventType())
-                                && ORG_ID.equals(log.getOrganizationId())));
-        assertThat(auditRecorded).isTrue();
+        // 監査ログは非同期（@Async）のため記録されるまで待機する。
+        Awaitility.await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            TransactionTemplate newTx = new TransactionTemplate(txManager);
+            newTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            Boolean auditRecorded = newTx.execute(status ->
+                    auditLogRepository.findAll().stream()
+                            .anyMatch(log -> "BID_DEADLINE_OPENED".equals(log.getEventType())
+                                    && ORG_ID.equals(log.getOrganizationId())));
+            assertThat(auditRecorded).isTrue();
+        });
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -454,7 +459,7 @@ class RepairPlanQuoteKanbanControllerTest extends AbstractRepairPlanKanbanIntegr
 
     @Test
     @DisplayName("カンバン更新（bidDeadlineAt 変更）後 BID_DEADLINE_OPENED 監査ログが記録される")
-    void updateKanban_withBidDeadline_logsAuditEvent() throws InterruptedException {
+    void updateKanban_withBidDeadline_logsAuditEvent() {
         UUID kanbanId = createKanban("入札締切更新テスト", ORG_ID);
         em.flush();
 
@@ -468,17 +473,18 @@ class RepairPlanQuoteKanbanControllerTest extends AbstractRepairPlanKanbanIntegr
         controller.updateKanban("ORGANIZATION", ORG_ID, kanbanId, ORG_ID, updateReq);
         em.flush();
 
-        // 監査ログは非同期（@Async）のため少し待つ
-        Thread.sleep(500);
-        TransactionTemplate newTx = new TransactionTemplate(txManager);
-        newTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        // createKanban 時 + updateKanban 時の計 2 件以上の BID_DEADLINE_OPENED が記録される
-        Boolean auditRecorded = newTx.execute(status ->
-                auditLogRepository.findAll().stream()
-                        .filter(log -> "BID_DEADLINE_OPENED".equals(log.getEventType())
-                                && ORG_ID.equals(log.getOrganizationId()))
-                        .count() >= 2);
-        assertThat(auditRecorded).isTrue();
+        // 監査ログは非同期（@Async）のため記録されるまで待機する。
+        // createKanban 時 + updateKanban 時の計 2 件以上の BID_DEADLINE_OPENED が記録される。
+        Awaitility.await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            TransactionTemplate newTx = new TransactionTemplate(txManager);
+            newTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            Boolean auditRecorded = newTx.execute(status ->
+                    auditLogRepository.findAll().stream()
+                            .filter(log -> "BID_DEADLINE_OPENED".equals(log.getEventType())
+                                    && ORG_ID.equals(log.getOrganizationId()))
+                            .count() >= 2);
+            assertThat(auditRecorded).isTrue();
+        });
     }
 
     // ─────────────────────────────────────────────────────────────────────

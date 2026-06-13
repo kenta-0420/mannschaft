@@ -1,0 +1,90 @@
+{
+  "admin_report": {
+    "title": "Meldungsverwaltung",
+    "empty": "Keine Meldungen",
+    "status_options": {
+      "all": "Alle",
+      "pending": "Offen",
+      "reviewing": "In Bearbeitung",
+      "escalated": "Eskaliert",
+      "resolved": "Gelöst",
+      "dismissed": "Abgelehnt"
+    },
+    "messages": {
+      "load_failed": "Meldungen konnten nicht geladen werden",
+      "note_added": "Notiz hinzugefügt",
+      "note_add_failed": "Notiz konnte nicht hinzugefügt werden",
+      "review_started": "Prüfung gestartet",
+      "review_failed": "Prüfung konnte nicht gestartet werden",
+      "resolved": "Meldung gelöst",
+      "resolve_failed": "Lösen fehlgeschlagen",
+      "dismissed": "Meldung abgelehnt",
+      "dismiss_failed": "Ablehnen fehlgeschlagen",
+      "escalated": "Eskaliert",
+      "escalate_failed": "Eskalieren fehlgeschlagen",
+      "reopened": "Meldung erneut geöffnet",
+      "reopen_failed": "Erneutes Öffnen fehlgeschlagen",
+      "content_hidden": "Inhalt ausgeblendet",
+      "hide_failed": "Ausblenden fehlgeschlagen",
+      "content_restored": "Inhalt wiederhergestellt",
+      "restore_failed": "Wiederherstellen fehlgeschlagen"
+    },
+    "stats": {
+      "pending": "Offen",
+      "reviewing": "In Bearbeitung",
+      "escalated": "Eskaliert",
+      "resolved": "Gelöst",
+      "dismissed": "Abgelehnt",
+      "total": "Gesamt"
+    },
+    "table": {
+      "status": "Status",
+      "target_type": "Zieltyp",
+      "reason": "Grund",
+      "reported_at": "Gemeldet am",
+      "actions": "Aktionen",
+      "status_placeholder": "Status"
+    },
+    "actions": {
+      "review": "Prüfen",
+      "resolve": "Lösen",
+      "dismiss": "Ablehnen",
+      "escalate": "Eskalieren",
+      "reopen": "Erneut öffnen"
+    },
+    "detail": {
+      "header": "Meldungsdetails",
+      "target_type": "Zieltyp",
+      "status": "Status",
+      "reason": "Grund",
+      "reported_at": "Gemeldet am",
+      "description": "Beschreibung",
+      "hide_content": "Inhalt ausblenden",
+      "restore_content": "Inhalt wiederherstellen",
+      "internal_notes": "Interne Notizen",
+      "no_notes": "Keine Notizen",
+      "note_placeholder": "Notiz eingeben...",
+      "add_note": "Hinzufügen"
+    },
+    "resolve": {
+      "header": "Meldung lösen",
+      "action_type": "Aktionstyp",
+      "note": "Notiz",
+      "guideline_section": "Richtlinienabschnitt",
+      "cancel": "Abbrechen",
+      "submit": "Lösen",
+      "action": {
+        "warning": "Warnung",
+        "content_delete": "Inhalt löschen",
+        "account_freeze": "Konto sperren"
+      }
+    },
+    "escalate": {
+      "header": "Eskalation",
+      "reason": "Grund",
+      "guideline_section": "Richtlinienabschnitt",
+      "cancel": "Abbrechen",
+      "submit": "Eskalieren"
+    }
+  }
+}
