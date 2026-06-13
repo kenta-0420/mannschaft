@@ -41,6 +41,17 @@ spring:
     locations: classpath:db/migration
     out-of-order: true
 
+  # spring-cloud-aws（F09.6 Phase 8a: SES 通知 SQS リスナー）
+  # SQS 自動構成はデフォルト無効。実 SQS を持つ prod / staging でのみ有効化する
+  # （local / test / openapi-gen で SqsAsyncClient の AWS 認証解決を起動時に試みないため）。
+  # region は SES と同一の ap-northeast-1 を既定とし、本番は環境変数で上書き可能。
+  cloud:
+    aws:
+      sqs:
+        enabled: ${MANNSCHAFT_SQS_ENABLED:false}
+      region:
+        static: ${AWS_REGION:ap-northeast-1}
+
   # Jackson — ISO 8601 文字列で出力（.claudecode.md §20）
   jackson:
     serialization:
@@ -111,6 +122,13 @@ mannschaft:
   ses:
     region: ${MANNSCHAFT_SES_REGION:ap-northeast-1}
     endpoint: ${MANNSCHAFT_SES_ENDPOINT:}
+    # F09.6 Phase 8a: SES バウンス/苦情/開封通知の SQS 受信キュー名。
+    # SES → SNS Topic → SQS Queue → SesNotificationSqsListener の入口（HTTP webhook 廃止）。
+    # 設定時のみ @ConditionalOnProperty でリスナー Bean を登録する。
+    # local / test / openapi-gen は未設定（空）のためリスナーは起動しない（実 SQS への接続を試みない）。
+    # prod / staging は環境変数 SES_NOTIFICATION_QUEUE_NAME を必ず供給すること（terraform が出力する SQS 名）。
+    sqs:
+      queue-name: ${SES_NOTIFICATION_QUEUE_NAME:}
   email:
     from-address: ${MANNSCHAFT_EMAIL_FROM:noreply@mannschaft.app}
   # F09.18 メール配信基盤 (Phase 18-a で導入)
@@ -155,6 +173,11 @@ mannschaft:
     token-uri: https://api.line.me/oauth2/v2.1/token
     profile-uri: https://api.line.me/v2/profile
     redirect-uri: ${MANNSCHAFT_LINE_REDIRECT_URI:https://app.mannschaft.com/auth/oauth/callback/line}
+    # F09.4 §6: Webhook 署名検証（X-Line-Signature / channel secret の HMAC-SHA256）の段階導入フラグ。
+    # off=検証なし / log-only=不一致でも処理継続しWARNログのみ / enforce=不一致なら処理スキップ（200返却）。
+    # 移行期間中の既定は log-only。本番で失敗率を観測してから enforce へ昇格する。
+    signature-verify:
+      mode: ${MANNSCHAFT_LINE_SIGNATURE_VERIFY_MODE:log-only}
   apple:
     client-id: ${MANNSCHAFT_APPLE_CLIENT_ID:}
     client-secret: ${MANNSCHAFT_APPLE_CLIENT_SECRET:}

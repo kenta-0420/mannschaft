@@ -74,6 +74,10 @@ mannschaft:
     hmac-key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
   security:
     internal-signing-key: openapi-gen-dummy-internal-signing-key-32bytes
+  # F09.4 §6: OpenAPI 生成時は LINE Webhook 署名検証を無効化（実通信なし）
+  line:
+    signature-verify:
+      mode: "off"
   storage:
     bucket: dummy-bucket
     endpoint: ""

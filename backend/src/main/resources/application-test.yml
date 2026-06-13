@@ -28,6 +28,10 @@ feature:
     retry-batch-enabled: false
 
 mannschaft:
+  # F09.4 §6 — テスト環境では LINE Webhook 署名検証を無効化（実署名を持たないため）
+  line:
+    signature-verify:
+      mode: "off"
   # F12.1 §5.14 / F09.15 §9.4 — テスト環境では内部 PDF 署名鍵を固定値で設定
   security:
     internal-signing-key: test-internal-pdf-signing-key-fixed-32bytes-xxxxx

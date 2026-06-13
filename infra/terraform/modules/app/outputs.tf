@@ -48,3 +48,24 @@ output "ecs_service_name" {
   description = "ECS サービス名（deploy workflow の ECS_SERVICE）"
   value       = aws_ecs_service.app.name
 }
+
+# F09.6 Phase 8a: SES 通知 SQS / SNS（SES Identity 結線・運用確認に使用）
+output "ses_notifications_queue_name" {
+  description = "SES バウンス/苦情通知の SQS キュー名（Spring Boot の SES_NOTIFICATION_QUEUE_NAME に注入済み）"
+  value       = aws_sqs_queue.ses_notifications.name
+}
+
+output "ses_notifications_queue_arn" {
+  description = "SES 通知 SQS キューの ARN"
+  value       = aws_sqs_queue.ses_notifications.arn
+}
+
+output "ses_notifications_dlq_arn" {
+  description = "SES 通知 SQS の DLQ ARN（滞留メッセージの調査用）"
+  value       = aws_sqs_queue.ses_notifications_dlq.arn
+}
+
+output "ses_notifications_topic_arn" {
+  description = "SES 通知 SNS Topic ARN（SES Identity / Configuration Set の通知先に結線する）"
+  value       = aws_sns_topic.ses_notifications.arn
+}
