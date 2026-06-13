@@ -9,11 +9,13 @@ import com.mannschaft.app.match.domain.PeriodType;
 import com.mannschaft.app.match.domain.TeamSide;
 import com.mannschaft.app.match.entity.MatchEntity;
 import com.mannschaft.app.match.entity.MatchEventEntity;
+import com.mannschaft.app.match.live.MatchLiveUpdateEvent;
 import com.mannschaft.app.match.repository.MatchEventRepository;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -79,6 +81,8 @@ public class MatchEventService {
     private final MatchService matchService;
     private final MatchAccessService matchAccessService;
     private final PlayingTimeCalculationService playingTimeCalculationService;
+    /** F08.10 / 07 §J.2 ライブ配信トリガー（AFTER_COMMIT で {@code MatchLiveBroadcastListener} が受ける）。 */
+    private final ApplicationEventPublisher eventPublisher;
 
     // ─────────────────────────────────────────────
     // 記録
@@ -129,6 +133,8 @@ public class MatchEventService {
 
         MatchEventEntity saved = matchEventRepository.save(event);
         triggerRecalculation(match, actorUserId);
+        // 07 §J.2: コミット後に観戦者へ差分配信する（publish のみ・配信は AFTER_COMMIT リスナーが担う）。
+        eventPublisher.publishEvent(MatchLiveUpdateEvent.eventAdded(matchId, saved));
         return saved;
     }
 
@@ -173,6 +179,8 @@ public class MatchEventService {
 
         MatchEventEntity saved = matchEventRepository.save(event);
         triggerRecalculation(match, actorUserId);
+        // 07 §J.2: コミット後に観戦者へ差分配信する。
+        eventPublisher.publishEvent(MatchLiveUpdateEvent.eventUpdated(matchId, saved));
         return saved;
     }
 
@@ -192,6 +200,8 @@ public class MatchEventService {
 
         matchEventRepository.delete(event);
         triggerRecalculation(match, actorUserId);
+        // 07 §J.2: コミット後に観戦者へ削除を配信する（ID のみ・機微情報を載せない）。
+        eventPublisher.publishEvent(MatchLiveUpdateEvent.eventDeleted(matchId, eventId));
     }
 
     // ─────────────────────────────────────────────

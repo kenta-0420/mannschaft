@@ -121,9 +121,21 @@ class MatchServiceTest {
         // 確定再計算は全 side（editableTeamSides=null）
         verify(playingTimeCalculationService).recalculate(eq(match), isNull());
 
-        ArgumentCaptor<MatchCompletedEvent> captor = ArgumentCaptor.forClass(MatchCompletedEvent.class);
-        verify(eventPublisher).publishEvent(captor.capture());
-        MatchCompletedEvent ev = captor.getValue();
+        // COMPLETED 遷移では 2 件 publish される: 順位連携の MatchCompletedEvent と
+        // ライブ配信の MatchLiveUpdateEvent(STATUS_CHANGED・07 §J.2)。前者を抽出して検証する。
+        ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher, org.mockito.Mockito.times(2)).publishEvent(captor.capture());
+        MatchCompletedEvent ev = captor.getAllValues().stream()
+                .filter(o -> o instanceof MatchCompletedEvent)
+                .map(o -> (MatchCompletedEvent) o)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("MatchCompletedEvent が publish されていない"));
+        // ライブ配信 STATUS_CHANGED も併せて publish される（07 §J.2）
+        boolean liveStatusPublished = captor.getAllValues().stream()
+                .anyMatch(o -> o instanceof com.mannschaft.app.match.live.MatchLiveUpdateEvent
+                        && ((com.mannschaft.app.match.live.MatchLiveUpdateEvent) o).getType()
+                            == com.mannschaft.app.match.live.MatchLiveUpdateType.STATUS_CHANGED);
+        assertThat(liveStatusPublished).isTrue();
         assertThat(ev.getMatchId()).isEqualTo(matchId);
         assertThat(ev.getTournamentFixtureId()).isEqualTo(777L);
         assertThat(ev.getHomeScore()).isEqualTo(2);
@@ -136,12 +148,20 @@ class MatchServiceTest {
     }
 
     @Test
-    @DisplayName("(b) COMPLETED 以外の遷移では MatchCompletedEvent を発火しない・再計算もしない")
+    @DisplayName("(b) COMPLETED 以外の遷移では MatchCompletedEvent を発火しない・再計算もしない（ライブ配信 STATUS_CHANGED は発火）")
     void nonCompletedDoesNotPublishOrRecalculate() {
         service.changeStatus(matchId, ORG, ACTOR, MatchStatus.POSTPONED);
 
-        verify(eventPublisher, never()).publishEvent(any());
+        // COMPLETED でない遷移では順位連携 MatchCompletedEvent は発火しない・確定再計算もしない
+        verify(eventPublisher, never()).publishEvent(any(MatchCompletedEvent.class));
         verify(playingTimeCalculationService, never()).recalculate(any(), any());
+        // ただしライブ配信の STATUS_CHANGED は全遷移で発火する（07 §J.2・観戦者へ進行を伝える）
+        ArgumentCaptor<com.mannschaft.app.match.live.MatchLiveUpdateEvent> liveCaptor =
+                ArgumentCaptor.forClass(com.mannschaft.app.match.live.MatchLiveUpdateEvent.class);
+        verify(eventPublisher).publishEvent(liveCaptor.capture());
+        assertThat(liveCaptor.getValue().getType())
+                .isEqualTo(com.mannschaft.app.match.live.MatchLiveUpdateType.STATUS_CHANGED);
+        assertThat(liveCaptor.getValue().getStatus()).isEqualTo(MatchStatus.POSTPONED);
         // 全遷移は監査記録される（03 §C.7）
         verify(auditLogService).record(eq(AuditEventType.MATCH_STATUS_CHANGED.name()),
                 eq(ACTOR), any(), eq(TEAM), eq(ORG), any(), any(), any(), any());

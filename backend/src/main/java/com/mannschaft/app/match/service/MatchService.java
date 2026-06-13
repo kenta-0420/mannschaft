@@ -11,6 +11,7 @@ import com.mannschaft.app.match.domain.MatchStatus;
 import com.mannschaft.app.match.domain.Sport;
 import com.mannschaft.app.match.dto.MatchSummaryResponse;
 import com.mannschaft.app.match.entity.MatchEntity;
+import com.mannschaft.app.match.live.MatchLiveUpdateEvent;
 import com.mannschaft.app.match.repository.MatchRepository;
 import lombok.Builder;
 import lombok.Getter;
@@ -288,6 +289,8 @@ public class MatchService {
                 homeScore, awayScore, homePenaltyScore, awayPenaltyScore);
         auditLogService.record(AuditEventType.MATCH_SCORE_FINALIZED.name(), actorUserId, null,
                 match.getTeamId(), organizationId, null, null, null, metadata);
+        // 07 §J.2: コミット後にスコア更新を観戦者へ配信する（機微情報を含まないスコアサマリのみ）。
+        eventPublisher.publishEvent(MatchLiveUpdateEvent.scoreUpdated(saved));
         return saved;
     }
 
@@ -326,6 +329,9 @@ public class MatchService {
                 matchId, match.getTeamId(), before, newStatus);
         auditLogService.record(AuditEventType.MATCH_STATUS_CHANGED.name(), actorUserId, null,
                 match.getTeamId(), organizationId, null, null, null, metadata);
+
+        // 07 §J.2: 全 status 遷移をコミット後に観戦者へ配信する（順位連携の MatchCompletedEvent とは別関心事）。
+        eventPublisher.publishEvent(MatchLiveUpdateEvent.statusChanged(matchId, newStatus));
 
         if (newStatus == MatchStatus.COMPLETED) {
             // 確定再計算（全 side・記録係/作成者は全 side 編集権あり）
