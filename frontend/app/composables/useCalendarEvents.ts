@@ -7,6 +7,7 @@ export interface CalendarEventItem {
   color: string | null
   isPersonal: boolean
   isTodo?: boolean
+  eventType?: string
   scopeType?: string
   scopeName?: string | null
   scopeIconUrl?: string | null

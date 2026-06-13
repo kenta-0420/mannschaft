@@ -48,12 +48,11 @@ public class ProxyVoteExportService {
         List<ProxyVoteMotionEntity> motions = motionRepository.findBySessionIdOrderByMotionNumberAsc(sessionId);
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        // BOM を付与（Excel 対応）
-        try {
-            baos.write(new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF});
-        } catch (Exception e) {
-            // ignore
-        }
+        // BOM を付与（Excel 対応）。
+        // ByteArrayOutputStream#writeBytes はメモリバッファへの書き込みのみで I/O を伴わず
+        // IOException を宣言しないため、握りつぶし用の try/catch は不要（旧 write(byte[]) は
+        // OutputStream のシグネチャ上 checked 例外を強制されていただけ）。
+        baos.writeBytes(new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF});
 
         try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8))) {
             if (session.getIsAnonymous()) {
