@@ -1,451 +1,483 @@
 {
-  "match": {
-    "list": {
-      "title": "Registros de partidos",
-      "subtitle": "Registra partidos de entrenamiento, amistosos y de torneo",
-      "record_button": "+ Registrar partido",
-      "filter": {
-        "kind": "Tipo",
-        "status": "Estado",
-        "all": "Todos"
-      },
-      "result": {
-        "win": "G",
-        "draw": "E",
-        "loss": "P",
-        "win_label": "W",
-        "draw_label": "D",
-        "loss_label": "L"
-      },
-      "in_progress_badge": "En curso",
-      "score_vs": "{home} - {away}",
-      "vs": "vs {opponent}",
-      "no_opponent": "Sin rival",
-      "no_score": "—",
-      "delete_confirm": "¿Eliminar este registro de partido?",
-      "delete_success": "Registro de partido eliminado",
-      "empty": "Aún no hay registros de partidos",
-      "empty_cta": "Registra tu primer partido",
-      "load_more": "Cargar más",
-      "page_info": "{from}-{to} de {total}",
-      "error": {
-        "load_failed": "Error al cargar los partidos",
-        "status_failed": "Error al cambiar el estado",
-        "score_failed": "Error al finalizar el marcador",
-        "recording_mode_failed": "Error al cambiar el modo de registro",
-        "delete_failed": "Error al eliminar el registro del partido"
-      }
-    },
-    "create": {
-      "title": "Registrar partido",
-      "subtitle": "Solo elige un tipo y un rival para empezar. El lugar y la hora se pueden configurar después.",
-      "kind_label": "Tipo",
-      "kind_hint": "Toca para seleccionar",
-      "opponent_label": "Nombre del equipo rival",
-      "opponent_placeholder": "Introduce el nombre del equipo rival",
-      "opponent_required": "Introduce un nombre de rival",
-      "kind_required": "Selecciona un tipo",
-      "optional_section": "Opcional (configurar después)",
-      "optional_hint": "Puedes empezar a registrar con estos campos vacíos y completarlos tras el partido.",
-      "venue_label": "Lugar",
-      "venue_placeholder": "Nombre del lugar (opcional)",
-      "kickoff_label": "Fecha y hora de inicio",
-      "duration_label": "Duración (minutos)",
-      "home_away_label": "Local / Visitante",
-      "home_away": {
-        "HOME": "Local",
-        "AWAY": "Visitante",
-        "NEUTRAL": "Neutral"
-      },
-      "submit": "Empezar a registrar",
-      "submit_short": "Crear",
-      "cancel": "Cancelar",
-      "success": "Partido creado",
-      "update_success": "Información del partido actualizada",
-      "error": {
-        "create_failed": "Error al crear el partido",
-        "update_failed": "Error al actualizar la información del partido"
-      }
-    },
-    "live": {
-      "title": "Registro en vivo",
-      "loading": "Cargando...",
-      "scoreboard": {
-        "home": "Nos.",
-        "away": "Riv.",
-        "vs": "vs {opponent}",
-        "penalty": "Penales {home}-{away}"
-      },
-      "penalty": {
-        "title": "Marcador de penales",
-        "home_label": "Penales convertidos (nosotros)",
-        "away_label": "Penales convertidos (rival)",
-        "hint": "Introduce los penales anotados. Se confirma al finalizar el partido y se refleja en la clasificación del torneo."
-      },
-      "timer": {
-        "state": {
-          "WAITING": "Pre-partido",
-          "FIRST_HALF": "1er tiempo",
-          "HALF_TIME": "Descanso",
-          "SECOND_HALF": "2do tiempo",
-          "EXTRA_FIRST": "Prórroga 1",
-          "EXTRA_SECOND": "Prórroga 2",
-          "PENALTY_SHOOTOUT": "Penales",
-          "COMPLETED": "Finalizado",
-          "QUARTER_1": "Q1",
-          "BREAK_1": "Descanso",
-          "QUARTER_2": "Q2",
-          "HALF_TIME_BREAK": "Descanso",
-          "QUARTER_3": "Q3",
-          "BREAK_3": "Descanso",
-          "QUARTER_4": "Q4",
-          "OVERTIME": "Prórroga"
-        },
-        "start_first_half": "Iniciar 1er tiempo",
-        "to_half_time": "Al descanso",
-        "start_second_half": "Iniciar 2do tiempo",
-        "to_extra": "A la prórroga",
-        "to_penalty": "A los penales",
-        "complete": "Finalizar partido",
-        "advance": "Siguiente periodo",
-        "minute_label": "Min",
-        "stoppage_label": "Tiempo añadido (+)",
-        "minute_override_hint": "Puedes corregir el minuto manualmente si se desfasa.",
-        "pause": "Pausar",
-        "resume": "Reanudar",
-        "running": "En marcha",
-        "stopped": "Detenido",
-        "start_quarter_1": "Iniciar Q1",
-        "end_quarter_1": "Fin Q1",
-        "start_quarter_2": "Iniciar Q2",
-        "end_quarter_2": "Fin Q2",
-        "start_quarter_3": "Iniciar Q3",
-        "end_quarter_3": "Fin Q3",
-        "start_quarter_4": "Iniciar Q4",
-        "to_overtime": "Ir a prórroga",
-        "to_overtime_again": "Otra prórroga"
-      },
-      "preset": {
-        "goal": "Gol",
-        "assist": "Asistencia",
-        "card": "Tarjeta",
-        "substitution": "Cambio",
-        "other": "Otro",
-        "field_goal_2": "2P",
-        "field_goal_3": "3P",
-        "free_throw": "Tiro libre",
-        "rebound": "Rebote",
-        "foul": "Falta"
-      },
-      "flow": {
-        "select_player": "Seleccionar jugador",
-        "select_scorer": "Seleccionar goleador",
-        "select_assist": "Seleccionar asistente",
-        "select_out": "Jugador que sale",
-        "select_in": "Jugador que entra",
-        "add_assist": "+ Vincular asistencia",
-        "to_goal": "-> Vincular al gol",
-        "skip": "Omitir",
-        "confirm": "Confirmar",
-        "cancel": "Cancelar",
-        "back": "Atrás",
-        "note_label": "Motivo / nota",
-        "note_placeholder": "p. ej. desde un córner",
-        "goal_type_label": "Tipo de gol",
-        "goal_type": {
-          "GOAL": "Jugada",
-          "PENALTY_GOAL": "Penal",
-          "OWN_GOAL": "Autogol"
-        },
-        "card_color_label": "Tipo de tarjeta",
-        "card_yellow": "Amarilla",
-        "card_red": "Roja",
-        "card_second_yellow": "Segunda amarilla",
-        "team_side_label": "Registrar para",
-        "other_label_placeholder": "Nombre del evento (p. ej. falta)",
-        "foul_type_label": "Tipo de falta"
-      },
-      "team_side": {
-        "HOME": "Nuestro equipo",
-        "AWAY": "Rival"
-      },
-      "card_reason": {
-        "title": "Código de motivo (opcional)",
-        "skip_hint": "Se puede completar luego. Recomendado en partidos oficiales.",
-        "none": "Sin seleccionar"
-      },
-      "grid": {
-        "starters": "Titulares",
-        "bench": "Suplentes",
-        "setup_button": "Definir alineación",
-        "all_starters": "Todos titulares",
-        "clear_starters": "Quitar titulares",
-        "copy_previous": "Copiar alineación anterior",
-        "add_manual": "Agregar manualmente",
-        "manual_name_placeholder": "Nombre del jugador",
-        "manual_number_placeholder": "N.º",
-        "empty": "No se encontraron jugadores. Agrégalos manualmente.",
-        "position": {
-          "GK": "POR",
-          "DF": "DEF",
-          "MF": "MED",
-          "FW": "DEL",
-          "other": "Otro"
-        }
-      },
-      "timeline": {
-        "title": "Cronología",
-        "empty": "Aún no hay eventos. Empieza a registrar con los botones de abajo.",
-        "minute_suffix": "'",
-        "self": "Nos.",
-        "opponent": "Riv.",
-        "linked_assist": "Asistencia",
-        "linked_goal": "Gol",
-        "tap_to_edit": "Toca para editar",
-        "delete": "Eliminar",
-        "delete_confirm": "¿Eliminar este evento?"
-      },
-      "undo": {
-        "button": "Deshacer",
-        "done": "Acción deshecha",
-        "substitution": "Cambio deshecho",
-        "goal_assist": "Gol/asistencia deshechos"
-      },
-      "conflict": {
-        "title": "Otro registrador actualizó esto",
-        "detail": "Recargando los registros más recientes y reintentando"
-      },
-      "opponent_notice": {
-        "title": "Registrado por el equipo {team}",
-        "detail": "Pide al registrador del equipo {team} que corrija esta entrada."
-      },
-      "offline": {
-        "queued": "Guardado sin conexión. Se enviará al reconectar.",
-        "flushed": "Se enviaron {count} evento(s) pendientes.",
-        "pending": "{count} pendiente(s)"
-      },
-      "completed_notice": "Este partido ha finalizado. Las correcciones siguen tus permisos.",
-      "error": {
-        "load_events_failed": "Error al cargar los eventos",
-        "load_appearances_failed": "Error al cargar las apariciones",
-        "load_match_failed": "Error al cargar la información del partido",
-        "add_event_failed": "Error al registrar el evento",
-        "update_event_failed": "Error al actualizar el evento",
-        "delete_event_failed": "Error al eliminar el evento",
-        "undo_failed": "Error al deshacer",
-        "period_boundary_failed": {
-          "title": "Error al registrar el límite del período",
-          "detail": "La transición de período no se pudo guardar en el servidor. Los marcadores y los totales de tiempo de juego pueden ser inexactos. Vuelve a accionar el cronómetro para registrarlo de nuevo."
-        },
-        "complete_failed": "No se pudo guardar la finalización del partido"
-      },
-      "read_only_notice": "Solo lectura. Solo administradores, suplentes y anotadores pueden registrar"
-    },
-    "analytics": {
-      "my_title": "Análisis de partidos",
-      "my_subtitle": "Visualiza tus estadísticas de carrera",
-      "member_title": "Análisis de partidos del miembro",
-      "member_subtitle": "Estadísticas por equipo de este miembro",
-      "team_context": "Equipo objetivo",
-      "unknown_kind": "Otro",
-      "forbidden": "No tienes permiso para ver estas estadísticas",
-      "metric": {
-        "total_matches": "Partidos",
-        "total_minutes": "Minutos totales",
-        "goals": "Goles",
-        "assists": "Asistencias",
-        "goals_per90": "Goles por 90",
-        "starter_rate": "Tasa de titular"
-      },
-      "axis": {
-        "goals": "Goles",
-        "assists": "Asistencias",
-        "matches": "Partidos",
-        "minutes": "Min. promedio",
-        "starter_rate": "Tasa de titular"
-      },
-      "series": {
-        "goals": "Goles",
-        "minutes": "Minutos",
-        "match_share": "Cuota de aparición",
-        "goals_by_kind": "Goles por tipo"
-      },
-      "chart": {
-        "radar_title": "Distribución de stats",
-        "line_title": "Tendencia mensual (goles / minutos)",
-        "doughnut_title": "Cuota de aparición por tipo",
-        "bar_title": "Distribución de goles por tipo"
-      },
-      "best": {
-        "title": "Récord personal",
-        "top_goals": "Más goles en un mes",
-        "longest_minutes": "Más minutos en un mes"
-      },
-      "empty": {
-        "no_data": "No hay datos para mostrar",
-        "no_trend": "Sin datos de tendencia",
-        "no_goals": "Sin goles registrados",
-        "no_matches": "Aún no hay registros de partidos",
-        "member_no_matches": "Sin registros de partidos para este miembro",
-        "no_team": "Sin equipos",
-        "record_cta": "Registrar un partido"
-      },
-      "error": {
-        "load_failed": "Error al cargar las estadísticas"
-      },
-      "team_title": "Análisis de partidos del equipo",
-      "team_subtitle": "Visualiza el registro de victorias/derrotas, goles, clasificaciones de jugadores y forma reciente",
-      "team": {
-        "metric": {
-          "total_matches": "Partidos",
-          "win_draw_loss": "V/E/D",
-          "goals_for": "Goles a favor",
-          "goals_against": "Goles en contra",
-          "goal_difference": "Diferencia de goles"
-        },
-        "series": {
-          "points": "Puntos (acumulado)",
-          "player_goals": "Goles",
-          "matches_by_kind": "Partidos"
-        },
-        "chart": {
-          "result_title": "Resumen de resultados",
-          "player_goals_title": "Máximos goleadores",
-          "recent_form_title": "Forma reciente (tendencia de puntos)",
-          "matches_by_kind_title": "Partidos por tipo"
-        }
-      },
-      "widget": {
-        "summary": {
-          "title": "Resumen de partido",
-          "wdl_label": "V/E/D",
-          "goals_label": "GF/GC",
-          "recent_form": "Forma reciente",
-          "in_progress_label": "En progreso",
-          "resume_recording": "Reanudar registro",
-          "no_matches": "Aún no hay registros de partidos",
-          "view_analytics": "Ver análisis detallado"
-        }
-      }
-    },
-    "kind": {
-      "PRACTICE": "Entrenamiento",
-      "FRIENDLY": "Amistoso",
-      "TOURNAMENT": "Torneo",
-      "LEAGUE": "Liga"
-    },
-    "status": {
-      "SCHEDULED": "Programado",
-      "IN_PROGRESS": "En curso",
-      "COMPLETED": "Finalizado",
-      "POSTPONED": "Aplazado",
-      "CANCELLED": "Cancelado",
-      "PLANNED": "Programado",
-      "CLOSED": "Confirmado"
-    },
-    "event_type": {
-      "STARTER": "Titular",
-      "SUB_IN": "Entra",
-      "SUB_OUT": "Sale",
-      "GOAL": "Gol",
-      "ASSIST": "Asistencia",
-      "OWN_GOAL": "Gol en propia puerta",
-      "PENALTY_GOAL": "Penalti (marcado)",
-      "PENALTY_MISS": "Penalti (fallado)",
-      "PENALTY_SHOOTOUT": "Tanda de penaltis",
-      "YELLOW_CARD": "Amonestación",
-      "RED_CARD": "Expulsión",
-      "SECOND_YELLOW": "Segunda amarilla",
-      "SAVE": "Parada",
-      "INJURY": "Lesión",
-      "PERIOD_START": "Inicio del periodo",
-      "PERIOD_END": "Fin del periodo",
-      "OTHER": "Otro",
-      "FIELD_GOAL_2": "2 puntos",
-      "FIELD_GOAL_3": "3 puntos",
-      "FREE_THROW": "Tiro libre",
-      "SHOT_MISS": "Tiro fallado",
-      "REBOUND": "Rebote",
-      "STEAL": "Robo",
-      "BLOCK": "Tapón",
-      "TURNOVER": "Pérdida",
-      "PERSONAL_FOUL": "Falta personal",
-      "TECHNICAL_FOUL": "Falta técnica",
-      "FOUL_OUT": "Eliminación por faltas"
-    },
-    "card_type": {
-      "YELLOW": "Amonestación",
-      "RED": "Expulsión",
-      "SECOND_YELLOW": "Segunda amarilla"
-    },
-    "card_reason": {
-      "C1": "Conducta antideportiva",
-      "C2": "Juego brusco",
-      "C3": "Desacuerdo",
-      "C4": "Infracciones reiteradas",
-      "C5": "Retrasar la reanudación",
-      "C6": "Distancia insuficiente",
-      "C7": "Entrar sin permiso",
-      "C8": "Salir sin permiso",
-      "S1": "Juego brusco grave",
-      "S2": "Conducta violenta",
-      "S3": "Escupir",
-      "S4": "Impedir un gol (mano)",
-      "S5": "Impedir un gol (otro)",
-      "S6": "Lenguaje o gestos ofensivos",
-      "CS": "Dos amonestaciones",
-      "PF": "Falta personal",
-      "SF": "Falta en tiro",
-      "OF": "Falta en ataque",
-      "TF": "Falta técnica",
-      "UF": "Falta antideportiva",
-      "DF": "Falta descalificante"
-    },
-    "position": {
-      "GK": "Portero",
-      "DF": "Defensa",
-      "MF": "Centrocampista",
-      "FW": "Delantero",
-      "FIXO": "Fijo",
-      "ALA": "Ala",
-      "PIVO": "Pívot",
-      "PG": "Base",
-      "SG": "Escolta",
-      "SF": "Alero",
-      "PF": "Ala-pívot",
-      "C": "Pívot"
-    },
-    "org_context": {
-      "resolve_failed": "No se pudo resolver la información del equipo/organización. Verifica tus membresías"
-    },
-    "entry": {
-      "record_from_schedule": "Registrar este partido",
-      "record_from_schedule_hint": "Comienza a registrar el partido de este evento",
-      "resolving": "Preparando el registro del partido…"
-    },
-    "fixtures": {
-      "title": "Calendario de partidos",
-      "back": "Volver al torneo",
-      "round": "Jornada {n}",
-      "record": "Registrar",
-      "venue_tbd": "Sede por definir",
-      "date_tbd": "Fecha por definir",
-      "tbd_participant": "Por definir",
-      "no_score": "Programado",
-      "empty": "Aún no hay partidos",
-      "load_failed": "No se pudo cargar el calendario de partidos",
-      "record_not_participant": "Tu equipo no participa en este partido, por lo que no se puede registrar",
-      "status": {
-        "SCHEDULED": "Programado",
-        "IN_PROGRESS": "En curso",
-        "COMPLETED": "Finalizado",
-        "POSTPONED": "Aplazado",
-        "CANCELLED": "Cancelado"
-      }
-    },
-    "foul_type": {
-      "PERSONAL_FOUL": "Falta personal",
-      "TECHNICAL_FOUL": "Falta técnica"
-    }
-  }
+    "match":  {
+                  "list":  {
+                               "title":  "Registros de partidos",
+                               "subtitle":  "Registra partidos de entrenamiento, amistosos y de torneo",
+                               "record_button":  "+ Registrar partido",
+                               "filter":  {
+                                              "kind":  "Tipo",
+                                              "status":  "Estado",
+                                              "all":  "Todos"
+                                          },
+                               "result":  {
+                                              "win":  "G",
+                                              "draw":  "E",
+                                              "loss":  "P",
+                                              "win_label":  "W",
+                                              "draw_label":  "D",
+                                              "loss_label":  "L"
+                                          },
+                               "in_progress_badge":  "En curso",
+                               "score_vs":  "{home} - {away}",
+                               "vs":  "vs {opponent}",
+                               "no_opponent":  "Sin rival",
+                               "no_score":  "—",
+                               "delete_confirm":  "¿Eliminar este registro de partido?",
+                               "delete_success":  "Registro de partido eliminado",
+                               "empty":  "Aún no hay registros de partidos",
+                               "empty_cta":  "Registra tu primer partido",
+                               "load_more":  "Cargar más",
+                               "page_info":  "{from}-{to} de {total}",
+                               "error":  {
+                                             "load_failed":  "Error al cargar los partidos",
+                                             "status_failed":  "Error al cambiar el estado",
+                                             "score_failed":  "Error al finalizar el marcador",
+                                             "recording_mode_failed":  "Error al cambiar el modo de registro",
+                                             "delete_failed":  "Error al eliminar el registro del partido"
+                                         }
+                           },
+                  "create":  {
+                                 "title":  "Registrar partido",
+                                 "subtitle":  "Solo elige un tipo y un rival para empezar. El lugar y la hora se pueden configurar después.",
+                                 "kind_label":  "Tipo",
+                                 "kind_hint":  "Toca para seleccionar",
+                                 "opponent_label":  "Nombre del equipo rival",
+                                 "opponent_placeholder":  "Introduce el nombre del equipo rival",
+                                 "opponent_required":  "Introduce un nombre de rival",
+                                 "kind_required":  "Selecciona un tipo",
+                                 "optional_section":  "Opcional (configurar después)",
+                                 "optional_hint":  "Puedes empezar a registrar con estos campos vacíos y completarlos tras el partido.",
+                                 "venue_label":  "Lugar",
+                                 "venue_placeholder":  "Nombre del lugar (opcional)",
+                                 "kickoff_label":  "Fecha y hora de inicio",
+                                 "duration_label":  "Duración (minutos)",
+                                 "home_away_label":  "Local / Visitante",
+                                 "home_away":  {
+                                                   "HOME":  "Local",
+                                                   "AWAY":  "Visitante",
+                                                   "NEUTRAL":  "Neutral"
+                                               },
+                                 "submit":  "Empezar a registrar",
+                                 "submit_short":  "Crear",
+                                 "cancel":  "Cancelar",
+                                 "success":  "Partido creado",
+                                 "update_success":  "Información del partido actualizada",
+                                 "error":  {
+                                               "create_failed":  "Error al crear el partido",
+                                               "update_failed":  "Error al actualizar la información del partido"
+                                           }
+                             },
+                  "live":  {
+                               "title":  "Registro en vivo",
+                               "loading":  "Cargando...",
+                               "scoreboard":  {
+                                                  "home":  "Nos.",
+                                                  "away":  "Riv.",
+                                                  "vs":  "vs {opponent}",
+                                                  "penalty":  "Penales {home}-{away}"
+                                              },
+                               "penalty":  {
+                                               "title":  "Marcador de penales",
+                                               "home_label":  "Penales convertidos (nosotros)",
+                                               "away_label":  "Penales convertidos (rival)",
+                                               "hint":  "Introduce los penales anotados. Se confirma al finalizar el partido y se refleja en la clasificación del torneo."
+                                           },
+                               "timer":  {
+                                             "state":  {
+                                                           "WAITING":  "Pre-partido",
+                                                           "FIRST_HALF":  "1er tiempo",
+                                                           "HALF_TIME":  "Descanso",
+                                                           "SECOND_HALF":  "2do tiempo",
+                                                           "EXTRA_FIRST":  "Prórroga 1",
+                                                           "EXTRA_SECOND":  "Prórroga 2",
+                                                           "PENALTY_SHOOTOUT":  "Penales",
+                                                           "COMPLETED":  "Finalizado",
+                                                           "QUARTER_1":  "Q1",
+                                                           "BREAK_1":  "Descanso",
+                                                           "QUARTER_2":  "Q2",
+                                                           "HALF_TIME_BREAK":  "Descanso",
+                                                           "QUARTER_3":  "Q3",
+                                                           "BREAK_3":  "Descanso",
+                                                           "QUARTER_4":  "Q4",
+                                                           "OVERTIME":  "Prórroga"
+                                                       },
+                                             "start_first_half":  "Iniciar 1er tiempo",
+                                             "to_half_time":  "Al descanso",
+                                             "start_second_half":  "Iniciar 2do tiempo",
+                                             "to_extra":  "A la prórroga",
+                                             "to_penalty":  "A los penales",
+                                             "complete":  "Finalizar partido",
+                                             "advance":  "Siguiente periodo",
+                                             "minute_label":  "Min",
+                                             "stoppage_label":  "Tiempo añadido (+)",
+                                             "minute_override_hint":  "Puedes corregir el minuto manualmente si se desfasa.",
+                                             "pause":  "Pausar",
+                                             "resume":  "Reanudar",
+                                             "running":  "En marcha",
+                                             "stopped":  "Detenido",
+                                             "start_quarter_1":  "Iniciar Q1",
+                                             "end_quarter_1":  "Fin Q1",
+                                             "start_quarter_2":  "Iniciar Q2",
+                                             "end_quarter_2":  "Fin Q2",
+                                             "start_quarter_3":  "Iniciar Q3",
+                                             "end_quarter_3":  "Fin Q3",
+                                             "start_quarter_4":  "Iniciar Q4",
+                                             "to_overtime":  "Ir a prórroga",
+                                             "to_overtime_again":  "Otra prórroga"
+                                         },
+                               "preset":  {
+                                              "goal":  "Gol",
+                                              "assist":  "Asistencia",
+                                              "card":  "Tarjeta",
+                                              "substitution":  "Cambio",
+                                              "other":  "Otro",
+                                              "field_goal_2":  "2P",
+                                              "field_goal_3":  "3P",
+                                              "free_throw":  "Tiro libre",
+                                              "rebound":  "Rebote",
+                                              "foul":  "Falta"
+                                          },
+                               "flow":  {
+                                            "select_player":  "Seleccionar jugador",
+                                            "select_scorer":  "Seleccionar goleador",
+                                            "select_assist":  "Seleccionar asistente",
+                                            "select_out":  "Jugador que sale",
+                                            "select_in":  "Jugador que entra",
+                                            "add_assist":  "+ Vincular asistencia",
+                                            "to_goal":  "-\u003e Vincular al gol",
+                                            "skip":  "Omitir",
+                                            "confirm":  "Confirmar",
+                                            "cancel":  "Cancelar",
+                                            "back":  "Atrás",
+                                            "note_label":  "Motivo / nota",
+                                            "note_placeholder":  "p. ej. desde un córner",
+                                            "goal_type_label":  "Tipo de gol",
+                                            "goal_type":  {
+                                                              "GOAL":  "Jugada",
+                                                              "PENALTY_GOAL":  "Penal",
+                                                              "OWN_GOAL":  "Autogol"
+                                                          },
+                                            "card_color_label":  "Tipo de tarjeta",
+                                            "card_yellow":  "Amarilla",
+                                            "card_red":  "Roja",
+                                            "card_second_yellow":  "Segunda amarilla",
+                                            "team_side_label":  "Registrar para",
+                                            "other_label_placeholder":  "Nombre del evento (p. ej. falta)",
+                                            "foul_type_label":  "Tipo de falta"
+                                        },
+                               "team_side":  {
+                                                 "HOME":  "Nuestro equipo",
+                                                 "AWAY":  "Rival"
+                                             },
+                               "card_reason":  {
+                                                   "title":  "Código de motivo (opcional)",
+                                                   "skip_hint":  "Se puede completar luego. Recomendado en partidos oficiales.",
+                                                   "none":  "Sin seleccionar"
+                                               },
+                               "grid":  {
+                                            "starters":  "Titulares",
+                                            "bench":  "Suplentes",
+                                            "setup_button":  "Definir alineación",
+                                            "all_starters":  "Todos titulares",
+                                            "clear_starters":  "Quitar titulares",
+                                            "copy_previous":  "Copiar alineación anterior",
+                                            "add_manual":  "Agregar manualmente",
+                                            "manual_name_placeholder":  "Nombre del jugador",
+                                            "manual_number_placeholder":  "N.º",
+                                            "empty":  "No se encontraron jugadores. Agrégalos manualmente.",
+                                            "position":  {
+                                                             "GK":  "POR",
+                                                             "DF":  "DEF",
+                                                             "MF":  "MED",
+                                                             "FW":  "DEL",
+                                                             "other":  "Otro"
+                                                         }
+                                        },
+                               "timeline":  {
+                                                "title":  "Cronología",
+                                                "empty":  "Aún no hay eventos. Empieza a registrar con los botones de abajo.",
+                                                "minute_suffix":  "\u0027",
+                                                "self":  "Nos.",
+                                                "opponent":  "Riv.",
+                                                "linked_assist":  "Asistencia",
+                                                "linked_goal":  "Gol",
+                                                "tap_to_edit":  "Toca para editar",
+                                                "delete":  "Eliminar",
+                                                "delete_confirm":  "¿Eliminar este evento?"
+                                            },
+                               "undo":  {
+                                            "button":  "Deshacer",
+                                            "done":  "Acción deshecha",
+                                            "substitution":  "Cambio deshecho",
+                                            "goal_assist":  "Gol/asistencia deshechos"
+                                        },
+                               "conflict":  {
+                                                "title":  "Otro registrador actualizó esto",
+                                                "detail":  "Recargando los registros más recientes y reintentando"
+                                            },
+                               "opponent_notice":  {
+                                                       "title":  "Registrado por el equipo {team}",
+                                                       "detail":  "Pide al registrador del equipo {team} que corrija esta entrada."
+                                                   },
+                               "offline":  {
+                                               "queued":  "Guardado sin conexión. Se enviará al reconectar.",
+                                               "flushed":  "Se enviaron {count} evento(s) pendientes.",
+                                               "pending":  "{count} pendiente(s)"
+                                           },
+                               "completed_notice":  "Este partido ha finalizado. Las correcciones siguen tus permisos.",
+                               "error":  {
+                                             "load_events_failed":  "Error al cargar los eventos",
+                                             "load_appearances_failed":  "Error al cargar las apariciones",
+                                             "load_match_failed":  "Error al cargar la información del partido",
+                                             "add_event_failed":  "Error al registrar el evento",
+                                             "update_event_failed":  "Error al actualizar el evento",
+                                             "delete_event_failed":  "Error al eliminar el evento",
+                                             "undo_failed":  "Error al deshacer",
+                                             "period_boundary_failed":  {
+                                                                            "title":  "Error al registrar el límite del período",
+                                                                            "detail":  "La transición de período no se pudo guardar en el servidor. Los marcadores y los totales de tiempo de juego pueden ser inexactos. Vuelve a accionar el cronómetro para registrarlo de nuevo."
+                                                                        },
+                                             "complete_failed":  "No se pudo guardar la finalización del partido"
+                                         },
+                               "read_only_notice":  "Solo lectura. Solo administradores, suplentes y anotadores pueden registrar"
+                           },
+                  "analytics":  {
+                                    "my_title":  "Análisis de partidos",
+                                    "my_subtitle":  "Visualiza tus estadísticas de carrera",
+                                    "member_title":  "Análisis de partidos del miembro",
+                                    "member_subtitle":  "Estadísticas por equipo de este miembro",
+                                    "team_context":  "Equipo objetivo",
+                                    "unknown_kind":  "Otro",
+                                    "forbidden":  "No tienes permiso para ver estas estadísticas",
+                                    "metric":  {
+                                                   "total_matches":  "Partidos",
+                                                   "total_minutes":  "Minutos totales",
+                                                   "goals":  "Goles",
+                                                   "assists":  "Asistencias",
+                                                   "goals_per90":  "Goles por 90",
+                                                   "starter_rate":  "Tasa de titular"
+                                               },
+                                    "axis":  {
+                                                 "goals":  "Goles",
+                                                 "assists":  "Asistencias",
+                                                 "matches":  "Partidos",
+                                                 "minutes":  "Min. promedio",
+                                                 "starter_rate":  "Tasa de titular"
+                                             },
+                                    "series":  {
+                                                   "goals":  "Goles",
+                                                   "minutes":  "Minutos",
+                                                   "match_share":  "Cuota de aparición",
+                                                   "goals_by_kind":  "Goles por tipo"
+                                               },
+                                    "chart":  {
+                                                  "radar_title":  "Distribución de stats",
+                                                  "line_title":  "Tendencia mensual (goles / minutos)",
+                                                  "doughnut_title":  "Cuota de aparición por tipo",
+                                                  "bar_title":  "Distribución de goles por tipo"
+                                              },
+                                    "best":  {
+                                                 "title":  "Récord personal",
+                                                 "top_goals":  "Más goles en un mes",
+                                                 "longest_minutes":  "Más minutos en un mes"
+                                             },
+                                    "empty":  {
+                                                  "no_data":  "No hay datos para mostrar",
+                                                  "no_trend":  "Sin datos de tendencia",
+                                                  "no_goals":  "Sin goles registrados",
+                                                  "no_matches":  "Aún no hay registros de partidos",
+                                                  "member_no_matches":  "Sin registros de partidos para este miembro",
+                                                  "no_team":  "Sin equipos",
+                                                  "record_cta":  "Registrar un partido"
+                                              },
+                                    "error":  {
+                                                  "load_failed":  "Error al cargar las estadísticas"
+                                              },
+                                    "team_title":  "Análisis de partidos del equipo",
+                                    "team_subtitle":  "Visualiza el registro de victorias/derrotas, goles, clasificaciones de jugadores y forma reciente",
+                                    "team":  {
+                                                 "metric":  {
+                                                                "total_matches":  "Partidos",
+                                                                "win_draw_loss":  "V/E/D",
+                                                                "goals_for":  "Goles a favor",
+                                                                "goals_against":  "Goles en contra",
+                                                                "goal_difference":  "Diferencia de goles"
+                                                            },
+                                                 "series":  {
+                                                                "points":  "Puntos (acumulado)",
+                                                                "player_goals":  "Goles",
+                                                                "matches_by_kind":  "Partidos"
+                                                            },
+                                                 "chart":  {
+                                                               "result_title":  "Resumen de resultados",
+                                                               "player_goals_title":  "Máximos goleadores",
+                                                               "recent_form_title":  "Forma reciente (tendencia de puntos)",
+                                                               "matches_by_kind_title":  "Partidos por tipo"
+                                                           }
+                                             },
+                                    "widget":  {
+                                                   "summary":  {
+                                                                   "title":  "Resumen de partido",
+                                                                   "wdl_label":  "V/E/D",
+                                                                   "goals_label":  "GF/GC",
+                                                                   "recent_form":  "Forma reciente",
+                                                                   "in_progress_label":  "En progreso",
+                                                                   "resume_recording":  "Reanudar registro",
+                                                                   "no_matches":  "Aún no hay registros de partidos",
+                                                                   "view_analytics":  "Ver análisis detallado"
+                                                               }
+                                               }
+                                },
+                  "kind":  {
+                               "PRACTICE":  "Entrenamiento",
+                               "FRIENDLY":  "Amistoso",
+                               "TOURNAMENT":  "Torneo",
+                               "LEAGUE":  "Liga"
+                           },
+                  "status":  {
+                                 "SCHEDULED":  "Programado",
+                                 "IN_PROGRESS":  "En curso",
+                                 "COMPLETED":  "Finalizado",
+                                 "POSTPONED":  "Aplazado",
+                                 "CANCELLED":  "Cancelado",
+                                 "PLANNED":  "Programado",
+                                 "CLOSED":  "Confirmado"
+                             },
+                  "event_type":  {
+                                     "STARTER":  "Titular",
+                                     "SUB_IN":  "Entra",
+                                     "SUB_OUT":  "Sale",
+                                     "GOAL":  "Gol",
+                                     "ASSIST":  "Asistencia",
+                                     "OWN_GOAL":  "Gol en propia puerta",
+                                     "PENALTY_GOAL":  "Penalti (marcado)",
+                                     "PENALTY_MISS":  "Penalti (fallado)",
+                                     "PENALTY_SHOOTOUT":  "Tanda de penaltis",
+                                     "YELLOW_CARD":  "Amonestación",
+                                     "RED_CARD":  "Expulsión",
+                                     "SECOND_YELLOW":  "Segunda amarilla",
+                                     "SAVE":  "Parada",
+                                     "INJURY":  "Lesión",
+                                     "PERIOD_START":  "Inicio del periodo",
+                                     "PERIOD_END":  "Fin del periodo",
+                                     "OTHER":  "Otro",
+                                     "FIELD_GOAL_2":  "2 puntos",
+                                     "FIELD_GOAL_3":  "3 puntos",
+                                     "FREE_THROW":  "Tiro libre",
+                                     "SHOT_MISS":  "Tiro fallado",
+                                     "REBOUND":  "Rebote",
+                                     "STEAL":  "Robo",
+                                     "BLOCK":  "Tapón",
+                                     "TURNOVER":  "Pérdida",
+                                     "PERSONAL_FOUL":  "Falta personal",
+                                     "TECHNICAL_FOUL":  "Falta técnica",
+                                     "FOUL_OUT":  "Eliminación por faltas",
+                                     "SET_END":  "Fin de set",
+                                     "SERVE_ERROR":  "Error de saque",
+                                     "SERVE_ACE":  "Ace de saque",
+                                     "POINT":  "Punto",
+                                     "BLOCK_POINT":  "Punto de bloqueo",
+                                     "ATTACK_POINT":  "Punto de ataque",
+                                     "SET_START":  "Inicio de set"
+                                 },
+                  "card_type":  {
+                                    "YELLOW":  "Amonestación",
+                                    "RED":  "Expulsión",
+                                    "SECOND_YELLOW":  "Segunda amarilla"
+                                },
+                  "card_reason":  {
+                                      "C1":  "Conducta antideportiva",
+                                      "C2":  "Juego brusco",
+                                      "C3":  "Desacuerdo",
+                                      "C4":  "Infracciones reiteradas",
+                                      "C5":  "Retrasar la reanudación",
+                                      "C6":  "Distancia insuficiente",
+                                      "C7":  "Entrar sin permiso",
+                                      "C8":  "Salir sin permiso",
+                                      "S1":  "Juego brusco grave",
+                                      "S2":  "Conducta violenta",
+                                      "S3":  "Escupir",
+                                      "S4":  "Impedir un gol (mano)",
+                                      "S5":  "Impedir un gol (otro)",
+                                      "S6":  "Lenguaje o gestos ofensivos",
+                                      "CS":  "Dos amonestaciones",
+                                      "PF":  "Falta personal",
+                                      "SF":  "Falta en tiro",
+                                      "OF":  "Falta en ataque",
+                                      "TF":  "Falta técnica",
+                                      "UF":  "Falta antideportiva",
+                                      "DF":  "Falta descalificante"
+                                  },
+                  "position":  {
+                                   "GK":  "Portero",
+                                   "DF":  "Defensa",
+                                   "MF":  "Centrocampista",
+                                   "FW":  "Delantero",
+                                   "FIXO":  "Fijo",
+                                   "ALA":  "Ala",
+                                   "PIVO":  "Pívot",
+                                   "PG":  "Base",
+                                   "SG":  "Escolta",
+                                   "SF":  "Alero",
+                                   "PF":  "Ala-pívot",
+                                   "C":  "Pívot",
+                                   "S":  "Colocador",
+                                   "OP":  "Opuesto",
+                                   "MB":  "Central",
+                                   "OH":  "Receptor",
+                                   "L":  "Libero"
+                               },
+                  "org_context":  {
+                                      "resolve_failed":  "No se pudo resolver la información del equipo/organización. Verifica tus membresías"
+                                  },
+                  "entry":  {
+                                "record_from_schedule":  "Registrar este partido",
+                                "record_from_schedule_hint":  "Comienza a registrar el partido de este evento",
+                                "resolving":  "Preparando el registro del partido…"
+                            },
+                  "fixtures":  {
+                                   "title":  "Calendario de partidos",
+                                   "back":  "Volver al torneo",
+                                   "round":  "Jornada {n}",
+                                   "record":  "Registrar",
+                                   "venue_tbd":  "Sede por definir",
+                                   "date_tbd":  "Fecha por definir",
+                                   "tbd_participant":  "Por definir",
+                                   "no_score":  "Programado",
+                                   "empty":  "Aún no hay partidos",
+                                   "load_failed":  "No se pudo cargar el calendario de partidos",
+                                   "record_not_participant":  "Tu equipo no participa en este partido, por lo que no se puede registrar",
+                                   "status":  {
+                                                  "SCHEDULED":  "Programado",
+                                                  "IN_PROGRESS":  "En curso",
+                                                  "COMPLETED":  "Finalizado",
+                                                  "POSTPONED":  "Aplazado",
+                                                  "CANCELLED":  "Cancelado"
+                                              }
+                               },
+                  "foul_type":  {
+                                    "PERSONAL_FOUL":  "Falta personal",
+                                    "TECHNICAL_FOUL":  "Falta técnica"
+                                },
+                  "set":  {
+                              "increment_home":  "Local +1",
+                              "increment_away":  "Visitante +1",
+                              "confirm_set":  "Confirmar set",
+                              "deuce_hint":  "Deuce: jugar hasta ventaja de 2 puntos",
+                              "in_progress":  "En curso",
+                              "past_sets":  "Sets completados",
+                              "set_label":  "Set {n}",
+                              "deuce":  "Deuce",
+                              "confirm_hint":  "Necesita {n} pts y ventaja de 2 para confirmar",
+                              "decrement_home":  "Local -1",
+                              "away_points_label":  "Puntos visitante",
+                              "sets_to_win":  "Al mejor de {n}",
+                              "match_completed":  "Partido terminado",
+                              "home_points_label":  "Puntos local",
+                              "target_points":  "Objetivo {n} pts",
+                              "sets_label":  "Marcador de sets",
+                              "decrement_away":  "Visitante -1",
+                              "start_first_set":  "Iniciar set 1"
+                          }
+              }
 }

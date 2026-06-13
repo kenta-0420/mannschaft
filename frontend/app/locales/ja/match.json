@@ -371,7 +371,14 @@
       "TURNOVER": "ターンオーバー",
       "PERSONAL_FOUL": "パーソナルファウル",
       "TECHNICAL_FOUL": "テクニカルファウル",
-      "FOUL_OUT": "退場（ファウルアウト）"
+      "FOUL_OUT": "退場（ファウルアウト）",
+      "SET_START": "セット開始",
+      "SET_END": "セット終了",
+      "POINT": "得点",
+      "SERVE_ACE": "サービスエース",
+      "BLOCK_POINT": "ブロック得点",
+      "ATTACK_POINT": "アタック決定",
+      "SERVE_ERROR": "サーブミス"
     },
     "card_type": {
       "YELLOW": "警告",
@@ -413,7 +420,12 @@
       "SG": "シューティングガード",
       "SF": "スモールフォワード",
       "PF": "パワーフォワード",
-      "C": "センター"
+      "C": "センター",
+      "OH": "アウトサイドヒッター",
+      "OP": "オポジット",
+      "MB": "ミドルブロッカー",
+      "S": "セッター",
+      "L": "リベロ"
     },
     "org_context": {
       "resolve_failed": "チーム・組織の情報を解決できませんでした。所属を確認してください"
@@ -446,6 +458,26 @@
     "foul_type": {
       "PERSONAL_FOUL": "パーソナルファウル",
       "TECHNICAL_FOUL": "テクニカルファウル"
+    },
+    "set": {
+      "set_label": "第{n}セット",
+      "sets_label": "セットスコア",
+      "sets_to_win": "先{n}セット先取",
+      "target_points": "目標{n}点",
+      "deuce": "デュース",
+      "deuce_hint": "デュース中：2点差がつくまで継続",
+      "confirm_set": "セット確定",
+      "confirm_hint": "{n}点先取かつ2点差で確定できます",
+      "match_completed": "試合終了",
+      "start_first_set": "第1セット開始",
+      "in_progress": "進行中",
+      "past_sets": "確定済みセット",
+      "home_points_label": "自チーム得点",
+      "away_points_label": "相手得点",
+      "increment_home": "自チーム+1",
+      "increment_away": "相手+1",
+      "decrement_home": "自チーム-1",
+      "decrement_away": "相手-1"
     }
   }
 }
