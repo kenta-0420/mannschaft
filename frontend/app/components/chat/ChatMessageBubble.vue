@@ -120,6 +120,7 @@ function onContextMenuSelect(key: string) {
       break
     case 'copy':
       if (props.message.body) {
+        // クリップボード書き込み失敗（権限拒否・非対応ブラウザ）は非クリティカルのため握りつぶす。
         navigator.clipboard.writeText(props.message.body).catch(() => {})
       }
       break
