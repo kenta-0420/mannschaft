@@ -25,6 +25,8 @@ public class EncryptedStringConverter implements AttributeConverter<String, Stri
         if (dbData == null) {
             return null;
         }
-        return EncryptionServiceHolder.getEncryptionService().decrypt(dbData);
+        // 暗号化導入（V9.053）前に平文のまま保存されたレガシー値（システムユーザー等のシードデータ）は
+        // そのまま返す。形が暗号文なのに復号失敗する真の異常は decryptLegacyAware が例外送出する。
+        return EncryptionServiceHolder.getEncryptionService().decryptLegacyAware(dbData);
     }
 }

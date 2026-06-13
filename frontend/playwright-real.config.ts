@@ -23,13 +23,17 @@ export default defineConfig({
       testMatch: /.*real-user\.setup\.ts/,
     },
     {
+      name: 'setup-real-admin',
+      testMatch: /.*real-admin\.setup\.ts/,
+    },
+    {
       name: 'chromium-real',
       use: {
         ...devices['Desktop Chrome'],
         storageState: 'tests/e2e/.auth/real-user.json',
       },
       testMatch: '**/real/**/*.spec.ts',
-      dependencies: ['setup-real-user'],
+      dependencies: ['setup-real-user', 'setup-real-admin'],
     },
   ],
   timeout: 60_000,
