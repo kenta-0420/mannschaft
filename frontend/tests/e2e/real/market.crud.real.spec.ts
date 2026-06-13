@@ -414,6 +414,39 @@ test('MRC-AUTHZ: MEMBER ロールのユーザーは札を作成できない（40
 })
 
 // ──────────────────────────────────────────────────────────────────────────
+// MRC-AUTHZ-2: MEMBER は他人（ADMIN チーム）の札を編集できない（横方向 IDOR 防止）
+//   本陣救出 market-role-check.real.spec.ts B5 由来。MRC-AUTHZ が「作成」の認可境界を
+//   固定するのに対し、こちらは「他人リソースへの更新（PATCH）」の認可境界を固定する。
+// ──────────────────────────────────────────────────────────────────────────
+test('MRC-AUTHZ-2: MEMBER は他人の札を編集できない（PATCH が 403 で拒否）', async () => {
+  // ADMIN が DRAFT 札を作成（公開不要・編集対象としてのみ使う）
+  const createRes = await api.post(`${BE_API}/teams/${adminTeamId}/recruitment-listings`, {
+    headers: authHeaders(adminToken),
+    data: {
+      categoryId: CATEGORY_PRACTICE_MATCH,
+      title: 'MRC-AUTHZ-2 編集対象札（DRAFT）',
+      participationType: 'INDIVIDUAL',
+      ...FUTURE_API,
+      capacity: 4,
+      minCapacity: 1,
+      paymentEnabled: false,
+      visibility: 'PUBLIC',
+    },
+  })
+  expect(createRes.status(), 'ADMIN の札作成は 201').toBe(201)
+  const created = (await createRes.json()) as { data: { id: number } }
+  cleanupIds.push(created.data.id)
+
+  // MEMBER が他人の札を PATCH → 403 で拒否される
+  const member = await login(api, MEMBER_EMAIL, MEMBER_PASSWORD)
+  const patchRes = await api.patch(`${BE_API}/recruitment-listings/${created.data.id}`, {
+    headers: authHeaders(member.accessToken),
+    data: { title: 'MEMBER による不正編集' },
+  })
+  expect(patchRes.status(), 'MEMBER の他人札編集は 403 で拒否').toBe(403)
+})
+
+// ──────────────────────────────────────────────────────────────────────────
 // MRC-BUG: PUBLIC publish の配信対象0件は RECRUITMENT_204 を 400 で返す（旧 500 → 400 化の回帰固定）
 //
 // 🔴 旧バグ（2026-06-02 実機 E2E で発覚）:
