@@ -6,6 +6,7 @@ definePageMeta({
 
 const orgStore = useOrganizationStore()
 const foldersStore = useScopeFoldersStore()
+const { handleApiError } = useErrorHandler()
 const route = useRoute()
 const router = useRouter()
 
@@ -60,7 +61,8 @@ function setCurrentFolderId(value: CurrentFolder) {
 }
 
 onMounted(async () => {
-  await orgStore.fetchMyOrganizations().catch(() => {})
+  // 重要データ（所属組織一覧）の取得失敗はユーザーに通知する。
+  await orgStore.fetchMyOrganizations().catch((e) => handleApiError(e, '組織一覧取得'))
   try {
     await foldersStore.fetchAll('ORGANIZATION')
   }

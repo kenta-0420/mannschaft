@@ -204,7 +204,9 @@ class SecurityConfigAuthorizationTest {
         });
     }
 
-    // ---- webhook 4 系統: 未認証で 401/403 にならない（permitAll） ----
+    // ---- webhook 3 系統: 未認証で 401/403 にならない（permitAll） ----
+    // ※ SES バウンス/苦情通知は F09.6 Phase 8a で SQS リスナー方式へ移行し HTTP 受け口を廃止した。
+    //    /api/v1/webhooks/ses は permitAll から外れ deny-by-default 対象に戻る（下記の専用テストで検証）。
 
     @Test
     @WithAnonymousUser
@@ -216,9 +218,10 @@ class SecurityConfigAuthorizationTest {
 
     @Test
     @WithAnonymousUser
-    @DisplayName("匿名: POST /api/v1/webhooks/ses は認証で弾かれない")
-    void anonymous_ses_webhook_not_auth_rejected() throws Exception {
-        expectNotAuthRejected(mockMvc.perform(post("/api/v1/webhooks/ses")),
+    @DisplayName("匿名: POST /api/v1/webhooks/ses は廃止済みで permitAll されない（SQS 移行・F09.6 Phase 8a）")
+    void anonymous_ses_webhook_no_longer_permit_all() throws Exception {
+        // SQS 方式へ移行し HTTP 受け口を撤去したため、deny-by-default で 401/403 に戻ること。
+        expectAuthRejected(mockMvc.perform(post("/api/v1/webhooks/ses")),
                 "POST /api/v1/webhooks/ses");
     }
 

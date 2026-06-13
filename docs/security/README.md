@@ -40,7 +40,7 @@
 | A05 セキュリティの設定ミス | CSP / セキュリティヘッダー / CORS / devtools 本番無効化 / Actuator は SYSTEM_ADMIN 限定 | [03](03_security_headers_and_csp.md) |
 | A06 脆弱で古いコンポーネント | Dependabot / OWASP Dependency-Check / npm audit | [04](04_dependency_and_supply_chain.md) |
 | A07 識別と認証の失敗 | BCrypt(12) / アカウントロック / トークンローテーション / HttpOnly+Secure+SameSite Cookie | [02](02_cookie_and_session.md), F01.1, F12.4 |
-| A08 ソフトウェアとデータの整合性の不備 | webhook 署名検証（Stripe `Stripe-Signature` / SNS / LINE `X-Line-Signature` HMAC-SHA256 🟢 **実装済み（フラグ段階導入・#Phase8b）**）/ 内部トークン / SRI は今後検討 | [01](01_authorization_baseline.md) §webhook, [04](04_dependency_and_supply_chain.md) |
+| A08 ソフトウェアとデータの整合性の不備 | webhook 認証: Stripe = 署名検証実装済 / SES = SQS 内部認証方式へ移行（F09.6 Phase 8a・HTTP 受け口廃止・署名検証不要化）/ LINE = `X-Line-Signature` HMAC-SHA256 🟢 **実装済み（フラグ段階導入・Phase 8b）** / incoming = パストークン DB 照合。内部トークン / SRI は今後検討 | [01](01_authorization_baseline.md) §webhook, [04](04_dependency_and_supply_chain.md) |
 | A09 ログとモニタリングの不備 | 監査ログ基盤 / セキュリティスキャン状態表示 | F10.3 |
 | A10 SSRF | 外部 URL はサーバーから fetch しない方針（表示用のみ） | [05](05_injection_and_input_validation.md), F01.2-04 |
 
@@ -92,7 +92,8 @@
 - [ ] `MANNSCHAFT_JWT_SECRET` を 256bit 以上のランダム値に設定
 - [ ] `MANNSCHAFT_ALLOWED_ORIGINS` を本番フロントオリジンに設定（ワイルドカード禁止）
 - [ ] `MANNSCHAFT_ENCRYPTION_KEY` / `MANNSCHAFT_HMAC_KEY` / `JOB_QR_SIGNING_SECRET` を設定
-- [ ] 認可既定値が `.authenticated()` で動作（webhook 4 系統が無認証到達することを確認）
+- [ ] 認可既定値が `.authenticated()` で動作（webhook 3 系統 Stripe/LINE/incoming が無認証到達することを確認。SES は SQS 移行で HTTP 受け口なし）
+- [ ] SES 通知 SQS: `SES_NOTIFICATION_QUEUE_NAME` を設定し、SES Identity/Configuration Set の Bounce/Complaint 通知先が SNS Topic に結線されていることを確認（F09.6 Phase 8a）
 - [ ] CSP 違反がブラウザコンソールに出ないことを主要画面で確認
 - [ ] HTTPS/HSTS が有効（アプリ層 or Cloudflare/LB 層、[03](03_security_headers_and_csp.md) §TLS）
 

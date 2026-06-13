@@ -18,6 +18,7 @@ interface EscalateForm {
 export function useAdminReports() {
   const adminReportApi = useAdminReportApi()
   const { success, error: showError } = useNotification()
+  const { t } = useI18n()
 
   const reports = ref<ReportResponse[]>([])
   const stats = ref<ReportStatsResponse | null>(null)
@@ -34,14 +35,14 @@ export function useAdminReports() {
   const showEscalateDialog = ref(false)
   const escalateForm = ref<EscalateForm>({ reason: '', guidelineSection: '' })
 
-  const statusOptions = [
-    { label: 'すべて', value: undefined },
-    { label: '未対応', value: 'PENDING' },
-    { label: '対応中', value: 'REVIEWING' },
-    { label: 'エスカレーション', value: 'ESCALATED' },
-    { label: '解決済み', value: 'RESOLVED' },
-    { label: '却下', value: 'DISMISSED' },
-  ]
+  const statusOptions = computed(() => [
+    { label: t('admin_report.status_options.all'), value: undefined },
+    { label: t('admin_report.status_options.pending'), value: 'PENDING' },
+    { label: t('admin_report.status_options.reviewing'), value: 'REVIEWING' },
+    { label: t('admin_report.status_options.escalated'), value: 'ESCALATED' },
+    { label: t('admin_report.status_options.resolved'), value: 'RESOLVED' },
+    { label: t('admin_report.status_options.dismissed'), value: 'DISMISSED' },
+  ])
 
   async function load() {
     loading.value = true
@@ -54,7 +55,7 @@ export function useAdminReports() {
       totalRecords.value = reportsRes.meta?.totalElements ?? reportsRes.data.length
       stats.value = statsRes.data
     } catch {
-      showError('レポートの取得に失敗しました')
+      showError(t('admin_report.messages.load_failed'))
     } finally {
       loading.value = false
     }
@@ -75,22 +76,22 @@ export function useAdminReports() {
     if (!selectedReport.value || !newNote.value.trim()) return
     try {
       await adminReportApi.createReportNote(selectedReport.value.id, { note: newNote.value })
-      success('メモを追加しました')
+      success(t('admin_report.messages.note_added'))
       newNote.value = ''
       const res = await adminReportApi.getReportNotes(selectedReport.value.id)
       notes.value = res.data
     } catch {
-      showError('メモの追加に失敗しました')
+      showError(t('admin_report.messages.note_add_failed'))
     }
   }
 
   async function review(id: number) {
     try {
       await adminReportApi.reviewReport(id)
-      success('レビューを開始しました')
+      success(t('admin_report.messages.review_started'))
       await load()
     } catch {
-      showError('レビュー開始に失敗しました')
+      showError(t('admin_report.messages.review_failed'))
     }
   }
 
@@ -104,21 +105,21 @@ export function useAdminReports() {
     if (!selectedReport.value) return
     try {
       await adminReportApi.resolveReport(selectedReport.value.id, resolveForm.value)
-      success('レポートを解決しました')
+      success(t('admin_report.messages.resolved'))
       showResolveDialog.value = false
       await load()
     } catch {
-      showError('解決に失敗しました')
+      showError(t('admin_report.messages.resolve_failed'))
     }
   }
 
   async function dismiss(id: number) {
     try {
       await adminReportApi.dismissReport(id)
-      success('レポートを却下しました')
+      success(t('admin_report.messages.dismissed'))
       await load()
     } catch {
-      showError('却下に失敗しました')
+      showError(t('admin_report.messages.dismiss_failed'))
     }
   }
 
@@ -132,39 +133,39 @@ export function useAdminReports() {
     if (!selectedReport.value) return
     try {
       await adminReportApi.escalateReport(selectedReport.value.id, escalateForm.value)
-      success('エスカレーションしました')
+      success(t('admin_report.messages.escalated'))
       showEscalateDialog.value = false
       await load()
     } catch {
-      showError('エスカレーションに失敗しました')
+      showError(t('admin_report.messages.escalate_failed'))
     }
   }
 
   async function reopen(id: number) {
     try {
       await adminReportApi.reopenReport(id)
-      success('レポートを再開しました')
+      success(t('admin_report.messages.reopened'))
       await load()
     } catch {
-      showError('再開に失敗しました')
+      showError(t('admin_report.messages.reopen_failed'))
     }
   }
 
   async function hideContent(id: number) {
     try {
       await adminReportApi.hideContent(id)
-      success('コンテンツを非表示にしました')
+      success(t('admin_report.messages.content_hidden'))
     } catch {
-      showError('非表示に失敗しました')
+      showError(t('admin_report.messages.hide_failed'))
     }
   }
 
   async function restoreContent(id: number) {
     try {
       await adminReportApi.restoreContent(id)
-      success('コンテンツを復元しました')
+      success(t('admin_report.messages.content_restored'))
     } catch {
-      showError('復元に失敗しました')
+      showError(t('admin_report.messages.restore_failed'))
     }
   }
 

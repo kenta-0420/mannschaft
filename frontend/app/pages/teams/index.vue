@@ -7,6 +7,7 @@ definePageMeta({
 const teamStore = useTeamStore()
 const foldersStore = useScopeFoldersStore()
 const { templateLabel } = useScopeLabels()
+const { handleApiError } = useErrorHandler()
 const route = useRoute()
 const router = useRouter()
 
@@ -67,8 +68,9 @@ function setCurrentFolderId(value: CurrentFolder) {
 }
 
 onMounted(async () => {
-  // 直接アクセス時もチーム一覧が表示されるよう常にフェッチする
-  await teamStore.fetchMyTeams().catch(() => {})
+  // 直接アクセス時もチーム一覧が表示されるよう常にフェッチする。
+  // 重要データ（所属チーム一覧）の取得失敗はユーザーに通知する。
+  await teamStore.fetchMyTeams().catch((e) => handleApiError(e, 'チーム一覧取得'))
   try {
     await foldersStore.fetchAll('TEAM')
   }

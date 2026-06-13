@@ -14,6 +14,14 @@ spring:
   jpa:
     show-sql: false
 
+  # F09.6 Phase 8a: 本番は SES 通知 SQS リスナーを有効化する。
+  # SES_NOTIFICATION_QUEUE_NAME（terraform 出力のキュー名）も併せて注入すること。
+  # IAM はタスクロール（mannschaft-prod-task）に ReceiveMessage/DeleteMessage/GetQueueAttributes を付与済み。
+  cloud:
+    aws:
+      sqs:
+        enabled: ${MANNSCHAFT_SQS_ENABLED:true}
+
 # F08.7 Phase 9-α / 9-δ: 本番環境はデフォルト無効（明示的に false 維持）。
 # 組織毎オプトインは三値論理 (budget_configs.shift_budget_enabled) で Phase 9-δ から有効化可能。
 # monthly-close-cron-enabled: 月次締めバッチの cron 自動起動は本番でも OFF（運用側で

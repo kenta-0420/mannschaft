@@ -10,24 +10,24 @@ const emit = defineEmits<{
 <template>
   <Dialog
     v-model:visible="visible"
-    header="エスカレーション"
+    :header="$t('admin_report.escalate.header')"
     :style="{ width: '500px' }"
     modal
   >
     <div class="flex flex-col gap-4">
       <div>
-        <label class="mb-1 block text-sm font-medium">理由</label>
+        <label class="mb-1 block text-sm font-medium">{{ $t('admin_report.escalate.reason') }}</label>
         <Textarea v-model="form.reason" rows="3" class="w-full" />
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium">ガイドラインセクション</label>
+        <label class="mb-1 block text-sm font-medium">{{ $t('admin_report.escalate.guideline_section') }}</label>
         <InputText v-model="form.guidelineSection" class="w-full" />
       </div>
     </div>
     <template #footer>
       <div class="flex justify-end gap-2">
-        <Button label="キャンセル" severity="secondary" @click="visible = false" />
-        <Button label="エスカレーションする" severity="warn" @click="emit('escalate')" />
+        <Button :label="$t('admin_report.escalate.cancel')" severity="secondary" @click="visible = false" />
+        <Button :label="$t('admin_report.escalate.submit')" severity="warn" @click="emit('escalate')" />
       </div>
     </template>
   </Dialog>
