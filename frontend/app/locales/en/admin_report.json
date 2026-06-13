@@ -1,0 +1,90 @@
+{
+  "admin_report": {
+    "title": "Report Management",
+    "empty": "No reports",
+    "status_options": {
+      "all": "All",
+      "pending": "Pending",
+      "reviewing": "Reviewing",
+      "escalated": "Escalated",
+      "resolved": "Resolved",
+      "dismissed": "Dismissed"
+    },
+    "messages": {
+      "load_failed": "Failed to load reports",
+      "note_added": "Note added",
+      "note_add_failed": "Failed to add note",
+      "review_started": "Review started",
+      "review_failed": "Failed to start review",
+      "resolved": "Report resolved",
+      "resolve_failed": "Failed to resolve",
+      "dismissed": "Report dismissed",
+      "dismiss_failed": "Failed to dismiss",
+      "escalated": "Escalated",
+      "escalate_failed": "Failed to escalate",
+      "reopened": "Report reopened",
+      "reopen_failed": "Failed to reopen",
+      "content_hidden": "Content hidden",
+      "hide_failed": "Failed to hide content",
+      "content_restored": "Content restored",
+      "restore_failed": "Failed to restore content"
+    },
+    "stats": {
+      "pending": "Pending",
+      "reviewing": "Reviewing",
+      "escalated": "Escalated",
+      "resolved": "Resolved",
+      "dismissed": "Dismissed",
+      "total": "Total"
+    },
+    "table": {
+      "status": "Status",
+      "target_type": "Target Type",
+      "reason": "Reason",
+      "reported_at": "Reported At",
+      "actions": "Actions",
+      "status_placeholder": "Status"
+    },
+    "actions": {
+      "review": "Review",
+      "resolve": "Resolve",
+      "dismiss": "Dismiss",
+      "escalate": "Escalate",
+      "reopen": "Reopen"
+    },
+    "detail": {
+      "header": "Report Details",
+      "target_type": "Target Type",
+      "status": "Status",
+      "reason": "Reason",
+      "reported_at": "Reported At",
+      "description": "Description",
+      "hide_content": "Hide Content",
+      "restore_content": "Restore Content",
+      "internal_notes": "Internal Notes",
+      "no_notes": "No notes",
+      "note_placeholder": "Enter a note...",
+      "add_note": "Add"
+    },
+    "resolve": {
+      "header": "Resolve Report",
+      "action_type": "Action Type",
+      "note": "Note",
+      "guideline_section": "Guideline Section",
+      "cancel": "Cancel",
+      "submit": "Resolve",
+      "action": {
+        "warning": "Warning",
+        "content_delete": "Delete Content",
+        "account_freeze": "Freeze Account"
+      }
+    },
+    "escalate": {
+      "header": "Escalation",
+      "reason": "Reason",
+      "guideline_section": "Guideline Section",
+      "cancel": "Cancel",
+      "submit": "Escalate"
+    }
+  }
+}

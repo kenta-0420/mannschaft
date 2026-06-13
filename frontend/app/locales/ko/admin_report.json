@@ -1,0 +1,90 @@
+{
+  "admin_report": {
+    "title": "신고 관리",
+    "empty": "신고가 없습니다",
+    "status_options": {
+      "all": "전체",
+      "pending": "미처리",
+      "reviewing": "처리 중",
+      "escalated": "에스컬레이션",
+      "resolved": "해결됨",
+      "dismissed": "반려"
+    },
+    "messages": {
+      "load_failed": "신고 조회에 실패했습니다",
+      "note_added": "메모를 추가했습니다",
+      "note_add_failed": "메모 추가에 실패했습니다",
+      "review_started": "검토를 시작했습니다",
+      "review_failed": "검토 시작에 실패했습니다",
+      "resolved": "신고를 해결했습니다",
+      "resolve_failed": "해결에 실패했습니다",
+      "dismissed": "신고를 반려했습니다",
+      "dismiss_failed": "반려에 실패했습니다",
+      "escalated": "에스컬레이션했습니다",
+      "escalate_failed": "에스컬레이션에 실패했습니다",
+      "reopened": "신고를 재개했습니다",
+      "reopen_failed": "재개에 실패했습니다",
+      "content_hidden": "콘텐츠를 숨겼습니다",
+      "hide_failed": "숨기기에 실패했습니다",
+      "content_restored": "콘텐츠를 복원했습니다",
+      "restore_failed": "복원에 실패했습니다"
+    },
+    "stats": {
+      "pending": "미처리",
+      "reviewing": "처리 중",
+      "escalated": "에스컬레이션",
+      "resolved": "해결됨",
+      "dismissed": "반려",
+      "total": "합계"
+    },
+    "table": {
+      "status": "상태",
+      "target_type": "대상 종류",
+      "reason": "사유",
+      "reported_at": "신고일",
+      "actions": "작업",
+      "status_placeholder": "상태"
+    },
+    "actions": {
+      "review": "검토",
+      "resolve": "해결",
+      "dismiss": "반려",
+      "escalate": "에스컬레이션",
+      "reopen": "재개"
+    },
+    "detail": {
+      "header": "신고 상세",
+      "target_type": "대상 종류",
+      "status": "상태",
+      "reason": "사유",
+      "reported_at": "신고일",
+      "description": "상세",
+      "hide_content": "콘텐츠 숨기기",
+      "restore_content": "콘텐츠 복원",
+      "internal_notes": "내부 메모",
+      "no_notes": "메모가 없습니다",
+      "note_placeholder": "메모를 입력하세요...",
+      "add_note": "추가"
+    },
+    "resolve": {
+      "header": "신고 해결",
+      "action_type": "조치 종류",
+      "note": "메모",
+      "guideline_section": "가이드라인 섹션",
+      "cancel": "취소",
+      "submit": "해결",
+      "action": {
+        "warning": "경고",
+        "content_delete": "콘텐츠 삭제",
+        "account_freeze": "계정 정지"
+      }
+    },
+    "escalate": {
+      "header": "에스컬레이션",
+      "reason": "사유",
+      "guideline_section": "가이드라인 섹션",
+      "cancel": "취소",
+      "submit": "에스컬레이션"
+    }
+  }
+}
