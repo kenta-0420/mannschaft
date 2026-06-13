@@ -284,11 +284,13 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/system-admin/gdpr/**").hasRole("SYSTEM_ADMIN")
                 // 外部 webhook（署名検証で認証＝JWT 非依存。docs/security/01 §3.6）
                 // JWT を持たない外部システムが叩くため deny-by-default 反転後も permitAll が必須。
-                // 各 Controller が署名/トークンを検証する（Stripe-Signature / SNS 署名 /
+                // 各 Controller が署名/トークンを検証する（Stripe-Signature /
                 // X-Line-Signature + パスシークレット / パストークン DB 照合）。
+                // ※ SES バウンス/苦情通知は F09.6 Phase 8a で SQS リスナー方式へ移行済み。
+                //    HTTP 受け口（/api/v1/webhooks/ses）を廃止したため permitAll 行も撤去した
+                //    （SQS は AWS 内部認証のため公開 HTTP エンドポイント不要・deny-by-default に戻す）。
                 .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/stripe").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/stripe/*").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/ses").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/line/webhook/*").permitAll()
                 .requestMatchers(HttpMethod.POST, "/incoming/*").permitAll()
                 // WebSocket ハンドシェイク（SockJS）。STOMP CONNECT 時に

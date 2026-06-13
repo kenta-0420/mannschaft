@@ -234,6 +234,31 @@ resource "aws_iam_role_policy" "task_ses" {
   })
 }
 
+# F09.6 Phase 8a: SES 通知 SQS の受信権限（Spring Boot の SesNotificationSqsListener が使用）
+# spring-cloud-aws は受信時に ReceiveMessage / DeleteMessage / GetQueueAttributes /
+# GetQueueUrl / ChangeMessageVisibility を呼ぶ。最小権限で当該キューのみに限定する。
+resource "aws_iam_role_policy" "task_sqs_ses" {
+  name = "sqs-ses-receive"
+  role = aws_iam_role.task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+          "sqs:GetQueueUrl",
+          "sqs:ChangeMessageVisibility"
+        ]
+        Resource = aws_sqs_queue.ses_notifications.arn
+      }
+    ]
+  })
+}
+
 # =============================================================================
 # Secrets Manager（箱のみ。値は手動投入）
 # =============================================================================
@@ -345,6 +370,18 @@ resource "aws_ecs_task_definition" "app" {
           {
             name  = "SPRING_REDIS_PORT"
             value = "6379"
+          },
+          # F09.6 Phase 8a: SES バウンス/苦情通知の SQS リスナー入口。
+          # spring-cloud-aws の @SqsListener はキュー名（URL でなく名前）を受け取る。
+          # MANNSCHAFT_SQS_ENABLED は application-prod.yml で既定 true のため明示不要だが、
+          # 将来一時停止できるよう env でも上書き可能にしておく。
+          {
+            name  = "SES_NOTIFICATION_QUEUE_NAME"
+            value = aws_sqs_queue.ses_notifications.name
+          },
+          {
+            name  = "AWS_REGION"
+            value = data.aws_region.current.name
           }
         ]
       )
@@ -440,13 +477,106 @@ resource "aws_ecs_service" "app" {
 }
 
 # =============================================================================
-# SES（SES ドメイン検証は別陣で contract 拡張とセットで実施）
+# SES バウンス/苦情通知 — SNS Topic → SQS Queue（F09.6 Phase 8a）
+# =============================================================================
+# 経路: SES（設定セットのイベント送信先 or Identity 通知）→ SNS Topic
+#       → SQS Queue → ECS の Spring Boot SesNotificationSqsListener
+#
+# 旧来の HTTP webhook（permitAll + SNS 署名検証なし）を廃止し、SQS 内部認証へ移行する。
+# SQS のアクセスポリシーで「この SNS Topic からの SendMessage のみ許可」に絞り、
+# 受信は ECS タスクロール（mannschaft-prod-task）の最小権限で行う（上記 task_sqs_ses）。
+#
+# ⚠️ SES → SNS の結線（どの通知種別を Topic に流すか）はこの module の範囲外:
+#    - Identity レベル通知の場合: SES Identity の Bounce/Complaint 通知先に
+#      aws_sns_topic.ses_notifications.arn を設定（SES Identity は DKIM 検証と同じく
+#      edge contract 拡張待ちのため別陣。aws_ses_identity_notification_topic で結線する）。
+#    - Configuration Set + Event Destination（推奨）の場合: aws_sesv2_configuration_set_event_destination
+#      の sns_destination に本 Topic を指定する。
+#    本 module では「SNS Topic / SQS / DLQ / 購読 / IAM」までを用意し、SES 側の結線は
+#    SES Identity 整備（別陣）と同時に最後のひと結びとして実施する（apply 手順を docs に明記）。
+
+# --- DLQ（処理に失敗し続けたメッセージの退避先）---
+resource "aws_sqs_queue" "ses_notifications_dlq" {
+  name = "${var.prefix}-ses-notifications-dlq"
+
+  # 退避メッセージは原因調査のため 14 日（SQS 最大）保持する
+  message_retention_seconds = 1209600
+
+  # 保存時暗号化（SSE-SQS。KMS 不要・追加料金なし）
+  sqs_managed_sse_enabled = true
+}
+
+# --- 本キュー（SES 通知の受信キュー）---
+resource "aws_sqs_queue" "ses_notifications" {
+  name = "${var.prefix}-ses-notifications"
+
+  # 可視性タイムアウト: リスナーの処理時間に余裕を持たせる（DB 更新数十 ms 想定だが
+  # コールドスタート/再試行を考慮し 60 秒）。Spring の処理失敗時はこの時間後に再配信される。
+  visibility_timeout_seconds = 60
+
+  # 通知は数日内に処理されれば十分。未処理滞留の上限として 4 日保持。
+  message_retention_seconds = 345600
+
+  # ロングポーリング（空受信のコスト/スロットリング削減）
+  receive_wait_time_seconds = 20
+
+  sqs_managed_sse_enabled = true
+
+  # 3 回処理に失敗したメッセージは DLQ へ退避する
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.ses_notifications_dlq.arn
+    maxReceiveCount     = 3
+  })
+}
+
+# --- SNS Topic（SES 通知の集約先）---
+resource "aws_sns_topic" "ses_notifications" {
+  name = "${var.prefix}-ses-notifications"
+}
+
+# --- SNS → SQS サブスクリプション（HTTPS でなく sqs プロトコル）---
+# raw_message_delivery = false（既定）: SQS には SNS エンベロープ（Message に SES 通知 JSON 文字列）が届く。
+# リスナー（SesNotificationSqsListener）はエンベロープ/raw の両方をパースできる実装にしてある。
+resource "aws_sns_topic_subscription" "ses_notifications_to_sqs" {
+  topic_arn = aws_sns_topic.ses_notifications.arn
+  protocol  = "sqs"
+  endpoint  = aws_sqs_queue.ses_notifications.arn
+}
+
+# --- SQS アクセスポリシー（この SNS Topic からの SendMessage のみ許可）---
+# 偽造メッセージ注入を防ぐため、Principal=SNS かつ aws:SourceArn が当該 Topic の場合のみ許可する。
+resource "aws_sqs_queue_policy" "ses_notifications" {
+  queue_url = aws_sqs_queue.ses_notifications.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "AllowSNSPublish"
+        Effect    = "Allow"
+        Principal = { Service = "sns.amazonaws.com" }
+        Action    = "sqs:SendMessage"
+        Resource  = aws_sqs_queue.ses_notifications.arn
+        Condition = {
+          ArnEquals = {
+            "aws:SourceArn" = aws_sns_topic.ses_notifications.arn
+          }
+        }
+      }
+    ]
+  })
+}
+
+# =============================================================================
+# SES Identity / DKIM（別陣で contract 拡張とセットで実施・未着手）
 # =============================================================================
 # TODO: SES ドメイン検証は別陣で contract 拡張とセットで実施すること。
 #       現在の edge module の outputs.tf には DKIM トークンの出力契約がないため、
 #       ここで aws_ses_domain_identity + aws_ses_domain_dkim を有効化しても
 #       Cloudflare 側で DKIM レコードを作成できない。
 #       contract 拡張（edge outputs に dkim_tokens を追加）と同時に実装すること。
+#       SES Identity 整備時に、Bounce/Complaint 通知先を aws_sns_topic.ses_notifications に
+#       結線する（aws_ses_identity_notification_topic もしくは Configuration Set Event Destination）。
 #
 # # resource "aws_ses_domain_identity" "this" {
 # #   domain = var.domain_name
@@ -454,6 +584,18 @@ resource "aws_ecs_service" "app" {
 # #
 # # resource "aws_ses_domain_dkim" "this" {
 # #   domain = aws_ses_domain_identity.this.domain
+# # }
+# #
+# # resource "aws_ses_identity_notification_topic" "bounce" {
+# #   identity          = aws_ses_domain_identity.this.domain
+# #   notification_type = "Bounce"
+# #   topic_arn         = aws_sns_topic.ses_notifications.arn
+# # }
+# #
+# # resource "aws_ses_identity_notification_topic" "complaint" {
+# #   identity          = aws_ses_domain_identity.this.domain
+# #   notification_type = "Complaint"
+# #   topic_arn         = aws_sns_topic.ses_notifications.arn
 # # }
 # #
 # # output "ses_dkim_tokens" {

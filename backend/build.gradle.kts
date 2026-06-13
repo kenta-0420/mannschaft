@@ -89,6 +89,15 @@ dependencies {
     implementation("software.amazon.awssdk:s3")
     implementation("software.amazon.awssdk:sesv2")
 
+    // === spring-cloud-aws SQS（F09.6 Phase 8a: SES バウンス/苦情通知の SQS リスナー化） ===
+    // SES → SNS Topic → SQS Queue → @SqsListener の受信入口。HTTP webhook を廃止し
+    // SQS 内部認証（AWS SigV4）に切り替えることで SNS 署名検証コードが不要になる。
+    // BOM 3.3.x は Spring Boot 3.5 系・AWS SDK v2（既存 software.amazon.awssdk:bom）と
+    // 共存可能（spring-cloud-aws は AWS SDK v2 上に構築されている）。
+    // starter-sqs は io.awspring.cloud:sqs（@SqsListener / SqsTemplate）を引き込む。
+    implementation(platform("io.awspring.cloud:spring-cloud-aws-dependencies:3.3.0"))
+    implementation("io.awspring.cloud:spring-cloud-aws-starter-sqs")
+
     // User-Agent パース（F12.4 セッション管理）
     implementation("com.github.ua-parser:uap-java:1.6.1")
 

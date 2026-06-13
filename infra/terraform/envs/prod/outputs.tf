@@ -42,3 +42,19 @@ output "r2_bucket_name" {
   description = "Cloudflare R2 バケット名（添付ファイル等のオブジェクトストレージ）"
   value       = module.edge.r2_bucket_name
 }
+
+# F09.6 Phase 8a: SES 通知 SQS / SNS（SES Identity 結線・運用確認に使用）
+output "ses_notifications_topic_arn" {
+  description = "SES バウンス/苦情通知の SNS Topic ARN。SES Identity / Configuration Set の通知先に結線する"
+  value       = module.app.ses_notifications_topic_arn
+}
+
+output "ses_notifications_queue_name" {
+  description = "SES 通知 SQS キュー名（Spring Boot の SES_NOTIFICATION_QUEUE_NAME に自動注入済み）"
+  value       = module.app.ses_notifications_queue_name
+}
+
+output "ses_notifications_dlq_arn" {
+  description = "SES 通知 SQS の DLQ ARN（滞留メッセージ調査用）"
+  value       = module.app.ses_notifications_dlq_arn
+}
