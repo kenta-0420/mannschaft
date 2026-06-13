@@ -1,5 +1,6 @@
 package com.mannschaft.app.config;
 
+import com.mannschaft.app.match.live.MatchLiveSubscriptionInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
@@ -19,6 +20,10 @@ import java.util.Arrays;
  *
  * <p>{@link WebSocketAuthChannelInterceptor} を inbound チャンネルに登録し、
  * STOMP CONNECT フレームの JWT 検証を行う。</p>
+ *
+ * <p>さらに {@link MatchLiveSubscriptionInterceptor} を<b>認証インターセプタの後段</b>に登録し、
+ * F08.10 ライブ観戦トピック（{@code /topic/matches/{matchId}/live}）の SUBSCRIBE 認可を行う
+ * （CONNECT で確定した session userId を参照するため順序が重要・07 §J.3）。</p>
  */
 @Configuration
 @EnableWebSocketMessageBroker
@@ -26,6 +31,7 @@ import java.util.Arrays;
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final WebSocketAuthChannelInterceptor authChannelInterceptor;
+    private final MatchLiveSubscriptionInterceptor matchLiveSubscriptionInterceptor;
 
     /**
      * WebSocket ハンドシェイクで許可するオリジン。{@code CorsConfig} と同じプロパティを使用し、
@@ -61,6 +67,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
-        registration.interceptors(authChannelInterceptor);
+        // 認証（CONNECT で session userId を確定）→ 購読認可（SUBSCRIBE で canView 検証）の順で登録する。
+        // 購読認可は CONNECT 時に確定した session userId を参照するため、必ず認証の後段に置く（07 §J.3）。
+        registration.interceptors(authChannelInterceptor, matchLiveSubscriptionInterceptor);
     }
 }
