@@ -518,7 +518,24 @@
       "comment_label": "评论/备注",
       "comment_placeholder": "例：精彩的终盘对决",
       "complete": "确定结果",
-      "complete_hint": "请先选择胜者或平局"
+      "complete_hint": "请先选择胜者或平局",
+      "photo": {
+        "label": "局面照片",
+        "add": "添加照片",
+        "remove": "删除照片",
+        "hint": "图片（PNG/JPEG/WebP/GIF，最大10MB，不支持SVG）",
+        "upload_success": "局面照片已上传"
+      },
+      "error": {
+        "record_result_failed": "保存对局结果失败",
+        "create_board_failed": "创建台次失败",
+        "load_boards_failed": "获取台次列表失败",
+        "load_attachments_failed": "获取局面照片失败",
+        "delete_attachment_failed": "删除局面照片失败",
+        "upload_photo_failed": "上传局面照片失败",
+        "attachment_type_invalid": "请选择图片文件（不支持SVG）",
+        "attachment_too_large": "文件过大（最大10MB）"
+      }
     },
     "board": {
       "title": "团体赛棋盘进度",
@@ -534,7 +551,8 @@
         "confirmed": "已确定",
         "in_progress": "记录中",
         "pending": "未输入"
-      }
+      },
+      "create_pending_notice": "此台次尚未创建"
     }
   }
 }

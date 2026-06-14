@@ -518,7 +518,24 @@
       "comment_label": "코멘트/메모",
       "comment_placeholder": "예：멋진 종반전이었습니다",
       "complete": "결과 확정",
-      "complete_hint": "승자 또는 무승부를 먼저 선택해 주세요"
+      "complete_hint": "승자 또는 무승부를 먼저 선택해 주세요",
+      "photo": {
+        "label": "국면 사진",
+        "add": "사진 추가",
+        "remove": "사진 삭제",
+        "hint": "이미지(PNG/JPEG/WebP/GIF, 최대 10MB, SVG 불가)",
+        "upload_success": "국면 사진을 업로드했습니다"
+      },
+      "error": {
+        "record_result_failed": "대국 결과 저장에 실패했습니다",
+        "create_board_failed": "보드 생성에 실패했습니다",
+        "load_boards_failed": "보드 목록을 불러오지 못했습니다",
+        "load_attachments_failed": "국면 사진을 불러오지 못했습니다",
+        "delete_attachment_failed": "국면 사진 삭제에 실패했습니다",
+        "upload_photo_failed": "국면 사진 업로드에 실패했습니다",
+        "attachment_type_invalid": "이미지 파일을 선택하세요(SVG 불가)",
+        "attachment_too_large": "파일이 너무 큽니다(최대 10MB)"
+      }
     },
     "board": {
       "title": "단체전 보드 진행 상황",
@@ -534,7 +551,8 @@
         "confirmed": "확정",
         "in_progress": "기록 중",
         "pending": "미입력"
-      }
+      },
+      "create_pending_notice": "이 보드는 아직 생성되지 않았습니다"
     }
   }
 }

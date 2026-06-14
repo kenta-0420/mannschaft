@@ -85,8 +85,13 @@ export function resolveScoreFromWinner(winnerSide: TurnWinnerSide): {
 }
 
 /**
- * 勝者サイドと勝ち方の組み合わせが有効か検証。
- * - winnerSide=null（引分け）のとき win_method は null か引分け系（REPETITION/IMPASSE）に限る。
+ * 勝者サイドと勝ち方の組み合わせが有効か検証（🟡 6-④c BE 整合・MATCH_028）。
+ *
+ * BE は引分（winnerSide=null）のとき win_method 非 NULL を 400(MATCH_028) で弾く
+ * （勝敗＝スコア・勝ち方＝enum の責務分離・§4.2）。FE もこれに合わせ、引分時は
+ * win_method を null に限る（千日手/持碁の UI 選択は「引分の種類ラベル」止まりとし、
+ * 送信ペイロードでは buildTurnResultPayload が win_method を落とす）。
+ * - winnerSide=null（引分け）のとき win_method は null のみ有効。
  * - winnerSide 非 null のとき win_method は null（未入力）または任意の勝ち方。
  */
 export function isValidTurnResult(
@@ -94,8 +99,8 @@ export function isValidTurnResult(
   winMethod: TurnWinMethod | null,
 ): boolean {
   if (winnerSide === null) {
-    // 引分け: win_method は null か引分け系のみ
-    return winMethod === null || winMethod === 'REPETITION' || winMethod === 'IMPASSE'
+    // 引分け: win_method は null のみ（BE MATCH_028 整合）
+    return winMethod === null
   }
   // 勝者あり: 何でも OK（未入力 null 含む）
   return true

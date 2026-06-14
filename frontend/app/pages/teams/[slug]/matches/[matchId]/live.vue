@@ -21,6 +21,8 @@ import {
 } from '~/composables/match/sport/sportModuleRegistry'
 import type { MatchSetTrackerReturn } from '~/composables/match/sport/useMatchSetTracker'
 import type { MatchTurnTrackerReturn } from '~/composables/match/sport/useMatchTurnTracker'
+import { buildTurnResultPayload } from '~/composables/match/useMatchTurnApi'
+import type { BoardProgressItem } from '~/components/match/MatchBoardProgress.vue'
 
 definePageMeta({ layout: 'team', middleware: 'auth' })
 
@@ -34,6 +36,7 @@ const notification = useNotification()
 const { resolveContext } = useMatchOrgContext()
 const matchApi = useMatchApi()
 const eventApi = useMatchEventApi()
+const turnApi = useMatchTurnApi()
 const grid = useMatchPlayerGrid()
 const wakeLock = useWakeLockWithFallback()
 
@@ -66,6 +69,45 @@ const setTracker = shallowRef<MatchSetTrackerReturn | null>(null)
 const isTurnBased = computed(() => sportModule.value !== null && isTurnBasedModule(sportModule.value!))
 /** ターントラッカー（TURN_BASED 競技時のみ非 null）。 */
 const turnTracker = shallowRef<MatchTurnTrackerReturn | null>(null)
+
+/**
+ * 団体戦の子ボード進捗（6-④c・GET /boards 由来）。
+ * 空配列＝個人戦 or 親未確認。ボードがある場合は MatchBoardProgress を描画する。
+ */
+const boards = ref<BoardProgressItem[]>([])
+/** 団体戦かどうか（子ボードが 1 件以上ある親 match）。 */
+const isTeamMatch = computed(() => boards.value.length > 0)
+
+/** ターン制競技の identifier（'SHOGI' | 'GO' | ...・MatchBoardProgress のラベル分岐用）。 */
+const turnSport = computed<string>(() => sportModule.value?.sport ?? 'SHOGI')
+
+/** 団体戦の子ボード一覧を読み込む（記録/閲覧いずれも・GET /boards）。 */
+async function loadBoards(): Promise<void> {
+  if (orgId.value === null) return
+  try {
+    const list = await turnApi.listBoards(orgId.value, matchId)
+    boards.value = list.map((b) => ({
+      boardNumber: b.boardNumber ?? 0,
+      matchId: b.id ?? null,
+      // 確定＝COMPLETED かつスコアが入っている（home/away いずれか 1 or 引分 0-0 でも COMPLETED）。
+      confirmed: b.status === 'COMPLETED',
+      winnerSide:
+        (b.homeScore ?? 0) > (b.awayScore ?? 0)
+          ? 'HOME'
+          : (b.awayScore ?? 0) > (b.homeScore ?? 0)
+            ? 'AWAY'
+            : null,
+      winMethod: b.winMethod ?? null,
+      // 選手名・記録者名の本格表示は後続フェーズ（BE 拡張待ち）。現状は相手名のみ。
+      homePlayerName: null,
+      awayPlayerName: b.opponentName ?? null,
+      recorderName: null,
+      canRecordThisBoard: b.canRecordTimeline ?? false,
+    }))
+  } catch {
+    // 通知済み（listBoards 内）。個人戦（404/空）でも空配列のまま続行する。
+  }
+}
 
 // セッションは競技モジュールの createTimer を注入して結線する。
 // モジュール解決（動的 import）は非同期＝setup 同期スコープ外で composable を作るため、
@@ -163,6 +205,8 @@ onMounted(async () => {
   // ターン制: ターントラッカーを初期化（TURN_BASED 競技時のみ・6-④b）。
   if (mod !== null && isTurnBasedModule(mod)) {
     turnTracker.value = mod.createTurnTracker()
+    // 団体戦の子ボード進捗を読み込む（個人戦なら空配列・6-④c）。
+    await loadBoards()
   }
 
   sessionScope = effectScope()
@@ -216,6 +260,88 @@ function penaltyPayload(): { home: number; away: number } | null {
 
 async function complete(): Promise<void> {
   await session.value?.completeMatch(penaltyPayload())
+}
+
+/**
+ * ターン制（将棋/囲碁）の対局結果を確定する（6-④c 配線）。
+ *
+ * 球技用 completeMatch（finalizeScore=ゴールイベント由来＝将棋では常に 0-0）ではなく、
+ * BE のターン制結果エンドポイント PUT /result を呼んで勝者・勝ち方・総手数を送信する。
+ * BE が home/away_score（1-0/0-1/0-0）を確定し、子ボードなら親の勝ち星を再集計する。
+ * その後 changeStatus(COMPLETED) で順位連携（MatchCompletedEvent）を発火させる。
+ * 引分時は win_method を送らない（buildTurnResultPayload が落とす・🟡 BE MATCH_028 整合）。
+ */
+async function completeTurnResult(): Promise<void> {
+  const tracker = turnTracker.value
+  if (!tracker || orgId.value === null || teamId.value === null) return
+  if (matchStatus.value === 'COMPLETED') return
+  const payload = buildTurnResultPayload(
+    tracker.winnerSide.value,
+    tracker.winMethod.value,
+    tracker.totalMoves.value,
+  )
+  try {
+    await turnApi.recordResult(orgId.value, matchId, payload)
+  } catch {
+    // recordResult 内でトースト済み。結果保存に失敗したら status 遷移はしない（根治原則）。
+    return
+  }
+  try {
+    await matchApi.changeStatus(orgId.value, teamId.value, matchId, { status: 'COMPLETED' })
+    matchStatus.value = 'COMPLETED'
+    session.value?.setMatchStatus('COMPLETED')
+    // 団体戦なら親の勝ち星再集計が走るためボード進捗を再取得する。
+    if (isTeamMatch.value) await loadBoards()
+  } catch {
+    notification.warn(t('match.live.error.complete_failed'))
+  }
+}
+
+/**
+ * 局面写真をアップロードする（presign → ストレージ PUT → confirm → 表示 URL 取得）。
+ * 成功したらトラッカーへ追加し、ターン制シートのプレビューに反映する。
+ */
+async function onUploadPositionPhoto(file: File): Promise<void> {
+  const tracker = turnTracker.value
+  if (!tracker || orgId.value === null) return
+  try {
+    const { attachment, displayUrl } = await turnApi.uploadPositionPhoto(orgId.value, matchId, file)
+    tracker.addPositionPhoto({
+      key: attachment.id,
+      url: displayUrl,
+      filename: attachment.originalFilename ?? file.name,
+    })
+    notification.success(t('match.turn.photo.upload_success'))
+  } catch {
+    // uploadPositionPhoto 内でトースト済み。
+  }
+}
+
+/**
+ * 局面写真を削除する（DELETE /attachments/{id}）。
+ * 成功したらトラッカーからも除去する。
+ */
+async function onRemovePositionPhoto(key: string): Promise<void> {
+  const tracker = turnTracker.value
+  if (!tracker || orgId.value === null) return
+  try {
+    await turnApi.deleteAttachment(orgId.value, matchId, key)
+    tracker.removePositionPhoto(key)
+  } catch {
+    // deleteAttachment 内でトースト済み。
+  }
+}
+
+/**
+ * 団体戦の子ボードを記録するため対象ボードの live へ遷移する（6-④c）。
+ * 子 match が未作成（matchId=null）の場合はここでは作成導線のみ（本格作成 UI は後続）。
+ */
+function onRecordBoard(_boardNumber: number, boardMatchId: string | null): void {
+  if (boardMatchId === null) {
+    notification.info(t('match.board.create_pending_notice'))
+    return
+  }
+  void router.push(`/teams/${teamIdStr}/matches/${boardMatchId}/live`)
 }
 
 /**
@@ -442,20 +568,39 @@ function back(): void {
       />
 
       <!--
-        ターン制 結果入力シート（TURN_BASED 競技のみ表示・6-④b）（§G.16a）。
+        団体戦ボード進捗（TURN_BASED かつ子ボードあり・6-④c）（§G.16a・§4.3）。
+        親 match を開いたとき、各ボードの確定状況（n/N）と記録導線を表示する。
+        個人戦（boards 空）では描画しない。
+      -->
+      <MatchBoardProgress
+        v-if="isTurnBased && isTeamMatch"
+        :boards="boards"
+        :sport="turnSport"
+        :can-record-all="canRecord"
+        class="mb-4"
+        @record-board="onRecordBoard"
+      />
+
+      <!--
+        ターン制 結果入力シート（TURN_BASED 競技のみ表示・6-④b/6-④c）（§G.16a）。
         将棋/囲碁は「タイマー・タイムライン・選手グリッド」を使わず、
         最小結果入力（勝者選択・勝ち方任意・手数任意・局面写真任意）UI で完結する。
         記録権限の有無に関わらずマウント（canRecord prop で内部出し分け）。
+        完了は球技用 complete() ではなく completeTurnResult()（PUT /result + COMPLETED・6-④c 配線）。
+        局面写真は presign 方式で uploadPositionPhoto / deleteAttachment へ結線する。
+        団体戦の親（isTeamMatch）では結果入力シートは出さない（各ボード live で記録する）。
       -->
       <component
         :is="sportModule.eventSheet"
-        v-if="isTurnBased && turnTracker && sportModule"
+        v-if="isTurnBased && turnTracker && sportModule && !isTeamMatch"
         :tracker="turnTracker!"
         :own-team-side="ownTeamSide"
         :opponent-name="opponentName"
         :can-record="canRecord"
         class="mb-4"
-        @complete-match="complete()"
+        @complete-match="completeTurnResult()"
+        @upload-photo="onUploadPositionPhoto"
+        @remove-photo="onRemovePositionPhoto"
       />
 
       <!-- スタメン設定シート（記録権限がある場合のみマウント・ターン制は不要） -->

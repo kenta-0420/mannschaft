@@ -518,7 +518,24 @@
       "comment_label": "コメント・メモ",
       "comment_placeholder": "例：終盤の見事な詰みでした",
       "complete": "結果を確定",
-      "complete_hint": "勝者（または引分け）を選択してください"
+      "complete_hint": "勝者（または引分け）を選択してください",
+      "photo": {
+        "label": "局面写真",
+        "add": "写真を追加",
+        "remove": "写真を削除",
+        "hint": "画像（PNG/JPEG/WebP/GIF・10MBまで・SVG不可）",
+        "upload_success": "局面写真をアップロードしました"
+      },
+      "error": {
+        "record_result_failed": "対局結果の保存に失敗しました",
+        "create_board_failed": "ボードの作成に失敗しました",
+        "load_boards_failed": "ボード一覧の取得に失敗しました",
+        "load_attachments_failed": "局面写真の取得に失敗しました",
+        "delete_attachment_failed": "局面写真の削除に失敗しました",
+        "upload_photo_failed": "局面写真のアップロードに失敗しました",
+        "attachment_type_invalid": "画像ファイル（SVG不可）を選択してください",
+        "attachment_too_large": "ファイルサイズが大きすぎます（10MBまで）"
+      }
     },
     "board": {
       "title": "団体戦ボード進捗",
@@ -534,7 +551,8 @@
         "confirmed": "確定",
         "in_progress": "記録中",
         "pending": "未入力"
-      }
+      },
+      "create_pending_notice": "このボードはまだ作成されていません"
     }
   }
 }

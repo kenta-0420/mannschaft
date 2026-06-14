@@ -518,7 +518,24 @@
       "comment_label": "Kommentar / Notiz",
       "comment_placeholder": "z. B. Ein brillantes Endspiel",
       "complete": "Ergebnis bestätigen",
-      "complete_hint": "Bitte zuerst Sieger oder Unentschieden auswählen"
+      "complete_hint": "Bitte zuerst Sieger oder Unentschieden auswählen",
+      "photo": {
+        "label": "Stellungsfotos",
+        "add": "Foto hinzufügen",
+        "remove": "Foto entfernen",
+        "hint": "Bilder (PNG/JPEG/WebP/GIF, bis 10MB, kein SVG)",
+        "upload_success": "Stellungsfoto hochgeladen"
+      },
+      "error": {
+        "record_result_failed": "Speichern des Ergebnisses fehlgeschlagen",
+        "create_board_failed": "Erstellen des Bretts fehlgeschlagen",
+        "load_boards_failed": "Laden der Brettliste fehlgeschlagen",
+        "load_attachments_failed": "Laden der Stellungsfotos fehlgeschlagen",
+        "delete_attachment_failed": "Löschen des Stellungsfotos fehlgeschlagen",
+        "upload_photo_failed": "Hochladen des Stellungsfotos fehlgeschlagen",
+        "attachment_type_invalid": "Bitte eine Bilddatei wählen (kein SVG)",
+        "attachment_too_large": "Datei ist zu groß (bis 10MB)"
+      }
     },
     "board": {
       "title": "Mannschaftskampf Brettfortschritt",
@@ -534,7 +551,8 @@
         "confirmed": "Bestätigt",
         "in_progress": "In Bearbeitung",
         "pending": "Ausstehend"
-      }
+      },
+      "create_pending_notice": "Dieses Brett wurde noch nicht erstellt"
     }
   }
 }

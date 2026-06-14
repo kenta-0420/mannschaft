@@ -31,8 +31,12 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  /** 試合完了を親へ通知（completeMatch 呼び出し要求）。 */
+  /** 試合完了を親へ通知（completeTurnResult 呼び出し要求・6-④c）。 */
   completeMatch: []
+  /** 局面写真アップロード要求（presign 方式・親が 3 段アップロードを実行）。 */
+  uploadPhoto: [file: File]
+  /** 局面写真削除要求（attachment key=BE の attachmentId）。 */
+  removePhoto: [key: string]
 }>()
 
 const { t } = useI18n()
@@ -45,6 +49,7 @@ const {
   margin,
   comment,
   drawSelected,
+  positionPhotos,
   isCompleted,
   isDraw,
   canComplete,
@@ -127,6 +132,8 @@ function onSelectAwayWin(): void {
 
 function onSelectDraw(): void {
   selectDraw()
+  // 🟡 引分時は win_method を持てない（BE MATCH_028）。選択済みの勝ち方をクリアする。
+  setWinMethod(null)
 }
 
 function onComplete(): void {
@@ -155,6 +162,32 @@ function onMarginChange(value: number | null): void {
 
 function onCommentChange(value: string): void {
   setComment(value)
+}
+
+// ===== 局面写真（presign 方式・親が 3 段アップロードを実行・6-④c） =====
+
+/** 隠し file input への参照（「写真を追加」ボタンから開く）。 */
+const photoInput = ref<HTMLInputElement | null>(null)
+
+/** 「写真を追加」ボタン → ネイティブ file ダイアログを開く。 */
+function openPhotoPicker(): void {
+  photoInput.value?.click()
+}
+
+/** file 選択 → 親へ upload-photo を emit（presign/PUT/confirm は親が担当）。 */
+function onPhotoSelected(event: Event): void {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (file) {
+    emit('uploadPhoto', file)
+  }
+  // 同じファイルの再選択でも change が発火するよう値をクリアする。
+  input.value = ''
+}
+
+/** 局面写真の削除を親へ emit。 */
+function onRemovePhoto(key: string): void {
+  emit('removePhoto', key)
 }
 
 /** 勝者ボタンの選択状態（ボタン強調表示）。 */
@@ -193,6 +226,18 @@ const winMethodLabel = computed(() => {
         {{ t('match.turn.margin', { n: margin }) }}
       </p>
       <p v-if="comment" class="mt-2 text-xs text-surface-500 italic">{{ comment }}</p>
+      <div v-if="positionPhotos.length" class="mt-3 grid grid-cols-3 gap-2">
+        <a
+          v-for="photo in positionPhotos"
+          :key="photo.key"
+          :href="photo.url"
+          target="_blank"
+          rel="noopener"
+          class="overflow-hidden rounded border border-surface-200"
+        >
+          <img :src="photo.url" :alt="photo.filename" class="h-20 w-full object-cover" >
+        </a>
+      </div>
     </div>
 
     <!-- 対局前（WAITING） -->
@@ -340,6 +385,47 @@ const winMethodLabel = computed(() => {
             auto-resize
             @update:model-value="onCommentChange"
           />
+        </div>
+
+        <!-- 局面写真（任意・presign 方式・6-④c） -->
+        <div class="mb-4">
+          <p class="mb-1 text-sm text-surface-600">
+            {{ t('match.turn.photo.label') }}
+            <span class="ml-1 text-xs text-surface-400">{{ t('match.turn.optional') }}</span>
+          </p>
+          <div v-if="positionPhotos.length" class="mb-2 grid grid-cols-3 gap-2">
+            <div
+              v-for="photo in positionPhotos"
+              :key="photo.key"
+              class="relative overflow-hidden rounded border border-surface-200"
+            >
+              <img :src="photo.url" :alt="photo.filename" class="h-20 w-full object-cover" >
+              <button
+                type="button"
+                class="absolute right-1 top-1 rounded-full bg-black/50 p-1 text-white"
+                :aria-label="t('match.turn.photo.remove')"
+                @click="onRemovePhoto(photo.key)"
+              >
+                <i class="pi pi-times text-xs" />
+              </button>
+            </div>
+          </div>
+          <input
+            ref="photoInput"
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            class="hidden"
+            @change="onPhotoSelected"
+          >
+          <Button
+            severity="secondary"
+            outlined
+            size="small"
+            icon="pi pi-camera"
+            :label="t('match.turn.photo.add')"
+            @click="openPhotoPicker"
+          />
+          <p class="mt-1 text-xs text-surface-400">{{ t('match.turn.photo.hint') }}</p>
         </div>
 
         <!-- 結果確定ボタン -->

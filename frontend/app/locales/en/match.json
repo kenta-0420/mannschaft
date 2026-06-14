@@ -518,7 +518,24 @@
       "comment_label": "Comment / Note",
       "comment_placeholder": "e.g. A brilliant endgame move",
       "complete": "Confirm result",
-      "complete_hint": "Select winner or draw first"
+      "complete_hint": "Select winner or draw first",
+      "photo": {
+        "label": "Position photos",
+        "add": "Add photo",
+        "remove": "Remove photo",
+        "hint": "Images (PNG/JPEG/WebP/GIF, up to 10MB, no SVG)",
+        "upload_success": "Position photo uploaded"
+      },
+      "error": {
+        "record_result_failed": "Failed to save the game result",
+        "create_board_failed": "Failed to create the board",
+        "load_boards_failed": "Failed to load the board list",
+        "load_attachments_failed": "Failed to load position photos",
+        "delete_attachment_failed": "Failed to delete the position photo",
+        "upload_photo_failed": "Failed to upload the position photo",
+        "attachment_type_invalid": "Please choose an image file (SVG not allowed)",
+        "attachment_too_large": "File is too large (up to 10MB)"
+      }
     },
     "board": {
       "title": "Team match board progress",
@@ -534,7 +551,8 @@
         "confirmed": "Confirmed",
         "in_progress": "In progress",
         "pending": "Pending"
-      }
+      },
+      "create_pending_notice": "This board has not been created yet"
     }
   }
 }

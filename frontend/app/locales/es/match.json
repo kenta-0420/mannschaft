@@ -518,7 +518,24 @@
       "comment_label": "Comentario / Nota",
       "comment_placeholder": "Ej. Un brillante final de partida",
       "complete": "Confirmar resultado",
-      "complete_hint": "Seleccione primero ganador o empate"
+      "complete_hint": "Seleccione primero ganador o empate",
+      "photo": {
+        "label": "Fotos de posición",
+        "add": "Añadir foto",
+        "remove": "Eliminar foto",
+        "hint": "Imágenes (PNG/JPEG/WebP/GIF, hasta 10MB, sin SVG)",
+        "upload_success": "Foto de posición subida"
+      },
+      "error": {
+        "record_result_failed": "No se pudo guardar el resultado",
+        "create_board_failed": "No se pudo crear el tablero",
+        "load_boards_failed": "No se pudo cargar la lista de tableros",
+        "load_attachments_failed": "No se pudieron cargar las fotos de posición",
+        "delete_attachment_failed": "No se pudo eliminar la foto de posición",
+        "upload_photo_failed": "No se pudo subir la foto de posición",
+        "attachment_type_invalid": "Elige un archivo de imagen (SVG no permitido)",
+        "attachment_too_large": "El archivo es demasiado grande (hasta 10MB)"
+      }
     },
     "board": {
       "title": "Progreso de tableros por equipo",
@@ -534,7 +551,8 @@
         "confirmed": "Confirmado",
         "in_progress": "En curso",
         "pending": "Pendiente"
-      }
+      },
+      "create_pending_notice": "Este tablero aún no se ha creado"
     }
   }
 }

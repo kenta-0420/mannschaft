@@ -53,12 +53,13 @@ describe('isValidTurnResult', () => {
     expect(isValidTurnResult(null, null)).toBe(true)
   })
 
-  it('TURN-002d: 引分け + REPETITION は有効（千日手は引分けになり得る）', () => {
-    expect(isValidTurnResult(null, 'REPETITION')).toBe(true)
+  it('TURN-002d: 引分け + REPETITION は無効（🟡 BE MATCH_028 整合・引分時は win_method を持てない）', () => {
+    // 千日手は「引分の種類ラベル」止まりで、送信ペイロードでは win_method を落とす（buildTurnResultPayload）。
+    expect(isValidTurnResult(null, 'REPETITION')).toBe(false)
   })
 
-  it('TURN-002e: 引分け + IMPASSE は有効（持将棋は引分けになり得る）', () => {
-    expect(isValidTurnResult(null, 'IMPASSE')).toBe(true)
+  it('TURN-002e: 引分け + IMPASSE は無効（🟡 BE MATCH_028 整合・引分時は win_method を持てない）', () => {
+    expect(isValidTurnResult(null, 'IMPASSE')).toBe(false)
   })
 
   it('TURN-002f: 引分け + RESIGNATION は無効（投了は必ず勝者がいる）', () => {
