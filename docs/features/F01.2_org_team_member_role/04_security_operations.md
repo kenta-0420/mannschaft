@@ -1,5 +1,67 @@
 ---
 
+## 5.9 slug（URL 識別子）正準仕様 — 村方式（ユーザー任意入力）
+
+> **マスター御裁可（2026-06-14）により確定した正準仕様。** チーム／組織の URL 識別子戦略が二重移行で混乱したため、村（`F17.1`）と同じ「ユーザーが登録時に任意 slug を決める」方式に一本化する。
+
+### 5.9.1 基本方針
+
+| 項目 | 正準仕様 |
+|---|---|
+| **入力主体** | チーム／組織の**作成時にユーザーが任意の slug を入力する**（村 `F17.1` の `VillageCreateRequest.slug` と同じ UX）。`name` からの自動生成は「編集可能な提案プレフィル」に降格 |
+| **形式** | `^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$`（3〜30文字・英小文字／数字／ハイフン。`teams.slug` / `organizations.slug` ともに VARCHAR(30) 上限）|
+| **一意性** | **グローバル一意**（`uq_teams_slug` / `uq_organizations_slug`。テーブル内で一意）|
+| **予約語** | FE ルートと衝突する語を禁止（§5.9.3）|
+| **重複時** | 強制連番付与（`team-000017` 等）は**廃止**。重複は 400 を返し、ユーザーに別 slug の入力を促す |
+| **可用性チェック** | `GET /api/v1/teams/slug-check?slug=` / `GET /api/v1/organizations/slug-check?slug=` でリアルタイム重複確認（既存。レスポンス `{ available: boolean, suggestions: string[] }`）|
+
+### 5.9.2 提案プレフィル（自動生成の降格）
+
+- FE は作成フォームで `name` を ASCII 変換（スペース→ハイフン・小文字化・不正文字除去）した候補を **slug 入力欄の初期値**として表示してよい。
+- これはあくまで**編集可能なプレフィル**であり、ユーザーは自由に書き換えられる。サーバが裏で確定 slug を上書きしたり、衝突時に数値サフィックスを強制付与したりはしない。
+- 候補が空文字・予約語・既存重複になる場合（日本語名のみ等）は、FE は slug 欄を空のままにしてユーザー入力を必須とし、`slug-check` API の `suggestions` を併用して候補を提示する。
+
+### 5.9.3 予約語
+
+以下の **FE ルートと衝突しうる語** を slug として禁止する。マスタ／定数（例: `ReservedSlug` enum またはアプリ設定 `app.slug.reserved`）で一元管理し、作成・リネーム時に検証する:
+
+```
+new, search, admin, settings, me, public, api, login, logout, signup,
+discover, slug-check, invite, system-admin, static, assets
+```
+
+> 予約語に該当した場合は 400（`TEAM_SLUG_RESERVED` / `ORG_SLUG_RESERVED`）を返す。リストは FE ルート追加時に追従更新し、本設計書と README の変更履歴に明記する。
+
+### 5.9.4 既存連番 slug の是正方針
+
+V71 backfill で ASCII 3 字未満（日本語名等）のチーム／組織には `team-000017` / `org-000017` のような**連番 slug** が付与された（§7 教訓参照）。これを次の方針で是正する:
+
+- **一括強制リネームは採用しない**（既発行 URL・ブックマーク・外部リンクを破壊するため）。
+- 設定画面でユーザー自身が slug を変更可能にする（`PATCH /teams/{slug}` / `PATCH /organizations/{slug}` で `slug` 変更を許可。形式・一意・予約語の同一バリデーションを適用）。
+- 連番 slug に該当するチーム／組織にのみ、設定画面で「URL を分かりやすい slug に変更しませんか？」と**変更を促す導線**を表示する（任意・非強制）。
+
+### 5.9.5 slug リネーム時の 301 リダイレクト（後続 wave 実装予定）
+
+slug を変更すると旧 URL が 404 になり SEO・ブックマークが失われるため、**旧 slug → 新 slug のリダイレクト用履歴を残す**:
+
+- `team_slug_history` / `organization_slug_history`（`old_slug` UNIQUE・`scope_id`・`changed_at`）に旧 slug を記録し、旧 slug アクセス時に新 slug へ **301 Moved Permanently** でリダイレクトする。
+- 旧 slug は他エンティティが再利用できないよう一定期間（または恒久）予約する。
+- ※ 本項目は**後続 wave での実装予定**。本 wave では設計方針の明記のみ。
+
+### 5.9.6 public_id（UUID）路線を採らない決定と根拠
+
+過去に列挙攻撃対策として slug を UUID（`public_id`）へ置き換える案があったが、**不採用**とする。根拠:
+
+1. **列挙攻撃の本丸防御は F00 認可基盤**（`ContentVisibilityResolver` / `@EnableMethodSecurity`）が担う。URL 識別子の難読化は本丸防御ではなく、非公開エンティティは slug を知られても 403/404 のみ返す（§6 optional-auth 注記参照）。
+2. **SEO 公開と矛盾**: チーム／組織は `/public/teams/{slug}` 等で**意図的に公開・被リンク・検索流入**を狙う（F15.4 / F19.1）。UUID 難読化は人間可読 URL・SEO と正面から衝突する。
+3. **非推測化はユーザー任意入力で担保**: 「推測しにくい URL が欲しい」ニーズは、村方式のユーザー任意入力（自分で決めた slug）で十分に満たせる。一律 UUID 化は過剰。
+
+### 5.9.7 DB 設計原則との整合
+
+slug は既存 BIGINT 主キーテーブル（`teams` / `organizations`）上の **URL 識別子（外部公開キー）** であり、CLAUDE.md「DB設計の原則 #6（新規テーブルの主キーは UUIDv7）」とは**別軸**である（主キーは BIGINT のまま、slug は人間可読の二次キーとして併存する）。
+
+---
+
 ## 6. セキュリティ考慮事項
 
 - **認可チェック**: 全 Service メソッドの入り口で `team_id` / `organization_id` と `currentUser` の所属を検証する（メンバーでないスコープへのアクセスは 403）
@@ -182,15 +244,18 @@ V71.20260609001__add_slug_to_teams.sql
   -- teams テーブルに slug カラムを ADD:
   --   slug VARCHAR(30) NOT NULL
   --   UNIQUE KEY uq_teams_slug (slug)
-  -- 既存データには publicId 相当の一時値を自動生成して埋める（例: CONCAT('team-', id)）
+  -- 既存データの backfill: ASCII 3 字以上に正規化できる name はそれを slug 候補とし、
+  --   3 字未満（日本語名等）になるものは一時値 CONCAT('team-', LPAD(id,6,'0')) を埋める
   -- バリデーション: ^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$（3〜30文字、英小文字・数字・ハイフンのみ）
 V71.20260609002__add_slug_to_organizations.sql
   -- organizations テーブルに slug カラムを ADD:
   --   slug VARCHAR(30) NOT NULL
   --   UNIQUE KEY uq_organizations_slug (slug)
-  -- 既存データには publicId 相当の一時値を自動生成して埋める（例: CONCAT('org-', id)）
+  -- 既存データの backfill: teams と同様。3 字未満は CONCAT('org-', LPAD(id,6,'0'))
   -- バリデーション: teams と同一
 ```
+
+> **教訓（slug 二重移行の退行）**: V71 系は当初 `public_id`（UUID）→ slug への置換として実装され、`public_id` 列を DROP した。さらに **`CreateTeamRequest` から slug 入力欄が失われ、name からの自動生成のみ**になった結果、ASCII 3 字未満（日本語名等）のチーム／組織には `team-000017` のような**意味の無い連番 slug** が backfill で付与された。正準仕様は「ユーザーが任意 slug を入力する村方式」（§5.9）であり、連番付与・public_id(UUID) 路線は不採用。既存連番 slug の是正は §5.9.4、public_id 不採用の根拠は §5.9.6 を参照。
 
 **マイグレーション上の注意点**
 - V2.001（organizations）→ V2.002（teams）の順を守ること（teams は organizations に FK）
@@ -273,6 +338,7 @@ V71.20260609002__add_slug_to_organizations.sql
 | 2026-03-12 | UX・保守性改善 10件: ① `GET /teams/search` / `GET /organizations/search` 公開検索 API を追加（visibility=PUBLIC のみ・名前/地域/種別検索） ② メンバー一覧 API にフィルタ（`role` / `q`）・ソート（`sort`）パラメータを追加 ③ `GET /teams/{id}/me/permissions` / `GET /organizations/{id}/me/permissions` 実効パーミッション API を追加（フロントエンド UI 制御用） ④ チーム/組織レスポンスに `member_count` フィールドを追加（`/me/teams` / `/me/organizations` / `/organizations/{id}/teams` / `/teams/{id}/organizations` / 検索 API） ⑤ `team_blocks` / `organization_blocks` に `reason VARCHAR(500) NULL` カラムを追加（ブロック理由の記録・一覧表示） ⑥ `POST /teams/{id}/transfer-ownership` / `POST /organizations/{id}/transfer-ownership` ADMIN 権限移譲 API を追加（1ステップ: 対象→ADMIN + 自分→DEPUTY_ADMIN を1トランザクション内で実行・2FA 必須チェックあり） ⑦ 全一覧取得 API をカーソルベースページネーションに統一（`cursor` + `size` + `next_cursor` + `has_next`） ⑧ 権限解決 Valkey キャッシュ戦略を追加（キー: `perm:{user_id}:{scope_key}`・TTL 5分・ロール変更/グループ更新時に `@CacheEvict`） ⑨ `PATCH /teams/{id}/restore` / `PATCH /organizations/{id}/restore` 論理削除復元 API を追加（SYSTEM_ADMIN 専用・誤削除復旧用） ⑩ 招待参加フローの audit_logs メタデータに `invite_token_id` を追加（参加経路の事後追跡用） |
 | 2026-04-18 | F04.10 組織委員会機能の追加に伴う追記。組織配下のサブスコープとして Committee を導入（詳細は F04.10_committee.md 参照） |
 | 2026-06-09 | チーム・組織スラッグ移行: `teams`/`organizations` テーブルに `slug VARCHAR(30) NOT NULL UNIQUE` を追加。全 API パスの `{id}`（チーム・組織識別子）を `{slug}` に統一。Flyway V71.20260609001/002 を追加。セキュリティ考慮事項のレートリミット表・optional-auth 注記を slug 表記に更新 |
+| 2026-06-14 | **slug を村方式（ユーザー任意入力）に正準化**（マスター御裁可）: ① §5.9「slug 正準仕様」節を新設（村 `F17.1` と同じくユーザーが作成時に任意 slug を入力・形式 `^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$`・グローバル一意・予約語禁止）。② `name` からの自動生成を「編集可能な提案プレフィル」に降格し、**強制連番付与（`team-000017`）を廃止方針**に。③ `slug-check` API による可用性チェックを正準フローに明記。④ 既存連番 slug の是正方針（一括強制リネームせず、設定画面でユーザー自身が変更可能・連番該当のみ促す）。⑤ slug リネーム時の **301 リダイレクト用履歴**（`team_slug_history` 等・後続 wave 実装予定）。⑥ 予約語（`new`/`search`/`admin`/`settings`/`me`/`public` 等）をマスタ管理。⑦ **public_id（UUID）路線の不採用**と根拠（列挙防御=F00 認可が本丸／SEO 公開と矛盾／非推測化は村方式のユーザー任意入力で担保）を明記。⑧ V71 退行（slug 入力欄喪失→連番 backfill）を「教訓」として記録。⑨ `01_db_design.md` の slug 制約備考・`02_api_design.md` の `POST /teams`（および `POST /organizations`）リクエストボディに `slug` フィールド（誤って欠落していた退行）を復元。slug は既存 BIGINT テーブル上の URL 識別子であり主キー UUIDv7 方針（新規テーブル）とは別軸である旨を補足 |
 
 ---
 
