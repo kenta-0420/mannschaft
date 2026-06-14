@@ -17,16 +17,37 @@
  *     → FC東京U-18（テスト）チームのメンバー
  */
 
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
+
+/**
+ * /dashboard を開き、スコープタグ一覧が読み込まれるまで（必要ならリロードして）待つ。
+ *
+ * <p>Vite dev サーバーの初回コールドスタート時は /api/v1/dashboard/scope-tabs の
+ * プロキシ初回ヒットがまれに失敗し「タグ一覧の取得に失敗しました」が出ることがある。
+ * これは環境起因のフレークであり、リロードで回復する（実ユーザーの再読込相当）。
+ * 対して本タスクで根治した slug 判定バグは「タグは読めるがパネルが永久スピナー」で
+ * リロードしても直らないため、この回復ロジックを入れてもバグ検知力は損なわれない。</p>
+ */
+async function openDashboardWithTabsLoaded(page: Page): Promise<void> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
+    await waitForHydration(page)
+    await expect(page.getByTestId('scope-carousel')).toBeVisible({ timeout: 20_000 })
+
+    // タグ一覧取得に失敗（環境フレーク）していたらリロードして再試行する。
+    const loadErr = page.getByText('タグ一覧の取得に失敗しました')
+    const failed = await loadErr.first().isVisible().catch(() => false)
+    if (!failed) return
+  }
+}
 
 test.describe('F221-SWIPE: スワイプダッシュボード slug パネル表示', () => {
   // /dashboard は 3 パネル同時マウント + 多数のウィジェット取得があり遅いため延長する
   test.setTimeout(120_000)
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
-    await waitForHydration(page)
+    await openDashboardWithTabsLoaded(page)
   })
 
   test('F221-SWIPE-001: カルーセルとチームセグメントが表示される', async ({ page }) => {
