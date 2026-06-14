@@ -1521,12 +1521,19 @@
     }
   },
   "slug": {
-    "label": "URLスラッグ",
-    "hint": "チーム・組織の公開URLに使われます（例: my-team）",
+    "label": "URL（スラッグ）",
+    "hint": "チーム・組織の公開URLに使われます（例: my-team）。空欄の場合は名前から自動生成されます",
+    "placeholder": "my-team",
     "available": "使用可能",
     "unavailable": "このスラッグは既に使われています",
     "checking": "確認中...",
-    "format": "英小文字・数字・ハイフンのみ（3〜30文字）"
+    "format": "英小文字・数字・ハイフンのみ（3〜30文字）",
+    "reason": {
+      "SLUG_REQUIRED": "スラッグを入力してください",
+      "SLUG_INVALID_FORMAT": "形式が不正です（英小文字・数字・ハイフン、3〜30文字、先頭末尾と連続ハイフン不可）",
+      "SLUG_RESERVED": "このスラッグは予約語のため使用できません",
+      "SLUG_ALREADY_TAKEN": "このスラッグは既に使われています"
+    }
   },
   "team_visibility": {
     "PUBLIC": "公開",

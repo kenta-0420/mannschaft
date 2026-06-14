@@ -40,3 +40,25 @@ export function generateSlug(name: string): string {
 export function isValidSlug(slug: string): boolean {
   return /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/.test(slug) || /^[a-z0-9]{3}$/.test(slug)
 }
+
+/**
+ * BE #1538 の slug 制約に厳密準拠した形式チェック。
+ *
+ * 制約（BE `^[a-z0-9-]{3,30}$` + 先頭/末尾ハイフン不可 + 連続ハイフン不可）:
+ * - 3〜30 文字
+ * - 英小文字・数字・ハイフンのみ
+ * - 先頭・末尾がハイフンでない
+ * - ハイフンが 2 つ以上連続しない
+ *
+ * 送信前のクライアント側ガード兼、可用性チェック呼び出し前の事前判定に使う。
+ *
+ * @param slug 検証するスラッグ
+ * @returns 形式が有効なら true
+ */
+export function isSlugFormatValid(slug: string): boolean {
+  if (slug.length < 3 || slug.length > 30) return false
+  if (!/^[a-z0-9-]+$/.test(slug)) return false
+  if (slug.startsWith('-') || slug.endsWith('-')) return false
+  if (slug.includes('--')) return false
+  return true
+}

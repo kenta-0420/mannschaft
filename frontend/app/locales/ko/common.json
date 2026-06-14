@@ -1521,12 +1521,19 @@
     }
   },
   "slug": {
-    "label": "URL 슬러그",
-    "hint": "팀/조직의 공개 URL에 사용됩니다（예: my-team）",
+    "label": "URL（슬러그）",
+    "hint": "팀/조직의 공개 URL에 사용됩니다（예: my-team）. 비워두면 이름에서 자동 생성됩니다.",
+    "placeholder": "my-team",
     "available": "사용 가능",
     "unavailable": "이미 사용 중인 슬러그입니다",
     "checking": "확인 중...",
-    "format": "영소문자, 숫자, 하이픈만 사용 가능（3~30자）"
+    "format": "영소문자, 숫자, 하이픈만 사용 가능（3~30자）",
+    "reason": {
+      "SLUG_REQUIRED": "슬러그를 입력해 주세요",
+      "SLUG_INVALID_FORMAT": "형식이 올바르지 않습니다 (영소문자, 숫자, 하이픈, 3~30자, 앞뒤 및 연속 하이픈 불가)",
+      "SLUG_RESERVED": "예약어이므로 사용할 수 없는 슬러그입니다",
+      "SLUG_ALREADY_TAKEN": "이미 사용 중인 슬러그입니다"
+    }
   },
   "team_visibility": {
     "PUBLIC": "공개",

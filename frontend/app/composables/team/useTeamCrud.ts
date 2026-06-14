@@ -1,5 +1,6 @@
 import type { FetchError } from 'ofetch'
 import type { PagedResponse } from '~/types/api'
+import type { SlugAvailabilityResponse } from '~/types/slug'
 import type { TeamPublicDetailResponse, TeamResponse } from '~/types/team'
 import {
   OrganizationNotFoundError,
@@ -149,6 +150,18 @@ export function useTeamCrud() {
     return api<{ data: TeamResponse }>('/api/v1/teams', { method: 'POST', body })
   }
 
+  /**
+   * チーム作成時の slug 可用性をチェックする（BE #1538）。
+   *
+   * `GET /api/v1/teams/slug-available?slug=xxx` を叩く。
+   * 形式不正・予約語・重複・未指定のいずれでも BE は常に 200 を返し、
+   * `available=false` のとき `reason` に理由コードが入る。
+   */
+  async function checkTeamSlugAvailable(slug: string): Promise<SlugAvailabilityResponse> {
+    const query = new URLSearchParams({ slug })
+    return api<SlugAvailabilityResponse>(`/api/v1/teams/slug-available?${query}`)
+  }
+
   async function updateTeam(teamSlug: string, body: Record<string, unknown>) {
     return api<{ data: TeamResponse }>(`/api/v1/teams/${teamSlug}`, { method: 'PATCH', body })
   }
@@ -189,6 +202,7 @@ export function useTeamCrud() {
     searchTeams,
     searchOrganizationTeams,
     createTeam,
+    checkTeamSlugAvailable,
     updateTeam,
     deleteTeam,
     archiveTeam,

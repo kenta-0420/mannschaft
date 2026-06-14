@@ -1521,12 +1521,19 @@
     }
   },
   "slug": {
-    "label": "URL Slug",
-    "hint": "Used in your team/organization public URL (e.g. my-team)",
+    "label": "URL (slug)",
+    "hint": "Used in your team/organization public URL (e.g. my-team). If left blank, it is generated from the name.",
+    "placeholder": "my-team",
     "available": "Available",
     "unavailable": "This slug is already taken",
     "checking": "Checking...",
-    "format": "Lowercase letters, numbers, and hyphens only (3-30 chars)"
+    "format": "Lowercase letters, numbers, and hyphens only (3-30 chars)",
+    "reason": {
+      "SLUG_REQUIRED": "Please enter a slug",
+      "SLUG_INVALID_FORMAT": "Invalid format (lowercase letters, numbers, and hyphens, 3-30 chars; no leading/trailing or consecutive hyphens)",
+      "SLUG_RESERVED": "This slug is reserved and cannot be used",
+      "SLUG_ALREADY_TAKEN": "This slug is already taken"
+    }
   },
   "team_visibility": {
     "PUBLIC": "Public",

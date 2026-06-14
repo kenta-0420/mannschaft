@@ -1521,12 +1521,19 @@
     }
   },
   "slug": {
-    "label": "URL-Slug",
-    "hint": "Wird in der öffentlichen URL des Teams/der Organisation verwendet (z.B. mein-team)",
+    "label": "URL (Slug)",
+    "hint": "Wird in der öffentlichen URL des Teams/der Organisation verwendet (z.B. mein-team). Wenn leer, wird er aus dem Namen generiert.",
+    "placeholder": "mein-team",
     "available": "Verfügbar",
     "unavailable": "Dieser Slug ist bereits vergeben",
     "checking": "Wird geprüft...",
-    "format": "Nur Kleinbuchstaben, Zahlen und Bindestriche (3-30 Zeichen)"
+    "format": "Nur Kleinbuchstaben, Zahlen und Bindestriche (3-30 Zeichen)",
+    "reason": {
+      "SLUG_REQUIRED": "Bitte einen Slug eingeben",
+      "SLUG_INVALID_FORMAT": "Ungültiges Format (Kleinbuchstaben, Zahlen und Bindestriche, 3-30 Zeichen; keine führenden/abschließenden oder aufeinanderfolgenden Bindestriche)",
+      "SLUG_RESERVED": "Dieser Slug ist reserviert und kann nicht verwendet werden",
+      "SLUG_ALREADY_TAKEN": "Dieser Slug ist bereits vergeben"
+    }
   },
   "team_visibility": {
     "PUBLIC": "Öffentlich",

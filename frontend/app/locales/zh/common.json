@@ -1521,12 +1521,19 @@
     }
   },
   "slug": {
-    "label": "URL标识",
-    "hint": "用于团队/组织的公开URL（例如：my-team）",
+    "label": "URL（标识）",
+    "hint": "用于团队/组织的公开URL（例如：my-team）。留空时将根据名称自动生成。",
+    "placeholder": "my-team",
     "available": "可使用",
     "unavailable": "此标识已被使用",
     "checking": "确认中...",
-    "format": "只能使用小写字母、数字和连字符（3〜30个字符）"
+    "format": "只能使用小写字母、数字和连字符（3〜30个字符）",
+    "reason": {
+      "SLUG_REQUIRED": "请输入标识",
+      "SLUG_INVALID_FORMAT": "格式不正确（小写字母、数字和连字符，3〜30个字符，首尾及连续连字符不可）",
+      "SLUG_RESERVED": "此标识为保留字，无法使用",
+      "SLUG_ALREADY_TAKEN": "此标识已被使用"
+    }
   },
   "team_visibility": {
     "PUBLIC": "公开",

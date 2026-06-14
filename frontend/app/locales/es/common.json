@@ -1521,12 +1521,19 @@
     }
   },
   "slug": {
-    "label": "Identificador URL",
-    "hint": "Se usa en la URL pública del equipo/organización (ej. mi-equipo)",
+    "label": "URL (slug)",
+    "hint": "Se usa en la URL pública del equipo/organización (ej. mi-equipo). Si se deja en blanco, se genera a partir del nombre.",
+    "placeholder": "mi-equipo",
     "available": "Disponible",
     "unavailable": "Este identificador ya está en uso",
     "checking": "Verificando...",
-    "format": "Solo letras minúsculas, números y guiones (3-30 caracteres)"
+    "format": "Solo letras minúsculas, números y guiones (3-30 caracteres)",
+    "reason": {
+      "SLUG_REQUIRED": "Introduce un identificador",
+      "SLUG_INVALID_FORMAT": "Formato no válido (letras minúsculas, números y guiones, 3-30 caracteres; sin guiones al inicio/final ni consecutivos)",
+      "SLUG_RESERVED": "Este identificador está reservado y no se puede usar",
+      "SLUG_ALREADY_TAKEN": "Este identificador ya está en uso"
+    }
   },
   "team_visibility": {
     "PUBLIC": "Público",
