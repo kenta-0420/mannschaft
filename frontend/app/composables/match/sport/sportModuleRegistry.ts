@@ -12,19 +12,17 @@
  * 【重要】レジストリの値は **`() => import(...)` の関数**であること（即時 import しない）。
  * 即時 import するとビルド時に全競技が初期チャンクへ巻き込まれ lazy-load にならない。
  *
- * 【前向きユニオン境界（6-③b 追加）】
- * VOLLEYBALL（SET_BASED）を追加。SportLiveModule はディスクリミネーテッドユニオン
- * （CONTINUOUS_TIME / SET_BASED）に拡張。live.vue は stateModel で分岐する。
- * BE が Sport enum を VOLLEYBALL へ拡張し openapi 再生成後、LiveSport ユニオンへ統合する
- * （現時点の border は isSupportedSport / resolveSportModule の 1 箇所・any 禁止）。
+ * 【状態モデル類型（CONTINUOUS_TIME / SET_BASED / TURN_BASED）】
+ * SportLiveModule は 3 類型のディスクリミネーテッドユニオン（stateModel で識別）。live.vue は
+ * stateModel で分岐する。VOLLEYBALL=SET_BASED・SHOGI/GO=TURN_BASED・他=CONTINUOUS_TIME。
  *
- * 【前向きユニオン境界（6-④b 追加）】
- * SHOGI/GO（TURN_BASED）を追加。SportLiveModule はターン制バリアントを含む 3 種類のユニオンに拡張。
- * BE が Sport enum を SHOGI/GO へ拡張し openapi 再生成後、LiveSport ユニオンへ統合する
- * （現時点の境界は REGISTRY・AllSport の定義のみ・any 禁止）。
+ * 【生成型への返済（旧前向きユニオン）】
+ * 旧来は BE OpenAPI の `Sport` が 'SOCCER' のみで、FE が VOLLEYBALL/SHOGI/GO を手書きの前向きユニオン
+ * （AllSport）で先行定義していた。OpenAPI 再生成で生成型 `Sport` が全 6 競技へ拡張されたため、
+ * `AllSport` を生成型 `Sport`（`~/types/match`）へ返済した（手書き列挙を撤去・生成型が正本）。
  */
 import type { Component } from 'vue'
-import type { LiveSport, MatchPeriod } from '~/types/match'
+import type { LiveSport, MatchPeriod, Sport } from '~/types/match'
 import type {
   TimerState,
   UseMatchTimerCoreOptions,
@@ -107,11 +105,6 @@ export interface SportLiveModuleTurnBased {
 
 /**
  * 競技モジュールのディスクリミネーテッドユニオン（stateModel で識別）。
- *
- * 【前向きユニオン境界】
- * 生成型の `Sport`（BE OpenAPI）は現時点 'SOCCER' のみを含む。
- * FE 先行実装（VOLLEYBALL/SHOGI/GO）は `AllSport` ユニオンを用いる。
- * BE が拡張次第 `LiveSport` と統合する。
  */
 export type SportLiveModule =
   | SportLiveModuleContinuous
@@ -119,11 +112,13 @@ export type SportLiveModule =
   | SportLiveModuleTurnBased
 
 /**
- * FE が扱う全競技（連続時間制 + セット制 + ターン制）の前向きユニオン。
- * BE openapi 再生成後に LiveSport へ統合する。
- * TODO: 生成型 Sport に VOLLEYBALL/SHOGI/GO が追加されたら LiveSport に組み込む。
+ * FE が扱う全競技（連続時間制 + セット制 + ターン制）。
+ *
+ * OpenAPI 再生成で生成型 `Sport`（`~/types/match`）が全 6 競技（SOCCER/FUTSAL/BASKETBALL/
+ * VOLLEYBALL/SHOGI/GO）へ拡張されたため、旧・手書き前向きユニオンを撤去し生成型 `Sport` へ返済した。
+ * `LiveSport`（連続時間制）はその部分集合（`Exclude` で導出）。
  */
-export type AllSport = LiveSport | 'VOLLEYBALL' | 'SHOGI' | 'GO'
+export type AllSport = Sport
 
 /** モジュールローダの型（必ず動的 import を返す関数）。 */
 export type SportModuleLoader = () => Promise<SportLiveModule>

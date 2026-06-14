@@ -16,13 +16,12 @@
  * - 通常セット（1〜4）: 25 点先取かつ 2 点差（デュース解消）
  * - 第 5 セット（ファイナルセット）: 15 点先取かつ 2 点差
  *
- * 【前向きユニオン境界】
+ * 【状態モデル分岐】
  * live.vue の共通シェルは SportTimer 型（連続時間制）を期待するが、
  * SET_BASED モジュールは SportTimer を提供しない（タイマー不要）。
  * live.vue 側で isSetBased フラグを判定しセット制パスへ分岐する
  * （境界は live.vue の sportModule.stateModel チェック 1 箇所のみ）。
- * TODO: BE が Sport enum を VOLLEYBALL へ拡張し openapi 再生成後、
- *       LiveSport ユニオンへ統合（現時点は FE 前向き定義）。
+ * VOLLEYBALL は生成型 Sport へ統合済み（AllSport=Sport・本トラッカーは内部状態機械でありBE DTOではない）。
  */
 import { computed, ref } from 'vue'
 

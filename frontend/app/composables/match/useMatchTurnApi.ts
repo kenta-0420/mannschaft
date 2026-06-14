@@ -13,99 +13,61 @@
  *   GET    .../attachments/{attachmentId}/download-url                      attachmentDownloadUrl（短命 DL URL）
  *   DELETE .../attachments/{attachmentId}                                   deleteAttachment（削除）
  *
- * 【前向きユニオン境界（6-④c）】
+ * 【生成型への返済（旧 6-④c 前向きユニオン）】
  * これらの BE DTO（MatchRecordTurnResultRequest / MatchRecordBoardCreateRequest /
- * MatchRecordAttachment*）は openapi-typescript 再生成が後続フェーズのため、生成型 `Schemas` に
- * 未反映である。よって本 composable 内に**手動の前向きユニオン型**を定義し、`useApi` の境界（各関数の
- * ジェネリック引数 1 箇所）で吸収する（any 禁止・後続の生成型一括再生成で本ファイルの手動型を撤去する）。
- * TODO: BE openapi 再生成後、本ファイルの Turn* 手動型を Schemas 由来へ置換する。
+ * MatchRecordAttachment* / MatchDetailResponse）は OpenAPI 再生成で生成型 `Schemas` へ反映済みと
+ * なったため、旧・手書きの前向きユニオン型を撤去し、生成型由来のエイリアスへ置換した
+ * （生成型が正本・二重定義を解消・any なし）。
+ * 例外: 引分け（winnerSide=null）は OpenAPI enum（"HOME" | "AWAY"）に null が含まれないため、
+ * FE が記録 UI で扱う「引分け」を表現するための補助ユニオン `TurnResultWinnerSide` のみ手書きで残す
+ * （送出時は生成型の器へ載せ替える＝境界 1 箇所・MATCH_028 整合）。
  *
  * R2 直 PUT は useBulletinAttachments と同じ presign 方式 A（ofetch 直叩き・credentials なし・
  * Content-Type を presign 時と一致）を踏襲する（01 §B.7）。
  */
 import { ofetch } from 'ofetch'
+import type { components } from '~/types/generated'
 
-// ===== 前向きユニオン型（生成型未反映・後続再生成で撤去） =====
+type Schemas = components['schemas']
 
-/** 勝者サイド（HOME=先手/黒・AWAY=後手/白・null=引分け）。 */
-export type TurnResultWinnerSide = 'HOME' | 'AWAY' | null
+// ===== DTO 型（生成型の再エクスポート・旧前向きユニオンの返済先） =====
 
-/** 対局結果記録リクエスト（BE MatchRecordTurnResultRequest 相当・引分時 winMethod は送らない）。 */
-export interface MatchTurnResultRequestPayload {
-  /** 勝者サイド（null=引分け）。 */
-  winnerSide: TurnResultWinnerSide
-  /** 勝ち方の enum 名（任意・引分時は省略＝BE の MATCH_028 を回避）。 */
-  winMethod?: string | null
-  /** 総手数（任意）。 */
-  totalMoves?: number | null
-}
-
-/** 団体戦の子ボード作成リクエスト（BE MatchRecordBoardCreateRequest 相当）。 */
-export interface MatchBoardCreateRequestPayload {
-  /** ボード順（1=大将/主将 等・親内一意）。 */
-  boardNumber: number
-  /** 相手チーム ID（任意・親から継承する場合は省略）。 */
-  opponentTeamId?: number | null
-  /** 未登録相手名（任意）。 */
-  opponentName?: string | null
-}
+/** 対局結果記録リクエスト（生成型 MatchRecordTurnResultRequest）。 */
+export type MatchTurnResultRequestPayload = Schemas['MatchRecordTurnResultRequest']
+/** 団体戦の子ボード作成リクエスト（生成型 MatchRecordBoardCreateRequest）。 */
+export type MatchBoardCreateRequestPayload = Schemas['MatchRecordBoardCreateRequest']
+/** ターン制を含む試合詳細レスポンス（生成型 MatchDetailResponse・winMethod/totalMoves/parentMatchId/boardNumber 反映済み）。 */
+export type TurnMatchResponse = Schemas['MatchDetailResponse']
+/** 局面写真 presign リクエスト（生成型 MatchRecordAttachmentPresignRequest）。 */
+export type MatchAttachmentPresignRequestPayload = Schemas['MatchRecordAttachmentPresignRequest']
+/** 局面写真 presign レスポンス（生成型 MatchRecordAttachmentPresignResponse）。 */
+export type MatchAttachmentPresignResponsePayload = Schemas['MatchRecordAttachmentPresignResponse']
+/** 局面写真 確定リクエスト（生成型 MatchRecordAttachmentConfirmRequest）。 */
+export type MatchAttachmentConfirmRequestPayload = Schemas['MatchRecordAttachmentConfirmRequest']
+/** 局面写真レスポンス（生成型 MatchRecordAttachmentResponse）。 */
+export type MatchAttachmentResponsePayload = Schemas['MatchRecordAttachmentResponse']
+/** 局面写真 短命 DL URL レスポンス（生成型 MatchRecordAttachmentDownloadResponse）。 */
+export type MatchAttachmentDownloadResponsePayload = Schemas['MatchRecordAttachmentDownloadResponse']
 
 /**
- * ターン制 match レスポンス（BE MatchDetailResponse 相当・ターン制拡張フィールドを含む前向きユニオン）。
- * 生成型 MatchDetailResponse には winMethod/totalMoves/parentMatchId/boardNumber が未反映のため手動定義する。
+ * 勝者サイド（HOME=先手/黒・AWAY=後手/白・null=引分け）。
+ * 生成型 MatchRecordTurnResultRequest.winnerSide は enum "HOME" | "AWAY" に null を含まないため、
+ * FE が記録 UI で扱う「引分け」を表す補助ユニオンとして手書きで残す（送出時に器へ載せ替える）。
  */
-export interface TurnMatchResponse {
-  id?: string
-  teamId?: number
-  parentMatchId?: string | null
-  boardNumber?: number | null
-  homeScore?: number | null
-  awayScore?: number | null
+export type TurnResultWinnerSide = NonNullable<MatchTurnResultRequestPayload['winnerSide']> | null
+
+/**
+ * 対局結果記録の **ワイヤーペイロード**（送出 JSON 形）。
+ * BE は引分けを `winnerSide=null` の明示で受ける（§4.2）。生成型 DTO は enum に null を含まないため、
+ * 送出時のみ null 明示を許す形で生成型を拡張する（境界 1 箇所・挙動不変＝従前と同じ JSON を送る）。
+ */
+export type MatchTurnResultWirePayload = Omit<
+  MatchTurnResultRequestPayload,
+  'winnerSide' | 'winMethod' | 'totalMoves'
+> & {
+  winnerSide: TurnResultWinnerSide
   winMethod?: string | null
   totalMoves?: number | null
-  opponentName?: string | null
-  opponentTeamId?: number | null
-  status?: string | null
-  canRecordTimeline?: boolean
-  canEditMeta?: boolean
-}
-
-/** 局面写真 presign リクエスト（BE MatchRecordAttachmentPresignRequest 相当）。 */
-export interface MatchAttachmentPresignRequestPayload {
-  contentType: string
-  fileSize: number
-}
-
-/** 局面写真 presign レスポンス（BE MatchRecordAttachmentPresignResponse 相当）。 */
-export interface MatchAttachmentPresignResponsePayload {
-  uploadUrl: string
-  fileKey: string
-  expiresInSeconds: number
-}
-
-/** 局面写真 確定リクエスト（BE MatchRecordAttachmentConfirmRequest 相当）。 */
-export interface MatchAttachmentConfirmRequestPayload {
-  fileKey: string
-  originalFilename?: string | null
-  contentType: string
-  fileSize: number
-}
-
-/** 局面写真レスポンス（BE MatchRecordAttachmentResponse 相当）。 */
-export interface MatchAttachmentResponsePayload {
-  id: string
-  matchId: string
-  originalFilename?: string | null
-  contentType?: string | null
-  fileSize?: number | null
-  createdBy?: number | null
-  createdAt?: string | null
-}
-
-/** 局面写真 短命 DL URL レスポンス（BE MatchRecordAttachmentDownloadResponse 相当）。 */
-export interface MatchAttachmentDownloadResponsePayload {
-  downloadUrl: string
-  expiresInSeconds: number
 }
 
 // ===== ヘルパー =====
@@ -124,7 +86,7 @@ export function buildTurnResultPayload(
   winnerSide: TurnResultWinnerSide,
   winMethod: string | null | undefined,
   totalMoves: number | null | undefined,
-): MatchTurnResultRequestPayload {
+): MatchTurnResultWirePayload {
   if (winnerSide === null) {
     // 引分: winMethod は送らない（BE の MATCH_028 回避・両スコア 0）
     return { winnerSide: null, winMethod: null, totalMoves: totalMoves ?? null }
@@ -163,10 +125,9 @@ export function useMatchTurnApi() {
   async function recordResult(
     orgId: number,
     matchId: string,
-    payload: MatchTurnResultRequestPayload,
+    payload: MatchTurnResultWirePayload,
   ): Promise<TurnMatchResponse> {
     try {
-      // 前向きユニオン境界: 生成型未反映の Turn* 型を useApi のジェネリックで吸収する。
       const res = await api<{ data: TurnMatchResponse }>(`${base(orgId, matchId)}/result`, {
         method: 'PUT',
         body: payload,
@@ -300,7 +261,7 @@ export function useMatchTurnApi() {
     orgId: number,
     matchId: string,
     file: File,
-  ): Promise<{ attachment: MatchAttachmentResponsePayload; displayUrl: string }> {
+  ): Promise<{ attachment: MatchAttachmentResponsePayload & { id: string }; displayUrl: string }> {
     if (!isUploadableImage(file)) {
       notification.error(t('match.turn.error.attachment_type_invalid'))
       throw new Error('match attachment: SVG/non-image not allowed')
@@ -315,6 +276,11 @@ export function useMatchTurnApi() {
         contentType: file.type,
         fileSize: file.size,
       })
+      // 生成型では uploadUrl/fileKey は optional（OpenAPI）。BE は常に返すが、欠落時は不正応答として弾く
+      // （症状を隠さず根治・null を握り潰さない）。
+      if (!presigned.uploadUrl || !presigned.fileKey) {
+        throw new Error('match attachment: presign response missing uploadUrl/fileKey')
+      }
       // (2) ストレージ直 PUT（Content-Type 一致）
       await uploadToStorage(presigned.uploadUrl, file)
       // (3) 確定
@@ -324,9 +290,17 @@ export function useMatchTurnApi() {
         contentType: file.type,
         fileSize: file.size,
       })
+      // 生成型では id は optional。確定応答に id が無いのは不正応答として弾く。
+      const attachmentId = attachment.id
+      if (!attachmentId) {
+        throw new Error('match attachment: confirm response missing id')
+      }
       // (4) 表示用の短命 URL を発行（生 key は返らない方針のため別取得）
-      const dl = await attachmentDownloadUrl(orgId, matchId, attachment.id)
-      return { attachment, displayUrl: dl.downloadUrl }
+      const dl = await attachmentDownloadUrl(orgId, matchId, attachmentId)
+      if (!dl.downloadUrl) {
+        throw new Error('match attachment: download-url response missing downloadUrl')
+      }
+      return { attachment: { ...attachment, id: attachmentId }, displayUrl: dl.downloadUrl }
     } catch (err) {
       // 個別関数で通知済みでない経路（PUT 失敗）はここで通知
       notification.error(t('match.turn.error.upload_photo_failed'))
