@@ -5,6 +5,7 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.match.MatchCompletedEvent;
 import com.mannschaft.app.match.MatchErrorCode;
+import com.mannschaft.app.match.catalog.VolleyballSetRules;
 import com.mannschaft.app.match.domain.HomeAway;
 import com.mannschaft.app.match.domain.MatchKind;
 import com.mannschaft.app.match.domain.MatchStatus;
@@ -381,9 +382,12 @@ public class MatchService {
                 }
             }
             case SET_BASED -> {
-                // 獲得セット数が両方確定し、勝者がセット先取で決着している（引分けなし）こと
-                if (match.getHomeScore() == null || match.getAwayScore() == null
-                        || match.getHomeScore().equals(match.getAwayScore())) {
+                // 獲得セット数（matches.home_score/away_score＝match_sets 集計の正本反映・§B.1.2）が両方確定し、
+                // 勝者が必要勝ちセット数（best-of-5=3 セット先取）に到達し、かつ引分けでない（バレーに D なし）こと。
+                // セット内スコアの正本は match_sets だが、その勝ちセット数は recordSet で matches 列へ集計済み
+                // のため、ここでは matches 列に対して VolleyballSetRules で「3 セット先取・引分けなし」を厳密判定する。
+                if (!VolleyballSetRules.isMatchCompletable(
+                        match.getHomeScore(), match.getAwayScore(), match.getPeriodFormat())) {
                     throw new BusinessException(MatchErrorCode.MATCH_026);
                 }
             }
