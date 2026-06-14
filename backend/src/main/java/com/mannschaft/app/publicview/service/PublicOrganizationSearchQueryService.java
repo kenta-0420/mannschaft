@@ -72,6 +72,7 @@ public class PublicOrganizationSearchQueryService {
         List<PublicOrganizationSearchResultResponse> content = orgPage.getContent().stream()
                 .map(org -> new PublicOrganizationSearchResultResponse(
                         org.getId(),
+                        org.getSlug(),
                         org.getName(),
                         org.getIconUrl(),
                         0, // 組織はmember_count集計カラムを持たないため、メンバー数は0として返す

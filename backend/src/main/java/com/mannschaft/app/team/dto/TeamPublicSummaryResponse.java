@@ -23,6 +23,8 @@ import com.mannschaft.app.team.entity.TeamEntity;
  */
 public record TeamPublicSummaryResponse(
         String id,
+        /** チームスラッグ（URL ルーティング用）。{@code /teams/{slug}} に使用する。 */
+        String slug,
         String name,
         String nameKana,
         String prefecture,
@@ -41,6 +43,7 @@ public record TeamPublicSummaryResponse(
      */
     public static TeamPublicSummaryResponse from(TeamEntity team) {
         return new TeamPublicSummaryResponse(
+                team.getSlug(),
                 team.getSlug(),
                 team.getName(),
                 team.getNameKana(),

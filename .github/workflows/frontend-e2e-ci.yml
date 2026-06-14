@@ -88,7 +88,7 @@ jobs:
       # F15.4 と F22.1 の smoke spec をまとめて 1 回の dev サーバ起動で実行する。
       # 両 spec とも page.route() で全 API をモックするためバックエンド非依存。
       - name: Run smoke E2E (F15.4 + F22.1)
-        run: npx playwright test F15.4-org-team-search f221-swipe-dashboard --project=chromium --workers=1 --timeout=120000
+        run: npx playwright test F15.4-org-team-search f221-swipe-dashboard F15.4-slug-navigation --project=chromium --workers=1 --timeout=120000
 
       - name: Upload Playwright HTML report (on failure)
         if: failure()

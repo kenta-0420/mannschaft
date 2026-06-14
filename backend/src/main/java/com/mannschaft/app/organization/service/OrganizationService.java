@@ -252,7 +252,7 @@ public class OrganizationService {
                 .map(org -> {
                     int memberCount = (int) userRoleRepository.countByOrganizationId(org.getId());
                     return new OrganizationSummaryResponse(
-                            org.getSlug(), org.getName(), org.getOrgType().name(),
+                            org.getSlug(), org.getSlug(), org.getName(), org.getOrgType().name(),
                             org.getVisibility().name(), memberCount);
                 })
                 .toList();
@@ -378,6 +378,7 @@ public class OrganizationService {
     private OrganizationResponse toResponse(OrganizationEntity org, int memberCount) {
         return OrganizationResponse.builder()
                 .id(org.getSlug())
+                .slug(org.getSlug())
                 .basicInfo(new OrganizationResponse.OrgBasicInfoDto(
                         org.getName(), org.getNameKana(),
                         org.getNickname1(), org.getNickname2()))

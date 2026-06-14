@@ -50,6 +50,8 @@ export interface OrganizationResponse {
 
 export interface OrganizationSummaryResponse {
   id: number
+  /** 組織スラッグ（URLルーティング用）。{@code /organizations/{slug}} に使用する。 */
+  slug: string
   name: string
   nickname1: string | null
   iconUrl: string | null
@@ -91,6 +93,8 @@ export interface UpdateOrganizationRequest {
 
 export interface OrgTeam {
   id: number
+  /** チームスラッグ（URLルーティング用）。{@code /teams/{slug}} に使用する。 */
+  slug: string
   name: string
   nickname1: string | null
   iconUrl: string | null

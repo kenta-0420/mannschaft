@@ -355,7 +355,7 @@ public class TeamService {
                     long supporterCount = membershipRepository.countActiveByScopeAndRoleKind(
                             ScopeType.TEAM, team.getId(), RoleKind.SUPPORTER);
                     return new TeamSummaryResponse(
-                            team.getSlug(), team.getName(), team.getTemplate(),
+                            team.getSlug(), team.getSlug(), team.getName(), team.getTemplate(),
                             team.getVisibility().name(), memberCount,
                             teamFriendCount, supporterCount);
                 })
@@ -482,6 +482,7 @@ public class TeamService {
                 .filter(org -> org != null)
                 .map(org -> new TeamOrgSummaryResponse(
                         org.getSlug(),
+                        org.getSlug(),
                         org.getName(),
                         null,
                         org.getVisibility().name(),
@@ -538,6 +539,7 @@ public class TeamService {
                                      long teamFriendCount, long supporterCount) {
         return TeamResponse.builder()
                 .id(team.getSlug())
+                .slug(team.getSlug())
                 .basicInfo(new TeamResponse.TeamBasicInfoDto(
                         team.getName(), team.getNameKana(),
                         team.getNickname1(), team.getNickname2()))
