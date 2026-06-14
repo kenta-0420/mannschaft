@@ -124,14 +124,14 @@ async function recordFixture(fx: TournamentMatch): Promise<void> {
 
   recordingFixtureId.value = fx.id
   try {
-    // 1) 数値 teamId → 数値 orgId ＋ teamPublicId を解決（live 遷移先に publicId が要る）
+    // 1) 数値 teamId → 数値 orgId ＋ teamSlug を解決（live 遷移先に slug が要る）
     const ctx = await resolveContextByTeamId(target.selfTeamId)
     if (!ctx) return // 解決失敗時は composable 内で通知済み
 
     // 2) この fixture に紐づく既存 match があれば live を開く（二重起票防止）
     const existing = await resolveMatchByFixture(ctx.orgId, ctx.teamId, fx.id)
     if (existing?.id) {
-      await navigateTo(`/teams/${ctx.teamPublicId}/matches/${existing.id}/live`)
+      await navigateTo(`/teams/${ctx.teamSlug}/matches/${existing.id}/live`)
       return
     }
 
@@ -150,7 +150,7 @@ async function recordFixture(fx: TournamentMatch): Promise<void> {
       venue: fx.info?.venue ?? undefined,
     })
     if (created.id) {
-      await navigateTo(`/teams/${ctx.teamPublicId}/matches/${created.id}/live`)
+      await navigateTo(`/teams/${ctx.teamSlug}/matches/${created.id}/live`)
     }
   } catch {
     // エラーは composable 内で通知済み（症状は隠さない）

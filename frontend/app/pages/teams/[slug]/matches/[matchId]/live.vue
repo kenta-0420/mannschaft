@@ -28,7 +28,7 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
 const router = useRouter()
-const teamIdStr = String(route.params.slug)
+const teamSlug = String(route.params.slug)
 const matchId = String(route.params.matchId)
 const { t } = useI18n()
 const notification = useNotification()
@@ -172,7 +172,7 @@ function addManualPlayer(p: { name: string; jerseyNumber: number | null }): void
 
 // === 初期ロード ===
 onMounted(async () => {
-  const ctx = await resolveContext(teamIdStr)
+  const ctx = await resolveContext(teamSlug)
   orgId.value = ctx?.orgId ?? null
   teamId.value = ctx?.teamId ?? null
   if (orgId.value === null || teamId.value === null) {
@@ -233,7 +233,7 @@ onMounted(async () => {
   } catch {
     // 通知済み
   }
-  await grid.loadPlayers(teamIdStr).catch(() => undefined)
+  await grid.loadPlayers(teamSlug).catch(() => undefined)
   await wakeLock.acquireWakeLock().catch(() => undefined)
   window.addEventListener('online', flushOffline)
   loading.value = false
@@ -341,7 +341,7 @@ function onRecordBoard(_boardNumber: number, boardMatchId: string | null): void 
     notification.info(t('match.board.create_pending_notice'))
     return
   }
-  void router.push(`/teams/${teamIdStr}/matches/${boardMatchId}/live`)
+  void router.push(`/teams/${teamSlug}/matches/${boardMatchId}/live`)
 }
 
 /**
@@ -374,14 +374,14 @@ function goOvertime(): void {
 }
 
 function back(): void {
-  void router.push(`/teams/${teamIdStr}/matches`)
+  void router.push(`/teams/${teamSlug}/matches`)
 }
 </script>
 
 <template>
   <div class="mx-auto max-w-2xl pb-28">
     <div class="mb-2 flex items-center gap-2">
-      <BackButton :to="`/teams/${teamIdStr}/matches`" @click="back" />
+      <BackButton :to="`/teams/${teamSlug}/matches`" @click="back" />
       <PageHeader :title="t('match.live.title')" size="sm" />
     </div>
 

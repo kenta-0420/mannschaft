@@ -13,18 +13,18 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
 const router = useRouter()
-const teamIdStr = String(route.params.slug)
+const teamSlug = String(route.params.slug)
 const { t } = useI18n()
 
 const { listMatches } = useMatchApi()
 
-// === 組織／チーム 数値 ID の解決（publicId→数値 orgId/teamId・useMatchOrgContext に集約）===
+// === 組織／チーム 数値 ID の解決（slug→数値 orgId/teamId・useMatchOrgContext に集約）===
 const { resolveContext } = useMatchOrgContext()
 const orgId = ref<number | null>(null)
 const teamId = ref<number | null>(null)
 
 async function loadOrganizationId(): Promise<void> {
-  const ctx = await resolveContext(teamIdStr)
+  const ctx = await resolveContext(teamSlug)
   orgId.value = ctx?.orgId ?? null
   teamId.value = ctx?.teamId ?? null
 }
@@ -88,12 +88,12 @@ watch([kindFilter, statusFilter], () => {
 // 遷移先 pages/teams/[id]/matches/[matchId]/live.vue は 3-B で実装済み。
 function onSelectMatch(match: MatchSummaryResponse): void {
   if (!match.id) return
-  void router.push(`/teams/${teamIdStr}/matches/${match.id}/live`)
+  void router.push(`/teams/${teamSlug}/matches/${match.id}/live`)
 }
 
 // === FAB から作成ページへ ===
 function goToCreate(): void {
-  void router.push(`/teams/${teamIdStr}/matches/new`)
+  void router.push(`/teams/${teamSlug}/matches/new`)
 }
 
 onMounted(async () => {
@@ -105,7 +105,7 @@ onMounted(async () => {
 <template>
   <div class="mx-auto max-w-3xl pb-24">
     <div class="mb-1 flex items-center gap-3">
-      <BackButton :to="`/teams/${teamIdStr}`" />
+      <BackButton :to="`/teams/${teamSlug}`" />
       <PageHeader :title="$t('match.list.title')" size="sm" />
     </div>
     <p class="mb-4 text-sm text-surface-500">{{ $t('match.list.subtitle') }}</p>

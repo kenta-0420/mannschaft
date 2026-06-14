@@ -9,18 +9,18 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
 const router = useRouter()
-const teamIdStr = String(route.params.slug)
+const teamSlug = String(route.params.slug)
 const { t } = useI18n()
 
 const { createMatch } = useMatchApi()
 const { buildOffsetDateTimeStr } = useDatetime()
 
-// === 組織／チーム 数値 ID の解決（publicId→数値 orgId/teamId・useMatchOrgContext に集約）===
+// === 組織／チーム 数値 ID の解決（slug→数値 orgId/teamId・useMatchOrgContext に集約）===
 const { resolveContext } = useMatchOrgContext()
 const orgId = ref<number | null>(null)
 const teamId = ref<number | null>(null)
 async function loadOrganizationId(): Promise<void> {
-  const ctx = await resolveContext(teamIdStr)
+  const ctx = await resolveContext(teamSlug)
   orgId.value = ctx?.orgId ?? null
   teamId.value = ctx?.teamId ?? null
 }
@@ -103,9 +103,9 @@ async function submit(): Promise<void> {
     const created = await createMatch(orgId.value, teamId.value, body)
     // 作成成功後は live.vue へ遷移する（§G.1a-2 = 即記録開始）。3-B で live.vue を実装済み。
     if (created.id) {
-      void router.push(`/teams/${teamIdStr}/matches/${created.id}/live`)
+      void router.push(`/teams/${teamSlug}/matches/${created.id}/live`)
     } else {
-      void router.push(`/teams/${teamIdStr}/matches`)
+      void router.push(`/teams/${teamSlug}/matches`)
     }
   } catch {
     // エラーは composable 内で通知済み
@@ -115,7 +115,7 @@ async function submit(): Promise<void> {
 }
 
 function cancel(): void {
-  void router.push(`/teams/${teamIdStr}/matches`)
+  void router.push(`/teams/${teamSlug}/matches`)
 }
 
 onMounted(() => loadOrganizationId())
@@ -124,7 +124,7 @@ onMounted(() => loadOrganizationId())
 <template>
   <div class="mx-auto max-w-xl">
     <div class="mb-1 flex items-center gap-3">
-      <BackButton :to="`/teams/${teamIdStr}/matches`" />
+      <BackButton :to="`/teams/${teamSlug}/matches`" />
       <PageHeader :title="$t('match.create.title')" size="sm" />
     </div>
     <p class="mb-6 text-sm text-surface-500">{{ $t('match.create.subtitle') }}</p>

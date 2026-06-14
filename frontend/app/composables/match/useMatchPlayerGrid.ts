@@ -47,7 +47,7 @@ export function useMatchPlayerGrid() {
    * roster が渡されればそれを最優先（段 1）、無ければチームメンバー（段 2）。
    * いずれも空なら段 3（手入力）に委ねる（players は空のまま）。
    *
-   * @param teamIdStr   チーム ID（文字列）
+   * @param teamIdStr   チーム slug（文字列・`/teams/[slug]` の slug）
    * @param roster      大会の先発 roster（任意・段 1）。GridPlayer 互換で渡す。
    */
   async function loadPlayers(
