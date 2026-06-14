@@ -693,7 +693,14 @@ public class GlobalExceptionHandler {
             // MATCH_026/MATCH_027（COMPLETED 不可）・MATCH_028（win_method 不正）・MATCH_029（競技不一致）・
             // MATCH_032/033/034（局面写真の MIME/サイズ/件数）は Severity.WARN デフォルト 400 に従う（明示不要）。
             Map.entry("MATCH_030", HttpStatus.NOT_FOUND),                    // 団体戦ボードの帰属不一致 / 親非団体戦 / 親子テナント不整合（IDOR 秘匿）
-            Map.entry("MATCH_031", HttpStatus.NOT_FOUND)                     // 局面写真不在 / 親子 match_id 不一致（IDOR 秘匿）
+            Map.entry("MATCH_031", HttpStatus.NOT_FOUND),                    // 局面写真不在 / 親子 match_id 不一致（IDOR 秘匿）
+            // チーム/組織 ユーザー任意 slug（村方式統一）。形式不正・予約語は 422、重複は 409
+            Map.entry("TEAM_060", HttpStatus.UNPROCESSABLE_ENTITY),          // SLUG_INVALID_FORMAT
+            Map.entry("TEAM_061", HttpStatus.UNPROCESSABLE_ENTITY),          // SLUG_RESERVED
+            Map.entry("TEAM_062", HttpStatus.CONFLICT),                      // SLUG_ALREADY_TAKEN
+            Map.entry("ORG_060", HttpStatus.UNPROCESSABLE_ENTITY),           // SLUG_INVALID_FORMAT
+            Map.entry("ORG_061", HttpStatus.UNPROCESSABLE_ENTITY),           // SLUG_RESERVED
+            Map.entry("ORG_062", HttpStatus.CONFLICT)                        // SLUG_ALREADY_TAKEN
     );
 
     /**

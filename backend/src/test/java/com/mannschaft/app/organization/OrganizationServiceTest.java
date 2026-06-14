@@ -101,7 +101,7 @@ class OrganizationServiceTest {
         @DisplayName("正常作成_組織とADMINロールが保存される")
         void 正常作成_組織とADMINロールが保存される() {
             CreateOrganizationRequest req = new CreateOrganizationRequest(
-                    "テスト組織", "SCHOOL", "東京都", "渋谷区", "PUBLIC", null);
+                    "テスト組織", "SCHOOL", "東京都", "渋谷区", "PUBLIC", null, null);
 
             given(organizationRepository.existsByName("テスト組織")).willReturn(false);
 
@@ -135,7 +135,7 @@ class OrganizationServiceTest {
         @DisplayName("組織名重複_ORG_002例外")
         void 組織名重複_ORG_002例外() {
             CreateOrganizationRequest req = new CreateOrganizationRequest(
-                    "既存組織", "SCHOOL", null, null, null, null);
+                    "既存組織", "SCHOOL", null, null, null, null, null);
 
             given(organizationRepository.existsByName("既存組織")).willReturn(true);
 
@@ -149,7 +149,7 @@ class OrganizationServiceTest {
         @DisplayName("ADMINロール未定義_ORG_005例外")
         void ADMINロール未定義_ORG_005例外() {
             CreateOrganizationRequest req = new CreateOrganizationRequest(
-                    "新組織", "COMPANY", null, null, null, null);
+                    "新組織", "COMPANY", null, null, null, null, null);
 
             given(organizationRepository.existsByName("新組織")).willReturn(false);
             given(organizationRepository.save(any(OrganizationEntity.class)))
@@ -166,7 +166,7 @@ class OrganizationServiceTest {
         @DisplayName("visibility省略時_PRIVATEがデフォルト")
         void visibility省略時_PRIVATEがデフォルト() {
             CreateOrganizationRequest req = new CreateOrganizationRequest(
-                    "非公開組織", "NPO", null, null, null, null);
+                    "非公開組織", "NPO", null, null, null, null, null);
 
             given(organizationRepository.existsByName("非公開組織")).willReturn(false);
 
@@ -187,7 +187,7 @@ class OrganizationServiceTest {
         @DisplayName("正常系: parentOrganizationId付きで作成される")
         void parentOrganizationId付き_正常作成() {
             CreateOrganizationRequest req = new CreateOrganizationRequest(
-                    "子組織", "SCHOOL", "東京都", "渋谷区", "PUBLIC", 5L);
+                    "子組織", "SCHOOL", "東京都", "渋谷区", "PUBLIC", 5L, null);
 
             given(organizationRepository.existsByName("子組織")).willReturn(false);
 
