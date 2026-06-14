@@ -92,12 +92,12 @@ class SportEventCatalogTest {
     }
 
     @Test
-    @DisplayName("CATALOG は SOCCER / FUTSAL / BASKETBALL の 3 競技を登録している（Phase 6-②a）")
-    void catalogContainsThreeCompetitions() {
+    @DisplayName("CATALOG は SOCCER / FUTSAL / BASKETBALL / VOLLEYBALL の 4 競技を登録している（Phase 6-③a でバレー追加）")
+    void catalogContainsRegisteredCompetitions() {
         assertThat(SportEventCatalog.CATALOG)
-                .as("Phase 6-②a 登録済み競技: SOCCER/FUTSAL/BASKETBALL")
-                .containsKeys(Sport.SOCCER, Sport.FUTSAL, Sport.BASKETBALL)
-                .hasSize(3);
+                .as("Phase 6-②a: SOCCER/FUTSAL/BASKETBALL ＋ Phase 6-③a: VOLLEYBALL")
+                .containsKeys(Sport.SOCCER, Sport.FUTSAL, Sport.BASKETBALL, Sport.VOLLEYBALL)
+                .hasSize(4);
     }
 
     @Test

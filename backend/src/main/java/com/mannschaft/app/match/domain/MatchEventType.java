@@ -73,6 +73,22 @@ public enum MatchEventType {
     /** 5 ファウル退場 / ディスクォリファイ（out 確定・BasketballFoulCode: DF または NULL） */
     FOUL_OUT,
 
+    // --- バレーボール固有: セット制（sports/04_volleyball.md §2）---
+    /** セット開始（match_sets 行を起こす・set_number 連動） */
+    SET_START,
+    /** セット終了（勝者サイド確定・match_sets を閉じる） */
+    SET_END,
+    /** 得点（ラリー獲得・得点サイド・任意で得点種別を detail に） */
+    POINT,
+    /** サービスエース（POINT の特殊・得点も計上） */
+    SERVE_ACE,
+    /** ブロック得点 */
+    BLOCK_POINT,
+    /** アタック決定 */
+    ATTACK_POINT,
+    /** サーブミス（相手得点・任意記録） */
+    SERVE_ERROR,
+
     // --- その他 ---
     /** GK セーブ */
     SAVE,
