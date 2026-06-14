@@ -371,7 +371,14 @@
       "TURNOVER": "失误",
       "PERSONAL_FOUL": "个人犯规",
       "TECHNICAL_FOUL": "技术犯规",
-      "FOUL_OUT": "犯满离场"
+      "FOUL_OUT": "犯满离场",
+      "SET_END": "局结束",
+      "SERVE_ERROR": "发球失误",
+      "SERVE_ACE": "发球直接得分",
+      "POINT": "得分",
+      "BLOCK_POINT": "拦网得分",
+      "ATTACK_POINT": "扣球得分",
+      "SET_START": "局开始"
     },
     "card_type": {
       "YELLOW": "警告",
@@ -413,7 +420,12 @@
       "SG": "得分后卫",
       "SF": "小前锋",
       "PF": "大前锋",
-      "C": "中锋"
+      "C": "中锋",
+      "S": "二传手",
+      "OP": "接应二传",
+      "MB": "中间拦网手",
+      "OH": "主攻手",
+      "L": "自由人"
     },
     "org_context": {
       "resolve_failed": "无法解析球队/组织信息。请确认你的所属"
@@ -446,6 +458,26 @@
     "foul_type": {
       "PERSONAL_FOUL": "个人犯规",
       "TECHNICAL_FOUL": "技术犯规"
+    },
+    "set": {
+      "increment_home": "主队+1",
+      "increment_away": "客队+1",
+      "confirm_set": "确认此局",
+      "deuce_hint": "平分中：领先 2 分即获胜",
+      "in_progress": "进行中",
+      "past_sets": "已完成的局",
+      "set_label": "第{n}局",
+      "deuce": "平分",
+      "confirm_hint": "需要达到{n}分并领先 2 分才能确认",
+      "decrement_home": "主队-1",
+      "away_points_label": "客队得分",
+      "sets_to_win": "先胜{n}局",
+      "match_completed": "比赛结束",
+      "home_points_label": "主队得分",
+      "target_points": "目标{n}分",
+      "sets_label": "局分",
+      "decrement_away": "客队-1",
+      "start_first_set": "开始第 1 局"
     }
   }
 }

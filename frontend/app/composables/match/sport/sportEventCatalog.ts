@@ -6,10 +6,12 @@
  * シート本体はこのカタログを読んでボタンを描画する（カタログ駆動）。各競技固有のプリセット並び:
  *   - サッカー / フットサル: [得点] [アシスト] [警告/退場] [交代] ＋ [その他]（§8.1）
  *   - バスケ:               [2P] [3P] [FT] [リバウンド] [ファウル] [交代] ＋ [その他]（§8.1）
+ *   - バレーボール:         プリセット空（主動線はセット入力シート MatchEventSheetVolleyball）（6-③b §G.16a）
  *
  * i18n ラベルキーのみを持ち（直書き禁止・$t で引く）、実 POST は recorder へ委譲する。
  */
-import type { CatalogEventType, LiveSport } from '~/types/match'
+import type { CatalogEventType } from '~/types/match'
+import type { AllSport } from '~/composables/match/sport/sportModuleRegistry'
 
 /** プリセットボタンが起動するフロー種別（シート内のステップ機械の分岐キー）。 */
 export type SportFlowKind =
@@ -41,10 +43,10 @@ export interface SportPreset {
 
 /** 競技別カタログ（プリセット並び＋メタ）。 */
 export interface SportCatalog {
-  readonly sport: LiveSport
-  /** 状態モデル類型（本波は連続時間制のみ）。 */
-  readonly stateModel: 'CONTINUOUS_TIME'
-  /** イベント入力シートのプリセット並び（画面下部固定）。 */
+  readonly sport: AllSport
+  /** 状態モデル類型（連続時間制 / セット制）。 */
+  readonly stateModel: 'CONTINUOUS_TIME' | 'SET_BASED'
+  /** イベント入力シートのプリセット並び（画面下部固定）。バレーはセット入力シートを使うため空。 */
   readonly presets: readonly SportPreset[]
   /** ポジション語彙（選手グリッド配置・doughnut 集計の大分類）。 */
   readonly positions: readonly string[]
@@ -70,20 +72,28 @@ const BASKETBALL_PRESETS: readonly SportPreset[] = [
   { flow: 'other', labelKey: 'match.live.preset.other', icon: 'pi pi-ellipsis-h', severity: 'secondary' },
 ]
 
-/** 競技別カタログ定義（本波＝連続時間制 3 競技）。 */
-export const SPORT_CATALOGS: Readonly<Record<LiveSport, SportCatalog>> = {
+/**
+ * バレーボールのプリセット（空）。
+ * 主動線はセット入力シート（MatchEventSheetVolleyball）が担うため、
+ * プリセット大ボタンは使用しない（§G.16a）。
+ */
+const VOLLEYBALL_PRESETS: readonly SportPreset[] = []
+
+/** 競技別カタログ定義（連続時間制 3 競技 + セット制 1 競技）。 */
+export const SPORT_CATALOGS: Readonly<Record<AllSport, SportCatalog>> = {
   SOCCER: { sport: 'SOCCER', stateModel: 'CONTINUOUS_TIME', presets: SOCCER_PRESETS, positions: ['GK', 'DF', 'MF', 'FW'] },
   FUTSAL: { sport: 'FUTSAL', stateModel: 'CONTINUOUS_TIME', presets: SOCCER_PRESETS, positions: ['GK', 'FIXO', 'ALA', 'PIVO'] },
   BASKETBALL: { sport: 'BASKETBALL', stateModel: 'CONTINUOUS_TIME', presets: BASKETBALL_PRESETS, positions: ['PG', 'SG', 'SF', 'PF', 'C'] },
+  VOLLEYBALL: { sport: 'VOLLEYBALL', stateModel: 'SET_BASED', presets: VOLLEYBALL_PRESETS, positions: ['OH', 'OP', 'MB', 'S', 'L'] },
 }
 
 /** サッカー/フットサルの共通シート（MatchEventSheet）を使う競技か。 */
-export function usesSoccerStyleSheet(sport: LiveSport | null | undefined): boolean {
+export function usesSoccerStyleSheet(sport: AllSport | null | undefined): boolean {
   return sport === 'SOCCER' || sport === 'FUTSAL'
 }
 
 /** 競技のカタログを取得（未登録競技は null）。 */
-export function getSportCatalog(sport: LiveSport | null | undefined): SportCatalog | null {
+export function getSportCatalog(sport: AllSport | null | undefined): SportCatalog | null {
   if (!sport) return null
   return SPORT_CATALOGS[sport] ?? null
 }

@@ -8,7 +8,13 @@
 // 入力シートを初期バンドルに同梱しない（Vite コード分割・マスター懸念「重くなる」の解消）。
 import { effectScope } from 'vue'
 import type { MatchEventResponse } from '~/types/match'
-import { resolveSportModule, type SportLiveModule } from '~/composables/match/sport/sportModuleRegistry'
+import {
+  resolveSportModule,
+  isContinuousModule,
+  isSetBasedModule,
+  type SportLiveModule,
+} from '~/composables/match/sport/sportModuleRegistry'
+import type { MatchSetTrackerReturn } from '~/composables/match/sport/useMatchSetTracker'
 
 definePageMeta({ layout: 'team', middleware: 'auth' })
 
@@ -39,6 +45,13 @@ const awayPenaltyScore = ref(0)
 const sportModule = ref<SportLiveModule | null>(null)
 /** 共通シェルが扱う「前後半系（サッカー/フットサル）」か「クォーター系（バスケ）」か。 */
 const isBasketball = computed(() => sportModule.value?.sport === 'BASKETBALL')
+/**
+ * セット制（VOLLEYBALL 等）かどうか（§G.16 stateModel 分岐）。
+ * セット制はタイマーを持たず、セットトラッカーをセットシートへ渡す。
+ */
+const isSetBased = computed(() => sportModule.value !== null && isSetBasedModule(sportModule.value!))
+/** セットトラッカー（SET_BASED 競技時のみ非 null）。 */
+const setTracker = shallowRef<MatchSetTrackerReturn | null>(null)
 
 // セッションは競技モジュールの createTimer を注入して結線する。
 // モジュール解決（動的 import）は非同期＝setup 同期スコープ外で composable を作るため、
@@ -134,7 +147,7 @@ onMounted(async () => {
       teamId,
       matchId,
       ownTeamSide,
-      createTimer: mod?.createTimer,
+      createTimer: mod !== null && isContinuousModule(mod) ? mod.createTimer.bind(mod) : undefined,
     }),
   )
   if (!s) {
@@ -190,6 +203,8 @@ async function handleAdvance(): Promise<void> {
   const s = session.value
   const mod = sportModule.value
   if (!s || !mod) return
+  // SET_BASED競技（バレーボール等）はタイマーを持たないため handleAdvance は早期リターン
+  if (!isContinuousModule(mod)) return
   if (mod.isNextCompleted(s.timer.state.value)) {
     await complete()
   } else {
@@ -235,7 +250,7 @@ function back(): void {
       />
 
       <!-- タイマー操作（記録権限がある場合のみ）。競技で出し分け（前後半系 / クォーター系）。 -->
-      <template v-if="canRecord">
+      <template v-if="canRecord && !isSetBased">
         <MatchTimerControlsBasketball
           v-if="isBasketball"
           class="mb-3"
@@ -368,7 +383,7 @@ function back(): void {
       -->
       <component
         :is="sportModule.eventSheet"
-        v-if="canRecord && sportModule"
+        v-if="canRecord && sportModule && !isSetBased"
         v-model:visible="sheetVisible"
         :players="grid.players.value"
         @goal="session.recordGoal"
@@ -379,6 +394,21 @@ function back(): void {
         @foul="session.recordBasketFoul"
         @substitution="session.recordSub"
         @other="session.recordOther"
+      />
+
+      <!--
+        バレーボール セット入力シート（SET_BASED 競技のみ表示）（§G.16a）。
+        タイマーコントロールの代わりに常時表示され、セット進行・デュース判定・試合終了を制御する。
+        記録権限がある場合のみマウント。
+      -->
+      <MatchEventSheetVolleyball
+        v-if="canRecord && isSetBased && setTracker"
+        :tracker="setTracker!"
+        :own-team-side="ownTeamSide"
+        :opponent-name="opponentName"
+        :can-record="canRecord"
+        class="mb-4"
+        @complete-match="complete()"
       />
 
       <!-- スタメン設定シート（記録権限がある場合のみマウント） -->

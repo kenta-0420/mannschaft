@@ -371,7 +371,14 @@
       "TURNOVER": "Ballverlust",
       "PERSONAL_FOUL": "Persönliches Foul",
       "TECHNICAL_FOUL": "Technisches Foul",
-      "FOUL_OUT": "Foul-Out"
+      "FOUL_OUT": "Foul-Out",
+      "SET_END": "Satz ende",
+      "SERVE_ERROR": "Aufschlagfehler",
+      "SERVE_ACE": "Ass",
+      "POINT": "Punkt",
+      "BLOCK_POINT": "Blockpunkt",
+      "ATTACK_POINT": "Angriffspunkt",
+      "SET_START": "Satz beginn"
     },
     "card_type": {
       "YELLOW": "Verwarnung",
@@ -413,7 +420,12 @@
       "SG": "Shooting Guard",
       "SF": "Small Forward",
       "PF": "Power Forward",
-      "C": "Center"
+      "C": "Center",
+      "S": "Zuspieler",
+      "OP": "Diagonalspieler",
+      "MB": "Mittelblocker",
+      "OH": "Außenangreifer",
+      "L": "Libero"
     },
     "org_context": {
       "resolve_failed": "Team-/Organisationsinfo konnte nicht aufgelöst werden. Bitte prüfe deine Mitgliedschaften"
@@ -446,6 +458,26 @@
     "foul_type": {
       "PERSONAL_FOUL": "Persönliches Foul",
       "TECHNICAL_FOUL": "Technisches Foul"
+    },
+    "set": {
+      "increment_home": "Heim +1",
+      "increment_away": "Auswärts +1",
+      "confirm_set": "Satz bestätigen",
+      "deuce_hint": "Einstand: spielen bis 2 Punkte Vorsprung",
+      "in_progress": "Läuft",
+      "past_sets": "Abgeschlossene Sätze",
+      "set_label": "Satz {n}",
+      "deuce": "Einstand",
+      "confirm_hint": "{n} Punkte mit 2 Punkte Vorsprung zum Bestätigen",
+      "decrement_home": "Heim -1",
+      "away_points_label": "Auswärtspunkte",
+      "sets_to_win": "Best of {n}",
+      "match_completed": "Spiel beendet",
+      "home_points_label": "Heimpunkte",
+      "target_points": "Ziel {n} Pkt",
+      "sets_label": "Satzstand",
+      "decrement_away": "Auswärts -1",
+      "start_first_set": "Satz 1 starten"
     }
   }
 }
