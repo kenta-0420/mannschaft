@@ -41,6 +41,8 @@ interface BlockResponse {
 
 interface TeamSummaryResponse {
   id: number
+  /** チームスラッグ（URLルーティング用）。BE `OrgTeamSummaryResponse.slug` と 1:1。 */
+  slug: string
   name: string
   nickname1: string | null
   iconUrl: string | null
