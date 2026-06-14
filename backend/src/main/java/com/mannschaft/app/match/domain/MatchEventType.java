@@ -89,6 +89,16 @@ public enum MatchEventType {
     /** サーブミス（相手得点・任意記録） */
     SERVE_ERROR,
 
+    // --- ターン制（将棋/囲碁）固有: 結果系少数（sports/05_shogi.md §2 / sports/06_go.md §2）---
+    /** 対局結果確定（勝者サイド＝home/away_score の 1-0/0-1・勝ち方＝win_method・§B.1.2/§D.7） */
+    GAME_RESULT,
+    /** 総手数記録（total_moves へ反映・任意） */
+    MOVE_COUNT,
+    /** 局面写真添付（presign 添付・§B.7） */
+    POSITION_PHOTO,
+    /** 局面コメント（note へ自由記述） */
+    COMMENT,
+
     // --- その他 ---
     /** GK セーブ */
     SAVE,
