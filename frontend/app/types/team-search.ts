@@ -53,6 +53,8 @@ export type TeamSearchSort = 'nameKana,asc' | 'name,asc' | 'createdAt,desc'
  */
 export interface TeamPublicSummary {
   id: number
+  /** チームスラッグ（URLルーティング用）。{@code /teams/{slug}} に使用する。 */
+  slug: string
   name: string
   nameKana: string
   prefecture: string | null

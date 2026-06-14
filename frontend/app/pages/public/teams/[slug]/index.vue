@@ -273,7 +273,7 @@ function onBackToSearch() {
       </section>
 
       <!-- ログイン誘導 CTA -->
-      <PublicTeamLoginCta :team-id="team.id" />
+      <PublicTeamLoginCta :team-id="team.slug" />
     </template>
   </div>
 </template>

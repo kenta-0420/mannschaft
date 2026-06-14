@@ -27,6 +27,8 @@ import com.mannschaft.app.team.entity.TeamEntity;
  */
 public record TeamSearchResultResponse(
         String id,
+        /** チームスラッグ（URL ルーティング用）。{@code /teams/{slug}} に使用する。 */
+        String slug,
         String name,
         String nameKana,
         String prefecture,
@@ -52,6 +54,7 @@ public record TeamSearchResultResponse(
      */
     public static TeamSearchResultResponse from(TeamEntity team) {
         return new TeamSearchResultResponse(
+                team.getSlug(),
                 team.getSlug(),
                 team.getName(),
                 team.getNameKana(),

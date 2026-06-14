@@ -38,7 +38,7 @@ const templateText = computed(() => {
  * 遷移先 URL。ログイン状態（compact=false）= 既存詳細ページ、未ログイン（compact=true）= 公開詳細ページ。
  */
 const targetUrl = computed(() => {
-  return props.compact ? `/public/teams/${props.team.id}` : `/teams/${props.team.id}`
+  return props.compact ? `/public/teams/${props.team.slug}` : `/teams/${props.team.slug}`
 })
 
 function formatLocation(prefecture: string | null, city: string | null): string {

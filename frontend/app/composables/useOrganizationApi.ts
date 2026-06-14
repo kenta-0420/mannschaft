@@ -3,11 +3,14 @@ import type { OrganizationResponse } from '~/types/organization'
 
 interface OrganizationSummaryResponse {
   id: string
+  /** 組織スラッグ（URLルーティング用）。{@code /organizations/{slug}} に使用する。 */
+  slug: string
   name: string
   nickname1: string | null
   iconUrl: string | null
   prefecture: string | null
   city: string | null
+  orgType: string
   memberCount: number
   supporterEnabled: boolean
 }
@@ -41,6 +44,8 @@ interface BlockResponse {
 
 interface TeamSummaryResponse {
   id: number
+  /** チームスラッグ（URLルーティング用）。BE `OrgTeamSummaryResponse.slug` と 1:1。 */
+  slug: string
   name: string
   nickname1: string | null
   iconUrl: string | null

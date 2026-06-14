@@ -109,7 +109,7 @@ class OrganizationControllerTest {
     void searchOrganizations_200() {
         Pageable pageable = PageRequest.of(0, 10);
         given(organizationService.searchOrganizations("テスト", pageable)).willReturn(
-                PagedResponse.of(List.of(new OrganizationSummaryResponse(ORG_SLUG, "テスト", "SCHOOL", "PUBLIC", 1)),
+                PagedResponse.of(List.of(new OrganizationSummaryResponse(ORG_SLUG, ORG_SLUG, "テスト", "SCHOOL", "PUBLIC", 1)),
                         new PagedResponse.PageMeta(1L, 0, 10, 1)));
         ResponseEntity<PagedResponse<OrganizationSummaryResponse>> resp = controller.searchOrganizations("テスト", pageable);
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
