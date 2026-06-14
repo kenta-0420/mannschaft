@@ -368,7 +368,10 @@ public class MatchService {
      *   <li><b>SET_BASED</b>（バレー）: 獲得セット数（home/away_score）が両方確定し、引分けでない
      *       （バレーに D なし）こと。未確定/同数は MATCH_026。</li>
      *   <li><b>TURN_BASED</b>（将棋/囲碁）: 勝敗（home/away_score）が両方確定していること
-     *       （勝ち 1-0/0-1・引分 0-0 を許容）。{@code duration_minutes} は不要。未確定は MATCH_027。</li>
+     *       （個人戦は勝ち 1-0/0-1・引分 0-0・団体戦の親は子ボードの勝ち星集計値）。{@code duration_minutes} は不要。
+     *       未確定は MATCH_027。<b>個人戦（子ボード無し）</b>は勝敗あり時に {@code win_method} 必須・引分時は NULL 必須
+     *       （MATCH_028）。<b>団体戦の親（{@code countByParentMatchId>0}＝子ボード保有）</b>は勝敗が勝ち星差で決まり
+     *       {@code win_method} は常に NULL が正常のため win_method 検証を免除する（§4.3）。</li>
      * </ul>
      */
     private void assertCompletable(MatchEntity match) {
@@ -393,24 +396,37 @@ public class MatchService {
                 }
             }
             case TURN_BASED -> {
-                // 勝敗（1-0/0-1/0-0）が両方確定していること（引分=0-0 は許容・§B.1.2）。
+                // 勝敗（1-0/0-1/0-0 ＝個人戦／勝ち星集計値 ＝団体戦の親）が両方確定していること
+                // （引分=同点は許容・§B.1.2）。未確定（スコア NULL）は親/個人戦ともに MATCH_027。
                 if (match.getHomeScore() == null || match.getAwayScore() == null) {
                     throw new BusinessException(MatchErrorCode.MATCH_027);
                 }
-                // 勝ち方（win_method）の妥当性も締める（症状を隠さない・§D.7）:
-                //   - 勝敗あり（1-0/0-1＝スコア不一致）: win_method は当該競技の勝ち方列挙値が必須。
-                //   - 引分（0-0＝スコア同点）: win_method は NULL でなければならない（責務分離・§4.2）。
-                boolean draw = match.getHomeScore().equals(match.getAwayScore());
-                if (draw) {
-                    if (match.getWinMethod() != null) {
-                        // 引分なのに勝ち方が付いている矛盾を弾く（症状を隠さない）
-                        throw new BusinessException(MatchErrorCode.MATCH_028);
-                    }
-                } else {
-                    // 勝敗ありは勝ち方必須かつ当該競技カタログの列挙値であること（NULL/列挙外は 400）
-                    if (match.getWinMethod() == null
-                            || !WinMethodCatalog.isValid(match.getSport(), match.getWinMethod())) {
-                        throw new BusinessException(MatchErrorCode.MATCH_028);
+                // 団体戦の親（子ボードを 1 件以上持つ）か個人戦（子ボード無し）かを区別する（§4.3）。
+                // 親の勝敗は子ボードの勝ち星集計（home/away_score 勝ち星差）から導出され、win_method は
+                // 常に NULL が正常（個別ボードの勝ち方の集合体ゆえ単一の勝ち方に集約できない・§4.3）。
+                // よって親は win_method 検証を免除する（症状を隠す回避ではなく、親と個人戦を正しく区別する根治）。
+                boolean isTeamMatchParent =
+                        match.getParentMatchId() == null
+                                && matchRepository.countByParentMatchId(match.getId()) > 0;
+                // 団体戦の親: スコア（勝ち星集計）が両方確定していれば COMPLETED 可。
+                // 勝ち星差あり（勝者あり）でも win_method=NULL が正常・勝ち星同数（引分）も可ゆえ
+                // win_method 検証はスキップする。個人戦（子ボード無し）のみ勝ち方を締める。
+                if (!isTeamMatchParent) {
+                    // 個人戦（子ボード無し）は勝ち方（win_method）の妥当性も締める（症状を隠さない・§D.7）:
+                    //   - 勝敗あり（1-0/0-1＝スコア不一致）: win_method は当該競技の勝ち方列挙値が必須。
+                    //   - 引分（0-0＝スコア同点）: win_method は NULL でなければならない（責務分離・§4.2）。
+                    boolean draw = match.getHomeScore().equals(match.getAwayScore());
+                    if (draw) {
+                        if (match.getWinMethod() != null) {
+                            // 引分なのに勝ち方が付いている矛盾を弾く（症状を隠さない）
+                            throw new BusinessException(MatchErrorCode.MATCH_028);
+                        }
+                    } else {
+                        // 勝敗ありは勝ち方必須かつ当該競技カタログの列挙値であること（NULL/列挙外は 400）
+                        if (match.getWinMethod() == null
+                                || !WinMethodCatalog.isValid(match.getSport(), match.getWinMethod())) {
+                            throw new BusinessException(MatchErrorCode.MATCH_028);
+                        }
                     }
                 }
             }

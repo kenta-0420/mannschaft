@@ -26,7 +26,7 @@ import java.util.Set;
  * </ul>
  *
  * <p>勝ち方の許容値は {@link ShogiWinMethod}、団体戦の勝ち星集計は
- * {@code MatchTeamMatchService} に集約する。</p>
+ * {@link com.mannschaft.app.match.service.MatchTurnResultService} に集約する。</p>
  *
  * <p>設計: docs/features/F08.10_match_record_analytics/sports/05_shogi.md §2 / §4 / §5 / §7</p>
  */
