@@ -239,7 +239,30 @@
         },
         "complete_failed": "保存比赛结束状态失败"
       },
-      "read_only_notice": "仅供查看。仅管理员、副管理员和记录员可记录"
+      "read_only_notice": "仅供查看。仅管理员、副管理员和记录员可记录",
+      "spectator": {
+        "title": "实时观战",
+        "read_only_badge": "仅观战·无记录权限",
+        "offline_banner": "已离线。可能不是最新内容。连接恢复后将自动刷新。",
+        "connection": {
+          "live": "实时连接中",
+          "connecting": "连接中…",
+          "reconnecting": "重新连接中…",
+          "offline": "离线",
+          "denied": "无法观战"
+        },
+        "status": {
+          "SCHEDULED": "未开始",
+          "IN_PROGRESS": "进行中",
+          "COMPLETED": "已结束",
+          "POSTPONED": "延期",
+          "CANCELLED": "取消"
+        },
+        "denied": {
+          "title": "无法观战此比赛",
+          "detail": "由于超出可见范围，无法显示实时直播。"
+        }
+      }
     },
     "analytics": {
       "my_title": "比赛分析",

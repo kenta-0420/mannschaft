@@ -239,7 +239,30 @@
         },
         "complete_failed": "경기 종료 저장에 실패했습니다"
       },
-      "read_only_notice": "보기 전용입니다. 관리자·부관리자·기록원만 기록할 수 있습니다"
+      "read_only_notice": "보기 전용입니다. 관리자·부관리자·기록원만 기록할 수 있습니다",
+      "spectator": {
+        "title": "라이브 관전",
+        "read_only_badge": "관전 전용·기록 권한 없음",
+        "offline_banner": "오프라인입니다. 최신이 아닐 수 있습니다. 연결이 복구되면 자동으로 최신화됩니다.",
+        "connection": {
+          "live": "실시간 연결 중",
+          "connecting": "연결 중…",
+          "reconnecting": "재연결 중…",
+          "offline": "오프라인",
+          "denied": "관전할 수 없습니다"
+        },
+        "status": {
+          "SCHEDULED": "시작 전",
+          "IN_PROGRESS": "경기 중",
+          "COMPLETED": "경기 종료",
+          "POSTPONED": "연기",
+          "CANCELLED": "취소"
+        },
+        "denied": {
+          "title": "이 경기는 관전할 수 없습니다",
+          "detail": "공개 범위 밖이므로 라이브 중계를 표시할 수 없습니다."
+        }
+      }
     },
     "analytics": {
       "my_title": "경기 분석",

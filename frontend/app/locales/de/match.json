@@ -239,7 +239,30 @@
         },
         "complete_failed": "Spielende konnte nicht gespeichert werden"
       },
-      "read_only_notice": "Nur Ansicht. Nur Admins, Stellvertreter und Protokollführer können erfassen"
+      "read_only_notice": "Nur Ansicht. Nur Admins, Stellvertreter und Protokollführer können erfassen",
+      "spectator": {
+        "title": "Live-Zuschauen",
+        "read_only_badge": "Nur Zuschauen · keine Erfassungsrechte",
+        "offline_banner": "Du bist offline. Dies ist möglicherweise nicht der neueste Stand. Es wird automatisch aktualisiert, sobald die Verbindung wiederhergestellt ist.",
+        "connection": {
+          "live": "Live verbunden",
+          "connecting": "Verbinden…",
+          "reconnecting": "Erneut verbinden…",
+          "offline": "Offline",
+          "denied": "Kein Zuschauen möglich"
+        },
+        "status": {
+          "SCHEDULED": "Nicht begonnen",
+          "IN_PROGRESS": "Läuft",
+          "COMPLETED": "Beendet",
+          "POSTPONED": "Verschoben",
+          "CANCELLED": "Abgesagt"
+        },
+        "denied": {
+          "title": "Dieses Spiel kann nicht angesehen werden",
+          "detail": "Der Live-Stream ist nicht verfügbar, da er außerhalb des Sichtbarkeitsbereichs liegt."
+        }
+      }
     },
     "analytics": {
       "my_title": "Spielanalyse",
