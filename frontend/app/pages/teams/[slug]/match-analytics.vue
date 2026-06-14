@@ -4,15 +4,19 @@
  *
  * チームの勝敗・得失点・選手別ランキング・直近フォーム・種別別試合数を可視化する。
  * 集計 API は `/organizations/{orgId}/teams/{teamId}/match-stats`（useMatchAnalytics.getTeamStats）。
- * org コンテキストは useMatchOrgContext で teamId から解決する（3 ページ共通化）。
+ * org コンテキストは useMatchOrgContext で teamSlug から解決する（3 ページ共通化）。
  * 試合記録が無い場合は空状態＋「試合を記録」CTA を出す（§G.8）。
+ *
+ * [slug] ルート配下に移設済み（旧: teams/[id]/match-analytics.vue）。
+ * route.params.slug を読むことで layout が正しくサイドバーを表示できる。
  */
 import type { TeamMatchStatsResponse } from '~/types/match'
 
 definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
-const teamIdStr = String(route.params.id)
+// [slug] ルートでは params.slug を使う（params.id は undefined）
+const teamSlug = computed(() => String(route.params.slug))
 const { t } = useI18n()
 
 const { resolveContext } = useMatchOrgContext()
@@ -28,7 +32,8 @@ const isEmpty = computed(() => (stats.value?.totalMatches ?? 0) === 0)
 async function load(): Promise<void> {
   loading.value = true
   try {
-    const ctx = await resolveContext(teamIdStr)
+    // resolveContext は tm.slug === 引数 で照合するため slug を渡す（数値 ID 不可）
+    const ctx = await resolveContext(teamSlug.value)
     orgId.value = ctx?.orgId ?? null
     if (ctx === null) {
       stats.value = null
@@ -43,13 +48,14 @@ async function load(): Promise<void> {
   }
 }
 
+watch(teamSlug, () => void load())
 onMounted(load)
 </script>
 
 <template>
   <div class="mx-auto max-w-6xl px-4 py-4">
     <div class="mb-1 flex items-center gap-3">
-      <BackButton :to="`/teams/${teamIdStr}`" />
+      <BackButton :to="`/teams/${teamSlug}`" />
       <PageHeader :title="t('match.analytics.team_title')" size="sm" />
     </div>
     <p class="mb-6 text-sm text-surface-500">{{ t('match.analytics.team_subtitle') }}</p>
@@ -72,7 +78,7 @@ onMounted(load)
         <i class="pi pi-chart-bar text-5xl text-surface-300" />
         <p>{{ t('match.analytics.empty.no_matches') }}</p>
         <NuxtLink
-          :to="`/teams/${teamIdStr}/matches`"
+          :to="`/teams/${teamSlug}/matches`"
           class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-semibold text-primary-contrast"
         >
           <i class="pi pi-plus" />

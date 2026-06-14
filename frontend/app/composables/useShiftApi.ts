@@ -11,21 +11,6 @@ import { useShiftSlotApi } from './shift/useShiftSlotApi'
 import { useShiftSwapApi } from './shift/useShiftSwapApi'
 import { useShiftUtilApi } from './shift/useShiftUtilApi'
 
-export {
-  useShiftApiCore,
-  useShiftAssignmentApi,
-  useShiftAutoAssignApi,
-  useShiftAvailabilityApi,
-  useShiftChangeRequestApi,
-  useShiftConstraintApi,
-  useShiftHourlyRateApi,
-  useShiftPositionApi,
-  useShiftRequestApi,
-  useShiftSlotApi,
-  useShiftSwapApi,
-  useShiftUtilApi,
-}
-
 /**
  * 後方互換: 全サブ composable をマージして返す。
  * 既存の呼び出し元は useShiftApi() のままで引き続き動作する。

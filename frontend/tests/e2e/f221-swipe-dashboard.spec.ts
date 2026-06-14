@@ -30,13 +30,26 @@ import { test, expect, type Page, type Route } from '@playwright/test'
 const TEAM_ID = 5001
 const ORG_ID = 6001
 
-/** GET /api/v1/dashboard/scope-tabs（snake_case で返す = useScopeTabApi が camelCase 化）*/
-function mockScopeTabPage(scopeType: 'TEAM' | 'ORGANIZATION') {
+/**
+ * slug 移行後（PR #1413〜）の実 BE が返す slug。
+ * チーム/組織の pathVariable は人間可読 slug（英字 + ハイフン）であり UUID ではない。
+ */
+const TEAM_SLUG = 'fc-u-18'
+const ORG_SLUG = 'tokyo-fa'
+
+/**
+ * GET /api/v1/dashboard/scope-tabs（snake_case で返す = useScopeTabApi が camelCase 化）。
+ *
+ * @param withSlug true のとき public_id に人間可読 slug を載せる（slug 移行後の実 BE 挙動）。
+ *   false のとき public_id を省略し scope_id（BIGINT）のみ（移行前 / 旧モック互換）。
+ */
+function mockScopeTabPage(scopeType: 'TEAM' | 'ORGANIZATION', withSlug = false) {
   const isTeam = scopeType === 'TEAM'
   return {
     items: [
       {
         scope_id: isTeam ? TEAM_ID : ORG_ID,
+        ...(withSlug ? { public_id: isTeam ? TEAM_SLUG : ORG_SLUG } : {}),
         scope_type: scopeType,
         name: isTeam ? 'E2E チームA' : 'E2E 組織A',
         avatar_url: null,
@@ -86,6 +99,8 @@ const MOCK_ACTION_REQUIRED = {
 interface MockOptions {
   /** 検索 API（scope-tabs）に渡された URL を観測するフック */
   onSearchTabs?: (url: URL) => void
+  /** scope-tabs の public_id に slug を載せる（slug 移行後の実 BE 挙動を再現）*/
+  withSlug?: boolean
 }
 
 /**
@@ -127,7 +142,7 @@ async function mockDashboardApis(page: Page, opts: MockOptions = {}): Promise<vo
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: mockScopeTabPage(scopeType) }),
+      body: JSON.stringify({ data: mockScopeTabPage(scopeType, opts.withSlug) }),
     })
   })
 
@@ -410,4 +425,77 @@ test('F22.1-6: アクティブパネルが localStorage に保存され、リロ
     'aria-selected',
     'true',
   )
+})
+
+// ──────────────────────────────────────────────────────────────────────────
+// シナリオ 7: slug 移行リグレッション — slug をパネル表示判定が受理し実コンテンツを描画
+// ──────────────────────────────────────────────────────────────────────────
+
+test('F22.1-7: scope-tabs が slug(public_id) を返すとき、チーム/組織パネルが永久スピナーにならず実コンテンツを描画する', async ({
+  page,
+}) => {
+  // slug 移行（PR #1413〜）後、scope-tabs の public_id は人間可読 slug（fc-u-18 等）になる。
+  // store は selectedTeamId に slug を入れるため、パネルの表示判定は slug を受理して
+  // ダッシュボードを load しなければならない。
+  //
+  // 回帰の本丸: 旧実装は UUID 正規表現で id を判定していたため、slug（fc-u-18）は
+  //   UUID にマッチせず else（loading=true 固定）に落ち、パネルが永久スピナーになっていた。
+  //   本テストは withSlug=true で slug を返し、ウィジェットグリッド（実コンテンツ）が
+  //   描画されることを検証する。旧実装ではここで permanent spinner となり失敗する。
+  await loginAsMember(page)
+  await mockDashboardApis(page, { withSlug: true })
+
+  await page.goto('/dashboard')
+  await waitForCarousel(page)
+
+  // チームパネルへ
+  await page.getByTestId('scope-segment-TEAM').click()
+  const teamPanel = page.locator('#scope-panel-TEAM')
+  // タグバーは描画される（slug ロード前から存在する静的要素）
+  await expect(teamPanel.getByTestId('scope-tab-bar-TEAM')).toBeVisible()
+  // 実コンテンツ（ウィジェットグリッド）が描画される = slug が load された証拠
+  await expect(teamPanel.getByTestId('swipe-widget-grid-TEAM')).toBeVisible({ timeout: 20000 })
+  // 永久スピナー（PageLoading）が残っていない
+  await expect(teamPanel.locator('.pi-spin')).toHaveCount(0)
+
+  // 組織パネルへ
+  await page.getByTestId('scope-segment-ORGANIZATION').click()
+  const orgPanel = page.locator('#scope-panel-ORGANIZATION')
+  await expect(orgPanel.getByTestId('scope-tab-bar-ORGANIZATION')).toBeVisible()
+  await expect(orgPanel.getByTestId('swipe-widget-grid-ORGANIZATION')).toBeVisible({
+    timeout: 20000,
+  })
+  await expect(orgPanel.locator('.pi-spin')).toHaveCount(0)
+})
+
+// ──────────────────────────────────────────────────────────────────────────
+// シナリオ 8: slug 移行リグレッション — UUID 宛の不正なダッシュボード取得が発生しない
+// ──────────────────────────────────────────────────────────────────────────
+
+test('F22.1-8: slug ロード時に UUID 宛のダッシュボード取得が発生しない', async ({ page }) => {
+  await loginAsMember(page)
+  await mockDashboardApis(page, { withSlug: true })
+
+  const uuidDashboardCalls: string[] = []
+  const uuidRe =
+    /\/api\/v1\/dashboard\/(team|organization)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
+  page.on('request', (req) => {
+    if (uuidRe.test(req.url())) uuidDashboardCalls.push(req.url())
+  })
+
+  await page.goto('/dashboard')
+  await waitForCarousel(page)
+  await page.getByTestId('scope-segment-TEAM').click()
+  await expect(
+    page.locator('#scope-panel-TEAM').getByTestId('swipe-widget-grid-TEAM'),
+  ).toBeVisible({ timeout: 20000 })
+  await page.getByTestId('scope-segment-ORGANIZATION').click()
+  await expect(
+    page.locator('#scope-panel-ORGANIZATION').getByTestId('swipe-widget-grid-ORGANIZATION'),
+  ).toBeVisible({ timeout: 20000 })
+
+  expect(
+    uuidDashboardCalls,
+    `UUID 宛のダッシュボード取得が発生した（slug 移行後は slug 宛であるべき）: ${uuidDashboardCalls.join(', ')}`,
+  ).toHaveLength(0)
 })
