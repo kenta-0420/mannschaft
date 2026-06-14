@@ -98,7 +98,10 @@ const summaryWidgets = computed(() => [
 </script>
 
 <template>
-  <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+  <div
+    class="grid grid-cols-1 gap-4 md:grid-cols-2"
+    :data-testid="`swipe-widget-grid-${scopeType}`"
+  >
     <!-- ①②③④⑤⑦ 簡易サマリ（件数 + 空状態） -->
     <SectionCard
       v-for="w in summaryWidgets"

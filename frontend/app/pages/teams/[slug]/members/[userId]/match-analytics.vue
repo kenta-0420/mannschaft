@@ -6,6 +6,9 @@
  * 閲覧可否は BE 側で「本人 / チーム管理者 / F19.1 公開設定」に応じて制御されるため、
  * FE は 403 を分かりやすく表示する（握りつぶさない・CLAUDE.md 根治治療）。
  * 試合記録が無い場合は空状態を出す（§G.8）。
+ *
+ * [slug] ルート配下に移設済み（旧: teams/[id]/members/[userId]/match-analytics.vue）。
+ * route.params.slug を読むことで layout が正しくサイドバーを表示できる。
  */
 import type { UserMatchStatsResponse } from '~/types/match'
 
@@ -14,7 +17,8 @@ definePageMeta({ layout: 'team', middleware: 'auth' })
 const route = useRoute()
 const { t } = useI18n()
 
-const teamIdStr = computed(() => String(route.params.id))
+// [slug] ルートでは params.slug を使う（params.id は undefined）
+const teamSlug = computed(() => String(route.params.slug))
 const userId = computed(() => Number(route.params.userId))
 
 const { resolveContext } = useMatchOrgContext()
@@ -40,7 +44,8 @@ async function load(): Promise<void> {
   loading.value = true
   forbidden.value = false
   try {
-    const ctx = await resolveContext(teamIdStr.value)
+    // resolveContext は tm.slug === 引数 で照合するため slug を渡す（数値 ID 不可）
+    const ctx = await resolveContext(teamSlug.value)
     if (ctx === null || !Number.isFinite(userId.value)) {
       stats.value = null
       return
@@ -59,7 +64,7 @@ async function load(): Promise<void> {
   }
 }
 
-watch([teamIdStr, userId], () => void load())
+watch([teamSlug, userId], () => void load())
 onMounted(load)
 </script>
 
