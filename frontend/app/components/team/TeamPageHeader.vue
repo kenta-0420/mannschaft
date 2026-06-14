@@ -112,7 +112,7 @@ const showBroadcastWizard = ref(false)
           severity="secondary"
           outlined
           size="small"
-          @click="navigateTo(`/teams/${team.id}/recruitment-listings/new`)"
+          @click="navigateTo(`/teams/${team.slug}/recruitment-listings/new`)"
         />
         <Button
           v-if="roleName && roleName !== 'SUPPORTER'"
