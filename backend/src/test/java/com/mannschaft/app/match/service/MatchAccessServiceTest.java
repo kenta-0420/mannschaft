@@ -41,6 +41,8 @@ class MatchAccessServiceTest {
     private AccessControlService accessControlService;
     @Mock
     private ContentVisibilityChecker visibilityChecker;
+    @Mock
+    private com.mannschaft.app.match.repository.MatchEventRepository matchEventRepository;
 
     @InjectMocks
     private MatchAccessService service;
@@ -163,6 +165,61 @@ class MatchAccessServiceTest {
         assertThat(service.canRecordTimeline(STRANGER, m)).isFalse();
         assertThatThrownBy(() -> service.assertCanRecordTimeline(STRANGER, m))
                 .isInstanceOf(BusinessException.class);
+    }
+
+    // ─── canRecordTimeline TURN_BASED 個人戦（§C.2a・対局者本人） ──
+
+    private MatchEntity turnMatch(boolean hasScorekeeper) {
+        MatchEntity m = MatchEntity.builder()
+                .organizationId(50L)
+                .teamId(TEAM_HOME)
+                .sport(com.mannschaft.app.match.domain.Sport.SHOGI)
+                .stateModel(com.mannschaft.app.match.domain.StateModel.TURN_BASED)
+                .createdBy(CREATOR)
+                .scorekeeperUserId(hasScorekeeper ? SCOREKEEPER : null)
+                .hasScorekeeper(hasScorekeeper)
+                .build();
+        m.setId(UUID.randomUUID());
+        return m;
+    }
+
+    @Test
+    @DisplayName("TURN_BASED 個人戦: 対局者本人は記録可（§C.2a・player_user_id 突合）")
+    void turnBasedParticipantCanRecord() {
+        MatchEntity m = turnMatch(false);
+        long player = 7L;
+        when(matchEventRepository.existsByMatchIdAndPlayerUserId(m.getId(), player)).thenReturn(true);
+        assertThat(service.canRecordTimeline(player, m)).isTrue();
+        assertThat(service.isParticipant(player, m)).isTrue();
+    }
+
+    @Test
+    @DisplayName("TURN_BASED 個人戦: 対局者でも主体チーム ADMIN でもない者は不可")
+    void turnBasedStrangerCannotRecord() {
+        MatchEntity m = turnMatch(false);
+        when(matchEventRepository.existsByMatchIdAndPlayerUserId(m.getId(), STRANGER)).thenReturn(false);
+        when(accessControlService.isAdminOrAbove(STRANGER, TEAM_HOME, "TEAM")).thenReturn(false);
+        assertThat(service.canRecordTimeline(STRANGER, m)).isFalse();
+    }
+
+    @Test
+    @DisplayName("TURN_BASED 個人戦: 主体チーム ADMIN は対局者でなくても記録可（§C.2a (b)）")
+    void turnBasedTeamAdminCanRecord() {
+        MatchEntity m = turnMatch(false);
+        lenient().when(matchEventRepository.existsByMatchIdAndPlayerUserId(m.getId(), HOME_ADMIN))
+                .thenReturn(false);
+        when(accessControlService.isAdminOrAbove(HOME_ADMIN, TEAM_HOME, "TEAM")).thenReturn(true);
+        assertThat(service.canRecordTimeline(HOME_ADMIN, m)).isTrue();
+    }
+
+    @Test
+    @DisplayName("TURN_BASED 公式戦: 記録係は記録可（§C.2a (c)）")
+    void turnBasedScorekeeperCanRecord() {
+        MatchEntity m = turnMatch(true);
+        lenient().when(matchEventRepository.existsByMatchIdAndPlayerUserId(m.getId(), SCOREKEEPER))
+                .thenReturn(false);
+        lenient().when(accessControlService.isAdminOrAbove(SCOREKEEPER, TEAM_HOME, "TEAM")).thenReturn(false);
+        assertThat(service.canRecordTimeline(SCOREKEEPER, m)).isTrue();
     }
 
     // ─── canEditTeamData（自チーム分のみ・相手分 403） ──────

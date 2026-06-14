@@ -24,6 +24,7 @@ import lombok.Setter;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * F08.10 試合本体（全種別の単一の真実・01 §B.1）。
@@ -122,6 +123,43 @@ public class MatchEntity extends UuidV7Entity {
     @Enumerated(EnumType.STRING)
     @Column(name = "state_model", nullable = false, length = 16)
     private StateModel stateModel;
+
+    /**
+     * 総手数（ターン制のみ・球技では NULL・sports/05_shogi.md §3 / 01 §B.1）。
+     *
+     * <p>将棋/囲碁の進行量的指標。{@code MatchEventType.MOVE_COUNT} イベント or 試合詳細での直接入力で記録。
+     * 任意（NULL 可）。SMALLINT UNSIGNED 相当。</p>
+     */
+    @Column(name = "total_moves")
+    private Integer totalMoves;
+
+    /**
+     * 勝ち方（ターン制のみ・競技別カタログ enum 文字列・球技では NULL・01 §B.1 / §D.7）。
+     *
+     * <p>将棋＝{@link com.mannschaft.app.match.catalog.ShogiWinMethod}・囲碁＝
+     * {@link com.mannschaft.app.match.catalog.GoWinMethod} の enum 名を VARCHAR(32) で保持する
+     * （勝ち方の正準は本列に統一）。「どう勝ったか」を表し、「どちらが勝ったか」は home/away_score の大小
+     * （責務分離・§B.1.2）。引き分け（千日手/持将棋/持碁）は本列 NULL＋両スコア 0。</p>
+     */
+    @Column(name = "win_method", length = 32)
+    private String winMethod;
+
+    /**
+     * 団体戦の親 match（個人戦=NULL／団体戦の子ボードのみ設定・自己参照・同一 match ドメイン・01 §B.6）。
+     *
+     * <p>DB 上は自己参照 FK＋ON DELETE CASCADE（親団体戦の物理削除で子ボードも消える・同一ドメインゆえ可）。
+     * ID のみ保持し ORM 関連は張らない（二段アクセス・子直引き禁止・01 §A.4 / §C.4）。</p>
+     */
+    @Column(name = "parent_match_id", columnDefinition = "BINARY(16)")
+    private UUID parentMatchId;
+
+    /**
+     * ボード順（団体戦の子のみ・1=大将/主将 等・将棋/囲碁・01 §B.6）。
+     *
+     * <p>個人戦・団体戦の親は NULL。SMALLINT UNSIGNED 相当。同一親の中で連番。</p>
+     */
+    @Column(name = "board_number")
+    private Integer boardNumber;
 
     /** 記録係ユーザー（公式戦・user ドメイン ID 参照・FK なし） */
     @Column(name = "scorekeeper_user_id")
