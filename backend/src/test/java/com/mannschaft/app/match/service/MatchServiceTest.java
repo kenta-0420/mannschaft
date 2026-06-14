@@ -221,6 +221,37 @@ class MatchServiceTest {
     }
 
     @Test
+    @DisplayName("(b2) SET_BASED: 2 セット止まり（2-1・3 セット先取に満たない）は 400（MATCH_026・match_sets 正本で厳密化）")
+    void setBasedBelowThresholdIsRejected() {
+        match.setSport(Sport.VOLLEYBALL);
+        match.setStateModel(StateModel.SET_BASED);
+        match.setPeriodFormat("BEST_OF_5");
+        // 2-1 はどちらも 3 セット先取に達していない＝試合未決着（recordSet が決着前に COMPLETED 押下した想定）
+        match.setHomeScore(2);
+        match.setAwayScore(1);
+
+        assertThatThrownBy(() -> service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("セット");
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    @DisplayName("(b2) SET_BASED: 3-2（第 5 セットまでもつれて 3 セット先取）は COMPLETED 可")
+    void setBasedThreeTwoIsCompletable() {
+        match.setSport(Sport.VOLLEYBALL);
+        match.setStateModel(StateModel.SET_BASED);
+        match.setPeriodFormat("BEST_OF_5");
+        match.setDurationMinutes(null);
+        match.setHomeScore(3);
+        match.setAwayScore(2);
+
+        service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED);
+
+        verify(eventPublisher).publishEvent(any(MatchCompletedEvent.class));
+    }
+
+    @Test
     @DisplayName("(b2) TURN_BASED（将棋）: 勝敗 1-0 が確定すれば COMPLETED 可（duration 不要・MATCH_023 を要求しない）")
     void turnBasedCompletedWithWinLoss() {
         match.setSport(Sport.SHOGI);
