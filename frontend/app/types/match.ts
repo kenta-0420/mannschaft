@@ -71,19 +71,18 @@ export type MatchEventRequest = Schemas['MatchEventRequest']
 // バッジ表示で「全候補値の配列」を回したい場面のための補助。生成型から導出する
 // （NonNullable で optional/undefined を除去）ので、生成型と二重定義にならない。
 
-/** 競技（生成型 CreateMatchRequest.sport から導出） */
+/** 競技（生成型 CreateMatchRequest.sport から導出・全 6 競技） */
 export type Sport = NonNullable<CreateMatchRequest['sport']>
 
 /**
- * FE が多競技ライブ記録で扱う競技の器（04 §G.16）。
+ * 連続時間制（CONTINUOUS_TIME）の競技（サッカー/フットサル/バスケ・04 §G.16）。
  *
- * 生成型 `Sport`（現時点 BE OpenAPI は 'SOCCER' のみ）は、BE の多競技カタログ波で
- * FUTSAL/BASKETBALL/… へ順次拡張される。FE 共通シェル＋競技別動的 import 機構は
- * **生成型の拡張を待たずに先行実装**するため、本波で対応する連続時間制競技を
- * FE 側の前向きユニオンとして定義する（生成型 Sport は LiveSport の部分集合）。
- * BE が Sport を拡張したら本ユニオンは生成型へ寄せて段階移行する。
+ * 旧前向きユニオン（'SOCCER' | 'FUTSAL' | 'BASKETBALL' の手書き）を、BE OpenAPI 再生成で
+ * 生成型 `Sport` が全 6 競技（SOCCER/FUTSAL/BASKETBALL/VOLLEYBALL/SHOGI/GO）へ拡張されたため、
+ * **生成型から導出**する形へ返済した。セット制（VOLLEYBALL）/ターン制（SHOGI/GO）を除いた残り
+ * （＝連続時間制）が `LiveSport`。BE がさらに連続時間制競技を追加した場合は除外リストを更新する。
  */
-export type LiveSport = 'SOCCER' | 'FUTSAL' | 'BASKETBALL'
+export type LiveSport = Exclude<Sport, 'VOLLEYBALL' | 'SHOGI' | 'GO'>
 /** 試合種別（生成型 CreateMatchRequest.kind から導出） */
 export type MatchKind = NonNullable<CreateMatchRequest['kind']>
 /** ホーム/アウェイ（生成型 CreateMatchRequest.homeAway から導出） */
@@ -117,13 +116,13 @@ export type FutsalPosition = 'GK' | 'FIXO' | 'ALA' | 'PIVO'
 export type BasketballPosition = 'PG' | 'SG' | 'SF' | 'PF' | 'C'
 
 // ===== バスケ固有イベント種別・ファウルコード（sports/03_basketball.md §2/§5） =====
-// BE の `MatchEventType` enum（器・全競技横断）はバスケ固有値の追加が後続の BE 波で行われる
-// 想定であり、現時点の生成型（MatchEventRequest.eventType）には FIELD_GOAL_2 等が**まだ無い**。
-// FE はカタログ駆動 UI のためにバスケの値を型として定義し、API 送出時は生成型の器へ載せる
-// （BE 受理は後続波・本波は FE 共通シェル＋カタログ＋タイマーの基盤が主眼・04 §G.16）。
+// BE OpenAPI 再生成により、生成型 `MatchEventType`（MatchEventRequest.eventType）へバスケ固有値
+// （FIELD_GOAL_2 等）が統合済みとなった。旧前向きユニオン（手書きの BasketballEventType 列挙）を、
+// 生成型から `Extract` で導出する形へ返済する（生成型が正本・二重定義を解消・any/手書き列挙なし）。
 
-/** バスケ固有の event_type（コア MatchEventType の器へ後続波で追加される・§2）。 */
-export type BasketballEventType =
+/** バスケ固有の event_type（生成型 MatchEventType から Extract で導出・§2）。 */
+export type BasketballEventType = Extract<
+  MatchEventType,
   | 'FIELD_GOAL_2'
   | 'FIELD_GOAL_3'
   | 'FREE_THROW'
@@ -135,13 +134,15 @@ export type BasketballEventType =
   | 'PERSONAL_FOUL'
   | 'TECHNICAL_FOUL'
   | 'FOUL_OUT'
+>
 
 /**
  * 全競技の event_type を保持するカタログ用ユニオン（FE 側の器）。
- * 生成型 `MatchEventType`（サッカー/共通）＋ バスケ固有値（後続 BE 波で生成型に統合予定）。
+ * 生成型 `MatchEventType` がバスケ固有値を含むため、現状 `MatchEventType` と等価となった
+ * （旧前向きユニオンの `| BasketballEventType` は生成型統合により冗長になり撤去）。
  * カタログ定数・競技別シート・i18n キーの型付けに用いる。
  */
-export type CatalogEventType = MatchEventType | BasketballEventType
+export type CatalogEventType = MatchEventType
 
 /** バスケのファウル理由コード（FIBA 標準・sports/03_basketball.md §5）。 */
 export type BasketballFoulCode = 'PF' | 'SF' | 'OF' | 'TF' | 'UF' | 'DF'

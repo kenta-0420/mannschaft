@@ -18,10 +18,10 @@
  * - 勝者: home_score=0 / away_score=1 → AWAY 勝ち
  * - 引分（千日手/持将棋/持碁）: home_score=0 / away_score=0 + win_method=null
  *
- * 【前向きユニオン境界】
- * BE が Sport enum を SHOGI/GO へ拡張し openapi 再生成後、AllSport へ統合する。
- * 現時点の境界は sportModuleRegistry の REGISTRY・AllSport 定義の 2 箇所のみ（any 禁止）。
- * TODO: BE openapi 再生成後に LiveSport ユニオンへ統合
+ * 【生成型への返済】
+ * SHOGI/GO は OpenAPI 再生成で生成型 Sport へ統合済み（AllSport=Sport）。
+ * 本トラッカーの ShogiWinMethod/GoWinMethod は BE では win_method 自由文字列カラムであり
+ * OpenAPI enum 契約ではない（UI 選択肢の語彙）ため、手書きの語彙ユニオンとして維持する。
  */
 import { computed, ref } from 'vue'
 
