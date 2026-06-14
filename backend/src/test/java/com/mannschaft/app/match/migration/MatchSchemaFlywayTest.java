@@ -105,9 +105,9 @@ class MatchSchemaFlywayTest {
     }
 
     @Test
-    @DisplayName("3 テーブルが作成され主キーが BINARY(16)（UUIDv7・原則6）")
+    @DisplayName("4 テーブルが作成され主キーが BINARY(16)（UUIDv7・原則6）")
     void tablesExistWithBinaryPk() throws Exception {
-        for (String table : List.of("matches", "match_events", "player_appearances")) {
+        for (String table : List.of("matches", "match_events", "player_appearances", "match_sets")) {
             assertThat(columnExists(table, "id"))
                     .as("%s.id が存在すること", table).isTrue();
             assertThat(columnType(table, "id").toLowerCase())
@@ -126,7 +126,7 @@ class MatchSchemaFlywayTest {
     @Test
     @DisplayName("子テーブルは organization_id / deleted_at を持たない（01 §A.4・二段アクセス）")
     void childrenHaveNoTenantNorSoftDeleteColumns() throws Exception {
-        for (String child : List.of("match_events", "player_appearances")) {
+        for (String child : List.of("match_events", "player_appearances", "match_sets")) {
             assertThat(columnExists(child, "organization_id"))
                     .as("%s に organization_id があってはならない（テナント分離は親 matches）", child).isFalse();
             assertThat(columnExists(child, "deleted_at"))
@@ -190,6 +190,38 @@ class MatchSchemaFlywayTest {
                 .allSatisfy(fk -> assertThat(fk[1]).isEqualTo("matches"));
         assertThat(fks)
                 .anySatisfy(fk -> assertThat(fk[2]).isEqualTo("CASCADE"));
+    }
+
+    @Test
+    @DisplayName("match_sets の FK は match_id→matches(CASCADE) のみ（同一ドメイン・クロスドメイン FK なし・§B.5）")
+    void matchSetsForeignKeys() throws Exception {
+        List<String[]> fks = foreignKeys("match_sets");
+        assertThat(fks)
+                .as("match_sets の FK 参照先は matches のみ（クロスドメイン FK 禁止・原則1）")
+                .allSatisfy(fk -> assertThat(fk[1]).isEqualTo("matches"));
+        assertThat(fks)
+                .anySatisfy(fk -> {
+                    assertThat(fk[1]).isEqualTo("matches");
+                    assertThat(fk[2]).isEqualTo("CASCADE");
+                });
+    }
+
+    @Test
+    @DisplayName("match_sets の列構成（set_number/home_points/away_points/winner_side/is_final_set・§B.5）")
+    void matchSetsColumns() throws Exception {
+        assertThat(columnExists("match_sets", "match_id")).isTrue();
+        assertThat(columnType("match_sets", "match_id").toLowerCase()).isEqualTo("binary(16)");
+        assertThat(columnExists("match_sets", "set_number")).isTrue();
+        assertThat(columnExists("match_sets", "home_points")).isTrue();
+        assertThat(columnExists("match_sets", "away_points")).isTrue();
+        assertThat(columnExists("match_sets", "winner_side")).isTrue();
+        assertThat(columnExists("match_sets", "is_final_set")).isTrue();
+        // winner_side は NULL 許容（未決着セット・§4.2）
+        assertThat(columnIsNullable("match_sets", "winner_side"))
+                .as("winner_side は NULL 許容（未決着セットは勝者なし）").isTrue();
+        // home_points/away_points は NOT NULL DEFAULT 0
+        assertThat(columnIsNullable("match_sets", "home_points")).isFalse();
+        assertThat(columnIsNullable("match_sets", "away_points")).isFalse();
     }
 
     @Test

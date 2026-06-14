@@ -371,7 +371,14 @@
       "TURNOVER": "Pérdida",
       "PERSONAL_FOUL": "Falta personal",
       "TECHNICAL_FOUL": "Falta técnica",
-      "FOUL_OUT": "Eliminación por faltas"
+      "FOUL_OUT": "Eliminación por faltas",
+      "SET_END": "Fin de set",
+      "SERVE_ERROR": "Error de saque",
+      "SERVE_ACE": "Ace de saque",
+      "POINT": "Punto",
+      "BLOCK_POINT": "Punto de bloqueo",
+      "ATTACK_POINT": "Punto de ataque",
+      "SET_START": "Inicio de set"
     },
     "card_type": {
       "YELLOW": "Amonestación",
@@ -413,7 +420,12 @@
       "SG": "Escolta",
       "SF": "Alero",
       "PF": "Ala-pívot",
-      "C": "Pívot"
+      "C": "Pívot",
+      "S": "Colocador",
+      "OP": "Opuesto",
+      "MB": "Central",
+      "OH": "Receptor",
+      "L": "Libero"
     },
     "org_context": {
       "resolve_failed": "No se pudo resolver la información del equipo/organización. Verifica tus membresías"
@@ -446,6 +458,26 @@
     "foul_type": {
       "PERSONAL_FOUL": "Falta personal",
       "TECHNICAL_FOUL": "Falta técnica"
+    },
+    "set": {
+      "increment_home": "Local +1",
+      "increment_away": "Visitante +1",
+      "confirm_set": "Confirmar set",
+      "deuce_hint": "Deuce: jugar hasta ventaja de 2 puntos",
+      "in_progress": "En curso",
+      "past_sets": "Sets completados",
+      "set_label": "Set {n}",
+      "deuce": "Deuce",
+      "confirm_hint": "Necesita {n} pts y ventaja de 2 para confirmar",
+      "decrement_home": "Local -1",
+      "away_points_label": "Puntos visitante",
+      "sets_to_win": "Al mejor de {n}",
+      "match_completed": "Partido terminado",
+      "home_points_label": "Puntos local",
+      "target_points": "Objetivo {n} pts",
+      "sets_label": "Marcador de sets",
+      "decrement_away": "Visitante -1",
+      "start_first_set": "Iniciar set 1"
     }
   }
 }

@@ -371,7 +371,14 @@
       "TURNOVER": "턴오버",
       "PERSONAL_FOUL": "개인 파울",
       "TECHNICAL_FOUL": "테크니컬 파울",
-      "FOUL_OUT": "파울 아웃"
+      "FOUL_OUT": "파울 아웃",
+      "SET_END": "세트 종료",
+      "SERVE_ERROR": "서브 실패",
+      "SERVE_ACE": "서브 에이스",
+      "POINT": "득점",
+      "BLOCK_POINT": "블로킹 득점",
+      "ATTACK_POINT": "공격 득점",
+      "SET_START": "세트 시작"
     },
     "card_type": {
       "YELLOW": "경고",
@@ -413,7 +420,12 @@
       "SG": "슈팅 가드",
       "SF": "스몰 포워드",
       "PF": "파워 포워드",
-      "C": "센터"
+      "C": "센터",
+      "S": "세터",
+      "OP": "오포짓",
+      "MB": "미들 블로커",
+      "OH": "아웃사이드 히터",
+      "L": "리베로"
     },
     "org_context": {
       "resolve_failed": "팀·조직 정보를 해결할 수 없습니다. 소속을 확인해 주세요"
@@ -446,6 +458,26 @@
     "foul_type": {
       "PERSONAL_FOUL": "개인 파울",
       "TECHNICAL_FOUL": "테크니컬 파울"
+    },
+    "set": {
+      "increment_home": "홈+1",
+      "increment_away": "원정+1",
+      "confirm_set": "세트 확정",
+      "deuce_hint": "듀스: 2점 차이가 날 때까지 계속",
+      "in_progress": "진행 중",
+      "past_sets": "확정된 세트",
+      "set_label": "제{n}세트",
+      "deuce": "듀스",
+      "confirm_hint": "{n}점 선취 및 2점 차이로 확정 가능",
+      "decrement_home": "홈-1",
+      "away_points_label": "원정 팀 점수",
+      "sets_to_win": "{n}세트 선취",
+      "match_completed": "경기 종료",
+      "home_points_label": "홈 팀 점수",
+      "target_points": "목표 {n}점",
+      "sets_label": "세트 스코어",
+      "decrement_away": "원정-1",
+      "start_first_set": "제1세트 시작"
     }
   }
 }

@@ -371,7 +371,14 @@
       "TURNOVER": "Turnover",
       "PERSONAL_FOUL": "Personal foul",
       "TECHNICAL_FOUL": "Technical foul",
-      "FOUL_OUT": "Foul out"
+      "FOUL_OUT": "Foul out",
+      "SET_END": "Set end",
+      "SERVE_ERROR": "Serve error",
+      "SERVE_ACE": "Serve ace",
+      "POINT": "Point",
+      "BLOCK_POINT": "Block point",
+      "ATTACK_POINT": "Attack point",
+      "SET_START": "Set start"
     },
     "card_type": {
       "YELLOW": "Caution",
@@ -413,7 +420,12 @@
       "SG": "Shooting guard",
       "SF": "Small forward",
       "PF": "Power forward",
-      "C": "Center"
+      "C": "Center",
+      "S": "Setter",
+      "OP": "Opposite",
+      "MB": "Middle blocker",
+      "OH": "Outside hitter",
+      "L": "Libero"
     },
     "org_context": {
       "resolve_failed": "Could not resolve team/organization info. Please check your memberships"
@@ -446,6 +458,26 @@
     "foul_type": {
       "PERSONAL_FOUL": "Personal foul",
       "TECHNICAL_FOUL": "Technical foul"
+    },
+    "set": {
+      "increment_home": "Home +1",
+      "increment_away": "Away +1",
+      "confirm_set": "Confirm set",
+      "deuce_hint": "Deuce: play until 2-point lead",
+      "in_progress": "In progress",
+      "past_sets": "Completed sets",
+      "set_label": "Set {n}",
+      "deuce": "Deuce",
+      "confirm_hint": "Reach {n} pts with a 2-point lead to confirm",
+      "decrement_home": "Home -1",
+      "away_points_label": "Away points",
+      "sets_to_win": "Best of {n}",
+      "match_completed": "Match completed",
+      "home_points_label": "Home points",
+      "target_points": "Target {n} pts",
+      "sets_label": "Set score",
+      "decrement_away": "Away -1",
+      "start_first_set": "Start set 1"
     }
   }
 }
