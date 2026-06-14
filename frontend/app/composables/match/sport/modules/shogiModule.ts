@@ -6,9 +6,7 @@
  * 対局結果の最小入力（勝者選択・勝ち方・手数任意・局面写真）UI を提供する。
  * これらは将棋試合を開いたときのみ遅延読込される（Vite コード分割）。
  *
- * 【前向きユニオン境界（6-④b）】
- * BE が Sport enum を SHOGI へ拡張し openapi 再生成後、AllSport に統合する。
- * TODO: BE openapi 再生成後に LiveSport ユニオンへ統合
+ * SHOGI は OpenAPI 再生成で生成型 Sport へ統合済み（AllSport=Sport・前向きユニオン返済済み）。
  */
 import { defineAsyncComponent } from 'vue'
 import type { SportLiveModuleTurnBased } from '~/composables/match/sport/sportModuleRegistry'

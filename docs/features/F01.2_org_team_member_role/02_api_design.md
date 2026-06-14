@@ -108,6 +108,7 @@
 **リクエストボディ**
 ```json
 {
+  "slug": "fc-mannschaft",
   "name": "FCマンシャフト",
   "nickname1": "マンシャフト",
   "nickname2": null,
@@ -119,11 +120,18 @@
 }
 ```
 
+> **`slug` フィールド（正準仕様・村方式）**: チーム作成時に**ユーザーが任意の slug を必須入力する**（村 `F17.1` と同じ UX）。
+> - 形式: `^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$`（3〜30文字・英小文字／数字／ハイフン）・グローバル一意・予約語禁止（§6「slug 正準仕様」参照）。
+> - FE は `name` から ASCII 変換した候補を**プレフィル（編集可能）**として初期表示してよいが、最終的な slug はユーザーが確定する。サーバ側の**強制連番付与（`team-000017`）は廃止方針**。
+> - 作成前に `GET /api/v1/teams/slug-check?slug={slug}` でリアルタイムに重複確認できる。
+> - エラー: 形式不正 → 400 `TEAM_SLUG_INVALID` / 重複 → 400 `TEAM_SLUG_TAKEN` / 予約語 → 400 `TEAM_SLUG_RESERVED`。
+
 **レスポンス（201 Created）**
 ```json
 {
   "data": {
     "id": 1,
+    "slug": "fc-mannschaft",
     "name": "FCマンシャフト",
     "visibility": "PUBLIC",
     "member_count": 1,
@@ -131,6 +139,8 @@
   }
 }
 ```
+
+> 組織作成（`POST /api/v1/organizations`）も同一仕様（slug をユーザー任意入力・必須・エラーコードは `ORG_SLUG_INVALID` / `ORG_SLUG_TAKEN` / `ORG_SLUG_RESERVED`）。
 
 ---
 
