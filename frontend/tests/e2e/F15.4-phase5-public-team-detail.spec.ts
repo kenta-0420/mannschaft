@@ -6,16 +6,18 @@ import { test, expect, type Page, type Route } from '@playwright/test'
  * 設計書: docs/features/F15.4_phase5_team_public_detail.md §9.2
  *
  * シナリオ:
- *   1. 未ログイン → /public/teams/{id} で公開詳細が表示され、CTA が出る
+ *   1. 未ログイン → /public/teams/{slug} で公開詳細が表示され、CTA が出る
  *   2. メンバー一覧 / チャット等の機微情報が出現しないこと
  *   3. 「ログイン」ボタンクリックで /login?redirect=... へ遷移
  *   4. archived / MEMBERS_AND_ABOVE / 不在 → バックエンドが 404 を返し、Nuxt の 404 画面になる
  */
 
 const TEAM_ID = 8001
+const TEAM_SLUG = 'midori-1'
 
 const MOCK_PUBLIC_TEAM = {
   id: TEAM_ID,
+  slug: TEAM_SLUG,
   name: 'みどり町第一支部',
   nameKana: 'ミドリチョウダイイチシブ',
   nickname1: 'みどりいち',
@@ -58,7 +60,7 @@ async function mockPublicTeam(
 test('F15.4-P5γ-1: 未ログインで /public/teams/{id} の主要要素が表示される', async ({ page }) => {
   await mockPublicTeam(page)
 
-  await page.goto(`/public/teams/${TEAM_ID}`)
+  await page.goto(`/public/teams/${TEAM_SLUG}`)
 
   // ヘッダー表示
   await expect(page.getByTestId('public-team-header')).toBeVisible()
@@ -94,7 +96,7 @@ test('F15.4-P5γ-2: メンバー一覧 / チャットなどの機微情報が画
 }) => {
   await mockPublicTeam(page)
 
-  await page.goto(`/public/teams/${TEAM_ID}`)
+  await page.goto(`/public/teams/${TEAM_SLUG}`)
   await expect(page.getByTestId('public-team-header')).toBeVisible()
 
   // 設計書 §3.2 禁則フィールド由来の語句が画面に出ていないこと
@@ -112,7 +114,7 @@ test('F15.4-P5γ-3: ログインボタンクリックで /login?redirect=/public
 }) => {
   await mockPublicTeam(page)
 
-  await page.goto(`/public/teams/${TEAM_ID}`)
+  await page.goto(`/public/teams/${TEAM_SLUG}`)
   await expect(page.getByTestId('public-team-login-cta')).toBeVisible()
 
   const loginLink = page
@@ -122,7 +124,7 @@ test('F15.4-P5γ-3: ログインボタンクリックで /login?redirect=/public
   // href にリダイレクトクエリが含まれる
   const href = await loginLink.getAttribute('href')
   expect(href).toContain('/login')
-  expect(href).toContain(encodeURIComponent(`/public/teams/${TEAM_ID}`))
+  expect(href).toContain(encodeURIComponent(`/public/teams/${TEAM_SLUG}`))
 })
 
 test('F15.4-P5γ-4: archived / MEMBERS_AND_ABOVE / 不在のチーム ID は 404 で Nuxt エラー画面になる', async ({
@@ -139,7 +141,7 @@ test('F15.4-P5γ-4: archived / MEMBERS_AND_ABOVE / 不在のチーム ID は 404
   await expect(page.getByTestId('public-team-header')).toHaveCount(0)
 })
 
-test('F15.4-P5γ-5: ログイン状態で TeamSearchCard をクリックすると /teams/{id} へ遷移する（compact 不適用）', async ({
+test('F15.4-P5γ-5: ログイン状態で TeamSearchCard をクリックすると /teams/{slug} へ遷移する（compact 不適用）', async ({
   page,
 }) => {
   // 認証情報を localStorage に注入（既存 F15.4-org-team-search と同じ流儀）
@@ -165,6 +167,7 @@ test('F15.4-P5γ-5: ログイン状態で TeamSearchCard をクリックする�
   const MOCK_TEAMS_MEMBER_VIEW = [
     {
       id: TEAM_ID,
+      slug: TEAM_SLUG,
       name: 'みどり町第一支部',
       nameKana: 'ミドリチョウダイイチシブ',
       prefecture: '東京都',
@@ -215,11 +218,11 @@ test('F15.4-P5γ-5: ログイン状態で TeamSearchCard をクリックする�
 
   await page.goto(`/organizations/7001/teams/search`)
 
-  // ログイン会員: TeamSearchCard 経由で /teams/{id} へ遷移する（/public/teams/ ではない）
+  // ログイン会員: TeamSearchCard 経由で /teams/{slug} へ遷移する（/public/teams/ ではない）
   const cardLink = page
     .getByRole('link', { name: /みどり町第一支部/ })
     .first()
   await expect(cardLink).toBeVisible()
   const href = await cardLink.getAttribute('href')
-  expect(href).toBe(`/teams/${TEAM_ID}`)
+  expect(href).toBe(`/teams/${TEAM_SLUG}`)
 })

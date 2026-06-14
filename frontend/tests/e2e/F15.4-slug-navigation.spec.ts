@@ -6,12 +6,14 @@ import { test, expect, type Page, type Route } from '@playwright/test'
  * 真因: 一覧/グリッド/作成後リダイレクトの遷移が UUID(id) で URL を組み立てていたため
  *       /teams/{UUID} → 404 になっていた。
  * 対策: 各レスポンス型の slug フィールドを使うよう全遷移箇所を修正し、
- *       本テストで「slug で遷移して詳細が表示されること」を保証する。
+ *       本テストで「href 属性が slug ベースになっていること」を保証する。
  *
  * シナリオ:
  *   SLUG-001: 組織内チーム検索カード（ログイン済）が /teams/{slug} を href に持つ
  *   SLUG-002: 公開チーム検索カード（未ログイン）が /public/teams/{slug} を href に持つ
- *   SLUG-003: /public/teams/{slug} へ直接 goto して公開詳細が表示される
+ *
+ * 公開詳細ページの描画検証は F15.4-phase5-public-team-detail.spec.ts が担う。
+ * 本ファイルは遷移 href が slug ベースであることのみを保証する。
  *
  * すべてモック方式（バックエンド非依存・CI 安定）。
  */
@@ -214,39 +216,4 @@ test('SLUG-002: 未ログイン検索カードの href が /public/teams/{slug} 
   const href = await cardLink.getAttribute('href')
   expect(href, 'slug 遷移になっていること（数値 ID は 404 になる）').toBe(`/public/teams/${TEAM_SLUG}`)
   expect(href, '数値 ID が混入していないこと').not.toContain(`/public/teams/${TEAM_ID}`)
-})
-
-/**
- * SLUG-003: /public/teams/{slug} へ直接遷移して公開詳細が表示される。
- *
- * ルートが [slug] ベースになっているため、slug で goto すると詳細が表示されることを確認。
- * 旧実装（id ベース）では goto('/public/teams/fc-u-18') → 404 または詳細が表示されなかった。
- *
- * SLUG-001/002 は「href 属性が slug になっているか」を検証するが、
- * SLUG-003 は「slug でアクセスして実際に公開詳細ページが描画されること」を検証する独自の価値を持つ。
- */
-test('SLUG-003: /public/teams/{slug} に直接 goto すると公開詳細ヘッダーが表示される', async ({ page }) => {
-  // 公開詳細 API のモック
-  await page.route('**/api/v1/public/teams/*', async (route: Route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ data: MOCK_PUBLIC_TEAM_DETAIL }),
-    })
-  })
-
-  await page.goto(`/public/teams/${TEAM_SLUG}`)
-
-  // Nuxt hydration 完了を待ってから要素を検証（他テストと同じ方式）
-  await waitForLayout(page)
-
-  // 公開詳細ページのヘッダーが表示されること（data-testid="public-team-header"）
-  const header = page.getByTestId('public-team-header')
-  await expect(header).toBeVisible({ timeout: 30000 })
-
-  // チーム名が表示されること
-  await expect(page.getByText('みどり町第一支部')).toBeVisible()
-
-  // URL が slug ベースのまま維持されていること（UUID/数値 ID へのリダイレクトが起きていない）
-  expect(page.url()).toContain(`/public/teams/${TEAM_SLUG}`)
 })
