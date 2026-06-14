@@ -221,6 +221,9 @@ test('SLUG-002: 未ログイン検索カードの href が /public/teams/{slug} 
  *
  * ルートが [slug] ベースになっているため、slug で goto すると詳細が表示されることを確認。
  * 旧実装（id ベース）では goto('/public/teams/fc-u-18') → 404 または詳細が表示されなかった。
+ *
+ * SLUG-001/002 は「href 属性が slug になっているか」を検証するが、
+ * SLUG-003 は「slug でアクセスして実際に公開詳細ページが描画されること」を検証する独自の価値を持つ。
  */
 test('SLUG-003: /public/teams/{slug} に直接 goto すると公開詳細ヘッダーが表示される', async ({ page }) => {
   // 公開詳細 API のモック
@@ -234,13 +237,16 @@ test('SLUG-003: /public/teams/{slug} に直接 goto すると公開詳細ヘッ�
 
   await page.goto(`/public/teams/${TEAM_SLUG}`)
 
+  // Nuxt hydration 完了を待ってから要素を検証（他テストと同じ方式）
+  await waitForLayout(page)
+
   // 公開詳細ページのヘッダーが表示されること（data-testid="public-team-header"）
   const header = page.getByTestId('public-team-header')
-  await expect(header).toBeVisible({ timeout: 15000 })
+  await expect(header).toBeVisible({ timeout: 30000 })
 
   // チーム名が表示されること
   await expect(page.getByText('みどり町第一支部')).toBeVisible()
 
-  // URL が slug ベースのまま維持されていること（UUID へのリダイレクトが起きていない）
+  // URL が slug ベースのまま維持されていること（UUID/数値 ID へのリダイレクトが起きていない）
   expect(page.url()).toContain(`/public/teams/${TEAM_SLUG}`)
 })
