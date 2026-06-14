@@ -5,8 +5,8 @@ import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDispatchService;
 import com.mannschaft.app.notification.service.NotificationService;
-import com.mannschaft.app.organization.repository.OrganizationRepository;
-import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.todo.entity.ProjectEntity;
 import com.mannschaft.app.todo.entity.ProjectMilestoneEntity;
 import com.mannschaft.app.todo.entity.TodoAssigneeEntity;
@@ -52,8 +52,8 @@ public class MilestoneNotificationListener {
     private final ProjectRepository projectRepository;
     private final TodoRepository todoRepository;
     private final TodoAssigneeRepository todoAssigneeRepository;
-    private final TeamRepository teamRepository;
-    private final OrganizationRepository organizationRepository;
+    private final TeamService teamService;
+    private final OrganizationService organizationService;
 
     /**
      * マイルストーンアンロック時にプッシュ通知・WebSocket 配信を実行する。
@@ -183,9 +183,8 @@ public class MilestoneNotificationListener {
     private String buildActionUrl(ProjectEntity project, Long milestoneId) {
         return switch (project.getScopeType()) {
             case TEAM -> {
-                String slug = teamRepository.findById(project.getScopeId())
-                        .map(t -> t.getSlug())
-                        .orElse(null);
+                // TeamService 経由で slug 解決（team Entity の直接参照を排除 / ドメイン境界遵守）
+                String slug = teamService.getSlugById(project.getScopeId());
                 yield slug != null
                         ? String.format("/teams/%s/projects/%d?milestone=%d",
                                 slug, project.getId(), milestoneId)
@@ -193,9 +192,8 @@ public class MilestoneNotificationListener {
                                 project.getId(), milestoneId);
             }
             case ORGANIZATION -> {
-                String slug = organizationRepository.findById(project.getScopeId())
-                        .map(o -> o.getSlug())
-                        .orElse(null);
+                // OrganizationService 経由で slug 解決（org Entity の直接参照を排除 / ドメイン境界遵守）
+                String slug = organizationService.getSlugById(project.getScopeId());
                 yield slug != null
                         ? String.format("/organizations/%s/projects/%d?milestone=%d",
                                 slug, project.getId(), milestoneId)

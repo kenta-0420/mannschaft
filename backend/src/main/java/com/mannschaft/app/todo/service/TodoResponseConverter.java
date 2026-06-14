@@ -2,8 +2,8 @@ package com.mannschaft.app.todo.service;
 
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.timezone.TimezoneContextHolder;
-import com.mannschaft.app.organization.repository.OrganizationRepository;
-import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.TodoStatus;
 import com.mannschaft.app.todo.TodoStatusBucket;
@@ -41,8 +41,8 @@ public class TodoResponseConverter {
     private final TodoRepository todoRepository;
     private final NameResolverService nameResolverService;
     private final TodoStatusLabelService todoStatusLabelService;
-    private final TeamRepository teamRepository;
-    private final OrganizationRepository organizationRepository;
+    private final TeamService teamService;
+    private final OrganizationService organizationService;
 
     /**
      * エンティティをレスポンスDTOに変換する（単発取得用）。
@@ -79,23 +79,19 @@ public class TodoResponseConverter {
                         l -> new TodoResponse.TodoStatusLabelInfo(
                                 l.getId(), l.getName(), l.getBucket().name(), l.getColor())));
 
-        // TEAM スコープの scopeId を収集してバッチ slug 解決
+        // TEAM スコープの scopeId を収集してバッチ slug 解決（TeamService 経由 / ドメイン境界遵守）
         Set<Long> teamScopeIds = entities.stream()
                 .filter(e -> e.getScopeType() == TodoScopeType.TEAM && e.getScopeId() != null)
                 .map(TodoEntity::getScopeId)
                 .collect(Collectors.toSet());
-        Map<Long, String> teamSlugMap = teamScopeIds.isEmpty()
-                ? Collections.emptyMap()
-                : teamRepository.findSlugMapByIdIn(teamScopeIds);
+        Map<Long, String> teamSlugMap = teamService.getSlugsByIds(teamScopeIds);
 
-        // ORGANIZATION スコープの scopeId を収集してバッチ slug 解決
+        // ORGANIZATION スコープの scopeId を収集してバッチ slug 解決（OrganizationService 経由 / ドメイン境界遵守）
         Set<Long> orgScopeIds = entities.stream()
                 .filter(e -> e.getScopeType() == TodoScopeType.ORGANIZATION && e.getScopeId() != null)
                 .map(TodoEntity::getScopeId)
                 .collect(Collectors.toSet());
-        Map<Long, String> orgSlugMap = orgScopeIds.isEmpty()
-                ? Collections.emptyMap()
-                : organizationRepository.findSlugMapByIdIn(orgScopeIds);
+        Map<Long, String> orgSlugMap = organizationService.getSlugsByIds(orgScopeIds);
 
         return entities.stream()
                 .map(e -> {
@@ -294,14 +290,15 @@ public class TodoResponseConverter {
 
     /**
      * 単発取得用: scopeType と scopeId から slug を解決する。
-     * TEAM → TeamRepository.findById で slug 取得、ORGANIZATION → OrganizationRepository。
+     * TEAM → TeamService.getSlugById、ORGANIZATION → OrganizationService.getSlugById。
      * PERSONAL や scopeId=null は null を返す。
+     * （team/org Entity への直接参照を排除しドメイン境界を遵守する）
      */
     private String resolveScopeSlugSingle(TodoScopeType scopeType, Long scopeId) {
         if (scopeId == null) return null;
         return switch (scopeType) {
-            case TEAM -> teamRepository.findById(scopeId).map(t -> t.getSlug()).orElse(null);
-            case ORGANIZATION -> organizationRepository.findById(scopeId).map(o -> o.getSlug()).orElse(null);
+            case TEAM -> teamService.getSlugById(scopeId);
+            case ORGANIZATION -> organizationService.getSlugById(scopeId);
             case PERSONAL -> null;
         };
     }
