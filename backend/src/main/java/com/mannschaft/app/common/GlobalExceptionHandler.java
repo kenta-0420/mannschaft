@@ -688,7 +688,12 @@ public class GlobalExceptionHandler {
             Map.entry("MATCH_022", HttpStatus.NOT_FOUND),                    // linked_event_id 越境（親子不一致 → 404 統一）
             Map.entry("MATCH_023", HttpStatus.BAD_REQUEST),                  // COMPLETED に duration_minutes 必須
             Map.entry("MATCH_024", HttpStatus.BAD_REQUEST),                  // 入力値が業務範囲外
-            Map.entry("MATCH_025", HttpStatus.FORBIDDEN)                     // team_side↔recorded_by_team_id 不整合（自名義捏造防止・03 §C.4a）
+            Map.entry("MATCH_025", HttpStatus.FORBIDDEN),                    // team_side↔recorded_by_team_id 不整合（自名義捏造防止・03 §C.4a）
+            // F08.10 6-④a ターン制（将棋/囲碁）＋団体戦（01 §B.6 / §D.7・検証系 400 / 不在・親子不一致 404）
+            // MATCH_026/MATCH_027（COMPLETED 不可）・MATCH_028（win_method 不正）・MATCH_029（競技不一致）・
+            // MATCH_032/033/034（局面写真の MIME/サイズ/件数）は Severity.WARN デフォルト 400 に従う（明示不要）。
+            Map.entry("MATCH_030", HttpStatus.NOT_FOUND),                    // 団体戦ボードの帰属不一致 / 親非団体戦 / 親子テナント不整合（IDOR 秘匿）
+            Map.entry("MATCH_031", HttpStatus.NOT_FOUND)                     // 局面写真不在 / 親子 match_id 不一致（IDOR 秘匿）
     );
 
     /**

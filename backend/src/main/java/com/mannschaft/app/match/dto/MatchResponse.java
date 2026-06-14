@@ -42,6 +42,14 @@ public class MatchResponse {
     private final Integer awayScore;
     private final Integer homePenaltyScore;
     private final Integer awayPenaltyScore;
+    /** 総手数（ターン制のみ・球技は null・01 §B.1）。 */
+    private final Integer totalMoves;
+    /** 勝ち方（ターン制のみ・ShogiWinMethod/GoWinMethod の enum 名・球技/引分は null・01 §D.7）。 */
+    private final String winMethod;
+    /** 団体戦の親 match（個人戦/親は null・子ボードのみ設定・01 §B.6）。 */
+    private final UUID parentMatchId;
+    /** ボード順（団体戦の子のみ・1=大将/主将 等・01 §B.6）。 */
+    private final Integer boardNumber;
     private final MatchStatus status;
     private final boolean hasScorekeeper;
     private final Long scorekeeperUserId;
@@ -82,6 +90,10 @@ public class MatchResponse {
                 .awayScore(match.getAwayScore())
                 .homePenaltyScore(match.getHomePenaltyScore())
                 .awayPenaltyScore(match.getAwayPenaltyScore())
+                .totalMoves(match.getTotalMoves())
+                .winMethod(match.getWinMethod())
+                .parentMatchId(match.getParentMatchId())
+                .boardNumber(match.getBoardNumber())
                 .status(match.getStatus())
                 .hasScorekeeper(match.isHasScorekeeper())
                 .scorekeeperUserId(match.getScorekeeperUserId())

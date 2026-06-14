@@ -33,6 +33,19 @@ public interface MatchEventRepository extends JpaRepository<MatchEventEntity, UU
     /** 指定試合のイベント件数。 */
     long countByMatchId(UUID matchId);
 
+    /**
+     * 指定試合に、指定ユーザーが対局者（{@code player_user_id}）として記録されたイベントが存在するか。
+     *
+     * <p>ターン制（将棋/囲碁）個人戦の「対局者本人」判定に用いる（03 §C.2a・先手/後手の player_user_id 突合）。
+     * 個人戦は 1 局＝1 match で対局者が明確なため、本人が自分の結果を記録・訂正できる。子 ID 直引きではなく
+     * match_id スコープで判定するため二段アクセス（01 §A.4）を侵さない。</p>
+     *
+     * @param matchId      対局 match ID
+     * @param playerUserId 判定対象ユーザー ID
+     * @return 対局者として登録されていれば true
+     */
+    boolean existsByMatchIdAndPlayerUserId(UUID matchId, Long playerUserId);
+
     /** 指定試合のイベントを一括削除する（親の物理削除前の明示削除など）。 */
     void deleteByMatchId(UUID matchId);
 

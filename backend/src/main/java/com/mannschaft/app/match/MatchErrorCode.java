@@ -68,7 +68,43 @@ public enum MatchErrorCode implements ErrorCode {
      * <p>共同記録で相手サイドのイベントを自チーム名義（{@code recorded_by_team_id}=自チーム）で
      * 捏造することを防ぐドメイン不変条件違反。`recorded_by_team_id` はサーバー導出済みである前提の二重防御。</p>
      */
-    MATCH_025("MATCH_025", "記録名義と対象サイドが一致しません", Severity.WARN);
+    MATCH_025("MATCH_025", "記録名義と対象サイドが一致しません", Severity.WARN),
+
+    /**
+     * win_method が当該競技の勝ち方カタログ外 / 球技への付与（400・01 §D.7 / 03 §C.4b）。
+     *
+     * <p>ターン制（将棋/囲碁）の勝ち方は {@code ShogiWinMethod}/{@code GoWinMethod} の列挙値のみ許容し、
+     * 競技間の流用（将棋の千日手を囲碁へ等）・球技への {@code win_method} 付与を弾く（症状を隠さず根治）。</p>
+     */
+    MATCH_028("MATCH_028", "勝ち方の指定が不正です", Severity.WARN),
+
+    /**
+     * ターン制（将棋/囲碁）以外への対局結果記録 / 団体戦操作の競技不一致（400・sports/05・06）。
+     *
+     * <p>対局結果記録（勝者・勝ち方）はターン制競技のみ。団体戦の親子ボード操作もターン制を前提とする。
+     * 球技 match への適用は競技不一致として弾く（症状を隠さない）。</p>
+     */
+    MATCH_029("MATCH_029", "この競技ではこの操作は利用できません", Severity.WARN),
+
+    /**
+     * 団体戦の親子ボードの帰属不一致 / 親が団体戦でない / 親子テナント不整合（IDOR・404・03 §C.4）。
+     *
+     * <p>子ボードの {@code parent_match_id} が指定の親と一致しない、親が団体戦の親（parent_match_id=NULL）でない、
+     * 親子のテナントが不一致、のいずれも存在を漏らさず 404 で統一する（推測 ID による越境を遮断・01 §B.6 / §C.4）。</p>
+     */
+    MATCH_030("MATCH_030", "対象のボードが見つかりません", Severity.WARN),
+
+    /** 局面写真添付が見つからない / 親子 match_id 不一致（IDOR 対策で 404・03 §C.7a）。 */
+    MATCH_031("MATCH_031", "対象の局面写真が見つかりません", Severity.WARN),
+
+    /** 局面写真の MIME がホワイトリスト外（SVG 等を除外・400・03 §C.7a）。 */
+    MATCH_032("MATCH_032", "添付できないファイル形式です", Severity.WARN),
+
+    /** 局面写真のサイズ上限超過（10MB・400・03 §C.7a）。 */
+    MATCH_033("MATCH_033", "ファイルサイズが上限を超えています", Severity.WARN),
+
+    /** 局面写真の添付件数上限超過（400・03 §C.7a）。 */
+    MATCH_034("MATCH_034", "添付できる件数の上限を超えています", Severity.WARN);
 
     private final String code;
     private final String message;

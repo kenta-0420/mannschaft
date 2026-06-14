@@ -252,19 +252,65 @@ class MatchServiceTest {
     }
 
     @Test
-    @DisplayName("(b2) TURN_BASED（将棋）: 勝敗 1-0 が確定すれば COMPLETED 可（duration 不要・MATCH_023 を要求しない）")
+    @DisplayName("(b2) TURN_BASED（将棋）: 勝敗 1-0 ＋ win_method 妥当なら COMPLETED 可（duration 不要・MATCH_023 を要求しない）")
     void turnBasedCompletedWithWinLoss() {
         match.setSport(Sport.SHOGI);
         match.setStateModel(StateModel.TURN_BASED);
         match.setDurationMinutes(null); // ターン制は duration 不要
         match.setHomeScore(1);
         match.setAwayScore(0);
+        match.setWinMethod("RESIGNATION"); // 勝敗ありは勝ち方必須（§D.7）
 
         service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED);
 
         // ターン制でも recalculate は呼ばれる（PlayingTimeCalculationService 側で TURN_BASED をスキップする）
         verify(playingTimeCalculationService).recalculate(eq(match), isNull());
         verify(eventPublisher).publishEvent(any(MatchCompletedEvent.class));
+    }
+
+    @Test
+    @DisplayName("(b2) TURN_BASED: 勝敗 1-0 だが win_method=NULL は 400（MATCH_028・勝ち方必須）")
+    void turnBasedWinWithoutWinMethodRejected() {
+        match.setSport(Sport.SHOGI);
+        match.setStateModel(StateModel.TURN_BASED);
+        match.setHomeScore(1);
+        match.setAwayScore(0);
+        match.setWinMethod(null);
+
+        assertThatThrownBy(() -> service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(MatchErrorCode.MATCH_028);
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    @DisplayName("(b2) TURN_BASED: 勝敗 1-0 だが win_method が競技外（POINTS_WIN は将棋に無い）は 400（MATCH_028）")
+    void turnBasedWinWithForeignWinMethodRejected() {
+        match.setSport(Sport.SHOGI);
+        match.setStateModel(StateModel.TURN_BASED);
+        match.setHomeScore(0);
+        match.setAwayScore(1);
+        match.setWinMethod("POINTS_WIN"); // 囲碁の勝ち方を将棋に流用
+
+        assertThatThrownBy(() -> service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(MatchErrorCode.MATCH_028);
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    @DisplayName("(b2) TURN_BASED: 引分 0-0 なのに win_method が付いていると 400（MATCH_028・責務分離）")
+    void turnBasedDrawWithWinMethodRejected() {
+        match.setSport(Sport.SHOGI);
+        match.setStateModel(StateModel.TURN_BASED);
+        match.setHomeScore(0);
+        match.setAwayScore(0);
+        match.setWinMethod("REPETITION"); // 引分なのに勝ち方が付いている矛盾
+
+        assertThatThrownBy(() -> service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(MatchErrorCode.MATCH_028);
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test

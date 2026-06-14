@@ -6,6 +6,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.match.MatchCompletedEvent;
 import com.mannschaft.app.match.MatchErrorCode;
 import com.mannschaft.app.match.catalog.VolleyballSetRules;
+import com.mannschaft.app.match.catalog.WinMethodCatalog;
 import com.mannschaft.app.match.domain.HomeAway;
 import com.mannschaft.app.match.domain.MatchKind;
 import com.mannschaft.app.match.domain.MatchStatus;
@@ -392,9 +393,25 @@ public class MatchService {
                 }
             }
             case TURN_BASED -> {
-                // 勝敗（1-0/0-1/0-0）が両方確定していること（引分=0-0 は許容・§B.1.2）
+                // 勝敗（1-0/0-1/0-0）が両方確定していること（引分=0-0 は許容・§B.1.2）。
                 if (match.getHomeScore() == null || match.getAwayScore() == null) {
                     throw new BusinessException(MatchErrorCode.MATCH_027);
+                }
+                // 勝ち方（win_method）の妥当性も締める（症状を隠さない・§D.7）:
+                //   - 勝敗あり（1-0/0-1＝スコア不一致）: win_method は当該競技の勝ち方列挙値が必須。
+                //   - 引分（0-0＝スコア同点）: win_method は NULL でなければならない（責務分離・§4.2）。
+                boolean draw = match.getHomeScore().equals(match.getAwayScore());
+                if (draw) {
+                    if (match.getWinMethod() != null) {
+                        // 引分なのに勝ち方が付いている矛盾を弾く（症状を隠さない）
+                        throw new BusinessException(MatchErrorCode.MATCH_028);
+                    }
+                } else {
+                    // 勝敗ありは勝ち方必須かつ当該競技カタログの列挙値であること（NULL/列挙外は 400）
+                    if (match.getWinMethod() == null
+                            || !WinMethodCatalog.isValid(match.getSport(), match.getWinMethod())) {
+                        throw new BusinessException(MatchErrorCode.MATCH_028);
+                    }
                 }
             }
             default -> throw new BusinessException(MatchErrorCode.MATCH_024);
