@@ -85,6 +85,16 @@ public class GlobalExceptionHandler {
             Map.entry(CommonErrorCode.COMMON_003.getCode(), HttpStatus.CONFLICT),
             // F15.4 Phase 5-α: 店舗詳細 Public API（IDOR対策で 404）
             Map.entry("TEAM_001", HttpStatus.NOT_FOUND),
+            // F01.2 §5.9 チーム slug（村方式・作成/リネーム共通）: 形式不正/予約語=422、重複/履歴予約=409
+            Map.entry("TEAM_060", HttpStatus.UNPROCESSABLE_ENTITY),  // 形式不正
+            Map.entry("TEAM_061", HttpStatus.UNPROCESSABLE_ENTITY),  // 予約語
+            Map.entry("TEAM_062", HttpStatus.CONFLICT),              // 重複
+            Map.entry("TEAM_063", HttpStatus.CONFLICT),              // 他チーム履歴に予約済み（SLUG_RETIRED）
+            // F01.2 §5.9 組織 slug（村方式・作成/リネーム共通）: 形式不正/予約語=422、重複/履歴予約=409
+            Map.entry("ORG_060", HttpStatus.UNPROCESSABLE_ENTITY),   // 形式不正
+            Map.entry("ORG_061", HttpStatus.UNPROCESSABLE_ENTITY),   // 予約語
+            Map.entry("ORG_062", HttpStatus.CONFLICT),               // 重複
+            Map.entry("ORG_063", HttpStatus.CONFLICT),               // 他組織履歴に予約済み（SLUG_RETIRED）
             // F19.1 公開ページ Public API（IDOR / レート制限）
             Map.entry("PUBLIC_001", HttpStatus.NOT_FOUND),         // PUBLIC でないチーム / 組織は 404 で隠蔽
             Map.entry("PUBLIC_002", HttpStatus.TOO_MANY_REQUESTS), // レート制限超過

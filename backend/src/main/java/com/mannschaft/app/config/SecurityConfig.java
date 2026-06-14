@@ -247,6 +247,11 @@ public class SecurityConfig {
                 // 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §7.x Phase 4
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/search").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/search").permitAll()
+                // F01.2 §5.9.5 slug 解決（旧slug→新slug 301判定・認証不要・レート制限あり）
+                // ブックマーク／被リンクされた旧URLの 301 リダイレクト判定に未ログインで到達可能にする。
+                // 実データは返さず canonicalSlug のみ（スコープ漏洩防止）。設計書 §5.9.5
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/slug-resolve").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/organizations/slug-resolve").permitAll()
                 // F22.1 市（Market）公開閲覧 API（認証不要・レート制限あり・PII抑制）
                 // 設計書: docs/features/F22.1_market/04_security.md §1.6
                 // これを怠ると deny-by-default 反転時に市の公開検索/詳細が 401 で死ぬ。

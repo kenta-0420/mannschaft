@@ -3,8 +3,11 @@ package com.mannschaft.app.organization.service;
 import com.mannschaft.app.common.util.SlugGenerator;
 import com.mannschaft.app.common.util.SlugValidator;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
+import com.mannschaft.app.organization.entity.OrganizationSlugHistoryEntity;
 import com.mannschaft.app.organization.OrgErrorCode;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.organization.repository.OrganizationSlugHistoryRepository;
+import com.mannschaft.app.common.dto.SlugResolveResponse;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
@@ -59,6 +62,7 @@ import java.util.Map;
 public class OrganizationService {
 
     private final OrganizationRepository organizationRepository;
+    private final OrganizationSlugHistoryRepository organizationSlugHistoryRepository;
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
     private final InviteTokenRepository inviteTokenRepository;
@@ -205,6 +209,11 @@ public class OrganizationService {
         if (organizationRepository.existsBySlugAndDeletedAtIsNull(slug)) {
             throw new BusinessException(OrgErrorCode.ORG_062);
         }
+        // F01.2 §5.9.5: 他組織の過去 slug（履歴予約）は恒久 301 を壊さないため使用不可。
+        // 作成時は自組織という概念が無いので全履歴を対象に弾く。
+        if (organizationSlugHistoryRepository.existsByOldSlug(slug)) {
+            throw new BusinessException(OrgErrorCode.ORG_063);
+        }
     }
 
     /**
@@ -229,6 +238,10 @@ public class OrganizationService {
         if (organizationRepository.existsBySlugAndDeletedAtIsNull(slug)) {
             return new SlugAvailabilityResponse(false, "SLUG_ALREADY_TAKEN");
         }
+        // F01.2 §5.9.5: 他組織の過去 slug（履歴予約）は使用不可（恒久 301 保全）
+        if (organizationSlugHistoryRepository.existsByOldSlug(slug)) {
+            return new SlugAvailabilityResponse(false, "SLUG_RETIRED");
+        }
         return new SlugAvailabilityResponse(true, null);
     }
 
@@ -239,6 +252,105 @@ public class OrganizationService {
      * @param reason    利用不可の理由コード（利用可能時は null）
      */
     public record SlugAvailabilityResponse(boolean available, String reason) {
+    }
+
+    /**
+     * F01.2 §5.9.5: 組織の slug を変更する（リネーム専用・既存 update とは分離）。
+     *
+     * <p>処理の流れ:</p>
+     * <ol>
+     *   <li>新 slug が現 slug と同一なら no-op（履歴も書かず現 slug を返す）。</li>
+     *   <li>形式・予約語・一意性・他組織履歴予約を検証する（自組織の過去 slug への戻しは許可）。</li>
+     *   <li>旧 slug を {@code organization_slug_history} に INSERT → org.slug を新 slug に更新（同一トランザクション）。</li>
+     * </ol>
+     *
+     * <p>認可（ADMIN/DEPUTY 相当）は Controller で {@code AccessControlService.checkAdminOrAbove} が
+     * 担保する前提（F00 正準）。本メソッドは認可済み呼び出しを前提とする。</p>
+     *
+     * @param orgId   対象組織 ID
+     * @param newSlug 新しい slug
+     * @return 更新後の組織レスポンス（no-op 時も現状を返す）
+     * @throws BusinessException 形式不正（ORG_060）/ 予約語（ORG_061）/ 重複（ORG_062）/ 他組織履歴予約（ORG_063）
+     */
+    @Transactional
+    @CacheEvict(value = "org-detail", allEntries = true)
+    public ApiResponse<OrganizationResponse> renameSlug(Long orgId, String newSlug) {
+        OrganizationEntity org = findOrganizationOrThrow(orgId);
+        String oldSlug = org.getSlug();
+
+        // 同一 slug は no-op（200・履歴を増やさない）
+        if (oldSlug.equals(newSlug)) {
+            int memberCount = (int) userRoleRepository.countByOrganizationId(orgId);
+            return ApiResponse.of(toResponse(org, memberCount));
+        }
+
+        validateRenameSlug(newSlug, orgId);
+
+        // 旧 slug を履歴へ記録（恒久予約＋301 解決元）
+        organizationSlugHistoryRepository.save(OrganizationSlugHistoryEntity.builder()
+                .organizationId(orgId)
+                .oldSlug(oldSlug)
+                .build());
+
+        org.renameSlug(newSlug);
+        organizationRepository.save(org);
+
+        log.info("組織 slug リネーム完了: orgId={}, {} -> {}", orgId, oldSlug, newSlug);
+
+        int memberCount = (int) userRoleRepository.countByOrganizationId(orgId);
+        return ApiResponse.of(toResponse(org, memberCount));
+    }
+
+    /**
+     * リネーム時の新 slug を検証する。作成時の {@link #validateUserSlug(String)} と同方式だが、
+     * 履歴予約チェックは「自組織を除外」する（自組織の過去 slug への戻しを許可するため）。
+     *
+     * @param slug  新 slug
+     * @param orgId 自組織 ID（履歴予約判定から除外）
+     */
+    private void validateRenameSlug(String slug, Long orgId) {
+        if (!SlugValidator.isValidFormat(slug)) {
+            throw new BusinessException(OrgErrorCode.ORG_060);
+        }
+        if (SlugValidator.isReserved(slug)) {
+            throw new BusinessException(OrgErrorCode.ORG_061);
+        }
+        if (organizationRepository.existsBySlugAndDeletedAtIsNull(slug)) {
+            throw new BusinessException(OrgErrorCode.ORG_062);
+        }
+        // 他組織の履歴に予約済みなら不可。自組織の過去 slug への戻しは許可（orgId 除外）。
+        if (organizationSlugHistoryRepository.existsByOldSlugAndOrganizationIdNot(slug, orgId)) {
+            throw new BusinessException(OrgErrorCode.ORG_063);
+        }
+    }
+
+    /**
+     * F01.2 §5.9.5: slug を解決する（旧 slug → 現 slug の 301 判定用・公開 EP から呼ばれる）。
+     *
+     * <ul>
+     *   <li>現 slug で存在 → {@code CURRENT}</li>
+     *   <li>無ければ履歴の old_slug 一致を引き、その組織の現 slug へ {@code MOVED(canonicalSlug)}。
+     *       ただし対象組織が論理削除済み等で現存しない場合は {@code NOT_FOUND}。</li>
+     *   <li>どちらも無ければ {@code NOT_FOUND}</li>
+     * </ul>
+     *
+     * <p>スコープ漏洩対策: 名前等は返さず canonicalSlug のみ。private 組織の実データは
+     * {@code getOrganization} の認可が守るため、slug→slug の対応自体は非機密として扱う。</p>
+     *
+     * @param slug 解決対象 slug
+     * @return 解決結果
+     */
+    public SlugResolveResponse resolveSlug(String slug) {
+        if (slug == null || slug.isBlank()) {
+            return SlugResolveResponse.notFound();
+        }
+        if (organizationRepository.existsBySlugAndDeletedAtIsNull(slug)) {
+            return SlugResolveResponse.current();
+        }
+        return organizationSlugHistoryRepository.findByOldSlug(slug)
+                .flatMap(history -> organizationRepository.findById(history.getOrganizationId()))
+                .map(org -> SlugResolveResponse.moved(org.getSlug()))
+                .orElseGet(SlugResolveResponse::notFound);
     }
 
     /**

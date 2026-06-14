@@ -22,6 +22,7 @@ import com.mannschaft.app.team.dto.TeamResponse;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamBlockRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.team.repository.TeamSlugHistoryRepository;
 import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.team.service.TeamShiftSettingsService;
 import java.util.Optional;
@@ -42,6 +43,7 @@ import org.springframework.context.ApplicationEventPublisher;
 class TeamSlugServiceTest {
 
     @Mock private TeamRepository teamRepository;
+    @Mock private TeamSlugHistoryRepository teamSlugHistoryRepository;
     @Mock private TeamBlockRepository teamBlockRepository;
     @Mock private UserRoleRepository userRoleRepository;
     @Mock private RoleRepository roleRepository;
