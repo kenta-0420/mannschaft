@@ -2,10 +2,11 @@
 const route = useRoute()
 const showSidebar = ref(false)
 
-// orgId を route params から取得
+// orgId（slug）を route params から取得
+// [slug] ルート配下では params.id は undefined になるため params.slug を読む
 const orgId = computed(() => {
-  const id = route.params.id
-  return id ? String(Array.isArray(id) ? id[0] : id) : null
+  const slug = route.params.slug
+  return slug ? String(Array.isArray(slug) ? slug[0] : slug) : null
 })
 
 // ルート変更時にDrawerを閉じる
