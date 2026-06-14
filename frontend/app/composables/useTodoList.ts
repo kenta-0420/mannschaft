@@ -7,11 +7,15 @@ export interface MyTodo {
   scopeType: string
   /** @deprecated 旧フラットフィールド互換 — scope?.scopeId を優先使用 */
   scopeId: string | null
+  /** TEAM / ORGANIZATION の slug（URL遷移用）。PERSONAL は null。 */
+  scopeSlug: string | null
   scope?: {
     scopeType?: string
     scopeId?: string | null
     projectId?: number | null
     milestoneId?: number | null
+    /** TEAM / ORGANIZATION の slug（URL遷移用）。PERSONAL は null。 */
+    scopeSlug?: string | null
   }
   content?: {
     title?: string
@@ -268,10 +272,12 @@ export function useTodoList() {
         orgStore.myOrganizations.length === 0 ? orgStore.fetchMyOrganizations() : Promise.resolve(),
       ])
       // Wave 1 DTO刷新: ネスト構造から旧フラットフィールドへ正規化マッピング（後方互換）
+      // slug 根治: scope.scopeSlug を scopeSlug フラットフィールドに引き継ぐ
       todos.value = (todosRes.data as unknown as MyTodo[]).map((item) => ({
         ...item,
         scopeType: item.scope?.scopeType ?? item.scopeType ?? '',
         scopeId: item.scope?.scopeId ?? item.scopeId ?? null,
+        scopeSlug: item.scope?.scopeSlug ?? item.scopeSlug ?? null,
         status: item.status ?? '',
         priority: item.priority ?? '',
         statusLabel: item.statusLabel ?? null,

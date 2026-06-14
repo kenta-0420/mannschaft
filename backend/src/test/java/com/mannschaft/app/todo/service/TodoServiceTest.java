@@ -107,7 +107,8 @@ class TodoServiceTest {
                         entity.getScopeType() != null ? entity.getScopeType().name() : null,
                         entity.getScopeId(),
                         entity.getProjectId(),
-                        entity.getMilestoneId()))
+                        entity.getMilestoneId(),
+                        null))
                 .content(new com.mannschaft.app.todo.dto.TodoResponse.TodoContentDto(
                         entity.getTitle(),
                         entity.getDescription(),

@@ -11,7 +11,9 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * 組織リポジトリ。
@@ -40,6 +42,32 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
 
     @Query("SELECT o FROM OrganizationEntity o WHERE o.name LIKE %:keyword% OR o.nameKana LIKE %:keyword%")
     Page<OrganizationEntity> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
+
+    /**
+     * TODO スコープ slug 解決用: 指定 ID 集合の id → slug マッピングを一括取得する。
+     *
+     * <p>TodoResponseConverter が「My TODO」一覧で scopeSlug を充填する際に N+1 を避けるため
+     * バッチ取得する。slug のみを SELECT することで SELECT * より軽量。</p>
+     *
+     * @param ids 取得対象の組織 ID 集合（非空）
+     * @return id → slug の Map（存在しない / 論理削除済みは除外）
+     */
+    @Query("SELECT o.id AS id, o.slug AS slug FROM OrganizationEntity o WHERE o.id IN :ids")
+    List<Object[]> findIdAndSlugByIdIn(@Param("ids") Collection<Long> ids);
+
+    /**
+     * TODO スコープ slug 解決用: ID → slug の Map を返すデフォルトメソッド。
+     *
+     * @param ids 取得対象の組織 ID 集合
+     * @return id → slug の Map（論理削除済みは @SQLRestriction で自動除外）
+     */
+    default Map<Long, String> findSlugMapByIdIn(Collection<Long> ids) {
+        return findIdAndSlugByIdIn(ids).stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (String) row[1]
+                ));
+    }
 
     /**
      * 論理削除済みを含めてIDで検索する（restore用）。

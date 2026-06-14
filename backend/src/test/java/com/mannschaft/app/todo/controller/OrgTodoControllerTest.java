@@ -119,7 +119,7 @@ class OrgTodoControllerTest {
         return TodoResponse.builder()
                 .id(TODO_ID)
                 .scope(new TodoResponse.TodoScopeDto(
-                        TodoScopeType.ORGANIZATION.name(), ORG_ID, null, null))
+                        TodoScopeType.ORGANIZATION.name(), ORG_ID, null, null, null))
                 .content(new TodoResponse.TodoContentDto(
                         "テスト組織TODO", "説明", null, null, false, 0))
                 .schedule(new TodoResponse.TodoScheduleDto(

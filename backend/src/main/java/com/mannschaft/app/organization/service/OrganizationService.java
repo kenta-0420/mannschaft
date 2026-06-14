@@ -38,7 +38,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 組織管理サービス（ファサード）。
@@ -347,6 +350,41 @@ public class OrganizationService {
      */
     public ChildrenResponse getChildren(Long orgId, Long requesterId, String cursor, int size) {
         return organizationHierarchyService.getChildren(orgId, requesterId, cursor, size);
+    }
+
+    // ========================================
+    // ドメイン間 slug 解決（Todoドメイン等から利用）
+    // ========================================
+
+    /**
+     * 指定 ID 集合に対して id → slug のマッピングを一括取得する（N+1 回避）。
+     *
+     * <p>TodoResponseConverter 等の他ドメインが organization Entity を直接参照することを防ぐために
+     * プリミティブ（Map&lt;Long, String&gt;）のみを返す。Entity は漏らさない。</p>
+     *
+     * @param ids 取得対象の組織 ID 集合
+     * @return id → slug の Map（論理削除済みは除外）。ids が空の場合は空 Map を返す
+     */
+    public Map<Long, String> getSlugsByIds(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return organizationRepository.findSlugMapByIdIn(ids);
+    }
+
+    /**
+     * 単一組織 ID から slug を取得する。
+     *
+     * <p>論理削除済み・存在しない場合は {@code null} を返す（例外を投げない）。</p>
+     *
+     * @param id 組織 ID
+     * @return slug 文字列。存在しない場合は null
+     */
+    public String getSlugById(Long id) {
+        if (id == null) {
+            return null;
+        }
+        return organizationRepository.findById(id).map(o -> o.getSlug()).orElse(null);
     }
 
     // ========================================
