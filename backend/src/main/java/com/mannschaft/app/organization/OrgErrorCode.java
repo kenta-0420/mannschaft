@@ -68,7 +68,18 @@ public enum OrgErrorCode implements ErrorCode {
     ORG_050("ORG_050", "役員が見つかりません", Severity.WARN),
 
     /** カスタムフィールドが見つかりません */
-    ORG_051("ORG_051", "カスタムフィールドが見つかりません", Severity.WARN);
+    ORG_051("ORG_051", "カスタムフィールドが見つかりません", Severity.WARN),
+
+    // --- ユーザー任意 slug（村方式統一）---
+
+    /** slug の形式が不正（422）。3〜30文字の英小文字・数字・ハイフン、先頭/末尾/連続ハイフン不可 */
+    ORG_060("ORG_060", "スラッグの形式が不正です（3〜30文字の英小文字・数字・ハイフン、先頭/末尾/連続ハイフン不可）", Severity.WARN),
+
+    /** slug が予約語（422）。フロントエンドの固定ルートと衝突する語は使用できない */
+    ORG_061("ORG_061", "そのスラッグは予約語のため使用できません", Severity.WARN),
+
+    /** slug が既に使用されている（409） */
+    ORG_062("ORG_062", "そのスラッグはすでに使われています", Severity.WARN);
 
     private final String code;
     private final String message;

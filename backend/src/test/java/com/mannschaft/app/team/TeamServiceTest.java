@@ -68,7 +68,7 @@ class TeamServiceTest {
         @DisplayName("正常系: チームが作成され作成者がADMINになる")
         void 作成_正常_保存() {
             // Given
-            CreateTeamRequest req = new CreateTeamRequest("テストチーム", "sports", "東京都", "渋谷区", null, null, null);
+            CreateTeamRequest req = new CreateTeamRequest("テストチーム", "sports", "東京都", "渋谷区", null, null, null, null);
             RoleEntity adminRole = RoleEntity.builder().name("ADMIN").build();
             try {
                 var field = adminRole.getClass().getSuperclass().getDeclaredField("id");

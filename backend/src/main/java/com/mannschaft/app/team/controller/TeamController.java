@@ -96,6 +96,14 @@ public class TeamController {
         return ResponseEntity.ok(teamService.searchTeams(keyword, pageable));
     }
 
+    @GetMapping("/slug-available")
+    @Operation(summary = "slug 可用性チェック（作成前のリアルタイム検証・村方式統一）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "判定結果")
+    public ResponseEntity<ApiResponse<TeamService.SlugAvailabilityResponse>> checkSlugAvailability(
+            @RequestParam String slug) {
+        return ResponseEntity.ok(ApiResponse.of(teamService.checkSlugAvailability(slug)));
+    }
+
     @GetMapping("/{slug}")
     @Operation(summary = "チーム取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

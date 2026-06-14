@@ -98,7 +98,7 @@ class OrganizationControllerTest {
     @DisplayName("createOrganization: 201 Created")
     void createOrganization_201() {
         CreateOrganizationRequest req = new CreateOrganizationRequest(
-                "テスト組織", "SCHOOL", "東京都", "渋谷区", "PUBLIC", null);
+                "テスト組織", "SCHOOL", "東京都", "渋谷区", "PUBLIC", null, null);
         given(organizationService.createOrganization(USER_ID, req)).willReturn(ApiResponse.of(orgResponse()));
         ResponseEntity<ApiResponse<OrganizationResponse>> resp = controller.createOrganization(req);
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);

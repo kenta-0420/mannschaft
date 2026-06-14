@@ -1,6 +1,7 @@
 package com.mannschaft.app.organization.service;
 
 import com.mannschaft.app.common.util.SlugGenerator;
+import com.mannschaft.app.common.util.SlugValidator;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.OrgErrorCode;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
@@ -77,7 +78,7 @@ public class OrganizationService {
             throw new BusinessException(OrgErrorCode.ORG_002);
         }
 
-        String slug = createUniqueSlug(req.getName());
+        String slug = resolveSlugForCreate(req.getSlug(), req.getName());
         OrganizationEntity org = OrganizationEntity.builder()
                 .name(req.getName())
                 .slug(slug)
@@ -166,6 +167,78 @@ public class OrganizationService {
             }
         }
         return SlugGenerator.withSuffix(base, (int) (System.currentTimeMillis() % 10000));
+    }
+
+    /**
+     * 作成時の slug を解決する（村方式に統一）。
+     *
+     * <p>ユーザーが slug を指定した場合は形式・予約語・一意性を検証して採用する。
+     * 未指定（null / 空文字）の場合は従来どおり {@link #createUniqueSlug(String)} で
+     * 組織名から自動生成（提案フォールバック）する。自動生成は降格扱いだが破壊的変更ではない。</p>
+     *
+     * @param requestedSlug ユーザー入力 slug（null / 空文字可）
+     * @param name          組織名（自動生成フォールバック用）
+     * @return 採用する一意な slug
+     * @throws BusinessException 形式不正（ORG_060）/ 予約語（ORG_061）/ 重複（ORG_062）
+     */
+    private String resolveSlugForCreate(String requestedSlug, String name) {
+        if (!SlugValidator.isProvided(requestedSlug)) {
+            return createUniqueSlug(name);
+        }
+        validateUserSlug(requestedSlug);
+        return requestedSlug;
+    }
+
+    /**
+     * ユーザー指定 slug の形式・予約語・一意性を検証する。村の {@code validateSlug} と同方式。
+     *
+     * @param slug ユーザー入力 slug（指定済み前提）
+     * @throws BusinessException 形式不正（ORG_060）/ 予約語（ORG_061）/ 重複（ORG_062）
+     */
+    private void validateUserSlug(String slug) {
+        if (!SlugValidator.isValidFormat(slug)) {
+            throw new BusinessException(OrgErrorCode.ORG_060);
+        }
+        if (SlugValidator.isReserved(slug)) {
+            throw new BusinessException(OrgErrorCode.ORG_061);
+        }
+        if (organizationRepository.existsBySlugAndDeletedAtIsNull(slug)) {
+            throw new BusinessException(OrgErrorCode.ORG_062);
+        }
+    }
+
+    /**
+     * slug の可用性をチェックする（作成前のリアルタイム検証 API 用）。
+     *
+     * <p>形式不正・予約語・重複のいずれかに該当すれば {@code available=false} と理由コードを返す。
+     * 例外は投げず、常に 200 で結果を返す。</p>
+     *
+     * @param slug チェック対象 slug
+     * @return 可用性結果（available と reason）
+     */
+    public SlugAvailabilityResponse checkSlugAvailability(String slug) {
+        if (!SlugValidator.isProvided(slug)) {
+            return new SlugAvailabilityResponse(false, "SLUG_REQUIRED");
+        }
+        if (!SlugValidator.isValidFormat(slug)) {
+            return new SlugAvailabilityResponse(false, "SLUG_INVALID_FORMAT");
+        }
+        if (SlugValidator.isReserved(slug)) {
+            return new SlugAvailabilityResponse(false, "SLUG_RESERVED");
+        }
+        if (organizationRepository.existsBySlugAndDeletedAtIsNull(slug)) {
+            return new SlugAvailabilityResponse(false, "SLUG_ALREADY_TAKEN");
+        }
+        return new SlugAvailabilityResponse(true, null);
+    }
+
+    /**
+     * slug 可用性チェックのレスポンス。
+     *
+     * @param available 利用可能なら true
+     * @param reason    利用不可の理由コード（利用可能時は null）
+     */
+    public record SlugAvailabilityResponse(boolean available, String reason) {
     }
 
     /**
