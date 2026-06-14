@@ -8,9 +8,6 @@
  */
 import type { OrgDashboardResponse } from '~/types/dashboard-scope'
 
-/** UUID v4/v7 形式判定。BIGINT 文字列（"1" 等）を除外して 400 を防ぐ。 */
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
 const store = useScopeDashboardStore()
 const { getOrganizationDashboard } = useDashboardApi()
 
@@ -19,6 +16,27 @@ const loading = ref(false)
 const errorKey = ref<string | null>(null)
 
 const selectedOrgId = computed(() => store.selectedOrgId)
+
+/**
+ * 選択中 ID が「まだ slug へ移行されていない内部 BIGINT」かどうかを判定する。
+ *
+ * <p>slug 移行（PR #1413〜）以降、ダッシュボード API の pathVariable は slug（例 `team-000017`）。
+ * ただし localStorage 復元直後など、store.loadTabs が走る前は selectedOrgId に旧来の
+ * 内部 BIGINT（scopeId）が残っていることがある。BIGINT を pathVariable に渡すと 400 になるため、
+ * loadTabs が slug へ張り替えるまでスピナーで待機する必要がある。</p>
+ *
+ * <p>判定方式: ロード済みタグ一覧の scopeId（内部 BIGINT）に一致する値は「移行前」とみなす。
+ * 純数値 slug（組織名が "12345" 等）でも scopeId と値が異なるため誤判定しない。
+ * UUID 正規表現に依存しないため、人間可読 slug（team-000017 等）が永久スピナーになる不具合を根治する。</p>
+ */
+function isUnmigratedScopeId(id: string): boolean {
+  const items = store.tabPages.ORGANIZATION?.items
+  if (!items) {
+    // タグ未ロード（loadTabs 前）。BIGINT 文字列なら移行待ち、slug なら即ロード。
+    return /^\d+$/.test(id)
+  }
+  return items.some(item => item.scopeId === id && item.slug !== id)
+}
 
 async function load(orgId: string) {
   loading.value = true
@@ -52,12 +70,13 @@ watch(
     if (id === null) {
       data.value = null
       loading.value = false
-    } else if (UUID_REGEX.test(id)) {
-      load(id)
-    } else {
-      // BIGINT 形式: onMounted の loadTabs が UUID に移行するまでスピナーを表示し
-      // 空白状態（loading=false/data=null/errorKey=null かつ非null id）を防ぐ
+    } else if (isUnmigratedScopeId(id)) {
+      // 内部 BIGINT（移行前）: onMounted の loadTabs が slug に張り替えるまでスピナーを
+      // 表示し、空白状態（loading=false/data=null/errorKey=null かつ非null id）を防ぐ。
       loading.value = true
+    } else {
+      // slug（team-000017 等）: そのまま表示。404 時は errorKey で顕在化させ握り潰さない。
+      load(id)
     }
   },
   { immediate: true },
