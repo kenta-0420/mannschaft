@@ -239,7 +239,30 @@
         },
         "complete_failed": "Failed to save match completion"
       },
-      "read_only_notice": "View only. Only admins, deputies and scorekeepers can record"
+      "read_only_notice": "View only. Only admins, deputies and scorekeepers can record",
+      "spectator": {
+        "title": "Live spectating",
+        "read_only_badge": "Spectating only · no recording rights",
+        "offline_banner": "You are offline. This may not be the latest. It will refresh automatically when the connection is restored.",
+        "connection": {
+          "live": "Live",
+          "connecting": "Connecting…",
+          "reconnecting": "Reconnecting…",
+          "offline": "Offline",
+          "denied": "Cannot spectate"
+        },
+        "status": {
+          "SCHEDULED": "Not started",
+          "IN_PROGRESS": "Live",
+          "COMPLETED": "Finished",
+          "POSTPONED": "Postponed",
+          "CANCELLED": "Cancelled"
+        },
+        "denied": {
+          "title": "This match cannot be spectated",
+          "detail": "The live feed is not available because it is outside the visibility scope."
+        }
+      }
     },
     "analytics": {
       "my_title": "Match Analytics",

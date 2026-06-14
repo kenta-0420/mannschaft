@@ -193,6 +193,13 @@ onMounted(async () => {
     notification.error(t('match.live.error.load_match_failed'))
   }
 
+  // 記録権限がなければ観戦ビュー（read-only）へ。記録セッション（タイマー/グリッド/wakeLock）は
+  // 構築しない（観戦は MatchSpectatorView が STOMP 購読＋初期スナップショットを自前で行う・§G.17 / 07 §J）。
+  if (!canRecord.value) {
+    loading.value = false
+    return
+  }
+
   // 競技モジュールを動的 import（lazy-load）で解決し、その createTimer をセッションへ注入。
   const mod = await resolveSportModule(sport)
   sportModule.value = mod
@@ -382,12 +389,25 @@ function back(): void {
   <div class="mx-auto max-w-2xl pb-28">
     <div class="mb-2 flex items-center gap-2">
       <BackButton :to="`/teams/${teamSlug}/matches`" @click="back" />
-      <PageHeader :title="t('match.live.title')" size="sm" />
+      <PageHeader
+        :title="canRecord ? t('match.live.title') : t('match.live.spectator.title')"
+        size="sm"
+      />
     </div>
 
-    <PageLoading v-if="loading || !session" size="40px" />
+    <PageLoading v-if="loading" size="40px" />
 
-    <template v-else>
+    <!-- 観戦ビュー（記録権限なし＝read-only・STOMP 購読＋初期スナップショット差分追従・§G.17 / 07 §J） -->
+    <MatchSpectatorView
+      v-else-if="!canRecord"
+      :org-id="orgId"
+      :team-id="teamId"
+      :match-id="matchId"
+      :own-team-side="ownTeamSide"
+      :opponent-name="opponentName"
+    />
+
+    <template v-else-if="session">
       <MatchScoreboard
         :home-score="session.homeScore.value"
         :away-score="session.awayScore.value"
@@ -460,15 +480,6 @@ function back(): void {
         </div>
         <p class="mt-2 text-center text-xs text-surface-500">{{ t('match.live.penalty.hint') }}</p>
       </div>
-
-      <!-- 閲覧専用案内（記録権限なし・§G.9 認可連動） -->
-      <p
-        v-if="!canRecord"
-        class="mb-3 flex items-center gap-2 rounded bg-surface-100 p-2 text-xs text-surface-500"
-      >
-        <i class="pi pi-eye" />
-        {{ t('match.live.read_only_notice') }}
-      </p>
 
       <p v-if="isCompleted" class="mb-3 rounded bg-surface-100 p-2 text-xs text-surface-500">
         {{ t('match.live.completed_notice') }}

@@ -149,6 +149,84 @@ export type BasketballFoulCode = 'PF' | 'SF' | 'OF' | 'TF' | 'UF' | 'DF'
 /** 競技横断のポジション語彙ユニオン（i18n 引きの型付け用）。 */
 export type CatalogPosition = SoccerPosition | FutsalPosition | BasketballPosition
 
+// ===== ライブ観戦（STOMP 配信ペイロード・07_realtime_spectator.md §J.2.1） =====
+//
+// 【前向きユニオン境界（7-C 追加）】
+// `/topic/matches/{matchId}/live` の STOMP 配信ペイロード（BE `match.live.MatchLiveUpdatePayload`/
+// `MatchLiveEventView`/`MatchLiveScoreSummary`/`MatchLiveUpdateType`）は **REST DTO ではない**ため
+// OpenAPI（docs/openapi.json）に現れず、生成型 `types/generated` に未反映である。観戦ビュー（read-only）
+// は配信を消費するため、ここで前向きユニオンとして定義する。生成型一括再生成で BE 配信 DTO が openapi へ
+// 露出した暁には本ユニオンを生成型へ寄せて段階移行する（any 禁止・境界は STOMP 受信パースの 1 箇所に閉じる）。
+
+/** 配信メッセージ種別（BE MatchLiveUpdateType・07 §J.2.1）。 */
+export type MatchLiveUpdateType =
+  | 'EVENT_ADDED'
+  | 'EVENT_UPDATED'
+  | 'EVENT_DELETED'
+  | 'SCORE_UPDATED'
+  | 'STATUS_CHANGED'
+
+/**
+ * 配信用の最小タイムラインイベントビュー（BE MatchLiveEventView・07 §J.3.3）。
+ * 機微情報（内部ユーザー ID・所有チーム ID）は **意図的に含まれない**（BE 側で除外済み）。
+ * FE は本ビューをスナップショットの {@link MatchEventResponse} 形へマージする（player_user_id 等は欠落）。
+ */
+export interface MatchLiveEventView {
+  id?: string
+  minute?: number | null
+  stoppageMinute?: number | null
+  period?: MatchPeriod | null
+  eventType?: MatchEventType
+  cardReasonCode?: string | null
+  customLabel?: string | null
+  teamSide?: TeamSide
+  playerName?: string | null
+  jerseyNumber?: number | null
+  relatedPlayerName?: string | null
+  note?: string | null
+  linkedEventId?: string | null
+  sortSeq?: number
+}
+
+/** 配信スコアサマリ（BE MatchLiveScoreSummary・07 §J.2.1）。 */
+export interface MatchLiveScoreSummary {
+  homeScore?: number | null
+  awayScore?: number | null
+  homePenaltyScore?: number | null
+  awayPenaltyScore?: number | null
+}
+
+/** 配信差分ペイロード（BE MatchLiveUpdatePayload・07 §J.2.1）。 */
+export interface MatchLiveUpdatePayload {
+  type: MatchLiveUpdateType
+  matchId?: string
+  /** 単調増加シーケンス（順序検出・飛び検知＝スナップショット再取得・07 §J.2.1 / §J.4）。 */
+  serverSeq: number
+  /** 差分イベント（EVENT_ADDED/EVENT_UPDATED 時）。 */
+  event?: MatchLiveEventView | null
+  /** 削除イベント ID（EVENT_DELETED 時）。 */
+  eventId?: string | null
+  /** 更新後スコア（SCORE_UPDATED 時）。 */
+  score?: MatchLiveScoreSummary | null
+  /** 遷移後ステータス（STATUS_CHANGED 時）。 */
+  status?: MatchSummaryStatus | null
+}
+
+/**
+ * 観戦ビューの接続状態（04 §G.17 接続状態インジケーター）。
+ * - CONNECTING:   初回接続中（購読確立前）
+ * - LIVE:         STOMP 接続中・差分配信を受信中（ライブ）
+ * - RECONNECTING: 切断→再接続中（復帰後にスナップショット再取得・07 §J.4）
+ * - OFFLINE:      WebSocket・HTTP ともに不通（最終スナップショット表示＝「最新でない可能性」明示）
+ * - DENIED:       購読拒否（可視性なし・F00／STOMP ERROR フレーム・07 §J.3.1）
+ */
+export type SpectatorConnectionState =
+  | 'CONNECTING'
+  | 'LIVE'
+  | 'RECONNECTING'
+  | 'OFFLINE'
+  | 'DENIED'
+
 /** 試合種別の全候補（フィルタ/作成フォームの選択肢） */
 export const MATCH_KINDS: readonly MatchKind[] = [
   'PRACTICE',

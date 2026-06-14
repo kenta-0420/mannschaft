@@ -239,7 +239,30 @@
         },
         "complete_failed": "試合終了の保存に失敗しました"
       },
-      "read_only_notice": "閲覧専用です。記録できるのは管理者・副管理者・記録係のみです"
+      "read_only_notice": "閲覧専用です。記録できるのは管理者・副管理者・記録係のみです",
+      "spectator": {
+        "title": "ライブ観戦",
+        "read_only_badge": "観戦のみ・記録権限なし",
+        "offline_banner": "オフラインです。最新でない可能性があります。通信が回復すると自動で最新化します。",
+        "connection": {
+          "live": "ライブ接続中",
+          "connecting": "接続中…",
+          "reconnecting": "再接続中…",
+          "offline": "オフライン",
+          "denied": "観戦できません"
+        },
+        "status": {
+          "SCHEDULED": "開始前",
+          "IN_PROGRESS": "試合中",
+          "COMPLETED": "試合終了",
+          "POSTPONED": "延期",
+          "CANCELLED": "中止"
+        },
+        "denied": {
+          "title": "この試合は観戦できません",
+          "detail": "公開範囲外のため、ライブ配信を表示できません。"
+        }
+      }
     },
     "analytics": {
       "my_title": "試合分析",

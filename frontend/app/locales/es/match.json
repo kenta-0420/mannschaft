@@ -239,7 +239,30 @@
         },
         "complete_failed": "No se pudo guardar la finalización del partido"
       },
-      "read_only_notice": "Solo lectura. Solo administradores, suplentes y anotadores pueden registrar"
+      "read_only_notice": "Solo lectura. Solo administradores, suplentes y anotadores pueden registrar",
+      "spectator": {
+        "title": "Espectador en vivo",
+        "read_only_badge": "Solo espectador · sin permiso de registro",
+        "offline_banner": "Estás sin conexión. Puede que no sea lo más reciente. Se actualizará automáticamente cuando se restablezca la conexión.",
+        "connection": {
+          "live": "En vivo",
+          "connecting": "Conectando…",
+          "reconnecting": "Reconectando…",
+          "offline": "Sin conexión",
+          "denied": "No se puede ver"
+        },
+        "status": {
+          "SCHEDULED": "Sin empezar",
+          "IN_PROGRESS": "En juego",
+          "COMPLETED": "Finalizado",
+          "POSTPONED": "Aplazado",
+          "CANCELLED": "Cancelado"
+        },
+        "denied": {
+          "title": "No se puede ver este partido",
+          "detail": "La transmisión en vivo no está disponible porque está fuera del alcance de visibilidad."
+        }
+      }
     },
     "analytics": {
       "my_title": "Análisis de partidos",
