@@ -22,7 +22,7 @@ const { templateLabel } = useScopeLabels()
         v-for="team in teams"
         :key="team.id"
         class="cursor-pointer rounded-lg border p-4 transition-shadow hover:shadow-md"
-        @click="navigateTo(`/teams/${team.id}`)"
+        @click="team.slug ? navigateTo(`/teams/${team.slug}`) : undefined"
       >
         <div class="mb-2 flex items-center gap-3">
           <Avatar

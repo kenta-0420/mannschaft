@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
  * </ul>
  *
  * @param id           組織 ID
+ * @param slug         組織スラッグ（URL ルーティング用。{@code /organizations/{slug}} に使用する）
  * @param name         組織名
  * @param iconUrl      アイコン URL（null 可）
  * @param memberCount  所属ユーザー数（{@code user_roles} からの集計値）
@@ -22,6 +23,7 @@ import java.time.LocalDateTime;
  */
 public record PublicOrganizationSearchResultResponse(
         Long id,
+        String slug,
         String name,
         String iconUrl,
         int memberCount,

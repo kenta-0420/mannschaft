@@ -31,8 +31,8 @@ watch(viewMode, (mode) => {
   }
 })
 
-function onOrgCreated(entity: { id: string; name: string }) {
-  navigateTo(`/organizations/${entity.id}`)
+function onOrgCreated(entity: { id: string; name: string; slug: string }) {
+  navigateTo(`/organizations/${entity.slug}`)
 }
 
 /** F15.3: URL クエリ `?folder=` がソース・オブ・トゥルース。 */

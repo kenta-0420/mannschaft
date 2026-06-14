@@ -82,6 +82,8 @@ export interface TeamResponse {
 
 export interface TeamSummaryResponse {
   id: number
+  /** チームスラッグ（URLルーティング用）。{@code /teams/{slug}} に使用する。 */
+  slug: string
   name: string
   nickname1: string | null
   iconUrl: string | null

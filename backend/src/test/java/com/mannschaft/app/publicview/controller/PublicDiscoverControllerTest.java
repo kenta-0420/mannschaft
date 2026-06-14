@@ -233,6 +233,7 @@ class PublicDiscoverControllerTest {
     private PublicOrganizationSearchResultResponse sampleOrg(Long id, String name) {
         return new PublicOrganizationSearchResultResponse(
                 id,
+                "org-slug-" + id,
                 name,
                 "https://cdn.example.com/org-icons/" + id + ".png",
                 0,

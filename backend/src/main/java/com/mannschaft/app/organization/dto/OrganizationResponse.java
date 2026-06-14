@@ -18,6 +18,8 @@ public class OrganizationResponse {
 
     /** URL 識別子（カスタムスラッグ）。 */
     private String id;
+    /** 組織スラッグ（URL ルーティング用）。{@code /organizations/{slug}} に使用する。 */
+    private String slug;
     private OrgBasicInfoDto basicInfo;
     private OrgHierarchyDto hierarchy;
     private OrgLocationDto location;

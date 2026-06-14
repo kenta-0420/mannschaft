@@ -10,6 +10,8 @@ import {
 
 interface TeamSummaryResponse {
   id: string
+  /** チームスラッグ（URLルーティング用）。{@code /teams/{slug}} に使用する。 */
+  slug: string
   name: string
   nickname1: string | null
   iconUrl: string | null
@@ -22,6 +24,8 @@ interface TeamSummaryResponse {
   template: string
   memberCount: number
   supporterEnabled: boolean
+  teamFriendCount: number
+  supporterCount: number
 }
 
 interface PagedData<T> {

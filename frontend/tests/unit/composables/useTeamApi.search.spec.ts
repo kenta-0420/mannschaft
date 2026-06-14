@@ -45,6 +45,7 @@ const { useTeamApi } = await import('~/composables/useTeamApi')
 function makePublicSummary(over: Partial<TeamPublicSummary> = {}): TeamPublicSummary {
   return {
     id: 1,
+    slug: 'team-slug-1',
     name: '本店',
     nameKana: 'ホンテン',
     prefecture: '東京都',

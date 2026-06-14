@@ -12,6 +12,8 @@ public class TeamSummaryResponse {
 
     /** URL 識別子（カスタムスラッグ）。 */
     private final String id;
+    /** チームスラッグ（URL ルーティング用）。{@code /teams/{slug}} に使用する。 */
+    private final String slug;
     private final String name;
     private final String template;
     private final String visibility;
