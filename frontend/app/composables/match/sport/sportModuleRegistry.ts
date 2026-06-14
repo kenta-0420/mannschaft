@@ -17,6 +17,11 @@
  * （CONTINUOUS_TIME / SET_BASED）に拡張。live.vue は stateModel で分岐する。
  * BE が Sport enum を VOLLEYBALL へ拡張し openapi 再生成後、LiveSport ユニオンへ統合する
  * （現時点の border は isSupportedSport / resolveSportModule の 1 箇所・any 禁止）。
+ *
+ * 【前向きユニオン境界（6-④b 追加）】
+ * SHOGI/GO（TURN_BASED）を追加。SportLiveModule はターン制バリアントを含む 3 種類のユニオンに拡張。
+ * BE が Sport enum を SHOGI/GO へ拡張し openapi 再生成後、LiveSport ユニオンへ統合する
+ * （現時点の境界は REGISTRY・AllSport の定義のみ・any 禁止）。
  */
 import type { Component } from 'vue'
 import type { LiveSport, MatchPeriod } from '~/types/match'
@@ -25,6 +30,7 @@ import type {
   UseMatchTimerCoreOptions,
 } from '~/composables/match/sport/useMatchTimerCore'
 import type { MatchSetTrackerReturn } from '~/composables/match/sport/useMatchSetTracker'
+import type { MatchTurnTrackerReturn } from '~/composables/match/sport/useMatchTurnTracker'
 
 /**
  * 競技別タイマー composable の共通シェイプ（核 useMatchTimerCore の返り値の構造的上位型）。
@@ -83,27 +89,47 @@ export interface SportLiveModuleSetBased {
 }
 
 /**
+ * ターン制（TURN_BASED）競技モジュール（将棋/囲碁）。
+ * タイマー・セットトラッカーを持たず、ターン制トラッカーを提供する。
+ * 最小結果入力 UI（勝者選択・勝ち方・手数任意・局面写真）を eventSheet として持つ。
+ *
+ * 【前向きユニオン境界（6-④b）】
+ * BE が Sport enum を SHOGI/GO へ拡張し openapi 再生成後、AllSport に統合する。
+ */
+export interface SportLiveModuleTurnBased {
+  readonly sport: AllSport
+  readonly stateModel: 'TURN_BASED'
+  /** ターン制トラッカー composable のファクトリ。 */
+  createTurnTracker(): MatchTurnTrackerReturn
+  /** 結果入力シートの遅延コンポーネント（defineAsyncComponent 済み）。 */
+  readonly eventSheet: Component
+}
+
+/**
  * 競技モジュールのディスクリミネーテッドユニオン（stateModel で識別）。
  *
  * 【前向きユニオン境界】
  * 生成型の `Sport`（BE OpenAPI）は現時点 'SOCCER' のみを含む。
- * FE 先行実装（VOLLEYBALL）は `AllSport` ユニオンを用いる。
+ * FE 先行実装（VOLLEYBALL/SHOGI/GO）は `AllSport` ユニオンを用いる。
  * BE が拡張次第 `LiveSport` と統合する。
  */
-export type SportLiveModule = SportLiveModuleContinuous | SportLiveModuleSetBased
+export type SportLiveModule =
+  | SportLiveModuleContinuous
+  | SportLiveModuleSetBased
+  | SportLiveModuleTurnBased
 
 /**
- * FE が扱う全競技（連続時間制 + セット制）の前向きユニオン。
+ * FE が扱う全競技（連続時間制 + セット制 + ターン制）の前向きユニオン。
  * BE openapi 再生成後に LiveSport へ統合する。
- * TODO: 生成型 Sport に VOLLEYBALL が追加されたら LiveSport に組み込む。
+ * TODO: 生成型 Sport に VOLLEYBALL/SHOGI/GO が追加されたら LiveSport に組み込む。
  */
-export type AllSport = LiveSport | 'VOLLEYBALL'
+export type AllSport = LiveSport | 'VOLLEYBALL' | 'SHOGI' | 'GO'
 
 /** モジュールローダの型（必ず動的 import を返す関数）。 */
 export type SportModuleLoader = () => Promise<SportLiveModule>
 
 /**
- * 競技 → モジュールローダのレジストリ（連続時間制 3 競技 + セット制 1 競技）。
+ * 競技 → モジュールローダのレジストリ（連続時間制 3 競技 + セット制 1 競技 + ターン制 2 競技）。
  * 値は `() => import(...)` 関数なので、参照するまで対象競技のチャンクは読み込まれない。
  */
 const REGISTRY: Readonly<Record<AllSport, SportModuleLoader>> = {
@@ -111,6 +137,8 @@ const REGISTRY: Readonly<Record<AllSport, SportModuleLoader>> = {
   FUTSAL: () => import('~/composables/match/sport/modules/futsalModule').then((m) => m.default),
   BASKETBALL: () => import('~/composables/match/sport/modules/basketballModule').then((m) => m.default),
   VOLLEYBALL: () => import('~/composables/match/sport/modules/volleyballModule').then((m) => m.default),
+  SHOGI: () => import('~/composables/match/sport/modules/shogiModule').then((m) => m.default),
+  GO: () => import('~/composables/match/sport/modules/goModule').then((m) => m.default),
 }
 
 /**
@@ -143,6 +171,11 @@ export function isContinuousModule(mod: SportLiveModule): mod is SportLiveModule
 /** 型ガード: セット制モジュールか（セットトラッカーを持つ）。 */
 export function isSetBasedModule(mod: SportLiveModule): mod is SportLiveModuleSetBased {
   return mod.stateModel === 'SET_BASED'
+}
+
+/** 型ガード: ターン制モジュールか（ターントラッカーを持つ）。 */
+export function isTurnBasedModule(mod: SportLiveModule): mod is SportLiveModuleTurnBased {
+  return mod.stateModel === 'TURN_BASED'
 }
 
 export type { TimerState, PeriodTransition } from '~/composables/match/sport/useMatchTimerCore'

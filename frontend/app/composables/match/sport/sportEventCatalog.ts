@@ -44,11 +44,11 @@ export interface SportPreset {
 /** 競技別カタログ（プリセット並び＋メタ）。 */
 export interface SportCatalog {
   readonly sport: AllSport
-  /** 状態モデル類型（連続時間制 / セット制）。 */
-  readonly stateModel: 'CONTINUOUS_TIME' | 'SET_BASED'
-  /** イベント入力シートのプリセット並び（画面下部固定）。バレーはセット入力シートを使うため空。 */
+  /** 状態モデル類型（連続時間制 / セット制 / ターン制）。 */
+  readonly stateModel: 'CONTINUOUS_TIME' | 'SET_BASED' | 'TURN_BASED'
+  /** イベント入力シートのプリセット並び（画面下部固定）。バレー・将棋・囲碁は専用シートを使うため空。 */
   readonly presets: readonly SportPreset[]
-  /** ポジション語彙（選手グリッド配置・doughnut 集計の大分類）。 */
+  /** ポジション語彙（選手グリッド配置・doughnut 集計の大分類）。ターン制は空（§7）。 */
   readonly positions: readonly string[]
 }
 
@@ -79,12 +79,22 @@ const BASKETBALL_PRESETS: readonly SportPreset[] = [
  */
 const VOLLEYBALL_PRESETS: readonly SportPreset[] = []
 
-/** 競技別カタログ定義（連続時間制 3 競技 + セット制 1 競技）。 */
+/**
+ * 将棋/囲碁のプリセット（空）。
+ * 主動線はターン制結果入力シート（MatchEventSheetTurnBased）が担うため、
+ * プリセット大ボタンは使用しない（§G.16a・ターン制 UI はタイムラインでなく結果入力）。
+ */
+const TURN_PRESETS: readonly SportPreset[] = []
+
+/** 競技別カタログ定義（連続時間制 3 競技 + セット制 1 競技 + ターン制 2 競技）。 */
 export const SPORT_CATALOGS: Readonly<Record<AllSport, SportCatalog>> = {
   SOCCER: { sport: 'SOCCER', stateModel: 'CONTINUOUS_TIME', presets: SOCCER_PRESETS, positions: ['GK', 'DF', 'MF', 'FW'] },
   FUTSAL: { sport: 'FUTSAL', stateModel: 'CONTINUOUS_TIME', presets: SOCCER_PRESETS, positions: ['GK', 'FIXO', 'ALA', 'PIVO'] },
   BASKETBALL: { sport: 'BASKETBALL', stateModel: 'CONTINUOUS_TIME', presets: BASKETBALL_PRESETS, positions: ['PG', 'SG', 'SF', 'PF', 'C'] },
   VOLLEYBALL: { sport: 'VOLLEYBALL', stateModel: 'SET_BASED', presets: VOLLEYBALL_PRESETS, positions: ['OH', 'OP', 'MB', 'S', 'L'] },
+  // ターン制（将棋・囲碁）: ポジション語彙なし（§7）・プリセット空（専用シートを使う）
+  SHOGI: { sport: 'SHOGI', stateModel: 'TURN_BASED', presets: TURN_PRESETS, positions: [] },
+  GO: { sport: 'GO', stateModel: 'TURN_BASED', presets: TURN_PRESETS, positions: [] },
 }
 
 /** サッカー/フットサルの共通シート（MatchEventSheet）を使う競技か。 */

@@ -478,6 +478,63 @@
       "sets_label": "Satzstand",
       "decrement_away": "Auswärts -1",
       "start_first_set": "Satz 1 starten"
+    },
+    "win_method": {
+      "RESIGNATION": "Aufgabe",
+      "CHECKMATE": "Matt",
+      "TIMEOUT": "Zeitüberschreitung",
+      "FOUL_WIN": "Sieg durch Regelverletzung",
+      "REPETITION": "Wiederholung (Sennichite)",
+      "IMPASSE": "Unentschieden (Jishogi)",
+      "DEFAULT_WIN": "Kampflos gewonnen",
+      "POINTS_WIN": "Punktesieg"
+    },
+    "turn": {
+      "waiting_notice": "Bitte starten Sie die Partie",
+      "start_game": "Partie starten",
+      "select_winner": "Sieger auswählen",
+      "required": "（Pflichtfeld）",
+      "optional": "（optional）",
+      "win": "gewinnt",
+      "result": {
+        "draw": "Unentschieden"
+      },
+      "draw_type_shogi": "Sennichite / Jishogi",
+      "draw_type_go": "Jigo (Unentschieden)",
+      "side": {
+        "home_shogi": "Sente (Anzug)",
+        "away_shogi": "Gote (Nachzug)",
+        "home_go": "Schwarz",
+        "away_go": "Weiß"
+      },
+      "win_method_label": "Gewinnart",
+      "win_method_placeholder": "Gewinnart auswählen（optional）",
+      "margin_label": "Punkteunterschied",
+      "margin_unit": "Pkt",
+      "total_moves_label": "Gesamtzüge",
+      "total_moves": "{n} Züge",
+      "margin": "{n} Pkt Unterschied",
+      "moves_unit": "Züge",
+      "comment_label": "Kommentar / Notiz",
+      "comment_placeholder": "z. B. Ein brillantes Endspiel",
+      "complete": "Ergebnis bestätigen",
+      "complete_hint": "Bitte zuerst Sieger oder Unentschieden auswählen"
+    },
+    "board": {
+      "title": "Mannschaftskampf Brettfortschritt",
+      "progress_label": "Bretter bestätigt",
+      "all_confirmed": "Alle Bretter bestätigt — Mannschaftskampfergebnis kann finalisiert werden",
+      "label": "Brett {n}",
+      "winner": "{name} gewinnt",
+      "recorder": "Aufzeichner: {name}",
+      "record_button": "Aufzeichnen",
+      "player_tbd": "Noch offen",
+      "empty": "Noch keine Bretter",
+      "status": {
+        "confirmed": "Bestätigt",
+        "in_progress": "In Bearbeitung",
+        "pending": "Ausstehend"
+      }
     }
   }
 }

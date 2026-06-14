@@ -478,6 +478,63 @@
       "sets_label": "局分",
       "decrement_away": "客队-1",
       "start_first_set": "开始第 1 局"
+    },
+    "win_method": {
+      "RESIGNATION": "投了",
+      "CHECKMATE": "将死",
+      "TIMEOUT": "超时",
+      "FOUL_WIN": "犯规胜",
+      "REPETITION": "千日手",
+      "IMPASSE": "持将棋",
+      "DEFAULT_WIN": "不战而胜",
+      "POINTS_WIN": "目数差胜"
+    },
+    "turn": {
+      "waiting_notice": "请开始对局",
+      "start_game": "开始对局",
+      "select_winner": "选择胜者",
+      "required": "（必填）",
+      "optional": "（选填）",
+      "win": "胜",
+      "result": {
+        "draw": "平局"
+      },
+      "draw_type_shogi": "千日手/持将棋",
+      "draw_type_go": "持碁",
+      "side": {
+        "home_shogi": "先手",
+        "away_shogi": "后手",
+        "home_go": "黑",
+        "away_go": "白"
+      },
+      "win_method_label": "胜利方式",
+      "win_method_placeholder": "选择胜利方式（选填）",
+      "margin_label": "目数差",
+      "margin_unit": "目",
+      "total_moves_label": "总手数",
+      "total_moves": "{n}手",
+      "margin": "{n}目差",
+      "moves_unit": "手",
+      "comment_label": "评论/备注",
+      "comment_placeholder": "例：精彩的终盘对决",
+      "complete": "确定结果",
+      "complete_hint": "请先选择胜者或平局"
+    },
+    "board": {
+      "title": "团体赛棋盘进度",
+      "progress_label": "棋盘已确定",
+      "all_confirmed": "全部棋盘已确定 — 可以确定团体赛结果",
+      "label": "第{n}棋盘",
+      "winner": "{name}胜",
+      "recorder": "记录员：{name}",
+      "record_button": "记录",
+      "player_tbd": "待定",
+      "empty": "暂无棋盘",
+      "status": {
+        "confirmed": "已确定",
+        "in_progress": "记录中",
+        "pending": "未输入"
+      }
     }
   }
 }

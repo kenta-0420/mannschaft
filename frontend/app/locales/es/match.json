@@ -478,6 +478,63 @@
       "sets_label": "Marcador de sets",
       "decrement_away": "Visitante -1",
       "start_first_set": "Iniciar set 1"
+    },
+    "win_method": {
+      "RESIGNATION": "Rendición",
+      "CHECKMATE": "Jaque mate",
+      "TIMEOUT": "Tiempo agotado",
+      "FOUL_WIN": "Victoria por falta",
+      "REPETITION": "Repetición (Sennichite)",
+      "IMPASSE": "Empate (Jishogi)",
+      "DEFAULT_WIN": "Victoria por abandono",
+      "POINTS_WIN": "Victoria por puntos"
+    },
+    "turn": {
+      "waiting_notice": "Inicie la partida",
+      "start_game": "Iniciar partida",
+      "select_winner": "Seleccionar ganador",
+      "required": "（obligatorio）",
+      "optional": "（opcional）",
+      "win": "gana",
+      "result": {
+        "draw": "Empate"
+      },
+      "draw_type_shogi": "Sennichite / Jishogi",
+      "draw_type_go": "Jigo (empate)",
+      "side": {
+        "home_shogi": "Sente (primeras)",
+        "away_shogi": "Gote (segundas)",
+        "home_go": "Negro",
+        "away_go": "Blanco"
+      },
+      "win_method_label": "Método de victoria",
+      "win_method_placeholder": "Seleccionar método（opcional）",
+      "margin_label": "Margen de puntos",
+      "margin_unit": "pts",
+      "total_moves_label": "Total de movimientos",
+      "total_moves": "{n} movimientos",
+      "margin": "{n} pts de margen",
+      "moves_unit": "mov",
+      "comment_label": "Comentario / Nota",
+      "comment_placeholder": "Ej. Un brillante final de partida",
+      "complete": "Confirmar resultado",
+      "complete_hint": "Seleccione primero ganador o empate"
+    },
+    "board": {
+      "title": "Progreso de tableros por equipo",
+      "progress_label": "tableros confirmados",
+      "all_confirmed": "Todos los tableros confirmados — puede finalizar el resultado del equipo",
+      "label": "Tablero {n}",
+      "winner": "{name} gana",
+      "recorder": "Registrador: {name}",
+      "record_button": "Registrar",
+      "player_tbd": "Por definir",
+      "empty": "Sin tableros aún",
+      "status": {
+        "confirmed": "Confirmado",
+        "in_progress": "En curso",
+        "pending": "Pendiente"
+      }
     }
   }
 }

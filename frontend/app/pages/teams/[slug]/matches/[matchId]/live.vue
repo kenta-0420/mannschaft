@@ -6,15 +6,21 @@
 // （タイマー状態機械・イベント入力シート）は `matches.sport` に応じて**競技モジュールを
 // 動的 import（lazy-load）**して差し替える。サッカーしか開かないユーザーはバスケのロジック・
 // 入力シートを初期バンドルに同梱しない（Vite コード分割・マスター懸念「重くなる」の解消）。
+//
+// 【6-④b 拡張】ターン制（SHOGI/GO）モジュールを追加。
+// isTurnBasedModule で判定し、ターン制専用の入力シート（MatchEventSheetTurnBased）を
+// component :is でマウントする（タイマー・タイムライン不要・最小結果入力 UI）。
 import { effectScope } from 'vue'
 import type { MatchEventResponse } from '~/types/match'
 import {
   resolveSportModule,
   isContinuousModule,
   isSetBasedModule,
+  isTurnBasedModule,
   type SportLiveModule,
 } from '~/composables/match/sport/sportModuleRegistry'
 import type { MatchSetTrackerReturn } from '~/composables/match/sport/useMatchSetTracker'
+import type { MatchTurnTrackerReturn } from '~/composables/match/sport/useMatchTurnTracker'
 
 definePageMeta({ layout: 'team', middleware: 'auth' })
 
@@ -52,6 +58,14 @@ const isBasketball = computed(() => sportModule.value?.sport === 'BASKETBALL')
 const isSetBased = computed(() => sportModule.value !== null && isSetBasedModule(sportModule.value!))
 /** セットトラッカー（SET_BASED 競技時のみ非 null）。 */
 const setTracker = shallowRef<MatchSetTrackerReturn | null>(null)
+
+/**
+ * ターン制（SHOGI/GO 等）かどうか（§G.16 stateModel 分岐・6-④b）。
+ * ターン制はタイマー・タイムラインを持たず、最小結果入力シートを使う。
+ */
+const isTurnBased = computed(() => sportModule.value !== null && isTurnBasedModule(sportModule.value!))
+/** ターントラッカー（TURN_BASED 競技時のみ非 null）。 */
+const turnTracker = shallowRef<MatchTurnTrackerReturn | null>(null)
 
 // セッションは競技モジュールの createTimer を注入して結線する。
 // モジュール解決（動的 import）は非同期＝setup 同期スコープ外で composable を作るため、
@@ -140,6 +154,17 @@ onMounted(async () => {
   // 競技モジュールを動的 import（lazy-load）で解決し、その createTimer をセッションへ注入。
   const mod = await resolveSportModule(sport)
   sportModule.value = mod
+
+  // セット制: セットトラッカーを初期化（SET_BASED 競技時のみ）。
+  if (mod !== null && isSetBasedModule(mod)) {
+    setTracker.value = mod.createSetTracker()
+  }
+
+  // ターン制: ターントラッカーを初期化（TURN_BASED 競技時のみ・6-④b）。
+  if (mod !== null && isTurnBasedModule(mod)) {
+    turnTracker.value = mod.createTurnTracker()
+  }
+
   sessionScope = effectScope()
   const s = sessionScope.run(() =>
     useMatchLiveSession({
@@ -323,8 +348,11 @@ function back(): void {
         {{ t('match.live.completed_notice') }}
       </p>
 
-      <!-- 大ボタン行（記録開始・スタメン設定）— 記録権限がある場合のみ。 -->
-      <div v-if="canRecord" class="mb-4 flex flex-col gap-2">
+      <!--
+        大ボタン行（記録開始・スタメン設定）— 球技（連続時間制・セット制）のみ。
+        ターン制（SHOGI/GO）は結果入力シートが別途表示されるためタイムライン不要。
+      -->
+      <div v-if="canRecord && !isTurnBased" class="mb-4 flex flex-col gap-2">
         <Button
           class="w-full !min-h-[3.5rem]"
           :label="t('match.live.title')"
@@ -341,8 +369,8 @@ function back(): void {
         />
       </div>
 
-      <!-- undo 帯（記録権限がある場合のみ） -->
-      <div v-if="canRecord && session.recorder.canUndo.value" class="mb-3 flex justify-end">
+      <!-- undo 帯（記録権限がある場合のみ・ターン制は不要） -->
+      <div v-if="canRecord && !isTurnBased && session.recorder.canUndo.value" class="mb-3 flex justify-end">
         <Button
           text
           severity="secondary"
@@ -352,7 +380,9 @@ function back(): void {
         />
       </div>
 
+      <!-- タイムライン（球技のみ・ターン制は不要） -->
       <MatchTimeline
+        v-if="!isTurnBased"
         :events="session.recorder.events.value"
         :own-team-side="ownTeamSide"
         @select="onTimelineSelect"
@@ -379,11 +409,11 @@ function back(): void {
         バスケシート Vue を初期バンドルに同梱しない（Vite コード分割に乗る）。
         emit はサッカー（goal/assist/card）とバスケ（score/stat/foul）で異なるが、各シートは
         自分が emit するイベントだけを発火するため、両系統のハンドラを束ねて結線して問題ない。
-        記録権限がある場合のみマウント。
+        記録権限がある場合のみマウント。ターン制・セット制は別パス（下記）なのでここは除外。
       -->
       <component
         :is="sportModule.eventSheet"
-        v-if="canRecord && sportModule && !isSetBased"
+        v-if="canRecord && sportModule && !isSetBased && !isTurnBased"
         v-model:visible="sheetVisible"
         :players="grid.players.value"
         @goal="session.recordGoal"
@@ -411,9 +441,26 @@ function back(): void {
         @complete-match="complete()"
       />
 
-      <!-- スタメン設定シート（記録権限がある場合のみマウント） -->
+      <!--
+        ターン制 結果入力シート（TURN_BASED 競技のみ表示・6-④b）（§G.16a）。
+        将棋/囲碁は「タイマー・タイムライン・選手グリッド」を使わず、
+        最小結果入力（勝者選択・勝ち方任意・手数任意・局面写真任意）UI で完結する。
+        記録権限の有無に関わらずマウント（canRecord prop で内部出し分け）。
+      -->
+      <component
+        :is="sportModule.eventSheet"
+        v-if="isTurnBased && turnTracker && sportModule"
+        :tracker="turnTracker!"
+        :own-team-side="ownTeamSide"
+        :opponent-name="opponentName"
+        :can-record="canRecord"
+        class="mb-4"
+        @complete-match="complete()"
+      />
+
+      <!-- スタメン設定シート（記録権限がある場合のみマウント・ターン制は不要） -->
       <MatchStarterSetup
-        v-if="canRecord"
+        v-if="canRecord && !isTurnBased"
         v-model:visible="starterSetupVisible"
         :players="grid.players.value"
         @toggle-starter="grid.toggleStarter($event)"

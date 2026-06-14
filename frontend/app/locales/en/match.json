@@ -478,6 +478,63 @@
       "sets_label": "Set score",
       "decrement_away": "Away -1",
       "start_first_set": "Start set 1"
+    },
+    "win_method": {
+      "RESIGNATION": "Resignation",
+      "CHECKMATE": "Checkmate",
+      "TIMEOUT": "Timeout",
+      "FOUL_WIN": "Win by foul",
+      "REPETITION": "Repetition (Sennichite)",
+      "IMPASSE": "Impasse (Jishogi)",
+      "DEFAULT_WIN": "Default win (forfeit)",
+      "POINTS_WIN": "Win by points (Mokusachi)"
+    },
+    "turn": {
+      "waiting_notice": "Start the game",
+      "start_game": "Start game",
+      "select_winner": "Select winner",
+      "required": "(required)",
+      "optional": "(optional)",
+      "win": "wins",
+      "result": {
+        "draw": "Draw"
+      },
+      "draw_type_shogi": "Sennichite / Jishogi",
+      "draw_type_go": "Jigo (draw)",
+      "side": {
+        "home_shogi": "Sente (First)",
+        "away_shogi": "Gote (Second)",
+        "home_go": "Black",
+        "away_go": "White"
+      },
+      "win_method_label": "Win method",
+      "win_method_placeholder": "Select win method (optional)",
+      "margin_label": "Points margin",
+      "margin_unit": "pts",
+      "total_moves_label": "Total moves",
+      "total_moves": "{n} moves",
+      "margin": "{n} pts margin",
+      "moves_unit": "moves",
+      "comment_label": "Comment / Note",
+      "comment_placeholder": "e.g. A brilliant endgame move",
+      "complete": "Confirm result",
+      "complete_hint": "Select winner or draw first"
+    },
+    "board": {
+      "title": "Team match board progress",
+      "progress_label": "boards confirmed",
+      "all_confirmed": "All boards confirmed — you can finalize the team match result",
+      "label": "Board {n}",
+      "winner": "{name} wins",
+      "recorder": "Recorder: {name}",
+      "record_button": "Record",
+      "player_tbd": "TBD",
+      "empty": "No boards yet",
+      "status": {
+        "confirmed": "Confirmed",
+        "in_progress": "In progress",
+        "pending": "Pending"
+      }
     }
   }
 }
