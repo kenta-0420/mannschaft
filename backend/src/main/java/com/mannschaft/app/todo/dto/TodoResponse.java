@@ -32,7 +32,9 @@ public class TodoResponse {
             String scopeType,
             Long scopeId,
             Long projectId,
-            Long milestoneId
+            Long milestoneId,
+            /** TEAM / ORGANIZATION の slug（URLルーティング用）。PERSONAL は null。 */
+            String scopeSlug
     ) {}
 
     public record TodoContentDto(

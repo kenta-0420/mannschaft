@@ -11,6 +11,8 @@ export interface TodoScopeDto {
   scopeId?: number
   projectId?: number | null
   milestoneId?: number | null
+  /** TEAM / ORGANIZATION の slug（URLルーティング用）。PERSONAL は null。 */
+  scopeSlug?: string | null
 }
 
 export interface TodoContentDto {

@@ -2,6 +2,9 @@ package com.mannschaft.app.todo.service;
 
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.timezone.TimezoneContextHolder;
+import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.TodoStatus;
 import com.mannschaft.app.todo.TodoStatusBucket;
 import com.mannschaft.app.todo.dto.AssigneeResponse;
@@ -17,6 +20,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -37,9 +41,11 @@ public class TodoResponseConverter {
     private final TodoRepository todoRepository;
     private final NameResolverService nameResolverService;
     private final TodoStatusLabelService todoStatusLabelService;
+    private final TeamRepository teamRepository;
+    private final OrganizationRepository organizationRepository;
 
     /**
-     * エンティティをレスポンスDTOに変換する（一覧用、N+1防止のため統計なし）。
+     * エンティティをレスポンスDTOに変換する（単発取得用）。
      * <p>F02.3.1: ラベル情報は単発で1件取得する。一覧経路では {@link #toTodoResponseList(List)} を使うこと。</p>
      * <p>F02.3.1 後続 B-6: {@code statusLabelId} が NULL の場合は {@code status} enum から
      * SYSTEM 既定ラベルを埋めて返す。これによりフロント側のフォールバック実装に依存しない。</p>
@@ -47,12 +53,14 @@ public class TodoResponseConverter {
     public TodoResponse toTodoResponse(TodoEntity entity) {
         TodoResponse.TodoStatusLabelInfo labelInfo = resolveLabelInfo(
                 entity.getStatusLabelId(), entity.getStatus());
-        return toTodoResponseInternal(entity, labelInfo);
+        String scopeSlug = resolveScopeSlugSingle(entity.getScopeType(), entity.getScopeId());
+        return toTodoResponseInternal(entity, labelInfo, scopeSlug);
     }
 
     /**
      * TODO リストを TodoResponse リストに変換する（F02.3.1: ラベル情報を一括取得して N+1 を防ぐ）。
      * <p>F02.3.1 後続 B-6: {@code statusLabelId} が NULL の TODO には SYSTEM 既定ラベルを埋める。</p>
+     * <p>slug 根治: TEAM/ORGANIZATION スコープの scopeId → slug をバッチ解決して N+1 を回避する。</p>
      */
     public List<TodoResponse> toTodoResponseList(List<TodoEntity> entities) {
         if (entities == null || entities.isEmpty()) {
@@ -71,12 +79,32 @@ public class TodoResponseConverter {
                         l -> new TodoResponse.TodoStatusLabelInfo(
                                 l.getId(), l.getName(), l.getBucket().name(), l.getColor())));
 
+        // TEAM スコープの scopeId を収集してバッチ slug 解決
+        Set<Long> teamScopeIds = entities.stream()
+                .filter(e -> e.getScopeType() == TodoScopeType.TEAM && e.getScopeId() != null)
+                .map(TodoEntity::getScopeId)
+                .collect(Collectors.toSet());
+        Map<Long, String> teamSlugMap = teamScopeIds.isEmpty()
+                ? Collections.emptyMap()
+                : teamRepository.findSlugMapByIdIn(teamScopeIds);
+
+        // ORGANIZATION スコープの scopeId を収集してバッチ slug 解決
+        Set<Long> orgScopeIds = entities.stream()
+                .filter(e -> e.getScopeType() == TodoScopeType.ORGANIZATION && e.getScopeId() != null)
+                .map(TodoEntity::getScopeId)
+                .collect(Collectors.toSet());
+        Map<Long, String> orgSlugMap = orgScopeIds.isEmpty()
+                ? Collections.emptyMap()
+                : organizationRepository.findSlugMapByIdIn(orgScopeIds);
+
         return entities.stream()
                 .map(e -> {
                     TodoResponse.TodoStatusLabelInfo info = e.getStatusLabelId() == null
                             ? systemDefaultLabelInfo(e.getStatus())
                             : labelMap.get(e.getStatusLabelId());
-                    return toTodoResponseInternal(e, info);
+                    String scopeSlug = resolveScopeSlugFromMaps(
+                            e.getScopeType(), e.getScopeId(), teamSlugMap, orgSlugMap);
+                    return toTodoResponseInternal(e, info, scopeSlug);
                 })
                 .toList();
     }
@@ -148,6 +176,7 @@ public class TodoResponseConverter {
 
         TodoResponse.TodoStatusLabelInfo labelInfo = resolveLabelInfo(
                 entity.getStatusLabelId(), entity.getStatus());
+        String scopeSlug = resolveScopeSlugSingle(entity.getScopeType(), entity.getScopeId());
 
         return TodoResponse.builder()
                 .id(entity.getId())
@@ -155,7 +184,8 @@ public class TodoResponseConverter {
                         entity.getScopeType().name(),
                         entity.getScopeId(),
                         entity.getProjectId(),
-                        entity.getMilestoneId()))
+                        entity.getMilestoneId(),
+                        scopeSlug))
                 .content(new TodoResponse.TodoContentDto(
                         entity.getTitle(),
                         entity.getDescription(),
@@ -202,7 +232,8 @@ public class TodoResponseConverter {
     // --- プライベートメソッド ---
 
     private TodoResponse toTodoResponseInternal(TodoEntity entity,
-                                                 TodoResponse.TodoStatusLabelInfo labelInfo) {
+                                                 TodoResponse.TodoStatusLabelInfo labelInfo,
+                                                 String scopeSlug) {
         List<TodoAssigneeEntity> assigneeEntities = assigneeRepository.findByTodoId(entity.getId());
 
         // 関連ユーザーIDを一括収集して名前解決
@@ -228,7 +259,8 @@ public class TodoResponseConverter {
                         entity.getScopeType().name(),
                         entity.getScopeId(),
                         entity.getProjectId(),
-                        entity.getMilestoneId()))
+                        entity.getMilestoneId(),
+                        scopeSlug))
                 .content(new TodoResponse.TodoContentDto(
                         entity.getTitle(),
                         entity.getDescription(),
@@ -258,6 +290,34 @@ public class TodoResponseConverter {
                         new ProjectResponse.UserInfo(entity.getCreatedBy(), nameMap.getOrDefault(entity.getCreatedBy(), "")),
                         completedByInfo))
                 .build();
+    }
+
+    /**
+     * 単発取得用: scopeType と scopeId から slug を解決する。
+     * TEAM → TeamRepository.findById で slug 取得、ORGANIZATION → OrganizationRepository。
+     * PERSONAL や scopeId=null は null を返す。
+     */
+    private String resolveScopeSlugSingle(TodoScopeType scopeType, Long scopeId) {
+        if (scopeId == null) return null;
+        return switch (scopeType) {
+            case TEAM -> teamRepository.findById(scopeId).map(t -> t.getSlug()).orElse(null);
+            case ORGANIZATION -> organizationRepository.findById(scopeId).map(o -> o.getSlug()).orElse(null);
+            case PERSONAL -> null;
+        };
+    }
+
+    /**
+     * 一覧取得用: バッチ解決済みの Map から slug を引く（N+1 回避）。
+     */
+    private String resolveScopeSlugFromMaps(TodoScopeType scopeType, Long scopeId,
+                                              Map<Long, String> teamSlugMap,
+                                              Map<Long, String> orgSlugMap) {
+        if (scopeId == null) return null;
+        return switch (scopeType) {
+            case TEAM -> teamSlugMap.get(scopeId);
+            case ORGANIZATION -> orgSlugMap.get(scopeId);
+            case PERSONAL -> null;
+        };
     }
 
     /**
