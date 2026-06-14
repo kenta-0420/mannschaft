@@ -38,7 +38,10 @@ import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import com.mannschaft.app.social.repository.TeamFriendRepository;
 import io.micrometer.core.instrument.MeterRegistry;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -507,6 +510,41 @@ public class TeamService {
             throw new BusinessException(TeamErrorCode.TEAM_006);
         }
         log.info("チーム復元完了: teamId={}", teamId);
+    }
+
+    // ========================================
+    // ドメイン間 slug 解決（Todoドメイン等から利用）
+    // ========================================
+
+    /**
+     * 指定 ID 集合に対して id → slug のマッピングを一括取得する（N+1 回避）。
+     *
+     * <p>TodoResponseConverter 等の他ドメインが team Entity を直接参照することを防ぐために
+     * プリミティブ（Map&lt;Long, String&gt;）のみを返す。Entity は漏らさない。</p>
+     *
+     * @param ids 取得対象のチーム ID 集合
+     * @return id → slug の Map（論理削除済みは除外）。ids が空の場合は空 Map を返す
+     */
+    public Map<Long, String> getSlugsByIds(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return teamRepository.findSlugMapByIdIn(ids);
+    }
+
+    /**
+     * 単一チーム ID から slug を取得する。
+     *
+     * <p>論理削除済み・存在しない場合は {@code null} を返す（例外を投げない）。</p>
+     *
+     * @param id チーム ID
+     * @return slug 文字列。存在しない場合は null
+     */
+    public String getSlugById(Long id) {
+        if (id == null) {
+            return null;
+        }
+        return teamRepository.findById(id).map(t -> t.getSlug()).orElse(null);
     }
 
     // ========================================

@@ -4,6 +4,8 @@ import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationService;
+import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.event.TodoHandoffEvent;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +34,8 @@ public class TodoHandoffNotificationListener {
 
     private final NotificationService notificationService;
     private final NameResolverService nameResolverService;
+    private final TeamService teamService;
+    private final OrganizationService organizationService;
 
     /**
      * キャッチボールイベントを受信して通知を作成する。
@@ -95,10 +99,33 @@ public class TodoHandoffNotificationListener {
         };
     }
 
+    /**
+     * 通知タップ時のアクション URL を組み立てる。
+     *
+     * <p>TEAM / ORGANIZATION は slug ベースの URL（/teams/{slug}/todos/{todoId}）を生成する。
+     * slug が取得できない場合（チーム/組織が論理削除済み等）は /todos/{todoId} にフォールバックする。</p>
+     *
+     * @param scopeType TODO のスコープ種別
+     * @param scopeId   TODO のスコープ数値 ID
+     * @param todoId    TODO ID
+     * @return 遷移先 URL 文字列
+     */
     private String buildActionUrl(TodoScopeType scopeType, Long scopeId, Long todoId) {
         return switch (scopeType) {
-            case TEAM -> "/teams/" + scopeId + "/todos/" + todoId;
-            case ORGANIZATION -> "/organizations/" + scopeId + "/todos/" + todoId;
+            case TEAM -> {
+                // TeamService 経由で slug 解決（team Entity の直接参照を排除 / ドメイン境界遵守）
+                String slug = teamService.getSlugById(scopeId);
+                yield slug != null
+                        ? "/teams/" + slug + "/todos/" + todoId
+                        : "/todos/" + todoId;
+            }
+            case ORGANIZATION -> {
+                // OrganizationService 経由で slug 解決（org Entity の直接参照を排除 / ドメイン境界遵守）
+                String slug = organizationService.getSlugById(scopeId);
+                yield slug != null
+                        ? "/organizations/" + slug + "/todos/" + todoId
+                        : "/todos/" + todoId;
+            }
             case PERSONAL -> "/todos/" + todoId;
         };
     }

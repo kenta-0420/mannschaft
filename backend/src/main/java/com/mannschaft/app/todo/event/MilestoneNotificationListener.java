@@ -5,6 +5,8 @@ import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDispatchService;
 import com.mannschaft.app.notification.service.NotificationService;
+import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.todo.entity.ProjectEntity;
 import com.mannschaft.app.todo.entity.ProjectMilestoneEntity;
 import com.mannschaft.app.todo.entity.TodoAssigneeEntity;
@@ -50,6 +52,8 @@ public class MilestoneNotificationListener {
     private final ProjectRepository projectRepository;
     private final TodoRepository todoRepository;
     private final TodoAssigneeRepository todoAssigneeRepository;
+    private final TeamService teamService;
+    private final OrganizationService organizationService;
 
     /**
      * マイルストーンアンロック時にプッシュ通知・WebSocket 配信を実行する。
@@ -168,13 +172,34 @@ public class MilestoneNotificationListener {
 
     /**
      * 通知タップ時の遷移先 URL を組み立てる。
+     *
+     * <p>TEAM / ORGANIZATION は slug ベースの URL を生成する。
+     * slug が取得できない場合（チーム/組織が論理削除済み等）は /projects/{id} にフォールバックする。</p>
+     *
+     * @param project     プロジェクトエンティティ
+     * @param milestoneId マイルストーン ID
+     * @return 遷移先 URL 文字列
      */
     private String buildActionUrl(ProjectEntity project, Long milestoneId) {
         return switch (project.getScopeType()) {
-            case TEAM -> String.format("/teams/%d/projects/%d?milestone=%d",
-                    project.getScopeId(), project.getId(), milestoneId);
-            case ORGANIZATION -> String.format("/organizations/%d/projects/%d?milestone=%d",
-                    project.getScopeId(), project.getId(), milestoneId);
+            case TEAM -> {
+                // TeamService 経由で slug 解決（team Entity の直接参照を排除 / ドメイン境界遵守）
+                String slug = teamService.getSlugById(project.getScopeId());
+                yield slug != null
+                        ? String.format("/teams/%s/projects/%d?milestone=%d",
+                                slug, project.getId(), milestoneId)
+                        : String.format("/projects/%d?milestone=%d",
+                                project.getId(), milestoneId);
+            }
+            case ORGANIZATION -> {
+                // OrganizationService 経由で slug 解決（org Entity の直接参照を排除 / ドメイン境界遵守）
+                String slug = organizationService.getSlugById(project.getScopeId());
+                yield slug != null
+                        ? String.format("/organizations/%s/projects/%d?milestone=%d",
+                                slug, project.getId(), milestoneId)
+                        : String.format("/projects/%d?milestone=%d",
+                                project.getId(), milestoneId);
+            }
             case PERSONAL -> String.format("/projects/%d?milestone=%d",
                     project.getId(), milestoneId);
         };

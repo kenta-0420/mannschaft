@@ -24,12 +24,13 @@ const emit = defineEmits<{
 const draggingTodo = ref<MyTodo | null>(null)
 
 function todoLink(todo: MyTodo): string {
-  if (todo.scopeType === 'TEAM' && todo.scopeId) {
-    return `/teams/${todo.scopeId}/todos/${todo.id}`
+  if (todo.scopeType === 'TEAM' && todo.scopeSlug) {
+    return `/teams/${todo.scopeSlug}/todos/${todo.id}`
   }
-  if (todo.scopeType === 'ORGANIZATION' && todo.scopeId) {
-    return `/organizations/${todo.scopeId}/todos/${todo.id}`
+  if (todo.scopeType === 'ORGANIZATION' && todo.scopeSlug) {
+    return `/organizations/${todo.scopeSlug}/todos/${todo.id}`
   }
+  // PERSONAL または scopeSlug が未設定（slug 移行前の古いデータの保険）
   return `/todos/${todo.id}`
 }
 

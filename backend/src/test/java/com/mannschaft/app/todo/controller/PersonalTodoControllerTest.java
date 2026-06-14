@@ -95,7 +95,7 @@ class PersonalTodoControllerTest {
         return TodoResponse.builder()
                 .id(TODO_ID)
                 .scope(new TodoResponse.TodoScopeDto(
-                        TodoScopeType.PERSONAL.name(), USER_ID, null, null))
+                        TodoScopeType.PERSONAL.name(), USER_ID, null, null, null))
                 .content(new TodoResponse.TodoContentDto(
                         "テスト個人TODO", "説明", null, null, false, 0))
                 .schedule(new TodoResponse.TodoScheduleDto(
