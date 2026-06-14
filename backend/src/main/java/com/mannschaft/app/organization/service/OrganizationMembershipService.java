@@ -153,6 +153,7 @@ public class OrganizationMembershipService {
                 .filter(team -> team != null)
                 .map(team -> new OrgTeamSummaryResponse(
                         team.getSlug(),
+                        team.getSlug(),
                         team.getName(),
                         null,
                         team.getVisibility().name(),

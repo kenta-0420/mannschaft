@@ -183,6 +183,8 @@ export interface PublicTeamSearchResult {
 /** F19.1 公開組織検索結果 1 件の DTO。 */
 export interface PublicOrganizationSearchResult {
   id: number
+  /** 組織スラッグ（URLルーティング用）。{@code /organizations/{slug}} に使用する。 */
+  slug: string
   name: string
   iconUrl: string | null
   memberCount: number

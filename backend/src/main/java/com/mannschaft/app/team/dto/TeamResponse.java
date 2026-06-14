@@ -15,6 +15,8 @@ public class TeamResponse {
 
     /** URL 識別子（カスタムスラッグ）。 */
     private String id;
+    /** チームスラッグ（URL ルーティング用）。{@code /teams/{slug}} に使用する。 */
+    private String slug;
     private TeamBasicInfoDto basicInfo;
     private TeamLocationDto location;
     private TeamVisibilityDto visibility;
