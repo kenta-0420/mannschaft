@@ -1,483 +1,483 @@
 {
-    "match":  {
-                  "list":  {
-                               "title":  "Match Records",
-                               "subtitle":  "Record practice, friendly and tournament matches",
-                               "record_button":  "+ Record a Match",
-                               "filter":  {
-                                              "kind":  "Type",
-                                              "status":  "Status",
-                                              "all":  "All"
-                                          },
-                               "result":  {
-                                              "win":  "W",
-                                              "draw":  "D",
-                                              "loss":  "L",
-                                              "win_label":  "W",
-                                              "draw_label":  "D",
-                                              "loss_label":  "L"
-                                          },
-                               "in_progress_badge":  "In Progress",
-                               "score_vs":  "{home} - {away}",
-                               "vs":  "vs {opponent}",
-                               "no_opponent":  "No opponent",
-                               "no_score":  "—",
-                               "delete_confirm":  "Delete this match record?",
-                               "delete_success":  "Match record deleted",
-                               "empty":  "No match records yet",
-                               "empty_cta":  "Record your first match",
-                               "load_more":  "Load more",
-                               "page_info":  "{from}-{to} of {total}",
-                               "error":  {
-                                             "load_failed":  "Failed to load matches",
-                                             "status_failed":  "Failed to change status",
-                                             "score_failed":  "Failed to finalize score",
-                                             "recording_mode_failed":  "Failed to change recording mode",
-                                             "delete_failed":  "Failed to delete match record"
-                                         }
-                           },
-                  "create":  {
-                                 "title":  "Record a Match",
-                                 "subtitle":  "Just pick a type and opponent to start. Venue and time can be set later.",
-                                 "kind_label":  "Type",
-                                 "kind_hint":  "Tap to select",
-                                 "opponent_label":  "Opponent team name",
-                                 "opponent_placeholder":  "Enter opponent team name",
-                                 "opponent_required":  "Please enter an opponent name",
-                                 "kind_required":  "Please select a type",
-                                 "optional_section":  "Optional (set later)",
-                                 "optional_hint":  "You can start recording with these blank and fill them in after the match.",
-                                 "venue_label":  "Venue",
-                                 "venue_placeholder":  "Venue name (optional)",
-                                 "kickoff_label":  "Kickoff date \u0026 time",
-                                 "duration_label":  "Duration (minutes)",
-                                 "home_away_label":  "Home / Away",
-                                 "home_away":  {
-                                                   "HOME":  "Home",
-                                                   "AWAY":  "Away",
-                                                   "NEUTRAL":  "Neutral"
-                                               },
-                                 "submit":  "Start Recording",
-                                 "submit_short":  "Create",
-                                 "cancel":  "Cancel",
-                                 "success":  "Match created",
-                                 "update_success":  "Match info updated",
-                                 "error":  {
-                                               "create_failed":  "Failed to create match",
-                                               "update_failed":  "Failed to update match info"
-                                           }
-                             },
-                  "live":  {
-                               "title":  "Live recording",
-                               "loading":  "Loading...",
-                               "scoreboard":  {
-                                                  "home":  "Us",
-                                                  "away":  "Opp.",
-                                                  "vs":  "vs {opponent}",
-                                                  "penalty":  "PK {home}-{away}"
-                                              },
-                               "penalty":  {
-                                               "title":  "Penalty Shootout Score",
-                                               "home_label":  "Our successful penalties",
-                                               "away_label":  "Opponent successful penalties",
-                                               "hint":  "Enter the number of successful kicks. Finalized when the match ends and reflected in tournament standings."
-                                           },
-                               "timer":  {
-                                             "state":  {
-                                                           "WAITING":  "Pre-match",
-                                                           "FIRST_HALF":  "1st half",
-                                                           "HALF_TIME":  "Half time",
-                                                           "SECOND_HALF":  "2nd half",
-                                                           "EXTRA_FIRST":  "Extra 1st",
-                                                           "EXTRA_SECOND":  "Extra 2nd",
-                                                           "PENALTY_SHOOTOUT":  "Penalties",
-                                                           "COMPLETED":  "Full time",
-                                                           "QUARTER_1":  "Q1",
-                                                           "BREAK_1":  "Break",
-                                                           "QUARTER_2":  "Q2",
-                                                           "HALF_TIME_BREAK":  "Halftime",
-                                                           "QUARTER_3":  "Q3",
-                                                           "BREAK_3":  "Break",
-                                                           "QUARTER_4":  "Q4",
-                                                           "OVERTIME":  "Overtime"
-                                                       },
-                                             "start_first_half":  "Start 1st half",
-                                             "to_half_time":  "To half time",
-                                             "start_second_half":  "Start 2nd half",
-                                             "to_extra":  "To extra time",
-                                             "to_penalty":  "To penalties",
-                                             "complete":  "End match",
-                                             "advance":  "Next period",
-                                             "minute_label":  "Min",
-                                             "stoppage_label":  "Added time (+)",
-                                             "minute_override_hint":  "You can correct the minute manually if it drifts.",
-                                             "pause":  "Pause",
-                                             "resume":  "Resume",
-                                             "running":  "Running",
-                                             "stopped":  "Stopped",
-                                             "start_quarter_1":  "Start Q1",
-                                             "end_quarter_1":  "End Q1",
-                                             "start_quarter_2":  "Start Q2",
-                                             "end_quarter_2":  "End Q2",
-                                             "start_quarter_3":  "Start Q3",
-                                             "end_quarter_3":  "End Q3",
-                                             "start_quarter_4":  "Start Q4",
-                                             "to_overtime":  "Go to overtime",
-                                             "to_overtime_again":  "Another overtime"
-                                         },
-                               "preset":  {
-                                              "goal":  "Goal",
-                                              "assist":  "Assist",
-                                              "card":  "Card",
-                                              "substitution":  "Sub",
-                                              "other":  "Other",
-                                              "field_goal_2":  "2P",
-                                              "field_goal_3":  "3P",
-                                              "free_throw":  "Free throw",
-                                              "rebound":  "Rebound",
-                                              "foul":  "Foul"
-                                          },
-                               "flow":  {
-                                            "select_player":  "Select player",
-                                            "select_scorer":  "Select scorer",
-                                            "select_assist":  "Select assist",
-                                            "select_out":  "Player OUT",
-                                            "select_in":  "Player IN",
-                                            "add_assist":  "+ Link assist",
-                                            "to_goal":  "-\u003e Link to goal",
-                                            "skip":  "Skip",
-                                            "confirm":  "Confirm",
-                                            "cancel":  "Cancel",
-                                            "back":  "Back",
-                                            "note_label":  "Reason / note",
-                                            "note_placeholder":  "e.g. from a corner kick",
-                                            "goal_type_label":  "Goal type",
-                                            "goal_type":  {
-                                                              "GOAL":  "Open play",
-                                                              "PENALTY_GOAL":  "Penalty",
-                                                              "OWN_GOAL":  "Own goal"
-                                                          },
-                                            "card_color_label":  "Card type",
-                                            "card_yellow":  "Yellow",
-                                            "card_red":  "Red",
-                                            "card_second_yellow":  "Second yellow",
-                                            "team_side_label":  "Recording for",
-                                            "other_label_placeholder":  "Event name (e.g. foul)",
-                                            "foul_type_label":  "Foul type"
-                                        },
-                               "team_side":  {
-                                                 "HOME":  "Our team",
-                                                 "AWAY":  "Opponent"
-                                             },
-                               "card_reason":  {
-                                                   "title":  "Reason code (optional)",
-                                                   "skip_hint":  "Can be filled in later. Recommended for official matches.",
-                                                   "none":  "None"
-                                               },
-                               "grid":  {
-                                            "starters":  "Starters",
-                                            "bench":  "Bench",
-                                            "setup_button":  "Set lineup",
-                                            "all_starters":  "All starters",
-                                            "clear_starters":  "Clear starters",
-                                            "copy_previous":  "Copy previous lineup",
-                                            "add_manual":  "Add manually",
-                                            "manual_name_placeholder":  "Player name",
-                                            "manual_number_placeholder":  "No.",
-                                            "empty":  "No players found. Add them manually.",
-                                            "position":  {
-                                                             "GK":  "GK",
-                                                             "DF":  "DF",
-                                                             "MF":  "MF",
-                                                             "FW":  "FW",
-                                                             "other":  "Other"
-                                                         }
-                                        },
-                               "timeline":  {
-                                                "title":  "Timeline",
-                                                "empty":  "No events yet. Start recording from the buttons below.",
-                                                "minute_suffix":  "\u0027",
-                                                "self":  "Us",
-                                                "opponent":  "Opp",
-                                                "linked_assist":  "Assist",
-                                                "linked_goal":  "Goal",
-                                                "tap_to_edit":  "Tap to edit",
-                                                "delete":  "Delete",
-                                                "delete_confirm":  "Delete this event?"
-                                            },
-                               "undo":  {
-                                            "button":  "Undo",
-                                            "done":  "Action undone",
-                                            "substitution":  "Substitution undone",
-                                            "goal_assist":  "Goal/assist undone"
-                                        },
-                               "conflict":  {
-                                                "title":  "Another recorder updated this",
-                                                "detail":  "Reloading the latest records and retrying"
-                                            },
-                               "opponent_notice":  {
-                                                       "title":  "Recorded by team {team}",
-                                                       "detail":  "Ask team {team}\u0027s recorder to correct this entry."
-                                                   },
-                               "offline":  {
-                                               "queued":  "Saved offline. Will send when back online.",
-                                               "flushed":  "Sent {count} pending event(s).",
-                                               "pending":  "{count} pending"
-                                           },
-                               "completed_notice":  "This match has ended. Corrections follow your permissions.",
-                               "error":  {
-                                             "load_events_failed":  "Failed to load events",
-                                             "load_appearances_failed":  "Failed to load appearances",
-                                             "load_match_failed":  "Failed to load match info",
-                                             "add_event_failed":  "Failed to record event",
-                                             "update_event_failed":  "Failed to update event",
-                                             "delete_event_failed":  "Failed to delete event",
-                                             "undo_failed":  "Failed to undo",
-                                             "period_boundary_failed":  {
-                                                                            "title":  "Failed to record period boundary",
-                                                                            "detail":  "The period transition could not be saved to the server. Scores and playing-time totals may be inaccurate. Please re-trigger the timer to record it again."
-                                                                        },
-                                             "complete_failed":  "Failed to save match completion"
-                                         },
-                               "read_only_notice":  "View only. Only admins, deputies and scorekeepers can record"
-                           },
-                  "analytics":  {
-                                    "my_title":  "Match Analytics",
-                                    "my_subtitle":  "Visualize your career statistics",
-                                    "member_title":  "Member Match Analytics",
-                                    "member_subtitle":  "This member\u0027s team statistics",
-                                    "team_context":  "Target team",
-                                    "unknown_kind":  "Other",
-                                    "forbidden":  "You do not have permission to view these statistics",
-                                    "metric":  {
-                                                   "total_matches":  "Matches",
-                                                   "total_minutes":  "Total minutes",
-                                                   "goals":  "Goals",
-                                                   "assists":  "Assists",
-                                                   "goals_per90":  "Goals per 90",
-                                                   "starter_rate":  "Starter rate"
-                                               },
-                                    "axis":  {
-                                                 "goals":  "Goals",
-                                                 "assists":  "Assists",
-                                                 "matches":  "Matches",
-                                                 "minutes":  "Avg minutes",
-                                                 "starter_rate":  "Starter rate"
-                                             },
-                                    "series":  {
-                                                   "goals":  "Goals",
-                                                   "minutes":  "Minutes",
-                                                   "match_share":  "Appearance share",
-                                                   "goals_by_kind":  "Goals by type"
-                                               },
-                                    "chart":  {
-                                                  "radar_title":  "Stat distribution",
-                                                  "line_title":  "Monthly trend (goals / minutes)",
-                                                  "doughnut_title":  "Appearance share by type",
-                                                  "bar_title":  "Goal distribution by type"
-                                              },
-                                    "best":  {
-                                                 "title":  "Personal best",
-                                                 "top_goals":  "Most goals in a month",
-                                                 "longest_minutes":  "Longest minutes in a month"
-                                             },
-                                    "empty":  {
-                                                  "no_data":  "No data to display",
-                                                  "no_trend":  "No trend data",
-                                                  "no_goals":  "No goals recorded",
-                                                  "no_matches":  "No match records yet",
-                                                  "member_no_matches":  "No match records for this member",
-                                                  "no_team":  "No teams joined",
-                                                  "record_cta":  "Record a match"
-                                              },
-                                    "error":  {
-                                                  "load_failed":  "Failed to load statistics"
-                                              },
-                                    "team_title":  "Team Match Analytics",
-                                    "team_subtitle":  "Visualize team win/loss record, goals, player rankings, and recent form",
-                                    "team":  {
-                                                 "metric":  {
-                                                                "total_matches":  "Matches",
-                                                                "win_draw_loss":  "W/D/L",
-                                                                "goals_for":  "Goals For",
-                                                                "goals_against":  "Goals Against",
-                                                                "goal_difference":  "Goal Difference"
-                                                            },
-                                                 "series":  {
-                                                                "points":  "Points (cumulative)",
-                                                                "player_goals":  "Goals",
-                                                                "matches_by_kind":  "Matches"
-                                                            },
-                                                 "chart":  {
-                                                               "result_title":  "Result Summary",
-                                                               "player_goals_title":  "Top Scorers",
-                                                               "recent_form_title":  "Recent Form (points trend)",
-                                                               "matches_by_kind_title":  "Matches by Type"
-                                                           }
-                                             },
-                                    "widget":  {
-                                                   "summary":  {
-                                                                   "title":  "Match Summary",
-                                                                   "wdl_label":  "W/D/L",
-                                                                   "goals_label":  "GF/GA",
-                                                                   "recent_form":  "Recent Form",
-                                                                   "in_progress_label":  "In Progress",
-                                                                   "resume_recording":  "Resume Recording",
-                                                                   "no_matches":  "No match records yet",
-                                                                   "view_analytics":  "View Analytics"
-                                                               }
-                                               }
-                                },
-                  "kind":  {
-                               "PRACTICE":  "Practice",
-                               "FRIENDLY":  "Friendly",
-                               "TOURNAMENT":  "Tournament",
-                               "LEAGUE":  "League"
-                           },
-                  "status":  {
-                                 "SCHEDULED":  "Scheduled",
-                                 "IN_PROGRESS":  "In Progress",
-                                 "COMPLETED":  "Completed",
-                                 "POSTPONED":  "Postponed",
-                                 "CANCELLED":  "Cancelled",
-                                 "PLANNED":  "Scheduled",
-                                 "CLOSED":  "Finalized"
-                             },
-                  "event_type":  {
-                                     "STARTER":  "Starter",
-                                     "SUB_IN":  "Sub In",
-                                     "SUB_OUT":  "Sub Out",
-                                     "GOAL":  "Goal",
-                                     "ASSIST":  "Assist",
-                                     "OWN_GOAL":  "Own Goal",
-                                     "PENALTY_GOAL":  "Penalty (Scored)",
-                                     "PENALTY_MISS":  "Penalty (Missed)",
-                                     "PENALTY_SHOOTOUT":  "Penalty Shootout",
-                                     "YELLOW_CARD":  "Caution",
-                                     "RED_CARD":  "Sending-off",
-                                     "SECOND_YELLOW":  "Second Yellow",
-                                     "SAVE":  "Save",
-                                     "INJURY":  "Injury",
-                                     "PERIOD_START":  "Period Start",
-                                     "PERIOD_END":  "Period End",
-                                     "OTHER":  "Other",
-                                     "FIELD_GOAL_2":  "2-pointer",
-                                     "FIELD_GOAL_3":  "3-pointer",
-                                     "FREE_THROW":  "Free throw",
-                                     "SHOT_MISS":  "Missed shot",
-                                     "REBOUND":  "Rebound",
-                                     "STEAL":  "Steal",
-                                     "BLOCK":  "Block",
-                                     "TURNOVER":  "Turnover",
-                                     "PERSONAL_FOUL":  "Personal foul",
-                                     "TECHNICAL_FOUL":  "Technical foul",
-                                     "FOUL_OUT":  "Foul out",
-                                     "SET_END":  "Set end",
-                                     "SERVE_ERROR":  "Serve error",
-                                     "SERVE_ACE":  "Serve ace",
-                                     "POINT":  "Point",
-                                     "BLOCK_POINT":  "Block point",
-                                     "ATTACK_POINT":  "Attack point",
-                                     "SET_START":  "Set start"
-                                 },
-                  "card_type":  {
-                                    "YELLOW":  "Caution",
-                                    "RED":  "Sending-off",
-                                    "SECOND_YELLOW":  "Second Yellow"
-                                },
-                  "card_reason":  {
-                                      "C1":  "Unsporting behavior",
-                                      "C2":  "Rough play",
-                                      "C3":  "Dissent",
-                                      "C4":  "Persistent offences",
-                                      "C5":  "Delaying the restart",
-                                      "C6":  "Failing to respect distance",
-                                      "C7":  "Entering without permission",
-                                      "C8":  "Leaving without permission",
-                                      "S1":  "Serious foul play",
-                                      "S2":  "Violent conduct",
-                                      "S3":  "Spitting",
-                                      "S4":  "Denying a goal (handball)",
-                                      "S5":  "Denying a goal (other)",
-                                      "S6":  "Offensive language/gestures",
-                                      "CS":  "Two cautions",
-                                      "PF":  "Personal foul",
-                                      "SF":  "Shooting foul",
-                                      "OF":  "Offensive foul",
-                                      "TF":  "Technical foul",
-                                      "UF":  "Unsportsmanlike foul",
-                                      "DF":  "Disqualifying foul"
-                                  },
-                  "position":  {
-                                   "GK":  "Goalkeeper",
-                                   "DF":  "Defender",
-                                   "MF":  "Midfielder",
-                                   "FW":  "Forward",
-                                   "FIXO":  "Fixo",
-                                   "ALA":  "Ala",
-                                   "PIVO":  "Pivo",
-                                   "PG":  "Point guard",
-                                   "SG":  "Shooting guard",
-                                   "SF":  "Small forward",
-                                   "PF":  "Power forward",
-                                   "C":  "Center",
-                                   "S":  "Setter",
-                                   "OP":  "Opposite",
-                                   "MB":  "Middle blocker",
-                                   "OH":  "Outside hitter",
-                                   "L":  "Libero"
-                               },
-                  "org_context":  {
-                                      "resolve_failed":  "Could not resolve team/organization info. Please check your memberships"
-                                  },
-                  "entry":  {
-                                "record_from_schedule":  "Record this match",
-                                "record_from_schedule_hint":  "Start recording the match for this event",
-                                "resolving":  "Preparing match record…"
-                            },
-                  "fixtures":  {
-                                   "title":  "Fixtures",
-                                   "back":  "Back to tournament",
-                                   "round":  "Round {n}",
-                                   "record":  "Record",
-                                   "venue_tbd":  "Venue TBD",
-                                   "date_tbd":  "Date TBD",
-                                   "tbd_participant":  "TBD",
-                                   "no_score":  "Scheduled",
-                                   "empty":  "No fixtures yet",
-                                   "load_failed":  "Failed to load fixtures",
-                                   "record_not_participant":  "Your team is not in this fixture, so it cannot be recorded",
-                                   "status":  {
-                                                  "SCHEDULED":  "Scheduled",
-                                                  "IN_PROGRESS":  "In progress",
-                                                  "COMPLETED":  "Finished",
-                                                  "POSTPONED":  "Postponed",
-                                                  "CANCELLED":  "Cancelled"
-                                              }
-                               },
-                  "foul_type":  {
-                                    "PERSONAL_FOUL":  "Personal foul",
-                                    "TECHNICAL_FOUL":  "Technical foul"
-                                },
-                  "set":  {
-                              "increment_home":  "Home +1",
-                              "increment_away":  "Away +1",
-                              "confirm_set":  "Confirm set",
-                              "deuce_hint":  "Deuce: play until 2-point lead",
-                              "in_progress":  "In progress",
-                              "past_sets":  "Completed sets",
-                              "set_label":  "Set {n}",
-                              "deuce":  "Deuce",
-                              "confirm_hint":  "Reach {n} pts with a 2-point lead to confirm",
-                              "decrement_home":  "Home -1",
-                              "away_points_label":  "Away points",
-                              "sets_to_win":  "Best of {n}",
-                              "match_completed":  "Match completed",
-                              "home_points_label":  "Home points",
-                              "target_points":  "Target {n} pts",
-                              "sets_label":  "Set score",
-                              "decrement_away":  "Away -1",
-                              "start_first_set":  "Start set 1"
-                          }
-              }
+  "match": {
+    "list": {
+      "title": "Match Records",
+      "subtitle": "Record practice, friendly and tournament matches",
+      "record_button": "+ Record a Match",
+      "filter": {
+        "kind": "Type",
+        "status": "Status",
+        "all": "All"
+      },
+      "result": {
+        "win": "W",
+        "draw": "D",
+        "loss": "L",
+        "win_label": "W",
+        "draw_label": "D",
+        "loss_label": "L"
+      },
+      "in_progress_badge": "In Progress",
+      "score_vs": "{home} - {away}",
+      "vs": "vs {opponent}",
+      "no_opponent": "No opponent",
+      "no_score": "—",
+      "delete_confirm": "Delete this match record?",
+      "delete_success": "Match record deleted",
+      "empty": "No match records yet",
+      "empty_cta": "Record your first match",
+      "load_more": "Load more",
+      "page_info": "{from}-{to} of {total}",
+      "error": {
+        "load_failed": "Failed to load matches",
+        "status_failed": "Failed to change status",
+        "score_failed": "Failed to finalize score",
+        "recording_mode_failed": "Failed to change recording mode",
+        "delete_failed": "Failed to delete match record"
+      }
+    },
+    "create": {
+      "title": "Record a Match",
+      "subtitle": "Just pick a type and opponent to start. Venue and time can be set later.",
+      "kind_label": "Type",
+      "kind_hint": "Tap to select",
+      "opponent_label": "Opponent team name",
+      "opponent_placeholder": "Enter opponent team name",
+      "opponent_required": "Please enter an opponent name",
+      "kind_required": "Please select a type",
+      "optional_section": "Optional (set later)",
+      "optional_hint": "You can start recording with these blank and fill them in after the match.",
+      "venue_label": "Venue",
+      "venue_placeholder": "Venue name (optional)",
+      "kickoff_label": "Kickoff date & time",
+      "duration_label": "Duration (minutes)",
+      "home_away_label": "Home / Away",
+      "home_away": {
+        "HOME": "Home",
+        "AWAY": "Away",
+        "NEUTRAL": "Neutral"
+      },
+      "submit": "Start Recording",
+      "submit_short": "Create",
+      "cancel": "Cancel",
+      "success": "Match created",
+      "update_success": "Match info updated",
+      "error": {
+        "create_failed": "Failed to create match",
+        "update_failed": "Failed to update match info"
+      }
+    },
+    "live": {
+      "title": "Live recording",
+      "loading": "Loading...",
+      "scoreboard": {
+        "home": "Us",
+        "away": "Opp.",
+        "vs": "vs {opponent}",
+        "penalty": "PK {home}-{away}"
+      },
+      "penalty": {
+        "title": "Penalty Shootout Score",
+        "home_label": "Our successful penalties",
+        "away_label": "Opponent successful penalties",
+        "hint": "Enter the number of successful kicks. Finalized when the match ends and reflected in tournament standings."
+      },
+      "timer": {
+        "state": {
+          "WAITING": "Pre-match",
+          "FIRST_HALF": "1st half",
+          "HALF_TIME": "Half time",
+          "SECOND_HALF": "2nd half",
+          "EXTRA_FIRST": "Extra 1st",
+          "EXTRA_SECOND": "Extra 2nd",
+          "PENALTY_SHOOTOUT": "Penalties",
+          "COMPLETED": "Full time",
+          "QUARTER_1": "Q1",
+          "BREAK_1": "Break",
+          "QUARTER_2": "Q2",
+          "HALF_TIME_BREAK": "Halftime",
+          "QUARTER_3": "Q3",
+          "BREAK_3": "Break",
+          "QUARTER_4": "Q4",
+          "OVERTIME": "Overtime"
+        },
+        "start_first_half": "Start 1st half",
+        "to_half_time": "To half time",
+        "start_second_half": "Start 2nd half",
+        "to_extra": "To extra time",
+        "to_penalty": "To penalties",
+        "complete": "End match",
+        "advance": "Next period",
+        "minute_label": "Min",
+        "stoppage_label": "Added time (+)",
+        "minute_override_hint": "You can correct the minute manually if it drifts.",
+        "pause": "Pause",
+        "resume": "Resume",
+        "running": "Running",
+        "stopped": "Stopped",
+        "start_quarter_1": "Start Q1",
+        "end_quarter_1": "End Q1",
+        "start_quarter_2": "Start Q2",
+        "end_quarter_2": "End Q2",
+        "start_quarter_3": "Start Q3",
+        "end_quarter_3": "End Q3",
+        "start_quarter_4": "Start Q4",
+        "to_overtime": "Go to overtime",
+        "to_overtime_again": "Another overtime"
+      },
+      "preset": {
+        "goal": "Goal",
+        "assist": "Assist",
+        "card": "Card",
+        "substitution": "Sub",
+        "other": "Other",
+        "field_goal_2": "2P",
+        "field_goal_3": "3P",
+        "free_throw": "Free throw",
+        "rebound": "Rebound",
+        "foul": "Foul"
+      },
+      "flow": {
+        "select_player": "Select player",
+        "select_scorer": "Select scorer",
+        "select_assist": "Select assist",
+        "select_out": "Player OUT",
+        "select_in": "Player IN",
+        "add_assist": "+ Link assist",
+        "to_goal": "-> Link to goal",
+        "skip": "Skip",
+        "confirm": "Confirm",
+        "cancel": "Cancel",
+        "back": "Back",
+        "note_label": "Reason / note",
+        "note_placeholder": "e.g. from a corner kick",
+        "goal_type_label": "Goal type",
+        "goal_type": {
+          "GOAL": "Open play",
+          "PENALTY_GOAL": "Penalty",
+          "OWN_GOAL": "Own goal"
+        },
+        "card_color_label": "Card type",
+        "card_yellow": "Yellow",
+        "card_red": "Red",
+        "card_second_yellow": "Second yellow",
+        "team_side_label": "Recording for",
+        "other_label_placeholder": "Event name (e.g. foul)",
+        "foul_type_label": "Foul type"
+      },
+      "team_side": {
+        "HOME": "Our team",
+        "AWAY": "Opponent"
+      },
+      "card_reason": {
+        "title": "Reason code (optional)",
+        "skip_hint": "Can be filled in later. Recommended for official matches.",
+        "none": "None"
+      },
+      "grid": {
+        "starters": "Starters",
+        "bench": "Bench",
+        "setup_button": "Set lineup",
+        "all_starters": "All starters",
+        "clear_starters": "Clear starters",
+        "copy_previous": "Copy previous lineup",
+        "add_manual": "Add manually",
+        "manual_name_placeholder": "Player name",
+        "manual_number_placeholder": "No.",
+        "empty": "No players found. Add them manually.",
+        "position": {
+          "GK": "GK",
+          "DF": "DF",
+          "MF": "MF",
+          "FW": "FW",
+          "other": "Other"
+        }
+      },
+      "timeline": {
+        "title": "Timeline",
+        "empty": "No events yet. Start recording from the buttons below.",
+        "minute_suffix": "'",
+        "self": "Us",
+        "opponent": "Opp",
+        "linked_assist": "Assist",
+        "linked_goal": "Goal",
+        "tap_to_edit": "Tap to edit",
+        "delete": "Delete",
+        "delete_confirm": "Delete this event?"
+      },
+      "undo": {
+        "button": "Undo",
+        "done": "Action undone",
+        "substitution": "Substitution undone",
+        "goal_assist": "Goal/assist undone"
+      },
+      "conflict": {
+        "title": "Another recorder updated this",
+        "detail": "Reloading the latest records and retrying"
+      },
+      "opponent_notice": {
+        "title": "Recorded by team {team}",
+        "detail": "Ask team {team}'s recorder to correct this entry."
+      },
+      "offline": {
+        "queued": "Saved offline. Will send when back online.",
+        "flushed": "Sent {count} pending event(s).",
+        "pending": "{count} pending"
+      },
+      "completed_notice": "This match has ended. Corrections follow your permissions.",
+      "error": {
+        "load_events_failed": "Failed to load events",
+        "load_appearances_failed": "Failed to load appearances",
+        "load_match_failed": "Failed to load match info",
+        "add_event_failed": "Failed to record event",
+        "update_event_failed": "Failed to update event",
+        "delete_event_failed": "Failed to delete event",
+        "undo_failed": "Failed to undo",
+        "period_boundary_failed": {
+          "title": "Failed to record period boundary",
+          "detail": "The period transition could not be saved to the server. Scores and playing-time totals may be inaccurate. Please re-trigger the timer to record it again."
+        },
+        "complete_failed": "Failed to save match completion"
+      },
+      "read_only_notice": "View only. Only admins, deputies and scorekeepers can record"
+    },
+    "analytics": {
+      "my_title": "Match Analytics",
+      "my_subtitle": "Visualize your career statistics",
+      "member_title": "Member Match Analytics",
+      "member_subtitle": "This member's team statistics",
+      "team_context": "Target team",
+      "unknown_kind": "Other",
+      "forbidden": "You do not have permission to view these statistics",
+      "metric": {
+        "total_matches": "Matches",
+        "total_minutes": "Total minutes",
+        "goals": "Goals",
+        "assists": "Assists",
+        "goals_per90": "Goals per 90",
+        "starter_rate": "Starter rate"
+      },
+      "axis": {
+        "goals": "Goals",
+        "assists": "Assists",
+        "matches": "Matches",
+        "minutes": "Avg minutes",
+        "starter_rate": "Starter rate"
+      },
+      "series": {
+        "goals": "Goals",
+        "minutes": "Minutes",
+        "match_share": "Appearance share",
+        "goals_by_kind": "Goals by type"
+      },
+      "chart": {
+        "radar_title": "Stat distribution",
+        "line_title": "Monthly trend (goals / minutes)",
+        "doughnut_title": "Appearance share by type",
+        "bar_title": "Goal distribution by type"
+      },
+      "best": {
+        "title": "Personal best",
+        "top_goals": "Most goals in a month",
+        "longest_minutes": "Longest minutes in a month"
+      },
+      "empty": {
+        "no_data": "No data to display",
+        "no_trend": "No trend data",
+        "no_goals": "No goals recorded",
+        "no_matches": "No match records yet",
+        "member_no_matches": "No match records for this member",
+        "no_team": "No teams joined",
+        "record_cta": "Record a match"
+      },
+      "error": {
+        "load_failed": "Failed to load statistics"
+      },
+      "team_title": "Team Match Analytics",
+      "team_subtitle": "Visualize team win/loss record, goals, player rankings, and recent form",
+      "team": {
+        "metric": {
+          "total_matches": "Matches",
+          "win_draw_loss": "W/D/L",
+          "goals_for": "Goals For",
+          "goals_against": "Goals Against",
+          "goal_difference": "Goal Difference"
+        },
+        "series": {
+          "points": "Points (cumulative)",
+          "player_goals": "Goals",
+          "matches_by_kind": "Matches"
+        },
+        "chart": {
+          "result_title": "Result Summary",
+          "player_goals_title": "Top Scorers",
+          "recent_form_title": "Recent Form (points trend)",
+          "matches_by_kind_title": "Matches by Type"
+        }
+      },
+      "widget": {
+        "summary": {
+          "title": "Match Summary",
+          "wdl_label": "W/D/L",
+          "goals_label": "GF/GA",
+          "recent_form": "Recent Form",
+          "in_progress_label": "In Progress",
+          "resume_recording": "Resume Recording",
+          "no_matches": "No match records yet",
+          "view_analytics": "View Analytics"
+        }
+      }
+    },
+    "kind": {
+      "PRACTICE": "Practice",
+      "FRIENDLY": "Friendly",
+      "TOURNAMENT": "Tournament",
+      "LEAGUE": "League"
+    },
+    "status": {
+      "SCHEDULED": "Scheduled",
+      "IN_PROGRESS": "In Progress",
+      "COMPLETED": "Completed",
+      "POSTPONED": "Postponed",
+      "CANCELLED": "Cancelled",
+      "PLANNED": "Scheduled",
+      "CLOSED": "Finalized"
+    },
+    "event_type": {
+      "STARTER": "Starter",
+      "SUB_IN": "Sub In",
+      "SUB_OUT": "Sub Out",
+      "GOAL": "Goal",
+      "ASSIST": "Assist",
+      "OWN_GOAL": "Own Goal",
+      "PENALTY_GOAL": "Penalty (Scored)",
+      "PENALTY_MISS": "Penalty (Missed)",
+      "PENALTY_SHOOTOUT": "Penalty Shootout",
+      "YELLOW_CARD": "Caution",
+      "RED_CARD": "Sending-off",
+      "SECOND_YELLOW": "Second Yellow",
+      "SAVE": "Save",
+      "INJURY": "Injury",
+      "PERIOD_START": "Period Start",
+      "PERIOD_END": "Period End",
+      "OTHER": "Other",
+      "FIELD_GOAL_2": "2-pointer",
+      "FIELD_GOAL_3": "3-pointer",
+      "FREE_THROW": "Free throw",
+      "SHOT_MISS": "Missed shot",
+      "REBOUND": "Rebound",
+      "STEAL": "Steal",
+      "BLOCK": "Block",
+      "TURNOVER": "Turnover",
+      "PERSONAL_FOUL": "Personal foul",
+      "TECHNICAL_FOUL": "Technical foul",
+      "FOUL_OUT": "Foul out",
+      "SET_END": "Set end",
+      "SERVE_ERROR": "Serve error",
+      "SERVE_ACE": "Serve ace",
+      "POINT": "Point",
+      "BLOCK_POINT": "Block point",
+      "ATTACK_POINT": "Attack point",
+      "SET_START": "Set start"
+    },
+    "card_type": {
+      "YELLOW": "Caution",
+      "RED": "Sending-off",
+      "SECOND_YELLOW": "Second Yellow"
+    },
+    "card_reason": {
+      "C1": "Unsporting behavior",
+      "C2": "Rough play",
+      "C3": "Dissent",
+      "C4": "Persistent offences",
+      "C5": "Delaying the restart",
+      "C6": "Failing to respect distance",
+      "C7": "Entering without permission",
+      "C8": "Leaving without permission",
+      "S1": "Serious foul play",
+      "S2": "Violent conduct",
+      "S3": "Spitting",
+      "S4": "Denying a goal (handball)",
+      "S5": "Denying a goal (other)",
+      "S6": "Offensive language/gestures",
+      "CS": "Two cautions",
+      "PF": "Personal foul",
+      "SF": "Shooting foul",
+      "OF": "Offensive foul",
+      "TF": "Technical foul",
+      "UF": "Unsportsmanlike foul",
+      "DF": "Disqualifying foul"
+    },
+    "position": {
+      "GK": "Goalkeeper",
+      "DF": "Defender",
+      "MF": "Midfielder",
+      "FW": "Forward",
+      "FIXO": "Fixo",
+      "ALA": "Ala",
+      "PIVO": "Pivo",
+      "PG": "Point guard",
+      "SG": "Shooting guard",
+      "SF": "Small forward",
+      "PF": "Power forward",
+      "C": "Center",
+      "S": "Setter",
+      "OP": "Opposite",
+      "MB": "Middle blocker",
+      "OH": "Outside hitter",
+      "L": "Libero"
+    },
+    "org_context": {
+      "resolve_failed": "Could not resolve team/organization info. Please check your memberships"
+    },
+    "entry": {
+      "record_from_schedule": "Record this match",
+      "record_from_schedule_hint": "Start recording the match for this event",
+      "resolving": "Preparing match record…"
+    },
+    "fixtures": {
+      "title": "Fixtures",
+      "back": "Back to tournament",
+      "round": "Round {n}",
+      "record": "Record",
+      "venue_tbd": "Venue TBD",
+      "date_tbd": "Date TBD",
+      "tbd_participant": "TBD",
+      "no_score": "Scheduled",
+      "empty": "No fixtures yet",
+      "load_failed": "Failed to load fixtures",
+      "record_not_participant": "Your team is not in this fixture, so it cannot be recorded",
+      "status": {
+        "SCHEDULED": "Scheduled",
+        "IN_PROGRESS": "In progress",
+        "COMPLETED": "Finished",
+        "POSTPONED": "Postponed",
+        "CANCELLED": "Cancelled"
+      }
+    },
+    "foul_type": {
+      "PERSONAL_FOUL": "Personal foul",
+      "TECHNICAL_FOUL": "Technical foul"
+    },
+    "set": {
+      "increment_home": "Home +1",
+      "increment_away": "Away +1",
+      "confirm_set": "Confirm set",
+      "deuce_hint": "Deuce: play until 2-point lead",
+      "in_progress": "In progress",
+      "past_sets": "Completed sets",
+      "set_label": "Set {n}",
+      "deuce": "Deuce",
+      "confirm_hint": "Reach {n} pts with a 2-point lead to confirm",
+      "decrement_home": "Home -1",
+      "away_points_label": "Away points",
+      "sets_to_win": "Best of {n}",
+      "match_completed": "Match completed",
+      "home_points_label": "Home points",
+      "target_points": "Target {n} pts",
+      "sets_label": "Set score",
+      "decrement_away": "Away -1",
+      "start_first_set": "Start set 1"
+    }
+  }
 }
