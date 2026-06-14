@@ -252,19 +252,65 @@ class MatchServiceTest {
     }
 
     @Test
-    @DisplayName("(b2) TURN_BASED（将棋）: 勝敗 1-0 が確定すれば COMPLETED 可（duration 不要・MATCH_023 を要求しない）")
+    @DisplayName("(b2) TURN_BASED（将棋）: 勝敗 1-0 ＋ win_method 妥当なら COMPLETED 可（duration 不要・MATCH_023 を要求しない）")
     void turnBasedCompletedWithWinLoss() {
         match.setSport(Sport.SHOGI);
         match.setStateModel(StateModel.TURN_BASED);
         match.setDurationMinutes(null); // ターン制は duration 不要
         match.setHomeScore(1);
         match.setAwayScore(0);
+        match.setWinMethod("RESIGNATION"); // 勝敗ありは勝ち方必須（§D.7）
 
         service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED);
 
         // ターン制でも recalculate は呼ばれる（PlayingTimeCalculationService 側で TURN_BASED をスキップする）
         verify(playingTimeCalculationService).recalculate(eq(match), isNull());
         verify(eventPublisher).publishEvent(any(MatchCompletedEvent.class));
+    }
+
+    @Test
+    @DisplayName("(b2) TURN_BASED: 勝敗 1-0 だが win_method=NULL は 400（MATCH_028・勝ち方必須）")
+    void turnBasedWinWithoutWinMethodRejected() {
+        match.setSport(Sport.SHOGI);
+        match.setStateModel(StateModel.TURN_BASED);
+        match.setHomeScore(1);
+        match.setAwayScore(0);
+        match.setWinMethod(null);
+
+        assertThatThrownBy(() -> service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(MatchErrorCode.MATCH_028);
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    @DisplayName("(b2) TURN_BASED: 勝敗 1-0 だが win_method が競技外（POINTS_WIN は将棋に無い）は 400（MATCH_028）")
+    void turnBasedWinWithForeignWinMethodRejected() {
+        match.setSport(Sport.SHOGI);
+        match.setStateModel(StateModel.TURN_BASED);
+        match.setHomeScore(0);
+        match.setAwayScore(1);
+        match.setWinMethod("POINTS_WIN"); // 囲碁の勝ち方を将棋に流用
+
+        assertThatThrownBy(() -> service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(MatchErrorCode.MATCH_028);
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    @DisplayName("(b2) TURN_BASED: 引分 0-0 なのに win_method が付いていると 400（MATCH_028・責務分離）")
+    void turnBasedDrawWithWinMethodRejected() {
+        match.setSport(Sport.SHOGI);
+        match.setStateModel(StateModel.TURN_BASED);
+        match.setHomeScore(0);
+        match.setAwayScore(0);
+        match.setWinMethod("REPETITION"); // 引分なのに勝ち方が付いている矛盾
+
+        assertThatThrownBy(() -> service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(MatchErrorCode.MATCH_028);
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -291,6 +337,79 @@ class MatchServiceTest {
         assertThatThrownBy(() -> service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("勝敗");
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    // ─── (b3) TURN_BASED 団体戦の親（子ボード保有）は win_method 検証を免除 ──────
+    // 親の勝敗は子ボードの勝ち星集計（home/away_score 勝ち星差）で決まり、win_method=NULL が正常（§4.3）。
+    // 親（countByParentMatchId>0）と個人戦（=0）を区別して締めることを検証する。
+
+    @Test
+    @DisplayName("(b3) TURN_BASED 団体戦の親: 勝ち星差あり（6-4）かつ win_method=NULL でも COMPLETED 可（§4.3）")
+    void turnBasedTeamParentCompletableWithWinStarsAndNullWinMethod() {
+        match.setSport(Sport.SHOGI);
+        match.setStateModel(StateModel.TURN_BASED);
+        match.setDurationMinutes(null);
+        // 親は子ボードの勝ち星集計（整数スケール）が反映されている（勝ち星差あり＝勝者あり）
+        match.setHomeScore(6);
+        match.setAwayScore(4);
+        // 団体戦の親は win_method を持たない（§4.3）。
+        match.setWinMethod(null);
+        // 子ボードを持つ＝団体戦の親（個人戦と区別する根拠）
+        when(matchRepository.countByParentMatchId(matchId)).thenReturn(5L);
+
+        service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED);
+
+        // 勝ち星差ありの親が win_method=NULL のまま COMPLETED できる（MATCH_028 を投げない）
+        verify(eventPublisher).publishEvent(any(MatchCompletedEvent.class));
+    }
+
+    @Test
+    @DisplayName("(b3) TURN_BASED 団体戦の親: 勝ち星同数（引分・5-5）も win_method=NULL で COMPLETED 可")
+    void turnBasedTeamParentCompletableWithDrawStars() {
+        match.setSport(Sport.GO);
+        match.setStateModel(StateModel.TURN_BASED);
+        match.setHomeScore(5);
+        match.setAwayScore(5);
+        match.setWinMethod(null);
+        when(matchRepository.countByParentMatchId(matchId)).thenReturn(5L);
+
+        service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED);
+
+        verify(eventPublisher).publishEvent(any(MatchCompletedEvent.class));
+    }
+
+    @Test
+    @DisplayName("(b3) TURN_BASED 個人戦（子ボード無し）は従来どおり勝敗あり時の win_method 必須を維持（MATCH_028）")
+    void turnBasedIndividualStillRequiresWinMethod() {
+        match.setSport(Sport.SHOGI);
+        match.setStateModel(StateModel.TURN_BASED);
+        match.setHomeScore(1);
+        match.setAwayScore(0);
+        match.setWinMethod(null);
+        // 子ボードを持たない＝個人戦（countByParentMatchId=0 はモックの既定値だが明示）
+        when(matchRepository.countByParentMatchId(matchId)).thenReturn(0L);
+
+        assertThatThrownBy(() -> service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(MatchErrorCode.MATCH_028);
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    @DisplayName("(b3) TURN_BASED 団体戦の親: 勝敗未確定（スコア NULL）は親でも 400（MATCH_027）")
+    void turnBasedTeamParentNullScoreStillRejected() {
+        match.setSport(Sport.SHOGI);
+        match.setStateModel(StateModel.TURN_BASED);
+        match.setHomeScore(null);
+        match.setAwayScore(4);
+        match.setWinMethod(null);
+        // スコア NULL の検証は親/個人戦の区別（countByParentMatchId）より前に行われるため
+        // ここでは countByParentMatchId をスタブしない（未確定は親でも個人戦でも MATCH_027）。
+
+        assertThatThrownBy(() -> service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(MatchErrorCode.MATCH_027);
         verify(eventPublisher, never()).publishEvent(any());
     }
 

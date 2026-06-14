@@ -225,11 +225,13 @@ class MatchSchemaFlywayTest {
     }
 
     @Test
-    @DisplayName("matches はクロスドメイン FK を持たない（原則1・ID 参照のみ）")
-    void matchesHasNoForeignKeys() throws Exception {
+    @DisplayName("matches はクロスドメイン FK を持たない（原則1・自己参照 FK のみ許容・V87.001 後）")
+    void matchesHasNoCrossDomainForeignKeys() throws Exception {
+        // V87.001 で団体戦の自己参照 FK（parent_match_id→matches）が追加される。
+        // クロスドメイン FK は依然 0 件＝matches から張る FK の参照先は自身（matches）のみであること（原則1）。
         assertThat(foreignKeys("matches"))
-                .as("matches から他ドメインへの FK は張らない（原則1）")
-                .isEmpty();
+                .as("matches から張る FK の参照先は自身（matches）のみ＝クロスドメイン FK は無い（原則1）")
+                .allSatisfy(fk -> assertThat(fk[1]).isEqualTo("matches"));
     }
 
     private boolean columnIsNullable(String table, String column) throws Exception {
@@ -275,5 +277,120 @@ class MatchSchemaFlywayTest {
     void matchEventsPeriodIsNullable() throws Exception {
         assertThat(columnIsNullable("match_events", "period"))
                 .as("period は NULL 許容（ターン制＝将棋/囲碁は period を使わない）").isTrue();
+    }
+
+    // ─── V87.001: ターン制（将棋/囲碁）＋団体戦の matches 4 列＋自己参照 FK ───
+
+    @Test
+    @DisplayName("matches.total_moves は SMALLINT UNSIGNED NULL（V87.001・ターン制のみ・01 §B.1）")
+    void matchesHasTotalMovesColumn() throws Exception {
+        assertThat(columnExists("matches", "total_moves"))
+                .as("matches.total_moves が存在すること（V87.001）").isTrue();
+        assertThat(columnType("matches", "total_moves").toLowerCase())
+                .as("total_moves は smallint unsigned").contains("smallint").contains("unsigned");
+        assertThat(columnIsNullable("matches", "total_moves"))
+                .as("total_moves は NULL 許容（球技は NULL・後方互換）").isTrue();
+    }
+
+    @Test
+    @DisplayName("matches.win_method は VARCHAR(32) NULL（V87.001・ターン制のみ・01 §D.7）")
+    void matchesHasWinMethodColumn() throws Exception {
+        assertThat(columnExists("matches", "win_method"))
+                .as("matches.win_method が存在すること（V87.001）").isTrue();
+        assertThat(columnType("matches", "win_method").toLowerCase())
+                .as("win_method は varchar(32)").isEqualTo("varchar(32)");
+        assertThat(columnIsNullable("matches", "win_method"))
+                .as("win_method は NULL 許容（球技は NULL・団体戦の親も NULL）").isTrue();
+    }
+
+    @Test
+    @DisplayName("matches.parent_match_id は BINARY(16) NULL（V87.001・団体戦の親 match・自己参照・01 §B.6）")
+    void matchesHasParentMatchIdColumn() throws Exception {
+        assertThat(columnExists("matches", "parent_match_id"))
+                .as("matches.parent_match_id が存在すること（V87.001）").isTrue();
+        assertThat(columnType("matches", "parent_match_id").toLowerCase())
+                .as("parent_match_id は binary(16)（matches.id 自己参照）").isEqualTo("binary(16)");
+        assertThat(columnIsNullable("matches", "parent_match_id"))
+                .as("parent_match_id は NULL 許容（個人戦・団体戦の親は NULL）").isTrue();
+    }
+
+    @Test
+    @DisplayName("matches.board_number は SMALLINT UNSIGNED NULL（V87.001・団体戦の子のみ・01 §B.6）")
+    void matchesHasBoardNumberColumn() throws Exception {
+        assertThat(columnExists("matches", "board_number"))
+                .as("matches.board_number が存在すること（V87.001）").isTrue();
+        assertThat(columnType("matches", "board_number").toLowerCase())
+                .as("board_number は smallint unsigned").contains("smallint").contains("unsigned");
+        assertThat(columnIsNullable("matches", "board_number"))
+                .as("board_number は NULL 許容（個人戦・団体戦の親は NULL）").isTrue();
+    }
+
+    @Test
+    @DisplayName("matches の自己参照 FK は parent_match_id→matches(CASCADE) のみ（同一ドメイン・原則2・V87.001）")
+    void matchesSelfReferenceForeignKey() throws Exception {
+        List<String[]> fks = foreignKeys("matches");
+        // V87.001 で自己参照 FK が 1 件だけ張られる（参照先は同一 matches テーブル＝同一ドメイン・原則1/2）。
+        assertThat(fks)
+                .as("matches の FK 参照先は自身（matches）のみ＝自己参照（クロスドメイン FK 禁止・原則1）")
+                .isNotEmpty()
+                .allSatisfy(fk -> assertThat(fk[1]).isEqualTo("matches"));
+        assertThat(fks)
+                .as("自己参照 FK は ON DELETE CASCADE（親団体戦の物理削除で子ボードも消える・原則2・§B.1 注記）")
+                .anySatisfy(fk -> {
+                    assertThat(fk[1]).isEqualTo("matches");
+                    assertThat(fk[2]).isEqualTo("CASCADE");
+                });
+    }
+
+    // ─── V87.002: match_attachments（局面写真など match スコープ添付・01 §B.7） ───
+
+    @Test
+    @DisplayName("match_attachments が作成され主キーが BINARY(16)（UUIDv7・原則6・V87.002）")
+    void matchAttachmentsTableExistsWithBinaryPk() throws Exception {
+        assertThat(columnExists("match_attachments", "id"))
+                .as("match_attachments.id が存在すること（V87.002）").isTrue();
+        assertThat(columnType("match_attachments", "id").toLowerCase())
+                .as("match_attachments.id は binary(16)（UUIDv7）").isEqualTo("binary(16)");
+    }
+
+    @Test
+    @DisplayName("match_attachments の列構成（match_id/file_key/content_type/file_size/created_by・§B.7）")
+    void matchAttachmentsColumns() throws Exception {
+        assertThat(columnExists("match_attachments", "match_id")).isTrue();
+        assertThat(columnType("match_attachments", "match_id").toLowerCase()).isEqualTo("binary(16)");
+        assertThat(columnExists("match_attachments", "file_key")).isTrue();
+        assertThat(columnExists("match_attachments", "content_type")).isTrue();
+        assertThat(columnExists("match_attachments", "file_size")).isTrue();
+        assertThat(columnExists("match_attachments", "created_by")).isTrue();
+        // match_id / content_type / file_size / created_by は NOT NULL（必須メタ）
+        assertThat(columnIsNullable("match_attachments", "match_id")).isFalse();
+        assertThat(columnIsNullable("match_attachments", "content_type")).isFalse();
+        assertThat(columnIsNullable("match_attachments", "file_size")).isFalse();
+        assertThat(columnIsNullable("match_attachments", "created_by")).isFalse();
+    }
+
+    @Test
+    @DisplayName("match_attachments は organization_id / deleted_at を持たない（01 §A.4/§B.7・テナント分離は親 matches）")
+    void matchAttachmentsHasNoTenantNorSoftDeleteColumns() throws Exception {
+        assertThat(columnExists("match_attachments", "organization_id"))
+                .as("match_attachments に organization_id があってはならない（テナント分離は親 matches）").isFalse();
+        assertThat(columnExists("match_attachments", "deleted_at"))
+                .as("match_attachments に deleted_at があってはならない（親 matches の削除に従う）").isFalse();
+    }
+
+    @Test
+    @DisplayName("match_attachments の FK は match_id→matches(CASCADE) のみ（同一ドメイン・原則1/2・V87.002）")
+    void matchAttachmentsForeignKeys() throws Exception {
+        List<String[]> fks = foreignKeys("match_attachments");
+        assertThat(fks)
+                .as("match_attachments の FK 参照先は matches のみ（クロスドメイン FK 禁止・原則1）")
+                .isNotEmpty()
+                .allSatisfy(fk -> assertThat(fk[1]).isEqualTo("matches"));
+        assertThat(fks)
+                .as("match_id→matches は ON DELETE CASCADE（親 matches の削除で添付も消える・原則2）")
+                .anySatisfy(fk -> {
+                    assertThat(fk[1]).isEqualTo("matches");
+                    assertThat(fk[2]).isEqualTo("CASCADE");
+                });
     }
 }
