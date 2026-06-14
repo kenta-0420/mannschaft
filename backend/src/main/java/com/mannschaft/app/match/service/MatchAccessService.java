@@ -5,7 +5,9 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.match.MatchErrorCode;
+import com.mannschaft.app.match.domain.StateModel;
 import com.mannschaft.app.match.entity.MatchEntity;
+import com.mannschaft.app.match.repository.MatchEventRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +45,8 @@ public class MatchAccessService {
 
     private final AccessControlService accessControlService;
     private final ContentVisibilityChecker visibilityChecker;
+    /** ターン制個人戦の「対局者本人」判定（player_user_id 突合）に用いる（03 §C.2a）。 */
+    private final MatchEventRepository matchEventRepository;
 
     // ─────────────────────────────────────────────
     // 閲覧（F00 可視性へ委譲・独自述語禁止）
@@ -135,6 +139,10 @@ public class MatchAccessService {
      * タイムラインイベントの記録可否（03 §C.2）。
      *
      * <ul>
+     *   <li><b>ターン制個人戦</b>（{@code state_model=TURN_BASED} かつ {@code parent_match_id=NULL}・03 §C.2a）:
+     *       (a) 対局者本人（{@link #isParticipant}）／(b) 主体チーム ADMIN/DEPUTY／(c) 記録係。
+     *       <b>団体戦の子ボード（parent_match_id 設定済）も各ボードが個人戦</b>のため同じ類型分岐に乗せる
+     *       （当該ボードの対局者本人 or 主体チーム ADMIN or 記録係・§C.2a 末尾）。</li>
      *   <li>公式戦（{@code has_scorekeeper=true}）: 記録係（{@code scorekeeper_user_id}）のみ。</li>
      *   <li>共同記録（{@code has_scorekeeper=false}）: 主体チーム or 相手チームの ADMIN/DEPUTY。</li>
      * </ul>
@@ -147,6 +155,23 @@ public class MatchAccessService {
         if (userId == null || match == null) {
             return false;
         }
+        // ターン制（将棋/囲碁）は対局者本人も自分の結果を記録/訂正できる（§C.2a・類型分岐を書き込み側に上乗せ）。
+        // 個人戦（parent_match_id=NULL）も団体戦の子ボードも各ボードが 1 対 1 の対局ゆえ同じ判定に乗せる。
+        if (resolveStateModel(match) == StateModel.TURN_BASED) {
+            // (a) 対局者本人
+            if (match.getId() != null && isParticipant(userId, match)) {
+                return true;
+            }
+            // (b) 主体チーム ADMIN/DEPUTY
+            if (match.getTeamId() != null
+                    && accessControlService.isAdminOrAbove(userId, match.getTeamId(), SCOPE_TEAM)) {
+                return true;
+            }
+            // (c) 記録係（公式戦）
+            return match.isHasScorekeeper()
+                    && match.getScorekeeperUserId() != null
+                    && userId.equals(match.getScorekeeperUserId());
+        }
         if (match.isHasScorekeeper()) {
             // 公式戦: 記録係のみ
             return match.getScorekeeperUserId() != null && userId.equals(match.getScorekeeperUserId());
@@ -158,6 +183,32 @@ public class MatchAccessService {
         }
         return match.getOpponentTeamId() != null
                 && accessControlService.isAdminOrAbove(userId, match.getOpponentTeamId(), SCOPE_TEAM);
+    }
+
+    /**
+     * ターン制個人戦の「対局者本人」判定（03 §C.2a・先手/後手の player_user_id 突合）。
+     *
+     * <p>当該 match に、認証ユーザーが {@code player_user_id} として登録されたイベント（対局者）が存在すれば true。
+     * 個人戦は 1 局＝1 match で対局者が明確なため、本人が自分の結果を記録・訂正できる（チーム ADMIN 経路に上乗せ）。
+     * match_id スコープで判定するため二段アクセス（01 §A.4）を侵さない。</p>
+     *
+     * @param userId 認証ユーザー ID
+     * @param match  対象試合
+     * @return 当該 match の対局者本人なら true
+     */
+    public boolean isParticipant(Long userId, MatchEntity match) {
+        if (userId == null || match == null || match.getId() == null) {
+            return false;
+        }
+        return matchEventRepository.existsByMatchIdAndPlayerUserId(match.getId(), userId);
+    }
+
+    /** {@code state_model} 列が未設定（古いレコード等）の場合は sport から導出してフォールバックする。 */
+    private StateModel resolveStateModel(MatchEntity match) {
+        if (match.getStateModel() != null) {
+            return match.getStateModel();
+        }
+        return match.getSport() != null ? match.getSport().stateModel() : StateModel.CONTINUOUS_TIME;
     }
 
     /** タイムライン記録不可なら 403 でスローする。 */

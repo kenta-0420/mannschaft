@@ -83,6 +83,22 @@ public interface MatchRepository extends AbstractTenantAwareRepository<MatchEnti
     List<MatchEntity> findByOrganizationIdAndStatus(Long organizationId, MatchStatus status);
 
     /**
+     * 団体戦の子ボード一覧を親 match ID から取得する（ボード順昇順・01 §B.6 / §C.4 二段アクセス）。
+     *
+     * <p><b>IDOR 根絶（01 §A.4 / §C.4）</b>: 子ボードは <b>親 match をテナント取得した後</b>に本メソッドで
+     * {@code parent_match_id} スコープで引く（子 ID 直引きで親をまたぐ越境を遮断）。論理削除は Entity の
+     * {@code @SQLRestriction("deleted_at IS NULL")} で常に除外される（子ボードも matches なので自身の
+     * deleted_at を持つ）。親勝ち星集計・子ボード一覧 GET の双方でこの 1 経路に集約する。</p>
+     *
+     * @param parentMatchId 親（団体戦）match ID（UUIDv7）
+     * @return 子ボード一覧（board_number 昇順・無ければ空）
+     */
+    List<MatchEntity> findByParentMatchIdOrderByBoardNumberAsc(UUID parentMatchId);
+
+    /** 団体戦の子ボード件数（親 match スコープ）。 */
+    long countByParentMatchId(UUID parentMatchId);
+
+    /**
      * カレンダー予定（入口④）から既存試合を解決する（04 §G.1a-2）。
      *
      * <p>当該テナント（organization_id）かつ当該チーム（team_id）が主体で、指定の {@code schedule_id} に
