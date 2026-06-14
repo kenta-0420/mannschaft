@@ -1,5 +1,6 @@
 import type { MemberResponse } from '~/types/member'
 import type { OrganizationResponse } from '~/types/organization'
+import type { SlugAvailabilityResponse } from '~/types/slug'
 
 interface OrganizationSummaryResponse {
   id: string
@@ -108,6 +109,20 @@ export function useOrganizationApi() {
 
   async function createOrganization(body: Record<string, unknown>) {
     return api<{ data: OrganizationResponse }>('/api/v1/organizations', { method: 'POST', body })
+  }
+
+  /**
+   * 組織作成時の slug 可用性をチェックする（BE #1538）。
+   *
+   * `GET /api/v1/organizations/slug-available?slug=xxx` を叩く。
+   * 形式不正・予約語・重複・未指定のいずれでも BE は常に 200 を返し、
+   * `available=false` のとき `reason` に理由コードが入る。
+   */
+  async function checkOrganizationSlugAvailable(
+    slug: string,
+  ): Promise<SlugAvailabilityResponse> {
+    const query = new URLSearchParams({ slug })
+    return api<SlugAvailabilityResponse>(`/api/v1/organizations/slug-available?${query}`)
   }
 
   async function updateOrganization(orgSlug: string, body: Record<string, unknown>) {
@@ -342,6 +357,7 @@ export function useOrganizationApi() {
     getOrganization,
     searchOrganizations,
     createOrganization,
+    checkOrganizationSlugAvailable,
     updateOrganization,
     deleteOrganization,
     getMembers,
