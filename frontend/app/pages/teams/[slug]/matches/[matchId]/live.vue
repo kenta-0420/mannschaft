@@ -6,15 +6,23 @@
 // （タイマー状態機械・イベント入力シート）は `matches.sport` に応じて**競技モジュールを
 // 動的 import（lazy-load）**して差し替える。サッカーしか開かないユーザーはバスケのロジック・
 // 入力シートを初期バンドルに同梱しない（Vite コード分割・マスター懸念「重くなる」の解消）。
+//
+// 【6-④b 拡張】ターン制（SHOGI/GO）モジュールを追加。
+// isTurnBasedModule で判定し、ターン制専用の入力シート（MatchEventSheetTurnBased）を
+// component :is でマウントする（タイマー・タイムライン不要・最小結果入力 UI）。
 import { effectScope } from 'vue'
 import type { MatchEventResponse } from '~/types/match'
 import {
   resolveSportModule,
   isContinuousModule,
   isSetBasedModule,
+  isTurnBasedModule,
   type SportLiveModule,
 } from '~/composables/match/sport/sportModuleRegistry'
 import type { MatchSetTrackerReturn } from '~/composables/match/sport/useMatchSetTracker'
+import type { MatchTurnTrackerReturn } from '~/composables/match/sport/useMatchTurnTracker'
+import { buildTurnResultPayload } from '~/composables/match/useMatchTurnApi'
+import type { BoardProgressItem } from '~/components/match/MatchBoardProgress.vue'
 
 definePageMeta({ layout: 'team', middleware: 'auth' })
 
@@ -28,6 +36,7 @@ const notification = useNotification()
 const { resolveContext } = useMatchOrgContext()
 const matchApi = useMatchApi()
 const eventApi = useMatchEventApi()
+const turnApi = useMatchTurnApi()
 const grid = useMatchPlayerGrid()
 const wakeLock = useWakeLockWithFallback()
 
@@ -52,6 +61,53 @@ const isBasketball = computed(() => sportModule.value?.sport === 'BASKETBALL')
 const isSetBased = computed(() => sportModule.value !== null && isSetBasedModule(sportModule.value!))
 /** セットトラッカー（SET_BASED 競技時のみ非 null）。 */
 const setTracker = shallowRef<MatchSetTrackerReturn | null>(null)
+
+/**
+ * ターン制（SHOGI/GO 等）かどうか（§G.16 stateModel 分岐・6-④b）。
+ * ターン制はタイマー・タイムラインを持たず、最小結果入力シートを使う。
+ */
+const isTurnBased = computed(() => sportModule.value !== null && isTurnBasedModule(sportModule.value!))
+/** ターントラッカー（TURN_BASED 競技時のみ非 null）。 */
+const turnTracker = shallowRef<MatchTurnTrackerReturn | null>(null)
+
+/**
+ * 団体戦の子ボード進捗（6-④c・GET /boards 由来）。
+ * 空配列＝個人戦 or 親未確認。ボードがある場合は MatchBoardProgress を描画する。
+ */
+const boards = ref<BoardProgressItem[]>([])
+/** 団体戦かどうか（子ボードが 1 件以上ある親 match）。 */
+const isTeamMatch = computed(() => boards.value.length > 0)
+
+/** ターン制競技の identifier（'SHOGI' | 'GO' | ...・MatchBoardProgress のラベル分岐用）。 */
+const turnSport = computed<string>(() => sportModule.value?.sport ?? 'SHOGI')
+
+/** 団体戦の子ボード一覧を読み込む（記録/閲覧いずれも・GET /boards）。 */
+async function loadBoards(): Promise<void> {
+  if (orgId.value === null) return
+  try {
+    const list = await turnApi.listBoards(orgId.value, matchId)
+    boards.value = list.map((b) => ({
+      boardNumber: b.boardNumber ?? 0,
+      matchId: b.id ?? null,
+      // 確定＝COMPLETED かつスコアが入っている（home/away いずれか 1 or 引分 0-0 でも COMPLETED）。
+      confirmed: b.status === 'COMPLETED',
+      winnerSide:
+        (b.homeScore ?? 0) > (b.awayScore ?? 0)
+          ? 'HOME'
+          : (b.awayScore ?? 0) > (b.homeScore ?? 0)
+            ? 'AWAY'
+            : null,
+      winMethod: b.winMethod ?? null,
+      // 選手名・記録者名の本格表示は後続フェーズ（BE 拡張待ち）。現状は相手名のみ。
+      homePlayerName: null,
+      awayPlayerName: b.opponentName ?? null,
+      recorderName: null,
+      canRecordThisBoard: b.canRecordTimeline ?? false,
+    }))
+  } catch {
+    // 通知済み（listBoards 内）。個人戦（404/空）でも空配列のまま続行する。
+  }
+}
 
 // セッションは競技モジュールの createTimer を注入して結線する。
 // モジュール解決（動的 import）は非同期＝setup 同期スコープ外で composable を作るため、
@@ -140,6 +196,19 @@ onMounted(async () => {
   // 競技モジュールを動的 import（lazy-load）で解決し、その createTimer をセッションへ注入。
   const mod = await resolveSportModule(sport)
   sportModule.value = mod
+
+  // セット制: セットトラッカーを初期化（SET_BASED 競技時のみ）。
+  if (mod !== null && isSetBasedModule(mod)) {
+    setTracker.value = mod.createSetTracker()
+  }
+
+  // ターン制: ターントラッカーを初期化（TURN_BASED 競技時のみ・6-④b）。
+  if (mod !== null && isTurnBasedModule(mod)) {
+    turnTracker.value = mod.createTurnTracker()
+    // 団体戦の子ボード進捗を読み込む（個人戦なら空配列・6-④c）。
+    await loadBoards()
+  }
+
   sessionScope = effectScope()
   const s = sessionScope.run(() =>
     useMatchLiveSession({
@@ -191,6 +260,88 @@ function penaltyPayload(): { home: number; away: number } | null {
 
 async function complete(): Promise<void> {
   await session.value?.completeMatch(penaltyPayload())
+}
+
+/**
+ * ターン制（将棋/囲碁）の対局結果を確定する（6-④c 配線）。
+ *
+ * 球技用 completeMatch（finalizeScore=ゴールイベント由来＝将棋では常に 0-0）ではなく、
+ * BE のターン制結果エンドポイント PUT /result を呼んで勝者・勝ち方・総手数を送信する。
+ * BE が home/away_score（1-0/0-1/0-0）を確定し、子ボードなら親の勝ち星を再集計する。
+ * その後 changeStatus(COMPLETED) で順位連携（MatchCompletedEvent）を発火させる。
+ * 引分時は win_method を送らない（buildTurnResultPayload が落とす・🟡 BE MATCH_028 整合）。
+ */
+async function completeTurnResult(): Promise<void> {
+  const tracker = turnTracker.value
+  if (!tracker || orgId.value === null || teamId.value === null) return
+  if (matchStatus.value === 'COMPLETED') return
+  const payload = buildTurnResultPayload(
+    tracker.winnerSide.value,
+    tracker.winMethod.value,
+    tracker.totalMoves.value,
+  )
+  try {
+    await turnApi.recordResult(orgId.value, matchId, payload)
+  } catch {
+    // recordResult 内でトースト済み。結果保存に失敗したら status 遷移はしない（根治原則）。
+    return
+  }
+  try {
+    await matchApi.changeStatus(orgId.value, teamId.value, matchId, { status: 'COMPLETED' })
+    matchStatus.value = 'COMPLETED'
+    session.value?.setMatchStatus('COMPLETED')
+    // 団体戦なら親の勝ち星再集計が走るためボード進捗を再取得する。
+    if (isTeamMatch.value) await loadBoards()
+  } catch {
+    notification.warn(t('match.live.error.complete_failed'))
+  }
+}
+
+/**
+ * 局面写真をアップロードする（presign → ストレージ PUT → confirm → 表示 URL 取得）。
+ * 成功したらトラッカーへ追加し、ターン制シートのプレビューに反映する。
+ */
+async function onUploadPositionPhoto(file: File): Promise<void> {
+  const tracker = turnTracker.value
+  if (!tracker || orgId.value === null) return
+  try {
+    const { attachment, displayUrl } = await turnApi.uploadPositionPhoto(orgId.value, matchId, file)
+    tracker.addPositionPhoto({
+      key: attachment.id,
+      url: displayUrl,
+      filename: attachment.originalFilename ?? file.name,
+    })
+    notification.success(t('match.turn.photo.upload_success'))
+  } catch {
+    // uploadPositionPhoto 内でトースト済み。
+  }
+}
+
+/**
+ * 局面写真を削除する（DELETE /attachments/{id}）。
+ * 成功したらトラッカーからも除去する。
+ */
+async function onRemovePositionPhoto(key: string): Promise<void> {
+  const tracker = turnTracker.value
+  if (!tracker || orgId.value === null) return
+  try {
+    await turnApi.deleteAttachment(orgId.value, matchId, key)
+    tracker.removePositionPhoto(key)
+  } catch {
+    // deleteAttachment 内でトースト済み。
+  }
+}
+
+/**
+ * 団体戦の子ボードを記録するため対象ボードの live へ遷移する（6-④c）。
+ * 子 match が未作成（matchId=null）の場合はここでは作成導線のみ（本格作成 UI は後続）。
+ */
+function onRecordBoard(_boardNumber: number, boardMatchId: string | null): void {
+  if (boardMatchId === null) {
+    notification.info(t('match.board.create_pending_notice'))
+    return
+  }
+  void router.push(`/teams/${teamIdStr}/matches/${boardMatchId}/live`)
 }
 
 /**
@@ -323,8 +474,11 @@ function back(): void {
         {{ t('match.live.completed_notice') }}
       </p>
 
-      <!-- 大ボタン行（記録開始・スタメン設定）— 記録権限がある場合のみ。 -->
-      <div v-if="canRecord" class="mb-4 flex flex-col gap-2">
+      <!--
+        大ボタン行（記録開始・スタメン設定）— 球技（連続時間制・セット制）のみ。
+        ターン制（SHOGI/GO）は結果入力シートが別途表示されるためタイムライン不要。
+      -->
+      <div v-if="canRecord && !isTurnBased" class="mb-4 flex flex-col gap-2">
         <Button
           class="w-full !min-h-[3.5rem]"
           :label="t('match.live.title')"
@@ -341,8 +495,8 @@ function back(): void {
         />
       </div>
 
-      <!-- undo 帯（記録権限がある場合のみ） -->
-      <div v-if="canRecord && session.recorder.canUndo.value" class="mb-3 flex justify-end">
+      <!-- undo 帯（記録権限がある場合のみ・ターン制は不要） -->
+      <div v-if="canRecord && !isTurnBased && session.recorder.canUndo.value" class="mb-3 flex justify-end">
         <Button
           text
           severity="secondary"
@@ -352,7 +506,9 @@ function back(): void {
         />
       </div>
 
+      <!-- タイムライン（球技のみ・ターン制は不要） -->
       <MatchTimeline
+        v-if="!isTurnBased"
         :events="session.recorder.events.value"
         :own-team-side="ownTeamSide"
         @select="onTimelineSelect"
@@ -379,11 +535,11 @@ function back(): void {
         バスケシート Vue を初期バンドルに同梱しない（Vite コード分割に乗る）。
         emit はサッカー（goal/assist/card）とバスケ（score/stat/foul）で異なるが、各シートは
         自分が emit するイベントだけを発火するため、両系統のハンドラを束ねて結線して問題ない。
-        記録権限がある場合のみマウント。
+        記録権限がある場合のみマウント。ターン制・セット制は別パス（下記）なのでここは除外。
       -->
       <component
         :is="sportModule.eventSheet"
-        v-if="canRecord && sportModule && !isSetBased"
+        v-if="canRecord && sportModule && !isSetBased && !isTurnBased"
         v-model:visible="sheetVisible"
         :players="grid.players.value"
         @goal="session.recordGoal"
@@ -411,9 +567,45 @@ function back(): void {
         @complete-match="complete()"
       />
 
-      <!-- スタメン設定シート（記録権限がある場合のみマウント） -->
+      <!--
+        団体戦ボード進捗（TURN_BASED かつ子ボードあり・6-④c）（§G.16a・§4.3）。
+        親 match を開いたとき、各ボードの確定状況（n/N）と記録導線を表示する。
+        個人戦（boards 空）では描画しない。
+      -->
+      <MatchBoardProgress
+        v-if="isTurnBased && isTeamMatch"
+        :boards="boards"
+        :sport="turnSport"
+        :can-record-all="canRecord"
+        class="mb-4"
+        @record-board="onRecordBoard"
+      />
+
+      <!--
+        ターン制 結果入力シート（TURN_BASED 競技のみ表示・6-④b/6-④c）（§G.16a）。
+        将棋/囲碁は「タイマー・タイムライン・選手グリッド」を使わず、
+        最小結果入力（勝者選択・勝ち方任意・手数任意・局面写真任意）UI で完結する。
+        記録権限の有無に関わらずマウント（canRecord prop で内部出し分け）。
+        完了は球技用 complete() ではなく completeTurnResult()（PUT /result + COMPLETED・6-④c 配線）。
+        局面写真は presign 方式で uploadPositionPhoto / deleteAttachment へ結線する。
+        団体戦の親（isTeamMatch）では結果入力シートは出さない（各ボード live で記録する）。
+      -->
+      <component
+        :is="sportModule.eventSheet"
+        v-if="isTurnBased && turnTracker && sportModule && !isTeamMatch"
+        :tracker="turnTracker!"
+        :own-team-side="ownTeamSide"
+        :opponent-name="opponentName"
+        :can-record="canRecord"
+        class="mb-4"
+        @complete-match="completeTurnResult()"
+        @upload-photo="onUploadPositionPhoto"
+        @remove-photo="onRemovePositionPhoto"
+      />
+
+      <!-- スタメン設定シート（記録権限がある場合のみマウント・ターン制は不要） -->
       <MatchStarterSetup
-        v-if="canRecord"
+        v-if="canRecord && !isTurnBased"
         v-model:visible="starterSetupVisible"
         :players="grid.players.value"
         @toggle-starter="grid.toggleStarter($event)"

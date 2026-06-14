@@ -478,6 +478,81 @@
       "increment_away": "相手+1",
       "decrement_home": "自チーム-1",
       "decrement_away": "相手-1"
+    },
+    "win_method": {
+      "RESIGNATION": "投了",
+      "CHECKMATE": "詰み",
+      "TIMEOUT": "時間切れ",
+      "FOUL_WIN": "反則勝ち",
+      "REPETITION": "千日手",
+      "IMPASSE": "持将棋",
+      "DEFAULT_WIN": "不戦勝",
+      "POINTS_WIN": "目数差勝ち"
+    },
+    "turn": {
+      "waiting_notice": "対局を開始してください",
+      "start_game": "対局開始",
+      "select_winner": "勝者を選択",
+      "required": "（必須）",
+      "optional": "（任意）",
+      "win": "の勝ち",
+      "result": {
+        "draw": "引分け"
+      },
+      "draw_type_shogi": "千日手/持将棋",
+      "draw_type_go": "持碁",
+      "side": {
+        "home_shogi": "先手",
+        "away_shogi": "後手",
+        "home_go": "黒",
+        "away_go": "白"
+      },
+      "win_method_label": "勝ち方",
+      "win_method_placeholder": "勝ち方を選択（任意）",
+      "margin_label": "目数差",
+      "margin_unit": "目",
+      "total_moves_label": "総手数",
+      "total_moves": "{n}手",
+      "margin": "{n}目差",
+      "moves_unit": "手",
+      "comment_label": "コメント・メモ",
+      "comment_placeholder": "例：終盤の見事な詰みでした",
+      "complete": "結果を確定",
+      "complete_hint": "勝者（または引分け）を選択してください",
+      "photo": {
+        "label": "局面写真",
+        "add": "写真を追加",
+        "remove": "写真を削除",
+        "hint": "画像（PNG/JPEG/WebP/GIF・10MBまで・SVG不可）",
+        "upload_success": "局面写真をアップロードしました"
+      },
+      "error": {
+        "record_result_failed": "対局結果の保存に失敗しました",
+        "create_board_failed": "ボードの作成に失敗しました",
+        "load_boards_failed": "ボード一覧の取得に失敗しました",
+        "load_attachments_failed": "局面写真の取得に失敗しました",
+        "delete_attachment_failed": "局面写真の削除に失敗しました",
+        "upload_photo_failed": "局面写真のアップロードに失敗しました",
+        "attachment_type_invalid": "画像ファイル（SVG不可）を選択してください",
+        "attachment_too_large": "ファイルサイズが大きすぎます（10MBまで）"
+      }
+    },
+    "board": {
+      "title": "団体戦ボード進捗",
+      "progress_label": "ボード確定",
+      "all_confirmed": "全ボード確定 — 団体戦結果を確定できます",
+      "label": "第{n}ボード",
+      "winner": "{name} の勝ち",
+      "recorder": "記録: {name}",
+      "record_button": "記録する",
+      "player_tbd": "未定",
+      "empty": "ボードがまだありません",
+      "status": {
+        "confirmed": "確定",
+        "in_progress": "記録中",
+        "pending": "未入力"
+      },
+      "create_pending_notice": "このボードはまだ作成されていません"
     }
   }
 }

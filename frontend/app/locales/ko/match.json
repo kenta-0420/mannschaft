@@ -478,6 +478,81 @@
       "sets_label": "세트 스코어",
       "decrement_away": "원정-1",
       "start_first_set": "제1세트 시작"
+    },
+    "win_method": {
+      "RESIGNATION": "투료",
+      "CHECKMATE": "외통수",
+      "TIMEOUT": "시간 초과",
+      "FOUL_WIN": "반칙승",
+      "REPETITION": "천일수",
+      "IMPASSE": "지쇼기",
+      "DEFAULT_WIN": "부전승",
+      "POINTS_WIN": "집수 차 승"
+    },
+    "turn": {
+      "waiting_notice": "대국을 시작해 주세요",
+      "start_game": "대국 시작",
+      "select_winner": "승자 선택",
+      "required": "（필수）",
+      "optional": "（선택）",
+      "win": "승",
+      "result": {
+        "draw": "무승부"
+      },
+      "draw_type_shogi": "천일수/지쇼기",
+      "draw_type_go": "지고（무승부）",
+      "side": {
+        "home_shogi": "선수",
+        "away_shogi": "후수",
+        "home_go": "흑",
+        "away_go": "백"
+      },
+      "win_method_label": "승리 방법",
+      "win_method_placeholder": "승리 방법 선택（선택）",
+      "margin_label": "집수 차",
+      "margin_unit": "집",
+      "total_moves_label": "총 수순",
+      "total_moves": "{n}수",
+      "margin": "{n}집 차",
+      "moves_unit": "수",
+      "comment_label": "코멘트/메모",
+      "comment_placeholder": "예：멋진 종반전이었습니다",
+      "complete": "결과 확정",
+      "complete_hint": "승자 또는 무승부를 먼저 선택해 주세요",
+      "photo": {
+        "label": "국면 사진",
+        "add": "사진 추가",
+        "remove": "사진 삭제",
+        "hint": "이미지(PNG/JPEG/WebP/GIF, 최대 10MB, SVG 불가)",
+        "upload_success": "국면 사진을 업로드했습니다"
+      },
+      "error": {
+        "record_result_failed": "대국 결과 저장에 실패했습니다",
+        "create_board_failed": "보드 생성에 실패했습니다",
+        "load_boards_failed": "보드 목록을 불러오지 못했습니다",
+        "load_attachments_failed": "국면 사진을 불러오지 못했습니다",
+        "delete_attachment_failed": "국면 사진 삭제에 실패했습니다",
+        "upload_photo_failed": "국면 사진 업로드에 실패했습니다",
+        "attachment_type_invalid": "이미지 파일을 선택하세요(SVG 불가)",
+        "attachment_too_large": "파일이 너무 큽니다(최대 10MB)"
+      }
+    },
+    "board": {
+      "title": "단체전 보드 진행 상황",
+      "progress_label": "보드 확정",
+      "all_confirmed": "전체 보드 확정 — 단체전 결과를 확정할 수 있습니다",
+      "label": "제{n}보드",
+      "winner": "{name} 승",
+      "recorder": "기록: {name}",
+      "record_button": "기록하기",
+      "player_tbd": "미정",
+      "empty": "보드가 아직 없습니다",
+      "status": {
+        "confirmed": "확정",
+        "in_progress": "기록 중",
+        "pending": "미입력"
+      },
+      "create_pending_notice": "이 보드는 아직 생성되지 않았습니다"
     }
   }
 }

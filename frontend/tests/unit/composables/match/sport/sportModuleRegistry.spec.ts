@@ -5,6 +5,7 @@ import {
   isSupportedSport,
   isContinuousModule,
   isSetBasedModule,
+  isTurnBasedModule,
 } from '~/composables/match/sport/sportModuleRegistry'
 import {
   getSportCatalog,
@@ -13,20 +14,23 @@ import {
 } from '~/composables/match/sport/sportEventCatalog'
 
 /**
- * F08.10 6-②b / 6-③b 動的 import モジュール選択 UT（04 §G.16）。
+ * F08.10 6-②b / 6-③b / 6-④b 動的 import モジュール選択 UT（04 §G.16）。
  *
  * 観点:
  *   MOD-001: isSupportedSport は連続時間制 3 競技 + VOLLEYBALL（セット制）で true
+ *   MOD-001b: SHOGI/GO（ターン制）も isSupportedSport=true（6-④b）
  *   MOD-002: resolveSportModule が競技に応じた正しいモジュールを動的 import で返す
- *   MOD-003: sport=null / 未対応競技（SHOGI 等）は SOCCER モジュールへフォールバック
+ *   MOD-003: sport=null / 未対応競技（TENNIS 等）は SOCCER モジュールへフォールバック
  *   MOD-004: 各連続時間制モジュールの createTimer が機能するタイマーを返す
  *   MOD-005: isNextCompleted が競技別に正しい（サッカー PK / バスケ Q4・OT）
  *   MOD-006: 各モジュールは eventSheet（遅延コンポ）を必ず提供する
  *   MOD-009: VOLLEYBALL モジュールは SET_BASED・createSetTracker を持ちタイマーを持たない
+ *   MOD-010: SHOGI/GO は TURN_BASED・createTurnTracker を持ちタイマーを持たない（6-④b）
  *   CAT-001: カタログ駆動のプリセット並び（サッカー=得点起点 / バスケ=2P/3P/FT 起点）
  *   CAT-002: usesSoccerStyleSheet（サッカー/フットサル=共通シート・バスケ=専用）
  *   CAT-003: ポジション語彙が競技別
  *   CAT-004: VOLLEYBALL カタログは SET_BASED・positions OH/OP/MB/S/L
+ *   CAT-005: SHOGI/GO カタログは TURN_BASED・positions 空・プリセット空（6-④b）
  */
 
 describe('sportModuleRegistry（動的 import 選択）', () => {
@@ -35,9 +39,14 @@ describe('sportModuleRegistry（動的 import 選択）', () => {
     expect(isSupportedSport('FUTSAL')).toBe(true)
     expect(isSupportedSport('BASKETBALL')).toBe(true)
     expect(isSupportedSport('VOLLEYBALL')).toBe(true) // 6-③b でセット制追加
-    expect(isSupportedSport('SHOGI')).toBe(false) // 後続波（ターン制）は未対応
     expect(isSupportedSport(null)).toBe(false)
     expect(isSupportedSport(undefined)).toBe(false)
+  })
+
+  it('MOD-001b: SHOGI/GO（ターン制）も isSupportedSport=true（6-④b）', () => {
+    expect(isSupportedSport('SHOGI')).toBe(true) // 6-④b でターン制追加
+    expect(isSupportedSport('GO')).toBe(true) // 6-④b でターン制追加
+    expect(isSupportedSport('TENNIS')).toBe(false) // 未対応競技
   })
 
   it('MOD-002: 競技に応じた正しいモジュールを返す', async () => {
@@ -45,20 +54,27 @@ describe('sportModuleRegistry（動的 import 選択）', () => {
     const futsal = await resolveSportModule('FUTSAL')
     const basket = await resolveSportModule('BASKETBALL')
     const volley = await resolveSportModule('VOLLEYBALL')
+    const shogi = await resolveSportModule('SHOGI')
+    const go = await resolveSportModule('GO')
     expect(soccer?.sport).toBe('SOCCER')
     expect(futsal?.sport).toBe('FUTSAL')
     expect(basket?.sport).toBe('BASKETBALL')
     expect(volley?.sport).toBe('VOLLEYBALL')
+    expect(shogi?.sport).toBe('SHOGI')
+    expect(go?.sport).toBe('GO')
     // 連続時間制モジュールの stateModel 検証
     expect(soccer?.stateModel).toBe('CONTINUOUS_TIME')
     expect(basket?.stateModel).toBe('CONTINUOUS_TIME')
     // セット制モジュールの stateModel 検証
     expect(volley?.stateModel).toBe('SET_BASED')
+    // ターン制モジュールの stateModel 検証
+    expect(shogi?.stateModel).toBe('TURN_BASED')
+    expect(go?.stateModel).toBe('TURN_BASED')
   })
 
-  it('MOD-003: null / 未対応競技（SHOGI）は SOCCER へフォールバック', async () => {
+  it('MOD-003: null / 未対応競技（TENNIS）は SOCCER へフォールバック', async () => {
     expect((await resolveSportModule(null))?.sport).toBe('SOCCER')
-    expect((await resolveSportModule('SHOGI'))?.sport).toBe('SOCCER')
+    expect((await resolveSportModule('TENNIS'))?.sport).toBe('SOCCER')
   })
 
   it('MOD-004: createTimer が機能するタイマーを返す（サッカー前後半 / バスケ Q1）', async () => {
@@ -106,7 +122,9 @@ describe('sportModuleRegistry（動的 import 選択）', () => {
     const futsal = await resolveSportModule('FUTSAL')
     const basket = await resolveSportModule('BASKETBALL')
     const volley = await resolveSportModule('VOLLEYBALL')
-    for (const mod of [soccer, futsal, basket, volley]) {
+    const shogi = await resolveSportModule('SHOGI')
+    const go = await resolveSportModule('GO')
+    for (const mod of [soccer, futsal, basket, volley, shogi, go]) {
       expect(mod?.eventSheet).toBeDefined()
       // defineAsyncComponent は object もしくは関数のコンポーネント定義を返す
       expect(['object', 'function']).toContain(typeof mod?.eventSheet)
@@ -119,6 +137,7 @@ describe('sportModuleRegistry（動的 import 選択）', () => {
     expect(volley?.stateModel).toBe('SET_BASED')
     expect(isSetBasedModule(volley!)).toBe(true)
     expect(isContinuousModule(volley!)).toBe(false)
+    expect(isTurnBasedModule(volley!)).toBe(false)
     const scope = effectScope()
     scope.run(() => {
       if (!isSetBasedModule(volley!)) return
@@ -126,6 +145,40 @@ describe('sportModuleRegistry（動的 import 選択）', () => {
       expect(tracker).toBeDefined()
       expect(tracker.trackerState.value).toBe('WAITING')
       expect(tracker.bestOf).toBe(5)
+    })
+    scope.stop()
+  })
+
+  it('MOD-010: SHOGI は TURN_BASED・createTurnTracker を持ちタイマー/セットトラッカーを持たない（6-④b）', async () => {
+    const shogi = await resolveSportModule('SHOGI')
+    expect(shogi).not.toBeNull()
+    expect(shogi?.stateModel).toBe('TURN_BASED')
+    expect(isTurnBasedModule(shogi!)).toBe(true)
+    expect(isContinuousModule(shogi!)).toBe(false)
+    expect(isSetBasedModule(shogi!)).toBe(false)
+    const scope = effectScope()
+    scope.run(() => {
+      if (!isTurnBasedModule(shogi!)) return
+      const tracker = shogi.createTurnTracker()
+      expect(tracker).toBeDefined()
+      expect(tracker.trackerState.value).toBe('WAITING')
+      expect(tracker.isGo.value).toBe(false) // SHOGI = isGo false
+      expect(tracker.sport).toBe('SHOGI')
+    })
+    scope.stop()
+  })
+
+  it('MOD-010: GO は TURN_BASED・createTurnTracker・isGo=true（6-④b）', async () => {
+    const go = await resolveSportModule('GO')
+    expect(go).not.toBeNull()
+    expect(go?.stateModel).toBe('TURN_BASED')
+    expect(isTurnBasedModule(go!)).toBe(true)
+    const scope = effectScope()
+    scope.run(() => {
+      if (!isTurnBasedModule(go!)) return
+      const tracker = go.createTurnTracker()
+      expect(tracker.isGo.value).toBe(true) // GO = isGo true
+      expect(tracker.sport).toBe('GO')
     })
     scope.stop()
   })
@@ -176,5 +229,23 @@ describe('sportEventCatalog（カタログ駆動）', () => {
     expect(volley).toBeDefined()
     expect(volley?.stateModel).toBe('SET_BASED')
     expect(volley?.presets).toEqual([])
+  })
+
+  it('CAT-005: SHOGI/GO カタログは TURN_BASED・プリセット空・ポジション空（6-④b）', () => {
+    const shogi = getSportCatalog('SHOGI')
+    const go = getSportCatalog('GO')
+    // SHOGI
+    expect(shogi).toBeDefined()
+    expect(shogi?.stateModel).toBe('TURN_BASED')
+    expect(shogi?.presets).toEqual([])
+    expect(shogi?.positions).toEqual([]) // ポジション語彙なし（§7）
+    // GO
+    expect(go).toBeDefined()
+    expect(go?.stateModel).toBe('TURN_BASED')
+    expect(go?.presets).toEqual([])
+    expect(go?.positions).toEqual([])
+    // カタログ全体: SPORT_CATALOGS に SHOGI/GO が登録されている
+    expect(SPORT_CATALOGS.SHOGI).toBeDefined()
+    expect(SPORT_CATALOGS.GO).toBeDefined()
   })
 })

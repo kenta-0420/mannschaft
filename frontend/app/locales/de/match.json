@@ -478,6 +478,81 @@
       "sets_label": "Satzstand",
       "decrement_away": "Auswärts -1",
       "start_first_set": "Satz 1 starten"
+    },
+    "win_method": {
+      "RESIGNATION": "Aufgabe",
+      "CHECKMATE": "Matt",
+      "TIMEOUT": "Zeitüberschreitung",
+      "FOUL_WIN": "Sieg durch Regelverletzung",
+      "REPETITION": "Wiederholung (Sennichite)",
+      "IMPASSE": "Unentschieden (Jishogi)",
+      "DEFAULT_WIN": "Kampflos gewonnen",
+      "POINTS_WIN": "Punktesieg"
+    },
+    "turn": {
+      "waiting_notice": "Bitte starten Sie die Partie",
+      "start_game": "Partie starten",
+      "select_winner": "Sieger auswählen",
+      "required": "（Pflichtfeld）",
+      "optional": "（optional）",
+      "win": "gewinnt",
+      "result": {
+        "draw": "Unentschieden"
+      },
+      "draw_type_shogi": "Sennichite / Jishogi",
+      "draw_type_go": "Jigo (Unentschieden)",
+      "side": {
+        "home_shogi": "Sente (Anzug)",
+        "away_shogi": "Gote (Nachzug)",
+        "home_go": "Schwarz",
+        "away_go": "Weiß"
+      },
+      "win_method_label": "Gewinnart",
+      "win_method_placeholder": "Gewinnart auswählen（optional）",
+      "margin_label": "Punkteunterschied",
+      "margin_unit": "Pkt",
+      "total_moves_label": "Gesamtzüge",
+      "total_moves": "{n} Züge",
+      "margin": "{n} Pkt Unterschied",
+      "moves_unit": "Züge",
+      "comment_label": "Kommentar / Notiz",
+      "comment_placeholder": "z. B. Ein brillantes Endspiel",
+      "complete": "Ergebnis bestätigen",
+      "complete_hint": "Bitte zuerst Sieger oder Unentschieden auswählen",
+      "photo": {
+        "label": "Stellungsfotos",
+        "add": "Foto hinzufügen",
+        "remove": "Foto entfernen",
+        "hint": "Bilder (PNG/JPEG/WebP/GIF, bis 10MB, kein SVG)",
+        "upload_success": "Stellungsfoto hochgeladen"
+      },
+      "error": {
+        "record_result_failed": "Speichern des Ergebnisses fehlgeschlagen",
+        "create_board_failed": "Erstellen des Bretts fehlgeschlagen",
+        "load_boards_failed": "Laden der Brettliste fehlgeschlagen",
+        "load_attachments_failed": "Laden der Stellungsfotos fehlgeschlagen",
+        "delete_attachment_failed": "Löschen des Stellungsfotos fehlgeschlagen",
+        "upload_photo_failed": "Hochladen des Stellungsfotos fehlgeschlagen",
+        "attachment_type_invalid": "Bitte eine Bilddatei wählen (kein SVG)",
+        "attachment_too_large": "Datei ist zu groß (bis 10MB)"
+      }
+    },
+    "board": {
+      "title": "Mannschaftskampf Brettfortschritt",
+      "progress_label": "Bretter bestätigt",
+      "all_confirmed": "Alle Bretter bestätigt — Mannschaftskampfergebnis kann finalisiert werden",
+      "label": "Brett {n}",
+      "winner": "{name} gewinnt",
+      "recorder": "Aufzeichner: {name}",
+      "record_button": "Aufzeichnen",
+      "player_tbd": "Noch offen",
+      "empty": "Noch keine Bretter",
+      "status": {
+        "confirmed": "Bestätigt",
+        "in_progress": "In Bearbeitung",
+        "pending": "Ausstehend"
+      },
+      "create_pending_notice": "Dieses Brett wurde noch nicht erstellt"
     }
   }
 }
