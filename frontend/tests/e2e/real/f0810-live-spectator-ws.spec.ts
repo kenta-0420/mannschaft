@@ -39,7 +39,7 @@
  */
 
 import { test, expect, request as pwRequest, type APIRequestContext } from '@playwright/test'
-import { Client, StompHeaders, type IMessage, type IFrame } from '@stomp/stompjs'
+import { Client, type StompHeaders, type IMessage, type IFrame } from '@stomp/stompjs'
 import WS from 'ws'
 
 // storageState に依存せず、テスト内で API ログインする（f0810-entry1 / basketball spec と同作法）。
