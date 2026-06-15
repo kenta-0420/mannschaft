@@ -700,7 +700,10 @@ public class GlobalExceptionHandler {
             Map.entry("TEAM_062", HttpStatus.CONFLICT),                      // SLUG_ALREADY_TAKEN
             Map.entry("ORG_060", HttpStatus.UNPROCESSABLE_ENTITY),           // SLUG_INVALID_FORMAT
             Map.entry("ORG_061", HttpStatus.UNPROCESSABLE_ENTITY),           // SLUG_RESERVED
-            Map.entry("ORG_062", HttpStatus.CONFLICT)                        // SLUG_ALREADY_TAKEN
+            Map.entry("ORG_062", HttpStatus.CONFLICT),                       // SLUG_ALREADY_TAKEN
+            // F01.2 §5.9.5 slug リネーム: 他スコープ履歴に予約済み slug は 409（SLUG_RETIRED）
+            Map.entry("TEAM_063", HttpStatus.CONFLICT),                      // SLUG_RETIRED（他チーム履歴予約）
+            Map.entry("ORG_063", HttpStatus.CONFLICT)                        // SLUG_RETIRED（他組織履歴予約）
     );
 
     /**

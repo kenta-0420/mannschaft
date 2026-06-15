@@ -12,6 +12,7 @@ import com.mannschaft.app.organization.dto.OrgAllMembersResponse;
 import com.mannschaft.app.organization.dto.OrgTeamSummaryResponse;
 import com.mannschaft.app.organization.dto.OrganizationResponse;
 import com.mannschaft.app.organization.dto.OrganizationSummaryResponse;
+import com.mannschaft.app.organization.dto.RenameSlugRequest;
 import com.mannschaft.app.organization.dto.UpdateOrganizationRequest;
 import com.mannschaft.app.role.service.BlockService;
 import com.mannschaft.app.role.service.InviteService;
@@ -119,6 +120,17 @@ public class OrganizationController {
             @PathVariable String slug, @Valid @RequestBody UpdateOrganizationRequest req) {
         Long id = organizationService.resolveOrgId(slug);
         return ResponseEntity.ok(organizationService.updateOrganization(id, req));
+    }
+
+    @PutMapping("/{slug}/slug")
+    @Operation(summary = "組織 slug リネーム（ADMIN/DEPUTY のみ・旧slugは301解決用に履歴予約）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "リネーム成功")
+    public ResponseEntity<ApiResponse<OrganizationResponse>> renameSlug(
+            @PathVariable String slug, @Valid @RequestBody RenameSlugRequest req) {
+        Long id = organizationService.resolveOrgId(slug);
+        // F00 正準: 当該組織の ADMIN/DEPUTY 相当のみ許可（独自 gate を作らず checkAdminOrAbove に委譲）
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
+        return ResponseEntity.ok(organizationService.renameSlug(id, req.getNewSlug()));
     }
 
     @DeleteMapping("/{slug}")

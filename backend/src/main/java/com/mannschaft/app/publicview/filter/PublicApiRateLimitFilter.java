@@ -105,6 +105,8 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
      * </ol>
      */
     // F21.1 §5.5: 公開FAQ（/faqs）をレート制限対象に追加（PUBLIC_API バケットを共有）。
+    // F01.2 §5.9.5: slug 解決 `/api/v1/public/(teams|organizations)/slug-resolve` も
+    //   この `([^/]+)` グループ（slug-resolve）にマッチするため PUBLIC_API バケットで自動的にレート制限される。
     private static final Pattern PUBLIC_API_PATH =
             Pattern.compile("^/api/v1/public/(teams|organizations)/([^/]+)(/posts(/[^/]+)?|/events|/faqs)?$");
 

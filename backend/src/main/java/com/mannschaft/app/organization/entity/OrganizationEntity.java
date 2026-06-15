@@ -224,4 +224,17 @@ public class OrganizationEntity extends BaseEntity {
     public void updateTimelinePostsPublic(boolean enabled) {
         this.timelinePostsPublic = enabled;
     }
+
+    /**
+     * F01.2 §5.9.5 slug リネーム: slug を新しい値へ変更する。
+     *
+     * <p>クラスレベル {@code @Setter} を持たないため、ビジネスメソッド経由で更新する。
+     * 形式・予約語・一意性・履歴予約の検証は Service 層（{@code OrganizationService#renameSlug}）が
+     * 行う前提で、本メソッドは値の差し替えのみを担う。旧 slug の履歴記録も Service 層の責務。</p>
+     *
+     * @param newSlug 新しい slug（検証済み前提）
+     */
+    public void renameSlug(String newSlug) {
+        this.slug = newSlug;
+    }
 }
