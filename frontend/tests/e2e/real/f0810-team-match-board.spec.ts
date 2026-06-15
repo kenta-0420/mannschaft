@@ -191,16 +191,19 @@ test('TM-003: 子ボード一覧（GET /boards）→ 5 局・board_number 昇順
 test('TM-004: 各ボードに対局結果記録（HOME 3 勝・引分 1・AWAY 1）→ 200 × 5', async () => {
   expect(boardIds.length, 'TM-002 でボード作成済み').toBe(5)
 
+  const [b0, b1, b2, b3, b4] = boardIds
+  if (!b0 || !b1 || !b2 || !b3 || !b4) throw new Error('boardIds が 5 件揃っていない（TM-002 が失敗）')
+
   // ボード1: HOME RESIGNATION 勝ち
-  await recordBoardResult(boardIds[0], 'HOME', 'RESIGNATION')
+  await recordBoardResult(b0, 'HOME', 'RESIGNATION')
   // ボード2: HOME CHECKMATE 勝ち
-  await recordBoardResult(boardIds[1], 'HOME', 'CHECKMATE')
+  await recordBoardResult(b1, 'HOME', 'CHECKMATE')
   // ボード3: 引分（千日手）
-  await recordBoardResult(boardIds[2], null, null)
+  await recordBoardResult(b2, null, null)
   // ボード4: HOME DEFAULT_WIN（不戦勝）
-  await recordBoardResult(boardIds[3], 'HOME', 'DEFAULT_WIN')
+  await recordBoardResult(b3, 'HOME', 'DEFAULT_WIN')
   // ボード5: AWAY RESIGNATION 勝ち
-  await recordBoardResult(boardIds[4], 'AWAY', 'RESIGNATION')
+  await recordBoardResult(b4, 'AWAY', 'RESIGNATION')
 })
 
 // ===========================================================================
@@ -277,8 +280,10 @@ test('TM-007: 勝ち星同数（引分）でも親 COMPLETED 可（DRAW は vali
     }
 
     // 両ボード引分
-    await recordBoardResult(drawBoardIds[0], null, null)
-    await recordBoardResult(drawBoardIds[1], null, null)
+    const [db0, db1] = drawBoardIds
+    if (!db0 || !db1) throw new Error('drawBoardIds が 2 件揃っていない（直前の作成ループが失敗）')
+    await recordBoardResult(db0, null, null)
+    await recordBoardResult(db1, null, null)
 
     // 親スコアを確認（homeStars=2・awayStars=2 = 同数引分）
     const parentRes = await api.get(`${BE_API}/organizations/${orgId}/teams/${teamId}/matches/${drawParentId}`, {

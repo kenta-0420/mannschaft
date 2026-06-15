@@ -235,7 +235,9 @@ test('PH-007: DL URL 発行 → downloadUrl が返る（生 fileKey を返さな
   )
   const attachments = (await listRes.json() as { data: Array<{ id: string }> }).data
   expect(attachments.length, '添付が存在する（PH-005 の confirm 済み）').toBeGreaterThanOrEqual(1)
-  const attachId = attachments[0].id
+  const firstAttach = attachments[0]
+  if (!firstAttach) throw new Error('添付が存在しない（PH-005 の confirm 未実施の可能性）')
+  const attachId = firstAttach.id
 
   // DL URL 発行
   const dlRes = await api.get(
@@ -271,7 +273,9 @@ test('PH-008: 添付削除 → 204 + 一覧から消える', async () => {
   )
   const beforeList = (await listRes.json() as { data: Array<{ id: string }> }).data
   expect(beforeList.length, '削除前に添付が存在する').toBeGreaterThanOrEqual(1)
-  const attachId = beforeList[0].id
+  const firstBeforeItem = beforeList[0]
+  if (!firstBeforeItem) throw new Error('削除対象の添付が存在しない（PH-005 の confirm 未実施の可能性）')
+  const attachId = firstBeforeItem.id
 
   // 削除
   const delRes = await api.delete(
