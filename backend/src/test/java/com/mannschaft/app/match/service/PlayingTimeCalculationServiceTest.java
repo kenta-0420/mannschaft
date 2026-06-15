@@ -262,6 +262,40 @@ class PlayingTimeCalculationServiceTest {
     }
 
     @Test
+    @DisplayName("recalculate: SCORED（フィギュア）は算出を起動しない（出場交代概念なし・01 §D.8）")
+    void recalcSkipsScored() {
+        UUID matchId = UUID.randomUUID();
+        MatchEntity match = MatchEntity.builder()
+                .sport(com.mannschaft.app.match.domain.Sport.FIGURE_SKATING)
+                .stateModel(com.mannschaft.app.match.domain.StateModel.SCORED)
+                .build();
+        match.setId(matchId);
+
+        service.recalculate(match, null);
+
+        // 採点競技は STARTER/SUB が存在せず区間が組み立たないため、リポジトリに一切触れない
+        verify(eventRepo, never()).findByMatchIdOrderByPeriodAscMinuteAscSortSeqAsc(any());
+        verify(appearanceRepo, never()).findByMatchId(any());
+        verify(appearanceRepo, never()).save(any());
+        verify(appearanceRepo, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("recalculate: state_model 未設定でも sport=GYMNASTICS から SCORED を導出してスキップ")
+    void recalcSkipsScoredDerivedFromSport() {
+        UUID matchId = UUID.randomUUID();
+        MatchEntity match = MatchEntity.builder()
+                .sport(com.mannschaft.app.match.domain.Sport.GYMNASTICS)
+                .build(); // state_model 明示なし（古いレコード相当）
+        match.setId(matchId);
+
+        service.recalculate(match, null);
+
+        verify(eventRepo, never()).findByMatchIdOrderByPeriodAscMinuteAscSortSeqAsc(any());
+        verify(appearanceRepo, never()).save(any());
+    }
+
+    @Test
     @DisplayName("recalculate: CONTINUOUS_TIME（サッカー）は通常どおり算出を起動する")
     void recalcRunsForContinuousTime() {
         UUID matchId = UUID.randomUUID();

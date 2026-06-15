@@ -413,6 +413,68 @@ class MatchServiceTest {
         verify(eventPublisher, never()).publishEvent(any());
     }
 
+    // ─── (b4) SCORED（採点競技）: 合計点（整数スケール×1000）両確定で COMPLETED 可 ──────
+    // 合計点の大小で勝敗を導出（高い側が勝者・同点は DRAW・§B.1.2/§6）。win_method は使わない（§10）。
+
+    @Test
+    @DisplayName("(b4) SCORED（フィギュア）: 合計点両確定なら COMPLETED 可（duration 不要・MATCH_023 を要求しない）")
+    void scoredCompletedWithBothScores() {
+        match.setSport(Sport.FIGURE_SKATING);
+        match.setStateModel(StateModel.SCORED);
+        match.setDurationMinutes(null); // 採点競技は duration 不要
+        // 215.43 → 215430 / 198.45 → 198450（HOME が高い＝HOME 勝ち）
+        match.setHomeScore(215430);
+        match.setAwayScore(198450);
+
+        service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED);
+
+        // 採点競技でも recalculate は呼ばれる（PlayingTimeCalculationService 側で SCORED をスキップする）
+        verify(playingTimeCalculationService).recalculate(eq(match), isNull());
+        verify(eventPublisher).publishEvent(any(MatchCompletedEvent.class));
+    }
+
+    @Test
+    @DisplayName("(b4) SCORED（体操）: 同点（整数スケール同値）も COMPLETED 可（引分 DRAW・§6）")
+    void scoredDrawIsCompletable() {
+        match.setSport(Sport.GYMNASTICS);
+        match.setStateModel(StateModel.SCORED);
+        match.setHomeScore(85332);
+        match.setAwayScore(85332); // 整数スケール同値＝引分
+
+        service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED);
+
+        verify(eventPublisher).publishEvent(any(MatchCompletedEvent.class));
+    }
+
+    @Test
+    @DisplayName("(b4) SCORED: 合計点未確定（home NULL）は 400（MATCH_035・採点未確定）")
+    void scoredNullHomeScoreIsRejected() {
+        match.setSport(Sport.FIGURE_SKATING);
+        match.setStateModel(StateModel.SCORED);
+        match.setHomeScore(null);
+        match.setAwayScore(198450);
+
+        assertThatThrownBy(() -> service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(MatchErrorCode.MATCH_035);
+        verify(playingTimeCalculationService, never()).recalculate(any(), any());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    @DisplayName("(b4) SCORED: 合計点未確定（away NULL）は 400（MATCH_035・採点未確定）")
+    void scoredNullAwayScoreIsRejected() {
+        match.setSport(Sport.GYMNASTICS);
+        match.setStateModel(StateModel.SCORED);
+        match.setHomeScore(85332);
+        match.setAwayScore(null);
+
+        assertThatThrownBy(() -> service.changeStatus(matchId, ORG, ACTOR, MatchStatus.COMPLETED))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(MatchErrorCode.MATCH_035);
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
     // ─── (c) finalizeScore の認可委譲＋before/after 監査 ──────────
 
     @Test

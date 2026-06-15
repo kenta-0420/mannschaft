@@ -393,4 +393,31 @@ class MatchSchemaFlywayTest {
                     assertThat(fk[2]).isEqualTo("CASCADE");
                 });
     }
+
+    // ─── V89.001: 採点競技（SCORED）対応で本戦スコア列を INT UNSIGNED へ拡張 ───
+
+    @Test
+    @DisplayName("matches.home_score/away_score は INT UNSIGNED NULL（V89.001・採点競技の合計点×1000・§B.1.2/§D.8）")
+    void matchesScoreColumnsAreIntUnsigned() throws Exception {
+        for (String col : List.of("home_score", "away_score")) {
+            assertThat(columnExists("matches", col))
+                    .as("matches.%s が存在すること", col).isTrue();
+            assertThat(columnType("matches", col).toLowerCase())
+                    .as("%s は int unsigned（SMALLINT→INT 拡張・採点競技の整数スケール×1000 合計点を格納）", col)
+                    .contains("int").contains("unsigned")
+                    .doesNotContain("smallint").doesNotContain("bigint");
+            assertThat(columnIsNullable("matches", col))
+                    .as("%s は NULL 許容（未確定許容・後方互換）", col).isTrue();
+        }
+    }
+
+    @Test
+    @DisplayName("matches.home_penalty_score/away_penalty_score は SMALLINT UNSIGNED 据え置き（PK 戦・採点競技は使わない）")
+    void matchesPenaltyScoreColumnsStaySmallint() throws Exception {
+        for (String col : List.of("home_penalty_score", "away_penalty_score")) {
+            assertThat(columnType("matches", col).toLowerCase())
+                    .as("%s は smallint unsigned 据え置き（V89.001 で拡張しない）", col)
+                    .contains("smallint").contains("unsigned");
+        }
+    }
 }
