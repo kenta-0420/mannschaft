@@ -432,6 +432,14 @@ public class MatchService {
                     }
                 }
             }
+            case SCORED -> {
+                // 採点競技（フィギュア/体操）は合計点（home/away_score・整数スケール×1000）が両方確定
+                // していれば COMPLETED 可（§D.8 / sports/07_scored.md §4）。未確定（スコア NULL）は MATCH_035。
+                // 勝敗は合計点の大小で導出（高い側が勝者・同点は引分 DRAW・§B.1.2 / §6）。win_method は使わない（NULL）。
+                if (match.getHomeScore() == null || match.getAwayScore() == null) {
+                    throw new BusinessException(MatchErrorCode.MATCH_035);
+                }
+            }
             default -> throw new BusinessException(MatchErrorCode.MATCH_024);
         }
     }

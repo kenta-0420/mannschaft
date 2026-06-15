@@ -34,8 +34,8 @@ public final class SportEventCatalog {
      * 競技 → 利用可能 event_type 集合（中身は各競技カタログを参照）。
      *
      * <p>{@code Map.ofEntries} を用いる（Phase 6-②a で 3 エントリ・6-③a で VOLLEYBALL を追加し 4 エントリ・
-     * 6-④a で SHOGI/GO を追加し 6 エントリ。型推論の限界を避けるため {@code Map.of} ではなく
-     * {@code Map.ofEntries} を用いる）。</p>
+     * 6-④a で SHOGI/GO を追加し 6 エントリ・SCORED-a で FIGURE_SKATING/GYMNASTICS を追加し 8 エントリ。
+     * 型推論の限界を避けるため {@code Map.of} ではなく {@code Map.ofEntries} を用いる）。</p>
      */
     public static final Map<Sport, Set<MatchEventType>> CATALOG = Map.ofEntries(
             Map.entry(Sport.SOCCER, SoccerCatalog.EVENT_TYPES),
@@ -44,7 +44,10 @@ public final class SportEventCatalog {
             Map.entry(Sport.VOLLEYBALL, VolleyballCatalog.EVENT_TYPES),
             // ターン制（将棋/囲碁・結果系少数・sports/05・06 §2）
             Map.entry(Sport.SHOGI, ShogiCatalog.EVENT_TYPES),
-            Map.entry(Sport.GO, GoCatalog.EVENT_TYPES));
+            Map.entry(Sport.GO, GoCatalog.EVENT_TYPES),
+            // 採点競技（フィギュア/体操・結果系少数・同一集合を共有・sports/07_scored.md §3）
+            Map.entry(Sport.FIGURE_SKATING, ScoredCatalog.EVENT_TYPES),
+            Map.entry(Sport.GYMNASTICS, ScoredCatalog.EVENT_TYPES));
 
     /**
      * 当該競技で {@code eventType} が利用可能か判定する。
