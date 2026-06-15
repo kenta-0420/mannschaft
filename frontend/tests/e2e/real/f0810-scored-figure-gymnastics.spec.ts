@@ -134,7 +134,9 @@ async function changeStatus(
     data: { status },
   })
   const body = await res.text()
-  return { status: res.status(), body }
+  const httpStatus = res.status()
+  expect(httpStatus, `status 変更 API は ${expectedHttpStatus} を返す。応答: ${body}`).toBe(expectedHttpStatus)
+  return { status: httpStatus, body }
 }
 
 /**
