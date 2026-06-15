@@ -7,6 +7,7 @@ import com.mannschaft.app.organization.entity.OrganizationSlugHistoryEntity;
 import com.mannschaft.app.organization.OrgErrorCode;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.organization.repository.OrganizationSlugHistoryRepository;
+import com.mannschaft.app.common.dto.SlugAvailabilityResponse;
 import com.mannschaft.app.common.dto.SlugResolveResponse;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
@@ -243,15 +244,6 @@ public class OrganizationService {
             return new SlugAvailabilityResponse(false, "SLUG_RETIRED");
         }
         return new SlugAvailabilityResponse(true, null);
-    }
-
-    /**
-     * slug 可用性チェックのレスポンス。
-     *
-     * @param available 利用可能なら true
-     * @param reason    利用不可の理由コード（利用可能時は null）
-     */
-    public record SlugAvailabilityResponse(boolean available, String reason) {
     }
 
     /**

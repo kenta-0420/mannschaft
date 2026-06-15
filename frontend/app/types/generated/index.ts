@@ -1968,6 +1968,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{slug}/slug": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** チーム slug リネーム（ADMIN/DEPUTY のみ・旧slugは301解決用に履歴予約） */
+        put: operations["renameSlug"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{slug}/officers/reorder": {
         parameters: {
             query?: never;
@@ -2735,6 +2752,23 @@ export interface paths {
         get: operations["getSupporterSettings_1"];
         /** サポーター設定更新（自動承認ON/OFF） */
         put: operations["updateSupporterSettings_1"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{slug}/slug": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 組織 slug リネーム（ADMIN/DEPUTY のみ・旧slugは301解決用に履歴予約） */
+        put: operations["renameSlug_1"];
         post?: never;
         delete?: never;
         options?: never;
@@ -31188,6 +31222,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/slug-available": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** slug 可用性チェック（作成前のリアルタイム検証・村方式統一） */
+        get: operations["checkSlugAvailability"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/search": {
         parameters: {
             query?: never;
@@ -33345,6 +33396,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/teams/slug-resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * チーム slug 解決（未ログイン公開・301 判定）
+         * @description 現行 slug なら CURRENT、旧 slug なら MOVED（canonicalSlug=現行 slug）、該当なしは NOT_FOUND。canonicalSlug 以外の実データは返さない。
+         */
+        get: operations["resolveTeamSlug"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/public/teams/search": {
         parameters: {
             query?: never;
@@ -33630,6 +33701,26 @@ export interface paths {
          * @description 未ログインでも実行可能。PUBLIC かつ未 archive かつ未削除の組織のみ 200。 それ以外は 404（IDOR 対策で状態を区別しない）。
          */
         get: operations["getPublicOrganization"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/organizations/slug-resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 組織 slug 解決（未ログイン公開・301 判定）
+         * @description 現行 slug なら CURRENT、旧 slug なら MOVED（canonicalSlug=現行 slug）、該当なしは NOT_FOUND。canonicalSlug 以外の実データは返さない。
+         */
+        get: operations["resolveOrganizationSlug"];
         put?: never;
         post?: never;
         delete?: never;
@@ -35950,6 +36041,23 @@ export interface paths {
         };
         /** 組織支払い状況 CSV エクスポート */
         get: operations["exportPayments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/slug-available": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** slug 可用性チェック（作成前のリアルタイム検証・村方式統一） */
+        get: operations["checkSlugAvailability_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -42274,6 +42382,19 @@ export interface components {
         ApiResponseMatchRosterResponse: {
             data?: components["schemas"]["FixtureRosterResponse"];
         };
+        FixtureRosterResponse: {
+            /** Format: int64 */
+            matchId?: number;
+            /** Format: int64 */
+            participantId?: number;
+            /** Format: int64 */
+            teamId?: number;
+            /** Format: date-time */
+            rosterDeadline?: string;
+            locked?: boolean;
+            players?: components["schemas"]["RosterPlayerResponse"][];
+            staff?: components["schemas"]["RosterStaffResponse"][];
+        };
         RosterPlayerResponse: {
             /** Format: int64 */
             id?: number;
@@ -42374,21 +42495,7 @@ export interface components {
              * Format: int64
              * @deprecated
              */
-            daysRemaining?: number;
-            /**
-             * Format: int32
-             * @deprecated
-             */
-            descendantCompletedCount?: number;
-            /** @deprecated */
-            statusLabel?: components["schemas"]["TodoStatusLabelInfo"];
-            /**
-             * Format: int32
-             * @deprecated
-             */
-            descendantTotalCount?: number;
-            /** @deprecated */
-            title?: string;
+            linkedScheduleId?: number;
             /** @deprecated */
             priority?: string;
             /**
@@ -42404,6 +42511,37 @@ export interface components {
             /** @deprecated */
             children?: components["schemas"]["TodoResponse"][];
             /**
+             * Format: date
+             * @deprecated
+             */
+            dueDate?: string;
+            /**
+             * Format: date
+             * @deprecated
+             */
+            startDate?: string;
+            /** @deprecated */
+            completedBy?: components["schemas"]["UserInfo"];
+            /**
+             * Format: int32
+             * @deprecated
+             */
+            descendantCompletedCount?: number;
+            /** @deprecated */
+            progressManual?: boolean;
+            /**
+             * Format: date-time
+             * @deprecated
+             */
+            completedAt?: string;
+            /**
+             * Format: int64
+             * @deprecated
+             */
+            milestoneId?: number;
+            /** @deprecated */
+            createdBy?: components["schemas"]["UserInfo"];
+            /**
              * Format: int64
              * @deprecated
              */
@@ -42416,46 +42554,26 @@ export interface components {
              */
             depth?: number;
             /** @deprecated */
+            title?: string;
+            /**
+             * Format: date-time
+             * @deprecated
+             */
+            updatedAt?: string;
+            /** @deprecated */
             progressRate?: number;
             /**
              * Format: date-time
              * @deprecated
              */
             createdAt?: string;
-            /**
-             * Format: date-time
-             * @deprecated
-             */
-            updatedAt?: string;
+            /** @deprecated */
+            scopeType?: string;
             /**
              * Format: int32
              * @deprecated
              */
             sortOrder?: number;
-            /** @deprecated */
-            scopeType?: string;
-            /** @deprecated */
-            createdBy?: components["schemas"]["UserInfo"];
-            /**
-             * Format: date
-             * @deprecated
-             */
-            dueDate?: string;
-            /**
-             * Format: date
-             * @deprecated
-             */
-            startDate?: string;
-            /**
-             * Format: date-time
-             * @deprecated
-             */
-            completedAt?: string;
-            /**
-             * Format: int64
-             * @deprecated
-             */
-            milestoneId?: number;
             /**
              * @deprecated
              * @example 14:30:00
@@ -42466,15 +42584,18 @@ export interface components {
              * @deprecated
              */
             projectId?: number;
-            /** @deprecated */
-            progressManual?: boolean;
+            /**
+             * Format: int32
+             * @deprecated
+             */
+            descendantTotalCount?: number;
             /**
              * Format: int64
              * @deprecated
              */
-            linkedScheduleId?: number;
+            daysRemaining?: number;
             /** @deprecated */
-            completedBy?: components["schemas"]["UserInfo"];
+            statusLabel?: components["schemas"]["TodoStatusLabelInfo"];
         };
         TodoScheduleDto: {
             /** Format: date */
@@ -42688,8 +42809,8 @@ export interface components {
             updatedAt?: string;
             /** Format: date-time */
             deletedAt?: string;
-            editable?: boolean;
             ownMemo?: boolean;
+            editable?: boolean;
         };
         UpdateCommentRequest: {
             body?: string;
@@ -44763,6 +44884,60 @@ export interface components {
         SupporterSettingsResponse: {
             autoApprove?: boolean;
         };
+        RenameSlugRequest: {
+            newSlug?: string;
+        };
+        ApiResponseTeamResponse: {
+            data?: components["schemas"]["TeamResponse"];
+        };
+        TeamBasicInfoDto: {
+            name?: string;
+            nameKana?: string;
+            nickname1?: string;
+            nickname2?: string;
+        };
+        TeamLocationDto: {
+            prefecture?: string;
+            city?: string;
+            template?: string;
+            prefectureCode?: string;
+            cityCode?: string;
+        };
+        TeamMetadataDto: {
+            /** Format: int64 */
+            version?: number;
+            /** Format: int32 */
+            memberCount?: number;
+            iconUrl?: string;
+            bannerUrl?: string;
+            mapEmbedUrl?: string;
+        };
+        TeamResponse: {
+            id?: string;
+            slug?: string;
+            basicInfo?: components["schemas"]["TeamBasicInfoDto"];
+            location?: components["schemas"]["TeamLocationDto"];
+            visibility?: components["schemas"]["TeamVisibilityDto"];
+            metadata?: components["schemas"]["TeamMetadataDto"];
+            social?: components["schemas"]["TeamSocialDto"];
+            timestamps?: components["schemas"]["TeamTimestampsDto"];
+        };
+        TeamSocialDto: {
+            /** Format: int64 */
+            teamFriendCount?: number;
+            /** Format: int64 */
+            supporterCount?: number;
+        };
+        TeamTimestampsDto: {
+            /** Format: date-time */
+            archivedAt?: string;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        TeamVisibilityDto: {
+            visibility?: string;
+            supporterEnabled?: boolean;
+        };
         OrderItem: {
             /** Format: int64 */
             id?: number;
@@ -45877,6 +46052,53 @@ export interface components {
             termsAcceptedAt?: string;
             termsVersion?: string;
             requireBiometricOnShow?: boolean;
+        };
+        ApiResponseOrganizationResponse: {
+            data?: components["schemas"]["OrganizationResponse"];
+        };
+        OrgBasicInfoDto: {
+            name?: string;
+            nameKana?: string;
+            nickname1?: string;
+            nickname2?: string;
+        };
+        OrgHierarchyDto: {
+            orgType?: string;
+            /** Format: int64 */
+            parentOrganizationId?: number;
+        };
+        OrgLocationDto: {
+            prefecture?: string;
+            city?: string;
+        };
+        OrgMetadataDto: {
+            /** Format: int64 */
+            version?: number;
+            /** Format: int32 */
+            memberCount?: number;
+            iconUrl?: string;
+            bannerUrl?: string;
+        };
+        OrgTimestampsDto: {
+            /** Format: date-time */
+            archivedAt?: string;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        OrgVisibilityDto: {
+            visibility?: string;
+            hierarchyVisibility?: string;
+            supporterEnabled?: boolean;
+        };
+        OrganizationResponse: {
+            id?: string;
+            slug?: string;
+            basicInfo?: components["schemas"]["OrgBasicInfoDto"];
+            hierarchy?: components["schemas"]["OrgHierarchyDto"];
+            location?: components["schemas"]["OrgLocationDto"];
+            visibility?: components["schemas"]["OrgVisibilityDto"];
+            metadata?: components["schemas"]["OrgMetadataDto"];
+            timestamps?: components["schemas"]["OrgTimestampsDto"];
         };
         ReorderRequest: {
             orders?: components["schemas"]["OrderItem"][];
@@ -49363,57 +49585,7 @@ export interface components {
             visibility?: string;
             prefectureCode?: string;
             cityCode?: string;
-        };
-        ApiResponseTeamResponse: {
-            data?: components["schemas"]["TeamResponse"];
-        };
-        TeamBasicInfoDto: {
-            name?: string;
-            nameKana?: string;
-            nickname1?: string;
-            nickname2?: string;
-        };
-        TeamLocationDto: {
-            prefecture?: string;
-            city?: string;
-            template?: string;
-            prefectureCode?: string;
-            cityCode?: string;
-        };
-        TeamMetadataDto: {
-            /** Format: int64 */
-            version?: number;
-            /** Format: int32 */
-            memberCount?: number;
-            iconUrl?: string;
-            bannerUrl?: string;
-            mapEmbedUrl?: string;
-        };
-        TeamResponse: {
-            id?: string;
             slug?: string;
-            basicInfo?: components["schemas"]["TeamBasicInfoDto"];
-            location?: components["schemas"]["TeamLocationDto"];
-            visibility?: components["schemas"]["TeamVisibilityDto"];
-            metadata?: components["schemas"]["TeamMetadataDto"];
-            social?: components["schemas"]["TeamSocialDto"];
-            timestamps?: components["schemas"]["TeamTimestampsDto"];
-        };
-        TeamSocialDto: {
-            /** Format: int64 */
-            teamFriendCount?: number;
-            /** Format: int64 */
-            supporterCount?: number;
-        };
-        TeamTimestampsDto: {
-            /** Format: date-time */
-            archivedAt?: string;
-            /** Format: date-time */
-            createdAt?: string;
-        };
-        TeamVisibilityDto: {
-            visibility?: string;
-            supporterEnabled?: boolean;
         };
         CreateReminderRequest: {
             /** Format: date-time */
@@ -49422,8 +49594,8 @@ export interface components {
             remindBeforeMinutes?: number;
             /** @enum {string} */
             reminderKind?: "RELATIVE" | "ABSOLUTE";
-            remindAtValid?: boolean;
             remindBeforeMinutesValid?: boolean;
+            remindAtValid?: boolean;
         };
         CreateScheduleRequest: {
             title?: string;
@@ -54837,53 +55009,7 @@ export interface components {
             visibility?: string;
             /** Format: int64 */
             parentOrganizationId?: number;
-        };
-        ApiResponseOrganizationResponse: {
-            data?: components["schemas"]["OrganizationResponse"];
-        };
-        OrgBasicInfoDto: {
-            name?: string;
-            nameKana?: string;
-            nickname1?: string;
-            nickname2?: string;
-        };
-        OrgHierarchyDto: {
-            orgType?: string;
-            /** Format: int64 */
-            parentOrganizationId?: number;
-        };
-        OrgLocationDto: {
-            prefecture?: string;
-            city?: string;
-        };
-        OrgMetadataDto: {
-            /** Format: int64 */
-            version?: number;
-            /** Format: int32 */
-            memberCount?: number;
-            iconUrl?: string;
-            bannerUrl?: string;
-        };
-        OrgTimestampsDto: {
-            /** Format: date-time */
-            archivedAt?: string;
-            /** Format: date-time */
-            createdAt?: string;
-        };
-        OrgVisibilityDto: {
-            visibility?: string;
-            hierarchyVisibility?: string;
-            supporterEnabled?: boolean;
-        };
-        OrganizationResponse: {
-            id?: string;
             slug?: string;
-            basicInfo?: components["schemas"]["OrgBasicInfoDto"];
-            hierarchy?: components["schemas"]["OrgHierarchyDto"];
-            location?: components["schemas"]["OrgLocationDto"];
-            visibility?: components["schemas"]["OrgVisibilityDto"];
-            metadata?: components["schemas"]["OrgMetadataDto"];
-            timestamps?: components["schemas"]["OrgTimestampsDto"];
         };
         CreateOfficerRequest: {
             name?: string;
@@ -55432,6 +55558,18 @@ export interface components {
             /** Format: int64 */
             winnerParticipantId?: number;
         };
+        FixtureResponse: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            matchdayId?: number;
+            participants?: components["schemas"]["MatchParticipantsDto"];
+            score?: components["schemas"]["MatchScoreDto"];
+            info?: components["schemas"]["MatchInfoDto"];
+            sets?: components["schemas"]["FixtureSetResponse"][];
+            playerStats?: components["schemas"]["PlayerStatResponse"][];
+            audit?: components["schemas"]["MatchAuditDto"];
+        };
         MatchScoreDto: {
             /** Format: int32 */
             homeScore?: number;
@@ -55445,6 +55583,16 @@ export interface components {
             homePenaltyScore?: number;
             /** Format: int32 */
             awayPenaltyScore?: number;
+        };
+        FixtureSetResponse: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int32 */
+            setNumber?: number;
+            /** Format: int32 */
+            homeScore?: number;
+            /** Format: int32 */
+            awayScore?: number;
         };
         MatchdayResponse: {
             /** Format: int64 */
@@ -55501,6 +55649,14 @@ export interface components {
             /** Format: int64 */
             version: number;
             sets?: components["schemas"]["FixtureSetRequest"][];
+        };
+        FixtureSetRequest: {
+            /** Format: int32 */
+            setNumber: number;
+            /** Format: int32 */
+            homeScore: number;
+            /** Format: int32 */
+            awayScore: number;
         };
         ApiResponseListMatchdayResponse: {
             data?: components["schemas"]["MatchdayResponse"][];
@@ -56351,8 +56507,8 @@ export interface components {
             reminders?: number[];
             absoluteReminders?: string[];
             recurrenceRule?: components["schemas"]["RecurrenceRuleDto"];
-            reminderCountWithinLimit?: boolean;
             eventTypeOrDefault?: string;
+            reminderCountWithinLimit?: boolean;
         };
         ApiResponsePersonalScheduleResponse: {
             data?: components["schemas"]["PersonalScheduleResponse"];
@@ -59001,6 +59157,10 @@ export interface components {
             refId?: number;
             isPublic?: boolean;
         };
+        UpdateFixtureRosterDeadlineRequest: {
+            /** Format: date-time */
+            rosterDeadline?: string;
+        };
         PatchTodoRequest: {
             /** Format: date */
             dueDate?: string;
@@ -59110,8 +59270,8 @@ export interface components {
             remindBeforeMinutes?: number;
             /** @enum {string} */
             reminderKind?: "RELATIVE" | "ABSOLUTE";
-            remindAtValid?: boolean;
             remindBeforeMinutesValid?: boolean;
+            remindAtValid?: boolean;
         };
         UpdateScheduleRequest: {
             title?: string;
@@ -59730,11 +59890,11 @@ export interface components {
             philosophy?: boolean;
             officers?: boolean;
             custom_fields?: boolean;
-            homepageUrlVisible?: boolean;
-            establishedDateVisible?: boolean;
+            philosophyVisible?: boolean;
             officersVisible?: boolean;
             customFieldsVisible?: boolean;
-            philosophyVisible?: boolean;
+            establishedDateVisible?: boolean;
+            homepageUrlVisible?: boolean;
         };
         UpdateTeamProfileRequest: {
             homepage_url?: string;
@@ -61444,19 +61604,19 @@ export interface components {
             empty?: boolean;
         };
         PageableObject: {
+            paged?: boolean;
             /** Format: int64 */
             offset?: number;
             sort?: components["schemas"]["SortObject"];
-            paged?: boolean;
-            /** Format: int32 */
-            pageNumber?: number;
             /** Format: int32 */
             pageSize?: number;
+            /** Format: int32 */
+            pageNumber?: number;
             unpaged?: boolean;
         };
         SortObject: {
-            empty?: boolean;
             sorted?: boolean;
+            empty?: boolean;
             unsorted?: boolean;
         };
         ApiResponseListFestivalResponse: {
@@ -62603,31 +62763,14 @@ export interface components {
             unassignedTodos?: components["schemas"]["UnassignedTodos"];
             audit?: components["schemas"]["ProjectAuditDto"];
             /**
-             * Format: int64
-             * @deprecated
-             */
-            daysRemaining?: number;
-            /** @deprecated */
-            visibility?: string;
-            /** @deprecated */
-            title?: string;
-            /** @deprecated */
-            description?: string;
-            /** @deprecated */
-            status?: string;
-            /** @deprecated */
-            progressRate?: number;
-            /** @deprecated */
-            color?: string;
-            /** @deprecated */
-            createdBy?: components["schemas"]["UserInfo"];
-            /**
              * Format: date
              * @deprecated
              */
             dueDate?: string;
             /** @deprecated */
-            emoji?: string;
+            color?: string;
+            /** @deprecated */
+            createdBy?: components["schemas"]["UserInfo"];
             /**
              * Format: int32
              * @deprecated
@@ -62638,6 +62781,23 @@ export interface components {
              * @deprecated
              */
             completedTodos?: number;
+            /** @deprecated */
+            description?: string;
+            /** @deprecated */
+            emoji?: string;
+            /** @deprecated */
+            status?: string;
+            /** @deprecated */
+            visibility?: string;
+            /** @deprecated */
+            title?: string;
+            /** @deprecated */
+            progressRate?: number;
+            /**
+             * Format: int64
+             * @deprecated
+             */
+            daysRemaining?: number;
         };
         ProjectMetaDto: {
             status?: string;
@@ -63493,8 +63653,8 @@ export interface components {
             rsvpStatus?: string;
             /** Format: int32 */
             watcherCount?: number;
-            underCare?: boolean;
             alreadyCheckedIn?: boolean;
+            underCare?: boolean;
         };
         ApiResponseDismissalStatusResponse: {
             data?: components["schemas"]["DismissalStatusResponse"];
@@ -64346,6 +64506,16 @@ export interface components {
             type?: string;
             amount?: number;
             currency?: string;
+        };
+        ApiResponseSlugAvailabilityResponse: {
+            data?: components["schemas"]["SlugAvailabilityResponse"];
+        };
+        /** @description slug 可用性チェック結果 */
+        SlugAvailabilityResponse: {
+            /** @description 利用可能なら true */
+            available?: boolean;
+            /** @description 利用不可の理由コード（利用可能時は null） */
+            reason?: string;
         };
         PagedResponseTeamSummaryResponse: {
             data?: components["schemas"]["TeamSummaryResponse"][];
@@ -66198,6 +66368,11 @@ export interface components {
             memberCount?: number;
             mapEmbedUrl?: string;
         };
+        SlugResolveResponse: {
+            /** @enum {string} */
+            status?: "CURRENT" | "MOVED" | "NOT_FOUND";
+            canonicalSlug?: string;
+        };
         PagePublicTeamSearchResultResponse: {
             /** Format: int64 */
             totalElements?: number;
@@ -67030,8 +67205,8 @@ export interface components {
             entryCount?: number;
             /** Format: date-time */
             lastUpdatedAt?: string;
-            minMet?: boolean;
             maxExceeded?: boolean;
+            minMet?: boolean;
         };
         EntryMemberSummaryResponse: {
             /** Format: int64 */
@@ -68042,8 +68217,8 @@ export interface components {
             googleCalendarId?: string;
             personalSyncEnabled?: boolean;
             lastSyncError?: components["schemas"]["SyncErrorDetail"];
-            connected?: boolean;
             active?: boolean;
+            connected?: boolean;
         };
         SyncErrorDetail: {
             type?: string;
@@ -69919,53 +70094,6 @@ export interface components {
         };
         RemoveParticipantsRequest: {
             userIds?: number[];
-        };
-        FixtureResponse: {
-            /** Format: int64 */
-            id?: number;
-            /** Format: int64 */
-            matchdayId?: number;
-            participants?: components["schemas"]["MatchParticipantsDto"];
-            score?: components["schemas"]["MatchScoreDto"];
-            info?: components["schemas"]["MatchInfoDto"];
-            sets?: components["schemas"]["FixtureSetResponse"][];
-            playerStats?: components["schemas"]["PlayerStatResponse"][];
-            audit?: components["schemas"]["MatchAuditDto"];
-        };
-        FixtureSetRequest: {
-            /** Format: int32 */
-            setNumber: number;
-            /** Format: int32 */
-            homeScore: number;
-            /** Format: int32 */
-            awayScore: number;
-        };
-        FixtureSetResponse: {
-            /** Format: int64 */
-            id?: number;
-            /** Format: int32 */
-            setNumber?: number;
-            /** Format: int32 */
-            homeScore?: number;
-            /** Format: int32 */
-            awayScore?: number;
-        };
-        FixtureRosterResponse: {
-            /** Format: int64 */
-            matchId?: number;
-            /** Format: int64 */
-            participantId?: number;
-            /** Format: int64 */
-            teamId?: number;
-            /** Format: date-time */
-            rosterDeadline?: string;
-            locked?: boolean;
-            players?: components["schemas"]["RosterPlayerResponse"][];
-            staff?: components["schemas"]["RosterStaffResponse"][];
-        };
-        UpdateFixtureRosterDeadlineRequest: {
-            /** Format: date-time */
-            rosterDeadline?: string;
         };
     };
     responses: never;
@@ -75960,6 +76088,32 @@ export interface operations {
             };
         };
     };
+    renameSlug: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenameSlugRequest"];
+            };
+        };
+        responses: {
+            /** @description リネーム成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamResponse"];
+                };
+            };
+        };
+    };
     reorderOfficers: {
         parameters: {
             query?: never;
@@ -77988,6 +78142,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseSupporterSettingsResponse"];
+                };
+            };
+        };
+    };
+    renameSlug_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenameSlugRequest"];
+            };
+        };
+        responses: {
+            /** @description リネーム成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOrganizationResponse"];
                 };
             };
         };
@@ -132130,6 +132310,28 @@ export interface operations {
             };
         };
     };
+    checkSlugAvailability: {
+        parameters: {
+            query: {
+                slug: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 判定結果 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseSlugAvailabilityResponse"];
+                };
+            };
+        };
+    };
     searchTeams: {
         parameters: {
             query: {
@@ -135024,6 +135226,28 @@ export interface operations {
             };
         };
     };
+    resolveTeamSlug: {
+        parameters: {
+            query: {
+                slug: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SlugResolveResponse"];
+                };
+            };
+        };
+    };
     searchTeams_1: {
         parameters: {
             query: {
@@ -135400,6 +135624,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PublicOrganizationResponse"];
+                };
+            };
+        };
+    };
+    resolveOrganizationSlug: {
+        parameters: {
+            query: {
+                slug: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SlugResolveResponse"];
                 };
             };
         };
@@ -138660,6 +138906,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": string;
+                };
+            };
+        };
+    };
+    checkSlugAvailability_1: {
+        parameters: {
+            query: {
+                slug: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 判定結果 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseSlugAvailabilityResponse"];
                 };
             };
         };

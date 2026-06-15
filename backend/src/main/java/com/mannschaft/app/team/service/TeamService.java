@@ -8,6 +8,7 @@ import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.team.repository.TeamBlockRepository;
 import com.mannschaft.app.team.repository.TeamSlugHistoryRepository;
 import com.mannschaft.app.team.entity.TeamSlugHistoryEntity;
+import com.mannschaft.app.common.dto.SlugAvailabilityResponse;
 import com.mannschaft.app.common.dto.SlugResolveResponse;
 import com.mannschaft.app.team.TeamErrorCode;
 import com.mannschaft.app.auth.repository.UserRepository;
@@ -327,15 +328,6 @@ public class TeamService {
             return new SlugAvailabilityResponse(false, "SLUG_RETIRED");
         }
         return new SlugAvailabilityResponse(true, null);
-    }
-
-    /**
-     * slug 可用性チェックのレスポンス。
-     *
-     * @param available 利用可能なら true
-     * @param reason    利用不可の理由コード（利用可能時は null）
-     */
-    public record SlugAvailabilityResponse(boolean available, String reason) {
     }
 
     /**

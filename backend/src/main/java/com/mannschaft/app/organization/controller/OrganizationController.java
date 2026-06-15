@@ -1,5 +1,6 @@
 package com.mannschaft.app.organization.controller;
 
+import com.mannschaft.app.common.dto.SlugAvailabilityResponse;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
@@ -101,7 +102,7 @@ public class OrganizationController {
     @GetMapping("/slug-available")
     @Operation(summary = "slug 可用性チェック（作成前のリアルタイム検証・村方式統一）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "判定結果")
-    public ResponseEntity<ApiResponse<OrganizationService.SlugAvailabilityResponse>> checkSlugAvailability(
+    public ResponseEntity<ApiResponse<SlugAvailabilityResponse>> checkSlugAvailability(
             @RequestParam String slug) {
         return ResponseEntity.ok(ApiResponse.of(organizationService.checkSlugAvailability(slug)));
     }
