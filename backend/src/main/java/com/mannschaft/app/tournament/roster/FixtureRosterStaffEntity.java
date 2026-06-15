@@ -33,7 +33,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder(toBuilder = true)
-public class MatchRosterStaffEntity extends UuidV7Entity {
+public class FixtureRosterStaffEntity extends UuidV7Entity {
 
     /** 対象試合（tournament_matches.id への ID 参照・同一ドメイン） */
     @Column(nullable = false)

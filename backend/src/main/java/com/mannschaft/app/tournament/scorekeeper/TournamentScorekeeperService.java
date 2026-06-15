@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
  * 大会スコアキーパー指名の管理サービス（F08.7 項目③）。
  *
  * <p>主催組織 ADMIN（または SYSTEM_ADMIN）が、当該大会のスコア入力を許可するユーザーを指名・解除・一覧する。
- * 指名されたユーザーは {@link TournamentMatchAccessService#canEnterScore} の条件②として扱われ、
+ * 指名されたユーザーは {@link TournamentFixtureAccessService#canEnterScore} の条件②として扱われ、
  * 当該大会のスコア入力系 EP を操作できるようになる。</p>
  *
  * <h2>認可</h2>

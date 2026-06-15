@@ -1,6 +1,6 @@
 package com.mannschaft.app.tournament.repository;
 
-import com.mannschaft.app.tournament.entity.TournamentMatchRosterEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixtureRosterEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 
@@ -9,14 +9,14 @@ import java.util.List;
 /**
  * 出場メンバーリポジトリ。
  */
-public interface TournamentMatchRosterRepository extends JpaRepository<TournamentMatchRosterEntity, Long> {
+public interface TournamentFixtureRosterRepository extends JpaRepository<TournamentFixtureRosterEntity, Long> {
 
-    List<TournamentMatchRosterEntity> findByMatchIdOrderByParticipantIdAscJerseyNumberAsc(Long matchId);
+    List<TournamentFixtureRosterEntity> findByMatchIdOrderByParticipantIdAscJerseyNumberAsc(Long matchId);
 
-    List<TournamentMatchRosterEntity> findByMatchIdAndParticipantId(Long matchId, Long participantId);
+    List<TournamentFixtureRosterEntity> findByMatchIdAndParticipantId(Long matchId, Long participantId);
 
     /** 自チーム分の roster を sortOrder 相当（背番号→id）で取得する（rosters/me 取得用） */
-    List<TournamentMatchRosterEntity> findByMatchIdAndParticipantIdOrderByJerseyNumberAscIdAsc(
+    List<TournamentFixtureRosterEntity> findByMatchIdAndParticipantIdOrderByJerseyNumberAscIdAsc(
             Long matchId, Long participantId);
 
     void deleteByMatchId(Long matchId);

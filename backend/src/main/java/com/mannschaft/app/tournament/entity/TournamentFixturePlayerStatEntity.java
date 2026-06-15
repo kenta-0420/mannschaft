@@ -22,7 +22,7 @@ import java.time.LocalTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder(toBuilder = true)
-public class TournamentMatchPlayerStatEntity extends BaseEntity {
+public class TournamentFixturePlayerStatEntity extends BaseEntity {
 
     @Column(nullable = false)
     private Long matchId;

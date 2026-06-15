@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type {
-  MatchRosterResponse,
+  FixtureRosterResponse,
   RosterPlayerEntry,
   RosterStaffEntry,
   SubmitRosterRequest,
@@ -29,7 +29,7 @@ onMounted(() => {
   }
 })
 
-const roster = ref<MatchRosterResponse | null>(null)
+const roster = ref<FixtureRosterResponse | null>(null)
 const loadingRoster = ref(false)
 
 // エントリーテンプレ一覧

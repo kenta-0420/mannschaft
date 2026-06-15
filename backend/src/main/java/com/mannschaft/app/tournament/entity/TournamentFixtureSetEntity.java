@@ -21,7 +21,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
-public class TournamentMatchSetEntity {
+public class TournamentFixtureSetEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

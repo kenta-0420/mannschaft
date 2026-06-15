@@ -5,10 +5,10 @@ import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.tournament.dto.IndividualRankingResponse;
 import com.mannschaft.app.tournament.dto.MatrixResponse;
-import com.mannschaft.app.tournament.dto.MatchResponse;
+import com.mannschaft.app.tournament.dto.FixtureResponse;
 import com.mannschaft.app.tournament.dto.StandingResponse;
 import com.mannschaft.app.tournament.dto.TournamentResponse;
-import com.mannschaft.app.tournament.service.MatchService;
+import com.mannschaft.app.tournament.service.FixtureService;
 import com.mannschaft.app.tournament.service.RankingsCalculationService;
 import com.mannschaft.app.tournament.service.StandingsQueryService;
 import com.mannschaft.app.tournament.service.TournamentService;
@@ -39,7 +39,7 @@ public class PublicTournamentController {
     private final TournamentService tournamentService;
     private final StandingsQueryService standingsQueryService;
     private final RankingsCalculationService rankingsCalculationService;
-    private final MatchService matchService;
+    private final FixtureService matchService;
 
     @GetMapping
     @Operation(summary = "公開大会一覧")
@@ -85,10 +85,10 @@ public class PublicTournamentController {
 
     @GetMapping("/{tId}/bracket")
     @Operation(summary = "公開トーナメント表")
-    public ResponseEntity<ApiResponse<List<MatchResponse>>> getPublicBracket(
+    public ResponseEntity<ApiResponse<List<FixtureResponse>>> getPublicBracket(
             @PathVariable Long orgId, @PathVariable Long tId) {
         tournamentService.verifyPublicAccess(orgId, tId);
-        List<MatchResponse> bracket = matchService.getBracket(tId);
+        List<FixtureResponse> bracket = matchService.getBracket(tId);
         return ResponseEntity.ok(ApiResponse.of(bracket));
     }
 

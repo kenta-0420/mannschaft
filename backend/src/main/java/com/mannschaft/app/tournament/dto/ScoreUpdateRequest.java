@@ -24,5 +24,5 @@ public class ScoreUpdateRequest {
     @NotNull
     private final Long version;
 
-    private final List<MatchSetRequest> sets;
+    private final List<FixtureSetRequest> sets;
 }

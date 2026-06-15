@@ -477,13 +477,14 @@ public final class SportEventCatalog {
 | **CONTINUOUS_TIME** | SOCCER / FUTSAL / BASKETBALL | タイマー＋ピリオド | スカラ `home/away_score`（＋PK） | 区間合計（02 §E.1） | FIRST_HALF.. / QUARTER_1.. | `useMatchTimerSoccer` / `useMatchTimerBasketball` |
 | **SET_BASED** | VOLLEYBALL | セット進行（デュース） | `match_sets`＋獲得セット数 | セット出場（分概念希薄・§B.5・04 §G.16） | SET_1..SET_5（補助） | `useMatchSetTracker` |
 | **TURN_BASED** | SHOGI / GO | 手番の応酬（総手数） | スコア無・勝敗＋勝ち方（§D.7） | **算出しない**（出場交代概念なし） | **NULL**（ピリオド無） | `useMatchTurnTracker` |
+| **SCORED** | FIGURE_SKATING / GYMNASTICS（設計確定・§D.8） | 演技/試技 → 審判採点 | 合計点（整数スケール×1000・`home/away_score`・MVP） | **算出しない**（出場交代概念なし） | **NULL**（ピリオド無） | `useMatchScoreEntry` |
 
 - **`matches.state_model`（VARCHAR・§B.1）で類型を保持**（`Sport` から DEFAULT を導出）。`Sport` → `StateModel` のマッピングはコード定数（`Map<Sport, StateModel>`）でコアに置く。
 - **類型別のコア分岐**:
   - **出場時間算出（02 §E）**: `CONTINUOUS_TIME` のみフル区間算出。`SET_BASED` は出場セット概念（computed_minutes は NULL 許容）。`TURN_BASED` は**算出を起動しない**（STARTER/SUB イベントが存在せず区間が組み立たないため）。
   - **`period` の NULL 許容（§B.2・確定）**: `TURN_BASED` は period を使わないため、**`match_events.period` 列を NULL 許容とする（確定）**。連続時間制/セット制では **Service が period を必須化（バリデーション）**し、ターン制では NULL を許容する。`period='NONE'` のようなダミー固定値は使わない（NULL で「ピリオド無し」を素直に表現）。§B.2 の DDL は既に `period VARCHAR(24) NULL` に変更済。
   - **COMPLETED バリデーション（02 §E.3）**: `CONTINUOUS_TIME` は `duration_minutes` 必須。`SET_BASED` は「全セット確定（勝者 3 セット先取）」必須。`TURN_BASED` は「勝者＋勝ち方確定」必須（`duration_minutes` 不要）。
-- **新競技の追加（保守性）**: 新競技は (1) `Sport` enum に追加、(2) `StateModel` マッピングに 1 行追加、(3) 競技カタログ文書（sports/0N）を雛形複製、の 3 ステップ。**3 類型のどれかに属する限り、コアのタイマー/出場時間/集計/権限/IDOR/F00 可視性/WebSocket 観戦は再実装不要**（[sports/01_soccer.md](./sports/01_soccer.md) §10）。3 類型のいずれにも当てはまらない競技（例: 採点競技＝体操/フィギュア）は新類型の追加を検討するが、MVP の 6 競技は 3 類型で網羅される。
+- **新競技の追加（保守性）**: 新競技は (1) `Sport` enum に追加、(2) `StateModel` マッピングに 1 行追加、(3) 競技カタログ文書（sports/0N）を雛形複製、の 3 ステップ。**3 類型のどれかに属する限り、コアのタイマー/出場時間/集計/権限/IDOR/F00 可視性/WebSocket 観戦は再実装不要**（[sports/01_soccer.md](./sports/01_soccer.md) §10）。3 類型のいずれにも当てはまらない競技（例: 採点競技＝体操/フィギュア）は新類型を追加する（MVP の 6 競技は 3 類型で網羅）。**「第 4 類型 `SCORED`（採点競技）」はマスター御裁可により対象競技＝フィギュアスケート＋体操の 2 競技・MVP 粒度＝合計点のみ・MVP 対戦モデル＝2 者対戦で設計確定済（§D.8・[sports/07_scored.md](./sports/07_scored.md)）。実装は別波**。
 
 ### D.7 ターン制の勝ち方カタログ（機構＝コア／具体コード＝競技固有）
 
@@ -492,6 +493,18 @@ public final class SportEventCatalog {
 - **競技非依存（コア）の確定事項**: (1) `win_method` は**ターン制競技のみ**使用（球技では NULL）。(2) 勝ち方カタログは `SportEventCatalog`（§D.3・案 A）と同じく**競技別カタログ**（`Map<Sport, WinMethodCatalog>`）として `match.sport` に紐づける。(3) 検証規約は「**その競技カタログの列挙値であること**」（列挙外は 400・症状を隠さない）。(4) 引き分け（千日手/持将棋＝将棋・持碁＝囲碁）は **`home_score`=0／`away_score`=0（個人戦）or 親の勝ち星同数（団体戦）＋`win_method`=NULL** で表現する（§B.1.2 勝敗格納規約・`result` 列は持たない）。勝敗（どちらが勝ったか）は `home_score`/`away_score` の大小、勝ち方（どう勝ったか）は `win_method`、の責務分離。
 - **競技固有 → [sports/05_shogi.md](./sports/05_shogi.md) §4.1（`ShogiWinMethod`: 投了/詰み/時間切れ/反則勝ち/千日手/持将棋/不戦勝）・[sports/06_go.md](./sports/06_go.md) §4.1（`GoWinMethod`: 投了〔中押し〕/目数差勝ち/時間切れ/反則勝ち/不戦勝）参照**。
 - `card_reason_code`（球技のカード理由）はターン制では使わない（NULL のみ・03 §C.4b の検証規約で当該競技カタログに理由コード集合を登録しない＝付けると 400）。反則は `win_method=FOUL_WIN`＋`note` で表現する。
+
+### D.8 第 4 状態モデル類型 `SCORED`（採点競技）— フィギュアスケート＋体操【設計確定・正準は sports/07_scored.md】
+
+> **ステータス**: 🟢 **設計完了**（マスター御裁可済・実装は別波）。既存 D.6 の 3 類型（実装済）に **第 4 類型 `SCORED`** を加える。対象競技・採点粒度・対戦モデルの 3 論点はマスター御裁可で確定（下記）。正準は [sports/07_scored.md](./sports/07_scored.md)。README §7.1「採点競技 SCORED（フィギュア＋体操）」解決済みに対応。
+
+採点競技（フィギュアスケート・体操）は「得点＝**審判スコアの合算**」であり、イベント駆動で得点を積み上げる CONTINUOUS_TIME とも、スコア無しの TURN_BASED とも異なる。`StateModel` に **`SCORED`** を 1 値追加して対応する（コアの類型分岐に 1 類型追加・出場時間算出は TURN_BASED 同様スキップ・[sports/07_scored.md](./sports/07_scored.md) §1）。
+
+- **対象競技（確定）**: **FIGURE_SKATING（フィギュアスケート）＋ GYMNASTICS（体操）の 2 競技**。`Sport` enum に 2 値追加し、両者の `stateModel()` を `SCORED` とする。採点構造の差異（フィギュア＝TES+PCS−減点／体操＝D スコア+E スコア・種目別合算）は [sports/07_scored.md](./sports/07_scored.md) §2 に明記。MVP では合計点に還元されて 2 競技を同一経路で扱える（差異が表面化するのは後段 Phase の内訳子表）。
+- **採点粒度（確定）**: **MVP=合計点のみ**。`matches.home_score`/`away_score` に合計点を**整数スケール×1000**で格納し（例 198.45 → `198450`）、§B.1.2 の単一正準（`resolveResult()` 大小比較）を崩さず勝敗導出を再利用する。小数表現のため `home_score`/`away_score` を `SMALLINT UNSIGNED` → **`INT UNSIGNED` へ 1 回拡張**（全競技共通列・既存値に無害）。**審判別内訳子表 `match_scored_components`（フィギュア=TES/PCS/DEDUCTION・体操=D/E・apparatus 種目別）は DDL 設計のみ用意し、実装は後段 Phase**（MVP では作成しない・[sports/07_scored.md](./sports/07_scored.md) §4B）。
+- **対戦モデル（確定）**: **MVP=2 者対戦**（既存 `home_score`/`away_score` 流用・侵襲最小・団体戦/デュアルミート/1 対 1 採点比較に適用）。**多人数順位制 `match_score_entries`（採点競技の本来形・多人数が順位を競う大会）は DDL 設計のみ用意し、後段 Phase**（MVP では作成しない・[sports/07_scored.md](./sports/07_scored.md) §5B）。**2 者対戦だけでは多人数順位の大会を表現できないことは意図的な MVP 割り切り**（症状を隠す回避ではなく段階導入の設計判断）。
+- **`assertCompletable` の `switch(stateModel)` に `case SCORED` 追加が必須**: 現状 `default -> MATCH_024`（入力不備）で弾かれるため、合計点確定を必須化する分岐を追加する（新エラーコード **`MATCH_035`**＝採点未確定・現状最大 `MATCH_034` の次番・[sports/07_scored.md](./sports/07_scored.md) §8）。出場時間算出は起動しない（TURN_BASED 同様）。`win_method`/`card_reason_code`/`total_moves` は NULL。
+- **既存整合**: 勝敗格納（§B.1.2 home/away_score 統一・整数スケールで維持）・二層正本（§B.5/§B.6 の再導出パターン＝後段の内訳/多人数集計に踏襲）・動的 import（04 §G.16）・F00 可視性委譲（03 §C.3）・採点改竄防止の監査ログ（03 §C.7）の確立済みパターンに乗せる。唯一 後段 Phase の多人数順位制のみ 2 者モデルを超える（MVP に含めず分離・[sports/07_scored.md](./sports/07_scored.md) §5B）。
 
 ---
 

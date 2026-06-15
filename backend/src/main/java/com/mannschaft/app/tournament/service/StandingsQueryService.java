@@ -8,11 +8,11 @@ import com.mannschaft.app.tournament.dto.MatrixResponse;
 import com.mannschaft.app.tournament.dto.StandingResponse;
 import com.mannschaft.app.tournament.dto.TeamTournamentHistoryResponse;
 import com.mannschaft.app.tournament.dto.TeamTournamentStatsResponse;
-import com.mannschaft.app.tournament.entity.TournamentMatchEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixtureEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
 import com.mannschaft.app.tournament.entity.TournamentStandingEntity;
 import com.mannschaft.app.tournament.repository.TournamentDivisionRepository;
-import com.mannschaft.app.tournament.repository.TournamentMatchRepository;
+import com.mannschaft.app.tournament.repository.TournamentFixtureRepository;
 import com.mannschaft.app.tournament.repository.TournamentParticipantRepository;
 import com.mannschaft.app.tournament.repository.TournamentRepository;
 import com.mannschaft.app.tournament.repository.TournamentStandingRepository;
@@ -41,7 +41,7 @@ public class StandingsQueryService {
     private final TournamentParticipantRepository participantRepository;
     private final TournamentDivisionRepository divisionRepository;
     private final TournamentRepository tournamentRepository;
-    private final TournamentMatchRepository matchRepository;
+    private final TournamentFixtureRepository matchRepository;
     private final TournamentMapper mapper;
     private final ContentVisibilityChecker contentVisibilityChecker;
 
@@ -65,7 +65,7 @@ public class StandingsQueryService {
     public MatrixResponse getMatrix(Long divisionId) {
         List<TournamentParticipantEntity> participants =
                 participantRepository.findByDivisionIdOrderBySeedAsc(divisionId);
-        List<TournamentMatchEntity> matches = matchRepository.findByDivisionId(divisionId);
+        List<TournamentFixtureEntity> matches = matchRepository.findByDivisionId(divisionId);
 
         List<MatrixResponse.ParticipantSummary> summaries = participants.stream()
                 .map(p -> new MatrixResponse.ParticipantSummary(
@@ -74,7 +74,7 @@ public class StandingsQueryService {
                 .toList();
 
         Map<String, MatrixResponse.MatrixCell> cells = new HashMap<>();
-        for (TournamentMatchEntity match : matches) {
+        for (TournamentFixtureEntity match : matches) {
             if (match.getHomeParticipantId() != null && match.getAwayParticipantId() != null) {
                 String key = match.getHomeParticipantId() + "_" + match.getAwayParticipantId();
                 cells.put(key, new MatrixResponse.MatrixCell(

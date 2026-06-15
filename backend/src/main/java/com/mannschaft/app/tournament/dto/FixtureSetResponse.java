@@ -1,22 +1,17 @@
 package com.mannschaft.app.tournament.dto;
 
-import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 /**
- * セット別スコアリクエストDTO。
+ * セット別スコアレスポンスDTO。
  */
 @Getter
 @RequiredArgsConstructor
-public class MatchSetRequest {
+public class FixtureSetResponse {
 
-    @NotNull
+    private final Long id;
     private final Integer setNumber;
-
-    @NotNull
     private final Integer homeScore;
-
-    @NotNull
     private final Integer awayScore;
 }

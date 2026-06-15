@@ -41,7 +41,7 @@ import java.util.UUID;
 /**
  * F08.10 試合本体の CRUD・status 遷移・スコア確定・記録モード切替コントローラー（02 §F・03 §C）。
  *
- * <p><b>【Bean 名衝突回避・最重要】</b> 既存 {@code com.mannschaft.app.tournament.controller.MatchController} と
+ * <p><b>【Bean 名衝突回避・最重要】</b> 既存 {@code com.mannschaft.app.tournament.controller.FixtureController}（旧 MatchController・Phase5a で改称）と
  * 単純名が異なる（{@code MatchRecordController}）うえ、<b>明示 Bean 名 {@code "matchRecordController"} を付与</b>し
  * デフォルト Bean 名（{@code matchRecordController}）でも tournament 系と衝突しないようにする
  * （Phase2A で {@code MatchService} が同名衝突で ApplicationContext 全滅した教訓）。</p>
