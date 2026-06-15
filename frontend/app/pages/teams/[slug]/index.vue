@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import type { FetchError } from 'ofetch'
 import type { ViewerRole } from '~/types/dashboard'
 import type { TeamResponse } from '~/types/team'
+import { computeSlugRedirectPath, parseSlugRoute } from '~/utils/slugRedirect'
 
 definePageMeta({
   middleware: 'auth',
@@ -88,9 +90,35 @@ async function fetchTeam() {
     const result = await teamApi.getTeam(teamSlug.value)
     team.value = result.data
   } catch (error) {
+    // 404 のときは「旧 slug → 新 slug の 301 移動」かもしれないので解決を試みる（村方式・BE #1542）。
+    // 取得が成功する現行 slug では解決 EP を一切叩かないため、happy path には干渉しない。
+    if ((error as FetchError)?.response?.status === 404 && await tryRedirectMovedSlug()) {
+      return
+    }
     handleApiError(error, 'チーム詳細取得')
   } finally {
     loading.value = false
+  }
+}
+
+/**
+ * 現 slug が旧 slug（MOVED）なら新 slug の同一パスへ 301 遷移する。
+ * 遷移した場合は true を返す（呼び出し元はそれ以上のエラー表示を行わない）。
+ */
+async function tryRedirectMovedSlug(): Promise<boolean> {
+  const parts = parseSlugRoute(useRoute().path)
+  if (!parts) return false
+  try {
+    const result = await teamApi.resolveTeamSlug(parts.slug)
+    const target = computeSlugRedirectPath(parts, result)
+    if (!target) return false
+    await navigateTo(
+      { path: target, query: useRoute().query, hash: useRoute().hash },
+      { redirectCode: 301, replace: true },
+    )
+    return true
+  } catch {
+    return false
   }
 }
 

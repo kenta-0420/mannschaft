@@ -1532,7 +1532,16 @@
       "SLUG_REQUIRED": "Introduce un identificador",
       "SLUG_INVALID_FORMAT": "Formato no válido (letras minúsculas, números y guiones, 3-30 caracteres; sin guiones al inicio/final ni consecutivos)",
       "SLUG_RESERVED": "Este identificador está reservado y no se puede usar",
-      "SLUG_ALREADY_TAKEN": "Este identificador ya está en uso"
+      "SLUG_ALREADY_TAKEN": "Este identificador ya está en uso",
+      "SLUG_RETIRED": "Este identificador se usó antes y no se puede reutilizar (reservado para redirecciones)"
+    },
+    "rename": {
+      "title": "Cambiar URL (slug)",
+      "help": "Cambia el identificador de tu URL pública. Las URL antiguas se redirigen automáticamente a la nueva.",
+      "save": "Cambiar",
+      "saved": "URL (slug) cambiada",
+      "saveError": "Error al cambiar la URL (slug)",
+      "unchanged": "Igual que el identificador actual (sin cambios)"
     }
   },
   "team_visibility": {
