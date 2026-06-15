@@ -576,6 +576,28 @@
         "pending": "Pending"
       },
       "create_pending_notice": "This board has not been created yet"
+    },
+    "scored": {
+      "sport": {
+        "figure_skating": "Figure skating",
+        "gymnastics": "Gymnastics"
+      },
+      "waiting_notice": "Record the scores",
+      "start": "Record scores",
+      "total_label_figure": "Total score (Total Segment Score)",
+      "total_label_gymnastics": "Total score (all-around)",
+      "own_score": "Your team's total score",
+      "opponent_score": "Opponent's total score",
+      "score_placeholder": "e.g. 198.45",
+      "required": "(required)",
+      "complete": "Confirm scores",
+      "complete_hint": "Enter both total scores",
+      "result": {
+        "draw": "Draw"
+      },
+      "error": {
+        "record_failed": "Failed to save the scores"
+      }
     }
   }
 }

@@ -576,6 +576,28 @@
         "pending": "未输入"
       },
       "create_pending_notice": "此台次尚未创建"
+    },
+    "scored": {
+      "sport": {
+        "figure_skating": "花样滑冰",
+        "gymnastics": "体操"
+      },
+      "waiting_notice": "请记录评分",
+      "start": "记录评分",
+      "total_label_figure": "总分（Total Segment Score）",
+      "total_label_gymnastics": "总分（个人全能）",
+      "own_score": "本队总分",
+      "opponent_score": "对方总分",
+      "score_placeholder": "例：198.45",
+      "required": "（必填）",
+      "complete": "确定评分",
+      "complete_hint": "请输入双方的总分",
+      "result": {
+        "draw": "平局"
+      },
+      "error": {
+        "record_failed": "评分结果保存失败"
+      }
     }
   }
 }

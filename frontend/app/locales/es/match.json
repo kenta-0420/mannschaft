@@ -576,6 +576,28 @@
         "pending": "Pendiente"
       },
       "create_pending_notice": "Este tablero aún no se ha creado"
+    },
+    "scored": {
+      "sport": {
+        "figure_skating": "Patinaje artístico",
+        "gymnastics": "Gimnasia"
+      },
+      "waiting_notice": "Registre las puntuaciones",
+      "start": "Registrar puntuaciones",
+      "total_label_figure": "Puntuación total (Total Segment Score)",
+      "total_label_gymnastics": "Puntuación total (general individual)",
+      "own_score": "Puntuación total de tu equipo",
+      "opponent_score": "Puntuación total del rival",
+      "score_placeholder": "p. ej. 198.45",
+      "required": "(obligatorio)",
+      "complete": "Confirmar puntuaciones",
+      "complete_hint": "Introduzca ambas puntuaciones totales",
+      "result": {
+        "draw": "Empate"
+      },
+      "error": {
+        "record_failed": "No se pudieron guardar las puntuaciones"
+      }
     }
   }
 }

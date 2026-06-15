@@ -576,6 +576,28 @@
         "pending": "미입력"
       },
       "create_pending_notice": "이 보드는 아직 생성되지 않았습니다"
+    },
+    "scored": {
+      "sport": {
+        "figure_skating": "피겨 스케이팅",
+        "gymnastics": "체조"
+      },
+      "waiting_notice": "채점을 기록해 주세요",
+      "start": "채점 기록",
+      "total_label_figure": "합계 점수(Total Segment Score)",
+      "total_label_gymnastics": "합계 점수(개인 종합)",
+      "own_score": "우리 팀 합계 점수",
+      "opponent_score": "상대 합계 점수",
+      "score_placeholder": "예: 198.45",
+      "required": "(필수)",
+      "complete": "채점 확정",
+      "complete_hint": "양쪽의 합계 점수를 입력해 주세요",
+      "result": {
+        "draw": "무승부"
+      },
+      "error": {
+        "record_failed": "채점 결과 저장에 실패했습니다"
+      }
     }
   }
 }

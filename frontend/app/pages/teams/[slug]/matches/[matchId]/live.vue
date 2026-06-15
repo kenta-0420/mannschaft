@@ -17,10 +17,12 @@ import {
   isContinuousModule,
   isSetBasedModule,
   isTurnBasedModule,
+  isScoredModule,
   type SportLiveModule,
 } from '~/composables/match/sport/sportModuleRegistry'
 import type { MatchSetTrackerReturn } from '~/composables/match/sport/useMatchSetTracker'
 import type { MatchTurnTrackerReturn } from '~/composables/match/sport/useMatchTurnTracker'
+import type { MatchScoreEntryReturn } from '~/composables/match/useMatchScoreEntry'
 import { buildTurnResultPayload } from '~/composables/match/useMatchTurnApi'
 import type { BoardProgressItem } from '~/components/match/MatchBoardProgress.vue'
 
@@ -69,6 +71,14 @@ const setTracker = shallowRef<MatchSetTrackerReturn | null>(null)
 const isTurnBased = computed(() => sportModule.value !== null && isTurnBasedModule(sportModule.value!))
 /** ターントラッカー（TURN_BASED 競技時のみ非 null）。 */
 const turnTracker = shallowRef<MatchTurnTrackerReturn | null>(null)
+
+/**
+ * 採点制（FIGURE_SKATING/GYMNASTICS）かどうか（§G.16 stateModel 分岐・SCORED）。
+ * 採点制はタイマー・セット・ターントラッカーを持たず、合計点入力シートを使う（07_scored.md §3）。
+ */
+const isScored = computed(() => sportModule.value !== null && isScoredModule(sportModule.value!))
+/** 採点入力トラッカー（SCORED 競技時のみ非 null）。 */
+const scoreEntry = shallowRef<MatchScoreEntryReturn | null>(null)
 
 /**
  * 団体戦の子ボード進捗（6-④c・GET /boards 由来）。
@@ -216,6 +226,12 @@ onMounted(async () => {
     await loadBoards()
   }
 
+  // 採点制: 採点入力トラッカーを初期化（SCORED 競技時のみ・07_scored.md §9）。
+  // 実際の競技（フィギュア/体操）を渡して表示ラベルを出し分ける（モジュールは共有のため）。
+  if (mod !== null && isScoredModule(mod)) {
+    scoreEntry.value = mod.createScoreEntry((sport ?? 'FIGURE_SKATING') as typeof mod.sport)
+  }
+
   sessionScope = effectScope()
   const s = sessionScope.run(() =>
     useMatchLiveSession({
@@ -299,6 +315,38 @@ async function completeTurnResult(): Promise<void> {
     session.value?.setMatchStatus('COMPLETED')
     // 団体戦なら親の勝ち星再集計が走るためボード進捗を再取得する。
     if (isTeamMatch.value) await loadBoards()
+  } catch {
+    notification.warn(t('match.live.error.complete_failed'))
+  }
+}
+
+/**
+ * 採点競技（フィギュア/体操）の採点結果を確定する（07_scored.md §9 配線）。
+ *
+ * 球技用 completeMatch（ゴールイベント由来＝採点競技では常に 0-0）ではなく、
+ * BE の採点結果エンドポイント PUT /scored-result を呼んで home/away の合計点（整数スケール×1000）を
+ * 送信する。BE が home/away_score を確定し、大小から勝敗（W/D/L）を導出する（§4.2）。
+ * その後 changeStatus(COMPLETED) で順位連携（MatchCompletedEvent）を発火させる。
+ */
+async function completeScoredResult(): Promise<void> {
+  const entry = scoreEntry.value
+  if (!entry || orgId.value === null || teamId.value === null) return
+  if (matchStatus.value === 'COMPLETED') return
+  let res: Awaited<ReturnType<typeof entry.submit>>
+  try {
+    res = await entry.submit(orgId.value, matchId)
+  } catch {
+    // submit（recordScore）内でトースト済み。スコア保存に失敗したら status 遷移はしない（根治原則）。
+    return
+  }
+  if (res === null) {
+    // canSubmit を満たさない（合計点未入力）。status 遷移はしない。
+    return
+  }
+  try {
+    await matchApi.changeStatus(orgId.value, teamId.value, matchId, { status: 'COMPLETED' })
+    matchStatus.value = 'COMPLETED'
+    session.value?.setMatchStatus('COMPLETED')
   } catch {
     notification.warn(t('match.live.error.complete_failed'))
   }
@@ -421,7 +469,8 @@ function back(): void {
       />
 
       <!-- タイマー操作（記録権限がある場合のみ）。競技で出し分け（前後半系 / クォーター系）。 -->
-      <template v-if="canRecord && !isSetBased">
+      <!-- 採点制はタイマーを持たないため除外（07_scored.md §3）。 -->
+      <template v-if="canRecord && !isSetBased && !isScored">
         <MatchTimerControlsBasketball
           v-if="isBasketball"
           class="mb-3"
@@ -489,7 +538,7 @@ function back(): void {
         大ボタン行（記録開始・スタメン設定）— 球技（連続時間制・セット制）のみ。
         ターン制（SHOGI/GO）は結果入力シートが別途表示されるためタイムライン不要。
       -->
-      <div v-if="canRecord && !isTurnBased" class="mb-4 flex flex-col gap-2">
+      <div v-if="canRecord && !isTurnBased && !isScored" class="mb-4 flex flex-col gap-2">
         <Button
           class="w-full !min-h-[3.5rem]"
           :label="t('match.live.title')"
@@ -507,7 +556,7 @@ function back(): void {
       </div>
 
       <!-- undo 帯（記録権限がある場合のみ・ターン制は不要） -->
-      <div v-if="canRecord && !isTurnBased && session.recorder.canUndo.value" class="mb-3 flex justify-end">
+      <div v-if="canRecord && !isTurnBased && !isScored && session.recorder.canUndo.value" class="mb-3 flex justify-end">
         <Button
           text
           severity="secondary"
@@ -517,9 +566,9 @@ function back(): void {
         />
       </div>
 
-      <!-- タイムライン（球技のみ・ターン制は不要） -->
+      <!-- タイムライン（球技のみ・ターン制/採点制は不要） -->
       <MatchTimeline
-        v-if="!isTurnBased"
+        v-if="!isTurnBased && !isScored"
         :events="session.recorder.events.value"
         :own-team-side="ownTeamSide"
         @select="onTimelineSelect"
@@ -550,7 +599,7 @@ function back(): void {
       -->
       <component
         :is="sportModule.eventSheet"
-        v-if="canRecord && sportModule && !isSetBased && !isTurnBased"
+        v-if="canRecord && sportModule && !isSetBased && !isTurnBased && !isScored"
         v-model:visible="sheetVisible"
         :players="grid.players.value"
         @goal="session.recordGoal"
@@ -614,9 +663,28 @@ function back(): void {
         @remove-photo="onRemovePositionPhoto"
       />
 
-      <!-- スタメン設定シート（記録権限がある場合のみマウント・ターン制は不要） -->
+      <!--
+        採点制 採点結果入力シート（SCORED 競技のみ表示・07_scored.md §9）。
+        フィギュア/体操は「タイマー・タイムライン・選手グリッド・セット」を使わず、
+        合計点入力（自/相手の Total Segment Score / 個人総合）UI で完結する（2 者対戦・MVP）。
+        記録権限の有無に関わらずマウント（canRecord prop で内部出し分け）。
+        完了は球技用 complete() ではなく completeScoredResult()（PUT /scored-result + COMPLETED）。
+        勝敗は合計点の大小で BE が導出する（FE は両合計点を送るだけ・§4.2）。
+      -->
+      <component
+        :is="sportModule.eventSheet"
+        v-if="isScored && scoreEntry && sportModule"
+        :tracker="scoreEntry!"
+        :own-team-side="ownTeamSide"
+        :opponent-name="opponentName"
+        :can-record="canRecord"
+        class="mb-4"
+        @complete-match="completeScoredResult()"
+      />
+
+      <!-- スタメン設定シート（記録権限がある場合のみマウント・ターン制/採点制は不要） -->
       <MatchStarterSetup
-        v-if="canRecord && !isTurnBased"
+        v-if="canRecord && !isTurnBased && !isScored"
         v-model:visible="starterSetupVisible"
         :players="grid.players.value"
         @toggle-starter="grid.toggleStarter($event)"

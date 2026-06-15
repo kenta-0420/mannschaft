@@ -576,6 +576,28 @@
         "pending": "Ausstehend"
       },
       "create_pending_notice": "Dieses Brett wurde noch nicht erstellt"
+    },
+    "scored": {
+      "sport": {
+        "figure_skating": "Eiskunstlauf",
+        "gymnastics": "Gymnastik"
+      },
+      "waiting_notice": "Bitte die Wertungen erfassen",
+      "start": "Wertungen erfassen",
+      "total_label_figure": "Gesamtpunktzahl (Total Segment Score)",
+      "total_label_gymnastics": "Gesamtpunktzahl (Mehrkampf)",
+      "own_score": "Gesamtpunktzahl deines Teams",
+      "opponent_score": "Gesamtpunktzahl des Gegners",
+      "score_placeholder": "z. B. 198.45",
+      "required": "(erforderlich)",
+      "complete": "Wertungen bestätigen",
+      "complete_hint": "Beide Gesamtpunktzahlen eingeben",
+      "result": {
+        "draw": "Unentschieden"
+      },
+      "error": {
+        "record_failed": "Speichern der Wertungen fehlgeschlagen"
+      }
     }
   }
 }

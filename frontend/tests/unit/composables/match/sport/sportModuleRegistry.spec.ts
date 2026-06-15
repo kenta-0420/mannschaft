@@ -6,6 +6,7 @@ import {
   isContinuousModule,
   isSetBasedModule,
   isTurnBasedModule,
+  isScoredModule,
 } from '~/composables/match/sport/sportModuleRegistry'
 import {
   getSportCatalog,
@@ -179,6 +180,47 @@ describe('sportModuleRegistry（動的 import 選択）', () => {
       const tracker = go.createTurnTracker()
       expect(tracker.isGo.value).toBe(true) // GO = isGo true
       expect(tracker.sport).toBe('GO')
+    })
+    scope.stop()
+  })
+
+  it('MOD-001c: FIGURE_SKATING/GYMNASTICS（採点制）も isSupportedSport=true（SCORED）', () => {
+    expect(isSupportedSport('FIGURE_SKATING')).toBe(true)
+    expect(isSupportedSport('GYMNASTICS')).toBe(true)
+  })
+
+  it('MOD-011: FIGURE_SKATING/GYMNASTICS は SCORED・createScoreEntry を持ちタイマー/セット/ターンを持たない', async () => {
+    const fig = await resolveSportModule('FIGURE_SKATING')
+    const gym = await resolveSportModule('GYMNASTICS')
+    for (const mod of [fig, gym]) {
+      expect(mod).not.toBeNull()
+      expect(mod?.stateModel).toBe('SCORED')
+      expect(isScoredModule(mod!)).toBe(true)
+      expect(isContinuousModule(mod!)).toBe(false)
+      expect(isSetBasedModule(mod!)).toBe(false)
+      expect(isTurnBasedModule(mod!)).toBe(false)
+      // eventSheet（遅延コンポ）契約
+      expect(mod?.eventSheet).toBeDefined()
+      expect(['object', 'function']).toContain(typeof mod?.eventSheet)
+    }
+  })
+
+  it('MOD-011b: 共有モジュールは createScoreEntry の引数で競技ラベルを出し分ける（フィギュア/体操）', async () => {
+    // FIGURE_SKATING/GYMNASTICS は同一モジュールインスタンスを共有するため、
+    // createScoreEntry(sport) の引数で表示ラベル用の競技を切り替える。
+    const fig = await resolveSportModule('FIGURE_SKATING')
+    const gym = await resolveSportModule('GYMNASTICS')
+    expect(fig && isScoredModule(fig)).toBe(true)
+    expect(gym && isScoredModule(gym)).toBe(true)
+    const scope = effectScope()
+    scope.run(() => {
+      if (!fig || !isScoredModule(fig)) return
+      if (!gym || !isScoredModule(gym)) return
+      const figEntry = fig.createScoreEntry('FIGURE_SKATING')
+      expect(figEntry.entryState.value).toBe('WAITING')
+      expect(figEntry.isFigureSkating.value).toBe(true)
+      const gymEntry = gym.createScoreEntry('GYMNASTICS')
+      expect(gymEntry.isGymnastics.value).toBe(true)
     })
     scope.stop()
   })
