@@ -76,7 +76,10 @@ public enum TeamErrorCode implements ErrorCode {
     TEAM_061("TEAM_061", "そのスラッグは予約語のため使用できません", Severity.WARN),
 
     /** slug が既に使用されている（409） */
-    TEAM_062("TEAM_062", "そのスラッグはすでに使われています", Severity.WARN);
+    TEAM_062("TEAM_062", "そのスラッグはすでに使われています", Severity.WARN),
+
+    /** slug が他チームの履歴に予約済み（恒久 301 リダイレクト保全のため使用不可・409） */
+    TEAM_063("TEAM_063", "そのスラッグは過去に他チームで使われていたため使用できません", Severity.WARN);
 
     private final String code;
     private final String message;

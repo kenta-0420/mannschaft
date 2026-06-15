@@ -79,7 +79,10 @@ public enum OrgErrorCode implements ErrorCode {
     ORG_061("ORG_061", "そのスラッグは予約語のため使用できません", Severity.WARN),
 
     /** slug が既に使用されている（409） */
-    ORG_062("ORG_062", "そのスラッグはすでに使われています", Severity.WARN);
+    ORG_062("ORG_062", "そのスラッグはすでに使われています", Severity.WARN),
+
+    /** slug が他組織の履歴に予約済み（恒久 301 リダイレクト保全のため使用不可・409） */
+    ORG_063("ORG_063", "そのスラッグは過去に他組織で使われていたため使用できません", Severity.WARN);
 
     private final String code;
     private final String message;

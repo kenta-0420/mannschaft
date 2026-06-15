@@ -21,6 +21,7 @@ import com.mannschaft.app.role.dto.PermissionGroupResponse;
 import com.mannschaft.app.role.dto.RoleChangeRequest;
 import com.mannschaft.app.role.dto.UserPermissionGroupAssignRequest;
 import com.mannschaft.app.team.dto.CreateTeamRequest;
+import com.mannschaft.app.team.dto.RenameSlugRequest;
 import com.mannschaft.app.team.dto.TeamOrgSummaryResponse;
 import com.mannschaft.app.team.dto.TeamResponse;
 import com.mannschaft.app.team.dto.TeamSummaryResponse;
@@ -118,6 +119,17 @@ public class TeamController {
             @PathVariable String slug, @Valid @RequestBody UpdateTeamRequest req) {
         Long id = teamService.resolveTeamId(slug);
         return ResponseEntity.ok(teamService.updateTeam(id, req));
+    }
+
+    @PutMapping("/{slug}/slug")
+    @Operation(summary = "チーム slug リネーム（ADMIN/DEPUTY のみ・旧slugは301解決用に履歴予約）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "リネーム成功")
+    public ResponseEntity<ApiResponse<TeamResponse>> renameSlug(
+            @PathVariable String slug, @Valid @RequestBody RenameSlugRequest req) {
+        Long id = teamService.resolveTeamId(slug);
+        // F00 正準: 当該チームの ADMIN/DEPUTY 相当のみ許可（独自 gate を作らず checkAdminOrAbove に委譲）
+        accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, SCOPE_TYPE);
+        return ResponseEntity.ok(teamService.renameSlug(id, req.getNewSlug()));
     }
 
     @DeleteMapping("/{slug}")

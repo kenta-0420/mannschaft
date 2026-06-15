@@ -40,13 +40,15 @@ V71 backfill で ASCII 3 字未満（日本語名等）のチーム／組織に�
 - 設定画面でユーザー自身が slug を変更可能にする（`PATCH /teams/{slug}` / `PATCH /organizations/{slug}` で `slug` 変更を許可。形式・一意・予約語の同一バリデーションを適用）。
 - 連番 slug に該当するチーム／組織にのみ、設定画面で「URL を分かりやすい slug に変更しませんか？」と**変更を促す導線**を表示する（任意・非強制）。
 
-### 5.9.5 slug リネーム時の 301 リダイレクト（後続 wave 実装予定）
+### 5.9.5 slug リネーム時の 301 リダイレクト（後続 wave ① BE 実装済み）
 
-slug を変更すると旧 URL が 404 になり SEO・ブックマークが失われるため、**旧 slug → 新 slug のリダイレクト用履歴を残す**:
+slug を変更すると旧 URL が 404 になり SEO・ブックマークが失われるため、**旧 slug → 新 slug のリダイレクト用履歴を残す**。**後続 wave ① で BE 実装済み**（FE 設定画面 UI・301 遷移は次 wave）:
 
-- `team_slug_history` / `organization_slug_history`（`old_slug` UNIQUE・`scope_id`・`changed_at`）に旧 slug を記録し、旧 slug アクセス時に新 slug へ **301 Moved Permanently** でリダイレクトする。
-- 旧 slug は他エンティティが再利用できないよう一定期間（または恒久）予約する。
-- ※ 本項目は**後続 wave での実装予定**。本 wave では設計方針の明記のみ。
+- **履歴テーブル**: `team_slug_history` / `organization_slug_history`（Flyway `V88.001`）。`id BINARY(16)`（UuidV7・原則6）, `team_id`/`organization_id BIGINT`, `old_slug VARCHAR(30) UNIQUE`, `created_at`。`old_slug` の UNIQUE が「恒久予約」と「301 解決キー」を兼ねる。**クロスドメイン FK は張らない**（原則1）。
+- **リネーム API**（既存 update と分離）: `PUT /api/v1/teams/{slug}/slug` / `PUT /api/v1/organizations/{slug}/slug` body `{ "newSlug": "..." }`。認可は `AccessControlService.checkAdminOrAbove`（ADMIN/DEPUTY 相当）。`newSlug == 現slug` は no-op で 200。成功時は旧 slug を履歴 INSERT → slug 更新を同一トランザクションで実施。
+- **301 解決 EP**（permitAll＋レート制限）: `GET /api/v1/public/teams/slug-resolve?slug=` / `GET /api/v1/public/organizations/slug-resolve?slug=` → `{ status: "CURRENT" | "MOVED" | "NOT_FOUND", canonicalSlug? }`。現 slug 存在=`CURRENT`、旧 slug 一致=その現 slug へ `MOVED(canonicalSlug)`、どちらも無し=`NOT_FOUND`。スコープ漏洩防止のため `canonicalSlug` のみ返し名前等は返さない。FE は `MOVED` を受けて **301 Moved Permanently** で `canonicalSlug` の URL へ誘導する（次 wave）。
+- **恒久予約**: 旧 slug は他チーム/組織が再利用できないよう**恒久予約**する。作成可用性チェック（`slug-available`）・作成検証・リネーム検証の全てで他スコープの履歴 slug を弾く（理由コード `SLUG_RETIRED`／`TEAM_063`・`ORG_063`＝409）。**自スコープ自身の過去 slug への戻しは許可**（同一 scope_id の履歴は判定から除外）。
+- エラーコード: `TEAM_060`/`ORG_060`=形式不正(422)・`TEAM_061`/`ORG_061`=予約語(422)・`TEAM_062`/`ORG_062`=重複(409)・`TEAM_063`/`ORG_063`=履歴予約(409)。
 
 ### 5.9.6 public_id（UUID）路線を採らない決定と根拠
 
