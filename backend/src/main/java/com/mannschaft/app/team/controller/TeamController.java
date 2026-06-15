@@ -20,6 +20,7 @@ import com.mannschaft.app.role.dto.PermissionGroupRequest;
 import com.mannschaft.app.role.dto.PermissionGroupResponse;
 import com.mannschaft.app.role.dto.RoleChangeRequest;
 import com.mannschaft.app.role.dto.UserPermissionGroupAssignRequest;
+import com.mannschaft.app.common.dto.SlugAvailabilityResponse;
 import com.mannschaft.app.team.dto.CreateTeamRequest;
 import com.mannschaft.app.team.dto.RenameSlugRequest;
 import com.mannschaft.app.team.dto.TeamOrgSummaryResponse;
@@ -100,7 +101,7 @@ public class TeamController {
     @GetMapping("/slug-available")
     @Operation(summary = "slug 可用性チェック（作成前のリアルタイム検証・村方式統一）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "判定結果")
-    public ResponseEntity<ApiResponse<TeamService.SlugAvailabilityResponse>> checkSlugAvailability(
+    public ResponseEntity<ApiResponse<SlugAvailabilityResponse>> checkSlugAvailability(
             @RequestParam String slug) {
         return ResponseEntity.ok(ApiResponse.of(teamService.checkSlugAvailability(slug)));
     }
