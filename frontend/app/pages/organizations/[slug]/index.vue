@@ -7,8 +7,6 @@ definePageMeta({
   layout: 'default',
 })
 
-const orgApi = useOrganizationApi()
-
 const route = useRoute()
 const orgSlug = computed(() => String(route.params.slug))
 const {
