@@ -9,13 +9,13 @@ import java.util.UUID;
 /**
  * ベンチ入り役員リポジトリ（F08.7.1/05 §8.3）。
  */
-public interface MatchRosterStaffRepository extends JpaRepository<MatchRosterStaffEntity, UUID> {
+public interface FixtureRosterStaffRepository extends JpaRepository<FixtureRosterStaffEntity, UUID> {
 
     /** 試合×参加チーム単位でベンチ役員一覧を取得する */
-    List<MatchRosterStaffEntity> findByMatchIdAndParticipantIdOrderByCreatedAtAsc(Long matchId, Long participantId);
+    List<FixtureRosterStaffEntity> findByMatchIdAndParticipantIdOrderByCreatedAtAsc(Long matchId, Long participantId);
 
     /** 試合の全参加チームのベンチ役員一覧を取得する（主催者ビュー用） */
-    List<MatchRosterStaffEntity> findByMatchIdOrderByParticipantIdAscCreatedAtAsc(Long matchId);
+    List<FixtureRosterStaffEntity> findByMatchIdOrderByParticipantIdAscCreatedAtAsc(Long matchId);
 
     /** 自チーム分のベンチ役員を全削除する（提出時の全置換 UPSERT に使用） */
     @Modifying

@@ -1,18 +1,18 @@
 package com.mannschaft.app.tournament.service;
 
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
-import com.mannschaft.app.tournament.MatchResult;
-import com.mannschaft.app.tournament.MatchStatus;
+import com.mannschaft.app.tournament.FixtureResult;
+import com.mannschaft.app.tournament.FixtureStatus;
 import com.mannschaft.app.tournament.TournamentFormat;
 import com.mannschaft.app.tournament.dto.ScoreUpdateRequest;
 import com.mannschaft.app.tournament.entity.TournamentDivisionEntity;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
-import com.mannschaft.app.tournament.entity.TournamentMatchEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixtureEntity;
 import com.mannschaft.app.tournament.entity.TournamentMatchdayEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
 import com.mannschaft.app.tournament.entity.TournamentStandingEntity;
 import com.mannschaft.app.tournament.repository.TournamentDivisionRepository;
-import com.mannschaft.app.tournament.repository.TournamentMatchRepository;
+import com.mannschaft.app.tournament.repository.TournamentFixtureRepository;
 import com.mannschaft.app.tournament.repository.TournamentMatchdayRepository;
 import com.mannschaft.app.tournament.repository.TournamentParticipantRepository;
 import com.mannschaft.app.tournament.repository.TournamentRepository;
@@ -34,7 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <h3>このテストが守るもの（05 §H.0.1）</h3>
  * <p>{@link StandingsCalculationService#onStandingsRecalculation} は第三陣で
  * {@code @Async @TransactionalEventListener(phase = AFTER_COMMIT)} ＋ {@code @Transactional(REQUIRES_NEW)}
- * に切り替えられた。これにより、{@link com.mannschaft.app.tournament.service.MatchService#updateScore}
+ * に切り替えられた。これにより、{@link com.mannschaft.app.tournament.service.FixtureService#updateScore}
  * の {@code @Transactional} が<b>コミットした後</b>に、別スレッド（{@code @Async event-pool}）が
  * <b>新規 TX で確定済みスコアを読んで</b>順位表を再計算する。手動再計算なしで自動反映される。</p>
  *
@@ -72,7 +72,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class StandingsRecalculationAfterCommitIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
-    private MatchService matchService;
+    private FixtureService matchService;
 
     @Autowired
     private TournamentRepository tournamentRepository;
@@ -87,7 +87,7 @@ class StandingsRecalculationAfterCommitIT extends AbstractMySqlIntegrationTest {
     private TournamentParticipantRepository participantRepository;
 
     @Autowired
-    private TournamentMatchRepository matchRepository;
+    private TournamentFixtureRepository matchRepository;
 
     @Autowired
     private TournamentStandingRepository standingRepository;
@@ -140,13 +140,13 @@ class StandingsRecalculationAfterCommitIT extends AbstractMySqlIntegrationTest {
                 .displayName("アウェイチーム")
                 .build());
 
-        TournamentMatchEntity fixture = matchRepository.save(TournamentMatchEntity.builder()
+        TournamentFixtureEntity fixture = matchRepository.save(TournamentFixtureEntity.builder()
                 .matchdayId(matchday.getId())
                 .homeParticipantId(home.getId())
                 .awayParticipantId(away.getId())
                 .matchNumber(1)
-                .result(MatchResult.PENDING)
-                .status(MatchStatus.SCHEDULED)
+                .result(FixtureResult.PENDING)
+                .status(FixtureStatus.SCHEDULED)
                 .build());
 
         // 前提: まだ順位表は存在しない（再計算が未実行）
@@ -191,8 +191,8 @@ class StandingsRecalculationAfterCommitIT extends AbstractMySqlIntegrationTest {
         assertThat(a.getRank()).as("away rank（敗者が2位）").isEqualTo(2);
 
         // 実 DB 上の試合もコミット済み（status=COMPLETED / result=HOME_WIN）であることを確認
-        TournamentMatchEntity persisted = matchRepository.findById(fixture.getId()).orElseThrow();
-        assertThat(persisted.getStatus()).isEqualTo(MatchStatus.COMPLETED);
-        assertThat(persisted.getResult()).isEqualTo(MatchResult.HOME_WIN);
+        TournamentFixtureEntity persisted = matchRepository.findById(fixture.getId()).orElseThrow();
+        assertThat(persisted.getStatus()).isEqualTo(FixtureStatus.COMPLETED);
+        assertThat(persisted.getResult()).isEqualTo(FixtureResult.HOME_WIN);
     }
 }

@@ -4,12 +4,12 @@ import com.mannschaft.app.match.MatchCompletedEvent;
 import com.mannschaft.app.match.domain.MatchStatus;
 import com.mannschaft.app.tournament.dto.ScoreUpdateRequest;
 import com.mannschaft.app.tournament.entity.TournamentDivisionEntity;
-import com.mannschaft.app.tournament.entity.TournamentMatchEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixtureEntity;
 import com.mannschaft.app.tournament.entity.TournamentMatchdayEntity;
 import com.mannschaft.app.tournament.repository.TournamentDivisionRepository;
-import com.mannschaft.app.tournament.repository.TournamentMatchRepository;
+import com.mannschaft.app.tournament.repository.TournamentFixtureRepository;
 import com.mannschaft.app.tournament.repository.TournamentMatchdayRepository;
-import com.mannschaft.app.tournament.service.MatchService;
+import com.mannschaft.app.tournament.service.FixtureService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,7 +34,7 @@ import static org.mockito.Mockito.when;
 /**
  * {@link MatchScoreFixtureListener} の純 UT（test-first・05 §H.2 / 06 §I.2 第一陣）。
  *
- * <p>検証: (a) 単独試合（fixtureId=null）無視、(b) fixture 引当→既存 {@link MatchService#updateScore}
+ * <p>検証: (a) 単独試合（fixtureId=null）無視、(b) fixture 引当→既存 {@link FixtureService#updateScore}
  * へスコア反映、(c) 順位再計算（既存 updateScore 内の {@code StandingsRecalculationEvent} 発火）が起動、
  * (d) 冪等（再発火で全列置換）、(e) participant⇔side（home participant=HOME 固定）。
  * 加えて fixture 引当不能時に例外を投げずスキップする（越境で壊さない）ことを確認する。
@@ -51,22 +51,22 @@ class MatchScoreFixtureListenerTest {
     private static final long TOURNAMENT_ID = 5L;
 
     @Mock
-    private TournamentMatchRepository fixtureRepository;
+    private TournamentFixtureRepository fixtureRepository;
     @Mock
     private TournamentMatchdayRepository matchdayRepository;
     @Mock
     private TournamentDivisionRepository divisionRepository;
     @Mock
-    private MatchService tournamentMatchService;
+    private FixtureService tournamentMatchService;
 
     @InjectMocks
     private MatchScoreFixtureListener listener;
 
-    private TournamentMatchEntity fixture;
+    private TournamentFixtureEntity fixture;
 
     @BeforeEach
     void setUp() {
-        fixture = TournamentMatchEntity.builder()
+        fixture = TournamentFixtureEntity.builder()
                 .matchdayId(MATCHDAY_ID)
                 .homeParticipantId(11L)
                 .awayParticipantId(22L)

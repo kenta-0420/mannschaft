@@ -2,12 +2,12 @@ package com.mannschaft.app.tournament.listener;
 
 import com.mannschaft.app.match.MatchCompletedEvent;
 import com.mannschaft.app.tournament.dto.ScoreUpdateRequest;
-import com.mannschaft.app.tournament.entity.TournamentMatchEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixtureEntity;
 import com.mannschaft.app.tournament.entity.TournamentMatchdayEntity;
 import com.mannschaft.app.tournament.repository.TournamentDivisionRepository;
-import com.mannschaft.app.tournament.repository.TournamentMatchRepository;
+import com.mannschaft.app.tournament.repository.TournamentFixtureRepository;
 import com.mannschaft.app.tournament.repository.TournamentMatchdayRepository;
-import com.mannschaft.app.tournament.service.MatchService;
+import com.mannschaft.app.tournament.service.FixtureService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -23,7 +23,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * （{@code tournament_matches}→{@code tournament_fixtures} 物理改称・スコア正本移管）は
  * <b>後続フェーズ（Phase 5）に延期</b>する。入口①は本リスナーが {@link MatchCompletedEvent} を
  * {@link TransactionalEventListener}(AFTER_COMMIT) で受信し、<b>既存 {@code tournament_matches} の
- * {@link MatchService#updateScore} を再利用</b>してスコア反映＋既存の
+ * {@link FixtureService#updateScore} を再利用</b>してスコア反映＋既存の
  * {@code StandingsRecalculationEvent} 発火（既存の非同期順位再計算・冪等）に乗せるだけとする。</p>
  *
  * <p><b>順位再計算経路（第三陣でレース根治済み・05 §H.0.1）</b>: 当初は既存
@@ -40,13 +40,13 @@ import org.springframework.transaction.event.TransactionalEventListener;
  *   <li>fixtureId（= {@code tournament_matches.id}・BIGINT）で fixture を引当。無ければ警告ログのみで
  *       終了（例外を投げない＝tournament を越境で壊さない・05 §H.2 (b)）。</li>
  *   <li>fixture の matchday → division から {@code tournamentId} を順引きし、既存
- *       {@link MatchService#updateScore} を呼ぶ。スコアはイベントのスナップショット（本戦合算済み
+ *       {@link FixtureService#updateScore} を呼ぶ。スコアはイベントのスナップショット（本戦合算済み
  *       {@code homeScore}/{@code awayScore}＋分離 PK）をそのまま渡す。
  *       <b>延長はイベントで本戦に合算済みゆえ extra は使わない（null）</b>。
  *       determineResult / winnerParticipantId は既存ロジックに委ねる。
  *       <b>participant ⇔ side は home participant = HOME 固定</b>（05 §H.1.2）であり、
  *       fixture の {@code home_participant_id} がそのまま本戦 {@code homeScore} を受ける。</li>
- *   <li>{@link MatchService#updateScore} 内で {@code match.updateScore} により status=COMPLETED が
+ *   <li>{@link FixtureService#updateScore} 内で {@code match.updateScore} により status=COMPLETED が
  *       自動化され、既存の {@code StandingsRecalculationEvent}（division/tournament 指定）が発火する。
  *       順位再計算は既存 {@code @Async}・冪等経路を流用する。</li>
  * </ol>
@@ -67,10 +67,10 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @RequiredArgsConstructor
 public class MatchScoreFixtureListener {
 
-    private final TournamentMatchRepository fixtureRepository;
+    private final TournamentFixtureRepository fixtureRepository;
     private final TournamentMatchdayRepository matchdayRepository;
     private final TournamentDivisionRepository divisionRepository;
-    private final MatchService tournamentMatchService;
+    private final FixtureService tournamentMatchService;
 
     /**
      * 試合完了イベントを受信し、リンクする大会の対戦カードへスコアを反映して順位連携する。
@@ -87,7 +87,7 @@ public class MatchScoreFixtureListener {
             return;
         }
 
-        TournamentMatchEntity fixture = fixtureRepository.findById(fixtureId).orElse(null);
+        TournamentFixtureEntity fixture = fixtureRepository.findById(fixtureId).orElse(null);
         if (fixture == null) {
             // 引当不能でも例外を投げない（match 側は既コミット・tournament を越境で壊さない・05 §H.2 (b)）。
             // 症状は握りつぶさず警告ログに残す（フェイルセーフは手動順位再計算 API・05 §H.2 (c)）。
@@ -131,7 +131,7 @@ public class MatchScoreFixtureListener {
      *
      * @return tournamentId（matchday / division が引けない場合は {@code null}）
      */
-    private Long resolveTournamentId(TournamentMatchEntity fixture) {
+    private Long resolveTournamentId(TournamentFixtureEntity fixture) {
         TournamentMatchdayEntity matchday = matchdayRepository.findById(fixture.getMatchdayId()).orElse(null);
         if (matchday == null) {
             return null;

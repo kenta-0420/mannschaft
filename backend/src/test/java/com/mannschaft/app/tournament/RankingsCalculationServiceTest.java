@@ -12,10 +12,10 @@ import com.mannschaft.app.publicview.visibility.ViewerContext;
 import com.mannschaft.app.tournament.dto.IndividualRankingResponse;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
 import com.mannschaft.app.tournament.entity.TournamentIndividualRankingEntity;
-import com.mannschaft.app.tournament.entity.TournamentMatchPlayerStatEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixturePlayerStatEntity;
 import com.mannschaft.app.tournament.entity.TournamentStatDefEntity;
 import com.mannschaft.app.tournament.repository.TournamentIndividualRankingRepository;
-import com.mannschaft.app.tournament.repository.TournamentMatchPlayerStatRepository;
+import com.mannschaft.app.tournament.repository.TournamentFixturePlayerStatRepository;
 import com.mannschaft.app.tournament.repository.TournamentRepository;
 import com.mannschaft.app.tournament.repository.TournamentStatDefRepository;
 import com.mannschaft.app.tournament.service.RankingsCalculationService;
@@ -59,7 +59,7 @@ import static org.mockito.Mockito.verify;
 class RankingsCalculationServiceTest {
 
     @Mock private TournamentStatDefRepository statDefRepository;
-    @Mock private TournamentMatchPlayerStatRepository playerStatRepository;
+    @Mock private TournamentFixturePlayerStatRepository playerStatRepository;
     @Mock private TournamentIndividualRankingRepository rankingRepository;
     @Mock private TournamentRepository tournamentRepository;
     @Mock private OrganizationRepository organizationRepository;
@@ -107,7 +107,7 @@ class RankingsCalculationServiceTest {
             given(statDefRepository.findByTournamentIdAndIsRankingTargetTrueOrderBySortOrderAsc(TOURNAMENT_ID))
                     .willReturn(List.of(def));
 
-            TournamentMatchPlayerStatEntity stat = TournamentMatchPlayerStatEntity.builder()
+            TournamentFixturePlayerStatEntity stat = TournamentFixturePlayerStatEntity.builder()
                     .userId(100L).participantId(1L).statKey(STAT_KEY).valueInt(3).build();
             given(playerStatRepository.findByTournamentIdAndStatKey(TOURNAMENT_ID, STAT_KEY))
                     .willReturn(List.of(stat));

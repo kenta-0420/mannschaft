@@ -28,7 +28,7 @@ class PromotionServiceTest {
     @Mock private TournamentDivisionRepository divisionRepository;
     @Mock private TournamentStandingRepository standingRepository;
     @Mock private TournamentParticipantRepository participantRepository;
-    @Mock private TournamentMatchRepository matchRepository;
+    @Mock private TournamentFixtureRepository matchRepository;
     @Mock private TournamentPromotionRecordRepository promotionRecordRepository;
     @Mock private TournamentMapper mapper;
 

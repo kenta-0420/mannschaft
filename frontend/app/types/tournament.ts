@@ -536,8 +536,8 @@ export interface RosterStaffResponse {
   userId: number | null
 }
 
-/** 自チーム分の試合メンバー表（GET / PUT rosters/me のレスポンス） */
-export interface MatchRosterResponse {
+/** 自チーム分の試合メンバー表（GET / PUT rosters/me のレスポンス・BE FixtureRosterResponse 整合） */
+export interface FixtureRosterResponse {
   matchId: number
   participantId: number
   teamId: number

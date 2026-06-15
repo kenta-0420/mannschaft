@@ -3,8 +3,8 @@ package com.mannschaft.app.tournament;
 import com.mannschaft.app.publicview.visibility.DisplayIdentity;
 import com.mannschaft.app.tournament.dto.DivisionResponse;
 import com.mannschaft.app.tournament.dto.IndividualRankingResponse;
-import com.mannschaft.app.tournament.dto.MatchResponse;
-import com.mannschaft.app.tournament.dto.MatchSetResponse;
+import com.mannschaft.app.tournament.dto.FixtureResponse;
+import com.mannschaft.app.tournament.dto.FixtureSetResponse;
 import com.mannschaft.app.tournament.dto.MatchdayResponse;
 import com.mannschaft.app.tournament.dto.ParticipantResponse;
 import com.mannschaft.app.tournament.dto.PlayerStatResponse;
@@ -22,10 +22,10 @@ import com.mannschaft.app.tournament.entity.SystemTournamentPresetTiebreakerEnti
 import com.mannschaft.app.tournament.entity.TournamentDivisionEntity;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
 import com.mannschaft.app.tournament.entity.TournamentIndividualRankingEntity;
-import com.mannschaft.app.tournament.entity.TournamentMatchEntity;
-import com.mannschaft.app.tournament.entity.TournamentMatchPlayerStatEntity;
-import com.mannschaft.app.tournament.entity.TournamentMatchRosterEntity;
-import com.mannschaft.app.tournament.entity.TournamentMatchSetEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixtureEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixturePlayerStatEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixtureRosterEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixtureSetEntity;
 import com.mannschaft.app.tournament.entity.TournamentMatchdayEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
 import com.mannschaft.app.tournament.entity.TournamentPromotionRecordEntity;
@@ -188,7 +188,7 @@ public interface TournamentMapper {
 
     // ===== Matchday =====
 
-    default MatchdayResponse toMatchdayResponse(TournamentMatchdayEntity entity, List<MatchResponse> matches) {
+    default MatchdayResponse toMatchdayResponse(TournamentMatchdayEntity entity, List<FixtureResponse> matches) {
         return new MatchdayResponse(entity.getId(), entity.getDivisionId(), entity.getName(),
                 entity.getMatchdayNumber(), entity.getScheduledDate(), entity.getStatus().name(),
                 matches, entity.getCreatedAt(), entity.getUpdatedAt());
@@ -196,20 +196,20 @@ public interface TournamentMapper {
 
     // ===== Match =====
 
-    default MatchResponse toMatchResponse(TournamentMatchEntity entity,
-                                          List<MatchSetResponse> sets,
+    default FixtureResponse toMatchResponse(TournamentFixtureEntity entity,
+                                          List<FixtureSetResponse> sets,
                                           List<PlayerStatResponse> playerStats) {
-        return MatchResponse.builder()
+        return FixtureResponse.builder()
                 .id(entity.getId())
                 .matchdayId(entity.getMatchdayId())
-                .participants(new MatchResponse.MatchParticipantsDto(
+                .participants(new FixtureResponse.MatchParticipantsDto(
                         entity.getHomeParticipantId(), entity.getAwayParticipantId(),
                         entity.getWinnerParticipantId()))
-                .score(new MatchResponse.MatchScoreDto(
+                .score(new FixtureResponse.MatchScoreDto(
                         entity.getHomeScore(), entity.getAwayScore(),
                         entity.getHomeExtraScore(), entity.getAwayExtraScore(),
                         entity.getHomePenaltyScore(), entity.getAwayPenaltyScore()))
-                .info(new MatchResponse.MatchInfoDto(
+                .info(new FixtureResponse.MatchInfoDto(
                         entity.getMatchNumber(), entity.getScheduledDatetime(), entity.getVenue(),
                         entity.getResult().name(), entity.getLeg(), entity.getNotes(),
                         entity.getStatus().name(), entity.getNextMatchId(),
@@ -217,17 +217,17 @@ public interface TournamentMapper {
                         entity.getScheduleId()))
                 .sets(sets)
                 .playerStats(playerStats)
-                .audit(new MatchResponse.MatchAuditDto(
+                .audit(new FixtureResponse.MatchAuditDto(
                         entity.getVersion(), entity.getCreatedAt(), entity.getUpdatedAt()))
                 .build();
     }
 
-    default MatchSetResponse toMatchSetResponse(TournamentMatchSetEntity entity) {
-        return new MatchSetResponse(entity.getId(), entity.getSetNumber(),
+    default FixtureSetResponse toMatchSetResponse(TournamentFixtureSetEntity entity) {
+        return new FixtureSetResponse(entity.getId(), entity.getSetNumber(),
                 entity.getHomeScore(), entity.getAwayScore());
     }
 
-    default PlayerStatResponse toPlayerStatResponse(TournamentMatchPlayerStatEntity entity) {
+    default PlayerStatResponse toPlayerStatResponse(TournamentFixturePlayerStatEntity entity) {
         return new PlayerStatResponse(entity.getId(), entity.getMatchId(),
                 entity.getParticipantId(), entity.getUserId(), entity.getStatKey(),
                 entity.getValueInt(), entity.getValueDecimal(), entity.getValueTime());
@@ -235,7 +235,7 @@ public interface TournamentMapper {
 
     // ===== Roster =====
 
-    RosterResponse toRosterResponse(TournamentMatchRosterEntity entity);
+    RosterResponse toRosterResponse(TournamentFixtureRosterEntity entity);
 
     // ===== Standing =====
 

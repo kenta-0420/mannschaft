@@ -3,7 +3,7 @@ package com.mannschaft.app.tournament;
 /**
  * 試合結果。
  */
-public enum MatchResult {
+public enum FixtureResult {
     HOME_WIN,
     AWAY_WIN,
     DRAW,
