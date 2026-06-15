@@ -44,11 +44,11 @@ export interface SportPreset {
 /** 競技別カタログ（プリセット並び＋メタ）。 */
 export interface SportCatalog {
   readonly sport: AllSport
-  /** 状態モデル類型（連続時間制 / セット制 / ターン制）。 */
-  readonly stateModel: 'CONTINUOUS_TIME' | 'SET_BASED' | 'TURN_BASED'
-  /** イベント入力シートのプリセット並び（画面下部固定）。バレー・将棋・囲碁は専用シートを使うため空。 */
+  /** 状態モデル類型（連続時間制 / セット制 / ターン制 / 採点制）。 */
+  readonly stateModel: 'CONTINUOUS_TIME' | 'SET_BASED' | 'TURN_BASED' | 'SCORED'
+  /** イベント入力シートのプリセット並び（画面下部固定）。バレー・将棋・囲碁・採点制は専用シートを使うため空。 */
   readonly presets: readonly SportPreset[]
-  /** ポジション語彙（選手グリッド配置・doughnut 集計の大分類）。ターン制は空（§7）。 */
+  /** ポジション語彙（選手グリッド配置・doughnut 集計の大分類）。ターン制・採点制は空（§7・07_scored.md §3）。 */
   readonly positions: readonly string[]
 }
 
@@ -86,7 +86,7 @@ const VOLLEYBALL_PRESETS: readonly SportPreset[] = []
  */
 const TURN_PRESETS: readonly SportPreset[] = []
 
-/** 競技別カタログ定義（連続時間制 3 競技 + セット制 1 競技 + ターン制 2 競技）。 */
+/** 競技別カタログ定義（連続時間制 3 競技 + セット制 1 競技 + ターン制 2 競技 + 採点制 2 競技）。 */
 export const SPORT_CATALOGS: Readonly<Record<AllSport, SportCatalog>> = {
   SOCCER: { sport: 'SOCCER', stateModel: 'CONTINUOUS_TIME', presets: SOCCER_PRESETS, positions: ['GK', 'DF', 'MF', 'FW'] },
   FUTSAL: { sport: 'FUTSAL', stateModel: 'CONTINUOUS_TIME', presets: SOCCER_PRESETS, positions: ['GK', 'FIXO', 'ALA', 'PIVO'] },
@@ -95,6 +95,10 @@ export const SPORT_CATALOGS: Readonly<Record<AllSport, SportCatalog>> = {
   // ターン制（将棋・囲碁）: ポジション語彙なし（§7）・プリセット空（専用シートを使う）
   SHOGI: { sport: 'SHOGI', stateModel: 'TURN_BASED', presets: TURN_PRESETS, positions: [] },
   GO: { sport: 'GO', stateModel: 'TURN_BASED', presets: TURN_PRESETS, positions: [] },
+  // 採点制（フィギュアスケート・体操）: ポジション語彙なし・プリセット空（採点入力シートを使う）
+  // MVP は合計点のみ（整数スケール×1000）。出場交代概念なし（07_scored.md §3 / §9）
+  FIGURE_SKATING: { sport: 'FIGURE_SKATING', stateModel: 'SCORED', presets: [], positions: [] },
+  GYMNASTICS: { sport: 'GYMNASTICS', stateModel: 'SCORED', presets: [], positions: [] },
 }
 
 /** サッカー/フットサルの共通シート（MatchEventSheet）を使う競技か。 */

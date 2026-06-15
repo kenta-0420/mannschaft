@@ -104,12 +104,29 @@ export interface SportLiveModuleTurnBased {
 }
 
 /**
+ * 採点制（SCORED）競技モジュール（フィギュアスケート/体操）。
+ * タイマー・セットトラッカー・ターントラッカーを持たず、採点入力UIを提供する。
+ * MVP は合計点のみ（整数スケール×1000）を `home_score`/`away_score` に格納する（§4.1）。
+ * 審判別内訳・多人数順位制は後段 Phase（07_scored.md §4B/§5B）。
+ *
+ * 【設計: 07_scored.md §9 FE / sports/07_scored.md §12.1】
+ * フィギュアスケートと体操は同一モジュール（scoredModule）を共有する。
+ */
+export interface SportLiveModuleScored {
+  readonly sport: AllSport
+  readonly stateModel: 'SCORED'
+  /** 採点入力シートの遅延コンポーネント（defineAsyncComponent 済み）。 */
+  readonly eventSheet: Component
+}
+
+/**
  * 競技モジュールのディスクリミネーテッドユニオン（stateModel で識別）。
  */
 export type SportLiveModule =
   | SportLiveModuleContinuous
   | SportLiveModuleSetBased
   | SportLiveModuleTurnBased
+  | SportLiveModuleScored
 
 /**
  * FE が扱う全競技（連続時間制 + セット制 + ターン制）。
@@ -124,7 +141,7 @@ export type AllSport = Sport
 export type SportModuleLoader = () => Promise<SportLiveModule>
 
 /**
- * 競技 → モジュールローダのレジストリ（連続時間制 3 競技 + セット制 1 競技 + ターン制 2 競技）。
+ * 競技 → モジュールローダのレジストリ（連続時間制 3 競技 + セット制 1 競技 + ターン制 2 競技 + 採点制 2 競技）。
  * 値は `() => import(...)` 関数なので、参照するまで対象競技のチャンクは読み込まれない。
  */
 const REGISTRY: Readonly<Record<AllSport, SportModuleLoader>> = {
@@ -134,6 +151,11 @@ const REGISTRY: Readonly<Record<AllSport, SportModuleLoader>> = {
   VOLLEYBALL: () => import('~/composables/match/sport/modules/volleyballModule').then((m) => m.default),
   SHOGI: () => import('~/composables/match/sport/modules/shogiModule').then((m) => m.default),
   GO: () => import('~/composables/match/sport/modules/goModule').then((m) => m.default),
+  // 採点制（SCORED）: フィギュアスケート・体操は同一モジュール共有（07_scored.md §9）
+  FIGURE_SKATING: () =>
+    import('~/composables/match/sport/modules/scoredModule').then((m) => m.default),
+  GYMNASTICS: () =>
+    import('~/composables/match/sport/modules/scoredModule').then((m) => m.default),
 }
 
 /**
@@ -171,6 +193,11 @@ export function isSetBasedModule(mod: SportLiveModule): mod is SportLiveModuleSe
 /** 型ガード: ターン制モジュールか（ターントラッカーを持つ）。 */
 export function isTurnBasedModule(mod: SportLiveModule): mod is SportLiveModuleTurnBased {
   return mod.stateModel === 'TURN_BASED'
+}
+
+/** 型ガード: 採点制モジュールか（採点入力UIを持つ）。 */
+export function isScoredModule(mod: SportLiveModule): mod is SportLiveModuleScored {
+  return mod.stateModel === 'SCORED'
 }
 
 export type { TimerState, PeriodTransition } from '~/composables/match/sport/useMatchTimerCore'

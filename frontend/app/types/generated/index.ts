@@ -3484,6 +3484,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{orgId}/matches/{matchId}/scored-result": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 採点結果記録/更新（HOME/AWAY 合計点・整数スケール×1000・採点競技・冪等） */
+        put: operations["recordScore"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{orgId}/matches/{matchId}/result": {
         parameters: {
             query?: never;
@@ -42379,7 +42396,7 @@ export interface components {
             players?: components["schemas"]["PlayerEntry"][];
             staff?: components["schemas"]["StaffEntry"][];
         };
-        ApiResponseMatchRosterResponse: {
+        ApiResponseFixtureRosterResponse: {
             data?: components["schemas"]["FixtureRosterResponse"];
         };
         FixtureRosterResponse: {
@@ -42495,7 +42512,21 @@ export interface components {
              * Format: int64
              * @deprecated
              */
-            linkedScheduleId?: number;
+            daysRemaining?: number;
+            /**
+             * Format: int32
+             * @deprecated
+             */
+            descendantCompletedCount?: number;
+            /** @deprecated */
+            statusLabel?: components["schemas"]["TodoStatusLabelInfo"];
+            /**
+             * Format: int32
+             * @deprecated
+             */
+            descendantTotalCount?: number;
+            /** @deprecated */
+            title?: string;
             /** @deprecated */
             priority?: string;
             /**
@@ -42511,37 +42542,6 @@ export interface components {
             /** @deprecated */
             children?: components["schemas"]["TodoResponse"][];
             /**
-             * Format: date
-             * @deprecated
-             */
-            dueDate?: string;
-            /**
-             * Format: date
-             * @deprecated
-             */
-            startDate?: string;
-            /** @deprecated */
-            completedBy?: components["schemas"]["UserInfo"];
-            /**
-             * Format: int32
-             * @deprecated
-             */
-            descendantCompletedCount?: number;
-            /** @deprecated */
-            progressManual?: boolean;
-            /**
-             * Format: date-time
-             * @deprecated
-             */
-            completedAt?: string;
-            /**
-             * Format: int64
-             * @deprecated
-             */
-            milestoneId?: number;
-            /** @deprecated */
-            createdBy?: components["schemas"]["UserInfo"];
-            /**
              * Format: int64
              * @deprecated
              */
@@ -42554,26 +42554,46 @@ export interface components {
              */
             depth?: number;
             /** @deprecated */
-            title?: string;
-            /**
-             * Format: date-time
-             * @deprecated
-             */
-            updatedAt?: string;
-            /** @deprecated */
             progressRate?: number;
             /**
              * Format: date-time
              * @deprecated
              */
             createdAt?: string;
-            /** @deprecated */
-            scopeType?: string;
+            /**
+             * Format: date-time
+             * @deprecated
+             */
+            updatedAt?: string;
             /**
              * Format: int32
              * @deprecated
              */
             sortOrder?: number;
+            /** @deprecated */
+            scopeType?: string;
+            /** @deprecated */
+            createdBy?: components["schemas"]["UserInfo"];
+            /**
+             * Format: date
+             * @deprecated
+             */
+            dueDate?: string;
+            /**
+             * Format: date
+             * @deprecated
+             */
+            startDate?: string;
+            /**
+             * Format: date-time
+             * @deprecated
+             */
+            completedAt?: string;
+            /**
+             * Format: int64
+             * @deprecated
+             */
+            milestoneId?: number;
             /**
              * @deprecated
              * @example 14:30:00
@@ -42584,18 +42604,15 @@ export interface components {
              * @deprecated
              */
             projectId?: number;
-            /**
-             * Format: int32
-             * @deprecated
-             */
-            descendantTotalCount?: number;
+            /** @deprecated */
+            progressManual?: boolean;
             /**
              * Format: int64
              * @deprecated
              */
-            daysRemaining?: number;
+            linkedScheduleId?: number;
             /** @deprecated */
-            statusLabel?: components["schemas"]["TodoStatusLabelInfo"];
+            completedBy?: components["schemas"]["UserInfo"];
         };
         TodoScheduleDto: {
             /** Format: date */
@@ -42809,8 +42826,8 @@ export interface components {
             updatedAt?: string;
             /** Format: date-time */
             deletedAt?: string;
-            ownMemo?: boolean;
             editable?: boolean;
+            ownMemo?: boolean;
         };
         UpdateCommentRequest: {
             body?: string;
@@ -46438,19 +46455,19 @@ export interface components {
             /** Format: date-time */
             updatedAt?: string;
         };
-        MatchRecordTurnResultRequest: {
-            /**
-             * @description 勝者サイド（HOME/AWAY・NULL=引分け）
-             * @enum {string}
-             */
-            winnerSide?: "HOME" | "AWAY";
-            /** @description 勝ち方（ShogiWinMethod/GoWinMethod の enum 名・引分けは null） */
-            winMethod?: string;
+        MatchRecordScoredResultRequest: {
             /**
              * Format: int32
-             * @description 総手数（任意）
+             * @description ホーム側合計点（整数スケール×1000・例 198450）
+             * @example 198450
              */
-            totalMoves?: number;
+            homeScoreScaled: number;
+            /**
+             * Format: int32
+             * @description アウェイ側合計点（整数スケール×1000・例 195300）
+             * @example 195300
+             */
+            awayScoreScaled: number;
         };
         ApiResponseMatchDetailResponse: {
             data?: components["schemas"]["MatchDetailResponse"];
@@ -46461,7 +46478,7 @@ export interface components {
             /** Format: int64 */
             teamId?: number;
             /** @enum {string} */
-            sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO";
+            sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO" | "FIGURE_SKATING" | "GYMNASTICS";
             /** @enum {string} */
             kind?: "PRACTICE" | "FRIENDLY" | "TOURNAMENT" | "LEAGUE";
             /** Format: int64 */
@@ -46508,6 +46525,20 @@ export interface components {
             updatedAt?: string;
             canEditMeta?: boolean;
             canRecordTimeline?: boolean;
+        };
+        MatchRecordTurnResultRequest: {
+            /**
+             * @description 勝者サイド（HOME/AWAY・NULL=引分け）
+             * @enum {string}
+             */
+            winnerSide?: "HOME" | "AWAY";
+            /** @description 勝ち方（ShogiWinMethod/GoWinMethod の enum 名・引分けは null） */
+            winMethod?: string;
+            /**
+             * Format: int32
+             * @description 総手数（任意）
+             */
+            totalMoves?: number;
         };
         CreateStepRequest: {
             title?: string;
@@ -49594,8 +49625,8 @@ export interface components {
             remindBeforeMinutes?: number;
             /** @enum {string} */
             reminderKind?: "RELATIVE" | "ABSOLUTE";
-            remindBeforeMinutesValid?: boolean;
             remindAtValid?: boolean;
+            remindBeforeMinutesValid?: boolean;
         };
         CreateScheduleRequest: {
             title?: string;
@@ -55525,6 +55556,28 @@ export interface components {
         ApiResponseMatchdayResponse: {
             data?: components["schemas"]["MatchdayResponse"];
         };
+        FixtureResponse: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            matchdayId?: number;
+            participants?: components["schemas"]["MatchParticipantsDto"];
+            score?: components["schemas"]["MatchScoreDto"];
+            info?: components["schemas"]["MatchInfoDto"];
+            sets?: components["schemas"]["FixtureSetResponse"][];
+            playerStats?: components["schemas"]["PlayerStatResponse"][];
+            audit?: components["schemas"]["MatchAuditDto"];
+        };
+        FixtureSetResponse: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int32 */
+            setNumber?: number;
+            /** Format: int32 */
+            homeScore?: number;
+            /** Format: int32 */
+            awayScore?: number;
+        };
         MatchAuditDto: {
             /** Format: int64 */
             version?: number;
@@ -55558,18 +55611,6 @@ export interface components {
             /** Format: int64 */
             winnerParticipantId?: number;
         };
-        FixtureResponse: {
-            /** Format: int64 */
-            id?: number;
-            /** Format: int64 */
-            matchdayId?: number;
-            participants?: components["schemas"]["MatchParticipantsDto"];
-            score?: components["schemas"]["MatchScoreDto"];
-            info?: components["schemas"]["MatchInfoDto"];
-            sets?: components["schemas"]["FixtureSetResponse"][];
-            playerStats?: components["schemas"]["PlayerStatResponse"][];
-            audit?: components["schemas"]["MatchAuditDto"];
-        };
         MatchScoreDto: {
             /** Format: int32 */
             homeScore?: number;
@@ -55583,16 +55624,6 @@ export interface components {
             homePenaltyScore?: number;
             /** Format: int32 */
             awayPenaltyScore?: number;
-        };
-        FixtureSetResponse: {
-            /** Format: int64 */
-            id?: number;
-            /** Format: int32 */
-            setNumber?: number;
-            /** Format: int32 */
-            homeScore?: number;
-            /** Format: int32 */
-            awayScore?: number;
         };
         MatchdayResponse: {
             /** Format: int64 */
@@ -55630,6 +55661,14 @@ export interface components {
         BatchScoreRequest: {
             scores: components["schemas"]["MatchScoreEntry"][];
         };
+        FixtureSetRequest: {
+            /** Format: int32 */
+            setNumber: number;
+            /** Format: int32 */
+            homeScore: number;
+            /** Format: int32 */
+            awayScore: number;
+        };
         MatchScoreEntry: {
             /** Format: int64 */
             matchId: number;
@@ -55650,14 +55689,6 @@ export interface components {
             version: number;
             sets?: components["schemas"]["FixtureSetRequest"][];
         };
-        FixtureSetRequest: {
-            /** Format: int32 */
-            setNumber: number;
-            /** Format: int32 */
-            homeScore: number;
-            /** Format: int32 */
-            awayScore: number;
-        };
         ApiResponseListMatchdayResponse: {
             data?: components["schemas"]["MatchdayResponse"][];
         };
@@ -55666,7 +55697,7 @@ export interface components {
         };
         CreateMatchRequest: {
             /** @enum {string} */
-            sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO";
+            sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO" | "FIGURE_SKATING" | "GYMNASTICS";
             /** @enum {string} */
             kind: "PRACTICE" | "FRIENDLY" | "TOURNAMENT" | "LEAGUE";
             /** Format: int64 */
@@ -56101,7 +56132,7 @@ export interface components {
             /** @enum {string} */
             period: "FIRST_HALF" | "SECOND_HALF" | "EXTRA_FIRST" | "EXTRA_SECOND" | "PENALTY_SHOOTOUT" | "QUARTER_1" | "QUARTER_2" | "QUARTER_3" | "QUARTER_4" | "OVERTIME" | "SET_1" | "SET_2" | "SET_3" | "SET_4" | "SET_5";
             /** @enum {string} */
-            eventType: "STARTER" | "SUB_IN" | "SUB_OUT" | "GOAL" | "ASSIST" | "OWN_GOAL" | "PENALTY_GOAL" | "PENALTY_MISS" | "PENALTY_SHOOTOUT" | "YELLOW_CARD" | "RED_CARD" | "SECOND_YELLOW" | "FIELD_GOAL_2" | "FIELD_GOAL_3" | "FREE_THROW" | "SHOT_MISS" | "REBOUND" | "STEAL" | "BLOCK" | "TURNOVER" | "PERSONAL_FOUL" | "TECHNICAL_FOUL" | "FOUL_OUT" | "SET_START" | "SET_END" | "POINT" | "SERVE_ACE" | "BLOCK_POINT" | "ATTACK_POINT" | "SERVE_ERROR" | "GAME_RESULT" | "MOVE_COUNT" | "POSITION_PHOTO" | "COMMENT" | "SAVE" | "INJURY" | "PERIOD_START" | "PERIOD_END" | "OTHER";
+            eventType: "STARTER" | "SUB_IN" | "SUB_OUT" | "GOAL" | "ASSIST" | "OWN_GOAL" | "PENALTY_GOAL" | "PENALTY_MISS" | "PENALTY_SHOOTOUT" | "YELLOW_CARD" | "RED_CARD" | "SECOND_YELLOW" | "FIELD_GOAL_2" | "FIELD_GOAL_3" | "FREE_THROW" | "SHOT_MISS" | "REBOUND" | "STEAL" | "BLOCK" | "TURNOVER" | "PERSONAL_FOUL" | "TECHNICAL_FOUL" | "FOUL_OUT" | "SET_START" | "SET_END" | "POINT" | "SERVE_ACE" | "BLOCK_POINT" | "ATTACK_POINT" | "SERVE_ERROR" | "GAME_RESULT" | "MOVE_COUNT" | "POSITION_PHOTO" | "COMMENT" | "SCORE_SUBMITTED" | "SAVE" | "INJURY" | "PERIOD_START" | "PERIOD_END" | "OTHER";
             cardReasonCode?: string;
             customLabel?: string;
             /** @enum {string} */
@@ -56136,7 +56167,7 @@ export interface components {
             /** @enum {string} */
             period?: "FIRST_HALF" | "SECOND_HALF" | "EXTRA_FIRST" | "EXTRA_SECOND" | "PENALTY_SHOOTOUT" | "QUARTER_1" | "QUARTER_2" | "QUARTER_3" | "QUARTER_4" | "OVERTIME" | "SET_1" | "SET_2" | "SET_3" | "SET_4" | "SET_5";
             /** @enum {string} */
-            eventType?: "STARTER" | "SUB_IN" | "SUB_OUT" | "GOAL" | "ASSIST" | "OWN_GOAL" | "PENALTY_GOAL" | "PENALTY_MISS" | "PENALTY_SHOOTOUT" | "YELLOW_CARD" | "RED_CARD" | "SECOND_YELLOW" | "FIELD_GOAL_2" | "FIELD_GOAL_3" | "FREE_THROW" | "SHOT_MISS" | "REBOUND" | "STEAL" | "BLOCK" | "TURNOVER" | "PERSONAL_FOUL" | "TECHNICAL_FOUL" | "FOUL_OUT" | "SET_START" | "SET_END" | "POINT" | "SERVE_ACE" | "BLOCK_POINT" | "ATTACK_POINT" | "SERVE_ERROR" | "GAME_RESULT" | "MOVE_COUNT" | "POSITION_PHOTO" | "COMMENT" | "SAVE" | "INJURY" | "PERIOD_START" | "PERIOD_END" | "OTHER";
+            eventType?: "STARTER" | "SUB_IN" | "SUB_OUT" | "GOAL" | "ASSIST" | "OWN_GOAL" | "PENALTY_GOAL" | "PENALTY_MISS" | "PENALTY_SHOOTOUT" | "YELLOW_CARD" | "RED_CARD" | "SECOND_YELLOW" | "FIELD_GOAL_2" | "FIELD_GOAL_3" | "FREE_THROW" | "SHOT_MISS" | "REBOUND" | "STEAL" | "BLOCK" | "TURNOVER" | "PERSONAL_FOUL" | "TECHNICAL_FOUL" | "FOUL_OUT" | "SET_START" | "SET_END" | "POINT" | "SERVE_ACE" | "BLOCK_POINT" | "ATTACK_POINT" | "SERVE_ERROR" | "GAME_RESULT" | "MOVE_COUNT" | "POSITION_PHOTO" | "COMMENT" | "SCORE_SUBMITTED" | "SAVE" | "INJURY" | "PERIOD_START" | "PERIOD_END" | "OTHER";
             cardReasonCode?: string;
             customLabel?: string;
             /** @enum {string} */
@@ -56507,8 +56538,8 @@ export interface components {
             reminders?: number[];
             absoluteReminders?: string[];
             recurrenceRule?: components["schemas"]["RecurrenceRuleDto"];
-            eventTypeOrDefault?: string;
             reminderCountWithinLimit?: boolean;
+            eventTypeOrDefault?: string;
         };
         ApiResponsePersonalScheduleResponse: {
             data?: components["schemas"]["PersonalScheduleResponse"];
@@ -59270,8 +59301,8 @@ export interface components {
             remindBeforeMinutes?: number;
             /** @enum {string} */
             reminderKind?: "RELATIVE" | "ABSOLUTE";
-            remindBeforeMinutesValid?: boolean;
             remindAtValid?: boolean;
+            remindBeforeMinutesValid?: boolean;
         };
         UpdateScheduleRequest: {
             title?: string;
@@ -59890,11 +59921,11 @@ export interface components {
             philosophy?: boolean;
             officers?: boolean;
             custom_fields?: boolean;
-            philosophyVisible?: boolean;
-            officersVisible?: boolean;
-            customFieldsVisible?: boolean;
-            establishedDateVisible?: boolean;
             homepageUrlVisible?: boolean;
+            establishedDateVisible?: boolean;
+            customFieldsVisible?: boolean;
+            officersVisible?: boolean;
+            philosophyVisible?: boolean;
         };
         UpdateTeamProfileRequest: {
             homepage_url?: string;
@@ -60544,7 +60575,7 @@ export interface components {
             version: number;
             sets?: components["schemas"]["FixtureSetRequest"][];
         };
-        ApiResponseMatchResponse: {
+        ApiResponseFixtureResponse: {
             data?: components["schemas"]["FixtureResponse"];
         };
         PlayerStatBatchRequest: {
@@ -61604,19 +61635,19 @@ export interface components {
             empty?: boolean;
         };
         PageableObject: {
-            paged?: boolean;
             /** Format: int64 */
             offset?: number;
             sort?: components["schemas"]["SortObject"];
-            /** Format: int32 */
-            pageSize?: number;
+            paged?: boolean;
             /** Format: int32 */
             pageNumber?: number;
+            /** Format: int32 */
+            pageSize?: number;
             unpaged?: boolean;
         };
         SortObject: {
-            sorted?: boolean;
             empty?: boolean;
+            sorted?: boolean;
             unsorted?: boolean;
         };
         ApiResponseListFestivalResponse: {
@@ -62763,14 +62794,31 @@ export interface components {
             unassignedTodos?: components["schemas"]["UnassignedTodos"];
             audit?: components["schemas"]["ProjectAuditDto"];
             /**
+             * Format: int64
+             * @deprecated
+             */
+            daysRemaining?: number;
+            /** @deprecated */
+            visibility?: string;
+            /** @deprecated */
+            title?: string;
+            /** @deprecated */
+            description?: string;
+            /** @deprecated */
+            status?: string;
+            /** @deprecated */
+            progressRate?: number;
+            /** @deprecated */
+            color?: string;
+            /** @deprecated */
+            createdBy?: components["schemas"]["UserInfo"];
+            /**
              * Format: date
              * @deprecated
              */
             dueDate?: string;
             /** @deprecated */
-            color?: string;
-            /** @deprecated */
-            createdBy?: components["schemas"]["UserInfo"];
+            emoji?: string;
             /**
              * Format: int32
              * @deprecated
@@ -62781,23 +62829,6 @@ export interface components {
              * @deprecated
              */
             completedTodos?: number;
-            /** @deprecated */
-            description?: string;
-            /** @deprecated */
-            emoji?: string;
-            /** @deprecated */
-            status?: string;
-            /** @deprecated */
-            visibility?: string;
-            /** @deprecated */
-            title?: string;
-            /** @deprecated */
-            progressRate?: number;
-            /**
-             * Format: int64
-             * @deprecated
-             */
-            daysRemaining?: number;
         };
         ProjectMetaDto: {
             status?: string;
@@ -63653,8 +63684,8 @@ export interface components {
             rsvpStatus?: string;
             /** Format: int32 */
             watcherCount?: number;
-            alreadyCheckedIn?: boolean;
             underCare?: boolean;
+            alreadyCheckedIn?: boolean;
         };
         ApiResponseDismissalStatusResponse: {
             data?: components["schemas"]["DismissalStatusResponse"];
@@ -66548,7 +66579,7 @@ export interface components {
             teamId?: number;
             teamName?: string;
         };
-        ApiResponseListMatchResponse: {
+        ApiResponseListFixtureResponse: {
             data?: components["schemas"]["FixtureResponse"][];
         };
         PublicOrganizationResponse: {
@@ -67205,8 +67236,8 @@ export interface components {
             entryCount?: number;
             /** Format: date-time */
             lastUpdatedAt?: string;
-            maxExceeded?: boolean;
             minMet?: boolean;
+            maxExceeded?: boolean;
         };
         EntryMemberSummaryResponse: {
             /** Format: int64 */
@@ -67247,7 +67278,7 @@ export interface components {
             /** Format: uuid */
             id?: string;
             /** @enum {string} */
-            sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO";
+            sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO" | "FIGURE_SKATING" | "GYMNASTICS";
             /** @enum {string} */
             kind?: "PRACTICE" | "FRIENDLY" | "TOURNAMENT" | "LEAGUE";
             /** @enum {string} */
@@ -68217,8 +68248,8 @@ export interface components {
             googleCalendarId?: string;
             personalSyncEnabled?: boolean;
             lastSyncError?: components["schemas"]["SyncErrorDetail"];
-            active?: boolean;
             connected?: boolean;
+            active?: boolean;
         };
         SyncErrorDetail: {
             type?: string;
@@ -71713,7 +71744,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseMatchRosterResponse"];
+                    "*/*": components["schemas"]["ApiResponseFixtureRosterResponse"];
                 };
             };
         };
@@ -71740,7 +71771,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseMatchRosterResponse"];
+                    "*/*": components["schemas"]["ApiResponseFixtureRosterResponse"];
                 };
             };
         };
@@ -80286,6 +80317,33 @@ export interface operations {
             };
         };
     };
+    recordScore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MatchRecordScoredResultRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
     recordResult: {
         parameters: {
             query?: never;
@@ -87329,7 +87387,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseMatchRosterResponse"];
+                    "*/*": components["schemas"]["ApiResponseFixtureRosterResponse"];
                 };
             };
         };
@@ -103698,7 +103756,7 @@ export interface operations {
             query?: {
                 kind?: "PRACTICE" | "FRIENDLY" | "TOURNAMENT" | "LEAGUE";
                 status?: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "POSTPONED" | "CANCELLED";
-                sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO";
+                sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO" | "FIGURE_SKATING" | "GYMNASTICS";
                 from?: string;
                 to?: string;
                 page?: number;
@@ -122772,7 +122830,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseMatchResponse"];
+                    "*/*": components["schemas"]["ApiResponseFixtureResponse"];
                 };
             };
         };
@@ -122800,7 +122858,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseMatchResponse"];
+                    "*/*": components["schemas"]["ApiResponseFixtureResponse"];
                 };
             };
         };
@@ -135434,7 +135492,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListMatchResponse"];
+                    "*/*": components["schemas"]["ApiResponseListFixtureResponse"];
                 };
             };
         };
@@ -136984,7 +137042,7 @@ export interface operations {
                 from?: string;
                 to?: string;
                 kind?: "PRACTICE" | "FRIENDLY" | "TOURNAMENT" | "LEAGUE";
-                sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO";
+                sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO" | "FIGURE_SKATING" | "GYMNASTICS";
             };
             header?: never;
             path: {
@@ -137013,7 +137071,7 @@ export interface operations {
                 from?: string;
                 to?: string;
                 kind?: "PRACTICE" | "FRIENDLY" | "TOURNAMENT" | "LEAGUE";
-                sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO";
+                sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO" | "FIGURE_SKATING" | "GYMNASTICS";
                 page?: number;
                 size?: number;
             };
@@ -137044,7 +137102,7 @@ export interface operations {
                 from?: string;
                 to?: string;
                 kind?: "PRACTICE" | "FRIENDLY" | "TOURNAMENT" | "LEAGUE";
-                sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO";
+                sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO" | "FIGURE_SKATING" | "GYMNASTICS";
             };
             header?: never;
             path: {
@@ -137072,7 +137130,7 @@ export interface operations {
                 from?: string;
                 to?: string;
                 kind?: "PRACTICE" | "FRIENDLY" | "TOURNAMENT" | "LEAGUE";
-                sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO";
+                sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO" | "FIGURE_SKATING" | "GYMNASTICS";
                 page?: number;
                 size?: number;
             };
@@ -137333,7 +137391,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseMatchResponse"];
+                    "*/*": components["schemas"]["ApiResponseFixtureResponse"];
                 };
             };
         };
@@ -137653,7 +137711,7 @@ export interface operations {
                 from?: string;
                 to?: string;
                 kind?: "PRACTICE" | "FRIENDLY" | "TOURNAMENT" | "LEAGUE";
-                sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO";
+                sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO" | "FIGURE_SKATING" | "GYMNASTICS";
             };
             header?: never;
             path: {
@@ -141229,7 +141287,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListMatchResponse"];
+                    "*/*": components["schemas"]["ApiResponseListFixtureResponse"];
                 };
             };
         };
