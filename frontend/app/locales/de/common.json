@@ -1532,7 +1532,16 @@
       "SLUG_REQUIRED": "Bitte einen Slug eingeben",
       "SLUG_INVALID_FORMAT": "Ungültiges Format (Kleinbuchstaben, Zahlen und Bindestriche, 3-30 Zeichen; keine führenden/abschließenden oder aufeinanderfolgenden Bindestriche)",
       "SLUG_RESERVED": "Dieser Slug ist reserviert und kann nicht verwendet werden",
-      "SLUG_ALREADY_TAKEN": "Dieser Slug ist bereits vergeben"
+      "SLUG_ALREADY_TAKEN": "Dieser Slug ist bereits vergeben",
+      "SLUG_RETIRED": "Dieser Slug wurde zuvor verwendet und kann nicht wiederverwendet werden (für Weiterleitungen reserviert)"
+    },
+    "rename": {
+      "title": "URL (Slug) ändern",
+      "help": "Ändern Sie den Slug in Ihrer öffentlichen URL. Alte URLs werden automatisch zur neuen weitergeleitet.",
+      "save": "Ändern",
+      "saved": "URL (Slug) geändert",
+      "saveError": "URL (Slug) konnte nicht geändert werden",
+      "unchanged": "Identisch mit dem aktuellen Slug (keine Änderung)"
     }
   },
   "team_visibility": {

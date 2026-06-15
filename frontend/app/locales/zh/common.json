@@ -1532,7 +1532,16 @@
       "SLUG_REQUIRED": "请输入标识",
       "SLUG_INVALID_FORMAT": "格式不正确（小写字母、数字和连字符，3〜30个字符，首尾及连续连字符不可）",
       "SLUG_RESERVED": "此标识为保留字，无法使用",
-      "SLUG_ALREADY_TAKEN": "此标识已被使用"
+      "SLUG_ALREADY_TAKEN": "此标识已被使用",
+      "SLUG_RETIRED": "此标识曾被使用过，无法重复使用（已为重定向保留）"
+    },
+    "rename": {
+      "title": "更改URL（标识）",
+      "help": "更改公开URL的标识。旧URL会自动重定向到新URL。",
+      "save": "更改",
+      "saved": "已更改URL（标识）",
+      "saveError": "更改URL（标识）失败",
+      "unchanged": "与当前标识相同（无更改）"
     }
   },
   "team_visibility": {

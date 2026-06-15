@@ -1,6 +1,6 @@
 import type { FetchError } from 'ofetch'
 import type { PagedResponse } from '~/types/api'
-import type { SlugAvailabilityResponse } from '~/types/slug'
+import type { SlugAvailabilityResponse, SlugResolveResponse } from '~/types/slug'
 import type { TeamPublicDetailResponse, TeamResponse } from '~/types/team'
 import {
   OrganizationNotFoundError,
@@ -162,6 +162,40 @@ export function useTeamCrud() {
     return api<SlugAvailabilityResponse>(`/api/v1/teams/slug-available?${query}`)
   }
 
+  /**
+   * チーム slug をリネームする（BE #1542）。
+   *
+   * `PUT /api/v1/teams/{currentSlug}/slug` を body `{ newSlug }` で叩く。
+   * 認可は BE 側で ADMIN/DEPUTY 相当に限定される。
+   *
+   * - 200: 成功（`data.slug` に新 slug。`newSlug==現slug` なら no-op 200）
+   * - 422: 形式不正 / 予約語
+   * - 409: 重複（SLUG_ALREADY_TAKEN）/ 履歴予約（SLUG_RETIRED）
+   *
+   * 旧 slug は 301 解決用に履歴予約されるため、成功後は新 slug の URL へ遷移すること。
+   */
+  async function renameTeamSlug(currentSlug: string, newSlug: string) {
+    return api<{ data: TeamResponse }>(`/api/v1/teams/${currentSlug}/slug`, {
+      method: 'PUT',
+      body: { newSlug },
+    })
+  }
+
+  /**
+   * チーム slug を解決する（旧 slug → 新 slug の 301 判定・BE #1542）。
+   *
+   * `GET /api/v1/public/teams/slug-resolve?slug=xxx` を叩く（permitAll・レート制限）。
+   * 名前など実データは返さず status / canonicalSlug のみ。
+   *
+   * - CURRENT: 現行 slug（リダイレクト不要）
+   * - MOVED: 旧 slug → canonicalSlug へ 301 すべき
+   * - NOT_FOUND: 該当なし
+   */
+  async function resolveTeamSlug(slug: string): Promise<SlugResolveResponse> {
+    const query = new URLSearchParams({ slug })
+    return api<SlugResolveResponse>(`/api/v1/public/teams/slug-resolve?${query}`)
+  }
+
   async function updateTeam(teamSlug: string, body: Record<string, unknown>) {
     return api<{ data: TeamResponse }>(`/api/v1/teams/${teamSlug}`, { method: 'PATCH', body })
   }
@@ -203,6 +237,8 @@ export function useTeamCrud() {
     searchOrganizationTeams,
     createTeam,
     checkTeamSlugAvailable,
+    renameTeamSlug,
+    resolveTeamSlug,
     updateTeam,
     deleteTeam,
     archiveTeam,

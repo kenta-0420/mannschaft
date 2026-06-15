@@ -16,6 +16,17 @@ const toast = useToast()
 
 const { fetchPublicTeam, updateTeamPublicSettings } = usePublicApi()
 
+// slug 変更（リネーム）は ADMIN/DEPUTY のみ表示・操作する。
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
+
+/**
+ * slug リネーム成功時: slug が変わったので新 slug の設定ページへ置換遷移する。
+ * 旧 URL は BE 側で 301 解決用に履歴予約される。
+ */
+async function onSlugRenamed(newSlug: string) {
+  await navigateTo(`/teams/${newSlug}/settings/public-settings`, { replace: true })
+}
+
 const timelinePostsPublic = ref(false)
 const loading = ref(false)
 const saving = ref(false)
@@ -49,6 +60,7 @@ async function save() {
 }
 
 await loadSettings()
+await loadPermissions()
 </script>
 
 <template>
@@ -64,8 +76,15 @@ await loadSettings()
       <ProgressSpinner />
     </div>
 
+    <SlugRenameField
+      v-if="!loading && isAdminOrDeputy"
+      entity-type="team"
+      :current-slug="teamSlug"
+      @renamed="onSlugRenamed"
+    />
+
     <form
-      v-else
+      v-if="!loading"
       data-testid="team-public-settings-form"
       class="space-y-6 rounded-lg border border-surface-200 p-6 dark:border-surface-700"
       @submit.prevent="save"

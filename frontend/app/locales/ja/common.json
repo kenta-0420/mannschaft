@@ -1532,7 +1532,16 @@
       "SLUG_REQUIRED": "スラッグを入力してください",
       "SLUG_INVALID_FORMAT": "形式が不正です（英小文字・数字・ハイフン、3〜30文字、先頭末尾と連続ハイフン不可）",
       "SLUG_RESERVED": "このスラッグは予約語のため使用できません",
-      "SLUG_ALREADY_TAKEN": "このスラッグは既に使われています"
+      "SLUG_ALREADY_TAKEN": "このスラッグは既に使われています",
+      "SLUG_RETIRED": "このスラッグは過去に使われていたため使用できません（リダイレクトのため予約済み）"
+    },
+    "rename": {
+      "title": "URL（スラッグ）の変更",
+      "help": "公開URLのスラッグを変更します。旧URLは自動で新URLへリダイレクトされます。",
+      "save": "変更する",
+      "saved": "URL（スラッグ）を変更しました",
+      "saveError": "URL（スラッグ）の変更に失敗しました",
+      "unchanged": "現在のスラッグと同じです（変更なし）"
     }
   },
   "team_visibility": {
