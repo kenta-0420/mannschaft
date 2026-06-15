@@ -417,5 +417,32 @@ openApi {
         jvmArgs.add("-Dspring.profiles.active=openapi-gen")
         // MapProperty.put() で systemProperties にも設定し二重に適用する
         systemProperties.put("spring.profiles.active", "openapi-gen")
+        // フォークプロセスのクラスパスを最新コンパイル済みの sourceSets.main.runtimeClasspath に明示固定する。
+        // プラグインは customBootRun.classpath が空の場合に bootRun.classpath をフォールバックで使うが、
+        // それは Gradle build cache から復元されたクラスパス解決に依存しているため、
+        // build cache が stale なエントリを返した場合に古いクラスを参照するリスクがある。
+        // sourceSets["main"].runtimeClasspath を直接指定することで、
+        // compileJava の出力（build/classes/java/main）を常に参照することを保証する。
+        classpath.from(sourceSets["main"].runtimeClasspath)
     }
+}
+
+// generateOpenApiDocs タスクの up-to-date 誤判定防止と依存関係の明示
+//
+// 問題の背景（#1547 で判明）:
+//   OpenApiGeneratorTask には @InputFiles 等の Gradle タスク入力アノテーションがなく、
+//   output ファイル（openapi.json）の存在だけで up-to-date と判断される。
+//   ソースコードを変更しても openapi.json が存在する限りタスクがスキップされ、
+//   最新 API が反映されない「古いキャッシュ参照」状態になる。
+//
+// 根治方針:
+//   1. outputs.upToDateWhen { false } で常に再実行を強制
+//      → ソース変更の有無に関わらず /v3/api-docs を再取得して最新 JSON を生成する
+//   2. dependsOn("classes") で compileJava → classes を先行実行を明示保証
+//      → フォークプロセスが最新コンパイル済みクラスを使うことを確実にする
+tasks.named("generateOpenApiDocs") {
+    // 常に再実行: openapi.json が存在しても up-to-date と判断させない
+    outputs.upToDateWhen { false }
+    // 最新コンパイル結果を先行保証（プラグインが内部で設定しているが明示して二重保証）
+    dependsOn("classes")
 }
