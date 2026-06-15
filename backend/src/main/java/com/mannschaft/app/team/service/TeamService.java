@@ -6,6 +6,9 @@ import com.mannschaft.app.team.event.TeamDeletedEvent;
 import com.mannschaft.app.team.event.TeamMemberRemovedEvent;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.team.repository.TeamBlockRepository;
+import com.mannschaft.app.team.repository.TeamSlugHistoryRepository;
+import com.mannschaft.app.team.entity.TeamSlugHistoryEntity;
+import com.mannschaft.app.common.dto.SlugResolveResponse;
 import com.mannschaft.app.team.TeamErrorCode;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
@@ -66,6 +69,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class TeamService {
 
     private final TeamRepository teamRepository;
+    private final TeamSlugHistoryRepository teamSlugHistoryRepository;
     private final TeamBlockRepository teamBlockRepository;
     private final TeamOrgMembershipRepository teamOrgMembershipRepository;
     private final OrganizationRepository organizationRepository;
@@ -289,6 +293,11 @@ public class TeamService {
         if (teamRepository.existsBySlugAndDeletedAtIsNull(slug)) {
             throw new BusinessException(TeamErrorCode.TEAM_062);
         }
+        // F01.2 §5.9.5: 他チームの過去 slug（履歴予約）は恒久 301 を壊さないため使用不可。
+        // 作成時は自チームという概念が無いので全履歴を対象に弾く。
+        if (teamSlugHistoryRepository.existsByOldSlug(slug)) {
+            throw new BusinessException(TeamErrorCode.TEAM_063);
+        }
     }
 
     /**
@@ -313,6 +322,10 @@ public class TeamService {
         if (teamRepository.existsBySlugAndDeletedAtIsNull(slug)) {
             return new SlugAvailabilityResponse(false, "SLUG_ALREADY_TAKEN");
         }
+        // F01.2 §5.9.5: 他チームの過去 slug（履歴予約）は使用不可（恒久 301 保全）
+        if (teamSlugHistoryRepository.existsByOldSlug(slug)) {
+            return new SlugAvailabilityResponse(false, "SLUG_RETIRED");
+        }
         return new SlugAvailabilityResponse(true, null);
     }
 
@@ -323,6 +336,114 @@ public class TeamService {
      * @param reason    利用不可の理由コード（利用可能時は null）
      */
     public record SlugAvailabilityResponse(boolean available, String reason) {
+    }
+
+    /**
+     * F01.2 §5.9.5: チームの slug を変更する（リネーム専用・既存 update とは分離）。
+     *
+     * <p>処理の流れ:</p>
+     * <ol>
+     *   <li>新 slug が現 slug と同一なら no-op（履歴も書かず現 slug を返す）。</li>
+     *   <li>形式・予約語・一意性・他チーム履歴予約を検証する（自チームの過去 slug への戻しは許可）。</li>
+     *   <li>旧 slug を {@code team_slug_history} に INSERT → team.slug を新 slug に更新（同一トランザクション）。</li>
+     * </ol>
+     *
+     * <p>認可（ADMIN/DEPUTY 相当）は Controller で {@code AccessControlService.checkAdminOrAbove} が
+     * 担保する前提（F00 正準）。本メソッドは認可済み呼び出しを前提とする。</p>
+     *
+     * @param teamId  対象チーム ID
+     * @param newSlug 新しい slug
+     * @return 更新後のチームレスポンス（no-op 時も現状を返す）
+     * @throws BusinessException 形式不正（TEAM_060）/ 予約語（TEAM_061）/ 重複（TEAM_062）/ 他チーム履歴予約（TEAM_063）
+     */
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "team-detail", allEntries = true),
+            @CacheEvict(value = "team-search", allEntries = true)
+    })
+    public ApiResponse<TeamResponse> renameSlug(Long teamId, String newSlug) {
+        TeamEntity team = findTeamOrThrow(teamId);
+        String oldSlug = team.getSlug();
+
+        // 同一 slug は no-op（200・履歴を増やさない）
+        if (oldSlug.equals(newSlug)) {
+            int memberCount = (int) userRoleRepository.countByTeamId(teamId);
+            long teamFriendCount = teamFriendRepository.countFriendsByTeamId(teamId);
+            long supporterCount = membershipRepository.countActiveByScopeAndRoleKind(
+                    ScopeType.TEAM, teamId, RoleKind.SUPPORTER);
+            return ApiResponse.of(toResponse(team, memberCount, teamFriendCount, supporterCount));
+        }
+
+        validateRenameSlug(newSlug, teamId);
+
+        // 旧 slug を履歴へ記録（恒久予約＋301 解決元）
+        teamSlugHistoryRepository.save(TeamSlugHistoryEntity.builder()
+                .teamId(teamId)
+                .oldSlug(oldSlug)
+                .build());
+
+        team.renameSlug(newSlug);
+        teamRepository.save(team);
+
+        log.info("チーム slug リネーム完了: teamId={}, {} -> {}", teamId, oldSlug, newSlug);
+
+        int memberCount = (int) userRoleRepository.countByTeamId(teamId);
+        long teamFriendCount = teamFriendRepository.countFriendsByTeamId(teamId);
+        long supporterCount = membershipRepository.countActiveByScopeAndRoleKind(
+                ScopeType.TEAM, teamId, RoleKind.SUPPORTER);
+        return ApiResponse.of(toResponse(team, memberCount, teamFriendCount, supporterCount));
+    }
+
+    /**
+     * リネーム時の新 slug を検証する。作成時の {@link #validateUserSlug(String)} と同方式だが、
+     * 履歴予約チェックは「自チームを除外」する（自チームの過去 slug への戻しを許可するため）。
+     *
+     * @param slug   新 slug
+     * @param teamId 自チーム ID（履歴予約判定から除外）
+     */
+    private void validateRenameSlug(String slug, Long teamId) {
+        if (!SlugValidator.isValidFormat(slug)) {
+            throw new BusinessException(TeamErrorCode.TEAM_060);
+        }
+        if (SlugValidator.isReserved(slug)) {
+            throw new BusinessException(TeamErrorCode.TEAM_061);
+        }
+        if (teamRepository.existsBySlugAndDeletedAtIsNull(slug)) {
+            throw new BusinessException(TeamErrorCode.TEAM_062);
+        }
+        // 他チームの履歴に予約済みなら不可。自チームの過去 slug への戻しは許可（teamId 除外）。
+        if (teamSlugHistoryRepository.existsByOldSlugAndTeamIdNot(slug, teamId)) {
+            throw new BusinessException(TeamErrorCode.TEAM_063);
+        }
+    }
+
+    /**
+     * F01.2 §5.9.5: slug を解決する（旧 slug → 現 slug の 301 判定用・公開 EP から呼ばれる）。
+     *
+     * <ul>
+     *   <li>現 slug で存在 → {@code CURRENT}</li>
+     *   <li>無ければ履歴の old_slug 一致を引き、その team の現 slug へ {@code MOVED(canonicalSlug)}。
+     *       ただし対象チームが論理削除済み等で現存しない場合は {@code NOT_FOUND}。</li>
+     *   <li>どちらも無ければ {@code NOT_FOUND}</li>
+     * </ul>
+     *
+     * <p>スコープ漏洩対策: 名前等は返さず canonicalSlug のみ。private チームの実データは
+     * {@code getTeam} の認可が守るため、slug→slug の対応自体は非機密として扱う。</p>
+     *
+     * @param slug 解決対象 slug
+     * @return 解決結果
+     */
+    public SlugResolveResponse resolveSlug(String slug) {
+        if (slug == null || slug.isBlank()) {
+            return SlugResolveResponse.notFound();
+        }
+        if (teamRepository.existsBySlugAndDeletedAtIsNull(slug)) {
+            return SlugResolveResponse.current();
+        }
+        return teamSlugHistoryRepository.findByOldSlug(slug)
+                .flatMap(history -> teamRepository.findById(history.getTeamId()))
+                .map(team -> SlugResolveResponse.moved(team.getSlug()))
+                .orElseGet(SlugResolveResponse::notFound);
     }
 
     /**

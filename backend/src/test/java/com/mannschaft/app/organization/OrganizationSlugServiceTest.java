@@ -12,6 +12,7 @@ import com.mannschaft.app.organization.dto.CreateOrganizationRequest;
 import com.mannschaft.app.organization.dto.OrganizationResponse;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.organization.repository.OrganizationSlugHistoryRepository;
 import com.mannschaft.app.organization.service.OrganizationHierarchyService;
 import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.organization.service.OrganizationService;
@@ -42,6 +43,7 @@ class OrganizationSlugServiceTest {
     private static final Long ADMIN_ROLE_ID = 100L;
 
     @Mock private OrganizationRepository organizationRepository;
+    @Mock private OrganizationSlugHistoryRepository organizationSlugHistoryRepository;
     @Mock private UserRoleRepository userRoleRepository;
     @Mock private RoleRepository roleRepository;
     @Mock private InviteTokenRepository inviteTokenRepository;

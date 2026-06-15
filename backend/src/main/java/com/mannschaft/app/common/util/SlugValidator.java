@@ -46,6 +46,8 @@ public final class SlugValidator {
             // 共通 / 一般的に危険な語
             "new", "search", "admin", "settings", "me", "public", "api",
             "login", "register", "logout", "signup", "signin",
+            // slug 可用性／301 解決 API のパスセグメント（動的 {slug} に食われないよう予約）
+            "slug-available", "slug-resolve",
             // FE 固定セグメント（frontend/app/pages/teams, organizations 直下）
             "index", "create", "edit", "delete", "list",
             // 予防的に押さえておく語
