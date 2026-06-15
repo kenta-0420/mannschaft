@@ -167,11 +167,12 @@ async function save() {
   }
   catch (error) {
     // BE エラーコード（422 形式/予約語・409 重複/履歴予約）をフィールドに反映する。
+    // エラー応答は { error: { code, message, fieldErrors } } のネスト構造（ErrorResponse）。
     const fetchError = error as FetchError
     const status = fetchError?.response?.status
-    const code = (fetchError?.data as { code?: string } | undefined)?.code
+    const code = (fetchError?.data as { error?: { code?: string } } | undefined)?.error?.code
+    // 履歴予約は TEAM_063 / ORG_063（いずれも末尾 063）。
     if (status === 409 && code?.endsWith('063')) {
-      // SLUG_RETIRED（履歴予約）
       slugStatus.value = 'unavailable'
       slugReason.value = 'SLUG_RETIRED'
     }
