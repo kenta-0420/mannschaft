@@ -1,6 +1,6 @@
 import type { MemberResponse } from '~/types/member'
 import type { OrganizationResponse } from '~/types/organization'
-import type { SlugAvailabilityResponse } from '~/types/slug'
+import type { SlugAvailabilityResponse, SlugResolveResponse } from '~/types/slug'
 
 interface OrganizationSummaryResponse {
   id: string
@@ -123,6 +123,36 @@ export function useOrganizationApi() {
   ): Promise<SlugAvailabilityResponse> {
     const query = new URLSearchParams({ slug })
     return api<SlugAvailabilityResponse>(`/api/v1/organizations/slug-available?${query}`)
+  }
+
+  /**
+   * 組織 slug をリネームする（BE #1542）。
+   *
+   * `PUT /api/v1/organizations/{currentSlug}/slug` を body `{ newSlug }` で叩く。
+   * 認可は BE 側で ADMIN/DEPUTY 相当に限定される。
+   *
+   * - 200: 成功（`data.slug` に新 slug。`newSlug==現slug` なら no-op 200）
+   * - 422: 形式不正 / 予約語
+   * - 409: 重複（SLUG_ALREADY_TAKEN）/ 履歴予約（SLUG_RETIRED）
+   *
+   * 旧 slug は 301 解決用に履歴予約されるため、成功後は新 slug の URL へ遷移すること。
+   */
+  async function renameOrganizationSlug(currentSlug: string, newSlug: string) {
+    return api<{ data: OrganizationResponse }>(`/api/v1/organizations/${currentSlug}/slug`, {
+      method: 'PUT',
+      body: { newSlug },
+    })
+  }
+
+  /**
+   * 組織 slug を解決する（旧 slug → 新 slug の 301 判定・BE #1542）。
+   *
+   * `GET /api/v1/public/organizations/slug-resolve?slug=xxx` を叩く（permitAll・レート制限）。
+   * 名前など実データは返さず status / canonicalSlug のみ。
+   */
+  async function resolveOrganizationSlug(slug: string): Promise<SlugResolveResponse> {
+    const query = new URLSearchParams({ slug })
+    return api<SlugResolveResponse>(`/api/v1/public/organizations/slug-resolve?${query}`)
   }
 
   async function updateOrganization(orgSlug: string, body: Record<string, unknown>) {
@@ -358,6 +388,8 @@ export function useOrganizationApi() {
     searchOrganizations,
     createOrganization,
     checkOrganizationSlugAvailable,
+    renameOrganizationSlug,
+    resolveOrganizationSlug,
     updateOrganization,
     deleteOrganization,
     getMembers,

@@ -17,6 +17,17 @@ const toast = useToast()
 
 const { fetchPublicOrganization, updateOrgPublicSettings } = usePublicApi()
 
+// slug 変更（リネーム）は ADMIN/DEPUTY のみ表示・操作する。
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
+
+/**
+ * slug リネーム成功時: slug が変わったので新 slug の設定ページへ置換遷移する。
+ * 旧 URL は BE 側で 301 解決用に履歴予約される。
+ */
+async function onSlugRenamed(newSlug: string) {
+  await navigateTo(`/organizations/${newSlug}/settings/public-settings`, { replace: true })
+}
+
 const timelinePostsPublic = ref(false)
 const publicEventsEnabled = ref(false)
 const loading = ref(false)
@@ -53,6 +64,7 @@ async function save() {
 }
 
 await loadSettings()
+await loadPermissions()
 </script>
 
 <template>
@@ -68,8 +80,15 @@ await loadSettings()
       <ProgressSpinner />
     </div>
 
+    <SlugRenameField
+      v-if="!loading && isAdminOrDeputy"
+      entity-type="organization"
+      :current-slug="orgSlug"
+      @renamed="onSlugRenamed"
+    />
+
     <form
-      v-else
+      v-if="!loading"
       data-testid="org-public-settings-form"
       class="space-y-6 rounded-lg border border-surface-200 p-6 dark:border-surface-700"
       @submit.prevent="save"

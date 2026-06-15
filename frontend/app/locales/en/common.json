@@ -1532,7 +1532,16 @@
       "SLUG_REQUIRED": "Please enter a slug",
       "SLUG_INVALID_FORMAT": "Invalid format (lowercase letters, numbers, and hyphens, 3-30 chars; no leading/trailing or consecutive hyphens)",
       "SLUG_RESERVED": "This slug is reserved and cannot be used",
-      "SLUG_ALREADY_TAKEN": "This slug is already taken"
+      "SLUG_ALREADY_TAKEN": "This slug is already taken",
+      "SLUG_RETIRED": "This slug was used before and cannot be reused (reserved for redirects)"
+    },
+    "rename": {
+      "title": "Change URL (slug)",
+      "help": "Change the slug in your public URL. Old URLs are automatically redirected to the new one.",
+      "save": "Change",
+      "saved": "URL (slug) changed",
+      "saveError": "Failed to change URL (slug)",
+      "unchanged": "Same as the current slug (no change)"
     }
   },
   "team_visibility": {

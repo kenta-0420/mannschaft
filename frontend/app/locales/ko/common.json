@@ -1532,7 +1532,16 @@
       "SLUG_REQUIRED": "슬러그를 입력해 주세요",
       "SLUG_INVALID_FORMAT": "형식이 올바르지 않습니다 (영소문자, 숫자, 하이픈, 3~30자, 앞뒤 및 연속 하이픈 불가)",
       "SLUG_RESERVED": "예약어이므로 사용할 수 없는 슬러그입니다",
-      "SLUG_ALREADY_TAKEN": "이미 사용 중인 슬러그입니다"
+      "SLUG_ALREADY_TAKEN": "이미 사용 중인 슬러그입니다",
+      "SLUG_RETIRED": "이 슬러그는 과거에 사용되어 재사용할 수 없습니다（리디렉션을 위해 예약됨）"
+    },
+    "rename": {
+      "title": "URL（슬러그）변경",
+      "help": "공개 URL의 슬러그를 변경합니다. 기존 URL은 자동으로 새 URL로 리디렉션됩니다.",
+      "save": "변경",
+      "saved": "URL（슬러그）을 변경했습니다",
+      "saveError": "URL（슬러그）변경에 실패했습니다",
+      "unchanged": "현재 슬러그와 동일합니다（변경 없음）"
     }
   },
   "team_visibility": {
