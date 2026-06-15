@@ -42272,20 +42272,7 @@ export interface components {
             staff?: components["schemas"]["StaffEntry"][];
         };
         ApiResponseMatchRosterResponse: {
-            data?: components["schemas"]["MatchRosterResponse"];
-        };
-        MatchRosterResponse: {
-            /** Format: int64 */
-            matchId?: number;
-            /** Format: int64 */
-            participantId?: number;
-            /** Format: int64 */
-            teamId?: number;
-            /** Format: date-time */
-            rosterDeadline?: string;
-            locked?: boolean;
-            players?: components["schemas"]["RosterPlayerResponse"][];
-            staff?: components["schemas"]["RosterStaffResponse"][];
+            data?: components["schemas"]["FixtureRosterResponse"];
         };
         RosterPlayerResponse: {
             /** Format: int64 */
@@ -55445,18 +55432,6 @@ export interface components {
             /** Format: int64 */
             winnerParticipantId?: number;
         };
-        MatchResponse: {
-            /** Format: int64 */
-            id?: number;
-            /** Format: int64 */
-            matchdayId?: number;
-            participants?: components["schemas"]["MatchParticipantsDto"];
-            score?: components["schemas"]["MatchScoreDto"];
-            info?: components["schemas"]["MatchInfoDto"];
-            sets?: components["schemas"]["MatchSetResponse"][];
-            playerStats?: components["schemas"]["PlayerStatResponse"][];
-            audit?: components["schemas"]["MatchAuditDto"];
-        };
         MatchScoreDto: {
             /** Format: int32 */
             homeScore?: number;
@@ -55471,16 +55446,6 @@ export interface components {
             /** Format: int32 */
             awayPenaltyScore?: number;
         };
-        MatchSetResponse: {
-            /** Format: int64 */
-            id?: number;
-            /** Format: int32 */
-            setNumber?: number;
-            /** Format: int32 */
-            homeScore?: number;
-            /** Format: int32 */
-            awayScore?: number;
-        };
         MatchdayResponse: {
             /** Format: int64 */
             id?: number;
@@ -55492,7 +55457,7 @@ export interface components {
             /** Format: date */
             scheduledDate?: string;
             status?: string;
-            matches?: components["schemas"]["MatchResponse"][];
+            matches?: components["schemas"]["FixtureResponse"][];
             /** Format: date-time */
             createdAt?: string;
             /** Format: date-time */
@@ -55535,15 +55500,7 @@ export interface components {
             notes?: string;
             /** Format: int64 */
             version: number;
-            sets?: components["schemas"]["MatchSetRequest"][];
-        };
-        MatchSetRequest: {
-            /** Format: int32 */
-            setNumber: number;
-            /** Format: int32 */
-            homeScore: number;
-            /** Format: int32 */
-            awayScore: number;
+            sets?: components["schemas"]["FixtureSetRequest"][];
         };
         ApiResponseListMatchdayResponse: {
             data?: components["schemas"]["MatchdayResponse"][];
@@ -59044,10 +59001,6 @@ export interface components {
             refId?: number;
             isPublic?: boolean;
         };
-        UpdateMatchRosterDeadlineRequest: {
-            /** Format: date-time */
-            rosterDeadline?: string;
-        };
         PatchTodoRequest: {
             /** Format: date */
             dueDate?: string;
@@ -60429,10 +60382,10 @@ export interface components {
             notes?: string;
             /** Format: int64 */
             version: number;
-            sets?: components["schemas"]["MatchSetRequest"][];
+            sets?: components["schemas"]["FixtureSetRequest"][];
         };
         ApiResponseMatchResponse: {
-            data?: components["schemas"]["MatchResponse"];
+            data?: components["schemas"]["FixtureResponse"];
         };
         PlayerStatBatchRequest: {
             /** Format: int64 */
@@ -66421,7 +66374,7 @@ export interface components {
             teamName?: string;
         };
         ApiResponseListMatchResponse: {
-            data?: components["schemas"]["MatchResponse"][];
+            data?: components["schemas"]["FixtureResponse"][];
         };
         PublicOrganizationResponse: {
             /** Format: int64 */
@@ -69966,6 +69919,53 @@ export interface components {
         };
         RemoveParticipantsRequest: {
             userIds?: number[];
+        };
+        FixtureResponse: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            matchdayId?: number;
+            participants?: components["schemas"]["MatchParticipantsDto"];
+            score?: components["schemas"]["MatchScoreDto"];
+            info?: components["schemas"]["MatchInfoDto"];
+            sets?: components["schemas"]["FixtureSetResponse"][];
+            playerStats?: components["schemas"]["PlayerStatResponse"][];
+            audit?: components["schemas"]["MatchAuditDto"];
+        };
+        FixtureSetRequest: {
+            /** Format: int32 */
+            setNumber: number;
+            /** Format: int32 */
+            homeScore: number;
+            /** Format: int32 */
+            awayScore: number;
+        };
+        FixtureSetResponse: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int32 */
+            setNumber?: number;
+            /** Format: int32 */
+            homeScore?: number;
+            /** Format: int32 */
+            awayScore?: number;
+        };
+        FixtureRosterResponse: {
+            /** Format: int64 */
+            matchId?: number;
+            /** Format: int64 */
+            participantId?: number;
+            /** Format: int64 */
+            teamId?: number;
+            /** Format: date-time */
+            rosterDeadline?: string;
+            locked?: boolean;
+            players?: components["schemas"]["RosterPlayerResponse"][];
+            staff?: components["schemas"]["RosterStaffResponse"][];
+        };
+        UpdateFixtureRosterDeadlineRequest: {
+            /** Format: date-time */
+            rosterDeadline?: string;
         };
     };
     responses: never;
@@ -116252,7 +116252,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["UpdateMatchRosterDeadlineRequest"];
+                "application/json": components["schemas"]["UpdateFixtureRosterDeadlineRequest"];
             };
         };
         responses: {

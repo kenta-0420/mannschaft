@@ -35,9 +35,10 @@ export type PagedResponseMatchSummaryResponse = Schemas['PagedResponseMatchSumma
 /**
  * 試合詳細（getMatch / createMatch / updateMatch / changeStatus / finalizeScore / recordingMode のレスポンス）。
  *
- * BE クラス名は `match.dto.MatchResponse` だが、tournament(リーグ)側の同名 `MatchResponse` と
- * OpenAPI スキーマ名が衝突するため、BE 側で `@Schema(name="MatchDetailResponse")` に分離した。
- * 生成型でも `MatchDetailResponse` が正本（F08.10 3-B 根治）。
+ * BE クラス名は `match.dto.MatchResponse`。かつて tournament(リーグ)側の同名 `MatchResponse` と
+ * OpenAPI スキーマ名が衝突するため BE 側で `@Schema(name="MatchDetailResponse")` に分離した
+ * （F08.10 3-B 根治）。Phase5a で tournament 側を `FixtureResponse` へ改称し単純名衝突は解消したが、
+ * 生成型は引き続き `MatchDetailResponse` が正本（別名は無害ゆえ維持）。
  */
 export type MatchResponse = Schemas['MatchDetailResponse']
 /** イベント */

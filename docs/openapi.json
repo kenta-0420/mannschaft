@@ -78463,7 +78463,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateMatchRosterDeadlineRequest"
+                "$ref": "#/components/schemas/UpdateFixtureRosterDeadlineRequest"
               }
             }
           },
@@ -131938,43 +131938,7 @@
         "type": "object",
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/MatchRosterResponse"
-          }
-        }
-      },
-      "MatchRosterResponse": {
-        "type": "object",
-        "properties": {
-          "matchId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "participantId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "teamId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "rosterDeadline": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "locked": {
-            "type": "boolean"
-          },
-          "players": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/RosterPlayerResponse"
-            }
-          },
-          "staff": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/RosterStaffResponse"
-            }
+            "$ref": "#/components/schemas/FixtureRosterResponse"
           }
         }
       },
@@ -167980,43 +167944,6 @@
           }
         }
       },
-      "MatchResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "matchdayId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "participants": {
-            "$ref": "#/components/schemas/MatchParticipantsDto"
-          },
-          "score": {
-            "$ref": "#/components/schemas/MatchScoreDto"
-          },
-          "info": {
-            "$ref": "#/components/schemas/MatchInfoDto"
-          },
-          "sets": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/MatchSetResponse"
-            }
-          },
-          "playerStats": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PlayerStatResponse"
-            }
-          },
-          "audit": {
-            "$ref": "#/components/schemas/MatchAuditDto"
-          }
-        }
-      },
       "MatchScoreDto": {
         "type": "object",
         "properties": {
@@ -168041,27 +167968,6 @@
             "format": "int32"
           },
           "awayPenaltyScore": {
-            "type": "integer",
-            "format": "int32"
-          }
-        }
-      },
-      "MatchSetResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "setNumber": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "homeScore": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "awayScore": {
             "type": "integer",
             "format": "int32"
           }
@@ -168095,7 +168001,7 @@
           "matches": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/MatchResponse"
+              "$ref": "#/components/schemas/FixtureResponse"
             }
           },
           "createdAt": {
@@ -168198,35 +168104,13 @@
           "sets": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/MatchSetRequest"
+              "$ref": "#/components/schemas/FixtureSetRequest"
             }
           }
         },
         "required": [
           "matchId",
           "version"
-        ]
-      },
-      "MatchSetRequest": {
-        "type": "object",
-        "properties": {
-          "setNumber": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "homeScore": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "awayScore": {
-            "type": "integer",
-            "format": "int32"
-          }
-        },
-        "required": [
-          "awayScore",
-          "homeScore",
-          "setNumber"
         ]
       },
       "ApiResponseListMatchdayResponse": {
@@ -178362,15 +178246,6 @@
           }
         }
       },
-      "UpdateMatchRosterDeadlineRequest": {
-        "type": "object",
-        "properties": {
-          "rosterDeadline": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
       "PatchTodoRequest": {
         "type": "object",
         "properties": {
@@ -182169,7 +182044,7 @@
           "sets": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/MatchSetRequest"
+              "$ref": "#/components/schemas/FixtureSetRequest"
             }
           }
         },
@@ -182181,7 +182056,7 @@
         "type": "object",
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/MatchResponse"
+            "$ref": "#/components/schemas/FixtureResponse"
           }
         }
       },
@@ -198609,7 +198484,7 @@
           "data": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/MatchResponse"
+              "$ref": "#/components/schemas/FixtureResponse"
             }
           }
         }
@@ -208176,6 +208051,131 @@
               "format": "int64"
             },
             "minItems": 1
+          }
+        }
+      },
+      "FixtureResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "matchdayId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "participants": {
+            "$ref": "#/components/schemas/MatchParticipantsDto"
+          },
+          "score": {
+            "$ref": "#/components/schemas/MatchScoreDto"
+          },
+          "info": {
+            "$ref": "#/components/schemas/MatchInfoDto"
+          },
+          "sets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FixtureSetResponse"
+            }
+          },
+          "playerStats": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayerStatResponse"
+            }
+          },
+          "audit": {
+            "$ref": "#/components/schemas/MatchAuditDto"
+          }
+        }
+      },
+      "FixtureSetRequest": {
+        "type": "object",
+        "properties": {
+          "setNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "homeScore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "awayScore": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "awayScore",
+          "homeScore",
+          "setNumber"
+        ]
+      },
+      "FixtureSetResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "setNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "homeScore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "awayScore": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "FixtureRosterResponse": {
+        "type": "object",
+        "properties": {
+          "matchId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "participantId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "teamId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "rosterDeadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "locked": {
+            "type": "boolean"
+          },
+          "players": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RosterPlayerResponse"
+            }
+          },
+          "staff": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RosterStaffResponse"
+            }
+          }
+        }
+      },
+      "UpdateFixtureRosterDeadlineRequest": {
+        "type": "object",
+        "properties": {
+          "rosterDeadline": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       }

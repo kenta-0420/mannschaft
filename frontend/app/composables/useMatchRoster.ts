@@ -9,7 +9,7 @@
  *   PATCH  /api/v1/tournaments/{tId}/matches/{matchId}                  （締切設定）
  */
 import type {
-  MatchRosterResponse,
+  FixtureRosterResponse,
   OrganizerRosterView,
   SubmitRosterRequest,
   ApplyRosterTemplateRequest,
@@ -22,7 +22,7 @@ export function useMatchRoster(tournamentId: number, matchId: number) {
 
   const base = `/api/v1/tournaments/${tournamentId}/matches/${matchId}`
 
-  const myRoster = ref<MatchRosterResponse | null>(null)
+  const myRoster = ref<FixtureRosterResponse | null>(null)
   const allRosters = ref<OrganizerRosterView[]>([])
   const loadingMy = ref(false)
   const loadingAll = ref(false)
@@ -32,10 +32,10 @@ export function useMatchRoster(tournamentId: number, matchId: number) {
 
   // ===== 自チームメンバー表取得 =====
 
-  async function getMyRoster(): Promise<MatchRosterResponse | null> {
+  async function getMyRoster(): Promise<FixtureRosterResponse | null> {
     loadingMy.value = true
     try {
-      const res = await api<{ data: MatchRosterResponse }>(`${base}/rosters/me`)
+      const res = await api<{ data: FixtureRosterResponse }>(`${base}/rosters/me`)
       myRoster.value = res.data
       return res.data
     } catch (err) {
@@ -48,10 +48,10 @@ export function useMatchRoster(tournamentId: number, matchId: number) {
 
   // ===== 自チームメンバー表提出 =====
 
-  async function submitMyRoster(request: SubmitRosterRequest): Promise<MatchRosterResponse> {
+  async function submitMyRoster(request: SubmitRosterRequest): Promise<FixtureRosterResponse> {
     submitting.value = true
     try {
-      const res = await api<{ data: MatchRosterResponse }>(`${base}/rosters/me`, {
+      const res = await api<{ data: FixtureRosterResponse }>(`${base}/rosters/me`, {
         method: 'PUT',
         body: request,
       })
@@ -68,10 +68,10 @@ export function useMatchRoster(tournamentId: number, matchId: number) {
 
   // ===== テンプレ適用（1 タップ） =====
 
-  async function applyTemplate(req: ApplyRosterTemplateRequest): Promise<MatchRosterResponse> {
+  async function applyTemplate(req: ApplyRosterTemplateRequest): Promise<FixtureRosterResponse> {
     applyingTemplate.value = true
     try {
-      const res = await api<{ data: MatchRosterResponse }>(`${base}/rosters/me/apply-template`, {
+      const res = await api<{ data: FixtureRosterResponse }>(`${base}/rosters/me/apply-template`, {
         method: 'POST',
         body: req,
       })
