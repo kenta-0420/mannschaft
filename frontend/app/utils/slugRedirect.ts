@@ -49,3 +49,36 @@ export function computeSlugRedirectPath(
   if (result.status !== 'MOVED' || !result.canonicalSlug) return null
   return `/${parts.entity}/${result.canonicalSlug}${parts.rest}`
 }
+
+/**
+ * 旧 slug → 新 slug の 301 リダイレクト全体を判定する純粋ロジック。
+ *
+ * パス解析（parseSlugRoute）と解決呼び出し（注入された resolve 関数）と
+ * 遷移先計算（computeSlugRedirectPath）を 1 つにまとめ、ランタイム非依存で
+ * テストできる形にしている。SSR ミドルウェアとページ側フォールバックの双方が
+ * この関数を共有することで、解決ロジックの二重化を防ぐ（BE #1542・村方式）。
+ *
+ * - 対象外パス（teams/organizations 以外）→ null（処理不要）
+ * - `CURRENT` / `NOT_FOUND` / canonicalSlug 欠落 → null（リダイレクト不要）
+ * - `MOVED` かつ canonicalSlug あり → 新 slug の同一サブパス文字列
+ *
+ * 解決呼び出しが失敗した場合（ネットワークエラー等）は null を返し、
+ * 呼び出し元は通常のページ表示（最終的に 404）にフォールバックする。
+ *
+ * @param path     現在のルートパス（クエリ・ハッシュを含まない）
+ * @param resolve  entity と slug を受け取り SlugResolveResponse を返す解決関数
+ * @returns 遷移先パス（例: `/teams/new-slug/settings`）、または null
+ */
+export async function resolveSlugRedirectPath(
+  path: string,
+  resolve: (entity: 'teams' | 'organizations', slug: string) => Promise<SlugResolveResponse>,
+): Promise<string | null> {
+  const parts = parseSlugRoute(path)
+  if (!parts) return null
+  try {
+    const result = await resolve(parts.entity, parts.slug)
+    return computeSlugRedirectPath(parts, result)
+  } catch {
+    return null
+  }
+}
