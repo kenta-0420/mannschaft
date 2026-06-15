@@ -148,6 +148,8 @@ function encryptForTest(plain) {
 
   const basketTeamId = await upsertTeam("f0810-basketball-team", "F08.10バスケ部（テスト）");
   const volleyTeamId = await upsertTeam("f0810-volleyball-team", "F08.10バレー部（テスト）");
+  // 採点競技（SCORED）専用チーム（フィギュアスケート・体操の E2E 用）
+  const scoredTeamId = await upsertTeam("f0810-scored-team", "F08.10採点競技部（テスト）");
 
   async function linkTeamOrg(teamId, orgId) {
     await conn.execute(
@@ -159,7 +161,8 @@ function encryptForTest(plain) {
   }
   await linkTeamOrg(basketTeamId, ORG_ID);
   await linkTeamOrg(volleyTeamId, ORG_ID);
-  console.log(`Teams: basketball=${basketTeamId}, volleyball=${volleyTeamId} (linked to org ${ORG_ID})`);
+  await linkTeamOrg(scoredTeamId, ORG_ID);
+  console.log(`Teams: basketball=${basketTeamId}, volleyball=${volleyTeamId}, scored=${scoredTeamId} (linked to org ${ORG_ID})`);
 
   // ------------------------------------------------------------
   // ロール配置（user_roles ＋ memberships 二系統同期・seed-e2e-data.js と同一）
@@ -195,23 +198,26 @@ function encryptForTest(plain) {
     }
   }
 
-  // 記録者: 両チームの ADMIN（共同記録＝主体チーム ADMIN/DEPUTY のみ記録可）
+  // 記録者: 全チームの ADMIN（共同記録＝主体チーム ADMIN/DEPUTY のみ記録可）
   await assignRole(recorderId, 2, basketTeamId, null);
   await assignRole(recorderId, 2, volleyTeamId, null);
+  await assignRole(recorderId, 2, scoredTeamId, null);
   // 組織 ADMIN も付与（観戦/閲覧の組織テナント文脈用）
   await assignRole(recorderId, 2, null, ORG_ID);
 
-  // e2e-admin（既存 SYSTEM_ADMIN / 既存 storageState 流用）にも両チーム ADMIN を付与
+  // e2e-admin（既存 SYSTEM_ADMIN / 既存 storageState 流用）にも全チーム ADMIN を付与
   await assignRole(E2E_ADMIN, 2, basketTeamId, null);
   await assignRole(E2E_ADMIN, 2, volleyTeamId, null);
+  await assignRole(E2E_ADMIN, 2, scoredTeamId, null);
   await assignRole(E2E_ADMIN, 2, null, ORG_ID);
 
-  // 選手4人を両チームの MEMBER（選手グリッドの母集団）
+  // 選手4人を全チームの MEMBER（選手グリッドの母集団）
   for (const pid of playerIds) {
     await assignRole(pid, 4, basketTeamId, null);
     await assignRole(pid, 4, volleyTeamId, null);
+    await assignRole(pid, 4, scoredTeamId, null);
   }
-  console.log("Roles assigned (recorder/e2e-admin = ADMIN, players = MEMBER on both teams)");
+  console.log("Roles assigned (recorder/e2e-admin = ADMIN, players = MEMBER on all teams including scored)");
 
   // ------------------------------------------------------------
   // サマリー（spec の固定値）
@@ -222,9 +228,10 @@ function encryptForTest(plain) {
   console.log(`ORG_ID:            ${ORG_ID}   (slug=${ORG_SLUG})`);
   console.log(`BASKETBALL_TEAM_ID:${basketTeamId} (slug=f0810-basketball-team)`);
   console.log(`VOLLEYBALL_TEAM_ID:${volleyTeamId} (slug=f0810-volleyball-team)`);
+  console.log(`SCORED_TEAM_ID:    ${scoredTeamId} (slug=f0810-scored-team)`);
   console.log(`RECORDER:          ${recorderId} (f0810-recorder@test.mannschaft.local)`);
   console.log(`PLAYERS:           [${playerIds.join(", ")}]`);
-  console.log(`E2E_ADMIN:         ${E2E_ADMIN} (両チーム ADMIN 追加付与済み)`);
+  console.log(`E2E_ADMIN:         ${E2E_ADMIN} (全チーム ADMIN 追加付与済み)`);
   console.log("========================================");
 
   await conn.end();
