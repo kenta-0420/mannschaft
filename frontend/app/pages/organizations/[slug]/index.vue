@@ -2,7 +2,8 @@
 import type { ViewerRole } from '~/types/dashboard'
 
 definePageMeta({
-  middleware: 'auth',
+  // slug-redirect: 旧 slug のトップ URL を新 slug へ 301（村方式・BE #1542）。auth より先に走らせる。
+  middleware: ['slug-redirect', 'auth'],
   layout: 'default',
 })
 
