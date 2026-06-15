@@ -2,9 +2,9 @@ package com.mannschaft.app.tournament.scorekeeper;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
-import com.mannschaft.app.tournament.entity.TournamentMatchEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixtureEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
-import com.mannschaft.app.tournament.repository.TournamentMatchRepository;
+import com.mannschaft.app.tournament.repository.TournamentFixtureRepository;
 import com.mannschaft.app.tournament.repository.TournamentParticipantRepository;
 import com.mannschaft.app.tournament.repository.TournamentRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,15 +25,15 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 /**
- * F08.7 順位UI 項目③ — {@link TournamentMatchAccessService#canEnterScore} の 3-way 認可番人テスト。
+ * F08.7 順位UI 項目③ — {@link TournamentFixtureAccessService#canEnterScore} の 3-way 認可番人テスト。
  *
  * <p>確定方針: スコア入力可＝「ORG 管理者 OR 当該大会の指名スコアキーパー OR その試合の参加チーム ADMIN」。
  * 純 Mockito で各立場の許可/拒否を実アサートする。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-@DisplayName("TournamentMatchAccessService — スコア入力 3-way 認可番人（項目③）")
-class TournamentMatchAccessServiceTest {
+@DisplayName("TournamentFixtureAccessService — スコア入力 3-way 認可番人（項目③）")
+class TournamentFixtureAccessServiceTest {
 
     private static final Long ORG_ID = 100L;
     private static final Long T_ID = 7L;
@@ -56,12 +56,12 @@ class TournamentMatchAccessServiceTest {
     @Mock
     private TournamentScorekeeperRepository scorekeeperRepository;
     @Mock
-    private TournamentMatchRepository matchRepository;
+    private TournamentFixtureRepository matchRepository;
     @Mock
     private TournamentParticipantRepository participantRepository;
 
     @InjectMocks
-    private TournamentMatchAccessService service;
+    private TournamentFixtureAccessService service;
 
     @BeforeEach
     void setUp() {
@@ -73,7 +73,7 @@ class TournamentMatchAccessServiceTest {
         when(tournamentRepository.findById(T_ID)).thenReturn(Optional.of(tournament));
 
         // match → participants
-        TournamentMatchEntity match = TournamentMatchEntity.builder()
+        TournamentFixtureEntity match = TournamentFixtureEntity.builder()
                 .matchdayId(50L)
                 .homeParticipantId(HOME_PARTICIPANT_ID)
                 .awayParticipantId(AWAY_PARTICIPANT_ID)

@@ -9,7 +9,7 @@ import com.mannschaft.app.tournament.entity.TournamentEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
 import com.mannschaft.app.tournament.entity.TournamentStandingEntity;
 import com.mannschaft.app.tournament.repository.TournamentDivisionRepository;
-import com.mannschaft.app.tournament.repository.TournamentMatchRepository;
+import com.mannschaft.app.tournament.repository.TournamentFixtureRepository;
 import com.mannschaft.app.tournament.repository.TournamentParticipantRepository;
 import com.mannschaft.app.tournament.repository.TournamentRepository;
 import com.mannschaft.app.tournament.repository.TournamentStandingRepository;
@@ -41,7 +41,7 @@ class StandingsQueryServiceTest {
     @Mock private TournamentParticipantRepository participantRepository;
     @Mock private TournamentDivisionRepository divisionRepository;
     @Mock private TournamentRepository tournamentRepository;
-    @Mock private TournamentMatchRepository matchRepository;
+    @Mock private TournamentFixtureRepository matchRepository;
     @Mock private TournamentMapper mapper;
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
 

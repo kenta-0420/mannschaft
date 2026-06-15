@@ -5,7 +5,7 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.tournament.TournamentErrorCode;
-import com.mannschaft.app.tournament.service.MatchService;
+import com.mannschaft.app.tournament.service.FixtureService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -24,17 +24,17 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * F08.7 順位UI Wave0 検分フォロー（B-2a） — {@link MatchController} GET 可視性ガード番人テスト。
+ * F08.7 順位UI Wave0 検分フォロー（B-2a） — {@link FixtureController} GET 可視性ガード番人テスト。
  *
- * <p>従来 MatchController の GET 系（節一覧・試合詳細・出場メンバー一覧）には可視性ガードが無く、
+ * <p>従来 FixtureController の GET 系（節一覧・試合詳細・出場メンバー一覧）には可視性ガードが無く、
  * 認証さえあれば非公開大会の対戦カード・結果・出場メンバーを素通しで閲覧できる漏洩穴になっていた。
  * 本テストは GET 系に F00 共通可視性ガード（{@code contentVisibilityChecker.canView(TOURNAMENT, tId, viewer)}・
  * 不可視は IDOR 防止のため 404）が挿入されていることを検証する。可視性は常に class 階層パスの親
  * tournament（{@code tId}）で判定される。</p>
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("MatchController — GET 可視性ガード番人（B-2a）")
-class MatchControllerVisibilityTest {
+@DisplayName("FixtureController — GET 可視性ガード番人（B-2a）")
+class FixtureControllerVisibilityTest {
 
     private static final Long ORG_ID = 100L;
     private static final Long T_ID = 7L;
@@ -43,12 +43,12 @@ class MatchControllerVisibilityTest {
     private static final Long VIEWER = 5L;
 
     @Mock
-    private MatchService matchService;
+    private FixtureService matchService;
     @Mock
     private ContentVisibilityChecker contentVisibilityChecker;
 
     @InjectMocks
-    private MatchController controller;
+    private FixtureController controller;
 
     @Nested
     @DisplayName("不可視（canView=false）のとき 404 を投げ、サービスを呼ばない")

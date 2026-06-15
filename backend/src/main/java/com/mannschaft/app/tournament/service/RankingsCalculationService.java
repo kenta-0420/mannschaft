@@ -21,10 +21,10 @@ import com.mannschaft.app.tournament.dto.IndividualRankingResponse;
 import com.mannschaft.app.tournament.dto.RankingSummaryResponse;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
 import com.mannschaft.app.tournament.entity.TournamentIndividualRankingEntity;
-import com.mannschaft.app.tournament.entity.TournamentMatchPlayerStatEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixturePlayerStatEntity;
 import com.mannschaft.app.tournament.entity.TournamentStatDefEntity;
 import com.mannschaft.app.tournament.repository.TournamentIndividualRankingRepository;
-import com.mannschaft.app.tournament.repository.TournamentMatchPlayerStatRepository;
+import com.mannschaft.app.tournament.repository.TournamentFixturePlayerStatRepository;
 import com.mannschaft.app.tournament.repository.TournamentRepository;
 import com.mannschaft.app.tournament.repository.TournamentStatDefRepository;
 import lombok.RequiredArgsConstructor;
@@ -59,7 +59,7 @@ import java.util.stream.Collectors;
 public class RankingsCalculationService {
 
     private final TournamentStatDefRepository statDefRepository;
-    private final TournamentMatchPlayerStatRepository playerStatRepository;
+    private final TournamentFixturePlayerStatRepository playerStatRepository;
     private final TournamentIndividualRankingRepository rankingRepository;
     private final TournamentMapper mapper;
 
@@ -74,7 +74,7 @@ public class RankingsCalculationService {
      * ランキング再計算イベントを受信する。
      *
      * <p><b>レース条件根治（05 §H.0 訂正・順位表と同根）</b>: 以前は {@code @Async @EventListener}
-     * だったため発火元TX（{@link MatchService#updatePlayerStats} の {@code @Transactional}）の
+     * だったため発火元TX（{@link FixtureService#updatePlayerStats} の {@code @Transactional}）の
      * <b>コミット前</b>に別スレッドで実行され、未コミットの選手スタッツを読んでランキングが
      * 自動反映されなかった。{@link TransactionalEventListener}(AFTER_COMMIT) に切り替え、確定後に
      * 再計算する。{@code @Async} 併存でコミット後の非同期実行を維持する。
@@ -106,13 +106,13 @@ public class RankingsCalculationService {
 
     private void recalculateForStatKey(Long tournamentId, TournamentStatDefEntity def) {
         String statKey = def.getStatKey();
-        List<TournamentMatchPlayerStatEntity> allStats =
+        List<TournamentFixturePlayerStatEntity> allStats =
                 playerStatRepository.findByTournamentIdAndStatKey(tournamentId, statKey);
 
         // ユーザーごとに集計
         Map<Long, PlayerAggregation> aggregations = new HashMap<>();
 
-        for (TournamentMatchPlayerStatEntity stat : allStats) {
+        for (TournamentFixturePlayerStatEntity stat : allStats) {
             PlayerAggregation agg = aggregations.computeIfAbsent(stat.getUserId(),
                     uid -> new PlayerAggregation(uid, stat.getParticipantId()));
             agg.matchCount++;

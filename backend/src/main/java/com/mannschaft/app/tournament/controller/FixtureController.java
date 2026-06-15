@@ -5,18 +5,18 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
-import com.mannschaft.app.tournament.MatchStatus;
+import com.mannschaft.app.tournament.FixtureStatus;
 import com.mannschaft.app.tournament.TournamentErrorCode;
 import com.mannschaft.app.tournament.dto.BatchScoreRequest;
 import com.mannschaft.app.tournament.dto.CreateMatchdayRequest;
 import com.mannschaft.app.tournament.dto.CreateRosterRequest;
-import com.mannschaft.app.tournament.dto.MatchResponse;
+import com.mannschaft.app.tournament.dto.FixtureResponse;
 import com.mannschaft.app.tournament.dto.MatchdayResponse;
 import com.mannschaft.app.tournament.dto.PlayerStatBatchRequest;
 import com.mannschaft.app.tournament.dto.RosterResponse;
 import com.mannschaft.app.tournament.dto.ScoreUpdateRequest;
 import com.mannschaft.app.tournament.dto.StatusChangeRequest;
-import com.mannschaft.app.tournament.service.MatchService;
+import com.mannschaft.app.tournament.service.FixtureService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -51,12 +51,12 @@ import java.util.List;
  * <p>F08.7 順位UI Wave0: 書き込み系（節作成・対戦カード生成・スコア入力・個人成績・試合ステータス・
  * 一括スコア・CSV インポート・出場メンバー登録/削除）に主催組織 ADMIN/DEPUTY_ADMIN の編集権限ガードを
  * 付与した（{@code @accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')}・SYSTEM_ADMIN は常に許可）。
- * 従来は MatchService にもコントローラーにも認可が無く、認証さえあれば他組織の試合結果を改竄できる
+ * 従来は FixtureService にもコントローラーにも認可が無く、認証さえあれば他組織の試合結果を改竄できる
  * セキュリティ穴になっていた。</p>
  *
  * <p>F08.7 順位UI 項目③（スコア入力編集権限の細分化）: スコア入力系 EP の認可を主催組織 ADMIN のみから
  * <strong>3-way</strong>（ORG 管理者 / 当該大会の指名スコアキーパー / その試合の参加チーム ADMIN）へ拡張した。
- * 判定は {@link com.mannschaft.app.tournament.scorekeeper.TournamentMatchAccessService}（bean 名
+ * 判定は {@link com.mannschaft.app.tournament.scorekeeper.TournamentFixtureAccessService}（bean 名
  * {@code tournamentScoreGuard}）に集約し、SpEL では解決できない {@code matchId → participant → teamId} を
  * サービス層で導出する（method-security 維持）。</p>
  * <ul>
@@ -77,9 +77,9 @@ import java.util.List;
 @RequestMapping("/api/v1/organizations/{orgId}/tournaments/{tId}")
 @Tag(name = "対戦カード・結果管理", description = "F08.7 対戦カード・結果・出場メンバーCRUD")
 @RequiredArgsConstructor
-public class MatchController {
+public class FixtureController {
 
-    private final MatchService matchService;
+    private final FixtureService matchService;
     private final ContentVisibilityChecker contentVisibilityChecker;
 
     /**
@@ -129,7 +129,7 @@ public class MatchController {
 
     @GetMapping("/matches/{matchId}")
     @Operation(summary = "試合詳細")
-    public ResponseEntity<ApiResponse<MatchResponse>> getMatch(
+    public ResponseEntity<ApiResponse<FixtureResponse>> getMatch(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long matchId) {
         verifyTournamentVisible(tId);
         return ResponseEntity.ok(ApiResponse.of(matchService.getMatch(matchId)));
@@ -138,7 +138,7 @@ public class MatchController {
     @PatchMapping("/matches/{matchId}/score")
     @Operation(summary = "スコア入力・更新")
     @PreAuthorize("@tournamentScoreGuard.canEnterScore(authentication, #orgId, #tId, #matchId)")
-    public ResponseEntity<ApiResponse<MatchResponse>> updateScore(
+    public ResponseEntity<ApiResponse<FixtureResponse>> updateScore(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long matchId,
             @Valid @RequestBody ScoreUpdateRequest request) {
         return ResponseEntity.ok(ApiResponse.of(matchService.updateScore(tId, matchId, request)));
@@ -147,7 +147,7 @@ public class MatchController {
     @PatchMapping("/matches/{matchId}/player-stats")
     @Operation(summary = "個人成績一括入力")
     @PreAuthorize("@tournamentScoreGuard.canEnterScore(authentication, #orgId, #tId, #matchId)")
-    public ResponseEntity<ApiResponse<MatchResponse>> updatePlayerStats(
+    public ResponseEntity<ApiResponse<FixtureResponse>> updatePlayerStats(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long matchId,
             @Valid @RequestBody PlayerStatBatchRequest request) {
         return ResponseEntity.ok(ApiResponse.of(matchService.updatePlayerStats(tId, matchId, request)));
@@ -159,7 +159,7 @@ public class MatchController {
     public ResponseEntity<Void> changeMatchStatus(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long matchId,
             @Valid @RequestBody StatusChangeRequest request) {
-        matchService.changeMatchStatus(matchId, MatchStatus.valueOf(request.getStatus()));
+        matchService.changeMatchStatus(matchId, FixtureStatus.valueOf(request.getStatus()));
         return ResponseEntity.noContent().build();
     }
 

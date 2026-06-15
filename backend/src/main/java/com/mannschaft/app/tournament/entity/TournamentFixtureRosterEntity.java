@@ -24,7 +24,7 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
-public class TournamentMatchRosterEntity {
+public class TournamentFixtureRosterEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

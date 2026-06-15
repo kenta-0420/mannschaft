@@ -2,9 +2,9 @@ package com.mannschaft.app.tournament.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.tournament.LeagueRoundType;
-import com.mannschaft.app.tournament.MatchResult;
-import com.mannschaft.app.tournament.MatchSlot;
-import com.mannschaft.app.tournament.MatchStatus;
+import com.mannschaft.app.tournament.FixtureResult;
+import com.mannschaft.app.tournament.FixtureSlot;
+import com.mannschaft.app.tournament.FixtureStatus;
 import com.mannschaft.app.tournament.RankingsRecalculationEvent;
 import com.mannschaft.app.tournament.StandingsRecalculationEvent;
 import com.mannschaft.app.tournament.TournamentErrorCode;
@@ -13,9 +13,9 @@ import com.mannschaft.app.tournament.TournamentMapper;
 import com.mannschaft.app.tournament.dto.BatchScoreRequest;
 import com.mannschaft.app.tournament.dto.CreateMatchdayRequest;
 import com.mannschaft.app.tournament.dto.CreateRosterRequest;
-import com.mannschaft.app.tournament.dto.MatchResponse;
-import com.mannschaft.app.tournament.dto.MatchSetRequest;
-import com.mannschaft.app.tournament.dto.MatchSetResponse;
+import com.mannschaft.app.tournament.dto.FixtureResponse;
+import com.mannschaft.app.tournament.dto.FixtureSetRequest;
+import com.mannschaft.app.tournament.dto.FixtureSetResponse;
 import com.mannschaft.app.tournament.dto.MatchdayResponse;
 import com.mannschaft.app.tournament.dto.PlayerStatBatchRequest;
 import com.mannschaft.app.tournament.dto.PlayerStatRequest;
@@ -23,16 +23,16 @@ import com.mannschaft.app.tournament.dto.PlayerStatResponse;
 import com.mannschaft.app.tournament.dto.RosterResponse;
 import com.mannschaft.app.tournament.dto.ScoreUpdateRequest;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
-import com.mannschaft.app.tournament.entity.TournamentMatchEntity;
-import com.mannschaft.app.tournament.entity.TournamentMatchPlayerStatEntity;
-import com.mannschaft.app.tournament.entity.TournamentMatchRosterEntity;
-import com.mannschaft.app.tournament.entity.TournamentMatchSetEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixtureEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixturePlayerStatEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixtureRosterEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixtureSetEntity;
 import com.mannschaft.app.tournament.entity.TournamentMatchdayEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
-import com.mannschaft.app.tournament.repository.TournamentMatchPlayerStatRepository;
-import com.mannschaft.app.tournament.repository.TournamentMatchRepository;
-import com.mannschaft.app.tournament.repository.TournamentMatchRosterRepository;
-import com.mannschaft.app.tournament.repository.TournamentMatchSetRepository;
+import com.mannschaft.app.tournament.repository.TournamentFixturePlayerStatRepository;
+import com.mannschaft.app.tournament.repository.TournamentFixtureRepository;
+import com.mannschaft.app.tournament.repository.TournamentFixtureRosterRepository;
+import com.mannschaft.app.tournament.repository.TournamentFixtureSetRepository;
 import com.mannschaft.app.tournament.repository.TournamentMatchdayRepository;
 import com.mannschaft.app.tournament.repository.TournamentParticipantRepository;
 import com.mannschaft.app.tournament.repository.TournamentRepository;
@@ -56,14 +56,14 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class MatchService {
+public class FixtureService {
 
     private final TournamentRepository tournamentRepository;
     private final TournamentMatchdayRepository matchdayRepository;
-    private final TournamentMatchRepository matchRepository;
-    private final TournamentMatchSetRepository matchSetRepository;
-    private final TournamentMatchRosterRepository rosterRepository;
-    private final TournamentMatchPlayerStatRepository playerStatRepository;
+    private final TournamentFixtureRepository matchRepository;
+    private final TournamentFixtureSetRepository matchSetRepository;
+    private final TournamentFixtureRosterRepository rosterRepository;
+    private final TournamentFixturePlayerStatRepository playerStatRepository;
     private final TournamentParticipantRepository participantRepository;
     private final TournamentStatDefRepository statDefRepository;
     private final TournamentMapper mapper;
@@ -75,7 +75,7 @@ public class MatchService {
         return matchdayRepository.findByDivisionIdOrderByMatchdayNumberAsc(divisionId)
                 .stream()
                 .map(md -> {
-                    List<MatchResponse> matches = matchRepository.findByMatchdayIdOrderByMatchNumberAsc(md.getId())
+                    List<FixtureResponse> matches = matchRepository.findByMatchdayIdOrderByMatchNumberAsc(md.getId())
                             .stream().map(m -> mapper.toMatchResponse(m, List.of(), List.of())).toList();
                     return mapper.toMatchdayResponse(md, matches);
                 })
@@ -141,17 +141,17 @@ public class MatchService {
                             .matchdayNumber(round + 1)
                             .build());
 
-            List<MatchResponse> matches = new ArrayList<>();
+            List<FixtureResponse> matches = new ArrayList<>();
             int matchNum = 1;
             for (int i = 0; i < n / 2; i++) {
                 TournamentParticipantEntity home = teamList.get(i);
                 TournamentParticipantEntity away = teamList.get(n - 1 - i);
-                TournamentMatchEntity match = TournamentMatchEntity.builder()
+                TournamentFixtureEntity match = TournamentFixtureEntity.builder()
                         .matchdayId(matchday.getId())
                         .homeParticipantId(home != null ? home.getId() : null)
                         .awayParticipantId(away != null ? away.getId() : null)
                         .matchNumber(matchNum++)
-                        .result(home == null || away == null ? MatchResult.BYE : MatchResult.PENDING)
+                        .result(home == null || away == null ? FixtureResult.BYE : FixtureResult.PENDING)
                         .build();
                 match = matchRepository.save(match);
                 matches.add(mapper.toMatchResponse(match, List.of(), List.of()));
@@ -175,17 +175,17 @@ public class MatchService {
                                 .matchdayNumber(mdNum)
                                 .build());
 
-                List<MatchResponse> matches = new ArrayList<>();
+                List<FixtureResponse> matches = new ArrayList<>();
                 int matchNum = 1;
                 for (int i = 0; i < n / 2; i++) {
                     TournamentParticipantEntity away = teamList.get(i);
                     TournamentParticipantEntity home = teamList.get(n - 1 - i);
-                    TournamentMatchEntity match = TournamentMatchEntity.builder()
+                    TournamentFixtureEntity match = TournamentFixtureEntity.builder()
                             .matchdayId(matchday.getId())
                             .homeParticipantId(home != null ? home.getId() : null)
                             .awayParticipantId(away != null ? away.getId() : null)
                             .matchNumber(matchNum++)
-                            .result(home == null || away == null ? MatchResult.BYE : MatchResult.PENDING)
+                            .result(home == null || away == null ? FixtureResult.BYE : FixtureResult.PENDING)
                             .build();
                     match = matchRepository.save(match);
                     matches.add(mapper.toMatchResponse(match, List.of(), List.of()));
@@ -210,7 +210,7 @@ public class MatchService {
         List<MatchdayResponse> result = new ArrayList<>();
 
         // 最終戦から作成して next_match_id を設定
-        List<List<TournamentMatchEntity>> roundMatches = new ArrayList<>();
+        List<List<TournamentFixtureEntity>> roundMatches = new ArrayList<>();
         for (int round = totalRounds; round >= 1; round--) {
             int matchCount = totalSlots / (int) Math.pow(2, round);
             String roundName = switch (matchCount) {
@@ -226,9 +226,9 @@ public class MatchService {
                             .matchdayNumber(totalRounds - round + 1)
                             .build());
 
-            List<TournamentMatchEntity> matches = new ArrayList<>();
+            List<TournamentFixtureEntity> matches = new ArrayList<>();
             for (int i = 0; i < matchCount; i++) {
-                TournamentMatchEntity match = TournamentMatchEntity.builder()
+                TournamentFixtureEntity match = TournamentFixtureEntity.builder()
                         .matchdayId(matchday.getId())
                         .matchNumber(i + 1)
                         .build();
@@ -240,37 +240,37 @@ public class MatchService {
 
         // next_match_id の設定
         for (int round = 0; round < roundMatches.size() - 1; round++) {
-            List<TournamentMatchEntity> current = roundMatches.get(round);
-            List<TournamentMatchEntity> next = roundMatches.get(round + 1);
+            List<TournamentFixtureEntity> current = roundMatches.get(round);
+            List<TournamentFixtureEntity> next = roundMatches.get(round + 1);
             for (int i = 0; i < current.size(); i++) {
-                TournamentMatchEntity match = current.get(i);
+                TournamentFixtureEntity match = current.get(i);
                 match.setNextMatch(next.get(i / 2).getId(),
-                        i % 2 == 0 ? MatchSlot.HOME : MatchSlot.AWAY);
+                        i % 2 == 0 ? FixtureSlot.HOME : FixtureSlot.AWAY);
                 matchRepository.save(match);
             }
         }
 
         // 1回戦に参加チームを配置
-        List<TournamentMatchEntity> firstRound = roundMatches.get(0);
+        List<TournamentFixtureEntity> firstRound = roundMatches.get(0);
         for (int i = 0; i < firstRound.size(); i++) {
-            TournamentMatchEntity match = firstRound.get(i);
+            TournamentFixtureEntity match = firstRound.get(i);
             Long homeId = (i * 2 < n) ? participants.get(i * 2).getId() : null;
             Long awayId = (i * 2 + 1 < n) ? participants.get(i * 2 + 1).getId() : null;
             match = match.toBuilder()
                     .homeParticipantId(homeId)
                     .awayParticipantId(awayId)
-                    .result(homeId == null || awayId == null ? MatchResult.BYE : MatchResult.PENDING)
+                    .result(homeId == null || awayId == null ? FixtureResult.BYE : FixtureResult.PENDING)
                     .build();
             matchRepository.save(match);
         }
 
         // レスポンス構築
         for (int round = 0; round < roundMatches.size(); round++) {
-            List<TournamentMatchEntity> matches = roundMatches.get(round);
+            List<TournamentFixtureEntity> matches = roundMatches.get(round);
             if (!matches.isEmpty()) {
                 TournamentMatchdayEntity md = matchdayRepository.findById(matches.get(0).getMatchdayId()).orElse(null);
                 if (md != null) {
-                    List<MatchResponse> matchResponses = matches.stream()
+                    List<FixtureResponse> matchResponses = matches.stream()
                             .map(m -> mapper.toMatchResponse(m, List.of(), List.of())).toList();
                     result.add(mapper.toMatchdayResponse(md, matchResponses));
                 }
@@ -282,9 +282,9 @@ public class MatchService {
 
     // ===== Score =====
 
-    public MatchResponse getMatch(Long matchId) {
-        TournamentMatchEntity match = findMatchOrThrow(matchId);
-        List<MatchSetResponse> sets = matchSetRepository.findByMatchIdOrderBySetNumberAsc(match.getId())
+    public FixtureResponse getMatch(Long matchId) {
+        TournamentFixtureEntity match = findMatchOrThrow(matchId);
+        List<FixtureSetResponse> sets = matchSetRepository.findByMatchIdOrderBySetNumberAsc(match.getId())
                 .stream().map(mapper::toMatchSetResponse).toList();
         List<PlayerStatResponse> stats = playerStatRepository.findByMatchId(match.getId())
                 .stream().map(mapper::toPlayerStatResponse).toList();
@@ -292,8 +292,8 @@ public class MatchService {
     }
 
     @Transactional
-    public MatchResponse updateScore(Long tournamentId, Long matchId, ScoreUpdateRequest request) {
-        TournamentMatchEntity match = findMatchOrThrow(matchId);
+    public FixtureResponse updateScore(Long tournamentId, Long matchId, ScoreUpdateRequest request) {
+        TournamentFixtureEntity match = findMatchOrThrow(matchId);
 
         // 楽観ロック: client が最後に見た版とロードした版を突合し、stale client を弾く（F08.7 Wave3a）
         checkOptimisticLock(match, request.getVersion());
@@ -314,12 +314,12 @@ public class MatchService {
         TournamentEntity tournament = tournamentRepository.findById(tournamentId).orElse(null);
 
         // 結果判定
-        MatchResult result = determineResult(request, match, tournament);
+        FixtureResult result = determineResult(request, match, tournament);
 
         Long winnerId = null;
-        if (result == MatchResult.HOME_WIN || result == MatchResult.FORFEIT_HOME_WIN) {
+        if (result == FixtureResult.HOME_WIN || result == FixtureResult.FORFEIT_HOME_WIN) {
             winnerId = match.getHomeParticipantId();
-        } else if (result == MatchResult.AWAY_WIN || result == MatchResult.FORFEIT_AWAY_WIN) {
+        } else if (result == FixtureResult.AWAY_WIN || result == FixtureResult.FORFEIT_AWAY_WIN) {
             winnerId = match.getAwayParticipantId();
         }
 
@@ -333,7 +333,7 @@ public class MatchService {
         if (request.getSets() != null) {
             matchSetRepository.deleteByMatchId(matchId);
             request.getSets().forEach(setReq -> matchSetRepository.save(
-                    TournamentMatchSetEntity.builder()
+                    TournamentFixtureSetEntity.builder()
                             .matchId(matchId)
                             .setNumber(setReq.getSetNumber())
                             .homeScore(setReq.getHomeScore())
@@ -358,7 +358,7 @@ public class MatchService {
         TournamentEntity tournament = tournamentRepository.findById(tournamentId).orElse(null);
 
         for (BatchScoreRequest.MatchScoreEntry entry : request.getScores()) {
-            TournamentMatchEntity match = findMatchOrThrow(entry.getMatchId());
+            TournamentFixtureEntity match = findMatchOrThrow(entry.getMatchId());
 
             // 楽観ロック: 各 fixture ごとに client 版とロード版を突合。1件でも不一致なら
             // 例外を投げ、@Transactional により一括ロールバック（部分適用しない）（F08.7 Wave3a）
@@ -372,10 +372,10 @@ public class MatchService {
                     entry.getHomeExtraScore(), entry.getAwayExtraScore(),
                     entry.getHomePenaltyScore(), entry.getAwayPenaltyScore(),
                     entry.getNotes(), entry.getVersion(), entry.getSets());
-            MatchResult result = determineResult(scoreReq, match, tournament);
+            FixtureResult result = determineResult(scoreReq, match, tournament);
             Long winnerId = null;
-            if (result == MatchResult.HOME_WIN) winnerId = match.getHomeParticipantId();
-            else if (result == MatchResult.AWAY_WIN) winnerId = match.getAwayParticipantId();
+            if (result == FixtureResult.HOME_WIN) winnerId = match.getHomeParticipantId();
+            else if (result == FixtureResult.AWAY_WIN) winnerId = match.getAwayParticipantId();
 
             match.updateScore(entry.getHomeScore(), entry.getAwayScore(),
                     entry.getHomeExtraScore(), entry.getAwayExtraScore(),
@@ -386,7 +386,7 @@ public class MatchService {
             if (entry.getSets() != null) {
                 matchSetRepository.deleteByMatchId(entry.getMatchId());
                 entry.getSets().forEach(setReq -> matchSetRepository.save(
-                        TournamentMatchSetEntity.builder()
+                        TournamentFixtureSetEntity.builder()
                                 .matchId(entry.getMatchId())
                                 .setNumber(setReq.getSetNumber())
                                 .homeScore(setReq.getHomeScore())
@@ -400,8 +400,8 @@ public class MatchService {
     }
 
     @Transactional
-    public void changeMatchStatus(Long matchId, MatchStatus newStatus) {
-        TournamentMatchEntity match = findMatchOrThrow(matchId);
+    public void changeMatchStatus(Long matchId, FixtureStatus newStatus) {
+        TournamentFixtureEntity match = findMatchOrThrow(matchId);
         match.changeStatus(newStatus);
         matchRepository.save(match);
     }
@@ -415,8 +415,8 @@ public class MatchService {
 
     @Transactional
     public List<RosterResponse> createRosters(Long matchId, CreateRosterRequest request) {
-        List<TournamentMatchRosterEntity> rosters = request.getEntries().stream()
-                .map(entry -> TournamentMatchRosterEntity.builder()
+        List<TournamentFixtureRosterEntity> rosters = request.getEntries().stream()
+                .map(entry -> TournamentFixtureRosterEntity.builder()
                         .matchId(matchId)
                         .participantId(entry.getParticipantId())
                         .userId(entry.getUserId())
@@ -437,7 +437,7 @@ public class MatchService {
     // ===== Player Stats =====
 
     @Transactional
-    public MatchResponse updatePlayerStats(Long tournamentId, Long matchId,
+    public FixtureResponse updatePlayerStats(Long tournamentId, Long matchId,
                                            PlayerStatBatchRequest request) {
         findMatchOrThrow(matchId);
 
@@ -446,7 +446,7 @@ public class MatchService {
             statDefRepository.findByTournamentIdAndStatKey(tournamentId, stat.getStatKey())
                     .orElseThrow(() -> new BusinessException(TournamentErrorCode.INVALID_STAT_KEY));
 
-            TournamentMatchPlayerStatEntity existing =
+            TournamentFixturePlayerStatEntity existing =
                     playerStatRepository.findByMatchIdAndUserIdAndStatKey(matchId, stat.getUserId(), stat.getStatKey())
                             .orElse(null);
 
@@ -457,7 +457,7 @@ public class MatchService {
                         stat.getValueTime() != null ? LocalTime.parse(stat.getValueTime()) : null);
                 playerStatRepository.save(existing);
             } else {
-                playerStatRepository.save(TournamentMatchPlayerStatEntity.builder()
+                playerStatRepository.save(TournamentFixturePlayerStatEntity.builder()
                         .matchId(matchId)
                         .participantId(stat.getParticipantId())
                         .userId(stat.getUserId())
@@ -492,10 +492,10 @@ public class MatchService {
      * <p><b>非セット制（hasSets=false / 大会未取得）</b>: 従来どおり本戦＋延長の合算で判定し、同点なら PK、
      * それでも同点なら DRAW を返す（延長・PK ロジックは温存・#1473）。</p>
      */
-    private MatchResult determineResult(ScoreUpdateRequest request, TournamentMatchEntity match,
+    private FixtureResult determineResult(ScoreUpdateRequest request, TournamentFixtureEntity match,
                                         TournamentEntity tournament) {
         boolean hasSets = tournament != null && Boolean.TRUE.equals(tournament.getHasSets());
-        List<MatchSetRequest> sets = request.getSets();
+        List<FixtureSetRequest> sets = request.getSets();
 
         // セット制かつセット入力がある場合のみ勝セット数で判定する。
         // sets が null/空のときは入口①（サッカー委譲）等の非破壊フォールバックとしてスコアベース判定へ落とす。
@@ -505,7 +505,7 @@ public class MatchService {
 
         // 以下、非セット制（または sets 未入力）の従来ロジック。
         if (request.getHomeScore() == null || request.getAwayScore() == null) {
-            return MatchResult.PENDING;
+            return FixtureResult.PENDING;
         }
 
         int totalHome = request.getHomeScore();
@@ -514,16 +514,16 @@ public class MatchService {
         if (request.getHomeExtraScore() != null) totalHome += request.getHomeExtraScore();
         if (request.getAwayExtraScore() != null) totalAway += request.getAwayExtraScore();
 
-        if (totalHome > totalAway) return MatchResult.HOME_WIN;
-        if (totalAway > totalHome) return MatchResult.AWAY_WIN;
+        if (totalHome > totalAway) return FixtureResult.HOME_WIN;
+        if (totalAway > totalHome) return FixtureResult.AWAY_WIN;
 
         // PK戦
         if (request.getHomePenaltyScore() != null && request.getAwayPenaltyScore() != null) {
-            if (request.getHomePenaltyScore() > request.getAwayPenaltyScore()) return MatchResult.HOME_WIN;
-            if (request.getAwayPenaltyScore() > request.getHomePenaltyScore()) return MatchResult.AWAY_WIN;
+            if (request.getHomePenaltyScore() > request.getAwayPenaltyScore()) return FixtureResult.HOME_WIN;
+            if (request.getAwayPenaltyScore() > request.getHomePenaltyScore()) return FixtureResult.AWAY_WIN;
         }
 
-        return MatchResult.DRAW;
+        return FixtureResult.DRAW;
     }
 
     /**
@@ -536,10 +536,10 @@ public class MatchService {
      * hasDraw=false（バレー等）なら本来発生しないが、安全な既定としてセット内の合計得点で判定し、
      * それも同点なら DRAW を返す（症状を隠さず、確定不能を握りつぶさない）。</p>
      */
-    private MatchResult determineResultBySets(List<MatchSetRequest> sets, TournamentEntity tournament) {
+    private FixtureResult determineResultBySets(List<FixtureSetRequest> sets, TournamentEntity tournament) {
         int homeSetsWon = 0;
         int awaySetsWon = 0;
-        for (MatchSetRequest set : sets) {
+        for (FixtureSetRequest set : sets) {
             if (set.getHomeScore() == null || set.getAwayScore() == null) continue;
             if (set.getHomeScore() > set.getAwayScore()) homeSetsWon++;
             else if (set.getAwayScore() > set.getHomeScore()) awaySetsWon++;
@@ -549,26 +549,26 @@ public class MatchService {
         // 設計意図（先取制）を明示するために setsToWin 到達を優先評価する。
         Integer setsToWin = tournament.getSetsToWin();
         if (setsToWin != null && setsToWin > 0) {
-            if (homeSetsWon >= setsToWin && homeSetsWon > awaySetsWon) return MatchResult.HOME_WIN;
-            if (awaySetsWon >= setsToWin && awaySetsWon > homeSetsWon) return MatchResult.AWAY_WIN;
+            if (homeSetsWon >= setsToWin && homeSetsWon > awaySetsWon) return FixtureResult.HOME_WIN;
+            if (awaySetsWon >= setsToWin && awaySetsWon > homeSetsWon) return FixtureResult.AWAY_WIN;
         }
 
-        if (homeSetsWon > awaySetsWon) return MatchResult.HOME_WIN;
-        if (awaySetsWon > homeSetsWon) return MatchResult.AWAY_WIN;
+        if (homeSetsWon > awaySetsWon) return FixtureResult.HOME_WIN;
+        if (awaySetsWon > homeSetsWon) return FixtureResult.AWAY_WIN;
 
         // 勝セット数同数: hasDraw を許容するなら DRAW、そうでなければセット内合計点で判定する。
         if (Boolean.TRUE.equals(tournament.getHasDraw())) {
-            return MatchResult.DRAW;
+            return FixtureResult.DRAW;
         }
         int homePoints = 0;
         int awayPoints = 0;
-        for (MatchSetRequest set : sets) {
+        for (FixtureSetRequest set : sets) {
             if (set.getHomeScore() != null) homePoints += set.getHomeScore();
             if (set.getAwayScore() != null) awayPoints += set.getAwayScore();
         }
-        if (homePoints > awayPoints) return MatchResult.HOME_WIN;
-        if (awayPoints > homePoints) return MatchResult.AWAY_WIN;
-        return MatchResult.DRAW;
+        if (homePoints > awayPoints) return FixtureResult.HOME_WIN;
+        if (awayPoints > homePoints) return FixtureResult.AWAY_WIN;
+        return FixtureResult.DRAW;
     }
 
     /**
@@ -578,9 +578,9 @@ public class MatchService {
      * 25点上限・デュース等の競技固有ルールは可変のため検証しない。{@code sets} が null の場合は何もしない
      * （入口①のセット非対応経路を壊さない）。</p>
      */
-    private void validateSets(List<MatchSetRequest> sets) {
+    private void validateSets(List<FixtureSetRequest> sets) {
         if (sets == null) return;
-        for (MatchSetRequest set : sets) {
+        for (FixtureSetRequest set : sets) {
             if (set.getHomeScore() != null && set.getHomeScore() < 0) {
                 throw new BusinessException(TournamentErrorCode.INVALID_SCORE);
             }
@@ -594,8 +594,8 @@ public class MatchService {
      * 大会のブラケット（トーナメント表）データを取得する。
      * 全試合をラウンド順（matchNumber昇順）で返し、nextMatchId/nextMatchSlot でツリー構造を表現する。
      */
-    public List<MatchResponse> getBracket(Long tournamentId) {
-        List<TournamentMatchEntity> matches = matchRepository.findByTournamentId(tournamentId);
+    public List<FixtureResponse> getBracket(Long tournamentId) {
+        List<TournamentFixtureEntity> matches = matchRepository.findByTournamentId(tournamentId);
         return matches.stream()
                 .sorted((a, b) -> {
                     int cmp = Integer.compare(
@@ -608,7 +608,7 @@ public class MatchService {
                 .toList();
     }
 
-    private TournamentMatchEntity findMatchOrThrow(Long matchId) {
+    private TournamentFixtureEntity findMatchOrThrow(Long matchId) {
         return matchRepository.findById(matchId)
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.MATCH_NOT_FOUND));
     }
@@ -628,9 +628,9 @@ public class MatchService {
      * <p>後方互換: {@code expectedVersion} が {@code null}（版を送らない旧来呼出）の場合は版チェックを行わず
      * 従来挙動とする。FE は常に版を送るため実運用では必ずチェックされる（DTO 側 {@code @NotNull} で必須化済み）。</p>
      */
-    private void checkOptimisticLock(TournamentMatchEntity match, Long expectedVersion) {
+    private void checkOptimisticLock(TournamentFixtureEntity match, Long expectedVersion) {
         if (expectedVersion != null && !Objects.equals(match.getVersion(), expectedVersion)) {
-            throw new ObjectOptimisticLockingFailureException(TournamentMatchEntity.class, match.getId());
+            throw new ObjectOptimisticLockingFailureException(TournamentFixtureEntity.class, match.getId());
         }
     }
 }

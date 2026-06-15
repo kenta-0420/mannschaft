@@ -2,9 +2,9 @@ package com.mannschaft.app.tournament.scorekeeper;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
-import com.mannschaft.app.tournament.entity.TournamentMatchEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixtureEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
-import com.mannschaft.app.tournament.repository.TournamentMatchRepository;
+import com.mannschaft.app.tournament.repository.TournamentFixtureRepository;
 import com.mannschaft.app.tournament.repository.TournamentParticipantRepository;
 import com.mannschaft.app.tournament.repository.TournamentRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +19,7 @@ import java.util.Optional;
 /**
  * F08.7 順位UI 項目③ — スコア入力の編集権限を細分化する認可集約サービス。
  *
- * <p>従来スコア入力系 EP（{@code MatchController} の updateScore / player-stats / status /
+ * <p>従来スコア入力系 EP（{@code FixtureController} の updateScore / player-stats / status /
  * batch / import）は主催組織 ADMIN（{@code @accessGuard.isScopeAdmin(...,'ORGANIZATION')}）のみが
  * 操作可能だった。本サービスはこれを次の <strong>3-way</strong> に拡張する（殿の確定案）:</p>
  *
@@ -37,7 +37,7 @@ import java.util.Optional;
  *
  * <h3>batch / import の混在方針</h3>
  * <p>節（matchday）一括入力は複数試合を横断するため、参加チーム ADMIN だと「自チーム関与分のみ可・他試合不可」
- * という混在が生じ、部分適用なしの一括トランザクション（{@code MatchService.batchUpdateScores}）と整合しない。
+ * という混在が生じ、部分適用なしの一括トランザクション（{@code FixtureService.batchUpdateScores}）と整合しない。
  * よって <strong>batch / import は ORG 管理者 or 指名スコアキーパーのみ</strong>に限定する
  * （{@link #canEnterScoreTournamentWide}）。参加チーム ADMIN は単発の {@code updateScore} で自チーム関与試合を入力する。</p>
  *
@@ -46,7 +46,7 @@ import java.util.Optional;
 @Service("tournamentScoreGuard")
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class TournamentMatchAccessService {
+public class TournamentFixtureAccessService {
 
     private static final String SCOPE_ORGANIZATION = "ORGANIZATION";
     private static final String SCOPE_TEAM = "TEAM";
@@ -54,7 +54,7 @@ public class TournamentMatchAccessService {
     private final AccessControlService accessControlService;
     private final TournamentRepository tournamentRepository;
     private final TournamentScorekeeperRepository scorekeeperRepository;
-    private final TournamentMatchRepository matchRepository;
+    private final TournamentFixtureRepository matchRepository;
     private final TournamentParticipantRepository participantRepository;
 
     /**
@@ -137,7 +137,7 @@ public class TournamentMatchAccessService {
      * （クライアントの teamId 詐称を信頼しない・サーバー導出）。</p>
      */
     private boolean isParticipatingTeamAdmin(Long actorUserId, Long tournamentId, Long matchId) {
-        TournamentMatchEntity match = matchRepository.findById(matchId).orElse(null);
+        TournamentFixtureEntity match = matchRepository.findById(matchId).orElse(null);
         if (match == null) {
             return false;
         }

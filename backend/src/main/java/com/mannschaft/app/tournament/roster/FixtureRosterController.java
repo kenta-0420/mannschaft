@@ -3,10 +3,10 @@ package com.mannschaft.app.tournament.roster;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.tournament.roster.dto.ApplyRosterTemplateRequest;
-import com.mannschaft.app.tournament.roster.dto.MatchRosterResponse;
+import com.mannschaft.app.tournament.roster.dto.FixtureRosterResponse;
 import com.mannschaft.app.tournament.roster.dto.OrganizerRosterView;
 import com.mannschaft.app.tournament.roster.dto.SubmitRosterRequest;
-import com.mannschaft.app.tournament.roster.dto.UpdateMatchRosterDeadlineRequest;
+import com.mannschaft.app.tournament.roster.dto.UpdateFixtureRosterDeadlineRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -27,7 +27,7 @@ import java.util.List;
  * 試合メンバー表コントローラー（F08.7.1/05）。
  *
  * <p>自チーム（チーム代表 ADMIN/DEPUTY）のメンバー表作成・提出（エントリーテンプレ流用）と、
- * 主催組織 ADMIN による締切設定・全チーム閲覧を提供する。認可はすべて {@link MatchRosterService}
+ * 主催組織 ADMIN による締切設定・全チーム閲覧を提供する。認可はすべて {@link FixtureRosterService}
  * 層で行う（全 read 経路で認可を通し提出内容の漏洩を防ぐ）。</p>
  *
  * <p>設計書: docs/features/F08.7.1_tournament_extensions/05_match_roster.md §4</p>
@@ -36,16 +36,16 @@ import java.util.List;
 @RequestMapping("/api/v1/tournaments/{tId}")
 @Tag(name = "試合メンバー表", description = "F08.7.1/05 試合メンバー表（自チーム作成＋テンプレ流用＋主催者締切管理）")
 @RequiredArgsConstructor
-public class MatchRosterController {
+public class FixtureRosterController {
 
-    private final MatchRosterService matchRosterService;
+    private final FixtureRosterService matchRosterService;
 
     /**
      * 自チーム分の現在のメンバー表を取得する（当該チーム MEMBER 以上）。
      */
     @GetMapping("/matches/{matchId}/rosters/me")
     @Operation(summary = "自チームメンバー表取得")
-    public ResponseEntity<ApiResponse<MatchRosterResponse>> getMyRoster(
+    public ResponseEntity<ApiResponse<FixtureRosterResponse>> getMyRoster(
             @PathVariable Long tId, @PathVariable Long matchId) {
         Long userId = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(ApiResponse.of(matchRosterService.getMyRoster(tId, matchId, userId)));
@@ -56,7 +56,7 @@ public class MatchRosterController {
      */
     @PutMapping("/matches/{matchId}/rosters/me")
     @Operation(summary = "自チームメンバー表提出")
-    public ResponseEntity<ApiResponse<MatchRosterResponse>> submitMyRoster(
+    public ResponseEntity<ApiResponse<FixtureRosterResponse>> submitMyRoster(
             @PathVariable Long tId, @PathVariable Long matchId,
             @Valid @RequestBody SubmitRosterRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
@@ -68,7 +68,7 @@ public class MatchRosterController {
      */
     @PostMapping("/matches/{matchId}/rosters/me/apply-template")
     @Operation(summary = "メンバー表にテンプレ適用（1 タップ）")
-    public ResponseEntity<ApiResponse<MatchRosterResponse>> applyTemplate(
+    public ResponseEntity<ApiResponse<FixtureRosterResponse>> applyTemplate(
             @PathVariable Long tId, @PathVariable Long matchId,
             @Valid @RequestBody ApplyRosterTemplateRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
@@ -93,7 +93,7 @@ public class MatchRosterController {
     @Operation(summary = "メンバー表提出締切の設定")
     public ResponseEntity<Void> updateRosterDeadline(
             @PathVariable Long tId, @PathVariable Long matchId,
-            @Valid @RequestBody UpdateMatchRosterDeadlineRequest request) {
+            @Valid @RequestBody UpdateFixtureRosterDeadlineRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
         matchRosterService.updateRosterDeadline(tId, matchId, userId, request);
         return ResponseEntity.noContent().build();

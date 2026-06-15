@@ -20,7 +20,7 @@ public class MatchdayResponse {
     private final Integer matchdayNumber;
     private final LocalDate scheduledDate;
     private final String status;
-    private final List<MatchResponse> matches;
+    private final List<FixtureResponse> matches;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 }

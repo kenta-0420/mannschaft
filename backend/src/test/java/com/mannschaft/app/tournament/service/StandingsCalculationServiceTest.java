@@ -1,21 +1,21 @@
 package com.mannschaft.app.tournament.service;
 
-import com.mannschaft.app.tournament.MatchResult;
-import com.mannschaft.app.tournament.MatchStatus;
+import com.mannschaft.app.tournament.FixtureResult;
+import com.mannschaft.app.tournament.FixtureStatus;
 import com.mannschaft.app.tournament.StandingsRecalculationEvent;
 import com.mannschaft.app.tournament.TiebreakerCriteria;
 import com.mannschaft.app.tournament.TiebreakerDirection;
 import com.mannschaft.app.tournament.TournamentFormat;
 import com.mannschaft.app.tournament.entity.TournamentDivisionEntity;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
-import com.mannschaft.app.tournament.entity.TournamentMatchEntity;
-import com.mannschaft.app.tournament.entity.TournamentMatchSetEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixtureEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixtureSetEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
 import com.mannschaft.app.tournament.entity.TournamentStandingEntity;
 import com.mannschaft.app.tournament.entity.TournamentTiebreakerEntity;
 import com.mannschaft.app.tournament.repository.TournamentDivisionRepository;
-import com.mannschaft.app.tournament.repository.TournamentMatchRepository;
-import com.mannschaft.app.tournament.repository.TournamentMatchSetRepository;
+import com.mannschaft.app.tournament.repository.TournamentFixtureRepository;
+import com.mannschaft.app.tournament.repository.TournamentFixtureSetRepository;
 import com.mannschaft.app.tournament.repository.TournamentParticipantRepository;
 import com.mannschaft.app.tournament.repository.TournamentRepository;
 import com.mannschaft.app.tournament.repository.TournamentStandingRepository;
@@ -55,10 +55,10 @@ class StandingsCalculationServiceTest {
     private TournamentParticipantRepository participantRepository;
 
     @Mock
-    private TournamentMatchRepository matchRepository;
+    private TournamentFixtureRepository matchRepository;
 
     @Mock
-    private TournamentMatchSetRepository matchSetRepository;
+    private TournamentFixtureSetRepository matchSetRepository;
 
     @Mock
     private TournamentStandingRepository standingRepository;
@@ -111,16 +111,16 @@ class StandingsCalculationServiceTest {
                 .build();
     }
 
-    private TournamentMatchEntity createMatch(Long homeId, Long awayId, int homeScore, int awayScore,
-                                               MatchResult result) {
-        TournamentMatchEntity match = TournamentMatchEntity.builder()
+    private TournamentFixtureEntity createMatch(Long homeId, Long awayId, int homeScore, int awayScore,
+                                               FixtureResult result) {
+        TournamentFixtureEntity match = TournamentFixtureEntity.builder()
                 .matchdayId(1L)
                 .homeParticipantId(homeId)
                 .awayParticipantId(awayId)
                 .homeScore(homeScore)
                 .awayScore(awayScore)
                 .result(result)
-                .status(MatchStatus.COMPLETED)
+                .status(FixtureStatus.COMPLETED)
                 .build();
         ReflectionTestUtils.setField(match, "createdAt", LocalDateTime.now());
         return match;
@@ -128,11 +128,11 @@ class StandingsCalculationServiceTest {
 
     private void setupBasicMocks(TournamentEntity tournament, TournamentDivisionEntity division,
                                   List<TournamentParticipantEntity> participants,
-                                  List<TournamentMatchEntity> matches) {
+                                  List<TournamentFixtureEntity> matches) {
         given(tournamentRepository.findById(TOURNAMENT_ID)).willReturn(Optional.of(tournament));
         given(divisionRepository.findById(DIVISION_ID)).willReturn(Optional.of(division));
         given(participantRepository.findByDivisionIdOrderBySeedAsc(DIVISION_ID)).willReturn(participants);
-        given(matchRepository.findByDivisionIdAndStatus(DIVISION_ID, MatchStatus.COMPLETED)).willReturn(matches);
+        given(matchRepository.findByDivisionIdAndStatus(DIVISION_ID, FixtureStatus.COMPLETED)).willReturn(matches);
         given(tiebreakerRepository.findByTournamentIdOrderByPriorityAsc(TOURNAMENT_ID)).willReturn(List.of());
         given(standingRepository.findByDivisionIdAndParticipantId(eq(DIVISION_ID), anyLong()))
                 .willReturn(Optional.empty());
@@ -158,8 +158,8 @@ class StandingsCalculationServiceTest {
                     createParticipant(PARTICIPANT_A),
                     createParticipant(PARTICIPANT_B)
             );
-            List<TournamentMatchEntity> matches = List.of(
-                    createMatch(PARTICIPANT_A, PARTICIPANT_B, 2, 1, MatchResult.HOME_WIN)
+            List<TournamentFixtureEntity> matches = List.of(
+                    createMatch(PARTICIPANT_A, PARTICIPANT_B, 2, 1, FixtureResult.HOME_WIN)
             );
 
             setupBasicMocks(tournament, division, participants, matches);
@@ -182,8 +182,8 @@ class StandingsCalculationServiceTest {
                     createParticipant(PARTICIPANT_A),
                     createParticipant(PARTICIPANT_B)
             );
-            List<TournamentMatchEntity> matches = List.of(
-                    createMatch(PARTICIPANT_A, PARTICIPANT_B, 1, 1, MatchResult.DRAW)
+            List<TournamentFixtureEntity> matches = List.of(
+                    createMatch(PARTICIPANT_A, PARTICIPANT_B, 1, 1, FixtureResult.DRAW)
             );
 
             setupBasicMocks(tournament, division, participants, matches);
@@ -206,8 +206,8 @@ class StandingsCalculationServiceTest {
                     createParticipant(PARTICIPANT_A),
                     createParticipant(PARTICIPANT_B)
             );
-            List<TournamentMatchEntity> matches = List.of(
-                    createMatch(PARTICIPANT_A, PARTICIPANT_B, 3, 0, MatchResult.FORFEIT_HOME_WIN)
+            List<TournamentFixtureEntity> matches = List.of(
+                    createMatch(PARTICIPANT_A, PARTICIPANT_B, 3, 0, FixtureResult.FORFEIT_HOME_WIN)
             );
 
             setupBasicMocks(tournament, division, participants, matches);
@@ -277,14 +277,14 @@ class StandingsCalculationServiceTest {
             List<TournamentParticipantEntity> participants = List.of(
                     createParticipant(PARTICIPANT_A)
             );
-            TournamentMatchEntity matchWithNull = TournamentMatchEntity.builder()
+            TournamentFixtureEntity matchWithNull = TournamentFixtureEntity.builder()
                     .matchdayId(1L)
                     .homeParticipantId(null)
                     .awayParticipantId(PARTICIPANT_A)
                     .homeScore(0)
                     .awayScore(0)
-                    .result(MatchResult.BYE)
-                    .status(MatchStatus.COMPLETED)
+                    .result(FixtureResult.BYE)
+                    .status(FixtureStatus.COMPLETED)
                     .build();
             ReflectionTestUtils.setField(matchWithNull, "createdAt", LocalDateTime.now());
 
@@ -300,7 +300,7 @@ class StandingsCalculationServiceTest {
         @Test
         @DisplayName("正常系: hasSets大会でセット勝者(result=HOME_WIN)が勝点・wins・setsWonに正しく反映される")
         void recalculate_セット制_勝敗が勝点と勝セット数に反映() {
-            // Given: hasSets 大会。MatchService.determineResult がセット勝敗で result=HOME_WIN を設定済みの前提。
+            // Given: hasSets 大会。FixtureService.determineResult がセット勝敗で result=HOME_WIN を設定済みの前提。
             // 本戦合計点は home(65) < away(70) だが、勝セット数 3-1 で home 勝利 → result=HOME_WIN。
             TournamentEntity tournament = TournamentEntity.builder()
                     .organizationId(1L)
@@ -315,12 +315,12 @@ class StandingsCalculationServiceTest {
                     createParticipant(PARTICIPANT_A),
                     createParticipant(PARTICIPANT_B)
             );
-            TournamentMatchEntity match = createMatch(PARTICIPANT_A, PARTICIPANT_B, 65, 70, MatchResult.HOME_WIN);
-            List<TournamentMatchSetEntity> sets = List.of(
-                    TournamentMatchSetEntity.builder().matchId(1L).setNumber(1).homeScore(25).awayScore(20).build(),
-                    TournamentMatchSetEntity.builder().matchId(1L).setNumber(2).homeScore(15).awayScore(25).build(),
-                    TournamentMatchSetEntity.builder().matchId(1L).setNumber(3).homeScore(25).awayScore(15).build(),
-                    TournamentMatchSetEntity.builder().matchId(1L).setNumber(4).homeScore(25).awayScore(10).build()
+            TournamentFixtureEntity match = createMatch(PARTICIPANT_A, PARTICIPANT_B, 65, 70, FixtureResult.HOME_WIN);
+            List<TournamentFixtureSetEntity> sets = List.of(
+                    TournamentFixtureSetEntity.builder().matchId(1L).setNumber(1).homeScore(25).awayScore(20).build(),
+                    TournamentFixtureSetEntity.builder().matchId(1L).setNumber(2).homeScore(15).awayScore(25).build(),
+                    TournamentFixtureSetEntity.builder().matchId(1L).setNumber(3).homeScore(25).awayScore(15).build(),
+                    TournamentFixtureSetEntity.builder().matchId(1L).setNumber(4).homeScore(25).awayScore(10).build()
             );
 
             setupBasicMocks(tournament, division, participants, List.of(match));
@@ -356,11 +356,11 @@ class StandingsCalculationServiceTest {
                     createParticipant(PARTICIPANT_A),
                     createParticipant(PARTICIPANT_B)
             );
-            TournamentMatchEntity match = createMatch(PARTICIPANT_A, PARTICIPANT_B, 3, 1, MatchResult.HOME_WIN);
-            List<TournamentMatchSetEntity> sets = List.of(
-                    TournamentMatchSetEntity.builder().matchId(1L).setNumber(1).homeScore(25).awayScore(20).build(),
-                    TournamentMatchSetEntity.builder().matchId(1L).setNumber(2).homeScore(20).awayScore(25).build(),
-                    TournamentMatchSetEntity.builder().matchId(1L).setNumber(3).homeScore(25).awayScore(22).build()
+            TournamentFixtureEntity match = createMatch(PARTICIPANT_A, PARTICIPANT_B, 3, 1, FixtureResult.HOME_WIN);
+            List<TournamentFixtureSetEntity> sets = List.of(
+                    TournamentFixtureSetEntity.builder().matchId(1L).setNumber(1).homeScore(25).awayScore(20).build(),
+                    TournamentFixtureSetEntity.builder().matchId(1L).setNumber(2).homeScore(20).awayScore(25).build(),
+                    TournamentFixtureSetEntity.builder().matchId(1L).setNumber(3).homeScore(25).awayScore(22).build()
             );
 
             setupBasicMocks(tournament, division, participants, List.of(match));
@@ -392,8 +392,8 @@ class StandingsCalculationServiceTest {
                     createParticipant(PARTICIPANT_A),
                     createParticipant(PARTICIPANT_B)
             );
-            List<TournamentMatchEntity> matches = List.of(
-                    createMatch(PARTICIPANT_A, PARTICIPANT_B, 3, 0, MatchResult.HOME_WIN)
+            List<TournamentFixtureEntity> matches = List.of(
+                    createMatch(PARTICIPANT_A, PARTICIPANT_B, 3, 0, FixtureResult.HOME_WIN)
             );
 
             setupBasicMocks(tournament, division, participants, matches);
@@ -418,10 +418,10 @@ class StandingsCalculationServiceTest {
                     createParticipant(PARTICIPANT_B),
                     createParticipant(PARTICIPANT_C)
             );
-            List<TournamentMatchEntity> matches = List.of(
-                    createMatch(PARTICIPANT_A, PARTICIPANT_B, 3, 0, MatchResult.HOME_WIN),
-                    createMatch(PARTICIPANT_A, PARTICIPANT_C, 2, 0, MatchResult.HOME_WIN),
-                    createMatch(PARTICIPANT_B, PARTICIPANT_C, 1, 0, MatchResult.HOME_WIN)
+            List<TournamentFixtureEntity> matches = List.of(
+                    createMatch(PARTICIPANT_A, PARTICIPANT_B, 3, 0, FixtureResult.HOME_WIN),
+                    createMatch(PARTICIPANT_A, PARTICIPANT_C, 2, 0, FixtureResult.HOME_WIN),
+                    createMatch(PARTICIPANT_B, PARTICIPANT_C, 1, 0, FixtureResult.HOME_WIN)
             );
 
             setupBasicMocks(tournament, division, participants, matches);
@@ -477,14 +477,14 @@ class StandingsCalculationServiceTest {
                     createParticipant(PARTICIPANT_A),
                     createParticipant(PARTICIPANT_B)
             );
-            List<TournamentMatchEntity> matches = List.of(
-                    createMatch(PARTICIPANT_A, PARTICIPANT_B, 2, 1, MatchResult.HOME_WIN)
+            List<TournamentFixtureEntity> matches = List.of(
+                    createMatch(PARTICIPANT_A, PARTICIPANT_B, 2, 1, FixtureResult.HOME_WIN)
             );
 
             given(tournamentRepository.findById(TOURNAMENT_ID)).willReturn(Optional.of(tournament));
             given(divisionRepository.findById(DIVISION_ID)).willReturn(Optional.of(division));
             given(participantRepository.findByDivisionIdOrderBySeedAsc(DIVISION_ID)).willReturn(participants);
-            given(matchRepository.findByDivisionIdAndStatus(DIVISION_ID, MatchStatus.COMPLETED)).willReturn(matches);
+            given(matchRepository.findByDivisionIdAndStatus(DIVISION_ID, FixtureStatus.COMPLETED)).willReturn(matches);
             given(matchSetRepository.findByMatchIdOrderBySetNumberAsc(any())).willReturn(List.of());
 
             List<TournamentTiebreakerEntity> tiebreakers = List.of(
@@ -526,7 +526,7 @@ class StandingsCalculationServiceTest {
             given(tournamentRepository.findById(TOURNAMENT_ID)).willReturn(Optional.of(tournament));
             given(divisionRepository.findById(DIVISION_ID)).willReturn(Optional.of(division));
             given(participantRepository.findByDivisionIdOrderBySeedAsc(DIVISION_ID)).willReturn(participants);
-            given(matchRepository.findByDivisionIdAndStatus(DIVISION_ID, MatchStatus.COMPLETED))
+            given(matchRepository.findByDivisionIdAndStatus(DIVISION_ID, FixtureStatus.COMPLETED))
                     .willReturn(List.of());
             given(tiebreakerRepository.findByTournamentIdOrderByPriorityAsc(TOURNAMENT_ID))
                     .willReturn(List.of());

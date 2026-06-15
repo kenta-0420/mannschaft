@@ -26,7 +26,7 @@ import java.util.UUID;
  * 大会スコアキーパー指名管理コントローラー（F08.7 順位UI 項目③）。
  *
  * <p>主催組織 ADMIN が「当該大会のスコア入力を許可するユーザー」を指名・解除・一覧する。指名されたユーザーは
- * {@link TournamentMatchAccessService#canEnterScore} の条件②として、当該大会のスコア入力系 EP を操作できる。</p>
+ * {@link TournamentFixtureAccessService#canEnterScore} の条件②として、当該大会のスコア入力系 EP を操作できる。</p>
  *
  * <p>エンドポイント（すべて主催組織 ADMIN / SYSTEM_ADMIN 限定）:</p>
  * <ul>

@@ -2,14 +2,14 @@ package com.mannschaft.app.tournament;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.tournament.dto.BatchScoreRequest;
-import com.mannschaft.app.tournament.dto.MatchSetRequest;
+import com.mannschaft.app.tournament.dto.FixtureSetRequest;
 import com.mannschaft.app.tournament.dto.ScoreUpdateRequest;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
-import com.mannschaft.app.tournament.entity.TournamentMatchEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixtureEntity;
 import com.mannschaft.app.tournament.entity.TournamentMatchdayEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
 import com.mannschaft.app.tournament.repository.*;
-import com.mannschaft.app.tournament.service.MatchService;
+import com.mannschaft.app.tournament.service.FixtureService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -32,25 +32,25 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
- * {@link MatchService} の単体テスト。
+ * {@link FixtureService} の単体テスト。
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("MatchService 単体テスト")
-class MatchServiceTest {
+@DisplayName("FixtureService 単体テスト")
+class FixtureServiceTest {
 
     @Mock private TournamentRepository tournamentRepository;
     @Mock private TournamentMatchdayRepository matchdayRepository;
-    @Mock private TournamentMatchRepository matchRepository;
-    @Mock private TournamentMatchSetRepository matchSetRepository;
-    @Mock private TournamentMatchRosterRepository rosterRepository;
-    @Mock private TournamentMatchPlayerStatRepository playerStatRepository;
+    @Mock private TournamentFixtureRepository matchRepository;
+    @Mock private TournamentFixtureSetRepository matchSetRepository;
+    @Mock private TournamentFixtureRosterRepository rosterRepository;
+    @Mock private TournamentFixturePlayerStatRepository playerStatRepository;
     @Mock private TournamentParticipantRepository participantRepository;
     @Mock private TournamentStatDefRepository statDefRepository;
     @Mock private TournamentMapper mapper;
     @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
-    private MatchService service;
+    private FixtureService service;
 
     private static final Long TOURNAMENT_ID = 1L;
     private static final Long MATCH_ID = 10L;
@@ -74,7 +74,7 @@ class MatchServiceTest {
         @Test
         @DisplayName("異常系: 負のスコアはエラー")
         void 負のスコア() {
-            TournamentMatchEntity match = TournamentMatchEntity.builder()
+            TournamentFixtureEntity match = TournamentFixtureEntity.builder()
                     .homeParticipantId(1L).awayParticipantId(2L).build();
             given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
 
@@ -88,7 +88,7 @@ class MatchServiceTest {
         @Test
         @DisplayName("正常系: スコア更新で順位表再計算イベントが発火される")
         void スコア更新成功() {
-            TournamentMatchEntity match = TournamentMatchEntity.builder()
+            TournamentFixtureEntity match = TournamentFixtureEntity.builder()
                     .homeParticipantId(1L).awayParticipantId(2L).build();
             given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
             given(matchRepository.save(any())).willReturn(match);
@@ -107,7 +107,7 @@ class MatchServiceTest {
         @Test
         @DisplayName("異常系: 楽観ロック — stale client（request.version=3 vs entity.version=5）は 409 相当の例外で弾かれ更新されない")
         void 楽観ロック衝突() {
-            TournamentMatchEntity match = TournamentMatchEntity.builder()
+            TournamentFixtureEntity match = TournamentFixtureEntity.builder()
                     .homeParticipantId(1L).awayParticipantId(2L).version(5L).build();
             given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
 
@@ -124,7 +124,7 @@ class MatchServiceTest {
         @Test
         @DisplayName("正常系: 楽観ロック — request.version が entity.version と一致すれば更新成功＋StandingsRecalc 発火")
         void 楽観ロック一致で更新成功() {
-            TournamentMatchEntity match = TournamentMatchEntity.builder()
+            TournamentFixtureEntity match = TournamentFixtureEntity.builder()
                     .homeParticipantId(1L).awayParticipantId(2L).version(5L).build();
             given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
             given(matchRepository.save(any())).willReturn(match);
@@ -143,7 +143,7 @@ class MatchServiceTest {
         @Test
         @DisplayName("後方互換: request.version=null は版チェックなし（従来挙動）で更新成功")
         void 版null後方互換() {
-            TournamentMatchEntity match = TournamentMatchEntity.builder()
+            TournamentFixtureEntity match = TournamentFixtureEntity.builder()
                     .homeParticipantId(1L).awayParticipantId(2L).version(5L).build();
             given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
             given(matchRepository.save(any())).willReturn(match);
@@ -172,9 +172,9 @@ class MatchServiceTest {
         @DisplayName("異常系: 楽観ロック — batch 内 1 件でも stale なら全体 409 相当の例外で中断（部分適用しない）")
         void batch楽観ロック衝突で全体中断() {
             // 1 件目は一致（version=2）、2 件目が stale（request=1 vs entity=4）
-            TournamentMatchEntity match1 = TournamentMatchEntity.builder()
+            TournamentFixtureEntity match1 = TournamentFixtureEntity.builder()
                     .homeParticipantId(1L).awayParticipantId(2L).version(2L).build();
-            TournamentMatchEntity match2 = TournamentMatchEntity.builder()
+            TournamentFixtureEntity match2 = TournamentFixtureEntity.builder()
                     .homeParticipantId(3L).awayParticipantId(4L).version(4L).build();
             given(matchRepository.findById(100L)).willReturn(Optional.of(match1));
             given(matchRepository.findById(200L)).willReturn(Optional.of(match2));
@@ -193,9 +193,9 @@ class MatchServiceTest {
         @Test
         @DisplayName("正常系: batch 全件の version が一致すれば全件更新＋StandingsRecalc は 1 回だけ発火")
         void batch全件一致で更新成功() {
-            TournamentMatchEntity match1 = TournamentMatchEntity.builder()
+            TournamentFixtureEntity match1 = TournamentFixtureEntity.builder()
                     .homeParticipantId(1L).awayParticipantId(2L).version(2L).build();
-            TournamentMatchEntity match2 = TournamentMatchEntity.builder()
+            TournamentFixtureEntity match2 = TournamentFixtureEntity.builder()
                     .homeParticipantId(3L).awayParticipantId(4L).version(4L).build();
             given(matchRepository.findById(100L)).willReturn(Optional.of(match1));
             given(matchRepository.findById(200L)).willReturn(Optional.of(match2));
@@ -243,7 +243,7 @@ class MatchServiceTest {
         @Test
         @DisplayName("正常系: hasSets大会で home 3-1（勝セット数）→ HOME_WIN・勝者=home")
         void セット制_ホーム3勝1敗で勝利() {
-            TournamentMatchEntity match = TournamentMatchEntity.builder()
+            TournamentFixtureEntity match = TournamentFixtureEntity.builder()
                     .homeParticipantId(HOME_ID).awayParticipantId(AWAY_ID).build();
             given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
             given(tournamentRepository.findById(TOURNAMENT_ID))
@@ -251,22 +251,22 @@ class MatchServiceTest {
             stubResponseChain();
 
             // 本戦合計点は home の方が少ない（65 vs 80）が、勝セット数は home 3 / away 1 → HOME_WIN
-            List<MatchSetRequest> sets = List.of(
-                    new MatchSetRequest(1, 25, 20),
-                    new MatchSetRequest(2, 10, 25),
-                    new MatchSetRequest(3, 25, 15),
-                    new MatchSetRequest(4, 25, 20));
+            List<FixtureSetRequest> sets = List.of(
+                    new FixtureSetRequest(1, 25, 20),
+                    new FixtureSetRequest(2, 10, 25),
+                    new FixtureSetRequest(3, 25, 15),
+                    new FixtureSetRequest(4, 25, 20));
             service.updateScore(TOURNAMENT_ID, MATCH_ID,
                     new ScoreUpdateRequest(65, 80, null, null, null, null, null, null, sets));
 
-            assertThat(match.getResult()).isEqualTo(MatchResult.HOME_WIN);
+            assertThat(match.getResult()).isEqualTo(FixtureResult.HOME_WIN);
             assertThat(match.getWinnerParticipantId()).isEqualTo(HOME_ID);
         }
 
         @Test
         @DisplayName("正常系: hasSets大会で away が setsToWin(2) 到達 → AWAY_WIN")
         void セット制_setsToWin到達で勝利() {
-            TournamentMatchEntity match = TournamentMatchEntity.builder()
+            TournamentFixtureEntity match = TournamentFixtureEntity.builder()
                     .homeParticipantId(HOME_ID).awayParticipantId(AWAY_ID).build();
             given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
             given(tournamentRepository.findById(TOURNAMENT_ID))
@@ -274,21 +274,21 @@ class MatchServiceTest {
             stubResponseChain();
 
             // away が 2 セット先取（home 1 / away 2）→ AWAY_WIN
-            List<MatchSetRequest> sets = List.of(
-                    new MatchSetRequest(1, 25, 20),
-                    new MatchSetRequest(2, 18, 25),
-                    new MatchSetRequest(3, 22, 25));
+            List<FixtureSetRequest> sets = List.of(
+                    new FixtureSetRequest(1, 25, 20),
+                    new FixtureSetRequest(2, 18, 25),
+                    new FixtureSetRequest(3, 22, 25));
             service.updateScore(TOURNAMENT_ID, MATCH_ID,
                     new ScoreUpdateRequest(65, 70, null, null, null, null, null, null, sets));
 
-            assertThat(match.getResult()).isEqualTo(MatchResult.AWAY_WIN);
+            assertThat(match.getResult()).isEqualTo(FixtureResult.AWAY_WIN);
             assertThat(match.getWinnerParticipantId()).isEqualTo(AWAY_ID);
         }
 
         @Test
         @DisplayName("境界系: hasSets大会で勝セット数同数・hasDraw=true → DRAW")
         void セット制_勝セット数同数_hasDrawありでDRAW() {
-            TournamentMatchEntity match = TournamentMatchEntity.builder()
+            TournamentFixtureEntity match = TournamentFixtureEntity.builder()
                     .homeParticipantId(HOME_ID).awayParticipantId(AWAY_ID).build();
             given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
             given(tournamentRepository.findById(TOURNAMENT_ID))
@@ -296,20 +296,20 @@ class MatchServiceTest {
             stubResponseChain();
 
             // 1-1 の勝セット同数 → hasDraw=true なので DRAW
-            List<MatchSetRequest> sets = List.of(
-                    new MatchSetRequest(1, 25, 20),
-                    new MatchSetRequest(2, 20, 25));
+            List<FixtureSetRequest> sets = List.of(
+                    new FixtureSetRequest(1, 25, 20),
+                    new FixtureSetRequest(2, 20, 25));
             service.updateScore(TOURNAMENT_ID, MATCH_ID,
                     new ScoreUpdateRequest(45, 45, null, null, null, null, null, null, sets));
 
-            assertThat(match.getResult()).isEqualTo(MatchResult.DRAW);
+            assertThat(match.getResult()).isEqualTo(FixtureResult.DRAW);
             assertThat(match.getWinnerParticipantId()).isNull();
         }
 
         @Test
         @DisplayName("境界系: hasSets大会で勝セット数同数・hasDraw=false → 合計点で判定（home合計多→HOME_WIN）")
         void セット制_勝セット数同数_hasDrawなしで合計点判定() {
-            TournamentMatchEntity match = TournamentMatchEntity.builder()
+            TournamentFixtureEntity match = TournamentFixtureEntity.builder()
                     .homeParticipantId(HOME_ID).awayParticipantId(AWAY_ID).build();
             given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
             given(tournamentRepository.findById(TOURNAMENT_ID))
@@ -317,20 +317,20 @@ class MatchServiceTest {
             stubResponseChain();
 
             // 勝セット 1-1 同数。合計点 home 50 / away 45 → HOME_WIN（確定不能を握りつぶさない安全既定）
-            List<MatchSetRequest> sets = List.of(
-                    new MatchSetRequest(1, 25, 20),
-                    new MatchSetRequest(2, 25, 25));
+            List<FixtureSetRequest> sets = List.of(
+                    new FixtureSetRequest(1, 25, 20),
+                    new FixtureSetRequest(2, 25, 25));
             service.updateScore(TOURNAMENT_ID, MATCH_ID,
                     new ScoreUpdateRequest(50, 45, null, null, null, null, null, null, sets));
 
-            assertThat(match.getResult()).isEqualTo(MatchResult.HOME_WIN);
+            assertThat(match.getResult()).isEqualTo(FixtureResult.HOME_WIN);
             assertThat(match.getWinnerParticipantId()).isEqualTo(HOME_ID);
         }
 
         @Test
         @DisplayName("入口①非破壊: hasSets大会でも sets=null なら従来の本戦スコア判定にフォールバック（home 2-1→HOME_WIN）")
         void セット制大会_setsNullで本戦スコアにフォールバック() {
-            TournamentMatchEntity match = TournamentMatchEntity.builder()
+            TournamentFixtureEntity match = TournamentFixtureEntity.builder()
                     .homeParticipantId(HOME_ID).awayParticipantId(AWAY_ID).build();
             given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
             given(tournamentRepository.findById(TOURNAMENT_ID))
@@ -341,14 +341,14 @@ class MatchServiceTest {
             service.updateScore(TOURNAMENT_ID, MATCH_ID,
                     new ScoreUpdateRequest(2, 1, null, null, null, null, null, null, null));
 
-            assertThat(match.getResult()).isEqualTo(MatchResult.HOME_WIN);
+            assertThat(match.getResult()).isEqualTo(FixtureResult.HOME_WIN);
             assertThat(match.getWinnerParticipantId()).isEqualTo(HOME_ID);
         }
 
         @Test
         @DisplayName("従来ロジック温存: hasSets=false大会では本戦＋延長合算＋PKで判定（延長同点→PKでHOME_WIN）")
         void 非セット制_延長PKの従来ロジック温存() {
-            TournamentMatchEntity match = TournamentMatchEntity.builder()
+            TournamentFixtureEntity match = TournamentFixtureEntity.builder()
                     .homeParticipantId(HOME_ID).awayParticipantId(AWAY_ID).build();
             given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
             given(tournamentRepository.findById(TOURNAMENT_ID))
@@ -359,18 +359,18 @@ class MatchServiceTest {
             service.updateScore(TOURNAMENT_ID, MATCH_ID,
                     new ScoreUpdateRequest(1, 1, 1, 1, 5, 4, null, null, null));
 
-            assertThat(match.getResult()).isEqualTo(MatchResult.HOME_WIN);
+            assertThat(match.getResult()).isEqualTo(FixtureResult.HOME_WIN);
             assertThat(match.getWinnerParticipantId()).isEqualTo(HOME_ID);
         }
 
         @Test
         @DisplayName("異常系: 負のセットスコアは INVALID_SCORE")
         void セット負値はエラー() {
-            TournamentMatchEntity match = TournamentMatchEntity.builder()
+            TournamentFixtureEntity match = TournamentFixtureEntity.builder()
                     .homeParticipantId(HOME_ID).awayParticipantId(AWAY_ID).build();
             given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
 
-            List<MatchSetRequest> sets = List.of(new MatchSetRequest(1, -1, 20));
+            List<FixtureSetRequest> sets = List.of(new FixtureSetRequest(1, -1, 20));
             assertThatThrownBy(() -> service.updateScore(TOURNAMENT_ID, MATCH_ID,
                     new ScoreUpdateRequest(0, 0, null, null, null, null, null, null, sets)))
                     .isInstanceOf(BusinessException.class)
