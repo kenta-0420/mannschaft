@@ -1,7 +1,7 @@
 # F08.10: 多競技ライブ記録・分析（Match Record & Analytics — GoalNote 上位互換）
 
 > **ステータス**: 🟢 設計完了（未解決ブロッカー ゼロ）
-> **最終更新**: 2026-06-13（多競技 6 種＝SOCCER/FUTSAL/BASKETBALL/VOLLEYBALL/SHOGI/GO・3 状態モデル類型・球技セット制・盤上ターン制・団体戦・WebSocket ライブ観戦を確定。先送り事項を決着。**二重検分の指摘 12 件を反映＝ターン制勝敗格納を home/away_score に統一（result/winner_side 列なし）・盤上個人戦の本人記録権限・sport/state_model 事後変更不可・団体戦引分け畳み込み・ボード記録分担/進捗一覧・完全オフライン明示・バスケ §8.4 ファウルコード表示・バレー period 正本統一・ReferenceType.MATCH 実装済追従・SimpleBroker 後追い切断の限界明記・win_method VARCHAR(32)・観戦 read-only バッジ**）
+> **最終更新**: 2026-06-15（**第 4 状態モデル類型 `SCORED`（採点競技＝フィギュアスケート＋体操）をマスター御裁可で設計確定**＝MVP は合計点のみ〔整数スケール×1000・`INT UNSIGNED` 拡張〕／2 者対戦、審判別内訳子表・多人数順位制は後段 Phase の設計済 DDL、実装は別波〔§D.8・sports/07_scored.md〕）／ 2026-06-13（多競技 6 種＝SOCCER/FUTSAL/BASKETBALL/VOLLEYBALL/SHOGI/GO・3 状態モデル類型・球技セット制・盤上ターン制・団体戦・WebSocket ライブ観戦を確定。先送り事項を決着。**二重検分の指摘 12 件を反映＝ターン制勝敗格納を home/away_score に統一（result/winner_side 列なし）・盤上個人戦の本人記録権限・sport/state_model 事後変更不可・団体戦引分け畳み込み・ボード記録分担/進捗一覧・完全オフライン明示・バスケ §8.4 ファウルコード表示・バレー period 正本統一・ReferenceType.MATCH 実装済追従・SimpleBroker 後追い切断の限界明記・win_method VARCHAR(32)・観戦 read-only バッジ**）
 > **モジュール種別**: 選択式モジュール #14（大会・リーグ管理）の中核拡張 ／ 全試合の記録核
 > **関連機能番号**: F08.7（大会・リーグ管理）／ F08.7.1（トーナメント機能拡張）／ F07.2（パフォーマンス管理）／ F06.4 活動記録 ／ F02.2 ダッシュボード ／ F00（コンテンツ可視性・ロール基盤）／ F19.1（個人プロフィール公開）／ F02.2.1（ウィジェット min_role）
 
@@ -29,14 +29,16 @@
 
 **MVP 対象競技（マスター御裁可）**: SOCCER（実装済）＋ **FUTSAL / BASKETBALL / VOLLEYBALL / SHOGI（将棋）/ GO（囲碁）**。将来競技は `Sport` enum＋カタログ追加のみで足りる。
 
-競技は試合進行のしかたで **3 つの状態モデル類型（`StateModel`・01 §D.6）** に抽象化し、コアの分岐（タイマー/出場時間/COMPLETED バリデーション/FE composable）を**類型単位**で行う。
+競技は試合進行のしかたで **状態モデル類型（`StateModel`・01 §D.6）** に抽象化し、コアの分岐（タイマー/出場時間/COMPLETED バリデーション/FE composable）を**類型単位**で行う。MVP 実装済の 3 類型（CONTINUOUS_TIME / SET_BASED / TURN_BASED）に加え、**第 4 類型 `SCORED`（採点競技＝フィギュアスケート＋体操）をマスター御裁可で設計確定**（実装は別波・01 §D.8・[sports/07_scored.md](./sports/07_scored.md)）。
 
 | 状態モデル類型 | 対象競技 | 進行 | スコア表現 | FE composable（動的 import・04 §G.16） |
 |----------------|----------|------|------------|------------------------------------------|
 | **連続時間制（CONTINUOUS_TIME）** | SOCCER / FUTSAL（前後半）・BASKETBALL（4 クォーター＋OT） | タイマー＋ピリオド | スカラ `home/away_score`（＋PK） | `useMatchTimerSoccer` / `useMatchTimerBasketball` |
 | **セット制（SET_BASED）** | VOLLEYBALL（best-of-5・ラリーポイント・デュース・25 点〔最終 15 点〕） | セット進行 | `match_sets`＋獲得セット数（01 §B.5） | `useMatchSetTracker` |
 | **ターン制（TURN_BASED）** | SHOGI / GO（手数・ピリオド無） | 手番の応酬（総手数） | スコア無・勝敗＋勝ち方（01 §D.7） | `useMatchTurnTracker` |
+| **採点制（SCORED）** | FIGURE_SKATING / GYMNASTICS（審判合算スコア・ピリオド無・設計確定／実装別波・01 §D.8） | 演技/試技 → 審判採点 | 合計点（整数スケール×1000・`home/away_score`・MVP は 2 者対戦） | `useMatchScoreEntry` |
 
+- **採点競技（フィギュア/体操）の記録粒度＝合計点のみ**: 審判団の採点を合算した合計点を `home_score`/`away_score`（整数スケール×1000）に格納し勝敗を導出（§B.1.2 単一正準を維持）。MVP は 2 者対戦。審判別内訳（`match_scored_components`）・多人数順位制（`match_score_entries`）は**後段 Phase の設計済 DDL**（MVP では実装しない・[sports/07_scored.md](./sports/07_scored.md)）。
 - **盤上（将棋/囲碁）の記録粒度＝中間**: 勝敗＋勝ち方（投了/時間切れ/中押し/反則勝ち等・競技別カタログ）＋総手数（`total_moves`）＋任意の局面写真/コメント。**棋譜フル（KIF/SGF）エンジンは持たない**（過剰機能・記録が主目的）。局面写真は既存添付基盤（presign・SVG 除外・サイズ上限・IDOR 逆引き）を流用（01 §B.7）。
 - **個人戦＋団体戦の両対応**: 1 局 = 1 match を基本。団体戦は `matches.parent_match_id`（自己参照・同一ドメイン FK＋CASCADE 可）＋`board_number` で表現し、親の勝敗は子ボードの勝ち星集計から導出（01 §B.6）。
 - **共通シェル＋競技別モジュール**: FE は薄い共通シェル（`live.vue`）＋競技別 composable を**動的 import（lazy-load）**で遅延読込しバンドル肥大化を防ぐ（04 §G.16）。
@@ -91,6 +93,7 @@ GoalNote（サッカー個人記録アプリ）は「個人が自分の出場・
 | **バレーボール競技カタログ** | セット制・ラリーポイント・デュース・`match_sets` 子表（sports/04_volleyball.md） | 🟢 設計完了 |
 | **将棋競技カタログ** | ターン制・勝ち方/総手数/局面写真・団体戦（sports/05_shogi.md） | 🟢 設計完了 |
 | **囲碁競技カタログ** | ターン制・中押し/目数差勝ち・団体戦（sports/06_go.md） | 🟢 設計完了 |
+| **採点競技カタログ（SCORED・第 4 類型）** | フィギュアスケート＋体操・審判合算スコア・MVP=合計点のみ（整数スケール×1000）・2 者対戦・内訳子表/多人数順位制は後段 Phase の設計済 DDL（sports/07_scored.md・01 §D.8） | 🟢 設計完了（実装は別波） |
 | **セット制スコア `match_sets`（器）** | バレー等のセット内得点子表（先送り解決・実装へ昇格・01 §B.5） | 🟢 設計完了 |
 | **団体戦（`parent_match_id`/`board_number`）** | 個人戦＋団体戦・親の勝敗は子ボード勝ち星集計（先送り解決・01 §B.6） | 🟢 設計完了 |
 | **WebSocket ライブ観戦** | STOMP 配信（AFTER_COMMIT・正本 HTTP）＋購読認可（F00 可視性）＋観戦者ビュー（07） | 🟢 設計完了 |
@@ -134,6 +137,7 @@ GoalNote（サッカー個人記録アプリ）は「個人が自分の出場・
 | [sports/04_volleyball.md](./sports/04_volleyball.md) | バレーボール（セット制・デュース・`match_sets`） | セット制 |
 | [sports/05_shogi.md](./sports/05_shogi.md) | 将棋（勝ち方/総手数/局面写真・団体戦） | ターン制 |
 | [sports/06_go.md](./sports/06_go.md) | 囲碁（中押し/目数差勝ち・団体戦） | ターン制 |
+| [sports/07_scored.md](./sports/07_scored.md) | 採点競技（フィギュアスケート＋体操・審判合算スコア・MVP=合計点のみ/2 者対戦・内訳子表/多人数順位制は後段 Phase） | 採点制（SCORED・実装別波） |
 
 ---
 
@@ -192,6 +196,7 @@ GoalNote（サッカー個人記録アプリ）は「個人が自分の出場・
 - **ターン制（盤上競技）の記録モデル** — 解決済み（マスター御裁可・本設計）: SHOGI/GO を**ターン制（TURN_BASED・[01](./01_domain_and_ddl.md) §D.6）**として確定。記録粒度＝中間（勝敗＋勝ち方＋総手数＋局面写真・**棋譜フルエンジンは持たない**）。`total_moves`/`win_method` 列・勝ち方カタログ（§D.7）・ターン制最小 UI（[04](./04_frontend_and_ux.md) §G.16a）を確定（[sports/05_shogi.md](./sports/05_shogi.md)・[sports/06_go.md](./sports/06_go.md)）。
 - **団体戦対応** — 解決済み（マスター御裁可・本設計）: 個人戦＋団体戦の両対応。団体戦は `matches.parent_match_id`（自己参照・同一ドメイン FK＋CASCADE）＋`board_number` で表現し、親の勝敗は子ボードの勝ち星集計から導出（[01](./01_domain_and_ddl.md) §B.6）。親子ボードの IDOR・テナント検証は [03](./03_permissions_and_recording_modes.md) §C.4。
 - **WebSocket ライブ観戦** — 解決済み（マスター御裁可・本設計）: STOMP トピック `/topic/matches/{id}/live` で記録者入力を **AFTER_COMMIT 配信**（正本は HTTP・観戦者は read-only）。**購読時に F00 可視性を検証する STOMP 購読インターセプタ**を新設し可視性なしは購読拒否（大会は F08.7 6 レベルと整合・[03](./03_permissions_and_recording_modes.md) §C.8・[07](./07_realtime_spectator.md)）。
+- **採点競技 SCORED（第 4 状態モデル類型）** — 解決済み（マスター御裁可・設計確定／実装は別波）: 対象競技＝**フィギュアスケート＋体操の 2 競技**（`Sport` に 2 値追加・両者 `stateModel()=SCORED`・採点構造の差異〔フィギュア=TES+PCS／体操=D+E・種目別〕を明記）。**MVP=合計点のみ**（`home_score`/`away_score` に整数スケール×1000・`INT UNSIGNED` 拡張・§B.1.2 単一正準準拠・`resolveResult()` 再利用）。**MVP=2 者対戦**（既存流用）。審判別内訳（`match_scored_components`）・多人数順位制（`match_score_entries`）は **後段 Phase の設計済 DDL**（MVP では実装しない・ブロッカー無し）。`assertCompletable` に `case SCORED`＋新エラーコード `MATCH_035`（[01](./01_domain_and_ddl.md) §D.6/§D.8・[sports/07_scored.md](./sports/07_scored.md)）。
 
 #### 二重検分（不備/保守性・セキュリティ・UX）の追加指摘 12 件 — 全て解決済（殿裁可）
 
@@ -217,6 +222,6 @@ GoalNote（サッカー個人記録アプリ）は「個人が自分の出場・
 - **大量試合一括取込時のバルク再計算**: CSV 一括取込（旧 GoalNote データ移行等）時のバルク再計算 API の要否。**MVP は 1 試合単位フル再計算で確定**。**なぜ今やらないか**: 1 試合のイベント数は高々数十〜百件でフル再計算が十分高速。一括取込は旧データ移行が要件化したときの後段課題（[02](./02_playing_time_and_aggregation.md) §E.2・§未解決 3）。
 - **大会連携（tournament 作り替え・Phase 5）**: fixture 化・`Match*→Fixture*` 物理改称・順位導出スナップショット。**MVP では入口①の中道（既存 tournament 非破壊・イベント駆動順位連携）まで実装済**で、full 改称は **Phase 5 として分離**。**なぜ今やらないか**: full 改称は既存 F08.7 全体への最も侵襲的な作り替え（Entity/Controller/Service 改称・大量テスト追従）で、単独試合記録＋多競技＋観戦の MVP には不要。御裁可を経て分離着手（[05](./05_tournament_integration.md) §H.0・[06](./06_implementation_plan.md) §I.1）。
 - **WS マルチインスタンスブローカー**: SimpleBroker（インメモリ）はインスタンスローカル。本番スケール時の Valkey/外部ブローカー切替。**MVP は既存 SimpleBroker で確定**。**なぜ今やらないか**: WS スケールは F08.10 固有でなく全 WS 機能（chat/lobby/通知）共通の基盤課題であり、F08.10 単独で先行決定すると基盤と乖離する。本機能は `SimpMessagingTemplate` 抽象に閉じておりブローカー差し替えに非依存（WS 基盤別軍議で判断・[07](./07_realtime_spectator.md) §J.5）。
-- **3 類型外の競技（採点競技等）**: 体操/フィギュア等の採点競技は 3 状態モデル類型に当てはまらない。**MVP の 6 競技は 3 類型で網羅**。**なぜ今やらないか**: 要件が顕在化したら新類型（SCORED 等）を `StateModel` に追加して対応する余地を残す（コアの類型分岐に 1 類型追加・[01](./01_domain_and_ddl.md) §D.6）。
+- **採点競技 SCORED の実装着手（実装は別波）**: 採点競技（フィギュア＋体操）は **§7.1 で設計確定済**（第 4 状態モデル類型 `SCORED`）。設計はブロッカー無しで完結しているが、**実装は本 MVP（6 競技＋観戦）とは別波**として分離する。**なぜ今やらないか**: SCORED は `StateModel`/`Sport` 追加・`home_score`/`away_score` の `INT UNSIGNED` 拡張・`SportEventCatalog` 登録という独立した追加であり、6 競技 MVP の実装に依存しない（先に 6 競技を仕上げ、採点競技は別波で着手）。後段 Phase の内訳子表/多人数順位制は要件顕在化時（[01](./01_domain_and_ddl.md) §D.8・[sports/07_scored.md](./sports/07_scored.md) §12）。
 
 > **横断未解決のブロッカーは存在しない**: 上記はいずれも MVP 既定値で成立し、後段 Phase での拡張可否/正本選定のみが残る。実装着手を妨げる未解決はゼロ。
