@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ViewerRole } from '~/types/dashboard'
-import { computeSlugRedirectPath, parseSlugRoute } from '~/utils/slugRedirect'
+import { resolveSlugRedirectPath } from '~/utils/slugRedirect'
 
 definePageMeta({
   middleware: 'auth',
@@ -73,22 +73,20 @@ const showTeamSearchLink = computed(() => {
  * 組織取得が 404（org 未取得）のとき、旧 slug → 新 slug の MOVED かを解決し 301 遷移する
  * （村方式・BE #1542）。取得が成功する現行 slug では解決 EP を一切叩かないため happy path に干渉しない。
  * 遷移した場合は true を返す。
+ *
+ * SSR 初回アクセスは slug-redirect.global ミドルウェアが本物の HTTP 301 を返すため、
+ * ここはクライアント側 SPA 遷移で旧 slug に到達した場合のフォールバック。
+ * 解決ロジックは middleware と共通の {@link resolveSlugRedirectPath} に一本化している。
  */
 async function tryRedirectMovedSlug(): Promise<boolean> {
-  const parts = parseSlugRoute(route.path)
-  if (!parts) return false
-  try {
-    const result = await orgApi.resolveOrganizationSlug(parts.slug)
-    const target = computeSlugRedirectPath(parts, result)
-    if (!target) return false
-    await navigateTo(
-      { path: target, query: route.query, hash: route.hash },
-      { redirectCode: 301, replace: true },
-    )
-    return true
-  } catch {
-    return false
-  }
+  const { resolveSlug } = useSlugRedirect()
+  const target = await resolveSlugRedirectPath(route.path, resolveSlug)
+  if (!target) return false
+  await navigateTo(
+    { path: target, query: route.query, hash: route.hash },
+    { redirectCode: 301, replace: true },
+  )
+  return true
 }
 
 onMounted(async () => {

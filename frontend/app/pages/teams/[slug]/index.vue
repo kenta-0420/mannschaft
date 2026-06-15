@@ -2,7 +2,7 @@
 import type { FetchError } from 'ofetch'
 import type { ViewerRole } from '~/types/dashboard'
 import type { TeamResponse } from '~/types/team'
-import { computeSlugRedirectPath, parseSlugRoute } from '~/utils/slugRedirect'
+import { resolveSlugRedirectPath } from '~/utils/slugRedirect'
 
 definePageMeta({
   middleware: 'auth',
@@ -104,22 +104,20 @@ async function fetchTeam() {
 /**
  * 現 slug が旧 slug（MOVED）なら新 slug の同一パスへ 301 遷移する。
  * 遷移した場合は true を返す（呼び出し元はそれ以上のエラー表示を行わない）。
+ *
+ * SSR 初回アクセスは slug-redirect.global ミドルウェアが本物の HTTP 301 を返すため、
+ * ここはクライアント側 SPA 遷移で旧 slug に到達した場合のフォールバック。
+ * 解決ロジックは middleware と共通の {@link resolveSlugRedirectPath} に一本化している。
  */
 async function tryRedirectMovedSlug(): Promise<boolean> {
-  const parts = parseSlugRoute(useRoute().path)
-  if (!parts) return false
-  try {
-    const result = await teamApi.resolveTeamSlug(parts.slug)
-    const target = computeSlugRedirectPath(parts, result)
-    if (!target) return false
-    await navigateTo(
-      { path: target, query: useRoute().query, hash: useRoute().hash },
-      { redirectCode: 301, replace: true },
-    )
-    return true
-  } catch {
-    return false
-  }
+  const { resolveSlug } = useSlugRedirect()
+  const target = await resolveSlugRedirectPath(useRoute().path, resolveSlug)
+  if (!target) return false
+  await navigateTo(
+    { path: target, query: useRoute().query, hash: useRoute().hash },
+    { redirectCode: 301, replace: true },
+  )
+  return true
 }
 
 async function leaveTeam() {
