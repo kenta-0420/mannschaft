@@ -9,8 +9,8 @@ import com.mannschaft.app.team.repository.TeamUniformSetRepository;
 import com.mannschaft.app.tournament.TournamentErrorCode;
 import com.mannschaft.app.tournament.entity.TournamentDivisionEntity;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
-import com.mannschaft.app.tournament.entity.TournamentMatchEntity;
-import com.mannschaft.app.tournament.entity.TournamentMatchRosterEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixtureEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixtureRosterEntity;
 import com.mannschaft.app.tournament.entity.TournamentMatchdayEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
 import com.mannschaft.app.tournament.entry.TournamentEntryTemplateEntity;
@@ -18,18 +18,18 @@ import com.mannschaft.app.tournament.entry.TournamentEntryTemplateMemberEntity;
 import com.mannschaft.app.tournament.entry.TournamentEntryTemplateMemberRepository;
 import com.mannschaft.app.tournament.entry.TournamentEntryTemplateRepository;
 import com.mannschaft.app.tournament.repository.TournamentDivisionRepository;
-import com.mannschaft.app.tournament.repository.TournamentMatchRepository;
-import com.mannschaft.app.tournament.repository.TournamentMatchRosterRepository;
+import com.mannschaft.app.tournament.repository.TournamentFixtureRepository;
+import com.mannschaft.app.tournament.repository.TournamentFixtureRosterRepository;
 import com.mannschaft.app.tournament.repository.TournamentMatchdayRepository;
 import com.mannschaft.app.tournament.repository.TournamentParticipantRepository;
 import com.mannschaft.app.tournament.repository.TournamentRepository;
 import com.mannschaft.app.tournament.roster.dto.ApplyRosterTemplateRequest;
-import com.mannschaft.app.tournament.roster.dto.MatchRosterResponse;
+import com.mannschaft.app.tournament.roster.dto.FixtureRosterResponse;
 import com.mannschaft.app.tournament.roster.dto.OrganizerRosterView;
 import com.mannschaft.app.tournament.roster.dto.RosterPlayerResponse;
 import com.mannschaft.app.tournament.roster.dto.RosterStaffResponse;
 import com.mannschaft.app.tournament.roster.dto.SubmitRosterRequest;
-import com.mannschaft.app.tournament.roster.dto.UpdateMatchRosterDeadlineRequest;
+import com.mannschaft.app.tournament.roster.dto.UpdateFixtureRosterDeadlineRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -47,7 +47,7 @@ import java.util.UUID;
  *
  * <p>自チーム（チーム代表 ADMIN/DEPUTY）によるメンバー表の作成・提出（エントリーテンプレ流用）と、
  * 主催組織 ADMIN による締切設定・全チーム閲覧を担う。既存 {@code tournament_match_rosters}
- * （管理者向け一括 CRUD は {@code MatchService}）を活用し、本サービスは自チーム提出フロー・
+ * （管理者向け一括 CRUD は {@code FixtureService}）を活用し、本サービスは自チーム提出フロー・
  * テンプレ適用・締切ロック・項目拡充（協会登録番号・ユニフォーム・ベンチ役員）を担当する。</p>
  *
  * <h2>認可（設計書 §5）</h2>
@@ -66,15 +66,15 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class MatchRosterService {
+public class FixtureRosterService {
 
     private final TournamentRepository tournamentRepository;
-    private final TournamentMatchRepository matchRepository;
+    private final TournamentFixtureRepository matchRepository;
     private final TournamentMatchdayRepository matchdayRepository;
     private final TournamentDivisionRepository divisionRepository;
     private final TournamentParticipantRepository participantRepository;
-    private final TournamentMatchRosterRepository rosterRepository;
-    private final MatchRosterStaffRepository staffRepository;
+    private final TournamentFixtureRosterRepository rosterRepository;
+    private final FixtureRosterStaffRepository staffRepository;
     private final TournamentEntryTemplateRepository templateRepository;
     private final TournamentEntryTemplateMemberRepository templateMemberRepository;
     private final TournamentEntryTemplateStaffRepository templateStaffRepository;
@@ -90,8 +90,8 @@ public class MatchRosterService {
     /**
      * 自チーム分の現在のメンバー表を取得する（rosters/me GET・当該チーム MEMBER 以上）。
      */
-    public MatchRosterResponse getMyRoster(Long tournamentId, Long matchId, Long userId) {
-        TournamentMatchEntity match = resolveMatchInTournamentOrThrow(tournamentId, matchId);
+    public FixtureRosterResponse getMyRoster(Long tournamentId, Long matchId, Long userId) {
+        TournamentFixtureEntity match = resolveMatchInTournamentOrThrow(tournamentId, matchId);
         TournamentParticipantEntity participant = resolveMyParticipant(match, userId);
         requireTeamMember(userId, participant.getTeamId());
         return buildResponse(match, participant);
@@ -101,9 +101,9 @@ public class MatchRosterService {
      * 自チーム分メンバー表を提出する（UPSERT＝全置換・当該チーム ADMIN/DEPUTY のみ・締切後 409）。
      */
     @Transactional
-    public MatchRosterResponse submitMyRoster(Long tournamentId, Long matchId, Long userId,
+    public FixtureRosterResponse submitMyRoster(Long tournamentId, Long matchId, Long userId,
                                               SubmitRosterRequest request) {
-        TournamentMatchEntity match = resolveMatchInTournamentOrThrow(tournamentId, matchId);
+        TournamentFixtureEntity match = resolveMatchInTournamentOrThrow(tournamentId, matchId);
         TournamentParticipantEntity participant = resolveMyParticipant(match, userId);
         requireTeamRepresentative(userId, participant.getTeamId());
         requireNotPastDeadline(match);
@@ -119,9 +119,9 @@ public class MatchRosterService {
      * エントリーテンプレを自チーム分メンバー表へ適用する（テンプレ → roster 複製・ADMIN/DEPUTY のみ・締切後 409）。
      */
     @Transactional
-    public MatchRosterResponse applyTemplate(Long tournamentId, Long matchId, Long userId,
+    public FixtureRosterResponse applyTemplate(Long tournamentId, Long matchId, Long userId,
                                              ApplyRosterTemplateRequest request) {
-        TournamentMatchEntity match = resolveMatchInTournamentOrThrow(tournamentId, matchId);
+        TournamentFixtureEntity match = resolveMatchInTournamentOrThrow(tournamentId, matchId);
         TournamentParticipantEntity participant = resolveMyParticipant(match, userId);
         requireTeamRepresentative(userId, participant.getTeamId());
         requireNotPastDeadline(match);
@@ -147,9 +147,9 @@ public class MatchRosterService {
 
         List<TournamentEntryTemplateMemberEntity> members =
                 templateMemberRepository.findByTemplateIdOrderBySortOrderAsc(template.getId());
-        List<TournamentMatchRosterEntity> newRosters = new ArrayList<>();
+        List<TournamentFixtureRosterEntity> newRosters = new ArrayList<>();
         for (TournamentEntryTemplateMemberEntity m : members) {
-            newRosters.add(TournamentMatchRosterEntity.builder()
+            newRosters.add(TournamentFixtureRosterEntity.builder()
                     .matchId(match.getId())
                     .participantId(participant.getId())
                     .userId(m.getUserId())
@@ -166,9 +166,9 @@ public class MatchRosterService {
 
         List<TournamentEntryTemplateStaffEntity> templateStaff =
                 templateStaffRepository.findByTemplateIdOrderBySortOrderAsc(template.getId());
-        List<MatchRosterStaffEntity> newStaff = new ArrayList<>();
+        List<FixtureRosterStaffEntity> newStaff = new ArrayList<>();
         for (TournamentEntryTemplateStaffEntity s : templateStaff) {
-            newStaff.add(MatchRosterStaffEntity.builder()
+            newStaff.add(FixtureRosterStaffEntity.builder()
                     .matchId(match.getId())
                     .participantId(participant.getId())
                     .role(s.getRole())
@@ -197,7 +197,7 @@ public class MatchRosterService {
      */
     public List<OrganizerRosterView> listAllRosters(Long tournamentId, Long matchId, Long userId) {
         TournamentEntity tournament = findTournamentOrThrow(tournamentId);
-        TournamentMatchEntity match = resolveMatchInTournamentOrThrow(tournamentId, matchId);
+        TournamentFixtureEntity match = resolveMatchInTournamentOrThrow(tournamentId, matchId);
         requireOrganizerAdmin(userId, tournament.getOrganizationId());
 
         TournamentMatchdayEntity matchday = matchdayRepository.findById(match.getMatchdayId())
@@ -213,12 +213,12 @@ public class MatchRosterService {
             if (participant == null || !participant.getDivisionId().equals(matchday.getDivisionId())) {
                 continue;
             }
-            List<TournamentMatchRosterEntity> rosters = rosterRepository
+            List<TournamentFixtureRosterEntity> rosters = rosterRepository
                     .findByMatchIdAndParticipantIdOrderByJerseyNumberAscIdAsc(match.getId(), pid);
-            List<MatchRosterStaffEntity> staff = staffRepository
+            List<FixtureRosterStaffEntity> staff = staffRepository
                     .findByMatchIdAndParticipantIdOrderByCreatedAtAsc(match.getId(), pid);
             Map<Long, String> names = resolveDisplayNames(
-                    rosters.stream().map(TournamentMatchRosterEntity::getUserId).toList());
+                    rosters.stream().map(TournamentFixtureRosterEntity::getUserId).toList());
 
             List<RosterPlayerResponse> players = rosters.stream().map(r -> toPlayer(r, names)).toList();
             List<RosterStaffResponse> staffResponses = staff.stream().map(this::toStaff).toList();
@@ -242,9 +242,9 @@ public class MatchRosterService {
      */
     @Transactional
     public void updateRosterDeadline(Long tournamentId, Long matchId, Long userId,
-                                     UpdateMatchRosterDeadlineRequest request) {
+                                     UpdateFixtureRosterDeadlineRequest request) {
         TournamentEntity tournament = findTournamentOrThrow(tournamentId);
-        TournamentMatchEntity match = resolveMatchInTournamentOrThrow(tournamentId, matchId);
+        TournamentFixtureEntity match = resolveMatchInTournamentOrThrow(tournamentId, matchId);
         requireOrganizerAdmin(userId, tournament.getOrganizationId());
 
         match.setRosterDeadline(request.getRosterDeadline());
@@ -271,8 +271,8 @@ public class MatchRosterService {
     /**
      * IDOR 検証チェーン: matchId → matchday → division → tId 帰属を確認して match を返す。
      */
-    private TournamentMatchEntity resolveMatchInTournamentOrThrow(Long tournamentId, Long matchId) {
-        TournamentMatchEntity match = matchRepository.findById(matchId)
+    private TournamentFixtureEntity resolveMatchInTournamentOrThrow(Long tournamentId, Long matchId) {
+        TournamentFixtureEntity match = matchRepository.findById(matchId)
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.MATCH_NOT_FOUND));
         TournamentMatchdayEntity matchday = matchdayRepository.findById(match.getMatchdayId())
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.MATCH_NOT_FOUND));
@@ -289,7 +289,7 @@ public class MatchRosterService {
      * 呼び出しユーザーの所属チームが当該試合の対戦当事者（home/away participant）のどちらかであることを解決する。
      * いずれの当事者チームにも所属しなければ 403（ROSTER_TEAM_NOT_IN_MATCH）。
      */
-    private TournamentParticipantEntity resolveMyParticipant(TournamentMatchEntity match, Long userId) {
+    private TournamentParticipantEntity resolveMyParticipant(TournamentFixtureEntity match, Long userId) {
         if (userId == null) {
             throw new BusinessException(TournamentErrorCode.ROSTER_TEAM_NOT_IN_MATCH);
         }
@@ -326,7 +326,7 @@ public class MatchRosterService {
         throw new BusinessException(TournamentErrorCode.ROSTER_MANAGE_FORBIDDEN);
     }
 
-    private void requireNotPastDeadline(TournamentMatchEntity match) {
+    private void requireNotPastDeadline(TournamentFixtureEntity match) {
         LocalDateTime deadline = match.getRosterDeadline();
         if (deadline != null && LocalDateTime.now().isAfter(deadline)) {
             throw new BusinessException(TournamentErrorCode.ROSTER_DEADLINE_PASSED);
@@ -352,10 +352,10 @@ public class MatchRosterService {
         if (request.getPlayers() == null || request.getPlayers().isEmpty()) {
             return;
         }
-        List<TournamentMatchRosterEntity> rosters = new ArrayList<>();
+        List<TournamentFixtureRosterEntity> rosters = new ArrayList<>();
         for (SubmitRosterRequest.PlayerEntry p : request.getPlayers()) {
             UUID uniformSetId = resolveOwnedUniformSetOrNull(p.getUniformSetId(), participant.getTeamId());
-            rosters.add(TournamentMatchRosterEntity.builder()
+            rosters.add(TournamentFixtureRosterEntity.builder()
                     .matchId(matchId)
                     .participantId(participant.getId())
                     .userId(p.getUserId())
@@ -374,9 +374,9 @@ public class MatchRosterService {
         if (request.getStaff() == null || request.getStaff().isEmpty()) {
             return;
         }
-        List<MatchRosterStaffEntity> staff = new ArrayList<>();
+        List<FixtureRosterStaffEntity> staff = new ArrayList<>();
         for (SubmitRosterRequest.StaffEntry s : request.getStaff()) {
-            staff.add(MatchRosterStaffEntity.builder()
+            staff.add(FixtureRosterStaffEntity.builder()
                     .matchId(matchId)
                     .participantId(participantId)
                     .role(s.getRole())
@@ -387,7 +387,7 @@ public class MatchRosterService {
         staffRepository.saveAll(staff);
     }
 
-    private void recordSubmissionAudit(TournamentMatchEntity match, TournamentParticipantEntity participant,
+    private void recordSubmissionAudit(TournamentFixtureEntity match, TournamentParticipantEntity participant,
                                        Long userId) {
         String metadata = String.format(
                 "{\"source\":\"TOURNAMENT_MATCH_ROSTER\",\"match_id\":%d,\"participant_id\":%d,\"team_id\":%d}",
@@ -400,19 +400,19 @@ public class MatchRosterService {
     // 内部ヘルパー: レスポンス組み立て
     // ========================================================================
 
-    private MatchRosterResponse buildResponse(TournamentMatchEntity match,
+    private FixtureRosterResponse buildResponse(TournamentFixtureEntity match,
                                               TournamentParticipantEntity participant) {
-        List<TournamentMatchRosterEntity> rosters = rosterRepository
+        List<TournamentFixtureRosterEntity> rosters = rosterRepository
                 .findByMatchIdAndParticipantIdOrderByJerseyNumberAscIdAsc(match.getId(), participant.getId());
-        List<MatchRosterStaffEntity> staff = staffRepository
+        List<FixtureRosterStaffEntity> staff = staffRepository
                 .findByMatchIdAndParticipantIdOrderByCreatedAtAsc(match.getId(), participant.getId());
         Map<Long, String> names = resolveDisplayNames(
-                rosters.stream().map(TournamentMatchRosterEntity::getUserId).toList());
+                rosters.stream().map(TournamentFixtureRosterEntity::getUserId).toList());
 
         boolean locked = match.getRosterDeadline() != null
                 && LocalDateTime.now().isAfter(match.getRosterDeadline());
 
-        return MatchRosterResponse.builder()
+        return FixtureRosterResponse.builder()
                 .matchId(match.getId())
                 .participantId(participant.getId())
                 .teamId(participant.getTeamId())
@@ -423,7 +423,7 @@ public class MatchRosterService {
                 .build();
     }
 
-    private RosterPlayerResponse toPlayer(TournamentMatchRosterEntity r, Map<Long, String> names) {
+    private RosterPlayerResponse toPlayer(TournamentFixtureRosterEntity r, Map<Long, String> names) {
         return RosterPlayerResponse.builder()
                 .id(r.getId())
                 .userId(r.getUserId())
@@ -436,7 +436,7 @@ public class MatchRosterService {
                 .build();
     }
 
-    private RosterStaffResponse toStaff(MatchRosterStaffEntity s) {
+    private RosterStaffResponse toStaff(FixtureRosterStaffEntity s) {
         return RosterStaffResponse.builder()
                 .id(s.getId())
                 .role(s.getRole())

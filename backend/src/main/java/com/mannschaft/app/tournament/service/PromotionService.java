@@ -12,7 +12,7 @@ import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
 import com.mannschaft.app.tournament.entity.TournamentPromotionRecordEntity;
 import com.mannschaft.app.tournament.entity.TournamentStandingEntity;
 import com.mannschaft.app.tournament.repository.TournamentDivisionRepository;
-import com.mannschaft.app.tournament.repository.TournamentMatchRepository;
+import com.mannschaft.app.tournament.repository.TournamentFixtureRepository;
 import com.mannschaft.app.tournament.repository.TournamentParticipantRepository;
 import com.mannschaft.app.tournament.repository.TournamentPromotionRecordRepository;
 import com.mannschaft.app.tournament.repository.TournamentStandingRepository;
@@ -36,7 +36,7 @@ public class PromotionService {
     private final TournamentDivisionRepository divisionRepository;
     private final TournamentStandingRepository standingRepository;
     private final TournamentParticipantRepository participantRepository;
-    private final TournamentMatchRepository matchRepository;
+    private final TournamentFixtureRepository matchRepository;
     private final TournamentPromotionRecordRepository promotionRecordRepository;
     private final TournamentMapper mapper;
 

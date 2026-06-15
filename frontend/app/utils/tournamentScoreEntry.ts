@@ -51,7 +51,7 @@ export interface ScoreEntryRow {
   sets: ScoreEntrySet[]
 }
 
-/** セット別スコア送信エントリ（BE MatchSetRequest 整合・全フィールド非 null 整数）。 */
+/** セット別スコア送信エントリ（BE FixtureSetRequest 整合・全フィールド非 null 整数）。 */
 export interface MatchSetEntryPayload {
   setNumber: number
   homeScore: number

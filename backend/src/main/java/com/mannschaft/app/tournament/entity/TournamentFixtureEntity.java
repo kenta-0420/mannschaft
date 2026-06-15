@@ -1,9 +1,9 @@
 package com.mannschaft.app.tournament.entity;
 
 import com.mannschaft.app.common.BaseEntity;
-import com.mannschaft.app.tournament.MatchResult;
-import com.mannschaft.app.tournament.MatchSlot;
-import com.mannschaft.app.tournament.MatchStatus;
+import com.mannschaft.app.tournament.FixtureResult;
+import com.mannschaft.app.tournament.FixtureSlot;
+import com.mannschaft.app.tournament.FixtureStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -27,7 +27,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder(toBuilder = true)
-public class TournamentMatchEntity extends BaseEntity {
+public class TournamentFixtureEntity extends BaseEntity {
 
     @Column(nullable = false)
     private Long matchdayId;
@@ -60,7 +60,7 @@ public class TournamentMatchEntity extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
-    private MatchResult result = MatchResult.PENDING;
+    private FixtureResult result = FixtureResult.PENDING;
 
     @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     @Builder.Default
@@ -69,7 +69,7 @@ public class TournamentMatchEntity extends BaseEntity {
     private Long nextMatchId;
 
     @Enumerated(EnumType.STRING)
-    private MatchSlot nextMatchSlot;
+    private FixtureSlot nextMatchSlot;
 
     @Column(columnDefinition = "TEXT")
     private String notes;
@@ -87,7 +87,7 @@ public class TournamentMatchEntity extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
-    private MatchStatus status = MatchStatus.SCHEDULED;
+    private FixtureStatus status = FixtureStatus.SCHEDULED;
 
     /**
      * スコアを入力・更新する。
@@ -95,7 +95,7 @@ public class TournamentMatchEntity extends BaseEntity {
     public void updateScore(Integer homeScore, Integer awayScore,
                             Integer homeExtraScore, Integer awayExtraScore,
                             Integer homePenaltyScore, Integer awayPenaltyScore,
-                            Long winnerParticipantId, MatchResult result, String notes) {
+                            Long winnerParticipantId, FixtureResult result, String notes) {
         this.homeScore = homeScore;
         this.awayScore = awayScore;
         this.homeExtraScore = homeExtraScore;
@@ -105,20 +105,20 @@ public class TournamentMatchEntity extends BaseEntity {
         this.winnerParticipantId = winnerParticipantId;
         this.result = result;
         this.notes = notes;
-        this.status = MatchStatus.COMPLETED;
+        this.status = FixtureStatus.COMPLETED;
     }
 
     /**
      * ステータスを変更する。
      */
-    public void changeStatus(MatchStatus newStatus) {
+    public void changeStatus(FixtureStatus newStatus) {
         this.status = newStatus;
     }
 
     /**
      * 勝者が次の試合に進む際にスロットを設定する。
      */
-    public void setNextMatch(Long nextMatchId, MatchSlot slot) {
+    public void setNextMatch(Long nextMatchId, FixtureSlot slot) {
         this.nextMatchId = nextMatchId;
         this.nextMatchSlot = slot;
     }

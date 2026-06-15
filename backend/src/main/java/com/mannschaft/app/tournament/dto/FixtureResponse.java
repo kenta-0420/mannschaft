@@ -11,14 +11,14 @@ import java.util.List;
  */
 @Builder(toBuilder = true)
 @Getter
-public class MatchResponse {
+public class FixtureResponse {
 
     private Long id;
     private Long matchdayId;
     private MatchParticipantsDto participants;
     private MatchScoreDto score;
     private MatchInfoDto info;
-    private List<MatchSetResponse> sets;
+    private List<FixtureSetResponse> sets;
     private List<PlayerStatResponse> playerStats;
     private MatchAuditDto audit;
 

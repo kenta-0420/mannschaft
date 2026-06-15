@@ -3,9 +3,9 @@ package com.mannschaft.app.tournament.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.tournament.dto.IndividualRankingResponse;
-import com.mannschaft.app.tournament.dto.MatchResponse;
+import com.mannschaft.app.tournament.dto.FixtureResponse;
 import com.mannschaft.app.tournament.dto.StandingResponse;
-import com.mannschaft.app.tournament.service.MatchService;
+import com.mannschaft.app.tournament.service.FixtureService;
 import com.mannschaft.app.tournament.service.RankingsCalculationService;
 import com.mannschaft.app.tournament.service.StandingsQueryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,7 +32,7 @@ public class EmbedController {
 
     private final StandingsQueryService standingsQueryService;
     private final RankingsCalculationService rankingsCalculationService;
-    private final MatchService matchService;
+    private final FixtureService matchService;
 
     @GetMapping("/standings/{divId}")
     @Operation(summary = "埋め込み用順位表")
@@ -43,9 +43,9 @@ public class EmbedController {
 
     @GetMapping("/bracket")
     @Operation(summary = "埋め込み用トーナメント表")
-    public ResponseEntity<ApiResponse<List<MatchResponse>>> getEmbedBracket(
+    public ResponseEntity<ApiResponse<List<FixtureResponse>>> getEmbedBracket(
             @PathVariable Long orgId, @PathVariable Long tId) {
-        List<MatchResponse> bracket = matchService.getBracket(tId);
+        List<FixtureResponse> bracket = matchService.getBracket(tId);
         return ResponseEntity.ok(ApiResponse.of(bracket));
     }
 

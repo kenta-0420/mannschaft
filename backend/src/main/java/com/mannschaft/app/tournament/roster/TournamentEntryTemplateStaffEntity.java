@@ -19,7 +19,7 @@ import java.util.UUID;
  * エントリーテンプレのベンチ役員エンティティ（F08.7.1/05 §8.4）。
  *
  * <p>ベンチ役員を「メンバー表テンプレ」として保存し、apply-template 時に
- * {@link MatchRosterStaffEntity} へ複製する。構造は match_roster_staff と対応させる。</p>
+ * {@link FixtureRosterStaffEntity} へ複製する。構造は match_roster_staff と対応させる。</p>
  *
  * <p>原則準拠:</p>
  * <ul>

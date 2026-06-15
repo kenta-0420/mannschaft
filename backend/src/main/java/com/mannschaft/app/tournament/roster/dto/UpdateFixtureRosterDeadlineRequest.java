@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
-public class UpdateMatchRosterDeadlineRequest {
+public class UpdateFixtureRosterDeadlineRequest {
 
     /** 提出締切（NULL=締切なし） */
     private LocalDateTime rosterDeadline;

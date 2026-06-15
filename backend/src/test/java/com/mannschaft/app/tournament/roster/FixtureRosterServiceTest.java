@@ -10,8 +10,8 @@ import com.mannschaft.app.team.repository.TeamUniformSetRepository;
 import com.mannschaft.app.tournament.TournamentErrorCode;
 import com.mannschaft.app.tournament.entity.TournamentDivisionEntity;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
-import com.mannschaft.app.tournament.entity.TournamentMatchEntity;
-import com.mannschaft.app.tournament.entity.TournamentMatchRosterEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixtureEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixtureRosterEntity;
 import com.mannschaft.app.tournament.entity.TournamentMatchdayEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
 import com.mannschaft.app.tournament.entry.TournamentEntryTemplateEntity;
@@ -19,16 +19,16 @@ import com.mannschaft.app.tournament.entry.TournamentEntryTemplateMemberEntity;
 import com.mannschaft.app.tournament.entry.TournamentEntryTemplateMemberRepository;
 import com.mannschaft.app.tournament.entry.TournamentEntryTemplateRepository;
 import com.mannschaft.app.tournament.repository.TournamentDivisionRepository;
-import com.mannschaft.app.tournament.repository.TournamentMatchRepository;
-import com.mannschaft.app.tournament.repository.TournamentMatchRosterRepository;
+import com.mannschaft.app.tournament.repository.TournamentFixtureRepository;
+import com.mannschaft.app.tournament.repository.TournamentFixtureRosterRepository;
 import com.mannschaft.app.tournament.repository.TournamentMatchdayRepository;
 import com.mannschaft.app.tournament.repository.TournamentParticipantRepository;
 import com.mannschaft.app.tournament.repository.TournamentRepository;
 import com.mannschaft.app.tournament.roster.dto.ApplyRosterTemplateRequest;
-import com.mannschaft.app.tournament.roster.dto.MatchRosterResponse;
+import com.mannschaft.app.tournament.roster.dto.FixtureRosterResponse;
 import com.mannschaft.app.tournament.roster.dto.OrganizerRosterView;
 import com.mannschaft.app.tournament.roster.dto.SubmitRosterRequest;
-import com.mannschaft.app.tournament.roster.dto.UpdateMatchRosterDeadlineRequest;
+import com.mannschaft.app.tournament.roster.dto.UpdateFixtureRosterDeadlineRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -56,7 +56,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
- * {@link MatchRosterService} 単体テスト（test-first）。
+ * {@link FixtureRosterService} 単体テスト（test-first）。
  *
  * <p>設計書 docs/features/F08.7.1_tournament_extensions/05_match_roster.md §4 / §5 / §8 に準拠。
  * 自チーム提出の認可（他チーム不可・主催者閲覧）・締切ロック・apply-template の複製
@@ -64,16 +64,16 @@ import static org.mockito.Mockito.verify;
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-@DisplayName("MatchRosterService 単体テスト")
-class MatchRosterServiceTest {
+@DisplayName("FixtureRosterService 単体テスト")
+class FixtureRosterServiceTest {
 
     @Mock private TournamentRepository tournamentRepository;
-    @Mock private TournamentMatchRepository matchRepository;
+    @Mock private TournamentFixtureRepository matchRepository;
     @Mock private TournamentMatchdayRepository matchdayRepository;
     @Mock private TournamentDivisionRepository divisionRepository;
     @Mock private TournamentParticipantRepository participantRepository;
-    @Mock private TournamentMatchRosterRepository rosterRepository;
-    @Mock private MatchRosterStaffRepository staffRepository;
+    @Mock private TournamentFixtureRosterRepository rosterRepository;
+    @Mock private FixtureRosterStaffRepository staffRepository;
     @Mock private TournamentEntryTemplateRepository templateRepository;
     @Mock private TournamentEntryTemplateMemberRepository templateMemberRepository;
     @Mock private TournamentEntryTemplateStaffRepository templateStaffRepository;
@@ -82,7 +82,7 @@ class MatchRosterServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private AuditLogService auditLogService;
 
-    @InjectMocks private MatchRosterService service;
+    @InjectMocks private FixtureRosterService service;
 
     private static final Long TID = 100L;
     private static final Long DIV_ID = 200L;
@@ -108,8 +108,8 @@ class MatchRosterServiceTest {
         return TournamentEntity.builder().organizationId(ORG_ID).name("テスト大会").build();
     }
 
-    private TournamentMatchEntity match(LocalDateTime deadline) {
-        TournamentMatchEntity m = TournamentMatchEntity.builder()
+    private TournamentFixtureEntity match(LocalDateTime deadline) {
+        TournamentFixtureEntity m = TournamentFixtureEntity.builder()
                 .matchdayId(MD_ID)
                 .homeParticipantId(HOME_PID)
                 .awayParticipantId(AWAY_PID)
@@ -159,7 +159,7 @@ class MatchRosterServiceTest {
 
     @BeforeEach
     void setUpChain() {
-        TournamentMatchEntity m = match(null);
+        TournamentFixtureEntity m = match(null);
         setId(m, MATCH_ID);
         given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(m));
         given(matchdayRepository.findById(MD_ID)).willReturn(Optional.of(matchday()));
@@ -176,7 +176,7 @@ class MatchRosterServiceTest {
 
     /** deadline 付きの match を findById に差し替える。 */
     private void matchWithDeadline(LocalDateTime deadline) {
-        TournamentMatchEntity m = match(deadline);
+        TournamentFixtureEntity m = match(deadline);
         setId(m, MATCH_ID);
         given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(m));
     }
@@ -194,7 +194,7 @@ class MatchRosterServiceTest {
         void memberCanGet() {
             given(accessControlService.isMember(HOME_MEMBER, HOME_TEAM, "TEAM")).willReturn(true);
 
-            MatchRosterResponse res = service.getMyRoster(TID, MATCH_ID, HOME_MEMBER);
+            FixtureRosterResponse res = service.getMyRoster(TID, MATCH_ID, HOME_MEMBER);
 
             assertThat(res.matchId()).isEqualTo(MATCH_ID);
             assertThat(res.participantId()).isEqualTo(HOME_PID);
@@ -256,14 +256,14 @@ class MatchRosterServiceTest {
             verify(rosterRepository).deleteByMatchIdAndParticipantId(MATCH_ID, HOME_PID);
             verify(staffRepository).deleteByMatchIdAndParticipantId(MATCH_ID, HOME_PID);
 
-            ArgumentCaptor<List<TournamentMatchRosterEntity>> rosterCaptor = ArgumentCaptor.forClass(List.class);
+            ArgumentCaptor<List<TournamentFixtureRosterEntity>> rosterCaptor = ArgumentCaptor.forClass(List.class);
             verify(rosterRepository).saveAll(rosterCaptor.capture());
             assertThat(rosterCaptor.getValue()).hasSize(1);
-            TournamentMatchRosterEntity saved = rosterCaptor.getValue().get(0);
+            TournamentFixtureRosterEntity saved = rosterCaptor.getValue().get(0);
             assertThat(saved.getParticipantId()).isEqualTo(HOME_PID);
             assertThat(saved.getRegistrationNumber()).isEqualTo("REG-001");
 
-            ArgumentCaptor<List<MatchRosterStaffEntity>> staffCaptor = ArgumentCaptor.forClass(List.class);
+            ArgumentCaptor<List<FixtureRosterStaffEntity>> staffCaptor = ArgumentCaptor.forClass(List.class);
             verify(staffRepository).saveAll(staffCaptor.capture());
             assertThat(staffCaptor.getValue()).hasSize(1);
             assertThat(staffCaptor.getValue().get(0).getRole()).isEqualTo("監督");
@@ -349,7 +349,7 @@ class MatchRosterServiceTest {
 
             service.submitMyRoster(TID, MATCH_ID, HOME_REP, r);
 
-            ArgumentCaptor<List<TournamentMatchRosterEntity>> captor = ArgumentCaptor.forClass(List.class);
+            ArgumentCaptor<List<TournamentFixtureRosterEntity>> captor = ArgumentCaptor.forClass(List.class);
             verify(rosterRepository).saveAll(captor.capture());
             assertThat(captor.getValue().get(0).getUniformSetId()).isEqualTo(ownSet);
         }
@@ -406,14 +406,14 @@ class MatchRosterServiceTest {
 
             service.applyTemplate(TID, MATCH_ID, HOME_REP, req(false, null));
 
-            ArgumentCaptor<List<TournamentMatchRosterEntity>> rosterCaptor = ArgumentCaptor.forClass(List.class);
+            ArgumentCaptor<List<TournamentFixtureRosterEntity>> rosterCaptor = ArgumentCaptor.forClass(List.class);
             verify(rosterRepository).saveAll(rosterCaptor.capture());
-            TournamentMatchRosterEntity r = rosterCaptor.getValue().get(0);
+            TournamentFixtureRosterEntity r = rosterCaptor.getValue().get(0);
             assertThat(r.getRegistrationNumber()).isEqualTo("REG-777");
             assertThat(r.getJerseyNumber()).isEqualTo(7);
             assertThat(r.getParticipantId()).isEqualTo(HOME_PID);
 
-            ArgumentCaptor<List<MatchRosterStaffEntity>> staffCaptor = ArgumentCaptor.forClass(List.class);
+            ArgumentCaptor<List<FixtureRosterStaffEntity>> staffCaptor = ArgumentCaptor.forClass(List.class);
             verify(staffRepository).saveAll(staffCaptor.capture());
             assertThat(staffCaptor.getValue().get(0).getName()).isEqualTo("佐藤次郎");
         }
@@ -435,7 +435,7 @@ class MatchRosterServiceTest {
 
             service.applyTemplate(TID, MATCH_ID, HOME_REP, req(false, set));
 
-            ArgumentCaptor<List<TournamentMatchRosterEntity>> captor = ArgumentCaptor.forClass(List.class);
+            ArgumentCaptor<List<TournamentFixtureRosterEntity>> captor = ArgumentCaptor.forClass(List.class);
             verify(rosterRepository).saveAll(captor.capture());
             assertThat(captor.getValue().get(0).getUniformSetId()).isEqualTo(set);
         }
@@ -461,7 +461,7 @@ class MatchRosterServiceTest {
             given(accessControlService.isAdminOrAbove(HOME_REP, HOME_TEAM, "TEAM")).willReturn(true);
             given(templateRepository.findByIdAndTeamIdAndDeletedAtIsNull(templateId, HOME_TEAM))
                     .willReturn(Optional.of(template(HOME_TEAM)));
-            TournamentMatchRosterEntity existing = TournamentMatchRosterEntity.builder()
+            TournamentFixtureRosterEntity existing = TournamentFixtureRosterEntity.builder()
                     .matchId(MATCH_ID).participantId(HOME_PID).userId(HOME_MEMBER).build();
             given(rosterRepository.findByMatchIdAndParticipantId(MATCH_ID, HOME_PID)).willReturn(List.of(existing));
 
@@ -549,8 +549,8 @@ class MatchRosterServiceTest {
     @DisplayName("締切設定（updateRosterDeadline）")
     class UpdateDeadline {
 
-        private UpdateMatchRosterDeadlineRequest req(LocalDateTime deadline) {
-            UpdateMatchRosterDeadlineRequest r = new UpdateMatchRosterDeadlineRequest();
+        private UpdateFixtureRosterDeadlineRequest req(LocalDateTime deadline) {
+            UpdateFixtureRosterDeadlineRequest r = new UpdateFixtureRosterDeadlineRequest();
             r.setRosterDeadline(deadline);
             return r;
         }
@@ -565,7 +565,7 @@ class MatchRosterServiceTest {
             LocalDateTime dl = LocalDateTime.now().plusDays(3);
             service.updateRosterDeadline(TID, MATCH_ID, ORG_ADMIN, req(dl));
 
-            ArgumentCaptor<TournamentMatchEntity> captor = ArgumentCaptor.forClass(TournamentMatchEntity.class);
+            ArgumentCaptor<TournamentFixtureEntity> captor = ArgumentCaptor.forClass(TournamentFixtureEntity.class);
             verify(matchRepository).save(captor.capture());
             assertThat(captor.getValue().getRosterDeadline()).isEqualTo(dl);
             verify(auditLogService).record(eq(AuditEventType.TOURNAMENT_ROSTER_DEADLINE_UPDATED.name()),

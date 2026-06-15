@@ -51,11 +51,11 @@ class MatchEnumValueTest {
     }
 
     @Test
-    @DisplayName("MatchStatus は既存 tournament.MatchStatus と値域が一致する（B.1.1 照合表）")
+    @DisplayName("MatchStatus は既存 tournament.FixtureStatus と値域が一致する（B.1.1 照合表）")
     void matchStatusAlignsWithTournament() {
         assertThat(names(MatchStatus.values()))
                 .as("fixture 化で tournament status を match 側へ寄せるため値域一致が前提")
-                .isEqualTo(names(com.mannschaft.app.tournament.MatchStatus.values()));
+                .isEqualTo(names(com.mannschaft.app.tournament.FixtureStatus.values()));
     }
 
     @Test
