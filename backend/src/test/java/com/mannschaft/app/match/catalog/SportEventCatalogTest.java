@@ -92,13 +92,15 @@ class SportEventCatalogTest {
     }
 
     @Test
-    @DisplayName("CATALOG は SOCCER/FUTSAL/BASKETBALL/VOLLEYBALL/SHOGI/GO の 6 競技を登録している（Phase 6-④a で将棋/囲碁追加）")
+    @DisplayName("CATALOG は 8 競技を登録している（既存 6＋SCORED-a で FIGURE_SKATING/GYMNASTICS 追加）")
     void catalogContainsRegisteredCompetitions() {
         assertThat(SportEventCatalog.CATALOG)
-                .as("Phase 6-②a: SOCCER/FUTSAL/BASKETBALL ＋ 6-③a: VOLLEYBALL ＋ 6-④a: SHOGI/GO")
+                .as("Phase 6-②a: SOCCER/FUTSAL/BASKETBALL ＋ 6-③a: VOLLEYBALL ＋ 6-④a: SHOGI/GO"
+                        + " ＋ SCORED-a: FIGURE_SKATING/GYMNASTICS")
                 .containsKeys(Sport.SOCCER, Sport.FUTSAL, Sport.BASKETBALL,
-                        Sport.VOLLEYBALL, Sport.SHOGI, Sport.GO)
-                .hasSize(6);
+                        Sport.VOLLEYBALL, Sport.SHOGI, Sport.GO,
+                        Sport.FIGURE_SKATING, Sport.GYMNASTICS)
+                .hasSize(8);
     }
 
     @Test

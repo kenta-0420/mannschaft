@@ -25,30 +25,33 @@ class SportStateModelMappingTest {
     }
 
     @Test
-    @DisplayName("Sport は MVP 6 競技（SOCCER/FUTSAL/BASKETBALL/VOLLEYBALL/SHOGI/GO）")
-    void sportHasSixMvpSports() {
+    @DisplayName("Sport は 8 競技（既存 6＋採点競技 FIGURE_SKATING/GYMNASTICS・01 §D.8）")
+    void sportHasEightSports() {
         assertThat(names(Sport.values()))
                 .containsExactlyInAnyOrder(
-                        "SOCCER", "FUTSAL", "BASKETBALL", "VOLLEYBALL", "SHOGI", "GO");
+                        "SOCCER", "FUTSAL", "BASKETBALL", "VOLLEYBALL", "SHOGI", "GO",
+                        "FIGURE_SKATING", "GYMNASTICS");
     }
 
     @Test
-    @DisplayName("StateModel は CONTINUOUS_TIME/SET_BASED/TURN_BASED の 3 類型")
-    void stateModelHasThreeTypes() {
+    @DisplayName("StateModel は CONTINUOUS_TIME/SET_BASED/TURN_BASED/SCORED の 4 類型（§D.8）")
+    void stateModelHasFourTypes() {
         assertThat(names(StateModel.values()))
-                .containsExactlyInAnyOrder("CONTINUOUS_TIME", "SET_BASED", "TURN_BASED");
+                .containsExactlyInAnyOrder("CONTINUOUS_TIME", "SET_BASED", "TURN_BASED", "SCORED");
     }
 
     @ParameterizedTest(name = "{0} → {1}")
     @CsvSource({
-            "SOCCER,     CONTINUOUS_TIME",
-            "FUTSAL,     CONTINUOUS_TIME",
-            "BASKETBALL, CONTINUOUS_TIME",
-            "VOLLEYBALL, SET_BASED",
-            "SHOGI,      TURN_BASED",
-            "GO,         TURN_BASED"
+            "SOCCER,         CONTINUOUS_TIME",
+            "FUTSAL,         CONTINUOUS_TIME",
+            "BASKETBALL,     CONTINUOUS_TIME",
+            "VOLLEYBALL,     SET_BASED",
+            "SHOGI,          TURN_BASED",
+            "GO,             TURN_BASED",
+            "FIGURE_SKATING, SCORED",
+            "GYMNASTICS,     SCORED"
     })
-    @DisplayName("6 競技すべてが設計どおりの状態モデル類型に属する")
+    @DisplayName("8 競技すべてが設計どおりの状態モデル類型に属する")
     void everySportMapsToExpectedStateModel(Sport sport, StateModel expected) {
         assertThat(sport.stateModel()).isEqualTo(expected);
     }

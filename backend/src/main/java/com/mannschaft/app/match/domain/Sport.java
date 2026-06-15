@@ -31,7 +31,13 @@ public enum Sport {
     SHOGI(StateModel.TURN_BASED),
 
     /** 囲碁（ターン制・総手数・勝敗＋勝ち方・ピリオド無）。 */
-    GO(StateModel.TURN_BASED);
+    GO(StateModel.TURN_BASED),
+
+    /** フィギュアスケート（採点競技・TES+PCS−減点・合計点×1000・2 者対戦 MVP・§D.8 / sports/07_scored.md）。 */
+    FIGURE_SKATING(StateModel.SCORED),
+
+    /** 体操（採点競技・D スコア+E スコア・種目別合算・合計点×1000・2 者対戦 MVP・§D.8 / sports/07_scored.md）。 */
+    GYMNASTICS(StateModel.SCORED);
 
     private final StateModel stateModel;
 
@@ -45,7 +51,7 @@ public enum Sport {
      * <p>{@code matches.state_model} の DEFAULT 導出に用いる。Service/FE はこの類型で分岐し、
      * 競技ごとの個別実装を避ける（タイマー/出場時間/COMPLETED バリデーション）。</p>
      *
-     * @return 状態モデル類型（CONTINUOUS_TIME / SET_BASED / TURN_BASED）
+     * @return 状態モデル類型（CONTINUOUS_TIME / SET_BASED / TURN_BASED / SCORED）
      */
     public StateModel stateModel() {
         return stateModel;

@@ -20,9 +20,12 @@ package com.mannschaft.app.match.domain;
  *       <td>セット出場（分概念希薄）</td><td>SET_1..SET_5（必須）</td></tr>
  *   <tr><td>TURN_BASED</td><td>SHOGI/GO</td><td>勝敗＋勝ち方（§D.7・home/away_score=1-0/0-1/0-0）</td>
  *       <td><b>算出しない</b>（出場交代概念なし）</td><td><b>NULL</b>（ピリオド無）</td></tr>
+ *   <tr><td>SCORED</td><td>FIGURE_SKATING/GYMNASTICS</td><td>合計点（整数スケール×1000・home/away_score・§D.8）</td>
+ *       <td><b>算出しない</b>（出場交代概念なし・TURN_BASED 同様）</td><td><b>NULL</b>（ピリオド無）</td></tr>
  * </table>
  *
- * <p>設計: docs/features/F08.10_match_record_analytics/01_domain_and_ddl.md §D.6</p>
+ * <p>設計: docs/features/F08.10_match_record_analytics/01_domain_and_ddl.md §D.6 / §D.8
+ *   / sports/07_scored.md</p>
  */
 public enum StateModel {
 
@@ -43,5 +46,16 @@ public enum StateModel {
      * スコア（連続量）を持たず、勝敗（home/away_score=1-0/0-1/0-0）＋勝ち方（win_method）で確定する（§D.7）。
      * 出場交代の概念が無いため出場時間算出は起動しない。
      */
-    TURN_BASED
+    TURN_BASED,
+
+    /**
+     * 採点競技（FIGURE_SKATING/GYMNASTICS・演技/試技 → 審判採点・ピリオド無・§D.8 / sports/07_scored.md）。
+     *
+     * <p>スコアは試合中のイベント集計ではなく<b>審判団が与える点数の合算</b>である。MVP は合計点のみを
+     * {@code home/away_score} に<b>整数スケール×1000</b>で格納し（例 198.45→198450）、その大小で W/D/L を
+     * 導出する（{@code resolveResult()} 再利用・§B.1.2）。同点（整数スケール同値）は引分（DRAW）。
+     * 出場交代の概念が無いため出場時間算出は起動しない（TURN_BASED 同様）。
+     * 審判別内訳子表・多人数順位制は後段 Phase（MVP では実装しない・§4B/§5B）。</p>
+     */
+    SCORED
 }

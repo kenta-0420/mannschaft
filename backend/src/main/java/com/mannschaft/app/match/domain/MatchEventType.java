@@ -99,6 +99,10 @@ public enum MatchEventType {
     /** 局面コメント（note へ自由記述） */
     COMMENT,
 
+    // --- 採点競技（フィギュアスケート/体操）固有: 結果系（sports/07_scored.md §3）---
+    /** 採点結果の提出（選手/チームの合計点確定・home/away_score へ反映・SCORED・§D.8） */
+    SCORE_SUBMITTED,
+
     // --- その他 ---
     /** GK セーブ */
     SAVE,

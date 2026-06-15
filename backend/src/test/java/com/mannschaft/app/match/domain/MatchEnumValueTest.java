@@ -67,18 +67,25 @@ class MatchEnumValueTest {
     }
 
     @Test
-    @DisplayName("Sport は MVP 6 競技（SOCCER/FUTSAL/BASKETBALL/VOLLEYBALL/SHOGI/GO・01 §D.1）")
+    @DisplayName("Sport は 8 競技（既存 6＋採点競技 FIGURE_SKATING/GYMNASTICS・01 §D.1 / §D.8）")
     void sport() {
         assertThat(names(Sport.values()))
                 .containsExactlyInAnyOrder(
-                        "SOCCER", "FUTSAL", "BASKETBALL", "VOLLEYBALL", "SHOGI", "GO");
+                        "SOCCER", "FUTSAL", "BASKETBALL", "VOLLEYBALL", "SHOGI", "GO",
+                        "FIGURE_SKATING", "GYMNASTICS");
     }
 
     @Test
-    @DisplayName("StateModel は CONTINUOUS_TIME/SET_BASED/TURN_BASED の 3 類型（01 §D.6）")
+    @DisplayName("StateModel は CONTINUOUS_TIME/SET_BASED/TURN_BASED/SCORED の 4 類型（01 §D.6 / §D.8）")
     void stateModel() {
         assertThat(names(StateModel.values()))
-                .containsExactlyInAnyOrder("CONTINUOUS_TIME", "SET_BASED", "TURN_BASED");
+                .containsExactlyInAnyOrder("CONTINUOUS_TIME", "SET_BASED", "TURN_BASED", "SCORED");
+    }
+
+    @Test
+    @DisplayName("MatchEventType は採点競技の SCORE_SUBMITTED を含む（採点確定・01 §D.8 / sports/07 §3）")
+    void matchEventTypeIncludesScoreSubmitted() {
+        assertThat(names(MatchEventType.values())).contains("SCORE_SUBMITTED");
     }
 
     @Test

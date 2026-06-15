@@ -104,7 +104,16 @@ public enum MatchErrorCode implements ErrorCode {
     MATCH_033("MATCH_033", "ファイルサイズが上限を超えています", Severity.WARN),
 
     /** 局面写真の添付件数上限超過（400・03 §C.7a）。 */
-    MATCH_034("MATCH_034", "添付できる件数の上限を超えています", Severity.WARN);
+    MATCH_034("MATCH_034", "添付できる件数の上限を超えています", Severity.WARN),
+
+    /**
+     * COMPLETED 遷移時に採点競技（フィギュア/体操）の合計点が確定していない（400・01 §D.8 / sports/07_scored.md §4）。
+     *
+     * <p>採点競技（SCORED）は合計点（{@code home_score}/{@code away_score}・整数スケール×1000）が
+     * 両方確定している必要がある。未確定（スコア NULL）のまま COMPLETED にはできない（症状を隠さない）。
+     * 同点（整数スケール同値）は引分（DRAW）として COMPLETED 可（§6）。</p>
+     */
+    MATCH_035("MATCH_035", "試合を終了するには採点（合計点）の確定が必要です", Severity.WARN);
 
     private final String code;
     private final String message;

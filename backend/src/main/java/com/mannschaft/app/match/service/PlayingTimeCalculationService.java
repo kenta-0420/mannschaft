@@ -75,10 +75,11 @@ public class PlayingTimeCalculationService {
      */
     @Transactional
     public void recalculate(MatchEntity match, Set<TeamSide> editableTeamSides) {
-        // ターン制（将棋/囲碁）は STARTER/SUB イベントが存在せず出場区間が組み立たないため、
-        // 出場時間算出を起動しない（01 §D.6・症状を隠さず「概念が無い」を素直に表現）。
+        // ターン制（将棋/囲碁）・採点競技（フィギュア/体操）は STARTER/SUB イベントが存在せず
+        // 出場区間が組み立たないため、出場時間算出を起動しない（01 §D.6 / §D.8・症状を隠さず
+        // 「出場交代の概念が無い」を素直に表現）。
         StateModel stateModel = resolveStateModel(match);
-        if (stateModel == StateModel.TURN_BASED) {
+        if (stateModel == StateModel.TURN_BASED || stateModel == StateModel.SCORED) {
             return;
         }
         UUID matchId = match.getId();
