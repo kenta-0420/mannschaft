@@ -39,7 +39,7 @@
  */
 
 import { test, expect, request as pwRequest, type APIRequestContext } from '@playwright/test'
-import { Client, type IMessage, type IFrame } from '@stomp/stompjs'
+import { Client, StompHeaders, type IMessage, type IFrame } from '@stomp/stompjs'
 import WS from 'ws'
 
 // storageState に依存せず、テスト内で API ログインする（f0810-entry1 / basketball spec と同作法）。
@@ -117,7 +117,10 @@ type MatchLiveUpdatePayload = {
 function connectStomp(token: string | null): Promise<SpectatorSession> {
   const messages: MatchLiveUpdatePayload[] = []
   const stompErrors: IFrame[] = []
-  const connectHeaders = token ? { Authorization: `Bearer ${token}` } : {}
+  const connectHeaders: StompHeaders = {}
+  if (token) {
+    connectHeaders.Authorization = `Bearer ${token}`
+  }
 
   const client = new Client({
     webSocketFactory: () => new WS(WS_URL) as unknown as WebSocket,
@@ -326,7 +329,9 @@ test('WS-001: 観戦者が購読 → EVENT_ADDED / SCORE_UPDATED / STATUS_CHANGE
     const seqs = spectator.messages.map((m) => m.serverSeq)
     expect(seqs.length, '少なくとも 3 件配信を受信').toBeGreaterThanOrEqual(3)
     for (let i = 1; i < seqs.length; i++) {
-      expect(seqs[i], `serverSeq 単調増加 (${seqs[i - 1]} < ${seqs[i]})`).toBeGreaterThan(seqs[i - 1])
+      const cur = seqs[i]!
+      const prev = seqs[i - 1]!
+      expect(cur, `serverSeq 単調増加 (${prev} < ${cur})`).toBeGreaterThan(prev)
     }
   } finally {
     await spectator.close()
