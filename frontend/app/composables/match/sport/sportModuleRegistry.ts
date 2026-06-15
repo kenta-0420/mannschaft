@@ -29,6 +29,7 @@ import type {
 } from '~/composables/match/sport/useMatchTimerCore'
 import type { MatchSetTrackerReturn } from '~/composables/match/sport/useMatchSetTracker'
 import type { MatchTurnTrackerReturn } from '~/composables/match/sport/useMatchTurnTracker'
+import type { MatchScoreEntryReturn } from '~/composables/match/useMatchScoreEntry'
 
 /**
  * 競技別タイマー composable の共通シェイプ（核 useMatchTimerCore の返り値の構造的上位型）。
@@ -115,6 +116,11 @@ export interface SportLiveModuleTurnBased {
 export interface SportLiveModuleScored {
   readonly sport: AllSport
   readonly stateModel: 'SCORED'
+  /**
+   * 採点入力トラッカー composable のファクトリ（合計点管理・MVP）。
+   * フィギュア/体操は同一モジュールを共有するため、実際の競技（表示ラベル用）を引数で受ける。
+   */
+  createScoreEntry(sport?: AllSport): MatchScoreEntryReturn
   /** 採点入力シートの遅延コンポーネント（defineAsyncComponent 済み）。 */
   readonly eventSheet: Component
 }

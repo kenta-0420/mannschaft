@@ -576,6 +576,28 @@
         "pending": "未入力"
       },
       "create_pending_notice": "このボードはまだ作成されていません"
+    },
+    "scored": {
+      "sport": {
+        "figure_skating": "フィギュアスケート",
+        "gymnastics": "体操"
+      },
+      "waiting_notice": "採点を記録してください",
+      "start": "採点を記録",
+      "total_label_figure": "合計点（Total Segment Score）",
+      "total_label_gymnastics": "合計点（個人総合）",
+      "own_score": "自チームの合計点",
+      "opponent_score": "相手の合計点",
+      "score_placeholder": "例：198.45",
+      "required": "（必須）",
+      "complete": "採点を確定",
+      "complete_hint": "両者の合計点を入力してください",
+      "result": {
+        "draw": "引分け"
+      },
+      "error": {
+        "record_failed": "採点結果の保存に失敗しました"
+      }
     }
   }
 }
