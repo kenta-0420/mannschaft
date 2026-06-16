@@ -3519,6 +3519,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{orgId}/matches/{matchId}/score-entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 出場者エントリ一覧取得（順位昇順・同順位は合計点降順・採点競技） */
+        get: operations["listEntries"];
+        /** 出場者エントリ記録/更新（全置換・合計点降順で順位算出・採点競技・冪等） */
+        put: operations["recordEntries"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{orgId}/matches/{matchId}/result": {
         parameters: {
             query?: never;
@@ -42544,86 +42562,81 @@ export interface components {
              * Format: int64
              * @deprecated
              */
-            projectId?: number;
+            parentId?: number;
             /** @deprecated */
             description?: string;
-            /**
-             * Format: int64
-             * @deprecated
-             */
-            parentId?: number;
             /**
              * Format: int32
              * @deprecated
              */
             depth?: number;
-            /** @deprecated */
-            title?: string;
+            /**
+             * Format: int64
+             * @deprecated
+             */
+            projectId?: number;
             /**
              * Format: int32
              * @deprecated
              */
             sortOrder?: number;
             /** @deprecated */
-            scopeType?: string;
-            /** @deprecated */
             createdBy?: components["schemas"]["UserInfo"];
             /** @deprecated */
-            progressManual?: boolean;
-            /** @deprecated */
-            completedBy?: components["schemas"]["UserInfo"];
-            /** @deprecated */
-            progressRate?: number;
-            /**
-             * Format: date-time
-             * @deprecated
-             */
-            updatedAt?: string;
+            scopeType?: string;
             /**
              * Format: date-time
              * @deprecated
              */
             createdAt?: string;
             /**
-             * @deprecated
-             * @example 14:30:00
-             */
-            dueTime?: string;
-            /**
-             * Format: date
-             * @deprecated
-             */
-            dueDate?: string;
-            /**
              * Format: date-time
              * @deprecated
              */
-            completedAt?: string;
+            updatedAt?: string;
+            /** @deprecated */
+            progressRate?: number;
+            /** @deprecated */
+            title?: string;
             /**
              * Format: int64
              * @deprecated
              */
             milestoneId?: number;
             /**
-             * Format: date
-             * @deprecated
-             */
-            startDate?: string;
-            /**
-             * Format: int64
-             * @deprecated
-             */
-            linkedScheduleId?: number;
-            /**
              * Format: int32
              * @deprecated
              */
             descendantCompletedCount?: number;
             /**
-             * Format: int32
+             * Format: date
              * @deprecated
              */
-            descendantTotalCount?: number;
+            dueDate?: string;
+            /**
+             * Format: date
+             * @deprecated
+             */
+            startDate?: string;
+            /**
+             * Format: date-time
+             * @deprecated
+             */
+            completedAt?: string;
+            /**
+             * @deprecated
+             * @example 14:30:00
+             */
+            dueTime?: string;
+            /** @deprecated */
+            progressManual?: boolean;
+            /** @deprecated */
+            completedBy?: components["schemas"]["UserInfo"];
+            /**
+             * Format: int64
+             * @deprecated
+             */
+            linkedScheduleId?: number;
             /**
              * Format: int64
              * @deprecated
@@ -42631,6 +42644,11 @@ export interface components {
             daysRemaining?: number;
             /** @deprecated */
             statusLabel?: components["schemas"]["TodoStatusLabelInfo"];
+            /**
+             * Format: int32
+             * @deprecated
+             */
+            descendantTotalCount?: number;
         };
         TodoScheduleDto: {
             /** Format: date */
@@ -46578,6 +46596,56 @@ export interface components {
         MatchRecordScoredComponentRequest: {
             components?: components["schemas"]["MatchRecordScoredComponentLine"][];
         };
+        MatchRecordScoreEntryLine: {
+            /**
+             * Format: int64
+             * @description 出場選手ユーザー ID（登録選手・任意）
+             * @example 1234
+             */
+            competitorUserId?: number;
+            /**
+             * @description 未登録選手名（competitorUserId 未指定時・任意）
+             * @example 山田 花子
+             */
+            competitorName?: string;
+            /**
+             * Format: int64
+             * @description 所属チーム ID（団体採点時・任意）
+             * @example 100
+             */
+            competitorTeamId?: number;
+            /**
+             * Format: int32
+             * @description 合計点（整数スケール×1000・非負・例 198450）
+             * @example 198450
+             */
+            totalScaled: number;
+        };
+        MatchRecordScoreEntryRequest: {
+            entries?: components["schemas"]["MatchRecordScoreEntryLine"][];
+        };
+        ApiResponseListMatchRecordScoreEntryResponse: {
+            data?: components["schemas"]["MatchRecordScoreEntryResponse"][];
+        };
+        MatchRecordScoreEntryResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            matchId?: string;
+            /** Format: int64 */
+            competitorUserId?: number;
+            competitorName?: string;
+            /** Format: int64 */
+            competitorTeamId?: number;
+            /** Format: int32 */
+            totalScaled?: number;
+            /** Format: int32 */
+            rankPosition?: number;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
         MatchRecordTurnResultRequest: {
             /**
              * @description 勝者サイド（HOME/AWAY・NULL=引分け）
@@ -49437,10 +49505,10 @@ export interface components {
             status?: "PUBLISHED" | "DRAFT" | "SCHEDULED" | "HIDDEN" | "DELETED";
             /** Format: uuid */
             scopeVillageId?: string;
-            scopeTypeOrDefault?: string;
             /** Format: int64 */
             scopeIdOrDefault?: number;
             postedAsTypeOrDefault?: string;
+            scopeTypeOrDefault?: string;
         };
         ApiResponsePostResponse: {
             data?: components["schemas"]["PostResponse"];
@@ -49677,8 +49745,8 @@ export interface components {
             remindBeforeMinutes?: number;
             /** @enum {string} */
             reminderKind?: "RELATIVE" | "ABSOLUTE";
-            remindBeforeMinutesValid?: boolean;
             remindAtValid?: boolean;
+            remindBeforeMinutesValid?: boolean;
         };
         CreateScheduleRequest: {
             title?: string;
@@ -59347,8 +59415,8 @@ export interface components {
             remindBeforeMinutes?: number;
             /** @enum {string} */
             reminderKind?: "RELATIVE" | "ABSOLUTE";
-            remindBeforeMinutesValid?: boolean;
             remindAtValid?: boolean;
+            remindBeforeMinutesValid?: boolean;
         };
         UpdateScheduleRequest: {
             title?: string;
@@ -59967,9 +60035,9 @@ export interface components {
             philosophy?: boolean;
             officers?: boolean;
             custom_fields?: boolean;
-            philosophyVisible?: boolean;
             officersVisible?: boolean;
             customFieldsVisible?: boolean;
+            philosophyVisible?: boolean;
             establishedDateVisible?: boolean;
             homepageUrlVisible?: boolean;
         };
@@ -61681,12 +61749,12 @@ export interface components {
             /** Format: int64 */
             offset?: number;
             sort?: components["schemas"]["SortObject"];
-            unpaged?: boolean;
             /** Format: int32 */
             pageNumber?: number;
             /** Format: int32 */
             pageSize?: number;
             paged?: boolean;
+            unpaged?: boolean;
         };
         SortObject: {
             empty?: boolean;
@@ -62852,15 +62920,26 @@ export interface components {
             unassignedTodos?: components["schemas"]["UnassignedTodos"];
             audit?: components["schemas"]["ProjectAuditDto"];
             /** @deprecated */
+            emoji?: string;
+            /** @deprecated */
             status?: string;
             /** @deprecated */
             description?: string;
             /** @deprecated */
-            title?: string;
-            /** @deprecated */
             createdBy?: components["schemas"]["UserInfo"];
             /** @deprecated */
-            emoji?: string;
+            progressRate?: number;
+            /** @deprecated */
+            title?: string;
+            /** @deprecated */
+            visibility?: string;
+            /**
+             * Format: date
+             * @deprecated
+             */
+            dueDate?: string;
+            /** @deprecated */
+            color?: string;
             /**
              * Format: int32
              * @deprecated
@@ -62871,17 +62950,6 @@ export interface components {
              * @deprecated
              */
             totalTodos?: number;
-            /** @deprecated */
-            visibility?: string;
-            /** @deprecated */
-            progressRate?: number;
-            /** @deprecated */
-            color?: string;
-            /**
-             * Format: date
-             * @deprecated
-             */
-            dueDate?: string;
             /**
              * Format: int64
              * @deprecated
@@ -67294,8 +67362,8 @@ export interface components {
             entryCount?: number;
             /** Format: date-time */
             lastUpdatedAt?: string;
-            maxExceeded?: boolean;
             minMet?: boolean;
+            maxExceeded?: boolean;
         };
         EntryMemberSummaryResponse: {
             /** Format: int64 */
@@ -80470,6 +80538,56 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
+    listEntries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListMatchRecordScoreEntryResponse"];
+                };
+            };
+        };
+    };
+    recordEntries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MatchRecordScoreEntryRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListMatchRecordScoreEntryResponse"];
                 };
             };
         };
