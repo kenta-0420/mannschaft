@@ -695,14 +695,42 @@ public class FixtureService {
                 .teamId(homeParticipant.getTeamId())
                 .opponentTeamId(opponentTeamId)
                 .opponentName(opponentName)
-                // 大会に sport 列が無い現状は SOCCER 既定（F08.7 はサッカー前提・将来 tournament.sport で拡張）。
-                .sport(Sport.SOCCER)
+                // F08.10 多競技対応（🟡-1a）: canonical match の競技は当該 fixture の大会 sport に従う。
+                // 大会 sport（String・既定 SOCCER）を Sport enum へ解決し、MatchService がこの sport を
+                // canonical match に格納する（多競技大会＝バレー/将棋等で誤った競技の正本 match を作らない）。
+                .sport(resolveTournamentSport(tournament))
                 .tournamentFixtureId(fixtureId)
                 .homeScore(homeScore)
                 .awayScore(awayScore)
                 .homePenaltyScore(homePenaltyScore)
                 .awayPenaltyScore(awayPenaltyScore)
                 .build());
+    }
+
+    /**
+     * 大会の競技種別（{@code tournament.sport}・String）を canonical match 用の {@link Sport} enum へ解決する
+     * （F08.10 多競技対応・🟡-1a）。
+     *
+     * <p>大会作成/更新時に DTO の {@code @Pattern} と Service の {@code resolveSport}（{@code Sport.valueOf} 相当）で
+     * 妥当性を担保済みのため、通常は {@code Sport.valueOf} が成功する。万一 DB に不正値（手動投入等）があった場合は
+     * 正本化を止めないよう SOCCER にフォールバックしつつ警告ログを残す（症状は隠さず可観測化する）。
+     * {@code null}（既存大会の後方互換・DDL DEFAULT 未充填の防御）も SOCCER とみなす。</p>
+     *
+     * @param tournament 大会（sport 解決元）
+     * @return canonical match に格納する {@link Sport}
+     */
+    private Sport resolveTournamentSport(TournamentEntity tournament) {
+        String sport = tournament.getSport();
+        if (sport == null) {
+            return Sport.SOCCER;
+        }
+        try {
+            return Sport.valueOf(sport);
+        } catch (IllegalArgumentException e) {
+            log.warn("大会 sport が不正値のため SOCCER にフォールバック: tournamentId={}, sport={}",
+                    tournament.getId(), sport);
+            return Sport.SOCCER;
+        }
     }
 
     /**

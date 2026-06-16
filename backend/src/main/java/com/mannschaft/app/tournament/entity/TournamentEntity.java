@@ -50,6 +50,21 @@ public class TournamentEntity extends BaseEntity {
     @Column(nullable = false)
     private TournamentFormat format;
 
+    /**
+     * 競技種別（F08.10 多競技対応・🟡-1a）。{@code match.domain.Sport} の列挙名を文字列で保持する
+     * （SOCCER/FUTSAL/BASKETBALL/VOLLEYBALL/SHOGI/GO/FIGURE_SKATING/GYMNASTICS）。
+     *
+     * <p>match ドメインの enum を entity に直接型として持たず String で保存することで、
+     * モジュラーモノリス境界（ドメイン境界の原則）を侵さない。値の妥当性検証
+     * （{@code Sport.valueOf} 相当）は DTO/Service 層で行う。系統B の直接スコア入力
+     * （{@code recordTournamentScore}）はこの値を canonical match の sport に充てる。</p>
+     *
+     * <p>後方互換: 既存大会・未指定時は {@code SOCCER}（DDL DEFAULT・Builder.Default 共に SOCCER）。</p>
+     */
+    @Column(nullable = false, columnDefinition = "VARCHAR(32) NOT NULL DEFAULT 'SOCCER'")
+    @Builder.Default
+    private String sport = "SOCCER";
+
     @Column(length = 50)
     private String season;
 
@@ -129,7 +144,7 @@ public class TournamentEntity extends BaseEntity {
      * 大会情報を更新する。
      */
     public void update(String name, String description, TournamentFormat format,
-                       String season, LocalDate startDate, LocalDate endDate,
+                       String sport, String season, LocalDate startDate, LocalDate endDate,
                        Integer winPoints, Integer drawPoints, Integer lossPoints,
                        Boolean hasDraw, Boolean hasSets, Integer setsToWin,
                        Boolean hasExtraTime, Boolean hasPenalties, String scoreUnitLabel,
@@ -138,6 +153,7 @@ public class TournamentEntity extends BaseEntity {
         this.name = name;
         this.description = description;
         this.format = format;
+        this.sport = sport;
         this.season = season;
         this.startDate = startDate;
         this.endDate = endDate;

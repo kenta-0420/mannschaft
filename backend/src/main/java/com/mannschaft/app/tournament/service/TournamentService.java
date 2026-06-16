@@ -3,6 +3,7 @@ package com.mannschaft.app.tournament.service;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.match.domain.Sport;
 import com.mannschaft.app.tournament.LeagueRoundType;
 import com.mannschaft.app.tournament.ParticipantStatus;
 import com.mannschaft.app.tournament.StatAggregationType;
@@ -172,6 +173,8 @@ public class TournamentService {
                 .name(request.getName())
                 .description(request.getDescription())
                 .format(format)
+                // F08.10 多競技対応（🟡-1a）: 未指定は SOCCER 既定。検証は resolveSport で Sport.valueOf 相当。
+                .sport(resolveSport(request.getSport()))
                 .season(request.getSeason())
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
@@ -249,6 +252,8 @@ public class TournamentService {
                 request.getName() != null ? request.getName() : tournament.getName(),
                 request.getDescription() != null ? request.getDescription() : tournament.getDescription(),
                 request.getFormat() != null ? TournamentFormat.valueOf(request.getFormat()) : tournament.getFormat(),
+                // F08.10 多競技対応（🟡-1a）: 未指定は既存値維持。指定時は resolveSport で検証。
+                request.getSport() != null ? resolveSport(request.getSport()) : tournament.getSport(),
                 request.getSeason() != null ? request.getSeason() : tournament.getSeason(),
                 request.getStartDate() != null ? request.getStartDate() : tournament.getStartDate(),
                 request.getEndDate() != null ? request.getEndDate() : tournament.getEndDate(),
@@ -332,6 +337,8 @@ public class TournamentService {
                 .name(previous.getName())
                 .description(previous.getDescription())
                 .format(previous.getFormat())
+                // F08.10 多競技対応（🟡-1a）: シーズン継続では旧大会の競技を引き継ぐ。
+                .sport(previous.getSport())
                 .winPoints(previous.getWinPoints())
                 .drawPoints(previous.getDrawPoints())
                 .lossPoints(previous.getLossPoints())
@@ -409,6 +416,24 @@ public class TournamentService {
     TournamentEntity findTournamentOrThrow(Long tournamentId) {
         return tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND));
+    }
+
+    /**
+     * 競技種別文字列を検証し、保存用の正準名（{@code Sport} の列挙名）へ解決する（F08.10 多競技対応・🟡-1a）。
+     *
+     * <p>{@code null}（未指定）は後方互換のため {@code SOCCER} 既定とする。値が指定された場合は
+     * {@code Sport.valueOf} 相当で妥当性を検証し、不正値は {@link IllegalArgumentException} を投げる
+     * （DTO の {@code @Pattern} で 400 に変換済みだが、Service 単独呼び出し・将来の経路に対する多重防御）。</p>
+     *
+     * @param sport 競技種別の列挙名（null 可）
+     * @return 正準化された競技種別の列挙名（保存値・String）
+     */
+    private String resolveSport(String sport) {
+        if (sport == null) {
+            return Sport.SOCCER.name();
+        }
+        // 不正値はここで弾く（症状を握りつぶさない・enum へ変換できることを保証）。
+        return Sport.valueOf(sport).name();
     }
 
     private void copyTiebreakersFromTemplate(Long tournamentId, Long templateId) {
