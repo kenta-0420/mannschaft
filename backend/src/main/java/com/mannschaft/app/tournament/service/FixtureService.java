@@ -1,6 +1,8 @@
 package com.mannschaft.app.tournament.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.match.domain.Sport;
+import com.mannschaft.app.match.service.MatchService;
 import com.mannschaft.app.tournament.LeagueRoundType;
 import com.mannschaft.app.tournament.FixtureResult;
 import com.mannschaft.app.tournament.FixtureSlot;
@@ -68,6 +70,11 @@ public class FixtureService {
     private final TournamentStatDefRepository statDefRepository;
     private final TournamentMapper mapper;
     private final ApplicationEventPublisher eventPublisher;
+    /**
+     * match ドメインのライフサイクル Service（Phase5b-2'・系統B の match 正本化）。
+     * tournament → match はエンティティ直参照せず本 Service メソッド経由で正本を作る（原則 1/5・D-1・05 §H.5）。
+     */
+    private final MatchService matchService;
 
     // ===== Matchday =====
 
@@ -329,6 +336,11 @@ public class FixtureService {
                 winnerId, result, request.getNotes());
         matchRepository.save(match);
 
+        // 系統B の match 正本化（Phase5b-2'・05 §H.1〜H.2.3）: fixture スナップショット書込と同一 TX 内で
+        // matches を正本として作成/更新する。fixture 列は派生スナップショット（H.2.3）であり、正本は matches。
+        recordMatchCanonical(matchId, match, tournament, request.getHomeScore(), request.getAwayScore(),
+                request.getHomePenaltyScore(), request.getAwayPenaltyScore());
+
         // セット別スコアの保存
         if (request.getSets() != null) {
             matchSetRepository.deleteByMatchId(matchId);
@@ -382,6 +394,10 @@ public class FixtureService {
                     entry.getHomePenaltyScore(), entry.getAwayPenaltyScore(),
                     winnerId, result, entry.getNotes());
             matchRepository.save(match);
+
+            // 系統B の match 正本化（Phase5b-2'・05 §H.1〜H.2.3）: 各 fixture の正本を matches へ反映する。
+            recordMatchCanonical(entry.getMatchId(), match, tournament, entry.getHomeScore(), entry.getAwayScore(),
+                    entry.getHomePenaltyScore(), entry.getAwayPenaltyScore());
 
             if (entry.getSets() != null) {
                 matchSetRepository.deleteByMatchId(entry.getMatchId());
@@ -611,6 +627,85 @@ public class FixtureService {
     private TournamentFixtureEntity findMatchOrThrow(Long matchId) {
         return matchRepository.findById(matchId)
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.MATCH_NOT_FOUND));
+    }
+
+    /**
+     * 系統B（直接スコア入力）を <b>match レコードへ正本化</b>する（Phase5b-2'・05 §H.1〜H.2.3）。
+     *
+     * <p>fixture のスコア列は派生スナップショット（H.2.3）であり、その正本がここで作る match である。
+     * {@link MatchService#recordTournamentScore} を Service 経由で呼び（エンティティ越境せず・原則 1/D-1）、
+     * 同一 fixture の match を冪等に作成/更新する（二重起票防止）。本メソッドは fixture スナップショット書込と
+     * <b>同一 TX 内</b>で動き、{@code MatchCompletedEvent} は発火しない（系統B は fixture を同期書込済みのため
+     * AFTER_COMMIT リスナーによる二重書込/二重 StandingsRecalc を避ける・{@link MatchService#recordTournamentScore} Javadoc）。</p>
+     *
+     * <h3>participant ⇔ side / team / org 解決（H.1.2）</h3>
+     * <ul>
+     *   <li><b>team</b>: fixture の <b>home participant の team_id</b>（HOME 固定）。participant 経由で解決し
+     *       team_id 単独逆引きはしない（同一 team が複数 participant になり得るため・H.1.2）。</li>
+     *   <li><b>相手</b>: away participant の team_id（無ければ participant の displayName を手入力名として渡す）。</li>
+     *   <li><b>org</b>: 大会の {@code organization_id}。sport は大会に sport 列が無いため SOCCER 既定
+     *       （多競技対応は将来の tournament.sport 列追加時に拡張・現状の F08.7 はサッカー前提）。</li>
+     * </ul>
+     *
+     * <p><b>正本化をスキップする条件</b>: home participant 未割当（BYE・トーナメント未確定枠）や、
+     * home participant の team_id が解決できない場合は <b>match を作らない</b>（matches.team_id は NOT NULL ゆえ）。
+     * その場合も fixture スナップショットは既に書かれており順位導出は従来どおり成立する（症状を隠さず、
+     * 正本化できない構造的ケースを明示的にスキップする）。</p>
+     *
+     * @param fixtureId        fixture の ID（{@code tournament_matches.id}・matches.tournament_fixture_id へ）
+     * @param fixture          スコア反映済みの fixture（スナップショット）
+     * @param tournament       大会（org/sport 解決元・null の場合は正本化スキップ）
+     * @param homeScore        本戦ホームスコア（延長合算済み）
+     * @param awayScore        本戦アウェイスコア（延長合算済み）
+     * @param homePenaltyScore PK 戦ホームスコア（NULL=PK なし）
+     * @param awayPenaltyScore PK 戦アウェイスコア（NULL=PK なし）
+     */
+    private void recordMatchCanonical(Long fixtureId, TournamentFixtureEntity fixture, TournamentEntity tournament,
+                                      Integer homeScore, Integer awayScore,
+                                      Integer homePenaltyScore, Integer awayPenaltyScore) {
+        if (tournament == null) {
+            // 大会未取得（防御的・通常起こらない）では org が引けないため正本化をスキップ（fixture は書込済み）。
+            log.warn("match 正本化スキップ: tournament 未取得 fixtureId={}", fixtureId);
+            return;
+        }
+        Long homeParticipantId = fixture.getHomeParticipantId();
+        if (homeParticipantId == null) {
+            // BYE / 未確定枠は HOME チームが無く matches.team_id（NOT NULL）を満たせないため正本化しない。
+            return;
+        }
+        TournamentParticipantEntity homeParticipant =
+                participantRepository.findById(homeParticipantId).orElse(null);
+        if (homeParticipant == null || homeParticipant.getTeamId() == null) {
+            log.warn("match 正本化スキップ: home participant の team 解決不能 fixtureId={}, homeParticipantId={}",
+                    fixtureId, homeParticipantId);
+            return;
+        }
+
+        // 相手は away participant 経由で解決する（team_id 単独逆引き禁止・H.1.2）。
+        Long opponentTeamId = null;
+        String opponentName = null;
+        if (fixture.getAwayParticipantId() != null) {
+            TournamentParticipantEntity awayParticipant =
+                    participantRepository.findById(fixture.getAwayParticipantId()).orElse(null);
+            if (awayParticipant != null) {
+                opponentTeamId = awayParticipant.getTeamId();
+                opponentName = awayParticipant.getDisplayName();
+            }
+        }
+
+        matchService.recordTournamentScore(MatchService.RecordTournamentScoreCommand.builder()
+                .organizationId(tournament.getOrganizationId())
+                .teamId(homeParticipant.getTeamId())
+                .opponentTeamId(opponentTeamId)
+                .opponentName(opponentName)
+                // 大会に sport 列が無い現状は SOCCER 既定（F08.7 はサッカー前提・将来 tournament.sport で拡張）。
+                .sport(Sport.SOCCER)
+                .tournamentFixtureId(fixtureId)
+                .homeScore(homeScore)
+                .awayScore(awayScore)
+                .homePenaltyScore(homePenaltyScore)
+                .awayPenaltyScore(awayPenaltyScore)
+                .build());
     }
 
     /**

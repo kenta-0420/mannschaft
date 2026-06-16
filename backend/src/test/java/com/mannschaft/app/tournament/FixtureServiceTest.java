@@ -14,6 +14,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -29,6 +30,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -48,12 +50,35 @@ class FixtureServiceTest {
     @Mock private TournamentStatDefRepository statDefRepository;
     @Mock private TournamentMapper mapper;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private com.mannschaft.app.match.service.MatchService matchService;
 
     @InjectMocks
     private FixtureService service;
 
     private static final Long TOURNAMENT_ID = 1L;
     private static final Long MATCH_ID = 10L;
+
+    /**
+     * match 正本化（{@code recordMatchCanonical}）が participant→team を解決できるよう、
+     * home/away participant の team_id をスタブする（H.1.2・participant 経由解決）。
+     * tournament（org/sport 解決元）も併せて返す。score 系テストで共通利用する。
+     */
+    private void stubCanonicalRecordingChain(Long homeParticipantId, Long awayParticipantId,
+                                             Long homeTeamId, Long awayTeamId) {
+        lenient().when(tournamentRepository.findById(TOURNAMENT_ID))
+                .thenReturn(Optional.of(TournamentEntity.builder()
+                        .organizationId(99L).name("t").format(TournamentFormat.LEAGUE).createdBy(1L).build()));
+        if (homeParticipantId != null) {
+            lenient().when(participantRepository.findById(homeParticipantId))
+                    .thenReturn(Optional.of(TournamentParticipantEntity.builder()
+                            .id(homeParticipantId).divisionId(5L).teamId(homeTeamId).build()));
+        }
+        if (awayParticipantId != null) {
+            lenient().when(participantRepository.findById(awayParticipantId))
+                    .thenReturn(Optional.of(TournamentParticipantEntity.builder()
+                            .id(awayParticipantId).divisionId(5L).teamId(awayTeamId).build()));
+        }
+    }
 
     @Nested
     @DisplayName("updateScore")
@@ -378,6 +403,139 @@ class FixtureServiceTest {
                     .isEqualTo(TournamentErrorCode.INVALID_SCORE);
 
             verify(matchRepository, never()).save(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("match 正本化（Phase5b-2'・系統B→matches 正本・05 §H.1〜H.2.3）")
+    class MatchCanonicalRecording {
+
+        private static final Long HOME_PARTICIPANT = 1L;
+        private static final Long AWAY_PARTICIPANT = 2L;
+        private static final Long HOME_TEAM = 1000L;
+        private static final Long AWAY_TEAM = 2000L;
+
+        private void stubResponseChain() {
+            given(matchRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            TournamentMatchdayEntity md = TournamentMatchdayEntity.builder().divisionId(5L).build();
+            given(matchdayRepository.findById(any())).willReturn(Optional.of(md));
+            lenient().when(matchSetRepository.findByMatchIdOrderBySetNumberAsc(any())).thenReturn(List.of());
+            given(playerStatRepository.findByMatchId(any())).willReturn(List.of());
+            given(mapper.toMatchResponse(any(), any(), any())).willReturn(null);
+        }
+
+        @Test
+        @DisplayName("updateScore: matches を正本化（org=大会org・team=home participant の team・kind=TOURNAMENT・fixtureId・スコア反映）")
+        void updateScoreRecordsMatchCanonical() {
+            TournamentFixtureEntity match = TournamentFixtureEntity.builder()
+                    .homeParticipantId(HOME_PARTICIPANT).awayParticipantId(AWAY_PARTICIPANT).build();
+            given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
+            stubCanonicalRecordingChain(HOME_PARTICIPANT, AWAY_PARTICIPANT, HOME_TEAM, AWAY_TEAM);
+            stubResponseChain();
+
+            service.updateScore(TOURNAMENT_ID, MATCH_ID,
+                    new ScoreUpdateRequest(2, 1, null, null, 5, 4, null, null, null));
+
+            ArgumentCaptor<com.mannschaft.app.match.service.MatchService.RecordTournamentScoreCommand> captor =
+                    ArgumentCaptor.forClass(
+                            com.mannschaft.app.match.service.MatchService.RecordTournamentScoreCommand.class);
+            verify(matchService).recordTournamentScore(captor.capture());
+            var c = captor.getValue();
+            assertThat(c.getOrganizationId()).isEqualTo(99L);
+            // team = home participant の team_id（HOME 固定・participant 経由解決・H.1.2）
+            assertThat(c.getTeamId()).isEqualTo(HOME_TEAM);
+            assertThat(c.getOpponentTeamId()).isEqualTo(AWAY_TEAM);
+            assertThat(c.getTournamentFixtureId()).isEqualTo(MATCH_ID);
+            assertThat(c.getHomeScore()).isEqualTo(2);
+            assertThat(c.getAwayScore()).isEqualTo(1);
+            assertThat(c.getHomePenaltyScore()).isEqualTo(5);
+            assertThat(c.getAwayPenaltyScore()).isEqualTo(4);
+        }
+
+        @Test
+        @DisplayName("二重発火回避: updateScore は MatchCompletedEvent を発火しない（StandingsRecalc は 1 回のみ・リスナー二重書込なし）")
+        void updateScoreDoesNotFireMatchCompletedEvent() {
+            TournamentFixtureEntity match = TournamentFixtureEntity.builder()
+                    .homeParticipantId(HOME_PARTICIPANT).awayParticipantId(AWAY_PARTICIPANT).build();
+            given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
+            stubCanonicalRecordingChain(HOME_PARTICIPANT, AWAY_PARTICIPANT, HOME_TEAM, AWAY_TEAM);
+            stubResponseChain();
+
+            service.updateScore(TOURNAMENT_ID, MATCH_ID,
+                    new ScoreUpdateRequest(2, 1, null, null, null, null, null, null, null));
+
+            // 系統B は StandingsRecalculationEvent を 1 回だけ発火（fixture 同期＋順位は同期経路に閉じる）。
+            verify(eventPublisher, times(1)).publishEvent(any(StandingsRecalculationEvent.class));
+            // MatchCompletedEvent は発火しない（AFTER_COMMIT リスナーによる fixture 二重書込/二重 recalc を避ける）。
+            verify(eventPublisher, never()).publishEvent(any(com.mannschaft.app.match.MatchCompletedEvent.class));
+        }
+
+        @Test
+        @DisplayName("participant 経由解決: home participant の team を team に充てる（team_id 単独逆引きしない・H.1.2）")
+        void resolvesTeamViaParticipantNotReverseLookup() {
+            TournamentFixtureEntity match = TournamentFixtureEntity.builder()
+                    .homeParticipantId(HOME_PARTICIPANT).awayParticipantId(AWAY_PARTICIPANT).build();
+            given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
+            stubCanonicalRecordingChain(HOME_PARTICIPANT, AWAY_PARTICIPANT, HOME_TEAM, AWAY_TEAM);
+            stubResponseChain();
+
+            service.updateScore(TOURNAMENT_ID, MATCH_ID,
+                    new ScoreUpdateRequest(0, 3, null, null, null, null, null, null, null));
+
+            // participant を findById で引いている（team_id 単独逆引きではない）
+            verify(participantRepository).findById(HOME_PARTICIPANT);
+            verify(participantRepository).findById(AWAY_PARTICIPANT);
+        }
+
+        @Test
+        @DisplayName("BYE/未割当: home participant 無しなら matches 正本化をスキップ（fixture スナップショットは従来どおり）")
+        void skipsCanonicalRecordingForBye() {
+            TournamentFixtureEntity match = TournamentFixtureEntity.builder()
+                    .homeParticipantId(null).awayParticipantId(AWAY_PARTICIPANT).build();
+            given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
+            // tournament は引けるが home participant が無いため正本化しない
+            lenient().when(tournamentRepository.findById(TOURNAMENT_ID))
+                    .thenReturn(Optional.of(TournamentEntity.builder()
+                            .organizationId(99L).name("t").format(TournamentFormat.LEAGUE).createdBy(1L).build()));
+            stubResponseChain();
+
+            service.updateScore(TOURNAMENT_ID, MATCH_ID,
+                    new ScoreUpdateRequest(3, 0, null, null, null, null, null, null, null));
+
+            verify(matchService, never()).recordTournamentScore(any());
+            // fixture スナップショットと順位再計算は従来どおり動く
+            verify(eventPublisher).publishEvent(any(StandingsRecalculationEvent.class));
+        }
+
+        @Test
+        @DisplayName("batchUpdateScores: 各 fixture を matches へ正本化し、StandingsRecalc は 1 回・MatchCompletedEvent は発火しない")
+        void batchRecordsEachMatchCanonical() {
+            TournamentFixtureEntity m1 = TournamentFixtureEntity.builder()
+                    .homeParticipantId(HOME_PARTICIPANT).awayParticipantId(AWAY_PARTICIPANT).build();
+            TournamentFixtureEntity m2 = TournamentFixtureEntity.builder()
+                    .homeParticipantId(3L).awayParticipantId(4L).build();
+            given(matchRepository.findById(100L)).willReturn(Optional.of(m1));
+            given(matchRepository.findById(200L)).willReturn(Optional.of(m2));
+            given(matchRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            stubCanonicalRecordingChain(HOME_PARTICIPANT, AWAY_PARTICIPANT, HOME_TEAM, AWAY_TEAM);
+            lenient().when(participantRepository.findById(3L))
+                    .thenReturn(Optional.of(TournamentParticipantEntity.builder()
+                            .id(3L).divisionId(5L).teamId(3000L).build()));
+            lenient().when(participantRepository.findById(4L))
+                    .thenReturn(Optional.of(TournamentParticipantEntity.builder()
+                            .id(4L).divisionId(5L).teamId(4000L).build()));
+
+            BatchScoreRequest request = new BatchScoreRequest(List.of(
+                    new BatchScoreRequest.MatchScoreEntry(100L, 2, 1, null, null, null, null, null, null, null),
+                    new BatchScoreRequest.MatchScoreEntry(200L, 0, 3, null, null, null, null, null, null, null)));
+
+            service.batchUpdateScores(TOURNAMENT_ID, 5L, 7L, request);
+
+            // 2 fixture 分の正本化が呼ばれる
+            verify(matchService, times(2)).recordTournamentScore(any());
+            // StandingsRecalc は batch で 1 回だけ・MatchCompletedEvent は発火しない
+            verify(eventPublisher, times(1)).publishEvent(any(StandingsRecalculationEvent.class));
+            verify(eventPublisher, never()).publishEvent(any(com.mannschaft.app.match.MatchCompletedEvent.class));
         }
     }
 
