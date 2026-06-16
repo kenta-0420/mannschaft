@@ -65,9 +65,25 @@ class FixtureServiceTest {
      */
     private void stubCanonicalRecordingChain(Long homeParticipantId, Long awayParticipantId,
                                              Long homeTeamId, Long awayTeamId) {
+        // sport 未指定（TournamentEntity の Builder.Default = SOCCER）の大会を返す既定スタブ。
+        stubCanonicalRecordingChainWithSport(homeParticipantId, awayParticipantId,
+                homeTeamId, awayTeamId, null);
+    }
+
+    /**
+     * {@link #stubCanonicalRecordingChain} の sport 明示版（F08.10 多競技対応・🟡-1a）。
+     * 大会 {@code sport}（null なら Builder.Default の SOCCER）を持つ tournament を返し、
+     * canonical match へ sport が伝播することを検証するために用いる。
+     */
+    private void stubCanonicalRecordingChainWithSport(Long homeParticipantId, Long awayParticipantId,
+                                                      Long homeTeamId, Long awayTeamId, String sport) {
+        TournamentEntity.TournamentEntityBuilder tb = TournamentEntity.builder()
+                .organizationId(99L).name("t").format(TournamentFormat.LEAGUE).createdBy(1L);
+        if (sport != null) {
+            tb.sport(sport);
+        }
         lenient().when(tournamentRepository.findById(TOURNAMENT_ID))
-                .thenReturn(Optional.of(TournamentEntity.builder()
-                        .organizationId(99L).name("t").format(TournamentFormat.LEAGUE).createdBy(1L).build()));
+                .thenReturn(Optional.of(tb.build()));
         if (homeParticipantId != null) {
             lenient().when(participantRepository.findById(homeParticipantId))
                     .thenReturn(Optional.of(TournamentParticipantEntity.builder()
@@ -450,6 +466,51 @@ class FixtureServiceTest {
             assertThat(c.getAwayScore()).isEqualTo(1);
             assertThat(c.getHomePenaltyScore()).isEqualTo(5);
             assertThat(c.getAwayPenaltyScore()).isEqualTo(4);
+            // 既定（sport 未設定の大会＝Builder.Default の SOCCER）は SOCCER の canonical match を作る（従来挙動）。
+            assertThat(c.getSport()).isEqualTo(com.mannschaft.app.match.domain.Sport.SOCCER);
+        }
+
+        @Test
+        @DisplayName("F08.10 多競技: バレー大会の直接入力は sport=VOLLEYBALL の canonical match を作る")
+        void recordsVolleyballSportFromTournament() {
+            TournamentFixtureEntity match = TournamentFixtureEntity.builder()
+                    .homeParticipantId(HOME_PARTICIPANT).awayParticipantId(AWAY_PARTICIPANT).build();
+            given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
+            stubCanonicalRecordingChainWithSport(HOME_PARTICIPANT, AWAY_PARTICIPANT, HOME_TEAM, AWAY_TEAM,
+                    "VOLLEYBALL");
+            stubResponseChain();
+
+            service.updateScore(TOURNAMENT_ID, MATCH_ID,
+                    new ScoreUpdateRequest(3, 1, null, null, null, null, null));
+
+            ArgumentCaptor<com.mannschaft.app.match.service.MatchService.RecordTournamentScoreCommand> captor =
+                    ArgumentCaptor.forClass(
+                            com.mannschaft.app.match.service.MatchService.RecordTournamentScoreCommand.class);
+            verify(matchService).recordTournamentScore(captor.capture());
+            // 大会 sport が canonical match に伝播する（多競技で誤った SOCCER の正本を作らない）。
+            assertThat(captor.getValue().getSport())
+                    .isEqualTo(com.mannschaft.app.match.domain.Sport.VOLLEYBALL);
+        }
+
+        @Test
+        @DisplayName("F08.10 多競技: 将棋大会の直接入力は sport=SHOGI の canonical match を作る")
+        void recordsShogiSportFromTournament() {
+            TournamentFixtureEntity match = TournamentFixtureEntity.builder()
+                    .homeParticipantId(HOME_PARTICIPANT).awayParticipantId(AWAY_PARTICIPANT).build();
+            given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
+            stubCanonicalRecordingChainWithSport(HOME_PARTICIPANT, AWAY_PARTICIPANT, HOME_TEAM, AWAY_TEAM,
+                    "SHOGI");
+            stubResponseChain();
+
+            service.updateScore(TOURNAMENT_ID, MATCH_ID,
+                    new ScoreUpdateRequest(1, 0, null, null, null, null, null));
+
+            ArgumentCaptor<com.mannschaft.app.match.service.MatchService.RecordTournamentScoreCommand> captor =
+                    ArgumentCaptor.forClass(
+                            com.mannschaft.app.match.service.MatchService.RecordTournamentScoreCommand.class);
+            verify(matchService).recordTournamentScore(captor.capture());
+            assertThat(captor.getValue().getSport())
+                    .isEqualTo(com.mannschaft.app.match.domain.Sport.SHOGI);
         }
 
         @Test

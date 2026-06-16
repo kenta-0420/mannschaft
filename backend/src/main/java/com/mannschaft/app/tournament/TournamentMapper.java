@@ -131,7 +131,7 @@ public interface TournamentMapper {
                         entity.getPreviousTournamentId()))
                 .content(new TournamentResponse.TournamentContentDto(
                         entity.getName(), entity.getDescription(), entity.getFormat().name(),
-                        entity.getSeason(), entity.getStartDate(), entity.getEndDate()))
+                        entity.getSport(), entity.getSeason(), entity.getStartDate(), entity.getEndDate()))
                 .scoring(new TournamentResponse.TournamentScoringDto(
                         entity.getWinPoints(), entity.getDrawPoints(), entity.getLossPoints(),
                         entity.getHasDraw(), entity.getHasSets(), entity.getSetsToWin(),

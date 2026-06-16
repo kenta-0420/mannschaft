@@ -194,6 +194,82 @@ class TournamentServiceTest {
     }
 
     @Nested
+    @DisplayName("createTournament（F08.10 多競技 sport）")
+    class CreateTournamentSport {
+
+        private com.mannschaft.app.tournament.dto.CreateTournamentRequest createRequest(String sport) {
+            return new com.mannschaft.app.tournament.dto.CreateTournamentRequest(
+                    null, // templateId
+                    "新大会", // name
+                    null, // description
+                    "LEAGUE", // format
+                    sport, // sport
+                    null, // season
+                    null, null, // start/end
+                    null, null, null, // win/draw/loss
+                    null, null, null, // hasDraw/hasSets/setsToWin
+                    null, null, // hasExtraTime/hasPenalties
+                    null, // scoreUnitLabel
+                    null, // bonusPointRules
+                    null, // leagueRoundType
+                    null, // knockoutLegs
+                    null, // visibility
+                    null, // tiebreakers
+                    null // statDefs
+            );
+        }
+
+        private void stubCreateChain() {
+            given(tournamentRepository.save(any(TournamentEntity.class))).willAnswer(inv -> {
+                TournamentEntity t = inv.getArgument(0);
+                setId(t, TOURNAMENT_ID);
+                return t;
+            });
+            given(tournamentRepository.findById(TOURNAMENT_ID))
+                    .willReturn(Optional.of(TournamentEntity.builder()
+                            .organizationId(ORG_ID).name("新大会").build()));
+            given(tiebreakerRepository.findByTournamentIdOrderByPriorityAsc(TOURNAMENT_ID)).willReturn(List.of());
+            given(statDefRepository.findByTournamentIdOrderBySortOrderAsc(TOURNAMENT_ID)).willReturn(List.of());
+            given(mapper.toTournamentResponse(any(), any(), any())).willReturn(null);
+        }
+
+        @Test
+        @DisplayName("正常系: sport 未指定（null）→ SOCCER 既定で保存される")
+        void sport未指定でSOCCER既定() {
+            stubCreateChain();
+
+            service.createTournament(ORG_ID, USER_ID, createRequest(null));
+
+            org.mockito.ArgumentCaptor<TournamentEntity> captor =
+                    org.mockito.ArgumentCaptor.forClass(TournamentEntity.class);
+            verify(tournamentRepository).save(captor.capture());
+            assertThat(captor.getValue().getSport()).isEqualTo("SOCCER");
+        }
+
+        @Test
+        @DisplayName("正常系: sport=VOLLEYBALL 指定 → そのまま保存される")
+        void sport指定で保存() {
+            stubCreateChain();
+
+            service.createTournament(ORG_ID, USER_ID, createRequest("VOLLEYBALL"));
+
+            org.mockito.ArgumentCaptor<TournamentEntity> captor =
+                    org.mockito.ArgumentCaptor.forClass(TournamentEntity.class);
+            verify(tournamentRepository).save(captor.capture());
+            assertThat(captor.getValue().getSport()).isEqualTo("VOLLEYBALL");
+        }
+
+        @Test
+        @DisplayName("異常系: sport が不正な列挙値 → IllegalArgumentException（@Pattern 突破時の多重防御で 400）")
+        void sport不正値で例外() {
+            // resolveSport の Sport.valueOf が IllegalArgumentException を投げ、save には到達しない。
+            assertThatThrownBy(() -> service.createTournament(ORG_ID, USER_ID, createRequest("HANDBALL")))
+                    .isInstanceOf(IllegalArgumentException.class);
+            verify(tournamentRepository, org.mockito.Mockito.never()).save(any());
+        }
+    }
+
+    @Nested
     @DisplayName("updateTournament")
     class UpdateTournament {
 
@@ -226,6 +302,7 @@ class TournamentServiceTest {
                             null, // name
                             null, // description
                             null, // format
+                            null, // sport
                             null, // season
                             null, // startDate
                             null, // endDate
@@ -254,6 +331,52 @@ class TournamentServiceTest {
             assertThat(entity.getBonusPointRules()).isEqualTo("{\"win3sets\":1}");
             // visibility は要求どおり更新されている
             assertThat(entity.getVisibility()).isEqualTo(TournamentVisibility.PUBLIC);
+            // sport は未指定（null）ゆえ既存値（Builder.Default の SOCCER）が維持される
+            assertThat(entity.getSport()).isEqualTo("SOCCER");
+        }
+
+        @Test
+        @DisplayName("正常系: sport を SHOGI に更新できる（指定時は更新・未指定時は維持の coalesce）")
+        void sport更新() {
+            // Given: 既存大会（Builder.Default で sport=SOCCER）
+            TournamentEntity entity = TournamentEntity.builder()
+                    .organizationId(ORG_ID).name("既存大会").build();
+            setVisibility(entity, TournamentVisibility.PUBLIC);
+            given(tournamentRepository.findById(TOURNAMENT_ID)).willReturn(Optional.of(entity));
+            given(tournamentRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(tiebreakerRepository.findByTournamentIdOrderByPriorityAsc(TOURNAMENT_ID)).willReturn(List.of());
+            given(statDefRepository.findByTournamentIdOrderBySortOrderAsc(TOURNAMENT_ID)).willReturn(List.of());
+            given(mapper.toTournamentResponse(any(), any(), any())).willReturn(null);
+
+            com.mannschaft.app.tournament.dto.UpdateTournamentRequest request =
+                    new com.mannschaft.app.tournament.dto.UpdateTournamentRequest(
+                            null, null, null,
+                            "SHOGI", // sport ← 更新する
+                            null, null, null, null, null, null, null, null, null, null, null,
+                            null, null, null, null, "PUBLIC", 1L, null, null);
+
+            service.updateTournament(TOURNAMENT_ID, request);
+
+            assertThat(entity.getSport()).isEqualTo("SHOGI");
+        }
+
+        @Test
+        @DisplayName("異常系: 不正な sport で更新 → IllegalArgumentException（多重防御）")
+        void sport不正値で更新失敗() {
+            TournamentEntity entity = TournamentEntity.builder()
+                    .organizationId(ORG_ID).name("既存大会").build();
+            setVisibility(entity, TournamentVisibility.PUBLIC);
+            given(tournamentRepository.findById(TOURNAMENT_ID)).willReturn(Optional.of(entity));
+
+            com.mannschaft.app.tournament.dto.UpdateTournamentRequest request =
+                    new com.mannschaft.app.tournament.dto.UpdateTournamentRequest(
+                            null, null, null,
+                            "CRICKET", // sport ← 不正値
+                            null, null, null, null, null, null, null, null, null, null, null,
+                            null, null, null, null, "PUBLIC", 1L, null, null);
+
+            assertThatThrownBy(() -> service.updateTournament(TOURNAMENT_ID, request))
+                    .isInstanceOf(IllegalArgumentException.class);
         }
     }
 
