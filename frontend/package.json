@@ -82,7 +82,7 @@
     "happy-dom": "^20.8.9",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
-    "nuxt-security": "^1.4.3",
+    "nuxt-security": "^2.6.0",
     "openapi-typescript": "^7.13.0",
     "otplib": "^13.4.0",
     "prettier": "^3.8.1",
