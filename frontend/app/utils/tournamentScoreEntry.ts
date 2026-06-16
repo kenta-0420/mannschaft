@@ -35,10 +35,6 @@ export interface ScoreEntryRow {
   homeScore: string
   /** アウェイスコア入力値。 */
   awayScore: string
-  /** ホーム延長スコア入力値（hasExtraTime 大会のみ表示・送信）。 */
-  homeExtraScore: string
-  /** アウェイ延長スコア入力値。 */
-  awayExtraScore: string
   /** ホーム PK スコア入力値（hasPenalties 大会のみ表示・送信）。 */
   homePenaltyScore: string
   /** アウェイ PK スコア入力値。 */
@@ -63,9 +59,6 @@ export interface BatchScoreEntryPayload {
   matchId: number
   homeScore: number | null
   awayScore: number | null
-  /** 延長スコア（hasExtraTime 大会のみ。未入力 / 対象外は null）。 */
-  homeExtraScore: number | null
-  awayExtraScore: number | null
   /** PK スコア（hasPenalties 大会のみ。未入力 / 対象外は null）。 */
   homePenaltyScore: number | null
   awayPenaltyScore: number | null
@@ -82,8 +75,6 @@ export interface BatchScoreEntryPayload {
  * スコア入力欄の出し分けフラグ（大会の TournamentScoringDto 由来）。
  */
 export interface ScoreEntryColumnFlags {
-  /** 延長スコア欄（home/away）を表示するか。 */
-  showExtraTime: boolean
   /** PK スコア欄（home/away）を表示するか。 */
   showPenalties: boolean
   /** セット別スコア欄を表示するか（hasSets 由来）。 */
@@ -99,7 +90,6 @@ export interface BatchScorePayload {
 
 /** 既定の出し分けフラグ（延長/PK/セットいずれも無し・setsToWin は安全側 1）。 */
 export const DEFAULT_COLUMN_FLAGS: ScoreEntryColumnFlags = {
-  showExtraTime: false,
   showPenalties: false,
   showSets: false,
   setsToWin: 1,
@@ -195,8 +185,6 @@ export function buildScoreEntryRows(
     awayName: resolveParticipantName(m.participants?.awayParticipantId, nameMap),
     homeScore: scoreToInput(m.score?.homeScore),
     awayScore: scoreToInput(m.score?.awayScore),
-    homeExtraScore: scoreToInput(m.score?.homeExtraScore),
-    awayExtraScore: scoreToInput(m.score?.awayExtraScore),
     homePenaltyScore: scoreToInput(m.score?.homePenaltyScore),
     awayPenaltyScore: scoreToInput(m.score?.awayPenaltyScore),
     sets: flags.showSets ? buildScoreEntrySets(m.sets, flags.setsToWin) : [],
@@ -248,7 +236,8 @@ function areSetsValid(sets: ScoreEntrySet[]): boolean {
  * - セット制（showSets）では本戦 home/away 欄を入力に使わない（合計はセットから自動算出）ため検証しない。
  *   代わりに各セットを「両方空 or 両方非負整数」で検証する。
  * - 非セット制では本戦 home/away は「両方空 or 両方非負整数」。
- * - flags で延長/PK 欄が有効な場合は、その欄も同じ規則で検証する。
+ *   延長得点は本戦スコアへ合算済み（延長別欄は Phase 5b-3 で廃止）。
+ * - flags で PK 欄が有効な場合は、その欄も同じ規則で検証する。
  *   無効な欄（フラグ false）の入力は送信対象外なので検証しない。
  * - 片方だけ入力／非数値・負数・小数が含まれる行は不正とする。
  */
@@ -261,9 +250,6 @@ export function isRowValid(
     return areSetsValid(row.sets)
   }
   if (!isScorePairValid(row.homeScore, row.awayScore)) return false
-  if (flags.showExtraTime && !isScorePairValid(row.homeExtraScore, row.awayExtraScore)) {
-    return false
-  }
   if (flags.showPenalties && !isScorePairValid(row.homePenaltyScore, row.awayPenaltyScore)) {
     return false
   }
@@ -291,7 +277,8 @@ export function collectFilledSets(sets: ScoreEntrySet[]): MatchSetEntryPayload[]
  *
  * - 両方未入力の行はスキップ（未消化の試合を 0-0 で確定させない）。
  * - 各エントリに version を必ず同梱する（楽観ロック・Wave3a #1459 を壊さない）。
- * - flags で延長/PK が有効な大会のみ extra/penalty を同梱する。フラグ false の欄は常に null。
+ * - flags で PK が有効な大会のみ penalty を同梱する。フラグ false の欄は常に null。
+ *   延長得点は本戦スコアへ合算済み（延長別欄は Phase 5b-3 で廃止）。
  * - 不正行（片方のみ・非数値等）が 1 つでもあれば null を返す（呼び出し側で保存を中断する）。
  */
 export function buildBatchScorePayload(
@@ -314,8 +301,6 @@ export function buildBatchScorePayload(
         matchId: row.matchId,
         homeScore: homeSum,
         awayScore: awaySum,
-        homeExtraScore: null,
-        awayExtraScore: null,
         homePenaltyScore: null,
         awayPenaltyScore: null,
         version: row.version,
@@ -332,8 +317,6 @@ export function buildBatchScorePayload(
       matchId: row.matchId,
       homeScore: home,
       awayScore: away,
-      homeExtraScore: flags.showExtraTime ? parseScoreInput(row.homeExtraScore) : null,
-      awayExtraScore: flags.showExtraTime ? parseScoreInput(row.awayExtraScore) : null,
       homePenaltyScore: flags.showPenalties ? parseScoreInput(row.homePenaltyScore) : null,
       awayPenaltyScore: flags.showPenalties ? parseScoreInput(row.awayPenaltyScore) : null,
       version: row.version,
@@ -347,10 +330,11 @@ export function buildBatchScorePayload(
  *
  * - セット制（hasSets）のときは showSets を立て、setsToWin（先取制）をフラグへ載せる。
  *   setsToWin が未指定 / 不正のときは安全側で 1 にフォールバックする。
- * - セット制では延長/PK は使わない（勝敗はセット数で決まる）ため showExtraTime/showPenalties は折る。
+ * - セット制では PK は使わない（勝敗はセット数で決まる）ため showPenalties は折る。
+ * - 延長別スコア欄は Phase 5b-3 で廃止した（延長得点は本戦スコアへ合算済み・05 §H.1 移行表）。
+ *   大会設定 hasExtraTime（延長戦ありか）の概念は残るが、入力欄の出し分けには使わない。
  */
 export function deriveScoreEntryColumnFlags(scoring: {
-  hasExtraTime?: boolean
   hasPenalties?: boolean
   hasSets?: boolean
   setsToWin?: number | null
@@ -361,7 +345,6 @@ export function deriveScoreEntryColumnFlags(scoring: {
     ? rawSetsToWin
     : 1
   return {
-    showExtraTime: !showSets && scoring?.hasExtraTime === true,
     showPenalties: !showSets && scoring?.hasPenalties === true,
     showSets,
     setsToWin,

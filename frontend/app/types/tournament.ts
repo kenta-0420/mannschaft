@@ -129,8 +129,8 @@ export interface MatchParticipantsDto {
 export interface MatchScoreDto {
   homeScore?: number | null
   awayScore?: number | null
-  homeExtraScore?: number | null
-  awayExtraScore?: number | null
+  // 延長別スコア（homeExtraScore/awayExtraScore）は Phase 5b-3 で廃止。
+  // 延長得点は本戦スコア（homeScore/awayScore）へ合算済み（05 §H.1 移行表）。
   homePenaltyScore?: number | null
   awayPenaltyScore?: number | null
 }

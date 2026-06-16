@@ -15,8 +15,6 @@ public class ScoreUpdateRequest {
 
     private final Integer homeScore;
     private final Integer awayScore;
-    private final Integer homeExtraScore;
-    private final Integer awayExtraScore;
     private final Integer homePenaltyScore;
     private final Integer awayPenaltyScore;
     private final String notes;

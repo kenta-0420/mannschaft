@@ -331,7 +331,6 @@ public class FixtureService {
         }
 
         match.updateScore(request.getHomeScore(), request.getAwayScore(),
-                request.getHomeExtraScore(), request.getAwayExtraScore(),
                 request.getHomePenaltyScore(), request.getAwayPenaltyScore(),
                 winnerId, result, request.getNotes());
         matchRepository.save(match);
@@ -381,7 +380,6 @@ public class FixtureService {
 
             ScoreUpdateRequest scoreReq = new ScoreUpdateRequest(
                     entry.getHomeScore(), entry.getAwayScore(),
-                    entry.getHomeExtraScore(), entry.getAwayExtraScore(),
                     entry.getHomePenaltyScore(), entry.getAwayPenaltyScore(),
                     entry.getNotes(), entry.getVersion(), entry.getSets());
             FixtureResult result = determineResult(scoreReq, match, tournament);
@@ -390,7 +388,6 @@ public class FixtureService {
             else if (result == FixtureResult.AWAY_WIN) winnerId = match.getAwayParticipantId();
 
             match.updateScore(entry.getHomeScore(), entry.getAwayScore(),
-                    entry.getHomeExtraScore(), entry.getAwayExtraScore(),
                     entry.getHomePenaltyScore(), entry.getAwayPenaltyScore(),
                     winnerId, result, entry.getNotes());
             matchRepository.save(match);
@@ -503,10 +500,11 @@ public class FixtureService {
      *
      * <p><b>入口①非破壊（最重要回帰）</b>: hasSets=true 大会であっても、{@code sets} が null/空の場合
      * （例: {@code MatchScoreFixtureListener} はサッカー前提で sets=null で委譲する）は<b>セット判定を行わず</b>、
-     * 従来どおり本戦/延長合算→PK→DRAW のスコアベース判定にフォールバックする。例外は投げない。</p>
+     * 従来どおり本戦スコア→PK→DRAW のスコアベース判定にフォールバックする。例外は投げない。</p>
      *
-     * <p><b>非セット制（hasSets=false / 大会未取得）</b>: 従来どおり本戦＋延長の合算で判定し、同点なら PK、
-     * それでも同点なら DRAW を返す（延長・PK ロジックは温存・#1473）。</p>
+     * <p><b>非セット制（hasSets=false / 大会未取得）</b>: 本戦スコア（home/away_score）で判定し、同点なら PK、
+     * それでも同点なら DRAW を返す（PK ロジックは温存・#1473）。<b>延長得点は本戦スコアへ合算済み</b>であり
+     * 延長別列は Phase 5b-3 で廃止した（05 §H.1 移行表・sports/01_soccer.md §4.1）。</p>
      */
     private FixtureResult determineResult(ScoreUpdateRequest request, TournamentFixtureEntity match,
                                         TournamentEntity tournament) {
@@ -524,11 +522,10 @@ public class FixtureService {
             return FixtureResult.PENDING;
         }
 
+        // 延長得点は本戦スコア（homeScore/awayScore）へ合算済みのため、本戦スコアのみで勝敗を判定する
+        // （延長別列は Phase 5b-3 で廃止・05 §H.1 移行表）。同点なら PK、それでも同点なら DRAW。
         int totalHome = request.getHomeScore();
         int totalAway = request.getAwayScore();
-
-        if (request.getHomeExtraScore() != null) totalHome += request.getHomeExtraScore();
-        if (request.getAwayExtraScore() != null) totalAway += request.getAwayExtraScore();
 
         if (totalHome > totalAway) return FixtureResult.HOME_WIN;
         if (totalAway > totalHome) return FixtureResult.AWAY_WIN;

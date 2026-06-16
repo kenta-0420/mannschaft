@@ -41,8 +41,6 @@ function makeRow(over: Partial<ScoreEntryRow> & { matchId: number }): ScoreEntry
     awayName: over.awayName ?? 'B',
     homeScore: over.homeScore ?? '',
     awayScore: over.awayScore ?? '',
-    homeExtraScore: over.homeExtraScore ?? '',
-    awayExtraScore: over.awayExtraScore ?? '',
     homePenaltyScore: over.homePenaltyScore ?? '',
     awayPenaltyScore: over.awayPenaltyScore ?? '',
     sets: over.sets ?? [],
@@ -91,7 +89,7 @@ describe('buildParticipantNameMap / resolveParticipantName', () => {
 })
 
 describe('buildScoreEntryRows', () => {
-  it('version を audit.version から採用し、既存スコア（延長/PK含む）を入力欄初期値にする', () => {
+  it('version を audit.version から採用し、既存スコア（本戦/PK）を入力欄初期値にする', () => {
     const m = buildParticipantNameMap(matrix)
     const matches = [
       fx({
@@ -100,8 +98,6 @@ describe('buildScoreEntryRows', () => {
         score: {
           homeScore: 2,
           awayScore: 1,
-          homeExtraScore: 1,
-          awayExtraScore: 0,
           homePenaltyScore: 4,
           awayPenaltyScore: 3,
         },
@@ -117,14 +113,12 @@ describe('buildScoreEntryRows', () => {
       awayName: 'Bravo',
       homeScore: '2',
       awayScore: '1',
-      homeExtraScore: '1',
-      awayExtraScore: '0',
       homePenaltyScore: '4',
       awayPenaltyScore: '3',
     })
   })
 
-  it('version 不在は 0、スコア null は空文字（延長/PK も空文字）', () => {
+  it('version 不在は 0、スコア null は空文字（本戦/PK も空文字）', () => {
     const m = buildParticipantNameMap(matrix)
     const matches = [
       fx({ id: 2, participants: { homeParticipantId: 10, awayParticipantId: 20 } }),
@@ -133,7 +127,6 @@ describe('buildScoreEntryRows', () => {
     expect(rows[0]!.version).toBe(0)
     expect(rows[0]!.homeScore).toBe('')
     expect(rows[0]!.awayScore).toBe('')
-    expect(rows[0]!.homeExtraScore).toBe('')
     expect(rows[0]!.awayPenaltyScore).toBe('')
   })
 })
@@ -165,67 +158,60 @@ describe('isRowValid', () => {
     expect(isRowValid({ ...base, homeScore: 'x', awayScore: '0' })).toBe(false)
   })
 
-  it('延長/PK 欄はフラグ有効時のみ検証する', () => {
-    const flags = { ...DEFAULT_COLUMN_FLAGS, showExtraTime: true, showPenalties: true }
+  it('PK 欄はフラグ有効時のみ検証する（延長別欄は Phase 5b-3 で廃止）', () => {
+    const flags = { ...DEFAULT_COLUMN_FLAGS, showPenalties: true }
     const full = {
       ...base,
       homeScore: '1',
       awayScore: '1',
-      homeExtraScore: '0',
-      awayExtraScore: '0',
       homePenaltyScore: '5',
       awayPenaltyScore: '4',
     }
     expect(isRowValid(full, flags)).toBe(true)
-    // 延長片方のみは不正
-    expect(isRowValid({ ...full, homeExtraScore: '1', awayExtraScore: '' }, flags)).toBe(false)
+    // PK 片方のみは不正
+    expect(isRowValid({ ...full, homePenaltyScore: '5', awayPenaltyScore: '' }, flags)).toBe(false)
     // PK 非数値は不正
     expect(isRowValid({ ...full, homePenaltyScore: 'x' }, flags)).toBe(false)
-    // フラグ無効なら延長/PK の不正値は無視される（本戦のみ検証）
+    // フラグ無効なら PK の不正値は無視される（本戦のみ検証）
     expect(
-      isRowValid({ ...full, homeExtraScore: 'x', homePenaltyScore: '-1' }),
+      isRowValid({ ...full, homePenaltyScore: '-1' }),
     ).toBe(true)
   })
 })
 
 describe('deriveScoreEntryColumnFlags', () => {
-  it('hasExtraTime/hasPenalties を真偽フラグへ写す（null/未指定は false・setsToWin 既定 1）', () => {
+  it('hasPenalties を真偽フラグへ写す（null/未指定は false・setsToWin 既定 1・延長別欄は廃止）', () => {
     expect(deriveScoreEntryColumnFlags(null)).toEqual({
-      showExtraTime: false,
       showPenalties: false,
       showSets: false,
       setsToWin: 1,
     })
-    expect(deriveScoreEntryColumnFlags({ hasExtraTime: true })).toEqual({
-      showExtraTime: true,
+    expect(deriveScoreEntryColumnFlags({})).toEqual({
       showPenalties: false,
       showSets: false,
       setsToWin: 1,
     })
     expect(
-      deriveScoreEntryColumnFlags({ hasExtraTime: true, hasPenalties: true }),
-    ).toEqual({ showExtraTime: true, showPenalties: true, showSets: false, setsToWin: 1 })
+      deriveScoreEntryColumnFlags({ hasPenalties: true }),
+    ).toEqual({ showPenalties: true, showSets: false, setsToWin: 1 })
   })
 
   it('hasSets のとき showSets を立て setsToWin を載せる', () => {
     expect(deriveScoreEntryColumnFlags({ hasSets: true, setsToWin: 3 })).toEqual({
-      showExtraTime: false,
       showPenalties: false,
       showSets: true,
       setsToWin: 3,
     })
   })
 
-  it('セット制では延長/PK を折る（勝敗はセット数で決まるため）', () => {
+  it('セット制では PK を折る（勝敗はセット数で決まるため）', () => {
     expect(
       deriveScoreEntryColumnFlags({
         hasSets: true,
         setsToWin: 2,
-        hasExtraTime: true,
         hasPenalties: true,
       }),
     ).toEqual({
-      showExtraTime: false,
       showPenalties: false,
       showSets: true,
       setsToWin: 2,
@@ -305,7 +291,7 @@ describe('collectFilledSets', () => {
 describe('buildBatchScorePayload', () => {
   const row = makeRow
 
-  it('両方入力済みの行のみ抽出し version を必ず同梱する（フラグ無効時 extra/penalty は null）', () => {
+  it('両方入力済みの行のみ抽出し version を必ず同梱する（フラグ無効時 penalty は null）', () => {
     const rows = [
       row({ matchId: 1, version: 3, homeScore: '2', awayScore: '1' }),
       row({ matchId: 2, version: 7 }), // 両方未入力 → スキップ
@@ -317,8 +303,6 @@ describe('buildBatchScorePayload', () => {
         matchId: 1,
         homeScore: 2,
         awayScore: 1,
-        homeExtraScore: null,
-        awayExtraScore: null,
         homePenaltyScore: null,
         awayPenaltyScore: null,
         version: 3,
@@ -334,8 +318,6 @@ describe('buildBatchScorePayload', () => {
         matchId: 1,
         homeScore: 0,
         awayScore: 0,
-        homeExtraScore: null,
-        awayExtraScore: null,
         homePenaltyScore: null,
         awayPenaltyScore: null,
         version: 1,
@@ -343,22 +325,19 @@ describe('buildBatchScorePayload', () => {
     ])
   })
 
-  it('フラグ有効時のみ延長/PK を同梱する（version は常に同梱）', () => {
+  it('フラグ有効時のみ PK を同梱する（version は常に同梱・延長別は廃止）', () => {
     const rows = [
       row({
         matchId: 1,
         version: 9,
         homeScore: '1',
         awayScore: '1',
-        homeExtraScore: '0',
-        awayExtraScore: '0',
         homePenaltyScore: '5',
         awayPenaltyScore: '4',
       }),
     ]
     const payload = buildBatchScorePayload(rows, {
       ...DEFAULT_COLUMN_FLAGS,
-      showExtraTime: true,
       showPenalties: true,
     })
     expect(payload!.scores).toEqual([
@@ -366,8 +345,6 @@ describe('buildBatchScorePayload', () => {
         matchId: 1,
         homeScore: 1,
         awayScore: 1,
-        homeExtraScore: 0,
-        awayExtraScore: 0,
         homePenaltyScore: 5,
         awayPenaltyScore: 4,
         version: 9,
@@ -375,15 +352,13 @@ describe('buildBatchScorePayload', () => {
     ])
   })
 
-  it('延長のみ有効なら PK は null のまま同梱しない', () => {
+  it('PK フラグ無効なら入力されていても PK は null のまま同梱しない', () => {
     const rows = [
       row({
         matchId: 1,
         version: 2,
         homeScore: '2',
         awayScore: '2',
-        homeExtraScore: '1',
-        awayExtraScore: '0',
         // PK は入力されていてもフラグ無効なら無視され null
         homePenaltyScore: '5',
         awayPenaltyScore: '3',
@@ -391,12 +366,9 @@ describe('buildBatchScorePayload', () => {
     ]
     const payload = buildBatchScorePayload(rows, {
       ...DEFAULT_COLUMN_FLAGS,
-      showExtraTime: true,
       showPenalties: false,
     })
     expect(payload!.scores[0]).toMatchObject({
-      homeExtraScore: 1,
-      awayExtraScore: 0,
       homePenaltyScore: null,
       awayPenaltyScore: null,
       version: 2,
@@ -534,8 +506,7 @@ describe('buildBatchScorePayload（セット制）', () => {
     expect(entry.awayScore).toBe(60)
     // 楽観ロック version 維持
     expect(entry.version).toBe(11)
-    // 延長/PK はセット制では常に null
-    expect(entry.homeExtraScore).toBeNull()
+    // PK はセット制では常に null（延長別は廃止）
     expect(entry.homePenaltyScore).toBeNull()
   })
 

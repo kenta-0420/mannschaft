@@ -55617,10 +55617,6 @@ export interface components {
             /** Format: int32 */
             awayScore?: number;
             /** Format: int32 */
-            homeExtraScore?: number;
-            /** Format: int32 */
-            awayExtraScore?: number;
-            /** Format: int32 */
             homePenaltyScore?: number;
             /** Format: int32 */
             awayPenaltyScore?: number;
@@ -55676,10 +55672,6 @@ export interface components {
             homeScore?: number;
             /** Format: int32 */
             awayScore?: number;
-            /** Format: int32 */
-            homeExtraScore?: number;
-            /** Format: int32 */
-            awayExtraScore?: number;
             /** Format: int32 */
             homePenaltyScore?: number;
             /** Format: int32 */
@@ -60562,10 +60554,6 @@ export interface components {
             homeScore?: number;
             /** Format: int32 */
             awayScore?: number;
-            /** Format: int32 */
-            homeExtraScore?: number;
-            /** Format: int32 */
-            awayExtraScore?: number;
             /** Format: int32 */
             homePenaltyScore?: number;
             /** Format: int32 */

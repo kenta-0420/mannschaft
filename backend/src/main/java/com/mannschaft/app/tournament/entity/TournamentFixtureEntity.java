@@ -75,11 +75,9 @@ public class TournamentFixtureEntity extends BaseEntity {
     /** 本戦アウェイ得点（matches 正本の派生スナップショット・05 §H.2.3）。順位計算はこの列を参照する。 */
     private Integer awayScore;
 
-    /** 延長別ホーム得点（延長別列は Phase 5b-3 で廃止予定。本戦スコアに合算する・05 §H.1 移行表）。 */
-    private Integer homeExtraScore;
-
-    /** 延長別アウェイ得点（延長別列は Phase 5b-3 で廃止予定。本戦スコアに合算する・05 §H.1 移行表）。 */
-    private Integer awayExtraScore;
+    // 延長別スコア列（home_extra_score / away_extra_score）は Phase 5b-3（Contract）で廃止した。
+    // 延長得点は本戦スコア（homeScore / awayScore）へ合算済みであり、延長別列は不要
+    // （05 §H.1 移行表・sports/01_soccer.md §4.1）。勝敗判定・順位は本戦スコアで完結する。
 
     /** PK 戦ホーム得点（matches 正本の派生スナップショット・05 §H.2.3）。 */
     private Integer homePenaltyScore;
@@ -135,13 +133,10 @@ public class TournamentFixtureEntity extends BaseEntity {
      * {@code batchUpdateScores} に限る（クラス Javadoc 参照）。冪等（全列上書き・置換）。</p>
      */
     public void updateScore(Integer homeScore, Integer awayScore,
-                            Integer homeExtraScore, Integer awayExtraScore,
                             Integer homePenaltyScore, Integer awayPenaltyScore,
                             Long winnerParticipantId, FixtureResult result, String notes) {
         this.homeScore = homeScore;
         this.awayScore = awayScore;
-        this.homeExtraScore = homeExtraScore;
-        this.awayExtraScore = awayExtraScore;
         this.homePenaltyScore = homePenaltyScore;
         this.awayPenaltyScore = awayPenaltyScore;
         this.winnerParticipantId = winnerParticipantId;

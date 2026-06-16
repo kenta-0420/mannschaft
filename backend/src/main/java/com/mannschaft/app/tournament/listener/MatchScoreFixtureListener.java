@@ -138,16 +138,14 @@ public class MatchScoreFixtureListener {
         }
 
         // 既存 updateScore を再利用（determineResult / winner 判定 / status=COMPLETED 自動化 / StandingsRecalc 発火）。
-        // 延長はイベントで本戦合算済みゆえ extra は null（05 §H.1 移行表・sports/01_soccer.md §4.1）。
-        // PK は分離値をそのまま渡す。participant⇔side は home participant=HOME 固定（05 §H.1.2）。
-        // version は null を渡す（F08.7 Wave3a 楽観ロック実効化）。本リスナーは試合記録ドメインからの
-        // システム内部同期であり、UI 上の並行編集者ではないため client 版突合の対象外。version=null は
-        // updateScore 側で「版チェックなし＝従来挙動」として扱われる。
+        // 延長得点はイベントで本戦スコアへ合算済み（延長別列は Phase 5b-3 で廃止・05 §H.1 移行表・
+        // sports/01_soccer.md §4.1）。PK は分離値をそのまま渡す。participant⇔side は home participant=HOME
+        // 固定（05 §H.1.2）。version は null を渡す（F08.7 Wave3a 楽観ロック実効化）。本リスナーは試合記録
+        // ドメインからのシステム内部同期であり、UI 上の並行編集者ではないため client 版突合の対象外。
+        // version=null は updateScore 側で「版チェックなし＝従来挙動」として扱われる。
         ScoreUpdateRequest scoreReq = new ScoreUpdateRequest(
                 event.getHomeScore(),
                 event.getAwayScore(),
-                null,
-                null,
                 event.getHomePenaltyScore(),
                 event.getAwayPenaltyScore(),
                 null,
