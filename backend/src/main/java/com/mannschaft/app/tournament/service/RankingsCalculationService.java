@@ -52,6 +52,14 @@ import java.util.stream.Collectors;
 
 /**
  * 個人ランキングの自動計算サービス。
+ *
+ * <p><b>集計源泉は fixture 配下の選手スタッツ（{@code tournament_fixture_player_stat}・05 §H.2.2）</b>:
+ * 本サービスは {@link TournamentFixturePlayerStatEntity}（fixture×user×statKey の EAV）を集計して
+ * 得点王等を算出する。これらは fixture（{@link TournamentFixtureEntity}・matches 正本の派生
+ * スナップショット側ドメイン）に属する選手スタッツであり、matches/match_events へクロスドメイン JOIN
+ * せず tournament 自ドメイン内で集計が完結するよう設計されている（CLAUDE.md 原則 1・
+ * {@code CrossDomainEntityImportArchTest}）。基本スタッツ（得点/アシスト）の {@code match_events} 由来への
+ * 統合は Phase 5（05 §H.2.2 / H.3）の後続フェーズ予定であり、本フェーズ（5b-1）では現行集計を変えない。</p>
  */
 @Slf4j
 @Service
