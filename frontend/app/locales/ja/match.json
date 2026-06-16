@@ -642,6 +642,28 @@
           "load_failed": "採点内訳の読み込みに失敗しました",
           "save_failed": "採点内訳の保存に失敗しました"
         }
+      },
+      "ranking": {
+        "switch_to_ranking": "多人数順位制で入力",
+        "intro": "出場者を追加して各自の合計点を入力すると、順位はサーバーが合計点の高い順に自動算出します。",
+        "mode_label": "多人数順位制",
+        "switch_to_direct": "合計点の直接入力へ",
+        "canonical_notice": "出場者エントリが入力されているため、多人数順位制が記録の正本です。",
+        "clear_to_direct": "エントリをクリアして直接入力へ戻す",
+        "standings": "順位（サーバー算出）",
+        "competitor_label": "出場者名",
+        "competitor_placeholder": "例：山田 花子",
+        "total_label": "合計点",
+        "add_entry": "出場者を追加",
+        "remove_entry": "この出場者を削除",
+        "complete": "順位を確定",
+        "complete_hint": "出場者を2人以上追加し、各自の名前と合計点を入力してください",
+        "user_fallback": "選手#{id}",
+        "team_fallback": "チーム#{id}",
+        "error": {
+          "load_failed": "出場者エントリの読み込みに失敗しました",
+          "save_failed": "出場者エントリの保存に失敗しました"
+        }
       }
     }
   }

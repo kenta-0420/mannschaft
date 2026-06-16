@@ -642,6 +642,28 @@
           "load_failed": "加载评分明细失败",
           "save_failed": "保存评分明细失败"
         }
+      },
+      "ranking": {
+        "switch_to_ranking": "以多人排名制输入",
+        "intro": "添加参赛者并输入各自的总分后，服务器会按总分从高到低自动计算名次。",
+        "mode_label": "多人排名制",
+        "switch_to_direct": "切换为直接输入总分",
+        "canonical_notice": "已存在参赛者条目，因此多人排名制为记录正本。",
+        "clear_to_direct": "清除条目并返回直接输入",
+        "standings": "名次（服务器计算）",
+        "competitor_label": "参赛者姓名",
+        "competitor_placeholder": "例如：山田花子",
+        "total_label": "总分",
+        "add_entry": "添加参赛者",
+        "remove_entry": "删除该参赛者",
+        "complete": "确定名次",
+        "complete_hint": "请添加至少两名参赛者，并输入各自的姓名和总分",
+        "user_fallback": "选手#{id}",
+        "team_fallback": "队伍#{id}",
+        "error": {
+          "load_failed": "加载参赛者条目失败",
+          "save_failed": "保存参赛者条目失败"
+        }
       }
     }
   }

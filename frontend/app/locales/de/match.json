@@ -642,6 +642,28 @@
           "load_failed": "Die Wertungsaufschlüsselung konnte nicht geladen werden",
           "save_failed": "Die Wertungsaufschlüsselung konnte nicht gespeichert werden"
         }
+      },
+      "ranking": {
+        "switch_to_ranking": "Mehrteilnehmer-Rangliste eingeben",
+        "intro": "Fuege Teilnehmer hinzu und gib jeweils die Gesamtpunktzahl ein; der Server ermittelt die Rangfolge automatisch nach absteigender Gesamtpunktzahl.",
+        "mode_label": "Mehrteilnehmer-Rangliste",
+        "switch_to_direct": "Zur direkten Gesamteingabe wechseln",
+        "canonical_notice": "Es liegen Teilnehmereintraege vor, daher ist die Mehrteilnehmer-Rangliste massgeblich.",
+        "clear_to_direct": "Eintraege loeschen und zur direkten Eingabe zurueckkehren",
+        "standings": "Rangliste (vom Server berechnet)",
+        "competitor_label": "Name des Teilnehmers",
+        "competitor_placeholder": "z. B. Hanako Yamada",
+        "total_label": "Gesamtpunktzahl",
+        "add_entry": "Teilnehmer hinzufuegen",
+        "remove_entry": "Diesen Teilnehmer entfernen",
+        "complete": "Rangliste bestaetigen",
+        "complete_hint": "Fuege mindestens zwei Teilnehmer hinzu und gib jeweils Name und Gesamtpunktzahl ein",
+        "user_fallback": "Spieler #{id}",
+        "team_fallback": "Team #{id}",
+        "error": {
+          "load_failed": "Teilnehmereintraege konnten nicht geladen werden",
+          "save_failed": "Teilnehmereintraege konnten nicht gespeichert werden"
+        }
       }
     }
   }
