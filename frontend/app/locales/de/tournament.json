@@ -1,4 +1,18 @@
 {
+  "sport": {
+    "label": "Sportart",
+    "help": "Wähle die Sportart für dieses Turnier. Bei direkter Ergebniseingabe erstellte Spiele verwenden diese Sportart.",
+    "options": {
+      "SOCCER": "Fußball",
+      "FUTSAL": "Futsal",
+      "BASKETBALL": "Basketball",
+      "VOLLEYBALL": "Volleyball",
+      "SHOGI": "Shogi",
+      "GO": "Go",
+      "FIGURE_SKATING": "Eiskunstlauf",
+      "GYMNASTICS": "Turnen"
+    }
+  },
   "entry": {
     "title": "Meldungsverwaltung",
     "memberCount": "{count} Mitglieder",

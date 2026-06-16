@@ -1,4 +1,18 @@
 {
+  "sport": {
+    "label": "Sport",
+    "help": "Choose the sport for this tournament. Matches created via direct score entry will use this sport.",
+    "options": {
+      "SOCCER": "Soccer",
+      "FUTSAL": "Futsal",
+      "BASKETBALL": "Basketball",
+      "VOLLEYBALL": "Volleyball",
+      "SHOGI": "Shogi",
+      "GO": "Go",
+      "FIGURE_SKATING": "Figure Skating",
+      "GYMNASTICS": "Gymnastics"
+    }
+  },
   "entry": {
     "title": "Entry Management",
     "memberCount": "{count} members",

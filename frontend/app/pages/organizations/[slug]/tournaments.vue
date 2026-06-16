@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
-import type { TournamentResponse } from '~/types/tournament'
+import type { TournamentResponse, TournamentSport } from '~/types/tournament'
+import { TOURNAMENT_SPORTS } from '~/types/tournament'
 import {
   TOURNAMENT_VISIBILITY_LEVELS,
   type TournamentVisibility,
@@ -15,6 +16,14 @@ const notification = useNotification()
 const { getTournaments, createTournament } = useTournamentApi()
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgId)
 const { userTimezone } = useDatetime()
+
+/** 競技 8 種のセレクタ選択肢（生成型 TournamentSport から導出・ラベルは i18n）。 */
+const sportOptions = computed(() =>
+  TOURNAMENT_SPORTS.map((sport) => ({
+    value: sport,
+    label: t(`tournament.sport.options.${sport}`),
+  })),
+)
 
 /** 可視性 6 レベルのセレクタ選択肢（ラベル＋説明は i18n）。 */
 const visibilityOptions = computed(() =>
@@ -33,6 +42,7 @@ const saving = ref(false)
 const form = ref({
   title: '',
   sportCategory: '',
+  sport: 'SOCCER' as TournamentSport,
   format: 'LEAGUE' as 'LEAGUE' | 'KNOCKOUT' | 'GROUP_KNOCKOUT',
   seasonYear: dayjs().tz(userTimezone.value).year(),
   isPublic: false,
@@ -87,6 +97,7 @@ function openCreateDialog() {
   form.value = {
     title: '',
     sportCategory: '',
+    sport: 'SOCCER',
     format: 'LEAGUE',
     seasonYear: dayjs().tz(userTimezone.value).year(),
     isPublic: false,
@@ -106,6 +117,7 @@ async function handleCreate() {
     await createTournament(orgId, {
       title: form.value.title,
       sportCategory: form.value.sportCategory,
+      sport: form.value.sport,
       format: form.value.format,
       seasonYear: form.value.seasonYear,
       isPublic: form.value.isPublic,
@@ -177,6 +189,18 @@ onMounted(() => {
             <label class="text-sm font-medium">年度 <span class="text-red-500">*</span></label>
             <InputNumber v-model="form.seasonYear" :min="2000" :max="2100" class="w-full" />
           </div>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-sm font-medium">{{ $t('tournament.sport.label') }}</label>
+          <Select
+            v-model="form.sport"
+            :options="sportOptions"
+            option-label="label"
+            option-value="value"
+            class="w-full"
+            data-testid="create-sport-select"
+          />
+          <p class="text-xs text-surface-500">{{ $t('tournament.sport.help') }}</p>
         </div>
         <div class="flex flex-col gap-1">
           <label class="text-sm font-medium">形式 <span class="text-red-500">*</span></label>

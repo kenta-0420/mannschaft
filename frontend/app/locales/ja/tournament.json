@@ -1,4 +1,18 @@
 {
+  "sport": {
+    "label": "競技",
+    "help": "この大会の競技を選びます。直接スコア入力時の試合がこの競技で作成されます。",
+    "options": {
+      "SOCCER": "サッカー",
+      "FUTSAL": "フットサル",
+      "BASKETBALL": "バスケットボール",
+      "VOLLEYBALL": "バレーボール",
+      "SHOGI": "将棋",
+      "GO": "囲碁",
+      "FIGURE_SKATING": "フィギュアスケート",
+      "GYMNASTICS": "体操"
+    }
+  },
   "entry": {
     "title": "エントリー管理",
     "memberCount": "{count}名",
