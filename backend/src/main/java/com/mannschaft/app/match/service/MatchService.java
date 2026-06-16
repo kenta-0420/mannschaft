@@ -230,6 +230,106 @@ public class MatchService {
     }
 
     // ─────────────────────────────────────────────
+    // 大会スコアの match 正本化（系統B・F08.7 直接入力・Phase5b-2'・05 §H.1〜H.2.3）
+    // ─────────────────────────────────────────────
+
+    /**
+     * 大会の対戦カード（fixture）に対する直接スコア入力を <b>match レコードへ正本化</b>する
+     * （F08.7 系統B＝{@code FixtureService.updateScore}/{@code batchUpdateScores} の付け替え先・Phase5b-2'）。
+     *
+     * <p><b>目的（05 §H.1〜H.2.3）</b>: 全大会スコアが matches を正本として持つようにする。tournament 側の
+     * fixture スコア列は派生スナップショット（05 §H.2.3）であり、その正本がここで作られる match レコードである。
+     * 既存があれば更新し、無ければ作成する（{@code tournament_fixture_id} による冪等・二重起票防止・04 §G.1a-2）。</p>
+     *
+     * <h3>解決ルール（H.1.2 participant⇔side 固定）</h3>
+     * <ul>
+     *   <li><b>org</b>: 大会の {@code organization_id}（呼び出し元 tournament が解決して渡す）。</li>
+     *   <li><b>team</b>: fixture の <b>home participant の team_id</b>（home participant = HOME 固定・H.1.2）。
+     *       <b>相手</b>は away participant の team_id（無ければ手入力名で代替・呼び出し元が解決して渡す）。</li>
+     *   <li><b>sport</b>: 大会の sport（tournament に sport 列が無い現状は呼び出し元が SOCCER 等の既定を渡す）。</li>
+     *   <li><b>kind</b>: {@code TOURNAMENT}。</li>
+     * </ul>
+     *
+     * <p><b>スコア</b>: 本戦（{@code homeScore}/{@code awayScore}・延長合算済み）と PK 戦
+     * （{@code homePenaltyScore}/{@code awayPenaltyScore}）を分離して保持する（正本・sports/01 §4.1）。
+     * status は {@code COMPLETED} を確定する。</p>
+     *
+     * <p><b>認可</b>: 本メソッドは tournament ドメインのスコア入力 EP（{@code FixtureController}・
+     * {@code @tournamentScoreGuard.canEnterScore*}）で既に認可済みの<b>システム内部正本化</b>であり、
+     * UI 操作者の {@code assertCanEditMeta} は適用しない（記録モード/操作者の概念が tournament 側にあるため）。
+     * テナント整合（org/team はサーバー導出値）と二重起票防止は本メソッドが担保する。</p>
+     *
+     * <p><b>COMPLETED バリデーション非適用</b>: {@link #changeStatus} の {@code assertCompletable}
+     * （CONTINUOUS_TIME の {@code duration_minutes} 必須等）は<b>適用しない</b>。大会の直接スコア入力は
+     * 出場記録（appearances）を伴わない「結果のみ」入力であり、duration を要求すると既存 UX が壊れるため
+     * （症状を隠す回避ではなく、tournament 直接入力という別経路の正しい責務分界）。</p>
+     *
+     * <p><b>{@code MatchCompletedEvent} は発火しない</b>: 系統B（直接入力）は呼び出し元
+     * {@code FixtureService} が<b>同期的に</b> fixture スナップショット列を書き、StandingsRecalc も同期発火する
+     * （FE がスコア保存直後に当該節を再取得して version/スコアを反映するため、AFTER_COMMIT 非同期では UX が壊れる）。
+     * ここで {@code MatchCompletedEvent} を発火すると {@code MatchScoreFixtureListener}（AFTER_COMMIT）が
+     * <b>二重に</b> fixture を書き StandingsRecalc を二重発火するため、本経路では発火させない
+     * （fixture 同期はリスナー一元ではなく系統B 内に閉じる・05 §H.2.3 派生キャッシュの整合）。
+     * 入口①（match ドメイン UI からの {@link #changeStatus} 経由）は従来どおりイベント駆動で fixture 同期する。</p>
+     *
+     * <p><b>ドメイン境界</b>: 本メソッドは match ドメイン内で完結し、tournament ドメインを参照しない（原則 5・H.5）。
+     * 呼び出し元 tournament は match エンティティを直接 import せず本 Service メソッド経由で正本を作る（原則 1・D-1）。
+     * 戻り値は match の {@code id}（UUID）のみで、エンティティを越境させない。</p>
+     *
+     * @param command 大会スコア正本化コマンド（org/team/相手/sport/fixtureId/スコアはサーバー導出値）
+     * @return 作成/更新された match の ID（tournament 側が fixture とのリンク確認等に用いうる）
+     */
+    @Transactional
+    public UUID recordTournamentScore(RecordTournamentScoreCommand command) {
+        if (command.getOrganizationId() == null || command.getTeamId() == null
+                || command.getTournamentFixtureId() == null) {
+            // 正本化に必要な帰属（org/team/fixture）が揃わない場合は呼び出し元の責務（BYE 等）。
+            throw new BusinessException(MatchErrorCode.MATCH_024);
+        }
+
+        // 二重起票防止・冪等: 同一 fixture の既存 match を解決する（無ければ作成）。
+        MatchEntity match = matchRepository
+                .findFirstByOrganizationIdAndTeamIdAndTournamentFixtureIdOrderByKickoffAtDescIdDesc(
+                        command.getOrganizationId(), command.getTeamId(), command.getTournamentFixtureId())
+                .orElse(null);
+
+        Sport sport = command.getSport() != null ? command.getSport() : Sport.SOCCER;
+        if (match == null) {
+            match = MatchEntity.builder()
+                    .organizationId(command.getOrganizationId())
+                    .teamId(command.getTeamId())
+                    .sport(sport)
+                    .stateModel(sport.stateModel())
+                    .kind(MatchKind.TOURNAMENT)
+                    .tournamentFixtureId(command.getTournamentFixtureId())
+                    .homeAway(HomeAway.HOME)
+                    .opponentTeamId(command.getOpponentTeamId())
+                    .opponentName(command.getOpponentName())
+                    // 大会の直接スコア入力は記録係を持たない共同記録扱い（hasScorekeeper=false）。
+                    .hasScorekeeper(false)
+                    // created_by は大会スコア入力の主体（呼び出し元が解決した操作者・監査整合）。
+                    .createdBy(command.getActorUserId() != null ? command.getActorUserId() : command.getTeamId())
+                    .status(MatchStatus.SCHEDULED)
+                    .build();
+        }
+
+        // スコアを正本としてセットする（本戦＋PK 戦・延長は本戦合算済み・01 §B.1）。
+        match.setHomeScore(command.getHomeScore());
+        match.setAwayScore(command.getAwayScore());
+        match.setHomePenaltyScore(command.getHomePenaltyScore());
+        match.setAwayPenaltyScore(command.getAwayPenaltyScore());
+        // 結果のみ入力ゆえ status は COMPLETED を確定する（assertCompletable は適用しない・上記 Javadoc 参照）。
+        match.setStatus(MatchStatus.COMPLETED);
+
+        MatchEntity saved = matchRepository.save(match);
+        log.info("大会スコア match 正本化: matchId={}, fixtureId={}, org={}, team={}, home={}, away={}",
+                saved.getId(), command.getTournamentFixtureId(), command.getOrganizationId(),
+                command.getTeamId(), command.getHomeScore(), command.getAwayScore());
+        // MatchCompletedEvent は発火しない（系統B は呼び出し元が fixture を同期書込・二重発火回避・上記 Javadoc）。
+        return saved.getId();
+    }
+
+    // ─────────────────────────────────────────────
     // メタ情報更新（日時・会場・相手・試合長など・03 §C.2）
     // ─────────────────────────────────────────────
 
@@ -538,6 +638,29 @@ public class MatchService {
         private final Integer durationMinutes;
         private final String periodFormat;
         private final String notes;
+    }
+
+    /**
+     * 大会スコア正本化コマンド（系統B・F08.7 直接入力・Phase5b-2'・{@link #recordTournamentScore}）。
+     *
+     * <p>{@code organizationId}/{@code teamId}/{@code opponentTeamId}/{@code sport} は呼び出し元 tournament が
+     * fixture・participant・大会から<b>サーバー導出</b>した値であること（クライアント詐称を信頼しない・H.1.2）。
+     * {@code teamId} は home participant の team_id（HOME 固定）。スコアは本戦合算済み＋PK 分離値（01 §B.1）。</p>
+     */
+    @Getter
+    @Builder
+    public static class RecordTournamentScoreCommand {
+        private final Long organizationId;
+        private final Long teamId;
+        private final Long opponentTeamId;
+        private final String opponentName;
+        private final Sport sport;
+        private final Long tournamentFixtureId;
+        private final Integer homeScore;
+        private final Integer awayScore;
+        private final Integer homePenaltyScore;
+        private final Integer awayPenaltyScore;
+        private final Long actorUserId;
     }
 
     /**
