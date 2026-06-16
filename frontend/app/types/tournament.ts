@@ -1,5 +1,32 @@
+import type { components } from '~/types/generated'
+
 export type TournamentFormat = 'LEAGUE' | 'KNOCKOUT' | 'GROUP_KNOCKOUT'
 export type TournamentStatus = 'DRAFT' | 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'ARCHIVED'
+
+/**
+ * 大会の競技種別（F08.10 多競技対応・🟡-1b）。
+ *
+ * 生成型 `CreateTournamentRequest.sport`（openapi-typescript 自動生成・BE `@Pattern` の 8 値）
+ * から `NonNullable` で導出する。手書き列挙はせず生成型を正本とし、BE が競技を増減した場合は
+ * openapi 再生成で自動追従する（`~/types/match` の `Sport` と同じ導出パターン）。
+ */
+export type TournamentSport = NonNullable<components['schemas']['CreateTournamentRequest']['sport']>
+
+/**
+ * 大会作成/編集フォームの競技選択肢（既定先頭 SOCCER）。
+ * ラベルは i18n（`tournament.sport.options.*`）で引く。生成型 `TournamentSport` の
+ * 全候補を網羅した配列で、要素が増減すると型エラーで検知できるよう `TournamentSport[]` で固定。
+ */
+export const TOURNAMENT_SPORTS: readonly TournamentSport[] = [
+  'SOCCER',
+  'FUTSAL',
+  'BASKETBALL',
+  'VOLLEYBALL',
+  'SHOGI',
+  'GO',
+  'FIGURE_SKATING',
+  'GYMNASTICS',
+] as const
 
 // ===== TournamentResponse ネスト化 DTO =====
 

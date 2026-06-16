@@ -597,6 +597,51 @@
       },
       "error": {
         "record_failed": "採点結果の保存に失敗しました"
+      },
+      "components": {
+        "intro": "審判別・種目別の採点内訳を入力すると、合計点は自動で算出されます。",
+        "mode_label": "採点内訳入力",
+        "switch_to_components": "採点内訳を入力",
+        "switch_to_direct": "合計点の直接入力へ",
+        "canonical_notice": "採点内訳が入力されているため、合計点はこの内訳から自動算出されます。",
+        "clear_to_direct": "内訳をクリアして直接入力へ戻す",
+        "side_label": "対象",
+        "component_type_label": "項目",
+        "apparatus_label": "種目／セグメント",
+        "apparatus_placeholder": "（任意）種目を選択",
+        "judge_label": "審判",
+        "judge_placeholder": "例：J1",
+        "points_label": "点数",
+        "points_placeholder": "例：88.43",
+        "optional": "（任意）",
+        "add_line": "内訳を追加",
+        "remove_line": "この内訳を削除",
+        "total_preview": "合計点プレビュー（確定はサーバーで算出）",
+        "complete": "採点内訳を確定",
+        "complete_hint": "内訳を1件以上入力し、各点数を入力してください",
+        "component_type": {
+          "TES": "技術点（TES）",
+          "PCS": "演技構成点（PCS）",
+          "DEDUCTION": "減点",
+          "D_SCORE": "難度点（Dスコア）",
+          "E_SCORE": "実施点（Eスコア）"
+        },
+        "apparatus": {
+          "SP": "ショートプログラム",
+          "FS": "フリースケーティング",
+          "FLOOR": "床",
+          "POMMEL_HORSE": "あん馬",
+          "RINGS": "つり輪",
+          "VAULT": "跳馬",
+          "PARALLEL_BARS": "平行棒",
+          "HORIZONTAL_BAR": "鉄棒",
+          "UNEVEN_BARS": "段違い平行棒",
+          "BALANCE_BEAM": "平均台"
+        },
+        "error": {
+          "load_failed": "採点内訳の読み込みに失敗しました",
+          "save_failed": "採点内訳の保存に失敗しました"
+        }
       }
     }
   }

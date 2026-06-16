@@ -15,7 +15,7 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: './tests/e2e/real',
   testMatch:
-    /f0810-(basketball-continuous|volleyball-sets|live-spectator-ws|shogi-turn|go-turn|position-photo|team-match-board|scored-figure-gymnastics)\.spec\.ts/,
+    /f0810-(basketball-continuous|volleyball-sets|live-spectator-ws|shogi-turn|go-turn|position-photo|team-match-board|scored-figure-gymnastics|scored-components|phase5b-canonical-match)\.spec\.ts/,
   fullyParallel: false,
   retries: 0,
   workers: 1,

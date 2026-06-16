@@ -23,6 +23,7 @@ import {
 import type { MatchSetTrackerReturn } from '~/composables/match/sport/useMatchSetTracker'
 import type { MatchTurnTrackerReturn } from '~/composables/match/sport/useMatchTurnTracker'
 import type { MatchScoreEntryReturn } from '~/composables/match/useMatchScoreEntry'
+import type { MatchScoredComponentsReturn } from '~/composables/match/useMatchScoredComponents'
 import { buildTurnResultPayload } from '~/composables/match/useMatchTurnApi'
 import type { BoardProgressItem } from '~/components/match/MatchBoardProgress.vue'
 
@@ -77,8 +78,10 @@ const turnTracker = shallowRef<MatchTurnTrackerReturn | null>(null)
  * 採点制はタイマー・セット・ターントラッカーを持たず、合計点入力シートを使う（07_scored.md §3）。
  */
 const isScored = computed(() => sportModule.value !== null && isScoredModule(sportModule.value!))
-/** 採点入力トラッカー（SCORED 競技時のみ非 null）。 */
+/** 採点入力トラッカー（合計直接入力・SCORED 競技時のみ非 null）。 */
 const scoreEntry = shallowRef<MatchScoreEntryReturn | null>(null)
+/** 採点内訳トラッカー（審判別/種目別・§4B・SCORED 競技時のみ非 null）。 */
+const scoredComponents = shallowRef<MatchScoredComponentsReturn | null>(null)
 
 /**
  * 団体戦の子ボード進捗（6-④c・GET /boards 由来）。
@@ -229,7 +232,14 @@ onMounted(async () => {
   // 採点制: 採点入力トラッカーを初期化（SCORED 競技時のみ・07_scored.md §9）。
   // 実際の競技（フィギュア/体操）を渡して表示ラベルを出し分ける（モジュールは共有のため）。
   if (mod !== null && isScoredModule(mod)) {
-    scoreEntry.value = mod.createScoreEntry((sport ?? 'FIGURE_SKATING') as typeof mod.sport)
+    const scoredSport = (sport ?? 'FIGURE_SKATING') as typeof mod.sport
+    scoreEntry.value = mod.createScoreEntry(scoredSport)
+    // 審判別/種目別採点内訳トラッカー（§4B）。既存内訳を読み込み、あれば内訳が正本になる（stale 整合）。
+    const componentsTracker = mod.createComponentEntry(scoredSport)
+    scoredComponents.value = componentsTracker
+    if (orgId.value !== null) {
+      await componentsTracker.load(orgId.value, matchId).catch(() => undefined)
+    }
   }
 
   sessionScope = effectScope()
@@ -341,6 +351,34 @@ async function completeScoredResult(): Promise<void> {
   }
   if (res === null) {
     // canSubmit を満たさない（合計点未入力）。status 遷移はしない。
+    return
+  }
+  try {
+    await matchApi.changeStatus(orgId.value, teamId.value, matchId, { status: 'COMPLETED' })
+    matchStatus.value = 'COMPLETED'
+    session.value?.setMatchStatus('COMPLETED')
+  } catch {
+    notification.warn(t('match.live.error.complete_failed'))
+  }
+}
+
+/**
+ * 採点競技（フィギュア/体操）の審判別/種目別採点内訳を確定する（07_scored.md §4B 配線）。
+ *
+ * 直接入力（completeScoredResult）ではなく、内訳の全置換 PUT /scored-components を呼ぶ。
+ * BE が internal の内訳を HOME/AWAY ごとに符号付き集計して home/away_score を再導出し
+ * （二層正本・§4B.2）、大小から勝敗（W/D/L）を導出する。その後 changeStatus(COMPLETED) で
+ * 順位連携（MatchCompletedEvent）を発火させる。
+ */
+async function completeScoredComponents(): Promise<void> {
+  const tracker = scoredComponents.value
+  if (!tracker || orgId.value === null || teamId.value === null) return
+  if (matchStatus.value === 'COMPLETED') return
+  if (!tracker.canSubmit.value) return
+  try {
+    await tracker.save(orgId.value, matchId)
+  } catch {
+    // save 内でトースト済み。内訳保存に失敗したら status 遷移はしない（根治原則）。
     return
   }
   try {
@@ -673,13 +711,15 @@ function back(): void {
       -->
       <component
         :is="sportModule.eventSheet"
-        v-if="isScored && scoreEntry && sportModule"
+        v-if="isScored && scoreEntry && scoredComponents && sportModule"
         :tracker="scoreEntry!"
+        :component-tracker="scoredComponents!"
         :own-team-side="ownTeamSide"
         :opponent-name="opponentName"
         :can-record="canRecord"
         class="mb-4"
         @complete-match="completeScoredResult()"
+        @complete-components="completeScoredComponents()"
       />
 
       <!-- スタメン設定シート（記録権限がある場合のみマウント・ターン制/採点制は不要） -->

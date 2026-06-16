@@ -1,4 +1,18 @@
 {
+  "sport": {
+    "label": "종목",
+    "help": "이 대회의 종목을 선택합니다. 직접 점수 입력 시 생성되는 경기가 이 종목으로 만들어집니다.",
+    "options": {
+      "SOCCER": "축구",
+      "FUTSAL": "풋살",
+      "BASKETBALL": "농구",
+      "VOLLEYBALL": "배구",
+      "SHOGI": "쇼기",
+      "GO": "바둑",
+      "FIGURE_SKATING": "피겨 스케이팅",
+      "GYMNASTICS": "체조"
+    }
+  },
   "entry": {
     "title": "엔트리 관리",
     "memberCount": "{count}명",
