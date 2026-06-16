@@ -30,6 +30,7 @@ import type {
 import type { MatchSetTrackerReturn } from '~/composables/match/sport/useMatchSetTracker'
 import type { MatchTurnTrackerReturn } from '~/composables/match/sport/useMatchTurnTracker'
 import type { MatchScoreEntryReturn } from '~/composables/match/useMatchScoreEntry'
+import type { MatchScoredComponentsReturn } from '~/composables/match/useMatchScoredComponents'
 
 /**
  * 競技別タイマー composable の共通シェイプ（核 useMatchTimerCore の返り値の構造的上位型）。
@@ -108,20 +109,26 @@ export interface SportLiveModuleTurnBased {
  * 採点制（SCORED）競技モジュール（フィギュアスケート/体操）。
  * タイマー・セットトラッカー・ターントラッカーを持たず、採点入力UIを提供する。
  * MVP は合計点のみ（整数スケール×1000）を `home_score`/`away_score` に格納する（§4.1）。
- * 審判別内訳・多人数順位制は後段 Phase（07_scored.md §4B/§5B）。
+ * 審判別内訳（match_scored_components・§4B）は後段 Phase として追加済み（#1566 BE・createComponentEntry）。
+ * 多人数順位制（match_score_entries・§5B）は別波（BE 別経路）。
  *
- * 【設計: 07_scored.md §9 FE / sports/07_scored.md §12.1】
+ * 【設計: 07_scored.md §9 FE / §4B / §8 / §12.1】
  * フィギュアスケートと体操は同一モジュール（scoredModule）を共有する。
  */
 export interface SportLiveModuleScored {
   readonly sport: AllSport
   readonly stateModel: 'SCORED'
   /**
-   * 採点入力トラッカー composable のファクトリ（合計点管理・MVP）。
+   * 採点入力トラッカー composable のファクトリ（合計点直接入力・MVP）。
    * フィギュア/体操は同一モジュールを共有するため、実際の競技（表示ラベル用）を引数で受ける。
    */
   createScoreEntry(sport?: AllSport): MatchScoreEntryReturn
-  /** 採点入力シートの遅延コンポーネント（defineAsyncComponent 済み）。 */
+  /**
+   * 審判別/種目別採点内訳トラッカー composable のファクトリ（内訳入力・§4B）。
+   * 内訳→合計再導出（二層正本）。フィギュア/体操の競技を引数で受け、カタログ・表示ラベルを出し分ける。
+   */
+  createComponentEntry(sport?: AllSport): MatchScoredComponentsReturn
+  /** 採点入力シートの遅延コンポーネント（合計直接入力＋内訳入力モード切替・defineAsyncComponent 済み）。 */
   readonly eventSheet: Component
 }
 

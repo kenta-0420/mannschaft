@@ -224,6 +224,28 @@ describe('sportModuleRegistry（動的 import 選択）', () => {
     })
     scope.stop()
   })
+
+  it('MOD-011c: SCORED モジュールは createComponentEntry（審判別内訳・§4B）を競技別カタログで返す', async () => {
+    const fig = await resolveSportModule('FIGURE_SKATING')
+    const gym = await resolveSportModule('GYMNASTICS')
+    expect(fig && isScoredModule(fig)).toBe(true)
+    expect(gym && isScoredModule(gym)).toBe(true)
+    const scope = effectScope()
+    scope.run(() => {
+      if (!fig || !isScoredModule(fig)) return
+      if (!gym || !isScoredModule(gym)) return
+      const figComp = fig.createComponentEntry('FIGURE_SKATING')
+      // フィギュアのカタログ: 項目=TES/PCS/DEDUCTION・セグメント=SP/FS
+      expect(figComp.allowedComponentTypes.value).toEqual(['TES', 'PCS', 'DEDUCTION'])
+      expect(figComp.allowedApparatuses.value).toEqual(['SP', 'FS'])
+      expect(figComp.drafts.value).toEqual([])
+      const gymComp = gym.createComponentEntry('GYMNASTICS')
+      // 体操のカタログ: 項目=D_SCORE/E_SCORE
+      expect(gymComp.allowedComponentTypes.value).toEqual(['D_SCORE', 'E_SCORE'])
+      expect(gymComp.isGymnastics.value).toBe(true)
+    })
+    scope.stop()
+  })
 })
 
 describe('sportEventCatalog（カタログ駆動）', () => {
