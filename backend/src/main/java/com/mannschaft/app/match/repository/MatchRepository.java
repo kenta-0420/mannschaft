@@ -139,6 +139,31 @@ public interface MatchRepository extends AbstractTenantAwareRepository<MatchEnti
             Long organizationId, Long teamId, Long tournamentFixtureId);
 
     /**
+     * 大会の対戦カード（fixture）から既存試合を <b>team 帰属に依存せず</b>解決する（系統B 正本化の冪等キー・05 §H.2.3）。
+     *
+     * <p>当該テナント（organization_id）かつ指定の {@code tournament_fixture_id} に紐づく試合を、
+     * 主体チーム（team_id）が home/away どちらであっても引き当てる。1 fixture = 最大 1 canonical match の運用前提を
+     * <b>team 帰属に依存しない冪等キー</b>で担保するためのメソッドである。</p>
+     *
+     * <p><b>なぜ team_id を冪等キーから外すか（幽霊重複の根治）</b>: 入口①（match ドメイン UI）では、
+     * fixture に対して <b>away participant の team が主体（{@code team_id}=awayTeamId）</b>の match が作られ得る。
+     * 一方、系統B（直接スコア入力）の正本化は常に home participant の team_id を用いる。両者が同一 fixture に対し
+     * team_id 違いで lookup すると、入口①で作られた away 帰属の既存 match を引けず、home 帰属の skeletal match を
+     * <b>新規作成</b>してしまう（1 fixture に match 2 件の幽霊重複）。冪等キーを {@code (org, fixtureId)} に堅牢化し、
+     * team 帰属によらず同一 canonical match へ収束させて根治する。</p>
+     *
+     * <p><b>テナント絞り込み（IDOR）</b>: orgId をサーバー導出値で強制し、帰属外の fixture 参照を結果に含めない。
+     * 論理削除は Entity の {@code @SQLRestriction("deleted_at IS NULL")} で常に除外される。データ整合の保険として
+     * 最新（kickoff_at 降順 → id 降順）を先頭に返し {@code findFirst...} で 1 件を確定する。</p>
+     *
+     * @param organizationId      テナント organization_id（サーバー導出）
+     * @param tournamentFixtureId 大会の対戦カード ID（tournament ドメインへの BIGINT ID 参照）
+     * @return 既存 canonical match（無ければ {@link java.util.Optional#empty()}）
+     */
+    java.util.Optional<MatchEntity> findFirstByOrganizationIdAndTournamentFixtureIdOrderByKickoffAtDescIdDesc(
+            Long organizationId, Long tournamentFixtureId);
+
+    /**
      * チーム試合一覧（コレクション GET 用・Phase2C）。
      *
      * <p>当該テナント（organization_id）かつ当該チームが主体（team_id）の試合をページングで取得する。

@@ -287,10 +287,14 @@ public class MatchService {
             throw new BusinessException(MatchErrorCode.MATCH_024);
         }
 
-        // 二重起票防止・冪等: 同一 fixture の既存 match を解決する（無ければ作成）。
+        // 二重起票防止・冪等（幽霊重複の根治・05 §H.2.3）: 同一 fixture の既存 canonical match を解決する（無ければ作成）。
+        // 冪等キーは team 帰属に依存しない (org, fixtureId) を用いる。team_id でも絞ると、入口①（match UI）で
+        // away participant の team が主体（team_id=awayTeamId）の match が作られた fixture に対し、系統B が常に
+        // home team_id で lookup して既存 away 帰属 match を引けず、home 帰属の skeletal match を新規作成してしまい
+        // 1 fixture に match 2 件の幽霊重複が生じる。fixtureId 基準で「あれば更新・無ければ作成」に堅牢化する。
         MatchEntity match = matchRepository
-                .findFirstByOrganizationIdAndTeamIdAndTournamentFixtureIdOrderByKickoffAtDescIdDesc(
-                        command.getOrganizationId(), command.getTeamId(), command.getTournamentFixtureId())
+                .findFirstByOrganizationIdAndTournamentFixtureIdOrderByKickoffAtDescIdDesc(
+                        command.getOrganizationId(), command.getTournamentFixtureId())
                 .orElse(null);
 
         Sport sport = command.getSport() != null ? command.getSport() : Sport.SOCCER;
@@ -314,6 +318,8 @@ public class MatchService {
         }
 
         // スコアを正本としてセットする（本戦＋PK 戦・延長は本戦合算済み・01 §B.1）。
+        // 既存 match を引いた場合（入口①で先に作られた match 等）は team_id/home_away/opponent（side 帰属・§H.1.2）を
+        // 維持し、系統B は「スコア更新に徹する」（home participant=HOME 固定ゆえ home/away スコア割当は team 帰属に依らず不変）。
         match.setHomeScore(command.getHomeScore());
         match.setAwayScore(command.getAwayScore());
         match.setHomePenaltyScore(command.getHomePenaltyScore());

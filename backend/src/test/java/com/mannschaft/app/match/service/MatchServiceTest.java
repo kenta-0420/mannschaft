@@ -811,8 +811,8 @@ class MatchServiceTest {
         @DisplayName("既存 match 無し → 新規作成（kind=TOURNAMENT・home/away_score＋PK 反映・status=COMPLETED）")
         void createsNewMatchWhenAbsent() {
             when(matchRepository
-                    .findFirstByOrganizationIdAndTeamIdAndTournamentFixtureIdOrderByKickoffAtDescIdDesc(
-                            ORG, HOME_TEAM, FIXTURE_ID))
+                    .findFirstByOrganizationIdAndTournamentFixtureIdOrderByKickoffAtDescIdDesc(
+                            ORG, FIXTURE_ID))
                     .thenReturn(Optional.empty());
             UUID newId = UUID.randomUUID();
             // save 後に id が割り当てられる体（UuidV7Entity は永続化時に id 生成）。
@@ -852,8 +852,8 @@ class MatchServiceTest {
                     .homeScore(1).awayScore(0).status(MatchStatus.COMPLETED)
                     .hasScorekeeper(false).createdBy(ACTOR).build();
             when(matchRepository
-                    .findFirstByOrganizationIdAndTeamIdAndTournamentFixtureIdOrderByKickoffAtDescIdDesc(
-                            ORG, HOME_TEAM, FIXTURE_ID))
+                    .findFirstByOrganizationIdAndTournamentFixtureIdOrderByKickoffAtDescIdDesc(
+                            ORG, FIXTURE_ID))
                     .thenReturn(Optional.of(existing));
             when(matchRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -874,6 +874,55 @@ class MatchServiceTest {
         }
 
         @Test
+        @DisplayName("幽霊重複根治: 入口①で away team 帰属の match が既存でも fixtureId 基準で引き当て、新規作成せず更新（team帰属不変）")
+        void resolvesAwayTeamAttributedExistingMatchWithoutDuplicate() {
+            // 入口①（match UI）で、当該 fixture に対し away participant の team が主体（team_id=AWAY_TEAM）の
+            // match が先に作られている状況を再現する。系統B（home team_id で正本化）が team_id 違いで lookup すると
+            // この既存 match を引けず home 帰属 skeletal match を新規作成し、1 fixture に match 2 件の幽霊重複となる。
+            // 冪等キーを (org, fixtureId) に堅牢化したことで、team 帰属によらず既存 match を引き当て更新に徹する。
+            MatchEntity existingAwayAttributed = MatchEntity.builder()
+                    .organizationId(ORG).teamId(AWAY_TEAM).sport(Sport.SOCCER)
+                    .stateModel(StateModel.CONTINUOUS_TIME).kind(MatchKind.TOURNAMENT)
+                    .tournamentFixtureId(FIXTURE_ID)
+                    .homeAway(com.mannschaft.app.match.domain.HomeAway.AWAY)
+                    .opponentTeamId(HOME_TEAM).opponentName("相手FC")
+                    .homeScore(0).awayScore(0).status(MatchStatus.SCHEDULED)
+                    .hasScorekeeper(false).createdBy(ACTOR).build();
+            UUID existingId = UUID.randomUUID();
+            org.springframework.test.util.ReflectionTestUtils.setField(existingAwayAttributed, "id", existingId);
+
+            // team 帰属に依存しない fixtureId 基準の lookup で既存 match を引き当てる。
+            when(matchRepository
+                    .findFirstByOrganizationIdAndTournamentFixtureIdOrderByKickoffAtDescIdDesc(
+                            ORG, FIXTURE_ID))
+                    .thenReturn(Optional.of(existingAwayAttributed));
+            when(matchRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            // 系統B は home participant の team_id（HOME_TEAM）でコマンドを組む（cmd は teamId=HOME_TEAM）。
+            UUID result = service.recordTournamentScore(cmd(2, 1, null, null));
+
+            ArgumentCaptor<MatchEntity> captor = ArgumentCaptor.forClass(MatchEntity.class);
+            verify(matchRepository).save(captor.capture());
+            MatchEntity saved = captor.getValue();
+            // 既存（away帰属）の同一インスタンスを更新＝新規作成していない（幽霊重複が生じない）。
+            assertThat(saved).isSameAs(existingAwayAttributed);
+            assertThat(saved.getId()).isEqualTo(existingId);
+            assertThat(result).isEqualTo(existingId);
+            // team 帰属（team_id / home_away / opponent）は維持する（§H.1.2 side 帰属不変・系統B はスコア更新に徹する）。
+            assertThat(saved.getTeamId()).isEqualTo(AWAY_TEAM);
+            assertThat(saved.getHomeAway()).isEqualTo(com.mannschaft.app.match.domain.HomeAway.AWAY);
+            assertThat(saved.getOpponentTeamId()).isEqualTo(HOME_TEAM);
+            // スコアは正本として置換され status は COMPLETED 確定（home participant=HOME 固定ゆえ割当不変）。
+            assertThat(saved.getHomeScore()).isEqualTo(2);
+            assertThat(saved.getAwayScore()).isEqualTo(1);
+            assertThat(saved.getStatus()).isEqualTo(MatchStatus.COMPLETED);
+            // team 帰属付きの旧 lookup は使わない（fixtureId 基準のみ）。
+            verify(matchRepository, never())
+                    .findFirstByOrganizationIdAndTeamIdAndTournamentFixtureIdOrderByKickoffAtDescIdDesc(
+                            any(), any(), any());
+        }
+
+        @Test
         @DisplayName("異常系: org/team/fixtureId が欠けると MATCH_024（正本化に必要な帰属不足）")
         void missingAttributionThrows() {
             assertThatThrownBy(() -> service.recordTournamentScore(
@@ -891,8 +940,8 @@ class MatchServiceTest {
         @DisplayName("duration 非要求: CONTINUOUS_TIME でも duration なしで COMPLETED 確定（assertCompletable 非適用）")
         void doesNotRequireDuration() {
             when(matchRepository
-                    .findFirstByOrganizationIdAndTeamIdAndTournamentFixtureIdOrderByKickoffAtDescIdDesc(
-                            ORG, HOME_TEAM, FIXTURE_ID))
+                    .findFirstByOrganizationIdAndTournamentFixtureIdOrderByKickoffAtDescIdDesc(
+                            ORG, FIXTURE_ID))
                     .thenReturn(Optional.empty());
             UUID newId = UUID.randomUUID();
             when(matchRepository.save(any())).thenAnswer(inv -> {
