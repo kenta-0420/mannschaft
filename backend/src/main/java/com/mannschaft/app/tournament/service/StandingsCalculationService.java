@@ -36,6 +36,16 @@ import java.util.Map;
 /**
  * 順位表の自動計算サービス。試合結果入力時に非同期で再計算する。
  * 冪等方式: 毎回全COMPLETED試合からゼロ計算してUPSERTする。
+ *
+ * <p><b>スコア源泉は fixture スナップショット列（05 §H.2.1 / H.2.3）</b>: 本サービスは
+ * {@link TournamentFixtureEntity} のスコア列（{@code homeScore} / {@code awayScore} /
+ * {@code result} / {@code status} 等）を読んで勝点・順位を計算する。これらの列は
+ * <b>matches ドメインを正本とする派生スナップショット</b>であり（実体化ビュー・05 §H.2.3）、
+ * クロスドメイン JOIN（CLAUDE.md 原則 1 違反・{@code CrossDomainEntityImportArchTest} が禁ずる）を
+ * 避けるため fixture 自ドメイン内で順位計算が完結するよう設計されている。matches へは直接 JOIN しない。
+ * スナップショットの書込（同期）は入口①の
+ * {@link com.mannschaft.app.tournament.listener.MatchScoreFixtureListener} および
+ * {@link FixtureService#updateScore}/{@code batchUpdateScores} が担う。</p>
  */
 @Slf4j
 @Service
@@ -90,6 +100,8 @@ public class StandingsCalculationService {
 
         List<TournamentParticipantEntity> participants =
                 participantRepository.findByDivisionIdOrderBySeedAsc(divisionId);
+        // COMPLETED 抽出・以降のスコア集計は fixture スナップショット列（matches 正本の派生・05 §H.2.3）由来。
+        // matches へクロスドメイン JOIN せず fixture 自ドメイン内で順位計算が完結する（CLAUDE.md 原則 1）。
         List<TournamentFixtureEntity> completedMatches =
                 matchRepository.findByDivisionIdAndStatus(divisionId, FixtureStatus.COMPLETED);
         List<TournamentTiebreakerEntity> tiebreakers =
@@ -151,6 +163,7 @@ public class StandingsCalculationService {
         homeStats.played++;
         awayStats.played++;
 
+        // 得失点・勝敗は fixture スナップショット列（matches 正本の派生・05 §H.2.3）を読む。
         int homeScore = match.getHomeScore() != null ? match.getHomeScore() : 0;
         int awayScore = match.getAwayScore() != null ? match.getAwayScore() : 0;
         homeStats.scoreFor += homeScore;

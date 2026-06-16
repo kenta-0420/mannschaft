@@ -17,7 +17,14 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * F08.10 入口①の順位連携リスナー（match → tournament 疎結合・05 §H.2）。
+ * F08.10 入口①の <b>fixture スナップショット同期器</b>（match → tournament 疎結合・05 §H.2）。
+ *
+ * <p><b>役割（Phase 5b-1 で明確化）</b>: 本リスナーは「<b>matches 正本</b>（{@link MatchCompletedEvent}）を
+ * <b>fixture スナップショット列へコピーし、StandingsRecalc を発火する同期器</b>」である。
+ * スコアの正本は matches ドメイン（{@code matches.home_score} 等）であり、
+ * {@link TournamentFixtureEntity} のスコア列はそれを高速参照するための<b>派生スナップショット</b>
+ * （実体化ビュー・05 §H.2.3）にすぎない。本リスナーがその同期を担う唯一の入口①経路である
+ * （正本宣言の詳細は {@link TournamentFixtureEntity} クラス Javadoc を参照）。</p>
  *
  * <p><b>中道（既存 tournament 非破壊）の採用</b>: 05 §H.1 の full Fixture 改称
  * （{@code tournament_matches}→{@code tournament_fixtures} 物理改称・スコア正本移管）は
@@ -73,10 +80,15 @@ public class MatchScoreFixtureListener {
     private final FixtureService tournamentMatchService;
 
     /**
-     * 試合完了イベントを受信し、リンクする大会の対戦カードへスコアを反映して順位連携する。
+     * 試合完了イベントを受信し、matches 正本のスコアを fixture スナップショット列へ同期して順位連携する。
      *
-     * <p>AFTER_COMMIT 発火により、match 側トランザクションがコミット済みのスコアに対してのみ反映する
-     * （未コミットのスコアで順位を誤更新しない・05 §H.2 (a)）。</p>
+     * <p><b>同期処理（05 §H.2.3）</b>: matches 正本（イベントのスコア）を fixture の派生スナップショット列
+     * （home/away_score・home/away_penalty_score・status・result・winner_participant_id）へコピーし、
+     * 既存 {@code StandingsRecalculationEvent} を発火する。コピー自体は既存
+     * {@link FixtureService#updateScore} 内の {@code match.updateScore} に委譲する（機構は不変）。</p>
+     *
+     * <p>AFTER_COMMIT 発火により、match 側トランザクションがコミット済みのスコアに対してのみ同期する
+     * （未コミットのスコアで順位を誤更新しない・05 §H.2 (a)）。冪等（全列上書き・置換）。</p>
      */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
