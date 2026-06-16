@@ -90,7 +90,7 @@ class FixtureServiceTest {
             given(matchRepository.findById(MATCH_ID)).willReturn(Optional.empty());
 
             assertThatThrownBy(() -> service.updateScore(TOURNAMENT_ID, MATCH_ID,
-                    new ScoreUpdateRequest(1, 0, null, null, null, null, null, null, null)))
+                    new ScoreUpdateRequest(1, 0, null, null, null, null, null)))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(TournamentErrorCode.MATCH_NOT_FOUND);
@@ -104,7 +104,7 @@ class FixtureServiceTest {
             given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
 
             assertThatThrownBy(() -> service.updateScore(TOURNAMENT_ID, MATCH_ID,
-                    new ScoreUpdateRequest(-1, 0, null, null, null, null, null, null, null)))
+                    new ScoreUpdateRequest(-1, 0, null, null, null, null, null)))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(TournamentErrorCode.INVALID_SCORE);
@@ -124,7 +124,7 @@ class FixtureServiceTest {
             given(mapper.toMatchResponse(any(), any(), any())).willReturn(null);
 
             service.updateScore(TOURNAMENT_ID, MATCH_ID,
-                    new ScoreUpdateRequest(2, 1, null, null, null, null, null, null, null));
+                    new ScoreUpdateRequest(2, 1, null, null, null, null, null));
 
             verify(eventPublisher).publishEvent(any(StandingsRecalculationEvent.class));
         }
@@ -137,7 +137,7 @@ class FixtureServiceTest {
             given(matchRepository.findById(MATCH_ID)).willReturn(Optional.of(match));
 
             assertThatThrownBy(() -> service.updateScore(TOURNAMENT_ID, MATCH_ID,
-                    new ScoreUpdateRequest(2, 1, null, null, null, null, null, 3L, null)))
+                    new ScoreUpdateRequest(2, 1, null, null, null, 3L, null)))
                     // GlobalExceptionHandler で HTTP 409（CONFLICT）に変換される例外型
                     .isInstanceOf(ObjectOptimisticLockingFailureException.class);
 
@@ -160,7 +160,7 @@ class FixtureServiceTest {
             given(mapper.toMatchResponse(any(), any(), any())).willReturn(null);
 
             service.updateScore(TOURNAMENT_ID, MATCH_ID,
-                    new ScoreUpdateRequest(2, 1, null, null, null, null, null, 5L, null));
+                    new ScoreUpdateRequest(2, 1, null, null, null, 5L, null));
 
             verify(eventPublisher).publishEvent(any(StandingsRecalculationEvent.class));
         }
@@ -180,7 +180,7 @@ class FixtureServiceTest {
 
             // 第8引数 version=null
             service.updateScore(TOURNAMENT_ID, MATCH_ID,
-                    new ScoreUpdateRequest(2, 1, null, null, null, null, null, null, null));
+                    new ScoreUpdateRequest(2, 1, null, null, null, null, null));
 
             verify(eventPublisher).publishEvent(any(StandingsRecalculationEvent.class));
         }
@@ -205,8 +205,8 @@ class FixtureServiceTest {
             given(matchRepository.findById(200L)).willReturn(Optional.of(match2));
 
             BatchScoreRequest request = new BatchScoreRequest(List.of(
-                    new BatchScoreRequest.MatchScoreEntry(100L, 2, 1, null, null, null, null, null, 2L, null),
-                    new BatchScoreRequest.MatchScoreEntry(200L, 0, 0, null, null, null, null, null, 1L, null)));
+                    new BatchScoreRequest.MatchScoreEntry(100L, 2, 1, null, null, null, 2L, null),
+                    new BatchScoreRequest.MatchScoreEntry(200L, 0, 0, null, null, null, 1L, null)));
 
             assertThatThrownBy(() -> service.batchUpdateScores(TOURNAMENT_ID, DIVISION_ID, MATCHDAY_ID, request))
                     .isInstanceOf(ObjectOptimisticLockingFailureException.class);
@@ -227,8 +227,8 @@ class FixtureServiceTest {
             given(matchRepository.save(any())).willReturn(match1);
 
             BatchScoreRequest request = new BatchScoreRequest(List.of(
-                    new BatchScoreRequest.MatchScoreEntry(100L, 2, 1, null, null, null, null, null, 2L, null),
-                    new BatchScoreRequest.MatchScoreEntry(200L, 0, 3, null, null, null, null, null, 4L, null)));
+                    new BatchScoreRequest.MatchScoreEntry(100L, 2, 1, null, null, null, 2L, null),
+                    new BatchScoreRequest.MatchScoreEntry(200L, 0, 3, null, null, null, 4L, null)));
 
             service.batchUpdateScores(TOURNAMENT_ID, DIVISION_ID, MATCHDAY_ID, request);
 
@@ -282,7 +282,7 @@ class FixtureServiceTest {
                     new FixtureSetRequest(3, 25, 15),
                     new FixtureSetRequest(4, 25, 20));
             service.updateScore(TOURNAMENT_ID, MATCH_ID,
-                    new ScoreUpdateRequest(65, 80, null, null, null, null, null, null, sets));
+                    new ScoreUpdateRequest(65, 80, null, null, null, null, sets));
 
             assertThat(match.getResult()).isEqualTo(FixtureResult.HOME_WIN);
             assertThat(match.getWinnerParticipantId()).isEqualTo(HOME_ID);
@@ -304,7 +304,7 @@ class FixtureServiceTest {
                     new FixtureSetRequest(2, 18, 25),
                     new FixtureSetRequest(3, 22, 25));
             service.updateScore(TOURNAMENT_ID, MATCH_ID,
-                    new ScoreUpdateRequest(65, 70, null, null, null, null, null, null, sets));
+                    new ScoreUpdateRequest(65, 70, null, null, null, null, sets));
 
             assertThat(match.getResult()).isEqualTo(FixtureResult.AWAY_WIN);
             assertThat(match.getWinnerParticipantId()).isEqualTo(AWAY_ID);
@@ -325,7 +325,7 @@ class FixtureServiceTest {
                     new FixtureSetRequest(1, 25, 20),
                     new FixtureSetRequest(2, 20, 25));
             service.updateScore(TOURNAMENT_ID, MATCH_ID,
-                    new ScoreUpdateRequest(45, 45, null, null, null, null, null, null, sets));
+                    new ScoreUpdateRequest(45, 45, null, null, null, null, sets));
 
             assertThat(match.getResult()).isEqualTo(FixtureResult.DRAW);
             assertThat(match.getWinnerParticipantId()).isNull();
@@ -346,7 +346,7 @@ class FixtureServiceTest {
                     new FixtureSetRequest(1, 25, 20),
                     new FixtureSetRequest(2, 25, 25));
             service.updateScore(TOURNAMENT_ID, MATCH_ID,
-                    new ScoreUpdateRequest(50, 45, null, null, null, null, null, null, sets));
+                    new ScoreUpdateRequest(50, 45, null, null, null, null, sets));
 
             assertThat(match.getResult()).isEqualTo(FixtureResult.HOME_WIN);
             assertThat(match.getWinnerParticipantId()).isEqualTo(HOME_ID);
@@ -364,14 +364,14 @@ class FixtureServiceTest {
 
             // sets=null。hasSets=true でもセット判定せず本戦スコア 2-1 で HOME_WIN（例外を投げない）
             service.updateScore(TOURNAMENT_ID, MATCH_ID,
-                    new ScoreUpdateRequest(2, 1, null, null, null, null, null, null, null));
+                    new ScoreUpdateRequest(2, 1, null, null, null, null, null));
 
             assertThat(match.getResult()).isEqualTo(FixtureResult.HOME_WIN);
             assertThat(match.getWinnerParticipantId()).isEqualTo(HOME_ID);
         }
 
         @Test
-        @DisplayName("従来ロジック温存: hasSets=false大会では本戦＋延長合算＋PKで判定（延長同点→PKでHOME_WIN）")
+        @DisplayName("従来ロジック温存: hasSets=false大会では本戦スコア＋PKで判定（本戦同点→PKでHOME_WIN）")
         void 非セット制_延長PKの従来ロジック温存() {
             TournamentFixtureEntity match = TournamentFixtureEntity.builder()
                     .homeParticipantId(HOME_ID).awayParticipantId(AWAY_ID).build();
@@ -380,9 +380,9 @@ class FixtureServiceTest {
                     .willReturn(Optional.of(setTournament(false, null, false)));
             stubResponseChain();
 
-            // 本戦1-1＋延長1-1（合算2-2）→ PK 5-4 で HOME_WIN（#1473 延長PKロジック温存）
+            // 本戦2-2（延長得点は本戦へ合算済み・延長別列は Phase 5b-3 で廃止）→ PK 5-4 で HOME_WIN（#1473 PKロジック温存）
             service.updateScore(TOURNAMENT_ID, MATCH_ID,
-                    new ScoreUpdateRequest(1, 1, 1, 1, 5, 4, null, null, null));
+                    new ScoreUpdateRequest(2, 2, 5, 4, null, null, null));
 
             assertThat(match.getResult()).isEqualTo(FixtureResult.HOME_WIN);
             assertThat(match.getWinnerParticipantId()).isEqualTo(HOME_ID);
@@ -397,7 +397,7 @@ class FixtureServiceTest {
 
             List<FixtureSetRequest> sets = List.of(new FixtureSetRequest(1, -1, 20));
             assertThatThrownBy(() -> service.updateScore(TOURNAMENT_ID, MATCH_ID,
-                    new ScoreUpdateRequest(0, 0, null, null, null, null, null, null, sets)))
+                    new ScoreUpdateRequest(0, 0, null, null, null, null, sets)))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(TournamentErrorCode.INVALID_SCORE);
@@ -434,7 +434,7 @@ class FixtureServiceTest {
             stubResponseChain();
 
             service.updateScore(TOURNAMENT_ID, MATCH_ID,
-                    new ScoreUpdateRequest(2, 1, null, null, 5, 4, null, null, null));
+                    new ScoreUpdateRequest(2, 1, 5, 4, null, null, null));
 
             ArgumentCaptor<com.mannschaft.app.match.service.MatchService.RecordTournamentScoreCommand> captor =
                     ArgumentCaptor.forClass(
@@ -462,7 +462,7 @@ class FixtureServiceTest {
             stubResponseChain();
 
             service.updateScore(TOURNAMENT_ID, MATCH_ID,
-                    new ScoreUpdateRequest(2, 1, null, null, null, null, null, null, null));
+                    new ScoreUpdateRequest(2, 1, null, null, null, null, null));
 
             // 系統B は StandingsRecalculationEvent を 1 回だけ発火（fixture 同期＋順位は同期経路に閉じる）。
             verify(eventPublisher, times(1)).publishEvent(any(StandingsRecalculationEvent.class));
@@ -480,7 +480,7 @@ class FixtureServiceTest {
             stubResponseChain();
 
             service.updateScore(TOURNAMENT_ID, MATCH_ID,
-                    new ScoreUpdateRequest(0, 3, null, null, null, null, null, null, null));
+                    new ScoreUpdateRequest(0, 3, null, null, null, null, null));
 
             // participant を findById で引いている（team_id 単独逆引きではない）
             verify(participantRepository).findById(HOME_PARTICIPANT);
@@ -500,7 +500,7 @@ class FixtureServiceTest {
             stubResponseChain();
 
             service.updateScore(TOURNAMENT_ID, MATCH_ID,
-                    new ScoreUpdateRequest(3, 0, null, null, null, null, null, null, null));
+                    new ScoreUpdateRequest(3, 0, null, null, null, null, null));
 
             verify(matchService, never()).recordTournamentScore(any());
             // fixture スナップショットと順位再計算は従来どおり動く
@@ -526,8 +526,8 @@ class FixtureServiceTest {
                             .id(4L).divisionId(5L).teamId(4000L).build()));
 
             BatchScoreRequest request = new BatchScoreRequest(List.of(
-                    new BatchScoreRequest.MatchScoreEntry(100L, 2, 1, null, null, null, null, null, null, null),
-                    new BatchScoreRequest.MatchScoreEntry(200L, 0, 3, null, null, null, null, null, null, null)));
+                    new BatchScoreRequest.MatchScoreEntry(100L, 2, 1, null, null, null, null, null),
+                    new BatchScoreRequest.MatchScoreEntry(200L, 0, 3, null, null, null, null, null)));
 
             service.batchUpdateScores(TOURNAMENT_ID, 5L, 7L, request);
 

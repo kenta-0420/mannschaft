@@ -207,7 +207,6 @@ public interface TournamentMapper {
                         entity.getWinnerParticipantId()))
                 .score(new FixtureResponse.MatchScoreDto(
                         entity.getHomeScore(), entity.getAwayScore(),
-                        entity.getHomeExtraScore(), entity.getAwayExtraScore(),
                         entity.getHomePenaltyScore(), entity.getAwayPenaltyScore()))
                 .info(new FixtureResponse.MatchInfoDto(
                         entity.getMatchNumber(), entity.getScheduledDatetime(), entity.getVenue(),

@@ -134,7 +134,7 @@ class MatchScoreFixtureListenerTest {
     // ─── (b) fixture 引当→スコア反映（本戦合算・延長 null・PK 分離） ──
 
     @Test
-    @DisplayName("(b) fixture 引当→既存 updateScore に本戦合算スコアを反映（延長 extra は null・PK は分離値）")
+    @DisplayName("(b) fixture 引当→既存 updateScore に本戦合算スコアを反映（延長は本戦合算済・PK は分離値）")
     void resolvedFixtureUpdatesScore() {
         // 本戦 3-2（延長合算済み）＋ PK 5-4
         listener.onMatchCompleted(event(FIXTURE_ID, 3, 2, 5, 4));
@@ -146,9 +146,7 @@ class MatchScoreFixtureListenerTest {
         // 本戦スコア（イベントで延長合算済み）
         assertThat(req.getHomeScore()).isEqualTo(3);
         assertThat(req.getAwayScore()).isEqualTo(2);
-        // 延長別スコアは使わない（イベントで本戦合算済み・05 §H.1 移行表）
-        assertThat(req.getHomeExtraScore()).isNull();
-        assertThat(req.getAwayExtraScore()).isNull();
+        // 延長別スコアは Phase 5b-3 で廃止（イベントで本戦合算済み・05 §H.1 移行表）
         // PK 戦は分離値をそのまま渡す
         assertThat(req.getHomePenaltyScore()).isEqualTo(5);
         assertThat(req.getAwayPenaltyScore()).isEqualTo(4);

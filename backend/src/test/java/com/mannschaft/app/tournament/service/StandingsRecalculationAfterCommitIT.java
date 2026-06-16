@@ -156,7 +156,7 @@ class StandingsRecalculationAfterCommitIT extends AbstractMySqlIntegrationTest {
         // ── When: updateScore（@Transactional）を呼ぶ。返ればコミット → AFTER_COMMIT 発火 → @Async 再計算 ──
         // ホーム 2 - 0 アウェイ（HOME_WIN）。テストメソッド自体は @Transactional にしない（実コミットさせる）。
         ScoreUpdateRequest req = new ScoreUpdateRequest(
-                2, 0, null, null, null, null, null, fixture.getVersion(), null);
+                2, 0, null, null, null, fixture.getVersion(), null);
         matchService.updateScore(tournament.getId(), fixture.getId(), req);
 
         // ── Then: bounded polling（最大 ~10 秒）で順位表が確定スコアで自動反映されるのを待つ ──

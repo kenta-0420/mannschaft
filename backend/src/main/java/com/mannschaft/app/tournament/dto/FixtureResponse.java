@@ -27,7 +27,6 @@ public class FixtureResponse {
 
     public record MatchScoreDto(
             Integer homeScore, Integer awayScore,
-            Integer homeExtraScore, Integer awayExtraScore,
             Integer homePenaltyScore, Integer awayPenaltyScore) {}
 
     public record MatchInfoDto(

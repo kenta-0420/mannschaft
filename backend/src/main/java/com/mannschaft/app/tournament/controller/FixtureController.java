@@ -198,17 +198,17 @@ public class FixtureController {
                 String[] cols = line.split(",", -1);
                 if (cols.length < 3) continue;
 
+                // 列順: matchId, homeScore, awayScore, homePenaltyScore, awayPenaltyScore, notes
+                // 延長別スコア列は Phase 5b-3 で廃止（延長得点は本戦スコアへ合算済み・05 §H.1 移行表）。
                 Long matchId = Long.parseLong(cols[0].trim());
                 Integer homeScore = cols[1].trim().isEmpty() ? null : Integer.parseInt(cols[1].trim());
                 Integer awayScore = cols[2].trim().isEmpty() ? null : Integer.parseInt(cols[2].trim());
-                Integer homeExtra = cols.length > 3 && !cols[3].trim().isEmpty() ? Integer.parseInt(cols[3].trim()) : null;
-                Integer awayExtra = cols.length > 4 && !cols[4].trim().isEmpty() ? Integer.parseInt(cols[4].trim()) : null;
-                Integer homePk = cols.length > 5 && !cols[5].trim().isEmpty() ? Integer.parseInt(cols[5].trim()) : null;
-                Integer awayPk = cols.length > 6 && !cols[6].trim().isEmpty() ? Integer.parseInt(cols[6].trim()) : null;
-                String notes = cols.length > 7 ? cols[7].trim() : null;
+                Integer homePk = cols.length > 3 && !cols[3].trim().isEmpty() ? Integer.parseInt(cols[3].trim()) : null;
+                Integer awayPk = cols.length > 4 && !cols[4].trim().isEmpty() ? Integer.parseInt(cols[4].trim()) : null;
+                String notes = cols.length > 5 ? cols[5].trim() : null;
 
                 entries.add(new BatchScoreRequest.MatchScoreEntry(
-                        matchId, homeScore, awayScore, homeExtra, awayExtra,
+                        matchId, homeScore, awayScore,
                         homePk, awayPk, notes, 0L, null));
             }
         } catch (NumberFormatException e) {
