@@ -39,12 +39,13 @@ export function useTimelineApi() {
 
   // === Feed ===
   async function getFeed(params: FeedParams) {
-    // VILLAGE スコープ: scope_id=0 + scope_village_id=UUID（設計書 §3.12.2）
+    // VILLAGE スコープ: scopeId=0 + scopeVillageId=UUID（設計書 §3.12.2）
+    // BE @RequestParam はcamelCase（プロジェクト規約）
     const isVillage = params.scopeType === 'VILLAGE'
     const qs = buildQuery({
-      scope_type: params.scopeType,
-      scope_id: isVillage ? 0 : params.scopeId,
-      ...(isVillage ? { scope_village_id: params.scopeId } : {}),
+      scopeType: params.scopeType,
+      scopeId: isVillage ? 0 : params.scopeId,
+      ...(isVillage ? { scopeVillageId: params.scopeId } : {}),
       cursor: params.cursor,
       limit: params.limit,
       feed: params.feed,
@@ -63,9 +64,10 @@ export function useTimelineApi() {
   }
 
   async function searchPosts(params: SearchParams) {
+    // BE @RequestParam はcamelCase（プロジェクト規約）
     const qs = buildQuery({
-      scope_type: params.scopeType,
-      scope_id: params.scopeId,
+      scopeType: params.scopeType,
+      scopeId: params.scopeId,
       q: params.q,
       cursor: params.cursor,
       limit: params.limit,
@@ -94,10 +96,11 @@ export function useTimelineApi() {
       '/api/v1/timeline/attachments/upload-image-url',
       {
         method: 'POST',
+        // BE @RequestBody はcamelCase（プロジェクト規約）
         body: {
-          content_type: params.contentType,
-          scope_type: params.scopeType,
-          scope_id: String(params.scopeId ?? 0),
+          contentType: params.contentType,
+          scopeType: params.scopeType,
+          scopeId: Number(params.scopeId ?? 0),
         },
       },
     )
@@ -115,10 +118,11 @@ export function useTimelineApi() {
   }
 
   // === Replies ===
+  // BE に POST /posts/{id}/replies は未実装（404）のため、POST /posts にparentIdを付与して送信する
   async function createReply(postId: number, content: string) {
-    return api<{ data: TimelinePostResponse }>(`/api/v1/timeline/posts/${postId}/replies`, {
+    return api<{ data: TimelinePostResponse }>('/api/v1/timeline/posts', {
       method: 'POST',
-      body: { content },
+      body: { content, parentId: postId },
     })
   }
 
