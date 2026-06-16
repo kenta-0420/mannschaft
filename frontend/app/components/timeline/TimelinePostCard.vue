@@ -87,6 +87,7 @@ async function handleToggleMitayo() {
 <template>
   <div
     class="cursor-pointer rounded-xl border-2 border-surface-400 bg-surface-0 p-4 transition-shadow hover:shadow-sm"
+    data-testid="team-timeline-post"
     @click="emit('clickPost', post.id)"
   >
     <!-- ピン表示 -->
@@ -124,6 +125,7 @@ async function handleToggleMitayo() {
         rounded
         severity="secondary"
         size="small"
+        data-testid="team-timeline-post-menu"
         @click.stop="toggleMenu"
       />
       <Menu ref="menu" :model="menuItems" popup />
@@ -249,6 +251,7 @@ async function handleToggleMitayo() {
         :mitayo="post.mitayo"
         :mitayo-count="post.mitayoCount"
         :loading="mitayoLoading"
+        data-testid="team-timeline-like"
         @toggle="handleToggleMitayo"
       />
     </div>
@@ -257,6 +260,7 @@ async function handleToggleMitayo() {
     <div class="flex items-center gap-4 border-t border-surface-100 pt-2" @click.stop>
       <button
         class="flex items-center gap-1 text-xs text-surface-400 transition-colors hover:text-primary"
+        data-testid="team-timeline-reply-btn"
         @click="emit('reply', post.id)"
       >
         <i class="pi pi-comment" />

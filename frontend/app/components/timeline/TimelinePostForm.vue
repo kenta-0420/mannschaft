@@ -196,6 +196,7 @@ async function onSubmit() {
       auto-resize
       rows="3"
       class="mb-2 w-full"
+      data-testid="team-timeline-composer"
     />
 
     <!-- 文字数カウンター -->
@@ -284,6 +285,7 @@ async function onSubmit() {
         size="small"
         :loading="submitting"
         :disabled="!canSubmit"
+        data-testid="team-timeline-submit"
         @click="onSubmit"
       />
     </div>
