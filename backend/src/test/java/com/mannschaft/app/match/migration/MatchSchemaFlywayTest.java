@@ -420,4 +420,69 @@ class MatchSchemaFlywayTest {
                     .contains("smallint").contains("unsigned");
         }
     }
+
+    // ─── V92.001: match_scored_components（採点競技の審判別/種目別採点内訳子表・07_scored §4B） ───
+
+    @Test
+    @DisplayName("match_scored_components が作成され主キーが BINARY(16)（UUIDv7・原則6・V92.001）")
+    void matchScoredComponentsTableExistsWithBinaryPk() throws Exception {
+        assertThat(columnExists("match_scored_components", "id"))
+                .as("match_scored_components.id が存在すること（V92.001）").isTrue();
+        assertThat(columnType("match_scored_components", "id").toLowerCase())
+                .as("match_scored_components.id は binary(16)（UUIDv7）").isEqualTo("binary(16)");
+    }
+
+    @Test
+    @DisplayName("match_scored_components の列構成（match_id/competitor_side/score_entry_id/apparatus/judge_label/component_type/points_scaled・§4B.1）")
+    void matchScoredComponentsColumns() throws Exception {
+        assertThat(columnExists("match_scored_components", "match_id")).isTrue();
+        assertThat(columnType("match_scored_components", "match_id").toLowerCase()).isEqualTo("binary(16)");
+        assertThat(columnExists("match_scored_components", "competitor_side")).isTrue();
+        assertThat(columnExists("match_scored_components", "score_entry_id")).isTrue();
+        assertThat(columnType("match_scored_components", "score_entry_id").toLowerCase()).isEqualTo("binary(16)");
+        assertThat(columnExists("match_scored_components", "apparatus")).isTrue();
+        assertThat(columnExists("match_scored_components", "judge_label")).isTrue();
+        assertThat(columnExists("match_scored_components", "component_type")).isTrue();
+        assertThat(columnExists("match_scored_components", "points_scaled")).isTrue();
+        assertThat(columnType("match_scored_components", "points_scaled").toLowerCase())
+                .as("points_scaled は int（整数スケール×1000・DEDUCTION は集計で減算）").contains("int");
+        // component_type は NOT NULL（必須項目）
+        assertThat(columnIsNullable("match_scored_components", "component_type"))
+                .as("component_type は NOT NULL（採点項目は必須）").isFalse();
+        // competitor_side / score_entry_id / apparatus / judge_label は NULL 許容（対戦モデル/種目を区別しない内訳）
+        assertThat(columnIsNullable("match_scored_components", "competitor_side"))
+                .as("competitor_side は NULL 許容（多人数順位制では NULL）").isTrue();
+        assertThat(columnIsNullable("match_scored_components", "score_entry_id"))
+                .as("score_entry_id は NULL 許容（2 者対戦では NULL）").isTrue();
+        assertThat(columnIsNullable("match_scored_components", "apparatus"))
+                .as("apparatus は NULL 許容（種目を区別しない内訳）").isTrue();
+        // points_scaled は NOT NULL DEFAULT 0
+        assertThat(columnIsNullable("match_scored_components", "points_scaled")).isFalse();
+    }
+
+    @Test
+    @DisplayName("match_scored_components は organization_id / deleted_at を持たない（01 §A.4・テナント分離は親 matches）")
+    void matchScoredComponentsHasNoTenantNorSoftDeleteColumns() throws Exception {
+        assertThat(columnExists("match_scored_components", "organization_id"))
+                .as("match_scored_components に organization_id があってはならない（テナント分離は親 matches）").isFalse();
+        assertThat(columnExists("match_scored_components", "deleted_at"))
+                .as("match_scored_components に deleted_at があってはならない（親 matches の削除に従う）").isFalse();
+    }
+
+    @Test
+    @DisplayName("match_scored_components の FK は match_id→matches(CASCADE) のみ（同一ドメイン・原則1/2・V92.001）")
+    void matchScoredComponentsForeignKeys() throws Exception {
+        List<String[]> fks = foreignKeys("match_scored_components");
+        assertThat(fks)
+                .as("match_scored_components の FK 参照先は matches のみ（クロスドメイン FK 禁止・原則1）"
+                        + "・score_entry_id は match_score_entries 未作成のため FK を張らない")
+                .isNotEmpty()
+                .allSatisfy(fk -> assertThat(fk[1]).isEqualTo("matches"));
+        assertThat(fks)
+                .as("match_id→matches は ON DELETE CASCADE（親 matches の削除で内訳も消える・原則2）")
+                .anySatisfy(fk -> {
+                    assertThat(fk[1]).isEqualTo("matches");
+                    assertThat(fk[2]).isEqualTo("CASCADE");
+                });
+    }
 }
