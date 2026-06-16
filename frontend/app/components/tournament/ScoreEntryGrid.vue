@@ -32,11 +32,11 @@ const props = defineProps<{
   orgId: string
   tournamentId: number
   divisions: TournamentDivision[]
-  /** 大会の採点設定。延長/PK 入力欄の出し分けに使う（セット制は今回対象外）。 */
+  /** 大会の採点設定。PK 入力欄の出し分けに使う（延長別欄は廃止・セット制は別系統）。 */
   scoring?: TournamentScoringDto | null
 }>()
 
-// 延長/PK/セット 入力欄の出し分けフラグ（hasExtraTime / hasPenalties / hasSets 由来）。
+// PK/セット 入力欄の出し分けフラグ（hasPenalties / hasSets 由来）。延長別欄は Phase 5b-3 で廃止。
 const columnFlags = computed(() => deriveScoreEntryColumnFlags(props.scoring))
 
 // セット入力列の本数（行ごとのセット枠数の最大。通常は全行同数だが取りこぼし行に追従）。
@@ -317,35 +317,7 @@ onMounted(() => {
                         {{ data.awayName }}
                       </template>
                     </Column>
-                    <!-- 延長スコア（hasExtraTime 大会のみ） -->
-                    <Column
-                      v-if="columnFlags.showExtraTime"
-                      :header="$t('tournament.scoreEntry.homeExtraScore')"
-                      style="width: 7rem"
-                    >
-                      <template #body="{ data }">
-                        <InputText
-                          v-model="data.homeExtraScore"
-                          inputmode="numeric"
-                          class="w-16 text-center"
-                          data-testid="score-entry-home-extra-input"
-                        />
-                      </template>
-                    </Column>
-                    <Column
-                      v-if="columnFlags.showExtraTime"
-                      :header="$t('tournament.scoreEntry.awayExtraScore')"
-                      style="width: 7rem"
-                    >
-                      <template #body="{ data }">
-                        <InputText
-                          v-model="data.awayExtraScore"
-                          inputmode="numeric"
-                          class="w-16 text-center"
-                          data-testid="score-entry-away-extra-input"
-                        />
-                      </template>
-                    </Column>
+                    <!-- 延長別スコア欄は Phase 5b-3 で廃止（延長得点は本戦スコアへ合算済み・05 §H.1 移行表）。 -->
                     <!-- PK スコア（hasPenalties 大会のみ） -->
                     <Column
                       v-if="columnFlags.showPenalties"
@@ -377,9 +349,9 @@ onMounted(() => {
                     </Column>
                   </DataTable>
 
-                  <!-- 延長/PK の入力補助（PK は本戦同点時のみ意味を持つ等） -->
+                  <!-- PK の入力補助（PK は本戦同点時のみ意味を持つ等） -->
                   <p
-                    v-if="columnFlags.showExtraTime || columnFlags.showPenalties"
+                    v-if="columnFlags.showPenalties"
                     class="mt-2 text-xs text-surface-500"
                     data-testid="score-entry-extra-penalty-hint"
                   >
