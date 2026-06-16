@@ -24,6 +24,7 @@ import type { MatchSetTrackerReturn } from '~/composables/match/sport/useMatchSe
 import type { MatchTurnTrackerReturn } from '~/composables/match/sport/useMatchTurnTracker'
 import type { MatchScoreEntryReturn } from '~/composables/match/useMatchScoreEntry'
 import type { MatchScoredComponentsReturn } from '~/composables/match/useMatchScoredComponents'
+import type { MatchScoreEntriesReturn } from '~/composables/match/useMatchScoreEntries'
 import { buildTurnResultPayload } from '~/composables/match/useMatchTurnApi'
 import type { BoardProgressItem } from '~/components/match/MatchBoardProgress.vue'
 
@@ -82,6 +83,8 @@ const isScored = computed(() => sportModule.value !== null && isScoredModule(spo
 const scoreEntry = shallowRef<MatchScoreEntryReturn | null>(null)
 /** 採点内訳トラッカー（審判別/種目別・§4B・SCORED 競技時のみ非 null）。 */
 const scoredComponents = shallowRef<MatchScoredComponentsReturn | null>(null)
+/** 多人数順位制トラッカー（出場者 N 人→順位・§5B・SCORED 競技時のみ非 null）。 */
+const scoredRanking = shallowRef<MatchScoreEntriesReturn | null>(null)
 
 /**
  * 団体戦の子ボード進捗（6-④c・GET /boards 由来）。
@@ -237,8 +240,12 @@ onMounted(async () => {
     // 審判別/種目別採点内訳トラッカー（§4B）。既存内訳を読み込み、あれば内訳が正本になる（stale 整合）。
     const componentsTracker = mod.createComponentEntry(scoredSport)
     scoredComponents.value = componentsTracker
+    // 多人数順位制トラッカー（§5B）。既存エントリを読み込み、あれば多人数が正本になる（stale 整合）。
+    const rankingTracker = mod.createRankingEntry(scoredSport)
+    scoredRanking.value = rankingTracker
     if (orgId.value !== null) {
       await componentsTracker.load(orgId.value, matchId).catch(() => undefined)
+      await rankingTracker.load(orgId.value, matchId).catch(() => undefined)
     }
   }
 
@@ -379,6 +386,34 @@ async function completeScoredComponents(): Promise<void> {
     await tracker.save(orgId.value, matchId)
   } catch {
     // save 内でトースト済み。内訳保存に失敗したら status 遷移はしない（根治原則）。
+    return
+  }
+  try {
+    await matchApi.changeStatus(orgId.value, teamId.value, matchId, { status: 'COMPLETED' })
+    matchStatus.value = 'COMPLETED'
+    session.value?.setMatchStatus('COMPLETED')
+  } catch {
+    notification.warn(t('match.live.error.complete_failed'))
+  }
+}
+
+/**
+ * 採点競技（フィギュア/体操）の多人数順位制エントリを確定する（07_scored.md §5B 配線）。
+ *
+ * 直接入力/内訳ではなく、出場者 N 人の全置換 PUT /score-entries を呼ぶ。BE が合計点降順で
+ * 順位（rank_position）を算出し、最上位の合計点を matches.home_score へ補助的に再導出する
+ * （二層正本・§5B.2）。FE は順位を送らず、受信した順位算出済みエントリを順位表に反映する。
+ * その後 changeStatus(COMPLETED) で順位連携（MatchCompletedEvent）を発火させる。
+ */
+async function completeScoredRanking(): Promise<void> {
+  const tracker = scoredRanking.value
+  if (!tracker || orgId.value === null || teamId.value === null) return
+  if (matchStatus.value === 'COMPLETED') return
+  if (!tracker.canSubmit.value) return
+  try {
+    await tracker.save(orgId.value, matchId)
+  } catch {
+    // save 内でトースト済み。エントリ保存に失敗したら status 遷移はしない（根治原則）。
     return
   }
   try {
@@ -711,15 +746,17 @@ function back(): void {
       -->
       <component
         :is="sportModule.eventSheet"
-        v-if="isScored && scoreEntry && scoredComponents && sportModule"
+        v-if="isScored && scoreEntry && scoredComponents && scoredRanking && sportModule"
         :tracker="scoreEntry!"
         :component-tracker="scoredComponents!"
+        :ranking-tracker="scoredRanking!"
         :own-team-side="ownTeamSide"
         :opponent-name="opponentName"
         :can-record="canRecord"
         class="mb-4"
         @complete-match="completeScoredResult()"
         @complete-components="completeScoredComponents()"
+        @complete-ranking="completeScoredRanking()"
       />
 
       <!-- スタメン設定シート（記録権限がある場合のみマウント・ターン制/採点制は不要） -->

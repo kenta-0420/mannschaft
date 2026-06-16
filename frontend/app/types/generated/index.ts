@@ -3519,6 +3519,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{orgId}/matches/{matchId}/score-entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 出場者エントリ一覧取得（順位昇順・同順位は合計点降順・採点競技） */
+        get: operations["listEntries"];
+        /** 出場者エントリ記録/更新（全置換・合計点降順で順位算出・採点競技・冪等） */
+        put: operations["recordEntries"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{orgId}/matches/{matchId}/result": {
         parameters: {
             query?: never;
@@ -46578,6 +46596,56 @@ export interface components {
         MatchRecordScoredComponentRequest: {
             components?: components["schemas"]["MatchRecordScoredComponentLine"][];
         };
+        MatchRecordScoreEntryLine: {
+            /**
+             * Format: int64
+             * @description 出場選手ユーザー ID（登録選手・任意）
+             * @example 1234
+             */
+            competitorUserId?: number;
+            /**
+             * @description 未登録選手名（competitorUserId 未指定時・任意）
+             * @example 山田 花子
+             */
+            competitorName?: string;
+            /**
+             * Format: int64
+             * @description 所属チーム ID（団体採点時・任意）
+             * @example 100
+             */
+            competitorTeamId?: number;
+            /**
+             * Format: int32
+             * @description 合計点（整数スケール×1000・非負・例 198450）
+             * @example 198450
+             */
+            totalScaled: number;
+        };
+        MatchRecordScoreEntryRequest: {
+            entries?: components["schemas"]["MatchRecordScoreEntryLine"][];
+        };
+        ApiResponseListMatchRecordScoreEntryResponse: {
+            data?: components["schemas"]["MatchRecordScoreEntryResponse"][];
+        };
+        MatchRecordScoreEntryResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            matchId?: string;
+            /** Format: int64 */
+            competitorUserId?: number;
+            competitorName?: string;
+            /** Format: int64 */
+            competitorTeamId?: number;
+            /** Format: int32 */
+            totalScaled?: number;
+            /** Format: int32 */
+            rankPosition?: number;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
         MatchRecordTurnResultRequest: {
             /**
              * @description 勝者サイド（HOME/AWAY・NULL=引分け）
@@ -80455,6 +80523,56 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
+    listEntries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListMatchRecordScoreEntryResponse"];
+                };
+            };
+        };
+    };
+    recordEntries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MatchRecordScoreEntryRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListMatchRecordScoreEntryResponse"];
                 };
             };
         };
