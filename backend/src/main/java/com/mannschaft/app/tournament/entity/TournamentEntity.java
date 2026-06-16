@@ -61,7 +61,7 @@ public class TournamentEntity extends BaseEntity {
      *
      * <p>後方互換: 既存大会・未指定時は {@code SOCCER}（DDL DEFAULT・Builder.Default 共に SOCCER）。</p>
      */
-    @Column(nullable = false, length = 32)
+    @Column(nullable = false, columnDefinition = "VARCHAR(32) NOT NULL DEFAULT 'SOCCER'")
     @Builder.Default
     private String sport = "SOCCER";
 

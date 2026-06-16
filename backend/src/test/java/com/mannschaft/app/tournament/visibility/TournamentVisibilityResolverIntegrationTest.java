@@ -148,13 +148,13 @@ class TournamentVisibilityResolverIntegrationTest extends AbstractMySqlIntegrati
     private Long insertTournament(String name, Long createdBy, String status, String visibility) {
         em.createNativeQuery(
                 "INSERT INTO tournaments ("
-                        + "organization_id, name, format, "
+                        + "organization_id, name, format, sport, "
                         + "win_points, draw_points, loss_points, "
                         + "has_draw, has_sets, has_extra_time, has_penalties, "
                         + "score_unit_label, league_round_type, knockout_legs, "
                         + "visibility, status, version, created_by, "
                         + "created_at, updated_at) "
-                        + "VALUES (:orgId, :name, 'LEAGUE', "
+                        + "VALUES (:orgId, :name, 'LEAGUE', 'SOCCER', "
                         + "3, 1, 0, "
                         + "1, 0, 0, 0, "
                         + "'点', 'SINGLE', 1, "
