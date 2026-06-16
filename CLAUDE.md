@@ -60,6 +60,17 @@
 
 **開発作業（実装・修正・調査・テスト）は原則として必ず大名システム（Agent サブエージェント）経由で実行すること。** メインの作業ディレクトリ `C:\Claude\mannschaft` で直接コーディング・コミットする運用は禁止。
 
+### Dynamic Workflows との連携（出陣・検分の高速化／コスト最適化）
+
+`/出陣`・`/検分` は **Dynamic Workflows（Workflow ツール）** で「足軽の並列起動」を決定論的に表現できる。役割と承認ゲート（§28.1〜28.4）は維持したまま、フェーズの中身だけ差し替える方針:
+
+- **軍議・早馬は対話のまま**（Workflow は自走して御裁可ゲートを内包できない）
+- **出陣 = `pipeline(実装, ビルド)` + worktree**、**検分 = `pipeline(次元別レビュー, 敵対的検証)`**
+- **モデル/effort をスクリプトで固定** — 機械的タスクは sonnet/haiku・低 effort、難所と敵対的検証のみ opus・high（コスト削減であってトークン削減ではない）
+- **Workflow はオプトイン**。スキル経由かマスターの明示依頼時のみ起動し、コミット/マージは Workflow の外で `gh` で行う
+
+設計詳細・参考スクリプト: [`docs/development/daimyo_workflow_migration.md`](docs/development/daimyo_workflow_migration.md)（`backend/.claudecode.md §28.9`）。
+
 ### なぜ必須なのか
 
 - 大名システムは内部で `git worktree add .claude/worktrees/agent-xxxxx` を使い、**物理的に別ディレクトリ** で agent を起動する。これにより複数の Claude セッションが並列に動いても HEAD 衝突しない。
