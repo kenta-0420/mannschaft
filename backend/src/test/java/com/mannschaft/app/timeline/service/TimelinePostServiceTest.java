@@ -216,6 +216,126 @@ class TimelinePostServiceTest {
         }
 
         @Test
+        @DisplayName("正常系[情報漏洩防止]: TEAMスコープ投稿へのリプライは親と同じTEAMスコープで作成される")
+        void TEAMスコープ投稿へのリプライは親スコープを継承する() {
+            // given
+            Long parentId = 10L;
+            Long teamId = 50L;
+            // リクエストには scope 情報を入れない（FE は content と parentId のみ送る）
+            CreatePostRequest req = new CreatePostRequest("チームへのリプライ", null, null,
+                    "USER", null, parentId, null, null, null, null);
+            // 親投稿は TEAM スコープ
+            TimelinePostEntity parentPost = TimelinePostEntity.builder()
+                    .scopeType(PostScopeType.TEAM)
+                    .scopeId(teamId)
+                    .userId(USER_ID)
+                    .postedAsType(PostedAsType.USER)
+                    .content("チームの元投稿")
+                    .status(PostStatus.PUBLISHED)
+                    .build();
+            TimelinePostEntity savedReply = TimelinePostEntity.builder()
+                    .scopeType(PostScopeType.TEAM)
+                    .scopeId(teamId)
+                    .userId(USER_ID)
+                    .postedAsType(PostedAsType.USER)
+                    .content("チームへのリプライ")
+                    .parentId(parentId)
+                    .status(PostStatus.PUBLISHED)
+                    .build();
+            PostResponse expected = createPostResponse();
+
+            given(postRepository.findById(parentId)).willReturn(Optional.of(parentPost));
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedReply);
+            given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
+
+            // when
+            timelinePostService.createPost(req, USER_ID);
+
+            // then: save に渡されたエンティティのスコープが親と同じ TEAM/teamId であること
+            // （リクエストの scopeType=null → PUBLIC デフォルトではなく、親の TEAM が継承される）
+            ArgumentCaptor<TimelinePostEntity> cap = ArgumentCaptor.forClass(TimelinePostEntity.class);
+            // 最初の save 呼び出し（リプライ投稿の保存）をキャプチャ
+            verify(postRepository, org.mockito.Mockito.atLeastOnce()).save(cap.capture());
+            TimelinePostEntity capturedReply = cap.getAllValues().stream()
+                    .filter(e -> parentId.equals(e.getParentId()))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("リプライエンティティが save されていない"));
+            assertThat(capturedReply.getScopeType())
+                    .as("リプライのscopeTypeは親のTEAMを継承していること（PUBLIC化による情報漏洩がないこと）")
+                    .isEqualTo(PostScopeType.TEAM);
+            assertThat(capturedReply.getScopeId())
+                    .as("リプライのscopeIdは親のteamIdを継承していること")
+                    .isEqualTo(teamId);
+        }
+
+        @Test
+        @DisplayName("正常系[情報漏洩防止]: ORGANIZATIONスコープ投稿へのリプライも親スコープを継承する")
+        void ORGANIZATIONスコープ投稿へのリプライは親スコープを継承する() {
+            // given
+            Long parentId = 20L;
+            Long orgId = 70L;
+            CreatePostRequest req = new CreatePostRequest("組織へのリプライ", null, null,
+                    "USER", null, parentId, null, null, null, null);
+            TimelinePostEntity parentPost = TimelinePostEntity.builder()
+                    .scopeType(PostScopeType.ORGANIZATION)
+                    .scopeId(orgId)
+                    .userId(USER_ID)
+                    .postedAsType(PostedAsType.USER)
+                    .content("組織の元投稿")
+                    .status(PostStatus.PUBLISHED)
+                    .build();
+            TimelinePostEntity savedReply = TimelinePostEntity.builder()
+                    .scopeType(PostScopeType.ORGANIZATION)
+                    .scopeId(orgId)
+                    .userId(USER_ID)
+                    .postedAsType(PostedAsType.USER)
+                    .content("組織へのリプライ")
+                    .parentId(parentId)
+                    .status(PostStatus.PUBLISHED)
+                    .build();
+            PostResponse expected = createPostResponse();
+
+            given(postRepository.findById(parentId)).willReturn(Optional.of(parentPost));
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedReply);
+            given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(expected);
+
+            // when
+            timelinePostService.createPost(req, USER_ID);
+
+            // then: ORGANIZATION スコープが継承されること
+            ArgumentCaptor<TimelinePostEntity> cap = ArgumentCaptor.forClass(TimelinePostEntity.class);
+            verify(postRepository, org.mockito.Mockito.atLeastOnce()).save(cap.capture());
+            TimelinePostEntity capturedReply = cap.getAllValues().stream()
+                    .filter(e -> parentId.equals(e.getParentId()))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("リプライエンティティが save されていない"));
+            assertThat(capturedReply.getScopeType())
+                    .as("リプライのscopeTypeは親のORGANIZATIONを継承していること")
+                    .isEqualTo(PostScopeType.ORGANIZATION);
+            assertThat(capturedReply.getScopeId())
+                    .as("リプライのscopeIdは親のorgIdを継承していること")
+                    .isEqualTo(orgId);
+        }
+
+        @Test
+        @DisplayName("異常系: 存在しない親投稿へのリプライはPOST_NOT_FOUNDエラー")
+        void 存在しない親投稿へのリプライはエラー() {
+            // given
+            Long parentId = 999L;
+            CreatePostRequest req = new CreatePostRequest("リプライ試み", null, null,
+                    "USER", null, parentId, null, null, null, null);
+            given(postRepository.findById(parentId)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> timelinePostService.createPost(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(TimelineErrorCode.POST_NOT_FOUND));
+            // 親が見つからない場合は投稿は保存されない
+            then(postRepository).should(org.mockito.Mockito.never()).save(any(TimelinePostEntity.class));
+        }
+
+        @Test
         @DisplayName("正常系: リポストの場合は元投稿のリポスト数がインクリメントされる")
         void リポストの場合は元投稿のリポスト数がインクリメントされる() {
             // given
