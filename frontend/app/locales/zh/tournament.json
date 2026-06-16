@@ -1,4 +1,18 @@
 {
+  "sport": {
+    "label": "运动项目",
+    "help": "选择本赛事的运动项目。直接录入比分时创建的比赛将使用该项目。",
+    "options": {
+      "SOCCER": "足球",
+      "FUTSAL": "五人制足球",
+      "BASKETBALL": "篮球",
+      "VOLLEYBALL": "排球",
+      "SHOGI": "将棋",
+      "GO": "围棋",
+      "FIGURE_SKATING": "花样滑冰",
+      "GYMNASTICS": "体操"
+    }
+  },
   "entry": {
     "title": "参赛名单管理",
     "memberCount": "{count}名",

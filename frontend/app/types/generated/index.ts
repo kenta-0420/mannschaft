@@ -55129,6 +55129,7 @@ export interface components {
             name?: string;
             description?: string;
             format: string;
+            sport?: string;
             season?: string;
             /** Format: date */
             startDate?: string;
@@ -55172,6 +55173,7 @@ export interface components {
             name?: string;
             description?: string;
             format?: string;
+            sport?: string;
             season?: string;
             /** Format: date */
             startDate?: string;
@@ -60507,6 +60509,7 @@ export interface components {
             name?: string;
             description?: string;
             format?: string;
+            sport?: string;
             season?: string;
             /** Format: date */
             startDate?: string;

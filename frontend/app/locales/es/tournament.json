@@ -1,4 +1,18 @@
 {
+  "sport": {
+    "label": "Deporte",
+    "help": "Elige el deporte de este torneo. Los partidos creados al introducir el marcador directamente usarán este deporte.",
+    "options": {
+      "SOCCER": "Fútbol",
+      "FUTSAL": "Fútbol sala",
+      "BASKETBALL": "Baloncesto",
+      "VOLLEYBALL": "Voleibol",
+      "SHOGI": "Shogi",
+      "GO": "Go",
+      "FIGURE_SKATING": "Patinaje artístico",
+      "GYMNASTICS": "Gimnasia"
+    }
+  },
   "entry": {
     "title": "Gestión de inscripción",
     "memberCount": "{count} miembros",
