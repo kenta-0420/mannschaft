@@ -53,13 +53,19 @@ import java.util.stream.Collectors;
 /**
  * 個人ランキングの自動計算サービス。
  *
- * <p><b>集計源泉は fixture 配下の選手スタッツ（{@code tournament_fixture_player_stat}・05 §H.2.2）</b>:
+ * <p><b>集計源泉は fixture 配下の選手スタッツ（{@code tournament_match_player_stats}・05 §H.2.2）</b>:
  * 本サービスは {@link TournamentFixturePlayerStatEntity}（fixture×user×statKey の EAV）を集計して
- * 得点王等を算出する。これらは fixture（{@link TournamentFixtureEntity}・matches 正本の派生
- * スナップショット側ドメイン）に属する選手スタッツであり、matches/match_events へクロスドメイン JOIN
- * せず tournament 自ドメイン内で集計が完結するよう設計されている（CLAUDE.md 原則 1・
- * {@code CrossDomainEntityImportArchTest}）。基本スタッツ（得点/アシスト）の {@code match_events} 由来への
- * 統合は Phase 5（05 §H.2.2 / H.3）の後続フェーズ予定であり、本フェーズ（5b-1）では現行集計を変えない。</p>
+ * 得点王等を算出する。これらは fixture（matches 正本の派生スナップショット側ドメイン）に属する選手スタッツ
+ * であり、matches/match_events へクロスドメイン JOIN せず tournament 自ドメイン内で集計が完結するよう
+ * 設計されている（CLAUDE.md 原則 1・{@code CrossDomainEntityImportArchTest}）。</p>
+ *
+ * <p><b>基本スタッツの正本は match_events（Phase 5b-2・05 §H.2.2）</b>: 得点/アシスト等の基本スタッツ
+ * （{@code BasicStatKeys}・"goals"/"assists"）の<b>正本は match ドメインの {@code match_events}</b>
+ * （GOAL/ASSIST）であり、試合完了時に {@code MatchScoreFixtureListener} が match 集計から
+ * {@code tournament_match_player_stats} スナップショットへ同期する。本サービスはそのスナップショットを
+ * 読むだけのため、<b>集計ロジック・値・並び順・同点処理はすべて不変</b>（源泉が match になったことのみが差分）。
+ * 大会主催者が任意定義する大会固有の独自 statKey（H.6）はスナップショット同期の対象外で、手入力
+ * （{@code FixtureService.updatePlayerStats}）の値が従来どおり tournament 側に残置され、本サービスが同様に集計する。</p>
  */
 @Slf4j
 @Service

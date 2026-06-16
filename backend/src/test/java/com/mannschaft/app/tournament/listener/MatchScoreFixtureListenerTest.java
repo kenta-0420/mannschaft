@@ -2,11 +2,18 @@ package com.mannschaft.app.tournament.listener;
 
 import com.mannschaft.app.match.MatchCompletedEvent;
 import com.mannschaft.app.match.domain.MatchStatus;
+import com.mannschaft.app.match.domain.TeamSide;
+import com.mannschaft.app.match.dto.MatchScoringTally;
+import com.mannschaft.app.match.service.MatchScoringTallyService;
+import com.mannschaft.app.tournament.BasicStatKeys;
+import com.mannschaft.app.tournament.RankingsRecalculationEvent;
 import com.mannschaft.app.tournament.dto.ScoreUpdateRequest;
 import com.mannschaft.app.tournament.entity.TournamentDivisionEntity;
 import com.mannschaft.app.tournament.entity.TournamentFixtureEntity;
+import com.mannschaft.app.tournament.entity.TournamentFixturePlayerStatEntity;
 import com.mannschaft.app.tournament.entity.TournamentMatchdayEntity;
 import com.mannschaft.app.tournament.repository.TournamentDivisionRepository;
+import com.mannschaft.app.tournament.repository.TournamentFixturePlayerStatRepository;
 import com.mannschaft.app.tournament.repository.TournamentFixtureRepository;
 import com.mannschaft.app.tournament.repository.TournamentMatchdayRepository;
 import com.mannschaft.app.tournament.service.FixtureService;
@@ -18,13 +25,20 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -58,6 +72,12 @@ class MatchScoreFixtureListenerTest {
     private TournamentDivisionRepository divisionRepository;
     @Mock
     private FixtureService tournamentMatchService;
+    @Mock
+    private MatchScoringTallyService matchScoringTallyService;
+    @Mock
+    private TournamentFixturePlayerStatRepository playerStatRepository;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private MatchScoreFixtureListener listener;
@@ -221,5 +241,109 @@ class MatchScoreFixtureListenerTest {
         listener.onMatchCompleted(event(FIXTURE_ID, 1, 0, null, null));
 
         verify(tournamentMatchService, never()).updateScore(any(), any(), any());
+    }
+
+    // ─── Phase 5b-2: 個人ランキング基本スタッツ（得点/アシスト）の match_events 同期 ──
+
+    @Test
+    @DisplayName("(5b-2 a) match_events 集計を得点/アシストの fixture スナップショットへ同期し participant を side で引当てる")
+    void syncsBasicPlayerStatsFromMatchEvents() {
+        // HOME 選手 10: 2得点/1アシスト、AWAY 選手 30: 1得点
+        given(matchScoringTallyService.tallyScoringStatsForMatch(any(UUID.class))).willReturn(List.of(
+                new MatchScoringTally(10L, TeamSide.HOME, 2, 1),
+                new MatchScoringTally(30L, TeamSide.AWAY, 1, 0)));
+
+        listener.onMatchCompleted(event(FIXTURE_ID, 3, 1, null, null));
+
+        ArgumentCaptor<TournamentFixturePlayerStatEntity> captor =
+                ArgumentCaptor.forClass(TournamentFixturePlayerStatEntity.class);
+        // 2 選手 × {goals, assists} = 4 行
+        verify(playerStatRepository, times(4)).save(captor.capture());
+
+        Map<String, TournamentFixturePlayerStatEntity> byKey = captor.getAllValues().stream()
+                .collect(Collectors.toMap(s -> s.getUserId() + ":" + s.getStatKey(), Function.identity()));
+
+        // HOME 選手 10 → home participant(11) に得点 2 / アシスト 1
+        assertThat(byKey.get("10:goals").getValueInt()).isEqualTo(2);
+        assertThat(byKey.get("10:goals").getParticipantId()).isEqualTo(11L);
+        assertThat(byKey.get("10:goals").getMatchId()).isEqualTo(FIXTURE_ID);
+        assertThat(byKey.get("10:assists").getValueInt()).isEqualTo(1);
+        // AWAY 選手 30 → away participant(22) に得点 1 / アシスト 0
+        assertThat(byKey.get("30:goals").getValueInt()).isEqualTo(1);
+        assertThat(byKey.get("30:goals").getParticipantId()).isEqualTo(22L);
+        assertThat(byKey.get("30:assists").getValueInt()).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("(5b-2 b) 同期前に基本 statKey 群を delete してから insert（冪等・大会固有 statKey は削除対象外）")
+    void deletesBasicStatKeysBeforeInsertForIdempotency() {
+        given(matchScoringTallyService.tallyScoringStatsForMatch(any(UUID.class))).willReturn(List.of(
+                new MatchScoringTally(10L, TeamSide.HOME, 1, 0)));
+
+        listener.onMatchCompleted(event(FIXTURE_ID, 1, 0, null, null));
+
+        // 削除は基本 statKey（goals/assists）のみを対象とする（大会固有 statKey=H.6 は残置）
+        verify(playerStatRepository).deleteByMatchIdAndStatKeyIn(FIXTURE_ID, BasicStatKeys.ALL);
+        assertThat(BasicStatKeys.ALL).containsExactlyInAnyOrder("goals", "assists");
+    }
+
+    @Test
+    @DisplayName("(5b-2 c) スナップショット同期後に RankingsRecalculationEvent を発火する")
+    void firesRankingsRecalculationAfterSync() {
+        given(matchScoringTallyService.tallyScoringStatsForMatch(any(UUID.class))).willReturn(List.of(
+                new MatchScoringTally(10L, TeamSide.HOME, 1, 0)));
+
+        listener.onMatchCompleted(event(FIXTURE_ID, 1, 0, null, null));
+
+        ArgumentCaptor<RankingsRecalculationEvent> captor =
+                ArgumentCaptor.forClass(RankingsRecalculationEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().getTournamentId()).isEqualTo(TOURNAMENT_ID);
+    }
+
+    @Test
+    @DisplayName("(5b-2 d) 得点者が居ない試合でも delete とランキング再計算は走る（0 行 insert・順位反映の冪等）")
+    void emptyTalliesStillDeletesAndRecalculates() {
+        given(matchScoringTallyService.tallyScoringStatsForMatch(any(UUID.class))).willReturn(List.of());
+
+        listener.onMatchCompleted(event(FIXTURE_ID, 0, 0, null, null));
+
+        verify(playerStatRepository).deleteByMatchIdAndStatKeyIn(FIXTURE_ID, BasicStatKeys.ALL);
+        verify(playerStatRepository, never()).save(any());
+        verify(eventPublisher).publishEvent(any(RankingsRecalculationEvent.class));
+    }
+
+    @Test
+    @DisplayName("(5b-2 e) participant 未割当（fixture の home/away participant=null）の集計はスキップし他を壊さない")
+    void skipsTallyWhenParticipantUnassigned() {
+        // fixture の away participant 未割当
+        fixture = TournamentFixtureEntity.builder()
+                .matchdayId(MATCHDAY_ID)
+                .homeParticipantId(11L)
+                .awayParticipantId(null)
+                .build();
+        lenient().when(fixtureRepository.findById(FIXTURE_ID)).thenReturn(Optional.of(fixture));
+
+        given(matchScoringTallyService.tallyScoringStatsForMatch(any(UUID.class))).willReturn(List.of(
+                new MatchScoringTally(10L, TeamSide.HOME, 1, 0),
+                new MatchScoringTally(30L, TeamSide.AWAY, 1, 0)));
+
+        listener.onMatchCompleted(event(FIXTURE_ID, 1, 1, null, null));
+
+        // HOME 側（participant 11）のみ insert（goals/assists 2 行）。AWAY は participant=null でスキップ。
+        ArgumentCaptor<TournamentFixturePlayerStatEntity> captor =
+                ArgumentCaptor.forClass(TournamentFixturePlayerStatEntity.class);
+        verify(playerStatRepository, times(2)).save(captor.capture());
+        assertThat(captor.getAllValues()).allMatch(s -> s.getUserId() == 10L);
+    }
+
+    @Test
+    @DisplayName("(5b-2 f) 単独試合（fixtureId=null）は個人スタッツ同期も走らない")
+    void nullFixtureSkipsPlayerStatSync() {
+        listener.onMatchCompleted(event(null, 2, 1, null, null));
+
+        verify(matchScoringTallyService, never()).tallyScoringStatsForMatch(any());
+        verify(playerStatRepository, never()).deleteByMatchIdAndStatKeyIn(any(), anyCollection());
+        verify(eventPublisher, never()).publishEvent(any());
     }
 }
