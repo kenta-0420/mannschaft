@@ -597,6 +597,51 @@
       },
       "error": {
         "record_failed": "Speichern der Wertungen fehlgeschlagen"
+      },
+      "components": {
+        "intro": "Gib die Wertungsaufschlüsselung nach Kampfrichter/Gerät ein; die Gesamtpunktzahl wird automatisch berechnet.",
+        "mode_label": "Wertungsaufschlüsselung",
+        "switch_to_components": "Wertungsaufschlüsselung eingeben",
+        "switch_to_direct": "Zur direkten Eingabe der Gesamtpunktzahl wechseln",
+        "canonical_notice": "Es wurde eine Aufschlüsselung eingegeben, daher wird die Gesamtpunktzahl daraus automatisch berechnet.",
+        "clear_to_direct": "Aufschlüsselung löschen und zur direkten Eingabe zurückkehren",
+        "side_label": "Seite",
+        "component_type_label": "Element",
+        "apparatus_label": "Gerät / Segment",
+        "apparatus_placeholder": "(optional) Gerät auswählen",
+        "judge_label": "Kampfrichter",
+        "judge_placeholder": "z. B. J1",
+        "points_label": "Punkte",
+        "points_placeholder": "z. B. 88,43",
+        "optional": "(optional)",
+        "add_line": "Aufschlüsselungszeile hinzufügen",
+        "remove_line": "Diese Zeile entfernen",
+        "total_preview": "Gesamtvorschau (die endgültige Summe wird auf dem Server berechnet)",
+        "complete": "Wertungsaufschlüsselung bestätigen",
+        "complete_hint": "Gib mindestens eine Zeile und für jede einen Wert ein",
+        "component_type": {
+          "TES": "Technische Wertung (TES)",
+          "PCS": "Programmkomponenten-Wertung (PCS)",
+          "DEDUCTION": "Abzug",
+          "D_SCORE": "Schwierigkeitswertung (D-Note)",
+          "E_SCORE": "Ausführungswertung (E-Note)"
+        },
+        "apparatus": {
+          "SP": "Kurzprogramm",
+          "FS": "Kür",
+          "FLOOR": "Boden",
+          "POMMEL_HORSE": "Pauschenpferd",
+          "RINGS": "Ringe",
+          "VAULT": "Sprung",
+          "PARALLEL_BARS": "Barren",
+          "HORIZONTAL_BAR": "Reck",
+          "UNEVEN_BARS": "Stufenbarren",
+          "BALANCE_BEAM": "Schwebebalken"
+        },
+        "error": {
+          "load_failed": "Die Wertungsaufschlüsselung konnte nicht geladen werden",
+          "save_failed": "Die Wertungsaufschlüsselung konnte nicht gespeichert werden"
+        }
       }
     }
   }

@@ -3501,6 +3501,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{orgId}/matches/{matchId}/scored-components": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 採点内訳一覧取得（作成時刻昇順・採点競技） */
+        get: operations["listComponents"];
+        /** 採点内訳記録/更新（全置換・内訳→HOME/AWAY 合計点を再導出・採点競技・冪等） */
+        put: operations["recordComponents"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{orgId}/matches/{matchId}/result": {
         parameters: {
             query?: never;
@@ -46526,6 +46544,40 @@ export interface components {
             canEditMeta?: boolean;
             canRecordTimeline?: boolean;
         };
+        MatchRecordScoredComponentLine: {
+            /**
+             * @description 対戦 side（HOME/AWAY）
+             * @example HOME
+             * @enum {string}
+             */
+            competitorSide: "HOME" | "AWAY";
+            /**
+             * @description 種目/セグメント（体操の FLOOR/POMMEL_HORSE… フィギュアの SP/FS・任意）
+             * @example SP
+             * @enum {string}
+             */
+            apparatus?: "SP" | "FS" | "FLOOR" | "POMMEL_HORSE" | "RINGS" | "VAULT" | "PARALLEL_BARS" | "HORIZONTAL_BAR" | "UNEVEN_BARS" | "BALANCE_BEAM";
+            /**
+             * @description 審判識別（J1〜J9 等・任意）
+             * @example J1
+             */
+            judgeLabel?: string;
+            /**
+             * @description 項目（フィギュア=TES/PCS/DEDUCTION・体操=D_SCORE/E_SCORE）
+             * @example TES
+             * @enum {string}
+             */
+            componentType: "TES" | "PCS" | "DEDUCTION" | "D_SCORE" | "E_SCORE";
+            /**
+             * Format: int32
+             * @description 当該項目の点数（整数スケール×1000・非負・例 88430）
+             * @example 88430
+             */
+            pointsScaled: number;
+        };
+        MatchRecordScoredComponentRequest: {
+            components?: components["schemas"]["MatchRecordScoredComponentLine"][];
+        };
         MatchRecordTurnResultRequest: {
             /**
              * @description 勝者サイド（HOME/AWAY・NULL=引分け）
@@ -67598,6 +67650,28 @@ export interface components {
         ApiResponseListMatchRecordSetResponse: {
             data?: components["schemas"]["MatchRecordSetResponse"][];
         };
+        ApiResponseListMatchRecordScoredComponentResponse: {
+            data?: components["schemas"]["MatchRecordScoredComponentResponse"][];
+        };
+        MatchRecordScoredComponentResponse: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            matchId?: string;
+            /** @enum {string} */
+            competitorSide?: "HOME" | "AWAY";
+            /** @enum {string} */
+            apparatus?: "SP" | "FS" | "FLOOR" | "POMMEL_HORSE" | "RINGS" | "VAULT" | "PARALLEL_BARS" | "HORIZONTAL_BAR" | "UNEVEN_BARS" | "BALANCE_BEAM";
+            judgeLabel?: string;
+            /** @enum {string} */
+            componentType?: "TES" | "PCS" | "DEDUCTION" | "D_SCORE" | "E_SCORE";
+            /** Format: int32 */
+            pointsScaled?: number;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
         ApiResponseMatchEventsResponse: {
             data?: components["schemas"]["MatchEventsResponse"];
         };
@@ -80321,6 +80395,56 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["MatchRecordScoredResultRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
+    listComponents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListMatchRecordScoredComponentResponse"];
+                };
+            };
+        };
+    };
+    recordComponents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MatchRecordScoredComponentRequest"];
             };
         };
         responses: {

@@ -597,6 +597,51 @@
       },
       "error": {
         "record_failed": "评分结果保存失败"
+      },
+      "components": {
+        "intro": "输入各裁判／项目的评分明细后，总分将自动计算。",
+        "mode_label": "评分明细录入",
+        "switch_to_components": "录入评分明细",
+        "switch_to_direct": "切换为直接录入总分",
+        "canonical_notice": "已录入评分明细，总分将根据明细自动计算。",
+        "clear_to_direct": "清除明细并返回直接录入",
+        "side_label": "对象",
+        "component_type_label": "项目",
+        "apparatus_label": "项目／段落",
+        "apparatus_placeholder": "（可选）选择项目",
+        "judge_label": "裁判",
+        "judge_placeholder": "例：J1",
+        "points_label": "分数",
+        "points_placeholder": "例：88.43",
+        "optional": "（可选）",
+        "add_line": "添加明细",
+        "remove_line": "删除此明细",
+        "total_preview": "总分预览（最终总分由服务器计算）",
+        "complete": "确认评分明细",
+        "complete_hint": "请至少输入一条明细，并填写每项分数",
+        "component_type": {
+          "TES": "技术分（TES）",
+          "PCS": "节目内容分（PCS）",
+          "DEDUCTION": "扣分",
+          "D_SCORE": "难度分（D分）",
+          "E_SCORE": "完成分（E分）"
+        },
+        "apparatus": {
+          "SP": "短节目",
+          "FS": "自由滑",
+          "FLOOR": "自由体操",
+          "POMMEL_HORSE": "鞍马",
+          "RINGS": "吊环",
+          "VAULT": "跳马",
+          "PARALLEL_BARS": "双杠",
+          "HORIZONTAL_BAR": "单杠",
+          "UNEVEN_BARS": "高低杠",
+          "BALANCE_BEAM": "平衡木"
+        },
+        "error": {
+          "load_failed": "加载评分明细失败",
+          "save_failed": "保存评分明细失败"
+        }
       }
     }
   }

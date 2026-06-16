@@ -597,6 +597,51 @@
       },
       "error": {
         "record_failed": "No se pudieron guardar las puntuaciones"
+      },
+      "components": {
+        "intro": "Introduce el desglose de puntuación por juez/aparato; el total se calcula automáticamente.",
+        "mode_label": "Desglose de puntuación",
+        "switch_to_components": "Introducir desglose de puntuación",
+        "switch_to_direct": "Cambiar a entrada directa del total",
+        "canonical_notice": "Se ha introducido un desglose, por lo que el total se calcula automáticamente a partir de él.",
+        "clear_to_direct": "Borrar el desglose y volver a la entrada directa",
+        "side_label": "Lado",
+        "component_type_label": "Elemento",
+        "apparatus_label": "Aparato / segmento",
+        "apparatus_placeholder": "(opcional) selecciona un aparato",
+        "judge_label": "Juez",
+        "judge_placeholder": "p. ej. J1",
+        "points_label": "Puntos",
+        "points_placeholder": "p. ej. 88,43",
+        "optional": "(opcional)",
+        "add_line": "Añadir línea de desglose",
+        "remove_line": "Eliminar esta línea",
+        "total_preview": "Vista previa del total (el total final lo calcula el servidor)",
+        "complete": "Confirmar desglose de puntuación",
+        "complete_hint": "Introduce al menos una línea y un valor para cada una",
+        "component_type": {
+          "TES": "Puntuación técnica (TES)",
+          "PCS": "Puntuación de componentes del programa (PCS)",
+          "DEDUCTION": "Deducción",
+          "D_SCORE": "Puntuación de dificultad (puntuación D)",
+          "E_SCORE": "Puntuación de ejecución (puntuación E)"
+        },
+        "apparatus": {
+          "SP": "Programa corto",
+          "FS": "Patinaje libre",
+          "FLOOR": "Suelo",
+          "POMMEL_HORSE": "Caballo con arcos",
+          "RINGS": "Anillas",
+          "VAULT": "Salto",
+          "PARALLEL_BARS": "Barras paralelas",
+          "HORIZONTAL_BAR": "Barra fija",
+          "UNEVEN_BARS": "Barras asimétricas",
+          "BALANCE_BEAM": "Barra de equilibrio"
+        },
+        "error": {
+          "load_failed": "No se pudo cargar el desglose de puntuación",
+          "save_failed": "No se pudo guardar el desglose de puntuación"
+        }
       }
     }
   }

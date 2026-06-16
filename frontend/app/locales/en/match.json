@@ -597,6 +597,51 @@
       },
       "error": {
         "record_failed": "Failed to save the scores"
+      },
+      "components": {
+        "intro": "Enter the judge/apparatus score breakdown; the total is calculated automatically.",
+        "mode_label": "Score breakdown",
+        "switch_to_components": "Enter score breakdown",
+        "switch_to_direct": "Switch to direct total entry",
+        "canonical_notice": "A score breakdown has been entered, so the total is calculated automatically from it.",
+        "clear_to_direct": "Clear the breakdown and return to direct entry",
+        "side_label": "Side",
+        "component_type_label": "Item",
+        "apparatus_label": "Apparatus / segment",
+        "apparatus_placeholder": "(optional) select an apparatus",
+        "judge_label": "Judge",
+        "judge_placeholder": "e.g. J1",
+        "points_label": "Points",
+        "points_placeholder": "e.g. 88.43",
+        "optional": "(optional)",
+        "add_line": "Add a breakdown line",
+        "remove_line": "Remove this line",
+        "total_preview": "Total preview (final total is calculated on the server)",
+        "complete": "Confirm score breakdown",
+        "complete_hint": "Enter at least one line and a value for each",
+        "component_type": {
+          "TES": "Technical score (TES)",
+          "PCS": "Program component score (PCS)",
+          "DEDUCTION": "Deduction",
+          "D_SCORE": "Difficulty score (D score)",
+          "E_SCORE": "Execution score (E score)"
+        },
+        "apparatus": {
+          "SP": "Short program",
+          "FS": "Free skating",
+          "FLOOR": "Floor",
+          "POMMEL_HORSE": "Pommel horse",
+          "RINGS": "Rings",
+          "VAULT": "Vault",
+          "PARALLEL_BARS": "Parallel bars",
+          "HORIZONTAL_BAR": "Horizontal bar",
+          "UNEVEN_BARS": "Uneven bars",
+          "BALANCE_BEAM": "Balance beam"
+        },
+        "error": {
+          "load_failed": "Failed to load the score breakdown",
+          "save_failed": "Failed to save the score breakdown"
+        }
       }
     }
   }
