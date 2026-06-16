@@ -485,4 +485,66 @@ class MatchSchemaFlywayTest {
                     assertThat(fk[2]).isEqualTo("CASCADE");
                 });
     }
+
+    // ─── V93.001: match_score_entries（採点競技の多人数順位制 出場者エントリ子表・07_scored §5B） ───
+
+    @Test
+    @DisplayName("match_score_entries が作成され主キーが BINARY(16)（UUIDv7・原則6・V93.001）")
+    void matchScoreEntriesTableExistsWithBinaryPk() throws Exception {
+        assertThat(columnExists("match_score_entries", "id"))
+                .as("match_score_entries.id が存在すること（V93.001）").isTrue();
+        assertThat(columnType("match_score_entries", "id").toLowerCase())
+                .as("match_score_entries.id は binary(16)（UUIDv7）").isEqualTo("binary(16)");
+    }
+
+    @Test
+    @DisplayName("match_score_entries の列構成（match_id/competitor_*/total_scaled/rank_position・§5B.1）")
+    void matchScoreEntriesColumns() throws Exception {
+        assertThat(columnExists("match_score_entries", "match_id")).isTrue();
+        assertThat(columnType("match_score_entries", "match_id").toLowerCase()).isEqualTo("binary(16)");
+        assertThat(columnExists("match_score_entries", "competitor_user_id")).isTrue();
+        assertThat(columnExists("match_score_entries", "competitor_name")).isTrue();
+        assertThat(columnExists("match_score_entries", "competitor_team_id")).isTrue();
+        assertThat(columnExists("match_score_entries", "total_scaled")).isTrue();
+        assertThat(columnType("match_score_entries", "total_scaled").toLowerCase())
+                .as("total_scaled は int（整数スケール×1000）").contains("int");
+        assertThat(columnExists("match_score_entries", "rank_position")).isTrue();
+        assertThat(columnType("match_score_entries", "rank_position").toLowerCase())
+                .as("rank_position は smallint unsigned（順位）").contains("smallint").contains("unsigned");
+        // total_scaled は NOT NULL DEFAULT 0
+        assertThat(columnIsNullable("match_score_entries", "total_scaled")).isFalse();
+        // competitor_* / rank_position は NULL 許容（未登録選手・団体・順位未算出）
+        assertThat(columnIsNullable("match_score_entries", "competitor_user_id"))
+                .as("competitor_user_id は NULL 許容（未登録選手）").isTrue();
+        assertThat(columnIsNullable("match_score_entries", "competitor_name")).isTrue();
+        assertThat(columnIsNullable("match_score_entries", "competitor_team_id")).isTrue();
+        assertThat(columnIsNullable("match_score_entries", "rank_position"))
+                .as("rank_position は NULL 許容（順位算出前）").isTrue();
+    }
+
+    @Test
+    @DisplayName("match_score_entries は organization_id / deleted_at を持たない（01 §A.4・テナント分離は親 matches）")
+    void matchScoreEntriesHasNoTenantNorSoftDeleteColumns() throws Exception {
+        assertThat(columnExists("match_score_entries", "organization_id"))
+                .as("match_score_entries に organization_id があってはならない（テナント分離は親 matches）").isFalse();
+        assertThat(columnExists("match_score_entries", "deleted_at"))
+                .as("match_score_entries に deleted_at があってはならない（親 matches の削除に従う）").isFalse();
+    }
+
+    @Test
+    @DisplayName("match_score_entries の FK は match_id→matches(CASCADE) のみ（同一ドメイン・原則1/2・V93.001）")
+    void matchScoreEntriesForeignKeys() throws Exception {
+        List<String[]> fks = foreignKeys("match_score_entries");
+        assertThat(fks)
+                .as("match_score_entries の FK 参照先は matches のみ（クロスドメイン FK 禁止・原則1）"
+                        + "・competitor_user_id/competitor_team_id は user/team ドメインゆえ FK を張らない")
+                .isNotEmpty()
+                .allSatisfy(fk -> assertThat(fk[1]).isEqualTo("matches"));
+        assertThat(fks)
+                .as("match_id→matches は ON DELETE CASCADE（親 matches の削除でエントリも消える・原則2）")
+                .anySatisfy(fk -> {
+                    assertThat(fk[1]).isEqualTo("matches");
+                    assertThat(fk[2]).isEqualTo("CASCADE");
+                });
+    }
 }

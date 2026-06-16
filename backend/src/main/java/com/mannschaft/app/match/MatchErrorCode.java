@@ -113,7 +113,17 @@ public enum MatchErrorCode implements ErrorCode {
      * 両方確定している必要がある。未確定（スコア NULL）のまま COMPLETED にはできない（症状を隠さない）。
      * 同点（整数スケール同値）は引分（DRAW）として COMPLETED 可（§6）。</p>
      */
-    MATCH_035("MATCH_035", "試合を終了するには採点（合計点）の確定が必要です", Severity.WARN);
+    MATCH_035("MATCH_035", "試合を終了するには採点（合計点）の確定が必要です", Severity.WARN),
+
+    /**
+     * 採点競技の出場者エントリが見つからない / 親子 match_id 不一致（IDOR 対策で 404・sports/07_scored.md §5B / §11）。
+     *
+     * <p>多人数順位制（{@code match_score_entries}・後段 Phase）の子エントリは {@code organization_id}/
+     * {@code deleted_at} を持たず、親 matches の二段アクセス（01 §A.4）でのみアクセスする。子 ID 指定 API は
+     * {@code entry.match_id == パスの matchId} を検証し、不在・親子不一致・テナント越境はすべて 404 で統一して
+     * 存在を漏らさない（推測 ID による越境を遮断）。</p>
+     */
+    MATCH_036("MATCH_036", "対象の出場者エントリが見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;
