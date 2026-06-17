@@ -34,6 +34,13 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
+        # 規模対応 Tier2（(B) 組織→参加チーム配信 案C フェーズA）:
+        # saveAll() を 1 ステートメントあたり複数行の INSERT にまとめ、組織配下展開で
+        # 出欠レコードが数千〜数万件に膨らんでも DB round-trip を抑制する。
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
 
   # Flyway
   flyway:
