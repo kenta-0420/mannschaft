@@ -177,6 +177,8 @@ public class SurveyService {
                         : UnrespondedVisibility.CREATOR_AND_ADMIN)
                 .autoPostToTimeline(request.getAutoPostToTimeline() != null
                         ? request.getAutoPostToTimeline() : false)
+                .includeSupporters(request.getIncludeSupporters() != null
+                        ? request.getIncludeSupporters() : false)
                 .seriesId(request.getSeriesId())
                 .remindBeforeHours(remindJson)
                 .startsAt(request.getStartsAt())
@@ -232,7 +234,8 @@ public class SurveyService {
             entity.changeDescription(request.getDescription());
         }
         if (request.getIsAnonymous() != null || request.getAllowMultipleSubmissions() != null
-                || request.getResultsVisibility() != null || request.getAutoPostToTimeline() != null) {
+                || request.getResultsVisibility() != null || request.getAutoPostToTimeline() != null
+                || request.getIncludeSupporters() != null) {
             entity.updateSettings(
                     request.getIsAnonymous() != null ? request.getIsAnonymous() : entity.getIsAnonymous(),
                     request.getAllowMultipleSubmissions() != null
@@ -241,7 +244,9 @@ public class SurveyService {
                             ? ResultsVisibility.valueOf(request.getResultsVisibility())
                             : entity.getResultsVisibility(),
                     request.getAutoPostToTimeline() != null
-                            ? request.getAutoPostToTimeline() : entity.getAutoPostToTimeline()
+                            ? request.getAutoPostToTimeline() : entity.getAutoPostToTimeline(),
+                    request.getIncludeSupporters() != null
+                            ? request.getIncludeSupporters() : entity.getIncludeSupporters()
             );
         }
         if (request.getUnrespondedVisibility() != null) {

@@ -88,6 +88,15 @@ public class ScheduleEntity extends BaseEntity {
     @Builder.Default
     private Boolean attendanceRequired = false;
 
+    /**
+     * 出欠確認の配信母集団にサポーター（応援者）を含めるか。
+     * (B) 組織→参加チーム配信 案C フェーズA 隊A で追加。
+     * 既定 false（組織配信時はサポーター除外）。値を使った母集団絞り込みの配線は後続隊。
+     */
+    @Column(name = "include_supporters", nullable = false)
+    @Builder.Default
+    private Boolean includeSupporters = false;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private AttendanceGenerationStatus attendanceStatus;
