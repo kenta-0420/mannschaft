@@ -75,12 +75,8 @@ saved_segment_presets -> users [fk_ssp_created_by] (RESTRICT) @V9.028__create_sa
 schedule_attendances -> proxy_input_records [fk_sa_proxy_record] (RESTRICT) @V18.017__add_proxy_input_columns_to_schedule_attendances.sql:8
 schedules -> committees [fk_schedules_committee] (CASCADE) @V9.086__add_committee_id_to_schedules.sql:4
 schedules -> todos [fk_schedules_todos] (SET NULL) @V13.015__alter_schedules_add_linked_todo_id.sql:8
-schedules -> users [fk_sch_created_by] (SET NULL) @V3.040__create_schedules_table.sql:43
 schedules -> venues [fk_sch_venue] (RESTRICT) @V9.059__add_venue_id_to_schedules_and_activity_results.sql:5
 schedules -> visibility_templates [fk_schedules_vt] (SET NULL) @V16.006__add_visibility_template_id_to_features.sql:7
-shared_file_versions -> users [fk_file_versions_uploaded] (SET NULL) @V5.022__create_shared_file_versions_table.sql:13
-shared_folders -> users [fk_shared_folders_created] (SET NULL) @V5.020__create_shared_folders_table.sql:20
-shared_folders -> users [fk_shared_folders_user] (SET NULL) @V5.020__create_shared_folders_table.sql:18
 shift_budget_allocations -> budget_categories [fk_sba_budget_category] (RESTRICT) @V11.030__create_shift_budget_allocations.sql:64
 shift_budget_allocations -> budget_fiscal_years [fk_sba_fiscal_year] (RESTRICT) @V11.030__create_shift_budget_allocations.sql:61
 shift_budget_allocations -> projects [fk_sba_project] (RESTRICT) @V11.035__add_project_id_fk_to_shift_budget_allocations.sql:18
@@ -93,9 +89,7 @@ shift_schedules -> projects [fk_ss_linked_project] (SET NULL) @V3.149__add_linke
 survey_responses -> proxy_input_records [fk_sr_proxy_record] (RESTRICT) @V18.016__add_proxy_input_columns_to_survey_responses.sql:8
 surveys -> users [fk_surveys_created_by] (SET NULL) @V5.014__create_surveys_table.sql:34
 tags -> users [fk_tags_created_by] (RESTRICT) @V3.107__create_tags_table.sql:14
-team_templates -> users [fk_team_templates_created_by] (SET NULL) @V2.017__create_team_templates_table.sql:16
 teams -> team_templates [fk_teams_template] (SET NULL) @V2.023__add_template_id_to_teams.sql:3
-timetables -> users [fk_tm_created_by] (SET NULL) @V11.003__create_timetables_table.sql:25
 todo_budget_links -> projects [fk_tbl_project] (CASCADE) @V11.032__create_todo_budget_links.sql:63
 todo_budget_links -> todos [fk_tbl_todo] (CASCADE) @V11.032__create_todo_budget_links.sql:66
 todo_budget_links -> users [fk_tbl_creator] (RESTRICT) @V11.032__create_todo_budget_links.sql:72
