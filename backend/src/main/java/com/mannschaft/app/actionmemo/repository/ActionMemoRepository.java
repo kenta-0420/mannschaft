@@ -4,6 +4,7 @@ import com.mannschaft.app.actionmemo.entity.ActionMemoEntity;
 import com.mannschaft.app.actionmemo.enums.ActionMemoCategory;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -182,4 +183,33 @@ public interface ActionMemoRepository extends JpaRepository<ActionMemoEntity, Lo
             @Param("teamId") Long teamId,
             @Param("cursorId") Long cursorId,
             Pageable pageable);
+
+    // ==================================================================
+    // クロスドメインFK撤廃キャンペーン 第二陣D（退会即時削除・GDPR Art.17）
+    // ==================================================================
+
+    /**
+     * 指定ユーザーの行動メモ（action_memos）を論理削除済みも含めて物理削除する。
+     *
+     * <p>{@code ActionMemoAnonymizationEventListener#onUserAnonymized} が退会受付直後
+     * （{@code UserAnonymizedEvent} 即時匿名化）に呼び出し、users 本体削除より前に
+     * 行動ログ（個人の内容＝PII）を先行削除するための安全弁メソッド。
+     * これにより V99.001 で撤廃する {@code fk_action_memos_user}（ON DELETE CASCADE）が冗長になる。</p>
+     *
+     * <p><b>native DELETE を使う理由:</b> {@code ActionMemoEntity} は
+     * {@code @SQLRestriction("deleted_at IS NULL")} を持つため、派生クエリ
+     * {@code deleteByUserId} では論理削除済み行が WHERE 句で除外され「消し残し」が発生する。
+     * GDPR 物理削除では論理削除済みの行も完全に消す必要があるため、{@code @SQLRestriction} を
+     * 回避できる native DELETE を用いる（同 Repository の {@code findByIdInIncludingDeleted} と同じ idiom）。</p>
+     *
+     * <p>action_memos を親とする同一ドメイン子テーブル {@code action_memo_tag_links} は
+     * {@code fk_amtl_memo}（memo_id → action_memos ON DELETE CASCADE）を持つため、
+     * 本削除に伴い DB の同一ドメイン内 CASCADE で自動削除される（手動順序削除は不要）。</p>
+     *
+     * @param userId 退会ユーザーID
+     * @return 削除された行数
+     */
+    @Modifying
+    @Query(value = "DELETE FROM action_memos WHERE user_id = :userId", nativeQuery = true)
+    int deleteAllByUserIdIncludingDeleted(@Param("userId") Long userId);
 }
