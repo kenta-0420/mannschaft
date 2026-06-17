@@ -136,6 +136,10 @@ public class TimelinePostService {
      *
      * <p>{@link #createPost} と {@link #createSystemPost} の両方から呼ばれる。
      * バリデーション・ステータス決定・Entity 生成・添付ファイル保存・イベント発行を担う。</p>
+     *
+     * <p><b>リプライのスコープ継承</b>: {@code parentId} が指定されている場合、リクエストの
+     * scopeType/scopeId/scopeVillageId を無視して親投稿のスコープを継承する。
+     * これにより「TEAMスコープ投稿へのリプライがPUBLICで作成される」情報漏洩を防ぐ。</p>
      */
     private PostResponse doCreatePost(CreatePostRequest req, Long userId) {
         if (req.getContent() == null || req.getContent().isBlank()) {
@@ -161,13 +165,36 @@ public class TimelinePostService {
             status = PostStatus.PUBLISHED;
         }
 
+        // リプライの場合、親投稿のスコープを継承する（情報漏洩防止）。
+        // リクエストで明示されたスコープ値ではなく、必ず親投稿のスコープを正とする。
+        // 親が存在しない場合は POST_NOT_FOUND をスローする。
+        TimelinePostEntity parentPost = null;
+        if (req.getParentId() != null) {
+            parentPost = postRepository.findById(req.getParentId())
+                    .orElseThrow(() -> new BusinessException(TimelineErrorCode.POST_NOT_FOUND));
+        }
+
         // F17.1 Phase 3: scope=VILLAGE 投稿の主体検証
-        PostScopeType scopeTypeEnum = PostScopeType.valueOf(req.getScopeTypeOrDefault());
+        // リプライ時は親スコープを使用するため req.getScopeTypeOrDefault() は使わない
+        PostScopeType scopeTypeEnum;
+        Long effectiveScopeId;
+        UUID scopeVillageId;
+        if (parentPost != null) {
+            // リプライ: 親投稿のスコープをそのまま継承する
+            scopeTypeEnum = parentPost.getScopeType();
+            effectiveScopeId = parentPost.getScopeId();
+            scopeVillageId = parentPost.getScopeVillageId();
+        } else {
+            scopeTypeEnum = PostScopeType.valueOf(req.getScopeTypeOrDefault());
+            effectiveScopeId = req.getScopeIdOrDefault();
+            scopeVillageId = null;
+        }
+
         PostedAsType postedAsTypeEnum = PostedAsType.valueOf(req.getPostedAsTypeOrDefault());
         Long postedAsId = req.getPostedAsId();
 
-        UUID scopeVillageId = null;
-        if (scopeTypeEnum == PostScopeType.VILLAGE) {
+        if (parentPost == null && scopeTypeEnum == PostScopeType.VILLAGE) {
+            // 通常投稿（非リプライ）のVILLAGEスコープ検証
             scopeVillageId = req.getScopeVillageId();
             if (scopeVillageId == null) {
                 throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
@@ -187,7 +214,7 @@ public class TimelinePostService {
 
         TimelinePostEntity post = TimelinePostEntity.builder()
                 .scopeType(scopeTypeEnum)
-                .scopeId(req.getScopeIdOrDefault())
+                .scopeId(effectiveScopeId)
                 .scopeVillageId(scopeVillageId)
                 .userId(userId)
                 .postedAsType(postedAsTypeEnum)
@@ -202,11 +229,10 @@ public class TimelinePostService {
         post = postRepository.save(post);
 
         // リプライの場合、親投稿のリプライ数をインクリメント
-        if (req.getParentId() != null) {
-            postRepository.findById(req.getParentId()).ifPresent(parent -> {
-                parent.incrementReplyCount();
-                postRepository.save(parent);
-            });
+        // （親投稿は上記で既に取得済みなのでそれを直接使う）
+        if (parentPost != null) {
+            parentPost.incrementReplyCount();
+            postRepository.save(parentPost);
         }
 
         // リポストの場合、元投稿のリポスト数をインクリメント
@@ -218,9 +244,9 @@ public class TimelinePostService {
         }
 
         // 添付ファイルの保存
+        // リプライ時は継承済みの scopeTypeEnum/effectiveScopeId を使う（req の値は使わない）
         if (req.getAttachments() != null && !req.getAttachments().isEmpty()) {
-            ScopeResolution scope = resolveScope(req.getScopeTypeOrDefault(),
-                    req.getScopeIdOrDefault(), userId);
+            ScopeResolution scope = resolveScope(scopeTypeEnum.name(), effectiveScopeId, userId);
             saveAttachments(post.getId(), req.getAttachments(), scope, userId);
         }
 
@@ -229,14 +255,14 @@ public class TimelinePostService {
             pollService.createPoll(post.getId(), req.getPoll());
         }
 
-        log.info("タイムライン投稿作成: id={}, userId={}, scopeType={}", post.getId(), userId, req.getScopeTypeOrDefault());
+        log.info("タイムライン投稿作成: id={}, userId={}, scopeType={}", post.getId(), userId, scopeTypeEnum);
 
         // 即時公開投稿のみゲーミフィケーションイベントを発行（予約投稿はスキップ）
         if (status == PostStatus.PUBLISHED) {
             domainEventPublisher.publish(new TimelinePostCreatedEvent(
                     post.getId(), userId,
-                    req.getScopeTypeOrDefault(),
-                    req.getScopeIdOrDefault()
+                    scopeTypeEnum.name(),
+                    effectiveScopeId
             ));
         }
 

@@ -404,7 +404,8 @@ dependencyCheck {
 // /v3/api-docs エンドポイントから JSON を取得して outputDir に保存する。
 // openapi-gen プロファイル: MySQL 不要、H2 インメモリ DB + Flyway 無効 で起動する。
 openApi {
-    apiDocsUrl.set("http://localhost:8080/v3/api-docs")
+    // 8082 ポートを使用: dev サーバー(:8080)が稼働中でも競合しない
+    apiDocsUrl.set("http://localhost:8082/v3/api-docs")
     // projectDir は backend/ ディレクトリを指すため、親（リポジトリルート）の docs/ を指定する
     outputDir.set(file("${projectDir.parentFile}/docs"))
     outputFileName.set("openapi.json")
@@ -415,8 +416,10 @@ openApi {
     customBootRun {
         // args.add は springdoc-openapi-gradle-plugin では機能しないため jvmArgs で -D オプションを使用する
         jvmArgs.add("-Dspring.profiles.active=openapi-gen")
+        jvmArgs.add("-Dserver.port=8082")
         // MapProperty.put() で systemProperties にも設定し二重に適用する
         systemProperties.put("spring.profiles.active", "openapi-gen")
+        systemProperties.put("server.port", "8082")
         // フォークプロセスのクラスパスを最新コンパイル済みの sourceSets.main.runtimeClasspath に明示固定する。
         // プラグインは customBootRun.classpath が空の場合に bootRun.classpath をフォールバックで使うが、
         // それは Gradle build cache から復元されたクラスパス解決に依存しているため、

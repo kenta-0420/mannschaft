@@ -144,12 +144,12 @@ async function onSubmit() {
       })
     }
 
-    // 3. JSON ボディを構築して送信
+    // 3. JSON ボディを構築して送信（BE @RequestBody はcamelCase。プロジェクト規約）
     const body: Record<string, unknown> = {
-      scope_type: props.scopeType,
-      scope_id: scopeId,
-      // VILLAGE スコープ: scope_id=0 + scope_village_id=UUID（設計書 §3.12.2）
-      ...(isVillage && props.scopeId ? { scope_village_id: String(props.scopeId) } : {}),
+      scopeType: props.scopeType,
+      scopeId: scopeId,
+      // VILLAGE スコープ: scopeId=0 + scopeVillageId=UUID（設計書 §3.12.2）
+      ...(isVillage && props.scopeId ? { scopeVillageId: String(props.scopeId) } : {}),
       content: content.value.trim(),
       ...(attachments.length ? { attachments } : {}),
       ...(poll.value ? { poll: poll.value } : {}),
