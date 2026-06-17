@@ -37,10 +37,12 @@ export function useReservationApi() {
   }
 
   // === Slots ===
-  async function getSlots(teamId: string, params?: { date?: string; lineId?: number }) {
+  // BE: GET /reservation-slots は from/to（取得期間。ISO DATE）が必須クエリ。
+  // 単日表示は from=to=対象日 を渡す。スロットはライン非依存（BEにライン紐付けは無い）。
+  async function getSlots(teamId: string, params: { from: string; to: string }) {
     const query = new URLSearchParams()
-    if (params?.date) query.set('date', params.date)
-    if (params?.lineId) query.set('lineId', String(params.lineId))
+    query.set('from', params.from)
+    query.set('to', params.to)
     return api<{ data: unknown[] }>(`${base(teamId)}/reservation-slots?${query}`)
   }
 
@@ -71,10 +73,11 @@ export function useReservationApi() {
     return api(`${base(teamId)}/reservation-slots/${slotId}/reopen`, { method: 'POST' })
   }
 
-  async function listAvailableSlots(teamId: string, params?: { date?: string; lineId?: number }) {
+  // BE: GET /reservation-slots/available も from/to（取得期間。ISO DATE）が必須クエリ。
+  async function listAvailableSlots(teamId: string, params: { from: string; to: string }) {
     const query = new URLSearchParams()
-    if (params?.date) query.set('date', params.date)
-    if (params?.lineId) query.set('lineId', String(params.lineId))
+    query.set('from', params.from)
+    query.set('to', params.to)
     return api<{ data: unknown[] }>(`${base(teamId)}/reservation-slots/available?${query}`)
   }
 
@@ -96,7 +99,8 @@ export function useReservationApi() {
 
   async function createReservation(
     teamId: string,
-    body: { slotId: number; serviceNotes?: string },
+    // BE: CreateReservationRequest は reservationSlotId/lineId(@NotNull) + userNote(任意)
+    body: { reservationSlotId: number; lineId: number; userNote?: string },
   ) {
     return api<{ data: unknown }>(`${base(teamId)}/reservations`, { method: 'POST', body })
   }
