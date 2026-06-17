@@ -268,7 +268,7 @@ class FlywayExistingDataErrorReportMiscSetNullFkMigrationTest {
                      resolved_by, assignee_id, error_hash, occurrence_count, affected_user_count,
                      first_occurred_at, last_occurred_at, created_at, updated_at)
                 VALUES ('監査FK撤廃テストエラー', 'https://example.com/test/3e', ?, NOW(), 'NEW', 'MEDIUM',
-                        ?, ?, 'hash-3e-0000000000000000000000000000000000000000000000000000000000', 1, 1,
+                        ?, ?, 'hash-3e-errorreport-setnull-test', 1, 1,
                         NOW(), NOW(), NOW(), NOW())
                 """, Statement.RETURN_GENERATED_KEYS)) {
             ps.setLong(1, userId);
