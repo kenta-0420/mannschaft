@@ -54,8 +54,6 @@ const MOCK_TEAMS_EMPTY = { data: [] }
 
 const MOCK_ORGS_EMPTY = { data: [] }
 
-const MOCK_OFFLINE_QUEUE = { count: 0 }
-
 // === P2-NET-01: write 操作中のネットワーク失敗 ===
 
 test.describe('P2-NET-01: write 操作中のネットワーク失敗でエラーバナーが出る', () => {
