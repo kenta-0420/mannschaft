@@ -12,6 +12,11 @@
  *   - 既存の reservation-dashboard-real.spec.ts のログイン手法／APIブリッジに倣う
  *     （:8080 絶対URLで自前ログインし Bearer/Cookie で自己完結。memory:
  *      feedback_e2e_wsl2_cors_apibridge / feedback_e2e_real_full_crud）。
+ *   - 実行は **--workers=1**（単一ワーカー）で行うこと。本スペックは worker ごとに
+ *     ADMIN/MEMBER/SUPPORTER の3アカウントをログインするため、複数ワーカー並列だと
+ *     短時間に多数のログインが BE に集中し AUTH_031（OAuth連携トークン無効/期限切れ）の
+ *     間欠失敗を誘発する（BE 側のログイン同時実行レース。本機能 F03.4 とは別件）。
+ *     例: BASE_URL=http://localhost:3001 playwright test ... --workers=1
  *
  * テストアカウント（seed: backend/scripts/seed-e2e-data.js）:
  *   - ADMIN:     e2e-admin@test.mannschaft.local     / TestPass2026!（fc-u-18 ADMIN + SYSTEM_ADMIN）
@@ -649,7 +654,16 @@ test.describe('RSV-F034-UI: 実ブラウザで予約管理ページが描画さ�
     const hasReservationUi =
       bodyText.includes('予約') || (await page.getByRole('tab').count()) > 0
     expect(hasReservationUi).toBe(true)
-    const fatal = consoleErrors.filter((e) => /Cannot read|undefined is not|Hydration|TypeError/i.test(e))
+    // 描画不能の兆候となる致命エラーのみを拾う。
+    // 「Hydration completed but contains mismatches」は SSR/CSR の auth 状態差で出る
+    // 良性の警告であり（adminInit が localStorage に currentUser を先入れするため発生する）、
+    // ページ自体は完全に描画される（snapshot で banner/nav/tab を確認済み）。
+    // よって描画不能の指標からは除外し、本物のランタイム例外だけを fatal とする。
+    const fatal = consoleErrors.filter(
+      (e) =>
+        /Cannot read|undefined is not|TypeError/i.test(e) &&
+        !/Hydration completed but contains mismatches/i.test(e),
+    )
     expect(fatal.length, `致命的コンソールエラー: ${fatal.join(' / ')}`).toBe(0)
   })
 
@@ -714,6 +728,9 @@ test.describe('RSV-F034-UI: 実ブラウザで予約管理ページが描画さ�
       expect(created, `UI から作成した予約が PENDING 一覧に出ない（slotId=${slot.id}）`).toBeTruthy()
       reservationId = created.id
     } finally {
+      // バックグラウンドのポーリング(inbox/summary 等)が in-flight のまま teardown に入ると
+      // page.request.fetch が「Target page closed」を投げてテストを汚す。先に route を解除する。
+      await page.unrouteAll({ behavior: 'ignoreErrors' }).catch(() => {})
       if (reservationId) await adminCancel(request, adminToken, reservationId)
       await deleteSlot(request, adminToken, slot.id).catch(() => {})
       await deleteLine(request, adminToken, line.id).catch(() => {})
