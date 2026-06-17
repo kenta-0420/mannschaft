@@ -86,6 +86,26 @@ AWS 本番投入前に、**設計書全体にわたって「設計に書いて�
 - F06.3 AI ダイジェスト（機能フラグ制御）
 - F09.16/F09.15/F09.1 の v2 候補（年次回答一覧・死亡手動入力・住民CSV）
 
+### ピンポイント裏取り確定（2026-06-18・第二陣の🟡を実ファイルで再監査）
+第二陣(P4〜P7)の机上が弱かった重要機能を実ファイルで再確定。前回判定の訂正を含む。
+
+| 機能 | 確定 | 前回→今回 | 根拠 |
+|---|---|---|---|
+| F09.18 メール outbox | 🟢 実装済(Phase18-a〜d) | 🔴→🟢 **訂正** | EmailOutboxServiceImpl / V68.001 / SystemAdminEmailOutboxController / FE+E2E spec |
+| F03.7 順番待ち | 🟢 実装済 | 推定→🟢 | QueueTicketService/QueueStatsService/Controller/queue.vue 全層 |
+| **F09.5 施設予約 競合制御** | 🔴 **オーバーブッキング危険** | 要確認→🔴 | findOverlapping はあるが **@Version/version列/unique制約/409 が無い→同時予約で後勝ち** |
+| F03.8 有料チケット決済 | 🔴 未配線 | 🟡→🔴 | EventTicketTypeEntity に payment_item_id 列が無く Stripe Checkout 未実装 |
+| F03.8 イベント公開SSR | 🟡 API のみ | 🟡 | getEventBySlug あり・SSR/OGP 未検証 |
+| F03.8 統計ダッシュボード | 🟡 API のみ | 🟡 | EventStatsResponse 骨組み・FE未確認 |
+| F09.17 受信者通報→3件自動SUSPEND | 🔴 完全未実装 | 推定→🔴 | 設計詳細あるが Java/SQL/FE/テーブル 一切無し |
+| F05.6 WF承認エンジン | 🟡 基盤完成・外部API設計のみ | — | 並列承認(ALL/ANY)実装済。external/by-source は Phase12 |
+| F05.2 自分宛未確認回覧(/pending) | 🔴 未実装 | — | 設計L249に「Phase2」明記 |
+| F05.2 管理API認可 | 🟡 Service層 per-scope | 訂正 | isAuthenticated()+AccessControlService(設計通り) |
+| F06.4/5 Org ナレッジベース | 🔴 完全未実装 | — | KbPageController SCOPE_TYPE="TEAM"ハードコード |
+
+> **AWS投入前に最も注意すべき本物のBE不備: F09.5 施設予約の楽観ロック欠落（オーバーブッキング）。** 机上裏取りで"挙動の穴"まで捕捉した実例。実機E2Eの「2件同時予約→1件のみ成功」で再現実証する。
+> ※ なお `feat/emergency-closure-*`/`reservation-*`/`f-orgdist-phaseA-*` 等のブランチが進行中（別エージェント）。休業一斉通知のリアルタイム既読・予約・組織配信出欠/アンケートは**実装途上**であり、本書の判定はマージ前時点のもの。
+
 ### 疑義の決着（思い込みを排した裏取り結果）
 - **予約の「二重実装」疑義は誤り**: `emergency_closure_*`(予約ドメインロジック) と `confirmable_notification_*`(F04.3 汎用通知基盤) は**関心の分離による二層構造**であり設計違反ではない（P9 が原典逐語で確認）。
 - **リアルタイム既読**: 通知/チャットの WebSocket は実装あり（P2）。予約固有の既読は F04.2/F04.3 管轄で現状 poll。「WS か poll か」の最終確定は実機 T-RT008 で。
