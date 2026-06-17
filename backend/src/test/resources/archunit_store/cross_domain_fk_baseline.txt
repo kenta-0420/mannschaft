@@ -10,8 +10,6 @@ advertiser_accounts -> users [fk_advertiser_accounts_approved_by] (RESTRICT) @V1
 analytics_daily_modules -> module_definitions [fk_analytics_daily_modules_module] (RESTRICT) @V10.070__create_analytics_daily_modules.sql:14
 announcement_read_status -> proxy_input_records [fk_announcement_read_status_proxy] (SET NULL) @V18.028__add_proxy_confirmed_columns_to_announcement_read_status.sql:17
 attendance_requirement_evaluations -> users [fk_are_resolver] (RESTRICT) @V18.019__create_attendance_requirement_evaluations.sql:27
-blog_post_series -> users [fk_bps_created_by] (SET NULL) @V6.001__create_blog_post_series.sql:20
-blog_posts -> users [fk_bp_author] (SET NULL) @V6.002__create_blog_posts.sql:61
 blog_posts -> visibility_templates [fk_blog_posts_vt] (SET NULL) @V16.006__add_visibility_template_id_to_features.sql:11
 budget_configs -> workflow_templates [fk_bconf_over_limit_workflow] (SET NULL) @V11.034__extend_budget_configs_and_grant_budget_admin.sql:42
 budget_configs -> workflow_templates [fk_bconf_workflow_template] (SET NULL) @V11.026__create_budget_configs.sql:16
@@ -31,13 +29,8 @@ disclosure_form_drafts -> dwelling_units [fk_dfd_dwelling] (SET NULL) @V61.009__
 error_reports -> users [fk_error_reports_assignee_id] (SET NULL) @V12.013__alter_error_reports_add_workflow_columns.sql:12
 error_reports -> users [fk_error_reports_resolved_by] (SET NULL) @V12.006__create_error_reports.sql:33
 error_reports -> users [fk_error_reports_user_id] (SET NULL) @V12.006__create_error_reports.sql:29
-event_checkins -> users [fk_event_checkins_checked_by] (SET NULL) @V3.104__create_event_checkins_table.sql:19
-event_guest_invite_tokens -> users [fk_event_guest_invite_tokens_created_by] (SET NULL) @V3.106__create_event_guest_invite_tokens_table.sql:20
-event_registrations -> users [fk_event_registrations_approved_by] (SET NULL) @V3.102__create_event_registrations_table.sql:30
-event_registrations -> users [fk_event_registrations_user] (SET NULL) @V3.102__create_event_registrations_table.sql:26
 events -> schedules [fk_events_schedule] (RESTRICT) @V3.100__create_events_table.sql:40
 events -> surveys [fk_events_pre_survey] (SET NULL) @V13.025__alter_events_add_attendance_mode.sql:7
-events -> users [fk_events_created_by] (SET NULL) @V3.100__create_events_table.sql:42
 friend_content_forwards -> timeline_posts [fk_fcf_forwarded_post] (CASCADE) @V9.074__create_friend_content_forwards_table.sql:36
 friend_content_forwards -> timeline_posts [fk_fcf_source_post] (CASCADE) @V9.074__create_friend_content_forwards_table.sql:33
 job_postings -> users [fk_jp_creator] (RESTRICT) @V13.030__create_job_postings.sql:26
