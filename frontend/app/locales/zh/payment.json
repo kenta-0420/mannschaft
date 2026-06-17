@@ -86,6 +86,7 @@
     },
     "admin": {
       "pageTitle": "支付管理",
+      "permissionDenied": "このページは管理者のみアクセスできます",
       "itemsTitle": "支付项目",
       "selectItem": "请选择支付项目",
       "remindUnpaid": "催缴未付款",

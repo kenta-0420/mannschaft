@@ -110,24 +110,24 @@ async function loginAndNavigate(
 }
 
 /**
- * e2e-admin が ADMIN ロールを持つ FC東京U-18 チームの ID を API で解決する。
+ * e2e-admin が ADMIN ロールを持つ FC東京U-18 チームの ID と slug を API で解決する。
  */
-async function resolveAdminTeamId(
+async function resolveAdminTeam(
   api: APIRequestContext,
   token: string,
-): Promise<number> {
+): Promise<{ id: number; slug: string }> {
   const res = await api.get(`${BE_API}/me/teams`, {
     headers: { Authorization: `Bearer ${token}` },
   })
   expect(res.status(), '/me/teams は 200').toBe(200)
   const json = (await res.json()) as {
-    data: Array<{ id: number; name: string; role: string }>
+    data: Array<{ id: number; slug: string; name: string; role: string }>
   }
   const team =
     json.data.find((t) => t.role === 'ADMIN' && t.name.includes('FC東京U-18')) ??
     json.data.find((t) => t.role === 'ADMIN')
   expect(team, 'ADMIN ロールのチームが存在すること').toBeTruthy()
-  return team!.id
+  return { id: team!.id, slug: team!.slug }
 }
 
 function authHeaders(token: string): Record<string, string> {
@@ -156,13 +156,17 @@ async function getFirstPaymentItemId(
 let sharedApi: APIRequestContext
 let adminToken: string
 let adminTeamId: number
+/** FE ページアクセス用 slug（useRoleAccess が slug-based API を呼ぶため数値 ID は不可） */
+let adminTeamSlug: string
 let supporterAvailable = false
 
 test.beforeAll(async () => {
   sharedApi = await pwRequest.newContext()
   const result = await apiLogin(sharedApi, ADMIN_EMAIL, ADMIN_PASSWORD)
   adminToken = result.accessToken
-  adminTeamId = await resolveAdminTeamId(sharedApi, adminToken)
+  const team = await resolveAdminTeam(sharedApi, adminToken)
+  adminTeamId = team.id
+  adminTeamSlug = team.slug
 
   // サポーターをチームに追加（既存ならスキップ）
   try {
@@ -202,7 +206,7 @@ test.describe('F08.9 P8: CSV エクスポート・費目明細', () => {
       if (/Content Security Policy|CSP/i.test(msg.text())) cspViolations.push(msg.text())
     })
 
-    await page.goto(`/teams/${adminTeamId}/billing/fee-statements`)
+    await page.goto(`/teams/${adminTeamSlug}/billing/fee-statements`)
     await page.waitForURL(/login/, { timeout: 15_000 })
 
     expect(cspViolations, `CSP 違反: ${cspViolations.join('\n')}`).toHaveLength(0)
@@ -220,28 +224,22 @@ test.describe('F08.9 P8: CSV エクスポート・費目明細', () => {
       if (/Content Security Policy|CSP/i.test(msg.text())) cspViolations.push(msg.text())
     })
 
-    await loginAndNavigate(page, MEMBER_EMAIL, MEMBER_PASSWORD, `/teams/${adminTeamId}/billing/fee-statements`)
+    await loginAndNavigate(page, MEMBER_EMAIL, MEMBER_PASSWORD, `/teams/${adminTeamSlug}/billing/fee-statements`)
 
-    // FE 表示チェック: 403 ページ、エラー表示、またはリダイレクトのいずれかか確認
-    const isRestrictedOrError =
-      page.url().includes('/403') ||
-      page.url().includes('/error') ||
-      (await page.getByText(/403|権限がありません|アクセスできません|管理者のみ|forbidden/i).isVisible({ timeout: 5_000 }).catch(() => false)) ||
-      (await page.locator('[data-testid="error-page"]').isVisible({ timeout: 5_000 }).catch(() => false))
+    // FE 表示チェック: route guard により「権限がありません」が表示されることを hard assert
+    // loadPermissions 完了後に permissionDenied = true → 鍵アイコン + メッセージが描画される
+    // useRoleAccess の API 呼び出し完了まで待つため十分な timeout を設ける
+    await expect(
+      page.getByText(/権限がありません|管理者のみ/),
+      'MEMBER は fee-statements ページで「権限がありません」が表示されること',
+    ).toBeVisible({ timeout: 20_000 })
 
-    // BE API レベルで必ず 403/404 が返ることを確認（FE 表示が曖昧でも BE は確実に弾く）
+    // BE API層: 必ず 403/404 が返ることを確認（二重防衛）
     const { accessToken: memberToken } = await apiLogin(sharedApi, MEMBER_EMAIL, MEMBER_PASSWORD)
     const apiRes = await sharedApi.get(`${BE_API}/teams/${adminTeamId}/fee-statements?period=2026-06`, {
       headers: authHeaders(memberToken),
     })
     expect([403, 404], 'MEMBER の fee-statements API は 403/404 になること').toContain(apiRes.status())
-
-    // FE が制限表示の場合はそれも確認（ページがエラーを表示することが理想だが必須ではない）
-    if (isRestrictedOrError) {
-      // FE でも正しく制限されている → 理想的な動作
-      expect(isRestrictedOrError).toBe(true)
-    }
-    // FE が制限表示でない場合でも、BE で 403/404 が確認済みなのでテストは通過（上の expect が担保）
 
     expect(cspViolations, `CSP 違反: ${cspViolations.join('\n')}`).toHaveLength(0)
     await page.screenshot({
@@ -258,7 +256,7 @@ test.describe('F08.9 P8: CSV エクスポート・費目明細', () => {
       if (/Content Security Policy|CSP/i.test(msg.text())) cspViolations.push(msg.text())
     })
 
-    await loginAndNavigate(page, ADMIN_EMAIL, ADMIN_PASSWORD, `/teams/${adminTeamId}/billing/fee-statements`)
+    await loginAndNavigate(page, ADMIN_EMAIL, ADMIN_PASSWORD, `/teams/${adminTeamSlug}/billing/fee-statements`)
 
     // 月選択セレクタが表示されること
     const periodInput = page.locator('input#fee-period')
@@ -281,7 +279,7 @@ test.describe('F08.9 P8: CSV エクスポート・費目明細', () => {
       if (/Content Security Policy|CSP/i.test(msg.text())) cspViolations.push(msg.text())
     })
 
-    await loginAndNavigate(page, ADMIN_EMAIL, ADMIN_PASSWORD, `/teams/${adminTeamId}/payments`)
+    await loginAndNavigate(page, ADMIN_EMAIL, ADMIN_PASSWORD, `/teams/${adminTeamSlug}/payments`)
 
     // 支払い項目が存在する場合のみ CSV ボタンが有効化される
     // まず支払い項目の存在確認
@@ -322,7 +320,7 @@ test.describe('F08.9 P8: CSV エクスポート・費目明細', () => {
       return
     }
 
-    await loginAndNavigate(page, ADMIN_EMAIL, ADMIN_PASSWORD, `/teams/${adminTeamId}/payments`)
+    await loginAndNavigate(page, ADMIN_EMAIL, ADMIN_PASSWORD, `/teams/${adminTeamSlug}/payments`)
 
     // 支払い項目リストが読み込まれるまで待ってからクリック
     const itemButton = page.locator('.w-64 button').first()
@@ -335,20 +333,26 @@ test.describe('F08.9 P8: CSV エクスポート・費目明細', () => {
       return
     }
 
-    // ダウンロードイベントを待つ（Blob 方式のため download イベントを使う）
+    // BE API は 200 で CSV を返すこと（ADMIN 認可 hard assert）
+    const exportApiRes = await sharedApi.get(
+      `${BE_API}/teams/${adminTeamId}/payment-items/${itemId}/payments/export`,
+      { headers: authHeaders(adminToken) },
+    )
+    expect(exportApiRes.status(), 'ADMIN の payment-items/export BE API は 200 を返すこと').toBe(200)
+
+    // Content-Type が CSV であること
+    const contentType = exportApiRes.headers()['content-type'] ?? ''
+    expect(contentType, 'レスポンスは CSV 形式であること').toMatch(/csv/i)
+
+    // UI層: CSV ボタンクリック後にダウンロードが開始されること（FE Blob 処理 hard assert）
+    // responseType:'blob' 修正後はエラートーストでなく download イベントが発火する
     const [download] = await Promise.all([
-      page.waitForEvent('download', { timeout: 15_000 }).catch(() => null),
+      page.waitForEvent('download', { timeout: 15_000 }),
       csvButton.click(),
     ])
-
-    if (download) {
-      // ダウンロードファイル名に payments が含まれること
-      expect(download.suggestedFilename()).toMatch(/payments.*\.csv/i)
-    } else {
-      // Blob URL リダイレクト方式の場合 download イベントが発火しないこともある
-      // エラーがないことを確認
-      expect(page.url()).not.toContain('/error')
-    }
+    expect(download, 'CSV ダウンロードが開始されること').toBeTruthy()
+    const downloadPath = await download.suggestedFilename()
+    expect(downloadPath, 'ダウンロードファイル名に payments が含まれること').toMatch(/payments/i)
 
     expect(cspViolations, `CSP 違反: ${cspViolations.join('\n')}`).toHaveLength(0)
     await page.screenshot({
@@ -365,7 +369,7 @@ test.describe('F08.9 P8: CSV エクスポート・費目明細', () => {
       if (/Content Security Policy|CSP/i.test(msg.text())) cspViolations.push(msg.text())
     })
 
-    await loginAndNavigate(page, MEMBER_EMAIL, MEMBER_PASSWORD, `/teams/${adminTeamId}/payments`)
+    await loginAndNavigate(page, MEMBER_EMAIL, MEMBER_PASSWORD, `/teams/${adminTeamSlug}/payments`)
 
     await page.waitForTimeout(3_000)
 
@@ -424,7 +428,7 @@ test.describe('F08.9 P8: CSV エクスポート・費目明細', () => {
     })
     expect([403, 404], 'サポーターの fee-statements API は 403/404').toContain(apiRes.status())
 
-    await loginAndNavigate(page, SUPPORTER_EMAIL, SUPPORTER_PASSWORD, `/teams/${adminTeamId}/billing/fee-statements`)
+    await loginAndNavigate(page, SUPPORTER_EMAIL, SUPPORTER_PASSWORD, `/teams/${adminTeamSlug}/billing/fee-statements`)
 
     expect(cspViolations, `CSP 違反: ${cspViolations.join('\n')}`).toHaveLength(0)
     await page.screenshot({
@@ -444,7 +448,7 @@ test.describe('F08.9 P6: 期別決済・支払い項目管理', () => {
       if (/Content Security Policy|CSP/i.test(msg.text())) cspViolations.push(msg.text())
     })
 
-    await page.goto(`/teams/${adminTeamId}/payments`)
+    await page.goto(`/teams/${adminTeamSlug}/payments`)
     await page.waitForURL(/\/login/, { timeout: 15_000 })
 
     expect(cspViolations, `CSP 違反: ${cspViolations.join('\n')}`).toHaveLength(0)
@@ -462,7 +466,7 @@ test.describe('F08.9 P6: 期別決済・支払い項目管理', () => {
       if (/Content Security Policy|CSP/i.test(msg.text())) cspViolations.push(msg.text())
     })
 
-    await loginAndNavigate(page, ADMIN_EMAIL, ADMIN_PASSWORD, `/teams/${adminTeamId}/payments`)
+    await loginAndNavigate(page, ADMIN_EMAIL, ADMIN_PASSWORD, `/teams/${adminTeamSlug}/payments`)
 
     // PaymentAdminPanel は常に .w-64 パネルを描画する（items が空でも）
     await expect(page.locator('.w-64').first(), 'ADMIN には支払い管理ページが表示される').toBeVisible({
@@ -490,7 +494,7 @@ test.describe('F08.9 P6: 期別決済・支払い項目管理', () => {
       return
     }
 
-    await loginAndNavigate(page, ADMIN_EMAIL, ADMIN_PASSWORD, `/teams/${adminTeamId}/payments`)
+    await loginAndNavigate(page, ADMIN_EMAIL, ADMIN_PASSWORD, `/teams/${adminTeamSlug}/payments`)
 
     // 支払い項目ボタンをクリック
     const itemButton = page.locator('.w-64 button').first()
@@ -531,7 +535,7 @@ test.describe('F08.9 P6: 期別決済・支払い項目管理', () => {
       return
     }
 
-    await loginAndNavigate(page, ADMIN_EMAIL, ADMIN_PASSWORD, `/teams/${adminTeamId}/payments`)
+    await loginAndNavigate(page, ADMIN_EMAIL, ADMIN_PASSWORD, `/teams/${adminTeamSlug}/payments`)
 
     // 支払い項目リストが読み込まれるまで待ってからクリック
     const itemButton = page.locator('.w-64 button').first()
@@ -594,7 +598,7 @@ test.describe('F08.9 P6: 期別決済・支払い項目管理', () => {
       if (/Content Security Policy|CSP/i.test(msg.text())) cspViolations.push(msg.text())
     })
 
-    await loginAndNavigate(page, MEMBER_EMAIL, MEMBER_PASSWORD, `/teams/${adminTeamId}/payments`)
+    await loginAndNavigate(page, MEMBER_EMAIL, MEMBER_PASSWORD, `/teams/${adminTeamSlug}/payments`)
 
     await page.waitForTimeout(3_000)
 
@@ -650,7 +654,7 @@ test.describe('F08.9 P6: 期別決済・支払い項目管理', () => {
       if (/Content Security Policy|CSP/i.test(msg.text())) cspViolations.push(msg.text())
     })
 
-    await loginAndNavigate(page, SUPPORTER_EMAIL, SUPPORTER_PASSWORD, `/teams/${adminTeamId}/payments`)
+    await loginAndNavigate(page, SUPPORTER_EMAIL, SUPPORTER_PASSWORD, `/teams/${adminTeamSlug}/payments`)
     await page.waitForTimeout(3_000)
 
     const isPageRestricted =
@@ -747,23 +751,23 @@ test.describe('F08.9 P2: 後見まとめ払い', () => {
     await page.waitForTimeout(2_000)
 
     // 「支払う」ボタンまたは空状態メッセージのいずれかが表示される
+    // 実機観測（2026-06-17）: 後見子なしの場合「未払いの会費はありません」が表示される
     const hasPayButton = await page
       .getByRole('button', { name: /支払う|まとめて|checkout/i })
       .isVisible({ timeout: 5_000 })
       .catch(() => false)
-    const hasEmptyMessage = await page
-      .getByText(/対象なし|未払い|支払うべき会費がありません|no.*due|payable/i)
-      .isVisible({ timeout: 5_000 })
-      .catch(() => false)
-    // ページが正常に描画されること（クラッシュしていないこと）
-    // ローディングスピナーが消えていること（上で waitFor 済み）
-    // hasPayButton / hasEmptyMessage は参考情報（スクリーンショットで確認）
-    void hasPayButton
-    void hasEmptyMessage
+    // bodyText で実際の表示テキストを確認してからマッチ判定する（getByText のタイミング問題を回避）
     const bodyText = await page.locator('body').innerText()
+    const hasEmptyMessage = /対象なし|未払い|会費はありません|支払うべき会費がありません|no.*due|payable/i.test(bodyText)
+    // ページが正常に描画されること（クラッシュしていないこと）
     expect(bodyText).not.toContain('undefined')
     expect(bodyText).not.toContain('NaN')
     expect(page.url()).not.toContain('/error')
+    // 「支払う」ボタンまたは「対象なし」メッセージのどちらかが必ず可視であること（偽陰性防止）
+    expect(
+      hasPayButton || hasEmptyMessage,
+      'まとめ払いページには「支払う」ボタンか「未払い会費なし」メッセージが表示されること',
+    ).toBe(true)
 
     expect(cspViolations, `CSP 違反: ${cspViolations.join('\n')}`).toHaveLength(0)
     await page.screenshot({
