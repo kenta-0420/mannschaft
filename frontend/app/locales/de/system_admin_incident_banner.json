@@ -1,0 +1,82 @@
+{
+  "incident_banner": {
+    "title": "Störungsbanner-Verwaltung",
+    "quick_link_label": "Störungsbanner",
+    "create_btn": "Banner erstellen",
+    "edit_dialog_title": "Banner bearbeiten",
+    "create_dialog_title": "Banner erstellen",
+    "save_btn": "Speichern",
+    "cancel_btn": "Abbrechen",
+    "delete_confirm": "Möchten Sie diesen Banner wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+    "delete_btn": "Löschen",
+    "publish_btn": "Veröffentlichen",
+    "unpublish_btn": "Rückgängig machen",
+    "load_failed": "Daten konnten nicht geladen werden",
+    "create_success": "Banner erstellt",
+    "update_success": "Banner aktualisiert",
+    "delete_success": "Banner gelöscht",
+    "publish_success": "Banner veröffentlicht",
+    "unpublish_success": "Banner zurückgezogen",
+    "save_failed": "Speichern fehlgeschlagen",
+    "delete_failed": "Löschen fehlgeschlagen",
+    "publish_failed": "Veröffentlichung fehlgeschlagen",
+    "unpublish_failed": "Rückzug fehlgeschlagen",
+    "suggestions_load_failed": "Vorschläge konnten nicht geladen werden",
+    "no_data": "Noch keine Banner registriert",
+    "translation_pending": "Übersetzungen werden automatisch generiert (bitte warten Sie einen Moment nach dem Speichern)",
+    "form": {
+      "message_label": "Nachricht (japanischer Originaltext)",
+      "message_placeholder": "Geben Sie den Störungsinhalt ein (max. 500 Zeichen)",
+      "message_required": "Nachricht ist erforderlich",
+      "message_too_long": "Nachricht darf maximal 500 Zeichen haben",
+      "level_label": "Ebene",
+      "page_pattern_label": "Ziel-Seitenmuster",
+      "page_pattern_placeholder": "Bsp: /teams/* (leer = alle Seiten)",
+      "starts_at_label": "Startdatum/-uhrzeit",
+      "starts_at_placeholder": "Leer: sofort",
+      "ends_at_label": "Enddatum/-uhrzeit",
+      "ends_at_placeholder": "Leer: bis manuell zurückgezogen",
+      "publish_toggle_label": "Sofort nach Erstellung veröffentlichen",
+      "preview_label": "Vorschau"
+    },
+    "level": {
+      "INFO": "INFO",
+      "WARNING": "WARNUNG",
+      "CRITICAL": "KRITISCH"
+    },
+    "table": {
+      "level": "Ebene",
+      "message": "Nachricht",
+      "page_pattern": "Zielseite",
+      "status": "Status",
+      "period": "Anzeigedauer",
+      "updated_at": "Aktualisiert am",
+      "actions": "Aktionen"
+    },
+    "status": {
+      "published": "Veröffentlicht",
+      "draft": "Entwurf"
+    },
+    "period_from": "von",
+    "period_to": "bis",
+    "period_immediate": "Sofort",
+    "period_manual": "Bis zum manuellen Stopp",
+    "suggestions": {
+      "title": "Erkannte Vorschläge (automatisch)",
+      "page_pattern": "Seitenmuster",
+      "severity": "Schweregrad",
+      "occurrence_count": "Vorkommen",
+      "affected_users": "Betroffene Benutzer",
+      "since": "Erkannt seit",
+      "create_banner_btn": "Banner erstellen",
+      "no_data": "Derzeit keine Vorschläge erkannt",
+      "severity_critical": "KRITISCH",
+      "severity_high": "HOCH"
+    },
+    "translations": {
+      "title": "Übersetzungsliste",
+      "language": "Sprache",
+      "message": "Übersetzte Nachricht"
+    }
+  }
+}

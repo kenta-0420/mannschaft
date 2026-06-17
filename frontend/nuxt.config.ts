@@ -443,6 +443,7 @@ export default defineNuxtConfig({
           'ja/payment.json',
           'ja/match.json',
           'ja/admin_report.json',
+          'ja/system_admin_incident_banner.json',
         ],
       },
       {
@@ -503,6 +504,7 @@ export default defineNuxtConfig({
           'en/payment.json',
           'en/match.json',
           'en/admin_report.json',
+          'en/system_admin_incident_banner.json',
         ],
       },
       {
@@ -563,6 +565,7 @@ export default defineNuxtConfig({
           'zh/payment.json',
           'zh/match.json',
           'zh/admin_report.json',
+          'zh/system_admin_incident_banner.json',
         ],
       },
       {
@@ -623,6 +626,7 @@ export default defineNuxtConfig({
           'ko/payment.json',
           'ko/match.json',
           'ko/admin_report.json',
+          'ko/system_admin_incident_banner.json',
         ],
       },
       {
@@ -683,6 +687,7 @@ export default defineNuxtConfig({
           'es/payment.json',
           'es/match.json',
           'es/admin_report.json',
+          'es/system_admin_incident_banner.json',
         ],
       },
       {
@@ -743,6 +748,7 @@ export default defineNuxtConfig({
           'de/payment.json',
           'de/match.json',
           'de/admin_report.json',
+          'de/system_admin_incident_banner.json',
         ],
       },
     ],
