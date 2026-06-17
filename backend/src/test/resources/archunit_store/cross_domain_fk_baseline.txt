@@ -13,14 +13,11 @@ attendance_requirement_evaluations -> users [fk_are_resolver] (RESTRICT) @V18.01
 blog_posts -> visibility_templates [fk_blog_posts_vt] (SET NULL) @V16.006__add_visibility_template_id_to_features.sql:11
 budget_configs -> workflow_templates [fk_bconf_over_limit_workflow] (SET NULL) @V11.034__extend_budget_configs_and_grant_budget_admin.sql:42
 budget_configs -> workflow_templates [fk_bconf_workflow_template] (SET NULL) @V11.026__create_budget_configs.sql:16
-budget_threshold_alerts -> users [fk_bta_acked_by] (SET NULL) @V11.033__create_budget_threshold_alerts.sql:51
 budget_threshold_alerts -> workflow_requests [fk_bta_workflow_request] (SET NULL) @V11.037__add_workflow_request_fk_to_budget_threshold_alerts.sql:16
 budget_transactions -> workflow_requests [fk_bt_workflow_request] (SET NULL) @V11.023__create_budget_transactions.sql:40
-bulletin_archive_folders -> users [fk_bulletin_archive_folders_created_by] (SET NULL) @V70.015__create_bulletin_archive_folders.sql:35
 chart_intake_forms -> electronic_seals [fk_cif_seal] (RESTRICT) @V7.017__create_chart_intake_forms_table.sql:14
 circulation_recipients -> proxy_input_records [fk_circulation_recipients_proxy] (SET NULL) @V18.030__add_proxy_confirmed_columns_to_circulation_recipients.sql:17
 committee_distribution_logs -> confirmable_notifications [fk_cdl_confirmable] (SET NULL) @V13.039__create_committee_distribution_logs_table.sql:20
-confirmable_notification_recipients -> users [fk_cnr_excluded_by] (SET NULL) @V13.007__create_confirmable_notification_recipients_table.sql:25
 coupon_redemptions -> users [fk_cr_redeemed_by] (RESTRICT) @V9.026__create_coupon_redemptions_table.sql:14
 coupons -> users [fk_coupons_created_by] (RESTRICT) @V9.024__create_coupons_table.sql:24
 disclosure_exports -> dwelling_units [fk_de_dwelling] (SET NULL) @V61.010__create_disclosure_exports.sql:28
@@ -34,7 +31,6 @@ job_postings -> users [fk_jp_creator] (RESTRICT) @V13.030__create_job_postings.s
 notification_credit_purchases -> organizations [fk_ncp_org] (RESTRICT) @V9.118__create_notification_credit_purchases.sql:30
 notification_monthly_usage -> organizations [fk_nmu_org] (RESTRICT) @V9.120__create_notification_monthly_usage.sql:15
 organization_enabled_modules -> organizations [fk_oem_org] (RESTRICT) @V2.043__create_organization_enabled_modules_table.sql:20
-organization_enabled_modules -> users [fk_oem_user] (SET NULL) @V2.043__create_organization_enabled_modules_table.sql:22
 organization_notification_balances -> organizations [fk_onb_org] (RESTRICT) @V9.119__create_organization_notification_balances.sql:16
 parking_applications -> proxy_input_records [fk_parking_applications_proxy] (SET NULL) @V18.029__add_proxy_input_columns_to_parking_applications.sql:17
 performance_metrics -> activity_template_fields [fk_pm_linked_field] (SET NULL) @V9.056__fix_performance_metrics_fk_to_activity_template_fields.sql:8
@@ -43,7 +39,6 @@ performance_records -> schedules [fk_pr_schedule] (SET NULL) @V7.010__create_per
 performance_records -> users [fk_pr_user] (RESTRICT) @V7.010__create_performance_records_table.sql:17
 period_attendance_records -> timetable_changes [fk_par_timetable_change] (SET NULL) @V18.004__create_period_attendance_records_table.sql:31
 period_attendance_records -> timetable_slots [fk_par_timetable_slot] (SET NULL) @V18.004__create_period_attendance_records_table.sql:30
-promotions -> users [fk_promotions_approved_by] (SET NULL) @V9.021__create_promotions_table.sql:30
 promotions -> users [fk_promotions_created_by] (RESTRICT) @V9.021__create_promotions_table.sql:28
 property_listings -> users [fk_pl_listed_by] (RESTRICT) @V9.019__create_property_listings_table.sql:22
 property_work_documents -> shared_files [fk_pwd_file] (CASCADE) @V61.003__create_property_work_documents.sql:15
