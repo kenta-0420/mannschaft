@@ -1,0 +1,61 @@
+# P6 マーケ・広告・配信・システム管理 E2E テスト法案
+
+> 対象: F09.2 / F09.17 / F09.11 / F09.7 / F09.6 / F09.18 / F09.8(+8.1) / F10.1/3/6/7 / F12.2 / F09.12
+> 凡例・テスト層は [README](./README.md) 参照。
+> ⚠️ **裏取り品質 △**: FE 実装を「UI確認必須」のまま残した箇所が多い。🟡 は実機 reachability で確定する。
+
+---
+
+## 1. トレーサビリティ監査サマリ
+
+### F09.2 プロモーション配信
+| 機能要素 | BE | 判定 |
+|---|---|---|
+| プロモCRUD/セグメント(郵便番号・ロール)/配信先プレビュー | OrgPromotionController/SegmentEvaluator/AdAudienceResolver | 🟢 FE要確認 |
+| クーポン紐付け・QR利用(HMAC-SHA256) | Coupon/CouponRedemptionService | 🟢 |
+| 配信予約/開封トラッキング | ScheduledBatch/DeliveryTracker | 🟢 |
+| **大規模配信(1000人以上)ADMIN承認** | ApprovalFlow | 🟡 承認UI要確認 |
+| 週次送信上限(週3回) | QuotaValidator | 🟡 制限到達シナリオ |
+
+### F09.17 広告主ターゲット配信キャンペーン
+| 機能要素 | BE | 判定 |
+|---|---|---|
+| キャンペーンCRUD/4チャネル/ターゲティング(AGE/GENDER/REGION) | AdMessagingCampaign系(PR#896/906/911) | 🟢 |
+| 推定リーチ(100人未満非表示)/審査提出・承認/自動NG検知 | AdReachEstimator/Moderation/NgWordDetector | 🟡 |
+| フリークエンシーキャップ(週3・Valkey) | FrequencyCap | 🟡 週境界テスト必須 |
+| オプトアウト(チャネル別+広告主ブロック) | UserAdPreferencesService | 🟢 |
+| **受信者3件通報→自動SUSPEND** | AdUserReportService | 🔴 UI導線要確認 |
+| GDPR自己データ削除(冪等) | AdDataDeletionService | 🟡 |
+
+### F09.6/F09.18/F09.8/F10.x
+- F09.6 DM配信(即時/予約)/配信対象プレビュー/開封トラッキング/クーポン手入力 = 🟢/🟡
+- **F09.18 メール配信基盤(outbox)** = Phase 18-a 設計、保証付き非同期/指数バックオフ/DEAD_LETTER。BE 実装確認要(メモリでは Phase18 完了系の記録あり=要突合)
+- F09.8 コルクボード/ピン止め/ダッシュボード統合 = 🟢/🟡
+- F10.1 管理者DB/F10.3 監査ログ/F10.6 エラー監視/F10.7 業務アラート = 🟢/🟡
+- F12.2 フィーチャーフラグ(`FEATURE_V9_ENABLED`) = 🟡
+
+---
+
+## 2. E2E 実機シナリオ（代表・トレーサ付き）
+- **[F09.2-E01]** 郵便番号セグメント配信→プレビュー対象数→配信→promotion_deliveries 45件 SUCCESS。（§3/§4 preview）
+- **[F09.2-E02]** クーポン付きプロモ→配布→マイページ表示→QR redeem→2回目で400(上限到達)。（§3/§4）
+- **[F09.17-E02]** 年齢セグメント+フリークエンシーキャップ: 月内3配信成功→4件目 402(週3上限)、`user_ad_delivery_counters`=3。（§3 user_ad_delivery_counters）★Valkey週境界
+- **[F09.17-E03]** 受信者通報→3件で自動SUSPEND→`ad_messaging_campaigns.status=SUSPENDED`+監査ログ AD_CAMPAIGN_SUSPENDED_AUTO。（§3 ad_user_reports/§1）
+- **[F09.11-E01]** 広告主登録(PENDING)→SYSTEM_ADMIN承認(ACTIVE/Stripe Customer)→配信→月次バッチで請求書(DRAFT→ISSUED)→PDF DL。（§4）
+
+---
+
+## 3. このフェーズの「設計にあるが UI/導線が無い」確定
+| 機能 | 状態 |
+|---|---|
+| F09.17 受信者3件通報自動SUSPEND の通報導線 | 🔴/🟡 メール本文「不正な広告」報告 UI 要確認 |
+| F09.2 大規模配信 DEPUTY_ADMIN→ADMIN 承認 UI | 🟡 |
+| F09.18 メール outbox(送信予約/指数バックオフ/DEAD_LETTER) | 🟡 BE 実装状態を Phase18 記録と突合 |
+| F09.17 unsubscribe 周期トークン(token_version) | 🟡 設定変更後リンク失効 E2E |
+| F10.3 メール outbox 操作監査ログ SYSTEM_ADMIN 画面 | 🟡 |
+
+---
+
+## 4. 既存 E2E spec ギャップ
+- F09.2 複合セグメント(AND/OR)・バウンス処理、F09.17 Valkey countering・自動SUSPEND、F09.11 請求書PDF/Stripe/増額申請、F09.6 トラッキングピクセル/SESバウンス/GDPR匿名化、F09.18 outbox ワーカー、F10.3 ドメイン別ログフィルタ — いずれも新規テスト追加要。
+- **裏取り再確認**: 🟡 は実機 reachability で UI 実在を確定。

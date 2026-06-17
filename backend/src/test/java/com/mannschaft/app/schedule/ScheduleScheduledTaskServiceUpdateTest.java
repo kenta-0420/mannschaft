@@ -89,7 +89,7 @@ class ScheduleScheduledTaskServiceUpdateTest {
                 false, false,
                 "AFTER_CLOSE", "ALL",
                 null, null, null, null, null, null,
-                null, null, null);
+                null, null, null, null);
     }
 
     @Nested

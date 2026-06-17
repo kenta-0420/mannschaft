@@ -4,6 +4,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.survey.DistributionMode;
 import com.mannschaft.app.survey.SurveyErrorCode;
@@ -52,6 +53,7 @@ public class SurveyRemindService {
     private final UserRoleRepository userRoleRepository;
     private final AccessControlService accessControlService;
     private final NotificationHelper notificationHelper;
+    private final OrganizationMembershipService organizationMembershipService;
 
     /**
      * 未回答者へ督促通知を送信する（F05.4 督促 API）。
@@ -181,6 +183,12 @@ public class SurveyRemindService {
      */
     private List<Long> resolveUniverseUserIds(SurveyEntity survey) {
         if (survey.getDistributionMode() == DistributionMode.ALL) {
+            // 組織×ALL は配下参加チームを展開する（OrganizationMembershipService 経由・越境是正）。
+            // チームスコープ（および COMMITTEE 等）は配下展開なし・従来挙動を維持する。
+            if ("ORGANIZATION".equals(survey.getScopeType())) {
+                return organizationMembershipService.resolveOrgDistributionUserIds(
+                        survey.getScopeId(), Boolean.TRUE.equals(survey.getIncludeSupporters()));
+            }
             return userRoleRepository.findUserIdsByScope(survey.getScopeType(), survey.getScopeId());
         }
         // TARGETED: survey_targets が母集団

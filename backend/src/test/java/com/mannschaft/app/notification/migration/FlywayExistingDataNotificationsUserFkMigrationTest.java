@@ -34,7 +34,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li><b>親 users 行を物理 DELETE しても notifications 行が CASCADE 削除されず生存し、
  *       user_id が孤児値として保持される</b>（＝退会リスナー先行削除への移行証明。
  *       FK が残っていれば CASCADE 削除されるので本テストが落ちる）。</li>
- *   <li>クロスドメイン SET NULL の {@code fk_notifications_actor} は撤廃対象外＝残存していること。</li>
  * </ol>
  *
  * <p>方針: Spring を起動せず Testcontainers の実 MySQL 8.0 に {@link Flyway} を Java API で直接実行する。
@@ -116,9 +115,9 @@ class FlywayExistingDataNotificationsUserFkMigrationTest {
             assertThat(foreignKeyExists(c, "notifications", "fk_notifications_user"))
                     .as("V100.001 で fk_notifications_user が撤廃されること").isFalse();
 
-            // sanity: SET NULL の actor 用 FK は対象外＝残存していること
-            assertThat(foreignKeyExists(c, "notifications", "fk_notifications_actor"))
-                    .as("クロスドメイン SET NULL fk_notifications_actor は撤廃対象外で残存すること").isTrue();
+            // 注: fk_notifications_actor は本テスト作成時(第二陣E/V100)は対象外だったが、
+            //     第三陣E V106.001 で撤廃される。本テストは全migration適用後に検証するため
+            //     「残存」対照は成立しなくなった→当該sanityを除去（本テストの主眼=fk_notifications_user撤廃+孤児保持は不変）。
 
             // then-2: 既存行は無傷で生存
             assertThat(rowExistsByLongId(c, "notifications", notificationId))

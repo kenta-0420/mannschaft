@@ -225,10 +225,10 @@
     "COMMON_003": "Von einem anderen Benutzer aktualisiert. Bitte aktualisieren Sie die Seite",
     "COMMON_999": "Ein Systemfehler ist aufgetreten",
     "AUTH_001": "E-Mail-Adresse oder Passwort ist falsch",
-    "AUTH_002": "Die Sitzung ist abgelaufen. Bitte melden Sie sich erneut an",
-    "AUTH_003": "Diese E-Mail-Adresse ist bereits registriert",
-    "AUTH_004": "Das Konto ist deaktiviert",
-    "AUTH_005": "Der Verifizierungscode ist falsch"
+    "AUTH_002": "Ihre E-Mail-Adresse wurde noch nicht bestätigt",
+    "AUTH_003": "Ihr Konto ist gesperrt. Bitte versuchen Sie es in 30 Minuten erneut",
+    "AUTH_004": "Diese E-Mail-Adresse ist bereits registriert",
+    "AUTH_005": "Der Link in der Bestätigungs-E-Mail ist ungültig oder abgelaufen"
   },
   "annual_plan": {
     "title": "Jahresveranstaltungsplan",
