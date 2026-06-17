@@ -1,6 +1,6 @@
 # F10.1.1: チーム/組織 管理者専用ダッシュボード・管理コンソール
 
-> **ステータス**: 🟢 設計確定
+> **ステータス**: 🟢 設計完了
 > **最終更新**: 2026-06-17
 > **モジュール種別**: F10.1（管理者ダッシュボード）のチーム/組織管理者向け拡張
 > **対象ロール**: ADMIN / DEPUTY_ADMIN（チーム/組織スコープ）
@@ -42,7 +42,9 @@ L1 はグランス（一目把握）専用で、深い操作は L2/L3 へ遷移�
 
 1. **軸を混ぜない** — 横スワイプの軸は「スコープ（個人/チーム/組織）」専用のまま温存する。第4タブ『管理』は新設しない。管理者ビューは各スコープパネル内の**レンズ切替（トグル）**で表現する。
 2. **認可はサーバが最終判断** — FE の `useRoleAccess.isAdminOrDeputy` は表示制御のみ。可視・実行可否の最終判断は必ず BE の `AccessControlService.isAdminOrAbove` / `checkAdminOrAbove` / 権限グループ判定で行う。
-3. **既存資産を流用する** — 認可は `AccessControlService` / `StandardVisibility(ADMINS_AND_ABOVE)` / `AbstractTenantAwareRepository` / `ContentVisibilityResolver`、ハブ UI は既存の `/organizations/[slug]/admin/point-cards/`（F18 Phase2）の作法を踏襲する。新規の可視性述語・独自ロールゲートは作らない。
+3. **既存資産を流用する** — 認可は `AccessControlService`（`checkAdminOrAbove` / `isAdminOrAbove`〔集合判定・DEPUTY 包含〕/ `resolveEffectiveRoleName`）・`StandardVisibility(ADMINS_AND_ABOVE)`〔ADMIN+DEPUTY 包含〕・`ContentVisibilityResolver` を流用する。新規の可視性述語・独自ロールゲートは作らない。ハブ UI のアクセス制御は**新規標準作法 `admin-console`**（ルートミドルウェア＋`useRoleAccess`〔第2引数 slug〕）として定義する（既存 point-cards は共通作法を持たないため「踏襲」しない・[05](./05_decisions.md) §6）。
+
+> **偵察に基づく事実確定（2026-06-17）**: 本シリーズは検分指摘を受け、先行版が「既存流用」を実コード未確認で断言した箇所を全て実コード偵察で確定し、断定に書き換えた。主な訂正: (a) team/org への入会申請ドメインは**存在しない**（招待のみ・村の `VillageJoinRequestService` のみ実在）、(b) 予約は team 専用（組織スコープ無し）、(c) 承認待ち集約はスコープ別動的ドメイン（team=予約/シフト/マッチング・org=支払）、(d) point-cards は共通認可作法を持たない（インライン `myOrganizations.role`＋amber 表示）、(e) `BUDGET_VIEW` は scope=ORGANIZATION のみ実在（team は seed 追加が要る）、(f) 管理者ウィジェット可視性は `min_role`（3値）ではなく `StandardVisibility.ADMINS_AND_ABOVE` コード固定。詳細は各分冊と [05_decisions.md](./05_decisions.md)。
 
 ---
 
@@ -61,14 +63,15 @@ L1 はグランス（一目把握）専用で、深い操作は L2/L3 へ遷移�
 
 L2/L3 ハブが束ねる管理機能を以下に列挙する。各機能のデータソース API・認可・ルートは [01_console_routes.md](./01_console_routes.md) を、L1 レンズに載せるサマリは [02_admin_lens_widgets.md](./02_admin_lens_widgets.md) を参照する。
 
-| カテゴリ | 機能 | 主な操作 | データソース（既存流用 / 新規） |
-|---------|------|---------|------------------------------|
-| **予約** | 予約確認 | confirm / cancel / complete / no-show / reschedule / admin-note / 承認待ち予約一覧 | **既存流用**: `Team/OrgReservationController`（§01.4.1） |
-| **予算** | 予算管理 | 会計年度・配分・カテゴリ・取引・サマリ・超過アラート・レポート・CSV | **既存流用**: `budget/controller/*`（§01.4.2） |
-| **承認待ち** | 横断承認待ち | 予約承認待ち・シフトリクエスト・マッチング申込・支払承認・入会/入村申請の横断集約と各一覧への導線 | **新規**: `admin-action-required` 集約 API（[03](./03_admin_action_required_api.md)）。各ドメインの承認実行は既存流用 |
-| **メンバー** | メンバー管理/統計 | ロール変更・招待・メンバー一覧・会員証/プロフィール/フィールド/情報・メンバー数統計 | **既存流用**: `admin/dashboard/users`・`member-cards/profiles/fields/info` 系（§01.4.3） |
-| **設定** | 設定集約 | shift / faq / public / care-overrides / todo-status-labels / notification-credits / モジュール ON-OFF | **既存流用**: 各 `settings/*` ルート・`admin/modules`（§01.4.4） |
-| **アラート** | 管理者向けアラート | 新規予約・承認待ち・未読問い合わせの件数バッジと通知 | **既存流用**: `WidgetAdminBusinessAlert` 系サマリ + 承認待ち集約 API（[02](./02_admin_lens_widgets.md) §3） |
+| カテゴリ | 機能 | スコープ | 主な操作 | データソース（既存流用 / 新規） |
+|---------|------|---------|---------|------------------------------|
+| **予約** | 予約確認 | team のみ | confirm / cancel / complete / no-show / reschedule / admin-note / 承認待ち予約一覧 | **既存流用**: `TeamReservationController`（実在・組織版は無し・§01.3.1） |
+| **予算** | 予算管理 | team / org | 会計年度・配分・カテゴリ・取引・サマリ・超過アラート・レポート・CSV | **既存流用**: budget ドメイン Controller 群（既存 `budget.vue` を正本・§01.3.2） |
+| **承認待ち** | 横断承認待ち | team=予約/シフト/マッチング・org=支払 | 各ドメインの承認待ち件数の横断集約と各一覧への導線（スコープ別動的ドメイン） | **新規**: `admin-action-required` 集約 API（[03](./03_admin_action_required_api.md)）。各ドメインの承認実行は既存流用 |
+| **支払** | 未収請求 | org のみ | 組織が発行した未完了請求の処理状況追跡 | **既存流用**: `PaymentRequestService.findForOrg`（実在・支払承認ワークフローは無し・[03](./03_admin_action_required_api.md) §3.4） |
+| **メンバー** | メンバー管理/統計 | team / org | ロール変更・**招待**（入会申請ドメインは team/org に無し）・メンバー一覧・会員証/プロフィール/フィールド/情報・メンバー数統計 | **既存流用**: `admin/dashboard/users`・`member-cards/profiles/fields/info` 系（§01.3.4） |
+| **設定** | 設定集約 | team / org | shift / faq / public / care-overrides / todo-status-labels / notification-credits / モジュール ON-OFF | **既存流用**: 各 `settings/*` ルート・`admin/modules`（§01.3.5） |
+| **アラート** | 管理者向けアラート | team / org | 新規予約・未読問い合わせの件数バッジ（承認待ちは ③ に一本化・二重計上回避） | **既存流用**: `WidgetAdminBusinessAlert` 系サマリ（[02](./02_admin_lens_widgets.md) §3） |
 
 ---
 
@@ -95,7 +98,8 @@ L2/L3 ハブが束ねる管理機能を以下に列挙する。各機能のデ�
                                    ▼
 ┌─ L2 ハブ /teams/[slug]/admin ─────────────────────────────────────────┐
 │  [予約] [予算] [承認待ち] [メンバー] [設定]   ← カテゴリ別アクションカード  │
-│  point-cards/index.vue（F18 Phase2）の作法を踏襲                       │
+│  新規標準作法 admin-console（middleware + useRoleAccess〔slug〕）        │
+│  ※組織ハブは [予算][支払][承認待ち][メンバー][設定][ポイントカード]      │
 └──────────────────────────────────────────────────────────────────────┘
                                    │ カード押下
                                    ▼
@@ -120,9 +124,19 @@ L2/L3 ハブが束ねる管理機能を以下に列挙する。各機能のデ�
 
 | フェーズ | 内容 | 依存 |
 |---------|------|------|
-| **P1** | 横断「承認待ち」集約 API（BE）＋契約テスト（[03](./03_admin_action_required_api.md)） | 各ドメイン既存 Service |
-| **P2** | L2/L3 ハブのルート骨格＋ミドルウェア（FE）＋既存 settings/member ルートの導線統一（[01](./01_console_routes.md)） | P1（承認待ちセクション） |
+| **P1** | 横断「承認待ち」集約 API（BE）＋各ドメインの読み取り専用 Query Service 新設（[05](./05_decisions.md) §12）＋TEAM スコープ予算権限 seed（[04](./04_security_authorization.md) §4.3）＋契約テスト（[03](./03_admin_action_required_api.md)） | 各ドメイン既存 Service |
+| **P2a** | L2/L3 ハブのルート骨格＋`admin-console` ミドルウェア（FE）。**承認待ちバッジは含めない**（ハブ骨格のみ・各フェーズ単独リリース可能にする） | P1（API 自体は無くてもハブ骨格は出せる） |
+| **P2b** | ハブの承認待ちバッジ／カードを点火（承認待ち集約 API を消費） | P1・P2a |
 | **P3** | L1 管理者レンズトグル＋`DashboardAdminWidgetGrid`（FE）（[02](./02_admin_lens_widgets.md)） | P1・F22.1 既存パネル |
-| **P4** | 既存ルート（settings/*・member-*）のハブ配下リダイレクト整理＋E2E（[01](./01_console_routes.md) §6） | P2 |
+| **P4** | 既存ルート（トップ直下 reservations/budget/payments/matching/shifts・member-*）のハブ配下リダイレクト整理＋settings 導線＋E2E（[01](./01_console_routes.md) §6） | P2a |
 
-> 新規テーブルは作らない（[03](./03_admin_action_required_api.md) §5）。本機能は既存テーブルの集計・既存 API のハブ集約・FE 再編が主体であり、Flyway マイグレーションを伴わない。
+> **P2/P1 依存の分割（各フェーズ単独リリース可能の成立）**: P2 を「P2a=ハブ骨格（承認待ちバッジ抜き）」と「P2b=承認待ちカード点火（P1 後）」に分割する。P2a はバッジ未取得でも非表示フォールバックで成立し、P1 完了前でもリリースできる。
+>
+> **新規テーブルは作らない**が、**Flyway マイグレーションは1本伴う**（TEAM スコープの `BUDGET_VIEW`/`BUDGET_MANAGE` 権限 seed・[04](./04_security_authorization.md) §4.3 / [05](./05_decisions.md) §10）。先行版の「マイグレーションを伴わない」は誤りのため訂正した。本機能の主体は既存テーブルの集計・既存 API のハブ集約・読み取り Query Service の新設・FE 再編。
+
+---
+
+## 7. 凡例・未解決事項
+
+- **ステータス凡例**: 🟢 = 設計完了（実装可能）。本シリーズの全分冊は 🟢。🟡（設計未確定・要検討）は使用しない。
+- **未解決事項: なし**。検分二隊の致命5件・要修正は全て実コード偵察に基づく断定へ書き換え済み。残る他ドメインへの依存作業は宙ぶらりんにせず [05](./05_decisions.md) §12 の依存タスク表に起票先付きで明示した（前提・後回しにしない）。
