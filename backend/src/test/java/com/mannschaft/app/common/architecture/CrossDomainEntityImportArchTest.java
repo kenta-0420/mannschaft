@@ -55,15 +55,6 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 )
 class CrossDomainEntityImportArchTest {
 
-    /** アプリのルートパッケージ。ドメイン名抽出の基点。 */
-    private static final String ROOT_PACKAGE = "com.mannschaft.app";
-
-    /**
-     * 全ドメインから共有される基盤パッケージ。相手先ドメインがこれの場合は許容し、
-     * 発生元がこれの場合も対象外とする。
-     */
-    private static final String SHARED_DOMAIN = "common";
-
     @ArchTest
     static final ArchRule no_cross_domain_entity_dependency =
         FreezingArchRule.freeze(
@@ -89,24 +80,24 @@ class CrossDomainEntityImportArchTest {
         return new ArchCondition<>("not depend on other domain entities") {
             @Override
             public void check(JavaClass clazz, ConditionEvents events) {
-                String sourceDomain = domainOf(clazz.getPackageName());
-                if (sourceDomain == null || SHARED_DOMAIN.equals(sourceDomain)) {
+                String sourceDomain = DomainPackages.domainOf(clazz.getPackageName());
+                if (sourceDomain == null || DomainPackages.isSharedDomain(sourceDomain)) {
                     // ドメイン外（com.mannschaft.app 直下等）や共有基盤は対象外
                     return;
                 }
                 for (Dependency dep : clazz.getDirectDependenciesFromSelf()) {
                     JavaClass target = dep.getTargetClass();
                     String targetPkg = target.getPackageName();
-                    if (!isEntityPackage(targetPkg)) {
+                    if (!DomainPackages.isEntityPackage(targetPkg)) {
                         continue;
                     }
-                    if (isEnumPackage(targetPkg)) {
+                    if (DomainPackages.isEnumPackage(targetPkg)) {
                         // enum パッケージは共有を許容
                         continue;
                     }
-                    String targetDomain = domainOf(targetPkg);
+                    String targetDomain = DomainPackages.domainOf(targetPkg);
                     if (targetDomain == null
-                            || SHARED_DOMAIN.equals(targetDomain)
+                            || DomainPackages.isSharedDomain(targetDomain)
                             || targetDomain.equals(sourceDomain)) {
                         // common 基盤への依存・自ドメイン内参照は許容
                         continue;
@@ -119,34 +110,5 @@ class CrossDomainEntityImportArchTest {
                 }
             }
         };
-    }
-
-    /**
-     * パッケージ名から所属ドメイン（{@code com.mannschaft.app} 直下の先頭セグメント）を
-     * 取り出す。アプリ配下でない場合は {@code null}。
-     */
-    private static String domainOf(String packageName) {
-        if (packageName == null || !packageName.startsWith(ROOT_PACKAGE)) {
-            return null;
-        }
-        String rest = packageName.substring(ROOT_PACKAGE.length());
-        if (rest.startsWith(".")) {
-            rest = rest.substring(1);
-        }
-        if (rest.isEmpty()) {
-            return null;
-        }
-        int dot = rest.indexOf('.');
-        return dot < 0 ? rest : rest.substring(0, dot);
-    }
-
-    /** {@code ..entity} または {@code ..entity.*} 配下かどうか。 */
-    private static boolean isEntityPackage(String packageName) {
-        return packageName.contains(".entity.") || packageName.endsWith(".entity");
-    }
-
-    /** {@code ..entity.enums} または {@code ..entity.enums.*} 配下かどうか。 */
-    private static boolean isEnumPackage(String packageName) {
-        return packageName.contains(".entity.enums.") || packageName.endsWith(".entity.enums");
     }
 }
