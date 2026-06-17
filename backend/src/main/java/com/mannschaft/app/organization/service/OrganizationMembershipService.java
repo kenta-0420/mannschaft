@@ -216,6 +216,27 @@ public class OrganizationMembershipService {
         return result;
     }
 
+    /**
+     * 組織スコープ配信の宛先ユーザーIDリストを解決する（(B) 組織→参加チーム配信 案C フェーズA 隊A 公開ラッパー）。
+     *
+     * <p>「直属メンバー ∪ 配下参加チーム(ACTIVE)のメンバー」を {@code DISTINCT user_id} で返す。
+     * SUPPORTER（応援者）は {@code includeSupporters=false} のとき既定で除外し、
+     * {@code true} のとき含める。判定ロジックの詳細は
+     * {@link UserRoleRepository#findDistributionUserIdsForOrganization(Long, boolean)} 参照。</p>
+     *
+     * <p><b>越境是正の窓口</b>: schedule/survey 等の他ドメインからはこのメソッドを呼び、
+     * {@code team_org_memberships} / {@code memberships} を直接参照させない。
+     * クエリ本体は SQL 局所性のため {@link UserRoleRepository} に置いている。</p>
+     *
+     * @param orgId             組織 ID（存在しない場合は {@link OrgErrorCode#ORG_001}）
+     * @param includeSupporters true=応援者も含める / false=応援者を除外する
+     * @return 配信対象ユーザー ID リスト（重複なし・在籍中のアクティブユーザーのみ）
+     */
+    public List<Long> resolveOrgDistributionUserIds(Long orgId, boolean includeSupporters) {
+        findOrganizationOrThrow(orgId); // 組織存在チェック（不在なら ORG_001）
+        return userRoleRepository.findDistributionUserIdsForOrganization(orgId, includeSupporters);
+    }
+
     private OrganizationEntity findOrganizationOrThrow(Long orgId) {
         return organizationRepository.findById(orgId)
                 .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001));

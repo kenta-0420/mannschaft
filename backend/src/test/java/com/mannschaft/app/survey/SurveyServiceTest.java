@@ -104,7 +104,7 @@ class SurveyServiceTest {
                 .scope(new SurveyResponse.SurveyScopeDto(SCOPE_TYPE, SCOPE_ID))
                 .content(new SurveyResponse.SurveyContentDto("テストアンケート", "説明"))
                 .policy(new SurveyResponse.SurveyPolicyDto(false, false, "AFTER_RESPONSE", "CREATOR_AND_ADMIN"))
-                .distribution(new SurveyResponse.SurveyDistributionDto("ALL", false, null, null, 0))
+                .distribution(new SurveyResponse.SurveyDistributionDto("ALL", false, null, null, 0, false))
                 .schedule(new SurveyResponse.SurveyScheduleDto(null, null, null, null))
                 .stats(new SurveyResponse.SurveyStatsDto(0, 0))
                 .audit(new SurveyResponse.SurveyAuditDto(null, USER_ID, null, null))

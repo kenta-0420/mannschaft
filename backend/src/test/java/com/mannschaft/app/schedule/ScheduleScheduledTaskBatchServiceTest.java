@@ -73,7 +73,7 @@ class ScheduleScheduledTaskBatchServiceTest {
         CreateSurveyRequest req = new CreateSurveyRequest(
                 "出欠アンケート", null, false, false,
                 "AFTER_CLOSE", "ALL",
-                null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null);
         return objectMapper.writeValueAsString(req);
     }
 

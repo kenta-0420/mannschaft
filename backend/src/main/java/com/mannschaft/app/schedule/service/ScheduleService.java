@@ -423,6 +423,8 @@ public class ScheduleService {
                 .status(ScheduleStatus.SCHEDULED)
                 .attendanceStatus(AttendanceGenerationStatus.READY)
                 .attendanceRequired(req.getAttendanceRequired())
+                .includeSupporters(req.getIncludeSupporters() != null
+                        ? req.getIncludeSupporters() : false)
                 .attendanceDeadline(deadlineJst)
                 .commentOption(req.getCommentOption() != null
                         ? CommentOption.valueOf(req.getCommentOption()) : CommentOption.OPTIONAL)
