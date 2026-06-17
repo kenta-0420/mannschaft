@@ -68,16 +68,10 @@ proxy_input_consents -> users [fk_pic_revoke_wit] (RESTRICT) @V18.010__create_pr
 proxy_input_consents -> users [fk_pic_subject] (RESTRICT) @V18.010__create_proxy_input_consents_table.sql:29
 proxy_input_consents -> users [fk_pic_witness] (RESTRICT) @V18.010__create_proxy_input_consents_table.sql:32
 recruitment_cancellation_policies -> users [fk_rcp_created_by] (RESTRICT) @V3.125__create_recruitment_cancellation_policies.sql:16
-recruitment_cancellation_records -> users [fk_rcr_cancelled_by] (SET NULL) @V3.127__create_recruitment_cancellation_records.sql:31
-recruitment_cancellation_records -> users [fk_rcr_user] (SET NULL) @V3.127__create_recruitment_cancellation_records.sql:27
 recruitment_listings -> reservation_lines [fk_rl_reservation_line] (SET NULL) @V3.119__create_recruitment_listings.sql:45
-recruitment_listings -> users [fk_rl_cancelled_by] (SET NULL) @V3.119__create_recruitment_listings.sql:49
 recruitment_listings -> users [fk_rl_created_by] (RESTRICT) @V3.119__create_recruitment_listings.sql:47
 recruitment_listings -> visibility_templates [fk_recruitment_listings_vt] (SET NULL) @V16.006__add_visibility_template_id_to_features.sql:3
-recruitment_participant_history -> users [fk_rph_changed_by] (SET NULL) @V3.121__create_recruitment_participant_history.sql:18
 recruitment_participants -> teams [fk_rp_team] (RESTRICT) @V3.120__create_recruitment_participants.sql:32
-recruitment_participants -> users [fk_rp_applied_by] (SET NULL) @V3.120__create_recruitment_participants.sql:34
-recruitment_participants -> users [fk_rp_cancelled_by] (SET NULL) @V3.120__create_recruitment_participants.sql:36
 recruitment_participants -> users [fk_rp_user] (RESTRICT) @V3.120__create_recruitment_participants.sql:30
 recruitment_subcategories -> users [fk_rs_created_by] (RESTRICT) @V3.117__create_recruitment_subcategories.sql:20
 reservation_blocked_times -> users [fk_reservation_bt_created_by] (SET NULL) @V3.064__create_reservation_blocked_times_table.sql:16
