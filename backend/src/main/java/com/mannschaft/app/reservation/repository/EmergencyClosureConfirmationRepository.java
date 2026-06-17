@@ -40,4 +40,20 @@ public interface EmergencyClosureConfirmationRepository
     List<EmergencyClosureConfirmationEntity> findUnconfirmedForPatientReminder(
             @Param("now") LocalDateTime now,
             @Param("threeHoursLater") LocalDateTime threeHoursLater);
+
+    /**
+     * 指定ユーザーの緊急休業確認を全件削除する（クロスドメインFK撤廃キャンペーン 第二陣E）。
+     *
+     * <p>{@code ReservationAnonymizationEventListener#onUserAnonymized} が退会受付直後
+     * （{@code UserAnonymizedEvent} 即時匿名化）に呼び出し、users 本体削除より前に
+     * 緊急休業確認（appointment_at 等の来院＝予約情報を含む個人データ）を先行削除する安全弁メソッド。
+     * これにより V100.001 で撤廃する {@code fk_ecc_user}（ON DELETE CASCADE）が冗長になる。</p>
+     *
+     * <p>{@code EmergencyClosureConfirmationEntity} は {@code @SQLRestriction} を持たず
+     * （論理削除カラム deleted_at なし）、派生 delete でも消し残しは発生しないため通常の派生 delete を用いる。</p>
+     *
+     * @param userId 退会ユーザーID
+     * @return 削除された行数
+     */
+    int deleteByUserId(Long userId);
 }
