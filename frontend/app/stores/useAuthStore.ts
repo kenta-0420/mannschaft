@@ -39,6 +39,27 @@ export const useAuthStore = defineStore('auth', {
       // accessToken は HttpOnly Cookie でも管理されており、Cookie はブラウザが自動送信する。
       this.accessToken = accessToken
       this.refreshToken = refreshToken
+
+      // 非機密のタイムスタンプ（access_token の有効期限）のみ localStorage に保存する。
+      // トークン本体は in-memory のまま保持し、ここでは exp（秒）→ ミリ秒のみを残す。
+      // 起動プラグイン（auth.client）がリロード時に「Cookie 失効済みか」を判定し、
+      // 失効時だけ先回りリフレッシュするために使う。
+      if (import.meta.client) {
+        try {
+          const payloadPart = accessToken.split('.')[1]
+          if (payloadPart) {
+            // JWT payload は base64url エンコードのため base64 に変換してからデコードする。
+            const base64 = payloadPart.replace(/-/g, '+').replace(/_/g, '/')
+            const payload = JSON.parse(atob(base64)) as { exp?: number }
+            if (typeof payload.exp === 'number') {
+              localStorage.setItem('tokenExpiresAt', String(payload.exp * 1000))
+            }
+          }
+        } catch {
+          // JWT デコード失敗・exp 欠落時は保存をスキップ（例外は投げない）。
+          // tokenExpiresAt が無ければプラグイン側は「期限不明＝失効扱い」で先回りリフレッシュする。
+        }
+      }
     },
 
     /**
@@ -134,6 +155,7 @@ export const useAuthStore = defineStore('auth', {
         localStorage.removeItem('accessToken')
         localStorage.removeItem('refreshToken')
         localStorage.removeItem('currentUser')
+        localStorage.removeItem('tokenExpiresAt')
 
         // PWA: Cache Storage を全クリア（api-cache + その他全エントリ）
         // api-cache の破棄は clearUserCaches でも行われるが、
