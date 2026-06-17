@@ -86,6 +86,7 @@
     },
     "admin": {
       "pageTitle": "Gestión de pagos",
+      "permissionDenied": "このページは管理者のみアクセスできます",
       "itemsTitle": "Conceptos de pago",
       "selectItem": "Selecciona un concepto de pago",
       "remindUnpaid": "Recordar impagados",

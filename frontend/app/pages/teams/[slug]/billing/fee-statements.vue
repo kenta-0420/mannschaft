@@ -14,10 +14,15 @@ const teamId = String(route.params.slug)
 const { getFeeStatement } = usePaymentApi()
 const notification = useNotification()
 
+const { isAdmin, loadPermissions } = useRoleAccess('team', teamId)
+
+const loading = ref(true)
+const permissionDenied = ref(false)
+
 /** 選択中の対象月（YYYY-MM 形式） */
 const selectedPeriod = ref<string>(currentYearMonth())
 const statement = ref<FeeStatementResponse | null>(null)
-const loading = ref(false)
+const dataLoading = ref(false)
 const noData = ref(false)
 
 /** 現在の年月を YYYY-MM 形式で返す。 */
@@ -34,7 +39,7 @@ function formatAmount(amount: number, currency: string): string {
 }
 
 async function load() {
-  loading.value = true
+  dataLoading.value = true
   noData.value = false
   statement.value = null
   try {
@@ -49,16 +54,41 @@ async function load() {
       notification.error(t('payment.feeStatements.loadError'))
     }
   } finally {
-    loading.value = false
+    dataLoading.value = false
   }
 }
 
-watch(selectedPeriod, () => load())
-onMounted(() => load())
+/** 権限チェック */
+onMounted(async () => {
+  try {
+    await loadPermissions()
+    if (!isAdmin.value) {
+      permissionDenied.value = true
+      return
+    }
+    await load()
+  } finally {
+    loading.value = false
+  }
+})
+
+watch(selectedPeriod, () => {
+  if (!permissionDenied.value) load()
+})
 </script>
 
 <template>
-  <div class="container mx-auto max-w-2xl p-4">
+  <PageLoading v-if="loading" />
+
+  <!-- 権限不足 -->
+  <div v-else-if="permissionDenied" class="flex flex-col items-center justify-center py-16">
+    <i class="pi pi-lock mb-4 text-4xl text-surface-400" />
+    <p class="text-surface-500">{{ t('payment.admin.permissionDenied') }}</p>
+    <BackButton class="mt-4" />
+  </div>
+
+  <!-- メインコンテンツ -->
+  <div v-else class="container mx-auto max-w-2xl p-4">
     <PageHeader :title="$t('payment.feeStatements.title')" class="mb-4" />
 
     <!-- 月選択 -->
@@ -75,7 +105,7 @@ onMounted(() => load())
     </div>
 
     <!-- ローディング -->
-    <div v-if="loading" class="flex justify-center py-12">
+    <div v-if="dataLoading" class="flex justify-center py-12">
       <LoadingBounce />
     </div>
 

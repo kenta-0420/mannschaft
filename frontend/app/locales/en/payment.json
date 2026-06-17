@@ -86,6 +86,7 @@
     },
     "admin": {
       "pageTitle": "Payment management",
+      "permissionDenied": "このページは管理者のみアクセスできます",
       "itemsTitle": "Payment items",
       "selectItem": "Select a payment item",
       "remindUnpaid": "Remind unpaid",

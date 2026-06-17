@@ -86,6 +86,7 @@
     },
     "admin": {
       "pageTitle": "Zahlungsverwaltung",
+      "permissionDenied": "このページは管理者のみアクセスできます",
       "itemsTitle": "Zahlungsposten",
       "selectItem": "Bitte einen Zahlungsposten auswählen",
       "remindUnpaid": "Offene Zahlungen erinnern",

@@ -144,7 +144,12 @@ export function usePaymentApi() {
     scopeId: string,
     itemId: number,
   ) {
-    return api<Blob>(`${base(scopeType, scopeId)}/payment-items/${itemId}/payments/export`)
+    return api(
+      `${base(scopeType, scopeId)}/payment-items/${itemId}/payments/export`,
+      {
+        responseType: 'blob' as const,
+      },
+    ) as Promise<Blob>
   }
 
   // === Refund ===

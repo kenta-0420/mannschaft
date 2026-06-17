@@ -86,6 +86,7 @@
     },
     "admin": {
       "pageTitle": "결제 관리",
+      "permissionDenied": "このページは管理者のみアクセスできます",
       "itemsTitle": "결제 항목",
       "selectItem": "결제 항목을 선택해 주세요",
       "remindUnpaid": "미납 알림",
