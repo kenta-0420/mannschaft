@@ -6,6 +6,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.survey.DistributionMode;
 import com.mannschaft.app.survey.QuestionType;
@@ -64,6 +65,7 @@ public class SurveyResultService {
     private final UserRepository userRepository;
     private final UserRoleRepository userRoleRepository;
     private final ContentVisibilityChecker contentVisibilityChecker;
+    private final OrganizationMembershipService organizationMembershipService;
 
     /**
      * アンケート結果を取得する。閲覧権限チェックを行う。
@@ -395,6 +397,15 @@ public class SurveyResultService {
      */
     private List<Long> resolveUniverseUserIds(SurveyEntity survey) {
         if (survey.getDistributionMode() == DistributionMode.ALL) {
+            // 組織×ALL は配下参加チームを展開する（OrganizationMembershipService 経由・越境是正）。
+            // これは「回答を期待する母集団（未回答者リスト/回答率の分母）」であり、
+            // 実際の配信母集団（SurveyPublishNotificationListener / extend / remind）と一致させる。
+            // チームスコープ（および COMMITTEE 等）は配下展開なし・従来挙動を維持する。
+            // 注: 可視性(view)判定経路である isUserInUniverse は本変更の対象外（従来挙動を維持）。
+            if ("ORGANIZATION".equals(survey.getScopeType())) {
+                return organizationMembershipService.resolveOrgDistributionUserIds(
+                        survey.getScopeId(), Boolean.TRUE.equals(survey.getIncludeSupporters()));
+            }
             return userRoleRepository.findUserIdsByScope(survey.getScopeType(), survey.getScopeId());
         }
         List<SurveyTargetEntity> targets = targetRepository.findBySurveyId(survey.getId());

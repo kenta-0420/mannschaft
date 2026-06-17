@@ -29,7 +29,8 @@ public interface SurveyMapper {
                         entity.getResultsVisibility().name(), entity.getUnrespondedVisibility().name()))
                 .distribution(new SurveyResponse.SurveyDistributionDto(
                         entity.getDistributionMode().name(), entity.getAutoPostToTimeline(),
-                        entity.getSeriesId(), entity.getRemindBeforeHours(), entity.getManualRemindCount()))
+                        entity.getSeriesId(), entity.getRemindBeforeHours(), entity.getManualRemindCount(),
+                        entity.getIncludeSupporters()))
                 .schedule(new SurveyResponse.SurveyScheduleDto(
                         entity.getStartsAt(), entity.getExpiresAt(),
                         entity.getPublishedAt(), entity.getClosedAt()))

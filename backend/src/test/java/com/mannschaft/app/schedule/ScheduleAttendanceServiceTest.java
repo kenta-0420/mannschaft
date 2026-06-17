@@ -78,6 +78,9 @@ class ScheduleAttendanceServiceTest {
     @Mock
     private AccessControlService accessControlService;
 
+    @Mock
+    private com.mannschaft.app.organization.service.OrganizationMembershipService organizationMembershipService;
+
     @InjectMocks
     private ScheduleAttendanceService attendanceService;
 
@@ -643,20 +646,22 @@ class ScheduleAttendanceServiceTest {
     class GenerateAttendanceRecords {
 
         @Test
-        @DisplayName("出欠レコード生成_3名分_3件保存される")
-        void 出欠レコード生成_3名分_3件保存される() {
-            // given
-            given(attendanceRepository.save(any(ScheduleAttendanceEntity.class)))
-                    .willAnswer(invocation -> invocation.getArgument(0));
-
+        @DisplayName("出欠レコード生成_3名分_saveAllでバッチ保存される")
+        void 出欠レコード生成_3名分_saveAllでバッチ保存される() {
+            // given: 規模対応 Tier2 で per-user save → saveAll バッチ INSERT に変更済み。
             List<Long> memberIds = List.of(1L, 2L, 3L);
 
             // when
             attendanceService.generateAttendanceRecords(SCHEDULE_ID, memberIds);
 
-            // then
-            verify(attendanceRepository, org.mockito.Mockito.times(3))
+            // then: saveAll が 1 回・3件のエンティティで呼ばれる（per-user save は使わない）
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<ScheduleAttendanceEntity>> captor =
+                    ArgumentCaptor.forClass(List.class);
+            verify(attendanceRepository, org.mockito.Mockito.times(1)).saveAll(captor.capture());
+            verify(attendanceRepository, org.mockito.Mockito.never())
                     .save(any(ScheduleAttendanceEntity.class));
+            assertThat(captor.getValue()).hasSize(3);
         }
     }
 

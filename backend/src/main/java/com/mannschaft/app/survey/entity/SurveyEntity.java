@@ -79,6 +79,15 @@ public class SurveyEntity extends BaseEntity {
     @Builder.Default
     private Boolean autoPostToTimeline = false;
 
+    /**
+     * 配信母集団にサポーター（応援者）を含めるか。
+     * (B) 組織→参加チーム配信 案C フェーズA 隊A で追加。
+     * 既定 false（組織配信時はサポーター除外）。値を使った母集団絞り込みの配線は後続隊。
+     */
+    @Column(name = "include_supporters", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
+    @Builder.Default
+    private Boolean includeSupporters = false;
+
     @Column(length = 50)
     private String seriesId;
 
@@ -169,13 +178,16 @@ public class SurveyEntity extends BaseEntity {
      * @param allowMultipleSubmissions  複数回答許可
      * @param resultsVisibility        結果公開設定
      * @param autoPostToTimeline       タイムライン自動投稿
+     * @param includeSupporters        配信母集団にサポーターを含めるか
      */
     public void updateSettings(Boolean isAnonymous, Boolean allowMultipleSubmissions,
-                               ResultsVisibility resultsVisibility, Boolean autoPostToTimeline) {
+                               ResultsVisibility resultsVisibility, Boolean autoPostToTimeline,
+                               Boolean includeSupporters) {
         this.isAnonymous = isAnonymous;
         this.allowMultipleSubmissions = allowMultipleSubmissions;
         this.resultsVisibility = resultsVisibility;
         this.autoPostToTimeline = autoPostToTimeline;
+        this.includeSupporters = includeSupporters;
     }
 
     /**

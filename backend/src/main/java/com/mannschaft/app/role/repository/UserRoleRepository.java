@@ -379,6 +379,78 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     List<Long> findTeamIdsByOrganizationId(@Param("organizationId") Long organizationId);
 
     /**
+     * 組織スコープ配信の宛先ユーザーIDリストを取得する（(B) 組織→参加チーム配信 案C フェーズA 隊A プリミティブ）。
+     *
+     * <p>展開ルール（マスター御裁可）: 「直属メンバー ∪ 配下参加チーム(ACTIVE)のメンバー」を {@code DISTINCT user_id} で返す。</p>
+     * <ul>
+     *   <li><b>直属</b>: {@code user_roles.organization_id = :organizationId}</li>
+     *   <li><b>配下チーム</b>: {@code user_roles.team_id IN (team_org_memberships で status='ACTIVE' の team_id)}</li>
+     * </ul>
+     *
+     * <p>退会・非アクティブユーザー除外: {@code users} を JOIN し {@code deleted_at IS NULL AND status = 'ACTIVE'} を担保する。</p>
+     *
+     * <p><b>SUPPORTER（応援者）の扱い</b>: F00.5 で MEMBER/SUPPORTER 判定は {@code memberships.role_kind} へ移管された
+     * （[[feedback_role_resolution_memberships_gap]] 正準）。{@code user_roles} にはロール名 SUPPORTER が存在しないため、
+     * SUPPORTER 除外は必ず {@code memberships} 側で判定する。</p>
+     *
+     * <p>{@code :includeSupporters = false} のとき、以下を満たすユーザーを除外する:</p>
+     * <ul>
+     *   <li>当該組織スコープ または 配下チームスコープで、{@code left_at IS NULL}（在籍中）の SUPPORTER 所属を持つ</li>
+     *   <li><b>かつ</b>、当該組織スコープ または 配下チームスコープで、{@code left_at IS NULL} の MEMBER 所属を持たない</li>
+     * </ul>
+     * <p>これにより「あるチームでは MEMBER だが別チームでは SUPPORTER」というユーザーは除外されない（MEMBER が優先）。
+     * これは resolveEffectiveRoleName の priority 最強ルール（UNION で最も強いロールを採る）と整合する。</p>
+     *
+     * <p>{@code :includeSupporters = true} のときは SUPPORTER 除外を行わず、展開対象を全員返す。</p>
+     *
+     * @param organizationId   組織 ID
+     * @param includeSupporters true=応援者も含める / false=応援者を除外する
+     * @return 配信対象ユーザー ID リスト（重複なし・在籍中のアクティブユーザーのみ）
+     */
+    @Query(value =
+            "SELECT DISTINCT ur.user_id FROM user_roles ur " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  AND ( " +
+            "    ur.organization_id = :organizationId " +
+            "    OR ur.team_id IN ( " +
+            "      SELECT tom.team_id FROM team_org_memberships tom " +
+            "      WHERE tom.organization_id = :organizationId AND tom.status = 'ACTIVE' " +
+            "    ) " +
+            "  ) " +
+            "  AND ( " +
+            "    :includeSupporters = TRUE " +
+            "    OR NOT ( " +
+            "      EXISTS ( " +
+            "        SELECT 1 FROM memberships ms " +
+            "        WHERE ms.user_id = ur.user_id AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' " +
+            "          AND ( " +
+            "            (ms.scope_type = 'ORGANIZATION' AND ms.scope_id = :organizationId) " +
+            "            OR (ms.scope_type = 'TEAM' AND ms.scope_id IN ( " +
+            "              SELECT tom2.team_id FROM team_org_memberships tom2 " +
+            "              WHERE tom2.organization_id = :organizationId AND tom2.status = 'ACTIVE' " +
+            "            )) " +
+            "          ) " +
+            "      ) " +
+            "      AND NOT EXISTS ( " +
+            "        SELECT 1 FROM memberships ms2 " +
+            "        WHERE ms2.user_id = ur.user_id AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' " +
+            "          AND ( " +
+            "            (ms2.scope_type = 'ORGANIZATION' AND ms2.scope_id = :organizationId) " +
+            "            OR (ms2.scope_type = 'TEAM' AND ms2.scope_id IN ( " +
+            "              SELECT tom3.team_id FROM team_org_memberships tom3 " +
+            "              WHERE tom3.organization_id = :organizationId AND tom3.status = 'ACTIVE' " +
+            "            )) " +
+            "          ) " +
+            "      ) " +
+            "    ) " +
+            "  )",
+            nativeQuery = true)
+    List<Long> findDistributionUserIdsForOrganization(
+            @Param("organizationId") Long organizationId,
+            @Param("includeSupporters") boolean includeSupporters);
+
+    /**
      * 複数チームの ADMIN/DEPUTY_ADMIN を (team_id, user_id) ペアで返す（通知ループのN+1回避用）。
      * 戻り値は Object[]{teamId, userId} の配列リスト。
      */

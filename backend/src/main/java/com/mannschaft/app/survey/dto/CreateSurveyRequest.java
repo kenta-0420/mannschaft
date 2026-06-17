@@ -59,4 +59,10 @@ public class CreateSurveyRequest {
     private final List<Long> targetUserIds;
 
     private final List<Long> resultViewerUserIds;
+
+    /**
+     * 配信母集団にサポーター（応援者）を含めるか。省略時 false（組織配信時はサポーター除外）。
+     * (B) 組織→参加チーム配信 案C フェーズA 隊A で追加。値を使った母集団絞り込みは後続隊。
+     */
+    private final Boolean includeSupporters;
 }
