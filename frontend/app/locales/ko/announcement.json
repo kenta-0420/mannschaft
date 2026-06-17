@@ -69,6 +69,9 @@
     "template_set_default": "기본값으로 설정",
     "template_create": "템플릿으로 저장",
     "template_save_success": "템플릿이 저장되었습니다",
-    "template_delete_confirm": "이 템플릿을 삭제하시겠습니까?"
+    "template_delete_confirm": "이 템플릿을 삭제하시겠습니까?",
+    "incident": {
+      "dismiss": "닫기"
+    }
   }
 }

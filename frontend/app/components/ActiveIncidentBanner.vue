@@ -2,6 +2,7 @@
 interface Incident {
   pagePattern: string
   message: string
+  // severity は INFO / WARNING / CRITICAL の3値
   severity: string
   since: string
 }
@@ -10,6 +11,7 @@ interface ActiveIncidentResponse {
   incidents: Incident[]
 }
 
+const { t, locale } = useI18n()
 const route = useRoute()
 const api = useApi()
 
@@ -24,18 +26,20 @@ function matchesRoute(pattern: string, path: string): boolean {
 
 async function fetchIncidents() {
   try {
-    const res = await api<ActiveIncidentResponse>('/api/v1/active-incidents')
+    // ?lang= で閲覧言語を付与し、BE側翻訳済みメッセージを受け取る
+    const res = await api<ActiveIncidentResponse>(`/api/v1/active-incidents?lang=${locale.value}`)
     incidents.value = res.incidents.filter(i => matchesRoute(i.pagePattern, route.path))
-    dismissedMessages.value = new Set()
+    // dismissed 集合はリセットしない（セッション中に閉じた告知を保持する）
   } catch {
     // サイレント失敗 — インシデントバナーの失敗でアプリを壊さない
   }
 }
 
+// severity の3値: INFO → info / WARNING → warn / CRITICAL → error
 function severityToPrimeVue(severity: string): string {
   if (severity === 'CRITICAL') return 'error'
   if (severity === 'WARNING') return 'warn'
-  return 'info'
+  return 'info' // INFO およびその他
 }
 
 function dismiss(message: string) {
@@ -58,7 +62,8 @@ let intervalId: ReturnType<typeof setInterval> | null = null
 
 onMounted(async () => {
   await fetchIncidents()
-  intervalId = setInterval(fetchIncidents, 300000)
+  // 設計値: 60秒ごとにポーリング
+  intervalId = setInterval(fetchIncidents, 60000)
 })
 
 onUnmounted(() => {
@@ -73,6 +78,7 @@ onUnmounted(() => {
       :key="index"
       :severity="severityToPrimeVue(incident.severity)"
       :closable="true"
+      :close-button-props="{ 'aria-label': t('announcement.incident.dismiss') }"
       @close="dismiss(incident.message)"
     >
       {{ incident.message }}
