@@ -49,6 +49,7 @@ function onKeydown(event: KeyboardEvent) {
         rows="1"
         class="flex-1"
         :disabled="disabled"
+        data-testid="team-chat-input"
         @keydown="onKeydown"
         @input="emit('typing')"
       />

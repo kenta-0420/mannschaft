@@ -190,10 +190,11 @@ defineExpose({ refresh: loadTodos, changeStatus: onStatusChange })
       <Column selection-mode="multiple" header-style="width: 3rem" />
       <Column header="タイトル" field="content.title" style="min-width: 200px">
         <template #body="{ data }">
-          <div>
+          <div :data-testid="`team-todo-row-${data.id}`">
             <NuxtLink
               :to="`/${props.scopeType === 'team' ? 'teams' : 'organizations'}/${props.scopeId}/todos/${data.id}`"
               class="font-medium hover:text-primary"
+              :data-testid="`team-todo-title-${data.id}`"
             >
               {{ data.content?.title }}
             </NuxtLink>
@@ -234,8 +235,8 @@ defineExpose({ refresh: loadTodos, changeStatus: onStatusChange })
       <Column v-if="canEdit || canDelete" header="操作" style="width: 100px">
         <template #body="{ data }">
           <div class="flex gap-1">
-            <Button v-if="canEdit" icon="pi pi-pencil" text rounded size="small" @click="emit('edit', data.id)" />
-            <Button v-if="canDelete" icon="pi pi-trash" text rounded size="small" severity="danger" @click="onDelete(data.id)" />
+            <Button v-if="canEdit" icon="pi pi-pencil" text rounded size="small" :data-testid="`team-todo-edit-${data.id}`" @click="emit('edit', data.id)" />
+            <Button v-if="canDelete" icon="pi pi-trash" text rounded size="small" severity="danger" :data-testid="`team-todo-delete-${data.id}`" @click="onDelete(data.id)" />
           </div>
         </template>
       </Column>

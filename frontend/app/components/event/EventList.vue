@@ -143,13 +143,15 @@ defineExpose({ refresh: loadEvents })
     >
       <Column header="イベント名" field="slug" style="min-width: 200px">
         <template #body="{ data }">
-          <NuxtLink
-            :to="`/${props.scopeType === 'team' ? 'teams' : 'organizations'}/${props.scopeId}/events/${data.id}`"
-            class="font-medium hover:text-primary"
-            @click.prevent="emit('select', data.id)"
-          >
-            {{ data.subtitle || data.slug || `イベント #${data.id}` }}
-          </NuxtLink>
+          <div :data-testid="`team-event-row-${data.id}`">
+            <NuxtLink
+              :to="`/${props.scopeType === 'team' ? 'teams' : 'organizations'}/${props.scopeId}/events/${data.id}`"
+              class="font-medium hover:text-primary"
+              @click.prevent="emit('select', data.id)"
+            >
+              {{ data.subtitle || data.slug || `イベント #${data.id}` }}
+            </NuxtLink>
+          </div>
         </template>
       </Column>
       <Column header="ステータス" field="status" style="width: 120px">
@@ -195,6 +197,7 @@ defineExpose({ refresh: loadEvents })
               text
               rounded
               size="small"
+              :data-testid="`team-event-view-${data.id}`"
               @click="emit('select', data.id)"
             />
             <Button
@@ -204,6 +207,7 @@ defineExpose({ refresh: loadEvents })
               rounded
               size="small"
               severity="danger"
+              :data-testid="`team-event-delete-${data.id}`"
               @click="onDelete(data.id)"
             />
           </div>

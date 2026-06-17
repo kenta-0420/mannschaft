@@ -238,6 +238,7 @@ defineExpose({ refresh })
       auto-resize
       rows="3"
       class="w-full"
+      data-testid="team-timeline-comment-input"
     />
     <template #footer>
       <Button label="キャンセル" severity="secondary" text @click="cancelReply" />
@@ -245,6 +246,7 @@ defineExpose({ refresh })
         label="返信"
         :loading="replySubmitting"
         :disabled="!replyContent.trim()"
+        data-testid="team-timeline-comment-submit"
         @click="submitReply"
       />
     </template>
