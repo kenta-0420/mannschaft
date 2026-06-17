@@ -63,6 +63,9 @@ class SurveyRemindServiceTest {
     @Mock
     private NotificationHelper notificationHelper;
 
+    @Mock
+    private com.mannschaft.app.organization.service.OrganizationMembershipService organizationMembershipService;
+
     @InjectMocks
     private SurveyRemindService remindService;
 
@@ -443,5 +446,37 @@ class SurveyRemindServiceTest {
                 anyString(), anyLong(),
                 eq(NotificationScopeType.ORGANIZATION), eq(SCOPE_ID),
                 anyString(), anyLong());
+    }
+
+    @Test
+    @DisplayName("督促_ORGANIZATION_ALL_配下チーム展開の母集団から未回答者抽出")
+    void 督促_ORG_ALL_配下チーム展開() {
+        // Given: 組織スコープ × ALL（配下チーム展開の窓口経由で母集団を解決）
+        SurveyEntity survey = SurveyEntity.builder()
+                .scopeType("ORGANIZATION").scopeId(SCOPE_ID).title("組織ALL")
+                .description("").isAnonymous(false).allowMultipleSubmissions(false)
+                .resultsVisibility(ResultsVisibility.AFTER_RESPONSE)
+                .distributionMode(DistributionMode.ALL)
+                .includeSupporters(false)
+                .createdBy(USER_ID).build();
+        setEntityId(survey, SURVEY_ID);
+        survey.publish();
+        given(surveyRepository.findById(SURVEY_ID)).willReturn(Optional.of(survey));
+        // 配下チーム展開の窓口（組織×ALL のみ呼ばれること）
+        given(organizationMembershipService.resolveOrgDistributionUserIds(SCOPE_ID, false))
+                .willReturn(List.of(11L, 22L, 33L));
+        // 22L は回答済み → 未回答は 11L / 33L
+        given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID))
+                .willReturn(List.of(buildResponse(22L)));
+        given(surveyRepository.save(survey)).willReturn(survey);
+
+        // When
+        RemindResponse result = remindService.remind(SURVEY_ID, USER_ID);
+
+        // Then: 組織配下展開の窓口経由・findUserIdsByScope は使わない・targets も使わない
+        assertThat(result.remindedCount()).isEqualTo(2);
+        verify(organizationMembershipService).resolveOrgDistributionUserIds(SCOPE_ID, false);
+        verify(userRoleRepository, never()).findUserIdsByScope(anyString(), any());
+        verify(targetRepository, never()).findBySurveyId(any());
     }
 }
