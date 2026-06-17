@@ -1,8 +1,10 @@
 package com.mannschaft.app.match.live;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.config.WebSocketAuthChannelInterceptor;
 import com.mannschaft.app.config.WebSocketConfig;
 import com.mannschaft.app.match.service.MatchAccessService;
+import com.mannschaft.app.reservation.ws.EmergencyClosureSubscriptionInterceptor;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -49,9 +51,15 @@ class MatchLiveSubscriptionInterceptorContextTest {
         }
 
         @Bean
+        EmergencyClosureSubscriptionInterceptor emergencyClosureSubscriptionInterceptor() {
+            return new EmergencyClosureSubscriptionInterceptor(Mockito.mock(AccessControlService.class));
+        }
+
+        @Bean
         WebSocketConfig webSocketConfig(WebSocketAuthChannelInterceptor auth,
-                                        MatchLiveSubscriptionInterceptor sub) {
-            return new WebSocketConfig(auth, sub);
+                                        MatchLiveSubscriptionInterceptor sub,
+                                        EmergencyClosureSubscriptionInterceptor closureSub) {
+            return new WebSocketConfig(auth, sub, closureSub);
         }
     }
 
@@ -63,26 +71,30 @@ class MatchLiveSubscriptionInterceptorContextTest {
                 assertThat(ctx.getBean(WebSocketConfig.class)).isNotNull();
                 assertThat(ctx.getBean(WebSocketAuthChannelInterceptor.class)).isNotNull();
                 assertThat(ctx.getBean(MatchLiveSubscriptionInterceptor.class)).isNotNull();
+                assertThat(ctx.getBean(EmergencyClosureSubscriptionInterceptor.class)).isNotNull();
             }
         }).doesNotThrowAnyException();
     }
 
     @Test
-    @DisplayName("inbound channel に認証 → 購読認可 の順で 2 つのインターセプタが登録される（CONNECT 既存は不変・併存）")
+    @DisplayName("inbound channel に認証 → match live認可 → 臨時休業認可 の順で 3 つのインターセプタが登録される（CONNECT 既存は不変・併存）")
     void inboundChannelに認証の後段で購読認可が登録される() {
         WebSocketAuthChannelInterceptor auth = Mockito.mock(WebSocketAuthChannelInterceptor.class);
         MatchLiveSubscriptionInterceptor sub =
                 new MatchLiveSubscriptionInterceptor(Mockito.mock(MatchAccessService.class));
-        WebSocketConfig config = new WebSocketConfig(auth, sub);
+        EmergencyClosureSubscriptionInterceptor closureSub =
+                new EmergencyClosureSubscriptionInterceptor(Mockito.mock(AccessControlService.class));
+        WebSocketConfig config = new WebSocketConfig(auth, sub, closureSub);
 
         ChannelRegistration registration = new ChannelRegistration();
         config.configureClientInboundChannel(registration);
 
         List<ChannelInterceptor> interceptors = extractInterceptors(registration);
-        assertThat(interceptors).hasSize(2);
-        // 認証（CONNECT で userId 確定）が先、購読認可（SUBSCRIBE で canView）が後。
+        assertThat(interceptors).hasSize(3);
+        // 認証（CONNECT で userId 確定）が先、購読認可（SUBSCRIBE）が後段に並ぶ。
         assertThat(interceptors.get(0)).isSameAs(auth);
         assertThat(interceptors.get(1)).isSameAs(sub);
+        assertThat(interceptors.get(2)).isSameAs(closureSub);
     }
 
     /** {@link ChannelRegistration#getInterceptors()}（protected）を反射で呼び出して登録済み一覧を取り出す。 */
