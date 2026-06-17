@@ -9,6 +9,7 @@ import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDispatchService;
 import com.mannschaft.app.notification.service.NotificationService;
+import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
@@ -71,6 +72,13 @@ public class ScheduleAttendanceService {
     private final ScheduleDelegationService scheduleDelegationService;
     private final NotificationService notificationService;
     private final NotificationDispatchService notificationDispatchService;
+
+    /**
+     * (B) 組織→参加チーム配信 案C フェーズA: 組織スコープ配信の宛先解決窓口。
+     * {@code team_org_memberships} / {@code memberships} を直接参照せず、本窓口経由で
+     * 「直属 ∪ 配下参加チーム(ACTIVE)」のユーザーIDを解決する（越境是正）。
+     */
+    private final OrganizationMembershipService organizationMembershipService;
 
     /**
      * F22.1 第二波: 統合「要対応」集計の per-scope 認可に使用する。
@@ -286,20 +294,29 @@ public class ScheduleAttendanceService {
     /**
      * 対象メンバーの出欠レコードを一括生成する。スケジュール作成時にイベントリスナーから呼ばれる。
      *
+     * <p><b>規模対応 Tier2</b>: per-user の {@code save} ループを {@code saveAll} のバッチ INSERT に変更し、
+     * 組織配下展開で対象が数千〜数万に膨らんでも N 回の round-trip を避ける
+     * （{@code spring.jpa.properties.hibernate.jdbc.batch_size} とあわせて 1 ステートメントあたり
+     * 複数行をまとめて INSERT する）。</p>
+     *
+     * <p>TODO（規模対応 Tier3）: 数万規模では単一トランザクションでの一括 INSERT も長大化するため、
+     * チャンク分割（例: 1,000 件ごとの非同期ジョブ）化が望ましい。本フェーズ A では saveAll バッチ＋
+     * 呼び出し元の非同期化（AFTER_COMMIT @Async / バッチスレッド）までを範囲とする。</p>
+     *
      * @param scheduleId    スケジュールID
      * @param memberUserIds 対象メンバーのユーザーIDリスト
      */
     @Transactional
     public void generateAttendanceRecords(Long scheduleId, List<Long> memberUserIds) {
-        for (Long userId : memberUserIds) {
-            ScheduleAttendanceEntity attendance = ScheduleAttendanceEntity.builder()
-                    .scheduleId(scheduleId)
-                    .userId(userId)
-                    .status(AttendanceStatus.UNDECIDED)
-                    .isProxyInput(false)
-                    .build();
-            attendanceRepository.save(attendance);
-        }
+        List<ScheduleAttendanceEntity> records = memberUserIds.stream()
+                .map(userId -> ScheduleAttendanceEntity.builder()
+                        .scheduleId(scheduleId)
+                        .userId(userId)
+                        .status(AttendanceStatus.UNDECIDED)
+                        .isProxyInput(false)
+                        .build())
+                .toList();
+        attendanceRepository.saveAll(records);
 
         log.info("出欠レコード生成: scheduleId={}, 件数={}", scheduleId, memberUserIds.size());
     }
@@ -320,6 +337,10 @@ public class ScheduleAttendanceService {
      * @param scheduleId 対象予定 schedules.id
      */
     // TODO: scheduleドメインとroleドメインをまたいでいる（UserRoleRepositoryを直接参照）。将来はUserRoleQueryServiceのAPI呼び出し経由で分離予定。機能55: 2026-06-01
+    // NOTE: (B) 組織→参加チーム配信 案C フェーズAで、ORGANIZATION スコープの宛先解決のみ
+    //       organization ドメインの窓口 OrganizationMembershipService.resolveOrgDistributionUserIds
+    //       経由に部分是正済み（team_org_memberships / memberships 直参照を排除）。
+    //       TEAM スコープは従来どおり UserRoleRepository.findUserIdsByScope を使う。
     @Transactional
     public void openAttendanceSolicitation(Long scheduleId) {
         ScheduleEntity schedule = scheduleService.getSchedule(scheduleId);
@@ -344,10 +365,23 @@ public class ScheduleAttendanceService {
             return;
         }
 
-        // 対象メンバーの解決（TEAM/ORGANIZATION 共通の scope ベース解決）
-        List<Long> memberUserIds = userRoleRepository.findUserIdsByScope(scopeType, scopeId).stream()
-                .distinct()
-                .toList();
+        // 対象メンバーの解決
+        // - ORGANIZATION: organization ドメインの窓口で「直属 ∪ 配下参加チーム(ACTIVE)」を解決し、
+        //   schedule.includeSupporters トグルに従い SUPPORTER（応援者）を含める/除外する。
+        // - TEAM: 従来どおり scope ベース（配下展開なし・includeSupporters は TEAM には適用しない。
+        //   フェーズ A は組織配信が主眼）。
+        List<Long> memberUserIds;
+        if ("ORGANIZATION".equals(scopeType)) {
+            boolean includeSupporters = Boolean.TRUE.equals(schedule.getIncludeSupporters());
+            memberUserIds = organizationMembershipService
+                    .resolveOrgDistributionUserIds(scopeId, includeSupporters).stream()
+                    .distinct()
+                    .toList();
+        } else {
+            memberUserIds = userRoleRepository.findUserIdsByScope(scopeType, scopeId).stream()
+                    .distinct()
+                    .toList();
+        }
         if (memberUserIds.isEmpty()) {
             log.info("出欠募集スキップ（対象メンバー0名）: scheduleId={}, scope={}:{}",
                     scheduleId, scopeType, scopeId);
@@ -364,6 +398,11 @@ public class ScheduleAttendanceService {
         String body = "「" + schedule.getTitle() + "」の出欠回答が募集されています。期日までに回答してください。";
         String actionUrl = "/schedules/" + scheduleId;
 
+        // TODO（規模対応 Tier3）: 数万規模の組織配信では、出欠レコード一括生成＋per-user 通知配信を
+        //   この単一トランザクション内で同期実行すると長大化する。チャンク分割した非同期ジョブ
+        //   （例: 1,000 件ごとに job-pool へ投入し、各チャンクを REQUIRES_NEW で確定）に移行するのが望ましい。
+        //   フェーズ A では「呼び出し元の非同期化（即時=AFTER_COMMIT @Async リスナー / 予約=バッチスレッド）」＋
+        //   「saveAll バッチ INSERT」までを範囲とし、リクエストをブロックしない構造は確保済み。
         int dispatched = 0;
         for (Long userId : memberUserIds) {
             NotificationEntity notification = notificationService.createNotification(
