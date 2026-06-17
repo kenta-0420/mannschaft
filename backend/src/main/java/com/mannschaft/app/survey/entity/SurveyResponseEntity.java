@@ -45,6 +45,7 @@ public class SurveyResponseEntity {
     @Column(columnDefinition = "TEXT")
     private String textResponse;
 
+    @Builder.Default
     @Column(name = "is_proxy_input", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
     private Boolean isProxyInput = false;
 
