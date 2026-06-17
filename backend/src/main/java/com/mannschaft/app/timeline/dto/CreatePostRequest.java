@@ -1,5 +1,7 @@
 package com.mannschaft.app.timeline.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mannschaft.app.timeline.PostStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -79,12 +81,26 @@ public class CreatePostRequest {
 
     /**
      * F17.1 Phase 3: 村スコープを明示指定する完全コンストラクタ。
+     *
+     * <p>{@code @JsonCreator} を付与することで、複数コンストラクタ存在時に Jackson が
+     * デシリアライズ用コンストラクタを一意に特定できるようにしている。
+     * これがないと {@code POST /api/v1/timeline/posts} が 500（no suitable creator）で落ちる。
+     * scopeId は数値（Long）のまま受け取る（String化・slug解決は行わない）。</p>
      */
-    public CreatePostRequest(String content, String scopeType, Long scopeId, String postedAsType,
-                             Long postedAsId, Long parentId, Long repostOfId,
-                             LocalDateTime scheduledAt, CreatePollRequest poll,
-                             List<CreateAttachmentRequest> attachments, PostStatus status,
-                             UUID scopeVillageId) {
+    @JsonCreator
+    public CreatePostRequest(
+            @JsonProperty("content") String content,
+            @JsonProperty("scopeType") String scopeType,
+            @JsonProperty("scopeId") Long scopeId,
+            @JsonProperty("postedAsType") String postedAsType,
+            @JsonProperty("postedAsId") Long postedAsId,
+            @JsonProperty("parentId") Long parentId,
+            @JsonProperty("repostOfId") Long repostOfId,
+            @JsonProperty("scheduledAt") LocalDateTime scheduledAt,
+            @JsonProperty("poll") CreatePollRequest poll,
+            @JsonProperty("attachments") List<CreateAttachmentRequest> attachments,
+            @JsonProperty("status") PostStatus status,
+            @JsonProperty("scopeVillageId") UUID scopeVillageId) {
         this.content = content;
         this.scopeType = scopeType;
         this.scopeId = scopeId;
