@@ -205,8 +205,8 @@ class FlywayExistingDataReservationSetNullFkMigrationTest {
 
     private long insertTeam(Connection c, String name) throws SQLException {
         try (PreparedStatement ps = c.prepareStatement("""
-                INSERT INTO teams (name, visibility, created_at, updated_at)
-                VALUES (?, 'PUBLIC', NOW(), NOW())
+                INSERT INTO teams (name, slug, visibility, created_at, updated_at)
+                VALUES (?, 'test-team-rsv', 'PUBLIC', NOW(), NOW())
                 """, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, name);
             ps.executeUpdate();
