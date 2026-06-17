@@ -225,10 +225,10 @@
     "COMMON_003": "Actualizado por otro usuario. Por favor, actualice la pagina",
     "COMMON_999": "Se produjo un error del sistema",
     "AUTH_001": "Correo electronico o contrasena incorrectos",
-    "AUTH_002": "La sesion ha expirado. Por favor, inicie sesion de nuevo",
-    "AUTH_003": "Este correo electronico ya esta registrado",
-    "AUTH_004": "La cuenta esta desactivada",
-    "AUTH_005": "Codigo de verificacion incorrecto"
+    "AUTH_002": "Su correo electronico aun no ha sido verificado",
+    "AUTH_003": "Su cuenta esta bloqueada. Intentelo de nuevo en 30 minutos",
+    "AUTH_004": "Este correo electronico ya esta registrado",
+    "AUTH_005": "El enlace del correo de verificacion no es valido o ha expirado"
   },
   "annual_plan": {
     "title": "Plan anual de eventos",
