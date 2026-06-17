@@ -93,10 +93,20 @@ export default defineConfig({
   },
 
   // テスト実行前に dev サーバーを起動する場合は有効化
+  // NUXT_IGNORE_LOCK=1: 既存 dev サーバーのロックファイルを無視して reuseExistingServer が
+  // 正しく動作するよう設定。既存サーバーが起動中の場合は URL チェックで reuse される。
   webServer: {
     command: `npm run dev -- --port ${new URL(BASE_URL).port || '8081'}`,
     url: BASE_URL,
     reuseExistingServer: true,
     timeout: 240_000,
+    env: {
+      ...process.env,
+      NUXT_IGNORE_LOCK: '1',
+      NUXT_API_PROXY: 'true',
+      // /api/v1/** → http://127.0.0.1:8080 へのプロキシを有効化
+      // reuseExistingServer=true で既存サーバーを再利用する場合は
+      // そのサーバーも NUXT_API_PROXY=true で起動されている必要がある
+    },
   },
 })
