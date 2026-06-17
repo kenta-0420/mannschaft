@@ -66,7 +66,16 @@ public enum ReservationErrorCode implements ErrorCode {
     INVALID_CLOSURE_DATE_RANGE("RESERVATION_018", "終了日は開始日以降である必要があります", Severity.ERROR),
 
     /** 臨時休業の時刻範囲が不正 */
-    INVALID_CLOSURE_TIME_RANGE("RESERVATION_019", "時刻範囲が不正です。開始・終了は両方指定し、整時（HH:00）かつ開始 < 終了である必要があります", Severity.ERROR);
+    INVALID_CLOSURE_TIME_RANGE("RESERVATION_019", "時刻範囲が不正です。開始・終了は両方指定し、整時（HH:00）かつ開始 < 終了である必要があります", Severity.ERROR),
+
+    /**
+     * 予約認可ゲート: チーム所属者でない者が一般公開OFFのチームに予約しようとした。
+     *
+     * <p>既定（allow_public_reservation=false）はチーム所属（SUPPORTER 以上＝memberships 存在）を要求する。
+     * 裏設定で公開（true）にした場合はログイン済みであれば誰でも予約可（匿名は認証層で 401）。
+     * Severity.WARN だが {@code GlobalExceptionHandler} の個別マッピングで HTTP 403 に上書きする。</p>
+     */
+    RESERVATION_PERMISSION_DENIED("RESERVATION_020", "このチームに予約する権限がありません", Severity.WARN);
 
     private final String code;
     private final String message;
