@@ -2,10 +2,8 @@
 # 1 行 = 全 migration を Flyway 適用順に再生した後 net-active な 1 件の クロスドメイン FK。baseline に無い新規 FK のみ fail。
 # 撤廃 wave が DROP FOREIGN KEY すると net-active から消え、再凍結で該当行も消える（chip-away 運用）。baseline が空になればクロスドメイン FK 全廃。
 # 再生成: ./gradlew test --tests "*CrossDomainForeignKeyArchTest" -Parchunit.fk.refreeze=true （または環境変数 ARCHUNIT_FK_REFREEZE=true）
-action_memo_tags -> users [fk_action_memo_tags_user] (CASCADE) @V5.042__create_action_memo_tags_table.sql:15
 action_memos -> timeline_posts [fk_action_memos_timeline_post] (SET NULL) @V5.041__create_action_memos_table.sql:21
 action_memos -> todos [fk_action_memos_related_todo] (SET NULL) @V5.041__create_action_memos_table.sql:19
-action_memos -> users [fk_action_memos_user] (CASCADE) @V5.041__create_action_memos_table.sql:17
 activity_results -> schedules [fk_ar_schedule] (SET NULL) @V6.012__create_activity_results.sql:26
 activity_results -> venues [fk_ar_venue] (RESTRICT) @V9.059__add_venue_id_to_schedules_and_activity_results.sql:12
 advertiser_accounts -> users [fk_advertiser_accounts_approved_by] (RESTRICT) @V10.060__create_advertiser_accounts.sql:17
@@ -129,4 +127,3 @@ todo_status_labels -> users [fk_tsl_created_by] (SET NULL) @V19.011__add_missing
 todo_tag_links -> todos [fk_todo_tag_links_todo] (CASCADE) @V3.111__create_todo_tag_links_table.sql:9
 todos -> schedules [fk_todos_schedules] (SET NULL) @V13.016__add_todos_linked_schedule_fk.sql:5
 tournament_matches -> schedules [fk_tmatch_schedule] (SET NULL) @V8.044__create_tournament_matches_table.sql:38
-user_action_memo_settings -> users [fk_user_action_memo_settings_user] (CASCADE) @V5.044__create_user_action_memo_settings_table.sql:11
