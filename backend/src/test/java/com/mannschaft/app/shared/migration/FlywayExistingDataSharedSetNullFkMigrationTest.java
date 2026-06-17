@@ -144,8 +144,7 @@ class FlywayExistingDataSharedSetNullFkMigrationTest {
                     .as("V105.001 で fk_shared_folders_created が撤廃されること").isFalse();
 
             // 対象外: 同一ドメイン/他参照 FK は撤廃後も残存していること
-            assertThat(foreignKeyExists(c, "shared_folders", "fk_shared_folders_team"))
-                    .as("fk_shared_folders_team（CASCADE）は撤廃対象外で残存すること").isTrue();
+            // 注: fk_shared_folders_team(teams CASCADE) は本キャンペーン第一陣 V62.004 で撤廃済のため対照に使わない
             assertThat(foreignKeyExists(c, "shared_folders", "fk_shared_folders_parent"))
                     .as("fk_shared_folders_parent（自己参照 SET NULL）は撤廃対象外で残存すること").isTrue();
             assertThat(foreignKeyExists(c, "shared_file_versions", "fk_file_versions_file"))
