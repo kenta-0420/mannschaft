@@ -22,4 +22,13 @@ public interface PointCardUserSettingsRepository
      * 指定ユーザーの設定を取得する。
      */
     Optional<PointCardUserSettingsEntity> findByUserId(Long userId);
+
+    /**
+     * 指定ユーザーの設定を削除する（退会30日後の物理削除時の安全弁）。
+     *
+     * <p>クロスドメインFK撤廃キャンペーン 第二陣C。{@code fk_pcus_user}（user CASCADE）撤廃に伴い、
+     * {@code PointCardAnonymizationEventListener#onAccountPurged} が退会30日後に 1:1 設定（個人設定）を
+     * 先行削除するために使用する。user_id は PK 兼 FK のため最大1行のみ削除される。</p>
+     */
+    void deleteByUserId(Long userId);
 }
