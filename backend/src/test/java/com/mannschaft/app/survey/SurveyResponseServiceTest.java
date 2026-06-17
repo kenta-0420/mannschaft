@@ -431,6 +431,47 @@ class SurveyResponseServiceTest {
         }
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // 回帰テスト: SurveyResponseEntity @Builder.Default バグ再発防止
+    // ─────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("SurveyResponseEntity — @Builder.Default 回帰テスト")
+    class SurveyResponseEntityBuilderDefault {
+
+        @Test
+        @DisplayName("isProxyInput を明示しないビルドで false が設定されること（null にならないこと）")
+        void isProxyInput未指定ビルド_falseが設定される() {
+            // Given & When
+            SurveyResponseEntity entity = SurveyResponseEntity.builder()
+                    .surveyId(1L)
+                    .questionId(1L)
+                    .userId(1L)
+                    .build();
+
+            // Then — @Builder.Default がなければ null になり DB NOT NULL 制約違反で INSERT が 500 になる
+            assertThat(entity.getIsProxyInput())
+                    .as("isProxyInput に @Builder.Default が付いていないと null になり NOT NULL 制約違反で 500 になるバグの回帰テスト")
+                    .isNotNull()
+                    .isFalse();
+        }
+
+        @Test
+        @DisplayName("isProxyInput=true を明示した場合は true が設定されること")
+        void isProxyInput明示True_trueが設定される() {
+            // Given & When
+            SurveyResponseEntity entity = SurveyResponseEntity.builder()
+                    .surveyId(1L)
+                    .questionId(1L)
+                    .userId(1L)
+                    .isProxyInput(true)
+                    .build();
+
+            // Then
+            assertThat(entity.getIsProxyInput()).isTrue();
+        }
+    }
+
     @Nested
     @DisplayName("getResponseByUser")
     class GetResponseByUser {
