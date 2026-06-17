@@ -6,6 +6,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.survey.DistributionMode;
 import com.mannschaft.app.survey.QuestionType;
@@ -16,6 +17,7 @@ import com.mannschaft.app.survey.SurveyNotificationType;
 import com.mannschaft.app.survey.SurveyStatus;
 import com.mannschaft.app.survey.UnrespondedVisibility;
 import com.mannschaft.app.survey.event.SurveyCreatedEvent;
+import com.mannschaft.app.survey.event.SurveyPublishedEvent;
 import com.mannschaft.app.survey.event.SurveyStatusChangedEvent;
 import com.mannschaft.app.survey.dto.CreateOptionRequest;
 import com.mannschaft.app.survey.dto.CreateQuestionRequest;
@@ -69,6 +71,7 @@ public class SurveyService {
     private final UserRoleRepository userRoleRepository;
     private final NotificationHelper notificationHelper;
     private final ApplicationEventPublisher eventPublisher;
+    private final OrganizationMembershipService organizationMembershipService;
 
     /**
      * アンケート一覧をページング取得する。
@@ -293,6 +296,20 @@ public class SurveyService {
         entity.publish();
         SurveyEntity saved = surveyRepository.save(entity);
         log.info("アンケート公開: surveyId={}", surveyId);
+
+        // 公開時通知（F05.4 §1528 SURVEY_CREATED）を AFTER_COMMIT・非同期で発火する（規模対応 Tier2）。
+        // 受信者ループ（通知行作成）は SurveyPublishNotificationListener が event-pool で実行し、
+        // 公開 API 応答はここで即返しする。配信母集団の解決はリスナー側で行う
+        // （組織×ALL は OrganizationMembershipService 経由で配下チームを展開）。
+        eventPublisher.publishEvent(new SurveyPublishedEvent(
+                saved.getId(),
+                scopeType,
+                scopeId,
+                saved.getTitle(),
+                saved.getDistributionMode(),
+                Boolean.TRUE.equals(saved.getIncludeSupporters()),
+                saved.getCreatedBy()));
+
         return surveyMapper.toSurveyResponse(saved);
     }
 
@@ -491,8 +508,9 @@ public class SurveyService {
         SurveyEntity saved = surveyRepository.save(entity);
 
         // 受信者通知（distribution_mode に応じた母集団）
+        // 組織×ALL は配下参加チームを展開する（OrganizationMembershipService 経由・越境是正）。
         List<Long> recipients = saved.getDistributionMode() == DistributionMode.ALL
-                ? userRoleRepository.findUserIdsByScope(scopeType, scopeId)
+                ? resolveAllModeRecipients(scopeType, scopeId, saved)
                 : targetRepository.findBySurveyId(surveyId).stream()
                     .map(SurveyTargetEntity::getUserId)
                     .distinct()
@@ -657,6 +675,27 @@ public class SurveyService {
     private SurveyEntity findSurveyOrThrow(String scopeType, Long scopeId, Long surveyId) {
         return surveyRepository.findByIdAndScopeTypeAndScopeId(surveyId, scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(SurveyErrorCode.SURVEY_NOT_FOUND));
+    }
+
+    /**
+     * {@code distribution_mode = ALL} の配信母集団を解決する。
+     *
+     * <p>組織スコープでは {@link OrganizationMembershipService#resolveOrgDistributionUserIds}
+     * 経由で「直属 ∪ 配下ACTIVEチーム」を展開し、応援者トグル（{@code includeSupporters}）を
+     * 適用する。チームスコープ（および COMMITTEE 等）は配下展開を行わず、従来どおり
+     * {@link UserRoleRepository#findUserIdsByScope} でスコープ内メンバーを解決する。</p>
+     *
+     * @param scopeType スコープ種別
+     * @param scopeId   スコープ ID
+     * @param survey    対象アンケート（応援者トグル参照のため）
+     * @return 配信対象ユーザー ID リスト
+     */
+    private List<Long> resolveAllModeRecipients(String scopeType, Long scopeId, SurveyEntity survey) {
+        if ("ORGANIZATION".equals(scopeType)) {
+            return organizationMembershipService.resolveOrgDistributionUserIds(
+                    scopeId, Boolean.TRUE.equals(survey.getIncludeSupporters()));
+        }
+        return userRoleRepository.findUserIdsByScope(scopeType, scopeId);
     }
 
     /**

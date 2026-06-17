@@ -74,6 +74,9 @@ class SurveyResultServiceTest {
     @Mock
     private ContentVisibilityChecker contentVisibilityChecker;
 
+    @Mock
+    private com.mannschaft.app.organization.service.OrganizationMembershipService organizationMembershipService;
+
     @InjectMocks
     private SurveyResultService surveyResultService;
 
