@@ -74,10 +74,6 @@ recruitment_listings -> visibility_templates [fk_recruitment_listings_vt] (SET N
 recruitment_participants -> teams [fk_rp_team] (RESTRICT) @V3.120__create_recruitment_participants.sql:32
 recruitment_participants -> users [fk_rp_user] (RESTRICT) @V3.120__create_recruitment_participants.sql:30
 recruitment_subcategories -> users [fk_rs_created_by] (RESTRICT) @V3.117__create_recruitment_subcategories.sql:20
-reservation_blocked_times -> users [fk_reservation_bt_created_by] (SET NULL) @V3.064__create_reservation_blocked_times_table.sql:16
-reservation_lines -> users [fk_reservation_lines_default_staff] (SET NULL) @V3.060__create_reservation_lines_table.sql:17
-reservation_slots -> users [fk_reservation_slots_created_by] (SET NULL) @V3.061__create_reservation_slots_table.sql:30
-reservation_slots -> users [fk_reservation_slots_staff] (SET NULL) @V3.061__create_reservation_slots_table.sql:26
 reservations -> users [fk_reservations_user] (RESTRICT) @V3.062__create_reservations_table.sql:28
 resident_documents -> users [fk_rd_uploaded_by] (RESTRICT) @V9.018__create_resident_documents_table.sql:17
 resident_registry -> users [fk_rr_user] (SET NULL) @V9.017__create_resident_registry_table.sql:30
@@ -101,8 +97,6 @@ shift_budget_consumptions -> shift_slots [fk_sbc_slot] (RESTRICT) @V11.031__crea
 shift_budget_consumptions -> users [fk_sbc_user] (RESTRICT) @V11.031__create_shift_budget_consumptions.sql:53
 shift_requests -> proxy_input_records [fk_shift_requests_proxy] (SET NULL) @V18.027__add_proxy_input_columns_to_shift_requests.sql:10
 shift_schedules -> projects [fk_ss_linked_project] (SET NULL) @V3.149__add_linked_project_id_to_shift_schedules.sql:9
-shift_schedules -> users [fk_ss_created_by] (SET NULL) @V3.070__create_shift_schedules_table.sql:27
-shift_schedules -> users [fk_ss_published_by] (SET NULL) @V3.070__create_shift_schedules_table.sql:28
 survey_responses -> proxy_input_records [fk_sr_proxy_record] (RESTRICT) @V18.016__add_proxy_input_columns_to_survey_responses.sql:8
 surveys -> users [fk_surveys_created_by] (SET NULL) @V5.014__create_surveys_table.sql:34
 tags -> users [fk_tags_created_by] (RESTRICT) @V3.107__create_tags_table.sql:14
