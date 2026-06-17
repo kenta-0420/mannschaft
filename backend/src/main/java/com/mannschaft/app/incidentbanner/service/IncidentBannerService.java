@@ -1,10 +1,14 @@
 package com.mannschaft.app.incidentbanner.service;
 
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.incidentbanner.IncidentBannerErrorCode;
 import com.mannschaft.app.incidentbanner.entity.IncidentBannerEntity;
 import com.mannschaft.app.incidentbanner.entity.IncidentBannerTranslationEntity;
 import com.mannschaft.app.incidentbanner.repository.IncidentBannerRepository;
 import com.mannschaft.app.incidentbanner.repository.IncidentBannerTranslationRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -12,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -48,6 +51,7 @@ public class IncidentBannerService {
      * @return 作成されたバナーエンティティ
      */
     @Transactional
+    @CacheEvict(value = "active-incidents", allEntries = true)
     public IncidentBannerEntity create(String level, String pagePattern, String originalLanguage,
                                       LocalDateTime startsAt, LocalDateTime endsAt, Long createdBy) {
         IncidentBannerEntity banner = IncidentBannerEntity.builder()
@@ -71,9 +75,10 @@ public class IncidentBannerService {
      * @param startsAt         表示開始日時（NULL で無制限）
      * @param endsAt           表示終了日時（NULL で無制限）
      * @return 更新後のバナーエンティティ
-     * @throws NoSuchElementException バナーが存在しない場合
+     * @throws BusinessException バナーが存在しない場合（{@link IncidentBannerErrorCode#INCIDENT_BANNER_NOT_FOUND}）
      */
     @Transactional
+    @CacheEvict(value = "active-incidents", allEntries = true)
     public IncidentBannerEntity update(UUID id, String level, String pagePattern,
                                       String originalLanguage, LocalDateTime startsAt,
                                       LocalDateTime endsAt) {
@@ -87,9 +92,10 @@ public class IncidentBannerService {
      *
      * @param id バナーID
      * @return 更新後のバナーエンティティ
-     * @throws NoSuchElementException バナーが存在しない場合
+     * @throws BusinessException バナーが存在しない場合（{@link IncidentBannerErrorCode#INCIDENT_BANNER_NOT_FOUND}）
      */
     @Transactional
+    @CacheEvict(value = "active-incidents", allEntries = true)
     public IncidentBannerEntity publish(UUID id) {
         IncidentBannerEntity banner = findByIdOrThrow(id);
         banner.publish();
@@ -101,9 +107,10 @@ public class IncidentBannerService {
      *
      * @param id バナーID
      * @return 更新後のバナーエンティティ
-     * @throws NoSuchElementException バナーが存在しない場合
+     * @throws BusinessException バナーが存在しない場合（{@link IncidentBannerErrorCode#INCIDENT_BANNER_NOT_FOUND}）
      */
     @Transactional
+    @CacheEvict(value = "active-incidents", allEntries = true)
     public IncidentBannerEntity unpublish(UUID id) {
         IncidentBannerEntity banner = findByIdOrThrow(id);
         banner.unpublish();
@@ -114,9 +121,10 @@ public class IncidentBannerService {
      * バナーを論理削除する。
      *
      * @param id バナーID
-     * @throws NoSuchElementException バナーが存在しない場合
+     * @throws BusinessException バナーが存在しない場合（{@link IncidentBannerErrorCode#INCIDENT_BANNER_NOT_FOUND}）
      */
     @Transactional
+    @CacheEvict(value = "active-incidents", allEntries = true)
     public void softDelete(UUID id) {
         IncidentBannerEntity banner = findByIdOrThrow(id);
         banner.softDelete();
@@ -161,9 +169,10 @@ public class IncidentBannerService {
      * @param language 言語コード
      * @param message  翻訳メッセージ
      * @return upsert 後の翻訳エンティティ
-     * @throws NoSuchElementException バナーが存在しない場合
+     * @throws BusinessException バナーが存在しない場合（{@link IncidentBannerErrorCode#INCIDENT_BANNER_NOT_FOUND}）
      */
     @Transactional
+    @CacheEvict(value = "active-incidents", allEntries = true)
     public IncidentBannerTranslationEntity upsertTranslation(UUID bannerId, String language,
                                                               String message) {
         // バナーの存在確認
@@ -215,6 +224,7 @@ public class IncidentBannerService {
      * @return 公開バナーのリスト（内部DTO）
      */
     @Transactional(readOnly = true)
+    @Cacheable(value = "active-incidents", key = "#language")
     public List<ActiveBannerDto> getActivePublic(String language) {
         LocalDateTime now = LocalDateTime.now();
         List<IncidentBannerEntity> banners = bannerRepository.findActivePublicBanners(now);
@@ -242,7 +252,8 @@ public class IncidentBannerService {
                             banner.getPagePattern(),
                             message,
                             banner.getStartsAt(),
-                            banner.getEndsAt()
+                            banner.getEndsAt(),
+                            banner.getCreatedAt()
                     );
                 })
                 .collect(Collectors.toList());
@@ -263,6 +274,7 @@ public class IncidentBannerService {
      * @param message     解決済みメッセージ（言語フォールバック済み）
      * @param startsAt    表示開始日時
      * @param endsAt      表示終了日時
+     * @param createdAt   作成日時（since の startsAt フォールバック用）
      */
     public record ActiveBannerDto(
             UUID id,
@@ -270,7 +282,8 @@ public class IncidentBannerService {
             String pagePattern,
             String message,
             LocalDateTime startsAt,
-            LocalDateTime endsAt
+            LocalDateTime endsAt,
+            LocalDateTime createdAt
     ) {}
 
     // =========================================================================
@@ -279,7 +292,7 @@ public class IncidentBannerService {
 
     private IncidentBannerEntity findByIdOrThrow(UUID id) {
         return bannerRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException(
-                        "IncidentBanner が見つかりません: id=" + id));
+                .orElseThrow(() -> new BusinessException(
+                        IncidentBannerErrorCode.INCIDENT_BANNER_NOT_FOUND));
     }
 }

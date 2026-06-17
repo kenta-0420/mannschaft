@@ -131,6 +131,10 @@ public class RedisConfig {
                 // 権限スコープ（未ログイン / 組織メンバー）はキーに含めるため別キャッシュとなる。
                 .withCacheConfiguration("team-search",
                         redisCacheConfiguration().entryTtl(Duration.ofSeconds(60)))
+                // F12.5 障害告知バナー: 公開バナーは @CacheEvict で即時無効化されるが、
+                // 取りこぼし対策として短め（1分）の TTL を設定する（設計書 F12.5 §5.4）。
+                .withCacheConfiguration("active-incidents",
+                        redisCacheConfiguration().entryTtl(Duration.ofMinutes(1)))
                 .build();
     }
 }
