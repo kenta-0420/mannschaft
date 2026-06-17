@@ -212,3 +212,87 @@ test.describe('SYS-014〜015: アクセス制御境界確認', () => {
     }
   })
 })
+
+// ---------------------------------------------------------------------------
+// SYS-016〜017: 認証済みMEMBER（非管理者）のadmin route guard
+// 実機観測（2026-06-17）:
+//   /system-admin/** → /login?redirect=... に即リダイレクト
+//   /admin/dashboard → loadingスピナー後に /login へ遷移（Nuxt middleware が非同期で認可チェック）
+// ---------------------------------------------------------------------------
+test.describe('SYS-016〜017: 認証済みMEMBERのadmin route guard', () => {
+  // MEMBER の storageState を使う（chromium-real-admin プロジェクトは admin storageState がデフォルトだが
+  // browser.newContext で MEMBER の storageState を明示的に指定してオーバーライドする）
+  const MEMBER_STORAGE_STATE = 'tests/e2e/.auth/real-user.json'
+
+  test('SYS-016: 認証済みMEMBERが /system-admin/email-outbox にアクセスすると /login にリダイレクトされる（UI + APIの両層）', async ({ browser, request }) => {
+    // --- UI層: FE route guard ---
+    const ctx = await browser.newContext({ storageState: MEMBER_STORAGE_STATE })
+    const page = await ctx.newPage()
+    try {
+      await page.goto('/system-admin/email-outbox')
+      // system-admin系は Nuxt middleware が即座に /login にリダイレクトする
+      await page.waitForURL(/\/login/, { timeout: 15_000 })
+      // パス部分のみ確認（redirect= クエリパラメータに元のパスが含まれるのは正常）
+      const urlObj = new URL(page.url())
+      expect(urlObj.pathname).toMatch(/\/login/)
+      expect(urlObj.pathname).not.toContain('/system-admin/')
+      expect(urlObj.pathname).not.toContain('/admin/')
+    } finally {
+      await ctx.close()
+    }
+
+    // --- API層: BE認可チェック ---
+    // MEMBER の Bearer トークンで system-admin 系 API を叩くと 403 が返ること
+    const loginRes = await request.post('http://localhost:8080/api/v1/auth/login', {
+      data: { email: 'e2e-user@test.mannschaft.local', password: 'TestPass2026!' },
+    })
+    expect(loginRes.status(), 'MEMBERログインは200').toBe(200)
+    const loginJson = (await loginRes.json()) as { data: { accessToken: string } }
+    const memberToken = loginJson.data.accessToken
+
+    const auditRes = await request.get('http://localhost:8080/api/v1/admin/audit-logs', {
+      headers: { Authorization: `Bearer ${memberToken}` },
+    })
+    // audit-logs は ADMIN 認可チェックが実装されているため 403 が返ること
+    expect([403], 'MEMBER の /api/v1/admin/audit-logs は 403').toContain(auditRes.status())
+
+    const emailOutboxRes = await request.get('http://localhost:8080/api/v1/system-admin/email-outbox', {
+      headers: { Authorization: `Bearer ${memberToken}` },
+    })
+    expect([403, 404], 'MEMBER の /api/v1/system-admin/email-outbox は 403/404').toContain(emailOutboxRes.status())
+  })
+
+  test('SYS-017: 認証済みMEMBERが /admin/dashboard にアクセスすると管理UIが表示されずloginへ遷移する（UI + APIの両層）', async ({ browser, request }) => {
+    test.setTimeout(90_000)
+
+    // --- UI層: FE route guard ---
+    // /admin/dashboard は Nuxt middleware が非同期で認可チェックし /login にリダイレクトする
+    const ctx = await browser.newContext({ storageState: MEMBER_STORAGE_STATE })
+    const page = await ctx.newPage()
+    try {
+      await page.goto('/admin/dashboard')
+      // admin middleware がチェックを完了するまで最大 20 秒待つ
+      await page.waitForURL(/\/login/, { timeout: 20_000 })
+      // パス部分のみ確認（redirect= クエリパラメータに元のパスが含まれるのは正常）
+      const urlObj = new URL(page.url())
+      expect(urlObj.pathname).toMatch(/\/login/)
+      expect(urlObj.pathname).not.toContain('/admin/')
+    } finally {
+      await ctx.close()
+    }
+
+    // --- API層: BE認可チェック ---
+    const loginRes = await request.post('http://localhost:8080/api/v1/auth/login', {
+      data: { email: 'e2e-user@test.mannschaft.local', password: 'TestPass2026!' },
+    })
+    expect(loginRes.status(), 'MEMBERログインは200').toBe(200)
+    const loginJson = (await loginRes.json()) as { data: { accessToken: string } }
+    const memberToken = loginJson.data.accessToken
+
+    // audit-logs API は ADMIN 認可チェック実装済み → 403
+    const apiRes = await request.get('http://localhost:8080/api/v1/admin/audit-logs', {
+      headers: { Authorization: `Bearer ${memberToken}` },
+    })
+    expect([403], 'MEMBER の admin API は 403 で拒否されること').toContain(apiRes.status())
+  })
+})

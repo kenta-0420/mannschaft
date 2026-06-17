@@ -86,6 +86,7 @@
     },
     "admin": {
       "pageTitle": "支払い管理",
+      "permissionDenied": "このページは管理者のみアクセスできます",
       "itemsTitle": "支払い項目",
       "selectItem": "支払い項目を選択してください",
       "remindUnpaid": "未払いリマインド",
