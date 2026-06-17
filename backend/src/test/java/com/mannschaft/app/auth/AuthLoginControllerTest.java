@@ -119,6 +119,58 @@ class AuthLoginControllerTest {
                 .andExpect(jsonPath("$.error.fieldErrors").isArray());
     }
 
+    @Test
+    @DisplayName("POST /register — 回帰: nickname 欠落でも 500 ではなく 400（COMMON_001）を返す")
+    void register_missingNickname_returns400NotServerError() throws Exception {
+        // 実機 E2E で捕捉した新規登録 500 バグの回帰テスト。
+        // nickname（= UserEntity.displayName、NOT NULL）を欠落させると、
+        // 修正前は DB の NOT NULL 制約違反で 500（COMMON_999）になっていた。
+        // RegisterRequest.nickname に @NotBlank を課したことで、
+        // 正しく 400（COMMON_001）として弾かれることを検証する。
+        String body = """
+                {
+                  "email": "no-nickname@example.com",
+                  "password": "Passw0rd!",
+                  "lastName": "山田",
+                  "firstName": "太郎",
+                  "postalCode": "123-4567",
+                  "birth_date": "1990-01-01",
+                  "locale": "ja",
+                  "timezone": "Asia/Tokyo"
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("COMMON_001"))
+                .andExpect(jsonPath("$.error.fieldErrors[?(@.field == 'nickname')]").exists());
+    }
+
+    @Test
+    @DisplayName("POST /register — 回帰: nickname 空文字でも 400（COMMON_001）を返す")
+    void register_blankNickname_returns400() throws Exception {
+        String body = """
+                {
+                  "email": "blank-nickname@example.com",
+                  "password": "Passw0rd!",
+                  "lastName": "山田",
+                  "firstName": "太郎",
+                  "nickname": "   ",
+                  "postalCode": "123-4567",
+                  "birth_date": "1990-01-01"
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("COMMON_001"))
+                .andExpect(jsonPath("$.error.fieldErrors[?(@.field == 'nickname')]").exists());
+    }
+
     // ──────────────────────────────────────────────
     // POST /api/v1/auth/login
     // ──────────────────────────────────────────────
