@@ -102,8 +102,6 @@ schedules -> todos [fk_schedules_todos] (SET NULL) @V13.015__alter_schedules_add
 schedules -> users [fk_sch_created_by] (SET NULL) @V3.040__create_schedules_table.sql:43
 schedules -> venues [fk_sch_venue] (RESTRICT) @V9.059__add_venue_id_to_schedules_and_activity_results.sql:5
 schedules -> visibility_templates [fk_schedules_vt] (SET NULL) @V16.006__add_visibility_template_id_to_features.sql:7
-search_histories -> users [fk_search_histories_user] (CASCADE) @V4.023__create_search_histories_table.sql:11
-search_saved_queries -> users [fk_search_saved_queries_user] (CASCADE) @V4.024__create_search_saved_queries_table.sql:11
 shared_file_versions -> users [fk_file_versions_uploaded] (SET NULL) @V5.022__create_shared_file_versions_table.sql:13
 shared_folders -> users [fk_shared_folders_created] (SET NULL) @V5.020__create_shared_folders_table.sql:20
 shared_folders -> users [fk_shared_folders_user] (SET NULL) @V5.020__create_shared_folders_table.sql:18
