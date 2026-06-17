@@ -267,7 +267,7 @@ class FlywayExistingDataBudgetMiscSetNullFkMigrationTest {
         try (PreparedStatement ps = c.prepareStatement("""
                 INSERT INTO organizations
                     (name, org_type, slug, created_at, updated_at)
-                VALUES ('第三陣F監査組織', 'GENERAL', ?, NOW(), NOW())
+                VALUES ('第三陣F監査組織', 'OTHER', ?, NOW(), NOW())
                 """, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, slug);
             ps.executeUpdate();
