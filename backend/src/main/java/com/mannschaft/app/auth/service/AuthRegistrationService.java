@@ -129,6 +129,9 @@ public class AuthRegistrationService {
         }
 
         // 4. ユーザー作成
+        // displayName は users.display_name（NOT NULL）に対応する。nickname は任意入力のため、
+        // 未指定（null / 空白）の場合は氏名から表示名を補完して NOT NULL 制約違反（COMMON_999/500）を防ぐ。
+        String displayName = resolveDisplayName(req);
         UserEntity user = UserEntity.builder()
                 .email(req.getEmail())
                 .passwordHash(passwordEncoder.encode(req.getPassword()))
@@ -136,7 +139,7 @@ public class AuthRegistrationService {
                 .firstName(req.getFirstName())
                 .lastNameHash(encryptionService.hmac(req.getLastName()))
                 .firstNameHash(encryptionService.hmac(req.getFirstName()))
-                .displayName(req.getNickname())
+                .displayName(displayName)
                 .postalCode(req.getPostalCode())
                 .locale(req.getLocale() != null ? req.getLocale() : "ja")
                 .timezone(req.getTimezone() != null ? req.getTimezone() : "Asia/Tokyo")
@@ -171,6 +174,26 @@ public class AuthRegistrationService {
 
         // 7. レスポンス
         return ApiResponse.of(new MessageResponse("確認メールを送信しました"));
+    }
+
+    /**
+     * 表示名（display_name）を決定する。
+     *
+     * <p>{@code users.display_name} は NOT NULL かつ最大 50 文字。nickname は任意入力のため、
+     * 未指定（null / 空白）の場合は「姓 名」を表示名として補完する。氏名も空になることは
+     * {@link RegisterRequest} の {@code @NotBlank} で防がれているため、ここでは追加で空チェックしない。
+     * 50 文字を超える場合は users.display_name の長さ制約に合わせて切り詰める。</p>
+     *
+     * @param req 登録リクエスト
+     * @return NOT NULL を満たす表示名（最大 50 文字）
+     */
+    private String resolveDisplayName(RegisterRequest req) {
+        String nickname = req.getNickname();
+        String resolved = (nickname != null && !nickname.isBlank())
+                ? nickname.trim()
+                : (req.getLastName() + " " + req.getFirstName()).trim();
+        // users.display_name は length = 50。氏名連結が超過した場合に備えて切り詰める。
+        return resolved.length() > 50 ? resolved.substring(0, 50) : resolved;
     }
 
     // ========================================
