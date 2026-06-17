@@ -33,10 +33,11 @@ import static org.mockito.Mockito.when;
  *
  * <p>検証観点:</p>
  * <ul>
- *   <li>確認状況トピックの SUBSCRIBE で当該チーム ADMIN（{@code isAdmin=true}）→ 許可。</li>
- *   <li>非 ADMIN（{@code isAdmin=false}）→ 拒否。他チーム ADMIN は teamId 違いで isAdmin=false に委譲され拒否（IDOR 遮断）。</li>
- *   <li>未認証（session userId=null）→ isAdmin を呼ばずに拒否（チーム管理者専用）。</li>
- *   <li>確認状況トピック以外（chat/lobby/match live、確認状況以外の emergency-closures 配下）→ 素通し（isAdmin を呼ばない）。</li>
+ *   <li>確認状況トピックの SUBSCRIBE で当該チーム ADMIN（{@code isAdminOrAbove=true}）→ 許可。</li>
+ *   <li>確認状況トピックの SUBSCRIBE で当該チーム DEPUTY_ADMIN（{@code isAdminOrAbove=true}）→ 許可。</li>
+ *   <li>非 ADMIN/DEPUTY（{@code isAdminOrAbove=false}）→ 拒否。他チーム管理者は teamId 違いで isAdminOrAbove=false に委譲され拒否（IDOR 遮断）。</li>
+ *   <li>未認証（session userId=null）→ isAdminOrAbove を呼ばずに拒否（チーム管理者専用）。</li>
+ *   <li>確認状況トピック以外（chat/lobby/match live、確認状況以外の emergency-closures 配下）→ 素通し（isAdminOrAbove を呼ばない）。</li>
  *   <li>SUBSCRIBE 以外のコマンド（CONNECT/SEND）→ 素通し。</li>
  *   <li>teamId/closureId が数値でない宛先 → 本機能対象外として素通し。</li>
  * </ul>
@@ -49,6 +50,8 @@ class EmergencyClosureSubscriptionInterceptorTest {
     private static final long OTHER_TEAM_ID = 99L;
     private static final long CLOSURE_ID = 12345L;
     private static final long ADMIN_USER_ID = 42L;
+    private static final long DEPUTY_USER_ID = 55L;
+    private static final long MEMBER_USER_ID = 77L;
 
     private static final String CONFIRMATIONS_DESTINATION =
             "/topic/teams/" + TEAM_ID + "/emergency-closures/" + CLOSURE_ID + "/confirmations";
@@ -88,43 +91,55 @@ class EmergencyClosureSubscriptionInterceptorTest {
     }
 
     // ─────────────────────────────────────────────
-    // 購読認可（isAdmin 委譲）
+    // 購読認可（isAdminOrAbove 委譲）
     // ─────────────────────────────────────────────
 
     @Test
     @DisplayName("当該チーム ADMIN → 購読許可（メッセージはそのまま通過）")
     void 当該チームADMINで許可() {
-        when(accessControlService.isAdmin(eq(ADMIN_USER_ID), eq(TEAM_ID), eq("TEAM"))).thenReturn(true);
+        when(accessControlService.isAdminOrAbove(eq(ADMIN_USER_ID), eq(TEAM_ID), eq("TEAM"))).thenReturn(true);
         Message<byte[]> msg = subscribeMessage(CONFIRMATIONS_DESTINATION, ADMIN_USER_ID);
 
         Message<?> result = interceptor.preSend(msg, channel);
 
         assertThat(result).isSameAs(msg);
-        verify(accessControlService).isAdmin(ADMIN_USER_ID, TEAM_ID, "TEAM");
+        verify(accessControlService).isAdminOrAbove(ADMIN_USER_ID, TEAM_ID, "TEAM");
     }
 
     @Test
-    @DisplayName("非 ADMIN（isAdmin=false）→ 購読拒否（MessagingException）")
-    void 非ADMINで拒否() {
-        when(accessControlService.isAdmin(eq(ADMIN_USER_ID), eq(TEAM_ID), eq("TEAM"))).thenReturn(false);
-        Message<byte[]> msg = subscribeMessage(CONFIRMATIONS_DESTINATION, ADMIN_USER_ID);
+    @DisplayName("当該チーム DEPUTY_ADMIN → 購読許可（予約一覧 canManage と権限基準統一）")
+    void 当該チームDEPUTY_ADMINで許可() {
+        when(accessControlService.isAdminOrAbove(eq(DEPUTY_USER_ID), eq(TEAM_ID), eq("TEAM"))).thenReturn(true);
+        Message<byte[]> msg = subscribeMessage(CONFIRMATIONS_DESTINATION, DEPUTY_USER_ID);
+
+        Message<?> result = interceptor.preSend(msg, channel);
+
+        assertThat(result).isSameAs(msg);
+        verify(accessControlService).isAdminOrAbove(DEPUTY_USER_ID, TEAM_ID, "TEAM");
+    }
+
+    @Test
+    @DisplayName("MEMBER（isAdminOrAbove=false）→ 購読拒否（MessagingException）")
+    void MEMBERで拒否() {
+        when(accessControlService.isAdminOrAbove(eq(MEMBER_USER_ID), eq(TEAM_ID), eq("TEAM"))).thenReturn(false);
+        Message<byte[]> msg = subscribeMessage(CONFIRMATIONS_DESTINATION, MEMBER_USER_ID);
 
         assertThatThrownBy(() -> interceptor.preSend(msg, channel))
                 .isInstanceOf(MessagingException.class);
-        verify(accessControlService).isAdmin(ADMIN_USER_ID, TEAM_ID, "TEAM");
+        verify(accessControlService).isAdminOrAbove(MEMBER_USER_ID, TEAM_ID, "TEAM");
     }
 
     @Test
-    @DisplayName("他チーム ADMIN が別チームの closure を購読 → isAdmin(他teamId)=false に委譲され拒否（IDOR 遮断）")
+    @DisplayName("他チーム ADMIN が別チームの closure を購読 → isAdminOrAbove(他teamId)=false に委譲され拒否（IDOR 遮断）")
     void 他チームADMINは別チームで拒否() {
         String otherDest = "/topic/teams/" + OTHER_TEAM_ID + "/emergency-closures/" + CLOSURE_ID + "/confirmations";
-        // 操作者は TEAM_ID の ADMIN だが、購読先は OTHER_TEAM_ID。OTHER_TEAM_ID に対しては isAdmin=false。
-        when(accessControlService.isAdmin(eq(ADMIN_USER_ID), eq(OTHER_TEAM_ID), eq("TEAM"))).thenReturn(false);
+        // 操作者は TEAM_ID の ADMIN だが、購読先は OTHER_TEAM_ID。OTHER_TEAM_ID に対しては isAdminOrAbove=false。
+        when(accessControlService.isAdminOrAbove(eq(ADMIN_USER_ID), eq(OTHER_TEAM_ID), eq("TEAM"))).thenReturn(false);
         Message<byte[]> msg = subscribeMessage(otherDest, ADMIN_USER_ID);
 
         assertThatThrownBy(() -> interceptor.preSend(msg, channel))
                 .isInstanceOf(MessagingException.class);
-        verify(accessControlService).isAdmin(ADMIN_USER_ID, OTHER_TEAM_ID, "TEAM");
+        verify(accessControlService).isAdminOrAbove(ADMIN_USER_ID, OTHER_TEAM_ID, "TEAM");
     }
 
     @Test
@@ -223,7 +238,7 @@ class EmergencyClosureSubscriptionInterceptorTest {
         Message<?> result = interceptor.preSend(msg, channel);
 
         assertThat(result).isSameAs(msg);
-        verify(accessControlService, never()).isAdmin(anyLong(), anyLong(), any());
+        verify(accessControlService, never()).isAdminOrAbove(anyLong(), anyLong(), any());
     }
 
     @Test

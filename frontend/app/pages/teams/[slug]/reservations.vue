@@ -34,7 +34,7 @@ onMounted(() => loadPermissions())
         <Tab :value="0">{{ t('reservation.tab.book') }}</Tab>
         <Tab :value="1">{{ t('reservation.tab.list') }}</Tab>
         <Tab :value="2">{{ t('reservation.tab.line_manage') }}</Tab>
-        <Tab v-if="isAdmin" :value="3">{{ t('reservation.tab.emergency_closure') }}</Tab>
+        <Tab v-if="isAdminOrDeputy" :value="3">{{ t('reservation.tab.emergency_closure') }}</Tab>
       </TabList>
       <TabPanels>
         <TabPanel :value="0">
@@ -46,7 +46,7 @@ onMounted(() => loadPermissions())
         <TabPanel v-if="isAdmin" :value="2">
           <LineManager :team-id="teamSlug" />
         </TabPanel>
-        <TabPanel v-if="isAdmin" :value="3">
+        <TabPanel v-if="isAdminOrDeputy" :value="3">
           <EmergencyClosureForm :team-id="teamSlug" />
         </TabPanel>
       </TabPanels>

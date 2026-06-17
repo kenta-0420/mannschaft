@@ -20,20 +20,22 @@ import java.util.regex.Pattern;
  *
  * <p>STOMP {@code SUBSCRIBE} フレームのうち
  * <b>{@code /topic/teams/{teamId}/emergency-closures/{closureId}/confirmations} 宛先のみ</b>を
- * 認可対象とし、<b>当該チームの厳格 ADMIN（{@code ADMIN} ロール）であること</b>を
- * {@link AccessControlService#isAdmin}（認可の正準サービス）へ委譲して検証する。
- * ADMIN でない者（非メンバー・MEMBER・SUPPORTER・DEPUTY_ADMIN・他チーム ADMIN・未認証）の購読は
+ * 認可対象とし、<b>当該チームの ADMIN または DEPUTY_ADMIN であること</b>を
+ * {@link AccessControlService#isAdminOrAbove}（認可の正準サービス）へ委譲して検証する。
+ * ADMIN / DEPUTY_ADMIN でない者（非メンバー・MEMBER・SUPPORTER・他チーム ADMIN・未認証）の購読は
  * {@link MessagingException} をスローして拒否する（ERROR フレーム返却・購読不成立）。</p>
  *
  * <h3>設計上の不変条件</h3>
  * <ul>
  *   <li><b>確認状況トピック以外（chat / lobby / match live / corkboard 等）は素通し</b>する。
  *       宛先パターン判定で本機能のトピックに限定し、既存購読を壊さない。</li>
- *   <li>認可の正準は {@link AccessControlService#isAdmin}。独自 visibility 述語・役割 gate は書かない
- *       （メモリ教訓「可視性は必ず F00 / 正準サービス経由」「独自述語は漏洩源」）。</li>
- *   <li>teamId は宛先パターンから抽出し、{@code isAdmin(userId, teamId, "TEAM")} で
- *       <b>その teamId に対する ADMIN ロール</b>を判定するため、他チーム ADMIN による越境（IDOR）も遮断される。</li>
- *   <li>未認証（session userId=null）は ADMIN ではあり得ないため購読を拒否する
+ *   <li>認可の正準は {@link AccessControlService#isAdminOrAbove}（ADMIN + DEPUTY_ADMIN を許可）。
+ *       独自 visibility 述語・役割 gate は書かない
+ *       （メモリ教訓「可視性は必ず F00 / 正準サービス経由」「独自述語は漏洩源」）。
+ *       予約一覧の管理操作（{@code canManage=isAdminOrDeputy}）と権限基準を統一する。</li>
+ *   <li>teamId は宛先パターンから抽出し、{@code isAdminOrAbove(userId, teamId, "TEAM")} で
+ *       <b>その teamId に対する ADMIN / DEPUTY_ADMIN ロール</b>を判定するため、他チーム管理者による越境（IDOR）も遮断される。</li>
+ *   <li>未認証（session userId=null）は ADMIN / DEPUTY_ADMIN ではあり得ないため購読を拒否する
  *       （確認状況一覧は送信者＝チーム管理者専用のため、未ログイン観覧は許容しない）。</li>
  * </ul>
  *
@@ -102,9 +104,10 @@ public class EmergencyClosureSubscriptionInterceptor implements ChannelIntercept
             throw new MessagingException("臨時休業確認状況の購読権限がありません");
         }
 
-        // 認可の正準（AccessControlService.isAdmin）へ委譲。
-        // teamId に対する厳格 ADMIN のみ許可するため、他チーム ADMIN の越境（IDOR）も遮断される。
-        if (!accessControlService.isAdmin(userId, teamId, SCOPE_TEAM)) {
+        // 認可の正準（AccessControlService.isAdminOrAbove）へ委譲。
+        // ADMIN + DEPUTY_ADMIN を許可。予約一覧の canManage=isAdminOrDeputy と権限基準を統一する。
+        // teamId に対する判定を行うため、他チーム管理者による越境（IDOR）も遮断される。
+        if (!accessControlService.isAdminOrAbove(userId, teamId, SCOPE_TEAM)) {
             log.debug("臨時休業確認状況の購読を拒否: userId={}, teamId={}, destination={}",
                     userId, teamId, destination);
             // 購読を不成立にする（ERROR フレームが返り SUBSCRIBE は確立しない）。
