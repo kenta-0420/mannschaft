@@ -2,6 +2,7 @@
 const props = defineProps<{
   teamId: string
   slotId: number | null
+  lineId: number | null
   lineName: string
   date: string
   startTime: string
@@ -22,12 +23,13 @@ const submitting = ref(false)
 const serviceNotes = ref('')
 
 async function submit() {
-  if (!props.slotId) return
+  if (!props.slotId || !props.lineId) return
   submitting.value = true
   try {
     await reservationApi.createReservation(props.teamId, {
-      slotId: props.slotId,
-      serviceNotes: serviceNotes.value.trim() || undefined,
+      reservationSlotId: props.slotId,
+      lineId: props.lineId,
+      userNote: serviceNotes.value.trim() || undefined,
     })
     notification.success(t('reservation.message.reserve_success'))
     emit('reserved')
