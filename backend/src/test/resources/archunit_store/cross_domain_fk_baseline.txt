@@ -14,7 +14,6 @@ announcement_read_status -> proxy_input_records [fk_announcement_read_status_pro
 attendance_requirement_evaluations -> users [fk_are_resolver] (RESTRICT) @V18.019__create_attendance_requirement_evaluations.sql:27
 blog_post_series -> users [fk_bps_created_by] (SET NULL) @V6.001__create_blog_post_series.sql:20
 blog_posts -> users [fk_bp_author] (SET NULL) @V6.002__create_blog_posts.sql:61
-blog_posts -> users [fk_bp_user] (CASCADE) @V6.002__create_blog_posts.sql:60
 blog_posts -> visibility_templates [fk_blog_posts_vt] (SET NULL) @V16.006__add_visibility_template_id_to_features.sql:11
 budget_configs -> workflow_templates [fk_bconf_over_limit_workflow] (SET NULL) @V11.034__extend_budget_configs_and_grant_budget_admin.sql:42
 budget_configs -> workflow_templates [fk_bconf_workflow_template] (SET NULL) @V11.026__create_budget_configs.sql:16
@@ -26,7 +25,6 @@ chart_intake_forms -> electronic_seals [fk_cif_seal] (RESTRICT) @V7.017__create_
 circulation_recipients -> proxy_input_records [fk_circulation_recipients_proxy] (SET NULL) @V18.030__add_proxy_confirmed_columns_to_circulation_recipients.sql:17
 committee_distribution_logs -> confirmable_notifications [fk_cdl_confirmable] (SET NULL) @V13.039__create_committee_distribution_logs_table.sql:20
 confirmable_notification_recipients -> users [fk_cnr_excluded_by] (SET NULL) @V13.007__create_confirmable_notification_recipients_table.sql:25
-coupon_distributions -> users [fk_cd_user] (CASCADE) @V9.025__create_coupon_distributions_table.sql:16
 coupon_redemptions -> users [fk_cr_redeemed_by] (RESTRICT) @V9.026__create_coupon_redemptions_table.sql:14
 coupons -> users [fk_coupons_created_by] (RESTRICT) @V9.024__create_coupons_table.sql:24
 disclosure_exports -> dwelling_units [fk_de_dwelling] (SET NULL) @V61.010__create_disclosure_exports.sql:28
@@ -62,7 +60,6 @@ period_attendance_records -> timetable_changes [fk_par_timetable_change] (SET NU
 period_attendance_records -> timetable_slots [fk_par_timetable_slot] (SET NULL) @V18.004__create_period_attendance_records_table.sql:30
 point_card_groups -> users [fk_pcg_user] (CASCADE) @V9.138__create_point_card_groups.sql:14
 point_card_user_settings -> users [fk_pcus_user] (CASCADE) @V9.140__create_point_card_user_settings.sql:13
-promotion_deliveries -> users [fk_pd_user] (CASCADE) @V9.023__create_promotion_deliveries_table.sql:18
 promotions -> users [fk_promotions_approved_by] (SET NULL) @V9.021__create_promotions_table.sql:30
 promotions -> users [fk_promotions_created_by] (RESTRICT) @V9.021__create_promotions_table.sql:28
 property_listing_inquiries -> users [fk_pli_user] (CASCADE) @V9.020__create_property_listing_inquiries_table.sql:14
@@ -103,7 +100,6 @@ schedule_attendances -> proxy_input_records [fk_sa_proxy_record] (RESTRICT) @V18
 schedules -> committees [fk_schedules_committee] (CASCADE) @V9.086__add_committee_id_to_schedules.sql:4
 schedules -> todos [fk_schedules_todos] (SET NULL) @V13.015__alter_schedules_add_linked_todo_id.sql:8
 schedules -> users [fk_sch_created_by] (SET NULL) @V3.040__create_schedules_table.sql:43
-schedules -> users [fk_sch_user] (CASCADE) @V3.040__create_schedules_table.sql:42
 schedules -> venues [fk_sch_venue] (RESTRICT) @V9.059__add_venue_id_to_schedules_and_activity_results.sql:5
 schedules -> visibility_templates [fk_schedules_vt] (SET NULL) @V16.006__add_visibility_template_id_to_features.sql:7
 search_histories -> users [fk_search_histories_user] (CASCADE) @V4.023__create_search_histories_table.sql:11
