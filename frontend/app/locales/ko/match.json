@@ -642,6 +642,28 @@
           "load_failed": "채점 내역을 불러오지 못했습니다",
           "save_failed": "채점 내역을 저장하지 못했습니다"
         }
+      },
+      "ranking": {
+        "switch_to_ranking": "다인원 순위제로 입력",
+        "intro": "출전자를 추가하고 각자의 총점을 입력하면 서버가 총점이 높은 순으로 순위를 자동 산출합니다.",
+        "mode_label": "다인원 순위제",
+        "switch_to_direct": "총점 직접 입력으로 전환",
+        "canonical_notice": "출전자 항목이 입력되어 있어 다인원 순위제가 기록의 정본입니다.",
+        "clear_to_direct": "항목을 지우고 직접 입력으로 돌아가기",
+        "standings": "순위(서버 산출)",
+        "competitor_label": "출전자 이름",
+        "competitor_placeholder": "예: 야마다 하나코",
+        "total_label": "총점",
+        "add_entry": "출전자 추가",
+        "remove_entry": "이 출전자 삭제",
+        "complete": "순위 확정",
+        "complete_hint": "출전자를 2명 이상 추가하고 각자의 이름과 총점을 입력하세요",
+        "user_fallback": "선수#{id}",
+        "team_fallback": "팀#{id}",
+        "error": {
+          "load_failed": "출전자 항목을 불러오지 못했습니다",
+          "save_failed": "출전자 항목을 저장하지 못했습니다"
+        }
       }
     }
   }

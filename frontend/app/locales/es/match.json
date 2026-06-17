@@ -642,6 +642,28 @@
           "load_failed": "No se pudo cargar el desglose de puntuación",
           "save_failed": "No se pudo guardar el desglose de puntuación"
         }
+      },
+      "ranking": {
+        "switch_to_ranking": "Introducir clasificacion de varios competidores",
+        "intro": "Anade competidores e introduce la puntuacion total de cada uno; el servidor los clasifica automaticamente de mayor a menor total.",
+        "mode_label": "Clasificacion de varios competidores",
+        "switch_to_direct": "Cambiar a entrada directa del total",
+        "canonical_notice": "Existen entradas de competidores, por lo que la clasificacion de varios competidores es la fuente de registro.",
+        "clear_to_direct": "Borrar entradas y volver a la entrada directa",
+        "standings": "Clasificacion (calculada por el servidor)",
+        "competitor_label": "Nombre del competidor",
+        "competitor_placeholder": "p. ej., Hanako Yamada",
+        "total_label": "Puntuacion total",
+        "add_entry": "Anadir competidor",
+        "remove_entry": "Eliminar este competidor",
+        "complete": "Confirmar clasificacion",
+        "complete_hint": "Anade al menos dos competidores e introduce el nombre y la puntuacion total de cada uno",
+        "user_fallback": "Jugador n.o {id}",
+        "team_fallback": "Equipo n.o {id}",
+        "error": {
+          "load_failed": "No se pudieron cargar las entradas de competidores",
+          "save_failed": "No se pudieron guardar las entradas de competidores"
+        }
       }
     }
   }

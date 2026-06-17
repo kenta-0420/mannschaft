@@ -642,6 +642,28 @@
           "load_failed": "Failed to load the score breakdown",
           "save_failed": "Failed to save the score breakdown"
         }
+      },
+      "ranking": {
+        "switch_to_ranking": "Enter multi-competitor ranking",
+        "intro": "Add competitors and enter each total score; the server automatically ranks them by descending total.",
+        "mode_label": "Multi-competitor ranking",
+        "switch_to_direct": "Switch to direct total entry",
+        "canonical_notice": "Competitor entries exist, so multi-competitor ranking is the source of record.",
+        "clear_to_direct": "Clear entries and return to direct entry",
+        "standings": "Ranking (computed by server)",
+        "competitor_label": "Competitor name",
+        "competitor_placeholder": "e.g. Hanako Yamada",
+        "total_label": "Total score",
+        "add_entry": "Add competitor",
+        "remove_entry": "Remove this competitor",
+        "complete": "Confirm ranking",
+        "complete_hint": "Add at least two competitors and enter each name and total score",
+        "user_fallback": "Player #{id}",
+        "team_fallback": "Team #{id}",
+        "error": {
+          "load_failed": "Failed to load competitor entries",
+          "save_failed": "Failed to save competitor entries"
+        }
       }
     }
   }
