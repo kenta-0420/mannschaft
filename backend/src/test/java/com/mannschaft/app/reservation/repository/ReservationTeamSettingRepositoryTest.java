@@ -73,7 +73,7 @@ class ReservationTeamSettingRepositoryTest extends AbstractMySqlIntegrationTest 
             Optional<ReservationTeamSettingEntity> found = repository.findByTeamId(TEAM_A);
             assertThat(found).isPresent();
             assertThat(found.get().getTeamId()).isEqualTo(TEAM_A);
-            assertThat(found.get().getAllowPublicReservation()).isTrue();
+            assertThat(found.get().isAllowPublicReservation()).isTrue();
         }
 
         @Test
@@ -112,7 +112,7 @@ class ReservationTeamSettingRepositoryTest extends AbstractMySqlIntegrationTest 
             ReservationTeamSettingEntity found = repository.findByTeamId(TEAM_A).orElseThrow();
 
             // Then: デフォルトはfalse
-            assertThat(found.getAllowPublicReservation()).isFalse();
+            assertThat(found.isAllowPublicReservation()).isFalse();
         }
 
         @Test
@@ -123,7 +123,7 @@ class ReservationTeamSettingRepositoryTest extends AbstractMySqlIntegrationTest 
 
             // Then
             ReservationTeamSettingEntity found = repository.findByTeamId(TEAM_A).orElseThrow();
-            assertThat(found.getAllowPublicReservation()).isFalse();
+            assertThat(found.isAllowPublicReservation()).isFalse();
         }
 
         @Test
@@ -134,7 +134,7 @@ class ReservationTeamSettingRepositoryTest extends AbstractMySqlIntegrationTest 
 
             // Then
             ReservationTeamSettingEntity found = repository.findByTeamId(TEAM_A).orElseThrow();
-            assertThat(found.getAllowPublicReservation()).isTrue();
+            assertThat(found.isAllowPublicReservation()).isTrue();
         }
     }
 
@@ -183,9 +183,9 @@ class ReservationTeamSettingRepositoryTest extends AbstractMySqlIntegrationTest 
 
             // Then
             assertThat(resultA).isPresent();
-            assertThat(resultA.get().getAllowPublicReservation()).isFalse();
+            assertThat(resultA.get().isAllowPublicReservation()).isFalse();
             assertThat(resultB).isPresent();
-            assertThat(resultB.get().getAllowPublicReservation()).isTrue();
+            assertThat(resultB.get().isAllowPublicReservation()).isTrue();
         }
     }
 
@@ -237,7 +237,7 @@ class ReservationTeamSettingRepositoryTest extends AbstractMySqlIntegrationTest 
 
             // Then
             ReservationTeamSettingEntity updated = repository.findByTeamId(TEAM_A).orElseThrow();
-            assertThat(updated.getAllowPublicReservation()).isTrue();
+            assertThat(updated.isAllowPublicReservation()).isTrue();
             // updated_at も更新されていること
             assertThat(updated.getUpdatedAt()).isNotNull();
         }
