@@ -7,7 +7,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  slotSelected: [slotId: number, lineName: string, date: string, startTime: string, endTime: string]
+  slotSelected: [slotId: number, lineId: number, lineName: string, date: string, startTime: string, endTime: string]
 }>()
 
 const { t } = useI18n()
@@ -59,6 +59,7 @@ function selectSlot(slot: ReservationSlotResponse) {
   emit(
     'slotSelected',
     slot.id ?? 0,
+    selectedLineId.value ?? 0,
     selectedLineName.value,
     slot.basic?.slotDate ?? '',
     slot.basic?.startTime ?? '',

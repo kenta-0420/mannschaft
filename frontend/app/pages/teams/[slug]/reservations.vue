@@ -8,16 +8,17 @@ const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', team
 
 const activeTab = ref(0)
 const showBookDialog = ref(false)
-const selectedSlot = ref({ slotId: 0, lineName: '', date: '', startTime: '', endTime: '' })
+const selectedSlot = ref({ slotId: 0, lineId: 0, lineName: '', date: '', startTime: '', endTime: '' })
 
 function onSlotSelected(
   slotId: number,
+  lineId: number,
   lineName: string,
   date: string,
   startTime: string,
   endTime: string,
 ) {
-  selectedSlot.value = { slotId, lineName, date, startTime, endTime }
+  selectedSlot.value = { slotId, lineId, lineName, date, startTime, endTime }
   showBookDialog.value = true
 }
 
@@ -51,6 +52,7 @@ onMounted(() => loadPermissions())
       v-model:visible="showBookDialog"
       :team-id="teamSlug"
       :slot-id="selectedSlot.slotId"
+      :line-id="selectedSlot.lineId"
       :line-name="selectedSlot.lineName"
       :date="selectedSlot.date"
       :start-time="selectedSlot.startTime"

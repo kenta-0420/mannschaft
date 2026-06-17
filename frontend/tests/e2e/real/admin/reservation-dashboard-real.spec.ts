@@ -25,7 +25,20 @@
  *   A. 管理者で /teams/fc-u-18/reservations を開き「予約一覧」タブ(Tab1)が表示される
  *   B. ライン作成→スロット作成→予約作成(PENDING)→承認(CONFIRMED) を実BEで一気通貫
  *   C. /dashboard（横スワイプ）に予約ウィジェットが存在するか実機で確認
- *   D. FE が実際に送る予約作成ペイロードが BE 契約と一致するか（実機専用バグの捕捉）
+ *   D. 実ブラウザで「予約する」タブ→スロット選択→予約フォーム送信で
+ *      予約が PENDING で作成される（FE→BE 契約一致を UI 操作で実証）
+ *
+ * 【2026-06-17 根治済み】
+ *   以前は FE(ReservationForm/useReservationApi)が {slotId, serviceNotes} を送り、
+ *   BE が要求する {reservationSlotId, lineId, userNote} と不一致で予約作成が 400 になり、
+ *   さらに notification.error で握りつぶされて会員が予約できない実機専用バグがあった。
+ *   次の3点を修正して根治した:
+ *     1) SlotPicker.vue が slotSelected で lineId も emit する
+ *     2) ReservationForm.vue / useReservationApi.createReservation が
+ *        body を { reservationSlotId, lineId, userNote } で送る
+ *     3) reservations.vue の onSlotSelected が lineId を受け渡す
+ *   シナリオD(RSV-REAL-004) は test.fail() を撤去し、実ブラウザ操作で
+ *   予約が PENDING 成立することを assert する通常テストに書き換えてある。
  */
 
 import { test as base, expect, request as playwrightRequest, type APIRequestContext } from '@playwright/test'
@@ -60,15 +73,15 @@ interface MeProfile {
  * BE が 500 を返す事象を避けるため、ログイン回数を worker あたり 1 回に抑える）。
  */
 const test = base.extend<
-  { authToken: string; adminInit: void },
+  { authToken: string; adminInit: boolean },
   { workerToken: { token: string; me: MeProfile } }
 >({
   // storageState 依存を外す（共有 setup が生成できないため空で上書き）
-  storageState: async ({}, use) => {
+  storageState: async (_deps, use) => {
     await use(undefined)
   },
   workerToken: [
-    async ({}, use) => {
+    async (_deps, use) => {
       const ctx = await playwrightRequest.newContext()
       const loginRes = await ctx.post(`${BE}/api/v1/auth/login`, {
         headers: { 'Content-Type': 'application/json' },
@@ -112,7 +125,7 @@ const test = base.extend<
           timezone: me.timezone ?? undefined,
         },
       )
-      await use()
+      await use(true)
     },
     { auto: true },
   ],
@@ -330,14 +343,26 @@ test.describe('RSV-REAL-003(B): 予約 PENDING→CONFIRMED 一気通貫（実BE�
 })
 
 // ---------------------------------------------------------------------------
-// シナリオD: FE が実際に送る予約作成ペイロードが BE 契約と一致するか（実機専用バグ）
+// シナリオD: 実ブラウザで「予約する」タブ→スロット選択→予約フォーム送信で
+//           予約が PENDING 成立する（FE→BE 契約一致を UI 操作で実証・根治の証跡）
 // ---------------------------------------------------------------------------
 
-test.describe('RSV-REAL-004(D): FE→BE 予約作成ペイロード契約の整合', () => {
+test.describe('RSV-REAL-004(D): 会員 UI からの予約作成→PENDING 成立', () => {
   let lineId: number | null = null
   let slotId: number | null = null
+  let reservationId: number | null = null
 
   test.afterEach(async ({ request, authToken }) => {
+    // 作成された予約はキャンセルしておく（slot 削除の前に）
+    if (reservationId) {
+      await request
+        .post(`${BE}/api/v1/teams/${TEAM_SLUG}/reservations/${reservationId}/cancel`, {
+          headers: authHeaders(authToken),
+          data: { reason: 'E2E cleanup' },
+        })
+        .catch(() => {})
+      reservationId = null
+    }
     if (slotId) {
       await deleteSlot(request, authToken, slotId).catch(() => {})
       slotId = null
@@ -350,73 +375,92 @@ test.describe('RSV-REAL-004(D): FE→BE 予約作成ペイロード契約の整�
 
   /**
    * RSV-REAL-004-01:
-   * FE の ReservationForm.vue → useReservationApi.createReservation() は
-   * `{ slotId, serviceNotes }` を POST する。
-   * 一方 BE の CreateReservationRequest は `{ reservationSlotId, lineId, userNote }`
-   * を要求する（reservationSlotId/lineId は @NotNull）。
+   * 実ブラウザで予約管理ページの「予約する」タブを開き、ライン/スロット選択 →
+   * 予約フォームで「予約する」ボタンを押す。
+   * FE(ReservationForm.vue → useReservationApi.createReservation)が
+   * 正しく { reservationSlotId, lineId, userNote } を送り、
+   * BE(CreateReservationRequest)契約と一致して予約が PENDING で作成されることを実証する。
    *
-   * このテストは「FE が実際に組み立てるペイロード」をそのまま投げ、
-   * BE 契約と一致して 2xx になることを期待する。
-   * 一致していなければ 400 になり、ユーザーが「予約する」ボタンを押しても
-   * 予約できない（FE 側は notification.error で握りつぶす）実機バグを示す。
-   *
-   * 【既知バグ・2026-06-17 実機E2E で確認】
-   *   現状 FE ペイロードは BE 契約と不一致で 400 になる（=予約作成導線が壊れている）。
-   *   そのため test.fail() で「既知の失敗」として明示的に可視化する。
-   *   症状を握りつぶさず、修正されたら test.fail() が「予期せぬ成功」を報告して
-   *   このマーカーの除去を促す設計（対処療法ではなく可視化）。
-   *
-   *   根治するには次の3点を修正する必要がある:
-   *     1) SlotPicker.vue が slotSelected で lineId も emit する
-   *        （現状 slotId/lineName/date/startTime/endTime のみで lineId を渡していない）
-   *     2) ReservationForm.vue / useReservationApi.createReservation が
-   *        body を { reservationSlotId, lineId, userNote } で送る
-   *        （現状 { slotId, serviceNotes }）
-   *     3) reservations.vue の onSlotSelected も lineId を受け渡す
+   * 握りつぶし(notification.error)に頼らず、実際に予約が成立して BE 一覧に
+   * PENDING で反映されることを assert する（root-cause 根治の証跡）。
    */
-  test('RSV-REAL-004-01: FE のペイロード {slotId, serviceNotes} で予約作成が 2xx になる', async ({
+  test('RSV-REAL-004-01: UI で「予約する」→ライン/スロット選択→送信で予約が PENDING 成立する', async ({
+    page,
     request,
     authToken,
   }) => {
-    // 既知バグ: 現状の FE ペイロードは BE 契約と不一致で 400 になる
-    test.fail(
-      true,
-      'FE(ReservationForm/useReservationApi)が {slotId, serviceNotes} を送るが BE は {reservationSlotId, lineId, userNote} を要求するため予約作成が 400 になる既知バグ',
-    )
-    const line = await createLine(request, authToken, `E2E契約ライン_${Date.now()}`)
+    // 1) 事前準備: ライン + 近未来スロットを BE 直叩きで用意する
+    const lineName = `E2E_UI予約ライン_${Date.now()}`
+    const line = await createLine(request, authToken, lineName)
     lineId = line.id
+    const slotDate = futureDate(32)
     const slot = await createSlot(request, authToken, {
-      slotDate: futureDate(31),
-      startTime: '11:00',
-      endTime: '11:30',
+      slotDate,
+      startTime: '13:00',
+      endTime: '13:30',
     })
     slotId = slot.id
 
-    // FE（ReservationForm.vue → useReservationApi.createReservation）が実際に送る形
-    const feResp = await request.post(`${BE}/api/v1/teams/${TEAM_SLUG}/reservations`, {
-      headers: authHeaders(authToken),
-      data: { slotId, serviceNotes: 'FE実送信ペイロード' },
+    // 2) 予約管理ページを開く（既定タブは「予約する」= SlotPicker）
+    await page.goto(`/teams/${TEAM_SLUG}/reservations`, { waitUntil: 'domcontentloaded' })
+    await waitForHydration(page)
+
+    // 「予約する」タブを明示的に選択（既定で開いているが念のため）
+    const bookTab = page.getByRole('tab', { name: '予約する' })
+    if (await bookTab.count()) await bookTab.click()
+
+    // 3) ライン Select で作成したラインを選ぶ
+    //    PrimeVue Select はネイティブ <select> ではないため、トリガを開いてから選ぶ
+    const lineSelect = page.locator('.p-select').first()
+    await lineSelect.waitFor({ state: 'visible', timeout: 15_000 })
+    await lineSelect.click()
+    await page.getByRole('option', { name: lineName }).click()
+
+    // 4) 日付ピッカーは既定で今日。スロットは指定日(32日後)に作ったので、
+    //    SlotPicker の日付を作成スロットの日付に合わせる必要がある。
+    //    DatePicker の入力欄へ直接日付文字列を入れて反映させる（yy/mm/dd 形式）。
+    const ymd = slotDate.replaceAll('-', '/') // YYYY/MM/DD
+    const dateInput = page.locator('.p-datepicker input').first()
+    await dateInput.fill(ymd)
+    await dateInput.press('Enter')
+
+    // 5) 空きスロットボタン（13:00 - 13:30）が描画されるのを待ってクリック
+    const slotButton = page.getByRole('button', { name: /13:00\s*-\s*13:30/ })
+    await slotButton.waitFor({ state: 'visible', timeout: 15_000 })
+    await slotButton.click()
+
+    // 6) 予約確認ダイアログが開く → 「予約する」ボタンで送信
+    const dialog = page.getByRole('dialog')
+    await dialog.waitFor({ state: 'visible', timeout: 10_000 })
+    // フォームの「予約する」ボタン（ダイアログ内）を押す
+    await dialog.getByRole('button', { name: '予約する' }).click()
+
+    // 7) 成功トーストが出る（握りつぶしの error トーストではないこと）
+    await expect(page.getByText('予約が完了しました')).toBeVisible({ timeout: 15_000 })
+
+    await page.screenshot({
+      path: 'test-results/reservation-real-ui-pending-created.png',
+      fullPage: true,
     })
 
-    const status = feResp.status()
-    const text = await feResp.text()
-    // 後片付け: 成功してしまった場合は作成された予約をキャンセル
-    if (feResp.ok()) {
-      const id = JSON.parse(text).data?.id
-      if (id) {
-        await request.post(
-          `${BE}/api/v1/teams/${TEAM_SLUG}/reservations/${id}/cancel`,
-          { headers: authHeaders(authToken), data: { reason: 'E2E cleanup' } },
-        )
-      }
-    }
-
+    // 8) BE 一覧(PENDING)に実際に作成されたことを検証する（UI 操作の結果を実BEで裏取り）
+    const pendingList = await request.get(
+      `${BE}/api/v1/teams/${TEAM_SLUG}/reservations?status=PENDING`,
+      { headers: authHeaders(authToken) },
+    )
+    expect(pendingList.status()).toBe(200)
+    const pendingBody = await pendingList.json()
+    // 予約レスポンスのスロットIDは identifier.reservationSlotId に入る（slot サマリは id を持たない）
+    const created = (pendingBody.data ?? []).find(
+      (r: { id: number; identifier?: { reservationSlotId?: number } }) =>
+        r.identifier?.reservationSlotId === slotId,
+    )
     expect(
-      feResp.ok(),
-      `FE ペイロード {slotId, serviceNotes} が BE 契約 {reservationSlotId, lineId, userNote} と不一致。` +
-        `status=${status} body=${text}。` +
-        `ReservationForm.vue / useReservationApi.createReservation を修正する必要がある。`,
-    ).toBe(true)
+      created,
+      `UI から作成した予約が PENDING 一覧に出ない（slotId=${slotId}）。` +
+        `FE→BE 予約作成契約の不一致が再発した可能性。`,
+    ).toBeTruthy()
+    reservationId = created.id
   })
 })
 

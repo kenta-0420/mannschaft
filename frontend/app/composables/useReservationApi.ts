@@ -96,7 +96,8 @@ export function useReservationApi() {
 
   async function createReservation(
     teamId: string,
-    body: { slotId: number; serviceNotes?: string },
+    // BE: CreateReservationRequest は reservationSlotId/lineId(@NotNull) + userNote(任意)
+    body: { reservationSlotId: number; lineId: number; userNote?: string },
   ) {
     return api<{ data: unknown }>(`${base(teamId)}/reservations`, { method: 'POST', body })
   }
