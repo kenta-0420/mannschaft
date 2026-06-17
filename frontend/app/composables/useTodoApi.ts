@@ -83,9 +83,12 @@ interface CommentList {
   data: Array<{
     id: number
     todoId: number
-    userId: number
-    displayName: string
-    avatarUrl: string | null
+    /** BE の CommentResponse は user フィールドにネストして返す（ProjectResponse.UserInfo 準拠） */
+    user: {
+      id: number
+      displayName: string
+      avatarUrl?: string | null
+    }
     body: string
     createdAt: string
     updatedAt: string
