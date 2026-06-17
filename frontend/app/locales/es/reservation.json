@@ -124,7 +124,8 @@
     "tab": {
       "book": "Reservar",
       "list": "Reservas",
-      "line_manage": "Gestionar líneas"
+      "line_manage": "Gestionar líneas",
+      "emergency_closure": "緊急休業"
     },
     "column": {
       "datetime": "Fecha y hora",

@@ -124,7 +124,8 @@
     "tab": {
       "book": "Book",
       "list": "Reservations",
-      "line_manage": "Manage Lines"
+      "line_manage": "Manage Lines",
+      "emergency_closure": "緊急休業"
     },
     "column": {
       "datetime": "Date & Time",
