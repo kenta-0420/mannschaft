@@ -58,8 +58,6 @@ performance_records -> schedules [fk_pr_schedule] (SET NULL) @V7.010__create_per
 performance_records -> users [fk_pr_user] (RESTRICT) @V7.010__create_performance_records_table.sql:17
 period_attendance_records -> timetable_changes [fk_par_timetable_change] (SET NULL) @V18.004__create_period_attendance_records_table.sql:31
 period_attendance_records -> timetable_slots [fk_par_timetable_slot] (SET NULL) @V18.004__create_period_attendance_records_table.sql:30
-point_card_groups -> users [fk_pcg_user] (CASCADE) @V9.138__create_point_card_groups.sql:14
-point_card_user_settings -> users [fk_pcus_user] (CASCADE) @V9.140__create_point_card_user_settings.sql:13
 promotions -> users [fk_promotions_approved_by] (SET NULL) @V9.021__create_promotions_table.sql:30
 promotions -> users [fk_promotions_created_by] (RESTRICT) @V9.021__create_promotions_table.sql:28
 property_listing_inquiries -> users [fk_pli_user] (CASCADE) @V9.020__create_property_listing_inquiries_table.sql:14
@@ -132,4 +130,3 @@ todo_tag_links -> todos [fk_todo_tag_links_todo] (CASCADE) @V3.111__create_todo_
 todos -> schedules [fk_todos_schedules] (SET NULL) @V13.016__add_todos_linked_schedule_fk.sql:5
 tournament_matches -> schedules [fk_tmatch_schedule] (SET NULL) @V8.044__create_tournament_matches_table.sql:38
 user_action_memo_settings -> users [fk_user_action_memo_settings_user] (CASCADE) @V5.044__create_user_action_memo_settings_table.sql:11
-user_point_cards -> users [fk_upc_user] (CASCADE) @V9.137__create_user_point_cards.sql:26
