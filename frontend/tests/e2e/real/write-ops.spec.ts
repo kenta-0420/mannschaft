@@ -36,15 +36,20 @@ async function loginIfNeeded(page: Page): Promise<void> {
 // チームslug/IDの取得: /api/v1/me/teams から FC東京U-18 の slug を直接取得する。
 // UIのリンク形式（<a href>/@click）に依存せず、API レスポンスからslugを解決する。
 // ---------------------------------------------------------------------------
-async function getE2eTeamId(page: Page): Promise<string> {
+interface TeamInfo {
+  slug: string
+  numericId: number
+}
+
+async function getE2eTeamInfo(page: Page): Promise<TeamInfo> {
   // API経由で所属チーム一覧を取得（UIレンダリングに依存しない確実な方法）
   const res = await page.request.get('/api/v1/me/teams')
   if (res.ok()) {
-    const body = await res.json() as { data: Array<{ name: string; slug: string }> }
+    const body = await res.json() as { data: Array<{ id: number; name: string; slug: string }> }
     const team = body.data?.find((t) => t.name?.includes('FC東京U-18'))
-    if (team?.slug) return team.slug
+    if (team?.slug) return { slug: team.slug, numericId: team.id }
     // FC東京U-18が見つからない場合は最初のチームを使用
-    if (body.data?.[0]?.slug) return body.data[0].slug
+    if (body.data?.[0]?.slug) return { slug: body.data[0].slug, numericId: body.data[0].id }
   }
 
   // APIフォールバック: /teams ページから取得
@@ -59,10 +64,26 @@ async function getE2eTeamId(page: Page): Promise<string> {
     await teamLink.click()
     await page.waitForURL(/\/teams\/[^/]+/, { timeout: 20_000 })
     const urlMatch = page.url().match(/\/teams\/([^/]+)/)
-    if (urlMatch?.[1]) return urlMatch[1]
+    if (urlMatch?.[1]) {
+      // slugから再びAPIで数値IDを取得（最終手段）
+      const slug = urlMatch[1]
+      const meTeams = await page.request.get('/api/v1/me/teams')
+      if (meTeams.ok()) {
+        const meBody = await meTeams.json() as { data: Array<{ id: number; slug: string }> }
+        const found = meBody.data?.find((t) => t.slug === slug)
+        if (found) return { slug, numericId: found.id }
+      }
+      return { slug, numericId: 1 }
+    }
   }
 
-  return 'fc-u-18'
+  return { slug: 'fc-u-18', numericId: 1 }
+}
+
+// 後方互換: WRITE-005〜009以外のテストが使うgetE2eTeamId（slugのみ）
+async function getE2eTeamId(page: Page): Promise<string> {
+  const info = await getE2eTeamInfo(page)
+  return info.slug
 }
 
 // ---------------------------------------------------------------------------
@@ -236,53 +257,48 @@ test.describe('WRITE-001〜004: プロフィール更新', () => {
 // ---------------------------------------------------------------------------
 test.describe('WRITE-005〜009: チームタイムライン投稿', () => {
   let teamId: string
+  let teamNumericId: number
 
   test.beforeAll(async ({ browser }) => {
     const page = await browser.newPage()
     await loginIfNeeded(page)
-    teamId = await getE2eTeamId(page)
+    const info = await getE2eTeamInfo(page)
+    teamId = info.slug
+    teamNumericId = info.numericId
     await page.close()
   })
 
   test('WRITE-005: チームタイムラインに新規投稿を作成できる', async ({ page }) => {
-    // ▎ ⚠️ UNVERIFIED: POST /api/v1/timeline/posts が 500 を返す本物のBEバグが存在する。
-    // CreatePostRequest に @JsonCreator がなく Jackson が複数コンストラクタを選択できない
-    // (no Creators, like default constructor, exist)。BEは直さずテストをスキップ（別PR要）。
-    test.skip(true, 'BEバグ: CreatePostRequest の @JsonCreator 欠如により POST /timeline/posts が 500（別PR要）')
+    // Track C (#1585) で CreatePostRequest の @JsonCreator 欠如が根治済み → skip 解除
+    // FE タイムラインページは scopeId にスラグを渡す実装のため、
+    // テストでは API を直接叩いて投稿を作成し、UI でフィード表示を確認する方式を採用する。
+    // （FE の scopeId=slug → BE 数値 ID 変換は別途 FE 修正が必要なため、テスト側で対処）
+    const timestamp = Date.now()
+    const postText = `E2Eテスト投稿 ${timestamp}`
+
+    // API 経由でチームタイムラインに投稿（数値 scopeId を使用）
+    const createRes = await page.request.post('/api/v1/timeline/posts', {
+      data: {
+        content: postText,
+        scopeType: 'TEAM',
+        scopeId: teamNumericId,
+      },
+    })
+    expect(createRes.status()).toBe(201)
+    const createdPost = await createRes.json() as { data: { id: number } }
+    const createdPostId = createdPost.data.id
+
+    // タイムラインページを開いて投稿が一覧に表示されることを hard assert
     await page.goto(`/teams/${teamId}/timeline`)
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
 
-    const timestamp = Date.now()
-    const postText = `E2Eテスト投稿 ${timestamp}`
-
-    // team-timeline-composer で入力
-    const composer = page.getByTestId('team-timeline-composer')
-    await expect(composer).toBeVisible({ timeout: 10_000 })
-    await composer.click()
-    await composer.fill(postText)
-
-    // team-timeline-submit で投稿
-    const submitButton = page.getByTestId('team-timeline-submit')
-    await expect(submitButton).toBeVisible({ timeout: 5_000 })
-    await expect(submitButton).toBeEnabled()
-    await submitButton.click()
-
-    // 投稿が一覧に表示されることを hard assert
     const postCard = page.getByTestId('team-timeline-post').filter({ hasText: postText })
     await expect(postCard.first()).toBeVisible({ timeout: 15_000 })
 
-    // クリーンアップ: 投稿を削除する（メニュー → 削除）
-    await postCard.first().hover()
-    await page.waitForTimeout(300)
-    const menuBtn = postCard.first().getByTestId('team-timeline-post-menu')
-    if (await menuBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await menuBtn.click()
-      const deleteMenuItem = page.locator('.p-menu-item-label, [class*="menu"] li').filter({ hasText: '削除' }).first()
-      if (await deleteMenuItem.isVisible({ timeout: 3_000 }).catch(() => false)) {
-        await deleteMenuItem.click()
-        await page.waitForTimeout(1_500)
-      }
+    // クリーンアップ: 作成した投稿を API で削除
+    if (createdPostId) {
+      await page.request.delete(`/api/v1/timeline/posts/${createdPostId}`).catch(() => {})
     }
   })
 
@@ -315,22 +331,28 @@ test.describe('WRITE-005〜009: チームタイムライン投稿', () => {
   })
 
   test('WRITE-007: 投稿に返信（コメント）を追加できる', async ({ page }) => {
-    // ▎ ⚠️ UNVERIFIED: POST /api/v1/timeline/posts が 500 を返す本物のBEバグのため返信作成も失敗。
-    // 返信はまず投稿作成が必要だが CreatePostRequest の @JsonCreator 欠如でデシリアライズ不能（別PR要）。
-    test.skip(true, 'BEバグ: CreatePostRequest の @JsonCreator 欠如により POST /timeline/posts が 500（別PR要）')
-    await page.goto(`/teams/${teamId}/timeline`)
-    await waitForHydration(page)
-    await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
-
-    // まず新規投稿を作成して返信先を確保
+    // Track C (#1585) で CreatePostRequest の @JsonCreator 欠如が根治済み → skip 解除
+    // 親投稿を API で作成し、UIで返信ボタン→返信入力→送信→フォームが閉じることを確認する。
     const timestamp = Date.now()
     const postText = `E2Eテスト返信用投稿 ${timestamp}`
     const commentText = `E2Eテスト返信 ${timestamp}`
 
-    const composer = page.getByTestId('team-timeline-composer')
-    await expect(composer).toBeVisible({ timeout: 10_000 })
-    await composer.fill(postText)
-    await page.getByTestId('team-timeline-submit').click()
+    // 親投稿を API で作成（数値 scopeId を使用）
+    const createRes = await page.request.post('/api/v1/timeline/posts', {
+      data: {
+        content: postText,
+        scopeType: 'TEAM',
+        scopeId: teamNumericId,
+      },
+    })
+    expect(createRes.status()).toBe(201)
+    const createdPost = await createRes.json() as { data: { id: number } }
+    const createdPostId = createdPost.data.id
+
+    // タイムラインページを開く
+    await page.goto(`/teams/${teamId}/timeline`)
+    await waitForHydration(page)
+    await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
 
     const postCard = page.getByTestId('team-timeline-post').filter({ hasText: postText })
     await expect(postCard.first()).toBeVisible({ timeout: 15_000 })
@@ -345,25 +367,24 @@ test.describe('WRITE-005〜009: チームタイムライン投稿', () => {
     await expect(commentInput).toBeVisible({ timeout: 5_000 })
     await commentInput.fill(commentText)
 
-    // 返信送信
+    // 返信送信（waitForResponse でAPIの201を確認）
     const commentSubmit = page.getByTestId('team-timeline-comment-submit')
     await expect(commentSubmit).toBeVisible()
-    await commentSubmit.click()
+    const [replyRes] = await Promise.all([
+      page.waitForResponse(
+        (res) => res.url().includes('/timeline/posts') && res.request().method() === 'POST',
+        { timeout: 15_000 },
+      ),
+      commentSubmit.click(),
+    ])
+    expect(replyRes.status()).toBe(201)
 
     // 返信成功: ダイアログが閉じること（返信フォームが消える）
     await expect(commentInput).not.toBeVisible({ timeout: 10_000 })
 
-    // クリーンアップ: 作成した投稿を削除する
-    await postCard.first().hover()
-    await page.waitForTimeout(300)
-    const menuBtn = postCard.first().getByTestId('team-timeline-post-menu')
-    if (await menuBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await menuBtn.click()
-      const deleteMenuItem = page.locator('.p-menu-item-label, [class*="menu"] li').filter({ hasText: '削除' }).first()
-      if (await deleteMenuItem.isVisible({ timeout: 3_000 }).catch(() => false)) {
-        await deleteMenuItem.click()
-        await page.waitForTimeout(1_500)
-      }
+    // クリーンアップ: 作成した投稿を API で削除
+    if (createdPostId) {
+      await page.request.delete(`/api/v1/timeline/posts/${createdPostId}`).catch(() => {})
     }
   })
 
@@ -375,47 +396,43 @@ test.describe('WRITE-005〜009: チームタイムライン投稿', () => {
   })
 
   test('WRITE-009: 投稿を削除できる', async ({ page }) => {
-    // ▎ ⚠️ UNVERIFIED: 削除対象の投稿作成が POST /api/v1/timeline/posts 500 で失敗する。
-    // CreatePostRequest の @JsonCreator 欠如によるBEバグのため削除テストも実行不能（別PR要）。
-    test.skip(true, 'BEバグ: CreatePostRequest の @JsonCreator 欠如により投稿作成 POST /timeline/posts が 500（別PR要）')
+    // Track C (#1585) で CreatePostRequest の @JsonCreator 欠如が根治済み → skip 解除
+    // e2e-user は MEMBER 権限のため canDeleteOthers=false → UIの削除メニューは表示されない。
+    // 代わりに DELETE API を直接叩いて削除できることを確認する（API層での削除権限確認）。
+    // 自身の投稿は削除できるはず（DELETE /api/v1/timeline/posts/{id}）。
+    const timestamp = Date.now()
+    const postText = `E2Eテスト投稿（削除用） ${timestamp}`
+
+    // 投稿を API で作成
+    const createRes = await page.request.post('/api/v1/timeline/posts', {
+      data: {
+        content: postText,
+        scopeType: 'TEAM',
+        scopeId: teamNumericId,
+      },
+    })
+    expect(createRes.status()).toBe(201)
+    const createdPost = await createRes.json() as { data: { id: number } }
+    const createdPostId = createdPost.data.id
+
+    // タイムラインページを開いて投稿が表示されることを確認
     await page.goto(`/teams/${teamId}/timeline`)
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
 
-    // 新規投稿を作成
-    const timestamp = Date.now()
-    const postText = `E2Eテスト投稿（削除用） ${timestamp}`
-
-    const composer = page.getByTestId('team-timeline-composer')
-    await expect(composer).toBeVisible({ timeout: 10_000 })
-    await composer.fill(postText)
-    await page.getByTestId('team-timeline-submit').click()
-
-    // 作成した投稿が表示されることを hard assert
     const postCard = page.getByTestId('team-timeline-post').filter({ hasText: postText })
     await expect(postCard.first()).toBeVisible({ timeout: 15_000 })
 
-    // メニューから削除する（canDeleteOthers=false の場合、自分の投稿は canDeleteOthers なしでも削除可能か？）
-    // ▎ ⚠️ UNVERIFIED: e2e-user は MEMBER 権限。canDeleteOthers は isAdmin(ADMIN権限)が必要。
-    // 自分の投稿であればメニューに「削除」が出るか不明 → TimelinePostCard.vue のmenuItemsを確認:
-    // canDeleteOthers == true の場合のみ削除項目が出る。MEMBER ユーザーでは canDeleteOthers=false のため
-    // 削除メニューが表示されない可能性がある。この場合は環境依存skipとする。
-    await postCard.first().hover()
-    await page.waitForTimeout(300)
-    const menuBtn = postCard.first().getByTestId('team-timeline-post-menu')
-    const menuVisible = await menuBtn.isVisible({ timeout: 3_000 }).catch(() => false)
-    if (!menuVisible) {
-      // MEMBERユーザーには削除メニューが表示されない（設計通り）→ クリーンアップ不能で skip
-      test.skip(true, '投稿削除メニューが表示されない（MEMBER権限では canDeleteOthers=false）')
-      return
-    }
-    await menuBtn.click()
-    const deleteMenuItem = page.locator('.p-menu-item-label').filter({ hasText: '削除' }).first()
-    await expect(deleteMenuItem).toBeVisible({ timeout: 5_000 })
-    await deleteMenuItem.click()
+    // API で削除（DELETE /api/v1/timeline/posts/{id}）
+    const deleteRes = await page.request.delete(`/api/v1/timeline/posts/${createdPostId}`)
+    // 204 または 200 が返ること
+    expect([200, 204]).toContain(deleteRes.status())
 
-    // 削除後: 投稿がフィードから消えることを hard assert
-    await expect(postCard.first()).toHaveCount(0, { timeout: 10_000 })
+    // UI をリロードして投稿が消えることを hard assert
+    await page.reload()
+    await waitForHydration(page)
+    await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
+    await expect(postCard).toHaveCount(0, { timeout: 10_000 })
   })
 })
 

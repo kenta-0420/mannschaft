@@ -164,11 +164,11 @@ async function handleToggleMitayo() {
 
     <!-- 添付ファイル -->
     <div
-      v-if="post.attachments.length > 0"
+      v-if="(post.attachments?.length ?? 0) > 0"
       class="mb-3 grid gap-2"
-      :class="post.attachments.length === 1 ? 'grid-cols-1' : 'grid-cols-2'"
+      :class="post.attachments!.length === 1 ? 'grid-cols-1' : 'grid-cols-2'"
     >
-      <template v-for="att in post.attachments" :key="att.id">
+      <template v-for="att in post.attachments!" :key="att.id">
         <img
           v-if="att.attachmentType === 'IMAGE'"
           :src="att.thumbnailUrl || att.url"
