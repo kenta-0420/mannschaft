@@ -78,7 +78,8 @@
       "subject_required": "Please enter a subject",
       "body_required": "Please enter a body",
       "send_failed": "Failed to send",
-      "confirmations_failed": "Failed to load confirmation status"
+      "confirmations_failed": "Failed to load confirmation status",
+      "info_missing": "Notification information is missing"
     },
     "template": {
       "staff_sick": "Staff illness",
@@ -102,7 +103,12 @@
       "CANCELLED": "Cancelled",
       "NO_SHOW": "No show",
       "REJECTED": "Rejected"
-    }
+    },
+    "confirm_button": "Confirm closure",
+    "already_confirmed": "Confirmed",
+    "confirm_success": "Emergency closure acknowledged",
+    "confirm_failed": "Failed to confirm",
+    "badge": "Emergency closure"
   },
   "reservation": {
     "status": {
