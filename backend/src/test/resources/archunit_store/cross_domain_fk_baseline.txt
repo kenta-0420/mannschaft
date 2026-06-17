@@ -1,0 +1,574 @@
+# クロスドメイン FK baseline（D-4 / CrossDomainForeignKeyArchTest が管理）
+# 1 行 = 現存する 1 件のクロスドメイン FK。baseline に無い新規 FK のみ fail。
+# 撤廃が進み FK が消えたら該当行を削除すること（chip-away 運用）。
+# 再生成: ./gradlew test --tests "*CrossDomainForeignKeyArchTest" -Darchunit.fk.refreeze=true
+action_memo_tags -> users [fk_action_memo_tags_user] (CASCADE) @V5.042__create_action_memo_tags_table.sql:15
+action_memos -> organizations [fk_action_memos_organization] (SET NULL) @V13.040__add_org_scope_to_action_memos.sql:14
+action_memos -> teams [fk_am_posted_team] (SET NULL) @V13.022__alter_action_memos_add_phase3_fields.sql:22
+action_memos -> timeline_posts [fk_action_memos_timeline_post] (SET NULL) @V5.041__create_action_memos_table.sql:21
+action_memos -> todos [fk_action_memos_related_todo] (SET NULL) @V5.041__create_action_memos_table.sql:19
+action_memos -> users [fk_action_memos_user] (CASCADE) @V5.041__create_action_memos_table.sql:17
+activity_comments -> users [fk_ac_user] (SET NULL) @V6.014__create_activity_comments.sql:13
+activity_participants -> users [fk_ap_user] (CASCADE) @V6.013__create_activity_participants.sql:12
+activity_results -> schedules [fk_ar_schedule] (SET NULL) @V6.012__create_activity_results.sql:26
+activity_results -> users [fk_ar_created_by] (SET NULL) @V6.012__create_activity_results.sql:27
+activity_results -> venues [fk_ar_venue] (RESTRICT) @V9.059__add_venue_id_to_schedules_and_activity_results.sql:12
+activity_templates -> users [fk_at_created_by] (RESTRICT) @V6.010__create_activity_templates.sql:19
+ad_campaigns -> organizations [fk_ad_campaigns_org] (RESTRICT) @V10.051__create_ad_campaigns.sql:15
+ad_conversions -> users [fk_ad_conversions_user] (RESTRICT) @V10.065__create_ad_conversions.sql:16
+ad_credit_limit_requests -> users [fk_ad_credit_requests_reviewer] (RESTRICT) @V10.067__create_ad_credit_limit_requests.sql:16
+ad_rate_cards -> users [fk_ad_rate_cards_created_by] (RESTRICT) @V10.061__create_ad_rate_cards.sql:14
+ad_report_schedules -> users [fk_ad_report_schedules_user] (RESTRICT) @V10.066__create_ad_report_schedules.sql:16
+advertiser_accounts -> organizations [fk_advertiser_accounts_organization] (RESTRICT) @V10.060__create_advertiser_accounts.sql:16
+advertiser_accounts -> users [fk_advertiser_accounts_approved_by] (RESTRICT) @V10.060__create_advertiser_accounts.sql:17
+analytics_alert_rules -> users [fk_analytics_alert_rules_user] (RESTRICT) @V10.074__create_analytics_alert_rules.sql:18
+analytics_daily_modules -> module_definitions [fk_analytics_daily_modules_module] (RESTRICT) @V10.070__create_analytics_daily_modules.sql:14
+announcement_feeds -> users [fk_af_author] (SET NULL) @V13.019__create_announcement_feeds_table.sql:45
+announcement_range_templates -> users [fk_art_created_by] (SET NULL) @V19.006__create_announcement_range_templates.sql:18
+announcement_read_status -> proxy_input_records [fk_announcement_read_status_proxy] (SET NULL) @V18.028__add_proxy_confirmed_columns_to_announcement_read_status.sql:17
+announcement_read_status -> users [fk_ars_user] (CASCADE) @V13.020__create_announcement_read_status_table.sql:22
+api_keys -> users [fk_ak_created_by] (RESTRICT) @V11.151__create_api_keys.sql:20
+attendance_requirement_evaluations -> users [fk_are_resolver] (RESTRICT) @V18.019__create_attendance_requirement_evaluations.sql:27
+attendance_requirement_evaluations -> users [fk_are_student] (RESTRICT) @V18.019__create_attendance_requirement_evaluations.sql:25
+attendance_transition_alerts -> teams [fk_ata_team] (CASCADE) @V18.005__create_attendance_transition_alerts_table.sql:21
+attendance_transition_alerts -> users [fk_ata_resolved_by] (SET NULL) @V18.005__create_attendance_transition_alerts_table.sql:23
+attendance_transition_alerts -> users [fk_ata_student] (CASCADE) @V18.005__create_attendance_transition_alerts_table.sql:22
+audit_logs -> organizations [fk_al_org] (SET NULL) @V11.163__update_audit_logs.sql:17
+audit_logs -> teams [fk_al_team] (SET NULL) @V11.163__update_audit_logs.sql:16
+blog_post_reactions -> users [fk_bpreact_user] (CASCADE) @V9.094__create_blog_post_reactions.sql:9
+blog_post_revisions -> users [fk_bpr_editor] (SET NULL) @V6.005__create_blog_post_revisions.sql:15
+blog_post_series -> organizations [fk_bps_org] (CASCADE) @V6.001__create_blog_post_series.sql:19
+blog_post_series -> teams [fk_bps_team] (CASCADE) @V6.001__create_blog_post_series.sql:18
+blog_post_series -> users [fk_bps_created_by] (SET NULL) @V6.001__create_blog_post_series.sql:20
+blog_post_shares -> organizations [fk_blog_share_org] (CASCADE) @V6.007__create_blog_post_shares.sql:20
+blog_post_shares -> teams [fk_blog_share_team] (CASCADE) @V6.007__create_blog_post_shares.sql:19
+blog_post_shares -> users [fk_bps_shared_by] (SET NULL) @V6.007__create_blog_post_shares.sql:21
+blog_posts -> organizations [fk_bp_org] (CASCADE) @V6.002__create_blog_posts.sql:59
+blog_posts -> teams [fk_bp_team] (CASCADE) @V6.002__create_blog_posts.sql:58
+blog_posts -> users [fk_bp_author] (SET NULL) @V6.002__create_blog_posts.sql:61
+blog_posts -> users [fk_bp_user] (CASCADE) @V6.002__create_blog_posts.sql:60
+blog_posts -> visibility_templates [fk_blog_posts_vt] (SET NULL) @V16.006__add_visibility_template_id_to_features.sql:11
+blog_tags -> organizations [fk_bt_org] (CASCADE) @V6.003__create_blog_tags.sql:22
+blog_tags -> teams [fk_bt_team] (CASCADE) @V6.003__create_blog_tags.sql:21
+budget_configs -> workflow_templates [fk_bconf_over_limit_workflow] (SET NULL) @V11.034__extend_budget_configs_and_grant_budget_admin.sql:42
+budget_configs -> workflow_templates [fk_bconf_workflow_template] (SET NULL) @V11.026__create_budget_configs.sql:16
+budget_fiscal_years -> users [fk_bfy_created_by] (RESTRICT) @V11.020__create_budget_fiscal_years.sql:21
+budget_reports -> users [fk_br_generated_by] (RESTRICT) @V11.025__create_budget_reports.sql:23
+budget_threshold_alerts -> users [fk_bta_acked_by] (SET NULL) @V11.033__create_budget_threshold_alerts.sql:51
+budget_threshold_alerts -> workflow_requests [fk_bta_workflow_request] (SET NULL) @V11.037__add_workflow_request_fk_to_budget_threshold_alerts.sql:16
+budget_transactions -> users [fk_bt_recorded_by] (RESTRICT) @V11.023__create_budget_transactions.sql:41
+budget_transactions -> workflow_requests [fk_bt_workflow_request] (SET NULL) @V11.023__create_budget_transactions.sql:40
+bulletin_archive_folders -> users [fk_bulletin_archive_folders_created_by] (SET NULL) @V70.015__create_bulletin_archive_folders.sql:35
+bulletin_attachments -> users [fk_bulletin_attachments_created_by] (SET NULL) @V5.005__create_bulletin_attachments_table.sql:13
+bulletin_categories -> users [fk_bulletin_categories_created_by] (SET NULL) @V5.001__create_bulletin_categories_table.sql:16
+bulletin_reactions -> users [fk_bulletin_reactions_user] (CASCADE) @V5.006__create_bulletin_reactions_table.sql:10
+bulletin_read_status -> users [fk_bulletin_read_status_user] (CASCADE) @V5.004__create_bulletin_read_status_table.sql:9
+bulletin_replies -> users [fk_bulletin_replies_author] (SET NULL) @V5.003__create_bulletin_replies_table.sql:16
+bulletin_threads -> users [fk_bulletin_threads_author] (SET NULL) @V5.002__create_bulletin_threads_table.sql:25
+chart_custom_fields -> teams [fk_ccf_team] (RESTRICT) @V7.022__create_chart_custom_fields_table.sql:13
+chart_intake_form_templates -> teams [fk_cift_team] (RESTRICT) @V7.024__create_chart_intake_form_templates_table.sql:12
+chart_intake_forms -> electronic_seals [fk_cif_seal] (RESTRICT) @V7.017__create_chart_intake_forms_table.sql:14
+chart_record_templates -> teams [fk_crt_team] (RESTRICT) @V7.025__create_chart_record_templates_table.sql:14
+chart_records -> teams [fk_cr_team] (RESTRICT) @V7.016__create_chart_records_table.sql:20
+chart_records -> users [fk_cr_customer] (RESTRICT) @V7.016__create_chart_records_table.sql:21
+chart_records -> users [fk_cr_staff] (SET NULL) @V7.016__create_chart_records_table.sql:22
+chart_section_settings -> teams [fk_css_team] (RESTRICT) @V7.021__create_chart_section_settings_table.sql:10
+chat_channel_members -> users [fk_member_user] (CASCADE) @V4.015__create_chat_channel_members_table.sql:18
+chat_channels -> organizations [fk_channel_org] (CASCADE) @V4.013__create_chat_channels_table.sql:26
+chat_channels -> teams [fk_channel_team] (CASCADE) @V4.013__create_chat_channels_table.sql:25
+chat_channels -> users [fk_channel_creator] (SET NULL) @V4.013__create_chat_channels_table.sql:27
+chat_message_bookmarks -> users [fk_bookmark_user] (CASCADE) @V4.018__create_chat_message_bookmarks_table.sql:11
+chat_message_reactions -> users [fk_reaction_user] (CASCADE) @V4.016__create_chat_message_reactions_table.sql:11
+chat_messages -> users [fk_msg_sender] (SET NULL) @V4.014__create_chat_messages_table.sql:25
+checkin_locations -> users [fk_cl_created_by] (SET NULL) @V3.002__create_checkin_locations_table.sql:18
+circulation_comments -> users [fk_circulation_comments_user] (CASCADE) @V5.010__create_circulation_comments_table.sql:12
+circulation_documents -> users [fk_circulation_documents_created_by] (RESTRICT) @V5.007__create_circulation_documents_table.sql:26
+circulation_recipients -> proxy_input_records [fk_circulation_recipients_proxy] (SET NULL) @V18.030__add_proxy_confirmed_columns_to_circulation_recipients.sql:17
+circulation_recipients -> users [fk_circulation_recipients_user] (CASCADE) @V5.008__create_circulation_recipients_table.sql:18
+class_homerooms -> teams [fk_ch_team] (CASCADE) @V18.001__create_class_homerooms_table.sql:17
+class_homerooms -> users [fk_ch_created_by] (RESTRICT) @V18.001__create_class_homerooms_table.sql:19
+class_homerooms -> users [fk_ch_homeroom_user] (RESTRICT) @V18.001__create_class_homerooms_table.sql:18
+coin_toss_results -> teams [fk_ctr_team] (RESTRICT) @V2.032__create_coin_toss_results_table.sql:14
+coin_toss_results -> users [fk_ctr_user] (RESTRICT) @V2.032__create_coin_toss_results_table.sql:15
+committee_distribution_logs -> confirmable_notifications [fk_cdl_confirmable] (SET NULL) @V13.039__create_committee_distribution_logs_table.sql:20
+committee_distribution_logs -> users [fk_cdl_created_by] (SET NULL) @V13.039__create_committee_distribution_logs_table.sql:21
+committee_invitations -> users [fk_ci_invited_by] (SET NULL) @V9.082__create_committee_invitations_table.sql:22
+committee_invitations -> users [fk_ci_invitee] (CASCADE) @V9.082__create_committee_invitations_table.sql:21
+committee_members -> users [fk_cm_invited_by] (SET NULL) @V9.081__create_committee_members_table.sql:18
+committee_members -> users [fk_cm_user] (CASCADE) @V9.081__create_committee_members_table.sql:17
+committees -> organizations [fk_committees_org] (CASCADE) @V9.080__create_committees_table.sql:24
+committees -> users [fk_committees_created_by] (SET NULL) @V9.080__create_committees_table.sql:25
+confirmable_notification_recipients -> users [fk_cnr_excluded_by] (SET NULL) @V13.007__create_confirmable_notification_recipients_table.sql:25
+confirmable_notification_recipients -> users [fk_cnr_user] (CASCADE) @V13.007__create_confirmable_notification_recipients_table.sql:24
+confirmable_notification_templates -> users [fk_cnt_created_by] (SET NULL) @V13.008__create_confirmable_notification_templates_table.sql:16
+confirmable_notifications -> users [fk_cn_cancelled_by] (SET NULL) @V13.006__create_confirmable_notifications_table.sql:30
+confirmable_notifications -> users [fk_cn_created_by] (SET NULL) @V13.006__create_confirmable_notifications_table.sql:31
+contact_invite_tokens -> users [fk_cit_user] (CASCADE) @V13.004__create_contact_invite_tokens_table.sql:17
+contact_request_blocks -> users [fk_crb_blocked] (CASCADE) @V13.003__create_contact_request_blocks_table.sql:12
+contact_request_blocks -> users [fk_crb_user] (CASCADE) @V13.003__create_contact_request_blocks_table.sql:11
+contact_requests -> users [fk_cr_requester] (CASCADE) @V13.002__create_contact_requests_table.sql:25
+contact_requests -> users [fk_cr_target] (CASCADE) @V13.002__create_contact_requests_table.sql:26
+content_payment_gates -> users [fk_cpg_created_by] (SET NULL) @V8.015__create_content_payment_gates_table.sql:14
+content_reports -> users [fk_content_reports_reviewer] (SET NULL) @V4.007__create_content_reports_table.sql:17
+content_translations -> users [fk_ct_reviewer] (SET NULL) @V11.160__create_content_translations.sql:24
+content_translations -> users [fk_ct_translator] (SET NULL) @V11.160__create_content_translations.sql:23
+corkboard_cards -> users [fk_cc_created_by] (RESTRICT) @V9.007__create_corkboard_cards_table.sql:32
+corkboards -> users [fk_cb_owner] (CASCADE) @V9.006__create_corkboards_table.sql:18
+coupon_distributions -> users [fk_cd_user] (CASCADE) @V9.025__create_coupon_distributions_table.sql:16
+coupon_redemptions -> users [fk_cr_redeemed_by] (RESTRICT) @V9.026__create_coupon_redemptions_table.sql:14
+coupons -> users [fk_coupons_created_by] (RESTRICT) @V9.024__create_coupons_table.sql:24
+daily_attendance_records -> teams [fk_dar_team] (CASCADE) @V18.003__create_daily_attendance_records_table.sql:22
+daily_attendance_records -> users [fk_dar_recorded_by] (RESTRICT) @V18.003__create_daily_attendance_records_table.sql:24
+daily_attendance_records -> users [fk_dar_student] (CASCADE) @V18.003__create_daily_attendance_records_table.sql:23
+dashboard_widget_role_visibility -> users [fk_dwrv_updated_by] (RESTRICT) @V2.041__create_dashboard_widget_role_visibility.sql:22
+data_exports -> users [fk_data_exports_user] (CASCADE) @V12.001__create_data_exports.sql:16
+direct_mail_image_uploads -> users [fk_dmiu_uploaded_by] (RESTRICT) @V9.013__create_direct_mail_image_uploads_table.sql:15
+direct_mail_logs -> users [fk_dml_sender] (RESTRICT) @V9.010__create_direct_mail_logs_table.sql:27
+direct_mail_recipients -> users [fk_dmr_user] (RESTRICT) @V9.011__create_direct_mail_recipients_table.sql:18
+direct_mail_templates -> users [fk_dmt_created_by] (RESTRICT) @V9.012__create_direct_mail_templates_table.sql:15
+disclosure_exports -> circulation_documents [fk_de_circulation] (SET NULL) @V61.010__create_disclosure_exports.sql:30
+disclosure_exports -> dwelling_units [fk_de_dwelling] (SET NULL) @V61.010__create_disclosure_exports.sql:28
+disclosure_exports -> shared_files [fk_de_shared_file] (RESTRICT) @V61.010__create_disclosure_exports.sql:27
+disclosure_exports -> users [fk_de_requester] (RESTRICT) @V61.010__create_disclosure_exports.sql:29
+disclosure_form_drafts -> dwelling_units [fk_dfd_dwelling] (SET NULL) @V61.009__create_disclosure_form_drafts.sql:22
+disclosure_form_drafts -> users [fk_dfd_created_by] (RESTRICT) @V61.009__create_disclosure_form_drafts.sql:23
+disclosure_form_drafts -> users [fk_dfd_updated_by] (SET NULL) @V61.009__create_disclosure_form_drafts.sql:24
+disclosure_form_templates -> users [fk_dft_created_by] (SET NULL) @V61.008__create_disclosure_form_templates.sql:25
+duty_rotations -> teams [fk_dr_team] (RESTRICT) @V2.038__create_duty_rotations_table.sql:17
+duty_rotations -> users [fk_dr_user] (RESTRICT) @V2.038__create_duty_rotations_table.sql:18
+dwelling_units -> organizations [fk_du_organization] (CASCADE) @V9.016__create_dwelling_units_table.sql:24
+dwelling_units -> teams [fk_du_team] (CASCADE) @V9.016__create_dwelling_units_table.sql:22
+electronic_seals -> users [fk_electronic_seals_user] (CASCADE) @V5.011__create_electronic_seals_table.sql:15
+emergency_closure_confirmations -> users [fk_ecc_user] (CASCADE) @V3.067__create_emergency_closure_confirmations_table.sql:16
+emergency_closures -> teams [fk_emergency_closures_team] (CASCADE) @V3.066__create_emergency_closures_table.sql:17
+equipment_assignments -> users [fk_ea_assigned_by] (SET NULL) @V7.015__create_equipment_assignments_table.sql:19
+equipment_assignments -> users [fk_ea_assigned_to] (RESTRICT) @V7.015__create_equipment_assignments_table.sql:18
+equipment_assignments -> users [fk_ea_returned_by] (SET NULL) @V7.015__create_equipment_assignments_table.sql:20
+equipment_items -> organizations [fk_ei_org] (RESTRICT) @V7.014__create_equipment_items_table.sql:23
+equipment_items -> teams [fk_ei_team] (RESTRICT) @V7.014__create_equipment_items_table.sql:22
+equipment_ranking_exclusions -> teams [fk_ere_team] (RESTRICT) @V13.011__create_equipment_ranking_exclusions_table.sql:16
+equipment_ranking_exclusions -> users [fk_ere_user] (RESTRICT) @V13.011__create_equipment_ranking_exclusions_table.sql:17
+error_report_activities -> users [fk_era_actor_id] (SET NULL) @V12.016__create_error_report_activities.sql:14
+error_report_ai_analyses -> users [fk_eraa_created_by] (SET NULL) @V12.015__create_error_report_ai_analyses.sql:20
+error_report_occurrences -> users [fk_ero_user_id] (SET NULL) @V12.014__create_error_report_occurrences.sql:15
+error_reports -> organizations [fk_error_reports_organization_id] (SET NULL) @V12.006__create_error_reports.sql:31
+error_reports -> users [fk_error_reports_assignee_id] (SET NULL) @V12.013__alter_error_reports_add_workflow_columns.sql:12
+error_reports -> users [fk_error_reports_resolved_by] (SET NULL) @V12.006__create_error_reports.sql:33
+error_reports -> users [fk_error_reports_user_id] (SET NULL) @V12.006__create_error_reports.sql:29
+event_checkins -> users [fk_event_checkins_checked_by] (SET NULL) @V3.104__create_event_checkins_table.sql:19
+event_guest_invite_tokens -> users [fk_event_guest_invite_tokens_created_by] (SET NULL) @V3.106__create_event_guest_invite_tokens_table.sql:20
+event_registrations -> users [fk_event_registrations_approved_by] (SET NULL) @V3.102__create_event_registrations_table.sql:30
+event_registrations -> users [fk_event_registrations_user] (SET NULL) @V3.102__create_event_registrations_table.sql:26
+event_rsvp_responses -> users [fk_rsvp_user] (CASCADE) @V13.026__create_event_rsvp_responses_table.sql:13
+event_survey_responses -> users [fk_esr_user] (CASCADE) @V3.043__create_event_survey_responses_table.sql:15
+events -> schedules [fk_events_schedule] (RESTRICT) @V3.100__create_events_table.sql:40
+events -> surveys [fk_events_pre_survey] (SET NULL) @V13.025__alter_events_add_attendance_mode.sql:7
+events -> users [fk_events_created_by] (SET NULL) @V3.100__create_events_table.sql:42
+facility_booking_payments -> users [fk_fbp_payer] (RESTRICT) @V9.050__create_facility_booking_payments_table.sql:24
+facility_bookings -> users [fk_fb_approved_by] (RESTRICT) @V9.048__create_facility_bookings_table.sql:37
+facility_bookings -> users [fk_fb_booked_by] (RESTRICT) @V9.048__create_facility_bookings_table.sql:35
+facility_bookings -> users [fk_fb_cancelled_by] (RESTRICT) @V9.048__create_facility_bookings_table.sql:38
+facility_bookings -> users [fk_fb_created_by_admin] (RESTRICT) @V9.048__create_facility_bookings_table.sql:36
+family_attendance_notices -> teams [fk_fan_team] (CASCADE) @V18.002__create_family_attendance_notices_table.sql:24
+family_attendance_notices -> users [fk_fan_acknowledged] (SET NULL) @V18.002__create_family_attendance_notices_table.sql:27
+family_attendance_notices -> users [fk_fan_student] (CASCADE) @V18.002__create_family_attendance_notices_table.sql:25
+family_attendance_notices -> users [fk_fan_submitter] (RESTRICT) @V18.002__create_family_attendance_notices_table.sql:26
+feedback_submissions -> users [fk_fs_submitted_by] (CASCADE) @V10.010__create_feedback_submissions_table.sql:19
+feedback_votes -> users [fk_fv_user] (CASCADE) @V10.011__create_feedback_votes_table.sql:9
+form_submissions -> users [fk_form_submissions_submitted_by] (SET NULL) @V5.038__create_form_submissions_table.sql:18
+form_templates -> users [fk_form_templates_created_by] (SET NULL) @V5.036__create_form_templates_table.sql:30
+friend_content_forwards -> teams [fk_fcf_forwarding_team] (CASCADE) @V9.074__create_friend_content_forwards_table.sql:35
+friend_content_forwards -> teams [fk_fcf_source_team] (CASCADE) @V9.074__create_friend_content_forwards_table.sql:34
+friend_content_forwards -> timeline_posts [fk_fcf_forwarded_post] (CASCADE) @V9.074__create_friend_content_forwards_table.sql:36
+friend_content_forwards -> timeline_posts [fk_fcf_source_post] (CASCADE) @V9.074__create_friend_content_forwards_table.sql:33
+friend_content_forwards -> users [fk_fcf_forwarded_by] (RESTRICT) @V9.074__create_friend_content_forwards_table.sql:37
+friend_content_forwards -> users [fk_fcf_revoked_by] (SET NULL) @V9.074__create_friend_content_forwards_table.sql:38
+gamification_user_settings -> users [fk_gus_user] (CASCADE) @V11.056__create_gamification_user_settings.sql:11
+incident_assignments -> users [fk_ias_user] (RESTRICT) @V11.141__create_incident_assignments.sql:11
+incident_attachments -> users [fk_ia_created_by] (RESTRICT) @V11.140__create_incident_attachments.sql:11
+incident_categories -> users [fk_ic_created_by] (RESTRICT) @V11.138__create_incident_categories.sql:15
+incident_comment_attachments -> users [fk_ica_created_by] (RESTRICT) @V11.143__create_incident_comment_attachments.sql:11
+incident_comments -> users [fk_ico_user] (RESTRICT) @V11.142__create_incident_comments.sql:14
+incident_maintenance_schedules -> users [fk_ims_created_by] (RESTRICT) @V11.145__create_maintenance_schedules.sql:23
+incident_maintenance_schedules -> users [fk_ims_default_assignee_user] (RESTRICT) @V11.145__create_maintenance_schedules.sql:22
+incident_status_histories -> users [fk_ish_changed_by] (RESTRICT) @V11.144__create_incident_status_histories.sql:12
+incidents -> users [fk_inc_reported_by] (RESTRICT) @V11.139__create_incidents.sql:21
+incoming_webhook_tokens -> users [fk_iwt_created_by] (RESTRICT) @V11.150__create_incoming_webhook_tokens.sql:18
+invite_tokens -> organizations [fk_invite_tokens_org] (RESTRICT) @V2.010__create_invite_tokens_table.sql:17
+invite_tokens -> teams [fk_invite_tokens_team] (RESTRICT) @V2.010__create_invite_tokens_table.sql:16
+invite_tokens -> users [fk_invite_tokens_created_by] (RESTRICT) @V2.010__create_invite_tokens_table.sql:19
+job_applications -> users [fk_ja_applicant] (CASCADE) @V13.031__create_job_applications.sql:15
+job_applications -> users [fk_ja_decider] (SET NULL) @V13.031__create_job_applications.sql:16
+job_check_ins -> users [fk_jci_worker] (RESTRICT) @V13.034__create_job_check_ins.sql:25
+job_contracts -> users [fk_jc_requester] (RESTRICT) @V13.032__create_job_contracts.sql:30
+job_contracts -> users [fk_jc_worker] (RESTRICT) @V13.032__create_job_contracts.sql:31
+job_postings -> teams [fk_jp_team] (CASCADE) @V13.030__create_job_postings.sql:25
+job_postings -> users [fk_jp_creator] (RESTRICT) @V13.030__create_job_postings.sql:26
+job_qr_tokens -> users [fk_jqt_issuer] (RESTRICT) @V13.033__create_job_qr_tokens.sql:21
+kb_image_uploads -> users [fk_kbiu_uploader] (RESTRICT) @V11.135__create_kb_image_uploads.sql:14
+kb_page_favorites -> users [fk_kbpf_user] (CASCADE) @V11.132__create_kb_page_favorites.sql:10
+kb_page_pins -> users [fk_kbpp_pinned_by] (RESTRICT) @V11.133__create_kb_page_pins.sql:13
+kb_page_revisions -> users [fk_kbpr_editor] (RESTRICT) @V11.131__create_kb_page_revisions.sql:14
+kb_pages -> users [fk_kbp_created_by] (RESTRICT) @V11.130__create_kb_pages.sql:27
+kb_pages -> users [fk_kbp_last_edited_by] (SET NULL) @V11.130__create_kb_pages.sql:28
+kb_templates -> users [fk_kbt_created_by] (SET NULL) @V11.134__create_kb_templates.sql:16
+line_bot_configs -> users [fk_lbc_configured_by] (RESTRICT) @V9.002__create_line_bot_configs_table.sql:24
+match_notification_preferences -> teams [fk_mnp_team] (CASCADE) @V8.009__create_match_notification_prefs_table.sql:13
+match_proposals -> teams [fk_mp_cancelled_by] (SET NULL) @V8.004__create_match_proposals_table.sql:18
+match_proposals -> teams [fk_mp_proposing_team] (CASCADE) @V8.004__create_match_proposals_table.sql:17
+match_request_templates -> teams [fk_mrt_team] (CASCADE) @V8.008__create_match_request_templates_table.sql:10
+match_requests -> teams [fk_mr_team] (CASCADE) @V8.003__create_match_requests_table.sql:30
+match_reviews -> teams [fk_mrev_reviewee] (RESTRICT) @V8.006__create_match_reviews_table.sql:14
+match_reviews -> teams [fk_mrev_reviewer] (RESTRICT) @V8.006__create_match_reviews_table.sql:13
+member_availability_defaults -> teams [fk_mad_team] (CASCADE) @V3.075__create_member_availability_defaults_table.sql:17
+member_availability_defaults -> users [fk_mad_user] (CASCADE) @V3.075__create_member_availability_defaults_table.sql:16
+member_card_checkins -> users [fk_mcc_checked_in_by] (SET NULL) @V3.003__create_member_card_checkins_table.sql:21
+member_cards -> users [fk_mc_user] (CASCADE) @V3.001__create_member_cards_table.sql:28
+member_payments -> users [fk_member_pay_user] (RESTRICT) @V8.012__create_member_payments_table.sql:30
+member_payments -> users [fk_mp_recorded_by] (SET NULL) @V8.012__create_member_payments_table.sql:32
+member_positions -> users [fk_member_positions_assigned_by] (SET NULL) @V60.002__create_member_positions_table.sql:35
+member_profile_fields -> organizations [fk_mpf_organization] (CASCADE) @V6.019__create_member_profile_fields.sql:22
+member_profile_fields -> teams [fk_mpf_team] (CASCADE) @V6.019__create_member_profile_fields.sql:21
+member_profiles -> users [fk_mp_user] (SET NULL) @V6.018__create_member_profiles.sql:22
+member_skills -> users [fk_ms_user] (RESTRICT) @V11.081__create_member_skills.sql:26
+member_skills -> users [fk_ms_verified_by] (SET NULL) @V11.081__create_member_skills.sql:27
+member_work_constraints -> teams [fk_mwc_team] (CASCADE) @V3.138__create_member_work_constraints_table.sql:25
+member_work_constraints -> users [fk_mwc_user] (CASCADE) @V3.138__create_member_work_constraints_table.sql:26
+memberships -> users [fk_memberships_invited_by] (SET NULL) @V60.001__create_memberships_table.sql:38
+memberships -> users [fk_memberships_user] (SET NULL) @V60.001__create_memberships_table.sql:37
+mentions -> users [fk_mention_by] (CASCADE) @V4.025__create_mentions_table.sql:16
+mentions -> users [fk_mention_user] (CASCADE) @V4.025__create_mentions_table.sql:15
+moderation_appeals -> users [fk_ma_user] (RESTRICT) @V10.014__create_moderation_appeals_table.sql:17
+moderation_settings_history -> users [fk_msh_user] (RESTRICT) @V10.018__create_moderation_settings_history_table.sql:12
+multipart_upload_sessions -> users [fk_mup_uploader] (CASCADE) @V9.068__create_multipart_upload_sessions.sql:24
+my_scope_folders -> users [fk_msf_user] (CASCADE) @V9.100__create_my_scope_folders.sql:11
+ng_teams -> teams [fk_ng_blocked] (CASCADE) @V8.007__create_ng_teams_table.sql:10
+ng_teams -> teams [fk_ng_team] (CASCADE) @V8.007__create_ng_teams_table.sql:9
+notification_credit_purchases -> organizations [fk_ncp_org] (RESTRICT) @V9.118__create_notification_credit_purchases.sql:30
+notification_monthly_usage -> organizations [fk_nmu_org] (RESTRICT) @V9.120__create_notification_monthly_usage.sql:15
+notification_preferences -> users [fk_notification_preferences_user] (CASCADE) @V4.020__create_notification_preferences_table.sql:13
+notification_type_preferences -> users [fk_notification_type_preferences_user] (CASCADE) @V4.021__create_notification_type_preferences_table.sql:12
+notifications -> users [fk_notifications_actor] (SET NULL) @V4.019__create_notifications_table.sql:25
+notifications -> users [fk_notifications_user] (CASCADE) @V4.019__create_notifications_table.sql:23
+offline_sync_conflicts -> users [fk_offline_sync_conflicts_user] (CASCADE) @V11.060__create_offline_sync_conflicts_table.sql:16
+onboarding_progresses -> users [fk_op_user] (CASCADE) @V11.122__create_onboarding_progresses.sql:25
+onboarding_templates -> users [fk_ot_created_by] (RESTRICT) @V11.120__create_onboarding_templates.sql:25
+organization_access_requirements -> organizations [fk_oar_organization] (CASCADE) @V8.014__create_organization_access_requirements_table.sql:10
+organization_blocks -> users [fk_org_blocks_blocked_by] (RESTRICT) @V2.013__create_organization_blocks_table.sql:12
+organization_blocks -> users [fk_org_blocks_user] (CASCADE) @V2.013__create_organization_blocks_table.sql:11
+organization_enabled_modules -> organizations [fk_oem_org] (RESTRICT) @V2.043__create_organization_enabled_modules_table.sql:20
+organization_enabled_modules -> users [fk_oem_user] (SET NULL) @V2.043__create_organization_enabled_modules_table.sql:22
+organization_notification_balances -> organizations [fk_onb_org] (RESTRICT) @V9.119__create_organization_notification_balances.sql:16
+otp_challenges -> users [fk_otp_challenges_user] (CASCADE) @V12.002__create_otp_challenges.sql:12
+parking_applications -> proxy_input_records [fk_parking_applications_proxy] (SET NULL) @V18.029__add_proxy_input_columns_to_parking_applications.sql:17
+payment_items -> organizations [fk_pi_organization] (CASCADE) @V8.010__create_payment_items_table.sql:25
+payment_items -> teams [fk_pi_team] (CASCADE) @V8.010__create_payment_items_table.sql:24
+payment_items -> users [fk_pi_created_by] (SET NULL) @V8.010__create_payment_items_table.sql:26
+pending_uploads -> users [fk_pending_uploads_user] (CASCADE) @V3.114__create_pending_uploads_table.sql:14
+performance_metrics -> activity_template_fields [fk_pm_linked_field] (SET NULL) @V7.009__create_performance_metrics_table.sql:24
+performance_metrics -> activity_template_fields [fk_pm_linked_field] (SET NULL) @V9.056__fix_performance_metrics_fk_to_activity_template_fields.sql:8
+performance_metrics -> teams [fk_pm_team] (RESTRICT) @V7.009__create_performance_metrics_table.sql:23
+performance_monthly_summaries -> users [fk_pms_user] (CASCADE) @V7.013__create_performance_monthly_summaries_table.sql:17
+performance_records -> activity_results [fk_pr_activity] (SET NULL) @V7.010__create_performance_records_table.sql:19
+performance_records -> schedules [fk_pr_schedule] (SET NULL) @V7.010__create_performance_records_table.sql:18
+performance_records -> users [fk_pr_recorded_by] (SET NULL) @V7.010__create_performance_records_table.sql:20
+performance_records -> users [fk_pr_user] (RESTRICT) @V7.010__create_performance_records_table.sql:17
+period_attendance_records -> teams [fk_par_team] (CASCADE) @V18.004__create_period_attendance_records_table.sql:26
+period_attendance_records -> timetable_changes [fk_par_timetable_change] (SET NULL) @V18.004__create_period_attendance_records_table.sql:31
+period_attendance_records -> timetable_slots [fk_par_timetable_slot] (SET NULL) @V18.004__create_period_attendance_records_table.sql:30
+period_attendance_records -> users [fk_par_recorded_by] (RESTRICT) @V18.004__create_period_attendance_records_table.sql:28
+period_attendance_records -> users [fk_par_student] (CASCADE) @V18.004__create_period_attendance_records_table.sql:27
+period_attendance_records -> users [fk_par_teacher_user] (SET NULL) @V18.004__create_period_attendance_records_table.sql:29
+permission_groups -> organizations [fk_permission_groups_org] (RESTRICT) @V2.007__create_permission_groups_table.sql:14
+permission_groups -> teams [fk_permission_groups_team] (RESTRICT) @V2.007__create_permission_groups_table.sql:13
+permission_groups -> users [fk_permission_groups_created_by] (RESTRICT) @V2.007__create_permission_groups_table.sql:15
+personal_timetable_settings -> users [fk_pts_settings_user] (CASCADE) @V14.008__create_personal_timetable_settings_table.sql:13
+personal_timetable_share_targets -> teams [fk_ptst_team] (CASCADE) @V14.004__create_personal_timetable_share_targets_table.sql:13
+personal_timetable_slots -> teams [fk_pts_linked_team] (SET NULL) @V14.003__create_personal_timetable_slots_table.sql:28
+personal_timetables -> users [fk_personal_timetable_user] (CASCADE) @V14.001__create_personal_timetables_table.sql:23
+photo_albums -> organizations [fk_pa_organization] (CASCADE) @V6.020__create_photo_albums.sql:27
+photo_albums -> teams [fk_pa_team] (CASCADE) @V6.020__create_photo_albums.sql:26
+photo_albums -> users [fk_pa_created_by] (SET NULL) @V6.020__create_photo_albums.sql:28
+photos -> users [fk_ph_uploaded_by] (SET NULL) @V6.021__create_photos.sql:23
+platform_announcements -> users [fk_platform_ann_created_by] (RESTRICT) @V10.009__create_platform_announcements_table.sql:16
+point_card_groups -> users [fk_pcg_user] (CASCADE) @V9.138__create_point_card_groups.sql:14
+point_card_user_settings -> users [fk_pcus_user] (CASCADE) @V9.140__create_point_card_user_settings.sql:13
+point_transactions -> users [fk_pt_user] (CASCADE) @V11.052__create_point_transactions.sql:15
+presence_events -> teams [fk_pe_team] (RESTRICT) @V2.030__create_presence_events_table.sql:17
+presence_events -> users [fk_pe_user] (RESTRICT) @V2.030__create_presence_events_table.sql:18
+promotion_deliveries -> users [fk_pd_user] (CASCADE) @V9.023__create_promotion_deliveries_table.sql:18
+promotions -> users [fk_promotions_approved_by] (SET NULL) @V9.021__create_promotions_table.sql:30
+promotions -> users [fk_promotions_created_by] (RESTRICT) @V9.021__create_promotions_table.sql:28
+property_listing_inquiries -> users [fk_pli_user] (CASCADE) @V9.020__create_property_listing_inquiries_table.sql:14
+property_listings -> users [fk_pl_listed_by] (RESTRICT) @V9.019__create_property_listings_table.sql:22
+property_work_documents -> shared_files [fk_pwd_file] (CASCADE) @V61.003__create_property_work_documents.sql:15
+property_work_documents -> users [fk_pwd_created_by] (RESTRICT) @V61.003__create_property_work_documents.sql:16
+property_work_history_views -> users [fk_pwhv_user] (CASCADE) @V61.004__create_property_work_history_views.sql:14
+property_work_packages -> budget_transactions [fk_pwp_budget_tx] (SET NULL) @V61.002__create_property_work_packages.sql:44
+property_work_packages -> dwelling_units [fk_pwp_dwelling] (SET NULL) @V61.002__create_property_work_packages.sql:41
+property_work_packages -> incidents [fk_pwp_incident] (SET NULL) @V61.002__create_property_work_packages.sql:42
+property_work_packages -> timeline_posts [fk_pwp_timeline] (SET NULL) @V61.002__create_property_work_packages.sql:45
+property_work_packages -> users [fk_pwp_created_by] (RESTRICT) @V61.002__create_property_work_packages.sql:46
+property_work_packages -> users [fk_pwp_updated_by] (SET NULL) @V61.002__create_property_work_packages.sql:47
+proxy_delegations -> users [fk_pd_delegate] (RESTRICT) @V8.021__create_proxy_votes.sql:43
+proxy_delegations -> users [fk_pd_delegator] (RESTRICT) @V8.021__create_proxy_votes.sql:42
+proxy_delegations -> users [fk_pd_reviewer] (RESTRICT) @V8.021__create_proxy_votes.sql:44
+proxy_input_consents -> organizations [fk_pic_org] (RESTRICT) @V18.010__create_proxy_input_consents_table.sql:31
+proxy_input_consents -> users [fk_pic_approved_by] (RESTRICT) @V18.010__create_proxy_input_consents_table.sql:33
+proxy_input_consents -> users [fk_pic_proxy] (RESTRICT) @V18.010__create_proxy_input_consents_table.sql:30
+proxy_input_consents -> users [fk_pic_revoke_wit] (RESTRICT) @V18.010__create_proxy_input_consents_table.sql:34
+proxy_input_consents -> users [fk_pic_subject] (RESTRICT) @V18.010__create_proxy_input_consents_table.sql:29
+proxy_input_consents -> users [fk_pic_witness] (RESTRICT) @V18.010__create_proxy_input_consents_table.sql:32
+proxy_input_records -> users [fk_pir_proxy] (RESTRICT) @V18.012__create_proxy_input_records_table.sql:23
+proxy_input_records -> users [fk_pir_subject] (RESTRICT) @V18.012__create_proxy_input_records_table.sql:22
+proxy_vote_attachments -> users [fk_pva_uploaded_by] (RESTRICT) @V8.019__create_proxy_vote_attachments.sql:18
+proxy_vote_motion_comments -> users [fk_pvmc_user] (RESTRICT) @V8.020__create_proxy_vote_motion_comments.sql:14
+proxy_vote_sessions -> organizations [fk_pvs_organization] (RESTRICT) @V8.017__create_proxy_vote_sessions.sql:32
+proxy_vote_sessions -> teams [fk_pvs_team] (RESTRICT) @V8.017__create_proxy_vote_sessions.sql:31
+proxy_vote_sessions -> users [fk_pvs_created_by] (RESTRICT) @V8.017__create_proxy_vote_sessions.sql:33
+proxy_votes -> users [fk_pv_user] (RESTRICT) @V8.021__create_proxy_votes.sql:17
+push_subscriptions -> users [fk_push_subscriptions_user] (CASCADE) @V4.022__create_push_subscriptions_table.sql:14
+queue_counters -> users [fk_qcnt_created_by] (RESTRICT) @V3.091__create_queue_counters_table.sql:24
+queue_tickets -> users [fk_qtkt_cancelled_by] (SET NULL) @V3.092__create_queue_tickets_table.sql:36
+queue_tickets -> users [fk_qtkt_user] (SET NULL) @V3.092__create_queue_tickets_table.sql:35
+quick_memos -> users [fk_quick_memos_user] (CASCADE) @V3.108__create_quick_memos_table.sql:22
+ranking_snapshots -> users [fk_rs_user] (CASCADE) @V11.055__create_ranking_snapshots.sql:13
+receipt_issuer_settings -> users [fk_ris_default_seal_user] (RESTRICT) @V8.022__create_receipt_issuer_settings.sql:25
+receipt_presets -> users [fk_rp_created_by] (RESTRICT) @V8.025__create_receipt_presets.sql:19
+receipt_queue -> users [fk_rq_recipient_user] (RESTRICT) @V8.026__create_receipt_queue.sql:18
+receipts -> users [fk_r_issued_by] (RESTRICT) @V8.023__create_receipts.sql:44
+receipts -> users [fk_r_recipient_user] (RESTRICT) @V8.023__create_receipts.sql:43
+receipts -> users [fk_r_voided_by] (RESTRICT) @V8.023__create_receipts.sql:45
+recruitment_cancellation_policies -> users [fk_rcp_created_by] (RESTRICT) @V3.125__create_recruitment_cancellation_policies.sql:16
+recruitment_cancellation_records -> teams [fk_rcr_team] (SET NULL) @V3.127__create_recruitment_cancellation_records.sql:29
+recruitment_cancellation_records -> users [fk_rcr_cancelled_by] (SET NULL) @V3.127__create_recruitment_cancellation_records.sql:31
+recruitment_cancellation_records -> users [fk_rcr_user] (SET NULL) @V3.127__create_recruitment_cancellation_records.sql:27
+recruitment_listings -> reservation_lines [fk_rl_reservation_line] (SET NULL) @V3.119__create_recruitment_listings.sql:45
+recruitment_listings -> users [fk_rl_cancelled_by] (SET NULL) @V3.119__create_recruitment_listings.sql:49
+recruitment_listings -> users [fk_rl_created_by] (RESTRICT) @V3.119__create_recruitment_listings.sql:47
+recruitment_listings -> visibility_templates [fk_recruitment_listings_vt] (SET NULL) @V16.006__add_visibility_template_id_to_features.sql:3
+recruitment_no_show_records -> users [fk_rns_user] (CASCADE) @V3.128__create_recruitment_no_show_records.sql:19
+recruitment_participant_history -> users [fk_rph_changed_by] (SET NULL) @V3.121__create_recruitment_participant_history.sql:18
+recruitment_participants -> teams [fk_rp_team] (RESTRICT) @V3.120__create_recruitment_participants.sql:32
+recruitment_participants -> users [fk_rp_applied_by] (SET NULL) @V3.120__create_recruitment_participants.sql:34
+recruitment_participants -> users [fk_rp_cancelled_by] (SET NULL) @V3.120__create_recruitment_participants.sql:36
+recruitment_participants -> users [fk_rp_user] (RESTRICT) @V3.120__create_recruitment_participants.sql:30
+recruitment_subcategories -> users [fk_rs_created_by] (RESTRICT) @V3.117__create_recruitment_subcategories.sql:20
+recruitment_user_penalties -> users [fk_rup_user] (CASCADE) @V3.130__create_recruitment_user_penalties.sql:18
+report_actions -> users [fk_report_actions_user] (RESTRICT) @V10.002__create_report_actions_table.sql:13
+report_internal_notes -> users [fk_rin_author] (RESTRICT) @V10.020__create_report_internal_notes_table.sql:11
+reservation_blocked_times -> teams [fk_reservation_bt_team] (CASCADE) @V3.064__create_reservation_blocked_times_table.sql:14
+reservation_blocked_times -> users [fk_reservation_bt_created_by] (SET NULL) @V3.064__create_reservation_blocked_times_table.sql:16
+reservation_business_hours -> teams [fk_reservation_bh_team] (CASCADE) @V3.063__create_reservation_business_hours_table.sql:13
+reservation_lines -> teams [fk_reservation_lines_team] (CASCADE) @V3.060__create_reservation_lines_table.sql:15
+reservation_lines -> users [fk_reservation_lines_default_staff] (SET NULL) @V3.060__create_reservation_lines_table.sql:17
+reservation_slots -> teams [fk_reservation_slots_team] (CASCADE) @V3.061__create_reservation_slots_table.sql:24
+reservation_slots -> users [fk_reservation_slots_created_by] (SET NULL) @V3.061__create_reservation_slots_table.sql:30
+reservation_slots -> users [fk_reservation_slots_staff] (SET NULL) @V3.061__create_reservation_slots_table.sql:26
+reservations -> teams [fk_reservations_team] (CASCADE) @V3.062__create_reservations_table.sql:26
+reservations -> users [fk_reservations_user] (RESTRICT) @V3.062__create_reservations_table.sql:28
+resident_documents -> users [fk_rd_uploaded_by] (RESTRICT) @V9.018__create_resident_documents_table.sql:17
+resident_registry -> users [fk_rr_user] (SET NULL) @V9.017__create_resident_registry_table.sql:30
+resident_registry -> users [fk_rr_verified_by] (SET NULL) @V9.017__create_resident_registry_table.sql:32
+safety_check_templates -> users [fk_sct_created_by] (SET NULL) @V3.083__create_safety_check_templates_table.sql:17
+safety_checks -> users [fk_sc_closed_by] (SET NULL) @V3.080__create_safety_checks_table.sql:25
+safety_checks -> users [fk_sc_created_by] (SET NULL) @V3.080__create_safety_checks_table.sql:24
+safety_response_followups -> users [fk_srf_assigned_to] (SET NULL) @V3.084__create_safety_response_followups_table.sql:14
+safety_responses -> users [fk_safety_resp_user] (CASCADE) @V3.081__create_safety_responses_table.sql:19
+saved_segment_presets -> users [fk_ssp_created_by] (RESTRICT) @V9.028__create_saved_segment_presets_table.sql:15
+schedule_annual_copy_logs -> organizations [fk_sacl_organization] (SET NULL) @V11.008__create_schedule_annual_copy_logs_table.sql:17
+schedule_annual_copy_logs -> teams [fk_sacl_team] (SET NULL) @V11.008__create_schedule_annual_copy_logs_table.sql:16
+schedule_annual_copy_logs -> users [fk_sacl_executed_by] (SET NULL) @V11.008__create_schedule_annual_copy_logs_table.sql:18
+schedule_attendances -> proxy_input_records [fk_sa_proxy_record] (RESTRICT) @V18.017__add_proxy_input_columns_to_schedule_attendances.sql:8
+schedule_attendances -> users [fk_sa_user] (CASCADE) @V3.041__create_schedule_attendances_table.sql:17
+schedule_cross_refs -> users [fk_scr_invited_by] (SET NULL) @V3.045__create_schedule_cross_refs_table.sql:21
+schedule_event_categories -> organizations [fk_sec_organization] (CASCADE) @V11.006__create_schedule_event_categories_table.sql:17
+schedule_event_categories -> teams [fk_sec_team] (CASCADE) @V11.006__create_schedule_event_categories_table.sql:16
+schedules -> committees [fk_schedules_committee] (CASCADE) @V9.086__add_committee_id_to_schedules.sql:4
+schedules -> organizations [fk_sch_org] (CASCADE) @V3.040__create_schedules_table.sql:41
+schedules -> teams [fk_sch_team] (CASCADE) @V3.040__create_schedules_table.sql:40
+schedules -> todos [fk_schedules_todos] (SET NULL) @V13.015__alter_schedules_add_linked_todo_id.sql:8
+schedules -> users [fk_sch_created_by] (SET NULL) @V3.040__create_schedules_table.sql:43
+schedules -> users [fk_sch_user] (CASCADE) @V3.040__create_schedules_table.sql:42
+schedules -> venues [fk_sch_venue] (RESTRICT) @V9.059__add_venue_id_to_schedules_and_activity_results.sql:5
+schedules -> visibility_templates [fk_schedules_vt] (SET NULL) @V16.006__add_visibility_template_id_to_features.sql:7
+seal_scope_defaults -> users [fk_seal_scope_defaults_user] (CASCADE) @V5.012__create_seal_scope_defaults_table.sql:12
+seal_stamp_logs -> users [fk_seal_stamp_logs_user] (CASCADE) @V5.013__create_seal_stamp_logs_table.sql:18
+search_histories -> users [fk_search_histories_user] (CASCADE) @V4.023__create_search_histories_table.sql:11
+search_saved_queries -> users [fk_search_saved_queries_user] (CASCADE) @V4.024__create_search_saved_queries_table.sql:11
+service_record_fields -> teams [fk_srf_team] (RESTRICT) @V7.002__create_service_record_fields_table.sql:17
+service_record_reactions -> users [fk_srr_user] (CASCADE) @V7.006__create_service_record_reactions_table.sql:12
+service_record_settings -> teams [fk_srs_team] (RESTRICT) @V7.005__create_service_record_settings_table.sql:12
+service_record_templates -> organizations [fk_srt_org] (RESTRICT) @V7.007__create_service_record_templates_table.sql:19
+service_record_templates -> teams [fk_srt_team] (RESTRICT) @V7.007__create_service_record_templates_table.sql:18
+service_record_templates -> users [fk_srt_user] (SET NULL) @V7.007__create_service_record_templates_table.sql:20
+service_records -> teams [fk_sr_team] (RESTRICT) @V7.001__create_service_records_table.sql:18
+service_records -> users [fk_sr_member] (RESTRICT) @V7.001__create_service_records_table.sql:19
+service_records -> users [fk_sr_staff] (SET NULL) @V7.001__create_service_records_table.sql:20
+shared_facilities -> users [fk_sf_created_by] (RESTRICT) @V9.044__create_shared_facilities_table.sql:32
+shared_file_comments -> users [fk_file_comments_user] (SET NULL) @V5.025__create_shared_file_comments_table.sql:11
+shared_file_links -> users [fk_file_links_created] (SET NULL) @V5.026__create_shared_file_links_table.sql:14
+shared_file_stars -> users [fk_file_stars_user] (CASCADE) @V5.024__create_shared_file_stars_table.sql:9
+shared_file_tags -> users [fk_file_tags_user] (CASCADE) @V5.027__create_shared_file_tags_table.sql:10
+shared_file_versions -> users [fk_file_versions_uploaded] (SET NULL) @V5.022__create_shared_file_versions_table.sql:13
+shared_files -> users [fk_shared_files_created] (SET NULL) @V5.021__create_shared_files_table.sql:17
+shared_folders -> organizations [fk_shared_folders_org] (CASCADE) @V5.020__create_shared_folders_table.sql:17
+shared_folders -> teams [fk_shared_folders_team] (CASCADE) @V5.020__create_shared_folders_table.sql:16
+shared_folders -> users [fk_shared_folders_created] (SET NULL) @V5.020__create_shared_folders_table.sql:20
+shared_folders -> users [fk_shared_folders_user] (SET NULL) @V5.020__create_shared_folders_table.sql:18
+shift_assignment_runs -> users [fk_shift_assignment_runs_triggered_by] (RESTRICT) @V3.140__create_shift_assignment_runs.sql:22
+shift_assignment_runs -> users [fk_shift_assignment_runs_visual_review] (RESTRICT) @V3.140__create_shift_assignment_runs.sql:23
+shift_assignments -> users [fk_shift_assignments_assigned_by] (RESTRICT) @V3.139__create_shift_assignments.sql:19
+shift_budget_allocations -> budget_categories [fk_sba_budget_category] (RESTRICT) @V11.030__create_shift_budget_allocations.sql:64
+shift_budget_allocations -> budget_fiscal_years [fk_sba_fiscal_year] (RESTRICT) @V11.030__create_shift_budget_allocations.sql:61
+shift_budget_allocations -> organizations [fk_sba_organization] (CASCADE) @V11.030__create_shift_budget_allocations.sql:55
+shift_budget_allocations -> projects [fk_sba_project] (RESTRICT) @V11.035__add_project_id_fk_to_shift_budget_allocations.sql:18
+shift_budget_allocations -> teams [fk_sba_team] (CASCADE) @V11.030__create_shift_budget_allocations.sql:58
+shift_budget_allocations -> users [fk_sba_created_by] (RESTRICT) @V11.030__create_shift_budget_allocations.sql:67
+shift_budget_consumptions -> shift_schedules [fk_sbc_shift] (RESTRICT) @V11.031__create_shift_budget_consumptions.sql:49
+shift_budget_consumptions -> shift_slots [fk_sbc_slot] (RESTRICT) @V11.031__create_shift_budget_consumptions.sql:51
+shift_budget_consumptions -> users [fk_sbc_user] (RESTRICT) @V11.031__create_shift_budget_consumptions.sql:53
+shift_budget_failed_events -> organizations [fk_sbfe_organization] (CASCADE) @V11.038__create_shift_budget_failed_events.sql:52
+shift_change_requests -> users [fk_shift_change_requests_requested_by] (RESTRICT) @V3.143__create_shift_change_requests.sql:22
+shift_change_requests -> users [fk_shift_change_requests_reviewer] (RESTRICT) @V3.143__create_shift_change_requests.sql:23
+shift_hourly_rates -> teams [fk_shr_team] (CASCADE) @V3.076__create_shift_hourly_rates_table.sql:14
+shift_hourly_rates -> users [fk_shr_user] (CASCADE) @V3.076__create_shift_hourly_rates_table.sql:13
+shift_positions -> teams [fk_sp_team] (CASCADE) @V3.071__create_shift_positions_table.sql:13
+shift_requests -> proxy_input_records [fk_shift_requests_proxy] (SET NULL) @V18.027__add_proxy_input_columns_to_shift_requests.sql:10
+shift_requests -> users [fk_sr_user] (CASCADE) @V3.073__create_shift_requests_table.sql:17
+shift_schedules -> projects [fk_ss_linked_project] (SET NULL) @V3.149__add_linked_project_id_to_shift_schedules.sql:9
+shift_schedules -> teams [fk_ss_team] (CASCADE) @V3.070__create_shift_schedules_table.sql:26
+shift_schedules -> users [fk_ss_created_by] (SET NULL) @V3.070__create_shift_schedules_table.sql:27
+shift_schedules -> users [fk_ss_published_by] (SET NULL) @V3.070__create_shift_schedules_table.sql:28
+shift_swap_requests -> users [fk_shift_swap_requests_claimed_by] (RESTRICT) @V3.144__extend_shift_swap_requests_open_call.sql:10
+shift_swap_requests -> users [fk_shift_swap_requests_target_user] (RESTRICT) @V3.144__extend_shift_swap_requests_open_call.sql:9
+shift_swap_requests -> users [fk_ssw_accepter] (RESTRICT) @V3.074__create_shift_swap_requests_table.sql:20
+shift_swap_requests -> users [fk_ssw_requester] (RESTRICT) @V3.074__create_shift_swap_requests_table.sql:19
+shift_swap_requests -> users [fk_ssw_resolved_by] (SET NULL) @V3.074__create_shift_swap_requests_table.sql:21
+shopping_list_items -> users [fk_sli_assigned] (RESTRICT) @V2.034__create_shopping_list_items_table.sql:20
+shopping_list_items -> users [fk_sli_checked] (RESTRICT) @V2.034__create_shopping_list_items_table.sql:21
+shopping_list_items -> users [fk_sli_created] (RESTRICT) @V2.034__create_shopping_list_items_table.sql:22
+shopping_lists -> teams [fk_sl_team] (RESTRICT) @V2.033__create_shopping_lists_table.sql:14
+shopping_lists -> users [fk_sl_user] (RESTRICT) @V2.033__create_shopping_lists_table.sql:15
+signage_access_tokens -> users [fk_sat_created_by] (RESTRICT) @V11.156__create_signage_access_tokens.sql:16
+signage_emergency_messages -> users [fk_sem_dismissed_by] (RESTRICT) @V11.157__create_signage_emergency_messages.sql:16
+signage_emergency_messages -> users [fk_sem_sent_by] (RESTRICT) @V11.157__create_signage_emergency_messages.sql:15
+signage_screens -> users [fk_sigscr_created_by] (RESTRICT) @V11.153__create_signage_screens.sql:21
+skill_categories -> users [fk_skcat_created_by] (RESTRICT) @V11.080__create_skill_categories.sql:19
+sns_feed_configs -> users [fk_sfc_configured_by] (RESTRICT) @V9.005__create_sns_feed_configs_table.sql:22
+stripe_customers -> users [fk_sc_user] (RESTRICT) @V8.011__create_stripe_customers_table.sql:10
+survey_responses -> proxy_input_records [fk_sr_proxy_record] (RESTRICT) @V18.016__add_proxy_input_columns_to_survey_responses.sql:8
+survey_responses -> users [fk_survey_responses_user] (CASCADE) @V5.017__create_survey_responses_table.sql:17
+survey_result_viewers -> users [fk_survey_result_viewers_user] (CASCADE) @V5.019__create_survey_result_viewers_table.sql:10
+survey_targets -> users [fk_survey_targets_user] (CASCADE) @V5.018__create_survey_targets_table.sql:10
+surveys -> users [fk_surveys_created_by] (SET NULL) @V5.014__create_surveys_table.sql:34
+system_form_presets -> users [fk_system_form_presets_created_by] (SET NULL) @V5.040__create_system_form_presets_table.sql:16
+system_onboarding_presets -> users [fk_sop_created_by] (RESTRICT) @V11.124__create_system_onboarding_presets.sql:20
+tags -> users [fk_tags_created_by] (RESTRICT) @V3.107__create_tags_table.sql:14
+team_access_requirements -> teams [fk_tar_team] (CASCADE) @V8.013__create_team_access_requirements_table.sql:10
+team_anniversaries -> teams [fk_ta_team] (RESTRICT) @V2.039__create_team_anniversaries_table.sql:15
+team_anniversaries -> users [fk_ta_user] (RESTRICT) @V2.039__create_team_anniversaries_table.sql:16
+team_blocks -> users [fk_team_blocks_blocked_by] (RESTRICT) @V2.012__create_team_blocks_table.sql:12
+team_blocks -> users [fk_team_blocks_user] (CASCADE) @V2.012__create_team_blocks_table.sql:11
+team_care_notification_overrides -> users [fk_tcno_created_by] (RESTRICT) @V17.003__create_team_care_notification_overrides_table.sql:20
+team_enabled_modules -> teams [fk_team_enabled_modules_team] (CASCADE) @V2.021__create_team_enabled_modules_table.sql:16
+team_enabled_modules -> users [fk_team_enabled_modules_user] (SET NULL) @V2.021__create_team_enabled_modules_table.sql:18
+team_friend_folder_members -> users [fk_tffm_added_by] (SET NULL) @V9.073__create_team_friend_folders_table.sql:43
+team_friend_folders -> teams [fk_tff_team] (CASCADE) @V9.073__create_team_friend_folders_table.sql:22
+team_friends -> teams [fk_tf_team_a] (CASCADE) @V9.072__create_team_friends_table.sql:20
+team_friends -> teams [fk_tf_team_b] (CASCADE) @V9.072__create_team_friends_table.sql:21
+team_member_info_fields -> teams [fk_tmif_team] (CASCADE) @V60.012__create_team_member_info_fields.sql:15
+team_member_info_responses -> teams [fk_tmir_team] (CASCADE) @V60.013__create_team_member_info_responses.sql:17
+team_member_info_responses -> users [fk_tmir_user] (CASCADE) @V60.013__create_team_member_info_responses.sql:18
+team_org_memberships -> organizations [fk_team_org_memberships_org] (RESTRICT) @V2.011__create_team_org_memberships_table.sql:14
+team_org_memberships -> users [fk_team_org_memberships_invited_by] (RESTRICT) @V2.011__create_team_org_memberships_table.sql:15
+team_org_memberships -> users [fk_team_org_memberships_responded_by] (RESTRICT) @V2.011__create_team_org_memberships_table.sql:16
+team_pages -> organizations [fk_tp_organization] (CASCADE) @V6.016__create_team_pages.sql:38
+team_pages -> teams [fk_tp_team] (CASCADE) @V6.016__create_team_pages.sql:37
+team_pages -> users [fk_tp_created_by] (SET NULL) @V6.016__create_team_pages.sql:39
+team_presence_icons -> teams [fk_tpi_team] (RESTRICT) @V2.040__create_team_presence_icons_table.sql:12
+team_presence_icons -> users [fk_tpi_user] (RESTRICT) @V2.040__create_team_presence_icons_table.sql:13
+team_role_aliases -> teams [fk_tra_team] (RESTRICT) @V2.031__create_team_role_aliases_table.sql:12
+team_role_aliases -> users [fk_tra_user] (RESTRICT) @V2.031__create_team_role_aliases_table.sql:13
+team_templates -> users [fk_team_templates_created_by] (SET NULL) @V2.017__create_team_templates_table.sql:16
+teams -> team_templates [fk_teams_template] (SET NULL) @V2.023__add_template_id_to_teams.sql:3
+ticket_books -> teams [fk_tb_team] (RESTRICT) @V8.030__create_ticket_books_table.sql:23
+ticket_books -> users [fk_tb_issued_by] (RESTRICT) @V8.030__create_ticket_books_table.sql:27
+ticket_books -> users [fk_tb_user] (RESTRICT) @V8.030__create_ticket_books_table.sql:25
+ticket_consumptions -> users [fk_tc_consumed_by] (RESTRICT) @V8.031__create_ticket_consumptions_table.sql:16
+ticket_consumptions -> users [fk_tc_voided_by] (RESTRICT) @V8.031__create_ticket_consumptions_table.sql:17
+ticket_payments -> teams [fk_tpay_team] (RESTRICT) @V8.029__create_ticket_payments_table.sql:25
+ticket_payments -> users [fk_tpay_recorded_by] (RESTRICT) @V8.029__create_ticket_payments_table.sql:28
+ticket_payments -> users [fk_tpay_user] (RESTRICT) @V8.029__create_ticket_payments_table.sql:26
+ticket_products -> teams [fk_ticket_prod_team] (RESTRICT) @V8.028__create_ticket_products_table.sql:23
+ticket_products -> users [fk_ticket_prod_created_by] (RESTRICT) @V8.028__create_ticket_products_table.sql:24
+timeline_bookmarks -> users [fk_bookmarks_user] (CASCADE) @V4.004__create_timeline_bookmarks_table.sql:8
+timeline_poll_votes -> users [fk_poll_votes_user] (CASCADE) @V4.012__create_timeline_poll_votes_table.sql:11
+timeline_post_reactions -> users [fk_post_reactions_user] (CASCADE) @V4.003__create_timeline_post_reactions_table.sql:10
+timeline_posts -> users [fk_timeline_posts_user] (CASCADE) @V4.001__create_timeline_posts_table.sql:25
+timetable_changes -> users [fk_tc_created_by] (SET NULL) @V11.005__create_timetable_changes_table.sql:20
+timetable_period_templates -> organizations [fk_tpt_organization] (CASCADE) @V11.001__create_timetable_period_templates_table.sql:15
+timetable_slot_user_note_attachments -> users [fk_tsuna_user] (CASCADE) @V14.007__create_timetable_slot_user_note_attachments_table.sql:18
+timetable_slot_user_note_fields -> users [fk_tsunf_user] (CASCADE) @V14.005__create_timetable_slot_user_note_fields_table.sql:16
+timetable_slot_user_notes -> users [fk_tsun_user] (CASCADE) @V14.006__create_timetable_slot_user_notes_table.sql:23
+timetable_terms -> organizations [fk_timetable_term_org] (CASCADE) @V11.002__create_timetable_terms_table.sql:17
+timetable_terms -> teams [fk_tt_team] (CASCADE) @V11.002__create_timetable_terms_table.sql:16
+timetables -> teams [fk_tm_team] (CASCADE) @V11.003__create_timetables_table.sql:23
+timetables -> users [fk_tm_created_by] (SET NULL) @V11.003__create_timetables_table.sql:25
+todo_budget_links -> projects [fk_tbl_project] (CASCADE) @V11.032__create_todo_budget_links.sql:63
+todo_budget_links -> todos [fk_tbl_todo] (CASCADE) @V11.032__create_todo_budget_links.sql:66
+todo_budget_links -> users [fk_tbl_creator] (RESTRICT) @V11.032__create_todo_budget_links.sql:72
+todo_handoffs -> users [fk_handoff_from_user] (RESTRICT) @V19.011__add_missing_constraints_to_todo_status_labels_and_handoffs.sql:55
+todo_personal_memos -> users [fk_tpm_user] (CASCADE) @V13.018__create_todo_personal_memos_table.sql:17
+todo_status_labels -> users [fk_tsl_created_by] (SET NULL) @V19.011__add_missing_constraints_to_todo_status_labels_and_handoffs.sql:42
+todo_tag_links -> todos [fk_todo_tag_links_todo] (CASCADE) @V3.111__create_todo_tag_links_table.sql:9
+todos -> schedules [fk_todos_schedules] (SET NULL) @V13.016__add_todos_linked_schedule_fk.sql:5
+tournament_individual_rankings -> users [fk_tir_user] (CASCADE) @V8.049__create_tournament_individual_rankings_table.sql:19
+tournament_match_player_stats -> users [fk_tmps_user] (CASCADE) @V8.047__create_tournament_match_player_stats_table.sql:19
+tournament_match_rosters -> users [fk_tmr_user] (CASCADE) @V8.046__create_tournament_match_rosters_table.sql:17
+tournament_matches -> schedules [fk_tmatch_schedule] (SET NULL) @V8.044__create_tournament_matches_table.sql:38
+tournament_participants -> teams [fk_tourn_part_team] (CASCADE) @V8.042__create_tournament_participants_table.sql:14
+tournament_promotion_records -> teams [fk_tpr_team] (CASCADE) @V8.050__create_tournament_promotion_records_table.sql:18
+tournament_promotion_records -> users [fk_tpr_executed_by] (RESTRICT) @V8.050__create_tournament_promotion_records_table.sql:21
+tournament_templates -> organizations [fk_tt_organization] (CASCADE) @V8.035__create_tournament_templates_table.sql:27
+tournament_templates -> users [fk_tt_created_by] (RESTRICT) @V8.035__create_tournament_templates_table.sql:29
+tournaments -> organizations [fk_t_organization] (CASCADE) @V8.038__create_tournaments_table.sql:37
+tournaments -> users [fk_t_created_by] (RESTRICT) @V8.038__create_tournaments_table.sql:40
+translation_assignments -> users [fk_transassign_user] (CASCADE) @V11.161__create_translation_assignments.sql:13
+user_action_memo_settings -> teams [fk_uams_default_team] (SET NULL) @V13.023__alter_user_action_memo_settings_add_phase3_fields.sql:13
+user_action_memo_settings -> users [fk_user_action_memo_settings_user] (CASCADE) @V5.044__create_user_action_memo_settings_table.sql:11
+user_badges -> users [fk_ub_user] (CASCADE) @V11.054__create_user_badges.sql:11
+user_blocks -> users [fk_ub_blocked] (CASCADE) @V12.008__create_user_blocks.sql:9
+user_blocks -> users [fk_ub_blocker] (CASCADE) @V12.008__create_user_blocks.sql:8
+user_blog_settings -> users [fk_ubs_user] (CASCADE) @V6.008__create_user_blog_settings.sql:12
+user_calendar_sync_settings -> users [fk_ucss_user] (CASCADE) @V3.048__create_user_calendar_sync_settings_table.sql:12
+user_care_links -> users [fk_ucl_created_by] (RESTRICT) @V17.002__create_user_care_links_table.sql:29
+user_care_links -> users [fk_ucl_recipient] (CASCADE) @V17.002__create_user_care_links_table.sql:27
+user_care_links -> users [fk_ucl_revoked_by] (SET NULL) @V17.002__create_user_care_links_table.sql:30
+user_care_links -> users [fk_ucl_watcher] (CASCADE) @V17.002__create_user_care_links_table.sql:28
+user_google_calendar_connections -> users [fk_ugcc_user] (CASCADE) @V3.047__create_user_google_calendar_connections_table.sql:19
+user_ical_tokens -> users [fk_uit_user] (CASCADE) @V3.050__create_user_ical_tokens_table.sql:12
+user_line_connections -> users [fk_ulc_user_id] (RESTRICT) @V9.003__create_user_line_connections_table.sql:19
+user_mutes -> users [fk_user_mutes_user] (CASCADE) @V4.009__create_user_mutes_table.sql:9
+user_permission_groups -> users [fk_upg_assigned_by] (RESTRICT) @V2.009__create_user_permission_groups_table.sql:11
+user_permission_groups -> users [fk_upg_user] (RESTRICT) @V2.009__create_user_permission_groups_table.sql:9
+user_point_cards -> users [fk_upc_user] (CASCADE) @V9.137__create_user_point_cards.sql:26
+user_quick_memo_settings -> users [fk_uqms_user] (CASCADE) @V3.112__create_user_quick_memo_settings_table.sql:14
+user_roles -> organizations [fk_user_roles_org] (RESTRICT) @V2.006__create_user_roles_table.sql:16
+user_roles -> teams [fk_user_roles_team] (RESTRICT) @V2.006__create_user_roles_table.sql:15
+user_roles -> users [fk_user_roles_granted_by] (RESTRICT) @V2.006__create_user_roles_table.sql:17
+user_roles -> users [fk_user_roles_user] (RESTRICT) @V2.006__create_user_roles_table.sql:13
+user_schedule_google_events -> users [fk_usge_user] (CASCADE) @V3.049__create_user_schedule_google_events_table.sql:10
+user_social_profiles -> users [fk_social_profiles_user] (CASCADE) @V4.005__create_user_social_profiles_table.sql:13
+user_violations -> users [fk_uv_user] (CASCADE) @V10.013__create_user_violations_table.sql:14
+user_voice_input_consents -> users [fk_uvic_user] (CASCADE) @V3.113__create_user_voice_input_consents_table.sql:11
+vendors -> users [fk_vendors_created_by] (RESTRICT) @V61.001__create_vendors.sql:27
+visibility_templates -> users [fk_vt_owner] (CASCADE) @V16.001__create_visibility_templates.sql:15
+warning_re_reviews -> users [fk_wrr_user] (RESTRICT) @V10.015__create_warning_re_reviews_table.sql:19
+webhook_endpoints -> users [fk_we_created_by] (RESTRICT) @V11.147__create_webhook_endpoints.sql:19
+workflow_request_approvers -> users [fk_wf_request_approvers_user] (CASCADE) @V5.033__create_workflow_request_approvers_table.sql:15
+workflow_request_attachments -> users [fk_wf_request_attachments_uploaded_by] (SET NULL) @V5.035__create_workflow_request_attachments_table.sql:14
+workflow_request_comments -> users [fk_wf_request_comments_user] (SET NULL) @V5.034__create_workflow_request_comments_table.sql:14
+workflow_requests -> users [fk_workflow_requests_requested_by] (SET NULL) @V5.031__create_workflow_requests_table.sql:26
+workflow_templates -> users [fk_workflow_templates_created_by] (SET NULL) @V5.028__create_workflow_templates_table.sql:22
+yabai_unflag_requests -> users [fk_yur_user] (RESTRICT) @V10.016__create_yabai_unflag_requests_table.sql:14
