@@ -127,6 +127,7 @@ class SurveyServiceTest {
         void アンケート公開_正常_PUBLISHED状態に遷移() {
             // Given
             SurveyEntity entity = createDraftSurvey();
+            ReflectionTestUtils.setField(entity, "id", SURVEY_ID);
             SurveyResponse response = createSurveyResponse();
 
             given(surveyRepository.findByIdAndScopeTypeAndScopeId(SURVEY_ID, SCOPE_TYPE, SCOPE_ID))
