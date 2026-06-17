@@ -856,9 +856,7 @@
       "Bash(echo \"DONE:$?\")",
       "Bash(rtk proxy *)",
       "WebFetch(domain:support.stripe.com)",
-      "Bash(awk '{print $4}')",
-      "PowerShell($ports = 3000,3001,8080; foreach \\($p in $ports\\) { $r = Test-NetConnection -ComputerName 127.0.0.1 -Port $p -WarningAction SilentlyContinue; \"Port $p : $\\($r.TcpTestSucceeded\\)\" })",
-      "Bash(sort -t V -k2 -n -u)"
+      "Bash(awk '{print $4}')"
     ],
     "deny": [
       "Write(**/.env)",
