@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
@@ -36,6 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -158,6 +160,29 @@ class RoleServiceTest {
 
             verify(userRoleRepository).delete(current);
             verify(userRoleRepository).save(any(UserRoleEntity.class));
+        }
+
+        @Test
+        @DisplayName("根治回帰_delete直後にflushしてからsaveする")
+        void 根治回帰_delete直後にflushしてからsaveする() {
+            // 回帰防止: changeRole は delete → flush → save の順で呼ばねばならない。
+            // flush を挟まないと Hibernate の write-behind が INSERT を先に発行し、
+            // user_roles の uq_user_roles_user_scope(user_id, scope_key) ユニーク制約に
+            // 旧行と衝突して 500 になる（実機 E2E + general_log で実証済みのバグ）。
+            UserRoleEntity current = UserRoleEntity.builder()
+                    .id(1L).userId(TARGET_USER_ID).roleId(MEMBER_ROLE_ID).organizationId(SCOPE_ID).build();
+            given(userRoleRepository.findByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(current));
+            given(roleRepository.findById(MEMBER_ROLE_ID)).willReturn(Optional.of(createMemberRole()));
+            given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));
+
+            roleService.changeRole(SCOPE_ID, "ORGANIZATION", TARGET_USER_ID,
+                    new RoleChangeRequest(ADMIN_ROLE_ID), USER_ID);
+
+            InOrder inOrder = inOrder(userRoleRepository);
+            inOrder.verify(userRoleRepository).delete(current);
+            inOrder.verify(userRoleRepository).flush();
+            inOrder.verify(userRoleRepository).save(any(UserRoleEntity.class));
         }
 
         @Test
