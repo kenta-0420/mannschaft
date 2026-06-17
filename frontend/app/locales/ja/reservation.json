@@ -78,7 +78,8 @@
       "subject_required": "件名を入力してください",
       "body_required": "本文を入力してください",
       "send_failed": "送信に失敗しました",
-      "confirmations_failed": "確認状況の取得に失敗しました"
+      "confirmations_failed": "確認状況の取得に失敗しました",
+      "info_missing": "通知情報が不足しています"
     },
     "template": {
       "staff_sick": "先生体調不良",
@@ -102,7 +103,12 @@
       "CANCELLED": "キャンセル",
       "NO_SHOW": "無断不参加",
       "REJECTED": "拒否"
-    }
+    },
+    "confirm_button": "休業を確認",
+    "already_confirmed": "確認済み",
+    "confirm_success": "緊急休業の受領を確認しました",
+    "confirm_failed": "確認処理に失敗しました",
+    "badge": "緊急休業"
   },
   "reservation": {
     "status": {
