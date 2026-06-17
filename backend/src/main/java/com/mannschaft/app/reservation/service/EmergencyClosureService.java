@@ -23,8 +23,10 @@ import com.mannschaft.app.reservation.repository.EmergencyClosureConfirmationRep
 import com.mannschaft.app.reservation.repository.EmergencyClosureRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
+import com.mannschaft.app.reservation.EmergencyClosureConfirmedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -59,6 +61,7 @@ public class EmergencyClosureService {
     private final EmergencyClosureRepository emergencyClosureRepository;
     private final ReservationSlotService slotService;
     private final EmergencyClosureConfirmationRepository confirmationRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 臨時休業通知のプレビューを取得する。送信前に影響を受ける予約を確認するために使用する。
@@ -240,6 +243,17 @@ public class EmergencyClosureService {
             confirmation.confirm();
             confirmationRepository.save(confirmation);
             log.info("臨時休業確認: closureId={}, userId={}", closureId, userId);
+
+            // 確認成功（confirmed=true 保存）直後にイベント発火。
+            // 配信先トピックのスコープに teamId が必要なため closure から取得する（無ければ配信スキップ）。
+            // 受信は EmergencyClosureBroadcastListener（AFTER_COMMIT・配信専用）。
+            emergencyClosureRepository.findById(closureId).ifPresent(closure ->
+                    eventPublisher.publishEvent(EmergencyClosureConfirmedEvent.builder()
+                            .closureId(closureId)
+                            .teamId(closure.getTeamId())
+                            .userId(userId)
+                            .confirmedAt(confirmation.getConfirmedAt())
+                            .build()));
         }
     }
 

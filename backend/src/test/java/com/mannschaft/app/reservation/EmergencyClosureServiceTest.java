@@ -5,6 +5,8 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.mail.outbox.EmailOutboxService;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.reservation.dto.EmergencyClosurePreviewResponse;
+import com.mannschaft.app.reservation.entity.EmergencyClosureConfirmationEntity;
+import com.mannschaft.app.reservation.entity.EmergencyClosureEntity;
 import com.mannschaft.app.reservation.entity.ReservationEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import com.mannschaft.app.reservation.repository.EmergencyClosureConfirmationRepository;
@@ -21,11 +23,14 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.lang.reflect.Field;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -71,6 +76,9 @@ class EmergencyClosureServiceTest {
 
     @Mock
     private EmergencyClosureConfirmationRepository confirmationRepository;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private EmergencyClosureService service;
@@ -452,6 +460,75 @@ class EmergencyClosureServiceTest {
         @SuppressWarnings("unchecked")
         private ArgumentCaptor<List<Long>> slotIdCaptor() {
             return ArgumentCaptor.forClass(List.class);
+        }
+    }
+
+    // ========================================
+    // confirmClosure / 患者確認イベント発火
+    // ========================================
+
+    @Nested
+    @DisplayName("confirmClosure / 患者確認イベント発火")
+    class ConfirmClosure {
+
+        private static final Long CLOSURE_ID = 500L;
+        private static final Long USER_ID = 42L;
+
+        @Test
+        @DisplayName("正常系: 未確認→確認で EmergencyClosureConfirmedEvent が publish される")
+        void 確認成功でイベントが発火する() {
+            // Given: 未確認の確認追跡レコード + 対応する closure（teamId を保持）
+            EmergencyClosureConfirmationEntity confirmation = EmergencyClosureConfirmationEntity.builder()
+                    .emergencyClosureId(CLOSURE_ID)
+                    .userId(USER_ID)
+                    .reservationId(999L)
+                    .appointmentAt(LocalDateTime.of(2026, 4, 8, 10, 0))
+                    .build();
+            EmergencyClosureEntity closure = EmergencyClosureEntity.builder()
+                    .teamId(TEAM_ID)
+                    .build();
+
+            given(confirmationRepository.findByEmergencyClosureIdAndUserId(CLOSURE_ID, USER_ID))
+                    .willReturn(Optional.of(confirmation));
+            given(emergencyClosureRepository.findById(CLOSURE_ID)).willReturn(Optional.of(closure));
+
+            // When
+            service.confirmClosure(CLOSURE_ID, USER_ID);
+
+            // Then: confirmed=true 保存後にイベントが publish される
+            verify(confirmationRepository).save(confirmation);
+            ArgumentCaptor<EmergencyClosureConfirmedEvent> captor =
+                    ArgumentCaptor.forClass(EmergencyClosureConfirmedEvent.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+
+            EmergencyClosureConfirmedEvent published = captor.getValue();
+            assertThat(published.getClosureId()).isEqualTo(CLOSURE_ID);
+            assertThat(published.getTeamId()).isEqualTo(TEAM_ID);
+            assertThat(published.getUserId()).isEqualTo(USER_ID);
+            assertThat(published.getConfirmedAt()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("冪等: 既に確認済みなら save もイベント発火もしない")
+        void 既に確認済みならイベントは発火しない() {
+            // Given: 既に確認済み（confirmedAt セット済み）
+            EmergencyClosureConfirmationEntity confirmation = EmergencyClosureConfirmationEntity.builder()
+                    .emergencyClosureId(CLOSURE_ID)
+                    .userId(USER_ID)
+                    .reservationId(999L)
+                    .appointmentAt(LocalDateTime.of(2026, 4, 8, 10, 0))
+                    .confirmedAt(LocalDateTime.of(2026, 4, 7, 9, 0))
+                    .build();
+
+            given(confirmationRepository.findByEmergencyClosureIdAndUserId(CLOSURE_ID, USER_ID))
+                    .willReturn(Optional.of(confirmation));
+
+            // When
+            service.confirmClosure(CLOSURE_ID, USER_ID);
+
+            // Then: 二重確認は副作用なし
+            verify(confirmationRepository, never()).save(any());
+            verify(eventPublisher, never()).publishEvent(any());
         }
     }
 }

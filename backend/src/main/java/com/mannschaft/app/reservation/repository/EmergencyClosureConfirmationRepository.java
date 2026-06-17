@@ -20,6 +20,18 @@ public interface EmergencyClosureConfirmationRepository
     Optional<EmergencyClosureConfirmationEntity> findByEmergencyClosureIdAndUserId(Long closureId, Long userId);
 
     /**
+     * 指定の臨時休業に紐づく確認追跡レコードの総件数（通知対象の総数）。
+     * リアルタイム配信のサマリ算出用の軽量カウントクエリ。
+     */
+    long countByEmergencyClosureId(Long closureId);
+
+    /**
+     * 指定の臨時休業のうち確認済み（{@code confirmedAt} が非 NULL）の件数。
+     * リアルタイム配信のサマリ算出用の軽量カウントクエリ。
+     */
+    long countByEmergencyClosureIdAndConfirmedAtIsNotNull(Long closureId);
+
+    /**
      * 未確認かつ予約時刻が now〜twoHoursLater に入るレコードを取得する（送信者への2時間前リマインダー用）。
      */
     @Query("SELECT c FROM EmergencyClosureConfirmationEntity c " +
