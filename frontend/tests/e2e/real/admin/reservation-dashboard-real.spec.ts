@@ -77,11 +77,13 @@ const test = base.extend<
   { workerToken: { token: string; me: MeProfile } }
 >({
   // storageState 依存を外す（共有 setup が生成できないため空で上書き）
-  storageState: async (_deps, use) => {
+  // eslint-disable-next-line no-empty-pattern -- Playwright は fixture 第1引数にオブジェクト分割代入を要求する
+  storageState: async ({}, use) => {
     await use(undefined)
   },
   workerToken: [
-    async (_deps, use) => {
+    // eslint-disable-next-line no-empty-pattern -- Playwright は fixture 第1引数にオブジェクト分割代入を要求する
+    async ({}, use) => {
       const ctx = await playwrightRequest.newContext()
       const loginRes = await ctx.post(`${BE}/api/v1/auth/login`, {
         headers: { 'Content-Type': 'application/json' },
@@ -113,18 +115,27 @@ const test = base.extend<
         data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
       })
       const me = workerToken.me
-      await page.goto('/')
-      await page.evaluate(
-        (user) => localStorage.setItem('currentUser', JSON.stringify(user)),
-        {
-          id: me.id,
-          email: me.email,
-          fullName: `${me.lastName} ${me.firstName}`,
-          profileImageUrl: me.avatarUrl,
-          systemRole: me.systemRole ?? undefined,
-          timezone: me.timezone ?? undefined,
+      const currentUser = {
+        id: me.id,
+        email: me.email,
+        fullName: `${me.lastName} ${me.firstName}`,
+        profileImageUrl: me.avatarUrl,
+        systemRole: me.systemRole ?? undefined,
+        timezone: me.timezone ?? undefined,
+      }
+      // currentUser と tokenExpiresAt を「アプリ起動前」に毎ナビゲーションで仕込む。
+      // tokenExpiresAt を十分未来にしておくことで auth.client.ts の先回りトークン更新
+      // (performTokenRefresh) をスキップさせ、refresh 失敗による /login への誤リダイレクトを防ぐ。
+      // BE セッション Cookie は上の login で確立済みのため、API 呼び出しは Cookie で通る。
+      const farFuture = Date.now() + 24 * 60 * 60 * 1000
+      await page.addInitScript(
+        ({ user, expiresAt }) => {
+          localStorage.setItem('currentUser', JSON.stringify(user))
+          localStorage.setItem('tokenExpiresAt', String(expiresAt))
         },
+        { user: currentUser, expiresAt: farFuture },
       )
+      await page.goto('/')
       await use(true)
     },
     { auto: true },
@@ -136,6 +147,55 @@ test.setTimeout(120_000)
 /** Bearer 認証ヘッダ付きで API を叩く共通ヘルパ */
 function authHeaders(token: string): Record<string, string> {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+}
+
+/**
+ * APIブリッジ（memory: feedback_e2e_wsl2_cors_apibridge）。
+ *
+ * 専用 dev サーバー(:3001) で動かす UI テストでは、Nuxt アプリがブラウザから
+ * BE(:8080) へクロスオリジン fetch する。BE の CORS 許可 origin は localhost:3000/8080
+ * のみで :3001 は弾かれる（「Failed to fetch」/ 403）ため、ブラウザの /api/v1 呼び出しを
+ * page.route で横取りし、Playwright の APIRequestContext（CORS 非対象）で中継する。
+ *
+ * 3点必須:
+ *   1) BE への中継リクエストの origin/referer を許可 origin(localhost:3000) に差し替える
+ *   2) fulfill 時の access-control-allow-origin を「ブラウザ実 origin」に固定する
+ *   3) Bearer トークンを付与して確実に認証する（Cookie 中継に依存しない）
+ */
+async function installApiBridge(
+  page: import('@playwright/test').Page,
+  token: string,
+): Promise<void> {
+  const pageOrigin = new URL(page.url() || 'http://localhost:3001').origin
+  await page.route('**/api/v1/**', async (route) => {
+    const req = route.request()
+    const url = new URL(req.url())
+    // 中継先は 127.0.0.1 明示（IPv6 ::1 解決ブレで間欠 ECONNREFUSED を避ける）
+    const target = `http://127.0.0.1:8080${url.pathname}${url.search}`
+    const headers: Record<string, string> = {
+      ...req.headers(),
+      origin: 'http://localhost:3000',
+      referer: 'http://localhost:3000/',
+      authorization: `Bearer ${token}`,
+    }
+    const method = req.method()
+    const postData = req.postData()
+    const relay = await page.request.fetch(target, {
+      method,
+      headers,
+      data: postData ?? undefined,
+      maxRedirects: 0,
+    })
+    const respHeaders: Record<string, string> = { ...relay.headers() }
+    // ブラウザ実 origin に ACAO を固定（new URL(req.url()).origin だと 8080 になり CORS 拒否される罠）
+    respHeaders['access-control-allow-origin'] = pageOrigin
+    respHeaders['access-control-allow-credentials'] = 'true'
+    await route.fulfill({
+      status: relay.status(),
+      headers: respHeaders,
+      body: await relay.body(),
+    })
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -389,19 +449,28 @@ test.describe('RSV-REAL-004(D): 会員 UI からの予約作成→PENDING 成立
     request,
     authToken,
   }) => {
-    // 1) 事前準備: ライン + 近未来スロットを BE 直叩きで用意する
+    // 1) 事前準備: ライン + 近未来スロットを BE 直叩きで用意する。
+    //    スロット時刻は実行ごとに一意にする（過去 run のオーファン枠と同時刻で衝突し、
+    //    .first() が別枠を掴む取り違えを防ぐ）。分は 00〜59 を timestamp から導出。
     const lineName = `E2E_UI予約ライン_${Date.now()}`
     const line = await createLine(request, authToken, lineName)
     lineId = line.id
     const slotDate = futureDate(32)
+    const startM = Date.now() % 60
+    const startTime = `14:${String(startM).padStart(2, '0')}` // 14:MM（営業時間内・一意）
+    const endTotalMin = 14 * 60 + startM + 30 // 30分枠
+    const endTime = `${String(Math.floor(endTotalMin / 60)).padStart(2, '0')}:${String(endTotalMin % 60).padStart(2, '0')}`
     const slot = await createSlot(request, authToken, {
       slotDate,
-      startTime: '13:00',
-      endTime: '13:30',
+      startTime,
+      endTime,
     })
     slotId = slot.id
 
-    // 2) 予約管理ページを開く（既定タブは「予約する」= SlotPicker）
+    // 2) ブラウザ→BE のクロスオリジン fetch を APIブリッジで中継する（:3001 は BE CORS 非許可）
+    await installApiBridge(page, authToken)
+
+    // 3) 予約管理ページを開く（既定タブは「予約する」= SlotPicker）
     await page.goto(`/teams/${TEAM_SLUG}/reservations`, { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
 
@@ -409,33 +478,40 @@ test.describe('RSV-REAL-004(D): 会員 UI からの予約作成→PENDING 成立
     const bookTab = page.getByRole('tab', { name: '予約する' })
     if (await bookTab.count()) await bookTab.click()
 
-    // 3) ライン Select で作成したラインを選ぶ
+    // 4) ライン Select で作成したラインを選ぶ
     //    PrimeVue Select はネイティブ <select> ではないため、トリガを開いてから選ぶ
     const lineSelect = page.locator('.p-select').first()
     await lineSelect.waitFor({ state: 'visible', timeout: 15_000 })
     await lineSelect.click()
     await page.getByRole('option', { name: lineName }).click()
 
-    // 4) 日付ピッカーは既定で今日。スロットは指定日(32日後)に作ったので、
-    //    SlotPicker の日付を作成スロットの日付に合わせる必要がある。
-    //    DatePicker の入力欄へ直接日付文字列を入れて反映させる（yy/mm/dd 形式）。
-    const ymd = slotDate.replaceAll('-', '/') // YYYY/MM/DD
-    const dateInput = page.locator('.p-datepicker input').first()
+    // 5) 日付ピッカーを作成スロットの日付(32日後)に合わせる。
+    //    SlotPicker は日付＋ライン変更で watch によりスロットを再取得する。
+    //    PrimeVue DatePicker(date-format=yy/mm/dd) はクリックでパネルが開くため、
+    //    Escape で閉じてから直接入力して v-model に反映させる（helpers/form.ts pickDate と同手）。
+    const ymd = slotDate.replaceAll('-', '/') // YYYY/MM/DD（yy=4桁年）
+    const dateInput = page.locator('.p-datepicker-input').first()
+    await dateInput.waitFor({ state: 'visible', timeout: 15_000 })
+    await dateInput.click()
+    await dateInput.press('Escape')
     await dateInput.fill(ymd)
     await dateInput.press('Enter')
+    await dateInput.press('Tab')
 
-    // 5) 空きスロットボタン（13:00 - 13:30）が描画されるのを待ってクリック
-    const slotButton = page.getByRole('button', { name: /13:00\s*-\s*13:30/ })
+    // 6) 空きスロットボタン（一意な開始時刻 14:MM）が描画されるのを待ってクリック
+    //    ボタンのアクセシブル名は「14:MM:00 - ... 空きあり」（秒付き）。一意時刻で取り違えを防ぐ
+    const slotTimeRe = new RegExp(`${startTime}:00.*空きあり`)
+    const slotButton = page.getByRole('button', { name: slotTimeRe }).first()
     await slotButton.waitFor({ state: 'visible', timeout: 15_000 })
     await slotButton.click()
 
-    // 6) 予約確認ダイアログが開く → 「予約する」ボタンで送信
+    // 7) 予約確認ダイアログが開く → 「予約する」ボタンで送信
     const dialog = page.getByRole('dialog')
     await dialog.waitFor({ state: 'visible', timeout: 10_000 })
     // フォームの「予約する」ボタン（ダイアログ内）を押す
     await dialog.getByRole('button', { name: '予約する' }).click()
 
-    // 7) 成功トーストが出る（握りつぶしの error トーストではないこと）
+    // 8) 成功トーストが出る（握りつぶしの error トーストではないこと）
     await expect(page.getByText('予約が完了しました')).toBeVisible({ timeout: 15_000 })
 
     await page.screenshot({
@@ -443,7 +519,7 @@ test.describe('RSV-REAL-004(D): 会員 UI からの予約作成→PENDING 成立
       fullPage: true,
     })
 
-    // 8) BE 一覧(PENDING)に実際に作成されたことを検証する（UI 操作の結果を実BEで裏取り）
+    // 9) BE 一覧(PENDING)に実際に作成されたことを検証する（UI 操作の結果を実BEで裏取り）
     const pendingList = await request.get(
       `${BE}/api/v1/teams/${TEAM_SLUG}/reservations?status=PENDING`,
       { headers: authHeaders(authToken) },

@@ -40,8 +40,10 @@ async function loadSlots() {
   if (!selectedDate.value || !selectedLineId.value) return
   loading.value = true
   try {
+    // BE のスロット一覧は from/to（取得期間）が必須。単日表示なので from=to=選択日 を渡す。
+    // スロットは BE 上でライン非依存のため、ラインは予約作成時の lineId としてのみ使う。
     const dateStr = dayjs(selectedDate.value).tz(userTimezone.value).format('YYYY-MM-DD')
-    const res = await reservationApi.getSlots(props.teamId, { date: dateStr, lineId: selectedLineId.value })
+    const res = await reservationApi.getSlots(props.teamId, { from: dateStr, to: dateStr })
     slots.value = (res.data as ReservationSlotResponse[]).filter(
       s => s.status?.slotStatus !== 'CLOSED',
     )
