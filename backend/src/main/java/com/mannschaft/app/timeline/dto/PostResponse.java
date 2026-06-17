@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * タイムライン投稿レスポンスDTO（一覧用）。
@@ -17,6 +18,11 @@ public class PostResponse {
     private final PostAuthorDto author;
     private final PostContentDto content;
     private final PostStatsDto stats;
+    /**
+     * 添付ファイル一覧。フィード一覧では空リストを返す（null 不可。FE が attachments.length を参照するため）。
+     * 詳細は {@link PostDetailResponse} で取得すること。
+     */
+    private final List<AttachmentResponse> attachments;
     private final PostAuditDto audit;
 
     public record PostScopeDto(String scopeType, Long scopeId) {}

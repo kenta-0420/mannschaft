@@ -1,6 +1,10 @@
 package com.mannschaft.app.timeline.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.team.service.TeamService;
+import com.mannschaft.app.timeline.TimelineErrorCode;
 import com.mannschaft.app.timeline.dto.CreatePostRequest;
 import com.mannschaft.app.timeline.dto.PostDetailResponse;
 import com.mannschaft.app.timeline.dto.PostResponse;
@@ -27,6 +31,10 @@ import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * タイムライン投稿コントローラー。投稿のCRUD・リプライ・ピン留めAPIを提供する。
+ *
+ * <p>scopeId の slug 解決は {@link TeamService#resolveTeamId} /
+ * {@link OrganizationService#resolveOrgId} のService経由で行い、
+ * Repository直注入しない（ドメイン境界原則）。</p>
  */
 @RestController
 @RequestMapping("/api/v1/timeline/posts")
@@ -35,18 +43,64 @@ import com.mannschaft.app.common.SecurityUtils;
 public class TimelinePostController {
 
     private final TimelinePostService postService;
+    /** scopeId の slug 解決用: ドメイン境界原則によりServiceを経由する（Repository直注入禁止）。 */
+    private final TeamService teamService;
+    /** scopeId の slug 解決用: ドメイン境界原則によりServiceを経由する（Repository直注入禁止）。 */
+    private final OrganizationService organizationService;
 
 
     /**
      * 投稿を作成する。
+     *
+     * <p>scopeId はチーム/組織ページの URL slug（例: "fc-u-18"）または数値 ID 文字列を受け付ける。
+     * slug が渡された場合（{@link CreatePostRequest#getScopeId()} が null かつ
+     * {@link CreatePostRequest#getScopeIdRaw()} に slug が格納）は、
+     * {@link TeamService#resolveTeamId} / {@link OrganizationService#resolveOrgId} で
+     * 内部 ID に解決してから Service を呼び出す。</p>
      */
     @PostMapping
     @Operation(summary = "投稿作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<PostResponse>> createPost(
             @Valid @RequestBody CreatePostRequest request) {
-        PostResponse response = postService.createPost(request, SecurityUtils.getCurrentUserId());
+        CreatePostRequest resolvedRequest = request;
+        // scopeId が null かつ scopeIdRaw に slug 文字列がある場合 → slug 解決を試みる
+        if (request.getScopeId() == null && request.getScopeIdRaw() != null
+                && request.getScopeType() != null) {
+            String scopeType = request.getScopeType();
+            String slugOrId = request.getScopeIdRaw();
+            Long resolvedId = resolveScopeId(scopeType, slugOrId);
+            resolvedRequest = request.withResolvedScopeId(resolvedId);
+        }
+        PostResponse response = postService.createPost(resolvedRequest, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
+
+    /**
+     * スコープID文字列（slug または Long文字列）を内部Long IDに解決する。
+     * {@link com.mannschaft.app.timeline.controller.TimelineFeedController} と同じパターン。
+     */
+    private Long resolveScopeId(String scopeType, String scopeIdStr) {
+        if (!"TEAM".equals(scopeType) && !"ORGANIZATION".equals(scopeType)) {
+            try {
+                return Long.parseLong(scopeIdStr);
+            } catch (NumberFormatException e) {
+                return 0L;
+            }
+        }
+        try {
+            return Long.parseLong(scopeIdStr);
+        } catch (NumberFormatException e) {
+            try {
+                if ("TEAM".equals(scopeType)) {
+                    return teamService.resolveTeamId(scopeIdStr);
+                } else {
+                    return organizationService.resolveOrgId(scopeIdStr);
+                }
+            } catch (BusinessException ex) {
+                throw new BusinessException(TimelineErrorCode.POST_NOT_FOUND);
+            }
+        }
     }
 
     /**

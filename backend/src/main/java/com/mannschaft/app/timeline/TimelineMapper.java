@@ -48,6 +48,9 @@ public interface TimelineMapper {
                         entity.getReplyCount(),
                         entity.getAttachmentCount(),
                         entity.getEditCount()))
+                // フィード一覧では添付ファイル詳細は省略して空リストを返す
+                // （詳細は getPostDetail で取得する。FE が attachments.length を参照するためnullは不可）
+                .attachments(Collections.emptyList())
                 .audit(new PostResponse.PostAuditDto(
                         entity.getCreatedAt(),
                         entity.getUpdatedAt()))
