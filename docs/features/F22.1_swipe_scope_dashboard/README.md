@@ -8,6 +8,7 @@
 > - [F02.9_favorites_widget.md](../F02.9_favorites_widget.md) — お気に入りウィジェット（タグ行 UI の近縁パターン）
 > - [F15.3_scope_folder_integration.md](../F15.3_scope_folder_integration.md) — マイスコープフォルダ（タグの任意フィルタ源として読み取り流用）
 > - [F20.1_nav_customization/](../F20.1_nav_customization/) — ナビゲーションカスタマイズ（store + plugin による localStorage / サーバー同期の手本）
+> - [F10.1.1_team_org_admin_console/](../F10.1.1_team_org_admin_console/) — チーム/組織パネルに追加する **L1 管理者レンズ**（トグル切替）の設計
 > - [docs/security/README.md](../../security/README.md) — 認可横断方針
 
 ---
@@ -18,6 +19,8 @@
 モバイルでは左右フリック、PC では上部セグメントトグル・左右矢印・キーボード（←→）でパネルを切り替える。3 枚のパネルは同時マウントされ、`transform: translateX` でスライドするため**画面の再描画（full re-render）は発生しない**。
 
 本機能は F02.2 マイダッシュボードを**置き換えるものではなく、その上位の「ナビゲーションシェル」**である。各パネルの中身（ウィジェット・データソース・認可）は F02.2 / F02.2.1 を踏襲し、本書ではスコープ切替の操作体系・スコープ選択（タグ）・チーム/組織パネルの厳選ウィジェット構成・新規 API のみを定義する。
+
+> **L1 管理者レンズ（F10.1.1 で追加）**: チーム/組織パネルには、ADMIN / DEPUTY_ADMIN 向けに「メンバー / 管理者」を切り替える**レンズトグル**が追加される（[F10.1.1_team_org_admin_console/02_admin_lens_widgets.md](../F10.1.1_team_org_admin_console/02_admin_lens_widgets.md)）。**横スワイプの軸は「スコープ（個人/チーム/組織）」専用のまま不変**であり、第4タブ『管理』は追加しない。管理者ビューはスコープと直交する「視点」であるため、タブ（同一軸の並び）ではなくトグル（軸への修飾）で表現する。管理者レンズのウィジェットも本書のメンバー向けと同様に F02.2.1 の可視性ゲート（`min_role = ADMINS_AND_ABOVE`）を通す。
 
 ### 1.1 背景
 

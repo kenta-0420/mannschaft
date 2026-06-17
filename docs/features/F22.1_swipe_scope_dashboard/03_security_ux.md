@@ -58,7 +58,8 @@ repo.upsertOrders(userId, scopeType, req.getOrders());
 ### 1.4 ウィジェットデータのロール別可視性
 
 - チーム/組織パネルの 8 ウィジェットは F02.2.1 の `viewerRole` / `widgetVisibility`（`min_role`）判定を**そのまま**通す。`viewerRole.isAtLeast(minRole)` が false のウィジェットはサーバー側で `null` / キー省略にする（既存 `DashboardService` の方式踏襲）。
-- 課金サマリー・アクセス解析など**管理者限定ウィジェットは厳選 8 枚に含めない**（README §2.3）。管理者限定情報がスワイプビューに漏れることはない。
+- 課金サマリー・アクセス解析など**管理者限定ウィジェットはメンバーレンズの厳選 8 枚に含めない**（README §2.3）。管理者限定情報がメンバー向けスワイプビューに漏れることはない。
+- **L1 管理者レンズ（F10.1.1）**: ADMIN / DEPUTY_ADMIN がレンズトグルを「管理者」に切り替えると `DashboardAdminWidgetGrid`（`ADMIN_*` ウィジェット）が表示される。これらは `min_role = ADMINS_AND_ABOVE`（StandardVisibility 正準ラダー）でゲートされ、`viewerRole.isAtLeast(ADMINS_AND_ABOVE)` が false のウィジェットはサーバー側でレスポンスから省略される。課金・予算等は加えて権限グループ（`BUDGET_VIEW` 等）で DEPUTY を二段ゲートする。詳細は [F10.1.1/04_security_authorization.md](../F10.1.1_team_org_admin_console/04_security_authorization.md)。レンズトグルは FE 表示制御に過ぎず、各管理 API は BE で `checkAdminOrAbove` を独立して通す。
 
 ### 1.5 統合「要対応」集計の認可（集計バイパス禁止）
 
