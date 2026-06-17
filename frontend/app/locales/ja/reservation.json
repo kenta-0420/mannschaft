@@ -124,7 +124,8 @@
     "tab": {
       "book": "予約する",
       "list": "予約一覧",
-      "line_manage": "ライン管理"
+      "line_manage": "ライン管理",
+      "emergency_closure": "緊急休業"
     },
     "column": {
       "datetime": "日時",
