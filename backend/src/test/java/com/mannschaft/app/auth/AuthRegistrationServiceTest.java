@@ -219,6 +219,77 @@ class AuthRegistrationServiceTest {
         }
 
         @Test
+        @DisplayName("正常系: nickname省略時はdisplayNameを氏名から補完する（display_name NOT NULL 制約違反=500を防止）")
+        void register_nickname省略_displayNameを氏名から補完() {
+            // Given: nickname を null にする（任意項目）
+            RegisterRequest req = new RegisterRequest(
+                    TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", null, null, "ja", "Asia/Tokyo", null, "2000-01-01");
+            given(userRepository.existsByEmail(TEST_EMAIL)).willReturn(false);
+            given(passwordEncoder.encode(TEST_PASSWORD)).willReturn(ENCODED_PASSWORD);
+            given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> {
+                UserEntity saved = invocation.getArgument(0);
+                // display_name は NOT NULL。nickname 未指定でも氏名から補完されていること
+                assertThat(saved.getDisplayName()).isEqualTo("山田 太郎");
+                return saved;
+            });
+            given(authTokenService.hashToken(anyString())).willReturn("hashed-token");
+            given(emailVerificationTokenRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+            // When
+            ApiResponse<MessageResponse> response = authRegistrationService.register(req, TEST_IP);
+
+            // Then
+            assertThat(response.getData().getMessage()).contains("確認メール");
+            verify(userRepository).save(any(UserEntity.class));
+        }
+
+        @Test
+        @DisplayName("正常系: nickname空白時もdisplayNameを氏名から補完する")
+        void register_nickname空白_displayNameを氏名から補完() {
+            // Given: nickname を空白文字列にする
+            RegisterRequest req = new RegisterRequest(
+                    TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "   ", null, "ja", "Asia/Tokyo", null, "2000-01-01");
+            given(userRepository.existsByEmail(TEST_EMAIL)).willReturn(false);
+            given(passwordEncoder.encode(TEST_PASSWORD)).willReturn(ENCODED_PASSWORD);
+            given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> {
+                UserEntity saved = invocation.getArgument(0);
+                assertThat(saved.getDisplayName()).isEqualTo("山田 太郎");
+                return saved;
+            });
+            given(authTokenService.hashToken(anyString())).willReturn("hashed-token");
+            given(emailVerificationTokenRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+            // When
+            authRegistrationService.register(req, TEST_IP);
+
+            // Then
+            verify(userRepository).save(any(UserEntity.class));
+        }
+
+        @Test
+        @DisplayName("正常系: nickname指定時はnicknameがdisplayNameになる")
+        void register_nickname指定_nicknameがdisplayName() {
+            // Given
+            RegisterRequest req = new RegisterRequest(
+                    TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo", null, "2000-01-01");
+            given(userRepository.existsByEmail(TEST_EMAIL)).willReturn(false);
+            given(passwordEncoder.encode(TEST_PASSWORD)).willReturn(ENCODED_PASSWORD);
+            given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> {
+                UserEntity saved = invocation.getArgument(0);
+                assertThat(saved.getDisplayName()).isEqualTo("yamada");
+                return saved;
+            });
+            given(authTokenService.hashToken(anyString())).willReturn("hashed-token");
+            given(emailVerificationTokenRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+            // When
+            authRegistrationService.register(req, TEST_IP);
+
+            // Then
+            verify(userRepository).save(any(UserEntity.class));
+        }
+
+        @Test
         @DisplayName("異常系: ベータ制限ON・トークンなし・AUTH_042例外")
         void register_ベータ制限ON_トークンなし_AUTH042() {
             // Given
