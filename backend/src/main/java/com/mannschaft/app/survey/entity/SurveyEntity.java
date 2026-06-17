@@ -84,7 +84,7 @@ public class SurveyEntity extends BaseEntity {
      * (B) 組織→参加チーム配信 案C フェーズA 隊A で追加。
      * 既定 false（組織配信時はサポーター除外）。値を使った母集団絞り込みの配線は後続隊。
      */
-    @Column(name = "include_supporters", nullable = false)
+    @Column(name = "include_supporters", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
     @Builder.Default
     private Boolean includeSupporters = false;
 
