@@ -57,7 +57,7 @@ async function load() {
   try {
     const res = await bannerApi.fetchList(currentPage.value, pageSize.value)
     banners.value = res.data ?? []
-    totalElements.value = res.meta?.totalElements ?? 0
+    totalElements.value = res.meta?.total ?? 0
   } catch (err) {
     console.error('incident-banners/index.vue: load failed', err)
     notification.error(t('incident_banner.load_failed'))

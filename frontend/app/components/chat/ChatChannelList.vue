@@ -102,6 +102,7 @@ defineExpose({ refresh: loadChannels, refreshAndSelect })
             :key="ch.id"
             class="flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-surface-100"
             :class="selectedId === ch.id ? 'bg-primary/10' : ''"
+            :data-testid="`chat-channel-${ch.id}`"
             @click="selectChannel(ch)"
           >
             <i class="pi pi-user text-surface-400" />
@@ -140,6 +141,7 @@ defineExpose({ refresh: loadChannels, refreshAndSelect })
             :key="ch.id"
             class="flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-surface-100"
             :class="selectedId === ch.id ? 'bg-primary/10' : ''"
+            :data-testid="`chat-channel-${ch.id}`"
             @click="selectChannel(ch)"
           >
             <i :class="getIcon(ch)" class="text-surface-400" />

@@ -31,7 +31,7 @@ onMounted(() => loadPermissions())
         <BackButton />
         <PageHeader title="TODO" />
       </div>
-      <Button v-if="isMember" label="TODO作成" icon="pi pi-plus" @click="showCreateDialog = true" />
+      <Button v-if="isMember" label="TODO作成" icon="pi pi-plus" data-testid="team-todo-create" @click="showCreateDialog = true" />
     </div>
 
     <TodoListTable
