@@ -3,6 +3,50 @@ import { resolveApiBaseUrl } from '~/composables/useApiBaseUrl'
 
 let refreshPromise: Promise<boolean> | null = null
 
+/**
+ * access_token の先回り／事後リフレッシュを行うモジュールスコープ関数。
+ *
+ * 起動時の先回りリフレッシュ（auth.client プラグイン）と interceptor の 401 リカバリの
+ * 両方から呼ばれ、モジュール level の refreshPromise で二重リフレッシュを防止する
+ * （同時に複数の呼び出しが来ても 1 本の Promise を共有する）。
+ *
+ * config / authStore は引数で受け取る。リクエスト時コンテキスト（イベントハンドラ等）から
+ * useRuntimeConfig() / useAuthStore() を呼ぶと Nuxt インスタンスが未解決になる落とし穴が
+ * あるため、setup 時に capture したものを必ず渡すこと。
+ */
+export function performTokenRefresh(
+  config: ReturnType<typeof useRuntimeConfig>,
+  authStore: ReturnType<typeof useAuthStore>,
+): Promise<boolean> {
+  // 二重リフレッシュ防止
+  if (refreshPromise) {
+    return refreshPromise
+  }
+
+  refreshPromise = (async () => {
+    try {
+      // バックエンドは refresh_token Cookie を読むため、body への refreshToken 送信は不要。
+      // credentials: 'include' で Cookie が自動送信される。
+      const data = await ofetch<{ data: { accessToken: string; refreshToken: string } }>(
+        '/api/v1/auth/refresh',
+        {
+          baseURL: resolveApiBaseUrl(config),
+          method: 'POST',
+          credentials: 'include',
+        },
+      )
+      authStore.setTokens(data.data.accessToken, data.data.refreshToken)
+      return true
+    } catch {
+      return false
+    } finally {
+      refreshPromise = null
+    }
+  })()
+
+  return refreshPromise
+}
+
 // 短時間に複数の 5xx が発生した場合のトースト集約
 let _errorBatchTimer: ReturnType<typeof setTimeout> | null = null
 let _errorBatchCount = 0
@@ -63,7 +107,7 @@ export function useApi() {
         opts._tokenRefreshed = true
 
         if (authStore.user) {
-          const success = await refreshAccessToken()
+          const success = await performTokenRefresh(config, authStore)
           if (!success) {
             await authStore.logout()
             // throw してリトライを中断する（リフレッシュ失敗 = ログアウト済み）
@@ -132,36 +176,6 @@ export function useApi() {
       }
     },
   })
-
-  async function refreshAccessToken(): Promise<boolean> {
-    // 二重リフレッシュ防止
-    if (refreshPromise) {
-      return refreshPromise
-    }
-
-    refreshPromise = (async () => {
-      try {
-        // バックエンドは refresh_token Cookie を読むため、body への refreshToken 送信は不要。
-        // credentials: 'include' で Cookie が自動送信される。
-        const data = await ofetch<{ data: { accessToken: string; refreshToken: string } }>(
-          '/api/v1/auth/refresh',
-          {
-            baseURL: resolveApiBaseUrl(config),
-            method: 'POST',
-            credentials: 'include',
-          },
-        )
-        authStore.setTokens(data.data.accessToken, data.data.refreshToken)
-        return true
-      } catch {
-        return false
-      } finally {
-        refreshPromise = null
-      }
-    })()
-
-    return refreshPromise
-  }
 
   return api
 }

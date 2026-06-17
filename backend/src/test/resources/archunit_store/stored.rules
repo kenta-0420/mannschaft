@@ -1,4 +1,5 @@
 #
-#Sat Jun 13 13:22:35 JST 2026
+#Wed Jun 17 12:55:54 JST 2026
 entities\ should\ extend\ UuidV7Entity\ (D-2b)=2c0ba995-682e-4f80-a5a5-f68c835b720d
 no\ cross-domain\ entity\ dependency\ (D-1)=584c3a46-b9c1-4cc2-bf74-e0a18eab1bef
+transactional\ should\ not\ span\ other-domain\ repositories\ (D-3)=f14374b1-655e-4df2-8e82-2d79c8df9174

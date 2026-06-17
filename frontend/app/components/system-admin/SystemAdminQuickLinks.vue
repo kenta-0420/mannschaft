@@ -144,6 +144,14 @@ const quickLinks: QuickLink[] = [
     color: 'text-violet-500',
     bg: 'bg-violet-50 dark:bg-violet-900/20',
   },
+  // F12.5: 障害告知バナー（シスアド手動オーサリング）
+  {
+    label: t('incident_banner.quick_link_label'),
+    icon: 'pi pi-exclamation-circle',
+    to: '/system-admin/incident-banners',
+    color: 'text-orange-500',
+    bg: 'bg-orange-50 dark:bg-orange-900/20',
+  },
 ]
 </script>
 

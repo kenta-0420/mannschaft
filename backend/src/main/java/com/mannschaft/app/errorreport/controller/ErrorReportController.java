@@ -3,8 +3,8 @@ package com.mannschaft.app.errorreport.controller;
 import com.mannschaft.app.errorreport.dto.ActiveIncidentResponse;
 import com.mannschaft.app.errorreport.dto.ErrorReportRequest;
 import com.mannschaft.app.errorreport.entity.ErrorReportEntity;
-import com.mannschaft.app.errorreport.service.ErrorReportQueryService;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
+import com.mannschaft.app.incidentbanner.service.IncidentBannerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -15,9 +15,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -31,7 +34,7 @@ import java.util.Map;
 public class ErrorReportController {
 
     private final ErrorReportService errorReportService;
-    private final ErrorReportQueryService errorReportQueryService;
+    private final IncidentBannerService incidentBannerService;
 
     /**
      * フロントエンドからのエラーレポートを受信する。
@@ -53,13 +56,62 @@ public class ErrorReportController {
     }
 
     /**
-     * 現在発生中のアクティブインシデント一覧を取得する。
+     * 現在公開中の障害告知バナーを取得する（permitAll）。
+     *
+     * <p>F12.5 転換: 旧実装はエラー自動集計からインシデントを生成していたが、
+     * シスアド手動オーサリングのバナー（incidentbanner ドメイン）へ差し替えた。
+     * 後方互換のためレスポンス形は既存の
+     * {@code { incidents:[{ pagePattern, message, severity, since }] }} を維持する。
+     * severity←banner.level、since←startsAt（無ければ createdAt 相当として startsAt）でマッピングする。</p>
+     *
+     * <p>言語解決: {@code ?lang=} を優先し、無ければ Accept-Language ヘッダの先頭、
+     * いずれも無ければ "ja"。</p>
      */
     @GetMapping("/active-incidents")
-    @Operation(summary = "アクティブインシデント一覧取得")
+    @Operation(summary = "アクティブインシデント（公開バナー）一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ActiveIncidentResponse> getActiveIncidents() {
-        ActiveIncidentResponse response = errorReportQueryService.getActiveIncidents();
+    public ResponseEntity<ActiveIncidentResponse> getActiveIncidents(
+            @RequestParam(name = "lang", required = false) String lang,
+            @RequestHeader(name = "Accept-Language", required = false) String acceptLanguage) {
+        String language = resolveLanguage(lang, acceptLanguage);
+
+        List<ActiveIncidentResponse.Incident> incidents =
+                incidentBannerService.getActivePublic(language).stream()
+                        .map(b -> ActiveIncidentResponse.Incident.builder()
+                                .pagePattern(b.pagePattern())
+                                .message(b.message())
+                                .severity(b.level())
+                                .since(b.startsAt() != null ? b.startsAt() : b.createdAt())
+                                .build())
+                        .toList();
+
+        ActiveIncidentResponse response = ActiveIncidentResponse.builder()
+                .incidents(incidents)
+                .build();
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 表示言語を解決する。{@code lang} クエリ優先 → Accept-Language 先頭 → 既定 "ja"。
+     */
+    private String resolveLanguage(String lang, String acceptLanguage) {
+        if (lang != null && !lang.isBlank()) {
+            return normalizeLang(lang);
+        }
+        if (acceptLanguage != null && !acceptLanguage.isBlank()) {
+            // "ja,en-US;q=0.9,en;q=0.8" → 先頭の主言語サブタグを採用
+            String first = acceptLanguage.split(",")[0].trim();
+            String primary = first.split(";")[0].trim();
+            if (!primary.isBlank()) {
+                return normalizeLang(primary);
+            }
+        }
+        return "ja";
+    }
+
+    /** "en-US" → "en" のように主言語サブタグへ正規化し小文字化する。 */
+    private String normalizeLang(String value) {
+        String primary = value.split("-")[0].trim().toLowerCase();
+        return primary.isBlank() ? "ja" : primary;
     }
 }
