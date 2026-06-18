@@ -68,6 +68,20 @@ function onPublicToggleChanged(value: boolean) {
   }
 }
 
+/** ReservationPolicySettings から emit される変更を受け取りキャッシュを更新する */
+function onPolicyChanged(
+  approvalMode: 'AUTO' | 'MANUAL',
+  cancelDeadlineHours: number,
+  remindBeforeHours: string,
+) {
+  reservationSettings.value = {
+    ...(reservationSettings.value ?? {}),
+    approvalMode,
+    cancelDeadlineHours,
+    remindBeforeHours,
+  }
+}
+
 onMounted(async () => {
   await loadPermissions()
   await loadReservationSettings()
@@ -133,6 +147,20 @@ onMounted(async () => {
                         :team-id="teamSlug"
                         :disabled="!isAdmin"
                         @changed="onPublicToggleChanged"
+                      />
+                    </div>
+
+                    <Divider />
+
+                    <!-- 予約ポリシー設定（承認モード・キャンセル期限・リマインド）-->
+                    <div>
+                      <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-surface-500">
+                        {{ t('reservation.settings.policy.section_label') }}
+                      </p>
+                      <ReservationPolicySettings
+                        :team-id="teamSlug"
+                        :disabled="!isAdmin"
+                        @changed="onPolicyChanged"
                       />
                     </div>
                   </div>

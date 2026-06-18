@@ -237,6 +237,28 @@
         "confirm_enable": "Nicht-Mitglieder können Reservierungen vornehmen. Fortfahren?",
         "confirm_disable": "Nicht-Mitglieder können keine Reservierungen mehr vornehmen. Fortfahren?",
         "confirm_ok": "Bestätigen"
+      },
+      "policy": {
+        "section_label": "Buchungsrichtlinie",
+        "save_success": "Richtlinie gespeichert",
+        "approval_mode": {
+          "label": "Genehmigungsmodus",
+          "hint": "AUTO = Buchung sofort bestätigt / MANUAL = Administrator genehmigt manuell",
+          "option_auto": "Automatische Bestätigung (AUTO)",
+          "option_manual": "Manuelle Genehmigung (MANUAL)"
+        },
+        "cancel_deadline": {
+          "label": "Stornierungsfrist",
+          "hint": "Wie viele Stunden vor Buchungsbeginn ist eine Stornierung möglich (0=bis zum Start, 8760=immer)",
+          "unit": " Stunden vorher"
+        },
+        "remind": {
+          "label": "Erinnerungszeit (CSV)",
+          "hint": "Stunden vor der Buchung für Erinnerungen, kommagetrennt (z.B. 24,1)",
+          "placeholder": "z.B. 24,1",
+          "error_empty": "Bitte mindestens einen Wert eingeben",
+          "error_invalid": "Bitte ganze Zahlen zwischen 0 und 8760, kommagetrennt eingeben"
+        }
       }
     },
     "book": {

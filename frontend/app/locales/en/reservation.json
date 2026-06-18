@@ -237,6 +237,28 @@
         "confirm_enable": "Non-members will be able to make reservations. Continue?",
         "confirm_disable": "Non-members will no longer be able to make reservations. Continue?",
         "confirm_ok": "Confirm"
+      },
+      "policy": {
+        "section_label": "Booking Policy",
+        "save_success": "Policy saved",
+        "approval_mode": {
+          "label": "Approval Mode",
+          "hint": "AUTO = reservations confirmed immediately / MANUAL = admin must approve manually",
+          "option_auto": "Auto-confirm (AUTO)",
+          "option_manual": "Manual approval (MANUAL)"
+        },
+        "cancel_deadline": {
+          "label": "Cancellation Deadline",
+          "hint": "How many hours before the reservation can the user cancel (0 = until start, 8760 = always allowed)",
+          "unit": " hours before"
+        },
+        "remind": {
+          "label": "Reminder Timing (CSV)",
+          "hint": "Comma-separated hours before the reservation to send reminders (e.g. 24,1)",
+          "placeholder": "e.g. 24,1",
+          "error_empty": "Please enter at least one value",
+          "error_invalid": "Enter integers between 0 and 8760 separated by commas"
+        }
       }
     },
     "book": {
