@@ -94,7 +94,26 @@ function encryptForTest(plain) {
   );
   const E2E_ADMIN = Number(e2eAdminRow.id);
 
-  console.log(`E2E users: E2E_USER id=${E2E_USER}, E2E_ADMIN id=${E2E_ADMIN}`);
+  // F03.4 予約E2E: SUPPORTER ロールのテストアカウント。
+  // 「SUPPORTER でも予約できるか」を実機検証するために fc-u-18 の SUPPORTER として用意する。
+  const e2eSupporterHash = hashStrength8('TestPass2026!');
+  await conn.execute(
+    `INSERT IGNORE INTO users
+      (email, password_hash, last_name, first_name, display_name,
+       is_searchable, encryption_key_version, locale, timezone,
+       status, reporting_restricted, created_at, updated_at)
+     VALUES (?,?,?,?,?,1,1,?,?,?,0,?,?)`,
+    ['e2e-supporter@test.mannschaft.local', e2eSupporterHash,
+     encryptForTest('E2Eサポーター'), encryptForTest('応援'), 'E2Eサポーター 応援',
+     'ja', 'Asia/Tokyo', 'ACTIVE', now, now]
+  );
+  const [[e2eSupporterRow]] = await conn.execute(
+    'SELECT id FROM users WHERE email = ?',
+    ['e2e-supporter@test.mannschaft.local']
+  );
+  const E2E_SUPPORTER = Number(e2eSupporterRow.id);
+
+  console.log(`E2E users: E2E_USER id=${E2E_USER}, E2E_ADMIN id=${E2E_ADMIN}, E2E_SUPPORTER id=${E2E_SUPPORTER}`);
 
   // ============================================================
   // 1. ダミーユーザー 20人
@@ -269,6 +288,9 @@ function encryptForTest(plain) {
 
   // E2E user: FC東京U-18 MEMBER
   await assignRole(E2E_USER, 4, teams.fcTokyoU18, null);
+
+  // E2E supporter: FC東京U-18 SUPPORTER（role_id=5。assignRole が memberships role_kind=SUPPORTER も同期投入）
+  await assignRole(E2E_SUPPORTER, 5, teams.fcTokyoU18, null);
 
   // FC東京U-18: 監督 + 選手4人
   await assignRole(userIds[0], 2, teams.fcTokyoU18, null);
