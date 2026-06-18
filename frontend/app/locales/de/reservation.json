@@ -63,6 +63,13 @@
       "reminder_sent": "Gesendet",
       "reminder_not_sent": "Nicht gesendet"
     },
+    "connection": {
+      "live": "Live-Aktualisierung",
+      "connecting": "Verbinden…",
+      "reconnecting": "Erneut verbinden…",
+      "offline": "Offline",
+      "denied": "Kein Zugriff"
+    },
     "dialog": {
       "title": "Versand bestätigen",
       "confirm_message": "Massenbenachrichtigung mit folgenden Details senden?",
@@ -215,6 +222,27 @@
       "no_lines_yet": "Noch keine Linien",
       "no_available_slots": "An diesem Tag keine freien Zeitfenster"
     },
-    "line_manage_title": "Reservierungslinienverwaltung"
+    "line_manage_title": "Reservierungslinienverwaltung",
+    "settings": {
+      "advanced": {
+        "title": "Erweiterte Einstellungen"
+      },
+      "allow_public": {
+        "section_label": "Öffentliche Reservierung",
+        "label": "Reservierungen für Nicht-Mitglieder erlauben",
+        "hint_off": "Derzeit können nur Mitglieder (MEMBER oder höher) reservieren",
+        "hint_on": "Auch Nicht-Mitglieder können reservieren",
+        "save_success": "Einstellungen gespeichert",
+        "confirm_title": "Einstellung ändern",
+        "confirm_enable": "Nicht-Mitglieder können Reservierungen vornehmen. Fortfahren?",
+        "confirm_disable": "Nicht-Mitglieder können keine Reservierungen mehr vornehmen. Fortfahren?",
+        "confirm_ok": "Bestätigen"
+      }
+    },
+    "book": {
+      "not_affiliated_notice": "Reservierungen für dieses Team sind nur für Mitglieder",
+      "not_affiliated_hint": "Treten Sie dem Team bei oder kontaktieren Sie den Administrator",
+      "error_public_forbidden": "Reservierungen sind nur für Teammitglieder verfügbar"
+    }
   }
 }

@@ -63,6 +63,13 @@
       "reminder_sent": "Sent",
       "reminder_not_sent": "Not sent"
     },
+    "connection": {
+      "live": "Live updates",
+      "connecting": "Connecting…",
+      "reconnecting": "Reconnecting…",
+      "offline": "Offline",
+      "denied": "No access"
+    },
     "dialog": {
       "title": "Confirm Send",
       "confirm_message": "Send bulk notification with the following details?",
@@ -215,6 +222,27 @@
       "no_lines_yet": "No lines yet",
       "no_available_slots": "No available slots on this day"
     },
-    "line_manage_title": "Reservation Line Management"
+    "line_manage_title": "Reservation Line Management",
+    "settings": {
+      "advanced": {
+        "title": "Advanced Settings"
+      },
+      "allow_public": {
+        "section_label": "Public Booking",
+        "label": "Allow non-member reservations",
+        "hint_off": "Currently only members (MEMBER or above) can make reservations",
+        "hint_on": "Non-members can also make reservations",
+        "save_success": "Settings saved",
+        "confirm_title": "Change Setting",
+        "confirm_enable": "Non-members will be able to make reservations. Continue?",
+        "confirm_disable": "Non-members will no longer be able to make reservations. Continue?",
+        "confirm_ok": "Confirm"
+      }
+    },
+    "book": {
+      "not_affiliated_notice": "Reservations for this team are for members only",
+      "not_affiliated_hint": "Please join the team or contact the administrator",
+      "error_public_forbidden": "Reservations are only available to team members"
+    }
   }
 }
