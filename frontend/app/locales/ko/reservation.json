@@ -237,6 +237,28 @@
         "confirm_enable": "비회원도 예약할 수 있게 됩니다. 계속하시겠습니까?",
         "confirm_disable": "비회원은 예약할 수 없게 됩니다. 계속하시겠습니까?",
         "confirm_ok": "변경"
+      },
+      "policy": {
+        "section_label": "예약 정책",
+        "save_success": "정책이 저장되었습니다",
+        "approval_mode": {
+          "label": "승인 모드",
+          "hint": "AUTO=예약 즉시 확정 / MANUAL=관리자가 수동으로 승인",
+          "option_auto": "자동 확정（AUTO）",
+          "option_manual": "수동 승인（MANUAL）"
+        },
+        "cancel_deadline": {
+          "label": "취소 마감 기한",
+          "hint": "예약 시작 몇 시간 전까지 취소를 받을지 지정（0=당일까지, 8760=항상 허용）",
+          "unit": " 시간 전까지"
+        },
+        "remind": {
+          "label": "알림 전송 시간（CSV）",
+          "hint": "예약 시작 몇 시간 전에 알림을 보낼지 쉼표로 구분하여 입력（예: 24,1）",
+          "placeholder": "예: 24,1",
+          "error_empty": "최소 하나의 값을 입력해주세요",
+          "error_invalid": "0~8760 사이의 정수를 쉼표로 구분하여 입력해주세요"
+        }
       }
     },
     "book": {

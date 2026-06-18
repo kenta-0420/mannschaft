@@ -237,6 +237,28 @@
         "confirm_enable": "Los no miembros podrán realizar reservas. ¿Continuar?",
         "confirm_disable": "Los no miembros no podrán realizar reservas. ¿Continuar?",
         "confirm_ok": "Confirmar"
+      },
+      "policy": {
+        "section_label": "Política de reservas",
+        "save_success": "Política guardada",
+        "approval_mode": {
+          "label": "Modo de aprobación",
+          "hint": "AUTO = reserva confirmada inmediatamente / MANUAL = el administrador aprueba manualmente",
+          "option_auto": "Confirmación automática (AUTO)",
+          "option_manual": "Aprobación manual (MANUAL)"
+        },
+        "cancel_deadline": {
+          "label": "Plazo de cancelación",
+          "hint": "Cuántas horas antes del inicio se acepta la cancelación (0=hasta el inicio, 8760=siempre)",
+          "unit": " horas antes"
+        },
+        "remind": {
+          "label": "Tiempo de recordatorio (CSV)",
+          "hint": "Horas antes de la reserva para enviar recordatorios, separadas por comas (ej: 24,1)",
+          "placeholder": "ej: 24,1",
+          "error_empty": "Ingrese al menos un valor",
+          "error_invalid": "Ingrese enteros entre 0 y 8760 separados por comas"
+        }
       }
     },
     "book": {
