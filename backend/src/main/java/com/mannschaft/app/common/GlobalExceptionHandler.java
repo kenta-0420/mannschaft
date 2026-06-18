@@ -705,7 +705,7 @@ public class GlobalExceptionHandler {
             Map.entry("TEAM_063", HttpStatus.CONFLICT),                      // SLUG_RETIRED（他チーム履歴予約）
             Map.entry("ORG_063", HttpStatus.CONFLICT),                       // SLUG_RETIRED（他組織履歴予約）
             // F03.4 予約認可ゲート: 非所属者が一般公開OFFのチームに予約 → 403（Severity.WARN 既定の 400 を上書き）
-            Map.entry("RESERVATION_020", HttpStatus.FORBIDDEN)               // RESERVATION_PERMISSION_DENIED
+            Map.entry("RESERVATION_021", HttpStatus.FORBIDDEN)               // RESERVATION_PERMISSION_DENIED
     );
 
     /**

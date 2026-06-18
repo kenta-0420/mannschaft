@@ -75,7 +75,7 @@ public enum ReservationErrorCode implements ErrorCode {
      * 裏設定で公開（true）にした場合はログイン済みであれば誰でも予約可（匿名は認証層で 401）。
      * Severity.WARN だが {@code GlobalExceptionHandler} の個別マッピングで HTTP 403 に上書きする。</p>
      */
-    RESERVATION_PERMISSION_DENIED("RESERVATION_020", "このチームに予約する権限がありません", Severity.WARN);
+    RESERVATION_PERMISSION_DENIED("RESERVATION_021", "このチームに予約する権限がありません", Severity.WARN);
 
     private final String code;
     private final String message;
