@@ -487,7 +487,7 @@ class FlywayExistingDataPhysDelSetNullFkMigrationTest {
                 """, Statement.RETURN_GENERATED_KEYS)) {
             ps.setLong(1, userId);
             ps.setBytes(2, "ENC-P4D-PLATE".getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            ps.setString(3, "p4dhashp4dhashp4dhashp4dhashp4dhashp4dhashp4dhashp4dhashp4dhash01"); // CHAR(64)
+            ps.setString(3, "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"); // CHAR(64) ちょうど64文字(16×4)
             ps.executeUpdate();
             try (ResultSet rs = ps.getGeneratedKeys()) {
                 rs.next();
