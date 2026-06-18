@@ -172,7 +172,22 @@ export interface BusinessHourResponse {
   businessStatus?: BusinessStatusDto
 }
 
+// === ReservationSettingsResponse（予約設定）===
+export interface ReservationSettingsResponse {
+  /** 非所属ユーザーの予約を許可するか（既定 false）。BE: reservation_team_settings.allow_public_reservation */
+  allowPublicReservation?: boolean
+  maxAdvanceBookingDays?: number
+  minAdvanceBookingHours?: number
+  requireConfirmation?: boolean
+  allowCancellation?: boolean
+  cancellationDeadlineHours?: number
+}
+
 // === リクエスト DTO ===
+export interface UpdateReservationSettingRequest {
+  allowPublicReservation?: boolean
+}
+
 export interface CreateReservationRequest {
   slotId: number
   serviceNotes?: string

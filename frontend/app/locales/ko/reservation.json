@@ -215,6 +215,27 @@
       "no_lines_yet": "아직 라인이 없습니다",
       "no_available_slots": "이 날에 예약 가능한 시간대가 없습니다"
     },
-    "line_manage_title": "예약 라인 관리"
+    "line_manage_title": "예약 라인 관리",
+    "settings": {
+      "advanced": {
+        "title": "고급 설정"
+      },
+      "allow_public": {
+        "section_label": "공개 예약",
+        "label": "비회원 예약 허용",
+        "hint_off": "현재 회원(MEMBER 이상)만 예약할 수 있습니다",
+        "hint_on": "비회원도 예약할 수 있습니다",
+        "save_success": "설정이 저장되었습니다",
+        "confirm_title": "설정 변경",
+        "confirm_enable": "비회원도 예약할 수 있게 됩니다. 계속하시겠습니까?",
+        "confirm_disable": "비회원은 예약할 수 없게 됩니다. 계속하시겠습니까?",
+        "confirm_ok": "변경"
+      }
+    },
+    "book": {
+      "not_affiliated_notice": "이 팀의 예약은 회원 전용입니다",
+      "not_affiliated_hint": "팀에 가입하거나 관리자에게 문의하세요",
+      "error_public_forbidden": "예약은 팀 회원만 이용할 수 있습니다"
+    }
   }
 }
