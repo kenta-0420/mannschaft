@@ -26,16 +26,20 @@
  *         追加した（user_roles role_id=5 + memberships role_kind=SUPPORTER）。
  *         seed は冪等（INSERT IGNORE / 存在チェック）なので再実行で増殖しない。
  *
- * 実機検証で判明した F03.4 設計との相違（本物の挙動。握りつぶさず本テストで明示的に固定する）:
+ * #1601（PR #1601 / commit 099a2eeda）で根治済みの正挙動。本テストはこの正挙動を assert する:
+ *   - start>=end の枠作成: 旧 500 → **400**（INVALID_TIME_RANGE / RESERVATION_007 を Severity.WARN 化）。
+ *   - active 予約(PENDING/CONFIRMED)が紐づく枠の DELETE: 旧 204 でオーファン化 →
+ *     **409**（SLOT_HAS_ACTIVE_RESERVATIONS / RESERVATION_020。deleteSlot に削除前ガード追加）。
+ *
+ * まだ未実装（#1601 では対象外。偽の正挙動を assert せず、未実装ゆえの現挙動として明示的に固定する）:
  *   - 承認モード AUTO の自動確定が未配線: createReservation は slot.approval_mode に
  *     関係なく常に PENDING で着地する（entity 既定 status=PENDING のまま confirm されない）。
  *     設計 §3 reservations では AUTO は PENDING をスキップして CONFIRMED 着地のはず。
- *     → 本テストは「会員/サポーターの予約は PENDING で成立し、ADMIN confirm で CONFIRMED」
- *        という実挙動を assert する（B シナリオ）。
- *   - 枠作成バリデーション未実装/相違（別途 §F034-VALIDATION で実挙動を記録）:
- *       30分単位チェックなし / 過去日チェックなし(枠作成) / ライン最大5本チェックなし /
- *       start>=end は 400 でなく 500（RESERVATION_007 が Severity.ERROR）/
- *       予約入り枠の DELETE が 409 でなく 204（予約がオーファン化）。
+ *     → 4-F MVP で別途修正予定の既知未実装。本テストは現挙動（PENDING 着地 → ADMIN confirm で
+ *        CONFIRMED）を assert し、AUTO 自動確定が配線されたら気付けるよう番人コメントを残す（B シナリオ）。
+ *   - 枠作成バリデーション未実装（別途 §F034-VALIDATION で実挙動を番人として記録）:
+ *       30分単位チェックなし / 過去日チェックなし(枠作成) / ライン最大5本チェックなし。
+ *       ※ start>=end と予約入り枠 DELETE は #1601 で根治済みのため、正挙動(400/409)を assert する。
  *   - キャンセル期限(cancel_deadline_hours)未実装: ユーザーはいつでもキャンセル可（400 にならない）。
  *   - CONFIRMED 時のリマインド自動生成なし（手動作成のみ）。
  */
@@ -85,16 +89,30 @@ const test = base.extend<
     // eslint-disable-next-line no-empty-pattern -- Playwright は fixture 第1引数にオブジェクト分割代入を要求する
     async ({}, use) => {
       const ctx = await playwrightRequest.newContext()
+      // ログインは直列＋指数バックオフで行う（複数ワーカー/プロジェクトの同時バーストで BE が
+      // 429/400/一過性 500 を返すことがあるため。memory: 並列ログインバースト対策 #1636）。
+      // 401/403 は認証情報の誤りなので即時失敗（リトライ無意味）。
       const login = async (email: string, password: string): Promise<string> => {
-        const res = await ctx.post(`${BE}/api/v1/auth/login`, {
-          headers: { 'Content-Type': 'application/json' },
-          data: { email, password },
-        })
-        if (!res.ok()) throw new Error(`ログイン失敗(${email}): ${res.status()} ${await res.text()}`)
-        return (await res.json()).data.accessToken as string
+        const maxAttempts = 6
+        let lastErr = ''
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+          const res = await ctx.post(`${BE}/api/v1/auth/login`, {
+            headers: { 'Content-Type': 'application/json' },
+            data: { email, password },
+          })
+          if (res.ok()) return (await res.json()).data.accessToken as string
+          const status = res.status()
+          lastErr = `${status} ${await res.text()}`
+          if (status === 401 || status === 403) break
+          await new Promise((r) => setTimeout(r, 500 * attempt + Math.floor(Math.random() * 300)))
+        }
+        throw new Error(`ログイン失敗(${email}): ${lastErr}`)
       }
+      const gap = (): Promise<void> => new Promise((r) => setTimeout(r, 250))
       const admin = await login(ADMIN.email, ADMIN.password)
+      await gap()
       const member = await login(MEMBER.email, MEMBER.password)
+      await gap()
       const supporter = await login(SUPPORTER.email, SUPPORTER.password)
       const meRes = await ctx.get(`${BE}/api/v1/users/me`, {
         headers: { Authorization: `Bearer ${admin}` },
@@ -569,7 +587,7 @@ test.describe('RSV-F034-C: 主要機能（reschedule / cancel / reminder / 横�
 // ===========================================================================
 
 test.describe('RSV-F034-VALIDATION: 設計との相違（実挙動の番人。設計の正解はコメント）', () => {
-  test('RSV-F034-V-01: start>=end は 500 を返す（設計の正解=400。RESERVATION_007 が Severity.ERROR）', async ({
+  test('RSV-F034-V-01: start>=end は 400 を返す（#1601 根治済み。INVALID_TIME_RANGE を Severity.WARN 化）', async ({
     request,
     tokens,
   }) => {
@@ -577,8 +595,8 @@ test.describe('RSV-F034-VALIDATION: 設計との相違（実挙動の番人。�
       headers: authHeaders(tokens.admin),
       data: { slotDate: futureDate(40), startTime: '11:00', endTime: '10:30' },
     })
-    // 実挙動: 500。設計通りなら 400 にすべき（INVALID_TIME_RANGE を WARN へ）。
-    expect(resp.status()).toBe(500)
+    // #1601 正挙動: 入力不正なので 400（旧 500 は GlobalExceptionHandler の Severity デフォルトマッピング起因のバグ）。
+    expect(resp.status(), `start>=end は 400 を期待: ${resp.status()} ${await resp.text()}`).toBe(400)
   })
 
   test('RSV-F034-V-02: 30分単位でない時刻(10:15)でも枠作成が通る（設計の正解=400）', async ({
@@ -602,7 +620,7 @@ test.describe('RSV-F034-VALIDATION: 設計との相違（実挙動の番人。�
     await deleteSlot(request, tokens.admin, (await resp.json()).data.id).catch(() => {})
   })
 
-  test('RSV-F034-V-04: 予約が入っている枠の DELETE が 204 で通る（設計の正解=409。予約がオーファン化）', async ({
+  test('RSV-F034-V-04: active 予約が入っている枠の DELETE は 409 を返す（#1601 根治済み。SLOT_HAS_ACTIVE_RESERVATIONS）', async ({
     request,
     tokens,
   }) => {
@@ -621,15 +639,32 @@ test.describe('RSV-F034-VALIDATION: 設計との相違（実挙動の番人。�
         })
       ).json()
     ).data
-    // 実挙動: 予約入りでも 204 で削除できてしまう（予約がオーファン化する重大な相違）
-    const delResp = await request.delete(
-      `${BE}/api/v1/teams/${TEAM_SLUG}/reservation-slots/${slot.id}`,
-      { headers: authHeaders(admin) },
-    )
-    expect(delResp.status()).toBe(204)
-    // 後片付け: オーファンになった予約を ADMIN がキャンセル試行（slot 消失でキャンセル不能なため best-effort）
-    await adminCancel(request, admin, created.id)
-    await deleteLine(request, admin, line.id).catch(() => {})
+    try {
+      // #1601 正挙動: active 予約(PENDING/CONFIRMED)が紐づく枠は削除ガードで 409。オーファン化しない。
+      const delResp = await request.delete(
+        `${BE}/api/v1/teams/${TEAM_SLUG}/reservation-slots/${slot.id}`,
+        { headers: authHeaders(admin) },
+      )
+      expect(
+        delResp.status(),
+        `active 予約入り枠の DELETE は 409 を期待: ${delResp.status()} ${await delResp.text()}`,
+      ).toBe(409)
+      // 予約をキャンセルして active でなくなれば、枠は削除可能（終端状態は削除を妨げない）。
+      await adminCancel(request, admin, created.id)
+      const delAfterCancel = await request.delete(
+        `${BE}/api/v1/teams/${TEAM_SLUG}/reservation-slots/${slot.id}`,
+        { headers: authHeaders(admin) },
+      )
+      expect(
+        delAfterCancel.status(),
+        `キャンセル後の枠 DELETE は 204 を期待: ${delAfterCancel.status()} ${await delAfterCancel.text()}`,
+      ).toBe(204)
+    } finally {
+      // 既に削除済みなら no-op（best-effort）。予約は既にキャンセル済み。
+      await adminCancel(request, admin, created.id)
+      await deleteSlot(request, admin, slot.id).catch(() => {})
+      await deleteLine(request, admin, line.id).catch(() => {})
+    }
   })
 })
 
@@ -641,11 +676,16 @@ test.describe('RSV-F034-VALIDATION: 設計との相違（実挙動の番人。�
 test.describe('RSV-F034-UI: 実ブラウザで予約管理ページが描画され予約導線が動く', () => {
   test('RSV-F034-UI-01: /teams/fc-u-18/reservations が描画され致命エラーが出ない', async ({
     page,
+    adminToken,
   }) => {
     const consoleErrors: string[] = []
     page.on('console', (msg) => {
       if (msg.type() === 'error') consoleErrors.push(msg.text())
     })
+    // API ブリッジで Bearer 認証を注入する（:8081 dev サーバーは BE と別オリジンのため、
+    // localStorage 先入れだけでは未認証扱いになりログインページへリダイレクトされる。
+    // ブリッジ経由で /api/v1/** を認証付きで :8080 に中継すると、認証済みアプリが描画される）。
+    await installApiBridge(page, adminToken)
     await page.goto(`/teams/${TEAM_SLUG}/reservations`, { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await page.waitForTimeout(2_000)
@@ -665,6 +705,8 @@ test.describe('RSV-F034-UI: 実ブラウザで予約管理ページが描画さ�
         !/Hydration completed but contains mismatches/i.test(e),
     )
     expect(fatal.length, `致命的コンソールエラー: ${fatal.join(' / ')}`).toBe(0)
+    // in-flight のポーリングが teardown 中に route へ届くと「Target page closed」で汚れるため先に解除する。
+    await page.unrouteAll({ behavior: 'ignoreErrors' }).catch(() => {})
   })
 
   test('RSV-F034-UI-02: UI で「予約する」→ライン/スロット選択→送信で予約が成立する', async ({
@@ -709,7 +751,9 @@ test.describe('RSV-F034-UI: 実ブラウザで予約管理ページが描画さ�
       await slotButton.waitFor({ state: 'visible', timeout: 15_000 })
       await slotButton.click()
 
-      const dialog = page.getByRole('dialog')
+      // PrimeVue の DatePicker パネルも role="dialog" を持つため、確認モーダル(名前: 予約確認)に限定する
+      // （getByRole('dialog') 単独だと datepicker パネルと strict mode 衝突する）。
+      const dialog = page.getByRole('dialog', { name: '予約確認' })
       await dialog.waitFor({ state: 'visible', timeout: 10_000 })
       await dialog.getByRole('button', { name: '予約する' }).click()
 
