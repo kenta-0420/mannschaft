@@ -521,6 +521,9 @@ class ReservationControllerTest {
         @Mock
         private ReservationBusinessHourService businessHourService;
 
+        @Mock
+        private com.mannschaft.app.reservation.service.ReservationTeamSettingService teamSettingService;
+
         @InjectMocks
         private ReservationBusinessHourController controller;
 
@@ -609,9 +612,10 @@ class ReservationControllerTest {
         }
 
         @Test
-        @DisplayName("予約設定概要取得_正常_200返却")
+        @DisplayName("予約設定概要取得_正常_200返却_公開フラグ含む")
         void 予約設定概要取得_正常_200返却() {
             given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(true);
+            given(teamSettingService.isAllowPublic(TEAM_ID)).willReturn(true);
 
             ResponseEntity<ApiResponse<Map<String, Object>>> result =
                     controller.getSettings(TEAM_ID);
@@ -619,6 +623,37 @@ class ReservationControllerTest {
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(result.getBody().getData()).containsEntry("teamId", TEAM_ID);
             assertThat(result.getBody().getData()).containsEntry("hasBusinessHours", true);
+            assertThat(result.getBody().getData()).containsEntry("allowPublicReservation", true);
+        }
+
+        @Test
+        @DisplayName("予約公開設定更新_正常_200返却_upsert委譲")
+        void 予約公開設定更新_正常_200返却() {
+            com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest request =
+                    new com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest(true);
+
+            ResponseEntity<ApiResponse<Map<String, Object>>> result =
+                    controller.updateReservationSetting(TEAM_ID, request);
+
+            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(result.getBody().getData()).containsEntry("teamId", TEAM_ID);
+            assertThat(result.getBody().getData()).containsEntry("allowPublicReservation", true);
+            verify(teamSettingService).updateAllowPublic(TEAM_ID, true);
+        }
+
+        @Test
+        @DisplayName("予約公開設定更新_ADMIN限定_PreAuthorize宣言を検証")
+        void 予約公開設定更新_ADMIN限定宣言() throws NoSuchMethodException {
+            // @PreAuthorize の SpEL が ADMIN 限定（isScopeStrictAdmin）であることを宣言レベルで保証する。
+            // 実際の認可強制は @EnableMethodSecurity + AccessGuard（AccessGuardTest で検証済み）が担う。
+            java.lang.reflect.Method method = ReservationBusinessHourController.class.getMethod(
+                    "updateReservationSetting", Long.class,
+                    com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest.class);
+            org.springframework.security.access.prepost.PreAuthorize preAuthorize =
+                    method.getAnnotation(org.springframework.security.access.prepost.PreAuthorize.class);
+            assertThat(preAuthorize).isNotNull();
+            assertThat(preAuthorize.value())
+                    .isEqualTo("@accessGuard.isScopeStrictAdmin(authentication, #teamId, 'TEAM')");
         }
     }
 

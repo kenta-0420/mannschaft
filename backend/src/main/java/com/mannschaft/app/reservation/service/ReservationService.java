@@ -1,5 +1,6 @@
 package com.mannschaft.app.reservation.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.reservation.CancelledBy;
@@ -58,6 +59,8 @@ public class ReservationService {
     private final ReservationMapper reservationMapper;
     private final NameResolverService nameResolverService;
     private final ApplicationEventPublisher eventPublisher;
+    private final ReservationTeamSettingService settingService;
+    private final AccessControlService accessControlService;
 
     /**
      * チームの予約一覧をページング取得する。
@@ -100,6 +103,16 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse createReservation(Long teamId, Long userId, CreateReservationRequest request) {
+        // 予約認可ゲート（Service 一本化）。
+        // teamId は数値（TeamReservationController の @PathVariable Long teamId）であり、
+        // AccessControlService.isMember は Long scopeId を期待するため slug 解決は不要。
+        // 既定（allow_public_reservation=false）→ チーム所属（SUPPORTER 以上＝memberships 存在）必須。
+        // 裏設定 ON → 所属チェックをスキップ（匿名は呼出元の認証層で 401 担保）。
+        if (!settingService.isAllowPublic(teamId)
+                && !accessControlService.isMember(userId, teamId, "TEAM")) {
+            throw new BusinessException(ReservationErrorCode.RESERVATION_PERMISSION_DENIED);
+        }
+
         ReservationSlotEntity slot = slotService.getSlotEntity(request.getReservationSlotId());
 
         if (!slot.isAvailable()) {
