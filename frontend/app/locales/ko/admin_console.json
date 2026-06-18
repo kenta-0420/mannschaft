@@ -50,6 +50,38 @@
     "approvalsBadge": {
       "degraded": "일부 집계 실패",
       "fetchFailed": "건수를 가져오지 못했습니다"
+    },
+    "lens": {
+      "toggleAriaLabel": "관리자 보기 전환",
+      "tooltip": "관리자 보기로 전환",
+      "onboardingHint": "여기에서 관리자 보기로 전환할 수 있습니다",
+      "member": "멤버",
+      "admin": "관리자",
+      "backToMember": "멤버 보기로 돌아가기",
+      "openConsole": "관리 콘솔 열기",
+      "widgets": {
+        "approvals": "승인 대기",
+        "console": "관리 콘솔",
+        "reservations": "예약",
+        "budget": "예산",
+        "members": "멤버 통계",
+        "alert": "업무 알림",
+        "reports": "신고",
+        "modules": "모듈",
+        "payments": "결제",
+        "pointCards": "포인트 카드"
+      },
+      "approvals": {
+        "empty": "승인 대기 항목이 없습니다",
+        "degraded": "일부 집계 실패",
+        "fetchFailed": "승인 대기 건수를 가져오지 못했습니다",
+        "domain": {
+          "RESERVATION": "예약",
+          "SHIFT_REQUEST": "근무",
+          "MATCHING": "매칭",
+          "PAYMENT": "결제"
+        }
+      }
     }
   }
 }

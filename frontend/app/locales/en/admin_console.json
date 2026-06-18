@@ -50,6 +50,38 @@
     "approvalsBadge": {
       "degraded": "Some counts unavailable",
       "fetchFailed": "Could not load counts"
+    },
+    "lens": {
+      "toggleAriaLabel": "Toggle admin view",
+      "tooltip": "Switch to admin view",
+      "onboardingHint": "You can switch to the admin view here",
+      "member": "Member",
+      "admin": "Admin",
+      "backToMember": "Back to member view",
+      "openConsole": "Open admin console",
+      "widgets": {
+        "approvals": "Approvals",
+        "console": "Admin console",
+        "reservations": "Reservations",
+        "budget": "Budget",
+        "members": "Member stats",
+        "alert": "Business alerts",
+        "reports": "Reports",
+        "modules": "Modules",
+        "payments": "Payments",
+        "pointCards": "Point cards"
+      },
+      "approvals": {
+        "empty": "No pending approvals",
+        "degraded": "Some counts unavailable",
+        "fetchFailed": "Could not load pending approvals",
+        "domain": {
+          "RESERVATION": "Reservations",
+          "SHIFT_REQUEST": "Shifts",
+          "MATCHING": "Matching",
+          "PAYMENT": "Payments"
+        }
+      }
     }
   }
 }

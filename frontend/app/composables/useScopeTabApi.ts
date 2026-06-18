@@ -156,8 +156,13 @@ function toActionRequiredSummary(r: RawActionRequiredSummary): ActionRequiredSum
 /**
  * 管理者向け admin-action-required（snake_case）→ camelCase 受信型へ変換する（F10.1.1 P2b）。
  *
- * メンバー向け {@link toActionRequiredSummary} とは別物。`degraded` ドメインの件数は
- * BE 側で `total_pending` に加算されないため、本変換では値をそのまま写すだけでよい。
+ * メンバー向け {@link toActionRequiredSummary} とは別物。
+ *
+ * <p><b>degraded 正規化（検分🟠・二重防御）</b>: 集計失敗（degraded=true）のドメインは
+ * BE 側で `total_pending` に加算されない前提だが、FE 側でも保証する。
+ * degraded ドメインの `pendingCount` は 0 に正規化し（集計失敗を「件数」として表示・合算しない）、
+ * `totalPending` も BE 値をそのまま信じず、正規化後の各ドメイン件数の合計で再計算する。
+ * これにより万一 BE が degraded 分を含めて返しても、FE 側で件数 / total に混入しない。</p>
  */
 function toAdminActionRequiredSummary(
   r: RawAdminActionRequiredSummary,
@@ -170,18 +175,22 @@ function toAdminActionRequiredSummary(
       requestedAt: i.requested_at,
       detailRoute: i.detail_route,
     }))
+    const degraded = d.degraded ?? false
     return {
       domain: d.domain,
-      pendingCount: d.pending_count ?? 0,
-      degraded: d.degraded ?? false,
+      // degraded ドメインは件数を 0 に正規化（集計失敗を件数と混同しない・二重防御）。
+      pendingCount: degraded ? 0 : (d.pending_count ?? 0),
+      degraded,
       listRoute: d.list_route,
       items,
     }
   })
+  // totalPending は BE 値を鵜呑みにせず、正規化後の各ドメイン件数（degraded=0）の合計で再計算する。
+  const totalPending = domains.reduce((sum, d) => sum + d.pendingCount, 0)
   return {
     scopeType: r.scope_type,
     scopeId: r.scope_id,
-    totalPending: r.total_pending ?? 0,
+    totalPending,
     domains,
   }
 }

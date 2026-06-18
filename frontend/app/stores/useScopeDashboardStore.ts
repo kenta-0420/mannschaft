@@ -25,6 +25,12 @@ interface PersistedState {
   selectedTeamId: string | null
   selectedOrgId: string | null
   tabOrders: Record<ScopeTabType, TabOrderEntry[]>
+  /**
+   * F10.1.1 L1 管理者レンズの ON/OFF（スコープ単位）。
+   * key = `${ScopeTabType}:${slug}`（例 `TEAM:dev-team`）, value = 管理者レンズ ON。
+   * 設計書 02 §1.2。PII でも DB データでもないため localStorage 同梱のみ（DB 保存しない）。
+   */
+  adminLens: Record<string, boolean>
 }
 
 const STORAGE_KEY = 'scope-dashboard'
@@ -53,6 +59,11 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
     tabOrders: defaultTabOrders() as Record<ScopeTabType, TabOrderEntry[]>,
     /** タグページデータキャッシュ（scopeType → ScopeTabPage）*/
     tabPages: {} as Partial<Record<ScopeTabType, ScopeTabPage>>,
+    /**
+     * F10.1.1 L1 管理者レンズの ON/OFF（スコープ単位・設計書 02 §1.2）。
+     * key = `${ScopeTabType}:${slug}`, value = 管理者レンズ ON。既定は空（=メンバーレンズ）。
+     */
+    adminLens: {} as Record<string, boolean>,
     /** 初期ロード完了フラグ */
     loaded: false,
     /**
@@ -81,6 +92,7 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
           if (parsed.selectedTeamId !== undefined) this.selectedTeamId = parsed.selectedTeamId
           if (parsed.selectedOrgId !== undefined) this.selectedOrgId = parsed.selectedOrgId
           if (parsed.tabOrders) this.tabOrders = parsed.tabOrders
+          if (parsed.adminLens) this.adminLens = parsed.adminLens
         }
       } catch {
         // localStorage 読み取り失敗は無視（デフォルト値で継続）
@@ -101,6 +113,7 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
         selectedTeamId: this.selectedTeamId,
         selectedOrgId: this.selectedOrgId,
         tabOrders: this.tabOrders,
+        adminLens: this.adminLens,
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave))
     },
@@ -207,6 +220,40 @@ export const useScopeDashboardStore = defineStore('scopeDashboard', {
         console.error('[scopeDashboard] reorder failed', e)
         this.lastError = 'scopeDashboard.orderDialog.saveError'
       }
+    },
+
+    /**
+     * 管理者レンズの scopeKey を生成する（設計書 02 §1.2）。
+     * `${scopeType}:${slug}`（例 `TEAM:dev-team` / `ORGANIZATION:acme`）。
+     * slug はスコープ内一意かつ URL 識別子の正準のため、数値 ID を持ち出さない。
+     *
+     * @param scopeType - TEAM / ORGANIZATION
+     * @param slug - スコープの slug
+     */
+    adminLensKey(scopeType: ScopeTabType, slug: string): string {
+      return `${scopeType}:${slug}`
+    },
+
+    /**
+     * 管理者レンズの ON/OFF を設定して localStorage に保存する。
+     *
+     * @param scopeType - TEAM / ORGANIZATION
+     * @param slug - スコープの slug
+     * @param on - 管理者レンズ ON（true）/ メンバーレンズ（false）
+     */
+    setAdminLens(scopeType: ScopeTabType, slug: string, on: boolean) {
+      this.adminLens[this.adminLensKey(scopeType, slug)] = on
+      this.persistToStorage()
+    },
+
+    /**
+     * 管理者レンズが ON かどうかを返す（既定 false = メンバーレンズ）。
+     *
+     * @param scopeType - TEAM / ORGANIZATION
+     * @param slug - スコープの slug
+     */
+    isAdminLensOn(scopeType: ScopeTabType, slug: string): boolean {
+      return this.adminLens[this.adminLensKey(scopeType, slug)] ?? false
     },
 
     /**
