@@ -1,4 +1,4 @@
-import type { ReservationResponse } from '~/types/reservation'
+import type { ReservationResponse, ReservationSettingsResponse, UpdateReservationSettingRequest } from '~/types/reservation'
 
 export function useReservationApi() {
   const api = useApi()
@@ -164,7 +164,19 @@ export function useReservationApi() {
 
   // === Settings ===
   async function getReservationSettings(teamId: string) {
-    return api<{ data: unknown }>(`${base(teamId)}/reservation-settings`)
+    return api<{ data: ReservationSettingsResponse }>(`${base(teamId)}/reservation-settings`)
+  }
+
+  /**
+   * 予約設定を更新する（ADMIN限定）。
+   * BE: PATCH /api/v1/teams/{teamId}/reservation-settings
+   * body: UpdateReservationSettingRequest { allowPublicReservation?: boolean }
+   */
+  async function updateReservationSettings(teamId: string, body: UpdateReservationSettingRequest) {
+    return api<{ data: ReservationSettingsResponse }>(`${base(teamId)}/reservation-settings`, {
+      method: 'PATCH',
+      body,
+    })
   }
 
   async function getBusinessHours(teamId: string) {
@@ -260,6 +272,7 @@ export function useReservationApi() {
     createReminder,
     getReservationStats,
     getReservationSettings,
+    updateReservationSettings,
     getBusinessHours,
     updateBusinessHours,
     listBlockedTimes,
