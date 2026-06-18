@@ -61,6 +61,14 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
     List<ReservationEntity> findByReservationSlotIdOrderByBookedAtAsc(Long slotId);
 
     /**
+     * スロットに active（指定ステータスのいずれか）な予約が存在するか確認する。
+     * スロット削除ガード（オーファン化防止）で使用する。
+     * {@code @SQLRestriction("deleted_at IS NULL")} により論理削除済み予約は自動除外される。
+     */
+    boolean existsByReservationSlotIdAndStatusIn(
+            Long slotId, List<ReservationStatus> statuses);
+
+    /**
      * チームの予約統計: ステータス別件数を取得する。
      */
     long countByTeamIdAndStatus(Long teamId, ReservationStatus status);

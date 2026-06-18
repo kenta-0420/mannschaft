@@ -57,4 +57,44 @@ public interface ShiftSwapRequestRepository extends JpaRepository<ShiftSwapReque
     List<ShiftSwapRequestEntity> findExpiredPendingBefore(
             @Param("cutoff") LocalDateTime cutoff,
             Pageable pageable);
+
+    // ─────────────────────────────────────────────
+    // F10.1.1 P1: 管理者向け承認待ち集約（team 単位・read-only）
+    // slotId → ShiftSlotEntity.scheduleId → ShiftScheduleEntity.teamId を JOIN し、
+    // WHERE に team_id を必須で含める（IDOR/テナント越境防止）。既存は status 単位のみのため新設。
+    // ─────────────────────────────────────────────
+
+    /**
+     * 指定チームの指定ステータスのシフト交代申請の件数を返す。
+     * slotId → ShiftSlotEntity → ShiftScheduleEntity.teamId を JOIN して team で絞り込む。
+     */
+    @Query("""
+            SELECT COUNT(r) FROM ShiftSwapRequestEntity r,
+                   com.mannschaft.app.shift.entity.ShiftSlotEntity sl,
+                   com.mannschaft.app.shift.entity.ShiftScheduleEntity s
+            WHERE r.slotId = sl.id
+              AND sl.scheduleId = s.id
+              AND s.teamId = :teamId
+              AND r.status = :status
+            """)
+    long countPendingByTeam(@Param("teamId") Long teamId,
+                            @Param("status") SwapRequestStatus status);
+
+    /**
+     * 指定チームの指定ステータスのシフト交代申請を作成日時降順でプレビュー取得する。
+     * slotId → ShiftSlotEntity → ShiftScheduleEntity.teamId を JOIN して team で絞り込む。
+     */
+    @Query("""
+            SELECT r FROM ShiftSwapRequestEntity r,
+                   com.mannschaft.app.shift.entity.ShiftSlotEntity sl,
+                   com.mannschaft.app.shift.entity.ShiftScheduleEntity s
+            WHERE r.slotId = sl.id
+              AND sl.scheduleId = s.id
+              AND s.teamId = :teamId
+              AND r.status = :status
+            ORDER BY r.createdAt DESC
+            """)
+    List<ShiftSwapRequestEntity> findPendingByTeam(@Param("teamId") Long teamId,
+                                                   @Param("status") SwapRequestStatus status,
+                                                   Pageable pageable);
 }
