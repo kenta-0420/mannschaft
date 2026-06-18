@@ -25,16 +25,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * <b>クロスドメインFK撤廃 第四陣D（Phase 4-D・ラスト）の番人テスト。</b>
  *
- * <p>V112.001 で「他ドメインの実テーブル（proxy_input_records / timetable_slots / timetable_changes /
+ * <p>V113.001 で「他ドメインの実テーブル（proxy_input_records / timetable_slots / timetable_changes /
  * activity_template_fields）を ON DELETE SET NULL で参照する群2＝構造参照のクロスドメインFK 7件」を撤廃only する。
  * 本 PR-4d の特殊性は「参照先テーブルが実際に物理削除される運用がある」点（proxy=保持期限ジョブ/退会purge、
  * timetable_slots=再構築deleteAll、timetable_changes=取消delete、activity_template_fields=テンプレ編集delete）。
  * それでも参照元の外部キー列は write-only / 不活性（getter/JOIN/query 0件）であり、孤児化しても漏洩/NPE/誤集計が
  * 発生しないため撤廃only（孤児保持）が安全。本テストはその不変条件を厳密に検証する:</p>
  * <ol>
- *   <li>V112.001 の直前（V111.001）まで適用 → 参照先行＋参照元行（外部キー列に参照先 id をセット）をシード。</li>
- *   <li>残り（V112.001 含む）を適用しても既存データを壊さず成功する。</li>
- *   <li>V112.001 で対象7FKが撤廃される。</li>
+ *   <li>V113.001 の直前（V111.001）まで適用 → 参照先行＋参照元行（外部キー列に参照先 id をセット）をシード。</li>
+ *   <li>残り（V113.001 含む）を適用しても既存データを壊さず成功する。</li>
+ *   <li>V113.001 で対象7FKが撤廃される。</li>
  *   <li><b>参照先テーブルの行を（テスト内で）物理 DELETE しても、参照元の外部キー列が NULL 化されず孤児値を保持し続ける</b>
  *       （＝SET NULL 撤廃only の肝）。本 PR-4d は参照先が実際に物理削除されるため、この検証が特に本質的である。</li>
  * </ol>
@@ -47,11 +47,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @EnabledIf("com.mannschaft.app.common.migration.FlywayExistingDataPhysDelSetNullFkMigrationTest#isDockerAvailable")
-@DisplayName("Flyway 既存データ proxy_input_records/timetable_slots/timetable_changes/activity_template_fields 参照 SET NULL FK撤廃（V112.001）番人テスト")
+@DisplayName("Flyway 既存データ proxy_input_records/timetable_slots/timetable_changes/activity_template_fields 参照 SET NULL FK撤廃（V113.001）番人テスト")
 class FlywayExistingDataPhysDelSetNullFkMigrationTest {
 
-    /** V112.001 の直前の版（origin/main 最大 = V111.001）。ここまで適用して参照元/先をシードする。 */
-    private static final String PRE_V112_001_TARGET = "111.001";
+    /** V113.001 の直前の版（origin/main 最大 = V111.001）。ここまで適用して参照元/先をシードする。 */
+    private static final String PRE_V113_001_TARGET = "111.001";
 
     @SuppressWarnings("resource")
     private static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0")
@@ -88,7 +88,7 @@ class FlywayExistingDataPhysDelSetNullFkMigrationTest {
                 .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
                 .locations("classpath:db/migration")
                 .outOfOrder(false)
-                .target(MigrationVersion.fromVersion(PRE_V112_001_TARGET))
+                .target(MigrationVersion.fromVersion(PRE_V113_001_TARGET))
                 .load();
         MigrateResult preResult = pre.migrate();
         assertThat(preResult.success).as("V111.001 までの適用が成功すること").isTrue();
@@ -101,20 +101,20 @@ class FlywayExistingDataPhysDelSetNullFkMigrationTest {
                 .outOfOrder(false)
                 .load();
         MigrateResult restResult = rest.migrate();
-        assertThat(restResult.success).as("V112.001 を含む残りのマイグレーションが成功すること").isTrue();
+        assertThat(restResult.success).as("V113.001 を含む残りのマイグレーションが成功すること").isTrue();
     }
 
     /**
      * 1回の pre→seed→migrate サイクルで7件すべてを検証する。
      *
-     * <p>注意: 同一DBを共有するため複数 @Test に分けると、2本目以降は既に V112.001 まで適用済みとなり
+     * <p>注意: 同一DBを共有するため複数 @Test に分けると、2本目以降は既に V113.001 まで適用済みとなり
      * 「FK実在 sanity（pre-state）」が成立しなくなる。よって1メソッドに集約し、
      * V111.001 時点での全7FK実在 → 7件ぶんのシード → 残り適用 → 全7FK撤廃 + 7件の孤児保持
      * を一気通貫で検証する。</p>
      */
     @Test
-    @DisplayName("V111.001で全7FK実在_V112.001適用で全7FK撤廃_参照先物理削除でも参照元の外部キー列が孤児値を保持")
-    void 既存データを持つDBでV112_001が群2SET_NULL_FK7件を撤廃onlyで安全に適用される() throws Exception {
+    @DisplayName("V111.001で全7FK実在_V113.001適用で全7FK撤廃_参照先物理削除でも参照元の外部キー列が孤児値を保持")
+    void 既存データを持つDBでV113_001が群2SET_NULL_FK7件を撤廃onlyで安全に適用される() throws Exception {
         migrateToPreTarget();
 
         // 参照先（target）id
@@ -203,25 +203,25 @@ class FlywayExistingDataPhysDelSetNullFkMigrationTest {
             performanceMetricId = insertPerformanceMetric(c, teamId, activityFieldId);
         }
 
-        // ── when: 残り（V112.001 含む）を適用 ──
+        // ── when: 残り（V113.001 含む）を適用 ──
         migrateRemaining();
 
         try (Connection c = conn()) {
             // ── then-1: 対象7FKが全て撤廃された ──
             assertThat(foreignKeyExists(c, "announcement_read_status", "fk_announcement_read_status_proxy"))
-                    .as("V112.001 で fk_announcement_read_status_proxy が撤廃されること").isFalse();
+                    .as("V113.001 で fk_announcement_read_status_proxy が撤廃されること").isFalse();
             assertThat(foreignKeyExists(c, "circulation_recipients", "fk_circulation_recipients_proxy"))
-                    .as("V112.001 で fk_circulation_recipients_proxy が撤廃されること").isFalse();
+                    .as("V113.001 で fk_circulation_recipients_proxy が撤廃されること").isFalse();
             assertThat(foreignKeyExists(c, "parking_applications", "fk_parking_applications_proxy"))
-                    .as("V112.001 で fk_parking_applications_proxy が撤廃されること").isFalse();
+                    .as("V113.001 で fk_parking_applications_proxy が撤廃されること").isFalse();
             assertThat(foreignKeyExists(c, "shift_requests", "fk_shift_requests_proxy"))
-                    .as("V112.001 で fk_shift_requests_proxy が撤廃されること").isFalse();
+                    .as("V113.001 で fk_shift_requests_proxy が撤廃されること").isFalse();
             assertThat(foreignKeyExists(c, "period_attendance_records", "fk_par_timetable_slot"))
-                    .as("V112.001 で fk_par_timetable_slot が撤廃されること").isFalse();
+                    .as("V113.001 で fk_par_timetable_slot が撤廃されること").isFalse();
             assertThat(foreignKeyExists(c, "period_attendance_records", "fk_par_timetable_change"))
-                    .as("V112.001 で fk_par_timetable_change が撤廃されること").isFalse();
+                    .as("V113.001 で fk_par_timetable_change が撤廃されること").isFalse();
             assertThat(foreignKeyExists(c, "performance_metrics", "fk_pm_linked_field"))
-                    .as("V112.001 で fk_pm_linked_field が撤廃されること").isFalse();
+                    .as("V113.001 で fk_pm_linked_field が撤廃されること").isFalse();
 
             // ── then-2（中核）: 各参照先テーブルの行を物理削除しても、参照元の外部キー列が NULL 化されず孤児値を保持 ──
 

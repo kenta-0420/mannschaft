@@ -1,6 +1,7 @@
 -- Phase 4-D（第四陣D・ラスト）: クロスドメインFK撤廃 — proxy_input_records / timetable_slots /
 -- timetable_changes / activity_template_fields を「参照先テーブル」とする SET NULL 構造FK 7件を撤廃
--- （撤廃only・孤児保持）。第四陣（A=V109.001 / B=V110.001 / C=V111.001 / D=V112.001）を完結させる。
+-- （撤廃only・孤児保持）。第四陣（A=V109.001 / B=V110.001 / C=V111.001 / D=V113.001）を完結させる。
+-- 注: 当初V112.001で起票したが並行PR(V112.001__create_reservation_policies...)とFlyway採番衝突したためV113.001へリネーム。
 --
 -- 1000万ユーザー耐久DB再構築 クロスドメインFK撤廃キャンペーン Phase 4-D。
 -- CLAUDE.md §1「クロスドメインFKは作らない」/ §2「CASCADE/SET NULL のクロスドメイン削除連鎖は禁止」
