@@ -63,6 +63,13 @@
       "reminder_sent": "Gesendet",
       "reminder_not_sent": "Nicht gesendet"
     },
+    "connection": {
+      "live": "Live-Aktualisierung",
+      "connecting": "Verbinden…",
+      "reconnecting": "Erneut verbinden…",
+      "offline": "Offline",
+      "denied": "Kein Zugriff"
+    },
     "dialog": {
       "title": "Versand bestätigen",
       "confirm_message": "Massenbenachrichtigung mit folgenden Details senden?",

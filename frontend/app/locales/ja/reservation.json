@@ -63,6 +63,13 @@
       "reminder_sent": "送信済み",
       "reminder_not_sent": "未送信"
     },
+    "connection": {
+      "live": "リアルタイム更新中",
+      "connecting": "接続中…",
+      "reconnecting": "再接続中…",
+      "offline": "オフライン",
+      "denied": "閲覧権限がありません"
+    },
     "dialog": {
       "title": "送信確認",
       "confirm_message": "以下の内容で一括送信します。よろしいですか？",

@@ -63,6 +63,13 @@
       "reminder_sent": "Sent",
       "reminder_not_sent": "Not sent"
     },
+    "connection": {
+      "live": "Live updates",
+      "connecting": "Connecting…",
+      "reconnecting": "Reconnecting…",
+      "offline": "Offline",
+      "denied": "No access"
+    },
     "dialog": {
       "title": "Confirm Send",
       "confirm_message": "Send bulk notification with the following details?",
