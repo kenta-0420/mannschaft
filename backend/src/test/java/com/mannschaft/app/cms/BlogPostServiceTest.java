@@ -21,6 +21,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.publicview.service.PostAuthorSnapshotService;
 import com.mannschaft.app.team.entity.TeamEntity;
@@ -32,6 +33,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -88,6 +91,9 @@ class BlogPostServiceTest {
     private static final String TEAM_ID_STR = TEAM_ID.toString();
     private static final Long USER_ID = 100L;
     private static final Long POST_ID = 10L;
+    /** SecurityUtils.getCurrentUserIdOrNull() をモックする際に返す閲覧者ID（非null定数）。
+     * シャード実行順序によらず決定論的な assertCanView 引数を保証するために使用する。 */
+    private static final Long VIEWER_ID = 99L;
 
     private BlogPostEntity createPostEntity(PostStatus status) {
         return BlogPostEntity.builder()
@@ -204,11 +210,18 @@ class BlogPostServiceTest {
             given(postRepository.findByTeamIdAndSlug(TEAM_ID, "test-slug")).willReturn(Optional.of(entity));
             given(cmsMapper.toBlogPostResponse(entity)).willReturn(createPostResponse());
 
-            // When
-            service.getBySlug(TEAM_ID, null, null, "test-slug");
+            // SecurityUtils.getCurrentUserIdOrNull() を VIEWER_ID に固定する。
+            // フルシャード実行では先行テストが認証済み SecurityContext を残置し得るため、
+            // ambient な SecurityContext に依存すると Strict Stub が PotentialStubbingProblem を投げる。
+            try (MockedStatic<SecurityUtils> securityUtils = Mockito.mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
 
-            // Then: 解決した記事IDで可視性判定が委譲される
-            verify(contentVisibilityChecker).assertCanView(ReferenceType.BLOG_POST, POST_ID, null);
+                // When
+                service.getBySlug(TEAM_ID, null, null, "test-slug");
+
+                // Then: 解決した記事IDと固定 viewerUserId で可視性判定が委譲される
+                verify(contentVisibilityChecker).assertCanView(ReferenceType.BLOG_POST, POST_ID, VIEWER_ID);
+            }
         }
 
         @Test
@@ -218,17 +231,24 @@ class BlogPostServiceTest {
             BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
             ReflectionTestUtils.setField(entity, "id", POST_ID);
             given(postRepository.findByTeamIdAndSlug(TEAM_ID, "secret-slug")).willReturn(Optional.of(entity));
-            org.mockito.BDDMockito.willThrow(new BusinessException(
-                    com.mannschaft.app.common.visibility.VisibilityErrorCode.VISIBILITY_001))
-                    .given(contentVisibilityChecker)
-                    .assertCanView(ReferenceType.BLOG_POST, POST_ID, null);
 
-            // When / Then: 例外がそのまま伝播し、レスポンス生成（漏洩）に到達しない
-            assertThatThrownBy(() -> service.getBySlug(TEAM_ID, null, null, "secret-slug"))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("VISIBILITY_001"));
-            verify(cmsMapper, never()).toBlogPostResponse(any(BlogPostEntity.class));
+            // SecurityUtils.getCurrentUserIdOrNull() を VIEWER_ID に固定する。
+            // フルシャード実行では先行テストが認証済み SecurityContext を残置し得るため、
+            // ambient な SecurityContext に依存すると Strict Stub が PotentialStubbingProblem を投げる。
+            try (MockedStatic<SecurityUtils> securityUtils = Mockito.mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
+                org.mockito.BDDMockito.willThrow(new BusinessException(
+                        com.mannschaft.app.common.visibility.VisibilityErrorCode.VISIBILITY_001))
+                        .given(contentVisibilityChecker)
+                        .assertCanView(ReferenceType.BLOG_POST, POST_ID, VIEWER_ID);
+
+                // When / Then: 例外がそのまま伝播し、レスポンス生成（漏洩）に到達しない
+                assertThatThrownBy(() -> service.getBySlug(TEAM_ID, null, null, "secret-slug"))
+                        .isInstanceOf(BusinessException.class)
+                        .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                                .isEqualTo("VISIBILITY_001"));
+                verify(cmsMapper, never()).toBlogPostResponse(any(BlogPostEntity.class));
+            }
         }
     }
 
