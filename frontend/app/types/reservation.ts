@@ -173,6 +173,8 @@ export interface BusinessHourResponse {
 }
 
 // === ReservationSettingsResponse（予約設定）===
+// 真実のソースは generated/index.ts の ReservationSettingsResponse。
+// こちらは composable の import 先として残し、生成型と整合を保つ。
 export interface ReservationSettingsResponse {
   /** 非所属ユーザーの予約を許可するか（既定 false）。BE: reservation_team_settings.allow_public_reservation */
   allowPublicReservation?: boolean
@@ -181,11 +183,23 @@ export interface ReservationSettingsResponse {
   requireConfirmation?: boolean
   allowCancellation?: boolean
   cancellationDeadlineHours?: number
+  /** 承認モード。AUTO=自動確定 / MANUAL=承認制（#1640 追加）*/
+  approvalMode?: 'AUTO' | 'MANUAL'
+  /** キャンセル受付の締切（予約開始の何時間前まで。0〜8760）*/
+  cancelDeadlineHours?: number
+  /** リマインド送信タイミングの CSV 文字列（例: "24,1"）*/
+  remindBeforeHours?: string
 }
 
 // === リクエスト DTO ===
 export interface UpdateReservationSettingRequest {
   allowPublicReservation?: boolean
+  /** 承認モード変更時に指定（AUTO/MANUAL）*/
+  approvalMode?: 'AUTO' | 'MANUAL'
+  /** キャンセル受付の締切（時間）変更時に指定 */
+  cancelDeadlineHours?: number
+  /** リマインドタイミングの CSV 文字列変更時に指定（例: "24,1"）*/
+  remindBeforeHours?: string
 }
 
 export interface CreateReservationRequest {

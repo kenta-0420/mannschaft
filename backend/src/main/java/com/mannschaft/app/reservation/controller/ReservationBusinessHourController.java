@@ -5,8 +5,11 @@ import com.mannschaft.app.reservation.dto.BlockedTimeRequest;
 import com.mannschaft.app.reservation.dto.BlockedTimeResponse;
 import com.mannschaft.app.reservation.dto.BusinessHourResponse;
 import com.mannschaft.app.reservation.dto.BusinessHoursUpdateRequest;
+import com.mannschaft.app.reservation.dto.ReservationSettingsResponse;
 import com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest;
+import com.mannschaft.app.reservation.entity.ReservationPolicyEntity;
 import com.mannschaft.app.reservation.service.ReservationBusinessHourService;
+import com.mannschaft.app.reservation.service.ReservationPolicyService;
 import com.mannschaft.app.reservation.service.ReservationTeamSettingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,7 +32,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 import com.mannschaft.app.common.SecurityUtils;
 
 /**
@@ -43,6 +45,7 @@ public class ReservationBusinessHourController {
 
     private final ReservationBusinessHourService businessHourService;
     private final ReservationTeamSettingService teamSettingService;
+    private final ReservationPolicyService policyService;
 
 
     /**
@@ -125,41 +128,64 @@ public class ReservationBusinessHourController {
     }
 
     /**
-     * 予約設定概要を取得する。
+     * 予約設定（チームポリシー）を取得する。
+     *
+     * <p>2 つの別テーブル（{@code reservation_team_settings}・{@code reservation_policies}）を
+     * 1 レスポンスに統合して返す。policy レコードが存在しないチームは既定値（AUTO / 24 / "24,1"）を返す。</p>
      */
     @GetMapping
-    @Operation(summary = "予約設定概要")
+    @Operation(summary = "予約設定（チームポリシー）取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getSettings(
+    public ResponseEntity<ApiResponse<ReservationSettingsResponse>> getSettings(
             @PathVariable Long teamId) {
         boolean hasBusinessHours = businessHourService.hasBusinessHours(teamId);
         boolean allowPublicReservation = teamSettingService.isAllowPublic(teamId);
-        Map<String, Object> settings = Map.of(
-                "teamId", teamId,
-                "hasBusinessHours", hasBusinessHours,
-                "allowPublicReservation", allowPublicReservation
-        );
+        ReservationPolicyEntity policy = policyService.getOrDefault(teamId);
+        ReservationSettingsResponse settings = ReservationSettingsResponse.builder()
+                .teamId(teamId)
+                .hasBusinessHours(hasBusinessHours)
+                .allowPublicReservation(allowPublicReservation)
+                .approvalMode(policy.getApprovalMode())
+                .cancelDeadlineHours(policy.getCancelDeadlineHours())
+                .remindBeforeHours(policy.getRemindBeforeHours())
+                .build();
         return ResponseEntity.ok(ApiResponse.of(settings));
     }
 
     /**
-     * 予約公開設定（一般公開予約の許可フラグ）を更新する。ADMIN 限定。
+     * 予約設定（チームポリシー）を更新する。ADMIN 限定。
      *
-     * <p>{@code allowPublicReservation=true} にすると、ログイン済みであればチーム所属者でなくても
-     * 予約できるようになる（裏設定）。既定は false（チーム所属者のみ）。</p>
+     * <p>PATCH の部分更新セマンティクス: null フィールドは据え置き。</p>
+     *
+     * <ul>
+     *   <li>{@code allowPublicReservation} … {@code reservation_team_settings} を更新。
+     *       true にするとログイン済みであればチーム所属者でなくても予約できるようになる（裏設定）。</li>
+     *   <li>{@code approvalMode} / {@code cancelDeadlineHours} / {@code remindBeforeHours}
+     *       … {@code reservation_policies} を upsert 更新。</li>
+     * </ul>
      */
     @PatchMapping
-    @Operation(summary = "予約公開設定の更新（ADMIN限定）")
+    @Operation(summary = "予約設定（チームポリシー）の更新（ADMIN限定）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     @PreAuthorize("@accessGuard.isScopeStrictAdmin(authentication, #teamId, 'TEAM')")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> updateReservationSetting(
+    public ResponseEntity<ApiResponse<ReservationSettingsResponse>> updateReservationSetting(
             @PathVariable Long teamId,
             @Valid @RequestBody UpdateReservationSettingRequest request) {
-        teamSettingService.updateAllowPublic(teamId, request.getAllowPublicReservation());
-        Map<String, Object> settings = Map.of(
-                "teamId", teamId,
-                "allowPublicReservation", request.getAllowPublicReservation()
-        );
-        return ResponseEntity.ok(ApiResponse.of(settings));
+        // allow_public_reservation（別テーブル）の更新。null は据え置き。
+        if (request.getAllowPublicReservation() != null) {
+            teamSettingService.updateAllowPublic(teamId, request.getAllowPublicReservation());
+        }
+        // reservation_policies（別テーブル）の upsert。全て null なら据え置き（既存レコードに影響なし）。
+        if (request.getApprovalMode() != null
+                || request.getCancelDeadlineHours() != null
+                || request.getRemindBeforeHours() != null) {
+            policyService.updatePolicy(
+                    teamId,
+                    request.getApprovalMode(),
+                    request.getCancelDeadlineHours(),
+                    request.getRemindBeforeHours());
+        }
+        // 更新後の統合状態を返す（GET と同形）。
+        return getSettings(teamId);
     }
 }

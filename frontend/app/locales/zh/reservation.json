@@ -237,6 +237,28 @@
         "confirm_enable": "非成员将可以进行预约。是否继续？",
         "confirm_disable": "非成员将无法进行预约。是否继续？",
         "confirm_ok": "确认"
+      },
+      "policy": {
+        "section_label": "预约政策",
+        "save_success": "政策已保存",
+        "approval_mode": {
+          "label": "审批模式",
+          "hint": "AUTO=预约立即确认 / MANUAL=管理员手动审批",
+          "option_auto": "自动确认（AUTO）",
+          "option_manual": "手动审批（MANUAL）"
+        },
+        "cancel_deadline": {
+          "label": "取消截止期限",
+          "hint": "预约开始前多少小时可以取消（0=直到开始，8760=始终允许）",
+          "unit": " 小时前"
+        },
+        "remind": {
+          "label": "提醒时间（CSV）",
+          "hint": "用逗号分隔的小时数，表示预约前多少小时发送提醒（例: 24,1）",
+          "placeholder": "例: 24,1",
+          "error_empty": "请至少输入一个值",
+          "error_invalid": "请输入0到8760之间的整数，用逗号分隔"
+        }
       }
     },
     "book": {

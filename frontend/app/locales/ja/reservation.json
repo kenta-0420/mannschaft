@@ -237,6 +237,28 @@
         "confirm_enable": "所属していないユーザーも予約できるようになります。よろしいですか？",
         "confirm_disable": "所属メンバー以外の予約を禁止します。よろしいですか？",
         "confirm_ok": "変更する"
+      },
+      "policy": {
+        "section_label": "予約ポリシー",
+        "save_success": "ポリシーを保存しました",
+        "approval_mode": {
+          "label": "承認モード",
+          "hint": "AUTO=予約が即時確定 / MANUAL=管理者が手動で承認します",
+          "option_auto": "自動確定（AUTO）",
+          "option_manual": "承認制（MANUAL）"
+        },
+        "cancel_deadline": {
+          "label": "キャンセル受付期限",
+          "hint": "予約開始の何時間前まで自己キャンセルを受け付けるか（0=当日まで・8760=常に受付）",
+          "unit": " 時間前まで"
+        },
+        "remind": {
+          "label": "リマインド送信タイミング（CSV）",
+          "hint": "予約開始の何時間前にリマインドを送るかをカンマ区切りで入力（例: 24,1）",
+          "placeholder": "例: 24,1",
+          "error_empty": "1つ以上の値を入力してください",
+          "error_invalid": "0〜8760の整数をカンマ区切りで入力してください"
+        }
       }
     },
     "book": {

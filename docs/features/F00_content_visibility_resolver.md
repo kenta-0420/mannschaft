@@ -1052,8 +1052,11 @@ Survey の `ResultsVisibility.AFTER_RESPONSE` / `AFTER_CLOSE` を Resolver の `
 | | PRIVATE | PRIVATE | |
 | | CUSTOM_TEMPLATE | CUSTOM_TEMPLATE | |
 | `event.entity.EventVisibility` | PUBLIC | PUBLIC | |
-| | MEMBERS_ONLY | MEMBERS_AND_ABOVE | メンバー以上（応援者除外）。`EventVisibilityMapper` 実装に一致 |
+| | MEMBERS_ONLY | MEMBERS_AND_ABOVE | 互換残置。メンバー以上（応援者除外）。`EventVisibilityMapper` 実装に一致 |
 | | SUPPORTERS_AND_ABOVE | SUPPORTERS_AND_ABOVE | |
+| | MEMBERS_AND_ABOVE | MEMBERS_AND_ABOVE | #1341 新ラダー値名。FE 可視性 UI が送る正準値。旧 MEMBERS_ONLY と同一範囲。`EventVisibilityMapper` 実装に一致 |
+| | ADMINS_AND_ABOVE | ADMINS_AND_ABOVE | #1341 新ラダー値名（管理者以上）。`EventVisibilityMapper` 実装に一致 |
+| | SCOPE_AFFILIATED | SCOPE_AFFILIATED | #1341 直接所属軸（応援者・ゲスト含む）。旧 MEMBERS_ONLY 相当の正準値。`EventVisibilityMapper` 実装に一致 |
 | `activity.ActivityVisibility` | PUBLIC | PUBLIC | |
 | | MEMBERS_ONLY | MEMBERS_AND_ABOVE | メンバー以上（応援者除外）。`ActivityVisibilityMapper` 実装に一致 |
 | `tournament.TournamentVisibility` | PUBLIC | PUBLIC | |
