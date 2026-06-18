@@ -1,0 +1,51 @@
+{
+  "adminConsole": {
+    "comingSoon": "곧 공개",
+    "team": {
+      "title": "팀 관리 콘솔",
+      "subtitle": "팀의 예약·예산·승인 대기·멤버·설정을 한곳에서 관리합니다"
+    },
+    "organization": {
+      "title": "조직 관리 콘솔",
+      "subtitle": "조직의 예산·결제·승인 대기·멤버·설정을 한곳에서 관리합니다"
+    },
+    "cards": {
+      "reservations": {
+        "title": "예약 확인",
+        "desc": "승인 대기 중인 예약을 확인하고 확정·취소·완료 등을 처리합니다"
+      },
+      "budget": {
+        "title": "예산 관리",
+        "desc": "회계 연도·카테고리별 예산과 지출을 확인합니다"
+      },
+      "approvals": {
+        "title": "승인 대기",
+        "desc": "예약·시프트·매칭 등 관리자가 처리해야 할 승인 대기를 통합 확인합니다"
+      },
+      "members": {
+        "title": "멤버 관리",
+        "desc": "멤버 목록·역할 변경·회원증·프로필을 관리합니다"
+      },
+      "settings": {
+        "title": "설정",
+        "desc": "각종 설정을 한곳에서 관리합니다"
+      },
+      "payments": {
+        "title": "결제",
+        "desc": "청구·결제 상태를 확인합니다"
+      },
+      "pointCards": {
+        "title": "포인트 카드",
+        "desc": "점주용 포인트 카드 발급·이력·도장을 관리합니다"
+      }
+    },
+    "middleware": {
+      "accessDeniedTitle": "접근할 수 없습니다",
+      "accessDeniedBody": "관리자 권한이 필요합니다"
+    },
+    "error": {
+      "fetchFailedTitle": "권한 정보를 가져오지 못했습니다",
+      "fetchFailedBody": "일시적인 문제가 발생했습니다. 잠시 후 다시 시도해 주세요"
+    }
+  }
+}
