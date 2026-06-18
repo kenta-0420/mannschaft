@@ -46,6 +46,10 @@
     "error": {
       "fetchFailedTitle": "権限情報を取得できませんでした",
       "fetchFailedBody": "一時的な問題が発生しています。時間をおいて再試行してください"
+    },
+    "approvalsBadge": {
+      "degraded": "一部集計できず",
+      "fetchFailed": "件数を取得できませんでした"
     }
   }
 }
