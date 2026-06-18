@@ -524,8 +524,17 @@ class ReservationControllerTest {
         @Mock
         private com.mannschaft.app.reservation.service.ReservationTeamSettingService teamSettingService;
 
+        @Mock
+        private com.mannschaft.app.reservation.service.ReservationPolicyService policyService;
+
         @InjectMocks
         private ReservationBusinessHourController controller;
+
+        private com.mannschaft.app.reservation.entity.ReservationPolicyEntity defaultPolicy() {
+            return com.mannschaft.app.reservation.entity.ReservationPolicyEntity.builder()
+                    .teamId(TEAM_ID)
+                    .build();
+        }
 
         @Test
         @DisplayName("営業時間取得_正常_200返却")
@@ -612,37 +621,94 @@ class ReservationControllerTest {
         }
 
         @Test
-        @DisplayName("予約設定概要取得_正常_200返却_公開フラグ含む")
+        @DisplayName("予約設定取得_正常_200返却_公開フラグ含む")
         void 予約設定概要取得_正常_200返却() {
             given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(true);
             given(teamSettingService.isAllowPublic(TEAM_ID)).willReturn(true);
+            given(policyService.getOrDefault(TEAM_ID)).willReturn(defaultPolicy());
 
-            ResponseEntity<ApiResponse<Map<String, Object>>> result =
+            ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.ReservationSettingsResponse>> result =
                     controller.getSettings(TEAM_ID);
 
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody().getData()).containsEntry("teamId", TEAM_ID);
-            assertThat(result.getBody().getData()).containsEntry("hasBusinessHours", true);
-            assertThat(result.getBody().getData()).containsEntry("allowPublicReservation", true);
+            com.mannschaft.app.reservation.dto.ReservationSettingsResponse data = result.getBody().getData();
+            assertThat(data.getTeamId()).isEqualTo(TEAM_ID);
+            assertThat(data.isHasBusinessHours()).isTrue();
+            assertThat(data.isAllowPublicReservation()).isTrue();
         }
 
         @Test
-        @DisplayName("予約公開設定更新_正常_200返却_upsert委譲")
+        @DisplayName("予約設定取得_policy無し_既定値AUTO/24/24,1を返す")
+        void 予約設定取得_policy無し_既定値() {
+            given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(false);
+            given(teamSettingService.isAllowPublic(TEAM_ID)).willReturn(false);
+            // getOrDefault は policy 無しでも既定値の未永続エンティティを返す。
+            given(policyService.getOrDefault(TEAM_ID)).willReturn(defaultPolicy());
+
+            ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.ReservationSettingsResponse>> result =
+                    controller.getSettings(TEAM_ID);
+
+            com.mannschaft.app.reservation.dto.ReservationSettingsResponse data = result.getBody().getData();
+            assertThat(data.getApprovalMode()).isEqualTo(com.mannschaft.app.reservation.ApprovalMode.AUTO);
+            assertThat(data.getCancelDeadlineHours()).isEqualTo(24);
+            assertThat(data.getRemindBeforeHours()).isEqualTo("24,1");
+        }
+
+        @Test
+        @DisplayName("予約設定更新_公開フラグのみ_upsert委譲_policyは触らない")
         void 予約公開設定更新_正常_200返却() {
             com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest request =
-                    new com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest(true);
+                    new com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest(
+                            true, null, null, null);
+            given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(false);
+            given(teamSettingService.isAllowPublic(TEAM_ID)).willReturn(true);
+            given(policyService.getOrDefault(TEAM_ID)).willReturn(defaultPolicy());
 
-            ResponseEntity<ApiResponse<Map<String, Object>>> result =
+            ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.ReservationSettingsResponse>> result =
                     controller.updateReservationSetting(TEAM_ID, request);
 
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody().getData()).containsEntry("teamId", TEAM_ID);
-            assertThat(result.getBody().getData()).containsEntry("allowPublicReservation", true);
+            assertThat(result.getBody().getData().isAllowPublicReservation()).isTrue();
             verify(teamSettingService).updateAllowPublic(TEAM_ID, true);
+            // policy フィールドが全て null なので updatePolicy は呼ばれない（据え置き）。
+            org.mockito.Mockito.verify(policyService, org.mockito.Mockito.never())
+                    .updatePolicy(any(), any(), any(), any());
         }
 
         @Test
-        @DisplayName("予約公開設定更新_ADMIN限定_PreAuthorize宣言を検証")
+        @DisplayName("予約設定更新_承認モード等_policyへupsert委譲しGETに反映")
+        void 予約設定更新_ポリシー更新_委譲() {
+            com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest request =
+                    new com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest(
+                            null, com.mannschaft.app.reservation.ApprovalMode.MANUAL, 48, "72,24,1");
+            given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(false);
+            given(teamSettingService.isAllowPublic(TEAM_ID)).willReturn(false);
+            given(policyService.getOrDefault(TEAM_ID)).willReturn(
+                    com.mannschaft.app.reservation.entity.ReservationPolicyEntity.builder()
+                            .teamId(TEAM_ID)
+                            .approvalMode(com.mannschaft.app.reservation.ApprovalMode.MANUAL)
+                            .cancelDeadlineHours(48)
+                            .remindBeforeHours("72,24,1")
+                            .build());
+
+            ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.ReservationSettingsResponse>> result =
+                    controller.updateReservationSetting(TEAM_ID, request);
+
+            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+            com.mannschaft.app.reservation.dto.ReservationSettingsResponse data = result.getBody().getData();
+            assertThat(data.getApprovalMode()).isEqualTo(com.mannschaft.app.reservation.ApprovalMode.MANUAL);
+            assertThat(data.getCancelDeadlineHours()).isEqualTo(48);
+            assertThat(data.getRemindBeforeHours()).isEqualTo("72,24,1");
+            verify(policyService).updatePolicy(
+                    TEAM_ID, com.mannschaft.app.reservation.ApprovalMode.MANUAL, 48, "72,24,1");
+            // 公開フラグ null なので allow_public は触らない。
+            org.mockito.Mockito.verify(teamSettingService, org.mockito.Mockito.never())
+                    .updateAllowPublic(org.mockito.ArgumentMatchers.anyLong(),
+                            org.mockito.ArgumentMatchers.anyBoolean());
+        }
+
+        @Test
+        @DisplayName("予約設定更新_ADMIN限定_PreAuthorize宣言を検証")
         void 予約公開設定更新_ADMIN限定宣言() throws NoSuchMethodException {
             // @PreAuthorize の SpEL が ADMIN 限定（isScopeStrictAdmin）であることを宣言レベルで保証する。
             // 実際の認可強制は @EnableMethodSecurity + AccessGuard（AccessGuardTest で検証済み）が担う。
