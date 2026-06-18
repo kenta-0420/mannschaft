@@ -1,6 +1,7 @@
 package com.mannschaft.app.config;
 
 import com.mannschaft.app.match.live.MatchLiveSubscriptionInterceptor;
+import com.mannschaft.app.reservation.ws.EmergencyClosureSubscriptionInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
@@ -24,6 +25,10 @@ import java.util.Arrays;
  * <p>さらに {@link MatchLiveSubscriptionInterceptor} を<b>認証インターセプタの後段</b>に登録し、
  * F08.10 ライブ観戦トピック（{@code /topic/matches/{matchId}/live}）の SUBSCRIBE 認可を行う
  * （CONNECT で確定した session userId を参照するため順序が重要・07 §J.3）。</p>
+ *
+ * <p>同様に {@link EmergencyClosureSubscriptionInterceptor} を認証インターセプタの後段に登録し、
+ * F03.4+ 臨時休業確認状況トピック（{@code /topic/teams/{teamId}/emergency-closures/{closureId}/confirmations}）の
+ * SUBSCRIBE 認可（当該チーム ADMIN 限定）を行う。</p>
  */
 @Configuration
 @EnableWebSocketMessageBroker
@@ -32,6 +37,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final WebSocketAuthChannelInterceptor authChannelInterceptor;
     private final MatchLiveSubscriptionInterceptor matchLiveSubscriptionInterceptor;
+    private final EmergencyClosureSubscriptionInterceptor emergencyClosureSubscriptionInterceptor;
 
     /**
      * WebSocket ハンドシェイクで許可するオリジン。{@code CorsConfig} と同じプロパティを使用し、
@@ -67,8 +73,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
-        // 認証（CONNECT で session userId を確定）→ 購読認可（SUBSCRIBE で canView 検証）の順で登録する。
+        // 認証（CONNECT で session userId を確定）→ 購読認可（SUBSCRIBE で各トピックの認可検証）の順で登録する。
         // 購読認可は CONNECT 時に確定した session userId を参照するため、必ず認証の後段に置く（07 §J.3）。
-        registration.interceptors(authChannelInterceptor, matchLiveSubscriptionInterceptor);
+        registration.interceptors(
+                authChannelInterceptor,
+                matchLiveSubscriptionInterceptor,
+                emergencyClosureSubscriptionInterceptor);
     }
 }

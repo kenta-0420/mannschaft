@@ -3,7 +3,9 @@ package com.mannschaft.app.survey;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.survey.event.SurveyPublishedEvent;
 import com.mannschaft.app.survey.dto.DuplicateSurveyRequest;
 import com.mannschaft.app.survey.dto.SurveyResponse;
 import com.mannschaft.app.survey.dto.SurveyStatsResponse;
@@ -20,10 +22,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -75,6 +79,9 @@ class SurveyServiceTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
+    @Mock
+    private OrganizationMembershipService organizationMembershipService;
+
     @InjectMocks
     private SurveyService surveyService;
 
@@ -104,7 +111,7 @@ class SurveyServiceTest {
                 .scope(new SurveyResponse.SurveyScopeDto(SCOPE_TYPE, SCOPE_ID))
                 .content(new SurveyResponse.SurveyContentDto("テストアンケート", "説明"))
                 .policy(new SurveyResponse.SurveyPolicyDto(false, false, "AFTER_RESPONSE", "CREATOR_AND_ADMIN"))
-                .distribution(new SurveyResponse.SurveyDistributionDto("ALL", false, null, null, 0))
+                .distribution(new SurveyResponse.SurveyDistributionDto("ALL", false, null, null, 0, false))
                 .schedule(new SurveyResponse.SurveyScheduleDto(null, null, null, null))
                 .stats(new SurveyResponse.SurveyStatsDto(0, 0))
                 .audit(new SurveyResponse.SurveyAuditDto(null, USER_ID, null, null))
@@ -120,6 +127,7 @@ class SurveyServiceTest {
         void アンケート公開_正常_PUBLISHED状態に遷移() {
             // Given
             SurveyEntity entity = createDraftSurvey();
+            ReflectionTestUtils.setField(entity, "id", SURVEY_ID);
             SurveyResponse response = createSurveyResponse();
 
             given(surveyRepository.findByIdAndScopeTypeAndScopeId(SURVEY_ID, SCOPE_TYPE, SCOPE_ID))
@@ -133,6 +141,36 @@ class SurveyServiceTest {
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(SurveyStatus.PUBLISHED);
+        }
+
+        @Test
+        @DisplayName("アンケート公開_正常_SurveyPublishedEvent発火_配信母集団解決はリスナー委譲")
+        void アンケート公開_正常_SurveyPublishedEvent発火() {
+            // Given
+            SurveyEntity entity = createDraftSurvey();
+            ReflectionTestUtils.setField(entity, "id", SURVEY_ID);
+            SurveyResponse response = createSurveyResponse();
+
+            given(surveyRepository.findByIdAndScopeTypeAndScopeId(SURVEY_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(questionRepository.countBySurveyId(SURVEY_ID)).willReturn(3L);
+            given(surveyRepository.save(entity)).willReturn(entity);
+            given(surveyMapper.toSurveyResponse(entity)).willReturn(response);
+
+            // When
+            surveyService.publishSurvey(SCOPE_TYPE, SCOPE_ID, SURVEY_ID);
+
+            // Then: 公開時通知は AFTER_COMMIT・非同期化のため、ここでは SurveyPublishedEvent の
+            // 発火のみを検証する（母集団解決・notifyAll はリスナー側）。
+            ArgumentCaptor<SurveyPublishedEvent> captor =
+                    ArgumentCaptor.forClass(SurveyPublishedEvent.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            SurveyPublishedEvent published = captor.getValue();
+            assertThat(published.getSurveyId()).isEqualTo(SURVEY_ID);
+            assertThat(published.getScopeType()).isEqualTo(SCOPE_TYPE);
+            assertThat(published.getScopeId()).isEqualTo(SCOPE_ID);
+            assertThat(published.getDistributionMode()).isEqualTo(DistributionMode.ALL);
+            assertThat(published.isIncludeSupporters()).isFalse();
         }
 
         @Test
@@ -298,6 +336,48 @@ class SurveyServiceTest {
 
             // Then
             assertThat(entity.getExpiresAt()).isEqualTo(newDeadline);
+        }
+
+        @Test
+        @DisplayName("締切延長_組織ALL_配下チーム展開の母集団へ通知")
+        void 締切延長_組織ALL_配下チーム展開() {
+            // Given: 組織スコープ × ALL
+            String orgScopeType = "ORGANIZATION";
+            SurveyEntity entity = SurveyEntity.builder()
+                    .scopeType(orgScopeType).scopeId(SCOPE_ID).title("組織アンケート")
+                    .resultsVisibility(ResultsVisibility.AFTER_RESPONSE)
+                    .distributionMode(DistributionMode.ALL)
+                    .includeSupporters(false)
+                    .createdBy(USER_ID).build();
+            entity.publish();
+            entity.updatePeriod(LocalDateTime.now().minusDays(1), LocalDateTime.now().plusDays(7));
+            LocalDateTime newDeadline = LocalDateTime.now().plusDays(14);
+
+            given(surveyRepository.findByIdAndScopeTypeAndScopeId(SURVEY_ID, orgScopeType, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(accessControlService.isAdminOrAbove(USER_ID, SCOPE_ID, orgScopeType)).willReturn(true);
+            given(surveyRepository.save(entity)).willReturn(entity);
+            given(surveyMapper.toSurveyResponse(entity)).willReturn(createSurveyResponse());
+            // 配下チーム展開の窓口（組織×ALL のみ呼ばれること）
+            given(organizationMembershipService.resolveOrgDistributionUserIds(SCOPE_ID, false))
+                    .willReturn(java.util.List.of(11L, 22L, 33L));
+
+            // When
+            surveyService.extendDeadline(orgScopeType, SCOPE_ID, SURVEY_ID, newDeadline, USER_ID);
+
+            // Then: 組織配下展開の窓口経由で母集団を解決し、findUserIdsByScope は使わない
+            verify(organizationMembershipService).resolveOrgDistributionUserIds(SCOPE_ID, false);
+            verify(notificationHelper).notifyAll(
+                    org.mockito.ArgumentMatchers.eq(java.util.List.of(11L, 22L, 33L)),
+                    org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.eq(SURVEY_ID),
+                    org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.eq(SCOPE_ID),
+                    org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.eq(USER_ID));
         }
 
         @Test

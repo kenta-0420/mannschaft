@@ -71,6 +71,12 @@ class ReservationServiceTest {
     @Mock
     private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
+    @Mock
+    private com.mannschaft.app.reservation.service.ReservationTeamSettingService settingService;
+
+    @Mock
+    private com.mannschaft.app.common.AccessControlService accessControlService;
+
     @InjectMocks
     private ReservationService service;
 
@@ -101,6 +107,10 @@ class ReservationServiceTest {
         given(nameResolverService.resolveUserFullNames(org.mockito.ArgumentMatchers.anyCollection()))
                 .willReturn(java.util.Map.of(USER_ID, "山田 太郎"));
         given(nameResolverService.resolveUserFullName(any(Long.class))).willReturn("山田 太郎");
+        // 予約認可ゲートの既定スタブ: 非公開チームだがユーザーは所属者 → 予約可。
+        // 認可固有のテストでは各 @Test 内で上書きする。
+        given(settingService.isAllowPublic(TEAM_ID)).willReturn(false);
+        given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
     }
 
     private ReservationEntity createReservationEntity() {
@@ -354,6 +364,68 @@ class ReservationServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ReservationErrorCode.DUPLICATE_RESERVATION);
+        }
+
+        @Test
+        @DisplayName("認可: 所属者は非公開チームでも予約できる")
+        void 予約作成_所属者は予約可() {
+            // Given: 非公開（false）だがユーザーは所属者（setUp の既定スタブ）
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, "テスト備考");
+            ReservationSlotEntity slot = createAvailableSlotEntity();
+            ReservationEntity savedEntity = createReservationEntity();
+
+            given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
+            given(reservationRepository.existsByReservationSlotIdAndUserIdAndStatusIn(
+                    eq(SLOT_ID), eq(USER_ID), any())).willReturn(false);
+            given(reservationRepository.save(any(ReservationEntity.class))).willReturn(savedEntity);
+
+            // When
+            ReservationResponse result = service.createReservation(TEAM_ID, USER_ID, request);
+
+            // Then
+            assertThat(result).isNotNull();
+            verify(reservationRepository).save(any(ReservationEntity.class));
+        }
+
+        @Test
+        @DisplayName("認可: 非所属者かつ非公開（既定）の場合 RESERVATION_PERMISSION_DENIED で 403 相当")
+        void 予約作成_非所属者かつ非公開は拒否() {
+            // Given: 非公開（false）かつ非所属者
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null);
+            given(settingService.isAllowPublic(TEAM_ID)).willReturn(false);
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+
+            // When / Then: スロット取得より前に認可で弾く
+            assertThatThrownBy(() -> service.createReservation(TEAM_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ReservationErrorCode.RESERVATION_PERMISSION_DENIED);
+            // 認可で弾かれるため永続化に到達しない
+            verify(reservationRepository, org.mockito.Mockito.never()).save(any(ReservationEntity.class));
+        }
+
+        @Test
+        @DisplayName("認可: 公開設定ON の場合は非所属者でも予約できる（所属チェックをスキップ）")
+        void 予約作成_公開ONなら非所属者でも予約可() {
+            // Given: 公開（true）かつ非所属者
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null);
+            ReservationSlotEntity slot = createAvailableSlotEntity();
+            ReservationEntity savedEntity = createReservationEntity();
+            given(settingService.isAllowPublic(TEAM_ID)).willReturn(true);
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+            given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
+            given(reservationRepository.existsByReservationSlotIdAndUserIdAndStatusIn(
+                    eq(SLOT_ID), eq(USER_ID), any())).willReturn(false);
+            given(reservationRepository.save(any(ReservationEntity.class))).willReturn(savedEntity);
+
+            // When
+            ReservationResponse result = service.createReservation(TEAM_ID, USER_ID, request);
+
+            // Then: 公開ONなので所属判定を待たず予約成立
+            assertThat(result).isNotNull();
+            verify(reservationRepository).save(any(ReservationEntity.class));
+            // 公開ONのときは短絡評価で isMember を呼ばない
+            verify(accessControlService, org.mockito.Mockito.never()).isMember(any(), any(), org.mockito.ArgumentMatchers.anyString());
         }
     }
 

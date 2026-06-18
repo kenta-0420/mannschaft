@@ -179,4 +179,20 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
             """)
     Page<NotificationEntity> findInboxByUserIdOrderByPriorityThenCreatedAtDesc(
             @Param("userId") Long userId, @Param("excludedType") String excludedType, Pageable pageable);
+
+    /**
+     * 指定ユーザーの通知本体を全件削除する（クロスドメインFK撤廃キャンペーン 第二陣E）。
+     *
+     * <p>{@code NotificationAnonymizationEventListener#handleUserAnonymized} が退会受付直後
+     * （{@code UserAnonymizedEvent} 即時匿名化）に呼び出し、users 本体削除より前に
+     * 通知本体（title / body ＝宛先ユーザー向けの個人の内容＝PII）を先行削除する安全弁メソッド。
+     * これにより V100.001 で撤廃する {@code fk_notifications_user}（ON DELETE CASCADE）が冗長になる。</p>
+     *
+     * <p>{@code NotificationEntity} は {@code @SQLRestriction} を持たず（論理削除カラム deleted_at なし）、
+     * 派生 delete クエリでも消し残しは発生しないため通常の派生 delete を用いる。</p>
+     *
+     * @param userId 退会ユーザーID
+     * @return 削除された行数
+     */
+    int deleteByUserId(Long userId);
 }

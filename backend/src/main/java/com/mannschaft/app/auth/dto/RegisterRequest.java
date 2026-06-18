@@ -29,6 +29,15 @@ public class RegisterRequest {
     @Size(max = 50)
     private final String firstName;
 
+    /**
+     * 表示名（displayName）。
+     *
+     * <p>UserEntity.displayName は {@code @Column(nullable = false)} のため必須。
+     * これを欠落・空文字で受け取ると DB の NOT NULL 制約違反で 500（COMMON_999）になるため、
+     * DTO 層で {@code @NotBlank} を課して 400（COMMON_001）として弾く。
+     * フロントエンド（register.vue）でも displayName は必須入力。</p>
+     */
+    @NotBlank
     @Size(max = 50)
     private final String nickname;
 

@@ -2,6 +2,7 @@ package com.mannschaft.app.survey.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.survey.dto.CreateSurveyRequest;
 import com.mannschaft.app.survey.dto.DuplicateSurveyRequest;
@@ -35,6 +36,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpHeaders;
+import org.springframework.web.server.ResponseStatusException;
 import com.mannschaft.app.common.SecurityUtils;
 
 /**
@@ -64,9 +66,10 @@ public class SurveyController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        String canonicalScopeType = resolveScopeType(scopeType);
         Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
         Page<SurveyResponse> result = surveyService.listSurveys(
-                scopeType, resolvedScopeId, status, PageRequest.of(page, size));
+                canonicalScopeType, resolvedScopeId, status, PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -82,8 +85,9 @@ public class SurveyController {
             @PathVariable String scopeType,
             @PathVariable String scopeId,
             @PathVariable Long surveyId) {
+        String canonicalScopeType = resolveScopeType(scopeType);
         Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
-        SurveyDetailResponse response = surveyService.getSurveyDetail(scopeType, resolvedScopeId, surveyId);
+        SurveyDetailResponse response = surveyService.getSurveyDetail(canonicalScopeType, resolvedScopeId, surveyId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -97,9 +101,10 @@ public class SurveyController {
             @PathVariable String scopeType,
             @PathVariable String scopeId,
             @Valid @RequestBody CreateSurveyRequest request) {
+        String canonicalScopeType = resolveScopeType(scopeType);
         Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
         SurveyDetailResponse response = surveyService.createSurvey(
-                scopeType, resolvedScopeId, SecurityUtils.getCurrentUserId(), request);
+                canonicalScopeType, resolvedScopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -114,8 +119,9 @@ public class SurveyController {
             @PathVariable String scopeId,
             @PathVariable Long surveyId,
             @Valid @RequestBody UpdateSurveyRequest request) {
+        String canonicalScopeType = resolveScopeType(scopeType);
         Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
-        SurveyResponse response = surveyService.updateSurvey(scopeType, resolvedScopeId, surveyId, request);
+        SurveyResponse response = surveyService.updateSurvey(canonicalScopeType, resolvedScopeId, surveyId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -129,8 +135,9 @@ public class SurveyController {
             @PathVariable String scopeType,
             @PathVariable String scopeId,
             @PathVariable Long surveyId) {
+        String canonicalScopeType = resolveScopeType(scopeType);
         Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
-        SurveyResponse response = surveyService.publishSurvey(scopeType, resolvedScopeId, surveyId);
+        SurveyResponse response = surveyService.publishSurvey(canonicalScopeType, resolvedScopeId, surveyId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -144,8 +151,9 @@ public class SurveyController {
             @PathVariable String scopeType,
             @PathVariable String scopeId,
             @PathVariable Long surveyId) {
+        String canonicalScopeType = resolveScopeType(scopeType);
         Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
-        SurveyResponse response = surveyService.closeSurvey(scopeType, resolvedScopeId, surveyId);
+        SurveyResponse response = surveyService.closeSurvey(canonicalScopeType, resolvedScopeId, surveyId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -159,8 +167,9 @@ public class SurveyController {
             @PathVariable String scopeType,
             @PathVariable String scopeId,
             @PathVariable Long surveyId) {
+        String canonicalScopeType = resolveScopeType(scopeType);
         Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
-        surveyService.deleteSurvey(scopeType, resolvedScopeId, surveyId);
+        surveyService.deleteSurvey(canonicalScopeType, resolvedScopeId, surveyId);
         return ResponseEntity.noContent().build();
     }
 
@@ -197,9 +206,10 @@ public class SurveyController {
             @PathVariable String scopeType,
             @PathVariable String scopeId,
             @PathVariable Long surveyId) {
+        String canonicalScopeType = resolveScopeType(scopeType);
         Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
         byte[] csv = surveyResultService.exportResultsCsv(
-                scopeType, resolvedScopeId, surveyId, SecurityUtils.getCurrentUserId());
+                canonicalScopeType, resolvedScopeId, surveyId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"survey_" + surveyId + ".csv\"")
                 .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
@@ -221,9 +231,10 @@ public class SurveyController {
             @PathVariable String scopeId,
             @PathVariable Long surveyId,
             @RequestBody(required = false) DuplicateSurveyRequest request) {
+        String canonicalScopeType = resolveScopeType(scopeType);
         Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
         SurveyDetailResponse response = surveyService.duplicateSurvey(
-                scopeType, resolvedScopeId, surveyId, request, SecurityUtils.getCurrentUserId());
+                canonicalScopeType, resolvedScopeId, surveyId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -241,9 +252,10 @@ public class SurveyController {
             @PathVariable String scopeId,
             @PathVariable Long surveyId,
             @Valid @RequestBody ExtendDeadlineRequest request) {
+        String canonicalScopeType = resolveScopeType(scopeType);
         Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
         SurveyResponse response = surveyService.extendDeadline(
-                scopeType, resolvedScopeId, surveyId, request.getNewDeadline(), SecurityUtils.getCurrentUserId());
+                canonicalScopeType, resolvedScopeId, surveyId, request.getNewDeadline(), SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -256,9 +268,30 @@ public class SurveyController {
     public ResponseEntity<ApiResponse<SurveyStatsResponse>> getStats(
             @PathVariable String scopeType,
             @PathVariable String scopeId) {
+        String canonicalScopeType = resolveScopeType(scopeType);
         Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
-        SurveyStatsResponse response = surveyService.getStats(scopeType, resolvedScopeId);
+        SurveyStatsResponse response = surveyService.getStats(canonicalScopeType, resolvedScopeId);
         return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * URLパス語の scopeType を正準 enum 値の文字列に変換する。
+     *
+     * <p>URL パスでは複数形（"organizations" / "teams"）が使われるが、
+     * DB・Service 層では正準 enum 値（"ORGANIZATION" / "TEAM"）を期待する。
+     * 本メソッドで変換することで、汚染値が保存されるのを防ぐ。</p>
+     *
+     * @param scopeType URLパス語（"organizations" または "teams"）
+     * @return 正準値（"ORGANIZATION" または "TEAM"）
+     * @throws ResponseStatusException 不明な scopeType の場合（HTTP 400）
+     */
+    private String resolveScopeType(String scopeType) {
+        if ("organizations".equalsIgnoreCase(scopeType)) {
+            return ScopeType.ORGANIZATION.name();
+        } else if ("teams".equalsIgnoreCase(scopeType)) {
+            return ScopeType.TEAM.name();
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "不明な scopeType: " + scopeType);
     }
 
     /**
@@ -267,7 +300,7 @@ public class SurveyController {
      * <p>slug 形式のスコープIDを、scopeType に応じて
      * OrganizationService または TeamService 経由で内部 ID に変換する。</p>
      *
-     * @param scopeType "organizations" または "teams"
+     * @param scopeType "organizations" または "teams"（URLパス語）
      * @param scopeId   スラッグ文字列
      * @return 内部 BIGINT ID
      */
@@ -277,6 +310,6 @@ public class SurveyController {
         } else if ("teams".equalsIgnoreCase(scopeType)) {
             return teamService.resolveTeamId(scopeId);
         }
-        throw new IllegalArgumentException("不明な scopeType: " + scopeType);
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "不明な scopeType: " + scopeType);
     }
 }

@@ -225,10 +225,10 @@
     "COMMON_003": "Updated by another user. Please refresh the page",
     "COMMON_999": "A system error occurred",
     "AUTH_001": "Invalid email address or password",
-    "AUTH_002": "Session has expired. Please log in again",
-    "AUTH_003": "This email address is already registered",
-    "AUTH_004": "This account is disabled",
-    "AUTH_005": "Invalid verification code"
+    "AUTH_002": "Your email address has not been verified yet",
+    "AUTH_003": "Your account is locked. Please try again in 30 minutes",
+    "AUTH_004": "This email address is already registered",
+    "AUTH_005": "The verification email link is invalid or has expired"
   },
   "annual_plan": {
     "title": "Annual Event Plan",

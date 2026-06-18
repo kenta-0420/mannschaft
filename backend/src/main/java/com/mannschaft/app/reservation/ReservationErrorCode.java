@@ -29,8 +29,8 @@ public enum ReservationErrorCode implements ErrorCode {
     /** 予約ステータス不正 */
     INVALID_RESERVATION_STATUS("RESERVATION_006", "この操作は現在の予約ステータスでは実行できません", Severity.WARN),
 
-    /** 開始時刻と終了時刻の整合性エラー */
-    INVALID_TIME_RANGE("RESERVATION_007", "開始時刻は終了時刻より前である必要があります", Severity.ERROR),
+    /** 開始時刻と終了時刻の整合性エラー（入力不正なので 400） */
+    INVALID_TIME_RANGE("RESERVATION_007", "開始時刻は終了時刻より前である必要があります", Severity.WARN),
 
     /** 営業時間外 */
     OUTSIDE_BUSINESS_HOURS("RESERVATION_008", "営業時間外の時刻が指定されています", Severity.WARN),
@@ -62,11 +62,23 @@ public enum ReservationErrorCode implements ErrorCode {
     /** 臨時休業確認レコードが見つからない */
     CLOSURE_CONFIRMATION_NOT_FOUND("RESERVATION_017", "臨時休業確認レコードが見つかりません", Severity.WARN),
 
-    /** 臨時休業の日付範囲が不正 */
-    INVALID_CLOSURE_DATE_RANGE("RESERVATION_018", "終了日は開始日以降である必要があります", Severity.ERROR),
+    /** 臨時休業の日付範囲が不正（入力不正なので 400） */
+    INVALID_CLOSURE_DATE_RANGE("RESERVATION_018", "終了日は開始日以降である必要があります", Severity.WARN),
 
-    /** 臨時休業の時刻範囲が不正 */
-    INVALID_CLOSURE_TIME_RANGE("RESERVATION_019", "時刻範囲が不正です。開始・終了は両方指定し、整時（HH:00）かつ開始 < 終了である必要があります", Severity.ERROR);
+    /** 臨時休業の時刻範囲が不正（入力不正なので 400） */
+    INVALID_CLOSURE_TIME_RANGE("RESERVATION_019", "時刻範囲が不正です。開始・終了は両方指定し、整時（HH:00）かつ開始 < 終了である必要があります", Severity.WARN),
+
+    /** 予約入り枠の削除拒否（active な予約が紐づくスロットは削除不可・409） */
+    SLOT_HAS_ACTIVE_RESERVATIONS("RESERVATION_020", "このスロットには有効な予約が存在するため削除できません", Severity.WARN),
+
+    /**
+     * 予約認可ゲート: チーム所属者でない者が一般公開OFFのチームに予約しようとした。
+     *
+     * <p>既定（allow_public_reservation=false）はチーム所属（SUPPORTER 以上＝memberships 存在）を要求する。
+     * 裏設定で公開（true）にした場合はログイン済みであれば誰でも予約可（匿名は認証層で 401）。
+     * Severity.WARN だが {@code GlobalExceptionHandler} の個別マッピングで HTTP 403 に上書きする。</p>
+     */
+    RESERVATION_PERMISSION_DENIED("RESERVATION_021", "このチームに予約する権限がありません", Severity.WARN);
 
     private final String code;
     private final String message;

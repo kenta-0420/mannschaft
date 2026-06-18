@@ -63,6 +63,13 @@
       "reminder_sent": "Sent",
       "reminder_not_sent": "Not sent"
     },
+    "connection": {
+      "live": "Live updates",
+      "connecting": "Connecting…",
+      "reconnecting": "Reconnecting…",
+      "offline": "Offline",
+      "denied": "No access"
+    },
     "dialog": {
       "title": "Confirm Send",
       "confirm_message": "Send bulk notification with the following details?",
@@ -78,7 +85,8 @@
       "subject_required": "Please enter a subject",
       "body_required": "Please enter a body",
       "send_failed": "Failed to send",
-      "confirmations_failed": "Failed to load confirmation status"
+      "confirmations_failed": "Failed to load confirmation status",
+      "info_missing": "Notification information is missing"
     },
     "template": {
       "staff_sick": "Staff illness",
@@ -102,7 +110,12 @@
       "CANCELLED": "Cancelled",
       "NO_SHOW": "No show",
       "REJECTED": "Rejected"
-    }
+    },
+    "confirm_button": "Confirm closure",
+    "already_confirmed": "Confirmed",
+    "confirm_success": "Emergency closure acknowledged",
+    "confirm_failed": "Failed to confirm",
+    "badge": "Emergency closure"
   },
   "reservation": {
     "status": {
@@ -124,7 +137,8 @@
     "tab": {
       "book": "Book",
       "list": "Reservations",
-      "line_manage": "Manage Lines"
+      "line_manage": "Manage Lines",
+      "emergency_closure": "緊急休業"
     },
     "column": {
       "datetime": "Date & Time",
@@ -208,6 +222,27 @@
       "no_lines_yet": "No lines yet",
       "no_available_slots": "No available slots on this day"
     },
-    "line_manage_title": "Reservation Line Management"
+    "line_manage_title": "Reservation Line Management",
+    "settings": {
+      "advanced": {
+        "title": "Advanced Settings"
+      },
+      "allow_public": {
+        "section_label": "Public Booking",
+        "label": "Allow non-member reservations",
+        "hint_off": "Currently only members (MEMBER or above) can make reservations",
+        "hint_on": "Non-members can also make reservations",
+        "save_success": "Settings saved",
+        "confirm_title": "Change Setting",
+        "confirm_enable": "Non-members will be able to make reservations. Continue?",
+        "confirm_disable": "Non-members will no longer be able to make reservations. Continue?",
+        "confirm_ok": "Confirm"
+      }
+    },
+    "book": {
+      "not_affiliated_notice": "Reservations for this team are for members only",
+      "not_affiliated_hint": "Please join the team or contact the administrator",
+      "error_public_forbidden": "Reservations are only available to team members"
+    }
   }
 }

@@ -63,6 +63,13 @@
       "reminder_sent": "Enviado",
       "reminder_not_sent": "No enviado"
     },
+    "connection": {
+      "live": "Actualización en vivo",
+      "connecting": "Conectando…",
+      "reconnecting": "Reconectando…",
+      "offline": "Sin conexión",
+      "denied": "Sin acceso"
+    },
     "dialog": {
       "title": "Confirmar envío",
       "confirm_message": "¿Desea enviar el mensaje masivo con los siguientes detalles?",
@@ -78,7 +85,8 @@
       "subject_required": "Por favor, ingrese un asunto",
       "body_required": "Por favor, ingrese el cuerpo del mensaje",
       "send_failed": "Error al enviar",
-      "confirmations_failed": "Error al cargar el estado de confirmación"
+      "confirmations_failed": "Error al cargar el estado de confirmación",
+      "info_missing": "Falta información de la notificación"
     },
     "template": {
       "staff_sick": "Enfermedad del personal",
@@ -102,7 +110,12 @@
       "CANCELLED": "Cancelado",
       "NO_SHOW": "No presentado",
       "REJECTED": "Rechazado"
-    }
+    },
+    "confirm_button": "Confirmar cierre",
+    "already_confirmed": "Confirmado",
+    "confirm_success": "Cierre de emergencia confirmado",
+    "confirm_failed": "Error al confirmar",
+    "badge": "Cierre de emergencia"
   },
   "reservation": {
     "status": {
@@ -124,7 +137,8 @@
     "tab": {
       "book": "Reservar",
       "list": "Reservas",
-      "line_manage": "Gestionar líneas"
+      "line_manage": "Gestionar líneas",
+      "emergency_closure": "緊急休業"
     },
     "column": {
       "datetime": "Fecha y hora",
@@ -208,6 +222,27 @@
       "no_lines_yet": "Aún no hay líneas",
       "no_available_slots": "No hay horarios disponibles este día"
     },
-    "line_manage_title": "Gestión de líneas de reserva"
+    "line_manage_title": "Gestión de líneas de reserva",
+    "settings": {
+      "advanced": {
+        "title": "Configuración avanzada"
+      },
+      "allow_public": {
+        "section_label": "Reserva pública",
+        "label": "Permitir reservas de no miembros",
+        "hint_off": "Actualmente solo los miembros (MEMBER o superior) pueden reservar",
+        "hint_on": "Los no miembros también pueden reservar",
+        "save_success": "Configuración guardada",
+        "confirm_title": "Cambiar configuración",
+        "confirm_enable": "Los no miembros podrán realizar reservas. ¿Continuar?",
+        "confirm_disable": "Los no miembros no podrán realizar reservas. ¿Continuar?",
+        "confirm_ok": "Confirmar"
+      }
+    },
+    "book": {
+      "not_affiliated_notice": "Las reservas de este equipo son solo para miembros",
+      "not_affiliated_hint": "Únete al equipo o contacta al administrador",
+      "error_public_forbidden": "Las reservas solo están disponibles para miembros del equipo"
+    }
   }
 }

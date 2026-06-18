@@ -13,6 +13,7 @@ const authStore = useAuthStore()
 const notification = useNotification()
 const route = useRoute()
 const { applyUserLocale } = useLocale()
+const { t } = useI18n()
 
 async function handleLogin() {
   loading.value = true
@@ -93,11 +94,24 @@ async function handleLogin() {
         }
       }
     }
-  } catch {
-    notification.error(
-      'ログインに失敗しました',
-      'メールアドレスまたはパスワードが正しくありません。',
-    )
+  } catch (e: unknown) {
+    // backend は AuthErrorCode を { error: { code, message } } 形式で返す。
+    // code を判定して文言を出し分ける（AUTH_003 ロック等を握りつぶさない）。
+    const err = e as { data?: { error?: { code?: string; message?: string } } }
+    const code = err?.data?.error?.code
+    if (code === 'AUTH_003') {
+      // アカウントロック（5回失敗で30分ロック）
+      notification.error(t('auth.login.account_locked'), t('auth.login.account_locked_detail'))
+    } else if (code === 'AUTH_002') {
+      // メール未確認
+      notification.error(
+        t('auth.login.email_not_verified'),
+        t('auth.login.email_not_verified_detail'),
+      )
+    } else {
+      // AUTH_001 を含む既定（メールアドレスまたはパスワード不一致）
+      notification.error(t('auth.login.failed'), t('auth.login.invalid_credentials'))
+    }
   } finally {
     loading.value = false
   }

@@ -38036,6 +38036,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard/team/{teamSlug}/admin-action-required": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * チーム横断承認待ち集約
+         * @description ADMIN/DEPUTY 向け。予約承認待ち/シフトリクエスト/マッチング応募を集約。preview_size=0 で件数のみ
+         */
+        get: operations["getTeamAdminActionRequired"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dashboard/team/{teamPublicId}": {
         parameters: {
             query?: never;
@@ -38108,6 +38128,26 @@ export interface paths {
          * @description 所属チーム/組織ごとの個人パフォーマンス概要
          */
         get: operations["getPerformance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboard/organization/{orgSlug}/admin-action-required": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 組織横断承認待ち集約
+         * @description ADMIN/DEPUTY 向け。組織が発行した未収請求（SENT/VIEWED/OVERDUE）を集約。preview_size=0 で件数のみ
+         */
+        get: operations["getOrgAdminActionRequired"];
         put?: never;
         post?: never;
         delete?: never;
@@ -42632,25 +42672,6 @@ export interface components {
             assignees?: components["schemas"]["AssigneeResponse"][];
             hierarchy?: components["schemas"]["TodoHierarchyDto"];
             audit?: components["schemas"]["TodoAuditDto"];
-            /**
-             * Format: int64
-             * @deprecated
-             */
-            daysRemaining?: number;
-            /**
-             * Format: int32
-             * @deprecated
-             */
-            descendantCompletedCount?: number;
-            /** @deprecated */
-            statusLabel?: components["schemas"]["TodoStatusLabelInfo"];
-            /**
-             * Format: int32
-             * @deprecated
-             */
-            descendantTotalCount?: number;
-            /** @deprecated */
-            title?: string;
             /** @deprecated */
             priority?: string;
             /**
@@ -42665,18 +42686,62 @@ export interface components {
             childCount?: number;
             /** @deprecated */
             children?: components["schemas"]["TodoResponse"][];
+            /** @deprecated */
+            description?: string;
             /**
              * Format: int64
              * @deprecated
              */
             parentId?: number;
-            /** @deprecated */
-            description?: string;
             /**
              * Format: int32
              * @deprecated
              */
             depth?: number;
+            /**
+             * Format: int64
+             * @deprecated
+             */
+            projectId?: number;
+            /**
+             * Format: int64
+             * @deprecated
+             */
+            milestoneId?: number;
+            /**
+             * Format: date-time
+             * @deprecated
+             */
+            completedAt?: string;
+            /**
+             * @deprecated
+             * @example 14:30:00
+             */
+            dueTime?: string;
+            /**
+             * Format: date
+             * @deprecated
+             */
+            dueDate?: string;
+            /** @deprecated */
+            createdBy?: components["schemas"]["UserInfo"];
+            /** @deprecated */
+            scopeType?: string;
+            /**
+             * Format: int32
+             * @deprecated
+             */
+            sortOrder?: number;
+            /**
+             * Format: int64
+             * @deprecated
+             */
+            linkedScheduleId?: number;
+            /**
+             * Format: date
+             * @deprecated
+             */
+            startDate?: string;
             /** @deprecated */
             progressRate?: number;
             /**
@@ -42689,54 +42754,29 @@ export interface components {
              * @deprecated
              */
             updatedAt?: string;
+            /** @deprecated */
+            title?: string;
+            /** @deprecated */
+            progressManual?: boolean;
+            /** @deprecated */
+            completedBy?: components["schemas"]["UserInfo"];
             /**
              * Format: int32
              * @deprecated
              */
-            sortOrder?: number;
+            descendantTotalCount?: number;
             /** @deprecated */
-            scopeType?: string;
-            /** @deprecated */
-            createdBy?: components["schemas"]["UserInfo"];
-            /**
-             * Format: date
-             * @deprecated
-             */
-            dueDate?: string;
-            /**
-             * Format: date
-             * @deprecated
-             */
-            startDate?: string;
-            /**
-             * Format: date-time
-             * @deprecated
-             */
-            completedAt?: string;
+            statusLabel?: components["schemas"]["TodoStatusLabelInfo"];
             /**
              * Format: int64
              * @deprecated
              */
-            milestoneId?: number;
+            daysRemaining?: number;
             /**
-             * @deprecated
-             * @example 14:30:00
-             */
-            dueTime?: string;
-            /**
-             * Format: int64
+             * Format: int32
              * @deprecated
              */
-            projectId?: number;
-            /** @deprecated */
-            progressManual?: boolean;
-            /**
-             * Format: int64
-             * @deprecated
-             */
-            linkedScheduleId?: number;
-            /** @deprecated */
-            completedBy?: components["schemas"]["UserInfo"];
+            descendantCompletedCount?: number;
         };
         TodoScheduleDto: {
             /** Format: date */
@@ -48097,6 +48137,7 @@ export interface components {
             questions?: components["schemas"]["CreateQuestionRequest"][];
             targetUserIds?: number[];
             resultViewerUserIds?: number[];
+            includeSupporters?: boolean;
         };
         ApiResponseSurveyDetailResponse: {
             data?: components["schemas"]["SurveyDetailResponse"];
@@ -48163,6 +48204,7 @@ export interface components {
             remindBeforeHours?: string;
             /** Format: int32 */
             manualRemindCount?: number;
+            includeSupporters?: boolean;
         };
         SurveyPolicyDto: {
             isAnonymous?: boolean;
@@ -49628,10 +49670,10 @@ export interface components {
             status?: "PUBLISHED" | "DRAFT" | "SCHEDULED" | "HIDDEN" | "DELETED";
             /** Format: uuid */
             scopeVillageId?: string;
-            scopeTypeOrDefault?: string;
+            postedAsTypeOrDefault?: string;
             /** Format: int64 */
             scopeIdOrDefault?: number;
-            postedAsTypeOrDefault?: string;
+            scopeTypeOrDefault?: string;
         };
         ApiResponsePostResponse: {
             data?: components["schemas"]["PostResponse"];
@@ -49868,8 +49910,8 @@ export interface components {
             remindBeforeMinutes?: number;
             /** @enum {string} */
             reminderKind?: "RELATIVE" | "ABSOLUTE";
-            remindAtValid?: boolean;
             remindBeforeMinutesValid?: boolean;
+            remindAtValid?: boolean;
         };
         CreateScheduleRequest: {
             title?: string;
@@ -49897,6 +49939,7 @@ export interface components {
             reminders?: components["schemas"]["CreateReminderRequest"][];
             scheduledSurveys?: components["schemas"]["ScheduledSurveyRequest"][];
             scheduledAttendance?: components["schemas"]["ScheduledAttendanceRequest"];
+            includeSupporters?: boolean;
         };
         RecurrenceRuleDto: {
             type: string;
@@ -56775,8 +56818,8 @@ export interface components {
             reminders?: number[];
             absoluteReminders?: string[];
             recurrenceRule?: components["schemas"]["RecurrenceRuleDto"];
-            reminderCountWithinLimit?: boolean;
             eventTypeOrDefault?: string;
+            reminderCountWithinLimit?: boolean;
         };
         ApiResponsePersonalScheduleResponse: {
             data?: components["schemas"]["PersonalScheduleResponse"];
@@ -59259,6 +59302,7 @@ export interface components {
             startsAt?: string;
             /** Format: date-time */
             expiresAt?: string;
+            includeSupporters?: boolean;
         };
         UpdateKanbanRequest: {
             title?: string;
@@ -59538,8 +59582,8 @@ export interface components {
             remindBeforeMinutes?: number;
             /** @enum {string} */
             reminderKind?: "RELATIVE" | "ABSOLUTE";
-            remindAtValid?: boolean;
             remindBeforeMinutesValid?: boolean;
+            remindAtValid?: boolean;
         };
         UpdateScheduleRequest: {
             title?: string;
@@ -60158,11 +60202,11 @@ export interface components {
             philosophy?: boolean;
             officers?: boolean;
             custom_fields?: boolean;
+            philosophyVisible?: boolean;
             homepageUrlVisible?: boolean;
             establishedDateVisible?: boolean;
             customFieldsVisible?: boolean;
             officersVisible?: boolean;
-            philosophyVisible?: boolean;
         };
         UpdateTeamProfileRequest: {
             homepage_url?: string;
@@ -61851,10 +61895,10 @@ export interface components {
             data?: components["schemas"]["PageJoinRequestResponse"];
         };
         PageJoinRequestResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["JoinRequestResponse"][];
@@ -61872,11 +61916,11 @@ export interface components {
             /** Format: int64 */
             offset?: number;
             sort?: components["schemas"]["SortObject"];
-            paged?: boolean;
             /** Format: int32 */
             pageNumber?: number;
             /** Format: int32 */
             pageSize?: number;
+            paged?: boolean;
             unpaged?: boolean;
         };
         SortObject: {
@@ -63042,42 +63086,42 @@ export interface components {
             milestones?: components["schemas"]["MilestoneDetail"][];
             unassignedTodos?: components["schemas"]["UnassignedTodos"];
             audit?: components["schemas"]["ProjectAuditDto"];
-            /**
-             * Format: int64
-             * @deprecated
-             */
-            daysRemaining?: number;
-            /** @deprecated */
-            visibility?: string;
-            /** @deprecated */
-            title?: string;
-            /** @deprecated */
-            description?: string;
             /** @deprecated */
             status?: string;
             /** @deprecated */
-            progressRate?: number;
+            description?: string;
+            /** @deprecated */
+            visibility?: string;
             /** @deprecated */
             color?: string;
-            /** @deprecated */
-            createdBy?: components["schemas"]["UserInfo"];
             /**
              * Format: date
              * @deprecated
              */
             dueDate?: string;
             /** @deprecated */
+            createdBy?: components["schemas"]["UserInfo"];
+            /** @deprecated */
+            progressRate?: number;
+            /** @deprecated */
             emoji?: string;
+            /** @deprecated */
+            title?: string;
+            /**
+             * Format: int32
+             * @deprecated
+             */
+            completedTodos?: number;
             /**
              * Format: int32
              * @deprecated
              */
             totalTodos?: number;
             /**
-             * Format: int32
+             * Format: int64
              * @deprecated
              */
-            completedTodos?: number;
+            daysRemaining?: number;
         };
         ProjectMetaDto: {
             status?: string;
@@ -63933,8 +63977,8 @@ export interface components {
             rsvpStatus?: string;
             /** Format: int32 */
             watcherCount?: number;
-            underCare?: boolean;
             alreadyCheckedIn?: boolean;
+            underCare?: boolean;
         };
         ApiResponseDismissalStatusResponse: {
             data?: components["schemas"]["DismissalStatusResponse"];
@@ -64717,10 +64761,10 @@ export interface components {
             data?: components["schemas"]["PageNotificationResponse"];
         };
         PageNotificationResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["NotificationResponse"][];
@@ -65045,10 +65089,10 @@ export interface components {
             data?: components["schemas"]["PagePurgeStatusRow"];
         };
         PagePurgeStatusRow: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PurgeStatusRow"][];
@@ -65266,10 +65310,10 @@ export interface components {
             lastError?: string;
         };
         PageEmailOutboxSummaryResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["EmailOutboxSummaryResponse"][];
@@ -65351,10 +65395,10 @@ export interface components {
             data?: components["schemas"]["PageUserEntity"];
         };
         PageUserEntity: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["UserEntity"][];
@@ -65440,10 +65484,10 @@ export interface components {
             data?: components["schemas"]["PageTeamEntity"];
         };
         PageTeamEntity: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["TeamEntity"][];
@@ -65548,10 +65592,10 @@ export interface components {
             timelinePostsPublic?: boolean;
         };
         PageOrganizationEntity: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["OrganizationEntity"][];
@@ -66495,10 +66539,10 @@ export interface components {
             memberSince?: string;
         };
         PagePublicUserPostSummaryResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicUserPostSummaryResponse"][];
@@ -66523,10 +66567,10 @@ export interface components {
             createdAt?: string;
         };
         PagePublicTimelinePostResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicTimelinePostResponse"][];
@@ -66555,10 +66599,10 @@ export interface components {
             createdAt?: string;
         };
         PagePublicPostSummary: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicPostSummary"][];
@@ -66606,10 +66650,10 @@ export interface components {
             answer?: string;
         };
         PagePublicEventResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicEventResponse"][];
@@ -66671,10 +66715,10 @@ export interface components {
             canonicalSlug?: string;
         };
         PagePublicTeamSearchResultResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicTeamSearchResultResponse"][];
@@ -66868,10 +66912,10 @@ export interface components {
             mapEmbedUrl?: string;
         };
         PagePublicOrganizationSearchResultResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicOrganizationSearchResultResponse"][];
@@ -66963,10 +67007,10 @@ export interface components {
             data?: components["schemas"]["MarketListingResponse"];
         };
         PagePublicPostCommentResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicPostCommentResponse"][];
@@ -67502,8 +67546,8 @@ export interface components {
             entryCount?: number;
             /** Format: date-time */
             lastUpdatedAt?: string;
-            minMet?: boolean;
             maxExceeded?: boolean;
+            minMet?: boolean;
         };
         EntryMemberSummaryResponse: {
             /** Format: int64 */
@@ -67696,10 +67740,10 @@ export interface components {
             data?: components["schemas"]["PageSuccessionCovenantResponse"];
         };
         PageSuccessionCovenantResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["SuccessionCovenantResponse"][];
@@ -67773,10 +67817,10 @@ export interface components {
             data?: components["schemas"]["BalanceEventResponse"][];
         };
         PageStampEventResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["StampEventResponse"][];
@@ -67804,10 +67848,10 @@ export interface components {
             webUrl?: string;
         };
         PageBalanceEventResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["BalanceEventResponse"][];
@@ -67969,10 +68013,10 @@ export interface components {
             createdAt?: string;
         };
         PageCommitteeSummaryResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["CommitteeSummaryResponse"][];
@@ -68536,8 +68580,8 @@ export interface components {
             googleCalendarId?: string;
             personalSyncEnabled?: boolean;
             lastSyncError?: components["schemas"]["SyncErrorDetail"];
-            connected?: boolean;
             active?: boolean;
+            connected?: boolean;
         };
         SyncErrorDetail: {
             type?: string;
@@ -69088,6 +69132,33 @@ export interface components {
             fetchedAt?: string;
             isStale?: boolean;
         };
+        AdminActionRequiredResponse: {
+            scope_type?: string;
+            /** Format: int64 */
+            scope_id?: number;
+            /** Format: int64 */
+            total_pending?: number;
+            domains?: components["schemas"]["DomainSection"][];
+        };
+        ApiResponseAdminActionRequiredResponse: {
+            data?: components["schemas"]["AdminActionRequiredResponse"];
+        };
+        DomainSection: {
+            domain?: string;
+            /** Format: int64 */
+            pending_count?: number;
+            degraded?: boolean;
+            list_route?: string;
+            items?: components["schemas"]["PreviewItem"][];
+        };
+        PreviewItem: {
+            id?: string;
+            title?: string;
+            requested_by?: string;
+            /** Format: date-time */
+            requested_at?: string;
+            detail_route?: string;
+        };
         ActionRequiredSummaryResponse: {
             circulation?: components["schemas"]["CirculationSection"];
             survey?: components["schemas"]["SurveySection"];
@@ -69432,10 +69503,10 @@ export interface components {
             data?: components["schemas"]["PageCommitteeDistributionLogResponse"];
         };
         PageCommitteeDistributionLogResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["CommitteeDistributionLogResponse"][];
@@ -69933,10 +70004,10 @@ export interface components {
             data?: components["schemas"]["PageVillageCreationRequestResponse"];
         };
         PageVillageCreationRequestResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["VillageCreationRequestResponse"][];
@@ -70118,10 +70189,10 @@ export interface components {
             data?: components["schemas"]["PageUserRoleEntity"];
         };
         PageUserRoleEntity: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["UserRoleEntity"][];
@@ -119751,6 +119822,24 @@ export interface operations {
                     "*/*": components["schemas"]["ApiResponseTeamResponse"];
                 };
             };
+            /** @description 可視性レベル未満（非メンバー等）でアクセス不可 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamResponse"];
+                };
+            };
+            /** @description チームが存在しない / 論理削除済み */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamResponse"];
+                };
+            };
         };
     };
     deleteTeam: {
@@ -122227,6 +122316,24 @@ export interface operations {
         responses: {
             /** @description 取得成功 */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOrganizationResponse"];
+                };
+            };
+            /** @description 可視性レベル未満（非メンバー等）でアクセス不可 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOrganizationResponse"];
+                };
+            };
+            /** @description 組織が存在しない / 論理削除済み */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -132749,6 +132856,24 @@ export interface operations {
                     "*/*": components["schemas"]["PagedResponseMemberResponse"];
                 };
             };
+            /** @description 可視性レベル未満（非メンバー等）でアクセス不可 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseMemberResponse"];
+                };
+            };
+            /** @description チームが存在しない / 論理削除済み */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseMemberResponse"];
+                };
+            };
         };
     };
     getMyPermissions: {
@@ -136947,6 +137072,24 @@ export interface operations {
         responses: {
             /** @description 取得成功 */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseMemberResponse"];
+                };
+            };
+            /** @description 可視性レベル未満（非メンバー等）でアクセス不可 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseMemberResponse"];
+                };
+            };
+            /** @description 組織が存在しない / 論理削除済み */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -142015,6 +142158,30 @@ export interface operations {
             };
         };
     };
+    getTeamAdminActionRequired: {
+        parameters: {
+            query?: {
+                preview_size?: number;
+            };
+            header?: never;
+            path: {
+                teamSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAdminActionRequiredResponse"];
+                };
+            };
+        };
+    };
     getTeamDashboard: {
         parameters: {
             query?: {
@@ -142105,6 +142272,30 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseMapStringObject"];
+                };
+            };
+        };
+    };
+    getOrgAdminActionRequired: {
+        parameters: {
+            query?: {
+                preview_size?: number;
+            };
+            header?: never;
+            path: {
+                orgSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAdminActionRequiredResponse"];
                 };
             };
         };

@@ -63,6 +63,13 @@
       "reminder_sent": "已发送",
       "reminder_not_sent": "未发送"
     },
+    "connection": {
+      "live": "实时更新中",
+      "connecting": "连接中…",
+      "reconnecting": "重新连接中…",
+      "offline": "离线",
+      "denied": "无查看权限"
+    },
     "dialog": {
       "title": "确认发送",
       "confirm_message": "是否以以下内容批量发送？",
@@ -78,7 +85,8 @@
       "subject_required": "请输入主题",
       "body_required": "请输入正文",
       "send_failed": "发送失败",
-      "confirmations_failed": "确认状态加载失败"
+      "confirmations_failed": "确认状态加载失败",
+      "info_missing": "通知信息缺失"
     },
     "template": {
       "staff_sick": "员工生病",
@@ -102,7 +110,12 @@
       "CANCELLED": "已取消",
       "NO_SHOW": "未到场",
       "REJECTED": "已拒绝"
-    }
+    },
+    "confirm_button": "确认休业",
+    "already_confirmed": "已确认",
+    "confirm_success": "已确认紧急休业通知",
+    "confirm_failed": "确认失败",
+    "badge": "紧急休业"
   },
   "reservation": {
     "status": {
@@ -124,7 +137,8 @@
     "tab": {
       "book": "预约",
       "list": "预约列表",
-      "line_manage": "线路管理"
+      "line_manage": "线路管理",
+      "emergency_closure": "緊急休業"
     },
     "column": {
       "datetime": "日期时间",
@@ -208,6 +222,27 @@
       "no_lines_yet": "还没有线路",
       "no_available_slots": "当天没有空闲时段"
     },
-    "line_manage_title": "预约线路管理"
+    "line_manage_title": "预约线路管理",
+    "settings": {
+      "advanced": {
+        "title": "高级设置"
+      },
+      "allow_public": {
+        "section_label": "公开预约",
+        "label": "允许非成员预约",
+        "hint_off": "当前只有成员（MEMBER及以上）可以预约",
+        "hint_on": "非成员也可以预约",
+        "save_success": "设置已保存",
+        "confirm_title": "更改设置",
+        "confirm_enable": "非成员将可以进行预约。是否继续？",
+        "confirm_disable": "非成员将无法进行预约。是否继续？",
+        "confirm_ok": "确认"
+      }
+    },
+    "book": {
+      "not_affiliated_notice": "此团队的预约仅限成员",
+      "not_affiliated_hint": "请加入团队或联系管理员",
+      "error_public_forbidden": "预约仅对团队成员开放"
+    }
   }
 }
