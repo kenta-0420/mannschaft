@@ -21,6 +21,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.publicview.service.PostAuthorSnapshotService;
 import com.mannschaft.app.team.entity.TeamEntity;
@@ -32,6 +33,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -88,6 +91,9 @@ class BlogPostServiceTest {
     private static final String TEAM_ID_STR = TEAM_ID.toString();
     private static final Long USER_ID = 100L;
     private static final Long POST_ID = 10L;
+    /** SecurityUtils.getCurrentUserIdOrNull() をモックする際に返す閲覧者ID（非null定数）。
+     * シャード実行順序によらず決定論的な assertCanView 引数を保証するために使用する。 */
+    private static final Long VIEWER_ID = 99L;
 
     private BlogPostEntity createPostEntity(PostStatus status) {
         return BlogPostEntity.builder()
@@ -194,6 +200,56 @@ class BlogPostServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("CMS_001"));
         }
+
+        @Test
+        @DisplayName("認可: slug解決後にContentVisibilityChecker.assertCanViewが呼ばれる（getByIdと同一挙動）")
+        void slug検索_可視性チェック呼び出し() {
+            // Given
+            BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
+            ReflectionTestUtils.setField(entity, "id", POST_ID);
+            given(postRepository.findByTeamIdAndSlug(TEAM_ID, "test-slug")).willReturn(Optional.of(entity));
+            given(cmsMapper.toBlogPostResponse(entity)).willReturn(createPostResponse());
+
+            // SecurityUtils.getCurrentUserIdOrNull() を VIEWER_ID に固定する。
+            // フルシャード実行では先行テストが認証済み SecurityContext を残置し得るため、
+            // ambient な SecurityContext に依存すると Strict Stub が PotentialStubbingProblem を投げる。
+            try (MockedStatic<SecurityUtils> securityUtils = Mockito.mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
+
+                // When
+                service.getBySlug(TEAM_ID, null, null, "test-slug");
+
+                // Then: 解決した記事IDと固定 viewerUserId で可視性判定が委譲される
+                verify(contentVisibilityChecker).assertCanView(ReferenceType.BLOG_POST, POST_ID, VIEWER_ID);
+            }
+        }
+
+        @Test
+        @DisplayName("認可: 非メンバーが他人のMEMBERS_ONLY記事をslug取得→assertCanViewで弾かれる（漏洩根治）")
+        void slug検索_可視性拒否で例外伝播() {
+            // Given: MEMBERS_ONLY 記事を slug で引けるが、Checker が VISIBILITY_001（403）で拒否する
+            BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
+            ReflectionTestUtils.setField(entity, "id", POST_ID);
+            given(postRepository.findByTeamIdAndSlug(TEAM_ID, "secret-slug")).willReturn(Optional.of(entity));
+
+            // SecurityUtils.getCurrentUserIdOrNull() を VIEWER_ID に固定する。
+            // フルシャード実行では先行テストが認証済み SecurityContext を残置し得るため、
+            // ambient な SecurityContext に依存すると Strict Stub が PotentialStubbingProblem を投げる。
+            try (MockedStatic<SecurityUtils> securityUtils = Mockito.mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
+                org.mockito.BDDMockito.willThrow(new BusinessException(
+                        com.mannschaft.app.common.visibility.VisibilityErrorCode.VISIBILITY_001))
+                        .given(contentVisibilityChecker)
+                        .assertCanView(ReferenceType.BLOG_POST, POST_ID, VIEWER_ID);
+
+                // When / Then: 例外がそのまま伝播し、レスポンス生成（漏洩）に到達しない
+                assertThatThrownBy(() -> service.getBySlug(TEAM_ID, null, null, "secret-slug"))
+                        .isInstanceOf(BusinessException.class)
+                        .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                                .isEqualTo("VISIBILITY_001"));
+                verify(cmsMapper, never()).toBlogPostResponse(any(BlogPostEntity.class));
+            }
+        }
     }
 
     // ========================================
@@ -223,6 +279,28 @@ class BlogPostServiceTest {
             assertThat(result).isNotNull();
             verify(postRepository).save(any(BlogPostEntity.class));
             verify(accessControlService).checkMembership(USER_ID, TEAM_ID, "TEAM");
+        }
+
+        @Test
+        @DisplayName("B1: visibility=MEMBERS_AND_ABOVE で作成しても500にならず永続化される（新ラダー値受理）")
+        void 作成_新ラダー可視性_500にならず保存() {
+            // Given: 可視性ラダー統一(#1341)の新ラダー値名を FE が送る
+            CreateBlogPostRequest request = new CreateBlogPostRequest(
+                    TEAM_ID_STR, null, null, "新ラダー記事", null, "本文",
+                    null, null, null, "MEMBERS_AND_ABOVE", null, null, null, null, null, null, null);
+            BlogPostEntity savedEntity = createPostEntity(PostStatus.DRAFT);
+            given(postRepository.save(any(BlogPostEntity.class))).willReturn(savedEntity);
+            given(cmsMapper.toBlogPostResponse(savedEntity)).willReturn(createPostResponse());
+
+            // When: 以前は Visibility.valueOf("MEMBERS_AND_ABOVE") が IllegalArgumentException → 500
+            BlogPostResponse result = service.createPost(USER_ID, request);
+
+            // Then: 例外なく保存され、entity に新ラダー可視性が設定される
+            assertThat(result).isNotNull();
+            org.mockito.ArgumentCaptor<BlogPostEntity> captor =
+                    org.mockito.ArgumentCaptor.forClass(BlogPostEntity.class);
+            verify(postRepository).save(captor.capture());
+            assertThat(captor.getValue().getVisibility()).isEqualTo(Visibility.MEMBERS_AND_ABOVE);
         }
 
         @Test
@@ -268,6 +346,26 @@ class BlogPostServiceTest {
 
             // Then
             assertThat(result).isNotNull();
+        }
+
+        @Test
+        @DisplayName("B1: visibility=MEMBERS_AND_ABOVE で更新しても500にならず反映される（新ラダー値受理）")
+        void 更新_新ラダー可視性_500にならず反映() {
+            // Given
+            BlogPostEntity entity = createPostEntity(PostStatus.DRAFT);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
+            UpdateBlogPostRequest request = new UpdateBlogPostRequest(
+                    "更新タイトル", null, "更新本文", null, null, "MEMBERS_AND_ABOVE",
+                    null, null, null, null, null, null, null);
+            given(postRepository.save(entity)).willReturn(entity);
+            given(cmsMapper.toBlogPostResponse(entity)).willReturn(createPostResponse());
+
+            // When: 以前は Visibility.valueOf("MEMBERS_AND_ABOVE") が IllegalArgumentException → 500
+            BlogPostResponse result = service.updatePost(POST_ID, USER_ID, request);
+
+            // Then: 例外なく更新され、新ラダー可視性が反映される
+            assertThat(result).isNotNull();
+            assertThat(entity.getVisibility()).isEqualTo(Visibility.MEMBERS_AND_ABOVE);
         }
 
         @Test
