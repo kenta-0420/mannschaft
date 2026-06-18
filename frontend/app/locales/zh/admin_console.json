@@ -45,8 +45,7 @@
     },
     "error": {
       "fetchFailedTitle": "无法获取权限信息",
-      "fetchFailedBody": "发生了临时问题。请稍后重试",
-      "retry": "重试"
+      "fetchFailedBody": "发生了临时问题。请稍后重试"
     }
   }
 }

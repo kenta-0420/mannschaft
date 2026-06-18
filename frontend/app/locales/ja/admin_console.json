@@ -45,8 +45,7 @@
     },
     "error": {
       "fetchFailedTitle": "権限情報を取得できませんでした",
-      "fetchFailedBody": "一時的な問題が発生しています。時間をおいて再試行してください",
-      "retry": "再試行"
+      "fetchFailedBody": "一時的な問題が発生しています。時間をおいて再試行してください"
     }
   }
 }

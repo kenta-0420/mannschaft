@@ -19,33 +19,39 @@ export default defineNuxtRouteMiddleware(async (to) => {
   // auth ミドルウェアと同じ作法（SSR では判定材料が無いので素通り、client で確定させる）。
   if (import.meta.server) return
 
+  // slug が空の場合はミドルウェアを素通りさせ、ページ側でルート不一致を処理する。
   const slug = String(to.params.slug ?? '')
+  if (!slug) return
+
   const scopeType = to.path.startsWith('/organizations/') ? 'organization' : 'team'
   const scopeTop = scopeType === 'organization'
     ? `/organizations/${slug}`
     : `/teams/${slug}`
 
+  const nuxtApp = useNuxtApp()
+  const t = (key: string): string => nuxtApp.$i18n.t(key)
+
   const access = useRoleAccess(scopeType, slug)
   const result = await access.loadPermissions()
 
-  // 取得失敗（BE 障害等）。権限なしに倒さず、再試行可能なエラー画面へ（握りつぶさない）。
+  // 取得失敗（BE 障害等）。権限なしに倒さず 503 でフルページエラーへ落とす（握りつぶさない）。
+  // 取得失敗は 503 で正直に伝播。リッチな再試行画面 UX（専用 error.vue）は本フェーズ対象外。
   if (!result.ok) {
     throw createError({
       statusCode: 503,
-      statusMessage: 'permission_fetch_failed',
-      // ErrorComponent 側で再試行導線を出せるよう、原因を fatal でないエラーとして伝播。
+      statusMessage: t('adminConsole.error.fetchFailedTitle'),
+      data: { body: t('adminConsole.error.fetchFailedBody') },
+      // fatal: true = Nuxt フルページエラーに落とす（権限なしへの誤倒しを防ぐ正しい挙動）。
       fatal: true,
     })
   }
 
   // 権限不足: プロジェクト慣習に従いスコープトップへ戻す（404 にしない）＋エラートースト。
   if (!access.isAdminOrDeputy.value) {
-    const nuxtApp = useNuxtApp()
     const toast = nuxtApp.$toast as
       | { add: (opts: Record<string, unknown>) => void }
       | undefined
     if (toast) {
-      const t = (key: string): string => nuxtApp.$i18n.t(key)
       toast.add({
         severity: 'error',
         summary: t('adminConsole.middleware.accessDeniedTitle'),

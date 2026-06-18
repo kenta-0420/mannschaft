@@ -45,8 +45,7 @@
     },
     "error": {
       "fetchFailedTitle": "Failed to load permissions",
-      "fetchFailedBody": "A temporary problem occurred. Please wait a moment and try again",
-      "retry": "Retry"
+      "fetchFailedBody": "A temporary problem occurred. Please wait a moment and try again"
     }
   }
 }

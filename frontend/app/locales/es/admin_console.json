@@ -45,8 +45,7 @@
     },
     "error": {
       "fetchFailedTitle": "No se pudieron cargar los permisos",
-      "fetchFailedBody": "Se produjo un problema temporal. Espera un momento e inténtalo de nuevo",
-      "retry": "Reintentar"
+      "fetchFailedBody": "Se produjo un problema temporal. Espera un momento e inténtalo de nuevo"
     }
   }
 }

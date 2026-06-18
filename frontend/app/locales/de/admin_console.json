@@ -45,8 +45,7 @@
     },
     "error": {
       "fetchFailedTitle": "Berechtigungen konnten nicht geladen werden",
-      "fetchFailedBody": "Ein vorübergehendes Problem ist aufgetreten. Bitte warte einen Moment und versuche es erneut",
-      "retry": "Erneut versuchen"
+      "fetchFailedBody": "Ein vorübergehendes Problem ist aufgetreten. Bitte warte einen Moment und versuche es erneut"
     }
   }
 }
