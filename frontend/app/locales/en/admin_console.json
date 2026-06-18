@@ -46,6 +46,10 @@
     "error": {
       "fetchFailedTitle": "Failed to load permissions",
       "fetchFailedBody": "A temporary problem occurred. Please wait a moment and try again"
+    },
+    "approvalsBadge": {
+      "degraded": "Some counts unavailable",
+      "fetchFailed": "Could not load counts"
     }
   }
 }

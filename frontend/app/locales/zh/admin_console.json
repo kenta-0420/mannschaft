@@ -46,6 +46,10 @@
     "error": {
       "fetchFailedTitle": "无法获取权限信息",
       "fetchFailedBody": "发生了临时问题。请稍后重试"
+    },
+    "approvalsBadge": {
+      "degraded": "部分统计失败",
+      "fetchFailed": "无法获取数量"
     }
   }
 }
