@@ -25,13 +25,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * <b>クロスドメインFK撤廃 第四陣A（Phase 4-A）の番人テスト。</b>
  *
- * <p>V108.001 で「他ドメインの実テーブル（schedules / todos / timeline_posts）を ON DELETE SET NULL で
+ * <p>V109.001 で「他ドメインの実テーブル（schedules / todos / timeline_posts）を ON DELETE SET NULL で
  * 参照する群2＝構造参照のクロスドメインFK 8件」を撤廃only する。本テストが守る不変条件は、
  * 参照先テーブル単位（schedules 参照 / todos 参照 / timeline_posts 参照）で次を検証する:</p>
  * <ol>
- *   <li>V108.001 の直前（V107.001）まで適用 → 参照先行＋参照元行（外部キー列に参照先 id をセット）をシード。</li>
- *   <li>残り（V108.001 含む）を適用しても既存データを壊さず成功する。</li>
- *   <li>V108.001 で対象8FKが撤廃される。</li>
+ *   <li>V109.001 の直前（V107.001）まで適用 → 参照先行＋参照元行（外部キー列に参照先 id をセット）をシード。</li>
+ *   <li>残り（V109.001 含む）を適用しても既存データを壊さず成功する。</li>
+ *   <li>V109.001 で対象8FKが撤廃される。</li>
  *   <li><b>参照先テーブルの行を（テスト内で意図的に）物理 DELETE しても、参照元の外部キー列が NULL 化されず
  *       孤児値を保持し続ける</b>（＝SET NULL 撤廃only の肝）。
  *       本番では参照先3テーブルはいずれも論理削除のみで物理削除されない（＝SET NULL 発火不能）が、
@@ -43,10 +43,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @EnabledIf("com.mannschaft.app.schedule.migration.FlywayExistingDataScheduleTodoTimelineSetNullFkMigrationTest#isDockerAvailable")
-@DisplayName("Flyway 既存データ schedules/todos/timeline_posts 参照 SET NULL FK撤廃（V108.001）番人テスト")
+@DisplayName("Flyway 既存データ schedules/todos/timeline_posts 参照 SET NULL FK撤廃（V109.001）番人テスト")
 class FlywayExistingDataScheduleTodoTimelineSetNullFkMigrationTest {
 
-    private static final String PRE_V108_001_TARGET = "107.001";
+    private static final String PRE_V109_001_TARGET = "107.001";
 
     @SuppressWarnings("resource")
     private static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0")
@@ -84,7 +84,7 @@ class FlywayExistingDataScheduleTodoTimelineSetNullFkMigrationTest {
                 .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
                 .locations("classpath:db/migration")
                 .outOfOrder(false)
-                .target(MigrationVersion.fromVersion(PRE_V108_001_TARGET))
+                .target(MigrationVersion.fromVersion(PRE_V109_001_TARGET))
                 .load();
         MigrateResult preResult = pre.migrate();
         assertThat(preResult.success).as("V107.001 までの適用が成功すること").isTrue();
@@ -97,20 +97,20 @@ class FlywayExistingDataScheduleTodoTimelineSetNullFkMigrationTest {
                 .outOfOrder(false)
                 .load();
         MigrateResult restResult = rest.migrate();
-        assertThat(restResult.success).as("V108.001 を含む残りのマイグレーションが成功すること").isTrue();
+        assertThat(restResult.success).as("V109.001 を含む残りのマイグレーションが成功すること").isTrue();
     }
 
     /**
      * 1回の pre→seed→migrate サイクルで schedules / todos / timeline_posts の3参照先すべてを検証する。
      *
-     * <p>注意: 同一DBを共有するため複数 @Test に分けると、2本目以降は既に V108.001 まで適用済みとなり
+     * <p>注意: 同一DBを共有するため複数 @Test に分けると、2本目以降は既に V109.001 まで適用済みとなり
      * 「FK実在 sanity（pre-state）」が成立しなくなる。よって1メソッドに集約し、
      * V107.001 時点での全8FK実在 → 3参照先ぶんのシード → 残り適用 → 全8FK撤廃 + 3参照先の孤児保持
      * を一気通貫で検証する。</p>
      */
     @Test
-    @DisplayName("V107.001で全8FK実在_V108.001適用で全8FK撤廃_schedules/todos/timeline_posts物理削除でも参照元の外部キー列が孤児値を保持")
-    void 既存データを持つDBでV108_001が群2SET_NULL_FK8件を撤廃onlyで安全に適用される() throws Exception {
+    @DisplayName("V107.001で全8FK実在_V109.001適用で全8FK撤廃_schedules/todos/timeline_posts物理削除でも参照元の外部キー列が孤児値を保持")
+    void 既存データを持つDBでV109_001が群2SET_NULL_FK8件を撤廃onlyで安全に適用される() throws Exception {
         migrateToPreTarget();
 
         // ── given: V107.001 時点では対象8FKが全て実在すること（pre-state sanity）──
@@ -157,27 +157,27 @@ class FlywayExistingDataScheduleTodoTimelineSetNullFkMigrationTest {
             tlMemoId = insertActionMemoTimelinePost(c, tlOwnerUserId, postId);
         }
 
-        // ── when: 残り（V108.001 含む）を適用 ──
+        // ── when: 残り（V109.001 含む）を適用 ──
         migrateRemaining();
 
         try (Connection c = conn()) {
             // ── then-1: 対象8FKが全て撤廃された ──
             assertThat(foreignKeyExists(c, "activity_results", "fk_ar_schedule"))
-                    .as("V108.001 で fk_ar_schedule が撤廃されること").isFalse();
+                    .as("V109.001 で fk_ar_schedule が撤廃されること").isFalse();
             assertThat(foreignKeyExists(c, "performance_records", "fk_pr_schedule"))
-                    .as("V108.001 で fk_pr_schedule が撤廃されること").isFalse();
+                    .as("V109.001 で fk_pr_schedule が撤廃されること").isFalse();
             assertThat(foreignKeyExists(c, "todos", "fk_todos_schedules"))
-                    .as("V108.001 で fk_todos_schedules が撤廃されること").isFalse();
+                    .as("V109.001 で fk_todos_schedules が撤廃されること").isFalse();
             assertThat(foreignKeyExists(c, "tournament_matches", "fk_tmatch_schedule"))
-                    .as("V108.001 で fk_tmatch_schedule が撤廃されること").isFalse();
+                    .as("V109.001 で fk_tmatch_schedule が撤廃されること").isFalse();
             assertThat(foreignKeyExists(c, "action_memos", "fk_action_memos_related_todo"))
-                    .as("V108.001 で fk_action_memos_related_todo が撤廃されること").isFalse();
+                    .as("V109.001 で fk_action_memos_related_todo が撤廃されること").isFalse();
             assertThat(foreignKeyExists(c, "schedules", "fk_schedules_todos"))
-                    .as("V108.001 で fk_schedules_todos が撤廃されること").isFalse();
+                    .as("V109.001 で fk_schedules_todos が撤廃されること").isFalse();
             assertThat(foreignKeyExists(c, "action_memos", "fk_action_memos_timeline_post"))
-                    .as("V108.001 で fk_action_memos_timeline_post が撤廃されること").isFalse();
+                    .as("V109.001 で fk_action_memos_timeline_post が撤廃されること").isFalse();
             assertThat(foreignKeyExists(c, "property_work_packages", "fk_pwp_timeline"))
-                    .as("V108.001 で fk_pwp_timeline が撤廃されること").isFalse();
+                    .as("V109.001 で fk_pwp_timeline が撤廃されること").isFalse();
 
             // 既存の参照元行が全て生存していること
             assertThat(rowExists(c, "todos", schTodoId)).as("FK 撤廃後も todo 行が生存").isTrue();
