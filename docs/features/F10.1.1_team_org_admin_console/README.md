@@ -124,7 +124,7 @@ L2/L3 ハブが束ねる管理機能を以下に列挙する。各機能のデ�
 
 | フェーズ | 内容 | 依存 |
 |---------|------|------|
-| **P1** | 横断「承認待ち」集約 API（BE）＋各ドメインの読み取り専用 Query Service 新設（[05](./05_decisions.md) §12）＋TEAM スコープ予算権限 seed（[04](./04_security_authorization.md) §4.3）＋契約テスト（[03](./03_admin_action_required_api.md)） | 各ドメイン既存 Service |
+| **P1** | 横断「承認待ち」集約 API（BE）＋各ドメインの読み取り専用 Query Service 新設（[05](./05_decisions.md) §12）＋契約テスト（[03](./03_admin_action_required_api.md)）。**TEAM スコープ予算権限 seed は P1 から除外**（`permissions.name` 単独 UNIQUE によりスキーマ上不可。P3 で方針確定・[05](./05_decisions.md) §13 参照） | 各ドメイン既存 Service |
 | **P2a** | L2/L3 ハブのルート骨格＋`admin-console` ミドルウェア（FE）。**承認待ちバッジは含めない**（ハブ骨格のみ・各フェーズ単独リリース可能にする） | P1（API 自体は無くてもハブ骨格は出せる） |
 | **P2b** | ハブの承認待ちバッジ／カードを点火（承認待ち集約 API を消費） | P1・P2a |
 | **P3** | L1 管理者レンズトグル＋`DashboardAdminWidgetGrid`（FE）（[02](./02_admin_lens_widgets.md)） | P1・F22.1 既存パネル |
@@ -132,7 +132,7 @@ L2/L3 ハブが束ねる管理機能を以下に列挙する。各機能のデ�
 
 > **P2/P1 依存の分割（各フェーズ単独リリース可能の成立）**: P2 を「P2a=ハブ骨格（承認待ちバッジ抜き）」と「P2b=承認待ちカード点火（P1 後）」に分割する。P2a はバッジ未取得でも非表示フォールバックで成立し、P1 完了前でもリリースできる。
 >
-> **新規テーブルは作らない**が、**Flyway マイグレーションは1本伴う**（TEAM スコープの `BUDGET_VIEW`/`BUDGET_MANAGE` 権限 seed・[04](./04_security_authorization.md) §4.3 / [05](./05_decisions.md) §10）。先行版の「マイグレーションを伴わない」は誤りのため訂正した。本機能の主体は既存テーブルの集計・既存 API のハブ集約・読み取り Query Service の新設・FE 再編。
+> **新規テーブルは作らない**。**Flyway マイグレーションについて**: TEAM スコープの `BUDGET_VIEW`/`BUDGET_MANAGE` 権限 seed は `permissions.name` 単独 UNIQUE（`V2.002`）によりスキーマ上不可であることが実装軍議で判明したため、**P1 スコープから除外**した（先行版の「Flyway マイグレーション1本伴う」記述を訂正）。TEAM 予算権限の方針は P3 軍議で確定（[05](./05_decisions.md) §13）。本機能の主体は既存テーブルの集計・既存 API のハブ集約・読み取り Query Service の新設・FE 再編。
 
 ---
 
