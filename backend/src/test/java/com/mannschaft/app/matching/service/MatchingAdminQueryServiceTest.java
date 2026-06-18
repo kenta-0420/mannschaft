@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -39,6 +40,7 @@ class MatchingAdminQueryServiceTest {
     private MatchingAdminQueryService service;
 
     private static final Long TEAM_ID = 10L;
+    private static final String TEAM_SLUG = "dev-team";
 
     @Test
     @DisplayName("preview_size=0 → 受け手 team_id+PENDING 件数のみ・プレビューは呼ばない")
@@ -46,7 +48,7 @@ class MatchingAdminQueryServiceTest {
         given(matchProposalRepository.countPendingReceivedByTeam(TEAM_ID, MatchProposalStatus.PENDING))
                 .willReturn(4L);
 
-        PendingAggregate result = service.pendingReceivedForTeam(TEAM_ID, 0);
+        PendingAggregate result = service.pendingReceivedForTeam(TEAM_ID, TEAM_SLUG, 0);
 
         assertThat(result.pendingCount()).isEqualTo(4);
         assertThat(result.items()).isEmpty();
@@ -55,22 +57,27 @@ class MatchingAdminQueryServiceTest {
     }
 
     @Test
-    @DisplayName("preview_size>0 → 応募元チーム名をバルク解決して requested_by に入れる")
+    @DisplayName("preview_size>0 → 応募元チーム名バルク解決・detail_route は id を含む個別遷移先")
     void countAndPreview() {
         given(matchProposalRepository.countPendingReceivedByTeam(TEAM_ID, MatchProposalStatus.PENDING))
                 .willReturn(1L);
         MatchProposalEntity p = MatchProposalEntity.builder()
                 .requestId(5L).proposingTeamId(33L).status(MatchProposalStatus.PENDING)
                 .message("練習試合お願いします").build();
+        ReflectionTestUtils.setField(p, "id", 7L);
         given(matchProposalRepository.findPendingReceivedByTeam(
                 eq(TEAM_ID), eq(MatchProposalStatus.PENDING), any()))
                 .willReturn(List.of(p));
         given(nameResolverService.resolveTeamNames(any())).willReturn(Map.of(33L, "鈴木FC"));
 
-        PendingAggregate result = service.pendingReceivedForTeam(TEAM_ID, 3);
+        PendingAggregate result = service.pendingReceivedForTeam(TEAM_ID, TEAM_SLUG, 3);
 
         assertThat(result.items()).hasSize(1);
-        assertThat(result.items().get(0).requestedBy()).isEqualTo("鈴木FC");
-        assertThat(result.items().get(0).title()).isEqualTo("練習試合お願いします");
+        PendingAggregate.Item item = result.items().get(0);
+        assertThat(item.requestedBy()).isEqualTo("鈴木FC");
+        assertThat(item.title()).isEqualTo("練習試合お願いします");
+        // id は主キーの文字列（§3.3）・detail_route は id を含む個別遷移先（§3.1）
+        assertThat(item.id()).isEqualTo("7");
+        assertThat(item.detailRoute()).isEqualTo("/teams/dev-team/admin/matching/7");
     }
 }

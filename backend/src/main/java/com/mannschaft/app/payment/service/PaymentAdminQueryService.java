@@ -43,16 +43,16 @@ public class PaymentAdminQueryService {
      * 指定組織が発行した未収請求（SENT/VIEWED/OVERDUE）の件数とプレビューを返す。
      *
      * @param orgId       組織 ID（issuer_scope_id・WHERE 必須・IDOR 防止）
+     * @param orgSlug     組織 slug（プレビュー要素の個別遷移先ルート組み立てに使用）
      * @param previewSize プレビュー件数（0 なら件数のみ）
      * @return 件数とプレビューの集計結果
      */
     @Transactional(readOnly = true)
-    public PendingAggregate unsettledForOrg(Long orgId, int previewSize) {
-        long count = UNSETTLED_STATUSES.stream()
-                .mapToLong(s -> paymentRequestRepository
-                        .countByIssuerScopeKindAndIssuerScopeIdAndStatusAndDeletedAtIsNull(
-                                ScopeKind.ORG, orgId, s))
-                .sum();
+    public PendingAggregate unsettledForOrg(Long orgId, String orgSlug, int previewSize) {
+        // 未収 3 ステータスを 1 COUNT（StatusIn 版）で集計する（設計書 03 §4.5「件数は 1 COUNT」）。
+        long count = paymentRequestRepository
+                .countByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(
+                        ScopeKind.ORG, orgId, UNSETTLED_STATUSES);
 
         if (previewSize <= 0) {
             return new PendingAggregate(count, List.of());
@@ -71,7 +71,9 @@ public class PaymentAdminQueryService {
                         String.valueOf(p.getId()),
                         p.getTitle(),
                         names.getOrDefault(p.getCreatedBy(), "不明なユーザー"),
-                        p.getCreatedAt()))
+                        p.getCreatedAt(),
+                        // その 1 件の個別遷移先（list_route の status 付き一覧とは別物・§3.1）
+                        "/organizations/" + orgSlug + "/admin/payments/" + p.getId()))
                 .toList();
 
         return new PendingAggregate(count, items);

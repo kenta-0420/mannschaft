@@ -17,6 +17,7 @@ import org.springframework.data.domain.PageRequest;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -44,42 +45,48 @@ class PaymentAdminQueryServiceTest {
     private PaymentAdminQueryService service;
 
     private static final Long ORG_ID = 20L;
+    private static final String ORG_SLUG = "dev-org";
 
     @Test
-    @DisplayName("preview_size=0 → SENT/VIEWED/OVERDUE 件数の合算のみ・プレビューは呼ばない")
-    void countOnlySumsUnsettledStatuses() {
-        given(paymentRequestRepository.countByIssuerScopeKindAndIssuerScopeIdAndStatusAndDeletedAtIsNull(
-                eq(ScopeKind.ORG), eq(ORG_ID), eq(PaymentRequestStatus.SENT))).willReturn(1L);
-        given(paymentRequestRepository.countByIssuerScopeKindAndIssuerScopeIdAndStatusAndDeletedAtIsNull(
-                eq(ScopeKind.ORG), eq(ORG_ID), eq(PaymentRequestStatus.VIEWED))).willReturn(2L);
-        given(paymentRequestRepository.countByIssuerScopeKindAndIssuerScopeIdAndStatusAndDeletedAtIsNull(
-                eq(ScopeKind.ORG), eq(ORG_ID), eq(PaymentRequestStatus.OVERDUE))).willReturn(3L);
+    @DisplayName("preview_size=0 → 未収3ステータスを 1 COUNT(StatusIn) で集計・個別 COUNT は呼ばない")
+    void countOnlyUsesSingleStatusInCount() {
+        given(paymentRequestRepository.countByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(
+                eq(ScopeKind.ORG), eq(ORG_ID), anyCollection())).willReturn(6L);
 
-        PendingAggregate result = service.unsettledForOrg(ORG_ID, 0);
+        PendingAggregate result = service.unsettledForOrg(ORG_ID, ORG_SLUG, 0);
 
         assertThat(result.pendingCount()).isEqualTo(6);
         assertThat(result.items()).isEmpty();
+        // 1 COUNT 化（設計書 03 §4.5）: 個別ステータス COUNT は使わない
+        verify(paymentRequestRepository, never())
+                .countByIssuerScopeKindAndIssuerScopeIdAndStatusAndDeletedAtIsNull(any(), any(), any());
         verify(paymentRequestRepository, never())
                 .findByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(any(), any(), anyCollection(), any());
     }
 
     @Test
-    @DisplayName("preview_size>0 → ORG + StatusIn でプレビュー取得・発行者名はバルク解決")
+    @DisplayName("preview_size>0 → ORG + StatusIn でプレビュー取得・発行者名バルク解決・detail_route は id を含む個別遷移先")
     void countAndPreview() {
-        given(paymentRequestRepository.countByIssuerScopeKindAndIssuerScopeIdAndStatusAndDeletedAtIsNull(
-                eq(ScopeKind.ORG), eq(ORG_ID), any())).willReturn(0L);
+        given(paymentRequestRepository.countByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(
+                eq(ScopeKind.ORG), eq(ORG_ID), anyCollection())).willReturn(1L);
         PaymentRequestEntity p = PaymentRequestEntity.builder()
                 .issuerScopeKind(ScopeKind.ORG).issuerScopeId(ORG_ID)
                 .title("年会費請求").status(PaymentRequestStatus.SENT).createdBy(77L).build();
+        UUID pid = UUID.fromString("00000000-0000-0000-0000-0000000000aa");
+        p.setId(pid);
         given(paymentRequestRepository.findByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(
                 eq(ScopeKind.ORG), eq(ORG_ID), anyCollection(), any()))
                 .willReturn(new PageImpl<>(List.of(p), PageRequest.of(0, 3), 1));
         given(nameResolverService.resolveUserDisplayNames(any())).willReturn(Map.of(77L, "経理担当"));
 
-        PendingAggregate result = service.unsettledForOrg(ORG_ID, 3);
+        PendingAggregate result = service.unsettledForOrg(ORG_ID, ORG_SLUG, 3);
 
         assertThat(result.items()).hasSize(1);
-        assertThat(result.items().get(0).title()).isEqualTo("年会費請求");
-        assertThat(result.items().get(0).requestedBy()).isEqualTo("経理担当");
+        PendingAggregate.Item item = result.items().get(0);
+        assertThat(item.title()).isEqualTo("年会費請求");
+        assertThat(item.requestedBy()).isEqualTo("経理担当");
+        // id は主キー(UUID)の文字列・detail_route は id を含む個別遷移先（§3.1 / §3.3）
+        assertThat(item.id()).isEqualTo(pid.toString());
+        assertThat(item.detailRoute()).isEqualTo("/organizations/dev-org/admin/payments/" + pid);
     }
 }

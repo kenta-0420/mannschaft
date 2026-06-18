@@ -108,20 +108,20 @@ public class AdminActionRequiredFacade {
             return List.of(
                     new DomainTask("RESERVATION",
                             "/teams/" + scopeSlug + "/admin/reservations?status=PENDING",
-                            () -> reservationAdminQueryService.pendingForTeam(scopeId, previewSize)),
+                            () -> reservationAdminQueryService.pendingForTeam(scopeId, scopeSlug, previewSize)),
                     new DomainTask("SHIFT_REQUEST",
                             "/teams/" + scopeSlug + "/admin/shifts?tab=requests",
-                            () -> shiftRequestAdminQueryService.pendingForTeam(scopeId, previewSize)),
+                            () -> shiftRequestAdminQueryService.pendingForTeam(scopeId, scopeSlug, previewSize)),
                     new DomainTask("MATCHING",
                             "/teams/" + scopeSlug + "/admin/matching?tab=received",
-                            () -> matchingAdminQueryService.pendingReceivedForTeam(scopeId, previewSize))
+                            () -> matchingAdminQueryService.pendingReceivedForTeam(scopeId, scopeSlug, previewSize))
             );
         }
         if ("ORGANIZATION".equals(scopeType)) {
             return List.of(
                     new DomainTask("PAYMENT",
                             "/organizations/" + scopeSlug + "/admin/payments?status=UNSETTLED",
-                            () -> paymentAdminQueryService.unsettledForOrg(scopeId, previewSize))
+                            () -> paymentAdminQueryService.unsettledForOrg(scopeId, scopeSlug, previewSize))
             );
         }
         throw new IllegalArgumentException("未対応のスコープ種別です: " + scopeType);
@@ -129,13 +129,15 @@ public class AdminActionRequiredFacade {
 
     private AdminActionRequiredResponse.DomainSection buildSection(DomainTask task) {
         PendingAggregate agg = task.supplier().get();
+        // detail_route は要素ごとの個別遷移先（Query Service が id・slug を解決して設定済み）。
+        // list_route（status 付き一覧）とは別物（設計書 03 §3.1 / §3.3）。
         List<AdminActionRequiredResponse.PreviewItem> items = agg.items().stream()
                 .map(item -> AdminActionRequiredResponse.PreviewItem.builder()
                         .id(item.id())
                         .title(item.title())
                         .requestedBy(item.requestedBy())
                         .requestedAt(item.requestedAt())
-                        .detailRoute(task.listRoute())
+                        .detailRoute(item.detailRoute())
                         .build())
                 .toList();
         return AdminActionRequiredResponse.DomainSection.builder()

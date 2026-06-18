@@ -85,7 +85,13 @@ public record AdminActionRequiredResponse(
             /** 申請日時。 */
             @JsonProperty("requested_at") java.time.LocalDateTime requestedAt,
 
-            /** FE が遷移する詳細ルート（BE がスラッグ解決済み）。 */
+            /**
+             * その 1 件の<b>個別遷移先</b>ルート（BE がスラッグ・主キーを解決済み）。
+             * ドメインの一覧ルート（{@code list_route}・status 付き）とは別物で、id を含む
+             * 個別画面へ飛ぶ（例 {@code /teams/{slug}/admin/reservations/{id}}・§3.1 / §3.3）。
+             * シフトのように同一ドメイン内に複数種別がある場合は種別ごとに異なる個別遷移先を持つ
+             * （変更依頼 {@code /shifts/change/{id}}・交代申請 {@code /shifts/swap/{id}}）。
+             */
             @JsonProperty("detail_route") String detailRoute
     ) {
     }

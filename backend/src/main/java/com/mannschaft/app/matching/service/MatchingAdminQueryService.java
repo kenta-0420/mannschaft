@@ -37,11 +37,12 @@ public class MatchingAdminQueryService {
      * 指定チームの募集に届いた PENDING の応募の件数とプレビューを返す（受け手視点）。
      *
      * @param teamId      チーム ID（募集を出したチーム・WHERE 必須・IDOR 防止）
+     * @param teamSlug    チーム slug（プレビュー要素の個別遷移先ルート組み立てに使用）
      * @param previewSize プレビュー件数（0 なら件数のみ）
      * @return 件数とプレビューの集計結果
      */
     @Transactional(readOnly = true)
-    public PendingAggregate pendingReceivedForTeam(Long teamId, int previewSize) {
+    public PendingAggregate pendingReceivedForTeam(Long teamId, String teamSlug, int previewSize) {
         long count = matchProposalRepository.countPendingReceivedByTeam(teamId, MatchProposalStatus.PENDING);
 
         if (previewSize <= 0) {
@@ -61,7 +62,9 @@ public class MatchingAdminQueryService {
                         p.getMessage() != null && !p.getMessage().isBlank()
                                 ? p.getMessage() : "練習試合の申込",
                         teamNames.getOrDefault(p.getProposingTeamId(), "不明なチーム"),
-                        p.getCreatedAt()))
+                        p.getCreatedAt(),
+                        // その 1 件の個別遷移先（list_route の tab 付き一覧とは別物・§3.1）
+                        "/teams/" + teamSlug + "/admin/matching/" + p.getId()))
                 .toList();
 
         return new PendingAggregate(count, items);

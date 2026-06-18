@@ -44,11 +44,12 @@ public class ShiftRequestAdminQueryService {
      * 指定チームの承認待ちシフトリクエスト（OPEN 変更依頼 + PENDING 交代申請）の件数とプレビューを返す。
      *
      * @param teamId      チーム ID（WHERE 必須・IDOR 防止）
+     * @param teamSlug    チーム slug（プレビュー要素の個別遷移先ルート組み立てに使用）
      * @param previewSize プレビュー件数（0 なら件数のみ）
      * @return 件数とプレビューの集計結果
      */
     @Transactional(readOnly = true)
-    public PendingAggregate pendingForTeam(Long teamId, int previewSize) {
+    public PendingAggregate pendingForTeam(Long teamId, String teamSlug, int previewSize) {
         long changeCount = changeRequestRepository.countPendingByTeam(teamId, ChangeRequestStatus.OPEN);
         long swapCount = swapRequestRepository.countPendingByTeam(teamId, SwapRequestStatus.PENDING);
         long total = changeCount + swapCount;
@@ -69,30 +70,36 @@ public class ShiftRequestAdminQueryService {
         swaps.forEach(s -> userIds.add(s.getRequesterId()));
         Map<Long, String> names = nameResolverService.resolveUserDisplayNames(userIds);
 
-        // 2 種別を作成日時降順でマージし、上位 previewSize 件に丸める
+        // 2 種別を作成日時降順でマージし、上位 previewSize 件に丸める。
+        // id は対象ドメインの主キー文字列（設計書 03 §3.3）。種別（変更依頼/交代申請）は
+        // detail_route のパス（/shifts/change/{id} と /shifts/swap/{id}）で区別する（合成 id を使わない）。
         List<Holder> merged = new ArrayList<>();
         changes.forEach(c -> merged.add(new Holder(
-                "change:" + c.getId(),
+                String.valueOf(c.getId()),
                 "シフト変更依頼",
                 names.getOrDefault(c.getRequestedBy(), "不明なユーザー"),
-                c.getCreatedAt())));
+                c.getCreatedAt(),
+                "/teams/" + teamSlug + "/admin/shifts/change/" + c.getId())));
         swaps.forEach(s -> merged.add(new Holder(
-                "swap:" + s.getId(),
+                String.valueOf(s.getId()),
                 "シフト交代申請",
                 names.getOrDefault(s.getRequesterId(), "不明なユーザー"),
-                s.getCreatedAt())));
+                s.getCreatedAt(),
+                "/teams/" + teamSlug + "/admin/shifts/swap/" + s.getId())));
         merged.sort(Comparator.comparing(
                 Holder::requestedAt, Comparator.nullsLast(Comparator.reverseOrder())));
 
         List<PendingAggregate.Item> items = merged.stream()
                 .limit(previewSize)
-                .map(h -> new PendingAggregate.Item(h.id(), h.title(), h.requestedBy(), h.requestedAt()))
+                .map(h -> new PendingAggregate.Item(
+                        h.id(), h.title(), h.requestedBy(), h.requestedAt(), h.detailRoute()))
                 .toList();
 
         return new PendingAggregate(total, items);
     }
 
     /** 2 種別のプレビューをマージするための一時保持レコード。 */
-    private record Holder(String id, String title, String requestedBy, LocalDateTime requestedAt) {
+    private record Holder(String id, String title, String requestedBy, LocalDateTime requestedAt,
+                          String detailRoute) {
     }
 }

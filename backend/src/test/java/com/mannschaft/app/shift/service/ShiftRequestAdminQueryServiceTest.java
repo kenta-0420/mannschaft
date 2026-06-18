@@ -14,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -45,6 +46,7 @@ class ShiftRequestAdminQueryServiceTest {
     private ShiftRequestAdminQueryService service;
 
     private static final Long TEAM_ID = 10L;
+    private static final String TEAM_SLUG = "dev-team";
 
     @Test
     @DisplayName("preview_size=0 → OPEN 変更依頼 + PENDING 交代申請の件数合算のみ・プレビューは呼ばない")
@@ -52,7 +54,7 @@ class ShiftRequestAdminQueryServiceTest {
         given(changeRequestRepository.countPendingByTeam(TEAM_ID, ChangeRequestStatus.OPEN)).willReturn(2L);
         given(swapRequestRepository.countPendingByTeam(TEAM_ID, SwapRequestStatus.PENDING)).willReturn(3L);
 
-        PendingAggregate result = service.pendingForTeam(TEAM_ID, 0);
+        PendingAggregate result = service.pendingForTeam(TEAM_ID, TEAM_SLUG, 0);
 
         assertThat(result.pendingCount()).isEqualTo(5);
         assertThat(result.items()).isEmpty();
@@ -61,14 +63,15 @@ class ShiftRequestAdminQueryServiceTest {
     }
 
     @Test
-    @DisplayName("preview_size>0 → 2 種別をマージし上位 previewSize 件・申請者名はバルク解決")
+    @DisplayName("preview_size>0 → 2 種別マージ・id は主キー文字列・detail_route は種別ごとの個別遷移先")
     void countAndPreviewMerged() {
         given(changeRequestRepository.countPendingByTeam(TEAM_ID, ChangeRequestStatus.OPEN)).willReturn(1L);
         given(swapRequestRepository.countPendingByTeam(TEAM_ID, SwapRequestStatus.PENDING)).willReturn(1L);
         ShiftChangeRequestEntity c = ShiftChangeRequestEntity.builder()
-                .scheduleId(100L).requestedBy(11L).status(ChangeRequestStatus.OPEN).build();
+                .id(88L).scheduleId(100L).requestedBy(11L).status(ChangeRequestStatus.OPEN).build();
         ShiftSwapRequestEntity s = ShiftSwapRequestEntity.builder()
                 .slotId(200L).requesterId(22L).status(SwapRequestStatus.PENDING).build();
+        ReflectionTestUtils.setField(s, "id", 99L);
         given(changeRequestRepository.findPendingByTeam(eq(TEAM_ID), eq(ChangeRequestStatus.OPEN), any()))
                 .willReturn(List.of(c));
         given(swapRequestRepository.findPendingByTeam(eq(TEAM_ID), eq(SwapRequestStatus.PENDING), any()))
@@ -76,11 +79,22 @@ class ShiftRequestAdminQueryServiceTest {
         given(nameResolverService.resolveUserDisplayNames(any()))
                 .willReturn(Map.of(11L, "佐藤花子", 22L, "田中一郎"));
 
-        PendingAggregate result = service.pendingForTeam(TEAM_ID, 3);
+        PendingAggregate result = service.pendingForTeam(TEAM_ID, TEAM_SLUG, 3);
 
         assertThat(result.pendingCount()).isEqualTo(2);
         assertThat(result.items()).hasSize(2);
         assertThat(result.items()).extracting(PendingAggregate.Item::requestedBy)
                 .containsExactlyInAnyOrder("佐藤花子", "田中一郎");
+
+        // id は合成文字列ではなく主キーの文字列（§3.3）
+        PendingAggregate.Item change = result.items().stream()
+                .filter(i -> "シフト変更依頼".equals(i.title())).findFirst().orElseThrow();
+        PendingAggregate.Item swap = result.items().stream()
+                .filter(i -> "シフト交代申請".equals(i.title())).findFirst().orElseThrow();
+        assertThat(change.id()).isEqualTo("88");
+        assertThat(swap.id()).isEqualTo("99");
+        // 種別判別は合成 id ではなく detail_route のパスで吸収する（要修正2）
+        assertThat(change.detailRoute()).isEqualTo("/teams/dev-team/admin/shifts/change/88");
+        assertThat(swap.detailRoute()).isEqualTo("/teams/dev-team/admin/shifts/swap/99");
     }
 }

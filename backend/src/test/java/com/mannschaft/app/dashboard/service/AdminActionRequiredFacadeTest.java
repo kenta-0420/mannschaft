@@ -23,6 +23,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -64,8 +65,10 @@ class AdminActionRequiredFacadeTest {
     private PendingAggregate agg(long count, int items) {
         List<PendingAggregate.Item> list = new java.util.ArrayList<>();
         for (int i = 0; i < items; i++) {
+            // detail_route は Query Service が組み立てる個別遷移先（id を含む）。Facade はこれを透過する。
             list.add(new PendingAggregate.Item(
-                    String.valueOf(i), "タイトル" + i, "申請者" + i, LocalDateTime.now()));
+                    String.valueOf(i), "タイトル" + i, "申請者" + i, LocalDateTime.now(),
+                    "/detail/" + i));
         }
         return new PendingAggregate(count, list);
     }
@@ -77,9 +80,9 @@ class AdminActionRequiredFacadeTest {
         @Test
         @DisplayName("ADMIN/team → 予約/シフト/マッチングのみ（payment 含まない）")
         void team_threeDomainsNoPayment() {
-            given(reservationAdminQueryService.pendingForTeam(eq(TEAM_ID), anyInt())).willReturn(agg(2, 2));
-            given(shiftRequestAdminQueryService.pendingForTeam(eq(TEAM_ID), anyInt())).willReturn(agg(3, 3));
-            given(matchingAdminQueryService.pendingReceivedForTeam(eq(TEAM_ID), anyInt())).willReturn(agg(1, 1));
+            given(reservationAdminQueryService.pendingForTeam(eq(TEAM_ID), eq(TEAM_SLUG), anyInt())).willReturn(agg(2, 2));
+            given(shiftRequestAdminQueryService.pendingForTeam(eq(TEAM_ID), eq(TEAM_SLUG), anyInt())).willReturn(agg(3, 3));
+            given(matchingAdminQueryService.pendingReceivedForTeam(eq(TEAM_ID), eq(TEAM_SLUG), anyInt())).willReturn(agg(1, 1));
 
             AdminActionRequiredResponse res =
                     facade.getAdminActionRequired(USER_ID, "TEAM", TEAM_ID, TEAM_SLUG, 3);
@@ -90,12 +93,18 @@ class AdminActionRequiredFacadeTest {
             assertThat(res.totalPending()).isEqualTo(6);
             verify(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
             verifyNoInteractions(paymentAdminQueryService);
+
+            // detail_route は Query Service が返した個別遷移先を透過し、list_route（status 付き一覧）とは別物（§3.1）。
+            res.domains().forEach(d -> d.items().forEach(item -> {
+                assertThat(item.detailRoute()).isNotEqualTo(d.listRoute());
+                assertThat(item.detailRoute()).startsWith("/detail/");
+            }));
         }
 
         @Test
         @DisplayName("ADMIN/org → 未収請求(payment)のみ（team 系含まない）")
         void org_onlyPayment() {
-            given(paymentAdminQueryService.unsettledForOrg(eq(ORG_ID), anyInt())).willReturn(agg(4, 3));
+            given(paymentAdminQueryService.unsettledForOrg(eq(ORG_ID), eq(ORG_SLUG), anyInt())).willReturn(agg(4, 3));
 
             AdminActionRequiredResponse res =
                     facade.getAdminActionRequired(USER_ID, "ORGANIZATION", ORG_ID, ORG_SLUG, 3);
@@ -110,9 +119,9 @@ class AdminActionRequiredFacadeTest {
         @Test
         @DisplayName("preview_size=0 → items 空・pending_count のみ")
         void previewSizeZero() {
-            given(reservationAdminQueryService.pendingForTeam(eq(TEAM_ID), eq(0))).willReturn(agg(2, 0));
-            given(shiftRequestAdminQueryService.pendingForTeam(eq(TEAM_ID), eq(0))).willReturn(agg(3, 0));
-            given(matchingAdminQueryService.pendingReceivedForTeam(eq(TEAM_ID), eq(0))).willReturn(agg(1, 0));
+            given(reservationAdminQueryService.pendingForTeam(eq(TEAM_ID), eq(TEAM_SLUG), eq(0))).willReturn(agg(2, 0));
+            given(shiftRequestAdminQueryService.pendingForTeam(eq(TEAM_ID), eq(TEAM_SLUG), eq(0))).willReturn(agg(3, 0));
+            given(matchingAdminQueryService.pendingReceivedForTeam(eq(TEAM_ID), eq(TEAM_SLUG), eq(0))).willReturn(agg(1, 0));
 
             AdminActionRequiredResponse res =
                     facade.getAdminActionRequired(USER_ID, "TEAM", TEAM_ID, TEAM_SLUG, 0);
@@ -143,10 +152,10 @@ class AdminActionRequiredFacadeTest {
         @Test
         @DisplayName("Query Service が内部で認可違反(COMMON_002)を投げる → 縮退せず全体が伝播")
         void domainAuthErrorPropagates() {
-            given(reservationAdminQueryService.pendingForTeam(eq(TEAM_ID), anyInt())).willReturn(agg(1, 1));
-            given(shiftRequestAdminQueryService.pendingForTeam(eq(TEAM_ID), anyInt()))
+            given(reservationAdminQueryService.pendingForTeam(eq(TEAM_ID), eq(TEAM_SLUG), anyInt())).willReturn(agg(1, 1));
+            given(shiftRequestAdminQueryService.pendingForTeam(eq(TEAM_ID), eq(TEAM_SLUG), anyInt()))
                     .willThrow(new BusinessException(CommonErrorCode.COMMON_002));
-            given(matchingAdminQueryService.pendingReceivedForTeam(eq(TEAM_ID), anyInt())).willReturn(agg(1, 1));
+            given(matchingAdminQueryService.pendingReceivedForTeam(eq(TEAM_ID), eq(TEAM_SLUG), anyInt())).willReturn(agg(1, 1));
 
             assertThatThrownBy(() -> facade.getAdminActionRequired(USER_ID, "TEAM", TEAM_ID, TEAM_SLUG, 3))
                     .isInstanceOf(BusinessException.class)
@@ -161,10 +170,10 @@ class AdminActionRequiredFacadeTest {
         @Test
         @DisplayName("1 ドメインが一時障害(DataAccessException) → 当該のみ degraded・他は正常・total に非加算")
         void transientDegradesOnlyThatDomain() {
-            given(reservationAdminQueryService.pendingForTeam(eq(TEAM_ID), anyInt()))
+            given(reservationAdminQueryService.pendingForTeam(eq(TEAM_ID), eq(TEAM_SLUG), anyInt()))
                     .willThrow(new DataAccessResourceFailureException("DB 一時障害"));
-            given(shiftRequestAdminQueryService.pendingForTeam(eq(TEAM_ID), anyInt())).willReturn(agg(3, 3));
-            given(matchingAdminQueryService.pendingReceivedForTeam(eq(TEAM_ID), anyInt())).willReturn(agg(1, 1));
+            given(shiftRequestAdminQueryService.pendingForTeam(eq(TEAM_ID), eq(TEAM_SLUG), anyInt())).willReturn(agg(3, 3));
+            given(matchingAdminQueryService.pendingReceivedForTeam(eq(TEAM_ID), eq(TEAM_SLUG), anyInt())).willReturn(agg(1, 1));
 
             AdminActionRequiredResponse res =
                     facade.getAdminActionRequired(USER_ID, "TEAM", TEAM_ID, TEAM_SLUG, 3);
@@ -181,10 +190,10 @@ class AdminActionRequiredFacadeTest {
         @Test
         @DisplayName("1 ドメインが NullPointerException(プログラミングエラー) → 縮退せず全体が伝播（500 相当）")
         void programmingErrorPropagates() {
-            given(reservationAdminQueryService.pendingForTeam(eq(TEAM_ID), anyInt())).willReturn(agg(1, 1));
-            given(shiftRequestAdminQueryService.pendingForTeam(eq(TEAM_ID), anyInt()))
+            given(reservationAdminQueryService.pendingForTeam(eq(TEAM_ID), eq(TEAM_SLUG), anyInt())).willReturn(agg(1, 1));
+            given(shiftRequestAdminQueryService.pendingForTeam(eq(TEAM_ID), eq(TEAM_SLUG), anyInt()))
                     .willThrow(new NullPointerException("バグ"));
-            given(matchingAdminQueryService.pendingReceivedForTeam(eq(TEAM_ID), anyInt())).willReturn(agg(1, 1));
+            given(matchingAdminQueryService.pendingReceivedForTeam(eq(TEAM_ID), eq(TEAM_SLUG), anyInt())).willReturn(agg(1, 1));
 
             assertThatThrownBy(() -> facade.getAdminActionRequired(USER_ID, "TEAM", TEAM_ID, TEAM_SLUG, 3))
                     .isInstanceOf(NullPointerException.class);
@@ -201,7 +210,7 @@ class AdminActionRequiredFacadeTest {
             assertThatThrownBy(() -> facade.getAdminActionRequired(USER_ID, "PERSONAL", 99L, "x", 3))
                     .isInstanceOf(IllegalArgumentException.class);
             verify(accessControlService).checkAdminOrAbove(USER_ID, 99L, "PERSONAL");
-            verify(reservationAdminQueryService, never()).pendingForTeam(eq(99L), anyInt());
+            verify(reservationAdminQueryService, never()).pendingForTeam(eq(99L), any(), anyInt());
         }
     }
 }

@@ -37,11 +37,12 @@ public class ReservationAdminQueryService {
      * 指定チームの承認待ち予約（PENDING）の件数とプレビューを返す。
      *
      * @param teamId      チーム ID（WHERE 必須・IDOR 防止）
+     * @param teamSlug    チーム slug（プレビュー要素の個別遷移先ルート組み立てに使用）
      * @param previewSize プレビュー件数（0 なら件数のみ）
      * @return 件数とプレビューの集計結果
      */
     @Transactional(readOnly = true)
-    public PendingAggregate pendingForTeam(Long teamId, int previewSize) {
+    public PendingAggregate pendingForTeam(Long teamId, String teamSlug, int previewSize) {
         long count = reservationRepository.countByTeamIdAndStatus(teamId, ReservationStatus.PENDING);
 
         if (previewSize <= 0) {
@@ -62,7 +63,9 @@ public class ReservationAdminQueryService {
                         r.getUserNote() != null && !r.getUserNote().isBlank()
                                 ? r.getUserNote() : "予約申請",
                         names.getOrDefault(r.getUserId(), "不明なユーザー"),
-                        r.getBookedAt()))
+                        r.getBookedAt(),
+                        // その 1 件の個別遷移先（list_route の status 付き一覧とは別物・§3.1）
+                        "/teams/" + teamSlug + "/admin/reservations/" + r.getId()))
                 .toList();
 
         return new PendingAggregate(count, items);
