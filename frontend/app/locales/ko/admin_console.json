@@ -1,4 +1,4 @@
-{
+﻿{
   "adminConsole": {
     "comingSoon": "곧 공개",
     "team": {
@@ -81,6 +81,25 @@
           "MATCHING": "매칭",
           "PAYMENT": "결제"
         }
+      },
+      "payments": {
+        "unsettled": "미결제",
+        "overdue": "기한 초과",
+        "fetchFailed": "결제 정보를 가져오지 못했습니다"
+      },
+      "alert": {
+        "newReservations": "신규 예약",
+        "unreadInquiries": "미확인 문의",
+        "fetchFailed": "업무 알림 정보를 가져오지 못했습니다"
+      },
+      "reports": {
+        "pending": "미처리",
+        "reviewing": "검토 중",
+        "fetchFailed": "신고 정보를 가져오지 못했습니다"
+      },
+      "modules": {
+        "summary": "활성화 {enabled} / 전체 {total}",
+        "fetchFailed": "모듈 정보를 가져오지 못했습니다"
       }
     }
   }

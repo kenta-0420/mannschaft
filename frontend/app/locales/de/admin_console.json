@@ -81,6 +81,25 @@
           "MATCHING": "Matching",
           "PAYMENT": "Zahlungen"
         }
+      },
+      "payments": {
+        "unsettled": "Ausstehend",
+        "overdue": "Überfällig",
+        "fetchFailed": "Zahlungsinformationen konnten nicht geladen werden"
+      },
+      "alert": {
+        "newReservations": "Neue Reservierungen",
+        "unreadInquiries": "Ungelesene Anfragen",
+        "fetchFailed": "Geschäftswarnungen konnten nicht geladen werden"
+      },
+      "reports": {
+        "pending": "Ausstehend",
+        "reviewing": "In Prüfung",
+        "fetchFailed": "Meldungsinformationen konnten nicht geladen werden"
+      },
+      "modules": {
+        "summary": "{enabled} aktiv / {total} gesamt",
+        "fetchFailed": "Modulinformationen konnten nicht geladen werden"
       }
     }
   }
