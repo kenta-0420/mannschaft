@@ -1,0 +1,156 @@
+package com.mannschaft.app.dashboard.controller;
+
+import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.dashboard.dto.AdminBusinessAlertScopeResponse;
+import com.mannschaft.app.dashboard.dto.AdminPaymentSummaryResponse;
+import com.mannschaft.app.dashboard.dto.AdminReportStatsResponse;
+import com.mannschaft.app.dashboard.service.AdminLensSummaryFacade;
+import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.team.service.TeamService;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
+
+/**
+ * F10.1.1 / P3b: {@link AdminLensSummaryController} 契約テスト（Facade はモック・コントローラ直接呼び出し）。
+ *
+ * <p>GET 200 形状・認可 403 伝播・IDOR 403 を検証する。{@code SecurityUtils.getCurrentUserId()} は
+ * authentication.getName() を userId として読むため "1" を設定する。</p>
+ */
+@ExtendWith(MockitoExtension.class)
+@DisplayName("AdminLensSummaryController 契約テスト")
+class AdminLensSummaryControllerTest {
+
+    @Mock
+    private AdminLensSummaryFacade adminLensSummaryFacade;
+    @Mock
+    private TeamService teamService;
+    @Mock
+    private OrganizationService organizationService;
+
+    @InjectMocks
+    private AdminLensSummaryController controller;
+
+    private static final Long USER_ID = 1L;
+    private static final String TEAM_SLUG = "dev-team";
+    private static final Long TEAM_ID = 10L;
+    private static final String ORG_SLUG = "dev-org";
+    private static final Long ORG_ID = 20L;
+
+    @BeforeEach
+    void setUp() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(String.valueOf(USER_ID), null, List.of()));
+    }
+
+    @AfterEach
+    void clear() {
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    @DisplayName("GET organization/{slug}/admin-payment-summary: 200・未収/期限超過")
+    void orgPaymentSummary200() {
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        given(adminLensSummaryFacade.getOrgPaymentSummary(USER_ID, ORG_ID))
+                .willReturn(AdminPaymentSummaryResponse.builder().unsettledCount(8).overdueCount(3).build());
+
+        ResponseEntity<ApiResponse<AdminPaymentSummaryResponse>> res =
+                controller.getOrgPaymentSummary(ORG_SLUG);
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(res.getBody()).isNotNull();
+        assertThat(res.getBody().getData().unsettledCount()).isEqualTo(8);
+        assertThat(res.getBody().getData().overdueCount()).isEqualTo(3);
+        verify(adminLensSummaryFacade).getOrgPaymentSummary(USER_ID, ORG_ID);
+    }
+
+    @Test
+    @DisplayName("GET team/{slug}/admin-business-alert: 200・新規予約/未読問い合わせ")
+    void teamBusinessAlert200() {
+        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        given(adminLensSummaryFacade.getTeamBusinessAlert(USER_ID, TEAM_ID))
+                .willReturn(AdminBusinessAlertScopeResponse.builder().newReservations(4).unreadInquiries(7).build());
+
+        ResponseEntity<ApiResponse<AdminBusinessAlertScopeResponse>> res =
+                controller.getTeamBusinessAlert(TEAM_SLUG);
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(res.getBody().getData().newReservations()).isEqualTo(4);
+        assertThat(res.getBody().getData().unreadInquiries()).isEqualTo(7);
+    }
+
+    @Test
+    @DisplayName("GET organization/{slug}/admin-business-alert: 200・未読問い合わせのみ（new_reservations=0）")
+    void orgBusinessAlert200() {
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        given(adminLensSummaryFacade.getOrgBusinessAlert(USER_ID, ORG_ID))
+                .willReturn(AdminBusinessAlertScopeResponse.builder().newReservations(0).unreadInquiries(2).build());
+
+        ResponseEntity<ApiResponse<AdminBusinessAlertScopeResponse>> res =
+                controller.getOrgBusinessAlert(ORG_SLUG);
+
+        assertThat(res.getBody().getData().newReservations()).isZero();
+        assertThat(res.getBody().getData().unreadInquiries()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("GET team/{slug}/admin-report-stats: 200・未対応/確認中")
+    void teamReportStats200() {
+        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        given(adminLensSummaryFacade.getReportStats(USER_ID, "TEAM", TEAM_ID))
+                .willReturn(AdminReportStatsResponse.builder().pendingCount(5).reviewingCount(2).build());
+
+        ResponseEntity<ApiResponse<AdminReportStatsResponse>> res =
+                controller.getTeamReportStats(TEAM_SLUG);
+
+        assertThat(res.getBody().getData().pendingCount()).isEqualTo(5);
+        assertThat(res.getBody().getData().reviewingCount()).isEqualTo(2);
+        verify(adminLensSummaryFacade).getReportStats(USER_ID, "TEAM", TEAM_ID);
+    }
+
+    @Test
+    @DisplayName("GET organization/{slug}/admin-report-stats: 200")
+    void orgReportStats200() {
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        given(adminLensSummaryFacade.getReportStats(USER_ID, "ORGANIZATION", ORG_ID))
+                .willReturn(AdminReportStatsResponse.builder().pendingCount(1).reviewingCount(0).build());
+
+        ResponseEntity<ApiResponse<AdminReportStatsResponse>> res =
+                controller.getOrgReportStats(ORG_SLUG);
+
+        assertThat(res.getBody().getData().pendingCount()).isEqualTo(1);
+        verify(adminLensSummaryFacade).getReportStats(USER_ID, "ORGANIZATION", ORG_ID);
+    }
+
+    @Test
+    @DisplayName("非ADMIN/他テナント（IDOR）→ Facade の checkAdminOrAbove が COMMON_002 を投げ 403 伝播")
+    void forbiddenPropagates403() {
+        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .when(adminLensSummaryFacade).getTeamBusinessAlert(USER_ID, TEAM_ID);
+
+        assertThatThrownBy(() -> controller.getTeamBusinessAlert(TEAM_SLUG))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", CommonErrorCode.COMMON_002);
+    }
+}
