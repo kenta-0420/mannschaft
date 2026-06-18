@@ -48,6 +48,13 @@ public interface PaymentRequestRepository
             ScopeKind issuerScopeKind, Long issuerScopeId, PaymentRequestStatus status);
 
     /**
+     * 協会の発行請求のうち指定状態群（複数ステータス）の件数を 1 クエリで集計する。
+     * F10.1.1 管理者向け承認待ち集約で未収（SENT/VIEWED/OVERDUE）件数を 1 COUNT で取るために使う（設計書 03 §4.5）。
+     */
+    long countByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(
+            ScopeKind issuerScopeKind, Long issuerScopeId, Collection<PaymentRequestStatus> statuses);
+
+    /**
      * 協会（請求元）が発行した請求一覧（status フィルタ・ページング）。協会視点一覧 API の本体。
      * {@code statuses} は SENT/VIEWED/OVERDUE 等の絞り込み（空・null 時は全件は {@link #findByIssuerScopeKindAndIssuerScopeIdAndDeletedAtIsNullOrderByCreatedAtDesc} を使う）。
      */

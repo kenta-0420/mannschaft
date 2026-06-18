@@ -62,7 +62,7 @@
         "degraded": false,
         "list_route": "/teams/dev-team/admin/reservations?status=PENDING",
         "items": [
-          { "id": "33", "title": "コートA 6/20 10:00", "requested_by": "山田太郎", "requested_at": "2026-06-17T09:00:00+09:00", "detail_route": "/teams/dev-team/admin/reservations" }
+          { "id": "33", "title": "コートA 6/20 10:00", "requested_by": "山田太郎", "requested_at": "2026-06-17T09:00:00+09:00", "detail_route": "/teams/dev-team/admin/reservations/33" }
         ]
       },
       {
@@ -70,14 +70,14 @@
         "pending_count": 3,
         "degraded": false,
         "list_route": "/teams/dev-team/admin/shifts?tab=requests",
-        "items": [ { "id": "88", "title": "6/22 早番 交代希望", "requested_by": "佐藤花子", "requested_at": "2026-06-16T18:00:00+09:00", "detail_route": "/teams/dev-team/admin/shifts" } ]
+        "items": [ { "id": "88", "title": "6/22 早番 交代希望", "requested_by": "佐藤花子", "requested_at": "2026-06-16T18:00:00+09:00", "detail_route": "/teams/dev-team/admin/shifts/swap/88" } ]
       },
       {
         "domain": "MATCHING",
         "pending_count": 1,
         "degraded": false,
         "list_route": "/teams/dev-team/admin/matching?tab=received",
-        "items": [ { "id": "5", "title": "練習試合の申込", "requested_by": "鈴木一郎", "requested_at": "2026-06-15T12:00:00+09:00", "detail_route": "/teams/dev-team/admin/matching" } ]
+        "items": [ { "id": "5", "title": "練習試合の申込", "requested_by": "鈴木一郎", "requested_at": "2026-06-15T12:00:00+09:00", "detail_route": "/teams/dev-team/admin/matching/5" } ]
       }
     ]
   }
@@ -109,8 +109,9 @@
 - `domains[]`: 当該スコープで有効なドメインのみ（§3.2）。`pending_count` が 0 のドメインも、有効でありさえすれば配列に含める（FE が枠を描画できる）。無効ドメインは含めない。
 - `domain`: enum（`RESERVATION` / `SHIFT_REQUEST` / `MATCHING` / `PAYMENT`）。
 - `degraded`: boolean（camelCase ではなく snake_case の `degraded`。API は snake_case 規約・§3.5）。当該ドメインの集計が**一時障害（DB 接続断・タイムアウト）で取得できなかった**場合のみ `true`。FE は当該ドメインを「集計失敗（再試行可）」として 0 件と区別して表示する（§4.3）。認可エラー・プログラミングエラーでは `degraded` は立たず、API 全体が当該ステータスを返す（握りつぶさない・§4.3）。
-- `list_route` / `detail_route`: FE が遷移するルート文字列。**BE がスラッグを解決して返す**（FE が ID から再構築しない）。スラッグ解決は他ドメイン Entity を直接参照せず `TeamService.getSlugsByIds(ids): Map<Long,String>` 等のプリミティブ返却 Service メソッド経由（ArchUnit 越境依存 D-1 を避ける。メモリ `project_slug_e2e_open_issues` の教訓）。ルートは §01.4 の実在ルートに整合させる（例: team のシフト承認待ちは `/teams/{slug}/admin/shifts?tab=requests`）。
-- `items[]`: `preview_size` 件までのプレビュー。`id` は対象ドメインの主キーを**文字列化**して返す（BIGINT/UUID を JSON 数値ではなく文字列で統一）。
+- `list_route`（DomainSection 単位）: FE が遷移する**一覧ルート**文字列（status / tab 付き）。当該ドメインの承認待ち一覧へ飛ぶ。**BE がスラッグを解決して返す**（FE が ID から再構築しない）。スラッグ解決は他ドメイン Entity を直接参照せず `TeamService.getSlugsByIds(ids): Map<Long,String>` 等のプリミティブ返却 Service メソッド経由（ArchUnit 越境依存 D-1 を避ける。メモリ `project_slug_e2e_open_issues` の教訓）。ルートは §01.4 の実在ルートに整合させる（例: team のシフト承認待ちは `/teams/{slug}/admin/shifts?tab=requests`）。
+- `detail_route`（PreviewItem 単位）: その**1 件の個別遷移先**ルート文字列。`list_route` と**別物**で、status 等のクエリではなく**主キー（id）をパスに含めて**個別画面に飛ぶ（例 `/teams/{slug}/admin/reservations/{id}`・`/teams/{slug}/admin/matching/{id}`・`/organizations/{slug}/admin/payments/{id}`）。`list_route` 同様に BE がスラッグ・主キーを解決して返す。
+- `items[]`: `preview_size` 件までのプレビュー。`id` は対象ドメインの主キーを**文字列化**して返す（BIGINT/UUID を JSON 数値ではなく文字列で統一）。**合成 id（`change:{id}` 等の種別接頭辞付き）は使わない**。同一ドメイン内に複数種別があるシフトドメインでは、`id` は各種別テーブルの主キー文字列とし、**種別（変更依頼／交代申請）の判別は `detail_route` のパスで吸収する**（変更依頼 → `/teams/{slug}/admin/shifts/change/{id}`、交代申請 → `/teams/{slug}/admin/shifts/swap/{id}`）。これにより id 契約（=主キー文字列）を保ったまま種別ごとの個別遷移を成立させる。
 
 ### 3.4 各ドメインの「承認待ち」の定義（実コード準拠）
 
@@ -119,7 +120,7 @@
 | `RESERVATION` | `ReservationRepository.countByTeamIdAndStatus(teamId, PENDING)` ほか（実在） | `status = PENDING` の予約 | 件数は既存メソッドで取得可。プレビュー用の `LIMIT` クエリのみ薄く新設 |
 | `SHIFT_REQUEST` | `ShiftChangeRequestService`（`ChangeRequestStatus.OPEN`）+ `ShiftSwapService`（`SwapRequestStatus.PENDING`） | OPEN のシフト変更依頼 + PENDING のシフト交代申請の合算 | **team 単位の集約クエリを新設**（既存は scheduleId 単位 / status 単位）。`ShiftRequestAdminQueryService.pendingForTeam(teamId, previewSize)` を読み取り専用で追加 |
 | `MATCHING` | `MatchProposalRepository.findByRequestIdAndStatus(..., PENDING)`（実在・申込単位） | 自チームの募集に届いた `MatchProposalStatus.PENDING` の応募 | **募集側（受け手）視点の team 単位集約クエリを新設**（既存は応募者視点 `proposingTeamId` のみ）。`MatchingAdminQueryService.pendingReceivedForTeam(teamId, previewSize)` を追加 |
-| `PAYMENT` | `PaymentRequestRepository.findByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(ORG, orgId, statuses, pageable)`（実在） | **組織が発行し、まだ支払い完了していない請求**（`status ∈ {SENT, VIEWED, OVERDUE}`）の件数＝「組織が回収状況を追うべき対象」。payment ドメインには「承認・却下」の双方向ワークフローは存在しないため、本ドメインは「承認待ち」ではなく**「処理状況の追跡が必要な未完了請求」**として集約する（名称は UI で「未収の請求」等に i18n） | 件数は既存メソッドで取得可。プレビュー用クエリのみ薄く新設 |
+| `PAYMENT` | `PaymentRequestRepository.findByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(ORG, orgId, statuses, pageable)`（実在） | **組織が発行し、まだ支払い完了していない請求**（`status ∈ {SENT, VIEWED, OVERDUE}`）の件数＝「組織が回収状況を追うべき対象」。payment ドメインには「承認・却下」の双方向ワークフローは存在しないため、本ドメインは「承認待ち」ではなく**「処理状況の追跡が必要な未完了請求」**として集約する（名称は UI で「未収の請求」等に i18n） | 件数は **StatusIn 版 count を 1 本薄く新設**（`countByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull`）して 1 COUNT で集計（§4.5）。プレビューは既存 StatusIn 版 find を流用 |
 
 > いずれの新設も**読み取り専用クエリメソッド**であり、承認ロジック・トランザクション・監査ログには一切触れない（CLAUDE.md 原則5・障害対応原則3「未実装は未実装として実装する」）。承認の実行は各ドメインの既存 API を L3 セクションで呼ぶ（§3.5）。
 
