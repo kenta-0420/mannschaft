@@ -81,6 +81,25 @@
           "MATCHING": "Emparejamiento",
           "PAYMENT": "Pagos"
         }
+      },
+      "payments": {
+        "unsettled": "Pendiente",
+        "overdue": "Vencido",
+        "fetchFailed": "No se pudo cargar la información de pagos"
+      },
+      "alert": {
+        "newReservations": "Nuevas reservas",
+        "unreadInquiries": "Consultas no leídas",
+        "fetchFailed": "No se pudo cargar la información de alertas de negocio"
+      },
+      "reports": {
+        "pending": "Pendiente",
+        "reviewing": "En revisión",
+        "fetchFailed": "No se pudo cargar la información de denuncias"
+      },
+      "modules": {
+        "summary": "{enabled} activos / {total} en total",
+        "fetchFailed": "No se pudo cargar la información de módulos"
       }
     }
   }

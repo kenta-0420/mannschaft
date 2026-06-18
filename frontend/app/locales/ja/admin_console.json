@@ -1,4 +1,4 @@
-{
+﻿{
   "adminConsole": {
     "comingSoon": "近日公開",
     "team": {
@@ -81,6 +81,25 @@
           "MATCHING": "マッチング",
           "PAYMENT": "支払"
         }
+      },
+      "payments": {
+        "unsettled": "未収",
+        "overdue": "期限超過",
+        "fetchFailed": "支払情報を取得できませんでした"
+      },
+      "alert": {
+        "newReservations": "新規予約",
+        "unreadInquiries": "未読問い合わせ",
+        "fetchFailed": "業務アラートを取得できませんでした"
+      },
+      "reports": {
+        "pending": "未対応",
+        "reviewing": "確認中",
+        "fetchFailed": "通報情報を取得できませんでした"
+      },
+      "modules": {
+        "summary": "有効 {enabled} / 全 {total}",
+        "fetchFailed": "モジュール情報を取得できませんでした"
       }
     }
   }
