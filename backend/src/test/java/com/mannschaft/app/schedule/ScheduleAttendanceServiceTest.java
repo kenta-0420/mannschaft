@@ -91,6 +91,7 @@ class ScheduleAttendanceServiceTest {
     private static final Long SCHEDULE_ID = 1L;
     private static final Long USER_ID = 100L;
     private static final Long TEAM_ID = 10L;
+    private static final Long ORG_ID = 20L;
     private static final LocalDateTime START = LocalDateTime.of(2026, 4, 1, 10, 0);
     private static final LocalDateTime END = LocalDateTime.of(2026, 4, 1, 12, 0);
     private static final LocalDateTime FUTURE_DEADLINE = LocalDateTime.of(2099, 12, 31, 23, 59);
@@ -143,6 +144,27 @@ class ScheduleAttendanceServiceTest {
         return ScheduleEntity.builder()
                 .teamId(TEAM_ID)
                 .title("練習")
+                .startAt(START)
+                .endAt(END)
+                .allDay(false)
+                .eventType(EventType.PRACTICE)
+                .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                .minViewRole(MinViewRole.MEMBER_PLUS)
+                .minResponseRole(minResponseRole)
+                .status(ScheduleStatus.SCHEDULED)
+                .attendanceRequired(true)
+                .attendanceDeadline(FUTURE_DEADLINE)
+                .commentOption(CommentOption.OPTIONAL)
+                .isException(false)
+                .createdBy(USER_ID)
+                .build();
+    }
+
+    /** 指定した minResponseRole を持つ ORGANIZATION スコープの出欠対象スケジュールを生成する（欠陥Z 用）。 */
+    private ScheduleEntity createOrgScheduleWithMinResponseRole(MinResponseRole minResponseRole) {
+        return ScheduleEntity.builder()
+                .organizationId(ORG_ID)
+                .title("組織練習")
                 .startAt(START)
                 .endAt(END)
                 .allDay(false)
@@ -498,6 +520,67 @@ class ScheduleAttendanceServiceTest {
             // then: AccessControlService に一切問い合わせないこと（後方互換）
             assertThat(result.getStatus()).isEqualTo("ATTENDING");
             org.mockito.Mockito.verifyNoInteractions(accessControlService);
+        }
+
+        // ---- 欠陥Z 根治: 組織スケジュールの配下メンバー救済（真因④） ----
+
+        @Test
+        @DisplayName("欠陥Z_ORG_MEMBER_PLUS_配下チームのみ所属MEMBERは救済されて回答可能")
+        void 欠陥Z_組織MEMBER_PLUS_配下メンバー救済() {
+            // given: 組織スケジュール(MEMBER_PLUS)に、組織に直接ロールを持たない配下チームのみ所属MEMBERが回答。
+            // 直接ロール解決は null → hasRoleOrAbove(...,"MEMBER")=false。配下救済フォールバックで回答可能。
+            ScheduleEntity schedule = createOrgScheduleWithMinResponseRole(MinResponseRole.MEMBER_PLUS);
+            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, ORG_ID, "ORGANIZATION", "MEMBER")).willReturn(false);
+            // 配下救済: isMemberOrDescendant が true（純 SUPPORTER 除外版で配下 MEMBER を許容）
+            given(accessControlService.isMemberOrDescendant(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
+            stubSaveAndDeadline();
+
+            AttendanceRequest req = new AttendanceRequest("ATTENDING", null, null);
+
+            // when
+            AttendanceResponse result = attendanceService.respondAttendance(SCHEDULE_ID, USER_ID, req);
+
+            // then
+            assertThat(result.getStatus()).isEqualTo("ATTENDING");
+        }
+
+        @Test
+        @DisplayName("欠陥Z_ORG_MEMBER_PLUS_配下にもいない者はフォールバックでもfalse_COMMON_002")
+        void 欠陥Z_組織MEMBER_PLUS_配下にもいない者は拒否() {
+            ScheduleEntity schedule = createOrgScheduleWithMinResponseRole(MinResponseRole.MEMBER_PLUS);
+            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, ORG_ID, "ORGANIZATION", "MEMBER")).willReturn(false);
+            given(accessControlService.isMemberOrDescendant(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+
+            AttendanceRequest req = new AttendanceRequest("ATTENDING", null, null);
+
+            assertThatThrownBy(() -> attendanceService.respondAttendance(SCHEDULE_ID, USER_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+        }
+
+        @Test
+        @DisplayName("欠陥Z_ORG_ADMIN_ONLY_管理者要求段では配下メンバーを救済しない_COMMON_002")
+        void 欠陥Z_組織ADMIN_ONLY_配下メンバー救済なし() {
+            // given: 管理者要求段。配下メンバーは組織 ADMIN ではないため救済しない（御裁可④）。
+            ScheduleEntity schedule = createOrgScheduleWithMinResponseRole(MinResponseRole.ADMIN_ONLY);
+            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+
+            AttendanceRequest req = new AttendanceRequest("ATTENDING", null, null);
+
+            assertThatThrownBy(() -> attendanceService.respondAttendance(SCHEDULE_ID, USER_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+            // 管理者要求段ではフォールバック（配下救済）を一切呼ばないこと
+            org.mockito.Mockito.verify(accessControlService, org.mockito.Mockito.never())
+                    .isMemberOrDescendant(USER_ID, ORG_ID, "ORGANIZATION");
         }
     }
 

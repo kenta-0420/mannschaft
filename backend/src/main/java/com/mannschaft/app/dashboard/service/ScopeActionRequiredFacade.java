@@ -21,9 +21,14 @@ import java.util.concurrent.ExecutionException;
  *
  * <p>回覧板（circulation）・アンケート（survey）・出席確認（schedule attendance）の 3 ドメインを
  * 跨ぐ <b>読み取り集計</b>を 1 つのレスポンスに集約する。各ドメインの Service メソッドを呼び、
- * 各メソッド内で per-scope 認可（{@code checkMembership}）が必ず適用される（集計バイパス禁止）。
- * ファサード自身も、エンドポイントの所属検証とは別に、集約の入口で {@code checkMembership} を
- * 通して二重防御する。</p>
+ * 各メソッド内で per-scope 認可が必ず適用される（集計バイパス禁止）。ファサード自身も、
+ * エンドポイントの所属検証とは別に、集約の入口で所属検証を通して二重防御する。</p>
+ *
+ * <p><b>欠陥Z 根治（組織→配下チーム配信）</b>: ORGANIZATION スコープでは、配下チームのみに所属する
+ * メンバーも組織発の出欠/アンケートに回答できる必要があるため、入口および survey/attendance の
+ * per-scope 認可は {@code checkMembershipOrDescendant}（純 SUPPORTER 除外）を用いる。circulation は
+ * 組織→配下チーム配信の対象外であり、従来どおり直接所属の {@code checkMembership} を用いる
+ * （配下メンバーの回覧区分は per-recipient ACL に登録が無ければ 0 件＝縮退でなく正しい結果）。</p>
  *
  * <p><b>原則 5 遵守</b>: {@code @Transactional} をドメイン跨ぎにしない。本ファサードはトランザクション
  * 境界を持たず（読み取り集計）、各ドメイン Service の読み取りメソッドを個別に呼ぶだけ。</p>
@@ -57,8 +62,10 @@ public class ScopeActionRequiredFacade {
      * @return 統合「要対応」集計レスポンス
      */
     public ActionRequiredSummaryResponse getActionRequired(Long userId, String scopeType, Long scopeId) {
-        // 集約の入口で所属検証（各ドメイン Service 内でも再度 checkMembership される＝二重防御）
-        accessControlService.checkMembership(userId, scopeId, scopeType);
+        // 集約の入口で所属検証（各ドメイン Service 内でも再度 checkMembershipOrDescendant される＝二重防御）。
+        // 欠陥Z 根治: ORGANIZATION スコープでは配下チームのみ所属メンバーも応答母集団に含める
+        // （純 SUPPORTER は除外）。TEAM は従来どおり直接所属のみ。
+        accessControlService.checkMembershipOrDescendant(userId, scopeId, scopeType);
 
         CompletableFuture<ActionRequiredSummaryResponse.CirculationSection> circulationFuture =
                 CompletableFuture.supplyAsync(() -> buildCirculation(userId, scopeType, scopeId));
