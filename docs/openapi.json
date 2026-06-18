@@ -80707,7 +80707,7 @@
         "tags": [
           "予約設定管理"
         ],
-        "summary": "予約設定概要",
+        "summary": "予約設定（チームポリシー）取得",
         "operationId": "getSettings_12",
         "parameters": [
           {
@@ -80726,7 +80726,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseMapStringObject"
+                  "$ref": "#/components/schemas/ApiResponseReservationSettingsResponse"
                 }
               }
             }
@@ -80737,7 +80737,7 @@
         "tags": [
           "予約設定管理"
         ],
-        "summary": "予約公開設定の更新（ADMIN限定）",
+        "summary": "予約設定（チームポリシー）の更新（ADMIN限定）",
         "operationId": "updateReservationSetting",
         "parameters": [
           {
@@ -80766,7 +80766,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseMapStringObject"
+                  "$ref": "#/components/schemas/ApiResponseReservationSettingsResponse"
                 }
               }
             }
@@ -133320,14 +133320,6 @@
           "audit": {
             "$ref": "#/components/schemas/TodoAuditDto"
           },
-          "completedBy": {
-            "$ref": "#/components/schemas/UserInfo",
-            "deprecated": true
-          },
-          "progressManual": {
-            "type": "boolean",
-            "deprecated": true
-          },
           "priority": {
             "type": "string",
             "deprecated": true
@@ -133349,28 +133341,79 @@
               "$ref": "#/components/schemas/TodoResponse"
             }
           },
-          "descendantTotalCount": {
-            "type": "integer",
-            "format": "int32",
-            "deprecated": true
-          },
-          "dueTime": {
-            "type": "string",
-            "deprecated": true,
-            "example": "14:30:00"
-          },
-          "description": {
-            "type": "string",
-            "deprecated": true
-          },
           "parentId": {
             "type": "integer",
             "format": "int64",
             "deprecated": true
           },
+          "description": {
+            "type": "string",
+            "deprecated": true
+          },
           "depth": {
             "type": "integer",
             "format": "int32",
+            "deprecated": true
+          },
+          "projectId": {
+            "type": "integer",
+            "format": "int64",
+            "deprecated": true
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "deprecated": true
+          },
+          "title": {
+            "type": "string",
+            "deprecated": true
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "deprecated": true
+          },
+          "descendantCompletedCount": {
+            "type": "integer",
+            "format": "int32",
+            "deprecated": true
+          },
+          "milestoneId": {
+            "type": "integer",
+            "format": "int64",
+            "deprecated": true
+          },
+          "linkedScheduleId": {
+            "type": "integer",
+            "format": "int64",
+            "deprecated": true
+          },
+          "progressManual": {
+            "type": "boolean",
+            "deprecated": true
+          },
+          "completedBy": {
+            "$ref": "#/components/schemas/UserInfo",
+            "deprecated": true
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "deprecated": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "deprecated": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "deprecated": true
+          },
+          "progressRate": {
+            "type": "number",
             "deprecated": true
           },
           "scopeType": {
@@ -133386,55 +133429,12 @@
             "$ref": "#/components/schemas/UserInfo",
             "deprecated": true
           },
-          "progressRate": {
-            "type": "number",
-            "deprecated": true
-          },
-          "dueDate": {
+          "dueTime": {
             "type": "string",
-            "format": "date",
-            "deprecated": true
+            "deprecated": true,
+            "example": "14:30:00"
           },
-          "completedAt": {
-            "type": "string",
-            "format": "date-time",
-            "deprecated": true
-          },
-          "milestoneId": {
-            "type": "integer",
-            "format": "int64",
-            "deprecated": true
-          },
-          "startDate": {
-            "type": "string",
-            "format": "date",
-            "deprecated": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "deprecated": true
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time",
-            "deprecated": true
-          },
-          "title": {
-            "type": "string",
-            "deprecated": true
-          },
-          "descendantCompletedCount": {
-            "type": "integer",
-            "format": "int32",
-            "deprecated": true
-          },
-          "linkedScheduleId": {
-            "type": "integer",
-            "format": "int64",
-            "deprecated": true
-          },
-          "projectId": {
+          "daysRemaining": {
             "type": "integer",
             "format": "int64",
             "deprecated": true
@@ -133443,9 +133443,9 @@
             "$ref": "#/components/schemas/TodoStatusLabelInfo",
             "deprecated": true
           },
-          "daysRemaining": {
+          "descendantTotalCount": {
             "type": "integer",
-            "format": "int64",
+            "format": "int32",
             "deprecated": true
           }
         }
@@ -134009,10 +134009,10 @@
             "type": "string",
             "format": "date-time"
           },
-          "editable": {
+          "ownMemo": {
             "type": "boolean"
           },
-          "ownMemo": {
+          "editable": {
             "type": "boolean"
           }
         }
@@ -138539,10 +138539,10 @@
           "note": {
             "type": "string"
           },
-          "yposition": {
+          "xposition": {
             "type": "number"
           },
-          "xposition": {
+          "yposition": {
             "type": "number"
           }
         }
@@ -138799,10 +138799,10 @@
             "maxLength": 300,
             "minLength": 0
           },
-          "yposition": {
+          "xposition": {
             "type": "number"
           },
-          "xposition": {
+          "yposition": {
             "type": "number"
           }
         },
@@ -152292,15 +152292,15 @@
             "type": "string",
             "format": "uuid"
           },
+          "postedAsTypeOrDefault": {
+            "type": "string"
+          },
           "scopeTypeOrDefault": {
             "type": "string"
           },
           "scopeIdOrDefault": {
             "type": "integer",
             "format": "int64"
-          },
-          "postedAsTypeOrDefault": {
-            "type": "string"
           }
         }
       },
@@ -152902,10 +152902,10 @@
               "ABSOLUTE"
             ]
           },
-          "remindBeforeMinutesValid": {
+          "remindAtValid": {
             "type": "boolean"
           },
-          "remindAtValid": {
+          "remindBeforeMinutesValid": {
             "type": "boolean"
           }
         }
@@ -172096,11 +172096,11 @@
           "recurrenceRule": {
             "$ref": "#/components/schemas/RecurrenceRuleDto"
           },
-          "eventTypeOrDefault": {
-            "type": "string"
-          },
           "reminderCountWithinLimit": {
             "type": "boolean"
+          },
+          "eventTypeOrDefault": {
+            "type": "string"
           }
         },
         "required": [
@@ -180082,10 +180082,10 @@
               "ABSOLUTE"
             ]
           },
-          "remindBeforeMinutesValid": {
+          "remindAtValid": {
             "type": "boolean"
           },
-          "remindAtValid": {
+          "remindBeforeMinutesValid": {
             "type": "boolean"
           }
         }
@@ -180397,13 +180397,83 @@
         "properties": {
           "allowPublicReservation": {
             "type": "boolean",
+            "description": "一般公開予約を許可するか（null\u003d据え置き）",
+            "example": false
+          },
+          "approvalMode": {
+            "type": "string",
+            "description": "承認モードの既定値（AUTO/MANUAL / null\u003d据え置き）",
+            "enum": [
+              "AUTO",
+              "MANUAL"
+            ],
+            "example": "AUTO"
+          },
+          "cancelDeadlineHours": {
+            "type": "integer",
+            "format": "int32",
+            "description": "キャンセル受付の締切（予約開始の何時間前まで・0〜8760 / null\u003d据え置き）",
+            "example": 24,
+            "maximum": 8760,
+            "minimum": 0
+          },
+          "remindBeforeHours": {
+            "type": "string",
+            "description": "リマインド送信タイミング（予約開始の何時間前か）の CSV 文字列（null\u003d据え置き）",
+            "example": "24,1",
+            "pattern": "^[1-9][0-9]*(,[1-9][0-9]*)*$"
+          }
+        }
+      },
+      "ApiResponseReservationSettingsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ReservationSettingsResponse"
+          }
+        }
+      },
+      "ReservationSettingsResponse": {
+        "type": "object",
+        "description": "予約設定（チームポリシー）のレスポンス",
+        "properties": {
+          "teamId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "チームID",
+            "example": 10
+          },
+          "hasBusinessHours": {
+            "type": "boolean",
+            "description": "営業時間が設定済みか",
+            "example": true
+          },
+          "allowPublicReservation": {
+            "type": "boolean",
             "description": "一般公開予約を許可するか（true\u003dログイン済みなら誰でも予約可 / false\u003dチーム所属者のみ）",
             "example": false
+          },
+          "approvalMode": {
+            "type": "string",
+            "description": "承認モードの既定値。AUTO\u003d自動承認 / MANUAL\u003d管理者の手動承認",
+            "enum": [
+              "AUTO",
+              "MANUAL"
+            ],
+            "example": "AUTO"
+          },
+          "cancelDeadlineHours": {
+            "type": "integer",
+            "format": "int32",
+            "description": "キャンセル受付の締切（予約開始の何時間前まで）",
+            "example": 24
+          },
+          "remindBeforeHours": {
+            "type": "string",
+            "description": "リマインド送信タイミング（予約開始の何時間前か）の CSV 文字列",
+            "example": "24,1"
           }
-        },
-        "required": [
-          "allowPublicReservation"
-        ]
+        }
       },
       "UpdateReservationLineRequest": {
         "type": "object",
@@ -181791,19 +181861,19 @@
           "custom_fields": {
             "type": "boolean"
           },
-          "establishedDateVisible": {
+          "officersVisible": {
             "type": "boolean"
           },
           "homepageUrlVisible": {
+            "type": "boolean"
+          },
+          "establishedDateVisible": {
             "type": "boolean"
           },
           "philosophyVisible": {
             "type": "boolean"
           },
           "customFieldsVisible": {
-            "type": "boolean"
-          },
-          "officersVisible": {
             "type": "boolean"
           }
         }
@@ -186679,12 +186749,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -186708,6 +186772,12 @@
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -189930,16 +190000,6 @@
           "audit": {
             "$ref": "#/components/schemas/ProjectAuditDto"
           },
-          "totalTodos": {
-            "type": "integer",
-            "format": "int32",
-            "deprecated": true
-          },
-          "completedTodos": {
-            "type": "integer",
-            "format": "int32",
-            "deprecated": true
-          },
           "status": {
             "type": "string",
             "deprecated": true
@@ -189948,17 +190008,8 @@
             "type": "string",
             "deprecated": true
           },
-          "createdBy": {
-            "$ref": "#/components/schemas/UserInfo",
-            "deprecated": true
-          },
-          "progressRate": {
-            "type": "number",
-            "deprecated": true
-          },
-          "dueDate": {
+          "title": {
             "type": "string",
-            "format": "date",
             "deprecated": true
           },
           "visibility": {
@@ -189969,12 +190020,31 @@
             "type": "string",
             "deprecated": true
           },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "deprecated": true
+          },
           "color": {
             "type": "string",
             "deprecated": true
           },
-          "title": {
-            "type": "string",
+          "totalTodos": {
+            "type": "integer",
+            "format": "int32",
+            "deprecated": true
+          },
+          "completedTodos": {
+            "type": "integer",
+            "format": "int32",
+            "deprecated": true
+          },
+          "progressRate": {
+            "type": "number",
+            "deprecated": true
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/UserInfo",
             "deprecated": true
           },
           "daysRemaining": {
@@ -192268,10 +192338,10 @@
             "type": "integer",
             "format": "int32"
           },
-          "alreadyCheckedIn": {
+          "underCare": {
             "type": "boolean"
           },
-          "underCare": {
+          "alreadyCheckedIn": {
             "type": "boolean"
           }
         }
@@ -194417,12 +194487,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -194446,6 +194510,12 @@
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -195311,12 +195381,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -195340,6 +195404,12 @@
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -195905,12 +195975,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -195934,6 +195998,12 @@
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -196104,12 +196174,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -196133,6 +196197,12 @@
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -196354,12 +196424,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -196383,6 +196447,12 @@
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -196655,12 +196725,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -196684,6 +196748,12 @@
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -199298,12 +199368,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -199327,6 +199391,12 @@
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -199369,12 +199439,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -199398,6 +199462,12 @@
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -199449,12 +199519,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -199478,6 +199542,12 @@
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -199582,12 +199652,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -199611,6 +199675,12 @@
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -199758,12 +199828,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -199787,6 +199851,12 @@
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -200244,12 +200314,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -200273,6 +200337,12 @@
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -200502,12 +200572,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -200531,6 +200595,12 @@
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -201956,10 +202026,10 @@
             "type": "string",
             "format": "date-time"
           },
-          "maxExceeded": {
+          "minMet": {
             "type": "boolean"
           },
-          "minMet": {
+          "maxExceeded": {
             "type": "boolean"
           }
         }
@@ -202474,12 +202544,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -202503,6 +202567,12 @@
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -202678,12 +202748,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -202707,6 +202771,12 @@
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -202761,12 +202831,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -202790,6 +202854,12 @@
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -203224,12 +203294,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -203253,6 +203317,12 @@
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -207355,12 +207425,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -207384,6 +207448,12 @@
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -208708,12 +208778,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -208737,6 +208801,12 @@
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -209149,12 +209219,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -209178,6 +209242,12 @@
           "numberOfElements": {
             "type": "integer",
             "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
