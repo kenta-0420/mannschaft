@@ -67,6 +67,46 @@ public class ReservationReminderService {
     }
 
     /**
+     * 予約確定時のリマインダーを自動生成する（⑥ CONFIRMED 時リマインド自動生成）。
+     *
+     * <p>渡された {@code remindAtList} の各時刻についてリマインダーを生成する。
+     * 1 予約あたりの上限（{@value #MAX_REMINDERS_PER_RESERVATION} 件）を超える分は生成しない。
+     * 上限超過時に例外を投げず黙って打ち切るのは、本メソッドが確定 TX の AFTER_COMMIT 後に
+     * 副作用として呼ばれる前提であり、リマインド過多で確定処理自体を失敗させないためである
+     * （症状隠蔽ではなく、上限という仕様上の正常打ち切り。打ち切り件数はログに残す）。</p>
+     *
+     * <p>過去時刻のスキップ判定は呼び出し側（リスナー）が {@code Clock} を用いて行い、
+     * 既に未来のみに絞り込んだリストを渡す責務とする。</p>
+     *
+     * @param reservationId 予約ID
+     * @param remindAtList  生成するリマインド時刻リスト（未来時刻のみが渡される想定）
+     * @return 実際に生成されたリマインダー件数
+     */
+    @Transactional
+    public int generateReminders(Long reservationId, List<LocalDateTime> remindAtList) {
+        long existing = reminderRepository.countByReservationId(reservationId);
+        int created = 0;
+        for (LocalDateTime remindAt : remindAtList) {
+            if (existing + created >= MAX_REMINDERS_PER_RESERVATION) {
+                log.info("リマインダー上限({})に達したため打ち切り: reservationId={}, 生成済み={}, 要求残={}",
+                        MAX_REMINDERS_PER_RESERVATION, reservationId, created,
+                        remindAtList.size() - created);
+                break;
+            }
+            ReservationReminderEntity entity = ReservationReminderEntity.builder()
+                    .reservationId(reservationId)
+                    .remindAt(remindAt)
+                    .build();
+            reminderRepository.save(entity);
+            created++;
+        }
+        if (created > 0) {
+            log.info("予約確定リマインダー自動生成: reservationId={}, 生成件数={}", reservationId, created);
+        }
+        return created;
+    }
+
+    /**
      * リマインダーをキャンセルする。
      *
      * @param reminderId リマインダーID
