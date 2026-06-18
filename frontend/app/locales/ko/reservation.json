@@ -78,7 +78,8 @@
       "subject_required": "제목을 입력해 주세요",
       "body_required": "본문을 입력해 주세요",
       "send_failed": "전송에 실패했습니다",
-      "confirmations_failed": "확인 현황 불러오기 실패"
+      "confirmations_failed": "확인 현황 불러오기 실패",
+      "info_missing": "알림 정보가 누락되었습니다"
     },
     "template": {
       "staff_sick": "직원 건강 이상",
@@ -102,7 +103,12 @@
       "CANCELLED": "취소",
       "NO_SHOW": "무단 불참",
       "REJECTED": "거부"
-    }
+    },
+    "confirm_button": "휴업 확인",
+    "already_confirmed": "확인 완료",
+    "confirm_success": "긴급 휴업을 확인했습니다",
+    "confirm_failed": "확인 처리에 실패했습니다",
+    "badge": "긴급 휴업"
   },
   "reservation": {
     "status": {
@@ -124,7 +130,8 @@
     "tab": {
       "book": "예약하기",
       "list": "예약 목록",
-      "line_manage": "라인 관리"
+      "line_manage": "라인 관리",
+      "emergency_closure": "緊急休業"
     },
     "column": {
       "datetime": "일시",
