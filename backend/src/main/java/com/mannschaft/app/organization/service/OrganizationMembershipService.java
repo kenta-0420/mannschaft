@@ -283,6 +283,33 @@ public class OrganizationMembershipService {
                 orgId, userId, MAX_ORG_DESCENDANT_DEPTH);
     }
 
+    /**
+     * 指定ユーザーが「対象組織を根とした再帰的配下ツリー」の<b>応答母集団</b>（純 SUPPORTER 除外版）
+     * に属するかを判定する（欠陥Z 根治: 組織発コンテンツの応答・要対応集計の認可・公開ラッパー）。
+     *
+     * <p>{@link #isUserInOrgDistributionUniverse(Long, Long)} が<b>所属軸</b>（SUPPORTER 含む・可視性判定向け）
+     * であるのに対し、本メソッドは<b>回答可否軸</b>であり、マスター御裁可②に従って純 SUPPORTER
+     * （配下に所属しても MEMBER でない者）を除外する。別スコープで MEMBER を持つ者は MEMBER 優先で残る。
+     * SUPPORTER 除外規約は {@link #resolveOrgDistributionUserIds(Long, boolean)} に
+     * {@code includeSupporters=false} を渡したときと同一（{@code memberships.role_kind} 軸・MEMBER 優先）。</p>
+     *
+     * <p><b>越境是正の窓口</b>: schedule/survey/common(AccessControlService) 等の他ドメインからは
+     * このメソッドを呼び、{@code organizations} / {@code team_org_memberships} / {@code memberships} を
+     * 直接参照させない。クエリ本体は SQL 局所性のため
+     * {@link UserRoleRepository#existsActiveMemberInOrganizationDescendants(Long, Long, int)} に置いている。</p>
+     *
+     * @param orgId  母集団の根となる組織 ID
+     * @param userId 判定対象ユーザー ID（null の場合は false）
+     * @return ユーザーが配下ツリーの「直属 ∪ 配下チーム」に属し、かつ純 SUPPORTER でないなら true
+     */
+    public boolean isActiveMemberInOrgDistributionUniverse(Long orgId, Long userId) {
+        if (userId == null) {
+            return false;
+        }
+        return userRoleRepository.existsActiveMemberInOrganizationDescendants(
+                orgId, userId, MAX_ORG_DESCENDANT_DEPTH);
+    }
+
     private OrganizationEntity findOrganizationOrThrow(Long orgId) {
         return organizationRepository.findById(orgId)
                 .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001));

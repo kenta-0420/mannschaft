@@ -4,6 +4,7 @@ import com.mannschaft.app.family.repository.UserCareLinkRepository;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
@@ -24,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * {@link AccessControlService} の単体テスト。
@@ -49,6 +51,9 @@ class AccessControlServiceTest {
 
     @Mock
     private MembershipRepository membershipRepository;
+
+    @Mock
+    private OrganizationMembershipService organizationMembershipService;
 
     @InjectMocks
     private AccessControlService accessControlService;
@@ -198,6 +203,94 @@ class AccessControlServiceTest {
             given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
                     .willReturn(false);
             assertThat(accessControlService.isMember(USER_ID, SCOPE_ID, "ORGANIZATION")).isFalse();
+        }
+    }
+
+    // ========================================
+    // isMemberOrDescendant / checkMembershipOrDescendant（欠陥Z 根治）
+    // ========================================
+
+    @Nested
+    @DisplayName("isMemberOrDescendant / checkMembershipOrDescendant")
+    class IsMemberOrDescendant {
+
+        @Test
+        @DisplayName("ORGANIZATION: 直接所属メンバーはtrue（配下判定を呼ばずに短絡）")
+        void organization_直接所属はtrue() {
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
+                    .willReturn(true);
+
+            assertThat(accessControlService.isMemberOrDescendant(USER_ID, SCOPE_ID, "ORGANIZATION")).isTrue();
+            // 直接所属で短絡するため配下判定は呼ばれない
+            verifyNoInteractions(organizationMembershipService);
+        }
+
+        @Test
+        @DisplayName("ORGANIZATION: 配下チームのみ所属MEMBERはtrue（応答母集団・純SUPPORTER除外版で救済）")
+        void organization_配下チームのみ所属メンバーはtrue() {
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
+                    .willReturn(false);
+            given(organizationMembershipService.isActiveMemberInOrgDistributionUniverse(SCOPE_ID, USER_ID))
+                    .willReturn(true);
+
+            assertThat(accessControlService.isMemberOrDescendant(USER_ID, SCOPE_ID, "ORGANIZATION")).isTrue();
+            // checkMembershipOrDescendant も例外なし
+            accessControlService.checkMembershipOrDescendant(USER_ID, SCOPE_ID, "ORGANIZATION");
+        }
+
+        @Test
+        @DisplayName("ORGANIZATION: 配下の純SUPPORTER（応答母集団に非該当）はfalse→checkで COMMON_002")
+        void organization_配下純SUPPORTERはfalse() {
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
+                    .willReturn(false);
+            given(organizationMembershipService.isActiveMemberInOrgDistributionUniverse(SCOPE_ID, USER_ID))
+                    .willReturn(false);
+
+            assertThat(accessControlService.isMemberOrDescendant(USER_ID, SCOPE_ID, "ORGANIZATION")).isFalse();
+            assertThatThrownBy(() ->
+                    accessControlService.checkMembershipOrDescendant(USER_ID, SCOPE_ID, "ORGANIZATION"))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+        }
+
+        @Test
+        @DisplayName("ORGANIZATION: 組織にも配下にも無関係なユーザーはfalse→checkで COMMON_002")
+        void organization_無関係ユーザーはfalse() {
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
+                    .willReturn(false);
+            given(organizationMembershipService.isActiveMemberInOrgDistributionUniverse(SCOPE_ID, USER_ID))
+                    .willReturn(false);
+
+            assertThatThrownBy(() ->
+                    accessControlService.checkMembershipOrDescendant(USER_ID, SCOPE_ID, "ORGANIZATION"))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+        }
+
+        @Test
+        @DisplayName("TEAM: 挙動不変（配下概念を持ち込まない）— 直接所属はtrue・配下判定は呼ばない")
+        void team_直接所属はtrue配下判定呼ばない() {
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.TEAM, SCOPE_ID))
+                    .willReturn(true);
+
+            assertThat(accessControlService.isMemberOrDescendant(USER_ID, SCOPE_ID, "TEAM")).isTrue();
+            verifyNoInteractions(organizationMembershipService);
+        }
+
+        @Test
+        @DisplayName("TEAM: 非メンバーはfalse（配下フォールバックを使わない・回帰ガード）→checkで COMMON_002")
+        void team_非メンバーはfalse配下フォールバックなし() {
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.TEAM, SCOPE_ID))
+                    .willReturn(false);
+
+            assertThat(accessControlService.isMemberOrDescendant(USER_ID, SCOPE_ID, "TEAM")).isFalse();
+            assertThatThrownBy(() ->
+                    accessControlService.checkMembershipOrDescendant(USER_ID, SCOPE_ID, "TEAM"))
+                    .isInstanceOf(BusinessException.class);
+            // TEAM では配下判定（organization 越境窓口）を一切呼ばない
+            verifyNoInteractions(organizationMembershipService);
         }
     }
 

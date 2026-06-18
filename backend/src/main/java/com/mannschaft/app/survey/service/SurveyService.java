@@ -116,7 +116,9 @@ public class SurveyService {
     public UnansweredSurveys getUnansweredForUserInScope(
             String scopeType, Long scopeId, Long userId, int limit) {
         if (accessControlService != null) {
-            accessControlService.checkMembership(userId, scopeId, scopeType);
+            // 欠陥Z 根治: ORGANIZATION スコープでは配下チームのみ所属メンバーも応答母集団に含める
+            // （純 SUPPORTER は除外）。TEAM は従来どおり直接所属のみ。
+            accessControlService.checkMembershipOrDescendant(userId, scopeId, scopeType);
         }
         List<SurveyEntity> all =
                 surveyRepository.findUnansweredPublishedForUserInScope(scopeType, scopeId, userId);

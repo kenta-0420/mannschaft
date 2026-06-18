@@ -362,6 +362,83 @@ class UserRoleDistributionRecursiveRepositoryTest extends AbstractMySqlIntegrati
     }
 
     // ---------------------------------------------------------------------
+    // (4b) 応答母集団 EXISTS 版（欠陥Z 根治・純 SUPPORTER 除外版）
+    //      existsActiveMemberInOrganizationDescendants
+    // ---------------------------------------------------------------------
+
+    @Test
+    @DisplayName("応答EXISTS版_配下チームのみ所属MEMBERはtrue_無関係はfalse")
+    void 応答EXISTSで配下チームMEMBERはtrue無関係false() {
+        Long rootOrg = persistOrganization(null);
+        Long midOrg = persistOrganization(rootOrg);
+        Long leafOrg = persistOrganization(midOrg);
+
+        Long leafTeam = 600_040L;
+        linkTeamToOrg(leafTeam, leafOrg, TeamOrgMembershipEntity.Status.ACTIVE);
+
+        // 配下チームのみ所属（memberships なし＝純 SUPPORTER でない通常メンバー）
+        Long leafTeamMember = persistActiveUser();
+        grantTeamRole(leafTeamMember, leafTeam);
+
+        // 配下組織の直属者
+        Long leafDirect = persistActiveUser();
+        grantOrgRole(leafDirect, leafOrg);
+
+        // 無関係な別組織のメンバー
+        Long otherOrg = persistOrganization(null);
+        Long outsider = persistActiveUser();
+        grantOrgRole(outsider, otherOrg);
+        flushClear();
+
+        assertThat(userRoleRepository.existsActiveMemberInOrganizationDescendants(rootOrg, leafTeamMember, MAX_DEPTH))
+                .isTrue();
+        assertThat(userRoleRepository.existsActiveMemberInOrganizationDescendants(rootOrg, leafDirect, MAX_DEPTH))
+                .isTrue();
+        assertThat(userRoleRepository.existsActiveMemberInOrganizationDescendants(rootOrg, outsider, MAX_DEPTH))
+                .isFalse();
+    }
+
+    @Test
+    @DisplayName("応答EXISTS版_配下の純SUPPORTERはfalse（御裁可②: 応答不可）")
+    void 応答EXISTSは純SUPPORTERでfalse() {
+        Long rootOrg = persistOrganization(null);
+        Long leafOrg = persistOrganization(rootOrg);
+        Long leafTeam = 600_041L;
+        linkTeamToOrg(leafTeam, leafOrg, TeamOrgMembershipEntity.Status.ACTIVE);
+
+        Long pureSupporter = persistActiveUser();
+        grantTeamRole(pureSupporter, leafTeam);
+        addMembership(pureSupporter, ScopeType.TEAM, leafTeam, RoleKind.SUPPORTER, null);
+        flushClear();
+
+        // 所属軸 EXISTS は true（可視性向け）
+        assertThat(userRoleRepository.existsUserInOrganizationDescendants(rootOrg, pureSupporter, MAX_DEPTH))
+                .isTrue();
+        // 応答母集団 EXISTS は純 SUPPORTER を除外して false（回答可否向け）
+        assertThat(userRoleRepository.existsActiveMemberInOrganizationDescendants(rootOrg, pureSupporter, MAX_DEPTH))
+                .isFalse();
+    }
+
+    @Test
+    @DisplayName("応答EXISTS版_別スコープでMEMBERを持つSUPPORTERはMEMBER優先でtrue")
+    void 応答EXISTSはMEMBER優先でtrue() {
+        Long rootOrg = persistOrganization(null);
+        Long leafOrg = persistOrganization(rootOrg);
+        Long leafTeam = 600_042L;
+        linkTeamToOrg(leafTeam, leafOrg, TeamOrgMembershipEntity.Status.ACTIVE);
+
+        // leaf 組織で SUPPORTER だが root 組織では MEMBER → MEMBER 優先で true
+        Long mixed = persistActiveUser();
+        grantOrgRole(mixed, rootOrg);
+        addMembership(mixed, ScopeType.ORGANIZATION, leafOrg, RoleKind.SUPPORTER, null);
+        addMembership(mixed, ScopeType.ORGANIZATION, rootOrg, RoleKind.MEMBER, null);
+        flushClear();
+
+        assertThat(userRoleRepository.existsActiveMemberInOrganizationDescendants(rootOrg, mixed, MAX_DEPTH))
+                .isTrue();
+    }
+
+    // ---------------------------------------------------------------------
     // (5) バルク版（フェーズM2 / ORGANIZATION_AND_DESCENDANTS 可視性判定の土台）
     //     findOrgRootsWhereUserIsDescendantMember: 複数 ORG 根 × 単一 viewer を 1 クエリ
     // ---------------------------------------------------------------------

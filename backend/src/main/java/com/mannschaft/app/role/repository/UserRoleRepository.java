@@ -608,6 +608,102 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             @Param("maxDepth") int maxDepth);
 
     /**
+     * 指定ユーザーが「対象組織を根とした再帰的配下ツリー」の<b>応答母集団</b>（純 SUPPORTER 除外版）
+     * に属するかを単発で判定する（欠陥Z 根治: 組織発コンテンツの応答・要対応集計の認可）。
+     *
+     * <p>{@link #existsUserInOrganizationDescendants(Long, Long, int)} は<b>所属軸</b>（SUPPORTER を含む）
+     * の判定であり、可視性（閲覧可否）には適するが、組織発の出欠/アンケートの<b>回答可否</b>には
+     * そのまま使えない（マスター御裁可②: 純 SUPPORTER は組織出欠/アンケに回答不可）。本メソッドは
+     * {@link #findDistributionUserIdsForOrganizationRecursive(Long, boolean, int)} に
+     * {@code includeSupporters=false} を渡したときと<b>同一の純 SUPPORTER 除外規約</b>（MEMBER 優先・
+     * {@code memberships.role_kind} 軸）を、母集団全件取得ではなく単発 {@code COUNT(*) > 0} に移植したものである。</p>
+     *
+     * <p><b>純 SUPPORTER 除外の規約（{@code findDistributionUserIdsForOrganizationRecursive} と 1 対 1 同一）</b>:
+     * org_tree（全子孫組織）または org_tree 配下 ACTIVE チームのスコープにおいて、</p>
+     * <ul>
+     *   <li>{@code left_at IS NULL} の SUPPORTER 所属を持つ、<b>かつ</b></li>
+     *   <li>{@code left_at IS NULL} の MEMBER 所属を<b>持たない</b></li>
+     * </ul>
+     * <p>ユーザーを除外する。これにより「あるスコープでは MEMBER だが別スコープでは SUPPORTER」という
+     * ユーザーは MEMBER 優先で残る（{@code resolveEffectiveRoleName} の priority 最強ルールと整合）。</p>
+     *
+     * <p><b>型の注意（M2 の轍を踏まない）</b>: native query で {@code SELECT COUNT(*) > 0} とすると
+     * MySQL は BIGINT(1/0) を返し Hibernate が Boolean へキャストできず
+     * {@code ClassCastException: Long cannot be cast to Boolean} で死ぬ（特に {@code WITH RECURSIVE} 併用時）。
+     * そこで {@code COUNT(*)} を {@code long} で受け、Java 側で {@code > 0} 比較する。公開シグネチャ（boolean）は
+     * {@code default} メソッドで温存する。直接呼ばず {@link #existsActiveMemberInOrganizationDescendants} を経由すること。</p>
+     *
+     * @param organizationId 母集団の根となる組織 ID（org_tree の根）
+     * @param userId         判定対象ユーザー ID
+     * @param maxDepth       再帰展開の最大深さ（サイクル防止上限・通常 32）
+     * @return ユーザーが「直属 ∪ 配下 ACTIVE チーム」に属し、かつ純 SUPPORTER でないなら true
+     */
+    default boolean existsActiveMemberInOrganizationDescendants(
+            Long organizationId,
+            Long userId,
+            int maxDepth) {
+        return countActiveMemberInOrganizationDescendants(organizationId, userId, maxDepth) > 0;
+    }
+
+    /**
+     * {@link #existsActiveMemberInOrganizationDescendants(Long, Long, int)} の native 実装。
+     *
+     * <p>{@link #findDistributionUserIdsForOrganizationRecursive(Long, boolean, int)} の
+     * {@code includeSupporters=false} ブランチ（org_tree CTE ＋ 純 SUPPORTER 除外サブクエリ）を、
+     * 単一 {@code :userId} に絞って {@code COUNT(*)} に書き換えたものである。CTE・除外条件は
+     * 母集団版と完全一致させ、母集団に含まれるか否かと単発判定が乖離しないようにする。</p>
+     */
+    @Query(value =
+            "WITH RECURSIVE org_tree (id, depth) AS ( " +
+            "    SELECT o.id, 0 FROM organizations o " +
+            "      WHERE o.id = :organizationId AND o.deleted_at IS NULL " +
+            "  UNION ALL " +
+            "    SELECT c.id, p.depth + 1 FROM organizations c " +
+            "      JOIN org_tree p ON c.parent_organization_id = p.id " +
+            "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
+            ") " +
+            "SELECT COUNT(*) FROM user_roles ur " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE ur.user_id = :userId " +
+            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  AND ( " +
+            "    ur.organization_id IN (SELECT id FROM org_tree) " +
+            "    OR ur.team_id IN ( " +
+            "      SELECT tom.team_id FROM team_org_memberships tom " +
+            "      WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
+            "    ) " +
+            "  ) " +
+            "  AND NOT ( " +
+            "    EXISTS ( " +
+            "      SELECT 1 FROM memberships ms " +
+            "      WHERE ms.user_id = ur.user_id AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' " +
+            "        AND ( " +
+            "          (ms.scope_type = 'ORGANIZATION' AND ms.scope_id IN (SELECT id FROM org_tree)) " +
+            "          OR (ms.scope_type = 'TEAM' AND ms.scope_id IN ( " +
+            "            SELECT tom2.team_id FROM team_org_memberships tom2 " +
+            "            WHERE tom2.organization_id IN (SELECT id FROM org_tree) AND tom2.status = 'ACTIVE' " +
+            "          )) " +
+            "        ) " +
+            "    ) " +
+            "    AND NOT EXISTS ( " +
+            "      SELECT 1 FROM memberships ms2 " +
+            "      WHERE ms2.user_id = ur.user_id AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' " +
+            "        AND ( " +
+            "          (ms2.scope_type = 'ORGANIZATION' AND ms2.scope_id IN (SELECT id FROM org_tree)) " +
+            "          OR (ms2.scope_type = 'TEAM' AND ms2.scope_id IN ( " +
+            "            SELECT tom3.team_id FROM team_org_memberships tom3 " +
+            "            WHERE tom3.organization_id IN (SELECT id FROM org_tree) AND tom3.status = 'ACTIVE' " +
+            "          )) " +
+            "        ) " +
+            "    ) " +
+            "  )",
+            nativeQuery = true)
+    long countActiveMemberInOrganizationDescendants(
+            @Param("organizationId") Long organizationId,
+            @Param("userId") Long userId,
+            @Param("maxDepth") int maxDepth);
+
+    /**
      * 複数の ORG 根に対し、単一 viewer が「再帰的配下メンバー」である ORG 根の ID 集合を
      * <b>1 クエリ（1 SQL）</b>で返す（フェーズ M2 / F00 可視性
      * {@link com.mannschaft.app.common.visibility.StandardVisibility#ORGANIZATION_AND_DESCENDANTS}

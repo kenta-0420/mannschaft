@@ -6,6 +6,7 @@ import com.mannschaft.app.gdpr.GdprErrorCode;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
@@ -34,6 +35,16 @@ public class AccessControlService {
     private final UserCareLinkRepository userCareLinkRepository;
     private final MembershipRepository membershipRepository;
 
+    /**
+     * 欠陥Z 根治: 組織発コンテンツの応答・要対応集計の認可で「配下チーム所属」を含めるための越境窓口。
+     *
+     * <p>配下チームのみ所属するユーザーは組織に直接 {@code user_roles}/{@code memberships} を持たないため、
+     * 直接所属のみを見る {@link #isMember} では弾かれる（実機 403 = COMMON_002 の真因）。
+     * organization ドメインの {@code team_org_memberships}/{@code organizations} 再帰展開を直接参照せず、
+     * Service メソッド呼び出し経由（CLAUDE.md ドメイン境界の原則・M2 #1644 と同じ越境窓口方式）で解決する。</p>
+     */
+    private final OrganizationMembershipService organizationMembershipService;
+
     private static final Set<String> ADMIN_ROLES = Set.of("ADMIN", "DEPUTY_ADMIN");
 
     // ========================================
@@ -58,6 +69,54 @@ public class AccessControlService {
     public boolean isMember(Long userId, Long scopeId, String scopeType) {
         ScopeType scope = ScopeType.valueOf(scopeType);
         return membershipRepository.existsActiveByUserAndScope(userId, scope, scopeId);
+    }
+
+    /**
+     * ユーザーがスコープのメンバー、または（ORGANIZATION スコープのとき）その配下ツリーの
+     * <b>応答母集団メンバー</b>かどうかを返す（欠陥Z 根治）。
+     *
+     * <p>組織発コンテンツ（出欠/アンケート）の応答・要対応集計では、配下チームのみに所属する
+     * メンバーも組織コンテンツに回答できる必要がある（マスター御裁可①）。しかし配下チーム所属者は
+     * 組織に直接 {@code memberships} を持たないため {@link #isMember} では false になり、実機で 403 になる。
+     * 本メソッドは:</p>
+     * <ul>
+     *   <li>{@code ORGANIZATION} スコープ: {@code isMember(...) ||
+     *       organizationMembershipService.isActiveMemberInOrgDistributionUniverse(scopeId, userId)}。
+     *       後者は<b>純 SUPPORTER を除外</b>する（マスター御裁可②: 純 SUPPORTER は回答不可）。</li>
+     *   <li>{@code TEAM} 等その他: 従来どおり {@link #isMember}（配下概念を持ち込まない・挙動不変）。</li>
+     * </ul>
+     *
+     * <p>{@link #isMember}（直接所属のみ）の既存定義は変更しない。本メソッドは応答・要対応の
+     * 認可入口専用に新設し、可視性層（F00）は別途 M2 #1644 で配下開放済みである。</p>
+     *
+     * @param userId    操作ユーザー
+     * @param scopeId   スコープ ID（チーム ID または組織 ID）
+     * @param scopeType スコープ種別（"TEAM" または "ORGANIZATION"）
+     * @return メンバー、または ORGANIZATION 配下の応答母集団メンバー（純 SUPPORTER 除く）なら true
+     */
+    public boolean isMemberOrDescendant(Long userId, Long scopeId, String scopeType) {
+        if (isMember(userId, scopeId, scopeType)) {
+            return true;
+        }
+        if ("ORGANIZATION".equals(scopeType)) {
+            return organizationMembershipService.isActiveMemberInOrgDistributionUniverse(scopeId, userId);
+        }
+        return false;
+    }
+
+    /**
+     * ユーザーがスコープのメンバー、または ORGANIZATION 配下ツリーの応答母集団メンバーであることを
+     * 検証する。いずれでもない場合は 403（COMMON_002）。
+     *
+     * <p>{@link #checkMembership} の配下対応版（欠陥Z 根治）。組織発コンテンツの応答・要対応集計の
+     * 入口でのみ使用する。例外コードは既存 {@link #checkMembership} と同一（COMMON_002）。</p>
+     *
+     * @see #isMemberOrDescendant(Long, Long, String)
+     */
+    public void checkMembershipOrDescendant(Long userId, Long scopeId, String scopeType) {
+        if (!isMemberOrDescendant(userId, scopeId, scopeType)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
     }
 
     // ========================================

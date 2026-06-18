@@ -267,7 +267,9 @@ public class ScheduleAttendanceService {
     public UnansweredAttendances getUnansweredForUserInScope(
             String scopeType, Long scopeId, Long userId, int limit) {
         if (accessControlService != null) {
-            accessControlService.checkMembership(userId, scopeId, scopeType);
+            // 欠陥Z 根治: ORGANIZATION スコープでは配下チームのみ所属メンバーも応答母集団に含める
+            // （純 SUPPORTER は除外）。TEAM は従来どおり直接所属のみ。
+            accessControlService.checkMembershipOrDescendant(userId, scopeId, scopeType);
         }
         LocalDateTime now = LocalDateTime.now();
         List<ScheduleEntity> all;
@@ -630,6 +632,19 @@ public class ScheduleAttendanceService {
             case MEMBER_PLUS -> accessControlService.hasRoleOrAbove(userId, scopeId, scopeType, "MEMBER");
             case ADMIN_ONLY -> accessControlService.isAdminOrAbove(userId, scopeId, scopeType);
         };
+
+        // 欠陥Z 根治（マスター御裁可④）: 組織スケジュールでは、配下チームのみ所属の MEMBER を
+        // 「組織 MEMBER 相当」とみなす。配下メンバーは組織に直接 user_roles/memberships を持たないため
+        // hasRoleOrAbove(...,"MEMBER") が有効ロール null で false になる（実機 403 = COMMON_002 の真因④）。
+        // 救済は「要求段が MEMBER 相当（MEMBER_PLUS）のときのみ」適用する:
+        //   - MEMBER_PLUS: 配下 MEMBER を許容（isMemberOrDescendant は純 SUPPORTER を除外＝御裁可②と整合）。
+        //   - SUPPORTER_PLUS: SUPPORTER 要求段。配下の純 SUPPORTER は御裁可②により回答不可のため救済しない。
+        //   - ADMIN_ONLY: 管理者要求段。配下メンバーは組織 ADMIN ではないため従来どおり不許可。
+        if (!allowed
+                && "ORGANIZATION".equals(scopeType)
+                && minResponseRole == MinResponseRole.MEMBER_PLUS) {
+            allowed = accessControlService.isMemberOrDescendant(userId, scopeId, scopeType);
+        }
 
         if (!allowed) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
