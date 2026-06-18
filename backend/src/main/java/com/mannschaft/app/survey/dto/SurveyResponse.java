@@ -30,7 +30,8 @@ public class SurveyResponse {
                                    String resultsVisibility, String unrespondedVisibility) {}
 
     public record SurveyDistributionDto(String distributionMode, Boolean autoPostToTimeline,
-                                         String seriesId, String remindBeforeHours, Integer manualRemindCount) {}
+                                         String seriesId, String remindBeforeHours, Integer manualRemindCount,
+                                         Boolean includeSupporters) {}
 
     public record SurveyScheduleDto(LocalDateTime startsAt, LocalDateTime expiresAt,
                                      LocalDateTime publishedAt, LocalDateTime closedAt) {}

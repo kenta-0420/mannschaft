@@ -38,4 +38,10 @@ public class UpdateSurveyRequest {
     private final LocalDateTime startsAt;
 
     private final LocalDateTime expiresAt;
+
+    /**
+     * 配信母集団にサポーター（応援者）を含めるか。null=変更なし。
+     * (B) 組織→参加チーム配信 案C フェーズA 隊A で追加。
+     */
+    private final Boolean includeSupporters;
 }

@@ -4,6 +4,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDispatchService;
 import com.mannschaft.app.notification.service.NotificationService;
+import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
@@ -65,11 +66,14 @@ class ScheduleAttendanceSolicitationServiceTest {
     private NotificationService notificationService;
     @Mock
     private NotificationDispatchService notificationDispatchService;
+    @Mock
+    private OrganizationMembershipService organizationMembershipService;
 
     private ScheduleAttendanceService service;
 
     private static final Long SCHEDULE_ID = 1L;
     private static final Long TEAM_ID = 10L;
+    private static final Long ORG_ID = 20L;
 
     @BeforeEach
     void setUp() {
@@ -78,6 +82,7 @@ class ScheduleAttendanceSolicitationServiceTest {
                 userRoleRepository, eventPublisher, proxyInputContext, proxyInputRecordRepository,
                 scheduleDelegationService,
                 notificationService, notificationDispatchService,
+                organizationMembershipService,
                 accessControlService);
     }
 
@@ -113,13 +118,101 @@ class ScheduleAttendanceSolicitationServiceTest {
         // when
         service.openAttendanceSolicitation(SCHEDULE_ID);
 
-        // then: 出欠レコード生成は generateAttendanceRecords 内で2回 save される
-        verify(attendanceRepository, times(2)).save(any());
+        // then: 出欠レコード生成は generateAttendanceRecords 内で saveAll（バッチ）1回で行われる
+        verify(attendanceRepository, times(1)).saveAll(any());
+        verify(attendanceRepository, never()).save(any());
         // 募集通知は2名分作成・配信される
         verify(notificationService, times(2)).createNotification(
                 anyLong(), eq("SCHEDULE_ATTENDANCE_REQUEST"), any(), any(), any(),
                 eq("SCHEDULE"), eq(SCHEDULE_ID), any(), eq(TEAM_ID), any(), eq(999L));
         verify(notificationDispatchService, times(2)).dispatch(dummy);
+    }
+
+    private ScheduleEntity orgSchedule(boolean includeSupporters) {
+        return ScheduleEntity.builder()
+                .organizationId(ORG_ID)
+                .title("組織総会")
+                .startAt(LocalDateTime.of(2026, 7, 1, 10, 0))
+                .endAt(LocalDateTime.of(2026, 7, 1, 12, 0))
+                .allDay(false)
+                .eventType(EventType.EVENT)
+                .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                .minViewRole(MinViewRole.MEMBER_PLUS)
+                .status(ScheduleStatus.SCHEDULED)
+                .attendanceRequired(true)
+                .includeSupporters(includeSupporters)
+                .createdBy(999L)
+                .build();
+    }
+
+    @Test
+    @DisplayName("ORG予定_組織配信窓口で配下チーム展開し_SUPPORTER除外で出欠生成と通知が飛ぶ")
+    void ORG予定_組織配信窓口で配下チーム展開し出欠生成と通知が飛ぶ() {
+        // given: includeSupporters=false → SUPPORTER 除外で窓口を呼ぶ。
+        //        TEAM 系の findUserIdsByScope は使わず、organization 窓口経由で解決すること。
+        given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(orgSchedule(false));
+        given(attendanceRepository.countByScheduleId(SCHEDULE_ID)).willReturn(0L);
+        given(organizationMembershipService.resolveOrgDistributionUserIds(ORG_ID, false))
+                .willReturn(List.of(301L, 302L, 303L));
+        NotificationEntity dummy = org.mockito.Mockito.mock(NotificationEntity.class);
+        given(notificationService.createNotification(
+                anyLong(), any(), any(), any(), any(), any(), anyLong(), any(), anyLong(), any(), any()))
+                .willReturn(dummy);
+
+        // when
+        service.openAttendanceSolicitation(SCHEDULE_ID);
+
+        // then: 出欠レコードは saveAll（バッチ）で 1 回だけ呼ばれる（per-user save ではない）
+        verify(attendanceRepository, times(1)).saveAll(any());
+        verify(attendanceRepository, never()).save(any());
+        // 募集通知は3名分作成・配信される（scope=ORGANIZATION・scopeId=ORG_ID）
+        verify(notificationService, times(3)).createNotification(
+                anyLong(), eq("SCHEDULE_ATTENDANCE_REQUEST"), any(), any(), any(),
+                eq("SCHEDULE"), eq(SCHEDULE_ID), any(), eq(ORG_ID), any(), eq(999L));
+        verify(notificationDispatchService, times(3)).dispatch(dummy);
+        // TEAM 系の解決は一切使われないこと
+        verify(userRoleRepository, never()).findUserIdsByScope(any(), anyLong());
+    }
+
+    @Test
+    @DisplayName("ORG予定_includeSupporters=true_窓口にtrueを渡しSUPPORTERも含める")
+    void ORG予定_includeSupportersがtrueなら窓口にtrueを渡す() {
+        // given
+        given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(orgSchedule(true));
+        given(attendanceRepository.countByScheduleId(SCHEDULE_ID)).willReturn(0L);
+        given(organizationMembershipService.resolveOrgDistributionUserIds(ORG_ID, true))
+                .willReturn(List.of(301L, 302L));
+        NotificationEntity dummy = org.mockito.Mockito.mock(NotificationEntity.class);
+        given(notificationService.createNotification(
+                anyLong(), any(), any(), any(), any(), any(), anyLong(), any(), anyLong(), any(), any()))
+                .willReturn(dummy);
+
+        // when
+        service.openAttendanceSolicitation(SCHEDULE_ID);
+
+        // then: includeSupporters=true で窓口が呼ばれ、2名分の通知が飛ぶ
+        verify(organizationMembershipService).resolveOrgDistributionUserIds(ORG_ID, true);
+        verify(attendanceRepository, times(1)).saveAll(any());
+        verify(notificationDispatchService, times(2)).dispatch(dummy);
+    }
+
+    @Test
+    @DisplayName("ORG予定_対象0名_出欠生成せずスキップ")
+    void ORG予定_対象0名_出欠生成せずスキップ() {
+        // given
+        given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(orgSchedule(false));
+        given(attendanceRepository.countByScheduleId(SCHEDULE_ID)).willReturn(0L);
+        given(organizationMembershipService.resolveOrgDistributionUserIds(ORG_ID, false))
+                .willReturn(List.of());
+
+        // when
+        service.openAttendanceSolicitation(SCHEDULE_ID);
+
+        // then
+        verify(attendanceRepository, never()).saveAll(any());
+        verify(attendanceRepository, never()).save(any());
+        verify(notificationService, never()).createNotification(
+                anyLong(), any(), any(), any(), any(), any(), anyLong(), any(), anyLong(), any(), any());
     }
 
     @Test

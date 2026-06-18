@@ -4,6 +4,8 @@ import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.social.dto.FollowResponse;
 import com.mannschaft.app.social.service.FollowService;
 import com.mannschaft.app.role.service.BlockService;
@@ -75,6 +77,7 @@ public class TeamController {
     private final BlockService blockService;
     private final SupporterService supporterService;
     private final FollowService followService;
+    private final ContentVisibilityChecker contentVisibilityChecker;
 
 
     // ========================================
@@ -109,7 +112,16 @@ public class TeamController {
     @GetMapping("/{slug}")
     @Operation(summary = "チーム取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "可視性レベル未満（非メンバー等）でアクセス不可")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+            description = "チームが存在しない / 論理削除済み")
     public ResponseEntity<ApiResponse<TeamResponse>> getTeam(@PathVariable String slug) {
+        Long id = teamService.resolveTeamId(slug);
+        // F00 正準: チームの visibility ラダーを ContentVisibilityChecker に委譲して判定する。
+        // PUBLIC は未認証含め公開、それ以外は閲覧可能ロール未満（非メンバー等）に 403、不在は 404。
+        contentVisibilityChecker.assertCanView(
+                ReferenceType.TEAM, id, SecurityUtils.getCurrentUserIdOrNull());
         return ResponseEntity.ok(teamService.getTeam(slug));
     }
 
@@ -150,9 +162,17 @@ public class TeamController {
     @GetMapping("/{slug}/members")
     @Operation(summary = "チームメンバー一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "可視性レベル未満（非メンバー等）でアクセス不可")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+            description = "チームが存在しない / 論理削除済み")
     public ResponseEntity<PagedResponse<MemberResponse>> getMembers(
             @PathVariable String slug, Pageable pageable) {
         Long id = teamService.resolveTeamId(slug);
+        // F00 正準: メンバー一覧はチーム本体と同じ visibility ラダーで保護する。
+        // 非メンバーがメンバー情報（userId/displayName/role/joinedAt）を列挙する漏洩を塞ぐ。
+        contentVisibilityChecker.assertCanView(
+                ReferenceType.TEAM, id, SecurityUtils.getCurrentUserIdOrNull());
         return ResponseEntity.ok(teamService.getMembers(id, pageable));
     }
 
