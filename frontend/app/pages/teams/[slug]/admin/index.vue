@@ -9,8 +9,10 @@
  * ページ本体では二重防御として `useRoleAccess` の `isAdminOrDeputy` でカード表示を制御する。
  *
  * <p>各カードは該当する既存ルートへ導線を張る（P2a スコープ）。承認待ち（`/admin/approvals`）は
- * 未整備（P4）かつ件数バッジは P2b で点火するため、本フェーズでは「近日公開」プレースホルダとし、
- * バッジ枠は用意するが非表示フォールバックとする。
+ * 未整備（P4）のため「近日公開」プレースホルダのままだが、P2b で横断集約 API
+ * （`admin-action-required`・03）を消費して件数バッジを点火する。集計失敗（degraded）の
+ * ドメインがある場合は 0 件と混同せず「一部集計できず」を明示し、API 自体の取得失敗は
+ * 握りつぶさずバッジ非表示＋小さな注記で穏当に扱う（03 §4.3）。
  */
 definePageMeta({
   layout: 'team',
@@ -24,8 +26,8 @@ interface AdminConsoleCard {
   icon: string
   /** 既存ルートが整備済みのカードのみ to を持つ。未整備カードは to: null（プレースホルダ）。 */
   to: string | null
-  /** P2b で点火する要対応件数バッジ枠。P2a では常に未取得（null）＝非表示フォールバック。 */
-  pendingCount: number | null
+  /** 横断承認待ちバッジを点火するカードか（approvals のみ true）。 */
+  showApprovalsBadge?: boolean
 }
 
 const route = useRoute()
@@ -33,10 +35,35 @@ const { t } = useI18n()
 
 const teamSlug = computed(() => String(route.params.slug))
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
+const { getAdminActionRequired } = useScopeTabApi()
+
+// P2b: 横断承認待ち集約のバッジ状態。
+// pending: total_pending（degraded ドメインは加算されない）。
+// degraded: いずれかのドメインが集計失敗（0 件と区別して注記）。
+// fetchFailed: API 自体の取得失敗（症状を隠さず非表示＋注記）。
+const approvalsPending = ref<number | null>(null)
+const approvalsDegraded = ref(false)
+const approvalsFetchFailed = ref(false)
+
+async function loadAdminActionRequired() {
+  try {
+    // バッジ用途のため preview_size=0（件数のみ・プレビュー不要）。
+    const summary = await getAdminActionRequired('TEAM', teamSlug.value, 0)
+    approvalsPending.value = summary.totalPending
+    approvalsDegraded.value = summary.domains.some((d) => d.degraded)
+    approvalsFetchFailed.value = false
+  } catch {
+    // 取得失敗は握りつぶさず、バッジ非表示＋注記で穏当に表示する（症状を隠さない）。
+    approvalsPending.value = null
+    approvalsDegraded.value = false
+    approvalsFetchFailed.value = true
+  }
+}
 
 // 二重防御用にページ本体でも権限を解決（ミドルウェアが本丸・ここは表示制御）。
 onMounted(() => {
   void loadPermissions()
+  void loadAdminActionRequired()
 })
 
 const base = computed(() => `/teams/${teamSlug.value}`)
@@ -49,7 +76,6 @@ const cards = computed<AdminConsoleCard[]>(() => [
     descKey: 'adminConsole.cards.reservations.desc',
     icon: 'pi pi-calendar-clock',
     to: `${base.value}/reservations`,
-    pendingCount: null,
   },
   {
     key: 'budget',
@@ -57,17 +83,15 @@ const cards = computed<AdminConsoleCard[]>(() => [
     descKey: 'adminConsole.cards.budget.desc',
     icon: 'pi pi-wallet',
     to: `${base.value}/budget`,
-    pendingCount: null,
   },
   {
     key: 'approvals',
     titleKey: 'adminConsole.cards.approvals.title',
     descKey: 'adminConsole.cards.approvals.desc',
     icon: 'pi pi-inbox',
-    // /admin/approvals は P4 で整備。P2a ではプレースホルダ（リンクしない）。
+    // /admin/approvals は P4 で整備。P2b でも導線は未整備（リンクしない）だが件数バッジは点火する。
     to: null,
-    // P2b で集約 API のサマリを充填する。P2a は未取得（null）＝バッジ非表示。
-    pendingCount: null,
+    showApprovalsBadge: true,
   },
   {
     key: 'members',
@@ -75,7 +99,6 @@ const cards = computed<AdminConsoleCard[]>(() => [
     descKey: 'adminConsole.cards.members.desc',
     icon: 'pi pi-users',
     to: `${base.value}/member-cards`,
-    pendingCount: null,
   },
   {
     key: 'settings',
@@ -83,7 +106,6 @@ const cards = computed<AdminConsoleCard[]>(() => [
     descKey: 'adminConsole.cards.settings.desc',
     icon: 'pi pi-cog',
     to: `${base.value}/settings/shift`,
-    pendingCount: null,
   },
 ])
 </script>
@@ -113,12 +135,27 @@ const cards = computed<AdminConsoleCard[]>(() => [
               : 'cursor-default border-dashed border-surface-300 bg-surface-50 dark:border-surface-600 dark:bg-surface-800/40',
           ]"
         >
-          <!-- 要対応件数バッジ枠（P2b で点火・件数があるときのみ表示） -->
+          <!-- 横断承認待ちバッジ（P2b 点火・approvals カードのみ）。
+               件数 > 0 のとき赤バッジ。degraded のときは 0 件と区別する注記。
+               取得失敗は握りつぶさず注記で穏当に表示する（03 §4.3）。 -->
           <span
-            v-if="card.pendingCount !== null && card.pendingCount > 0"
+            v-if="card.showApprovalsBadge && approvalsPending !== null && approvalsPending > 0"
             class="absolute right-3 top-3 inline-flex min-w-[1.5rem] items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-xs font-semibold text-white"
           >
-            {{ card.pendingCount }}
+            {{ approvalsPending }}
+          </span>
+          <span
+            v-else-if="card.showApprovalsBadge && approvalsDegraded"
+            class="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[0.7rem] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+          >
+            <i class="pi pi-exclamation-triangle text-[0.7rem]" aria-hidden="true" />
+            {{ t('adminConsole.approvalsBadge.degraded') }}
+          </span>
+          <span
+            v-else-if="card.showApprovalsBadge && approvalsFetchFailed"
+            class="absolute right-3 top-3 text-[0.7rem] font-medium text-surface-400 dark:text-surface-500"
+          >
+            {{ t('adminConsole.approvalsBadge.fetchFailed') }}
           </span>
 
           <div class="flex items-center gap-2">
