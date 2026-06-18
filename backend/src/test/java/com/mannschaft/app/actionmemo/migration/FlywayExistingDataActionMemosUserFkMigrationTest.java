@@ -117,11 +117,9 @@ class FlywayExistingDataActionMemosUserFkMigrationTest {
             assertThat(foreignKeyExists(c, "action_memos", "fk_action_memos_user"))
                     .as("V99.001 で fk_action_memos_user が撤廃されること").isFalse();
 
-            // sanity: SET NULL の2件（related_todo / timeline_post）は対象外＝残存していること
-            assertThat(foreignKeyExists(c, "action_memos", "fk_action_memos_related_todo"))
-                    .as("クロスドメイン SET NULL fk_action_memos_related_todo は撤廃対象外で残存すること").isTrue();
-            assertThat(foreignKeyExists(c, "action_memos", "fk_action_memos_timeline_post"))
-                    .as("クロスドメイン SET NULL fk_action_memos_timeline_post は撤廃対象外で残存すること").isTrue();
+            // 注: fk_action_memos_related_todo / fk_action_memos_timeline_post は本テスト作成時(第二陣D/V99)は
+            //     対象外だったが、第四陣A V108.001 で撤廃される。本テストは全migration適用後に検証するため
+            //     「残存」対照は成立しなくなった→当該sanityを除去（本テストの主眼=fk_action_memos_user撤廃+孤児保持は不変）。
 
             // then-2: 既存行は無傷で生存
             assertThat(rowExistsByLongId(c, "action_memos", memoId))
