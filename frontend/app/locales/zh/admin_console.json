@@ -50,6 +50,38 @@
     "approvalsBadge": {
       "degraded": "部分统计失败",
       "fetchFailed": "无法获取数量"
+    },
+    "lens": {
+      "toggleAriaLabel": "切换管理员视图",
+      "tooltip": "切换到管理员视图",
+      "onboardingHint": "您可以在此切换到管理员视图",
+      "member": "成员",
+      "admin": "管理员",
+      "backToMember": "返回成员视图",
+      "openConsole": "打开管理控制台",
+      "widgets": {
+        "approvals": "待审批",
+        "console": "管理控制台",
+        "reservations": "预约",
+        "budget": "预算",
+        "members": "成员统计",
+        "alert": "业务提醒",
+        "reports": "举报",
+        "modules": "模块",
+        "payments": "支付",
+        "pointCards": "积分卡"
+      },
+      "approvals": {
+        "empty": "没有待审批项",
+        "degraded": "部分统计失败",
+        "fetchFailed": "无法获取待审批数量",
+        "domain": {
+          "RESERVATION": "预约",
+          "SHIFT_REQUEST": "排班",
+          "MATCHING": "匹配",
+          "PAYMENT": "支付"
+        }
+      }
     }
   }
 }
