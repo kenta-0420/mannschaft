@@ -3,6 +3,7 @@ package com.mannschaft.app.event;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.event.dto.CreateEventRequest;
+import com.mannschaft.app.event.dto.UpdateEventRequest;
 import com.mannschaft.app.event.dto.EventDetailResponse;
 import com.mannschaft.app.event.dto.EventDetailResponse.EventAuditDto;
 import com.mannschaft.app.event.dto.EventDetailResponse.EventContentDto;
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -30,6 +32,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -289,6 +292,168 @@ class EventServiceTest {
             // When & Then
             assertThatThrownBy(() -> eventService.createEvent(SCOPE_TYPE, SCOPE_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class);
+        }
+    }
+
+    // ========================================
+    // updateEvent
+    // ========================================
+
+    @Nested
+    @DisplayName("updateEvent")
+    class UpdateEvent {
+
+        /**
+         * 既存エンティティ（id 採番済み）を生成する。
+         *
+         * <p>{@link com.mannschaft.app.common.BaseEntity#id} は setter を持たないため
+         * {@link ReflectionTestUtils} で採番済み状態を再現する（DB から findById で取得した
+         * managed entity を模す）。
+         */
+        private EventEntity existingEvent() {
+            EventEntity entity = createDraftEvent();
+            ReflectionTestUtils.setField(entity, "id", EVENT_ID);
+            return entity;
+        }
+
+        private UpdateEventRequest updateRequest(String slug, String visibility) {
+            return new UpdateEventRequest(
+                    slug, "更新後サブタイトル", "更新後サマリ", null,
+                    null, null, null, null, null, visibility,
+                    null, null, null, null, null, null, null, null, null
+            );
+        }
+
+        @Test
+        @DisplayName("イベント更新_既存エンティティをUPDATE_id不変かつ新規行を作らない")
+        void イベント更新_既存エンティティをUPDATE_id不変かつ新規行を作らない() {
+            // Given: findById で取得した id 採番済みの managed entity
+            EventEntity existing = existingEvent();
+            EventDetailResponse response = createEventDetailResponse();
+            UpdateEventRequest request = updateRequest(null, null); // slug 据置（重複チェックに入らない）
+
+            given(eventRepository.findById(EVENT_ID)).willReturn(Optional.of(existing));
+            given(eventRepository.save(any(EventEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(eventMapper.toEventDetailResponse(any(EventEntity.class))).willReturn(response);
+
+            // When
+            eventService.updateEvent(EVENT_ID, request);
+
+            // Then: save に渡るのは findById で取得した「まさにその」managed entity
+            // （toBuilder().build() で作り直した別インスタンスではない）。
+            // id が保持されているので save は UPDATE になり、新規 INSERT（id=null）は起きない。
+            ArgumentCaptor<EventEntity> captor = ArgumentCaptor.forClass(EventEntity.class);
+            verify(eventRepository).save(captor.capture());
+            EventEntity saved = captor.getValue();
+            assertThat(saved).isSameAs(existing);
+            assertThat(saved.getId()).isEqualTo(EVENT_ID); // id 欠落（INSERT 化）が起きていない
+            // 部分更新が反映されている
+            assertThat(saved.getSubtitle()).isEqualTo("更新後サブタイトル");
+            assertThat(saved.getSummary()).isEqualTo("更新後サマリ");
+            // 未指定フィールドは現値維持
+            assertThat(saved.getSlug()).isEqualTo("test-event");
+        }
+
+        @Test
+        @DisplayName("イベント更新_slug据置_重複チェックを呼ばず500にならない")
+        void イベント更新_slug据置_重複チェックを呼ばず500にならない() {
+            // Given
+            EventEntity existing = existingEvent();
+            EventDetailResponse response = createEventDetailResponse();
+            // slug を現値と同じにする → existsBySlug を呼んではならない（呼べば自分自身に当たり 500 の温床）
+            UpdateEventRequest request = updateRequest("test-event", null);
+
+            given(eventRepository.findById(EVENT_ID)).willReturn(Optional.of(existing));
+            given(eventRepository.save(any(EventEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(eventMapper.toEventDetailResponse(any(EventEntity.class))).willReturn(response);
+
+            // When
+            EventDetailResponse result = eventService.updateEvent(EVENT_ID, request);
+
+            // Then
+            assertThat(result).isNotNull();
+            verify(eventRepository, org.mockito.Mockito.never()).existsBySlug(any());
+            verify(eventRepository).save(existing);
+        }
+
+        @Test
+        @DisplayName("イベント更新_可視性MEMBERS_AND_ABOVE_新ラダー値で500にならず永続化")
+        void イベント更新_可視性MEMBERS_AND_ABOVE_新ラダー値で500にならず永続化() {
+            // Given: 旧 enum には無かった新ラダー値名。valueOf が IllegalArgumentException を投げると 500。
+            EventEntity existing = existingEvent();
+            EventDetailResponse response = createEventDetailResponse();
+            UpdateEventRequest request = updateRequest(null, "MEMBERS_AND_ABOVE");
+
+            given(eventRepository.findById(EVENT_ID)).willReturn(Optional.of(existing));
+            given(eventRepository.save(any(EventEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(eventMapper.toEventDetailResponse(any(EventEntity.class))).willReturn(response);
+
+            // When（例外が出ないこと自体が回帰防止）
+            eventService.updateEvent(EVENT_ID, request);
+
+            // Then: 解決済み enum が managed entity に反映される
+            assertThat(existing.getVisibility()).isEqualTo(EventVisibility.MEMBERS_AND_ABOVE);
+            verify(eventRepository).save(existing);
+        }
+
+        @Test
+        @DisplayName("イベント更新_存在しない_例外スロー")
+        void イベント更新_存在しない_例外スロー() {
+            // Given
+            given(eventRepository.findById(EVENT_ID)).willReturn(Optional.empty());
+
+            // When & Then
+            assertThatThrownBy(() -> eventService.updateEvent(EVENT_ID, updateRequest(null, null)))
+                    .isInstanceOf(BusinessException.class);
+        }
+
+        @Test
+        @DisplayName("イベント更新_slug変更で重複_例外スロー")
+        void イベント更新_slug変更で重複_例外スロー() {
+            // Given
+            EventEntity existing = existingEvent();
+            UpdateEventRequest request = updateRequest("taken-slug", null);
+
+            given(eventRepository.findById(EVENT_ID)).willReturn(Optional.of(existing));
+            given(eventRepository.existsBySlug("taken-slug")).willReturn(true);
+
+            // When & Then
+            assertThatThrownBy(() -> eventService.updateEvent(EVENT_ID, request))
+                    .isInstanceOf(BusinessException.class);
+            verify(eventRepository, org.mockito.Mockito.never()).save(any());
+        }
+    }
+
+    // ========================================
+    // createEvent（可視性 新ラダー回帰）
+    // ========================================
+
+    @Nested
+    @DisplayName("createEvent — 可視性新ラダー")
+    class CreateEventVisibility {
+
+        @Test
+        @DisplayName("イベント作成_可視性MEMBERS_AND_ABOVE_新ラダー値で500にならず永続化")
+        void イベント作成_可視性MEMBERS_AND_ABOVE_新ラダー値で500にならず永続化() {
+            // Given
+            CreateEventRequest request = new CreateEventRequest(
+                    null, "new-ladder-event", "テストイベント", "説明", null,
+                    null, null, null, null, null, "MEMBERS_AND_ABOVE",
+                    null, null, null, false, EventAttendanceMode.REGISTRATION, null, null, null, null
+            );
+            EventDetailResponse response = createEventDetailResponse();
+
+            given(eventRepository.existsBySlug("new-ladder-event")).willReturn(false);
+            given(eventRepository.save(any(EventEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(eventMapper.toEventDetailResponse(any(EventEntity.class))).willReturn(response);
+
+            // When（例外が出ないこと自体が回帰防止）
+            eventService.createEvent(SCOPE_TYPE, SCOPE_ID, USER_ID, request);
+
+            // Then: 保存される entity に新ラダー可視性が反映される
+            ArgumentCaptor<EventEntity> captor = ArgumentCaptor.forClass(EventEntity.class);
+            verify(eventRepository).save(captor.capture());
+            assertThat(captor.getValue().getVisibility()).isEqualTo(EventVisibility.MEMBERS_AND_ABOVE);
         }
     }
 

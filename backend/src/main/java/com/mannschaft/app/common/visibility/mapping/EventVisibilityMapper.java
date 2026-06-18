@@ -35,6 +35,11 @@ public final class EventVisibilityMapper {
             //  応援者に見せたいイベントは SUPPORTERS_AND_ABOVE を選ぶ運用）。
             case MEMBERS_ONLY -> StandardVisibility.MEMBERS_AND_ABOVE;
             case SUPPORTERS_AND_ABOVE -> StandardVisibility.SUPPORTERS_AND_ABOVE;
+            // 可視性ラダー統一（#1341）: FE が送る新ラダー値名。同名写像（旧 MEMBERS_ONLY と同一の可視範囲）。
+            case MEMBERS_AND_ABOVE -> StandardVisibility.MEMBERS_AND_ABOVE;
+            case ADMINS_AND_ABOVE -> StandardVisibility.ADMINS_AND_ABOVE;
+            // SCOPE_AFFILIATED = 直接所属者全員（応援者・ゲスト含む。旧 MEMBERS_ONLY 相当の正準値）。
+            case SCOPE_AFFILIATED -> StandardVisibility.SCOPE_AFFILIATED;
         };
     }
 }

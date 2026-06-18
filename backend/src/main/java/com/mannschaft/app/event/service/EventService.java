@@ -174,35 +174,38 @@ public class EventService {
             }
         }
 
-        EventEntity updated = entity.toBuilder()
-                .slug(request.getSlug() != null ? request.getSlug() : entity.getSlug())
-                .subtitle(request.getSubtitle() != null ? request.getSubtitle() : entity.getSubtitle())
-                .summary(request.getSummary() != null ? request.getSummary() : entity.getSummary())
-                .coverImageKey(request.getCoverImageKey() != null ? request.getCoverImageKey() : entity.getCoverImageKey())
-                .venueName(request.getVenueName() != null ? request.getVenueName() : entity.getVenueName())
-                .venueAddress(request.getVenueAddress() != null ? request.getVenueAddress() : entity.getVenueAddress())
-                .venueLatitude(request.getVenueLatitude() != null ? request.getVenueLatitude() : entity.getVenueLatitude())
-                .venueLongitude(request.getVenueLongitude() != null ? request.getVenueLongitude() : entity.getVenueLongitude())
-                .venueAccessInfo(request.getVenueAccessInfo() != null ? request.getVenueAccessInfo() : entity.getVenueAccessInfo())
-                .visibility(request.getVisibility() != null
-                        ? EventVisibility.valueOf(request.getVisibility())
-                        : entity.getVisibility())
-                .registrationStartsAt(request.getRegistrationStartsAt() != null
-                        ? request.getRegistrationStartsAt() : entity.getRegistrationStartsAt())
-                .registrationEndsAt(request.getRegistrationEndsAt() != null
-                        ? request.getRegistrationEndsAt() : entity.getRegistrationEndsAt())
-                .maxCapacity(request.getMaxCapacity() != null ? request.getMaxCapacity() : entity.getMaxCapacity())
-                .isApprovalRequired(request.getIsApprovalRequired() != null
-                        ? request.getIsApprovalRequired() : entity.getIsApprovalRequired())
-                .attendanceMode(request.getAttendanceMode() != null
-                        ? request.getAttendanceMode() : entity.getAttendanceMode())
-                .preSurveyId(request.getPreSurveyId() != null ? request.getPreSurveyId() : entity.getPreSurveyId())
-                .ogpTitle(request.getOgpTitle() != null ? request.getOgpTitle() : entity.getOgpTitle())
-                .ogpDescription(request.getOgpDescription() != null ? request.getOgpDescription() : entity.getOgpDescription())
-                .ogpImageKey(request.getOgpImageKey() != null ? request.getOgpImageKey() : entity.getOgpImageKey())
-                .build();
+        // visibility 文字列は enum へ解決してから渡す（null なら現値維持）。
+        // 新ラダー値名（MEMBERS_AND_ABOVE 等）は EventVisibility に追加済みのため valueOf で受理される。
+        EventVisibility newVisibility = request.getVisibility() != null
+                ? EventVisibility.valueOf(request.getVisibility())
+                : null;
 
-        EventEntity saved = eventRepository.save(updated);
+        // 根治: toBuilder().build() で作り直すと継承フィールド id が欠落し INSERT になる
+        //       （slug 一意制約違反で 500）。managed entity を直接ミューテートして
+        //       JPA dirty checking で UPDATE させる（EventEntity.applyUpdate の Javadoc 参照）。
+        entity.applyUpdate(
+                request.getSlug(),
+                request.getSubtitle(),
+                request.getSummary(),
+                request.getCoverImageKey(),
+                request.getVenueName(),
+                request.getVenueAddress(),
+                request.getVenueLatitude(),
+                request.getVenueLongitude(),
+                request.getVenueAccessInfo(),
+                newVisibility,
+                request.getRegistrationStartsAt(),
+                request.getRegistrationEndsAt(),
+                request.getMaxCapacity(),
+                request.getIsApprovalRequired(),
+                request.getAttendanceMode(),
+                request.getPreSurveyId(),
+                request.getOgpTitle(),
+                request.getOgpDescription(),
+                request.getOgpImageKey()
+        );
+
+        EventEntity saved = eventRepository.save(entity);
         log.info("イベント更新: eventId={}", eventId);
         return toDetailResponseWithRsvp(saved);
     }
