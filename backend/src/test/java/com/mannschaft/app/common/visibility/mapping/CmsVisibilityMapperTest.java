@@ -51,6 +51,28 @@ class CmsVisibilityMapperTest {
     }
 
     @Test
+    @DisplayName("MEMBERS_AND_ABOVE → StandardVisibility.MEMBERS_AND_ABOVE（#1341 新ラダー値名・FE送信値）")
+    void members_and_above_maps_to_MEMBERS_AND_ABOVE() {
+        // 可視性ラダー統一(#1341)で FE が送る新ラダー値名。旧 MEMBERS_ONLY と同一の可視範囲へ写像。
+        assertThat(CmsVisibilityMapper.toStandard(Visibility.MEMBERS_AND_ABOVE))
+            .isEqualTo(StandardVisibility.MEMBERS_AND_ABOVE);
+    }
+
+    @Test
+    @DisplayName("ADMINS_AND_ABOVE → StandardVisibility.ADMINS_AND_ABOVE（#1341 新ラダー値名）")
+    void admins_and_above_maps_to_ADMINS_AND_ABOVE() {
+        assertThat(CmsVisibilityMapper.toStandard(Visibility.ADMINS_AND_ABOVE))
+            .isEqualTo(StandardVisibility.ADMINS_AND_ABOVE);
+    }
+
+    @Test
+    @DisplayName("SCOPE_AFFILIATED → StandardVisibility.SCOPE_AFFILIATED（直接所属軸・旧MEMBERS_ONLY相当の正準値）")
+    void scope_affiliated_maps_to_SCOPE_AFFILIATED() {
+        assertThat(CmsVisibilityMapper.toStandard(Visibility.SCOPE_AFFILIATED))
+            .isEqualTo(StandardVisibility.SCOPE_AFFILIATED);
+    }
+
+    @Test
     @DisplayName("FOLLOWERS_ONLY → StandardVisibility.FOLLOWERS_ONLY")
     void followers_only_maps_to_FOLLOWERS_ONLY() {
         assertThat(CmsVisibilityMapper.toStandard(Visibility.FOLLOWERS_ONLY))

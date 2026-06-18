@@ -128,6 +128,14 @@ public class BlogPostService {
 
     /**
      * slug で記事を取得する。
+     *
+     * <p>F00 可視性認可（{@link #getById} と同一挙動）: slug→entity 解決直後に
+     * {@link ContentVisibilityChecker#assertCanView} を呼び、閲覧不可なら
+     * {@link com.mannschaft.app.common.BusinessException}（{@code VISIBILITY_001}=403 /
+     * {@code VISIBILITY_004}=404 相当）を投げる。これを欠くと slug 経由で他人の
+     * MEMBERS_ONLY/DRAFT 記事が漏洩する（実機E2Eで捕捉した認可漏洩バグ）。
+     * viewerUserId は認証コンテキストから取得する（リクエスト引数 {@code userId} は
+     * スコープ解決用であり閲覧者IDではないため使用しない）。</p>
      */
     public BlogPostResponse getBySlug(Long teamId, Long organizationId, Long userId, String slug) {
         BlogPostEntity entity;
@@ -141,6 +149,9 @@ public class BlogPostService {
             entity = postRepository.findByUserIdAndSlug(userId, slug)
                     .orElseThrow(() -> new BusinessException(CmsErrorCode.POST_NOT_FOUND));
         }
+        // 可視性判定を ContentVisibilityChecker に一元化（getById と完全に同じ認可挙動）。
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        contentVisibilityChecker.assertCanView(ReferenceType.BLOG_POST, entity.getId(), viewerUserId);
         return cmsMapper.toBlogPostResponse(entity);
     }
 
