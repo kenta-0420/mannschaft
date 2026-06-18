@@ -2,7 +2,11 @@ package com.mannschaft.app.organization;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.common.visibility.VisibilityErrorCode;
 import com.mannschaft.app.organization.controller.OrganizationController;
 import com.mannschaft.app.organization.dto.CreateOrganizationRequest;
 import com.mannschaft.app.organization.dto.OrganizationResponse;
@@ -43,9 +47,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.time.LocalDateTime;
 import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -66,6 +72,7 @@ class OrganizationControllerTest {
     @Mock private PermissionGroupService permissionGroupService;
     @Mock private BlockService blockService;
     @Mock private SupporterService supporterService;
+    @Mock private ContentVisibilityChecker contentVisibilityChecker;
 
     @InjectMocks
     private OrganizationController controller;
@@ -116,10 +123,25 @@ class OrganizationControllerTest {
     }
 
     @Test
-    @DisplayName("getOrganization: 200 OK")
+    @DisplayName("getOrganization: 200 OK（可視性チェック通過時）")
     void getOrganization_200() {
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
         given(organizationService.getOrganization(ORG_SLUG)).willReturn(ApiResponse.of(orgResponse()));
         assertThat(controller.getOrganization(ORG_SLUG).getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(contentVisibilityChecker).assertCanView(ReferenceType.ORGANIZATION, ORG_ID, USER_ID);
+    }
+
+    @Test
+    @DisplayName("getOrganization: 可視性チェックで拒否されたら例外を伝播（非メンバー→403）")
+    void getOrganization_visibilityDenied_throws() {
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        willThrow(new BusinessException(VisibilityErrorCode.VISIBILITY_001))
+                .given(contentVisibilityChecker)
+                .assertCanView(ReferenceType.ORGANIZATION, ORG_ID, USER_ID);
+        assertThatThrownBy(() -> controller.getOrganization(ORG_SLUG))
+                .isInstanceOf(BusinessException.class);
+        // 可視性で弾かれたら Service の取得本体は呼ばれない
+        verify(organizationService, org.mockito.Mockito.never()).getOrganization(ORG_SLUG);
     }
 
     @Test
@@ -141,7 +163,7 @@ class OrganizationControllerTest {
     }
 
     @Test
-    @DisplayName("getMembers: 200 OK")
+    @DisplayName("getMembers: 200 OK（可視性チェック通過時）")
     void getMembers_200() {
         Pageable pageable = PageRequest.of(0, 10);
         given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
@@ -149,6 +171,20 @@ class OrganizationControllerTest {
                 PagedResponse.of(List.of(new MemberResponse(USER_ID, "テスト", null, "ADMIN", LocalDateTime.now())),
                         new PagedResponse.PageMeta(1L, 0, 10, 1)));
         assertThat(controller.getMembers(ORG_SLUG, pageable).getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(contentVisibilityChecker).assertCanView(ReferenceType.ORGANIZATION, ORG_ID, USER_ID);
+    }
+
+    @Test
+    @DisplayName("getMembers: 可視性チェックで拒否されたらメンバー一覧を取得しない（非メンバー列挙の遮断）")
+    void getMembers_visibilityDenied_throws() {
+        Pageable pageable = PageRequest.of(0, 10);
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        willThrow(new BusinessException(VisibilityErrorCode.VISIBILITY_001))
+                .given(contentVisibilityChecker)
+                .assertCanView(ReferenceType.ORGANIZATION, ORG_ID, USER_ID);
+        assertThatThrownBy(() -> controller.getMembers(ORG_SLUG, pageable))
+                .isInstanceOf(BusinessException.class);
+        verify(organizationService, org.mockito.Mockito.never()).getMembers(ORG_ID, pageable);
     }
 
     @Test
