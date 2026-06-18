@@ -92,6 +92,8 @@
 
 > 別案として「チームの予算ウィジェットでは DEPUTY 細粒度ゲートを行わず ADMIN 専用にする（`isAdmin` のみ）」も検討したが、要件（DEPUTY に権限付与で予算を見せられる）を満たさないため却下。チームスコープ seed を追加して要件を満たす（[05](./05_decisions.md) §3）。
 
+> **⚠️ 注記（実装軍議で判明）**: `permissions.name` は単独 UNIQUE（`uq_permissions_name`・`V2.002`）のため、同名 `BUDGET_VIEW`/`BUDGET_MANAGE` の TEAM 行 seed は不可。TEAM 予算権限の最終方針は [05_decisions.md §13](./05_decisions.md) のとおり **P3 の軍議で確定**（P1 スコープ外）。
+
 ---
 
 ## 5. IDOR・テナント越境の防止

@@ -6,6 +6,8 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.organization.dto.AncestorsResponse;
 import com.mannschaft.app.organization.dto.ChildrenResponse;
 import com.mannschaft.app.organization.dto.CreateOrganizationRequest;
@@ -76,6 +78,7 @@ public class OrganizationController {
     private final PermissionGroupService permissionGroupService;
     private final BlockService blockService;
     private final SupporterService supporterService;
+    private final ContentVisibilityChecker contentVisibilityChecker;
 
 
     // ========================================
@@ -110,7 +113,16 @@ public class OrganizationController {
     @GetMapping("/{slug}")
     @Operation(summary = "組織取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "可視性レベル未満（非メンバー等）でアクセス不可")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+            description = "組織が存在しない / 論理削除済み")
     public ResponseEntity<ApiResponse<OrganizationResponse>> getOrganization(@PathVariable String slug) {
+        Long id = organizationService.resolveOrgId(slug);
+        // F00 正準: 組織の visibility ラダーを ContentVisibilityChecker に委譲して判定する。
+        // PUBLIC は未認証含め公開、PRIVATE は非メンバーに 403、不在は 404。
+        contentVisibilityChecker.assertCanView(
+                ReferenceType.ORGANIZATION, id, SecurityUtils.getCurrentUserIdOrNull());
         return ResponseEntity.ok(organizationService.getOrganization(slug));
     }
 
@@ -151,9 +163,17 @@ public class OrganizationController {
     @GetMapping("/{slug}/members")
     @Operation(summary = "組織メンバー一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "可視性レベル未満（非メンバー等）でアクセス不可")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+            description = "組織が存在しない / 論理削除済み")
     public ResponseEntity<PagedResponse<MemberResponse>> getMembers(
             @PathVariable String slug, Pageable pageable) {
         Long id = organizationService.resolveOrgId(slug);
+        // F00 正準: メンバー一覧は組織本体と同じ visibility ラダーで保護する。
+        // 非メンバーがメンバー情報を列挙する漏洩を塞ぐ。
+        contentVisibilityChecker.assertCanView(
+                ReferenceType.ORGANIZATION, id, SecurityUtils.getCurrentUserIdOrNull());
         return ResponseEntity.ok(organizationService.getMembers(id, pageable));
     }
 
