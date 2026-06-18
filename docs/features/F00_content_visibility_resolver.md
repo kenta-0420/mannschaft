@@ -1003,6 +1003,30 @@ Survey の `ResultsVisibility.AFTER_RESPONSE` / `AFTER_CLOSE` を Resolver の `
 - **非アクティブ連鎖（§11.6 鏡像）**: 当該 ORG **自身**が DELETED/SUSPENDED なら fail-closed
   （`isOrgInactive(scope)`。`isParentOrgInactive` が TEAM の「親 ORG」を見るのに対し、本値は ORG 自身を見る）。
 
+#### 配信 vs 可視性 vs 認可（3 軸の分離・欠陥Z 根治の位置づけ）
+
+組織発コンテンツの「配下チームへの到達」は **3 つの独立した軸**で評価される。混同すると漏洩・過小権限のいずれかを招くため明示する。
+
+| 軸 | 問い | 主体 | SUPPORTER 扱い | 実装 |
+|---|---|---|---|---|
+| **配信（distribution）** | 誰に通知/宛先を配るか | `OrganizationMembershipService.resolveOrgDistributionUserIds(orgId, includeSupporters)` | トグル（既定除外） | `UserRoleRepository.findDistributionUserIdsForOrganizationRecursive` |
+| **可視性（visibility）** | 誰が閲覧してよいか | F00 `ORGANIZATION_AND_DESCENDANTS`（本節 M2） | **含む**（所属軸・G7） | `existsUserInOrganizationDescendants` / `findOrgRootsWhereUserIsDescendantMember` |
+| **認可（authorization）** | 誰が**回答/要対応集計**してよいか | `AccessControlService.isMemberOrDescendant` / `checkMembershipOrDescendant` | **除外**（純 SUPPORTER は回答不可・御裁可②） | `OrganizationMembershipService.isActiveMemberInOrgDistributionUniverse` → `UserRoleRepository.existsActiveMemberInOrganizationDescendants` |
+
+**欠陥Z（2026-06-18 根治）**: M2 は**可視性**を配下へ開いたが、出欠/アンケートの**応答・要対応集計の認可**は別層（`AccessControlService` の直接所属判定）にあり未修正だったため、配下チームのみ所属メンバーが
+`GET /api/v1/dashboard/organization/{orgPublicId}/action-required`・組織発出欠回答で 403（`COMMON_002`）になっていた。
+根治として認可軸に「配下チーム MEMBER を組織応答母集団に含める（純 SUPPORTER 除外）」判定を新設し、以下 4 箇所に適用した:
+
+1. `ScopeActionRequiredFacade.getActionRequired` の入口（`checkMembership` → `checkMembershipOrDescendant`）
+2. `SurveyService.getUnansweredForUserInScope`（同上）
+3. `ScheduleAttendanceService.getUnansweredForUserInScope`（同上）
+4. `ScheduleAttendanceService.validateMinResponseRole`: 組織スケジュールで要求段が `MEMBER_PLUS` のときのみ
+   配下 MEMBER を「組織 MEMBER 相当」とみなして救済（`isMemberOrDescendant`）。`SUPPORTER_PLUS`（純 SUPPORTER は御裁可②で回答不可）・
+   `ADMIN_ONLY`（配下メンバーは組織 ADMIN でない）は救済しない。
+
+認可軸の純 SUPPORTER 除外規約は配信軸 `includeSupporters=false` と 1 対 1 同一（`memberships.role_kind` 軸・MEMBER 優先）。
+回覧（circulation）は組織→配下チーム配信の対象外であり、従来どおり直接所属の `checkMembership` のまま（配下メンバーの回覧は per-recipient ACL 登録が無ければ 0 件＝正しい結果）。
+
 #### 判定基盤（Expand 方式・非永続のため安全）
 
 `StandardVisibility` は実行時導出のみ（`@Enumerated` 永続化・`valueOf`・API 露出いずれも無し）であるため、
