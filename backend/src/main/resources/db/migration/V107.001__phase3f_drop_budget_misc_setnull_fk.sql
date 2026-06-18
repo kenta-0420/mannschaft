@@ -1,0 +1,111 @@
+-- Phase 3-F（第三陣ラスト）: クロスドメインFK撤廃 — org_modules / budget / promotion / confirmable / bulletin ドメインの SET NULL 監査FK5件を撤廃（撤廃only）
+--
+-- 1000万ユーザー耐久DB再構築 クロスドメインFK撤廃キャンペーン Phase 3-F（第三陣の最終陣）。
+-- CLAUDE.md §1「クロスドメインFKは作らない」/ §2「CASCADE/SET NULL のクロスドメイン削除連鎖は禁止」
+-- 原則に従い、organization_enabled_modules（モジュール有効化）/ budget_threshold_alerts（予算閾値警告）/
+-- promotions（プロモーション）/ confirmable_notification_recipients（確認通知受信者）/
+-- bulletin_archive_folders（掲示板 保管庫フォルダ）の
+-- 「users を親とする ON DELETE SET NULL の監査/操作者カラム」FK を撤廃する。
+--
+-- ━━━ 対象一覧（5件・すべて user 親 ON DELETE SET NULL のクロスドメインFK・すべて明示名）━━━
+--  org_modules（モジュール有効化）ドメイン（1件）:
+--   1. organization_enabled_modules        / fk_oem_user                            (enabled_by  → users SET NULL)
+--  budget（予算）ドメイン（1件）:
+--   2. budget_threshold_alerts             / fk_bta_acked_by                        (acknowledged_by → users SET NULL)
+--  promotion（プロモーション）ドメイン（1件）:
+--   3. promotions                          / fk_promotions_approved_by              (approved_by → users SET NULL)
+--  confirmable（確認通知）ドメイン（1件）:
+--   4. confirmable_notification_recipients / fk_cnr_excluded_by                     (excluded_by → users SET NULL)
+--  bulletin（掲示板）ドメイン（1件）:
+--   5. bulletin_archive_folders            / fk_bulletin_archive_folders_created_by (created_by  → users SET NULL)
+--
+-- ━━━ なぜ「撤廃only・孤児 user_id 保持」が安全か（監査履歴温存・マスター御裁可）━━━
+--
+-- これら5件はいずれも「誰がモジュールを有効化したか（organization_enabled_modules.enabled_by）/
+-- 誰が予算超過警告を確認したか（budget_threshold_alerts.acknowledged_by）/
+-- 誰がプロモーションを承認したか（promotions.approved_by）/
+-- 誰が確認を免除したか（confirmable_notification_recipients.excluded_by）/
+-- 誰が保管庫フォルダを作成したか（bulletin_archive_folders.created_by）」を表す監査・操作者カラムである。
+-- 運用証跡として保持価値があり、退会後も「操作者の id（孤児値）」を残したい。
+--
+-- 退会フローは2段階モデル（CLAUDE.md「PII 消去のタイミング §13.12」）:
+--   ・退会受付直後: user 本体を匿名化（UserEntity.anonymize()）するが行は残す。
+--   ・退会受付から最大30日後: AccountPurgeService.purgeUser → userRepository.delete で
+--     はじめて users 行を物理削除する。
+--
+-- すなわち ON DELETE SET NULL が発火しうるのは「30日後の物理削除」のときだけだが、
+-- 現状のままだと物理削除の瞬間に上記の監査列が NULL に書き換えられ、「誰が有効化/確認/承認/免除/作成したか」
+-- の証跡が失われる。本 migration で SET NULL FK を撤廃すると、users 物理削除後も子行の監査列は
+-- 孤児 user_id（もう users には存在しない値）を保持し続け、監査履歴が温存される（＝マスター御裁可の狙い）。
+-- 参照整合性はアプリ層で保証する（CLAUDE.md §1）。
+--
+-- ━━━ SET NULL ゆえ行削除リスクは元々ゼロ（CASCADE との違い・リスナー不要）━━━
+--
+-- 第二陣の CASCADE 撤廃は「物理削除で子行が連鎖削除される」リスクの根治だったが、本対象は
+-- すべて ON DELETE SET NULL であり、もともと子行が削除されることはない（列が NULL 化されるだけ）。
+-- したがって本 migration は極めて低リスクで、リスナーもデータ操作も NULL 化処理も一切伴わない、
+-- 純粋な FK 撤廃のみである。番人テストが見る不変条件も CASCADE 版の「行が消えない」ではなく
+-- 「親 users 物理削除後も監査列が NULL 化されず孤児 user_id 値を保持する」である。
+--
+-- ━━━ index 判定（FK 撤廃でバッキングインデックスが消えても CREATE INDEX 追加が必要か）━━━
+--
+-- 結論: 5件とも CREATE INDEX 追加は不要。いずれも「誰が操作したか」を表す冷たい監査列であり、
+-- これらの列を先頭に持つ非FK index も逆引き finder も存在しない。FK の暗黙バッキング index のみで、
+-- 撤廃でそれが消えても運用クエリへの影響はない。
+--   ・organization_enabled_modules.enabled_by : 冷たい監査列。enabled_by 先頭の非FK index なし。
+--       実用 index は uq_org_module(organization_id, module_id) / idx_org_enabled(organization_id, is_enabled) で
+--       いずれも enabled_by を含まない → 追加不要。
+--   ・budget_threshold_alerts.acknowledged_by : 冷たい監査列。acknowledged_by 先頭の非FK index なし。
+--       未確認一覧は idx_bta_unack(acknowledged_at, allocation_id) で acknowledged_at を見るのであり
+--       acknowledged_by ではない → 追加不要。
+--   ・promotions.approved_by : 冷たい監査列。approved_by 先頭の非FK index なし。
+--       実用 index は idx_promotions_scope / idx_promotions_status で approved_by を含まない → 追加不要。
+--   ・confirmable_notification_recipients.excluded_by : 冷たい監査列。excluded_by 先頭の非FK index なし。
+--       idx_cnr_excluded(excluded_at) は excluded_at 列であり excluded_by ではない（除外日時の絞り込み用）→ 追加不要。
+--   ・bulletin_archive_folders.created_by : 冷たい監査列。created_by 先頭の非FK index なし。
+--       ツリー構築は idx_bulletin_archive_folders_scope_parent / _parent で created_by を含まない → 追加不要。
+--
+-- ━━━ 対象外（本 migration では一切触らない）━━━
+--   ・organization_enabled_modules → organizations（fk_oem_org RESTRICT・同一 template/組織ドメイン扱い）。
+--   ・organization_enabled_modules → module_definitions（fk_oem_module RESTRICT・template ドメイン）。
+--   ・budget_threshold_alerts → shift_budget_allocations（fk_bta_allocation CASCADE・同一 F08.7 予算ドメイン）。
+--   ・budget_threshold_alerts → workflow_requests（fk_bta_workflow_request SET NULL・F05.6 連携）。
+--   ・promotions → users（fk_promotions_created_by RESTRICT・作成者は退会防止）。
+--   ・confirmable_notification_recipients → confirmable_notifications（fk_cnr_notification CASCADE・同一 F04.9 ドメイン）。
+--   ・confirmable_notification_recipients → users（fk_cnr_user CASCADE・受信者本人）。
+--   ・bulletin_archive_folders は created_by が唯一の FK（scope/parent_folder は FK 無し）。
+--   ・上記5つの SET NULL → users 以外の FK 全て。
+
+-- ===== organization_enabled_modules（F16.1 モジュール有効化ドメイン）=====
+-- fk_oem_user: enabled_by → users (SET NULL) クロスドメイン監査列
+-- → 撤廃only。退会30日後の users 物理削除でも「誰がモジュールを有効化したか」の孤児 user_id を保持＝監査履歴温存。
+--   冷たい監査列・enabled_by 先頭の専用 index なし・finder なし → index 追加不要。
+ALTER TABLE organization_enabled_modules DROP FOREIGN KEY fk_oem_user;
+
+-- ===== budget_threshold_alerts（F08.7 予算ドメイン）=====
+-- fk_bta_acked_by: acknowledged_by → users (SET NULL) クロスドメイン監査列
+-- → 撤廃only。退会30日後の users 物理削除でも「誰が予算超過警告を確認したか」の孤児 user_id を保持＝監査履歴温存。
+--   冷たい監査列・acknowledged_by 先頭の専用 index なし（idx_bta_unack は acknowledged_at）・finder なし → index 追加不要。
+--   注: fk_bta_allocation（allocation_id → shift_budget_allocations CASCADE）は同一 F08.7 予算ドメインで撤廃対象外。
+ALTER TABLE budget_threshold_alerts DROP FOREIGN KEY fk_bta_acked_by;
+
+-- ===== promotions（F09.2 プロモーションドメイン）=====
+-- fk_promotions_approved_by: approved_by → users (SET NULL) クロスドメイン監査列
+-- → 撤廃only。退会30日後の users 物理削除でも「誰がプロモーションを承認したか」の孤児 user_id を保持＝監査履歴温存。
+--   冷たい監査列・approved_by 先頭の専用 index なし・finder なし → index 追加不要。
+--   注: fk_promotions_created_by（created_by → users RESTRICT）は作成者で退会防止のため撤廃対象外。
+ALTER TABLE promotions DROP FOREIGN KEY fk_promotions_approved_by;
+
+-- ===== confirmable_notification_recipients（F04.9 確認通知ドメイン）=====
+-- fk_cnr_excluded_by: excluded_by → users (SET NULL) クロスドメイン監査列
+-- → 撤廃only。退会30日後の users 物理削除でも「誰が確認を免除したか」の孤児 user_id を保持＝監査履歴温存。
+--   冷たい監査列・excluded_by 先頭の専用 index なし（idx_cnr_excluded は excluded_at）・finder なし → index 追加不要。
+--   注: fk_cnr_notification（CASCADE）/ fk_cnr_user（受信者本人 CASCADE）は同一 F04.9 ドメインで撤廃対象外。
+ALTER TABLE confirmable_notification_recipients DROP FOREIGN KEY fk_cnr_excluded_by;
+
+-- ===== bulletin_archive_folders（F05.1 掲示板 保管庫ドメイン）=====
+-- fk_bulletin_archive_folders_created_by: created_by → users (SET NULL) クロスドメイン監査列
+-- → 撤廃only。退会30日後の users 物理削除でも「誰が保管庫フォルダを作成したか」の孤児 user_id を保持＝監査履歴温存。
+--   冷たい監査列・created_by 先頭の専用 index なし・finder なし → index 追加不要。
+--   注: created_by が唯一の FK（scope_type/scope_id/parent_folder_id は FK 無し・アプリ層整合）。
+ALTER TABLE bulletin_archive_folders DROP FOREIGN KEY fk_bulletin_archive_folders_created_by;
