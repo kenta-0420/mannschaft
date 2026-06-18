@@ -2,9 +2,6 @@
 # 1 行 = 全 migration を Flyway 適用順に再生した後 net-active な 1 件の クロスドメイン FK。baseline に無い新規 FK のみ fail。
 # 撤廃 wave が DROP FOREIGN KEY すると net-active から消え、再凍結で該当行も消える（chip-away 運用）。baseline が空になればクロスドメイン FK 全廃。
 # 再生成: ./gradlew test --tests "*CrossDomainForeignKeyArchTest" -Parchunit.fk.refreeze=true （または環境変数 ARCHUNIT_FK_REFREEZE=true）
-action_memos -> timeline_posts [fk_action_memos_timeline_post] (SET NULL) @V5.041__create_action_memos_table.sql:21
-action_memos -> todos [fk_action_memos_related_todo] (SET NULL) @V5.041__create_action_memos_table.sql:19
-activity_results -> schedules [fk_ar_schedule] (SET NULL) @V6.012__create_activity_results.sql:26
 activity_results -> venues [fk_ar_venue] (RESTRICT) @V9.059__add_venue_id_to_schedules_and_activity_results.sql:12
 advertiser_accounts -> users [fk_advertiser_accounts_approved_by] (RESTRICT) @V10.060__create_advertiser_accounts.sql:17
 analytics_daily_modules -> module_definitions [fk_analytics_daily_modules_module] (RESTRICT) @V10.070__create_analytics_daily_modules.sql:14
@@ -35,7 +32,6 @@ organization_notification_balances -> organizations [fk_onb_org] (RESTRICT) @V9.
 parking_applications -> proxy_input_records [fk_parking_applications_proxy] (SET NULL) @V18.029__add_proxy_input_columns_to_parking_applications.sql:17
 performance_metrics -> activity_template_fields [fk_pm_linked_field] (SET NULL) @V9.056__fix_performance_metrics_fk_to_activity_template_fields.sql:8
 performance_records -> activity_results [fk_pr_activity] (SET NULL) @V7.010__create_performance_records_table.sql:19
-performance_records -> schedules [fk_pr_schedule] (SET NULL) @V7.010__create_performance_records_table.sql:18
 performance_records -> users [fk_pr_user] (RESTRICT) @V7.010__create_performance_records_table.sql:17
 period_attendance_records -> timetable_changes [fk_par_timetable_change] (SET NULL) @V18.004__create_period_attendance_records_table.sql:31
 period_attendance_records -> timetable_slots [fk_par_timetable_slot] (SET NULL) @V18.004__create_period_attendance_records_table.sql:30
@@ -45,7 +41,6 @@ property_work_documents -> shared_files [fk_pwd_file] (CASCADE) @V61.003__create
 property_work_packages -> budget_transactions [fk_pwp_budget_tx] (SET NULL) @V61.002__create_property_work_packages.sql:44
 property_work_packages -> dwelling_units [fk_pwp_dwelling] (SET NULL) @V61.002__create_property_work_packages.sql:41
 property_work_packages -> incidents [fk_pwp_incident] (SET NULL) @V61.002__create_property_work_packages.sql:42
-property_work_packages -> timeline_posts [fk_pwp_timeline] (SET NULL) @V61.002__create_property_work_packages.sql:45
 proxy_input_consents -> users [fk_pic_approved_by] (RESTRICT) @V18.010__create_proxy_input_consents_table.sql:33
 proxy_input_consents -> users [fk_pic_proxy] (RESTRICT) @V18.010__create_proxy_input_consents_table.sql:30
 proxy_input_consents -> users [fk_pic_revoke_wit] (RESTRICT) @V18.010__create_proxy_input_consents_table.sql:34
@@ -63,7 +58,6 @@ resident_documents -> users [fk_rd_uploaded_by] (RESTRICT) @V9.018__create_resid
 saved_segment_presets -> users [fk_ssp_created_by] (RESTRICT) @V9.028__create_saved_segment_presets_table.sql:15
 schedule_attendances -> proxy_input_records [fk_sa_proxy_record] (RESTRICT) @V18.017__add_proxy_input_columns_to_schedule_attendances.sql:8
 schedules -> committees [fk_schedules_committee] (CASCADE) @V9.086__add_committee_id_to_schedules.sql:4
-schedules -> todos [fk_schedules_todos] (SET NULL) @V13.015__alter_schedules_add_linked_todo_id.sql:8
 schedules -> venues [fk_sch_venue] (RESTRICT) @V9.059__add_venue_id_to_schedules_and_activity_results.sql:5
 schedules -> visibility_templates [fk_schedules_vt] (SET NULL) @V16.006__add_visibility_template_id_to_features.sql:7
 shift_budget_allocations -> budget_categories [fk_sba_budget_category] (RESTRICT) @V11.030__create_shift_budget_allocations.sql:64
@@ -83,5 +77,3 @@ todo_budget_links -> todos [fk_tbl_todo] (CASCADE) @V11.032__create_todo_budget_
 todo_budget_links -> users [fk_tbl_creator] (RESTRICT) @V11.032__create_todo_budget_links.sql:72
 todo_handoffs -> users [fk_handoff_from_user] (RESTRICT) @V19.011__add_missing_constraints_to_todo_status_labels_and_handoffs.sql:55
 todo_tag_links -> todos [fk_todo_tag_links_todo] (CASCADE) @V3.111__create_todo_tag_links_table.sql:9
-todos -> schedules [fk_todos_schedules] (SET NULL) @V13.016__add_todos_linked_schedule_fk.sql:5
-tournament_matches -> schedules [fk_tmatch_schedule] (SET NULL) @V8.044__create_tournament_matches_table.sql:38
