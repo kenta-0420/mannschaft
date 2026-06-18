@@ -229,13 +229,15 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
             return Set.of();
         }
 
-        // 2) 必要スコープを集計（直接所属判定 / ORGANIZATION_WIDE 親解決）。
+        // 2) 必要スコープを集計（直接所属判定 / ORGANIZATION_WIDE 親解決 / 新段 下向き再帰）。
         Set<ScopeKey> directScopes = collectDirectScopes(rows);
         Set<ScopeKey> orgWideScopes = collectOrgWideScopes(rows);
+        Set<ScopeKey> descendantScopes = collectDescendantScopes(rows);
 
         // 3) snapshot 構築（最大 SQL 5、SystemAdmin なら SQL 1）。
-        UserScopeRoleSnapshot snapshot = membershipBatchQueryService
-                .snapshotForUser(viewerUserId, directScopes, orgWideScopes);
+        //    新段スコープが無ければ従来 3 引数版に委譲し SQL・挙動を完全に保存する。
+        UserScopeRoleSnapshot snapshot = buildSnapshot(
+                viewerUserId, directScopes, orgWideScopes, descendantScopes);
 
         // 4) 各 row の判定（DB アクセスなし、純メモリ）。
         Set<Long> result = new HashSet<>();
@@ -295,8 +297,9 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
         // 2) snapshot 構築
         Set<ScopeKey> directScopes = collectDirectScopes(rows);
         Set<ScopeKey> orgWideScopes = collectOrgWideScopes(rows);
-        UserScopeRoleSnapshot snapshot = membershipBatchQueryService
-                .snapshotForUser(viewerUserId, directScopes, orgWideScopes);
+        Set<ScopeKey> descendantScopes = collectDescendantScopes(rows);
+        UserScopeRoleSnapshot snapshot = buildSnapshot(
+                viewerUserId, directScopes, orgWideScopes, descendantScopes);
 
         // 3) status ガード
         if (!visibleByStatus(row, viewerUserId, snapshot)) {
@@ -426,6 +429,13 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
             case ADMINS_AND_ABOVE -> scope != null
                     && snapshot.hasRoleOrAbove(scope, "ADMIN");
             case ORGANIZATION_WIDE -> scope != null && snapshot.isMemberOfParentOrg(scope);
+            // フェーズ M2: ORGANIZATION_AND_DESCENDANTS（下向き再帰・所属軸・SUPPORTER 含む）。
+            // §11.6 鏡像: 当該 ORG 自身が非アクティブなら fail-closed。
+            // ORGANIZATION_WIDE（上向き 1 段）の鏡像であり、当該 ORG コンテンツを
+            // 全子孫組織 + 配下 ACTIVE チームの再帰メンバーへ開く。
+            case ORGANIZATION_AND_DESCENDANTS -> scope != null
+                    && !snapshot.isOrgInactive(scope)
+                    && snapshot.isDescendantMemberOf(scope);
             case PRIVATE -> viewerUserId != null
                     && Objects.equals(viewerUserId, row.authorUserId());
             case CUSTOM_TEMPLATE -> row.visibilityTemplateId() != null
@@ -456,8 +466,8 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
         return switch (level) {
             case PRIVATE -> DenyReason.NOT_OWNER;
             case CUSTOM_TEMPLATE -> DenyReason.TEMPLATE_RULE_NO_MATCH;
-            // SCOPE_AFFILIATED は所属軸（旧 MEMBERS_ONLY 相当）として同列に分類。
-            case ORGANIZATION_WIDE, SCOPE_AFFILIATED ->
+            // SCOPE_AFFILIATED / ORGANIZATION_AND_DESCENDANTS は所属軸（拡大軸）として同列に分類。
+            case ORGANIZATION_WIDE, SCOPE_AFFILIATED, ORGANIZATION_AND_DESCENDANTS ->
                     scope != null && snapshot.roleByScope().containsKey(scope)
                             ? DenyReason.INSUFFICIENT_ROLE : DenyReason.NOT_A_MEMBER;
             // MEMBERS_AND_ABOVE / ADMINS_AND_ABOVE は閾値軸として同列に分類。
@@ -544,6 +554,11 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
     /**
      * Projection の visibility を {@link StandardVisibility} に解決する。
      * 値が null や型不一致の場合は null を返す（呼び出し側で fail-closed する）。
+     *
+     * <p>{@link #toStandard(Enum)} による enum 正規化のあと、scope 依存の補正が必要な機能のため
+     * {@link #adjustLevel(VisibilityProjection, StandardVisibility)} フックを通す。
+     * これにより SQL 集計（{@link #collectOrgWideScopes} / {@link #collectDescendantScopes}）と
+     * 判定（{@link #visibleByVisibility} / {@link #decide}）が常に同一の実効レベルを参照する。</p>
      */
     @SuppressWarnings("unchecked")
     private StandardVisibility resolveLevelSafely(P row) {
@@ -552,12 +567,35 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
             return null;
         }
         try {
-            return toStandard((V) raw);
+            return adjustLevel(row, toStandard((V) raw));
         } catch (ClassCastException e) {
             log.warn("toStandard 用の enum キャスト失敗: referenceType={} id={} actualType={}",
                     referenceType(), row.id(), raw.getClass().getName(), e);
             return null;
         }
+    }
+
+    /**
+     * {@link #toStandard(Enum)} で正規化した {@link StandardVisibility} に、scope 依存の補正を施す
+     * 任意フック（既定: 補正なし＝恒等）。
+     *
+     * <p>機能側 visibility enum は scope を持たないため {@link #toStandard(Enum)} だけでは
+     * 「同じ enum 値でも scope によって意味が変わる」ケースを表現できない。フェーズ M2 の
+     * {@link StandardVisibility#ORGANIZATION_AND_DESCENDANTS}（下向き再帰）がその典型で、
+     * 「組織全体公開」という同じ意図でも、コンテンツが ORGANIZATION スコープのときだけ
+     * 下向き再帰段へ昇格させたい。survey / schedule Resolver はこのフックで
+     * 「ORG スコープ × 組織全体（{@link StandardVisibility#ORGANIZATION_WIDE}）→
+     * {@link StandardVisibility#ORGANIZATION_AND_DESCENDANTS}」へ昇格する。</p>
+     *
+     * <p>既定実装は受け取った level をそのまま返す。新段未対応の Resolver は本フックを
+     * オーバーライドしないため、挙動は完全に従来どおりである。</p>
+     *
+     * @param row   判定対象 Projection（scope 参照用）
+     * @param level {@link #toStandard(Enum)} で正規化したレベル（{@code null} 可）
+     * @return 補正後のレベル（{@code null} はそのまま伝播）
+     */
+    protected StandardVisibility adjustLevel(P row, StandardVisibility level) {
+        return level;
     }
 
     /** filterAccessible / decide の SQL 集計ヘルパ: 直接所属判定が必要なスコープ集合。 */
@@ -589,6 +627,48 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
             }
         }
         return scopes;
+    }
+
+    /**
+     * filterAccessible / decide の SQL 集計ヘルパ: {@code ORGANIZATION_AND_DESCENDANTS} の
+     * 下向き再帰判定対象スコープ集合（フェーズ M2）。
+     *
+     * <p>{@link #collectOrgWideScopes} の鏡像。新段は ORGANIZATION スコープのコンテンツ専用のため、
+     * ORG スコープのみを収集する（TEAM スコープの新段 row は対象外で fail-closed 側に倒す）。
+     * 解決失敗 row はスキップ。</p>
+     */
+    private Set<ScopeKey> collectDescendantScopes(List<P> rows) {
+        Set<ScopeKey> scopes = new HashSet<>();
+        for (P row : rows) {
+            StandardVisibility level = resolveLevelSafely(row);
+            if (level != StandardVisibility.ORGANIZATION_AND_DESCENDANTS) {
+                continue;
+            }
+            ScopeKey scope = scopeOf(row);
+            if (scope != null && "ORGANIZATION".equals(scope.scopeType())) {
+                scopes.add(scope);
+            }
+        }
+        return scopes;
+    }
+
+    /**
+     * snapshot を構築する。新段スコープが空（＝従来 Resolver / 新段未使用）なら
+     * 従来の 3 引数 {@link MembershipBatchQueryService#snapshotForUser(Long, java.util.Set, java.util.Set)}
+     * に委譲し、SQL・挙動・既存テストのモック契約を完全に保存する。
+     * 新段スコープが非空のときのみ 4 引数版を呼び、下向き再帰 SQL を 1 回追加発行させる。
+     */
+    private UserScopeRoleSnapshot buildSnapshot(
+            Long viewerUserId,
+            Set<ScopeKey> directScopes,
+            Set<ScopeKey> orgWideScopes,
+            Set<ScopeKey> descendantScopes) {
+        if (descendantScopes == null || descendantScopes.isEmpty()) {
+            return membershipBatchQueryService
+                    .snapshotForUser(viewerUserId, directScopes, orgWideScopes);
+        }
+        return membershipBatchQueryService
+                .snapshotForUser(viewerUserId, directScopes, orgWideScopes, descendantScopes);
     }
 
     // 静的解析向けの未使用警告抑止（Stream API を使う代替実装の参考実装として保持）。

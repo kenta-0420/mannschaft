@@ -104,6 +104,32 @@ public class SurveyVisibilityResolver
         return SurveyResultsVisibilityMapper.toStandard(visibility);
     }
 
+    /**
+     * フェーズ M2: 組織スコープのアンケートで、結果可視性が組織全体（上向き 1 段の
+     * {@link StandardVisibility#ORGANIZATION_WIDE}）に正規化された場合に限り、下向き再帰の
+     * {@link StandardVisibility#ORGANIZATION_AND_DESCENDANTS} へ昇格する（schedule と同一作法）。
+     *
+     * <p>これにより、ネスト組織 root が配信した組織全体アンケートの結果を、孫組織配下の参加チームのみ
+     * 所属メンバーまで閲覧可能にする（欠陥 Z の根治・配信 universe と評価範囲を一致させる）。</p>
+     *
+     * <p><strong>補足（現状の実効性）</strong>: 現行の {@link com.mannschaft.app.survey.ResultsVisibility}
+     * は組織全体（org-wide）を表す値を持たず、{@link com.mannschaft.app.common.visibility.mapping.SurveyResultsVisibilityMapper}
+     * は {@link StandardVisibility#ORGANIZATION_WIDE} を生成しないため、本昇格は現時点では発火しない。
+     * 「アンケートを閲覧・回答してよい所属圏か」という組織配信の可視範囲は M1 の
+     * {@code SurveyResultService.isUserInUniverse}（再帰 universe）が司る。本フックは schedule と
+     * 作法を揃え、将来 org-wide 値が追加された際に下向き再帰へ正しく開くための前向き整合である。</p>
+     */
+    @Override
+    protected StandardVisibility adjustLevel(
+            SurveyVisibilityProjection row, StandardVisibility level) {
+        if (level == StandardVisibility.ORGANIZATION_WIDE
+                && row.scopeType() != null
+                && "ORGANIZATION".equals(row.scopeType())) {
+            return StandardVisibility.ORGANIZATION_AND_DESCENDANTS;
+        }
+        return level;
+    }
+
     @Override
     protected ContentStatus toContentStatus(SurveyVisibilityProjection row) {
         SurveyStatus status = row.status();

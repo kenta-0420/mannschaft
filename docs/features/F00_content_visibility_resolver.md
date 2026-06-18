@@ -765,11 +765,22 @@ public enum StandardVisibility {
     CUSTOM_TEMPLATE,
 
     /**
-     * スコープ全体の組織メンバーへ公開
+     * スコープ全体の組織メンバーへ公開（**上向き 1 段**・所属拡大軸）
      * TEAM スコープのコンテンツでも親 ORG の所属メンバーまで広げる。
+     * 判定 = isMemberOfParentOrg(scope)（TEAM → 親 ORG 1 段を上向きに辿る）。
      * 親スコープ解決規約は §5.1.1 を参照。
+     * 方向の対比は ORGANIZATION_AND_DESCENDANTS（下向き再帰）を参照。
      */
     ORGANIZATION_WIDE,
+
+    /**
+     * 組織スコープのコンテンツを **組織 + 全子孫組織 + 配下 ACTIVE チームのメンバー（再帰）** へ公開
+     * （**下向き再帰**・所属拡大軸 / フェーズ M2・§5.1.7）。
+     * ORGANIZATION_WIDE（上向き 1 段）の鏡像。判定 = isDescendantMemberOf(scope)。
+     * SUPPORTER を含む（G7・所属軸）。組織メンバー定義は不変（G3・別フィールドで保持）。
+     * 当該 ORG 自身が非アクティブなら fail-closed（isOrgInactive・§11.6 鏡像）。
+     */
+    ORGANIZATION_AND_DESCENDANTS,
 
     /**
      * 上記いずれにも該当しない機能独自のセマンティクス。
@@ -955,6 +966,74 @@ Survey の `ResultsVisibility.AFTER_RESPONSE` / `AFTER_CLOSE` を Resolver の `
 
 これは §11.2 fail-closed 原則の Resolver 個別適用例として明文化する。`SurveyVisibilityResolver` の単体テストでは上記 3 ケースを必ず網羅すること。
 
+### 5.1.7 `ORGANIZATION_AND_DESCENDANTS` — 下向き再帰の所属拡大軸（フェーズ M2・2026-06-18 御裁可）
+
+`StandardVisibility` に新値 `ORGANIZATION_AND_DESCENDANTS` を追加した。これは
+`ORGANIZATION_WIDE`（上向き 1 段）の**鏡像**であり、**組織スコープのコンテンツを
+「組織 + 全子孫組織 + 配下 ACTIVE チームのメンバー（再帰）」へ下向きに開く**ための所属拡大軸である。
+
+#### 背景（欠陥 Z）
+
+組織はネスト（`organizations.parent_organization_id` 隣接リスト）するが、F00 Resolver の
+`SCOPE_AFFILIATED`（当該 ORG への直接所属のみ）/ `ORGANIZATION_WIDE`（TEAM → 親 ORG 1 段上向き）は、
+**root 組織が配信したコンテンツを、孫組織配下の参加チームのみに所属するメンバーへ届けられない**
+（実機 E2E で組織スケジュール詳細の 403 を捕捉）。配信 universe は M1 で再帰化済み（通知・回答は届く）だが、
+**F00 Resolver 経由の閲覧には下向き再帰段が無かった**。これが欠陥 Z。
+
+#### 方向性の対比（上向き ⇔ 下向き）
+
+| 値 | 方向 | 判定 | 対象コンテンツ | スナップショット |
+|---|---|---|---|---|
+| `ORGANIZATION_WIDE` | **上向き 1 段** | `isMemberOfParentOrg(scope)` | 主に TEAM スコープ（子 → 親 ORG メンバーへ） | `orgMemberOf` / `parentOrgByScope` |
+| `ORGANIZATION_AND_DESCENDANTS` | **下向き再帰** | `isDescendantMemberOf(scope)` | ORGANIZATION スコープ（親 ORG → 全子孫組織 + 配下チームメンバーへ） | `descendantMemberOfOrgIds`（別フィールド） |
+
+両者は閾値ラダー（`PUBLIC > SUPPORTERS_AND_ABOVE > MEMBERS_AND_ABOVE > ADMINS_AND_ABOVE`）ではなく、
+`SCOPE_AFFILIATED` と並ぶ**所属拡大軸**に属する。
+
+#### 御裁可された意味論
+
+- **再帰の範囲**: 当該 ORG を根とした全子孫組織ツリー（`WITH RECURSIVE`・depth 上限 32・サイクル防止）の
+  「直属（全子孫組織の `user_roles`）∪ 配下 ACTIVE 参加チーム（`team_org_memberships.status='ACTIVE'`）のメンバー」。
+  配信 universe（M1 の `findDistributionUserIdsForOrganizationRecursive` / `existsUserInOrganizationDescendants`）と
+  評価範囲を一致させる。
+- **SUPPORTER を含む（G7）**: 所属軸であり、配信トグル（`includeSupporters`）とは別軸。SUPPORTER 除外は行わない。
+- **組織メンバー定義は不変（G3）**: 配下チーム所属を ORG 直接所属に「昇格」させない。スナップショット上も
+  `orgMemberOf`（直接所属）とは**別フィールド** `descendantMemberOfOrgIds` で保持し、
+  `ORGANIZATION_WIDE` / `SCOPE_AFFILIATED` の判定には一切影響しない。
+- **非アクティブ連鎖（§11.6 鏡像）**: 当該 ORG **自身**が DELETED/SUSPENDED なら fail-closed
+  （`isOrgInactive(scope)`。`isParentOrgInactive` が TEAM の「親 ORG」を見るのに対し、本値は ORG 自身を見る）。
+
+#### 判定基盤（Expand 方式・非永続のため安全）
+
+`StandardVisibility` は実行時導出のみ（`@Enumerated` 永続化・`valueOf`・API 露出いずれも無し）であるため、
+値追加は Expand/Contract 安全。判定基盤は以下:
+
+- `UserScopeRoleSnapshot` に `descendantMemberOfOrgIds: Set<Long>` を追加（後方互換のため
+  5 引数コンストラクタを温存）。`isDescendantMemberOf(scope)` / `isOrgInactive(scope)` を追加。
+- `MembershipBatchQueryService.snapshotForUser(...)` に 4 引数版（`descendantScopes` 追加）を新設。
+  新段スコープが空なら従来 3 引数版に委譲し SQL・挙動を完全保存。非空のときのみ
+  `UserRoleRepository.findOrgRootsWhereUserIsDescendantMember(rootOrgIds, userId, maxDepth)` を
+  **1 バルク SQL** だけ追加発行（複数 ORG 根 × 単一 viewer を `root_id` 伝播 CTE で 1 クエリ判定）。
+  `ORGANIZATION_WIDE` と排他的に集計し、新段 row が無ければ SQL 0（SQL 数番人予算 ≤ 7 内）。
+- `AbstractContentVisibilityResolver` の `visibleByVisibility` に
+  `case ORGANIZATION_AND_DESCENDANTS -> scope != null && !snapshot.isOrgInactive(scope) && snapshot.isDescendantMemberOf(scope)`
+  を追加。`classifyDenyReason` でも `ORGANIZATION_WIDE` / `SCOPE_AFFILIATED` と同列の所属拡大軸として分類。
+  scope 依存の昇格は `adjustLevel(row, level)` フック（既定恒等）で表現する。
+
+#### MVP 適用範囲（G2）
+
+フェーズ M2 では **survey / schedule のみ**新段に対応する（他 ~18 Resolver は不変）。
+
+- **schedule**: `ScheduleVisibility.ORGANIZATION`（組織全体）の **ORGANIZATION スコープ**コンテンツに限り、
+  `adjustLevel` で `ORGANIZATION_WIDE` → `ORGANIZATION_AND_DESCENDANTS` へ昇格（欠陥 Z の根治）。
+  TEAM スコープのスケジュールは従来どおり `ORGANIZATION_WIDE`（上向き 1 段）のまま不変。
+- **survey**: schedule と同一作法の `adjustLevel` を備える。ただし現行 `ResultsVisibility` は org-wide 値を
+  持たず `SurveyResultsVisibilityMapper` は `ORGANIZATION_WIDE` を生成しないため、本昇格は現時点で発火しない。
+  組織配信アンケートの「閲覧・回答してよい所属圏か」は M1 の `SurveyResultService.isUserInUniverse`
+  （再帰 universe）が司る。survey の `adjustLevel` は schedule と作法を揃えた前向き整合である。
+
+後続（M3）で他 Resolver への展開可否を別途軍議する。
+
 ### 5.2 既存 enum → StandardVisibility 対応表
 
 > **✅ 移行ステータス注記（2026-06-05・W6 Contract 完了・実コードに一致済）**: 右列は **各 Mapper/Resolver の実際の Std 出力先**であり、W6 でコード実装と完全に突き合わせた。
@@ -987,7 +1066,8 @@ Survey の `ResultsVisibility.AFTER_RESPONSE` / `AFTER_CLOSE` を Resolver の `
 | | MEMBERS_ONLY | MEMBERS_AND_ABOVE | メンバー以上（応援者除外）。`ProjectVisibilityMapper` 実装に一致 |
 | | PUBLIC | PUBLIC | |
 | `schedule.ScheduleVisibility` | MEMBERS_ONLY | SCOPE_AFFILIATED | 挙動不変（直接所属者全員） |
-| | ORGANIZATION | ORGANIZATION_WIDE | |
+| | ORGANIZATION（TEAM スコープ） | ORGANIZATION_WIDE | 上向き 1 段（親 ORG メンバーへ）。不変 |
+| | ORGANIZATION（ORGANIZATION スコープ） | ORGANIZATION_AND_DESCENDANTS | **M2**: 下向き再帰（全子孫組織 + 配下チームメンバーへ）。`adjustLevel` で昇格・§5.1.7 |
 | | CUSTOM_TEMPLATE | CUSTOM_TEMPLATE | |
 | `recruitment.RecruitmentVisibility` | PUBLIC | PUBLIC | |
 | | SCOPE_ONLY | SCOPE_AFFILIATED | 直接所属者全員。挙動不変 |

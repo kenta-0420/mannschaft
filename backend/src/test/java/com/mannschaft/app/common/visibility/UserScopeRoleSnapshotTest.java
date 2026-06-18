@@ -321,4 +321,79 @@ class UserScopeRoleSnapshotTest {
             assertThat(s.isParentOrgInactive(TEAM_1)).isFalse();
         }
     }
+
+    @Nested
+    @DisplayName("フェーズ M2: isDescendantMemberOf / isOrgInactive（下向き再帰・所属拡大軸）")
+    class DescendantMembership {
+
+        @Test
+        @DisplayName("descendantMemberOfOrgIds に含まれる ORG スコープは isDescendantMemberOf=true")
+        void 配下再帰メンバー_true() {
+            UserScopeRoleSnapshot s = new UserScopeRoleSnapshot(
+                    false, Map.of(), Map.of(), Set.of(), Set.of(), Set.of(10L));
+            assertThat(s.isDescendantMemberOf(ORG_10)).isTrue();
+            assertThat(s.isDescendantMemberOf(ORG_20)).isFalse();
+        }
+
+        @Test
+        @DisplayName("TEAM スコープに対しては常に false（新段は ORG コンテンツ専用）")
+        void TEAMスコープはfalse() {
+            UserScopeRoleSnapshot s = new UserScopeRoleSnapshot(
+                    false, Map.of(), Map.of(), Set.of(), Set.of(), Set.of(1L));
+            // TEAM_1（id=1）が descendantMemberOfOrgIds に id=1 で入っていても TEAM 種別では false
+            assertThat(s.isDescendantMemberOf(TEAM_1)).isFalse();
+        }
+
+        @Test
+        @DisplayName("SystemAdmin は常に isDescendantMemberOf=true")
+        void SystemAdminは常にtrue() {
+            UserScopeRoleSnapshot s = UserScopeRoleSnapshot.forSystemAdmin();
+            assertThat(s.isDescendantMemberOf(ORG_10)).isTrue();
+        }
+
+        @Test
+        @DisplayName("null scope は false")
+        void nullScopeはfalse() {
+            UserScopeRoleSnapshot s = new UserScopeRoleSnapshot(
+                    false, Map.of(), Map.of(), Set.of(), Set.of(), Set.of(10L));
+            assertThat(s.isDescendantMemberOf(null)).isFalse();
+        }
+
+        @Test
+        @DisplayName("isOrgInactive: 当該 ORG 自身が suspendedOrgIds に含まれれば true（§11.6 鏡像）")
+        void 当該ORG非アクティブ_true() {
+            UserScopeRoleSnapshot s = new UserScopeRoleSnapshot(
+                    false, Map.of(), Map.of(), Set.of(), Set.of(10L), Set.of(10L));
+            assertThat(s.isOrgInactive(ORG_10)).isTrue();
+            assertThat(s.isOrgInactive(ORG_20)).isFalse();
+        }
+
+        @Test
+        @DisplayName("isOrgInactive: TEAM スコープ / null は false")
+        void isOrgInactive_TEAMとnullはfalse() {
+            UserScopeRoleSnapshot s = new UserScopeRoleSnapshot(
+                    false, Map.of(), Map.of(), Set.of(), Set.of(1L), Set.of());
+            assertThat(s.isOrgInactive(TEAM_1)).isFalse();
+            assertThat(s.isOrgInactive(null)).isFalse();
+        }
+
+        @Test
+        @DisplayName("5 引数コンストラクタ（後方互換）では descendantMemberOfOrgIds が空になる")
+        void 後方互換コンストラクタ_descendant空() {
+            UserScopeRoleSnapshot s = new UserScopeRoleSnapshot(
+                    false, Map.of(), Map.of(), Set.of(), Set.of());
+            assertThat(s.descendantMemberOfOrgIds()).isEmpty();
+            assertThat(s.isDescendantMemberOf(ORG_10)).isFalse();
+        }
+
+        @Test
+        @DisplayName("新段は直接所属（isMemberOf / isMemberOfParentOrg）に影響しない（G3 別軸）")
+        void 既存所属軸に非干渉() {
+            UserScopeRoleSnapshot s = new UserScopeRoleSnapshot(
+                    false, Map.of(), Map.of(), Set.of(), Set.of(), Set.of(10L));
+            // descendant メンバーであっても ORG_10 への直接所属（orgMemberOf）は無い
+            assertThat(s.isMemberOf(ORG_10)).isFalse();
+            assertThat(s.isMemberOfParentOrg(ORG_10)).isFalse();
+        }
+    }
 }

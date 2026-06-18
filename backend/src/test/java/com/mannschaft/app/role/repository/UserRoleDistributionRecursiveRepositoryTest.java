@@ -352,4 +352,81 @@ class UserRoleDistributionRecursiveRepositoryTest extends AbstractMySqlIntegrati
         assertThat(userRoleRepository.existsUserInOrganizationDescendants(rootOrg, supporter, MAX_DEPTH))
                 .isTrue();
     }
+
+    // ---------------------------------------------------------------------
+    // (5) バルク版（フェーズM2 / ORGANIZATION_AND_DESCENDANTS 可視性判定の土台）
+    //     findOrgRootsWhereUserIsDescendantMember: 複数 ORG 根 × 単一 viewer を 1 クエリ
+    // ---------------------------------------------------------------------
+
+    @Test
+    @DisplayName("バルク版_viewerが配下に属する根ORGのみが返る（複数根を1クエリで判定）")
+    void バルク版_配下に属する根のみ返る() {
+        // 根A: 配下に viewer の所属あり（孫組織配下チームのみ所属）
+        Long rootA = persistOrganization(null);
+        Long midA = persistOrganization(rootA);
+        Long leafA = persistOrganization(midA);
+        Long leafTeamA = 600_100L;
+        linkTeamToOrg(leafTeamA, leafA, TeamOrgMembershipEntity.Status.ACTIVE);
+
+        // 根B: viewer は B 配下に一切所属しない
+        Long rootB = persistOrganization(null);
+        Long leafB = persistOrganization(rootB);
+
+        // 根C: viewer は C の直属（直接所属）
+        Long rootC = persistOrganization(null);
+
+        Long viewer = persistActiveUser();
+        grantTeamRole(viewer, leafTeamA);   // A の孫組織配下チームのみ所属
+        grantOrgRole(viewer, rootC);        // C の直属
+        flushClear();
+
+        List<Long> matched = userRoleRepository.findOrgRootsWhereUserIsDescendantMember(
+                java.util.Set.of(rootA, rootB, rootC), viewer, MAX_DEPTH);
+
+        // A（配下チーム所属）と C（直属）は返り、B は返らない
+        assertThat(matched).containsExactlyInAnyOrder(rootA, rootC);
+        assertThat(matched).doesNotContain(rootB, leafA, leafB);
+    }
+
+    @Test
+    @DisplayName("バルク版_SUPPORTERでも所属軸なので返る（G7・配信トグルと別軸）")
+    void バルク版_SUPPORTERでも返る() {
+        Long rootOrg = persistOrganization(null);
+        Long leafOrg = persistOrganization(rootOrg);
+        Long leafTeam = 600_110L;
+        linkTeamToOrg(leafTeam, leafOrg, TeamOrgMembershipEntity.Status.ACTIVE);
+
+        Long supporter = persistActiveUser();
+        grantTeamRole(supporter, leafTeam);
+        addMembership(supporter, ScopeType.TEAM, leafTeam, RoleKind.SUPPORTER, null);
+        flushClear();
+
+        List<Long> matched = userRoleRepository.findOrgRootsWhereUserIsDescendantMember(
+                java.util.Set.of(rootOrg), supporter, MAX_DEPTH);
+
+        assertThat(matched).containsExactly(rootOrg);
+    }
+
+    @Test
+    @DisplayName("バルク版_削除済み中間組織のさらに配下は枝刈りされ根に算入されない")
+    void バルク版_削除済み中間配下は枝刈り() {
+        Long rootOrg = persistOrganization(null);
+        Long deletedMid = persistOrganization(rootOrg);
+        Long leafOrg = persistOrganization(deletedMid);
+
+        Long leafTeam = 600_120L;
+        linkTeamToOrg(leafTeam, leafOrg, TeamOrgMembershipEntity.Status.ACTIVE);
+        Long leafTeamMember = persistActiveUser();
+        grantTeamRole(leafTeamMember, leafTeam);
+
+        OrganizationEntity mid = em.find(OrganizationEntity.class, deletedMid);
+        mid.softDelete();
+        em.merge(mid);
+        flushClear();
+
+        // 中間組織が削除 → その配下 leaf も枝刈り → leafTeamMember は root の配下と見なされない
+        List<Long> matched = userRoleRepository.findOrgRootsWhereUserIsDescendantMember(
+                java.util.Set.of(rootOrg), leafTeamMember, MAX_DEPTH);
+        assertThat(matched).isEmpty();
+    }
 }

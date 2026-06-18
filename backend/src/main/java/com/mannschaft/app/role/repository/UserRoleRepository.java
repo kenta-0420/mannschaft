@@ -589,6 +589,67 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             @Param("maxDepth") int maxDepth);
 
     /**
+     * 複数の ORG 根に対し、単一 viewer が「再帰的配下メンバー」である ORG 根の ID 集合を
+     * <b>1 クエリ（1 SQL）</b>で返す（フェーズ M2 / F00 可視性
+     * {@link com.mannschaft.app.common.visibility.StandardVisibility#ORGANIZATION_AND_DESCENDANTS}
+     * 下向き再帰判定のバルク版）。
+     *
+     * <p>{@link #existsUserInOrganizationDescendants(Long, Long, int)}（単一 ORG 根 × 単一 viewer）の
+     * <b>複数根バルク化</b>である。可視性 snapshot 構築では複数の ORG スコープを 1 リクエストで
+     * 評価するため、ORG ごとに EXISTS を N 回発行すると SQL 数番人（最大 7）を破る。そこで
+     * 再帰 CTE が各配下ノードに「どの根（{@code root_id}）に属するか」を伝播させ、根単位で
+     * viewer の所属有無を 1 回の集計で判定する。</p>
+     *
+     * <p>展開規約（M1 {@code existsUserInOrganizationDescendants} と 1 対 1 同一・挙動差は
+     * 「単一根 → 複数根」のみ）:</p>
+     * <ul>
+     *   <li><b>org_tree</b>: 各 {@code :organizationId IN (:rootOrgIds)} を depth=0 の根とし、
+     *       {@code organizations.parent_organization_id} を {@code :maxDepth} まで辿る。
+     *       各行は自身が属する根 {@code root_id} を保持する（サイクル防止は depth カウンタ）。</li>
+     *   <li><b>直属</b>: {@code user_roles.organization_id} が org_tree のいずれかの組織（その根配下）に一致。</li>
+     *   <li><b>配下チーム</b>: {@code user_roles.team_id} が org_tree 配下の {@code status='ACTIVE'} な
+     *       {@code team_org_memberships.team_id} に一致。</li>
+     * </ul>
+     *
+     * <p><b>SUPPORTER 除外は行わない</b>（G7: 所属軸であり配信トグルとは別軸）。
+     * viewer / users は {@code deleted_at IS NULL AND status='ACTIVE'} で生存確認する。
+     * 戻り値は「viewer が配下に属する」根 ORG の ID（distinct）リスト。</p>
+     *
+     * <p>呼び出し側は {@code rootOrgIds} が空のときは本メソッドを<b>呼ばない</b>こと
+     * （空 IN () 回避・SQL 0 回）。これにより新段スコープが無いリクエストでは SQL を一切増やさず、
+     * 既存の SQL 数番人予算を侵さない。</p>
+     *
+     * @param rootOrgIds 下向き再帰の根となる ORG ID 集合（空集合で呼ばないこと）
+     * @param userId     判定対象 viewer の user_id
+     * @param maxDepth   再帰展開の最大深さ（サイクル防止上限・通常 32）
+     * @return viewer が「直属（配下組織）∪ 配下 ACTIVE チーム」に属する根 ORG の ID リスト
+     */
+    @Query(value =
+            "WITH RECURSIVE org_tree (root_id, id, depth) AS ( " +
+            "    SELECT o.id, o.id, 0 FROM organizations o " +
+            "      WHERE o.id IN (:rootOrgIds) AND o.deleted_at IS NULL " +
+            "  UNION ALL " +
+            "    SELECT p.root_id, c.id, p.depth + 1 FROM organizations c " +
+            "      JOIN org_tree p ON c.parent_organization_id = p.id " +
+            "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
+            ") " +
+            "SELECT DISTINCT t.root_id FROM org_tree t " +
+            "JOIN user_roles ur " +
+            "  ON ( ur.organization_id = t.id " +
+            "       OR ur.team_id IN ( " +
+            "         SELECT tom.team_id FROM team_org_memberships tom " +
+            "         WHERE tom.organization_id = t.id AND tom.status = 'ACTIVE' " +
+            "       ) ) " +
+            "JOIN users u ON u.id = ur.user_id " +
+            "WHERE ur.user_id = :userId " +
+            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+            nativeQuery = true)
+    List<Long> findOrgRootsWhereUserIsDescendantMember(
+            @Param("rootOrgIds") Set<Long> rootOrgIds,
+            @Param("userId") Long userId,
+            @Param("maxDepth") int maxDepth);
+
+    /**
      * 複数チームの ADMIN/DEPUTY_ADMIN を (team_id, user_id) ペアで返す（通知ループのN+1回避用）。
      * 戻り値は Object[]{teamId, userId} の配列リスト。
      */
