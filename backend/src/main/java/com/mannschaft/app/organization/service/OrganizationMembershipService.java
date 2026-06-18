@@ -279,8 +279,11 @@ public class OrganizationMembershipService {
         if (userId == null) {
             return false;
         }
-        return userRoleRepository.existsUserInOrganizationDescendants(
-                orgId, userId, MAX_ORG_DESCENDANT_DEPTH);
+        // 件数（long）を取得して Java 側で > 0 判定する。
+        // WITH RECURSIVE CTE を伴うネイティブクエリは boolean へ自動変換できないため
+        // （ClassCastException(Long→Boolean) 回避・既存 existsSystemAdminByUserId 等と同作法）。
+        return userRoleRepository.countUserInOrganizationDescendants(
+                orgId, userId, MAX_ORG_DESCENDANT_DEPTH) > 0;
     }
 
     private OrganizationEntity findOrganizationOrThrow(Long orgId) {

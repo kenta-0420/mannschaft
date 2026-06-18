@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * フェーズM1: 組織配信の再帰的配下解決（universe 再帰化）の結合テスト。
  *
  * <p>{@link UserRoleRepository#findDistributionUserIdsForOrganizationRecursive(Long, boolean, int)} と
- * {@link UserRoleRepository#existsUserInOrganizationDescendants(Long, Long, int)} を検証する。</p>
+ * {@link UserRoleRepository#countUserInOrganizationDescendants(Long, Long, int)} を検証する。</p>
  *
  * <ul>
  *   <li>多段配下解決: ネスト組織（root→中間→末端）の末端チームメンバーまで到達することを検証。
@@ -239,10 +239,16 @@ class UserRoleDistributionRecursiveRepositoryTest extends AbstractMySqlIntegrati
         // org A ⇄ B（相互に親を指す循環）
         Long orgA = persistOrganization(null);
         Long orgB = persistOrganization(orgA);
-        // A の親を B にして循環を作る
-        OrganizationEntity a = em.find(OrganizationEntity.class, orgA);
-        OrganizationEntity aWithParent = a.toBuilder().parentOrganizationId(orgB).build();
-        em.merge(aWithParent);
+        // A の親を B にして循環を作る。
+        // 注: OrganizationEntity は素の @Builder(toBuilder=true)（@SuperBuilder ではない）のため
+        // toBuilder() は親クラス BaseEntity の id を引き継がない。toBuilder().build() を merge すると
+        // id=null の新規エンティティとみなされ INSERT が走り slug 重複違反になる。
+        // 親 ID の変更のみが目的なので、ネイティブ UPDATE で直接書き換える（id 紛失を回避）。
+        em.createNativeQuery("UPDATE organizations SET parent_organization_id = :pid WHERE id = :id")
+                .setParameter("pid", orgB)
+                .setParameter("id", orgA)
+                .executeUpdate();
+        em.clear();
 
         Long memberA = persistActiveUser();
         grantOrgRole(memberA, orgA);
@@ -327,12 +333,12 @@ class UserRoleDistributionRecursiveRepositoryTest extends AbstractMySqlIntegrati
         grantOrgRole(outsider, otherOrg);
         flushClear();
 
-        assertThat(userRoleRepository.existsUserInOrganizationDescendants(rootOrg, leafTeamMember, MAX_DEPTH))
-                .isTrue();
-        assertThat(userRoleRepository.existsUserInOrganizationDescendants(rootOrg, leafDirect, MAX_DEPTH))
-                .isTrue();
-        assertThat(userRoleRepository.existsUserInOrganizationDescendants(rootOrg, outsider, MAX_DEPTH))
-                .isFalse();
+        assertThat(userRoleRepository.countUserInOrganizationDescendants(rootOrg, leafTeamMember, MAX_DEPTH))
+                .isGreaterThan(0L);
+        assertThat(userRoleRepository.countUserInOrganizationDescendants(rootOrg, leafDirect, MAX_DEPTH))
+                .isGreaterThan(0L);
+        assertThat(userRoleRepository.countUserInOrganizationDescendants(rootOrg, outsider, MAX_DEPTH))
+                .isZero();
     }
 
     @Test
@@ -348,8 +354,8 @@ class UserRoleDistributionRecursiveRepositoryTest extends AbstractMySqlIntegrati
         addMembership(supporter, ScopeType.TEAM, leafTeam, RoleKind.SUPPORTER, null);
         flushClear();
 
-        // EXISTS 版は SUPPORTER 除外をかけない（所属していれば true）
-        assertThat(userRoleRepository.existsUserInOrganizationDescendants(rootOrg, supporter, MAX_DEPTH))
-                .isTrue();
+        // EXISTS 版は SUPPORTER 除外をかけない（所属していれば件数 > 0）
+        assertThat(userRoleRepository.countUserInOrganizationDescendants(rootOrg, supporter, MAX_DEPTH))
+                .isGreaterThan(0L);
     }
 }

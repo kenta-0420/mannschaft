@@ -549,9 +549,18 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      *
      * <p>{@link #findDistributionUserIdsForOrganizationRecursive(Long, boolean, int)} と
      * <b>同一の org_tree CTE</b> を共有し、特定 {@code userId} が
-     * 「直属（全子孫組織）∪ 配下チーム(ACTIVE)」に含まれるかを {@code EXISTS} 相当の
-     * {@code COUNT(*) > 0} で判定する。1 ユーザー単発判定のため、配信母集団全件を
-     * 取得して {@code contains} するよりコストが小さい。</p>
+     * 「直属（全子孫組織）∪ 配下チーム(ACTIVE)」に含まれる行数を返す。1 ユーザー単発判定の
+     * ため、配信母集団全件を取得して {@code contains} するよりコストが小さい。</p>
+     *
+     * <p><b>戻り値が {@code long}（{@code boolean} ではない）理由</b>:
+     * {@code WITH RECURSIVE} CTE を伴うネイティブクエリでは、Hibernate 6 が
+     * {@code SELECT COUNT(*) > 0} の結果を {@code boolean} へ自動変換できず、
+     * MySQL が返す {@code BIGINT}（0/1）を {@code Long} のまま返すため
+     * {@code ClassCastException(Long → Boolean)} が発生する。これを避けるため
+     * {@code SELECT COUNT(*)} の生件数（{@code long}）を返し、{@code > 0} 判定は
+     * 呼び出し側ラッパ {@link com.mannschaft.app.organization.service.OrganizationMembershipService#isUserInOrgDistributionUniverse(Long, Long)}
+     * で行う。これは {@link #existsSystemAdminByUserId(Long)} 等、本リポジトリ既存の
+     * ネイティブ存在判定（{@code long} 返却＋Java 側 {@code > 0}）と同一の作法である。</p>
      *
      * <p><b>SUPPORTER 除外は行わない</b>（G7: 可視性新段は所属軸であり SUPPORTER を含む）。
      * これは「組織 ALL アンケートを閲覧・回答してよいか」という所属判定であり、
@@ -560,7 +569,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * @param organizationId 母集団の根となる組織 ID（org_tree の根）
      * @param userId         判定対象ユーザー ID
      * @param maxDepth       再帰展開の最大深さ（サイクル防止上限・通常 32）
-     * @return ユーザーが配下ツリーの「直属 ∪ 配下チーム」に含まれるなら true
+     * @return ユーザーが配下ツリーの「直属 ∪ 配下チーム」に含まれる行数（&gt; 0 なら所属）
      */
     @Query(value =
             "WITH RECURSIVE org_tree (id, depth) AS ( " +
@@ -571,7 +580,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      JOIN org_tree p ON c.parent_organization_id = p.id " +
             "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
             ") " +
-            "SELECT COUNT(*) > 0 FROM user_roles ur " +
+            "SELECT COUNT(*) FROM user_roles ur " +
             "JOIN users u ON u.id = ur.user_id " +
             "WHERE ur.user_id = :userId " +
             "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
@@ -583,7 +592,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "    ) " +
             "  )",
             nativeQuery = true)
-    boolean existsUserInOrganizationDescendants(
+    long countUserInOrganizationDescendants(
             @Param("organizationId") Long organizationId,
             @Param("userId") Long userId,
             @Param("maxDepth") int maxDepth);
