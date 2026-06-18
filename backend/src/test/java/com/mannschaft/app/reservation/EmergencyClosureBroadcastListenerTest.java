@@ -1,7 +1,6 @@
 package com.mannschaft.app.reservation;
 
-import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.reservation.repository.EmergencyClosureConfirmationRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -18,7 +17,6 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.lang.reflect.Method;
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -39,7 +37,7 @@ import static org.mockito.Mockito.verify;
  *   <li>イベント受領 → {@code convertAndSend("/topic/teams/{teamId}/emergency-closures/{closureId}/confirmations", payload)}
  *       が正しい宛先・ペイロードで呼ばれる</li>
  *   <li>確認サマリ（confirmedCount/totalCount）がカウントクエリ結果から算出される</li>
- *   <li>ユーザー氏名が「姓 + ' ' + 名」で取得される（ユーザー不在時は空文字）</li>
+ *   <li>ユーザー氏名が NameResolverService 経由「姓 + ' ' + 名」で取得される（不在時は "不明なユーザー"）</li>
  *   <li>convertAndSend が例外 → 確認経路へ伝播させずログのみ（巻き戻さない・症状を隠さない）</li>
  *   <li>{@code @TransactionalEventListener(AFTER_COMMIT)} かつ {@code @Transactional} を付けていない
  *       （配信のみで DB 書き込みなしゆえ・素の REQUIRED は ApplicationContext 全滅）</li>
@@ -56,7 +54,7 @@ class EmergencyClosureBroadcastListenerTest {
     private EmergencyClosureConfirmationRepository confirmationRepository;
 
     @Mock
-    private UserRepository userRepository;
+    private NameResolverService nameResolverService;
 
     @InjectMocks
     private EmergencyClosureBroadcastListener listener;
@@ -88,8 +86,7 @@ class EmergencyClosureBroadcastListenerTest {
             given(confirmationRepository.countByEmergencyClosureId(CLOSURE_ID)).willReturn(5L);
             given(confirmationRepository.countByEmergencyClosureIdAndConfirmedAtIsNotNull(CLOSURE_ID))
                     .willReturn(3L);
-            UserEntity user = UserEntity.builder().lastName("山田").firstName("太郎").build();
-            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(nameResolverService.resolveUserFullName(USER_ID)).willReturn("山田 太郎");
 
             listener.onEmergencyClosureConfirmed(event());
 
@@ -108,19 +105,19 @@ class EmergencyClosureBroadcastListenerTest {
         }
 
         @Test
-        @DisplayName("ユーザーが見つからない場合は氏名を空文字で配信する（配信は継続）")
-        void ユーザー不在時は空文字氏名() {
+        @DisplayName("ユーザーが見つからない場合は NameResolverService のフォールバック氏名で配信する（配信は継続）")
+        void ユーザー不在時はフォールバック氏名() {
             given(confirmationRepository.countByEmergencyClosureId(CLOSURE_ID)).willReturn(1L);
             given(confirmationRepository.countByEmergencyClosureIdAndConfirmedAtIsNotNull(CLOSURE_ID))
                     .willReturn(1L);
-            given(userRepository.findById(USER_ID)).willReturn(Optional.empty());
+            given(nameResolverService.resolveUserFullName(USER_ID)).willReturn("不明なユーザー");
 
             listener.onEmergencyClosureConfirmed(event());
 
             ArgumentCaptor<EmergencyClosureConfirmationUpdatePayload> captor =
                     ArgumentCaptor.forClass(EmergencyClosureConfirmationUpdatePayload.class);
             verify(messagingTemplate).convertAndSend(any(String.class), captor.capture());
-            assertThat(captor.getValue().getUserFullName()).isEmpty();
+            assertThat(captor.getValue().getUserFullName()).isEqualTo("不明なユーザー");
         }
     }
 
@@ -138,7 +135,7 @@ class EmergencyClosureBroadcastListenerTest {
             given(confirmationRepository.countByEmergencyClosureId(CLOSURE_ID)).willReturn(1L);
             given(confirmationRepository.countByEmergencyClosureIdAndConfirmedAtIsNotNull(CLOSURE_ID))
                     .willReturn(1L);
-            given(userRepository.findById(USER_ID)).willReturn(Optional.empty());
+            given(nameResolverService.resolveUserFullName(USER_ID)).willReturn("不明なユーザー");
             doThrow(new org.springframework.messaging.MessagingException("broker down"))
                     .when(messagingTemplate).convertAndSend(any(String.class), any(Object.class));
 

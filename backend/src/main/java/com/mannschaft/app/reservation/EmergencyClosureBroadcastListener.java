@@ -1,7 +1,6 @@
 package com.mannschaft.app.reservation;
 
-import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.reservation.repository.EmergencyClosureConfirmationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,7 +45,7 @@ public class EmergencyClosureBroadcastListener {
 
     private final SimpMessagingTemplate messagingTemplate;
     private final EmergencyClosureConfirmationRepository confirmationRepository;
-    private final UserRepository userRepository;
+    private final NameResolverService nameResolverService;
 
     /**
      * 患者確認のコミット後に、確認サマリをアドミンへ配信する。
@@ -60,10 +59,10 @@ public class EmergencyClosureBroadcastListener {
         long confirmedCount =
                 confirmationRepository.countByEmergencyClosureIdAndConfirmedAtIsNotNull(event.getClosureId());
 
-        // 確認したユーザーの氏名（既存の取得経路と同じ「姓 + ' ' + 名」フォーマット）。
-        String userFullName = userRepository.findById(event.getUserId())
-                .map(EmergencyClosureBroadcastListener::toFullName)
-                .orElse("");
+        // 確認したユーザーの氏名（「姓 + ' ' + 名」）。auth ドメインの UserEntity を直参照せず、
+        // common 共有ドメインの NameResolverService 経由で String を受け取る
+        // （CLAUDE.md ドメイン境界の原則 / D-1: クロスドメイン Entity 直参照禁止）。
+        String userFullName = nameResolverService.resolveUserFullName(event.getUserId());
 
         EmergencyClosureConfirmationUpdatePayload payload =
                 EmergencyClosureConfirmationUpdatePayload.builder()
@@ -86,10 +85,5 @@ public class EmergencyClosureBroadcastListener {
                             + "destination={}, closureId={}, userId={}",
                     destination, event.getClosureId(), event.getUserId(), e);
         }
-    }
-
-    /** ユーザー氏名を「姓 + ' ' + 名」で組み立てる（既存 EmergencyClosureService と同フォーマット）。 */
-    private static String toFullName(UserEntity user) {
-        return user.getLastName() + " " + user.getFirstName();
     }
 }
