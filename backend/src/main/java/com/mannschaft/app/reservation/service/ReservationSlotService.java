@@ -3,12 +3,14 @@ package com.mannschaft.app.reservation.service;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.reservation.ReservationErrorCode;
 import com.mannschaft.app.reservation.ReservationMapper;
+import com.mannschaft.app.reservation.ReservationStatus;
 import com.mannschaft.app.reservation.SlotStatus;
 import com.mannschaft.app.reservation.dto.CloseSlotRequest;
 import com.mannschaft.app.reservation.dto.CreateSlotRequest;
 import com.mannschaft.app.reservation.dto.ReservationSlotResponse;
 import com.mannschaft.app.reservation.dto.UpdateSlotRequest;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
+import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +30,16 @@ import java.util.List;
 public class ReservationSlotService {
 
     private final ReservationSlotRepository slotRepository;
+    private final ReservationRepository reservationRepository;
     private final ReservationMapper reservationMapper;
+
+    /**
+     * スロット削除ガードで「予約が紐づいている」と見なす active ステータス。
+     * PENDING / CONFIRMED は将来の来店が期待されており、枠を消すとオーファン化する。
+     * CANCELLED / COMPLETED / NO_SHOW は終端状態のため削除を妨げない。
+     */
+    private static final List<ReservationStatus> ACTIVE_RESERVATION_STATUSES =
+            List.of(ReservationStatus.PENDING, ReservationStatus.CONFIRMED);
 
     /**
      * チームのスロット一覧を日付範囲で取得する。
@@ -144,12 +155,22 @@ public class ReservationSlotService {
     /**
      * スロットを論理削除する。
      *
+     * <p>active な予約（PENDING / CONFIRMED）が紐づくスロットの削除は、
+     * 予約をオーファン化させ以後キャンセル不能にする重大なデータ整合性バグを招くため拒否する（409）。
+     * 予約入り枠を消したい場合は、先に予約を CANCELLED 等の終端状態へ遷移させること。</p>
+     *
      * @param teamId チームID
      * @param slotId スロットID
+     * @throws BusinessException スロット未存在（SLOT_NOT_FOUND）/ active 予約あり（SLOT_HAS_ACTIVE_RESERVATIONS）
      */
     @Transactional
     public void deleteSlot(Long teamId, Long slotId) {
         ReservationSlotEntity entity = findSlotOrThrow(teamId, slotId);
+
+        if (reservationRepository.existsByReservationSlotIdAndStatusIn(slotId, ACTIVE_RESERVATION_STATUSES)) {
+            throw new BusinessException(ReservationErrorCode.SLOT_HAS_ACTIVE_RESERVATIONS);
+        }
+
         entity.softDelete();
         slotRepository.save(entity);
         log.info("予約スロット削除: teamId={}, slotId={}", teamId, slotId);
