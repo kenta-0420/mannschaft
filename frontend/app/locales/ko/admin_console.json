@@ -46,6 +46,10 @@
     "error": {
       "fetchFailedTitle": "권한 정보를 가져오지 못했습니다",
       "fetchFailedBody": "일시적인 문제가 발생했습니다. 잠시 후 다시 시도해 주세요"
+    },
+    "approvalsBadge": {
+      "degraded": "일부 집계 실패",
+      "fetchFailed": "건수를 가져오지 못했습니다"
     }
   }
 }

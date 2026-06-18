@@ -21,6 +21,12 @@ import type {
   SurveyActionItem,
   AttendanceActionItem,
 } from '~/types/dashboard-scope'
+import type {
+  AdminActionRequiredSummary,
+  AdminActionDomain,
+  AdminActionDomainSummary,
+  AdminActionItem,
+} from '~/types/admin-action-required'
 
 // ---- API レスポンス（snake_case）の生型 ----
 
@@ -58,6 +64,31 @@ interface RawActionRequiredSummary {
     items: { schedule_id: number; event_title: string; starts_at: string }[]
   }
   total_action_count: number
+}
+
+// ---- 管理者向け admin-action-required（snake_case）の生型（F10.1.1 P2b）----
+
+interface RawAdminActionItem {
+  id: string
+  title: string
+  requested_by: string
+  requested_at: string
+  detail_route: string
+}
+
+interface RawAdminActionDomainSummary {
+  domain: AdminActionDomain
+  pending_count: number
+  degraded: boolean
+  list_route: string
+  items: RawAdminActionItem[]
+}
+
+interface RawAdminActionRequiredSummary {
+  scope_type: 'TEAM' | 'ORGANIZATION'
+  scope_id: number
+  total_pending: number
+  domains: RawAdminActionDomainSummary[]
 }
 
 // ---- snake_case → camelCase 変換 ----
@@ -123,6 +154,39 @@ function toActionRequiredSummary(r: RawActionRequiredSummary): ActionRequiredSum
 }
 
 /**
+ * 管理者向け admin-action-required（snake_case）→ camelCase 受信型へ変換する（F10.1.1 P2b）。
+ *
+ * メンバー向け {@link toActionRequiredSummary} とは別物。`degraded` ドメインの件数は
+ * BE 側で `total_pending` に加算されないため、本変換では値をそのまま写すだけでよい。
+ */
+function toAdminActionRequiredSummary(
+  r: RawAdminActionRequiredSummary,
+): AdminActionRequiredSummary {
+  const domains: AdminActionDomainSummary[] = (r.domains ?? []).map((d) => {
+    const items: AdminActionItem[] = (d.items ?? []).map((i) => ({
+      id: i.id,
+      title: i.title,
+      requestedBy: i.requested_by,
+      requestedAt: i.requested_at,
+      detailRoute: i.detail_route,
+    }))
+    return {
+      domain: d.domain,
+      pendingCount: d.pending_count ?? 0,
+      degraded: d.degraded ?? false,
+      listRoute: d.list_route,
+      items,
+    }
+  })
+  return {
+    scopeType: r.scope_type,
+    scopeId: r.scope_id,
+    totalPending: r.total_pending ?? 0,
+    domains,
+  }
+}
+
+/**
  * スコープタブ（タグ行）API の composable。
  *
  * - getScopeTabs: GET /api/v1/dashboard/scope-tabs（表示順適用済みの所属スコープ一覧）
@@ -179,5 +243,32 @@ export function useScopeTabApi() {
     return toActionRequiredSummary(res.data)
   }
 
-  return { getScopeTabs, updateOrder, getActionRequired }
+  /**
+   * 管理者向け横断「承認待ち」集約（予約承認待ち/シフトリクエスト/マッチング応募、または組織の未収請求）を
+   * 取得する（F10.1.1 P2b・設計書 03）。
+   *
+   * メンバー向け {@link getActionRequired}（「私が回答/確認すべきこと」）とは**別物**。
+   * こちらは ADMIN/DEPUTY が承認/処理すべきタスクを集約し、認可は BE の `checkAdminOrAbove` で担保される。
+   *
+   * パスの末尾には **slug** を使う（BE の `{teamSlug}` / `{orgSlug}`）。
+   *
+   * @param scopeType - TEAM / ORGANIZATION
+   * @param slug - チーム / 組織の slug
+   * @param previewSize - 各ドメインのプレビュー件数（0〜5）。0 で件数のみ（ハブのバッジ用途）。省略時は BE デフォルト（3）
+   */
+  async function getAdminActionRequired(
+    scopeType: ScopeTabType,
+    slug: string,
+    previewSize?: number,
+  ): Promise<AdminActionRequiredSummary> {
+    const base = scopeType === 'TEAM' ? `team/${slug}` : `organization/${slug}`
+    const query =
+      previewSize !== undefined ? `?preview_size=${String(previewSize)}` : ''
+    const res = await api<{ data: RawAdminActionRequiredSummary }>(
+      `/api/v1/dashboard/${base}/admin-action-required${query}`,
+    )
+    return toAdminActionRequiredSummary(res.data)
+  }
+
+  return { getScopeTabs, updateOrder, getActionRequired, getAdminActionRequired }
 }
