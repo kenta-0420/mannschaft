@@ -60,6 +60,15 @@ public class OrganizationMembershipService {
     private final MembershipRepository membershipRepository;
 
     /**
+     * 組織配信の再帰的配下解決における再帰展開の最大深さ（サイクル防止上限・フェーズM1）。
+     *
+     * <p>{@code organizations.parent_organization_id} 隣接リストを {@code WITH RECURSIVE} で辿る際の
+     * depth カウンタ上限。組織ネストが 32 段を超えることは現実的に想定されず、万一サイクルが
+     * 混入していても本上限で確実に停止する（無限ループ防止）。</p>
+     */
+    static final int MAX_ORG_DESCENDANT_DEPTH = 32;
+
+    /**
      * 組織のメンバー一覧を取得する。
      *
      * <p>F00.5 Phase 3: MemberQueryDispatcher 経由で memberships + user_roles を統合参照する。</p>
@@ -221,8 +230,16 @@ public class OrganizationMembershipService {
      *
      * <p>「直属メンバー ∪ 配下参加チーム(ACTIVE)のメンバー」を {@code DISTINCT user_id} で返す。
      * SUPPORTER（応援者）は {@code includeSupporters=false} のとき既定で除外し、
-     * {@code true} のとき含める。判定ロジックの詳細は
-     * {@link UserRoleRepository#findDistributionUserIdsForOrganization(Long, boolean)} 参照。</p>
+     * {@code true} のとき含める。</p>
+     *
+     * <p><b>フェーズM1（組織配信の再帰的配下解決）</b>: 組織はネストする
+     * （{@code organizations.parent_organization_id} 隣接リスト）。従来の 1 段展開では
+     * ネスト組織の末端参加チームに配信が届かなかった（root 組織配信が 0 件になる根因）。
+     * 本ラッパは {@link UserRoleRepository#findDistributionUserIdsForOrganizationRecursive(Long, boolean, int)}
+     * を呼び、対象組織を根とした<b>全子孫組織ツリー</b>（depth 上限 {@value #MAX_ORG_DESCENDANT_DEPTH}）へ
+     * 再帰展開する。挙動差は「配下組織展開が 1 段 → 全子孫」のみで、SUPPORTER 除外・退会除外・
+     * DISTINCT 等のセマンティクスは従来と同一。判定ロジックの詳細は
+     * {@link UserRoleRepository#findDistributionUserIdsForOrganizationRecursive(Long, boolean, int)} 参照。</p>
      *
      * <p><b>越境是正の窓口</b>: schedule/survey 等の他ドメインからはこのメソッドを呼び、
      * {@code team_org_memberships} / {@code memberships} を直接参照させない。
@@ -234,7 +251,36 @@ public class OrganizationMembershipService {
      */
     public List<Long> resolveOrgDistributionUserIds(Long orgId, boolean includeSupporters) {
         findOrganizationOrThrow(orgId); // 組織存在チェック（不在なら ORG_001）
-        return userRoleRepository.findDistributionUserIdsForOrganization(orgId, includeSupporters);
+        return userRoleRepository.findDistributionUserIdsForOrganizationRecursive(
+                orgId, includeSupporters, MAX_ORG_DESCENDANT_DEPTH);
+    }
+
+    /**
+     * 指定ユーザーが「対象組織を根とした再帰的配下組織ツリー」の母集団に属するかを判定する
+     * （フェーズM1: 可視性 / 回答可否の universe 再帰化・公開ラッパー）。
+     *
+     * <p>{@link #resolveOrgDistributionUserIds(Long, boolean)} と同一の org_tree
+     * （対象組織を根とした全子孫組織ツリー・depth 上限 {@value #MAX_ORG_DESCENDANT_DEPTH}）を共有し、
+     * 特定ユーザーが「直属（全子孫組織）∪ 配下チーム(ACTIVE)」に含まれるかを単発 EXISTS で判定する。
+     * 配信母集団全件を取得して contains するよりコストが小さい。</p>
+     *
+     * <p><b>SUPPORTER 除外は行わない</b>（G7: 可視性新段は所属軸であり SUPPORTER を含む）。
+     * これは「組織 ALL アンケートを閲覧・回答してよいか」という所属判定であり、
+     * 配信トグル（includeSupporters）とは別の軸である。</p>
+     *
+     * <p><b>越境是正の窓口</b>: schedule/survey 等の他ドメインからはこのメソッドを呼び、
+     * {@code organizations} / {@code team_org_memberships} を直接参照させない。</p>
+     *
+     * @param orgId  母集団の根となる組織 ID
+     * @param userId 判定対象ユーザー ID（null の場合は false）
+     * @return ユーザーが配下ツリーの「直属 ∪ 配下チーム」に含まれるなら true
+     */
+    public boolean isUserInOrgDistributionUniverse(Long orgId, Long userId) {
+        if (userId == null) {
+            return false;
+        }
+        return userRoleRepository.existsUserInOrganizationDescendants(
+                orgId, userId, MAX_ORG_DESCENDANT_DEPTH);
     }
 
     private OrganizationEntity findOrganizationOrThrow(Long orgId) {
