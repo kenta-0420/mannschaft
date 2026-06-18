@@ -54,6 +54,7 @@
     "lens": {
       "toggleAriaLabel": "Administratoransicht umschalten",
       "tooltip": "Zur Administratoransicht wechseln",
+      "onboardingHint": "Hier kannst du zur Administratoransicht wechseln",
       "member": "Mitglied",
       "admin": "Administrator",
       "backToMember": "Zurück zur Mitgliederansicht",

@@ -54,6 +54,7 @@
     "lens": {
       "toggleAriaLabel": "Alternar vista de administrador",
       "tooltip": "Cambiar a vista de administrador",
+      "onboardingHint": "Puedes cambiar a la vista de administrador aquí",
       "member": "Miembro",
       "admin": "Administrador",
       "backToMember": "Volver a la vista de miembro",

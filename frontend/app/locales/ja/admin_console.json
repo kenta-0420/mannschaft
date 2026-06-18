@@ -54,6 +54,7 @@
     "lens": {
       "toggleAriaLabel": "管理者表示の切り替え",
       "tooltip": "管理者ビューに切り替え",
+      "onboardingHint": "管理者ビューに切り替えできます",
       "member": "メンバー",
       "admin": "管理者",
       "backToMember": "メンバービューに戻る",

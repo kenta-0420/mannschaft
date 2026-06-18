@@ -54,6 +54,7 @@
     "lens": {
       "toggleAriaLabel": "切换管理员视图",
       "tooltip": "切换到管理员视图",
+      "onboardingHint": "您可以在此切换到管理员视图",
       "member": "成员",
       "admin": "管理员",
       "backToMember": "返回成员视图",

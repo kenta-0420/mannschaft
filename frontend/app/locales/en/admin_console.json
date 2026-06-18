@@ -54,6 +54,7 @@
     "lens": {
       "toggleAriaLabel": "Toggle admin view",
       "tooltip": "Switch to admin view",
+      "onboardingHint": "You can switch to the admin view here",
       "member": "Member",
       "admin": "Admin",
       "backToMember": "Back to member view",
