@@ -5,10 +5,8 @@
 activity_results -> venues [fk_ar_venue] (RESTRICT) @V9.059__add_venue_id_to_schedules_and_activity_results.sql:12
 advertiser_accounts -> users [fk_advertiser_accounts_approved_by] (RESTRICT) @V10.060__create_advertiser_accounts.sql:17
 analytics_daily_modules -> module_definitions [fk_analytics_daily_modules_module] (RESTRICT) @V10.070__create_analytics_daily_modules.sql:14
-announcement_read_status -> proxy_input_records [fk_announcement_read_status_proxy] (SET NULL) @V18.028__add_proxy_confirmed_columns_to_announcement_read_status.sql:17
 attendance_requirement_evaluations -> users [fk_are_resolver] (RESTRICT) @V18.019__create_attendance_requirement_evaluations.sql:27
 chart_intake_forms -> electronic_seals [fk_cif_seal] (RESTRICT) @V7.017__create_chart_intake_forms_table.sql:14
-circulation_recipients -> proxy_input_records [fk_circulation_recipients_proxy] (SET NULL) @V18.030__add_proxy_confirmed_columns_to_circulation_recipients.sql:17
 coupon_redemptions -> users [fk_cr_redeemed_by] (RESTRICT) @V9.026__create_coupon_redemptions_table.sql:14
 coupons -> users [fk_coupons_created_by] (RESTRICT) @V9.024__create_coupons_table.sql:24
 disclosure_exports -> shared_files [fk_de_shared_file] (RESTRICT) @V61.010__create_disclosure_exports.sql:27
@@ -20,11 +18,7 @@ notification_credit_purchases -> organizations [fk_ncp_org] (RESTRICT) @V9.118__
 notification_monthly_usage -> organizations [fk_nmu_org] (RESTRICT) @V9.120__create_notification_monthly_usage.sql:15
 organization_enabled_modules -> organizations [fk_oem_org] (RESTRICT) @V2.043__create_organization_enabled_modules_table.sql:20
 organization_notification_balances -> organizations [fk_onb_org] (RESTRICT) @V9.119__create_organization_notification_balances.sql:16
-parking_applications -> proxy_input_records [fk_parking_applications_proxy] (SET NULL) @V18.029__add_proxy_input_columns_to_parking_applications.sql:17
-performance_metrics -> activity_template_fields [fk_pm_linked_field] (SET NULL) @V9.056__fix_performance_metrics_fk_to_activity_template_fields.sql:8
 performance_records -> users [fk_pr_user] (RESTRICT) @V7.010__create_performance_records_table.sql:17
-period_attendance_records -> timetable_changes [fk_par_timetable_change] (SET NULL) @V18.004__create_period_attendance_records_table.sql:31
-period_attendance_records -> timetable_slots [fk_par_timetable_slot] (SET NULL) @V18.004__create_period_attendance_records_table.sql:30
 promotions -> users [fk_promotions_created_by] (RESTRICT) @V9.021__create_promotions_table.sql:28
 property_listings -> users [fk_pl_listed_by] (RESTRICT) @V9.019__create_property_listings_table.sql:22
 property_work_documents -> shared_files [fk_pwd_file] (CASCADE) @V61.003__create_property_work_documents.sql:15
@@ -51,7 +45,6 @@ shift_budget_allocations -> users [fk_sba_created_by] (RESTRICT) @V11.030__creat
 shift_budget_consumptions -> shift_schedules [fk_sbc_shift] (RESTRICT) @V11.031__create_shift_budget_consumptions.sql:49
 shift_budget_consumptions -> shift_slots [fk_sbc_slot] (RESTRICT) @V11.031__create_shift_budget_consumptions.sql:51
 shift_budget_consumptions -> users [fk_sbc_user] (RESTRICT) @V11.031__create_shift_budget_consumptions.sql:53
-shift_requests -> proxy_input_records [fk_shift_requests_proxy] (SET NULL) @V18.027__add_proxy_input_columns_to_shift_requests.sql:10
 survey_responses -> proxy_input_records [fk_sr_proxy_record] (RESTRICT) @V18.016__add_proxy_input_columns_to_survey_responses.sql:8
 tags -> users [fk_tags_created_by] (RESTRICT) @V3.107__create_tags_table.sql:14
 todo_budget_links -> projects [fk_tbl_project] (CASCADE) @V11.032__create_todo_budget_links.sql:63
