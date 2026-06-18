@@ -222,6 +222,27 @@
       "no_lines_yet": "ラインはまだありません",
       "no_available_slots": "この日の空き枠はありません"
     },
-    "line_manage_title": "予約ライン管理"
+    "line_manage_title": "予約ライン管理",
+    "settings": {
+      "advanced": {
+        "title": "詳細設定"
+      },
+      "allow_public": {
+        "section_label": "公開予約",
+        "label": "非所属ユーザーの予約を許可する",
+        "hint_off": "現在は所属メンバー（MEMBER以上）のみ予約できます",
+        "hint_on": "所属していないユーザーも予約できます",
+        "save_success": "設定を保存しました",
+        "confirm_title": "設定の変更",
+        "confirm_enable": "所属していないユーザーも予約できるようになります。よろしいですか？",
+        "confirm_disable": "所属メンバー以外の予約を禁止します。よろしいですか？",
+        "confirm_ok": "変更する"
+      }
+    },
+    "book": {
+      "not_affiliated_notice": "このチームの予約は所属メンバー専用です",
+      "not_affiliated_hint": "チームに参加するか、管理者にお問い合わせください",
+      "error_public_forbidden": "このチームの予約は所属メンバーのみ利用できます"
+    }
   }
 }

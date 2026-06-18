@@ -222,6 +222,27 @@
       "no_lines_yet": "Aún no hay líneas",
       "no_available_slots": "No hay horarios disponibles este día"
     },
-    "line_manage_title": "Gestión de líneas de reserva"
+    "line_manage_title": "Gestión de líneas de reserva",
+    "settings": {
+      "advanced": {
+        "title": "Configuración avanzada"
+      },
+      "allow_public": {
+        "section_label": "Reserva pública",
+        "label": "Permitir reservas de no miembros",
+        "hint_off": "Actualmente solo los miembros (MEMBER o superior) pueden reservar",
+        "hint_on": "Los no miembros también pueden reservar",
+        "save_success": "Configuración guardada",
+        "confirm_title": "Cambiar configuración",
+        "confirm_enable": "Los no miembros podrán realizar reservas. ¿Continuar?",
+        "confirm_disable": "Los no miembros no podrán realizar reservas. ¿Continuar?",
+        "confirm_ok": "Confirmar"
+      }
+    },
+    "book": {
+      "not_affiliated_notice": "Las reservas de este equipo son solo para miembros",
+      "not_affiliated_hint": "Únete al equipo o contacta al administrador",
+      "error_public_forbidden": "Las reservas solo están disponibles para miembros del equipo"
+    }
   }
 }
