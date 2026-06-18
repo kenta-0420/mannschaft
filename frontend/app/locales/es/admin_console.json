@@ -1,0 +1,51 @@
+{
+  "adminConsole": {
+    "comingSoon": "Próximamente",
+    "team": {
+      "title": "Consola de administración del equipo",
+      "subtitle": "Gestiona las reservas, el presupuesto, las aprobaciones pendientes, los miembros y la configuración de tu equipo en un solo lugar"
+    },
+    "organization": {
+      "title": "Consola de administración de la organización",
+      "subtitle": "Gestiona el presupuesto, los pagos, las aprobaciones pendientes, los miembros y la configuración de tu organización en un solo lugar"
+    },
+    "cards": {
+      "reservations": {
+        "title": "Reservas",
+        "desc": "Revisa las reservas pendientes y confírmalas, cancélalas o complétalas"
+      },
+      "budget": {
+        "title": "Presupuesto",
+        "desc": "Revisa el presupuesto y los gastos por año fiscal y categoría"
+      },
+      "approvals": {
+        "title": "Aprobaciones pendientes",
+        "desc": "Revisa en un solo lugar las aprobaciones pendientes de reservas, turnos y emparejamientos"
+      },
+      "members": {
+        "title": "Miembros",
+        "desc": "Gestiona la lista de miembros, los cambios de rol, las tarjetas de miembro y los perfiles"
+      },
+      "settings": {
+        "title": "Configuración",
+        "desc": "Gestiona toda la configuración en un solo lugar"
+      },
+      "payments": {
+        "title": "Pagos",
+        "desc": "Revisa el estado de la facturación y los pagos"
+      },
+      "pointCards": {
+        "title": "Tarjetas de puntos",
+        "desc": "Gestiona la emisión, el historial y el sellado de tarjetas de puntos para comercios"
+      }
+    },
+    "middleware": {
+      "accessDeniedTitle": "Acceso denegado",
+      "accessDeniedBody": "Se requieren privilegios de administrador"
+    },
+    "error": {
+      "fetchFailedTitle": "No se pudieron cargar los permisos",
+      "fetchFailedBody": "Se produjo un problema temporal. Espera un momento e inténtalo de nuevo"
+    }
+  }
+}

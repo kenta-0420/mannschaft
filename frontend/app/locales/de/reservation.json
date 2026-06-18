@@ -78,7 +78,8 @@
       "subject_required": "Bitte einen Betreff eingeben",
       "body_required": "Bitte einen Nachrichtentext eingeben",
       "send_failed": "Versand fehlgeschlagen",
-      "confirmations_failed": "Bestätigungsstatus konnte nicht geladen werden"
+      "confirmations_failed": "Bestätigungsstatus konnte nicht geladen werden",
+      "info_missing": "Benachrichtigungsinformationen fehlen"
     },
     "template": {
       "staff_sick": "Mitarbeitererkrankung",
@@ -102,7 +103,12 @@
       "CANCELLED": "Storniert",
       "NO_SHOW": "Nicht erschienen",
       "REJECTED": "Abgelehnt"
-    }
+    },
+    "confirm_button": "Schließung bestätigen",
+    "already_confirmed": "Bestätigt",
+    "confirm_success": "Notfallschließung wurde bestätigt",
+    "confirm_failed": "Bestätigung fehlgeschlagen",
+    "badge": "Notfallschließung"
   },
   "reservation": {
     "status": {
@@ -124,7 +130,8 @@
     "tab": {
       "book": "Reservieren",
       "list": "Reservierungen",
-      "line_manage": "Linien verwalten"
+      "line_manage": "Linien verwalten",
+      "emergency_closure": "緊急休業"
     },
     "column": {
       "datetime": "Datum & Uhrzeit",

@@ -116,6 +116,8 @@ const categories: SidebarCategory[] = [
     labelKey: 'orgSidebar.category.settings',
     icon: 'pi pi-cog',
     items: [
+      // F10.1.1 P2a: 管理コンソール（L2 ハブ）への入口。DEPUTY_ADMIN 以上に表示。
+      { labelKey: 'orgSidebar.adminConsole', icon: 'pi pi-shield', path: 'admin', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
       { labelKey: 'orgSidebar.settingsModules', icon: 'pi pi-sliders-h', path: '', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.notificationCredits', icon: 'pi pi-bell', path: 'settings/notification-credits', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.todoStatusLabels', icon: 'pi pi-tags', path: 'settings/todo-status-labels', moduleSlug: null, requiredRole: 'ADMIN' },

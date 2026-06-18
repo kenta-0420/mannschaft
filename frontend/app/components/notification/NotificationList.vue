@@ -5,6 +5,7 @@ import { computeSnoozeUntil } from '~/utils/snoozePreset'
 
 const { getNotifications, markAsRead, markAsUnread, markAllAsRead, snooze } = useNotificationApi()
 const { confirmNotification, getNotificationDetail } = useConfirmableNotificationApi()
+const { confirmClosure } = useEmergencyClosureApi()
 const { showError } = useNotification()
 const { t } = useI18n()
 const router = useRouter()
@@ -159,6 +160,7 @@ function getIcon(sourceType: string): string {
     case 'BLOG_POST': return 'pi pi-book'
     case 'SYSTEM': return 'pi pi-info-circle'
     case 'CONFIRMABLE_NOTIFICATION': return 'pi pi-check-circle'
+    case 'EMERGENCY_CLOSURE': return 'pi pi-exclamation-triangle'
     default: return 'pi pi-bell'
   }
 }
@@ -166,6 +168,38 @@ function getIcon(sourceType: string): string {
 /** 確認通知かどうか判定する */
 function isConfirmableNotification(notif: NotificationResponse): boolean {
   return notif.sourceType === 'CONFIRMABLE_NOTIFICATION'
+}
+
+/** 緊急休業通知かどうか判定する */
+function isEmergencyClosureNotification(notif: NotificationResponse): boolean {
+  return notif.sourceType === 'EMERGENCY_CLOSURE'
+}
+
+/**
+ * 緊急休業通知の「確認する」ボタンをクリックした時の処理。
+ * scopeId（チームslug: string）と sourceId（closureId: number）を使って
+ * useEmergencyClosureApi().confirmClosure(teamId, closureId) を呼ぶ。
+ */
+async function onConfirmEmergencyClosure(notif: NotificationResponse) {
+  if (!notif.scopeId || !notif.sourceId) {
+    showError(t('emergency_closure.error.info_missing'))
+    return
+  }
+  try {
+    await confirmClosure(notif.scopeId, notif.sourceId)
+    await markAsRead(notif.id)
+    notif.isRead = true
+    toast.add({
+      severity: 'success',
+      summary: t('emergency_closure.confirm_success'),
+      life: 3000,
+    })
+    // 一覧を再取得して確認状態を反映
+    await loadNotifications()
+  }
+  catch {
+    showError(t('emergency_closure.confirm_failed'))
+  }
 }
 
 /** 確認通知の期限日を取得する（sourceIdを使って別途取得する場合のプレースホルダ。現状はbodyから判断） */
@@ -277,6 +311,7 @@ defineExpose({ refresh: () => loadNotifications() })
         :class="[
           notif.isRead ? 'opacity-60' : '',
           isConfirmableNotification(notif) ? 'bg-amber-50 hover:bg-amber-100' : '',
+          isEmergencyClosureNotification(notif) ? 'bg-red-50 hover:bg-red-100' : '',
         ]"
         @click="onClickNotification(notif)"
         @keydown.enter="onClickNotification(notif)"
@@ -294,12 +329,20 @@ defineExpose({ refresh: () => loadNotifications() })
         <!-- アイコン -->
         <div
           class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-          :class="isConfirmableNotification(notif) ? 'bg-amber-200' : 'bg-surface-100'"
+          :class="[
+            isConfirmableNotification(notif) ? 'bg-amber-200' : '',
+            isEmergencyClosureNotification(notif) ? 'bg-red-100' : '',
+            (!isConfirmableNotification(notif) && !isEmergencyClosureNotification(notif)) ? 'bg-surface-100' : '',
+          ]"
         >
           <i
             :class="getIcon(notif.sourceType)"
             class="text-sm"
-            :style="isConfirmableNotification(notif) ? 'color: #d97706' : ''"
+            :style="{
+              color: isConfirmableNotification(notif) ? '#d97706'
+                : isEmergencyClosureNotification(notif) ? '#dc2626'
+                : undefined,
+            }"
           />
         </div>
 
@@ -318,6 +361,13 @@ defineExpose({ refresh: () => loadNotifications() })
               class="rounded bg-amber-200 px-1.5 py-0.5 text-xs font-medium text-amber-800"
             >
               {{ $t('confirmable.title') }}
+            </span>
+            <!-- 緊急休業通知バッジ -->
+            <span
+              v-if="isEmergencyClosureNotification(notif)"
+              class="rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-700"
+            >
+              {{ $t('emergency_closure.badge') }}
             </span>
           </div>
           <p v-if="notif.body" class="mt-0.5 truncate text-xs text-surface-400">
@@ -358,7 +408,7 @@ defineExpose({ refresh: () => loadNotifications() })
             />
           </div>
 
-          <!-- 確認済みラベル -->
+          <!-- 確認済みラベル（CONFIRMABLE_NOTIFICATION） -->
           <div
             v-else-if="isConfirmableNotification(notif) && notif.isRead"
             class="mt-1"
@@ -366,6 +416,31 @@ defineExpose({ refresh: () => loadNotifications() })
             <span class="text-xs text-surface-400">
               <i class="pi pi-check mr-1 text-green-500" />
               {{ $t('confirmable.already_confirmed') }}
+            </span>
+          </div>
+
+          <!-- 「確認する」ボタン（EMERGENCY_CLOSURE かつ未確認の場合） -->
+          <div
+            v-if="isEmergencyClosureNotification(notif) && !notif.isRead"
+            class="mt-2"
+          >
+            <Button
+              :label="$t('emergency_closure.confirm_button')"
+              size="small"
+              severity="danger"
+              icon="pi pi-check"
+              @click.stop="onConfirmEmergencyClosure(notif)"
+            />
+          </div>
+
+          <!-- 確認済みラベル（EMERGENCY_CLOSURE） -->
+          <div
+            v-else-if="isEmergencyClosureNotification(notif) && notif.isRead"
+            class="mt-1"
+          >
+            <span class="text-xs text-surface-400">
+              <i class="pi pi-check mr-1 text-green-500" />
+              {{ $t('emergency_closure.already_confirmed') }}
             </span>
           </div>
         </div>

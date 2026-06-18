@@ -39,7 +39,8 @@
       "audit_logs": "감사 로그",
       "settings": "설정",
       "faqSettings": "FAQ 설정",
-      "leagueTransfers": "리그 이적"
+      "leagueTransfers": "리그 이적",
+      "adminConsole": "관리 콘솔"
     }
   }
 }
