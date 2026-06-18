@@ -6,7 +6,7 @@ definePageMeta({ middleware: 'auth' })
 const { t } = useI18n()
 const route = useRoute()
 const teamSlug = String(route.params.slug)
-const { isAdmin, isAdminOrDeputy, isMember, loadPermissions } = useRoleAccess('team', teamSlug)
+const { isAdmin, isAdminOrDeputy, isMember, roleName, loadPermissions } = useRoleAccess('team', teamSlug)
 
 const activeTab = ref(0)
 const showBookDialog = ref(false)
@@ -19,11 +19,14 @@ const advancedSettingsValue = ref<string | null>(null)
 const reservationSettings = ref<ReservationSettingsResponse | null>(null)
 const settingsLoading = ref(false)
 
+/** 所属者（SUPPORTER含む）判定。BE の ReservationService 認可ゲート（memberships 経由の isMember）と定義を揃える */
+const isAffiliated = computed<boolean>(() => isMember.value || roleName.value === 'SUPPORTER')
+
 /** 非所属ユーザーに予約導線を表示するか。設定OFFかつ非所属の場合は案内文に切り替え */
 const canBook = computed<boolean>(() => {
-  // isMember（ADMIN/DEPUTY_ADMIN/MEMBER）は常に予約可
-  if (isMember.value) return true
-  // SUPPORTER/GUEST/未ログイン: allowPublicReservation が true の場合のみ可
+  // 所属者（ADMIN/DEPUTY_ADMIN/MEMBER/SUPPORTER）は常に予約可
+  if (isAffiliated.value) return true
+  // 非所属（GUEST/未ログイン）: allowPublicReservation が true の場合のみ可
   return reservationSettings.value?.allowPublicReservation === true
 })
 
