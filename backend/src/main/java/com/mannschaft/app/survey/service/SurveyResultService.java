@@ -401,7 +401,7 @@ public class SurveyResultService {
             // これは「回答を期待する母集団（未回答者リスト/回答率の分母）」であり、
             // 実際の配信母集団（SurveyPublishNotificationListener / extend / remind）と一致させる。
             // チームスコープ（および COMMITTEE 等）は配下展開なし・従来挙動を維持する。
-            // 注: 可視性(view)判定経路である isUserInUniverse は本変更の対象外（従来挙動を維持）。
+            // フェーズM1: 可視性(view)判定経路 isUserInUniverse も再帰版へ追従済み（分母と回答可否を一致）。
             if ("ORGANIZATION".equals(survey.getScopeType())) {
                 return organizationMembershipService.resolveOrgDistributionUserIds(
                         survey.getScopeId(), Boolean.TRUE.equals(survey.getIncludeSupporters()));
@@ -420,12 +420,26 @@ public class SurveyResultService {
      *
      * <p>MEMBER 経路の認可（{@code unresponded_visibility = ALL_MEMBERS}）で
      * 「自分が母集団内のメンバーかどうか」をチェックする際に使用する。</p>
+     *
+     * <p><b>フェーズM1（universe 再帰化）</b>: 組織×ALL のときは
+     * {@link #resolveUniverseUserIds(SurveyEntity)} が
+     * {@link OrganizationMembershipService#resolveOrgDistributionUserIds(Long, boolean)} 経由で
+     * 配下組織ツリーへ再帰展開されるのと整合させ、本判定も
+     * {@link OrganizationMembershipService#isUserInOrgDistributionUniverse(Long, Long)} で
+     * 配下ツリーの「直属 ∪ 配下チーム」を単発 EXISTS 判定する（分母と回答可否を一致させる）。
+     * 1 ユーザー判定なので配信母集団全件を取得せず EXISTS でコストを抑える。
+     * チームスコープ（および COMMITTEE 等）は配下展開なし・従来挙動を維持する。</p>
      */
     private boolean isUserInUniverse(SurveyEntity survey, Long userId) {
         if (userId == null) {
             return false;
         }
         if (survey.getDistributionMode() == DistributionMode.ALL) {
+            // 組織×ALL は配下組織ツリーへ再帰展開（resolveUniverseUserIds と整合）。
+            if ("ORGANIZATION".equals(survey.getScopeType())) {
+                return organizationMembershipService.isUserInOrgDistributionUniverse(
+                        survey.getScopeId(), userId);
+            }
             return userRoleRepository.findUserIdsByScope(survey.getScopeType(), survey.getScopeId())
                     .contains(userId);
         }

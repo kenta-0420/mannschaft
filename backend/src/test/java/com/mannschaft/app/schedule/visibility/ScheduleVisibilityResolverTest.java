@@ -186,45 +186,113 @@ class ScheduleVisibilityResolverTest {
     }
 
     // ========================================================================
-    // ORGANIZATION スコープ × ORGANIZATION（→ ORGANIZATION_WIDE）
+    // ORGANIZATION スコープ × ORGANIZATION
+    //   フェーズ M2: ORG スコープのコンテンツは下向き再帰 ORGANIZATION_AND_DESCENDANTS へ昇格する。
     // ========================================================================
 
     @Nested
-    @DisplayName("ORGANIZATION スコープ × ORGANIZATION（→ ORGANIZATION_WIDE）")
-    class OrgOrganizationWide {
+    @DisplayName("ORGANIZATION スコープ × ORGANIZATION（→ ORGANIZATION_AND_DESCENDANTS / 下向き再帰）")
+    class OrgOrganizationAndDescendants {
 
         @Test
-        @DisplayName("親 ORG メンバーは閲覧可")
-        void orgMember_canView() {
+        @DisplayName("配下再帰メンバー（孫組織配下チームのみ所属も含む）は閲覧可")
+        void descendantMember_canView() {
             ScheduleVisibilityProjection row = org(1L, 20L, ScheduleVisibility.ORGANIZATION);
             stubProjection(row);
             ScopeKey orgScope = new ScopeKey("ORGANIZATION", 20L);
-            when(membershipBatchQueryService.snapshotForUser(eq(300L), any(), any()))
+            // 新段では 4 引数版が呼ばれ、descendantMemberOfOrgIds で判定される。
+            when(membershipBatchQueryService.snapshotForUser(eq(300L), any(), any(), any()))
                     .thenReturn(new UserScopeRoleSnapshot(
                             false,
                             Map.of(),
                             Map.of(orgScope, 20L),
-                            Set.of(orgScope),
-                            Set.of()));
+                            Set.of(),          // 直接所属（orgMemberOf）は無くてよい（G3）
+                            Set.of(),
+                            Set.of(20L)));     // descendantMemberOfOrgIds
 
             assertThat(resolver.canView(1L, 300L)).isTrue();
         }
 
         @Test
-        @DisplayName("親 ORG 非アクティブなら fail-closed")
-        void parentOrgInactive_denied() {
+        @DisplayName("配下再帰メンバーでない無関係ユーザーは閲覧不可")
+        void nonDescendant_denied() {
             ScheduleVisibilityProjection row = org(1L, 20L, ScheduleVisibility.ORGANIZATION);
             stubProjection(row);
             ScopeKey orgScope = new ScopeKey("ORGANIZATION", 20L);
-            when(membershipBatchQueryService.snapshotForUser(eq(300L), any(), any()))
+            when(membershipBatchQueryService.snapshotForUser(eq(300L), any(), any(), any()))
+                    .thenReturn(new UserScopeRoleSnapshot(
+                            false,
+                            Map.of(),
+                            Map.of(orgScope, 20L),
+                            Set.of(),
+                            Set.of(),
+                            Set.of()));        // どの根の配下にもいない
+
+            assertThat(resolver.canView(1L, 300L)).isFalse();
+        }
+
+        @Test
+        @DisplayName("組織直接所属者も（配下再帰メンバー集合に含まれるため）閲覧可")
+        void directOrgMember_canView() {
+            ScheduleVisibilityProjection row = org(1L, 20L, ScheduleVisibility.ORGANIZATION);
+            stubProjection(row);
+            ScopeKey orgScope = new ScopeKey("ORGANIZATION", 20L);
+            // 直接所属者はバルク SQL の「直属」条件にもヒットするため descendantMemberOfOrgIds に入る。
+            when(membershipBatchQueryService.snapshotForUser(eq(300L), any(), any(), any()))
                     .thenReturn(new UserScopeRoleSnapshot(
                             false,
                             Map.of(),
                             Map.of(orgScope, 20L),
                             Set.of(orgScope),
+                            Set.of(),
                             Set.of(20L)));
 
+            assertThat(resolver.canView(1L, 300L)).isTrue();
+        }
+
+        @Test
+        @DisplayName("§11.6 鏡像: 当該 ORG 自身が非アクティブなら配下メンバーでも fail-closed")
+        void orgInactive_denied() {
+            ScheduleVisibilityProjection row = org(1L, 20L, ScheduleVisibility.ORGANIZATION);
+            stubProjection(row);
+            ScopeKey orgScope = new ScopeKey("ORGANIZATION", 20L);
+            when(membershipBatchQueryService.snapshotForUser(eq(300L), any(), any(), any()))
+                    .thenReturn(new UserScopeRoleSnapshot(
+                            false,
+                            Map.of(),
+                            Map.of(orgScope, 20L),
+                            Set.of(),
+                            Set.of(20L),       // suspendedOrgIds に当該 ORG
+                            Set.of(20L)));     // 配下メンバーではある
+
             assertThat(resolver.canView(1L, 300L)).isFalse();
+        }
+    }
+
+    // ========================================================================
+    // TEAM スコープ × ORGANIZATION（上向き 1 段 ORGANIZATION_WIDE は不変）
+    // ========================================================================
+
+    @Nested
+    @DisplayName("TEAM スコープ × ORGANIZATION（→ ORGANIZATION_WIDE / 上向き 1 段・不変）")
+    class TeamOrganizationWideUnchanged {
+
+        @Test
+        @DisplayName("TEAM スコープは従来どおり親 ORG 上向き判定（3 引数版・新段に昇格しない）")
+        void teamScope_parentOrgMember_canView() {
+            ScheduleVisibilityProjection row = team(1L, 30L, ScheduleVisibility.ORGANIZATION);
+            stubProjection(row);
+            ScopeKey teamScope = new ScopeKey("TEAM", 30L);
+            // TEAM スコープは新段に昇格しないため従来 3 引数版が呼ばれる。
+            when(membershipBatchQueryService.snapshotForUser(eq(300L), any(), any()))
+                    .thenReturn(new UserScopeRoleSnapshot(
+                            false,
+                            Map.of(),
+                            Map.of(teamScope, 40L),       // TEAM30 → 親 ORG40
+                            Set.of(new ScopeKey("ORGANIZATION", 40L)),
+                            Set.of()));
+
+            assertThat(resolver.canView(1L, 300L)).isTrue();
         }
     }
 
@@ -328,18 +396,21 @@ class ScheduleVisibilityResolverTest {
 
         ScopeKey teamScope = new ScopeKey("TEAM", 10L);
         ScopeKey orgScope = new ScopeKey("ORGANIZATION", 20L);
-        when(membershipBatchQueryService.snapshotForUser(eq(200L), any(), any()))
+        // orgRow（ORG スコープ × ORGANIZATION）はフェーズ M2 で下向き再帰段へ昇格するため、
+        // descendantScopes 非空 → 4 引数版が呼ばれる。判定は descendantMemberOfOrgIds で行う。
+        when(membershipBatchQueryService.snapshotForUser(eq(200L), any(), any(), any()))
                 .thenReturn(new UserScopeRoleSnapshot(
                         false,
                         Map.of(teamScope, "MEMBER"),
                         Map.of(orgScope, 20L),
                         Set.of(orgScope),
-                        Set.of()));
+                        Set.of(),
+                        Set.of(20L)));   // viewer は ORG20 の配下再帰メンバー
 
         Set<Long> accessible = resolver.filterAccessible(List.of(1L, 2L, 3L, 4L), 200L);
 
         // teamRow (1L): メンバー → 可
-        // orgRow (2L): 親 ORG メンバー → 可
+        // orgRow (2L): 配下再帰メンバー（ORGANIZATION_AND_DESCENDANTS）→ 可
         // personalOwnerRow (3L): 作成者本人 → 可
         // personalOtherRow (4L): 他人 → 不可
         assertThat(accessible).containsExactlyInAnyOrder(1L, 2L, 3L);

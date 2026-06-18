@@ -12,19 +12,26 @@ import java.util.Set;
  * <p>設計書 {@code docs/features/F00_content_visibility_resolver.md} §10.2 / §11.6
  * のシグネチャに準拠する。</p>
  *
- * @param systemAdmin       SystemAdmin ロール保有
- * @param roleByScope       direct メンバーシップにおけるスコープ → ロール名のマップ
- * @param parentOrgByScope  TEAM スコープ → 親 ORGANIZATION ID のマップ
- *                          （ORGANIZATION スコープは自身が ORG として entry を持つ）
- * @param orgMemberOf       親 ORG での所属を示す {@code ORGANIZATION} スコープ集合
- * @param suspendedOrgIds   非アクティブ（削除済 / SUSPENDED）と判定された親 ORG ID 集合 §11.6
+ * @param systemAdmin              SystemAdmin ロール保有
+ * @param roleByScope             direct メンバーシップにおけるスコープ → ロール名のマップ
+ * @param parentOrgByScope        TEAM スコープ → 親 ORGANIZATION ID のマップ
+ *                                （ORGANIZATION スコープは自身が ORG として entry を持つ）
+ * @param orgMemberOf             親 ORG での所属を示す {@code ORGANIZATION} スコープ集合
+ *                                （= 直接所属。{@code ORGANIZATION_WIDE}（上向き 1 段）判定に用いる）
+ * @param suspendedOrgIds         非アクティブ（削除済 / SUSPENDED）と判定された
+ *                                「{@code parentOrgByScope} に現れる ORG（親 ORG / 当該 ORG）」の ID 集合 §11.6
+ * @param descendantMemberOfOrgIds viewer が「再帰的配下メンバー（直属（全子孫組織）∪ 配下 ACTIVE チーム）」
+ *                                である ORG の ID 集合（フェーズ M2 / {@code ORGANIZATION_AND_DESCENDANTS}
+ *                                下向き再帰判定に用いる）。{@code orgMemberOf}（直接所属）とは
+ *                                <strong>別フィールド</strong>であり、組織メンバー定義（G3）には影響しない。
  */
 public record UserScopeRoleSnapshot(
         boolean systemAdmin,
         Map<ScopeKey, String> roleByScope,
         Map<ScopeKey, Long> parentOrgByScope,
         Set<ScopeKey> orgMemberOf,
-        Set<Long> suspendedOrgIds) {
+        Set<Long> suspendedOrgIds,
+        Set<Long> descendantMemberOfOrgIds) {
 
     /**
      * 防御的コピーは行わない（呼び出し元が不変 Map/Set を渡す前提）。
@@ -35,13 +42,30 @@ public record UserScopeRoleSnapshot(
         parentOrgByScope = parentOrgByScope != null ? parentOrgByScope : Map.of();
         orgMemberOf = orgMemberOf != null ? orgMemberOf : Set.of();
         suspendedOrgIds = suspendedOrgIds != null ? suspendedOrgIds : Set.of();
+        descendantMemberOfOrgIds = descendantMemberOfOrgIds != null ? descendantMemberOfOrgIds : Set.of();
+    }
+
+    /**
+     * フェーズ M2 以前の 5 引数呼び出しとの後方互換コンストラクタ。
+     * {@code descendantMemberOfOrgIds} を空集合で補完してカノニカルコンストラクタへ委譲する。
+     *
+     * <p>{@code ORGANIZATION_AND_DESCENDANTS} を扱わない既存 Resolver テスト・呼び出し元は
+     * 本コンストラクタ経由で従来どおり 5 引数で生成でき、挙動も従来と完全一致する。</p>
+     */
+    public UserScopeRoleSnapshot(
+            boolean systemAdmin,
+            Map<ScopeKey, String> roleByScope,
+            Map<ScopeKey, Long> parentOrgByScope,
+            Set<ScopeKey> orgMemberOf,
+            Set<Long> suspendedOrgIds) {
+        this(systemAdmin, roleByScope, parentOrgByScope, orgMemberOf, suspendedOrgIds, Set.of());
     }
 
     /**
      * 匿名ユーザー（未ログイン or userId=null）用の空スナップショット。
      */
     public static UserScopeRoleSnapshot empty() {
-        return new UserScopeRoleSnapshot(false, Map.of(), Map.of(), Set.of(), Set.of());
+        return new UserScopeRoleSnapshot(false, Map.of(), Map.of(), Set.of(), Set.of(), Set.of());
     }
 
     /**
@@ -53,7 +77,7 @@ public record UserScopeRoleSnapshot(
      * {@code forSystemAdmin} という名称を採用している。</p>
      */
     public static UserScopeRoleSnapshot forSystemAdmin() {
-        return new UserScopeRoleSnapshot(true, Map.of(), Map.of(), Set.of(), Set.of());
+        return new UserScopeRoleSnapshot(true, Map.of(), Map.of(), Set.of(), Set.of(), Set.of());
     }
 
     public boolean isSystemAdmin() {
@@ -124,5 +148,46 @@ public record UserScopeRoleSnapshot(
         }
         Long parent = parentOrgByScope.get(scope);
         return parent != null && suspendedOrgIds.contains(parent);
+    }
+
+    /**
+     * 当該 ORG スコープのコンテンツが「再帰的配下メンバー」として可視かを返す
+     * （フェーズ M2 / {@link StandardVisibility#ORGANIZATION_AND_DESCENDANTS} の中核ロジック）。
+     *
+     * <p>{@link #isMemberOfParentOrg(ScopeKey)}（上向き 1 段）の<strong>下向き再帰の鏡像</strong>。
+     * scope が ORGANIZATION スコープであり、かつ viewer がその ORG を根とした再帰的配下ツリー
+     * （全子孫組織の直属 ∪ それら組織の ACTIVE 参加チームメンバー）に属するなら true。</p>
+     *
+     * <p><strong>所属軸であり SUPPORTER を含む</strong>（G7）。SystemAdmin は常に true。
+     * 直接所属（{@link #orgMemberOf}）とは別フィールド {@link #descendantMemberOfOrgIds} を参照するため、
+     * {@link #isMemberOf(ScopeKey)} / {@link #isMemberOfParentOrg(ScopeKey)} の挙動には影響しない。</p>
+     */
+    public boolean isDescendantMemberOf(ScopeKey scope) {
+        if (systemAdmin) {
+            return true;
+        }
+        if (scope == null || !"ORGANIZATION".equals(scope.scopeType())) {
+            return false;
+        }
+        return descendantMemberOfOrgIds.contains(scope.scopeId());
+    }
+
+    /**
+     * 当該 ORG スコープの ORG <strong>自身</strong>が削除済 / SUSPENDED 状態かを返す
+     * （§11.6 連鎖ルールの「下向き再帰版」鏡像）。
+     *
+     * <p>{@link #isParentOrgInactive(ScopeKey)} は TEAM コンテンツの「親 ORG」を見るが、
+     * {@link StandardVisibility#ORGANIZATION_AND_DESCENDANTS} は ORG スコープのコンテンツが対象であり、
+     * 評価すべき非アクティブ判定は「当該 ORG 自身」である。{@code parentOrgByScope} は
+     * ORGANIZATION スコープに対して自身の ORG ID を entry として持つ（{@code ScopeAncestorResolver}）ため、
+     * 当該 ORG 自身が非アクティブ集合 {@code suspendedOrgIds} に含まれるかで判定する。</p>
+     *
+     * <p>scope が ORGANIZATION でない、または判定不能（マッピング無し）の場合は false。</p>
+     */
+    public boolean isOrgInactive(ScopeKey scope) {
+        if (scope == null || !"ORGANIZATION".equals(scope.scopeType())) {
+            return false;
+        }
+        return suspendedOrgIds.contains(scope.scopeId());
     }
 }

@@ -91,6 +91,28 @@ public class ScheduleVisibilityResolver
         };
     }
 
+    /**
+     * フェーズ M2: 組織全体公開（{@link ScheduleVisibility#ORGANIZATION}）のスケジュールが
+     * <strong>ORGANIZATION スコープ</strong>のコンテンツである場合に限り、上向き 1 段の
+     * {@link StandardVisibility#ORGANIZATION_WIDE} を下向き再帰の
+     * {@link StandardVisibility#ORGANIZATION_AND_DESCENDANTS} へ昇格する。
+     *
+     * <p>これにより、ネスト組織の root が配信した「組織全体」スケジュールを、孫組織配下の
+     * 参加チームのみに所属するメンバーまで閲覧可能にする（欠陥 Z の根治）。TEAM スコープの
+     * スケジュールは従来どおり {@link StandardVisibility#ORGANIZATION_WIDE}（親 ORG への上向き
+     * 1 段公開）のまま変更しない。</p>
+     */
+    @Override
+    protected StandardVisibility adjustLevel(
+            ScheduleVisibilityProjection row, StandardVisibility level) {
+        if (level == StandardVisibility.ORGANIZATION_WIDE
+                && row.scopeType() != null
+                && "ORGANIZATION".equals(row.scopeType())) {
+            return StandardVisibility.ORGANIZATION_AND_DESCENDANTS;
+        }
+        return level;
+    }
+
     @Override
     protected ContentStatus toContentStatus(ScheduleVisibilityProjection row) {
         ScheduleStatus status = row.scheduleStatus();

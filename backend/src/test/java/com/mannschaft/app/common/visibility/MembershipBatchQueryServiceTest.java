@@ -24,6 +24,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.eq;
@@ -335,6 +336,104 @@ class MembershipBatchQueryServiceTest {
 
             assertThat(result.orgMemberOf()).contains(ORG_10);
             assertThat(result.isMemberOfParentOrg(TEAM_1)).isTrue();
+        }
+    }
+
+    @Nested
+    @DisplayName("フェーズ M2: descendantScopes 経由の下向き再帰メンバーシップ解決")
+    class DescendantMembership {
+
+        @Test
+        @DisplayName("descendantScopes 空 → 下向き再帰バルク SQL は発行されない（従来挙動・SQL 0）")
+        void descendant空_バルクSQL未発行() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(userRoleRepository.findByUserIdAndScopes(any(), any(), any()))
+                    .thenReturn(List.of());
+
+            // 3 引数版（従来の Resolver 経路）。新段 SQL は決して呼ばれない。
+            UserScopeRoleSnapshot result = service.snapshotForUser(USER_ID, Set.of(TEAM_1), Set.of());
+
+            assertThat(result.descendantMemberOfOrgIds()).isEmpty();
+            verify(userRoleRepository, never())
+                    .findOrgRootsWhereUserIsDescendantMember(anySet(), anyLong(), anyInt());
+        }
+
+        @Test
+        @DisplayName("配下再帰メンバーの ORG 根は descendantMemberOfOrgIds に入り isDescendantMemberOf=true")
+        void 配下再帰メンバー_isDescendantMemberOfTrue() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            // 新段の根 ORG_10 は parentOrgs に合流 → membership/非アクティブ判定が走る
+            when(membershipRepository.findActiveRoleKindsByUserAndScopes(eq(USER_ID), eq(Set.of()), eq(Set.of(10L))))
+                    .thenReturn(List.of());
+            when(userRoleRepository.findByUserIdAndOrganizationIdIn(eq(USER_ID), eq(Set.of(10L))))
+                    .thenReturn(List.of());
+            when(organizationRepository.findInactiveIdsByIdIn(Set.of(10L)))
+                    .thenReturn(List.of());
+            // 下向き再帰バルク: viewer は ORG_10 の配下再帰メンバー
+            when(userRoleRepository.findOrgRootsWhereUserIsDescendantMember(eq(Set.of(10L)), eq(USER_ID), anyInt()))
+                    .thenReturn(List.of(10L));
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(
+                    USER_ID, Set.of(), Set.of(), Set.of(ORG_10));
+
+            assertThat(result.descendantMemberOfOrgIds()).containsExactly(10L);
+            assertThat(result.isDescendantMemberOf(ORG_10)).isTrue();
+            // 直接所属軸（orgMemberOf）は汚さない（G3: 昇格しない）
+            assertThat(result.orgMemberOf()).doesNotContain(ORG_10);
+            // 上向き 1 段（ORGANIZATION_WIDE 経路）とは独立
+            assertThat(result.isMemberOfParentOrg(ORG_10)).isFalse();
+        }
+
+        @Test
+        @DisplayName("配下再帰メンバーでない viewer → isDescendantMemberOf=false")
+        void 非配下メンバー_isDescendantMemberOfFalse() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(membershipRepository.findActiveRoleKindsByUserAndScopes(eq(USER_ID), eq(Set.of()), eq(Set.of(10L))))
+                    .thenReturn(List.of());
+            when(userRoleRepository.findByUserIdAndOrganizationIdIn(eq(USER_ID), eq(Set.of(10L))))
+                    .thenReturn(List.of());
+            when(organizationRepository.findInactiveIdsByIdIn(Set.of(10L)))
+                    .thenReturn(List.of());
+            when(userRoleRepository.findOrgRootsWhereUserIsDescendantMember(eq(Set.of(10L)), eq(USER_ID), anyInt()))
+                    .thenReturn(List.of()); // どの根にも属さない
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(
+                    USER_ID, Set.of(), Set.of(), Set.of(ORG_10));
+
+            assertThat(result.descendantMemberOfOrgIds()).isEmpty();
+            assertThat(result.isDescendantMemberOf(ORG_10)).isFalse();
+        }
+
+        @Test
+        @DisplayName("§11.6 鏡像: 根 ORG 自身が非アクティブなら isOrgInactive=true（配下メンバーでも閲覧不可へ）")
+        void 根ORG非アクティブ_isOrgInactiveTrue() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(membershipRepository.findActiveRoleKindsByUserAndScopes(eq(USER_ID), eq(Set.of()), eq(Set.of(10L))))
+                    .thenReturn(List.of());
+            when(userRoleRepository.findByUserIdAndOrganizationIdIn(eq(USER_ID), eq(Set.of(10L))))
+                    .thenReturn(List.of());
+            // 当該 ORG 自身が削除済
+            when(organizationRepository.findInactiveIdsByIdIn(Set.of(10L)))
+                    .thenReturn(List.of(10L));
+            when(userRoleRepository.findOrgRootsWhereUserIsDescendantMember(eq(Set.of(10L)), eq(USER_ID), anyInt()))
+                    .thenReturn(List.of(10L));
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(
+                    USER_ID, Set.of(), Set.of(), Set.of(ORG_10));
+
+            assertThat(result.isOrgInactive(ORG_10)).isTrue();
+            // 配下メンバーではあるが ORG 非アクティブ。Resolver 側 case で fail-closed される。
+            assertThat(result.isDescendantMemberOf(ORG_10)).isTrue();
+        }
+
+        @Test
+        @DisplayName("匿名 viewer → 下向き再帰 SQL は発行されない")
+        void 匿名_descendant_SQL未発行() {
+            UserScopeRoleSnapshot result = service.snapshotForUser(
+                    null, Set.of(), Set.of(), Set.of(ORG_10));
+
+            assertThat(result.descendantMemberOfOrgIds()).isEmpty();
+            verifyNoInteractions(userRoleRepository);
         }
     }
 

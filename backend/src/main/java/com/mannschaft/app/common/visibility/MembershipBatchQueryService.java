@@ -48,6 +48,14 @@ import java.util.Set;
 @Transactional(readOnly = true)
 public class MembershipBatchQueryService {
 
+    /**
+     * フェーズ M2: 下向き再帰（{@code ORGANIZATION_AND_DESCENDANTS}）展開の最大深さ。
+     * サイクル防止上限。M1 の
+     * {@code OrganizationMembershipService.MAX_ORG_DESCENDANT_DEPTH}（= 32）と一致させ、
+     * 配信 universe と可視性の評価範囲を揃える。
+     */
+    static final int ORG_DESCENDANT_MAX_DEPTH = 32;
+
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
     private final ScopeAncestorResolver scopeAncestorResolver;
@@ -73,6 +81,35 @@ public class MembershipBatchQueryService {
             Long userId,
             Set<ScopeKey> directScopes,
             Set<ScopeKey> orgWideScopes) {
+        return snapshotForUser(userId, directScopes, orgWideScopes, Set.of());
+    }
+
+    /**
+     * フェーズ M2: {@code descendantScopes}（{@code ORGANIZATION_AND_DESCENDANTS} 用の
+     * 下向き再帰判定対象 ORG スコープ集合）を加えた拡張版。
+     *
+     * <p>{@code descendantScopes} が空のとき（＝従来の 3 引数版・新段を使わない Resolver）は
+     * 下向き再帰 SQL を一切発行せず、生成される snapshot も従来 5 引数版と完全に同一であるため、
+     * 既存挙動・SQL 数番人予算（最大 7）に影響しない。</p>
+     *
+     * <p>{@code descendantScopes} が非空のときのみ、{@code rootOrgIds} を集約して
+     * {@link UserRoleRepository#findOrgRootsWhereUserIsDescendantMember} を
+     * <b>1 バルク SQL</b> だけ追加発行する（{@code ORGANIZATION_WIDE} とは独立に集計し、
+     * 新段 row が無ければ SQL 0）。非アクティブ判定（§11.6 鏡像）のため、対象 ORG を
+     * {@code parentOrgs} へ {@code (ORGANIZATION, orgId) -> orgId} として合流させ、
+     * {@code suspendedOrgIds} の抽出対象に含める。</p>
+     *
+     * @param userId          判定対象ユーザー（{@code null} 可: 匿名）
+     * @param directScopes    直接所属判定の対象
+     * @param orgWideScopes   {@code ORGANIZATION_WIDE}（上向き 1 段）判定の対象
+     * @param descendantScopes {@code ORGANIZATION_AND_DESCENDANTS}（下向き再帰）判定の対象 ORG スコープ
+     * @return 不変的に扱える {@link UserScopeRoleSnapshot}
+     */
+    public UserScopeRoleSnapshot snapshotForUser(
+            Long userId,
+            Set<ScopeKey> directScopes,
+            Set<ScopeKey> orgWideScopes,
+            Set<ScopeKey> descendantScopes) {
         if (userId == null) {
             return UserScopeRoleSnapshot.empty();
         }
@@ -85,14 +122,23 @@ public class MembershipBatchQueryService {
 
         Set<ScopeKey> safeDirect = directScopes != null ? directScopes : Set.of();
         Set<ScopeKey> safeOrgWide = orgWideScopes != null ? orgWideScopes : Set.of();
+        Set<ScopeKey> safeDescendant = descendantScopes != null ? descendantScopes : Set.of();
 
         // SQL 2: direct メンバーシップの user_roles 権限ロールを取得（roles 解決込み）
         Map<ScopeKey, String> roleByScope = resolveDirectMembership(userId, safeDirect);
 
         // SQL 3 (orgWideScopes が非空のみ): TEAM → 親 ORG 解決
         Map<ScopeKey, Long> parentOrgs = safeOrgWide.isEmpty()
-                ? Map.of()
-                : scopeAncestorResolver.resolveParentOrgIds(safeOrgWide);
+                ? new HashMap<>()
+                : new HashMap<>(scopeAncestorResolver.resolveParentOrgIds(safeOrgWide));
+
+        // 新段（ORGANIZATION_AND_DESCENDANTS）の根 ORG 集合。ORGANIZATION スコープのみ対象。
+        Set<Long> descendantRootOrgIds = collectDescendantRootOrgIds(safeDescendant);
+        // §11.6 鏡像: 新段の根 ORG 自身の非アクティブ判定のため parentOrgs に自身を合流させる
+        //（ORG スコープは parentOrg=自身。ScopeAncestorResolver と同じ規約）。
+        for (Long rootOrgId : descendantRootOrgIds) {
+            parentOrgs.putIfAbsent(new ScopeKey("ORGANIZATION", rootOrgId), rootOrgId);
+        }
 
         // SQL 4 (direct or 親 ORG が非空のみ): memberships の role_kind（MEMBER / SUPPORTER）を
         //        「direct スコープ ＋ 親 ORG」まとめて 1 バッチで取得する（F00.5 SQL 回帰根治）。
@@ -113,10 +159,51 @@ public class MembershipBatchQueryService {
         Set<ScopeKey> orgMemberOf = resolveOrgMembership(
                 userId, parentOrgIds, membershipRoleKinds);
 
-        // SQL 6 (parentOrgs が非空のみ): 非アクティブ親 ORG 抽出 §11.6
+        // SQL 6 (parentOrgs が非空のみ): 非アクティブ親 ORG / 当該 ORG 抽出 §11.6（新段の根も含む）
         Set<Long> suspendedOrgIds = resolveInactiveParentOrgs(parentOrgs);
 
-        return new UserScopeRoleSnapshot(false, roleByScope, parentOrgs, orgMemberOf, suspendedOrgIds);
+        // SQL 7 (descendantScopes が非空のみ): 下向き再帰メンバーシップを 1 バルク SQL で解決。
+        //        ORGANIZATION_WIDE とは独立に発行し、新段 row が無ければ SQL 0。
+        Set<Long> descendantMemberOfOrgIds = resolveDescendantMembership(userId, descendantRootOrgIds);
+
+        return new UserScopeRoleSnapshot(
+                false, roleByScope, parentOrgs, orgMemberOf, suspendedOrgIds, descendantMemberOfOrgIds);
+    }
+
+    /**
+     * {@code descendantScopes}（ORGANIZATION スコープのみ有効）から根 ORG ID 集合を抽出する。
+     * TEAM スコープが混入していても無視する（新段は ORG コンテンツ専用・G3）。
+     */
+    private Set<Long> collectDescendantRootOrgIds(Set<ScopeKey> descendantScopes) {
+        if (descendantScopes.isEmpty()) {
+            return Set.of();
+        }
+        Set<Long> rootOrgIds = new HashSet<>();
+        for (ScopeKey s : descendantScopes) {
+            if ("ORGANIZATION".equals(s.scopeType()) && s.scopeId() != null) {
+                rootOrgIds.add(s.scopeId());
+            }
+        }
+        return rootOrgIds;
+    }
+
+    /**
+     * 下向き再帰メンバーシップを 1 バルク SQL で解決する（フェーズ M2）。
+     *
+     * <p>{@code rootOrgIds} が空のときは SQL を発行しない（空 IN () 回避 / SQL 0）。
+     * SUPPORTER 除外は行わない（G7）。{@code maxDepth} は M1 と同じ
+     * {@link com.mannschaft.app.organization.service.OrganizationMembershipService} の上限 32 を用いる。</p>
+     */
+    private Set<Long> resolveDescendantMembership(Long userId, Set<Long> rootOrgIds) {
+        if (rootOrgIds.isEmpty()) {
+            return Set.of();
+        }
+        List<Long> matchedRoots = userRoleRepository.findOrgRootsWhereUserIsDescendantMember(
+                rootOrgIds, userId, ORG_DESCENDANT_MAX_DEPTH);
+        if (matchedRoots.isEmpty()) {
+            return Set.of();
+        }
+        return new HashSet<>(matchedRoots);
     }
 
     /**
