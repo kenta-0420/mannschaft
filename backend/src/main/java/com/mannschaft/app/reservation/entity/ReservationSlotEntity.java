@@ -67,10 +67,16 @@ public class ReservationSlotEntity extends BaseEntity {
     @Builder.Default
     private Boolean isException = false;
 
+    /**
+     * 枠単位の承認モード上書き。
+     *
+     * <p>{@code null} = チーム既定（{@code reservation_policies}）に従う。
+     * 値あり = この枠だけチーム既定を上書きする。
+     * 承認モードの最終解決は {@code ReservationPolicyService.resolveApprovalMode(teamId, slot)} で行う。</p>
+     */
     @Enumerated(EnumType.STRING)
-    @Column(name = "approval_mode", nullable = false)
-    @Builder.Default
-    private ApprovalMode approvalMode = ApprovalMode.AUTO;
+    @Column(name = "approval_mode")
+    private ApprovalMode approvalMode;
 
     @Column(precision = 10, scale = 2)
     private BigDecimal price;
