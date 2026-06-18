@@ -230,21 +230,23 @@ class FlywayExistingDataVisibilityWorkflowDwellingSetNullFkMigrationTest {
             assertThat(longColumn(c, "schedules", "visibility_template_id", scheduleId))
                     .as("schedules.visibility_template_id が SET NULL されず孤児 vt_id を保持すること").isEqualTo(vtId);
 
-            // group-2a: workflow_template を物理削除 → budget_configs の2列が孤児値保持
-            deleteRow(c, "workflow_templates", workflowTemplateId);
-            assertThat(rowExists(c, "workflow_templates", workflowTemplateId)).as("参照先 workflow_template が物理削除されたこと").isFalse();
-            assertThat(longColumn(c, "budget_configs", "workflow_template_id", budgetConfigId))
-                    .as("budget_configs.workflow_template_id が SET NULL されず孤児 template_id を保持すること").isEqualTo(workflowTemplateId);
-            assertThat(longColumn(c, "budget_configs", "over_limit_workflow_id", budgetConfigId))
-                    .as("budget_configs.over_limit_workflow_id が SET NULL されず孤児 template_id を保持すること").isEqualTo(workflowTemplateId);
-
-            // group-2b: workflow_request を物理削除 → alert / transaction の workflow_request_id が孤児値保持
+            // group-2b: workflow_request を先に物理削除 → alert / transaction の workflow_request_id が孤児値保持
+            //   注: workflow_requests.template_id は workflow_templates へ ON DELETE RESTRICT(fk_workflow_requests_template・
+            //   同一ドメイン・本PR対象外)。よって workflow_template より先に workflow_request を削除して RESTRICT を解消する。
             deleteRow(c, "workflow_requests", workflowRequestId);
             assertThat(rowExists(c, "workflow_requests", workflowRequestId)).as("参照先 workflow_request が物理削除されたこと").isFalse();
             assertThat(longColumn(c, "budget_threshold_alerts", "workflow_request_id", btaId))
                     .as("budget_threshold_alerts.workflow_request_id が SET NULL されず孤児 request_id を保持すること").isEqualTo(workflowRequestId);
             assertThat(longColumn(c, "budget_transactions", "workflow_request_id", budgetTxId))
                     .as("budget_transactions.workflow_request_id が SET NULL されず孤児 request_id を保持すること").isEqualTo(workflowRequestId);
+
+            // group-2a: workflow_request 削除後に workflow_template を物理削除 → budget_configs の2列が孤児値保持
+            deleteRow(c, "workflow_templates", workflowTemplateId);
+            assertThat(rowExists(c, "workflow_templates", workflowTemplateId)).as("参照先 workflow_template が物理削除されたこと").isFalse();
+            assertThat(longColumn(c, "budget_configs", "workflow_template_id", budgetConfigId))
+                    .as("budget_configs.workflow_template_id が SET NULL されず孤児 template_id を保持すること").isEqualTo(workflowTemplateId);
+            assertThat(longColumn(c, "budget_configs", "over_limit_workflow_id", budgetConfigId))
+                    .as("budget_configs.over_limit_workflow_id が SET NULL されず孤児 template_id を保持すること").isEqualTo(workflowTemplateId);
 
             // group-3: dwelling_unit を物理削除 → 3参照元の dwelling 列が孤児値保持
             deleteRow(c, "dwelling_units", dwellingUnitId);
