@@ -703,7 +703,9 @@ public class GlobalExceptionHandler {
             Map.entry("ORG_062", HttpStatus.CONFLICT),                       // SLUG_ALREADY_TAKEN
             // F01.2 §5.9.5 slug リネーム: 他スコープ履歴に予約済み slug は 409（SLUG_RETIRED）
             Map.entry("TEAM_063", HttpStatus.CONFLICT),                      // SLUG_RETIRED（他チーム履歴予約）
-            Map.entry("ORG_063", HttpStatus.CONFLICT)                        // SLUG_RETIRED（他組織履歴予約）
+            Map.entry("ORG_063", HttpStatus.CONFLICT),                       // SLUG_RETIRED（他組織履歴予約）
+            // F03.4 予約スロット削除ガード: active 予約が紐づく枠の削除はオーファン化を招くため 409
+            Map.entry("RESERVATION_020", HttpStatus.CONFLICT)                // SLOT_HAS_ACTIVE_RESERVATIONS
     );
 
     /**

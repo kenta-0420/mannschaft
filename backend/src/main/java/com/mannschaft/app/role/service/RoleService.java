@@ -68,8 +68,13 @@ public class RoleService {
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
 
         // 既存ロール存在チェック → 上書き
+        // 上書き時は changeRole と同様に flush して DELETE を先に確定させる
+        // （uq_user_roles_user_scope ユニーク制約の衝突回避。詳細は changeRole 参照）。
         findUserRole(targetUserId, scopeId, scopeType)
-                .ifPresent(existing -> userRoleRepository.delete(existing));
+                .ifPresent(existing -> {
+                    userRoleRepository.delete(existing);
+                    userRoleRepository.flush();
+                });
 
         UserRoleEntity.UserRoleEntityBuilder builder = UserRoleEntity.builder()
                 .userId(targetUserId)
@@ -113,7 +118,13 @@ public class RoleService {
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
 
         // 既存を削除して新規作成
+        // 根治: delete 直後に flush して DELETE を先に DB へ確定させる。
+        //   user_roles には uq_user_roles_user_scope(user_id, scope_key) のユニーク制約がある
+        //   （scope_key は organization_id / team_id から導出される生成列）。
+        //   flush しないと Hibernate の write-behind が INSERT を先に発行し、
+        //   同一 (user_id, scope_key) で旧行と衝突して DuplicateKeyException → 500 になる。
         userRoleRepository.delete(current);
+        userRoleRepository.flush();
         UserRoleEntity.UserRoleEntityBuilder builder = UserRoleEntity.builder()
                 .userId(targetUserId)
                 .roleId(req.getRoleId());
@@ -316,7 +327,10 @@ public class RoleService {
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
 
         // 対象ユーザーを ADMIN に昇格
+        // delete→save が同一 scope_key を再挿入するため flush で DELETE を先に確定させる
+        // （uq_user_roles_user_scope ユニーク制約の衝突回避。詳細は changeRole 参照）。
         userRoleRepository.delete(targetUserRole);
+        userRoleRepository.flush();
         UserRoleEntity.UserRoleEntityBuilder newAdminBuilder = UserRoleEntity.builder()
                 .userId(targetUserId)
                 .roleId(adminRole.getId())
@@ -326,6 +340,7 @@ public class RoleService {
 
         // 現オーナーを MEMBER にダウングレード
         userRoleRepository.delete(currentUserRole);
+        userRoleRepository.flush();
         UserRoleEntity.UserRoleEntityBuilder demotedBuilder = UserRoleEntity.builder()
                 .userId(currentUserId)
                 .roleId(memberRole.getId());
