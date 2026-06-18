@@ -29,10 +29,16 @@ const loaded = ref(false)
 const rootEl = ref<HTMLElement | null>(null)
 let observer: IntersectionObserver | null = null
 
-/** 導線先: 予約管理 or 問い合わせページ（スコープ別）。 */
+/**
+ * 導線先: スコープ別に実在するページへ振り分け。
+ * - TEAM: /teams/{slug}/reservations（予約管理ページが実在）
+ * - ORGANIZATION: /organizations/{slug}/admin（組織に予約ページは無いため管理コンソールへ）
+ */
 const reservationsRoute = computed(() => {
-  const base = props.scopeType === 'TEAM' ? 'teams' : 'organizations'
-  return `/${base}/${props.slug}/admin/reservations`
+  if (props.scopeType === 'TEAM') {
+    return `/teams/${props.slug}/reservations`
+  }
+  return `/organizations/${props.slug}/admin`
 })
 
 async function fetchSummary() {
