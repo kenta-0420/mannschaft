@@ -78,7 +78,8 @@
       "subject_required": "Por favor, ingrese un asunto",
       "body_required": "Por favor, ingrese el cuerpo del mensaje",
       "send_failed": "Error al enviar",
-      "confirmations_failed": "Error al cargar el estado de confirmación"
+      "confirmations_failed": "Error al cargar el estado de confirmación",
+      "info_missing": "Falta información de la notificación"
     },
     "template": {
       "staff_sick": "Enfermedad del personal",
@@ -102,7 +103,12 @@
       "CANCELLED": "Cancelado",
       "NO_SHOW": "No presentado",
       "REJECTED": "Rechazado"
-    }
+    },
+    "confirm_button": "Confirmar cierre",
+    "already_confirmed": "Confirmado",
+    "confirm_success": "Cierre de emergencia confirmado",
+    "confirm_failed": "Error al confirmar",
+    "badge": "Cierre de emergencia"
   },
   "reservation": {
     "status": {
@@ -124,7 +130,8 @@
     "tab": {
       "book": "Reservar",
       "list": "Reservas",
-      "line_manage": "Gestionar líneas"
+      "line_manage": "Gestionar líneas",
+      "emergency_closure": "緊急休業"
     },
     "column": {
       "datetime": "Fecha y hora",

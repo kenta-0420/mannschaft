@@ -57,6 +57,7 @@
     "notificationCredits": "Notification Credits",
     "todoStatusLabels": "TODO Labels",
     "faqSettings": "FAQ Settings",
-    "leagueTransfers": "League Transfers"
+    "leagueTransfers": "League Transfers",
+    "adminConsole": "Admin Console"
   }
 }
