@@ -50,6 +50,37 @@
     "approvalsBadge": {
       "degraded": "一部集計できず",
       "fetchFailed": "件数を取得できませんでした"
+    },
+    "lens": {
+      "toggleAriaLabel": "管理者表示の切り替え",
+      "tooltip": "管理者ビューに切り替え",
+      "member": "メンバー",
+      "admin": "管理者",
+      "backToMember": "メンバービューに戻る",
+      "openConsole": "管理コンソールを開く",
+      "widgets": {
+        "approvals": "承認待ち",
+        "console": "管理コンソール",
+        "reservations": "予約",
+        "budget": "予算",
+        "members": "メンバー統計",
+        "alert": "業務アラート",
+        "reports": "通報",
+        "modules": "モジュール",
+        "payments": "支払",
+        "pointCards": "ポイントカード"
+      },
+      "approvals": {
+        "empty": "承認待ちはありません",
+        "degraded": "一部集計できず",
+        "fetchFailed": "承認待ちの件数を取得できませんでした",
+        "domain": {
+          "RESERVATION": "予約",
+          "SHIFT_REQUEST": "シフト",
+          "MATCHING": "マッチング",
+          "PAYMENT": "支払"
+        }
+      }
     }
   }
 }

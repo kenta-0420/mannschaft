@@ -86,7 +86,16 @@ watch(
 <template>
   <div class="flex flex-col gap-4">
     <ScopeSearchForm scope-type="ORGANIZATION" />
-    <ScopeTabBar scope-type="ORGANIZATION" />
+
+    <!-- タグ行右端に管理者レンズトグル（ADMIN/DEPUTY のみ描画・§1.2/§1.3）。 -->
+    <div class="flex items-center justify-between gap-2">
+      <ScopeTabBar scope-type="ORGANIZATION" class="min-w-0 flex-1" />
+      <DashboardScopeLensToggle
+        v-if="selectedOrgId"
+        scope-type="ORGANIZATION"
+        :slug="selectedOrgId"
+      />
+    </div>
 
     <PageLoading v-if="loading" />
 
@@ -100,6 +109,14 @@ watch(
       :message="$t('scopeDashboard.tagBar.empty')"
     />
 
+    <!-- 管理者レンズ ON: 管理者グリッドへシート差替（§1.2）。 -->
+    <DashboardAdminWidgetGrid
+      v-else-if="data && store.isAdminLensOn('ORGANIZATION', selectedOrgId)"
+      scope-type="ORGANIZATION"
+      :slug="selectedOrgId"
+    />
+
+    <!-- 既定: メンバー向け厳選 8 ウィジェット（F22.1 既存挙動・差替前）。 -->
     <DashboardSwipeWidgetGrid
       v-else-if="data"
       scope-type="ORGANIZATION"

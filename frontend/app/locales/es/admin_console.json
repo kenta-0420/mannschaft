@@ -50,6 +50,37 @@
     "approvalsBadge": {
       "degraded": "Algunos recuentos no disponibles",
       "fetchFailed": "No se pudieron cargar los recuentos"
+    },
+    "lens": {
+      "toggleAriaLabel": "Alternar vista de administrador",
+      "tooltip": "Cambiar a vista de administrador",
+      "member": "Miembro",
+      "admin": "Administrador",
+      "backToMember": "Volver a la vista de miembro",
+      "openConsole": "Abrir consola de administración",
+      "widgets": {
+        "approvals": "Aprobaciones",
+        "console": "Consola de administración",
+        "reservations": "Reservas",
+        "budget": "Presupuesto",
+        "members": "Estadísticas de miembros",
+        "alert": "Alertas de negocio",
+        "reports": "Denuncias",
+        "modules": "Módulos",
+        "payments": "Pagos",
+        "pointCards": "Tarjetas de puntos"
+      },
+      "approvals": {
+        "empty": "No hay aprobaciones pendientes",
+        "degraded": "Algunos recuentos no disponibles",
+        "fetchFailed": "No se pudieron cargar las aprobaciones pendientes",
+        "domain": {
+          "RESERVATION": "Reservas",
+          "SHIFT_REQUEST": "Turnos",
+          "MATCHING": "Emparejamiento",
+          "PAYMENT": "Pagos"
+        }
+      }
     }
   }
 }
