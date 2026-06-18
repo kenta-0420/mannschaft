@@ -46,6 +46,10 @@
     "error": {
       "fetchFailedTitle": "No se pudieron cargar los permisos",
       "fetchFailedBody": "Se produjo un problema temporal. Espera un momento e inténtalo de nuevo"
+    },
+    "approvalsBadge": {
+      "degraded": "Algunos recuentos no disponibles",
+      "fetchFailed": "No se pudieron cargar los recuentos"
     }
   }
 }
