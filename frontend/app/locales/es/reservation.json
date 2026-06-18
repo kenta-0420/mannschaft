@@ -63,6 +63,13 @@
       "reminder_sent": "Enviado",
       "reminder_not_sent": "No enviado"
     },
+    "connection": {
+      "live": "Actualización en vivo",
+      "connecting": "Conectando…",
+      "reconnecting": "Reconectando…",
+      "offline": "Sin conexión",
+      "denied": "Sin acceso"
+    },
     "dialog": {
       "title": "Confirmar envío",
       "confirm_message": "¿Desea enviar el mensaje masivo con los siguientes detalles?",

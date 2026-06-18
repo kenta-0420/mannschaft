@@ -63,6 +63,13 @@
       "reminder_sent": "전송 완료",
       "reminder_not_sent": "미전송"
     },
+    "connection": {
+      "live": "실시간 업데이트 중",
+      "connecting": "연결 중…",
+      "reconnecting": "재연결 중…",
+      "offline": "오프라인",
+      "denied": "열람 권한이 없습니다"
+    },
     "dialog": {
       "title": "전송 확인",
       "confirm_message": "다음 내용으로 일괄 전송하시겠습니까?",

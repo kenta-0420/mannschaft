@@ -63,6 +63,13 @@
       "reminder_sent": "已发送",
       "reminder_not_sent": "未发送"
     },
+    "connection": {
+      "live": "实时更新中",
+      "connecting": "连接中…",
+      "reconnecting": "重新连接中…",
+      "offline": "离线",
+      "denied": "无查看权限"
+    },
     "dialog": {
       "title": "确认发送",
       "confirm_message": "是否以以下内容批量发送？",
