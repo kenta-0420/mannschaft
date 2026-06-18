@@ -128,6 +128,8 @@
 - ただし偵察（R5）で `BUDGET_VIEW`/`BUDGET_MANAGE` は **scope=ORGANIZATION のみ** seed 済みと判明。チームの予算ウィジェットで DEPUTY を権限付与で解放するには **scope=TEAM の seed が必要**（[04](./04_security_authorization.md) §4.3）。よって本機能は権限 seed のマイグレーションを1本伴う。
 - Flyway 採番は origin/main 全体の最大 major +1、マージ直前に再確認（メモリ `feedback_flyway_version_sort_after_global_max` / `feedback_migration_version_collision`）。seed 形式は F02.2.1 §9 を手本にする。
 
+> **⚠️ 後続判明事項（§13）**: 上記「チームスコープ seed を追加する Flyway マイグレーションを伴う」は**実装軍議で不可能と判明し訂正**。`permissions.name` 単独 UNIQUE（V2.002）により同名 TEAM 行追加は UNIQUE 違反で失敗する。P1 スコープから除外確定。最終方針は §13 のとおり P3 軍議で確定する。
+
 ---
 
 ## §11. 影響する既存設計書の更新範囲
@@ -144,6 +146,29 @@
 
 ---
 
+## §13. TEAMスコープ予算権限seedは`permissions.name`単独UNIQUEにより同名TEAM行追加が不可能（P3で方針確定・P1スコープ外）
+
+**決定**: §10・[04](./04_security_authorization.md) §4.3 で「チームスコープの `BUDGET_VIEW`/`BUDGET_MANAGE` seed を追加する Flyway を P1 で追加する」と記述していたが、**実装軍議でこれが不可能と判明した**。最終方針は**P3（L1 管理者レンズの予算ウィジェット着工時）の軍議で確定する**。P1 の承認待ち集約 API は予算権限を使わないため P1 に実害はなく、P1 スコープから除外確定とする。
+
+**判明した制約**:
+
+- `permissions` テーブルのスキーマ（`V2.002__create_permissions_table.sql`）の制約は `CONSTRAINT uq_permissions_name UNIQUE (name)` = **name 列の単独 UNIQUE**。
+- Flyway `V11.034` で `BUDGET_VIEW` / `BUDGET_MANAGE` が `scope='ORGANIZATION'` で 1 行ずつ seed 済み。
+- よって**同名 `BUDGET_VIEW` を `scope='TEAM'` の別行として追加することはスキーマ上不可能**（UNIQUE 違反）。§10 末尾・[04](./04_security_authorization.md) §4.3 が前提にした「TEAMスコープ seed 追加 Flyway」は現スキーマでは成立しない。
+
+**P3 軍議で選ぶべき候補**:
+
+| 案 | 内容 | 備考 |
+|----|------|------|
+| (A) 別名権限を新設 | `TEAM_BUDGET_VIEW` / `TEAM_BUDGET_MANAGE` 等、TEAM スコープ専用の新規 permission 名を追加。name 単独 UNIQUE を回避しつつ、TEAM でも粒度の細かい DEPUTY 権限ゲートを維持できる | Flyway 1本（新名の INSERT のみ・既存 ORGANIZATION 行に触らない）|
+| (B) TEAM は `isAdmin` のみでゲート | チームの予算ウィジェットは `isAdmin(userId, teamId, "TEAM")` で守り、DEPUTY への権限付与ゲートを設けない。`checkAdminOrHasPermission` が ORGANIZATION 専用・`BUDGET_VIEW` が ORGANIZATION 専用という既存実態と整合。Flyway 不要 | DEPUTY に予算を開放できない。要件レベルで許容できるかをP3 軍議で確認 |
+
+**P1 への影響**: P1 の承認待ち集約 API（[03](./03_admin_action_required_api.md)）は予算権限（`BUDGET_VIEW`/`BUDGET_MANAGE`）を判定に使わないため、本制約による P1 の実害はゼロ。P1 スコープから予算権限 Flyway を除外する（§12 依存タスク表の「TEAM スコープ予算権限 seed」行の P1 記述を削除）。
+
+**却下案**: 同名 `BUDGET_VIEW` を `scope='TEAM'` で追加 → `uq_permissions_name`（V2.002）により UNIQUE 違反でマイグレーション失敗するため却下（実装軍議で確定）。
+
+---
+
 ## §12. 本機能の依存タスク（前提で済ませない・起票先明記）
 
 「前提とする」「未対応なら是正する」という宙ぶらりんを廃し、本機能が依存する他ドメインの作業を明示する。
@@ -154,7 +179,7 @@
 | マッチング募集側集約クエリ | `MatchingAdminQueryService.pendingReceivedForTeam`（募集側=受け手視点の PENDING 応募・読み取り専用） | matching | 本機能の P1 で新設 |
 | 予約プレビュークエリ | `ReservationAdminQueryService.pendingForTeam`（LIMIT プレビュー・件数は既存メソッド流用） | reservation | 本機能の P1 で薄く新設 |
 | 支払プレビュークエリ | `PaymentAdminQueryService.unsettledForOrg`（未完了請求のプレビュー） | payment | 本機能の P1 で薄く新設 |
-| TEAM スコープ予算権限 seed | `BUDGET_VIEW`/`BUDGET_MANAGE` を scope=TEAM で seed する Flyway | budget | 本機能の P1 で追加（§10） |
+| TEAM スコープ予算権限 seed | `BUDGET_VIEW`/`BUDGET_MANAGE` を scope=TEAM で seed する Flyway | budget | **P1 から除外**。`permissions.name` 単独 UNIQUE（V2.002）により同名 TEAM 行追加は不可（§13）。最終方針は P3 軍議で確定 |
 | メンバー一覧の退会状態露出 | `admin/dashboard/users` 応答に `withdrawalPending` 状態を含める | F10.1 母体 / user | 在籍/退会申請中/退会済みの区別に必要（[04](./04_security_authorization.md) §6）。未露出なら本機能 P2 で当該ドメインに依頼 |
 
 > `checkAdminOrHasPermission` のチーム一般化は依存タスク**ではない**（§4 で明示判定の恒久対応に確定済み・基盤改修を持ち込まない）。
