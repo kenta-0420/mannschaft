@@ -6,12 +6,14 @@ import com.mannschaft.app.reservation.dto.CreateSlotRequest;
 import com.mannschaft.app.reservation.dto.ReservationSlotResponse;
 import com.mannschaft.app.reservation.dto.UpdateSlotRequest;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
+import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import com.mannschaft.app.reservation.service.ReservationSlotService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -25,7 +27,10 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -38,6 +43,9 @@ class ReservationSlotServiceTest {
 
     @Mock
     private ReservationSlotRepository slotRepository;
+
+    @Mock
+    private ReservationRepository reservationRepository;
 
     @Mock
     private ReservationMapper reservationMapper;
@@ -317,11 +325,13 @@ class ReservationSlotServiceTest {
     class DeleteSlot {
 
         @Test
-        @DisplayName("正常系: スロットが論理削除される")
+        @DisplayName("正常系: active予約のないスロットは論理削除される")
         void スロット削除_正常() {
             // Given
             ReservationSlotEntity entity = createSlotEntity();
             given(slotRepository.findByIdAndTeamId(SLOT_ID, TEAM_ID)).willReturn(Optional.of(entity));
+            given(reservationRepository.existsByReservationSlotIdAndStatusIn(eq(SLOT_ID), anyList()))
+                    .willReturn(false);
 
             // When
             service.deleteSlot(TEAM_ID, SLOT_ID);
@@ -341,6 +351,45 @@ class ReservationSlotServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ReservationErrorCode.SLOT_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("異常系: active予約が紐づくスロットの削除はSLOT_HAS_ACTIVE_RESERVATIONS（409）で拒否され、論理削除されない")
+        void スロット削除_active予約あり() {
+            // Given
+            ReservationSlotEntity entity = createSlotEntity();
+            given(slotRepository.findByIdAndTeamId(SLOT_ID, TEAM_ID)).willReturn(Optional.of(entity));
+            given(reservationRepository.existsByReservationSlotIdAndStatusIn(eq(SLOT_ID), anyList()))
+                    .willReturn(true);
+
+            // When / Then
+            assertThatThrownBy(() -> service.deleteSlot(TEAM_ID, SLOT_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ReservationErrorCode.SLOT_HAS_ACTIVE_RESERVATIONS);
+
+            // オーファン化防止: 削除（save）は呼ばれない
+            verify(slotRepository, never()).save(any(ReservationSlotEntity.class));
+        }
+
+        @Test
+        @DisplayName("正常系: ガードが参照する active ステータスは PENDING / CONFIRMED の2件のみ")
+        void スロット削除_ガード対象ステータス() {
+            // Given
+            ReservationSlotEntity entity = createSlotEntity();
+            given(slotRepository.findByIdAndTeamId(SLOT_ID, TEAM_ID)).willReturn(Optional.of(entity));
+            given(reservationRepository.existsByReservationSlotIdAndStatusIn(eq(SLOT_ID), anyList()))
+                    .willReturn(false);
+
+            // When
+            service.deleteSlot(TEAM_ID, SLOT_ID);
+
+            // Then: 終端状態（CANCELLED/COMPLETED/NO_SHOW）は削除を妨げないことを、
+            //       ガードに渡されるステータス集合で検証する
+            ArgumentCaptor<List<ReservationStatus>> captor = ArgumentCaptor.forClass(List.class);
+            verify(reservationRepository).existsByReservationSlotIdAndStatusIn(eq(SLOT_ID), captor.capture());
+            assertThat(captor.getValue())
+                    .containsExactlyInAnyOrder(ReservationStatus.PENDING, ReservationStatus.CONFIRMED);
         }
     }
 
