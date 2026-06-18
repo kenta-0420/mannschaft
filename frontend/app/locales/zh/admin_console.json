@@ -1,4 +1,4 @@
-{
+﻿{
   "adminConsole": {
     "comingSoon": "即将推出",
     "team": {
@@ -81,6 +81,25 @@
           "MATCHING": "匹配",
           "PAYMENT": "支付"
         }
+      },
+      "payments": {
+        "unsettled": "未结清",
+        "overdue": "已逾期",
+        "fetchFailed": "无法获取支付信息"
+      },
+      "alert": {
+        "newReservations": "新增预约",
+        "unreadInquiries": "未读咨询",
+        "fetchFailed": "无法获取业务提醒信息"
+      },
+      "reports": {
+        "pending": "待处理",
+        "reviewing": "审核中",
+        "fetchFailed": "无法获取举报信息"
+      },
+      "modules": {
+        "summary": "已启用 {enabled} / 共 {total}",
+        "fetchFailed": "无法获取模块信息"
       }
     }
   }

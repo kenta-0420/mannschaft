@@ -78,4 +78,40 @@ public class PaymentAdminQueryService {
 
         return new PendingAggregate(count, items);
     }
+
+    /**
+     * F10.1.1 / P3b: 組織パネル管理者レンズ ⑤ {@code ADMIN_ORG_PAYMENTS} のサマリを返す。
+     *
+     * <p>未収件数（SENT/VIEWED/OVERDUE 合計）と期限超過件数（OVERDUE 単体）を<b>別カウント</b>で返す。
+     * P1 横断「承認待ち」集約（{@link #unsettledForOrg}）が未収 3 ステータスを 1 件にまとめて
+     * {@code total_pending} に積むのに対し、本サマリは「未収／期限超過」の 2 区分を表示する
+     * （設計書 02 §2.3 ③）。dashboard DTO への組み立ては呼び出し側（dashboard ファサード）で行い、
+     * 本サービスはドメインローカルな {@link OrgPaymentSummary} を返す（payment → dashboard の逆依存回避）。</p>
+     *
+     * <p>全カウントの WHERE に {@code issuer_scope_kind = ORG AND issuer_scope_id = ?} を含めるため、
+     * テナント越境（IDOR）は構造的に発生しない。</p>
+     *
+     * @param orgId 組織 ID（issuer_scope_id・WHERE 必須・IDOR 防止）
+     * @return 未収件数・期限超過件数の 2 区分サマリ
+     */
+    @Transactional(readOnly = true)
+    public OrgPaymentSummary summaryForOrg(Long orgId) {
+        long unsettled = paymentRequestRepository
+                .countByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(
+                        ScopeKind.ORG, orgId, UNSETTLED_STATUSES);
+        long overdue = paymentRequestRepository
+                .countByIssuerScopeKindAndIssuerScopeIdAndStatusAndDeletedAtIsNull(
+                        ScopeKind.ORG, orgId, PaymentRequestStatus.OVERDUE);
+        return new OrgPaymentSummary(unsettled, overdue);
+    }
+
+    /**
+     * 組織の支払サマリ（未収件数・期限超過件数）のドメインローカル値オブジェクト。
+     * dashboard DTO（{@code AdminPaymentSummaryResponse}）への変換は dashboard ファサードが担う。
+     *
+     * @param unsettledCount 未収件数（SENT/VIEWED/OVERDUE 合計）
+     * @param overdueCount   期限超過件数（OVERDUE 単体・未収の内数）
+     */
+    public record OrgPaymentSummary(long unsettledCount, long overdueCount) {
+    }
 }

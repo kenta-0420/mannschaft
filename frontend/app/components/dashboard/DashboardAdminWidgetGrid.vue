@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 /**
  * F10.1.1 L1 管理者レンズ — 管理者向けウィジェットグリッド。
  *
@@ -9,15 +9,20 @@
  * - 本グリッドは管理者レンズ ON のときに `DashboardTeamPanel` / `DashboardOrgPanel` でメンバーグリッドと
  *   シート差替される（v-if="store.isAdminLensOn(...)"）。
  *
- * P3a で点火するウィジェット:
+ * P3a で点火したウィジェット:
  *   - 承認待ち（ADMIN_*_APPROVALS）: `DashboardAdminApprovalsWidget`（getAdminActionRequired 消費・degraded 区別）。
  *   - 管理コンソール導線（ADMIN_*_CONSOLE）: L2 ハブ（/teams|organizations/[slug]/admin）への遷移カード。
  *
- * P3b 送り（「準備中（近日公開）」プレースホルダ・本グリッドではデータ取得しない）:
- *   team: 予約 / 予算 / メンバー統計 / 業務アラート / 通報 / モジュール
- *   org : 予算 / 支払 / メンバー統計 / 業務アラート / 通報 / ポイントカード
- *   これらは P3b で BE 集約 API（dashboard レスポンスの管理者拡張フィールド等）整備後に点火する。
- *   L1 は読み取り専用グランスのため、点火後も実操作は L2/L3 へ遷移してから行う（02 §5）。
+ * P3b Wave1 で点火するウィジェット:
+ *   - 支払（ADMIN_ORG_PAYMENTS）: `DashboardAdminPaymentsWidget`（組織専用・未収/期限超過）。
+ *   - 業務アラート（ADMIN_TEAM_ALERT / ADMIN_ORG_ALERT）: `DashboardAdminBusinessAlertWidget`（新規予約/未読問い合わせ）。
+ *   - 通報（ADMIN_TEAM_REPORTS / ADMIN_ORG_REPORTS）: `DashboardAdminReportsWidget`（未対応/確認中）。
+ *   - モジュール（ADMIN_TEAM_MODULES）: `DashboardAdminModulesWidget`（有効N/全M・チーム専用）。
+ *
+ * P3b Wave2/3 送り（「準備中（近日公開）」プレースホルダ・本グリッドではデータ取得しない）:
+ *   team: 予約 / 予算 / メンバー統計
+ *   org : 予算 / メンバー統計 / ポイントカード
+ *   これらは P3b Wave2/3 で対応する。
  */
 import type { ScopeTabType } from '~/types/dashboard-scope'
 
@@ -36,8 +41,8 @@ const consoleRoute = computed(() => {
 })
 
 /**
- * P3b 送りの「準備中」プレースホルダウィジェット（02 §2.2 / §2.3 の表のラベルのみ・データ取得しない）。
- * クリックしても何も起きない（リンク切れにしない）。P3b で BE 集約 API 整備後に点火する。
+ * Wave2/3 送りの「準備中」プレースホルダウィジェット（02 §2.2 / §2.3 の表のラベルのみ・データ取得しない）。
+ * P3b Wave2/3 で BE 集約 API 整備後に点火する。
  */
 const placeholderWidgets = computed<{ key: string; labelKey: string; icon: string }[]>(() => {
   if (props.scopeType === 'TEAM') {
@@ -45,17 +50,11 @@ const placeholderWidgets = computed<{ key: string; labelKey: string; icon: strin
       { key: 'reservations', labelKey: 'adminConsole.lens.widgets.reservations', icon: 'pi pi-calendar-clock' },
       { key: 'budget', labelKey: 'adminConsole.lens.widgets.budget', icon: 'pi pi-wallet' },
       { key: 'members', labelKey: 'adminConsole.lens.widgets.members', icon: 'pi pi-users' },
-      { key: 'alert', labelKey: 'adminConsole.lens.widgets.alert', icon: 'pi pi-bell' },
-      { key: 'reports', labelKey: 'adminConsole.lens.widgets.reports', icon: 'pi pi-flag' },
-      { key: 'modules', labelKey: 'adminConsole.lens.widgets.modules', icon: 'pi pi-th-large' },
     ]
   }
   return [
     { key: 'budget', labelKey: 'adminConsole.lens.widgets.budget', icon: 'pi pi-wallet' },
-    { key: 'payments', labelKey: 'adminConsole.lens.widgets.payments', icon: 'pi pi-credit-card' },
     { key: 'members', labelKey: 'adminConsole.lens.widgets.members', icon: 'pi pi-users' },
-    { key: 'alert', labelKey: 'adminConsole.lens.widgets.alert', icon: 'pi pi-bell' },
-    { key: 'reports', labelKey: 'adminConsole.lens.widgets.reports', icon: 'pi pi-flag' },
     { key: 'pointCards', labelKey: 'adminConsole.lens.widgets.pointCards', icon: 'pi pi-id-card' },
   ]
 })
@@ -100,7 +99,25 @@ function backToMember() {
         </NuxtLink>
       </SectionCard>
 
-      <!-- ③〜 準備中プレースホルダ（P3b 送り・データ取得しない・クリック無効） -->
+      <!-- ③ 支払（組織専用・P3b Wave1 点火） -->
+      <DashboardAdminPaymentsWidget
+        v-if="scopeType === 'ORGANIZATION'"
+        :slug="slug"
+      />
+
+      <!-- ④ 業務アラート（team/org 両スコープ・P3b Wave1 点火） -->
+      <DashboardAdminBusinessAlertWidget :scope-type="scopeType" :slug="slug" />
+
+      <!-- ⑤ 通報（team/org 両スコープ・P3b Wave1 点火） -->
+      <DashboardAdminReportsWidget :scope-type="scopeType" :slug="slug" />
+
+      <!-- ⑥ モジュール（チーム専用・P3b Wave1 点火） -->
+      <DashboardAdminModulesWidget
+        v-if="scopeType === 'TEAM'"
+        :slug="slug"
+      />
+
+      <!-- Wave2/3 送りプレースホルダ（予約/予算/メンバー統計/ポイントカード） -->
       <SectionCard
         v-for="w in placeholderWidgets"
         :key="w.key"

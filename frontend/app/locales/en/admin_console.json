@@ -1,4 +1,4 @@
-{
+﻿{
   "adminConsole": {
     "comingSoon": "Coming soon",
     "team": {
@@ -81,6 +81,25 @@
           "MATCHING": "Matching",
           "PAYMENT": "Payments"
         }
+      },
+      "payments": {
+        "unsettled": "Unsettled",
+        "overdue": "Overdue",
+        "fetchFailed": "Could not load payment information"
+      },
+      "alert": {
+        "newReservations": "New reservations",
+        "unreadInquiries": "Unread inquiries",
+        "fetchFailed": "Could not load business alert information"
+      },
+      "reports": {
+        "pending": "Pending",
+        "reviewing": "Under review",
+        "fetchFailed": "Could not load report information"
+      },
+      "modules": {
+        "summary": "{enabled} enabled / {total} total",
+        "fetchFailed": "Could not load module information"
       }
     }
   }
