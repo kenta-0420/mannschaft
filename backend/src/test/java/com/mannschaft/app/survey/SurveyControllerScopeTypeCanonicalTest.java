@@ -20,6 +20,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -123,13 +124,30 @@ class SurveyControllerScopeTypeCanonicalTest {
         }
 
         @Test
-        @DisplayName("不明な scopeType → IllegalArgumentException")
-        void 不明なscopeType_IllegalArgumentException() {
+        @DisplayName("不明な scopeType → ResponseStatusException (HTTP 400 BAD_REQUEST)")
+        void 不明なscopeType_ResponseStatusException400() {
             CreateSurveyRequest request = mock(CreateSurveyRequest.class);
 
             assertThatThrownBy(() -> controller.createSurvey("committees", "some-slug", request))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("不明な scopeType");
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> {
+                        ResponseStatusException rse = (ResponseStatusException) ex;
+                        assertThat(rse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                        assertThat(rse.getMessage()).contains("不明な scopeType");
+                    });
+        }
+
+        @Test
+        @DisplayName("不明な scopeType（users）→ ResponseStatusException (HTTP 400 BAD_REQUEST)")
+        void users_scopeType_ResponseStatusException400() {
+            CreateSurveyRequest request = mock(CreateSurveyRequest.class);
+
+            assertThatThrownBy(() -> controller.createSurvey("users", "123", request))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(ex -> {
+                        ResponseStatusException rse = (ResponseStatusException) ex;
+                        assertThat(rse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    });
         }
     }
 }

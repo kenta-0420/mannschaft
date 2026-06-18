@@ -36,6 +36,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpHeaders;
+import org.springframework.web.server.ResponseStatusException;
 import com.mannschaft.app.common.SecurityUtils;
 
 /**
@@ -282,7 +283,7 @@ public class SurveyController {
      *
      * @param scopeType URLパス語（"organizations" または "teams"）
      * @return 正準値（"ORGANIZATION" または "TEAM"）
-     * @throws IllegalArgumentException 不明な scopeType の場合
+     * @throws ResponseStatusException 不明な scopeType の場合（HTTP 400）
      */
     private String resolveScopeType(String scopeType) {
         if ("organizations".equalsIgnoreCase(scopeType)) {
@@ -290,7 +291,7 @@ public class SurveyController {
         } else if ("teams".equalsIgnoreCase(scopeType)) {
             return ScopeType.TEAM.name();
         }
-        throw new IllegalArgumentException("不明な scopeType: " + scopeType);
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "不明な scopeType: " + scopeType);
     }
 
     /**
@@ -309,6 +310,6 @@ public class SurveyController {
         } else if ("teams".equalsIgnoreCase(scopeType)) {
             return teamService.resolveTeamId(scopeId);
         }
-        throw new IllegalArgumentException("不明な scopeType: " + scopeType);
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "不明な scopeType: " + scopeType);
     }
 }
