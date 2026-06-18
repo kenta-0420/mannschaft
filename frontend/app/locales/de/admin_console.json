@@ -1,0 +1,51 @@
+{
+  "adminConsole": {
+    "comingSoon": "Demnächst verfügbar",
+    "team": {
+      "title": "Team-Administrationskonsole",
+      "subtitle": "Verwalte Reservierungen, Budget, ausstehende Genehmigungen, Mitglieder und Einstellungen deines Teams an einem Ort"
+    },
+    "organization": {
+      "title": "Organisations-Administrationskonsole",
+      "subtitle": "Verwalte Budget, Zahlungen, ausstehende Genehmigungen, Mitglieder und Einstellungen deiner Organisation an einem Ort"
+    },
+    "cards": {
+      "reservations": {
+        "title": "Reservierungen",
+        "desc": "Prüfe ausstehende Reservierungen und bestätige, storniere oder schließe sie ab"
+      },
+      "budget": {
+        "title": "Budget",
+        "desc": "Prüfe Budget und Ausgaben nach Geschäftsjahr und Kategorie"
+      },
+      "approvals": {
+        "title": "Ausstehende Genehmigungen",
+        "desc": "Prüfe ausstehende Genehmigungen für Reservierungen, Schichten und Matching an einem Ort"
+      },
+      "members": {
+        "title": "Mitglieder",
+        "desc": "Verwalte die Mitgliederliste, Rollenänderungen, Mitgliedskarten und Profile"
+      },
+      "settings": {
+        "title": "Einstellungen",
+        "desc": "Verwalte alle Einstellungen an einem Ort"
+      },
+      "payments": {
+        "title": "Zahlungen",
+        "desc": "Prüfe den Status von Abrechnung und Zahlungen"
+      },
+      "pointCards": {
+        "title": "Punktekarten",
+        "desc": "Verwalte Ausgabe, Verlauf und Stempelung von Punktekarten für Händler"
+      }
+    },
+    "middleware": {
+      "accessDeniedTitle": "Zugriff verweigert",
+      "accessDeniedBody": "Administratorrechte sind erforderlich"
+    },
+    "error": {
+      "fetchFailedTitle": "Berechtigungen konnten nicht geladen werden",
+      "fetchFailedBody": "Ein vorübergehendes Problem ist aufgetreten. Bitte warte einen Moment und versuche es erneut"
+    }
+  }
+}

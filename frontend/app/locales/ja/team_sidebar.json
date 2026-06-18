@@ -39,7 +39,8 @@
       "audit_logs": "監査ログ",
       "settings": "設定",
       "faqSettings": "FAQ設定",
-      "leagueTransfers": "リーグ移籍"
+      "leagueTransfers": "リーグ移籍",
+      "adminConsole": "管理コンソール"
     }
   }
 }
