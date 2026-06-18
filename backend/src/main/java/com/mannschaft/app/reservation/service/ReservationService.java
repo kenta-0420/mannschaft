@@ -1,7 +1,9 @@
 package com.mannschaft.app.reservation.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.reservation.ApprovalMode;
 import com.mannschaft.app.reservation.CancelledBy;
 import com.mannschaft.app.reservation.ReservationErrorCode;
 import com.mannschaft.app.reservation.ReservationMapper;
@@ -16,6 +18,7 @@ import com.mannschaft.app.reservation.entity.ReservationEntity;
 import com.mannschaft.app.reservation.entity.ReservationLineEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import com.mannschaft.app.reservation.event.ReservationCancelledByMemberEvent;
+import com.mannschaft.app.reservation.event.ReservationConfirmedEvent;
 import com.mannschaft.app.reservation.event.ReservationCreatedEvent;
 import com.mannschaft.app.reservation.repository.ReservationLineRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
@@ -58,6 +61,9 @@ public class ReservationService {
     private final ReservationMapper reservationMapper;
     private final NameResolverService nameResolverService;
     private final ApplicationEventPublisher eventPublisher;
+    private final ReservationTeamSettingService settingService;
+    private final AccessControlService accessControlService;
+    private final ReservationPolicyService reservationPolicyService;
 
     /**
      * チームの予約一覧をページング取得する。
@@ -100,6 +106,16 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse createReservation(Long teamId, Long userId, CreateReservationRequest request) {
+        // 予約認可ゲート（Service 一本化）。
+        // teamId は数値（TeamReservationController の @PathVariable Long teamId）であり、
+        // AccessControlService.isMember は Long scopeId を期待するため slug 解決は不要。
+        // 既定（allow_public_reservation=false）→ チーム所属（SUPPORTER 以上＝memberships 存在）必須。
+        // 裏設定 ON → 所属チェックをスキップ（匿名は呼出元の認証層で 401 担保）。
+        if (!settingService.isAllowPublic(teamId)
+                && !accessControlService.isMember(userId, teamId, "TEAM")) {
+            throw new BusinessException(ReservationErrorCode.RESERVATION_PERMISSION_DENIED);
+        }
+
         ReservationSlotEntity slot = slotService.getSlotEntity(request.getReservationSlotId());
 
         if (!slot.isAvailable()) {
@@ -126,17 +142,30 @@ public class ReservationService {
         ReservationEntity saved = reservationRepository.save(entity);
         slotService.incrementAndCheckFull(slot);
 
+        // 承認モードを解決する（枠値→チーム設定→AUTO の優先順で必ず非 null）。
+        ApprovalMode mode = reservationPolicyService.resolveApprovalMode(teamId, slot);
+
+        // AUTO の場合は同一トランザクション内で即時確定し、確定イベントを発行する。
+        // MANUAL の場合は PENDING のまま維持し、管理者の手動承認（confirmReservation）を待つ。
+        if (mode == ApprovalMode.AUTO) {
+            saved.confirm();
+            saved = reservationRepository.save(saved);
+            publishConfirmedEvent(saved, slot, userId);
+        }
+
         String bookedAtFormatted = saved.getBookedAt().format(BOOKED_AT_FORMATTER);
+        // 管理者通知の出し分けには「実効承認モード」を渡す（生の slot 値ではなく解決後の mode）。
         eventPublisher.publishEvent(new ReservationCreatedEvent(
                 saved.getTeamId(),
                 saved.getId(),
                 userId,
-                slot.getApprovalMode(),
+                mode,
                 slot.getTitle(),
                 bookedAtFormatted
         ));
 
-        log.info("予約作成: teamId={}, reservationId={}, userId={}", teamId, saved.getId(), userId);
+        log.info("予約作成: teamId={}, reservationId={}, userId={}, approvalMode={}",
+                teamId, saved.getId(), userId, mode);
         return enrich(saved);
     }
 
@@ -157,6 +186,12 @@ public class ReservationService {
 
         entity.confirm();
         ReservationEntity saved = reservationRepository.save(entity);
+
+        // 手動承認時もリマインド対象（設計書 §3）。確定が実際に起きた経路のみで発行する。
+        // isConfirmable() を満たした PENDING のみがここに到達するため、二重発行は起きない。
+        ReservationSlotEntity slot = slotService.getSlotEntity(saved.getReservationSlotId());
+        publishConfirmedEvent(saved, slot, saved.getUserId());
+
         log.info("予約確定: teamId={}, reservationId={}", teamId, reservationId);
         return enrich(saved);
     }
@@ -349,6 +384,24 @@ public class ReservationService {
         long total = pending + confirmed + cancelled + completed + noShow;
 
         return new ReservationStatsResponse(total, pending, confirmed, cancelled, completed, noShow);
+    }
+
+    /**
+     * 予約確定イベントを発行する。スロットの日付・開始時刻を合成した {@code slotStartAt} を保持させる。
+     *
+     * @param reservation 確定済み予約エンティティ
+     * @param slot        対象スロット（タイトル・開始日時の取得元）
+     * @param actorUserId 確定を引き起こした操作者のユーザーID
+     */
+    private void publishConfirmedEvent(ReservationEntity reservation, ReservationSlotEntity slot, Long actorUserId) {
+        LocalDateTime slotStartAt = LocalDateTime.of(slot.getSlotDate(), slot.getStartTime());
+        eventPublisher.publishEvent(new ReservationConfirmedEvent(
+                reservation.getTeamId(),
+                reservation.getId(),
+                actorUserId,
+                slotStartAt,
+                slot.getTitle()
+        ));
     }
 
     /**

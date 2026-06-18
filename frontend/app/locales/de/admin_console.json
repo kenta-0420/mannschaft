@@ -50,6 +50,57 @@
     "approvalsBadge": {
       "degraded": "Einige Zahlen nicht verfügbar",
       "fetchFailed": "Anzahl konnte nicht geladen werden"
+    },
+    "lens": {
+      "toggleAriaLabel": "Administratoransicht umschalten",
+      "tooltip": "Zur Administratoransicht wechseln",
+      "onboardingHint": "Hier kannst du zur Administratoransicht wechseln",
+      "member": "Mitglied",
+      "admin": "Administrator",
+      "backToMember": "Zurück zur Mitgliederansicht",
+      "openConsole": "Administrationskonsole öffnen",
+      "widgets": {
+        "approvals": "Genehmigungen",
+        "console": "Administrationskonsole",
+        "reservations": "Reservierungen",
+        "budget": "Budget",
+        "members": "Mitgliederstatistik",
+        "alert": "Geschäftswarnungen",
+        "reports": "Meldungen",
+        "modules": "Module",
+        "payments": "Zahlungen",
+        "pointCards": "Punktekarten"
+      },
+      "approvals": {
+        "empty": "Keine ausstehenden Genehmigungen",
+        "degraded": "Einige Zahlen nicht verfügbar",
+        "fetchFailed": "Ausstehende Genehmigungen konnten nicht geladen werden",
+        "domain": {
+          "RESERVATION": "Reservierungen",
+          "SHIFT_REQUEST": "Schichten",
+          "MATCHING": "Matching",
+          "PAYMENT": "Zahlungen"
+        }
+      },
+      "payments": {
+        "unsettled": "Ausstehend",
+        "overdue": "Überfällig",
+        "fetchFailed": "Zahlungsinformationen konnten nicht geladen werden"
+      },
+      "alert": {
+        "newReservations": "Neue Reservierungen",
+        "unreadInquiries": "Ungelesene Anfragen",
+        "fetchFailed": "Geschäftswarnungen konnten nicht geladen werden"
+      },
+      "reports": {
+        "pending": "Ausstehend",
+        "reviewing": "In Prüfung",
+        "fetchFailed": "Meldungsinformationen konnten nicht geladen werden"
+      },
+      "modules": {
+        "summary": "{enabled} aktiv / {total} gesamt",
+        "fetchFailed": "Modulinformationen konnten nicht geladen werden"
+      }
     }
   }
 }

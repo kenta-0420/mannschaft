@@ -443,6 +443,30 @@ class GlobalExceptionHandlerTest {
             assertThat(response.getBody()).isNotNull();
             assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_020");
         }
+
+        @Test
+        @DisplayName("F03.4 予約認可ゲート: RESERVATION_PERMISSION_DENIED は個別マッピングで 403 Forbidden になる")
+        void resolveHttpStatus_RESERVATION_PERMISSION_DENIED_403() {
+            // 非所属者が一般公開OFFのチームに予約 → 403。Severity.WARN 既定（400）を個別マッピングで 403 に上書き。
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.reservation.ReservationErrorCode.RESERVATION_PERMISSION_DENIED);
+
+            assertThat(result).isEqualTo(HttpStatus.FORBIDDEN);
+        }
+
+        @Test
+        @DisplayName("F03.4 予約認可ゲート: RESERVATION_PERMISSION_DENIED の BusinessException は 403 Forbidden（code=RESERVATION_021）で返る")
+        void handleBusinessException_RESERVATION_PERMISSION_DENIED_403() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.reservation.ReservationErrorCode.RESERVATION_PERMISSION_DENIED);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(response.getBody()).isNotNull();
+            // #1601 の RESERVATION_020(409) と別物であることを保証
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_021");
+        }
     }
 
     // ========================================

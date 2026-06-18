@@ -89,4 +89,40 @@ class PaymentAdminQueryServiceTest {
         assertThat(item.id()).isEqualTo(pid.toString());
         assertThat(item.detailRoute()).isEqualTo("/organizations/dev-org/admin/payments/" + pid);
     }
+
+    // ──────────────────────────────────────────────────────────────
+    // F10.1.1 / P3b: ADMIN_ORG_PAYMENTS サマリ（未収件数／期限超過件数の 2 区分）
+    // ──────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("summaryForOrg → 未収(StatusIn 3種)と期限超過(OVERDUE 単体)を別カウントで返す")
+    void summaryForOrgSeparatesOverdue() {
+        // 未収 3 ステータス合計 = 8
+        given(paymentRequestRepository.countByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(
+                eq(ScopeKind.ORG), eq(ORG_ID), anyCollection())).willReturn(8L);
+        // OVERDUE 単体 = 3（未収の内数）
+        given(paymentRequestRepository.countByIssuerScopeKindAndIssuerScopeIdAndStatusAndDeletedAtIsNull(
+                eq(ScopeKind.ORG), eq(ORG_ID), eq(PaymentRequestStatus.OVERDUE))).willReturn(3L);
+
+        PaymentAdminQueryService.OrgPaymentSummary result = service.summaryForOrg(ORG_ID);
+
+        assertThat(result.unsettledCount()).isEqualTo(8L);
+        assertThat(result.overdueCount()).isEqualTo(3L);
+    }
+
+    @Test
+    @DisplayName("summaryForOrg → 番人: 全カウントが issuer_scope_kind=ORG + 当該 orgId で絞り込まれる（IDOR 防止）")
+    void summaryForOrgScopesToOrg() {
+        given(paymentRequestRepository.countByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(
+                eq(ScopeKind.ORG), eq(ORG_ID), anyCollection())).willReturn(0L);
+        given(paymentRequestRepository.countByIssuerScopeKindAndIssuerScopeIdAndStatusAndDeletedAtIsNull(
+                eq(ScopeKind.ORG), eq(ORG_ID), eq(PaymentRequestStatus.OVERDUE))).willReturn(0L);
+
+        service.summaryForOrg(ORG_ID);
+
+        verify(paymentRequestRepository).countByIssuerScopeKindAndIssuerScopeIdAndStatusInAndDeletedAtIsNull(
+                eq(ScopeKind.ORG), eq(ORG_ID), anyCollection());
+        verify(paymentRequestRepository).countByIssuerScopeKindAndIssuerScopeIdAndStatusAndDeletedAtIsNull(
+                eq(ScopeKind.ORG), eq(ORG_ID), eq(PaymentRequestStatus.OVERDUE));
+    }
 }

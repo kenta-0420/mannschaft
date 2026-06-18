@@ -1,6 +1,8 @@
 package com.mannschaft.app.reservation;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.reservation.event.ReservationConfirmedEvent;
+import com.mannschaft.app.reservation.event.ReservationCreatedEvent;
 import com.mannschaft.app.reservation.dto.AdminNoteRequest;
 import com.mannschaft.app.reservation.dto.CancelReservationRequest;
 import com.mannschaft.app.reservation.dto.CreateReservationRequest;
@@ -71,6 +73,15 @@ class ReservationServiceTest {
     @Mock
     private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
+    @Mock
+    private com.mannschaft.app.reservation.service.ReservationTeamSettingService settingService;
+
+    @Mock
+    private com.mannschaft.app.common.AccessControlService accessControlService;
+
+    @Mock
+    private com.mannschaft.app.reservation.service.ReservationPolicyService reservationPolicyService;
+
     @InjectMocks
     private ReservationService service;
 
@@ -101,6 +112,14 @@ class ReservationServiceTest {
         given(nameResolverService.resolveUserFullNames(org.mockito.ArgumentMatchers.anyCollection()))
                 .willReturn(java.util.Map.of(USER_ID, "山田 太郎"));
         given(nameResolverService.resolveUserFullName(any(Long.class))).willReturn("山田 太郎");
+        // 予約認可ゲートの既定スタブ: 非公開チームだがユーザーは所属者 → 予約可。
+        // 認可固有のテストでは各 @Test 内で上書きする。
+        given(settingService.isAllowPublic(TEAM_ID)).willReturn(false);
+        given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        // 承認モード解決の既定スタブ: MANUAL（＝PENDING 維持・自動確定しない）。
+        // AUTO 自動確定を検証するテストでは各 @Test 内で上書きする。
+        given(reservationPolicyService.resolveApprovalMode(eq(TEAM_ID), any(ReservationSlotEntity.class)))
+                .willReturn(ApprovalMode.MANUAL);
     }
 
     private ReservationEntity createReservationEntity() {
@@ -355,6 +374,182 @@ class ReservationServiceTest {
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ReservationErrorCode.DUPLICATE_RESERVATION);
         }
+
+        @Test
+        @DisplayName("認可: 所属者は非公開チームでも予約できる")
+        void 予約作成_所属者は予約可() {
+            // Given: 非公開（false）だがユーザーは所属者（setUp の既定スタブ）
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, "テスト備考");
+            ReservationSlotEntity slot = createAvailableSlotEntity();
+            ReservationEntity savedEntity = createReservationEntity();
+
+            given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
+            given(reservationRepository.existsByReservationSlotIdAndUserIdAndStatusIn(
+                    eq(SLOT_ID), eq(USER_ID), any())).willReturn(false);
+            given(reservationRepository.save(any(ReservationEntity.class))).willReturn(savedEntity);
+
+            // When
+            ReservationResponse result = service.createReservation(TEAM_ID, USER_ID, request);
+
+            // Then
+            assertThat(result).isNotNull();
+            verify(reservationRepository).save(any(ReservationEntity.class));
+        }
+
+        @Test
+        @DisplayName("認可: 非所属者かつ非公開（既定）の場合 RESERVATION_PERMISSION_DENIED で 403 相当")
+        void 予約作成_非所属者かつ非公開は拒否() {
+            // Given: 非公開（false）かつ非所属者
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null);
+            given(settingService.isAllowPublic(TEAM_ID)).willReturn(false);
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+
+            // When / Then: スロット取得より前に認可で弾く
+            assertThatThrownBy(() -> service.createReservation(TEAM_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ReservationErrorCode.RESERVATION_PERMISSION_DENIED);
+            // 認可で弾かれるため永続化に到達しない
+            verify(reservationRepository, org.mockito.Mockito.never()).save(any(ReservationEntity.class));
+        }
+
+        @Test
+        @DisplayName("AUTO: 承認モードAUTOの場合 createReservation で即時CONFIRMED かつ ReservationConfirmedEvent 発行")
+        void 予約作成_AUTOで自動確定() {
+            // Given: 承認モード AUTO
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, "テスト備考");
+            ReservationSlotEntity slot = ReservationSlotEntity.builder()
+                    .teamId(TEAM_ID)
+                    .title("カット")
+                    .slotDate(java.time.LocalDate.of(2026, 4, 1))
+                    .startTime(java.time.LocalTime.of(10, 0))
+                    .endTime(java.time.LocalTime.of(11, 0))
+                    .build();
+            ReservationEntity savedEntity = createReservationEntity();
+
+            given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
+            given(reservationRepository.existsByReservationSlotIdAndUserIdAndStatusIn(
+                    eq(SLOT_ID), eq(USER_ID), any())).willReturn(false);
+            given(reservationRepository.save(any(ReservationEntity.class))).willReturn(savedEntity);
+            given(reservationPolicyService.resolveApprovalMode(eq(TEAM_ID), eq(slot)))
+                    .willReturn(ApprovalMode.AUTO);
+
+            // When
+            service.createReservation(TEAM_ID, USER_ID, request);
+
+            // Then: confirm() が呼ばれて CONFIRMED 化されている（同一エンティティを再save）
+            assertThat(savedEntity.getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
+            // AUTO 時は initial save + confirm 後の再save の計 2 回
+            verify(reservationRepository, org.mockito.Mockito.times(2)).save(any(ReservationEntity.class));
+
+            // 発行イベントを一括捕捉する（publishEvent(Object) は単一オーバーロードのため
+            // Confirmed/Created の両方が同一メソッド経由で 2 回呼ばれる）。
+            org.mockito.ArgumentCaptor<Object> captor = org.mockito.ArgumentCaptor.forClass(Object.class);
+            verify(eventPublisher, org.mockito.Mockito.times(2)).publishEvent(captor.capture());
+
+            // ReservationConfirmedEvent が発行され、slotStartAt が slotDate+startTime で合成されている
+            ReservationConfirmedEvent confirmedEvent = captor.getAllValues().stream()
+                    .filter(ReservationConfirmedEvent.class::isInstance)
+                    .map(ReservationConfirmedEvent.class::cast)
+                    .findFirst().orElseThrow();
+            assertThat(confirmedEvent.getTeamId()).isEqualTo(TEAM_ID);
+            assertThat(confirmedEvent.getActorUserId()).isEqualTo(USER_ID);
+            assertThat(confirmedEvent.getSlotTitle()).isEqualTo("カット");
+            assertThat(confirmedEvent.getSlotStartAt())
+                    .isEqualTo(java.time.LocalDateTime.of(2026, 4, 1, 10, 0));
+
+            // 既存の ReservationCreatedEvent も維持され、実効モード AUTO が渡される
+            ReservationCreatedEvent createdEvent = captor.getAllValues().stream()
+                    .filter(ReservationCreatedEvent.class::isInstance)
+                    .map(ReservationCreatedEvent.class::cast)
+                    .findFirst().orElseThrow();
+            assertThat(createdEvent.getApprovalMode()).isEqualTo(ApprovalMode.AUTO);
+        }
+
+        @Test
+        @DisplayName("MANUAL: 承認モードMANUALの場合 createReservation で PENDING維持・ReservationConfirmedEvent 未発行")
+        void 予約作成_MANUALはPENDING維持() {
+            // Given: 承認モード MANUAL（setUp 既定）
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, "テスト備考");
+            ReservationSlotEntity slot = createAvailableSlotEntity();
+            ReservationEntity savedEntity = createReservationEntity();
+
+            given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
+            given(reservationRepository.existsByReservationSlotIdAndUserIdAndStatusIn(
+                    eq(SLOT_ID), eq(USER_ID), any())).willReturn(false);
+            given(reservationRepository.save(any(ReservationEntity.class))).willReturn(savedEntity);
+
+            // When
+            service.createReservation(TEAM_ID, USER_ID, request);
+
+            // Then: PENDING のまま・save は 1 回のみ
+            assertThat(savedEntity.getStatus()).isEqualTo(ReservationStatus.PENDING);
+            verify(reservationRepository, org.mockito.Mockito.times(1)).save(any(ReservationEntity.class));
+
+            // ReservationConfirmedEvent は発行されない
+            verify(eventPublisher, org.mockito.Mockito.never())
+                    .publishEvent(any(ReservationConfirmedEvent.class));
+
+            // ReservationCreatedEvent には実効モード MANUAL が渡される
+            org.mockito.ArgumentCaptor<ReservationCreatedEvent> createdCaptor =
+                    org.mockito.ArgumentCaptor.forClass(ReservationCreatedEvent.class);
+            verify(eventPublisher).publishEvent(createdCaptor.capture());
+            assertThat(createdCaptor.getValue().getApprovalMode()).isEqualTo(ApprovalMode.MANUAL);
+        }
+
+        @Test
+        @DisplayName("結線: 承認モード解決を ReservationPolicyService に委譲する（枠値優先は同サービスの責務）")
+        void 予約作成_承認モード解決をポリシーサービスに委譲() {
+            // Given: 枠に MANUAL を持つスロット。resolveApprovalMode が枠値優先で MANUAL を返すことを結線で確認する。
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null);
+            ReservationSlotEntity slot = ReservationSlotEntity.builder()
+                    .teamId(TEAM_ID)
+                    .slotDate(java.time.LocalDate.of(2026, 4, 1))
+                    .startTime(java.time.LocalTime.of(10, 0))
+                    .endTime(java.time.LocalTime.of(11, 0))
+                    .approvalMode(ApprovalMode.MANUAL)
+                    .build();
+            ReservationEntity savedEntity = createReservationEntity();
+
+            given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
+            given(reservationRepository.existsByReservationSlotIdAndUserIdAndStatusIn(
+                    eq(SLOT_ID), eq(USER_ID), any())).willReturn(false);
+            given(reservationRepository.save(any(ReservationEntity.class))).willReturn(savedEntity);
+            // 枠値優先 → MANUAL（解決ロジック自体は ReservationPolicyServiceTest で担保）
+            given(reservationPolicyService.resolveApprovalMode(eq(TEAM_ID), eq(slot)))
+                    .willReturn(ApprovalMode.MANUAL);
+
+            // When
+            service.createReservation(TEAM_ID, USER_ID, request);
+
+            // Then: 解決はサービスに委譲され、その結果（MANUAL）に従い PENDING 維持
+            verify(reservationPolicyService).resolveApprovalMode(eq(TEAM_ID), eq(slot));
+            assertThat(savedEntity.getStatus()).isEqualTo(ReservationStatus.PENDING);
+        }
+
+        @Test
+        @DisplayName("認可: 公開設定ON の場合は非所属者でも予約できる（所属チェックをスキップ）")
+        void 予約作成_公開ONなら非所属者でも予約可() {
+            // Given: 公開（true）かつ非所属者
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null);
+            ReservationSlotEntity slot = createAvailableSlotEntity();
+            ReservationEntity savedEntity = createReservationEntity();
+            given(settingService.isAllowPublic(TEAM_ID)).willReturn(true);
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+            given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
+            given(reservationRepository.existsByReservationSlotIdAndUserIdAndStatusIn(
+                    eq(SLOT_ID), eq(USER_ID), any())).willReturn(false);
+            given(reservationRepository.save(any(ReservationEntity.class))).willReturn(savedEntity);
+
+            // When
+            ReservationResponse result = service.createReservation(TEAM_ID, USER_ID, request);
+
+            // Then: 公開ONなので所属判定を待たず予約成立
+            assertThat(result).isNotNull();
+            verify(reservationRepository).save(any(ReservationEntity.class));
+            // 公開ONのときは短絡評価で isMember を呼ばない
+            verify(accessControlService, org.mockito.Mockito.never()).isMember(any(), any(), org.mockito.ArgumentMatchers.anyString());
+        }
     }
 
     // ========================================
@@ -370,10 +565,12 @@ class ReservationServiceTest {
         void 予約確定_正常() {
             // Given
             ReservationEntity entity = createReservationEntity();
+            ReservationSlotEntity slot = createAvailableSlotEntity();
             ReservationResponse response = createReservationResponse();
             given(reservationRepository.findByIdAndTeamId(RESERVATION_ID, TEAM_ID))
                     .willReturn(Optional.of(entity));
             given(reservationRepository.save(entity)).willReturn(entity);
+            given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
             given(reservationMapper.toReservationResponse(entity)).willReturn(response);
 
             // When
@@ -382,6 +579,55 @@ class ReservationServiceTest {
             // Then
             assertThat(result).isNotNull();
             verify(reservationRepository).save(entity);
+        }
+
+        @Test
+        @DisplayName("確定イベント: 手動承認成功時に ReservationConfirmedEvent が発行される（手動承認もリマインド対象）")
+        void 予約確定_手動承認でConfirmedEvent発行() {
+            // Given: PENDING 予約
+            ReservationEntity entity = createReservationEntity();
+            ReservationSlotEntity slot = ReservationSlotEntity.builder()
+                    .teamId(TEAM_ID)
+                    .title("カット")
+                    .slotDate(java.time.LocalDate.of(2026, 4, 1))
+                    .startTime(java.time.LocalTime.of(10, 0))
+                    .endTime(java.time.LocalTime.of(11, 0))
+                    .build();
+            ReservationResponse response = createReservationResponse();
+            given(reservationRepository.findByIdAndTeamId(RESERVATION_ID, TEAM_ID))
+                    .willReturn(Optional.of(entity));
+            given(reservationRepository.save(entity)).willReturn(entity);
+            given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
+            given(reservationMapper.toReservationResponse(entity)).willReturn(response);
+
+            // When
+            service.confirmReservation(TEAM_ID, RESERVATION_ID);
+
+            // Then: ReservationConfirmedEvent が発行され、slotStartAt が合成されている
+            org.mockito.ArgumentCaptor<ReservationConfirmedEvent> captor =
+                    org.mockito.ArgumentCaptor.forClass(ReservationConfirmedEvent.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            ReservationConfirmedEvent event = captor.getValue();
+            assertThat(event.getTeamId()).isEqualTo(TEAM_ID);
+            assertThat(event.getActorUserId()).isEqualTo(USER_ID);
+            assertThat(event.getSlotTitle()).isEqualTo("カット");
+            assertThat(event.getSlotStartAt())
+                    .isEqualTo(java.time.LocalDateTime.of(2026, 4, 1, 10, 0));
+        }
+
+        @Test
+        @DisplayName("確定イベント: CONFIRMED 済み（確定が起きない）の場合は ReservationConfirmedEvent を発行しない")
+        void 予約確定_既確定なら未発行() {
+            // Given: 既に CONFIRMED（isConfirmable=false）
+            ReservationEntity entity = createConfirmedReservationEntity();
+            given(reservationRepository.findByIdAndTeamId(RESERVATION_ID, TEAM_ID))
+                    .willReturn(Optional.of(entity));
+
+            // When / Then: 例外でガードされ、イベントは発行されない
+            assertThatThrownBy(() -> service.confirmReservation(TEAM_ID, RESERVATION_ID))
+                    .isInstanceOf(BusinessException.class);
+            verify(eventPublisher, org.mockito.Mockito.never())
+                    .publishEvent(any(ReservationConfirmedEvent.class));
         }
 
         @Test

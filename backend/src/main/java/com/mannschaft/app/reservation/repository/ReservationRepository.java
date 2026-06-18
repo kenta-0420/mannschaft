@@ -74,6 +74,14 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
     long countByTeamIdAndStatus(Long teamId, ReservationStatus status);
 
     /**
+     * F10.1.1 / P3b: 指定チームの「指定時刻以降に作成された」指定ステータス予約の件数を取得する
+     * （管理者レンズ ⑤ ADMIN_TEAM_ALERT の「新規予約」用・本日 CONFIRMED）。
+     * {@code @SQLRestriction("deleted_at IS NULL")} により論理削除済みは自動除外される。
+     */
+    long countByTeamIdAndStatusAndCreatedAtGreaterThanEqual(
+            Long teamId, ReservationStatus status, LocalDateTime createdAtFrom);
+
+    /**
      * ユーザーの直近の予約を取得する（CONFIRMED かつ booked_at が未来）。
      */
     @Query("SELECT r FROM ReservationEntity r WHERE r.userId = :userId AND r.status = 'CONFIRMED' AND r.bookedAt >= :now ORDER BY r.bookedAt ASC")

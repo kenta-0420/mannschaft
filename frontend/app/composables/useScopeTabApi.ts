@@ -1,4 +1,4 @@
-/**
+﻿/**
  * F22.1 横スワイプ・スコープダッシュボード — タグ API composable
  *
  * 設計書: docs/features/F22.1_swipe_scope_dashboard/02_api_design.md §3.1〜§3.4
@@ -27,6 +27,11 @@ import type {
   AdminActionDomainSummary,
   AdminActionItem,
 } from '~/types/admin-action-required'
+import type {
+  AdminPaymentSummary,
+  AdminBusinessAlert,
+  AdminReportStats,
+} from '~/types/admin-dashboard-widgets'
 
 // ---- API レスポンス（snake_case）の生型 ----
 
@@ -156,8 +161,13 @@ function toActionRequiredSummary(r: RawActionRequiredSummary): ActionRequiredSum
 /**
  * 管理者向け admin-action-required（snake_case）→ camelCase 受信型へ変換する（F10.1.1 P2b）。
  *
- * メンバー向け {@link toActionRequiredSummary} とは別物。`degraded` ドメインの件数は
- * BE 側で `total_pending` に加算されないため、本変換では値をそのまま写すだけでよい。
+ * メンバー向け {@link toActionRequiredSummary} とは別物。
+ *
+ * <p><b>degraded 正規化（検分🟠・二重防御）</b>: 集計失敗（degraded=true）のドメインは
+ * BE 側で `total_pending` に加算されない前提だが、FE 側でも保証する。
+ * degraded ドメインの `pendingCount` は 0 に正規化し（集計失敗を「件数」として表示・合算しない）、
+ * `totalPending` も BE 値をそのまま信じず、正規化後の各ドメイン件数の合計で再計算する。
+ * これにより万一 BE が degraded 分を含めて返しても、FE 側で件数 / total に混入しない。</p>
  */
 function toAdminActionRequiredSummary(
   r: RawAdminActionRequiredSummary,
@@ -170,19 +180,63 @@ function toAdminActionRequiredSummary(
       requestedAt: i.requested_at,
       detailRoute: i.detail_route,
     }))
+    const degraded = d.degraded ?? false
     return {
       domain: d.domain,
-      pendingCount: d.pending_count ?? 0,
-      degraded: d.degraded ?? false,
+      // degraded ドメインは件数を 0 に正規化（集計失敗を件数と混同しない・二重防御）。
+      pendingCount: degraded ? 0 : (d.pending_count ?? 0),
+      degraded,
       listRoute: d.list_route,
       items,
     }
   })
+  // totalPending は BE 値を鵜呑みにせず、正規化後の各ドメイン件数（degraded=0）の合計で再計算する。
+  const totalPending = domains.reduce((sum, d) => sum + d.pendingCount, 0)
   return {
     scopeType: r.scope_type,
     scopeId: r.scope_id,
-    totalPending: r.total_pending ?? 0,
+    totalPending,
     domains,
+  }
+}
+
+// ---- P3b Wave1 管理者ウィジェット用 API レスポンス（snake_case）の生型 ----
+
+interface RawAdminPaymentSummary {
+  unsettled_count: number
+  overdue_count: number
+}
+
+interface RawAdminBusinessAlert {
+  new_reservations: number
+  unread_inquiries: number
+}
+
+interface RawAdminReportStats {
+  pending_count: number
+  reviewing_count: number
+}
+
+// ---- P3b Wave1 snake_case → camelCase 変換 ----
+
+function toAdminPaymentSummary(r: RawAdminPaymentSummary): AdminPaymentSummary {
+  return {
+    unsettledCount: r.unsettled_count ?? 0,
+    overdueCount: r.overdue_count ?? 0,
+  }
+}
+
+function toAdminBusinessAlert(r: RawAdminBusinessAlert): AdminBusinessAlert {
+  return {
+    newReservations: r.new_reservations ?? 0,
+    unreadInquiries: r.unread_inquiries ?? 0,
+  }
+}
+
+function toAdminReportStats(r: RawAdminReportStats): AdminReportStats {
+  return {
+    pendingCount: r.pending_count ?? 0,
+    reviewingCount: r.reviewing_count ?? 0,
   }
 }
 
@@ -270,5 +324,74 @@ export function useScopeTabApi() {
     return toAdminActionRequiredSummary(res.data)
   }
 
-  return { getScopeTabs, updateOrder, getActionRequired, getAdminActionRequired }
+
+  /**
+   * 組織の支払サマリ（ADMIN_ORG_PAYMENTS）を取得する（F10.1.1 P3b Wave1）。
+   *
+   * 対応 EP: GET /api/v1/dashboard/organization/{orgSlug}/admin-payment-summary
+   *
+   * @param orgSlug - 組織の slug
+   */
+  async function getAdminPaymentSummary(orgSlug: string): Promise<AdminPaymentSummary> {
+    const res = await api<{ data: RawAdminPaymentSummary }>(
+      `/api/v1/dashboard/organization/${orgSlug}/admin-payment-summary`,
+    )
+    return toAdminPaymentSummary(res.data)
+  }
+
+  /**
+   * 業務アラートサマリ（ADMIN_TEAM_ALERT / ADMIN_ORG_ALERT）を取得する（F10.1.1 P3b Wave1）。
+   *
+   * 対応 EP:
+   *   - GET /api/v1/dashboard/team/{teamSlug}/admin-business-alert
+   *   - GET /api/v1/dashboard/organization/{orgSlug}/admin-business-alert
+   *
+   * 組織スコープは new_reservations=0 固定（§2.3⑤）。
+   *
+   * @param scopeType - TEAM / ORGANIZATION
+   * @param slug - チーム / 組織の slug
+   */
+  async function getAdminBusinessAlert(
+    scopeType: ScopeTabType,
+    slug: string,
+  ): Promise<AdminBusinessAlert> {
+    const base = scopeType === 'TEAM' ? `team/${slug}` : `organization/${slug}`
+    const res = await api<{ data: RawAdminBusinessAlert }>(
+      `/api/v1/dashboard/${base}/admin-business-alert`,
+    )
+    return toAdminBusinessAlert(res.data)
+  }
+
+  /**
+   * 通報統計（ADMIN_TEAM_REPORTS / ADMIN_ORG_REPORTS）を取得する（F10.1.1 P3b Wave1）。
+   *
+   * 対応 EP:
+   *   - GET /api/v1/dashboard/team/{teamSlug}/admin-report-stats
+   *   - GET /api/v1/dashboard/organization/{orgSlug}/admin-report-stats
+   *
+   * @param scopeType - TEAM / ORGANIZATION
+   * @param slug - チーム / 組織の slug
+   */
+  async function getAdminReportStats(
+    scopeType: ScopeTabType,
+    slug: string,
+  ): Promise<AdminReportStats> {
+    const base = scopeType === 'TEAM' ? `team/${slug}` : `organization/${slug}`
+    const res = await api<{ data: RawAdminReportStats }>(
+      `/api/v1/dashboard/${base}/admin-report-stats`,
+    )
+    return toAdminReportStats(res.data)
+  }
+
+  return {
+    getScopeTabs,
+    updateOrder,
+    getActionRequired,
+    getAdminActionRequired,
+    getAdminPaymentSummary,
+    getAdminBusinessAlert,
+    getAdminReportStats,
+  }
 }
+
+

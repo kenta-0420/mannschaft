@@ -28,6 +28,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -152,10 +153,14 @@ class AdminActionRequiredFacadeTest {
         @Test
         @DisplayName("Query Service が内部で認可違反(COMMON_002)を投げる → 縮退せず全体が伝播")
         void domainAuthErrorPropagates() {
-            given(reservationAdminQueryService.pendingForTeam(eq(TEAM_ID), eq(TEAM_SLUG), anyInt())).willReturn(agg(1, 1));
+            // CompletableFuture 並列実行＋短絡伝播のため、shiftRequest が例外を投げると
+            // reservation / matching の stub がタイミング次第で消費されない場合がある。
+            // UnnecessaryStubbingException（間欠的な flaky）を防ぐため lenient 化する。
+            // assert は一切弱めておらず、例外の型・エラーコードは strict に検証する。
+            lenient().when(reservationAdminQueryService.pendingForTeam(eq(TEAM_ID), eq(TEAM_SLUG), anyInt())).thenReturn(agg(1, 1));
             given(shiftRequestAdminQueryService.pendingForTeam(eq(TEAM_ID), eq(TEAM_SLUG), anyInt()))
                     .willThrow(new BusinessException(CommonErrorCode.COMMON_002));
-            given(matchingAdminQueryService.pendingReceivedForTeam(eq(TEAM_ID), eq(TEAM_SLUG), anyInt())).willReturn(agg(1, 1));
+            lenient().when(matchingAdminQueryService.pendingReceivedForTeam(eq(TEAM_ID), eq(TEAM_SLUG), anyInt())).thenReturn(agg(1, 1));
 
             assertThatThrownBy(() -> facade.getAdminActionRequired(USER_ID, "TEAM", TEAM_ID, TEAM_SLUG, 3))
                     .isInstanceOf(BusinessException.class)
@@ -190,10 +195,14 @@ class AdminActionRequiredFacadeTest {
         @Test
         @DisplayName("1 ドメインが NullPointerException(プログラミングエラー) → 縮退せず全体が伝播（500 相当）")
         void programmingErrorPropagates() {
-            given(reservationAdminQueryService.pendingForTeam(eq(TEAM_ID), eq(TEAM_SLUG), anyInt())).willReturn(agg(1, 1));
+            // CompletableFuture 並列実行＋短絡伝播のため、shiftRequest が例外を投げると
+            // reservation / matching の stub がタイミング次第で消費されない場合がある。
+            // UnnecessaryStubbingException（間欠的な flaky）を防ぐため lenient 化する。
+            // assert は一切弱めておらず、NullPointerException の伝播は strict に検証する。
+            lenient().when(reservationAdminQueryService.pendingForTeam(eq(TEAM_ID), eq(TEAM_SLUG), anyInt())).thenReturn(agg(1, 1));
             given(shiftRequestAdminQueryService.pendingForTeam(eq(TEAM_ID), eq(TEAM_SLUG), anyInt()))
                     .willThrow(new NullPointerException("バグ"));
-            given(matchingAdminQueryService.pendingReceivedForTeam(eq(TEAM_ID), eq(TEAM_SLUG), anyInt())).willReturn(agg(1, 1));
+            lenient().when(matchingAdminQueryService.pendingReceivedForTeam(eq(TEAM_ID), eq(TEAM_SLUG), anyInt())).thenReturn(agg(1, 1));
 
             assertThatThrownBy(() -> facade.getAdminActionRequired(USER_ID, "TEAM", TEAM_ID, TEAM_SLUG, 3))
                     .isInstanceOf(NullPointerException.class);

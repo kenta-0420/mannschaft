@@ -5,12 +5,15 @@ import com.mannschaft.app.reservation.dto.BlockedTimeRequest;
 import com.mannschaft.app.reservation.dto.BlockedTimeResponse;
 import com.mannschaft.app.reservation.dto.BusinessHourResponse;
 import com.mannschaft.app.reservation.dto.BusinessHoursUpdateRequest;
+import com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest;
 import com.mannschaft.app.reservation.service.ReservationBusinessHourService;
+import com.mannschaft.app.reservation.service.ReservationTeamSettingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -39,6 +42,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class ReservationBusinessHourController {
 
     private final ReservationBusinessHourService businessHourService;
+    private final ReservationTeamSettingService teamSettingService;
 
 
     /**
@@ -129,9 +133,32 @@ public class ReservationBusinessHourController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> getSettings(
             @PathVariable Long teamId) {
         boolean hasBusinessHours = businessHourService.hasBusinessHours(teamId);
+        boolean allowPublicReservation = teamSettingService.isAllowPublic(teamId);
         Map<String, Object> settings = Map.of(
                 "teamId", teamId,
-                "hasBusinessHours", hasBusinessHours
+                "hasBusinessHours", hasBusinessHours,
+                "allowPublicReservation", allowPublicReservation
+        );
+        return ResponseEntity.ok(ApiResponse.of(settings));
+    }
+
+    /**
+     * 予約公開設定（一般公開予約の許可フラグ）を更新する。ADMIN 限定。
+     *
+     * <p>{@code allowPublicReservation=true} にすると、ログイン済みであればチーム所属者でなくても
+     * 予約できるようになる（裏設定）。既定は false（チーム所属者のみ）。</p>
+     */
+    @PatchMapping
+    @Operation(summary = "予約公開設定の更新（ADMIN限定）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    @PreAuthorize("@accessGuard.isScopeStrictAdmin(authentication, #teamId, 'TEAM')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updateReservationSetting(
+            @PathVariable Long teamId,
+            @Valid @RequestBody UpdateReservationSettingRequest request) {
+        teamSettingService.updateAllowPublic(teamId, request.getAllowPublicReservation());
+        Map<String, Object> settings = Map.of(
+                "teamId", teamId,
+                "allowPublicReservation", request.getAllowPublicReservation()
         );
         return ResponseEntity.ok(ApiResponse.of(settings));
     }
