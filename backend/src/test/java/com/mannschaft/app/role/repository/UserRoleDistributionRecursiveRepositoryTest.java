@@ -239,10 +239,18 @@ class UserRoleDistributionRecursiveRepositoryTest extends AbstractMySqlIntegrati
         // org A ⇄ B（相互に親を指す循環）
         Long orgA = persistOrganization(null);
         Long orgB = persistOrganization(orgA);
-        // A の親を B にして循環を作る
-        OrganizationEntity a = em.find(OrganizationEntity.class, orgA);
-        OrganizationEntity aWithParent = a.toBuilder().parentOrganizationId(orgB).build();
-        em.merge(aWithParent);
+        // A の親を B にして循環を作る。
+        // toBuilder().build() + em.merge は新インスタンス（同一 slug 'm1-org-N'）を生成し、
+        // merge が UPDATE ではなく INSERT に解決されて slug 一意制約違反
+        // （Duplicate entry ... for key 'organizations.UKsfr9...'）を起こすため使わない。
+        // 親 ID の付け替えだけが目的なので native UPDATE で確実に既存行を更新する。
+        em.createNativeQuery(
+                        "UPDATE organizations SET parent_organization_id = :p WHERE id = :id")
+                .setParameter("p", orgB)
+                .setParameter("id", orgA)
+                .executeUpdate();
+        em.flush();
+        em.clear();
 
         Long memberA = persistActiveUser();
         grantOrgRole(memberA, orgA);

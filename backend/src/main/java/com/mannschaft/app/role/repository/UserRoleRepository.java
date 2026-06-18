@@ -562,6 +562,25 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * @param maxDepth       再帰展開の最大深さ（サイクル防止上限・通常 32）
      * @return ユーザーが配下ツリーの「直属 ∪ 配下チーム」に含まれるなら true
      */
+    default boolean existsUserInOrganizationDescendants(
+            Long organizationId,
+            Long userId,
+            int maxDepth) {
+        return countUserInOrganizationDescendants(organizationId, userId, maxDepth) > 0;
+    }
+
+    /**
+     * {@link #existsUserInOrganizationDescendants(Long, Long, int)} の native 実装。
+     *
+     * <p>MySQL の native query では {@code SELECT COUNT(*) > 0} は boolean ではなく
+     * BIGINT（1/0）を返すため、Hibernate が結果を Boolean へキャストしようとして
+     * {@code ClassCastException: Long cannot be cast to Boolean} で死ぬ
+     * （特に {@code WITH RECURSIVE} を伴う場合に結果型推論が boolean に解決されない）。
+     * そこで素直に {@code COUNT(*)} を {@code long} で受け取り、Java 側で {@code > 0}
+     * 比較する。公開シグネチャ（boolean）は {@code default} メソッドで温存し、
+     * 呼び出し元（テスト・{@code OrganizationMembershipService.isUserInOrgDistributionUniverse}）
+     * は無改変で動く。直接呼び出さず {@link #existsUserInOrganizationDescendants} を経由すること。</p>
+     */
     @Query(value =
             "WITH RECURSIVE org_tree (id, depth) AS ( " +
             "    SELECT o.id, 0 FROM organizations o " +
@@ -571,7 +590,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      JOIN org_tree p ON c.parent_organization_id = p.id " +
             "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
             ") " +
-            "SELECT COUNT(*) > 0 FROM user_roles ur " +
+            "SELECT COUNT(*) FROM user_roles ur " +
             "JOIN users u ON u.id = ur.user_id " +
             "WHERE ur.user_id = :userId " +
             "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
@@ -583,7 +602,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "    ) " +
             "  )",
             nativeQuery = true)
-    boolean existsUserInOrganizationDescendants(
+    long countUserInOrganizationDescendants(
             @Param("organizationId") Long organizationId,
             @Param("userId") Long userId,
             @Param("maxDepth") int maxDepth);
