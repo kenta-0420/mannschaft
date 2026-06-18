@@ -1,0 +1,52 @@
+{
+  "adminConsole": {
+    "comingSoon": "即将推出",
+    "team": {
+      "title": "团队管理控制台",
+      "subtitle": "在一处统一管理团队的预约、预算、待审批、成员和设置"
+    },
+    "organization": {
+      "title": "组织管理控制台",
+      "subtitle": "在一处统一管理组织的预算、付款、待审批、成员和设置"
+    },
+    "cards": {
+      "reservations": {
+        "title": "预约确认",
+        "desc": "查看待审批的预约，并进行确认、取消或完成等处理"
+      },
+      "budget": {
+        "title": "预算管理",
+        "desc": "查看按会计年度和类别划分的预算与支出"
+      },
+      "approvals": {
+        "title": "待审批",
+        "desc": "跨预约、排班、匹配等统一查看管理员需要处理的待审批事项"
+      },
+      "members": {
+        "title": "成员管理",
+        "desc": "管理成员列表、角色变更、会员卡和个人资料"
+      },
+      "settings": {
+        "title": "设置",
+        "desc": "统一管理各项设置"
+      },
+      "payments": {
+        "title": "付款",
+        "desc": "查看账单与付款状态"
+      },
+      "pointCards": {
+        "title": "积分卡",
+        "desc": "管理面向商户的积分卡发行、历史和盖章"
+      }
+    },
+    "middleware": {
+      "accessDeniedTitle": "无法访问",
+      "accessDeniedBody": "需要管理员权限"
+    },
+    "error": {
+      "fetchFailedTitle": "无法获取权限信息",
+      "fetchFailedBody": "发生了临时问题。请稍后重试",
+      "retry": "重试"
+    }
+  }
+}

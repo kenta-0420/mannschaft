@@ -1,0 +1,52 @@
+{
+  "adminConsole": {
+    "comingSoon": "近日公開",
+    "team": {
+      "title": "チーム管理コンソール",
+      "subtitle": "チームの予約・予算・承認待ち・メンバー・設定をまとめて管理します"
+    },
+    "organization": {
+      "title": "組織管理コンソール",
+      "subtitle": "組織の予算・支払・承認待ち・メンバー・設定をまとめて管理します"
+    },
+    "cards": {
+      "reservations": {
+        "title": "予約確認",
+        "desc": "承認待ちの予約を確認し、確定・キャンセル・完了などの対応を行います"
+      },
+      "budget": {
+        "title": "予算管理",
+        "desc": "会計年度・カテゴリ別の予算と支出を確認します"
+      },
+      "approvals": {
+        "title": "承認待ち",
+        "desc": "予約・シフト・マッチングなど、管理者が対応すべき承認待ちを横断で確認します"
+      },
+      "members": {
+        "title": "メンバー管理",
+        "desc": "メンバー一覧・ロール変更・会員証・プロフィールを管理します"
+      },
+      "settings": {
+        "title": "設定",
+        "desc": "各種設定をまとめて管理します"
+      },
+      "payments": {
+        "title": "支払",
+        "desc": "請求・支払の状況を確認します"
+      },
+      "pointCards": {
+        "title": "ポイントカード",
+        "desc": "店主向けポイントカードの発行・履歴・押印を管理します"
+      }
+    },
+    "middleware": {
+      "accessDeniedTitle": "アクセスできません",
+      "accessDeniedBody": "管理者権限が必要です"
+    },
+    "error": {
+      "fetchFailedTitle": "権限情報を取得できませんでした",
+      "fetchFailedBody": "一時的な問題が発生しています。時間をおいて再試行してください",
+      "retry": "再試行"
+    }
+  }
+}
