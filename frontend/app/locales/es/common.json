@@ -228,7 +228,8 @@
     "AUTH_002": "Su correo electrónico aún no ha sido verificado",
     "AUTH_003": "Su cuenta está bloqueada. Inténtelo de nuevo en 30 minutos",
     "AUTH_004": "Este correo electrónico ya está registrado",
-    "AUTH_005": "El enlace del correo de verificación no es válido o ha expirado"
+    "AUTH_005": "El enlace del correo de verificación no es válido o ha expirado",
+    "AUTH_044": "Demasiadas solicitudes. Por favor, espere un momento y vuelva a intentarlo"
   },
   "annual_plan": {
     "title": "Plan anual de eventos",
