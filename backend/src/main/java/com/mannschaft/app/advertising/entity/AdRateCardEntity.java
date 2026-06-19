@@ -25,7 +25,7 @@ import java.time.LocalDate;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@SuperBuilder(toBuilder = true)
+@SuperBuilder
 public class AdRateCardEntity extends BaseEntity {
 
     @Column(length = 20)

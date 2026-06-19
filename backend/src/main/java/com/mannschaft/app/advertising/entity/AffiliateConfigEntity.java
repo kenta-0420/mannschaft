@@ -27,7 +27,7 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@SuperBuilder(toBuilder = true)
+@SuperBuilder
 public class AffiliateConfigEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)

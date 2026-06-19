@@ -29,7 +29,7 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@SuperBuilder(toBuilder = true)
+@SuperBuilder
 public class AdvertiserAccountEntity extends BaseEntity {
 
     /** スコープ種別 (ORGANIZATION / TEAM)。F09.17 Phase 11-d-1 で追加。 */

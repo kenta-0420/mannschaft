@@ -32,7 +32,7 @@ import java.util.UUID;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@SuperBuilder(toBuilder = true)
+@SuperBuilder
 public class AdInvoiceItemEntity extends BaseEntity {
 
     @Column(nullable = false)
