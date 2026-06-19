@@ -19,6 +19,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -260,7 +261,19 @@ class NotificationCreditServiceTest {
 
             // then: 無料枠がリセットされ、今月分として100通使用される
             // balance.save() が2回呼ばれる（1回目: 月次リセット、2回目: 消費後の最終状態保存）
-            verify(balanceRepository, times(2)).save(any(OrganizationNotificationBalanceEntity.class));
+            ArgumentCaptor<OrganizationNotificationBalanceEntity> captor =
+                    ArgumentCaptor.forClass(OrganizationNotificationBalanceEntity.class);
+            verify(balanceRepository, times(2)).save(captor.capture());
+
+            // 回帰: リセット分岐で toBuilder().build() の別インスタンスを save していない。
+            // 取得した managed entity を直接ミューテートして save に渡している（=同一行 UPDATE）。
+            // 別インスタンスなら id=null の新規行 INSERT になり organization_id 一意制約違反で 500。
+            assertThat(captor.getAllValues()).allMatch(saved -> saved == balance);
+
+            // リセット後に今月分として 100 通が消費されている（先月分 5000 はクリア済み）
+            assertThat(balance.getFreeQuotaMonth()).isEqualTo(firstOfMonth);
+            assertThat(balance.getFreeUsedThisMonth()).isEqualTo(100L);
+            assertThat(balance.getAlertSentThisMonth()).isFalse();
         }
     }
 
