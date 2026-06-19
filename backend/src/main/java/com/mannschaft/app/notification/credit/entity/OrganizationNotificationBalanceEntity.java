@@ -127,6 +127,29 @@ public class OrganizationNotificationBalanceEntity extends BaseEntity {
     }
 
     /**
+     * 無料枠カウンタを指定月向けにリセットする（バッチ未実行補完）。
+     *
+     * <p>月初バッチが走る前に当月最初の送信が来たとき、{@code consume} から呼ばれる。
+     * {@link #monthlyReset} と異なり猶予期間負債の残高相殺（{@code creditBalance -= gracePeriodDebt}）は
+     * 行わず、無料枠カウンタ・当月アラート・猶予負債のみを当月用に初期化する（従来挙動を踏襲）。</p>
+     *
+     * <p><strong>なぜ builder ({@code toBuilder().build()}) で作り直さないか:</strong>
+     * 本エンティティは {@code @Builder(toBuilder = true)}（{@code @SuperBuilder} ではない）で、
+     * 主キー {@code id} は基底クラス {@link BaseEntity} のフィールドである。
+     * {@code toBuilder()} は継承フィールド {@code id} を引き継がず {@code id = null} の
+     * 新インスタンスになり、{@code save} が UPDATE でなく INSERT を実行して
+     * {@code organization_id} 一意制約違反で 500 になる。よって直接ミューテートする。</p>
+     *
+     * @param currentMonth 今月1日の日付
+     */
+    public void resetFreeQuotaForMonth(LocalDate currentMonth) {
+        this.freeUsedThisMonth = 0L;
+        this.freeQuotaMonth = currentMonth;
+        this.alertSentThisMonth = false;
+        this.gracePeriodDebt = 0L;
+    }
+
+    /**
      * 月次リセット処理（毎月1日バッチが実行）。
      * 猶予期間の負債を相殺し、無料枠カウンタをリセットする。
      *

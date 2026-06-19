@@ -115,12 +115,10 @@ public class NotificationCreditService {
         if (!firstOfMonth.equals(balance.getFreeQuotaMonth())) {
             log.info("無料枠リセット（バッチ未実行補完）: organizationId={}, oldMonth={}, newMonth={}",
                     organizationId, balance.getFreeQuotaMonth(), firstOfMonth);
-            balance = balance.toBuilder()
-                    .freeUsedThisMonth(0L)
-                    .freeQuotaMonth(firstOfMonth)
-                    .alertSentThisMonth(false)
-                    .gracePeriodDebt(0L)
-                    .build();
+            // managed entity を直接ミューテート。toBuilder().build() は継承フィールド id を
+            // 引き継がず id=null の新インスタンスになり、save が INSERT になって
+            // organization_id 一意制約違反で 500 になるため使わない。
+            balance.resetFreeQuotaForMonth(firstOfMonth);
             balance = balanceRepository.save(balance);
         }
 
