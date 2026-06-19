@@ -279,6 +279,42 @@ class TeamServiceTest {
         }
 
         @Test
+        @DisplayName("回帰防止: 既存エンティティをUPDATE_id不変かつ新規行を作らない(toBuilder id欠落INSERT化の根治)")
+        void 更新_既存エンティティをUPDATE_id不変かつ新規行を作らない() {
+            // Given: findById で取得した id 採番済みの managed entity を模す。
+            // BaseEntity#id は setter を持たないため ReflectionTestUtils で採番済み状態を再現する。
+            TeamEntity team = TeamEntity.builder()
+                    .slug(TEAM_SLUG)
+                    .name("旧名称").template("sports")
+                    .visibility(TeamEntity.Visibility.PUBLIC)
+                    .supporterEnabled(false)
+                    .build();
+            org.springframework.test.util.ReflectionTestUtils.setField(team, "id", TEAM_ID);
+            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
+            given(teamRepository.save(any(TeamEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(teamFriendRepository.countFriendsByTeamId(any())).willReturn(0L);
+            given(membershipRepository.countActiveByScopeAndRoleKind(any(), any(), any())).willReturn(0L);
+
+            UpdateTeamRequest req = new UpdateTeamRequest(
+                    "新名称", null, null, null, null, null, null, null, null,
+                    null, 1L);
+
+            // When
+            service.updateTeam(TEAM_ID, req);
+
+            // Then: save に渡るのは findById で取得した「まさにその」managed entity（別インスタンスではない）。
+            // id が保持されているので save は UPDATE になり、新規 INSERT（id=null・slug 一意制約違反500）は起きない。
+            org.mockito.ArgumentCaptor<TeamEntity> captor =
+                    org.mockito.ArgumentCaptor.forClass(TeamEntity.class);
+            verify(teamRepository).save(captor.capture());
+            TeamEntity saved = captor.getValue();
+            assertThat(saved).isSameAs(team);
+            assertThat(saved.getId()).isEqualTo(TEAM_ID); // id 欠落（INSERT 化）が起きていない
+            assertThat(saved.getSlug()).isEqualTo(TEAM_SLUG); // slug 据置
+            assertThat(saved.getName()).isEqualTo("新名称"); // 部分更新が反映
+        }
+
+        @Test
         @DisplayName("正常系: mapEmbedUrl=null の場合は既存値が保持される")
         void 更新_mapEmbedUrl_null時既存維持() {
             // Given
