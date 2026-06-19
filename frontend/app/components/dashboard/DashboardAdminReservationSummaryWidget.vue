@@ -6,7 +6,7 @@
  *
  * - チームスコープ専用（組織には予約 API が無い）。`getAdminReservationSummary(teamSlug)` を消費する。
  * - 表示: 承認待ち件数（導線）/ 本日の予約数。
- * - 導線: /teams/[slug]/admin/reservations。
+ * - 導線: /teams/[slug]/reservations（既存正本・P4 A-1方針。/admin/reservations 整備後に切替予定）。
  * - API 取得失敗は握りつぶさず注記で表示（症状を隠さない）。
  */
 import type { AdminReservationSummary } from '~/types/admin-dashboard-widgets'
@@ -26,8 +26,13 @@ const loaded = ref(false)
 const rootEl = ref<HTMLElement | null>(null)
 let observer: IntersectionObserver | null = null
 
-/** 導線先: 予約管理ページ。 */
-const reservationsRoute = computed(() => `/teams/${props.slug}/admin/reservations`)
+/**
+ * 導線先: 予約管理ページ（既存正本ルート）。
+ * 設計方針（P4 A-1）: `/admin/reservations` はまだ存在しないため、
+ * ハブカードと同様に既存の正本ルート `/teams/[slug]/reservations` へ直結する。
+ * `/admin/reservations` が整備された段階でこちらへ切り替える。
+ */
+const reservationsRoute = computed(() => `/teams/${props.slug}/reservations`)
 
 async function fetchSummary() {
   if (loaded.value || loading.value) return

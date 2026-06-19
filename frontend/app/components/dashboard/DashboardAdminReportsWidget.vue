@@ -6,7 +6,8 @@
  *
  * - team/org 両スコープ対応。`getAdminReportStats(scopeType, slug)` を消費する。
  * - 表示: 未対応 N 件 / 確認中 N 件。
- * - 導線: F10.1 母体モデレーション画面（スコープ別）。
+ * - 導線: 管理コンソールハブ（/{base}/[slug]/admin）を暫定設定（P4 A-1方針）。
+ *   スコープ別通報ページ未整備のため暫定。F10.1 母体モデレーション画面が整備後に切替予定。
  * - API 取得失敗は握りつぶさず注記で表示（症状を隠さない）。
  */
 import type { ScopeTabType } from '~/types/dashboard-scope'
@@ -28,10 +29,16 @@ const loaded = ref(false)
 const rootEl = ref<HTMLElement | null>(null)
 let observer: IntersectionObserver | null = null
 
-/** 導線先: モデレーション画面（スコープ別）。 */
+/**
+ * 導線先: モデレーション/通報画面（設計書 §2.2⑥・§2.3⑥「F10.1 母体モデレーション画面」）。
+ * 設計方針（P4 A-1）: スコープ別の通報専用ページ（`/admin/reports`）はまだ存在せず、
+ * F10.1 母体の `/admin/moderation.vue` もシステム管理者向けで別物。
+ * 通報ページ正本が未整備のため、管理コンソールハブ（`/{base}/[slug]/admin`）を暫定導線とする。
+ * 正本の通報管理ページ（スコープ別）が整備された時点でそちらへ切り替えること。
+ */
 const reportsRoute = computed(() => {
   const base = props.scopeType === 'TEAM' ? 'teams' : 'organizations'
-  return `/${base}/${props.slug}/admin/reports`
+  return `/${base}/${props.slug}/admin`
 })
 
 async function fetchStats() {

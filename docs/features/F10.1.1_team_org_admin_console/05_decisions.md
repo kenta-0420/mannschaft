@@ -184,3 +184,26 @@
 | メンバー一覧の退会状態露出 | `admin/dashboard/users` 応答に `withdrawalPending` 状態を含める | F10.1 母体 / user | 在籍/退会申請中/退会済みの区別に必要（[04](./04_security_authorization.md) §6）。未露出なら本機能 P2 で当該ドメインに依頼 |
 
 > `checkAdminOrHasPermission` のチーム一般化は依存タスク**ではない**（§4 で明示判定の恒久対応に確定済み・基盤改修を持ち込まない）。
+
+---
+
+## §14. L1 ウィジェット（管理者レンズ）の導線は `/admin/*` 経由でなく既存正本ルートへ直結する（P4 A-1 決定）
+
+**決定**: ウィジェット（`DashboardAdmin*Widget.vue`）の `:to` は `/admin/*` サブページを経由せず、**ハブカードと同様に既存正本ルートへ直結する**。`/admin/reservations`・`/admin/payments`・`/admin/members` 等の L3 サブページは新設しない（物理移設しない方針の一貫適用）。
+
+**各ウィジェットの確定導線先**（P4 A-1 実装済み、2026-06-19）:
+
+| ウィジェット | 旧導線（デッドリンク） | 新導線（既存正本） | 備考 |
+|-------------|----------------------|-------------------|------|
+| `DashboardAdminReservationSummaryWidget` | `/teams/{slug}/admin/reservations` | `/teams/{slug}/reservations` | 実在確認済み |
+| `DashboardAdminPaymentsWidget` | `/organizations/{slug}/admin/payments` | `/organizations/{slug}/payments` | 実在確認済み |
+| `DashboardAdminMemberStatsWidget` | `/{base}/{slug}/admin/members` | `/{base}/{slug}/member-cards` | team/org 両方に実在確認済み |
+| `DashboardAdminReportsWidget` | `/{base}/{slug}/admin/reports` | `/{base}/{slug}/admin`（暫定） | スコープ別通報ページ未整備につき管理コンソールハブを暫定設定。F10.1 母体モデレーション画面（スコープ別）が整備された時点で切替 |
+| `DashboardAdminModulesWidget` | `/teams/{slug}/admin/settings/modules` | `/teams/{slug}/admin`（暫定） | チームモジュール設定ページ（`/admin/settings/modules`）未整備につき管理コンソールハブを暫定設定。整備後に切替 |
+
+**ハブカードの approvals（`to: null`）については据え置き**。承認待ちドメインがチームでは予約/シフト/マッチングの複数に分散しており一意な既存正本へ向けられないため、`to: null`（近日公開プレースホルダ）のままとする。404 にはならない。`/admin/approvals` が整備された時点で点火する。
+
+**根拠**:
+- `[01_console_routes.md](./01_console_routes.md) §4`（既存ルート再編マッピング）で「物理移設しない・リダイレクト/導線追加」と既に確定している。ウィジェット導線も同じ精神に従い、未整備の `/admin/*` サブページへリンクを張ってデッドリンクを作るのではなく、現時点で実在する正本ルートへ直結する。
+- デッドリンク（クリックして 404 に着地する）は許容しない（CLAUDE.md 禁止事項の対処療法禁止、根治治療の原則）。
+- 設計書 `[02_admin_lens_widgets.md](./02_admin_lens_widgets.md) §2.2`・`§2.3` に記載の「導線先ルート」欄は**将来のL3整備後を想定した目標URL**であり、現時点の実装URLとは異なる。L3 各セクションが整備されたタイミングでウィジェット導線を更新し、設計書と実装を同期させること。

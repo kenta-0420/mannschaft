@@ -6,7 +6,7 @@
  *
  * - 組織スコープ専用。`getAdminPaymentSummary(orgSlug)` を消費する。
  * - 表示: 未収 N 件 / 期限超過 N 件。
- * - 導線: `/organizations/[slug]/admin/payments`。
+ * - 導線: `/organizations/[slug]/payments`（既存正本・P4 A-1方針。/admin/payments 整備後に切替予定）。
  * - API 取得失敗は握りつぶさず注記で表示（症状を隠さない）。
  */
 import type { AdminPaymentSummary } from '~/types/admin-dashboard-widgets'
@@ -26,8 +26,12 @@ const loaded = ref(false)
 const rootEl = ref<HTMLElement | null>(null)
 let observer: IntersectionObserver | null = null
 
-/** 導線先: 支払管理ページ。 */
-const paymentsRoute = computed(() => `/organizations/${props.slug}/admin/payments`)
+/**
+ * 導線先: 支払管理ページ（既存正本ルート）。
+ * 設計方針（P4 A-1）: `/admin/payments` はまだ存在しないため、
+ * ハブカードと同様に既存の正本ルート `/organizations/[slug]/payments` へ直結する。
+ */
+const paymentsRoute = computed(() => `/organizations/${props.slug}/payments`)
 
 async function fetchSummary() {
   if (loaded.value || loading.value) return

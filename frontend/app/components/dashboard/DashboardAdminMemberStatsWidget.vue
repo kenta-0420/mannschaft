@@ -6,7 +6,7 @@
  *
  * - team/org 両スコープ対応。`getAdminMemberStats(scopeType, slug)` を消費する。
  * - 表示: 総数（導線）/ アクティブ / 今月新規。
- * - 導線: /teams|organizations/[slug]/admin/members。
+ * - 導線: /{base}/[slug]/member-cards（既存正本・P4 A-1方針。/admin/members 整備後に切替予定）。
  * - API 取得失敗は握りつぶさず注記で表示（症状を隠さない）。
  */
 import type { ScopeTabType } from '~/types/dashboard-scope'
@@ -28,10 +28,14 @@ const loaded = ref(false)
 const rootEl = ref<HTMLElement | null>(null)
 let observer: IntersectionObserver | null = null
 
-/** 導線先: メンバー管理ページ。 */
+/**
+ * 導線先: メンバー管理ページ（既存正本ルート）。
+ * 設計方針（P4 A-1）: `/admin/members` はまだ存在しないため、
+ * ハブカードと同様に既存の正本ルート `/{base}/[slug]/member-cards` へ直結する。
+ */
 const membersRoute = computed(() => {
   const base = props.scopeType === 'TEAM' ? 'teams' : 'organizations'
-  return `/${base}/${props.slug}/admin/members`
+  return `/${base}/${props.slug}/member-cards`
 })
 
 async function fetchSummary() {
