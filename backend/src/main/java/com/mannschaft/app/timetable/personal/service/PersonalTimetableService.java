@@ -133,6 +133,11 @@ public class PersonalTimetableService {
                 ? data.weekPatternBaseDate() : entity.getWeekPatternBaseDate();
         validateMetadata(newFrom, newUntil, newWpe, newWpb);
 
+        // 監査ログの before 値は applyUpdate でミューテートされる前に捕捉する。
+        // ミューテート後に entity.getVisibility() を比較すると常に新値と一致し、
+        // visibility_changed が発火しなくなる（直接ミューテート化に伴う回帰の根治）。
+        PersonalTimetableVisibility previousVisibility = entity.getVisibility();
+
         // toBuilder().build() で作り直すと id=null の新インスタンスになり INSERT 化するため、
         // managed entity を直接ミューテートして UPDATE に固定する（#1643 同型バグ根治）。
         entity.applyUpdate(
@@ -144,9 +149,10 @@ public class PersonalTimetableService {
         PersonalTimetableEntity saved = repository.save(entity);
 
         // F03.15 Phase 5b: visibility 直接変更時の監査ログ
-        // ShareTargetService 経由の自動切替とは別に、PATCH での直接変更も網羅する
+        // ShareTargetService 経由の自動切替とは別に、PATCH での直接変更も網羅する。
+        // 比較は applyUpdate 前に捕捉した previousVisibility（旧値）と data.visibility()（新値）で行う。
         if (data.visibility() != null && auditLogService != null
-                && entity.getVisibility() != data.visibility()) {
+                && previousVisibility != data.visibility()) {
             auditLogService.record(
                     "personal_timetable.visibility_changed",
                     userId, null, null, null, null, null, null,
@@ -154,7 +160,7 @@ public class PersonalTimetableService {
                             "{\"source\":\"PERSONAL_TIMETABLE\",\"source_id\":%d,"
                                     + "\"before\":\"%s\",\"after\":\"%s\","
                                     + "\"trigger\":\"PATCH\"}",
-                            id, entity.getVisibility().name(), data.visibility().name()));
+                            id, previousVisibility.name(), data.visibility().name()));
         }
 
         return saved;
