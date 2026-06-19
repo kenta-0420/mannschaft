@@ -117,13 +117,10 @@ public class KbTemplateService {
             throw new BusinessException(KnowledgeBaseErrorCode.KB_006);
         }
 
-        KbTemplateEntity updated = template.toBuilder()
-                .name(req.name() != null ? req.name() : template.getName())
-                .body(req.body() != null ? req.body() : template.getBody())
-                .icon(req.icon() != null ? req.icon() : template.getIcon())
-                .build();
+        // managed entity を直接ミューテートして UPDATE する（toBuilder().build() は BaseEntity の id を引き継がず INSERT 化するため使用禁止）
+        template.applyUpdate(req.name(), req.body(), req.icon());
 
-        KbTemplateEntity saved = templateRepository.save(updated);
+        KbTemplateEntity saved = templateRepository.save(template);
         log.info("KBテンプレートを更新しました: id={}", id);
         return ApiResponse.of(saved);
     }
