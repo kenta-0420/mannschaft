@@ -8,7 +8,6 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.EqualsAndHashCode;
@@ -53,7 +52,6 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @SuperBuilder(toBuilder = true)
 @EqualsAndHashCode(callSuper = true)
 public class FeeRecoveryBalanceEntity extends UuidV7Entity {
