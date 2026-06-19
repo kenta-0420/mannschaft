@@ -442,7 +442,8 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
                                                     new com.mannschaft.app.survey.dto.CreateOptionRequest("不参加", 1)))),
                             null,                           // targetUserIds
                             null,                           // resultViewerUserIds
-                            false                           // includeSupporters
+                            false,                          // includeSupporters
+                            false                           // teamBreakdownEnabled
                     ));
 
             LocalDateTime pastTime = LocalDateTime.now().minusMinutes(5);

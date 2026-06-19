@@ -71,7 +71,7 @@ class ScheduleScheduledTaskServiceTest {
                 false, false,
                 "AFTER_CLOSE", "ALL",
                 null, null, null, null, null, null,
-                null, null, null, null);
+                null, null, null, null, null);
     }
 
     @Nested
