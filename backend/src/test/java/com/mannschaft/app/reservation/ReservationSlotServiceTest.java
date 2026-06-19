@@ -9,18 +9,21 @@ import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import com.mannschaft.app.reservation.service.ReservationSlotService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -50,7 +53,6 @@ class ReservationSlotServiceTest {
     @Mock
     private ReservationMapper reservationMapper;
 
-    @InjectMocks
     private ReservationSlotService service;
 
     // ========================================
@@ -64,6 +66,17 @@ class ReservationSlotServiceTest {
     private static final LocalDate SLOT_DATE = LocalDate.of(2026, 4, 1);
     private static final LocalTime START_TIME = LocalTime.of(10, 0);
     private static final LocalTime END_TIME = LocalTime.of(11, 0);
+
+    /** 過去日判定の基準を SLOT_DATE（2026-04-01）より前の固定時刻に置く（既存正常系を未来日のまま保つ）。 */
+    private static final Clock FIXED_CLOCK =
+            Clock.fixed(LocalDate.of(2026, 3, 1).atStartOfDay(ZoneOffset.UTC).toInstant(), ZoneId.of("UTC"));
+
+    @BeforeEach
+    void setUp() {
+        // @InjectMocks は Clock を mock で埋めてしまい LocalDate.now(clock) が NPE になるため、
+        // 固定 Clock を明示注入してサービスを生成する。
+        service = new ReservationSlotService(slotRepository, reservationRepository, reservationMapper, FIXED_CLOCK);
+    }
 
     private ReservationSlotEntity createSlotEntity() {
         return ReservationSlotEntity.builder()
@@ -290,6 +303,93 @@ class ReservationSlotServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ReservationErrorCode.INVALID_TIME_RANGE);
+        }
+
+        // ② 30分単位バリデーション
+        @Test
+        @DisplayName("異常系: 開始時刻が30分グリッドに乗らない（10:15）場合INVALID_SLOT_GRANULARITY（400）")
+        void スロット作成_開始15分刻み() {
+            // Given
+            CreateSlotRequest request = new CreateSlotRequest(
+                    STAFF_USER_ID, "不正グリッド", SLOT_DATE,
+                    LocalTime.of(10, 15), LocalTime.of(11, 0),
+                    null, null, null, null);
+
+            // When / Then
+            assertThatThrownBy(() -> service.createSlot(TEAM_ID, request, CREATED_BY))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ReservationErrorCode.INVALID_SLOT_GRANULARITY);
+        }
+
+        @Test
+        @DisplayName("異常系: 終了時刻が30分グリッドに乗らない（10:00→10:45）場合INVALID_SLOT_GRANULARITY（400）")
+        void スロット作成_終了15分刻み() {
+            // Given
+            CreateSlotRequest request = new CreateSlotRequest(
+                    STAFF_USER_ID, "不正グリッド", SLOT_DATE,
+                    LocalTime.of(10, 0), LocalTime.of(10, 45),
+                    null, null, null, null);
+
+            // When / Then
+            assertThatThrownBy(() -> service.createSlot(TEAM_ID, request, CREATED_BY))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ReservationErrorCode.INVALID_SLOT_GRANULARITY);
+        }
+
+        @Test
+        @DisplayName("異常系: 枠長が30分未満（10:00→10:15はグリッド外、10:00→10:00は逆転）でない最小枠未満境界を検証")
+        void スロット作成_最小枠未満() {
+            // Given: 10:00→10:15 は分が15で既にグリッド外だが、グリッドに乗った 30 分未満は構成不能（00/30 刻みで最小差は 30 分）。
+            // よって 30 分グリッドに乗りつつ 30 分未満となるケースは存在しない＝グリッド検証で最小枠が担保される。
+            // ここでは「30分ちょうど（10:00→10:30）」が許可されることを正常系として確認する。
+            CreateSlotRequest request = new CreateSlotRequest(
+                    STAFF_USER_ID, "最小枠30分", SLOT_DATE,
+                    LocalTime.of(10, 0), LocalTime.of(10, 30),
+                    null, null, null, null);
+            given(slotRepository.save(any(ReservationSlotEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(reservationMapper.toSlotResponse(any(ReservationSlotEntity.class)))
+                    .willReturn(createSlotResponse());
+
+            // When / Then: 例外なく作成される
+            ReservationSlotResponse result = service.createSlot(TEAM_ID, request, CREATED_BY);
+            assertThat(result).isNotNull();
+            verify(slotRepository).save(any(ReservationSlotEntity.class));
+        }
+
+        // ③ 過去日チェック（固定 Clock = 2026-03-01）
+        @Test
+        @DisplayName("異常系: 過去日（2026-02-28 < Clock=2026-03-01）の枠作成はPAST_DATE_SLOT（400）")
+        void スロット作成_過去日() {
+            // Given
+            CreateSlotRequest request = new CreateSlotRequest(
+                    STAFF_USER_ID, "過去枠", LocalDate.of(2026, 2, 28),
+                    START_TIME, END_TIME, null, null, null, null);
+
+            // When / Then
+            assertThatThrownBy(() -> service.createSlot(TEAM_ID, request, CREATED_BY))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ReservationErrorCode.PAST_DATE_SLOT);
+        }
+
+        @Test
+        @DisplayName("正常系: 当日（Clock=2026-03-01）の枠作成は許可される（過去日チェック境界）")
+        void スロット作成_当日許可() {
+            // Given
+            CreateSlotRequest request = new CreateSlotRequest(
+                    STAFF_USER_ID, "当日枠", LocalDate.of(2026, 3, 1),
+                    START_TIME, END_TIME, null, null, null, null);
+            given(slotRepository.save(any(ReservationSlotEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(reservationMapper.toSlotResponse(any(ReservationSlotEntity.class)))
+                    .willReturn(createSlotResponse());
+
+            // When / Then
+            ReservationSlotResponse result = service.createSlot(TEAM_ID, request, CREATED_BY);
+            assertThat(result).isNotNull();
         }
     }
 

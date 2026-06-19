@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -165,6 +166,58 @@ class ReservationLineServiceTest {
             // Then
             assertThat(result).isNotNull();
             verify(lineRepository).save(any(ReservationLineEntity.class));
+        }
+
+        // ④ ライン最大5本
+        @Test
+        @DisplayName("正常系: 既存4本（5本目）なら作成できる")
+        void ライン作成_5本目まで可() {
+            // Given: 既存 4 本 → 5 本目は許可
+            CreateReservationLineRequest request = new CreateReservationLineRequest(
+                    "5本目メニュー", null, null, null);
+            given(lineRepository.countByTeamId(TEAM_ID)).willReturn(4L);
+            given(lineRepository.save(any(ReservationLineEntity.class))).willReturn(createLineEntity());
+            given(reservationMapper.toLineResponse(any(ReservationLineEntity.class)))
+                    .willReturn(createLineResponse());
+
+            // When
+            ReservationLineResponse result = service.createLine(TEAM_ID, request);
+
+            // Then
+            assertThat(result).isNotNull();
+            verify(lineRepository).save(any(ReservationLineEntity.class));
+        }
+
+        @Test
+        @DisplayName("異常系: 既存5本（6本目）はLINE_LIMIT_EXCEEDED（400）で拒否され保存されない")
+        void ライン作成_6本目拒否() {
+            // Given: 既存 5 本 → 6 本目は拒否
+            CreateReservationLineRequest request = new CreateReservationLineRequest(
+                    "6本目メニュー", null, null, null);
+            given(lineRepository.countByTeamId(TEAM_ID)).willReturn(5L);
+
+            // When / Then
+            assertThatThrownBy(() -> service.createLine(TEAM_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ReservationErrorCode.LINE_LIMIT_EXCEEDED);
+            verify(lineRepository, never()).save(any(ReservationLineEntity.class));
+        }
+
+        @Test
+        @DisplayName("異常系: display_orderが範囲外（6）はINVALID_DISPLAY_ORDER（400）")
+        void ライン作成_表示順範囲外() {
+            // Given: 上限未満だが display_order=6（範囲外）
+            CreateReservationLineRequest request = new CreateReservationLineRequest(
+                    "範囲外メニュー", null, 6, null);
+            given(lineRepository.countByTeamId(TEAM_ID)).willReturn(0L);
+
+            // When / Then
+            assertThatThrownBy(() -> service.createLine(TEAM_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ReservationErrorCode.INVALID_DISPLAY_ORDER);
+            verify(lineRepository, never()).save(any(ReservationLineEntity.class));
         }
     }
 

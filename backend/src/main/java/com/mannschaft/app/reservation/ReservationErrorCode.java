@@ -78,7 +78,40 @@ public enum ReservationErrorCode implements ErrorCode {
      * 裏設定で公開（true）にした場合はログイン済みであれば誰でも予約可（匿名は認証層で 401）。
      * Severity.WARN だが {@code GlobalExceptionHandler} の個別マッピングで HTTP 403 に上書きする。</p>
      */
-    RESERVATION_PERMISSION_DENIED("RESERVATION_021", "このチームに予約する権限がありません", Severity.WARN);
+    RESERVATION_PERMISSION_DENIED("RESERVATION_021", "このチームに予約する権限がありません", Severity.WARN),
+
+    /**
+     * 枠の時刻が 30 分グリッドに乗っていない、または枠長が 30 分未満（入力不正なので 400）。
+     *
+     * <p>F03.4 §3 「{@code start_time}/{@code end_time} の分は {@code 00} または {@code 30} のみ。最小枠 30 分」を
+     * Service 層（{@code ReservationSlotService.validateTimeRange}）で担保する（段階拡張バックログ ②）。</p>
+     */
+    INVALID_SLOT_GRANULARITY("RESERVATION_022", "予約枠は30分単位で、最小30分以上である必要があります", Severity.WARN),
+
+    /**
+     * 過去日付の枠作成（入力不正なので 400）。
+     *
+     * <p>F03.4 §3 「{@code slot_date} は当日以降のみ作成可能。過去日は 400」を Service 層で担保する
+     * （段階拡張バックログ ③）。予約（reservation）用の {@link #PAST_DATE_RESERVATION} とは
+     * 文脈が異なる（こちらは ADMIN による枠定義）ため別コードを割り当てる。判定は注入 {@code Clock} 基準。</p>
+     */
+    PAST_DATE_SLOT("RESERVATION_023", "過去の日付には予約枠を作成できません", Severity.WARN),
+
+    /**
+     * 予約ライン数の上限（5 本）超過（入力不正なので 400）。
+     *
+     * <p>F03.4 §1/§2 「1 チームあたり最大 5 本の予約ライン」を Service 層
+     * （{@code ReservationLineService.createLine}）で担保する（段階拡張バックログ ④）。</p>
+     */
+    LINE_LIMIT_EXCEEDED("RESERVATION_024", "予約ラインはチームあたり最大5本までです", Severity.WARN),
+
+    /**
+     * 予約ラインの表示順（display_order）がチーム内許可範囲（1〜5）外（入力不正なので 400）。
+     *
+     * <p>F03.4 §2 「{@code display_order} はチーム内で 1〜5 の範囲。Service 層で保証」を担保する
+     * （段階拡張バックログ ④ の付随検証）。</p>
+     */
+    INVALID_DISPLAY_ORDER("RESERVATION_025", "表示順は1〜5の範囲で指定してください", Severity.WARN);
 
     private final String code;
     private final String message;
