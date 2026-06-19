@@ -133,10 +133,12 @@ public class NotificationCreditCheckoutService {
                             cancelUrl
                     );
 
-            // Stripe Session ID を購入レコードに保存
-            purchase = purchase.toBuilder()
-                    .stripeCheckoutSessionId(sessionInfo.sessionId())
-                    .build();
+            // Stripe Session ID を購入レコードに保存。
+            // L118 で save 済み（id 採番済み）の managed entity を直接ミューテートして
+            // 同一行 UPDATE にする。toBuilder().build() は id を引き継がず id=null の
+            // 新インスタンスになり、idempotency_key の UNIQUE 制約違反（二重 INSERT）で
+            // 500 になるため使わない。
+            purchase.assignCheckoutSession(sessionInfo.sessionId());
             purchaseRepository.save(purchase);
 
             log.info("通知クレジット Checkout Session 作成: orgId={}, packageId={}, purchaseId={}, sessionId={}",

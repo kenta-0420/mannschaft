@@ -43,4 +43,23 @@ public class FeatureFlagEntity extends BaseEntity {
         this.isEnabled = enabled;
         this.updatedBy = userId;
     }
+
+    /**
+     * 説明文を更新する（部分更新）。
+     *
+     * <p>managed entity をその場でミューテートする更新メソッド。{@code @Transactional} 内で
+     * 呼ぶことで JPA の dirty checking により UPDATE が発行される。</p>
+     *
+     * <p><strong>なぜ builder ({@code toBuilder().build()}) で作り直さないか:</strong>
+     * 本エンティティは {@code @Builder(toBuilder = true)}（{@code @SuperBuilder} ではない）で、
+     * 主キー {@code id} は基底クラス {@link BaseEntity} のフィールドである。
+     * {@code @Builder} は superclass のフィールドを取り込まないため、{@code toBuilder()} で
+     * 作り直すと {@code id = null} の新インスタンスになり、{@code save} が UPDATE でなく
+     * INSERT を実行して {@code flag_key} 一意制約違反で 500 になる。よって直接ミューテートする。</p>
+     *
+     * @param description 新しい説明文
+     */
+    public void updateDescription(String description) {
+        this.description = description;
+    }
 }
