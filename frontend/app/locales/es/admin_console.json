@@ -1,4 +1,4 @@
-{
+﻿{
   "adminConsole": {
     "comingSoon": "Próximamente",
     "team": {
@@ -107,6 +107,14 @@
         "pending": "Pendientes de aprobación",
         "today": "Reservas de hoy",
         "fetchFailed": "No se pudo cargar el resumen de reservas"
+      },
+      "budget": {
+        "allocation": "Asignado",
+        "actual": "Real",
+        "remaining": "Restante",
+        "overBudgetCount": "Categorías excedidas",
+        "noFiscalYear": "Sin ejercicio fiscal",
+        "fetchFailed": "No se pudo cargar el resumen de presupuesto"
       },
       "modules": {
         "summary": "{enabled} activos / {total} en total",

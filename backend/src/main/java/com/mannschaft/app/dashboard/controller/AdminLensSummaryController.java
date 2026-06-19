@@ -2,6 +2,7 @@ package com.mannschaft.app.dashboard.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.dashboard.dto.AdminBudgetSummaryResponse;
 import com.mannschaft.app.dashboard.dto.AdminBusinessAlertScopeResponse;
 import com.mannschaft.app.dashboard.dto.AdminMemberStatsResponse;
 import com.mannschaft.app.dashboard.dto.AdminPaymentSummaryResponse;
@@ -163,5 +164,41 @@ public class AdminLensSummaryController {
         Long teamId = teamService.resolveTeamId(teamSlug);
         return ResponseEntity.ok(ApiResponse.of(
                 adminLensSummaryFacade.getTeamReservationSummary(userId, teamId)));
+    }
+
+    // ── P3b Wave3: 予算サマリ（team / org） ──────────────────────────
+
+    /**
+     * チームパネル {@code ADMIN_TEAM_BUDGET} の予算サマリ（配分 / 実績 / 残 / 超過カテゴリ数）を取得する。
+     */
+    @GetMapping("/team/{teamSlug}/admin-budget-summary")
+    @Operation(summary = "チーム 予算サマリ（管理者レンズ）",
+            description = "ADMIN または TEAM_BUDGET_VIEW 保有 DEPUTY 向け。現年度の 配分/実績/残/超過カテゴリ数 を返す。現年度未設定時は has_current_fiscal_year=false")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "予算サマリ")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "非 ADMIN かつ TEAM_BUDGET_VIEW 未保有、または他テナント（COMMON_002）")
+    public ResponseEntity<ApiResponse<AdminBudgetSummaryResponse>> getTeamBudgetSummary(
+            @PathVariable String teamSlug) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        Long teamId = teamService.resolveTeamId(teamSlug);
+        return ResponseEntity.ok(ApiResponse.of(
+                adminLensSummaryFacade.getTeamBudgetSummary(userId, teamId)));
+    }
+
+    /**
+     * 組織パネル {@code ADMIN_ORG_BUDGET} の予算サマリ（配分 / 実績 / 残 / 超過カテゴリ数）を取得する。
+     */
+    @GetMapping("/organization/{orgSlug}/admin-budget-summary")
+    @Operation(summary = "組織 予算サマリ（管理者レンズ）",
+            description = "ADMIN または BUDGET_VIEW 保有 DEPUTY 向け。現年度の 配分/実績/残/超過カテゴリ数 を返す。現年度未設定時は has_current_fiscal_year=false")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "予算サマリ")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "非 ADMIN かつ BUDGET_VIEW 未保有、または他テナント（COMMON_002）")
+    public ResponseEntity<ApiResponse<AdminBudgetSummaryResponse>> getOrgBudgetSummary(
+            @PathVariable String orgSlug) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        Long orgId = organizationService.resolveOrgId(orgSlug);
+        return ResponseEntity.ok(ApiResponse.of(
+                adminLensSummaryFacade.getOrgBudgetSummary(userId, orgId)));
     }
 }

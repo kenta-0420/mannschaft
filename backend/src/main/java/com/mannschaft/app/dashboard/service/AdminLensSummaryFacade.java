@@ -1,8 +1,12 @@
 package com.mannschaft.app.dashboard.service;
 
 import com.mannschaft.app.auth.service.UserActiveCountQueryService;
+import com.mannschaft.app.budget.service.BudgetAdminSummaryQueryService;
 import com.mannschaft.app.chat.service.InquiryAlertQueryService;
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.dashboard.dto.AdminBudgetSummaryResponse;
 import com.mannschaft.app.dashboard.dto.AdminBusinessAlertScopeResponse;
 import com.mannschaft.app.dashboard.dto.AdminMemberStatsResponse;
 import com.mannschaft.app.dashboard.dto.AdminPaymentSummaryResponse;
@@ -51,6 +55,12 @@ public class AdminLensSummaryFacade {
     private final MembershipStatsQueryService membershipStatsQueryService;
     private final UserActiveCountQueryService userActiveCountQueryService;
     private final ReservationAdminQueryService reservationAdminQueryService;
+    private final BudgetAdminSummaryQueryService budgetAdminSummaryQueryService;
+
+    /** TEAM スコープ予算閲覧権限名（V115.001 で seed・DEPUTY が保有しうる）。 */
+    private static final String TEAM_BUDGET_VIEW_PERMISSION = "TEAM_BUDGET_VIEW";
+    /** ORG スコープ予算閲覧権限名（V11.034 で seed 済み）。 */
+    private static final String ORG_BUDGET_VIEW_PERMISSION = "BUDGET_VIEW";
 
     /**
      * 組織パネル ⑤ {@code ADMIN_ORG_PAYMENTS} のサマリ（未収 / 期限超過）を取得する。
@@ -169,6 +179,57 @@ public class AdminLensSummaryFacade {
         return AdminReservationSummaryResponse.builder()
                 .pendingCount(summary.pendingCount())
                 .todayCount(summary.todayCount())
+                .build();
+    }
+
+    // ── P3b Wave3: 予算サマリ（team / org） ──────────────────────────
+
+    /**
+     * チームパネル {@code ADMIN_TEAM_BUDGET} の予算サマリ（配分 / 実績 / 残 / 超過カテゴリ数）を取得する。
+     *
+     * <p><b>認可（TEAM 細粒度）</b>: {@code checkAdminOrAbove} では DEPUTY を一律通してしまい
+     * 「予算閲覧権限を持つ DEPUTY のみ通す」細粒度に届かない。また {@code checkAdminOrHasPermission} は
+     * ORGANIZATION 専用で TEAM に渡すと {@link IllegalArgumentException} を投げる。よって TEAM では
+     * {@code isAdmin || hasPermission(TEAM, "TEAM_BUDGET_VIEW")} を明示判定し、満たさなければ 403（COMMON_002）。</p>
+     *
+     * @param userId 閲覧ユーザー ID（認可主体・パスの teamId は信用せず本値で判定）
+     * @param teamId チーム ID（slug 解決済み内部 ID）
+     */
+    public AdminBudgetSummaryResponse getTeamBudgetSummary(Long userId, Long teamId) {
+        boolean allowed = accessControlService.isAdmin(userId, teamId, "TEAM")
+                || accessControlService.hasPermission(userId, teamId, "TEAM", TEAM_BUDGET_VIEW_PERMISSION);
+        if (!allowed) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+        return toResponse(budgetAdminSummaryQueryService.summaryForScope("TEAM", teamId));
+    }
+
+    /**
+     * 組織パネル {@code ADMIN_ORG_BUDGET} の予算サマリ（配分 / 実績 / 残 / 超過カテゴリ数）を取得する。
+     *
+     * <p><b>認可（ORG 細粒度）</b>: ORGANIZATION 専用の {@code checkAdminOrHasPermission} を用い、
+     * 「ADMIN または BUDGET_VIEW 権限を持つ DEPUTY」のみ通す。違反は COMMON_002（403）で伝播し集計しない。</p>
+     *
+     * @param userId 閲覧ユーザー ID（認可主体・パスの orgId は信用せず本値で判定）
+     * @param orgId  組織 ID（slug 解決済み内部 ID）
+     */
+    public AdminBudgetSummaryResponse getOrgBudgetSummary(Long userId, Long orgId) {
+        accessControlService.checkAdminOrHasPermission(userId, orgId, "ORGANIZATION", ORG_BUDGET_VIEW_PERMISSION);
+        return toResponse(budgetAdminSummaryQueryService.summaryForScope("ORGANIZATION", orgId));
+    }
+
+    /**
+     * budget ドメインローカル集計を dashboard DTO へ変換する。
+     */
+    private AdminBudgetSummaryResponse toResponse(
+            BudgetAdminSummaryQueryService.BudgetAdminSummary summary) {
+        return AdminBudgetSummaryResponse.builder()
+                .hasCurrentFiscalYear(summary.hasCurrentFiscalYear())
+                .fiscalYearName(summary.fiscalYearName())
+                .allocation(summary.allocation())
+                .actual(summary.actual())
+                .remaining(summary.remaining())
+                .overBudgetCategoryCount(summary.overBudgetCategoryCount())
                 .build();
     }
 }

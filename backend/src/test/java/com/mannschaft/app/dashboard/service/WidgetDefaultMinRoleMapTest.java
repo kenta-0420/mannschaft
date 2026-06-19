@@ -207,6 +207,18 @@ class WidgetDefaultMinRoleMapTest {
         }
 
         @Test
+        @DisplayName("ADMIN_TEAM_BUDGET は管理対象外（isConfigurable=false・P3b Wave3）")
+        void adminTeamBudget_対象外() {
+            assertThat(WidgetDefaultMinRoleMap.isConfigurable(WidgetKey.ADMIN_TEAM_BUDGET)).isFalse();
+        }
+
+        @Test
+        @DisplayName("ADMIN_ORG_BUDGET は管理対象外（isConfigurable=false・P3b Wave3）")
+        void adminOrgBudget_対象外() {
+            assertThat(WidgetDefaultMinRoleMap.isConfigurable(WidgetKey.ADMIN_ORG_BUDGET)).isFalse();
+        }
+
+        @Test
         @DisplayName("ADMIN 限定ウィジェットへの getDefault は IllegalArgumentException")
         void getDefault_ADMIN限定_例外() {
             assertThatThrownBy(() -> WidgetDefaultMinRoleMap.getDefault(WidgetKey.TEAM_BILLING))
@@ -374,7 +386,9 @@ class WidgetDefaultMinRoleMapTest {
                     .doesNotContain(WidgetKey.ORG_BILLING)
                     .doesNotContain(WidgetKey.ADMIN_TEAM_MEMBERS)
                     .doesNotContain(WidgetKey.ADMIN_TEAM_RESERVATIONS)
-                    .doesNotContain(WidgetKey.ADMIN_ORG_MEMBERS);
+                    .doesNotContain(WidgetKey.ADMIN_ORG_MEMBERS)
+                    .doesNotContain(WidgetKey.ADMIN_TEAM_BUDGET)
+                    .doesNotContain(WidgetKey.ADMIN_ORG_BUDGET);
         }
 
         @Test
@@ -407,7 +421,9 @@ class WidgetDefaultMinRoleMapTest {
                 "ORG_BILLING",
                 "ADMIN_TEAM_MEMBERS",
                 "ADMIN_TEAM_RESERVATIONS",
-                "ADMIN_ORG_MEMBERS"
+                "ADMIN_ORG_MEMBERS",
+                "ADMIN_TEAM_BUDGET",
+                "ADMIN_ORG_BUDGET"
         })
         @DisplayName("ロール制限ウィジェットは isConfigurable=false")
         void roleRestrictedWidgets_isConfigurableFalse(WidgetKey key) {

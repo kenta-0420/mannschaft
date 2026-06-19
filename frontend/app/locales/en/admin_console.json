@@ -108,6 +108,14 @@
         "today": "Today's reservations",
         "fetchFailed": "Could not load reservation summary"
       },
+      "budget": {
+        "allocation": "Allocated",
+        "actual": "Actual",
+        "remaining": "Remaining",
+        "overBudgetCount": "Over-budget categories",
+        "noFiscalYear": "No fiscal year set",
+        "fetchFailed": "Could not load budget summary"
+      },
       "modules": {
         "summary": "{enabled} enabled / {total} total",
         "fetchFailed": "Could not load module information"

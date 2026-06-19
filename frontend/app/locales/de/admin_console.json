@@ -1,4 +1,4 @@
-{
+﻿{
   "adminConsole": {
     "comingSoon": "Demnächst verfügbar",
     "team": {
@@ -107,6 +107,14 @@
         "pending": "Genehmigung ausstehend",
         "today": "Heutige Reservierungen",
         "fetchFailed": "Reservierungsübersicht konnte nicht geladen werden"
+      },
+      "budget": {
+        "allocation": "Zugewiesen",
+        "actual": "Ist",
+        "remaining": "Verbleibend",
+        "overBudgetCount": "Überschrittene Kategorien",
+        "noFiscalYear": "Kein Geschäftsjahr festgelegt",
+        "fetchFailed": "Budgetübersicht konnte nicht geladen werden"
       },
       "modules": {
         "summary": "{enabled} aktiv / {total} gesamt",
