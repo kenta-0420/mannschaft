@@ -168,6 +168,14 @@ public class SurveyService {
                                               CreateSurveyRequest request) {
         validateTimeRange(request.getStartsAt(), request.getExpiresAt());
 
+        boolean teamBreakdownEnabled = Boolean.TRUE.equals(request.getTeamBreakdownEnabled());
+        boolean isAnonymous = Boolean.TRUE.equals(request.getIsAnonymous());
+        // 御裁可B（匿名保護）: 匿名アンケート × チーム別内訳トグル ON は併用禁止。
+        // 回答者の所属チームを内訳に出すと匿名性が崩れるため、作成時に弾く（400・症状を隠さない）。
+        if (isAnonymous && teamBreakdownEnabled) {
+            throw new BusinessException(SurveyErrorCode.ANONYMOUS_TEAM_BREAKDOWN_CONFLICT);
+        }
+
         String remindJson = serializeRemindHours(request.getRemindBeforeHours());
 
         SurveyEntity entity = SurveyEntity.builder()
@@ -186,6 +194,7 @@ public class SurveyService {
                         ? request.getAutoPostToTimeline() : false)
                 .includeSupporters(request.getIncludeSupporters() != null
                         ? request.getIncludeSupporters() : false)
+                .teamBreakdownEnabled(teamBreakdownEnabled)
                 .seriesId(request.getSeriesId())
                 .remindBeforeHours(remindJson)
                 .startsAt(request.getStartsAt())
