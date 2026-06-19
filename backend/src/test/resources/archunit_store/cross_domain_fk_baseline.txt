@@ -2,5 +2,3 @@
 # 1 行 = 全 migration を Flyway 適用順に再生した後 net-active な 1 件の クロスドメイン FK。baseline に無い新規 FK のみ fail。
 # 撤廃 wave が DROP FOREIGN KEY すると net-active から消え、再凍結で該当行も消える（chip-away 運用）。baseline が空になればクロスドメイン FK 全廃。
 # 再生成: ./gradlew test --tests "*CrossDomainForeignKeyArchTest" -Parchunit.fk.refreeze=true （または環境変数 ARCHUNIT_FK_REFREEZE=true）
-schedule_attendances -> proxy_input_records [fk_sa_proxy_record] (RESTRICT) @V18.017__add_proxy_input_columns_to_schedule_attendances.sql:8
-survey_responses -> proxy_input_records [fk_sr_proxy_record] (RESTRICT) @V18.016__add_proxy_input_columns_to_survey_responses.sql:8
