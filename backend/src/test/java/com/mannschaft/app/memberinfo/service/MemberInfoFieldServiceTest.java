@@ -21,6 +21,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+import com.mannschaft.app.memberinfo.dto.UpdateMemberInfoFieldRequest;
+import org.mockito.ArgumentCaptor;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -111,6 +115,54 @@ class MemberInfoFieldServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    // ========================================
+    // UpdateField テスト（toBuilder 廃止・id 保持回帰）
+    // ========================================
+
+    @Nested
+    @DisplayName("updateField - save に渡るのが findById の同一インスタンスかつ id 保持")
+    class UpdateField {
+
+        @Test
+        @DisplayName("updateField → save に渡るエンティティが findById の同一インスタンスで id を保持する")
+        void updateField_savesOriginalInstanceWithIdPreserved() {
+            TeamMemberInfoFieldEntity entity = buildField(FIELD_ID, true);
+            UpdateMemberInfoFieldRequest request = new UpdateMemberInfoFieldRequest(
+                    "更新フィールド", MemberInfoFieldType.TEXT, false, false, 12, 1);
+            MemberInfoFieldResponse response = buildFieldResponse(FIELD_ID);
+
+            given(fieldRepository.findByIdAndTeamId(FIELD_ID, TEAM_ID)).willReturn(Optional.of(entity));
+            given(fieldRepository.save(any())).willReturn(entity);
+            given(mapper.toFieldResponse(entity)).willReturn(response);
+
+            service.updateField(TEAM_ID, FIELD_ID, USER_ID, request);
+
+            ArgumentCaptor<TeamMemberInfoFieldEntity> captor =
+                    ArgumentCaptor.forClass(TeamMemberInfoFieldEntity.class);
+            verify(fieldRepository).save(captor.capture());
+            // save に渡るのが findById の同一インスタンスかつ id を保持していることを検証
+            assertThat(captor.getValue()).isSameAs(entity);
+            assertThat(captor.getValue().getId()).isEqualTo(FIELD_ID);
+        }
+
+        @Test
+        @DisplayName("deleteField → save に渡るエンティティが findById の同一インスタンスで id を保持する")
+        void deleteField_savesOriginalInstanceWithIdPreserved() {
+            TeamMemberInfoFieldEntity entity = buildField(FIELD_ID, true);
+            given(fieldRepository.findByIdAndTeamId(FIELD_ID, TEAM_ID)).willReturn(Optional.of(entity));
+            given(fieldRepository.save(any())).willReturn(entity);
+
+            service.deleteField(TEAM_ID, FIELD_ID, USER_ID);
+
+            ArgumentCaptor<TeamMemberInfoFieldEntity> captor =
+                    ArgumentCaptor.forClass(TeamMemberInfoFieldEntity.class);
+            verify(fieldRepository).save(captor.capture());
+            // save に渡るのが findById の同一インスタンスかつ id を保持していることを検証
+            assertThat(captor.getValue()).isSameAs(entity);
+            assertThat(captor.getValue().getId()).isEqualTo(FIELD_ID);
         }
     }
 

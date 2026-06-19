@@ -42,4 +42,13 @@ public class AnalyticsAlertHistoryEntity extends BaseEntity {
 
     @Builder.Default
     private boolean notified = false;
+
+    /**
+     * 通知済みフラグを立てる。
+     * managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する。
+     * （toBuilder().build() は継承フィールド id を引き継がず INSERT 化するため使用しない）
+     */
+    public void markNotified() {
+        this.notified = true;
+    }
 }

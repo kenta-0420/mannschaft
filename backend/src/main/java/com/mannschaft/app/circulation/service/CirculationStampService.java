@@ -110,10 +110,10 @@ public class CirculationStampService {
         if (proxyInputContext.isProxy()) {
             ProxyInputRecordEntity proxyRecord = buildAndSaveStampProxyRecord(
                     "CIRCULATION_STAMP", savedRecipient.getId());
-            savedRecipient = recipientRepository.save(savedRecipient.toBuilder()
-                    .isProxyConfirmed(true)
-                    .proxyInputRecordId(proxyRecord.getId())
-                    .build());
+            // managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する
+            // （toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化するため廃止）
+            savedRecipient.applyProxyConfirmed(proxyRecord.getId());
+            savedRecipient = recipientRepository.save(savedRecipient);
         }
 
         document.incrementStampedCount();

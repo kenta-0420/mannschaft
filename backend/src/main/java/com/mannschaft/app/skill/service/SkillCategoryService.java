@@ -121,16 +121,17 @@ public class SkillCategoryService {
             }
         }
 
-        // toBuilder でフィールドを更新
-        SkillCategoryEntity updated = category.toBuilder()
-                .name(name != null ? name : category.getName())
-                .description(description != null ? description : category.getDescription())
-                .icon(icon != null ? icon : category.getIcon())
-                .sortOrder(sortOrder != null ? sortOrder : category.getSortOrder())
-                .isActive(isActive != null ? isActive : category.getIsActive())
-                .build();
+        // managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する
+        // （toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化するため廃止）
+        category.applyUpdate(
+                name != null ? name : category.getName(),
+                description != null ? description : category.getDescription(),
+                icon != null ? icon : category.getIcon(),
+                sortOrder != null ? sortOrder : category.getSortOrder(),
+                isActive != null ? isActive : category.getIsActive()
+        );
 
-        SkillCategoryEntity saved = categoryRepository.save(updated);
+        SkillCategoryEntity saved = categoryRepository.save(category);
         log.info("スキルカテゴリ更新: id={}", id);
         return ApiResponse.of(saved);
     }

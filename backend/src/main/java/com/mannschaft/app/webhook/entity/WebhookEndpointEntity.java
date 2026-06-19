@@ -64,6 +64,17 @@ public class WebhookEndpointEntity extends BaseEntity {
     private LocalDateTime deletedAt;
 
     /**
+     * エンドポイント情報を更新する。
+     * managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する。
+     * （toBuilder().build() は継承フィールド id を引き継がず INSERT 化するため使用しない）
+     */
+    public void applyUpdate(String name, String url, Integer timeoutMs) {
+        this.name = name;
+        this.url = url;
+        this.timeoutMs = timeoutMs;
+    }
+
+    /**
      * 論理削除を行う。
      */
     public void softDelete() {
