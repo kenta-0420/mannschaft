@@ -9,6 +9,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -47,45 +48,45 @@ public class FormTemplateEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @SuperBuilder.Default
+    @Builder.Default
     private FormStatus status = FormStatus.DRAFT;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean requiresApproval = false;
 
     private Long workflowTemplateId;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean isSealOnPdf = false;
 
     private LocalDateTime deadline;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean allowEditAfterSubmit = false;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean autoFillEnabled = false;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Integer maxSubmissionsPerUser = 0;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Integer sortOrder = 0;
 
     private Long presetId;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Integer submissionCount = 0;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Integer targetCount = 0;
 
     private Long createdBy;

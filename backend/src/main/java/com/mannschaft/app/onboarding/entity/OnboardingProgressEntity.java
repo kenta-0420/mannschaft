@@ -8,6 +8,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -38,20 +39,20 @@ public class OnboardingProgressEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @SuperBuilder.Default
+    @Builder.Default
     private OnboardingProgressStatus status = OnboardingProgressStatus.IN_PROGRESS;
 
     @Column(nullable = false)
     private Short totalSteps;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Short completedSteps = 0;
 
     private LocalDateTime deadlineAt;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private LocalDateTime startedAt = LocalDateTime.now();
 
     private LocalDateTime completedAt;

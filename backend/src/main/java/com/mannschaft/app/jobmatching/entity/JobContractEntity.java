@@ -9,6 +9,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -88,7 +89,7 @@ public class JobContractEntity extends BaseEntity {
     private LocalDateTime cancelledAt;
 
     @Column(name = "rejection_count", nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Integer rejectionCount = 0;
 
     @Column(name = "last_rejection_reason", columnDefinition = "TEXT")
@@ -96,7 +97,7 @@ public class JobContractEntity extends BaseEntity {
 
     @Version
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Integer version = 0;
 
     /**

@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -39,7 +40,7 @@ public class MatchProposalDateEntity {
     private LocalTime proposedTimeTo;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean isSelected = false;
 
     /**

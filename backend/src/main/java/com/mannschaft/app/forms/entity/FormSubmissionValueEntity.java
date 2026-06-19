@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -55,7 +56,7 @@ public class FormSubmissionValueEntity {
     private String fileKey;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean isAutoFilled = false;
 
     private LocalDateTime createdAt;

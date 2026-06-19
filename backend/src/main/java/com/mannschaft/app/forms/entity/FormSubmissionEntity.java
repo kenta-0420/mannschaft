@@ -9,6 +9,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -39,7 +40,7 @@ public class FormSubmissionEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @SuperBuilder.Default
+    @Builder.Default
     private SubmissionStatus status = SubmissionStatus.DRAFT;
 
     private Long submittedBy;
@@ -59,7 +60,7 @@ public class FormSubmissionEntity extends BaseEntity {
     private String pdfFileKey;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Integer submissionCountForUser = 1;
 
     @Version

@@ -8,6 +8,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -54,11 +55,11 @@ public class JobCheckInEntity extends BaseEntity {
     private Instant serverReceivedAt;
 
     @Column(name = "offline_submitted", nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean offlineSubmitted = false;
 
     @Column(name = "manual_code_fallback", nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean manualCodeFallback = false;
 
     /** 端末緯度（DECIMAL(9,6)）。アプリ層で AES-256-GCM 暗号化して格納する想定（設計書 §10.10）。 */
@@ -74,7 +75,7 @@ public class JobCheckInEntity extends BaseEntity {
 
     /** 業務場所から 500 m 以上乖離した場合に true。 */
     @Column(name = "geo_anomaly", nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean geoAnomaly = false;
 
     /** 位置情報削除日時（完了 90 日後バッチによる NULL 更新時に記録）。 */

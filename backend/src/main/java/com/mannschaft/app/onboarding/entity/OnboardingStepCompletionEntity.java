@@ -8,6 +8,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -35,6 +36,6 @@ public class OnboardingStepCompletionEntity extends BaseEntity {
     private OnboardingCompletionType completionType;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private LocalDateTime completedAt = LocalDateTime.now();
 }

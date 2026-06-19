@@ -10,6 +10,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -42,11 +43,11 @@ public class FormTemplateFieldEntity {
     private FormFieldType fieldType;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean isRequired = false;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Integer sortOrder = 0;
 
     @Column(length = 50)

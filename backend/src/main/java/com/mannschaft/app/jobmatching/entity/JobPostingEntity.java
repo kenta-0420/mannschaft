@@ -12,6 +12,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -87,7 +88,7 @@ public class JobPostingEntity extends BaseEntity {
 
     @Version
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Integer version = 0;
 
     @Column(name = "deleted_at")

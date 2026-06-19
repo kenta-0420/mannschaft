@@ -9,6 +9,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -41,7 +42,7 @@ public class SystemOnboardingPresetEntity extends BaseEntity {
     private String welcomeMessage;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean isOrderEnforced = false;
 
     private Short deadlineDays;
@@ -50,11 +51,11 @@ public class SystemOnboardingPresetEntity extends BaseEntity {
     private String stepsJson;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean isActive = true;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Integer sortOrder = 0;
 
     @Column(nullable = false)

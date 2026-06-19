@@ -9,6 +9,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -44,24 +45,24 @@ public class OnboardingTemplateEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @SuperBuilder.Default
+    @Builder.Default
     private OnboardingTemplateStatus status = OnboardingTemplateStatus.DRAFT;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean isOrderEnforced = false;
 
     private Short deadlineDays;
 
-    @SuperBuilder.Default
+    @Builder.Default
     private Short reminderDaysBefore = 3;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean isAdminNotifiedOnComplete = true;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean isTimelinePostedOnComplete = false;
 
     private Long presetId;

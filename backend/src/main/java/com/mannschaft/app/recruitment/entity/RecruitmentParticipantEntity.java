@@ -13,6 +13,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -55,7 +56,7 @@ public class RecruitmentParticipantEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @SuperBuilder.Default
+    @Builder.Default
     private RecruitmentParticipantStatus status = RecruitmentParticipantStatus.APPLIED;
 
     private Integer waitlistPosition;

@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -66,14 +67,14 @@ public class RecruitmentCancellationRecordEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @SuperBuilder.Default
+    @Builder.Default
     private CancellationPaymentStatus paymentStatus = CancellationPaymentStatus.NOT_REQUIRED;
 
     @Column(length = 100)
     private String paymentId;
 
     /** §Phase5a 決済リトライ回数（最大3回）。 */
-    @SuperBuilder.Default
+    @Builder.Default
     private Integer paymentRetryCount = 0;
 
     @Column(length = 500)

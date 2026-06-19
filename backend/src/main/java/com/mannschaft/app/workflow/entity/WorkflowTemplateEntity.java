@@ -6,7 +6,9 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -44,15 +46,15 @@ public class WorkflowTemplateEntity extends BaseEntity {
     private String color;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean isSealRequired = false;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean isActive = true;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Integer sortOrder = 0;
 
     private Long createdBy;

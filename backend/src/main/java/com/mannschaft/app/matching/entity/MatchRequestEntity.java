@@ -12,6 +12,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -50,12 +51,12 @@ public class MatchRequestEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private MatchCategory category = MatchCategory.ANY;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private MatchVisibility visibility = MatchVisibility.PLATFORM;
 
     @Column(nullable = false, length = 2)
@@ -77,7 +78,7 @@ public class MatchRequestEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private MatchLevel level = MatchLevel.ANY;
 
     private Short minParticipants;
@@ -86,11 +87,11 @@ public class MatchRequestEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private MatchRequestStatus status = MatchRequestStatus.OPEN;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Integer proposalCount = 0;
 
     private LocalDateTime expiresAt;
@@ -98,7 +99,7 @@ public class MatchRequestEntity extends BaseEntity {
     private Long matchedProposalId;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Short cancelCount = 0;
 
     private LocalDateTime deletedAt;

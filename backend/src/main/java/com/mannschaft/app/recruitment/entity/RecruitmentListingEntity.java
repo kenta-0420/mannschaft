@@ -11,7 +11,9 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -75,19 +77,19 @@ public class RecruitmentListingEntity extends BaseEntity {
     private Integer minCapacity;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Integer confirmedCount = 0;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Integer waitlistCount = 0;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Integer waitlistMax = 100;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean paymentEnabled = false;
 
     private Integer price;
@@ -110,7 +112,7 @@ public class RecruitmentListingEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @SuperBuilder.Default
+    @Builder.Default
     private RecruitmentVisibility visibility = RecruitmentVisibility.SCOPE_ONLY;
 
     /** カスタム公開範囲テンプレートID (F01.7)。visibility = CUSTOM_TEMPLATE の場合のみ使用 */
@@ -119,7 +121,7 @@ public class RecruitmentListingEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @SuperBuilder.Default
+    @Builder.Default
     private RecruitmentListingStatus status = RecruitmentListingStatus.DRAFT;
 
     @Column(length = 200)
@@ -157,11 +159,11 @@ public class RecruitmentListingEntity extends BaseEntity {
     private String cancelledReason;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Integer participantCountCache = 0;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Integer nextWaitlistPosition = 1;
 
     private LocalDateTime deletedAt;
