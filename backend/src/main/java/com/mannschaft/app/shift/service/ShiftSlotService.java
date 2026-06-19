@@ -119,17 +119,21 @@ public class ShiftSlotService {
     public ShiftSlotResponse updateSlot(Long slotId, UpdateShiftSlotRequest req) {
         ShiftSlotEntity entity = findSlotOrThrow(slotId);
 
-        ShiftSlotEntity.ShiftSlotEntityBuilder builder = entity.toBuilder();
+        // managed entity を直接ミューテート（toBuilder().build() でなくドメインメソッドで更新）。
+        // ShiftSlotEntity は @Builder(toBuilder=true) / @SuperBuilder でない / BaseEntity継承(自前id無)
+        // の3条件が揃うため、toBuilder().build()→save では id=null の新インスタンスが生成され
+        // UPDATE でなく INSERT が走る行重複バグになる。
+        entity.applyUpdate(
+                req.getSlotDate(),
+                req.getStartTime(),
+                req.getEndTime(),
+                req.getPositionId(),
+                req.getRequiredCount(),
+                req.getAssignedUserIds() != null ? serializeUserIds(req.getAssignedUserIds()) : null,
+                req.getNote()
+        );
 
-        if (req.getSlotDate() != null) builder.slotDate(req.getSlotDate());
-        if (req.getStartTime() != null) builder.startTime(req.getStartTime());
-        if (req.getEndTime() != null) builder.endTime(req.getEndTime());
-        if (req.getPositionId() != null) builder.positionId(req.getPositionId());
-        if (req.getRequiredCount() != null) builder.requiredCount(req.getRequiredCount());
-        if (req.getAssignedUserIds() != null) builder.assignedUserIds(serializeUserIds(req.getAssignedUserIds()));
-        if (req.getNote() != null) builder.note(req.getNote());
-
-        entity = slotRepository.save(builder.build());
+        slotRepository.save(entity);
         log.info("シフト枠更新: id={}", slotId);
         return toSlotResponse(entity);
     }
@@ -172,16 +176,15 @@ public class ShiftSlotService {
             throw new BusinessException(ShiftErrorCode.SLOT_ASSIGNMENT_EXCEEDED);
         }
 
-        ShiftSlotEntity updated = entity.toBuilder()
-                .assignedUserIds(serializeUserIds(currentUserIds))
-                .build();
-        updated = slotRepository.save(updated);
+        // managed entity を直接ミューテート（toBuilder().build() 行重複バグ回避）。
+        entity.updateAssignedUserIds(serializeUserIds(currentUserIds));
+        slotRepository.save(entity);
 
         log.info("スロット差分割当更新: slotId={}, added={}, removed={}",
                 slotId,
                 request.addUserIds() != null ? request.addUserIds().size() : 0,
                 request.removeUserIds() != null ? request.removeUserIds().size() : 0);
-        return toSlotResponse(updated);
+        return toSlotResponse(entity);
     }
 
     /**
