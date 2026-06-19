@@ -11,6 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -181,8 +182,8 @@ class EventTicketTypeServiceTest {
     class UpdateTicketType {
 
         @Test
-        @DisplayName("チケット種別更新_正常_レスポンス返却")
-        void チケット種別更新_正常_レスポンス返却() {
+        @DisplayName("チケット種別更新_正常_findByIdと同一インスタンスがsaveされid保持")
+        void チケット種別更新_正常_findByIdと同一インスタンスがsaveされid保持() {
             // Given
             UpdateTicketTypeRequest request = new UpdateTicketTypeRequest(
                     "VIPチケット", "VIP参加者向け", BigDecimal.valueOf(5000),
@@ -197,7 +198,7 @@ class EventTicketTypeServiceTest {
             );
 
             given(ticketTypeRepository.findById(TICKET_TYPE_ID)).willReturn(Optional.of(entity));
-            given(ticketTypeRepository.save(any(EventTicketTypeEntity.class))).willReturn(entity);
+            given(ticketTypeRepository.save(entity)).willReturn(entity);
             given(eventMapper.toTicketTypeResponse(entity)).willReturn(response);
 
             // When
@@ -205,7 +206,36 @@ class EventTicketTypeServiceTest {
 
             // Then
             assertThat(result.getName()).isEqualTo("VIPチケット");
-            verify(ticketTypeRepository).save(any(EventTicketTypeEntity.class));
+            // save に渡されるのが findById の同一インスタンスであることを確認（id=null INSERT 化バグ回帰防止）
+            ArgumentCaptor<EventTicketTypeEntity> captor = ArgumentCaptor.forClass(EventTicketTypeEntity.class);
+            verify(ticketTypeRepository).save(captor.capture());
+            assertThat(captor.getValue()).isSameAs(entity);
+        }
+
+        @Test
+        @DisplayName("チケット種別更新_フィールド変更_applyUpdateが正しく適用される")
+        void チケット種別更新_フィールド変更_applyUpdateが正しく適用される() {
+            // Given
+            UpdateTicketTypeRequest request = new UpdateTicketTypeRequest(
+                    "VIPチケット", null, BigDecimal.valueOf(5000),
+                    null, null, null, false, null
+            );
+            EventTicketTypeEntity entity = createTicketTypeEntity();
+
+            given(ticketTypeRepository.findById(TICKET_TYPE_ID)).willReturn(Optional.of(entity));
+            given(ticketTypeRepository.save(entity)).willReturn(entity);
+            given(eventMapper.toTicketTypeResponse(entity)).willReturn(createTicketTypeResponse());
+
+            // When
+            eventTicketTypeService.updateTicketType(TICKET_TYPE_ID, request);
+
+            // Then: ミューテート後のフィールドが正しく更新されていることを確認
+            assertThat(entity.getName()).isEqualTo("VIPチケット");
+            assertThat(entity.getPrice()).isEqualByComparingTo(BigDecimal.valueOf(5000));
+            assertThat(entity.getIsActive()).isFalse();
+            // null 指定フィールドは既存値を維持
+            assertThat(entity.getDescription()).isEqualTo("一般参加者向け");
+            assertThat(entity.getCurrency()).isEqualTo("JPY");
         }
 
         @Test
