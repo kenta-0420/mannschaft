@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
  * 全エンティティの基底クラス。ID・作成日時・更新日時を共通管理する。
  */
 @Getter
-@SuperBuilder
+@SuperBuilder(toBuilder = true)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @MappedSuperclass
 public abstract class BaseEntity {
