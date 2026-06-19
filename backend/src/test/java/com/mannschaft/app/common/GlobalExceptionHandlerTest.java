@@ -467,6 +467,19 @@ class GlobalExceptionHandlerTest {
             // #1601 の RESERVATION_020(409) と別物であることを保証
             assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_021");
         }
+
+        @Test
+        @DisplayName("F03.4 段階拡張⑧ 予約重複: DUPLICATE_RESERVATION の BusinessException は 409 Conflict（code=RESERVATION_013）で返る")
+        void handleBusinessException_DUPLICATE_RESERVATION_409() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.reservation.ReservationErrorCode.DUPLICATE_RESERVATION);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_013");
+        }
     }
 
     // ========================================
