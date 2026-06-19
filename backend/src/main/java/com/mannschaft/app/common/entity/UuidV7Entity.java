@@ -41,7 +41,7 @@ import java.util.UUID;
  *
  * @see org.hibernate.annotations.UuidGenerator
  */
-@SuperBuilder
+@SuperBuilder(toBuilder = true)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @MappedSuperclass
 public abstract class UuidV7Entity {
