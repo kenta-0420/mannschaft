@@ -233,18 +233,15 @@ public class PeriodAttendanceService {
                 .filter(r -> r.getTeamId().equals(teamId))
                 .orElseThrow(() -> new BusinessException(SchoolErrorCode.PERIOD_RECORD_NOT_FOUND));
 
-        PeriodAttendanceRecordEntity updated = existing.toBuilder()
-                .status(request.getStatus() != null ? request.getStatus() : existing.getStatus())
-                .lateMinutes(request.getLateMinutes() != null ? request.getLateMinutes() : existing.getLateMinutes())
-                .comment(request.getComment() != null ? request.getComment() : existing.getComment())
-                .build();
-
-        PeriodAttendanceRecordEntity saved = periodAttendanceRecordRepository.save(updated);
+        // toBuilder().build() で作り直すと BaseEntity.id が引き継がれず INSERT 化する（行重複）。
+        // managed entity を直接ミューテートし JPA dirty checking で UPDATE する。
+        existing.applyUpdate(request.getStatus(), request.getLateMinutes(), request.getComment(), operatorUserId);
+        periodAttendanceRecordRepository.save(existing);
 
         log.info("時限出欠レコード修正: teamId={}, recordId={}, operatorUserId={}",
                 teamId, recordId, operatorUserId);
 
-        return PeriodAttendanceResponse.from(saved);
+        return PeriodAttendanceResponse.from(existing);
     }
 
     /**
@@ -301,12 +298,10 @@ public class PeriodAttendanceService {
 
         PeriodAttendanceRecordEntity record;
         if (existing.isPresent()) {
-            record = existing.get().toBuilder()
-                    .status(entry.getStatus())
-                    .lateMinutes(entry.getLateMinutes())
-                    .comment(entry.getComment())
-                    .recordedBy(operatorUserId)
-                    .build();
+            // toBuilder().build() で作り直すと BaseEntity.id が引き継がれず INSERT 化する（行重複）。
+            // managed entity を直接ミューテートし JPA dirty checking で UPDATE する。
+            record = existing.get();
+            record.applyUpsertUpdate(entry.getStatus(), entry.getLateMinutes(), entry.getComment(), operatorUserId);
         } else {
             record = PeriodAttendanceRecordEntity.builder()
                     .teamId(teamId)

@@ -78,4 +78,28 @@ public class FamilyAttendanceNoticeEntity extends BaseEntity {
         if (acknowledgedBy != null) return FamilyNoticeStatus.ACKNOWLEDGED;
         return FamilyNoticeStatus.PENDING;
     }
+
+    /**
+     * 担任が連絡を確認済みにする（直接ミューテート）。
+     *
+     * <p>{@code toBuilder().build()} で作り直すと {@link com.mannschaft.app.common.BaseEntity}
+     * の {@code id} が引き継がれず id=null の新インスタンスとなり、INSERT 化して行が重複する。
+     * managed entity を直接書き換えることで JPA dirty checking が UPDATE を発行し id を保持する。</p>
+     *
+     * @param acknowledgedBy  担任のユーザーID
+     * @param acknowledgedAt  確認日時
+     */
+    public void acknowledge(Long acknowledgedBy, java.time.LocalDateTime acknowledgedAt) {
+        this.acknowledgedBy = acknowledgedBy;
+        this.acknowledgedAt = acknowledgedAt;
+    }
+
+    /**
+     * 出欠レコードへの反映フラグを true にする（直接ミューテート）。
+     *
+     * <p>id 保持で UPDATE するために直接代入する。{@link #acknowledge} と同じ理由による。</p>
+     */
+    public void markAppliedToRecord() {
+        this.appliedToRecord = true;
+    }
 }

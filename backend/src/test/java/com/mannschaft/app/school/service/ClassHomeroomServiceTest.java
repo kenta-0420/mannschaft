@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import org.mockito.ArgumentCaptor;
 
 /**
  * {@link ClassHomeroomService} 単体テスト。
@@ -195,6 +196,59 @@ class ClassHomeroomServiceTest {
 
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getHomeroomTeacherUserId()).isEqualTo(TEACHER_USER_ID);
+        }
+    }
+
+    // ========================================
+    // toBuilder 更新破壊 回帰テスト
+    // ========================================
+
+    /**
+     * toBuilder().build() で作り直すと BaseEntity.id が引き継がれず id=null の新インスタンスになり
+     * INSERT 化して行が重複するバグの回帰テスト。
+     */
+    @Nested
+    @DisplayName("toBuilder更新破壊回帰")
+    class ToBuilderUpdateRegression {
+
+        private static final Long EXISTING_ID = 10L;
+        private static final Long NEW_TEACHER_USER_ID = 300L;
+
+        @Test
+        @DisplayName("updateHomeroom: 取得した同一インスタンスを id 保持のまま UPDATE する（新インスタンス化しない）")
+        void updateHomeroom_既存行をUPDATE_id保持() {
+            // Given
+            given(accessControlService.isAdminOrAbove(ADMIN_USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+
+            ClassHomeroomEntity existing = ClassHomeroomEntity.builder()
+                    .teamId(TEAM_ID)
+                    .homeroomTeacherUserId(TEACHER_USER_ID)
+                    .academicYear(ACADEMIC_YEAR)
+                    .effectiveFrom(LocalDate.of(2026, 4, 1))
+                    .effectiveUntil(null)
+                    .createdBy(ADMIN_USER_ID)
+                    .build();
+            ReflectionTestUtils.setField(existing, "id", EXISTING_ID);
+
+            given(classHomeroomRepository.findById(EXISTING_ID)).willReturn(Optional.of(existing));
+
+            ArgumentCaptor<ClassHomeroomEntity> captor =
+                    ArgumentCaptor.forClass(ClassHomeroomEntity.class);
+            given(classHomeroomRepository.save(captor.capture())).willAnswer(inv -> inv.getArgument(0));
+
+            ClassHomeroomUpdateRequest request = new ClassHomeroomUpdateRequest();
+            ReflectionTestUtils.setField(request, "homeroomTeacherUserId", NEW_TEACHER_USER_ID);
+            ReflectionTestUtils.setField(request, "effectiveUntil", LocalDate.of(2027, 3, 31));
+
+            // When
+            classHomeroomService.updateHomeroom(TEAM_ID, EXISTING_ID, request, ADMIN_USER_ID);
+
+            // Then: save に渡るのは取得した同一インスタンスで、id が保持されている（=UPDATE 経路）
+            ClassHomeroomEntity saved = captor.getValue();
+            assertThat(saved).isSameAs(existing);
+            assertThat(saved.getId()).isEqualTo(EXISTING_ID);
+            assertThat(saved.getHomeroomTeacherUserId()).isEqualTo(NEW_TEACHER_USER_ID);
+            assertThat(saved.getEffectiveUntil()).isEqualTo(LocalDate.of(2027, 3, 31));
         }
     }
 }
