@@ -4,6 +4,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.shift.dto.BulkCreateShiftSlotRequest;
 import com.mannschaft.app.shift.dto.CreateShiftSlotRequest;
 import com.mannschaft.app.shift.dto.ShiftSlotResponse;
+import com.mannschaft.app.shift.dto.SlotAssignmentPatchRequest;
 import com.mannschaft.app.shift.dto.UpdateShiftSlotRequest;
 import com.mannschaft.app.shift.entity.ShiftPositionEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
@@ -16,9 +17,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -311,6 +314,85 @@ class ShiftSlotServiceTest {
             // When & Then
             assertThatThrownBy(() -> shiftSlotService.updateSlot(SLOT_ID, req))
                     .isInstanceOf(BusinessException.class);
+        }
+    }
+
+    // ========================================
+    // ToBuilderUpdateRegression (行重複INSERT防止回帰テスト)
+    // ========================================
+
+    @Nested
+    @DisplayName("ToBuilderUpdateRegression_ShiftSlot")
+    class ToBuilderUpdateRegressionShiftSlot {
+
+        /**
+         * id 採番済みの existing entity を生成する。
+         *
+         * <p>{@link com.mannschaft.app.common.BaseEntity#id} は setter を持たないため
+         * {@link ReflectionTestUtils} で採番済み状態を再現する（DB から findById で取得した
+         * managed entity を模す）。
+         */
+        private ShiftSlotEntity existingSlotWithId() {
+            ShiftSlotEntity entity = createSlotEntity();
+            ReflectionTestUtils.setField(entity, "id", SLOT_ID);
+            return entity;
+        }
+
+        @Test
+        @DisplayName("updateSlot_既存エンティティをUPDATE_id不変かつ同一インスタンスをsave")
+        void updateSlot_既存エンティティをUPDATE_id不変かつ同一インスタンスをsave() {
+            // Given: findById で取得した id 採番済みの managed entity
+            ShiftSlotEntity existing = existingSlotWithId();
+            UpdateShiftSlotRequest req = new UpdateShiftSlotRequest(
+                    null, LocalTime.of(10, 0), null, null, 3, null, "更新メモ");
+
+            given(slotRepository.findById(SLOT_ID)).willReturn(Optional.of(existing));
+            given(slotRepository.save(any(ShiftSlotEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(positionRepository.findById(POSITION_ID))
+                    .willReturn(Optional.of(createPositionEntity()));
+
+            // When
+            shiftSlotService.updateSlot(SLOT_ID, req);
+
+            // Then: save に渡るのは findById で取得した「まさにその」managed entity
+            // （toBuilder().build() で作り直した別インスタンスではない）。
+            // id が保持されているので save は UPDATE になり、新規 INSERT（id=null）は起きない。
+            ArgumentCaptor<ShiftSlotEntity> captor = ArgumentCaptor.forClass(ShiftSlotEntity.class);
+            verify(slotRepository).save(captor.capture());
+            ShiftSlotEntity saved = captor.getValue();
+            assertThat(saved).isSameAs(existing);       // 同一インスタンス（新規作成でない）
+            assertThat(saved.getId()).isEqualTo(SLOT_ID); // id 欠落（INSERT 化）が起きていない
+            // 部分更新が managed entity に反映されている
+            assertThat(saved.getStartTime()).isEqualTo(LocalTime.of(10, 0));
+            assertThat(saved.getRequiredCount()).isEqualTo(3);
+            assertThat(saved.getNote()).isEqualTo("更新メモ");
+            // 未指定フィールドは現値維持
+            assertThat(saved.getSlotDate()).isEqualTo(LocalDate.of(2026, 3, 2));
+        }
+
+        @Test
+        @DisplayName("patchSlotAssignments_既存エンティティをUPDATE_id不変かつ同一インスタンスをsave")
+        void patchSlotAssignments_既存エンティティをUPDATE_id不変かつ同一インスタンスをsave() {
+            // Given
+            ShiftSlotEntity existing = existingSlotWithId();
+            ReflectionTestUtils.setField(existing, "version", 0L);
+            SlotAssignmentPatchRequest request =
+                    new SlotAssignmentPatchRequest(List.of(101L), List.of(), 0);
+
+            given(slotRepository.findById(SLOT_ID)).willReturn(Optional.of(existing));
+            given(slotRepository.save(any(ShiftSlotEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(positionRepository.findById(POSITION_ID))
+                    .willReturn(Optional.of(createPositionEntity()));
+
+            // When
+            shiftSlotService.patchSlotAssignments(SLOT_ID, request);
+
+            // Then: 同一インスタンスが save に渡り id 保持
+            ArgumentCaptor<ShiftSlotEntity> captor = ArgumentCaptor.forClass(ShiftSlotEntity.class);
+            verify(slotRepository).save(captor.capture());
+            ShiftSlotEntity saved = captor.getValue();
+            assertThat(saved).isSameAs(existing);
+            assertThat(saved.getId()).isEqualTo(SLOT_ID);
         }
     }
 
