@@ -154,6 +154,38 @@ async function listLines(
   return ((await resp.json()).data ?? []) as { id: number }[]
 }
 
+/**
+ * 予約に使うラインを 1 本確保する。
+ * チームがライン上限（5 本）に達している場合は新規作成できない（RESERVATION_024）ため、
+ * その場合は既存ラインを 1 本流用する。{@code created} が true のときだけ呼び出し側が削除する
+ * （流用した既存ラインは他スペック資産の可能性があるため削除しない＝データ衛生）。
+ *
+ * 共有 dev DB には過去 E2E の後始末漏れラインが堆積し得るため、本ヘルパーで上限到達に耐える。
+ */
+async function getOrCreateLine(
+  request: APIRequestContext,
+  token: string,
+  name: string,
+): Promise<{ id: number; created: boolean }> {
+  const createResp = await request.post(`${BE}/api/v1/teams/${TEAM_SLUG}/reservation-lines`, {
+    headers: authHeaders(token),
+    data: { name },
+  })
+  if (createResp.ok()) {
+    return { id: (await createResp.json()).data.id as number, created: true }
+  }
+  const code = await errorCode(createResp)
+  if (createResp.status() === 400 && code === 'RESERVATION_024') {
+    // 上限到達: 既存ラインを流用する（堆積した後始末漏れラインがあるため）。
+    const existing = await listLines(request, token)
+    if (existing.length === 0) {
+      throw new Error('ライン上限なのに既存ラインが 0 本という不整合（要調査）')
+    }
+    return { id: existing[0].id, created: false }
+  }
+  throw new Error(`getOrCreateLine 失敗: ${createResp.status()} ${await createResp.text()}`)
+}
+
 async function createSlot(
   request: APIRequestContext,
   token: string,
@@ -326,10 +358,21 @@ test.describe('RSV-BL-LINELIMIT: 予約ラインはチーム合計 5 本まで',
 
   test('RSV-BL-L-02: display_order 範囲外（6）→ 400 RESERVATION_025', async ({ request, tokens }) => {
     const admin = tokens.admin
-    // display_order 検証は count 上限チェックの後段。上限未満の状態でないと
-    // RESERVATION_024 に先取りされるため、まず既存ライン数を確認する。
-    const existing = (await listLines(request, admin)).length
-    test.skip(existing >= 5, `既にライン上限(${existing}本)のため display_order 検証は実施不可（後始末漏れ要確認）`)
+    // display_order 検証（RESERVATION_025）は BE では count 上限チェック（RESERVATION_024）の後段。
+    // よってライン数が 5 本未満でないと 024 に先取りされ 025 を観測できない。
+    // 共有 dev DB には過去 E2E の後始末漏れラインが堆積していることがあるため、
+    // 上限到達時は「新しい（id が大きい）順に余剰ラインを削除して 4 本まで落とす」ことで
+    // 検証可能な状態を決定論的に作る（id の小さい seed 由来ラインは温存。これは
+    // 御下命「必要なら先に既存を削除orカウント把握」に沿った正当なテストデータ衛生）。
+    const lines = await listLines(request, admin)
+    if (lines.length >= 5) {
+      const sortedDesc = [...lines].sort((a, b) => b.id - a.id)
+      const toRemove = sortedDesc.slice(0, lines.length - 4) // 4 本まで落とす
+      for (const l of toRemove) await deleteLine(request, admin, l.id)
+    }
+    const remaining = (await listLines(request, admin)).length
+    expect(remaining, `display_order 検証の前提（4 本以下）が満たせない: ${remaining} 本`).toBeLessThanOrEqual(4)
+
     const resp = await request.post(`${BE}/api/v1/teams/${TEAM_SLUG}/reservation-lines`, {
       headers: authHeaders(admin),
       data: { name: `BL_L02_${Date.now()}`, displayOrder: 6 },
@@ -340,7 +383,7 @@ test.describe('RSV-BL-LINELIMIT: 予約ラインはチーム合計 5 本まで',
       `display_order=6 は 400 を期待: status=${resp.status()} code=${code}`,
     ).toBe(400)
     expect(code).toBe('RESERVATION_025')
-    // 万一通ってしまった場合は片付ける
+    // 万一通ってしまった場合は片付ける（退行検知の保険）
     if (resp.ok()) await deleteLine(request, admin, (await resp.json()).data.id)
   })
 })
@@ -404,7 +447,7 @@ test.describe('RSV-BL-CANCELDEADLINE: 会員キャンセルは締切を実適用
     const endDate = new Date(start.getTime() + 30 * 60 * 1000)
     const endTime = hhmm(endDate.getHours(), (endDate.getMinutes() === 0 ? 0 : 30) as 0 | 30)
 
-    const line = await createLine(request, admin, { name: `BL_CD_${Date.now()}` })
+    const line = await getOrCreateLine(request, admin, `BL_CD_${Date.now()}`)
     let slotId: number | null = null
     let memberResId: number | null = null
     let adminResId: number | null = null
@@ -471,7 +514,7 @@ test.describe('RSV-BL-CANCELDEADLINE: 会員キャンセルは締切を実適用
       if (adminResId) await adminCancel(request, admin, adminResId)
       await setCancelDeadlineHours(request, admin, DEFAULT_CANCEL_DEADLINE_HOURS).catch(() => {})
       if (slotId) await deleteSlot(request, admin, slotId)
-      await deleteLine(request, admin, line.id)
+      if (line.created) await deleteLine(request, admin, line.id)
     }
   })
 })
@@ -487,7 +530,7 @@ test.describe('RSV-BL-DUPLICATE: 同一会員の同一枠への重複予約は 4
   }) => {
     const admin = tokens.admin
     const member = tokens.member
-    const line = await createLine(request, admin, { name: `BL_D01_${Date.now()}` })
+    const line = await getOrCreateLine(request, admin, `BL_D01_${Date.now()}`)
     const slot = await createSlot(request, admin, {
       slotDate: futureDate(46),
       startTime: '13:00',
@@ -517,7 +560,7 @@ test.describe('RSV-BL-DUPLICATE: 同一会員の同一枠への重複予約は 4
     } finally {
       if (reservationId) await adminCancel(request, admin, reservationId)
       await deleteSlot(request, admin, slot.id)
-      await deleteLine(request, admin, line.id)
+      if (line.created) await deleteLine(request, admin, line.id)
     }
   })
 })
