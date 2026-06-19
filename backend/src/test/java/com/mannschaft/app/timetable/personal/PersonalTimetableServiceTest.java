@@ -16,6 +16,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -366,6 +367,34 @@ class PersonalTimetableServiceTest {
 
             assertThat(result.getName()).isEqualTo("改名後");
             assertThat(result.getNotes()).isEqualTo("更新メモ");
+        }
+
+        @Test
+        @DisplayName("回帰: updateはfindByIdで取得した同一インスタンスをsaveする（toBuilderで新規行を作らない）")
+        void 更新_同一インスタンスUPDATE() throws Exception {
+            // id を反射でセット
+            var idField = draftEntity.getClass().getSuperclass().getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(draftEntity, 40L);
+
+            given(repository.findByIdAndUserIdAndDeletedAtIsNull(TIMETABLE_ID, USER_ID))
+                    .willReturn(Optional.of(draftEntity));
+            given(repository.save(any(PersonalTimetableEntity.class))).willAnswer(inv -> inv.getArgument(0));
+
+            UpdateData data = new UpdateData(
+                    "更新後", null, null, null, null, null, null, null, null);
+            service.update(TIMETABLE_ID, USER_ID, data);
+
+            // toBuilder().build() で別インスタンスを save していたら id=null の新規行 INSERT になる。
+            // 同一インスタンスを save することで UPDATE になっていることを検証する。
+            ArgumentCaptor<PersonalTimetableEntity> captor =
+                    ArgumentCaptor.forClass(PersonalTimetableEntity.class);
+            verify(repository).save(captor.capture());
+            assertThat(captor.getValue()).isSameAs(draftEntity);
+            // id が保持されている（= INSERT でなく UPDATE）
+            assertThat(captor.getValue().getId()).isEqualTo(40L);
+            // name が更新されている
+            assertThat(captor.getValue().getName()).isEqualTo("更新後");
         }
 
         @Test

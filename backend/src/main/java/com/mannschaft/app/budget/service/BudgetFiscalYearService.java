@@ -121,13 +121,15 @@ public class BudgetFiscalYearService {
 
         checkOpen(entity);
 
-        BudgetFiscalYearEntity updated = entity.toBuilder()
-                .name(request.name())
-                .startDate(request.startDate())
-                .endDate(request.endDate())
-                .build();
+        // 管理対象エンティティを直接ミューテートして id 保持＝UPDATE を保証する
+        // （toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化するため廃止）
+        entity.applyUpdate(
+                request.name(),
+                request.startDate(),
+                request.endDate()
+        );
 
-        BudgetFiscalYearEntity saved = fiscalYearRepository.save(updated);
+        BudgetFiscalYearEntity saved = fiscalYearRepository.save(entity);
         log.info("会計年度を更新しました: id={}", saved.getId());
         return budgetMapper.toFiscalYearResponse(saved);
     }

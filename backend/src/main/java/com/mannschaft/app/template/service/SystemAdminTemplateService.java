@@ -94,14 +94,13 @@ public class SystemAdminTemplateService {
     public ApiResponse<TemplateResponse> updateTemplate(Long id, UpdateTemplateRequest request) {
         TeamTemplateEntity template = findTemplateOrThrow(id);
 
-        TeamTemplateEntity updated = template.toBuilder()
-                .name(request.getName() != null ? request.getName() : template.getName())
-                .description(request.getDescription() != null ? request.getDescription() : template.getDescription())
-                .iconUrl(request.getIconUrl() != null ? request.getIconUrl() : template.getIconUrl())
-                .category(request.getCategory() != null ? request.getCategory() : template.getCategory())
-                .isActive(request.getIsActive() != null ? request.getIsActive() : template.getIsActive())
-                .build();
-        teamTemplateRepository.save(updated);
+        template.applyUpdate(
+                request.getName(),
+                request.getDescription(),
+                request.getIconUrl(),
+                request.getCategory(),
+                request.getIsActive());
+        teamTemplateRepository.save(template);
 
         if (request.getModuleIds() != null) {
             // 既存紐付けを削除して再作成
@@ -118,7 +117,7 @@ public class SystemAdminTemplateService {
 
         log.info("テンプレート更新完了: templateId={}", id);
         List<ModuleSummaryResponse> modules = getModuleSummaries(id);
-        return ApiResponse.of(toResponse(updated, modules));
+        return ApiResponse.of(toResponse(template, modules));
     }
 
     /**
@@ -158,10 +157,8 @@ public class SystemAdminTemplateService {
                 .findByModuleIdAndLevel(moduleId, level)
                 .orElseThrow(() -> new BusinessException(TemplateErrorCode.TMPL_002));
 
-        ModuleLevelAvailabilityEntity updated = availability.toBuilder()
-                .isAvailable(request.isAvailable())
-                .build();
-        moduleLevelAvailabilityRepository.save(updated);
+        availability.applyUpdate(request.isAvailable());
+        moduleLevelAvailabilityRepository.save(availability);
 
         log.info("レベル別利用可否更新完了: moduleId={}, level={}, isAvailable={}", moduleId, request.getLevel(), request.isAvailable());
     }

@@ -142,4 +142,14 @@ public class CirculationRecipientEntity extends BaseEntity {
     public boolean isStampable() {
         return this.status == RecipientStatus.PENDING;
     }
+
+    /**
+     * 代理確認フラグと代理入力レコードIDを設定する。
+     * managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する。
+     * （toBuilder().build() は継承フィールド id を引き継がず INSERT 化するため使用しない）
+     */
+    public void applyProxyConfirmed(Long proxyInputRecordId) {
+        this.isProxyConfirmed = true;
+        this.proxyInputRecordId = proxyInputRecordId;
+    }
 }

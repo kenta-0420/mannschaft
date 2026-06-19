@@ -104,6 +104,8 @@ public class ReservationSlotService {
                 .recurrenceRule(request.getRecurrenceRule())
                 .price(request.getPrice())
                 .note(request.getNote())
+                // 枠単位の承認モード上書き。null = チーム既定に従う（継承）。
+                .approvalMode(request.getApprovalMode())
                 .createdBy(createdBy)
                 .build();
 
@@ -122,32 +124,44 @@ public class ReservationSlotService {
      */
     @Transactional
     public ReservationSlotResponse updateSlot(Long teamId, Long slotId, UpdateSlotRequest request) {
+        // findSlotOrThrow が返す managed entity を直接 in-place 変更する。
+        // 以前は entity.toBuilder().build() の detached コピーを save していたため、
+        // merge の戻り値（新値）はレスポンスに乗るものの、同一トランザクションの flush 時に
+        // 未変更の元 managed entity が勝ち、DB は旧値のまま残るバグ（実機E2E #1665）があった。
+        // closeSlot / reopenSlot と同じく managed entity をドメインメソッドで変更し、
+        // dirty checking（＋明示 save）で確実に永続化する。
         ReservationSlotEntity entity = findSlotOrThrow(teamId, slotId);
 
-        ReservationSlotEntity.ReservationSlotEntityBuilder builder = entity.toBuilder();
-
         if (request.getStaffUserId() != null) {
-            builder.staffUserId(request.getStaffUserId());
+            entity.changeStaffUser(request.getStaffUserId());
         }
         if (request.getTitle() != null) {
-            builder.title(request.getTitle());
+            entity.changeTitle(request.getTitle());
         }
         if (request.getSlotDate() != null) {
-            builder.slotDate(request.getSlotDate());
+            entity.changeSlotDate(request.getSlotDate());
         }
         if (request.getStartTime() != null && request.getEndTime() != null) {
             validateTimeRange(request.getStartTime(), request.getEndTime());
-            builder.startTime(request.getStartTime());
-            builder.endTime(request.getEndTime());
+            entity.changeTimeRange(request.getStartTime(), request.getEndTime());
         }
         if (request.getPrice() != null) {
-            builder.price(request.getPrice());
+            entity.changePrice(request.getPrice());
         }
         if (request.getNote() != null) {
-            builder.note(request.getNote());
+            entity.changeNote(request.getNote());
+        }
+        // 承認モード上書き:
+        //   clearApprovalMode=true → null（チーム既定に従う）へ戻す
+        //   approvalMode 指定あり   → その値で上書き
+        //   いずれも無し            → 据え置き（部分更新）
+        if (Boolean.TRUE.equals(request.getClearApprovalMode())) {
+            entity.clearApprovalMode();
+        } else if (request.getApprovalMode() != null) {
+            entity.changeApprovalMode(request.getApprovalMode());
         }
 
-        ReservationSlotEntity saved = slotRepository.save(builder.build());
+        ReservationSlotEntity saved = slotRepository.save(entity);
         log.info("予約スロット更新: teamId={}, slotId={}", teamId, slotId);
         return reservationMapper.toSlotResponse(saved);
     }

@@ -11,6 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -157,8 +158,8 @@ class EventTimetableServiceTest {
     class UpdateTimetableItem {
 
         @Test
-        @DisplayName("タイムテーブル項目更新_正常_レスポンス返却")
-        void タイムテーブル項目更新_正常_レスポンス返却() {
+        @DisplayName("タイムテーブル項目更新_正常_findByIdと同一インスタンスがsaveされid保持")
+        void タイムテーブル項目更新_正常_findByIdと同一インスタンスがsaveされid保持() {
             // Given
             UpdateTimetableItemRequest request = new UpdateTimetableItemRequest(
                     "パネルディスカッション", "変更後の説明", "佐藤花子",
@@ -175,7 +176,7 @@ class EventTimetableServiceTest {
             );
 
             given(timetableRepository.findById(ITEM_ID)).willReturn(Optional.of(entity));
-            given(timetableRepository.save(any(EventTimetableItemEntity.class))).willReturn(entity);
+            given(timetableRepository.save(entity)).willReturn(entity);
             given(eventMapper.toTimetableItemResponse(entity)).willReturn(response);
 
             // When
@@ -183,7 +184,36 @@ class EventTimetableServiceTest {
 
             // Then
             assertThat(result.getTitle()).isEqualTo("パネルディスカッション");
-            verify(timetableRepository).save(any(EventTimetableItemEntity.class));
+            // save に渡されるのが findById の同一インスタンスであることを確認（id=null INSERT 化バグ回帰防止）
+            ArgumentCaptor<EventTimetableItemEntity> captor = ArgumentCaptor.forClass(EventTimetableItemEntity.class);
+            verify(timetableRepository).save(captor.capture());
+            assertThat(captor.getValue()).isSameAs(entity);
+        }
+
+        @Test
+        @DisplayName("タイムテーブル項目更新_フィールド変更_applyUpdateが正しく適用される")
+        void タイムテーブル項目更新_フィールド変更_applyUpdateが正しく適用される() {
+            // Given
+            UpdateTimetableItemRequest request = new UpdateTimetableItemRequest(
+                    "パネルディスカッション", null, "佐藤花子",
+                    null, null, "サブホール", null
+            );
+            EventTimetableItemEntity entity = createTimetableItem();
+
+            given(timetableRepository.findById(ITEM_ID)).willReturn(Optional.of(entity));
+            given(timetableRepository.save(entity)).willReturn(entity);
+            given(eventMapper.toTimetableItemResponse(entity)).willReturn(createTimetableItemResponse());
+
+            // When
+            eventTimetableService.updateTimetableItem(ITEM_ID, request);
+
+            // Then: ミューテート後のフィールドが正しく更新されていることを確認
+            assertThat(entity.getTitle()).isEqualTo("パネルディスカッション");
+            assertThat(entity.getSpeaker()).isEqualTo("佐藤花子");
+            assertThat(entity.getLocation()).isEqualTo("サブホール");
+            // null 指定フィールドは既存値を維持
+            assertThat(entity.getDescription()).isEqualTo("オープニングの基調講演");
+            assertThat(entity.getStartAt()).isEqualTo(LocalDateTime.of(2026, 4, 1, 10, 0));
         }
 
         @Test

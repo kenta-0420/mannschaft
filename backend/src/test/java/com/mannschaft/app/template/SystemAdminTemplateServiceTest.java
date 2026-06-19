@@ -32,6 +32,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
+import org.mockito.ArgumentCaptor;
+
 /**
  * {@link SystemAdminTemplateService} の単体テスト。
  * テンプレートCRUD・レベル別利用可否更新を検証する。
@@ -185,13 +187,17 @@ class SystemAdminTemplateServiceTest {
             // When
             ApiResponse<TemplateResponse> response = systemAdminTemplateService.updateTemplate(TEMPLATE_ID, request);
 
-            // Then
+            // Then: toBuilder()→id=null→INSERT化バグの回帰防止。
+            // save に渡るのが findById の同一インスタンス（管理対象）であることを確認。
+            ArgumentCaptor<TeamTemplateEntity> captor = ArgumentCaptor.forClass(TeamTemplateEntity.class);
+            verify(teamTemplateRepository).save(captor.capture());
+            assertThat(captor.getValue()).isSameAs(template);
+
             TemplateResponse data = response.getData();
             assertThat(data.getName()).isEqualTo("更新後名称");
             assertThat(data.getDescription()).isEqualTo("更新後説明");
             assertThat(data.getCategory()).isEqualTo("education");
             assertThat(data.getIsActive()).isFalse();
-            verify(teamTemplateRepository).save(any(TeamTemplateEntity.class));
             verify(templateModuleRepository).deleteAll(any());
         }
 
@@ -302,8 +308,13 @@ class SystemAdminTemplateServiceTest {
             // When
             systemAdminTemplateService.updateLevelAvailability(MODULE_ID, request);
 
-            // Then
-            verify(moduleLevelAvailabilityRepository).save(any(ModuleLevelAvailabilityEntity.class));
+            // Then: toBuilder()→id=null→INSERT化バグの回帰防止。
+            // save に渡るのが findById の同一インスタンス（管理対象）であることを確認。
+            ArgumentCaptor<ModuleLevelAvailabilityEntity> captor =
+                    ArgumentCaptor.forClass(ModuleLevelAvailabilityEntity.class);
+            verify(moduleLevelAvailabilityRepository).save(captor.capture());
+            assertThat(captor.getValue()).isSameAs(availability);
+            assertThat(captor.getValue().getIsAvailable()).isTrue();
         }
 
         @Test

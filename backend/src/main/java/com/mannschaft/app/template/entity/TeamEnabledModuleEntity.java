@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@Builder
 public class TeamEnabledModuleEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -42,4 +42,15 @@ public class TeamEnabledModuleEntity extends BaseEntity {
 
     @Column(nullable = false)
     private Boolean trialUsed;
+
+    /**
+     * モジュールの有効/無効状態を更新する（toBuilder を使わない直接ミューテート）。
+     */
+    public void applyToggle(boolean enabled, java.time.LocalDateTime enabledAt,
+                             java.time.LocalDateTime disabledAt, Long enabledBy) {
+        this.isEnabled = enabled;
+        this.enabledAt = enabledAt;
+        this.disabledAt = disabledAt;
+        this.enabledBy = enabledBy;
+    }
 }

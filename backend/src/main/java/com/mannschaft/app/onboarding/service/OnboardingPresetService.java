@@ -56,19 +56,19 @@ public class OnboardingPresetService {
     public PresetResponse update(Long presetId, UpdatePresetRequest request) {
         SystemOnboardingPresetEntity entity = findPresetOrThrow(presetId);
 
-        SystemOnboardingPresetEntity updated = entity.toBuilder()
-                .name(request.name() != null ? request.name() : entity.getName())
-                .description(request.description() != null ? request.description() : entity.getDescription())
-                .category(request.category() != null ? request.category() : entity.getCategory())
-                .welcomeMessage(request.welcomeMessage() != null ? request.welcomeMessage() : entity.getWelcomeMessage())
-                .isOrderEnforced(request.isOrderEnforced() != null ? request.isOrderEnforced() : entity.getIsOrderEnforced())
-                .deadlineDays(request.deadlineDays() != null ? request.deadlineDays().shortValue() : entity.getDeadlineDays())
-                .stepsJson(request.stepsJson() != null ? request.stepsJson() : entity.getStepsJson())
-                .isActive(request.isActive() != null ? request.isActive() : entity.getIsActive())
-                .sortOrder(request.sortOrder() != null ? request.sortOrder() : entity.getSortOrder())
-                .build();
+        // managed entity を直接ミューテートして主キー・@Version を保持する（toBuilder().build() は id 欠落で INSERT 化＝行重複を招くため使用しない）
+        entity.applyUpdate(
+                request.name(),
+                request.description(),
+                request.category(),
+                request.welcomeMessage(),
+                request.isOrderEnforced(),
+                request.deadlineDays() != null ? request.deadlineDays().shortValue() : null,
+                request.stepsJson(),
+                request.isActive(),
+                request.sortOrder());
 
-        SystemOnboardingPresetEntity saved = presetRepository.save(updated);
+        SystemOnboardingPresetEntity saved = presetRepository.save(entity);
         log.info("オンボーディングプリセット更新: id={}", presetId);
         return mapper.toPresetResponse(saved);
     }

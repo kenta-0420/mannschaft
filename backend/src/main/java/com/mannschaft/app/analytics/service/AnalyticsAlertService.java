@@ -176,7 +176,8 @@ public class AnalyticsAlertService {
                 // 通知実行（F04.3 プッシュ / F09.6 メール 連携は将来実装）
                 log.info("アラート通知: ruleId={}, metric={}, value={}",
                         rule.getId(), rule.getMetric(), currentValue);
-                history = history.toBuilder().notified(true).build();
+                // save 前の新規エンティティを直接ミューテート（toBuilder().build() の廃止）
+                history.markNotified();
             }
 
             historyRepository.save(history);

@@ -345,6 +345,79 @@ public class OrganizationMembershipService {
                 orgId, userId, includeSupporters, MAX_ORG_DESCENDANT_DEPTH);
     }
 
+    /**
+     * 組織配信母集団を「ユーザーID → 所属配下チーム（複数）」の対応で返す
+     * （出欠のチーム別内訳 by_team・組織→参加チーム配信 案C フェーズB 公開ラッパー）。
+     *
+     * <p>{@link #resolveOrgDistributionUserIds(Long, boolean)} と<b>同一の母集団・同一の SUPPORTER 除外規約</b>
+     * （対象組織を根とした全子孫組織ツリー・depth 上限 {@value #MAX_ORG_DESCENDANT_DEPTH}）を共有しつつ、
+     * DISTINCT user_id ではなく「ユーザーごとの所属チーム集合」を返す。</p>
+     *
+     * <ul>
+     *   <li><b>組織直属メンバー</b>: {@code team_id = null} の {@link TeamRef}（チーム未所属＝組織直接メンバー枠）を
+     *       そのユーザーの所属リストに含める。</li>
+     *   <li><b>配下参加チーム(ACTIVE)のメンバー</b>: 所属チームごとに {@link TeamRef}(teamId, teamName) を含める。</li>
+     * </ul>
+     *
+     * <p><b>御裁可A（全チーム計上・重複あり）</b>: 配下の複数チームに所属するユーザーは、返り値の List に
+     * 複数の {@link TeamRef} を持つ。さらに組織直属かつチーム所属を兼ねるユーザーは
+     * {@code team_id = null} の TeamRef とチーム TeamRef の両方を持つ。これを呼び出し側（出欠集計）が
+     * 「所属全チームへ 1 票ずつ計上」する。したがって by_team 各チームの合計は配信母集団の<b>実人数以上</b>に
+     * なりうる（total は実人数として別建てで算出すること）。</p>
+     *
+     * <p>チーム名は {@code team} ドメイン（{@link TeamRepository}）から一括解決する（N+1 回避）。
+     * 論理削除済みチームは名前解決できないため除外する。{@code team_id = null} 枠の表示名は
+     * 呼び出し側（i18n・F03.1）が決めるため、ここでは {@code teamName = null} のまま返す。</p>
+     *
+     * @param orgId             配信元となる組織 ID（存在しない場合は {@link OrgErrorCode#ORG_001}）
+     * @param includeSupporters true=応援者も含める / false=応援者を除外する
+     * @return userId → 所属チーム参照（複数）の Map（重複計上前提・在籍中のアクティブユーザーのみ）
+     */
+    public java.util.Map<Long, List<TeamRef>> resolveMemberTeams(Long orgId, boolean includeSupporters) {
+        findOrganizationOrThrow(orgId); // 組織存在チェック（不在なら ORG_001）
+
+        List<Object[]> pairs = userRoleRepository.findDistributionMemberTeamPairsForOrganizationRecursive(
+                orgId, includeSupporters, MAX_ORG_DESCENDANT_DEPTH);
+
+        // 出現したチームID（非null）の名前を team ドメインから一括解決（N+1 回避・Entity を漏らさない）。
+        // teamRepository.findAllById は @SQLRestriction("deleted_at IS NULL") により論理削除済みを自動除外する。
+        java.util.Set<Long> teamIds = new java.util.HashSet<>();
+        for (Object[] row : pairs) {
+            Long teamId = row[1] == null ? null : ((Number) row[1]).longValue();
+            if (teamId != null) {
+                teamIds.add(teamId);
+            }
+        }
+        java.util.Map<Long, String> teamNameById = new java.util.HashMap<>();
+        if (!teamIds.isEmpty()) {
+            for (TeamEntity team : teamRepository.findAllById(teamIds)) {
+                teamNameById.put(team.getId(), team.getName());
+            }
+        }
+
+        java.util.Map<Long, List<TeamRef>> result = new java.util.HashMap<>();
+        for (Object[] row : pairs) {
+            Long userId = ((Number) row[0]).longValue();
+            Long teamId = row[1] == null ? null : ((Number) row[1]).longValue();
+            String teamName = teamId == null ? null : teamNameById.get(teamId);
+            // 論理削除済み等で名前解決できない非null teamId はスキップ（孤児チーム計上を避ける）
+            if (teamId != null && teamName == null) {
+                continue;
+            }
+            result.computeIfAbsent(userId, k -> new ArrayList<>()).add(new TeamRef(teamId, teamName));
+        }
+        return result;
+    }
+
+    /**
+     * 組織配信母集団におけるユーザーの所属チーム参照（出欠のチーム別内訳 by_team 用）。
+     *
+     * @param teamId   所属チーム ID。{@code null} の場合は「チーム未所属（組織直接メンバー）」枠を表す
+     * @param teamName チーム名。{@code teamId = null}（組織直接メンバー枠）の場合は {@code null}
+     */
+    public record TeamRef(Long teamId, String teamName) {
+    }
+
     private OrganizationEntity findOrganizationOrThrow(Long orgId) {
         return organizationRepository.findById(orgId)
                 .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001));

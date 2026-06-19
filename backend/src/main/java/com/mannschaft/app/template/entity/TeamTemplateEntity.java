@@ -22,7 +22,7 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@Builder
 public class TeamTemplateEntity extends BaseEntity {
 
     @Column(nullable = false, length = 100)
@@ -46,6 +46,29 @@ public class TeamTemplateEntity extends BaseEntity {
     private Long createdBy;
 
     private LocalDateTime deletedAt;
+
+    /**
+     * テンプレートの各フィールドを更新する（toBuilder を使わない直接ミューテート）。
+     * null の場合は既存値を保持する。
+     */
+    public void applyUpdate(String name, String description, String iconUrl,
+                             String category, Boolean isActive) {
+        if (name != null) {
+            this.name = name;
+        }
+        if (description != null) {
+            this.description = description;
+        }
+        if (iconUrl != null) {
+            this.iconUrl = iconUrl;
+        }
+        if (category != null) {
+            this.category = category;
+        }
+        if (isActive != null) {
+            this.isActive = isActive;
+        }
+    }
 
     /**
      * テンプレートを論理削除する。

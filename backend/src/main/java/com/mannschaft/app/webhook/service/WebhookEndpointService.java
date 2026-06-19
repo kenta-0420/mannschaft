@@ -208,19 +208,15 @@ public class WebhookEndpointService {
             validateUrl(req.url());
         }
 
-        // フィールドを更新（nullは変更なし）
-        WebhookEndpointEntity.WebhookEndpointEntityBuilder builder = entity.toBuilder()
-                .name(req.name() != null ? req.name() : entity.getName())
-                .url(newUrl)
-                .timeoutMs(req.timeoutMs() != null ? req.timeoutMs() : entity.getTimeoutMs());
+        // managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する
+        // （toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化するため廃止）
+        entity.applyUpdate(
+                req.name() != null ? req.name() : entity.getName(),
+                newUrl,
+                req.timeoutMs() != null ? req.timeoutMs() : entity.getTimeoutMs()
+        );
 
-        // description はnullを許容するフィールドなので別扱い（省略）
-        WebhookEndpointEntity updated = builder.build();
-
-        // isActive フラグ更新（toBuilderでbooleanをそのまま引き継ぐため明示的に操作）
-        // NOTE: isActiveはbooleanのため、toBuilder後にactivate/deactivate メソッドを使用
-        // updated.toBuilder はコピーを生成するため、ここでは保存後にactivate/deactivateを呼ぶ
-        WebhookEndpointEntity saved = endpointRepository.save(updated);
+        WebhookEndpointEntity saved = endpointRepository.save(entity);
 
         if (req.isActive() != null) {
             if (req.isActive()) {

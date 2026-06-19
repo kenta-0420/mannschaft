@@ -265,6 +265,60 @@
       "not_affiliated_notice": "이 팀의 예약은 회원 전용입니다",
       "not_affiliated_hint": "팀에 가입하거나 관리자에게 문의하세요",
       "error_public_forbidden": "예약은 팀 회원만 이용할 수 있습니다"
+    },
+    "slot_form": {
+      "dialog": {
+        "create_title": "예약 슬롯 생성",
+        "edit_title": "예약 슬롯 편집"
+      },
+      "field": {
+        "date": "날짜",
+        "start_time": "시작 시간",
+        "end_time": "종료 시간",
+        "title": "제목（선택 사항）",
+        "note": "메모（선택 사항）"
+      },
+      "placeholder": {
+        "date": "예: 2026-01-01",
+        "title": "예: 초기 상담",
+        "note": "예: 비고 사항"
+      },
+      "approval_mode": {
+        "label": "승인 모드",
+        "hint": "팀 설정 따르기=기본 정책 상속 / 자동 확정=즉시 확정 / 수동 승인=관리자 수동 승인",
+        "option_inherit": "팀 설정에 따름（기본）",
+        "option_auto": "자동 확정（AUTO）",
+        "option_manual": "수동 승인（MANUAL）"
+      },
+      "message": {
+        "create_success": "예약 슬롯이 생성되었습니다",
+        "update_success": "예약 슬롯이 업데이트되었습니다",
+        "save_failed": "저장에 실패했습니다"
+      }
+    },
+    "slot_manager": {
+      "title": "슬롯 관리",
+      "button": {
+        "add_slot": "슬롯 추가",
+        "edit": "편집",
+        "close": "닫기",
+        "reopen": "재개"
+      },
+      "status": {
+        "available": "예약 가능",
+        "full": "만석",
+        "closed": "닫힘"
+      },
+      "booked_count": "예약 {count}건",
+      "empty": {
+        "no_slots": "이 날의 슬롯이 없습니다"
+      },
+      "message": {
+        "load_failed": "예약 슬롯을 불러오지 못했습니다",
+        "closed": "슬롯이 닫혔습니다",
+        "reopened": "슬롯이 재개되었습니다",
+        "status_change_failed": "상태 변경에 실패했습니다"
+      }
     }
   }
 }

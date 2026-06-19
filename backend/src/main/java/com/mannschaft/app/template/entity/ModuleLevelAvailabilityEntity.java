@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@Builder
 public class ModuleLevelAvailabilityEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -35,6 +35,13 @@ public class ModuleLevelAvailabilityEntity extends BaseEntity {
 
     @Column(length = 200)
     private String note;
+
+    /**
+     * 利用可否を更新する（toBuilder を使わない直接ミューテート）。
+     */
+    public void applyUpdate(boolean isAvailable) {
+        this.isAvailable = isAvailable;
+    }
 
     /**
      * モジュール適用レベル

@@ -448,6 +448,8 @@ public class ScheduleService {
                 .attendanceRequired(req.getAttendanceRequired())
                 .includeSupporters(req.getIncludeSupporters() != null
                         ? req.getIncludeSupporters() : false)
+                .teamBreakdownEnabled(req.getTeamBreakdownEnabled() != null
+                        ? req.getTeamBreakdownEnabled() : false)
                 .attendanceDeadline(deadlineJst)
                 .commentOption(req.getCommentOption() != null
                         ? CommentOption.valueOf(req.getCommentOption()) : CommentOption.OPTIONAL)

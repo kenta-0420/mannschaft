@@ -83,19 +83,9 @@ public class EventTicketTypeService {
     public TicketTypeResponse updateTicketType(Long ticketTypeId, UpdateTicketTypeRequest request) {
         EventTicketTypeEntity entity = findTicketTypeOrThrow(ticketTypeId);
 
-        EventTicketTypeEntity updated = entity.toBuilder()
-                .name(request.getName() != null ? request.getName() : entity.getName())
-                .description(request.getDescription() != null ? request.getDescription() : entity.getDescription())
-                .price(request.getPrice() != null ? request.getPrice() : entity.getPrice())
-                .currency(request.getCurrency() != null ? request.getCurrency() : entity.getCurrency())
-                .maxQuantity(request.getMaxQuantity() != null ? request.getMaxQuantity() : entity.getMaxQuantity())
-                .minRegistrationRole(request.getMinRegistrationRole() != null
-                        ? request.getMinRegistrationRole() : entity.getMinRegistrationRole())
-                .isActive(request.getIsActive() != null ? request.getIsActive() : entity.getIsActive())
-                .sortOrder(request.getSortOrder() != null ? request.getSortOrder() : entity.getSortOrder())
-                .build();
-
-        EventTicketTypeEntity saved = ticketTypeRepository.save(updated);
+        // managed entity を直接ミューテートして save → UPDATE が保証される（id=null INSERT 化バグ根治）
+        entity.applyUpdate(request);
+        EventTicketTypeEntity saved = ticketTypeRepository.save(entity);
         log.info("チケット種別更新: ticketTypeId={}", ticketTypeId);
         return eventMapper.toTicketTypeResponse(saved);
     }

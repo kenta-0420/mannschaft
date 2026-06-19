@@ -336,7 +336,7 @@ class ScheduleServiceTest {
                     null,
                     null,
                     null,
-                    null, null, false);
+                    null, null, false, false);
 
             given(scheduleRepository.save(any(ScheduleEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
@@ -359,7 +359,7 @@ class ScheduleServiceTest {
                     END_ODT, START_ODT, // start > end
                     false, "PRACTICE",
                     null, null, null,
-                    false, null, null, null, null, null, null, null, null, null, false);
+                    false, null, null, null, null, null, null, null, null, null, false, false);
 
             // when & then
             assertThatThrownBy(() -> scheduleService.createSchedule(req, TEAM_ID, "TEAM", USER_ID))
@@ -377,7 +377,7 @@ class ScheduleServiceTest {
                     START_ODT, END_ODT,
                     false, "PRACTICE",
                     null, null, null,
-                    false, null, null, null, null, null, null, null, null, null, false);
+                    false, null, null, null, null, null, null, null, null, null, false, false);
 
             // when & then
             assertThatThrownBy(() -> scheduleService.createSchedule(req, TEAM_ID, "INVALID", USER_ID))
@@ -651,7 +651,7 @@ class ScheduleServiceTest {
             // given
             CreateScheduleRequest req = new CreateScheduleRequest(
                     "個人予定", null, null, START_ODT, END_ODT, false, "OTHER",
-                    null, null, null, false, null, null, null, null, null, null, null, null, null, false);
+                    null, null, null, false, null, null, null, null, null, null, null, null, null, false, false);
 
             given(scheduleRepository.save(any(ScheduleEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
@@ -670,7 +670,7 @@ class ScheduleServiceTest {
             Long ORG_ID = 20L;
             CreateScheduleRequest req = new CreateScheduleRequest(
                     "組織イベント", null, null, START_ODT, END_ODT, false, "EVENT",
-                    null, null, null, false, null, null, null, null, null, null, null, null, null, false);
+                    null, null, null, false, null, null, null, null, null, null, null, null, null, false, false);
 
             given(scheduleRepository.save(any(ScheduleEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
@@ -699,7 +699,7 @@ class ScheduleServiceTest {
             OffsetDateTime endUtc = OffsetDateTime.of(2026, 4, 1, 3, 0, 0, 0, ZoneOffset.UTC);
             CreateScheduleRequest req = new CreateScheduleRequest(
                     "UTC入力テスト", null, null, startUtc, endUtc, false, "PRACTICE",
-                    null, null, null, false, null, null, null, null, null, null, null, null, null, false);
+                    null, null, null, false, null, null, null, null, null, null, null, null, null, false, false);
 
             ScheduleEntity[] saved = new ScheduleEntity[1];
             given(scheduleRepository.save(any(ScheduleEntity.class)))
@@ -726,7 +726,7 @@ class ScheduleServiceTest {
             OffsetDateTime endEst = OffsetDateTime.of(2026, 3, 31, 22, 0, 0, 0, ZoneOffset.ofHours(-5));
             CreateScheduleRequest req = new CreateScheduleRequest(
                     "EST入力テスト", null, null, startEst, endEst, false, "EVENT",
-                    null, null, null, false, null, null, null, null, null, null, null, null, null, false);
+                    null, null, null, false, null, null, null, null, null, null, null, null, null, false, false);
 
             ScheduleEntity[] saved = new ScheduleEntity[1];
             given(scheduleRepository.save(any(ScheduleEntity.class)))
@@ -751,7 +751,7 @@ class ScheduleServiceTest {
             // given: JST 10:00 はそのまま 10:00 として保存される
             CreateScheduleRequest req = new CreateScheduleRequest(
                     "JST入力テスト", null, null, START_ODT, END_ODT, false, "PRACTICE",
-                    null, null, null, false, null, null, null, null, null, null, null, null, null, false);
+                    null, null, null, false, null, null, null, null, null, null, null, null, null, false, false);
 
             ScheduleEntity[] saved = new ScheduleEntity[1];
             given(scheduleRepository.save(any(ScheduleEntity.class)))

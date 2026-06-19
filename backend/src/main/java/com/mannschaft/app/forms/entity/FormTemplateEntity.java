@@ -159,6 +159,68 @@ public class FormTemplateEntity extends BaseEntity {
     }
 
     /**
+     * 更新リクエストの非 null フィールドを反映する。
+     *
+     * <p>managed entity を直接ミューテートすることで主キー（BaseEntity の id）と @Version を保持し、
+     * save 時に確実に UPDATE となるようにする（toBuilder().build() は id を引き継がず INSERT 化＝行重複を招くため使用しない）。
+     * ステータス遷移（publish/close/archive）はそれぞれ専用メソッドで扱い、本メソッドでは変更しない。
+     */
+    public void applyUpdate(
+            String name,
+            String description,
+            String icon,
+            String color,
+            Boolean requiresApproval,
+            Long workflowTemplateId,
+            Boolean isSealOnPdf,
+            LocalDateTime deadline,
+            Boolean allowEditAfterSubmit,
+            Boolean autoFillEnabled,
+            Integer maxSubmissionsPerUser,
+            Integer sortOrder,
+            Integer targetCount) {
+        if (name != null) {
+            this.name = name;
+        }
+        if (description != null) {
+            this.description = description;
+        }
+        if (icon != null) {
+            this.icon = icon;
+        }
+        if (color != null) {
+            this.color = color;
+        }
+        if (requiresApproval != null) {
+            this.requiresApproval = requiresApproval;
+        }
+        if (workflowTemplateId != null) {
+            this.workflowTemplateId = workflowTemplateId;
+        }
+        if (isSealOnPdf != null) {
+            this.isSealOnPdf = isSealOnPdf;
+        }
+        if (deadline != null) {
+            this.deadline = deadline;
+        }
+        if (allowEditAfterSubmit != null) {
+            this.allowEditAfterSubmit = allowEditAfterSubmit;
+        }
+        if (autoFillEnabled != null) {
+            this.autoFillEnabled = autoFillEnabled;
+        }
+        if (maxSubmissionsPerUser != null) {
+            this.maxSubmissionsPerUser = maxSubmissionsPerUser;
+        }
+        if (sortOrder != null) {
+            this.sortOrder = sortOrder;
+        }
+        if (targetCount != null) {
+            this.targetCount = targetCount;
+        }
+    }
+
+    /**
      * 論理削除を行う。
      */
     public void softDelete() {

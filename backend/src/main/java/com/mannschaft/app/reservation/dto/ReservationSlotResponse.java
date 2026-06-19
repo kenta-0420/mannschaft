@@ -22,6 +22,7 @@ public class ReservationSlotResponse {
     SlotStatusDto status;
     RecurrenceDto recurrence;
     SlotPricingDto pricing;
+    SlotPolicyDto policy;
     SlotAuditDto audit;
 
     public record SlotBasicDto(String title, LocalDate slotDate, LocalTime startTime, LocalTime endTime) {}
@@ -31,6 +32,14 @@ public class ReservationSlotResponse {
     public record RecurrenceDto(String recurrenceRule, Long parentSlotId) {}
 
     public record SlotPricingDto(BigDecimal price) {}
+
+    /**
+     * 枠単位の承認モード上書き。
+     *
+     * @param approvalMode この枠で上書きされた承認モード（{@code AUTO} / {@code MANUAL}）。
+     *                     {@code null} = 上書きなし（チーム既定に従う）。
+     */
+    public record SlotPolicyDto(String approvalMode) {}
 
     public record SlotAuditDto(Long createdBy, LocalDateTime createdAt, LocalDateTime updatedAt) {}
 }
