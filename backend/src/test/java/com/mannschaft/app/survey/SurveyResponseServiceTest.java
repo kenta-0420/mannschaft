@@ -193,6 +193,35 @@ class SurveyResponseServiceTest {
         }
 
         @Test
+        @DisplayName("番人: 回答送信_ALL_scope欠落は認可をスキップせず403で弾く（fail-closed・不変条件ガード）")
+        void 回答送信_ALL_scope欠落は403で拒否() {
+            // Given: DistributionMode.ALL なのに scopeId/scopeType が null（不変条件違反）。
+            // 旧ガードは scope!=null のときのみ認可していたため、null なら認可をサイレントスキップして
+            // surveyId を知る任意ユーザーが回答できる漏洩穴になりうる。fail-closed で弾くことを担保する。
+            SurveyEntity survey = SurveyEntity.builder()
+                    .title("scope欠落アンケート")
+                    .distributionMode(DistributionMode.ALL)
+                    .includeSupporters(false)
+                    .allowMultipleSubmissions(false).createdBy(1L).build();
+            survey.publish();
+            // scopeId/scopeType は未設定（null）
+
+            SubmitResponseRequest request = new SubmitResponseRequest(List.of());
+
+            given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
+
+            // When & Then: 認可をスキップせず COMMON_002（403）で拒否
+            assertThatThrownBy(() -> surveyResponseService.submitResponse(SURVEY_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(com.mannschaft.app.common.CommonErrorCode.COMMON_002));
+            // 回答保存・重複チェックには進まないこと（弾く前で握りつぶさず例外）
+            org.mockito.Mockito.verify(responseRepository, org.mockito.Mockito.never())
+                    .existsBySurveyIdAndUserId(org.mockito.ArgumentMatchers.anyLong(),
+                            org.mockito.ArgumentMatchers.anyLong());
+        }
+
+        @Test
         @DisplayName("番人: 回答送信_ALL×組織_配信母集団メンバーはトグル準拠で認可を通過する")
         void 回答送信_ALL組織_配信母集団メンバーは通過() {
             // Given: includeSupporters=true の組織 ALL アンケ。配下 SUPPORTER も配信母集団＝回答可。
