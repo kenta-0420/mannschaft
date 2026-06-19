@@ -4,6 +4,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.DomainEventPublisher;
+import org.mockito.ArgumentCaptor;
 import com.mannschaft.app.shift.dto.CreateShiftScheduleRequest;
 import com.mannschaft.app.shift.dto.ShiftScheduleResponse;
 import com.mannschaft.app.shift.dto.ShiftScheduleSummaryResponse;
@@ -333,6 +334,84 @@ class ShiftScheduleServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ShiftErrorCode.INVALID_DATE_RANGE));
+        }
+    }
+
+    // ========================================
+    // ToBuilderUpdateRegression (行重複INSERT防止回帰テスト)
+    // ========================================
+
+    @Nested
+    @DisplayName("ToBuilderUpdateRegression_ShiftSchedule")
+    class ToBuilderUpdateRegressionShiftSchedule {
+
+        /**
+         * id 採番済みの existing entity を生成する。
+         *
+         * <p>{@link com.mannschaft.app.common.BaseEntity#id} は setter を持たないため
+         * {@link ReflectionTestUtils} で採番済み状態を再現する（DB から findById で取得した
+         * managed entity を模す）。
+         */
+        private ShiftScheduleEntity existingScheduleWithId() {
+            ShiftScheduleEntity entity = createScheduleEntity();
+            ReflectionTestUtils.setField(entity, "id", SCHEDULE_ID);
+            return entity;
+        }
+
+        @Test
+        @DisplayName("updateSchedule_既存エンティティをUPDATE_id不変かつ同一インスタンスをsave")
+        void updateSchedule_既存エンティティをUPDATE_id不変かつ同一インスタンスをsave() {
+            // Given: findById で取得した id 採番済みの managed entity
+            ShiftScheduleEntity existing = existingScheduleWithId();
+            UpdateShiftScheduleRequest req = new UpdateShiftScheduleRequest(
+                    "更新後タイトル", null, null, null, null, null, null);
+            ShiftScheduleResponse response = createScheduleResponse();
+
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(existing));
+            given(scheduleRepository.save(any(ShiftScheduleEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(shiftMapper.toScheduleResponse(any(ShiftScheduleEntity.class))).willReturn(response);
+
+            // When
+            shiftScheduleService.updateSchedule(SCHEDULE_ID, req);
+
+            // Then: save に渡るのは findById で取得した「まさにその」managed entity
+            // （toBuilder().build() で作り直した別インスタンスではない）。
+            // id が保持されているので save は UPDATE になり、新規 INSERT（id=null）は起きない。
+            ArgumentCaptor<ShiftScheduleEntity> captor = ArgumentCaptor.forClass(ShiftScheduleEntity.class);
+            verify(scheduleRepository).save(captor.capture());
+            ShiftScheduleEntity saved = captor.getValue();
+            assertThat(saved).isSameAs(existing);         // 同一インスタンス（新規作成でない）
+            assertThat(saved.getId()).isEqualTo(SCHEDULE_ID); // id 欠落（INSERT 化）が起きていない
+            // 部分更新が managed entity に反映されている
+            assertThat(saved.getTitle()).isEqualTo("更新後タイトル");
+            // 未指定フィールドは現値維持
+            assertThat(saved.getPeriodType()).isEqualTo(ShiftPeriodType.WEEKLY);
+            assertThat(saved.getStartDate()).isEqualTo(LocalDate.of(2026, 3, 1));
+        }
+
+        @Test
+        @DisplayName("updateSchedule_periodType更新_enumが正しくセットされる")
+        void updateSchedule_periodType更新_enumが正しくセットされる() {
+            // Given
+            ShiftScheduleEntity existing = existingScheduleWithId();
+            UpdateShiftScheduleRequest req = new UpdateShiftScheduleRequest(
+                    null, "MONTHLY", null, null, null, null, null);
+            ShiftScheduleResponse response = createScheduleResponse();
+
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(existing));
+            given(scheduleRepository.save(any(ShiftScheduleEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(shiftMapper.toScheduleResponse(any(ShiftScheduleEntity.class))).willReturn(response);
+
+            // When
+            shiftScheduleService.updateSchedule(SCHEDULE_ID, req);
+
+            // Then: periodType が enum に解決されて managed entity に反映
+            ArgumentCaptor<ShiftScheduleEntity> captor = ArgumentCaptor.forClass(ShiftScheduleEntity.class);
+            verify(scheduleRepository).save(captor.capture());
+            ShiftScheduleEntity saved = captor.getValue();
+            assertThat(saved).isSameAs(existing);
+            assertThat(saved.getId()).isEqualTo(SCHEDULE_ID);
+            assertThat(saved.getPeriodType()).isEqualTo(ShiftPeriodType.MONTHLY);
         }
     }
 

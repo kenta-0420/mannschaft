@@ -89,15 +89,12 @@ public class TransitionAlertService {
             throw new BusinessException(SchoolErrorCode.TRANSITION_ALERT_ALREADY_RESOLVED);
         }
 
-        AttendanceTransitionAlertEntity resolved = entity.toBuilder()
-                .resolvedAt(LocalDateTime.now())
-                .resolvedBy(resolverUserId)
-                .resolutionNote(note)
-                .build();
-
-        AttendanceTransitionAlertEntity saved = alertRepository.save(resolved);
+        // toBuilder().build() で作り直すと BaseEntity.id が引き継がれず INSERT 化する（行重複）。
+        // managed entity を直接ミューテートし JPA dirty checking で UPDATE する。
+        entity.markResolved(resolverUserId, LocalDateTime.now(), note);
+        alertRepository.save(entity);
         log.info("移動検知アラート解決: alertId={}, resolverUserId={}", alertId, resolverUserId);
 
-        return TransitionAlertResponse.from(saved);
+        return TransitionAlertResponse.from(entity);
     }
 }

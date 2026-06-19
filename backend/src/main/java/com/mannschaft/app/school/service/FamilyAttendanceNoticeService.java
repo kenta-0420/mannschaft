@@ -96,12 +96,10 @@ public class FamilyAttendanceNoticeService {
         FamilyAttendanceNoticeEntity entity = noticeRepository.findById(noticeId)
                 .orElseThrow(() -> new BusinessException(SchoolErrorCode.FAMILY_NOTICE_NOT_FOUND));
 
-        entity = entity.toBuilder()
-                .acknowledgedBy(acknowledgerUserId)
-                .acknowledgedAt(LocalDateTime.now())
-                .build();
-
-        entity = noticeRepository.save(entity);
+        // toBuilder().build() で作り直すと BaseEntity.id が引き継がれず INSERT 化する（行重複）。
+        // managed entity を直接ミューテートし JPA dirty checking で UPDATE する。
+        entity.acknowledge(acknowledgerUserId, LocalDateTime.now());
+        noticeRepository.save(entity);
         notificationService.notifyFamilyNoticeAcknowledged(entity);
         return buildResponse(entity);
     }
@@ -121,11 +119,11 @@ public class FamilyAttendanceNoticeService {
             throw new BusinessException(SchoolErrorCode.FAMILY_NOTICE_ALREADY_APPLIED);
         }
 
-        entity = entity.toBuilder()
-                .appliedToRecord(true)
-                .build();
-
-        return buildResponse(noticeRepository.save(entity));
+        // toBuilder().build() で作り直すと BaseEntity.id が引き継がれず INSERT 化する（行重複）。
+        // managed entity を直接ミューテートし JPA dirty checking で UPDATE する。
+        entity.markAppliedToRecord();
+        noticeRepository.save(entity);
+        return buildResponse(entity);
     }
 
     // ========================================

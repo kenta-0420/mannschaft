@@ -34,6 +34,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
+import org.mockito.ArgumentCaptor;
 
 /**
  * {@link FamilyAttendanceNoticeService} 単体テスト。
@@ -249,5 +250,65 @@ class FamilyAttendanceNoticeServiceTest {
 
     private void setId(FamilyAttendanceNoticeEntity entity, Long id) {
         ReflectionTestUtils.setField(entity, "id", id);
+    }
+
+    // ────────────────────────────────
+    // toBuilder 更新破壊 回帰テスト
+    // ────────────────────────────────
+
+    /**
+     * toBuilder().build() で作り直すと BaseEntity.id が引き継がれず id=null の新インスタンスになり
+     * INSERT 化して行が重複するバグの回帰テスト。
+     */
+    @Nested
+    @DisplayName("toBuilder更新破壊回帰")
+    class ToBuilderUpdateRegression {
+
+        private static final Long EXISTING_ID = 55L;
+
+        @Test
+        @DisplayName("acknowledgeNotice: 取得した同一インスタンスを id 保持のまま UPDATE する")
+        void acknowledgeNotice_既存行をUPDATE_id保持() {
+            // Given
+            FamilyAttendanceNoticeEntity entity = buildEntity(false, null, null);
+            setId(entity, EXISTING_ID);
+            given(noticeRepository.findById(NOTICE_ID)).willReturn(Optional.of(entity));
+
+            ArgumentCaptor<FamilyAttendanceNoticeEntity> captor =
+                    ArgumentCaptor.forClass(FamilyAttendanceNoticeEntity.class);
+            given(noticeRepository.save(captor.capture())).willAnswer(inv -> inv.getArgument(0));
+
+            // When
+            service.acknowledgeNotice(NOTICE_ID, 99L);
+
+            // Then: save に渡るのは取得した同一インスタンスで、id が保持されている（=UPDATE 経路）
+            FamilyAttendanceNoticeEntity saved = captor.getValue();
+            assertThat(saved).isSameAs(entity);
+            assertThat(saved.getId()).isEqualTo(EXISTING_ID);
+            assertThat(saved.getAcknowledgedBy()).isEqualTo(99L);
+            assertThat(saved.getAcknowledgedAt()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("applyToAttendanceRecord: 取得した同一インスタンスを id 保持のまま UPDATE する")
+        void applyToAttendanceRecord_既存行をUPDATE_id保持() {
+            // Given
+            FamilyAttendanceNoticeEntity entity = buildEntity(false, 99L, LocalDateTime.now());
+            setId(entity, EXISTING_ID);
+            given(noticeRepository.findById(NOTICE_ID)).willReturn(Optional.of(entity));
+
+            ArgumentCaptor<FamilyAttendanceNoticeEntity> captor =
+                    ArgumentCaptor.forClass(FamilyAttendanceNoticeEntity.class);
+            given(noticeRepository.save(captor.capture())).willAnswer(inv -> inv.getArgument(0));
+
+            // When
+            service.applyToAttendanceRecord(NOTICE_ID, 99L);
+
+            // Then: 同一インスタンス・id 保持・appliedToRecord=true 反映
+            FamilyAttendanceNoticeEntity saved = captor.getValue();
+            assertThat(saved).isSameAs(entity);
+            assertThat(saved.getId()).isEqualTo(EXISTING_ID);
+            assertThat(saved.getAppliedToRecord()).isTrue();
+        }
     }
 }

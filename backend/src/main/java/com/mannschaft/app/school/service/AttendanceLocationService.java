@@ -87,15 +87,14 @@ public class AttendanceLocationService {
         AttendanceLocationChangeEntity saved = attendanceLocationChangeRepository.save(changeEntity);
 
         // 2-3. 日次出欠レコードの attendanceLocation・locationChangedDuringDay を更新
+        // toBuilder().build() で作り直すと BaseEntity.id が引き継がれず INSERT 化する（行重複）。
+        // managed entity を直接ミューテートし JPA dirty checking で UPDATE する。
         DailyAttendanceRecordEntity dailyRecord = dailyAttendanceRecordRepository
                 .findByTeamIdAndStudentUserIdAndAttendanceDate(teamId, studentUserId, attendanceDate)
                 .orElseThrow(() -> new BusinessException(SchoolErrorCode.DAILY_RECORD_NOT_FOUND));
 
-        DailyAttendanceRecordEntity updatedDailyRecord = dailyRecord.toBuilder()
-                .attendanceLocation(toLocation)
-                .locationChangedDuringDay(true)
-                .build();
-        dailyAttendanceRecordRepository.save(updatedDailyRecord);
+        dailyRecord.updateLocation(toLocation, true);
+        dailyAttendanceRecordRepository.save(dailyRecord);
 
         // 4. changedAtPeriod が非 null の場合、その時限以降の時限別出欠レコードを更新
         if (changedAtPeriod != null) {
@@ -106,10 +105,9 @@ public class AttendanceLocationService {
                     .toList();
 
             for (var periodRecord : periodRecords) {
-                var updatedPeriodRecord = periodRecord.toBuilder()
-                        .attendanceLocation(toLocation)
-                        .build();
-                periodAttendanceRecordRepository.save(updatedPeriodRecord);
+                // 同様に managed entity を直接ミューテートして UPDATE する。
+                periodRecord.updateLocation(toLocation);
+                periodAttendanceRecordRepository.save(periodRecord);
             }
 
             log.info("登校場所変更: studentUserId={}, date={}, {}→{}, 第{}時限以降 {} 件更新",
