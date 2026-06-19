@@ -12,8 +12,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
@@ -30,8 +29,7 @@ import java.time.LocalTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class MatchRequestEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -52,12 +50,12 @@ public class MatchRequestEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private MatchCategory category = MatchCategory.ANY;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private MatchVisibility visibility = MatchVisibility.PLATFORM;
 
     @Column(nullable = false, length = 2)
@@ -79,7 +77,7 @@ public class MatchRequestEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private MatchLevel level = MatchLevel.ANY;
 
     private Short minParticipants;
@@ -88,11 +86,11 @@ public class MatchRequestEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private MatchRequestStatus status = MatchRequestStatus.OPEN;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Integer proposalCount = 0;
 
     private LocalDateTime expiresAt;
@@ -100,7 +98,7 @@ public class MatchRequestEntity extends BaseEntity {
     private Long matchedProposalId;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Short cancelCount = 0;
 
     private LocalDateTime deletedAt;

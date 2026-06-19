@@ -8,8 +8,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -22,8 +21,7 @@ import java.time.LocalDateTime;
 @Table(name = "onboarding_step_completions")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class OnboardingStepCompletionEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -37,6 +35,6 @@ public class OnboardingStepCompletionEntity extends BaseEntity {
     private OnboardingCompletionType completionType;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private LocalDateTime completedAt = LocalDateTime.now();
 }

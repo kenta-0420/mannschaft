@@ -9,8 +9,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
@@ -26,8 +25,7 @@ import java.util.UUID;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class FormSubmissionEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -41,7 +39,7 @@ public class FormSubmissionEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @Builder.Default
+    @SuperBuilder.Default
     private SubmissionStatus status = SubmissionStatus.DRAFT;
 
     private Long submittedBy;
@@ -61,7 +59,7 @@ public class FormSubmissionEntity extends BaseEntity {
     private String pdfFileKey;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Integer submissionCountForUser = 1;
 
     @Version

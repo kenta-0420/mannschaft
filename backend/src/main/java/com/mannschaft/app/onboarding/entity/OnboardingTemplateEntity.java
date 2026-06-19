@@ -9,8 +9,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
@@ -25,8 +24,7 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class OnboardingTemplateEntity extends BaseEntity {
 
     @Column(nullable = false, length = 20)
@@ -46,24 +44,24 @@ public class OnboardingTemplateEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @Builder.Default
+    @SuperBuilder.Default
     private OnboardingTemplateStatus status = OnboardingTemplateStatus.DRAFT;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean isOrderEnforced = false;
 
     private Short deadlineDays;
 
-    @Builder.Default
+    @SuperBuilder.Default
     private Short reminderDaysBefore = 3;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean isAdminNotifiedOnComplete = true;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean isTimelinePostedOnComplete = false;
 
     private Long presetId;

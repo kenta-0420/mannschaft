@@ -9,8 +9,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
@@ -25,8 +24,7 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class SystemOnboardingPresetEntity extends BaseEntity {
 
     @Column(nullable = false, length = 100)
@@ -43,7 +41,7 @@ public class SystemOnboardingPresetEntity extends BaseEntity {
     private String welcomeMessage;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean isOrderEnforced = false;
 
     private Short deadlineDays;
@@ -52,11 +50,11 @@ public class SystemOnboardingPresetEntity extends BaseEntity {
     private String stepsJson;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean isActive = true;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Integer sortOrder = 0;
 
     @Column(nullable = false)
