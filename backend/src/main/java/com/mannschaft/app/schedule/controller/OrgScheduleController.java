@@ -4,6 +4,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.schedule.dto.AttendanceResponse;
+import com.mannschaft.app.schedule.dto.AttendanceTeamBreakdownResponse;
 import com.mannschaft.app.schedule.CalendarSyncScopeType;
 import com.mannschaft.app.schedule.dto.CreateScheduleRequest;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
@@ -217,6 +218,43 @@ public class OrgScheduleController {
         byte[] csvBytes = csv.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=attendances_" + scheduleId + ".csv")
+                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .body(csvBytes);
+    }
+
+    /**
+     * 組織スケジュールの出欠をチーム別内訳（by_team）で集計取得する
+     * （(B) 組織→参加チーム配信 案C フェーズB・出欠のチーム別内訳）。
+     *
+     * <p>全体集計（{@code total}・実人数 DISTINCT）＋チーム別内訳（{@code by_team}・重複計上あり）を返す。
+     * 作成時トグル {@code team_breakdown_enabled = TRUE} の組織スケジュールでのみ by_team を算出する。
+     * トグル OFF（既定）は {@code by_team = null}（従来挙動＝全体集計のみ）。個別メンバーの出欠情報は含まない。</p>
+     */
+    @GetMapping("/{scheduleId}/attendances/team-breakdown")
+    @Operation(summary = "組織出欠チーム別内訳集計")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<AttendanceTeamBreakdownResponse>> getAttendanceTeamBreakdown(
+            @PathVariable String orgPublicId,
+            @PathVariable Long scheduleId) {
+        AttendanceTeamBreakdownResponse response = attendanceService.getAttendanceTeamBreakdown(scheduleId);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 組織スケジュールの出欠チーム別内訳をCSVエクスポートする
+     * （F03.1: {@code チーム名,出席,一部参加,欠席,未回答,合計} ＋末尾「合計」行）。
+     */
+    @GetMapping("/{scheduleId}/attendances/team-breakdown/export")
+    @Operation(summary = "組織出欠チーム別内訳CSVエクスポート")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "エクスポート成功")
+    public ResponseEntity<byte[]> exportAttendanceTeamBreakdownCsv(
+            @PathVariable String orgPublicId,
+            @PathVariable Long scheduleId) {
+        String csv = attendanceService.exportAttendanceTeamBreakdownCsv(scheduleId);
+        byte[] csvBytes = csv.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=org_attendance_team_breakdown_" + scheduleId + ".csv")
                 .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
                 .body(csvBytes);
     }
