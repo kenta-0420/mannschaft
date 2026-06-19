@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * <b>クロスドメインFK撤廃 最終局面 5-C（Phase 5-C・第三弾＝本丸）の番人テスト。</b>
  *
- * <p>V116.001 で「残った RESTRICT のうち、参照先が users（user ドメイン）である監査/作成者/操作者カラムのFK」25件を
+ * <p>V117.001 で「残った RESTRICT のうち、参照先が users（user ドメイン）である監査/作成者/操作者カラムのFK」25件を
  * 撤廃only する（advertiser/are/cr/coupons/jp/pr/promotions/pl の 8 件 + proxy_input_consents の 5 件 +
  * rcp/rl/rp/rs/reservations/rd/ssp/sba/sbc/tags/tbl/handoff の 12 件 = 25 件）。</p>
  *
@@ -38,10 +38,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>本テストは「参照元の子行をシードし、参照先の users 行を（テスト内で意図的に）物理 DELETE しても、
  * RESTRICT 撤廃済みゆえ users DELETE がブロックされず、子行が孤児 user_id 値を保持し続ける」ことを厳密に検証する:</p>
  * <ol>
- *   <li>V116.001 の直前（origin/main 最大 = V115.001）まで適用 → users 親行＋撤廃対象FKの参照元子行（監査FK列に user id をセット）をシード。</li>
- *   <li>V116.001 直前時点で対象25FKが実在することを sanity 確認。</li>
- *   <li>残り（V116.001 含む）を適用しても既存データを壊さず成功する。</li>
- *   <li>V116.001 で対象25FKが全て撤廃される。</li>
+ *   <li>V117.001 の直前（origin/main 最大 = V115.001）まで適用 → users 親行＋撤廃対象FKの参照元子行（監査FK列に user id をセット）をシード。</li>
+ *   <li>V117.001 直前時点で対象25FKが実在することを sanity 確認。</li>
+ *   <li>残り（V117.001 含む）を適用しても既存データを壊さず成功する。</li>
+ *   <li>V117.001 で対象25FKが全て撤廃される。</li>
  *   <li><b>子行が孤児 user_id を保持したまま、users 親行の物理 DELETE がブロックされずに成功する</b>
  *       （RESTRICT 撤廃only の肝・退会 purge ブロック解消の直接証明）。</li>
  * </ol>
@@ -49,15 +49,15 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>方針: Spring を起動せず Testcontainers の実 MySQL 8.0 に {@link Flyway} を Java API で直接実行する。
  * Docker 未起動環境では {@code @EnabledIf} でスキップ（骨抜きにしない・根治原則）。
  * 1回の pre→seed→migrate サイクルで25件すべてを検証する（同一DBを共有するため複数 @Test に分けると
- * 2本目以降は既に V116.001 まで適用済みとなり「FK実在 sanity（pre-state）」が成立しないため）。</p>
+ * 2本目以降は既に V117.001 まで適用済みとなり「FK実在 sanity（pre-state）」が成立しないため）。</p>
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @EnabledIf("com.mannschaft.app.common.migration.FlywayExistingDataRestrictUserAuditFkMigrationTest#isDockerAvailable")
-@DisplayName("Flyway 既存データ RESTRICT→users 監査FK撤廃（V116.001・Phase 5-C）番人テスト")
+@DisplayName("Flyway 既存データ RESTRICT→users 監査FK撤廃（V117.001・Phase 5-C）番人テスト")
 class FlywayExistingDataRestrictUserAuditFkMigrationTest {
 
-    /** V116.001 の直前の版（origin/main 最大 = V115.001）。ここまで適用して参照元/先をシードする。 */
-    private static final String PRE_V116_001_TARGET = "115.001";
+    /** V117.001 の直前の版（origin/main 最大 = V115.001）。ここまで適用して参照元/先をシードする。 */
+    private static final String PRE_V117_001_TARGET = "115.001";
 
     @SuppressWarnings("resource")
     private static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0")
@@ -94,7 +94,7 @@ class FlywayExistingDataRestrictUserAuditFkMigrationTest {
                 .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
                 .locations("classpath:db/migration")
                 .outOfOrder(false)
-                .target(MigrationVersion.fromVersion(PRE_V116_001_TARGET))
+                .target(MigrationVersion.fromVersion(PRE_V117_001_TARGET))
                 .load();
         MigrateResult preResult = pre.migrate();
         assertThat(preResult.success).as("V115.001 までの適用が成功すること").isTrue();
@@ -107,7 +107,7 @@ class FlywayExistingDataRestrictUserAuditFkMigrationTest {
                 .outOfOrder(false)
                 .load();
         MigrateResult restResult = rest.migrate();
-        assertThat(restResult.success).as("V116.001 を含む残りのマイグレーションが成功すること").isTrue();
+        assertThat(restResult.success).as("V117.001 を含む残りのマイグレーションが成功すること").isTrue();
     }
 
     /** 撤廃対象25FKの (table, constraintName)。pre-state sanity と post-drop 検証に使う。 */
@@ -140,8 +140,8 @@ class FlywayExistingDataRestrictUserAuditFkMigrationTest {
     };
 
     @Test
-    @DisplayName("V115.001で全25FK実在_V116.001適用で全25FK撤廃_参照元の孤児保持のままusers親を物理削除できる")
-    void 既存データを持つDBでV116_001がRESTRICT_users監査FK25件を撤廃onlyで安全に適用される() throws Exception {
+    @DisplayName("V115.001で全25FK実在_V117.001適用で全25FK撤廃_参照元の孤児保持のままusers親を物理削除できる")
+    void 既存データを持つDBでV117_001がRESTRICT_users監査FK25件を撤廃onlyで安全に適用される() throws Exception {
         migrateToPreTarget();
 
         // ── 物理削除対象の users（撤廃対象FKでのみ参照される監査/作成者/本人 user 群）──
@@ -254,7 +254,7 @@ class FlywayExistingDataRestrictUserAuditFkMigrationTest {
             plId = insertPropertyListing(c, dwellingId, plUser);
 
             // ── 9〜13. proxy_input_consents の5列（subject/proxy/witness/approved_by/revoke_wit）→ users ──
-            // 退会貫通の核心：5列すべてを同一 picUser にして、V116.001 で5FKを撤廃後にその user を物理削除が貫通することを実証。
+            // 退会貫通の核心：5列すべてを同一 picUser にして、V117.001 で5FKを撤廃後にその user を物理削除が貫通することを実証。
             picUser = insertUser(c, "p5c-pic@example.com");
             picId = insertProxyInputConsent(c, picUser, orgParent);
 
@@ -322,14 +322,14 @@ class FlywayExistingDataRestrictUserAuditFkMigrationTest {
             handoffId = insertTodoHandoff(c, todoId, handoffUser);
         }
 
-        // ── when: 残り（V116.001 含む）を適用 ──
+        // ── when: 残り（V117.001 含む）を適用 ──
         migrateRemaining();
 
         try (Connection c = conn()) {
             // ── then-1: 対象25FKが全て撤廃された ──
             for (String[] fk : TARGET_FKS) {
                 assertThat(foreignKeyExists(c, fk[0], fk[1]))
-                        .as("V116.001 で " + fk[0] + "." + fk[1] + " が撤廃されること").isFalse();
+                        .as("V117.001 で " + fk[0] + "." + fk[1] + " が撤廃されること").isFalse();
             }
 
             // ── then-2（中核）: 各参照先 users 行を物理削除しても、RESTRICT 撤廃済みゆえ
@@ -683,7 +683,7 @@ class FlywayExistingDataRestrictUserAuditFkMigrationTest {
     /**
      * proxy_input_consents: subject_user_id/proxy_user_id/organization_id/consent_method/effective_from/effective_until NOT NULL。
      * 撤廃対象5列（subject/proxy/witness/approved_by/revoke_wit）すべてに同一 user をセットして、
-     * V116.001 で5FKを撤廃後にその user を物理削除が貫通することを実証する（退会 purge ブロック解消の核心）。
+     * V117.001 で5FKを撤廃後にその user を物理削除が貫通することを実証する（退会 purge ブロック解消の核心）。
      */
     private long insertProxyInputConsent(Connection c, long user, long orgId) throws SQLException {
         try (PreparedStatement ps = c.prepareStatement("""
