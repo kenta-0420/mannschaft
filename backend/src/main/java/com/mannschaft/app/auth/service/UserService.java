@@ -152,35 +152,34 @@ public class UserService {
         String oldPostalCode = user.getPostalCode();
         String oldCountryCode = user.getCountryCode();
 
-        // Builder パターンで更新（Entityに@Setterは使わない）
+        // 直接ミューテートで更新（toBuilder().build() は継承フィールド id を欠落させ INSERT 化→email 一意制約500。PR #1643 と同型の根治）
         String newLastName = req.getLastName() != null ? req.getLastName() : user.getLastName();
         String newFirstName = req.getFirstName() != null ? req.getFirstName() : user.getFirstName();
         String newPhoneNumber = req.getPhoneNumber() != null ? req.getPhoneNumber() : user.getPhoneNumber();
         DmReceiveFrom newDmReceiveFrom = req.getDmReceiveFrom() != null ? req.getDmReceiveFrom() : user.getDmReceiveFrom();
-        UserEntity updated = user.toBuilder()
-                .lastName(newLastName)
-                .firstName(newFirstName)
-                .lastNameKana(req.getLastNameKana() != null ? req.getLastNameKana() : user.getLastNameKana())
-                .firstNameKana(req.getFirstNameKana() != null ? req.getFirstNameKana() : user.getFirstNameKana())
-                .displayName(req.getNickname() != null ? req.getNickname() : user.getDisplayName())
-                .nickname2(req.getNickname2() != null ? req.getNickname2() : user.getNickname2())
-                .isSearchable(req.getIsSearchable() != null ? req.getIsSearchable() : user.getIsSearchable())
-                .avatarUrl(req.getAvatarUrl() != null ? req.getAvatarUrl() : user.getAvatarUrl())
-                .phoneNumber(newPhoneNumber)
-                .postalCode(req.getPostalCode() != null ? req.getPostalCode() : user.getPostalCode())
-                .lastNameHash(encryptionService.hmac(newLastName))
-                .firstNameHash(encryptionService.hmac(newFirstName))
-                .phoneNumberHash(encryptionService.hmac(newPhoneNumber))
-                .locale(req.getLocale() != null ? req.getLocale() : user.getLocale())
-                .countryCode(req.getCountryCode() != null ? req.getCountryCode() : user.getCountryCode())
-                .timezone(req.getTimezone() != null ? req.getTimezone() : user.getTimezone())
-                .dmReceiveFrom(newDmReceiveFrom)
-                .build();
-        userRepository.save(updated);
+        user.applyProfileUpdate(
+                newLastName,
+                newFirstName,
+                req.getLastNameKana() != null ? req.getLastNameKana() : user.getLastNameKana(),
+                req.getFirstNameKana() != null ? req.getFirstNameKana() : user.getFirstNameKana(),
+                req.getNickname() != null ? req.getNickname() : user.getDisplayName(),
+                req.getNickname2() != null ? req.getNickname2() : user.getNickname2(),
+                req.getIsSearchable() != null ? req.getIsSearchable() : user.getIsSearchable(),
+                req.getAvatarUrl() != null ? req.getAvatarUrl() : user.getAvatarUrl(),
+                newPhoneNumber,
+                req.getPostalCode() != null ? req.getPostalCode() : user.getPostalCode(),
+                encryptionService.hmac(newLastName),
+                encryptionService.hmac(newFirstName),
+                encryptionService.hmac(newPhoneNumber),
+                req.getLocale() != null ? req.getLocale() : user.getLocale(),
+                req.getCountryCode() != null ? req.getCountryCode() : user.getCountryCode(),
+                req.getTimezone() != null ? req.getTimezone() : user.getTimezone(),
+                newDmReceiveFrom);
+        userRepository.save(user);
 
         // F02.10: postalCode または countryCode が変化した場合に WeatherLocationEventListener を起動
-        if (!Objects.equals(oldPostalCode, updated.getPostalCode())
-                || !Objects.equals(oldCountryCode, updated.getCountryCode())) {
+        if (!Objects.equals(oldPostalCode, user.getPostalCode())
+                || !Objects.equals(oldCountryCode, user.getCountryCode())) {
             eventPublisher.publish(new UserPostalCodeUpdatedEvent(userId));
             log.debug("UserPostalCodeUpdatedEvent 発行: userId={}", userId);
         }
@@ -208,10 +207,9 @@ public class UserService {
         // パスワードポリシー検証
         validatePasswordPolicy(newPassword);
 
-        UserEntity updated = user.toBuilder()
-                .passwordHash(passwordEncoder.encode(newPassword))
-                .build();
-        userRepository.save(updated);
+        // 直接ミューテート（toBuilder().build() は id 欠落で INSERT 化→500。PR #1643 と同型の根治）
+        user.updatePasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
 
         // イベント発行
         eventPublisher.publish(new PasswordSetupEvent(userId));
@@ -264,11 +262,9 @@ public class UserService {
         // 5. パスワードポリシー検証
         validatePasswordPolicy(req.getNewPassword());
 
-        // 6. パスワード更新
-        UserEntity updated = user.toBuilder()
-                .passwordHash(passwordEncoder.encode(req.getNewPassword()))
-                .build();
-        userRepository.save(updated);
+        // 6. パスワード更新（直接ミューテート。toBuilder().build() は id 欠落で INSERT 化→500。PR #1643 と同型の根治）
+        user.updatePasswordHash(passwordEncoder.encode(req.getNewPassword()));
+        userRepository.save(user);
 
         // 全Refresh Token失効
         revokeAllRefreshTokens(userId);
@@ -375,10 +371,9 @@ public class UserService {
         UserEntity user = findUserOrThrow(emailChangeToken.getUserId());
         String oldEmail = user.getEmail();
 
-        UserEntity updated = user.toBuilder()
-                .email(emailChangeToken.getNewEmail())
-                .build();
-        userRepository.save(updated);
+        // 直接ミューテート（toBuilder().build() は id 欠落で INSERT 化→email 一意制約500。PR #1643 と同型の根治）
+        user.updateEmail(emailChangeToken.getNewEmail());
+        userRepository.save(user);
 
         // トークンを使用済みにする
         emailChangeToken.markUsed();

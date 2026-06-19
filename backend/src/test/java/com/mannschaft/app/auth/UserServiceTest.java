@@ -129,6 +129,23 @@ class UserServiceTest {
         return user;
     }
 
+    /**
+     * 既存（永続化済み）ユーザーを再現するため、継承フィールド {@code id} をリフレクションで設定する。
+     *
+     * <p>{@code id} は {@code BaseEntity} のフィールドで {@code @Builder} の対象外（これが toBuilder バグの根）であり、
+     * テストからは builder で設定できないため、永続化済みエンティティの状態を再現する目的でのみ直接代入する。
+     */
+    private static void setId(UserEntity user, Long id) {
+        try {
+            java.lang.reflect.Field field =
+                    com.mannschaft.app.common.BaseEntity.class.getDeclaredField("id");
+            field.setAccessible(true);
+            field.set(user, id);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("テスト用 id 設定に失敗", e);
+        }
+    }
+
     // ========================================
     // getUserProfile
     // ========================================
@@ -897,6 +914,146 @@ class UserServiceTest {
             // Then: anonymize は PII 消去のみ。deletedAt は softDelete() の責務。
             assertThat(user.getDeletedAt()).isNull();
             assertThat(user.getDisplayName()).isEqualTo("退会済みユーザー");
+        }
+    }
+
+    // ========================================
+    // toBuilder 更新破壊（id 欠落 INSERT 化）回帰テスト — PR #1643 と同型
+    //
+    // 旧実装は user.toBuilder().build() で作り直して save していたため、@Builder の対象外である
+    // 継承フィールド id が引き継がれず id=null の新インスタンスを save → UPDATE でなく INSERT が走り
+    // email 一意制約違反で 500 になっていた。直接ミューテートに是正したことを以下で固定する:
+    //   ① save に渡るのが findById で取得した「同一インスタンス」であること
+    //   ② save に渡るエンティティの id が保持されていること（id 不変＝UPDATE 経路）
+    // ========================================
+
+    @Nested
+    @DisplayName("toBuilder更新破壊回帰")
+    class ToBuilderUpdateRegression {
+
+        private static final Long EXISTING_ID = 42L;
+
+        @Test
+        @DisplayName("updateProfile: 取得した同一インスタンスを id 保持のまま UPDATE する（新インスタンス化しない）")
+        void updateProfile_既存行をUPDATE_id保持() {
+            // Given: 既存（永続化済み・id付き）ユーザー
+            UpdateProfileRequest req = new UpdateProfileRequest(
+                    "佐藤", "次郎", "サトウ", "ジロウ",
+                    "sato-jiro", null, "ja", null, "Asia/Tokyo",
+                    false, null, "090-1234-5678", null, null);
+            UserEntity user = createActiveUser();
+            setId(user, EXISTING_ID);
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(encryptionService.hmac(anyString())).willReturn("hashed-value");
+            given(twoFactorAuthRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(webauthnCredentialRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(oauthAccountRepository.findByUserId(USER_ID)).willReturn(List.of());
+
+            ArgumentCaptor<UserEntity> captor = ArgumentCaptor.forClass(UserEntity.class);
+            given(userRepository.save(captor.capture())).willAnswer(inv -> inv.getArgument(0));
+
+            // When
+            userService.updateProfile(USER_ID, req);
+
+            // Then: save に渡るのは取得した同一インスタンスで、id が保持されている（=UPDATE 経路）
+            UserEntity saved = captor.getValue();
+            assertThat(saved).isSameAs(user);
+            assertThat(saved.getId()).isEqualTo(EXISTING_ID);
+            // 更新値が反映されている
+            assertThat(saved.getLastName()).isEqualTo("佐藤");
+            assertThat(saved.getDisplayName()).isEqualTo("sato-jiro");
+        }
+
+        @Test
+        @DisplayName("changePassword: 取得した同一インスタンスを id 保持のまま UPDATE する")
+        void changePassword_既存行をUPDATE_id保持() {
+            // Given
+            ChangePasswordRequest req = new ChangePasswordRequest("OldPassword1!", "NewPassword1!");
+            UserEntity user = createActiveUser();
+            setId(user, EXISTING_ID);
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(passwordEncoder.matches("OldPassword1!", ENCODED_PASSWORD)).willReturn(true);
+            given(passwordEncoder.matches("NewPassword1!", ENCODED_PASSWORD)).willReturn(false);
+            given(passwordEncoder.encode("NewPassword1!")).willReturn("$2a$12$newHash");
+            given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(USER_ID)).willReturn(List.of());
+
+            ArgumentCaptor<UserEntity> captor = ArgumentCaptor.forClass(UserEntity.class);
+            given(userRepository.save(captor.capture())).willAnswer(inv -> inv.getArgument(0));
+
+            // When
+            userService.changePassword(USER_ID, req, TEST_IP);
+
+            // Then: 同一インスタンス・id 保持・新ハッシュ反映
+            UserEntity saved = captor.getValue();
+            assertThat(saved).isSameAs(user);
+            assertThat(saved.getId()).isEqualTo(EXISTING_ID);
+            assertThat(saved.getPasswordHash()).isEqualTo("$2a$12$newHash");
+        }
+
+        @Test
+        @DisplayName("setupPassword: 取得した同一インスタンスを id 保持のまま UPDATE する")
+        void setupPassword_既存行をUPDATE_id保持() {
+            // Given: OAuth ユーザー（passwordHash=null）
+            UserEntity oauthUser = UserEntity.builder()
+                    .email(TEST_EMAIL).passwordHash(null)
+                    .lastName("田中").firstName("花子")
+                    .displayName("hanako").isSearchable(true)
+                    .locale("ja").timezone("Asia/Tokyo")
+                    .status(UserEntity.UserStatus.ACTIVE)
+                    .build();
+            setId(oauthUser, EXISTING_ID);
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(oauthUser));
+            given(passwordEncoder.encode("NewPassword1!")).willReturn("$2a$12$newHash");
+
+            ArgumentCaptor<UserEntity> captor = ArgumentCaptor.forClass(UserEntity.class);
+            given(userRepository.save(captor.capture())).willAnswer(inv -> inv.getArgument(0));
+
+            // When
+            userService.setupPassword(USER_ID, "NewPassword1!");
+
+            // Then
+            UserEntity saved = captor.getValue();
+            assertThat(saved).isSameAs(oauthUser);
+            assertThat(saved.getId()).isEqualTo(EXISTING_ID);
+            assertThat(saved.getPasswordHash()).isEqualTo("$2a$12$newHash");
+        }
+
+        @Test
+        @DisplayName("confirmEmailChange: 取得した同一インスタンスを id 保持のまま email UPDATE する")
+        void confirmEmailChange_既存行をUPDATE_id保持() {
+            // Given
+            String rawToken = "email-change-token";
+            String tokenHash = "hashed-email-change-token";
+            given(authTokenService.hashToken(rawToken)).willReturn(tokenHash);
+
+            EmailChangeTokenEntity emailChangeToken = EmailChangeTokenEntity.builder()
+                    .userId(USER_ID)
+                    .newEmail("new@example.com")
+                    .tokenHash(tokenHash)
+                    .expiresAt(LocalDateTime.now().plusHours(24))
+                    .build();
+            given(emailChangeTokenRepository.findByTokenHash(tokenHash))
+                    .willReturn(Optional.of(emailChangeToken));
+            given(userRepository.existsByEmail("new@example.com")).willReturn(false);
+
+            UserEntity user = createActiveUser();
+            setId(user, EXISTING_ID);
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(emailChangeTokenRepository.save(any(EmailChangeTokenEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(any())).willReturn(List.of());
+
+            ArgumentCaptor<UserEntity> captor = ArgumentCaptor.forClass(UserEntity.class);
+            given(userRepository.save(captor.capture())).willAnswer(inv -> inv.getArgument(0));
+
+            // When
+            userService.confirmEmailChange(rawToken);
+
+            // Then: 同一インスタンス・id 保持・email 更新（旧実装は新インスタンス化で email 一意制約500）
+            UserEntity saved = captor.getValue();
+            assertThat(saved).isSameAs(user);
+            assertThat(saved.getId()).isEqualTo(EXISTING_ID);
+            assertThat(saved.getEmail()).isEqualTo("new@example.com");
         }
     }
 }
