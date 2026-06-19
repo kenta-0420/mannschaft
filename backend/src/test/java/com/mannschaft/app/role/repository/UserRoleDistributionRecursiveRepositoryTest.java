@@ -514,4 +514,107 @@ class UserRoleDistributionRecursiveRepositoryTest extends AbstractMySqlIntegrati
                 java.util.Set.of(rootOrg), leafTeamMember, MAX_DEPTH);
         assertThat(matched).isEmpty();
     }
+
+    // ---------------------------------------------------------------------
+    // (6) 配信母集団 EXISTS 版（配信＝受信権 統一・includeSupporters トグル準拠）
+    //     existsInOrgDistributionAudience: 通知/閲覧/回答の3関所が共有する単発判定
+    // ---------------------------------------------------------------------
+
+    @Test
+    @DisplayName("配信EXISTS版_配下チームのみ所属MEMBERはtrue_無関係ユーザーはfalse（番人: 関所共有の基盤）")
+    void 配信EXISTSで配下チームMEMBERはtrue無関係false() {
+        Long rootOrg = persistOrganization(null);
+        Long midOrg = persistOrganization(rootOrg);
+        Long leafOrg = persistOrganization(midOrg);
+
+        Long leafTeam = 600_200L;
+        linkTeamToOrg(leafTeam, leafOrg, TeamOrgMembershipEntity.Status.ACTIVE);
+        Long leafTeamMember = persistActiveUser();
+        grantTeamRole(leafTeamMember, leafTeam);
+
+        Long otherOrg = persistOrganization(null);
+        Long outsider = persistActiveUser();
+        grantOrgRole(outsider, otherOrg);
+        flushClear();
+
+        // トグル OFF / ON いずれでも、通常メンバー（memberships なし）は母集団に含まれる
+        assertThat(userRoleRepository.existsInOrgDistributionAudience(rootOrg, leafTeamMember, false, MAX_DEPTH))
+                .isTrue();
+        assertThat(userRoleRepository.existsInOrgDistributionAudience(rootOrg, leafTeamMember, true, MAX_DEPTH))
+                .isTrue();
+        // 無関係ユーザーはトグルに関わらず母集団外
+        assertThat(userRoleRepository.existsInOrgDistributionAudience(rootOrg, outsider, false, MAX_DEPTH))
+                .isFalse();
+        assertThat(userRoleRepository.existsInOrgDistributionAudience(rootOrg, outsider, true, MAX_DEPTH))
+                .isFalse();
+    }
+
+    @Test
+    @DisplayName("配信EXISTS版_純SUPPORTERはトグルOFFでfalse_トグルONでtrue（番人2/3: 通知配信のトグル準拠）")
+    void 配信EXISTSは純SUPPORTERでトグルOFF_false_ON_true() {
+        Long rootOrg = persistOrganization(null);
+        Long leafOrg = persistOrganization(rootOrg);
+        Long leafTeam = 600_201L;
+        linkTeamToOrg(leafTeam, leafOrg, TeamOrgMembershipEntity.Status.ACTIVE);
+
+        Long pureSupporter = persistActiveUser();
+        grantTeamRole(pureSupporter, leafTeam);
+        addMembership(pureSupporter, ScopeType.TEAM, leafTeam, RoleKind.SUPPORTER, null);
+        flushClear();
+
+        // トグル OFF（配下 MEMBER のみ配信）: 純 SUPPORTER は母集団外
+        assertThat(userRoleRepository.existsInOrgDistributionAudience(rootOrg, pureSupporter, false, MAX_DEPTH))
+                .isFalse();
+        // トグル ON（配下 SUPPORTER も配信）: 純 SUPPORTER も母集団内
+        assertThat(userRoleRepository.existsInOrgDistributionAudience(rootOrg, pureSupporter, true, MAX_DEPTH))
+                .isTrue();
+    }
+
+    @Test
+    @DisplayName("配信EXISTS版_別スコープMEMBER保有のSUPPORTERはトグルOFFでもMEMBER優先でtrue（母集団全件版と一致）")
+    void 配信EXISTSはMEMBER優先でトグルOFFでもtrue() {
+        Long rootOrg = persistOrganization(null);
+        Long leafOrg = persistOrganization(rootOrg);
+        Long leafTeam = 600_202L;
+        linkTeamToOrg(leafTeam, leafOrg, TeamOrgMembershipEntity.Status.ACTIVE);
+
+        // leaf 組織で SUPPORTER だが root 組織では MEMBER → MEMBER 優先で OFF でも母集団内
+        Long mixed = persistActiveUser();
+        grantOrgRole(mixed, rootOrg);
+        addMembership(mixed, ScopeType.ORGANIZATION, leafOrg, RoleKind.SUPPORTER, null);
+        addMembership(mixed, ScopeType.ORGANIZATION, rootOrg, RoleKind.MEMBER, null);
+        flushClear();
+
+        assertThat(userRoleRepository.existsInOrgDistributionAudience(rootOrg, mixed, false, MAX_DEPTH))
+                .isTrue();
+        // 母集団全件版（findDistributionUserIdsForOrganizationRecursive）と単発判定が一致することを確認
+        assertThat(userRoleRepository.findDistributionUserIdsForOrganizationRecursive(rootOrg, false, MAX_DEPTH))
+                .contains(mixed);
+    }
+
+    @Test
+    @DisplayName("配信EXISTS版_母集団全件版と1対1で整合する（多段・純SUPPORTER混在）")
+    void 配信EXISTSは母集団全件版と整合する() {
+        Long rootOrg = persistOrganization(null);
+        Long leafOrg = persistOrganization(rootOrg);
+        Long leafTeam = 600_203L;
+        linkTeamToOrg(leafTeam, leafOrg, TeamOrgMembershipEntity.Status.ACTIVE);
+
+        Long plainMember = persistActiveUser();
+        grantOrgRole(plainMember, leafOrg);
+        Long pureSupporter = persistActiveUser();
+        grantTeamRole(pureSupporter, leafTeam);
+        addMembership(pureSupporter, ScopeType.TEAM, leafTeam, RoleKind.SUPPORTER, null);
+        flushClear();
+
+        for (boolean toggle : new boolean[]{false, true}) {
+            List<Long> bulk =
+                    userRoleRepository.findDistributionUserIdsForOrganizationRecursive(rootOrg, toggle, MAX_DEPTH);
+            // 全件版に含まれる ⇔ 単発 EXISTS が true（plainMember / pureSupporter で検証）
+            assertThat(userRoleRepository.existsInOrgDistributionAudience(rootOrg, plainMember, toggle, MAX_DEPTH))
+                    .isEqualTo(bulk.contains(plainMember));
+            assertThat(userRoleRepository.existsInOrgDistributionAudience(rootOrg, pureSupporter, toggle, MAX_DEPTH))
+                    .isEqualTo(bulk.contains(pureSupporter));
+        }
+    }
 }

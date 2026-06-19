@@ -163,6 +163,63 @@ class SurveyResponseServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(SurveyErrorCode.NOT_TARGET_USER));
         }
+
+        @Test
+        @DisplayName("番人: 回答送信_ALL×組織_配信母集団外ユーザーは認可で弾かれる（submitResponse ALL認可穴の塞ぎ）")
+        void 回答送信_ALL組織_配信母集団外は認可で拒否() {
+            // Given: DistributionMode.ALL × ORGANIZATION。旧実装は TARGETED のみ認可しており、
+            // ALL は認可ゼロで組織外ユーザーも surveyId さえ知れば回答できる漏洩穴だった。
+            SurveyEntity survey = SurveyEntity.builder()
+                    .scopeType("ORGANIZATION").scopeId(20L).title("組織アンケート")
+                    .distributionMode(DistributionMode.ALL)
+                    .includeSupporters(false)
+                    .allowMultipleSubmissions(false).createdBy(1L).build();
+            survey.publish();
+
+            SubmitResponseRequest request = new SubmitResponseRequest(List.of());
+
+            given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
+            // 配信母集団外 → checkMembershipOrDescendant が COMMON_002 を投げる
+            org.mockito.Mockito.doThrow(new BusinessException(
+                            com.mannschaft.app.common.CommonErrorCode.COMMON_002))
+                    .when(accessControlService)
+                    .checkMembershipOrDescendant(USER_ID, 20L, "ORGANIZATION", false);
+
+            // When & Then
+            assertThatThrownBy(() -> surveyResponseService.submitResponse(SURVEY_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(com.mannschaft.app.common.CommonErrorCode.COMMON_002));
+        }
+
+        @Test
+        @DisplayName("番人: 回答送信_ALL×組織_配信母集団メンバーはトグル準拠で認可を通過する")
+        void 回答送信_ALL組織_配信母集団メンバーは通過() {
+            // Given: includeSupporters=true の組織 ALL アンケ。配下 SUPPORTER も配信母集団＝回答可。
+            SurveyEntity survey = SurveyEntity.builder()
+                    .scopeType("ORGANIZATION").scopeId(20L).title("組織アンケート")
+                    .distributionMode(DistributionMode.ALL)
+                    .includeSupporters(true)
+                    .allowMultipleSubmissions(false).createdBy(1L).build();
+            survey.publish();
+
+            SubmitResponseRequest request = new SubmitResponseRequest(List.of());
+
+            given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
+            // 母集団内 → checkMembershipOrDescendant(...,true) は例外なし（mock 既定の no-op）
+            given(responseRepository.existsBySurveyIdAndUserId(SURVEY_ID, USER_ID)).willReturn(false);
+            given(surveyMapper.toResponseEntryList(org.mockito.ArgumentMatchers.anyList()))
+                    .willReturn(List.of());
+
+            // When
+            List<SurveyResponseEntry> result = surveyResponseService.submitResponse(SURVEY_ID, USER_ID, request);
+
+            // Then: 認可を通過し回答が成立する（空回答だが例外は出ない）
+            assertThat(result).isEmpty();
+            // トグル準拠（includeSupporters=true）で認可されたこと
+            org.mockito.Mockito.verify(accessControlService)
+                    .checkMembershipOrDescendant(USER_ID, 20L, "ORGANIZATION", true);
+        }
     }
 
     @Nested
