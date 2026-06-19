@@ -1,5 +1,6 @@
 package com.mannschaft.app.survey.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -64,6 +65,7 @@ public class SurveyTeamBreakdownResponse {
      * @param masked          回答者 5 名未満で内訳をマスクしたか（true のとき {@code questionResults} は空）
      * @param questionResults 設問ごとのチーム内集計（{@code masked = true} のときは空リスト）
      */
+    @Schema(name = "SurveyTeamBreakdownItem")
     public record TeamBreakdownItem(
             Long teamId,
             String teamName,

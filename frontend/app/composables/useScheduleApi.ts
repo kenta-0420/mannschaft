@@ -34,6 +34,8 @@ export function useScheduleApi() {
     getAttendances: attendance.getAttendances,
     respondAttendance: attendance.respondAttendance,
     exportAttendances: attendance.exportAttendances,
+    getAttendanceTeamBreakdown: attendance.getAttendanceTeamBreakdown,
+    exportAttendanceTeamBreakdownCsv: attendance.exportAttendanceTeamBreakdownCsv,
     bulkUpdateAttendances: attendance.bulkUpdateAttendances,
     // === Personal Schedule ===
     listPersonalSchedules: personal.listPersonalSchedules,

@@ -11,6 +11,30 @@ import type {
   CrossInviteRequest,
   ScheduleStatsResponse,
 } from '~/types/schedule'
+import type { components } from '~/types/generated'
+
+/**
+ * F03.1 (B) 組織出欠のステータス別件数。生成型をそのまま利用する。
+ * 生成型 components['schemas']['TeamBreakdownCounts']。
+ */
+export type AttendanceBreakdownCounts = components['schemas']['TeamBreakdownCounts']
+
+/**
+ * F03.1 (B) 組織出欠のチーム別内訳 1 行。生成型をそのまま利用する。
+ *
+ * BE の schedule.dto.AttendanceTeamBreakdownResponse.TeamBreakdownItem を
+ * @Schema(name="AttendanceTeamBreakdownItem") で survey 側と分離したため、
+ * 出欠形（attending/partial/absent/undecided）が独立した生成型として得られる。
+ * 生成型 components['schemas']['AttendanceTeamBreakdownItem']。
+ */
+export type AttendanceTeamBreakdownItem = components['schemas']['AttendanceTeamBreakdownItem']
+
+/**
+ * F03.1 (B) 組織出欠のチーム別内訳レスポンス。生成型をそのまま利用する。
+ * 生成型 components['schemas']['AttendanceTeamBreakdownResponse']。
+ */
+export type AttendanceTeamBreakdownResponse =
+  components['schemas']['AttendanceTeamBreakdownResponse']
 
 export function useScheduleAttendance() {
   const api = useApi()
@@ -52,6 +76,28 @@ export function useScheduleAttendance() {
     })
   }
 
+  /**
+   * F03.1 (B) 組織出欠のチーム別内訳（by_team）を取得する。
+   * 認可: 組織 ADMIN 限定（非 ADMIN は 403）。トグル OFF（既定）は本 EP ではなく従来の集計を使う。
+   * 設計書: docs/features/F03.1（出欠） / PR #1666
+   */
+  async function getAttendanceTeamBreakdown(orgPublicId: string, scheduleId: number) {
+    return api<{ data: AttendanceTeamBreakdownResponse }>(
+      `/api/v1/organizations/${orgPublicId}/schedules/${scheduleId}/attendances/team-breakdown`,
+    )
+  }
+
+  /**
+   * F03.1 (B) 組織出欠のチーム別内訳 CSV エクスポート。
+   * 認可: 組織 ADMIN 限定。Blob として受け取る。
+   */
+  async function exportAttendanceTeamBreakdownCsv(orgPublicId: string, scheduleId: number) {
+    return api(
+      `/api/v1/organizations/${orgPublicId}/schedules/${scheduleId}/attendances/team-breakdown/export`,
+      { responseType: 'blob' },
+    )
+  }
+
   // === Bulk Attendance (teams only) ===
   async function bulkUpdateAttendances(
     teamId: string,
@@ -87,6 +133,8 @@ export function useScheduleAttendance() {
     getAttendances,
     respondAttendance,
     exportAttendances,
+    getAttendanceTeamBreakdown,
+    exportAttendanceTeamBreakdownCsv,
     bulkUpdateAttendances,
     createCrossInvite,
     deleteCrossInvite,

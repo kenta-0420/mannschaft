@@ -81,6 +81,8 @@ export interface ScheduleEventFormState {
   recurrenceCount: number
   allowProxyAttendance: boolean   // F03.10 代理出席を許可するか
   isProxyAutoAccept: boolean      // F03.10 代理委任を自動承認するか
+  // F03.1 (B) 組織出欠のチーム別内訳を有効にするか（組織スコープのみ・既定 false）
+  teamBreakdownEnabled: boolean
   // 機能55: リマインダー（全スコープ共通。最大5件）
   reminders: ReminderFormEntry[]
   // 機能55: 予約アンケート作成（team/org のみ）

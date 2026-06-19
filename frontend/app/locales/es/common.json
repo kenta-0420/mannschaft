@@ -229,7 +229,8 @@
     "AUTH_003": "Su cuenta está bloqueada. Inténtelo de nuevo en 30 minutos",
     "AUTH_004": "Este correo electrónico ya está registrado",
     "AUTH_005": "El enlace del correo de verificación no es válido o ha expirado",
-    "AUTH_044": "Demasiadas solicitudes. Por favor, espere un momento y vuelva a intentarlo"
+    "AUTH_044": "Demasiadas solicitudes. Por favor, espere un momento y vuelva a intentarlo",
+    "SURVEY_023": "No se puede activar el desglose por equipo en encuestas anonimas"
   },
   "annual_plan": {
     "title": "Plan anual de eventos",

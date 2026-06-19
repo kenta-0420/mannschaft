@@ -117,6 +117,7 @@ const form = ref<ScheduleEventFormState>({
   recurrenceCount: 10,
   allowProxyAttendance: false,
   isProxyAutoAccept: false,
+  teamBreakdownEnabled: false,
   reminders: [],
   scheduledSurvey: {
     enabled: false,
@@ -224,6 +225,7 @@ watch(
           form.value.attendanceRequired = (data.attendanceRequired as boolean) ?? false
           form.value.allowProxyAttendance = (data.allowProxyAttendance as boolean) ?? false
           form.value.isProxyAutoAccept = (data.isProxyAutoAccept as boolean) ?? false
+          form.value.teamBreakdownEnabled = (data.teamBreakdownEnabled as boolean) ?? false
           if (data.startAt) {
             const start = new Date(data.startAt as string)
             form.value.startDate = start
@@ -397,6 +399,10 @@ async function submit() {
     body.attendanceRequired = form.value.attendanceRequired
     body.allow_proxy_attendance = form.value.allowProxyAttendance
     body.is_proxy_auto_accept = form.value.allowProxyAttendance ? form.value.isProxyAutoAccept : false
+    // F03.1 (B) チーム別内訳トグルは組織スコープ + 出欠ありのときのみ送る
+    if (effectiveScope.value.scopeType === 'organization' && form.value.attendanceRequired) {
+      body.teamBreakdownEnabled = form.value.teamBreakdownEnabled
+    }
   }
 
   if (form.value.recurrence) {
@@ -529,6 +535,7 @@ function resetForm() {
     recurrenceCount: 10,
     allowProxyAttendance: false,
     isProxyAutoAccept: false,
+    teamBreakdownEnabled: false,
     reminders: [],
     scheduledSurvey: {
       enabled: false,
@@ -585,6 +592,27 @@ function close() {
         :time-history="timeHistory"
         :time-options="timeOptions"
       />
+      <!-- F03.1 (B) チーム別内訳トグル（組織スコープ + 出欠ありのときのみ） -->
+      <div
+        v-if="effectiveScope.scopeType === 'organization' && form.attendanceRequired"
+        class="flex flex-col gap-1 rounded-lg bg-surface-50 p-3 dark:bg-surface-800"
+      >
+        <div class="flex items-center gap-3">
+          <Checkbox
+            v-model="form.teamBreakdownEnabled"
+            :binary="true"
+            input-id="scheduleTeamBreakdown"
+            data-testid="schedule-team-breakdown-toggle"
+          />
+          <label for="scheduleTeamBreakdown" class="text-sm text-gray-700 dark:text-gray-300">
+            {{ $t('schedule.attendanceTeamBreakdown.toggleLabel') }}
+          </label>
+        </div>
+        <p class="ml-6 text-xs text-gray-500 dark:text-gray-400">
+          {{ $t('schedule.attendanceTeamBreakdown.toggleHint') }}
+        </p>
+      </div>
+
       <!-- 代理出席設定（チームまたは組織スコープのみ） -->
       <div v-if="!effectiveScope.isPersonal" class="flex flex-col gap-2">
         <div class="flex items-center gap-3">
