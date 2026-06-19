@@ -121,14 +121,15 @@
 
 ## §10. 新規テーブル・マイグレーションは必要か
 
-**決定**: 新規**テーブル**は不要。ただし**チームスコープの `BUDGET_VIEW` / `BUDGET_MANAGE` 権限 seed を追加する Flyway マイグレーションは必要**（先行版の「マイグレーションなし」を訂正）。
+**決定**: 新規**テーブル**は不要。**チームスコープの予算権限については、同名 `BUDGET_VIEW`/`BUDGET_MANAGE` の TEAM 行追加が `permissions.name` 単独 UNIQUE（V2.002）により不可能なため、別名 `TEAM_BUDGET_VIEW` / `TEAM_BUDGET_MANAGE`（scope=TEAM）を新設する Flyway マイグレーション（V116.001）を追加した**（§13・PR #1659 で実装済み）。
 
 **根拠**:
 - 承認待ちは各ドメインの既存テーブルの集計で取れる（新規テーブル不要）。L1 レンズ状態は localStorage で十分。
-- ただし偵察（R5）で `BUDGET_VIEW`/`BUDGET_MANAGE` は **scope=ORGANIZATION のみ** seed 済みと判明。チームの予算ウィジェットで DEPUTY を権限付与で解放するには **scope=TEAM の seed が必要**（[04](./04_security_authorization.md) §4.3）。よって本機能は権限 seed のマイグレーションを1本伴う。
-- Flyway 採番は origin/main 全体の最大 major +1、マージ直前に再確認（メモリ `feedback_flyway_version_sort_after_global_max` / `feedback_migration_version_collision`）。seed 形式は F02.2.1 §9 を手本にする。
+- 偵察（R5）で `BUDGET_VIEW`/`BUDGET_MANAGE` は **scope=ORGANIZATION のみ** seed 済みと判明。チームの予算ウィジェットで DEPUTY を権限付与で解放するには TEAM スコープ専用の権限 seed が必要（[04](./04_security_authorization.md) §4.3）。
+- ただし同名 `BUDGET_VIEW` を scope=TEAM で追加しようとすると `uq_permissions_name`（V2.002）の UNIQUE 違反でマイグレーションが失敗する（§13 で確定）。そのため **TEAM スコープ専用の別名 `TEAM_BUDGET_VIEW` / `TEAM_BUDGET_MANAGE` を新設する案(A)** を採用し、Flyway V116.001 として実装した（PR #1659 で main マージ済み）。
+- Flyway 採番は origin/main 全体の最大 major +1 を使用（メモリ `feedback_flyway_version_sort_after_global_max` / `feedback_migration_version_collision`）。seed 形式は F02.2.1 §9 を手本にした。
 
-> **⚠️ 後続判明事項（§13）**: 上記「チームスコープ seed を追加する Flyway マイグレーションを伴う」は**実装軍議で不可能と判明し訂正**。`permissions.name` 単独 UNIQUE（V2.002）により同名 TEAM 行追加は UNIQUE 違反で失敗する。P1 スコープから除外確定。最終方針は §13 のとおり P3 軍議で確定する。
+> **補足（§13 参照）**: 当初「チームスコープ seed を追加する Flyway マイグレーションを伴う」と記述したが、実装軍議で同名 TEAM 行追加が不可能と判明した（§13 で詳細を記録）。最終的に §13 案(A)（別名権限新設）を採用し、PR #1659 / V116.001 にて実装完了済み。
 
 ---
 
