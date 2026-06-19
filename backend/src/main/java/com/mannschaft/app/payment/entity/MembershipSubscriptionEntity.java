@@ -14,6 +14,8 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.experimental.SuperBuilder;
+import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -305,7 +307,7 @@ public class MembershipSubscriptionEntity extends UuidV7Entity {
      * 現サイクル期間（{@code current_period_start}/{@code current_period_end}）を更新する（status は変えない）。
      *
      * <p>F08.9 P5 第三波: ACTIVE の通常サイクル更新（{@code invoice.paid}）や解約応答の期末日反映で用いる。
-     * {@code toBuilder()} での再構築は Lombok の {@code @Builder} が<b>親クラス {@link UuidV7Entity} の id を引き継がない</b>ため
+     * {@code toBuilder()} での再構築は Lombok の {@code @SuperBuilder} が<b>親クラス {@link UuidV7Entity} の id を引き継がない</b>ため
      * id を失う（member_payments の subscription 連結が null になる事故）。これを避け、本ミューテータで原子的に更新する。</p>
      *
      * @param periodStart 現サイクル開始日（null 可・null は更新しない）
