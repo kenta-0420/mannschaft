@@ -11,6 +11,50 @@ import type {
   CrossInviteRequest,
   ScheduleStatsResponse,
 } from '~/types/schedule'
+import type { components } from '~/types/generated'
+
+/**
+ * F03.1 (B) 組織出欠のステータス別件数。生成型をそのまま利用する。
+ * 生成型 components['schemas']['TeamBreakdownCounts']。
+ */
+export type AttendanceBreakdownCounts = components['schemas']['TeamBreakdownCounts']
+
+/**
+ * F03.1 (B) 組織出欠のチーム別内訳 1 行。
+ *
+ * 【生成型を使わず手書きしている理由（BE openapi 名称衝突の回避）】
+ * BE には別パッケージに同名の nested record が 2 つ存在する:
+ *   - schedule.dto.AttendanceTeamBreakdownResponse.TeamBreakdownItem
+ *       → { teamId, teamName, attending, partial, absent, undecided }
+ *   - survey.dto.SurveyTeamBreakdownResponse.TeamBreakdownItem
+ *       → { teamId, teamName, respondentCount, masked, questionResults }
+ * springdoc はこれらを単一の #/components/schemas/TeamBreakdownItem に畳み込むため、
+ * PR #1679（survey）の openapi 再生成でアンケート側の形が出欠側を上書きしてしまい、
+ * 生成型 components['schemas']['TeamBreakdownItem'] は出欠の attending/partial/absent/undecided を
+ * 失っている（生成型は誤り。BE ランタイム JSON は AttendanceTeamBreakdownResponse.TeamBreakdownItem の
+ * とおり attending/partial/absent/undecided を返す）。
+ * 生成型をそのまま使うと any/キャストでの握りつぶしが必要になるため、ここでは BE の record を正準として
+ * 正確に型付けする。根治は BE 側で @Schema(name=...) によるスキーマ名の衝突解消 + openapi 再生成。
+ * 詳細は本 PR の説明を参照。
+ */
+export interface AttendanceTeamBreakdownItem {
+  /** チームID。null は「組織直接メンバー」グループ（teamName も BE では null）。 */
+  teamId: number | null
+  teamName: string | null
+  attending: number
+  partial: number
+  absent: number
+  undecided: number
+}
+
+/** F03.1 (B) 組織出欠のチーム別内訳レスポンス。 */
+export interface AttendanceTeamBreakdownResponse {
+  scheduleId: number
+  /** 全体集計（実人数・DISTINCT 母数）。 */
+  total: AttendanceBreakdownCounts
+  /** チームごとの内訳（のべ人数・重複計上あり）。 */
+  byTeam: AttendanceTeamBreakdownItem[]
+}
 
 export function useScheduleAttendance() {
   const api = useApi()
@@ -52,6 +96,28 @@ export function useScheduleAttendance() {
     })
   }
 
+  /**
+   * F03.1 (B) 組織出欠のチーム別内訳（by_team）を取得する。
+   * 認可: 組織 ADMIN 限定（非 ADMIN は 403）。トグル OFF（既定）は本 EP ではなく従来の集計を使う。
+   * 設計書: docs/features/F03.1（出欠） / PR #1666
+   */
+  async function getAttendanceTeamBreakdown(orgPublicId: string, scheduleId: number) {
+    return api<{ data: AttendanceTeamBreakdownResponse }>(
+      `/api/v1/organizations/${orgPublicId}/schedules/${scheduleId}/attendances/team-breakdown`,
+    )
+  }
+
+  /**
+   * F03.1 (B) 組織出欠のチーム別内訳 CSV エクスポート。
+   * 認可: 組織 ADMIN 限定。Blob として受け取る。
+   */
+  async function exportAttendanceTeamBreakdownCsv(orgPublicId: string, scheduleId: number) {
+    return api(
+      `/api/v1/organizations/${orgPublicId}/schedules/${scheduleId}/attendances/team-breakdown/export`,
+      { responseType: 'blob' },
+    )
+  }
+
   // === Bulk Attendance (teams only) ===
   async function bulkUpdateAttendances(
     teamId: string,
@@ -87,6 +153,8 @@ export function useScheduleAttendance() {
     getAttendances,
     respondAttendance,
     exportAttendances,
+    getAttendanceTeamBreakdown,
+    exportAttendanceTeamBreakdownCsv,
     bulkUpdateAttendances,
     createCrossInvite,
     deleteCrossInvite,

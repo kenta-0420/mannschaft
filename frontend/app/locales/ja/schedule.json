@@ -67,6 +67,26 @@
       "cancel": "取消",
       "cancel_success": "予約タスクを取り消しました",
       "cancel_failed": "予約タスクの取消に失敗しました"
+    },
+    "attendanceTeamBreakdown": {
+      "toggleLabel": "チーム別に集計する",
+      "toggleHint": "配下チームごとに出欠を集計します（組織配信のみ）。",
+      "title": "チーム別出欠内訳",
+      "team": "チーム",
+      "attending": "出席",
+      "partial": "一部参加",
+      "absent": "欠席",
+      "undecided": "未回答",
+      "total": "全体",
+      "totalNote": "全体は実人数、チーム別はのべ人数（複数チーム所属は各チームに計上）です。",
+      "directMembers": "組織直接メンバー",
+      "reload": "再読み込み",
+      "retry": "再試行",
+      "exportCsv": "CSV出力",
+      "exportFailed": "CSVの出力に失敗しました。",
+      "fetchFailed": "チーム別出欠内訳の取得に失敗しました。",
+      "forbidden": "この内訳を表示する権限がありません。",
+      "empty": "チーム別出欠内訳の対象データがありません。"
     }
   }
 }

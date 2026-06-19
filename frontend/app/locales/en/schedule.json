@@ -67,6 +67,26 @@
       "cancel": "Cancel",
       "cancel_success": "The scheduled task has been cancelled",
       "cancel_failed": "Failed to cancel the scheduled task"
+    },
+    "attendanceTeamBreakdown": {
+      "toggleLabel": "Aggregate by team",
+      "toggleHint": "Aggregate attendance per member team (organization distribution only).",
+      "title": "Attendance by team",
+      "team": "Team",
+      "attending": "Attending",
+      "partial": "Partial",
+      "absent": "Absent",
+      "undecided": "Undecided",
+      "total": "Total",
+      "totalNote": "Total counts unique people; per-team counts may overlap (members in multiple teams are counted in each).",
+      "directMembers": "Direct organization members",
+      "reload": "Reload",
+      "retry": "Retry",
+      "exportCsv": "Export CSV",
+      "exportFailed": "Failed to export CSV.",
+      "fetchFailed": "Failed to load the attendance breakdown by team.",
+      "forbidden": "You do not have permission to view this breakdown.",
+      "empty": "No attendance breakdown data available."
     }
   }
 }
