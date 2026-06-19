@@ -136,20 +136,25 @@ public class ShiftScheduleService {
     public ShiftScheduleResponse updateSchedule(Long id, UpdateShiftScheduleRequest req) {
         ShiftScheduleEntity entity = findScheduleOrThrow(id);
 
-        ShiftScheduleEntity.ShiftScheduleEntityBuilder builder = entity.toBuilder();
-
-        if (req.getTitle() != null) builder.title(req.getTitle());
-        if (req.getPeriodType() != null) builder.periodType(ShiftPeriodType.valueOf(req.getPeriodType()));
-        if (req.getStartDate() != null) builder.startDate(req.getStartDate());
-        if (req.getEndDate() != null) builder.endDate(req.getEndDate());
-        if (req.getRequestDeadline() != null) builder.requestDeadline(req.getRequestDeadline());
-        if (req.getNote() != null) builder.note(req.getNote());
-
+        // 日付整合性検証（更新後の組み合わせで確認）
         LocalDate startDate = req.getStartDate() != null ? req.getStartDate() : entity.getStartDate();
         LocalDate endDate = req.getEndDate() != null ? req.getEndDate() : entity.getEndDate();
         validateDateRange(startDate, endDate);
 
-        entity = scheduleRepository.save(builder.build());
+        // managed entity を直接ミューテート（toBuilder().build() でなくドメインメソッドで更新）。
+        // ShiftScheduleEntity は @Builder(toBuilder=true) / @SuperBuilder でない / BaseEntity継承(自前id無)
+        // の3条件が揃うため、toBuilder().build()→save では id=null の新インスタンスが生成され
+        // UPDATE でなく INSERT が走る行重複バグになる。
+        entity.applyUpdate(
+                req.getTitle(),
+                req.getPeriodType() != null ? ShiftPeriodType.valueOf(req.getPeriodType()) : null,
+                req.getStartDate(),
+                req.getEndDate(),
+                req.getRequestDeadline(),
+                req.getNote()
+        );
+
+        scheduleRepository.save(entity);
 
         log.info("シフトスケジュール更新: id={}", id);
         return shiftMapper.toScheduleResponse(entity);

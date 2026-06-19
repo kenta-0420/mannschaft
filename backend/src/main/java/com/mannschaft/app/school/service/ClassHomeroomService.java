@@ -83,22 +83,14 @@ public class ClassHomeroomService {
                 .filter(e -> e.getTeamId().equals(teamId))
                 .orElseThrow(() -> new BusinessException(SchoolErrorCode.HOMEROOM_NOT_FOUND));
 
-        ClassHomeroomEntity updated = entity.toBuilder()
-                .homeroomTeacherUserId(
-                        request.getHomeroomTeacherUserId() != null
-                                ? request.getHomeroomTeacherUserId()
-                                : entity.getHomeroomTeacherUserId())
-                .assistantTeacherUserIds(
-                        request.getAssistantTeacherUserIds() != null
-                                ? serializeAssistantIds(request.getAssistantTeacherUserIds())
-                                : entity.getAssistantTeacherUserIds())
-                .effectiveUntil(
-                        request.getEffectiveUntil() != null
-                                ? request.getEffectiveUntil()
-                                : entity.getEffectiveUntil())
-                .build();
-        classHomeroomRepository.save(updated);
-        return ClassHomeroomResponse.from(updated, parseAssistantIds(updated.getAssistantTeacherUserIds()));
+        // toBuilder().build() で作り直すと BaseEntity.id が引き継がれず INSERT 化する（行重複）。
+        // managed entity を直接ミューテートし JPA dirty checking で UPDATE する。
+        String serializedAssistants = request.getAssistantTeacherUserIds() != null
+                ? serializeAssistantIds(request.getAssistantTeacherUserIds())
+                : null;
+        entity.applyUpdate(request.getHomeroomTeacherUserId(), serializedAssistants, request.getEffectiveUntil());
+        classHomeroomRepository.save(entity);
+        return ClassHomeroomResponse.from(entity, parseAssistantIds(entity.getAssistantTeacherUserIds()));
     }
 
     // ========================================

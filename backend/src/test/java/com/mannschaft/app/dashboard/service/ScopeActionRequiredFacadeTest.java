@@ -102,8 +102,8 @@ class ScopeActionRequiredFacadeTest {
             assertThat(result.circulation().items()).hasSize(1);
             assertThat(result.survey().items()).hasSize(1);
             assertThat(result.attendance().items()).hasSize(1);
-            // 入口の所属検証が呼ばれること（欠陥Z根治: ORGANIZATION配下チームメンバーも含めるため checkMembershipOrDescendant を使用）
-            verify(accessControlService).checkMembershipOrDescendant(USER_ID, SCOPE_ID, SCOPE_TYPE);
+            // 入口の所属検証が呼ばれること（配信＝受信権: 集約入口は広め includeSupporters=true で通す）
+            verify(accessControlService).checkMembershipOrDescendant(USER_ID, SCOPE_ID, SCOPE_TYPE, true);
         }
 
         @Test
@@ -131,7 +131,7 @@ class ScopeActionRequiredFacadeTest {
         @DisplayName("入口の checkMembershipOrDescendant が 403 を投げると全体が拒否される")
         void 非所属は拒否() {
             doThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .when(accessControlService).checkMembershipOrDescendant(USER_ID, SCOPE_ID, SCOPE_TYPE);
+                    .when(accessControlService).checkMembershipOrDescendant(USER_ID, SCOPE_ID, SCOPE_TYPE, true);
 
             assertThatThrownBy(() -> facade.getActionRequired(USER_ID, SCOPE_TYPE, SCOPE_ID))
                     .isInstanceOf(BusinessException.class);

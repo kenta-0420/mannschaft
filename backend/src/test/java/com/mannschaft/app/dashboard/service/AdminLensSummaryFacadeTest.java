@@ -1,10 +1,13 @@
 package com.mannschaft.app.dashboard.service;
 
 import com.mannschaft.app.auth.service.UserActiveCountQueryService;
+import com.mannschaft.app.budget.service.BudgetAdminSummaryQueryService;
+import com.mannschaft.app.budget.service.BudgetAdminSummaryQueryService.BudgetAdminSummary;
 import com.mannschaft.app.chat.service.InquiryAlertQueryService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.dashboard.dto.AdminBudgetSummaryResponse;
 import com.mannschaft.app.dashboard.dto.AdminBusinessAlertScopeResponse;
 import com.mannschaft.app.dashboard.dto.AdminMemberStatsResponse;
 import com.mannschaft.app.dashboard.dto.AdminPaymentSummaryResponse;
@@ -26,6 +29,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -65,6 +70,8 @@ class AdminLensSummaryFacadeTest {
     private UserActiveCountQueryService userActiveCountQueryService;
     @Mock
     private ReservationAdminQueryService reservationAdminQueryService;
+    @Mock
+    private BudgetAdminSummaryQueryService budgetAdminSummaryQueryService;
 
     @InjectMocks
     private AdminLensSummaryFacade facade;
@@ -243,5 +250,92 @@ class AdminLensSummaryFacadeTest {
                 .isInstanceOf(BusinessException.class);
 
         verifyNoInteractions(reservationAdminQueryService);
+    }
+
+    // ── 予算サマリ（team / org）P3b Wave3 ──────────────────────────
+
+    private static BudgetAdminSummary sampleBudget() {
+        return new BudgetAdminSummary(
+                true, "2026年度",
+                new BigDecimal("1500"), new BigDecimal("1400"), new BigDecimal("100"), 1L);
+    }
+
+    @Test
+    @DisplayName("getTeamBudgetSummary → ADMIN は通る（isAdmin=true）。配分/実績/残/超過カテゴリ数を集約")
+    void teamBudgetSummary_admin() {
+        given(accessControlService.isAdmin(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        given(budgetAdminSummaryQueryService.summaryForScope("TEAM", TEAM_ID)).willReturn(sampleBudget());
+
+        AdminBudgetSummaryResponse result = facade.getTeamBudgetSummary(USER_ID, TEAM_ID);
+
+        assertThat(result.hasCurrentFiscalYear()).isTrue();
+        assertThat(result.fiscalYearName()).isEqualTo("2026年度");
+        assertThat(result.allocation()).isEqualByComparingTo("1500");
+        assertThat(result.actual()).isEqualByComparingTo("1400");
+        assertThat(result.remaining()).isEqualByComparingTo("100");
+        assertThat(result.overBudgetCategoryCount()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("getTeamBudgetSummary → DEPUTY は TEAM_BUDGET_VIEW 保有時のみ通る（isAdmin=false・hasPermission=true）")
+    void teamBudgetSummary_deputyWithPermission() {
+        given(accessControlService.isAdmin(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+        given(accessControlService.hasPermission(USER_ID, TEAM_ID, "TEAM", "TEAM_BUDGET_VIEW")).willReturn(true);
+        given(budgetAdminSummaryQueryService.summaryForScope("TEAM", TEAM_ID)).willReturn(sampleBudget());
+
+        AdminBudgetSummaryResponse result = facade.getTeamBudgetSummary(USER_ID, TEAM_ID);
+
+        assertThat(result.hasCurrentFiscalYear()).isTrue();
+    }
+
+    @Test
+    @DisplayName("getTeamBudgetSummary → DEPUTY が TEAM_BUDGET_VIEW 未保有なら 403 で集計しない（isAdmin=false・hasPermission=false）")
+    void teamBudgetSummary_deputyWithoutPermissionForbidden() {
+        given(accessControlService.isAdmin(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+        given(accessControlService.hasPermission(USER_ID, TEAM_ID, "TEAM", "TEAM_BUDGET_VIEW")).willReturn(false);
+
+        assertThatThrownBy(() -> facade.getTeamBudgetSummary(USER_ID, TEAM_ID))
+                .isInstanceOf(BusinessException.class);
+
+        verifyNoInteractions(budgetAdminSummaryQueryService);
+    }
+
+    @Test
+    @DisplayName("getOrgBudgetSummary → ADMIN/BUDGET_VIEW 保有 DEPUTY が通る（checkAdminOrHasPermission 通過）")
+    void orgBudgetSummary_ok() {
+        given(budgetAdminSummaryQueryService.summaryForScope("ORGANIZATION", ORG_ID)).willReturn(sampleBudget());
+
+        AdminBudgetSummaryResponse result = facade.getOrgBudgetSummary(USER_ID, ORG_ID);
+
+        verify(accessControlService).checkAdminOrHasPermission(USER_ID, ORG_ID, "ORGANIZATION", "BUDGET_VIEW");
+        assertThat(result.allocation()).isEqualByComparingTo("1500");
+    }
+
+    @Test
+    @DisplayName("getOrgBudgetSummary → 非ADMIN/BUDGET_VIEW未保有/他org IDOR は 403 で伝播し集計しない")
+    void orgBudgetSummaryForbidden() {
+        willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .given(accessControlService)
+                .checkAdminOrHasPermission(USER_ID, ORG_ID, "ORGANIZATION", "BUDGET_VIEW");
+
+        assertThatThrownBy(() -> facade.getOrgBudgetSummary(USER_ID, ORG_ID))
+                .isInstanceOf(BusinessException.class);
+
+        verifyNoInteractions(budgetAdminSummaryQueryService);
+    }
+
+    @Test
+    @DisplayName("getTeamBudgetSummary → 現年度未設定でも例外でなく未設定応答を返す（has_current_fiscal_year=false）")
+    void teamBudgetSummary_noFiscalYear() {
+        given(accessControlService.isAdmin(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        given(budgetAdminSummaryQueryService.summaryForScope("TEAM", TEAM_ID))
+                .willReturn(BudgetAdminSummary.empty());
+
+        AdminBudgetSummaryResponse result = facade.getTeamBudgetSummary(USER_ID, TEAM_ID);
+
+        assertThat(result.hasCurrentFiscalYear()).isFalse();
+        assertThat(result.fiscalYearName()).isNull();
+        assertThat(result.allocation()).isEqualByComparingTo("0");
+        assertThat(result.overBudgetCategoryCount()).isZero();
     }
 }

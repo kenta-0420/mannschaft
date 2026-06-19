@@ -78,3 +78,28 @@ export interface AdminReservationSummary {
   /** 本日の予約数（today_count・本日 JST の CONFIRMED/PENDING）。 */
   todayCount: number
 }
+
+/**
+ * 予算サマリ（ADMIN_TEAM_BUDGET / ADMIN_ORG_BUDGET）— P3b Wave3。team/org 両対応。
+ *
+ * 対応 EP:
+ *   - GET /api/v1/dashboard/team/{teamSlug}/admin-budget-summary
+ *   - GET /api/v1/dashboard/organization/{orgSlug}/admin-budget-summary
+ *
+ * 現年度（today を期間に含む年度）の集計。現年度が無い場合は hasCurrentFiscalYear=false・各数値0・名称null。
+ * 配分=配分合計 / 実績=承認済みEXPENSE合計 / 残=配分−実績 / 超過カテゴリ数=カテゴリ毎の残が負の数。
+ */
+export interface AdminBudgetSummary {
+  /** 現年度が存在するか（has_current_fiscal_year）。false なら数値は0・名称はnull。 */
+  hasCurrentFiscalYear: boolean
+  /** 現年度名（fiscal_year_name・未設定時 null）。 */
+  fiscalYearName: string | null
+  /** 配分合計（allocation）。 */
+  allocation: number
+  /** 実績合計（actual・承認済み EXPENSE）。 */
+  actual: number
+  /** 残（remaining・配分−実績・負になり得る）。 */
+  remaining: number
+  /** 超過カテゴリ数（over_budget_category_count）。 */
+  overBudgetCategoryCount: number
+}

@@ -3,6 +3,7 @@ package com.mannschaft.app.dashboard.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.dashboard.dto.AdminBudgetSummaryResponse;
 import com.mannschaft.app.dashboard.dto.AdminBusinessAlertScopeResponse;
 import com.mannschaft.app.dashboard.dto.AdminMemberStatsResponse;
 import com.mannschaft.app.dashboard.dto.AdminPaymentSummaryResponse;
@@ -24,6 +25,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -193,6 +195,75 @@ class AdminLensSummaryControllerTest {
         assertThat(res.getBody().getData().pendingCount()).isEqualTo(6);
         assertThat(res.getBody().getData().todayCount()).isEqualTo(9);
         verify(adminLensSummaryFacade).getTeamReservationSummary(USER_ID, TEAM_ID);
+    }
+
+    // ── P3b Wave3: 予算サマリ ──────────────────────────
+
+    @Test
+    @DisplayName("GET team/{slug}/admin-budget-summary: 200・配分/実績/残/超過カテゴリ数")
+    void teamBudgetSummary200() {
+        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        given(adminLensSummaryFacade.getTeamBudgetSummary(USER_ID, TEAM_ID))
+                .willReturn(AdminBudgetSummaryResponse.builder()
+                        .hasCurrentFiscalYear(true).fiscalYearName("2026年度")
+                        .allocation(new BigDecimal("1500")).actual(new BigDecimal("1400"))
+                        .remaining(new BigDecimal("100")).overBudgetCategoryCount(1L).build());
+
+        ResponseEntity<ApiResponse<AdminBudgetSummaryResponse>> res =
+                controller.getTeamBudgetSummary(TEAM_SLUG);
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(res.getBody().getData().hasCurrentFiscalYear()).isTrue();
+        assertThat(res.getBody().getData().allocation()).isEqualByComparingTo("1500");
+        assertThat(res.getBody().getData().overBudgetCategoryCount()).isEqualTo(1L);
+        verify(adminLensSummaryFacade).getTeamBudgetSummary(USER_ID, TEAM_ID);
+    }
+
+    @Test
+    @DisplayName("GET organization/{slug}/admin-budget-summary: 200")
+    void orgBudgetSummary200() {
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        given(adminLensSummaryFacade.getOrgBudgetSummary(USER_ID, ORG_ID))
+                .willReturn(AdminBudgetSummaryResponse.builder()
+                        .hasCurrentFiscalYear(true).fiscalYearName("2026年度")
+                        .allocation(new BigDecimal("3000")).actual(new BigDecimal("1000"))
+                        .remaining(new BigDecimal("2000")).overBudgetCategoryCount(0L).build());
+
+        ResponseEntity<ApiResponse<AdminBudgetSummaryResponse>> res =
+                controller.getOrgBudgetSummary(ORG_SLUG);
+
+        assertThat(res.getBody().getData().allocation()).isEqualByComparingTo("3000");
+        assertThat(res.getBody().getData().overBudgetCategoryCount()).isZero();
+        verify(adminLensSummaryFacade).getOrgBudgetSummary(USER_ID, ORG_ID);
+    }
+
+    @Test
+    @DisplayName("GET team/{slug}/admin-budget-summary: 現年度未設定 → has_current_fiscal_year=false")
+    void teamBudgetSummary_noFiscalYear() {
+        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        given(adminLensSummaryFacade.getTeamBudgetSummary(USER_ID, TEAM_ID))
+                .willReturn(AdminBudgetSummaryResponse.builder()
+                        .hasCurrentFiscalYear(false).fiscalYearName(null)
+                        .allocation(BigDecimal.ZERO).actual(BigDecimal.ZERO)
+                        .remaining(BigDecimal.ZERO).overBudgetCategoryCount(0L).build());
+
+        ResponseEntity<ApiResponse<AdminBudgetSummaryResponse>> res =
+                controller.getTeamBudgetSummary(TEAM_SLUG);
+
+        assertThat(res.getBody().getData().hasCurrentFiscalYear()).isFalse();
+        assertThat(res.getBody().getData().fiscalYearName()).isNull();
+    }
+
+    @Test
+    @DisplayName("team admin-budget-summary: 権限なし DEPUTY（403）→ Facade の COMMON_002 が伝播")
+    void teamBudgetSummaryForbidden403() {
+        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .when(adminLensSummaryFacade).getTeamBudgetSummary(USER_ID, TEAM_ID);
+
+        assertThatThrownBy(() -> controller.getTeamBudgetSummary(TEAM_SLUG))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", CommonErrorCode.COMMON_002);
     }
 
     @Test

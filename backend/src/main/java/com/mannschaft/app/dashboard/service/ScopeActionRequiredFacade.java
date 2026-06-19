@@ -63,9 +63,11 @@ public class ScopeActionRequiredFacade {
      */
     public ActionRequiredSummaryResponse getActionRequired(Long userId, String scopeType, Long scopeId) {
         // 集約の入口で所属検証（各ドメイン Service 内でも再度 checkMembershipOrDescendant される＝二重防御）。
-        // 欠陥Z 根治: ORGANIZATION スコープでは配下チームのみ所属メンバーも応答母集団に含める
-        // （純 SUPPORTER は除外）。TEAM は従来どおり直接所属のみ。
-        accessControlService.checkMembershipOrDescendant(userId, scopeId, scopeType);
+        // 配信＝受信権 統一: 集約入口は単一コンテンツではないため広め（includeSupporters=true）で通す。
+        // トグル ON で配信された出欠/アンケに回答できる配下 SUPPORTER も入口で弾かれないようにする。
+        // per-content の絞りは各未回答クエリ（buildAttendance/buildSurvey）が userId の materialize 済み行で
+        // 自然に効くため、過小排除も漏洩も起きない（母集団外ユーザーは未回答 0 件になる）。
+        accessControlService.checkMembershipOrDescendant(userId, scopeId, scopeType, true);
 
         CompletableFuture<ActionRequiredSummaryResponse.CirculationSection> circulationFuture =
                 CompletableFuture.supplyAsync(() -> buildCirculation(userId, scopeType, scopeId));

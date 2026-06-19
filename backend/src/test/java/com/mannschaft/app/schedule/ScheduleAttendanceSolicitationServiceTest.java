@@ -111,7 +111,7 @@ class ScheduleAttendanceSolicitationServiceTest {
         given(userRoleRepository.findUserIdsByScope("TEAM", TEAM_ID))
                 .willReturn(List.of(201L, 202L));
         NotificationEntity dummy = org.mockito.Mockito.mock(NotificationEntity.class);
-        given(notificationService.createNotification(
+        given(notificationService.createNotificationPreAuthorized(
                 anyLong(), any(), any(), any(), any(), any(), anyLong(), any(), anyLong(), any(), any()))
                 .willReturn(dummy);
 
@@ -122,7 +122,7 @@ class ScheduleAttendanceSolicitationServiceTest {
         verify(attendanceRepository, times(1)).saveAll(any());
         verify(attendanceRepository, never()).save(any());
         // 募集通知は2名分作成・配信される
-        verify(notificationService, times(2)).createNotification(
+        verify(notificationService, times(2)).createNotificationPreAuthorized(
                 anyLong(), eq("SCHEDULE_ATTENDANCE_REQUEST"), any(), any(), any(),
                 eq("SCHEDULE"), eq(SCHEDULE_ID), any(), eq(TEAM_ID), any(), eq(999L));
         verify(notificationDispatchService, times(2)).dispatch(dummy);
@@ -155,7 +155,7 @@ class ScheduleAttendanceSolicitationServiceTest {
         given(organizationMembershipService.resolveOrgDistributionUserIds(ORG_ID, false))
                 .willReturn(List.of(301L, 302L, 303L));
         NotificationEntity dummy = org.mockito.Mockito.mock(NotificationEntity.class);
-        given(notificationService.createNotification(
+        given(notificationService.createNotificationPreAuthorized(
                 anyLong(), any(), any(), any(), any(), any(), anyLong(), any(), anyLong(), any(), any()))
                 .willReturn(dummy);
 
@@ -166,7 +166,7 @@ class ScheduleAttendanceSolicitationServiceTest {
         verify(attendanceRepository, times(1)).saveAll(any());
         verify(attendanceRepository, never()).save(any());
         // 募集通知は3名分作成・配信される（scope=ORGANIZATION・scopeId=ORG_ID）
-        verify(notificationService, times(3)).createNotification(
+        verify(notificationService, times(3)).createNotificationPreAuthorized(
                 anyLong(), eq("SCHEDULE_ATTENDANCE_REQUEST"), any(), any(), any(),
                 eq("SCHEDULE"), eq(SCHEDULE_ID), any(), eq(ORG_ID), any(), eq(999L));
         verify(notificationDispatchService, times(3)).dispatch(dummy);
@@ -183,7 +183,7 @@ class ScheduleAttendanceSolicitationServiceTest {
         given(organizationMembershipService.resolveOrgDistributionUserIds(ORG_ID, true))
                 .willReturn(List.of(301L, 302L));
         NotificationEntity dummy = org.mockito.Mockito.mock(NotificationEntity.class);
-        given(notificationService.createNotification(
+        given(notificationService.createNotificationPreAuthorized(
                 anyLong(), any(), any(), any(), any(), any(), anyLong(), any(), anyLong(), any(), any()))
                 .willReturn(dummy);
 
@@ -211,7 +211,7 @@ class ScheduleAttendanceSolicitationServiceTest {
         // then
         verify(attendanceRepository, never()).saveAll(any());
         verify(attendanceRepository, never()).save(any());
-        verify(notificationService, never()).createNotification(
+        verify(notificationService, never()).createNotificationPreAuthorized(
                 anyLong(), any(), any(), any(), any(), any(), anyLong(), any(), anyLong(), any(), any());
     }
 
@@ -228,7 +228,7 @@ class ScheduleAttendanceSolicitationServiceTest {
         // then: 生成も通知もされない
         verify(attendanceRepository, never()).save(any());
         verify(userRoleRepository, never()).findUserIdsByScope(any(), anyLong());
-        verify(notificationService, never()).createNotification(
+        verify(notificationService, never()).createNotificationPreAuthorized(
                 anyLong(), any(), any(), any(), any(), any(), anyLong(), any(), anyLong(), any(), any());
     }
 
@@ -255,7 +255,7 @@ class ScheduleAttendanceSolicitationServiceTest {
 
         // then
         verify(attendanceRepository, never()).save(any());
-        verify(notificationService, never()).createNotification(
+        verify(notificationService, never()).createNotificationPreAuthorized(
                 anyLong(), any(), any(), any(), any(), any(), anyLong(), any(), anyLong(), any(), any());
     }
 
@@ -272,7 +272,7 @@ class ScheduleAttendanceSolicitationServiceTest {
 
         // then
         verify(attendanceRepository, never()).save(any());
-        verify(notificationService, never()).createNotification(
+        verify(notificationService, never()).createNotificationPreAuthorized(
                 anyLong(), any(), any(), any(), any(), any(), anyLong(), any(), anyLong(), any(), any());
     }
 }

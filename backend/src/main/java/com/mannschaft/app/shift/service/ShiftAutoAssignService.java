@@ -317,10 +317,10 @@ public class ShiftAutoAssignService {
                         .distinct()
                         .toList();
 
-                ShiftSlotEntity updated = slot.toBuilder()
-                        .assignedUserIds(serializeList(userIds))
-                        .build();
-                slotRepository.save(updated);
+                // managed entity を直接ミューテート（toBuilder().build() 行重複バグ回避）。
+                // slot は findById で取得した managed entity なので直接ミューテートで UPDATE になる。
+                slot.updateAssignedUserIds(serializeList(userIds));
+                slotRepository.save(slot);
             });
         }
     }

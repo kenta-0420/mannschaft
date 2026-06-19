@@ -108,6 +108,14 @@
         "today": "本日の予約",
         "fetchFailed": "予約サマリを取得できませんでした"
       },
+      "budget": {
+        "allocation": "配分",
+        "actual": "実績",
+        "remaining": "残",
+        "overBudgetCount": "超過カテゴリ数",
+        "noFiscalYear": "当年度未設定",
+        "fetchFailed": "予算サマリを取得できませんでした"
+      },
       "modules": {
         "summary": "有効 {enabled} / 全 {total}",
         "fetchFailed": "モジュール情報を取得できませんでした"
