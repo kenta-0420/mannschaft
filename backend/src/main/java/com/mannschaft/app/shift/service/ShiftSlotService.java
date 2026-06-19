@@ -92,7 +92,7 @@ public class ShiftSlotService {
     @Transactional
     public List<ShiftSlotResponse> bulkCreateSlots(Long scheduleId, BulkCreateShiftSlotRequest req) {
         List<ShiftSlotEntity> entities = req.getSlots().stream()
-                .map(slotReq -> ShiftSlotEntity.builder()
+                .map(slotReq -> (ShiftSlotEntity) ShiftSlotEntity.builder()
                         .scheduleId(scheduleId)
                         .slotDate(slotReq.getSlotDate())
                         .startTime(slotReq.getStartTime())
