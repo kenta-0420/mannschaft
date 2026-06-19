@@ -458,9 +458,10 @@ class FlywayExistingDataRestrictUserAuditFkMigrationTest {
     private long insertAdvertiserAccount(Connection c, long orgId, long approvedBy) throws SQLException {
         try (PreparedStatement ps = c.prepareStatement("""
                 INSERT INTO advertiser_accounts
-                    (organization_id, company_name, contact_email, approved_by, approved_at)
-                VALUES (?, '最終局面5C広告主', 'adv-5c@example.com', ?, NOW())
+                    (scope_type, scope_id, company_name, contact_email, approved_by, approved_at)
+                VALUES ('ORGANIZATION', ?, '最終局面5C広告主', 'adv-5c@example.com', ?, NOW())
                 """, Statement.RETURN_GENERATED_KEYS)) {
+            // 注: organization_id は F09.17 Phase 11-d (V67.026) で撤廃され scope_type/scope_id(NOT NULL) に置換済。
             ps.setLong(1, orgId);
             ps.setLong(2, approvedBy);
             ps.executeUpdate();
