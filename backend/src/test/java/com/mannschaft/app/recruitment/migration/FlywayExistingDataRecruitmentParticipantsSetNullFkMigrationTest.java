@@ -119,19 +119,19 @@ class FlywayExistingDataRecruitmentParticipantsSetNullFkMigrationTest {
         assertThat(restResult.success).as("V102.001 を含む残りのマイグレーションが成功すること").isTrue();
 
         try (Connection c = conn()) {
-            // then-1: 監査列 FK が撤廃され、fk_rp_user（RESTRICT・対象外）は残る
+            // then-1: 監査列 FK が撤廃される。
+            //   fk_rp_user（user_id RESTRICT → users）の残存対照は、最終局面 5c(V116.001) で当該 FK を撤廃するため除去。
+            //   ※ 本テストの主眼（applied_by/cancelled_by SET NULL 撤廃onlyで監査列が孤児値を保持すること）は不変。
+            //     本テストが物理削除するのは操作者 user（auditUserId）のみで subject user は削除しないため、fk_rp_user の撤廃は検証経路に影響しない。
             assertThat(foreignKeyExists(c, "recruitment_participants", "fk_rp_applied_by"))
                     .as("V102.001 で fk_rp_applied_by が撤廃されること").isFalse();
             assertThat(foreignKeyExists(c, "recruitment_participants", "fk_rp_cancelled_by"))
                     .as("V102.001 で fk_rp_cancelled_by が撤廃されること").isFalse();
-            assertThat(foreignKeyExists(c, "recruitment_participants", "fk_rp_user"))
-                    .as("対象外の fk_rp_user（RESTRICT）は残ること").isTrue();
 
             assertThat(rowExists(c, "recruitment_participants", participantId))
                     .as("FK 撤廃後も既存参加者行が生存していること").isTrue();
 
             // then-2（中核）: 操作者 user（applied_by/cancelled_by のみで参照）を物理削除しても監査列が NULL 化されず孤児値を保持
-            //   subject user は fk_rp_user RESTRICT で参照されるが、audit user は撤廃済みの監査列でしか参照されないため削除可能。
             deleteUserPhysically(c, auditUserId);
             assertThat(rowExists(c, "users", auditUserId))
                     .as("親 users 行（操作者）が物理削除されたこと").isFalse();

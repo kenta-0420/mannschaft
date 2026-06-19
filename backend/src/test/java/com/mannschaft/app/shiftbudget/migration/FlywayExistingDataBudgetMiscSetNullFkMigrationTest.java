@@ -204,9 +204,9 @@ class FlywayExistingDataBudgetMiscSetNullFkMigrationTest {
             // 対象外（対照）: 撤廃済でない同一/隣接ドメイン FK が撤廃後も残存していること。
             // 注: 過去 wave で既に撤廃済の FK を対照に使うと誤って fail するため、確実に net-active な FK のみ使う。
             //   ・fk_oem_org（organization_enabled_modules → organizations RESTRICT）は最終局面 5a(V114.001) で撤廃されたため対照から除去。
-            //   ・fk_promotions_created_by（promotions → users RESTRICT・作成者退会防止）は本 PR でも対象外で残存。
-            assertThat(foreignKeyExists(c, "promotions", "fk_promotions_created_by"))
-                    .as("fk_promotions_created_by（users RESTRICT・作成者）は撤廃対象外で残存すること").isTrue();
+            //   ・fk_promotions_created_by（promotions → users RESTRICT・作成者退会防止）は最終局面 5c(V116.001) で撤廃のため対照から除去。
+            //     ※ 本テストの主眼（approved_by SET NULL 撤廃onlyで監査列が孤児値を保持すること）は不変。
+            //       promoCreatedBy user は本テストで物理削除しないため、fk_promotions_created_by の撤廃は本テストの検証経路に影響しない。
 
             // then-2: 既存子行が生存していること
             assertThat(rowExists(c, "organization_enabled_modules", oemId))

@@ -114568,87 +114568,6 @@
         }
       }
     },
-    "/api/v1/organizations/{orgPublicId}/schedules/{scheduleId}/attendances/team-breakdown": {
-      "get": {
-        "tags": [
-          "組織スケジュール管理"
-        ],
-        "summary": "組織出欠チーム別内訳集計",
-        "operationId": "getAttendanceTeamBreakdown",
-        "parameters": [
-          {
-            "name": "orgPublicId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "scheduleId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "取得成功",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseAttendanceTeamBreakdownResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/organizations/{orgPublicId}/schedules/{scheduleId}/attendances/team-breakdown/export": {
-      "get": {
-        "tags": [
-          "組織スケジュール管理"
-        ],
-        "summary": "組織出欠チーム別内訳CSVエクスポート",
-        "operationId": "exportAttendanceTeamBreakdownCsv",
-        "parameters": [
-          {
-            "name": "orgPublicId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "scheduleId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "エクスポート成功",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "type": "string",
-                  "format": "byte"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/organizations/{orgPublicId}/schedules/{scheduleId}/attendances/export": {
       "get": {
         "tags": [
@@ -133611,6 +133530,10 @@
           "audit": {
             "$ref": "#/components/schemas/TodoAuditDto"
           },
+          "progressManual": {
+            "type": "boolean",
+            "deprecated": true
+          },
           "priority": {
             "type": "string",
             "deprecated": true
@@ -133632,6 +133555,34 @@
               "$ref": "#/components/schemas/TodoResponse"
             }
           },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32",
+            "deprecated": true
+          },
+          "scopeType": {
+            "type": "string",
+            "deprecated": true
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/UserInfo",
+            "deprecated": true
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "deprecated": true
+          },
+          "projectId": {
+            "type": "integer",
+            "format": "int64",
+            "deprecated": true
+          },
+          "dueTime": {
+            "type": "string",
+            "deprecated": true,
+            "example": "14:30:00"
+          },
           "parentId": {
             "type": "integer",
             "format": "int64",
@@ -133642,38 +133593,6 @@
             "deprecated": true
           },
           "depth": {
-            "type": "integer",
-            "format": "int32",
-            "deprecated": true
-          },
-          "dueDate": {
-            "type": "string",
-            "format": "date",
-            "deprecated": true
-          },
-          "createdBy": {
-            "$ref": "#/components/schemas/UserInfo",
-            "deprecated": true
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time",
-            "deprecated": true
-          },
-          "progressRate": {
-            "type": "number",
-            "deprecated": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "deprecated": true
-          },
-          "scopeType": {
-            "type": "string",
-            "deprecated": true
-          },
-          "sortOrder": {
             "type": "integer",
             "format": "int32",
             "deprecated": true
@@ -133692,6 +133611,24 @@
             "type": "string",
             "deprecated": true
           },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "deprecated": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "deprecated": true
+          },
+          "progressRate": {
+            "type": "number",
+            "deprecated": true
+          },
+          "completedBy": {
+            "$ref": "#/components/schemas/UserInfo",
+            "deprecated": true
+          },
           "startDate": {
             "type": "string",
             "format": "date",
@@ -133702,30 +133639,7 @@
             "format": "int64",
             "deprecated": true
           },
-          "progressManual": {
-            "type": "boolean",
-            "deprecated": true
-          },
-          "completedBy": {
-            "$ref": "#/components/schemas/UserInfo",
-            "deprecated": true
-          },
-          "projectId": {
-            "type": "integer",
-            "format": "int64",
-            "deprecated": true
-          },
-          "dueTime": {
-            "type": "string",
-            "deprecated": true,
-            "example": "14:30:00"
-          },
           "descendantCompletedCount": {
-            "type": "integer",
-            "format": "int32",
-            "deprecated": true
-          },
-          "descendantTotalCount": {
             "type": "integer",
             "format": "int32",
             "deprecated": true
@@ -133737,6 +133651,11 @@
           },
           "statusLabel": {
             "$ref": "#/components/schemas/TodoStatusLabelInfo",
+            "deprecated": true
+          },
+          "descendantTotalCount": {
+            "type": "integer",
+            "format": "int32",
             "deprecated": true
           }
         }
@@ -134300,10 +134219,10 @@
             "type": "string",
             "format": "date-time"
           },
-          "ownMemo": {
+          "editable": {
             "type": "boolean"
           },
-          "editable": {
+          "ownMemo": {
             "type": "boolean"
           }
         }
@@ -138830,10 +138749,10 @@
           "note": {
             "type": "string"
           },
-          "xposition": {
+          "yposition": {
             "type": "number"
           },
-          "yposition": {
+          "xposition": {
             "type": "number"
           }
         }
@@ -139090,10 +139009,10 @@
             "maxLength": 300,
             "minLength": 0
           },
-          "xposition": {
+          "yposition": {
             "type": "number"
           },
-          "yposition": {
+          "xposition": {
             "type": "number"
           }
         },
@@ -152583,14 +152502,14 @@
             "type": "string",
             "format": "uuid"
           },
-          "postedAsTypeOrDefault": {
+          "scopeTypeOrDefault": {
             "type": "string"
           },
           "scopeIdOrDefault": {
             "type": "integer",
             "format": "int64"
           },
-          "scopeTypeOrDefault": {
+          "postedAsTypeOrDefault": {
             "type": "string"
           }
         }
@@ -153193,10 +153112,10 @@
               "ABSOLUTE"
             ]
           },
-          "remindBeforeMinutesValid": {
+          "remindAtValid": {
             "type": "boolean"
           },
-          "remindAtValid": {
+          "remindBeforeMinutesValid": {
             "type": "boolean"
           }
         }
@@ -153291,9 +153210,6 @@
             "$ref": "#/components/schemas/ScheduledAttendanceRequest"
           },
           "includeSupporters": {
-            "type": "boolean"
-          },
-          "teamBreakdownEnabled": {
             "type": "boolean"
           }
         },
@@ -155443,6 +155359,13 @@
             "type": "string",
             "maxLength": 2000,
             "minLength": 0
+          },
+          "approvalMode": {
+            "type": "string",
+            "enum": [
+              "AUTO",
+              "MANUAL"
+            ]
           }
         },
         "required": [
@@ -155498,6 +155421,9 @@
           "pricing": {
             "$ref": "#/components/schemas/SlotPricingDto"
           },
+          "policy": {
+            "$ref": "#/components/schemas/SlotPolicyDto"
+          },
           "audit": {
             "$ref": "#/components/schemas/SlotAuditDto"
           }
@@ -155537,6 +155463,14 @@
           "endTime": {
             "type": "string",
             "example": "14:30:00"
+          }
+        }
+      },
+      "SlotPolicyDto": {
+        "type": "object",
+        "properties": {
+          "approvalMode": {
+            "type": "string"
           }
         }
       },
@@ -180376,10 +180310,10 @@
               "ABSOLUTE"
             ]
           },
-          "remindBeforeMinutesValid": {
+          "remindAtValid": {
             "type": "boolean"
           },
-          "remindAtValid": {
+          "remindBeforeMinutesValid": {
             "type": "boolean"
           }
         }
@@ -180683,6 +180617,16 @@
             "type": "string",
             "maxLength": 2000,
             "minLength": 0
+          },
+          "approvalMode": {
+            "type": "string",
+            "enum": [
+              "AUTO",
+              "MANUAL"
+            ]
+          },
+          "clearApprovalMode": {
+            "type": "boolean"
           }
         }
       },
@@ -182155,6 +182099,12 @@
           "custom_fields": {
             "type": "boolean"
           },
+          "homepageUrlVisible": {
+            "type": "boolean"
+          },
+          "establishedDateVisible": {
+            "type": "boolean"
+          },
           "customFieldsVisible": {
             "type": "boolean"
           },
@@ -182162,12 +182112,6 @@
             "type": "boolean"
           },
           "officersVisible": {
-            "type": "boolean"
-          },
-          "establishedDateVisible": {
-            "type": "boolean"
-          },
-          "homepageUrlVisible": {
             "type": "boolean"
           }
         }
@@ -187035,13 +186979,19 @@
       "PageJoinRequestResponse": {
         "type": "object",
         "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
           },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -187067,12 +187017,6 @@
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "empty": {
             "type": "boolean"
           }
@@ -187096,10 +187040,10 @@
             "type": "integer",
             "format": "int32"
           },
-          "paged": {
+          "unpaged": {
             "type": "boolean"
           },
-          "unpaged": {
+          "paged": {
             "type": "boolean"
           }
         }
@@ -190294,15 +190238,25 @@
           "audit": {
             "$ref": "#/components/schemas/ProjectAuditDto"
           },
+          "totalTodos": {
+            "type": "integer",
+            "format": "int32",
+            "deprecated": true
+          },
+          "completedTodos": {
+            "type": "integer",
+            "format": "int32",
+            "deprecated": true
+          },
           "color": {
             "type": "string",
             "deprecated": true
           },
-          "status": {
-            "type": "string",
+          "createdBy": {
+            "$ref": "#/components/schemas/UserInfo",
             "deprecated": true
           },
-          "description": {
+          "status": {
             "type": "string",
             "deprecated": true
           },
@@ -190311,16 +190265,8 @@
             "format": "date",
             "deprecated": true
           },
-          "emoji": {
+          "description": {
             "type": "string",
-            "deprecated": true
-          },
-          "createdBy": {
-            "$ref": "#/components/schemas/UserInfo",
-            "deprecated": true
-          },
-          "progressRate": {
-            "type": "number",
             "deprecated": true
           },
           "visibility": {
@@ -190331,14 +190277,12 @@
             "type": "string",
             "deprecated": true
           },
-          "completedTodos": {
-            "type": "integer",
-            "format": "int32",
+          "progressRate": {
+            "type": "number",
             "deprecated": true
           },
-          "totalTodos": {
-            "type": "integer",
-            "format": "int32",
+          "emoji": {
+            "type": "string",
             "deprecated": true
           },
           "daysRemaining": {
@@ -192632,10 +192576,10 @@
             "type": "integer",
             "format": "int32"
           },
-          "underCare": {
+          "alreadyCheckedIn": {
             "type": "boolean"
           },
-          "alreadyCheckedIn": {
+          "underCare": {
             "type": "boolean"
           }
         }
@@ -194773,13 +194717,19 @@
       "PageNotificationResponse": {
         "type": "object",
         "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
           },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -194804,12 +194754,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -195667,13 +195611,19 @@
       "PagePurgeStatusRow": {
         "type": "object",
         "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
           },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -195698,12 +195648,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -196261,13 +196205,19 @@
       "PageEmailOutboxSummaryResponse": {
         "type": "object",
         "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
           },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -196292,12 +196242,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -196460,13 +196404,19 @@
       "PageUserEntity": {
         "type": "object",
         "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
           },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -196491,12 +196441,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -196710,13 +196654,19 @@
       "PageTeamEntity": {
         "type": "object",
         "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
           },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -196741,12 +196691,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -197011,13 +196955,19 @@
       "PageOrganizationEntity": {
         "type": "object",
         "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
           },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -197042,12 +196992,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -199654,13 +199598,19 @@
       "PagePublicUserPostSummaryResponse": {
         "type": "object",
         "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
           },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -199685,12 +199635,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -199725,13 +199669,19 @@
       "PagePublicTimelinePostResponse": {
         "type": "object",
         "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
           },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -199756,12 +199706,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -199805,13 +199749,19 @@
       "PagePublicPostSummary": {
         "type": "object",
         "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
           },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -199836,12 +199786,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -199938,13 +199882,19 @@
       "PagePublicEventResponse": {
         "type": "object",
         "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
           },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -199969,12 +199919,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -200114,13 +200058,19 @@
       "PagePublicTeamSearchResultResponse": {
         "type": "object",
         "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
           },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -200145,12 +200095,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -200600,13 +200544,19 @@
       "PagePublicOrganizationSearchResultResponse": {
         "type": "object",
         "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
           },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -200631,12 +200581,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -200858,13 +200802,19 @@
       "PagePublicPostCommentResponse": {
         "type": "object",
         "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
           },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -200889,12 +200839,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -201881,81 +201825,6 @@
           }
         }
       },
-      "ApiResponseAttendanceTeamBreakdownResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/AttendanceTeamBreakdownResponse"
-          }
-        }
-      },
-      "AttendanceTeamBreakdownResponse": {
-        "type": "object",
-        "properties": {
-          "scheduleId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "total": {
-            "$ref": "#/components/schemas/TeamBreakdownCounts"
-          },
-          "byTeam": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/TeamBreakdownItem"
-            }
-          }
-        }
-      },
-      "TeamBreakdownCounts": {
-        "type": "object",
-        "properties": {
-          "attending": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "partial": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "absent": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "undecided": {
-            "type": "integer",
-            "format": "int32"
-          }
-        }
-      },
-      "TeamBreakdownItem": {
-        "type": "object",
-        "properties": {
-          "teamId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "teamName": {
-            "type": "string"
-          },
-          "attending": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "partial": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "absent": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "undecided": {
-            "type": "integer",
-            "format": "int32"
-          }
-        }
-      },
       "ApiResponseUserMatchStatsResponse": {
         "type": "object",
         "properties": {
@@ -202395,10 +202264,10 @@
             "type": "string",
             "format": "date-time"
           },
-          "minMet": {
+          "maxExceeded": {
             "type": "boolean"
           },
-          "maxExceeded": {
+          "minMet": {
             "type": "boolean"
           }
         }
@@ -202905,13 +202774,19 @@
       "PageSuccessionCovenantResponse": {
         "type": "object",
         "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
           },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -202936,12 +202811,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -203109,13 +202978,19 @@
       "PageStampEventResponse": {
         "type": "object",
         "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
           },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -203140,12 +203015,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -203192,13 +203061,19 @@
       "PageBalanceEventResponse": {
         "type": "object",
         "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
           },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -203223,12 +203098,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -203655,13 +203524,19 @@
       "PageCommitteeSummaryResponse": {
         "type": "object",
         "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
           },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -203686,12 +203561,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -205205,10 +205074,10 @@
           "lastSyncError": {
             "$ref": "#/components/schemas/SyncErrorDetail"
           },
-          "connected": {
+          "active": {
             "type": "boolean"
           },
-          "active": {
+          "connected": {
             "type": "boolean"
           }
         }
@@ -207864,13 +207733,19 @@
       "PageCommitteeDistributionLogResponse": {
         "type": "object",
         "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
           },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -207895,12 +207770,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -209217,13 +209086,19 @@
       "PageVillageCreationRequestResponse": {
         "type": "object",
         "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
           },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -209248,12 +209123,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -209658,13 +209527,19 @@
       "PageUserRoleEntity": {
         "type": "object",
         "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
           "totalPages": {
             "type": "integer",
             "format": "int32"
           },
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -209689,12 +209564,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"

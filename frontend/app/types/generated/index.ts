@@ -42874,6 +42874,8 @@ export interface components {
             hierarchy?: components["schemas"]["TodoHierarchyDto"];
             audit?: components["schemas"]["TodoAuditDto"];
             /** @deprecated */
+            progressManual?: boolean;
+            /** @deprecated */
             priority?: string;
             /**
              * Format: int64
@@ -42891,43 +42893,50 @@ export interface components {
              * Format: int32
              * @deprecated
              */
-            descendantCompletedCount?: number;
+            sortOrder?: number;
             /** @deprecated */
-            description?: string;
+            scopeType?: string;
+            /** @deprecated */
+            createdBy?: components["schemas"]["UserInfo"];
+            /**
+             * Format: date
+             * @deprecated
+             */
+            dueDate?: string;
+            /**
+             * Format: int64
+             * @deprecated
+             */
+            projectId?: number;
+            /**
+             * @deprecated
+             * @example 14:30:00
+             */
+            dueTime?: string;
             /**
              * Format: int64
              * @deprecated
              */
             parentId?: number;
+            /** @deprecated */
+            description?: string;
             /**
              * Format: int32
              * @deprecated
              */
             depth?: number;
             /**
-             * Format: date
-             * @deprecated
-             */
-            startDate?: string;
-            /**
-             * @deprecated
-             * @example 14:30:00
-             */
-            dueTime?: string;
-            /** @deprecated */
-            title?: string;
-            /**
-             * Format: int32
-             * @deprecated
-             */
-            sortOrder?: number;
-            /**
              * Format: date-time
              * @deprecated
              */
             completedAt?: string;
+            /**
+             * Format: int64
+             * @deprecated
+             */
+            milestoneId?: number;
             /** @deprecated */
-            progressRate?: number;
+            title?: string;
             /**
              * Format: date-time
              * @deprecated
@@ -42939,38 +42948,24 @@ export interface components {
              */
             updatedAt?: string;
             /** @deprecated */
-            scopeType?: string;
-            /**
-             * Format: int64
-             * @deprecated
-             */
-            projectId?: number;
+            progressRate?: number;
+            /** @deprecated */
+            completedBy?: components["schemas"]["UserInfo"];
             /**
              * Format: date
              * @deprecated
              */
-            dueDate?: string;
-            /** @deprecated */
-            createdBy?: components["schemas"]["UserInfo"];
+            startDate?: string;
             /**
              * Format: int64
              * @deprecated
              */
             linkedScheduleId?: number;
             /**
-             * Format: int64
-             * @deprecated
-             */
-            milestoneId?: number;
-            /**
              * Format: int32
              * @deprecated
              */
-            descendantTotalCount?: number;
-            /** @deprecated */
-            progressManual?: boolean;
-            /** @deprecated */
-            completedBy?: components["schemas"]["UserInfo"];
+            descendantCompletedCount?: number;
             /**
              * Format: int64
              * @deprecated
@@ -42978,6 +42973,11 @@ export interface components {
             daysRemaining?: number;
             /** @deprecated */
             statusLabel?: components["schemas"]["TodoStatusLabelInfo"];
+            /**
+             * Format: int32
+             * @deprecated
+             */
+            descendantTotalCount?: number;
         };
         TodoScheduleDto: {
             /** Format: date */
@@ -50111,8 +50111,8 @@ export interface components {
             remindBeforeMinutes?: number;
             /** @enum {string} */
             reminderKind?: "RELATIVE" | "ABSOLUTE";
-            remindBeforeMinutesValid?: boolean;
             remindAtValid?: boolean;
+            remindBeforeMinutesValid?: boolean;
         };
         CreateScheduleRequest: {
             title?: string;
@@ -50929,6 +50929,8 @@ export interface components {
             recurrenceRule?: string;
             price?: number;
             note?: string;
+            /** @enum {string} */
+            approvalMode?: "AUTO" | "MANUAL";
         };
         ApiResponseReservationSlotResponse: {
             data?: components["schemas"]["ReservationSlotResponse"];
@@ -50949,6 +50951,7 @@ export interface components {
             status?: components["schemas"]["SlotStatusDto"];
             recurrence?: components["schemas"]["RecurrenceDto"];
             pricing?: components["schemas"]["SlotPricingDto"];
+            policy?: components["schemas"]["SlotPolicyDto"];
             audit?: components["schemas"]["SlotAuditDto"];
         };
         SlotAuditDto: {
@@ -50967,6 +50970,9 @@ export interface components {
             startTime?: string;
             /** @example 14:30:00 */
             endTime?: string;
+        };
+        SlotPolicyDto: {
+            approvalMode?: string;
         };
         SlotPricingDto: {
             price?: number;
@@ -59783,8 +59789,8 @@ export interface components {
             remindBeforeMinutes?: number;
             /** @enum {string} */
             reminderKind?: "RELATIVE" | "ABSOLUTE";
-            remindBeforeMinutesValid?: boolean;
             remindAtValid?: boolean;
+            remindBeforeMinutesValid?: boolean;
         };
         UpdateScheduleRequest: {
             title?: string;
@@ -59887,6 +59893,9 @@ export interface components {
             endTime?: string;
             price?: number;
             note?: string;
+            /** @enum {string} */
+            approvalMode?: "AUTO" | "MANUAL";
+            clearApprovalMode?: boolean;
         };
         UpdateReservationSettingRequest: {
             /**
@@ -60466,11 +60475,11 @@ export interface components {
             philosophy?: boolean;
             officers?: boolean;
             custom_fields?: boolean;
-            philosophyVisible?: boolean;
-            customFieldsVisible?: boolean;
-            officersVisible?: boolean;
             homepageUrlVisible?: boolean;
             establishedDateVisible?: boolean;
+            customFieldsVisible?: boolean;
+            philosophyVisible?: boolean;
+            officersVisible?: boolean;
         };
         UpdateTeamProfileRequest: {
             homepage_url?: string;
@@ -62163,14 +62172,14 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["JoinRequestResponse"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
@@ -62180,17 +62189,17 @@ export interface components {
             /** Format: int64 */
             offset?: number;
             sort?: components["schemas"]["SortObject"];
-            paged?: boolean;
-            /** Format: int32 */
-            pageSize?: number;
             /** Format: int32 */
             pageNumber?: number;
+            /** Format: int32 */
+            pageSize?: number;
             unpaged?: boolean;
+            paged?: boolean;
         };
         SortObject: {
             empty?: boolean;
-            sorted?: boolean;
             unsorted?: boolean;
+            sorted?: boolean;
         };
         ApiResponseListFestivalResponse: {
             data?: components["schemas"]["FestivalResponse"][];
@@ -63350,37 +63359,37 @@ export interface components {
             milestones?: components["schemas"]["MilestoneDetail"][];
             unassignedTodos?: components["schemas"]["UnassignedTodos"];
             audit?: components["schemas"]["ProjectAuditDto"];
-            /** @deprecated */
-            description?: string;
-            /** @deprecated */
-            status?: string;
-            /** @deprecated */
-            title?: string;
-            /** @deprecated */
-            visibility?: string;
+            /**
+             * Format: int32
+             * @deprecated
+             */
+            totalTodos?: number;
+            /**
+             * Format: int32
+             * @deprecated
+             */
+            completedTodos?: number;
             /** @deprecated */
             color?: string;
             /** @deprecated */
-            progressRate?: number;
+            createdBy?: components["schemas"]["UserInfo"];
             /** @deprecated */
-            emoji?: string;
+            status?: string;
             /**
              * Format: date
              * @deprecated
              */
             dueDate?: string;
             /** @deprecated */
-            createdBy?: components["schemas"]["UserInfo"];
-            /**
-             * Format: int32
-             * @deprecated
-             */
-            completedTodos?: number;
-            /**
-             * Format: int32
-             * @deprecated
-             */
-            totalTodos?: number;
+            description?: string;
+            /** @deprecated */
+            visibility?: string;
+            /** @deprecated */
+            title?: string;
+            /** @deprecated */
+            progressRate?: number;
+            /** @deprecated */
+            emoji?: string;
             /**
              * Format: int64
              * @deprecated
@@ -64241,8 +64250,8 @@ export interface components {
             rsvpStatus?: string;
             /** Format: int32 */
             watcherCount?: number;
-            underCare?: boolean;
             alreadyCheckedIn?: boolean;
+            underCare?: boolean;
         };
         ApiResponseDismissalStatusResponse: {
             data?: components["schemas"]["DismissalStatusResponse"];
@@ -65029,14 +65038,14 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["NotificationResponse"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
@@ -65357,14 +65366,14 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PurgeStatusRow"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
@@ -65578,14 +65587,14 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["EmailOutboxSummaryResponse"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
@@ -65663,14 +65672,14 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["UserEntity"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
@@ -65752,14 +65761,14 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["TeamEntity"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
@@ -65860,14 +65869,14 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["OrganizationEntity"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
@@ -66807,14 +66816,14 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicUserPostSummaryResponse"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
@@ -66835,14 +66844,14 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicTimelinePostResponse"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
@@ -66867,14 +66876,14 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicPostSummary"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
@@ -66918,14 +66927,14 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicEventResponse"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
@@ -66983,14 +66992,14 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicTeamSearchResultResponse"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
@@ -67180,14 +67189,14 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicOrganizationSearchResultResponse"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
@@ -67275,14 +67284,14 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicPostCommentResponse"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
@@ -68008,14 +68017,14 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["SuccessionCovenantResponse"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
@@ -68085,14 +68094,14 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["StampEventResponse"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
@@ -68116,14 +68125,14 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["BalanceEventResponse"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
@@ -68281,14 +68290,14 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["CommitteeSummaryResponse"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
@@ -69830,14 +69839,14 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["CommitteeDistributionLogResponse"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
@@ -70331,14 +70340,14 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["VillageCreationRequestResponse"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
@@ -70516,14 +70525,14 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["UserRoleEntity"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];

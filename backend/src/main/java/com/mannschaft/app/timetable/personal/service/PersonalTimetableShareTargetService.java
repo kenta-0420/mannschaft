@@ -115,13 +115,13 @@ public class PersonalTimetableShareTargetService {
         PersonalTimetableShareTargetEntity saved = shareTargetRepository.save(entity);
 
         // 6) visibility 自動切替（PRIVATE → FAMILY_SHARED）
+        // toBuilder().build() で作り直すと id=null の新インスタンスになり INSERT 化するため、
+        // managed entity を直接ミューテートして UPDATE に固定する（#1643 同型バグ根治）。
         boolean visibilityChanged = false;
         PersonalTimetableVisibility before = timetable.getVisibility();
         if (before != PersonalTimetableVisibility.FAMILY_SHARED) {
-            PersonalTimetableEntity updated = timetable.toBuilder()
-                    .visibility(PersonalTimetableVisibility.FAMILY_SHARED)
-                    .build();
-            personalTimetableRepository.save(updated);
+            timetable.applyVisibility(PersonalTimetableVisibility.FAMILY_SHARED);
+            personalTimetableRepository.save(timetable);
             visibilityChanged = true;
         }
 
@@ -161,15 +161,15 @@ public class PersonalTimetableShareTargetService {
         shareTargetRepository.deleteByPersonalTimetableIdAndTeamId(personalTimetableId, teamId);
 
         // 全件0になったら visibility を PRIVATE に戻す
+        // toBuilder().build() で作り直すと id=null の新インスタンスになり INSERT 化するため、
+        // managed entity を直接ミューテートして UPDATE に固定する（#1643 同型バグ根治）。
         long remaining = shareTargetRepository.countByPersonalTimetableId(personalTimetableId);
         boolean visibilityChanged = false;
         PersonalTimetableVisibility before = timetable.getVisibility();
         if (remaining == 0
                 && before == PersonalTimetableVisibility.FAMILY_SHARED) {
-            PersonalTimetableEntity updated = timetable.toBuilder()
-                    .visibility(PersonalTimetableVisibility.PRIVATE)
-                    .build();
-            personalTimetableRepository.save(updated);
+            timetable.applyVisibility(PersonalTimetableVisibility.PRIVATE);
+            personalTimetableRepository.save(timetable);
             visibilityChanged = true;
         }
 

@@ -6,10 +6,12 @@ import com.mannschaft.app.timetable.repository.TimetableRepository;
 import com.mannschaft.app.timetable.repository.TimetableTermRepository;
 import com.mannschaft.app.timetable.service.TimetableTermService;
 import com.mannschaft.app.timetable.service.TimetableTermService.CreateTermData;
+import com.mannschaft.app.timetable.service.TimetableTermService.UpdateTermData;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -80,6 +82,50 @@ class TimetableTermServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TIMETABLE_020"));
+        }
+    }
+
+    @Nested
+    @DisplayName("updateTerm")
+    class UpdateTerm {
+
+        @Test
+        @DisplayName("回帰: updateTermはfindByIdで取得した同一インスタンスをsaveする（toBuilderで新規行を作らない）")
+        void 更新_同一インスタンスUPDATE() throws Exception {
+            // Given
+            TimetableTermEntity entity = TimetableTermEntity.builder()
+                    .teamId(1L).organizationId(null).academicYear(2025)
+                    .name("1学期")
+                    .startDate(LocalDate.of(2025, 4, 1))
+                    .endDate(LocalDate.of(2025, 7, 31))
+                    .sortOrder(1).build();
+            // id を反射でセット（BaseEntity の GeneratedValue フィールド）
+            var idField = entity.getClass().getSuperclass().getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(entity, 10L);
+
+            UpdateTermData data = new UpdateTermData(
+                    "前期", LocalDate.of(2025, 4, 1), LocalDate.of(2025, 7, 31), 1);
+
+            given(termRepository.findById(10L)).willReturn(Optional.of(entity));
+            // 重複チェックは空リストで通過
+            given(termRepository.findByTeamIdAndAcademicYearOrderBySortOrder(1L, 2025))
+                    .willReturn(List.of(entity));
+            given(termRepository.save(any(TimetableTermEntity.class))).willAnswer(inv -> inv.getArgument(0));
+
+            // When
+            service.updateTerm(10L, data);
+
+            // Then
+            // toBuilder().build() で別インスタンスを save していたら id=null の新規行 INSERT になる。
+            // 同一インスタンスを save することで UPDATE になっていることを検証する。
+            ArgumentCaptor<TimetableTermEntity> captor = ArgumentCaptor.forClass(TimetableTermEntity.class);
+            verify(termRepository).save(captor.capture());
+            assertThat(captor.getValue()).isSameAs(entity);
+            // id が保持されている（= INSERT でなく UPDATE）
+            assertThat(captor.getValue().getId()).isEqualTo(10L);
+            // フィールドが更新されている
+            assertThat(captor.getValue().getName()).isEqualTo("前期");
         }
     }
 
