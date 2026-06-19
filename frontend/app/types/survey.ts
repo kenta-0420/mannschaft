@@ -113,6 +113,13 @@ export interface CreateSurveyRequest {
   resultsVisibility?: ResultsVisibility
   unrespondedVisibility?: UnrespondedVisibility | null
   deadline?: string
+  /**
+   * F05.4 (B) 組織→参加チーム配信: チーム別内訳（by_team）集計を有効にするか。
+   * 既定 false。組織スコープのアンケートでのみ意味を持つ。匿名（isAnonymous=true）との併用は
+   * BE 側で 400（SURVEY_023）になるため UI で相互排他にする。
+   * 生成型 components['schemas']['CreateSurveyRequest'].teamBreakdownEnabled と同値。
+   */
+  teamBreakdownEnabled?: boolean
   questions: Array<{
     questionText: string
     questionType: QuestionType

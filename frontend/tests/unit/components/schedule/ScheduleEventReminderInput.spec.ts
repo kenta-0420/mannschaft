@@ -32,6 +32,7 @@ function baseForm(reminders: ScheduleEventFormState['reminders'] = []): Schedule
     recurrenceCount: 10,
     allowProxyAttendance: false,
     isProxyAutoAccept: false,
+    teamBreakdownEnabled: false,
     reminders,
     scheduledSurvey: {
       enabled: false,

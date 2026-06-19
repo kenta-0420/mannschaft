@@ -77,7 +77,10 @@
         "ratingScale": "평가 스케일(1〜5)",
         "textHint": "응답자가 자유 기술로 답합니다",
         "dateHint": "응답자가 날짜를 선택하여 답합니다"
-      }
+      },
+      "teamBreakdownEnabled": "팀별로 집계",
+      "teamBreakdownHint": "하위 팀별로 응답 결과를 집계합니다(조직 배포만 해당).",
+      "teamBreakdownAnonymousConflict": "익명 설문에서는 팀별 집계를 사용할 수 없습니다."
     },
     "detail": {
       "scopeMissing": "설문 범위 정보가 없습니다",
@@ -151,6 +154,21 @@
       "unrespondedBadge": "미응답",
       "emptyResponded": "아직 응답자가 없습니다",
       "emptyUnresponded": "미응답자가 없습니다"
+    },
+    "teamBreakdown": {
+      "title": "팀별 내역",
+      "reload": "새로고침",
+      "retry": "다시 시도",
+      "fetchFailed": "팀별 내역을 불러오지 못했습니다.",
+      "forbidden": "이 내역을 볼 권한이 없습니다.",
+      "empty": "팀별 내역 데이터가 없습니다.",
+      "masked": "응답자가 5명 미만이라 집계에서 제외됩니다.",
+      "directMembers": "조직 직접 멤버",
+      "totalRespondents": "전체 응답자: {count}명",
+      "respondentCount": "응답자 {count}명",
+      "optionCount": "{count}건 ({percentage}%)",
+      "noOptionData": "데이터가 없습니다.",
+      "noQuestionData": "집계할 문항이 없습니다."
     }
   }
 }

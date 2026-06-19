@@ -67,6 +67,26 @@
       "cancel": "취소",
       "cancel_success": "예약 작업을 취소했습니다",
       "cancel_failed": "예약 작업 취소에 실패했습니다"
+    },
+    "attendanceTeamBreakdown": {
+      "toggleLabel": "팀별로 집계",
+      "toggleHint": "하위 팀별로 출결을 집계합니다(조직 배포만 해당).",
+      "title": "팀별 출결 내역",
+      "team": "팀",
+      "attending": "출석",
+      "partial": "부분 참여",
+      "absent": "결석",
+      "undecided": "미응답",
+      "total": "전체",
+      "totalNote": "전체는 실인원, 팀별은 누적 인원입니다(여러 팀 소속은 각 팀에 계상).",
+      "directMembers": "조직 직접 멤버",
+      "reload": "새로고침",
+      "retry": "다시 시도",
+      "exportCsv": "CSV 내보내기",
+      "exportFailed": "CSV 내보내기에 실패했습니다.",
+      "fetchFailed": "팀별 출결 내역을 불러오지 못했습니다.",
+      "forbidden": "이 내역을 볼 권한이 없습니다.",
+      "empty": "팀별 출결 내역 데이터가 없습니다."
     }
   }
 }

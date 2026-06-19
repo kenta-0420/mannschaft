@@ -77,7 +77,10 @@
         "ratingScale": "Rating scale (1-5)",
         "textHint": "Respondents will answer in free text",
         "dateHint": "Respondents will pick a date"
-      }
+      },
+      "teamBreakdownEnabled": "Aggregate by team",
+      "teamBreakdownHint": "Aggregate responses per member team (organization distribution only).",
+      "teamBreakdownAnonymousConflict": "Team breakdown is not available for anonymous surveys."
     },
     "detail": {
       "scopeMissing": "Survey scope information is missing",
@@ -151,6 +154,21 @@
       "unrespondedBadge": "Unresponded",
       "emptyResponded": "No respondents yet",
       "emptyUnresponded": "No unresponded members"
+    },
+    "teamBreakdown": {
+      "title": "Team breakdown",
+      "reload": "Reload",
+      "retry": "Retry",
+      "fetchFailed": "Failed to load the team breakdown.",
+      "forbidden": "You do not have permission to view this breakdown.",
+      "empty": "No team breakdown data available.",
+      "masked": "Hidden because fewer than 5 respondents.",
+      "directMembers": "Direct organization members",
+      "totalRespondents": "Total respondents: {count}",
+      "respondentCount": "{count} respondents",
+      "optionCount": "{count} ({percentage}%)",
+      "noOptionData": "No data.",
+      "noQuestionData": "No questions to aggregate."
     }
   }
 }
