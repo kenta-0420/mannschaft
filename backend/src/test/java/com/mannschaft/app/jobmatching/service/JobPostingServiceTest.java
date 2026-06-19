@@ -18,6 +18,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -32,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 
 /**
  * {@link JobPostingService} のユニットテスト。
@@ -342,6 +344,30 @@ class JobPostingServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(JobmatchingErrorCode.JOB_INVALID_STATE_TRANSITION));
+        }
+
+        @Test
+        @DisplayName("回帰: 更新は findById の managed entity を直接ミューテートして save し id を保持する（toBuilder INSERT化防止）")
+        void 回帰_id保持_managedentity直更新() {
+            JobPostingEntity posting = postingWithStatus(JobPostingStatus.OPEN);
+            given(postingRepository.findById(POSTING_ID)).willReturn(Optional.of(posting));
+            given(jobPolicy.canEditPosting(USER_ID, posting)).willReturn(true);
+            given(applicationRepository.countByJobPostingId(POSTING_ID)).willReturn(0);
+            given(postingRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+            UpdateJobPostingCommand cmd = new UpdateJobPostingCommand(
+                    "新タイトル", null, null, null, null, null, null, null, null,
+                    null, null, null, null);
+            service.update(POSTING_ID, cmd, USER_ID);
+
+            // save に渡るのが findById で得た同一インスタンスであること（= UPDATE）。
+            ArgumentCaptor<JobPostingEntity> captor = ArgumentCaptor.forClass(JobPostingEntity.class);
+            verify(postingRepository).save(captor.capture());
+            JobPostingEntity savedArg = captor.getValue();
+            assertThat(savedArg).isSameAs(posting);
+            // id が保持されている（toBuilder().build() なら id=null になり INSERT 化していた）。
+            assertThat(savedArg.getId()).isEqualTo(POSTING_ID);
+            assertThat(savedArg.getTitle()).isEqualTo("新タイトル");
         }
     }
 

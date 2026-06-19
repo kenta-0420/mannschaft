@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -511,6 +512,29 @@ class JobContractServiceTest {
 
             JobContractEntity saved = service.rejectCompletion(1L, "3回目", REQUESTER_ID);
             assertThat(saved.getRejectionCount()).isEqualTo(3);
+        }
+
+        @Test
+        @DisplayName("回帰: 差し戻しは findById の managed entity を直接ミューテートして save し id を保持する（toBuilder INSERT化防止）")
+        void 回帰_id保持_managedentity直更新() {
+            JobContractEntity contract = contractWithStatus(JobContractStatus.COMPLETION_REPORTED, 0);
+            given(contractRepository.findById(1L)).willReturn(Optional.of(contract));
+            given(jobPolicy.canApproveCompletion(REQUESTER_ID, contract)).willReturn(true);
+            given(contractRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+            service.rejectCompletion(1L, "不十分です", REQUESTER_ID);
+
+            // save に渡るのが findById で得た同一インスタンスであること（= UPDATE）。
+            ArgumentCaptor<JobContractEntity> captor = ArgumentCaptor.forClass(JobContractEntity.class);
+            verify(contractRepository).save(captor.capture());
+            JobContractEntity savedArg = captor.getValue();
+            assertThat(savedArg).isSameAs(contract);
+            // id が保持されている（旧 toBuilder().status(MATCHED).build() なら id=null で INSERT 化していた）。
+            assertThat(savedArg.getId()).isEqualTo(1L);
+            // 副作用（カウントアップ・理由記録・MATCHED 遷移）が保たれていること。
+            assertThat(savedArg.getStatus()).isEqualTo(JobContractStatus.MATCHED);
+            assertThat(savedArg.getRejectionCount()).isEqualTo(1);
+            assertThat(savedArg.getLastRejectionReason()).isEqualTo("不十分です");
         }
     }
 
