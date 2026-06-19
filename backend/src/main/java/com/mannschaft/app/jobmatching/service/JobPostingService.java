@@ -194,27 +194,19 @@ public class JobPostingService {
             validatePublishAt(cmd.publishAt());
         }
 
-        // toBuilder で新インスタンスを構築し、null でないフィールドのみ差し替え。
-        JobPostingEntity updated = posting.toBuilder()
-                .title(cmd.title() != null ? cmd.title() : posting.getTitle())
-                .description(cmd.description() != null ? cmd.description() : posting.getDescription())
-                .category(cmd.category() != null ? cmd.category() : posting.getCategory())
-                .workLocationType(cmd.workLocationType() != null
-                        ? cmd.workLocationType() : posting.getWorkLocationType())
-                .workAddress(cmd.workAddress() != null ? cmd.workAddress() : posting.getWorkAddress())
-                .workStartAt(cmd.workStartAt() != null ? cmd.workStartAt() : posting.getWorkStartAt())
-                .workEndAt(cmd.workEndAt() != null ? cmd.workEndAt() : posting.getWorkEndAt())
-                .rewardType(cmd.rewardType() != null ? cmd.rewardType() : posting.getRewardType())
-                .baseRewardJpy(cmd.baseRewardJpy() != null ? cmd.baseRewardJpy() : posting.getBaseRewardJpy())
-                .capacity(cmd.capacity() != null ? cmd.capacity() : posting.getCapacity())
-                .applicationDeadlineAt(cmd.applicationDeadlineAt() != null
-                        ? cmd.applicationDeadlineAt() : posting.getApplicationDeadlineAt())
-                .visibilityScope(cmd.visibilityScope() != null
-                        ? cmd.visibilityScope() : posting.getVisibilityScope())
-                .publishAt(cmd.publishAt() != null ? cmd.publishAt() : posting.getPublishAt())
-                .build();
+        // managed entity を直接ミューテートして null でないフィールドのみ差し替える。
+        // id・version を保持するため save は UPDATE として永続化される
+        // （旧実装の toBuilder().build() は BaseEntity 継承の id を引き継がず INSERT 化する不具合があった）。
+        // 不変フィールドチェック（rejectIfImmutableFieldChanged）・日時整合性検証は上で旧値を読んで実施済み。
+        posting.applyUpdate(
+                cmd.title(), cmd.description(), cmd.category(),
+                cmd.workLocationType(), cmd.workAddress(),
+                cmd.workStartAt(), cmd.workEndAt(),
+                cmd.rewardType(), cmd.baseRewardJpy(), cmd.capacity(),
+                cmd.applicationDeadlineAt(), cmd.visibilityScope(),
+                cmd.publishAt());
 
-        JobPostingEntity saved = postingRepository.save(updated);
+        JobPostingEntity saved = postingRepository.save(posting);
         log.info("求人更新: postingId={}, userId={}, applicantCount={}", postingId, userId, applicantCount);
         return saved;
     }
