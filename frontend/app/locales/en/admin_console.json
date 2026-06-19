@@ -97,6 +97,17 @@
         "reviewing": "Under review",
         "fetchFailed": "Could not load report information"
       },
+      "members": {
+        "total": "Total",
+        "active": "Active",
+        "newThisMonth": "New this month",
+        "fetchFailed": "Could not load member statistics"
+      },
+      "reservations": {
+        "pending": "Pending approval",
+        "today": "Today's reservations",
+        "fetchFailed": "Could not load reservation summary"
+      },
       "modules": {
         "summary": "{enabled} enabled / {total} total",
         "fetchFailed": "Could not load module information"

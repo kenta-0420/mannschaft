@@ -4,8 +4,10 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.dashboard.dto.AdminBusinessAlertScopeResponse;
+import com.mannschaft.app.dashboard.dto.AdminMemberStatsResponse;
 import com.mannschaft.app.dashboard.dto.AdminPaymentSummaryResponse;
 import com.mannschaft.app.dashboard.dto.AdminReportStatsResponse;
+import com.mannschaft.app.dashboard.dto.AdminReservationSummaryResponse;
 import com.mannschaft.app.dashboard.service.AdminLensSummaryFacade;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.team.service.TeamService;
@@ -140,6 +142,57 @@ class AdminLensSummaryControllerTest {
 
         assertThat(res.getBody().getData().pendingCount()).isEqualTo(1);
         verify(adminLensSummaryFacade).getReportStats(USER_ID, "ORGANIZATION", ORG_ID);
+    }
+
+    // ── P3b Wave2: メンバー統計 / 予約サマリ ──────────────────────────
+
+    @Test
+    @DisplayName("GET team/{slug}/admin-member-stats: 200・総数/アクティブ/今月新規")
+    void teamMemberStats200() {
+        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        given(adminLensSummaryFacade.getTeamMemberStats(USER_ID, TEAM_ID))
+                .willReturn(AdminMemberStatsResponse.builder()
+                        .totalCount(12).activeCount(10).newThisMonthCount(3).build());
+
+        ResponseEntity<ApiResponse<AdminMemberStatsResponse>> res =
+                controller.getTeamMemberStats(TEAM_SLUG);
+
+        assertThat(res.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(res.getBody().getData().totalCount()).isEqualTo(12);
+        assertThat(res.getBody().getData().activeCount()).isEqualTo(10);
+        assertThat(res.getBody().getData().newThisMonthCount()).isEqualTo(3);
+        verify(adminLensSummaryFacade).getTeamMemberStats(USER_ID, TEAM_ID);
+    }
+
+    @Test
+    @DisplayName("GET organization/{slug}/admin-member-stats: 200")
+    void orgMemberStats200() {
+        given(organizationService.resolveOrgId(ORG_SLUG)).willReturn(ORG_ID);
+        given(adminLensSummaryFacade.getOrgMemberStats(USER_ID, ORG_ID))
+                .willReturn(AdminMemberStatsResponse.builder()
+                        .totalCount(5).activeCount(5).newThisMonthCount(1).build());
+
+        ResponseEntity<ApiResponse<AdminMemberStatsResponse>> res =
+                controller.getOrgMemberStats(ORG_SLUG);
+
+        assertThat(res.getBody().getData().totalCount()).isEqualTo(5);
+        verify(adminLensSummaryFacade).getOrgMemberStats(USER_ID, ORG_ID);
+    }
+
+    @Test
+    @DisplayName("GET team/{slug}/admin-reservation-summary: 200・承認待ち/本日")
+    void teamReservationSummary200() {
+        given(teamService.resolveTeamId(TEAM_SLUG)).willReturn(TEAM_ID);
+        given(adminLensSummaryFacade.getTeamReservationSummary(USER_ID, TEAM_ID))
+                .willReturn(AdminReservationSummaryResponse.builder()
+                        .pendingCount(6).todayCount(9).build());
+
+        ResponseEntity<ApiResponse<AdminReservationSummaryResponse>> res =
+                controller.getTeamReservationSummary(TEAM_SLUG);
+
+        assertThat(res.getBody().getData().pendingCount()).isEqualTo(6);
+        assertThat(res.getBody().getData().todayCount()).isEqualTo(9);
+        verify(adminLensSummaryFacade).getTeamReservationSummary(USER_ID, TEAM_ID);
     }
 
     @Test

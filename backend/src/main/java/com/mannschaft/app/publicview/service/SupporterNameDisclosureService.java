@@ -86,11 +86,11 @@ public class SupporterNameDisclosureService {
             return new SupporterNameDisclosureResponse(oldMode, null);
         }
 
-        // DB 更新（toBuilder パターン）
-        TeamEntity updated = team.toBuilder()
-                .supporterNameDisclosure(newMode)
-                .build();
-        teamRepository.save(updated);
+        // DB 更新（直接ミューテート・PR #1643 と同型）。
+        // toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化し、
+        // slug 一意制約違反で 500 になるため使わない。
+        team.updateSupporterNameDisclosure(newMode);
+        teamRepository.save(team);
 
         // change_log INSERT
         LocalDateTime changedAt = LocalDateTime.now();
@@ -144,11 +144,11 @@ public class SupporterNameDisclosureService {
             return new SupporterNameDisclosureResponse(oldMode, null);
         }
 
-        // DB 更新（toBuilder パターン）
-        OrganizationEntity updated = org.toBuilder()
-                .supporterNameDisclosure(newMode)
-                .build();
-        organizationRepository.save(updated);
+        // DB 更新（直接ミューテート・PR #1643 と同型）。
+        // toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化し、
+        // slug 一意制約違反で 500 になるため使わない。
+        org.updateSupporterNameDisclosure(newMode);
+        organizationRepository.save(org);
 
         // change_log INSERT
         LocalDateTime changedAt = LocalDateTime.now();

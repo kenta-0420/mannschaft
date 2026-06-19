@@ -97,6 +97,17 @@
         "reviewing": "审核中",
         "fetchFailed": "无法获取举报信息"
       },
+      "members": {
+        "total": "总数",
+        "active": "活跃",
+        "newThisMonth": "本月新增",
+        "fetchFailed": "无法获取成员统计信息"
+      },
+      "reservations": {
+        "pending": "待审批",
+        "today": "今日预约",
+        "fetchFailed": "无法获取预约摘要"
+      },
       "modules": {
         "summary": "已启用 {enabled} / 共 {total}",
         "fetchFailed": "无法获取模块信息"

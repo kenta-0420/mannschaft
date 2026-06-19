@@ -49,6 +49,10 @@ public enum WidgetKey {
     TEAM_PAGE_VIEWS(ScopeType.TEAM, false, 11),
     /** F08.10: チーム試合サマリ（直近成績＋ミニチャート＋進行中試合の記録再開導線） */
     TEAM_MATCH_SUMMARY(ScopeType.TEAM, true, 12),
+    /** F10.1.1 P3b Wave2: 管理者レンズ チームメンバー統計（総数/アクティブ/今月新規・ADMIN 限定・コード固定 ADMINS_AND_ABOVE） */
+    ADMIN_TEAM_MEMBERS(ScopeType.TEAM, true, 13),
+    /** F10.1.1 P3b Wave2: 管理者レンズ チーム予約サマリ（承認待ち/本日の予約数・ADMIN 限定・コード固定 ADMINS_AND_ABOVE） */
+    ADMIN_TEAM_RESERVATIONS(ScopeType.TEAM, true, 14),
 
     // --- 組織ダッシュボード ---
     ORG_TEAM_LIST(ScopeType.ORGANIZATION, true, 0),
@@ -58,7 +62,9 @@ public enum WidgetKey {
     ORG_STATS(ScopeType.ORGANIZATION, true, 4),
     /** F08.7.1: 主催大会サマリ（各大会×各部の首位・参加数・status） */
     ORG_TOURNAMENT_SUMMARY(ScopeType.ORGANIZATION, true, 5),
-    ORG_BILLING(ScopeType.ORGANIZATION, true, 6);
+    ORG_BILLING(ScopeType.ORGANIZATION, true, 6),
+    /** F10.1.1 P3b Wave2: 管理者レンズ 組織メンバー統計（総数/アクティブ/今月新規・ADMIN 限定・コード固定 ADMINS_AND_ABOVE） */
+    ADMIN_ORG_MEMBERS(ScopeType.ORGANIZATION, true, 7);
 
     private final ScopeType scopeType;
     private final boolean defaultVisible;
@@ -112,7 +118,9 @@ public enum WidgetKey {
 
     /** ロール制限ウィジェット（ADMIN / DEPUTY_ADMIN のみ） */
     private static final Set<WidgetKey> ROLE_RESTRICTED = Set.of(
-            TEAM_BILLING, TEAM_PAGE_VIEWS, ORG_BILLING
+            TEAM_BILLING, TEAM_PAGE_VIEWS, ORG_BILLING,
+            // F10.1.1 P3b 管理者レンズウィジェットは ADMIN/DEPUTY 限定（コード固定 ADMINS_AND_ABOVE）。
+            ADMIN_TEAM_MEMBERS, ADMIN_TEAM_RESERVATIONS, ADMIN_ORG_MEMBERS
     );
 
     public boolean isRoleRestricted() {

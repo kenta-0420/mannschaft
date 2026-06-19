@@ -354,27 +354,31 @@ public class OrganizationService {
         OrganizationEntity org = findOrganizationOrThrow(orgId);
         checkNotArchived(org);
 
-        // 楽観ロック用バージョンチェックはJPAの@Versionで自動処理
-        OrganizationEntity updated = org.toBuilder()
-                .name(req.getName() != null ? req.getName() : org.getName())
-                .nameKana(req.getNameKana() != null ? req.getNameKana() : org.getNameKana())
-                .nickname1(req.getNickname1() != null ? req.getNickname1() : org.getNickname1())
-                .nickname2(req.getNickname2() != null ? req.getNickname2() : org.getNickname2())
-                .prefecture(req.getPrefecture() != null ? req.getPrefecture() : org.getPrefecture())
-                .city(req.getCity() != null ? req.getCity() : org.getCity())
-                .visibility(req.getVisibility() != null
-                        ? OrganizationEntity.Visibility.valueOf(req.getVisibility())
-                        : org.getVisibility())
-                .hierarchyVisibility(req.getHierarchyVisibility() != null
-                        ? OrganizationEntity.HierarchyVisibility.valueOf(req.getHierarchyVisibility())
-                        : org.getHierarchyVisibility())
-                .supporterEnabled(req.getSupporterEnabled() != null ? req.getSupporterEnabled() : org.getSupporterEnabled())
-                .build();
-        organizationRepository.save(updated);
+        // 直接ミューテートで UPDATE を発行する（PR #1643 と同型）。
+        // toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化し、
+        // slug 一意制約違反で 500 になるため使わない。enum 解決は本層の責務。
+        // 楽観ロック用バージョンチェックはJPAの@Versionで自動処理。
+        OrganizationEntity.Visibility visibility = req.getVisibility() != null
+                ? OrganizationEntity.Visibility.valueOf(req.getVisibility())
+                : null;
+        OrganizationEntity.HierarchyVisibility hierarchyVisibility = req.getHierarchyVisibility() != null
+                ? OrganizationEntity.HierarchyVisibility.valueOf(req.getHierarchyVisibility())
+                : null;
+        org.applyUpdate(
+                req.getName(),
+                req.getNameKana(),
+                req.getNickname1(),
+                req.getNickname2(),
+                req.getPrefecture(),
+                req.getCity(),
+                visibility,
+                hierarchyVisibility,
+                req.getSupporterEnabled());
+        organizationRepository.save(org);
 
         int memberCount = (int) userRoleRepository.countByOrganizationId(orgId);
         log.info("組織更新完了: orgId={}", orgId);
-        return ApiResponse.of(toResponse(updated, memberCount));
+        return ApiResponse.of(toResponse(org, memberCount));
     }
 
     /**

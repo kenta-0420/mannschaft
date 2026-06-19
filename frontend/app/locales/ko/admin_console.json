@@ -97,6 +97,17 @@
         "reviewing": "검토 중",
         "fetchFailed": "신고 정보를 가져오지 못했습니다"
       },
+      "members": {
+        "total": "총원",
+        "active": "활성",
+        "newThisMonth": "이번 달 신규",
+        "fetchFailed": "멤버 통계를 가져오지 못했습니다"
+      },
+      "reservations": {
+        "pending": "승인 대기",
+        "today": "오늘 예약",
+        "fetchFailed": "예약 요약을 가져오지 못했습니다"
+      },
       "modules": {
         "summary": "활성화 {enabled} / 전체 {total}",
         "fetchFailed": "모듈 정보를 가져오지 못했습니다"

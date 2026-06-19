@@ -97,6 +97,17 @@
         "reviewing": "In Prüfung",
         "fetchFailed": "Meldungsinformationen konnten nicht geladen werden"
       },
+      "members": {
+        "total": "Gesamt",
+        "active": "Aktiv",
+        "newThisMonth": "Neu in diesem Monat",
+        "fetchFailed": "Mitgliederstatistik konnte nicht geladen werden"
+      },
+      "reservations": {
+        "pending": "Genehmigung ausstehend",
+        "today": "Heutige Reservierungen",
+        "fetchFailed": "Reservierungsübersicht konnte nicht geladen werden"
+      },
       "modules": {
         "summary": "{enabled} aktiv / {total} gesamt",
         "fetchFailed": "Modulinformationen konnten nicht geladen werden"

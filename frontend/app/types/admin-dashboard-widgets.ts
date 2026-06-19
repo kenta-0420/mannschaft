@@ -48,3 +48,33 @@ export interface AdminReportStats {
   /** 確認中件数（reviewing_count）。 */
   reviewingCount: number
 }
+
+/**
+ * メンバー統計（ADMIN_TEAM_MEMBERS / ADMIN_ORG_MEMBERS・§2.2④ §2.3④）— P3b Wave2。
+ *
+ * 対応 EP:
+ *   - GET /api/v1/dashboard/team/{teamSlug}/admin-member-stats
+ *   - GET /api/v1/dashboard/organization/{orgSlug}/admin-member-stats
+ *
+ * memberships（在籍）由来。総数は管理者（ADMIN/DEPUTY）も含めた全在籍者。
+ */
+export interface AdminMemberStats {
+  /** 会員総数（total_count・管理者含む全在籍者）。 */
+  totalCount: number
+  /** アクティブ会員数（active_count・users.status='ACTIVE'）。 */
+  activeCount: number
+  /** 今月新規会員数（new_this_month_count・joined_at が当月 JST）。 */
+  newThisMonthCount: number
+}
+
+/**
+ * 予約サマリ（ADMIN_TEAM_RESERVATIONS・§2.2①）— P3b Wave2。team 専用。
+ *
+ * 対応 EP: GET /api/v1/dashboard/team/{teamSlug}/admin-reservation-summary
+ */
+export interface AdminReservationSummary {
+  /** 承認待ち件数（pending_count・status=PENDING）。 */
+  pendingCount: number
+  /** 本日の予約数（today_count・本日 JST の CONFIRMED/PENDING）。 */
+  todayCount: number
+}

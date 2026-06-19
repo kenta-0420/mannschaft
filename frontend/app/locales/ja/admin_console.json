@@ -97,6 +97,17 @@
         "reviewing": "確認中",
         "fetchFailed": "通報情報を取得できませんでした"
       },
+      "members": {
+        "total": "総数",
+        "active": "アクティブ",
+        "newThisMonth": "今月新規",
+        "fetchFailed": "メンバー統計を取得できませんでした"
+      },
+      "reservations": {
+        "pending": "承認待ち",
+        "today": "本日の予約",
+        "fetchFailed": "予約サマリを取得できませんでした"
+      },
       "modules": {
         "summary": "有効 {enabled} / 全 {total}",
         "fetchFailed": "モジュール情報を取得できませんでした"

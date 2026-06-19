@@ -10,6 +10,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 
@@ -29,6 +33,12 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class ReservationAdminQueryService {
+
+    private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
+
+    /** 本日の予約数に数える「有効予約」のステータス（キャンセル等は除外）。 */
+    private static final List<ReservationStatus> ACTIVE_RESERVATION_STATUSES =
+            List.of(ReservationStatus.CONFIRMED, ReservationStatus.PENDING);
 
     private final ReservationRepository reservationRepository;
     private final NameResolverService nameResolverService;
@@ -69,5 +79,46 @@ public class ReservationAdminQueryService {
                 .toList();
 
         return new PendingAggregate(count, items);
+    }
+
+    /**
+     * F10.1.1 / P3b Wave2: 指定チームの予約サマリ（承認待ち件数 / 本日の予約数）を返す
+     * （管理者レンズ「予約サマリ」{@code ADMIN_TEAM_RESERVATIONS}・設計書 02 §2.2①）。
+     *
+     * <ul>
+     *   <li>承認待ち = {@code status=PENDING} の件数（{@link #pendingForTeam} と同じ断面・件数のみ流用）。</li>
+     *   <li>本日の予約数 = 本日（JST）に {@code booked_at} があり、ステータスが CONFIRMED/PENDING の有効予約
+     *       （キャンセル等は除外）。本日 0:00:00 JST を UTC（DB 格納 TZ）へ変換した半開区間 [本日0:00, 翌日0:00) で絞る。</li>
+     * </ul>
+     *
+     * <p>全クエリの WHERE に {@code team_id} を含めるため、テナント越境（IDOR）は構造的に発生しない。</p>
+     *
+     * @param teamId チーム ID（WHERE 必須・IDOR 防止）
+     * @return 承認待ち件数・本日の予約数のドメインローカル集計
+     */
+    @Transactional(readOnly = true)
+    public TeamReservationSummary summaryForTeam(Long teamId) {
+        long pending = reservationRepository.countByTeamIdAndStatus(teamId, ReservationStatus.PENDING);
+
+        // 本日（JST）の半開区間 [本日0:00, 翌日0:00) を JST→UTC へ変換して算出する（ReservationAdminAlertQueryService と同方式）。
+        LocalDate todayJst = LocalDate.now(JST);
+        LocalDateTime todayStartUtc = todayJst.atStartOfDay()
+                .atZone(JST).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+        LocalDateTime tomorrowStartUtc = todayJst.plusDays(1).atStartOfDay()
+                .atZone(JST).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+
+        long today = reservationRepository.countByTeamIdAndStatusInAndBookedAtRange(
+                teamId, ACTIVE_RESERVATION_STATUSES, todayStartUtc, tomorrowStartUtc);
+
+        return new TeamReservationSummary(pending, today);
+    }
+
+    /**
+     * 予約サマリのドメインローカル集計。
+     *
+     * @param pendingCount 承認待ち件数（status=PENDING）
+     * @param todayCount   本日の予約数（本日 JST・CONFIRMED/PENDING）
+     */
+    public record TeamReservationSummary(long pendingCount, long todayCount) {
     }
 }
