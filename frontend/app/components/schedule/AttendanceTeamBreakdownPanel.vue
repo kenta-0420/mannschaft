@@ -47,7 +47,7 @@ async function load() {
 const teams = computed(() => data.value?.byTeam ?? [])
 const total = computed(() => data.value?.total ?? null)
 
-function teamLabel(teamId: number | null, teamName: string | null): string {
+function teamLabel(teamId: number | null | undefined, teamName: string | null | undefined): string {
   return teamId == null ? t('schedule.attendanceTeamBreakdown.directMembers') : (teamName ?? '')
 }
 
