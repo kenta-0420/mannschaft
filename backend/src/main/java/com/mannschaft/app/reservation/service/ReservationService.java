@@ -32,6 +32,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -64,6 +65,7 @@ public class ReservationService {
     private final ReservationTeamSettingService settingService;
     private final AccessControlService accessControlService;
     private final ReservationPolicyService reservationPolicyService;
+    private final Clock clock;
 
     /**
      * チームの予約一覧をページング取得する。
@@ -240,6 +242,16 @@ public class ReservationService {
         }
 
         ReservationSlotEntity slot = slotService.getSlotEntity(entity.getReservationSlotId());
+
+        // F03.4 ⑤: 会員（USER）キャンセルは締切（cancel_deadline_hours・既定 24）を実適用する。
+        // 枠開始時刻の deadline 時間前を過ぎていればキャンセルを拒否する（管理者キャンセルは対象外）。
+        // 判定基準は注入 Clock（LocalDateTime.now() 直書きは CI 破壊地雷のため禁止）。
+        int cancelDeadlineHours = reservationPolicyService.getOrDefault(entity.getTeamId()).getCancelDeadlineHours();
+        LocalDateTime slotStart = LocalDateTime.of(slot.getSlotDate(), slot.getStartTime());
+        LocalDateTime deadline = slotStart.minusHours(cancelDeadlineHours);
+        if (LocalDateTime.now(clock).isAfter(deadline)) {
+            throw new BusinessException(ReservationErrorCode.CANCEL_DEADLINE_PASSED);
+        }
 
         entity.cancel(request.getReason(), CancelledBy.USER);
         ReservationEntity saved = reservationRepository.save(entity);
