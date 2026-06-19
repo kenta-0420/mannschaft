@@ -7,7 +7,8 @@
  * - チームスコープ専用（設計書 §2.2⑦ に記載。組織に対応するウィジェットはない）。
  * - 既存 `useAdminDashboardApi().listModules('team', slug)` を消費する（新規 EP 不要）。
  * - 表示: 有効 N / 全 M（モジュール一覧の enabled 判定を FE で集計）。
- * - 導線: `/teams/[slug]/admin/settings/modules`。
+ * - 導線: 管理コンソールハブ（/teams/[slug]/admin）を暫定設定（P4 A-1方針）。
+ *   モジュール設定ページ未整備のため暫定。/admin/settings/modules が整備後に切替予定。
  * - API 取得失敗は握りつぶさず注記で表示（症状を隠さない）。
  */
 
@@ -37,8 +38,14 @@ const enabledCount = computed(() => modules.value.filter((m) => m.enabled).lengt
 /** 全モジュール数。 */
 const totalCount = computed(() => modules.value.length)
 
-/** 導線先: モジュール設定ページ。 */
-const modulesRoute = computed(() => `/teams/${props.slug}/admin/settings/modules`)
+/**
+ * 導線先: モジュール設定ページ。
+ * 設計方針（P4 A-1）: `/admin/settings/modules`（チームモジュール ON/OFF）はまだ存在しない
+ * （`/teams/[slug]/settings/` 配下にも modules.vue は未整備）。
+ * 正本ページが未整備のため、管理コンソールハブ（`/teams/[slug]/admin`）を暫定導線とする。
+ * モジュール設定ページが整備された時点でそちらへ切り替えること。
+ */
+const modulesRoute = computed(() => `/teams/${props.slug}/admin`)
 
 async function fetchModules() {
   if (loaded.value || loading.value) return
