@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -29,6 +30,7 @@ public class ReservationReminderService {
 
     private final ReservationReminderRepository reminderRepository;
     private final ReservationMapper reservationMapper;
+    private final Clock clock;
 
     /**
      * 予約のリマインダー一覧を取得する。
@@ -121,23 +123,21 @@ public class ReservationReminderService {
     }
 
     /**
-     * 送信対象のリマインダーを取得し、送信済みにマークする。
+     * 送信対象（{@code remind_at} 到来済みの PENDING）リマインダーを取得する。
      *
-     * @return 送信対象のリマインダーリスト
+     * <p>本メソッドは「取得のみ」を行い、送信済みマークは<b>行わない</b>。実送信と
+     * {@code SENT} マークは {@link ReservationReminderDispatchBatchService#dispatchDueReminders()}
+     * が「通知送出に成功した行のみ」担う（送信 → マークの順序を厳守し二重送信を防ぐ）。
+     * かつてここで通知を送らずに一括 {@code markSent()} していたのは、送信なしで SENT に
+     * してしまう症状隠蔽だったため撤去した（F03.4 段階拡張 ⑥）。</p>
+     *
+     * <p>現在時刻の判定は注入 {@link Clock} を用いる（テストで固定可能。直書き禁止）。</p>
+     *
+     * @return 送信対象（{@code remind_at <= now} かつ PENDING）のリマインダーリスト
      */
-    @Transactional
-    public List<ReservationReminderEntity> processPendingReminders() {
-        List<ReservationReminderEntity> pending =
-                reminderRepository.findByStatusAndRemindAtBefore(ReminderStatus.PENDING, LocalDateTime.now());
-
-        for (ReservationReminderEntity reminder : pending) {
-            reminder.markSent();
-            reminderRepository.save(reminder);
-        }
-
-        if (!pending.isEmpty()) {
-            log.info("リマインダー送信処理: {}件", pending.size());
-        }
-        return pending;
+    @Transactional(readOnly = true)
+    public List<ReservationReminderEntity> findDueReminders() {
+        return reminderRepository.findByStatusAndRemindAtBefore(
+                ReminderStatus.PENDING, LocalDateTime.now(clock));
     }
 }
