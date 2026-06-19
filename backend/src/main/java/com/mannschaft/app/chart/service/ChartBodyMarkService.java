@@ -50,7 +50,7 @@ public class ChartBodyMarkService {
 
         // 新しいマークを一括INSERT
         List<ChartBodyMarkEntity> entities = request.getMarks().stream()
-                .map(mark -> {
+                .<ChartBodyMarkEntity>map(mark -> {
                     // enum バリデーション
                     BodyPart.valueOf(mark.getBodyPart());
                     MarkType.valueOf(mark.getMarkType());
