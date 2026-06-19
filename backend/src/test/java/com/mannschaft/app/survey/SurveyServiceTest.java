@@ -339,7 +339,7 @@ class SurveyServiceTest {
         }
 
         @Test
-        @DisplayName("締切延長_組織ALL_配下チーム展開の母集団へ通知")
+        @DisplayName("締切延長_組織ALL_配下チーム展開の母集団へ事前認可通知（(B)レグ番人）")
         void 締切延長_組織ALL_配下チーム展開() {
             // Given: 組織スコープ × ALL
             String orgScopeType = "ORGANIZATION";
@@ -367,7 +367,9 @@ class SurveyServiceTest {
 
             // Then: 組織配下展開の窓口経由で母集団を解決し、findUserIdsByScope は使わない
             verify(organizationMembershipService).resolveOrgDistributionUserIds(SCOPE_ID, false);
-            verify(notificationHelper).notifyAll(
+            // (B) レグ番人: 締切延長通知も publish/remind と同形に notifyAllPreAuthorized で送られ、
+            // canView 絞り込みを通さない（配下/直属一般メンバーへ誤 deny で届かないことを担保）。
+            verify(notificationHelper).notifyAllPreAuthorized(
                     org.mockito.ArgumentMatchers.eq(java.util.List.of(11L, 22L, 33L)),
                     org.mockito.ArgumentMatchers.anyString(),
                     org.mockito.ArgumentMatchers.anyString(),
@@ -378,6 +380,18 @@ class SurveyServiceTest {
                     org.mockito.ArgumentMatchers.eq(SCOPE_ID),
                     org.mockito.ArgumentMatchers.anyString(),
                     org.mockito.ArgumentMatchers.eq(USER_ID));
+            // 旧 canView ゲート付き notifyAll は使わないことも明示（取りこぼし非回帰）。
+            verify(notificationHelper, org.mockito.Mockito.never()).notifyAll(
+                    org.mockito.ArgumentMatchers.anyList(),
+                    org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.any());
         }
 
         @Test

@@ -75,7 +75,7 @@ class SurveyPublishNotificationListenerTest {
         // Then: 組織配下展開の窓口経由・findUserIdsByScope は呼ばない
         verify(organizationMembershipService).resolveOrgDistributionUserIds(SCOPE_ID, false);
         verify(userRoleRepository, never()).findUserIdsByScope(anyString(), any());
-        verify(notificationHelper).notifyAll(
+        verify(notificationHelper).notifyAllPreAuthorized(
                 eq(List.of(11L, 22L, 33L)),
                 eq(SurveyNotificationType.SURVEY_CREATED.name()),
                 anyString(),
@@ -121,7 +121,7 @@ class SurveyPublishNotificationListenerTest {
         // Then: チームは findUserIdsByScope のみ・組織展開窓口は呼ばない
         verify(userRoleRepository).findUserIdsByScope("TEAM", SCOPE_ID);
         verify(organizationMembershipService, never()).resolveOrgDistributionUserIds(any(), org.mockito.ArgumentMatchers.anyBoolean());
-        verify(notificationHelper).notifyAll(
+        verify(notificationHelper).notifyAllPreAuthorized(
                 eq(List.of(7L, 8L)),
                 eq(SurveyNotificationType.SURVEY_CREATED.name()),
                 anyString(),
@@ -153,7 +153,7 @@ class SurveyPublishNotificationListenerTest {
         verify(surveyTargetRepository).findBySurveyId(SURVEY_ID);
         verify(organizationMembershipService, never()).resolveOrgDistributionUserIds(any(), org.mockito.ArgumentMatchers.anyBoolean());
         verify(userRoleRepository, never()).findUserIdsByScope(anyString(), any());
-        verify(notificationHelper).notifyAll(
+        verify(notificationHelper).notifyAllPreAuthorized(
                 eq(List.of(101L, 102L)),
                 eq(SurveyNotificationType.SURVEY_CREATED.name()),
                 anyString(),
@@ -180,7 +180,7 @@ class SurveyPublishNotificationListenerTest {
         listener.onSurveyPublished(event);
 
         // Then
-        verify(notificationHelper, never()).notifyAll(
+        verify(notificationHelper, never()).notifyAllPreAuthorized(
                 any(), anyString(), anyString(), anyString(), anyString(),
                 any(), any(), any(), anyString(), any());
     }

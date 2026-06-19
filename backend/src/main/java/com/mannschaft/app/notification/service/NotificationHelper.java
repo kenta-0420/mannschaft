@@ -190,6 +190,87 @@ public class NotificationHelper {
     }
 
     /**
+     * 配信認可済み受信者へ単一通知を作成・配信する（配信＝受信権 統一・関所(1)通知）。
+     *
+     * <p>{@link #notify(Long, String, NotificationPriority, String, String, String, Long,
+     * NotificationScopeType, Long, String, Long)} と異なり、
+     * {@link NotificationService#createNotificationPreAuthorized} を呼ぶため
+     * visibility ガード（canView）を通さない。{@link #notifyAllPreAuthorized} のループ本体として用いる。</p>
+     */
+    public void notifyPreAuthorized(Long userId, String notificationType, NotificationPriority priority,
+                                    String title, String body,
+                                    String sourceType, Long sourceId,
+                                    NotificationScopeType scopeType, Long scopeId,
+                                    String actionUrl, Long actorId) {
+        NotificationEntity notification = notificationService.createNotificationPreAuthorized(
+                userId, notificationType, priority,
+                title, body, sourceType, sourceId, scopeType, scopeId, actionUrl, actorId);
+        dispatchService.dispatch(notification);
+    }
+
+    /**
+     * 配信認可済み受信者リストへ一括通知を作成・配信する（配信＝受信権 統一・関所(1)通知）。
+     *
+     * <p>{@link #notifyAll} と異なり、{@link #filterAccessibleRecipients}（canView 絞り込み）を
+     * <b>通さない</b>。受信者リストが「配信母集団（コンテンツの {@code includeSupporters} トグル準拠で
+     * {@code resolveOrgDistributionUserIds} が展開した集合）」として呼び出し側で事前認可済みの場合にのみ使用する。</p>
+     *
+     * <p>これにより、SURVEY 通知が結果閲覧（ResultsVisibility）軸の canView で誤って deny され
+     * 直属一般メンバー／配下チームメンバーへ届かなかった (B) 通知レグレッションを根治する。
+     * 課金（{@code isBillable}）は告知通知専用の概念であり、本配信通知は対象外のため引数を持たない
+     * （既存 {@link #notifyAll} の課金オーバーロードは不変）。</p>
+     *
+     * @param userIds          配信母集団で事前認可済みの受信者リスト
+     * @param notificationType 通知種別
+     * @param priority         優先度
+     * @param title            タイトル
+     * @param body             本文
+     * @param sourceType       ソース種別
+     * @param sourceId         ソースID
+     * @param scopeType        通知スコープ種別
+     * @param scopeId          通知スコープID
+     * @param actionUrl        アクションURL
+     * @param actorId          実行者ID
+     */
+    public void notifyAllPreAuthorized(List<Long> userIds, String notificationType, NotificationPriority priority,
+                                       String title, String body,
+                                       String sourceType, Long sourceId,
+                                       NotificationScopeType scopeType, Long scopeId,
+                                       String actionUrl, Long actorId) {
+        if (userIds == null || userIds.isEmpty()) {
+            return;
+        }
+        int dispatched = 0;
+        for (Long userId : userIds) {
+            try {
+                notifyPreAuthorized(userId, notificationType, priority, title, body,
+                        sourceType, sourceId, scopeType, scopeId, actionUrl, actorId);
+                dispatched++;
+            } catch (Exception e) {
+                log.warn("通知送信失敗（継続）: userId={}, type={}, error={}",
+                        userId, notificationType, e.getMessage());
+            }
+        }
+        log.info("一括通知送信(配信認可済): type={}, userCount={}（visibility絞込なし）",
+                notificationType, dispatched);
+    }
+
+    /**
+     * 配信認可済み受信者リストへ NORMAL 優先度で一括通知を作成・配信する（配信＝受信権 統一・関所(1)通知）。
+     *
+     * @see #notifyAllPreAuthorized(List, String, NotificationPriority, String, String, String, Long,
+     *      NotificationScopeType, Long, String, Long)
+     */
+    public void notifyAllPreAuthorized(List<Long> userIds, String notificationType,
+                                       String title, String body,
+                                       String sourceType, Long sourceId,
+                                       NotificationScopeType scopeType, Long scopeId,
+                                       String actionUrl, Long actorId) {
+        notifyAllPreAuthorized(userIds, notificationType, NotificationPriority.NORMAL, title, body,
+                sourceType, sourceId, scopeType, scopeId, actionUrl, actorId);
+    }
+
+    /**
      * 受信者リストを visibility ガードで絞り込む (F00 Phase F)。
      *
      * <p>fail-soft: {@code sourceType} が {@link ReferenceType} に

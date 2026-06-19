@@ -95,11 +95,39 @@ public class AccessControlService {
      * @return メンバー、または ORGANIZATION 配下の応答母集団メンバー（純 SUPPORTER 除く）なら true
      */
     public boolean isMemberOrDescendant(Long userId, Long scopeId, String scopeType) {
+        // 既存 3 引数版は純 SUPPORTER 除外（includeSupporters=false）に委譲して挙動温存（#1647 非回帰）。
+        return isMemberOrDescendant(userId, scopeId, scopeType, false);
+    }
+
+    /**
+     * {@link #isMemberOrDescendant(Long, Long, String)} の {@code includeSupporters} トグル版
+     * （配信＝受信権 統一・関所(3)回答）。
+     *
+     * <p>組織発コンテンツ（出欠/アンケート）は、コンテンツの {@code includeSupporters} トグルに従って
+     * 配信母集団が決まる（ON=配下 SUPPORTER 含む / OFF=配下 MEMBER のみ）。応答（回答）の認可母集団も
+     * これと一致させるため、本オーバーロードは ORGANIZATION スコープで
+     * {@link OrganizationMembershipService#isInOrgDistributionAudience(Long, Long, boolean)}
+     * を呼び、トグルに応じて純 SUPPORTER の救済有無を切り替える。</p>
+     *
+     * <ul>
+     *   <li>{@code includeSupporters=false}: 純 SUPPORTER を除外（既存 3 引数版と同一・#1647 非回帰）。</li>
+     *   <li>{@code includeSupporters=true}: 配下 SUPPORTER も応答母集団に含む（トグル ON のコンテンツ）。</li>
+     * </ul>
+     *
+     * <p>TEAM 等その他スコープは従来どおり {@link #isMember}（配下概念を持ち込まない・挙動不変）。</p>
+     *
+     * @param userId            操作ユーザー
+     * @param scopeId           スコープ ID（チーム ID または組織 ID）
+     * @param scopeType         スコープ種別（"TEAM" または "ORGANIZATION"）
+     * @param includeSupporters コンテンツの配信トグル（true=配下 SUPPORTER 含む / false=純 SUPPORTER 除外）
+     * @return メンバー、または ORGANIZATION 配下のトグル準拠配信母集団メンバーなら true
+     */
+    public boolean isMemberOrDescendant(Long userId, Long scopeId, String scopeType, boolean includeSupporters) {
         if (isMember(userId, scopeId, scopeType)) {
             return true;
         }
         if ("ORGANIZATION".equals(scopeType)) {
-            return organizationMembershipService.isActiveMemberInOrgDistributionUniverse(scopeId, userId);
+            return organizationMembershipService.isInOrgDistributionAudience(scopeId, userId, includeSupporters);
         }
         return false;
     }
@@ -114,7 +142,22 @@ public class AccessControlService {
      * @see #isMemberOrDescendant(Long, Long, String)
      */
     public void checkMembershipOrDescendant(Long userId, Long scopeId, String scopeType) {
-        if (!isMemberOrDescendant(userId, scopeId, scopeType)) {
+        checkMembershipOrDescendant(userId, scopeId, scopeType, false);
+    }
+
+    /**
+     * {@link #checkMembershipOrDescendant(Long, Long, String)} の {@code includeSupporters} トグル版。
+     * いずれの母集団にも属さない場合は 403（COMMON_002）。
+     *
+     * <p>集約入口（action-required 等）では、トグル ON で配信された出欠/アンケに回答可能な配下 SUPPORTER も
+     * 入口で弾かれないよう {@code includeSupporters=true} で広めに通す（per-content の絞りは各未回答クエリの
+     * materialize 済み行で自然に効く）。単一コンテンツの回答経路は当該コンテンツのトグル値を渡す。</p>
+     *
+     * @see #isMemberOrDescendant(Long, Long, String, boolean)
+     */
+    public void checkMembershipOrDescendant(Long userId, Long scopeId, String scopeType,
+                                            boolean includeSupporters) {
+        if (!isMemberOrDescendant(userId, scopeId, scopeType, includeSupporters)) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
     }

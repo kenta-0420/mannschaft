@@ -23,6 +23,7 @@ import com.mannschaft.app.schedule.event.ScheduleCancelledEvent;
 import com.mannschaft.app.schedule.event.ScheduleCreatedEvent;
 import com.mannschaft.app.schedule.event.ScheduleUpdatedEvent;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -72,6 +73,12 @@ public class ScheduleService {
     private final ScheduleRecurrenceService recurrenceService;
     private final ScheduleScheduledTaskService scheduledTaskService;
     private final TeamOrgMembershipRepository teamOrgMembershipRepository;
+    /**
+     * 関所(2)閲覧の OR寄せ（配信＝受信権）で、組織スケジュールの配信母集団判定に用いる越境窓口。
+     * {@code team_org_memberships} / {@code organizations} を直接参照せず Service 経由で解決する
+     * （CLAUDE.md ドメイン境界の原則・ScheduleAttendanceService と同じ越境窓口方式）。
+     */
+    private final OrganizationMembershipService organizationMembershipService;
 
     /**
      * スケジュールを単体取得する。存在しない場合は例外をスローする。
@@ -109,8 +116,24 @@ public class ScheduleService {
      * @throws BusinessException 閲覧権限が無い、または存在しない場合
      */
     public ScheduleEntity getScheduleWithAccessCheck(Long id, Long userId) {
+        // 関所(2)閲覧（配信＝受信権 統一・案ロ OR寄せ）:
+        // 通常の F00 可視性 canView が true ならそのまま許可。false でも、組織スケジュールで
+        // 当該ユーザーがコンテンツの includeSupporters トグル準拠の配信母集団に属するなら閲覧許可する。
+        // 可視性 level の書換・新段昇格は行わず（旧案B同種の地雷回避）、OR の一辺として母集団判定を足すのみ。
+        if (contentVisibilityChecker.canView(ReferenceType.SCHEDULE, id, userId)) {
+            return findScheduleOrThrow(id);
+        }
+        ScheduleEntity schedule = findScheduleOrThrow(id);
+        if (schedule.getOrganizationId() != null
+                && organizationMembershipService.isInOrgDistributionAudience(
+                        schedule.getOrganizationId(), userId,
+                        Boolean.TRUE.equals(schedule.getIncludeSupporters()))) {
+            return schedule;
+        }
+        // 母集団にも属さない場合は従来どおり assertCanView に委譲し、
+        // 正規の deny 監査記録（VISIBILITY_DENIED）と例外コード（VISIBILITY_001/004）を発火させる。
         contentVisibilityChecker.assertCanView(ReferenceType.SCHEDULE, id, userId);
-        return findScheduleOrThrow(id);
+        return schedule;
     }
 
     /**

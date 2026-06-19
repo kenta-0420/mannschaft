@@ -162,6 +162,12 @@ class ScheduleAttendanceServiceTest {
 
     /** 指定した minResponseRole を持つ ORGANIZATION スコープの出欠対象スケジュールを生成する（欠陥Z 用）。 */
     private ScheduleEntity createOrgScheduleWithMinResponseRole(MinResponseRole minResponseRole) {
+        return createOrgScheduleWithMinResponseRole(minResponseRole, false);
+    }
+
+    /** includeSupporters トグルを指定できる ORGANIZATION スコープ出欠対象スケジュール生成（配信＝受信権 用）。 */
+    private ScheduleEntity createOrgScheduleWithMinResponseRole(MinResponseRole minResponseRole,
+                                                                boolean includeSupporters) {
         return ScheduleEntity.builder()
                 .organizationId(ORG_ID)
                 .title("組織練習")
@@ -174,6 +180,7 @@ class ScheduleAttendanceServiceTest {
                 .minResponseRole(minResponseRole)
                 .status(ScheduleStatus.SCHEDULED)
                 .attendanceRequired(true)
+                .includeSupporters(includeSupporters)
                 .attendanceDeadline(FUTURE_DEADLINE)
                 .commentOption(CommentOption.OPTIONAL)
                 .isException(false)
@@ -533,8 +540,8 @@ class ScheduleAttendanceServiceTest {
             given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
             given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
             given(accessControlService.hasRoleOrAbove(USER_ID, ORG_ID, "ORGANIZATION", "MEMBER")).willReturn(false);
-            // 配下救済: isMemberOrDescendant が true（純 SUPPORTER 除外版で配下 MEMBER を許容）
-            given(accessControlService.isMemberOrDescendant(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(true);
+            // 配下救済: MEMBER 要求段は includeSupporters=false（純 SUPPORTER 除外）で配下 MEMBER を許容
+            given(accessControlService.isMemberOrDescendant(USER_ID, ORG_ID, "ORGANIZATION", false)).willReturn(true);
             stubSaveAndDeadline();
 
             AttendanceRequest req = new AttendanceRequest("ATTENDING", null, null);
@@ -553,7 +560,7 @@ class ScheduleAttendanceServiceTest {
             given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
             given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
             given(accessControlService.hasRoleOrAbove(USER_ID, ORG_ID, "ORGANIZATION", "MEMBER")).willReturn(false);
-            given(accessControlService.isMemberOrDescendant(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+            given(accessControlService.isMemberOrDescendant(USER_ID, ORG_ID, "ORGANIZATION", false)).willReturn(false);
 
             AttendanceRequest req = new AttendanceRequest("ATTENDING", null, null);
 
@@ -580,7 +587,48 @@ class ScheduleAttendanceServiceTest {
                     .isEqualTo(CommonErrorCode.COMMON_002);
             // 管理者要求段ではフォールバック（配下救済）を一切呼ばないこと
             org.mockito.Mockito.verify(accessControlService, org.mockito.Mockito.never())
-                    .isMemberOrDescendant(USER_ID, ORG_ID, "ORGANIZATION");
+                    .isMemberOrDescendant(org.mockito.ArgumentMatchers.eq(USER_ID),
+                            org.mockito.ArgumentMatchers.eq(ORG_ID),
+                            org.mockito.ArgumentMatchers.eq("ORGANIZATION"),
+                            org.mockito.ArgumentMatchers.anyBoolean());
+        }
+
+        // ---- 配信＝受信権 統一: SUPPORTER_PLUS のトグル準拠救済（関所(3)回答） ----
+
+        @Test
+        @DisplayName("配信統一_ORG_SUPPORTER_PLUS_トグルON_配下SUPPORTERは配信母集団として救済され回答可能")
+        void 配信統一_組織SUPPORTER_PLUS_トグルON_配下救済() {
+            // given: includeSupporters=true の組織出欠(SUPPORTER_PLUS)。配下 SUPPORTER は配信母集団＝回答可。
+            ScheduleEntity schedule = createOrgScheduleWithMinResponseRole(MinResponseRole.SUPPORTER_PLUS, true);
+            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, ORG_ID, "ORGANIZATION", "SUPPORTER")).willReturn(false);
+            // トグル ON のためトグル準拠（includeSupporters=true）で救済される
+            given(accessControlService.isMemberOrDescendant(USER_ID, ORG_ID, "ORGANIZATION", true)).willReturn(true);
+            stubSaveAndDeadline();
+
+            AttendanceRequest req = new AttendanceRequest("ATTENDING", null, null);
+
+            AttendanceResponse result = attendanceService.respondAttendance(SCHEDULE_ID, USER_ID, req);
+            assertThat(result.getStatus()).isEqualTo("ATTENDING");
+        }
+
+        @Test
+        @DisplayName("配信統一_ORG_SUPPORTER_PLUS_トグルOFF_配下純SUPPORTERは母集団外で回答不可_COMMON_002")
+        void 配信統一_組織SUPPORTER_PLUS_トグルOFF_純SUPPORTER拒否() {
+            // given: includeSupporters=false の組織出欠(SUPPORTER_PLUS)。配下純 SUPPORTER は母集団外＝回答不可。
+            ScheduleEntity schedule = createOrgScheduleWithMinResponseRole(MinResponseRole.SUPPORTER_PLUS, false);
+            given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, ORG_ID, "ORGANIZATION", "SUPPORTER")).willReturn(false);
+            given(accessControlService.isMemberOrDescendant(USER_ID, ORG_ID, "ORGANIZATION", false)).willReturn(false);
+
+            AttendanceRequest req = new AttendanceRequest("ATTENDING", null, null);
+
+            assertThatThrownBy(() -> attendanceService.respondAttendance(SCHEDULE_ID, USER_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
         }
     }
 

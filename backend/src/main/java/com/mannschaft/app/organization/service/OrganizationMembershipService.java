@@ -310,6 +310,41 @@ public class OrganizationMembershipService {
                 orgId, userId, MAX_ORG_DESCENDANT_DEPTH);
     }
 
+    /**
+     * 指定ユーザーが「対象組織を根とした再帰的配下ツリー」の<b>配信母集団</b>
+     * （コンテンツの {@code includeSupporters} トグル準拠）に属するかを判定する
+     * （配信＝受信権 統一・通知/閲覧/回答の 3 関所を母集団へ揃える公開ラッパー）。
+     *
+     * <p>{@link #isUserInOrgDistributionUniverse(Long, Long)}（SUPPORTER 一律含む・所属軸）や
+     * {@link #isActiveMemberInOrgDistributionUniverse(Long, Long)}（純 SUPPORTER 一律除外・固定）と異なり、
+     * <b>呼び出し側が渡す {@code includeSupporters} トグルに従って</b> SUPPORTER 除外有無を切り替える。
+     * これにより {@link #resolveOrgDistributionUserIds(Long, boolean)} で実際に配信した母集団と、
+     * 通知・閲覧・回答の各関所の認可母集団が完全に一致する（配信＝受信権）。</p>
+     *
+     * <ul>
+     *   <li>{@code includeSupporters=true}（出欠/アンケのトグル ON）: 配下 SUPPORTER も母集団に含む。</li>
+     *   <li>{@code includeSupporters=false}（トグル OFF）: 純 SUPPORTER を除外（MEMBER 優先）。
+     *       {@link #isActiveMemberInOrgDistributionUniverse(Long, Long)} と同一セマンティクス。</li>
+     * </ul>
+     *
+     * <p><b>越境是正の窓口</b>: schedule/survey/common(AccessControlService) 等の他ドメインからは
+     * このメソッドを呼び、{@code organizations} / {@code team_org_memberships} / {@code memberships} を
+     * 直接参照させない。クエリ本体は SQL 局所性のため
+     * {@link UserRoleRepository#existsInOrgDistributionAudience(Long, Long, boolean, int)} に置いている。</p>
+     *
+     * @param orgId             母集団の根となる組織 ID
+     * @param userId            判定対象ユーザー ID（null の場合は false）
+     * @param includeSupporters コンテンツの配信トグル（true=配下 SUPPORTER 含む / false=純 SUPPORTER 除外）
+     * @return ユーザーがトグル準拠の配信母集団に属するなら true
+     */
+    public boolean isInOrgDistributionAudience(Long orgId, Long userId, boolean includeSupporters) {
+        if (userId == null) {
+            return false;
+        }
+        return userRoleRepository.existsInOrgDistributionAudience(
+                orgId, userId, includeSupporters, MAX_ORG_DESCENDANT_DEPTH);
+    }
+
     private OrganizationEntity findOrganizationOrThrow(Long orgId) {
         return organizationRepository.findById(orgId)
                 .orElseThrow(() -> new BusinessException(OrgErrorCode.ORG_001));

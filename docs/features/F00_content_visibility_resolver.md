@@ -1735,6 +1735,26 @@ public void notifyMentions(Long messageId, List<Long> mentionedUserIds) {
 }
 ```
 
+### 11.1.1 配信＝受信権（組織配信の通知・閲覧・回答を母集団へ統一）
+
+**マスター御裁可（よきにはからえ）**。組織発の出欠/アンケート（`schedule` / `survey`）は、配信母集団
+（`OrganizationMembershipService.resolveOrgDistributionUserIds` がコンテンツの `includeSupporters` トグル準拠で
+「直属 ∪ 配下参加チーム(ACTIVE)」を展開した集合）に属する者に対して、**通知・閲覧・回答の 3 関所すべてを開く**。
+出欠もアンケもトグル準拠（ON=配下 SUPPORTER 含む / OFF=配下 MEMBER のみ）。可視性 level の書換・新段昇格は不採用。
+結果閲覧（`ResultsVisibility`）軸は本統一の対象外（温存）。
+
+| 関所 | 入口 | 統一方法 |
+|---|---|---|
+| (1) 通知 | `ScheduleAttendanceService.openAttendanceSolicitation` / `SurveyPublishNotificationListener` / `SurveyRemindService` / `SurveyService.extendDeadline` / `ScheduleReminderNotificationListener`（出欠リマインド） | `NotificationService.createNotificationPreAuthorized` / `NotificationHelper.notifyAllPreAuthorized` で `canView`（`isAccessible`/`filterAccessible`）をスキップ。受信者は配信母集団で事前認可済み（締切延長＝publish と同一母集団解決／出欠リマインド＝`schedule_attendances` 行＝配信母集団 materialize 由来 or 予定所有者本人）。**既存 `createNotification`/`notifyAll` の Phase F ガードは他通知のため不変**。 |
+| (2) 閲覧 | `ScheduleService.getScheduleWithAccessCheck` | `canView=false` でも組織スケジュールで `isInOrgDistributionAudience(orgId, userId, includeSupporters)` が true なら閲覧許可する OR寄せ。母集団外は従来どおり `assertCanView` 委譲で deny 監査＋例外。 |
+| (3) 回答 | `AccessControlService.isMemberOrDescendant`/`checkMembershipOrDescendant`（トグル版）/ `ScheduleAttendanceService.validateMinResponseRole` / `SurveyResponseService.submitResponse` | 出欠は `schedule.includeSupporters` 駆動で救済段を切替（SUPPORTER_PLUS×ON は配下 SUPPORTER 救済）。アンケは `DistributionMode.ALL` 時に認可がゼロだった組織外漏洩穴を `checkMembershipOrDescendant`（トグル準拠）で塞ぐ。 |
+
+**`createNotificationPreAuthorized` の ArchUnit 整合**: 専用経路は `NotificationService`（`ContentVisibilityChecker` 依存済み）に置くため、§13.5 の「`NotificationRepository.save*` 呼出元は `ContentVisibilityChecker` に依存」ルールを満たす（クラス単位依存・メソッド単位ではない）。
+
+**(B) 通知レグレッションの根治**: SURVEY 通知が `ResultsVisibility` 軸を含む `canView` で誤 deny され、配信母集団に属する直属一般メンバー・配下チームメンバーへ届かなかった問題を、関所(1)の専用経路化で根治（番人テスト `SurveyPublishNotificationListenerTest` が `notifyAllPreAuthorized` 経由を担保）。同種の配信母集団向け通知の**取りこぼし経路**（締切延長 `SurveyService.extendDeadline`・出欠リマインド `ScheduleReminderNotificationListener`）も `notifyAllPreAuthorized` へ統一して同根治を波及（番人 `SurveyServiceTest#ExtendDeadline` / `ScheduleReminderNotificationListenerTest`）。出欠リマインドの受信者は `schedule_attendances` 行（出欠募集時に配信母集団から materialize 済み）由来、または個人予定の所有者本人であり、いずれも事前認可済み。
+
+**`submitResponse` ALL 認可穴**: 旧実装は `DistributionMode.TARGETED` のみ `existsBySurveyIdAndUserId` で弾き、`ALL` は認可ゼロ＝組織外の任意ユーザーが `surveyId` を知れば回答できた。`ALL` 時にスコープ準拠の `checkMembershipOrDescendant`（ORG=トグル準拠母集団 / TEAM=直接所属）を追加して塞いだ。さらに **ALL アンケは必ず scoped（`scopeId`/`scopeType` 非 null）である不変条件**を明示ガードで固定し、scope 欠落時は認可をサイレントスキップせず `COMMON_002`（403）で fail-closed に弾く（番人 `SurveyResponseServiceTest#SubmitResponse`）。
+
 ### 11.2 fail-closed 原則
 
 - 未対応 ReferenceType: `false` を返す（漏らさない）

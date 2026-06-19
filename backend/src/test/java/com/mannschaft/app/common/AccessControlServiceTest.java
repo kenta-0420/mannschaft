@@ -230,7 +230,8 @@ class AccessControlServiceTest {
         void organization_配下チームのみ所属メンバーはtrue() {
             given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
                     .willReturn(false);
-            given(organizationMembershipService.isActiveMemberInOrgDistributionUniverse(SCOPE_ID, USER_ID))
+            // 3 引数版は includeSupporters=false 委譲（純 SUPPORTER 除外の配信母集団判定）。
+            given(organizationMembershipService.isInOrgDistributionAudience(SCOPE_ID, USER_ID, false))
                     .willReturn(true);
 
             assertThat(accessControlService.isMemberOrDescendant(USER_ID, SCOPE_ID, "ORGANIZATION")).isTrue();
@@ -243,7 +244,7 @@ class AccessControlServiceTest {
         void organization_配下純SUPPORTERはfalse() {
             given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
                     .willReturn(false);
-            given(organizationMembershipService.isActiveMemberInOrgDistributionUniverse(SCOPE_ID, USER_ID))
+            given(organizationMembershipService.isInOrgDistributionAudience(SCOPE_ID, USER_ID, false))
                     .willReturn(false);
 
             assertThat(accessControlService.isMemberOrDescendant(USER_ID, SCOPE_ID, "ORGANIZATION")).isFalse();
@@ -259,7 +260,7 @@ class AccessControlServiceTest {
         void organization_無関係ユーザーはfalse() {
             given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
                     .willReturn(false);
-            given(organizationMembershipService.isActiveMemberInOrgDistributionUniverse(SCOPE_ID, USER_ID))
+            given(organizationMembershipService.isInOrgDistributionAudience(SCOPE_ID, USER_ID, false))
                     .willReturn(false);
 
             assertThatThrownBy(() ->
@@ -291,6 +292,36 @@ class AccessControlServiceTest {
                     .isInstanceOf(BusinessException.class);
             // TEAM では配下判定（organization 越境窓口）を一切呼ばない
             verifyNoInteractions(organizationMembershipService);
+        }
+
+        @Test
+        @DisplayName("ORGANIZATION includeSupporters=true: 配下純SUPPORTERもトグル準拠で母集団に含まれる→true")
+        void organization_トグルON_配下純SUPPORTERはtrue() {
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
+                    .willReturn(false);
+            // トグル ON（includeSupporters=true）の配信母集団判定を呼ぶ
+            given(organizationMembershipService.isInOrgDistributionAudience(SCOPE_ID, USER_ID, true))
+                    .willReturn(true);
+
+            assertThat(accessControlService.isMemberOrDescendant(USER_ID, SCOPE_ID, "ORGANIZATION", true)).isTrue();
+            // 例外なし
+            accessControlService.checkMembershipOrDescendant(USER_ID, SCOPE_ID, "ORGANIZATION", true);
+        }
+
+        @Test
+        @DisplayName("ORGANIZATION includeSupporters=false: トグルOFFなら配下純SUPPORTERは母集団外→false")
+        void organization_トグルOFF_配下純SUPPORTERはfalse() {
+            given(membershipRepository.existsActiveByUserAndScope(USER_ID, ScopeType.ORGANIZATION, SCOPE_ID))
+                    .willReturn(false);
+            given(organizationMembershipService.isInOrgDistributionAudience(SCOPE_ID, USER_ID, false))
+                    .willReturn(false);
+
+            assertThat(accessControlService.isMemberOrDescendant(USER_ID, SCOPE_ID, "ORGANIZATION", false)).isFalse();
+            assertThatThrownBy(() ->
+                    accessControlService.checkMembershipOrDescendant(USER_ID, SCOPE_ID, "ORGANIZATION", false))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
         }
     }
 

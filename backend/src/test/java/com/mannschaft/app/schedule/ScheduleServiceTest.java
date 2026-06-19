@@ -72,6 +72,9 @@ class ScheduleServiceTest {
     @Mock
     private TeamOrgMembershipRepository teamOrgMembershipRepository;
 
+    @Mock
+    private com.mannschaft.app.organization.service.OrganizationMembershipService organizationMembershipService;
+
     @InjectMocks
     private ScheduleService scheduleService;
 
@@ -167,10 +170,12 @@ class ScheduleServiceTest {
     class GetScheduleWithAccessCheck {
 
         @Test
-        @DisplayName("アクセスチェック付き取得_F00 ContentVisibilityChecker 経由で判定される")
-        void アクセスチェック付き取得_ContentVisibilityChecker経由で判定される() {
+        @DisplayName("アクセスチェック付き取得_F00 canView がtrueならそのまま許可")
+        void アクセスチェック付き取得_canViewがtrueなら許可() {
             // given
             ScheduleEntity entity = createTeamScheduleEntity();
+            given(contentVisibilityChecker.canView(ReferenceType.SCHEDULE, SCHEDULE_ID, USER_ID))
+                    .willReturn(true);
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
 
             // when
@@ -178,13 +183,68 @@ class ScheduleServiceTest {
 
             // then
             assertThat(result.getTitle()).isEqualTo("練習");
-            verify(contentVisibilityChecker).assertCanView(ReferenceType.SCHEDULE, SCHEDULE_ID, USER_ID);
+            verify(contentVisibilityChecker).canView(ReferenceType.SCHEDULE, SCHEDULE_ID, USER_ID);
+            // canView=true なら配信母集団判定（越境窓口）は呼ばない
+            org.mockito.Mockito.verifyNoInteractions(organizationMembershipService);
         }
 
         @Test
-        @DisplayName("アクセスチェック付き取得_可視性無し_例外スロー")
-        void アクセスチェック付き取得_可視性無し_例外スロー() {
-            // given: ContentVisibilityChecker が assertCanView で BusinessException をスローする
+        @DisplayName("番人4: 関所(2)閲覧_組織スケジュールで canView=false でも配信母集団なら200で開ける")
+        void 番人4_組織配下メンバーは出欠詳細を開ける() {
+            // given: 組織スケジュール。canView=false（直接所属でない配下メンバー）だが、
+            // includeSupporters トグル準拠の配信母集団に属する → OR寄せで閲覧許可。
+            ScheduleEntity orgSchedule = ScheduleEntity.builder()
+                    .organizationId(20L)
+                    .title("組織練習")
+                    .startAt(START).endAt(END).allDay(false)
+                    .eventType(EventType.PRACTICE)
+                    .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                    .minViewRole(MinViewRole.MEMBER_PLUS)
+                    .status(ScheduleStatus.SCHEDULED)
+                    .attendanceRequired(true)
+                    .includeSupporters(false)
+                    .commentOption(CommentOption.OPTIONAL)
+                    .isException(false)
+                    .createdBy(USER_ID)
+                    .build();
+            given(contentVisibilityChecker.canView(ReferenceType.SCHEDULE, SCHEDULE_ID, USER_ID))
+                    .willReturn(false);
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(orgSchedule));
+            given(organizationMembershipService.isInOrgDistributionAudience(20L, USER_ID, false))
+                    .willReturn(true);
+
+            // when
+            ScheduleEntity result = scheduleService.getScheduleWithAccessCheck(SCHEDULE_ID, USER_ID);
+
+            // then: 200 相当でエンティティが返り、assertCanView（deny例外）には到達しない
+            assertThat(result.getTitle()).isEqualTo("組織練習");
+            verify(contentVisibilityChecker, org.mockito.Mockito.never())
+                    .assertCanView(ReferenceType.SCHEDULE, SCHEDULE_ID, USER_ID);
+        }
+
+        @Test
+        @DisplayName("番人5: 組織にも配下にも無関係なユーザーは assertCanView へ委譲され例外（403相当）")
+        void 番人5_無関係ユーザーは例外() {
+            // given: 組織スケジュール。canView=false かつ配信母集団にも非該当 → assertCanView 委譲で deny。
+            ScheduleEntity orgSchedule = ScheduleEntity.builder()
+                    .organizationId(20L)
+                    .title("組織練習")
+                    .startAt(START).endAt(END).allDay(false)
+                    .eventType(EventType.PRACTICE)
+                    .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                    .minViewRole(MinViewRole.MEMBER_PLUS)
+                    .status(ScheduleStatus.SCHEDULED)
+                    .attendanceRequired(true)
+                    .includeSupporters(false)
+                    .commentOption(CommentOption.OPTIONAL)
+                    .isException(false)
+                    .createdBy(USER_ID)
+                    .build();
+            given(contentVisibilityChecker.canView(ReferenceType.SCHEDULE, SCHEDULE_ID, USER_ID))
+                    .willReturn(false);
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(orgSchedule));
+            given(organizationMembershipService.isInOrgDistributionAudience(20L, USER_ID, false))
+                    .willReturn(false);
             org.mockito.Mockito.doThrow(new BusinessException(
                             com.mannschaft.app.common.visibility.VisibilityErrorCode.VISIBILITY_001))
                     .when(contentVisibilityChecker)
@@ -193,6 +253,25 @@ class ScheduleServiceTest {
             // when & then
             assertThatThrownBy(() -> scheduleService.getScheduleWithAccessCheck(SCHEDULE_ID, USER_ID))
                     .isInstanceOf(BusinessException.class);
+        }
+
+        @Test
+        @DisplayName("チームスケジュール_canView=false は配下概念なし→assertCanViewへ委譲で例外")
+        void チームスケジュール_canView偽は委譲で例外() {
+            // given: TEAM スケジュール（orgId null）。配信母集団判定は ORG のみのため呼ばれず assertCanView へ。
+            ScheduleEntity entity = createTeamScheduleEntity();
+            given(contentVisibilityChecker.canView(ReferenceType.SCHEDULE, SCHEDULE_ID, USER_ID))
+                    .willReturn(false);
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            org.mockito.Mockito.doThrow(new BusinessException(
+                            com.mannschaft.app.common.visibility.VisibilityErrorCode.VISIBILITY_001))
+                    .when(contentVisibilityChecker)
+                    .assertCanView(ReferenceType.SCHEDULE, SCHEDULE_ID, USER_ID);
+
+            assertThatThrownBy(() -> scheduleService.getScheduleWithAccessCheck(SCHEDULE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class);
+            // TEAM では配下判定（organization 越境窓口）を一切呼ばない
+            org.mockito.Mockito.verifyNoInteractions(organizationMembershipService);
         }
     }
 
