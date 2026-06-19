@@ -228,13 +228,10 @@ public class WebhookDeliveryService {
 
         long durationMs = System.currentTimeMillis() - startMs;
 
-        // 配信ログを更新（結果を反映）
-        WebhookDeliveryLogEntity finalLog = deliveryLog.toBuilder()
-                .responseStatus(responseStatus)
-                .deliveryStatus(deliveryStatus)
-                .errorMessage(errorMessage)
-                .build();
-        deliveryLogRepository.save(finalLog);
+        // managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する
+        // （toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化するため廃止）
+        deliveryLog.applyDeliveryResult(responseStatus, deliveryStatus, errorMessage);
+        deliveryLogRepository.save(deliveryLog);
         endpointRepository.save(endpoint);
 
         log.debug("Webhook配信ログ記録: endpointId={}, eventId={}, status={}, durationMs={}",

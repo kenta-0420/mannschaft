@@ -74,6 +74,20 @@ public class MemberSkillEntity extends BaseEntity {
     private LocalDateTime deletedAt;
 
     /**
+     * スキル情報を更新する。
+     * managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する。
+     * （toBuilder().build() は継承フィールド id を引き継がず INSERT 化するため使用しない）
+     */
+    public void applyUpdate(String name, String issuer, String credentialNumber,
+                            LocalDate acquiredOn, LocalDate expiresAt) {
+        this.name = name;
+        this.issuer = issuer;
+        this.credentialNumber = credentialNumber;
+        this.acquiredOn = acquiredOn;
+        this.expiresAt = expiresAt;
+    }
+
+    /**
      * 論理削除を行う。
      */
     public void softDelete() {

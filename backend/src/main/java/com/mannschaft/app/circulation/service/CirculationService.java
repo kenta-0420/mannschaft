@@ -317,9 +317,9 @@ public class CirculationService {
         entity.activate();
 
         if (entity.getCirculationMode() == CirculationMode.SEQUENTIAL) {
-            entity = entity.toBuilder()
-                    .sequentialCount((int) recipientCount)
-                    .build();
+            // managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する
+            // （toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化するため廃止）
+            entity.updateSequentialCount((int) recipientCount);
         }
 
         CirculationDocumentEntity saved = documentRepository.save(entity);
