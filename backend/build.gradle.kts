@@ -242,15 +242,9 @@ tasks.withType<Test> {
         "-Duser.timezone=Asia/Tokyo"
     )
 
-    // D-4 CrossDomainForeignKeyArchTest の baseline 再凍結スイッチ。
-    // `-D` は Gradle 自身の JVM に渡るだけで fork されたテスト JVM には届かないため、
-    // Gradle プロジェクトプロパティ `-Parchunit.fk.refreeze=true` を受け取り、
-    // テスト JVM の system property `archunit.fk.refreeze` へ明示的に伝播する。
-    // （環境変数 ARCHUNIT_FK_REFREEZE=true でも再凍結できるが、案内は `-P` に統一。）
-    systemProperty(
-        "archunit.fk.refreeze",
-        providers.gradleProperty("archunit.fk.refreeze").orElse("false").get()
-    )
+    // （旧: D-4 CrossDomainForeignKeyArchTest の baseline 再凍結スイッチ archunit.fk.refreeze を
+    //  ここで伝播していたが、クロスドメイン FK 全廃 [158→0 件] 達成に伴い番人を baseline 方式から
+    //  「1 件でも検出したら fail」する恒久 ArchRule へ格上げしたため不要になり撤去した。）
 
     // =====================================================================
     // CI テストシャーディング（backend CI 高速化②）
