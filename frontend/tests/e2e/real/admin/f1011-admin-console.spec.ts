@@ -1,12 +1,12 @@
 /**
  * F10.1.1 管理コンソール / 管理者レンズ — 実機フルスタック E2E テスト（P4 要素2）
  *
- * バックエンド http://localhost:8080 / フロントエンド http://localhost:3000 が
+ * バックエンド http://localhost:8080 / フロントエンド http://localhost:3001（本ブランチ専用 dev）が
  * 起動済みの状態で実行してください（playwright-real.config.ts は webServer 無効＝既存サーバー前提）。
  *
- * 実行プロジェクト: chromium-real（baseURL=http://localhost:3000）
+ * 実行プロジェクト: chromium-real（baseURL=process.env.BASE_URL ?? 'http://localhost:3000'）
  *   ※ 本 spec は storageState に依存せず、各テスト内で実 BE にログインして
- *     ロール（ADMIN / MEMBER）を切り替える。f089-billing-crud-roles.spec.ts の作法に倣う。
+ *     ロール（ADMIN / MEMBER）を切り替える。
  *
  * テストユーザー（backend/scripts/seed-e2e-data.js で投入）:
  *   ADMIN : e2e-admin@test.mannschaft.local / TestPass2026!（FC東京U-18 ADMIN / JFA ADMIN / SYSTEM_ADMIN）
@@ -19,19 +19,24 @@
  * 設計書: docs/features/F10.1.1_team_org_admin_console/01_console_routes.md §6
  *
  * ⚠️ 実行前提（2026-06-19 実走で判明した落とし穴）:
- *   稼働中の dev サーバー(:3000)が **admin コンソールルートを含む最新コードを配信している**こと。
+ *   稼働中の dev サーバー が **admin コンソールルートを含む最新コードを配信している**こと。
  *   admin console（P2/P3a/P4）マージ前の HEAD で起動された古い dev サーバーは
  *   `/teams|organizations/{slug}/admin` を Nuxt 404 で返し（admin/index.vue 不在）、
  *   レンズトグルも描画されないため、本 spec は全シナリオ失敗する（テスト側のバグではない）。
  *   実走時は必ず本ブランチ相当のコードを配信する dev サーバーで実行すること。
  *   なお BE(:8080) 層は admin 集約 API・IDOR 403・ロール解決ともに実機で正常動作を確認済み。
  *
+ * APIブリッジ（memory: feedback_e2e_wsl2_cors_apibridge）:
+ *   本ブランチ専用 dev(:3001) で動かす場合、Nuxt アプリがブラウザから BE(:8080) へ
+ *   クロスオリジン fetch するが BE の CORS 許可オリジンは :3000/:8080 のみで :3001 は弾かれる。
+ *   loginViaApiBridge がセッションを API 経由で確立し、page.route で /api/v1/** を中継する。
+ *
  * 検証シナリオ:
  *   ACL-GUARD-001: MEMBER で /teams/{slug}/admin → スコープトップへリダイレクト＋エラートースト（404 でない）
  *   ACL-GUARD-002: ADMIN で /teams/{slug}/admin → 管理コンソールハブ表示（チーム）
  *   ACL-GUARD-003: ADMIN で /organizations/{slug}/admin → 管理コンソールハブ表示（組織）
  *   ACL-IDOR-001 : ADMIN だが非所属 org の /organizations/{other}/admin → BE 403・FE スコープトップへ
- *   LENS-TEAM-001: ダッシュボードで admin-lens-toggle-TEAM → 管理者グリッド出現・各ウィジェット testid 描画（実データ件数）
+ *   LENS-TEAM-001: ダッシュボードで admin-lens-toggle-TEAM → 管理者グリッド出現・各ウィジェット描画（実データ件数）
  *   LENS-ORG-001 : ダッシュボードで admin-lens-toggle-ORGANIZATION → 同上（組織版・支払ウィジェット含む）
  *   LINK-TEAM-001: 管理者グリッドの各リンク（要素1で直した正本ルート）押下 → 着地先 200 でレンダ（404 でない）
  *   LINK-ORG-001 : 組織グリッドの各リンク押下 → 着地先 200 でレンダ
@@ -73,23 +78,118 @@ function authHeaders(token: string): Record<string, string> {
 }
 
 /**
- * /login フォームから実ブラウザセッションを確立する（PrimeVue InputText 対応）。
- * dev:3000 → BE:8080 は CORS で許可されているため API ブリッジは不要。
+ * APIブリッジ（memory: feedback_e2e_wsl2_cors_apibridge）。
+ *
+ * 専用 dev サーバー(:3001) で動かす UI テストでは、Nuxt アプリがブラウザから
+ * BE(:8080) へクロスオリジン fetch する。BE の CORS 許可 origin は localhost:3000/8080
+ * のみで :3001 は弾かれる（「Failed to fetch」/ 403）ため、ブラウザの /api/v1 呼び出しを
+ * page.route で横取りし、Playwright の APIRequestContext（CORS 非対象）で中継する。
+ *
+ * 3点必須:
+ *   1) BE への中継リクエストの origin/referer を許可 origin(localhost:3000) に差し替える
+ *   2) fulfill 時の access-control-allow-origin を「ブラウザ実 origin」に固定する
+ *   3) Bearer トークンを付与して確実に認証する（Cookie 中継に依存しない）
  */
-async function loginUI(page: Page, email: string, password: string): Promise<void> {
-  await page.goto('/login')
-  await waitForHydration(page)
-  const emailInput = page.locator('input#email')
-  await emailInput.click()
-  await emailInput.pressSequentially(email, { delay: 10 })
-  const passwordInput = page.locator('input[type="password"]')
-  await passwordInput.click()
-  await passwordInput.pressSequentially(password, { delay: 10 })
-  await page.getByRole('button', { name: 'ログイン' }).click()
-  await page.waitForURL((url) => !url.pathname.includes('/login'), {
-    timeout: 30_000,
-    waitUntil: 'commit',
+async function installApiBridge(page: Page, token: string): Promise<void> {
+  // page.goto 前に設定するケースのため、origin を固定値で指定する（about:blank 対策）
+  const pageOrigin = 'http://localhost:3001'
+  // 正規表現で /api/v1/ を含む全 URL をキャッチ
+  // （NUXT_PUBLIC_API_BASE=http://127.0.0.1:8080 の場合、ブラウザが絶対 URL で fetch する。
+  //   glob '**/api/v1/**' がドメイン付き絶対 URL にマッチしない場合の保険）
+  await page.route(/\/api\/v1\//, async (route) => {
+    const req = route.request()
+    const url = new URL(req.url())
+    // 中継先は 127.0.0.1 明示（IPv6 ::1 解決ブレで間欠 ECONNREFUSED を避ける）
+    const target = `http://127.0.0.1:8080${url.pathname}${url.search}`
+    const headers: Record<string, string> = {
+      ...req.headers(),
+      origin: 'http://localhost:3000',
+      referer: 'http://localhost:3000/',
+      authorization: `Bearer ${token}`,
+    }
+    const method = req.method()
+    const postData = req.postData()
+    const relay = await page.request.fetch(target, {
+      method,
+      headers,
+      data: postData ?? undefined,
+      maxRedirects: 0,
+    })
+    const respHeaders: Record<string, string> = { ...relay.headers() }
+    // ブラウザ実 origin に ACAO を固定（new URL(req.url()).origin だと 8080 になり CORS 拒否される罠）
+    respHeaders['access-control-allow-origin'] = pageOrigin
+    respHeaders['access-control-allow-credentials'] = 'true'
+    await route.fulfill({
+      status: relay.status(),
+      headers: respHeaders,
+      body: await relay.body(),
+    })
   })
+}
+
+/**
+ * BE に直接ログインして Cookie + localStorage を仕込み、APIブリッジを設置する。
+ * ブラウザフォームからのログイン（loginUI）を使わないため CORS をバイパスできる。
+ *
+ * reservation-dashboard-real.spec.ts の adminInit fixture と同じ作法（memory: feedback_e2e_wsl2_cors_apibridge）。
+ */
+async function loginViaApiBridge(page: Page, email: string, password: string): Promise<string> {
+  // 1. Playwright APIRequestContext（CORS 非対象）で BE に直接ログイン → accessToken 取得
+  const ctx = await pwRequest.newContext()
+  const loginRes = await ctx.post(`${BE_API}/auth/login`, {
+    headers: { 'Content-Type': 'application/json' },
+    data: { email, password },
+  })
+  expect(loginRes.status(), `BE ログイン(${email}) は 200`).toBe(200)
+  const loginJson = (await loginRes.json()) as { data: { accessToken: string; userId: number } }
+  const token = loginJson.data.accessToken
+
+  // 2. /users/me でプロフィール取得（localStorage.currentUser 用）
+  const meRes = await ctx.get(`${BE_API}/users/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  expect(meRes.status(), '/users/me は 200').toBe(200)
+  const me = (await meRes.json()).data as {
+    id: number
+    email: string
+    lastName: string
+    firstName: string
+    avatarUrl: string | null
+    systemRole: string | null
+    timezone: string | null
+  }
+  await ctx.dispose()
+
+  // 3. ブラウザコンテキストも BE にログインして HttpOnly Cookie を確立
+  await page.request.post(`${BE_API}/auth/login`, {
+    headers: { 'Content-Type': 'application/json' },
+    data: { email, password },
+  })
+
+  // 4. addInitScript で currentUser + tokenExpiresAt を仕込む（auth.client.ts のリフレッシュ抑止）
+  const farFuture = Date.now() + 24 * 60 * 60 * 1000
+  const currentUser = {
+    id: me.id,
+    email: me.email,
+    fullName: `${me.lastName} ${me.firstName}`,
+    profileImageUrl: me.avatarUrl,
+    systemRole: me.systemRole ?? undefined,
+    timezone: me.timezone ?? undefined,
+  }
+  await page.addInitScript(
+    ({ user, expiresAt }) => {
+      localStorage.setItem('currentUser', JSON.stringify(user))
+      localStorage.setItem('tokenExpiresAt', String(expiresAt))
+    },
+    { user: currentUser, expiresAt: farFuture },
+  )
+
+  // 5. APIブリッジ設置（page.goto より前に設定して初回ナビゲーションからブリッジが有効になるようにする）
+  await installApiBridge(page, token)
+  // addInitScript は次の page.goto で初めて実行されるため、ここでは goto しない。
+  // 各テストで直接目的ページへ goto することで、余分なリダイレクト待ちを省く。
+
+  return token
 }
 
 /**
@@ -178,6 +278,12 @@ test.afterAll(async () => {
   await sharedApi.dispose()
 })
 
+// テスト終了後のインフライト API ブリッジルートによる
+// "Target page context has been closed" エラーを抑止する
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: 'ignoreErrors' })
+})
+
 // ===========================================================================
 // ガード（admin-console ミドルウェア）
 // ===========================================================================
@@ -185,7 +291,15 @@ test.describe('F10.1.1 管理コンソール — アクセスガード', () => {
   test('ACL-GUARD-001: MEMBER で /teams/{slug}/admin → スコープトップへリダイレクト（404 でない）', async ({
     page,
   }) => {
-    await loginUI(page, MEMBER_EMAIL, MEMBER_PASSWORD)
+    // MEMBER でログイン（API ブリッジ経由）
+    await loginViaApiBridge(page, MEMBER_EMAIL, MEMBER_PASSWORD)
+
+    // トーストは navigateTo(scopeTop) と同時に発火するため、goto 前からリスナーを設定して
+    // リダイレクト完了後にトーストが消えてしまうタイミング問題を回避する。
+    const toastVisible = page.getByText('管理者権限が必要です').waitFor({
+      state: 'visible',
+      timeout: 20_000,
+    })
     await page.goto(`/teams/${teamSlug}/admin`)
 
     // ミドルウェアが権限不足を検知し、スコープトップ /teams/{slug} へ navigateTo する
@@ -196,15 +310,12 @@ test.describe('F10.1.1 管理コンソール — アクセスガード', () => {
     // /admin ハブには留まっていない
     expect(new URL(url).pathname, '/admin ハブに留まっていない').not.toMatch(/\/admin\/?$/)
 
-    // エラートースト「管理者権限が必要です」が表示される（i18n: adminConsole.middleware.accessDeniedBody）
-    await expect(
-      page.getByText('管理者権限が必要です'),
-      'アクセス拒否トーストが表示されること',
-    ).toBeVisible({ timeout: 10_000 })
+    // エラートースト「管理者権限が必要です」が表示されること（life: 5000ms のため goto 前からリスナー設定済み）
+    await toastVisible
   })
 
   test('ACL-GUARD-002: ADMIN で /teams/{slug}/admin → チーム管理コンソールハブ表示', async ({ page }) => {
-    await loginUI(page, ADMIN_EMAIL, ADMIN_PASSWORD)
+    await loginViaApiBridge(page, ADMIN_EMAIL, ADMIN_PASSWORD)
     await page.goto(`/teams/${teamSlug}/admin`)
     await waitForHydration(page)
 
@@ -220,7 +331,7 @@ test.describe('F10.1.1 管理コンソール — アクセスガード', () => {
   test('ACL-GUARD-003: ADMIN で /organizations/{slug}/admin → 組織管理コンソールハブ表示', async ({
     page,
   }) => {
-    await loginUI(page, ADMIN_EMAIL, ADMIN_PASSWORD)
+    await loginViaApiBridge(page, ADMIN_EMAIL, ADMIN_PASSWORD)
     await page.goto(`/organizations/${orgSlug}/admin`)
     await waitForHydration(page)
 
@@ -244,7 +355,7 @@ test.describe('F10.1.1 管理コンソール — アクセスガード', () => {
     expect(apiRes.status(), '非所属 org の管理集約 API は 403').toBe(403)
 
     // FE 層: ミドルウェアが isAdminOrDeputy=false を検知しスコープトップへ戻す（404 にしない）
-    await loginUI(page, ADMIN_EMAIL, ADMIN_PASSWORD)
+    await loginViaApiBridge(page, ADMIN_EMAIL, ADMIN_PASSWORD)
     await page.goto(`/organizations/${foreignOrgSlug}/admin`)
     await page.waitForURL(new RegExp(`/organizations/${foreignOrgSlug}(\\?|/?$)`), { timeout: 20_000 })
     expect(new URL(page.url()).pathname, '/admin ハブに留まっていない').not.toMatch(/\/admin\/?$/)
@@ -259,7 +370,7 @@ test.describe('F10.1.1 管理者レンズ — ウィジェット描画（実デ�
   test('LENS-TEAM-001: admin-lens-toggle-TEAM → 管理者グリッド出現・各ウィジェット描画', async ({
     page,
   }) => {
-    await loginUI(page, ADMIN_EMAIL, ADMIN_PASSWORD)
+    await loginViaApiBridge(page, ADMIN_EMAIL, ADMIN_PASSWORD)
     await gotoDashboardScope(page, 'TEAM')
 
     // トグル押下で管理者レンズ ON → グリッドへシート差替
@@ -296,7 +407,7 @@ test.describe('F10.1.1 管理者レンズ — ウィジェット描画（実デ�
   test('LENS-ORG-001: admin-lens-toggle-ORGANIZATION → 管理者グリッド出現・各ウィジェット描画', async ({
     page,
   }) => {
-    await loginUI(page, ADMIN_EMAIL, ADMIN_PASSWORD)
+    await loginViaApiBridge(page, ADMIN_EMAIL, ADMIN_PASSWORD)
     await gotoDashboardScope(page, 'ORGANIZATION')
 
     await page.getByTestId('admin-lens-toggle-ORGANIZATION').click()
@@ -325,7 +436,7 @@ test.describe('F10.1.1 管理者レンズ — ウィジェット描画（実デ�
 // ===========================================================================
 test.describe('F10.1.1 管理者レンズ — 導線遷移（要素1の成果検証）', () => {
   test('LINK-TEAM-001: チーム管理者グリッドの各リンク → 正本ルートへ着地（404 でない）', async ({ page }) => {
-    await loginUI(page, ADMIN_EMAIL, ADMIN_PASSWORD)
+    await loginViaApiBridge(page, ADMIN_EMAIL, ADMIN_PASSWORD)
     await gotoDashboardScope(page, 'TEAM')
     await page.getByTestId('admin-lens-toggle-TEAM').click()
     await expect(page.getByTestId('admin-widget-grid-TEAM')).toBeVisible({ timeout: 15_000 })
@@ -357,7 +468,7 @@ test.describe('F10.1.1 管理者レンズ — 導線遷移（要素1の成果検
   })
 
   test('LINK-ORG-001: 組織管理者グリッドの各リンク → 正本ルートへ着地（404 でない）', async ({ page }) => {
-    await loginUI(page, ADMIN_EMAIL, ADMIN_PASSWORD)
+    await loginViaApiBridge(page, ADMIN_EMAIL, ADMIN_PASSWORD)
     await gotoDashboardScope(page, 'ORGANIZATION')
     await page.getByTestId('admin-lens-toggle-ORGANIZATION').click()
     await expect(page.getByTestId('admin-widget-grid-ORGANIZATION')).toBeVisible({ timeout: 15_000 })

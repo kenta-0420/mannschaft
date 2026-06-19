@@ -129,13 +129,13 @@ async function onFolderChange(folderId: number | null) {
           >
             <Avatar
               :image="item.avatarUrl ?? undefined"
-              :label="item.avatarUrl ? undefined : item.name.charAt(0)"
-              :aria-label="item.name"
+              :label="item.avatarUrl ? undefined : (item.name?.charAt(0) ?? '?')"
+              :aria-label="item.name ?? ''"
               shape="circle"
               size="normal"
               class="!h-6 !w-6 !text-xs"
             />
-            <span class="max-w-28 truncate">{{ item.name }}</span>
+            <span class="max-w-28 truncate">{{ item.name ?? '' }}</span>
             <Badge
               v-if="item.unreadCount > 0"
               :value="item.unreadCount"

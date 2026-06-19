@@ -1,10 +1,10 @@
 /**
  * F10.1.1 管理者レンズ L1 トグル — emulated touch（タッチ）ジェスチャ補完 E2E（P4 要素3 補完）
  *
- * バックエンド http://localhost:8080 / フロントエンド http://localhost:3000 が
+ * バックエンド http://localhost:8080 / フロントエンド http://localhost:3001（本ブランチ専用 dev）が
  * 起動済みの状態で実行してください（playwright-real.config.ts は webServer 無効＝既存サーバー前提）。
  *
- * 実行プロジェクト: chromium-real（baseURL=http://localhost:3000）+ test.use({ hasTouch: true }) でタッチ端末を擬似。
+ * 実行プロジェクト: chromium-real（baseURL=process.env.BASE_URL ?? 'http://localhost:3000'）+ test.use({ hasTouch: true }) でタッチ端末を擬似。
  *
  * 目的（DashboardScopeLensToggle.vue §1.3 のジェスチャ排他ロジックを実ブラウザで検証）:
  *   - **タップ（移動なし）** → トグルが 1 回だけ切り替わる（ghost click による二重発火がない）。
@@ -14,10 +14,18 @@
  * Chromium の emulated touch でロジックの正しさを補完検証するもの（コンポーネント側コメント §1.3 参照）。
  *
  * テストユーザー: e2e-admin@test.mannschaft.local（FC東京U-18 ADMIN）— トグルは ADMIN/DEPUTY のみ描画されるため。
+ *
+ * APIブリッジ（memory: feedback_e2e_wsl2_cors_apibridge）:
+ *   本ブランチ専用 dev(:3001) で動かす場合、Nuxt アプリがブラウザから BE(:8080) へ
+ *   クロスオリジン fetch するが BE の CORS 許可オリジンは :3000/:8080 のみで :3001 は弾かれる。
+ *   loginViaApiBridge がセッションを API 経由で確立し、page.route で /api/v1/** を中継する。
  */
 
-import { test as base, expect, type Page } from '@playwright/test'
+import { test as base, expect, request as pwRequest, type Page } from '@playwright/test'
 import { waitForHydration } from '../../helpers/wait'
+
+// 127.0.0.1 を明示（localhost だと IPv6 ::1 解決で間欠 ECONNREFUSED・memory: feedback_e2e_wsl2_cors_apibridge）
+const BE_API = `${process.env.BE_ORIGIN ?? 'http://127.0.0.1:8080'}/api/v1`
 
 const ADMIN_EMAIL = process.env.TEST_ADMIN_EMAIL ?? 'e2e-admin@test.mannschaft.local'
 const ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD ?? 'TestPass2026!'
@@ -27,21 +35,103 @@ const test = base.extend({})
 test.use({ storageState: { cookies: [], origins: [] }, hasTouch: true })
 test.setTimeout(120_000)
 
-async function loginUI(page: Page, email: string, password: string): Promise<void> {
-  await page.goto('/login')
-  await waitForHydration(page)
-  const emailInput = page.locator('input#email')
-  await emailInput.click()
-  await emailInput.pressSequentially(email, { delay: 10 })
-  const passwordInput = page.locator('input[type="password"]')
-  await passwordInput.click()
-  await passwordInput.pressSequentially(password, { delay: 10 })
-  await page.getByRole('button', { name: 'ログイン' }).click()
-  await page.waitForURL((url) => !url.pathname.includes('/login'), {
-    timeout: 30_000,
-    waitUntil: 'commit',
+/**
+ * APIブリッジ（memory: feedback_e2e_wsl2_cors_apibridge）。
+ * ブラウザの /api/v1/** 呼び出しを page.route で横取りして BE に中継する。
+ */
+async function installApiBridge(page: Page, token: string): Promise<void> {
+  // page.goto 前に設定するケースのため、origin を固定値で指定する（about:blank 対策）
+  const pageOrigin = 'http://localhost:3001'
+  // 正規表現で /api/v1/ を含む全 URL をキャッチ
+  // （NUXT_PUBLIC_API_BASE が絶対 URL 設定時にも確実に横取りできる）
+  await page.route(/\/api\/v1\//, async (route) => {
+    const req = route.request()
+    const url = new URL(req.url())
+    const target = `http://127.0.0.1:8080${url.pathname}${url.search}`
+    const headers: Record<string, string> = {
+      ...req.headers(),
+      origin: 'http://localhost:3000',
+      referer: 'http://localhost:3000/',
+      authorization: `Bearer ${token}`,
+    }
+    const relay = await page.request.fetch(target, {
+      method: req.method(),
+      headers,
+      data: req.postData() ?? undefined,
+      maxRedirects: 0,
+    })
+    const respHeaders: Record<string, string> = { ...relay.headers() }
+    respHeaders['access-control-allow-origin'] = pageOrigin
+    respHeaders['access-control-allow-credentials'] = 'true'
+    await route.fulfill({
+      status: relay.status(),
+      headers: respHeaders,
+      body: await relay.body(),
+    })
   })
 }
+
+/**
+ * BE に直接ログインして Cookie + localStorage を仕込み、APIブリッジを設置する。
+ * f1011-admin-console.spec.ts / reservation-dashboard-real.spec.ts と同じ作法。
+ */
+async function loginViaApiBridge(page: Page, email: string, password: string): Promise<void> {
+  const ctx = await pwRequest.newContext()
+  const loginRes = await ctx.post(`${BE_API}/auth/login`, {
+    headers: { 'Content-Type': 'application/json' },
+    data: { email, password },
+  })
+  expect(loginRes.status(), `BE ログイン(${email}) は 200`).toBe(200)
+  const loginJson = (await loginRes.json()) as { data: { accessToken: string; userId: number } }
+  const token = loginJson.data.accessToken
+
+  const meRes = await ctx.get(`${BE_API}/users/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  expect(meRes.status(), '/users/me は 200').toBe(200)
+  const me = (await meRes.json()).data as {
+    id: number
+    email: string
+    lastName: string
+    firstName: string
+    avatarUrl: string | null
+    systemRole: string | null
+    timezone: string | null
+  }
+  await ctx.dispose()
+
+  await page.request.post(`${BE_API}/auth/login`, {
+    headers: { 'Content-Type': 'application/json' },
+    data: { email, password },
+  })
+
+  const farFuture = Date.now() + 24 * 60 * 60 * 1000
+  const currentUser = {
+    id: me.id,
+    email: me.email,
+    fullName: `${me.lastName} ${me.firstName}`,
+    profileImageUrl: me.avatarUrl,
+    systemRole: me.systemRole ?? undefined,
+    timezone: me.timezone ?? undefined,
+  }
+  await page.addInitScript(
+    ({ user, expiresAt }) => {
+      localStorage.setItem('currentUser', JSON.stringify(user))
+      localStorage.setItem('tokenExpiresAt', String(expiresAt))
+    },
+    { user: currentUser, expiresAt: farFuture },
+  )
+
+  // APIブリッジを page.goto より前に設定して初回ナビゲーションからブリッジが有効になるようにする
+  await installApiBridge(page, token)
+  // addInitScript は次の page.goto で初めて実行されるため、ここでは goto しない。
+}
+
+// テスト終了後のインフライト API ブリッジルートによる
+// "Target page context has been closed" エラーを抑止する
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: 'ignoreErrors' })
+})
 
 /** TEAM スコープの管理者レンズトグルが出るまでダッシュボードを開く。 */
 async function openTeamLens(page: Page): Promise<void> {
@@ -102,7 +192,7 @@ test.describe('F10.1.1 管理者レンズ L1 トグル — emulated touch ジェ
   test('TOUCH-001: タップ（移動なし）でトグルが 1 回だけ切り替わる（ghost click 二重発火なし）', async ({
     page,
   }) => {
-    await loginUI(page, ADMIN_EMAIL, ADMIN_PASSWORD)
+    await loginViaApiBridge(page, ADMIN_EMAIL, ADMIN_PASSWORD)
     await openTeamLens(page)
 
     const toggle = page.getByTestId('admin-lens-toggle-TEAM')
@@ -127,7 +217,7 @@ test.describe('F10.1.1 管理者レンズ L1 トグル — emulated touch ジェ
   })
 
   test('TOUCH-002: 横スワイプ（閾値超）ではトグルが切り替わらない（カルーセルへ委譲）', async ({ page }) => {
-    await loginUI(page, ADMIN_EMAIL, ADMIN_PASSWORD)
+    await loginViaApiBridge(page, ADMIN_EMAIL, ADMIN_PASSWORD)
     await openTeamLens(page)
 
     const toggle = page.getByTestId('admin-lens-toggle-TEAM')
