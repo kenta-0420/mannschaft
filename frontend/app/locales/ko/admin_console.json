@@ -108,6 +108,14 @@
         "today": "오늘 예약",
         "fetchFailed": "예약 요약을 가져오지 못했습니다"
       },
+      "budget": {
+        "allocation": "배분",
+        "actual": "실적",
+        "remaining": "잔액",
+        "overBudgetCount": "초과 카테고리 수",
+        "noFiscalYear": "당해 연도 미설정",
+        "fetchFailed": "예산 요약을 불러오지 못했습니다"
+      },
       "modules": {
         "summary": "활성화 {enabled} / 전체 {total}",
         "fetchFailed": "모듈 정보를 가져오지 못했습니다"
