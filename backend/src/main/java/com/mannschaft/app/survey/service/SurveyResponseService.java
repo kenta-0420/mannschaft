@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
@@ -92,8 +93,17 @@ public class SurveyResponseService {
             //   - ORGANIZATION: includeSupporters トグル準拠の配信母集団（配下チーム展開）。配下は通し、
             //     母集団外は COMMON_002 で弾く。トグル OFF なら純 SUPPORTER も母集団外＝回答不可。
             //   - TEAM 等: 当該スコープの直接所属メンバー（配下概念を持ち込まない）。
-            if (accessControlService != null && survey.getScopeId() != null
-                    && survey.getScopeType() != null) {
+            // 不変条件: ALL アンケは必ず scoped（scopeId/scopeType 非 null）である。
+            // 配信母集団は当該スコープから resolve されるため、scope が欠落した ALL アンケは
+            // 配信母集団を確定できず、認可をサイレントスキップすれば surveyId を知る任意ユーザーが
+            // 回答できる漏洩穴になる。よって scope 欠落時は握りつぶさず素直に 403 で弾く（fail-closed）。
+            // accessControlService==null はテストシームのため判定対象外（本番では常に注入される）。
+            if (accessControlService != null) {
+                if (survey.getScopeId() == null || survey.getScopeType() == null) {
+                    log.warn("ALL アンケに scope 欠落（不変条件違反・回答を拒否）: surveyId={}, scopeId={}, scopeType={}",
+                            surveyId, survey.getScopeId(), survey.getScopeType());
+                    throw new BusinessException(CommonErrorCode.COMMON_002);
+                }
                 boolean includeSupporters = Boolean.TRUE.equals(survey.getIncludeSupporters());
                 accessControlService.checkMembershipOrDescendant(
                         userId, survey.getScopeId(), survey.getScopeType(), includeSupporters);
