@@ -65,4 +65,14 @@ public class CreateSurveyRequest {
      * (B) 組織→参加チーム配信 案C フェーズA 隊A で追加。値を使った母集団絞り込みは後続隊。
      */
     private final Boolean includeSupporters;
+
+    /**
+     * アンケート集計をチーム別内訳（by_team）でも収集・表示するか。省略時 false（従来挙動）。
+     * (B) 組織→参加チーム配信 案C フェーズB（アンケートのチーム別内訳）で追加。
+     *
+     * <p><b>御裁可B（匿名保護）</b>: 匿名アンケート（{@code isAnonymous = true}）× 本トグル ON の
+     * 併用は禁止。{@code SurveyService.createSurvey} が作成時に
+     * {@link com.mannschaft.app.survey.SurveyErrorCode#ANONYMOUS_TEAM_BREAKDOWN_CONFLICT} で弾く（400）。</p>
+     */
+    private final Boolean teamBreakdownEnabled;
 }

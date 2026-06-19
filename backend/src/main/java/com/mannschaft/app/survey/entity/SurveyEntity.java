@@ -88,6 +88,19 @@ public class SurveyEntity extends BaseEntity {
     @Builder.Default
     private Boolean includeSupporters = false;
 
+    /**
+     * アンケート集計をチーム別内訳（by_team）でも収集・表示するか。
+     * (B) 組織→参加チーム配信 案C フェーズB（アンケートのチーム別内訳）で追加。
+     * 既定 false（従来挙動＝by_team は省略・全体集計のみ）。TRUE のときのみ
+     * 組織アンケート結果が optionResultsByTeam を算出する。
+     *
+     * <p><b>御裁可B（匿名保護）</b>: 匿名アンケート（{@code isAnonymous = true}）との併用は禁止
+     * （作成時バリデーションで弾く）。回答者の所属チームを内訳に出すと匿名性が崩れるため。</p>
+     */
+    @Column(name = "team_breakdown_enabled", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
+    @Builder.Default
+    private Boolean teamBreakdownEnabled = false;
+
     @Column(length = 50)
     private String seriesId;
 
