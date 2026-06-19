@@ -8,6 +8,7 @@ import com.mannschaft.app.reservation.repository.ReservationRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -15,6 +16,10 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 
@@ -82,5 +87,41 @@ class ReservationAdminQueryServiceTest {
         assertThat(item.id()).isEqualTo("33");
         // detail_route は id を含む個別遷移先（list_route の status 付き一覧とは別物・§3.1）
         assertThat(item.detailRoute()).isEqualTo("/teams/dev-team/admin/reservations/33");
+    }
+
+    // ── P3b Wave2: summaryForTeam（承認待ち / 本日の予約数） ────────────
+
+    private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
+
+    @Test
+    @DisplayName("summaryForTeam → 承認待ち(PENDING)件数と本日(JST)の CONFIRMED/PENDING 予約数を team_id 絞りで集約")
+    void summaryForTeam_集約() {
+        given(reservationRepository.countByTeamIdAndStatus(TEAM_ID, ReservationStatus.PENDING)).willReturn(6L);
+        given(reservationRepository.countByTeamIdAndStatusInAndBookedAtRange(
+                eq(TEAM_ID),
+                eq(List.of(ReservationStatus.CONFIRMED, ReservationStatus.PENDING)),
+                any(), any()))
+                .willReturn(9L);
+
+        ReservationAdminQueryService.TeamReservationSummary summary = service.summaryForTeam(TEAM_ID);
+
+        assertThat(summary.pendingCount()).isEqualTo(6L);
+        assertThat(summary.todayCount()).isEqualTo(9L);
+
+        // 本日の予約数は本日 JST の半開区間 [本日0:00, 翌日0:00) を JST→UTC へ変換して問い合わせる。
+        ArgumentCaptor<LocalDateTime> fromCap = ArgumentCaptor.forClass(LocalDateTime.class);
+        ArgumentCaptor<LocalDateTime> toCap = ArgumentCaptor.forClass(LocalDateTime.class);
+        verify(reservationRepository).countByTeamIdAndStatusInAndBookedAtRange(
+                eq(TEAM_ID),
+                eq(List.of(ReservationStatus.CONFIRMED, ReservationStatus.PENDING)),
+                fromCap.capture(), toCap.capture());
+
+        LocalDate todayJst = LocalDate.now(JST);
+        LocalDateTime expectedFrom = todayJst.atStartOfDay()
+                .atZone(JST).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+        LocalDateTime expectedTo = todayJst.plusDays(1).atStartOfDay()
+                .atZone(JST).withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+        assertThat(fromCap.getValue()).isEqualTo(expectedFrom);
+        assertThat(toCap.getValue()).isEqualTo(expectedTo);
     }
 }

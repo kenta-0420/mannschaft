@@ -181,4 +181,45 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
             @Param("userId") Long userId,
             @Param("teamIds") Collection<Long> teamIds,
             @Param("orgIds") Collection<Long> orgIds);
+
+    /**
+     * F10.1.1 / P3b Wave2: 指定スコープのアクティブ会員総数（role_kind 横断・DISTINCT user_id 件数）を返す。
+     *
+     * <p>管理者レンズ「メンバー統計」の「総数」用。{@code left_at IS NULL} を在籍の真実の源とし、
+     * 管理者（ADMIN/DEPUTY）も memberships に MEMBER 行を持つため総数に含まれる。
+     * 同一 user_id が（理論上）複数行を持っても二重計上しないよう DISTINCT で数える。</p>
+     */
+    @Query("SELECT COUNT(DISTINCT m.userId) FROM MembershipEntity m " +
+            "WHERE m.scopeType = :scopeType AND m.scopeId = :scopeId AND m.leftAt IS NULL")
+    long countActiveDistinctUsersByScope(
+            @Param("scopeType") ScopeType scopeType,
+            @Param("scopeId") Long scopeId);
+
+    /**
+     * F10.1.1 / P3b Wave2: 指定スコープのアクティブ会員の user_id 集合（DISTINCT）を返す。
+     *
+     * <p>「アクティブ」（users.status='ACTIVE'）判定は user(auth) ドメインに委ねるため、本クエリは
+     * 在籍者の user_id 集合だけを返す（ドメイン境界厳守・membership から users を直接参照しない）。</p>
+     */
+    @Query("SELECT DISTINCT m.userId FROM MembershipEntity m " +
+            "WHERE m.scopeType = :scopeType AND m.scopeId = :scopeId AND m.leftAt IS NULL")
+    List<Long> findActiveDistinctUserIdsByScope(
+            @Param("scopeType") ScopeType scopeType,
+            @Param("scopeId") Long scopeId);
+
+    /**
+     * F10.1.1 / P3b Wave2: 指定スコープのアクティブ会員のうち、joined_at が指定期間内
+     * （当月初日 ≦ joined_at ＜ 翌月初日）の DISTINCT user_id 件数を返す（今月新規）。
+     *
+     * <p>母集合は memberships 単独（user_roles を UNION しない）。昇格で created_at がリセットされても
+     * joined_at は入会時刻を保持するため、管理者昇格者を「今月新規」に誤計上しない。</p>
+     */
+    @Query("SELECT COUNT(DISTINCT m.userId) FROM MembershipEntity m " +
+            "WHERE m.scopeType = :scopeType AND m.scopeId = :scopeId AND m.leftAt IS NULL " +
+            "AND m.joinedAt >= :from AND m.joinedAt < :to")
+    long countActiveDistinctUsersByScopeAndJoinedAtBetween(
+            @Param("scopeType") ScopeType scopeType,
+            @Param("scopeId") Long scopeId,
+            @Param("from") java.time.LocalDateTime from,
+            @Param("to") java.time.LocalDateTime to);
 }

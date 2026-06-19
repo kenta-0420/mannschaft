@@ -1,13 +1,18 @@
 package com.mannschaft.app.dashboard.service;
 
+import com.mannschaft.app.auth.service.UserActiveCountQueryService;
 import com.mannschaft.app.chat.service.InquiryAlertQueryService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.dashboard.dto.AdminBusinessAlertScopeResponse;
+import com.mannschaft.app.dashboard.dto.AdminMemberStatsResponse;
 import com.mannschaft.app.dashboard.dto.AdminPaymentSummaryResponse;
 import com.mannschaft.app.dashboard.dto.AdminReportStatsResponse;
+import com.mannschaft.app.dashboard.dto.AdminReservationSummaryResponse;
+import com.mannschaft.app.membership.service.MembershipStatsQueryService;
 import com.mannschaft.app.moderation.service.ReportScopeStatsQueryService;
 import com.mannschaft.app.payment.service.PaymentAdminQueryService;
 import com.mannschaft.app.reservation.service.ReservationAdminAlertQueryService;
+import com.mannschaft.app.reservation.service.ReservationAdminQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -43,6 +48,9 @@ public class AdminLensSummaryFacade {
     private final ReservationAdminAlertQueryService reservationAdminAlertQueryService;
     private final InquiryAlertQueryService inquiryAlertQueryService;
     private final ReportScopeStatsQueryService reportScopeStatsQueryService;
+    private final MembershipStatsQueryService membershipStatsQueryService;
+    private final UserActiveCountQueryService userActiveCountQueryService;
+    private final ReservationAdminQueryService reservationAdminQueryService;
 
     /**
      * 組織パネル ⑤ {@code ADMIN_ORG_PAYMENTS} のサマリ（未収 / 期限超過）を取得する。
@@ -107,6 +115,60 @@ public class AdminLensSummaryFacade {
         return AdminReportStatsResponse.builder()
                 .pendingCount(stats.pendingCount())
                 .reviewingCount(stats.reviewingCount())
+                .build();
+    }
+
+    /**
+     * チームパネル ④ {@code ADMIN_TEAM_MEMBERS} のメンバー統計（総数 / アクティブ / 今月新規）を取得する。
+     *
+     * @param userId 閲覧ユーザー ID
+     * @param teamId チーム ID（slug 解決済み内部 ID）
+     */
+    public AdminMemberStatsResponse getTeamMemberStats(Long userId, Long teamId) {
+        accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
+        return buildMemberStats(com.mannschaft.app.membership.domain.ScopeType.TEAM, teamId);
+    }
+
+    /**
+     * 組織パネル ④ {@code ADMIN_ORG_MEMBERS} のメンバー統計（総数 / アクティブ / 今月新規）を取得する。
+     *
+     * @param userId 閲覧ユーザー ID
+     * @param orgId  組織 ID（slug 解決済み内部 ID）
+     */
+    public AdminMemberStatsResponse getOrgMemberStats(Long userId, Long orgId) {
+        accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
+        return buildMemberStats(com.mannschaft.app.membership.domain.ScopeType.ORGANIZATION, orgId);
+    }
+
+    /**
+     * メンバー統計を組み立てる。母集合（総数・今月新規・在籍 user_id 集合）は membership ドメインで集計し、
+     * 「アクティブ」（users.status='ACTIVE'）件数のみ user(auth) ドメインへ委ねる（ドメイン境界厳守）。
+     */
+    private AdminMemberStatsResponse buildMemberStats(
+            com.mannschaft.app.membership.domain.ScopeType scopeType, Long scopeId) {
+        MembershipStatsQueryService.MemberStats stats =
+                membershipStatsQueryService.statsForScope(scopeType, scopeId);
+        long activeCount = userActiveCountQueryService.countActive(stats.activeUserIds());
+        return AdminMemberStatsResponse.builder()
+                .totalCount(stats.totalCount())
+                .activeCount(activeCount)
+                .newThisMonthCount(stats.newThisMonthCount())
+                .build();
+    }
+
+    /**
+     * チームパネル ① {@code ADMIN_TEAM_RESERVATIONS} の予約サマリ（承認待ち件数 / 本日の予約数）を取得する。
+     *
+     * @param userId 閲覧ユーザー ID
+     * @param teamId チーム ID（slug 解決済み内部 ID）
+     */
+    public AdminReservationSummaryResponse getTeamReservationSummary(Long userId, Long teamId) {
+        accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
+        ReservationAdminQueryService.TeamReservationSummary summary =
+                reservationAdminQueryService.summaryForTeam(teamId);
+        return AdminReservationSummaryResponse.builder()
+                .pendingCount(summary.pendingCount())
+                .todayCount(summary.todayCount())
                 .build();
     }
 }

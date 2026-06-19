@@ -3,8 +3,10 @@ package com.mannschaft.app.dashboard.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.dashboard.dto.AdminBusinessAlertScopeResponse;
+import com.mannschaft.app.dashboard.dto.AdminMemberStatsResponse;
 import com.mannschaft.app.dashboard.dto.AdminPaymentSummaryResponse;
 import com.mannschaft.app.dashboard.dto.AdminReportStatsResponse;
+import com.mannschaft.app.dashboard.dto.AdminReservationSummaryResponse;
 import com.mannschaft.app.dashboard.service.AdminLensSummaryFacade;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.team.service.TeamService;
@@ -108,5 +110,58 @@ public class AdminLensSummaryController {
         Long orgId = organizationService.resolveOrgId(orgSlug);
         return ResponseEntity.ok(ApiResponse.of(
                 adminLensSummaryFacade.getReportStats(userId, "ORGANIZATION", orgId)));
+    }
+
+    // ── P3b Wave2: メンバー統計 / 予約サマリ ──────────────────────────
+
+    /**
+     * チームパネル ④ {@code ADMIN_TEAM_MEMBERS} のメンバー統計（総数 / アクティブ / 今月新規）を取得する。
+     */
+    @GetMapping("/team/{teamSlug}/admin-member-stats")
+    @Operation(summary = "チーム メンバー統計（管理者レンズ）",
+            description = "ADMIN/DEPUTY 向け。memberships（在籍）由来の会員総数・アクティブ・今月新規を返す")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "メンバー統計")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "非 ADMIN/DEPUTY または他テナント（COMMON_002）")
+    public ResponseEntity<ApiResponse<AdminMemberStatsResponse>> getTeamMemberStats(
+            @PathVariable String teamSlug) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        Long teamId = teamService.resolveTeamId(teamSlug);
+        return ResponseEntity.ok(ApiResponse.of(
+                adminLensSummaryFacade.getTeamMemberStats(userId, teamId)));
+    }
+
+    /**
+     * 組織パネル ④ {@code ADMIN_ORG_MEMBERS} のメンバー統計（総数 / アクティブ / 今月新規）を取得する。
+     */
+    @GetMapping("/organization/{orgSlug}/admin-member-stats")
+    @Operation(summary = "組織 メンバー統計（管理者レンズ）",
+            description = "ADMIN/DEPUTY 向け。memberships（在籍）由来の会員総数・アクティブ・今月新規を返す")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "メンバー統計")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "非 ADMIN/DEPUTY または他テナント（COMMON_002）")
+    public ResponseEntity<ApiResponse<AdminMemberStatsResponse>> getOrgMemberStats(
+            @PathVariable String orgSlug) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        Long orgId = organizationService.resolveOrgId(orgSlug);
+        return ResponseEntity.ok(ApiResponse.of(
+                adminLensSummaryFacade.getOrgMemberStats(userId, orgId)));
+    }
+
+    /**
+     * チームパネル ① {@code ADMIN_TEAM_RESERVATIONS} の予約サマリ（承認待ち件数 / 本日の予約数）を取得する。
+     */
+    @GetMapping("/team/{teamSlug}/admin-reservation-summary")
+    @Operation(summary = "チーム 予約サマリ（管理者レンズ）",
+            description = "ADMIN/DEPUTY 向け。承認待ち(PENDING)件数と本日(JST)の有効予約(CONFIRMED/PENDING)件数を返す")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "予約サマリ")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "非 ADMIN/DEPUTY または他テナント（COMMON_002）")
+    public ResponseEntity<ApiResponse<AdminReservationSummaryResponse>> getTeamReservationSummary(
+            @PathVariable String teamSlug) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        Long teamId = teamService.resolveTeamId(teamSlug);
+        return ResponseEntity.ok(ApiResponse.of(
+                adminLensSummaryFacade.getTeamReservationSummary(userId, teamId)));
     }
 }
