@@ -12,7 +12,9 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -109,12 +111,12 @@ public class MembershipSubscriptionEntity extends UuidV7Entity {
     /** 状態。 */
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 16)
-    @SuperBuilder.Default
+    @Builder.Default
     private MembershipSubscriptionStatus status = MembershipSubscriptionStatus.PENDING;
 
     /** 加入時に解決した手数料パターン（遡及防止の焼き付け・F22.1 fee_policies）。 */
     @Column(name = "fee_policy_key", nullable = false, length = 40)
-    @SuperBuilder.Default
+    @Builder.Default
     private String feePolicyKey = "DEFAULT";
 
     /** 額面（円整数・加入時に固定＝price-lock）。 */
@@ -123,7 +125,7 @@ public class MembershipSubscriptionEntity extends UuidV7Entity {
 
     /** 通貨（加入時に固定）。 */
     @Column(name = "currency", nullable = false, length = 3)
-    @SuperBuilder.Default
+    @Builder.Default
     private String currency = "JPY";
 
     /** 現サイクル開始日。 */
@@ -136,7 +138,7 @@ public class MembershipSubscriptionEntity extends UuidV7Entity {
 
     /** 期末解約フラグ（ACTIVE 内の利用者操作・status と独立）。 */
     @Column(name = "cancel_at_period_end", nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean cancelAtPeriodEnd = false;
 
     /** CANCELLED 遷移日時。 */

@@ -8,7 +8,9 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -50,18 +52,18 @@ public class AdInvoiceItemEntity extends BaseEntity {
     private PricingModel pricingModel;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private long impressions = 0;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private long clicks = 0;
 
     @Column(nullable = false)
     private BigDecimal unitPrice;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private BigDecimal subtotal = BigDecimal.ZERO;
 
     /**

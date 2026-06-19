@@ -11,7 +11,9 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -89,7 +91,7 @@ public class PaymentRequestEntity extends UuidV7Entity {
 
     /** 通貨。 */
     @Column(name = "currency", nullable = false, length = 3)
-    @SuperBuilder.Default
+    @Builder.Default
     private String currency = "JPY";
 
     /** 税からくり（NULL=税なし扱い・NoOpTaxPolicy）。 */
@@ -103,7 +105,7 @@ public class PaymentRequestEntity extends UuidV7Entity {
     /** 状態。 */
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 12)
-    @SuperBuilder.Default
+    @Builder.Default
     private PaymentRequestStatus status = PaymentRequestStatus.DRAFT;
 
     /** 支払い時に money rail へ連結（F22.1 escrow）。論理参照・FK なし。 */

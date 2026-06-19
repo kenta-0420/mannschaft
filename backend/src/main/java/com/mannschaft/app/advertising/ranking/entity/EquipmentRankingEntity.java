@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -35,7 +36,7 @@ public class EquipmentRankingEntity {
 
     /** カテゴリ（__ALL__ は全カテゴリ集計） */
     @Column(name = "category", nullable = false, length = 100)
-    @SuperBuilder.Default
+    @Builder.Default
     private String category = "__ALL__";
 
     /** カテゴリ内順位 */
@@ -68,7 +69,7 @@ public class EquipmentRankingEntity {
 
     /** 消費イベント発生回数 */
     @Column(name = "consume_event_count", nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Integer consumeEventCount = 0;
 
     /** ランキングスコア */

@@ -11,7 +11,9 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -42,7 +44,7 @@ public class MemberPaymentEntity extends BaseEntity {
     private BigDecimal amountPaid;
 
     @Column(nullable = false, length = 3)
-    @SuperBuilder.Default
+    @Builder.Default
     private String currency = "JPY";
 
     @Enumerated(EnumType.STRING)
@@ -51,7 +53,7 @@ public class MemberPaymentEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 15)
-    @SuperBuilder.Default
+    @Builder.Default
     private PaymentStatus status = PaymentStatus.PENDING;
 
     private LocalDate validFrom;

@@ -7,6 +7,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -62,7 +63,7 @@ public class AgeGroupSettingsEntity {
      * 例: {"chat":true,"advertising":false}
      * デフォルト値は空オブジェクト "{}"。
      */
-    @SuperBuilder.Default
+    @Builder.Default
     @Column(name = "features_enabled", columnDefinition = "JSON", nullable = false)
     private String featuresEnabled = "{}";
 
@@ -71,7 +72,7 @@ public class AgeGroupSettingsEntity {
      * 例: {"primaryColor":"#4CAF50","iconSet":"kids"}
      * デフォルト値は空オブジェクト "{}"。
      */
-    @SuperBuilder.Default
+    @Builder.Default
     @Column(name = "theme_config", columnDefinition = "JSON", nullable = false)
     private String themeConfig = "{}";
 

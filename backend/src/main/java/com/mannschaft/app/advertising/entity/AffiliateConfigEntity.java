@@ -9,7 +9,9 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -53,7 +55,7 @@ public class AffiliateConfigEntity extends BaseEntity {
     private String altText;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean isActive = true;
 
     private LocalDateTime activeFrom;
@@ -61,7 +63,7 @@ public class AffiliateConfigEntity extends BaseEntity {
     private LocalDateTime activeUntil;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Short displayPriority = 0;
 
     @Column(length = 30)

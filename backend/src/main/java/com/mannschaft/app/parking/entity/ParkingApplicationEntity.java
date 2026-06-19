@@ -9,7 +9,9 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -37,18 +39,18 @@ public class ParkingApplicationEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private ApplicationSourceType sourceType = ApplicationSourceType.VACANCY;
 
     private Long listingId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private ParkingApplicationStatus status = ParkingApplicationStatus.PENDING;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Integer priority = 0;
 
     @Column(length = 500)
@@ -58,7 +60,7 @@ public class ParkingApplicationEntity extends BaseEntity {
     private String rejectionReason;
 
     @Column(name = "is_proxy_input", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean isProxyInput = false;
 
     @Column(name = "proxy_input_record_id")

@@ -14,6 +14,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -65,18 +66,18 @@ public class UserEntity extends BaseEntity {
 
     /** ハンドル検索許可フラグ。true=検索可能（デフォルト）。 */
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean handleSearchable = true;
 
     /** 連絡先申請に承認が必要かどうか。true=承認制（デフォルト）。 */
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean contactApprovalRequired = true;
 
     /** オンライン状態の公開範囲。デフォルト: NOBODY。 */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @SuperBuilder.Default
+    @Builder.Default
     private OnlineVisibility onlineVisibility = OnlineVisibility.NOBODY;
 
     @Column(length = 50)
@@ -88,7 +89,7 @@ public class UserEntity extends BaseEntity {
     /** DM受信制限設定。誰からのDMを受け取るかを制御する。 */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @SuperBuilder.Default
+    @Builder.Default
     private DmReceiveFrom dmReceiveFrom = DmReceiveFrom.ANYONE;
 
     @Column(length = 500)
@@ -115,7 +116,7 @@ public class UserEntity extends BaseEntity {
     private String phoneNumberHash;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Integer encryptionKeyVersion = 1;
 
     @Column(nullable = false, length = 10)
@@ -137,13 +138,13 @@ public class UserEntity extends BaseEntity {
     private LocalDateTime reminderSentAt;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean reportingRestricted = false;
 
     /** フォロー一覧の公開設定。デフォルト: PUBLIC。 */
     @Enumerated(EnumType.STRING)
     @Column(name = "follow_list_visibility", nullable = false, length = 16)
-    @SuperBuilder.Default
+    @Builder.Default
     private FollowListVisibility followListVisibility = FollowListVisibility.PUBLIC;
 
     private LocalDateTime archivedAt;
@@ -168,12 +169,12 @@ public class UserEntity extends BaseEntity {
 
     /** ケア通知の受信フラグ。デフォルト true。 */
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean careNotificationEnabled = true;
 
     /** スマートフォン・PCを持たない住民フラグ（F14.1 非デジタル住民対応）。 */
     @Column(name = "offline_only", nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean offlineOnly = false;
 
     /** 見守り者がアカウントを代理作成した場合の作成者ユーザーID。 */
@@ -231,7 +232,7 @@ public class UserEntity extends BaseEntity {
      * <p>Flyway V68.006 で追加。</p>
      */
     @Column(name = "public_profile_enabled", nullable = false, columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
-    @SuperBuilder.Default
+    @Builder.Default
     private boolean publicProfileEnabled = false;
 
     /**

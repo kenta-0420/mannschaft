@@ -10,7 +10,9 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -41,7 +43,7 @@ public class AdvertiserAccountEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @SuperBuilder.Default
+    @Builder.Default
     private AdvertiserAccountStatus status = AdvertiserAccountStatus.PENDING;
 
     @Column(nullable = false, length = 200)
@@ -52,14 +54,14 @@ public class AdvertiserAccountEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @SuperBuilder.Default
+    @Builder.Default
     private BillingMethod billingMethod = BillingMethod.STRIPE;
 
     @Column(length = 50)
     private String stripeCustomerId;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private BigDecimal creditLimit = new BigDecimal("100000");
 
     private Long approvedBy;
