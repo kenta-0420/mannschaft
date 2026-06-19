@@ -330,7 +330,7 @@ public class TournamentEntryMemberService {
         entryMemberRepository.deleteByParticipantId(pId);
 
         List<TournamentEntryMemberEntity> newEntries = req.getMembers().stream()
-                .map(item -> TournamentEntryMemberEntity.builder()
+                .map(item -> (TournamentEntryMemberEntity) TournamentEntryMemberEntity.builder()
                         .participantId(pId)
                         .userId(item.getUserId())
                         .jerseyNumber(item.getJerseyNumber())

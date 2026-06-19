@@ -227,7 +227,7 @@ public class TournamentEntryTemplateService {
         TournamentEntryTemplateEntity saved = templateRepository.save(template);
 
         List<TournamentEntryTemplateMemberEntity> members = req.getMembers().stream()
-                .map(item -> TournamentEntryTemplateMemberEntity.builder()
+                .map(item -> (TournamentEntryTemplateMemberEntity) TournamentEntryTemplateMemberEntity.builder()
                         .templateId(saved.getId())
                         .userId(item.getUserId())
                         .jerseyNumber(item.getJerseyNumber())
@@ -274,7 +274,7 @@ public class TournamentEntryTemplateService {
         // メンバーを全置換（差分更新推奨だが全置換で実装）
         templateMemberRepository.deleteByTemplateId(templateId);
         List<TournamentEntryTemplateMemberEntity> newMembers = req.getMembers().stream()
-                .map(item -> TournamentEntryTemplateMemberEntity.builder()
+                .map(item -> (TournamentEntryTemplateMemberEntity) TournamentEntryTemplateMemberEntity.builder()
                         .templateId(templateId)
                         .userId(item.getUserId())
                         .jerseyNumber(item.getJerseyNumber())
