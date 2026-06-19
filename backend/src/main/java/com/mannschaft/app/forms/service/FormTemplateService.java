@@ -137,23 +137,23 @@ public class FormTemplateService {
             String scopeType, Long scopeId, Long templateId, UpdateFormTemplateRequest request) {
         FormTemplateEntity entity = findTemplateOrThrow(scopeType, scopeId, templateId);
 
-        FormTemplateEntity updated = entity.toBuilder()
-                .name(request.getName() != null ? request.getName() : entity.getName())
-                .description(request.getDescription() != null ? request.getDescription() : entity.getDescription())
-                .icon(request.getIcon() != null ? request.getIcon() : entity.getIcon())
-                .color(request.getColor() != null ? request.getColor() : entity.getColor())
-                .requiresApproval(request.getRequiresApproval() != null ? request.getRequiresApproval() : entity.getRequiresApproval())
-                .workflowTemplateId(request.getWorkflowTemplateId() != null ? request.getWorkflowTemplateId() : entity.getWorkflowTemplateId())
-                .isSealOnPdf(request.getIsSealOnPdf() != null ? request.getIsSealOnPdf() : entity.getIsSealOnPdf())
-                .deadline(request.getDeadline() != null ? request.getDeadline() : entity.getDeadline())
-                .allowEditAfterSubmit(request.getAllowEditAfterSubmit() != null ? request.getAllowEditAfterSubmit() : entity.getAllowEditAfterSubmit())
-                .autoFillEnabled(request.getAutoFillEnabled() != null ? request.getAutoFillEnabled() : entity.getAutoFillEnabled())
-                .maxSubmissionsPerUser(request.getMaxSubmissionsPerUser() != null ? request.getMaxSubmissionsPerUser() : entity.getMaxSubmissionsPerUser())
-                .sortOrder(request.getSortOrder() != null ? request.getSortOrder() : entity.getSortOrder())
-                .targetCount(request.getTargetCount() != null ? request.getTargetCount() : entity.getTargetCount())
-                .build();
+        // managed entity を直接ミューテートして主キー・@Version を保持する（toBuilder().build() は id 欠落で INSERT 化＝行重複を招くため使用しない）
+        entity.applyUpdate(
+                request.getName(),
+                request.getDescription(),
+                request.getIcon(),
+                request.getColor(),
+                request.getRequiresApproval(),
+                request.getWorkflowTemplateId(),
+                request.getIsSealOnPdf(),
+                request.getDeadline(),
+                request.getAllowEditAfterSubmit(),
+                request.getAutoFillEnabled(),
+                request.getMaxSubmissionsPerUser(),
+                request.getSortOrder(),
+                request.getTargetCount());
 
-        FormTemplateEntity saved = templateRepository.save(updated);
+        FormTemplateEntity saved = templateRepository.save(entity);
 
         List<FormTemplateFieldEntity> fields;
         if (request.getFields() != null) {
