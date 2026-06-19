@@ -43,6 +43,9 @@ public interface AdvertisingMapper {
     /**
      * 作成リクエストからエンティティに変換する。
      */
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "deletedAt", ignore = true)
     @Mapping(target = "isActive", constant = "true")
     @Mapping(target = "provider", expression = "java(AffiliateProvider.valueOf(request.getProvider()))")

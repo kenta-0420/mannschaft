@@ -238,7 +238,7 @@ public class WorkflowTemplateService {
         }
 
         List<WorkflowTemplateStepEntity> steps = stepRequests.stream()
-                .map(req -> WorkflowTemplateStepEntity.builder()
+                .map(req -> (WorkflowTemplateStepEntity) WorkflowTemplateStepEntity.builder()
                         .templateId(templateId)
                         .stepOrder(req.getStepOrder())
                         .name(req.getName())
@@ -262,7 +262,7 @@ public class WorkflowTemplateService {
         }
 
         List<WorkflowTemplateFieldEntity> fields = fieldRequests.stream()
-                .map(req -> WorkflowTemplateFieldEntity.builder()
+                .map(req -> (WorkflowTemplateFieldEntity) WorkflowTemplateFieldEntity.builder()
                         .templateId(templateId)
                         .fieldKey(req.getFieldKey())
                         .fieldLabel(req.getFieldLabel())
