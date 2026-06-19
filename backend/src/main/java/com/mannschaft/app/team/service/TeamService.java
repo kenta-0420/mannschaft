@@ -451,25 +451,28 @@ public class TeamService {
         TeamEntity team = findTeamOrThrow(teamId);
         checkNotArchived(team);
 
-        TeamEntity updated = team.toBuilder()
-                .name(req.getName() != null ? req.getName() : team.getName())
-                .nameKana(req.getNameKana() != null ? req.getNameKana() : team.getNameKana())
-                .nickname1(req.getNickname1() != null ? req.getNickname1() : team.getNickname1())
-                .nickname2(req.getNickname2() != null ? req.getNickname2() : team.getNickname2())
-                .template(req.getTemplate() != null ? req.getTemplate() : team.getTemplate())
-                .prefecture(req.getPrefecture() != null ? req.getPrefecture() : team.getPrefecture())
-                .city(req.getCity() != null ? req.getCity() : team.getCity())
+        // 直接ミューテートで UPDATE を発行する（PR #1643 と同型）。
+        // toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化し、
+        // slug 一意制約違反で 500 になるため使わない。visibility の enum 解決は本層の責務。
+        TeamEntity.Visibility visibility = req.getVisibility() != null
+                ? TeamEntity.Visibility.valueOf(req.getVisibility())
+                : null;
+        team.applyUpdate(
+                req.getName(),
+                req.getNameKana(),
+                req.getNickname1(),
+                req.getNickname2(),
+                req.getTemplate(),
+                req.getPrefecture(),
+                req.getCity(),
                 // F22.1 市 Phase 2 足場C: 地域コードは指定時のみ更新（null は既存値を維持）
-                .prefectureCode(req.getPrefectureCode() != null ? req.getPrefectureCode() : team.getPrefectureCode())
-                .cityCode(req.getCityCode() != null ? req.getCityCode() : team.getCityCode())
-                .visibility(req.getVisibility() != null
-                        ? TeamEntity.Visibility.valueOf(req.getVisibility())
-                        : team.getVisibility())
-                .supporterEnabled(req.getSupporterEnabled() != null ? req.getSupporterEnabled() : team.getSupporterEnabled())
-                // F15.4 Phase 5-β: Google Maps 埋め込み URL。null 許容（地図なしも OK）
-                .mapEmbedUrl(req.getMapEmbedUrl() != null ? req.getMapEmbedUrl() : team.getMapEmbedUrl())
-                .build();
-        teamRepository.save(updated);
+                req.getPrefectureCode(),
+                req.getCityCode(),
+                visibility,
+                req.getSupporterEnabled(),
+                // F15.4 Phase 5-β: Google Maps 埋め込み URL。指定時のみ更新（null は既存値を維持）
+                req.getMapEmbedUrl());
+        teamRepository.save(team);
 
         int memberCount = (int) userRoleRepository.countByTeamId(teamId);
         long teamFriendCount = teamFriendRepository.countFriendsByTeamId(teamId);
@@ -477,7 +480,7 @@ public class TeamService {
         long supporterCount = membershipRepository.countActiveByScopeAndRoleKind(
                 ScopeType.TEAM, teamId, RoleKind.SUPPORTER);
         log.info("チーム更新完了: teamId={}", teamId);
-        return ApiResponse.of(toResponse(updated, memberCount, teamFriendCount, supporterCount));
+        return ApiResponse.of(toResponse(team, memberCount, teamFriendCount, supporterCount));
     }
 
     /**

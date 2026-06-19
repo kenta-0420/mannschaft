@@ -27,6 +27,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -271,6 +272,34 @@ class OrganizationServiceTest {
             assertThat(response.getData().getLocation().prefecture()).isEqualTo("大阪府");
             // 未指定フィールドは元のまま
             assertThat(response.getData().getHierarchy().orgType()).isEqualTo("SCHOOL");
+        }
+
+        @Test
+        @DisplayName("回帰防止: 既存エンティティをUPDATE_id不変かつ新規行を作らない(toBuilder id欠落INSERT化の根治)")
+        void 更新_既存エンティティをUPDATE_id不変かつ新規行を作らない() {
+            // Given: createOrganization() は id=ORG_ID を採番済み（findById 取得の managed entity を模す）
+            OrganizationEntity org = createOrganization();
+            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
+            given(organizationRepository.save(any(OrganizationEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(userRoleRepository.countByOrganizationId(ORG_ID)).willReturn(3L);
+
+            UpdateOrganizationRequest req = new UpdateOrganizationRequest(
+                    "更新後の名前", null, null, null, null, null, null, null, null, 0L);
+
+            // When
+            organizationService.updateOrganization(ORG_ID, req);
+
+            // Then: save に渡るのは findById で取得した「まさにその」managed entity（別インスタンスではない）。
+            // id が保持されているので save は UPDATE になり、新規 INSERT（id=null・slug 一意制約違反500）は起きない。
+            ArgumentCaptor<OrganizationEntity> captor =
+                    ArgumentCaptor.forClass(OrganizationEntity.class);
+            verify(organizationRepository).save(captor.capture());
+            OrganizationEntity saved = captor.getValue();
+            assertThat(saved).isSameAs(org);
+            assertThat(saved.getId()).isEqualTo(ORG_ID); // id 欠落（INSERT 化）が起きていない
+            assertThat(saved.getName()).isEqualTo("更新後の名前"); // 部分更新が反映
+            assertThat(saved.getOrgType()).isEqualTo(OrganizationEntity.OrgType.SCHOOL); // 未指定は現値維持
         }
 
         @Test

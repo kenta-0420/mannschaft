@@ -269,4 +269,118 @@ public class TeamEntity extends BaseEntity {
     public void renameSlug(String newSlug) {
         this.slug = newSlug;
     }
+
+    /**
+     * チームの基本情報を部分更新する（{@code TeamService#updateTeam} 用）。
+     *
+     * <p>本メソッドは managed entity をその場でミューテートする更新メソッドである。
+     * {@code @Transactional} 内で managed な本エンティティに対して呼ぶことで JPA の
+     * dirty checking により UPDATE が発行される。</p>
+     *
+     * <p><strong>なぜ builder ({@code toBuilder().build()}) で作り直さないか:</strong>
+     * {@link TeamEntity} は {@code @Builder(toBuilder = true)}（{@code @SuperBuilder} ではない）であり、
+     * 主キー {@code id} は基底クラス {@link com.mannschaft.app.common.BaseEntity} のフィールドである。
+     * {@code @Builder} は superclass のフィールドを取り込まないため、{@code toBuilder()} で
+     * 作り直すと継承フィールド {@code id} が引き継がれず {@code id = null} の新インスタンスになる。
+     * これを {@code save} すると UPDATE ではなく INSERT が走り、slug 一意制約違反で 500 になる。
+     * よって更新は必ず managed entity の直接ミューテートで行う（PR #1643 と同型）。</p>
+     *
+     * <p>各引数は「リクエスト値が非 null なら採用、null なら現値を維持」の部分更新セマンティクス。
+     * slug の一意性検証・visibility 文字列の enum 解決は呼び出し側（{@code TeamService}）の責務とし、
+     * 本メソッドは解決済みの値を受け取る。</p>
+     *
+     * @param name             新チーム名
+     * @param nameKana         新カナ
+     * @param nickname1        新ニックネーム1
+     * @param nickname2        新ニックネーム2
+     * @param template         新テンプレート
+     * @param prefecture       新都道府県（自由入力）
+     * @param city             新市区町村（自由入力）
+     * @param prefectureCode   新都道府県コード
+     * @param cityCode         新市区町村コード
+     * @param visibility       新公開範囲（解決済み enum・null なら現値維持）
+     * @param supporterEnabled 新サポーター有効フラグ
+     * @param mapEmbedUrl      新地図埋め込み URL
+     */
+    public void applyUpdate(String name, String nameKana, String nickname1, String nickname2,
+                            String template, String prefecture, String city,
+                            String prefectureCode, String cityCode, Visibility visibility,
+                            Boolean supporterEnabled, String mapEmbedUrl) {
+        if (name != null) {
+            this.name = name;
+        }
+        if (nameKana != null) {
+            this.nameKana = nameKana;
+        }
+        if (nickname1 != null) {
+            this.nickname1 = nickname1;
+        }
+        if (nickname2 != null) {
+            this.nickname2 = nickname2;
+        }
+        if (template != null) {
+            this.template = template;
+        }
+        if (prefecture != null) {
+            this.prefecture = prefecture;
+        }
+        if (city != null) {
+            this.city = city;
+        }
+        if (prefectureCode != null) {
+            this.prefectureCode = prefectureCode;
+        }
+        if (cityCode != null) {
+            this.cityCode = cityCode;
+        }
+        if (visibility != null) {
+            this.visibility = visibility;
+        }
+        if (supporterEnabled != null) {
+            this.supporterEnabled = supporterEnabled;
+        }
+        if (mapEmbedUrl != null) {
+            this.mapEmbedUrl = mapEmbedUrl;
+        }
+    }
+
+    /**
+     * チームの拡張プロフィールを更新する（{@code TeamExtendedProfileService#updateProfile} 用）。
+     *
+     * <p>{@link #applyUpdate} と同じく managed entity の直接ミューテートで UPDATE を発行する。
+     * builder 作り直しによる id 欠落 INSERT を避けるために設けた更新メソッドである。</p>
+     *
+     * <p>本メソッドは「指定された値で上書きする」セマンティクス（null も含めて上書き可）。
+     * 呼び出し側（{@code TeamExtendedProfileService}）が現値維持／null 化のロジックを解決済みの
+     * 値として渡す前提とする。</p>
+     *
+     * @param homepageUrl              新ホームページ URL（正規化済み・null 化可）
+     * @param establishedDate         新設立日（null 化可）
+     * @param establishedDatePrecision 新設立日精度（null 化可）
+     * @param philosophy              新理念（trim・null 化済み）
+     * @param profileVisibility       新プロフィール公開設定
+     */
+    public void applyProfileUpdate(String homepageUrl, LocalDate establishedDate,
+                                   com.mannschaft.app.organization.EstablishedDatePrecision establishedDatePrecision,
+                                   String philosophy,
+                                   com.mannschaft.app.organization.ProfileVisibility profileVisibility) {
+        this.homepageUrl = homepageUrl;
+        this.establishedDate = establishedDate;
+        this.establishedDatePrecision = establishedDatePrecision;
+        this.philosophy = philosophy;
+        this.profileVisibility = profileVisibility;
+    }
+
+    /**
+     * F19.1 Phase 2: サポーター向け氏名表示モードを更新する
+     * （{@code SupporterNameDisclosureService#patchTeamDisclosure} 用）。
+     *
+     * <p>managed entity の直接ミューテートで UPDATE を発行する。builder 作り直しによる
+     * id 欠落 INSERT を避けるために設けた更新メソッドである。</p>
+     *
+     * @param mode 新しい氏名表示モード
+     */
+    public void updateSupporterNameDisclosure(com.mannschaft.app.publicview.enums.NameDisclosureMode mode) {
+        this.supporterNameDisclosure = mode;
+    }
 }
