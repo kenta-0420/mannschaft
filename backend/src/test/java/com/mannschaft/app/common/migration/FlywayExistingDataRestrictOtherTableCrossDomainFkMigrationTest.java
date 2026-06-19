@@ -506,7 +506,7 @@ class FlywayExistingDataRestrictOtherTableCrossDomainFkMigrationTest {
         try (PreparedStatement ps = c.prepareStatement("""
                 INSERT INTO electronic_seals
                     (user_id, variant, display_text, svg_data, seal_hash)
-                VALUES (?, 'ROUND', '最終5B', '<svg/>', 'p5bsealhash0000000000000000000000000000000000000000000000000000000')
+                VALUES (?, 'ROUND', '最終5B', '<svg/>', 'abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789')
                 """, Statement.RETURN_GENERATED_KEYS)) {
             ps.setLong(1, userId);
             ps.executeUpdate();
