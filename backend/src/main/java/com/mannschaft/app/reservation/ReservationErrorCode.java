@@ -111,7 +111,18 @@ public enum ReservationErrorCode implements ErrorCode {
      * <p>F03.4 §2 「{@code display_order} はチーム内で 1〜5 の範囲。Service 層で保証」を担保する
      * （段階拡張バックログ ④ の付随検証）。</p>
      */
-    INVALID_DISPLAY_ORDER("RESERVATION_025", "表示順は1〜5の範囲で指定してください", Severity.WARN);
+    INVALID_DISPLAY_ORDER("RESERVATION_025", "表示順は1〜5の範囲で指定してください", Severity.WARN),
+
+    /**
+     * キャンセル締切超過（会員キャンセル拒否・入力不正なので 400）。
+     *
+     * <p>F03.4 §3 「{@code reservation_policies.cancel_deadline_hours}（既定 24）を実適用し、
+     * 枠開始時刻の {@code deadline} 時間前を過ぎた会員（USER）キャンセルは拒否する」を
+     * Service 層（{@code ReservationService.cancelByUser}）で担保する（段階拡張バックログ ⑤）。
+     * 判定は注入 {@code Clock} 基準。管理者（ADMIN）キャンセルは締切の対象外（常時キャンセル可）。
+     * Severity.WARN のため {@code GlobalExceptionHandler} の既定マッピングで 400 になる（個別 map 不要）。</p>
+     */
+    CANCEL_DEADLINE_PASSED("RESERVATION_026", "キャンセル締切を過ぎているためキャンセルできません", Severity.WARN);
 
     private final String code;
     private final String message;
