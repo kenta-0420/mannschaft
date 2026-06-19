@@ -104,6 +104,8 @@ public class ReservationSlotService {
                 .recurrenceRule(request.getRecurrenceRule())
                 .price(request.getPrice())
                 .note(request.getNote())
+                // 枠単位の承認モード上書き。null = チーム既定に従う（継承）。
+                .approvalMode(request.getApprovalMode())
                 .createdBy(createdBy)
                 .build();
 
@@ -145,6 +147,15 @@ public class ReservationSlotService {
         }
         if (request.getNote() != null) {
             builder.note(request.getNote());
+        }
+        // 承認モード上書き:
+        //   clearApprovalMode=true → null（チーム既定に従う）へ戻す
+        //   approvalMode 指定あり   → その値で上書き
+        //   いずれも無し            → 据え置き（部分更新）
+        if (Boolean.TRUE.equals(request.getClearApprovalMode())) {
+            builder.approvalMode(null);
+        } else if (request.getApprovalMode() != null) {
+            builder.approvalMode(request.getApprovalMode());
         }
 
         ReservationSlotEntity saved = slotRepository.save(builder.build());
