@@ -77,7 +77,10 @@
         "ratingScale": "評価スケール（1〜5）",
         "textHint": "回答者は自由記述で回答します",
         "dateHint": "回答者は日付を選択して回答します"
-      }
+      },
+      "teamBreakdownEnabled": "チーム別に集計する",
+      "teamBreakdownHint": "配下チームごとに回答結果を集計します（組織配信のみ）。",
+      "teamBreakdownAnonymousConflict": "匿名アンケートではチーム別集計は利用できません。"
     },
     "detail": {
       "scopeMissing": "アンケートのスコープ情報が不足しています",
@@ -151,6 +154,21 @@
       "unrespondedBadge": "未回答",
       "emptyResponded": "まだ回答者はいません",
       "emptyUnresponded": "未回答者はいません"
+    },
+    "teamBreakdown": {
+      "title": "チーム別内訳",
+      "reload": "再読み込み",
+      "retry": "再試行",
+      "fetchFailed": "チーム別内訳の取得に失敗しました。",
+      "forbidden": "この内訳を表示する権限がありません。",
+      "empty": "チーム別内訳の対象データがありません。",
+      "masked": "回答者が5名未満のため集計対象外です。",
+      "directMembers": "組織直接メンバー",
+      "totalRespondents": "全体回答者: {count}名",
+      "respondentCount": "回答者 {count}名",
+      "optionCount": "{count}件 ({percentage}%)",
+      "noOptionData": "データがありません。",
+      "noQuestionData": "集計対象の設問がありません。"
     }
   }
 }

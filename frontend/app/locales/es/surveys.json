@@ -77,7 +77,10 @@
         "ratingScale": "Escala de valoración (1-5)",
         "textHint": "Los encuestados responderán con texto libre",
         "dateHint": "Los encuestados elegirán una fecha"
-      }
+      },
+      "teamBreakdownEnabled": "Agrupar por equipo",
+      "teamBreakdownHint": "Agrupa las respuestas por equipo subordinado (solo distribucion de la organizacion).",
+      "teamBreakdownAnonymousConflict": "El desglose por equipo no esta disponible en encuestas anonimas."
     },
     "detail": {
       "scopeMissing": "Falta la información de alcance de la encuesta",
@@ -151,6 +154,21 @@
       "unrespondedBadge": "Sin responder",
       "emptyResponded": "Aún no hay encuestados",
       "emptyUnresponded": "No hay miembros sin responder"
+    },
+    "teamBreakdown": {
+      "title": "Desglose por equipo",
+      "reload": "Recargar",
+      "retry": "Reintentar",
+      "fetchFailed": "No se pudo cargar el desglose por equipo.",
+      "forbidden": "No tienes permiso para ver este desglose.",
+      "empty": "No hay datos de desglose por equipo.",
+      "masked": "Oculto porque hay menos de 5 encuestados.",
+      "directMembers": "Miembros directos de la organizacion",
+      "totalRespondents": "Total de encuestados: {count}",
+      "respondentCount": "{count} encuestados",
+      "optionCount": "{count} ({percentage}%)",
+      "noOptionData": "Sin datos.",
+      "noQuestionData": "No hay preguntas que agregar."
     }
   }
 }

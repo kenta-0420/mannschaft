@@ -77,7 +77,10 @@
         "ratingScale": "评分（1〜5）",
         "textHint": "回答者将以自由文本作答",
         "dateHint": "回答者将选择日期作答"
-      }
+      },
+      "teamBreakdownEnabled": "按团队汇总",
+      "teamBreakdownHint": "按下属团队分别汇总回答结果（仅限组织分发）。",
+      "teamBreakdownAnonymousConflict": "匿名问卷无法使用团队汇总。"
     },
     "detail": {
       "scopeMissing": "缺少问卷范围信息",
@@ -151,6 +154,21 @@
       "unrespondedBadge": "未回答",
       "emptyResponded": "暂无回答者",
       "emptyUnresponded": "无未回答者"
+    },
+    "teamBreakdown": {
+      "title": "团队明细",
+      "reload": "重新加载",
+      "retry": "重试",
+      "fetchFailed": "加载团队明细失败。",
+      "forbidden": "您没有查看此明细的权限。",
+      "empty": "没有可用的团队明细数据。",
+      "masked": "回答者少于5人，已隐藏明细。",
+      "directMembers": "组织直属成员",
+      "totalRespondents": "回答者总数：{count}",
+      "respondentCount": "回答者 {count} 人",
+      "optionCount": "{count}（{percentage}%）",
+      "noOptionData": "暂无数据。",
+      "noQuestionData": "没有可汇总的题目。"
     }
   }
 }

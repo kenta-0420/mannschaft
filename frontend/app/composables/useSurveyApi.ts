@@ -5,6 +5,11 @@ import type {
   RespondentsResponse,
   RemindRespondentsResponse,
 } from '~/types/survey'
+import type { components } from '~/types/generated'
+
+// F05.4 (B) チーム別内訳（by_team）の生成型エイリアス。
+// アンケート側は生成型が正準（survey.dto.SurveyTeamBreakdownResponse をそのまま反映している）。
+export type SurveyTeamBreakdownResponse = components['schemas']['SurveyTeamBreakdownResponse']
 
 export function useSurveyApi() {
   const api = useApi()
@@ -143,6 +148,17 @@ export function useSurveyApi() {
     return api<{ data: SurveyResultSummary[] }>(`/api/v1/surveys/${surveyId}/results`)
   }
 
+  /**
+   * F05.4 (B) アンケート結果のチーム別内訳（by_team）を取得する。
+   * 認可: 組織 ADMIN 限定（非 ADMIN は 403）。トグル OFF / 非組織 / 匿名のときは byTeam が空/未定義。
+   * 設計書: docs/features/F05.4_survey_vote.md / PR #1679
+   */
+  async function getTeamBreakdown(surveyId: number) {
+    return api<{ data: SurveyTeamBreakdownResponse }>(
+      `/api/v1/surveys/${surveyId}/results/team-breakdown`,
+    )
+  }
+
   // === Respondents (未回答者一覧の可視化) ===
   /**
    * 回答者・未回答者一覧を取得する。
@@ -183,6 +199,7 @@ export function useSurveyApi() {
     setTargets,
     setResultViewers,
     getResults,
+    getTeamBreakdown,
     getRespondents,
     remindRespondents,
   }
