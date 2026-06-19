@@ -7,8 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -23,8 +22,7 @@ import java.time.LocalDateTime;
 @Table(name = "equipment_rankings")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class EquipmentRankingEntity {
 
     @Id
@@ -37,7 +35,7 @@ public class EquipmentRankingEntity {
 
     /** カテゴリ（__ALL__ は全カテゴリ集計） */
     @Column(name = "category", nullable = false, length = 100)
-    @Builder.Default
+    @SuperBuilder.Default
     private String category = "__ALL__";
 
     /** カテゴリ内順位 */
@@ -70,7 +68,7 @@ public class EquipmentRankingEntity {
 
     /** 消費イベント発生回数 */
     @Column(name = "consume_event_count", nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Integer consumeEventCount = 0;
 
     /** ランキングスコア */

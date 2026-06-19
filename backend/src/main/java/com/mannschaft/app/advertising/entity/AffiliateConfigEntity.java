@@ -9,8 +9,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -26,7 +25,6 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @SuperBuilder
 public class AffiliateConfigEntity extends BaseEntity {
 
@@ -55,7 +53,7 @@ public class AffiliateConfigEntity extends BaseEntity {
     private String altText;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean isActive = true;
 
     private LocalDateTime activeFrom;
@@ -63,7 +61,7 @@ public class AffiliateConfigEntity extends BaseEntity {
     private LocalDateTime activeUntil;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Short displayPriority = 0;
 
     @Column(length = 30)

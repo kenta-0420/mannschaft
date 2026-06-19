@@ -11,7 +11,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -52,7 +52,7 @@ public class ParkingSpaceEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private SpaceStatus status = SpaceStatus.VACANT;
 
     @Column(length = 10)
@@ -63,7 +63,7 @@ public class ParkingSpaceEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private ApplicationStatus applicationStatus = ApplicationStatus.NOT_ACCEPTING;
 
     @Enumerated(EnumType.STRING)

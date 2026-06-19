@@ -8,8 +8,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -25,7 +24,6 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @SuperBuilder
 public class AdReportScheduleEntity extends BaseEntity {
 
@@ -43,7 +41,7 @@ public class AdReportScheduleEntity extends BaseEntity {
     private String includeCampaigns;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private boolean enabled = true;
 
     private LocalDateTime lastSentAt;

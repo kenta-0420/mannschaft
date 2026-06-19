@@ -12,7 +12,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.experimental.SuperBuilder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -109,12 +109,12 @@ public class MembershipSubscriptionEntity extends UuidV7Entity {
     /** 状態。 */
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 16)
-    @Builder.Default
+    @SuperBuilder.Default
     private MembershipSubscriptionStatus status = MembershipSubscriptionStatus.PENDING;
 
     /** 加入時に解決した手数料パターン（遡及防止の焼き付け・F22.1 fee_policies）。 */
     @Column(name = "fee_policy_key", nullable = false, length = 40)
-    @Builder.Default
+    @SuperBuilder.Default
     private String feePolicyKey = "DEFAULT";
 
     /** 額面（円整数・加入時に固定＝price-lock）。 */
@@ -123,7 +123,7 @@ public class MembershipSubscriptionEntity extends UuidV7Entity {
 
     /** 通貨（加入時に固定）。 */
     @Column(name = "currency", nullable = false, length = 3)
-    @Builder.Default
+    @SuperBuilder.Default
     private String currency = "JPY";
 
     /** 現サイクル開始日。 */
@@ -136,7 +136,7 @@ public class MembershipSubscriptionEntity extends UuidV7Entity {
 
     /** 期末解約フラグ（ACTIVE 内の利用者操作・status と独立）。 */
     @Column(name = "cancel_at_period_end", nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean cancelAtPeriodEnd = false;
 
     /** CANCELLED 遷移日時。 */
@@ -305,7 +305,7 @@ public class MembershipSubscriptionEntity extends UuidV7Entity {
      * 現サイクル期間（{@code current_period_start}/{@code current_period_end}）を更新する（status は変えない）。
      *
      * <p>F08.9 P5 第三波: ACTIVE の通常サイクル更新（{@code invoice.paid}）や解約応答の期末日反映で用いる。
-     * {@code toBuilder()} での再構築は Lombok の {@code @Builder} が<b>親クラス {@link UuidV7Entity} の id を引き継がない</b>ため
+     * {@code toBuilder()} での再構築は Lombok の {@code @SuperBuilder} が<b>親クラス {@link UuidV7Entity} の id を引き継がない</b>ため
      * id を失う（member_payments の subscription 連結が null になる事故）。これを避け、本ミューテータで原子的に更新する。</p>
      *
      * @param periodStart 現サイクル開始日（null 可・null は更新しない）

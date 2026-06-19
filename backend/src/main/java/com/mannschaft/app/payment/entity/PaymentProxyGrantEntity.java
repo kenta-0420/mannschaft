@@ -11,7 +11,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.experimental.SuperBuilder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -70,7 +70,7 @@ public class PaymentProxyGrantEntity extends UuidV7Entity {
      * 用途。現在は {@code PAYMENT} 固定。
      */
     @Column(name = "scope", nullable = false, length = 16)
-    @Builder.Default
+    @SuperBuilder.Default
     private String scope = "PAYMENT";
 
     /**
@@ -92,7 +92,7 @@ public class PaymentProxyGrantEntity extends UuidV7Entity {
      */
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 12)
-    @Builder.Default
+    @SuperBuilder.Default
     private PaymentProxyGrantStatus status = PaymentProxyGrantStatus.PENDING;
 
     /**

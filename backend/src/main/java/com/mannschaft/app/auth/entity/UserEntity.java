@@ -14,8 +14,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
@@ -33,8 +32,7 @@ import java.util.UUID;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class UserEntity extends BaseEntity {
 
     @Column(nullable = false, unique = true)
@@ -67,18 +65,18 @@ public class UserEntity extends BaseEntity {
 
     /** ハンドル検索許可フラグ。true=検索可能（デフォルト）。 */
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean handleSearchable = true;
 
     /** 連絡先申請に承認が必要かどうか。true=承認制（デフォルト）。 */
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean contactApprovalRequired = true;
 
     /** オンライン状態の公開範囲。デフォルト: NOBODY。 */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @Builder.Default
+    @SuperBuilder.Default
     private OnlineVisibility onlineVisibility = OnlineVisibility.NOBODY;
 
     @Column(length = 50)
@@ -90,7 +88,7 @@ public class UserEntity extends BaseEntity {
     /** DM受信制限設定。誰からのDMを受け取るかを制御する。 */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @Builder.Default
+    @SuperBuilder.Default
     private DmReceiveFrom dmReceiveFrom = DmReceiveFrom.ANYONE;
 
     @Column(length = 500)
@@ -117,7 +115,7 @@ public class UserEntity extends BaseEntity {
     private String phoneNumberHash;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Integer encryptionKeyVersion = 1;
 
     @Column(nullable = false, length = 10)
@@ -139,13 +137,13 @@ public class UserEntity extends BaseEntity {
     private LocalDateTime reminderSentAt;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean reportingRestricted = false;
 
     /** フォロー一覧の公開設定。デフォルト: PUBLIC。 */
     @Enumerated(EnumType.STRING)
     @Column(name = "follow_list_visibility", nullable = false, length = 16)
-    @Builder.Default
+    @SuperBuilder.Default
     private FollowListVisibility followListVisibility = FollowListVisibility.PUBLIC;
 
     private LocalDateTime archivedAt;
@@ -170,12 +168,12 @@ public class UserEntity extends BaseEntity {
 
     /** ケア通知の受信フラグ。デフォルト true。 */
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean careNotificationEnabled = true;
 
     /** スマートフォン・PCを持たない住民フラグ（F14.1 非デジタル住民対応）。 */
     @Column(name = "offline_only", nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean offlineOnly = false;
 
     /** 見守り者がアカウントを代理作成した場合の作成者ユーザーID。 */
@@ -233,7 +231,7 @@ public class UserEntity extends BaseEntity {
      * <p>Flyway V68.006 で追加。</p>
      */
     @Column(name = "public_profile_enabled", nullable = false, columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
-    @Builder.Default
+    @SuperBuilder.Default
     private boolean publicProfileEnabled = false;
 
     /**
@@ -481,9 +479,9 @@ public class UserEntity extends BaseEntity {
      * dirty checking により UPDATE が発行される。
      *
      * <p><strong>なぜ builder ({@code toBuilder().build()}) で作り直さないか:</strong>
-     * {@link UserEntity} は {@code @Builder(toBuilder = true)}（{@code @SuperBuilder} ではない）であり、
+     * {@link UserEntity} は {@code @SuperBuilder(toBuilder = true)}（{@code @SuperBuilder} ではない）であり、
      * 主キー {@code id} は基底クラス {@link com.mannschaft.app.common.BaseEntity} のフィールドである。
-     * {@code @Builder} は superclass のフィールドを取り込まないため、{@code toBuilder()} で
+     * {@code @SuperBuilder} は superclass のフィールドを取り込まないため、{@code toBuilder()} で
      * 作り直すと継承フィールド {@code id} が引き継がれず {@code id = null} の新インスタンスになる。
      * これを {@code save} すると UPDATE ではなく INSERT が走り、email 一意制約違反で 500 になる
      * （PR #1643 と同型の根治）。よって更新は必ず managed entity の直接ミューテートで行う。

@@ -8,8 +8,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -31,7 +30,6 @@ import java.util.UUID;
 @Table(name = "ad_invoice_items")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @SuperBuilder
 public class AdInvoiceItemEntity extends BaseEntity {
 
@@ -52,18 +50,18 @@ public class AdInvoiceItemEntity extends BaseEntity {
     private PricingModel pricingModel;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private long impressions = 0;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private long clicks = 0;
 
     @Column(nullable = false)
     private BigDecimal unitPrice;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private BigDecimal subtotal = BigDecimal.ZERO;
 
     /**

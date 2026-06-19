@@ -7,8 +7,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -32,8 +31,7 @@ import java.time.LocalDateTime;
 @Table(name = "age_group_settings")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class AgeGroupSettingsEntity {
 
     /**
@@ -64,7 +62,7 @@ public class AgeGroupSettingsEntity {
      * 例: {"chat":true,"advertising":false}
      * デフォルト値は空オブジェクト "{}"。
      */
-    @Builder.Default
+    @SuperBuilder.Default
     @Column(name = "features_enabled", columnDefinition = "JSON", nullable = false)
     private String featuresEnabled = "{}";
 
@@ -73,7 +71,7 @@ public class AgeGroupSettingsEntity {
      * 例: {"primaryColor":"#4CAF50","iconSet":"kids"}
      * デフォルト値は空オブジェクト "{}"。
      */
-    @Builder.Default
+    @SuperBuilder.Default
     @Column(name = "theme_config", columnDefinition = "JSON", nullable = false)
     private String themeConfig = "{}";
 

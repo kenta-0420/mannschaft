@@ -5,7 +5,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -36,6 +36,6 @@ public class ParkingSpacePriceHistoryEntity extends BaseEntity {
     private Long changedBy;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private LocalDateTime changedAt = LocalDateTime.now();
 }

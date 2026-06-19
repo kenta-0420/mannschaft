@@ -10,8 +10,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -28,7 +27,6 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @SuperBuilder
 public class AdvertiserAccountEntity extends BaseEntity {
 
@@ -43,7 +41,7 @@ public class AdvertiserAccountEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @Builder.Default
+    @SuperBuilder.Default
     private AdvertiserAccountStatus status = AdvertiserAccountStatus.PENDING;
 
     @Column(nullable = false, length = 200)
@@ -54,14 +52,14 @@ public class AdvertiserAccountEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @Builder.Default
+    @SuperBuilder.Default
     private BillingMethod billingMethod = BillingMethod.STRIPE;
 
     @Column(length = 50)
     private String stripeCustomerId;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private BigDecimal creditLimit = new BigDecimal("100000");
 
     private Long approvedBy;

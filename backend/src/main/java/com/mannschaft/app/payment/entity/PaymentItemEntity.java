@@ -9,7 +9,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -48,7 +48,7 @@ public class PaymentItemEntity extends BaseEntity {
     private BigDecimal amount;
 
     @Column(nullable = false, length = 3)
-    @Builder.Default
+    @SuperBuilder.Default
     private String currency = "JPY";
 
     @Column(length = 100)
@@ -58,15 +58,15 @@ public class PaymentItemEntity extends BaseEntity {
     private String stripePriceId;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean isActive = true;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Short displayOrder = 0;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Short gracePeriodDays = 0;
 
     /**
@@ -74,7 +74,7 @@ public class PaymentItemEntity extends BaseEntity {
      * 後方互換: 既定 FALSE で現挙動と完全一致（設計書 01 §1.2）。
      */
     @Column(name = "is_recurring", nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean isRecurring = false;
 
     /**

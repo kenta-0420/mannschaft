@@ -5,7 +5,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -35,7 +35,7 @@ public class ParkingAssignmentEntity extends BaseEntity {
     private Long assignedBy;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private LocalDateTime assignedAt = LocalDateTime.now();
 
     private LocalDate contractStartDate;

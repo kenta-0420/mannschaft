@@ -8,7 +8,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.experimental.SuperBuilder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -69,12 +69,12 @@ public class FeeRecoveryBalanceEntity extends UuidV7Entity {
      * 通常は非負だが将来の符号反転（過回収/調整）に備え符号付き {@code Long}（BIGINT）。
      */
     @Column(name = "outstanding_amount", nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Long outstandingAmount = 0L;
 
     /** 通貨（minor 単位の母数）。既定 {@code jpy}。 */
     @Column(name = "currency", nullable = false, length = 3)
-    @Builder.Default
+    @SuperBuilder.Default
     private String currency = "jpy";
 
     @Column(name = "created_at", nullable = false, updatable = false)

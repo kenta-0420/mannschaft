@@ -10,7 +10,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.experimental.SuperBuilder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -69,7 +69,7 @@ public class TeamPaymentAdvanceEntity extends UuidV7Entity {
 
     /** 通貨。 */
     @Column(name = "currency", nullable = false, length = 3)
-    @Builder.Default
+    @SuperBuilder.Default
     private String currency = "JPY";
 
     /** 立替（協会請求支払い）日時。 */
@@ -79,7 +79,7 @@ public class TeamPaymentAdvanceEntity extends UuidV7Entity {
     /** チームからの精算状態。 */
     @Enumerated(EnumType.STRING)
     @Column(name = "settlement_status", nullable = false, length = 12)
-    @Builder.Default
+    @SuperBuilder.Default
     private AdvanceSettlementStatus settlementStatus = AdvanceSettlementStatus.PENDING;
 
     /** 精算完了日時。SETTLED の場合のみ設定。 */
