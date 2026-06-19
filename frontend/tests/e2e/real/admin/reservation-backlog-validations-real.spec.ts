@@ -58,7 +58,8 @@ const MEMBER = {
  * （並列ログインバーストで BE が 429/400/一過性 500 を返すため）。
  */
 const test = base.extend<
-  Record<string, never>,
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- test-scoped の追加 fixture は無い（worker-scoped の tokens のみ）。Record<string, never> だと storageState 等の組込 fixture override が never 型になり TS2345 になる
+  {},
   { tokens: { admin: string; member: string } }
 >({
   // eslint-disable-next-line no-empty-pattern -- Playwright は fixture 第1引数にオブジェクト分割代入を要求する
@@ -178,10 +179,11 @@ async function getOrCreateLine(
   if (createResp.status() === 400 && code === 'RESERVATION_024') {
     // 上限到達: 既存ラインを流用する（堆積した後始末漏れラインがあるため）。
     const existing = await listLines(request, token)
-    if (existing.length === 0) {
+    const reusable = existing[0]
+    if (!reusable) {
       throw new Error('ライン上限なのに既存ラインが 0 本という不整合（要調査）')
     }
-    return { id: existing[0].id, created: false }
+    return { id: reusable.id, created: false }
   }
   throw new Error(`getOrCreateLine 失敗: ${createResp.status()} ${await createResp.text()}`)
 }
