@@ -827,6 +827,22 @@ class FlywayExistingDataRestrictUserAuditFkMigrationTest {
         }
     }
 
+    // ── 23. tags ──
+
+    /** tags: scope_type/scope_id/name/created_by NOT NULL ＋ UNIQUE(scope_type,scope_id,name)。created_by(撤廃対象) をセット。 */
+    private long insertTag(Connection c, long orgId, long createdBy) throws SQLException {
+        try (PreparedStatement ps = c.prepareStatement("""
+                INSERT INTO tags
+                    (scope_type, scope_id, name, created_by)
+                VALUES ('ORGANIZATION', ?, '最終局面5Cタグ', ?)
+                """, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setLong(1, orgId);
+            ps.setLong(2, createdBy);
+            ps.executeUpdate();
+            return generatedId(ps);
+        }
+    }
+
     // ── 21+22+24. budget chain / projects / shift_budget / todo_budget_links ──
 
     /** budget_fiscal_years: scope_type/scope_id/name/start_date/end_date/created_by NOT NULL ＋ CHECK(start<end)。 */
