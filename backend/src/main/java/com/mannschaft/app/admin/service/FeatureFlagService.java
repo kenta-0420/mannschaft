@@ -57,7 +57,10 @@ public class FeatureFlagService {
 
         entity.updateFlag(req.getIsEnabled(), userId);
         if (req.getDescription() != null) {
-            entity = entity.toBuilder().description(req.getDescription()).build();
+            // managed entity を直接ミューテート。toBuilder().build() は継承フィールド id を
+            // 引き継がず id=null の新インスタンスになり、save が INSERT になって
+            // flag_key 一意制約違反で 500 になるため使わない。
+            entity.updateDescription(req.getDescription());
         }
         entity = featureFlagRepository.save(entity);
 

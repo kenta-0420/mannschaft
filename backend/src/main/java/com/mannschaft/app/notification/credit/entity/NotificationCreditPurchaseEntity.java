@@ -110,6 +110,27 @@ public class NotificationCreditPurchaseEntity extends BaseEntity {
     }
 
     /**
+     * Stripe Checkout Session ID を割り当てる（Checkout 作成後）。
+     *
+     * <p>{@code createCheckout} 内で save 済み（id 採番済み）の本エンティティに対し、
+     * Stripe Session 作成後に session id を後付けする更新メソッド。managed entity を
+     * その場でミューテートし、続く {@code save} を同一行 UPDATE にする。</p>
+     *
+     * <p><strong>なぜ builder ({@code toBuilder().build()}) で作り直さないか:</strong>
+     * 本エンティティは {@code @Builder(toBuilder = true)}（{@code @SuperBuilder} ではない）で、
+     * 主キー {@code id} は基底クラス {@link BaseEntity} のフィールドである。
+     * {@code toBuilder()} は継承フィールド {@code id} を引き継がず {@code id = null} の
+     * 新インスタンスになり、{@code save} が UPDATE でなく INSERT を実行する。これは
+     * {@code idempotency_key} の UNIQUE 制約違反（同じキーで2行目を INSERT）で 500 になる
+     * 二重 save 構造であった。よって直接ミューテートして UPDATE にする。</p>
+     *
+     * @param checkoutSessionId Stripe Checkout Session ID
+     */
+    public void assignCheckoutSession(String checkoutSessionId) {
+        this.stripeCheckoutSessionId = checkoutSessionId;
+    }
+
+    /**
      * クレジットを消費する（FIFO）。
      *
      * @param amount 消費するクレジット数
