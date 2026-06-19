@@ -8,8 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -41,8 +40,7 @@ import java.time.LocalDateTime;
 @Table(name = "announcement_read_status")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class AnnouncementReadStatusEntity {
 
     @Id
@@ -71,7 +69,7 @@ public class AnnouncementReadStatusEntity {
      * 代理確認フラグ（0=本人既読, 1=代理確認）。
      */
     @Column(name = "is_proxy_confirmed", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean isProxyConfirmed = false;
 
     /**

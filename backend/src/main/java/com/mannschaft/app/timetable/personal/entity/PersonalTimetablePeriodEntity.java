@@ -5,8 +5,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -21,8 +20,7 @@ import java.time.LocalTime;
 @Table(name = "personal_timetable_periods")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class PersonalTimetablePeriodEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -41,6 +39,6 @@ public class PersonalTimetablePeriodEntity extends BaseEntity {
     private LocalTime endTime;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean isBreak = false;
 }

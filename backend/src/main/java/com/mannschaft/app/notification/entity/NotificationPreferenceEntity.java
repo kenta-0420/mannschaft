@@ -5,8 +5,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -17,8 +16,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "notification_preferences")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class NotificationPreferenceEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -30,7 +28,7 @@ public class NotificationPreferenceEntity extends BaseEntity {
     private Long scopeId;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean isEnabled = true;
 
     /**

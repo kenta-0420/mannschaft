@@ -7,8 +7,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -48,8 +47,7 @@ import java.time.LocalDateTime;
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class FriendContentForwardEntity extends BaseEntity {
 
     /** 転送元投稿 ID（timeline_posts.id） */
@@ -73,7 +71,7 @@ public class FriendContentForwardEntity extends BaseEntity {
      * Phase 3 以降で {@code 'MEMBER_AND_SUPPORTER'} 解禁予定。
      */
     @Column(name = "target", nullable = false, length = 30)
-    @Builder.Default
+    @SuperBuilder.Default
     private String target = "MEMBER";
 
     /** 転送時に管理者が付与したコメント（任意） */
@@ -82,7 +80,7 @@ public class FriendContentForwardEntity extends BaseEntity {
 
     /** 転送取消フラグ。{@code TRUE} = 取消済み / {@code FALSE} = アクティブ */
     @Column(name = "is_revoked", nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean isRevoked = false;
 
     /** 転送操作を行った ADMIN / DEPUTY_ADMIN のユーザー ID */

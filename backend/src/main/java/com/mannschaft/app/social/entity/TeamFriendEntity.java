@@ -7,8 +7,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -42,8 +41,7 @@ import java.time.LocalDateTime;
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class TeamFriendEntity extends BaseEntity {
 
     /** 関係の片側（常に team_a_id &lt; team_b_id となるよう正規化） */
@@ -72,7 +70,7 @@ public class TeamFriendEntity extends BaseEntity {
      * 両チームの ADMIN 承認により切り替え。デフォルトは {@code FALSE}（プライバシー安全側）。
      */
     @Column(name = "is_public", nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean isPublic = false;
 
     /**

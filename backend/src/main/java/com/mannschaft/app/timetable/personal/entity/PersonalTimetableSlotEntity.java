@@ -8,8 +8,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -25,8 +24,7 @@ import java.math.BigDecimal;
 @Table(name = "personal_timetable_slots")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class PersonalTimetableSlotEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -40,7 +38,7 @@ public class PersonalTimetableSlotEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 5)
-    @Builder.Default
+    @SuperBuilder.Default
     private WeekPattern weekPattern = WeekPattern.EVERY;
 
     @Column(nullable = false, length = 200)
@@ -68,7 +66,7 @@ public class PersonalTimetableSlotEntity extends BaseEntity {
     private Long linkedSlotId;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean autoSyncChanges = true;
 
     @Column(length = 300)

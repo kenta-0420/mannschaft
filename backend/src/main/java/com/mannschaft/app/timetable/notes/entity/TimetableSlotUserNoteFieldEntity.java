@@ -5,8 +5,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -17,8 +16,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "timetable_slot_user_note_fields")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class TimetableSlotUserNoteFieldEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -31,11 +29,11 @@ public class TimetableSlotUserNoteFieldEntity extends BaseEntity {
     private String placeholder;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Integer sortOrder = 0;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Integer maxLength = 2000;
 
     /**

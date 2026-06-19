@@ -13,8 +13,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -33,8 +32,7 @@ import java.time.LocalDateTime;
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class ConfirmableNotificationSettingsEntity {
 
     @Id
@@ -69,7 +67,7 @@ public class ConfirmableNotificationSettingsEntity {
      * この割合を超えて未確認者が残った場合に送信者へ通知する。
      */
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Integer senderAlertThresholdPercent = 80;
 
     /**
@@ -80,7 +78,7 @@ public class ConfirmableNotificationSettingsEntity {
      */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    @Builder.Default
+    @SuperBuilder.Default
     private UnconfirmedVisibility defaultUnconfirmedVisibility = UnconfirmedVisibility.CREATOR_AND_ADMIN;
 
     @Column(nullable = false)

@@ -7,8 +7,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -22,8 +21,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "announcement_range_templates")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class AnnouncementRangeTemplateEntity extends BaseEntity {
 
     /**
@@ -49,7 +47,7 @@ public class AnnouncementRangeTemplateEntity extends BaseEntity {
      * 告知対象ロール（MEMBERS_AND_ABOVE / SUPPORTERS_AND_ABOVE / PUBLIC）。
      */
     @Column(nullable = false, length = 30)
-    @Builder.Default
+    @SuperBuilder.Default
     private String targetRole = "MEMBERS_AND_ABOVE";
 
     /**
@@ -68,7 +66,7 @@ public class AnnouncementRangeTemplateEntity extends BaseEntity {
      * デフォルトテンプレートフラグ。スコープごとに 1 件のみ true が許容される。
      */
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean isDefault = false;
 
     /**

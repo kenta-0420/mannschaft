@@ -16,8 +16,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -41,8 +40,7 @@ import java.time.LocalDateTime;
 @Table(name = "confirmable_notifications")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class ConfirmableNotificationEntity {
 
     @Id
@@ -61,7 +59,7 @@ public class ConfirmableNotificationEntity {
      * {@code IllegalArgumentException} で連鎖故障させない防御を持つこと（01_data_model §5 警告）。</p>
      */
     @Column(name = "source_type", nullable = false, length = 40)
-    @Builder.Default
+    @SuperBuilder.Default
     private String sourceType = "EMERGENCY_CLOSURE";
 
     /**
@@ -93,13 +91,13 @@ public class ConfirmableNotificationEntity {
     /** 優先度（NORMAL / HIGH / URGENT） */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
-    @Builder.Default
+    @SuperBuilder.Default
     private ConfirmableNotificationPriority priority = ConfirmableNotificationPriority.NORMAL;
 
     /** ステータス（ACTIVE / COMPLETED / EXPIRED / CANCELLED） */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @Builder.Default
+    @SuperBuilder.Default
     private ConfirmableNotificationStatus status = ConfirmableNotificationStatus.ACTIVE;
 
     /** 確認期限。NULL は無期限。 */
@@ -146,7 +144,7 @@ public class ConfirmableNotificationEntity {
      * 確認率計算の分母として使用。
      */
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Integer totalRecipientCount = 0;
 
     /**
@@ -158,7 +156,7 @@ public class ConfirmableNotificationEntity {
      */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    @Builder.Default
+    @SuperBuilder.Default
     private UnconfirmedVisibility unconfirmedVisibility = UnconfirmedVisibility.CREATOR_AND_ADMIN;
 
     /** 使用したテンプレートID（参照用。テンプレート削除後も記録を保持） */

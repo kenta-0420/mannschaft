@@ -16,8 +16,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -33,8 +32,7 @@ import java.time.LocalDateTime;
 @Table(name = "confirmable_notification_templates")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class ConfirmableNotificationTemplateEntity {
 
     @Id
@@ -65,7 +63,7 @@ public class ConfirmableNotificationTemplateEntity {
     /** デフォルト優先度（NORMAL / HIGH / URGENT） */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
-    @Builder.Default
+    @SuperBuilder.Default
     private ConfirmableNotificationPriority defaultPriority = ConfirmableNotificationPriority.NORMAL;
 
     /** テンプレート作成者（退会時 NULL に設定） */

@@ -7,8 +7,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -43,8 +42,7 @@ import java.time.LocalDateTime;
 @Table(name = "announcement_feeds")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class AnnouncementFeedEntity extends BaseEntity {
 
     /**
@@ -97,14 +95,14 @@ public class AnnouncementFeedEntity extends BaseEntity {
      * 元コンテンツの優先度から正規化してセット（設計書 3 章）。
      */
     @Column(nullable = false, length = 20)
-    @Builder.Default
+    @SuperBuilder.Default
     private String priority = "NORMAL";
 
     /**
      * ピン留めフラグ。ADMIN のみ変更可。スコープごと最大 5 件まで（Service 層制限）。
      */
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean isPinned = false;
 
     /**
@@ -124,7 +122,7 @@ public class AnnouncementFeedEntity extends BaseEntity {
      * 値: MEMBERS_AND_ABOVE / SUPPORTERS_AND_ABOVE / PUBLIC
      */
     @Column(nullable = false, length = 30)
-    @Builder.Default
+    @SuperBuilder.Default
     private String visibility = "MEMBERS_AND_ABOVE";
 
     /**
@@ -163,7 +161,7 @@ public class AnnouncementFeedEntity extends BaseEntity {
      * 既存お知らせ（チーム/組織/委員会）は常に false。</p>
      */
     @Column(name = "is_advertisement", nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean isAdvertisement = false;
 
     // --- ドメインメソッド ---

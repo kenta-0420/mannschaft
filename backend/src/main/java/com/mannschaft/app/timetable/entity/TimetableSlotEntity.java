@@ -8,8 +8,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -20,8 +19,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "timetable_slots")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class TimetableSlotEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -35,7 +33,7 @@ public class TimetableSlotEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @Builder.Default
+    @SuperBuilder.Default
     private WeekPattern weekPattern = WeekPattern.EVERY;
 
     @Column(nullable = false, length = 100)

@@ -15,8 +15,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -30,8 +29,7 @@ import java.time.LocalDateTime;
 @Table(name = "user_care_links")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class UserCareLinkEntity {
 
     @Id
@@ -50,16 +48,16 @@ public class UserCareLinkEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    @Builder.Default
+    @SuperBuilder.Default
     private CareRelationship relationship = CareRelationship.PARENT;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean isPrimary = true;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @Builder.Default
+    @SuperBuilder.Default
     private CareLinkStatus status = CareLinkStatus.PENDING;
 
     @Enumerated(EnumType.STRING)
@@ -73,34 +71,34 @@ public class UserCareLinkEntity {
     private LocalDateTime confirmedAt;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean notifyOnRsvp = true;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean notifyOnCheckin = true;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean notifyOnCheckout = false;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean notifyOnAbsentAlert = true;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private Boolean notifyOnDismissal = true;
 
     @Column(nullable = false)
     private Long createdBy;
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @Column(nullable = false)
-    @Builder.Default
+    @SuperBuilder.Default
     private LocalDateTime updatedAt = LocalDateTime.now();
 
     private LocalDateTime revokedAt;
