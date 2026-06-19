@@ -6,6 +6,7 @@ import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.survey.event.SurveyPublishedEvent;
+import com.mannschaft.app.survey.dto.CreateSurveyRequest;
 import com.mannschaft.app.survey.dto.DuplicateSurveyRequest;
 import com.mannschaft.app.survey.dto.SurveyResponse;
 import com.mannschaft.app.survey.dto.SurveyStatsResponse;
@@ -519,6 +520,69 @@ class SurveyServiceTest {
             assertThat(result.getTotal()).isEqualTo(6L);
             assertThat(result.getDraft()).isEqualTo(2L);
             assertThat(result.getPublished()).isEqualTo(3L);
+        }
+    }
+
+    /**
+     * (B) 組織→参加チーム配信 案C フェーズB（御裁可B・匿名保護）。
+     * 匿名アンケート × チーム別内訳トグル ON の併用が作成時バリデーションで弾かれることを検証する。
+     */
+    @Nested
+    @DisplayName("createSurvey 匿名×チーム別内訳トグル併用禁止")
+    class CreateSurveyTeamBreakdownValidation {
+
+        private CreateSurveyRequest request(boolean anonymous, boolean teamBreakdownEnabled) {
+            return new CreateSurveyRequest(
+                    "タイトル",            // title
+                    null,                  // description
+                    anonymous,             // isAnonymous
+                    false,                 // allowMultipleSubmissions
+                    "AFTER_CLOSE",         // resultsVisibility
+                    "ALL",                 // distributionMode
+                    null,                  // unrespondedVisibility
+                    false,                 // autoPostToTimeline
+                    null,                  // seriesId
+                    null,                  // remindBeforeHours
+                    null,                  // startsAt
+                    null,                  // expiresAt
+                    Collections.emptyList(), // questions
+                    null,                  // targetUserIds
+                    null,                  // resultViewerUserIds
+                    false,                 // includeSupporters
+                    teamBreakdownEnabled); // teamBreakdownEnabled
+        }
+
+        @Test
+        @DisplayName("匿名ON×トグルON_作成時にANONYMOUS_TEAM_BREAKDOWN_CONFLICTで弾かれる")
+        void 匿名ON_トグルON_弾かれる() {
+            assertThatThrownBy(() ->
+                    surveyService.createSurvey("ORGANIZATION", 1L, 10L, request(true, true)))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(SurveyErrorCode.ANONYMOUS_TEAM_BREAKDOWN_CONFLICT));
+            // バリデーションで弾かれ永続化に到達しない
+            verify(surveyRepository, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
+        }
+
+        @Test
+        @DisplayName("匿名OFF×トグルON_併用禁止に該当せず保存へ進む")
+        void 匿名OFF_トグルON_許容() {
+            SurveyEntity saved = SurveyEntity.builder()
+                    .scopeType("ORGANIZATION").scopeId(1L).title("タイトル")
+                    .teamBreakdownEnabled(true).build();
+            ReflectionTestUtils.setField(saved, "id", 777L);
+            given(surveyRepository.save(org.mockito.ArgumentMatchers.any(SurveyEntity.class)))
+                    .willReturn(saved);
+            given(surveyRepository.findByIdAndScopeTypeAndScopeId(777L, "ORGANIZATION", 1L))
+                    .willReturn(Optional.of(saved));
+            // 末尾の getSurveyDetail（設問ビルド）が NPE しないよう空設問を返す。
+            given(questionRepository.findBySurveyIdOrderByDisplayOrderAsc(777L))
+                    .willReturn(Collections.emptyList());
+
+            // 例外を投げずに作成経路（save）へ到達することを確認する。
+            assertThat(surveyService.createSurvey("ORGANIZATION", 1L, 10L, request(false, true)))
+                    .isNotNull();
+            verify(surveyRepository).save(org.mockito.ArgumentMatchers.any(SurveyEntity.class));
         }
     }
 

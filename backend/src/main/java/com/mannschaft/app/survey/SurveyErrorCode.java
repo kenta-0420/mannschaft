@@ -75,7 +75,14 @@ public enum SurveyErrorCode implements ErrorCode {
     SERIES_NOT_FOUND("SURVEY_021", "指定シリーズに該当するアンケートが見つかりません", Severity.WARN),
 
     /** 操作権限なし（F05.4 extend/duplicate 共通） */
-    OPERATION_PERMISSION_DENIED("SURVEY_022", "この操作を実行する権限がありません", Severity.WARN);
+    OPERATION_PERMISSION_DENIED("SURVEY_022", "この操作を実行する権限がありません", Severity.WARN),
+
+    /**
+     * 匿名アンケートとチーム別内訳トグルの併用禁止（F05.4 チーム別内訳・御裁可B）。
+     * 匿名アンケートで回答者の所属チームを内訳に出すと匿名性が崩れるため、作成時に弾く（400）。
+     */
+    ANONYMOUS_TEAM_BREAKDOWN_CONFLICT("SURVEY_023",
+            "匿名アンケートではチーム別内訳を有効化できません", Severity.WARN);
 
     private final String code;
     private final String message;

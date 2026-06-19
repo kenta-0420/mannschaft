@@ -27,6 +27,13 @@ public class ReservationLineService {
     private final ReservationLineRepository lineRepository;
     private final ReservationMapper reservationMapper;
 
+    /** F03.4 §1/§2: 1 チームあたりの予約ライン上限。 */
+    private static final long MAX_LINES_PER_TEAM = 5L;
+
+    /** F03.4 §2: display_order の許可範囲（チーム内 1〜5）。 */
+    private static final int MIN_DISPLAY_ORDER = 1;
+    private static final int MAX_DISPLAY_ORDER = 5;
+
     /**
      * チームの予約ライン一覧を取得する。
      *
@@ -58,6 +65,13 @@ public class ReservationLineService {
      */
     @Transactional
     public ReservationLineResponse createLine(Long teamId, CreateReservationLineRequest request) {
+        // ④ ライン上限 5 本。既存のアクティブライン数が上限に達していれば拒否（400）。
+        if (lineRepository.countByTeamId(teamId) >= MAX_LINES_PER_TEAM) {
+            throw new BusinessException(ReservationErrorCode.LINE_LIMIT_EXCEEDED);
+        }
+        // display_order を明示指定した場合は 1〜5 の範囲を検証（省略時は既定 1 で範囲内）。
+        validateDisplayOrder(request.getDisplayOrder());
+
         ReservationLineEntity entity = ReservationLineEntity.builder()
                 .teamId(teamId)
                 .name(request.getName())
@@ -90,6 +104,7 @@ public class ReservationLineService {
             entity.changeDescription(request.getDescription());
         }
         if (request.getDisplayOrder() != null) {
+            validateDisplayOrder(request.getDisplayOrder());
             entity.changeDisplayOrder(request.getDisplayOrder());
         }
         if (request.getIsActive() != null) {
@@ -120,6 +135,18 @@ public class ReservationLineService {
         entity.softDelete();
         lineRepository.save(entity);
         log.info("予約ライン削除: teamId={}, lineId={}", teamId, lineId);
+    }
+
+    /**
+     * display_order がチーム内許可範囲（1〜5）かを検証する。null は呼び出し側で除外済み前提。
+     *
+     * @param displayOrder 検証対象の表示順
+     * @throws BusinessException 範囲外（INVALID_DISPLAY_ORDER・400）
+     */
+    private void validateDisplayOrder(Integer displayOrder) {
+        if (displayOrder != null && (displayOrder < MIN_DISPLAY_ORDER || displayOrder > MAX_DISPLAY_ORDER)) {
+            throw new BusinessException(ReservationErrorCode.INVALID_DISPLAY_ORDER);
+        }
     }
 
     /**
