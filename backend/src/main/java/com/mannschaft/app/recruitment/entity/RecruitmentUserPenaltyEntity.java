@@ -4,7 +4,7 @@ import com.mannschaft.app.recruitment.PenaltyLiftReason;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
-import lombok.experimental.SuperBuilder;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
@@ -66,7 +66,7 @@ public class RecruitmentUserPenaltyEntity {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @SuperBuilder
+    @Builder
     public RecruitmentUserPenaltyEntity(
             Long userId, RecruitmentScopeType scopeType, Long scopeId,
             Long triggeredBySettingId, int triggeredNoShowCount,

@@ -4,7 +4,7 @@ import com.mannschaft.app.recruitment.DisputeResolution;
 import com.mannschaft.app.recruitment.NoShowReason;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
-import lombok.experimental.SuperBuilder;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
@@ -60,7 +60,7 @@ public class RecruitmentNoShowRecordEntity {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @SuperBuilder
+    @Builder
     public RecruitmentNoShowRecordEntity(
             Long participantId, Long listingId, Long userId,
             NoShowReason reason, Long recordedBy) {
