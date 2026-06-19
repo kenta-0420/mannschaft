@@ -265,6 +265,60 @@
       "not_affiliated_notice": "Reservations for this team are for members only",
       "not_affiliated_hint": "Please join the team or contact the administrator",
       "error_public_forbidden": "Reservations are only available to team members"
+    },
+    "slot_form": {
+      "dialog": {
+        "create_title": "Create Reservation Slot",
+        "edit_title": "Edit Reservation Slot"
+      },
+      "field": {
+        "date": "Date",
+        "start_time": "Start Time",
+        "end_time": "End Time",
+        "title": "Title (optional)",
+        "note": "Note (optional)"
+      },
+      "placeholder": {
+        "date": "e.g. 2026-01-01",
+        "title": "e.g. Initial Consultation",
+        "note": "e.g. Remarks"
+      },
+      "approval_mode": {
+        "label": "Approval Mode",
+        "hint": "Use team setting = inherit default policy / Auto-confirm = instant / Manual = admin approval required",
+        "option_inherit": "Use team setting (default)",
+        "option_auto": "Auto-confirm (AUTO)",
+        "option_manual": "Manual approval (MANUAL)"
+      },
+      "message": {
+        "create_success": "Reservation slot created",
+        "update_success": "Reservation slot updated",
+        "save_failed": "Failed to save"
+      }
+    },
+    "slot_manager": {
+      "title": "Slot Management",
+      "button": {
+        "add_slot": "Add Slot",
+        "edit": "Edit",
+        "close": "Close",
+        "reopen": "Reopen"
+      },
+      "status": {
+        "available": "Available",
+        "full": "Full",
+        "closed": "Closed"
+      },
+      "booked_count": "{count} booked",
+      "empty": {
+        "no_slots": "No slots for this day"
+      },
+      "message": {
+        "load_failed": "Failed to load reservation slots",
+        "closed": "Slot closed",
+        "reopened": "Slot reopened",
+        "status_change_failed": "Failed to change status"
+      }
     }
   }
 }

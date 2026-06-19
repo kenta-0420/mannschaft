@@ -265,6 +265,60 @@
       "not_affiliated_notice": "Las reservas de este equipo son solo para miembros",
       "not_affiliated_hint": "Únete al equipo o contacta al administrador",
       "error_public_forbidden": "Las reservas solo están disponibles para miembros del equipo"
+    },
+    "slot_form": {
+      "dialog": {
+        "create_title": "Crear franja horaria",
+        "edit_title": "Editar franja horaria"
+      },
+      "field": {
+        "date": "Fecha",
+        "start_time": "Hora de inicio",
+        "end_time": "Hora de fin",
+        "title": "Título（opcional）",
+        "note": "Nota（opcional）"
+      },
+      "placeholder": {
+        "date": "ej: 2026-01-01",
+        "title": "ej: Consulta inicial",
+        "note": "ej: Observaciones"
+      },
+      "approval_mode": {
+        "label": "Modo de aprobación",
+        "hint": "Usar configuración del equipo=heredar política / Confirmación automática=inmediata / Manual=aprobación del administrador",
+        "option_inherit": "Usar configuración del equipo（predeterminado）",
+        "option_auto": "Confirmación automática（AUTO）",
+        "option_manual": "Aprobación manual（MANUAL）"
+      },
+      "message": {
+        "create_success": "Franja horaria creada",
+        "update_success": "Franja horaria actualizada",
+        "save_failed": "Error al guardar"
+      }
+    },
+    "slot_manager": {
+      "title": "Gestión de franjas",
+      "button": {
+        "add_slot": "Añadir franja",
+        "edit": "Editar",
+        "close": "Cerrar",
+        "reopen": "Reabrir"
+      },
+      "status": {
+        "available": "Disponible",
+        "full": "Completo",
+        "closed": "Cerrado"
+      },
+      "booked_count": "{count} reservas",
+      "empty": {
+        "no_slots": "No hay franjas para este día"
+      },
+      "message": {
+        "load_failed": "Error al cargar las franjas horarias",
+        "closed": "Franja cerrada",
+        "reopened": "Franja reabierta",
+        "status_change_failed": "Error al cambiar el estado"
+      }
     }
   }
 }

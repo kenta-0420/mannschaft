@@ -123,9 +123,14 @@ onMounted(async () => {
           <ReservationList :team-id="teamSlug" :can-manage="isAdminOrDeputy" />
         </TabPanel>
 
-        <!-- ライン管理タブ（ADMIN限定）+ 詳細設定アコーディオン -->
+        <!-- ライン管理タブ（ADMIN限定）+ 枠管理 + 詳細設定アコーディオン -->
         <TabPanel v-if="isAdmin" :value="2">
           <LineManager :team-id="teamSlug" />
+
+          <!-- 枠（Slot）管理セクション -->
+          <div class="mt-6">
+            <SlotManager :team-id="teamSlug" />
+          </div>
 
           <!-- 詳細設定（ADMIN限定・既定 collapsed）-->
           <div class="mt-6">
