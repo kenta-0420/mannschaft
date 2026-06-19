@@ -31,6 +31,8 @@ import type {
   AdminPaymentSummary,
   AdminBusinessAlert,
   AdminReportStats,
+  AdminMemberStats,
+  AdminReservationSummary,
 } from '~/types/admin-dashboard-widgets'
 
 // ---- API レスポンス（snake_case）の生型 ----
@@ -217,6 +219,19 @@ interface RawAdminReportStats {
   reviewing_count: number
 }
 
+// ---- P3b Wave2 管理者ウィジェット用 API レスポンス（snake_case）の生型 ----
+
+interface RawAdminMemberStats {
+  total_count: number
+  active_count: number
+  new_this_month_count: number
+}
+
+interface RawAdminReservationSummary {
+  pending_count: number
+  today_count: number
+}
+
 // ---- P3b Wave1 snake_case → camelCase 変換 ----
 
 function toAdminPaymentSummary(r: RawAdminPaymentSummary): AdminPaymentSummary {
@@ -237,6 +252,23 @@ function toAdminReportStats(r: RawAdminReportStats): AdminReportStats {
   return {
     pendingCount: r.pending_count ?? 0,
     reviewingCount: r.reviewing_count ?? 0,
+  }
+}
+
+// ---- P3b Wave2 snake_case → camelCase 変換 ----
+
+function toAdminMemberStats(r: RawAdminMemberStats): AdminMemberStats {
+  return {
+    totalCount: r.total_count ?? 0,
+    activeCount: r.active_count ?? 0,
+    newThisMonthCount: r.new_this_month_count ?? 0,
+  }
+}
+
+function toAdminReservationSummary(r: RawAdminReservationSummary): AdminReservationSummary {
+  return {
+    pendingCount: r.pending_count ?? 0,
+    todayCount: r.today_count ?? 0,
   }
 }
 
@@ -383,6 +415,41 @@ export function useScopeTabApi() {
     return toAdminReportStats(res.data)
   }
 
+  /**
+   * メンバー統計（ADMIN_TEAM_MEMBERS / ADMIN_ORG_MEMBERS）を取得する（F10.1.1 P3b Wave2）。
+   *
+   * 対応 EP:
+   *   - GET /api/v1/dashboard/team/{teamSlug}/admin-member-stats
+   *   - GET /api/v1/dashboard/organization/{orgSlug}/admin-member-stats
+   *
+   * @param scopeType - TEAM / ORGANIZATION
+   * @param slug - チーム / 組織の slug
+   */
+  async function getAdminMemberStats(
+    scopeType: ScopeTabType,
+    slug: string,
+  ): Promise<AdminMemberStats> {
+    const base = scopeType === 'TEAM' ? `team/${slug}` : `organization/${slug}`
+    const res = await api<{ data: RawAdminMemberStats }>(
+      `/api/v1/dashboard/${base}/admin-member-stats`,
+    )
+    return toAdminMemberStats(res.data)
+  }
+
+  /**
+   * 予約サマリ（ADMIN_TEAM_RESERVATIONS）を取得する（F10.1.1 P3b Wave2・team 専用）。
+   *
+   * 対応 EP: GET /api/v1/dashboard/team/{teamSlug}/admin-reservation-summary
+   *
+   * @param teamSlug - チームの slug
+   */
+  async function getAdminReservationSummary(teamSlug: string): Promise<AdminReservationSummary> {
+    const res = await api<{ data: RawAdminReservationSummary }>(
+      `/api/v1/dashboard/team/${teamSlug}/admin-reservation-summary`,
+    )
+    return toAdminReservationSummary(res.data)
+  }
+
   return {
     getScopeTabs,
     updateOrder,
@@ -391,6 +458,8 @@ export function useScopeTabApi() {
     getAdminPaymentSummary,
     getAdminBusinessAlert,
     getAdminReportStats,
+    getAdminMemberStats,
+    getAdminReservationSummary,
   }
 }
 

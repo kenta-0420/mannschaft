@@ -97,6 +97,17 @@
         "reviewing": "En revisión",
         "fetchFailed": "No se pudo cargar la información de denuncias"
       },
+      "members": {
+        "total": "Total",
+        "active": "Activos",
+        "newThisMonth": "Nuevos este mes",
+        "fetchFailed": "No se pudieron cargar las estadísticas de miembros"
+      },
+      "reservations": {
+        "pending": "Pendientes de aprobación",
+        "today": "Reservas de hoy",
+        "fetchFailed": "No se pudo cargar el resumen de reservas"
+      },
       "modules": {
         "summary": "{enabled} activos / {total} en total",
         "fetchFailed": "No se pudo cargar la información de módulos"

@@ -93,6 +93,22 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
     long countByTeamIdAndBookedAtBetween(Long teamId, LocalDateTime from, LocalDateTime to);
 
     /**
+     * F10.1.1 / P3b Wave2: 指定チームの「指定ステータス群」かつ「booked_at が半開区間 [from, to) 内」の
+     * 予約件数を取得する（管理者レンズ「予約サマリ」の本日の予約数用・本日 JST に予約された CONFIRMED/PENDING の有効予約）。
+     *
+     * <p>上限を排他（{@code < :to}）にすることで、翌日 0:00 ちょうどの予約を本日分に二重計上しない。
+     * {@code @SQLRestriction("deleted_at IS NULL")} により論理削除済みは自動除外される。</p>
+     */
+    @Query("SELECT COUNT(r) FROM ReservationEntity r " +
+            "WHERE r.teamId = :teamId AND r.status IN :statuses " +
+            "AND r.bookedAt >= :from AND r.bookedAt < :to")
+    long countByTeamIdAndStatusInAndBookedAtRange(
+            @Param("teamId") Long teamId,
+            @Param("statuses") List<ReservationStatus> statuses,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to);
+
+    /**
      * 指定スロットIDリストに紐付くアクティブ予約を取得する（臨時休業通知用）。
      */
     List<ReservationEntity> findByReservationSlotIdInAndStatusIn(

@@ -1,17 +1,25 @@
 package com.mannschaft.app.dashboard.service;
 
+import com.mannschaft.app.auth.service.UserActiveCountQueryService;
 import com.mannschaft.app.chat.service.InquiryAlertQueryService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.dashboard.dto.AdminBusinessAlertScopeResponse;
+import com.mannschaft.app.dashboard.dto.AdminMemberStatsResponse;
 import com.mannschaft.app.dashboard.dto.AdminPaymentSummaryResponse;
 import com.mannschaft.app.dashboard.dto.AdminReportStatsResponse;
+import com.mannschaft.app.dashboard.dto.AdminReservationSummaryResponse;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.service.MembershipStatsQueryService;
+import com.mannschaft.app.membership.service.MembershipStatsQueryService.MemberStats;
 import com.mannschaft.app.moderation.service.ReportScopeStatsQueryService;
 import com.mannschaft.app.moderation.service.ReportScopeStatsQueryService.ScopeReportStats;
 import com.mannschaft.app.payment.service.PaymentAdminQueryService.OrgPaymentSummary;
 import com.mannschaft.app.payment.service.PaymentAdminQueryService;
 import com.mannschaft.app.reservation.service.ReservationAdminAlertQueryService;
+import com.mannschaft.app.reservation.service.ReservationAdminQueryService;
+import com.mannschaft.app.reservation.service.ReservationAdminQueryService.TeamReservationSummary;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -51,6 +59,12 @@ class AdminLensSummaryFacadeTest {
     private InquiryAlertQueryService inquiryAlertQueryService;
     @Mock
     private ReportScopeStatsQueryService reportScopeStatsQueryService;
+    @Mock
+    private MembershipStatsQueryService membershipStatsQueryService;
+    @Mock
+    private UserActiveCountQueryService userActiveCountQueryService;
+    @Mock
+    private ReservationAdminQueryService reservationAdminQueryService;
 
     @InjectMocks
     private AdminLensSummaryFacade facade;
@@ -153,5 +167,81 @@ class AdminLensSummaryFacadeTest {
                 .isInstanceOf(BusinessException.class);
 
         verifyNoInteractions(reportScopeStatsQueryService);
+    }
+
+    // ── メンバー統計（team / org）P3b Wave2 ──────────────────────────
+
+    @Test
+    @DisplayName("getTeamMemberStats → 認可後に membership 統計を集約し active は user ドメインへ委譲（管理者も総数に含む）")
+    void teamMemberStats() {
+        // 在籍者集合に管理者（USER_ID=1）も含まれている前提（管理者も memberships に MEMBER 行を持つ）。
+        given(membershipStatsQueryService.statsForScope(ScopeType.TEAM, TEAM_ID))
+                .willReturn(new MemberStats(12L, 3L, java.util.List.of(1L, 2L, 3L)));
+        given(userActiveCountQueryService.countActive(java.util.List.of(1L, 2L, 3L))).willReturn(2L);
+
+        AdminMemberStatsResponse result = facade.getTeamMemberStats(USER_ID, TEAM_ID);
+
+        verify(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+        // 総数は管理者を含む全在籍者（12）
+        assertThat(result.totalCount()).isEqualTo(12L);
+        // アクティブは user ドメイン（status=ACTIVE）の判定結果
+        assertThat(result.activeCount()).isEqualTo(2L);
+        // 今月新規は joined_at ベースの集計値（昇格者は含めない＝membership 側で保証）
+        assertThat(result.newThisMonthCount()).isEqualTo(3L);
+    }
+
+    @Test
+    @DisplayName("getOrgMemberStats → ORGANIZATION スコープで membership 統計を集約")
+    void orgMemberStats() {
+        given(membershipStatsQueryService.statsForScope(ScopeType.ORGANIZATION, ORG_ID))
+                .willReturn(new MemberStats(5L, 1L, java.util.List.of(7L, 8L)));
+        given(userActiveCountQueryService.countActive(java.util.List.of(7L, 8L))).willReturn(2L);
+
+        AdminMemberStatsResponse result = facade.getOrgMemberStats(USER_ID, ORG_ID);
+
+        verify(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+        assertThat(result.totalCount()).isEqualTo(5L);
+        assertThat(result.activeCount()).isEqualTo(2L);
+        assertThat(result.newThisMonthCount()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("getTeamMemberStats → 非ADMIN/別team IDOR は 403 で伝播し集計しない")
+    void teamMemberStatsForbidden() {
+        willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+
+        assertThatThrownBy(() -> facade.getTeamMemberStats(USER_ID, TEAM_ID))
+                .isInstanceOf(BusinessException.class);
+
+        verifyNoInteractions(membershipStatsQueryService);
+        verifyNoInteractions(userActiveCountQueryService);
+    }
+
+    // ── 予約サマリ（team）P3b Wave2 ──────────────────────────────────
+
+    @Test
+    @DisplayName("getTeamReservationSummary → 認可後に予約サマリ（承認待ち/本日）を集約")
+    void teamReservationSummary() {
+        given(reservationAdminQueryService.summaryForTeam(TEAM_ID))
+                .willReturn(new TeamReservationSummary(6L, 9L));
+
+        AdminReservationSummaryResponse result = facade.getTeamReservationSummary(USER_ID, TEAM_ID);
+
+        verify(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+        assertThat(result.pendingCount()).isEqualTo(6L);
+        assertThat(result.todayCount()).isEqualTo(9L);
+    }
+
+    @Test
+    @DisplayName("getTeamReservationSummary → 非ADMIN/別team IDOR は 403 で伝播し集計しない")
+    void teamReservationSummaryForbidden() {
+        willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+
+        assertThatThrownBy(() -> facade.getTeamReservationSummary(USER_ID, TEAM_ID))
+                .isInstanceOf(BusinessException.class);
+
+        verifyNoInteractions(reservationAdminQueryService);
     }
 }
