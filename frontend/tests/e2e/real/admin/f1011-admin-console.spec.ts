@@ -18,6 +18,14 @@
  *
  * 設計書: docs/features/F10.1.1_team_org_admin_console/01_console_routes.md §6
  *
+ * ⚠️ 実行前提（2026-06-19 実走で判明した落とし穴）:
+ *   稼働中の dev サーバー(:3000)が **admin コンソールルートを含む最新コードを配信している**こと。
+ *   admin console（P2/P3a/P4）マージ前の HEAD で起動された古い dev サーバーは
+ *   `/teams|organizations/{slug}/admin` を Nuxt 404 で返し（admin/index.vue 不在）、
+ *   レンズトグルも描画されないため、本 spec は全シナリオ失敗する（テスト側のバグではない）。
+ *   実走時は必ず本ブランチ相当のコードを配信する dev サーバーで実行すること。
+ *   なお BE(:8080) 層は admin 集約 API・IDOR 403・ロール解決ともに実機で正常動作を確認済み。
+ *
  * 検証シナリオ:
  *   ACL-GUARD-001: MEMBER で /teams/{slug}/admin → スコープトップへリダイレクト＋エラートースト（404 でない）
  *   ACL-GUARD-002: ADMIN で /teams/{slug}/admin → 管理コンソールハブ表示（チーム）
