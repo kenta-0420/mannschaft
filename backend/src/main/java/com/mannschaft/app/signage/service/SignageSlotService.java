@@ -121,13 +121,15 @@ public class SignageSlotService {
     public SignageSlotResponse updateSlot(Long id, UpdateSignageSlotRequest req) {
         SignageSlotEntity entity = findSlotOrThrow(id);
 
-        SignageSlotEntity updated = entity.toBuilder()
-                .slideDuration(req.durationSeconds() != null ? req.durationSeconds() : entity.getSlideDuration())
-                .contentConfig(req.displayCondition() != null ? req.displayCondition() : entity.getContentConfig())
-                .isActive(req.isEnabled() != null ? req.isEnabled() : entity.getIsActive())
-                .build();
+        // managed entity を直接ミューテートして save することで id=null INSERT を防ぐ。
+        // toBuilder().build() では @Builder が BaseEntity の id を引き継がず id=null になるため使用禁止。
+        entity.applyUpdate(
+                req.durationSeconds(),
+                req.displayCondition(),
+                req.isEnabled()
+        );
 
-        SignageSlotEntity saved = slotRepository.save(updated);
+        SignageSlotEntity saved = slotRepository.save(entity);
         log.info("サイネージスロット更新: id={}", id);
         return toResponse(saved);
     }
