@@ -17,22 +17,16 @@
  *   3. チームMANUAL・枠AUTO上書き: 枠C(AUTO上書き)→CONFIRMED（枠がチームMANUALに勝つ）/ 枠D(継承)→PENDING。
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * 【実機E2Eで発見した既知バグ（2026-06-19・修正は殿采配）】
- *   `ReservationSlotService.updateSlot` の **PATCH 更新がDBに永続化されない**。
+ * 【実機E2Eで発見した既知バグ → 根治済み（#1674・2026-06-19）】
+ *   かつて `ReservationSlotService.updateSlot` の **PATCH 更新がDBに永続化されない**バグがあった。
  *   実装が `slotRepository.save(entity.toBuilder().build())` で「管理下エンティティの
- *   detached コピー」を保存するため、PATCH レスポンスは新値を返すのに DB は旧値のまま。
- *   - 実証（curl 直叩き）:
- *       PATCH approvalMode=AUTO  → resp=AUTO だが GET=MANUAL（旧値）
- *       PATCH clearApprovalMode  → resp=null だが GET=MANUAL（旧値）
- *       PATCH title=changed      → resp=changed だが GET=orig（旧値）← approvalMode 特有でなく全フィールド
- *   - 対照: 作成時(POST)の approvalMode 上書きは正しく永続化される（INSERT のため管理下衝突なし）。
- *           closeSlot/deleteSlot は managed entity を in-place 変更するため正常。
- *   - 根本原因: updateSlot だけが `toBuilder().build()` で detached 新インスタンスを save() し、
- *     元の managed entity（未変更）が flush 時に勝つ。closeSlot 同様 managed entity を
- *     in-place mutate して save する形に揃えれば根治する。
- *   → このバグを暴く RSV-SLOT-02 は **test.fixme** でマークし CI を赤にせず可視化する
- *     （症状を隠す skip ではなく「既知の未修正バグ・修正待ち」を明示するため）。
- *     バックエンド修正後に fixme を外せば緑になるよう、アサーションは正しい契約のまま残す。
+ *   detached コピー」を保存していたため、PATCH レスポンスは新値を返すのに DB は旧値のままだった
+ *   （PATCH approvalMode/clearApprovalMode/title いずれも resp=新値 だが GET=旧値）。
+ *   - 根治: closeSlot 同様、managed entity を in-place mutate して save する形に揃えた（#1674）。
+ *   - RSV-SLOT-02（clearApprovalMode→GETで null 永続化→新規予約CONFIRMED）はこのバグを暴く
+ *     検証だったため一時 test.fixme 化していたが、根治・main 着地・稼働BE反映を確認し fixme を解除。
+ *     アサーションは当時の正しい契約（PATCH→GET で反映 / policy.approvalMode=null / 新規予約CONFIRMED）
+ *     のまま厳格に検証する。
  * ─────────────────────────────────────────────────────────────────────────────
  *
  * 重要な前提（テーブル設計に起因する直列実行制約）:
@@ -335,11 +329,12 @@ test.describe.serial('RSV-SLOT-OVERRIDE: 枠単位の承認モード上書き', 
   // シナリオ2: 上書き解除（clearApprovalMode=true で継承に戻す）
   //   枠 MANUAL → clear → policy.approvalMode=null → 新規予約 CONFIRMED（継承→チームAUTO）
   // -------------------------------------------------------------------------
-  // 【既知バグ・修正待ち】updateSlot(PATCH) が永続化されない（ヘッダー記載）。
-  // バックエンド根治後に fixme を外すこと。アサーションは正しい契約のまま残す。
-  test.fixme(
-    'RSV-SLOT-02: clearApprovalMode=true で上書き解除→policy=null→新規予約がCONFIRMED',
-    async ({ request, tokens }) => {
+  // 【根治済み・#1674】updateSlot(PATCH) の未永続化バグ（ヘッダー記載）は in-place 永続化に
+  // 是正され main 着地・稼働BEへ反映済み。fixme を外し本来の厳格 assert で緑を確認する。
+  test('RSV-SLOT-02: clearApprovalMode=true で上書き解除→policy=null→新規予約がCONFIRMED', async ({
+    request,
+    tokens,
+  }) => {
     const admin = tokens.admin
     await patchTeamApprovalMode(request, admin, 'AUTO')
 
@@ -383,8 +378,7 @@ test.describe.serial('RSV-SLOT-OVERRIDE: 枠単位の承認モード上書き', 
       await deleteSlot(request, admin, slot.id)
       await deleteLine(request, admin, line.id)
     }
-    },
-  )
+  })
 
   // -------------------------------------------------------------------------
   // シナリオ3: チームMANUAL・枠AUTO上書き
