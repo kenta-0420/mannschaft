@@ -290,6 +290,66 @@ public class NotificationService {
     }
 
     /**
+     * 配信認可済み受信者向けの通知を作成する（配信＝受信権 統一・関所(1)通知）。
+     *
+     * <p>本メソッドは {@link #createNotification(Long, String, NotificationPriority, String, String,
+     * String, Long, NotificationScopeType, Long, String, Long, Long)} の <b>visibility ガード
+     * （{@code isAccessible} / {@code canView}）をスキップする</b>専用オーバーロードである。
+     * 受信者が「配信母集団（{@code resolveOrgDistributionUserIds} がコンテンツの {@code includeSupporters}
+     * トグル準拠で展開した集合）」に属することを呼び出し側で事前認可済みの場合にのみ使用する。</p>
+     *
+     * <p><b>なぜ専用経路が必要か</b>: 既存 {@code createNotification} の Phase F ガード
+     * （§11.1）は SCHEDULE / SURVEY の {@code sourceType} を {@link ReferenceType} に解決し
+     * {@code canView} で個別判定する。SURVEY の canView は結果閲覧（ResultsVisibility）軸も絡む
+     * Resolver に委譲されるため、配信母集団に属する直属一般メンバー／配下チームメンバーへの
+     * 公開通知が誤って deny されていた（(B) 通知レグレッションの真因＝関所(1)）。配信済みの受信者は
+     * 母集団で事前認可されているため、ここでは二重の canView 判定を行わない。</p>
+     *
+     * <p><b>既存ガードは不変</b>: 既存 {@code createNotification} は他通知（個別通知・他ドメイン）の
+     * Phase F ガードとしてそのまま機能する。本メソッドは別シグネチャの新設であり、一律バイパスではない。</p>
+     *
+     * @param userId           宛先ユーザーID（配信母集団で事前認可済みであること）
+     * @param notificationType 通知種別
+     * @param priority         優先度
+     * @param title            タイトル
+     * @param body             本文
+     * @param sourceType       ソース種別
+     * @param sourceId         ソースID
+     * @param scopeType        スコープ種別
+     * @param scopeId          スコープID
+     * @param actionUrl        アクションURL
+     * @param actorId          実行者ID
+     * @return 作成された通知エンティティ（常に非 null。visibility deny によるスキップは発生しない）
+     */
+    @Transactional
+    public NotificationEntity createNotificationPreAuthorized(
+            Long userId, String notificationType,
+            NotificationPriority priority, String title, String body,
+            String sourceType, Long sourceId,
+            NotificationScopeType scopeType, Long scopeId,
+            String actionUrl, Long actorId) {
+        // 配信母集団で事前認可済みのため Phase F の isAccessible(canView) 二重判定はスキップする。
+        NotificationEntity entity = NotificationEntity.builder()
+                .userId(userId)
+                .notificationType(notificationType)
+                .priority(priority)
+                .title(title)
+                .body(body)
+                .sourceType(sourceType)
+                .sourceId(sourceId)
+                .scopeType(scopeType)
+                .scopeId(scopeId)
+                .actionUrl(actionUrl)
+                .actorId(actorId)
+                .build();
+
+        NotificationEntity saved = notificationRepository.save(entity);
+        log.info("通知作成(配信認可済): userId={}, type={}, notificationId={}",
+                userId, notificationType, saved.getId());
+        return saved;
+    }
+
+    /**
      * 通知ソースに対する受信者の閲覧可否を判定する。
      *
      * <p>F00 Phase F セキュリティガード (§11.1)。{@code sourceType} を
