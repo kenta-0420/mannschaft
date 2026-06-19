@@ -25,4 +25,12 @@ public interface ReservationLineRepository extends JpaRepository<ReservationLine
      * IDとチームIDで予約ラインを取得する。
      */
     Optional<ReservationLineEntity> findByIdAndTeamId(Long id, Long teamId);
+
+    /**
+     * チームのアクティブな（論理削除されていない）予約ライン数を数える。
+     *
+     * <p>{@link ReservationLineEntity} は {@code @SQLRestriction("deleted_at IS NULL")} を持つため、
+     * このカウントは自動的に論理削除済みラインを除外する。F03.4 §1/§2 のライン上限（5 本）判定に用いる。</p>
+     */
+    long countByTeamId(Long teamId);
 }
