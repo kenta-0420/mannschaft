@@ -1,5 +1,6 @@
 package com.mannschaft.app.schedule.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -65,6 +66,7 @@ public class AttendanceTeamBreakdownResponse {
      * @param absent    欠席
      * @param undecided 未回答
      */
+    @Schema(name = "AttendanceTeamBreakdownItem")
     public record TeamBreakdownItem(
             Long teamId,
             String teamName,
