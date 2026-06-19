@@ -20,41 +20,21 @@ import type { components } from '~/types/generated'
 export type AttendanceBreakdownCounts = components['schemas']['TeamBreakdownCounts']
 
 /**
- * F03.1 (B) 組織出欠のチーム別内訳 1 行。
+ * F03.1 (B) 組織出欠のチーム別内訳 1 行。生成型をそのまま利用する。
  *
- * 【生成型を使わず手書きしている理由（BE openapi 名称衝突の回避）】
- * BE には別パッケージに同名の nested record が 2 つ存在する:
- *   - schedule.dto.AttendanceTeamBreakdownResponse.TeamBreakdownItem
- *       → { teamId, teamName, attending, partial, absent, undecided }
- *   - survey.dto.SurveyTeamBreakdownResponse.TeamBreakdownItem
- *       → { teamId, teamName, respondentCount, masked, questionResults }
- * springdoc はこれらを単一の #/components/schemas/TeamBreakdownItem に畳み込むため、
- * PR #1679（survey）の openapi 再生成でアンケート側の形が出欠側を上書きしてしまい、
- * 生成型 components['schemas']['TeamBreakdownItem'] は出欠の attending/partial/absent/undecided を
- * 失っている（生成型は誤り。BE ランタイム JSON は AttendanceTeamBreakdownResponse.TeamBreakdownItem の
- * とおり attending/partial/absent/undecided を返す）。
- * 生成型をそのまま使うと any/キャストでの握りつぶしが必要になるため、ここでは BE の record を正準として
- * 正確に型付けする。根治は BE 側で @Schema(name=...) によるスキーマ名の衝突解消 + openapi 再生成。
- * 詳細は本 PR の説明を参照。
+ * BE の schedule.dto.AttendanceTeamBreakdownResponse.TeamBreakdownItem を
+ * @Schema(name="AttendanceTeamBreakdownItem") で survey 側と分離したため、
+ * 出欠形（attending/partial/absent/undecided）が独立した生成型として得られる。
+ * 生成型 components['schemas']['AttendanceTeamBreakdownItem']。
  */
-export interface AttendanceTeamBreakdownItem {
-  /** チームID。null は「組織直接メンバー」グループ（teamName も BE では null）。 */
-  teamId: number | null
-  teamName: string | null
-  attending: number
-  partial: number
-  absent: number
-  undecided: number
-}
+export type AttendanceTeamBreakdownItem = components['schemas']['AttendanceTeamBreakdownItem']
 
-/** F03.1 (B) 組織出欠のチーム別内訳レスポンス。 */
-export interface AttendanceTeamBreakdownResponse {
-  scheduleId: number
-  /** 全体集計（実人数・DISTINCT 母数）。 */
-  total: AttendanceBreakdownCounts
-  /** チームごとの内訳（のべ人数・重複計上あり）。 */
-  byTeam: AttendanceTeamBreakdownItem[]
-}
+/**
+ * F03.1 (B) 組織出欠のチーム別内訳レスポンス。生成型をそのまま利用する。
+ * 生成型 components['schemas']['AttendanceTeamBreakdownResponse']。
+ */
+export type AttendanceTeamBreakdownResponse =
+  components['schemas']['AttendanceTeamBreakdownResponse']
 
 export function useScheduleAttendance() {
   const api = useApi()
