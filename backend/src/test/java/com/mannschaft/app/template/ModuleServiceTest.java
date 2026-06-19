@@ -9,12 +9,14 @@ import com.mannschaft.app.template.dto.ToggleModuleRequest;
 import com.mannschaft.app.template.entity.ModuleDefinitionEntity;
 import com.mannschaft.app.template.entity.ModuleLevelAvailabilityEntity;
 import com.mannschaft.app.template.entity.ModuleRecommendationEntity;
+import com.mannschaft.app.template.entity.OrganizationEnabledModuleEntity;
 import com.mannschaft.app.template.entity.TeamEnabledModuleEntity;
 import com.mannschaft.app.template.entity.TeamTemplateEntity;
 import com.mannschaft.app.template.entity.TemplateModuleEntity;
 import com.mannschaft.app.template.repository.ModuleDefinitionRepository;
 import com.mannschaft.app.template.repository.ModuleLevelAvailabilityRepository;
 import com.mannschaft.app.template.repository.ModuleRecommendationRepository;
+import com.mannschaft.app.template.repository.OrganizationEnabledModuleRepository;
 import com.mannschaft.app.template.repository.TeamEnabledModuleRepository;
 import com.mannschaft.app.template.repository.TeamTemplateRepository;
 import com.mannschaft.app.template.repository.TemplateModuleRepository;
@@ -23,6 +25,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -58,6 +61,9 @@ class ModuleServiceTest {
 
     @Mock
     private TeamEnabledModuleRepository teamEnabledModuleRepository;
+
+    @Mock
+    private OrganizationEnabledModuleRepository organizationEnabledModuleRepository;
 
     @Mock
     private TemplateModuleRepository templateModuleRepository;
@@ -363,8 +369,12 @@ class ModuleServiceTest {
             // When
             moduleService.toggleTeamModule(TEAM_ID, request, USER_ID);
 
-            // Then
-            verify(teamEnabledModuleRepository).save(any(TeamEnabledModuleEntity.class));
+            // Then: toBuilder()→id=null→INSERT化バグの回帰防止。
+            // save に渡るのが findById の同一インスタンス（管理対象）であることを確認。
+            ArgumentCaptor<TeamEnabledModuleEntity> captor = ArgumentCaptor.forClass(TeamEnabledModuleEntity.class);
+            verify(teamEnabledModuleRepository).save(captor.capture());
+            assertThat(captor.getValue()).isSameAs(existing);
+            assertThat(captor.getValue().getIsEnabled()).isTrue();
         }
 
         @Test
@@ -388,8 +398,12 @@ class ModuleServiceTest {
             // When
             moduleService.toggleTeamModule(TEAM_ID, request, USER_ID);
 
-            // Then
-            verify(teamEnabledModuleRepository).save(any(TeamEnabledModuleEntity.class));
+            // Then: toBuilder()→id=null→INSERT化バグの回帰防止。
+            ArgumentCaptor<TeamEnabledModuleEntity> captor = ArgumentCaptor.forClass(TeamEnabledModuleEntity.class);
+            verify(teamEnabledModuleRepository).save(captor.capture());
+            assertThat(captor.getValue()).isSameAs(existing);
+            assertThat(captor.getValue().getIsEnabled()).isFalse();
+            assertThat(captor.getValue().getDisabledAt()).isNotNull();
         }
 
         @Test
@@ -758,6 +772,232 @@ class ModuleServiceTest {
 
             // Then
             assertThat(reason).isEqualTo("このチームでは未有効化です");
+        }
+    }
+
+    // ========================================
+    // toggleOrganizationModule（回帰テスト込み）
+    // ========================================
+
+    @Nested
+    @DisplayName("toggleOrganizationModule")
+    class ToggleOrganizationModule {
+
+        private static final Long ORG_ID = 200L;
+
+        @Test
+        @DisplayName("有効化_既存エンティティあり_同一インスタンスで保存_INSERT化バグ回帰防止")
+        void 有効化_既存エンティティあり_同一インスタンスで保存() {
+            // Given
+            ModuleDefinitionEntity module = createOptionalModule();
+            given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.of(module));
+            given(moduleLevelAvailabilityRepository.findByModuleIdAndLevel(
+                    module.getId(), ModuleLevelAvailabilityEntity.Level.ORGANIZATION))
+                    .willReturn(Optional.empty());
+            given(organizationEnabledModuleRepository.countByOrganizationIdAndIsEnabledTrue(ORG_ID))
+                    .willReturn(0L);
+
+            OrganizationEnabledModuleEntity existing = OrganizationEnabledModuleEntity.builder()
+                    .organizationId(ORG_ID)
+                    .moduleId(MODULE_ID)
+                    .isEnabled(false)
+                    .enabledBy(USER_ID)
+                    .build();
+            given(organizationEnabledModuleRepository.findByOrganizationIdAndModuleId(ORG_ID, MODULE_ID))
+                    .willReturn(Optional.of(existing));
+            given(organizationEnabledModuleRepository.save(any(OrganizationEnabledModuleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            ToggleModuleRequest request = new ToggleModuleRequest(MODULE_ID, true);
+
+            // When
+            moduleService.toggleOrganizationModule(ORG_ID, request, USER_ID);
+
+            // Then: toBuilder()→id=null→INSERT化バグの回帰防止。
+            // save に渡るのが findById の同一インスタンス（管理対象）であることを確認。
+            ArgumentCaptor<OrganizationEnabledModuleEntity> captor =
+                    ArgumentCaptor.forClass(OrganizationEnabledModuleEntity.class);
+            verify(organizationEnabledModuleRepository).save(captor.capture());
+            assertThat(captor.getValue()).isSameAs(existing);
+            assertThat(captor.getValue().getIsEnabled()).isTrue();
+        }
+
+        @Test
+        @DisplayName("無効化_既存エンティティあり_同一インスタンスで保存かつdisabledAt設定")
+        void 無効化_既存エンティティあり_同一インスタンスで保存かつdisabledAt設定() {
+            // Given
+            ModuleDefinitionEntity module = createOptionalModule();
+            given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.of(module));
+            given(moduleLevelAvailabilityRepository.findByModuleIdAndLevel(
+                    module.getId(), ModuleLevelAvailabilityEntity.Level.ORGANIZATION))
+                    .willReturn(Optional.empty());
+
+            OrganizationEnabledModuleEntity existing = OrganizationEnabledModuleEntity.builder()
+                    .organizationId(ORG_ID)
+                    .moduleId(MODULE_ID)
+                    .isEnabled(true)
+                    .enabledAt(LocalDateTime.now().minusDays(1))
+                    .enabledBy(USER_ID)
+                    .build();
+            given(organizationEnabledModuleRepository.findByOrganizationIdAndModuleId(ORG_ID, MODULE_ID))
+                    .willReturn(Optional.of(existing));
+            given(organizationEnabledModuleRepository.save(any(OrganizationEnabledModuleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            ToggleModuleRequest request = new ToggleModuleRequest(MODULE_ID, false);
+
+            // When
+            moduleService.toggleOrganizationModule(ORG_ID, request, USER_ID);
+
+            // Then
+            ArgumentCaptor<OrganizationEnabledModuleEntity> captor =
+                    ArgumentCaptor.forClass(OrganizationEnabledModuleEntity.class);
+            verify(organizationEnabledModuleRepository).save(captor.capture());
+            assertThat(captor.getValue()).isSameAs(existing);
+            assertThat(captor.getValue().getIsEnabled()).isFalse();
+            assertThat(captor.getValue().getDisabledAt()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("有効化_DEFAULTモジュール_TMPL006例外")
+        void 有効化_DEFAULTモジュール_TMPL006例外() {
+            // Given
+            ModuleDefinitionEntity module = createDefaultModule();
+            given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.of(module));
+
+            ToggleModuleRequest request = new ToggleModuleRequest(MODULE_ID, true);
+
+            // When / Then
+            assertThatThrownBy(() -> moduleService.toggleOrganizationModule(ORG_ID, request, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TMPL_006"));
+        }
+
+        @Test
+        @DisplayName("有効化_ORGANIZATIONレベル不可_TMPL005例外")
+        void 有効化_ORGANIZATIONレベル不可_TMPL005例外() {
+            // Given
+            ModuleDefinitionEntity module = createOptionalModule();
+            given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.of(module));
+
+            ModuleLevelAvailabilityEntity unavailable = ModuleLevelAvailabilityEntity.builder()
+                    .moduleId(module.getId())
+                    .level(ModuleLevelAvailabilityEntity.Level.ORGANIZATION)
+                    .isAvailable(false)
+                    .build();
+            given(moduleLevelAvailabilityRepository.findByModuleIdAndLevel(
+                    module.getId(), ModuleLevelAvailabilityEntity.Level.ORGANIZATION))
+                    .willReturn(Optional.of(unavailable));
+
+            ToggleModuleRequest request = new ToggleModuleRequest(MODULE_ID, true);
+
+            // When / Then
+            assertThatThrownBy(() -> moduleService.toggleOrganizationModule(ORG_ID, request, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TMPL_005"));
+        }
+
+        @Test
+        @DisplayName("有効化_無料上限10到達_TMPL003例外")
+        void 有効化_無料上限10到達_TMPL003例外() {
+            // Given
+            ModuleDefinitionEntity module = createOptionalModule();
+            given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.of(module));
+            given(moduleLevelAvailabilityRepository.findByModuleIdAndLevel(
+                    module.getId(), ModuleLevelAvailabilityEntity.Level.ORGANIZATION))
+                    .willReturn(Optional.empty());
+            given(organizationEnabledModuleRepository.countByOrganizationIdAndIsEnabledTrue(ORG_ID))
+                    .willReturn(10L);
+
+            ToggleModuleRequest request = new ToggleModuleRequest(MODULE_ID, true);
+
+            // When / Then
+            assertThatThrownBy(() -> moduleService.toggleOrganizationModule(ORG_ID, request, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TMPL_003"));
+        }
+    }
+
+    // ========================================
+    // isModuleEnabledForOrg
+    // ========================================
+
+    @Nested
+    @DisplayName("isModuleEnabledForOrg")
+    class IsModuleEnabledForOrg {
+
+        private static final Long ORG_ID = 200L;
+
+        @Test
+        @DisplayName("判定_DEFAULTモジュール_常にtrue")
+        void 判定_DEFAULTモジュール_常にtrue() {
+            // Given
+            ModuleDefinitionEntity module = createDefaultModule();
+            given(moduleDefinitionRepository.findBySlug("member-management"))
+                    .willReturn(Optional.of(module));
+
+            // When
+            boolean result = moduleService.isModuleEnabledForOrg("member-management", ORG_ID);
+
+            // Then
+            assertThat(result).isTrue();
+        }
+
+        @Test
+        @DisplayName("判定_OPTIONALモジュールで有効化済み_true")
+        void 判定_OPTIONALモジュールで有効化済み_true() {
+            // Given
+            ModuleDefinitionEntity module = createOptionalModule();
+            given(moduleDefinitionRepository.findBySlug("reservation"))
+                    .willReturn(Optional.of(module));
+
+            OrganizationEnabledModuleEntity oem = OrganizationEnabledModuleEntity.builder()
+                    .organizationId(ORG_ID)
+                    .moduleId(module.getId())
+                    .isEnabled(true)
+                    .build();
+            given(organizationEnabledModuleRepository.findByOrganizationIdAndModuleId(ORG_ID, module.getId()))
+                    .willReturn(Optional.of(oem));
+
+            // When
+            boolean result = moduleService.isModuleEnabledForOrg("reservation", ORG_ID);
+
+            // Then
+            assertThat(result).isTrue();
+        }
+
+        @Test
+        @DisplayName("判定_OPTIONALモジュールで未有効化_false")
+        void 判定_OPTIONALモジュールで未有効化_false() {
+            // Given
+            ModuleDefinitionEntity module = createOptionalModule();
+            given(moduleDefinitionRepository.findBySlug("reservation"))
+                    .willReturn(Optional.of(module));
+            given(organizationEnabledModuleRepository.findByOrganizationIdAndModuleId(ORG_ID, module.getId()))
+                    .willReturn(Optional.empty());
+
+            // When
+            boolean result = moduleService.isModuleEnabledForOrg("reservation", ORG_ID);
+
+            // Then
+            assertThat(result).isFalse();
+        }
+
+        @Test
+        @DisplayName("判定_モジュール不在_false")
+        void 判定_モジュール不在_false() {
+            // Given
+            given(moduleDefinitionRepository.findBySlug("nonexistent"))
+                    .willReturn(Optional.empty());
+
+            // When
+            boolean result = moduleService.isModuleEnabledForOrg("nonexistent", ORG_ID);
+
+            // Then
+            assertThat(result).isFalse();
         }
     }
 }

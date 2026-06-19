@@ -148,13 +148,12 @@ public class ModuleService {
 
         if (existing != null) {
             LocalDateTime now = LocalDateTime.now();
-            TeamEnabledModuleEntity updated = existing.toBuilder()
-                    .isEnabled(request.isEnabled())
-                    .enabledAt(request.isEnabled() ? now : existing.getEnabledAt())
-                    .disabledAt(!request.isEnabled() ? now : null)
-                    .enabledBy(userId)
-                    .build();
-            teamEnabledModuleRepository.save(updated);
+            existing.applyToggle(
+                    request.isEnabled(),
+                    request.isEnabled() ? now : existing.getEnabledAt(),
+                    !request.isEnabled() ? now : null,
+                    userId);
+            teamEnabledModuleRepository.save(existing);
         } else {
             LocalDateTime now = LocalDateTime.now();
             TeamEnabledModuleEntity newEntity = TeamEnabledModuleEntity.builder()
@@ -333,13 +332,12 @@ public class ModuleService {
 
         LocalDateTime now = LocalDateTime.now();
         if (existing != null) {
-            OrganizationEnabledModuleEntity updated = existing.toBuilder()
-                    .isEnabled(request.isEnabled())
-                    .enabledAt(request.isEnabled() ? now : existing.getEnabledAt())
-                    .disabledAt(!request.isEnabled() ? now : null)
-                    .enabledBy(userId)
-                    .build();
-            organizationEnabledModuleRepository.save(updated);
+            existing.applyToggle(
+                    request.isEnabled(),
+                    request.isEnabled() ? now : existing.getEnabledAt(),
+                    !request.isEnabled() ? now : null,
+                    userId);
+            organizationEnabledModuleRepository.save(existing);
         } else {
             OrganizationEnabledModuleEntity newEntity = OrganizationEnabledModuleEntity.builder()
                     .organizationId(orgId)
