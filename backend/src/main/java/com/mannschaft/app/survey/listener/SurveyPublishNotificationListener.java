@@ -70,8 +70,13 @@ public class SurveyPublishNotificationListener {
             NotificationScopeType notifScope = "TEAM".equals(event.getScopeType())
                     ? NotificationScopeType.TEAM
                     : NotificationScopeType.ORGANIZATION;
-            // TODO（Tier3）: 数万規模では notifyAll の受信者ループをジョブ化（チャンク投入）する。
-            notificationHelper.notifyAll(
+            // 配信＝受信権 統一（関所(1)通知 / E: ResultsVisibility 誤用是正）:
+            // recipients は resolveRecipients が配信母集団（ORG=includeSupporters トグル準拠の
+            // 配下チーム展開 / TEAM=スコープ内）として確定済みのため、notifyAllPreAuthorized で
+            // canView 絞り込み（SURVEY の結果閲覧 ResultsVisibility 軸を含む）を通さない。これにより
+            // 直属一般メンバー・配下チームメンバーへの公開通知が誤 deny される (B) レグを根治する。
+            // TODO（Tier3）: 数万規模では受信者ループをジョブ化（チャンク投入）する。
+            notificationHelper.notifyAllPreAuthorized(
                     recipients,
                     SurveyNotificationType.SURVEY_CREATED.name(),
                     "新しいアンケートが公開されました",

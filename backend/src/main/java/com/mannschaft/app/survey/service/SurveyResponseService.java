@@ -80,10 +80,23 @@ public class SurveyResponseService {
             throw new BusinessException(SurveyErrorCode.INVALID_SURVEY_STATUS);
         }
 
-        // 配信対象チェック
+        // 配信対象チェック（関所(3)回答・配信＝受信権 統一）
         if (survey.getDistributionMode() == DistributionMode.TARGETED) {
             if (!targetRepository.existsBySurveyIdAndUserId(surveyId, userId)) {
                 throw new BusinessException(SurveyErrorCode.NOT_TARGET_USER);
+            }
+        } else {
+            // DistributionMode.ALL: 旧実装はここで認可が一切なく、組織外の任意ユーザーが
+            // surveyId さえ知れば回答できる漏洩穴だった（TARGETED のみ existsBySurveyIdAndUserId で
+            // 弾いていた）。ALL は「スコープ内全メンバー」が母集団であるから、回答も配信母集団に限定する。
+            //   - ORGANIZATION: includeSupporters トグル準拠の配信母集団（配下チーム展開）。配下は通し、
+            //     母集団外は COMMON_002 で弾く。トグル OFF なら純 SUPPORTER も母集団外＝回答不可。
+            //   - TEAM 等: 当該スコープの直接所属メンバー（配下概念を持ち込まない）。
+            if (accessControlService != null && survey.getScopeId() != null
+                    && survey.getScopeType() != null) {
+                boolean includeSupporters = Boolean.TRUE.equals(survey.getIncludeSupporters());
+                accessControlService.checkMembershipOrDescendant(
+                        userId, survey.getScopeId(), survey.getScopeType(), includeSupporters);
             }
         }
 

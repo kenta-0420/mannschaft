@@ -116,9 +116,11 @@ public class SurveyService {
     public UnansweredSurveys getUnansweredForUserInScope(
             String scopeType, Long scopeId, Long userId, int limit) {
         if (accessControlService != null) {
-            // 欠陥Z 根治: ORGANIZATION スコープでは配下チームのみ所属メンバーも応答母集団に含める
-            // （純 SUPPORTER は除外）。TEAM は従来どおり直接所属のみ。
-            accessControlService.checkMembershipOrDescendant(userId, scopeId, scopeType);
+            // 配信＝受信権 統一: 未回答集計の入口は広め（includeSupporters=true）で通す。
+            // 未回答クエリ findUnansweredPublishedForUserInScope は userId が回答対象のアンケのみ返すため、
+            // 配信母集団外ユーザーは 0 件になり過小排除も漏洩も起きない。トグル ON 配信の配下 SUPPORTER も
+            // 入口で弾かれないようにする（ScopeActionRequiredFacade と同方針）。
+            accessControlService.checkMembershipOrDescendant(userId, scopeId, scopeType, true);
         }
         List<SurveyEntity> all =
                 surveyRepository.findUnansweredPublishedForUserInScope(scopeType, scopeId, userId);

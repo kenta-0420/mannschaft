@@ -267,9 +267,11 @@ public class ScheduleAttendanceService {
     public UnansweredAttendances getUnansweredForUserInScope(
             String scopeType, Long scopeId, Long userId, int limit) {
         if (accessControlService != null) {
-            // 欠陥Z 根治: ORGANIZATION スコープでは配下チームのみ所属メンバーも応答母集団に含める
-            // （純 SUPPORTER は除外）。TEAM は従来どおり直接所属のみ。
-            accessControlService.checkMembershipOrDescendant(userId, scopeId, scopeType);
+            // 配信＝受信権 統一: 未回答集計の入口は広め（includeSupporters=true）で通す。
+            // findUnansweredUpcomingForUserIn{Organization,Team} は userId の出欠行（materialize 済み）
+            // のみ返すため、配信母集団外ユーザーは 0 件になり過小排除も漏洩も起きない。トグル ON 配信の
+            // 配下 SUPPORTER も入口で弾かれないようにする（ScopeActionRequiredFacade と同方針）。
+            accessControlService.checkMembershipOrDescendant(userId, scopeId, scopeType, true);
         }
         LocalDateTime now = LocalDateTime.now();
         List<ScheduleEntity> all;
@@ -405,9 +407,13 @@ public class ScheduleAttendanceService {
         //   （例: 1,000 件ごとに job-pool へ投入し、各チャンクを REQUIRES_NEW で確定）に移行するのが望ましい。
         //   フェーズ A では「呼び出し元の非同期化（即時=AFTER_COMMIT @Async リスナー / 予約=バッチスレッド）」＋
         //   「saveAll バッチ INSERT」までを範囲とし、リクエストをブロックしない構造は確保済み。
+        // 配信＝受信権 統一（関所(1)通知）: 受信者は配信母集団（ORG=resolveOrgDistributionUserIds の
+        // includeSupporters トグル準拠 / TEAM=findUserIdsByScope）で事前認可済みのため、
+        // createNotificationPreAuthorized を使い canView 二重判定をスキップする。これにより
+        // SURVEY/SCHEDULE の visibility（結果閲覧軸を含む）誤 deny で通知が届かない (B) レグを回避する。
         int dispatched = 0;
         for (Long userId : memberUserIds) {
-            NotificationEntity notification = notificationService.createNotification(
+            NotificationEntity notification = notificationService.createNotificationPreAuthorized(
                     userId,
                     NOTIFICATION_TYPE_ATTENDANCE_REQUEST,
                     NotificationPriority.NORMAL,
@@ -415,10 +421,8 @@ public class ScheduleAttendanceService {
                     NOTIFICATION_SOURCE_TYPE, scheduleId,
                     notifScope, scopeId,
                     actionUrl, schedule.getCreatedBy());
-            if (notification != null) {
-                notificationDispatchService.dispatch(notification);
-                dispatched++;
-            }
+            notificationDispatchService.dispatch(notification);
+            dispatched++;
         }
 
         log.info("出欠募集開始: scheduleId={}, scope={}:{}, 対象={}名, 通知配信={}件",
@@ -633,17 +637,25 @@ public class ScheduleAttendanceService {
             case ADMIN_ONLY -> accessControlService.isAdminOrAbove(userId, scopeId, scopeType);
         };
 
-        // 欠陥Z 根治（マスター御裁可④）: 組織スケジュールでは、配下チームのみ所属の MEMBER を
-        // 「組織 MEMBER 相当」とみなす。配下メンバーは組織に直接 user_roles/memberships を持たないため
-        // hasRoleOrAbove(...,"MEMBER") が有効ロール null で false になる（実機 403 = COMMON_002 の真因④）。
-        // 救済は「要求段が MEMBER 相当（MEMBER_PLUS）のときのみ」適用する:
-        //   - MEMBER_PLUS: 配下 MEMBER を許容（isMemberOrDescendant は純 SUPPORTER を除外＝御裁可②と整合）。
-        //   - SUPPORTER_PLUS: SUPPORTER 要求段。配下の純 SUPPORTER は御裁可②により回答不可のため救済しない。
+        // 配信＝受信権 統一（関所(3)回答）: 組織スケジュールでは、配下チームのみ所属者を
+        // コンテンツの includeSupporters トグル準拠の配信母集団で救済する。配下メンバーは組織に直接
+        // user_roles/memberships を持たないため hasRoleOrAbove(...) が有効ロール null で false になる
+        // （実機 403 = COMMON_002 の真因）。救済の段は要求段（minResponseRole）に応じて切り替える:
+        //   - MEMBER_PLUS: 配下 MEMBER を救済（includeSupporters=false＝純 SUPPORTER 除外）。
+        //   - SUPPORTER_PLUS:
+        //       * トグル ON（includeSupporters=true）の出欠は配下 SUPPORTER も配信母集団＝回答可のため救済する。
+        //       * トグル OFF（false）は配下 MEMBER のみが母集団のため純 SUPPORTER は救済しない。
+        //     いずれも isMemberOrDescendant(..., includeSupporters) が配信母集団と一致する判定を担う。
         //   - ADMIN_ONLY: 管理者要求段。配下メンバーは組織 ADMIN ではないため従来どおり不許可。
-        if (!allowed
-                && "ORGANIZATION".equals(scopeType)
-                && minResponseRole == MinResponseRole.MEMBER_PLUS) {
-            allowed = accessControlService.isMemberOrDescendant(userId, scopeId, scopeType);
+        if (!allowed && "ORGANIZATION".equals(scopeType)) {
+            boolean includeSupporters = Boolean.TRUE.equals(schedule.getIncludeSupporters());
+            if (minResponseRole == MinResponseRole.MEMBER_PLUS) {
+                // MEMBER 要求段では純 SUPPORTER は対象外（配下 MEMBER のみ救済）。
+                allowed = accessControlService.isMemberOrDescendant(userId, scopeId, scopeType, false);
+            } else if (minResponseRole == MinResponseRole.SUPPORTER_PLUS) {
+                // SUPPORTER 要求段はコンテンツのトグルに従って配下 SUPPORTER の救済可否を決める。
+                allowed = accessControlService.isMemberOrDescendant(userId, scopeId, scopeType, includeSupporters);
+            }
         }
 
         if (!allowed) {
