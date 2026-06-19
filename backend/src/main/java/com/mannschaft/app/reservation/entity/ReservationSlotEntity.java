@@ -132,6 +132,78 @@ public class ReservationSlotEntity extends BaseEntity {
     }
 
     /**
+     * 担当者を変更する（部分更新）。
+     *
+     * @param staffUserId 担当者ユーザーID
+     */
+    public void changeStaffUser(Long staffUserId) {
+        this.staffUserId = staffUserId;
+    }
+
+    /**
+     * タイトルを変更する（部分更新）。
+     *
+     * @param title タイトル
+     */
+    public void changeTitle(String title) {
+        this.title = title;
+    }
+
+    /**
+     * 日付を変更する（部分更新）。
+     *
+     * @param slotDate スロット日付
+     */
+    public void changeSlotDate(LocalDate slotDate) {
+        this.slotDate = slotDate;
+    }
+
+    /**
+     * 時間帯を変更する（部分更新）。開始・終了時刻は対で更新する。
+     *
+     * @param startTime 開始時刻
+     * @param endTime   終了時刻
+     */
+    public void changeTimeRange(LocalTime startTime, LocalTime endTime) {
+        this.startTime = startTime;
+        this.endTime = endTime;
+    }
+
+    /**
+     * 価格を変更する（部分更新）。
+     *
+     * @param price 価格
+     */
+    public void changePrice(BigDecimal price) {
+        this.price = price;
+    }
+
+    /**
+     * メモを変更する（部分更新）。
+     *
+     * @param note メモ
+     */
+    public void changeNote(String note) {
+        this.note = note;
+    }
+
+    /**
+     * 枠単位の承認モード上書きを設定する（部分更新）。
+     *
+     * @param approvalMode 上書きする承認モード（{@code AUTO} / {@code MANUAL}）
+     */
+    public void changeApprovalMode(ApprovalMode approvalMode) {
+        this.approvalMode = approvalMode;
+    }
+
+    /**
+     * 枠単位の承認モード上書きを解除し、チーム既定に従う（{@code null}）状態へ戻す。
+     */
+    public void clearApprovalMode() {
+        this.approvalMode = null;
+    }
+
+    /**
      * 繰り返しスロットかどうかを判定する。
      *
      * @return 繰り返しルールが設定されている場合 true
