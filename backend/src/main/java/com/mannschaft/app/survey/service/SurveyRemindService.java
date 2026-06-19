@@ -112,12 +112,16 @@ public class SurveyRemindService {
         // 未回答者抽出（distribution_mode に応じて母集団を切り替え。回答済みを除外）
         List<Long> unansweredUserIds = findUnansweredUserIds(survey);
 
-        // 通知送信（NotificationHelper.notifyAll が個別の失敗を握りつつ継続する）
+        // 通知送信（配信＝受信権 統一・関所(1)通知）:
+        // unansweredUserIds は配信母集団（resolveUniverseUserIds が includeSupporters トグル準拠で展開した
+        // 集合）から回答済みを除いたもので、全員が配信母集団として事前認可済み。よって notifyAllPreAuthorized
+        // を使い canView 絞り込み（SURVEY の ResultsVisibility 軸を含む）を通さない。これにより督促通知が
+        // 公開通知と同様に誤 deny で届かなくなる (B) レグを回避する。NotificationHelper が個別失敗を握り継続する。
         NotificationScopeType notifScope = "TEAM".equals(survey.getScopeType())
                 ? NotificationScopeType.TEAM
                 : NotificationScopeType.ORGANIZATION;
         if (!unansweredUserIds.isEmpty()) {
-            notificationHelper.notifyAll(
+            notificationHelper.notifyAllPreAuthorized(
                     unansweredUserIds,
                     SurveyNotificationType.SURVEY_RESPONSE_REMINDER.name(),
                     "アンケート未回答のお知らせ",
