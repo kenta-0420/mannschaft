@@ -265,6 +265,60 @@
       "not_affiliated_notice": "このチームの予約は所属メンバー専用です",
       "not_affiliated_hint": "チームに参加するか、管理者にお問い合わせください",
       "error_public_forbidden": "このチームの予約は所属メンバーのみ利用できます"
+    },
+    "slot_form": {
+      "dialog": {
+        "create_title": "予約枠を作成",
+        "edit_title": "予約枠を編集"
+      },
+      "field": {
+        "date": "日付",
+        "start_time": "開始時刻",
+        "end_time": "終了時刻",
+        "title": "タイトル（任意）",
+        "note": "メモ（任意）"
+      },
+      "placeholder": {
+        "date": "例: 2026-01-01",
+        "title": "例: 初回相談",
+        "note": "例: 備考事項"
+      },
+      "approval_mode": {
+        "label": "承認モード",
+        "hint": "チーム設定に従う=既定ポリシーを引き継ぐ / 自動確定=予約が即時確定 / 承認制=管理者が手動で承認",
+        "option_inherit": "チーム設定に従う（既定）",
+        "option_auto": "自動確定（AUTO）",
+        "option_manual": "承認制（MANUAL）"
+      },
+      "message": {
+        "create_success": "予約枠を作成しました",
+        "update_success": "予約枠を更新しました",
+        "save_failed": "保存に失敗しました"
+      }
+    },
+    "slot_manager": {
+      "title": "予約枠管理",
+      "button": {
+        "add_slot": "枠を追加",
+        "edit": "編集",
+        "close": "クローズ",
+        "reopen": "再開"
+      },
+      "status": {
+        "available": "空きあり",
+        "full": "満席",
+        "closed": "クローズ済み"
+      },
+      "booked_count": "予約 {count}件",
+      "empty": {
+        "no_slots": "この日の枠はありません"
+      },
+      "message": {
+        "load_failed": "予約枠の取得に失敗しました",
+        "closed": "枠をクローズしました",
+        "reopened": "枠を再開しました",
+        "status_change_failed": "状態の変更に失敗しました"
+      }
     }
   }
 }
