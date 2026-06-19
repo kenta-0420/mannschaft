@@ -51,7 +51,8 @@ public class SurveyAnnouncementAdapter implements AnnouncementChannelAdapter {
                 Collections.emptyList(), // questions（告知ウィザードは設問なしで作成）
                 null,                // targetUserIds（全対象）
                 null,                // resultViewerUserIds
-                false                // includeSupporters（既定 false）
+                false,               // includeSupporters（既定 false）
+                false                // teamBreakdownEnabled（既定 false）
         );
 
         SurveyDetailResponse response = surveyService.createSurvey(

@@ -16,6 +16,7 @@ import com.mannschaft.app.survey.dto.RespondentResponse;
 import com.mannschaft.app.survey.dto.SurveyResultResponse;
 import com.mannschaft.app.survey.dto.SurveyResultResponse.OptionResultResponse;
 import com.mannschaft.app.survey.dto.SurveyResultResponse.QuestionResultResponse;
+import com.mannschaft.app.survey.dto.SurveyTeamBreakdownResponse;
 import com.mannschaft.app.survey.entity.SurveyEntity;
 import com.mannschaft.app.survey.entity.SurveyOptionEntity;
 import com.mannschaft.app.survey.entity.SurveyQuestionEntity;
@@ -37,6 +38,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -384,6 +386,176 @@ public class SurveyResultService {
                 optionResults,
                 textResponses
         );
+    }
+
+    // ===================================================================================
+    // (B) 組織→参加チーム配信 案C フェーズB（アンケートのチーム別内訳 by_team）
+    // ===================================================================================
+
+    /**
+     * アンケート結果をチーム別内訳（by_team）で集計取得する
+     * （(B) 組織→参加チーム配信 案C フェーズB・御裁可A/B）。
+     *
+     * <p>全体集計（{@code total}・実人数 DISTINCT）＋チームごとの内訳（{@code byTeam}・重複計上あり）を返す。
+     * 個別回答者（user_id・氏名）は含まない。</p>
+     *
+     * <p><b>byTeam を返す条件</b>: {@code team_breakdown_enabled = TRUE} かつ組織スコープ
+     * （{@code scope_type = ORGANIZATION}）かつ<b>非匿名</b>のときのみ。トグル OFF（既定）・
+     * 非組織スコープ・匿名アンケートは {@code byTeam = null}（従来挙動・後方互換）。匿名 ×
+     * トグル ON はそもそも作成時バリデーション（{@link SurveyService#createSurvey}）で禁止されるが、
+     * 既存データ・将来の経路を考慮し集計側でも二重防御で byTeam を出さない（御裁可B）。</p>
+     *
+     * <p><b>御裁可A（全チーム計上）</b>: 配下の複数チームに所属する回答者は所属全チームへ 1 票ずつ計上する
+     * （{@link OrganizationMembershipService#resolveMemberTeams(Long, boolean)} の重複計上前提）。
+     * したがって byTeam 各チームの回答者数の合計は total の実回答者数以上になりうる。</p>
+     *
+     * <p><b>御裁可B（5名未満マスク）</b>: 非匿名でも回答者 {@value #MIN_RESPONDENTS_FOR_DETAIL_EXPORT}
+     * 名未満のチームは {@code masked = true} とし、設問ごとの内訳（optionResults）を出さない。</p>
+     *
+     * <p><b>チーム別回答率の分母</b>: 当該チームの実回答者数（チーム内 DISTINCT user_id）。
+     * 全体回答率の分母は全体の実回答者数。</p>
+     *
+     * <p><b>認可</b>: チーム別内訳は組織の管理ビューであり、当該組織（{@code scopeType}/{@code scopeId}）の
+     * ADMIN / DEPUTY_ADMIN のみ取得できる。これは結果閲覧可否（{@code ResultsVisibility}）よりも厳格な
+     * 管理ビュー専用ゲートであり、ResultsVisibility と独立して常に ADMIN を要求する（権限がない場合 403）。
+     * survey ドメインの既存 EP（{@code exportResultsCsv} / {@code getRespondents}）と同じく Service 層で認可する。</p>
+     *
+     * @param surveyId アンケートID
+     * @param userId   閲覧者ユーザーID（当該組織の ADMIN/DEPUTY_ADMIN でなければ 403）
+     * @return チーム別内訳レスポンス
+     */
+    public SurveyTeamBreakdownResponse getTeamBreakdown(Long surveyId, Long userId) {
+        SurveyEntity survey = surveyService.findSurveyEntityOrThrow(surveyId);
+
+        // 認可: 組織の管理ビューゆえ ADMIN/DEPUTY_ADMIN を強制（ResultsVisibility より厳格）。
+        accessControlService.checkAdminOrAbove(userId, survey.getScopeId(), survey.getScopeType());
+
+        List<SurveyQuestionEntity> questions =
+                questionRepository.findBySurveyIdOrderByDisplayOrderAsc(survey.getId());
+        // 設問ID → 選択肢一覧（出現順）。全体・チーム両方の集計で使い回す（N+1 回避）。
+        Map<Long, List<SurveyOptionEntity>> optionsByQuestion = new LinkedHashMap<>();
+        for (SurveyQuestionEntity q : questions) {
+            optionsByQuestion.put(q.getId(),
+                    optionRepository.findByQuestionIdOrderByDisplayOrderAsc(q.getId()));
+        }
+
+        // 全回答行（全体・チーム両方で使う）。
+        List<SurveyResponseEntity> allResponses =
+                responseRepository.findBySurveyIdOrderByCreatedAtAsc(surveyId);
+
+        // 全体の実回答者数（DISTINCT user_id）。御裁可A の total 別建て。
+        Set<Long> allRespondentUserIds = new HashSet<>();
+        for (SurveyResponseEntity r : allResponses) {
+            allRespondentUserIds.add(r.getUserId());
+        }
+        int totalRespondentCount = allRespondentUserIds.size();
+
+        // 全体集計（全回答行を 1 バケットに集約）。
+        SurveyTeamBreakdownResponse.TeamQuestionResults total = new SurveyTeamBreakdownResponse.TeamQuestionResults(
+                totalRespondentCount,
+                aggregateQuestionResults(questions, optionsByQuestion, allResponses, totalRespondentCount));
+
+        // byTeam を返さない条件（トグル OFF / 非組織 / 匿名）。
+        boolean teamBreakdownEnabled = Boolean.TRUE.equals(survey.getTeamBreakdownEnabled());
+        boolean isOrganizationScope = "ORGANIZATION".equals(survey.getScopeType());
+        boolean isAnonymous = Boolean.TRUE.equals(survey.getIsAnonymous());
+        if (!teamBreakdownEnabled || !isOrganizationScope || isAnonymous) {
+            return new SurveyTeamBreakdownResponse(survey.getId(), survey.getTitle(), total, null);
+        }
+
+        // userId → 所属配下チーム（複数・組織直属は teamId=null 枠）。SUPPORTER 包含は配信トグルに従う。
+        boolean includeSupporters = Boolean.TRUE.equals(survey.getIncludeSupporters());
+        Map<Long, List<OrganizationMembershipService.TeamRef>> memberTeams =
+                organizationMembershipService.resolveMemberTeams(survey.getScopeId(), includeSupporters);
+
+        // teamKey（null=組織直接枠）→ 当該チームに帰属する回答行のバケット（御裁可A: 全チームへ計上）。
+        Map<Long, List<SurveyResponseEntity>> responsesByTeam = new LinkedHashMap<>();
+        Map<Long, Set<Long>> respondentsByTeam = new LinkedHashMap<>();
+        Map<Long, String> teamNameById = new HashMap<>();
+        // 回答行を userId でまとめ、各回答者の所属全チームへ複製計上する。
+        Map<Long, List<SurveyResponseEntity>> responsesByUser = allResponses.stream()
+                .collect(Collectors.groupingBy(SurveyResponseEntity::getUserId));
+        for (Map.Entry<Long, List<SurveyResponseEntity>> entry : responsesByUser.entrySet()) {
+            Long respondentUserId = entry.getKey();
+            List<OrganizationMembershipService.TeamRef> teams = memberTeams.get(respondentUserId);
+            if (teams == null || teams.isEmpty()) {
+                // 配信母集団に属さない回答者（母集団変更・退会等）。byTeam では計上しない。
+                continue;
+            }
+            for (OrganizationMembershipService.TeamRef ref : teams) {
+                Long teamKey = ref.teamId(); // null = 組織直接メンバー枠
+                responsesByTeam.computeIfAbsent(teamKey, k -> new ArrayList<>()).addAll(entry.getValue());
+                respondentsByTeam.computeIfAbsent(teamKey, k -> new HashSet<>()).add(respondentUserId);
+                if (teamKey != null && ref.teamName() != null) {
+                    teamNameById.putIfAbsent(teamKey, ref.teamName());
+                }
+            }
+        }
+
+        List<SurveyTeamBreakdownResponse.TeamBreakdownItem> byTeam = new ArrayList<>();
+        for (Map.Entry<Long, List<SurveyResponseEntity>> e : responsesByTeam.entrySet()) {
+            Long teamKey = e.getKey();
+            int teamRespondentCount = respondentsByTeam.getOrDefault(teamKey, Set.of()).size();
+            // 御裁可B: 5名未満のチームは内訳をマスク（設問内訳を出さない）。
+            boolean masked = teamRespondentCount < MIN_RESPONDENTS_FOR_DETAIL_EXPORT;
+            List<SurveyTeamBreakdownResponse.TeamQuestionResult> teamQuestionResults = masked
+                    ? List.of()
+                    : aggregateQuestionResults(questions, optionsByQuestion, e.getValue(), teamRespondentCount);
+            byTeam.add(new SurveyTeamBreakdownResponse.TeamBreakdownItem(
+                    teamKey,
+                    teamKey == null ? null : teamNameById.get(teamKey),
+                    teamRespondentCount,
+                    masked,
+                    teamQuestionResults));
+        }
+
+        return new SurveyTeamBreakdownResponse(survey.getId(), survey.getTitle(), total, byTeam);
+    }
+
+    /**
+     * 与えられた回答行集合（全体 or 1 チーム分）から、設問ごとの選択肢集計を構築する。
+     *
+     * <p>選択式設問（SINGLE_CHOICE / MULTIPLE_CHOICE）のみ optionResults を算出する。
+     * 自由記述（FREE_TEXT / SCALE）はチーム別内訳・匿名性の観点から対象外とし optionResults は空。
+     * 回答率の分母は引数 {@code respondentCount}（全体 or 当該チームの実回答者数）。</p>
+     */
+    private List<SurveyTeamBreakdownResponse.TeamQuestionResult> aggregateQuestionResults(
+            List<SurveyQuestionEntity> questions,
+            Map<Long, List<SurveyOptionEntity>> optionsByQuestion,
+            List<SurveyResponseEntity> responses,
+            int respondentCount) {
+        // (questionId, optionId) → 選択数。
+        Map<Long, Map<Long, Long>> optionCounts = new HashMap<>();
+        for (SurveyResponseEntity r : responses) {
+            if (r.getOptionId() == null) {
+                continue;
+            }
+            optionCounts.computeIfAbsent(r.getQuestionId(), k -> new HashMap<>())
+                    .merge(r.getOptionId(), 1L, Long::sum);
+        }
+
+        List<SurveyTeamBreakdownResponse.TeamQuestionResult> results = new ArrayList<>();
+        for (SurveyQuestionEntity q : questions) {
+            List<SurveyTeamBreakdownResponse.TeamOptionResult> optionResults = new ArrayList<>();
+            if (q.getQuestionType() == QuestionType.SINGLE_CHOICE
+                    || q.getQuestionType() == QuestionType.MULTIPLE_CHOICE) {
+                Map<Long, Long> countsForQuestion =
+                        optionCounts.getOrDefault(q.getId(), Map.of());
+                for (SurveyOptionEntity option : optionsByQuestion.getOrDefault(q.getId(), List.of())) {
+                    long count = countsForQuestion.getOrDefault(option.getId(), 0L);
+                    double percentage = respondentCount > 0
+                            ? (double) count / respondentCount * 100.0 : 0.0;
+                    optionResults.add(new SurveyTeamBreakdownResponse.TeamOptionResult(
+                            option.getId(), option.getOptionText(), count, percentage));
+                }
+            }
+            results.add(new SurveyTeamBreakdownResponse.TeamQuestionResult(
+                    q.getId(),
+                    q.getQuestionText(),
+                    q.getQuestionType().name(),
+                    optionResults));
+        }
+        return results;
     }
 
     /**
