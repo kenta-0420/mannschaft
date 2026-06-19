@@ -58,4 +58,13 @@ public class KbTemplateEntity extends BaseEntity {
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
     }
+
+    /**
+     * テンプレート内容を更新する（toBuilder → UPDATE 化バグを防ぐドメインメソッド）。
+     */
+    public void applyUpdate(String name, String body, String icon) {
+        if (name != null) this.name = name;
+        if (body != null) this.body = body;
+        if (icon != null) this.icon = icon;
+    }
 }

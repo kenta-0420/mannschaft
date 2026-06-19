@@ -92,12 +92,9 @@ public class KbRevisionService {
         }
 
         // 指定リビジョンのtitle/bodyで現在ページを更新（versionはJPAが自動インクリメント）
-        KbPageEntity restored = page.toBuilder()
-                .title(targetRevision.getTitle())
-                .body(targetRevision.getBody())
-                .lastEditedBy(userId)
-                .build();
-        KbPageEntity saved = pageRepository.save(restored);
+        // managed entity を直接ミューテートして UPDATE する（toBuilder().build() は id を引き継がず INSERT 化するため使用禁止）
+        page.applyUpdate(targetRevision.getTitle(), targetRevision.getBody(), null, null, userId);
+        KbPageEntity saved = pageRepository.save(page);
 
         log.info("KBページをリビジョン {} から復元しました: pageId={}", revisionId, pageId);
         return ApiResponse.of(saved);

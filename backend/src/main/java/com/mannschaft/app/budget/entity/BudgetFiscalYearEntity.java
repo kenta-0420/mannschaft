@@ -73,6 +73,18 @@ public class BudgetFiscalYearEntity extends BaseEntity {
     }
 
     /**
+     * 会計年度の基本情報を更新する。
+     * 管理対象（managed）エンティティを直接ミューテートすることで、
+     * 主キー id を保持したまま UPDATE 文が発行されることを保証する。
+     * （toBuilder().build() による再構築は継承フィールド id を引き継がず INSERT 化するため使用しない）
+     */
+    public void applyUpdate(String name, LocalDate startDate, LocalDate endDate) {
+        this.name = name;
+        this.startDate = startDate;
+        this.endDate = endDate;
+    }
+
+    /**
      * 論理削除を行う。
      */
     public void softDelete() {

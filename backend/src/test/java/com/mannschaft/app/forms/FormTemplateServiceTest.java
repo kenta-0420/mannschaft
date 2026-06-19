@@ -4,6 +4,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.forms.dto.CreateFormTemplateRequest;
 import com.mannschaft.app.forms.dto.FormFieldRequest;
 import com.mannschaft.app.forms.dto.FormTemplateResponse;
+import com.mannschaft.app.forms.dto.UpdateFormTemplateRequest;
 import com.mannschaft.app.forms.entity.FormTemplateEntity;
 import com.mannschaft.app.forms.repository.FormTemplateFieldRepository;
 import com.mannschaft.app.forms.repository.FormTemplateRepository;
@@ -12,9 +13,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
@@ -200,6 +203,57 @@ class FormTemplateServiceTest {
             // Then
             assertThat(entity.getDeletedAt()).isNotNull();
             verify(templateRepository).save(entity);
+        }
+    }
+
+    @Nested
+    @DisplayName("updateTemplate")
+    class UpdateTemplate {
+
+        @Test
+        @DisplayName("テンプレート更新_findByIdの同一インスタンスをsaveしid・@Version保持（INSERT化退行防止）")
+        void テンプレート更新_id保持で同一インスタンスをsave() {
+            // Given: 既存（永続化済み＝id・version を持つ）テンプレート
+            FormTemplateEntity entity = createDraftTemplate();
+            ReflectionTestUtils.setField(entity, "id", TEMPLATE_ID);
+            ReflectionTestUtils.setField(entity, "version", 3L);
+            given(templateRepository.findByIdAndScopeTypeAndScopeId(TEMPLATE_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(templateRepository.save(any(FormTemplateEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(fieldRepository.findByTemplateIdOrderBySortOrderAsc(TEMPLATE_ID)).willReturn(List.of());
+            given(formMapper.toTemplateResponseWithFields(any(FormTemplateEntity.class), any()))
+                    .willReturn(FormTemplateResponse.builder()
+                            .id(TEMPLATE_ID).status("DRAFT")
+                            .scope(new FormTemplateResponse.FormScopeDto(SCOPE_TYPE, SCOPE_ID))
+                            .content(new FormTemplateResponse.FormContentDto("新名", null, null, null, 0))
+                            .workflow(new FormTemplateResponse.FormWorkflowDto(false, null, false))
+                            .editPolicy(new FormTemplateResponse.FormEditPolicyDto(false, false, 0))
+                            .stats(new FormTemplateResponse.FormStatsDto(0, 0, null))
+                            .timeline(new FormTemplateResponse.FormTimelineDto(null, null, null))
+                            .audit(new FormTemplateResponse.FormAuditDto(null, USER_ID, null, null))
+                            .fields(List.of())
+                            .build());
+
+            // fields=null → 既存フィールド取得経路（deleteByTemplateId は呼ばれない）
+            UpdateFormTemplateRequest request = new UpdateFormTemplateRequest(
+                    "新名", null, null, null, null, null, null, null,
+                    null, null, null, null, null, null);
+
+            // When
+            formTemplateService.updateTemplate(SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID, request);
+
+            // Then: save に渡るのは findById が返した同一インスタンスで、id・@Version が保持される（=UPDATE）
+            ArgumentCaptor<FormTemplateEntity> captor =
+                    ArgumentCaptor.forClass(FormTemplateEntity.class);
+            verify(templateRepository).save(captor.capture());
+            FormTemplateEntity savedArg = captor.getValue();
+            assertThat(savedArg).isSameAs(entity);
+            assertThat(savedArg.getId()).isEqualTo(TEMPLATE_ID);
+            assertThat(savedArg.getVersion()).isEqualTo(3L);
+            // 非 null のみ更新・null は旧値温存・ステータスは変更しない
+            assertThat(savedArg.getName()).isEqualTo("新名");
+            assertThat(savedArg.getStatus()).isEqualTo(FormStatus.DRAFT);
         }
     }
 

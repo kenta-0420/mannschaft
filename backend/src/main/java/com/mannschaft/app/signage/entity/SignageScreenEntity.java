@@ -81,6 +81,48 @@ public class SignageScreenEntity extends BaseEntity {
     private LocalDateTime deletedAt;
 
     /**
+     * 画面の更新可能フィールドを部分更新する（null=現値維持セマンティクス）。
+     *
+     * <p>本メソッドは managed entity をその場でミューテートする更新メソッドである。
+     * {@code @Transactional} 内で managed な本エンティティに対して呼ぶことで JPA の
+     * dirty checking により UPDATE が発行される。
+     *
+     * <p><strong>なぜ toBuilder().build() で作り直さないか:</strong>
+     * {@link SignageScreenEntity} は {@code @Builder(toBuilder = true)}（{@code @SuperBuilder} ではない）であり、
+     * 主キー {@code id} は基底クラス {@link com.mannschaft.app.common.BaseEntity} のフィールドである。
+     * {@code @Builder} は superclass のフィールドを取り込まないため、{@code toBuilder()} で
+     * 作り直すと継承フィールド {@code id} が引き継がれず {@code id = null} の新インスタンスになる。
+     * これを {@code save} すると UPDATE でなく INSERT が走り、行重複 INSERT になる。
+     * よって更新は必ず managed entity の直接ミューテートで行う。
+     *
+     * @param name                 新名称（null なら現値維持）
+     * @param layout               新レイアウト（null なら現値維持）
+     * @param defaultSlideDuration 新デフォルトスライド秒数（null なら現値維持）
+     * @param transitionEffect     新トランジションエフェクト（null なら現値維持）
+     * @param isActive             新アクティブフラグ（null なら現値維持）
+     */
+    public void applyUpdate(String name, SignageLayout layout,
+                            Integer defaultSlideDuration,
+                            SignageTransitionEffect transitionEffect,
+                            Boolean isActive) {
+        if (name != null) {
+            this.name = name;
+        }
+        if (layout != null) {
+            this.layout = layout;
+        }
+        if (defaultSlideDuration != null) {
+            this.defaultSlideDuration = defaultSlideDuration;
+        }
+        if (transitionEffect != null) {
+            this.transitionEffect = transitionEffect;
+        }
+        if (isActive != null) {
+            this.isActive = isActive;
+        }
+    }
+
+    /**
      * 論理削除を行う。
      */
     public void softDelete() {

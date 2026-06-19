@@ -66,6 +66,39 @@ public class SystemFormPresetEntity extends BaseEntity {
     }
 
     /**
+     * 更新リクエストの非 null フィールドを反映する。
+     *
+     * <p>managed entity を直接ミューテートすることで主キー（BaseEntity の id）を保持し、
+     * save 時に確実に UPDATE となるようにする（toBuilder().build() は id を引き継がず INSERT 化するため使用しない）。
+     */
+    public void applyUpdate(
+            String name,
+            String description,
+            String category,
+            String fieldsJson,
+            String icon,
+            String color) {
+        if (name != null) {
+            this.name = name;
+        }
+        if (description != null) {
+            this.description = description;
+        }
+        if (category != null) {
+            this.category = category;
+        }
+        if (fieldsJson != null) {
+            this.fieldsJson = fieldsJson;
+        }
+        if (icon != null) {
+            this.icon = icon;
+        }
+        if (color != null) {
+            this.color = color;
+        }
+    }
+
+    /**
      * 論理削除を行う。
      */
     public void softDelete() {
