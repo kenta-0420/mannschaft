@@ -7,10 +7,12 @@ import com.mannschaft.app.timetable.repository.TimetableChangeRepository;
 import com.mannschaft.app.timetable.repository.TimetableRepository;
 import com.mannschaft.app.timetable.service.TimetableChangeService;
 import com.mannschaft.app.timetable.service.TimetableChangeService.CreateChangeData;
+import com.mannschaft.app.timetable.service.TimetableChangeService.UpdateChangeData;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -103,6 +105,49 @@ class TimetableChangeServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TIMETABLE_033"));
+        }
+    }
+
+    @Nested
+    @DisplayName("updateChange")
+    class UpdateChange {
+
+        @Test
+        @DisplayName("回帰: updateChangeはfindByIdAndTimetableIdで取得した同一インスタンスをsaveする（toBuilderで新規行を作らない）")
+        void 更新_同一インスタンスUPDATE() throws Exception {
+            // Given
+            TimetableChangeEntity entity = TimetableChangeEntity.builder()
+                    .timetableId(1L)
+                    .targetDate(LocalDate.of(2025, 5, 1))
+                    .periodNumber(1)
+                    .changeType(TimetableChangeType.REPLACE)
+                    .subjectName("数学")
+                    .teacherName("鈴木先生")
+                    .notifyMembers(false).build();
+            // id を反射でセット
+            var idField = entity.getClass().getSuperclass().getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(entity, 30L);
+
+            UpdateChangeData data = new UpdateChangeData(
+                    "体育", null, null, null, null);
+
+            given(changeRepository.findByIdAndTimetableId(30L, 1L)).willReturn(Optional.of(entity));
+            given(changeRepository.save(any(TimetableChangeEntity.class))).willAnswer(inv -> inv.getArgument(0));
+
+            // When
+            service.updateChange(30L, 1L, data);
+
+            // Then
+            // toBuilder().build() で別インスタンスを save していたら id=null の新規行 INSERT になる。
+            // 同一インスタンスを save することで UPDATE になっていることを検証する。
+            ArgumentCaptor<TimetableChangeEntity> captor = ArgumentCaptor.forClass(TimetableChangeEntity.class);
+            verify(changeRepository).save(captor.capture());
+            assertThat(captor.getValue()).isSameAs(entity);
+            // id が保持されている（= INSERT でなく UPDATE）
+            assertThat(captor.getValue().getId()).isEqualTo(30L);
+            // subjectName が更新されている
+            assertThat(captor.getValue().getSubjectName()).isEqualTo("体育");
         }
     }
 

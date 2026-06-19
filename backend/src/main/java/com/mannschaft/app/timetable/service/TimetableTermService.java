@@ -102,14 +102,10 @@ public class TimetableTermService {
         validateTermDateRange(scopeId, isTeam, entity.getAcademicYear(),
                 data.startDate(), data.endDate(), termId);
 
-        TimetableTermEntity updated = entity.toBuilder()
-                .name(data.name())
-                .startDate(data.startDate())
-                .endDate(data.endDate())
-                .sortOrder(data.sortOrder())
-                .build();
-
-        return termRepository.save(updated);
+        // toBuilder().build() で作り直すと id=null の新インスタンスになり INSERT 化するため、
+        // managed entity を直接ミューテートして UPDATE に固定する（#1643 同型バグ根治）。
+        entity.applyUpdate(data.name(), data.startDate(), data.endDate(), data.sortOrder());
+        return termRepository.save(entity);
     }
 
     /**

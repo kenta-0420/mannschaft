@@ -118,17 +118,14 @@ public class TimetableService {
         LocalDate effectiveUntil = data.effectiveUntil() != null ? data.effectiveUntil() : entity.getEffectiveUntil();
         validateEffectiveDateRange(effectiveFrom, effectiveUntil, term);
 
-        var builder = entity.toBuilder();
-        if (data.name() != null) builder.name(data.name());
-        if (data.visibility() != null) builder.visibility(data.visibility());
-        if (data.effectiveFrom() != null) builder.effectiveFrom(data.effectiveFrom());
-        if (data.effectiveUntil() != null) builder.effectiveUntil(data.effectiveUntil());
-        if (data.weekPatternEnabled() != null) builder.weekPatternEnabled(data.weekPatternEnabled());
-        if (data.weekPatternBaseDate() != null) builder.weekPatternBaseDate(data.weekPatternBaseDate());
-        if (data.periodOverride() != null) builder.periodOverride(data.periodOverride());
-        if (data.notes() != null) builder.notes(data.notes());
-
-        return timetableRepository.save(builder.build());
+        // toBuilder().build() で作り直すと id=null の新インスタンスになり INSERT 化するため、
+        // managed entity を直接ミューテートして UPDATE に固定する（#1643 同型バグ根治）。
+        entity.applyUpdate(
+                data.name(), data.visibility(),
+                data.effectiveFrom(), data.effectiveUntil(),
+                data.weekPatternEnabled(), data.weekPatternBaseDate(),
+                data.periodOverride(), data.notes());
+        return timetableRepository.save(entity);
     }
 
     /**

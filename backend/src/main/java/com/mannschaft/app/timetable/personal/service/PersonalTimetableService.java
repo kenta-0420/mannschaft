@@ -133,18 +133,15 @@ public class PersonalTimetableService {
                 ? data.weekPatternBaseDate() : entity.getWeekPatternBaseDate();
         validateMetadata(newFrom, newUntil, newWpe, newWpb);
 
-        var builder = entity.toBuilder()
-                .effectiveFrom(newFrom)
-                .effectiveUntil(newUntil)
-                .weekPatternEnabled(newWpe)
-                .weekPatternBaseDate(newWpb);
-        if (data.name() != null) builder.name(data.name());
-        if (data.academicYear() != null) builder.academicYear(data.academicYear());
-        if (data.termLabel() != null) builder.termLabel(data.termLabel());
-        if (data.visibility() != null) builder.visibility(data.visibility());
-        if (data.notes() != null) builder.notes(data.notes());
-
-        PersonalTimetableEntity saved = repository.save(builder.build());
+        // toBuilder().build() で作り直すと id=null の新インスタンスになり INSERT 化するため、
+        // managed entity を直接ミューテートして UPDATE に固定する（#1643 同型バグ根治）。
+        entity.applyUpdate(
+                data.name(), data.academicYear(), data.termLabel(),
+                newFrom, newUntil,
+                data.visibility(),
+                newWpe, newWpb,
+                data.notes());
+        PersonalTimetableEntity saved = repository.save(entity);
 
         // F03.15 Phase 5b: visibility 直接変更時の監査ログ
         // ShareTargetService 経由の自動切替とは別に、PATCH での直接変更も網羅する

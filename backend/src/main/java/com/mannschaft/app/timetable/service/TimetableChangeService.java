@@ -110,14 +110,12 @@ public class TimetableChangeService {
         TimetableChangeEntity entity = changeRepository.findByIdAndTimetableId(changeId, timetableId)
                 .orElseThrow(() -> new BusinessException(TimetableErrorCode.CHANGE_NOT_FOUND));
 
-        var builder = entity.toBuilder();
-        if (data.subjectName() != null) builder.subjectName(data.subjectName());
-        if (data.teacherName() != null) builder.teacherName(data.teacherName());
-        if (data.roomName() != null) builder.roomName(data.roomName());
-        if (data.reason() != null) builder.reason(data.reason());
-        if (data.notifyMembers() != null) builder.notifyMembers(data.notifyMembers());
-
-        TimetableChangeEntity saved = changeRepository.save(builder.build());
+        // toBuilder().build() で作り直すと id=null の新インスタンスになり INSERT 化するため、
+        // managed entity を直接ミューテートして UPDATE に固定する（#1643 同型バグ根治）。
+        entity.applyUpdate(
+                data.subjectName(), data.teacherName(), data.roomName(),
+                data.reason(), data.notifyMembers());
+        TimetableChangeEntity saved = changeRepository.save(entity);
 
         if (Boolean.TRUE.equals(data.notifyMembers())) {
             eventPublisher.publishEvent(new TimetableChangeCreatedEvent(
