@@ -544,6 +544,93 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             @Param("maxDepth") int maxDepth);
 
     /**
+     * 組織スコープ配信の母集団を「ユーザー × 所属チーム」の組で返す（出欠のチーム別内訳 by_team 用）。
+     *
+     * <p>{@link #findDistributionUserIdsForOrganizationRecursive(Long, boolean, int)} と<b>同一の org_tree CTE
+     * ・同一の SUPPORTER 除外規約</b>を共有しつつ、DISTINCT user_id ではなく
+     * {@code (user_id, team_id)} のペアを返す点が異なる。各行の意味は次のとおり:</p>
+     * <ul>
+     *   <li><b>組織直属メンバー</b>（{@code user_roles.organization_id IN org_tree}）: {@code team_id = NULL}
+     *       の行を返す（F03.1 の「チーム未所属（組織直接メンバー）」グループ）。</li>
+     *   <li><b>配下参加チーム(ACTIVE)のメンバー</b>（{@code user_roles.team_id IN org_tree 配下チーム}）:
+     *       所属チームごとに {@code (user_id, team_id)} の行を返す。</li>
+     * </ul>
+     *
+     * <p><b>御裁可A（全チーム計上・重複あり）</b>: 配下の複数チームに所属するユーザーは、所属チームごとに
+     * 1 行ずつ返るため by_team では複数チームに計上される。さらに組織直属かつチーム所属を兼ねるユーザーは
+     * {@code team_id = NULL} 行とチーム行の両方を返す。したがって本クエリの行数（by_team 各チームの合計）は
+     * <b>配信母集団の実人数（DISTINCT user_id）以上</b>になりうる。全体 total は重複のない実人数として
+     * {@link #findDistributionUserIdsForOrganizationRecursive(Long, boolean, int)} 側で別建て算出すること。</p>
+     *
+     * <p>SUPPORTER 除外・退会除外・離脱チーム(status!=ACTIVE)除外・MEMBER 優先のセマンティクスは
+     * {@link #findDistributionUserIdsForOrganizationRecursive(Long, boolean, int)} と完全一致。</p>
+     *
+     * @param organizationId    配信元となる組織 ID（org_tree の根）
+     * @param includeSupporters true=応援者も含める / false=応援者を除外する
+     * @param maxDepth          再帰展開の最大深さ（サイクル防止上限・通常 32）
+     * @return {@code Object[]{user_id (Long), team_id (Long or null)}} の行リスト（重複計上あり）
+     */
+    @Query(value =
+            "WITH RECURSIVE org_tree (id, depth) AS ( " +
+            "    SELECT o.id, 0 FROM organizations o " +
+            "      WHERE o.id = :organizationId AND o.deleted_at IS NULL " +
+            "  UNION ALL " +
+            "    SELECT c.id, p.depth + 1 FROM organizations c " +
+            "      JOIN org_tree p ON c.parent_organization_id = p.id " +
+            "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
+            ") " +
+            "SELECT user_id, team_id FROM ( " +
+            // 組織直属メンバー → team_id = NULL バケット
+            "  SELECT DISTINCT ur.user_id AS user_id, CAST(NULL AS SIGNED) AS team_id " +
+            "  FROM user_roles ur " +
+            "  JOIN users u ON u.id = ur.user_id " +
+            "  WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "    AND ur.organization_id IN (SELECT id FROM org_tree) " +
+            "    AND ( :includeSupporters = TRUE OR NOT ( " +
+            "      EXISTS ( SELECT 1 FROM memberships ms WHERE ms.user_id = ur.user_id " +
+            "        AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' AND ( " +
+            "          (ms.scope_type = 'ORGANIZATION' AND ms.scope_id IN (SELECT id FROM org_tree)) " +
+            "          OR (ms.scope_type = 'TEAM' AND ms.scope_id IN ( " +
+            "            SELECT tom.team_id FROM team_org_memberships tom " +
+            "            WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE')) ) ) " +
+            "      AND NOT EXISTS ( SELECT 1 FROM memberships ms2 WHERE ms2.user_id = ur.user_id " +
+            "        AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' AND ( " +
+            "          (ms2.scope_type = 'ORGANIZATION' AND ms2.scope_id IN (SELECT id FROM org_tree)) " +
+            "          OR (ms2.scope_type = 'TEAM' AND ms2.scope_id IN ( " +
+            "            SELECT tom2.team_id FROM team_org_memberships tom2 " +
+            "            WHERE tom2.organization_id IN (SELECT id FROM org_tree) AND tom2.status = 'ACTIVE')) ) ) " +
+            "    ) ) " +
+            "  UNION ALL " +
+            // 配下参加チーム(ACTIVE)のメンバー → 所属チームごとに 1 行（重複計上あり）
+            "  SELECT DISTINCT ur.user_id AS user_id, ur.team_id AS team_id " +
+            "  FROM user_roles ur " +
+            "  JOIN users u ON u.id = ur.user_id " +
+            "  WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "    AND ur.team_id IN ( " +
+            "      SELECT tom3.team_id FROM team_org_memberships tom3 " +
+            "      WHERE tom3.organization_id IN (SELECT id FROM org_tree) AND tom3.status = 'ACTIVE') " +
+            "    AND ( :includeSupporters = TRUE OR NOT ( " +
+            "      EXISTS ( SELECT 1 FROM memberships ms3 WHERE ms3.user_id = ur.user_id " +
+            "        AND ms3.left_at IS NULL AND ms3.role_kind = 'SUPPORTER' AND ( " +
+            "          (ms3.scope_type = 'ORGANIZATION' AND ms3.scope_id IN (SELECT id FROM org_tree)) " +
+            "          OR (ms3.scope_type = 'TEAM' AND ms3.scope_id IN ( " +
+            "            SELECT tom4.team_id FROM team_org_memberships tom4 " +
+            "            WHERE tom4.organization_id IN (SELECT id FROM org_tree) AND tom4.status = 'ACTIVE')) ) ) " +
+            "      AND NOT EXISTS ( SELECT 1 FROM memberships ms4 WHERE ms4.user_id = ur.user_id " +
+            "        AND ms4.left_at IS NULL AND ms4.role_kind = 'MEMBER' AND ( " +
+            "          (ms4.scope_type = 'ORGANIZATION' AND ms4.scope_id IN (SELECT id FROM org_tree)) " +
+            "          OR (ms4.scope_type = 'TEAM' AND ms4.scope_id IN ( " +
+            "            SELECT tom5.team_id FROM team_org_memberships tom5 " +
+            "            WHERE tom5.organization_id IN (SELECT id FROM org_tree) AND tom5.status = 'ACTIVE')) ) ) " +
+            "    ) ) " +
+            ") AS audience_pairs",
+            nativeQuery = true)
+    List<Object[]> findDistributionMemberTeamPairsForOrganizationRecursive(
+            @Param("organizationId") Long organizationId,
+            @Param("includeSupporters") boolean includeSupporters,
+            @Param("maxDepth") int maxDepth);
+
+    /**
      * 指定ユーザーが「対象組織を根とした再帰的配下組織ツリー」の母集団に属するかを判定する
      * （フェーズM1: 可視性 / 回答可否の universe 再帰化）。
      *

@@ -97,6 +97,18 @@ public class ScheduleEntity extends BaseEntity {
     @Builder.Default
     private Boolean includeSupporters = false;
 
+    /**
+     * 出欠確認の集計を「チームごとの内訳（by_team）」でも収集・表示するか。
+     * (B) 組織→参加チーム配信 案C フェーズB（出欠のチーム別内訳）で追加。
+     * 既定 false（従来挙動＝by_team は省略・全体集計のみ）。TRUE のときのみ組織出欠集計が
+     * by_team を算出して返す。配下の複数チーム所属者は所属全チームへ計上されるため
+     * by_team 各チームの合計は実人数（total・DISTINCT）以上になりうる（御裁可A・重複計上）。
+     * @Builder.Default 必須（NULL 挿入バグ回避）。
+     */
+    @Column(name = "team_breakdown_enabled", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
+    @Builder.Default
+    private Boolean teamBreakdownEnabled = false;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private AttendanceGenerationStatus attendanceStatus;

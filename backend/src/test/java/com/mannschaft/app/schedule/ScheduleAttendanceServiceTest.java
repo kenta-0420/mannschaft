@@ -819,4 +819,185 @@ class ScheduleAttendanceServiceTest {
             assertThat(result.getAttendanceRate()).isZero();
         }
     }
+
+    // ========================================
+    // getAttendanceTeamBreakdown（(B) フェーズB・出欠のチーム別内訳 by_team）
+    // ========================================
+
+    @Nested
+    @DisplayName("getAttendanceTeamBreakdown")
+    class GetAttendanceTeamBreakdown {
+
+        private static final Long ORG_SCHEDULE_ID = 30L;
+        private static final Long TEAM_A = 1L;
+        private static final Long TEAM_B = 2L;
+
+        /** team_breakdown_enabled / include_supporters を指定した組織出欠スケジュールを生成する。 */
+        private ScheduleEntity orgSchedule(boolean teamBreakdownEnabled, boolean includeSupporters) {
+            return ScheduleEntity.builder()
+                    .organizationId(ORG_ID)
+                    .title("組織練習")
+                    .startAt(START)
+                    .endAt(END)
+                    .allDay(false)
+                    .eventType(EventType.PRACTICE)
+                    .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                    .minViewRole(MinViewRole.MEMBER_PLUS)
+                    .status(ScheduleStatus.SCHEDULED)
+                    .attendanceRequired(true)
+                    .includeSupporters(includeSupporters)
+                    .teamBreakdownEnabled(teamBreakdownEnabled)
+                    .commentOption(CommentOption.OPTIONAL)
+                    .isException(false)
+                    .createdBy(USER_ID)
+                    .build();
+        }
+
+        private ScheduleAttendanceEntity attendance(Long userId, AttendanceStatus status) {
+            return ScheduleAttendanceEntity.builder()
+                    .scheduleId(ORG_SCHEDULE_ID)
+                    .userId(userId)
+                    .status(status)
+                    .build();
+        }
+
+        /** countByScheduleIdGroupByStatus が返す Object[]{status, count(Long)} を組み立てる。 */
+        private List<Object[]> statusCounts(java.util.Map<AttendanceStatus, Long> counts) {
+            List<Object[]> rows = new java.util.ArrayList<>();
+            counts.forEach((status, count) -> rows.add(new Object[]{status, count}));
+            return rows;
+        }
+
+        @Test
+        @DisplayName("番人③: トグルOFFはby_teamを省略（null）＝従来挙動・totalは返す")
+        void トグルOFFはbyTeam省略() {
+            // given: team_breakdown_enabled = false
+            given(scheduleService.getSchedule(ORG_SCHEDULE_ID))
+                    .willReturn(orgSchedule(false, false));
+            given(attendanceRepository.countByScheduleIdGroupByStatus(ORG_SCHEDULE_ID))
+                    .willReturn(statusCounts(java.util.Map.of(
+                            AttendanceStatus.ATTENDING, 3L,
+                            AttendanceStatus.ABSENT, 1L)));
+
+            // when
+            var result = attendanceService.getAttendanceTeamBreakdown(ORG_SCHEDULE_ID);
+
+            // then: byTeam は null（省略）、total は実人数で返る
+            assertThat(result.getByTeam()).isNull();
+            assertThat(result.getTotal().attending()).isEqualTo(3);
+            assertThat(result.getTotal().absent()).isEqualTo(1);
+            // トグル OFF では母集団解決（越境窓口）を呼ばない
+            org.mockito.Mockito.verifyNoInteractions(organizationMembershipService);
+        }
+
+        @Test
+        @DisplayName("番人④⑤: トグルONでby_team算出・totalはDISTINCT実人数・複数チーム所属は全チーム計上(合計>total)・team_id=null枠")
+        void トグルONで全チーム計上_totalはDISTINCT() {
+            // given: 3 ユーザー
+            //   u101: TEAM_A のみ → ATTENDING
+            //   u102: TEAM_A と TEAM_B 両方所属 → ABSENT（両チームに計上＝重複）
+            //   u103: 組織直属（team_id=null 枠）→ PARTIAL
+            given(scheduleService.getSchedule(ORG_SCHEDULE_ID))
+                    .willReturn(orgSchedule(true, false));
+
+            // total（実人数）: ATTENDING=1, ABSENT=1, PARTIAL=1 → DISTINCT 3 名
+            given(attendanceRepository.countByScheduleIdGroupByStatus(ORG_SCHEDULE_ID))
+                    .willReturn(statusCounts(java.util.Map.of(
+                            AttendanceStatus.ATTENDING, 1L,
+                            AttendanceStatus.ABSENT, 1L,
+                            AttendanceStatus.PARTIAL, 1L)));
+
+            given(attendanceRepository.findByScheduleIdOrderByUserIdAsc(ORG_SCHEDULE_ID))
+                    .willReturn(List.of(
+                            attendance(101L, AttendanceStatus.ATTENDING),
+                            attendance(102L, AttendanceStatus.ABSENT),
+                            attendance(103L, AttendanceStatus.PARTIAL)));
+
+            // 母集団解決（越境窓口）: u102 は TEAM_A/TEAM_B 両方、u103 は組織直属（teamId=null）
+            given(organizationMembershipService.resolveMemberTeams(ORG_ID, false))
+                    .willReturn(java.util.Map.of(
+                            101L, List.of(new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(TEAM_A, "Aチーム")),
+                            102L, List.of(
+                                    new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(TEAM_A, "Aチーム"),
+                                    new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(TEAM_B, "Bチーム")),
+                            103L, List.of(new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(null, null))));
+
+            // when
+            var result = attendanceService.getAttendanceTeamBreakdown(ORG_SCHEDULE_ID);
+
+            // then: total は DISTINCT 実人数（各 1）
+            assertThat(result.getTotal().attending()).isEqualTo(1);
+            assertThat(result.getTotal().absent()).isEqualTo(1);
+            assertThat(result.getTotal().partial()).isEqualTo(1);
+
+            assertThat(result.getByTeam()).isNotNull();
+
+            // TEAM_A: u101(ATTENDING) + u102(ABSENT)
+            var teamA = result.getByTeam().stream()
+                    .filter(i -> TEAM_A.equals(i.teamId())).findFirst().orElseThrow();
+            assertThat(teamA.teamName()).isEqualTo("Aチーム");
+            assertThat(teamA.attending()).isEqualTo(1);
+            assertThat(teamA.absent()).isEqualTo(1);
+
+            // TEAM_B: u102(ABSENT) ← 複数チーム所属の重複計上
+            var teamB = result.getByTeam().stream()
+                    .filter(i -> TEAM_B.equals(i.teamId())).findFirst().orElseThrow();
+            assertThat(teamB.absent()).isEqualTo(1);
+
+            // team_id=null 枠（組織直接メンバー）: u103(PARTIAL)
+            var orgDirect = result.getByTeam().stream()
+                    .filter(i -> i.teamId() == null).findFirst().orElseThrow();
+            assertThat(orgDirect.partial()).isEqualTo(1);
+
+            // 御裁可A: by_team 各チームの「のべ人数」合計 ≧ total（実人数）。
+            //   by_team のべ = TEAM_A(2) + TEAM_B(1) + null枠(1) = 4 > total 実人数 3
+            int byTeamTotal = result.getByTeam().stream()
+                    .mapToInt(i -> i.attending() + i.partial() + i.absent() + i.undecided())
+                    .sum();
+            int realTotal = result.getTotal().attending() + result.getTotal().partial()
+                    + result.getTotal().absent() + result.getTotal().undecided();
+            assertThat(byTeamTotal).isGreaterThan(realTotal);
+            assertThat(byTeamTotal).isEqualTo(4);
+            assertThat(realTotal).isEqualTo(3);
+        }
+
+        @Test
+        @DisplayName("番人②: team_id=null枠が組織直接メンバーを拾う")
+        void teamIdNull枠が組織直接メンバーを拾う() {
+            given(scheduleService.getSchedule(ORG_SCHEDULE_ID))
+                    .willReturn(orgSchedule(true, false));
+            given(attendanceRepository.countByScheduleIdGroupByStatus(ORG_SCHEDULE_ID))
+                    .willReturn(statusCounts(java.util.Map.of(AttendanceStatus.ATTENDING, 1L)));
+            given(attendanceRepository.findByScheduleIdOrderByUserIdAsc(ORG_SCHEDULE_ID))
+                    .willReturn(List.of(attendance(200L, AttendanceStatus.ATTENDING)));
+            given(organizationMembershipService.resolveMemberTeams(ORG_ID, false))
+                    .willReturn(java.util.Map.of(200L, List.of(
+                            new com.mannschaft.app.organization.service.OrganizationMembershipService.TeamRef(null, null))));
+
+            var result = attendanceService.getAttendanceTeamBreakdown(ORG_SCHEDULE_ID);
+
+            assertThat(result.getByTeam()).hasSize(1);
+            var orgDirect = result.getByTeam().get(0);
+            assertThat(orgDirect.teamId()).isNull();
+            assertThat(orgDirect.attending()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("includeSupportersトグルが母集団解決へ伝播する")
+        void includeSupportersが母集団解決へ伝播() {
+            given(scheduleService.getSchedule(ORG_SCHEDULE_ID))
+                    .willReturn(orgSchedule(true, true)); // includeSupporters=true
+            given(attendanceRepository.countByScheduleIdGroupByStatus(ORG_SCHEDULE_ID))
+                    .willReturn(List.of());
+            given(attendanceRepository.findByScheduleIdOrderByUserIdAsc(ORG_SCHEDULE_ID))
+                    .willReturn(List.of());
+            given(organizationMembershipService.resolveMemberTeams(ORG_ID, true))
+                    .willReturn(java.util.Map.of());
+
+            attendanceService.getAttendanceTeamBreakdown(ORG_SCHEDULE_ID);
+
+            // includeSupporters=true で母集団解決が呼ばれることを検証
+            verify(organizationMembershipService).resolveMemberTeams(ORG_ID, true);
+        }
+    }
 }

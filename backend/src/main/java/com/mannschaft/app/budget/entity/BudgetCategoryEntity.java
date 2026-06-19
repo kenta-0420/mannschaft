@@ -54,6 +54,18 @@ public class BudgetCategoryEntity extends BaseEntity {
     private LocalDateTime deletedAt;
 
     /**
+     * カテゴリ内容を更新する。
+     * 管理対象（managed）エンティティを直接ミューテートすることで、
+     * 主キー id を保持したまま UPDATE 文が発行されることを保証する。
+     * （toBuilder().build() による再構築は継承フィールド id を引き継がず INSERT 化するため使用しない）
+     */
+    public void applyUpdate(String name, Integer sortOrder, String description) {
+        this.name = name;
+        this.sortOrder = sortOrder;
+        this.description = description;
+    }
+
+    /**
      * 論理削除を行う。
      */
     public void softDelete() {

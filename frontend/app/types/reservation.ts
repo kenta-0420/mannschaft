@@ -100,6 +100,12 @@ export interface SlotAuditDto {
   updatedAt?: string
 }
 
+/** 枠単位の承認ポリシー（null=チーム設定に従う） */
+export interface SlotPolicyDto {
+  /** AUTO=自動確定 / MANUAL=承認制 / undefined=チーム設定に従う */
+  approvalMode?: 'AUTO' | 'MANUAL'
+}
+
 export interface ReservationSlotResponse {
   id?: number
   teamId?: number
@@ -108,6 +114,7 @@ export interface ReservationSlotResponse {
   status?: SlotStatusDto
   recurrence?: SlotRecurrenceDto
   pricing?: SlotPricingDto
+  policy?: SlotPolicyDto
   audit?: SlotAuditDto
 }
 
@@ -226,4 +233,23 @@ export interface CreateSlotRequest {
   recurrenceRule?: string
   price?: number
   note?: string
+  /** 枠単位の承認モード上書き（省略=チーム設定に従う） */
+  approvalMode?: 'AUTO' | 'MANUAL'
+}
+
+export interface UpdateSlotRequest {
+  staffUserId?: number
+  title?: string
+  /** Format: date (YYYY-MM-DD) */
+  slotDate?: string
+  /** Format: time (HH:mm:ss) */
+  startTime?: string
+  /** Format: time (HH:mm:ss) */
+  endTime?: string
+  price?: number
+  note?: string
+  /** 枠単位の承認モード上書き（clearApprovalMode=true と同時指定不可） */
+  approvalMode?: 'AUTO' | 'MANUAL'
+  /** true にすると承認モード上書きを解除（チーム設定に従う状態に戻す） */
+  clearApprovalMode?: boolean
 }

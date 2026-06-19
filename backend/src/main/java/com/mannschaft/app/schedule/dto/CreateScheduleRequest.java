@@ -97,4 +97,11 @@ public class CreateScheduleRequest {
      * (B) 組織→参加チーム配信 案C フェーズA 隊A で追加。値を使った母集団絞り込みは後続隊。
      */
     private final Boolean includeSupporters;
+
+    /**
+     * 出欠確認の集計を「チームごとの内訳（by_team）」でも収集・表示するか。省略時 false（従来挙動＝全体集計のみ）。
+     * (B) 組織→参加チーム配信 案C フェーズB（出欠のチーム別内訳）で追加。TRUE のときのみ
+     * 組織出欠集計が by_team を算出して返す。
+     */
+    private final Boolean teamBreakdownEnabled;
 }

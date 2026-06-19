@@ -145,16 +145,17 @@ public class SignageScreenService {
     public SignageScreenResponse updateScreen(Long id, UpdateSignageScreenRequest req) {
         SignageScreenEntity entity = findScreenOrThrow(id);
 
-        // toBuilder で更新対象フィールドを差し替える
-        SignageScreenEntity updated = entity.toBuilder()
-                .name(req.name() != null ? req.name() : entity.getName())
-                .layout(req.layout() != null ? req.layout() : entity.getLayout())
-                .defaultSlideDuration(req.defaultSlideDuration() != null ? req.defaultSlideDuration() : entity.getDefaultSlideDuration())
-                .transitionEffect(req.transitionEffect() != null ? req.transitionEffect() : entity.getTransitionEffect())
-                .isActive(req.isActive() != null ? req.isActive() : entity.getIsActive())
-                .build();
+        // managed entity を直接ミューテートして save することで id=null INSERT を防ぐ。
+        // toBuilder().build() では @Builder が BaseEntity の id を引き継がず id=null になるため使用禁止。
+        entity.applyUpdate(
+                req.name(),
+                req.layout(),
+                req.defaultSlideDuration(),
+                req.transitionEffect(),
+                req.isActive()
+        );
 
-        SignageScreenEntity saved = screenRepository.save(updated);
+        SignageScreenEntity saved = screenRepository.save(entity);
         log.info("サイネージ画面更新: id={}", id);
         return toResponse(saved);
     }

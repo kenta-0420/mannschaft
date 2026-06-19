@@ -34789,6 +34789,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{orgPublicId}/schedules/{scheduleId}/attendances/team-breakdown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 組織出欠チーム別内訳集計 */
+        get: operations["getAttendanceTeamBreakdown"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgPublicId}/schedules/{scheduleId}/attendances/team-breakdown/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 組織出欠チーム別内訳CSVエクスポート */
+        get: operations["exportAttendanceTeamBreakdownCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{orgPublicId}/schedules/{scheduleId}/attendances/export": {
         parameters: {
             query?: never;
@@ -42874,8 +42908,6 @@ export interface components {
             hierarchy?: components["schemas"]["TodoHierarchyDto"];
             audit?: components["schemas"]["TodoAuditDto"];
             /** @deprecated */
-            progressManual?: boolean;
-            /** @deprecated */
             priority?: string;
             /**
              * Format: int64
@@ -42890,29 +42922,15 @@ export interface components {
             /** @deprecated */
             children?: components["schemas"]["TodoResponse"][];
             /**
-             * Format: int32
-             * @deprecated
-             */
-            sortOrder?: number;
-            /** @deprecated */
-            scopeType?: string;
-            /** @deprecated */
-            createdBy?: components["schemas"]["UserInfo"];
-            /**
              * Format: date
              * @deprecated
              */
-            dueDate?: string;
+            startDate?: string;
             /**
              * Format: int64
              * @deprecated
              */
             projectId?: number;
-            /**
-             * @deprecated
-             * @example 14:30:00
-             */
-            dueTime?: string;
             /**
              * Format: int64
              * @deprecated
@@ -42926,46 +42944,57 @@ export interface components {
              */
             depth?: number;
             /**
-             * Format: date-time
              * @deprecated
+             * @example 14:30:00
              */
-            completedAt?: string;
+            dueTime?: string;
             /**
              * Format: int64
              * @deprecated
              */
             milestoneId?: number;
             /** @deprecated */
-            title?: string;
-            /**
-             * Format: date-time
-             * @deprecated
-             */
-            createdAt?: string;
-            /**
-             * Format: date-time
-             * @deprecated
-             */
-            updatedAt?: string;
-            /** @deprecated */
-            progressRate?: number;
+            progressManual?: boolean;
             /** @deprecated */
             completedBy?: components["schemas"]["UserInfo"];
-            /**
-             * Format: date
-             * @deprecated
-             */
-            startDate?: string;
             /**
              * Format: int64
              * @deprecated
              */
             linkedScheduleId?: number;
+            /** @deprecated */
+            title?: string;
+            /**
+             * Format: date-time
+             * @deprecated
+             */
+            completedAt?: string;
+            /**
+             * Format: date
+             * @deprecated
+             */
+            dueDate?: string;
+            /** @deprecated */
+            progressRate?: number;
+            /**
+             * Format: date-time
+             * @deprecated
+             */
+            updatedAt?: string;
+            /**
+             * Format: date-time
+             * @deprecated
+             */
+            createdAt?: string;
+            /** @deprecated */
+            scopeType?: string;
             /**
              * Format: int32
              * @deprecated
              */
-            descendantCompletedCount?: number;
+            sortOrder?: number;
+            /** @deprecated */
+            createdBy?: components["schemas"]["UserInfo"];
             /**
              * Format: int64
              * @deprecated
@@ -42978,6 +43007,11 @@ export interface components {
              * @deprecated
              */
             descendantTotalCount?: number;
+            /**
+             * Format: int32
+             * @deprecated
+             */
+            descendantCompletedCount?: number;
         };
         TodoScheduleDto: {
             /** Format: date */
@@ -44888,8 +44922,8 @@ export interface components {
             /** Format: int32 */
             severity?: number;
             note?: string;
-            yposition?: number;
             xposition?: number;
+            yposition?: number;
         };
         ChartFormulaResponse: {
             /** Format: int64 */
@@ -44985,8 +45019,8 @@ export interface components {
             /** Format: int32 */
             severity: number;
             note?: string;
-            yposition?: number;
             xposition?: number;
+            yposition?: number;
         };
         UpdateBodyMarksRequest: {
             marks: components["schemas"]["ChartBodyMarkRequest"][];
@@ -49872,9 +49906,9 @@ export interface components {
             /** Format: uuid */
             scopeVillageId?: string;
             scopeTypeOrDefault?: string;
+            postedAsTypeOrDefault?: string;
             /** Format: int64 */
             scopeIdOrDefault?: number;
-            postedAsTypeOrDefault?: string;
         };
         ApiResponsePostResponse: {
             data?: components["schemas"]["PostResponse"];
@@ -50141,6 +50175,7 @@ export interface components {
             scheduledSurveys?: components["schemas"]["ScheduledSurveyRequest"][];
             scheduledAttendance?: components["schemas"]["ScheduledAttendanceRequest"];
             includeSupporters?: boolean;
+            teamBreakdownEnabled?: boolean;
         };
         RecurrenceRuleDto: {
             type: string;
@@ -60475,11 +60510,11 @@ export interface components {
             philosophy?: boolean;
             officers?: boolean;
             custom_fields?: boolean;
-            homepageUrlVisible?: boolean;
-            establishedDateVisible?: boolean;
-            customFieldsVisible?: boolean;
             philosophyVisible?: boolean;
             officersVisible?: boolean;
+            customFieldsVisible?: boolean;
+            homepageUrlVisible?: boolean;
+            establishedDateVisible?: boolean;
         };
         UpdateTeamProfileRequest: {
             homepage_url?: string;
@@ -62168,10 +62203,10 @@ export interface components {
             data?: components["schemas"]["PageJoinRequestResponse"];
         };
         PageJoinRequestResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -62189,17 +62224,17 @@ export interface components {
             /** Format: int64 */
             offset?: number;
             sort?: components["schemas"]["SortObject"];
+            paged?: boolean;
             /** Format: int32 */
             pageNumber?: number;
             /** Format: int32 */
             pageSize?: number;
             unpaged?: boolean;
-            paged?: boolean;
         };
         SortObject: {
             empty?: boolean;
-            unsorted?: boolean;
             sorted?: boolean;
+            unsorted?: boolean;
         };
         ApiResponseListFestivalResponse: {
             data?: components["schemas"]["FestivalResponse"][];
@@ -63359,6 +63394,16 @@ export interface components {
             milestones?: components["schemas"]["MilestoneDetail"][];
             unassignedTodos?: components["schemas"]["UnassignedTodos"];
             audit?: components["schemas"]["ProjectAuditDto"];
+            /** @deprecated */
+            status?: string;
+            /** @deprecated */
+            description?: string;
+            /** @deprecated */
+            color?: string;
+            /** @deprecated */
+            emoji?: string;
+            /** @deprecated */
+            visibility?: string;
             /**
              * Format: int32
              * @deprecated
@@ -63370,26 +63415,16 @@ export interface components {
              */
             completedTodos?: number;
             /** @deprecated */
-            color?: string;
-            /** @deprecated */
-            createdBy?: components["schemas"]["UserInfo"];
-            /** @deprecated */
-            status?: string;
+            title?: string;
             /**
              * Format: date
              * @deprecated
              */
             dueDate?: string;
             /** @deprecated */
-            description?: string;
-            /** @deprecated */
-            visibility?: string;
-            /** @deprecated */
-            title?: string;
-            /** @deprecated */
             progressRate?: number;
             /** @deprecated */
-            emoji?: string;
+            createdBy?: components["schemas"]["UserInfo"];
             /**
              * Format: int64
              * @deprecated
@@ -65034,10 +65069,10 @@ export interface components {
             data?: components["schemas"]["PageNotificationResponse"];
         };
         PageNotificationResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -65362,10 +65397,10 @@ export interface components {
             data?: components["schemas"]["PagePurgeStatusRow"];
         };
         PagePurgeStatusRow: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -65583,10 +65618,10 @@ export interface components {
             lastError?: string;
         };
         PageEmailOutboxSummaryResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -65668,10 +65703,10 @@ export interface components {
             data?: components["schemas"]["PageUserEntity"];
         };
         PageUserEntity: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -65757,10 +65792,10 @@ export interface components {
             data?: components["schemas"]["PageTeamEntity"];
         };
         PageTeamEntity: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -65865,10 +65900,10 @@ export interface components {
             timelinePostsPublic?: boolean;
         };
         PageOrganizationEntity: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -66812,10 +66847,10 @@ export interface components {
             memberSince?: string;
         };
         PagePublicUserPostSummaryResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -66840,10 +66875,10 @@ export interface components {
             createdAt?: string;
         };
         PagePublicTimelinePostResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -66872,10 +66907,10 @@ export interface components {
             createdAt?: string;
         };
         PagePublicPostSummary: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -66923,10 +66958,10 @@ export interface components {
             answer?: string;
         };
         PagePublicEventResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -66988,10 +67023,10 @@ export interface components {
             canonicalSlug?: string;
         };
         PagePublicTeamSearchResultResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -67185,10 +67220,10 @@ export interface components {
             mapEmbedUrl?: string;
         };
         PagePublicOrganizationSearchResultResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -67280,10 +67315,10 @@ export interface components {
             data?: components["schemas"]["MarketListingResponse"];
         };
         PagePublicPostCommentResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -67644,6 +67679,38 @@ export interface components {
         PagedResponseObject: {
             data?: Record<string, never>[];
             meta?: components["schemas"]["PageMeta"];
+        };
+        ApiResponseAttendanceTeamBreakdownResponse: {
+            data?: components["schemas"]["AttendanceTeamBreakdownResponse"];
+        };
+        AttendanceTeamBreakdownResponse: {
+            /** Format: int64 */
+            scheduleId?: number;
+            total?: components["schemas"]["TeamBreakdownCounts"];
+            byTeam?: components["schemas"]["TeamBreakdownItem"][];
+        };
+        TeamBreakdownCounts: {
+            /** Format: int32 */
+            attending?: number;
+            /** Format: int32 */
+            partial?: number;
+            /** Format: int32 */
+            absent?: number;
+            /** Format: int32 */
+            undecided?: number;
+        };
+        TeamBreakdownItem: {
+            /** Format: int64 */
+            teamId?: number;
+            teamName?: string;
+            /** Format: int32 */
+            attending?: number;
+            /** Format: int32 */
+            partial?: number;
+            /** Format: int32 */
+            absent?: number;
+            /** Format: int32 */
+            undecided?: number;
         };
         ApiResponseUserMatchStatsResponse: {
             data?: components["schemas"]["UserMatchStatsResponse"];
@@ -68013,10 +68080,10 @@ export interface components {
             data?: components["schemas"]["PageSuccessionCovenantResponse"];
         };
         PageSuccessionCovenantResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -68090,10 +68157,10 @@ export interface components {
             data?: components["schemas"]["BalanceEventResponse"][];
         };
         PageStampEventResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -68121,10 +68188,10 @@ export interface components {
             webUrl?: string;
         };
         PageBalanceEventResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -68286,10 +68353,10 @@ export interface components {
             createdAt?: string;
         };
         PageCommitteeSummaryResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -69835,10 +69902,10 @@ export interface components {
             data?: components["schemas"]["PageCommitteeDistributionLogResponse"];
         };
         PageCommitteeDistributionLogResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -70336,10 +70403,10 @@ export interface components {
             data?: components["schemas"]["PageVillageCreationRequestResponse"];
         };
         PageVillageCreationRequestResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -70521,10 +70588,10 @@ export interface components {
             data?: components["schemas"]["PageUserRoleEntity"];
         };
         PageUserRoleEntity: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -138079,6 +138146,52 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListAttendanceResponse"];
+                };
+            };
+        };
+    };
+    getAttendanceTeamBreakdown: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAttendanceTeamBreakdownResponse"];
+                };
+            };
+        };
+    };
+    exportAttendanceTeamBreakdownCsv: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description エクスポート成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
                 };
             };
         };

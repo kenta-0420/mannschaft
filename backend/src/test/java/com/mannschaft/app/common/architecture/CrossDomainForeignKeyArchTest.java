@@ -79,49 +79,31 @@ import static org.junit.jupiter.api.Assertions.fail;
  * crash させず skip し、skip 件数をログ出力する。マイグレーション専用の中間テーブル等で
  * 対応 Entity が存在しないケースを想定。
  *
- * <h2>凍結（baseline）方式</h2>
- * <p>SQL 走査は ArchUnit のバイトコード解析の<b>外</b>のため、FreezingArchRule は使えない。
- * 代わりに git 管理の baseline テキストファイル
- * {@code src/test/resources/archunit_store/cross_domain_fk_baseline.txt} に net-active な
- * クロスドメイン FK を全件記録し、<b>baseline に無い新規 FK が現れたときのみ fail</b> させる。
- * 各違反は次の安定キーで 1 行記録する（ソート安定する形式）:
+ * <h2>恒久ルール方式（全廃達成後の格上げ）</h2>
+ * <p>クロスドメイン FK 撤廃キャンペーンで <b>baseline 158 → 0 件</b> を達成した。これに伴い、本番人は
+ * かつての baseline 凍結（chip-away）方式から、<b>net-active なクロスドメイン FK を 1 件でも検出したら
+ * fail する恒久 ArchRule</b> へ格上げした（baseline テキストファイルおよび再凍結スイッチ
+ * {@code archunit.fk.refreeze} は廃止）。SQL 走査は ArchUnit のバイトコード解析の<b>外</b>のため
+ * FreezingArchRule は使えず、migration を Flyway 適用順に再生して net-active FK 集合を自前で算出し、
+ * ドメイン解決（同一ドメイン・共有ドメイン common は許容）の後、残ったクロスドメイン FK が
+ * 0 件であることを検証する。各違反は次の形式で列挙する:
  * <pre>{@code <子テーブル> -> <親テーブル> [<制約名 or 無名キー>] (<onDelete>) @<ファイル名>:<行番号>}</pre>
  *
- * <p>撤廃（chip-away）が進み net-active から FK が消えると、再凍結で baseline 行も消える。
- * baseline が空になればクロスドメイン FK 全廃が達成されたことになり、その時点で本番人を
- * 通常ルール（1 件でも検出したら fail）へ格上げできる。
+ * <h2>CASCADE / SET NULL の即時阻止</h2>
+ * <p>検出したクロスドメイン FK が {@code ON DELETE CASCADE/SET NULL} の場合は、通常のクロスドメイン
+ * 違反より強いメッセージで fail させる（原則 #2 = クロスドメイン削除連鎖の禁止の再混入を即座に止める）。
  *
- * <h2>新規 CASCADE / SET NULL の即時阻止</h2>
- * <p>baseline に無い新規 FK が「クロスドメイン<b>かつ</b> {@code ON DELETE CASCADE/SET NULL}」の
- * 場合は、通常のクロスドメイン違反より強いメッセージで fail させる（原則 #2 違反の再混入を
- * 即座に止める）。
- *
- * <h2>baseline の再生成方法</h2>
- * <p>意図的に baseline を作り直したいとき（初回生成 / 撤廃 wave 後の再採取）は、
- * 次のいずれかで 1 度だけ実行する:
- * <pre>{@code ./gradlew test --tests "*CrossDomainForeignKeyArchTest" -Parchunit.fk.refreeze=true}</pre>
- * あるいは環境変数 {@code ARCHUNIT_FK_REFREEZE=true} を設定する。
- * （{@code -P}（Gradle プロジェクトプロパティ）は {@code build.gradle.kts} の
- * {@code tasks.withType<Test>} がテスト JVM の system property
- * {@code archunit.fk.refreeze} へ伝播する。{@code -D} は Gradle 自身の JVM に渡るだけで
- * fork されたテスト JVM には届かないため使わないこと。）
- * 再生成された baseline は必ず差分を目視確認した上で git にコミットすること
- * （骨抜き＝検出ロジックを甘くして緑にするのは禁止。baseline は「net-active を正直に記録」する）。
+ * <h2>新規クロスドメイン FK が必要になった場合</h2>
+ * <p>本ルールは CLAUDE.md DB設計原則 #1（クロスドメイン FK は作らない・整合性はアプリ層で保証）の
+ * 恒久 enforcement である。設計上どうしても他ドメインのテーブルを参照したい場合は、FK を張らず INDEX のみ
+ * とし参照整合性をアプリ層で保証するか、参照先を共有ドメイン(common)へ寄せる / {@code DomainPackages} の
+ * ドメイン定義を見直すことで対応する。検出を骨抜きにして緑化する（ルールを甘くする）のは禁止。
  */
 class CrossDomainForeignKeyArchTest {
 
     /** マイグレーション SQL のルート（worktree からの相対パス）。 */
     private static final Path MIGRATION_DIR =
         Paths.get("src", "main", "resources", "db", "migration");
-
-    /** クロスドメイン FK の baseline。 */
-    private static final Path BASELINE_FILE =
-        Paths.get("src", "test", "resources", "archunit_store", "cross_domain_fk_baseline.txt");
-
-    /** baseline 再生成スイッチ（system property は build が {@code -P} から伝播 / 環境変数も可）。 */
-    private static final boolean REFREEZE =
-        Boolean.getBoolean("archunit.fk.refreeze")
-            || "true".equalsIgnoreCase(System.getenv("ARCHUNIT_FK_REFREEZE"));
 
     // ------------------------------------------------------------------
     // 正規表現
@@ -203,61 +185,41 @@ class CrossDomainForeignKeyArchTest {
                 parentDomain));
         }
 
-        // 安定ソート（キー文字列の自然順）
-        Set<String> currentKeys = new TreeSet<>();
-        for (Violation v : crossDomainFks) {
-            currentKeys.add(v.key());
-        }
-
-        if (REFREEZE) {
-            writeBaseline(currentKeys);
-            System.out.println("[CrossDomainForeignKeyArchTest] baseline を再生成しました: "
-                + currentKeys.size() + " 件 -> " + BASELINE_FILE.toAbsolutePath());
-            System.out.println("[CrossDomainForeignKeyArchTest] net-active FK 総数: "
-                + netActive.size() + " 件 / skip(ドメイン未知): " + skipped + " 件");
-            return;
-        }
-
-        Set<String> baseline = readBaseline();
+        // 恒久ルール（クロスドメインFK全廃 158→0 達成に伴う baseline 方式からの格上げ）:
+        // net-active なクロスドメイン FK が 1 件でも在れば fail させる。検出ロジック（migration 再生→
+        // ドメイン解決→同一/shared 除外）は baseline 方式時代から不変で、判定だけを「0 件必須」に強化した。
         System.out.println("[CrossDomainForeignKeyArchTest] net-active クロスドメインFK: "
-            + currentKeys.size() + " 件 / baseline: " + baseline.size()
-            + " 件 / net-active FK 総数: " + netActive.size()
+            + crossDomainFks.size() + " 件（恒久ルール: 0 件必須）"
+            + " / net-active FK 総数: " + netActive.size()
             + " 件 / skip(ドメイン未知): " + skipped + " 件");
 
-        // baseline に無い新規違反のみを抽出
-        List<Violation> newViolations = new ArrayList<>();
-        for (Violation v : crossDomainFks) {
-            if (!baseline.contains(v.key())) {
-                newViolations.add(v);
-            }
+        if (crossDomainFks.isEmpty()) {
+            return; // 緑（クロスドメイン FK 0 件 = 原則 #1 を満たす）
         }
 
-        if (newViolations.isEmpty()) {
-            return; // 緑
-        }
-
-        // 新規違反のうち CASCADE/SET NULL は強規律で先頭に出す
+        // CASCADE/SET NULL は強規律で先頭に出す
         StringBuilder sb = new StringBuilder();
-        List<Violation> cascadeNew = newViolations.stream()
+        List<Violation> cascade = crossDomainFks.stream()
             .filter(Violation::isCascadeOrSetNull).toList();
-        if (!cascadeNew.isEmpty()) {
-            sb.append("【最重要】baseline に無い新規クロスドメイン FK で、しかも "
+        if (!cascade.isEmpty()) {
+            sb.append("【最重要】クロスドメイン FK で、しかも "
                 + "ON DELETE CASCADE / SET NULL が付いています。CLAUDE.md DB設計原則 #2 違反 "
                 + "（クロスドメインの削除連鎖は禁止）。即時に撤廃すること:\n");
-            for (Violation v : cascadeNew) {
+            for (Violation v : cascade) {
                 sb.append("  ✗✗ ").append(v.describe()).append('\n');
             }
             sb.append('\n');
         }
-        sb.append("baseline に無い新規クロスドメイン FK を検出しました。"
-            + "CLAUDE.md DB設計原則 #1（クロスドメイン FK 禁止・整合性はアプリ層で保証）違反です。\n");
-        for (Violation v : newViolations) {
+        sb.append("クロスドメイン FK を検出しました。"
+            + "CLAUDE.md DB設計原則 #1（クロスドメイン FK 禁止・整合性はアプリ層で保証）違反です。\n"
+            + "本キャンペーンで全廃済（baseline 158→0）であり、新規のクロスドメイン FK は許容されません。\n");
+        for (Violation v : crossDomainFks) {
             sb.append("  ✗ ").append(v.describe()).append('\n');
         }
         sb.append('\n')
-            .append("対処: 当該 FK を削除（INDEX のみに）するか、設計上どうしても必要なら "
-                + "別軍議で承認を得た上で baseline を再生成してください "
-                + "(-Parchunit.fk.refreeze=true)。検出を骨抜きにして緑にするのは禁止です。");
+            .append("対処: 当該 FK を削除（INDEX のみに）し、参照整合性はアプリ層で保証すること。"
+                + "設計上どうしても必要なら、共有ドメイン(common)への配置や DomainPackages の見直しで対応し、"
+                + "安易に本ルールを緩めない（検出を骨抜きにして緑化するのは禁止）。");
 
         fail(sb.toString());
     }
@@ -525,39 +487,6 @@ class CrossDomainForeignKeyArchTest {
             }
         }
         return sb.toString();
-    }
-
-    // ------------------------------------------------------------------
-    // baseline 入出力
-    // ------------------------------------------------------------------
-
-    private static Set<String> readBaseline() throws IOException {
-        if (!Files.exists(BASELINE_FILE)) {
-            return Collections.emptySet();
-        }
-        Set<String> set = new LinkedHashSet<>();
-        for (String line : Files.readAllLines(BASELINE_FILE, StandardCharsets.UTF_8)) {
-            String t = line.strip();
-            if (t.isEmpty() || t.startsWith("#")) {
-                continue;
-            }
-            set.add(t);
-        }
-        return set;
-    }
-
-    private static void writeBaseline(Set<String> keys) throws IOException {
-        Files.createDirectories(BASELINE_FILE.getParent());
-        List<String> lines = new ArrayList<>();
-        lines.add("# クロスドメイン FK baseline（D-4 / CrossDomainForeignKeyArchTest が管理）");
-        lines.add("# 1 行 = 全 migration を Flyway 適用順に再生した後 net-active な 1 件の "
-            + "クロスドメイン FK。baseline に無い新規 FK のみ fail。");
-        lines.add("# 撤廃 wave が DROP FOREIGN KEY すると net-active から消え、再凍結で該当行も消える"
-            + "（chip-away 運用）。baseline が空になればクロスドメイン FK 全廃。");
-        lines.add("# 再生成: ./gradlew test --tests \"*CrossDomainForeignKeyArchTest\" "
-            + "-Parchunit.fk.refreeze=true （または環境変数 ARCHUNIT_FK_REFREEZE=true）");
-        lines.addAll(keys); // keys は TreeSet 由来で既にソート済み
-        Files.write(BASELINE_FILE, lines, StandardCharsets.UTF_8);
     }
 
     // ------------------------------------------------------------------

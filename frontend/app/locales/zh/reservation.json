@@ -265,6 +265,60 @@
       "not_affiliated_notice": "此团队的预约仅限成员",
       "not_affiliated_hint": "请加入团队或联系管理员",
       "error_public_forbidden": "预约仅对团队成员开放"
+    },
+    "slot_form": {
+      "dialog": {
+        "create_title": "创建预约时段",
+        "edit_title": "编辑预约时段"
+      },
+      "field": {
+        "date": "日期",
+        "start_time": "开始时间",
+        "end_time": "结束时间",
+        "title": "标题（可选）",
+        "note": "备注（可选）"
+      },
+      "placeholder": {
+        "date": "例: 2026-01-01",
+        "title": "例: 初次咨询",
+        "note": "例: 备注事项"
+      },
+      "approval_mode": {
+        "label": "审批模式",
+        "hint": "遵循团队设置=继承默认策略 / 自动确认=即时确认 / 手动审批=管理员手动审批",
+        "option_inherit": "遵循团队设置（默认）",
+        "option_auto": "自动确认（AUTO）",
+        "option_manual": "手动审批（MANUAL）"
+      },
+      "message": {
+        "create_success": "预约时段已创建",
+        "update_success": "预约时段已更新",
+        "save_failed": "保存失败"
+      }
+    },
+    "slot_manager": {
+      "title": "时段管理",
+      "button": {
+        "add_slot": "添加时段",
+        "edit": "编辑",
+        "close": "关闭",
+        "reopen": "重新开放"
+      },
+      "status": {
+        "available": "可预约",
+        "full": "已满",
+        "closed": "已关闭"
+      },
+      "booked_count": "已预约 {count} 件",
+      "empty": {
+        "no_slots": "当天没有时段"
+      },
+      "message": {
+        "load_failed": "获取预约时段失败",
+        "closed": "时段已关闭",
+        "reopened": "时段已重新开放",
+        "status_change_failed": "状态更改失败"
+      }
     }
   }
 }

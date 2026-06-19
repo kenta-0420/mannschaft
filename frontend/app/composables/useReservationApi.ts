@@ -1,4 +1,4 @@
-import type { ReservationResponse, ReservationSettingsResponse, UpdateReservationSettingRequest } from '~/types/reservation'
+import type { ReservationResponse, ReservationSettingsResponse, UpdateReservationSettingRequest, CreateSlotRequest, UpdateSlotRequest } from '~/types/reservation'
 
 export function useReservationApi() {
   const api = useApi()
@@ -46,7 +46,7 @@ export function useReservationApi() {
     return api<{ data: unknown[] }>(`${base(teamId)}/reservation-slots?${query}`)
   }
 
-  async function createSlot(teamId: string, body: Record<string, unknown>) {
+  async function createSlot(teamId: string, body: CreateSlotRequest) {
     return api<{ data: unknown }>(`${base(teamId)}/reservation-slots`, { method: 'POST', body })
   }
 
@@ -54,7 +54,7 @@ export function useReservationApi() {
     return api<{ data: unknown }>(`${base(teamId)}/reservation-slots/${slotId}`)
   }
 
-  async function updateSlot(teamId: string, slotId: number, body: Record<string, unknown>) {
+  async function updateSlot(teamId: string, slotId: number, body: UpdateSlotRequest) {
     return api<{ data: unknown }>(`${base(teamId)}/reservation-slots/${slotId}`, {
       method: 'PATCH',
       body,

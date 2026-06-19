@@ -67,13 +67,15 @@ public class BudgetCategoryService {
         accessControlService.checkAdminOrAbove(currentUserId, scopeId, scopeType);
 
         BudgetCategoryEntity entity = findById(id);
-        BudgetCategoryEntity updated = entity.toBuilder()
-                .name(request.name())
-                .sortOrder(request.sortOrder() != null ? request.sortOrder() : entity.getSortOrder())
-                .description(request.description())
-                .build();
+        // 管理対象エンティティを直接ミューテートして id 保持＝UPDATE を保証する
+        // （toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化するため廃止）
+        entity.applyUpdate(
+                request.name(),
+                request.sortOrder() != null ? request.sortOrder() : entity.getSortOrder(),
+                request.description()
+        );
 
-        BudgetCategoryEntity saved = categoryRepository.save(updated);
+        BudgetCategoryEntity saved = categoryRepository.save(entity);
         log.info("カテゴリを更新しました: id={}", saved.getId());
         return budgetMapper.toCategoryResponse(saved);
     }

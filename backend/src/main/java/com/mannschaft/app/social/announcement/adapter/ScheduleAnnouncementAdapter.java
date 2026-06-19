@@ -58,7 +58,8 @@ public class ScheduleAnnouncementAdapter implements AnnouncementChannelAdapter {
                 null,                // reminders
                 null,                // scheduledSurveys（機能55: 告知ウィザードでは未使用）
                 null,                // scheduledAttendance（機能55: 告知ウィザードでは未使用）
-                false                // includeSupporters（既定 false）
+                false,               // includeSupporters（既定 false）
+                false                // teamBreakdownEnabled（既定 false＝従来挙動）
         );
 
         ScheduleResponse response = scheduleService.createSchedule(
