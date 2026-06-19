@@ -30,6 +30,10 @@ docker-compose.override.yml
 .claude/worktrees/
 .claude/scheduled_tasks.lock
 
+# --- 大名システム 戦役台帳（クラッシュ耐性。戦役完了時に削除。テンプレート _TEMPLATE.md のみ追跡） ---
+.claude/campaigns/*
+!.claude/campaigns/_TEMPLATE.md
+
 # --- ローカルログ ---
 *.log
 
