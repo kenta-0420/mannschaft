@@ -33,6 +33,7 @@ public interface ReservationMapper {
     @Mapping(target = "status", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotStatusDto(entity.getSlotStatus() != null ? entity.getSlotStatus().name() : null, entity.getBookedCount(), entity.getIsException(), entity.getClosedReason(), entity.getNote()))")
     @Mapping(target = "recurrence", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.RecurrenceDto(entity.getRecurrenceRule(), entity.getParentSlotId()))")
     @Mapping(target = "pricing", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotPricingDto(entity.getPrice()))")
+    @Mapping(target = "policy", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotPolicyDto(entity.getApprovalMode() != null ? entity.getApprovalMode().name() : null))")
     @Mapping(target = "audit", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotAuditDto(entity.getCreatedBy(), entity.getCreatedAt(), entity.getUpdatedAt()))")
     ReservationSlotResponse toSlotResponse(ReservationSlotEntity entity);
 
