@@ -22,7 +22,7 @@ import java.util.UUID;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@SuperBuilder(toBuilder = true)
+@SuperBuilder
 @EqualsAndHashCode(callSuper = true)
 public class VillageCategoryEntity extends UuidV7Entity {
 

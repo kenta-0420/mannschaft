@@ -42,7 +42,7 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor(access = AccessLevel.PUBLIC)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@SuperBuilder(toBuilder = true)
+@SuperBuilder
 @EqualsAndHashCode(callSuper = true)
 public class VillageRepresentativeEntity extends UuidV7Entity {
 
