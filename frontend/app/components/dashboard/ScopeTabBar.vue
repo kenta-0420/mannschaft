@@ -118,6 +118,7 @@ async function onFolderChange(folderId: number | null) {
             :key="item.scopeId"
             type="button"
             role="button"
+            :data-testid="`scope-tab-chip-${scopeType}-${item.slug ?? item.scopeId}`"
             :aria-pressed="item.scopeId === selectedScopeId"
             class="flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors"
             :class="
@@ -125,7 +126,7 @@ async function onFolderChange(folderId: number | null) {
                 ? 'border-primary bg-primary text-primary-contrast'
                 : 'border-surface-300 bg-surface-0 hover:bg-surface-100 dark:border-surface-600 dark:bg-surface-800'
             "
-            @click="selectScope(item.scopeId)"
+            @click="selectScope(item.slug ?? item.scopeId)"
           >
             <Avatar
               :image="item.avatarUrl ?? undefined"
@@ -154,6 +155,7 @@ async function onFolderChange(folderId: number | null) {
           rounded
           size="small"
           :disabled="!hasPrev"
+          :data-testid="`scope-tab-prevpage-${scopeType}`"
           :aria-label="$t('scopeDashboard.tagBar.prevPage')"
           @click="goPrevPage"
         />
@@ -164,6 +166,7 @@ async function onFolderChange(folderId: number | null) {
           rounded
           size="small"
           :disabled="!hasNext"
+          :data-testid="`scope-tab-nextpage-${scopeType}`"
           :aria-label="$t('scopeDashboard.tagBar.nextPage')"
           @click="goNextPage"
         />

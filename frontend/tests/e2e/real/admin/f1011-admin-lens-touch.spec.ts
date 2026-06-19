@@ -35,6 +35,22 @@ const test = base.extend({})
 test.use({ storageState: { cookies: [], origins: [] }, hasTouch: true })
 test.setTimeout(120_000)
 
+// 検証対象の管理チーム slug（FC東京U-18 を優先・seed が rich データを投入済み）。beforeAll で解決。
+let teamSlug = ''
+
+test.beforeAll(async () => {
+  // ログインは 1 回だけ（credCache に格納し各テストで使い回す）。
+  const { token } = await resolveCreds(ADMIN_EMAIL, ADMIN_PASSWORD)
+  const ctx = await pwRequest.newContext()
+  const teamsRes = await ctx.get(`${BE_API}/me/teams`, { headers: { Authorization: `Bearer ${token}` } })
+  const teams = (await teamsRes.json()).data as Array<{ slug: string | null; name: string | null; role: string }>
+  const admin = teams.filter((t) => t.slug && (t.role === 'ADMIN' || t.role === 'DEPUTY'))
+  const pick = admin.find((t) => (t.name ?? '').includes('FC東京U-18')) ?? admin[0]
+  expect(pick, 'slug 解決済みの管理チームが存在すること').toBeTruthy()
+  teamSlug = pick!.slug!
+  await ctx.dispose()
+})
+
 /**
  * APIブリッジ（memory: feedback_e2e_wsl2_cors_apibridge）。
  * ブラウザの /api/v1/** 呼び出しを page.route で横取りして BE に中継する。
@@ -71,39 +87,46 @@ async function installApiBridge(page: Page, token: string): Promise<void> {
   })
 }
 
-/**
- * BE に直接ログインして Cookie + localStorage を仕込み、APIブリッジを設置する。
- * f1011-admin-console.spec.ts / reservation-dashboard-real.spec.ts と同じ作法。
- */
-async function loginViaApiBridge(page: Page, email: string, password: string): Promise<void> {
+type Me = {
+  id: number
+  email: string
+  lastName: string
+  firstName: string
+  avatarUrl: string | null
+  systemRole: string | null
+  timezone: string | null
+}
+
+// role（email）ごとのログイン結果キャッシュ。同一ユーザーの高速連続ログインで BE が稀に 500 を
+// 返す問題を避けるため、ログインは role ごとに 1 回だけ行う。
+const credCache = new Map<string, { token: string; me: Me }>()
+
+async function resolveCreds(email: string, password: string): Promise<{ token: string; me: Me }> {
+  const cached = credCache.get(email)
+  if (cached) return cached
   const ctx = await pwRequest.newContext()
   const loginRes = await ctx.post(`${BE_API}/auth/login`, {
     headers: { 'Content-Type': 'application/json' },
     data: { email, password },
   })
   expect(loginRes.status(), `BE ログイン(${email}) は 200`).toBe(200)
-  const loginJson = (await loginRes.json()) as { data: { accessToken: string; userId: number } }
-  const token = loginJson.data.accessToken
-
-  const meRes = await ctx.get(`${BE_API}/users/me`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
+  const token = (await loginRes.json()).data.accessToken as string
+  const meRes = await ctx.get(`${BE_API}/users/me`, { headers: { Authorization: `Bearer ${token}` } })
   expect(meRes.status(), '/users/me は 200').toBe(200)
-  const me = (await meRes.json()).data as {
-    id: number
-    email: string
-    lastName: string
-    firstName: string
-    avatarUrl: string | null
-    systemRole: string | null
-    timezone: string | null
-  }
+  const me = (await meRes.json()).data as Me
   await ctx.dispose()
+  const creds = { token, me }
+  credCache.set(email, creds)
+  return creds
+}
 
-  await page.request.post(`${BE_API}/auth/login`, {
-    headers: { 'Content-Type': 'application/json' },
-    data: { email, password },
-  })
+/**
+ * APIブリッジ＋localStorage(currentUser) を仕込み、role のセッションを確立する。
+ * ログインは role ごとに 1 回だけ（{@link resolveCreds} がキャッシュ）。Cookie ログインは省略し
+ * API ブリッジの Bearer 認証に依存する（同一ユーザーの連続ログインによる BE 間欠 500 を回避）。
+ */
+async function loginViaApiBridge(page: Page, email: string, password: string): Promise<void> {
+  const { token, me } = await resolveCreds(email, password)
 
   const farFuture = Date.now() + 24 * 60 * 60 * 1000
   const currentUser = {
@@ -133,13 +156,36 @@ test.afterEach(async ({ page }) => {
   await page.unrouteAll({ behavior: 'ignoreErrors' })
 })
 
-/** TEAM スコープの管理者レンズトグルが出るまでダッシュボードを開く。 */
+/**
+ * TEAM スコープの管理者レンズトグルが出るまでダッシュボードを開く。
+ * 既定選択任せにせず「slug 解決済み かつ 管理ロール」のタグチップを明示選択する
+ * （f1011-admin-console.spec.ts の gotoDashboardScope と同じ理由・作法）。
+ */
 async function openTeamLens(page: Page): Promise<void> {
   await page.goto('/dashboard')
   await waitForHydration(page)
   const segment = page.getByTestId('scope-segment-TEAM')
   await expect(segment).toBeVisible({ timeout: 20_000 })
   await segment.click()
+
+  await expect(
+    page.locator('[data-testid^="scope-tab-chip-TEAM-"]').first(),
+    'TEAM のタグチップが描画されること',
+  ).toBeVisible({ timeout: 20_000 })
+
+  // 目的チーム(teamSlug)のチップが見つかるまでページ送りして選択する
+  // （タグ一覧は joined_at 降順 6 件/ページで、最古参加の検証用チームは後方ページに出るため）。
+  const chip = page.getByTestId(`scope-tab-chip-TEAM-${teamSlug}`)
+  const nextBtn = page.getByTestId('scope-tab-nextpage-TEAM')
+  for (let i = 0; i < 12; i++) {
+    if (await chip.count()) break
+    if ((await nextBtn.count()) === 0 || (await nextBtn.isDisabled())) break
+    await nextBtn.click()
+    await expect(page.locator('[data-testid^="scope-tab-chip-TEAM-"]').first()).toBeVisible({ timeout: 10_000 })
+    await page.waitForTimeout(300)
+  }
+  await expect(chip, `タグ一覧に TEAM スコープ ${teamSlug} のチップが見つかること`).toBeVisible({ timeout: 10_000 })
+  await chip.click()
   await expect(page.getByTestId('admin-lens-toggle-TEAM')).toBeVisible({ timeout: 20_000 })
 }
 

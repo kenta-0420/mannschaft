@@ -67,12 +67,6 @@ test.setTimeout(120_000)
 
 // ── ヘルパー ──────────────────────────────────────────────────────────────
 
-async function apiLogin(api: APIRequestContext, email: string, password: string): Promise<string> {
-  const res = await api.post(`${BE_API}/auth/login`, { data: { email, password } })
-  expect(res.status(), `apiLogin(${email}) は 200`).toBe(200)
-  return (await res.json()).data.accessToken as string
-}
-
 function authHeaders(token: string): Record<string, string> {
   return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
 }
@@ -127,46 +121,53 @@ async function installApiBridge(page: Page, token: string): Promise<void> {
   })
 }
 
-/**
- * BE に直接ログインして Cookie + localStorage を仕込み、APIブリッジを設置する。
- * ブラウザフォームからのログイン（loginUI）を使わないため CORS をバイパスできる。
- *
- * reservation-dashboard-real.spec.ts の adminInit fixture と同じ作法（memory: feedback_e2e_wsl2_cors_apibridge）。
- */
-async function loginViaApiBridge(page: Page, email: string, password: string): Promise<string> {
-  // 1. Playwright APIRequestContext（CORS 非対象）で BE に直接ログイン → accessToken 取得
+type Me = {
+  id: number
+  email: string
+  lastName: string
+  firstName: string
+  avatarUrl: string | null
+  systemRole: string | null
+  timezone: string | null
+}
+
+// role（email）ごとのログイン結果キャッシュ。同一ユーザーの高速連続ログインで BE が稀に 500 を
+// 返す問題（auth ドメインの連続ログイン競合）を避けるため、ログインは role ごとに 1 回だけ行う。
+const credCache = new Map<string, { token: string; me: Me }>()
+
+async function resolveCreds(email: string, password: string): Promise<{ token: string; me: Me }> {
+  const cached = credCache.get(email)
+  if (cached) return cached
   const ctx = await pwRequest.newContext()
   const loginRes = await ctx.post(`${BE_API}/auth/login`, {
     headers: { 'Content-Type': 'application/json' },
     data: { email, password },
   })
   expect(loginRes.status(), `BE ログイン(${email}) は 200`).toBe(200)
-  const loginJson = (await loginRes.json()) as { data: { accessToken: string; userId: number } }
-  const token = loginJson.data.accessToken
-
-  // 2. /users/me でプロフィール取得（localStorage.currentUser 用）
-  const meRes = await ctx.get(`${BE_API}/users/me`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
+  const token = (await loginRes.json()).data.accessToken as string
+  const meRes = await ctx.get(`${BE_API}/users/me`, { headers: { Authorization: `Bearer ${token}` } })
   expect(meRes.status(), '/users/me は 200').toBe(200)
-  const me = (await meRes.json()).data as {
-    id: number
-    email: string
-    lastName: string
-    firstName: string
-    avatarUrl: string | null
-    systemRole: string | null
-    timezone: string | null
-  }
+  const me = (await meRes.json()).data as Me
   await ctx.dispose()
+  const creds = { token, me }
+  credCache.set(email, creds)
+  return creds
+}
 
-  // 3. ブラウザコンテキストも BE にログインして HttpOnly Cookie を確立
-  await page.request.post(`${BE_API}/auth/login`, {
-    headers: { 'Content-Type': 'application/json' },
-    data: { email, password },
-  })
+/**
+ * APIブリッジ＋localStorage(currentUser) を仕込み、role のセッションを確立する。
+ * ブラウザフォームからのログイン（loginUI）を使わないため CORS をバイパスできる。
+ *
+ * <p>ログインは role ごとに 1 回だけ（{@link resolveCreds} がキャッシュ）。トークンを使い回し、
+ * ブラウザ Cookie ログインは省略する（API ブリッジが毎リクエストに Bearer を付与して認証するため、
+ * Cookie 中継に依存しない）。これにより同一ユーザーの高速連続ログインによる BE の間欠 500 を回避する。</p>
+ *
+ * reservation-dashboard-real.spec.ts の adminInit fixture と同じ作法（memory: feedback_e2e_wsl2_cors_apibridge）。
+ */
+async function loginViaApiBridge(page: Page, email: string, password: string): Promise<string> {
+  const { token, me } = await resolveCreds(email, password)
 
-  // 4. addInitScript で currentUser + tokenExpiresAt を仕込む（auth.client.ts のリフレッシュ抑止）
+  // addInitScript で currentUser + tokenExpiresAt を仕込む（auth.client.ts のリフレッシュ抑止）
   const farFuture = Date.now() + 24 * 60 * 60 * 1000
   const currentUser = {
     id: me.id,
@@ -184,11 +185,8 @@ async function loginViaApiBridge(page: Page, email: string, password: string): P
     { user: currentUser, expiresAt: farFuture },
   )
 
-  // 5. APIブリッジ設置（page.goto より前に設定して初回ナビゲーションからブリッジが有効になるようにする）
+  // APIブリッジ設置（page.goto より前に設定して初回ナビゲーションからブリッジが有効になるようにする）
   await installApiBridge(page, token)
-  // addInitScript は次の page.goto で初めて実行されるため、ここでは goto しない。
-  // 各テストで直接目的ページへ goto することで、余分なリダイレクト待ちを省く。
-
   return token
 }
 
@@ -230,21 +228,99 @@ async function resolveForeignOrgSlug(
 
 /**
  * ダッシュボードのスコープカルーセルを目的スコープ（TEAM / ORGANIZATION）へ送り、
+ * 「slug 解決済み かつ 管理ロール（ADMIN/DEPUTY）」のタグを明示選択して
  * 管理者レンズトグルが描画されるまで待つ。
- * トグルは「実 slug 確定 かつ ADMIN/DEPUTY」のときのみ DOM に出る。
+ *
+ * <p>既定選択（タグ先頭）任せにしない理由: タグ一覧は memberships 由来で、
+ * 環境によっては slug=null のスコープ（=実 slug 未確定）が先頭に来うる。その場合
+ * DashboardTeamPanel.hasResolvedSlug=false でメンバー表示に留まり、トグルが出ない。
+ * 本ヘルパーは「実 slug を持つ管理スコープ」を一覧から特定し、そのタグチップを
+ * クリックして選択することで、レンズ機能そのもの（管理スコープ→トグル描画）を検証する。
+ * トグルは「実 slug 確定 かつ ADMIN/DEPUTY」のときのみ DOM に出る。</p>
  */
-async function gotoDashboardScope(page: Page, scope: 'TEAM' | 'ORGANIZATION'): Promise<void> {
+async function gotoDashboardScope(
+  page: Page,
+  scope: 'TEAM' | 'ORGANIZATION',
+  targetSlug: string,
+): Promise<void> {
   await page.goto('/dashboard')
   await waitForHydration(page)
   // カルーセルのセグメントタブで目的スコープへ切替（PERSONAL→TEAM→ORGANIZATION）
   const segment = page.getByTestId(`scope-segment-${scope}`)
   await expect(segment, `スコープセグメント ${scope} が存在すること`).toBeVisible({ timeout: 20_000 })
   await segment.click()
-  // トグル出現を待つ（loadTabs による slug 解決＋権限取得の完了を含む）
+
+  // タグ一覧（loadTabs）が描画されるまで待つ。
+  await expect(
+    page.locator(`[data-testid^="scope-tab-chip-${scope}-"]`).first(),
+    `${scope} のタグチップが描画されること`,
+  ).toBeVisible({ timeout: 20_000 })
+
+  // 目的 slug のタグチップを選ぶ。タグ一覧は memberships の joined_at 降順 6 件/ページで、
+  // seed が用意した検証用スコープ（FC東京U-18 等・最古参加）は後方ページに出るため、
+  // 見つかるまでページ送りする（chip testid は slug ベース）。
+  await selectScopeTabBySlug(page, scope, targetSlug)
+
+  // トグル出現を待つ（slug 解決＋権限取得の完了を含む）。
   await expect(
     page.getByTestId(`admin-lens-toggle-${scope}`),
     `管理者レンズトグル(${scope})が ADMIN に描画されること`,
   ).toBeVisible({ timeout: 20_000 })
+}
+
+/**
+ * タグバーをページ送りしながら目的 slug のタグチップを探してクリックする。
+ * 見つからなければ次ページへ。最終ページまで見つからなければ失敗させる。
+ */
+async function selectScopeTabBySlug(
+  page: Page,
+  scope: 'TEAM' | 'ORGANIZATION',
+  targetSlug: string,
+): Promise<void> {
+  const chip = page.getByTestId(`scope-tab-chip-${scope}-${targetSlug}`)
+  const nextBtn = page.getByTestId(`scope-tab-nextpage-${scope}`)
+  for (let i = 0; i < 12; i++) {
+    if (await chip.count()) {
+      await chip.click()
+      return
+    }
+    // 次ページが無ければ終了（チップは見つからなかった → 後段の expect で顕在化）。
+    if ((await nextBtn.count()) === 0 || (await nextBtn.isDisabled())) break
+    await nextBtn.click()
+    // ページ遷移後の再描画を待つ（先頭チップの再出現）。
+    await expect(
+      page.locator(`[data-testid^="scope-tab-chip-${scope}-"]`).first(),
+    ).toBeVisible({ timeout: 10_000 })
+    await page.waitForTimeout(300)
+  }
+  // 念のため：ループを抜けてもチップがあればクリック。
+  await expect(chip, `タグ一覧に ${scope} スコープ ${targetSlug} のチップが見つかること`).toBeVisible({
+    timeout: 10_000,
+  })
+  await chip.click()
+}
+
+/**
+ * 管理者レンズトグルを ON にし、ウィジェットグリッドが描画されるまで待つ。
+ * トグルが ON（aria-checked=true）になったことを確認してからグリッドを待つことで、
+ * クリック未着・データロード遅延による取りこぼし（flake）を防ぐ。
+ */
+async function openAdminGrid(page: Page, scope: 'TEAM' | 'ORGANIZATION'): Promise<void> {
+  const toggle = page.getByTestId(`admin-lens-toggle-${scope}`)
+  await expect(toggle, `レンズトグル(${scope})が描画されること`).toBeVisible({ timeout: 20_000 })
+  // タグ選択直後はパネルのデータ再ロード再描画が走っており、クリックが稀に取りこぼされる
+  // （aria-checked が反転しない）ことがある。ON になるまでクリックを数回試行する
+  // （機能が本当に壊れていれば ON にならず 30s で失敗するため、症状は隠さない）。
+  await expect(async () => {
+    if ((await toggle.getAttribute('aria-checked')) !== 'true') {
+      await toggle.click()
+    }
+    await expect(toggle).toHaveAttribute('aria-checked', 'true', { timeout: 3_000 })
+  }, `レンズトグル(${scope})が ON になること`).toPass({ timeout: 30_000 })
+  await expect(
+    page.getByTestId(`admin-widget-grid-${scope}`),
+    `管理者ウィジェットグリッド(${scope})が描画されること`,
+  ).toBeVisible({ timeout: 30_000 })
 }
 
 // ===========================================================================
@@ -258,19 +334,21 @@ let foreignOrgSlug: string | null
 
 test.beforeAll(async () => {
   sharedApi = await pwRequest.newContext()
-  adminToken = await apiLogin(sharedApi, ADMIN_EMAIL, ADMIN_PASSWORD)
+  // ログインは role ごとに 1 回だけ（連続ログインによる BE 間欠 500 を回避）。
+  adminToken = (await resolveCreds(ADMIN_EMAIL, ADMIN_PASSWORD)).token
+  await resolveCreds(MEMBER_EMAIL, MEMBER_PASSWORD) // MEMBER も温めてキャッシュ
   teamSlug = await resolveAdminTeamSlug(sharedApi, adminToken)
 
   const orgRes = await sharedApi.get(`${BE_API}/me/organizations`, { headers: authHeaders(adminToken) })
-  const orgs = (await orgRes.json()).data as Array<{ slug: string; role: string }>
+  const orgs = (await orgRes.json()).data as Array<{ slug: string | null; role: string }>
   const adminOrg = orgs.find((o) => o.role === 'ADMIN')
   expect(adminOrg, 'ADMIN ロールの組織が存在すること').toBeTruthy()
-  orgSlug = adminOrg!.slug
+  orgSlug = adminOrg!.slug!
 
   foreignOrgSlug = await resolveForeignOrgSlug(
     sharedApi,
     adminToken,
-    orgs.map((o) => o.slug),
+    orgs.map((o) => o.slug).filter((s): s is string => s !== null),
   )
 })
 
@@ -294,13 +372,26 @@ test.describe('F10.1.1 管理コンソール — アクセスガード', () => {
     // MEMBER でログイン（API ブリッジ経由）
     await loginViaApiBridge(page, MEMBER_EMAIL, MEMBER_PASSWORD)
 
-    // トーストは navigateTo(scopeTop) と同時に発火するため、goto 前からリスナーを設定して
+    // まず通常ページを開いてアプリシェル（PrimeVue <Toast> を含むレイアウト）をマウントしておく。
+    await page.goto('/dashboard')
+    await waitForHydration(page)
+
+    // トーストは navigateTo(scopeTop) と同時に発火するため、遷移前からリスナーを設定して
     // リダイレクト完了後にトーストが消えてしまうタイミング問題を回避する。
     const toastVisible = page.getByText('管理者権限が必要です').waitFor({
       state: 'visible',
       timeout: 20_000,
     })
-    await page.goto(`/teams/${teamSlug}/admin`)
+
+    // page.goto はフルリロードで Nuxt アプリを再マウントするため、ミドルウェアの toast.add 時点で
+    // <Toast> が未マウントとなりトーストが描画されない。クライアントサイド遷移（router.push）なら
+    // <Toast> が載ったまま遷移するため、ミドルウェアのアクセス拒否トーストが実際に表示される
+    // （実運用のユーザー操作と同じ経路）。
+    await page.evaluate((url) => {
+      const w = window as unknown as { useNuxtApp?: () => { $router?: { push: (u: string) => Promise<unknown> } } }
+      // navigateTo によるリダイレクトで push が reject されることがあるため握る。
+      void w.useNuxtApp?.().$router?.push(url)?.catch(() => {})
+    }, `/teams/${teamSlug}/admin`)
 
     // ミドルウェアが権限不足を検知し、スコープトップ /teams/{slug} へ navigateTo する
     await page.waitForURL(new RegExp(`/teams/${teamSlug}(\\?|/?$)`), { timeout: 20_000 })
@@ -371,14 +462,10 @@ test.describe('F10.1.1 管理者レンズ — ウィジェット描画（実デ�
     page,
   }) => {
     await loginViaApiBridge(page, ADMIN_EMAIL, ADMIN_PASSWORD)
-    await gotoDashboardScope(page, 'TEAM')
+    await gotoDashboardScope(page, 'TEAM', teamSlug)
 
     // トグル押下で管理者レンズ ON → グリッドへシート差替
-    await page.getByTestId('admin-lens-toggle-TEAM').click()
-    await expect(
-      page.getByTestId('admin-widget-grid-TEAM'),
-      '管理者ウィジェットグリッド(TEAM)が描画されること',
-    ).toBeVisible({ timeout: 15_000 })
+    await openAdminGrid(page, 'TEAM')
 
     // 各ウィジェット testid が描画される（チームスコープ）
     await expect(page.getByTestId('admin-approvals-total-TEAM')).toBeVisible({ timeout: 15_000 })
@@ -408,15 +495,18 @@ test.describe('F10.1.1 管理者レンズ — ウィジェット描画（実デ�
     page,
   }) => {
     await loginViaApiBridge(page, ADMIN_EMAIL, ADMIN_PASSWORD)
-    await gotoDashboardScope(page, 'ORGANIZATION')
+    await gotoDashboardScope(page, 'ORGANIZATION', orgSlug)
 
-    await page.getByTestId('admin-lens-toggle-ORGANIZATION').click()
+    await openAdminGrid(page, 'ORGANIZATION')
+
+    // 承認待ちウィジェット: 件数(>0)または空状態(0件)のいずれかが描画されること（loaded 状態）。
+    // この組織(seed)は承認待ち 0 件なので空状態になりうる。集計失敗(degraded/fetchFailed)でないことを担保する。
     await expect(
-      page.getByTestId('admin-widget-grid-ORGANIZATION'),
-      '管理者ウィジェットグリッド(ORG)が描画されること',
+      page
+        .getByTestId('admin-approvals-total-ORGANIZATION')
+        .or(page.getByTestId('admin-approvals-empty-ORGANIZATION')),
+      '承認待ちウィジェットが loaded 状態（件数 or 空）で描画されること',
     ).toBeVisible({ timeout: 15_000 })
-
-    await expect(page.getByTestId('admin-approvals-total-ORGANIZATION')).toBeVisible({ timeout: 15_000 })
     await expect(page.getByTestId('admin-console-link-ORGANIZATION')).toBeVisible()
     await expect(page.getByTestId('admin-payments-link')).toBeVisible() // 組織専用
     await expect(page.getByTestId('admin-alert-link-ORGANIZATION')).toBeVisible()
@@ -437,9 +527,8 @@ test.describe('F10.1.1 管理者レンズ — ウィジェット描画（実デ�
 test.describe('F10.1.1 管理者レンズ — 導線遷移（要素1の成果検証）', () => {
   test('LINK-TEAM-001: チーム管理者グリッドの各リンク → 正本ルートへ着地（404 でない）', async ({ page }) => {
     await loginViaApiBridge(page, ADMIN_EMAIL, ADMIN_PASSWORD)
-    await gotoDashboardScope(page, 'TEAM')
-    await page.getByTestId('admin-lens-toggle-TEAM').click()
-    await expect(page.getByTestId('admin-widget-grid-TEAM')).toBeVisible({ timeout: 15_000 })
+    await gotoDashboardScope(page, 'TEAM', teamSlug)
+    await openAdminGrid(page, 'TEAM')
 
     // 要素1で整備された正本ルート直結（01 §180）。各リンクの href を取得して着地確認する。
     const linkTestIds: { testId: string; expectPath: RegExp }[] = [
@@ -461,17 +550,15 @@ test.describe('F10.1.1 管理者レンズ — 導線遷移（要素1の成果検
       await waitForHydration(page)
       await expect(page, `${testId} がログインへリダイレクトしない`).not.toHaveURL(/\/login/)
       // 戻ってグリッドを再構築（次のリンク検証のため）
-      await gotoDashboardScope(page, 'TEAM')
-      await page.getByTestId('admin-lens-toggle-TEAM').click()
-      await expect(page.getByTestId('admin-widget-grid-TEAM')).toBeVisible({ timeout: 15_000 })
+      await gotoDashboardScope(page, 'TEAM', teamSlug)
+      await openAdminGrid(page, 'TEAM')
     }
   })
 
   test('LINK-ORG-001: 組織管理者グリッドの各リンク → 正本ルートへ着地（404 でない）', async ({ page }) => {
     await loginViaApiBridge(page, ADMIN_EMAIL, ADMIN_PASSWORD)
-    await gotoDashboardScope(page, 'ORGANIZATION')
-    await page.getByTestId('admin-lens-toggle-ORGANIZATION').click()
-    await expect(page.getByTestId('admin-widget-grid-ORGANIZATION')).toBeVisible({ timeout: 15_000 })
+    await gotoDashboardScope(page, 'ORGANIZATION', orgSlug)
+    await openAdminGrid(page, 'ORGANIZATION')
 
     const linkTestIds: { testId: string; expectPath: RegExp }[] = [
       { testId: 'admin-payments-link', expectPath: new RegExp(`/organizations/${orgSlug}/payments`) },
@@ -493,9 +580,8 @@ test.describe('F10.1.1 管理者レンズ — 導線遷移（要素1の成果検
       expect(resp?.status(), `${testId} 着地 ${href} が 4xx/5xx でない`).toBeLessThan(400)
       await waitForHydration(page)
       await expect(page, `${testId} がログインへリダイレクトしない`).not.toHaveURL(/\/login/)
-      await gotoDashboardScope(page, 'ORGANIZATION')
-      await page.getByTestId('admin-lens-toggle-ORGANIZATION').click()
-      await expect(page.getByTestId('admin-widget-grid-ORGANIZATION')).toBeVisible({ timeout: 15_000 })
+      await gotoDashboardScope(page, 'ORGANIZATION', orgSlug)
+      await openAdminGrid(page, 'ORGANIZATION')
     }
   })
 })
