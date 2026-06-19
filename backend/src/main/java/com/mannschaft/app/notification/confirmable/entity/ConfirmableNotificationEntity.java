@@ -16,6 +16,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -59,7 +60,7 @@ public class ConfirmableNotificationEntity {
      * {@code IllegalArgumentException} で連鎖故障させない防御を持つこと（01_data_model §5 警告）。</p>
      */
     @Column(name = "source_type", nullable = false, length = 40)
-    @SuperBuilder.Default
+    @Builder.Default
     private String sourceType = "EMERGENCY_CLOSURE";
 
     /**
@@ -91,13 +92,13 @@ public class ConfirmableNotificationEntity {
     /** 優先度（NORMAL / HIGH / URGENT） */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
-    @SuperBuilder.Default
+    @Builder.Default
     private ConfirmableNotificationPriority priority = ConfirmableNotificationPriority.NORMAL;
 
     /** ステータス（ACTIVE / COMPLETED / EXPIRED / CANCELLED） */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @SuperBuilder.Default
+    @Builder.Default
     private ConfirmableNotificationStatus status = ConfirmableNotificationStatus.ACTIVE;
 
     /** 確認期限。NULL は無期限。 */
@@ -144,7 +145,7 @@ public class ConfirmableNotificationEntity {
      * 確認率計算の分母として使用。
      */
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Integer totalRecipientCount = 0;
 
     /**
@@ -156,7 +157,7 @@ public class ConfirmableNotificationEntity {
      */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    @SuperBuilder.Default
+    @Builder.Default
     private UnconfirmedVisibility unconfirmedVisibility = UnconfirmedVisibility.CREATOR_AND_ADMIN;
 
     /** 使用したテンプレートID（参照用。テンプレート削除後も記録を保持） */

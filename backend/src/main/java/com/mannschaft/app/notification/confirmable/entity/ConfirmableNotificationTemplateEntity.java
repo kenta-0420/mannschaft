@@ -16,6 +16,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -63,7 +64,7 @@ public class ConfirmableNotificationTemplateEntity {
     /** デフォルト優先度（NORMAL / HIGH / URGENT） */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
-    @SuperBuilder.Default
+    @Builder.Default
     private ConfirmableNotificationPriority defaultPriority = ConfirmableNotificationPriority.NORMAL;
 
     /** テンプレート作成者（退会時 NULL に設定） */

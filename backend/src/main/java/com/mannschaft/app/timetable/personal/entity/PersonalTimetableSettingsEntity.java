@@ -9,6 +9,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -33,23 +34,23 @@ public class PersonalTimetableSettingsEntity {
 
     @Setter
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean autoReflectClassChangesToCalendar = true;
 
     @Setter
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean notifyTeamSlotNoteUpdates = true;
 
     @Setter
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @SuperBuilder.Default
+    @Builder.Default
     private DefaultPeriodTemplate defaultPeriodTemplate = DefaultPeriodTemplate.CUSTOM;
 
     @Setter
     @Column(nullable = false, columnDefinition = "JSON")
-    @SuperBuilder.Default
+    @Builder.Default
     private String visibleDefaultFields = "[\"preparation\",\"review\",\"items_to_bring\",\"free_memo\"]";
 
     private LocalDateTime createdAt;

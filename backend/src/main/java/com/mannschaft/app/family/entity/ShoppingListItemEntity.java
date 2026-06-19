@@ -9,6 +9,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -43,7 +44,7 @@ public class ShoppingListItemEntity {
 
     private Long assignedTo;
 
-    @SuperBuilder.Default
+    @Builder.Default
     @Column(nullable = false)
     private Boolean isChecked = false;
 
@@ -51,7 +52,7 @@ public class ShoppingListItemEntity {
 
     private LocalDateTime checkedAt;
 
-    @SuperBuilder.Default
+    @Builder.Default
     @Column(nullable = false)
     private Integer sortOrder = 0;
 

@@ -9,6 +9,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -113,7 +114,7 @@ public class OrganizationEntity extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "supporter_name_disclosure", nullable = false,
             columnDefinition = "ENUM('DISPLAY_NAME','REAL_NAME') NOT NULL DEFAULT 'DISPLAY_NAME'")
-    @SuperBuilder.Default
+    @Builder.Default
     private com.mannschaft.app.publicview.enums.NameDisclosureMode supporterNameDisclosure =
             com.mannschaft.app.publicview.enums.NameDisclosureMode.DISPLAY_NAME;
 
@@ -130,13 +131,13 @@ public class OrganizationEntity extends BaseEntity {
     /** F19.1 Phase 7: イベントを公開ページに表示するか。 */
     @Column(name = "public_events_enabled", nullable = false,
             columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
-    @SuperBuilder.Default
+    @Builder.Default
     private boolean publicEventsEnabled = false;
 
     /** F19.1 Phase 7: タイムライン投稿を公開ページに表示するか。 */
     @Column(name = "timeline_posts_public", nullable = false,
             columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
-    @SuperBuilder.Default
+    @Builder.Default
     private boolean timelinePostsPublic = false;
 
     /**

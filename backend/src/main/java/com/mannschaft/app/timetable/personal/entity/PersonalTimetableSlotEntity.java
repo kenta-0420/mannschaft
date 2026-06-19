@@ -8,6 +8,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -38,7 +39,7 @@ public class PersonalTimetableSlotEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 5)
-    @SuperBuilder.Default
+    @Builder.Default
     private WeekPattern weekPattern = WeekPattern.EVERY;
 
     @Column(nullable = false, length = 200)
@@ -66,7 +67,7 @@ public class PersonalTimetableSlotEntity extends BaseEntity {
     private Long linkedSlotId;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean autoSyncChanges = true;
 
     @Column(length = 300)

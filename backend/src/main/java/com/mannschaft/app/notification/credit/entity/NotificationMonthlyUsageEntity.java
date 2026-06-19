@@ -7,6 +7,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -40,22 +41,22 @@ public class NotificationMonthlyUsageEntity extends BaseEntity {
 
     /** 合計使用通数 */
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Long usedCount = 0L;
 
     /** 無料枠から消費した通数 */
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Long freeCount = 0L;
 
     /** クレジット残高から消費した通数 */
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Long creditCount = 0L;
 
     /** 猶予期間中の送信通数（翌月1日に相殺予定） */
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Long graceCount = 0L;
 
     /**

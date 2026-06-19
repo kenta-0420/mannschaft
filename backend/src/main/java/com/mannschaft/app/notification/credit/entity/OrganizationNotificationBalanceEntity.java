@@ -6,6 +6,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -32,7 +33,7 @@ public class OrganizationNotificationBalanceEntity extends BaseEntity {
 
     /** 今月の無料枠使用通数 */
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Long freeUsedThisMonth = 0L;
 
     /** 無料枠リセット月（YYYY-MM-01） */
@@ -41,14 +42,14 @@ public class OrganizationNotificationBalanceEntity extends BaseEntity {
 
     /** 今月の9000通アラート送信済みフラグ */
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean alertSentThisMonth = false;
 
     /**
      * クレジット残高（マイナスあり: 残高不足時は負債）。
      */
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Long creditBalance = 0L;
 
     /** 残高不足による猶予期間開始日時 */
@@ -58,13 +59,13 @@ public class OrganizationNotificationBalanceEntity extends BaseEntity {
      * 猶予期間中の累積負債（翌月1日に {@code credit_balance} から相殺する）。
      */
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Long gracePeriodDebt = 0L;
 
     /** JPA楽観的ロック用バージョン */
     @Version
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Long version = 0L;
 
     // ─────────────────────────────────────────────────────────

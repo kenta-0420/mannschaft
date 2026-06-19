@@ -15,6 +15,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -48,16 +49,16 @@ public class UserCareLinkEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    @SuperBuilder.Default
+    @Builder.Default
     private CareRelationship relationship = CareRelationship.PARENT;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean isPrimary = true;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @SuperBuilder.Default
+    @Builder.Default
     private CareLinkStatus status = CareLinkStatus.PENDING;
 
     @Enumerated(EnumType.STRING)
@@ -71,34 +72,34 @@ public class UserCareLinkEntity {
     private LocalDateTime confirmedAt;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean notifyOnRsvp = true;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean notifyOnCheckin = true;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean notifyOnCheckout = false;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean notifyOnAbsentAlert = true;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean notifyOnDismissal = true;
 
     @Column(nullable = false)
     private Long createdBy;
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private LocalDateTime updatedAt = LocalDateTime.now();
 
     private LocalDateTime revokedAt;

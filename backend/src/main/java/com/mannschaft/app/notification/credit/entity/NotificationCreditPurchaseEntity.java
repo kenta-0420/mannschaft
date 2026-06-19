@@ -7,6 +7,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -62,7 +63,7 @@ public class NotificationCreditPurchaseEntity extends BaseEntity {
     /** 決済ステータス */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    @SuperBuilder.Default
+    @Builder.Default
     private NotificationCreditPurchaseStatus paymentStatus = NotificationCreditPurchaseStatus.PENDING;
 
     /** 決済完了日時 */
@@ -77,12 +78,12 @@ public class NotificationCreditPurchaseEntity extends BaseEntity {
 
     /** 有効期限30日前アラート送信済みフラグ */
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean alertSent30d = false;
 
     /** 有効期限7日前アラート送信済みフラグ */
     @Column(nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean alertSent7d = false;
 
     /** 失効処理実施日時（失効バッチが処理した際にセット） */

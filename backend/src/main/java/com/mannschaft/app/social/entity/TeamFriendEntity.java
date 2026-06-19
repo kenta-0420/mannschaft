@@ -7,6 +7,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -70,7 +71,7 @@ public class TeamFriendEntity extends BaseEntity {
      * 両チームの ADMIN 承認により切り替え。デフォルトは {@code FALSE}（プライバシー安全側）。
      */
     @Column(name = "is_public", nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean isPublic = false;
 
     /**

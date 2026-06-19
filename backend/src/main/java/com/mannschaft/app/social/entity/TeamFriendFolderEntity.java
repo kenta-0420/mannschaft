@@ -5,6 +5,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -48,17 +49,17 @@ public class TeamFriendFolderEntity extends BaseEntity {
 
     /** 表示色（HEX。UI バッジ色として使用） */
     @Column(name = "color", nullable = false, length = 7)
-    @SuperBuilder.Default
+    @Builder.Default
     private String color = "#6B7280";
 
     /** デフォルトフォルダ判定フラグ（システム自動生成のフォルダかどうか） */
     @Column(name = "is_default", nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Boolean isDefault = false;
 
     /** 並び替え順（小さいほど上に表示） */
     @Column(name = "sort_order", nullable = false)
-    @SuperBuilder.Default
+    @Builder.Default
     private Integer folderOrder = 0;
 
     /** 論理削除日時。NULL の場合はアクティブ。 */
