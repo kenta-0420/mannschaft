@@ -177,26 +177,27 @@ public class CommitteeService {
             }
         }
 
-        // builder パターンで更新
-        CommitteeEntity updated = committee.toBuilder()
-                .name(request.getName() != null ? request.getName() : committee.getName())
-                .description(request.getDescription() != null ? request.getDescription() : committee.getDescription())
-                .purposeTag(request.getPurposeTag() != null ? request.getPurposeTag() : committee.getPurposeTag())
-                .startDate(request.getStartDate() != null ? request.getStartDate() : committee.getStartDate())
-                .endDate(request.getEndDate() != null ? request.getEndDate() : committee.getEndDate())
-                .visibilityToOrg(request.getVisibilityToOrg() != null ? request.getVisibilityToOrg() : committee.getVisibilityToOrg())
-                .defaultConfirmationMode(request.getDefaultConfirmationMode() != null
+        // managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する
+        // （toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化するため廃止）
+        committee.applyUpdate(
+                request.getName() != null ? request.getName() : committee.getName(),
+                request.getDescription() != null ? request.getDescription() : committee.getDescription(),
+                request.getPurposeTag() != null ? request.getPurposeTag() : committee.getPurposeTag(),
+                request.getStartDate() != null ? request.getStartDate() : committee.getStartDate(),
+                request.getEndDate() != null ? request.getEndDate() : committee.getEndDate(),
+                request.getVisibilityToOrg() != null ? request.getVisibilityToOrg() : committee.getVisibilityToOrg(),
+                request.getDefaultConfirmationMode() != null
                         ? request.getDefaultConfirmationMode()
-                        : committee.getDefaultConfirmationMode())
-                .defaultAnnouncementEnabled(request.getDefaultAnnouncementEnabled() != null
+                        : committee.getDefaultConfirmationMode(),
+                request.getDefaultAnnouncementEnabled() != null
                         ? request.getDefaultAnnouncementEnabled()
-                        : committee.isDefaultAnnouncementEnabled())
-                .defaultDistributionScope(request.getDefaultDistributionScope() != null
+                        : committee.isDefaultAnnouncementEnabled(),
+                request.getDefaultDistributionScope() != null
                         ? request.getDefaultDistributionScope()
-                        : committee.getDefaultDistributionScope())
-                .build();
+                        : committee.getDefaultDistributionScope()
+        );
 
-        return committeeRepository.save(updated);
+        return committeeRepository.save(committee);
     }
 
     /**
@@ -255,11 +256,9 @@ public class CommitteeService {
                 throw new BusinessException(CommitteeErrorCode.INVALID_STATUS_TRANSITION);
         }
 
-        CommitteeEntity updated = committee.toBuilder()
-                .status(newStatus)
-                .archivedAt(newArchivedAt)
-                .build();
-        return committeeRepository.save(updated);
+        // managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する
+        committee.applyStatusTransition(newStatus, newArchivedAt);
+        return committeeRepository.save(committee);
     }
 
     // ========================================

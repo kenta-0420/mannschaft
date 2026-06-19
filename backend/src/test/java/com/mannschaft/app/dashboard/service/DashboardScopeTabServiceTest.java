@@ -10,6 +10,7 @@ import com.mannschaft.app.dashboard.entity.DashboardScopeTabOrderEntity;
 import com.mannschaft.app.dashboard.repository.DashboardScopeTabOrderRepository;
 import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.scopefolder.entity.MyScopeFolderEntity;
 import com.mannschaft.app.scopefolder.entity.MyScopeFolderItemEntity;
@@ -33,6 +34,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -109,6 +111,19 @@ class DashboardScopeTabServiceTest {
         lenient().when(teamRepository.findById(anyLong())).thenAnswer(inv -> {
             Long id = inv.getArgument(0);
             return Optional.of(team(id, "Team-" + id, null));
+        });
+        // findAllById: リクエストされた id 集合をすべて「実在」として返す（論理削除なし想定）。
+        // TeamEntity の getId() は BaseEntity から継承するため、Mockito.mock で id を注入する。
+        // lenient().when() は Mockito.OngoingStubbing を返すため thenAnswer を使う。
+        lenient().when(teamRepository.findAllById(any())).thenAnswer(inv -> {
+            Iterable<Long> ids = inv.getArgument(0);
+            List<TeamEntity> result = new ArrayList<>();
+            StreamSupport.stream(ids.spliterator(), false).forEach(id -> {
+                TeamEntity mock = org.mockito.Mockito.mock(TeamEntity.class);
+                org.mockito.Mockito.when(mock.getId()).thenReturn(id);
+                result.add(mock);
+            });
+            return result;
         });
     }
 
@@ -269,6 +284,35 @@ class DashboardScopeTabServiceTest {
             assertThat(res.items()).extracting(ScopeTabItemResponse::scopeId)
                     .containsExactlyInAnyOrder(10L, 30L);
             assertThat(res.totalCount()).isEqualTo(2);
+        }
+
+        @Test
+        @DisplayName("membership は存在するが team が論理削除済み（孤児）の場合は一覧から除外される")
+        void orphanMembershipExcluded() {
+            // activeScopeIds: 10（実在）, 175（孤児: team 削除済み）, 159（孤児）
+            given(membershipRepository.findActiveByUserAndScopeType(eq(USER_ID), any()))
+                    .willReturn(List.of(
+                            activeMembership(10L, com.mannschaft.app.membership.domain.ScopeType.TEAM, LocalDateTime.now()),
+                            activeMembership(175L, com.mannschaft.app.membership.domain.ScopeType.TEAM, LocalDateTime.now().minusDays(1)),
+                            activeMembership(159L, com.mannschaft.app.membership.domain.ScopeType.TEAM, LocalDateTime.now().minusDays(2))));
+            given(scopeTabOrderRepository.findByUserIdAndScopeTypeOrderBySortOrderAsc(USER_ID, "TEAM"))
+                    .willReturn(List.of());
+            // findById は個別取得（buildItem 内）
+            lenient().when(teamRepository.findById(10L)).thenReturn(Optional.of(team(10L, "Team-10", null)));
+            // findAllById: 10 のみ実在、175 と 159 は論理削除済み（結果に含まれない）。
+            // @SQLRestriction により論理削除済みは findAllById の結果に含まれない。
+            // Mockito.mock で getId() = 10L を返すモックを使い、existingScopeIds = {10} を確定させる。
+            given(teamRepository.findAllById(any())).willAnswer(inv -> {
+                TeamEntity mock10 = org.mockito.Mockito.mock(TeamEntity.class);
+                org.mockito.Mockito.when(mock10.getId()).thenReturn(10L);
+                return List.of(mock10);
+            });
+
+            ScopeTabPageResponse res = service.getScopeTabs("TEAM", 0, null);
+
+            // 孤児 membership (175, 159) は除外され、実在する 10 のみが返る。
+            assertThat(res.items()).extracting(ScopeTabItemResponse::scopeId).containsExactly(10L);
+            assertThat(res.totalCount()).isEqualTo(1);
         }
 
         @Test

@@ -161,6 +161,108 @@ dependencies {
 ```
 * **N+1 問題の防止**: リレーションの取得には `@EntityGraph` またはJPQLの `JOIN FETCH` を明示的に使用し、Lazy Loading による N+1 問題を防止すること。
 
+### Entity 更新パターン規約 — managed entity の直接ミューテートで行う（`toBuilder().build() → save` 禁止）（2026-06-19〜）
+
+#### 問題：`toBuilder().build()` で再構築して `save()` すると INSERT 化する
+
+`BaseEntity` / `UuidV7Entity` を継承したエンティティを以下のように更新しようとすると、**静かに INSERT が発行される**という致命的なバグが発生する。
+
+```java
+// NG: toBuilder().build() で再構築して save
+MyEntity updated = entity.toBuilder()
+    .name(request.name())
+    .build();
+myRepository.save(updated);  // → INSERT が発行される（id=null のため）
+```
+
+**原因**: 本プロジェクトは `@Builder`（`@SuperBuilder` ではない）を使用している。Lombok の `@Builder(toBuilder = true)` による `toBuilder()` は**同一クラスのフィールドのみ**をコピーし、`BaseEntity` / `UuidV7Entity` 等の**親クラス由来の継承フィールド（`id`）はコピーしない**。その結果、再構築されたインスタンスの `id` が `null` になり、JPA は新規INSERT と判断する。
+
+- 一意制約があれば `500 Internal Server Error` が発生する
+- 一意制約がなければ**行が静かに二重化**する（検知が困難で非常に危険）
+
+この問題は Service のユニットテストでは検出できず、**実際の DB を使う統合テスト・実機テストでしか発覚しない**（2026-06-19 横断根治キャンペーンで約45箇所を修正）。
+
+#### ルール：managed entity に直接ミューテートして save する
+
+既存エンティティの更新は、`findById` で取得した **managed entity に対してドメインメソッドでその場でフィールドをミューテートし、そのまま `save(entity)`** で行うこと。
+
+```java
+// OK: managed entity を直接ミューテートして save
+MyEntity entity = myRepository.findById(id)
+    .orElseThrow(() -> new NotFoundException("リソースが見つかりません"));
+
+entity.applyUpdate(request);  // ← ドメインメソッドでミューテート
+myRepository.save(entity);    // → UPDATE が発行される（id が保持されているため）
+```
+
+Entity 側にドメインメソッドを定義する:
+
+```java
+// Entity 側のドメインメソッド
+public void applyUpdate(UpdateMyRequest request) {
+    if (request.name() != null) {
+        this.name = request.name();
+    }
+    if (request.description() != null) {
+        this.description = request.description();
+    }
+    // ... 他のフィールドも同様に
+}
+```
+
+#### `toBuilder()` / `builder()` が許可される用途
+
+以下の用途では `id` 消失の問題が発生しないため、引き続き使用してよい。
+
+| 用途 | 説明 |
+|---|---|
+| **新規エンティティの作成** | `Entity.builder()...build()` による新規行作成（`id` は自動生成されるため問題なし） |
+| **レスポンス DTO の組み立て** | DTO は `BaseEntity` を継承しないため問題なし |
+| **`@Id` を自前宣言しているエンティティ** | 親クラスから `id` を継承していないため `toBuilder()` でもコピーされる |
+| **TestFixture での複製** | 新規行を作ることが目的の文脈（テストデータ生成）は許可 |
+
+#### 移行時の注意事項
+
+`toBuilder().build() → save` を managed entity の直接ミューテートへ書き換える際、以下の点に注意すること。
+
+**① null ガードのセマンティクスを正確に再現する**
+
+旧コードで「リクエストが `null` のフィールドは既存値を維持する」という部分更新セマンティクスがある場合、`applyUpdate` メソッド内または呼び出し側で同じ null ガードを実装すること。
+
+```java
+// 旧コード（NG）の null ガードを applyUpdate に移植する例
+public void applyUpdate(UpdateMyRequest request) {
+    if (request.name() != null) {          // null ガードを applyUpdate 内で再現
+        this.name = request.name();
+    }
+}
+```
+
+**② 旧値の先行キャプチャ（副作用がある場合）**
+
+監査ログ・通知・状態遷移など、**旧値と新値を比較して副作用を起こす処理**がある場合は、ミューテートで旧値が上書きされる前に、必ずローカル変数に旧値を退避してから比較・記録すること。
+
+```java
+// NG: ミューテート後に entity.getOldField() を参照すると常に新値になる
+entity.applyUpdate(request);
+if (entity.getName().equals(request.name())) { ... }  // 常に true になる
+
+// OK: 先に旧値を退避してからミューテート
+String oldName = entity.getName();   // ← 先に旧値をキャプチャ
+entity.applyUpdate(request);
+if (!oldName.equals(entity.getName())) {
+    auditLog.record("名前変更: {} → {}", oldName, entity.getName());
+}
+```
+
+#### 背景・参考
+
+2026-06-19 の横断根治キャンペーンで約45箇所の `toBuilder().build() → save` を修正した。
+手本 PR: #1643（`EventService.updateEvent` + `EventEntity.applyUpdate` の直接ミューテートへの書き換え）、他 #1648 / #1651 / #1656 / #1667 等。
+
+`@SuperBuilder` を使えば継承フィールドも `toBuilder()` でコピーされ本問題は回避できるが、
+本プロジェクトは `@Builder` 統一のため上記ルールで運用面から担保する。
+
 ### Entity フィールドの @Column(name) 必須ルール
 
 #### 数字を挟む略語フィールドは @Column(name=...) を必ず明示すること

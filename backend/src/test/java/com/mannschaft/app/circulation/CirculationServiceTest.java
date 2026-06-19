@@ -1,5 +1,7 @@
 package com.mannschaft.app.circulation;
 
+import com.mannschaft.app.circulation.CirculationMode;
+import com.mannschaft.app.circulation.CirculationStatus;
 import com.mannschaft.app.circulation.dto.DocumentResponse;
 import com.mannschaft.app.circulation.dto.DocumentStatsResponse;
 import com.mannschaft.app.circulation.dto.UpdateDocumentRequest;
@@ -291,6 +293,55 @@ class CirculationServiceTest {
             assertThat(result.getTotal()).isEqualTo(11L);
             assertThat(result.getDraft()).isEqualTo(2L);
             assertThat(result.getActive()).isEqualTo(3L);
+        }
+    }
+
+    @Nested
+    @DisplayName("activateDocument - toBuilder 廃止・id 保持回帰テスト")
+    class ActivateDocumentToBuilderRegression {
+
+        @Test
+        @DisplayName("activateDocument_SEQUENTIAL → save に渡るのが findById の同一インスタンスかつ id 保持")
+        void activateDocument_sequential_savesOriginalInstanceWithIdPreserved() throws Exception {
+            // Given: SEQUENTIAL モードの DRAFT 文書（id をリフレクションでセット）
+            CirculationDocumentEntity entity = CirculationDocumentEntity.builder()
+                    .scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).createdBy(USER_ID)
+                    .title("回覧テスト").body("回覧本文")
+                    .circulationMode(CirculationMode.SEQUENTIAL)
+                    .build();
+            java.lang.reflect.Field idField = findField(entity.getClass(), "id");
+            idField.setAccessible(true);
+            idField.set(entity, DOCUMENT_ID);
+
+            DocumentResponse response = createDocumentResponse();
+            given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(recipientRepository.countByDocumentId(DOCUMENT_ID)).willReturn(3L);
+            given(documentRepository.save(any())).willReturn(entity);
+            given(circulationMapper.toDocumentResponse(entity)).willReturn(response);
+
+            // When
+            circulationService.activateDocument(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID);
+
+            // Then: save に渡るのが findById の同一インスタンスかつ id を保持していることを検証
+            ArgumentCaptor<CirculationDocumentEntity> captor =
+                    ArgumentCaptor.forClass(CirculationDocumentEntity.class);
+            verify(documentRepository).save(captor.capture());
+            assertThat(captor.getValue()).isSameAs(entity);
+            assertThat(captor.getValue().getId()).isEqualTo(DOCUMENT_ID);
+            assertThat(captor.getValue().getStatus()).isEqualTo(CirculationStatus.ACTIVE);
+            assertThat(captor.getValue().getSequentialCount()).isEqualTo(3);
+        }
+
+        private java.lang.reflect.Field findField(Class<?> clazz, String name) throws NoSuchFieldException {
+            while (clazz != null) {
+                try {
+                    return clazz.getDeclaredField(name);
+                } catch (NoSuchFieldException e) {
+                    clazz = clazz.getSuperclass();
+                }
+            }
+            throw new NoSuchFieldException(name);
         }
     }
 }

@@ -49,4 +49,15 @@ public class WebhookDeliveryLogEntity extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String errorMessage;
+
+    /**
+     * 配信結果を反映する。
+     * managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する。
+     * （toBuilder().build() は継承フィールド id を引き継がず INSERT 化するため使用しない）
+     */
+    public void applyDeliveryResult(Integer responseStatus, DeliveryStatus deliveryStatus, String errorMessage) {
+        this.responseStatus = responseStatus;
+        this.deliveryStatus = deliveryStatus;
+        this.errorMessage = errorMessage;
+    }
 }
