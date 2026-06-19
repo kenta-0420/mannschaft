@@ -7,8 +7,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -43,8 +42,7 @@ import java.time.LocalDateTime;
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class BudgetThresholdAlertEntity extends BaseEntity {
 
     /** FK → shift_budget_allocations。ON DELETE CASCADE */

@@ -477,7 +477,7 @@ public class ScheduleAttendanceService {
     @Transactional
     public void generateAttendanceRecords(Long scheduleId, List<Long> memberUserIds) {
         List<ScheduleAttendanceEntity> records = memberUserIds.stream()
-                .map(userId -> ScheduleAttendanceEntity.builder()
+                .map(userId -> (ScheduleAttendanceEntity) ScheduleAttendanceEntity.builder()
                         .scheduleId(scheduleId)
                         .userId(userId)
                         .status(AttendanceStatus.UNDECIDED)

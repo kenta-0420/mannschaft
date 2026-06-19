@@ -54,7 +54,7 @@ public class ShiftAvailabilityService {
 
         // 新規作成
         List<MemberAvailabilityDefaultEntity> entities = req.getAvailabilities().stream()
-                .map(avail -> MemberAvailabilityDefaultEntity.builder()
+                .map(avail -> (MemberAvailabilityDefaultEntity) MemberAvailabilityDefaultEntity.builder()
                         .userId(userId)
                         .teamId(teamId)
                         .dayOfWeek(avail.getDayOfWeek())
