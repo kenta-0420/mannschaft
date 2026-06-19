@@ -10,7 +10,6 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
@@ -26,7 +25,6 @@ import java.time.LocalDateTime;
 @Table(name = "analytics_alert_rules")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @SuperBuilder(toBuilder = true)
 public class AnalyticsAlertRuleEntity extends BaseEntity {
 
