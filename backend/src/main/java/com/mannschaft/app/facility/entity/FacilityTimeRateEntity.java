@@ -8,7 +8,6 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,7 +22,6 @@ import java.time.LocalTime;
 @Table(name = "facility_time_rates")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @SuperBuilder(toBuilder = true)
 public class FacilityTimeRateEntity extends BaseEntity {
 

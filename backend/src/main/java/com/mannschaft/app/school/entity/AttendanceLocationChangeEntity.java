@@ -8,7 +8,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -22,7 +21,6 @@ import java.time.LocalTime;
 @Table(name = "attendance_location_changes")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @SuperBuilder(toBuilder = true)
 public class AttendanceLocationChangeEntity extends BaseEntity {
 

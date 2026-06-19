@@ -123,7 +123,7 @@ public class AttendanceRequirementEvaluationService {
         AttendanceRequirementEvaluationEntity entity =
                 evaluationRepository.findTopByStudentUserIdAndRequirementRuleIdOrderByEvaluatedAtDesc(
                         studentUserId, requirementRuleId)
-                .map(existing -> existing.toBuilder()
+                .map(existing -> (AttendanceRequirementEvaluationEntity) existing.toBuilder()
                         .status(newStatus)
                         .currentAttendanceRate(attendanceRate)
                         .remainingAllowedAbsences(remainingAllowedAbsences)

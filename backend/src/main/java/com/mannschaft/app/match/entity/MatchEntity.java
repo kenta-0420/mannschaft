@@ -15,7 +15,6 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -41,7 +40,6 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @SuperBuilder(toBuilder = true)
 @EqualsAndHashCode(callSuper = true)
 public class MatchEntity extends UuidV7Entity {
