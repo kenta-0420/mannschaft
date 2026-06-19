@@ -513,6 +513,9 @@ public class SurveyService {
 
         // 受信者通知（distribution_mode に応じた母集団）
         // 組織×ALL は配下参加チームを展開する（OrganizationMembershipService 経由・越境是正）。
+        // recipients は publish（SurveyPublishNotificationListener#resolveRecipients）・
+        // remind（SurveyRemindService）と同一の配信母集団解決ロジック（ALL=resolveAllModeRecipients=
+        // resolveOrgDistributionUserIds(includeSupporters トグル準拠)／TARGETED=survey_targets）を用いる。
         List<Long> recipients = saved.getDistributionMode() == DistributionMode.ALL
                 ? resolveAllModeRecipients(scopeType, scopeId, saved)
                 : targetRepository.findBySurveyId(surveyId).stream()
@@ -522,8 +525,13 @@ public class SurveyService {
         NotificationScopeType notifScope = "TEAM".equals(scopeType)
                 ? NotificationScopeType.TEAM
                 : NotificationScopeType.ORGANIZATION;
+        // 配信＝受信権 統一（関所(1)通知 / E: ResultsVisibility 誤用是正）:
+        // recipients は上記のとおり配信母集団として事前認可済みのため、publish/remind と同形に
+        // notifyAllPreAuthorized を用いて canView 絞り込み（SURVEY の結果閲覧 ResultsVisibility 軸を含む）を
+        // 通さない。これにより締切延長通知が直属一般メンバー・配下チームメンバーへ誤 deny で届かない
+        // (B) レグを根治する。
         if (!recipients.isEmpty()) {
-            notificationHelper.notifyAll(
+            notificationHelper.notifyAllPreAuthorized(
                     recipients,
                     SurveyNotificationType.SURVEY_RESPONSE_REMINDER.name(),
                     "アンケート締切が延長されました",
