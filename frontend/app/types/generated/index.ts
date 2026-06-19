@@ -38117,6 +38117,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard/team/{teamSlug}/admin-budget-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * チーム 予算サマリ（管理者レンズ）
+         * @description ADMIN または TEAM_BUDGET_VIEW 保有 DEPUTY 向け。現年度の 配分/実績/残/超過カテゴリ数 を返す。現年度未設定時は has_current_fiscal_year=false
+         */
+        get: operations["getTeamBudgetSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dashboard/team/{teamSlug}/admin-action-required": {
         parameters: {
             query?: never;
@@ -38289,6 +38309,26 @@ export interface paths {
          * @description ADMIN/DEPUTY 向け。未読問い合わせ件数を返す（組織には予約 API が無いため new_reservations は常に 0）
          */
         get: operations["getOrgBusinessAlert"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboard/organization/{orgSlug}/admin-budget-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 組織 予算サマリ（管理者レンズ）
+         * @description ADMIN または BUDGET_VIEW 保有 DEPUTY 向け。現年度の 配分/実績/残/超過カテゴリ数 を返す。現年度未設定時は has_current_fiscal_year=false
+         */
+        get: operations["getOrgBudgetSummary"];
         put?: never;
         post?: never;
         delete?: never;
@@ -42848,50 +42888,85 @@ export interface components {
             /** @deprecated */
             children?: components["schemas"]["TodoResponse"][];
             /**
+             * Format: int32
              * @deprecated
-             * @example 14:30:00
              */
-            dueTime?: string;
+            descendantCompletedCount?: number;
+            /** @deprecated */
+            description?: string;
             /**
              * Format: int64
              * @deprecated
              */
             parentId?: number;
-            /** @deprecated */
-            description?: string;
+            /**
+             * Format: int32
+             * @deprecated
+             */
+            depth?: number;
+            /**
+             * Format: date
+             * @deprecated
+             */
+            startDate?: string;
+            /**
+             * @deprecated
+             * @example 14:30:00
+             */
+            dueTime?: string;
             /** @deprecated */
             title?: string;
             /**
              * Format: int32
              * @deprecated
              */
-            depth?: number;
-            /** @deprecated */
-            createdBy?: components["schemas"]["UserInfo"];
+            sortOrder?: number;
             /**
              * Format: date-time
              * @deprecated
              */
-            createdAt?: string;
+            completedAt?: string;
             /** @deprecated */
             progressRate?: number;
             /**
              * Format: date-time
              * @deprecated
              */
-            updatedAt?: string;
+            createdAt?: string;
             /**
-             * Format: int32
+             * Format: date-time
              * @deprecated
              */
-            sortOrder?: number;
+            updatedAt?: string;
             /** @deprecated */
             scopeType?: string;
+            /**
+             * Format: int64
+             * @deprecated
+             */
+            projectId?: number;
             /**
              * Format: date
              * @deprecated
              */
             dueDate?: string;
+            /** @deprecated */
+            createdBy?: components["schemas"]["UserInfo"];
+            /**
+             * Format: int64
+             * @deprecated
+             */
+            linkedScheduleId?: number;
+            /**
+             * Format: int64
+             * @deprecated
+             */
+            milestoneId?: number;
+            /**
+             * Format: int32
+             * @deprecated
+             */
+            descendantTotalCount?: number;
             /** @deprecated */
             progressManual?: boolean;
             /** @deprecated */
@@ -42900,44 +42975,9 @@ export interface components {
              * Format: int64
              * @deprecated
              */
-            projectId?: number;
-            /**
-             * Format: int64
-             * @deprecated
-             */
-            linkedScheduleId?: number;
-            /**
-             * Format: date-time
-             * @deprecated
-             */
-            completedAt?: string;
-            /**
-             * Format: int64
-             * @deprecated
-             */
-            milestoneId?: number;
-            /**
-             * Format: date
-             * @deprecated
-             */
-            startDate?: string;
-            /**
-             * Format: int32
-             * @deprecated
-             */
-            descendantTotalCount?: number;
+            daysRemaining?: number;
             /** @deprecated */
             statusLabel?: components["schemas"]["TodoStatusLabelInfo"];
-            /**
-             * Format: int64
-             * @deprecated
-             */
-            daysRemaining?: number;
-            /**
-             * Format: int32
-             * @deprecated
-             */
-            descendantCompletedCount?: number;
         };
         TodoScheduleDto: {
             /** Format: date */
@@ -44848,8 +44888,8 @@ export interface components {
             /** Format: int32 */
             severity?: number;
             note?: string;
-            xposition?: number;
             yposition?: number;
+            xposition?: number;
         };
         ChartFormulaResponse: {
             /** Format: int64 */
@@ -44945,8 +44985,8 @@ export interface components {
             /** Format: int32 */
             severity: number;
             note?: string;
-            xposition?: number;
             yposition?: number;
+            xposition?: number;
         };
         UpdateBodyMarksRequest: {
             marks: components["schemas"]["ChartBodyMarkRequest"][];
@@ -60426,11 +60466,11 @@ export interface components {
             philosophy?: boolean;
             officers?: boolean;
             custom_fields?: boolean;
-            customFieldsVisible?: boolean;
             philosophyVisible?: boolean;
+            customFieldsVisible?: boolean;
             officersVisible?: boolean;
-            establishedDateVisible?: boolean;
             homepageUrlVisible?: boolean;
+            establishedDateVisible?: boolean;
         };
         UpdateTeamProfileRequest: {
             homepage_url?: string;
@@ -62129,10 +62169,10 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             first?: boolean;
             last?: boolean;
+            /** Format: int32 */
+            numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
@@ -62142,15 +62182,15 @@ export interface components {
             sort?: components["schemas"]["SortObject"];
             paged?: boolean;
             /** Format: int32 */
-            pageNumber?: number;
-            /** Format: int32 */
             pageSize?: number;
+            /** Format: int32 */
+            pageNumber?: number;
             unpaged?: boolean;
         };
         SortObject: {
             empty?: boolean;
-            unsorted?: boolean;
             sorted?: boolean;
+            unsorted?: boolean;
         };
         ApiResponseListFestivalResponse: {
             data?: components["schemas"]["FestivalResponse"][];
@@ -63311,26 +63351,26 @@ export interface components {
             unassignedTodos?: components["schemas"]["UnassignedTodos"];
             audit?: components["schemas"]["ProjectAuditDto"];
             /** @deprecated */
-            status?: string;
-            /** @deprecated */
             description?: string;
+            /** @deprecated */
+            status?: string;
             /** @deprecated */
             title?: string;
             /** @deprecated */
-            createdBy?: components["schemas"]["UserInfo"];
+            visibility?: string;
+            /** @deprecated */
+            color?: string;
             /** @deprecated */
             progressRate?: number;
             /** @deprecated */
-            color?: string;
+            emoji?: string;
             /**
              * Format: date
              * @deprecated
              */
             dueDate?: string;
             /** @deprecated */
-            visibility?: string;
-            /** @deprecated */
-            emoji?: string;
+            createdBy?: components["schemas"]["UserInfo"];
             /**
              * Format: int32
              * @deprecated
@@ -64201,8 +64241,8 @@ export interface components {
             rsvpStatus?: string;
             /** Format: int32 */
             watcherCount?: number;
-            alreadyCheckedIn?: boolean;
             underCare?: boolean;
+            alreadyCheckedIn?: boolean;
         };
         ApiResponseDismissalStatusResponse: {
             data?: components["schemas"]["DismissalStatusResponse"];
@@ -64995,10 +65035,10 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             first?: boolean;
             last?: boolean;
+            /** Format: int32 */
+            numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
@@ -65323,10 +65363,10 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             first?: boolean;
             last?: boolean;
+            /** Format: int32 */
+            numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
@@ -65544,10 +65584,10 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             first?: boolean;
             last?: boolean;
+            /** Format: int32 */
+            numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
@@ -65629,10 +65669,10 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             first?: boolean;
             last?: boolean;
+            /** Format: int32 */
+            numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
@@ -65718,10 +65758,10 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             first?: boolean;
             last?: boolean;
+            /** Format: int32 */
+            numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
@@ -65826,10 +65866,10 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             first?: boolean;
             last?: boolean;
+            /** Format: int32 */
+            numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
@@ -66773,10 +66813,10 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             first?: boolean;
             last?: boolean;
+            /** Format: int32 */
+            numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
@@ -66801,10 +66841,10 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             first?: boolean;
             last?: boolean;
+            /** Format: int32 */
+            numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
@@ -66833,10 +66873,10 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             first?: boolean;
             last?: boolean;
+            /** Format: int32 */
+            numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
@@ -66884,10 +66924,10 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             first?: boolean;
             last?: boolean;
+            /** Format: int32 */
+            numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
@@ -66949,10 +66989,10 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             first?: boolean;
             last?: boolean;
+            /** Format: int32 */
+            numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
@@ -67146,10 +67186,10 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             first?: boolean;
             last?: boolean;
+            /** Format: int32 */
+            numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
@@ -67241,10 +67281,10 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             first?: boolean;
             last?: boolean;
+            /** Format: int32 */
+            numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
@@ -67974,10 +68014,10 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             first?: boolean;
             last?: boolean;
+            /** Format: int32 */
+            numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
@@ -68051,10 +68091,10 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             first?: boolean;
             last?: boolean;
+            /** Format: int32 */
+            numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
@@ -68082,10 +68122,10 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             first?: boolean;
             last?: boolean;
+            /** Format: int32 */
+            numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
@@ -68247,10 +68287,10 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             first?: boolean;
             last?: boolean;
+            /** Format: int32 */
+            numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
@@ -69394,6 +69434,18 @@ export interface components {
         ApiResponseAdminBusinessAlertScopeResponse: {
             data?: components["schemas"]["AdminBusinessAlertScopeResponse"];
         };
+        AdminBudgetSummaryResponse: {
+            has_current_fiscal_year?: boolean;
+            fiscal_year_name?: string;
+            allocation?: number;
+            actual?: number;
+            remaining?: number;
+            /** Format: int64 */
+            over_budget_category_count?: number;
+        };
+        ApiResponseAdminBudgetSummaryResponse: {
+            data?: components["schemas"]["AdminBudgetSummaryResponse"];
+        };
         AdminActionRequiredResponse: {
             scope_type?: string;
             /** Format: int64 */
@@ -69784,10 +69836,10 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             first?: boolean;
             last?: boolean;
+            /** Format: int32 */
+            numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
@@ -70285,10 +70337,10 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             first?: boolean;
             last?: boolean;
+            /** Format: int32 */
+            numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
@@ -70470,10 +70522,10 @@ export interface components {
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             first?: boolean;
             last?: boolean;
+            /** Format: int32 */
+            numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
@@ -142561,6 +142613,37 @@ export interface operations {
             };
         };
     };
+    getTeamBudgetSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 予算サマリ */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAdminBudgetSummaryResponse"];
+                };
+            };
+            /** @description 非 ADMIN かつ TEAM_BUDGET_VIEW 未保有、または他テナント（COMMON_002） */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAdminBudgetSummaryResponse"];
+                };
+            };
+        };
+    };
     getTeamAdminActionRequired: {
         parameters: {
             query?: {
@@ -142772,6 +142855,37 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseAdminBusinessAlertScopeResponse"];
+                };
+            };
+        };
+    };
+    getOrgBudgetSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgSlug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 予算サマリ */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAdminBudgetSummaryResponse"];
+                };
+            };
+            /** @description 非 ADMIN かつ BUDGET_VIEW 未保有、または他テナント（COMMON_002） */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAdminBudgetSummaryResponse"];
                 };
             };
         };
