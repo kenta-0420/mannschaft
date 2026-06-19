@@ -23,10 +23,12 @@
  *   - メンバー統計（ADMIN_TEAM_MEMBERS / ADMIN_ORG_MEMBERS）: `DashboardAdminMemberStatsWidget`（総数/アクティブ/今月新規・両スコープ）。
  *   - 予約サマリ（ADMIN_TEAM_RESERVATIONS）: `DashboardAdminReservationSummaryWidget`（承認待ち/本日・チーム専用）。
  *
- * P3b Wave3 送り（「準備中（近日公開）」プレースホルダ・本グリッドではデータ取得しない）:
- *   team: 予算
- *   org : 予算 / ポイントカード
- *   これらは P3b Wave3 で対応する。
+ * P3b Wave3 で点火するウィジェット:
+ *   - 予算サマリ（ADMIN_TEAM_BUDGET / ADMIN_ORG_BUDGET）: `DashboardAdminBudgetWidget`（配分/実績/残/超過カテゴリ数・両スコープ）。
+ *
+ * 残プレースホルダ（「準備中（近日公開）」・本グリッドではデータ取得しない）:
+ *   org : ポイントカード
+ *   これは将来 Wave で対応する。
  */
 import type { ScopeTabType } from '~/types/dashboard-scope'
 
@@ -50,12 +52,9 @@ const consoleRoute = computed(() => {
  */
 const placeholderWidgets = computed<{ key: string; labelKey: string; icon: string }[]>(() => {
   if (props.scopeType === 'TEAM') {
-    return [
-      { key: 'budget', labelKey: 'adminConsole.lens.widgets.budget', icon: 'pi pi-wallet' },
-    ]
+    return []
   }
   return [
-    { key: 'budget', labelKey: 'adminConsole.lens.widgets.budget', icon: 'pi pi-wallet' },
     { key: 'pointCards', labelKey: 'adminConsole.lens.widgets.pointCards', icon: 'pi pi-id-card' },
   ]
 })
@@ -127,7 +126,10 @@ function backToMember() {
         :slug="slug"
       />
 
-      <!-- Wave3 送りプレースホルダ（予算/ポイントカード） -->
+      <!-- ⑨ 予算サマリ（team/org 両スコープ・P3b Wave3 点火） -->
+      <DashboardAdminBudgetWidget :scope-type="scopeType" :slug="slug" />
+
+      <!-- 残プレースホルダ（組織のポイントカードのみ） -->
       <SectionCard
         v-for="w in placeholderWidgets"
         :key="w.key"

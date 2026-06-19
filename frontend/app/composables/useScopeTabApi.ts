@@ -33,6 +33,7 @@ import type {
   AdminReportStats,
   AdminMemberStats,
   AdminReservationSummary,
+  AdminBudgetSummary,
 } from '~/types/admin-dashboard-widgets'
 
 // ---- API レスポンス（snake_case）の生型 ----
@@ -232,6 +233,15 @@ interface RawAdminReservationSummary {
   today_count: number
 }
 
+interface RawAdminBudgetSummary {
+  has_current_fiscal_year: boolean
+  fiscal_year_name: string | null
+  allocation: number
+  actual: number
+  remaining: number
+  over_budget_category_count: number
+}
+
 // ---- P3b Wave1 snake_case → camelCase 変換 ----
 
 function toAdminPaymentSummary(r: RawAdminPaymentSummary): AdminPaymentSummary {
@@ -269,6 +279,19 @@ function toAdminReservationSummary(r: RawAdminReservationSummary): AdminReservat
   return {
     pendingCount: r.pending_count ?? 0,
     todayCount: r.today_count ?? 0,
+  }
+}
+
+// ---- P3b Wave3 snake_case → camelCase 変換 ----
+
+function toAdminBudgetSummary(r: RawAdminBudgetSummary): AdminBudgetSummary {
+  return {
+    hasCurrentFiscalYear: r.has_current_fiscal_year ?? false,
+    fiscalYearName: r.fiscal_year_name ?? null,
+    allocation: r.allocation ?? 0,
+    actual: r.actual ?? 0,
+    remaining: r.remaining ?? 0,
+    overBudgetCategoryCount: r.over_budget_category_count ?? 0,
   }
 }
 
@@ -450,6 +473,27 @@ export function useScopeTabApi() {
     return toAdminReservationSummary(res.data)
   }
 
+  /**
+   * 予算サマリ（ADMIN_TEAM_BUDGET / ADMIN_ORG_BUDGET）を取得する（F10.1.1 P3b Wave3・team/org 両対応）。
+   *
+   * 対応 EP:
+   *   - GET /api/v1/dashboard/team/{teamSlug}/admin-budget-summary
+   *   - GET /api/v1/dashboard/organization/{orgSlug}/admin-budget-summary
+   *
+   * @param scopeType - TEAM / ORGANIZATION
+   * @param slug - チーム / 組織の slug
+   */
+  async function getAdminBudgetSummary(
+    scopeType: ScopeTabType,
+    slug: string,
+  ): Promise<AdminBudgetSummary> {
+    const base = scopeType === 'TEAM' ? `team/${slug}` : `organization/${slug}`
+    const res = await api<{ data: RawAdminBudgetSummary }>(
+      `/api/v1/dashboard/${base}/admin-budget-summary`,
+    )
+    return toAdminBudgetSummary(res.data)
+  }
+
   return {
     getScopeTabs,
     updateOrder,
@@ -460,6 +504,7 @@ export function useScopeTabApi() {
     getAdminReportStats,
     getAdminMemberStats,
     getAdminReservationSummary,
+    getAdminBudgetSummary,
   }
 }
 

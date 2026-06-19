@@ -53,6 +53,8 @@ public enum WidgetKey {
     ADMIN_TEAM_MEMBERS(ScopeType.TEAM, true, 13),
     /** F10.1.1 P3b Wave2: 管理者レンズ チーム予約サマリ（承認待ち/本日の予約数・ADMIN 限定・コード固定 ADMINS_AND_ABOVE） */
     ADMIN_TEAM_RESERVATIONS(ScopeType.TEAM, true, 14),
+    /** F10.1.1 P3b Wave3: 管理者レンズ チーム予算サマリ（配分/実績/残/超過カテゴリ数・ADMIN/TEAM_BUDGET_VIEW 限定・コード固定 ADMINS_AND_ABOVE） */
+    ADMIN_TEAM_BUDGET(ScopeType.TEAM, true, 15),
 
     // --- 組織ダッシュボード ---
     ORG_TEAM_LIST(ScopeType.ORGANIZATION, true, 0),
@@ -64,7 +66,9 @@ public enum WidgetKey {
     ORG_TOURNAMENT_SUMMARY(ScopeType.ORGANIZATION, true, 5),
     ORG_BILLING(ScopeType.ORGANIZATION, true, 6),
     /** F10.1.1 P3b Wave2: 管理者レンズ 組織メンバー統計（総数/アクティブ/今月新規・ADMIN 限定・コード固定 ADMINS_AND_ABOVE） */
-    ADMIN_ORG_MEMBERS(ScopeType.ORGANIZATION, true, 7);
+    ADMIN_ORG_MEMBERS(ScopeType.ORGANIZATION, true, 7),
+    /** F10.1.1 P3b Wave3: 管理者レンズ 組織予算サマリ（配分/実績/残/超過カテゴリ数・ADMIN/BUDGET_VIEW 限定・コード固定 ADMINS_AND_ABOVE） */
+    ADMIN_ORG_BUDGET(ScopeType.ORGANIZATION, true, 8);
 
     private final ScopeType scopeType;
     private final boolean defaultVisible;
@@ -120,7 +124,8 @@ public enum WidgetKey {
     private static final Set<WidgetKey> ROLE_RESTRICTED = Set.of(
             TEAM_BILLING, TEAM_PAGE_VIEWS, ORG_BILLING,
             // F10.1.1 P3b 管理者レンズウィジェットは ADMIN/DEPUTY 限定（コード固定 ADMINS_AND_ABOVE）。
-            ADMIN_TEAM_MEMBERS, ADMIN_TEAM_RESERVATIONS, ADMIN_ORG_MEMBERS
+            ADMIN_TEAM_MEMBERS, ADMIN_TEAM_RESERVATIONS, ADMIN_ORG_MEMBERS,
+            ADMIN_TEAM_BUDGET, ADMIN_ORG_BUDGET
     );
 
     public boolean isRoleRestricted() {
