@@ -167,10 +167,11 @@ class SealReadAuthzControllerTest {
         }
 
         @Test
-        @DisplayName("本人: 初回 size 未指定は 20 で問い合わせ・meta が返る")
+        @DisplayName("本人: size未指定は生のnullのままService委譲し、解決結果(limit=20)のmetaを返す")
         void 初回20() {
             loginAs(OWNER_ID);
-            given(stampService.listStampLogs(OWNER_ID, null, 20, null, true))
+            // size 未指定時、Controller は生の null を Service へ渡す（デフォルト20の解決は Service の resolvePageSize 責務）。
+            given(stampService.listStampLogs(OWNER_ID, null, null, null, true))
                     .willReturn(paged(List.of(buildLog(2L), buildLog(1L)), null, false, 20));
 
             ResponseEntity<CursorPagedResponse<StampLogResponse>> response =
@@ -184,10 +185,11 @@ class SealReadAuthzControllerTest {
         }
 
         @Test
-        @DisplayName("本人: size>50 は 50 に丸めて問い合わせ")
+        @DisplayName("本人: size>50 は生値のままService委譲（丸めはService責務）・解決結果limit=50のmetaを返す")
         void サイズ丸め() {
             loginAs(OWNER_ID);
-            given(stampService.listStampLogs(OWNER_ID, null, 50, null, true))
+            // Controller は生の 100 を Service へ渡す。上限50への丸めは Service の resolvePageSize が行い、結果 limit=50 が meta に返る。
+            given(stampService.listStampLogs(OWNER_ID, null, 100, null, true))
                     .willReturn(paged(List.of(), null, false, 50));
 
             ResponseEntity<CursorPagedResponse<StampLogResponse>> response =
@@ -216,7 +218,8 @@ class SealReadAuthzControllerTest {
         @DisplayName("本人: 0件は空配列")
         void ゼロ件() {
             loginAs(OWNER_ID);
-            given(stampService.listStampLogs(OWNER_ID, null, 20, null, true))
+            // size 未指定 → Controller は生の null を Service へ委譲。
+            given(stampService.listStampLogs(OWNER_ID, null, null, null, true))
                     .willReturn(paged(List.of(), null, false, 20));
 
             ResponseEntity<CursorPagedResponse<StampLogResponse>> response =
