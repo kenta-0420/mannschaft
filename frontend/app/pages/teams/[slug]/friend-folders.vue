@@ -112,14 +112,11 @@ onMounted(() => {
 <template>
   <div>
     <div class="mb-6 flex items-start justify-between gap-3">
-      <div class="flex items-start gap-3">
-        <BackButton />
-        <div>
-          <PageHeader :title="t('folders.title')" />
-          <p v-if="canManage" class="text-sm text-surface-500">
-            {{ t('folders.list.remaining', { remaining }) }}
-          </p>
-        </div>
+      <div>
+        <PageHeader :title="t('folders.title')" />
+        <p v-if="canManage" class="text-sm text-surface-500">
+          {{ t('folders.list.remaining', { remaining }) }}
+        </p>
       </div>
       <Button
         v-if="canManage"

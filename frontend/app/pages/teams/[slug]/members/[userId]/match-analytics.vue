@@ -71,7 +71,6 @@ onMounted(load)
 <template>
   <div class="mx-auto max-w-6xl">
     <div class="mb-2 flex items-center gap-3">
-      <BackButton />
       <PageHeader :title="t('match.analytics.member_title')" />
     </div>
     <p class="mb-6 text-sm text-surface-500">{{ t('match.analytics.member_subtitle') }}</p>

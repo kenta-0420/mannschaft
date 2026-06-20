@@ -32,7 +32,6 @@ onMounted(() => loadPermissions())
 <template>
   <div>
     <div class="mb-4 flex items-center gap-3">
-      <BackButton />
       <PageHeader title="チャット" />
     </div>
 

@@ -7,7 +7,6 @@ const teamSlug = String(route.params.slug)
 <template>
   <div>
     <div class="mb-4 flex items-center gap-3">
-      <BackButton />
       <PageHeader title="ギャラリー" />
     </div>
     <GalleryAlbumGrid scope-type="TEAM" :scope-id="teamSlug" />

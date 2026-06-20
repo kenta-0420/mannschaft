@@ -190,8 +190,7 @@ onMounted(async () => {
 <template>
   <div class="mx-auto max-w-3xl">
     <div class="mb-4 flex items-center gap-3">
-      <BackButton :to="`/teams/${teamSlug}/tournaments`" :label="$t('tournament.roster.title')" />
-      <PageHeader :title="$t('tournament.roster.title')" />
+      <PageHeader :title="$t('tournament.roster.title')" :back-to="`/teams/${teamSlug}/tournaments`" :back-label="$t('tournament.roster.title')" />
     </div>
 
     <!-- 試合未選択の場合 -->

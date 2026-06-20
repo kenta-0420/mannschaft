@@ -113,7 +113,6 @@ function onDeleteConfirm(id: number) {
   <div class="mx-auto max-w-3xl p-4">
     <!-- ヘッダー -->
     <div class="mb-4 flex items-center gap-3">
-      <BackButton />
       <PageHeader :title="t('announcement.widget_title')">
         <span class="text-sm text-surface-400">{{ t('announcement.all_announcements') }}</span>
       </PageHeader>

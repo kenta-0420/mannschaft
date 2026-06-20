@@ -11,7 +11,6 @@ const activeTab = ref(0)
 <template>
   <div>
     <div class="mb-4 flex items-center gap-3">
-      <BackButton />
       <PageHeader title="Webhook / 外部API管理" />
     </div>
 

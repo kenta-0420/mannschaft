@@ -55,8 +55,7 @@ onMounted(load)
 <template>
   <div class="mx-auto max-w-6xl px-4 py-4">
     <div class="mb-1 flex items-center gap-3">
-      <BackButton :to="`/teams/${teamSlug}`" />
-      <PageHeader :title="t('match.analytics.team_title')" size="sm" />
+      <PageHeader :title="t('match.analytics.team_title')" size="sm" :back-to="`/teams/${teamSlug}`" />
     </div>
     <p class="mb-6 text-sm text-surface-500">{{ t('match.analytics.team_subtitle') }}</p>
 
