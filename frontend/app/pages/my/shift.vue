@@ -200,7 +200,7 @@ const DOW_KEYS = ['月', '火', '水', '木', '金', '土', '日'] as const
 
 <template>
   <div class="mx-auto max-w-5xl">
-    <PageHeader :title="t('shift.page.myShift')" />
+    <PageHeader :title="t('shift.page.myShift')" back-to="/my" />
 
     <!-- ビュー切り替え・ナビゲーション -->
     <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
