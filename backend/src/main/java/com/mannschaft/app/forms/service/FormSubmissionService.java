@@ -537,7 +537,7 @@ public class FormSubmissionService {
     private List<FormSubmissionValueEntity> saveValues(
             Long submissionId, List<SubmissionValueRequest> values) {
         List<FormSubmissionValueEntity> entities = values.stream()
-                .map(v -> FormSubmissionValueEntity.builder()
+                .map(v -> (FormSubmissionValueEntity) FormSubmissionValueEntity.builder()
                         .submissionId(submissionId)
                         .fieldKey(v.getFieldKey())
                         .fieldType(FormFieldType.valueOf(v.getFieldType()))

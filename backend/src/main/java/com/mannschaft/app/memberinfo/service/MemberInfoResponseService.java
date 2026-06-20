@@ -104,14 +104,14 @@ public class MemberInfoResponseService {
                 }
                 responseRepository.save(builder.build());
             } else {
-                TeamMemberInfoResponseEntity.TeamMemberInfoResponseEntityBuilder builder =
-                    existing.toBuilder().confirmedAt(LocalDateTime.now());
+                // managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する
+                // （toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化するため廃止）
                 if (field.getIsSensitive()) {
-                    builder.valueEncrypted(item.getValue()).valuePlain(null).encryptionKeyVersion(1);
+                    existing.applyUpsert(null, item.getValue(), 1, LocalDateTime.now());
                 } else {
-                    builder.valuePlain(item.getValue()).valueEncrypted(null).encryptionKeyVersion(null);
+                    existing.applyUpsert(item.getValue(), null, null, LocalDateTime.now());
                 }
-                responseRepository.save(builder.build());
+                responseRepository.save(existing);
             }
         }
     }
@@ -201,7 +201,9 @@ public class MemberInfoResponseService {
                     .teamId(teamId).userId(targetUserId).fieldId(field.getId())
                     .lastReminderSentAt(now).build());
             } else {
-                responseRepository.save(resp.toBuilder().lastReminderSentAt(now).build());
+                // managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する
+                resp.updateLastReminderSentAt(now);
+                responseRepository.save(resp);
             }
         }
     }

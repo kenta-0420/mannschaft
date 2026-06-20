@@ -27,12 +27,26 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const { createSurvey } = useSurveyApi()
 const { error: showError, success: showSuccess } = useNotification()
+const { handleApiError } = useErrorHandler()
 
 // === フォーム状態 ===
 const title = ref('')
 const description = ref('')
 const isAnonymous = ref(false)
 const allowMultipleSubmissions = ref(false)
+// F05.4 (B) チーム別内訳トグル（組織スコープのみ・匿名と相互排他）
+const teamBreakdownEnabled = ref(false)
+// 組織配信のときのみチーム別内訳トグルを表示する
+const isOrganizationScope = computed(() => props.scopeType === 'ORGANIZATION')
+
+// 匿名 ON のときはチーム別内訳を無効化（BE が SURVEY_023 で 400 を返すため UI で防ぐ）
+watch(isAnonymous, (anon) => {
+  if (anon) teamBreakdownEnabled.value = false
+})
+// チーム別内訳 ON のときは匿名を選べないようにする（相互排他）
+watch(teamBreakdownEnabled, (enabled) => {
+  if (enabled) isAnonymous.value = false
+})
 const resultsVisibility = ref<ResultsVisibility>('RESPONDENTS')
 const unrespondedVisibility = ref<UnrespondedVisibility>('CREATOR_AND_ADMIN')
 const deadline = ref<Date | null>(null)
@@ -59,6 +73,7 @@ function resetForm() {
   description.value = ''
   isAnonymous.value = false
   allowMultipleSubmissions.value = false
+  teamBreakdownEnabled.value = false
   resultsVisibility.value = 'RESPONDENTS'
   unrespondedVisibility.value = 'CREATOR_AND_ADMIN'
   deadline.value = null
@@ -119,6 +134,8 @@ async function submit() {
       description: description.value.trim() || undefined,
       isAnonymous: isAnonymous.value,
       allowMultipleSubmissions: allowMultipleSubmissions.value,
+      // 組織スコープのみチーム別内訳トグルを送る（チーム/個人スコープでは送らない）
+      teamBreakdownEnabled: isOrganizationScope.value ? teamBreakdownEnabled.value : undefined,
       resultsVisibility: resultsVisibility.value,
       unrespondedVisibility: unrespondedVisibility.value,
       deadline: deadline.value ? deadline.value.toISOString() : undefined,
@@ -146,8 +163,15 @@ async function submit() {
     emit('created', res.data)
     resetForm()
     close()
-  } catch {
-    showError(t('surveys.create.failureToast'))
+  } catch (e) {
+    // BE エラーコード（例: SURVEY_023 匿名×チーム別内訳の併用禁止）があれば
+    // それを優先表示し、無ければ汎用の失敗トーストにフォールバックする。
+    const apiError = e as { data?: { error?: { code?: string } } }
+    if (apiError?.data?.error?.code) {
+      handleApiError(e, 'surveyCreate')
+    } else {
+      showError(t('surveys.create.failureToast'))
+    }
   } finally {
     submitting.value = false
   }
@@ -203,6 +227,26 @@ async function submit() {
           <Checkbox v-model="allowMultipleSubmissions" binary />
           <span>{{ t('surveys.create.allowMultipleSubmissions') }}</span>
         </label>
+      </div>
+
+      <!-- F05.4 (B) チーム別内訳トグル（組織配信のみ・匿名と相互排他） -->
+      <div v-if="isOrganizationScope" class="rounded-lg bg-surface-50 p-3 dark:bg-surface-800">
+        <label class="flex items-center gap-2 text-sm" data-testid="survey-create-team-breakdown">
+          <Checkbox v-model="teamBreakdownEnabled" binary :disabled="isAnonymous" />
+          <span :class="{ 'text-surface-400': isAnonymous }">
+            {{ t('surveys.create.teamBreakdownEnabled') }}
+          </span>
+        </label>
+        <p
+          v-if="isAnonymous"
+          class="mt-1 ml-6 text-xs text-surface-400"
+          data-testid="survey-create-team-breakdown-anonymous-note"
+        >
+          <i class="pi pi-info-circle mr-1" />{{ t('surveys.create.teamBreakdownAnonymousConflict') }}
+        </p>
+        <p v-else class="mt-1 ml-6 text-xs text-surface-400">
+          {{ t('surveys.create.teamBreakdownHint') }}
+        </p>
       </div>
 
       <!-- 可視性設定 -->

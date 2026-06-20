@@ -67,6 +67,26 @@
       "cancel": "Cancelar",
       "cancel_success": "La tarea programada se ha cancelado",
       "cancel_failed": "No se pudo cancelar la tarea programada"
+    },
+    "attendanceTeamBreakdown": {
+      "toggleLabel": "Agrupar por equipo",
+      "toggleHint": "Agrupa la asistencia por equipo subordinado (solo distribucion de la organizacion).",
+      "title": "Asistencia por equipo",
+      "team": "Equipo",
+      "attending": "Asiste",
+      "partial": "Parcial",
+      "absent": "Ausente",
+      "undecided": "Sin responder",
+      "total": "Total",
+      "totalNote": "El total cuenta personas unicas; el conteo por equipo puede solaparse (los miembros en varios equipos se cuentan en cada uno).",
+      "directMembers": "Miembros directos de la organizacion",
+      "reload": "Recargar",
+      "retry": "Reintentar",
+      "exportCsv": "Exportar CSV",
+      "exportFailed": "No se pudo exportar el CSV.",
+      "fetchFailed": "No se pudo cargar el desglose de asistencia por equipo.",
+      "forbidden": "No tienes permiso para ver este desglose.",
+      "empty": "No hay datos de desglose de asistencia por equipo."
     }
   }
 }

@@ -118,6 +118,7 @@ async function onFolderChange(folderId: number | null) {
             :key="item.scopeId"
             type="button"
             role="button"
+            :data-testid="`scope-tab-chip-${scopeType}-${item.slug ?? item.scopeId}`"
             :aria-pressed="item.scopeId === selectedScopeId"
             class="flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors"
             :class="
@@ -125,17 +126,17 @@ async function onFolderChange(folderId: number | null) {
                 ? 'border-primary bg-primary text-primary-contrast'
                 : 'border-surface-300 bg-surface-0 hover:bg-surface-100 dark:border-surface-600 dark:bg-surface-800'
             "
-            @click="selectScope(item.scopeId)"
+            @click="selectScope(item.slug ?? item.scopeId)"
           >
             <Avatar
               :image="item.avatarUrl ?? undefined"
-              :label="item.avatarUrl ? undefined : item.name.charAt(0)"
-              :aria-label="item.name"
+              :label="item.avatarUrl ? undefined : (item.name?.charAt(0) ?? '?')"
+              :aria-label="item.name ?? ''"
               shape="circle"
               size="normal"
               class="!h-6 !w-6 !text-xs"
             />
-            <span class="max-w-28 truncate">{{ item.name }}</span>
+            <span class="max-w-28 truncate">{{ item.name ?? '' }}</span>
             <Badge
               v-if="item.unreadCount > 0"
               :value="item.unreadCount"
@@ -154,6 +155,7 @@ async function onFolderChange(folderId: number | null) {
           rounded
           size="small"
           :disabled="!hasPrev"
+          :data-testid="`scope-tab-prevpage-${scopeType}`"
           :aria-label="$t('scopeDashboard.tagBar.prevPage')"
           @click="goPrevPage"
         />
@@ -164,6 +166,7 @@ async function onFolderChange(folderId: number | null) {
           rounded
           size="small"
           :disabled="!hasNext"
+          :data-testid="`scope-tab-nextpage-${scopeType}`"
           :aria-label="$t('scopeDashboard.tagBar.nextPage')"
           @click="goNextPage"
         />

@@ -313,7 +313,7 @@ class AuthTokenServiceTest {
             assertThatThrownBy(() -> authTokenService.checkRateLimit(key, 5, Duration.ofMinutes(1)))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("AUTH_031"));
+                            .isEqualTo("AUTH_044"));
         }
 
         @Test

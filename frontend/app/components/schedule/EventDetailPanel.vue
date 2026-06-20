@@ -238,6 +238,15 @@ onMounted(async () => {
       @responded="emit('responded')"
     />
 
+    <!-- F03.1 (B) 組織出欠のチーム別内訳（組織スコープ + 管理者のみ）。
+         認可は BE 側 org-ADMIN 限定 EP。ここでは出し分けの一次フィルタとして
+         組織スコープ + canEdit(管理者) + 出欠あり を要求する（403 時はパネル内で明示表示）。 -->
+    <AttendanceTeamBreakdownPanel
+      v-if="event.attendanceRequired && scopeType === 'organization' && canEdit"
+      :org-public-id="scopeId"
+      :schedule-id="event.id"
+    />
+
     <!-- 機能55: 予約タスク一覧（管理者 + 1件以上の場合のみ表示） -->
     <div
       v-if="canEdit && scheduledTasks.length > 0"

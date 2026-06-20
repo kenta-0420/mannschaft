@@ -9,6 +9,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 /**
  * フィーチャーフラグエンティティ。機能の有効/無効を管理する。
@@ -18,7 +19,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class FeatureFlagEntity extends BaseEntity {
 
     @Column(nullable = false, length = 100, unique = true)
@@ -51,11 +52,10 @@ public class FeatureFlagEntity extends BaseEntity {
      * 呼ぶことで JPA の dirty checking により UPDATE が発行される。</p>
      *
      * <p><strong>なぜ builder ({@code toBuilder().build()}) で作り直さないか:</strong>
-     * 本エンティティは {@code @Builder(toBuilder = true)}（{@code @SuperBuilder} ではない）で、
+     * 本エンティティは {@code @SuperBuilder(toBuilder = true)} を使用しており、
      * 主キー {@code id} は基底クラス {@link BaseEntity} のフィールドである。
-     * {@code @Builder} は superclass のフィールドを取り込まないため、{@code toBuilder()} で
-     * 作り直すと {@code id = null} の新インスタンスになり、{@code save} が UPDATE でなく
-     * INSERT を実行して {@code flag_key} 一意制約違反で 500 になる。よって直接ミューテートする。</p>
+     * {@code toBuilder()} は {@code id} を引き継ぐが、managed entity の直接ミューテートが
+     * より安全かつ明示的なため、その場でフィールドを更新する。よって直接ミューテートする。</p>
      *
      * @param description 新しい説明文
      */

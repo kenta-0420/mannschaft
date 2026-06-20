@@ -165,15 +165,17 @@ public class MemberSkillService {
             throw new BusinessException(SkillErrorCode.SKILL_006);
         }
 
-        MemberSkillEntity updated = skill.toBuilder()
-                .name(name != null ? name : skill.getName())
-                .issuer(issuer != null ? issuer : skill.getIssuer())
-                .credentialNumber(credentialNumber != null ? credentialNumber : skill.getCredentialNumber())
-                .acquiredOn(acquiredOn != null ? acquiredOn : skill.getAcquiredOn())
-                .expiresAt(expiresAt != null ? expiresAt : skill.getExpiresAt())
-                .build();
+        // managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する
+        // （toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化するため廃止）
+        skill.applyUpdate(
+                name != null ? name : skill.getName(),
+                issuer != null ? issuer : skill.getIssuer(),
+                credentialNumber != null ? credentialNumber : skill.getCredentialNumber(),
+                acquiredOn != null ? acquiredOn : skill.getAcquiredOn(),
+                expiresAt != null ? expiresAt : skill.getExpiresAt()
+        );
 
-        MemberSkillEntity saved = memberSkillRepository.save(updated);
+        MemberSkillEntity saved = memberSkillRepository.save(skill);
         log.info("資格更新: id={}", id);
         return ApiResponse.of(saved);
     }

@@ -123,6 +123,7 @@ public class GlobalExceptionHandler {
             Map.entry("AD_OPEN_PIXEL_TOKEN_INVALID", HttpStatus.OK),
             Map.entry("AUTH_033", HttpStatus.NOT_FOUND),
             Map.entry("AUTH_034", HttpStatus.CONFLICT),
+            Map.entry("AUTH_044", HttpStatus.TOO_MANY_REQUESTS), // レート制限超過 → 429
             // F02.5 行動メモ: IDOR 対策で 403 ではなく 404 を返す
             Map.entry("ACTION_MEMO_001", HttpStatus.NOT_FOUND),
             Map.entry("ACTION_MEMO_006", HttpStatus.NOT_FOUND),
@@ -704,6 +705,9 @@ public class GlobalExceptionHandler {
             // F01.2 §5.9.5 slug リネーム: 他スコープ履歴に予約済み slug は 409（SLUG_RETIRED）
             Map.entry("TEAM_063", HttpStatus.CONFLICT),                      // SLUG_RETIRED（他チーム履歴予約）
             Map.entry("ORG_063", HttpStatus.CONFLICT),                       // SLUG_RETIRED（他組織履歴予約）
+            // F03.4 予約重複: 同一スロット×同一ユーザーに active 予約が既に存在 → 409（段階拡張 ⑧）
+            // Severity.WARN 既定の 400 を上書き。リソース競合（重複作成）の意味論として 409 が正準。
+            Map.entry("RESERVATION_013", HttpStatus.CONFLICT),               // DUPLICATE_RESERVATION
             // F03.4 予約スロット削除ガード: active 予約が紐づく枠の削除はオーファン化を招くため 409
             Map.entry("RESERVATION_020", HttpStatus.CONFLICT),               // SLOT_HAS_ACTIVE_RESERVATIONS
             // F03.4 予約認可ゲート: 非所属者が一般公開OFFのチームに予約 → 403（Severity.WARN 既定の 400 を上書き）

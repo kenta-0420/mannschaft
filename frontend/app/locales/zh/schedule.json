@@ -67,6 +67,26 @@
       "cancel": "取消",
       "cancel_success": "已取消预约任务",
       "cancel_failed": "取消预约任务失败"
+    },
+    "attendanceTeamBreakdown": {
+      "toggleLabel": "按团队汇总",
+      "toggleHint": "按下属团队分别汇总出勤情况（仅限组织分发）。",
+      "title": "团队出勤明细",
+      "team": "团队",
+      "attending": "出席",
+      "partial": "部分参加",
+      "absent": "缺席",
+      "undecided": "未回答",
+      "total": "总计",
+      "totalNote": "总计为实际人数，团队明细为累计人数（跨团队成员在每个团队中各计一次）。",
+      "directMembers": "组织直属成员",
+      "reload": "重新加载",
+      "retry": "重试",
+      "exportCsv": "导出CSV",
+      "exportFailed": "导出CSV失败。",
+      "fetchFailed": "加载团队出勤明细失败。",
+      "forbidden": "您没有查看此明细的权限。",
+      "empty": "没有可用的团队出勤明细数据。"
     }
   }
 }

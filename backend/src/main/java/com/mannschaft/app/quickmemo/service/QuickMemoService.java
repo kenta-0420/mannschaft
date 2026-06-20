@@ -81,7 +81,7 @@ public class QuickMemoService {
         List<ReminderOffset> offsets = usesDefault
                 ? getDefaultReminders(userId)
                 : (req.reminders() != null ? req.reminders() : List.of());
-        QuickMemoEntity.QuickMemoEntityBuilder builder = QuickMemoEntity.builder()
+        var builder = QuickMemoEntity.builder()
                 .userId(userId).title(title).body(req.body()).reminderUsesDefault(usesDefault);
         applyReminderOffsets(builder, offsets, LocalDate.now(JST));
         QuickMemoEntity memo = memoRepository.save(builder.build());
@@ -97,7 +97,7 @@ public class QuickMemoService {
     public QuickMemoResponse updateMemo(Long memoId, Long userId, UpdateQuickMemoRequest req) {
         QuickMemoEntity memo = memoRepository.findByIdAndUserIdForUpdate(memoId, userId)
                 .orElseThrow(() -> new BusinessException(QuickMemoErrorCode.MEMO_NOT_FOUND));
-        QuickMemoEntity.QuickMemoEntityBuilder builder = memo.toBuilder();
+        var builder = memo.toBuilder();
         if (req.title() != null && !req.title().isBlank()) builder.title(req.title());
         if (req.body() != null) builder.body(req.body());
         if (req.reminderUsesDefault() != null) builder.reminderUsesDefault(req.reminderUsesDefault());
@@ -200,6 +200,7 @@ public class QuickMemoService {
                 }).orElse(List.of());
     }
 
+    @SuppressWarnings("rawtypes")
     private void applyReminderOffsets(QuickMemoEntity.QuickMemoEntityBuilder builder,
                                        List<ReminderOffset> offsets, LocalDate baseDate) {
         if (offsets == null || offsets.isEmpty()) return;

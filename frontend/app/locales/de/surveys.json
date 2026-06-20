@@ -77,7 +77,10 @@
         "ratingScale": "Bewertungsskala (1-5)",
         "textHint": "Befragte antworten in Freitext",
         "dateHint": "Befragte wählen ein Datum"
-      }
+      },
+      "teamBreakdownEnabled": "Nach Team auswerten",
+      "teamBreakdownHint": "Wertet die Antworten je untergeordnetem Team aus (nur Organisationsverteilung).",
+      "teamBreakdownAnonymousConflict": "Die Team-Aufschluesselung ist bei anonymen Umfragen nicht verfuegbar."
     },
     "detail": {
       "scopeMissing": "Bereichsinformationen zur Umfrage fehlen",
@@ -151,6 +154,21 @@
       "unrespondedBadge": "Offen",
       "emptyResponded": "Noch keine Befragten",
       "emptyUnresponded": "Keine offenen Befragten"
+    },
+    "teamBreakdown": {
+      "title": "Team-Aufschluesselung",
+      "reload": "Neu laden",
+      "retry": "Erneut versuchen",
+      "fetchFailed": "Die Team-Aufschluesselung konnte nicht geladen werden.",
+      "forbidden": "Sie haben keine Berechtigung, diese Aufschluesselung anzuzeigen.",
+      "empty": "Keine Daten zur Team-Aufschluesselung verfuegbar.",
+      "masked": "Ausgeblendet, da weniger als 5 Teilnehmende.",
+      "directMembers": "Direkte Organisationsmitglieder",
+      "totalRespondents": "Teilnehmende gesamt: {count}",
+      "respondentCount": "{count} Teilnehmende",
+      "optionCount": "{count} ({percentage}%)",
+      "noOptionData": "Keine Daten.",
+      "noQuestionData": "Keine auswertbaren Fragen."
     }
   }
 }

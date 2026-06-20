@@ -86,17 +86,9 @@ public class EventTimetableService {
     public TimetableItemResponse updateTimetableItem(Long itemId, UpdateTimetableItemRequest request) {
         EventTimetableItemEntity entity = findItemOrThrow(itemId);
 
-        EventTimetableItemEntity updated = entity.toBuilder()
-                .title(request.getTitle() != null ? request.getTitle() : entity.getTitle())
-                .description(request.getDescription() != null ? request.getDescription() : entity.getDescription())
-                .speaker(request.getSpeaker() != null ? request.getSpeaker() : entity.getSpeaker())
-                .startAt(request.getStartAt() != null ? request.getStartAt() : entity.getStartAt())
-                .endAt(request.getEndAt() != null ? request.getEndAt() : entity.getEndAt())
-                .location(request.getLocation() != null ? request.getLocation() : entity.getLocation())
-                .sortOrder(request.getSortOrder() != null ? request.getSortOrder() : entity.getSortOrder())
-                .build();
-
-        EventTimetableItemEntity saved = timetableRepository.save(updated);
+        // managed entity を直接ミューテートして save → UPDATE が保証される（id=null INSERT 化バグ根治）
+        entity.applyUpdate(request);
+        EventTimetableItemEntity saved = timetableRepository.save(entity);
         log.info("タイムテーブル項目更新: itemId={}", itemId);
         return eventMapper.toTimetableItemResponse(saved);
     }
@@ -132,10 +124,9 @@ public class EventTimetableService {
         for (int i = 0; i < orderedIds.size(); i++) {
             EventTimetableItemEntity item = itemMap.get(orderedIds.get(i));
             if (item != null) {
-                EventTimetableItemEntity reordered = item.toBuilder()
-                        .sortOrder(i)
-                        .build();
-                timetableRepository.save(reordered);
+                // managed entity を直接ミューテートして save → UPDATE が保証される（id=null INSERT 化バグ根治）
+                item.applySortOrder(i);
+                timetableRepository.save(item);
             }
         }
 

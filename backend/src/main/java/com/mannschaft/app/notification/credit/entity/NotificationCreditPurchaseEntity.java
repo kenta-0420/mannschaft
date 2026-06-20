@@ -7,8 +7,8 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -25,8 +25,7 @@ import java.time.LocalDateTime;
 @Table(name = "notification_credit_purchases")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class NotificationCreditPurchaseEntity extends BaseEntity {
 
     /** 購入した組織ID */
@@ -117,7 +116,7 @@ public class NotificationCreditPurchaseEntity extends BaseEntity {
      * その場でミューテートし、続く {@code save} を同一行 UPDATE にする。</p>
      *
      * <p><strong>なぜ builder ({@code toBuilder().build()}) で作り直さないか:</strong>
-     * 本エンティティは {@code @Builder(toBuilder = true)}（{@code @SuperBuilder} ではない）で、
+     * 本エンティティは {@code @SuperBuilder(toBuilder = true)}（{@code @SuperBuilder} ではない）で、
      * 主キー {@code id} は基底クラス {@link BaseEntity} のフィールドである。
      * {@code toBuilder()} は継承フィールド {@code id} を引き継がず {@code id = null} の
      * 新インスタンスになり、{@code save} が UPDATE でなく INSERT を実行する。これは

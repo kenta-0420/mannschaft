@@ -58,7 +58,9 @@ class ReservationSlotServicePersistenceIntegrationTest extends AbstractMySqlInte
 
     private static final Long TEAM_ID = 7777L;
     private static final Long CREATED_BY = 8888L;
-    private static final LocalDate SLOT_DATE = LocalDate.of(2026, 9, 1);
+    // 実 createSlot（本番コード・実 Clock）の過去日ガード（#1680 で導入・slotDate < today は 400）を避けるため、
+    // 実行時起点の十分未来の相対日付を使う（固定日付 2026-09-01 はその日付到達後に過去日扱いで落ちる地雷だった）。
+    private static final LocalDate SLOT_DATE = LocalDate.now().plusMonths(1);
     private static final LocalTime START_TIME = LocalTime.of(10, 0);
     private static final LocalTime END_TIME = LocalTime.of(11, 0);
 

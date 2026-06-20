@@ -17,7 +17,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 /**
@@ -32,6 +35,11 @@ public class ReservationSlotService {
     private final ReservationSlotRepository slotRepository;
     private final ReservationRepository reservationRepository;
     private final ReservationMapper reservationMapper;
+    /** 過去日判定の基準時刻（チーム TZ は将来拡張。現状はシステム既定 Clock）。テストは固定 Clock を注入する。 */
+    private final Clock clock;
+
+    /** 予約枠の最小グリッド（分）。start/end の分はこの倍数（00 / 30）でなければならない。 */
+    private static final int SLOT_GRANULARITY_MINUTES = 30;
 
     /**
      * スロット削除ガードで「予約が紐づいている」と見なす active ステータス。
@@ -92,6 +100,10 @@ public class ReservationSlotService {
      */
     @Transactional
     public ReservationSlotResponse createSlot(Long teamId, CreateSlotRequest request, Long createdBy) {
+        // ③ 過去日の枠作成禁止（注入 Clock 基準で当日以降のみ許可）。LocalDate.now() 直書きは CI 破壊地雷のため禁止。
+        if (request.getSlotDate() != null && request.getSlotDate().isBefore(LocalDate.now(clock))) {
+            throw new BusinessException(ReservationErrorCode.PAST_DATE_SLOT);
+        }
         validateTimeRange(request.getStartTime(), request.getEndTime());
 
         ReservationSlotEntity entity = ReservationSlotEntity.builder()
@@ -282,11 +294,37 @@ public class ReservationSlotService {
     }
 
     /**
-     * 時間範囲のバリデーション。
+     * 時間範囲のバリデーション。createSlot / updateSlot の両方から呼ばれる単一の検証点。
+     *
+     * <p>検証内容:</p>
+     * <ol>
+     *   <li>start &lt; end（{@link ReservationErrorCode#INVALID_TIME_RANGE}・400）</li>
+     *   <li>② 30 分グリッド: start/end の分が {@code 00} または {@code 30} のみ、かつ枠長 &ge; 30 分
+     *       （{@link ReservationErrorCode#INVALID_SLOT_GRANULARITY}・400）</li>
+     * </ol>
+     * 片方のみ指定（updateSlot で時刻据え置き等）の場合は検証をスキップする
+     * （updateSlot 側で「両方非 null のときのみ」呼ぶ前提）。
      */
-    private void validateTimeRange(java.time.LocalTime startTime, java.time.LocalTime endTime) {
-        if (startTime != null && endTime != null && !startTime.isBefore(endTime)) {
+    private void validateTimeRange(LocalTime startTime, LocalTime endTime) {
+        if (startTime == null || endTime == null) {
+            return;
+        }
+        if (!startTime.isBefore(endTime)) {
             throw new BusinessException(ReservationErrorCode.INVALID_TIME_RANGE);
         }
+        // ② 30 分グリッド + 最小枠 30 分
+        if (!isOnGranularityGrid(startTime) || !isOnGranularityGrid(endTime)
+                || Duration.between(startTime, endTime).toMinutes() < SLOT_GRANULARITY_MINUTES) {
+            throw new BusinessException(ReservationErrorCode.INVALID_SLOT_GRANULARITY);
+        }
+    }
+
+    /**
+     * 時刻が 30 分グリッド（分が 00 / 30、秒・ナノ秒が 0）に乗っているか判定する。
+     */
+    private boolean isOnGranularityGrid(LocalTime time) {
+        return time.getMinute() % SLOT_GRANULARITY_MINUTES == 0
+                && time.getSecond() == 0
+                && time.getNano() == 0;
     }
 }

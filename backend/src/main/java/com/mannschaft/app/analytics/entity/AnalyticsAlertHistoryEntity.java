@@ -5,8 +5,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -20,8 +20,7 @@ import java.time.LocalDateTime;
 @Table(name = "analytics_alert_history")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class AnalyticsAlertHistoryEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -42,4 +41,13 @@ public class AnalyticsAlertHistoryEntity extends BaseEntity {
 
     @Builder.Default
     private boolean notified = false;
+
+    /**
+     * 通知済みフラグを立てる。
+     * managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する。
+     * （toBuilder().build() は継承フィールド id を引き継がず INSERT 化するため使用しない）
+     */
+    public void markNotified() {
+        this.notified = true;
+    }
 }

@@ -8,10 +8,10 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 /**
  * 安否確認テンプレートエンティティ。安否確認の雛形を管理する。
@@ -20,8 +20,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "safety_check_templates")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class SafetyCheckTemplateEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)

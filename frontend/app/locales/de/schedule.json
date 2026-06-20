@@ -67,6 +67,26 @@
       "cancel": "Abbrechen",
       "cancel_success": "Die geplante Aufgabe wurde abgebrochen",
       "cancel_failed": "Die geplante Aufgabe konnte nicht abgebrochen werden"
+    },
+    "attendanceTeamBreakdown": {
+      "toggleLabel": "Nach Team auswerten",
+      "toggleHint": "Wertet die Anwesenheit je untergeordnetem Team aus (nur Organisationsverteilung).",
+      "title": "Anwesenheit nach Team",
+      "team": "Team",
+      "attending": "Anwesend",
+      "partial": "Teilweise",
+      "absent": "Abwesend",
+      "undecided": "Offen",
+      "total": "Gesamt",
+      "totalNote": "Gesamt zaehlt eindeutige Personen; die Team-Werte koennen sich ueberschneiden (Mitglieder in mehreren Teams werden je Team gezaehlt).",
+      "directMembers": "Direkte Organisationsmitglieder",
+      "reload": "Neu laden",
+      "retry": "Erneut versuchen",
+      "exportCsv": "CSV exportieren",
+      "exportFailed": "CSV-Export fehlgeschlagen.",
+      "fetchFailed": "Die Anwesenheitsaufschluesselung nach Team konnte nicht geladen werden.",
+      "forbidden": "Sie haben keine Berechtigung, diese Aufschluesselung anzuzeigen.",
+      "empty": "Keine Daten zur Anwesenheitsaufschluesselung nach Team verfuegbar."
     }
   }
 }

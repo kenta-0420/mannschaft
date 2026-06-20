@@ -273,7 +273,7 @@ public class FormTemplateService {
         FormTemplateEntity savedTemplate = templateRepository.save(copy);
 
         List<FormTemplateFieldEntity> copiedFields = originalFields.stream()
-                .map(f -> FormTemplateFieldEntity.builder()
+                .map(f -> (FormTemplateFieldEntity) FormTemplateFieldEntity.builder()
                         .templateId(savedTemplate.getId())
                         .fieldKey(f.getFieldKey())
                         .fieldLabel(f.getFieldLabel())
@@ -343,7 +343,7 @@ public class FormTemplateService {
      */
     private List<FormTemplateFieldEntity> saveFields(Long templateId, List<FormFieldRequest> fields) {
         List<FormTemplateFieldEntity> entities = fields.stream()
-                .map(f -> FormTemplateFieldEntity.builder()
+                .map(f -> (FormTemplateFieldEntity) FormTemplateFieldEntity.builder()
                         .templateId(templateId)
                         .fieldKey(f.getFieldKey())
                         .fieldLabel(f.getFieldLabel())

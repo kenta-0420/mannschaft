@@ -5,10 +5,9 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 
@@ -19,8 +18,7 @@ import java.time.LocalDateTime;
 @Table(name = "team_enabled_modules")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class TeamEnabledModuleEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -42,4 +40,15 @@ public class TeamEnabledModuleEntity extends BaseEntity {
 
     @Column(nullable = false)
     private Boolean trialUsed;
+
+    /**
+     * モジュールの有効/無効状態を更新する（toBuilder を使わない直接ミューテート）。
+     */
+    public void applyToggle(boolean enabled, java.time.LocalDateTime enabledAt,
+                             java.time.LocalDateTime disabledAt, Long enabledBy) {
+        this.isEnabled = enabled;
+        this.enabledAt = enabledAt;
+        this.disabledAt = disabledAt;
+        this.enabledBy = enabledBy;
+    }
 }

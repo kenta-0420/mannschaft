@@ -76,11 +76,15 @@ public class RoleService {
                     userRoleRepository.flush();
                 });
 
-        UserRoleEntity.UserRoleEntityBuilder builder = UserRoleEntity.builder()
+        var builder = UserRoleEntity.builder()
                 .userId(targetUserId)
                 .roleId(roleId)
                 .grantedBy(grantedBy);
-        setScopeField(builder, scopeId, scopeType);
+        if ("TEAM".equals(scopeType)) {
+            builder.teamId(scopeId);
+        } else {
+            builder.organizationId(scopeId);
+        }
         userRoleRepository.save(builder.build());
 
         log.info("ロール割当完了: scopeType={}, scopeId={}, userId={}, roleId={}, grantedBy={}",
@@ -125,10 +129,14 @@ public class RoleService {
         //   同一 (user_id, scope_key) で旧行と衝突して DuplicateKeyException → 500 になる。
         userRoleRepository.delete(current);
         userRoleRepository.flush();
-        UserRoleEntity.UserRoleEntityBuilder builder = UserRoleEntity.builder()
+        var builder = UserRoleEntity.builder()
                 .userId(targetUserId)
                 .roleId(req.getRoleId());
-        setScopeField(builder, scopeId, scopeType);
+        if ("TEAM".equals(scopeType)) {
+            builder.teamId(scopeId);
+        } else {
+            builder.organizationId(scopeId);
+        }
         userRoleRepository.save(builder.build());
 
         log.info("ロール変更完了: scopeType={}, scopeId={}, userId={}, newRoleId={}, changedBy={}",
@@ -331,20 +339,28 @@ public class RoleService {
         // （uq_user_roles_user_scope ユニーク制約の衝突回避。詳細は changeRole 参照）。
         userRoleRepository.delete(targetUserRole);
         userRoleRepository.flush();
-        UserRoleEntity.UserRoleEntityBuilder newAdminBuilder = UserRoleEntity.builder()
+        var newAdminBuilder = UserRoleEntity.builder()
                 .userId(targetUserId)
                 .roleId(adminRole.getId())
                 .grantedBy(currentUserId);
-        setScopeField(newAdminBuilder, scopeId, scopeType);
+        if ("TEAM".equals(scopeType)) {
+            newAdminBuilder.teamId(scopeId);
+        } else {
+            newAdminBuilder.organizationId(scopeId);
+        }
         userRoleRepository.save(newAdminBuilder.build());
 
         // 現オーナーを MEMBER にダウングレード
         userRoleRepository.delete(currentUserRole);
         userRoleRepository.flush();
-        UserRoleEntity.UserRoleEntityBuilder demotedBuilder = UserRoleEntity.builder()
+        var demotedBuilder = UserRoleEntity.builder()
                 .userId(currentUserId)
                 .roleId(memberRole.getId());
-        setScopeField(demotedBuilder, scopeId, scopeType);
+        if ("TEAM".equals(scopeType)) {
+            demotedBuilder.teamId(scopeId);
+        } else {
+            demotedBuilder.organizationId(scopeId);
+        }
         userRoleRepository.save(demotedBuilder.build());
 
         log.info("オーナー譲渡完了: scopeType={}, scopeId={}, from={}, to={}",
@@ -377,17 +393,6 @@ public class RoleService {
             return userRoleRepository.findByUserIdAndTeamId(userId, scopeId);
         }
         return userRoleRepository.findByUserIdAndOrganizationId(userId, scopeId);
-    }
-
-    /**
-     * スコープタイプに応じてビルダーのフィールドをセットする。
-     */
-    private void setScopeField(UserRoleEntity.UserRoleEntityBuilder builder, Long scopeId, String scopeType) {
-        if ("TEAM".equals(scopeType)) {
-            builder.teamId(scopeId);
-        } else {
-            builder.organizationId(scopeId);
-        }
     }
 
     /**

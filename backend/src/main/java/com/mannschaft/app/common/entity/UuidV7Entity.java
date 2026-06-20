@@ -3,6 +3,9 @@ package com.mannschaft.app.common.entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
+import lombok.NoArgsConstructor;
+import lombok.AccessLevel;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.util.Objects;
@@ -38,6 +41,8 @@ import java.util.UUID;
  *
  * @see org.hibernate.annotations.UuidGenerator
  */
+@SuperBuilder(toBuilder = true)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @MappedSuperclass
 public abstract class UuidV7Entity {
 

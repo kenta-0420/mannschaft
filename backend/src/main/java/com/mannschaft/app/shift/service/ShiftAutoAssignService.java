@@ -107,7 +107,7 @@ public class ShiftAutoAssignService {
             // 割当提案を shift_assignments に INSERT（status=PROPOSED）
             final Long runId = run.getId();
             List<ShiftAssignmentEntity> assignments = result.proposals().stream()
-                    .map(proposal -> ShiftAssignmentEntity.builder()
+                    .map(proposal -> (ShiftAssignmentEntity) ShiftAssignmentEntity.builder()
                             .slotId(proposal.slotId())
                             .userId(proposal.userId())
                             .runId(runId)

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -76,14 +77,15 @@ class EventTimetableServiceAdditionalTest {
     class ReorderTimetableItems {
 
         @Test
-        @DisplayName("並び替え_正常_ソート順更新")
-        void 並び替え_正常_ソート順更新() {
+        @DisplayName("並び替え_正常_同一インスタンスがsaveされid保持")
+        void 並び替え_正常_同一インスタンスがsaveされid保持() {
             // Given
             EventTimetableItemEntity item1 = createItemWithId(10L, 0);
             EventTimetableItemEntity item2 = createItemWithId(20L, 1);
             EventTimetableItemEntity item3 = createItemWithId(30L, 2);
 
             List<EventTimetableItemEntity> items = List.of(item1, item2, item3);
+            // 並び替え順: 30, 10, 20
             ReorderTimetableRequest request = new ReorderTimetableRequest(List.of(30L, 10L, 20L));
 
             TimetableItemResponse r1 = createResponse(10L);
@@ -103,7 +105,19 @@ class EventTimetableServiceAdditionalTest {
 
             // Then
             assertThat(result).hasSize(3);
-            verify(timetableRepository, atLeastOnce()).save(any(EventTimetableItemEntity.class));
+            // save に渡されるのが元のインスタンスと同一であることを確認（id=null INSERT 化バグ回帰防止）
+            ArgumentCaptor<EventTimetableItemEntity> captor = ArgumentCaptor.forClass(EventTimetableItemEntity.class);
+            verify(timetableRepository, atLeastOnce()).save(captor.capture());
+            List<EventTimetableItemEntity> savedItems = captor.getAllValues();
+            // 並び替え後のソート順が正しく適用されていること
+            assertThat(savedItems).hasSize(3);
+            // item3(id=30)が最初(sortOrder=0)、item1(id=10)が2番目(sortOrder=1)、item2(id=20)が3番目(sortOrder=2)
+            assertThat(savedItems.get(0)).isSameAs(item3);
+            assertThat(savedItems.get(0).getSortOrder()).isEqualTo(0);
+            assertThat(savedItems.get(1)).isSameAs(item1);
+            assertThat(savedItems.get(1).getSortOrder()).isEqualTo(1);
+            assertThat(savedItems.get(2)).isSameAs(item2);
+            assertThat(savedItems.get(2).getSortOrder()).isEqualTo(2);
         }
 
         @Test
@@ -172,8 +186,8 @@ class EventTimetableServiceAdditionalTest {
         }
 
         @Test
-        @DisplayName("タイムテーブル項目更新_全フィールドnull_既存値維持")
-        void タイムテーブル項目更新_全フィールドnull_既存値維持() {
+        @DisplayName("タイムテーブル項目更新_全フィールドnull_同一インスタンスsave_既存値維持")
+        void タイムテーブル項目更新_全フィールドnull_同一インスタンスsave_既存値維持() {
             // Given
             Long itemId = 10L;
             EventTimetableItemEntity entity = EventTimetableItemEntity.builder()
@@ -185,7 +199,7 @@ class EventTimetableServiceAdditionalTest {
             TimetableItemResponse response = createResponse(itemId);
 
             given(timetableRepository.findById(itemId)).willReturn(java.util.Optional.of(entity));
-            given(timetableRepository.save(any(EventTimetableItemEntity.class))).willReturn(entity);
+            given(timetableRepository.save(entity)).willReturn(entity);
             given(eventMapper.toTimetableItemResponse(entity)).willReturn(response);
 
             // When
@@ -193,7 +207,13 @@ class EventTimetableServiceAdditionalTest {
 
             // Then
             assertThat(result).isNotNull();
-            verify(timetableRepository).save(any(EventTimetableItemEntity.class));
+            // save に渡されるのが findById の同一インスタンスであることを確認（id=null INSERT 化バグ回帰防止）
+            ArgumentCaptor<EventTimetableItemEntity> captor = ArgumentCaptor.forClass(EventTimetableItemEntity.class);
+            verify(timetableRepository).save(captor.capture());
+            assertThat(captor.getValue()).isSameAs(entity);
+            // 全フィールドnull指定時は既存値を維持
+            assertThat(entity.getTitle()).isEqualTo("既存タイトル");
+            assertThat(entity.getSortOrder()).isEqualTo(0);
         }
     }
 }

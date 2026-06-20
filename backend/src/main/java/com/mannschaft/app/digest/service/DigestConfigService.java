@@ -16,7 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Optional;
 
@@ -72,25 +71,27 @@ public class DigestConfigService {
 
         TimelineDigestConfigEntity config;
         if (existing.isPresent()) {
-            // 更新
-            config = existing.get().toBuilder()
-                    .scheduleType(scheduleType)
-                    .scheduleTime(request.getScheduleTime())
-                    .scheduleDayOfWeek(request.getScheduleDayOfWeek())
-                    .digestStyle(digestStyle)
-                    .autoPublish(request.getAutoPublish() != null ? request.getAutoPublish() : false)
-                    .stylePresets(request.getStylePresets())
-                    .includeReactions(request.getIncludeReactions() != null ? request.getIncludeReactions() : true)
-                    .includePolls(request.getIncludePolls() != null ? request.getIncludePolls() : true)
-                    .includeDiffFromPrevious(request.getIncludeDiffFromPrevious() != null ? request.getIncludeDiffFromPrevious() : false)
-                    .minPostsThreshold(request.getMinPostsThreshold() != null ? request.getMinPostsThreshold() : digestProperties.getDefaults().getMinPostsThreshold())
-                    .maxPostsPerDigest(request.getMaxPostsPerDigest() != null ? request.getMaxPostsPerDigest() : digestProperties.getDefaults().getMaxPostsPerDigest())
-                    .timezone(request.getTimezone())
-                    .contentMaxChars(request.getContentMaxChars() != null ? request.getContentMaxChars() : digestProperties.getDefaults().getContentMaxChars())
-                    .language(request.getLanguage() != null ? request.getLanguage() : "ja")
-                    .customPromptSuffix(request.getCustomPromptSuffix())
-                    .autoTagIds(request.getAutoTagIds() != null ? request.getAutoTagIds().toString() : null)
-                    .build();
+            // managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する
+            // （toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化するため廃止）
+            config = existing.get();
+            config.applyUpdate(
+                    scheduleType,
+                    request.getScheduleTime(),
+                    request.getScheduleDayOfWeek(),
+                    digestStyle,
+                    request.getAutoPublish() != null ? request.getAutoPublish() : false,
+                    request.getStylePresets(),
+                    request.getIncludeReactions() != null ? request.getIncludeReactions() : true,
+                    request.getIncludePolls() != null ? request.getIncludePolls() : true,
+                    request.getIncludeDiffFromPrevious() != null ? request.getIncludeDiffFromPrevious() : false,
+                    request.getMinPostsThreshold() != null ? request.getMinPostsThreshold() : digestProperties.getDefaults().getMinPostsThreshold(),
+                    request.getMaxPostsPerDigest() != null ? request.getMaxPostsPerDigest() : digestProperties.getDefaults().getMaxPostsPerDigest(),
+                    request.getTimezone(),
+                    request.getContentMaxChars() != null ? request.getContentMaxChars() : digestProperties.getDefaults().getContentMaxChars(),
+                    request.getLanguage() != null ? request.getLanguage() : "ja",
+                    request.getCustomPromptSuffix(),
+                    request.getAutoTagIds() != null ? request.getAutoTagIds().toString() : null
+            );
         } else {
             // 新規作成
             config = TimelineDigestConfigEntity.builder()
@@ -137,11 +138,10 @@ public class DigestConfigService {
                 .findByScopeTypeAndScopeId(scope, scopeId)
                 .orElseThrow(() -> new BusinessException(DigestErrorCode.DIGEST_014));
 
-        TimelineDigestConfigEntity deleted = config.toBuilder()
-                .deletedAt(LocalDateTime.now())
-                .isEnabled(false)
-                .build();
-        configRepository.save(deleted);
+        // managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する
+        // （toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化するため廃止）
+        config.deactivateAndDelete();
+        configRepository.save(config);
         log.info("ダイジェスト設定を無効化しました: scope={}:{}", scopeType, scopeId);
     }
 
