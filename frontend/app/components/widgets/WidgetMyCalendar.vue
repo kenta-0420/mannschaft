@@ -51,6 +51,20 @@ function onDateClick(date: string) {
   navigateTo(`/calendar?date=${date}`)
 }
 
+/**
+ * reflection 印クリック（§6.2/AC-21）。
+ * 想起予定（REFLECTION_RECALL）は想起テスト画面へ、振り返り記入（REFLECTION_ENTRY）はエントリ詳細へ遷移。
+ * referenceUuid は SPACED/エントリ＝entry UUID、PRE_EXAM＝theme UUID。
+ */
+function onReflectionClick(referenceUuid: string, referenceKind: string) {
+  if (referenceKind === 'REFLECTION_RECALL') {
+    navigateTo(`/reflections/recall?entry=${referenceUuid}`)
+  }
+  else {
+    navigateTo(`/reflections/entries/${referenceUuid}`)
+  }
+}
+
 async function onEventClick(eventId: number, isPersonal: boolean) {
   if (eventId < 0) {
     await navigateTo(`/todos/${-(eventId + 1)}`)
@@ -156,6 +170,7 @@ onMounted(() => {
         :events="filteredEvents"
         @date-click="onDateClick"
         @event-click="onEventClick"
+        @reflection-click="onReflectionClick"
         @prev-month="onPrevMonth"
         @next-month="onNextMonth"
       />

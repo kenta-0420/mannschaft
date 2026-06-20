@@ -93,6 +93,19 @@ function onDateClick(date: string) {
   showCreateDialog.value = true
 }
 
+/**
+ * reflection 印クリック（§6.2/AC-21・id 非依存）。
+ * 想起予定は想起テスト画面へ、振り返り記入はエントリ詳細へ遷移する。
+ */
+async function onReflectionClick(referenceUuid: string, referenceKind: string) {
+  if (referenceKind === 'REFLECTION_RECALL') {
+    await router.push(`/reflections/recall?entry=${referenceUuid}`)
+  }
+  else {
+    await router.push(`/reflections/entries/${referenceUuid}`)
+  }
+}
+
 // イベントクリック
 async function onEventClick(eventId: number, isPersonal: boolean) {
   // TODO イベントは負数 ID（-(todoId + 1) で格納）
@@ -379,6 +392,7 @@ onMounted(() => {
               :events="filteredEvents"
               @date-click="onDateClick"
               @event-click="onEventClick"
+              @reflection-click="onReflectionClick"
               @prev-month="onPrevMonth"
               @next-month="onNextMonth"
             />
@@ -470,9 +484,11 @@ onMounted(() => {
               </div>
               <div
                 v-for="ev in dayEvents"
-                :key="ev.id"
+                :key="ev.uniqueKey"
                 class="cursor-pointer rounded-lg p-2 hover:bg-surface-100 dark:hover:bg-surface-700 border border-surface-200 dark:border-surface-600"
-                @click="onEventClick(ev.id, ev.isPersonal)"
+                @click="ev.isReflection && ev.referenceUuid && ev.referenceKind
+                  ? onReflectionClick(ev.referenceUuid, ev.referenceKind)
+                  : onEventClick(ev.id, ev.isPersonal)"
               >
                 <div class="flex items-center gap-2">
                   <span class="h-2 w-2 rounded-full flex-shrink-0" :style="{ backgroundColor: ev.color ?? '#6366f1' }" />

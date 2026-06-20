@@ -84,6 +84,7 @@ export function toCalendarEventItem(
 
   return {
     id: raw.id,
+    uniqueKey: `${scopeType.toLowerCase()}:${raw.id}`,
     title: content.title ?? '',
     startAt: time.startAt ?? '',
     endAt: time.endAt ?? time.startAt ?? '',

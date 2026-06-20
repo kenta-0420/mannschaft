@@ -1,5 +1,13 @@
 export interface CalendarEventItem {
   id: number
+  /**
+   * 一覧/ループの安定一意キー（v-for :key・ルックアップ用）。
+   *
+   * 既存の数値 id 依存だと、UUID 主キードメイン（reflection・F06.5 §6.2/AC-21）の行は
+   * id=null で衝突する。よって全イベントに文字列の uniqueKey を持たせ、:key とルックアップは
+   * これを使う。schedule 行は `String(id)`、reflection 行は `ref:{referenceUuid}`。
+   */
+  uniqueKey: string
   title: string
   startAt: string
   endAt: string
@@ -7,6 +15,12 @@ export interface CalendarEventItem {
   color: string | null
   isPersonal: boolean
   isTodo?: boolean
+  /** reflection 等 UUID 主キードメインのカレンダー印か（id 非依存描画・§6.2/AC-21）。 */
+  isReflection?: boolean
+  /** reflection 行の参照 UUID（entry または theme・referenceKind で意味が変わる）。 */
+  referenceUuid?: string | null
+  /** reflection 行の参照種別（"REFLECTION_ENTRY" / "REFLECTION_RECALL"）。 */
+  referenceKind?: string | null
   eventType?: string
   scopeType?: string
   scopeName?: string | null

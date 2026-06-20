@@ -2,8 +2,16 @@ import type { CalendarEventItem } from './useCalendarEvents'
 import type { GanttTodo } from '~/types/todo'
 
 interface CalendarEntryRaw {
-  id: number
-  content: { title: string; eventType: string; status: string }
+  // reflection 等 UUID 主キードメインの行は id=null（§6.2/AC-21）。
+  id: number | null
+  content: {
+    title: string
+    eventType: string
+    status: string
+    // UUID 主キードメイン（reflection・F06.5 §6.2）の識別子。schedule 行は両者 null。
+    referenceUuid?: string | null
+    referenceKind?: string | null
+  }
   time: { startAt: string; endAt: string; allDay: boolean }
   scope: { scopeType: string; scopeId: string; scopeName: string | null; scopeIconUrl: string | null }
   myAttendanceStatus: string
@@ -49,6 +57,7 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
 
     const personalEvents = ((personal.data ?? []) as unknown as PersonalScheduleRaw[]).map((e): CalEvent => ({
       id: e.id,
+      uniqueKey: `personal:${e.id}`,
       title: e.content?.title ?? '',
       startAt: e.time?.startAt ?? '',
       endAt: e.time?.endAt ?? '',
@@ -60,10 +69,39 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
       scopeName: null,
     }))
 
-    const sharedEvents = ((shared.data as unknown as CalendarEntryRaw[]) ?? [])
-      .filter((e) => e.scope?.scopeType !== 'PERSONAL')
+    const sharedRaw = (shared.data as unknown as CalendarEntryRaw[]) ?? []
+
+    // reflection 等 UUID 主キードメインの印（referenceKind を持つ・id=null）。
+    // §6.2/AC-21: 既存の id 依存ルックアップが id=null で壊れるのを防ぐため、ここで分岐して
+    // 一意キーを referenceUuid+referenceKind から作る。reflection 行は scopeType=PERSONAL で来るため
+    // 下の PERSONAL 除外フィルタより先に拾う。
+    const reflectionEvents = sharedRaw
+      .filter((e) => !!e.content?.referenceKind && !!e.content?.referenceUuid)
       .map((e): CalEvent => ({
-        id: e.id,
+        id: -1, // UUID 主キーゆえ数値 id は持たない（ルックアップ/描画は uniqueKey を使う）
+        uniqueKey: `ref:${e.content.referenceKind}:${e.content.referenceUuid}`,
+        title: e.content?.title ?? '',
+        startAt: e.time?.startAt ?? '',
+        endAt: e.time?.endAt ?? '',
+        allDay: e.time?.allDay ?? true,
+        // 想起予定=橙、振り返り記入=藍。CalendarGrid の凡例と整合。
+        color: e.content?.referenceKind === 'REFLECTION_RECALL' ? '#f59e0b' : '#6366f1',
+        isPersonal: true,
+        isReflection: true,
+        referenceUuid: e.content?.referenceUuid ?? null,
+        referenceKind: e.content?.referenceKind ?? null,
+        eventType: e.content?.eventType ?? undefined,
+        scopeType: 'PERSONAL',
+        scopeId: undefined,
+        scopeName: null,
+      }))
+
+    const sharedEvents = sharedRaw
+      // reflection 等 UUID ドメイン行は上で別途処理済み。残りの PERSONAL 行は除外（重複防止）。
+      .filter((e) => !e.content?.referenceKind && e.scope?.scopeType !== 'PERSONAL')
+      .map((e): CalEvent => ({
+        id: e.id as number,
+        uniqueKey: `shared:${e.id}`,
         title: e.content?.title ?? '',
         startAt: e.time?.startAt ?? '',
         endAt: e.time?.endAt ?? '',
@@ -83,6 +121,7 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
       .filter((t) => t.dueDate && t.status !== 'COMPLETED')
       .map((t) => ({
         id: -(t.id + 1),
+        uniqueKey: `todo:${t.id}`,
         title: t.title,
         startAt: `${t.startDate || t.dueDate}T00:00:00`,
         endAt: `${t.dueDate}T23:59:59`,
@@ -97,7 +136,7 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
         isTodo: true,
       }))
 
-    const merged = [...personalEvents, ...sharedEvents, ...todoEvents]
+    const merged = [...personalEvents, ...sharedEvents, ...reflectionEvents, ...todoEvents]
     extendedEvents.value = merged
     return merged
   }
@@ -128,7 +167,8 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
 
   const filteredEvents = computed(() =>
     events.value.filter((e) => {
-      const ext = extendedEvents.value.find((x) => x.id === e.id)
+      // §6.2/AC-21: id は reflection 行で衝突する（id=null/-1）ため uniqueKey でルックアップする。
+      const ext = extendedEvents.value.find((x) => x.uniqueKey === e.uniqueKey)
       if (!ext) return false
       if (ext.isPersonal || ext.scopeType === 'PERSONAL') return selectedScopes.value.includes(PERSONAL_KEY)
       return selectedScopes.value.includes(`${ext.scopeType}:${ext.scopeId}`)
