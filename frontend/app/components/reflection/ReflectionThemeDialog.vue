@@ -39,7 +39,8 @@ const form = ref({
   title: '',
   description: '',
   sourceType: 'FREE' as ReflectionSourceType,
-  examDate: null as string | null,
+  // PrimeVue DatePicker は Date を扱う。応答の ISO 文字列とは toIsoDate / parseIsoDate で相互変換する。
+  examDate: null as Date | null,
 })
 
 const isEdit = computed(() => !!props.theme?.id)
@@ -65,7 +66,7 @@ watch(
         title: props.theme.title ?? '',
         description: props.theme.description ?? '',
         sourceType: (props.theme.sourceType as ReflectionSourceType) ?? 'FREE',
-        examDate: props.theme.examDate ?? null,
+        examDate: props.theme.examDate ? new Date(props.theme.examDate) : null,
       }
     }
     else {
@@ -84,11 +85,10 @@ function close() {
   emit('update:visible', false)
 }
 
-function toIsoDate(d: string | null): string | null {
+function toIsoDate(d: Date | null): string | null {
   if (!d) return null
-  // PrimeVue DatePicker は Date を返すことがあるため string 化（YYYY-MM-DD）。
-  const dt = new Date(d)
-  if (Number.isNaN(dt.getTime())) return d
+  const dt = d instanceof Date ? d : new Date(d)
+  if (Number.isNaN(dt.getTime())) return null
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`
 }
