@@ -7,10 +7,9 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 /**
  * モジュール×レベル別利用可否エンティティ。組織・チーム・個人レベルでの利用可否を管理する。
@@ -19,8 +18,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "module_level_availability")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder
+@SuperBuilder(toBuilder = true)
 public class ModuleLevelAvailabilityEntity extends BaseEntity {
 
     @Column(nullable = false)
