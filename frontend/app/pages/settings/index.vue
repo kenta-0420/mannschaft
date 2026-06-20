@@ -178,7 +178,7 @@ const searchResults = computed(() => {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <PageHeader title="設定" />
+    <PageHeader title="設定" :back="false" />
 
     <IconField class="mb-6">
       <InputIcon class="pi pi-search" />
