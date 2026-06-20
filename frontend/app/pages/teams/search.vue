@@ -134,8 +134,7 @@ onMounted(() => {
 <template>
   <div class="mx-auto max-w-6xl p-6">
     <div class="mb-6 flex items-center gap-4">
-      <BackButton to="/teams" />
-      <PageHeader :title="$t('teamHub.searchPageTitle')" class="flex-1" />
+      <PageHeader :title="$t('teamHub.searchPageTitle')" class="flex-1" back-to="/teams" />
       <Button
         :label="$t('teamHub.createTeam')"
         icon="pi pi-plus"

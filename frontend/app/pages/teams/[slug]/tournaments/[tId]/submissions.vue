@@ -88,8 +88,7 @@ onMounted(() => loadRequirements())
 <template>
   <div class="mx-auto max-w-3xl">
     <div class="mb-4 flex items-center gap-3">
-      <BackButton :to="`/teams/${teamSlug}/tournaments`" />
-      <PageHeader :title="$t('tournament.submission.title')" />
+      <PageHeader :title="$t('tournament.submission.title')" :back-to="`/teams/${teamSlug}/tournaments`" />
     </div>
 
     <PageLoading v-if="loadingReqs" size="40px" />

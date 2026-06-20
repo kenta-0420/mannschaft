@@ -44,7 +44,6 @@ onMounted(async () => {
   <div>
     <div class="mb-4 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <BackButton />
         <PageHeader :title="$t('activity.pageTitle')" />
       </div>
       <Button v-if="isMember" :label="$t('activity.addRecord')" icon="pi pi-plus" />

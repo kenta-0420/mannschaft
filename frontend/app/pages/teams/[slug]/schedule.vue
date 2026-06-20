@@ -87,10 +87,7 @@ onMounted(async () => {
   <PageLoading v-if="loading" />
   <div v-else>
     <div class="mb-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <BackButton />
-        <PageHeader title="スケジュール" />
-      </div>
+      <PageHeader title="スケジュール" />
       <Button label="予定を追加" icon="pi pi-plus" @click="onAddButtonClick" />
     </div>
 

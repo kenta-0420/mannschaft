@@ -83,12 +83,8 @@ onMounted(() => {
 
 <template>
   <div>
-    <div class="mb-4 flex items-center gap-3">
-      <BackButton :to="`/teams/${teamSlug}/tournaments`" :label="$t('tournament.fees.title')" />
-    </div>
-
     <div class="mb-6">
-      <PageHeader :title="$t('tournament.fees.title')" />
+      <PageHeader :title="$t('tournament.fees.title')" :back-to="`/teams/${teamSlug}/tournaments`" :back-label="$t('tournament.fees.title')" />
     </div>
 
     <PageLoading v-if="loading" size="40px" />

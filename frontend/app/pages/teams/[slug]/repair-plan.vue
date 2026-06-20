@@ -152,7 +152,6 @@ onMounted(async () => {
   <div class="mx-auto max-w-7xl">
     <!-- ページヘッダ -->
     <div class="mb-4 flex items-center gap-3">
-      <BackButton />
       <PageHeader :title="$t('repair_plan.dashboard.title')" />
     </div>
 
