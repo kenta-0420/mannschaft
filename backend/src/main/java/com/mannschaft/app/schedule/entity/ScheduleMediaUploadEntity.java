@@ -2,6 +2,7 @@ package com.mannschaft.app.schedule.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 
@@ -14,8 +15,7 @@ import java.time.LocalDateTime;
 @Table(name = "schedule_media_uploads")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class ScheduleMediaUploadEntity {
 
     @Id
