@@ -20,6 +20,13 @@ public interface ReflectionSpacedReminderRepository
     List<ReflectionSpacedReminderEntity> findByStatusAndRemindAtLessThanEqual(
             ReflectionReminderStatus status, LocalDateTime now);
 
+    /**
+     * カレンダー想起予定印用（F06.5・§6.2 / AC-14）。指定ユーザーの特定 status かつ
+     * remind_at が from..to 内のリマインダーを引く（PENDING を想定）。
+     */
+    List<ReflectionSpacedReminderEntity> findByUserIdAndStatusAndRemindAtBetween(
+            Long userId, ReflectionReminderStatus status, LocalDateTime from, LocalDateTime to);
+
     /** PENDING リマインダー総数上限（§2.5.1 (a)・1,000）判定用。 */
     long countByUserIdAndStatus(Long userId, ReflectionReminderStatus status);
 

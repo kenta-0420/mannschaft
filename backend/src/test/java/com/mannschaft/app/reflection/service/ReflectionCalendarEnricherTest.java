@@ -2,9 +2,13 @@ package com.mannschaft.app.reflection.service;
 
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.reflection.ReflectionReminderKind;
+import com.mannschaft.app.reflection.ReflectionReminderStatus;
 import com.mannschaft.app.reflection.entity.ReflectionEntryEntity;
+import com.mannschaft.app.reflection.entity.ReflectionSpacedReminderEntity;
 import com.mannschaft.app.reflection.entity.ReflectionThemeEntity;
 import com.mannschaft.app.reflection.repository.ReflectionEntryRepository;
+import com.mannschaft.app.reflection.repository.ReflectionSpacedReminderRepository;
 import com.mannschaft.app.reflection.repository.ReflectionThemeRepository;
 import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
 import org.junit.jupiter.api.DisplayName;
@@ -39,6 +43,7 @@ class ReflectionCalendarEnricherTest {
 
     @Mock private ReflectionEntryRepository entryRepository;
     @Mock private ReflectionThemeRepository themeRepository;
+    @Mock private ReflectionSpacedReminderRepository reminderRepository;
     @Mock private ContentVisibilityChecker visibilityChecker;
 
     @InjectMocks private ReflectionCalendarEnricher enricher;
@@ -70,6 +75,20 @@ class ReflectionCalendarEnricherTest {
                 .structuredContent("{\"main_theme\":\"秘密\"}").build();
         setId(e, id);
         return e;
+    }
+
+    /** SPACED（entry_id 基準）の PENDING 想起予定。 */
+    private ReflectionSpacedReminderEntity spacedReminder(UUID entryId, UUID themeId, LocalDateTime remindAt) {
+        return ReflectionSpacedReminderEntity.builder()
+                .entryId(entryId).themeId(themeId).userId(USER_ID).remindAt(remindAt)
+                .kind(ReflectionReminderKind.SPACED).status(ReflectionReminderStatus.PENDING).build();
+    }
+
+    /** PRE_EXAM（entry_id=null・theme_id 基準）の PENDING 想起予定。 */
+    private ReflectionSpacedReminderEntity preExamReminder(UUID themeId, LocalDateTime remindAt) {
+        return ReflectionSpacedReminderEntity.builder()
+                .entryId(null).themeId(themeId).userId(USER_ID).remindAt(remindAt)
+                .kind(ReflectionReminderKind.PRE_EXAM).status(ReflectionReminderStatus.PENDING).build();
     }
 
     @Test
@@ -147,5 +166,132 @@ class ReflectionCalendarEnricherTest {
         List<CalendarEntryResponse> result = enricher.enrich(USER_ID, FROM, TO);
 
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("AC-14/§6.2: SPACED 想起予定が REFLECTION_RECALL 印（id=null・referenceUuid=entry_id・remind_at 日付 allDay・本文非搭載）で出る")
+    void enrich_addsSpacedRecallMark() {
+        UUID themeId = UUID.randomUUID();
+        UUID entryId = UUID.randomUUID();
+        LocalDateTime remindAt = LocalDate.now().plusDays(3).atTime(9, 0);
+
+        given(entryRepository.findByUserIdAndTargetDateBetween(eq(USER_ID), any(), any()))
+                .willReturn(List.of());
+        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID))
+                .willReturn(List.of(theme(themeId, "数学II")));
+        given(reminderRepository.findByUserIdAndStatusAndRemindAtBetween(
+                eq(USER_ID), eq(ReflectionReminderStatus.PENDING), any(), any()))
+                .willReturn(List.of(spacedReminder(entryId, themeId, remindAt)));
+        given(visibilityChecker.filterAccessibleUuid(eq(ReferenceType.REFLECTION_ENTRY), any(), eq(USER_ID)))
+                .willReturn(Set.of(entryId));
+
+        List<CalendarEntryResponse> result = enricher.enrich(USER_ID, FROM, TO);
+
+        assertThat(result).hasSize(1);
+        CalendarEntryResponse cal = result.get(0);
+        assertThat(cal.getId()).isNull();
+        assertThat(cal.getContent().eventType()).isEqualTo("REFLECTION_RECALL");
+        assertThat(cal.getContent().referenceKind()).isEqualTo("REFLECTION_RECALL");
+        assertThat(cal.getContent().referenceUuid()).isEqualTo(entryId.toString());
+        assertThat(cal.getContent().title()).isEqualTo("数学II");
+        // 本文は載せない。
+        assertThat(cal.getContent().status()).isNull();
+        assertThat(cal.getContent().title()).doesNotContain("秘密");
+        // remind_at の日付の atStartOfDay()・allDay。
+        assertThat(cal.getTime().startAt()).isEqualTo(remindAt.toLocalDate().atStartOfDay());
+        assertThat(cal.getTime().allDay()).isTrue();
+        assertThat(cal.getScope().scopeType()).isEqualTo("PERSONAL");
+    }
+
+    @Test
+    @DisplayName("§6.2: PRE_EXAM 想起予定（entry_id=null）はテーマ所有者本人なら referenceUuid=theme_id で出る")
+    void enrich_addsPreExamRecallMark() {
+        UUID themeId = UUID.randomUUID();
+        LocalDateTime remindAt = LocalDate.now().plusDays(1).atTime(9, 0);
+
+        given(entryRepository.findByUserIdAndTargetDateBetween(eq(USER_ID), any(), any()))
+                .willReturn(List.of());
+        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID))
+                .willReturn(List.of(theme(themeId, "英語表現")));
+        given(reminderRepository.findByUserIdAndStatusAndRemindAtBetween(
+                eq(USER_ID), eq(ReflectionReminderStatus.PENDING), any(), any()))
+                .willReturn(List.of(preExamReminder(themeId, remindAt)));
+
+        List<CalendarEntryResponse> result = enricher.enrich(USER_ID, FROM, TO);
+
+        assertThat(result).hasSize(1);
+        CalendarEntryResponse cal = result.get(0);
+        assertThat(cal.getContent().eventType()).isEqualTo("REFLECTION_RECALL");
+        assertThat(cal.getContent().referenceUuid()).isEqualTo(themeId.toString());
+        assertThat(cal.getContent().title()).isEqualTo("英語表現");
+    }
+
+    @Test
+    @DisplayName("F00: SPACED 想起予定の親エントリが非可視なら想起予定印も出ない（漏洩防止）")
+    void enrich_filtersInaccessibleSpacedRecall() {
+        UUID themeId = UUID.randomUUID();
+        UUID entryId = UUID.randomUUID();
+        LocalDateTime remindAt = LocalDate.now().plusDays(2).atTime(9, 0);
+
+        given(entryRepository.findByUserIdAndTargetDateBetween(eq(USER_ID), any(), any()))
+                .willReturn(List.of());
+        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID))
+                .willReturn(List.of(theme(themeId, "数学")));
+        given(reminderRepository.findByUserIdAndStatusAndRemindAtBetween(
+                eq(USER_ID), eq(ReflectionReminderStatus.PENDING), any(), any()))
+                .willReturn(List.of(spacedReminder(entryId, themeId, remindAt)));
+        // 親エントリが F00 非可視。
+        given(visibilityChecker.filterAccessibleUuid(eq(ReferenceType.REFLECTION_ENTRY), any(), eq(USER_ID)))
+                .willReturn(Set.of());
+
+        List<CalendarEntryResponse> result = enricher.enrich(USER_ID, FROM, TO);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("§6.2: PRE_EXAM 想起予定でも所有していないテーマ（themeTitleById に無い）は出ない")
+    void enrich_filtersUnownedPreExamRecall() {
+        UUID ownedThemeId = UUID.randomUUID();
+        UUID otherThemeId = UUID.randomUUID();
+        LocalDateTime remindAt = LocalDate.now().plusDays(1).atTime(9, 0);
+
+        given(entryRepository.findByUserIdAndTargetDateBetween(eq(USER_ID), any(), any()))
+                .willReturn(List.of());
+        // 本人所有テーマには otherThemeId が含まれない。
+        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID))
+                .willReturn(List.of(theme(ownedThemeId, "自分のテーマ")));
+        given(reminderRepository.findByUserIdAndStatusAndRemindAtBetween(
+                eq(USER_ID), eq(ReflectionReminderStatus.PENDING), any(), any()))
+                .willReturn(List.of(preExamReminder(otherThemeId, remindAt)));
+
+        List<CalendarEntryResponse> result = enricher.enrich(USER_ID, FROM, TO);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("§6.2: エントリ印と想起予定印の両方が合流する（片方だけにしない）")
+    void enrich_returnsBothEntryAndRecallMarks() {
+        UUID themeId = UUID.randomUUID();
+        UUID entryId = UUID.randomUUID();
+        UUID recallEntryId = UUID.randomUUID();
+        LocalDateTime remindAt = LocalDate.now().plusDays(3).atTime(9, 0);
+
+        given(entryRepository.findByUserIdAndTargetDateBetween(eq(USER_ID), any(), any()))
+                .willReturn(List.of(entry(entryId, themeId, LocalDate.now())));
+        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID))
+                .willReturn(List.of(theme(themeId, "数学II")));
+        given(reminderRepository.findByUserIdAndStatusAndRemindAtBetween(
+                eq(USER_ID), eq(ReflectionReminderStatus.PENDING), any(), any()))
+                .willReturn(List.of(spacedReminder(recallEntryId, themeId, remindAt)));
+        given(visibilityChecker.filterAccessibleUuid(eq(ReferenceType.REFLECTION_ENTRY), any(), eq(USER_ID)))
+                .willReturn(Set.of(entryId, recallEntryId));
+
+        List<CalendarEntryResponse> result = enricher.enrich(USER_ID, FROM, TO);
+
+        assertThat(result).hasSize(2);
+        assertThat(result).extracting(c -> c.getContent().eventType())
+                .containsExactlyInAnyOrder("REFLECTION_ENTRY", "REFLECTION_RECALL");
     }
 }
