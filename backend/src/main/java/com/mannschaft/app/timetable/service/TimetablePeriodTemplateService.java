@@ -45,7 +45,7 @@ public class TimetablePeriodTemplateService {
         periodTemplateRepository.deleteByOrganizationId(orgId);
 
         List<TimetablePeriodTemplateEntity> entities = periods.stream()
-                .map(p -> TimetablePeriodTemplateEntity.builder()
+                .<TimetablePeriodTemplateEntity>map(p -> TimetablePeriodTemplateEntity.builder()
                         .organizationId(orgId)
                         .periodNumber(p.periodNumber())
                         .label(p.label())

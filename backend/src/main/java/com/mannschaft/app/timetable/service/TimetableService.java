@@ -232,7 +232,7 @@ public class TimetableService {
         List<TimetableSlotEntity> sourceSlots =
                 slotRepository.findByTimetableIdOrderByDayOfWeekAscPeriodNumberAsc(timetableId);
         List<TimetableSlotEntity> newSlots = sourceSlots.stream()
-                .map(slot -> TimetableSlotEntity.builder()
+                .<TimetableSlotEntity>map(slot -> TimetableSlotEntity.builder()
                         .timetableId(saved.getId())
                         .dayOfWeek(slot.getDayOfWeek())
                         .periodNumber(slot.getPeriodNumber())

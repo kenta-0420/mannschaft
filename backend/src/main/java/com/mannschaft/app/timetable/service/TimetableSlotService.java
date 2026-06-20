@@ -88,7 +88,7 @@ public class TimetableSlotService {
         }
 
         List<TimetableSlotEntity> entities = slots.stream()
-                .map(s -> TimetableSlotEntity.builder()
+                .<TimetableSlotEntity>map(s -> TimetableSlotEntity.builder()
                         .timetableId(timetableId)
                         .dayOfWeek(s.dayOfWeek())
                         .periodNumber(s.periodNumber())

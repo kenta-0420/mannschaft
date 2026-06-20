@@ -114,7 +114,7 @@ public class AnnouncementReadService {
         // 未読のものだけ既読登録
         List<AnnouncementReadStatusEntity> newReadStatuses = feedIds.stream()
                 .filter(feedId -> !alreadyReadFeedIds.contains(feedId))
-                .map(feedId -> AnnouncementReadStatusEntity.builder()
+                .<AnnouncementReadStatusEntity>map(feedId -> AnnouncementReadStatusEntity.builder()
                         .announcementFeedId(feedId)
                         .userId(userId)
                         .build())

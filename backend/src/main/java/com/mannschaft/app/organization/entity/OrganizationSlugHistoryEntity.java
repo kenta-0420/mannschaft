@@ -6,8 +6,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -34,8 +33,7 @@ import java.time.LocalDateTime;
 @Table(name = "organization_slug_history")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder
+@SuperBuilder
 public class OrganizationSlugHistoryEntity extends UuidV7Entity {
 
     /** リネーム対象組織（organizations.id への ID 参照・FK なし／原則1） */
