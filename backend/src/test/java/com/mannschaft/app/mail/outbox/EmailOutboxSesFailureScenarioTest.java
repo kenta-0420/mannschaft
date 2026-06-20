@@ -13,10 +13,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
-import software.amazon.awssdk.services.sesv2.SesV2Client;
-import software.amazon.awssdk.services.sesv2.model.SendEmailRequest;
-import software.amazon.awssdk.services.sesv2.model.SendEmailResponse;
 import software.amazon.awssdk.services.sesv2.model.SesV2Exception;
 
 import java.nio.charset.StandardCharsets;
@@ -51,7 +47,7 @@ class EmailOutboxSesFailureScenarioTest {
     @Mock private EmailOutboxRepository repository;
     @Mock private EncryptionService encryption;
     @Mock private EmailTemplateRenderer renderer;
-    @Mock private SesV2Client sesClient;
+    @Mock private EmailTransport emailTransport;  // AC4: SesV2Client → EmailTransport に変更
     @Mock private SesExceptionClassifier classifier;
     @Spy private IdempotencyKeyGenerator keyGen = new IdempotencyKeyGenerator();
     @Spy private io.micrometer.core.instrument.MeterRegistry meterRegistry = new SimpleMeterRegistry();
@@ -62,7 +58,6 @@ class EmailOutboxSesFailureScenarioTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(service, "fromAddress", "noreply@test.example.com");
         lenient().when(encryption.encryptBytes(any(byte[].class)))
                 .thenAnswer(inv -> {
                     byte[] in = inv.getArgument(0);
@@ -141,8 +136,8 @@ class EmailOutboxSesFailureScenarioTest {
         });
         when(renderer.renderVerificationEmail(any(), any(), any())).thenReturn("<html>...</html>");
         when(renderer.resolveMessage(any(), any())).thenReturn("認証メール件名");
-        when(sesClient.sendEmail(any(SendEmailRequest.class)))
-                .thenReturn(SendEmailResponse.builder().messageId("ses-msg-001").build());
+        // AC4: sesClient.sendEmail → emailTransport.send に変更
+        when(emailTransport.send(any(), any(), any())).thenReturn("ses-msg-001");
 
         service.processOne(id);
 
@@ -156,8 +151,8 @@ class EmailOutboxSesFailureScenarioTest {
                 .as("SES 復旧後は最終的に SENT になること")
                 .isEqualTo("SENT");
 
-        // SES に実際に sendEmail が呼ばれた
-        verify(sesClient, times(1)).sendEmail(any(SendEmailRequest.class));
+        // EmailTransport に実際に send が呼ばれた
+        verify(emailTransport, times(1)).send(any(), any(), any());
     }
 
     // -----------------------------------------------------------------------
@@ -183,8 +178,9 @@ class EmailOutboxSesFailureScenarioTest {
         when(renderer.resolveMessage(any(), any())).thenReturn("認証メール件名");
 
         // 1回目: SES 失敗（認証情報未設定 → 一時失敗扱い）
-        when(sesClient.sendEmail(any(SendEmailRequest.class)))
-                .thenThrow(SesV2Exception.builder().message("連接エラー").build());
+        // AC4: sesClient.sendEmail → emailTransport.send が例外を投げる形に変更
+        RuntimeException transientEx = SesV2Exception.builder().message("連接エラー").build();
+        when(emailTransport.send(any(), any(), any())).thenThrow(transientEx);
         when(classifier.isPermanent(any())).thenReturn(false);
 
         service.processOne(id);
@@ -205,9 +201,9 @@ class EmailOutboxSesFailureScenarioTest {
                 .isEqualTo("PENDING");
 
         // 2回目: entity を PENDING に戻してから SES 成功でリトライ
+        // AC4: sesClient.sendEmail → emailTransport.send が成功値を返す形に変更
         entity.markPendingForRetry();
-        when(sesClient.sendEmail(any(SendEmailRequest.class)))
-                .thenReturn(SendEmailResponse.builder().messageId("ses-retry-001").build());
+        when(emailTransport.send(any(), any(), any())).thenReturn("ses-retry-001");
 
         service.processOne(id);
 

@@ -14,8 +14,6 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.test.util.ReflectionTestUtils;
-import software.amazon.awssdk.services.sesv2.SesV2Client;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -44,7 +42,7 @@ class EmailOutboxServiceTest {
     @Mock private EmailOutboxRepository repository;
     @Mock private EncryptionService encryption;
     @Mock private EmailTemplateRenderer renderer;
-    @Mock private SesV2Client sesClient;
+    @Mock private EmailTransport emailTransport;  // AC4: SesV2Client → EmailTransport に変更
     @Mock private SesExceptionClassifier classifier;
     @Spy private IdempotencyKeyGenerator keyGen = new IdempotencyKeyGenerator();
     @Spy private MeterRegistry meterRegistry = new SimpleMeterRegistry();
@@ -55,8 +53,6 @@ class EmailOutboxServiceTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(service, "fromAddress", "noreply@test.example.com");
-
         // 暗号化/HMAC は本テストでは内容を問わないため固定値を返す
         lenient().when(encryption.encryptBytes(any(byte[].class)))
                 .thenAnswer(inv -> {
