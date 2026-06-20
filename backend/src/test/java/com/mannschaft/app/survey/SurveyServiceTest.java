@@ -586,4 +586,119 @@ class SurveyServiceTest {
         }
     }
 
+    /**
+     * follow-up②: 作成経路の enum 文字列フィールド不正値 → 500 ではなく 400（BusinessException）。
+     *
+     * <p>真因: {@code ResultsVisibility.valueOf(...)} 等が不正値で {@code IllegalArgumentException}
+     * を投げ、GlobalExceptionHandler の汎用ハンドラに落ちて 500 COMMON_999 になっていた。
+     * 本来クライアント入力エラーなので {@code SurveyErrorCode.INVALID_ENUM_VALUE}（Severity.WARN → 400）
+     * を投げるべき。握りつぶして既定値に倒す対処療法は禁止。</p>
+     */
+    @Nested
+    @DisplayName("createSurvey/addQuestion enum 文字列不正値は400(BusinessException)")
+    class CreateSurveyEnumValidation {
+
+        private CreateSurveyRequest createRequest(String resultsVisibility, String distributionMode,
+                                                  String unrespondedVisibility,
+                                                  java.util.List<com.mannschaft.app.survey.dto.CreateQuestionRequest> questions) {
+            return new CreateSurveyRequest(
+                    "タイトル", null, false, false,
+                    resultsVisibility,    // resultsVisibility
+                    distributionMode,     // distributionMode
+                    unrespondedVisibility, // unrespondedVisibility
+                    false, null, null, null, null,
+                    questions,            // questions
+                    null, null, false, false);
+        }
+
+        @Test
+        @DisplayName("resultsVisibility不正(ADMIN_ONLY)_INVALID_ENUM_VALUEで400(save到達せず)")
+        void resultsVisibility不正_400() {
+            // 正は ADMINS_ONLY 等。ADMIN_ONLY は定義外。
+            CreateSurveyRequest req = createRequest("ADMIN_ONLY", "ALL", null, Collections.emptyList());
+            assertThatThrownBy(() -> surveyService.createSurvey("ORGANIZATION", 1L, 10L, req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(SurveyErrorCode.INVALID_ENUM_VALUE));
+            verify(surveyRepository, org.mockito.Mockito.never())
+                    .save(org.mockito.ArgumentMatchers.any());
+        }
+
+        @Test
+        @DisplayName("distributionMode不正_INVALID_ENUM_VALUEで400")
+        void distributionMode不正_400() {
+            CreateSurveyRequest req = createRequest("AFTER_CLOSE", "INVALID_MODE", null, Collections.emptyList());
+            assertThatThrownBy(() -> surveyService.createSurvey("ORGANIZATION", 1L, 10L, req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(SurveyErrorCode.INVALID_ENUM_VALUE));
+            verify(surveyRepository, org.mockito.Mockito.never())
+                    .save(org.mockito.ArgumentMatchers.any());
+        }
+
+        @Test
+        @DisplayName("unrespondedVisibility不正_INVALID_ENUM_VALUEで400")
+        void unrespondedVisibility不正_400() {
+            CreateSurveyRequest req = createRequest("AFTER_CLOSE", "ALL", "BOGUS", Collections.emptyList());
+            assertThatThrownBy(() -> surveyService.createSurvey("ORGANIZATION", 1L, 10L, req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(SurveyErrorCode.INVALID_ENUM_VALUE));
+            verify(surveyRepository, org.mockito.Mockito.never())
+                    .save(org.mockito.ArgumentMatchers.any());
+        }
+
+        @Test
+        @DisplayName("questionType不正(INVALID)_作成同梱設問_INVALID_ENUM_VALUEで400")
+        void questionType不正_作成同梱_400() {
+            com.mannschaft.app.survey.dto.CreateQuestionRequest badQuestion =
+                    new com.mannschaft.app.survey.dto.CreateQuestionRequest(
+                            "INVALID", "Q1", true, 0, null, null, null, null, null, null);
+            CreateSurveyRequest req = createRequest("AFTER_CLOSE", "ALL", null,
+                    java.util.List.of(badQuestion));
+            assertThatThrownBy(() -> surveyService.createSurvey("ORGANIZATION", 1L, 10L, req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(SurveyErrorCode.INVALID_ENUM_VALUE));
+        }
+
+        @Test
+        @DisplayName("addQuestion_questionType不正_INVALID_ENUM_VALUEで400(save到達せず)")
+        void addQuestion_questionType不正_400() {
+            SurveyEntity draft = createDraftSurvey();
+            ReflectionTestUtils.setField(draft, "id", SURVEY_ID);
+            given(surveyRepository.findByIdAndScopeTypeAndScopeId(SURVEY_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(draft));
+            com.mannschaft.app.survey.dto.CreateQuestionRequest badQuestion =
+                    new com.mannschaft.app.survey.dto.CreateQuestionRequest(
+                            "INVALID", "Q1", true, 0, null, null, null, null, null, null);
+            assertThatThrownBy(() ->
+                    surveyService.addQuestion(SCOPE_TYPE, SCOPE_ID, SURVEY_ID, badQuestion))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(SurveyErrorCode.INVALID_ENUM_VALUE));
+            verify(questionRepository, org.mockito.Mockito.never())
+                    .save(org.mockito.ArgumentMatchers.any());
+        }
+
+        @Test
+        @DisplayName("正常値_従来どおり作成へ到達する(回帰防止)")
+        void 正常値_作成到達() {
+            SurveyEntity saved = SurveyEntity.builder()
+                    .scopeType("ORGANIZATION").scopeId(1L).title("タイトル").build();
+            ReflectionTestUtils.setField(saved, "id", 888L);
+            given(surveyRepository.save(org.mockito.ArgumentMatchers.any(SurveyEntity.class)))
+                    .willReturn(saved);
+            given(surveyRepository.findByIdAndScopeTypeAndScopeId(888L, "ORGANIZATION", 1L))
+                    .willReturn(Optional.of(saved));
+            given(questionRepository.findBySurveyIdOrderByDisplayOrderAsc(888L))
+                    .willReturn(Collections.emptyList());
+
+            CreateSurveyRequest req = createRequest("AFTER_CLOSE", "ALL", "CREATOR_AND_ADMIN",
+                    Collections.emptyList());
+            assertThat(surveyService.createSurvey("ORGANIZATION", 1L, 10L, req)).isNotNull();
+            verify(surveyRepository).save(org.mockito.ArgumentMatchers.any(SurveyEntity.class));
+        }
+    }
+
 }
