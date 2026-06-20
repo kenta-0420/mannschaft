@@ -8,10 +8,10 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 /**
  * 順番待ち設定エンティティ。スコープ単位の順番待ち設定を管理する。
@@ -20,8 +20,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "queue_settings")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class QueueSettingsEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
