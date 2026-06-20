@@ -43,6 +43,13 @@ public class ScheduleQueryService {
     private final ContentVisibilityChecker contentVisibilityChecker;
 
     /**
+     * 横断カレンダーへの追加合流 SPI（F06.5 §6.2）。schedule 以外のドメイン（例 reflection）が
+     * 自前の可視性フィルタを通したカレンダー印を {@code getMyCalendar} の return 直前に合流する。
+     * Spring が全 {@link CalendarEnricher} Bean を収集する（実装が無ければ空リスト）。
+     */
+    private final List<CalendarEnricher> calendarEnrichers;
+
+    /**
      * チームスコープのスケジュール一覧を取得する。
      *
      * <p>F00 認可基盤連携（2026-05-29）: 取得したスケジュールの ID 群を
@@ -151,6 +158,21 @@ public class ScheduleQueryService {
         // ループ内 per-item 呼び出しは避ける）。個人予定は本人取得のため対象外。
         addVisibleEntries(teamScoped, userId, entries);
         addVisibleEntries(orgScoped, userId, entries);
+
+        // F06.5 §6.2: 既存 schedule 合流（Long 経路）を一切改変せず、return 直前に独立 enrich パスで
+        // 他ドメイン（reflection 等）のカレンダー印を合流する。各 enricher は自ドメインの UUID 経路
+        // 可視性フィルタ（F00 filterAccessibleUuid）を通したエントリ（id=null＋referenceUuid 識別）を返す。
+        // enricher 個別の失敗で本体カレンダー（schedule 行）が落ちないよう fail-safe で握る（漏洩でなく欠落側に倒す）。
+        if (calendarEnrichers != null) {
+            for (CalendarEnricher enricher : calendarEnrichers) {
+                try {
+                    entries.addAll(enricher.enrich(userId, from, to));
+                } catch (RuntimeException e) {
+                    log.warn("カレンダー enrich 失敗（schedule 本体は継続）: enricher={}, userId={}",
+                            enricher.getClass().getName(), userId, e);
+                }
+            }
+        }
 
         return entries;
     }

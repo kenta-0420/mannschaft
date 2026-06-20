@@ -7,6 +7,7 @@ import com.mannschaft.app.schedule.dto.CalendarSyncSettingsResponse;
 import com.mannschaft.app.schedule.dto.CalendarSyncToggleResponse;
 import com.mannschaft.app.schedule.dto.GoogleCalendarStatusResponse;
 import com.mannschaft.app.schedule.dto.ManualSyncResponse;
+import com.mannschaft.app.schedule.dto.PersonalSyncStatusResponse;
 import com.mannschaft.app.schedule.entity.UserCalendarSyncSettingEntity;
 import com.mannschaft.app.schedule.entity.UserGoogleCalendarConnectionEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
@@ -407,6 +408,88 @@ class GoogleCalendarServiceTest {
             assertThat(result.isConnected()).isTrue();
             assertThat(result.getLastSyncError()).isNotNull();
             assertThat(result.getLastSyncError().type()).isEqualTo("TOKEN_EXPIRED");
+        }
+    }
+
+    // ========================================
+    // getPersonalSync（受け入れ条件テスト）
+    // ========================================
+
+    @Nested
+    @DisplayName("getPersonalSync")
+    class GetPersonalSync {
+
+        @Test
+        @DisplayName("getPersonalSync_連携済みかつON_200でpersonalSyncEnabled=true,connected=true,active=true,email反映")
+        void getPersonalSync_連携済みかつON_正しく返す() {
+            // given
+            UserGoogleCalendarConnectionEntity conn = UserGoogleCalendarConnectionEntity.builder()
+                    .userId(USER_ID)
+                    .googleAccountEmail("sync-on@gmail.com")
+                    .googleCalendarId("primary")
+                    .accessToken("enc_access")
+                    .refreshToken("enc_refresh")
+                    .tokenExpiresAt(LocalDateTime.now().plusHours(1))
+                    .isActive(true)
+                    .personalSyncEnabled(true)
+                    .build();
+            given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.of(conn));
+
+            // when
+            PersonalSyncStatusResponse result = googleCalendarService.getPersonalSync(USER_ID);
+
+            // then
+            assertThat(result.isConnected()).isTrue();
+            assertThat(result.isActive()).isTrue();
+            assertThat(result.isPersonalSyncEnabled()).isTrue();
+            assertThat(result.getGoogleAccountEmail()).isEqualTo("sync-on@gmail.com");
+        }
+
+        @Test
+        @DisplayName("getPersonalSync_連携済みかつOFF_200でpersonalSyncEnabled=false")
+        void getPersonalSync_連携済みかつOFF_personalSyncEnabledがfalse() {
+            // given
+            UserGoogleCalendarConnectionEntity conn = createActiveConnection(); // personalSyncEnabled=false
+            given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.of(conn));
+
+            // when
+            PersonalSyncStatusResponse result = googleCalendarService.getPersonalSync(USER_ID);
+
+            // then
+            assertThat(result.isConnected()).isTrue();
+            assertThat(result.isPersonalSyncEnabled()).isFalse();
+        }
+
+        @Test
+        @DisplayName("getPersonalSync_未連携_405ではなく200でconnected=false/active=false/enabled=false/email=null")
+        void getPersonalSync_未連携_デフォルトfalse値を返す() {
+            // given
+            given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+
+            // when
+            PersonalSyncStatusResponse result = googleCalendarService.getPersonalSync(USER_ID);
+
+            // then
+            assertThat(result.isConnected()).isFalse();
+            assertThat(result.isActive()).isFalse();
+            assertThat(result.isPersonalSyncEnabled()).isFalse();
+            assertThat(result.getGoogleAccountEmail()).isNull();
+        }
+
+        @Test
+        @DisplayName("getPersonalSync_副作用なし_personalSyncEnabledを書き換えない")
+        void getPersonalSync_副作用なし_Repositoryのsave系は呼ばれない() {
+            // given
+            UserGoogleCalendarConnectionEntity conn = createActiveConnection();
+            given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.of(conn));
+
+            // when
+            googleCalendarService.getPersonalSync(USER_ID);
+
+            // then: save/update 系メソッドが一切呼ばれていない
+            org.mockito.Mockito.verifyNoMoreInteractions(syncSettingRepository);
+            org.mockito.Mockito.verify(connectionRepository).findByUserId(USER_ID);
+            org.mockito.Mockito.verifyNoMoreInteractions(connectionRepository);
         }
     }
 

@@ -16,6 +16,12 @@ public class ScopeDefaultResponse {
     private final Long userId;
     private final String scopeType;
     private final Long scopeId;
+    /**
+     * スコープ表示名。
+     * DEFAULT="デフォルト" / TEAM=チーム名 / ORGANIZATION=組織名 /
+     * 解決不能の場合は "不明なチーム" / "不明な組織"。
+     */
+    private final String scopeName;
     private final Long sealId;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
