@@ -50,17 +50,14 @@ public class AppearanceSettingsService {
      */
     @Transactional
     public AppearanceResponse save(Long userId, UpdateAppearanceRequest request) {
+        // 新規時は builder で userId のみ持たせ、既存時は取得済み managed entity をそのまま使う。
         AppearanceSettingsEntity entity = repository.findByUserId(userId)
                 .orElseGet(() -> AppearanceSettingsEntity.builder()
                         .userId(userId)
-                        .theme(request.getTheme())
-                        .bgColor(request.getBgColor())
-                        .seasonalThemeId(request.getSeasonalThemeId())
-                        .hideChatPreview(Boolean.TRUE.equals(request.getHideChatPreview()))
                         .build());
 
-        // 既存行の直接ミューテート（toBuilder().build() は UuidV7Entity 継承クラスで id が引き継がれず
-        // 新インスタンスになり INSERT になってしまうため使用しない。直接 setter で更新する）
+        // 値の真実の源を setter に一本化する（新規・既存とも同一経路。builder と二重設定しない＝保守時の片側更新ミスを防ぐ）。
+        // toBuilder().build() は UuidV7Entity 継承クラスで id が引き継がれず新インスタンス＝INSERT になるため使わない。
         entity.setTheme(request.getTheme());
         entity.setBgColor(request.getBgColor());
         entity.setSeasonalThemeId(request.getSeasonalThemeId());

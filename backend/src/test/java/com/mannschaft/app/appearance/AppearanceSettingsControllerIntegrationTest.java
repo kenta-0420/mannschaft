@@ -211,7 +211,8 @@ class AppearanceSettingsControllerIntegrationTest extends AbstractMySqlIntegrati
         assertThat(data.getTheme()).isNotNull();
         assertThat(data.getBgColor()).isNotNull();
         // seasonalThemeId は null 許容
-        assertThat(data.isHideChatPreview()).isNotNull();  // Boolean としてnot-null
+        // 未登録ユーザーのデフォルトは false（プリミティブ boolean なので値そのものを検証する）
+        assertThat(data.isHideChatPreview()).isFalse();
     }
 
     // ─────────────────────────────────────────────────────────────────────

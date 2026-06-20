@@ -17,7 +17,7 @@ CREATE TABLE appearance_settings (
     updated_at          DATETIME(6)     NOT NULL,
 
     PRIMARY KEY (id),
-    UNIQUE KEY uq_appearance_settings_user_id (user_id),
-    INDEX idx_appearance_settings_user_id (user_id)
+    -- UNIQUE KEY が user_id の BTree インデックスを兼ねる（別途 INDEX は重複のため張らない）。
+    UNIQUE KEY uq_appearance_settings_user_id (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='ユーザーごとの外観テーマ設定（1ユーザー1行・複数端末同期）';
