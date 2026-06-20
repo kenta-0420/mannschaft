@@ -587,6 +587,80 @@ class SurveyServiceTest {
     }
 
     /**
+     * follow-up④: listSurveys の status クエリパラメータ不正値 → 500 ではなく 400（BusinessException）。
+     *
+     * <p>真因: {@code SurveyStatus.valueOf(status)} がクライアント入力の不正値で
+     * {@code IllegalArgumentException} を投げ、GlobalExceptionHandler の汎用ハンドラに落ちて
+     * 500 COMMON_999 になっていた。本来クライアント入力エラーなので {@code parseEnumOrThrow}
+     * 流用により {@code SurveyErrorCode.INVALID_ENUM_VALUE}（Severity.WARN → 400）を返す。
+     * null/空は「フィルタなし（全件）」として通し続ける（仕様変更なし）。</p>
+     */
+    @Nested
+    @DisplayName("listSurveys status enum 不正値は400(BusinessException)")
+    class ListSurveysStatusEnumValidation {
+
+        @Test
+        @DisplayName("status不正値(BOGUS)_INVALID_ENUM_VALUEで400")
+        void status不正値_400() {
+            // When & Then: 修正前は IllegalArgumentException が伝播して 500 になっていた
+            assertThatThrownBy(() -> surveyService.listSurveys(
+                    SCOPE_TYPE, SCOPE_ID, "BOGUS",
+                    org.springframework.data.domain.Pageable.unpaged()))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(SurveyErrorCode.INVALID_ENUM_VALUE));
+            // 不正 enum 値はリポジトリへ到達しない
+            verify(surveyRepository, org.mockito.Mockito.never())
+                    .findByScopeTypeAndScopeIdAndStatusOrderByCreatedAtDesc(
+                            org.mockito.ArgumentMatchers.any(),
+                            org.mockito.ArgumentMatchers.any(),
+                            org.mockito.ArgumentMatchers.any(),
+                            org.mockito.ArgumentMatchers.any());
+        }
+
+        @Test
+        @DisplayName("status=null_フィルタなし全件クエリが実行される(null 400化しない)")
+        void status_null_全件クエリ() {
+            org.springframework.data.domain.Page<SurveyEntity> emptyPage =
+                    org.springframework.data.domain.Page.empty();
+            given(surveyRepository.findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
+                    SCOPE_TYPE, SCOPE_ID,
+                    org.springframework.data.domain.Pageable.unpaged()))
+                    .willReturn(emptyPage);
+
+            // null は例外を投げず全件クエリへ進む
+            org.springframework.data.domain.Page<SurveyResponse> result =
+                    surveyService.listSurveys(SCOPE_TYPE, SCOPE_ID, null,
+                            org.springframework.data.domain.Pageable.unpaged());
+
+            assertThat(result).isNotNull();
+            verify(surveyRepository).findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
+                    SCOPE_TYPE, SCOPE_ID,
+                    org.springframework.data.domain.Pageable.unpaged());
+        }
+
+        @Test
+        @DisplayName("status=DRAFT_正常値は従来どおりフィルタありクエリへ")
+        void status正常値_DRAFT_フィルタクエリ() {
+            org.springframework.data.domain.Page<SurveyEntity> emptyPage =
+                    org.springframework.data.domain.Page.empty();
+            given(surveyRepository.findByScopeTypeAndScopeIdAndStatusOrderByCreatedAtDesc(
+                    SCOPE_TYPE, SCOPE_ID, SurveyStatus.DRAFT,
+                    org.springframework.data.domain.Pageable.unpaged()))
+                    .willReturn(emptyPage);
+
+            org.springframework.data.domain.Page<SurveyResponse> result =
+                    surveyService.listSurveys(SCOPE_TYPE, SCOPE_ID, "DRAFT",
+                            org.springframework.data.domain.Pageable.unpaged());
+
+            assertThat(result).isNotNull();
+            verify(surveyRepository).findByScopeTypeAndScopeIdAndStatusOrderByCreatedAtDesc(
+                    SCOPE_TYPE, SCOPE_ID, SurveyStatus.DRAFT,
+                    org.springframework.data.domain.Pageable.unpaged());
+        }
+    }
+
+    /**
      * follow-up②: 作成経路の enum 文字列フィールド不正値 → 500 ではなく 400（BusinessException）。
      *
      * <p>真因: {@code ResultsVisibility.valueOf(...)} 等が不正値で {@code IllegalArgumentException}
