@@ -111,8 +111,7 @@ onMounted(() => {
 <template>
   <div class="mx-auto max-w-6xl p-6">
     <div class="mb-6 flex items-center gap-4">
-      <BackButton to="/organizations" />
-      <PageHeader :title="$t('orgHub.searchPageTitle')" class="flex-1" />
+      <PageHeader :title="$t('orgHub.searchPageTitle')" back-to="/organizations" class="flex-1" />
       <Button
         :label="$t('orgHub.createOrg')"
         icon="pi pi-plus"

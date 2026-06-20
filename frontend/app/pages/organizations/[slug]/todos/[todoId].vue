@@ -177,9 +177,8 @@ onMounted(async () => {
   <div v-else-if="todo" class="mx-auto max-w-3xl">
     <!-- ヘッダー -->
     <div class="mb-6">
-      <BackButton :to="`/organizations/${orgSlug}/todos`" :label="t('todo.backToList')" />
       <div class="flex items-start justify-between">
-        <PageHeader :title="todo.content?.title ?? ''" />
+        <PageHeader :title="todo.content?.title ?? ''" :back-to="`/organizations/${orgSlug}/todos`" :back-label="t('todo.backToList')" />
         <div class="flex gap-2">
           <Button
             :label="t('handoff.button.passToOther')"
