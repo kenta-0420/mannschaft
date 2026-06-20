@@ -138,6 +138,12 @@ mannschaft:
       queue-name: ${SES_NOTIFICATION_QUEUE_NAME:}
   email:
     from-address: ${MANNSCHAFT_EMAIL_FROM:noreply@mannschaft.app}
+    # F09.18: メール送信 simulate モード。true のとき実 SES を呼ばずログ出力のみ行う。
+    # - test / CI は application-test.yml / application-ci.yml で true に設定済み。
+    # - local 開発者は application-local.yml（gitignore 対象）に simulate: true を追記すること。
+    # - SQS リスナー側の @ConditionalOnProperty(queue-name) と対称的な設計。
+    # - 本番（prod/staging）は false のまま（環境変数 MANNSCHAFT_EMAIL_SIMULATE=false）。
+    simulate: ${MANNSCHAFT_EMAIL_SIMULATE:false}
   # F09.18 メール配信基盤 (Phase 18-a で導入)
   # 設計書: docs/features/F09.18_email_delivery_infrastructure.md §4 / §10 / §14
   # - worker.enabled: EmailOutboxWorker の @Scheduled 起動フラグ（test/openapi-gen で false 推奨）
