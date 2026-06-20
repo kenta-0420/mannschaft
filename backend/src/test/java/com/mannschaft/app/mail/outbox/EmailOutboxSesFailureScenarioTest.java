@@ -177,10 +177,13 @@ class EmailOutboxSesFailureScenarioTest {
         when(renderer.renderVerificationEmail(any(), any(), any())).thenReturn("<html>...</html>");
         when(renderer.resolveMessage(any(), any())).thenReturn("認証メール件名");
 
-        // 1回目: SES 失敗（認証情報未設定 → 一時失敗扱い）
-        // AC4: sesClient.sendEmail → emailTransport.send が例外を投げる形に変更
+        // 1回目: SES 失敗 → 2回目: 成功 の順で設定（STRICT_STUBS と再スタブ問題を回避）
+        // AC4: sesClient.sendEmail → emailTransport.send が例外を投げる→成功の形に変更
         RuntimeException transientEx = SesV2Exception.builder().message("連接エラー").build();
-        when(emailTransport.send(any(), any(), any())).thenThrow(transientEx);
+        // 1回目は例外、2回目は成功を返すよう順番に設定
+        when(emailTransport.send(any(), any(), any()))
+                .thenThrow(transientEx)
+                .thenReturn("ses-retry-001");
         when(classifier.isPermanent(any())).thenReturn(false);
 
         service.processOne(id);
@@ -201,9 +204,7 @@ class EmailOutboxSesFailureScenarioTest {
                 .isEqualTo("PENDING");
 
         // 2回目: entity を PENDING に戻してから SES 成功でリトライ
-        // AC4: sesClient.sendEmail → emailTransport.send が成功値を返す形に変更
         entity.markPendingForRetry();
-        when(emailTransport.send(any(), any(), any())).thenReturn("ses-retry-001");
 
         service.processOne(id);
 
