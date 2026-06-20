@@ -5,9 +5,9 @@
  * クエリ `?create=1`（＋ slotKind/slotId/title/sourceType）で作成ダイアログを自動オープンする
  * （今日ビューの空きコマからの遷移）。
  */
-import {
-  type ReflectionThemeResponse,
-  type ReflectionSourceType,
+import type {
+  ReflectionThemeResponse,
+  ReflectionSourceType,
 } from '~/types/reflection'
 
 definePageMeta({ middleware: 'auth' })
