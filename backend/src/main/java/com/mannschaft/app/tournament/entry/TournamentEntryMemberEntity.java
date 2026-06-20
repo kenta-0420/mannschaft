@@ -7,7 +7,8 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 import lombok.Getter;
@@ -25,7 +26,6 @@ import java.time.LocalDateTime;
 @Table(name = "tournament_entry_members")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @SuperBuilder(toBuilder = true)
 public class TournamentEntryMemberEntity extends UuidV7Entity {
 
