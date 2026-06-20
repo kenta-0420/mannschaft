@@ -87,10 +87,12 @@ const navSettingsStore = useNavSettingsStore()
 /** 未解決コンフリクトがある場合のみ「同期」ナビを表示 */
 const showSyncNav = computed(() => syncStore.hasConflicts)
 
-/** DEPUTY_ADMIN 以上のチームが 1 つでもある場合に代理入力デスクを表示 */
+/** NEIGHBORHOOD/CONDO テンプレートかつ DEPUTY_ADMIN 以上のチームが 1 つでもある場合に代理入力デスクを表示 */
 const showProxyDeskNav = computed(() =>
   teamStore.myTeams.some(
-    (team) => team.role === 'ADMIN' || team.role === 'SYSTEM_ADMIN' || team.role === 'DEPUTY_ADMIN',
+    (team) =>
+      (team.template === 'NEIGHBORHOOD' || team.template === 'CONDO') &&
+      (team.role === 'ADMIN' || team.role === 'SYSTEM_ADMIN' || team.role === 'DEPUTY_ADMIN'),
   ),
 )
 

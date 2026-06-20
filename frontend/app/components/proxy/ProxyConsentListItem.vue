@@ -21,7 +21,7 @@ const consentMethodKey = computed(() => {
     DIGITAL_SIGNATURE: 'proxy.consent.method.digital_signature',
     GUARDIAN_BY_COURT: 'proxy.consent.method.guardian_by_court',
   }
-  return keyMap[props.consent.consentMethod] ?? props.consent.consentMethod
+  return keyMap[props.consent.consentMethod] ?? props.consent.consentMethod ?? ''
 })
 
 /** 機能スコープの i18n ラベルを返す */

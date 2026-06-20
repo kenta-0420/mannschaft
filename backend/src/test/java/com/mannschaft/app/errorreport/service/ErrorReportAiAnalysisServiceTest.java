@@ -210,6 +210,52 @@ class ErrorReportAiAnalysisServiceTest {
                 .hasMessageContaining(ErrorReportErrorCode.ERROR_REPORT_NOT_FOUND.getMessage());
     }
 
+    // ===== AC-10: 即時分析パスの予算チェック漏れ根治 =====
+
+    @Test
+    @DisplayName("AC-10: 即時分析(analyzeAfterCommit)は予算超過時に Claude API を呼ばずスキップする")
+    void analyzeAfterCommit_skipsWhenBudgetExceeded() {
+        // トランザクション同期が無いコンテキストでは即時実行されるため、
+        // 予算超過なら provider.analyze は一度も呼ばれてはならない。
+        given(budgetService.canExpend(anyInt())).willReturn(false);
+
+        service.analyzeAfterCommit(REPORT_ID, null);
+
+        // Claude API（webClient 経由）が発火しないこと
+        verify(provider, never()).analyze(any());
+        // 予算超過時はレポートも引かない（即時パスは予算ゲートで早期スキップ）
+        verify(errorReportRepository, never()).findById(anyLong());
+        // 後追いバッチが拾えるよう実コスト計上もされない
+        verify(budgetService, never()).recordExpense(anyInt());
+    }
+
+    @Test
+    @DisplayName("AC-10: 即時分析(analyzeAfterCommit)は予算内なら Claude API を呼ぶ")
+    void analyzeAfterCommit_invokesWhenWithinBudget() {
+        ErrorReportEntity report = sampleReport(ErrorReportSeverity.HIGH);
+        given(budgetService.canExpend(anyInt())).willReturn(true);
+        given(errorReportRepository.findById(REPORT_ID)).willReturn(Optional.of(report));
+        given(provider.analyze(any())).willReturn(AiAnalysisResult.builder()
+                .estimatedCause("c").fixProposal("f").impactAssessment("i")
+                .suggestedFiles(List.of()).promptTokens(10).completionTokens(5)
+                .rawResponse("{}").build());
+        given(aiAnalysisRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+        service.analyzeAfterCommit(REPORT_ID, null);
+
+        verify(provider).analyze(any());
+    }
+
+    @Test
+    @DisplayName("AC-10: 即時分析の予算判定は機能無効時に Claude API を呼ばずスキップする")
+    void analyzeAfterCommit_skipsWhenDisabled() {
+        props.getAi().setEnabled(false);
+
+        service.analyzeAfterCommit(REPORT_ID, null);
+
+        verify(provider, never()).analyze(any());
+    }
+
     @Test
     @DisplayName("serializeSuggestedFiles: NULL は NULL を返す")
     void serializeSuggestedFiles_returnsNullForEmpty() {
