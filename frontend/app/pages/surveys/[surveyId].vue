@@ -234,8 +234,6 @@ onMounted(async () => {
 
 <template>
   <div class="mx-auto max-w-3xl p-4" data-testid="survey-detail-page">
-    <BackButton :to="scopeListPath" />
-
     <!-- ローディング -->
     <PageLoading v-if="loading" />
 
@@ -251,7 +249,7 @@ onMounted(async () => {
 
     <template v-else>
       <!-- ヘッダー -->
-      <PageHeader :title="survey.content?.title ?? ''" size="sm">
+      <PageHeader :title="survey.content?.title ?? ''" size="sm" :back-to="scopeListPath">
         <span :class="statusClass(survey.status)" class="rounded px-2 py-0.5 text-xs font-medium" data-testid="survey-detail-status">
           {{ t(`surveys.statusLabel.${survey.status}`) }}
         </span>

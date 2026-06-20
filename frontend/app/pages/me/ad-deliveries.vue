@@ -118,8 +118,7 @@ onMounted(loadInitial)
 
 <template>
   <div>
-    <BackButton to="/settings" />
-    <PageHeader :title="t('advertising.pages.me_ad_deliveries.title')" />
+    <PageHeader :title="t('advertising.pages.me_ad_deliveries.title')" back-to="/settings" />
 
     <div class="mx-auto max-w-4xl">
       <p class="mb-4 text-sm text-surface-500 dark:text-surface-300">

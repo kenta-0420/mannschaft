@@ -26,8 +26,7 @@ onMounted(() => load())
 
 <template>
   <div class="mx-auto max-w-3xl">
-    <BackButton to="/my" />
-    <PageHeader title="マイパフォーマンス" />
+    <PageHeader title="マイパフォーマンス" back-to="/my" />
     <PageLoading v-if="loading" size="40px" />
     <template v-else-if="data">
       <div class="grid gap-4 md:grid-cols-3">
