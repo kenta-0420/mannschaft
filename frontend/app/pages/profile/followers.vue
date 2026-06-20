@@ -24,10 +24,7 @@ onMounted(loadData)
 
 <template>
   <div class="mx-auto max-w-2xl px-4 py-6">
-    <div class="mb-6 flex items-center gap-3">
-      <BackButton to="/profile" />
-      <PageHeader :title="`${$t('label.followers')} ${totalCount}`" />
-    </div>
+    <PageHeader :title="`${$t('label.followers')} ${totalCount}`" back-to="/profile" />
 
     <PageLoading v-if="followersLoading && followers.length === 0" />
 

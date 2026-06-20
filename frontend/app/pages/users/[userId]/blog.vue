@@ -65,7 +65,6 @@ onMounted(() => loadPosts())
 <template>
   <div class="mx-auto max-w-4xl px-4 py-8">
     <div class="mb-6 flex items-center gap-3">
-      <BackButton />
       <PageHeader :title="$t('blog.post.published')" />
       <!-- F02.9 お気に入りトグル（BLOG_AUTHOR） -->
       <FavoriteToggleButton

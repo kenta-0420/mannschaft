@@ -134,8 +134,7 @@ async function handleRenameCredential() {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <BackButton to="/settings" />
-    <PageHeader title="セキュリティ" />
+    <PageHeader title="セキュリティ" back-to="/settings" />
 
     <PageLoading v-if="loading" />
 

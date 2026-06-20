@@ -85,8 +85,7 @@ function formatDate(dateStr: string | null) {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <BackButton to="/settings" />
-    <PageHeader title="アカウント連携" />
+    <PageHeader title="アカウント連携" back-to="/settings" />
 
     <PageLoading v-if="loading" />
 

@@ -38,10 +38,7 @@ onMounted(async () => {
 <template>
   <PageLoading v-if="loading" />
   <div v-else>
-    <div class="mb-4 flex items-center gap-3">
-      <BackButton />
-      <PageHeader :title="$t('committee.distributions.title')" />
-    </div>
+    <PageHeader :title="$t('committee.distributions.title')" />
 
     <SectionCard v-if="distributions.length === 0">
       <DashboardEmptyState icon="pi pi-list" :message="$t('committee.distributions.empty')" />

@@ -70,8 +70,7 @@ function eventSeverity(eventType: string) {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <BackButton to="/settings" />
-    <PageHeader title="ログイン履歴" />
+    <PageHeader title="ログイン履歴" back-to="/settings" />
 
     <PageLoading v-if="loading" />
 

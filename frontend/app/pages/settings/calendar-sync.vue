@@ -108,8 +108,7 @@ onMounted(load)
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <BackButton to="/settings" />
-    <PageHeader title="Google Calendar 連携" />
+    <PageHeader title="Google Calendar 連携" back-to="/settings" />
 
     <div v-if="loading" class="space-y-4">
       <Skeleton height="6rem" />
