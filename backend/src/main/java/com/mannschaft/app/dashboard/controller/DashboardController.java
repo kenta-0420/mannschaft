@@ -334,12 +334,13 @@ public class DashboardController {
         long eventsThisWeek = scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, todayStart, weekEnd).size();
         long eventsThisMonth = scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, todayStart, monthEnd).size();
 
-        // チーム公開イベントも加算
+        // チーム公開イベントも加算（N+1 解消: 所属チーム ID を IN 句で一括取得し、期間ごと 1 クエリ）
         List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
-        for (UserRoleEntity role : teamRoles) {
-            eventsToday += scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), todayStart, todayEnd).size();
-            eventsThisWeek += scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), todayStart, weekEnd).size();
-            eventsThisMonth += scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), todayStart, monthEnd).size();
+        List<Long> teamIds = teamRoles.stream().map(UserRoleEntity::getTeamId).toList();
+        if (!teamIds.isEmpty()) {
+            eventsToday += scheduleRepository.findByTeamIdInAndStartAtBetween(teamIds, todayStart, todayEnd).size();
+            eventsThisWeek += scheduleRepository.findByTeamIdInAndStartAtBetween(teamIds, todayStart, weekEnd).size();
+            eventsThisMonth += scheduleRepository.findByTeamIdInAndStartAtBetween(teamIds, todayStart, monthEnd).size();
         }
 
         return ResponseEntity.ok(ApiResponse.of(Map.of(

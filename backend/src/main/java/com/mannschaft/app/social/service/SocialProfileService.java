@@ -83,14 +83,15 @@ public class SocialProfileService {
 
     /**
      * 自分のソーシャルプロフィールを取得する。
+     * プロフィール未作成の場合は例外を投げず null を返す（FE 側で空配列化）。
      *
      * @param userId ユーザーID
-     * @return プロフィール
+     * @return プロフィール。未作成の場合は null
      */
     public ProfileResponse getMyProfile(Long userId) {
-        UserSocialProfileEntity profile = profileRepository.findByUserId(userId)
-                .orElseThrow(() -> new BusinessException(SocialErrorCode.PROFILE_NOT_FOUND));
-        return toProfileResponse(profile);
+        return profileRepository.findByUserId(userId)
+                .map(this::toProfileResponse)
+                .orElse(null);
     }
 
     /**
