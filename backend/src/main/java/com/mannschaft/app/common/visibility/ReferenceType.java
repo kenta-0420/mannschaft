@@ -181,7 +181,23 @@ public enum ReferenceType {
      * （引用要件が顕在化したら追加する）。本値は {@code ContentVisibilityChecker.canViewUuid} の
      * 単発・バッチ判定経路でのみ参照される。</p>
      */
-    MATCH;
+    MATCH,
+
+    // ---------------------------------------------------------------------
+    // F06.5 アクティブリコール学習機能 (reflection_entries は UUIDv7 主キー)
+    // ---------------------------------------------------------------------
+
+    /**
+     * 振り返りエントリ (F06.5 / {@code ReflectionEntryVisibilityResolver} が実装).
+     *
+     * <p>{@code reflection_entries} テーブル（UUIDv7 / BINARY(16) 主キー）の可視性判定に用いる。
+     * MVP は PRIVATE 固定ゆえ「閲覧者＝所有者本人」判定。FAMILY_SHARED（保護者の学習確認）は
+     * 別軍議で追加予定（設計書 §6.1 / §9.1）。{@link #idKind()} は {@link IdKind#UUID_V7}。</p>
+     *
+     * <p>カレンダー印（target_date / 想起予定）を F00 UUID 経路フィルタ経由で合流する保険に用いる
+     * （設計書 §6.2・AC-14）。{@code ContentVisibilityChecker.canViewUuid} の経路で参照される。</p>
+     */
+    REFLECTION_ENTRY;
 
     /**
      * 本 reference_type が参照する主キー型を返す。
@@ -202,7 +218,8 @@ public enum ReferenceType {
             case SUCCESSION_PRE_REGISTRATION,
                  SUCCESSION_COVENANTS,
                  RESIDENT_ACTIVITY_SNAPSHOT,
-                 MATCH -> IdKind.UUID_V7;
+                 MATCH,
+                 REFLECTION_ENTRY -> IdKind.UUID_V7;
             default -> IdKind.BIGINT;
         };
     }
