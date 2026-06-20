@@ -218,11 +218,10 @@ onMounted(async () => {
 
     <div v-else-if="project">
       <div class="mb-6">
-        <BackButton to="/my/projects" :label="$t('project.my_projects')" />
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
             <span v-if="project.emoji" class="text-3xl">{{ project.emoji }}</span>
-            <PageHeader :title="project.title" />
+            <PageHeader :title="project.title" back-to="/my/projects" :back-label="$t('project.my_projects')" />
             <Tag
               :value="project.status === 'COMPLETED' ? '完了' : '進行中'"
               :severity="project.status === 'COMPLETED' ? 'success' : 'info'"

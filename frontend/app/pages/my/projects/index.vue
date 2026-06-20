@@ -94,10 +94,9 @@ onMounted(async () => {
 
 <template>
   <div>
-    <BackButton to="/my" />
     <div class="mb-4 flex items-center justify-between">
       <div>
-        <PageHeader :title="$t('project.my_projects')" />
+        <PageHeader :title="$t('project.my_projects')" back-to="/my" />
         <p class="text-sm text-surface-500">{{ $t('project.my_projects_description') }}</p>
       </div>
       <Button label="プロジェクト作成" icon="pi pi-plus" @click="openCreate" />
