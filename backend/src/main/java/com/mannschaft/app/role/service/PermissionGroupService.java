@@ -44,11 +44,15 @@ public class PermissionGroupService {
         // パーミッション存在確認
         validatePermissionIds(req.getPermissionIds());
 
-        PermissionGroupEntity.PermissionGroupEntityBuilder builder = PermissionGroupEntity.builder()
+        var builder = PermissionGroupEntity.builder()
                 .name(req.getName())
                 .targetRole(PermissionGroupEntity.TargetRole.valueOf(req.getTargetRole()))
                 .createdBy(createdBy);
-        setScopeField(builder, scopeId, scopeType);
+        if ("TEAM".equals(scopeType)) {
+            builder.teamId(scopeId);
+        } else {
+            builder.organizationId(scopeId);
+        }
         PermissionGroupEntity group = builder.build();
         permissionGroupRepository.save(group);
 
@@ -94,13 +98,13 @@ public class PermissionGroupService {
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_006));
 
         // 複製エンティティ作成
-        PermissionGroupEntity.PermissionGroupEntityBuilder builder = PermissionGroupEntity.builder()
+        var dupBuilder = PermissionGroupEntity.builder()
                 .name(original.getName() + " (コピー)")
                 .targetRole(original.getTargetRole())
                 .teamId(original.getTeamId())
                 .organizationId(original.getOrganizationId())
                 .createdBy(createdBy);
-        PermissionGroupEntity copy = builder.build();
+        PermissionGroupEntity copy = dupBuilder.build();
         permissionGroupRepository.save(copy);
 
         // パーミッション紐付けを複製
@@ -253,18 +257,6 @@ public class PermissionGroupService {
             return permissionGroupRepository.findByTeamId(scopeId);
         }
         return permissionGroupRepository.findByOrganizationId(scopeId);
-    }
-
-    /**
-     * ビルダーにスコープフィールドをセットする。
-     */
-    private void setScopeField(PermissionGroupEntity.PermissionGroupEntityBuilder builder,
-                                Long scopeId, String scopeType) {
-        if ("TEAM".equals(scopeType)) {
-            builder.teamId(scopeId);
-        } else {
-            builder.organizationId(scopeId);
-        }
     }
 
     private PermissionGroupResponse toResponse(PermissionGroupEntity group) {

@@ -92,15 +92,19 @@ public class InviteService {
         // 有効期限の計算
         LocalDateTime expiresAt = resolveExpiresAt(req.getExpiresIn());
 
-        InviteTokenEntity.InviteTokenEntityBuilder builder = InviteTokenEntity.builder()
+        var inviteBuilder = InviteTokenEntity.builder()
                 .token(UUID.randomUUID().toString())
                 .roleId(req.getRoleId())
                 .createdBy(createdBy)
                 .expiresAt(expiresAt)
                 .maxUses(req.getMaxUses())
                 .usedCount(0);
-        setScopeFieldOnInvite(builder, scopeId, scopeType);
-        InviteTokenEntity token = builder.build();
+        if ("TEAM".equals(scopeType)) {
+            inviteBuilder.teamId(scopeId);
+        } else {
+            inviteBuilder.organizationId(scopeId);
+        }
+        InviteTokenEntity token = inviteBuilder.build();
         inviteTokenRepository.save(token);
 
         // 監査ログ用イベント発行
@@ -212,7 +216,7 @@ public class InviteService {
         }
 
         // ロール割当
-        UserRoleEntity.UserRoleEntityBuilder roleBuilder = UserRoleEntity.builder()
+        var roleBuilder = UserRoleEntity.builder()
                 .userId(userId)
                 .roleId(token.getRoleId());
         if ("TEAM".equals(scopeType)) {
@@ -354,18 +358,6 @@ public class InviteService {
         };
         if (blocked) {
             throw new BusinessException(TeamErrorCode.TEAM_004);
-        }
-    }
-
-    /**
-     * InviteTokenEntityビルダーにスコープフィールドをセットする。
-     */
-    private void setScopeFieldOnInvite(InviteTokenEntity.InviteTokenEntityBuilder builder,
-                                        Long scopeId, String scopeType) {
-        if ("TEAM".equals(scopeType)) {
-            builder.teamId(scopeId);
-        } else {
-            builder.organizationId(scopeId);
         }
     }
 
