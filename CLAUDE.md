@@ -143,10 +143,22 @@
 
 | サービス | ポート | 備考 |
 |---|---|---|
-| Spring Boot API | 8080 | `http://localhost:8080` |
+| Spring Boot API | 8080 | `http://localhost:8080`（本陣・正本の dev サーバー）|
 | Nuxt dev server | 3000 | 使用中の場合 3001 に移動 |
 | MySQL 8.0 | 3306 | コンテナ名: `mannschaft-mysql` |
 | Valkey (Redis互換) | 6379 | コンテナ名: `mannschaft-valkey` |
+
+#### 常駐サーバーのポート規約（本陣 と 検証用 worktree を分離）
+
+並行セッション・E2E で本陣の 8080/3000 を奪い合う事故（ゾンビ bootRun 等。`feedback_opus_infra_ops_danger`）を防ぐため、**本陣と検証用 worktree でポートを分ける**。worktree はディレクトリ隔離、ポートは実行時リソース隔離で、両者は補完関係（冗長ではない）。
+
+| 用途 | バックエンド | フロントエンド |
+|---|---|---|
+| **本陣**（正本の dev サーバー）| 8080 | 3000 |
+| **検証・E2E 用 worktree**（本陣と別ディレクトリで起動）| **8081** | **3001** |
+
+- 検証用 BE は `./gradlew bootRun --args='--server.port=8081'`、FE は `npm run dev -- --port 3001` で固定起動する
+- **テスト（試練）はこの規約の対象外**。`@SpringBootTest(webEnvironment = RANDOM_PORT)` + Testcontainers 自動採番で、ポートを固定しない（並行実行の衝突回避。`/試練` 参照）
 
 ### 型定義の管理
 
@@ -335,7 +347,13 @@ cp .githooks/pre-commit .git/hooks/pre-commit   # PowerShell: Copy-Item .githook
 ### C. dev サーバーは本陣と別 worktree で起動（任意・推奨）
 
 画面確認用 dev サーバーを本陣と別ディレクトリで動かすと、本陣 HEAD が動いても表示が無傷。
-`git worktree add .claude/worktrees/dev-main main` → そこで `cd frontend && npm run dev`。
+`git worktree add .claude/worktrees/dev-main main` → そこで以下のように **検証用ポート（BE 8081 / FE 3001）** で起動する（本陣 8080/3000 と衝突しない。上記「常駐サーバーのポート規約」参照）:
+
+```bash
+# 検証用 worktree 内で
+cd backend && ./gradlew bootRun --args='--server.port=8081' &
+cd frontend && npm run dev -- --port 3001
+```
 
 詳細経緯: memory `feedback_branch_isolation` / `feedback_merge_gh_only_no_honjin_git`。
 
