@@ -8,10 +8,10 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 /**
  * ページ内セクションエンティティ。テキスト・画像・メンバー一覧・見出しを管理する。
@@ -20,8 +20,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "team_page_sections")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class TeamPageSectionEntity extends BaseEntity {
 
     @Column(nullable = false)
