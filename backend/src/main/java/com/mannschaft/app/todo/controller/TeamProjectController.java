@@ -12,6 +12,7 @@ import com.mannschaft.app.todo.dto.ProjectResponse;
 import com.mannschaft.app.todo.dto.TodoResponse;
 import com.mannschaft.app.todo.dto.UpdateMilestoneRequest;
 import com.mannschaft.app.todo.dto.UpdateProjectRequest;
+import com.mannschaft.app.todo.security.ProjectAccessGuard;
 import com.mannschaft.app.todo.service.ProjectService;
 import com.mannschaft.app.todo.service.TodoService;
 import com.mannschaft.app.team.service.TeamService;
@@ -47,6 +48,8 @@ public class TeamProjectController {
     private final ProjectService projectService;
     private final TodoService todoService;
     private final TeamService teamService;
+    // 試練フェーズで追加。出陣で /{id} 系 EP の認可ゲートとして配線する（現状未呼び出し → IDOR/非メンバーテストが red）。
+    private final ProjectAccessGuard projectAccessGuard;
 
 
     /**
