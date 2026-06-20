@@ -1,6 +1,7 @@
 package com.mannschaft.app.seal;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.seal.dto.CreateSealRequest;
 import com.mannschaft.app.seal.dto.ScopeDefaultResponse;
 import com.mannschaft.app.seal.dto.SealResponse;
@@ -47,6 +48,9 @@ class SealServiceTest {
 
     @Mock
     private SealGenerator sealGenerator;
+
+    @Mock
+    private NameResolverService nameResolverService;
 
     @InjectMocks
     private SealService sealService;
@@ -179,19 +183,23 @@ class SealServiceTest {
             ElectronicSealEntity seal = createDefaultSeal();
             SealScopeDefaultEntity savedDefault = SealScopeDefaultEntity.builder()
                     .userId(USER_ID).scopeType(SealScopeType.TEAM).scopeId(1L).sealId(SEAL_ID).build();
-            ScopeDefaultResponse response = new ScopeDefaultResponse(1L, USER_ID, "TEAM", 1L, SEAL_ID, null, null);
+            ScopeDefaultResponse response = new ScopeDefaultResponse(
+                    1L, USER_ID, "TEAM", 1L, "チームA", SEAL_ID, null, null);
 
             given(sealRepository.findByIdAndUserId(SEAL_ID, USER_ID)).willReturn(Optional.of(seal));
             given(scopeDefaultRepository.findByUserIdAndScopeTypeAndScopeId(USER_ID, SealScopeType.TEAM, 1L))
                     .willReturn(Optional.empty());
             given(scopeDefaultRepository.save(any(SealScopeDefaultEntity.class))).willReturn(savedDefault);
-            given(sealMapper.toScopeDefaultResponse(savedDefault)).willReturn(response);
+            given(nameResolverService.resolveTeamNames(java.util.Set.of(1L)))
+                    .willReturn(java.util.Map.of(1L, "チームA"));
+            given(sealMapper.toScopeDefaultResponse(savedDefault, "チームA")).willReturn(response);
 
             // When
             ScopeDefaultResponse result = sealService.setScopeDefault(USER_ID, request);
 
             // Then
             assertThat(result).isNotNull();
+            assertThat(result.getScopeName()).isEqualTo("チームA");
         }
     }
 }

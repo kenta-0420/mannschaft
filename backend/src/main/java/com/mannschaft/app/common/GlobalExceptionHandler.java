@@ -711,7 +711,16 @@ public class GlobalExceptionHandler {
             // F03.4 予約スロット削除ガード: active 予約が紐づく枠の削除はオーファン化を招くため 409
             Map.entry("RESERVATION_020", HttpStatus.CONFLICT),               // SLOT_HAS_ACTIVE_RESERVATIONS
             // F03.4 予約認可ゲート: 非所属者が一般公開OFFのチームに予約 → 403（Severity.WARN 既定の 400 を上書き）
-            Map.entry("RESERVATION_021", HttpStatus.FORBIDDEN)               // RESERVATION_PERMISSION_DENIED
+            Map.entry("RESERVATION_021", HttpStatus.FORBIDDEN),              // RESERVATION_PERMISSION_DENIED
+            // F06.5 アクティブリコール学習（IDOR 対策で 404、上限/範囲外は 400、楽観排他/マスク中編集/再輸出は 409）
+            Map.entry("REFLECTION_001", HttpStatus.NOT_FOUND),              // NOT_FOUND（他人所有も IDOR 対策で 404）
+            Map.entry("REFLECTION_002", HttpStatus.BAD_REQUEST),           // THEME_LIMIT_EXCEEDED
+            Map.entry("REFLECTION_003", HttpStatus.BAD_REQUEST),           // REMINDER_LIMIT_EXCEEDED
+            Map.entry("REFLECTION_004", HttpStatus.BAD_REQUEST),           // TARGET_DATE_OUT_OF_RANGE
+            Map.entry("REFLECTION_005", HttpStatus.CONFLICT),              // VERSION_CONFLICT（楽観排他）
+            Map.entry("REFLECTION_006", HttpStatus.CONFLICT),              // ENTRY_MASKED（マスク中直接 PUT）
+            Map.entry("REFLECTION_007", HttpStatus.BAD_REQUEST),           // CONTENT_INVALID
+            Map.entry("REFLECTION_008", HttpStatus.CONFLICT)               // ALREADY_EXPORTED（再輸出ブロック）
     );
 
     /**
