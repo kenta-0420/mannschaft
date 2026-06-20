@@ -74,7 +74,7 @@ class SignageScreenServiceTest {
         @DisplayName("異常系: 10画面に達したスコープで SIGNAGE_001 例外")
         void createScreen_limitReached_throws() {
             List<SignageScreenEntity> tenScreens = java.util.stream.Stream
-                    .generate(() -> SignageScreenEntity.builder()
+                    .<SignageScreenEntity>generate(() -> SignageScreenEntity.builder()
                             .scopeType("TEAM").scopeId(1L).name("dummy")
                             .createdBy(1L).build())
                     .limit(10)
