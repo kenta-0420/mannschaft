@@ -1,4 +1,4 @@
-﻿package com.mannschaft.app.common.architecture;
+package com.mannschaft.app.common.architecture;
 
 import com.mannschaft.app.common.BaseEntity;
 import com.tngtech.archunit.core.importer.ImportOption;
