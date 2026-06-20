@@ -1,4 +1,4 @@
-package com.mannschaft.app.common.architecture;
+﻿package com.mannschaft.app.common.architecture;
 
 import com.mannschaft.app.common.BaseEntity;
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -7,7 +7,6 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 
 import jakarta.persistence.Entity;
-import lombok.Builder;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 
@@ -57,7 +56,7 @@ class EntitySuperBuilderConventionArchTest {
         classes().that()
             .areAnnotatedWith(Entity.class)
             .and().areAssignableTo(BaseEntity.class)
-            .should().notBeAnnotatedWith(Builder.class)
+            .should().notBeAnnotatedWith("lombok.Builder")
             .because("BaseEntity継承Entityには@Builder(toBuilder=true)は禁止。"
                 + "toBuilder()が継承フィールド(id/createdAt/updatedAt)を引き継がずINSERT化するバグを防ぐ。"
                 + "@SuperBuilder(toBuilder=true)を使うこと（CLAUDE.mdアーキテクチャ思想参照）")
