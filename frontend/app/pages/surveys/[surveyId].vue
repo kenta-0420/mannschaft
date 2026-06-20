@@ -32,7 +32,7 @@ if (!scopeType || !scopeId || !Number.isFinite(surveyId)) {
 // scopeId が確定してから RoleAccess をロード
 const roleScope = scopeType === 'TEAM' ? 'team' : 'organization'
 const scopeTypeStrict = scopeType as 'TEAM' | 'ORGANIZATION'
-const { isAdmin, loadPermissions } = useRoleAccess(roleScope, scopeId)
+const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess(roleScope, scopeId)
 
 const survey = ref<SurveyDetailResponse['data'] | null>(null)
 const loading = ref(true)
@@ -61,6 +61,17 @@ const isCreator = computed(() => {
 
 /** ADMIN+（ADMIN または SYSTEM_ADMIN）の判定 */
 const isAdminPlus = computed(() => isAdmin.value)
+
+/**
+ * F05.4 (B) チーム別内訳パネルの表示ガード。
+ *
+ * 出欠側（EventDetailPanel の AttendanceTeamBreakdownPanel ガード = isAdminOrDeputy）および
+ * BE 認可（checkAdminOrAbove = ADMIN/DEPUTY_ADMIN 許可）と判定を一致させる。
+ * isAdminPlus（DEPUTY 除外）のままだと DEPUTY 組織管理者がアンケ内訳パネルだけ
+ * 見られない過小露出（漏洩でなく UX 欠落）になるため DEPUTY を含める。
+ * MEMBER/SUPPORTER/GUEST は引き続き非表示（漏洩を新たに作らない）。
+ */
+const canViewTeamBreakdown = computed(() => isAdminOrDeputy.value)
 
 /** 回答者セクションの開閉状態（初期は閉じた状態） */
 const showRespondents = ref(false)
@@ -368,11 +379,12 @@ onMounted(async () => {
         </p>
       </div>
 
-      <!-- F05.4 (B) チーム別内訳（組織スコープ + ADMIN のみ）。
-           認可は BE 側 org-ADMIN 限定 EP。ここでは出し分けの一次フィルタとして
-           組織スコープ + isAdminPlus を要求する（403 時はパネル内で明示表示）。 -->
+      <!-- F05.4 (B) チーム別内訳（組織スコープ + ADMIN/DEPUTY_ADMIN）。
+           認可は BE 側 org-ADMIN+ 限定 EP。ここでは出し分けの一次フィルタとして
+           組織スコープ + canViewTeamBreakdown（出欠側・BE 認可と一致した DEPUTY 含む判定）を
+           要求する（403 時はパネル内で明示表示）。 -->
       <section
-        v-if="isAdminPlus && scopeType === 'ORGANIZATION'"
+        v-if="canViewTeamBreakdown && scopeType === 'ORGANIZATION'"
         class="mt-6"
         data-testid="survey-team-breakdown-section"
       >
