@@ -17,7 +17,7 @@ const MOUNT_TIMEOUT = 30000
 
 describe('BackButton.vue', () => {
   it(
-    'label 未指定なら i18n の common.button.back にフォールバックする',
+    'label 未指定なら i18n の button.back にフォールバックする',
     async () => {
       const wrapper = await mountSuspended(BackButton)
       // テスト環境では i18n が翻訳値（例: ja=戻る / en=Back）を返すか、
@@ -25,9 +25,11 @@ describe('BackButton.vue', () => {
       // label を渡さなくても i18n フォールバック経由でラベルが描画されることを確認する。
       const text = wrapper.text()
       expect(text.length).toBeGreaterThan(0)
-      // 既知の翻訳値またはキー自体のいずれかであること（直書き '' でないこと）
-      const acceptable = ['戻る', 'Back', '返回', '뒤로', 'Volver', 'Zuruck', 'common.button.back']
+      // 既知の翻訳値、または「正しいキー button.back」自体のいずれかであること。
+      // 誤キー（例 common.button.back）へ回帰したらキーがそのまま漏れて不一致→検知される。
+      const acceptable = ['戻る', 'Back', '返回', '뒤로', 'Volver', 'Zuruck', 'button.back']
       expect(acceptable.some((v) => text.includes(v))).toBe(true)
+      expect(text, '誤キー common.button.back への回帰').not.toContain('common.button.back')
     },
     MOUNT_TIMEOUT,
   )

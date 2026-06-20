@@ -8,7 +8,8 @@ const { t } = useI18n()
 const router = useRouter()
 
 // label 未指定なら i18n の共通「戻る」キーにフォールバックする
-const displayLabel = computed(() => props.label ?? t('common.button.back'))
+// （キーは common.json ルートの button.back。プレフィックス無しが正しい解決パス）
+const displayLabel = computed(() => props.label ?? t('button.back'))
 
 function goBack() {
   if (props.to) {
