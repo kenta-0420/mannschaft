@@ -8,10 +8,10 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 /**
  * プロフィール拡張フィールド定義エンティティ。チーム/組織単位でカスタムフィールドを定義する。
@@ -20,8 +20,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "member_profile_fields")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class MemberProfileFieldEntity extends BaseEntity {
 
     private Long teamId;

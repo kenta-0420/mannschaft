@@ -2,6 +2,7 @@ package com.mannschaft.app.cms.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import java.time.LocalDateTime;
 
 /**
@@ -12,8 +13,7 @@ import java.time.LocalDateTime;
 @Table(name = "blog_media_uploads")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class BlogMediaUploadEntity {
 
     @Id
