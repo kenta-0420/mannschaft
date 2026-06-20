@@ -18,6 +18,10 @@
 #     - main ブランチ保護 Ruleset の必須チェック「Compile & Test」は従来どおり 1 個。
 #     - docs-only PR は detect で backend_changed=false → shard skip → ゲート success。
 #     - shard が 1 つでも失敗すればゲート fail。
+# 2026-06-20: D-5 番人 grep ガード追加 — @Builder(toBuilder=true) は @Retention(SOURCE)
+#   のため ArchUnit（バイトコード解析）では検知不能。ソースレベルの bash grep で
+#   BaseEntity 継承クラスへの @Builder(toBuilder=true) 残存を CI で検出する。
+#   lint ジョブは detect ジョブと並列に shard ジョブと並走し、gate の needs に追加。
 # =============================================================================
 
 name: Backend — CI (PR Check)
@@ -88,6 +92,56 @@ jobs:
             echo "[INFO] no backend changes (docs-only 等) → backend_changed=false（compile/test skip）"
             echo "backend_changed=false" >> "$GITHUB_OUTPUT"
           fi
+
+  # ---------------------------------------------------------------------------
+  # lint: ソースレベル静的チェック（D-5 @Builder guard）
+  #
+  # @Builder(toBuilder=true) は @Retention(SOURCE) のため ArchUnit（バイトコード解析）
+  # では検知不能。bash grep でソースを直接走査し、BaseEntity 継承クラスへの
+  # @Builder(toBuilder=true) 残存を検出する。
+  #
+  # detect.backend_changed が true のときだけ起動する（docs-only PR では skip）。
+  # checkout のみで動作するため Gradle キャッシュ不要・5 分以内に完了する。
+  # ---------------------------------------------------------------------------
+  lint:
+    name: Lint (D-5 @Builder guard)
+    needs: detect
+    if: needs.detect.outputs.backend_changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: BaseEntity継承クラスの @Builder(toBuilder=true) 禁止チェック（D-5）
+        run: |
+          set -e
+          # 1. @Builder(toBuilder= を含み、かつ Super が直前にないファイルを抽出
+          #    grep -P '(?<!Super)@Builder\(toBuilder' は @SuperBuilder(toBuilder は無視し
+          #    純粋な @Builder(toBuilder だけを検知する。
+          CANDIDATES=$(grep -rPl '(?<!Super)@Builder\(toBuilder' \
+            backend/src/main/java/ --include="*.java" || true)
+
+          if [ -z "$CANDIDATES" ]; then
+            echo "[OK] @Builder(toBuilder=true) 違反なし"
+            exit 0
+          fi
+
+          # 2. 候補の中から BaseEntity / UuidV7Entity / UuidV7CharEntity を継承するものに絞る
+          VIOLATIONS=""
+          while IFS= read -r f; do
+            if grep -qE 'extends[[:space:]]+(BaseEntity|UuidV7Entity|UuidV7CharEntity)' "$f"; then
+              VIOLATIONS="$VIOLATIONS"$'\n'"$f"
+            fi
+          done <<< "$CANDIDATES"
+
+          if [ -n "$VIOLATIONS" ]; then
+            echo "[ERROR] BaseEntity継承クラスに @Builder(toBuilder=true) が残存しています。"
+            echo "  @SuperBuilder(toBuilder=true) に移行してください（D-5 規約）:"
+            echo "$VIOLATIONS"
+            exit 1
+          fi
+          echo "[OK] @Builder(toBuilder=true) 違反なし（BaseEntity継承クラス）"
 
   # ---------------------------------------------------------------------------
   # shard: compile + test を 4 並列で実行する（Docker required for Testcontainers）
@@ -205,7 +259,7 @@ jobs:
   # ---------------------------------------------------------------------------
   gate:
     name: Compile & Test
-    needs: [detect, shard]
+    needs: [detect, shard, lint]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -215,23 +269,25 @@ jobs:
           set -e
           CHANGED="${{ needs.detect.outputs.backend_changed }}"
           SHARD_RESULT="${{ needs.shard.result }}"
+          LINT_RESULT="${{ needs.lint.result }}"
           echo "[INFO] detect.backend_changed = ${CHANGED}"
           echo "[INFO] needs.shard.result     = ${SHARD_RESULT}"
+          echo "[INFO] needs.lint.result      = ${LINT_RESULT}"
 
-          # (1) backend 無変更（docs-only 等）: shard は skip 済み → テスト不要で success
+          # (1) backend 無変更（docs-only 等）: shard / lint は skip 済み → テスト不要で success
           if [ "${CHANGED}" != "true" ]; then
-            echo "[OK] backend に変更なし（docs-only 等）。shard をスキップし success とする。"
+            echo "[OK] backend に変更なし（docs-only 等）。shard / lint をスキップし success とする。"
             exit 0
           fi
 
-          # (2) 全 shard 成功 → success
-          if [ "${SHARD_RESULT}" = "success" ]; then
-            echo "[OK] 全 shard が success。Compile & Test は success。"
+          # (2) 全 shard + lint が成功 → success
+          if [ "${SHARD_RESULT}" = "success" ] && [ "${LINT_RESULT}" = "success" ]; then
+            echo "[OK] 全 shard + lint が success。Compile & Test は success。"
             exit 0
           fi
 
           # (3) それ以外（failure / cancelled / skipped-but-changed 等の異常） → fail
-          echo "[NG] shard の集約結果が success ではない（${SHARD_RESULT}）。Compile & Test を失敗とする。"
+          echo "[NG] shard=${SHARD_RESULT}, lint=${LINT_RESULT} — いずれかが success ではない。Compile & Test を失敗とする。"
           exit 1
 
 # =============================================================================
