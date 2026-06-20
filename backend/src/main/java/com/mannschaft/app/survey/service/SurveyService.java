@@ -86,7 +86,10 @@ public class SurveyService {
                                              String status, Pageable pageable) {
         Page<SurveyEntity> page;
         if (status != null) {
-            SurveyStatus surveyStatus = SurveyStatus.valueOf(status);
+            // follow-up④: SurveyStatus.valueOf(status) は不正値で IllegalArgumentException → 500 に
+            // 落ちていた。クライアント入力エラーなので parseEnumOrThrow で 400（INVALID_ENUM_VALUE）に変換する。
+            // null は「フィルタなし（全件）」として従来どおり通す（null で 400 にしない）。
+            SurveyStatus surveyStatus = parseEnumOrThrow(SurveyStatus.class, status, "status");
             page = surveyRepository.findByScopeTypeAndScopeIdAndStatusOrderByCreatedAtDesc(
                     scopeType, scopeId, surveyStatus, pageable);
         } else {
