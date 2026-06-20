@@ -1,9 +1,13 @@
 package com.mannschaft.app.reflection.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.cms.dto.BlogPostResponse;
+import com.mannschaft.app.cms.dto.CreateBlogPostRequest;
+import com.mannschaft.app.cms.service.BlogPostService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.timezone.UserTimezoneCache;
 import com.mannschaft.app.reflection.ReflectionErrorCode;
+import com.mannschaft.app.reflection.dto.ExportToBlogRequest;
 import com.mannschaft.app.reflection.dto.ReflectionEntryResponse;
 import com.mannschaft.app.reflection.dto.UpsertReflectionEntryRequest;
 import com.mannschaft.app.reflection.entity.ReflectionEntryEntity;
@@ -14,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -24,9 +29,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -49,6 +56,7 @@ class ReflectionEntryServiceTest {
     @Mock private ReflectionEntryResponseMapper responseMapper;
     @Mock private ReflectionMaskEvaluator maskEvaluator;
     @Mock private UserTimezoneCache userTimezoneCache;
+    @Mock private BlogPostService blogPostService;
 
     @InjectMocks private ReflectionEntryService service;
 
@@ -262,5 +270,59 @@ class ReflectionEntryServiceTest {
 
         org.assertj.core.api.Assertions.assertThat(e.getDeletedAt()).isNotNull();
         verify(reminderService).cancelPendingForEntry(e.getId());
+    }
+
+    // ─── ブログ輸出（§7 #13・§6.3・AC-20） ─────────────────────────
+
+    @Test
+    @DisplayName("AC-20: exportToBlog は visibility=PRIVATE 明示で createPost を呼び、exported_blog_post_id を非NULL化（元エントリ残存）")
+    void exportToBlog_callsCreatePostWithPrivateAndMarksExported() {
+        ReflectionEntryEntity e = entry(TODAY.minusDays(1), 0L);
+        ReflectionThemeEntity theme = ownedTheme();
+        given(entryRepository.findByIdAndUserId(e.getId(), USER_ID)).willReturn(Optional.of(e));
+        given(themeRepository.findByIdAndUserId(THEME_ID, USER_ID)).willReturn(Optional.of(theme));
+        given(contentSanitizer.parse(any())).willReturn(
+                objectMapper.createObjectNode().put("main_theme", "二次関数"));
+        BlogPostResponse created = BlogPostResponse.builder().id(555L).build();
+        given(blogPostService.createPost(eq(USER_ID), any(CreateBlogPostRequest.class))).willReturn(created);
+
+        BlogPostResponse res = service.exportToBlog(USER_ID, e.getId(), new ExportToBlogRequest(null));
+
+        ArgumentCaptor<CreateBlogPostRequest> captor = ArgumentCaptor.forClass(CreateBlogPostRequest.class);
+        verify(blogPostService).createPost(eq(USER_ID), captor.capture());
+        // visibility=PRIVATE 明示（未指定だと MEMBERS_ONLY になるため・§6.3）
+        assertThat(captor.getValue().getVisibility()).isEqualTo("PRIVATE");
+        // exported_blog_post_id 非NULL化（直接ミューテート markExported）
+        assertThat(e.getExportedBlogPostId()).isEqualTo(555L);
+        // 元エントリは残存（論理削除しない・AC-20）
+        assertThat(e.getDeletedAt()).isNull();
+        assertThat(res.getId()).isEqualTo(555L);
+    }
+
+    @Test
+    @DisplayName("AC-20: 既に輸出済み（exported_blog_post_id 非NULL）のエントリの再輸出は 409（ALREADY_EXPORTED）")
+    void exportToBlog_alreadyExported_throwsConflict() {
+        ReflectionEntryEntity e = entry(TODAY.minusDays(1), 0L);
+        e.markExported(999L);
+        given(entryRepository.findByIdAndUserId(e.getId(), USER_ID)).willReturn(Optional.of(e));
+
+        assertThatThrownBy(() -> service.exportToBlog(USER_ID, e.getId(), new ExportToBlogRequest(null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ReflectionErrorCode.REFLECTION_ALREADY_EXPORTED);
+
+        verify(blogPostService, never()).createPost(anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("AC-2: 他人所有エントリの輸出は 404（NOT_FOUND）")
+    void exportToBlog_notOwned_throwsNotFound() {
+        UUID entryId = UUID.randomUUID();
+        given(entryRepository.findByIdAndUserId(entryId, USER_ID)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.exportToBlog(USER_ID, entryId, new ExportToBlogRequest(null)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ReflectionErrorCode.REFLECTION_NOT_FOUND);
     }
 }
