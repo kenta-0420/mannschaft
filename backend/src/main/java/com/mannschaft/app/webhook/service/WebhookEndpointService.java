@@ -298,7 +298,7 @@ public class WebhookEndpointService {
     private void saveSubscriptions(Long endpointId, List<String> eventTypes) {
         List<WebhookEventSubscriptionEntity> subscriptions = eventTypes.stream()
                 .distinct()
-                .map(eventType -> WebhookEventSubscriptionEntity.builder()
+                .map(eventType -> (WebhookEventSubscriptionEntity) WebhookEventSubscriptionEntity.builder()
                         .endpointId(endpointId)
                         .eventType(eventType)
                         .build())
