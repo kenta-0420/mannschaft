@@ -131,12 +131,12 @@ public class DashboardService {
         LocalDateTime weekLater = now.plusDays(7);
         List<ScheduleEntity> personalSchedules = scheduleRepository
                 .findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, now, weekLater);
-        // 所属チームのスケジュールも取得
+        // 所属チームのスケジュールも取得（N+1 解消: チーム ID を IN 句で一括取得）
         List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
-        List<ScheduleEntity> teamSchedules = teamRoles.stream()
-                .flatMap(role -> scheduleRepository
-                        .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), now, weekLater).stream())
-                .toList();
+        List<Long> teamIds = teamRoles.stream().map(UserRoleEntity::getTeamId).toList();
+        List<ScheduleEntity> teamSchedules = teamIds.isEmpty()
+                ? List.of()
+                : scheduleRepository.findByTeamIdInAndStartAtBetween(teamIds, now, weekLater);
         List<Map<String, Object>> upcomingItems = new java.util.ArrayList<>();
         personalSchedules.stream().map(this::toScheduleMap).forEach(upcomingItems::add);
         teamSchedules.stream().map(this::toScheduleMap).forEach(upcomingItems::add);
@@ -229,11 +229,11 @@ public class DashboardService {
             long eventsToday = scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, todayStart, todayEnd).size();
             long eventsThisWeek = scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, weekStart, weekEnd).size();
             long eventsThisMonth = scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, weekStart, monthEnd).size();
-            // チーム公開イベントも加算
-            for (UserRoleEntity role : teamRoles) {
-                eventsToday += scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), todayStart, todayEnd).size();
-                eventsThisWeek += scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), weekStart, weekEnd).size();
-                eventsThisMonth += scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), weekStart, monthEnd).size();
+            // チーム公開イベントも加算（N+1 解消: チーム ID を IN 句で一括取得し、期間ごと 1 クエリ）
+            if (!teamIds.isEmpty()) {
+                eventsToday += scheduleRepository.findByTeamIdInAndStartAtBetween(teamIds, todayStart, todayEnd).size();
+                eventsThisWeek += scheduleRepository.findByTeamIdInAndStartAtBetween(teamIds, weekStart, weekEnd).size();
+                eventsThisMonth += scheduleRepository.findByTeamIdInAndStartAtBetween(teamIds, weekStart, monthEnd).size();
             }
             builder.personalCalendar(Map.of(
                     "events_today", eventsToday,

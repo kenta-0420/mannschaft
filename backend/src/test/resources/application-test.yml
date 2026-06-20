@@ -45,6 +45,9 @@ management:
         enabled: true
 
 mannschaft:
+  # F09.18: テスト環境では実 SES を叩かない（simulate=true でログのみ送信）
+  email:
+    simulate: true
   jwt:
     secret: test-secret-key-that-is-at-least-256-bits-long-for-hmac-sha256-algorithm
     access-token-expiration: 900
