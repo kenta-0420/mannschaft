@@ -11,6 +11,7 @@ import com.mannschaft.app.schedule.dto.GoogleCalendarConnectRequest;
 import com.mannschaft.app.schedule.dto.GoogleCalendarConnectResponse;
 import com.mannschaft.app.schedule.dto.GoogleCalendarStatusResponse;
 import com.mannschaft.app.schedule.dto.ManualSyncResponse;
+import com.mannschaft.app.schedule.dto.PersonalSyncStatusResponse;
 import com.mannschaft.app.schedule.dto.PersonalSyncToggleResponse;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.entity.UserGoogleCalendarConnectionEntity;
@@ -74,6 +75,29 @@ public class GoogleCalendarService {
                                 : null))
                 .orElse(new GoogleCalendarStatusResponse(
                         false, null, null, false, false, null));
+    }
+
+    /**
+     * 個人同期状態を取得する（読み取り専用・副作用なし）。
+     * 未連携でも例外を投げず、デフォルト値（connected=false 等）を返す。
+     *
+     * @param userId ユーザーID
+     * @return 個人同期状態レスポンス
+     */
+    public PersonalSyncStatusResponse getPersonalSync(Long userId) {
+        return connectionRepository.findByUserId(userId)
+                .map(conn -> new PersonalSyncStatusResponse(
+                        true,
+                        conn.getIsActive(),
+                        conn.getPersonalSyncEnabled(),
+                        conn.getGoogleAccountEmail(),
+                        conn.getLastSyncErrorType() != null
+                                ? new GoogleCalendarStatusResponse.SyncErrorDetail(
+                                conn.getLastSyncErrorType(),
+                                conn.getLastSyncErrorMessage(),
+                                conn.getLastSyncErrorAt())
+                                : null))
+                .orElse(new PersonalSyncStatusResponse(false, false, false, null, null));
     }
 
     /**
