@@ -20,5 +20,8 @@ public interface VenueMapper {
     VenueSuggestionResponse toSuggestion(VenueEntity entity);
 
     @Mapping(target = "usageCount", constant = "0")
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
     VenueEntity toEntity(RegisterVenueRequest request);
 }
