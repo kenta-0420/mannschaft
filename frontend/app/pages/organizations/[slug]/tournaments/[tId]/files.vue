@@ -36,11 +36,7 @@ onMounted(async () => {
 
 <template>
   <div>
-    <div class="mb-4 flex items-center gap-3">
-      <BackButton :to="`/organizations/${orgSlug}/tournaments/${tId}`" :label="tournamentName || String(tId)" />
-    </div>
-
-    <PageHeader :title="$t('tournament.files.title')" />
+    <PageHeader :title="$t('tournament.files.title')" :back-to="`/organizations/${orgSlug}/tournaments/${tId}`" :back-label="tournamentName || String(tId)" />
 
     <PageLoading v-if="loading" size="40px" />
 
