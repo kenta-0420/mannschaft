@@ -29,6 +29,10 @@ public interface ReflectionEntryRepository extends JpaRepository<ReflectionEntry
     /** 今日の振り返りビュー（§4.3）でユーザーの当日エントリを一括取得。 */
     List<ReflectionEntryEntity> findByUserIdAndTargetDate(Long userId, LocalDate targetDate);
 
+    /** カレンダー連携（§6.2）でユーザーの target_date が期間内のエントリを一括取得。 */
+    List<ReflectionEntryEntity> findByUserIdAndTargetDateBetween(
+            Long userId, LocalDate fromDate, LocalDate toDate);
+
     /** ユーザーの未削除エントリ件数（運用・統計用）。 */
     long countByUserIdAndDeletedAtIsNull(Long userId);
 

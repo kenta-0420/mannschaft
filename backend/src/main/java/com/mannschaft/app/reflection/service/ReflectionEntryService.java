@@ -1,6 +1,9 @@
 package com.mannschaft.app.reflection.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.mannschaft.app.cms.dto.BlogPostResponse;
+import com.mannschaft.app.cms.dto.CreateBlogPostRequest;
+import com.mannschaft.app.cms.service.BlogPostService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.timezone.UserTimezoneCache;
 import com.mannschaft.app.reflection.ReflectionConstants;
@@ -45,6 +48,7 @@ public class ReflectionEntryService {
     private final ReflectionEntryResponseMapper responseMapper;
     private final ReflectionMaskEvaluator maskEvaluator;
     private final UserTimezoneCache userTimezoneCache;
+    private final BlogPostService blogPostService;
 
     /** テーマ配下エントリ一覧（§7 #6・マスク適用＝§3.2）。 */
     @Transactional(readOnly = true)
@@ -100,9 +104,124 @@ public class ReflectionEntryService {
         reflectionSpacedReminderService.cancelPendingForEntry(entryId);
     }
 
-    /** ブログ輸出（§7 #13・Wave2 ゆえ未実装据え置き）。 */
+    /**
+     * ブログ輸出（§7 #13・§6.3・AC-20）。
+     *
+     * <p>本人所有 entry の structured_content を Markdown 本文へ整形し、
+     * {@code BlogPostService.createPost} を <b>visibility=PRIVATE 明示</b>で呼ぶ（未指定だと MEMBERS_ONLY ゆえ）。
+     * 輸出後も元エントリは残し（論理削除しない）、{@code exported_blog_post_id} を非 NULL 化する。
+     * 既に輸出済みなら 409（REFLECTION_008 ALREADY_EXPORTED）。</p>
+     *
+     * <p><b>クロスドメイン越境の回避（設計原則5・D-3）</b>: 本メソッドは {@code @Transactional} を付けず、
+     * (1) reflection 側の本人所有・再輸出チェックを行い、(2) {@code blogPostService.createPost}（cms 側の
+     * 独自トランザクション）を呼び、(3) その戻り id で reflection エントリを更新する。reflection と cms の
+     * 書き込みを<b>同一トランザクションでまたがない</b>（cms Repository を直接触らずサービス経由）。</p>
+     */
     public BlogPostResponse exportToBlog(Long userId, UUID entryId, ExportToBlogRequest request) {
-        throw new UnsupportedOperationException("F06.5 Wave2: §7 #13 ブログ輸出");
+        ReflectionEntryEntity entry = requireOwnedEntry(userId, entryId);
+        if (entry.getExportedBlogPostId() != null) {
+            // 再輸出は MVP ブロック（§6.3・AC-20）。
+            throw new BusinessException(ReflectionErrorCode.REFLECTION_ALREADY_EXPORTED);
+        }
+        ReflectionThemeEntity theme = requireOwnedTheme(userId, entry.getThemeId());
+
+        String title = resolveExportTitle(request, theme, entry);
+        String body = renderMarkdown(entry, theme);
+
+        // cms 側の独自トランザクションでブログ記事を作成（visibility=PRIVATE 明示・§6.3）。
+        CreateBlogPostRequest createRequest = new CreateBlogPostRequest(
+                null,                       // teamId（個人ブログ）
+                null,                       // organizationId
+                null,                       // socialProfileId
+                title,                      // title
+                null,                       // slug（サービスが自動生成）
+                body,                       // body
+                null,                       // excerpt
+                null,                       // coverImageUrl
+                null,                       // postType（既定 BLOG）
+                "PRIVATE",                  // visibility（必ず明示・未指定だと MEMBERS_ONLY）
+                null,                       // priority
+                null,                       // tagIds
+                null,                       // publishedAt
+                null,                       // archiveAt
+                null,                       // crossPostToTimeline
+                null,                       // seriesId
+                null);                      // seriesOrder
+        BlogPostResponse created = blogPostService.createPost(userId, createRequest);
+
+        // reflection 側を別トランザクションで更新（exported_blog_post_id 非 NULL 化・直接ミューテート）。
+        entry.markExported(created.getId());
+        reflectionEntryRepository.save(entry);
+        return created;
+    }
+
+    /** 輸出タイトルを解決する（指定なければ「テーマ名（対象日）」）。 */
+    private String resolveExportTitle(ExportToBlogRequest request, ReflectionThemeEntity theme,
+                                      ReflectionEntryEntity entry) {
+        if (request != null && request.title() != null && !request.title().isBlank()) {
+            return request.title();
+        }
+        return theme.getTitle() + "（" + entry.getTargetDate() + "）";
+    }
+
+    /**
+     * structured_content（§2.3 アウトライン）を Markdown 本文へ整形する。
+     * パース不能・空でも空文字でなく最低限の本文を返す（createPost の body 必須に合わせる）。
+     */
+    private String renderMarkdown(ReflectionEntryEntity entry, ReflectionThemeEntity theme) {
+        StringBuilder md = new StringBuilder();
+        JsonNode content;
+        try {
+            content = contentSanitizer.parse(entry.getStructuredContent());
+        } catch (Exception e) {
+            log.warn("輸出本文パース失敗のためテーマ名のみで輸出: entryId={}", entry.getId(), e);
+            return "# " + theme.getTitle() + "\n";
+        }
+        String mainTheme = textOf(content, "main_theme");
+        md.append("# ").append(mainTheme != null ? mainTheme : theme.getTitle()).append("\n\n");
+        JsonNode sections = content != null ? content.get("sections") : null;
+        if (sections != null && sections.isArray()) {
+            for (JsonNode section : sections) {
+                String heading = textOf(section, "heading");
+                if (heading != null) {
+                    md.append("## ").append(heading).append("\n\n");
+                }
+                JsonNode subs = section.get("subsections");
+                if (subs != null && subs.isArray()) {
+                    for (JsonNode sub : subs) {
+                        appendSubsection(md, sub);
+                    }
+                }
+            }
+        }
+        String freeNote = textOf(content, "free_note");
+        if (freeNote != null && !freeNote.isBlank()) {
+            md.append("---\n\n").append(freeNote).append("\n");
+        }
+        return md.toString();
+    }
+
+    private void appendSubsection(StringBuilder md, JsonNode sub) {
+        String subHeading = textOf(sub, "sub_heading");
+        if (subHeading != null) {
+            md.append("### ").append(subHeading).append("\n\n");
+        }
+        String detail = textOf(sub, "detail");
+        if (detail != null) {
+            md.append(detail).append("\n\n");
+        }
+        String supplement = textOf(sub, "supplement");
+        if (supplement != null) {
+            md.append("> ").append(supplement).append("\n\n");
+        }
+    }
+
+    private String textOf(JsonNode node, String field) {
+        if (node == null) {
+            return null;
+        }
+        JsonNode v = node.get(field);
+        return v != null && v.isTextual() ? v.asText() : null;
     }
 
     // ─── upsert 分岐 ──────────────────────────────────────────────
