@@ -22,7 +22,22 @@ const frontendDir = fileURLToPath(new URL('../..', import.meta.url))
 const appDir = join(frontendDir, 'app')
 
 // 除外する allowlist（frontend からの相対パス、posix 区切り）
-const ALLOWLIST = new Set<string>(['app/components/PageHeader.vue'])
+//
+// - PageHeader.vue: 内部で BackButton を使うため正当。
+// - 以下のページ: BackButton が「権限不足/アクセス拒否フォールバック分岐
+//   （v-else-if="permissionDenied" 等）」の内側にのみ存在する。この分岐では
+//   PageHeader 自体が描画されない（メインコンテンツの v-if が false）ため、
+//   その状態でユーザーに戻る導線を提供する唯一の手段として BackButton が必要。
+//   PageHeader のデフォルト戻るボタンとは二重描画にならない（排他分岐）。
+//   新たにこのパターンを追加する場合のみ、理由を添えてここへ列挙する。
+const ALLOWLIST = new Set<string>([
+  'app/components/PageHeader.vue',
+  'app/pages/organizations/[slug]/payments.vue',
+  'app/pages/teams/[slug]/payments.vue',
+  'app/pages/teams/[slug]/billing/fee-statements.vue',
+  'app/pages/teams/[slug]/friend-feed.vue',
+  'app/pages/teams/[slug]/friend-forward-exports.vue',
+])
 
 function collectVueFiles(baseDir: string): string[] {
   if (!existsSync(baseDir)) return []

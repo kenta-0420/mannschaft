@@ -18,6 +18,11 @@ const props = withDefaults(
   },
 )
 
+// フォールスルー属性（class 等）は外側ラッパではなくタイトル行へ束ねる。
+// これにより、従来 <PageHeader class="..."> が当たっていた要素（タイトル行の
+// flex コンテナ）が戻るボタン統合の前後で変わらず、既存ページのレイアウトを維持する。
+defineOptions({ inheritAttrs: false })
+
 const titleClass = computed(() =>
   props.size === 'sm' ? 'text-2xl font-bold' : 'text-4xl font-bold',
 )
@@ -27,7 +32,7 @@ const titleClass = computed(() =>
   <div>
     <!-- 戻るリンクはタイトル行の上に描画する。既存 slot（アクション/バッジ）はタイトル行に並ぶため干渉しない -->
     <BackButton v-if="back" :to="backTo" :label="backLabel" />
-    <div class="mb-6 flex items-end gap-3">
+    <div class="mb-6 flex items-end gap-3" v-bind="$attrs">
       <h1 :class="titleClass">{{ title }}</h1>
       <slot />
     </div>

@@ -33,6 +33,7 @@ onMounted(async () => {
   <div v-else-if="permissionDenied" class="flex flex-col items-center justify-center py-16">
     <i class="pi pi-lock mb-4 text-4xl text-surface-400" />
     <p class="text-surface-500">{{ t('payment.admin.permissionDenied') }}</p>
+    <BackButton class="mt-4" />
   </div>
 
   <!-- メインコンテンツ -->
