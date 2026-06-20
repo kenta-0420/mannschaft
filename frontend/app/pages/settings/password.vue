@@ -78,8 +78,7 @@ async function handleSubmit() {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <BackButton to="/settings" />
-    <PageHeader :title="hasPassword ? 'パスワード変更' : 'パスワード設定'" />
+    <PageHeader :title="hasPassword ? 'パスワード変更' : 'パスワード設定'" back-to="/settings" />
 
     <PageLoading v-if="loading" />
 

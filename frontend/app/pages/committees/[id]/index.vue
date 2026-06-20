@@ -151,7 +151,6 @@ onMounted(async () => {
   <div v-else-if="committee">
     <div class="mb-4 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <BackButton />
         <PageHeader :title="committee.name" />
         <Tag
           :value="$t(`committee.status.${committee.status}`)"

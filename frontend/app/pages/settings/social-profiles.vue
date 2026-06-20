@@ -100,10 +100,7 @@ onMounted(async () => {
 <template>
   <div class="mx-auto max-w-2xl">
     <div class="mb-6 flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <BackButton to="/settings" />
-        <PageHeader title="ソーシャルプロフィール" />
-      </div>
+      <PageHeader title="ソーシャルプロフィール" back-to="/settings" />
       <Button v-if="profiles.length < 3" label="新規作成" icon="pi pi-plus" @click="openCreate" />
     </div>
 

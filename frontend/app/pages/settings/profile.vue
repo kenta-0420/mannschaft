@@ -106,8 +106,7 @@ async function uploadAvatar(event: Event) {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <BackButton to="/settings" />
-    <PageHeader title="プロフィール設定" />
+    <PageHeader title="プロフィール設定" back-to="/settings" />
 
     <PageLoading v-if="loading" />
 
