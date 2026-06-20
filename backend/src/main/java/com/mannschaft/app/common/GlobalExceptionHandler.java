@@ -123,6 +123,7 @@ public class GlobalExceptionHandler {
             Map.entry("AD_OPEN_PIXEL_TOKEN_INVALID", HttpStatus.OK),
             Map.entry("AUTH_033", HttpStatus.NOT_FOUND),
             Map.entry("AUTH_034", HttpStatus.CONFLICT),
+            Map.entry("AUTH_044", HttpStatus.TOO_MANY_REQUESTS), // レート制限超過 → 429
             // F02.5 行動メモ: IDOR 対策で 403 ではなく 404 を返す
             Map.entry("ACTION_MEMO_001", HttpStatus.NOT_FOUND),
             Map.entry("ACTION_MEMO_006", HttpStatus.NOT_FOUND),
