@@ -9,10 +9,10 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 /**
  * F04.10 委員会伝達処理ログエンティティ。
@@ -30,8 +30,7 @@ import lombok.NoArgsConstructor;
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder
+@SuperBuilder(toBuilder = true)
 public class CommitteeDistributionLogEntity extends BaseEntity {
 
     /** 委員会 ID（FK → committees） */
