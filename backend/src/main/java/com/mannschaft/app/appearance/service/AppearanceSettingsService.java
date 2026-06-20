@@ -51,12 +51,6 @@ public class AppearanceSettingsService {
     @Transactional
     public AppearanceResponse save(Long userId, UpdateAppearanceRequest request) {
         AppearanceSettingsEntity entity = repository.findByUserId(userId)
-                .map(existing -> existing.toBuilder()
-                        .theme(request.getTheme())
-                        .bgColor(request.getBgColor())
-                        .seasonalThemeId(request.getSeasonalThemeId())
-                        .hideChatPreview(Boolean.TRUE.equals(request.getHideChatPreview()))
-                        .build())
                 .orElseGet(() -> AppearanceSettingsEntity.builder()
                         .userId(userId)
                         .theme(request.getTheme())
@@ -64,6 +58,13 @@ public class AppearanceSettingsService {
                         .seasonalThemeId(request.getSeasonalThemeId())
                         .hideChatPreview(Boolean.TRUE.equals(request.getHideChatPreview()))
                         .build());
+
+        // 既存行の直接ミューテート（toBuilder().build() は UuidV7Entity 継承クラスで id が引き継がれず
+        // 新インスタンスになり INSERT になってしまうため使用しない。直接 setter で更新する）
+        entity.setTheme(request.getTheme());
+        entity.setBgColor(request.getBgColor());
+        entity.setSeasonalThemeId(request.getSeasonalThemeId());
+        entity.setHideChatPreview(Boolean.TRUE.equals(request.getHideChatPreview()));
 
         return toResponse(repository.save(entity));
     }

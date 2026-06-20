@@ -12,6 +12,7 @@ import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
@@ -44,19 +45,23 @@ public class AppearanceSettingsEntity extends UuidV7Entity {
     private Long userId;
 
     /** テーマモード（LIGHT / DARK）。デフォルト LIGHT。 */
+    @Setter
     @Enumerated(EnumType.STRING)
     @Column(name = "theme", nullable = false, length = 8)
     private ThemeMode theme;
 
     /** 背景色（HEX カラーコード、例: {@code #f3efe0}）。 */
+    @Setter
     @Column(name = "bg_color", nullable = false, length = 32)
     private String bgColor;
 
     /** 季節テーマ ID（任意・null 許容）。seasonal_themes テーブルへの参照（FK なし）。 */
+    @Setter
     @Column(name = "seasonal_theme_id")
     private Long seasonalThemeId;
 
     /** チャットプレビューを非表示にするか。デフォルト false。 */
+    @Setter
     @Column(name = "hide_chat_preview", nullable = false)
     private boolean hideChatPreview;
 
