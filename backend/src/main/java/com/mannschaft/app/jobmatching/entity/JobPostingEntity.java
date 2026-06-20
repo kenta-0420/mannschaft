@@ -12,8 +12,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
@@ -31,8 +31,7 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class JobPostingEntity extends BaseEntity {
 
     @Column(name = "team_id", nullable = false)
@@ -100,7 +99,7 @@ public class JobPostingEntity extends BaseEntity {
      *
      * <p>managed entity を直接ミューテートするため主キー（id）・楽観ロック version を保持し、{@code save()} が
      * UPDATE になる。旧実装は {@code toBuilder()...build()} で別インスタンスを作り直していたが、
-     * {@code @Builder(toBuilder=true)} は {@link BaseEntity} 継承の id を引き継がず id=null となり save が
+     * {@code @SuperBuilder(toBuilder = true)} は {@link BaseEntity} 継承の id を引き継がず id=null となり save が
      * INSERT 化する不具合があったため、本メソッドへ集約した。</p>
      *
      * <p>引数の値検証（報酬範囲・公開範囲・日時整合性・応募者ありの場合の不変フィールドチェック）は
