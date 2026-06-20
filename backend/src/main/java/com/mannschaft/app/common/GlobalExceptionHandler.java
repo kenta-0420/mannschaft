@@ -363,6 +363,8 @@ public class GlobalExceptionHandler {
             Map.entry("CHAT_023", HttpStatus.FORBIDDEN),                     // CHANNEL_ICON_PERMISSION_DENIED (OWNER/ADMIN ではない)
             // F05.5 ファイル共有（F13 Phase 4-epsilon）
             Map.entry("FILE_SHARING_016", HttpStatus.CONFLICT),              // STORAGE_QUOTA_EXCEEDED (F13 統合クォータ超過)
+            // F02.3 プロジェクト管理（IDOR 対策で 404 統一）
+            Map.entry("TODO_001", HttpStatus.NOT_FOUND),                     // PROJECT_NOT_FOUND（IDOR 秘匿 → 404）
             // F02.3.1 TODO カスタムステータスラベル
             Map.entry("TODO_070", HttpStatus.CONFLICT),                      // LABEL_NAME_DUPLICATED
             Map.entry("TODO_071", HttpStatus.CONFLICT),                      // LABEL_LIMIT_EXCEEDED

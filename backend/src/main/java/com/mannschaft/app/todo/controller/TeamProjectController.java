@@ -64,6 +64,7 @@ public class TeamProjectController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamMembership(SecurityUtils.getCurrentUserId(), internalTeamId);
         return ResponseEntity.ok(projectService.listProjects(
                 TodoScopeType.TEAM, internalTeamId, ProjectStatus.valueOf(status), page, size));
     }
@@ -78,6 +79,7 @@ public class TeamProjectController {
             @PathVariable String teamId,
             @Valid @RequestBody CreateProjectRequest request) {
         Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamMembership(SecurityUtils.getCurrentUserId(), internalTeamId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(projectService.createProject(TodoScopeType.TEAM, internalTeamId, request, SecurityUtils.getCurrentUserId()));
     }
@@ -91,6 +93,8 @@ public class TeamProjectController {
     public ResponseEntity<ApiResponse<ProjectDetailResponse>> getProject(
             @PathVariable String teamId,
             @PathVariable Long id) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamProjectAccess(SecurityUtils.getCurrentUserId(), internalTeamId, id);
         return ResponseEntity.ok(projectService.getProject(id));
     }
 
@@ -104,6 +108,8 @@ public class TeamProjectController {
             @PathVariable String teamId,
             @PathVariable Long id,
             @Valid @RequestBody UpdateProjectRequest request) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamProjectAccess(SecurityUtils.getCurrentUserId(), internalTeamId, id);
         return ResponseEntity.ok(projectService.updateProject(id, request));
     }
 
@@ -116,6 +122,8 @@ public class TeamProjectController {
     public ResponseEntity<Void> deleteProject(
             @PathVariable String teamId,
             @PathVariable Long id) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamProjectAccess(SecurityUtils.getCurrentUserId(), internalTeamId, id);
         projectService.deleteProject(id);
         return ResponseEntity.noContent().build();
     }
@@ -129,6 +137,8 @@ public class TeamProjectController {
     public ResponseEntity<ApiResponse<ProjectResponse>> completeProject(
             @PathVariable String teamId,
             @PathVariable Long id) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamProjectAccess(SecurityUtils.getCurrentUserId(), internalTeamId, id);
         return ResponseEntity.ok(projectService.completeProject(id));
     }
 
@@ -141,6 +151,8 @@ public class TeamProjectController {
     public ResponseEntity<ApiResponse<ProjectResponse>> reopenProject(
             @PathVariable String teamId,
             @PathVariable Long id) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamProjectAccess(SecurityUtils.getCurrentUserId(), internalTeamId, id);
         return ResponseEntity.ok(projectService.reopenProject(id));
     }
 
@@ -155,6 +167,8 @@ public class TeamProjectController {
     public ResponseEntity<ApiResponse<List<MilestoneResponse>>> listMilestones(
             @PathVariable String teamId,
             @PathVariable Long id) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamProjectAccess(SecurityUtils.getCurrentUserId(), internalTeamId, id);
         return ResponseEntity.ok(projectService.listMilestones(id));
     }
 
@@ -168,6 +182,8 @@ public class TeamProjectController {
             @PathVariable String teamId,
             @PathVariable Long id,
             @Valid @RequestBody CreateMilestoneRequest request) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamProjectAccess(SecurityUtils.getCurrentUserId(), internalTeamId, id);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(projectService.createMilestone(id, request));
     }
@@ -183,6 +199,8 @@ public class TeamProjectController {
             @PathVariable Long id,
             @PathVariable Long mid,
             @Valid @RequestBody UpdateMilestoneRequest request) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamProjectAccess(SecurityUtils.getCurrentUserId(), internalTeamId, id);
         return ResponseEntity.ok(projectService.updateMilestone(id, mid, request));
     }
 
@@ -196,6 +214,8 @@ public class TeamProjectController {
             @PathVariable String teamId,
             @PathVariable Long id,
             @PathVariable Long mid) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamProjectAccess(SecurityUtils.getCurrentUserId(), internalTeamId, id);
         projectService.deleteMilestone(id, mid);
         return ResponseEntity.noContent().build();
     }
@@ -210,6 +230,8 @@ public class TeamProjectController {
             @PathVariable String teamId,
             @PathVariable Long id,
             @PathVariable Long mid) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamProjectAccess(SecurityUtils.getCurrentUserId(), internalTeamId, id);
         return ResponseEntity.ok(projectService.completeMilestone(id, mid));
     }
 
@@ -222,6 +244,8 @@ public class TeamProjectController {
     public ResponseEntity<ApiResponse<List<TodoResponse>>> listProjectTodos(
             @PathVariable String teamId,
             @PathVariable Long id) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamProjectAccess(SecurityUtils.getCurrentUserId(), internalTeamId, id);
         return ResponseEntity.ok(todoService.listProjectTodos(id));
     }
 }

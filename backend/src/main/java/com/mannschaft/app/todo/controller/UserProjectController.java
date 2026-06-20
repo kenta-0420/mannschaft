@@ -91,7 +91,7 @@ public class UserProjectController {
     @GetMapping("/{id}")
     @Operation(summary = "プロジェクト詳細（個人）")
     public ResponseEntity<ApiResponse<ProjectDetailResponse>> getProject(@PathVariable Long id) {
-        // TODO(出陣): projectAccessGuard.validatePersonalProjectAccess(SecurityUtils.getCurrentUserId(), id);
+        projectAccessGuard.validatePersonalProjectAccess(SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.ok(projectService.getProject(id));
     }
 
@@ -103,7 +103,7 @@ public class UserProjectController {
     public ResponseEntity<ApiResponse<ProjectResponse>> updateProject(
             @PathVariable Long id,
             @Valid @RequestBody UpdateProjectRequest request) {
-        // TODO(出陣): projectAccessGuard.validatePersonalProjectAccess(SecurityUtils.getCurrentUserId(), id);
+        projectAccessGuard.validatePersonalProjectAccess(SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.ok(projectService.updateProject(id, request));
     }
 
@@ -113,7 +113,7 @@ public class UserProjectController {
     @DeleteMapping("/{id}")
     @Operation(summary = "プロジェクト削除（個人）")
     public ResponseEntity<Void> deleteProject(@PathVariable Long id) {
-        // TODO(出陣): projectAccessGuard.validatePersonalProjectAccess(SecurityUtils.getCurrentUserId(), id);
+        projectAccessGuard.validatePersonalProjectAccess(SecurityUtils.getCurrentUserId(), id);
         projectService.deleteProject(id);
         return ResponseEntity.noContent().build();
     }
@@ -124,7 +124,7 @@ public class UserProjectController {
     @PatchMapping("/{id}/complete")
     @Operation(summary = "プロジェクト手動完了（個人）")
     public ResponseEntity<ApiResponse<ProjectResponse>> completeProject(@PathVariable Long id) {
-        // TODO(出陣): projectAccessGuard.validatePersonalProjectAccess(SecurityUtils.getCurrentUserId(), id);
+        projectAccessGuard.validatePersonalProjectAccess(SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.ok(projectService.completeProject(id));
     }
 
@@ -134,7 +134,7 @@ public class UserProjectController {
     @PatchMapping("/{id}/reopen")
     @Operation(summary = "プロジェクト再開（個人）")
     public ResponseEntity<ApiResponse<ProjectResponse>> reopenProject(@PathVariable Long id) {
-        // TODO(出陣): projectAccessGuard.validatePersonalProjectAccess(SecurityUtils.getCurrentUserId(), id);
+        projectAccessGuard.validatePersonalProjectAccess(SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.ok(projectService.reopenProject(id));
     }
 
@@ -146,7 +146,7 @@ public class UserProjectController {
     @GetMapping("/{id}/milestones")
     @Operation(summary = "マイルストーン一覧（個人）")
     public ResponseEntity<ApiResponse<List<MilestoneResponse>>> listMilestones(@PathVariable Long id) {
-        // TODO(出陣): projectAccessGuard.validatePersonalProjectAccess(SecurityUtils.getCurrentUserId(), id);
+        projectAccessGuard.validatePersonalProjectAccess(SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.ok(projectService.listMilestones(id));
     }
 
@@ -158,7 +158,7 @@ public class UserProjectController {
     public ResponseEntity<ApiResponse<MilestoneResponse>> createMilestone(
             @PathVariable Long id,
             @Valid @RequestBody CreateMilestoneRequest request) {
-        // TODO(出陣): projectAccessGuard.validatePersonalProjectAccess(SecurityUtils.getCurrentUserId(), id);
+        projectAccessGuard.validatePersonalProjectAccess(SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(projectService.createMilestone(id, request));
     }
@@ -172,7 +172,7 @@ public class UserProjectController {
             @PathVariable Long id,
             @PathVariable Long mid,
             @Valid @RequestBody UpdateMilestoneRequest request) {
-        // TODO(出陣): projectAccessGuard.validatePersonalProjectAccess(SecurityUtils.getCurrentUserId(), id);
+        projectAccessGuard.validatePersonalProjectAccess(SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.ok(projectService.updateMilestone(id, mid, request));
     }
 
@@ -184,7 +184,7 @@ public class UserProjectController {
     public ResponseEntity<Void> deleteMilestone(
             @PathVariable Long id,
             @PathVariable Long mid) {
-        // TODO(出陣): projectAccessGuard.validatePersonalProjectAccess(SecurityUtils.getCurrentUserId(), id);
+        projectAccessGuard.validatePersonalProjectAccess(SecurityUtils.getCurrentUserId(), id);
         projectService.deleteMilestone(id, mid);
         return ResponseEntity.noContent().build();
     }
@@ -197,7 +197,7 @@ public class UserProjectController {
     public ResponseEntity<ApiResponse<MilestoneResponse>> completeMilestone(
             @PathVariable Long id,
             @PathVariable Long mid) {
-        // TODO(出陣): projectAccessGuard.validatePersonalProjectAccess(SecurityUtils.getCurrentUserId(), id);
+        projectAccessGuard.validatePersonalProjectAccess(SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.ok(projectService.completeMilestone(id, mid));
     }
 
@@ -209,7 +209,7 @@ public class UserProjectController {
     @GetMapping("/{id}/todos")
     @Operation(summary = "プロジェクト内TODO一覧（個人）")
     public ResponseEntity<ApiResponse<List<TodoResponse>>> listProjectTodos(@PathVariable Long id) {
-        // TODO(出陣): projectAccessGuard.validatePersonalProjectAccess(SecurityUtils.getCurrentUserId(), id);
+        projectAccessGuard.validatePersonalProjectAccess(SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.ok(todoService.listProjectTodos(id));
     }
 }

@@ -1,6 +1,10 @@
 package com.mannschaft.app.todo.security;
 
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.todo.TodoErrorCode;
+import com.mannschaft.app.todo.TodoScopeType;
+import com.mannschaft.app.todo.entity.ProjectEntity;
 import com.mannschaft.app.todo.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -42,7 +46,13 @@ public class ProjectAccessGuard {
      * @param projectId パス上のプロジェクト ID
      */
     public void validatePersonalProjectAccess(Long userId, Long projectId) {
-        // TODO(出陣): PERSONAL スコープ整合性 + 所有者一致検証を実装する。
+        ProjectEntity project = projectRepository.findByIdAndDeletedAtIsNull(projectId)
+                .orElseThrow(() -> new BusinessException(TodoErrorCode.PROJECT_NOT_FOUND));
+        if (project.getScopeType() != TodoScopeType.PERSONAL
+                || !project.getScopeId().equals(userId)) {
+            // IDOR 防御: 他ユーザー ID を推測して叩くケースや他スコープを NOT_FOUND にまとめる
+            throw new BusinessException(TodoErrorCode.PROJECT_NOT_FOUND);
+        }
     }
 
     /**
@@ -58,7 +68,16 @@ public class ProjectAccessGuard {
      * @param projectId パス上のプロジェクト ID
      */
     public void validateTeamProjectAccess(Long userId, Long teamId, Long projectId) {
-        // TODO(出陣): TEAM スコープ整合性 + membership 検証を実装する。
+        // プロジェクトが存在し、チームスコープ・スコープ ID が一致することを検証
+        ProjectEntity project = projectRepository.findByIdAndDeletedAtIsNull(projectId)
+                .orElseThrow(() -> new BusinessException(TodoErrorCode.PROJECT_NOT_FOUND));
+        if (project.getScopeType() != TodoScopeType.TEAM || !project.getScopeId().equals(teamId)) {
+            // IDOR 防御: 他スコープ ID を推測して叩くケースを NOT_FOUND にまとめる
+            throw new BusinessException(TodoErrorCode.PROJECT_NOT_FOUND);
+        }
+
+        // メンバーシップ検証（adminは要求しない — 一般メンバーの CRUD を許可）
+        accessControlService.checkMembership(userId, teamId, "TEAM");
     }
 
     /**
@@ -73,6 +92,7 @@ public class ProjectAccessGuard {
      * @param teamId パス上のチーム内部 ID（resolveTeamId 済み）
      */
     public void validateTeamMembership(Long userId, Long teamId) {
-        // TODO(出陣): membership 検証を実装する。
+        // メンバーシップ検証（一覧・作成 EP 用・projectId なし）
+        accessControlService.checkMembership(userId, teamId, "TEAM");
     }
 }

@@ -1,6 +1,7 @@
 package com.mannschaft.app.todo.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
@@ -96,7 +97,7 @@ class TeamProjectControllerTest {
 
     @BeforeEach
     void setUp() {
-        objectMapper = new ObjectMapper();
+        objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler(messageSource))
                 .build();
