@@ -317,9 +317,30 @@ mannschaft.error-report:
     temperature: 0.2
     monthly-budget-jpy: ${ERROR_REPORT_AI_BUDGET_JPY:5000}
     auto-batch-delay-minutes: 30
+    # コスト青天井ガード（AC-11/12/13）— Claude API 呼び出しのタイムアウト/リトライ
+    # timeout-ms 既定 5 秒。5xx/タイムアウトは最大 retry-max-attempts 回・指数バックオフでリトライし、
+    # 4xx（400/401/403）は即時非リトライ。
+    timeout-ms: ${ERROR_REPORT_AI_TIMEOUT_MS:5000}
+    retry-max-attempts: ${ERROR_REPORT_AI_RETRY_MAX_ATTEMPTS:3}
+    retry-backoff-delay-ms: ${ERROR_REPORT_AI_RETRY_BACKOFF_MS:200}
   github:
     # GH_TOKEN / GH_OWNER / GH_REPO は環境変数から直接 @Value で注入される
     enabled: ${ERROR_REPORT_GITHUB_ENABLED:false}
+
+# タイムラインダイジェスト AI 生成 — Claude API コスト青天井ガード（AC-11/12/13）
+# 月次上限 monthly-limit-per-scope（既定30回/スコープ）でコストは守られているため、
+# ここでは timeout/retry のみ追加（既存の AI モデル設定は DigestProperties 既定値を踏襲）。
+mannschaft.digest:
+  timeout-ms: ${DIGEST_AI_TIMEOUT_MS:5000}
+  retry-max-attempts: ${DIGEST_AI_RETRY_MAX_ATTEMPTS:3}
+  retry-backoff-delay-ms: ${DIGEST_AI_RETRY_BACKOFF_MS:200}
+
+# 障害告知バナー 自動翻訳 — Claude API コスト青天井ガード（AC-11/12/13）
+# 翻訳はシスアド手動公開時のみの低頻度・短文のため、タイムアウトを設ける
+# （リトライは @Retryable で 5xx/timeout 最大3回、4xx 非リトライ。失敗時は原文フォールバック）。
+mannschaft.incident-banner:
+  translation:
+    timeout-ms: ${INCIDENT_BANNER_TRANSLATION_TIMEOUT_MS:5000}
 
 # F12.5 Phase 2-D — GitHub Issue 本文の「内部管理画面」リンクの基底 URL
 # ※ mannschaft.app-base-url は廃止。app.base-url に統一済み（2026-06-11）。
