@@ -82,7 +82,16 @@ public enum SurveyErrorCode implements ErrorCode {
      * 匿名アンケートで回答者の所属チームを内訳に出すと匿名性が崩れるため、作成時に弾く（400）。
      */
     ANONYMOUS_TEAM_BREAKDOWN_CONFLICT("SURVEY_023",
-            "匿名アンケートではチーム別内訳を有効化できません", Severity.WARN);
+            "匿名アンケートではチーム別内訳を有効化できません", Severity.WARN),
+
+    /**
+     * enum 文字列フィールドの値が不正（F05.4 作成・更新・設問作成）。
+     * resultsVisibility / distributionMode / unrespondedVisibility / questionType 等の
+     * クライアント入力 enum 文字列が定義済みの値に一致しない場合に投げる。
+     * IllegalArgumentException を握りつぶさず 400（Severity.WARN）で正直に返す。
+     */
+    INVALID_ENUM_VALUE("SURVEY_024",
+            "指定された値が不正です", Severity.WARN);
 
     private final String code;
     private final String message;

@@ -178,6 +178,23 @@ public class SurveyService {
 
         String remindJson = serializeRemindHours(request.getRemindBeforeHours());
 
+        // enum 文字列フィールドは save 前にまとめて検証する（不正値は 400・DB へ半端に書かない）。
+        // 同梱設問の questionType も含めて先に弾くことで、save 後に IllegalArgumentException で
+        // 500 に落ちる（=半端な survey が残る）退行を防ぐ。
+        ResultsVisibility resultsVisibility =
+                parseEnumOrThrow(ResultsVisibility.class, request.getResultsVisibility(), "resultsVisibility");
+        DistributionMode distributionMode =
+                parseEnumOrThrow(DistributionMode.class, request.getDistributionMode(), "distributionMode");
+        UnrespondedVisibility unrespondedVisibility = request.getUnrespondedVisibility() != null
+                ? parseEnumOrThrow(UnrespondedVisibility.class, request.getUnrespondedVisibility(),
+                        "unrespondedVisibility")
+                : UnrespondedVisibility.CREATOR_AND_ADMIN;
+        if (request.getQuestions() != null) {
+            for (CreateQuestionRequest q : request.getQuestions()) {
+                parseEnumOrThrow(QuestionType.class, q.getQuestionType(), "questionType");
+            }
+        }
+
         SurveyEntity entity = SurveyEntity.builder()
                 .scopeType(scopeType)
                 .scopeId(scopeId)
@@ -185,11 +202,9 @@ public class SurveyService {
                 .description(request.getDescription())
                 .isAnonymous(request.getIsAnonymous())
                 .allowMultipleSubmissions(request.getAllowMultipleSubmissions())
-                .resultsVisibility(ResultsVisibility.valueOf(request.getResultsVisibility()))
-                .distributionMode(DistributionMode.valueOf(request.getDistributionMode()))
-                .unrespondedVisibility(request.getUnrespondedVisibility() != null
-                        ? UnrespondedVisibility.valueOf(request.getUnrespondedVisibility())
-                        : UnrespondedVisibility.CREATOR_AND_ADMIN)
+                .resultsVisibility(resultsVisibility)
+                .distributionMode(distributionMode)
+                .unrespondedVisibility(unrespondedVisibility)
                 .autoPostToTimeline(request.getAutoPostToTimeline() != null
                         ? request.getAutoPostToTimeline() : false)
                 .includeSupporters(request.getIncludeSupporters() != null
@@ -257,7 +272,8 @@ public class SurveyService {
                     request.getAllowMultipleSubmissions() != null
                             ? request.getAllowMultipleSubmissions() : entity.getAllowMultipleSubmissions(),
                     request.getResultsVisibility() != null
-                            ? ResultsVisibility.valueOf(request.getResultsVisibility())
+                            ? parseEnumOrThrow(ResultsVisibility.class, request.getResultsVisibility(),
+                                    "resultsVisibility")
                             : entity.getResultsVisibility(),
                     request.getAutoPostToTimeline() != null
                             ? request.getAutoPostToTimeline() : entity.getAutoPostToTimeline(),
@@ -267,7 +283,8 @@ public class SurveyService {
         }
         if (request.getUnrespondedVisibility() != null) {
             entity.updateUnrespondedVisibility(
-                    UnrespondedVisibility.valueOf(request.getUnrespondedVisibility()));
+                    parseEnumOrThrow(UnrespondedVisibility.class, request.getUnrespondedVisibility(),
+                            "unrespondedVisibility"));
         }
         if (request.getStartsAt() != null || request.getExpiresAt() != null) {
             validateTimeRange(
@@ -383,7 +400,7 @@ public class SurveyService {
 
         SurveyQuestionEntity question = SurveyQuestionEntity.builder()
                 .surveyId(surveyId)
-                .questionType(QuestionType.valueOf(request.getQuestionType()))
+                .questionType(parseEnumOrThrow(QuestionType.class, request.getQuestionType(), "questionType"))
                 .questionText(request.getQuestionText())
                 .isRequired(request.getIsRequired())
                 .displayOrder(request.getDisplayOrder() != null ? request.getDisplayOrder() : 0)
@@ -740,7 +757,7 @@ public class SurveyService {
             CreateQuestionRequest qReq = questionRequests.get(i);
             SurveyQuestionEntity question = SurveyQuestionEntity.builder()
                     .surveyId(surveyId)
-                    .questionType(QuestionType.valueOf(qReq.getQuestionType()))
+                    .questionType(parseEnumOrThrow(QuestionType.class, qReq.getQuestionType(), "questionType"))
                     .questionText(qReq.getQuestionText())
                     .isRequired(qReq.getIsRequired())
                     .displayOrder(qReq.getDisplayOrder() != null ? qReq.getDisplayOrder() : i)
@@ -772,6 +789,33 @@ public class SurveyService {
     private void validateTimeRange(java.time.LocalDateTime startsAt, java.time.LocalDateTime expiresAt) {
         if (startsAt != null && expiresAt != null && !startsAt.isBefore(expiresAt)) {
             throw new BusinessException(SurveyErrorCode.INVALID_TIME_RANGE);
+        }
+    }
+
+    /**
+     * enum 文字列フィールドを安全にパースする。
+     *
+     * <p>follow-up②: {@code Enum.valueOf(...)} は不正値で {@link IllegalArgumentException} を投げ、
+     * GlobalExceptionHandler の汎用ハンドラに落ちて 500 COMMON_999 になる。本来はクライアント入力
+     * エラーなので、ここで捕捉して {@link SurveyErrorCode#INVALID_ENUM_VALUE}（Severity.WARN → 400）
+     * に変換する。握りつぶして既定値に倒す対処療法はしない（症状を隠さない）。</p>
+     *
+     * @param enumClass パース対象の enum 型
+     * @param value     クライアント入力の文字列値
+     * @param fieldName エラー応答に含めるフィールド名
+     * @param <E>       enum 型
+     * @return パース済み enum 値
+     * @throws BusinessException 値が定義済み enum 値に一致しない場合（INVALID_ENUM_VALUE）
+     */
+    private <E extends Enum<E>> E parseEnumOrThrow(Class<E> enumClass, String value, String fieldName) {
+        try {
+            return Enum.valueOf(enumClass, value);
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(
+                    SurveyErrorCode.INVALID_ENUM_VALUE,
+                    List.of(new com.mannschaft.app.common.ErrorResponse.FieldError(
+                            fieldName,
+                            "指定された値は許可されていません: " + value)));
         }
     }
 
