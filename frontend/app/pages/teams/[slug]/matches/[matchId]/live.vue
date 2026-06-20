@@ -500,10 +500,6 @@ function goPenalty(): void {
 function goOvertime(): void {
   void session.value?.timer.goOvertime?.()
 }
-
-function back(): void {
-  void router.push(`/teams/${teamSlug}/matches`)
-}
 </script>
 
 <template>
