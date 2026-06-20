@@ -23,7 +23,17 @@ public interface SealMapper {
     List<SealResponse> toSealResponseList(List<ElectronicSealEntity> entities);
 
     @Mapping(target = "scopeType", expression = "java(entity.getScopeType().name())")
+    @Mapping(target = "scopeName", ignore = true)
     ScopeDefaultResponse toScopeDefaultResponse(SealScopeDefaultEntity entity);
+
+    /**
+     * scopeName を解決済みの値で埋めて変換する。
+     * scopeName は他ドメイン（team/organization）依存のため Service 層で
+     * {@code NameResolverService} を用いて一括解決し、本メソッドへ渡す。
+     */
+    @Mapping(target = "scopeType", expression = "java(entity.getScopeType().name())")
+    @Mapping(target = "scopeName", source = "scopeName")
+    ScopeDefaultResponse toScopeDefaultResponse(SealScopeDefaultEntity entity, String scopeName);
 
     List<ScopeDefaultResponse> toScopeDefaultResponseList(List<SealScopeDefaultEntity> entities);
 

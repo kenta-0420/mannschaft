@@ -856,7 +856,15 @@
       "Bash(echo \"DONE:$?\")",
       "Bash(rtk proxy *)",
       "WebFetch(domain:support.stripe.com)",
-      "Bash(awk '{print $4}')"
+      "Bash(awk '{print $4}')",
+      "PowerShell($ports = 3000,3001,8080; foreach \\($p in $ports\\) { $r = Test-NetConnection -ComputerName 127.0.0.1 -Port $p -WarningAction SilentlyContinue; \"Port $p : $\\($r.TcpTestSucceeded\\)\" })",
+      "Bash(sort -t V -k2 -n -u)",
+      "Bash(sort -t V -k2 -n)",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('title:',d['title']\\); print\\('state:',d['state'],'mergeable:',d['mergeable'],'head:',d['headRefName']\\); [print\\(c.get\\('name'\\),c.get\\('conclusion'\\)\\) for c in d.get\\('statusCheckRollup',[]\\)]\")",
+      "Bash(echo \"exit=$?\")",
+      "Bash(BASE_URL=http://localhost:3001 rtk playwright test tests/e2e/real/admin/f1011-admin-console.spec.ts tests/e2e/real/admin/f1011-admin-lens-touch.spec.ts --project=chromium-real --reporter=list --timeout=120000)",
+      "PowerShell(git *)"
     ],
     "deny": [
       "Write(**/.env)",

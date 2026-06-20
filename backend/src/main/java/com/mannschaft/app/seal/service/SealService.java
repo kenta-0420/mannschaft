@@ -1,6 +1,7 @@
 package com.mannschaft.app.seal.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.seal.SealErrorCode;
 import com.mannschaft.app.seal.SealMapper;
 import com.mannschaft.app.seal.SealScopeType;
@@ -20,6 +21,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 電子印鑑サービス。印鑑の生成・管理・スコープデフォルト設定を担当する。
@@ -34,6 +38,7 @@ public class SealService {
     private final SealScopeDefaultRepository scopeDefaultRepository;
     private final SealMapper sealMapper;
     private final SealGenerator sealGenerator;
+    private final NameResolverService nameResolverService;
 
     /**
      * ユーザーの印鑑一覧を取得する。
@@ -160,18 +165,58 @@ public class SealService {
 
         SealScopeDefaultEntity saved = scopeDefaultRepository.save(entity);
         log.info("スコープデフォルト設定: userId={}, scopeType={}, sealId={}", userId, scopeType, request.getSealId());
-        return sealMapper.toScopeDefaultResponse(saved);
+
+        // scopeName を解決して返す（単一件のため都度解決）
+        Map<Long, String> teamNames = saved.getScopeType() == SealScopeType.TEAM && saved.getScopeId() != null
+                ? nameResolverService.resolveTeamNames(Set.of(saved.getScopeId()))
+                : Map.of();
+        Map<Long, String> orgNames = saved.getScopeType() == SealScopeType.ORGANIZATION && saved.getScopeId() != null
+                ? nameResolverService.resolveOrganizationNames(Set.of(saved.getScopeId()))
+                : Map.of();
+        return sealMapper.toScopeDefaultResponse(saved, resolveScopeName(saved, teamNames, orgNames));
     }
 
     /**
      * ユーザーのスコープデフォルト一覧を取得する。
+     * scopeName（チーム名・組織名）は N+1 を避けるため一括解決する。
      *
      * @param userId ユーザーID
      * @return スコープデフォルトレスポンスリスト
      */
     public List<ScopeDefaultResponse> listScopeDefaults(Long userId) {
         List<SealScopeDefaultEntity> defaults = scopeDefaultRepository.findByUserIdOrderByCreatedAtAsc(userId);
-        return sealMapper.toScopeDefaultResponseList(defaults);
+
+        // TEAM / ORGANIZATION の scopeId を種別ごとに集約し、それぞれ一括で名前解決する
+        Set<Long> teamIds = defaults.stream()
+                .filter(d -> d.getScopeType() == SealScopeType.TEAM && d.getScopeId() != null)
+                .map(SealScopeDefaultEntity::getScopeId)
+                .collect(Collectors.toSet());
+        Set<Long> orgIds = defaults.stream()
+                .filter(d -> d.getScopeType() == SealScopeType.ORGANIZATION && d.getScopeId() != null)
+                .map(SealScopeDefaultEntity::getScopeId)
+                .collect(Collectors.toSet());
+
+        Map<Long, String> teamNames = nameResolverService.resolveTeamNames(teamIds);
+        Map<Long, String> orgNames = nameResolverService.resolveOrganizationNames(orgIds);
+
+        return defaults.stream()
+                .map(d -> sealMapper.toScopeDefaultResponse(d, resolveScopeName(d, teamNames, orgNames)))
+                .toList();
+    }
+
+    /**
+     * スコープ表示名を解決する。
+     * DEFAULT="デフォルト" / TEAM→チーム名（不明="不明なチーム"） /
+     * ORGANIZATION→組織名（不明="不明な組織"）。
+     */
+    private String resolveScopeName(SealScopeDefaultEntity entity,
+                                    Map<Long, String> teamNames,
+                                    Map<Long, String> orgNames) {
+        return switch (entity.getScopeType()) {
+            case DEFAULT -> "デフォルト";
+            case TEAM -> teamNames.getOrDefault(entity.getScopeId(), "不明なチーム");
+            case ORGANIZATION -> orgNames.getOrDefault(entity.getScopeId(), "不明な組織");
+        };
     }
 
     /**
