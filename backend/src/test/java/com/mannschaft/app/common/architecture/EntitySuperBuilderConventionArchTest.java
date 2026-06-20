@@ -7,7 +7,6 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 
 import jakarta.persistence.Entity;
-import lombok.Builder;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 
@@ -33,8 +32,8 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
  * <h2>恒久ルール方式</h2>
  * <p>今回の移行により違反は <b>0 件</b> になったため、
  * {@link com.tngtech.archunit.library.freeze.FreezingArchRule} は使用しない。
- * クラスレベルの {@link Builder} アノテーションを検出した瞬間に fail させる恒久ルールとして
- * 定義する。フィールドレベルの {@code @Builder.Default} はクラスレベルの {@link Builder}
+ * クラスレベルの {@code @Builder} アノテーションを検出した瞬間に fail させる恒久ルールとして
+ * 定義する。フィールドレベルの {@code @Builder.Default} はクラスレベルの {@code @Builder}
  * とは異なるアノテーションのため、本ルールには引っかからない（誤検知なし）。
  *
  * <h2>ルール ID</h2>
@@ -57,7 +56,7 @@ class EntitySuperBuilderConventionArchTest {
         classes().that()
             .areAnnotatedWith(Entity.class)
             .and().areAssignableTo(BaseEntity.class)
-            .should().notBeAnnotatedWith(Builder.class)
+            .should().notBeAnnotatedWith("lombok.Builder")
             .because("BaseEntity継承Entityには@Builder(toBuilder=true)は禁止。"
                 + "toBuilder()が継承フィールド(id/createdAt/updatedAt)を引き継がずINSERT化するバグを防ぐ。"
                 + "@SuperBuilder(toBuilder=true)を使うこと（CLAUDE.mdアーキテクチャ思想参照）")
