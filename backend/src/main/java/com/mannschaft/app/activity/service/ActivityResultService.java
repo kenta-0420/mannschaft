@@ -255,6 +255,11 @@ public class ActivityResultService {
     @Transactional
     public ActivityResultEntity duplicateActivity(Long id, Long userId, DuplicateActivityRequest request) {
         ActivityResultEntity original = findActivityOrThrow(id);
+        // スコープメンバーシップ検証: 非メンバーは403（他スコープ会員による複製=IDOR を封じる）
+        ActivityScopeType originalScopeType = original.getScopeType();
+        if (originalScopeType == ActivityScopeType.TEAM || originalScopeType == ActivityScopeType.ORGANIZATION) {
+            accessControlService.checkMembership(userId, original.getScopeId(), originalScopeType.name());
+        }
 
         String title = request != null && request.getTitle() != null
                 ? request.getTitle() : original.getTitle();

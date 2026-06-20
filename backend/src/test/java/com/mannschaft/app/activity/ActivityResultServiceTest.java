@@ -110,6 +110,46 @@ class ActivityResultServiceTest {
     }
 
     @Nested
+    @DisplayName("duplicateActivity")
+    class DuplicateActivity {
+
+        private ActivityResultEntity teamOriginal() {
+            return ActivityResultEntity.builder()
+                    .scopeType(ActivityScopeType.TEAM).scopeId(SCOPE_ID).title("元活動").build();
+        }
+
+        // AC-1: 他スコープ会員は複製不可（IDOR封じ）
+        @Test
+        @DisplayName("duplicateActivity_他スコープ会員は403（COMMON_002）")
+        void 複製_他スコープ_403() {
+            given(resultRepository.findById(ACTIVITY_ID)).willReturn(Optional.of(teamOriginal()));
+            org.mockito.BDDMockito.willThrow(new BusinessException(
+                    com.mannschaft.app.common.CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkMembership(USER_ID, SCOPE_ID, "TEAM");
+
+            assertThatThrownBy(() -> service.duplicateActivity(ACTIVITY_ID, USER_ID, null))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+        }
+
+        // AC-2: 自スコープ会員は従来通り複製成功（非回帰）
+        @Test
+        @DisplayName("duplicateActivity_自スコープ会員は成功（非回帰）")
+        void 複製_自スコープ_成功() {
+            ActivityResultEntity original = teamOriginal();
+            given(resultRepository.findById(ACTIVITY_ID)).willReturn(Optional.of(original));
+            given(resultRepository.save(any())).willReturn(original);
+            given(participantRepository.findByActivityResultIdOrderByCreatedAtAsc(ACTIVITY_ID))
+                    .willReturn(List.of());
+
+            ActivityResultEntity result = service.duplicateActivity(ACTIVITY_ID, USER_ID, null);
+            assertThat(result).isNotNull();
+            verify(accessControlService).checkMembership(USER_ID, SCOPE_ID, "TEAM");
+        }
+    }
+
+    @Nested
     @DisplayName("listPublicActivities")
     class ListPublicActivities {
 
