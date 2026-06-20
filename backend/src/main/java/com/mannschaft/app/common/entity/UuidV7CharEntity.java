@@ -31,7 +31,7 @@ import java.util.UUID;
  * 本クラスは既に {@code CHAR(36)} で main にマージされているテーブル群を救うための
  * 互換層であり、新規での採用は推奨しない。</p>
  */
-@SuperBuilder
+@SuperBuilder(toBuilder = true)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @MappedSuperclass
 public abstract class UuidV7CharEntity {

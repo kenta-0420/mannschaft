@@ -228,7 +228,9 @@
     "AUTH_002": "Ihre E-Mail-Adresse wurde noch nicht bestätigt",
     "AUTH_003": "Ihr Konto ist gesperrt. Bitte versuchen Sie es in 30 Minuten erneut",
     "AUTH_004": "Diese E-Mail-Adresse ist bereits registriert",
-    "AUTH_005": "Der Link in der Bestätigungs-E-Mail ist ungültig oder abgelaufen"
+    "AUTH_005": "Der Link in der Bestätigungs-E-Mail ist ungültig oder abgelaufen",
+    "AUTH_044": "Zu viele Anfragen. Bitte warten Sie einen Moment und versuchen Sie es erneut",
+    "SURVEY_023": "Die Team-Aufschluesselung kann bei anonymen Umfragen nicht aktiviert werden"
   },
   "annual_plan": {
     "title": "Jahresveranstaltungsplan",

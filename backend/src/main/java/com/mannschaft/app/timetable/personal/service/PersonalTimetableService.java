@@ -272,7 +272,7 @@ public class PersonalTimetableService {
                 periodRepository.findByPersonalTimetableIdOrderByPeriodNumberAsc(source.getId());
         if (!sourcePeriods.isEmpty()) {
             List<PersonalTimetablePeriodEntity> copies = sourcePeriods.stream()
-                    .map(p -> PersonalTimetablePeriodEntity.builder()
+                    .<PersonalTimetablePeriodEntity>map(p -> PersonalTimetablePeriodEntity.builder()
                             .personalTimetableId(saved.getId())
                             .periodNumber(p.getPeriodNumber())
                             .label(p.getLabel())
@@ -289,7 +289,7 @@ public class PersonalTimetableService {
                 slotRepository.findByPersonalTimetableIdOrderByDayOfWeekAscPeriodNumberAsc(source.getId());
         if (!sourceSlots.isEmpty()) {
             List<PersonalTimetableSlotEntity> copies = sourceSlots.stream()
-                    .map(s -> PersonalTimetableSlotEntity.builder()
+                    .<PersonalTimetableSlotEntity>map(s -> PersonalTimetableSlotEntity.builder()
                             .personalTimetableId(saved.getId())
                             .dayOfWeek(s.getDayOfWeek())
                             .periodNumber(s.getPeriodNumber())

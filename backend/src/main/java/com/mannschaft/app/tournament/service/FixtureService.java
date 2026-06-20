@@ -429,7 +429,7 @@ public class FixtureService {
     @Transactional
     public List<RosterResponse> createRosters(Long matchId, CreateRosterRequest request) {
         List<TournamentFixtureRosterEntity> rosters = request.getEntries().stream()
-                .map(entry -> TournamentFixtureRosterEntity.builder()
+                .map(entry -> (TournamentFixtureRosterEntity) TournamentFixtureRosterEntity.builder()
                         .matchId(matchId)
                         .participantId(entry.getParticipantId())
                         .userId(entry.getUserId())

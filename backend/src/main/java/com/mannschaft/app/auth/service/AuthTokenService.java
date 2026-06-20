@@ -260,13 +260,13 @@ public class AuthTokenService {
      * @param key         Valkeyキー
      * @param maxAttempts 最大試行回数
      * @param window      ウィンドウ期間
-     * @throws BusinessException レートリミット超過時（AUTH_031）
+     * @throws BusinessException レートリミット超過時（AUTH_044）
      */
     public void checkRateLimit(String key, int maxAttempts, Duration window) {
         try {
             long currentCount = incrementRateLimit(key, window);
             if (currentCount > maxAttempts) {
-                throw new BusinessException(AuthErrorCode.AUTH_031);
+                throw new BusinessException(AuthErrorCode.AUTH_044);
             }
         } catch (BusinessException e) {
             throw e;

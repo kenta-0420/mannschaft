@@ -14,8 +14,8 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
@@ -33,8 +33,7 @@ import java.util.UUID;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class UserEntity extends BaseEntity {
 
     @Column(nullable = false, unique = true)
@@ -481,9 +480,9 @@ public class UserEntity extends BaseEntity {
      * dirty checking により UPDATE が発行される。
      *
      * <p><strong>なぜ builder ({@code toBuilder().build()}) で作り直さないか:</strong>
-     * {@link UserEntity} は {@code @Builder(toBuilder = true)}（{@code @SuperBuilder} ではない）であり、
+     * {@link UserEntity} は {@code @SuperBuilder(toBuilder = true)}（{@code @SuperBuilder} ではない）であり、
      * 主キー {@code id} は基底クラス {@link com.mannschaft.app.common.BaseEntity} のフィールドである。
-     * {@code @Builder} は superclass のフィールドを取り込まないため、{@code toBuilder()} で
+     * {@code @SuperBuilder} は superclass のフィールドを取り込まないため、{@code toBuilder()} で
      * 作り直すと継承フィールド {@code id} が引き継がれず {@code id = null} の新インスタンスになる。
      * これを {@code save} すると UPDATE ではなく INSERT が走り、email 一意制約違反で 500 になる
      * （PR #1643 と同型の根治）。よって更新は必ず managed entity の直接ミューテートで行う。

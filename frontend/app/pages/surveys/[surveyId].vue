@@ -368,6 +368,21 @@ onMounted(async () => {
         </p>
       </div>
 
+      <!-- F05.4 (B) チーム別内訳（組織スコープ + ADMIN のみ）。
+           認可は BE 側 org-ADMIN 限定 EP。ここでは出し分けの一次フィルタとして
+           組織スコープ + isAdminPlus を要求する（403 時はパネル内で明示表示）。 -->
+      <section
+        v-if="isAdminPlus && scopeType === 'ORGANIZATION'"
+        class="mt-6"
+        data-testid="survey-team-breakdown-section"
+      >
+        <Card>
+          <template #content>
+            <SurveyTeamBreakdownPanel :survey-id="survey.id" />
+          </template>
+        </Card>
+      </section>
+
       <!-- 回答者セクション（作成者 or ADMIN+ のみ） -->
       <section
         v-if="isAdminPlus || isCreator"

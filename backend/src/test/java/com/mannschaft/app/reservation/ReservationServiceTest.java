@@ -17,11 +17,11 @@ import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import com.mannschaft.app.reservation.service.ReservationService;
 import com.mannschaft.app.reservation.service.ReservationSlotService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -31,7 +31,11 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -82,7 +86,6 @@ class ReservationServiceTest {
     @Mock
     private com.mannschaft.app.reservation.service.ReservationPolicyService reservationPolicyService;
 
-    @InjectMocks
     private ReservationService service;
 
     // ========================================
@@ -96,13 +99,28 @@ class ReservationServiceTest {
     private static final Long LINE_ID = 30L;
 
     /**
+     * キャンセル締切（⑤）判定の基準時刻。枠は 2026-04-01 10:00（{@link #createAvailableSlotEntity()}）であり、
+     * 既定締切 24h 前（2026-03-31 10:00）より十分前の 2026-03-01 に固定することで、
+     * 既存の会員キャンセル正常系を「締切内」に保つ。締切超過テストは各 @Test 内で別 Clock を注入する。
+     */
+    private static final Clock FIXED_CLOCK =
+            Clock.fixed(LocalDate.of(2026, 3, 1).atStartOfDay(ZoneOffset.UTC).toInstant(), ZoneId.of("UTC"));
+
+    /**
      * enrich/enrichList のスロット・ライン取得プラミングを共通スタブ化する。
      * 各テストはスロット/ラインを保持しないため空を返し、
      * マッパーの 3 引数オーバーロードが (entity, null, null) で呼ばれた際に
      * 既定の予約レスポンスを返すよう設定する。
      */
-    @org.junit.jupiter.api.BeforeEach
+    @BeforeEach
     void setUpEnrichPlumbing() {
+        // @InjectMocks は final Clock を mock で埋めて LocalDateTime.now(clock) が NPE になるため、
+        // 固定 Clock を明示注入してサービスを生成する（ReservationSlotServiceTest と同じ作法）。
+        service = new ReservationService(
+                reservationRepository, slotRepository, lineRepository, slotService, reservationMapper,
+                nameResolverService, eventPublisher, settingService, accessControlService,
+                reservationPolicyService, FIXED_CLOCK);
+
         given(slotRepository.findById(any())).willReturn(Optional.empty());
         given(lineRepository.findById(any())).willReturn(Optional.empty());
         given(slotRepository.findAllById(anyIterable())).willReturn(List.of());
@@ -120,6 +138,24 @@ class ReservationServiceTest {
         // AUTO 自動確定を検証するテストでは各 @Test 内で上書きする。
         given(reservationPolicyService.resolveApprovalMode(eq(TEAM_ID), any(ReservationSlotEntity.class)))
                 .willReturn(ApprovalMode.MANUAL);
+        // キャンセル締切（⑤）の既定ポリシー: cancelDeadlineHours=24（エンティティ既定値）。
+        // 締切超過/境界を検証するテストでは各 @Test 内で上書きする。
+        given(reservationPolicyService.getOrDefault(TEAM_ID))
+                .willReturn(com.mannschaft.app.reservation.entity.ReservationPolicyEntity.builder()
+                        .teamId(TEAM_ID)
+                        .build());
+    }
+
+    /**
+     * 指定した固定時刻を「現在」とする Clock を注入してサービスを再生成する。
+     * キャンセル締切（⑤）の超過/境界を時刻別に検証するために使う。
+     */
+    private void reinitServiceWithClockAt(LocalDateTime now) {
+        Clock fixed = Clock.fixed(now.toInstant(ZoneOffset.UTC), ZoneId.of("UTC"));
+        service = new ReservationService(
+                reservationRepository, slotRepository, lineRepository, slotService, reservationMapper,
+                nameResolverService, eventPublisher, settingService, accessControlService,
+                reservationPolicyService, fixed);
     }
 
     private ReservationEntity createReservationEntity() {
@@ -693,6 +729,32 @@ class ReservationServiceTest {
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ReservationErrorCode.INVALID_RESERVATION_STATUS);
         }
+
+        @Test
+        @DisplayName("正常系: 締切（24h前）を過ぎていても管理者キャンセルは可（締切の対象外）")
+        void 管理者キャンセル_締切超過でも可() {
+            // 締切（2026-03-31 10:00）を大きく過ぎた時刻でも、ADMIN キャンセルは締切判定を行わず可。
+            reinitServiceWithClockAt(LocalDateTime.of(2026, 4, 1, 9, 0));
+            CancelReservationRequest request = new CancelReservationRequest("管理者都合");
+            ReservationEntity entity = createReservationEntity();
+            ReservationSlotEntity slot = createAvailableSlotEntity();
+            ReservationResponse response = createReservationResponse();
+
+            given(reservationRepository.findByIdAndTeamId(RESERVATION_ID, TEAM_ID))
+                    .willReturn(Optional.of(entity));
+            given(reservationRepository.save(entity)).willReturn(entity);
+            given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
+            given(reservationMapper.toReservationResponse(entity)).willReturn(response);
+
+            // When
+            ReservationResponse result = service.cancelByAdmin(TEAM_ID, RESERVATION_ID, request);
+
+            // Then: 締切超過でも例外なくキャンセル成立し、枠在庫が戻る。
+            assertThat(result).isNotNull();
+            verify(slotService).decrementAndReopen(slot);
+            // ADMIN は締切判定を行わないため getOrDefault は呼ばれない。
+            verify(reservationPolicyService, org.mockito.Mockito.never()).getOrDefault(any());
+        }
     }
 
     // ========================================
@@ -756,6 +818,77 @@ class ReservationServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ReservationErrorCode.INVALID_RESERVATION_STATUS);
+        }
+
+        @Test
+        @DisplayName("異常系: 締切（24h前）を過ぎた会員キャンセルは CANCEL_DEADLINE_PASSED（400相当）")
+        void ユーザーキャンセル_締切超過() {
+            // 枠開始 2026-04-01 10:00 / 既定締切 24h → 締切は 2026-03-31 10:00。
+            // その 1 分後（締切超過）を現在時刻に設定する。
+            reinitServiceWithClockAt(LocalDateTime.of(2026, 3, 31, 10, 1));
+            CancelReservationRequest request = new CancelReservationRequest("ユーザー都合");
+            ReservationEntity entity = createReservationEntity();
+            ReservationSlotEntity slot = createAvailableSlotEntity();
+
+            given(reservationRepository.findByIdAndUserId(RESERVATION_ID, USER_ID))
+                    .willReturn(Optional.of(entity));
+            given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
+
+            // When / Then
+            assertThatThrownBy(() -> service.cancelByUser(USER_ID, RESERVATION_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ReservationErrorCode.CANCEL_DEADLINE_PASSED);
+            // 締切超過で拒否されたため、枠の在庫戻し（decrementAndReopen）は呼ばれない。
+            verify(slotService, org.mockito.Mockito.never()).decrementAndReopen(any());
+        }
+
+        @Test
+        @DisplayName("正常系: 締切ちょうど（境界・24h前丁度）は会員キャンセル可（isAfter=false）")
+        void ユーザーキャンセル_締切境界丁度はキャンセル可() {
+            // 締切ちょうど（2026-03-31 10:00）。now.isAfter(deadline) は false なのでキャンセル可。
+            reinitServiceWithClockAt(LocalDateTime.of(2026, 3, 31, 10, 0));
+            CancelReservationRequest request = new CancelReservationRequest("ユーザー都合");
+            ReservationEntity entity = createReservationEntity();
+            ReservationSlotEntity slot = createAvailableSlotEntity();
+            ReservationResponse response = createReservationResponse();
+
+            given(reservationRepository.findByIdAndUserId(RESERVATION_ID, USER_ID))
+                    .willReturn(Optional.of(entity));
+            given(reservationRepository.save(entity)).willReturn(entity);
+            given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
+            given(reservationMapper.toReservationResponse(entity)).willReturn(response);
+
+            // When
+            ReservationResponse result = service.cancelByUser(USER_ID, RESERVATION_ID, request);
+
+            // Then
+            assertThat(result).isNotNull();
+            verify(slotService).decrementAndReopen(slot);
+        }
+
+        @Test
+        @DisplayName("正常系: 締切内（締切の1分前）は会員キャンセル可")
+        void ユーザーキャンセル_締切内はキャンセル可() {
+            // 締切（2026-03-31 10:00）の 1 分前。
+            reinitServiceWithClockAt(LocalDateTime.of(2026, 3, 31, 9, 59));
+            CancelReservationRequest request = new CancelReservationRequest("ユーザー都合");
+            ReservationEntity entity = createReservationEntity();
+            ReservationSlotEntity slot = createAvailableSlotEntity();
+            ReservationResponse response = createReservationResponse();
+
+            given(reservationRepository.findByIdAndUserId(RESERVATION_ID, USER_ID))
+                    .willReturn(Optional.of(entity));
+            given(reservationRepository.save(entity)).willReturn(entity);
+            given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
+            given(reservationMapper.toReservationResponse(entity)).willReturn(response);
+
+            // When
+            ReservationResponse result = service.cancelByUser(USER_ID, RESERVATION_ID, request);
+
+            // Then
+            assertThat(result).isNotNull();
+            verify(slotService).decrementAndReopen(slot);
         }
     }
 

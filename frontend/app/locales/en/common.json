@@ -228,7 +228,9 @@
     "AUTH_002": "Your email address has not been verified yet",
     "AUTH_003": "Your account is locked. Please try again in 30 minutes",
     "AUTH_004": "This email address is already registered",
-    "AUTH_005": "The verification email link is invalid or has expired"
+    "AUTH_005": "The verification email link is invalid or has expired",
+    "AUTH_044": "Too many requests. Please wait a moment and try again",
+    "SURVEY_023": "Team breakdown cannot be enabled for anonymous surveys"
   },
   "annual_plan": {
     "title": "Annual Event Plan",

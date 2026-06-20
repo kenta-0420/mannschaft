@@ -5,8 +5,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -19,8 +18,7 @@ import java.time.LocalDate;
 @Table(name = "timetable_terms")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class TimetableTermEntity extends BaseEntity {
 
     private Long teamId;
@@ -50,9 +48,9 @@ public class TimetableTermEntity extends BaseEntity {
      * dirty checking により UPDATE が発行される。
      *
      * <p><strong>なぜ toBuilder().build() で作り直さないか:</strong>
-     * {@link TimetableTermEntity} は {@code @Builder(toBuilder = true)}（{@code @SuperBuilder} ではない）であり、
+     * {@link TimetableTermEntity} は {@code @SuperBuilder(toBuilder = true)}（{@code @SuperBuilder} ではない）であり、
      * 主キー {@code id} は基底クラス {@link com.mannschaft.app.common.BaseEntity} のフィールドである。
-     * {@code @Builder} は superclass のフィールドを取り込まないため、{@code toBuilder()} で
+     * {@code @SuperBuilder} は superclass のフィールドを取り込まないため、{@code toBuilder()} で
      * 作り直すと継承フィールド {@code id} が引き継がれず {@code id = null} の新インスタンスになる。
      * これを {@code save} すると UPDATE でなく INSERT が走り、一意制約違反で 500 になる。
      * よって更新は必ず managed entity の直接ミューテートで行う。
