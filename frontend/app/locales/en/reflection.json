@@ -1,168 +1,170 @@
 {
-  "title": "Reflections",
-  "nav": {
-    "today": "Today's reflections",
-    "themes": "Themes",
-    "settings": "Notification settings"
-  },
-  "today": {
-    "heading": "Today's reflections",
-    "date_label": "Date",
-    "empty": "No classes or themes for today. Create a theme to start reflecting.",
-    "free_themes": "Themes (outside timetable)",
-    "timetable_slots": "Today's classes",
-    "no_theme": "No theme set",
-    "create_theme_for_slot": "Create a theme for this slot",
-    "create_entry": "Write a reflection",
-    "edit_entry": "Edit reflection",
-    "open_recall": "Recall test",
-    "masked_badge": "Awaiting recall",
-    "has_entry": "Written",
-    "period_label": "Period {period}"
-  },
-  "theme": {
-    "list_heading": "Themes",
-    "create": "Create theme",
-    "edit": "Edit theme",
-    "delete": "Delete",
-    "delete_confirm": "Delete this theme and all its reflections?",
-    "empty": "No themes yet. Create your first theme.",
-    "title_label": "Theme name",
-    "title_placeholder": "e.g. Math II / Project X / Diary",
-    "description_label": "Description",
-    "description_placeholder": "Optional note",
-    "source_type_label": "Type",
-    "exam_date_label": "Exam date",
-    "exam_date_help": "If set, reminders are sent 14/7/3/1 days before the exam",
-    "exam_date_past_warning": "No reminders are generated for past dates",
-    "exam_date_clear": "Clear exam date",
-    "recall_interval_label": "Recall interval",
-    "recall_interval_fixed": "Recall test {days} days later (fixed)",
-    "open": "Open",
-    "view_entries": "View reflections"
-  },
-  "source_type": {
-    "SUBJECT": "Class",
-    "PROJECT": "Work / Project",
-    "DIARY": "Diary",
-    "FREE": "Free"
-  },
-  "template": {
-    "label": "Template",
-    "help": "Choose preset headings for your input",
-    "NORMAL": "Normal",
-    "DIARY": "Diary",
-    "WORK": "Work reflection",
-    "CLASS": "Class reflection",
-    "normal_desc": "No headings, free writing",
-    "diary_desc": "Events / Feelings / For tomorrow",
-    "work_desc": "Results / Issues / Learnings / Next actions",
-    "class_desc": "What I learned / Stumbling points / Key points to remember",
-    "preset": {
-      "diary": {
-        "event": "Events",
-        "feeling": "Feelings",
-        "tomorrow": "For tomorrow"
-      },
-      "work": {
-        "result": "Results",
-        "issue": "Issues",
-        "learning": "Learnings",
-        "next": "Next actions"
-      },
-      "class": {
-        "learned": "What I learned",
-        "stumble": "Stumbling points",
-        "keypoint": "Key points to remember"
-      }
-    }
-  },
-  "entry": {
-    "list_heading": "Reflections",
-    "create": "Create reflection",
-    "edit": "Edit reflection",
-    "delete": "Delete",
-    "delete_confirm": "Delete this reflection?",
-    "empty": "No reflections yet.",
-    "target_date_label": "Date",
-    "main_theme_label": "Main theme",
-    "main_theme_placeholder": "e.g. Maxima and minima of quadratic functions",
-    "section_heading_label": "Heading",
-    "section_heading_placeholder": "e.g. Completing the square",
-    "add_section": "Add heading",
-    "remove_section": "Remove heading",
-    "sub_heading_label": "Sub-heading",
-    "sub_heading_placeholder": "e.g. Transform to standard form",
-    "add_subsection": "Add sub-heading",
-    "remove_subsection": "Remove sub-heading",
-    "detail_label": "Detail",
-    "detail_placeholder": "Write what you learned",
-    "supplement_label": "Supplement",
-    "supplement_placeholder": "Supplement / note",
-    "free_note_label": "Free note (excluded from recall)",
-    "free_note_placeholder": "Impressions or question notes",
-    "save": "Save",
-    "saved": "Saved",
-    "save_failed": "Failed to save",
-    "conflict": "Updated elsewhere. Please reload the latest and try again.",
-    "masked_notice": "This is a recall-test target. The content is hidden.",
-    "exported_badge": "Exported to blog",
-    "exported_edited_badge": "Edited after export"
-  },
-  "recall": {
-    "heading": "Recall test",
-    "intro": "Without looking at the content, recall and write what you remember.",
-    "hint_theme": "Theme",
-    "hint_target_date": "Date",
-    "hint_due_dates": "Scheduled recall dates",
-    "input_label": "What you recalled",
-    "input_placeholder": "Write as much as you remember",
-    "self_rating_label": "Self-assessment",
-    "rating": {
-      "REMEMBERED": "Remembered",
-      "PARTIAL": "Partial",
-      "FORGOT": "Forgot"
+  "reflection": {
+    "title": "Reflections",
+    "nav": {
+      "today": "Today's reflections",
+      "themes": "Themes",
+      "settings": "Notification settings"
     },
-    "submit": "Save and reveal",
-    "submitting": "Saving...",
-    "saved": "Recall recorded",
-    "save_failed": "Failed to save recall",
-    "revealed_heading": "Answer (original content)",
-    "your_recall": "Your recall",
-    "history_heading": "Recall history",
-    "history_empty": "No recall history yet.",
-    "not_masked": "This entry is not masked. You can edit it normally.",
-    "back_to_entry": "Back to reflection"
-  },
-  "export": {
-    "button": "Export to blog",
-    "dialog_title": "Export to blog",
-    "title_label": "Post title",
-    "title_placeholder": "If omitted, the theme name and date are used",
-    "submit": "Export",
-    "submitting": "Exporting...",
-    "success": "Exported to blog (private)",
-    "failed": "Export failed",
-    "already_exported": "This reflection has already been exported",
-    "view_post": "View exported post"
-  },
-  "settings": {
-    "heading": "Recall notification settings",
-    "remind_hour_label": "Notification time",
-    "remind_hour_help": "The time to send recall-test reminders (your timezone)",
-    "save": "Save",
-    "saved": "Settings saved",
-    "save_failed": "Failed to save settings",
-    "hour_format": "{hour}:00"
-  },
-  "calendar": {
-    "entry_mark": "Reflection",
-    "recall_mark": "Recall due"
-  },
-  "common": {
-    "cancel": "Cancel",
-    "close": "Close",
-    "loading": "Loading...",
-    "load_failed": "Failed to load"
+    "today": {
+      "heading": "Today's reflections",
+      "date_label": "Date",
+      "empty": "No classes or themes for today. Create a theme to start reflecting.",
+      "free_themes": "Themes (outside timetable)",
+      "timetable_slots": "Today's classes",
+      "no_theme": "No theme set",
+      "create_theme_for_slot": "Create a theme for this slot",
+      "create_entry": "Write a reflection",
+      "edit_entry": "Edit reflection",
+      "open_recall": "Recall test",
+      "masked_badge": "Awaiting recall",
+      "has_entry": "Written",
+      "period_label": "Period {period}"
+    },
+    "theme": {
+      "list_heading": "Themes",
+      "create": "Create theme",
+      "edit": "Edit theme",
+      "delete": "Delete",
+      "delete_confirm": "Delete this theme and all its reflections?",
+      "empty": "No themes yet. Create your first theme.",
+      "title_label": "Theme name",
+      "title_placeholder": "e.g. Math II / Project X / Diary",
+      "description_label": "Description",
+      "description_placeholder": "Optional note",
+      "source_type_label": "Type",
+      "exam_date_label": "Exam date",
+      "exam_date_help": "If set, reminders are sent 14/7/3/1 days before the exam",
+      "exam_date_past_warning": "No reminders are generated for past dates",
+      "exam_date_clear": "Clear exam date",
+      "recall_interval_label": "Recall interval",
+      "recall_interval_fixed": "Recall test {days} days later (fixed)",
+      "open": "Open",
+      "view_entries": "View reflections"
+    },
+    "source_type": {
+      "SUBJECT": "Class",
+      "PROJECT": "Work / Project",
+      "DIARY": "Diary",
+      "FREE": "Free"
+    },
+    "template": {
+      "label": "Template",
+      "help": "Choose preset headings for your input",
+      "NORMAL": "Normal",
+      "DIARY": "Diary",
+      "WORK": "Work reflection",
+      "CLASS": "Class reflection",
+      "normal_desc": "No headings, free writing",
+      "diary_desc": "Events / Feelings / For tomorrow",
+      "work_desc": "Results / Issues / Learnings / Next actions",
+      "class_desc": "What I learned / Stumbling points / Key points to remember",
+      "preset": {
+        "diary": {
+          "event": "Events",
+          "feeling": "Feelings",
+          "tomorrow": "For tomorrow"
+        },
+        "work": {
+          "result": "Results",
+          "issue": "Issues",
+          "learning": "Learnings",
+          "next": "Next actions"
+        },
+        "class": {
+          "learned": "What I learned",
+          "stumble": "Stumbling points",
+          "keypoint": "Key points to remember"
+        }
+      }
+    },
+    "entry": {
+      "list_heading": "Reflections",
+      "create": "Create reflection",
+      "edit": "Edit reflection",
+      "delete": "Delete",
+      "delete_confirm": "Delete this reflection?",
+      "empty": "No reflections yet.",
+      "target_date_label": "Date",
+      "main_theme_label": "Main theme",
+      "main_theme_placeholder": "e.g. Maxima and minima of quadratic functions",
+      "section_heading_label": "Heading",
+      "section_heading_placeholder": "e.g. Completing the square",
+      "add_section": "Add heading",
+      "remove_section": "Remove heading",
+      "sub_heading_label": "Sub-heading",
+      "sub_heading_placeholder": "e.g. Transform to standard form",
+      "add_subsection": "Add sub-heading",
+      "remove_subsection": "Remove sub-heading",
+      "detail_label": "Detail",
+      "detail_placeholder": "Write what you learned",
+      "supplement_label": "Supplement",
+      "supplement_placeholder": "Supplement / note",
+      "free_note_label": "Free note (excluded from recall)",
+      "free_note_placeholder": "Impressions or question notes",
+      "save": "Save",
+      "saved": "Saved",
+      "save_failed": "Failed to save",
+      "conflict": "Updated elsewhere. Please reload the latest and try again.",
+      "masked_notice": "This is a recall-test target. The content is hidden.",
+      "exported_badge": "Exported to blog",
+      "exported_edited_badge": "Edited after export"
+    },
+    "recall": {
+      "heading": "Recall test",
+      "intro": "Without looking at the content, recall and write what you remember.",
+      "hint_theme": "Theme",
+      "hint_target_date": "Date",
+      "hint_due_dates": "Scheduled recall dates",
+      "input_label": "What you recalled",
+      "input_placeholder": "Write as much as you remember",
+      "self_rating_label": "Self-assessment",
+      "rating": {
+        "REMEMBERED": "Remembered",
+        "PARTIAL": "Partial",
+        "FORGOT": "Forgot"
+      },
+      "submit": "Save and reveal",
+      "submitting": "Saving...",
+      "saved": "Recall recorded",
+      "save_failed": "Failed to save recall",
+      "revealed_heading": "Answer (original content)",
+      "your_recall": "Your recall",
+      "history_heading": "Recall history",
+      "history_empty": "No recall history yet.",
+      "not_masked": "This entry is not masked. You can edit it normally.",
+      "back_to_entry": "Back to reflection"
+    },
+    "export": {
+      "button": "Export to blog",
+      "dialog_title": "Export to blog",
+      "title_label": "Post title",
+      "title_placeholder": "If omitted, the theme name and date are used",
+      "submit": "Export",
+      "submitting": "Exporting...",
+      "success": "Exported to blog (private)",
+      "failed": "Export failed",
+      "already_exported": "This reflection has already been exported",
+      "view_post": "View exported post"
+    },
+    "settings": {
+      "heading": "Recall notification settings",
+      "remind_hour_label": "Notification time",
+      "remind_hour_help": "The time to send recall-test reminders (your timezone)",
+      "save": "Save",
+      "saved": "Settings saved",
+      "save_failed": "Failed to save settings",
+      "hour_format": "{hour}:00"
+    },
+    "calendar": {
+      "entry_mark": "Reflection",
+      "recall_mark": "Recall due"
+    },
+    "common": {
+      "cancel": "Cancel",
+      "close": "Close",
+      "loading": "Loading...",
+      "load_failed": "Failed to load"
+    }
   }
 }

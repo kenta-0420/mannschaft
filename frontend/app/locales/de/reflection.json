@@ -1,168 +1,170 @@
 {
-  "title": "Rückblicke",
-  "nav": {
-    "today": "Heutige Rückblicke",
-    "themes": "Themen",
-    "settings": "Benachrichtigungseinstellungen"
-  },
-  "today": {
-    "heading": "Heutige Rückblicke",
-    "date_label": "Datum",
-    "empty": "Heute gibt es keine Stunden oder Themen. Erstelle ein Thema, um mit dem Rückblick zu beginnen.",
-    "free_themes": "Themen (außerhalb des Stundenplans)",
-    "timetable_slots": "Heutige Stunden",
-    "no_theme": "Kein Thema festgelegt",
-    "create_theme_for_slot": "Ein Thema für diese Stunde erstellen",
-    "create_entry": "Rückblick schreiben",
-    "edit_entry": "Rückblick bearbeiten",
-    "open_recall": "Abruftest",
-    "masked_badge": "Abruf ausstehend",
-    "has_entry": "Geschrieben",
-    "period_label": "{period}. Stunde"
-  },
-  "theme": {
-    "list_heading": "Themen",
-    "create": "Thema erstellen",
-    "edit": "Thema bearbeiten",
-    "delete": "Löschen",
-    "delete_confirm": "Dieses Thema und alle zugehörigen Rückblicke löschen?",
-    "empty": "Noch keine Themen. Erstelle dein erstes Thema.",
-    "title_label": "Themenname",
-    "title_placeholder": "z. B. Mathematik II / Projekt X / Tagebuch",
-    "description_label": "Beschreibung",
-    "description_placeholder": "Optionale Notiz",
-    "source_type_label": "Typ",
-    "exam_date_label": "Prüfungsdatum",
-    "exam_date_help": "Wenn gesetzt, werden 14/7/3/1 Tage vor der Prüfung Erinnerungen gesendet",
-    "exam_date_past_warning": "Für vergangene Daten werden keine Erinnerungen erstellt",
-    "exam_date_clear": "Prüfungsdatum löschen",
-    "recall_interval_label": "Abrufintervall",
-    "recall_interval_fixed": "Abruftest {days} Tage später (fest)",
-    "open": "Öffnen",
-    "view_entries": "Rückblicke ansehen"
-  },
-  "source_type": {
-    "SUBJECT": "Unterricht",
-    "PROJECT": "Arbeit / Projekt",
-    "DIARY": "Tagebuch",
-    "FREE": "Frei"
-  },
-  "template": {
-    "label": "Vorlage",
-    "help": "Wähle voreingestellte Überschriften für deine Eingabe",
-    "NORMAL": "Normal",
-    "DIARY": "Tagebuch",
-    "WORK": "Arbeitsrückblick",
-    "CLASS": "Unterrichtsrückblick",
-    "normal_desc": "Keine Überschriften, freies Schreiben",
-    "diary_desc": "Ereignisse / Gefühle / Für morgen",
-    "work_desc": "Ergebnisse / Probleme / Erkenntnisse / Nächste Schritte",
-    "class_desc": "Was ich gelernt habe / Stolpersteine / Wichtige Punkte zum Merken",
-    "preset": {
-      "diary": {
-        "event": "Ereignisse",
-        "feeling": "Gefühle",
-        "tomorrow": "Für morgen"
-      },
-      "work": {
-        "result": "Ergebnisse",
-        "issue": "Probleme",
-        "learning": "Erkenntnisse",
-        "next": "Nächste Schritte"
-      },
-      "class": {
-        "learned": "Was ich gelernt habe",
-        "stumble": "Stolpersteine",
-        "keypoint": "Wichtige Punkte zum Merken"
-      }
-    }
-  },
-  "entry": {
-    "list_heading": "Rückblicke",
-    "create": "Rückblick erstellen",
-    "edit": "Rückblick bearbeiten",
-    "delete": "Löschen",
-    "delete_confirm": "Diesen Rückblick löschen?",
-    "empty": "Noch keine Rückblicke.",
-    "target_date_label": "Datum",
-    "main_theme_label": "Hauptthema",
-    "main_theme_placeholder": "z. B. Maxima und Minima quadratischer Funktionen",
-    "section_heading_label": "Überschrift",
-    "section_heading_placeholder": "z. B. Quadratische Ergänzung",
-    "add_section": "Überschrift hinzufügen",
-    "remove_section": "Überschrift entfernen",
-    "sub_heading_label": "Unterüberschrift",
-    "sub_heading_placeholder": "z. B. In die Standardform umformen",
-    "add_subsection": "Unterüberschrift hinzufügen",
-    "remove_subsection": "Unterüberschrift entfernen",
-    "detail_label": "Detail",
-    "detail_placeholder": "Schreibe auf, was du gelernt hast",
-    "supplement_label": "Ergänzung",
-    "supplement_placeholder": "Ergänzung / Notiz",
-    "free_note_label": "Freie Notiz (vom Abruf ausgeschlossen)",
-    "free_note_placeholder": "Eindrücke oder Fragenotizen",
-    "save": "Speichern",
-    "saved": "Gespeichert",
-    "save_failed": "Speichern fehlgeschlagen",
-    "conflict": "Anderswo aktualisiert. Bitte lade den neuesten Stand und versuche es erneut.",
-    "masked_notice": "Dies ist ein Abruftest-Ziel. Der Inhalt ist verborgen.",
-    "exported_badge": "Ins Blog exportiert",
-    "exported_edited_badge": "Nach Export bearbeitet"
-  },
-  "recall": {
-    "heading": "Abruftest",
-    "intro": "Erinnere dich, ohne den Inhalt anzusehen, und schreibe auf, was du weißt.",
-    "hint_theme": "Thema",
-    "hint_target_date": "Datum",
-    "hint_due_dates": "Geplante Abruftermine",
-    "input_label": "Was du erinnert hast",
-    "input_placeholder": "Schreibe so viel auf, wie du erinnerst",
-    "self_rating_label": "Selbsteinschätzung",
-    "rating": {
-      "REMEMBERED": "Erinnert",
-      "PARTIAL": "Teilweise",
-      "FORGOT": "Vergessen"
+  "reflection": {
+    "title": "Rückblicke",
+    "nav": {
+      "today": "Heutige Rückblicke",
+      "themes": "Themen",
+      "settings": "Benachrichtigungseinstellungen"
     },
-    "submit": "Speichern und aufdecken",
-    "submitting": "Speichern...",
-    "saved": "Abruf erfasst",
-    "save_failed": "Speichern des Abrufs fehlgeschlagen",
-    "revealed_heading": "Antwort (Originalinhalt)",
-    "your_recall": "Dein Abruf",
-    "history_heading": "Abrufverlauf",
-    "history_empty": "Noch kein Abrufverlauf.",
-    "not_masked": "Dieser Eintrag ist nicht verborgen. Du kannst ihn normal bearbeiten.",
-    "back_to_entry": "Zurück zum Rückblick"
-  },
-  "export": {
-    "button": "Ins Blog exportieren",
-    "dialog_title": "Ins Blog exportieren",
-    "title_label": "Beitragstitel",
-    "title_placeholder": "Wird weggelassen, werden Themenname und Datum verwendet",
-    "submit": "Exportieren",
-    "submitting": "Exportieren...",
-    "success": "Ins Blog exportiert (privat)",
-    "failed": "Export fehlgeschlagen",
-    "already_exported": "Dieser Rückblick wurde bereits exportiert",
-    "view_post": "Exportierten Beitrag ansehen"
-  },
-  "settings": {
-    "heading": "Abruf-Benachrichtigungseinstellungen",
-    "remind_hour_label": "Benachrichtigungszeit",
-    "remind_hour_help": "Die Uhrzeit zum Senden von Abruftest-Erinnerungen (deine Zeitzone)",
-    "save": "Speichern",
-    "saved": "Einstellungen gespeichert",
-    "save_failed": "Speichern der Einstellungen fehlgeschlagen",
-    "hour_format": "{hour}:00 Uhr"
-  },
-  "calendar": {
-    "entry_mark": "Rückblick",
-    "recall_mark": "Abruf fällig"
-  },
-  "common": {
-    "cancel": "Abbrechen",
-    "close": "Schließen",
-    "loading": "Lädt...",
-    "load_failed": "Laden fehlgeschlagen"
+    "today": {
+      "heading": "Heutige Rückblicke",
+      "date_label": "Datum",
+      "empty": "Heute gibt es keine Stunden oder Themen. Erstelle ein Thema, um mit dem Rückblick zu beginnen.",
+      "free_themes": "Themen (außerhalb des Stundenplans)",
+      "timetable_slots": "Heutige Stunden",
+      "no_theme": "Kein Thema festgelegt",
+      "create_theme_for_slot": "Ein Thema für diese Stunde erstellen",
+      "create_entry": "Rückblick schreiben",
+      "edit_entry": "Rückblick bearbeiten",
+      "open_recall": "Abruftest",
+      "masked_badge": "Abruf ausstehend",
+      "has_entry": "Geschrieben",
+      "period_label": "{period}. Stunde"
+    },
+    "theme": {
+      "list_heading": "Themen",
+      "create": "Thema erstellen",
+      "edit": "Thema bearbeiten",
+      "delete": "Löschen",
+      "delete_confirm": "Dieses Thema und alle zugehörigen Rückblicke löschen?",
+      "empty": "Noch keine Themen. Erstelle dein erstes Thema.",
+      "title_label": "Themenname",
+      "title_placeholder": "z. B. Mathematik II / Projekt X / Tagebuch",
+      "description_label": "Beschreibung",
+      "description_placeholder": "Optionale Notiz",
+      "source_type_label": "Typ",
+      "exam_date_label": "Prüfungsdatum",
+      "exam_date_help": "Wenn gesetzt, werden 14/7/3/1 Tage vor der Prüfung Erinnerungen gesendet",
+      "exam_date_past_warning": "Für vergangene Daten werden keine Erinnerungen erstellt",
+      "exam_date_clear": "Prüfungsdatum löschen",
+      "recall_interval_label": "Abrufintervall",
+      "recall_interval_fixed": "Abruftest {days} Tage später (fest)",
+      "open": "Öffnen",
+      "view_entries": "Rückblicke ansehen"
+    },
+    "source_type": {
+      "SUBJECT": "Unterricht",
+      "PROJECT": "Arbeit / Projekt",
+      "DIARY": "Tagebuch",
+      "FREE": "Frei"
+    },
+    "template": {
+      "label": "Vorlage",
+      "help": "Wähle voreingestellte Überschriften für deine Eingabe",
+      "NORMAL": "Normal",
+      "DIARY": "Tagebuch",
+      "WORK": "Arbeitsrückblick",
+      "CLASS": "Unterrichtsrückblick",
+      "normal_desc": "Keine Überschriften, freies Schreiben",
+      "diary_desc": "Ereignisse / Gefühle / Für morgen",
+      "work_desc": "Ergebnisse / Probleme / Erkenntnisse / Nächste Schritte",
+      "class_desc": "Was ich gelernt habe / Stolpersteine / Wichtige Punkte zum Merken",
+      "preset": {
+        "diary": {
+          "event": "Ereignisse",
+          "feeling": "Gefühle",
+          "tomorrow": "Für morgen"
+        },
+        "work": {
+          "result": "Ergebnisse",
+          "issue": "Probleme",
+          "learning": "Erkenntnisse",
+          "next": "Nächste Schritte"
+        },
+        "class": {
+          "learned": "Was ich gelernt habe",
+          "stumble": "Stolpersteine",
+          "keypoint": "Wichtige Punkte zum Merken"
+        }
+      }
+    },
+    "entry": {
+      "list_heading": "Rückblicke",
+      "create": "Rückblick erstellen",
+      "edit": "Rückblick bearbeiten",
+      "delete": "Löschen",
+      "delete_confirm": "Diesen Rückblick löschen?",
+      "empty": "Noch keine Rückblicke.",
+      "target_date_label": "Datum",
+      "main_theme_label": "Hauptthema",
+      "main_theme_placeholder": "z. B. Maxima und Minima quadratischer Funktionen",
+      "section_heading_label": "Überschrift",
+      "section_heading_placeholder": "z. B. Quadratische Ergänzung",
+      "add_section": "Überschrift hinzufügen",
+      "remove_section": "Überschrift entfernen",
+      "sub_heading_label": "Unterüberschrift",
+      "sub_heading_placeholder": "z. B. In die Standardform umformen",
+      "add_subsection": "Unterüberschrift hinzufügen",
+      "remove_subsection": "Unterüberschrift entfernen",
+      "detail_label": "Detail",
+      "detail_placeholder": "Schreibe auf, was du gelernt hast",
+      "supplement_label": "Ergänzung",
+      "supplement_placeholder": "Ergänzung / Notiz",
+      "free_note_label": "Freie Notiz (vom Abruf ausgeschlossen)",
+      "free_note_placeholder": "Eindrücke oder Fragenotizen",
+      "save": "Speichern",
+      "saved": "Gespeichert",
+      "save_failed": "Speichern fehlgeschlagen",
+      "conflict": "Anderswo aktualisiert. Bitte lade den neuesten Stand und versuche es erneut.",
+      "masked_notice": "Dies ist ein Abruftest-Ziel. Der Inhalt ist verborgen.",
+      "exported_badge": "Ins Blog exportiert",
+      "exported_edited_badge": "Nach Export bearbeitet"
+    },
+    "recall": {
+      "heading": "Abruftest",
+      "intro": "Erinnere dich, ohne den Inhalt anzusehen, und schreibe auf, was du weißt.",
+      "hint_theme": "Thema",
+      "hint_target_date": "Datum",
+      "hint_due_dates": "Geplante Abruftermine",
+      "input_label": "Was du erinnert hast",
+      "input_placeholder": "Schreibe so viel auf, wie du erinnerst",
+      "self_rating_label": "Selbsteinschätzung",
+      "rating": {
+        "REMEMBERED": "Erinnert",
+        "PARTIAL": "Teilweise",
+        "FORGOT": "Vergessen"
+      },
+      "submit": "Speichern und aufdecken",
+      "submitting": "Speichern...",
+      "saved": "Abruf erfasst",
+      "save_failed": "Speichern des Abrufs fehlgeschlagen",
+      "revealed_heading": "Antwort (Originalinhalt)",
+      "your_recall": "Dein Abruf",
+      "history_heading": "Abrufverlauf",
+      "history_empty": "Noch kein Abrufverlauf.",
+      "not_masked": "Dieser Eintrag ist nicht verborgen. Du kannst ihn normal bearbeiten.",
+      "back_to_entry": "Zurück zum Rückblick"
+    },
+    "export": {
+      "button": "Ins Blog exportieren",
+      "dialog_title": "Ins Blog exportieren",
+      "title_label": "Beitragstitel",
+      "title_placeholder": "Wird weggelassen, werden Themenname und Datum verwendet",
+      "submit": "Exportieren",
+      "submitting": "Exportieren...",
+      "success": "Ins Blog exportiert (privat)",
+      "failed": "Export fehlgeschlagen",
+      "already_exported": "Dieser Rückblick wurde bereits exportiert",
+      "view_post": "Exportierten Beitrag ansehen"
+    },
+    "settings": {
+      "heading": "Abruf-Benachrichtigungseinstellungen",
+      "remind_hour_label": "Benachrichtigungszeit",
+      "remind_hour_help": "Die Uhrzeit zum Senden von Abruftest-Erinnerungen (deine Zeitzone)",
+      "save": "Speichern",
+      "saved": "Einstellungen gespeichert",
+      "save_failed": "Speichern der Einstellungen fehlgeschlagen",
+      "hour_format": "{hour}:00 Uhr"
+    },
+    "calendar": {
+      "entry_mark": "Rückblick",
+      "recall_mark": "Abruf fällig"
+    },
+    "common": {
+      "cancel": "Abbrechen",
+      "close": "Schließen",
+      "loading": "Lädt...",
+      "load_failed": "Laden fehlgeschlagen"
+    }
   }
 }
