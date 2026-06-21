@@ -7,14 +7,23 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.errorreport.ErrorReportErrorCode;
 import com.mannschaft.app.errorreport.ErrorReportProperties;
+import io.netty.channel.ChannelOption;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.netty.http.client.HttpClient;
 
+import java.time.Duration;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,14 +70,19 @@ public class ErrorReportClaudeAiProvider {
     @PostConstruct
     void init() {
         if (apiKey != null && !apiKey.isBlank()) {
+            int timeoutMs = props.getAi().getTimeoutMs();
+            HttpClient httpClient = HttpClient.create()
+                    .responseTimeout(Duration.ofMillis(timeoutMs))
+                    .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, timeoutMs);
             this.webClient = WebClient.builder()
                     .baseUrl(CLAUDE_API_URL)
+                    .clientConnector(new ReactorClientHttpConnector(httpClient))
                     .defaultHeader("x-api-key", apiKey)
                     .defaultHeader("anthropic-version", ANTHROPIC_VERSION)
                     .defaultHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
                     .codecs(c -> c.defaultCodecs().maxInMemorySize(2 * 1024 * 1024))
                     .build();
-            log.info("ErrorReport Claude API クライアント初期化完了");
+            log.info("ErrorReport Claude API クライアント初期化完了 (timeoutMs={})", timeoutMs);
         } else {
             log.warn("Claude API キー未設定。エラーレポート AI 分析は呼び出し時に例外を投げます。");
         }
@@ -84,9 +98,27 @@ public class ErrorReportClaudeAiProvider {
     /**
      * Claude Messages API を呼び出してエラー分析を取得する。
      *
+     * <p>AC-11/12: タイムアウト（{@code init()} で設定）と {@link Retryable} を組み合わせ、
+     * 5xx／タイムアウト（{@link WebClientException}）は最大 3 回・指数バックオフ（200ms→600ms→1.8s）で
+     * リトライし、4xx（400/401/403 等）は即時に非リトライで失敗させる。
+     * リトライ既定値は {@link ErrorReportProperties.Ai} と同値（externalized default）。</p>
+     *
      * @param ctx サニタイズ済みエラーコンテキスト
      * @return 分析結果
      */
+    @Retryable(
+            retryFor = {WebClientException.class},
+            noRetryFor = {WebClientResponseException.BadRequest.class,
+                    WebClientResponseException.Unauthorized.class,
+                    WebClientResponseException.Forbidden.class,
+                    WebClientResponseException.NotFound.class,
+                    WebClientResponseException.MethodNotAllowed.class,
+                    WebClientResponseException.NotAcceptable.class,
+                    WebClientResponseException.UnsupportedMediaType.class,
+                    WebClientResponseException.UnprocessableEntity.class,
+                    WebClientResponseException.TooManyRequests.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 200, multiplier = 3))
     public AiAnalysisResult analyze(SanitizedErrorContext ctx) {
         if (webClient == null) {
             throw new BusinessException(ErrorReportErrorCode.ERROR_REPORT_007);
@@ -100,12 +132,25 @@ public class ErrorReportClaudeAiProvider {
                     .bodyToMono(String.class)
                     .block();
             return parseResponse(responseJson);
-        } catch (BusinessException e) {
+        } catch (BusinessException | WebClientException e) {
+            // 予算/未初期化系（BusinessException）はそのまま、
+            // WebClientException（4xx/5xx/timeout）は @Retryable / @Recover に委ねる。
             throw e;
         } catch (Exception e) {
             log.error("Claude API 呼び出しエラー", e);
             throw new RuntimeException("Claude API 呼び出しに失敗しました: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * リトライ上限到達後の {@link WebClientException}（5xx／タイムアウト）を
+     * {@link RuntimeException} にラップする Spring Retry の {@code @Recover} ハンドラ。
+     * 上位の {@link ErrorReportAiAnalysisService} 側で FAILED として記録される。
+     */
+    @Recover
+    AiAnalysisResult recover(WebClientException e, SanitizedErrorContext ctx) {
+        log.error("Claude API 呼び出しが 5xx/timeout でリトライ尽き", e);
+        throw new RuntimeException("Claude API 呼び出しに失敗しました（リトライ尽き）: " + e.getMessage(), e);
     }
 
     /**

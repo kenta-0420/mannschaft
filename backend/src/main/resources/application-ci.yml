@@ -60,6 +60,11 @@ mannschaft:
   security:
     # PDF 署名キー（CI テスト用固定値）
     internal-signing-key: ci-test-internal-pdf-signing-key-fixed-32bytes-xxxx
+  # F09.18: CI 環境では実 SES を叩かない（simulate=true でログのみ送信）
+  # テストは application-test.yml でも simulate=true が設定されているが、
+  # CI プロファイルでも明示することで SES 認証なしの CI 環境を安全に保つ。
+  email:
+    simulate: true
   # メール配信ワーカーは CI では無効化（SES 未接続）
   email-outbox:
     worker:
