@@ -5,6 +5,7 @@ definePageMeta({
   middleware: 'auth',
 })
 
+const { t } = useI18n()
 const notification = useNotification()
 const authStore = useAuthStore()
 const {
@@ -134,7 +135,14 @@ async function handleRenameCredential() {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <PageHeader title="セキュリティ" back-to="/settings" />
+    <PageHeader title="セキュリティ" back-to="/settings">
+      <NuxtLink
+        to="/help/security"
+        class="ml-auto inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+      >
+        {{ t('security_help.link_label') }}
+      </NuxtLink>
+    </PageHeader>
 
     <PageLoading v-if="loading" />
 
