@@ -8,6 +8,7 @@ import com.mannschaft.app.schedule.dto.GoogleCalendarConnectRequest;
 import com.mannschaft.app.schedule.dto.GoogleCalendarConnectResponse;
 import com.mannschaft.app.schedule.dto.GoogleCalendarStatusResponse;
 import com.mannschaft.app.schedule.dto.ManualSyncResponse;
+import com.mannschaft.app.schedule.dto.PersonalSyncStatusResponse;
 import com.mannschaft.app.schedule.dto.PersonalSyncToggleResponse;
 import com.mannschaft.app.schedule.service.GoogleCalendarService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -108,6 +109,18 @@ public class GoogleCalendarController {
             @Valid @RequestBody CalendarSyncToggleRequest request) {
         CalendarSyncToggleResponse response = googleCalendarService.toggleOrgSync(
                 orgId, request.isEnabled(), SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 個人同期状態を取得する（読み取り専用）。
+     * 未連携でも例外を投げず200で connected=false 等を返す。
+     */
+    @GetMapping("/google-calendar/personal-sync")
+    @Operation(summary = "個人カレンダー同期状態取得")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<PersonalSyncStatusResponse>> getPersonalSync() {
+        PersonalSyncStatusResponse response = googleCalendarService.getPersonalSync(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

@@ -13,9 +13,25 @@ const props = defineProps<{
 const emit = defineEmits<{
   dateClick: [date: string]
   eventClick: [eventId: number, isPersonal: boolean]
+  // reflection 等 UUID 主キードメインの印クリック（§6.2/AC-21・id 非依存）。
+  reflectionClick: [referenceUuid: string, referenceKind: string]
   prevMonth: []
   nextMonth: []
 }>()
+
+/**
+ * イベントクリックを種別で振り分ける（§6.2/AC-21）。
+ *
+ * reflection 行は id=null/-1 で数値 id ルックアップが壊れるため、referenceUuid+referenceKind で
+ * 親へ通知する。schedule/todo 行は従来どおり数値 id で eventClick を発火する。
+ */
+function onEventClick(event: CalendarEventItem) {
+  if (event.isReflection && event.referenceUuid && event.referenceKind) {
+    emit('reflectionClick', event.referenceUuid, event.referenceKind)
+    return
+  }
+  emit('eventClick', event.id, event.isPersonal)
+}
 
 const { getHoliday } = useHolidays()
 const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土']
@@ -227,10 +243,10 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
           <div class="space-y-0.5">
             <div
               v-for="event in week.singleByCol[di]?.slice(0, 3)"
-              :key="event.id"
+              :key="event.uniqueKey"
               class="flex items-center rounded px-1 py-0.5 text-xs gap-0.5"
               :style="{ backgroundColor: (event.color ?? '#6366f1') + '20', color: event.color ?? '#6366f1' }"
-              @click.stop="emit('eventClick', event.id, event.isPersonal)"
+              @click.stop="onEventClick(event)"
             >
               <!-- チーム・組織スコープのみアイコンを表示 -->
               <span
@@ -258,10 +274,10 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
         <div class="relative" :style="{ height: `${week.lanesUsed * BAR_STRIDE}px` }">
           <div
             v-for="slot in week.slots.filter(s => s.lane < MAX_LANES)"
-            :key="`${slot.event.id}-w${wi}`"
+            :key="`${slot.event.uniqueKey}-w${wi}`"
             class="pointer-events-auto absolute flex cursor-pointer select-none items-center overflow-hidden text-xs font-medium"
             :style="barStyle(slot)"
-            @click.stop="emit('eventClick', slot.event.id, slot.event.isPersonal)"
+            @click.stop="onEventClick(slot.event)"
           >
             <i v-if="slot.continuesBefore" class="pi pi-angle-left shrink-0 text-[9px]" />
             <!-- チーム・組織スコープのみアイコンを表示 -->
