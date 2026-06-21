@@ -3962,6 +3962,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/reflections/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 想起通知設定取得 */
+        get: operations["getSettings_11"];
+        /** 想起通知設定更新 */
+        put: operations["updateSettings_11"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/reflections/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** エントリ upsert（作成/更新） */
+        put: operations["upsertEntry"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/personal-timetables/{id}/slots": {
         parameters: {
             query?: never;
@@ -4040,7 +4075,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** 個人カレンダー同期状態取得 */
+        get: operations["getPersonalSync"];
         /** 個人カレンダー同期ON/OFF */
         put: operations["togglePersonalSync"];
         post?: never;
@@ -4570,7 +4606,7 @@ export interface paths {
             cookie?: never;
         };
         /** 発行者設定取得 */
-        get: operations["getSettings_11"];
+        get: operations["getSettings_12"];
         /** 発行者設定更新 */
         put: operations["upsertSettings"];
         post?: never;
@@ -6396,7 +6432,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** 押印ログ一覧（カーソルページング） */
+        get: operations["listStamps"];
         put?: never;
         /** 押印実行 */
         post: operations["stamp"];
@@ -17342,6 +17379,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/reflections/themes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** テーマ一覧取得 */
+        get: operations["listThemes"];
+        put?: never;
+        /** テーマ作成 */
+        post: operations["createTheme"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/reflections/entries/{entryId}/recall": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 想起テスト保存＝開示 */
+        post: operations["recordRecall"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/reflections/entries/{entryId}/export-to-blog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** ブログ輸出（元エントリ残存） */
+        post: operations["exportToBlog"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/pilgrimage/{recommendationId}/visit": {
         parameters: {
             query?: never;
@@ -22501,7 +22590,7 @@ export interface paths {
             cookie?: never;
         };
         /** 予約設定（チームポリシー）取得 */
-        get: operations["getSettings_12"];
+        get: operations["getSettings_13"];
         put?: never;
         post?: never;
         delete?: never;
@@ -22572,14 +22661,14 @@ export interface paths {
             cookie?: never;
         };
         /** 設定取得 */
-        get: operations["getSettings_13"];
+        get: operations["getSettings_14"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** 設定更新 */
-        patch: operations["updateSettings_11"];
+        patch: operations["updateSettings_12"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/queue/counters/{counterId}": {
@@ -23455,14 +23544,14 @@ export interface paths {
             cookie?: never;
         };
         /** チームシフト設定取得 */
-        get: operations["getSettings_14"];
+        get: operations["getSettings_15"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** チームシフト設定更新 */
-        patch: operations["updateSettings_12"];
+        patch: operations["updateSettings_13"];
         trace?: never;
     };
     "/api/v1/teams/{slug}/restore": {
@@ -25964,6 +26053,25 @@ export interface paths {
         patch: operations["updateSchedule_5"];
         trace?: never;
     };
+    "/api/v1/me/reflections/themes/{themeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** テーマ詳細取得 */
+        get: operations["getTheme"];
+        put?: never;
+        post?: never;
+        /** テーマ論理削除 */
+        delete: operations["deleteTheme"];
+        options?: never;
+        head?: never;
+        /** テーマ更新 */
+        patch: operations["updateTheme"];
+        trace?: never;
+    };
     "/api/v1/me/personal-timetables/{id}": {
         parameters: {
             query?: never;
@@ -26430,7 +26538,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** チャンネル個人設定 */
-        patch: operations["updateSettings_13"];
+        patch: operations["updateSettings_14"];
         trace?: never;
     };
     "/api/v1/chat/channels/{channelId}/members/{userId}/role": {
@@ -27211,14 +27319,14 @@ export interface paths {
             cookie?: never;
         };
         /** 行動メモ設定取得 */
-        get: operations["getSettings_15"];
+        get: operations["getSettings_16"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** 行動メモ設定更新 */
-        patch: operations["updateSettings_14"];
+        patch: operations["updateSettings_15"];
         trace?: never;
     };
     "/sitemap.xml": {
@@ -27969,6 +28077,23 @@ export interface paths {
         };
         /** 押印検証 */
         get: operations["verifyStamp"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{userId}/seals/scope-defaults": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** スコープデフォルト一覧 */
+        get: operations["getScopeDefaults"];
         put?: never;
         post?: never;
         delete?: never;
@@ -31616,7 +31741,7 @@ export interface paths {
             cookie?: never;
         };
         /** モデレーション設定一覧取得 */
-        get: operations["getSettings_16"];
+        get: operations["getSettings_17"];
         put?: never;
         post?: never;
         delete?: never;
@@ -36834,6 +36959,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/reflections/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 今日の振り返りビュー取得 */
+        get: operations["getToday"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/reflections/themes/{themeId}/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** テーマ配下エントリ一覧取得 */
+        get: operations["listEntries_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/reflections/entries/{entryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** エントリ詳細取得 */
+        get: operations["getEntry"];
+        put?: never;
+        post?: never;
+        /** エントリ論理削除 */
+        delete: operations["deleteEntry"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/reflections/entries/{entryId}/recalls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 想起履歴一覧取得 */
+        get: operations["listRecalls"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/recruitment-listings": {
         parameters: {
             query?: never;
@@ -36879,7 +37073,7 @@ export interface paths {
             cookie?: never;
         };
         /** 今日の巡礼推薦を取得する（無ければ data: null） */
-        get: operations["getToday"];
+        get: operations["getToday_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -42927,28 +43121,6 @@ export interface components {
             assignees?: components["schemas"]["AssigneeResponse"][];
             hierarchy?: components["schemas"]["TodoHierarchyDto"];
             audit?: components["schemas"]["TodoAuditDto"];
-            /**
-             * Format: date-time
-             * @deprecated
-             */
-            createdAt?: string;
-            /**
-             * Format: date-time
-             * @deprecated
-             */
-            updatedAt?: string;
-            /** @deprecated */
-            scopeType?: string;
-            /**
-             * Format: int32
-             * @deprecated
-             */
-            sortOrder?: number;
-            /**
-             * Format: date-time
-             * @deprecated
-             */
-            completedAt?: string;
             /** @deprecated */
             priority?: string;
             /**
@@ -42963,49 +43135,33 @@ export interface components {
             childCount?: number;
             /** @deprecated */
             children?: components["schemas"]["TodoResponse"][];
-            /** @deprecated */
-            createdBy?: components["schemas"]["UserInfo"];
             /**
-             * Format: int64
+             * Format: date-time
              * @deprecated
              */
-            parentId?: number;
-            /** @deprecated */
-            description?: string;
-            /**
-             * Format: int32
-             * @deprecated
-             */
-            depth?: number;
-            /**
-             * Format: date
-             * @deprecated
-             */
-            dueDate?: string;
-            /** @deprecated */
-            title?: string;
-            /**
-             * Format: int64
-             * @deprecated
-             */
-            projectId?: number;
-            /** @deprecated */
-            progressRate?: number;
+            completedAt?: string;
             /**
              * Format: int64
              * @deprecated
              */
             milestoneId?: number;
             /**
+             * Format: int64
+             * @deprecated
+             */
+            parentId?: number;
+            /**
+             * Format: int32
+             * @deprecated
+             */
+            depth?: number;
+            /** @deprecated */
+            description?: string;
+            /**
              * @deprecated
              * @example 14:30:00
              */
             dueTime?: string;
-            /**
-             * Format: date
-             * @deprecated
-             */
-            startDate?: string;
             /** @deprecated */
             progressManual?: boolean;
             /** @deprecated */
@@ -43014,7 +43170,45 @@ export interface components {
              * Format: int64
              * @deprecated
              */
+            projectId?: number;
+            /** @deprecated */
+            title?: string;
+            /**
+             * Format: date-time
+             * @deprecated
+             */
+            createdAt?: string;
+            /**
+             * Format: date-time
+             * @deprecated
+             */
+            updatedAt?: string;
+            /** @deprecated */
+            progressRate?: number;
+            /** @deprecated */
+            createdBy?: components["schemas"]["UserInfo"];
+            /** @deprecated */
+            scopeType?: string;
+            /**
+             * Format: int32
+             * @deprecated
+             */
+            sortOrder?: number;
+            /**
+             * Format: date
+             * @deprecated
+             */
+            startDate?: string;
+            /**
+             * Format: int64
+             * @deprecated
+             */
             linkedScheduleId?: number;
+            /**
+             * Format: date
+             * @deprecated
+             */
+            dueDate?: string;
             /**
              * Format: int64
              * @deprecated
@@ -44942,8 +45136,8 @@ export interface components {
             /** Format: int32 */
             severity?: number;
             note?: string;
-            yposition?: number;
             xposition?: number;
+            yposition?: number;
         };
         ChartFormulaResponse: {
             /** Format: int64 */
@@ -45039,8 +45233,8 @@ export interface components {
             /** Format: int32 */
             severity: number;
             note?: string;
-            yposition?: number;
             xposition?: number;
+            yposition?: number;
         };
         UpdateBodyMarksRequest: {
             marks: components["schemas"]["ChartBodyMarkRequest"][];
@@ -47297,6 +47491,50 @@ export interface components {
         };
         ReorderFoldersRequest: {
             orderedIds: number[];
+        };
+        UpdateReflectionSettingsRequest: {
+            /** Format: int32 */
+            remindHour: number;
+        };
+        ApiResponseReflectionSettingsResponse: {
+            data?: components["schemas"]["ReflectionSettingsResponse"];
+        };
+        ReflectionSettingsResponse: {
+            /** Format: int32 */
+            remindHour?: number;
+        };
+        UpsertReflectionEntryRequest: {
+            /** Format: uuid */
+            themeId: string;
+            /** Format: date */
+            targetDate: string;
+            structuredContent: components["schemas"]["JsonNode"];
+            /** Format: int64 */
+            expectedVersion?: number;
+        };
+        ApiResponseReflectionEntryResponse: {
+            data?: components["schemas"]["ReflectionEntryResponse"];
+        };
+        MaskedHint: {
+            themeTitle?: string;
+            /** Format: date */
+            targetDate?: string;
+            dueRecallDates?: string[];
+        };
+        ReflectionEntryResponse: {
+            id?: string;
+            themeId?: string;
+            /** Format: date */
+            targetDate?: string;
+            isMasked?: boolean;
+            structuredContent?: components["schemas"]["JsonNode"];
+            maskedHint?: components["schemas"]["MaskedHint"];
+            /** @enum {string} */
+            visibility?: "PRIVATE";
+            /** Format: int64 */
+            version?: number;
+            /** Format: date-time */
+            updatedAt?: string;
         };
         BulkPersonalTimetableSlotRequest: {
             slots: components["schemas"]["PersonalTimetableSlotRequest"][];
@@ -49567,6 +49805,7 @@ export interface components {
             scopeType?: string;
             /** Format: int64 */
             scopeId?: number;
+            scopeName?: string;
             /** Format: int64 */
             sealId?: number;
             /** Format: date-time */
@@ -49928,8 +50167,8 @@ export interface components {
             scopeVillageId?: string;
             /** Format: int64 */
             scopeIdOrDefault?: number;
-            scopeTypeOrDefault?: string;
             postedAsTypeOrDefault?: string;
+            scopeTypeOrDefault?: string;
         };
         ApiResponsePostResponse: {
             data?: components["schemas"]["PostResponse"];
@@ -50166,8 +50405,8 @@ export interface components {
             remindBeforeMinutes?: number;
             /** @enum {string} */
             reminderKind?: "RELATIVE" | "ABSOLUTE";
-            remindBeforeMinutesValid?: boolean;
             remindAtValid?: boolean;
+            remindBeforeMinutesValid?: boolean;
         };
         CreateScheduleRequest: {
             title?: string;
@@ -57126,6 +57365,51 @@ export interface components {
             endAt?: string;
             allDay?: boolean;
         };
+        CreateReflectionThemeRequest: {
+            title?: string;
+            description?: string;
+            /** @enum {string} */
+            sourceType?: "SUBJECT" | "PROJECT" | "DIARY" | "FREE";
+            /** @enum {string} */
+            linkedSlotKind?: "TEAM" | "PERSONAL";
+            /** Format: int64 */
+            linkedSlotId?: number;
+            /** Format: date */
+            examDate?: string;
+        };
+        ApiResponseReflectionThemeResponse: {
+            data?: components["schemas"]["ReflectionThemeResponse"];
+        };
+        ReflectionThemeResponse: {
+            id?: string;
+            /** Format: int64 */
+            userId?: number;
+            title?: string;
+            description?: string;
+            /** @enum {string} */
+            sourceType?: "SUBJECT" | "PROJECT" | "DIARY" | "FREE";
+            /** @enum {string} */
+            linkedSlotKind?: "TEAM" | "PERSONAL";
+            /** Format: int64 */
+            linkedSlotId?: number;
+            /** Format: date */
+            examDate?: string;
+            /** @enum {string} */
+            visibility?: "PRIVATE";
+            recallIntervalDays?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        CreateRecallAttemptRequest: {
+            recalledContent: components["schemas"]["JsonNode"];
+            /** @enum {string} */
+            selfRating: "REMEMBERED" | "PARTIAL" | "FORGOT";
+        };
+        ExportToBlogRequest: {
+            title?: string;
+        };
         ApiResponsePilgrimageRecommendationResponse: {
             data?: components["schemas"]["PilgrimageRecommendationResponse"];
         };
@@ -59845,8 +60129,8 @@ export interface components {
             remindBeforeMinutes?: number;
             /** @enum {string} */
             reminderKind?: "RELATIVE" | "ABSOLUTE";
-            remindBeforeMinutesValid?: boolean;
             remindAtValid?: boolean;
+            remindBeforeMinutesValid?: boolean;
         };
         UpdateScheduleRequest: {
             title?: string;
@@ -60531,11 +60815,11 @@ export interface components {
             philosophy?: boolean;
             officers?: boolean;
             custom_fields?: boolean;
+            establishedDateVisible?: boolean;
+            homepageUrlVisible?: boolean;
+            officersVisible?: boolean;
             customFieldsVisible?: boolean;
             philosophyVisible?: boolean;
-            officersVisible?: boolean;
-            homepageUrlVisible?: boolean;
-            establishedDateVisible?: boolean;
         };
         UpdateTeamProfileRequest: {
             homepage_url?: string;
@@ -61316,6 +61600,15 @@ export interface components {
             updateScope?: string;
             absoluteReminders?: string[];
             updateScopeOrDefault?: string;
+        };
+        UpdateReflectionThemeRequest: {
+            title?: string;
+            description?: string;
+            /** @enum {string} */
+            sourceType?: "SUBJECT" | "PROJECT" | "DIARY" | "FREE";
+            /** Format: date */
+            examDate?: string;
+            examDateCleared?: boolean;
         };
         UpdatePersonalTimetableRequest: {
             name?: string;
@@ -62224,10 +62517,10 @@ export interface components {
             data?: components["schemas"]["PageJoinRequestResponse"];
         };
         PageJoinRequestResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -62247,15 +62540,15 @@ export interface components {
             sort?: components["schemas"]["SortObject"];
             paged?: boolean;
             /** Format: int32 */
-            pageSize?: number;
-            /** Format: int32 */
             pageNumber?: number;
+            /** Format: int32 */
+            pageSize?: number;
             unpaged?: boolean;
         };
         SortObject: {
             empty?: boolean;
-            sorted?: boolean;
             unsorted?: boolean;
+            sorted?: boolean;
         };
         ApiResponseListFestivalResponse: {
             data?: components["schemas"]["FestivalResponse"][];
@@ -62319,6 +62612,16 @@ export interface components {
             address?: string;
             source?: string;
         };
+        CursorMeta: {
+            nextCursor?: string;
+            hasNext?: boolean;
+            /** Format: int32 */
+            limit?: number;
+        };
+        CursorPagedResponseStampLogResponse: {
+            data?: components["schemas"]["StampLogResponse"][];
+            meta?: components["schemas"]["CursorMeta"];
+        };
         ApiResponseStampVerifyResponse: {
             data?: components["schemas"]["StampVerifyResponse"];
         };
@@ -62331,6 +62634,9 @@ export interface components {
         };
         ApiResponseListSealResponse: {
             data?: components["schemas"]["SealResponse"][];
+        };
+        ApiResponseListScopeDefaultResponse: {
+            data?: components["schemas"]["ScopeDefaultResponse"][];
         };
         ApiResponseListFollowResponse: {
             data?: components["schemas"]["FollowResponse"][];
@@ -62450,12 +62756,6 @@ export interface components {
             providerEmail?: string;
             /** Format: date-time */
             connectedAt?: string;
-        };
-        CursorMeta: {
-            nextCursor?: string;
-            hasNext?: boolean;
-            /** Format: int32 */
-            limit?: number;
         };
         CursorPagedResponseLoginHistoryResponse: {
             data?: components["schemas"]["LoginHistoryResponse"][];
@@ -63416,26 +63716,13 @@ export interface components {
             unassignedTodos?: components["schemas"]["UnassignedTodos"];
             audit?: components["schemas"]["ProjectAuditDto"];
             /** @deprecated */
-            createdBy?: components["schemas"]["UserInfo"];
+            color?: string;
             /** @deprecated */
             status?: string;
             /** @deprecated */
             description?: string;
-            /**
-             * Format: date
-             * @deprecated
-             */
-            dueDate?: string;
-            /** @deprecated */
-            title?: string;
             /** @deprecated */
             visibility?: string;
-            /** @deprecated */
-            progressRate?: number;
-            /** @deprecated */
-            color?: string;
-            /** @deprecated */
-            emoji?: string;
             /**
              * Format: int32
              * @deprecated
@@ -63446,6 +63733,19 @@ export interface components {
              * @deprecated
              */
             totalTodos?: number;
+            /** @deprecated */
+            title?: string;
+            /** @deprecated */
+            progressRate?: number;
+            /** @deprecated */
+            createdBy?: components["schemas"]["UserInfo"];
+            /** @deprecated */
+            emoji?: string;
+            /**
+             * Format: date
+             * @deprecated
+             */
+            dueDate?: string;
             /**
              * Format: int64
              * @deprecated
@@ -64306,8 +64606,8 @@ export interface components {
             rsvpStatus?: string;
             /** Format: int32 */
             watcherCount?: number;
-            underCare?: boolean;
             alreadyCheckedIn?: boolean;
+            underCare?: boolean;
         };
         ApiResponseDismissalStatusResponse: {
             data?: components["schemas"]["DismissalStatusResponse"];
@@ -65090,10 +65390,10 @@ export interface components {
             data?: components["schemas"]["PageNotificationResponse"];
         };
         PageNotificationResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -65418,10 +65718,10 @@ export interface components {
             data?: components["schemas"]["PagePurgeStatusRow"];
         };
         PagePurgeStatusRow: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -65639,10 +65939,10 @@ export interface components {
             lastError?: string;
         };
         PageEmailOutboxSummaryResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -65724,10 +66024,10 @@ export interface components {
             data?: components["schemas"]["PageUserEntity"];
         };
         PageUserEntity: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -65813,10 +66113,10 @@ export interface components {
             data?: components["schemas"]["PageTeamEntity"];
         };
         PageTeamEntity: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -65921,10 +66221,10 @@ export interface components {
             timelinePostsPublic?: boolean;
         };
         PageOrganizationEntity: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -66908,10 +67208,10 @@ export interface components {
             memberSince?: string;
         };
         PagePublicUserPostSummaryResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -66936,10 +67236,10 @@ export interface components {
             createdAt?: string;
         };
         PagePublicTimelinePostResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -66968,10 +67268,10 @@ export interface components {
             createdAt?: string;
         };
         PagePublicPostSummary: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -67019,10 +67319,10 @@ export interface components {
             answer?: string;
         };
         PagePublicEventResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -67084,10 +67384,10 @@ export interface components {
             canonicalSlug?: string;
         };
         PagePublicTeamSearchResultResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -67281,10 +67581,10 @@ export interface components {
             mapEmbedUrl?: string;
         };
         PagePublicOrganizationSearchResultResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -67376,10 +67676,10 @@ export interface components {
             data?: components["schemas"]["MarketListingResponse"];
         };
         PagePublicPostCommentResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -68141,10 +68441,10 @@ export interface components {
             data?: components["schemas"]["PageSuccessionCovenantResponse"];
         };
         PageSuccessionCovenantResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -68218,10 +68518,10 @@ export interface components {
             data?: components["schemas"]["BalanceEventResponse"][];
         };
         PageStampEventResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -68249,10 +68549,10 @@ export interface components {
             webUrl?: string;
         };
         PageBalanceEventResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -68414,10 +68714,10 @@ export interface components {
             createdAt?: string;
         };
         PageCommitteeSummaryResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -68590,6 +68890,8 @@ export interface components {
             title?: string;
             eventType?: string;
             status?: string;
+            referenceUuid?: string;
+            referenceKind?: string;
         };
         CalendarEntryResponse: {
             /** Format: int64 */
@@ -68780,6 +69082,47 @@ export interface components {
         };
         ApiResponseListPersonalScheduleResponse: {
             data?: components["schemas"]["PersonalScheduleResponse"][];
+        };
+        ApiResponseReflectionTodayResponse: {
+            data?: components["schemas"]["ReflectionTodayResponse"];
+        };
+        ReflectionTodayItem: {
+            slotKind?: string;
+            /** Format: int64 */
+            slotId?: number;
+            periodLabel?: string;
+            subjectName?: string;
+            themeId?: string;
+            hasEntryToday?: boolean;
+            entryId?: string;
+            isMasked?: boolean;
+        };
+        ReflectionTodayResponse: {
+            /** Format: date */
+            date?: string;
+            items?: components["schemas"]["ReflectionTodayItem"][];
+        };
+        ApiResponseListReflectionThemeResponse: {
+            data?: components["schemas"]["ReflectionThemeResponse"][];
+        };
+        ApiResponseListReflectionEntryResponse: {
+            data?: components["schemas"]["ReflectionEntryResponse"][];
+        };
+        ApiResponseListRecallAttemptResponse: {
+            data?: components["schemas"]["RecallAttemptResponse"][];
+        };
+        RecallAttemptResponse: {
+            id?: string;
+            entryId?: string;
+            /** Format: date */
+            recallDate?: string;
+            recalledContent?: components["schemas"]["JsonNode"];
+            /** @enum {string} */
+            selfRating?: "REMEMBERED" | "PARTIAL" | "FORGOT";
+            /** Format: date-time */
+            revealedAt?: string;
+            /** Format: date-time */
+            createdAt?: string;
         };
         ApiResponseListRecruitmentParticipantResponse: {
             data?: components["schemas"]["RecruitmentParticipantResponse"][];
@@ -68989,6 +69332,16 @@ export interface components {
             message?: string;
             /** Format: date-time */
             occurredAt?: string;
+        };
+        ApiResponsePersonalSyncStatusResponse: {
+            data?: components["schemas"]["PersonalSyncStatusResponse"];
+        };
+        PersonalSyncStatusResponse: {
+            connected?: boolean;
+            active?: boolean;
+            personalSyncEnabled?: boolean;
+            googleAccountEmail?: string;
+            lastSyncError?: components["schemas"]["SyncErrorDetail"];
         };
         ApiResponseListFavoriteResponse: {
             data?: components["schemas"]["FavoriteResponse"][];
@@ -69963,10 +70316,10 @@ export interface components {
             data?: components["schemas"]["PageCommitteeDistributionLogResponse"];
         };
         PageCommitteeDistributionLogResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -70464,10 +70817,10 @@ export interface components {
             data?: components["schemas"]["PageVillageCreationRequestResponse"];
         };
         PageVillageCreationRequestResponse: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -70649,10 +71002,10 @@ export interface components {
             data?: components["schemas"]["PageUserRoleEntity"];
         };
         PageUserRoleEntity: {
-            /** Format: int64 */
-            totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            /** Format: int64 */
+            totalElements?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -82429,6 +82782,74 @@ export interface operations {
             };
         };
     };
+    getSettings_11: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReflectionSettingsResponse"];
+                };
+            };
+        };
+    };
+    updateSettings_11: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateReflectionSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReflectionSettingsResponse"];
+                };
+            };
+        };
+    };
+    upsertEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpsertReflectionEntryRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReflectionEntryResponse"];
+                };
+            };
+        };
+    };
     listSlots_1: {
         parameters: {
             query?: {
@@ -82595,6 +83016,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseCalendarSyncToggleResponse"];
+                };
+            };
+        };
+    };
+    getPersonalSync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePersonalSyncStatusResponse"];
                 };
             };
         };
@@ -83879,7 +84320,7 @@ export interface operations {
             };
         };
     };
-    getSettings_11: {
+    getSettings_12: {
         parameters: {
             query: {
                 scopeType: string;
@@ -87642,6 +88083,33 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseVenueResponse"];
+                };
+            };
+        };
+    };
+    listStamps: {
+        parameters: {
+            query?: {
+                cursor?: number;
+                size?: number;
+                targetType?: string;
+                includeRevoked?: boolean;
+            };
+            header?: never;
+            path: {
+                userId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseStampLogResponse"];
                 };
             };
         };
@@ -109083,6 +109551,102 @@ export interface operations {
             };
         };
     };
+    listThemes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListReflectionThemeResponse"];
+                };
+            };
+        };
+    };
+    createTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateReflectionThemeRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReflectionThemeResponse"];
+                };
+            };
+        };
+    };
+    recordRecall: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRecallAttemptRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReflectionEntryResponse"];
+                };
+            };
+        };
+    };
+    exportToBlog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExportToBlogRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBlogPostResponse"];
+                };
+            };
+        };
+    };
     recordVisit: {
         parameters: {
             query?: never;
@@ -118560,7 +119124,7 @@ export interface operations {
             };
         };
     };
-    getSettings_12: {
+    getSettings_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -118731,7 +119295,7 @@ export interface operations {
             };
         };
     };
-    getSettings_13: {
+    getSettings_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -118753,7 +119317,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_11: {
+    updateSettings_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -120416,7 +120980,7 @@ export interface operations {
             };
         };
     };
-    getSettings_14: {
+    getSettings_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -120438,7 +121002,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_12: {
+    updateSettings_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -125304,6 +125868,74 @@ export interface operations {
             };
         };
     };
+    getTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                themeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReflectionThemeResponse"];
+                };
+            };
+        };
+    };
+    deleteTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                themeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                themeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateReflectionThemeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReflectionThemeResponse"];
+                };
+            };
+        };
+    };
     get_25: {
         parameters: {
             query?: never;
@@ -126332,7 +126964,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_13: {
+    updateSettings_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -127737,7 +128369,7 @@ export interface operations {
             };
         };
     };
-    getSettings_15: {
+    getSettings_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -127757,7 +128389,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_14: {
+    updateSettings_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -128806,6 +129438,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseStampVerifyResponse"];
+                };
+            };
+        };
+    };
+    getScopeDefaults: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListScopeDefaultResponse"];
                 };
             };
         };
@@ -133863,7 +134517,7 @@ export interface operations {
             };
         };
     };
-    getSettings_16: {
+    getSettings_17: {
         parameters: {
             query?: never;
             header?: never;
@@ -140996,6 +141650,114 @@ export interface operations {
             };
         };
     };
+    getToday: {
+        parameters: {
+            query?: {
+                date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReflectionTodayResponse"];
+                };
+            };
+        };
+    };
+    listEntries_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                themeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListReflectionEntryResponse"];
+                };
+            };
+        };
+    };
+    getEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReflectionEntryResponse"];
+                };
+            };
+        };
+    };
+    deleteEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listRecalls: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListRecallAttemptResponse"];
+                };
+            };
+        };
+    };
     myActiveParticipations: {
         parameters: {
             query?: never;
@@ -141036,7 +141798,7 @@ export interface operations {
             };
         };
     };
-    getToday: {
+    getToday_1: {
         parameters: {
             query?: never;
             header?: never;
