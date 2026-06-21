@@ -13,6 +13,7 @@ const { showError } = useNotification()
 const projects = ref<ProjectResponse[]>([])
 const loading = ref(true)
 const showDialog = ref(false)
+const showGuide = ref(false)
 
 const form = reactive<CreateProjectRequest>({
   title: '',
@@ -105,7 +106,7 @@ onMounted(async () => {
           :label="$t('project.guide.button')"
           text
           data-testid="project-help-link"
-          @click="router.push('/help/projects')"
+          @click="showGuide = true"
         />
         <Button
           v-if="isAdminOrDeputy"
@@ -209,5 +210,8 @@ onMounted(async () => {
         <Button :label="$t('project.dialog.create')" @click="createProject" />
       </template>
     </Dialog>
+
+    <!-- 使い方説明モーダル -->
+    <ProjectGuideModal v-model:visible="showGuide" />
   </div>
 </template>
