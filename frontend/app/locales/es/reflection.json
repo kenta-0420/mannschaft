@@ -6,6 +6,12 @@
       "themes": "Temas",
       "settings": "Ajustes de notificación"
     },
+    "widget": {
+      "pending_recall": "Pendiente de recuerdo",
+      "unwritten": "Sin escribir",
+      "open_today": "Abrir reflexiones de hoy",
+      "empty": "No hay temas para hoy"
+    },
     "today": {
       "heading": "Reflexiones de hoy",
       "date_label": "Fecha",

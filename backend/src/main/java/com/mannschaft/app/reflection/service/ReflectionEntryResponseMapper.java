@@ -78,6 +78,7 @@ public class ReflectionEntryResponseMapper {
                 .visibility(entry.getVisibility())
                 .version(entry.getVersion())
                 .updatedAt(entry.getUpdatedAt())
+                .exportedBlogPostId(entry.getExportedBlogPostId())
                 .build();
     }
 
@@ -101,6 +102,7 @@ public class ReflectionEntryResponseMapper {
                 .visibility(entry.getVisibility())
                 .version(entry.getVersion())
                 .updatedAt(entry.getUpdatedAt())
+                .exportedBlogPostId(entry.getExportedBlogPostId())
                 .build();
     }
 }

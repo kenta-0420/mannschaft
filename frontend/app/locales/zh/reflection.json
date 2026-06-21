@@ -6,6 +6,12 @@
       "themes": "主题列表",
       "settings": "通知设置"
     },
+    "widget": {
+      "pending_recall": "待回想",
+      "unwritten": "未填写",
+      "open_today": "打开今日回顾",
+      "empty": "今天没有主题"
+    },
     "today": {
       "heading": "今日回顾",
       "date_label": "日期",
