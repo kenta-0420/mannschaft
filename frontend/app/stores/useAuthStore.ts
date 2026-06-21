@@ -8,6 +8,8 @@ interface AuthUser {
   systemRole?: string
   /** IANA タイムゾーン識別子（例: Asia/Tokyo）。未設定時は 'Asia/Tokyo' をデフォルトとして使用する。 */
   timezone?: string
+  /** UI 表示ロケール（例: 'ja', 'en'）。未設定時はアプリのデフォルトロケールを使用する。 */
+  locale?: string
 }
 
 interface AuthState {
