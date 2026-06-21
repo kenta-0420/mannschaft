@@ -134998,35 +134998,7 @@
               "$ref": "#/components/schemas/TodoResponse"
             }
           },
-          "parentId": {
-            "type": "integer",
-            "format": "int64",
-            "deprecated": true
-          },
-          "dueTime": {
-            "type": "string",
-            "deprecated": true,
-            "example": "14:30:00"
-          },
-          "createdBy": {
-            "$ref": "#/components/schemas/UserInfo",
-            "deprecated": true
-          },
-          "sortOrder": {
-            "type": "integer",
-            "format": "int32",
-            "deprecated": true
-          },
-          "description": {
-            "type": "string",
-            "deprecated": true
-          },
-          "depth": {
-            "type": "integer",
-            "format": "int32",
-            "deprecated": true
-          },
-          "scopeType": {
+          "title": {
             "type": "string",
             "deprecated": true
           },
@@ -135034,19 +135006,14 @@
             "type": "number",
             "deprecated": true
           },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "deprecated": true
-          },
           "updatedAt": {
             "type": "string",
             "format": "date-time",
             "deprecated": true
           },
-          "startDate": {
+          "createdAt": {
             "type": "string",
-            "format": "date",
+            "format": "date-time",
             "deprecated": true
           },
           "completedAt": {
@@ -135057,23 +135024,6 @@
           "milestoneId": {
             "type": "integer",
             "format": "int64",
-            "deprecated": true
-          },
-          "descendantCompletedCount": {
-            "type": "integer",
-            "format": "int32",
-            "deprecated": true
-          },
-          "title": {
-            "type": "string",
-            "deprecated": true
-          },
-          "progressManual": {
-            "type": "boolean",
-            "deprecated": true
-          },
-          "completedBy": {
-            "$ref": "#/components/schemas/UserInfo",
             "deprecated": true
           },
           "projectId": {
@@ -135091,18 +135041,68 @@
             "format": "date",
             "deprecated": true
           },
+          "dueTime": {
+            "type": "string",
+            "deprecated": true,
+            "example": "14:30:00"
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/UserInfo",
+            "deprecated": true
+          },
+          "scopeType": {
+            "type": "string",
+            "deprecated": true
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32",
+            "deprecated": true
+          },
+          "progressManual": {
+            "type": "boolean",
+            "deprecated": true
+          },
+          "completedBy": {
+            "$ref": "#/components/schemas/UserInfo",
+            "deprecated": true
+          },
+          "descendantCompletedCount": {
+            "type": "integer",
+            "format": "int32",
+            "deprecated": true
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "deprecated": true
+          },
+          "parentId": {
+            "type": "integer",
+            "format": "int64",
+            "deprecated": true
+          },
+          "description": {
+            "type": "string",
+            "deprecated": true
+          },
+          "depth": {
+            "type": "integer",
+            "format": "int32",
+            "deprecated": true
+          },
           "descendantTotalCount": {
             "type": "integer",
             "format": "int32",
             "deprecated": true
           },
+          "statusLabel": {
+            "$ref": "#/components/schemas/TodoStatusLabelInfo",
+            "deprecated": true
+          },
           "daysRemaining": {
             "type": "integer",
             "format": "int64",
-            "deprecated": true
-          },
-          "statusLabel": {
-            "$ref": "#/components/schemas/TodoStatusLabelInfo",
             "deprecated": true
           }
         }
@@ -135654,10 +135654,10 @@
             "type": "string",
             "format": "date-time"
           },
-          "ownMemo": {
+          "editable": {
             "type": "boolean"
           },
-          "editable": {
+          "ownMemo": {
             "type": "boolean"
           }
         }
@@ -147786,10 +147786,10 @@
           "disabledReason": {
             "type": "string"
           },
-          "visible": {
+          "moduleEnabled": {
             "type": "boolean"
           },
-          "moduleEnabled": {
+          "visible": {
             "type": "boolean"
           }
         }
@@ -152857,6 +152857,14 @@
           "sealHashAtStamp": {
             "type": "string"
           },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "LAST_NAME",
+              "FULL_NAME",
+              "FIRST_NAME"
+            ]
+          },
           "targetType": {
             "type": "string"
           },
@@ -152936,6 +152944,14 @@
           "sealId": {
             "type": "integer",
             "format": "int64"
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "LAST_NAME",
+              "FULL_NAME",
+              "FIRST_NAME"
+            ]
           },
           "createdAt": {
             "type": "string",
@@ -153970,14 +153986,14 @@
             "type": "string",
             "format": "uuid"
           },
-          "postedAsTypeOrDefault": {
+          "scopeTypeOrDefault": {
             "type": "string"
           },
           "scopeIdOrDefault": {
             "type": "integer",
             "format": "int64"
           },
-          "scopeTypeOrDefault": {
+          "postedAsTypeOrDefault": {
             "type": "string"
           }
         }
@@ -154580,10 +154596,10 @@
               "ABSOLUTE"
             ]
           },
-          "remindAtValid": {
+          "remindBeforeMinutesValid": {
             "type": "boolean"
           },
-          "remindBeforeMinutesValid": {
+          "remindAtValid": {
             "type": "boolean"
           }
         }
@@ -181869,10 +181885,10 @@
               "ABSOLUTE"
             ]
           },
-          "remindAtValid": {
+          "remindBeforeMinutesValid": {
             "type": "boolean"
           },
-          "remindBeforeMinutesValid": {
+          "remindAtValid": {
             "type": "boolean"
           }
         }
@@ -188594,10 +188610,6 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
           },
@@ -188606,6 +188618,10 @@
           },
           "last": {
             "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
           },
           "empty": {
             "type": "boolean"
@@ -188622,9 +188638,6 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "unpaged": {
-            "type": "boolean"
-          },
           "pageNumber": {
             "type": "integer",
             "format": "int32"
@@ -188634,6 +188647,9 @@
             "format": "int32"
           },
           "paged": {
+            "type": "boolean"
+          },
+          "unpaged": {
             "type": "boolean"
           }
         }
@@ -189304,23 +189320,7 @@
           "audit": {
             "$ref": "#/components/schemas/ProjectAuditDto"
           },
-          "createdBy": {
-            "$ref": "#/components/schemas/UserInfo",
-            "deprecated": true
-          },
-          "status": {
-            "type": "string",
-            "deprecated": true
-          },
-          "description": {
-            "type": "string",
-            "deprecated": true
-          },
-          "color": {
-            "type": "string",
-            "deprecated": true
-          },
-          "visibility": {
+          "title": {
             "type": "string",
             "deprecated": true
           },
@@ -189328,17 +189328,17 @@
             "type": "number",
             "deprecated": true
           },
-          "emoji": {
+          "visibility": {
             "type": "string",
             "deprecated": true
           },
-          "title": {
+          "dueDate": {
             "type": "string",
+            "format": "date",
             "deprecated": true
           },
-          "completedTodos": {
-            "type": "integer",
-            "format": "int32",
+          "createdBy": {
+            "$ref": "#/components/schemas/UserInfo",
             "deprecated": true
           },
           "totalTodos": {
@@ -189346,9 +189346,25 @@
             "format": "int32",
             "deprecated": true
           },
-          "dueDate": {
+          "completedTodos": {
+            "type": "integer",
+            "format": "int32",
+            "deprecated": true
+          },
+          "color": {
             "type": "string",
-            "format": "date",
+            "deprecated": true
+          },
+          "emoji": {
+            "type": "string",
+            "deprecated": true
+          },
+          "description": {
+            "type": "string",
+            "deprecated": true
+          },
+          "status": {
+            "type": "string",
             "deprecated": true
           },
           "daysRemaining": {
@@ -194191,10 +194207,10 @@
             "type": "integer",
             "format": "int32"
           },
-          "alreadyCheckedIn": {
+          "underCare": {
             "type": "boolean"
           },
-          "underCare": {
+          "alreadyCheckedIn": {
             "type": "boolean"
           }
         }
@@ -196357,10 +196373,6 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
           },
@@ -196369,6 +196381,10 @@
           },
           "last": {
             "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
           },
           "empty": {
             "type": "boolean"
@@ -197251,10 +197267,6 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
           },
@@ -197263,6 +197275,10 @@
           },
           "last": {
             "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
           },
           "empty": {
             "type": "boolean"
@@ -197845,10 +197861,6 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
           },
@@ -197857,6 +197869,10 @@
           },
           "last": {
             "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
           },
           "empty": {
             "type": "boolean"
@@ -198044,10 +198060,6 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
           },
@@ -198056,6 +198068,10 @@
           },
           "last": {
             "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
           },
           "empty": {
             "type": "boolean"
@@ -198294,10 +198310,6 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
           },
@@ -198306,6 +198318,10 @@
           },
           "last": {
             "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
           },
           "empty": {
             "type": "boolean"
@@ -198595,10 +198611,6 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
           },
@@ -198607,6 +198619,10 @@
           },
           "last": {
             "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
           },
           "empty": {
             "type": "boolean"
@@ -201348,10 +201364,6 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
           },
@@ -201360,6 +201372,10 @@
           },
           "last": {
             "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
           },
           "empty": {
             "type": "boolean"
@@ -201419,10 +201435,6 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
           },
@@ -201431,6 +201443,10 @@
           },
           "last": {
             "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
           },
           "empty": {
             "type": "boolean"
@@ -201499,10 +201515,6 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
           },
@@ -201511,6 +201523,10 @@
           },
           "last": {
             "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
           },
           "empty": {
             "type": "boolean"
@@ -201632,10 +201648,6 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
           },
@@ -201644,6 +201656,10 @@
           },
           "last": {
             "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
           },
           "empty": {
             "type": "boolean"
@@ -201808,10 +201824,6 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
           },
@@ -201820,6 +201832,10 @@
           },
           "last": {
             "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
           },
           "empty": {
             "type": "boolean"
@@ -202294,10 +202310,6 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
           },
@@ -202306,6 +202318,10 @@
           },
           "last": {
             "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
           },
           "empty": {
             "type": "boolean"
@@ -202552,10 +202568,6 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
           },
@@ -202564,6 +202576,10 @@
           },
           "last": {
             "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
           },
           "empty": {
             "type": "boolean"
@@ -204064,10 +204080,10 @@
             "type": "string",
             "format": "date-time"
           },
-          "minMet": {
+          "maxExceeded": {
             "type": "boolean"
           },
-          "maxExceeded": {
+          "minMet": {
             "type": "boolean"
           }
         }
@@ -204599,10 +204615,6 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
           },
@@ -204611,6 +204623,10 @@
           },
           "last": {
             "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
           },
           "empty": {
             "type": "boolean"
@@ -204803,10 +204819,6 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
           },
@@ -204815,6 +204827,10 @@
           },
           "last": {
             "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
           },
           "empty": {
             "type": "boolean"
@@ -204886,10 +204902,6 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
           },
@@ -204898,6 +204910,10 @@
           },
           "last": {
             "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
           },
           "empty": {
             "type": "boolean"
@@ -205349,10 +205365,6 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
           },
@@ -205361,6 +205373,10 @@
           },
           "last": {
             "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
           },
           "empty": {
             "type": "boolean"
@@ -209712,10 +209728,6 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
           },
@@ -209724,6 +209736,10 @@
           },
           "last": {
             "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
           },
           "empty": {
             "type": "boolean"
@@ -211065,10 +211081,6 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
           },
@@ -211077,6 +211089,10 @@
           },
           "last": {
             "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
           },
           "empty": {
             "type": "boolean"
@@ -211506,10 +211522,6 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
           },
@@ -211518,6 +211530,10 @@
           },
           "last": {
             "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
           },
           "empty": {
             "type": "boolean"
