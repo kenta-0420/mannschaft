@@ -10,7 +10,8 @@
     "step_completed": "导出完成 — 下载截止日期: {expiry}",
     "step_failed": "导出失败",
     "step_processing": "导出中...",
-    "step_preparing": "准备中..."
+    "step_preparing": "准备中...",
+    "description": "您可以将个人数据导出为 ZIP 文件。"
   },
   "deletion_preview": {
     "dialog_title": "确认账户删除",
@@ -51,6 +52,167 @@
       "resetToDefault": "恢复默认",
       "saveSuccess": "设置已保存",
       "saveError": "保存失败"
+    },
+    "account": {
+      "page_title": "账户设置",
+      "notification_settings": "通知设置"
+    },
+    "profile": {
+      "section_title": "个人资料",
+      "avatar_alt": "头像",
+      "change_image": "更换图片",
+      "image_hint": "JPG、PNG，5MB以下",
+      "display_name": "显示名称",
+      "phone_number": "电话号码",
+      "phone_placeholder": "090-0000-0000",
+      "postal_code": "邮政编码",
+      "postal_placeholder": "000-0000",
+      "searchable_label": "在用户搜索中显示",
+      "searchable_description": "开启后，其他用户可通过搜索找到您"
+    },
+    "email": {
+      "section_title": "更改邮箱地址",
+      "current_email": "当前邮箱地址",
+      "new_email": "新邮箱地址",
+      "new_email_placeholder": "new{'@'}example.com",
+      "current_password": "当前密码",
+      "send_confirmation": "发送确认邮件",
+      "sent_title": "确认邮件已发送",
+      "sent_description": "确认邮件已发送至 {email}。请点击链接完成更改。"
+    },
+    "password": {
+      "section_title_change": "更改密码",
+      "section_title_set": "设置密码",
+      "no_password_description": "当前未设置密码。设置密码后可使用邮箱和密码登录。",
+      "current_password": "当前密码",
+      "new_password": "新密码",
+      "confirm_password": "确认新密码",
+      "change_button": "更改密码",
+      "set_button": "设置密码",
+      "change_success": "密码已更改",
+      "change_error": "更改密码失败。请检查当前密码"
+    },
+    "locale": {
+      "section_title": "语言与时区",
+      "display_language": "显示语言",
+      "timezone": "时区"
+    },
+    "appearance": {
+      "section_title": "外观",
+      "hide_chat_preview_label": "隐藏聊天预览",
+      "hide_chat_preview_description": "在通知横幅中不显示聊天内容",
+      "save_button": "保存外观",
+      "save_success": "外观设置已保存"
+    },
+    "security": {
+      "two_fa_section_title": "双重认证（2FA）",
+      "two_fa_description": "使用认证应用（如 Google Authenticator）来加强账户安全性。",
+      "setup_2fa_button": "设置 2FA",
+      "regenerate_backup_codes_button": "重新生成备用代码",
+      "scan_qr_description": "请使用认证应用扫描二维码。",
+      "totp_qr_alt": "TOTP 二维码",
+      "secret_key": "密钥",
+      "sessions_section_title": "活跃会话",
+      "logout_all_button": "全部退出",
+      "no_sessions": "暂无会话信息",
+      "unknown_device": "未知设备",
+      "current_session_tag": "当前",
+      "webauthn_section_title": "安全密钥（WebAuthn）",
+      "webauthn_description": "注册 FIDO2/WebAuthn 兼容的安全密钥或生物识别认证。",
+      "no_credentials": "未注册安全密钥",
+      "default_credential_name": "安全密钥",
+      "last_used": "最后使用: {date}",
+      "registered": "注册: {date}",
+      "backup_codes_dialog_title": "备用代码",
+      "backup_codes_description": "请将以下备用代码保存在安全的地方。每个代码只能使用一次。",
+      "rename_dialog_title": "重命名设备",
+      "device_name_label": "设备名称",
+      "session": {
+        "device_label": "{os} 上的 {browser}",
+        "unknown_device": "未知设备"
+      }
+    },
+    "linked_accounts": {
+      "oauth_section_title": "OAuth 连接",
+      "no_oauth": "暂无关联账户",
+      "connected_at": "关联日期: {date}",
+      "unlink_button": "解除",
+      "line_section_title": "LINE 连接",
+      "line_icon_alt": "LINE 图标",
+      "line_default_user": "LINE 用户",
+      "line_linked_at": "关联日期: {date}",
+      "line_unlink_button": "解除 LINE 连接",
+      "line_not_linked": "未关联 LINE 账户",
+      "line_link_instruction": "请通过 LINE 应用进行关联"
+    },
+    "member_card": {
+      "section_title": "QR 会员证",
+      "tab_list": "会员证列表",
+      "tab_history": "签到历史"
+    },
+    "social_profile": {
+      "section_title": "社交档案",
+      "create_button": "新建",
+      "count_description": "最多可创建 3 个档案（{count}/3）",
+      "no_profiles": "暂无档案",
+      "dialog_title_create": "创建档案",
+      "dialog_title_edit": "编辑档案",
+      "handle_label": "用户名 *",
+      "handle_placeholder": "my_handle",
+      "handle_hint": "仅限字母、数字和下划线（每30天可修改一次）",
+      "display_name_label": "显示名称 *",
+      "bio_label": "个人简介",
+      "bio_count": "{count}/300",
+      "update_button": "更新",
+      "create_submit_button": "创建"
+    },
+    "seal": {
+      "section_title": "电子印章",
+      "tab_preview": "印章预览",
+      "tab_defaults": "默认设置",
+      "tab_history": "盖章历史",
+      "regenerate_button": "重新生成印章",
+      "regenerate_hint": "印章根据您的注册姓名自动生成（每小时最多3次）"
+    },
+    "login_history": {
+      "section_title": "登录历史",
+      "no_history": "暂无登录历史",
+      "load_more": "加载更多",
+      "event_login_success": "登录成功",
+      "event_login_failure": "登录失败",
+      "event_logout": "退出登录",
+      "event_token_refresh": "令牌刷新",
+      "event_password_change": "密码变更",
+      "event_mfa_verify": "2FA 验证"
+    },
+    "gcal": {
+      "section_title": "Google 日历集成",
+      "connected_label": "已连接",
+      "last_synced": "最后同步: {date}",
+      "manual_sync_button": "手动同步",
+      "disconnect_button": "解除连接",
+      "sync_settings_title": "同步设置",
+      "personal_calendar_label": "个人日历",
+      "personal_calendar_description": "将个人日程同步到 Google 日历",
+      "team_calendars_label": "团队日历",
+      "org_calendars_label": "组织日历",
+      "save_settings_button": "保存设置",
+      "not_connected_description": "连接您的 Google 账户以同步日历",
+      "connect_button": "连接 Google 账户"
+    },
+    "delete_account": {
+      "section_title": "删除账户",
+      "description": "删除账户将永久删除您的所有数据。此操作无法撤销。",
+      "delete_button": "删除账户",
+      "confirm_message": "删除账户将永久删除您的所有数据。确定要继续吗？",
+      "confirm_dialog_title": "确认账户删除",
+      "confirm_reject_label": "取消",
+      "confirm_accept_label": "继续删除",
+      "password_confirm_label": "请输入当前密码以确认",
+      "password_placeholder": "当前密码",
+      "retention_note": "※ 由于法律要求，部分数据将在 {days} 天后删除。",
+      "delete_success": "账户已删除。感谢您的使用。",
+      "delete_error": "删除账户失败"
     }
   }
 }

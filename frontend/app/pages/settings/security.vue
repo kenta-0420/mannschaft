@@ -5,6 +5,7 @@ definePageMeta({
   middleware: 'auth',
 })
 
+const { t } = useI18n()
 const notification = useNotification()
 const authStore = useAuthStore()
 const {
@@ -33,6 +34,9 @@ const regenerating = ref(false)
 const renameDialog = ref(false)
 const renameTarget = ref<WebAuthnCredentialResponse | null>(null)
 const newDeviceName = ref('')
+
+// 使い方ガイド（モーダル）
+const showHelp = ref(false)
 
 onMounted(async () => {
   await loadData()
@@ -134,7 +138,17 @@ async function handleRenameCredential() {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <PageHeader title="セキュリティ" back-to="/settings" />
+    <PageHeader title="セキュリティ" back-to="/settings">
+      <button
+        type="button"
+        class="ml-auto inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+        @click="showHelp = true"
+      >
+        {{ t('security_help.link_label') }}
+      </button>
+    </PageHeader>
+
+    <SecurityHelpDialog v-model:visible="showHelp" />
 
     <PageLoading v-if="loading" />
 
