@@ -14,6 +14,16 @@ export interface ProjectResponse {
   createdAt: string
 }
 
+/**
+ * マイページ チームプロジェクト集約レスポンス（GET /api/v1/me/team-projects）。
+ * ProjectResponse の各項目に所属チームの識別情報（teamId / teamName / teamSlug）を付与する。
+ */
+export interface TeamProjectResponse extends ProjectResponse {
+  teamId: number
+  teamName: string
+  teamSlug: string
+}
+
 export interface CreateProjectRequest {
   title?: string
   description?: string

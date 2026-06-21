@@ -715,6 +715,8 @@
     "my_projects": "Meine Projekte",
     "my_projects_description": "Persönliche Aufgabenverwaltung und Ziele",
     "no_my_projects": "Noch keine persönlichen Projekte",
+    "team_projects_section": "Teamprojekte",
+    "no_team_projects": "Noch keine Projekte in Ihren Teams",
     "create_button": "Projekt erstellen",
     "dialog": {
       "create_title": "Projekt erstellen",
@@ -773,6 +775,45 @@
         "team_desc": "Mit Teammitgliedern teilen und gemeinsam verwalten. Zugriff über den Tab 'Projekte' auf der Teamseite."
       },
       "back_to_projects": "Zurück zur Projektliste"
+    },
+    "org_page": {
+      "title": "Projekte",
+      "empty": "Keine Projekte vorhanden",
+      "back_label": "Projektliste"
+    },
+    "error": {
+      "fetch_failed": "Projekte konnten nicht geladen werden",
+      "create_failed": "Projekt konnte nicht erstellt werden",
+      "update_failed": "Aktualisierung fehlgeschlagen",
+      "delete_failed": "Loeschen fehlgeschlagen",
+      "status_change_failed": "Statusaenderung fehlgeschlagen",
+      "milestone_save_failed": "Meilenstein konnte nicht gespeichert werden"
+    },
+    "status": {
+      "active": "Aktiv",
+      "completed": "Abgeschlossen",
+      "archived": "Archiviert"
+    },
+    "action": {
+      "edit": "Bearbeiten",
+      "complete": "Als abgeschlossen markieren",
+      "reopen": "Wieder oeffnen"
+    },
+    "stats": {
+      "progress": "Fortschritt",
+      "tasks": "Aufgaben",
+      "milestones": "Meilensteine",
+      "due_date": "Faelligkeitsdatum",
+      "no_due_date": "Nicht festgelegt"
+    },
+    "task_unit": "Aufgaben",
+    "days_remaining": "Noch {n} Tage",
+    "days_overdue": "{n} Tage ueberfaellig",
+    "related_tasks": "Verwandte Aufgaben",
+    "no_related_tasks": "Keine verwandten Aufgaben fuer dieses Projekt",
+    "widget": {
+      "label": "Projekte",
+      "description": "Projektfortschritt und Liste"
     }
   },
   "inviteToken": {

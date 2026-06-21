@@ -3,6 +3,7 @@ import type { LoginHistoryResponse } from '~/types/user-settings'
 
 export function useAccountSecurity() {
   const notification = useNotification()
+  const { t } = useI18n()
   const {
     setup2fa,
     regenerateBackupCodes,
@@ -61,7 +62,7 @@ export function useAccountSecurity() {
     try {
       totpSetup.value = (await setup2fa()).data
     } catch {
-      notification.error('2FAセットアップの開始に失敗しました')
+      notification.error(t('settings.security.toast.setup_2fa_error'))
     } finally {
       setting2fa.value = false
     }
@@ -72,9 +73,9 @@ export function useAccountSecurity() {
     try {
       backupCodes.value = (await regenerateBackupCodes()).data.backupCodes
       showBackupCodesDialog.value = true
-      notification.success('バックアップコードを再生成しました')
+      notification.success(t('settings.security.toast.regenerate_success'))
     } catch {
-      notification.error('バックアップコードの再生成に失敗しました')
+      notification.error(t('settings.security.toast.regenerate_error'))
     } finally {
       regenerating.value = false
     }
@@ -84,9 +85,9 @@ export function useAccountSecurity() {
     try {
       await revokeSession(id)
       sessions.value = sessions.value.filter((s) => s.id !== id)
-      notification.success('セッションを無効化しました')
+      notification.success(t('settings.security.toast.revoke_success'))
     } catch {
-      notification.error('セッションの無効化に失敗しました')
+      notification.error(t('settings.security.toast.revoke_error'))
     }
   }
 
@@ -94,9 +95,9 @@ export function useAccountSecurity() {
     try {
       await revokeAllSessions()
       sessions.value = []
-      notification.success('全デバイスからログアウトしました')
+      notification.success(t('settings.security.toast.revoke_all_success'))
     } catch {
-      notification.error('全デバイスログアウトに失敗しました')
+      notification.error(t('settings.security.toast.revoke_all_error'))
     }
   }
 
@@ -104,9 +105,9 @@ export function useAccountSecurity() {
     try {
       await deleteWebAuthnCredential(id)
       credentials.value = credentials.value.filter((c) => c.id !== id)
-      notification.success('セキュリティキーを削除しました')
+      notification.success(t('settings.security.toast.delete_key_success'))
     } catch {
-      notification.error('セキュリティキーの削除に失敗しました')
+      notification.error(t('settings.security.toast.delete_key_error'))
     }
   }
 
@@ -125,9 +126,9 @@ export function useAccountSecurity() {
       const idx = credentials.value.findIndex((c) => c.id === renameTarget.value!.id)
       if (idx !== -1) credentials.value[idx] = res.data
       renameDialog.value = false
-      notification.success('デバイス名を更新しました')
+      notification.success(t('settings.security.toast.rename_success'))
     } catch {
-      notification.error('デバイス名の更新に失敗しました')
+      notification.error(t('settings.security.toast.rename_error'))
     }
   }
 

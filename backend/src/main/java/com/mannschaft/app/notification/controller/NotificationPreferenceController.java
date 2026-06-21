@@ -1,9 +1,12 @@
 package com.mannschaft.app.notification.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.notification.dto.NotificationSettingsResponse;
+import com.mannschaft.app.notification.dto.NotificationSettingsUpdateRequest;
 import com.mannschaft.app.notification.dto.PreferenceResponse;
 import com.mannschaft.app.notification.dto.PreferenceUpdateRequest;
 import com.mannschaft.app.notification.dto.TypePreferenceBulkUpdateRequest;
+import com.mannschaft.app.notification.dto.TypePreferenceBulkUpdateResponse;
 import com.mannschaft.app.notification.dto.TypePreferenceResponse;
 import com.mannschaft.app.notification.service.NotificationPreferenceService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,7 +24,7 @@ import java.util.List;
 import com.mannschaft.app.common.SecurityUtils;
 
 /**
- * 通知設定コントローラー。通知設定・通知種別設定の管理APIを提供する。
+ * 通知設定コントローラー。スコープ別・種別別・グローバルの通知設定 API を提供する（F04.3）。
  */
 @RestController
 @RequestMapping("/api/v1")
@@ -30,7 +33,6 @@ import com.mannschaft.app.common.SecurityUtils;
 public class NotificationPreferenceController {
 
     private final NotificationPreferenceService preferenceService;
-
 
     /**
      * 通知設定一覧を取得する。
@@ -56,26 +58,52 @@ public class NotificationPreferenceController {
     }
 
     /**
-     * 通知種別設定一覧を取得する。
+     * 通知種別設定一覧を取得する（カタログ・単一/Dual 含む全種別）。
      */
     @GetMapping("/notification-type-preferences")
     @Operation(summary = "通知種別設定一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TypePreferenceResponse>>> listTypePreferences() {
-        List<TypePreferenceResponse> responses = preferenceService.listTypePreferences(SecurityUtils.getCurrentUserId());
+        List<TypePreferenceResponse> responses =
+                preferenceService.listTypePreferences(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
     /**
-     * 通知種別設定を一括更新する。
+     * 通知種別設定を一括更新する（単一/Dual 含む）。URGENT 種別はスキップ。
      */
     @PutMapping("/notification-type-preferences")
     @Operation(summary = "通知種別設定一括更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
-    public ResponseEntity<ApiResponse<List<TypePreferenceResponse>>> bulkUpdateTypePreferences(
+    public ResponseEntity<ApiResponse<TypePreferenceBulkUpdateResponse>> bulkUpdateTypePreferences(
             @Valid @RequestBody TypePreferenceBulkUpdateRequest request) {
-        List<TypePreferenceResponse> responses =
+        TypePreferenceBulkUpdateResponse response =
                 preferenceService.bulkUpdateTypePreferences(SecurityUtils.getCurrentUserId(), request);
-        return ResponseEntity.ok(ApiResponse.of(responses));
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * グローバル通知設定（優先度による自動配信）を取得する。
+     */
+    @GetMapping("/notification-settings")
+    @Operation(summary = "グローバル通知設定取得")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<NotificationSettingsResponse>> getSettings() {
+        NotificationSettingsResponse response =
+                preferenceService.getSettings(SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * グローバル通知設定を更新する。
+     */
+    @PutMapping("/notification-settings")
+    @Operation(summary = "グローバル通知設定更新")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    public ResponseEntity<ApiResponse<NotificationSettingsResponse>> updateSettings(
+            @Valid @RequestBody NotificationSettingsUpdateRequest request) {
+        NotificationSettingsResponse response =
+                preferenceService.updateSettings(SecurityUtils.getCurrentUserId(), request);
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

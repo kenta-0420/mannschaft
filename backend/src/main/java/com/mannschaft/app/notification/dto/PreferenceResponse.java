@@ -16,6 +16,8 @@ public class PreferenceResponse {
     Long    userId;
 
     PreferenceScopeDto scope;
+    /** スコープ表示名（NameResolverService で解決・越境禁止）。 */
+    String             scopeName;
     Boolean            isEnabled;
     PreferenceAuditDto audit;
 

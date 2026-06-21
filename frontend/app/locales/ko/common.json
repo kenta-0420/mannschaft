@@ -715,6 +715,8 @@
     "my_projects": "개인 프로젝트",
     "my_projects_description": "개인 작업 관리 및 목표",
     "no_my_projects": "아직 개인 프로젝트가 없습니다",
+    "team_projects_section": "팀 프로젝트",
+    "no_team_projects": "소속 팀에 아직 프로젝트가 없습니다",
     "create_button": "프로젝트 생성",
     "dialog": {
       "create_title": "프로젝트 생성",
@@ -773,6 +775,45 @@
         "team_desc": "팀원과 공유하고 함께 관리합니다. 팀 페이지의 '프로젝트' 탭에서 접근하세요."
       },
       "back_to_projects": "프로젝트 목록으로 돌아가기"
+    },
+    "org_page": {
+      "title": "프로젝트",
+      "empty": "프로젝트가 없습니다",
+      "back_label": "프로젝트 목록"
+    },
+    "error": {
+      "fetch_failed": "프로젝트를 불러오지 못했습니다",
+      "create_failed": "프로젝트 생성에 실패했습니다",
+      "update_failed": "업데이트에 실패했습니다",
+      "delete_failed": "삭제에 실패했습니다",
+      "status_change_failed": "상태 변경에 실패했습니다",
+      "milestone_save_failed": "마일스톤 저장에 실패했습니다"
+    },
+    "status": {
+      "active": "진행 중",
+      "completed": "완료",
+      "archived": "보관됨"
+    },
+    "action": {
+      "edit": "편집",
+      "complete": "완료로 표시",
+      "reopen": "다시 열기"
+    },
+    "stats": {
+      "progress": "진행률",
+      "tasks": "작업",
+      "milestones": "마일스톤",
+      "due_date": "기한",
+      "no_due_date": "미설정"
+    },
+    "task_unit": "개 작업",
+    "days_remaining": "{n}일 남음",
+    "days_overdue": "{n}일 초과",
+    "related_tasks": "관련 작업",
+    "no_related_tasks": "이 프로젝트에 관련 작업이 없습니다",
+    "widget": {
+      "label": "프로젝트",
+      "description": "프로젝트 진행 상황 및 목록"
     }
   },
   "inviteToken": {

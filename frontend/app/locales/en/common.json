@@ -715,6 +715,8 @@
     "my_projects": "My projects",
     "my_projects_description": "Personal task management and goals",
     "no_my_projects": "No personal projects yet",
+    "team_projects_section": "Team Projects",
+    "no_team_projects": "No projects in your teams yet",
     "create_button": "Create project",
     "dialog": {
       "create_title": "Create project",
@@ -773,6 +775,45 @@
         "team_desc": "Share and co-manage with team members. Access via the 'Projects' tab on the team page."
       },
       "back_to_projects": "Back to project list"
+    },
+    "org_page": {
+      "title": "Projects",
+      "empty": "No projects found",
+      "back_label": "Project List"
+    },
+    "error": {
+      "fetch_failed": "Failed to fetch projects",
+      "create_failed": "Failed to create project",
+      "update_failed": "Failed to update",
+      "delete_failed": "Failed to delete",
+      "status_change_failed": "Failed to change status",
+      "milestone_save_failed": "Failed to save milestone"
+    },
+    "status": {
+      "active": "Active",
+      "completed": "Completed",
+      "archived": "Archived"
+    },
+    "action": {
+      "edit": "Edit",
+      "complete": "Mark Complete",
+      "reopen": "Reopen"
+    },
+    "stats": {
+      "progress": "Progress",
+      "tasks": "Tasks",
+      "milestones": "Milestones",
+      "due_date": "Due Date",
+      "no_due_date": "Not set"
+    },
+    "task_unit": "tasks",
+    "days_remaining": "{n} days left",
+    "days_overdue": "{n} days overdue",
+    "related_tasks": "Related Tasks",
+    "no_related_tasks": "No related tasks for this project",
+    "widget": {
+      "label": "Projects",
+      "description": "Project progress and list"
     }
   },
   "inviteToken": {
