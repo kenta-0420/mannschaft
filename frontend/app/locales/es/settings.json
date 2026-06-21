@@ -281,6 +281,30 @@
       "retention_note": "※ Algunos datos pueden retenerse durante {days} días por requisitos legales antes de ser eliminados.",
       "delete_success": "Su cuenta ha sido eliminada. Gracias por usar nuestro servicio.",
       "delete_error": "No se pudo eliminar la cuenta"
+    },
+    "notification": {
+      "load_error": "Error al cargar la configuración",
+      "save_success": "Configuración de notificaciones guardada",
+      "save_error": "Error al guardar",
+      "save_button": "Guardar configuración",
+      "global_section_title": "Entrega automática",
+      "priority_auto_delivery_label": "Entrega automática por prioridad",
+      "priority_auto_delivery_desc": "Envía automáticamente las notificaciones importantes también como notificaciones push.",
+      "scope_section_title": "Notificaciones por equipo / organización",
+      "scope_section_desc": "Configure la recepción de notificaciones para cada equipo u organización al que pertenece.",
+      "scope_type_team": "Equipo",
+      "scope_type_organization": "Organización",
+      "scope_receiving": "Recibiendo",
+      "scope_muted": "Silenciado",
+      "scope_empty": "No pertenece a ningún equipo u organización",
+      "type_section_title": "Tipos de notificación",
+      "type_section_desc": "Configure la recepción por tipo. Use \"Expandir\" para controlar la app y push por separado.",
+      "expand": "Expandir",
+      "collapse": "Contraer",
+      "channel_in_app": "En la app",
+      "channel_push": "Push",
+      "locked_tag": "Urgente",
+      "locked_desc": "Esta notificación no se puede desactivar"
     }
   }
 }

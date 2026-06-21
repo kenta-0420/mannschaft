@@ -281,6 +281,30 @@
       "retention_note": "※ 一部のデータは法的要件により {days} 日間保持された後に削除されます。",
       "delete_success": "アカウントを削除しました。ご利用ありがとうございました。",
       "delete_error": "アカウントの削除に失敗しました"
+    },
+    "notification": {
+      "load_error": "設定の取得に失敗しました",
+      "save_success": "通知設定を保存しました",
+      "save_error": "保存に失敗しました",
+      "save_button": "設定を保存",
+      "global_section_title": "通知の自動配信",
+      "priority_auto_delivery_label": "優先度による自動配信",
+      "priority_auto_delivery_desc": "重要度の高い通知を自動的にプッシュ通知でも配信します。",
+      "scope_section_title": "チーム・組織別の通知",
+      "scope_section_desc": "所属するチーム・組織ごとに通知の受信を設定できます。",
+      "scope_type_team": "チーム",
+      "scope_type_organization": "組織",
+      "scope_receiving": "受信中",
+      "scope_muted": "ミュート中",
+      "scope_empty": "所属するチーム・組織がありません",
+      "type_section_title": "通知の種類",
+      "type_section_desc": "種類ごとに受信を設定できます。「展開」するとアプリ内・プッシュを個別に切り替えられます。",
+      "expand": "展開",
+      "collapse": "折りたたむ",
+      "channel_in_app": "アプリ内",
+      "channel_push": "プッシュ",
+      "locked_tag": "緊急",
+      "locked_desc": "この通知は無効化できません"
     }
   }
 }
