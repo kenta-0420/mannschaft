@@ -119,10 +119,10 @@ async function onFolderChange(folderId: number | null) {
             type="button"
             role="button"
             :data-testid="`scope-tab-chip-${scopeType}-${item.slug ?? item.scopeId}`"
-            :aria-pressed="item.scopeId === selectedScopeId"
+            :aria-pressed="(item.slug ?? item.scopeId) === selectedScopeId"
             class="flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors"
             :class="
-              item.scopeId === selectedScopeId
+              (item.slug ?? item.scopeId) === selectedScopeId
                 ? 'border-primary bg-primary text-primary-contrast'
                 : 'border-surface-300 bg-surface-0 hover:bg-surface-100 dark:border-surface-600 dark:bg-surface-800'
             "

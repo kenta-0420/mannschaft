@@ -384,6 +384,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/me/projects/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** プロジェクト詳細（個人） */
+        get: operations["getProject"];
+        /** プロジェクト更新（個人） */
+        put: operations["updateProject"];
+        post?: never;
+        /** プロジェクト削除（個人） */
+        delete: operations["deleteProject"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/me/projects/{id}/milestones/{mid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** マイルストーン更新（個人） */
+        put: operations["updateMilestone"];
+        post?: never;
+        /** マイルストーン削除（個人） */
+        delete: operations["deleteMilestone"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/me/profile-media/{role}": {
         parameters: {
             query?: never;
@@ -1042,12 +1079,12 @@ export interface paths {
             cookie?: never;
         };
         /** プロジェクト詳細 */
-        get: operations["getProject"];
+        get: operations["getProject_1"];
         /** プロジェクト更新 */
-        put: operations["updateProject"];
+        put: operations["updateProject_1"];
         post?: never;
         /** プロジェクト削除 */
-        delete: operations["deleteProject"];
+        delete: operations["deleteProject_1"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1062,10 +1099,10 @@ export interface paths {
         };
         get?: never;
         /** マイルストーン更新 */
-        put: operations["updateMilestone"];
+        put: operations["updateMilestone_1"];
         post?: never;
         /** マイルストーン削除 */
-        delete: operations["deleteMilestone"];
+        delete: operations["deleteMilestone_1"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2575,6 +2612,30 @@ export interface paths {
          * @description 非表示にするナビキーリストを全量上書き保存する。
          */
         put: operations["updateNavSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/appearance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 外観設定取得
+         * @description 現在ユーザーの外観テーマ設定を返す。未登録時はデフォルト値を返す。
+         */
+        get: operations["getAppearance"];
+        /**
+         * 外観設定更新
+         * @description 現在ユーザーの外観テーマ設定を全量上書き保存する（1ユーザー1行upsert）。
+         */
+        put: operations["updateAppearance"];
         post?: never;
         delete?: never;
         options?: never;
@@ -6584,6 +6645,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/me/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** プロジェクト一覧（個人） */
+        get: operations["listProjects"];
+        put?: never;
+        /** プロジェクト作成（個人） */
+        post: operations["createProject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/me/projects/{id}/milestones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** マイルストーン一覧（個人） */
+        get: operations["listMilestones"];
+        put?: never;
+        /** マイルストーン作成（個人） */
+        post: operations["createMilestone"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/me/profile-media/{role}/upload-url": {
         parameters: {
             query?: never;
@@ -8605,10 +8702,10 @@ export interface paths {
             cookie?: never;
         };
         /** プロジェクト一覧 */
-        get: operations["listProjects"];
+        get: operations["listProjects_1"];
         put?: never;
         /** プロジェクト作成 */
-        post: operations["createProject"];
+        post: operations["createProject_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8623,10 +8720,10 @@ export interface paths {
             cookie?: never;
         };
         /** マイルストーン一覧 */
-        get: operations["listMilestones"];
+        get: operations["listMilestones_1"];
         put?: never;
         /** マイルストーン作成 */
-        post: operations["createMilestone"];
+        post: operations["createMilestone_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -21972,6 +22069,57 @@ export interface paths {
         patch: operations["changePersonalCompletionMode"];
         trace?: never;
     };
+    "/api/v1/users/me/projects/{id}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** プロジェクト再開（個人） */
+        patch: operations["reopenProject"];
+        trace?: never;
+    };
+    "/api/v1/users/me/projects/{id}/milestones/{mid}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** マイルストーン完了（個人） */
+        patch: operations["completeMilestone"];
+        trace?: never;
+    };
+    "/api/v1/users/me/projects/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** プロジェクト手動完了（個人） */
+        patch: operations["completeProject"];
+        trace?: never;
+    };
     "/api/v1/users/me/password": {
         parameters: {
             query?: never;
@@ -22789,7 +22937,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** プロジェクト再開 */
-        patch: operations["reopenProject"];
+        patch: operations["reopenProject_1"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/projects/{id}/milestones/{mid}/complete": {
@@ -22806,7 +22954,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** マイルストーン完了 */
-        patch: operations["completeMilestone"];
+        patch: operations["completeMilestone_1"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/projects/{id}/complete": {
@@ -22823,7 +22971,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** プロジェクト手動完了 */
-        patch: operations["completeProject"];
+        patch: operations["completeProject_1"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/performance/metrics/sort-order": {
@@ -28255,6 +28403,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/me/projects/{id}/todos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** プロジェクト内TODO一覧（個人） */
+        get: operations["listProjectTodos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/me/oauth": {
         parameters: {
             query?: never;
@@ -29521,7 +29686,7 @@ export interface paths {
             cookie?: never;
         };
         /** プロジェクト内TODO一覧 */
-        get: operations["listProjectTodos"];
+        get: operations["listProjectTodos_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -42805,6 +42970,92 @@ export interface components {
             /** Format: date-time */
             updatedAt?: string;
         };
+        UpdateProjectRequest: {
+            title?: string;
+            description?: string;
+            emoji?: string;
+            color?: string;
+            /** Format: date */
+            dueDate?: string;
+            visibility?: string;
+            status?: string;
+        };
+        ApiResponseProjectResponse: {
+            data?: components["schemas"]["ProjectResponse"];
+        };
+        MilestoneSummary: {
+            /** Format: int64 */
+            total?: number;
+            /** Format: int64 */
+            completed?: number;
+        };
+        ProjectResponse: {
+            /** Format: int64 */
+            id?: number;
+            title?: string;
+            emoji?: string;
+            color?: string;
+            /** Format: date */
+            dueDate?: string;
+            /** Format: int64 */
+            daysRemaining?: number;
+            status?: string;
+            progressRate?: number;
+            /** Format: int32 */
+            totalTodos?: number;
+            /** Format: int32 */
+            completedTodos?: number;
+            milestones?: components["schemas"]["MilestoneSummary"];
+            createdBy?: components["schemas"]["UserInfo"];
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        UserInfo: {
+            /** Format: int64 */
+            id?: number;
+            displayName?: string;
+        };
+        UpdateMilestoneRequest: {
+            title?: string;
+            /** Format: date */
+            dueDate?: string;
+            /** Format: int32 */
+            sortOrder?: number;
+        };
+        ApiResponseMilestoneResponse: {
+            data?: components["schemas"]["MilestoneResponse"];
+        };
+        MilestoneResponse: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            projectId?: number;
+            title?: string;
+            /** Format: date */
+            dueDate?: string;
+            /** Format: int32 */
+            sortOrder?: number;
+            /** Format: date-time */
+            completedAt?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+            progressRate?: number;
+            /** Format: int64 */
+            lockedByMilestoneId?: number;
+            lockedByMilestoneTitle?: string;
+            completionMode?: string;
+            /** Format: int64 */
+            lockedTodoCount?: number;
+            forceUnlocked?: boolean;
+            /** Format: date-time */
+            lockedAt?: string;
+            /** Format: date-time */
+            unlockedAt?: string;
+            locked?: boolean;
+            completed?: boolean;
+        };
         ProfileMediaCommitRequest: {
             r2Key?: string;
         };
@@ -43136,6 +43387,66 @@ export interface components {
             /** @deprecated */
             children?: components["schemas"]["TodoResponse"][];
             /**
+             * Format: date
+             * @deprecated
+             */
+            dueDate?: string;
+            /**
+             * Format: int32
+             * @deprecated
+             */
+            depth?: number;
+            /**
+             * Format: int64
+             * @deprecated
+             */
+            parentId?: number;
+            /** @deprecated */
+            description?: string;
+            /** @deprecated */
+            title?: string;
+            /**
+             * @deprecated
+             * @example 14:30:00
+             */
+            dueTime?: string;
+            /**
+             * Format: int64
+             * @deprecated
+             */
+            projectId?: number;
+            /**
+             * Format: date-time
+             * @deprecated
+             */
+            createdAt?: string;
+            /** @deprecated */
+            progressRate?: number;
+            /**
+             * Format: date-time
+             * @deprecated
+             */
+            updatedAt?: string;
+            /** @deprecated */
+            scopeType?: string;
+            /**
+             * Format: int32
+             * @deprecated
+             */
+            sortOrder?: number;
+            /** @deprecated */
+            createdBy?: components["schemas"]["UserInfo"];
+            /**
+             * Format: int64
+             * @deprecated
+             */
+            milestoneId?: number;
+            /**
+             * Format: date
+             * @deprecated
+             */
+            startDate?: string;
+            /**
              * Format: date-time
              * @deprecated
              */
@@ -43144,88 +43455,28 @@ export interface components {
              * Format: int64
              * @deprecated
              */
-            milestoneId?: number;
-            /**
-             * Format: int64
-             * @deprecated
-             */
-            parentId?: number;
-            /**
-             * Format: int32
-             * @deprecated
-             */
-            depth?: number;
-            /** @deprecated */
-            description?: string;
-            /**
-             * @deprecated
-             * @example 14:30:00
-             */
-            dueTime?: string;
+            linkedScheduleId?: number;
             /** @deprecated */
             progressManual?: boolean;
             /** @deprecated */
             completedBy?: components["schemas"]["UserInfo"];
             /**
-             * Format: int64
-             * @deprecated
-             */
-            projectId?: number;
-            /** @deprecated */
-            title?: string;
-            /**
-             * Format: date-time
-             * @deprecated
-             */
-            createdAt?: string;
-            /**
-             * Format: date-time
-             * @deprecated
-             */
-            updatedAt?: string;
-            /** @deprecated */
-            progressRate?: number;
-            /** @deprecated */
-            createdBy?: components["schemas"]["UserInfo"];
-            /** @deprecated */
-            scopeType?: string;
-            /**
              * Format: int32
              * @deprecated
              */
-            sortOrder?: number;
-            /**
-             * Format: date
-             * @deprecated
-             */
-            startDate?: string;
-            /**
-             * Format: int64
-             * @deprecated
-             */
-            linkedScheduleId?: number;
-            /**
-             * Format: date
-             * @deprecated
-             */
-            dueDate?: string;
+            descendantCompletedCount?: number;
+            /** @deprecated */
+            statusLabel?: components["schemas"]["TodoStatusLabelInfo"];
             /**
              * Format: int64
              * @deprecated
              */
             daysRemaining?: number;
-            /** @deprecated */
-            statusLabel?: components["schemas"]["TodoStatusLabelInfo"];
             /**
              * Format: int32
              * @deprecated
              */
             descendantTotalCount?: number;
-            /**
-             * Format: int32
-             * @deprecated
-             */
-            descendantCompletedCount?: number;
         };
         TodoScheduleDto: {
             /** Format: date */
@@ -43253,11 +43504,6 @@ export interface components {
             name?: string;
             bucket?: string;
             color?: string;
-        };
-        UserInfo: {
-            /** Format: int64 */
-            id?: number;
-            displayName?: string;
         };
         PersonalMemoRequest: {
             memo?: string;
@@ -43439,8 +43685,8 @@ export interface components {
             updatedAt?: string;
             /** Format: date-time */
             deletedAt?: string;
-            ownMemo?: boolean;
             editable?: boolean;
+            ownMemo?: boolean;
         };
         UpdateCommentRequest: {
             body?: string;
@@ -44051,87 +44297,6 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
-        };
-        UpdateProjectRequest: {
-            title?: string;
-            description?: string;
-            emoji?: string;
-            color?: string;
-            /** Format: date */
-            dueDate?: string;
-            visibility?: string;
-            status?: string;
-        };
-        ApiResponseProjectResponse: {
-            data?: components["schemas"]["ProjectResponse"];
-        };
-        MilestoneSummary: {
-            /** Format: int64 */
-            total?: number;
-            /** Format: int64 */
-            completed?: number;
-        };
-        ProjectResponse: {
-            /** Format: int64 */
-            id?: number;
-            title?: string;
-            emoji?: string;
-            color?: string;
-            /** Format: date */
-            dueDate?: string;
-            /** Format: int64 */
-            daysRemaining?: number;
-            status?: string;
-            progressRate?: number;
-            /** Format: int32 */
-            totalTodos?: number;
-            /** Format: int32 */
-            completedTodos?: number;
-            milestones?: components["schemas"]["MilestoneSummary"];
-            createdBy?: components["schemas"]["UserInfo"];
-            /** Format: date-time */
-            createdAt?: string;
-        };
-        UpdateMilestoneRequest: {
-            title?: string;
-            /** Format: date */
-            dueDate?: string;
-            /** Format: int32 */
-            sortOrder?: number;
-        };
-        ApiResponseMilestoneResponse: {
-            data?: components["schemas"]["MilestoneResponse"];
-        };
-        MilestoneResponse: {
-            /** Format: int64 */
-            id?: number;
-            /** Format: int64 */
-            projectId?: number;
-            title?: string;
-            /** Format: date */
-            dueDate?: string;
-            /** Format: int32 */
-            sortOrder?: number;
-            /** Format: date-time */
-            completedAt?: string;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
-            progressRate?: number;
-            /** Format: int64 */
-            lockedByMilestoneId?: number;
-            lockedByMilestoneTitle?: string;
-            completionMode?: string;
-            /** Format: int64 */
-            lockedTodoCount?: number;
-            forceUnlocked?: boolean;
-            /** Format: date-time */
-            lockedAt?: string;
-            /** Format: date-time */
-            unlockedAt?: string;
-            locked?: boolean;
-            completed?: boolean;
         };
         IconEntry: {
             eventType?: string;
@@ -45136,8 +45301,8 @@ export interface components {
             /** Format: int32 */
             severity?: number;
             note?: string;
-            xposition?: number;
             yposition?: number;
+            xposition?: number;
         };
         ChartFormulaResponse: {
             /** Format: int64 */
@@ -45233,8 +45398,8 @@ export interface components {
             /** Format: int32 */
             severity: number;
             note?: string;
-            xposition?: number;
             yposition?: number;
+            xposition?: number;
         };
         UpdateBodyMarksRequest: {
             marks: components["schemas"]["ChartBodyMarkRequest"][];
@@ -46293,6 +46458,25 @@ export interface components {
         };
         UpdateNavSettingsRequest: {
             hiddenNavKeys: string[];
+        };
+        UpdateAppearanceRequest: {
+            /** @enum {string} */
+            theme: "LIGHT" | "DARK";
+            bgColor: string;
+            /** Format: int64 */
+            seasonalThemeId?: number;
+            hideChatPreview: boolean;
+        };
+        ApiResponseAppearanceResponse: {
+            data?: components["schemas"]["AppearanceResponse"];
+        };
+        AppearanceResponse: {
+            /** @enum {string} */
+            theme?: "LIGHT" | "DARK";
+            bgColor?: string;
+            /** Format: int64 */
+            seasonalThemeId?: number;
+            hideChatPreview?: boolean;
         };
         UpsertPenaltySettingRequest: {
             /** Format: int32 */
@@ -49848,6 +50032,22 @@ export interface components {
                 [key: string]: string;
             };
         };
+        CreateProjectRequest: {
+            title?: string;
+            description?: string;
+            emoji?: string;
+            color?: string;
+            /** Format: date */
+            dueDate?: string;
+            visibility?: string;
+        };
+        CreateMilestoneRequest: {
+            title?: string;
+            /** Format: date */
+            dueDate?: string;
+            /** Format: int32 */
+            sortOrder?: number;
+        };
         ProfileMediaUploadUrlRequest: {
             contentType?: string;
             /** Format: int64 */
@@ -50165,10 +50365,10 @@ export interface components {
             status?: "PUBLISHED" | "DRAFT" | "SCHEDULED" | "HIDDEN" | "DELETED";
             /** Format: uuid */
             scopeVillageId?: string;
-            /** Format: int64 */
-            scopeIdOrDefault?: number;
             postedAsTypeOrDefault?: string;
             scopeTypeOrDefault?: string;
+            /** Format: int64 */
+            scopeIdOrDefault?: number;
         };
         ApiResponsePostResponse: {
             data?: components["schemas"]["PostResponse"];
@@ -50405,8 +50605,8 @@ export interface components {
             remindBeforeMinutes?: number;
             /** @enum {string} */
             reminderKind?: "RELATIVE" | "ABSOLUTE";
-            remindAtValid?: boolean;
             remindBeforeMinutesValid?: boolean;
+            remindAtValid?: boolean;
         };
         CreateScheduleRequest: {
             title?: string;
@@ -51825,22 +52025,6 @@ export interface components {
         AudienceEstimateResponse: {
             /** Format: int32 */
             estimatedCount?: number;
-        };
-        CreateProjectRequest: {
-            title?: string;
-            description?: string;
-            emoji?: string;
-            color?: string;
-            /** Format: date */
-            dueDate?: string;
-            visibility?: string;
-        };
-        CreateMilestoneRequest: {
-            title?: string;
-            /** Format: date */
-            dueDate?: string;
-            /** Format: int32 */
-            sortOrder?: number;
         };
         PresenceHomeRequest: {
             message?: string;
@@ -57320,8 +57504,8 @@ export interface components {
             reminders?: number[];
             absoluteReminders?: string[];
             recurrenceRule?: components["schemas"]["RecurrenceRuleDto"];
-            eventTypeOrDefault?: string;
             reminderCountWithinLimit?: boolean;
+            eventTypeOrDefault?: string;
         };
         ApiResponsePersonalScheduleResponse: {
             data?: components["schemas"]["PersonalScheduleResponse"];
@@ -60129,8 +60313,8 @@ export interface components {
             remindBeforeMinutes?: number;
             /** @enum {string} */
             reminderKind?: "RELATIVE" | "ABSOLUTE";
-            remindAtValid?: boolean;
             remindBeforeMinutesValid?: boolean;
+            remindAtValid?: boolean;
         };
         UpdateScheduleRequest: {
             title?: string;
@@ -60817,9 +61001,9 @@ export interface components {
             custom_fields?: boolean;
             establishedDateVisible?: boolean;
             homepageUrlVisible?: boolean;
-            officersVisible?: boolean;
-            customFieldsVisible?: boolean;
             philosophyVisible?: boolean;
+            customFieldsVisible?: boolean;
+            officersVisible?: boolean;
         };
         UpdateTeamProfileRequest: {
             homepage_url?: string;
@@ -62517,12 +62701,10 @@ export interface components {
             data?: components["schemas"]["PageJoinRequestResponse"];
         };
         PageJoinRequestResponse: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
-            first?: boolean;
-            last?: boolean;
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["JoinRequestResponse"][];
@@ -62532,23 +62714,25 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         PageableObject: {
             /** Format: int64 */
             offset?: number;
             sort?: components["schemas"]["SortObject"];
-            paged?: boolean;
             /** Format: int32 */
             pageNumber?: number;
             /** Format: int32 */
             pageSize?: number;
+            paged?: boolean;
             unpaged?: boolean;
         };
         SortObject: {
             empty?: boolean;
-            unsorted?: boolean;
             sorted?: boolean;
+            unsorted?: boolean;
         };
         ApiResponseListFestivalResponse: {
             data?: components["schemas"]["FestivalResponse"][];
@@ -62698,6 +62882,10 @@ export interface components {
             /** Format: date-time */
             createdAt?: string;
         };
+        PagedResponseProjectResponse: {
+            data?: components["schemas"]["ProjectResponse"][];
+            meta?: components["schemas"]["PageMeta"];
+        };
         ApiResponseGatesSummaryResponse: {
             data?: components["schemas"]["GatesSummaryResponse"];
         };
@@ -62747,6 +62935,111 @@ export interface components {
             lockedReasonMilestoneId?: number;
             lockedReasonMilestoneTitle?: string;
             previousProgressRate?: number;
+        };
+        ApiResponseProjectDetailResponse: {
+            data?: components["schemas"]["ProjectDetailResponse"];
+        };
+        MilestoneDetail: {
+            /** Format: int64 */
+            id?: number;
+            title?: string;
+            /** Format: date */
+            dueDate?: string;
+            /** Format: date-time */
+            completedAt?: string;
+            progressRate?: number;
+            /** Format: int64 */
+            totalTodos?: number;
+            /** Format: int64 */
+            completedTodos?: number;
+            /** Format: int32 */
+            sortOrder?: number;
+            completed?: boolean;
+        };
+        ProjectAuditDto: {
+            createdBy?: components["schemas"]["UserInfo"];
+        };
+        ProjectContentDto: {
+            title?: string;
+            description?: string;
+            emoji?: string;
+            color?: string;
+        };
+        ProjectDetailResponse: {
+            /** Format: int64 */
+            id?: number;
+            meta?: components["schemas"]["ProjectMetaDto"];
+            content?: components["schemas"]["ProjectContentDto"];
+            schedule?: components["schemas"]["ProjectScheduleDto"];
+            progress?: components["schemas"]["ProjectProgressDto"];
+            milestones?: components["schemas"]["MilestoneDetail"][];
+            unassignedTodos?: components["schemas"]["UnassignedTodos"];
+            audit?: components["schemas"]["ProjectAuditDto"];
+            /**
+             * Format: date
+             * @deprecated
+             */
+            dueDate?: string;
+            /** @deprecated */
+            emoji?: string;
+            /** @deprecated */
+            status?: string;
+            /** @deprecated */
+            description?: string;
+            /** @deprecated */
+            visibility?: string;
+            /** @deprecated */
+            title?: string;
+            /** @deprecated */
+            color?: string;
+            /** @deprecated */
+            progressRate?: number;
+            /** @deprecated */
+            createdBy?: components["schemas"]["UserInfo"];
+            /**
+             * Format: int32
+             * @deprecated
+             */
+            totalTodos?: number;
+            /**
+             * Format: int32
+             * @deprecated
+             */
+            completedTodos?: number;
+            /**
+             * Format: int64
+             * @deprecated
+             */
+            daysRemaining?: number;
+        };
+        ProjectMetaDto: {
+            status?: string;
+            visibility?: string;
+        };
+        ProjectProgressDto: {
+            progressRate?: number;
+            /** Format: int32 */
+            totalTodos?: number;
+            /** Format: int32 */
+            completedTodos?: number;
+        };
+        ProjectScheduleDto: {
+            /** Format: date */
+            dueDate?: string;
+            /** Format: int64 */
+            daysRemaining?: number;
+        };
+        UnassignedTodos: {
+            /** Format: int64 */
+            total?: number;
+            /** Format: int64 */
+            completed?: number;
+        };
+        ApiResponseListTodoResponse: {
+            data?: components["schemas"]["TodoResponse"][];
+        };
+        ApiResponseListMilestoneResponse: {
+            data?: components["schemas"]["MilestoneResponse"][];
         };
         ApiResponseListOAuthProviderResponse: {
             data?: components["schemas"]["OAuthProviderResponse"][];
@@ -62973,9 +63266,6 @@ export interface components {
         };
         MyTournamentFeesResponse: {
             fees?: components["schemas"]["MyTournamentFeeItem"][];
-        };
-        ApiResponseListTodoResponse: {
-            data?: components["schemas"]["TodoResponse"][];
         };
         ApiResponseListGanttTodoResponse: {
             data?: components["schemas"]["GanttTodoResponse"][];
@@ -63671,112 +63961,6 @@ export interface components {
             /** Format: double */
             openRate?: number;
             dailySummaries?: components["schemas"]["DailySummary"][];
-        };
-        PagedResponseProjectResponse: {
-            data?: components["schemas"]["ProjectResponse"][];
-            meta?: components["schemas"]["PageMeta"];
-        };
-        ApiResponseProjectDetailResponse: {
-            data?: components["schemas"]["ProjectDetailResponse"];
-        };
-        MilestoneDetail: {
-            /** Format: int64 */
-            id?: number;
-            title?: string;
-            /** Format: date */
-            dueDate?: string;
-            /** Format: date-time */
-            completedAt?: string;
-            progressRate?: number;
-            /** Format: int64 */
-            totalTodos?: number;
-            /** Format: int64 */
-            completedTodos?: number;
-            /** Format: int32 */
-            sortOrder?: number;
-            completed?: boolean;
-        };
-        ProjectAuditDto: {
-            createdBy?: components["schemas"]["UserInfo"];
-        };
-        ProjectContentDto: {
-            title?: string;
-            description?: string;
-            emoji?: string;
-            color?: string;
-        };
-        ProjectDetailResponse: {
-            /** Format: int64 */
-            id?: number;
-            meta?: components["schemas"]["ProjectMetaDto"];
-            content?: components["schemas"]["ProjectContentDto"];
-            schedule?: components["schemas"]["ProjectScheduleDto"];
-            progress?: components["schemas"]["ProjectProgressDto"];
-            milestones?: components["schemas"]["MilestoneDetail"][];
-            unassignedTodos?: components["schemas"]["UnassignedTodos"];
-            audit?: components["schemas"]["ProjectAuditDto"];
-            /** @deprecated */
-            color?: string;
-            /** @deprecated */
-            status?: string;
-            /** @deprecated */
-            description?: string;
-            /** @deprecated */
-            visibility?: string;
-            /**
-             * Format: int32
-             * @deprecated
-             */
-            completedTodos?: number;
-            /**
-             * Format: int32
-             * @deprecated
-             */
-            totalTodos?: number;
-            /** @deprecated */
-            title?: string;
-            /** @deprecated */
-            progressRate?: number;
-            /** @deprecated */
-            createdBy?: components["schemas"]["UserInfo"];
-            /** @deprecated */
-            emoji?: string;
-            /**
-             * Format: date
-             * @deprecated
-             */
-            dueDate?: string;
-            /**
-             * Format: int64
-             * @deprecated
-             */
-            daysRemaining?: number;
-        };
-        ProjectMetaDto: {
-            status?: string;
-            visibility?: string;
-        };
-        ProjectProgressDto: {
-            progressRate?: number;
-            /** Format: int32 */
-            totalTodos?: number;
-            /** Format: int32 */
-            completedTodos?: number;
-        };
-        ProjectScheduleDto: {
-            /** Format: date */
-            dueDate?: string;
-            /** Format: int64 */
-            daysRemaining?: number;
-        };
-        UnassignedTodos: {
-            /** Format: int64 */
-            total?: number;
-            /** Format: int64 */
-            completed?: number;
-        };
-        ApiResponseListMilestoneResponse: {
-            data?: components["schemas"]["MilestoneResponse"][];
         };
         ApiResponseListPresenceStatusResponse: {
             data?: components["schemas"]["PresenceStatusResponse"][];
@@ -64606,8 +64790,8 @@ export interface components {
             rsvpStatus?: string;
             /** Format: int32 */
             watcherCount?: number;
-            alreadyCheckedIn?: boolean;
             underCare?: boolean;
+            alreadyCheckedIn?: boolean;
         };
         ApiResponseDismissalStatusResponse: {
             data?: components["schemas"]["DismissalStatusResponse"];
@@ -65390,12 +65574,10 @@ export interface components {
             data?: components["schemas"]["PageNotificationResponse"];
         };
         PageNotificationResponse: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
-            first?: boolean;
-            last?: boolean;
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["NotificationResponse"][];
@@ -65405,6 +65587,8 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         FriendForwardExportListResponse: {
@@ -65718,12 +65902,10 @@ export interface components {
             data?: components["schemas"]["PagePurgeStatusRow"];
         };
         PagePurgeStatusRow: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
-            first?: boolean;
-            last?: boolean;
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PurgeStatusRow"][];
@@ -65733,6 +65915,8 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         PurgeStatusRow: {
@@ -65939,12 +66123,10 @@ export interface components {
             lastError?: string;
         };
         PageEmailOutboxSummaryResponse: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
-            first?: boolean;
-            last?: boolean;
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["EmailOutboxSummaryResponse"][];
@@ -65954,6 +66136,8 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         ApiResponseEmailOutboxDetailResponse: {
@@ -66024,12 +66208,10 @@ export interface components {
             data?: components["schemas"]["PageUserEntity"];
         };
         PageUserEntity: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
-            first?: boolean;
-            last?: boolean;
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["UserEntity"][];
@@ -66039,6 +66221,8 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         UserEntity: {
@@ -66113,12 +66297,10 @@ export interface components {
             data?: components["schemas"]["PageTeamEntity"];
         };
         PageTeamEntity: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
-            first?: boolean;
-            last?: boolean;
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["TeamEntity"][];
@@ -66128,6 +66310,8 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         TeamEntity: {
@@ -66221,12 +66405,10 @@ export interface components {
             timelinePostsPublic?: boolean;
         };
         PageOrganizationEntity: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
-            first?: boolean;
-            last?: boolean;
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["OrganizationEntity"][];
@@ -66236,6 +66418,8 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         ApiResponseListBatchEndpointSummary: {
@@ -67208,12 +67392,10 @@ export interface components {
             memberSince?: string;
         };
         PagePublicUserPostSummaryResponse: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
-            first?: boolean;
-            last?: boolean;
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicUserPostSummaryResponse"][];
@@ -67223,6 +67405,8 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         PublicUserPostSummaryResponse: {
@@ -67236,12 +67420,10 @@ export interface components {
             createdAt?: string;
         };
         PagePublicTimelinePostResponse: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
-            first?: boolean;
-            last?: boolean;
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicTimelinePostResponse"][];
@@ -67251,6 +67433,8 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         PublicScopeRef: {
@@ -67268,12 +67452,10 @@ export interface components {
             createdAt?: string;
         };
         PagePublicPostSummary: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
-            first?: boolean;
-            last?: boolean;
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicPostSummary"][];
@@ -67283,6 +67465,8 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         PublicAuthorIdentity: {
@@ -67319,12 +67503,10 @@ export interface components {
             answer?: string;
         };
         PagePublicEventResponse: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
-            first?: boolean;
-            last?: boolean;
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicEventResponse"][];
@@ -67334,6 +67516,8 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         PublicEventResponse: {
@@ -67384,12 +67568,10 @@ export interface components {
             canonicalSlug?: string;
         };
         PagePublicTeamSearchResultResponse: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
-            first?: boolean;
-            last?: boolean;
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicTeamSearchResultResponse"][];
@@ -67399,6 +67581,8 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         PublicTeamSearchResultResponse: {
@@ -67581,12 +67765,10 @@ export interface components {
             mapEmbedUrl?: string;
         };
         PagePublicOrganizationSearchResultResponse: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
-            first?: boolean;
-            last?: boolean;
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicOrganizationSearchResultResponse"][];
@@ -67596,6 +67778,8 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         PublicOrganizationSearchResultResponse: {
@@ -67676,12 +67860,10 @@ export interface components {
             data?: components["schemas"]["MarketListingResponse"];
         };
         PagePublicPostCommentResponse: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
-            first?: boolean;
-            last?: boolean;
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["PublicPostCommentResponse"][];
@@ -67691,6 +67873,8 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         PagedResponseSessionListResponse: {
@@ -68441,12 +68625,10 @@ export interface components {
             data?: components["schemas"]["PageSuccessionCovenantResponse"];
         };
         PageSuccessionCovenantResponse: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
-            first?: boolean;
-            last?: boolean;
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["SuccessionCovenantResponse"][];
@@ -68456,6 +68638,8 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         ApiResponseListOrgWideSafetyCheckDto: {
@@ -68518,12 +68702,10 @@ export interface components {
             data?: components["schemas"]["BalanceEventResponse"][];
         };
         PageStampEventResponse: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
-            first?: boolean;
-            last?: boolean;
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["StampEventResponse"][];
@@ -68533,6 +68715,8 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         ApiResponseListPointCardProviderResponse: {
@@ -68549,12 +68733,10 @@ export interface components {
             webUrl?: string;
         };
         PageBalanceEventResponse: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
-            first?: boolean;
-            last?: boolean;
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["BalanceEventResponse"][];
@@ -68564,6 +68746,8 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         PagedResponsePaymentRequestResponse: {
@@ -68714,12 +68898,10 @@ export interface components {
             createdAt?: string;
         };
         PageCommitteeSummaryResponse: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
-            first?: boolean;
-            last?: boolean;
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["CommitteeSummaryResponse"][];
@@ -68729,6 +68911,8 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         OrganizationSummaryResponse: {
@@ -70316,12 +70500,10 @@ export interface components {
             data?: components["schemas"]["PageCommitteeDistributionLogResponse"];
         };
         PageCommitteeDistributionLogResponse: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
-            first?: boolean;
-            last?: boolean;
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["CommitteeDistributionLogResponse"][];
@@ -70331,6 +70513,8 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         ApiResponseExportStatusResponse: {
@@ -70817,12 +71001,10 @@ export interface components {
             data?: components["schemas"]["PageVillageCreationRequestResponse"];
         };
         PageVillageCreationRequestResponse: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
-            first?: boolean;
-            last?: boolean;
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["VillageCreationRequestResponse"][];
@@ -70832,6 +71014,8 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         NameDisclosureChangeLogResponse: {
@@ -71002,12 +71186,10 @@ export interface components {
             data?: components["schemas"]["PageUserRoleEntity"];
         };
         PageUserRoleEntity: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
-            first?: boolean;
-            last?: boolean;
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["UserRoleEntity"][];
@@ -71017,6 +71199,8 @@ export interface components {
             /** Format: int32 */
             numberOfElements?: number;
             pageable?: components["schemas"]["PageableObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         UserRoleEntity: {
@@ -72528,6 +72712,122 @@ export interface operations {
             header?: never;
             path: {
                 labelId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseProjectDetailResponse"];
+                };
+            };
+        };
+    };
+    updateProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProjectRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseProjectResponse"];
+                };
+            };
+        };
+    };
+    deleteProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateMilestone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                mid: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMilestoneRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMilestoneResponse"];
+                };
+            };
+        };
+    };
+    deleteMilestone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                mid: number;
             };
             cookie?: never;
         };
@@ -74574,7 +74874,7 @@ export interface operations {
             };
         };
     };
-    getProject: {
+    getProject_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -74597,7 +74897,7 @@ export interface operations {
             };
         };
     };
-    updateProject: {
+    updateProject_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -74624,7 +74924,7 @@ export interface operations {
             };
         };
     };
-    deleteProject: {
+    deleteProject_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -74645,7 +74945,7 @@ export interface operations {
             };
         };
     };
-    updateMilestone: {
+    updateMilestone_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -74673,7 +74973,7 @@ export interface operations {
             };
         };
     };
-    deleteMilestone: {
+    deleteMilestone_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -78852,6 +79152,50 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    getAppearance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAppearanceResponse"];
+                };
+            };
+        };
+    };
+    updateAppearance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAppearanceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAppearanceResponse"];
+                };
             };
         };
     };
@@ -88385,6 +88729,102 @@ export interface operations {
             };
         };
     };
+    listProjects: {
+        parameters: {
+            query?: {
+                status?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseProjectResponse"];
+                };
+            };
+        };
+    };
+    createProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProjectRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseProjectResponse"];
+                };
+            };
+        };
+    };
+    listMilestones: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListMilestoneResponse"];
+                };
+            };
+        };
+    };
+    createMilestone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMilestoneRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMilestoneResponse"];
+                };
+            };
+        };
+    };
     generateUploadUrl: {
         parameters: {
             query?: never;
@@ -92458,7 +92898,7 @@ export interface operations {
             };
         };
     };
-    listProjects: {
+    listProjects_1: {
         parameters: {
             query?: {
                 status?: string;
@@ -92484,7 +92924,7 @@ export interface operations {
             };
         };
     };
-    createProject: {
+    createProject_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -92510,7 +92950,7 @@ export interface operations {
             };
         };
     };
-    listMilestones: {
+    listMilestones_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -92533,7 +92973,7 @@ export interface operations {
             };
         };
     };
-    createMilestone: {
+    createMilestone_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -117967,6 +118407,73 @@ export interface operations {
             };
         };
     };
+    reopenProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseProjectResponse"];
+                };
+            };
+        };
+    };
+    completeMilestone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                mid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMilestoneResponse"];
+                };
+            };
+        };
+    };
+    completeProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseProjectResponse"];
+                };
+            };
+        };
+    };
     changePassword: {
         parameters: {
             query?: never;
@@ -119545,7 +120052,7 @@ export interface operations {
             };
         };
     };
-    reopenProject: {
+    reopenProject_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -119568,7 +120075,7 @@ export interface operations {
             };
         };
     };
-    completeMilestone: {
+    completeMilestone_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -119592,7 +120099,7 @@ export interface operations {
             };
         };
     };
-    completeProject: {
+    completeProject_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -129683,6 +130190,28 @@ export interface operations {
             };
         };
     };
+    listProjectTodos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListTodoResponse"];
+                };
+            };
+        };
+    };
     getConnectedProviders: {
         parameters: {
             query?: never;
@@ -131431,7 +131960,7 @@ export interface operations {
             };
         };
     };
-    listProjectTodos: {
+    listProjectTodos_1: {
         parameters: {
             query?: never;
             header?: never;

@@ -316,6 +316,36 @@ class DashboardScopeTabServiceTest {
         }
 
         @Test
+        @DisplayName("ORG: membership は存在するが organization が論理削除済み（孤児）の場合は一覧から除外される")
+        void orphanOrganizationMembershipExcluded() {
+            // activeScopeIds: 20（実在）, 301（孤児: org 削除済み）, 302（孤児）
+            given(membershipRepository.findActiveByUserAndScopeType(eq(USER_ID), any()))
+                    .willReturn(List.of(
+                            activeMembership(20L, com.mannschaft.app.membership.domain.ScopeType.ORGANIZATION, LocalDateTime.now()),
+                            activeMembership(301L, com.mannschaft.app.membership.domain.ScopeType.ORGANIZATION, LocalDateTime.now().minusDays(1)),
+                            activeMembership(302L, com.mannschaft.app.membership.domain.ScopeType.ORGANIZATION, LocalDateTime.now().minusDays(2))));
+            given(scopeTabOrderRepository.findByUserIdAndScopeTypeOrderBySortOrderAsc(USER_ID, "ORGANIZATION"))
+                    .willReturn(List.of());
+            // findById は buildItem 内の個別取得（ORGANIZATION 分岐）。
+            // org.getName()/getIconUrl()/getSlug() はデフォルト null を返すMockitoモックで十分。
+            // getId() は buildItem では scopeId パラメータを直接使うため不要。
+            OrganizationEntity mockOrg20 = org.mockito.Mockito.mock(OrganizationEntity.class);
+            lenient().when(organizationRepository.findById(20L)).thenReturn(Optional.of(mockOrg20));
+            // findAllById: 20 のみ実在、301 と 302 は論理削除済み（@SQLRestriction により結果に含まれない）。
+            given(organizationRepository.findAllById(any())).willAnswer(inv -> {
+                OrganizationEntity mock20 = org.mockito.Mockito.mock(OrganizationEntity.class);
+                org.mockito.Mockito.when(mock20.getId()).thenReturn(20L);
+                return List.of(mock20);
+            });
+
+            ScopeTabPageResponse res = service.getScopeTabs("ORGANIZATION", 0, null);
+
+            // 孤児 membership (301, 302) は除外され、実在する 20 のみが返る。
+            assertThat(res.items()).extracting(ScopeTabItemResponse::scopeId).containsExactly(20L);
+            assertThat(res.totalCount()).isEqualTo(1);
+        }
+
+        @Test
         @DisplayName("他人所有/不在フォルダは SCOPE_TAB_004")
         void foreignFolder() {
             lenient().when(membershipRepository.findActiveByUserAndScopeType(eq(USER_ID), any()))
