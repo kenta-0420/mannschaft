@@ -1,4 +1,10 @@
 {
+  "security": {
+    "session": {
+      "device_label": "{os} 上的 {browser}",
+      "unknown_device": "未知设备"
+    }
+  },
   "data_export": {
     "section_title": "数据导出",
     "export_button": "导出个人数据",
