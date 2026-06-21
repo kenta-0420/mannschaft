@@ -1,4 +1,9 @@
 import { defineStore } from 'pinia'
+import type { components } from '~/types/generated'
+
+// 生成型エイリアス
+type AppearanceResponse = components['schemas']['AppearanceResponse']
+type UpdateAppearanceRequest = components['schemas']['UpdateAppearanceRequest']
 
 type ThemeMode = 'LIGHT' | 'DARK'
 
@@ -98,14 +103,16 @@ export const useAppearanceStore = defineStore('appearance', {
     async syncWithServer() {
       try {
         const api = useApi()
+        // 生成型 UpdateAppearanceRequest に合わせたボディ（seasonalThemeId は optional）
+        const body: UpdateAppearanceRequest = {
+          theme: this.theme,
+          bgColor: this.bgColor,
+          hideChatPreview: this.hideChatPreview,
+          ...(this.seasonalThemeId !== null ? { seasonalThemeId: this.seasonalThemeId } : {}),
+        }
         await api('/api/v1/settings/appearance', {
           method: 'PUT',
-          body: {
-            theme: this.theme,
-            bgColor: this.bgColor,
-            seasonalThemeId: this.seasonalThemeId,
-            hideChatPreview: this.hideChatPreview,
-          },
+          body,
         })
       }
       catch {
@@ -116,12 +123,13 @@ export const useAppearanceStore = defineStore('appearance', {
     async loadFromServer() {
       try {
         const api = useApi()
-        const response = await api<{ data: AppearanceState }>('/api/v1/settings/appearance')
-        const t = response.data.theme as string
+        // 生成型 AppearanceResponse を使用してサーバーレスポンスを型付け
+        const response = await api<{ data: AppearanceResponse }>('/api/v1/settings/appearance')
+        const t = response.data.theme
         this.theme = (t === 'LIGHT' || t === 'DARK') ? t : 'LIGHT'
-        this.bgColor = response.data.bgColor
-        this.seasonalThemeId = response.data.seasonalThemeId
-        this.hideChatPreview = response.data.hideChatPreview
+        this.bgColor = response.data.bgColor ?? '#f3efe0'
+        this.seasonalThemeId = response.data.seasonalThemeId ?? null
+        this.hideChatPreview = response.data.hideChatPreview ?? false
         this.applyTheme()
         this.applyBgColor()
         this.persistToStorage()

@@ -9,6 +9,10 @@ import type {
   SealScopeType,
 } from '~/types/seal'
 
+// TODO: BEの ScopeDefaultResponse に variant フィールドが未実装のため手動型を維持。
+//        StampLogResponse も stampId / variant / targetTitle / revokeReason が未実装。
+//        BE DTO 修正後は ~/types/generated の ScopeDefaultResponse / StampLogResponse へ移行。
+
 export function useSealApi() {
   const api = useApi()
 

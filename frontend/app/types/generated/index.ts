@@ -43387,60 +43387,43 @@ export interface components {
             /** @deprecated */
             children?: components["schemas"]["TodoResponse"][];
             /**
-             * Format: date
-             * @deprecated
-             */
-            dueDate?: string;
-            /**
-             * Format: int32
-             * @deprecated
-             */
-            depth?: number;
-            /**
              * Format: int64
              * @deprecated
              */
             parentId?: number;
-            /** @deprecated */
-            description?: string;
-            /** @deprecated */
-            title?: string;
             /**
              * @deprecated
              * @example 14:30:00
              */
             dueTime?: string;
-            /**
-             * Format: int64
-             * @deprecated
-             */
-            projectId?: number;
-            /**
-             * Format: date-time
-             * @deprecated
-             */
-            createdAt?: string;
             /** @deprecated */
-            progressRate?: number;
-            /**
-             * Format: date-time
-             * @deprecated
-             */
-            updatedAt?: string;
-            /** @deprecated */
-            scopeType?: string;
+            createdBy?: components["schemas"]["UserInfo"];
             /**
              * Format: int32
              * @deprecated
              */
             sortOrder?: number;
             /** @deprecated */
-            createdBy?: components["schemas"]["UserInfo"];
+            description?: string;
             /**
-             * Format: int64
+             * Format: int32
              * @deprecated
              */
-            milestoneId?: number;
+            depth?: number;
+            /** @deprecated */
+            scopeType?: string;
+            /** @deprecated */
+            progressRate?: number;
+            /**
+             * Format: date-time
+             * @deprecated
+             */
+            createdAt?: string;
+            /**
+             * Format: date-time
+             * @deprecated
+             */
+            updatedAt?: string;
             /**
              * Format: date
              * @deprecated
@@ -43455,28 +43438,45 @@ export interface components {
              * Format: int64
              * @deprecated
              */
-            linkedScheduleId?: number;
-            /** @deprecated */
-            progressManual?: boolean;
-            /** @deprecated */
-            completedBy?: components["schemas"]["UserInfo"];
+            milestoneId?: number;
             /**
              * Format: int32
              * @deprecated
              */
             descendantCompletedCount?: number;
             /** @deprecated */
-            statusLabel?: components["schemas"]["TodoStatusLabelInfo"];
+            title?: string;
+            /** @deprecated */
+            progressManual?: boolean;
+            /** @deprecated */
+            completedBy?: components["schemas"]["UserInfo"];
             /**
              * Format: int64
              * @deprecated
              */
-            daysRemaining?: number;
+            projectId?: number;
+            /**
+             * Format: int64
+             * @deprecated
+             */
+            linkedScheduleId?: number;
+            /**
+             * Format: date
+             * @deprecated
+             */
+            dueDate?: string;
             /**
              * Format: int32
              * @deprecated
              */
             descendantTotalCount?: number;
+            /**
+             * Format: int64
+             * @deprecated
+             */
+            daysRemaining?: number;
+            /** @deprecated */
+            statusLabel?: components["schemas"]["TodoStatusLabelInfo"];
         };
         TodoScheduleDto: {
             /** Format: date */
@@ -43685,8 +43685,8 @@ export interface components {
             updatedAt?: string;
             /** Format: date-time */
             deletedAt?: string;
-            editable?: boolean;
             ownMemo?: boolean;
+            editable?: boolean;
         };
         UpdateCommentRequest: {
             body?: string;
@@ -45301,8 +45301,8 @@ export interface components {
             /** Format: int32 */
             severity?: number;
             note?: string;
-            yposition?: number;
             xposition?: number;
+            yposition?: number;
         };
         ChartFormulaResponse: {
             /** Format: int64 */
@@ -45398,8 +45398,8 @@ export interface components {
             /** Format: int32 */
             severity: number;
             note?: string;
-            yposition?: number;
             xposition?: number;
+            yposition?: number;
         };
         UpdateBodyMarksRequest: {
             marks: components["schemas"]["ChartBodyMarkRequest"][];
@@ -50366,9 +50366,9 @@ export interface components {
             /** Format: uuid */
             scopeVillageId?: string;
             postedAsTypeOrDefault?: string;
-            scopeTypeOrDefault?: string;
             /** Format: int64 */
             scopeIdOrDefault?: number;
+            scopeTypeOrDefault?: string;
         };
         ApiResponsePostResponse: {
             data?: components["schemas"]["PostResponse"];
@@ -50605,8 +50605,8 @@ export interface components {
             remindBeforeMinutes?: number;
             /** @enum {string} */
             reminderKind?: "RELATIVE" | "ABSOLUTE";
-            remindBeforeMinutesValid?: boolean;
             remindAtValid?: boolean;
+            remindBeforeMinutesValid?: boolean;
         };
         CreateScheduleRequest: {
             title?: string;
@@ -57504,8 +57504,8 @@ export interface components {
             reminders?: number[];
             absoluteReminders?: string[];
             recurrenceRule?: components["schemas"]["RecurrenceRuleDto"];
-            reminderCountWithinLimit?: boolean;
             eventTypeOrDefault?: string;
+            reminderCountWithinLimit?: boolean;
         };
         ApiResponsePersonalScheduleResponse: {
             data?: components["schemas"]["PersonalScheduleResponse"];
@@ -60313,8 +60313,8 @@ export interface components {
             remindBeforeMinutes?: number;
             /** @enum {string} */
             reminderKind?: "RELATIVE" | "ABSOLUTE";
-            remindBeforeMinutesValid?: boolean;
             remindAtValid?: boolean;
+            remindBeforeMinutesValid?: boolean;
         };
         UpdateScheduleRequest: {
             title?: string;
@@ -60999,11 +60999,11 @@ export interface components {
             philosophy?: boolean;
             officers?: boolean;
             custom_fields?: boolean;
-            establishedDateVisible?: boolean;
-            homepageUrlVisible?: boolean;
-            philosophyVisible?: boolean;
             customFieldsVisible?: boolean;
             officersVisible?: boolean;
+            philosophyVisible?: boolean;
+            homepageUrlVisible?: boolean;
+            establishedDateVisible?: boolean;
         };
         UpdateTeamProfileRequest: {
             homepage_url?: string;
@@ -62722,17 +62722,17 @@ export interface components {
             /** Format: int64 */
             offset?: number;
             sort?: components["schemas"]["SortObject"];
+            unpaged?: boolean;
             /** Format: int32 */
             pageNumber?: number;
             /** Format: int32 */
             pageSize?: number;
             paged?: boolean;
-            unpaged?: boolean;
         };
         SortObject: {
             empty?: boolean;
-            sorted?: boolean;
             unsorted?: boolean;
+            sorted?: boolean;
         };
         ApiResponseListFestivalResponse: {
             data?: components["schemas"]["FestivalResponse"][];
@@ -62975,37 +62975,37 @@ export interface components {
             milestones?: components["schemas"]["MilestoneDetail"][];
             unassignedTodos?: components["schemas"]["UnassignedTodos"];
             audit?: components["schemas"]["ProjectAuditDto"];
-            /**
-             * Format: date
-             * @deprecated
-             */
-            dueDate?: string;
             /** @deprecated */
-            emoji?: string;
+            createdBy?: components["schemas"]["UserInfo"];
             /** @deprecated */
             status?: string;
             /** @deprecated */
             description?: string;
             /** @deprecated */
-            visibility?: string;
-            /** @deprecated */
-            title?: string;
-            /** @deprecated */
             color?: string;
+            /** @deprecated */
+            visibility?: string;
             /** @deprecated */
             progressRate?: number;
             /** @deprecated */
-            createdBy?: components["schemas"]["UserInfo"];
+            emoji?: string;
+            /** @deprecated */
+            title?: string;
+            /**
+             * Format: int32
+             * @deprecated
+             */
+            completedTodos?: number;
             /**
              * Format: int32
              * @deprecated
              */
             totalTodos?: number;
             /**
-             * Format: int32
+             * Format: date
              * @deprecated
              */
-            completedTodos?: number;
+            dueDate?: string;
             /**
              * Format: int64
              * @deprecated
@@ -64790,8 +64790,8 @@ export interface components {
             rsvpStatus?: string;
             /** Format: int32 */
             watcherCount?: number;
-            underCare?: boolean;
             alreadyCheckedIn?: boolean;
+            underCare?: boolean;
         };
         ApiResponseDismissalStatusResponse: {
             data?: components["schemas"]["DismissalStatusResponse"];
