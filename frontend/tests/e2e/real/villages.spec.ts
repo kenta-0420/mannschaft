@@ -333,6 +333,22 @@ test.describe('VLG-SPA-001〜006: 村タブ永続シェル（SPA）', () => {
     chronicle: '村史',
   } as const
 
+  // タブ表示名 → URL 末尾セグメント（VillageHeader.vue の tab.to 末尾に対応）。
+  // clickTab は表示名でなく href サフィックスでロケートするため、ここで対応付けする。
+  // 表示名だけだと「タイムライン」等がグローバルナビの同名リンク（/timeline 等）と
+  // 衝突し誤クリックするため、村ヘッダー内の href サフィックスで一意に特定する。
+  const LABEL_TO_SLUG: Record<string, string> = {
+    [TAB_LABELS.bulletin]: 'bulletin',
+    [TAB_LABELS.timeline]: 'timeline',
+    [TAB_LABELS.lobby]: 'lobby',
+    [TAB_LABELS.members]: 'members',
+    [TAB_LABELS.calendar]: 'calendar',
+    [TAB_LABELS.festival]: 'festivals',
+    [TAB_LABELS.matchRecruit]: 'match-recruits',
+    [TAB_LABELS.meetup]: 'meetups',
+    [TAB_LABELS.chronicle]: 'chronicles',
+  }
+
   test.beforeAll(async ({ playwright }) => {
     const ctx = await playwright.request.newContext()
     try {
@@ -360,9 +376,17 @@ test.describe('VLG-SPA-001〜006: 村タブ永続シェル（SPA）', () => {
     }
   })
 
-  /** VillageHeader のタブ NuxtLink をクリックする。 */
+  /**
+   * VillageHeader のタブ NuxtLink をクリックする。
+   *  グローバルナビの同名リンク（例: 「タイムライン」→ /timeline）を誤クリックしないよう
+   *  村ヘッダー（.village-header）内に **スコープ** し、href サフィックスでタブを一意に特定する。
+   */
   async function clickTab(page: Page, label: string): Promise<void> {
-    await page.getByRole('link', { name: label, exact: false }).first().click()
+    const slug = LABEL_TO_SLUG[label]
+    if (!slug) {
+      throw new Error(`未知のタブ表示名: ${label}（LABEL_TO_SLUG に未登録）`)
+    }
+    await page.locator(`.village-header a[href$="/${slug}"]`).first().click()
   }
 
   // -------------------------------------------------------------------------

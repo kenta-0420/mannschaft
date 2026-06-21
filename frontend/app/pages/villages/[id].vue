@@ -7,7 +7,7 @@
  * # 役割（永続シェル方式 / SPA）
  *  Nuxt 3 では `pages/villages/[id].vue` を置くと `pages/villages/[id]/*.vue` の親になる。
  *  本ファイルは村詳細の「常駐シェル」として以下を 1 度だけ解決し、子タブへ provide する:
- *    - 村データ（useAsyncData で SSR 対応・タブ遷移では再実行されない）
+ *    - 村データ（useAsyncData の `server: false` でクライアント専用取得・タブ遷移では再実行されない）
  *    - 自分のメンバーシップ（退村時に id が必要）
  *    - 権限フラグ（村長/長老/村人）
  *    - VillageHeader の常駐描画 + アクション emit ハンドラ（join/requestJoin/leave/
@@ -60,18 +60,41 @@ const { handleApiError } = useErrorHandler()
 const villageId = computed<string>(() => String(route.params.id))
 
 // =============================================================================
-// 村データ — useAsyncData で 1 回だけ取得（SSR 対応・タブ遷移で再実行しないキー）
+// 村データ — useAsyncData で 1 回だけ取得
+//  - `server: false`: 本アプリの認証はクライアント専用（useApi の onRequest が
+//    authStore.accessToken〔localStorage 由来〕がある時だけ Bearer を付与する）。
+//    SSR では authStore が空＝無認証となり BE が 401 を返して村取得が失敗し、
+//    親シェルがエラーフォールバックを表示してしまう（VillageHeader もタブも出ない）。
+//    そのため村取得はクライアント側に寄せ、authStore が確定してから実行する。
+//    旧子ページの onMounted 取得と同じ認証文脈になる。
+//  - 初回は villageData=null かつ status='pending' になるため、テンプレートは
+//    pending 中をローディング表示にして VillageHeader / 子(<NuxtPage>) を描画しない。
 // =============================================================================
 
 const {
   data: villageData,
   error: villageError,
+  status: villageStatus,
   refresh: refreshVillage,
 } = await useAsyncData(
   `village-${villageId.value}`,
   () => villageApi.getVillage(villageId.value),
-  // 永続シェルを維持したまま別の村へ遷移した場合（同一親ルート record）に再取得する。
-  { watch: [villageId] },
+  {
+    // SSR では無認証 fetch になるためクライアント専用にする（上記コメント参照）。
+    server: false,
+    // 永続シェルを維持したまま別の村へ遷移した場合（同一親ルート record）に再取得する。
+    watch: [villageId],
+  },
+)
+
+/**
+ * 村ロード中フラグ。
+ *  `server: false` のため初回は status='pending'（クライアントで取得確定前）。
+ *  この間は VillageHeader（village=null）や子パネルを描画せずローディングを出す。
+ *  別の村へ遷移して再取得している間も pending=true になり、据置中の村でちらつかせない。
+ */
+const isVillageLoading = computed<boolean>(
+  () => villageStatus.value === 'pending' || villageStatus.value === 'idle',
 )
 
 /** VillageHeader 用の交差型 Ref（村紋 r2Key を optional で許容）。 */
@@ -276,8 +299,16 @@ provideVillageContext({
 
 <template>
   <div>
+    <!--
+      村ロード中（server:false のため初回は必ずここ）。
+      authStore 確定後にクライアントで村を取得する。取得完了までは VillageHeader
+      （village=null）も子パネル（<NuxtPage>）も描画しない＝村 context 未解決での
+      子描画を防ぐ。タブ遷移時は村が据置のため pending にならずローディングは出ない。
+    -->
+    <PageLoading v-if="isVillageLoading" />
+
     <!-- 村が見つからない（404） -->
-    <div v-if="notFound" class="mx-auto max-w-2xl p-6 text-center">
+    <div v-else-if="notFound" class="mx-auto max-w-2xl p-6 text-center">
       <i class="pi pi-exclamation-circle text-4xl text-surface-400" aria-hidden="true" />
       <p class="mt-4 text-lg">
         {{ t('village.error.VILLAGE_001') }}
@@ -355,7 +386,19 @@ provideVillageContext({
       />
     </template>
 
-    <!-- 初回取得待ち（SSR 後のごく短い間）。タブ遷移時には出ない（村は据置）。 -->
-    <PageLoading v-else />
+    <!--
+      到達想定外フォールバック（pending でも error でも village 取得済みでもない）。
+      村が見つからない扱いにして無限ローディングや VillageHeader(null) 描画を防ぐ。
+    -->
+    <div v-else class="mx-auto max-w-2xl p-6 text-center">
+      <i class="pi pi-exclamation-circle text-4xl text-surface-400" aria-hidden="true" />
+      <p class="mt-4 text-lg">
+        {{ t('village.error.VILLAGE_001') }}
+      </p>
+      <NuxtLink to="/villages" class="mt-4 inline-block text-primary-600 hover:underline">
+        <i class="pi pi-arrow-left mr-1" />
+        {{ t('village.error.backToList') }}
+      </NuxtLink>
+    </div>
   </div>
 </template>
