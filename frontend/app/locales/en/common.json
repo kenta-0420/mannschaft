@@ -1511,6 +1511,7 @@
       "prevPage": "Previous page",
       "nextPage": "Next page",
       "reorder": "Change display order",
+      "goToScopePage": "Go to team/organization page",
       "empty": "You do not belong to any teams or organizations",
       "folderEmpty": "No scopes in this folder",
       "loadError": "Failed to load tag list"
