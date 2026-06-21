@@ -1,3 +1,7 @@
+import type { components } from '~/types/generated'
+
+type PersonalSyncStatusResponse = components['schemas']['PersonalSyncStatusResponse']
+
 interface GcalStatus {
   isConnected: boolean
   email: string | null
@@ -16,16 +20,28 @@ export function useAccountGcal() {
 
   const gcalStatus = ref<GcalStatus | null>(null)
   const gcalSyncSettings = ref<GcalSync | null>(null)
+  /** BE の PersonalSyncStatusResponse をそのまま保持する（接続状態・同期有効フラグ等）。
+   *  GcalSync（チーム・org 同期 ID リスト）と別物なので別 ref で管理。 */
+  const personalSyncStatus = ref<PersonalSyncStatusResponse | null>(null)
   const gcalSyncing = ref(false)
 
   async function loadGcal() {
     try {
-      const [statusRes, settingsRes] = await Promise.all([
+      const [statusRes, personalSyncRes] = await Promise.all([
         gcalApi.getConnectionStatus(),
         gcalApi.getPersonalSync(),
       ])
       gcalStatus.value = statusRes.data as GcalStatus
-      gcalSyncSettings.value = settingsRes as unknown as GcalSync
+      personalSyncStatus.value = personalSyncRes.data ?? null
+      // gcalSyncSettings は UI 側で teamSyncIds/orgSyncIds を扱うための別 ref
+      // 既存 UI との互換のため初期値は personalSyncEnabled を personalSync にマップ
+      if (gcalSyncSettings.value === null) {
+        gcalSyncSettings.value = {
+          personalSync: personalSyncRes.data?.personalSyncEnabled ?? false,
+          teamSyncIds: [],
+          orgSyncIds: [],
+        }
+      }
     } catch {
       /* silent */
     }
@@ -91,6 +107,7 @@ export function useAccountGcal() {
   return {
     gcalStatus,
     gcalSyncSettings,
+    personalSyncStatus,
     gcalSyncing,
     loadGcal,
     connectGoogle,
