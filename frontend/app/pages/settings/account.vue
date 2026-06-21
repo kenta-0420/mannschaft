@@ -14,11 +14,11 @@ async function handleDeleteAccount(currentPassword: string | null) {
       method: 'DELETE',
       body: { currentPassword: currentPassword ?? null },
     })
-    notification.success(t('settings.settings.delete_account.delete_success'))
+    notification.success(t('settings.delete_account.delete_success'))
     authStore.logout()
     setTimeout(() => navigateTo('/login'), 2000)
   } catch {
-    notification.error(t('settings.settings.delete_account.delete_error'))
+    notification.error(t('settings.delete_account.delete_error'))
   }
 }
 
@@ -153,7 +153,7 @@ onMounted(async () => {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <PageHeader :title="$t('settings.settings.account.page_title')" back-to="/settings" />
+    <PageHeader :title="$t('settings.account.page_title')" back-to="/settings" />
 
     <PageLoading v-if="!isMounted || loading" />
 
@@ -191,7 +191,7 @@ onMounted(async () => {
 
       <SettingsAppearanceSection />
 
-      <SectionCard :title="$t('settings.settings.account.notification_settings')">
+      <SectionCard :title="$t('settings.account.notification_settings')">
         <NotificationPreferences />
       </SectionCard>
 

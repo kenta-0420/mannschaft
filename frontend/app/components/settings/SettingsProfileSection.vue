@@ -19,14 +19,14 @@ defineEmits<{
 </script>
 
 <template>
-  <SectionCard :title="$t('settings.settings.profile.section_title')">
+  <SectionCard :title="$t('settings.profile.section_title')">
     <div class="space-y-4">
       <div class="flex items-center gap-4">
         <div>
           <img
             v-if="profile.avatarUrl"
             :src="profile.avatarUrl"
-            :alt="$t('settings.settings.profile.avatar_alt')"
+            :alt="$t('settings.profile.avatar_alt')"
             class="h-20 w-20 rounded-full object-cover"
           >
           <div
@@ -46,35 +46,35 @@ defineEmits<{
             >
             <Button
               translate="no"
-              :label="$t('settings.settings.profile.change_image')"
+              :label="$t('settings.profile.change_image')"
               icon="pi pi-upload"
               severity="secondary"
               size="small"
               as="span"
             />
           </label>
-          <p class="mt-1 text-xs text-surface-500">{{ $t('settings.settings.profile.image_hint') }}</p>
+          <p class="mt-1 text-xs text-surface-500">{{ $t('settings.profile.image_hint') }}</p>
         </div>
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium">{{ $t('settings.settings.profile.display_name') }}</label>
+        <label class="mb-1 block text-sm font-medium">{{ $t('settings.profile.display_name') }}</label>
         <InputText v-model="profile.nickname" class="w-full" />
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium">{{ $t('settings.settings.profile.phone_number') }}</label>
-        <InputText v-model="profile.phoneNumber" class="w-full" :placeholder="$t('settings.settings.profile.phone_placeholder')" />
+        <label class="mb-1 block text-sm font-medium">{{ $t('settings.profile.phone_number') }}</label>
+        <InputText v-model="profile.phoneNumber" class="w-full" :placeholder="$t('settings.profile.phone_placeholder')" />
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium">{{ $t('settings.settings.profile.postal_code') }}</label>
-        <InputText v-model="profile.postalCode" class="w-full" :placeholder="$t('settings.settings.profile.postal_placeholder')" />
+        <label class="mb-1 block text-sm font-medium">{{ $t('settings.profile.postal_code') }}</label>
+        <InputText v-model="profile.postalCode" class="w-full" :placeholder="$t('settings.profile.postal_placeholder')" />
       </div>
       <div
         class="flex items-center justify-between rounded-lg border border-surface-300 p-3 dark:border-surface-600"
       >
         <div>
-          <p class="text-sm font-medium">{{ $t('settings.settings.profile.searchable_label') }}</p>
+          <p class="text-sm font-medium">{{ $t('settings.profile.searchable_label') }}</p>
           <p class="text-xs text-surface-500">
-            {{ $t('settings.settings.profile.searchable_description') }}
+            {{ $t('settings.profile.searchable_description') }}
           </p>
         </div>
         <ToggleSwitch v-model="profile.isSearchable" />

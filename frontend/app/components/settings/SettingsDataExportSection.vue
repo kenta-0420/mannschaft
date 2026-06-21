@@ -13,15 +13,15 @@ let pollInterval: ReturnType<typeof setInterval> | null = null
 function getStatusLabel(status: DataExportResponse): string {
   const step = status.currentStep?.toLowerCase() ?? ''
   if (step === 'completed' || status.progressPercent === 100) {
-    return t('settings.data_export.step_completed', { expiry: formatExpiry(status.expiresAt) })
+    return t('data_export.step_completed', { expiry: formatExpiry(status.expiresAt) })
   }
   if (step === 'failed') {
-    return t('settings.data_export.step_failed')
+    return t('data_export.step_failed')
   }
   if (status.progressPercent > 0) {
-    return t('settings.data_export.step_processing')
+    return t('data_export.step_processing')
   }
-  return t('settings.data_export.step_preparing')
+  return t('data_export.step_preparing')
 }
 
 function getProgressValue(status: DataExportResponse): number {
@@ -56,7 +56,7 @@ async function pollStatus() {
     }
   } catch {
     stopPolling()
-    notification.error(t('settings.data_export.fetch_error'))
+    notification.error(t('data_export.fetch_error'))
   }
 }
 
@@ -79,7 +79,7 @@ async function startExport() {
       pollInterval = setInterval(pollStatus, 10000)
     }
   } catch {
-    notification.error(t('settings.data_export.fetch_error'))
+    notification.error(t('data_export.fetch_error'))
   } finally {
     exporting.value = false
   }
@@ -92,10 +92,10 @@ async function downloadExport() {
     if (url) {
       window.open(url, '_blank')
     } else {
-      notification.error(t('settings.data_export.fetch_error'))
+      notification.error(t('data_export.fetch_error'))
     }
   } catch {
-    notification.error(t('settings.data_export.fetch_error'))
+    notification.error(t('data_export.fetch_error'))
   }
 }
 
@@ -105,15 +105,15 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <SectionCard :title="$t('settings.data_export.section_title')">
+  <SectionCard :title="$t('data_export.section_title')">
     <div class="space-y-4">
       <p class="text-sm text-surface-500">
-        {{ $t('settings.data_export.description') }}
+        {{ $t('data_export.description') }}
       </p>
 
       <Button
         translate="no"
-        :label="$t('settings.data_export.export_button')"
+        :label="$t('data_export.export_button')"
         icon="pi pi-download"
         :loading="exporting"
         :disabled="exporting || (exportStatus !== null && !isFinished(exportStatus))"
@@ -126,19 +126,19 @@ onUnmounted(() => {
             <span class="text-sm font-medium">{{ getStatusLabel(exportStatus) }}</span>
             <Tag
               v-if="isCompleted(exportStatus)"
-              :value="$t('settings.data_export.status_completed')"
+              :value="$t('data_export.status_completed')"
               severity="success"
               class="text-xs"
             />
             <Tag
               v-else-if="isFailed(exportStatus)"
-              :value="$t('settings.data_export.status_failed')"
+              :value="$t('data_export.status_failed')"
               severity="danger"
               class="text-xs"
             />
             <Tag
               v-else
-              :value="$t('settings.data_export.status_processing')"
+              :value="$t('data_export.status_processing')"
               severity="info"
               class="text-xs"
             />
@@ -156,7 +156,7 @@ onUnmounted(() => {
             </p>
             <Button
               translate="no"
-              :label="$t('settings.data_export.download_button')"
+              :label="$t('data_export.download_button')"
               icon="pi pi-file-export"
               size="small"
               @click="downloadExport"
@@ -164,7 +164,7 @@ onUnmounted(() => {
           </div>
 
           <p v-if="isFailed(exportStatus)" class="mt-2 text-sm text-red-500">
-            {{ $t('settings.data_export.step_failed') }}
+            {{ $t('data_export.step_failed') }}
           </p>
         </div>
       </div>

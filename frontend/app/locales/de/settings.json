@@ -74,7 +74,7 @@
       "section_title": "E-Mail-Adresse ändern",
       "current_email": "Aktuelle E-Mail-Adresse",
       "new_email": "Neue E-Mail-Adresse",
-      "new_email_placeholder": "new@example.com",
+      "new_email_placeholder": "new{'@'}example.com",
       "current_password": "Aktuelles Passwort",
       "send_confirmation": "Bestätigungs-E-Mail senden",
       "sent_title": "Bestätigungs-E-Mail gesendet",

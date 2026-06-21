@@ -38,10 +38,10 @@ const timezoneOptions = [
 </script>
 
 <template>
-  <SectionCard :title="$t('settings.settings.locale.section_title')">
+  <SectionCard :title="$t('settings.locale.section_title')">
     <div class="space-y-4">
       <div>
-        <label translate="no" class="mb-1 block text-sm font-medium">{{ $t('settings.settings.locale.display_language') }}</label>
+        <label translate="no" class="mb-1 block text-sm font-medium">{{ $t('settings.locale.display_language') }}</label>
         <Select
           v-model="profile.locale"
           :options="localeOptions"
@@ -52,7 +52,7 @@ const timezoneOptions = [
         />
       </div>
       <div>
-        <label translate="no" class="mb-1 block text-sm font-medium">{{ $t('settings.settings.locale.timezone') }}</label>
+        <label translate="no" class="mb-1 block text-sm font-medium">{{ $t('settings.locale.timezone') }}</label>
         <Select
           v-model="profile.timezone"
           :options="timezoneOptions"

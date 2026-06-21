@@ -74,7 +74,7 @@
       "section_title": "メールアドレス変更",
       "current_email": "現在のメールアドレス",
       "new_email": "新しいメールアドレス",
-      "new_email_placeholder": "new@example.com",
+      "new_email_placeholder": "new{'@'}example.com",
       "current_password": "現在のパスワード",
       "send_confirmation": "確認メールを送信",
       "sent_title": "確認メールを送信しました",

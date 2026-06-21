@@ -35,22 +35,22 @@ function formatDate(dateStr: string | null): string {
 </script>
 
 <template>
-  <SectionCard :title="$t('settings.settings.security.two_fa_section_title')">
+  <SectionCard :title="$t('settings.security.two_fa_section_title')">
     <div v-if="!totpSetup" class="space-y-4">
       <p class="text-sm text-surface-500">
-        {{ $t('settings.settings.security.two_fa_description') }}
+        {{ $t('settings.security.two_fa_description') }}
       </p>
       <div class="flex flex-wrap gap-2">
         <Button
           translate="no"
-          :label="$t('settings.settings.security.setup_2fa_button')"
+          :label="$t('settings.security.setup_2fa_button')"
           icon="pi pi-shield"
           :loading="setting2fa"
           @click="$emit('setup2fa')"
         />
         <Button
           translate="no"
-          :label="$t('settings.settings.security.regenerate_backup_codes_button')"
+          :label="$t('settings.security.regenerate_backup_codes_button')"
           icon="pi pi-refresh"
           severity="secondary"
           :loading="regenerating"
@@ -59,12 +59,12 @@ function formatDate(dateStr: string | null): string {
       </div>
     </div>
     <div v-else class="space-y-4">
-      <p class="text-sm text-surface-500">{{ $t('settings.settings.security.scan_qr_description') }}</p>
+      <p class="text-sm text-surface-500">{{ $t('settings.security.scan_qr_description') }}</p>
       <div class="flex justify-center">
-        <img :src="totpSetup.qrCodeUrl" :alt="$t('settings.settings.security.totp_qr_alt')" class="h-48 w-48" >
+        <img :src="totpSetup.qrCodeUrl" :alt="$t('settings.security.totp_qr_alt')" class="h-48 w-48" >
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium">{{ $t('settings.settings.security.secret_key') }}</label>
+        <label class="mb-1 block text-sm font-medium">{{ $t('settings.security.secret_key') }}</label>
         <code class="block rounded bg-surface-100 px-3 py-2 text-sm dark:bg-surface-700">{{
           totpSetup.secret
         }}</code>
@@ -74,11 +74,11 @@ function formatDate(dateStr: string | null): string {
 
   <SectionCard>
     <div class="mb-4 flex items-center justify-between">
-      <h2 class="text-lg font-semibold">{{ $t('settings.settings.security.sessions_section_title') }}</h2>
+      <h2 class="text-lg font-semibold">{{ $t('settings.security.sessions_section_title') }}</h2>
       <Button
         v-if="sessions.length > 0"
         translate="no"
-        :label="$t('settings.settings.security.logout_all_button')"
+        :label="$t('settings.security.logout_all_button')"
         icon="pi pi-sign-out"
         severity="danger"
         text
@@ -87,7 +87,7 @@ function formatDate(dateStr: string | null): string {
       />
     </div>
     <div v-if="sessions.length === 0" class="py-4 text-center text-surface-400">
-      {{ $t('settings.settings.security.no_sessions') }}
+      {{ $t('settings.security.no_sessions') }}
     </div>
     <div v-else class="space-y-3">
       <div
@@ -97,8 +97,8 @@ function formatDate(dateStr: string | null): string {
       >
         <div>
           <p class="text-sm font-medium">
-            {{ session.userAgent || $t('settings.settings.security.unknown_device') }}
-            <Tag v-if="session.isCurrent" :value="$t('settings.settings.security.current_session_tag')" severity="success" class="ml-2" />
+            {{ session.userAgent || $t('settings.security.unknown_device') }}
+            <Tag v-if="session.isCurrent" :value="$t('settings.security.current_session_tag')" severity="success" class="ml-2" />
           </p>
           <p class="text-xs text-surface-500">
             IP: {{ session.ipAddress || '-' }} / {{ formatDate(session.createdAt) }}
@@ -117,12 +117,12 @@ function formatDate(dateStr: string | null): string {
     </div>
   </SectionCard>
 
-  <SectionCard :title="$t('settings.settings.security.webauthn_section_title')">
+  <SectionCard :title="$t('settings.security.webauthn_section_title')">
     <p class="mb-4 text-sm text-surface-500">
-      {{ $t('settings.settings.security.webauthn_description') }}
+      {{ $t('settings.security.webauthn_description') }}
     </p>
     <div v-if="credentials.length === 0" class="py-4 text-center text-surface-400">
-      {{ $t('settings.settings.security.no_credentials') }}
+      {{ $t('settings.security.no_credentials') }}
     </div>
     <div v-else class="space-y-3">
       <div
@@ -132,10 +132,10 @@ function formatDate(dateStr: string | null): string {
       >
         <div>
           <p class="text-sm font-medium">
-            <i class="pi pi-key mr-1" />{{ cred.deviceName || $t('settings.settings.security.default_credential_name') }}
+            <i class="pi pi-key mr-1" />{{ cred.deviceName || $t('settings.security.default_credential_name') }}
           </p>
           <p class="text-xs text-surface-500">
-            {{ $t('settings.settings.security.last_used', { date: formatDate(cred.lastUsedAt) }) }} / {{ $t('settings.settings.security.registered', { date: formatDate(cred.createdAt) }) }}
+            {{ $t('settings.security.last_used', { date: formatDate(cred.lastUsedAt) }) }} / {{ $t('settings.security.registered', { date: formatDate(cred.createdAt) }) }}
           </p>
         </div>
         <div class="flex gap-1">
@@ -162,13 +162,13 @@ function formatDate(dateStr: string | null): string {
 
   <Dialog
     :visible="showBackupCodesDialog"
-    :header="$t('settings.settings.security.backup_codes_dialog_title')"
+    :header="$t('settings.security.backup_codes_dialog_title')"
     :modal="true"
     class="w-full max-w-md"
     @update:visible="$emit('update:showBackupCodesDialog', $event)"
   >
     <p class="mb-4 text-sm text-surface-500">
-      {{ $t('settings.settings.security.backup_codes_description') }}
+      {{ $t('settings.security.backup_codes_description') }}
     </p>
     <div class="grid grid-cols-2 gap-2">
       <code
@@ -185,14 +185,14 @@ function formatDate(dateStr: string | null): string {
 
   <Dialog
     :visible="renameDialog"
-    :header="$t('settings.settings.security.rename_dialog_title')"
+    :header="$t('settings.security.rename_dialog_title')"
     :modal="true"
     class="w-full max-w-sm"
     @update:visible="$emit('update:renameDialog', $event)"
   >
     <div class="space-y-4">
       <div>
-        <label class="mb-1 block text-sm font-medium">{{ $t('settings.settings.security.device_name_label') }}</label>
+        <label class="mb-1 block text-sm font-medium">{{ $t('settings.security.device_name_label') }}</label>
         <InputText :model-value="newDeviceName" class="w-full" @update:model-value="$emit('update:newDeviceName', $event as string)" />
       </div>
       <div class="flex justify-end gap-2">

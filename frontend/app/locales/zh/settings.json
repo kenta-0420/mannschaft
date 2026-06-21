@@ -74,7 +74,7 @@
       "section_title": "更改邮箱地址",
       "current_email": "当前邮箱地址",
       "new_email": "新邮箱地址",
-      "new_email_placeholder": "new@example.com",
+      "new_email_placeholder": "new{'@'}example.com",
       "current_password": "当前密码",
       "send_confirmation": "发送确认邮件",
       "sent_title": "确认邮件已发送",

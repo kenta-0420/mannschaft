@@ -14,13 +14,13 @@ defineEmits<{
 </script>
 
 <template>
-  <SectionCard :title="hasPassword ? $t('settings.settings.password.section_title_change') : $t('settings.settings.password.section_title_set')">
+  <SectionCard :title="hasPassword ? $t('settings.password.section_title_change') : $t('settings.password.section_title_set')">
     <div class="space-y-4">
       <p v-if="!hasPassword" class="text-sm text-surface-500">
-        {{ $t('settings.settings.password.no_password_description') }}
+        {{ $t('settings.password.no_password_description') }}
       </p>
       <div v-if="hasPassword">
-        <label class="mb-1 block text-sm font-medium">{{ $t('settings.settings.password.current_password') }}</label>
+        <label class="mb-1 block text-sm font-medium">{{ $t('settings.password.current_password') }}</label>
         <Password
           v-model="passwordForm.currentPassword"
           :feedback="false"
@@ -30,7 +30,7 @@ defineEmits<{
         />
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium">{{ $t('settings.settings.password.new_password') }}</label>
+        <label class="mb-1 block text-sm font-medium">{{ $t('settings.password.new_password') }}</label>
         <Password
           v-model="passwordForm.newPassword"
           toggle-mask
@@ -39,7 +39,7 @@ defineEmits<{
         />
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium">{{ $t('settings.settings.password.confirm_password') }}</label>
+        <label class="mb-1 block text-sm font-medium">{{ $t('settings.password.confirm_password') }}</label>
         <Password
           v-model="passwordForm.confirmPassword"
           :feedback="false"
@@ -52,7 +52,7 @@ defineEmits<{
       <div class="flex justify-end">
         <Button
           translate="no"
-          :label="hasPassword ? $t('settings.settings.password.change_button') : $t('settings.settings.password.set_button')"
+          :label="hasPassword ? $t('settings.password.change_button') : $t('settings.password.set_button')"
           icon="pi pi-lock"
           :loading="submittingPassword"
           :disabled="!canSubmitPassword"

@@ -22,12 +22,12 @@ function formatDate(dateStr: string | null): string {
 
 function eventLabel(eventType: string) {
   const map: Record<string, string> = {
-    LOGIN_SUCCESS: t('settings.settings.login_history.event_login_success'),
-    LOGIN_FAILURE: t('settings.settings.login_history.event_login_failure'),
-    LOGOUT: t('settings.settings.login_history.event_logout'),
-    TOKEN_REFRESH: t('settings.settings.login_history.event_token_refresh'),
-    PASSWORD_CHANGE: t('settings.settings.login_history.event_password_change'),
-    MFA_VERIFY: t('settings.settings.login_history.event_mfa_verify'),
+    LOGIN_SUCCESS: t('settings.login_history.event_login_success'),
+    LOGIN_FAILURE: t('settings.login_history.event_login_failure'),
+    LOGOUT: t('settings.login_history.event_logout'),
+    TOKEN_REFRESH: t('settings.login_history.event_token_refresh'),
+    PASSWORD_CHANGE: t('settings.login_history.event_password_change'),
+    MFA_VERIFY: t('settings.login_history.event_mfa_verify'),
   }
   return map[eventType] || eventType
 }
@@ -40,10 +40,10 @@ function eventSeverity(eventType: string) {
 </script>
 
 <template>
-  <SectionCard :title="$t('settings.settings.login_history.section_title')">
+  <SectionCard :title="$t('settings.login_history.section_title')">
     <div v-if="loginHistory.length === 0" class="py-8 text-center text-surface-400">
       <i class="pi pi-history mb-2 text-4xl" />
-      <p>{{ $t('settings.settings.login_history.no_history') }}</p>
+      <p>{{ $t('settings.login_history.no_history') }}</p>
     </div>
     <div v-else class="space-y-3">
       <div
@@ -73,7 +73,7 @@ function eventSeverity(eventType: string) {
       <div v-if="loginHistoryHasNext" class="flex justify-center pt-2">
         <Button
           translate="no"
-          :label="$t('settings.settings.login_history.load_more')"
+          :label="$t('settings.login_history.load_more')"
           text
           :loading="loadingMoreHistory"
           @click="$emit('loadMore', loginHistoryNextCursor ?? undefined)"

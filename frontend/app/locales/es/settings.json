@@ -74,7 +74,7 @@
       "section_title": "Cambiar dirección de correo",
       "current_email": "Dirección de correo actual",
       "new_email": "Nueva dirección de correo",
-      "new_email_placeholder": "new@example.com",
+      "new_email_placeholder": "new{'@'}example.com",
       "current_password": "Contraseña actual",
       "send_confirmation": "Enviar correo de confirmación",
       "sent_title": "Correo de confirmación enviado",

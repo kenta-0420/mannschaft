@@ -14,24 +14,24 @@ defineEmits<{
 </script>
 
 <template>
-  <SectionCard :title="$t('settings.settings.email.section_title')">
+  <SectionCard :title="$t('settings.email.section_title')">
     <template v-if="!emailSent">
       <div class="space-y-4">
         <div>
-          <label class="mb-1 block text-sm font-medium">{{ $t('settings.settings.email.current_email') }}</label>
+          <label class="mb-1 block text-sm font-medium">{{ $t('settings.email.current_email') }}</label>
           <InputText :model-value="currentEmail" class="w-full" disabled />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">{{ $t('settings.settings.email.new_email') }}</label>
+          <label class="mb-1 block text-sm font-medium">{{ $t('settings.email.new_email') }}</label>
           <InputText
             v-model="emailForm.newEmail"
             type="email"
             class="w-full"
-            :placeholder="$t('settings.settings.email.new_email_placeholder')"
+            :placeholder="$t('settings.email.new_email_placeholder')"
           />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">{{ $t('settings.settings.email.current_password') }}</label>
+          <label class="mb-1 block text-sm font-medium">{{ $t('settings.email.current_password') }}</label>
           <Password
             v-model="emailForm.currentPassword"
             :feedback="false"
@@ -43,7 +43,7 @@ defineEmits<{
         <div class="flex justify-end">
           <Button
             translate="no"
-            :label="$t('settings.settings.email.send_confirmation')"
+            :label="$t('settings.email.send_confirmation')"
             icon="pi pi-envelope"
             :loading="submittingEmail"
             :disabled="!canSubmitEmail"
@@ -55,9 +55,9 @@ defineEmits<{
     <template v-else>
       <div class="py-6 text-center">
         <i class="pi pi-check-circle mb-3 text-5xl text-green-500" />
-        <p class="mb-1 font-semibold">{{ $t('settings.settings.email.sent_title') }}</p>
+        <p class="mb-1 font-semibold">{{ $t('settings.email.sent_title') }}</p>
         <p class="text-sm text-surface-500">
-          {{ $t('settings.settings.email.sent_description', { email: emailForm.newEmail }) }}
+          {{ $t('settings.email.sent_description', { email: emailForm.newEmail }) }}
         </p>
       </div>
     </template>

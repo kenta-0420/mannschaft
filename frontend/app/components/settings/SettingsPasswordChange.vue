@@ -43,9 +43,9 @@ async function changePassword() {
       },
     })
     passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
-    notification.success(t('settings.settings.password.change_success'))
+    notification.success(t('settings.password.change_success'))
   } catch {
-    notification.error(t('settings.settings.password.change_error'))
+    notification.error(t('settings.password.change_error'))
   } finally {
     changingPassword.value = false
   }
@@ -53,10 +53,10 @@ async function changePassword() {
 </script>
 
 <template>
-  <SectionCard :title="$t('settings.settings.password.section_title_change')">
+  <SectionCard :title="$t('settings.password.section_title_change')">
     <div class="space-y-4">
       <div>
-        <label class="mb-1 block text-sm font-medium">{{ $t('settings.settings.password.current_password') }}</label>
+        <label class="mb-1 block text-sm font-medium">{{ $t('settings.password.current_password') }}</label>
         <Password
           v-model="passwordForm.currentPassword"
           :feedback="false"
@@ -66,7 +66,7 @@ async function changePassword() {
         />
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium">{{ $t('settings.settings.password.new_password') }}</label>
+        <label class="mb-1 block text-sm font-medium">{{ $t('settings.password.new_password') }}</label>
         <Password
           v-model="passwordForm.newPassword"
           toggle-mask
@@ -75,7 +75,7 @@ async function changePassword() {
         />
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium">{{ $t('settings.settings.password.confirm_password') }}</label>
+        <label class="mb-1 block text-sm font-medium">{{ $t('settings.password.confirm_password') }}</label>
         <Password
           v-model="passwordForm.confirmPassword"
           :feedback="false"
@@ -88,7 +88,7 @@ async function changePassword() {
       <div class="flex justify-end">
         <Button
           translate="no"
-          :label="$t('settings.settings.password.change_button')"
+          :label="$t('settings.password.change_button')"
           icon="pi pi-lock"
           :loading="changingPassword"
           :disabled="!canSubmitPassword"

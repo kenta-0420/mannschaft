@@ -16,14 +16,14 @@ defineEmits<{
 </script>
 
 <template>
-  <SectionCard :title="$t('settings.settings.member_card.section_title')">
+  <SectionCard :title="$t('settings.member_card.section_title')">
     <Tabs
       :value="memberCardActiveTab"
       @update:value="$emit('update:memberCardActiveTab', $event as string)"
     >
       <TabList>
-        <Tab value="0">{{ $t('settings.settings.member_card.tab_list') }}</Tab>
-        <Tab value="1" :disabled="!selectedCard">{{ $t('settings.settings.member_card.tab_history') }}</Tab>
+        <Tab value="0">{{ $t('settings.member_card.tab_list') }}</Tab>
+        <Tab value="1" :disabled="!selectedCard">{{ $t('settings.member_card.tab_history') }}</Tab>
       </TabList>
       <TabPanels>
         <TabPanel value="0">

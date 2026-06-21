@@ -12,7 +12,7 @@ async function deleteAccount() {
     authStore.logout()
     navigateTo('/login')
   } catch {
-    notification.error(t('settings.settings.delete_account.delete_error'))
+    notification.error(t('settings.delete_account.delete_error'))
   }
 }
 </script>
@@ -21,13 +21,13 @@ async function deleteAccount() {
   <div
     class="rounded-xl border border-red-200 bg-surface-0 p-6 dark:border-red-900 dark:bg-surface-800"
   >
-    <h2 class="mb-2 text-lg font-semibold text-red-600">{{ $t('settings.settings.delete_account.section_title') }}</h2>
+    <h2 class="mb-2 text-lg font-semibold text-red-600">{{ $t('settings.delete_account.section_title') }}</h2>
     <p class="mb-4 text-sm text-surface-500">
-      {{ $t('settings.settings.delete_account.description') }}
+      {{ $t('settings.delete_account.description') }}
     </p>
     <Button
       translate="no"
-      :label="$t('settings.settings.delete_account.delete_button')"
+      :label="$t('settings.delete_account.delete_button')"
       icon="pi pi-trash"
       severity="danger"
       outlined
@@ -37,16 +37,16 @@ async function deleteAccount() {
 
   <Dialog
     v-model:visible="showDeleteDialog"
-    :header="$t('settings.settings.delete_account.confirm_dialog_title')"
+    :header="$t('settings.delete_account.confirm_dialog_title')"
     :modal="true"
     class="w-full max-w-md"
   >
     <p class="mb-4">
-      {{ $t('settings.settings.delete_account.confirm_message') }}
+      {{ $t('settings.delete_account.confirm_message') }}
     </p>
     <div class="flex justify-end gap-2">
-      <Button translate="no" :label="$t('settings.settings.delete_account.confirm_reject_label')" severity="secondary" @click="showDeleteDialog = false" />
-      <Button translate="no" :label="$t('settings.deletion_preview.delete_button')" severity="danger" @click="deleteAccount" />
+      <Button translate="no" :label="$t('settings.delete_account.confirm_reject_label')" severity="secondary" @click="showDeleteDialog = false" />
+      <Button translate="no" :label="$t('deletion_preview.delete_button')" severity="danger" @click="deleteAccount" />
     </div>
   </Dialog>
 </template>

@@ -74,7 +74,7 @@
       "section_title": "이메일 주소 변경",
       "current_email": "현재 이메일 주소",
       "new_email": "새 이메일 주소",
-      "new_email_placeholder": "new@example.com",
+      "new_email_placeholder": "new{'@'}example.com",
       "current_password": "현재 비밀번호",
       "send_confirmation": "확인 이메일 발송",
       "sent_title": "확인 이메일이 발송되었습니다",

@@ -17,15 +17,15 @@ defineEmits<{
 </script>
 
 <template>
-  <SectionCard :title="$t('settings.settings.seal.section_title')">
+  <SectionCard :title="$t('settings.seal.section_title')">
     <Tabs
       :value="sealActiveTab"
       @update:value="$emit('update:sealActiveTab', $event as string)"
     >
       <TabList>
-        <Tab value="0">{{ $t('settings.settings.seal.tab_preview') }}</Tab>
-        <Tab value="1">{{ $t('settings.settings.seal.tab_defaults') }}</Tab>
-        <Tab value="2">{{ $t('settings.settings.seal.tab_history') }}</Tab>
+        <Tab value="0">{{ $t('settings.seal.tab_preview') }}</Tab>
+        <Tab value="1">{{ $t('settings.seal.tab_defaults') }}</Tab>
+        <Tab value="2">{{ $t('settings.seal.tab_history') }}</Tab>
       </TabList>
       <TabPanels>
         <TabPanel value="0">
@@ -34,7 +34,7 @@ defineEmits<{
             <div class="flex justify-center">
               <Button
                 translate="no"
-                :label="$t('settings.settings.seal.regenerate_button')"
+                :label="$t('settings.seal.regenerate_button')"
                 icon="pi pi-refresh"
                 severity="secondary"
                 :loading="regeneratingSeals"
@@ -42,7 +42,7 @@ defineEmits<{
               />
             </div>
             <p class="text-center text-xs text-surface-500">
-              {{ $t('settings.settings.seal.regenerate_hint') }}
+              {{ $t('settings.seal.regenerate_hint') }}
             </p>
           </div>
         </TabPanel>
