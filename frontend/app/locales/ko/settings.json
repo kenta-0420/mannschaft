@@ -68,7 +68,14 @@
       "postal_code": "우편번호",
       "postal_placeholder": "00000",
       "searchable_label": "사용자 검색에 표시",
-      "searchable_description": "켜면 다른 사용자가 검색으로 찾을 수 있습니다"
+      "searchable_description": "켜면 다른 사용자가 검색으로 찾을 수 있습니다",
+      "toast": {
+        "save_success": "프로필이 업데이트되었습니다",
+        "save_error": "프로필 업데이트에 실패했습니다",
+        "avatar_size_error": "파일 크기는 5MB 이하여야 합니다",
+        "avatar_success": "아바타가 업데이트되었습니다",
+        "avatar_error": "아바타 업로드에 실패했습니다"
+      }
     },
     "email": {
       "section_title": "이메일 주소 변경",
@@ -78,7 +85,11 @@
       "current_password": "현재 비밀번호",
       "send_confirmation": "확인 이메일 발송",
       "sent_title": "확인 이메일이 발송되었습니다",
-      "sent_description": "{email}로 확인 이메일을 보냈습니다. 링크를 클릭하여 변경을 완료하세요."
+      "sent_description": "{email}로 확인 이메일을 보냈습니다. 링크를 클릭하여 변경을 완료하세요.",
+      "toast": {
+        "send_success": "확인 이메일이 발송되었습니다",
+        "send_error": "이메일 주소 변경 요청에 실패했습니다"
+      }
     },
     "password": {
       "section_title_change": "비밀번호 변경",
@@ -90,12 +101,22 @@
       "change_button": "비밀번호 변경",
       "set_button": "비밀번호 설정",
       "change_success": "비밀번호가 변경되었습니다",
-      "change_error": "비밀번호 변경에 실패했습니다. 현재 비밀번호를 확인하세요"
+      "change_error": "비밀번호 변경에 실패했습니다. 현재 비밀번호를 확인하세요",
+      "toast": {
+        "change_success": "비밀번호가 변경되었습니다",
+        "setup_success": "비밀번호가 설정되었습니다",
+        "change_error": "비밀번호 변경에 실패했습니다. 현재 비밀번호를 확인하세요",
+        "setup_error": "비밀번호 설정에 실패했습니다"
+      }
     },
     "locale": {
       "section_title": "언어 및 시간대",
       "display_language": "표시 언어",
-      "timezone": "시간대"
+      "timezone": "시간대",
+      "toast": {
+        "save_success": "언어 및 시간대가 업데이트되었습니다",
+        "save_error": "언어 및 시간대 업데이트에 실패했습니다"
+      }
     },
     "appearance": {
       "section_title": "외관",
@@ -130,6 +151,19 @@
       "session": {
         "device_label": "{os}의 {browser}",
         "unknown_device": "알 수 없는 기기"
+      },
+      "toast": {
+        "setup_2fa_error": "2FA 설정 시작에 실패했습니다",
+        "regenerate_success": "백업 코드가 재생성되었습니다",
+        "regenerate_error": "백업 코드 재생성에 실패했습니다",
+        "revoke_success": "세션이 무효화되었습니다",
+        "revoke_error": "세션 무효화에 실패했습니다",
+        "revoke_all_success": "모든 기기에서 로그아웃되었습니다",
+        "revoke_all_error": "모든 기기 로그아웃에 실패했습니다",
+        "delete_key_success": "보안 키가 삭제되었습니다",
+        "delete_key_error": "보안 키 삭제에 실패했습니다",
+        "rename_success": "기기 이름이 업데이트되었습니다",
+        "rename_error": "기기 이름 업데이트에 실패했습니다"
       }
     },
     "linked_accounts": {
@@ -143,12 +177,24 @@
       "line_linked_at": "연동일: {date}",
       "line_unlink_button": "LINE 연동 해제",
       "line_not_linked": "LINE 계정이 연동되지 않았습니다",
-      "line_link_instruction": "LINE 앱에서 연동을 진행해 주세요"
+      "line_link_instruction": "LINE 앱에서 연동을 진행해 주세요",
+      "toast": {
+        "unlink_success": "{provider} 연동이 해제되었습니다",
+        "unlink_error": "연동 해제에 실패했습니다",
+        "line_unlink_success": "LINE 연동이 해제되었습니다",
+        "line_unlink_error": "LINE 연동 해제에 실패했습니다"
+      }
     },
     "member_card": {
       "section_title": "QR 회원증",
       "tab_list": "회원증 목록",
-      "tab_history": "체크인 내역"
+      "tab_history": "체크인 내역",
+      "toast": {
+        "suspend_success": "회원증이 일시 정지되었습니다",
+        "suspend_error": "일시 정지에 실패했습니다",
+        "reactivate_success": "회원증이 재개되었습니다",
+        "reactivate_error": "재개에 실패했습니다"
+      }
     },
     "social_profile": {
       "section_title": "소셜 프로필",
@@ -164,7 +210,14 @@
       "bio_label": "자기소개",
       "bio_count": "{count}/300",
       "update_button": "업데이트",
-      "create_submit_button": "만들기"
+      "create_submit_button": "만들기",
+      "toast": {
+        "update_success": "프로필이 업데이트되었습니다",
+        "create_success": "프로필이 생성되었습니다",
+        "save_error": "저장에 실패했습니다",
+        "delete_success": "프로필이 삭제되었습니다",
+        "delete_error": "삭제에 실패했습니다"
+      }
     },
     "seal": {
       "section_title": "전자 도장",
@@ -172,7 +225,13 @@
       "tab_defaults": "기본 설정",
       "tab_history": "날인 내역",
       "regenerate_button": "도장 재생성",
-      "regenerate_hint": "도장은 등록된 이름으로 자동 생성됩니다（1시간에 최대 3회）"
+      "regenerate_hint": "도장은 등록된 이름으로 자동 생성됩니다（1시간에 최대 3회）",
+      "toast": {
+        "regenerate_success": "도장이 재생성되었습니다",
+        "regenerate_error": "재생성에 실패했습니다（1시간에 최대 3회）",
+        "save_defaults_success": "기본 설정이 저장되었습니다",
+        "save_defaults_error": "설정 저장에 실패했습니다"
+      }
     },
     "login_history": {
       "section_title": "로그인 내역",
@@ -198,7 +257,16 @@
       "org_calendars_label": "조직 캘린더",
       "save_settings_button": "설정 저장",
       "not_connected_description": "Google 계정을 연결하여 캘린더를 동기화할 수 있습니다",
-      "connect_button": "Google 계정 연결"
+      "connect_button": "Google 계정 연결",
+      "toast": {
+        "connect_error": "연결에 실패했습니다",
+        "disconnect_success": "연동이 해제되었습니다",
+        "disconnect_error": "해제에 실패했습니다",
+        "save_success": "동기화 설정이 저장되었습니다",
+        "save_error": "저장에 실패했습니다",
+        "sync_success": "동기화가 실행되었습니다",
+        "sync_error": "동기화에 실패했습니다"
+      }
     },
     "delete_account": {
       "section_title": "계정 삭제",

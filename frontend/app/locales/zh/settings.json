@@ -68,7 +68,14 @@
       "postal_code": "邮政编码",
       "postal_placeholder": "000-0000",
       "searchable_label": "在用户搜索中显示",
-      "searchable_description": "开启后，其他用户可通过搜索找到您"
+      "searchable_description": "开启后，其他用户可通过搜索找到您",
+      "toast": {
+        "save_success": "个人资料已更新",
+        "save_error": "更新个人资料失败",
+        "avatar_size_error": "文件大小必须在5MB以下",
+        "avatar_success": "头像已更新",
+        "avatar_error": "上传头像失败"
+      }
     },
     "email": {
       "section_title": "更改邮箱地址",
@@ -78,7 +85,11 @@
       "current_password": "当前密码",
       "send_confirmation": "发送确认邮件",
       "sent_title": "确认邮件已发送",
-      "sent_description": "确认邮件已发送至 {email}。请点击链接完成更改。"
+      "sent_description": "确认邮件已发送至 {email}。请点击链接完成更改。",
+      "toast": {
+        "send_success": "确认邮件已发送",
+        "send_error": "更改邮箱地址请求失败"
+      }
     },
     "password": {
       "section_title_change": "更改密码",
@@ -90,12 +101,22 @@
       "change_button": "更改密码",
       "set_button": "设置密码",
       "change_success": "密码已更改",
-      "change_error": "更改密码失败。请检查当前密码"
+      "change_error": "更改密码失败。请检查当前密码",
+      "toast": {
+        "change_success": "密码已更改",
+        "setup_success": "密码已设置",
+        "change_error": "更改密码失败。请检查当前密码",
+        "setup_error": "设置密码失败"
+      }
     },
     "locale": {
       "section_title": "语言与时区",
       "display_language": "显示语言",
-      "timezone": "时区"
+      "timezone": "时区",
+      "toast": {
+        "save_success": "语言与时区已更新",
+        "save_error": "更新语言与时区失败"
+      }
     },
     "appearance": {
       "section_title": "外观",
@@ -130,6 +151,19 @@
       "session": {
         "device_label": "{os} 上的 {browser}",
         "unknown_device": "未知设备"
+      },
+      "toast": {
+        "setup_2fa_error": "2FA 设置启动失败",
+        "regenerate_success": "备用代码已重新生成",
+        "regenerate_error": "重新生成备用代码失败",
+        "revoke_success": "会话已注销",
+        "revoke_error": "注销会话失败",
+        "revoke_all_success": "已从所有设备退出",
+        "revoke_all_error": "从所有设备退出失败",
+        "delete_key_success": "安全密钥已删除",
+        "delete_key_error": "删除安全密钥失败",
+        "rename_success": "设备名称已更新",
+        "rename_error": "更新设备名称失败"
       }
     },
     "linked_accounts": {
@@ -143,12 +177,24 @@
       "line_linked_at": "关联日期: {date}",
       "line_unlink_button": "解除 LINE 连接",
       "line_not_linked": "未关联 LINE 账户",
-      "line_link_instruction": "请通过 LINE 应用进行关联"
+      "line_link_instruction": "请通过 LINE 应用进行关联",
+      "toast": {
+        "unlink_success": "已解除 {provider} 连接",
+        "unlink_error": "解除连接失败",
+        "line_unlink_success": "已解除 LINE 连接",
+        "line_unlink_error": "解除 LINE 连接失败"
+      }
     },
     "member_card": {
       "section_title": "QR 会员证",
       "tab_list": "会员证列表",
-      "tab_history": "签到历史"
+      "tab_history": "签到历史",
+      "toast": {
+        "suspend_success": "会员证已暂停",
+        "suspend_error": "暂停失败",
+        "reactivate_success": "会员证已恢复",
+        "reactivate_error": "恢复失败"
+      }
     },
     "social_profile": {
       "section_title": "社交档案",
@@ -164,7 +210,14 @@
       "bio_label": "个人简介",
       "bio_count": "{count}/300",
       "update_button": "更新",
-      "create_submit_button": "创建"
+      "create_submit_button": "创建",
+      "toast": {
+        "update_success": "档案已更新",
+        "create_success": "档案已创建",
+        "save_error": "保存失败",
+        "delete_success": "档案已删除",
+        "delete_error": "删除失败"
+      }
     },
     "seal": {
       "section_title": "电子印章",
@@ -172,7 +225,13 @@
       "tab_defaults": "默认设置",
       "tab_history": "盖章历史",
       "regenerate_button": "重新生成印章",
-      "regenerate_hint": "印章根据您的注册姓名自动生成（每小时最多3次）"
+      "regenerate_hint": "印章根据您的注册姓名自动生成（每小时最多3次）",
+      "toast": {
+        "regenerate_success": "印章已重新生成",
+        "regenerate_error": "重新生成失败（每小时最多3次）",
+        "save_defaults_success": "默认设置已保存",
+        "save_defaults_error": "保存设置失败"
+      }
     },
     "login_history": {
       "section_title": "登录历史",
@@ -198,7 +257,16 @@
       "org_calendars_label": "组织日历",
       "save_settings_button": "保存设置",
       "not_connected_description": "连接您的 Google 账户以同步日历",
-      "connect_button": "连接 Google 账户"
+      "connect_button": "连接 Google 账户",
+      "toast": {
+        "connect_error": "连接失败",
+        "disconnect_success": "已解除连接",
+        "disconnect_error": "解除连接失败",
+        "save_success": "同步设置已保存",
+        "save_error": "保存失败",
+        "sync_success": "同步已执行",
+        "sync_error": "同步失败"
+      }
     },
     "delete_account": {
       "section_title": "删除账户",

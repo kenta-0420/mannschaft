@@ -68,7 +68,14 @@
       "postal_code": "Postal Code",
       "postal_placeholder": "000-0000",
       "searchable_label": "Show in User Search",
-      "searchable_description": "When enabled, other users can find you through search"
+      "searchable_description": "When enabled, other users can find you through search",
+      "toast": {
+        "save_success": "Profile updated",
+        "save_error": "Failed to update profile",
+        "avatar_size_error": "File size must be 5MB or less",
+        "avatar_success": "Avatar updated",
+        "avatar_error": "Failed to upload avatar"
+      }
     },
     "email": {
       "section_title": "Change Email Address",
@@ -78,7 +85,11 @@
       "current_password": "Current Password",
       "send_confirmation": "Send Confirmation Email",
       "sent_title": "Confirmation Email Sent",
-      "sent_description": "A confirmation email has been sent to {email}. Click the link to complete the change."
+      "sent_description": "A confirmation email has been sent to {email}. Click the link to complete the change.",
+      "toast": {
+        "send_success": "Confirmation email sent",
+        "send_error": "Failed to request email address change"
+      }
     },
     "password": {
       "section_title_change": "Change Password",
@@ -90,12 +101,22 @@
       "change_button": "Change Password",
       "set_button": "Set Password",
       "change_success": "Password changed successfully",
-      "change_error": "Failed to change password. Please check your current password"
+      "change_error": "Failed to change password. Please check your current password",
+      "toast": {
+        "change_success": "Password changed successfully",
+        "setup_success": "Password set successfully",
+        "change_error": "Failed to change password. Please check your current password",
+        "setup_error": "Failed to set password"
+      }
     },
     "locale": {
       "section_title": "Language & Timezone",
       "display_language": "Display Language",
-      "timezone": "Timezone"
+      "timezone": "Timezone",
+      "toast": {
+        "save_success": "Language & timezone updated",
+        "save_error": "Failed to update language & timezone"
+      }
     },
     "appearance": {
       "section_title": "Appearance",
@@ -130,6 +151,19 @@
       "session": {
         "device_label": "{browser} on {os}",
         "unknown_device": "Unknown device"
+      },
+      "toast": {
+        "setup_2fa_error": "Failed to start 2FA setup",
+        "regenerate_success": "Backup codes regenerated",
+        "regenerate_error": "Failed to regenerate backup codes",
+        "revoke_success": "Session revoked",
+        "revoke_error": "Failed to revoke session",
+        "revoke_all_success": "Logged out from all devices",
+        "revoke_all_error": "Failed to log out from all devices",
+        "delete_key_success": "Security key deleted",
+        "delete_key_error": "Failed to delete security key",
+        "rename_success": "Device name updated",
+        "rename_error": "Failed to update device name"
       }
     },
     "linked_accounts": {
@@ -143,12 +177,24 @@
       "line_linked_at": "Connected: {date}",
       "line_unlink_button": "Disconnect LINE",
       "line_not_linked": "No LINE account connected",
-      "line_link_instruction": "Connect LINE from the LINE app"
+      "line_link_instruction": "Connect LINE from the LINE app",
+      "toast": {
+        "unlink_success": "{provider} disconnected",
+        "unlink_error": "Failed to disconnect",
+        "line_unlink_success": "LINE disconnected",
+        "line_unlink_error": "Failed to disconnect LINE"
+      }
     },
     "member_card": {
       "section_title": "QR Member Card",
       "tab_list": "Card List",
-      "tab_history": "Check-in History"
+      "tab_history": "Check-in History",
+      "toast": {
+        "suspend_success": "Member card suspended",
+        "suspend_error": "Failed to suspend",
+        "reactivate_success": "Member card reactivated",
+        "reactivate_error": "Failed to reactivate"
+      }
     },
     "social_profile": {
       "section_title": "Social Profiles",
@@ -164,7 +210,14 @@
       "bio_label": "Bio",
       "bio_count": "{count}/300",
       "update_button": "Update",
-      "create_submit_button": "Create"
+      "create_submit_button": "Create",
+      "toast": {
+        "update_success": "Profile updated",
+        "create_success": "Profile created",
+        "save_error": "Failed to save",
+        "delete_success": "Profile deleted",
+        "delete_error": "Failed to delete"
+      }
     },
     "seal": {
       "section_title": "Electronic Seal",
@@ -172,7 +225,13 @@
       "tab_defaults": "Default Settings",
       "tab_history": "Stamp History",
       "regenerate_button": "Regenerate Seal",
-      "regenerate_hint": "Seals are auto-generated from your registered name (up to 3 times per hour)"
+      "regenerate_hint": "Seals are auto-generated from your registered name (up to 3 times per hour)",
+      "toast": {
+        "regenerate_success": "Seal regenerated",
+        "regenerate_error": "Failed to regenerate (up to 3 times per hour)",
+        "save_defaults_success": "Default settings saved",
+        "save_defaults_error": "Failed to save settings"
+      }
     },
     "login_history": {
       "section_title": "Login History",
@@ -198,7 +257,16 @@
       "org_calendars_label": "Organization Calendars",
       "save_settings_button": "Save Settings",
       "not_connected_description": "Connect your Google account to sync calendars",
-      "connect_button": "Connect Google Account"
+      "connect_button": "Connect Google Account",
+      "toast": {
+        "connect_error": "Failed to connect",
+        "disconnect_success": "Disconnected",
+        "disconnect_error": "Failed to disconnect",
+        "save_success": "Sync settings saved",
+        "save_error": "Failed to save",
+        "sync_success": "Sync completed",
+        "sync_error": "Failed to sync"
+      }
     },
     "delete_account": {
       "section_title": "Delete Account",

@@ -2,6 +2,7 @@ import type { MemberCard } from '~/types/member-card'
 
 export function useAccountMemberCards() {
   const notification = useNotification()
+  const { t } = useI18n()
   const memberCardApi = useMemberCardApi()
 
   const memberCards = ref<MemberCard[]>([])
@@ -19,20 +20,20 @@ export function useAccountMemberCards() {
   async function handleSuspendCard(id: number) {
     try {
       await memberCardApi.suspend(id)
-      notification.success('会員証を一時停止しました')
+      notification.success(t('settings.member_card.toast.suspend_success'))
       await loadMemberCards()
     } catch {
-      notification.error('一時停止に失敗しました')
+      notification.error(t('settings.member_card.toast.suspend_error'))
     }
   }
 
   async function handleReactivateCard(id: number) {
     try {
       await memberCardApi.reactivate(id)
-      notification.success('会員証を再開しました')
+      notification.success(t('settings.member_card.toast.reactivate_success'))
       await loadMemberCards()
     } catch {
-      notification.error('再開に失敗しました')
+      notification.error(t('settings.member_card.toast.reactivate_error'))
     }
   }
 
