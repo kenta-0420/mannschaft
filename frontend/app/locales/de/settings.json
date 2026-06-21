@@ -281,6 +281,30 @@
       "retention_note": "※ Einige Daten werden aufgrund gesetzlicher Anforderungen {days} Tage lang aufbewahrt, bevor sie gelöscht werden.",
       "delete_success": "Ihr Konto wurde gelöscht. Vielen Dank für Ihre Nutzung.",
       "delete_error": "Konto konnte nicht gelöscht werden"
+    },
+    "notification": {
+      "load_error": "Einstellungen konnten nicht geladen werden",
+      "save_success": "Benachrichtigungseinstellungen gespeichert",
+      "save_error": "Speichern fehlgeschlagen",
+      "save_button": "Einstellungen speichern",
+      "global_section_title": "Automatische Zustellung",
+      "priority_auto_delivery_label": "Automatische Zustellung nach Priorität",
+      "priority_auto_delivery_desc": "Sendet wichtige Benachrichtigungen automatisch auch als Push-Benachrichtigung.",
+      "scope_section_title": "Benachrichtigungen nach Team / Organisation",
+      "scope_section_desc": "Stellen Sie den Empfang von Benachrichtigungen für jedes Team oder jede Organisation ein, der Sie angehören.",
+      "scope_type_team": "Team",
+      "scope_type_organization": "Organisation",
+      "scope_receiving": "Empfang aktiv",
+      "scope_muted": "Stummgeschaltet",
+      "scope_empty": "Sie gehören keinem Team oder keiner Organisation an",
+      "type_section_title": "Benachrichtigungstypen",
+      "type_section_desc": "Empfang pro Typ einstellen. Mit „Erweitern“ können In-App und Push einzeln gesteuert werden.",
+      "expand": "Erweitern",
+      "collapse": "Einklappen",
+      "channel_in_app": "In-App",
+      "channel_push": "Push",
+      "locked_tag": "Dringend",
+      "locked_desc": "Diese Benachrichtigung kann nicht deaktiviert werden"
     }
   }
 }
