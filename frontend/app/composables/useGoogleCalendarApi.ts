@@ -1,3 +1,7 @@
+import type { components } from '~/types/generated'
+
+type PersonalSyncStatusResponse = components['schemas']['PersonalSyncStatusResponse']
+
 export function useGoogleCalendarApi() {
   const api = useApi()
 
@@ -19,7 +23,7 @@ export function useGoogleCalendarApi() {
   }
 
   async function getPersonalSync() {
-    return api('/api/v1/me/google-calendar/personal-sync')
+    return api<{ data: PersonalSyncStatusResponse }>('/api/v1/me/google-calendar/personal-sync')
   }
 
   async function updatePersonalSync(body: Record<string, unknown>) {
