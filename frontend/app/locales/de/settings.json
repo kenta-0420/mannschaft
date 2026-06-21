@@ -1,4 +1,10 @@
 {
+  "security": {
+    "session": {
+      "device_label": "{browser} unter {os}",
+      "unknown_device": "Unbekanntes Gerät"
+    }
+  },
   "data_export": {
     "section_title": "Datenexport",
     "export_button": "Persönliche Daten exportieren",

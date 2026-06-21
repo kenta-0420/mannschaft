@@ -65,6 +65,7 @@ async function handleLogin() {
           profileImageUrl: profile.data.avatarUrl,
           systemRole: profile.data.systemRole ?? undefined,
           timezone: profile.data.timezone ?? undefined,
+          locale: profile.data.locale || undefined,
         })
         if (profile.data.locale) {
           await applyUserLocale(profile.data.locale)

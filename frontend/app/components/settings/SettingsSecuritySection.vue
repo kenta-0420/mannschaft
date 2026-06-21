@@ -26,11 +26,28 @@ defineEmits<{
   'update:newDeviceName': [value: string]
 }>()
 
+const { t } = useI18n()
 const { formatDateTime } = useDatetime()
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '-'
   return formatDateTime(dateStr)
+}
+
+/**
+ * セッションの User-Agent を「Windows の Chrome」のような読みやすいデバイス名に整形する。
+ * - ブラウザ・OS 両方判明 → i18n テンプレートで結合
+ * - 片方のみ判明 → そのまま表示（ブラウザ優先）
+ * - 両方とも不明 → 元の userAgent 文字列（それも無ければ「不明なデバイス」相当）
+ */
+function deviceLabel(userAgent: string | null): string {
+  const { browser, os } = parseUserAgent(userAgent)
+  if (browser && os) {
+    return t('settings.security.session.device_label', { os, browser })
+  }
+  if (browser) return browser
+  if (os) return os
+  return userAgent || t('settings.security.session.unknown_device')
 }
 </script>
 
@@ -94,7 +111,7 @@ function formatDate(dateStr: string | null): string {
       >
         <div>
           <p class="text-sm font-medium">
-            {{ session.userAgent || '不明なデバイス' }}
+            {{ deviceLabel(session.userAgent) }}
             <Tag v-if="session.isCurrent" value="現在" severity="success" class="ml-2" />
           </p>
           <p class="text-xs text-surface-500">
