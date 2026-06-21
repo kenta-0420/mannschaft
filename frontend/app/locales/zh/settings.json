@@ -281,6 +281,30 @@
       "retention_note": "※ 由于法律要求，部分数据将在 {days} 天后删除。",
       "delete_success": "账户已删除。感谢您的使用。",
       "delete_error": "删除账户失败"
+    },
+    "notification": {
+      "load_error": "获取设置失败",
+      "save_success": "已保存通知设置",
+      "save_error": "保存失败",
+      "save_button": "保存设置",
+      "global_section_title": "自动推送",
+      "priority_auto_delivery_label": "按优先级自动推送",
+      "priority_auto_delivery_desc": "将重要通知自动以推送通知发送。",
+      "scope_section_title": "按团队・组织的通知",
+      "scope_section_desc": "可按所属的团队或组织设置通知接收。",
+      "scope_type_team": "团队",
+      "scope_type_organization": "组织",
+      "scope_receiving": "接收中",
+      "scope_muted": "已静音",
+      "scope_empty": "没有所属的团队或组织",
+      "type_section_title": "通知类型",
+      "type_section_desc": "可按类型设置接收。点击“展开”可分别控制应用内和推送。",
+      "expand": "展开",
+      "collapse": "折叠",
+      "channel_in_app": "应用内",
+      "channel_push": "推送",
+      "locked_tag": "紧急",
+      "locked_desc": "此通知无法关闭"
     }
   }
 }

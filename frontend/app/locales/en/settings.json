@@ -281,6 +281,30 @@
       "retention_note": "※ Some data may be retained for {days} days due to legal requirements before being deleted.",
       "delete_success": "Your account has been deleted. Thank you for using our service.",
       "delete_error": "Failed to delete the account"
+    },
+    "notification": {
+      "load_error": "Failed to load settings",
+      "save_success": "Notification settings saved",
+      "save_error": "Failed to save",
+      "save_button": "Save settings",
+      "global_section_title": "Automatic delivery",
+      "priority_auto_delivery_label": "Auto-deliver by priority",
+      "priority_auto_delivery_desc": "Automatically also sends high-priority notifications as push notifications.",
+      "scope_section_title": "Notifications by team / organization",
+      "scope_section_desc": "Set notification reception for each team or organization you belong to.",
+      "scope_type_team": "Team",
+      "scope_type_organization": "Organization",
+      "scope_receiving": "Receiving",
+      "scope_muted": "Muted",
+      "scope_empty": "You do not belong to any team or organization",
+      "type_section_title": "Notification types",
+      "type_section_desc": "Configure reception per type. Use \"Expand\" to control in-app and push separately.",
+      "expand": "Expand",
+      "collapse": "Collapse",
+      "channel_in_app": "In-app",
+      "channel_push": "Push",
+      "locked_tag": "Urgent",
+      "locked_desc": "This notification cannot be disabled"
     }
   }
 }
