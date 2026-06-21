@@ -714,7 +714,66 @@
     "reorder_failed": "重新排序失败",
     "my_projects": "个人项目",
     "my_projects_description": "个人任务管理与目标",
-    "no_my_projects": "暂无个人项目"
+    "no_my_projects": "暂无个人项目",
+    "create_button": "创建项目",
+    "dialog": {
+      "create_title": "创建项目",
+      "edit_title": "编辑项目",
+      "title_label": "标题",
+      "title_placeholder": "项目名称",
+      "description_label": "描述",
+      "due_date_label": "截止日期",
+      "cancel": "取消",
+      "create": "创建",
+      "update": "更新"
+    },
+    "appearance": {
+      "emoji_label": "表情符号",
+      "color_label": "颜色",
+      "none": "无",
+      "custom_emoji": "自定义",
+      "custom_color": "自定义颜色",
+      "current": "当前值"
+    },
+    "guide": {
+      "button": "使用说明",
+      "page_title": "项目使用说明",
+      "description": "了解如何使用项目功能。",
+      "what": {
+        "title": "什么是项目？",
+        "body": "项目是统一管理任务（TODO）和里程碑的单元。您可以设置目标和截止日期，一目了然地跟踪进度。"
+      },
+      "create": {
+        "title": "如何创建项目",
+        "body": "点击“创建项目”按钮，填写以下信息。",
+        "item_title": "标题（必填）：项目名称",
+        "item_emoji": "表情符号：代表项目的图标（从预设中选择）",
+        "item_color": "颜色：卡片的识别颜色（从预设中选择）",
+        "item_due_date": "截止日期：目标完成日期（可选）"
+      },
+      "milestone": {
+        "title": "里程碑与关卡",
+        "body": "里程碑是项目中的阶段性目标。启用关卡功能后，在上一个里程碑完成之前，下一个里程碑将被锁定。",
+        "completion_mode_label": "关于完成模式",
+        "mode_auto": "自动完成",
+        "mode_auto_desc": "当里程碑中的所有TODO完成时，自动标记为已达成。",
+        "mode_manual": "手动",
+        "mode_manual_desc": "无论TODO完成状态如何，手动标记为已达成。"
+      },
+      "progress": {
+        "title": "如何查看进度",
+        "body": "项目卡片显示进度条、完成率和剩余天数。进度条根据已完成TODO/总TODO自动计算。"
+      },
+      "scope": {
+        "title": "个人项目与团队项目的区别",
+        "body": "项目有“个人”和“团队”两种范围。",
+        "personal_title": "个人项目",
+        "personal_desc": "只有您可以查看和管理。通过“我的页面”→“项目”访问。",
+        "team_title": "团队项目",
+        "team_desc": "与团队成员共享和共同管理。通过团队页面的“项目”标签访问。"
+      },
+      "back_to_projects": "返回项目列表"
+    }
   },
   "inviteToken": {
     "printQrPdf": "打印二维码PDF",

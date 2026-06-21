@@ -714,7 +714,66 @@
     "reorder_failed": "순서 변경에 실패했습니다",
     "my_projects": "개인 프로젝트",
     "my_projects_description": "개인 작업 관리 및 목표",
-    "no_my_projects": "아직 개인 프로젝트가 없습니다"
+    "no_my_projects": "아직 개인 프로젝트가 없습니다",
+    "create_button": "프로젝트 생성",
+    "dialog": {
+      "create_title": "프로젝트 생성",
+      "edit_title": "프로젝트 편집",
+      "title_label": "제목",
+      "title_placeholder": "프로젝트 이름",
+      "description_label": "설명",
+      "due_date_label": "마감일",
+      "cancel": "취소",
+      "create": "생성",
+      "update": "업데이트"
+    },
+    "appearance": {
+      "emoji_label": "이모지",
+      "color_label": "색상",
+      "none": "없음",
+      "custom_emoji": "사용자 지정",
+      "custom_color": "사용자 지정 색상",
+      "current": "현재 값"
+    },
+    "guide": {
+      "button": "사용 방법",
+      "page_title": "프로젝트 사용 방법",
+      "description": "프로젝트 기능의 기본 사용 방법을 알아보세요.",
+      "what": {
+        "title": "프로젝트란?",
+        "body": "프로젝트는 작업(TODO)과 마일스톤을 함께 관리하는 단위입니다. 목표와 마감일을 설정하고 진행 상황을 한눈에 파악할 수 있습니다."
+      },
+      "create": {
+        "title": "프로젝트 만들기",
+        "body": "'프로젝트 생성' 버튼을 클릭하고 다음 정보를 입력하세요.",
+        "item_title": "제목 (필수): 프로젝트 이름",
+        "item_emoji": "이모지: 프로젝트를 나타내는 아이콘 (프리셋에서 선택)",
+        "item_color": "색상: 카드의 식별 색상 (프리셋에서 선택)",
+        "item_due_date": "마감일: 완료 목표일 (선택사항)"
+      },
+      "milestone": {
+        "title": "마일스톤과 게이트",
+        "body": "마일스톤은 프로젝트 내의 중간 목표입니다. 게이트 기능을 활성화하면 이전 마일스톤이 완료될 때까지 다음 마일스톤이 잠깁니다.",
+        "completion_mode_label": "완료 모드에 대하여",
+        "mode_auto": "자동 완료",
+        "mode_auto_desc": "마일스톤의 모든 TODO가 완료되면 자동으로 달성 처리됩니다.",
+        "mode_manual": "수동",
+        "mode_manual_desc": "TODO 완료 여부와 관계없이 수동으로 달성 표시를 합니다."
+      },
+      "progress": {
+        "title": "진행 상황 보기",
+        "body": "프로젝트 카드에는 진행 바, 완료율, 남은 일수가 표시됩니다. 진행 바는 완료된 TODO / 전체 TODO 수에서 자동 계산됩니다."
+      },
+      "scope": {
+        "title": "개인 프로젝트 vs. 팀 프로젝트",
+        "body": "프로젝트에는 '개인'과 '팀' 두 가지 범위가 있습니다.",
+        "personal_title": "개인 프로젝트",
+        "personal_desc": "본인만 조회 및 관리할 수 있습니다. '마이 페이지' → '프로젝트'에서 접근하세요.",
+        "team_title": "팀 프로젝트",
+        "team_desc": "팀원과 공유하고 함께 관리합니다. 팀 페이지의 '프로젝트' 탭에서 접근하세요."
+      },
+      "back_to_projects": "프로젝트 목록으로 돌아가기"
+    }
   },
   "inviteToken": {
     "printQrPdf": "QR코드 PDF 인쇄",
