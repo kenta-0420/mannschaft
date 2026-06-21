@@ -71,7 +71,7 @@ class ProjectServiceTest {
     private com.mannschaft.app.auth.service.AuditLogService auditLogService;
 
     @Mock
-    private com.mannschaft.app.membership.repository.MembershipRepository membershipRepository;
+    private com.mannschaft.app.membership.service.MembershipService membershipService;
 
     @Mock
     private com.mannschaft.app.team.service.TeamService teamService;
@@ -856,17 +856,6 @@ class ProjectServiceTest {
         private static final Long TEAM_B = 22L;
         private static final Long TEAM_C_NOT_JOINED = 99L;
 
-        /** 指定 scopeId（チーム ID）のアクティブメンバーシップを生成する。 */
-        private com.mannschaft.app.membership.entity.MembershipEntity membership(Long teamScopeId) {
-            return com.mannschaft.app.membership.entity.MembershipEntity.builder()
-                    .userId(USER_ID)
-                    .scopeType(com.mannschaft.app.membership.domain.ScopeType.TEAM)
-                    .scopeId(teamScopeId)
-                    .roleKind(com.mannschaft.app.membership.domain.RoleKind.MEMBER)
-                    .joinedAt(LocalDateTime.now())
-                    .build();
-        }
-
         /** 指定チーム（scopeId）に属する ACTIVE プロジェクトを生成する。 */
         private ProjectEntity teamProject(Long teamScopeId, String title) {
             return ProjectEntity.builder()
@@ -896,9 +885,8 @@ class ProjectServiceTest {
         @DisplayName("AC-2: 複数チーム所属_所属teamId集合で集約クエリが呼ばれ全projが返る")
         void AC2_複数チーム所属_集約クエリのscopeId集合で全proj返却() {
             // Given: TEAM_A / TEAM_B の 2 チームに所属
-            given(membershipRepository.findActiveByUserAndScopeType(
-                    USER_ID, com.mannschaft.app.membership.domain.ScopeType.TEAM))
-                    .willReturn(List.of(membership(TEAM_A), membership(TEAM_B)));
+            given(membershipService.getActiveTeamIdsByUser(USER_ID))
+                    .willReturn(List.of(TEAM_A, TEAM_B));
             Page<ProjectEntity> page = new PageImpl<>(List.of(
                     teamProject(TEAM_A, "Aプロジェクト"),
                     teamProject(TEAM_B, "Bプロジェクト")));
@@ -932,9 +920,8 @@ class ProjectServiceTest {
         @Test
         @DisplayName("AC-3: 各レスポンスにteamId/teamName/teamSlugが正しく付与される")
         void AC3_teamId_teamName_teamSlugが付与される() {
-            given(membershipRepository.findActiveByUserAndScopeType(
-                    USER_ID, com.mannschaft.app.membership.domain.ScopeType.TEAM))
-                    .willReturn(List.of(membership(TEAM_A), membership(TEAM_B)));
+            given(membershipService.getActiveTeamIdsByUser(USER_ID))
+                    .willReturn(List.of(TEAM_A, TEAM_B));
             given(projectRepository.findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
                     eq(TodoScopeType.TEAM), anyCollection(), eq(ProjectStatus.ACTIVE), any(Pageable.class)))
                     .willReturn(new PageImpl<>(List.of(
@@ -960,9 +947,8 @@ class ProjectServiceTest {
         @DisplayName("AC-4: membershipが返さないチームのprojは含まれない（scopeIds集合に無い）")
         void AC4_所属外チームのscopeIdは集約クエリに渡らない() {
             // Given: 所属は TEAM_A のみ（TEAM_C には未所属）
-            given(membershipRepository.findActiveByUserAndScopeType(
-                    USER_ID, com.mannschaft.app.membership.domain.ScopeType.TEAM))
-                    .willReturn(List.of(membership(TEAM_A)));
+            given(membershipService.getActiveTeamIdsByUser(USER_ID))
+                    .willReturn(List.of(TEAM_A));
             given(projectRepository.findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
                     eq(TodoScopeType.TEAM), anyCollection(), eq(ProjectStatus.ACTIVE), any(Pageable.class)))
                     .willReturn(new PageImpl<>(List.of(teamProject(TEAM_A, "Aプロジェクト"))));
@@ -984,13 +970,12 @@ class ProjectServiceTest {
         }
 
         @Test
-        @DisplayName("AC-5: 非アクティブ/退会チームはfindActiveByUserAndScopeTypeが返さず除外される")
+        @DisplayName("AC-5: 非アクティブ/退会チームはgetActiveTeamIdsByUserが返さず除外される")
         void AC5_非アクティブ所属は集約対象に含まれない() {
-            // Given: findActiveByUserAndScopeType は active な TEAM_A のみ返す
-            //        （退会済み TEAM_B は left_at IS NOT NULL でリポジトリが除外する前提）
-            given(membershipRepository.findActiveByUserAndScopeType(
-                    USER_ID, com.mannschaft.app.membership.domain.ScopeType.TEAM))
-                    .willReturn(List.of(membership(TEAM_A)));
+            // Given: getActiveTeamIdsByUser は active な TEAM_A のみ返す
+            //        （退会済み TEAM_B は MembershipService が left_at IS NOT NULL で除外する前提）
+            given(membershipService.getActiveTeamIdsByUser(USER_ID))
+                    .willReturn(List.of(TEAM_A));
             given(projectRepository.findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
                     eq(TodoScopeType.TEAM), anyCollection(), eq(ProjectStatus.ACTIVE), any(Pageable.class)))
                     .willReturn(new PageImpl<>(List.of(teamProject(TEAM_A, "Aプロジェクト"))));
@@ -1013,9 +998,8 @@ class ProjectServiceTest {
         @Test
         @DisplayName("AC-6: status引数がfindBy...Statusに渡る（COMPLETED指定）")
         void AC6_status引数が集約クエリに渡る() {
-            given(membershipRepository.findActiveByUserAndScopeType(
-                    USER_ID, com.mannschaft.app.membership.domain.ScopeType.TEAM))
-                    .willReturn(List.of(membership(TEAM_A)));
+            given(membershipService.getActiveTeamIdsByUser(USER_ID))
+                    .willReturn(List.of(TEAM_A));
             given(projectRepository.findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
                     eq(TodoScopeType.TEAM), anyCollection(), eq(ProjectStatus.COMPLETED), any(Pageable.class)))
                     .willReturn(new PageImpl<>(List.of()));
@@ -1034,18 +1018,15 @@ class ProjectServiceTest {
         @Test
         @DisplayName("AC-7: 所属0（membershipが空）→所属解決のみ実施し集約クエリは呼ばず空リスト")
         void AC7_所属0_集約クエリを呼ばず空リスト() {
-            given(membershipRepository.findActiveByUserAndScopeType(
-                    USER_ID, com.mannschaft.app.membership.domain.ScopeType.TEAM))
+            given(membershipService.getActiveTeamIdsByUser(USER_ID))
                     .willReturn(List.of());
 
             PagedResponse<com.mannschaft.app.todo.dto.TeamProjectSummaryResponse> response =
                     projectService.listTeamProjectsForUser(USER_ID, ProjectStatus.ACTIVE, 0, 20);
 
-            // Then: 所属解決（findActiveByUserAndScopeType）は実施するが、
+            // Then: 所属解決（getActiveTeamIdsByUser）は実施するが、
             //       teamIds が空なので集約クエリは 1 度も呼ばず、空リストを返す。
-            //       空実装段階では所属解決自体を呼ばないため red（出陣で所属解決を配線して green 化）。
-            verify(membershipRepository).findActiveByUserAndScopeType(
-                    USER_ID, com.mannschaft.app.membership.domain.ScopeType.TEAM);
+            verify(membershipService).getActiveTeamIdsByUser(USER_ID);
             verify(projectRepository, org.mockito.Mockito.never())
                     .findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
                             any(), anyCollection(), any(), any(Pageable.class));
@@ -1055,9 +1036,8 @@ class ProjectServiceTest {
         @Test
         @DisplayName("AC-8: teamName/slug解決はgetNamesByIds/getSlugsByIdsを各1回だけ呼ぶ（N+1でない）")
         void AC8_名前slug解決はバッチで各1回() {
-            given(membershipRepository.findActiveByUserAndScopeType(
-                    USER_ID, com.mannschaft.app.membership.domain.ScopeType.TEAM))
-                    .willReturn(List.of(membership(TEAM_A), membership(TEAM_B)));
+            given(membershipService.getActiveTeamIdsByUser(USER_ID))
+                    .willReturn(List.of(TEAM_A, TEAM_B));
             given(projectRepository.findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
                     eq(TodoScopeType.TEAM), anyCollection(), eq(ProjectStatus.ACTIVE), any(Pageable.class)))
                     .willReturn(new PageImpl<>(List.of(

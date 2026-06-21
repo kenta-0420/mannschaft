@@ -735,8 +735,10 @@ public class TeamService {
      * @return id → name の Map（論理削除済みは除外）。ids が空の場合は空 Map を返す
      */
     public Map<Long, String> getNamesByIds(Collection<Long> ids) {
-        // TODO(出陣): 試練フェーズの空実装。実装は /出陣 で teamRepository から name マップを取得する。
-        return java.util.Map.of();
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return teamRepository.findNameMapByIdIn(ids);
     }
 
     /**

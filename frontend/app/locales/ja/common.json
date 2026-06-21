@@ -715,6 +715,8 @@
     "my_projects": "個人プロジェクト",
     "my_projects_description": "自分のタスク管理・目標",
     "no_my_projects": "個人プロジェクトがまだありません",
+    "team_projects_section": "チームのプロジェクト",
+    "no_team_projects": "所属チームにプロジェクトがまだありません",
     "create_button": "プロジェクト作成",
     "dialog": {
       "create_title": "プロジェクト作成",

@@ -25,7 +25,7 @@ import com.mannschaft.app.todo.dto.TeamProjectSummaryResponse;
 import com.mannschaft.app.todo.repository.ProjectMilestoneRepository;
 import com.mannschaft.app.todo.repository.ProjectRepository;
 import com.mannschaft.app.todo.repository.TodoRepository;
-import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -61,7 +61,7 @@ public class ProjectService {
     private final NameResolverService nameResolverService;
     private final MilestoneGateService milestoneGateService;
     private final AuditLogService auditLogService;
-    private final MembershipRepository membershipRepository;
+    private final MembershipService membershipService;
     private final TeamService teamService;
 
     /**
@@ -110,9 +110,56 @@ public class ProjectService {
      */
     public PagedResponse<TeamProjectSummaryResponse> listTeamProjectsForUser(
             Long userId, ProjectStatus status, int page, int size) {
-        // TODO(出陣): 空実装。所属チーム解決 → 集約クエリ → teamName/teamSlug 付与を実装する。
-        PagedResponse.PageMeta meta = new PagedResponse.PageMeta(0L, page, size, 0);
-        return PagedResponse.of(List.of(), meta);
+        // AC-7: 所属チーム ID 集合を取得。MembershipService 経由でプリミティブのみ受け取り
+        //        MembershipRepository への直接依存を避ける（D-3 ArchUnit 準拠）。
+        List<Long> teamIds = membershipService.getActiveTeamIdsByUser(userId);
+        if (teamIds.isEmpty()) {
+            // AC-7: teamIds が空なら集約クエリを呼ばず空ページを返す
+            PagedResponse.PageMeta emptyMeta = new PagedResponse.PageMeta(0L, page, size, 0);
+            return PagedResponse.of(List.of(), emptyMeta);
+        }
+
+        PageRequest pageable = PageRequest.of(page, size, Sort.by("dueDate").ascending());
+        Page<ProjectEntity> pageResult = projectRepository
+                .findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
+                        TodoScopeType.TEAM, teamIds, status, pageable);
+
+        // AC-8: teamName / teamSlug はバッチで各 1 回（N+1 回避）
+        Set<Long> scopeIds = pageResult.getContent().stream()
+                .map(ProjectEntity::getScopeId)
+                .collect(java.util.stream.Collectors.toSet());
+        Map<Long, String> nameMap = teamService.getNamesByIds(scopeIds);
+        Map<Long, String> slugMap = teamService.getSlugsByIds(scopeIds);
+
+        List<TeamProjectSummaryResponse> responses = pageResult.getContent().stream()
+                .map(p -> {
+                    long milestoneTotal = milestoneRepository.countByProjectId(p.getId());
+                    long milestoneCompleted = milestoneRepository.countByProjectIdAndIsCompletedTrue(p.getId());
+                    return new TeamProjectSummaryResponse(
+                            p.getId(),
+                            p.getTitle(),
+                            p.getEmoji(),
+                            p.getColor(),
+                            p.getDueDate(),
+                            calculateDaysRemaining(p.getDueDate()),
+                            p.getStatus().name(),
+                            p.getProgressRate(),
+                            p.getTotalTodos(),
+                            p.getCompletedTodos(),
+                            new ProjectResponse.MilestoneSummary(milestoneTotal, milestoneCompleted),
+                            resolveUserInfo(p.getCreatedBy()),
+                            p.getCreatedAt(),
+                            p.getScopeId(),
+                            nameMap.getOrDefault(p.getScopeId(), ""),
+                            slugMap.getOrDefault(p.getScopeId(), "")
+                    );
+                })
+                .toList();
+
+        PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
+                pageResult.getTotalElements(), pageResult.getNumber(),
+                pageResult.getSize(), pageResult.getTotalPages());
+        return PagedResponse.of(responses, meta);
     }
 
     /**
