@@ -1,0 +1,36 @@
+# application-local.yml.example — ローカル開発環境設定テンプレート
+# このファイルをコピーして application-local.yml を作成し、環境に合わせて設定すること。
+# application-local.yml は .gitignore で管理されている（コミット禁止）。
+#
+# コピー方法:
+#   cp backend/src/main/resources/application-local.yml.example \
+#      backend/src/main/resources/application-local.yml
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/mannschaft?serverTimezone=Asia/Tokyo
+    username: mannschaft
+    password: mannschaft
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+
+mannschaft:
+  # ローカル開発用メール送信設定: 実SESを叩かずログのみ出力する
+  email:
+    simulate: true
+
+  # ─────────────────────────────────────────────────────────
+  # ローカルアバター/メディア画像保存 — MinIO（S3互換）設定
+  # 前提: docker compose --profile storage up -d で MinIO を起動すること
+  # バケット mannschaft-storage は minio-init が自動作成する
+  # ─────────────────────────────────────────────────────────
+  storage:
+    endpoint: ${MANNSCHAFT_R2_ENDPOINT:http://localhost:9000}
+    access-key: ${MANNSCHAFT_R2_ACCESS_KEY:minioadmin}
+    secret-key: ${MANNSCHAFT_R2_SECRET_KEY:minioadmin}
+    bucket: ${MANNSCHAFT_R2_BUCKET:mannschaft-storage}
+    presigned-upload-ttl: 600
+    presigned-download-ttl: 3600
