@@ -714,7 +714,66 @@
     "reorder_failed": "Failed to reorder",
     "my_projects": "My projects",
     "my_projects_description": "Personal task management and goals",
-    "no_my_projects": "No personal projects yet"
+    "no_my_projects": "No personal projects yet",
+    "create_button": "Create project",
+    "dialog": {
+      "create_title": "Create project",
+      "edit_title": "Edit project",
+      "title_label": "Title",
+      "title_placeholder": "Project name",
+      "description_label": "Description",
+      "due_date_label": "Due date",
+      "cancel": "Cancel",
+      "create": "Create",
+      "update": "Update"
+    },
+    "appearance": {
+      "emoji_label": "Emoji",
+      "color_label": "Color",
+      "none": "None",
+      "custom_emoji": "Custom",
+      "custom_color": "Custom color",
+      "current": "Current"
+    },
+    "guide": {
+      "button": "How to use",
+      "page_title": "How to use Projects",
+      "description": "Learn how to use the project feature.",
+      "what": {
+        "title": "What is a project?",
+        "body": "A project is a unit for managing tasks (TODOs) and milestones together. You can set goals and deadlines and track progress at a glance. It can be used for personal self-management or team collaboration."
+      },
+      "create": {
+        "title": "How to create a project",
+        "body": "Click the 'Create Project' button and fill in the following information.",
+        "item_title": "Title (required): Name of the project",
+        "item_emoji": "Emoji: Icon representing the project (choose from presets)",
+        "item_color": "Color: Identification color for the card (choose from presets)",
+        "item_due_date": "Due date: Target completion date (optional)"
+      },
+      "milestone": {
+        "title": "Milestones and gates",
+        "body": "Milestones are intermediate goals within a project. When the gate feature is enabled, the next milestone is locked until the previous one is completed. You can build up progress step by step.",
+        "completion_mode_label": "About completion mode",
+        "mode_auto": "Auto-complete",
+        "mode_auto_desc": "Automatically marked as achieved when all TODOs in the milestone are completed.",
+        "mode_manual": "Manual",
+        "mode_manual_desc": "Manually mark as achieved regardless of TODO completion status."
+      },
+      "progress": {
+        "title": "How to read progress",
+        "body": "Project cards show a progress bar, completion rate, and days remaining. The progress bar is automatically calculated from the number of completed TODOs / total TODOs. If the deadline is exceeded, it is displayed in red as 'X days overdue'."
+      },
+      "scope": {
+        "title": "Personal vs. team projects",
+        "body": "Projects have two types of scope: 'personal' and 'team'.",
+        "personal_title": "Personal project",
+        "personal_desc": "Only you can view and manage it. Access via 'My page' → 'Projects'.",
+        "team_title": "Team project",
+        "team_desc": "Share and co-manage with team members. Access via the 'Projects' tab on the team page."
+      },
+      "back_to_projects": "Back to project list"
+    }
   },
   "inviteToken": {
     "printQrPdf": "Print QR PDF",
@@ -1511,6 +1570,7 @@
       "prevPage": "Previous page",
       "nextPage": "Next page",
       "reorder": "Change display order",
+      "goToScopePage": "Go to team/organization page",
       "empty": "You do not belong to any teams or organizations",
       "folderEmpty": "No scopes in this folder",
       "loadError": "Failed to load tag list"
