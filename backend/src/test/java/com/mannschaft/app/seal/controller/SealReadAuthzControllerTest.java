@@ -4,6 +4,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.seal.SealVariant;
 import com.mannschaft.app.seal.dto.ScopeDefaultResponse;
 import com.mannschaft.app.seal.dto.StampLogResponse;
 import com.mannschaft.app.seal.service.SealService;
@@ -95,7 +96,7 @@ class SealReadAuthzControllerTest {
         private ScopeDefaultResponse buildScopeDefault() {
             return new ScopeDefaultResponse(
                     1L, OWNER_ID, "TEAM", 100L, "チームA", 50L,
-                    LocalDateTime.of(2026, 3, 1, 0, 0), null);
+                    SealVariant.LAST_NAME, LocalDateTime.of(2026, 3, 1, 0, 0), null);
         }
 
         @Test
@@ -156,7 +157,8 @@ class SealReadAuthzControllerTest {
     class ListStamps {
 
         private StampLogResponse buildLog(Long id) {
-            return new StampLogResponse(id, OWNER_ID, 50L, "hash", "CIRCULATION", 500L,
+            return new StampLogResponse(id, OWNER_ID, 50L, "hash",
+                    SealVariant.LAST_NAME, "CIRCULATION", 500L,
                     "docHash", false, null, LocalDateTime.of(2026, 3, 1, 12, 0), null);
         }
 
