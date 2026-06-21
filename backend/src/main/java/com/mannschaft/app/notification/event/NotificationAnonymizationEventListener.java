@@ -3,6 +3,7 @@ package com.mannschaft.app.notification.event;
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
 import com.mannschaft.app.notification.repository.NotificationPreferenceRepository;
 import com.mannschaft.app.notification.repository.NotificationRepository;
+import com.mannschaft.app.notification.repository.NotificationSettingsRepository;
 import com.mannschaft.app.notification.repository.NotificationTypePreferenceRepository;
 import com.mannschaft.app.notification.repository.PushSubscriptionRepository;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,7 @@ public class NotificationAnonymizationEventListener {
     private final PushSubscriptionRepository pushSubscriptionRepository;
     private final NotificationPreferenceRepository notificationPreferenceRepository;
     private final NotificationTypePreferenceRepository notificationTypePreferenceRepository;
+    private final NotificationSettingsRepository notificationSettingsRepository;
     private final NotificationRepository notificationRepository;
 
     /**
@@ -63,6 +65,9 @@ public class NotificationAnonymizationEventListener {
 
             notificationTypePreferenceRepository.deleteByUserId(userId);
             log.debug("ユーザー退会: 通知種別設定削除完了: userId={}", userId);
+
+            notificationSettingsRepository.deleteByUserId(userId);
+            log.debug("ユーザー退会: グローバル通知設定削除完了: userId={}", userId);
 
             // 第二陣E: 通知本体（title / body ＝個人の内容＝PII）を即時削除し、
             // V100.001 で撤廃する fk_notifications_user（CASCADE）を冗長化する。
