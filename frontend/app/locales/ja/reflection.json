@@ -6,6 +6,12 @@
       "themes": "テーマ一覧",
       "settings": "通知設定"
     },
+    "widget": {
+      "pending_recall": "想起待ち",
+      "unwritten": "未記入",
+      "open_today": "今日の振り返りを開く",
+      "empty": "今日のテーマがありません"
+    },
     "today": {
       "heading": "今日の振り返り",
       "date_label": "対象日",

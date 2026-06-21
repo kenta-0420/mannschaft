@@ -1,5 +1,6 @@
 package com.mannschaft.app.seal.dto;
 
+import com.mannschaft.app.seal.SealVariant;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -23,6 +24,10 @@ public class ScopeDefaultResponse {
      */
     private final String scopeName;
     private final Long sealId;
+    /**
+     * 印鑑字体種別。印鑑が削除済みの場合は null。
+     */
+    private final SealVariant variant;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 }

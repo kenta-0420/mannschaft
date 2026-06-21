@@ -6,6 +6,12 @@
       "themes": "Themen",
       "settings": "Benachrichtigungseinstellungen"
     },
+    "widget": {
+      "pending_recall": "Abruf ausstehend",
+      "unwritten": "Nicht geschrieben",
+      "open_today": "Heutige Rückblicke öffnen",
+      "empty": "Keine Themen für heute"
+    },
     "today": {
       "heading": "Heutige Rückblicke",
       "date_label": "Datum",

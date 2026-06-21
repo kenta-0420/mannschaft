@@ -24,6 +24,7 @@ import java.util.List;
  * @param visibility       可視性（MVP は PRIVATE）
  * @param version          楽観ロックバージョン（PUT の expectedVersion 突合用）
  * @param updatedAt        更新日時
+ * @param exportedBlogPostId 輸出済みブログ投稿ID（null=未輸出）。マスク中でも本文ではないメタとして開示してよい（再輸出 409 回避導線・follow-up A④）
  */
 @Builder
 public record ReflectionEntryResponse(
@@ -35,7 +36,8 @@ public record ReflectionEntryResponse(
         MaskedHint maskedHint,
         ReflectionVisibility visibility,
         Long version,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        Long exportedBlogPostId
 ) {
 
     /**

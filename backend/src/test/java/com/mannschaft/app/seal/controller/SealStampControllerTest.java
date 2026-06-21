@@ -2,6 +2,7 @@ package com.mannschaft.app.seal.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.seal.SealVariant;
 import com.mannschaft.app.seal.dto.ScopeDefaultResponse;
 import com.mannschaft.app.seal.dto.SetScopeDefaultRequest;
 import com.mannschaft.app.seal.dto.StampLogResponse;
@@ -69,7 +70,7 @@ class SealStampControllerTest {
 
     private StampLogResponse buildStampLogResponse() {
         return new StampLogResponse(STAMP_LOG_ID, USER_ID, SEAL_ID, "hash123",
-                "CIRCULATION", 500L, "docHash", false, null,
+                SealVariant.LAST_NAME, "CIRCULATION", 500L, "docHash", false, null,
                 LocalDateTime.of(2026, 3, 1, 12, 0), null);
     }
 
@@ -107,7 +108,7 @@ class SealStampControllerTest {
         @DisplayName("正常系: 押印が取り消される")
         void 押印取消() {
             StampLogResponse revoked = new StampLogResponse(STAMP_LOG_ID, USER_ID, SEAL_ID, "hash123",
-                    "CIRCULATION", 500L, "docHash", true,
+                    SealVariant.LAST_NAME, "CIRCULATION", 500L, "docHash", true,
                     LocalDateTime.of(2026, 4, 1, 0, 0),
                     LocalDateTime.of(2026, 3, 1, 12, 0), null);
             given(stampService.revokeStamp(USER_ID, STAMP_LOG_ID)).willReturn(revoked);
@@ -169,7 +170,7 @@ class SealStampControllerTest {
         void スコープデフォルト設定() {
             ScopeDefaultResponse scopeDefault = new ScopeDefaultResponse(
                     1L, USER_ID, "DEFAULT", null, "デフォルト", SEAL_ID,
-                    LocalDateTime.of(2026, 3, 1, 0, 0), null);
+                    SealVariant.LAST_NAME, LocalDateTime.of(2026, 3, 1, 0, 0), null);
             given(sealService.setScopeDefault(eq(USER_ID), any(SetScopeDefaultRequest.class)))
                     .willReturn(scopeDefault);
             SetScopeDefaultRequest request = new SetScopeDefaultRequest("DEFAULT", null, SEAL_ID);
