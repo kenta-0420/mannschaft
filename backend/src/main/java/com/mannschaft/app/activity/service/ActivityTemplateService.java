@@ -16,6 +16,7 @@ import com.mannschaft.app.activity.entity.SystemActivityTemplatePresetEntity;
 import com.mannschaft.app.activity.repository.ActivityTemplateFieldRepository;
 import com.mannschaft.app.activity.repository.ActivityTemplateRepository;
 import com.mannschaft.app.activity.repository.SystemActivityTemplatePresetRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -46,11 +47,16 @@ public class ActivityTemplateService {
     private final SystemActivityTemplatePresetRepository presetRepository;
     private final ActivityMapper activityMapper;
     private final ObjectMapper objectMapper;
+    private final AccessControlService accessControlService;
 
     /**
      * テンプレート一覧を取得する。
+     *
+     * <p>認可: 対象スコープの会員のみ閲覧可（非会員は 403 = COMMON_002）。
+     * 他スコープ会員によるテンプレート列挙（IDOR）を封じる。</p>
      */
-    public List<ActivityTemplateResponse> listTemplates(ActivityScopeType scopeType, Long scopeId) {
+    public List<ActivityTemplateResponse> listTemplates(Long userId, ActivityScopeType scopeType, Long scopeId) {
+        checkScopeMembership(userId, scopeType, scopeId);
         List<ActivityTemplateEntity> templates =
                 templateRepository.findByScopeTypeAndScopeIdOrderBySortOrderAsc(scopeType, scopeId);
         return templates.stream().map(this::toResponseWithFields).collect(Collectors.toList());
@@ -58,9 +64,12 @@ public class ActivityTemplateService {
 
     /**
      * テンプレート詳細を取得する。
+     *
+     * <p>認可: テンプレートが属するスコープの会員のみ閲覧可（非会員は 403 = COMMON_002）。</p>
      */
-    public ActivityTemplateResponse getTemplate(Long id) {
+    public ActivityTemplateResponse getTemplate(Long id, Long userId) {
         ActivityTemplateEntity entity = findTemplateOrThrow(id);
+        checkScopeMembership(userId, entity.getScopeType(), entity.getScopeId());
         return toResponseWithFields(entity);
     }
 
@@ -70,6 +79,8 @@ public class ActivityTemplateService {
     @Transactional
     public ActivityTemplateResponse createTemplate(Long userId, ActivityScopeType scopeType,
                                                     Long scopeId, CreateTemplateRequest request) {
+        // スコープメンバーシップ検証: 非メンバーは403
+        checkScopeMembership(userId, scopeType, scopeId);
         // 上限チェック
         long count = templateRepository.countByScopeTypeAndScopeId(scopeType, scopeId);
         if (count >= MAX_TEMPLATES_PER_SCOPE) {
@@ -127,8 +138,10 @@ public class ActivityTemplateService {
      * テンプレートを更新する。
      */
     @Transactional
-    public ActivityTemplateResponse updateTemplate(Long id, UpdateTemplateRequest request) {
+    public ActivityTemplateResponse updateTemplate(Long id, Long userId, UpdateTemplateRequest request) {
         ActivityTemplateEntity entity = findTemplateOrThrow(id);
+        // 認可: 管理者（ADMIN/DEPUTY_ADMIN）のみ更新可。非管理者は403
+        checkScopeAdmin(userId, entity.getScopeType(), entity.getScopeId());
         ActivityVisibility visibility = request.getDefaultVisibility() != null
                 ? ActivityVisibility.valueOf(request.getDefaultVisibility()) : entity.getDefaultVisibility();
 
@@ -206,8 +219,10 @@ public class ActivityTemplateService {
      * テンプレートを論理削除する。
      */
     @Transactional
-    public void deleteTemplate(Long id) {
+    public void deleteTemplate(Long id, Long userId) {
         ActivityTemplateEntity entity = findTemplateOrThrow(id);
+        // 認可: 管理者（ADMIN/DEPUTY_ADMIN）のみ削除可。非管理者は403
+        checkScopeAdmin(userId, entity.getScopeType(), entity.getScopeId());
         entity.softDelete();
         templateRepository.save(entity);
         log.info("テンプレート削除: templateId={}", id);
@@ -219,6 +234,8 @@ public class ActivityTemplateService {
     @Transactional
     public ActivityTemplateResponse duplicateTemplate(Long id, Long userId, DuplicateTemplateRequest request) {
         ActivityTemplateEntity source = findTemplateOrThrow(id);
+        // 認可: コピー元スコープの会員のみ複製可。非会員は403（他スコープのテンプレ窃取=IDOR を封じる）
+        checkScopeMembership(userId, source.getScopeType(), source.getScopeId());
         ActivityScopeType targetScopeType = ActivityScopeType.valueOf(request.getTargetScopeType());
         Long targetScopeId = request.getTargetScopeId();
 
@@ -276,6 +293,9 @@ public class ActivityTemplateService {
 
         ActivityScopeType scopeType = ActivityScopeType.valueOf(request.getScopeType());
         Long scopeId = request.getScopeId();
+
+        // 認可: インポート先スコープの会員のみ実行可。非会員は403
+        checkScopeMembership(userId, scopeType, scopeId);
 
         // 上限チェック
         long count = templateRepository.countByScopeTypeAndScopeId(scopeType, scopeId);
@@ -335,6 +355,29 @@ public class ActivityTemplateService {
     ActivityTemplateEntity findTemplateOrThrow(Long id) {
         return templateRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ActivityErrorCode.TEMPLATE_NOT_FOUND));
+    }
+
+    /**
+     * スコープ会員であることを検証する（参照系・作成系）。
+     *
+     * <p>{@code ActivityResultService} の既存実装に倣い、TEAM/ORGANIZATION のみ検証する
+     * （AccessControlService は TEAM/ORGANIZATION のみ処理するため。COMMITTEE は対象外で通す）。</p>
+     */
+    private void checkScopeMembership(Long userId, ActivityScopeType scopeType, Long scopeId) {
+        if (scopeType == ActivityScopeType.TEAM || scopeType == ActivityScopeType.ORGANIZATION) {
+            accessControlService.checkMembership(userId, scopeId, scopeType.name());
+        }
+    }
+
+    /**
+     * スコープ管理者（ADMIN/DEPUTY_ADMIN）であることを検証する（更新・削除系）。
+     *
+     * <p>TEAM/ORGANIZATION のみ検証する（COMMITTEE は対象外で通す）。</p>
+     */
+    private void checkScopeAdmin(Long userId, ActivityScopeType scopeType, Long scopeId) {
+        if (scopeType == ActivityScopeType.TEAM || scopeType == ActivityScopeType.ORGANIZATION) {
+            accessControlService.checkAdminOrAbove(userId, scopeId, scopeType.name());
+        }
     }
 
     /**

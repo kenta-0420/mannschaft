@@ -43,7 +43,8 @@ public class ActivityCommentController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<ActivityCommentResponse>>> listComments(
             @PathVariable Long activityId) {
-        return ResponseEntity.ok(ApiResponse.of(commentService.listComments(activityId)));
+        return ResponseEntity.ok(ApiResponse.of(
+                commentService.listComments(activityId, SecurityUtils.getCurrentUserId())));
     }
 
     /**
@@ -81,7 +82,7 @@ public class ActivityCommentController {
     public ResponseEntity<Void> deleteComment(
             @PathVariable Long activityId,
             @PathVariable Long commentId) {
-        commentService.deleteComment(commentId);
+        commentService.deleteComment(commentId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }
