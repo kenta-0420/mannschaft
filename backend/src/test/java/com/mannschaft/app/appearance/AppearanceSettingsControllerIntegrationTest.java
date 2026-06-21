@@ -140,12 +140,15 @@ class AppearanceSettingsControllerIntegrationTest extends AbstractMySqlIntegrati
     // ─────────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("GET未認証401: 認証なしでGET → BusinessException(COMMON_000)が投げられる")
+    @DisplayName("GET未認証401: 認証なしでGET → @PreAuthorize が AuthenticationCredentialsNotFoundException を投げる(→401)")
     void get_unauthenticated_throws() {
         SecurityContextHolder.clearContext();
 
+        // @SpringBootTest では実コントローラが method security プロキシ越しに呼ばれるため、
+        // 未認証時は本体(SecurityUtils.getCurrentUserId の COMMON_000)より先に @PreAuthorize が発火し
+        // AuthenticationCredentialsNotFoundException を投げる（HTTP 層では 401 に変換される）。
         assertThatThrownBy(() -> controller.getAppearance())
-                .isInstanceOf(com.mannschaft.app.common.BusinessException.class);
+                .isInstanceOf(org.springframework.security.authentication.AuthenticationCredentialsNotFoundException.class);
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -153,7 +156,7 @@ class AppearanceSettingsControllerIntegrationTest extends AbstractMySqlIntegrati
     // ─────────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("PUT未認証401: 認証なしでPUT → BusinessException(COMMON_000)が投げられる")
+    @DisplayName("PUT未認証401: 認証なしでPUT → @PreAuthorize が AuthenticationCredentialsNotFoundException を投げる(→401)")
     void put_unauthenticated_throws() {
         SecurityContextHolder.clearContext();
 
@@ -164,8 +167,9 @@ class AppearanceSettingsControllerIntegrationTest extends AbstractMySqlIntegrati
                 .hideChatPreview(false)
                 .build();
 
+        // method security プロキシにより未認証は @PreAuthorize で弾かれる（→401）。
         assertThatThrownBy(() -> controller.updateAppearance(req))
-                .isInstanceOf(com.mannschaft.app.common.BusinessException.class);
+                .isInstanceOf(org.springframework.security.authentication.AuthenticationCredentialsNotFoundException.class);
     }
 
     // ─────────────────────────────────────────────────────────────────────
