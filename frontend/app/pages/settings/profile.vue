@@ -7,6 +7,7 @@ const api = useApi()
 const notification = useNotification()
 const contactApi = useContactApi()
 const { captureQuiet } = useErrorReport()
+const { uploadAndCommit } = useProfileMediaApi()
 
 const loading = ref(true)
 const saving = ref(false)
@@ -64,7 +65,7 @@ async function saveProfile() {
   saving.value = true
   try {
     await api('/api/v1/users/me', {
-      method: 'PATCH',
+      method: 'PUT',
       body: {
         nickname: profile.value.nickname,
         phoneNumber: profile.value.phoneNumber,
@@ -88,18 +89,15 @@ async function uploadAvatar(event: Event) {
     return
   }
 
-  const formData = new FormData()
-  formData.append('file', file)
-
   try {
-    const res = await api<{ data: { avatarUrl: string } }>('/api/v1/users/me/avatar', {
-      method: 'POST',
-      body: formData,
-    })
-    profile.value.avatarUrl = res.data.avatarUrl
+    const result = await uploadAndCommit('user', null, 'icon', file)
+    profile.value.avatarUrl = result.url
     notification.success('アバターを更新しました')
-  } catch {
+  } catch (e) {
+    captureQuiet(e, { context: 'ProfileSettings: アバターアップロード' })
     notification.error('アバターのアップロードに失敗しました')
+  } finally {
+    input.value = ''
   }
 }
 </script>

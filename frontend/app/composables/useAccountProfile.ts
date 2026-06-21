@@ -2,6 +2,7 @@ export function useAccountProfile() {
   const api = useApi()
   const notification = useNotification()
   const { changeLocale } = useLocale()
+  const authStore = useAuthStore()
   const {
     getProfile,
     updateProfile,
@@ -128,6 +129,11 @@ export function useAccountProfile() {
     try {
       await updateProfile({ locale: profile.value.locale, timezone: profile.value.timezone })
       await changeLocale(profile.value.locale)
+      // authStore の user.locale を更新して localStorage と同期する。
+      // これにより次回リロード時に locale.client.ts が正しいロケールを復元できる。
+      if (authStore.user) {
+        await authStore.setUser({ ...authStore.user, locale: profile.value.locale })
+      }
       notification.success('言語・タイムゾーンを更新しました')
     } catch {
       notification.error('言語・タイムゾーンの更新に失敗しました')

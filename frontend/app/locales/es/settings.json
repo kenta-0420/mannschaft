@@ -126,7 +126,11 @@
       "backup_codes_dialog_title": "Códigos de respaldo",
       "backup_codes_description": "Guarde los siguientes códigos de respaldo en un lugar seguro. Cada código solo se puede usar una vez.",
       "rename_dialog_title": "Renombrar dispositivo",
-      "device_name_label": "Nombre del dispositivo"
+      "device_name_label": "Nombre del dispositivo",
+      "session": {
+        "device_label": "{browser} en {os}",
+        "unknown_device": "Dispositivo desconocido"
+      }
     },
     "linked_accounts": {
       "oauth_section_title": "Conexiones OAuth",

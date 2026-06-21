@@ -773,7 +773,10 @@ export default defineNuxtConfig({
     },
     langDir: 'locales/',
     detectBrowserLanguage: {
-      useCookie: false,
+      // useCookie:true → SSR が Cookie からロケールを確定し、ハイドレーション mismatch を根治する。
+      // リロード後もロケールが cookie 経由で復元されるためナビバーが日本語に戻るバグ（#2）を根治。
+      useCookie: true,
+      cookieKey: 'i18n_locale',
       redirectOn: 'root',
     },
   },

@@ -126,7 +126,11 @@
       "backup_codes_dialog_title": "バックアップコード",
       "backup_codes_description": "以下のバックアップコードを安全な場所に保管してください。各コードは一度だけ使用できます。",
       "rename_dialog_title": "デバイス名の変更",
-      "device_name_label": "デバイス名"
+      "device_name_label": "デバイス名",
+      "session": {
+        "device_label": "{os} の {browser}",
+        "unknown_device": "不明なデバイス"
+      }
     },
     "linked_accounts": {
       "oauth_section_title": "OAuth連携",

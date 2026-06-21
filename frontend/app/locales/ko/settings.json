@@ -126,7 +126,11 @@
       "backup_codes_dialog_title": "백업 코드",
       "backup_codes_description": "아래 백업 코드를 안전한 곳에 보관하세요. 각 코드는 한 번만 사용할 수 있습니다.",
       "rename_dialog_title": "기기 이름 변경",
-      "device_name_label": "기기 이름"
+      "device_name_label": "기기 이름",
+      "session": {
+        "device_label": "{os}의 {browser}",
+        "unknown_device": "알 수 없는 기기"
+      }
     },
     "linked_accounts": {
       "oauth_section_title": "OAuth 연동",

@@ -126,7 +126,11 @@
       "backup_codes_dialog_title": "Backup Codes",
       "backup_codes_description": "Store the following backup codes in a safe place. Each code can only be used once.",
       "rename_dialog_title": "Rename Device",
-      "device_name_label": "Device Name"
+      "device_name_label": "Device Name",
+      "session": {
+        "device_label": "{browser} on {os}",
+        "unknown_device": "Unknown device"
+      }
     },
     "linked_accounts": {
       "oauth_section_title": "OAuth Connections",

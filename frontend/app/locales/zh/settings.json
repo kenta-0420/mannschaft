@@ -126,7 +126,11 @@
       "backup_codes_dialog_title": "备用代码",
       "backup_codes_description": "请将以下备用代码保存在安全的地方。每个代码只能使用一次。",
       "rename_dialog_title": "重命名设备",
-      "device_name_label": "设备名称"
+      "device_name_label": "设备名称",
+      "session": {
+        "device_label": "{os} 上的 {browser}",
+        "unknown_device": "未知设备"
+      }
     },
     "linked_accounts": {
       "oauth_section_title": "OAuth 连接",
