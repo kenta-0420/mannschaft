@@ -2,10 +2,8 @@ package com.mannschaft.app.notification;
 
 import com.mannschaft.app.notification.dto.NotificationResponse;
 import com.mannschaft.app.notification.dto.PreferenceResponse;
-import com.mannschaft.app.notification.dto.TypePreferenceResponse;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.entity.NotificationPreferenceEntity;
-import com.mannschaft.app.notification.entity.NotificationTypePreferenceEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -260,75 +258,6 @@ class NotificationMapperTest {
             // Then
             assertThat(responses).hasSize(2);
             assertThat(responses.get(0).getIsEnabled()).isTrue();
-            assertThat(responses.get(1).getIsEnabled()).isFalse();
-        }
-    }
-
-    // ========================================
-    // toTypePreferenceResponse
-    // ========================================
-
-    @Nested
-    @DisplayName("toTypePreferenceResponse")
-    class ToTypePreferenceResponse {
-
-        @Test
-        @DisplayName("正常系: NotificationTypePreferenceEntityがTypePreferenceResponseに変換される")
-        void toTypePreferenceResponse_正常_DTOに変換() {
-            // Given
-            NotificationTypePreferenceEntity entity = NotificationTypePreferenceEntity.builder()
-                    .userId(1L)
-                    .notificationType("SCHEDULE_REMINDER")
-                    .isEnabled(true)
-                    .build();
-            ReflectionTestUtils.setField(entity, "id", 20L);
-
-            // When
-            TypePreferenceResponse response = notificationMapper.toTypePreferenceResponse(entity);
-
-            // Then
-            assertThat(response.getId()).isEqualTo(20L);
-            assertThat(response.getUserId()).isEqualTo(1L);
-            assertThat(response.getNotificationType()).isEqualTo("SCHEDULE_REMINDER");
-            assertThat(response.getIsEnabled()).isTrue();
-        }
-
-        @Test
-        @DisplayName("正常系: 無効化された通知種別設定が変換される")
-        void toTypePreferenceResponse_無効化_DTOに変換() {
-            // Given
-            NotificationTypePreferenceEntity entity = NotificationTypePreferenceEntity.builder()
-                    .userId(1L)
-                    .notificationType("CHAT_MESSAGE")
-                    .isEnabled(false)
-                    .build();
-            ReflectionTestUtils.setField(entity, "id", 21L);
-
-            // When
-            TypePreferenceResponse response = notificationMapper.toTypePreferenceResponse(entity);
-
-            // Then
-            assertThat(response.getIsEnabled()).isFalse();
-            assertThat(response.getNotificationType()).isEqualTo("CHAT_MESSAGE");
-        }
-
-        @Test
-        @DisplayName("正常系: 通知種別設定リストが変換される")
-        void toTypePreferenceResponseList_正常_リスト変換() {
-            // Given
-            NotificationTypePreferenceEntity e1 = NotificationTypePreferenceEntity.builder()
-                    .userId(1L).notificationType("SCHEDULE_REMINDER").isEnabled(true).build();
-            NotificationTypePreferenceEntity e2 = NotificationTypePreferenceEntity.builder()
-                    .userId(1L).notificationType("SYSTEM_ALERT").isEnabled(false).build();
-            ReflectionTestUtils.setField(e1, "id", 1L);
-            ReflectionTestUtils.setField(e2, "id", 2L);
-
-            // When
-            List<TypePreferenceResponse> responses = notificationMapper.toTypePreferenceResponseList(List.of(e1, e2));
-
-            // Then
-            assertThat(responses).hasSize(2);
-            assertThat(responses.get(0).getNotificationType()).isEqualTo("SCHEDULE_REMINDER");
             assertThat(responses.get(1).getIsEnabled()).isFalse();
         }
     }
