@@ -116,6 +116,8 @@ async function saveTypePreferences() {
     saving.value = false
   }
 }
+
+onMounted(() => load())
 </script>
 
 <template>
