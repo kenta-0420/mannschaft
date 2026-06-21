@@ -715,6 +715,8 @@
     "my_projects": "个人项目",
     "my_projects_description": "个人任务管理与目标",
     "no_my_projects": "暂无个人项目",
+    "team_projects_section": "团队项目",
+    "no_team_projects": "您所在的团队暂无项目",
     "create_button": "创建项目",
     "dialog": {
       "create_title": "创建项目",

@@ -1,5 +1,6 @@
 import type {
   ProjectResponse,
+  TeamProjectResponse,
   CreateProjectRequest,
   UpdateProjectRequest,
   MilestoneResponse,
@@ -31,6 +32,14 @@ export function useProjectApi() {
   // === Projects ===
   async function listProjects(teamId: string | null) {
     return api<{ data: ProjectResponse[] }>(buildBase(teamId))
+  }
+
+  /**
+   * マイページ チームプロジェクト集約（GET /api/v1/me/team-projects）。
+   * ログインユーザーが所属する全チームのプロジェクトを一括取得する。
+   */
+  async function listMyTeamProjects() {
+    return api<{ data: TeamProjectResponse[] }>('/api/v1/me/team-projects')
   }
 
   async function getProject(teamId: string | null, projectId: number) {
@@ -174,6 +183,7 @@ export function useProjectApi() {
 
   return {
     listProjects,
+    listMyTeamProjects,
     getProject,
     createProject,
     updateProject,
