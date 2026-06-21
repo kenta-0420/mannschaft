@@ -16,14 +16,14 @@ defineEmits<{
 </script>
 
 <template>
-  <SectionCard title="QR会員証">
+  <SectionCard :title="$t('settings.settings.member_card.section_title')">
     <Tabs
       :value="memberCardActiveTab"
       @update:value="$emit('update:memberCardActiveTab', $event as string)"
     >
       <TabList>
-        <Tab value="0">会員証一覧</Tab>
-        <Tab value="1" :disabled="!selectedCard">チェックイン履歴</Tab>
+        <Tab value="0">{{ $t('settings.settings.member_card.tab_list') }}</Tab>
+        <Tab value="1" :disabled="!selectedCard">{{ $t('settings.settings.member_card.tab_history') }}</Tab>
       </TabList>
       <TabPanels>
         <TabPanel value="0">

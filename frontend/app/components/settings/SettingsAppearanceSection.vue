@@ -1,15 +1,16 @@
 <script setup lang="ts">
+const { t } = useI18n()
 const appearanceStore = useAppearanceStore()
 const notification = useNotification()
 
 async function saveAppearance() {
   await appearanceStore.syncWithServer()
-  notification.success('外観設定を保存しました')
+  notification.success(t('settings.settings.appearance.save_success'))
 }
 </script>
 
 <template>
-  <SectionCard title="外観">
+  <SectionCard :title="$t('settings.settings.appearance.section_title')">
     <div class="space-y-6">
       <ThemeSelector />
       <Divider />
@@ -17,8 +18,8 @@ async function saveAppearance() {
       <Divider />
       <div class="flex items-center justify-between">
         <div>
-          <label class="text-sm font-medium">チャットプレビュー非表示</label>
-          <p class="text-xs text-surface-500">通知バナーでチャットの内容を表示しない</p>
+          <label class="text-sm font-medium">{{ $t('settings.settings.appearance.hide_chat_preview_label') }}</label>
+          <p class="text-xs text-surface-500">{{ $t('settings.settings.appearance.hide_chat_preview_description') }}</p>
         </div>
         <ToggleSwitch
           :model-value="appearanceStore.hideChatPreview"
@@ -26,7 +27,7 @@ async function saveAppearance() {
         />
       </div>
       <div class="flex justify-end">
-        <Button label="外観を保存" icon="pi pi-check" @click="saveAppearance" />
+        <Button translate="no" :label="$t('settings.settings.appearance.save_button')" icon="pi pi-check" @click="saveAppearance" />
       </div>
     </div>
   </SectionCard>

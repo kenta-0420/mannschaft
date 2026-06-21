@@ -38,30 +38,32 @@ const timezoneOptions = [
 </script>
 
 <template>
-  <SectionCard title="言語・タイムゾーン">
+  <SectionCard :title="$t('settings.settings.locale.section_title')">
     <div class="space-y-4">
       <div>
-        <label class="mb-1 block text-sm font-medium">表示言語</label>
+        <label translate="no" class="mb-1 block text-sm font-medium">{{ $t('settings.settings.locale.display_language') }}</label>
         <Select
           v-model="profile.locale"
           :options="localeOptions"
           option-label="name"
           option-value="code"
           class="w-full"
+          translate="no"
         />
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium">タイムゾーン</label>
+        <label translate="no" class="mb-1 block text-sm font-medium">{{ $t('settings.settings.locale.timezone') }}</label>
         <Select
           v-model="profile.timezone"
           :options="timezoneOptions"
           option-label="label"
           option-value="value"
           class="w-full"
+          translate="no"
         />
       </div>
       <div class="flex justify-end">
-        <Button label="保存" icon="pi pi-check" :loading="savingLocale" @click="$emit('save')" />
+        <Button translate="no" :label="$t('button.save')" icon="pi pi-check" :loading="savingLocale" @click="$emit('save')" />
       </div>
     </div>
   </SectionCard>

@@ -30,7 +30,7 @@ function formatDate(dateStr: string | null): string {
 </script>
 
 <template>
-  <SectionCard title="Google Calendar 連携">
+  <SectionCard :title="$t('settings.settings.gcal.section_title')">
     <div v-if="gcalStatus?.isConnected" class="space-y-4">
       <div class="flex items-center gap-3">
         <div
@@ -39,16 +39,17 @@ function formatDate(dateStr: string | null): string {
           <i class="pi pi-check text-green-600" />
         </div>
         <div>
-          <p class="font-medium text-green-700 dark:text-green-400">接続中</p>
+          <p class="font-medium text-green-700 dark:text-green-400">{{ $t('settings.settings.gcal.connected_label') }}</p>
           <p class="text-sm text-surface-500">{{ gcalStatus.email }}</p>
         </div>
       </div>
       <p class="text-xs text-surface-400">
-        最終同期: {{ formatDate(gcalStatus.lastSyncedAt) }}
+        {{ $t('settings.settings.gcal.last_synced', { date: formatDate(gcalStatus.lastSyncedAt) }) }}
       </p>
       <div class="flex gap-2">
         <Button
-          label="手動同期"
+          translate="no"
+          :label="$t('settings.settings.gcal.manual_sync_button')"
           icon="pi pi-refresh"
           size="small"
           outlined
@@ -56,7 +57,8 @@ function formatDate(dateStr: string | null): string {
           @click="$emit('manualSync')"
         />
         <Button
-          label="連携解除"
+          translate="no"
+          :label="$t('settings.settings.gcal.disconnect_button')"
           icon="pi pi-times"
           size="small"
           severity="danger"
@@ -66,16 +68,16 @@ function formatDate(dateStr: string | null): string {
       </div>
       <div v-if="gcalSyncSettings">
         <Divider />
-        <h3 class="mb-3 text-sm font-semibold">同期設定</h3>
+        <h3 class="mb-3 text-sm font-semibold">{{ $t('settings.settings.gcal.sync_settings_title') }}</h3>
         <div class="mb-3 flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium">個人カレンダー</p>
-            <p class="text-xs text-surface-500">個人の予定をGoogleカレンダーに同期</p>
+            <p class="text-sm font-medium">{{ $t('settings.settings.gcal.personal_calendar_label') }}</p>
+            <p class="text-xs text-surface-500">{{ $t('settings.settings.gcal.personal_calendar_description') }}</p>
           </div>
           <ToggleSwitch v-model="gcalSyncSettings.personalSync" />
         </div>
         <div v-if="teams.length > 0" class="mb-3">
-          <p class="mb-2 text-xs font-medium text-surface-500">チームカレンダー</p>
+          <p class="mb-2 text-xs font-medium text-surface-500">{{ $t('settings.settings.gcal.team_calendars_label') }}</p>
           <div class="space-y-2">
             <div
               v-for="team in teams"
@@ -91,7 +93,7 @@ function formatDate(dateStr: string | null): string {
           </div>
         </div>
         <div v-if="organizations.length > 0" class="mb-3">
-          <p class="mb-2 text-xs font-medium text-surface-500">組織カレンダー</p>
+          <p class="mb-2 text-xs font-medium text-surface-500">{{ $t('settings.settings.gcal.org_calendars_label') }}</p>
           <div class="space-y-2">
             <div
               v-for="org in organizations"
@@ -106,15 +108,16 @@ function formatDate(dateStr: string | null): string {
             </div>
           </div>
         </div>
-        <Button label="設定を保存" icon="pi pi-check" size="small" @click="$emit('saveSettings')" />
+        <Button translate="no" :label="$t('settings.settings.gcal.save_settings_button')" icon="pi pi-check" size="small" @click="$emit('saveSettings')" />
       </div>
     </div>
     <div v-else>
       <p class="mb-3 text-sm text-surface-500">
-        Googleアカウントと連携して、カレンダーを同期できます
+        {{ $t('settings.settings.gcal.not_connected_description') }}
       </p>
       <Button
-        label="Googleアカウントに接続"
+        translate="no"
+        :label="$t('settings.settings.gcal.connect_button')"
         icon="pi pi-external-link"
         @click="$emit('connect')"
       />

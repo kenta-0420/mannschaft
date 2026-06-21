@@ -10,7 +10,8 @@
     "step_completed": "Exportación completa — Descarga expira: {expiry}",
     "step_failed": "La exportación falló",
     "step_processing": "Exportando...",
-    "step_preparing": "Preparando..."
+    "step_preparing": "Preparando...",
+    "description": "Puede exportar sus datos personales como un archivo ZIP."
   },
   "deletion_preview": {
     "dialog_title": "Confirmar eliminación de cuenta",
@@ -51,6 +52,163 @@
       "resetToDefault": "Restablecer valores predeterminados",
       "saveSuccess": "Configuración guardada",
       "saveError": "Error al guardar la configuración"
+    },
+    "account": {
+      "page_title": "Configuración de cuenta",
+      "notification_settings": "Configuración de notificaciones"
+    },
+    "profile": {
+      "section_title": "Información de perfil",
+      "avatar_alt": "Avatar",
+      "change_image": "Cambiar imagen",
+      "image_hint": "JPG, PNG de menos de 5MB",
+      "display_name": "Nombre para mostrar",
+      "phone_number": "Número de teléfono",
+      "phone_placeholder": "090-0000-0000",
+      "postal_code": "Código postal",
+      "postal_placeholder": "000-0000",
+      "searchable_label": "Mostrar en búsqueda de usuarios",
+      "searchable_description": "Cuando está activado, otros usuarios pueden encontrarte mediante búsqueda"
+    },
+    "email": {
+      "section_title": "Cambiar dirección de correo",
+      "current_email": "Dirección de correo actual",
+      "new_email": "Nueva dirección de correo",
+      "new_email_placeholder": "new@example.com",
+      "current_password": "Contraseña actual",
+      "send_confirmation": "Enviar correo de confirmación",
+      "sent_title": "Correo de confirmación enviado",
+      "sent_description": "Se ha enviado un correo de confirmación a {email}. Haga clic en el enlace para completar el cambio."
+    },
+    "password": {
+      "section_title_change": "Cambiar contraseña",
+      "section_title_set": "Establecer contraseña",
+      "no_password_description": "Actualmente no hay contraseña configurada. Establecer una contraseña le permitirá iniciar sesión con correo y contraseña.",
+      "current_password": "Contraseña actual",
+      "new_password": "Nueva contraseña",
+      "confirm_password": "Confirmar nueva contraseña",
+      "change_button": "Cambiar contraseña",
+      "set_button": "Establecer contraseña",
+      "change_success": "Contraseña cambiada correctamente",
+      "change_error": "No se pudo cambiar la contraseña. Compruebe su contraseña actual"
+    },
+    "locale": {
+      "section_title": "Idioma y zona horaria",
+      "display_language": "Idioma de visualización",
+      "timezone": "Zona horaria"
+    },
+    "appearance": {
+      "section_title": "Apariencia",
+      "hide_chat_preview_label": "Ocultar vista previa del chat",
+      "hide_chat_preview_description": "No mostrar el contenido del chat en los banners de notificación",
+      "save_button": "Guardar apariencia",
+      "save_success": "Configuración de apariencia guardada"
+    },
+    "security": {
+      "two_fa_section_title": "Autenticación de dos factores (2FA)",
+      "two_fa_description": "Use una aplicación de autenticación (como Google Authenticator) para reforzar la seguridad de su cuenta.",
+      "setup_2fa_button": "Configurar 2FA",
+      "regenerate_backup_codes_button": "Regenerar códigos de respaldo",
+      "scan_qr_description": "Escanee el código QR con su aplicación de autenticación.",
+      "totp_qr_alt": "Código QR TOTP",
+      "secret_key": "Clave secreta",
+      "sessions_section_title": "Sesiones activas",
+      "logout_all_button": "Cerrar todas las sesiones",
+      "no_sessions": "No hay información de sesión disponible",
+      "unknown_device": "Dispositivo desconocido",
+      "current_session_tag": "Actual",
+      "webauthn_section_title": "Claves de seguridad (WebAuthn)",
+      "webauthn_description": "Registre claves de seguridad compatibles con FIDO2/WebAuthn o autenticación biométrica.",
+      "no_credentials": "No hay claves de seguridad registradas",
+      "default_credential_name": "Clave de seguridad",
+      "last_used": "Último uso: {date}",
+      "registered": "Registrado: {date}",
+      "backup_codes_dialog_title": "Códigos de respaldo",
+      "backup_codes_description": "Guarde los siguientes códigos de respaldo en un lugar seguro. Cada código solo se puede usar una vez.",
+      "rename_dialog_title": "Renombrar dispositivo",
+      "device_name_label": "Nombre del dispositivo"
+    },
+    "linked_accounts": {
+      "oauth_section_title": "Conexiones OAuth",
+      "no_oauth": "No hay cuentas conectadas",
+      "connected_at": "Conectado: {date}",
+      "unlink_button": "Desconectar",
+      "line_section_title": "Conexión LINE",
+      "line_icon_alt": "Icono de LINE",
+      "line_default_user": "Usuario de LINE",
+      "line_linked_at": "Conectado: {date}",
+      "line_unlink_button": "Desconectar LINE",
+      "line_not_linked": "No hay cuenta LINE conectada",
+      "line_link_instruction": "Conecte LINE desde la aplicación LINE"
+    },
+    "member_card": {
+      "section_title": "Tarjeta de socio QR",
+      "tab_list": "Lista de tarjetas",
+      "tab_history": "Historial de registro"
+    },
+    "social_profile": {
+      "section_title": "Perfiles sociales",
+      "create_button": "Crear nuevo",
+      "count_description": "Puede crear hasta 3 perfiles ({count}/3)",
+      "no_profiles": "Aún no hay perfiles",
+      "dialog_title_create": "Crear perfil",
+      "dialog_title_edit": "Editar perfil",
+      "handle_label": "Nombre de usuario *",
+      "handle_placeholder": "my_handle",
+      "handle_hint": "Solo alfanumérico y guiones bajos (cambios permitidos una vez cada 30 días)",
+      "display_name_label": "Nombre para mostrar *",
+      "bio_label": "Biografía",
+      "bio_count": "{count}/300",
+      "update_button": "Actualizar",
+      "create_submit_button": "Crear"
+    },
+    "seal": {
+      "section_title": "Sello electrónico",
+      "tab_preview": "Vista previa del sello",
+      "tab_defaults": "Configuración predeterminada",
+      "tab_history": "Historial de sellos",
+      "regenerate_button": "Regenerar sello",
+      "regenerate_hint": "Los sellos se generan automáticamente a partir de su nombre registrado (hasta 3 veces por hora)"
+    },
+    "login_history": {
+      "section_title": "Historial de inicio de sesión",
+      "no_history": "No hay historial de inicio de sesión",
+      "load_more": "Cargar más",
+      "event_login_success": "Inicio de sesión exitoso",
+      "event_login_failure": "Error de inicio de sesión",
+      "event_logout": "Cierre de sesión",
+      "event_token_refresh": "Actualización de token",
+      "event_password_change": "Cambio de contraseña",
+      "event_mfa_verify": "Verificación 2FA"
+    },
+    "gcal": {
+      "section_title": "Integración con Google Calendar",
+      "connected_label": "Conectado",
+      "last_synced": "Última sincronización: {date}",
+      "manual_sync_button": "Sincronización manual",
+      "disconnect_button": "Desconectar",
+      "sync_settings_title": "Configuración de sincronización",
+      "personal_calendar_label": "Calendario personal",
+      "personal_calendar_description": "Sincronizar eventos personales con Google Calendar",
+      "team_calendars_label": "Calendarios de equipo",
+      "org_calendars_label": "Calendarios de organización",
+      "save_settings_button": "Guardar configuración",
+      "not_connected_description": "Conecte su cuenta de Google para sincronizar calendarios",
+      "connect_button": "Conectar cuenta de Google"
+    },
+    "delete_account": {
+      "section_title": "Eliminar cuenta",
+      "description": "Eliminar su cuenta borrará permanentemente todos sus datos. Esta acción no se puede deshacer.",
+      "delete_button": "Eliminar cuenta",
+      "confirm_message": "Eliminar su cuenta borrará permanentemente todos sus datos. ¿Realmente desea continuar?",
+      "confirm_dialog_title": "Confirmar eliminación de cuenta",
+      "confirm_reject_label": "Cancelar",
+      "confirm_accept_label": "Proceder a la eliminación",
+      "password_confirm_label": "Ingrese su contraseña actual para confirmar",
+      "password_placeholder": "Contraseña actual",
+      "retention_note": "※ Algunos datos pueden retenerse durante {days} días por requisitos legales antes de ser eliminados.",
+      "delete_success": "Su cuenta ha sido eliminada. Gracias por usar nuestro servicio.",
+      "delete_error": "No se pudo eliminar la cuenta"
     }
   }
 }
