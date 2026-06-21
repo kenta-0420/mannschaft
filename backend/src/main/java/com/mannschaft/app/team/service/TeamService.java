@@ -722,6 +722,24 @@ public class TeamService {
     }
 
     /**
+     * 指定 ID 集合に対して id → name（チーム名）のマッピングを一括取得する（N+1 回避）。
+     *
+     * <p>マイページ チームプロジェクト集約（{@code GET /api/v1/me/team-projects}）が、
+     * プロジェクトに所属チーム名を付与する際に Entity を直接参照しないよう、プリミティブ
+     * （Map&lt;Long, String&gt;）のみを返す。{@link #getSlugsByIds(Collection)} と対をなす。</p>
+     *
+     * <p>TODO(出陣): 現状は空実装。teamRepository から id → name のマップを論理削除除外で
+     * バルク取得して返す実装を /出陣 で行う（findSlugMapByIdIn と同様の name 版を用意する）。</p>
+     *
+     * @param ids 取得対象のチーム ID 集合
+     * @return id → name の Map（論理削除済みは除外）。ids が空の場合は空 Map を返す
+     */
+    public Map<Long, String> getNamesByIds(Collection<Long> ids) {
+        // TODO(出陣): 試練フェーズの空実装。実装は /出陣 で teamRepository から name マップを取得する。
+        return java.util.Map.of();
+    }
+
+    /**
      * 単一チーム ID から slug を取得する。
      *
      * <p>論理削除済み・存在しない場合は {@code null} を返す（例外を投げない）。</p>
