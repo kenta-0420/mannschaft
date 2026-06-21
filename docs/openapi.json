@@ -1348,6 +1348,10 @@
       "description": "F04.5 管理者向け通報レビュー"
     },
     {
+      "name": "外観テーマ設定",
+      "description": "F11.4 個人外観テーマ・背景色設定（複数端末同期）"
+    },
+    {
       "name": "F03.11 募集型予約 / 個人マイページ",
       "description": "自分の参加中・参加予定の募集・フォロー先フィード"
     },
@@ -1978,6 +1982,10 @@
     {
       "name": "パフォーマンス指標",
       "description": "F07.2 パフォーマンス指標定義CRUD・テンプレート・並び順管理"
+    },
+    {
+      "name": "プロジェクト（個人）",
+      "description": "F02.3 個人プロジェクト管理"
     },
     {
       "name": "パフォーマンス記録",
@@ -4204,6 +4212,184 @@
         "parameters": [
           {
             "name": "labelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/users/me/projects/{id}": {
+      "get": {
+        "tags": [
+          "プロジェクト（個人）"
+        ],
+        "summary": "プロジェクト詳細（個人）",
+        "operationId": "getProject",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseProjectDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "プロジェクト（個人）"
+        ],
+        "summary": "プロジェクト更新（個人）",
+        "operationId": "updateProject",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProjectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseProjectResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "プロジェクト（個人）"
+        ],
+        "summary": "プロジェクト削除（個人）",
+        "operationId": "deleteProject",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/users/me/projects/{id}/milestones/{mid}": {
+      "put": {
+        "tags": [
+          "プロジェクト（個人）"
+        ],
+        "summary": "マイルストーン更新（個人）",
+        "operationId": "updateMilestone",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "mid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMilestoneRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMilestoneResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "プロジェクト（個人）"
+        ],
+        "summary": "マイルストーン削除（個人）",
+        "operationId": "deleteMilestone",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "mid",
             "in": "path",
             "required": true,
             "schema": {
@@ -7486,7 +7672,7 @@
           "プロジェクト（チーム）"
         ],
         "summary": "プロジェクト詳細",
-        "operationId": "getProject",
+        "operationId": "getProject_1",
         "parameters": [
           {
             "name": "teamId",
@@ -7524,7 +7710,7 @@
           "プロジェクト（チーム）"
         ],
         "summary": "プロジェクト更新",
-        "operationId": "updateProject",
+        "operationId": "updateProject_1",
         "parameters": [
           {
             "name": "teamId",
@@ -7572,7 +7758,7 @@
           "プロジェクト（チーム）"
         ],
         "summary": "プロジェクト削除",
-        "operationId": "deleteProject",
+        "operationId": "deleteProject_1",
         "parameters": [
           {
             "name": "teamId",
@@ -7605,7 +7791,7 @@
           "プロジェクト（チーム）"
         ],
         "summary": "マイルストーン更新",
-        "operationId": "updateMilestone",
+        "operationId": "updateMilestone_1",
         "parameters": [
           {
             "name": "teamId",
@@ -7662,7 +7848,7 @@
           "プロジェクト（チーム）"
         ],
         "summary": "マイルストーン削除",
-        "operationId": "deleteMilestone",
+        "operationId": "deleteMilestone_1",
         "parameters": [
           {
             "name": "teamId",
@@ -14376,6 +14562,58 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/settings/appearance": {
+      "get": {
+        "tags": [
+          "外観テーマ設定"
+        ],
+        "summary": "外観設定取得",
+        "description": "現在ユーザーの外観テーマ設定を返す。未登録時はデフォルト値を返す。",
+        "operationId": "getAppearance",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAppearanceResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "外観テーマ設定"
+        ],
+        "summary": "外観設定更新",
+        "description": "現在ユーザーの外観テーマ設定を全量上書き保存する（1ユーザー1行upsert）。",
+        "operationId": "updateAppearance",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAppearanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAppearanceResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -30645,6 +30883,159 @@
         }
       }
     },
+    "/api/v1/users/me/projects": {
+      "get": {
+        "tags": [
+          "プロジェクト（個人）"
+        ],
+        "summary": "プロジェクト一覧（個人）",
+        "operationId": "listProjects",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "ACTIVE"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseProjectResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "プロジェクト（個人）"
+        ],
+        "summary": "プロジェクト作成（個人）",
+        "operationId": "createProject",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProjectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseProjectResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/me/projects/{id}/milestones": {
+      "get": {
+        "tags": [
+          "プロジェクト（個人）"
+        ],
+        "summary": "マイルストーン一覧（個人）",
+        "operationId": "listMilestones",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListMilestoneResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "プロジェクト（個人）"
+        ],
+        "summary": "マイルストーン作成（個人）",
+        "operationId": "createMilestone",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMilestoneRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMilestoneResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/users/me/profile-media/{role}/upload-url": {
       "post": {
         "tags": [
@@ -37542,7 +37933,7 @@
           "プロジェクト（チーム）"
         ],
         "summary": "プロジェクト一覧",
-        "operationId": "listProjects",
+        "operationId": "listProjects_1",
         "parameters": [
           {
             "name": "teamId",
@@ -37600,7 +37991,7 @@
           "プロジェクト（チーム）"
         ],
         "summary": "プロジェクト作成",
-        "operationId": "createProject",
+        "operationId": "createProject_1",
         "parameters": [
           {
             "name": "teamId",
@@ -37641,7 +38032,7 @@
           "プロジェクト（チーム）"
         ],
         "summary": "マイルストーン一覧",
-        "operationId": "listMilestones",
+        "operationId": "listMilestones_1",
         "parameters": [
           {
             "name": "teamId",
@@ -37679,7 +38070,7 @@
           "プロジェクト（チーム）"
         ],
         "summary": "マイルストーン作成",
-        "operationId": "createMilestone",
+        "operationId": "createMilestone_1",
         "parameters": [
           {
             "name": "teamId",
@@ -79057,6 +79448,111 @@
         }
       }
     },
+    "/api/v1/users/me/projects/{id}/reopen": {
+      "patch": {
+        "tags": [
+          "プロジェクト（個人）"
+        ],
+        "summary": "プロジェクト再開（個人）",
+        "operationId": "reopenProject",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseProjectResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/me/projects/{id}/milestones/{mid}/complete": {
+      "patch": {
+        "tags": [
+          "プロジェクト（個人）"
+        ],
+        "summary": "マイルストーン完了（個人）",
+        "operationId": "completeMilestone",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "mid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMilestoneResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/me/projects/{id}/complete": {
+      "patch": {
+        "tags": [
+          "プロジェクト（個人）"
+        ],
+        "summary": "プロジェクト手動完了（個人）",
+        "operationId": "completeProject",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseProjectResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/users/me/password": {
       "patch": {
         "tags": [
@@ -81773,7 +82269,7 @@
           "プロジェクト（チーム）"
         ],
         "summary": "プロジェクト再開",
-        "operationId": "reopenProject",
+        "operationId": "reopenProject_1",
         "parameters": [
           {
             "name": "teamId",
@@ -81813,7 +82309,7 @@
           "プロジェクト（チーム）"
         ],
         "summary": "マイルストーン完了",
-        "operationId": "completeMilestone",
+        "operationId": "completeMilestone_1",
         "parameters": [
           {
             "name": "teamId",
@@ -81862,7 +82358,7 @@
           "プロジェクト（チーム）"
         ],
         "summary": "プロジェクト手動完了",
-        "operationId": "completeProject",
+        "operationId": "completeProject_1",
         "parameters": [
           {
             "name": "teamId",
@@ -98626,6 +99122,38 @@
         }
       }
     },
+    "/api/v1/users/me/projects/{id}/todos": {
+      "get": {
+        "tags": [
+          "プロジェクト（個人）"
+        ],
+        "summary": "プロジェクト内TODO一覧（個人）",
+        "operationId": "listProjectTodos",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListTodoResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/users/me/oauth": {
       "get": {
         "tags": [
@@ -101675,7 +102203,7 @@
           "プロジェクト（チーム）"
         ],
         "summary": "プロジェクト内TODO一覧",
-        "operationId": "listProjectTodos",
+        "operationId": "listProjectTodos_1",
         "parameters": [
           {
             "name": "teamId",
@@ -133395,6 +133923,218 @@
           }
         }
       },
+      "UpdateProjectRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "description": {
+            "type": "string"
+          },
+          "emoji": {
+            "type": "string",
+            "maxLength": 10,
+            "minLength": 0
+          },
+          "color": {
+            "type": "string",
+            "maxLength": 7,
+            "minLength": 0
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "visibility": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseProjectResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ProjectResponse"
+          }
+        }
+      },
+      "MilestoneSummary": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "completed": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ProjectResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "title": {
+            "type": "string"
+          },
+          "emoji": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "daysRemaining": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          },
+          "progressRate": {
+            "type": "number"
+          },
+          "totalTodos": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "completedTodos": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "milestones": {
+            "$ref": "#/components/schemas/MilestoneSummary"
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/UserInfo"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "UserInfo": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateMilestoneRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ApiResponseMilestoneResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MilestoneResponse"
+          }
+        }
+      },
+      "MilestoneResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "projectId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "title": {
+            "type": "string"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "progressRate": {
+            "type": "number"
+          },
+          "lockedByMilestoneId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lockedByMilestoneTitle": {
+            "type": "string"
+          },
+          "completionMode": {
+            "type": "string"
+          },
+          "lockedTodoCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "forceUnlocked": {
+            "type": "boolean"
+          },
+          "lockedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "unlockedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "locked": {
+            "type": "boolean"
+          },
+          "completed": {
+            "type": "boolean"
+          }
+        }
+      },
       "ProfileMediaCommitRequest": {
         "type": "object",
         "properties": {
@@ -134258,19 +134998,9 @@
               "$ref": "#/components/schemas/TodoResponse"
             }
           },
-          "completedAt": {
+          "dueDate": {
             "type": "string",
-            "format": "date-time",
-            "deprecated": true
-          },
-          "milestoneId": {
-            "type": "integer",
-            "format": "int64",
-            "deprecated": true
-          },
-          "parentId": {
-            "type": "integer",
-            "format": "int64",
+            "format": "date",
             "deprecated": true
           },
           "depth": {
@@ -134278,7 +135008,16 @@
             "format": "int32",
             "deprecated": true
           },
+          "parentId": {
+            "type": "integer",
+            "format": "int64",
+            "deprecated": true
+          },
           "description": {
+            "type": "string",
+            "deprecated": true
+          },
+          "title": {
             "type": "string",
             "deprecated": true
           },
@@ -134287,29 +135026,12 @@
             "deprecated": true,
             "example": "14:30:00"
           },
-          "progressManual": {
-            "type": "boolean",
-            "deprecated": true
-          },
-          "completedBy": {
-            "$ref": "#/components/schemas/UserInfo",
-            "deprecated": true
-          },
           "projectId": {
             "type": "integer",
             "format": "int64",
             "deprecated": true
           },
-          "title": {
-            "type": "string",
-            "deprecated": true
-          },
           "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "deprecated": true
-          },
-          "updatedAt": {
             "type": "string",
             "format": "date-time",
             "deprecated": true
@@ -134318,8 +135040,9 @@
             "type": "number",
             "deprecated": true
           },
-          "createdBy": {
-            "$ref": "#/components/schemas/UserInfo",
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
             "deprecated": true
           },
           "scopeType": {
@@ -134331,9 +135054,23 @@
             "format": "int32",
             "deprecated": true
           },
+          "createdBy": {
+            "$ref": "#/components/schemas/UserInfo",
+            "deprecated": true
+          },
+          "milestoneId": {
+            "type": "integer",
+            "format": "int64",
+            "deprecated": true
+          },
           "startDate": {
             "type": "string",
             "format": "date",
+            "deprecated": true
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
             "deprecated": true
           },
           "linkedScheduleId": {
@@ -134341,9 +135078,21 @@
             "format": "int64",
             "deprecated": true
           },
-          "dueDate": {
-            "type": "string",
-            "format": "date",
+          "progressManual": {
+            "type": "boolean",
+            "deprecated": true
+          },
+          "completedBy": {
+            "$ref": "#/components/schemas/UserInfo",
+            "deprecated": true
+          },
+          "descendantCompletedCount": {
+            "type": "integer",
+            "format": "int32",
+            "deprecated": true
+          },
+          "statusLabel": {
+            "$ref": "#/components/schemas/TodoStatusLabelInfo",
             "deprecated": true
           },
           "daysRemaining": {
@@ -134351,16 +135100,7 @@
             "format": "int64",
             "deprecated": true
           },
-          "statusLabel": {
-            "$ref": "#/components/schemas/TodoStatusLabelInfo",
-            "deprecated": true
-          },
           "descendantTotalCount": {
-            "type": "integer",
-            "format": "int32",
-            "deprecated": true
-          },
-          "descendantCompletedCount": {
             "type": "integer",
             "format": "int32",
             "deprecated": true
@@ -134425,18 +135165,6 @@
             "type": "string"
           },
           "color": {
-            "type": "string"
-          }
-        }
-      },
-      "UserInfo": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "displayName": {
             "type": "string"
           }
         }
@@ -134926,10 +135654,10 @@
             "type": "string",
             "format": "date-time"
           },
-          "ownMemo": {
+          "editable": {
             "type": "boolean"
           },
-          "editable": {
+          "ownMemo": {
             "type": "boolean"
           }
         }
@@ -136550,206 +137278,6 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
-          }
-        }
-      },
-      "UpdateProjectRequest": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string",
-            "maxLength": 200,
-            "minLength": 0
-          },
-          "description": {
-            "type": "string"
-          },
-          "emoji": {
-            "type": "string",
-            "maxLength": 10,
-            "minLength": 0
-          },
-          "color": {
-            "type": "string",
-            "maxLength": 7,
-            "minLength": 0
-          },
-          "dueDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "visibility": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string"
-          }
-        }
-      },
-      "ApiResponseProjectResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/ProjectResponse"
-          }
-        }
-      },
-      "MilestoneSummary": {
-        "type": "object",
-        "properties": {
-          "total": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "completed": {
-            "type": "integer",
-            "format": "int64"
-          }
-        }
-      },
-      "ProjectResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "title": {
-            "type": "string"
-          },
-          "emoji": {
-            "type": "string"
-          },
-          "color": {
-            "type": "string"
-          },
-          "dueDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "daysRemaining": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "status": {
-            "type": "string"
-          },
-          "progressRate": {
-            "type": "number"
-          },
-          "totalTodos": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "completedTodos": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "milestones": {
-            "$ref": "#/components/schemas/MilestoneSummary"
-          },
-          "createdBy": {
-            "$ref": "#/components/schemas/UserInfo"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "UpdateMilestoneRequest": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string",
-            "maxLength": 200,
-            "minLength": 0
-          },
-          "dueDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "sortOrder": {
-            "type": "integer",
-            "format": "int32"
-          }
-        }
-      },
-      "ApiResponseMilestoneResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/MilestoneResponse"
-          }
-        }
-      },
-      "MilestoneResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "projectId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "title": {
-            "type": "string"
-          },
-          "dueDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "sortOrder": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "completedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "progressRate": {
-            "type": "number"
-          },
-          "lockedByMilestoneId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "lockedByMilestoneTitle": {
-            "type": "string"
-          },
-          "completionMode": {
-            "type": "string"
-          },
-          "lockedTodoCount": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "forceUnlocked": {
-            "type": "boolean"
-          },
-          "lockedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "unlockedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "locked": {
-            "type": "boolean"
-          },
-          "completed": {
-            "type": "boolean"
           }
         }
       },
@@ -139456,10 +139984,10 @@
           "note": {
             "type": "string"
           },
-          "xposition": {
+          "yposition": {
             "type": "number"
           },
-          "yposition": {
+          "xposition": {
             "type": "number"
           }
         }
@@ -139716,10 +140244,10 @@
             "maxLength": 300,
             "minLength": 0
           },
-          "xposition": {
+          "yposition": {
             "type": "number"
           },
-          "yposition": {
+          "xposition": {
             "type": "number"
           }
         },
@@ -142714,6 +143242,64 @@
         "required": [
           "hiddenNavKeys"
         ]
+      },
+      "UpdateAppearanceRequest": {
+        "type": "object",
+        "properties": {
+          "theme": {
+            "type": "string",
+            "enum": [
+              "LIGHT",
+              "DARK"
+            ]
+          },
+          "bgColor": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
+          "seasonalThemeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "hideChatPreview": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "bgColor",
+          "hideChatPreview",
+          "theme"
+        ]
+      },
+      "ApiResponseAppearanceResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AppearanceResponse"
+          }
+        }
+      },
+      "AppearanceResponse": {
+        "type": "object",
+        "properties": {
+          "theme": {
+            "type": "string",
+            "enum": [
+              "LIGHT",
+              "DARK"
+            ]
+          },
+          "bgColor": {
+            "type": "string"
+          },
+          "seasonalThemeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "hideChatPreview": {
+            "type": "boolean"
+          }
+        }
       },
       "UpsertPenaltySettingRequest": {
         "type": "object",
@@ -152471,6 +153057,54 @@
           }
         }
       },
+      "CreateProjectRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "description": {
+            "type": "string"
+          },
+          "emoji": {
+            "type": "string",
+            "maxLength": 10,
+            "minLength": 0
+          },
+          "color": {
+            "type": "string",
+            "maxLength": 7,
+            "minLength": 0
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "visibility": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateMilestoneRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "ProfileMediaUploadUrlRequest": {
         "type": "object",
         "properties": {
@@ -153336,15 +153970,15 @@
             "type": "string",
             "format": "uuid"
           },
-          "scopeIdOrDefault": {
-            "type": "integer",
-            "format": "int64"
-          },
           "postedAsTypeOrDefault": {
             "type": "string"
           },
           "scopeTypeOrDefault": {
             "type": "string"
+          },
+          "scopeIdOrDefault": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -153946,10 +154580,10 @@
               "ABSOLUTE"
             ]
           },
-          "remindAtValid": {
+          "remindBeforeMinutesValid": {
             "type": "boolean"
           },
-          "remindBeforeMinutesValid": {
+          "remindAtValid": {
             "type": "boolean"
           }
         }
@@ -157740,54 +158374,6 @@
         "type": "object",
         "properties": {
           "estimatedCount": {
-            "type": "integer",
-            "format": "int32"
-          }
-        }
-      },
-      "CreateProjectRequest": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string",
-            "maxLength": 200,
-            "minLength": 0
-          },
-          "description": {
-            "type": "string"
-          },
-          "emoji": {
-            "type": "string",
-            "maxLength": 10,
-            "minLength": 0
-          },
-          "color": {
-            "type": "string",
-            "maxLength": 7,
-            "minLength": 0
-          },
-          "dueDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "visibility": {
-            "type": "string"
-          }
-        }
-      },
-      "CreateMilestoneRequest": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string",
-            "maxLength": 200,
-            "minLength": 0
-          },
-          "dueDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "sortOrder": {
             "type": "integer",
             "format": "int32"
           }
@@ -173161,11 +173747,11 @@
           "recurrenceRule": {
             "$ref": "#/components/schemas/RecurrenceRuleDto"
           },
-          "eventTypeOrDefault": {
-            "type": "string"
-          },
           "reminderCountWithinLimit": {
             "type": "boolean"
+          },
+          "eventTypeOrDefault": {
+            "type": "string"
           }
         },
         "required": [
@@ -181283,10 +181869,10 @@
               "ABSOLUTE"
             ]
           },
-          "remindAtValid": {
+          "remindBeforeMinutesValid": {
             "type": "boolean"
           },
-          "remindBeforeMinutesValid": {
+          "remindAtValid": {
             "type": "boolean"
           }
         }
@@ -183078,13 +183664,13 @@
           "homepageUrlVisible": {
             "type": "boolean"
           },
-          "officersVisible": {
+          "philosophyVisible": {
             "type": "boolean"
           },
           "customFieldsVisible": {
             "type": "boolean"
           },
-          "philosophyVisible": {
+          "officersVisible": {
             "type": "boolean"
           }
         }
@@ -187983,19 +188569,13 @@
       "PageJoinRequestResponse": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -188021,6 +188601,12 @@
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
           },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          },
           "empty": {
             "type": "boolean"
           }
@@ -188036,9 +188622,6 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "paged": {
-            "type": "boolean"
-          },
           "pageNumber": {
             "type": "integer",
             "format": "int32"
@@ -188046,6 +188629,9 @@
           "pageSize": {
             "type": "integer",
             "format": "int32"
+          },
+          "paged": {
+            "type": "boolean"
           },
           "unpaged": {
             "type": "boolean"
@@ -188058,10 +188644,10 @@
           "empty": {
             "type": "boolean"
           },
-          "unsorted": {
+          "sorted": {
             "type": "boolean"
           },
-          "sorted": {
+          "unsorted": {
             "type": "boolean"
           }
         }
@@ -188481,6 +189067,20 @@
           }
         }
       },
+      "PagedResponseProjectResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectResponse"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        }
+      },
       "ApiResponseGatesSummaryResponse": {
         "type": "object",
         "properties": {
@@ -188599,6 +189199,237 @@
           },
           "previousProgressRate": {
             "type": "number"
+          }
+        }
+      },
+      "ApiResponseProjectDetailResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ProjectDetailResponse"
+          }
+        }
+      },
+      "MilestoneDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "title": {
+            "type": "string"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "progressRate": {
+            "type": "number"
+          },
+          "totalTodos": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "completedTodos": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "completed": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ProjectAuditDto": {
+        "type": "object",
+        "properties": {
+          "createdBy": {
+            "$ref": "#/components/schemas/UserInfo"
+          }
+        }
+      },
+      "ProjectContentDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "emoji": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          }
+        }
+      },
+      "ProjectDetailResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ProjectMetaDto"
+          },
+          "content": {
+            "$ref": "#/components/schemas/ProjectContentDto"
+          },
+          "schedule": {
+            "$ref": "#/components/schemas/ProjectScheduleDto"
+          },
+          "progress": {
+            "$ref": "#/components/schemas/ProjectProgressDto"
+          },
+          "milestones": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MilestoneDetail"
+            }
+          },
+          "unassignedTodos": {
+            "$ref": "#/components/schemas/UnassignedTodos"
+          },
+          "audit": {
+            "$ref": "#/components/schemas/ProjectAuditDto"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "deprecated": true
+          },
+          "emoji": {
+            "type": "string",
+            "deprecated": true
+          },
+          "status": {
+            "type": "string",
+            "deprecated": true
+          },
+          "description": {
+            "type": "string",
+            "deprecated": true
+          },
+          "visibility": {
+            "type": "string",
+            "deprecated": true
+          },
+          "title": {
+            "type": "string",
+            "deprecated": true
+          },
+          "color": {
+            "type": "string",
+            "deprecated": true
+          },
+          "progressRate": {
+            "type": "number",
+            "deprecated": true
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/UserInfo",
+            "deprecated": true
+          },
+          "totalTodos": {
+            "type": "integer",
+            "format": "int32",
+            "deprecated": true
+          },
+          "completedTodos": {
+            "type": "integer",
+            "format": "int32",
+            "deprecated": true
+          },
+          "daysRemaining": {
+            "type": "integer",
+            "format": "int64",
+            "deprecated": true
+          }
+        }
+      },
+      "ProjectMetaDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string"
+          }
+        }
+      },
+      "ProjectProgressDto": {
+        "type": "object",
+        "properties": {
+          "progressRate": {
+            "type": "number"
+          },
+          "totalTodos": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "completedTodos": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ProjectScheduleDto": {
+        "type": "object",
+        "properties": {
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "daysRemaining": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "UnassignedTodos": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "completed": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ApiResponseListTodoResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TodoResponse"
+            }
+          }
+        }
+      },
+      "ApiResponseListMilestoneResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MilestoneResponse"
+            }
           }
         }
       },
@@ -189213,17 +190044,6 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/MyTournamentFeeItem"
-            }
-          }
-        }
-      },
-      "ApiResponseListTodoResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/TodoResponse"
             }
           }
         }
@@ -191147,240 +191967,6 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/DailySummary"
-            }
-          }
-        }
-      },
-      "PagedResponseProjectResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ProjectResponse"
-            }
-          },
-          "meta": {
-            "$ref": "#/components/schemas/PageMeta"
-          }
-        }
-      },
-      "ApiResponseProjectDetailResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/ProjectDetailResponse"
-          }
-        }
-      },
-      "MilestoneDetail": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "title": {
-            "type": "string"
-          },
-          "dueDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "completedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "progressRate": {
-            "type": "number"
-          },
-          "totalTodos": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "completedTodos": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "sortOrder": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "completed": {
-            "type": "boolean"
-          }
-        }
-      },
-      "ProjectAuditDto": {
-        "type": "object",
-        "properties": {
-          "createdBy": {
-            "$ref": "#/components/schemas/UserInfo"
-          }
-        }
-      },
-      "ProjectContentDto": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "emoji": {
-            "type": "string"
-          },
-          "color": {
-            "type": "string"
-          }
-        }
-      },
-      "ProjectDetailResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "meta": {
-            "$ref": "#/components/schemas/ProjectMetaDto"
-          },
-          "content": {
-            "$ref": "#/components/schemas/ProjectContentDto"
-          },
-          "schedule": {
-            "$ref": "#/components/schemas/ProjectScheduleDto"
-          },
-          "progress": {
-            "$ref": "#/components/schemas/ProjectProgressDto"
-          },
-          "milestones": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/MilestoneDetail"
-            }
-          },
-          "unassignedTodos": {
-            "$ref": "#/components/schemas/UnassignedTodos"
-          },
-          "audit": {
-            "$ref": "#/components/schemas/ProjectAuditDto"
-          },
-          "color": {
-            "type": "string",
-            "deprecated": true
-          },
-          "status": {
-            "type": "string",
-            "deprecated": true
-          },
-          "description": {
-            "type": "string",
-            "deprecated": true
-          },
-          "visibility": {
-            "type": "string",
-            "deprecated": true
-          },
-          "completedTodos": {
-            "type": "integer",
-            "format": "int32",
-            "deprecated": true
-          },
-          "totalTodos": {
-            "type": "integer",
-            "format": "int32",
-            "deprecated": true
-          },
-          "title": {
-            "type": "string",
-            "deprecated": true
-          },
-          "progressRate": {
-            "type": "number",
-            "deprecated": true
-          },
-          "createdBy": {
-            "$ref": "#/components/schemas/UserInfo",
-            "deprecated": true
-          },
-          "emoji": {
-            "type": "string",
-            "deprecated": true
-          },
-          "dueDate": {
-            "type": "string",
-            "format": "date",
-            "deprecated": true
-          },
-          "daysRemaining": {
-            "type": "integer",
-            "format": "int64",
-            "deprecated": true
-          }
-        }
-      },
-      "ProjectMetaDto": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string"
-          },
-          "visibility": {
-            "type": "string"
-          }
-        }
-      },
-      "ProjectProgressDto": {
-        "type": "object",
-        "properties": {
-          "progressRate": {
-            "type": "number"
-          },
-          "totalTodos": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "completedTodos": {
-            "type": "integer",
-            "format": "int32"
-          }
-        }
-      },
-      "ProjectScheduleDto": {
-        "type": "object",
-        "properties": {
-          "dueDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "daysRemaining": {
-            "type": "integer",
-            "format": "int64"
-          }
-        }
-      },
-      "UnassignedTodos": {
-        "type": "object",
-        "properties": {
-          "total": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "completed": {
-            "type": "integer",
-            "format": "int64"
-          }
-        }
-      },
-      "ApiResponseListMilestoneResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/MilestoneResponse"
             }
           }
         }
@@ -193605,10 +194191,10 @@
             "type": "integer",
             "format": "int32"
           },
-          "alreadyCheckedIn": {
+          "underCare": {
             "type": "boolean"
           },
-          "underCare": {
+          "alreadyCheckedIn": {
             "type": "boolean"
           }
         }
@@ -195746,19 +196332,13 @@
       "PageNotificationResponse": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -195783,6 +196363,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -196640,19 +197226,13 @@
       "PagePurgeStatusRow": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -196677,6 +197257,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -197234,19 +197820,13 @@
       "PageEmailOutboxSummaryResponse": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -197271,6 +197851,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -197433,19 +198019,13 @@
       "PageUserEntity": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -197470,6 +198050,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -197683,19 +198269,13 @@
       "PageTeamEntity": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -197720,6 +198300,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -197984,19 +198570,13 @@
       "PageOrganizationEntity": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -198021,6 +198601,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -200737,19 +201323,13 @@
       "PagePublicUserPostSummaryResponse": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -200774,6 +201354,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -200808,19 +201394,13 @@
       "PagePublicTimelinePostResponse": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -200845,6 +201425,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -200888,19 +201474,13 @@
       "PagePublicPostSummary": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -200925,6 +201505,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -201021,19 +201607,13 @@
       "PagePublicEventResponse": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -201058,6 +201638,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -201197,19 +201783,13 @@
       "PagePublicTeamSearchResultResponse": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -201234,6 +201814,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -201683,19 +202269,13 @@
       "PagePublicOrganizationSearchResultResponse": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -201720,6 +202300,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -201941,19 +202527,13 @@
       "PagePublicPostCommentResponse": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -201978,6 +202558,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -203988,19 +204574,13 @@
       "PageSuccessionCovenantResponse": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -204025,6 +204605,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -204192,19 +204778,13 @@
       "PageStampEventResponse": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -204229,6 +204809,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -204275,19 +204861,13 @@
       "PageBalanceEventResponse": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -204312,6 +204892,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -204738,19 +205324,13 @@
       "PageCommitteeSummaryResponse": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -204775,6 +205355,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -209101,19 +209687,13 @@
       "PageCommitteeDistributionLogResponse": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -209138,6 +209718,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -210454,19 +211040,13 @@
       "PageVillageCreationRequestResponse": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -210491,6 +211071,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -210895,19 +211481,13 @@
       "PageUserRoleEntity": {
         "type": "object",
         "properties": {
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
           },
           "size": {
             "type": "integer",
@@ -210932,6 +211512,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
