@@ -173,12 +173,16 @@ public class SealService {
         Map<Long, String> orgNames = saved.getScopeType() == SealScopeType.ORGANIZATION && saved.getScopeId() != null
                 ? nameResolverService.resolveOrganizationNames(Set.of(saved.getScopeId()))
                 : Map.of();
-        return sealMapper.toScopeDefaultResponse(saved, resolveScopeName(saved, teamNames, orgNames));
+        // variant を同一 seal ドメイン内で解決（印鑑が削除済みの場合は null）
+        SealVariant variant = sealRepository.findById(saved.getSealId())
+                .map(ElectronicSealEntity::getVariant)
+                .orElse(null);
+        return sealMapper.toScopeDefaultResponse(saved, resolveScopeName(saved, teamNames, orgNames), variant);
     }
 
     /**
      * ユーザーのスコープデフォルト一覧を取得する。
-     * scopeName（チーム名・組織名）は N+1 を避けるため一括解決する。
+     * scopeName（チーム名・組織名）および variant は N+1 を避けるため一括解決する。
      *
      * @param userId ユーザーID
      * @return スコープデフォルトレスポンスリスト
@@ -199,8 +203,18 @@ public class SealService {
         Map<Long, String> teamNames = nameResolverService.resolveTeamNames(teamIds);
         Map<Long, String> orgNames = nameResolverService.resolveOrganizationNames(orgIds);
 
+        // variant を sealId 単位で一括解決する（N+1 回避）
+        Set<Long> sealIds = defaults.stream()
+                .map(SealScopeDefaultEntity::getSealId)
+                .collect(Collectors.toSet());
+        Map<Long, SealVariant> sealVariantMap = sealRepository.findAllById(sealIds).stream()
+                .collect(Collectors.toMap(ElectronicSealEntity::getId, ElectronicSealEntity::getVariant));
+
         return defaults.stream()
-                .map(d -> sealMapper.toScopeDefaultResponse(d, resolveScopeName(d, teamNames, orgNames)))
+                .map(d -> sealMapper.toScopeDefaultResponse(
+                        d,
+                        resolveScopeName(d, teamNames, orgNames),
+                        sealVariantMap.get(d.getSealId())))
                 .toList();
     }
 
