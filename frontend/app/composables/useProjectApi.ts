@@ -17,7 +17,7 @@ export function useProjectApi() {
   const api = useApi()
 
   // teamId === null で個人スコープ (`/api/v1/users/me/projects`)、
-  // 数値の場合はチーム/組織スコープ (`/api/v1/teams/{teamId}/projects`)
+  // 文字列の場合はチームスコープ (`/api/v1/teams/{teamId}/projects`)
   function buildBase(teamId: string | null) {
     if (teamId === null) {
       return '/api/v1/users/me/projects'
@@ -25,13 +25,92 @@ export function useProjectApi() {
     return `/api/v1/teams/${teamId}/projects`
   }
 
+  // 組織スコープ専用のベース URL を構築する (`/api/v1/organizations/{orgSlug}/projects`)
+  function buildOrgBase(orgSlug: string) {
+    return `/api/v1/organizations/${orgSlug}/projects`
+  }
+
   function buildScopedBase(teamId: string | null, projectId: number) {
     return `${buildBase(teamId)}/${projectId}`
+  }
+
+  function buildOrgScopedBase(orgSlug: string, projectId: number) {
+    return `${buildOrgBase(orgSlug)}/${projectId}`
   }
 
   // === Projects ===
   async function listProjects(teamId: string | null) {
     return api<{ data: ProjectResponse[] }>(buildBase(teamId))
+  }
+
+  async function listOrgProjects(orgSlug: string) {
+    return api<{ data: ProjectResponse[] }>(buildOrgBase(orgSlug))
+  }
+
+  async function getOrgProject(orgSlug: string, projectId: number) {
+    return api<{ data: ProjectResponse }>(buildOrgScopedBase(orgSlug, projectId))
+  }
+
+  async function createOrgProject(orgSlug: string, body: CreateProjectRequest) {
+    return api<{ data: ProjectResponse }>(buildOrgBase(orgSlug), { method: 'POST', body })
+  }
+
+  async function updateOrgProject(orgSlug: string, projectId: number, body: UpdateProjectRequest) {
+    return api<{ data: ProjectResponse }>(buildOrgScopedBase(orgSlug, projectId), {
+      method: 'PUT',
+      body,
+    })
+  }
+
+  async function deleteOrgProject(orgSlug: string, projectId: number) {
+    return api(buildOrgScopedBase(orgSlug, projectId), { method: 'DELETE' })
+  }
+
+  async function completeOrgProject(orgSlug: string, projectId: number) {
+    return api(`${buildOrgScopedBase(orgSlug, projectId)}/complete`, { method: 'PATCH' })
+  }
+
+  async function reopenOrgProject(orgSlug: string, projectId: number) {
+    return api(`${buildOrgScopedBase(orgSlug, projectId)}/reopen`, { method: 'PATCH' })
+  }
+
+  async function listOrgMilestones(orgSlug: string, projectId: number) {
+    return api<{ data: MilestoneResponse[] }>(`${buildOrgScopedBase(orgSlug, projectId)}/milestones`)
+  }
+
+  async function createOrgMilestone(orgSlug: string, projectId: number, body: CreateMilestoneRequest) {
+    return api<{ data: MilestoneResponse }>(`${buildOrgScopedBase(orgSlug, projectId)}/milestones`, {
+      method: 'POST',
+      body,
+    })
+  }
+
+  async function updateOrgMilestone(
+    orgSlug: string,
+    projectId: number,
+    milestoneId: number,
+    body: UpdateMilestoneRequest,
+  ) {
+    return api<{ data: MilestoneResponse }>(
+      `${buildOrgScopedBase(orgSlug, projectId)}/milestones/${milestoneId}`,
+      { method: 'PUT', body },
+    )
+  }
+
+  async function deleteOrgMilestone(orgSlug: string, projectId: number, milestoneId: number) {
+    return api(`${buildOrgScopedBase(orgSlug, projectId)}/milestones/${milestoneId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async function completeOrgMilestone(orgSlug: string, projectId: number, milestoneId: number) {
+    return api(`${buildOrgScopedBase(orgSlug, projectId)}/milestones/${milestoneId}/complete`, {
+      method: 'PATCH',
+    })
+  }
+
+  async function getOrgProjectTodos(orgSlug: string, projectId: number) {
+    return api<{ data: unknown[] }>(`${buildOrgScopedBase(orgSlug, projectId)}/todos`)
   }
 
   /**
@@ -202,5 +281,19 @@ export function useProjectApi() {
     forceUnlockMilestone,
     initializeGate,
     reorderMilestoneTodos,
+    // 組織スコープ
+    listOrgProjects,
+    getOrgProject,
+    createOrgProject,
+    updateOrgProject,
+    deleteOrgProject,
+    completeOrgProject,
+    reopenOrgProject,
+    listOrgMilestones,
+    createOrgMilestone,
+    updateOrgMilestone,
+    deleteOrgMilestone,
+    completeOrgMilestone,
+    getOrgProjectTodos,
   }
 }
