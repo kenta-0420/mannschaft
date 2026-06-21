@@ -714,7 +714,66 @@
     "reorder_failed": "Neuordnung fehlgeschlagen",
     "my_projects": "Meine Projekte",
     "my_projects_description": "Persönliche Aufgabenverwaltung und Ziele",
-    "no_my_projects": "Noch keine persönlichen Projekte"
+    "no_my_projects": "Noch keine persönlichen Projekte",
+    "create_button": "Projekt erstellen",
+    "dialog": {
+      "create_title": "Projekt erstellen",
+      "edit_title": "Projekt bearbeiten",
+      "title_label": "Titel",
+      "title_placeholder": "Projektname",
+      "description_label": "Beschreibung",
+      "due_date_label": "Fälligkeitsdatum",
+      "cancel": "Abbrechen",
+      "create": "Erstellen",
+      "update": "Aktualisieren"
+    },
+    "appearance": {
+      "emoji_label": "Emoji",
+      "color_label": "Farbe",
+      "none": "Keines",
+      "custom_emoji": "Benutzerdefiniert",
+      "custom_color": "Benutzerdefinierte Farbe",
+      "current": "Aktuell"
+    },
+    "guide": {
+      "button": "Anleitung",
+      "page_title": "Projektanleitung",
+      "description": "Erfahren Sie, wie Sie die Projektfunktion nutzen können.",
+      "what": {
+        "title": "Was ist ein Projekt?",
+        "body": "Ein Projekt ist eine Einheit zur Verwaltung von Aufgaben (TODOs) und Meilensteinen. Sie können Ziele und Fristen festlegen und den Fortschritt auf einen Blick verfolgen."
+      },
+      "create": {
+        "title": "So erstellen Sie ein Projekt",
+        "body": "Klicken Sie auf 'Projekt erstellen' und füllen Sie die folgenden Informationen aus.",
+        "item_title": "Titel (erforderlich): Name des Projekts",
+        "item_emoji": "Emoji: Symbol für das Projekt (aus Voreinstellungen wählen)",
+        "item_color": "Farbe: Erkennungsfarbe der Karte (aus Voreinstellungen wählen)",
+        "item_due_date": "Fälligkeitsdatum: Zieldatum für den Abschluss (optional)"
+      },
+      "milestone": {
+        "title": "Meilensteine und Tore",
+        "body": "Meilensteine sind Zwischenziele innerhalb eines Projekts. Wenn die Gate-Funktion aktiviert ist, wird der nächste Meilenstein gesperrt, bis der vorherige abgeschlossen ist.",
+        "completion_mode_label": "Über den Abschlussmodus",
+        "mode_auto": "Automatischer Abschluss",
+        "mode_auto_desc": "Wird automatisch als erreicht markiert, wenn alle TODOs im Meilenstein abgeschlossen sind.",
+        "mode_manual": "Manuell",
+        "mode_manual_desc": "Manuell als erreicht markieren, unabhängig vom TODO-Abschlussstatus."
+      },
+      "progress": {
+        "title": "Fortschritt verstehen",
+        "body": "Projektkarten zeigen einen Fortschrittsbalken, Abschlussrate und verbleibende Tage. Der Fortschrittsbalken wird automatisch aus abgeschlossenen TODOs / Gesamt-TODOs berechnet."
+      },
+      "scope": {
+        "title": "Persönliche vs. Team-Projekte",
+        "body": "Projekte haben zwei Arten von Umfang: 'persönlich' und 'Team'.",
+        "personal_title": "Persönliches Projekt",
+        "personal_desc": "Nur Sie können es anzeigen und verwalten. Zugriff über 'Meine Seite' → 'Projekte'.",
+        "team_title": "Team-Projekt",
+        "team_desc": "Mit Teammitgliedern teilen und gemeinsam verwalten. Zugriff über den Tab 'Projekte' auf der Teamseite."
+      },
+      "back_to_projects": "Zurück zur Projektliste"
+    }
   },
   "inviteToken": {
     "printQrPdf": "QR PDF drucken",
