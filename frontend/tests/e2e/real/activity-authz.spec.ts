@@ -80,7 +80,8 @@ test.beforeAll(async () => {
   const userTeams = await myTeams(userToken)
   expect(userTeams.length, 'e2e-user は最低 1 チームに所属（seed 前提）').toBeGreaterThan(0)
   const ownTeam = userTeams.find((t) => t.slug === 'fc-u-18') ?? userTeams[0]
-  ownTeamId = ownTeam.id
+  expect(ownTeam, 'e2e-user の自スコープチームを解決できる').toBeTruthy()
+  ownTeamId = ownTeam!.id
 
   // 自スコープの既存活動 1 件（seed が fc-u-18 に活動を投入済み）。複製 200 検証の元。
   const ownList = await api.get(
@@ -89,8 +90,9 @@ test.beforeAll(async () => {
   )
   expect(ownList.status(), '自スコープ活動一覧は 200').toBe(200)
   const ownActs = (await ownList.json() as { data: Array<{ id: number }> }).data
-  expect(ownActs.length, '自スコープに活動が最低 1 件（seed 前提）').toBeGreaterThan(0)
-  ownActivityId = ownActs[0].id
+  const firstOwnAct = ownActs[0]
+  expect(firstOwnAct, '自スコープに活動が最低 1 件（seed 前提）').toBeTruthy()
+  ownActivityId = firstOwnAct!.id
 
   // ── 非会員スコープを admin が新規作成（seed 汚染に依存しない使い捨てチーム） ──
   const uniqueName = `IDOR-E2E-Other-${Date.now()}`
