@@ -1,4 +1,10 @@
 {
+  "security": {
+    "session": {
+      "device_label": "{os} の {browser}",
+      "unknown_device": "不明なデバイス"
+    }
+  },
   "data_export": {
     "section_title": "データエクスポート",
     "export_button": "個人データをエクスポート",
