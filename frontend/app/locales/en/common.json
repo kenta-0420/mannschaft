@@ -715,6 +715,8 @@
     "my_projects": "My projects",
     "my_projects_description": "Personal task management and goals",
     "no_my_projects": "No personal projects yet",
+    "team_projects_section": "Team Projects",
+    "no_team_projects": "No projects in your teams yet",
     "create_button": "Create project",
     "dialog": {
       "create_title": "Create project",

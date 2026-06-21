@@ -328,5 +328,25 @@ public class MembershipService {
         }
     }
 
+    /**
+     * 指定ユーザーがアクティブ（退会していない）に所属するチームの ID 一覧を返す。
+     *
+     * <p>マイページ チームプロジェクト集約（{@code GET /api/v1/me/team-projects}）が
+     * 所属チーム ID 集合を取得する際、{@code todo} ドメインの {@code ProjectService} が
+     * {@code membership} ドメインの {@code MembershipRepository} を直接注入することを避けるために
+     * 本メソッドを提供する（D-3 ArchUnit 準拠: @Transactional クラスは別ドメイン Repository に
+     * 直接依存しない）。プリミティブ（{@code List<Long>}）のみを返し、Entity を漏らさない。</p>
+     *
+     * @param userId 対象ユーザー ID
+     * @return アクティブに所属するチームの scopeId 一覧（退会済みは除外）
+     */
+    public List<Long> getActiveTeamIdsByUser(Long userId) {
+        return membershipRepository
+                .findActiveByUserAndScopeType(userId, ScopeType.TEAM)
+                .stream()
+                .map(MembershipEntity::getScopeId)
+                .toList();
+    }
+
 }
 
