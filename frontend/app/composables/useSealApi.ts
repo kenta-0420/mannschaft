@@ -1,13 +1,17 @@
 import type {
   ElectronicSeal,
-  ScopeDefault,
   SealPreview,
-  StampLog,
   VerifyResult,
   RegenerateAllStatus,
   SealVariant,
   SealScopeType,
 } from '~/types/seal'
+import type { components } from '~/types/generated'
+
+// 生成型エイリアス
+type ScopeDefaultResponse = components['schemas']['ScopeDefaultResponse']
+type StampLogResponse = components['schemas']['StampLogResponse']
+type CursorMeta = components['schemas']['CursorMeta']
 
 export function useSealApi() {
   const api = useApi()
@@ -67,8 +71,9 @@ export function useSealApi() {
   }
 
   // === スコープ別デフォルト ===
+  // 生成型 ScopeDefaultResponse[] を使用（scopeName フィールドを含む）
   async function getScopeDefaults(userId: number) {
-    const res = await api<{ data: ScopeDefault[] }>(`/api/v1/users/${userId}/seals/scope-defaults`)
+    const res = await api<{ data: ScopeDefaultResponse[] }>(`/api/v1/users/${userId}/seals/scope-defaults`)
     return res.data
   }
 
@@ -76,7 +81,7 @@ export function useSealApi() {
     userId: number,
     defaults: { scopeType: SealScopeType; scopeId: string | null; variant: SealVariant }[],
   ) {
-    const res = await api<{ data: ScopeDefault[] }>(
+    const res = await api<{ data: ScopeDefaultResponse[] }>(
       `/api/v1/users/${userId}/seals/scope-defaults`,
       {
         method: 'PUT',
@@ -87,12 +92,13 @@ export function useSealApi() {
   }
 
   // === 押印ログ ===
+  // 生成型 CursorPagedResponseStampLogResponse 相当（data: StampLogResponse[], meta: CursorMeta）を使用
   async function getStampLogs(userId: number, params?: { cursor?: string; size?: number }) {
     const query = new URLSearchParams()
     if (params?.cursor) query.set('cursor', params.cursor)
     if (params?.size) query.set('size', String(params.size))
     const qs = query.toString()
-    const res = await api<{ data: StampLog[]; meta: { nextCursor: string | null } }>(
+    const res = await api<{ data: StampLogResponse[]; meta: CursorMeta }>(
       `/api/v1/users/${userId}/stamps${qs ? `?${qs}` : ''}`,
     )
     return res
