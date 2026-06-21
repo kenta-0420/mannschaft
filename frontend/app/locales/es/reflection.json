@@ -1,168 +1,170 @@
 {
-  "title": "Reflexiones",
-  "nav": {
-    "today": "Reflexiones de hoy",
-    "themes": "Temas",
-    "settings": "Ajustes de notificación"
-  },
-  "today": {
-    "heading": "Reflexiones de hoy",
-    "date_label": "Fecha",
-    "empty": "No hay clases ni temas para hoy. Crea un tema para empezar a reflexionar.",
-    "free_themes": "Temas (fuera del horario)",
-    "timetable_slots": "Clases de hoy",
-    "no_theme": "Sin tema",
-    "create_theme_for_slot": "Crear un tema para esta franja",
-    "create_entry": "Escribir una reflexión",
-    "edit_entry": "Editar reflexión",
-    "open_recall": "Prueba de recuerdo",
-    "masked_badge": "Pendiente de recuerdo",
-    "has_entry": "Escrito",
-    "period_label": "Período {period}"
-  },
-  "theme": {
-    "list_heading": "Temas",
-    "create": "Crear tema",
-    "edit": "Editar tema",
-    "delete": "Eliminar",
-    "delete_confirm": "¿Eliminar este tema y todas sus reflexiones?",
-    "empty": "Aún no hay temas. Crea tu primer tema.",
-    "title_label": "Nombre del tema",
-    "title_placeholder": "p. ej. Matemáticas II / Proyecto X / Diario",
-    "description_label": "Descripción",
-    "description_placeholder": "Nota opcional",
-    "source_type_label": "Tipo",
-    "exam_date_label": "Fecha del examen",
-    "exam_date_help": "Si se establece, se envían recordatorios 14/7/3/1 días antes del examen",
-    "exam_date_past_warning": "No se generan recordatorios para fechas pasadas",
-    "exam_date_clear": "Borrar fecha del examen",
-    "recall_interval_label": "Intervalo de recuerdo",
-    "recall_interval_fixed": "Prueba de recuerdo {days} días después (fijo)",
-    "open": "Abrir",
-    "view_entries": "Ver reflexiones"
-  },
-  "source_type": {
-    "SUBJECT": "Clase",
-    "PROJECT": "Trabajo / Proyecto",
-    "DIARY": "Diario",
-    "FREE": "Libre"
-  },
-  "template": {
-    "label": "Plantilla",
-    "help": "Elige encabezados predefinidos para tu entrada",
-    "NORMAL": "Normal",
-    "DIARY": "Diario",
-    "WORK": "Reflexión laboral",
-    "CLASS": "Reflexión de clase",
-    "normal_desc": "Sin encabezados, escritura libre",
-    "diary_desc": "Sucesos / Sentimientos / Para mañana",
-    "work_desc": "Resultados / Problemas / Aprendizajes / Próximas acciones",
-    "class_desc": "Lo que aprendí / Dificultades / Puntos clave a recordar",
-    "preset": {
-      "diary": {
-        "event": "Sucesos",
-        "feeling": "Sentimientos",
-        "tomorrow": "Para mañana"
-      },
-      "work": {
-        "result": "Resultados",
-        "issue": "Problemas",
-        "learning": "Aprendizajes",
-        "next": "Próximas acciones"
-      },
-      "class": {
-        "learned": "Lo que aprendí",
-        "stumble": "Dificultades",
-        "keypoint": "Puntos clave a recordar"
-      }
-    }
-  },
-  "entry": {
-    "list_heading": "Reflexiones",
-    "create": "Crear reflexión",
-    "edit": "Editar reflexión",
-    "delete": "Eliminar",
-    "delete_confirm": "¿Eliminar esta reflexión?",
-    "empty": "Aún no hay reflexiones.",
-    "target_date_label": "Fecha",
-    "main_theme_label": "Tema principal",
-    "main_theme_placeholder": "p. ej. Máximos y mínimos de funciones cuadráticas",
-    "section_heading_label": "Encabezado",
-    "section_heading_placeholder": "p. ej. Completar el cuadrado",
-    "add_section": "Añadir encabezado",
-    "remove_section": "Eliminar encabezado",
-    "sub_heading_label": "Subencabezado",
-    "sub_heading_placeholder": "p. ej. Transformar a la forma estándar",
-    "add_subsection": "Añadir subencabezado",
-    "remove_subsection": "Eliminar subencabezado",
-    "detail_label": "Detalle",
-    "detail_placeholder": "Escribe lo que aprendiste",
-    "supplement_label": "Complemento",
-    "supplement_placeholder": "Complemento / nota",
-    "free_note_label": "Nota libre (excluida del recuerdo)",
-    "free_note_placeholder": "Impresiones o notas de preguntas",
-    "save": "Guardar",
-    "saved": "Guardado",
-    "save_failed": "Error al guardar",
-    "conflict": "Se actualizó en otro lugar. Recarga lo más reciente e inténtalo de nuevo.",
-    "masked_notice": "Es un objetivo de prueba de recuerdo. El contenido está oculto.",
-    "exported_badge": "Exportado al blog",
-    "exported_edited_badge": "Editado tras exportar"
-  },
-  "recall": {
-    "heading": "Prueba de recuerdo",
-    "intro": "Sin mirar el contenido, recuerda y escribe lo que recuerdes.",
-    "hint_theme": "Tema",
-    "hint_target_date": "Fecha",
-    "hint_due_dates": "Fechas de recuerdo programadas",
-    "input_label": "Lo que recordaste",
-    "input_placeholder": "Escribe todo lo que recuerdes",
-    "self_rating_label": "Autoevaluación",
-    "rating": {
-      "REMEMBERED": "Lo recordé",
-      "PARTIAL": "Parcial",
-      "FORGOT": "Lo olvidé"
+  "reflection": {
+    "title": "Reflexiones",
+    "nav": {
+      "today": "Reflexiones de hoy",
+      "themes": "Temas",
+      "settings": "Ajustes de notificación"
     },
-    "submit": "Guardar y revelar",
-    "submitting": "Guardando...",
-    "saved": "Recuerdo registrado",
-    "save_failed": "Error al guardar el recuerdo",
-    "revealed_heading": "Respuesta (contenido original)",
-    "your_recall": "Tu recuerdo",
-    "history_heading": "Historial de recuerdos",
-    "history_empty": "Aún no hay historial de recuerdos.",
-    "not_masked": "Esta entrada no está oculta. Puedes editarla normalmente.",
-    "back_to_entry": "Volver a la reflexión"
-  },
-  "export": {
-    "button": "Exportar al blog",
-    "dialog_title": "Exportar al blog",
-    "title_label": "Título de la publicación",
-    "title_placeholder": "Si se omite, se usan el nombre del tema y la fecha",
-    "submit": "Exportar",
-    "submitting": "Exportando...",
-    "success": "Exportado al blog (privado)",
-    "failed": "Error al exportar",
-    "already_exported": "Esta reflexión ya se ha exportado",
-    "view_post": "Ver publicación exportada"
-  },
-  "settings": {
-    "heading": "Ajustes de notificación de recuerdo",
-    "remind_hour_label": "Hora de notificación",
-    "remind_hour_help": "La hora para enviar recordatorios de prueba de recuerdo (tu zona horaria)",
-    "save": "Guardar",
-    "saved": "Ajustes guardados",
-    "save_failed": "Error al guardar los ajustes",
-    "hour_format": "{hour}:00"
-  },
-  "calendar": {
-    "entry_mark": "Reflexión",
-    "recall_mark": "Recuerdo pendiente"
-  },
-  "common": {
-    "cancel": "Cancelar",
-    "close": "Cerrar",
-    "loading": "Cargando...",
-    "load_failed": "Error al cargar"
+    "today": {
+      "heading": "Reflexiones de hoy",
+      "date_label": "Fecha",
+      "empty": "No hay clases ni temas para hoy. Crea un tema para empezar a reflexionar.",
+      "free_themes": "Temas (fuera del horario)",
+      "timetable_slots": "Clases de hoy",
+      "no_theme": "Sin tema",
+      "create_theme_for_slot": "Crear un tema para esta franja",
+      "create_entry": "Escribir una reflexión",
+      "edit_entry": "Editar reflexión",
+      "open_recall": "Prueba de recuerdo",
+      "masked_badge": "Pendiente de recuerdo",
+      "has_entry": "Escrito",
+      "period_label": "Período {period}"
+    },
+    "theme": {
+      "list_heading": "Temas",
+      "create": "Crear tema",
+      "edit": "Editar tema",
+      "delete": "Eliminar",
+      "delete_confirm": "¿Eliminar este tema y todas sus reflexiones?",
+      "empty": "Aún no hay temas. Crea tu primer tema.",
+      "title_label": "Nombre del tema",
+      "title_placeholder": "p. ej. Matemáticas II / Proyecto X / Diario",
+      "description_label": "Descripción",
+      "description_placeholder": "Nota opcional",
+      "source_type_label": "Tipo",
+      "exam_date_label": "Fecha del examen",
+      "exam_date_help": "Si se establece, se envían recordatorios 14/7/3/1 días antes del examen",
+      "exam_date_past_warning": "No se generan recordatorios para fechas pasadas",
+      "exam_date_clear": "Borrar fecha del examen",
+      "recall_interval_label": "Intervalo de recuerdo",
+      "recall_interval_fixed": "Prueba de recuerdo {days} días después (fijo)",
+      "open": "Abrir",
+      "view_entries": "Ver reflexiones"
+    },
+    "source_type": {
+      "SUBJECT": "Clase",
+      "PROJECT": "Trabajo / Proyecto",
+      "DIARY": "Diario",
+      "FREE": "Libre"
+    },
+    "template": {
+      "label": "Plantilla",
+      "help": "Elige encabezados predefinidos para tu entrada",
+      "NORMAL": "Normal",
+      "DIARY": "Diario",
+      "WORK": "Reflexión laboral",
+      "CLASS": "Reflexión de clase",
+      "normal_desc": "Sin encabezados, escritura libre",
+      "diary_desc": "Sucesos / Sentimientos / Para mañana",
+      "work_desc": "Resultados / Problemas / Aprendizajes / Próximas acciones",
+      "class_desc": "Lo que aprendí / Dificultades / Puntos clave a recordar",
+      "preset": {
+        "diary": {
+          "event": "Sucesos",
+          "feeling": "Sentimientos",
+          "tomorrow": "Para mañana"
+        },
+        "work": {
+          "result": "Resultados",
+          "issue": "Problemas",
+          "learning": "Aprendizajes",
+          "next": "Próximas acciones"
+        },
+        "class": {
+          "learned": "Lo que aprendí",
+          "stumble": "Dificultades",
+          "keypoint": "Puntos clave a recordar"
+        }
+      }
+    },
+    "entry": {
+      "list_heading": "Reflexiones",
+      "create": "Crear reflexión",
+      "edit": "Editar reflexión",
+      "delete": "Eliminar",
+      "delete_confirm": "¿Eliminar esta reflexión?",
+      "empty": "Aún no hay reflexiones.",
+      "target_date_label": "Fecha",
+      "main_theme_label": "Tema principal",
+      "main_theme_placeholder": "p. ej. Máximos y mínimos de funciones cuadráticas",
+      "section_heading_label": "Encabezado",
+      "section_heading_placeholder": "p. ej. Completar el cuadrado",
+      "add_section": "Añadir encabezado",
+      "remove_section": "Eliminar encabezado",
+      "sub_heading_label": "Subencabezado",
+      "sub_heading_placeholder": "p. ej. Transformar a la forma estándar",
+      "add_subsection": "Añadir subencabezado",
+      "remove_subsection": "Eliminar subencabezado",
+      "detail_label": "Detalle",
+      "detail_placeholder": "Escribe lo que aprendiste",
+      "supplement_label": "Complemento",
+      "supplement_placeholder": "Complemento / nota",
+      "free_note_label": "Nota libre (excluida del recuerdo)",
+      "free_note_placeholder": "Impresiones o notas de preguntas",
+      "save": "Guardar",
+      "saved": "Guardado",
+      "save_failed": "Error al guardar",
+      "conflict": "Se actualizó en otro lugar. Recarga lo más reciente e inténtalo de nuevo.",
+      "masked_notice": "Es un objetivo de prueba de recuerdo. El contenido está oculto.",
+      "exported_badge": "Exportado al blog",
+      "exported_edited_badge": "Editado tras exportar"
+    },
+    "recall": {
+      "heading": "Prueba de recuerdo",
+      "intro": "Sin mirar el contenido, recuerda y escribe lo que recuerdes.",
+      "hint_theme": "Tema",
+      "hint_target_date": "Fecha",
+      "hint_due_dates": "Fechas de recuerdo programadas",
+      "input_label": "Lo que recordaste",
+      "input_placeholder": "Escribe todo lo que recuerdes",
+      "self_rating_label": "Autoevaluación",
+      "rating": {
+        "REMEMBERED": "Lo recordé",
+        "PARTIAL": "Parcial",
+        "FORGOT": "Lo olvidé"
+      },
+      "submit": "Guardar y revelar",
+      "submitting": "Guardando...",
+      "saved": "Recuerdo registrado",
+      "save_failed": "Error al guardar el recuerdo",
+      "revealed_heading": "Respuesta (contenido original)",
+      "your_recall": "Tu recuerdo",
+      "history_heading": "Historial de recuerdos",
+      "history_empty": "Aún no hay historial de recuerdos.",
+      "not_masked": "Esta entrada no está oculta. Puedes editarla normalmente.",
+      "back_to_entry": "Volver a la reflexión"
+    },
+    "export": {
+      "button": "Exportar al blog",
+      "dialog_title": "Exportar al blog",
+      "title_label": "Título de la publicación",
+      "title_placeholder": "Si se omite, se usan el nombre del tema y la fecha",
+      "submit": "Exportar",
+      "submitting": "Exportando...",
+      "success": "Exportado al blog (privado)",
+      "failed": "Error al exportar",
+      "already_exported": "Esta reflexión ya se ha exportado",
+      "view_post": "Ver publicación exportada"
+    },
+    "settings": {
+      "heading": "Ajustes de notificación de recuerdo",
+      "remind_hour_label": "Hora de notificación",
+      "remind_hour_help": "La hora para enviar recordatorios de prueba de recuerdo (tu zona horaria)",
+      "save": "Guardar",
+      "saved": "Ajustes guardados",
+      "save_failed": "Error al guardar los ajustes",
+      "hour_format": "{hour}:00"
+    },
+    "calendar": {
+      "entry_mark": "Reflexión",
+      "recall_mark": "Recuerdo pendiente"
+    },
+    "common": {
+      "cancel": "Cancelar",
+      "close": "Cerrar",
+      "loading": "Cargando...",
+      "load_failed": "Error al cargar"
+    }
   }
 }

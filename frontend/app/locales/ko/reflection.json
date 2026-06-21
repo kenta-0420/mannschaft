@@ -1,168 +1,170 @@
 {
-  "title": "회고",
-  "nav": {
-    "today": "오늘의 회고",
-    "themes": "테마 목록",
-    "settings": "알림 설정"
-  },
-  "today": {
-    "heading": "오늘의 회고",
-    "date_label": "날짜",
-    "empty": "오늘의 수업이나 테마가 없습니다. 테마를 만들어 회고를 시작하세요.",
-    "free_themes": "테마 (시간표 외)",
-    "timetable_slots": "오늘의 수업",
-    "no_theme": "테마 미설정",
-    "create_theme_for_slot": "이 교시의 테마 만들기",
-    "create_entry": "회고 작성",
-    "edit_entry": "회고 편집",
-    "open_recall": "상기 테스트",
-    "masked_badge": "상기 대기",
-    "has_entry": "작성됨",
-    "period_label": "{period}교시"
-  },
-  "theme": {
-    "list_heading": "테마 목록",
-    "create": "테마 만들기",
-    "edit": "테마 편집",
-    "delete": "삭제",
-    "delete_confirm": "이 테마와 하위 회고를 모두 삭제하시겠습니까?",
-    "empty": "아직 테마가 없습니다. 첫 번째 테마를 만드세요.",
-    "title_label": "테마 이름",
-    "title_placeholder": "예: 수학II / 프로젝트X / 일기",
-    "description_label": "설명",
-    "description_placeholder": "선택 메모",
-    "source_type_label": "유형",
-    "exam_date_label": "시험 날짜",
-    "exam_date_help": "설정하면 시험 14/7/3/1일 전에 알림이 전송됩니다",
-    "exam_date_past_warning": "과거 날짜에는 알림이 생성되지 않습니다",
-    "exam_date_clear": "시험 날짜 지우기",
-    "recall_interval_label": "상기 간격",
-    "recall_interval_fixed": "{days}일 후 상기 테스트 (고정)",
-    "open": "열기",
-    "view_entries": "회고 보기"
-  },
-  "source_type": {
-    "SUBJECT": "수업",
-    "PROJECT": "업무 / 프로젝트",
-    "DIARY": "일기",
-    "FREE": "자유"
-  },
-  "template": {
-    "label": "템플릿",
-    "help": "입력 제목을 프리셋에서 선택할 수 있습니다",
-    "NORMAL": "보통",
-    "DIARY": "일기",
-    "WORK": "업무 회고",
-    "CLASS": "수업 회고",
-    "normal_desc": "제목 없이 자유 작성",
-    "diary_desc": "사건／느낀 점／내일을 위해",
-    "work_desc": "성과／과제／배움／다음 행동",
-    "class_desc": "배운 것／막힌 부분／기억할 요점",
-    "preset": {
-      "diary": {
-        "event": "사건",
-        "feeling": "느낀 점",
-        "tomorrow": "내일을 위해"
-      },
-      "work": {
-        "result": "성과",
-        "issue": "과제",
-        "learning": "배움",
-        "next": "다음 행동"
-      },
-      "class": {
-        "learned": "배운 것",
-        "stumble": "막힌 부분",
-        "keypoint": "기억할 요점"
-      }
-    }
-  },
-  "entry": {
-    "list_heading": "회고 목록",
-    "create": "회고 만들기",
-    "edit": "회고 편집",
-    "delete": "삭제",
-    "delete_confirm": "이 회고를 삭제하시겠습니까?",
-    "empty": "아직 회고가 없습니다.",
-    "target_date_label": "날짜",
-    "main_theme_label": "메인 테마",
-    "main_theme_placeholder": "예: 이차함수의 최대 최소",
-    "section_heading_label": "제목",
-    "section_heading_placeholder": "예: 완전제곱식",
-    "add_section": "제목 추가",
-    "remove_section": "제목 삭제",
-    "sub_heading_label": "소제목",
-    "sub_heading_placeholder": "예: 기본형으로 변형",
-    "add_subsection": "소제목 추가",
-    "remove_subsection": "소제목 삭제",
-    "detail_label": "상세",
-    "detail_placeholder": "배운 내용을 작성하세요",
-    "supplement_label": "보충",
-    "supplement_placeholder": "보충／메모",
-    "free_note_label": "자유 메모 (상기 대상 외)",
-    "free_note_placeholder": "소감이나 질문 메모",
-    "save": "저장",
-    "saved": "저장했습니다",
-    "save_failed": "저장에 실패했습니다",
-    "conflict": "다른 곳에서 업데이트되었습니다. 최신 내용을 다시 불러온 후 다시 시도하세요.",
-    "masked_notice": "상기 테스트 대상입니다. 본문이 숨겨져 있습니다.",
-    "exported_badge": "블로그 내보냄",
-    "exported_edited_badge": "내보낸 후 편집됨"
-  },
-  "recall": {
-    "heading": "상기 테스트",
-    "intro": "본문을 보지 않고 기억나는 내용을 떠올려 작성해 보세요.",
-    "hint_theme": "테마",
-    "hint_target_date": "날짜",
-    "hint_due_dates": "상기 예정일",
-    "input_label": "떠올린 내용",
-    "input_placeholder": "기억나는 만큼 작성하세요",
-    "self_rating_label": "자기 평가",
-    "rating": {
-      "REMEMBERED": "기억함",
-      "PARTIAL": "부분적",
-      "FORGOT": "잊음"
+  "reflection": {
+    "title": "회고",
+    "nav": {
+      "today": "오늘의 회고",
+      "themes": "테마 목록",
+      "settings": "알림 설정"
     },
-    "submit": "저장하고 공개",
-    "submitting": "저장 중…",
-    "saved": "상기를 기록했습니다",
-    "save_failed": "상기 저장에 실패했습니다",
-    "revealed_heading": "정답 (원본 본문)",
-    "your_recall": "당신의 상기",
-    "history_heading": "상기 기록",
-    "history_empty": "아직 상기 기록이 없습니다.",
-    "not_masked": "이 항목은 마스크되지 않았습니다. 정상적으로 편집할 수 있습니다.",
-    "back_to_entry": "회고로 돌아가기"
-  },
-  "export": {
-    "button": "블로그로 내보내기",
-    "dialog_title": "블로그로 내보내기",
-    "title_label": "게시물 제목",
-    "title_placeholder": "생략하면 테마 이름과 날짜가 사용됩니다",
-    "submit": "내보내기",
-    "submitting": "내보내는 중…",
-    "success": "블로그로 내보냈습니다 (비공개)",
-    "failed": "내보내기에 실패했습니다",
-    "already_exported": "이 회고는 이미 내보냈습니다",
-    "view_post": "내보낸 게시물 보기"
-  },
-  "settings": {
-    "heading": "상기 알림 설정",
-    "remind_hour_label": "알림 시간",
-    "remind_hour_help": "상기 테스트 알림을 보낼 시간 (당신의 시간대)",
-    "save": "저장",
-    "saved": "설정을 저장했습니다",
-    "save_failed": "설정 저장에 실패했습니다",
-    "hour_format": "{hour}시"
-  },
-  "calendar": {
-    "entry_mark": "회고",
-    "recall_mark": "상기 예정"
-  },
-  "common": {
-    "cancel": "취소",
-    "close": "닫기",
-    "loading": "불러오는 중…",
-    "load_failed": "불러오기에 실패했습니다"
+    "today": {
+      "heading": "오늘의 회고",
+      "date_label": "날짜",
+      "empty": "오늘의 수업이나 테마가 없습니다. 테마를 만들어 회고를 시작하세요.",
+      "free_themes": "테마 (시간표 외)",
+      "timetable_slots": "오늘의 수업",
+      "no_theme": "테마 미설정",
+      "create_theme_for_slot": "이 교시의 테마 만들기",
+      "create_entry": "회고 작성",
+      "edit_entry": "회고 편집",
+      "open_recall": "상기 테스트",
+      "masked_badge": "상기 대기",
+      "has_entry": "작성됨",
+      "period_label": "{period}교시"
+    },
+    "theme": {
+      "list_heading": "테마 목록",
+      "create": "테마 만들기",
+      "edit": "테마 편집",
+      "delete": "삭제",
+      "delete_confirm": "이 테마와 하위 회고를 모두 삭제하시겠습니까?",
+      "empty": "아직 테마가 없습니다. 첫 번째 테마를 만드세요.",
+      "title_label": "테마 이름",
+      "title_placeholder": "예: 수학II / 프로젝트X / 일기",
+      "description_label": "설명",
+      "description_placeholder": "선택 메모",
+      "source_type_label": "유형",
+      "exam_date_label": "시험 날짜",
+      "exam_date_help": "설정하면 시험 14/7/3/1일 전에 알림이 전송됩니다",
+      "exam_date_past_warning": "과거 날짜에는 알림이 생성되지 않습니다",
+      "exam_date_clear": "시험 날짜 지우기",
+      "recall_interval_label": "상기 간격",
+      "recall_interval_fixed": "{days}일 후 상기 테스트 (고정)",
+      "open": "열기",
+      "view_entries": "회고 보기"
+    },
+    "source_type": {
+      "SUBJECT": "수업",
+      "PROJECT": "업무 / 프로젝트",
+      "DIARY": "일기",
+      "FREE": "자유"
+    },
+    "template": {
+      "label": "템플릿",
+      "help": "입력 제목을 프리셋에서 선택할 수 있습니다",
+      "NORMAL": "보통",
+      "DIARY": "일기",
+      "WORK": "업무 회고",
+      "CLASS": "수업 회고",
+      "normal_desc": "제목 없이 자유 작성",
+      "diary_desc": "사건／느낀 점／내일을 위해",
+      "work_desc": "성과／과제／배움／다음 행동",
+      "class_desc": "배운 것／막힌 부분／기억할 요점",
+      "preset": {
+        "diary": {
+          "event": "사건",
+          "feeling": "느낀 점",
+          "tomorrow": "내일을 위해"
+        },
+        "work": {
+          "result": "성과",
+          "issue": "과제",
+          "learning": "배움",
+          "next": "다음 행동"
+        },
+        "class": {
+          "learned": "배운 것",
+          "stumble": "막힌 부분",
+          "keypoint": "기억할 요점"
+        }
+      }
+    },
+    "entry": {
+      "list_heading": "회고 목록",
+      "create": "회고 만들기",
+      "edit": "회고 편집",
+      "delete": "삭제",
+      "delete_confirm": "이 회고를 삭제하시겠습니까?",
+      "empty": "아직 회고가 없습니다.",
+      "target_date_label": "날짜",
+      "main_theme_label": "메인 테마",
+      "main_theme_placeholder": "예: 이차함수의 최대 최소",
+      "section_heading_label": "제목",
+      "section_heading_placeholder": "예: 완전제곱식",
+      "add_section": "제목 추가",
+      "remove_section": "제목 삭제",
+      "sub_heading_label": "소제목",
+      "sub_heading_placeholder": "예: 기본형으로 변형",
+      "add_subsection": "소제목 추가",
+      "remove_subsection": "소제목 삭제",
+      "detail_label": "상세",
+      "detail_placeholder": "배운 내용을 작성하세요",
+      "supplement_label": "보충",
+      "supplement_placeholder": "보충／메모",
+      "free_note_label": "자유 메모 (상기 대상 외)",
+      "free_note_placeholder": "소감이나 질문 메모",
+      "save": "저장",
+      "saved": "저장했습니다",
+      "save_failed": "저장에 실패했습니다",
+      "conflict": "다른 곳에서 업데이트되었습니다. 최신 내용을 다시 불러온 후 다시 시도하세요.",
+      "masked_notice": "상기 테스트 대상입니다. 본문이 숨겨져 있습니다.",
+      "exported_badge": "블로그 내보냄",
+      "exported_edited_badge": "내보낸 후 편집됨"
+    },
+    "recall": {
+      "heading": "상기 테스트",
+      "intro": "본문을 보지 않고 기억나는 내용을 떠올려 작성해 보세요.",
+      "hint_theme": "테마",
+      "hint_target_date": "날짜",
+      "hint_due_dates": "상기 예정일",
+      "input_label": "떠올린 내용",
+      "input_placeholder": "기억나는 만큼 작성하세요",
+      "self_rating_label": "자기 평가",
+      "rating": {
+        "REMEMBERED": "기억함",
+        "PARTIAL": "부분적",
+        "FORGOT": "잊음"
+      },
+      "submit": "저장하고 공개",
+      "submitting": "저장 중…",
+      "saved": "상기를 기록했습니다",
+      "save_failed": "상기 저장에 실패했습니다",
+      "revealed_heading": "정답 (원본 본문)",
+      "your_recall": "당신의 상기",
+      "history_heading": "상기 기록",
+      "history_empty": "아직 상기 기록이 없습니다.",
+      "not_masked": "이 항목은 마스크되지 않았습니다. 정상적으로 편집할 수 있습니다.",
+      "back_to_entry": "회고로 돌아가기"
+    },
+    "export": {
+      "button": "블로그로 내보내기",
+      "dialog_title": "블로그로 내보내기",
+      "title_label": "게시물 제목",
+      "title_placeholder": "생략하면 테마 이름과 날짜가 사용됩니다",
+      "submit": "내보내기",
+      "submitting": "내보내는 중…",
+      "success": "블로그로 내보냈습니다 (비공개)",
+      "failed": "내보내기에 실패했습니다",
+      "already_exported": "이 회고는 이미 내보냈습니다",
+      "view_post": "내보낸 게시물 보기"
+    },
+    "settings": {
+      "heading": "상기 알림 설정",
+      "remind_hour_label": "알림 시간",
+      "remind_hour_help": "상기 테스트 알림을 보낼 시간 (당신의 시간대)",
+      "save": "저장",
+      "saved": "설정을 저장했습니다",
+      "save_failed": "설정 저장에 실패했습니다",
+      "hour_format": "{hour}시"
+    },
+    "calendar": {
+      "entry_mark": "회고",
+      "recall_mark": "상기 예정"
+    },
+    "common": {
+      "cancel": "취소",
+      "close": "닫기",
+      "loading": "불러오는 중…",
+      "load_failed": "불러오기에 실패했습니다"
+    }
   }
 }
