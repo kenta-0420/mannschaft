@@ -24,8 +24,10 @@ const entry = ref<ReflectionEntryResponse | null>(null)
 
 const dialogVisible = ref(false)
 const exportDialogVisible = ref(false)
-// ReflectionEntryResponse は exported_blog_post_id を露出しないため、輸出成功をセッション内で記録する。
-const exported = ref(false)
+// 輸出済みか否かは DTO の exportedBlogPostId（マスク中でも開示されるメタ・follow-up A④）で判定する。
+// 輸出直後はサーバ再読込前でも即時反映できるよう、セッション内フラグを OR で併用する。
+const exportedThisSession = ref(false)
+const exported = computed(() => exportedThisSession.value || entry.value?.exportedBlogPostId != null)
 
 const structured = computed(() =>
   entry.value?.structuredContent
@@ -64,7 +66,7 @@ function onSaved(updated: ReflectionEntryResponse) {
 
 function onExported() {
   exportDialogVisible.value = false
-  exported.value = true
+  exportedThisSession.value = true
 }
 </script>
 
@@ -123,6 +125,7 @@ function onExported() {
       v-if="entry"
       v-model:visible="exportDialogVisible"
       :entry-id="entryId"
+      :already-exported="exported"
       @exported="onExported"
     />
   </div>

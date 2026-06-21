@@ -47719,6 +47719,8 @@ export interface components {
             version?: number;
             /** Format: date-time */
             updatedAt?: string;
+            /** Format: int64 */
+            exportedBlogPostId?: number;
         };
         BulkPersonalTimetableSlotRequest: {
             slots: components["schemas"]["PersonalTimetableSlotRequest"][];

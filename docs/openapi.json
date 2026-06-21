@@ -146623,6 +146623,10 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "exportedBlogPostId": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },

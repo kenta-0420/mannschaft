@@ -6,6 +6,12 @@
       "themes": "테마 목록",
       "settings": "알림 설정"
     },
+    "widget": {
+      "pending_recall": "회상 대기",
+      "unwritten": "미작성",
+      "open_today": "오늘의 회고 열기",
+      "empty": "오늘 테마가 없습니다"
+    },
     "today": {
       "heading": "오늘의 회고",
       "date_label": "날짜",

@@ -6,6 +6,12 @@
       "themes": "Themes",
       "settings": "Notification settings"
     },
+    "widget": {
+      "pending_recall": "Pending recall",
+      "unwritten": "Not written",
+      "open_today": "Open today's reflections",
+      "empty": "No themes for today"
+    },
     "today": {
       "heading": "Today's reflections",
       "date_label": "Date",
