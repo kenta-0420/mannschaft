@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import type { AuthSessionResponse, WebAuthnCredentialResponse } from '~/types/auth'
 
 defineProps<{
@@ -52,20 +52,22 @@ function deviceLabel(userAgent: string | null): string {
 </script>
 
 <template>
-  <SectionCard title="二要素認証（2FA）">
+  <SectionCard :title="$t('settings.security.two_fa_section_title')">
     <div v-if="!totpSetup" class="space-y-4">
       <p class="text-sm text-surface-500">
-        認証アプリ（Google Authenticatorなど）を使用して、アカウントのセキュリティを強化します。
+        {{ $t('settings.security.two_fa_description') }}
       </p>
       <div class="flex flex-wrap gap-2">
         <Button
-          label="2FAをセットアップ"
+          translate="no"
+          :label="$t('settings.security.setup_2fa_button')"
           icon="pi pi-shield"
           :loading="setting2fa"
           @click="$emit('setup2fa')"
         />
         <Button
-          label="バックアップコード再生成"
+          translate="no"
+          :label="$t('settings.security.regenerate_backup_codes_button')"
           icon="pi pi-refresh"
           severity="secondary"
           :loading="regenerating"
@@ -74,12 +76,12 @@ function deviceLabel(userAgent: string | null): string {
       </div>
     </div>
     <div v-else class="space-y-4">
-      <p class="text-sm text-surface-500">認証アプリでQRコードをスキャンしてください。</p>
+      <p class="text-sm text-surface-500">{{ $t('settings.security.scan_qr_description') }}</p>
       <div class="flex justify-center">
-        <img :src="totpSetup.qrCodeUrl" alt="TOTP QRコード" class="h-48 w-48" >
+        <img :src="totpSetup.qrCodeUrl" :alt="$t('settings.security.totp_qr_alt')" class="h-48 w-48" >
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium">シークレットキー</label>
+        <label class="mb-1 block text-sm font-medium">{{ $t('settings.security.secret_key') }}</label>
         <code class="block rounded bg-surface-100 px-3 py-2 text-sm dark:bg-surface-700">{{
           totpSetup.secret
         }}</code>
@@ -89,10 +91,11 @@ function deviceLabel(userAgent: string | null): string {
 
   <SectionCard>
     <div class="mb-4 flex items-center justify-between">
-      <h2 class="text-lg font-semibold">アクティブセッション</h2>
+      <h2 class="text-lg font-semibold">{{ $t('settings.security.sessions_section_title') }}</h2>
       <Button
         v-if="sessions.length > 0"
-        label="全てログアウト"
+        translate="no"
+        :label="$t('settings.security.logout_all_button')"
         icon="pi pi-sign-out"
         severity="danger"
         text
@@ -101,7 +104,7 @@ function deviceLabel(userAgent: string | null): string {
       />
     </div>
     <div v-if="sessions.length === 0" class="py-4 text-center text-surface-400">
-      セッション情報がありません
+      {{ $t('settings.security.no_sessions') }}
     </div>
     <div v-else class="space-y-3">
       <div
@@ -112,7 +115,7 @@ function deviceLabel(userAgent: string | null): string {
         <div>
           <p class="text-sm font-medium">
             {{ deviceLabel(session.userAgent) }}
-            <Tag v-if="session.isCurrent" value="現在" severity="success" class="ml-2" />
+            <Tag v-if="session.isCurrent" :value="$t('settings.security.current_session_tag')" severity="success" class="ml-2" />
           </p>
           <p class="text-xs text-surface-500">
             IP: {{ session.ipAddress || '-' }} / {{ formatDate(session.createdAt) }}
@@ -131,12 +134,12 @@ function deviceLabel(userAgent: string | null): string {
     </div>
   </SectionCard>
 
-  <SectionCard title="セキュリティキー（WebAuthn）">
+  <SectionCard :title="$t('settings.security.webauthn_section_title')">
     <p class="mb-4 text-sm text-surface-500">
-      FIDO2/WebAuthn対応のセキュリティキーや生体認証を登録できます。
+      {{ $t('settings.security.webauthn_description') }}
     </p>
     <div v-if="credentials.length === 0" class="py-4 text-center text-surface-400">
-      登録されたセキュリティキーはありません
+      {{ $t('settings.security.no_credentials') }}
     </div>
     <div v-else class="space-y-3">
       <div
@@ -146,10 +149,10 @@ function deviceLabel(userAgent: string | null): string {
       >
         <div>
           <p class="text-sm font-medium">
-            <i class="pi pi-key mr-1" />{{ cred.deviceName || 'セキュリティキー' }}
+            <i class="pi pi-key mr-1" />{{ cred.deviceName || $t('settings.security.default_credential_name') }}
           </p>
           <p class="text-xs text-surface-500">
-            最終使用: {{ formatDate(cred.lastUsedAt) }} / 登録: {{ formatDate(cred.createdAt) }}
+            {{ $t('settings.security.last_used', { date: formatDate(cred.lastUsedAt) }) }} / {{ $t('settings.security.registered', { date: formatDate(cred.createdAt) }) }}
           </p>
         </div>
         <div class="flex gap-1">
@@ -176,13 +179,13 @@ function deviceLabel(userAgent: string | null): string {
 
   <Dialog
     :visible="showBackupCodesDialog"
-    header="バックアップコード"
+    :header="$t('settings.security.backup_codes_dialog_title')"
     :modal="true"
     class="w-full max-w-md"
     @update:visible="$emit('update:showBackupCodesDialog', $event)"
   >
     <p class="mb-4 text-sm text-surface-500">
-      以下のバックアップコードを安全な場所に保管してください。各コードは一度だけ使用できます。
+      {{ $t('settings.security.backup_codes_description') }}
     </p>
     <div class="grid grid-cols-2 gap-2">
       <code
@@ -193,25 +196,25 @@ function deviceLabel(userAgent: string | null): string {
       >
     </div>
     <div class="mt-4 flex justify-end">
-      <Button label="閉じる" @click="$emit('update:showBackupCodesDialog', false)" />
+      <Button translate="no" :label="$t('button.close')" @click="$emit('update:showBackupCodesDialog', false)" />
     </div>
   </Dialog>
 
   <Dialog
     :visible="renameDialog"
-    header="デバイス名の変更"
+    :header="$t('settings.security.rename_dialog_title')"
     :modal="true"
     class="w-full max-w-sm"
     @update:visible="$emit('update:renameDialog', $event)"
   >
     <div class="space-y-4">
       <div>
-        <label class="mb-1 block text-sm font-medium">デバイス名</label>
+        <label class="mb-1 block text-sm font-medium">{{ $t('settings.security.device_name_label') }}</label>
         <InputText :model-value="newDeviceName" class="w-full" @update:model-value="$emit('update:newDeviceName', $event as string)" />
       </div>
       <div class="flex justify-end gap-2">
-        <Button label="キャンセル" severity="secondary" @click="$emit('update:renameDialog', false)" />
-        <Button label="保存" @click="$emit('renameCredential')" />
+        <Button translate="no" :label="$t('button.cancel')" severity="secondary" @click="$emit('update:renameDialog', false)" />
+        <Button translate="no" :label="$t('button.save')" @click="$emit('renameCredential')" />
       </div>
     </div>
   </Dialog>
