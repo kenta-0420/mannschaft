@@ -3,10 +3,13 @@ package com.mannschaft.app.notification;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.notification.controller.NotificationPreferenceController;
 import com.mannschaft.app.notification.controller.PushSubscriptionController;
+import com.mannschaft.app.notification.dto.NotificationSettingsResponse;
+import com.mannschaft.app.notification.dto.NotificationSettingsUpdateRequest;
 import com.mannschaft.app.notification.dto.PreferenceResponse;
 import com.mannschaft.app.notification.dto.PreferenceUpdateRequest;
 import com.mannschaft.app.notification.dto.PushSubscriptionRequest;
 import com.mannschaft.app.notification.dto.TypePreferenceBulkUpdateRequest;
+import com.mannschaft.app.notification.dto.TypePreferenceBulkUpdateResponse;
 import com.mannschaft.app.notification.dto.TypePreferenceResponse;
 import com.mannschaft.app.notification.entity.PushSubscriptionEntity;
 import com.mannschaft.app.notification.service.NotificationPreferenceService;
@@ -33,7 +36,8 @@ import static org.mockito.Mockito.verify;
 import com.mannschaft.app.common.SecurityUtils;
 
 /**
- * {@link NotificationPreferenceController} および {@link PushSubscriptionController} の単体テスト。
+ * {@link NotificationPreferenceController} および {@link PushSubscriptionController} の単体テスト
+ * （F04.3 ハイブリッド方式）。
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("NotificationPreferenceController 単体テスト")
@@ -52,6 +56,7 @@ class NotificationPreferenceControllerTest {
                 .id(1L)
                 .userId(USER_ID)
                 .scope(new PreferenceResponse.PreferenceScopeDto("TEAM", 5L))
+                .scopeName("FCバルセロナ")
                 .isEnabled(true)
                 .audit(new PreferenceResponse.PreferenceAuditDto(LocalDateTime.now(), LocalDateTime.now()))
                 .build();
@@ -61,8 +66,14 @@ class NotificationPreferenceControllerTest {
         return TypePreferenceResponse.builder()
                 .id(1L)
                 .userId(USER_ID)
-                .notificationType("SCHEDULE_REMINDER")
+                .notificationType("SCHEDULE_CREATED")
+                .label("スケジュール作成通知")
+                .priority("NORMAL")
                 .isEnabled(true)
+                .channelOverride(false)
+                .inAppEnabled(true)
+                .pushEnabled(true)
+                .isLocked(false)
                 .audit(new TypePreferenceResponse.TypePrefAuditDto(LocalDateTime.now(), LocalDateTime.now()))
                 .build();
     }
@@ -76,21 +87,19 @@ class NotificationPreferenceControllerTest {
     class ListPreferences {
 
         @Test
-        @DisplayName("通知設定一覧取得_正常_200返却")
+        @DisplayName("AC-7: 通知設定一覧取得_scopeName含む_200返却")
         void 通知設定一覧取得_正常_200返却() {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
-                // Given
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
                 given(preferenceService.listPreferences(USER_ID))
                         .willReturn(List.of(createPreferenceResponse()));
 
-                // When
                 ResponseEntity<ApiResponse<List<PreferenceResponse>>> result =
                         preferenceController.listPreferences();
 
-                // Then
                 assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
                 assertThat(result.getBody().getData()).hasSize(1);
+                assertThat(result.getBody().getData().get(0).getScopeName()).isEqualTo("FCバルセロナ");
             }
         }
     }
@@ -107,17 +116,13 @@ class NotificationPreferenceControllerTest {
         @DisplayName("通知設定更新_正常_200返却")
         void 通知設定更新_正常_200返却() {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
-                // Given
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
                 PreferenceUpdateRequest request = new PreferenceUpdateRequest("TEAM", 5L, false);
-                PreferenceResponse resp = createPreferenceResponse();
-                given(preferenceService.updatePreference(USER_ID, request)).willReturn(resp);
+                given(preferenceService.updatePreference(USER_ID, request)).willReturn(createPreferenceResponse());
 
-                // When
                 ResponseEntity<ApiResponse<PreferenceResponse>> result =
                         preferenceController.updatePreference(request);
 
-                // Then
                 assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
                 assertThat(result.getBody().getData()).isNotNull();
             }
@@ -125,7 +130,7 @@ class NotificationPreferenceControllerTest {
     }
 
     // ========================================
-    // listTypePreferences
+    // listTypePreferences（カタログ・新フィールド）
     // ========================================
 
     @Nested
@@ -133,27 +138,30 @@ class NotificationPreferenceControllerTest {
     class ListTypePreferences {
 
         @Test
-        @DisplayName("通知種別設定一覧取得_正常_200返却")
+        @DisplayName("AC-1/AC-9: 通知種別設定一覧_新フィールドで返却_category/isMuted不在")
         void 通知種別設定一覧取得_正常_200返却() {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
-                // Given
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
                 given(preferenceService.listTypePreferences(USER_ID))
                         .willReturn(List.of(createTypePreferenceResponse()));
 
-                // When
                 ResponseEntity<ApiResponse<List<TypePreferenceResponse>>> result =
                         preferenceController.listTypePreferences();
 
-                // Then
                 assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-                assertThat(result.getBody().getData()).hasSize(1);
+                TypePreferenceResponse dto = result.getBody().getData().get(0);
+                assertThat(dto.getLabel()).isNotNull();
+                assertThat(dto.getPriority()).isEqualTo("NORMAL");
+                assertThat(dto.getChannelOverride()).isFalse();
+                assertThat(dto.getInAppEnabled()).isTrue();
+                assertThat(dto.getPushEnabled()).isTrue();
+                assertThat(dto.getIsLocked()).isFalse();
             }
         }
     }
 
     // ========================================
-    // bulkUpdateTypePreferences
+    // bulkUpdateTypePreferences（新レスポンス）
     // ========================================
 
     @Nested
@@ -161,24 +169,64 @@ class NotificationPreferenceControllerTest {
     class BulkUpdateTypePreferences {
 
         @Test
-        @DisplayName("通知種別設定一括更新_正常_200返却")
+        @DisplayName("AC-3: 通知種別設定一括更新_updated/ignoredLocked返却_200")
         void 通知種別設定一括更新_正常_200返却() {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
-                // Given
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
                 TypePreferenceBulkUpdateRequest request = new TypePreferenceBulkUpdateRequest(
-                        List.of(new TypePreferenceBulkUpdateRequest.TypePreferenceEntry("SCHEDULE_REMINDER", true))
-                );
+                        List.of(new TypePreferenceBulkUpdateRequest.TypePreferenceEntry(
+                                "SCHEDULE_CREATED", false, true, null, null)));
                 given(preferenceService.bulkUpdateTypePreferences(USER_ID, request))
-                        .willReturn(List.of(createTypePreferenceResponse()));
+                        .willReturn(TypePreferenceBulkUpdateResponse.builder()
+                                .updatedCount(1).ignoredLockedCount(0).build());
 
-                // When
-                ResponseEntity<ApiResponse<List<TypePreferenceResponse>>> result =
+                ResponseEntity<ApiResponse<TypePreferenceBulkUpdateResponse>> result =
                         preferenceController.bulkUpdateTypePreferences(request);
 
-                // Then
                 assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-                assertThat(result.getBody().getData()).hasSize(1);
+                assertThat(result.getBody().getData().getUpdatedCount()).isEqualTo(1);
+            }
+        }
+    }
+
+    // ========================================
+    // notification-settings（GET/PUT）
+    // ========================================
+
+    @Nested
+    @DisplayName("notification-settings")
+    class Settings {
+
+        @Test
+        @DisplayName("AC-5: グローバル設定取得_200返却")
+        void グローバル設定取得_200返却() {
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(preferenceService.getSettings(USER_ID))
+                        .willReturn(NotificationSettingsResponse.builder().priorityAutoDelivery(true).build());
+
+                ResponseEntity<ApiResponse<NotificationSettingsResponse>> result =
+                        preferenceController.getSettings();
+
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData().getPriorityAutoDelivery()).isTrue();
+            }
+        }
+
+        @Test
+        @DisplayName("AC-5: グローバル設定更新_200返却")
+        void グローバル設定更新_200返却() {
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                NotificationSettingsUpdateRequest request = new NotificationSettingsUpdateRequest(false);
+                given(preferenceService.updateSettings(USER_ID, request))
+                        .willReturn(NotificationSettingsResponse.builder().priorityAutoDelivery(false).build());
+
+                ResponseEntity<ApiResponse<NotificationSettingsResponse>> result =
+                        preferenceController.updateSettings(request);
+
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData().getPriorityAutoDelivery()).isFalse();
             }
         }
     }
@@ -201,7 +249,6 @@ class NotificationPreferenceControllerTest {
         @DisplayName("プッシュ購読登録_正常_201返却")
         void プッシュ購読登録_正常_201返却() {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
-                // Given
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
                 PushSubscriptionRequest request = new PushSubscriptionRequest(
                         "https://fcm.googleapis.com/test", "p256dh", "auth", "Mozilla/5.0"
@@ -215,11 +262,9 @@ class NotificationPreferenceControllerTest {
                         .build();
                 given(pushSubscriptionService.subscribe(USER_ID, request)).willReturn(entity);
 
-                // When
                 ResponseEntity<ApiResponse<Long>> result =
                         pushSubscriptionController.subscribe(request);
 
-                // Then
                 assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
             }
         }
@@ -228,15 +273,12 @@ class NotificationPreferenceControllerTest {
         @DisplayName("プッシュ購読解除_正常_204返却")
         void プッシュ購読解除_正常_204返却() {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
-                // Given
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
                 String endpoint = "https://fcm.googleapis.com/test";
 
-                // When
                 ResponseEntity<Void> result =
                         pushSubscriptionController.unsubscribe(endpoint);
 
-                // Then
                 assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
                 verify(pushSubscriptionService).unsubscribe(USER_ID, endpoint);
             }

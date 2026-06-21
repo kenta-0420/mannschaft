@@ -2,10 +2,8 @@ package com.mannschaft.app.notification;
 
 import com.mannschaft.app.notification.dto.NotificationResponse;
 import com.mannschaft.app.notification.dto.PreferenceResponse;
-import com.mannschaft.app.notification.dto.TypePreferenceResponse;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.entity.NotificationPreferenceEntity;
-import com.mannschaft.app.notification.entity.NotificationTypePreferenceEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -51,15 +49,16 @@ public interface NotificationMapper {
 
     @Mapping(target = "scope.scopeType", source = "scopeType")
     @Mapping(target = "scope.scopeId", source = "scopeId")
+    @Mapping(target = "scopeName", ignore = true)
     @Mapping(target = "audit.createdAt", source = "createdAt")
     @Mapping(target = "audit.updatedAt", source = "updatedAt")
     PreferenceResponse toPreferenceResponse(NotificationPreferenceEntity entity);
 
     List<PreferenceResponse> toPreferenceResponseList(List<NotificationPreferenceEntity> entities);
 
-    @Mapping(target = "audit.createdAt", source = "createdAt")
-    @Mapping(target = "audit.updatedAt", source = "updatedAt")
-    TypePreferenceResponse toTypePreferenceResponse(NotificationTypePreferenceEntity entity);
-
-    List<TypePreferenceResponse> toTypePreferenceResponseList(List<NotificationTypePreferenceEntity> entities);
+    /**
+     * 通知種別設定のレスポンス変換は、enum カタログ（label / priority / isLocked）の
+     * マージが必要なため {@code NotificationPreferenceService} 側で行う。
+     * MapStruct の自動生成では enum メタデータを解決できないため本マッパーには定義しない。
+     */
 }

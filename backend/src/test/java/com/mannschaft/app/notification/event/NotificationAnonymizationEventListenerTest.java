@@ -3,6 +3,7 @@ package com.mannschaft.app.notification.event;
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
 import com.mannschaft.app.notification.repository.NotificationPreferenceRepository;
 import com.mannschaft.app.notification.repository.NotificationRepository;
+import com.mannschaft.app.notification.repository.NotificationSettingsRepository;
 import com.mannschaft.app.notification.repository.NotificationTypePreferenceRepository;
 import com.mannschaft.app.notification.repository.PushSubscriptionRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -31,6 +32,9 @@ class NotificationAnonymizationEventListenerTest {
     private NotificationTypePreferenceRepository notificationTypePreferenceRepository;
 
     @Mock
+    private NotificationSettingsRepository notificationSettingsRepository;
+
+    @Mock
     private NotificationRepository notificationRepository;
 
     @InjectMocks
@@ -51,6 +55,7 @@ class NotificationAnonymizationEventListenerTest {
             verify(pushSubscriptionRepository).deleteByUserId(userId);
             verify(notificationPreferenceRepository).deleteByUserId(userId);
             verify(notificationTypePreferenceRepository).deleteByUserId(userId);
+            verify(notificationSettingsRepository).deleteByUserId(userId);
             // 第二陣E: 通知本体（PII）も即時削除される
             verify(notificationRepository).deleteByUserId(userId);
         }
