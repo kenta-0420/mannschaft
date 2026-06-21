@@ -47,7 +47,7 @@ class SesExceptionClassifierTest {
     }
 
     @Test
-    @DisplayName("SdkClientException は一時失敗")
+    @DisplayName("SdkClientException(ネットワーク系) は一時失敗")
     void sdkClient_isTransient() {
         SdkClientException ex = SdkClientException.builder().message("network").build();
         assertThat(classifier.isPermanent(ex)).isFalse();
@@ -63,5 +63,38 @@ class SesExceptionClassifierTest {
     @DisplayName("null は一時失敗扱い (false)")
     void nullThrowable_isTransient() {
         assertThat(classifier.isPermanent(null)).isFalse();
+    }
+
+    // -----------------------------------------------------------------------
+    // AC1: 認証情報ロード失敗 SdkClientException は永久失敗
+    // -----------------------------------------------------------------------
+
+    @Test
+    @DisplayName("AC1: SdkClientException(Unable to load credentials) は永久失敗")
+    void sdkClient_credentialsNotFound_isPermanent() {
+        SdkClientException ex = SdkClientException.builder()
+                .message("Unable to load credentials from any of the providers in the chain ..." +
+                        " com.amazonaws.auth.EC2ContainerCredentialsProviderWrapper: ...")
+                .build();
+        assertThat(classifier.isPermanent(ex)).isTrue();
+    }
+
+    @Test
+    @DisplayName("AC1: ラップされた cause チェーンの中に Unable to load credentials があれば永久失敗")
+    void sdkClient_credentialsWrapped_isPermanent() {
+        SdkClientException cause = SdkClientException.builder()
+                .message("Unable to load credentials from any of the providers in the chain")
+                .build();
+        RuntimeException wrapper = new RuntimeException("outer wrapper", cause);
+        assertThat(classifier.isPermanent(wrapper)).isTrue();
+    }
+
+    @Test
+    @DisplayName("AC2: SdkClientException(Unable to execute HTTP request) は一時失敗")
+    void sdkClient_httpRequestFailed_isTransient() {
+        SdkClientException ex = SdkClientException.builder()
+                .message("Unable to execute HTTP request: Connection reset")
+                .build();
+        assertThat(classifier.isPermanent(ex)).isFalse();
     }
 }

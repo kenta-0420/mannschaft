@@ -75,9 +75,10 @@ public class EmailOutboxAlertChecker {
     }
 
     void checkDeadLetterDepth() {
-        long deadLetter = repository.countByStatus(EmailOutboxStatus.DEAD_LETTER.name());
+        LocalDateTime since = LocalDateTime.now().minusHours(24);
+        long deadLetter = repository.countByStatusSince(EmailOutboxStatus.DEAD_LETTER.name(), since);
         if (deadLetter > CRITICAL_QUEUE_DEPTH_DEAD_LETTER) {
-            log.error("[EMAIL_OUTBOX][CRITICAL] DEAD_LETTER 超過: {} 件 (閾値 {})",
+            log.error("[EMAIL_OUTBOX][CRITICAL] 直近24h の DEAD_LETTER が {} 件 (閾値 {})",
                     deadLetter, CRITICAL_QUEUE_DEPTH_DEAD_LETTER);
         }
     }
