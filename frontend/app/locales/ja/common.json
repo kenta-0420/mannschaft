@@ -1570,6 +1570,7 @@
       "prevPage": "前のページ",
       "nextPage": "次のページ",
       "reorder": "表示順を変更",
+      "goToScopePage": "チーム/組織ページを開く",
       "empty": "所属しているチーム/組織がありません",
       "folderEmpty": "このフォルダにスコープがありません",
       "loadError": "タグ一覧の取得に失敗しました"

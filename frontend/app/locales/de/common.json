@@ -1570,6 +1570,7 @@
       "prevPage": "Vorherige Seite",
       "nextPage": "Nächste Seite",
       "reorder": "Anzeigereihenfolge ändern",
+      "goToScopePage": "Zur Team-/Organisationsseite",
       "empty": "Du gehörst keinem Team oder keiner Organisation an",
       "folderEmpty": "Keine Bereiche in diesem Ordner",
       "loadError": "Tag-Liste konnte nicht geladen werden"

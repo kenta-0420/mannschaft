@@ -41,9 +41,8 @@ onMounted(() => {
 
 const isOn = computed(() => store.isAdminLensOn(props.scopeType, props.slug))
 
-function toggle() {
-  store.setAdminLens(props.scopeType, props.slug, !isOn.value)
-  // 初回オンボーディングヒントは、トグルが一度でも操作されたら役目を終える。
+function setLens(on: boolean) {
+  store.setAdminLens(props.scopeType, props.slug, on)
   dismissOnboardingHint()
 }
 
@@ -124,62 +123,74 @@ function onTouchMove(e: TouchEvent) {
 }
 
 function onTouchEnd(e: TouchEvent) {
-  // touch 由来の操作。後続の ghost click を onClick で無視させるためフラグを立てる。
   usedTouch = true
-  // スワイプ・タップいずれも、まず後続の ghost click を確実に殺す（@click="onClick" の二重発火防止）。
   e.preventDefault()
   if (touchMoved) {
-    // 横スワイプ判定: カルーセルへジェスチャを委譲し、トグルは発火しない。
     touchMoved = false
     return
   }
-  // タップ判定: ここで 1 回だけ toggle する（ghost click は onClick が無視する）。
-  toggle()
+  // タップ判定: どちらのボタンがタップされたか data-lens 属性から取得してレンズを設定する。
+  const btn = (e.target as HTMLElement).closest('[data-lens]')
+  if (btn) {
+    setLens(btn.getAttribute('data-lens') === 'admin')
+  }
 }
 
-/**
- * マウス操作（およびキーボード Enter/Space）由来の click。
- * touch 由来の ghost click（usedTouch=true）は無視し、純粋なマウス操作のときだけ toggle する。
- */
-function onClick() {
+function onClickLens(on: boolean) {
   if (usedTouch) {
-    // touch 由来の ghost click。toggle は onTouchEnd で済ませているため何もしない。
-    // 次のマウス操作に備えてフラグを下ろす。
     usedTouch = false
     return
   }
-  toggle()
+  setLens(on)
 }
 </script>
 
 <template>
   <!-- ADMIN/DEPUTY のときのみ描画（非管理者には DOM ごと存在しない） -->
   <div v-if="isAdminOrDeputy" class="relative inline-flex">
-    <button
-      type="button"
-      role="switch"
-      :aria-checked="isOn"
+    <div
+      role="group"
       :aria-label="$t('adminConsole.lens.toggleAriaLabel')"
-      :data-testid="`admin-lens-toggle-${scopeType}`"
-      class="inline-flex min-h-[44px] min-w-[44px] items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
-      :class="
-        isOn
-          ? 'border-primary bg-primary text-primary-contrast'
-          : 'border-surface-300 bg-surface-100 text-surface-600 hover:bg-surface-200 dark:border-surface-600 dark:bg-surface-800 dark:text-surface-300 dark:hover:bg-surface-700'
-      "
-      :title="$t('adminConsole.lens.tooltip')"
-      @click="onClick"
+      class="inline-flex overflow-hidden rounded-full border border-surface-300 dark:border-surface-600"
       @touchstart.passive="onTouchStart"
       @touchmove.passive="onTouchMove"
       @touchend="onTouchEnd"
     >
-      <i
-        :class="isOn ? 'pi pi-shield' : 'pi pi-user'"
-        class="text-sm"
-        aria-hidden="true"
-      />
-      <span>{{ isOn ? $t('adminConsole.lens.admin') : $t('adminConsole.lens.member') }}</span>
-    </button>
+      <!-- メンバーボタン -->
+      <button
+        type="button"
+        :aria-pressed="!isOn"
+        data-lens="member"
+        :data-testid="`admin-lens-member-${scopeType}`"
+        class="inline-flex min-h-[44px] items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors"
+        :class="
+          !isOn
+            ? 'bg-primary text-primary-contrast'
+            : 'bg-surface-100 text-surface-600 hover:bg-surface-200 dark:bg-surface-800 dark:text-surface-300 dark:hover:bg-surface-700'
+        "
+        @click="onClickLens(false)"
+      >
+        <i class="pi pi-user text-sm" aria-hidden="true" />
+        <span>{{ $t('adminConsole.lens.member') }}</span>
+      </button>
+      <!-- 管理者ボタン -->
+      <button
+        type="button"
+        :aria-pressed="isOn"
+        data-lens="admin"
+        :data-testid="`admin-lens-toggle-${scopeType}`"
+        class="inline-flex min-h-[44px] items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors"
+        :class="
+          isOn
+            ? 'bg-primary text-primary-contrast'
+            : 'bg-surface-100 text-surface-600 hover:bg-surface-200 dark:bg-surface-800 dark:text-surface-300 dark:hover:bg-surface-700'
+        "
+        @click="onClickLens(true)"
+      >
+        <i class="pi pi-shield text-sm" aria-hidden="true" />
+        <span>{{ $t('adminConsole.lens.admin') }}</span>
+      </button>
+    </div>
 
     <!-- 初回オンボーディングヒント（§1.5・🟡）。localStorage で 1 回だけ。タップで dismiss。 -->
     <div

@@ -1570,6 +1570,7 @@
       "prevPage": "Página anterior",
       "nextPage": "Página siguiente",
       "reorder": "Cambiar orden de visualización",
+      "goToScopePage": "Ir a la página del equipo/organización",
       "empty": "No perteneces a ningún equipo u organización",
       "folderEmpty": "No hay alcances en esta carpeta",
       "loadError": "Error al cargar la lista de etiquetas"

@@ -1570,6 +1570,7 @@
       "prevPage": "이전 페이지",
       "nextPage": "다음 페이지",
       "reorder": "표시 순서 변경",
+      "goToScopePage": "팀/조직 페이지로 이동",
       "empty": "소속된 팀/조직이 없습니다",
       "folderEmpty": "이 폴더에 범위가 없습니다",
       "loadError": "태그 목록을 불러오지 못했습니다"

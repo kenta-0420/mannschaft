@@ -1570,6 +1570,7 @@
       "prevPage": "上一页",
       "nextPage": "下一页",
       "reorder": "更改显示顺序",
+      "goToScopePage": "前往团队/组织页面",
       "empty": "您不属于任何团队/组织",
       "folderEmpty": "此文件夹中没有范围",
       "loadError": "获取标签列表失败"
