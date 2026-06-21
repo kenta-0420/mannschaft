@@ -59,7 +59,10 @@ class SealStampServiceTest {
     private static final Long STAMP_LOG_ID = 200L;
 
     private ElectronicSealEntity createActiveSeal() {
+        // id を SEAL_ID に固定する。listStampLogs は variant を sealId→印鑑.getId() の
+        // Map（buildVariantMap）で一括解決するため、印鑑の id が押印ログの sealId と一致している必要がある。
         return ElectronicSealEntity.builder()
+                .id(SEAL_ID)
                 .userId(USER_ID).variant(SealVariant.LAST_NAME)
                 .displayText("山田").svgData("<svg/>").sealHash("hash123").build();
     }

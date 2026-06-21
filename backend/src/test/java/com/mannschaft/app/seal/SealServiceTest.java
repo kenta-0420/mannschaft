@@ -62,7 +62,10 @@ class SealServiceTest {
     private static final Long SEAL_ID = 50L;
 
     private ElectronicSealEntity createDefaultSeal() {
+        // id を SEAL_ID に固定する。listScopeDefaults は variant を sealId→印鑑.getId() の
+        // Map で一括解決するため、印鑑の id が scope default の sealId と一致している必要がある。
         return ElectronicSealEntity.builder()
+                .id(SEAL_ID)
                 .userId(USER_ID).variant(SealVariant.LAST_NAME)
                 .displayText("山田").svgData("<svg/>").sealHash("hash123").build();
     }
@@ -260,7 +263,10 @@ class SealServiceTest {
             given(scopeDefaultRepository.save(any(SealScopeDefaultEntity.class))).willReturn(savedDefault);
             given(nameResolverService.resolveTeamNames(java.util.Set.of(1L)))
                     .willReturn(java.util.Map.of(1L, "チームA"));
-            given(sealMapper.toScopeDefaultResponse(savedDefault, "チームA")).willReturn(response);
+            // variant は同一 seal ドメイン内で sealId→印鑑.variant を解決する（SealService.setScopeDefault）
+            given(sealRepository.findById(SEAL_ID)).willReturn(Optional.of(seal));
+            given(sealMapper.toScopeDefaultResponse(savedDefault, "チームA", SealVariant.LAST_NAME))
+                    .willReturn(response);
 
             // When
             ScopeDefaultResponse result = sealService.setScopeDefault(USER_ID, request);
