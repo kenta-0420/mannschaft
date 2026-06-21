@@ -1,3 +1,13 @@
+<script setup lang="ts">
+// html[lang] をアクティブなロケールに追従させる。
+// locale が変わるたびにリアクティブに更新されるため、
+// リロード後・言語切替後ともに document.documentElement.lang が正しい値になる（AC-12 対応）。
+const { locale } = useI18n()
+useHead(() => ({
+  htmlAttrs: { lang: locale.value },
+}))
+</script>
+
 <template>
   <NuxtLayout>
     <ActiveIncidentBanner />

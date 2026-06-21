@@ -10,6 +10,7 @@ const { showError } = useNotification()
 const projects = ref<ProjectResponse[]>([])
 const loading = ref(true)
 const showDialog = ref(false)
+const showGuide = ref(false)
 
 const form = reactive<CreateProjectRequest>({
   title: '',
@@ -99,7 +100,16 @@ onMounted(async () => {
         <PageHeader :title="$t('project.my_projects')" back-to="/my" />
         <p class="text-sm text-surface-500">{{ $t('project.my_projects_description') }}</p>
       </div>
-      <Button label="プロジェクト作成" icon="pi pi-plus" @click="openCreate" />
+      <div class="flex items-center gap-2">
+        <Button
+          icon="pi pi-question-circle"
+          :label="$t('project.guide.button')"
+          text
+          data-testid="project-help-link"
+          @click="showGuide = true"
+        />
+        <Button :label="$t('project.create_button')" icon="pi pi-plus" @click="openCreate" />
+      </div>
     </div>
 
     <PageLoading v-if="loading" size="40px" />
@@ -172,44 +182,41 @@ onMounted(async () => {
     </div>
 
     <!-- 作成ダイアログ -->
-    <Dialog v-model:visible="showDialog" header="プロジェクト作成" modal class="w-full max-w-lg">
+    <Dialog v-model:visible="showDialog" :header="$t('project.dialog.create_title')" modal class="w-full max-w-lg">
       <div class="flex flex-col gap-4">
         <div>
-          <label class="mb-1 block text-sm font-medium">タイトル</label>
+          <label class="mb-1 block text-sm font-medium">{{ $t('project.dialog.title_label') }}</label>
           <InputText
             v-model="form.title"
             class="w-full"
-            placeholder="プロジェクト名"
+            :placeholder="$t('project.dialog.title_placeholder')"
             data-testid="my-project-create-title"
           />
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium">説明</label>
+          <label class="mb-1 block text-sm font-medium">{{ $t('project.dialog.description_label') }}</label>
           <Textarea v-model="form.description" class="w-full" rows="3" />
         </div>
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="mb-1 block text-sm font-medium">絵文字</label>
-            <InputText v-model="form.emoji" class="w-full" placeholder="例: 📚" />
-          </div>
-          <div>
-            <label class="mb-1 block text-sm font-medium">カラー</label>
-            <InputText v-model="form.color" type="color" class="w-full" />
-          </div>
-        </div>
+        <ProjectAppearanceFields
+          v-model:emoji="form.emoji"
+          v-model:color="form.color"
+        />
         <div>
-          <label class="mb-1 block text-sm font-medium">期限</label>
+          <label class="mb-1 block text-sm font-medium">{{ $t('project.dialog.due_date_label') }}</label>
           <InputText v-model="form.dueDate" type="date" class="w-full" />
         </div>
       </div>
       <template #footer>
-        <Button label="キャンセル" text @click="showDialog = false" />
+        <Button :label="$t('project.dialog.cancel')" text @click="showDialog = false" />
         <Button
-          label="作成"
+          :label="$t('project.dialog.create')"
           data-testid="my-project-create-submit"
           @click="createProject"
         />
       </template>
     </Dialog>
+
+    <!-- 使い方説明モーダル -->
+    <ProjectGuideModal v-model:visible="showGuide" />
   </div>
 </template>
