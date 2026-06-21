@@ -50,8 +50,11 @@ export interface VillagePerms {
  * 村詳細シェルが子タブへ共有するコンテキスト。
  */
 export interface VillageContext {
-  /** 村本体（取得前/エラー時は null）。 */
-  village: Ref<VillageWithMonsho | null>
+  /**
+   * 村本体（取得前/エラー時は null）。子は読み取り専用で参照する。
+   * 親では `villageData`（useAsyncData）を加工した computed を渡すため ComputedRef とする。
+   */
+  village: ComputedRef<VillageWithMonsho | null>
   /** 村再取得（参加・退村・ピン操作後の状態同期に使う）。 */
   refresh: () => Promise<void>
   /** 自分のメンバーシップ（退村時に id が必要・未所属時は null）。 */
