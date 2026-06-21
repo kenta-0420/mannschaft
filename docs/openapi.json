@@ -134998,27 +134998,9 @@
               "$ref": "#/components/schemas/TodoResponse"
             }
           },
-          "dueDate": {
-            "type": "string",
-            "format": "date",
-            "deprecated": true
-          },
-          "depth": {
-            "type": "integer",
-            "format": "int32",
-            "deprecated": true
-          },
           "parentId": {
             "type": "integer",
             "format": "int64",
-            "deprecated": true
-          },
-          "description": {
-            "type": "string",
-            "deprecated": true
-          },
-          "title": {
-            "type": "string",
             "deprecated": true
           },
           "dueTime": {
@@ -135026,27 +135008,8 @@
             "deprecated": true,
             "example": "14:30:00"
           },
-          "projectId": {
-            "type": "integer",
-            "format": "int64",
-            "deprecated": true
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "deprecated": true
-          },
-          "progressRate": {
-            "type": "number",
-            "deprecated": true
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time",
-            "deprecated": true
-          },
-          "scopeType": {
-            "type": "string",
+          "createdBy": {
+            "$ref": "#/components/schemas/UserInfo",
             "deprecated": true
           },
           "sortOrder": {
@@ -135054,13 +135017,31 @@
             "format": "int32",
             "deprecated": true
           },
-          "createdBy": {
-            "$ref": "#/components/schemas/UserInfo",
+          "description": {
+            "type": "string",
             "deprecated": true
           },
-          "milestoneId": {
+          "depth": {
             "type": "integer",
-            "format": "int64",
+            "format": "int32",
+            "deprecated": true
+          },
+          "scopeType": {
+            "type": "string",
+            "deprecated": true
+          },
+          "progressRate": {
+            "type": "number",
+            "deprecated": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "deprecated": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
             "deprecated": true
           },
           "startDate": {
@@ -135073,9 +135054,18 @@
             "format": "date-time",
             "deprecated": true
           },
-          "linkedScheduleId": {
+          "milestoneId": {
             "type": "integer",
             "format": "int64",
+            "deprecated": true
+          },
+          "descendantCompletedCount": {
+            "type": "integer",
+            "format": "int32",
+            "deprecated": true
+          },
+          "title": {
+            "type": "string",
             "deprecated": true
           },
           "progressManual": {
@@ -135086,13 +135076,24 @@
             "$ref": "#/components/schemas/UserInfo",
             "deprecated": true
           },
-          "descendantCompletedCount": {
+          "projectId": {
             "type": "integer",
-            "format": "int32",
+            "format": "int64",
             "deprecated": true
           },
-          "statusLabel": {
-            "$ref": "#/components/schemas/TodoStatusLabelInfo",
+          "linkedScheduleId": {
+            "type": "integer",
+            "format": "int64",
+            "deprecated": true
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "deprecated": true
+          },
+          "descendantTotalCount": {
+            "type": "integer",
+            "format": "int32",
             "deprecated": true
           },
           "daysRemaining": {
@@ -135100,9 +135101,8 @@
             "format": "int64",
             "deprecated": true
           },
-          "descendantTotalCount": {
-            "type": "integer",
-            "format": "int32",
+          "statusLabel": {
+            "$ref": "#/components/schemas/TodoStatusLabelInfo",
             "deprecated": true
           }
         }
@@ -135654,10 +135654,10 @@
             "type": "string",
             "format": "date-time"
           },
-          "editable": {
+          "ownMemo": {
             "type": "boolean"
           },
-          "ownMemo": {
+          "editable": {
             "type": "boolean"
           }
         }
@@ -139984,10 +139984,10 @@
           "note": {
             "type": "string"
           },
-          "yposition": {
+          "xposition": {
             "type": "number"
           },
-          "xposition": {
+          "yposition": {
             "type": "number"
           }
         }
@@ -140244,10 +140244,10 @@
             "maxLength": 300,
             "minLength": 0
           },
-          "yposition": {
+          "xposition": {
             "type": "number"
           },
-          "xposition": {
+          "yposition": {
             "type": "number"
           }
         },
@@ -153973,12 +153973,12 @@
           "postedAsTypeOrDefault": {
             "type": "string"
           },
-          "scopeTypeOrDefault": {
-            "type": "string"
-          },
           "scopeIdOrDefault": {
             "type": "integer",
             "format": "int64"
+          },
+          "scopeTypeOrDefault": {
+            "type": "string"
           }
         }
       },
@@ -154580,10 +154580,10 @@
               "ABSOLUTE"
             ]
           },
-          "remindBeforeMinutesValid": {
+          "remindAtValid": {
             "type": "boolean"
           },
-          "remindAtValid": {
+          "remindBeforeMinutesValid": {
             "type": "boolean"
           }
         }
@@ -173747,11 +173747,11 @@
           "recurrenceRule": {
             "$ref": "#/components/schemas/RecurrenceRuleDto"
           },
-          "reminderCountWithinLimit": {
-            "type": "boolean"
-          },
           "eventTypeOrDefault": {
             "type": "string"
+          },
+          "reminderCountWithinLimit": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -181869,10 +181869,10 @@
               "ABSOLUTE"
             ]
           },
-          "remindBeforeMinutesValid": {
+          "remindAtValid": {
             "type": "boolean"
           },
-          "remindAtValid": {
+          "remindBeforeMinutesValid": {
             "type": "boolean"
           }
         }
@@ -183658,19 +183658,19 @@
           "custom_fields": {
             "type": "boolean"
           },
-          "establishedDateVisible": {
+          "customFieldsVisible": {
             "type": "boolean"
           },
-          "homepageUrlVisible": {
+          "officersVisible": {
             "type": "boolean"
           },
           "philosophyVisible": {
             "type": "boolean"
           },
-          "customFieldsVisible": {
+          "homepageUrlVisible": {
             "type": "boolean"
           },
-          "officersVisible": {
+          "establishedDateVisible": {
             "type": "boolean"
           }
         }
@@ -188622,6 +188622,9 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
+          "unpaged": {
+            "type": "boolean"
+          },
           "pageNumber": {
             "type": "integer",
             "format": "int32"
@@ -188632,9 +188635,6 @@
           },
           "paged": {
             "type": "boolean"
-          },
-          "unpaged": {
-            "type": "boolean"
           }
         }
       },
@@ -188644,10 +188644,10 @@
           "empty": {
             "type": "boolean"
           },
-          "sorted": {
+          "unsorted": {
             "type": "boolean"
           },
-          "unsorted": {
+          "sorted": {
             "type": "boolean"
           }
         }
@@ -189304,13 +189304,8 @@
           "audit": {
             "$ref": "#/components/schemas/ProjectAuditDto"
           },
-          "dueDate": {
-            "type": "string",
-            "format": "date",
-            "deprecated": true
-          },
-          "emoji": {
-            "type": "string",
+          "createdBy": {
+            "$ref": "#/components/schemas/UserInfo",
             "deprecated": true
           },
           "status": {
@@ -189321,15 +189316,11 @@
             "type": "string",
             "deprecated": true
           },
-          "visibility": {
-            "type": "string",
-            "deprecated": true
-          },
-          "title": {
-            "type": "string",
-            "deprecated": true
-          },
           "color": {
+            "type": "string",
+            "deprecated": true
+          },
+          "visibility": {
             "type": "string",
             "deprecated": true
           },
@@ -189337,8 +189328,17 @@
             "type": "number",
             "deprecated": true
           },
-          "createdBy": {
-            "$ref": "#/components/schemas/UserInfo",
+          "emoji": {
+            "type": "string",
+            "deprecated": true
+          },
+          "title": {
+            "type": "string",
+            "deprecated": true
+          },
+          "completedTodos": {
+            "type": "integer",
+            "format": "int32",
             "deprecated": true
           },
           "totalTodos": {
@@ -189346,9 +189346,9 @@
             "format": "int32",
             "deprecated": true
           },
-          "completedTodos": {
-            "type": "integer",
-            "format": "int32",
+          "dueDate": {
+            "type": "string",
+            "format": "date",
             "deprecated": true
           },
           "daysRemaining": {
@@ -194191,10 +194191,10 @@
             "type": "integer",
             "format": "int32"
           },
-          "underCare": {
+          "alreadyCheckedIn": {
             "type": "boolean"
           },
-          "alreadyCheckedIn": {
+          "underCare": {
             "type": "boolean"
           }
         }
