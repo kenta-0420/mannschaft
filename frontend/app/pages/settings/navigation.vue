@@ -19,8 +19,8 @@ onMounted(async () => {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <PageHeader :title="$t('settings.settings.navigation.title')" back-to="/settings" />
-    <p class="mb-4 text-sm text-surface-500">{{ $t('settings.settings.navigation.description') }}</p>
+    <PageHeader :title="$t('settings.navigation.title')" back-to="/settings" />
+    <p class="mb-4 text-sm text-surface-500">{{ $t('settings.navigation.description') }}</p>
 
     <PageLoading v-if="loading" size="40px" />
     <div v-else class="flex flex-col gap-2">
@@ -39,7 +39,7 @@ onMounted(async () => {
               class="rounded-full bg-surface-100 px-2 py-0.5 text-xs text-surface-500 dark:bg-surface-700"
             >
               <i class="pi pi-lock text-xs" />
-              {{ $t('settings.settings.navigation.required') }}
+              {{ $t('settings.navigation.required') }}
             </span>
             <ToggleSwitch
               :model-value="item.visible"
@@ -53,7 +53,7 @@ onMounted(async () => {
 
     <div class="mt-6 flex justify-end">
       <Button
-        :label="$t('settings.settings.navigation.resetToDefault')"
+        :label="$t('settings.navigation.resetToDefault')"
         severity="secondary"
         outlined
         size="small"

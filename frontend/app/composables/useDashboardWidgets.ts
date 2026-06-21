@@ -55,6 +55,8 @@ export const WidgetKeyMap: Record<string, { team?: string; organization?: string
   'org-tournament-summary': { organization: 'ORG_TOURNAMENT_SUMMARY' },
   // F08.10 チーム試合サマリ
   'team-match-summary': { team: 'TEAM_MATCH_SUMMARY' },
+  // F02.3 プロジェクト進捗
+  projects: { team: 'TEAM_PROJECT_PROGRESS', organization: 'ORG_PROJECT_PROGRESS' },
 }
 
 export const WidgetDefaultMinRoleMap: Record<string, MinRole> = {
@@ -308,6 +310,15 @@ const ALL_WIDGETS: WidgetDefinition[] = [
     icon: 'pi pi-flag',
     description: '直近の試合成績と進行中試合の記録再開',
     scope: ['team'],
+    defaultMinRole: 'MEMBER' as MinRole,
+  },
+  // F02.3: プロジェクト進捗ウィジェット（チーム・組織）
+  {
+    key: 'projects',
+    label: 'プロジェクト',
+    icon: 'pi pi-briefcase',
+    description: 'プロジェクトの進捗状況と一覧',
+    scope: ['team', 'organization'],
     defaultMinRole: 'MEMBER' as MinRole,
   },
 ]

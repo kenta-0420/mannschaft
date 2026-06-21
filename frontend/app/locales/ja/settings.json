@@ -1,10 +1,4 @@
 {
-  "security": {
-    "session": {
-      "device_label": "{os} の {browser}",
-      "unknown_device": "不明なデバイス"
-    }
-  },
   "data_export": {
     "section_title": "データエクスポート",
     "export_button": "個人データをエクスポート",
@@ -16,7 +10,8 @@
     "step_completed": "エクスポート完了 — ダウンロード期限: {expiry}",
     "step_failed": "エクスポートに失敗しました",
     "step_processing": "エクスポート中...",
-    "step_preparing": "準備中..."
+    "step_preparing": "準備中...",
+    "description": "あなたの個人データをZIPファイルとしてエクスポートできます。"
   },
   "deletion_preview": {
     "dialog_title": "アカウント削除の確認",
@@ -57,6 +52,259 @@
       "resetToDefault": "デフォルトに戻す",
       "saveSuccess": "設定を保存しました",
       "saveError": "設定の保存に失敗しました"
+    },
+    "account": {
+      "page_title": "アカウント設定",
+      "notification_settings": "通知設定"
+    },
+    "profile": {
+      "section_title": "プロフィール情報",
+      "avatar_alt": "アバター",
+      "change_image": "画像を変更",
+      "image_hint": "5MB以下のJPG, PNG",
+      "display_name": "表示名",
+      "phone_number": "電話番号",
+      "phone_placeholder": "090-0000-0000",
+      "postal_code": "郵便番号",
+      "postal_placeholder": "000-0000",
+      "searchable_label": "ユーザー検索への表示",
+      "searchable_description": "オンにすると他のユーザーから検索で見つけられます",
+      "toast": {
+        "save_success": "プロフィールを更新しました",
+        "save_error": "プロフィールの更新に失敗しました",
+        "avatar_size_error": "ファイルサイズは5MB以下にしてください",
+        "avatar_success": "アバターを更新しました",
+        "avatar_error": "アバターのアップロードに失敗しました"
+      }
+    },
+    "email": {
+      "section_title": "メールアドレス変更",
+      "current_email": "現在のメールアドレス",
+      "new_email": "新しいメールアドレス",
+      "new_email_placeholder": "new{'@'}example.com",
+      "current_password": "現在のパスワード",
+      "send_confirmation": "確認メールを送信",
+      "sent_title": "確認メールを送信しました",
+      "sent_description": "{email} に確認メールを送信しました。リンクをクリックして変更を完了してください。",
+      "toast": {
+        "send_success": "確認メールを送信しました",
+        "send_error": "メールアドレスの変更リクエストに失敗しました"
+      }
+    },
+    "password": {
+      "section_title_change": "パスワード変更",
+      "section_title_set": "パスワード設定",
+      "no_password_description": "現在パスワードが設定されていません。パスワードを設定することでメール・パスワードでもログインできるようになります。",
+      "current_password": "現在のパスワード",
+      "new_password": "新しいパスワード",
+      "confirm_password": "新しいパスワード（確認）",
+      "change_button": "パスワードを変更",
+      "set_button": "パスワードを設定",
+      "change_success": "パスワードを変更しました",
+      "change_error": "パスワードの変更に失敗しました。現在のパスワードを確認してください",
+      "toast": {
+        "change_success": "パスワードを変更しました",
+        "setup_success": "パスワードを設定しました",
+        "change_error": "パスワードの変更に失敗しました。現在のパスワードを確認してください",
+        "setup_error": "パスワードの設定に失敗しました"
+      }
+    },
+    "locale": {
+      "section_title": "言語・タイムゾーン",
+      "display_language": "表示言語",
+      "timezone": "タイムゾーン",
+      "toast": {
+        "save_success": "言語・タイムゾーンを更新しました",
+        "save_error": "言語・タイムゾーンの更新に失敗しました"
+      }
+    },
+    "appearance": {
+      "section_title": "外観",
+      "hide_chat_preview_label": "チャットプレビュー非表示",
+      "hide_chat_preview_description": "通知バナーでチャットの内容を表示しない",
+      "save_button": "外観を保存",
+      "save_success": "外観設定を保存しました"
+    },
+    "security": {
+      "two_fa_section_title": "二要素認証（2FA）",
+      "two_fa_description": "認証アプリ（Google Authenticatorなど）を使用して、アカウントのセキュリティを強化します。",
+      "setup_2fa_button": "2FAをセットアップ",
+      "regenerate_backup_codes_button": "バックアップコード再生成",
+      "scan_qr_description": "認証アプリでQRコードをスキャンしてください。",
+      "totp_qr_alt": "TOTP QRコード",
+      "secret_key": "シークレットキー",
+      "sessions_section_title": "アクティブセッション",
+      "logout_all_button": "全てログアウト",
+      "no_sessions": "セッション情報がありません",
+      "unknown_device": "不明なデバイス",
+      "current_session_tag": "現在",
+      "webauthn_section_title": "セキュリティキー（WebAuthn）",
+      "webauthn_description": "FIDO2/WebAuthn対応のセキュリティキーや生体認証を登録できます。",
+      "no_credentials": "登録されたセキュリティキーはありません",
+      "default_credential_name": "セキュリティキー",
+      "last_used": "最終使用: {date}",
+      "registered": "登録: {date}",
+      "backup_codes_dialog_title": "バックアップコード",
+      "backup_codes_description": "以下のバックアップコードを安全な場所に保管してください。各コードは一度だけ使用できます。",
+      "rename_dialog_title": "デバイス名の変更",
+      "device_name_label": "デバイス名",
+      "session": {
+        "device_label": "{os} の {browser}",
+        "unknown_device": "不明なデバイス"
+      },
+      "toast": {
+        "setup_2fa_error": "2FAセットアップの開始に失敗しました",
+        "regenerate_success": "バックアップコードを再生成しました",
+        "regenerate_error": "バックアップコードの再生成に失敗しました",
+        "revoke_success": "セッションを無効化しました",
+        "revoke_error": "セッションの無効化に失敗しました",
+        "revoke_all_success": "全デバイスからログアウトしました",
+        "revoke_all_error": "全デバイスログアウトに失敗しました",
+        "delete_key_success": "セキュリティキーを削除しました",
+        "delete_key_error": "セキュリティキーの削除に失敗しました",
+        "rename_success": "デバイス名を更新しました",
+        "rename_error": "デバイス名の更新に失敗しました"
+      }
+    },
+    "linked_accounts": {
+      "oauth_section_title": "OAuth連携",
+      "no_oauth": "連携されたアカウントはありません",
+      "connected_at": "連携日: {date}",
+      "unlink_button": "解除",
+      "line_section_title": "LINE連携",
+      "line_icon_alt": "LINEアイコン",
+      "line_default_user": "LINE ユーザー",
+      "line_linked_at": "連携日: {date}",
+      "line_unlink_button": "LINE連携を解除",
+      "line_not_linked": "LINEアカウントは連携されていません",
+      "line_link_instruction": "LINE連携はLINEアプリから行ってください",
+      "toast": {
+        "unlink_success": "{provider}の連携を解除しました",
+        "unlink_error": "連携解除に失敗しました",
+        "line_unlink_success": "LINE連携を解除しました",
+        "line_unlink_error": "LINE連携の解除に失敗しました"
+      }
+    },
+    "member_card": {
+      "section_title": "QR会員証",
+      "tab_list": "会員証一覧",
+      "tab_history": "チェックイン履歴",
+      "toast": {
+        "suspend_success": "会員証を一時停止しました",
+        "suspend_error": "一時停止に失敗しました",
+        "reactivate_success": "会員証を再開しました",
+        "reactivate_error": "再開に失敗しました"
+      }
+    },
+    "social_profile": {
+      "section_title": "ソーシャルプロフィール",
+      "create_button": "新規作成",
+      "count_description": "最大3つのプロフィールを作成できます（{count}/3）",
+      "no_profiles": "まだプロフィールがありません",
+      "dialog_title_create": "プロフィール作成",
+      "dialog_title_edit": "プロフィール編集",
+      "handle_label": "ハンドル名 *",
+      "handle_placeholder": "my_handle",
+      "handle_hint": "英数字とアンダースコアのみ（変更は30日に1回）",
+      "display_name_label": "表示名 *",
+      "bio_label": "自己紹介",
+      "bio_count": "{count}/300",
+      "update_button": "更新",
+      "create_submit_button": "作成",
+      "toast": {
+        "update_success": "プロフィールを更新しました",
+        "create_success": "プロフィールを作成しました",
+        "save_error": "保存に失敗しました",
+        "delete_success": "プロフィールを削除しました",
+        "delete_error": "削除に失敗しました"
+      }
+    },
+    "seal": {
+      "section_title": "電子印鑑",
+      "tab_preview": "印鑑プレビュー",
+      "tab_defaults": "デフォルト設定",
+      "tab_history": "押印履歴",
+      "regenerate_button": "印鑑を再生成",
+      "regenerate_hint": "印鑑は登録姓名から自動生成されます（1時間に3回まで）",
+      "toast": {
+        "regenerate_success": "印鑑を再生成しました",
+        "regenerate_error": "再生成に失敗しました（1時間に3回まで）",
+        "save_defaults_success": "デフォルト設定を保存しました",
+        "save_defaults_error": "設定の保存に失敗しました"
+      }
+    },
+    "login_history": {
+      "section_title": "ログイン履歴",
+      "no_history": "ログイン履歴がありません",
+      "load_more": "もっと読む",
+      "event_login_success": "ログイン成功",
+      "event_login_failure": "ログイン失敗",
+      "event_logout": "ログアウト",
+      "event_token_refresh": "トークン更新",
+      "event_password_change": "パスワード変更",
+      "event_mfa_verify": "2FA認証"
+    },
+    "gcal": {
+      "section_title": "Google Calendar 連携",
+      "connected_label": "接続中",
+      "last_synced": "最終同期: {date}",
+      "manual_sync_button": "手動同期",
+      "disconnect_button": "連携解除",
+      "sync_settings_title": "同期設定",
+      "personal_calendar_label": "個人カレンダー",
+      "personal_calendar_description": "個人の予定をGoogleカレンダーに同期",
+      "team_calendars_label": "チームカレンダー",
+      "org_calendars_label": "組織カレンダー",
+      "save_settings_button": "設定を保存",
+      "not_connected_description": "Googleアカウントと連携して、カレンダーを同期できます",
+      "connect_button": "Googleアカウントに接続",
+      "toast": {
+        "connect_error": "接続に失敗しました",
+        "disconnect_success": "連携を解除しました",
+        "disconnect_error": "解除に失敗しました",
+        "save_success": "同期設定を保存しました",
+        "save_error": "保存に失敗しました",
+        "sync_success": "同期を実行しました",
+        "sync_error": "同期に失敗しました"
+      }
+    },
+    "delete_account": {
+      "section_title": "アカウント削除",
+      "description": "アカウントを削除すると、全てのデータが完全に削除されます。この操作は取り消せません。",
+      "delete_button": "アカウントを削除",
+      "confirm_message": "アカウントを削除すると、全てのデータが完全に削除されます。本当に続けますか？",
+      "confirm_dialog_title": "アカウント削除の確認",
+      "confirm_reject_label": "キャンセル",
+      "confirm_accept_label": "削除の手続きへ進む",
+      "password_confirm_label": "確認のため現在のパスワードを入力してください",
+      "password_placeholder": "現在のパスワード",
+      "retention_note": "※ 一部のデータは法的要件により {days} 日間保持された後に削除されます。",
+      "delete_success": "アカウントを削除しました。ご利用ありがとうございました。",
+      "delete_error": "アカウントの削除に失敗しました"
+    },
+    "notification": {
+      "load_error": "設定の取得に失敗しました",
+      "save_success": "通知設定を保存しました",
+      "save_error": "保存に失敗しました",
+      "save_button": "設定を保存",
+      "global_section_title": "通知の自動配信",
+      "priority_auto_delivery_label": "優先度による自動配信",
+      "priority_auto_delivery_desc": "重要度の高い通知を自動的にプッシュ通知でも配信します。",
+      "scope_section_title": "チーム・組織別の通知",
+      "scope_section_desc": "所属するチーム・組織ごとに通知の受信を設定できます。",
+      "scope_type_team": "チーム",
+      "scope_type_organization": "組織",
+      "scope_receiving": "受信中",
+      "scope_muted": "ミュート中",
+      "scope_empty": "所属するチーム・組織がありません",
+      "type_section_title": "通知の種類",
+      "type_section_desc": "種類ごとに受信を設定できます。「展開」するとアプリ内・プッシュを個別に切り替えられます。",
+      "expand": "展開",
+      "collapse": "折りたたむ",
+      "channel_in_app": "アプリ内",
+      "channel_push": "プッシュ",
+      "locked_tag": "緊急",
+      "locked_desc": "この通知は無効化できません"
     }
   }
 }

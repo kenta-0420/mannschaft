@@ -149,6 +149,8 @@ function linkTo(widgetKey: string): string | undefined {
     'org-tournament-summary': `${base}/tournaments`,
     // F08.10: チーム試合サマリ → チーム分析ページ
     'team-match-summary': `${base}/match-analytics`,
+    // F02.3: プロジェクト
+    projects: `${base}/projects`,
   }
   return scopeLinks[widgetKey]
 }

@@ -10,13 +10,19 @@
  * - SSR フェーズ: Cookie (i18n_locale) からロケールを確定
  * - クライアントフェーズ: このプラグインが authStore のロケールで上書き（一致を保証）
  */
-export default defineNuxtPlugin(async () => {
+export default defineNuxtPlugin(async (nuxtApp) => {
   const authStore = useAuthStore()
   // auth.client.ts が loadFromStorage() で user を復元した後なので、
   // user.locale が存在すれば i18n に反映する。
   const userLocale = authStore.user?.locale
-  if (userLocale) {
-    const { applyUserLocale } = useLocale()
-    await applyUserLocale(userLocale)
+  if (!userLocale) return
+
+  // プラグイン文脈では useI18n()（setup 専用）は呼べない。
+  // primevue-locale.client.ts と同じく nuxtApp.$i18n（グローバルインスタンス）経由で設定する。
+  const i18n = nuxtApp.$i18n as
+    | { locale: { value: string }; setLocale: (code: string) => Promise<void> }
+    | undefined
+  if (i18n && i18n.locale.value !== userLocale) {
+    await i18n.setLocale(userLocale)
   }
 })

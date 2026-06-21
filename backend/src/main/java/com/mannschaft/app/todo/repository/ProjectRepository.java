@@ -24,6 +24,15 @@ public interface ProjectRepository extends JpaRepository<ProjectEntity, Long> {
             TodoScopeType scopeType, Long scopeId, ProjectStatus status, Pageable pageable);
 
     /**
+     * 複数スコープ（チーム群）・ステータス別のプロジェクト一覧を取得する（論理削除除外）。
+     *
+     * <p>マイページ チームプロジェクト集約（{@code GET /api/v1/me/team-projects}）で、
+     * ユーザーが所属する全チームの scopeId 集合を 1 クエリでまとめ取りするために用いる。</p>
+     */
+    Page<ProjectEntity> findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
+            TodoScopeType scopeType, java.util.Collection<Long> scopeIds, ProjectStatus status, Pageable pageable);
+
+    /**
      * IDで論理削除されていないプロジェクトを取得する。
      */
     Optional<ProjectEntity> findByIdAndDeletedAtIsNull(Long id);

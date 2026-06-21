@@ -22,6 +22,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -68,6 +69,12 @@ class ProjectServiceTest {
 
     @Mock
     private com.mannschaft.app.auth.service.AuditLogService auditLogService;
+
+    @Mock
+    private com.mannschaft.app.membership.service.MembershipService membershipService;
+
+    @Mock
+    private com.mannschaft.app.team.service.TeamService teamService;
 
     @InjectMocks
     private ProjectService projectService;
@@ -826,6 +833,227 @@ class ProjectServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TODO_019"));
+        }
+    }
+
+    // ========================================
+    // listTeamProjectsForUser（マイページ チームプロジェクト集約 /api/v1/me/team-projects）
+    // ========================================
+
+    /**
+     * {@code ProjectService.listTeamProjectsForUser} の試練（red）。
+     *
+     * <p>受け入れ条件 AC-2〜AC-8 を純 Mockito で検証する。試練フェーズでは
+     * {@code listTeamProjectsForUser} が空ページを返す<b>空実装</b>のため、
+     * 所属チーム解決・集約クエリ・teamName/teamSlug 付与を検証する各テストは red になる。
+     * /出陣 で本実装を行い green 化する。</p>
+     */
+    @Nested
+    @DisplayName("listTeamProjectsForUser（チームプロジェクト集約）")
+    class ListTeamProjectsForUser {
+
+        private static final Long TEAM_A = 11L;
+        private static final Long TEAM_B = 22L;
+        private static final Long TEAM_C_NOT_JOINED = 99L;
+
+        /** 指定チーム（scopeId）に属する ACTIVE プロジェクトを生成する。 */
+        private ProjectEntity teamProject(Long teamScopeId, String title) {
+            return ProjectEntity.builder()
+                    .scopeType(TodoScopeType.TEAM)
+                    .scopeId(teamScopeId)
+                    .title(title)
+                    .emoji("📋")
+                    .color("#FF0000")
+                    .dueDate(LocalDate.now().plusDays(30))
+                    .status(ProjectStatus.ACTIVE)
+                    .progressRate(BigDecimal.ZERO)
+                    .totalTodos((short) 0)
+                    .completedTodos((short) 0)
+                    .visibility(ProjectVisibility.MEMBERS_ONLY)
+                    .createdBy(USER_ID)
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
+                    .build();
+        }
+
+        private void stubMilestoneCounts() {
+            lenient().when(milestoneRepository.countByProjectId(any())).thenReturn(0L);
+            lenient().when(milestoneRepository.countByProjectIdAndIsCompletedTrue(any())).thenReturn(0L);
+        }
+
+        @Test
+        @DisplayName("AC-2: 複数チーム所属_所属teamId集合で集約クエリが呼ばれ全projが返る")
+        void AC2_複数チーム所属_集約クエリのscopeId集合で全proj返却() {
+            // Given: TEAM_A / TEAM_B の 2 チームに所属
+            given(membershipService.getActiveTeamIdsByUser(USER_ID))
+                    .willReturn(List.of(TEAM_A, TEAM_B));
+            Page<ProjectEntity> page = new PageImpl<>(List.of(
+                    teamProject(TEAM_A, "Aプロジェクト"),
+                    teamProject(TEAM_B, "Bプロジェクト")));
+            given(projectRepository.findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
+                    eq(TodoScopeType.TEAM), anyCollection(), eq(ProjectStatus.ACTIVE), any(Pageable.class)))
+                    .willReturn(page);
+            given(teamService.getNamesByIds(anyCollection()))
+                    .willReturn(Map.of(TEAM_A, "チームA", TEAM_B, "チームB"));
+            given(teamService.getSlugsByIds(anyCollection()))
+                    .willReturn(Map.of(TEAM_A, "team-a", TEAM_B, "team-b"));
+            stubMilestoneCounts();
+
+            // When
+            PagedResponse<com.mannschaft.app.todo.dto.TeamProjectSummaryResponse> response =
+                    projectService.listTeamProjectsForUser(USER_ID, ProjectStatus.ACTIVE, 0, 20);
+
+            // Then: 集約クエリが所属 teamId 集合 {A, B} で呼ばれ、全 proj が返る
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<java.util.Collection<Long>> scopeIdsCaptor =
+                    ArgumentCaptor.forClass(java.util.Collection.class);
+            verify(projectRepository).findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
+                    eq(TodoScopeType.TEAM), scopeIdsCaptor.capture(),
+                    eq(ProjectStatus.ACTIVE), any(Pageable.class));
+            assertThat(scopeIdsCaptor.getValue()).containsExactlyInAnyOrder(TEAM_A, TEAM_B);
+            assertThat(response.getData()).hasSize(2);
+            assertThat(response.getData()).extracting(
+                    com.mannschaft.app.todo.dto.TeamProjectSummaryResponse::title)
+                    .containsExactlyInAnyOrder("Aプロジェクト", "Bプロジェクト");
+        }
+
+        @Test
+        @DisplayName("AC-3: 各レスポンスにteamId/teamName/teamSlugが正しく付与される")
+        void AC3_teamId_teamName_teamSlugが付与される() {
+            given(membershipService.getActiveTeamIdsByUser(USER_ID))
+                    .willReturn(List.of(TEAM_A, TEAM_B));
+            given(projectRepository.findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
+                    eq(TodoScopeType.TEAM), anyCollection(), eq(ProjectStatus.ACTIVE), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(
+                            teamProject(TEAM_A, "Aプロジェクト"),
+                            teamProject(TEAM_B, "Bプロジェクト"))));
+            given(teamService.getNamesByIds(anyCollection()))
+                    .willReturn(Map.of(TEAM_A, "チームA", TEAM_B, "チームB"));
+            given(teamService.getSlugsByIds(anyCollection()))
+                    .willReturn(Map.of(TEAM_A, "team-a", TEAM_B, "team-b"));
+            stubMilestoneCounts();
+
+            PagedResponse<com.mannschaft.app.todo.dto.TeamProjectSummaryResponse> response =
+                    projectService.listTeamProjectsForUser(USER_ID, ProjectStatus.ACTIVE, 0, 20);
+
+            com.mannschaft.app.todo.dto.TeamProjectSummaryResponse a = response.getData().stream()
+                    .filter(r -> "Aプロジェクト".equals(r.title())).findFirst().orElseThrow();
+            assertThat(a.teamId()).isEqualTo(TEAM_A);
+            assertThat(a.teamName()).isEqualTo("チームA");
+            assertThat(a.teamSlug()).isEqualTo("team-a");
+        }
+
+        @Test
+        @DisplayName("AC-4: membershipが返さないチームのprojは含まれない（scopeIds集合に無い）")
+        void AC4_所属外チームのscopeIdは集約クエリに渡らない() {
+            // Given: 所属は TEAM_A のみ（TEAM_C には未所属）
+            given(membershipService.getActiveTeamIdsByUser(USER_ID))
+                    .willReturn(List.of(TEAM_A));
+            given(projectRepository.findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
+                    eq(TodoScopeType.TEAM), anyCollection(), eq(ProjectStatus.ACTIVE), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(teamProject(TEAM_A, "Aプロジェクト"))));
+            given(teamService.getNamesByIds(anyCollection())).willReturn(Map.of(TEAM_A, "チームA"));
+            given(teamService.getSlugsByIds(anyCollection())).willReturn(Map.of(TEAM_A, "team-a"));
+            stubMilestoneCounts();
+
+            projectService.listTeamProjectsForUser(USER_ID, ProjectStatus.ACTIVE, 0, 20);
+
+            // Then: 集約クエリの scopeIds に未所属 TEAM_C は含まれない
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<java.util.Collection<Long>> scopeIdsCaptor =
+                    ArgumentCaptor.forClass(java.util.Collection.class);
+            verify(projectRepository).findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
+                    eq(TodoScopeType.TEAM), scopeIdsCaptor.capture(),
+                    eq(ProjectStatus.ACTIVE), any(Pageable.class));
+            assertThat(scopeIdsCaptor.getValue()).containsExactly(TEAM_A);
+            assertThat(scopeIdsCaptor.getValue()).doesNotContain(TEAM_C_NOT_JOINED);
+        }
+
+        @Test
+        @DisplayName("AC-5: 非アクティブ/退会チームはgetActiveTeamIdsByUserが返さず除外される")
+        void AC5_非アクティブ所属は集約対象に含まれない() {
+            // Given: getActiveTeamIdsByUser は active な TEAM_A のみ返す
+            //        （退会済み TEAM_B は MembershipService が left_at IS NOT NULL で除外する前提）
+            given(membershipService.getActiveTeamIdsByUser(USER_ID))
+                    .willReturn(List.of(TEAM_A));
+            given(projectRepository.findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
+                    eq(TodoScopeType.TEAM), anyCollection(), eq(ProjectStatus.ACTIVE), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(teamProject(TEAM_A, "Aプロジェクト"))));
+            given(teamService.getNamesByIds(anyCollection())).willReturn(Map.of(TEAM_A, "チームA"));
+            given(teamService.getSlugsByIds(anyCollection())).willReturn(Map.of(TEAM_A, "team-a"));
+            stubMilestoneCounts();
+
+            projectService.listTeamProjectsForUser(USER_ID, ProjectStatus.ACTIVE, 0, 20);
+
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<java.util.Collection<Long>> scopeIdsCaptor =
+                    ArgumentCaptor.forClass(java.util.Collection.class);
+            verify(projectRepository).findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
+                    eq(TodoScopeType.TEAM), scopeIdsCaptor.capture(),
+                    eq(ProjectStatus.ACTIVE), any(Pageable.class));
+            assertThat(scopeIdsCaptor.getValue()).containsExactly(TEAM_A);
+            assertThat(scopeIdsCaptor.getValue()).doesNotContain(TEAM_B);
+        }
+
+        @Test
+        @DisplayName("AC-6: status引数がfindBy...Statusに渡る（COMPLETED指定）")
+        void AC6_status引数が集約クエリに渡る() {
+            given(membershipService.getActiveTeamIdsByUser(USER_ID))
+                    .willReturn(List.of(TEAM_A));
+            given(projectRepository.findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
+                    eq(TodoScopeType.TEAM), anyCollection(), eq(ProjectStatus.COMPLETED), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of()));
+            lenient().when(teamService.getNamesByIds(anyCollection())).thenReturn(Map.of());
+            lenient().when(teamService.getSlugsByIds(anyCollection())).thenReturn(Map.of());
+            stubMilestoneCounts();
+
+            projectService.listTeamProjectsForUser(USER_ID, ProjectStatus.COMPLETED, 0, 20);
+
+            // Then: status=COMPLETED が集約クエリに渡る
+            verify(projectRepository).findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
+                    eq(TodoScopeType.TEAM), anyCollection(),
+                    eq(ProjectStatus.COMPLETED), any(Pageable.class));
+        }
+
+        @Test
+        @DisplayName("AC-7: 所属0（membershipが空）→所属解決のみ実施し集約クエリは呼ばず空リスト")
+        void AC7_所属0_集約クエリを呼ばず空リスト() {
+            given(membershipService.getActiveTeamIdsByUser(USER_ID))
+                    .willReturn(List.of());
+
+            PagedResponse<com.mannschaft.app.todo.dto.TeamProjectSummaryResponse> response =
+                    projectService.listTeamProjectsForUser(USER_ID, ProjectStatus.ACTIVE, 0, 20);
+
+            // Then: 所属解決（getActiveTeamIdsByUser）は実施するが、
+            //       teamIds が空なので集約クエリは 1 度も呼ばず、空リストを返す。
+            verify(membershipService).getActiveTeamIdsByUser(USER_ID);
+            verify(projectRepository, org.mockito.Mockito.never())
+                    .findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
+                            any(), anyCollection(), any(), any(Pageable.class));
+            assertThat(response.getData()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("AC-8: teamName/slug解決はgetNamesByIds/getSlugsByIdsを各1回だけ呼ぶ（N+1でない）")
+        void AC8_名前slug解決はバッチで各1回() {
+            given(membershipService.getActiveTeamIdsByUser(USER_ID))
+                    .willReturn(List.of(TEAM_A, TEAM_B));
+            given(projectRepository.findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
+                    eq(TodoScopeType.TEAM), anyCollection(), eq(ProjectStatus.ACTIVE), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(
+                            teamProject(TEAM_A, "Aプロジェクト"),
+                            teamProject(TEAM_B, "Bプロジェクト"))));
+            given(teamService.getNamesByIds(anyCollection()))
+                    .willReturn(Map.of(TEAM_A, "チームA", TEAM_B, "チームB"));
+            given(teamService.getSlugsByIds(anyCollection()))
+                    .willReturn(Map.of(TEAM_A, "team-a", TEAM_B, "team-b"));
+            stubMilestoneCounts();
+
+            projectService.listTeamProjectsForUser(USER_ID, ProjectStatus.ACTIVE, 0, 20);
+
+            // Then: N+1 回避。proj が複数でも名前/slug 解決は各 1 回
+            verify(teamService, org.mockito.Mockito.times(1)).getNamesByIds(anyCollection());
+            verify(teamService, org.mockito.Mockito.times(1)).getSlugsByIds(anyCollection());
         }
     }
 }

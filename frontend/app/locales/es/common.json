@@ -715,6 +715,8 @@
     "my_projects": "Mis proyectos",
     "my_projects_description": "Gestión personal de tareas y objetivos",
     "no_my_projects": "Aún no hay proyectos personales",
+    "team_projects_section": "Proyectos del equipo",
+    "no_team_projects": "Aún no hay proyectos en tus equipos",
     "create_button": "Crear proyecto",
     "dialog": {
       "create_title": "Crear proyecto",
@@ -773,6 +775,45 @@
         "team_desc": "Comparta y co-gestione con los miembros del equipo. Acceso desde la pestaña 'Proyectos' en la página del equipo."
       },
       "back_to_projects": "Volver a la lista de proyectos"
+    },
+    "org_page": {
+      "title": "Proyectos",
+      "empty": "No hay proyectos",
+      "back_label": "Lista de proyectos"
+    },
+    "error": {
+      "fetch_failed": "Error al obtener proyectos",
+      "create_failed": "Error al crear el proyecto",
+      "update_failed": "Error al actualizar",
+      "delete_failed": "Error al eliminar",
+      "status_change_failed": "Error al cambiar el estado",
+      "milestone_save_failed": "Error al guardar el hito"
+    },
+    "status": {
+      "active": "Activo",
+      "completed": "Completado",
+      "archived": "Archivado"
+    },
+    "action": {
+      "edit": "Editar",
+      "complete": "Marcar como completado",
+      "reopen": "Reabrir"
+    },
+    "stats": {
+      "progress": "Progreso",
+      "tasks": "Tareas",
+      "milestones": "Hitos",
+      "due_date": "Fecha de vencimiento",
+      "no_due_date": "Sin definir"
+    },
+    "task_unit": "tareas",
+    "days_remaining": "{n} dias restantes",
+    "days_overdue": "{n} dias de retraso",
+    "related_tasks": "Tareas relacionadas",
+    "no_related_tasks": "No hay tareas relacionadas con este proyecto",
+    "widget": {
+      "label": "Proyectos",
+      "description": "Progreso y lista de proyectos"
     }
   },
   "inviteToken": {
