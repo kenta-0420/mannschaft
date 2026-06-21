@@ -48,8 +48,7 @@ async function toggle() {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <BackButton to="/settings" />
-    <PageHeader :title="t('public.profileVisibility.title')" />
+    <PageHeader :title="t('public.profileVisibility.title')" back-to="/settings" />
 
     <SectionCard :title="t('public.profileVisibility.title')">
       <div class="space-y-4">

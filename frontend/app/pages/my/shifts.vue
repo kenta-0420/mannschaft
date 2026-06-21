@@ -40,9 +40,8 @@ onMounted(() => load())
 
 <template>
   <div class="mx-auto max-w-3xl">
-    <BackButton to="/my" />
     <div class="mb-4 flex items-center justify-between">
-      <PageHeader :title="$t('shift.myShifts.title')" />
+      <PageHeader :title="$t('shift.myShifts.title')" back-to="/my" />
       <NuxtLink to="/my/shift-request">
         <Button
           :label="$t('shift.changeRequest.submit')"

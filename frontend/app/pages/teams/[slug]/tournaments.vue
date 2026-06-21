@@ -69,7 +69,6 @@ onMounted(() => load())
 <template>
   <div class="mx-auto max-w-5xl">
     <div class="mb-4 flex items-center gap-3">
-      <BackButton />
       <PageHeader title="参加大会・リーグ" />
     </div>
 

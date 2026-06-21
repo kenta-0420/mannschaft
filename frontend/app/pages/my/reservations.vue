@@ -47,8 +47,7 @@ onMounted(() => load())
 
 <template>
   <div class="mx-auto max-w-3xl">
-    <BackButton to="/my" />
-    <PageHeader :title="t('reservation.page.my_title')" />
+    <PageHeader :title="t('reservation.page.my_title')" back-to="/my" />
     <PageLoading v-if="loading" size="40px" />
     <div v-else class="flex flex-col gap-3">
       <SectionCard

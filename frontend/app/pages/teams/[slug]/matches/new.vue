@@ -124,8 +124,7 @@ onMounted(() => loadOrganizationId())
 <template>
   <div class="mx-auto max-w-xl">
     <div class="mb-1 flex items-center gap-3">
-      <BackButton :to="`/teams/${teamSlug}/matches`" />
-      <PageHeader :title="$t('match.create.title')" size="sm" />
+      <PageHeader :title="$t('match.create.title')" size="sm" :back-to="`/teams/${teamSlug}/matches`" />
     </div>
     <p class="mb-6 text-sm text-surface-500">{{ $t('match.create.subtitle') }}</p>
 

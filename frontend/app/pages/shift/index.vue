@@ -152,7 +152,7 @@ function openDetail(scheduleId: number) {
   <div class="mx-auto max-w-6xl px-4 py-8">
     <!-- ヘッダー -->
     <div class="mb-6 flex items-center justify-between">
-      <PageHeader :title="t('shift.index.title')" />
+      <PageHeader :title="t('shift.index.title')" :back="false" />
       <Button
         v-if="canManage"
         icon="pi pi-plus"

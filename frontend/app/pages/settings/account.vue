@@ -147,8 +147,7 @@ onMounted(async () => {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <BackButton to="/settings" />
-    <PageHeader title="アカウント設定" />
+    <PageHeader title="アカウント設定" back-to="/settings" />
 
     <PageLoading v-if="loading" />
 

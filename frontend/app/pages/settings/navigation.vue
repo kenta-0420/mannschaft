@@ -19,8 +19,7 @@ onMounted(async () => {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <BackButton to="/settings" />
-    <PageHeader :title="$t('settings.settings.navigation.title')" />
+    <PageHeader :title="$t('settings.settings.navigation.title')" back-to="/settings" />
     <p class="mb-4 text-sm text-surface-500">{{ $t('settings.settings.navigation.description') }}</p>
 
     <PageLoading v-if="loading" size="40px" />

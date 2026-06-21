@@ -6,8 +6,7 @@ const orgSlug = String(route.params.slug)
 
 <template>
   <div>
-    <div class="mb-4 flex items-center gap-3">
-      <BackButton />
+    <div class="mb-4">
       <PageHeader title="ギャラリー" />
     </div>
     <GalleryAlbumGrid scope-type="ORGANIZATION" :scope-id="orgSlug" />

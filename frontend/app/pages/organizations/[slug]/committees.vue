@@ -81,10 +81,7 @@ onMounted(async () => {
   <PageLoading v-if="loading" />
   <div v-else>
     <div class="mb-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <BackButton />
-        <PageHeader :title="$t('committee.list.title')" />
-      </div>
+      <PageHeader :title="$t('committee.list.title')" />
       <Button
         v-if="isAdminOrDeputy"
         :label="$t('committee.list.create')"

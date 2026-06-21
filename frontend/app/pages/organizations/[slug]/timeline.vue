@@ -32,8 +32,7 @@ onMounted(async () => {
 <template>
   <PageLoading v-if="loading" />
   <div v-else>
-    <div class="mb-4 flex items-center gap-3">
-      <BackButton />
+    <div class="mb-4">
       <PageHeader title="タイムライン" />
     </div>
 

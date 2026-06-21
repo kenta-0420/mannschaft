@@ -104,8 +104,7 @@ async function save() {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <BackButton to="/settings" />
-    <PageHeader :title="$t('settings.language.title')" />
+    <PageHeader :title="$t('settings.language.title')" back-to="/settings" />
 
     <PageLoading v-if="loading" />
 

@@ -500,19 +500,15 @@ function goPenalty(): void {
 function goOvertime(): void {
   void session.value?.timer.goOvertime?.()
 }
-
-function back(): void {
-  void router.push(`/teams/${teamSlug}/matches`)
-}
 </script>
 
 <template>
   <div class="mx-auto max-w-2xl pb-28">
     <div class="mb-2 flex items-center gap-2">
-      <BackButton :to="`/teams/${teamSlug}/matches`" @click="back" />
       <PageHeader
         :title="canRecord ? t('match.live.title') : t('match.live.spectator.title')"
         size="sm"
+        :back-to="`/teams/${teamSlug}/matches`"
       />
     </div>
 

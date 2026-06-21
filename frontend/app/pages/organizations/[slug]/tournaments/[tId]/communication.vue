@@ -172,9 +172,8 @@ onMounted(async () => {
 
 <template>
   <div>
-    <div class="mb-4 flex items-center gap-3">
-      <BackButton :to="`/organizations/${orgSlug}/tournaments/${tId}`" />
-      <PageHeader :title="$t('tournament.communication.title')" />
+    <div class="mb-4">
+      <PageHeader :title="$t('tournament.communication.title')" :back-to="`/organizations/${orgSlug}/tournaments/${tId}`" />
     </div>
 
     <PageLoading v-if="loading" size="40px" />

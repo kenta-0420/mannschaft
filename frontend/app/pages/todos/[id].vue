@@ -284,9 +284,8 @@ onUnmounted(() => {
   <div v-else-if="todo" class="mx-auto max-w-3xl">
     <!-- ヘッダー -->
     <div class="mb-6">
-      <BackButton to="/todos" :label="t('todo.backToList')" />
       <div class="flex items-center justify-between gap-3">
-        <PageHeader :title="todo.content?.title ?? ''" />
+        <PageHeader :title="todo.content?.title ?? ''" back-to="/todos" :back-label="t('todo.backToList')" />
         <Button
           v-if="!editing && editingField === null"
           icon="pi pi-pencil"

@@ -6,8 +6,7 @@ definePageMeta({
 
 <template>
   <div>
-    <BackButton to="/settings" />
-    <PageHeader title="通知設定" />
+    <PageHeader title="通知設定" back-to="/settings" />
 
     <div class="mx-auto max-w-2xl">
       <NotificationPreferences />

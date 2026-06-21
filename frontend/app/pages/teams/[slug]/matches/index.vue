@@ -105,8 +105,7 @@ onMounted(async () => {
 <template>
   <div class="mx-auto max-w-3xl pb-24">
     <div class="mb-1 flex items-center gap-3">
-      <BackButton :to="`/teams/${teamSlug}`" />
-      <PageHeader :title="$t('match.list.title')" size="sm" />
+      <PageHeader :title="$t('match.list.title')" size="sm" :back-to="`/teams/${teamSlug}`" />
     </div>
     <p class="mb-4 text-sm text-surface-500">{{ $t('match.list.subtitle') }}</p>
 

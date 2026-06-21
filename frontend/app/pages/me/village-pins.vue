@@ -162,8 +162,7 @@ onMounted(() => {
 
 <template>
   <div class="mx-auto max-w-3xl">
-    <BackButton to="/dashboard" />
-    <PageHeader :title="t('village.pin.title')" />
+    <PageHeader :title="t('village.pin.title')" back-to="/dashboard" />
 
     <PageLoading v-if="loading" />
 

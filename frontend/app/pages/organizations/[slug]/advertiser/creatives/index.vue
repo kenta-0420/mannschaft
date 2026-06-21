@@ -136,14 +136,11 @@ onMounted(load)
   <div>
     <!-- ヘッダー -->
     <div class="mb-6 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <BackButton :to="`/organizations/${orgSlug}/advertiser`" />
-        <div>
-          <PageHeader :title="t('advertising.creative.title')" />
-          <p class="text-sm text-surface-500">
-            {{ t('advertising.creative.description') }}
-          </p>
-        </div>
+      <div>
+        <PageHeader :title="t('advertising.creative.title')" :back-to="`/organizations/${orgSlug}/advertiser`" />
+        <p class="text-sm text-surface-500">
+          {{ t('advertising.creative.description') }}
+        </p>
       </div>
       <Button
         icon="pi pi-plus"

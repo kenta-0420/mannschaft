@@ -95,12 +95,8 @@ function toggleExpand(teamId: number) {
 
 <template>
   <div class="mx-auto max-w-4xl">
-    <div class="mb-4 flex items-center gap-3">
-      <BackButton
-        :to="`/organizations/${orgSlug}/tournaments/${tournamentId}`"
-        :label="$t('tournament.roster.title')"
-      />
-      <PageHeader :title="$t('tournament.roster.title')" />
+    <div class="mb-4">
+      <PageHeader :title="$t('tournament.roster.title')" :back-to="`/organizations/${orgSlug}/tournaments/${tournamentId}`" :back-label="$t('tournament.roster.title')" />
     </div>
 
     <!-- 試合ID入力 -->

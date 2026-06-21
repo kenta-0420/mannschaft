@@ -138,12 +138,8 @@ onMounted(async () => {
 
 <template>
   <div>
-    <div class="mb-4 flex items-center gap-3">
-      <BackButton :to="`/organizations/${orgSlug}/tournaments/${tId}`" :label="$t('tournament.fees.title')" />
-    </div>
-
     <div class="mb-6 flex items-center justify-between">
-      <PageHeader :title="$t('tournament.fees.title')" />
+      <PageHeader :title="$t('tournament.fees.title')" :back-to="`/organizations/${orgSlug}/tournaments/${tId}`" :back-label="$t('tournament.fees.title')" />
       <Button
         v-if="isAdminOrDeputy"
         :label="$t('tournament.fees.create')"

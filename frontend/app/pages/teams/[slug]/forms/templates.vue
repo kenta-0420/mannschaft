@@ -20,10 +20,7 @@ onMounted(() => loadPermissions())
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <BackButton :to="`/teams/${teamSlug}/forms`" label="フォームに戻る" />
-        <PageHeader title="フォームテンプレート" />
-      </div>
+      <PageHeader title="フォームテンプレート" :back-to="`/teams/${teamSlug}/forms`" back-label="フォームに戻る" />
       <Button
         v-if="isAdminOrDeputy"
         label="テンプレート作成"

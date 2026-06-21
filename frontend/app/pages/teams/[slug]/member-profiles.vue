@@ -95,7 +95,6 @@ onMounted(loadData)
 <template>
   <div class="mx-auto max-w-6xl">
     <div class="mb-6 flex items-center gap-3">
-      <BackButton />
       <PageHeader title="メンバー紹介" />
     </div>
 

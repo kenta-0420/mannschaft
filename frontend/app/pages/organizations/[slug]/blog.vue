@@ -12,8 +12,7 @@ onMounted(async () => {
 
 <template>
   <div>
-    <div class="mb-4 flex items-center gap-3">
-      <BackButton />
+    <div class="mb-4">
       <PageHeader title="ブログ・お知らせ" />
     </div>
     <BlogPostList scope-type="ORGANIZATION" :scope-id="orgId" :can-create="isMember" />
