@@ -2,6 +2,7 @@
   "village": {
     "title": "Village",
     "subtitle": "Community Square",
+    "archivedNotice": "This village is frozen. It is read-only.",
     "action": {
       "create": "Create a village",
       "edit": "Edit village",

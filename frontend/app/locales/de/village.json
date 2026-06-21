@@ -2,6 +2,7 @@
   "village": {
     "title": "Dorf",
     "subtitle": "Gemeinschaftsplatz",
+    "archivedNotice": "Dieses Dorf ist eingefroren. Es ist schreibgeschützt.",
     "action": {
       "create": "Dorf erstellen",
       "edit": "Dorf bearbeiten",
