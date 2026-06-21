@@ -1,168 +1,170 @@
 {
-  "title": "振り返り",
-  "nav": {
-    "today": "今日の振り返り",
-    "themes": "テーマ一覧",
-    "settings": "通知設定"
-  },
-  "today": {
-    "heading": "今日の振り返り",
-    "date_label": "対象日",
-    "empty": "今日のコマ・テーマがありません。テーマを作成して振り返りを始めましょう。",
-    "free_themes": "テーマ（時間割外）",
-    "timetable_slots": "今日のコマ",
-    "no_theme": "テーマ未設定",
-    "create_theme_for_slot": "このコマのテーマを作成",
-    "create_entry": "振り返りを書く",
-    "edit_entry": "振り返りを編集",
-    "open_recall": "想起テスト",
-    "masked_badge": "想起待ち",
-    "has_entry": "記入済み",
-    "period_label": "{period}限"
-  },
-  "theme": {
-    "list_heading": "テーマ一覧",
-    "create": "テーマを作成",
-    "edit": "テーマを編集",
-    "delete": "削除",
-    "delete_confirm": "このテーマと配下の振り返りをすべて削除しますか？",
-    "empty": "まだテーマがありません。最初のテーマを作成しましょう。",
-    "title_label": "テーマ名",
-    "title_placeholder": "例: 数学II / ○○プロジェクト / 日記",
-    "description_label": "説明",
-    "description_placeholder": "任意のメモ",
-    "source_type_label": "種類",
-    "exam_date_label": "定期考査日",
-    "exam_date_help": "設定すると考査の14/7/3/1日前にリマインドが届きます",
-    "exam_date_past_warning": "過去日のためリマインドは生成されません",
-    "exam_date_clear": "考査日をクリア",
-    "recall_interval_label": "想起間隔",
-    "recall_interval_fixed": "{days} 日後に想起テスト（固定）",
-    "open": "開く",
-    "view_entries": "振り返りを見る"
-  },
-  "source_type": {
-    "SUBJECT": "授業",
-    "PROJECT": "仕事・案件",
-    "DIARY": "日記",
-    "FREE": "自由"
-  },
-  "template": {
-    "label": "テンプレート",
-    "help": "入力の見出しをプリセットから選べます",
-    "NORMAL": "ノーマル",
-    "DIARY": "日記",
-    "WORK": "仕事の振り返り",
-    "CLASS": "授業の振り返り",
-    "normal_desc": "見出しなし・自由記述",
-    "diary_desc": "出来事／感じたこと／明日に向けて",
-    "work_desc": "成果／課題／学び／次アクション",
-    "class_desc": "学んだこと／つまずき／覚える要点",
-    "preset": {
-      "diary": {
-        "event": "出来事",
-        "feeling": "感じたこと",
-        "tomorrow": "明日に向けて"
-      },
-      "work": {
-        "result": "成果",
-        "issue": "課題",
-        "learning": "学び",
-        "next": "次アクション"
-      },
-      "class": {
-        "learned": "学んだこと",
-        "stumble": "つまずき",
-        "keypoint": "覚える要点"
-      }
-    }
-  },
-  "entry": {
-    "list_heading": "振り返り一覧",
-    "create": "振り返りを作成",
-    "edit": "振り返りを編集",
-    "delete": "削除",
-    "delete_confirm": "この振り返りを削除しますか？",
-    "empty": "まだ振り返りがありません。",
-    "target_date_label": "対象日",
-    "main_theme_label": "メインテーマ",
-    "main_theme_placeholder": "例: 二次関数の最大最小",
-    "section_heading_label": "中見出し",
-    "section_heading_placeholder": "例: 平方完成",
-    "add_section": "中見出しを追加",
-    "remove_section": "中見出しを削除",
-    "sub_heading_label": "小見出し",
-    "sub_heading_placeholder": "例: 基本形への変形",
-    "add_subsection": "小見出しを追加",
-    "remove_subsection": "小見出しを削除",
-    "detail_label": "詳細",
-    "detail_placeholder": "学んだ内容を書く",
-    "supplement_label": "補足",
-    "supplement_placeholder": "補足・メモ",
-    "free_note_label": "自由メモ（想起対象外）",
-    "free_note_placeholder": "所感や質問メモ",
-    "save": "保存",
-    "saved": "保存しました",
-    "save_failed": "保存に失敗しました",
-    "conflict": "他の場所で更新されました。最新を読み込んでからもう一度お試しください。",
-    "masked_notice": "想起テストの対象です。本文は隠れています。",
-    "exported_badge": "ブログ輸出済み",
-    "exported_edited_badge": "輸出後に編集あり"
-  },
-  "recall": {
-    "heading": "想起テスト",
-    "intro": "本文を見ずに、覚えている内容を思い出して書いてみましょう。",
-    "hint_theme": "テーマ",
-    "hint_target_date": "対象日",
-    "hint_due_dates": "想起予定日",
-    "input_label": "思い出した内容",
-    "input_placeholder": "覚えている範囲で書いてください",
-    "self_rating_label": "自己評価",
-    "rating": {
-      "REMEMBERED": "覚えていた",
-      "PARTIAL": "部分的",
-      "FORGOT": "忘れていた"
+  "reflection": {
+    "title": "振り返り",
+    "nav": {
+      "today": "今日の振り返り",
+      "themes": "テーマ一覧",
+      "settings": "通知設定"
     },
-    "submit": "保存して開示",
-    "submitting": "保存中…",
-    "saved": "想起を記録しました",
-    "save_failed": "想起の保存に失敗しました",
-    "revealed_heading": "正解（元の本文）",
-    "your_recall": "あなたの想起",
-    "history_heading": "想起履歴",
-    "history_empty": "まだ想起履歴がありません。",
-    "not_masked": "このエントリはマスクされていません。通常編集できます。",
-    "back_to_entry": "振り返りへ戻る"
-  },
-  "export": {
-    "button": "ブログへ輸出",
-    "dialog_title": "ブログへ輸出",
-    "title_label": "記事タイトル",
-    "title_placeholder": "省略するとテーマ名＋対象日になります",
-    "submit": "輸出する",
-    "submitting": "輸出中…",
-    "success": "ブログへ輸出しました（非公開）",
-    "failed": "輸出に失敗しました",
-    "already_exported": "この振り返りは既に輸出済みです",
-    "view_post": "輸出した記事を見る"
-  },
-  "settings": {
-    "heading": "想起通知の設定",
-    "remind_hour_label": "通知時刻",
-    "remind_hour_help": "想起テストのリマインドを送る時刻（あなたのタイムゾーン）",
-    "save": "保存",
-    "saved": "設定を保存しました",
-    "save_failed": "設定の保存に失敗しました",
-    "hour_format": "{hour}時"
-  },
-  "calendar": {
-    "entry_mark": "振り返り",
-    "recall_mark": "想起予定"
-  },
-  "common": {
-    "cancel": "キャンセル",
-    "close": "閉じる",
-    "loading": "読み込み中…",
-    "load_failed": "読み込みに失敗しました"
+    "today": {
+      "heading": "今日の振り返り",
+      "date_label": "対象日",
+      "empty": "今日のコマ・テーマがありません。テーマを作成して振り返りを始めましょう。",
+      "free_themes": "テーマ（時間割外）",
+      "timetable_slots": "今日のコマ",
+      "no_theme": "テーマ未設定",
+      "create_theme_for_slot": "このコマのテーマを作成",
+      "create_entry": "振り返りを書く",
+      "edit_entry": "振り返りを編集",
+      "open_recall": "想起テスト",
+      "masked_badge": "想起待ち",
+      "has_entry": "記入済み",
+      "period_label": "{period}限"
+    },
+    "theme": {
+      "list_heading": "テーマ一覧",
+      "create": "テーマを作成",
+      "edit": "テーマを編集",
+      "delete": "削除",
+      "delete_confirm": "このテーマと配下の振り返りをすべて削除しますか？",
+      "empty": "まだテーマがありません。最初のテーマを作成しましょう。",
+      "title_label": "テーマ名",
+      "title_placeholder": "例: 数学II / ○○プロジェクト / 日記",
+      "description_label": "説明",
+      "description_placeholder": "任意のメモ",
+      "source_type_label": "種類",
+      "exam_date_label": "定期考査日",
+      "exam_date_help": "設定すると考査の14/7/3/1日前にリマインドが届きます",
+      "exam_date_past_warning": "過去日のためリマインドは生成されません",
+      "exam_date_clear": "考査日をクリア",
+      "recall_interval_label": "想起間隔",
+      "recall_interval_fixed": "{days} 日後に想起テスト（固定）",
+      "open": "開く",
+      "view_entries": "振り返りを見る"
+    },
+    "source_type": {
+      "SUBJECT": "授業",
+      "PROJECT": "仕事・案件",
+      "DIARY": "日記",
+      "FREE": "自由"
+    },
+    "template": {
+      "label": "テンプレート",
+      "help": "入力の見出しをプリセットから選べます",
+      "NORMAL": "ノーマル",
+      "DIARY": "日記",
+      "WORK": "仕事の振り返り",
+      "CLASS": "授業の振り返り",
+      "normal_desc": "見出しなし・自由記述",
+      "diary_desc": "出来事／感じたこと／明日に向けて",
+      "work_desc": "成果／課題／学び／次アクション",
+      "class_desc": "学んだこと／つまずき／覚える要点",
+      "preset": {
+        "diary": {
+          "event": "出来事",
+          "feeling": "感じたこと",
+          "tomorrow": "明日に向けて"
+        },
+        "work": {
+          "result": "成果",
+          "issue": "課題",
+          "learning": "学び",
+          "next": "次アクション"
+        },
+        "class": {
+          "learned": "学んだこと",
+          "stumble": "つまずき",
+          "keypoint": "覚える要点"
+        }
+      }
+    },
+    "entry": {
+      "list_heading": "振り返り一覧",
+      "create": "振り返りを作成",
+      "edit": "振り返りを編集",
+      "delete": "削除",
+      "delete_confirm": "この振り返りを削除しますか？",
+      "empty": "まだ振り返りがありません。",
+      "target_date_label": "対象日",
+      "main_theme_label": "メインテーマ",
+      "main_theme_placeholder": "例: 二次関数の最大最小",
+      "section_heading_label": "中見出し",
+      "section_heading_placeholder": "例: 平方完成",
+      "add_section": "中見出しを追加",
+      "remove_section": "中見出しを削除",
+      "sub_heading_label": "小見出し",
+      "sub_heading_placeholder": "例: 基本形への変形",
+      "add_subsection": "小見出しを追加",
+      "remove_subsection": "小見出しを削除",
+      "detail_label": "詳細",
+      "detail_placeholder": "学んだ内容を書く",
+      "supplement_label": "補足",
+      "supplement_placeholder": "補足・メモ",
+      "free_note_label": "自由メモ（想起対象外）",
+      "free_note_placeholder": "所感や質問メモ",
+      "save": "保存",
+      "saved": "保存しました",
+      "save_failed": "保存に失敗しました",
+      "conflict": "他の場所で更新されました。最新を読み込んでからもう一度お試しください。",
+      "masked_notice": "想起テストの対象です。本文は隠れています。",
+      "exported_badge": "ブログ輸出済み",
+      "exported_edited_badge": "輸出後に編集あり"
+    },
+    "recall": {
+      "heading": "想起テスト",
+      "intro": "本文を見ずに、覚えている内容を思い出して書いてみましょう。",
+      "hint_theme": "テーマ",
+      "hint_target_date": "対象日",
+      "hint_due_dates": "想起予定日",
+      "input_label": "思い出した内容",
+      "input_placeholder": "覚えている範囲で書いてください",
+      "self_rating_label": "自己評価",
+      "rating": {
+        "REMEMBERED": "覚えていた",
+        "PARTIAL": "部分的",
+        "FORGOT": "忘れていた"
+      },
+      "submit": "保存して開示",
+      "submitting": "保存中…",
+      "saved": "想起を記録しました",
+      "save_failed": "想起の保存に失敗しました",
+      "revealed_heading": "正解（元の本文）",
+      "your_recall": "あなたの想起",
+      "history_heading": "想起履歴",
+      "history_empty": "まだ想起履歴がありません。",
+      "not_masked": "このエントリはマスクされていません。通常編集できます。",
+      "back_to_entry": "振り返りへ戻る"
+    },
+    "export": {
+      "button": "ブログへ輸出",
+      "dialog_title": "ブログへ輸出",
+      "title_label": "記事タイトル",
+      "title_placeholder": "省略するとテーマ名＋対象日になります",
+      "submit": "輸出する",
+      "submitting": "輸出中…",
+      "success": "ブログへ輸出しました（非公開）",
+      "failed": "輸出に失敗しました",
+      "already_exported": "この振り返りは既に輸出済みです",
+      "view_post": "輸出した記事を見る"
+    },
+    "settings": {
+      "heading": "想起通知の設定",
+      "remind_hour_label": "通知時刻",
+      "remind_hour_help": "想起テストのリマインドを送る時刻（あなたのタイムゾーン）",
+      "save": "保存",
+      "saved": "設定を保存しました",
+      "save_failed": "設定の保存に失敗しました",
+      "hour_format": "{hour}時"
+    },
+    "calendar": {
+      "entry_mark": "振り返り",
+      "recall_mark": "想起予定"
+    },
+    "common": {
+      "cancel": "キャンセル",
+      "close": "閉じる",
+      "loading": "読み込み中…",
+      "load_failed": "読み込みに失敗しました"
+    }
   }
 }

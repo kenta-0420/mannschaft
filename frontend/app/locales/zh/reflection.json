@@ -1,168 +1,170 @@
 {
-  "title": "回顾",
-  "nav": {
-    "today": "今日回顾",
-    "themes": "主题列表",
-    "settings": "通知设置"
-  },
-  "today": {
-    "heading": "今日回顾",
-    "date_label": "日期",
-    "empty": "今天没有课程或主题。创建一个主题开始回顾吧。",
-    "free_themes": "主题（课表之外）",
-    "timetable_slots": "今日课程",
-    "no_theme": "未设置主题",
-    "create_theme_for_slot": "为此课时创建主题",
-    "create_entry": "撰写回顾",
-    "edit_entry": "编辑回顾",
-    "open_recall": "回忆测试",
-    "masked_badge": "待回忆",
-    "has_entry": "已填写",
-    "period_label": "第{period}节"
-  },
-  "theme": {
-    "list_heading": "主题列表",
-    "create": "创建主题",
-    "edit": "编辑主题",
-    "delete": "删除",
-    "delete_confirm": "删除此主题及其下所有回顾吗？",
-    "empty": "还没有主题。创建第一个主题吧。",
-    "title_label": "主题名称",
-    "title_placeholder": "例如：数学II ／ 项目X ／ 日记",
-    "description_label": "说明",
-    "description_placeholder": "可选备注",
-    "source_type_label": "类型",
-    "exam_date_label": "考试日期",
-    "exam_date_help": "设置后将在考试前14/7/3/1天发送提醒",
-    "exam_date_past_warning": "过去的日期不会生成提醒",
-    "exam_date_clear": "清除考试日期",
-    "recall_interval_label": "回忆间隔",
-    "recall_interval_fixed": "{days}天后进行回忆测试（固定）",
-    "open": "打开",
-    "view_entries": "查看回顾"
-  },
-  "source_type": {
-    "SUBJECT": "课程",
-    "PROJECT": "工作 / 项目",
-    "DIARY": "日记",
-    "FREE": "自由"
-  },
-  "template": {
-    "label": "模板",
-    "help": "可从预设中选择输入标题",
-    "NORMAL": "普通",
-    "DIARY": "日记",
-    "WORK": "工作回顾",
-    "CLASS": "课程回顾",
-    "normal_desc": "无标题，自由书写",
-    "diary_desc": "事件／感受／明日计划",
-    "work_desc": "成果／问题／收获／下一步",
-    "class_desc": "学到的内容／卡点／需记住的要点",
-    "preset": {
-      "diary": {
-        "event": "事件",
-        "feeling": "感受",
-        "tomorrow": "明日计划"
-      },
-      "work": {
-        "result": "成果",
-        "issue": "问题",
-        "learning": "收获",
-        "next": "下一步"
-      },
-      "class": {
-        "learned": "学到的内容",
-        "stumble": "卡点",
-        "keypoint": "需记住的要点"
-      }
-    }
-  },
-  "entry": {
-    "list_heading": "回顾列表",
-    "create": "创建回顾",
-    "edit": "编辑回顾",
-    "delete": "删除",
-    "delete_confirm": "删除此回顾吗？",
-    "empty": "还没有回顾。",
-    "target_date_label": "日期",
-    "main_theme_label": "主要主题",
-    "main_theme_placeholder": "例如：二次函数的最大最小值",
-    "section_heading_label": "标题",
-    "section_heading_placeholder": "例如：配方法",
-    "add_section": "添加标题",
-    "remove_section": "删除标题",
-    "sub_heading_label": "子标题",
-    "sub_heading_placeholder": "例如：转换为标准形式",
-    "add_subsection": "添加子标题",
-    "remove_subsection": "删除子标题",
-    "detail_label": "详情",
-    "detail_placeholder": "写下你学到的内容",
-    "supplement_label": "补充",
-    "supplement_placeholder": "补充／备注",
-    "free_note_label": "自由备注（不纳入回忆）",
-    "free_note_placeholder": "感想或问题备注",
-    "save": "保存",
-    "saved": "已保存",
-    "save_failed": "保存失败",
-    "conflict": "已在其他地方更新。请重新加载最新内容后再试。",
-    "masked_notice": "这是回忆测试对象，内容已隐藏。",
-    "exported_badge": "已导出至博客",
-    "exported_edited_badge": "导出后已编辑"
-  },
-  "recall": {
-    "heading": "回忆测试",
-    "intro": "不看内容，凭记忆回忆并写下你记得的内容。",
-    "hint_theme": "主题",
-    "hint_target_date": "日期",
-    "hint_due_dates": "回忆预定日期",
-    "input_label": "你回忆的内容",
-    "input_placeholder": "尽量写下你记得的内容",
-    "self_rating_label": "自我评价",
-    "rating": {
-      "REMEMBERED": "记得",
-      "PARTIAL": "部分记得",
-      "FORGOT": "忘记了"
+  "reflection": {
+    "title": "回顾",
+    "nav": {
+      "today": "今日回顾",
+      "themes": "主题列表",
+      "settings": "通知设置"
     },
-    "submit": "保存并揭示",
-    "submitting": "保存中…",
-    "saved": "已记录回忆",
-    "save_failed": "保存回忆失败",
-    "revealed_heading": "答案（原始内容）",
-    "your_recall": "你的回忆",
-    "history_heading": "回忆历史",
-    "history_empty": "还没有回忆历史。",
-    "not_masked": "此条目未被隐藏，可正常编辑。",
-    "back_to_entry": "返回回顾"
-  },
-  "export": {
-    "button": "导出至博客",
-    "dialog_title": "导出至博客",
-    "title_label": "文章标题",
-    "title_placeholder": "省略则使用主题名称和日期",
-    "submit": "导出",
-    "submitting": "导出中…",
-    "success": "已导出至博客（私密）",
-    "failed": "导出失败",
-    "already_exported": "此回顾已导出",
-    "view_post": "查看已导出文章"
-  },
-  "settings": {
-    "heading": "回忆通知设置",
-    "remind_hour_label": "通知时间",
-    "remind_hour_help": "发送回忆测试提醒的时间（你的时区）",
-    "save": "保存",
-    "saved": "设置已保存",
-    "save_failed": "设置保存失败",
-    "hour_format": "{hour}时"
-  },
-  "calendar": {
-    "entry_mark": "回顾",
-    "recall_mark": "回忆预定"
-  },
-  "common": {
-    "cancel": "取消",
-    "close": "关闭",
-    "loading": "加载中…",
-    "load_failed": "加载失败"
+    "today": {
+      "heading": "今日回顾",
+      "date_label": "日期",
+      "empty": "今天没有课程或主题。创建一个主题开始回顾吧。",
+      "free_themes": "主题（课表之外）",
+      "timetable_slots": "今日课程",
+      "no_theme": "未设置主题",
+      "create_theme_for_slot": "为此课时创建主题",
+      "create_entry": "撰写回顾",
+      "edit_entry": "编辑回顾",
+      "open_recall": "回忆测试",
+      "masked_badge": "待回忆",
+      "has_entry": "已填写",
+      "period_label": "第{period}节"
+    },
+    "theme": {
+      "list_heading": "主题列表",
+      "create": "创建主题",
+      "edit": "编辑主题",
+      "delete": "删除",
+      "delete_confirm": "删除此主题及其下所有回顾吗？",
+      "empty": "还没有主题。创建第一个主题吧。",
+      "title_label": "主题名称",
+      "title_placeholder": "例如：数学II ／ 项目X ／ 日记",
+      "description_label": "说明",
+      "description_placeholder": "可选备注",
+      "source_type_label": "类型",
+      "exam_date_label": "考试日期",
+      "exam_date_help": "设置后将在考试前14/7/3/1天发送提醒",
+      "exam_date_past_warning": "过去的日期不会生成提醒",
+      "exam_date_clear": "清除考试日期",
+      "recall_interval_label": "回忆间隔",
+      "recall_interval_fixed": "{days}天后进行回忆测试（固定）",
+      "open": "打开",
+      "view_entries": "查看回顾"
+    },
+    "source_type": {
+      "SUBJECT": "课程",
+      "PROJECT": "工作 / 项目",
+      "DIARY": "日记",
+      "FREE": "自由"
+    },
+    "template": {
+      "label": "模板",
+      "help": "可从预设中选择输入标题",
+      "NORMAL": "普通",
+      "DIARY": "日记",
+      "WORK": "工作回顾",
+      "CLASS": "课程回顾",
+      "normal_desc": "无标题，自由书写",
+      "diary_desc": "事件／感受／明日计划",
+      "work_desc": "成果／问题／收获／下一步",
+      "class_desc": "学到的内容／卡点／需记住的要点",
+      "preset": {
+        "diary": {
+          "event": "事件",
+          "feeling": "感受",
+          "tomorrow": "明日计划"
+        },
+        "work": {
+          "result": "成果",
+          "issue": "问题",
+          "learning": "收获",
+          "next": "下一步"
+        },
+        "class": {
+          "learned": "学到的内容",
+          "stumble": "卡点",
+          "keypoint": "需记住的要点"
+        }
+      }
+    },
+    "entry": {
+      "list_heading": "回顾列表",
+      "create": "创建回顾",
+      "edit": "编辑回顾",
+      "delete": "删除",
+      "delete_confirm": "删除此回顾吗？",
+      "empty": "还没有回顾。",
+      "target_date_label": "日期",
+      "main_theme_label": "主要主题",
+      "main_theme_placeholder": "例如：二次函数的最大最小值",
+      "section_heading_label": "标题",
+      "section_heading_placeholder": "例如：配方法",
+      "add_section": "添加标题",
+      "remove_section": "删除标题",
+      "sub_heading_label": "子标题",
+      "sub_heading_placeholder": "例如：转换为标准形式",
+      "add_subsection": "添加子标题",
+      "remove_subsection": "删除子标题",
+      "detail_label": "详情",
+      "detail_placeholder": "写下你学到的内容",
+      "supplement_label": "补充",
+      "supplement_placeholder": "补充／备注",
+      "free_note_label": "自由备注（不纳入回忆）",
+      "free_note_placeholder": "感想或问题备注",
+      "save": "保存",
+      "saved": "已保存",
+      "save_failed": "保存失败",
+      "conflict": "已在其他地方更新。请重新加载最新内容后再试。",
+      "masked_notice": "这是回忆测试对象，内容已隐藏。",
+      "exported_badge": "已导出至博客",
+      "exported_edited_badge": "导出后已编辑"
+    },
+    "recall": {
+      "heading": "回忆测试",
+      "intro": "不看内容，凭记忆回忆并写下你记得的内容。",
+      "hint_theme": "主题",
+      "hint_target_date": "日期",
+      "hint_due_dates": "回忆预定日期",
+      "input_label": "你回忆的内容",
+      "input_placeholder": "尽量写下你记得的内容",
+      "self_rating_label": "自我评价",
+      "rating": {
+        "REMEMBERED": "记得",
+        "PARTIAL": "部分记得",
+        "FORGOT": "忘记了"
+      },
+      "submit": "保存并揭示",
+      "submitting": "保存中…",
+      "saved": "已记录回忆",
+      "save_failed": "保存回忆失败",
+      "revealed_heading": "答案（原始内容）",
+      "your_recall": "你的回忆",
+      "history_heading": "回忆历史",
+      "history_empty": "还没有回忆历史。",
+      "not_masked": "此条目未被隐藏，可正常编辑。",
+      "back_to_entry": "返回回顾"
+    },
+    "export": {
+      "button": "导出至博客",
+      "dialog_title": "导出至博客",
+      "title_label": "文章标题",
+      "title_placeholder": "省略则使用主题名称和日期",
+      "submit": "导出",
+      "submitting": "导出中…",
+      "success": "已导出至博客（私密）",
+      "failed": "导出失败",
+      "already_exported": "此回顾已导出",
+      "view_post": "查看已导出文章"
+    },
+    "settings": {
+      "heading": "回忆通知设置",
+      "remind_hour_label": "通知时间",
+      "remind_hour_help": "发送回忆测试提醒的时间（你的时区）",
+      "save": "保存",
+      "saved": "设置已保存",
+      "save_failed": "设置保存失败",
+      "hour_format": "{hour}时"
+    },
+    "calendar": {
+      "entry_mark": "回顾",
+      "recall_mark": "回忆预定"
+    },
+    "common": {
+      "cancel": "取消",
+      "close": "关闭",
+      "loading": "加载中…",
+      "load_failed": "加载失败"
+    }
   }
 }
