@@ -9,14 +9,25 @@ const props = withDefaults(
     backTo?: string
     /** 戻るリンクのラベル。未指定なら BackButton 側の i18n デフォルト（戻る/Back…） */
     backLabel?: string
+    /** 「？使い方」ボタンを描画するか。既定 false（明示的に出すページのみ opt-in する） */
+    help?: boolean
+    /** 使い方ボタンのラベル。未指定なら i18n button.help（使い方/How to use…） */
+    helpLabel?: string
   }>(),
   {
     size: 'lg',
     back: true,
     backTo: undefined,
     backLabel: undefined,
+    help: false,
+    helpLabel: undefined,
   },
 )
+
+// 使い方ボタンのクリックを呼び出し側へ通知する
+const emit = defineEmits<{ help: [] }>()
+
+const { t } = useI18n()
 
 // フォールスルー属性（class 等）は外側ラッパではなくタイトル行へ束ねる。
 // これにより、従来 <PageHeader class="..."> が当たっていた要素（タイトル行の
@@ -35,6 +46,17 @@ const titleClass = computed(() =>
     <div class="mb-6 flex items-end gap-3" v-bind="$attrs">
       <h1 :class="titleClass">{{ title }}</h1>
       <slot />
+      <!-- 「？使い方」ボタンは戻ると同じ流儀で内蔵し、ml-auto で右寄せにする -->
+      <Button
+        v-if="help"
+        class="ml-auto"
+        icon="pi pi-question-circle"
+        :label="helpLabel ?? t('button.help')"
+        text
+        size="small"
+        data-testid="page-header-help"
+        @click="emit('help')"
+      />
     </div>
   </div>
 </template>
