@@ -14,6 +14,9 @@
 import type { VillageChronicleResponse } from '~/types/village'
 import { useVillageContext } from '~/composables/useVillageContext'
 
+// auth は各タブで明示宣言（本コードベースの規約。親シェルも auth を持つ）。
+definePageMeta({ middleware: 'auth' })
+
 const route = useRoute()
 const villageId = computed(() => String(route.params.id))
 const { t } = useI18n()

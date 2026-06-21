@@ -68,8 +68,10 @@ const {
   error: villageError,
   refresh: refreshVillage,
 } = await useAsyncData(
-  () => `village-${villageId.value}`,
+  `village-${villageId.value}`,
   () => villageApi.getVillage(villageId.value),
+  // 永続シェルを維持したまま別の村へ遷移した場合（同一親ルート record）に再取得する。
+  { watch: [villageId] },
 )
 
 /** VillageHeader 用の交差型 Ref（村紋 r2Key を optional で許容）。 */
@@ -117,6 +119,11 @@ async function loadMyMembership() {
 
 // クライアントで村取得後にメンバーシップを解決（SSR では認証ストア未確定のためスキップ）
 onMounted(() => {
+  void loadMyMembership()
+})
+
+// 永続シェルを維持したまま別の村へ遷移した場合にメンバーシップも再解決する。
+watch(villageId, () => {
   void loadMyMembership()
 })
 

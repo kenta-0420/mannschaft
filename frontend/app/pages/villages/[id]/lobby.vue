@@ -28,6 +28,9 @@ import type {
 import { useVillageLobbyPresence } from '~/composables/village/useVillageLobbyPresence'
 import { useVillageContext } from '~/composables/useVillageContext'
 
+// auth は各タブで明示宣言（本コードベースの規約。親シェルも auth を持つ）。
+definePageMeta({ middleware: 'auth' })
+
 // =============================================================================
 // 型補強 — FE1 の DailyThreadResponse には threadDate / messages が無い
 // =============================================================================
