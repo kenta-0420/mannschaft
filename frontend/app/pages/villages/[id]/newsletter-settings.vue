@@ -16,35 +16,28 @@
 import type {
   VillageNewsletterFrequency,
   VillageNewsletterSettingsResponse,
-  VillageResponse,
 } from '~/types/village'
-
-definePageMeta({
-  middleware: 'auth',
-  layout: 'default',
-  key: route => route.fullPath,
-})
+import { useVillageContext } from '~/composables/useVillageContext'
 
 const route = useRoute()
 const villageId = String(route.params.id)
 const { t } = useI18n()
-const villageApi = useVillageApi()
 const villagePhase3Api = useVillagePhase3Api()
 const { handleApiError } = useErrorHandler()
 const toast = useToast()
+
+// 村本体・権限は親シェルから inject（再フェッチしない）
+const { village, perms } = useVillageContext()
 
 // =====================================================================
 // State
 // =====================================================================
 
-const village = ref<VillageResponse | null>(null)
-const loading = ref(true)
-const notFound = ref(false)
 const settings = ref<VillageNewsletterSettingsResponse | null>(null)
 const settingsLoading = ref(false)
 const saving = ref(false)
 
-const isHeadman = computed(() => village.value?.myRole === 'HEADMAN')
+const isHeadman = computed(() => perms.value.isHeadman)
 
 const frequencyOptions = computed(() =>
   [
@@ -118,49 +111,14 @@ async function toggleOptOut() {
   }
 }
 
-async function loadVillage() {
-  loading.value = true
-  notFound.value = false
-  try {
-    village.value = await villageApi.getVillage(villageId)
-    await loadSettings()
-  }
-  catch (error: unknown) {
-    const status = (error as { statusCode?: number; response?: { status?: number } })
-    const code = status?.statusCode ?? status?.response?.status
-    if (code === 404) {
-      notFound.value = true
-    }
-    else {
-      handleApiError(error, t('village.title'))
-    }
-  }
-  finally {
-    loading.value = false
-  }
-}
-
 onMounted(() => {
-  loadVillage()
+  void loadSettings()
 })
 </script>
 
 <template>
   <div>
-    <PageLoading v-if="loading" />
-
-    <div v-else-if="notFound" class="mx-auto max-w-2xl p-6 text-center">
-      <i class="pi pi-exclamation-circle text-4xl text-surface-400" />
-      <p class="mt-4 text-lg">
-        {{ t('village.error.VILLAGE_001') }}
-      </p>
-      <NuxtLink to="/villages" class="mt-4 inline-block text-primary-600 hover:underline">
-        <i class="pi pi-arrow-left mr-1" />
-        {{ t('village.error.backToList') }}
-      </NuxtLink>
-    </div>
-
-    <template v-else-if="village">
+    <template v-if="village">
       <div class="mx-auto max-w-3xl p-4 sm:p-6">
         <div class="flex items-center gap-3 mb-6">
           <NuxtLink :to="`/villages/${village.id}`" class="text-primary-600 hover:underline">

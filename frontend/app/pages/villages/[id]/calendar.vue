@@ -1,49 +1,36 @@
 <script setup lang="ts">
 /**
- * F17.1 村機能 — 村詳細 / 歳時記タブ
+ * F17.1 村機能 — 村詳細 / 歳時記タブ（永続シェル子）
  *
  * 設計書: docs/features/F17.1_village_community.md §2.2 / §13.2
  *
+ * 永続シェル方式（SPA）: 村データ・権限・VillageHeader・アクションは親
+ * `pages/villages/[id].vue` に集約。本ファイルは歳時記カレンダーパネル本体のみ。
+ *
  * 構成:
- *   - 上段: <VillageHeader activeTab="calendar" />
- *   - 下段:
- *       - 月送りナビ（前月 / 今月 / 翌月）
- *       - 月別行事一覧（カード形式、絵文字 + タイトル + 開催日）
- *       - HEADMAN/ELDER のみ「行事を追加」ボタン
+ *   - 月送りナビ（前月 / 今月 / 翌月）
+ *   - 月別行事一覧（カード形式、絵文字 + タイトル + 開催日）
+ *   - HEADMAN/ELDER のみ「行事を追加」ボタン
  *   - 行事クリックで詳細 Dialog（HEADMAN/ELDER は編集 / 削除も可能）
  */
 import dayjs from 'dayjs'
 import type {
-  MembershipResponse,
   VillageCalendarEventCreateRequest,
   VillageCalendarEventResponse,
   VillageCalendarEventUpdateRequest,
-  VillageResponse,
 } from '~/types/village'
-
-definePageMeta({
-  middleware: 'auth',
-  layout: 'default',
-  key: route => route.fullPath,
-})
+import { useVillageContext } from '~/composables/useVillageContext'
 
 const route = useRoute()
-const villageId = String(route.params.id)
+const villageId = computed(() => String(route.params.id))
 const { t } = useI18n()
 const villageApi = useVillageApi()
-const authStore = useAuthStore()
 const { handleApiError } = useErrorHandler()
 const toast = useToast()
 const { userTimezone } = useDatetime()
 
-// =====================================================================
-// State — 村本体
-// =====================================================================
-
-const village = ref<VillageResponse | null>(null)
-const loading = ref(true)
-const notFound = ref(false)
-const myMembership = ref<MembershipResponse | null>(null)
+// 権限は親シェルから inject
+const { perms } = useVillageContext()
 
 // =====================================================================
 // State — カレンダー
@@ -56,9 +43,7 @@ const currentMonth = ref<number>(dayjs().tz(userTimezone.value).month() + 1)
 const events = ref<VillageCalendarEventResponse[]>([])
 const eventsLoading = ref(false)
 
-const canManage = computed(
-  () => village.value?.myRole === 'HEADMAN' || village.value?.myRole === 'ELDER',
-)
+const canManage = computed(() => perms.value.isAdmin)
 
 // =====================================================================
 // 月別フィルタ＋API 呼び出し
@@ -82,7 +67,7 @@ async function loadEvents() {
       currentMonth.value,
       lastDayOfMonth(currentYear.value, currentMonth.value),
     )
-    events.value = await villageApi.listCalendarEvents(villageId, { from, to })
+    events.value = await villageApi.listCalendarEvents(villageId.value, { from, to })
   }
   catch (error) {
     events.value = []
@@ -208,7 +193,7 @@ async function submitCreate() {
     colorHex: createForm.value.colorHex || null,
   }
   try {
-    await villageApi.createCalendarEvent(villageId, body)
+    await villageApi.createCalendarEvent(villageId.value, body)
     showCreateDialog.value = false
     toast.add({
       severity: 'success',
@@ -234,7 +219,7 @@ async function submitEdit() {
     colorHex: editForm.value.colorHex || null,
   }
   try {
-    await villageApi.updateCalendarEvent(villageId, editTargetId.value, body)
+    await villageApi.updateCalendarEvent(villageId.value, editTargetId.value, body)
     showEditDialog.value = false
     toast.add({
       severity: 'success',
@@ -251,7 +236,7 @@ async function submitEdit() {
 async function submitDelete(ev: VillageCalendarEventResponse) {
   if (!window.confirm(t('village.calendar.confirmDelete'))) return
   try {
-    await villageApi.deleteCalendarEvent(villageId, ev.id)
+    await villageApi.deleteCalendarEvent(villageId.value, ev.id)
     showDetailDialog.value = false
     toast.add({
       severity: 'success',
@@ -266,443 +251,284 @@ async function submitDelete(ev: VillageCalendarEventResponse) {
 }
 
 // =====================================================================
-// VillageHeader アクションハンドラ
-// =====================================================================
-
-async function loadVillage() {
-  loading.value = true
-  notFound.value = false
-  try {
-    village.value = await villageApi.getVillage(villageId)
-    if (village.value?.isMember) {
-      await loadMyMembership()
-    }
-    await loadEvents()
-  }
-  catch (error: unknown) {
-    const status = (error as { statusCode?: number; response?: { status?: number } })
-    const code = status?.statusCode ?? status?.response?.status
-    if (code === 404) {
-      notFound.value = true
-    }
-    else {
-      handleApiError(error, t('village.title'))
-    }
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-async function loadMyMembership() {
-  const myUserId = authStore.currentUser?.id
-  if (!myUserId) {
-    myMembership.value = null
-    return
-  }
-  try {
-    const res = await villageApi.listMembers(villageId, { page: 0, size: 100 })
-    myMembership.value
-      = res.content.find(
-        m => m.subjectType === 'USER' && m.subjectId === myUserId,
-      ) ?? null
-  }
-  catch (error) {
-    console.warn('[village/calendar] listMembers failed', error)
-    myMembership.value = null
-  }
-}
-
-async function onJoin() {
-  const myUserId = authStore.currentUser?.id
-  if (!myUserId) return
-  try {
-    await villageApi.joinVillage(villageId, {
-      subjectType: 'USER',
-      subjectId: myUserId,
-    })
-    await loadVillage()
-  }
-  catch (error) {
-    handleApiError(error, t('village.action.join'))
-  }
-}
-
-async function onLeave() {
-  if (!myMembership.value) await loadMyMembership()
-  if (!myMembership.value) {
-    await loadVillage()
-    return
-  }
-  try {
-    await villageApi.leaveVillage(villageId, myMembership.value.id)
-    await loadVillage()
-  }
-  catch (error) {
-    handleApiError(error, t('village.action.leave'))
-  }
-}
-
-async function onPin() {
-  try {
-    await villageApi.addPin(villageId)
-    await loadVillage()
-  }
-  catch (error) {
-    handleApiError(error, t('village.action.pin'))
-  }
-}
-
-async function onUnpin() {
-  try {
-    await villageApi.removePin(villageId)
-    await loadVillage()
-  }
-  catch (error) {
-    handleApiError(error, t('village.action.unpin'))
-  }
-}
-
-/** 通報ダイアログ表示状態 — VillageReportDialog (FE5 完成済) を組み込む */
-const showReportDialog = ref(false)
-function onReportClick() {
-  showReportDialog.value = true
-}
-
-/** 村本体編集ダイアログ表示状態 — VillageEditDialog (FE α2 で新規実装) を組み込む */
-const showVillageEditDialog = ref(false)
-function onEdit() {
-  showVillageEditDialog.value = true
-}
-
-/** 編集 Dialog から更新成功時に村情報を差し替え */
-function onVillageUpdated(updated: VillageResponse) {
-  village.value = updated
-}
-
-// =====================================================================
 // Init
 // =====================================================================
 
 onMounted(() => {
-  loadVillage()
+  void loadEvents()
 })
 </script>
 
 <template>
-  <div>
-    <PageLoading v-if="loading" />
-
-    <div v-else-if="notFound" class="mx-auto max-w-2xl p-6 text-center">
-      <i class="pi pi-exclamation-circle text-4xl text-surface-400" />
-      <p class="mt-4 text-lg">
-        {{ t('village.error.VILLAGE_001') }}
-      </p>
-      <NuxtLink to="/villages" class="mt-4 inline-block text-primary-600 hover:underline">
-        <i class="pi pi-arrow-left mr-1" />
-        {{ t('village.error.backToList') }}
-      </NuxtLink>
+  <div class="mx-auto max-w-3xl p-4 sm:p-6">
+    <!-- 月送りナビ + 追加ボタン -->
+    <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
+      <div class="flex items-center gap-2">
+        <Button
+          :label="t('village.calendar.prev')"
+          icon="pi pi-chevron-left"
+          size="small"
+          outlined
+          @click="goPrevMonth"
+        />
+        <Button
+          :label="t('village.calendar.today')"
+          size="small"
+          text
+          @click="goToday"
+        />
+        <Button
+          :label="t('village.calendar.next')"
+          icon="pi pi-chevron-right"
+          icon-pos="right"
+          size="small"
+          outlined
+          @click="goNextMonth"
+        />
+        <span class="ml-2 font-semibold text-lg">{{ monthLabel }}</span>
+      </div>
+      <Button
+        v-if="canManage"
+        :label="t('village.calendar.create')"
+        icon="pi pi-plus"
+        severity="primary"
+        size="small"
+        @click="openCreateDialog"
+      />
     </div>
 
-    <template v-else-if="village">
-      <VillageHeader
-        :village="village"
-        active-tab="calendar"
-        @join="onJoin"
-        @request-join="onJoin"
-        @leave="onLeave"
-        @pin="onPin"
-        @unpin="onUnpin"
-        @report-click="onReportClick"
-        @edit="onEdit"
-      />
+    <!-- 行事一覧 -->
+    <div v-if="eventsLoading" class="text-center py-12 text-surface-500">
+      <i class="pi pi-spin pi-spinner text-2xl" />
+    </div>
+    <DashboardEmptyState
+      v-else-if="events.length === 0"
+      icon="pi pi-calendar"
+      :message="t('village.calendar.noEventsInMonth')"
+    />
+    <div v-else class="flex flex-col gap-2">
+      <button
+        v-for="ev in events"
+        :key="ev.id"
+        type="button"
+        class="village-calendar__row flex items-center gap-3 rounded-lg border border-surface-200 p-3 text-left transition hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-800"
+        :style="ev.colorHex ? { borderLeft: `4px solid ${ev.colorHex}` } : undefined"
+        @click="openDetailDialog(ev)"
+      >
+        <span class="text-2xl">{{ ev.iconEmoji || '🗓' }}</span>
+        <div class="flex flex-col min-w-0 flex-1">
+          <span class="font-medium truncate">{{ ev.title }}</span>
+          <span class="text-xs text-surface-500">
+            {{ ev.eventDate }}<span v-if="ev.eventEndDate"> 〜 {{ ev.eventEndDate }}</span>
+            <span v-if="ev.isAnnualRecurring" class="ml-2">
+              <i class="pi pi-replay" /> {{ t('village.calendar.annualRecurring') }}
+            </span>
+          </span>
+        </div>
+      </button>
+    </div>
 
-      <div class="mx-auto max-w-3xl p-4 sm:p-6">
-        <!-- 月送りナビ + 追加ボタン -->
-        <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
-          <div class="flex items-center gap-2">
-            <Button
-              :label="t('village.calendar.prev')"
-              icon="pi pi-chevron-left"
-              size="small"
-              outlined
-              @click="goPrevMonth"
-            />
-            <Button
-              :label="t('village.calendar.today')"
-              size="small"
-              text
-              @click="goToday"
-            />
-            <Button
-              :label="t('village.calendar.next')"
-              icon="pi pi-chevron-right"
-              icon-pos="right"
-              size="small"
-              outlined
-              @click="goNextMonth"
-            />
-            <span class="ml-2 font-semibold text-lg">{{ monthLabel }}</span>
+    <!-- 作成 Dialog -->
+    <Dialog
+      v-model:visible="showCreateDialog"
+      modal
+      :draggable="false"
+      :header="t('village.calendar.createTitle')"
+      :style="{ width: '32rem' }"
+      :breakpoints="{ '640px': '92vw' }"
+    >
+      <div class="flex flex-col gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1">
+            {{ t('village.calendar.eventTitle') }}
+          </label>
+          <InputText v-model="createForm.title" class="w-full" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">
+            {{ t('village.calendar.description') }}
+          </label>
+          <Textarea v-model="createForm.description" class="w-full" rows="3" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-medium mb-1">
+              {{ t('village.calendar.eventDate') }}
+            </label>
+            <InputText v-model="createForm.eventDate" type="date" class="w-full" />
           </div>
-          <Button
-            v-if="canManage"
-            :label="t('village.calendar.create')"
-            icon="pi pi-plus"
-            severity="primary"
-            size="small"
-            @click="openCreateDialog"
+          <div>
+            <label class="block text-sm font-medium mb-1">
+              {{ t('village.calendar.eventEndDate') }}
+            </label>
+            <InputText v-model="createForm.eventEndDate" type="date" class="w-full" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-medium mb-1">
+              {{ t('village.calendar.icon') }}
+            </label>
+            <InputText v-model="createForm.iconEmoji" maxlength="4" class="w-full" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">
+              {{ t('village.calendar.color') }}
+            </label>
+            <InputText v-model="createForm.colorHex" type="color" class="w-full h-10" />
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <Checkbox
+            v-model="createForm.isAnnualRecurring"
+            input-id="calendar-recur"
+            binary
           />
-        </div>
-
-        <!-- 行事一覧 -->
-        <div v-if="eventsLoading" class="text-center py-12 text-surface-500">
-          <i class="pi pi-spin pi-spinner text-2xl" />
-        </div>
-        <DashboardEmptyState
-          v-else-if="events.length === 0"
-          icon="pi pi-calendar"
-          :message="t('village.calendar.noEventsInMonth')"
-        />
-        <div v-else class="flex flex-col gap-2">
-          <button
-            v-for="ev in events"
-            :key="ev.id"
-            type="button"
-            class="village-calendar__row flex items-center gap-3 rounded-lg border border-surface-200 p-3 text-left transition hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-800"
-            :style="ev.colorHex ? { borderLeft: `4px solid ${ev.colorHex}` } : undefined"
-            @click="openDetailDialog(ev)"
-          >
-            <span class="text-2xl">{{ ev.iconEmoji || '🗓' }}</span>
-            <div class="flex flex-col min-w-0 flex-1">
-              <span class="font-medium truncate">{{ ev.title }}</span>
-              <span class="text-xs text-surface-500">
-                {{ ev.eventDate }}<span v-if="ev.eventEndDate"> 〜 {{ ev.eventEndDate }}</span>
-                <span v-if="ev.isAnnualRecurring" class="ml-2">
-                  <i class="pi pi-replay" /> {{ t('village.calendar.annualRecurring') }}
-                </span>
-              </span>
-            </div>
-          </button>
+          <label for="calendar-recur" class="text-sm">
+            {{ t('village.calendar.annualRecurring') }}
+          </label>
         </div>
       </div>
+      <template #footer>
+        <Button
+          :label="t('village.action.cancel')"
+          severity="secondary"
+          text
+          @click="showCreateDialog = false"
+        />
+        <Button
+          :label="t('village.action.save')"
+          icon="pi pi-check"
+          severity="primary"
+          @click="submitCreate"
+        />
+      </template>
+    </Dialog>
 
-      <!-- 作成 Dialog -->
-      <Dialog
-        v-model:visible="showCreateDialog"
-        modal
-        :draggable="false"
-        :header="t('village.calendar.createTitle')"
-        :style="{ width: '32rem' }"
-        :breakpoints="{ '640px': '92vw' }"
-      >
-        <div class="flex flex-col gap-3">
+    <!-- 詳細 Dialog -->
+    <Dialog
+      v-model:visible="showDetailDialog"
+      modal
+      :draggable="false"
+      :header="detailEvent?.title ?? ''"
+      :style="{ width: '28rem' }"
+      :breakpoints="{ '640px': '92vw' }"
+    >
+      <div v-if="detailEvent" class="flex flex-col gap-3">
+        <div class="flex items-center gap-2 text-sm">
+          <span class="text-2xl">{{ detailEvent.iconEmoji || '🗓' }}</span>
+          <span>
+            {{ detailEvent.eventDate }}<span v-if="detailEvent.eventEndDate"> 〜 {{ detailEvent.eventEndDate }}</span>
+          </span>
+        </div>
+        <div v-if="detailEvent.description" class="whitespace-pre-wrap text-sm">
+          {{ detailEvent.description }}
+        </div>
+        <div v-if="detailEvent.isAnnualRecurring" class="text-xs text-surface-500">
+          <i class="pi pi-replay" /> {{ t('village.calendar.annualRecurring') }}
+        </div>
+      </div>
+      <template #footer>
+        <Button
+          v-if="canManage && detailEvent"
+          :label="t('village.calendar.edit')"
+          icon="pi pi-pencil"
+          severity="secondary"
+          outlined
+          @click="openEditDialog(detailEvent)"
+        />
+        <Button
+          v-if="canManage && detailEvent"
+          :label="t('village.calendar.delete')"
+          icon="pi pi-trash"
+          severity="danger"
+          outlined
+          @click="submitDelete(detailEvent)"
+        />
+        <Button
+          :label="t('village.action.cancel')"
+          severity="secondary"
+          text
+          @click="showDetailDialog = false"
+        />
+      </template>
+    </Dialog>
+
+    <!-- 編集 Dialog -->
+    <Dialog
+      v-model:visible="showEditDialog"
+      modal
+      :draggable="false"
+      :header="t('village.calendar.editTitle')"
+      :style="{ width: '32rem' }"
+      :breakpoints="{ '640px': '92vw' }"
+    >
+      <div class="flex flex-col gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1">
+            {{ t('village.calendar.eventTitle') }}
+          </label>
+          <InputText v-model="editForm.title" class="w-full" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">
+            {{ t('village.calendar.description') }}
+          </label>
+          <Textarea v-model="editForm.description" class="w-full" rows="3" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-sm font-medium mb-1">
-              {{ t('village.calendar.eventTitle') }}
+              {{ t('village.calendar.eventDate') }}
             </label>
-            <InputText v-model="createForm.title" class="w-full" />
+            <InputText v-model="editForm.eventDate" type="date" class="w-full" />
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">
-              {{ t('village.calendar.description') }}
+              {{ t('village.calendar.eventEndDate') }}
             </label>
-            <Textarea v-model="createForm.description" class="w-full" rows="3" />
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-sm font-medium mb-1">
-                {{ t('village.calendar.eventDate') }}
-              </label>
-              <InputText v-model="createForm.eventDate" type="date" class="w-full" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">
-                {{ t('village.calendar.eventEndDate') }}
-              </label>
-              <InputText v-model="createForm.eventEndDate" type="date" class="w-full" />
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-sm font-medium mb-1">
-                {{ t('village.calendar.icon') }}
-              </label>
-              <InputText v-model="createForm.iconEmoji" maxlength="4" class="w-full" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">
-                {{ t('village.calendar.color') }}
-              </label>
-              <InputText v-model="createForm.colorHex" type="color" class="w-full h-10" />
-            </div>
-          </div>
-          <div class="flex items-center gap-2">
-            <Checkbox
-              v-model="createForm.isAnnualRecurring"
-              input-id="calendar-recur"
-              binary
-            />
-            <label for="calendar-recur" class="text-sm">
-              {{ t('village.calendar.annualRecurring') }}
-            </label>
+            <InputText v-model="editForm.eventEndDate" type="date" class="w-full" />
           </div>
         </div>
-        <template #footer>
-          <Button
-            :label="t('village.action.cancel')"
-            severity="secondary"
-            text
-            @click="showCreateDialog = false"
-          />
-          <Button
-            :label="t('village.action.save')"
-            icon="pi pi-check"
-            severity="primary"
-            @click="submitCreate"
-          />
-        </template>
-      </Dialog>
-
-      <!-- 詳細 Dialog -->
-      <Dialog
-        v-model:visible="showDetailDialog"
-        modal
-        :draggable="false"
-        :header="detailEvent?.title ?? ''"
-        :style="{ width: '28rem' }"
-        :breakpoints="{ '640px': '92vw' }"
-      >
-        <div v-if="detailEvent" class="flex flex-col gap-3">
-          <div class="flex items-center gap-2 text-sm">
-            <span class="text-2xl">{{ detailEvent.iconEmoji || '🗓' }}</span>
-            <span>
-              {{ detailEvent.eventDate }}<span v-if="detailEvent.eventEndDate"> 〜 {{ detailEvent.eventEndDate }}</span>
-            </span>
-          </div>
-          <div v-if="detailEvent.description" class="whitespace-pre-wrap text-sm">
-            {{ detailEvent.description }}
-          </div>
-          <div v-if="detailEvent.isAnnualRecurring" class="text-xs text-surface-500">
-            <i class="pi pi-replay" /> {{ t('village.calendar.annualRecurring') }}
-          </div>
-        </div>
-        <template #footer>
-          <Button
-            v-if="canManage && detailEvent"
-            :label="t('village.calendar.edit')"
-            icon="pi pi-pencil"
-            severity="secondary"
-            outlined
-            @click="openEditDialog(detailEvent)"
-          />
-          <Button
-            v-if="canManage && detailEvent"
-            :label="t('village.calendar.delete')"
-            icon="pi pi-trash"
-            severity="danger"
-            outlined
-            @click="submitDelete(detailEvent)"
-          />
-          <Button
-            :label="t('village.action.cancel')"
-            severity="secondary"
-            text
-            @click="showDetailDialog = false"
-          />
-        </template>
-      </Dialog>
-
-      <!-- 編集 Dialog -->
-      <Dialog
-        v-model:visible="showEditDialog"
-        modal
-        :draggable="false"
-        :header="t('village.calendar.editTitle')"
-        :style="{ width: '32rem' }"
-        :breakpoints="{ '640px': '92vw' }"
-      >
-        <div class="flex flex-col gap-3">
+        <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-sm font-medium mb-1">
-              {{ t('village.calendar.eventTitle') }}
+              {{ t('village.calendar.icon') }}
             </label>
-            <InputText v-model="editForm.title" class="w-full" />
+            <InputText v-model="editForm.iconEmoji" maxlength="4" class="w-full" />
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">
-              {{ t('village.calendar.description') }}
+              {{ t('village.calendar.color') }}
             </label>
-            <Textarea v-model="editForm.description" class="w-full" rows="3" />
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-sm font-medium mb-1">
-                {{ t('village.calendar.eventDate') }}
-              </label>
-              <InputText v-model="editForm.eventDate" type="date" class="w-full" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">
-                {{ t('village.calendar.eventEndDate') }}
-              </label>
-              <InputText v-model="editForm.eventEndDate" type="date" class="w-full" />
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-sm font-medium mb-1">
-                {{ t('village.calendar.icon') }}
-              </label>
-              <InputText v-model="editForm.iconEmoji" maxlength="4" class="w-full" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium mb-1">
-                {{ t('village.calendar.color') }}
-              </label>
-              <InputText v-model="editForm.colorHex" type="color" class="w-full h-10" />
-            </div>
-          </div>
-          <div class="flex items-center gap-2">
-            <Checkbox
-              v-model="editForm.isAnnualRecurring"
-              input-id="calendar-edit-recur"
-              binary
-            />
-            <label for="calendar-edit-recur" class="text-sm">
-              {{ t('village.calendar.annualRecurring') }}
-            </label>
+            <InputText v-model="editForm.colorHex" type="color" class="w-full h-10" />
           </div>
         </div>
-        <template #footer>
-          <Button
-            :label="t('village.action.cancel')"
-            severity="secondary"
-            text
-            @click="showEditDialog = false"
+        <div class="flex items-center gap-2">
+          <Checkbox
+            v-model="editForm.isAnnualRecurring"
+            input-id="calendar-edit-recur"
+            binary
           />
-          <Button
-            :label="t('village.action.save')"
-            icon="pi pi-check"
-            severity="primary"
-            @click="submitEdit"
-          />
-        </template>
-      </Dialog>
-
-      <!-- 通報ダイアログ — 対象は村本体 (VILLAGE) -->
-      <VillageReportDialog
-        v-model:visible="showReportDialog"
-        :village-id="village.id"
-        target-type="VILLAGE"
-        :target-ref-id="village.id"
-      />
-
-      <!-- 村本体編集ダイアログ — 村長のみ（VillageHeader 側で制御） -->
-      <VillageEditDialog
-        v-model:visible="showVillageEditDialog"
-        :village="village"
-        @updated="onVillageUpdated"
-      />
-    </template>
+          <label for="calendar-edit-recur" class="text-sm">
+            {{ t('village.calendar.annualRecurring') }}
+          </label>
+        </div>
+      </div>
+      <template #footer>
+        <Button
+          :label="t('village.action.cancel')"
+          severity="secondary"
+          text
+          @click="showEditDialog = false"
+        />
+        <Button
+          :label="t('village.action.save')"
+          icon="pi pi-check"
+          severity="primary"
+          @click="submitEdit"
+        />
+      </template>
+    </Dialog>
   </div>
 </template>
