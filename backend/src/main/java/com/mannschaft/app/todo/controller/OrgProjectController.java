@@ -73,7 +73,7 @@ public class OrgProjectController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Long orgId = organizationService.resolveOrgId(slug);
-        // TODO(出陣): projectAccessGuard.validateOrgMembership(SecurityUtils.getCurrentUserId(), orgId);
+        projectAccessGuard.validateOrgMembership(SecurityUtils.getCurrentUserId(), orgId);
         return ResponseEntity.ok(projectService.listProjects(
                 TodoScopeType.ORGANIZATION, orgId, ProjectStatus.valueOf(status), page, size));
     }
@@ -88,7 +88,7 @@ public class OrgProjectController {
             @PathVariable String slug,
             @Valid @RequestBody CreateProjectRequest request) {
         Long orgId = organizationService.resolveOrgId(slug);
-        // TODO(出陣): projectAccessGuard.validateOrgMembership(SecurityUtils.getCurrentUserId(), orgId);
+        projectAccessGuard.validateOrgMembership(SecurityUtils.getCurrentUserId(), orgId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(projectService.createProject(
                         TodoScopeType.ORGANIZATION, orgId, request, SecurityUtils.getCurrentUserId()));
@@ -104,7 +104,7 @@ public class OrgProjectController {
             @PathVariable String slug,
             @PathVariable Long id) {
         Long orgId = organizationService.resolveOrgId(slug);
-        // TODO(出陣): projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
+        projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
         return ResponseEntity.ok(projectService.getProject(id));
     }
 
@@ -119,7 +119,7 @@ public class OrgProjectController {
             @PathVariable Long id,
             @Valid @RequestBody UpdateProjectRequest request) {
         Long orgId = organizationService.resolveOrgId(slug);
-        // TODO(出陣): projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
+        projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
         return ResponseEntity.ok(projectService.updateProject(id, request));
     }
 
@@ -133,7 +133,7 @@ public class OrgProjectController {
             @PathVariable String slug,
             @PathVariable Long id) {
         Long orgId = organizationService.resolveOrgId(slug);
-        // TODO(出陣): projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
+        projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
         projectService.deleteProject(id);
         return ResponseEntity.noContent().build();
     }
@@ -148,7 +148,7 @@ public class OrgProjectController {
             @PathVariable String slug,
             @PathVariable Long id) {
         Long orgId = organizationService.resolveOrgId(slug);
-        // TODO(出陣): projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
+        projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
         return ResponseEntity.ok(projectService.completeProject(id));
     }
 
@@ -162,7 +162,7 @@ public class OrgProjectController {
             @PathVariable String slug,
             @PathVariable Long id) {
         Long orgId = organizationService.resolveOrgId(slug);
-        // TODO(出陣): projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
+        projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
         return ResponseEntity.ok(projectService.reopenProject(id));
     }
 
@@ -178,7 +178,7 @@ public class OrgProjectController {
             @PathVariable String slug,
             @PathVariable Long id) {
         Long orgId = organizationService.resolveOrgId(slug);
-        // TODO(出陣): projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
+        projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
         return ResponseEntity.ok(projectService.listMilestones(id));
     }
 
@@ -193,7 +193,7 @@ public class OrgProjectController {
             @PathVariable Long id,
             @Valid @RequestBody CreateMilestoneRequest request) {
         Long orgId = organizationService.resolveOrgId(slug);
-        // TODO(出陣): projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
+        projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(projectService.createMilestone(id, request));
     }
@@ -210,7 +210,7 @@ public class OrgProjectController {
             @PathVariable Long mid,
             @Valid @RequestBody UpdateMilestoneRequest request) {
         Long orgId = organizationService.resolveOrgId(slug);
-        // TODO(出陣): projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
+        projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
         return ResponseEntity.ok(projectService.updateMilestone(id, mid, request));
     }
 
@@ -225,7 +225,7 @@ public class OrgProjectController {
             @PathVariable Long id,
             @PathVariable Long mid) {
         Long orgId = organizationService.resolveOrgId(slug);
-        // TODO(出陣): projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
+        projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
         projectService.deleteMilestone(id, mid);
         return ResponseEntity.noContent().build();
     }
@@ -241,7 +241,7 @@ public class OrgProjectController {
             @PathVariable Long id,
             @PathVariable Long mid) {
         Long orgId = organizationService.resolveOrgId(slug);
-        // TODO(出陣): projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
+        projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
         return ResponseEntity.ok(projectService.completeMilestone(id, mid));
     }
 
@@ -255,7 +255,7 @@ public class OrgProjectController {
             @PathVariable String slug,
             @PathVariable Long id) {
         Long orgId = organizationService.resolveOrgId(slug);
-        // TODO(出陣): projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
+        projectAccessGuard.validateOrgProjectAccess(SecurityUtils.getCurrentUserId(), orgId, id);
         return ResponseEntity.ok(todoService.listProjectTodos(id));
     }
 }

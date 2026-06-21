@@ -111,8 +111,16 @@ public class ProjectAccessGuard {
      * @param projectId パス上のプロジェクト ID
      */
     public void validateOrgProjectAccess(Long userId, Long orgId, Long projectId) {
-        // TODO(出陣): validateTeamProjectAccess を写経し ORGANIZATION スコープ整合性 + membership を検証する。
-        // 現状は空実装（何もしない） → IDOR / 非メンバーテストが red。
+        // プロジェクトが存在し、組織スコープ・スコープ ID が一致することを検証
+        ProjectEntity project = projectRepository.findByIdAndDeletedAtIsNull(projectId)
+                .orElseThrow(() -> new BusinessException(TodoErrorCode.PROJECT_NOT_FOUND));
+        if (project.getScopeType() != TodoScopeType.ORGANIZATION || !project.getScopeId().equals(orgId)) {
+            // IDOR 防御: 他スコープ ID を推測して叩くケースを NOT_FOUND にまとめる
+            throw new BusinessException(TodoErrorCode.PROJECT_NOT_FOUND);
+        }
+
+        // メンバーシップ検証（adminは要求しない — 一般メンバーの CRUD を許可）
+        accessControlService.checkMembership(userId, orgId, "ORGANIZATION");
     }
 
     /**
@@ -127,7 +135,7 @@ public class ProjectAccessGuard {
      * @param orgId  パス上の組織内部 ID（resolveOrgId 済み）
      */
     public void validateOrgMembership(Long userId, Long orgId) {
-        // TODO(出陣): accessControlService.checkMembership(userId, orgId, "ORGANIZATION") を呼ぶ。
-        // 現状は空実装（何もしない） → 非メンバーテストが red。
+        // メンバーシップ検証（一覧・作成 EP 用・projectId なし）
+        accessControlService.checkMembership(userId, orgId, "ORGANIZATION");
     }
 }

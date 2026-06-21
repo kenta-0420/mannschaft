@@ -775,6 +775,45 @@
         "team_desc": "チームメンバーと共有して共同管理できます。チームページの「プロジェクト」タブからアクセスします。"
       },
       "back_to_projects": "プロジェクト一覧に戻る"
+    },
+    "org_page": {
+      "title": "プロジェクト",
+      "empty": "プロジェクトがありません",
+      "back_label": "プロジェクト一覧"
+    },
+    "error": {
+      "fetch_failed": "プロジェクトの取得に失敗しました",
+      "create_failed": "プロジェクトの作成に失敗しました",
+      "update_failed": "更新に失敗しました",
+      "delete_failed": "削除に失敗しました",
+      "status_change_failed": "ステータスの変更に失敗しました",
+      "milestone_save_failed": "マイルストーンの保存に失敗しました"
+    },
+    "status": {
+      "active": "進行中",
+      "completed": "完了",
+      "archived": "アーカイブ"
+    },
+    "action": {
+      "edit": "編集",
+      "complete": "完了にする",
+      "reopen": "再開"
+    },
+    "stats": {
+      "progress": "進捗",
+      "tasks": "タスク",
+      "milestones": "マイルストーン",
+      "due_date": "期限",
+      "no_due_date": "未設定"
+    },
+    "task_unit": "タスク",
+    "days_remaining": "あと{n}日",
+    "days_overdue": "{n}日超過",
+    "related_tasks": "関連タスク",
+    "no_related_tasks": "このプロジェクトに関連するタスクはありません",
+    "widget": {
+      "label": "プロジェクト",
+      "description": "プロジェクトの進捗状況と一覧"
     }
   },
   "inviteToken": {
