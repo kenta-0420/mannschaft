@@ -68,7 +68,14 @@
       "postal_code": "Postleitzahl",
       "postal_placeholder": "000-0000",
       "searchable_label": "In Benutzersuche anzeigen",
-      "searchable_description": "Wenn aktiviert, können andere Benutzer Sie über die Suche finden"
+      "searchable_description": "Wenn aktiviert, können andere Benutzer Sie über die Suche finden",
+      "toast": {
+        "save_success": "Profil aktualisiert",
+        "save_error": "Profil konnte nicht aktualisiert werden",
+        "avatar_size_error": "Die Dateigröße darf maximal 5 MB betragen",
+        "avatar_success": "Avatar aktualisiert",
+        "avatar_error": "Avatar konnte nicht hochgeladen werden"
+      }
     },
     "email": {
       "section_title": "E-Mail-Adresse ändern",
@@ -78,7 +85,11 @@
       "current_password": "Aktuelles Passwort",
       "send_confirmation": "Bestätigungs-E-Mail senden",
       "sent_title": "Bestätigungs-E-Mail gesendet",
-      "sent_description": "Eine Bestätigungs-E-Mail wurde an {email} gesendet. Klicken Sie auf den Link, um die Änderung abzuschließen."
+      "sent_description": "Eine Bestätigungs-E-Mail wurde an {email} gesendet. Klicken Sie auf den Link, um die Änderung abzuschließen.",
+      "toast": {
+        "send_success": "Bestätigungs-E-Mail gesendet",
+        "send_error": "Anfrage zur Änderung der E-Mail-Adresse fehlgeschlagen"
+      }
     },
     "password": {
       "section_title_change": "Passwort ändern",
@@ -90,12 +101,22 @@
       "change_button": "Passwort ändern",
       "set_button": "Passwort festlegen",
       "change_success": "Passwort erfolgreich geändert",
-      "change_error": "Passwort konnte nicht geändert werden. Bitte überprüfen Sie Ihr aktuelles Passwort"
+      "change_error": "Passwort konnte nicht geändert werden. Bitte überprüfen Sie Ihr aktuelles Passwort",
+      "toast": {
+        "change_success": "Passwort erfolgreich geändert",
+        "setup_success": "Passwort erfolgreich festgelegt",
+        "change_error": "Passwort konnte nicht geändert werden. Bitte überprüfen Sie Ihr aktuelles Passwort",
+        "setup_error": "Passwort konnte nicht festgelegt werden"
+      }
     },
     "locale": {
       "section_title": "Sprache & Zeitzone",
       "display_language": "Anzeigesprache",
-      "timezone": "Zeitzone"
+      "timezone": "Zeitzone",
+      "toast": {
+        "save_success": "Sprache & Zeitzone aktualisiert",
+        "save_error": "Sprache & Zeitzone konnten nicht aktualisiert werden"
+      }
     },
     "appearance": {
       "section_title": "Erscheinungsbild",
@@ -130,6 +151,19 @@
       "session": {
         "device_label": "{browser} unter {os}",
         "unknown_device": "Unbekanntes Gerät"
+      },
+      "toast": {
+        "setup_2fa_error": "2FA-Einrichtung konnte nicht gestartet werden",
+        "regenerate_success": "Backup-Codes neu generiert",
+        "regenerate_error": "Backup-Codes konnten nicht neu generiert werden",
+        "revoke_success": "Sitzung widerrufen",
+        "revoke_error": "Sitzung konnte nicht widerrufen werden",
+        "revoke_all_success": "Von allen Geräten abgemeldet",
+        "revoke_all_error": "Abmeldung von allen Geräten fehlgeschlagen",
+        "delete_key_success": "Sicherheitsschlüssel gelöscht",
+        "delete_key_error": "Sicherheitsschlüssel konnte nicht gelöscht werden",
+        "rename_success": "Gerätename aktualisiert",
+        "rename_error": "Gerätename konnte nicht aktualisiert werden"
       }
     },
     "linked_accounts": {
@@ -143,12 +177,24 @@
       "line_linked_at": "Verbunden: {date}",
       "line_unlink_button": "LINE trennen",
       "line_not_linked": "Kein LINE-Konto verbunden",
-      "line_link_instruction": "Verbinden Sie LINE über die LINE-App"
+      "line_link_instruction": "Verbinden Sie LINE über die LINE-App",
+      "toast": {
+        "unlink_success": "{provider} getrennt",
+        "unlink_error": "Trennung fehlgeschlagen",
+        "line_unlink_success": "LINE getrennt",
+        "line_unlink_error": "LINE-Trennung fehlgeschlagen"
+      }
     },
     "member_card": {
       "section_title": "QR-Mitgliedskarte",
       "tab_list": "Kartenliste",
-      "tab_history": "Check-in-Verlauf"
+      "tab_history": "Check-in-Verlauf",
+      "toast": {
+        "suspend_success": "Mitgliedskarte gesperrt",
+        "suspend_error": "Sperrung fehlgeschlagen",
+        "reactivate_success": "Mitgliedskarte reaktiviert",
+        "reactivate_error": "Reaktivierung fehlgeschlagen"
+      }
     },
     "social_profile": {
       "section_title": "Soziale Profile",
@@ -164,7 +210,14 @@
       "bio_label": "Biografie",
       "bio_count": "{count}/300",
       "update_button": "Aktualisieren",
-      "create_submit_button": "Erstellen"
+      "create_submit_button": "Erstellen",
+      "toast": {
+        "update_success": "Profil aktualisiert",
+        "create_success": "Profil erstellt",
+        "save_error": "Speichern fehlgeschlagen",
+        "delete_success": "Profil gelöscht",
+        "delete_error": "Löschen fehlgeschlagen"
+      }
     },
     "seal": {
       "section_title": "Elektronisches Siegel",
@@ -172,7 +225,13 @@
       "tab_defaults": "Standardeinstellungen",
       "tab_history": "Stempelverlauf",
       "regenerate_button": "Siegel neu generieren",
-      "regenerate_hint": "Siegel werden automatisch aus Ihrem registrierten Namen generiert (bis zu 3 Mal pro Stunde)"
+      "regenerate_hint": "Siegel werden automatisch aus Ihrem registrierten Namen generiert (bis zu 3 Mal pro Stunde)",
+      "toast": {
+        "regenerate_success": "Siegel neu generiert",
+        "regenerate_error": "Neu generieren fehlgeschlagen (bis zu 3 Mal pro Stunde)",
+        "save_defaults_success": "Standardeinstellungen gespeichert",
+        "save_defaults_error": "Einstellungen konnten nicht gespeichert werden"
+      }
     },
     "login_history": {
       "section_title": "Anmeldeverlauf",
@@ -198,7 +257,16 @@
       "org_calendars_label": "Organisations-Kalender",
       "save_settings_button": "Einstellungen speichern",
       "not_connected_description": "Verbinden Sie Ihr Google-Konto, um Kalender zu synchronisieren",
-      "connect_button": "Google-Konto verbinden"
+      "connect_button": "Google-Konto verbinden",
+      "toast": {
+        "connect_error": "Verbindung fehlgeschlagen",
+        "disconnect_success": "Verbindung getrennt",
+        "disconnect_error": "Trennung fehlgeschlagen",
+        "save_success": "Synchronisationseinstellungen gespeichert",
+        "save_error": "Speichern fehlgeschlagen",
+        "sync_success": "Synchronisation abgeschlossen",
+        "sync_error": "Synchronisation fehlgeschlagen"
+      }
     },
     "delete_account": {
       "section_title": "Konto löschen",

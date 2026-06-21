@@ -1,6 +1,7 @@
 export function useAccountProfile() {
   const api = useApi()
   const notification = useNotification()
+  const { t } = useI18n()
   const { changeLocale } = useLocale()
   const authStore = useAuthStore()
   const {
@@ -95,9 +96,9 @@ export function useAccountProfile() {
         postalCode: profile.value.postalCode || undefined,
         isSearchable: profile.value.isSearchable,
       })
-      notification.success('プロフィールを更新しました')
+      notification.success(t('settings.profile.toast.save_success'))
     } catch {
-      notification.error('プロフィールの更新に失敗しました')
+      notification.error(t('settings.profile.toast.save_error'))
     } finally {
       savingProfile.value = false
     }
@@ -107,7 +108,7 @@ export function useAccountProfile() {
     const file = (event.target as HTMLInputElement).files?.[0]
     if (!file) return
     if (file.size > 5 * 1024 * 1024) {
-      notification.error('ファイルサイズは5MB以下にしてください')
+      notification.error(t('settings.profile.toast.avatar_size_error'))
       return
     }
     const formData = new FormData()
@@ -118,9 +119,9 @@ export function useAccountProfile() {
         body: formData,
       })
       profile.value.avatarUrl = res.data.avatarUrl
-      notification.success('アバターを更新しました')
+      notification.success(t('settings.profile.toast.avatar_success'))
     } catch {
-      notification.error('アバターのアップロードに失敗しました')
+      notification.error(t('settings.profile.toast.avatar_error'))
     }
   }
 
@@ -134,9 +135,9 @@ export function useAccountProfile() {
       if (authStore.user) {
         await authStore.setUser({ ...authStore.user, locale: profile.value.locale })
       }
-      notification.success('言語・タイムゾーンを更新しました')
+      notification.success(t('settings.locale.toast.save_success'))
     } catch {
-      notification.error('言語・タイムゾーンの更新に失敗しました')
+      notification.error(t('settings.locale.toast.save_error'))
     } finally {
       savingLocale.value = false
     }
@@ -150,9 +151,9 @@ export function useAccountProfile() {
         currentPassword: emailForm.value.currentPassword,
       })
       emailSent.value = true
-      notification.success('確認メールを送信しました')
+      notification.success(t('settings.email.toast.send_success'))
     } catch {
-      notification.error('メールアドレスの変更リクエストに失敗しました')
+      notification.error(t('settings.email.toast.send_error'))
     } finally {
       submittingEmail.value = false
     }
@@ -172,13 +173,15 @@ export function useAccountProfile() {
       }
       passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
       notification.success(
-        profile.value.hasPassword ? 'パスワードを変更しました' : 'パスワードを設定しました',
+        profile.value.hasPassword
+          ? t('settings.password.toast.change_success')
+          : t('settings.password.toast.setup_success'),
       )
     } catch {
       notification.error(
         profile.value.hasPassword
-          ? 'パスワードの変更に失敗しました。現在のパスワードを確認してください'
-          : 'パスワードの設定に失敗しました',
+          ? t('settings.password.toast.change_error')
+          : t('settings.password.toast.setup_error'),
       )
     } finally {
       submittingPassword.value = false

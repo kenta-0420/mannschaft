@@ -68,7 +68,14 @@
       "postal_code": "郵便番号",
       "postal_placeholder": "000-0000",
       "searchable_label": "ユーザー検索への表示",
-      "searchable_description": "オンにすると他のユーザーから検索で見つけられます"
+      "searchable_description": "オンにすると他のユーザーから検索で見つけられます",
+      "toast": {
+        "save_success": "プロフィールを更新しました",
+        "save_error": "プロフィールの更新に失敗しました",
+        "avatar_size_error": "ファイルサイズは5MB以下にしてください",
+        "avatar_success": "アバターを更新しました",
+        "avatar_error": "アバターのアップロードに失敗しました"
+      }
     },
     "email": {
       "section_title": "メールアドレス変更",
@@ -78,7 +85,11 @@
       "current_password": "現在のパスワード",
       "send_confirmation": "確認メールを送信",
       "sent_title": "確認メールを送信しました",
-      "sent_description": "{email} に確認メールを送信しました。リンクをクリックして変更を完了してください。"
+      "sent_description": "{email} に確認メールを送信しました。リンクをクリックして変更を完了してください。",
+      "toast": {
+        "send_success": "確認メールを送信しました",
+        "send_error": "メールアドレスの変更リクエストに失敗しました"
+      }
     },
     "password": {
       "section_title_change": "パスワード変更",
@@ -90,12 +101,22 @@
       "change_button": "パスワードを変更",
       "set_button": "パスワードを設定",
       "change_success": "パスワードを変更しました",
-      "change_error": "パスワードの変更に失敗しました。現在のパスワードを確認してください"
+      "change_error": "パスワードの変更に失敗しました。現在のパスワードを確認してください",
+      "toast": {
+        "change_success": "パスワードを変更しました",
+        "setup_success": "パスワードを設定しました",
+        "change_error": "パスワードの変更に失敗しました。現在のパスワードを確認してください",
+        "setup_error": "パスワードの設定に失敗しました"
+      }
     },
     "locale": {
       "section_title": "言語・タイムゾーン",
       "display_language": "表示言語",
-      "timezone": "タイムゾーン"
+      "timezone": "タイムゾーン",
+      "toast": {
+        "save_success": "言語・タイムゾーンを更新しました",
+        "save_error": "言語・タイムゾーンの更新に失敗しました"
+      }
     },
     "appearance": {
       "section_title": "外観",
@@ -130,6 +151,19 @@
       "session": {
         "device_label": "{os} の {browser}",
         "unknown_device": "不明なデバイス"
+      },
+      "toast": {
+        "setup_2fa_error": "2FAセットアップの開始に失敗しました",
+        "regenerate_success": "バックアップコードを再生成しました",
+        "regenerate_error": "バックアップコードの再生成に失敗しました",
+        "revoke_success": "セッションを無効化しました",
+        "revoke_error": "セッションの無効化に失敗しました",
+        "revoke_all_success": "全デバイスからログアウトしました",
+        "revoke_all_error": "全デバイスログアウトに失敗しました",
+        "delete_key_success": "セキュリティキーを削除しました",
+        "delete_key_error": "セキュリティキーの削除に失敗しました",
+        "rename_success": "デバイス名を更新しました",
+        "rename_error": "デバイス名の更新に失敗しました"
       }
     },
     "linked_accounts": {
@@ -143,12 +177,24 @@
       "line_linked_at": "連携日: {date}",
       "line_unlink_button": "LINE連携を解除",
       "line_not_linked": "LINEアカウントは連携されていません",
-      "line_link_instruction": "LINE連携はLINEアプリから行ってください"
+      "line_link_instruction": "LINE連携はLINEアプリから行ってください",
+      "toast": {
+        "unlink_success": "{provider}の連携を解除しました",
+        "unlink_error": "連携解除に失敗しました",
+        "line_unlink_success": "LINE連携を解除しました",
+        "line_unlink_error": "LINE連携の解除に失敗しました"
+      }
     },
     "member_card": {
       "section_title": "QR会員証",
       "tab_list": "会員証一覧",
-      "tab_history": "チェックイン履歴"
+      "tab_history": "チェックイン履歴",
+      "toast": {
+        "suspend_success": "会員証を一時停止しました",
+        "suspend_error": "一時停止に失敗しました",
+        "reactivate_success": "会員証を再開しました",
+        "reactivate_error": "再開に失敗しました"
+      }
     },
     "social_profile": {
       "section_title": "ソーシャルプロフィール",
@@ -164,7 +210,14 @@
       "bio_label": "自己紹介",
       "bio_count": "{count}/300",
       "update_button": "更新",
-      "create_submit_button": "作成"
+      "create_submit_button": "作成",
+      "toast": {
+        "update_success": "プロフィールを更新しました",
+        "create_success": "プロフィールを作成しました",
+        "save_error": "保存に失敗しました",
+        "delete_success": "プロフィールを削除しました",
+        "delete_error": "削除に失敗しました"
+      }
     },
     "seal": {
       "section_title": "電子印鑑",
@@ -172,7 +225,13 @@
       "tab_defaults": "デフォルト設定",
       "tab_history": "押印履歴",
       "regenerate_button": "印鑑を再生成",
-      "regenerate_hint": "印鑑は登録姓名から自動生成されます（1時間に3回まで）"
+      "regenerate_hint": "印鑑は登録姓名から自動生成されます（1時間に3回まで）",
+      "toast": {
+        "regenerate_success": "印鑑を再生成しました",
+        "regenerate_error": "再生成に失敗しました（1時間に3回まで）",
+        "save_defaults_success": "デフォルト設定を保存しました",
+        "save_defaults_error": "設定の保存に失敗しました"
+      }
     },
     "login_history": {
       "section_title": "ログイン履歴",
@@ -198,7 +257,16 @@
       "org_calendars_label": "組織カレンダー",
       "save_settings_button": "設定を保存",
       "not_connected_description": "Googleアカウントと連携して、カレンダーを同期できます",
-      "connect_button": "Googleアカウントに接続"
+      "connect_button": "Googleアカウントに接続",
+      "toast": {
+        "connect_error": "接続に失敗しました",
+        "disconnect_success": "連携を解除しました",
+        "disconnect_error": "解除に失敗しました",
+        "save_success": "同期設定を保存しました",
+        "save_error": "保存に失敗しました",
+        "sync_success": "同期を実行しました",
+        "sync_error": "同期に失敗しました"
+      }
     },
     "delete_account": {
       "section_title": "アカウント削除",
