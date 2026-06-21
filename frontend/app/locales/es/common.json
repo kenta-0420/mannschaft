@@ -714,7 +714,66 @@
     "reorder_failed": "Error al reordenar",
     "my_projects": "Mis proyectos",
     "my_projects_description": "Gestión personal de tareas y objetivos",
-    "no_my_projects": "Aún no hay proyectos personales"
+    "no_my_projects": "Aún no hay proyectos personales",
+    "create_button": "Crear proyecto",
+    "dialog": {
+      "create_title": "Crear proyecto",
+      "edit_title": "Editar proyecto",
+      "title_label": "Título",
+      "title_placeholder": "Nombre del proyecto",
+      "description_label": "Descripción",
+      "due_date_label": "Fecha límite",
+      "cancel": "Cancelar",
+      "create": "Crear",
+      "update": "Actualizar"
+    },
+    "appearance": {
+      "emoji_label": "Emoji",
+      "color_label": "Color",
+      "none": "Ninguno",
+      "custom_emoji": "Personalizado",
+      "custom_color": "Color personalizado",
+      "current": "Actual"
+    },
+    "guide": {
+      "button": "Cómo usar",
+      "page_title": "Cómo usar Proyectos",
+      "description": "Aprenda a utilizar la función de proyectos.",
+      "what": {
+        "title": "¿Qué es un proyecto?",
+        "body": "Un proyecto es una unidad para gestionar tareas (TODOs) e hitos juntos. Puede establecer objetivos y plazos, y realizar un seguimiento del progreso de un vistazo."
+      },
+      "create": {
+        "title": "Cómo crear un proyecto",
+        "body": "Haga clic en 'Crear proyecto' y complete la siguiente información.",
+        "item_title": "Título (obligatorio): Nombre del proyecto",
+        "item_emoji": "Emoji: Icono que representa el proyecto (elegir de los presets)",
+        "item_color": "Color: Color de identificación de la tarjeta (elegir de los presets)",
+        "item_due_date": "Fecha límite: Fecha objetivo de finalización (opcional)"
+      },
+      "milestone": {
+        "title": "Hitos y puertas",
+        "body": "Los hitos son objetivos intermedios dentro de un proyecto. Cuando la función de puertas está activada, el siguiente hito se bloquea hasta que se completa el anterior.",
+        "completion_mode_label": "Sobre el modo de finalización",
+        "mode_auto": "Completar automáticamente",
+        "mode_auto_desc": "Se marca automáticamente como logrado cuando se completan todos los TODOs del hito.",
+        "mode_manual": "Manual",
+        "mode_manual_desc": "Marcar manualmente como logrado independientemente del estado de los TODOs."
+      },
+      "progress": {
+        "title": "Cómo leer el progreso",
+        "body": "Las tarjetas de proyecto muestran una barra de progreso, tasa de finalización y días restantes. La barra de progreso se calcula automáticamente a partir de TODOs completados / total."
+      },
+      "scope": {
+        "title": "Proyectos personales vs. de equipo",
+        "body": "Los proyectos tienen dos tipos de alcance: 'personal' y 'equipo'.",
+        "personal_title": "Proyecto personal",
+        "personal_desc": "Solo usted puede verlo y gestionarlo. Acceso desde 'Mi página' → 'Proyectos'.",
+        "team_title": "Proyecto de equipo",
+        "team_desc": "Comparta y co-gestione con los miembros del equipo. Acceso desde la pestaña 'Proyectos' en la página del equipo."
+      },
+      "back_to_projects": "Volver a la lista de proyectos"
+    }
   },
   "inviteToken": {
     "printQrPdf": "Imprimir QR PDF",
@@ -1511,6 +1570,7 @@
       "prevPage": "Página anterior",
       "nextPage": "Página siguiente",
       "reorder": "Cambiar orden de visualización",
+      "goToScopePage": "Ir a la página del equipo/organización",
       "empty": "No perteneces a ningún equipo u organización",
       "folderEmpty": "No hay alcances en esta carpeta",
       "loadError": "Error al cargar la lista de etiquetas"
