@@ -33,7 +33,10 @@ public enum NotificationErrorCode implements ErrorCode {
     ALREADY_UNREAD("NOTIFICATION_007", "通知は既に未読です", Severity.INFO),
 
     /** スヌーズ日時が過去 */
-    INVALID_SNOOZE_TIME("NOTIFICATION_008", "スヌーズ日時は未来である必要があります", Severity.WARN);
+    INVALID_SNOOZE_TIME("NOTIFICATION_008", "スヌーズ日時は未来である必要があります", Severity.WARN),
+
+    /** 通知種別設定リクエストが不正（未知の種別・条件付き必須欠落） */
+    INVALID_TYPE_PREFERENCE("NOTIFICATION_009", "通知種別設定のリクエストが不正です", Severity.WARN);
 
     private final String code;
     private final String message;

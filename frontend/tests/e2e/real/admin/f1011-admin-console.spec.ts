@@ -86,7 +86,8 @@ function authHeaders(token: string): Record<string, string> {
  */
 async function installApiBridge(page: Page, token: string): Promise<void> {
   // page.goto 前に設定するケースのため、origin を固定値で指定する（about:blank 対策）
-  const pageOrigin = 'http://localhost:3001'
+  // BASE_URL 環境変数が設定されている場合はそちらを使う（本陣:3000 / 検証 worktree:3001 等）
+  const pageOrigin = process.env.BASE_URL ?? 'http://localhost:3000'
   // 正規表現で /api/v1/ を含む全 URL をキャッチ
   // （NUXT_PUBLIC_API_BASE=http://127.0.0.1:8080 の場合、ブラウザが絶対 URL で fetch する。
   //   glob '**/api/v1/**' がドメイン付き絶対 URL にマッチしない場合の保険）
@@ -301,21 +302,22 @@ async function selectScopeTabBySlug(
 }
 
 /**
- * 管理者レンズトグルを ON にし、ウィジェットグリッドが描画されるまで待つ。
- * トグルが ON（aria-checked=true）になったことを確認してからグリッドを待つことで、
+ * 管理者レンズ（管理者ボタン）を ON にし、ウィジェットグリッドが描画されるまで待つ。
+ * トグルが ON（aria-pressed=true）になったことを確認してからグリッドを待つことで、
  * クリック未着・データロード遅延による取りこぼし（flake）を防ぐ。
+ * PR #1759 でコントラクト変更: role=switch/aria-checked → 2ボタン/aria-pressed。
  */
 async function openAdminGrid(page: Page, scope: 'TEAM' | 'ORGANIZATION'): Promise<void> {
   const toggle = page.getByTestId(`admin-lens-toggle-${scope}`)
   await expect(toggle, `レンズトグル(${scope})が描画されること`).toBeVisible({ timeout: 20_000 })
   // タグ選択直後はパネルのデータ再ロード再描画が走っており、クリックが稀に取りこぼされる
-  // （aria-checked が反転しない）ことがある。ON になるまでクリックを数回試行する
+  // （aria-pressed が反転しない）ことがある。ON になるまでクリックを数回試行する
   // （機能が本当に壊れていれば ON にならず 30s で失敗するため、症状は隠さない）。
   await expect(async () => {
-    if ((await toggle.getAttribute('aria-checked')) !== 'true') {
+    if ((await toggle.getAttribute('aria-pressed')) !== 'true') {
       await toggle.click()
     }
-    await expect(toggle).toHaveAttribute('aria-checked', 'true', { timeout: 3_000 })
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true', { timeout: 3_000 })
   }, `レンズトグル(${scope})が ON になること`).toPass({ timeout: 30_000 })
   await expect(
     page.getByTestId(`admin-widget-grid-${scope}`),
@@ -583,5 +585,67 @@ test.describe('F10.1.1 管理者レンズ — 導線遷移（要素1の成果検
       await gotoDashboardScope(page, 'ORGANIZATION', orgSlug)
       await openAdminGrid(page, 'ORGANIZATION')
     }
+  })
+})
+
+// ===========================================================================
+// F10.1.1 管理者レンズ — 2 ボタン表示＋スコープ導線（#1759 追従）
+// ===========================================================================
+test.describe('F10.1.1 管理者レンズ — 2ボタン表示＋スコープ導線（#1759 追従）', () => {
+  test('LENS-2BTN-TEAM-001: 両ボタン表示＋aria-pressed がレンズ状態を反映', async ({ page }) => {
+    await loginViaApiBridge(page, ADMIN_EMAIL, ADMIN_PASSWORD)
+    await gotoDashboardScope(page, 'TEAM', teamSlug)
+
+    const memberBtn = page.getByTestId('admin-lens-member-TEAM')
+    const adminBtn = page.getByTestId('admin-lens-toggle-TEAM')
+
+    // 両ボタンが描画されていること
+    await expect(memberBtn, 'メンバーボタンが visible').toBeVisible({ timeout: 15_000 })
+    await expect(adminBtn, '管理者ボタンが visible').toBeVisible({ timeout: 15_000 })
+
+    // 既定 OFF: メンバーボタンが選択状態（aria-pressed=true）、管理者ボタンは非選択（false）
+    await expect(memberBtn, '既定: メンバーボタン aria-pressed=true').toHaveAttribute('aria-pressed', 'true')
+    await expect(adminBtn, '既定: 管理者ボタン aria-pressed=false').toHaveAttribute('aria-pressed', 'false')
+
+    // 管理者ボタンをクリック → 管理者 ON、メンバー OFF、グリッド visible
+    await adminBtn.click()
+    await expect(adminBtn, 'クリック後 管理者ボタン aria-pressed=true').toHaveAttribute('aria-pressed', 'true', {
+      timeout: 8_000,
+    })
+    await expect(memberBtn, 'クリック後 メンバーボタン aria-pressed=false').toHaveAttribute('aria-pressed', 'false')
+    await expect(
+      page.getByTestId('admin-widget-grid-TEAM'),
+      '管理者グリッドが visible',
+    ).toBeVisible({ timeout: 10_000 })
+
+    // メンバーボタンをクリック → 反転（管理者 false・メンバー true）、グリッド hidden
+    await memberBtn.click()
+    await expect(adminBtn, 'メンバー選択後 管理者ボタン aria-pressed=false').toHaveAttribute(
+      'aria-pressed',
+      'false',
+      { timeout: 8_000 },
+    )
+    await expect(memberBtn, 'メンバー選択後 メンバーボタン aria-pressed=true').toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await expect(
+      page.getByTestId('admin-widget-grid-TEAM'),
+      '管理者グリッドが hidden',
+    ).toBeHidden({ timeout: 10_000 })
+  })
+
+  test('SCOPELINK-TEAM-001: スコープページ導線 → チームページへ遷移', async ({ page }) => {
+    await loginViaApiBridge(page, ADMIN_EMAIL, ADMIN_PASSWORD)
+    await gotoDashboardScope(page, 'TEAM', teamSlug)
+
+    // スコープリンクボタンが visible であること
+    const goLink = page.getByTestId('scope-tab-go-to-page-TEAM')
+    await expect(goLink, 'scope-tab-go-to-page-TEAM が visible').toBeVisible({ timeout: 15_000 })
+
+    // クリックでチームページへ遷移
+    await goLink.click()
+    await page.waitForURL(`**/teams/${teamSlug}`, { timeout: 15_000 })
+    expect(page.url(), 'URL に /teams/{slug} を含む').toContain(`/teams/${teamSlug}`)
   })
 })
