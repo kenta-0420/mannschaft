@@ -27,6 +27,10 @@ const teamStore = useTeamStore()
 const orgStore = useOrganizationStore()
 
 const loading = ref(true)
+// SSR/CSR 初期マークアップを一致させるためのマウントフラグ。
+// SSR では authStore.user が未復元で userId が undefined になるため、
+// マウント前は全コンテンツをローディング表示に統一して Hydration mismatch を防ぐ。
+const isMounted = ref(false)
 const userId = computed(() => authStore.user?.id)
 
 const {
@@ -128,6 +132,7 @@ const {
 } = useAccountGcal()
 
 onMounted(async () => {
+  isMounted.value = true
   await Promise.allSettled([
     loadProfile(),
     loadSecurity(),
@@ -149,7 +154,7 @@ onMounted(async () => {
   <div class="mx-auto max-w-2xl">
     <PageHeader title="アカウント設定" back-to="/settings" />
 
-    <PageLoading v-if="loading" />
+    <PageLoading v-if="!isMounted || loading" />
 
     <div v-else class="fade-in space-y-8">
       <SettingsProfileSection
