@@ -42,7 +42,13 @@
     "myShift": "내 시프트",
     "myPage": "마이페이지",
     "qa": "Q&A",
-    "blog": "블로그"
+    "blog": "블로그",
+    "reservations": "예약 확인",
+    "wallet": "포인트 카드",
+    "inbox": "받은 편지함",
+    "market": "마켓",
+    "jobs": "채용",
+    "matching": "매칭"
   },
   "settings": {
     "navigation": {

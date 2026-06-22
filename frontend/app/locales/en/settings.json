@@ -42,7 +42,13 @@
     "myShift": "My Shift",
     "myPage": "My Page",
     "qa": "Q&A",
-    "blog": "Blog"
+    "blog": "Blog",
+    "reservations": "Reservations",
+    "wallet": "Point Cards",
+    "inbox": "Inbox",
+    "market": "Market",
+    "jobs": "Jobs",
+    "matching": "Matching"
   },
   "settings": {
     "navigation": {

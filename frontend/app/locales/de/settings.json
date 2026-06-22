@@ -42,7 +42,13 @@
     "myShift": "Meine Schicht",
     "myPage": "Meine Seite",
     "qa": "FAQ",
-    "blog": "Blog"
+    "blog": "Blog",
+    "reservations": "Reservierungen",
+    "wallet": "Punktekarten",
+    "inbox": "Posteingang",
+    "market": "Markt",
+    "jobs": "Stellenangebote",
+    "matching": "Matching"
   },
   "settings": {
     "navigation": {
