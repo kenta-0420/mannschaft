@@ -76,6 +76,7 @@
     "submit": "Senden",
     "close": "Schliessen",
     "back": "Zuruck",
+    "help": "Anleitung",
     "next": "Weiter",
     "search": "Suchen",
     "loading": "Laden...",
@@ -229,6 +230,11 @@
     "AUTH_003": "Ihr Konto ist gesperrt. Bitte versuchen Sie es in 30 Minuten erneut",
     "AUTH_004": "Diese E-Mail-Adresse ist bereits registriert",
     "AUTH_005": "Der Link in der Bestätigungs-E-Mail ist ungültig oder abgelaufen",
+    "AUTH_008": "Das Passwort muss mindestens 8 Zeichen lang sein und 3 oder mehr aus Großbuchstaben, Kleinbuchstaben, Ziffern und Symbolen enthalten",
+    "AUTH_015": "Der Link zum Zurücksetzen des Passworts ist ungültig oder abgelaufen. Bitte beantragen Sie ein erneutes Zurücksetzen.",
+    "AUTH_009": "Das neue Passwort muss sich vom aktuellen Passwort unterscheiden",
+    "AUTH_010": "Das aktuelle Passwort ist nicht korrekt",
+    "AUTH_011": "Es wurde noch kein Passwort festgelegt",
     "AUTH_044": "Zu viele Anfragen. Bitte warten Sie einen Moment und versuchen Sie es erneut",
     "SURVEY_023": "Die Team-Aufschluesselung kann bei anonymen Umfragen nicht aktiviert werden"
   },
@@ -714,7 +720,109 @@
     "reorder_failed": "Neuordnung fehlgeschlagen",
     "my_projects": "Meine Projekte",
     "my_projects_description": "Persönliche Aufgabenverwaltung und Ziele",
-    "no_my_projects": "Noch keine persönlichen Projekte"
+    "no_my_projects": "Noch keine persönlichen Projekte",
+    "team_projects_section": "Teamprojekte",
+    "no_team_projects": "Noch keine Projekte in Ihren Teams",
+    "org_projects_section": "Organisationsprojekte",
+    "no_org_projects": "Noch keine Projekte in Ihren Organisationen",
+    "create_button": "Projekt erstellen",
+    "dialog": {
+      "create_title": "Projekt erstellen",
+      "edit_title": "Projekt bearbeiten",
+      "title_label": "Titel",
+      "title_placeholder": "Projektname",
+      "description_label": "Beschreibung",
+      "due_date_label": "Fälligkeitsdatum",
+      "cancel": "Abbrechen",
+      "create": "Erstellen",
+      "update": "Aktualisieren"
+    },
+    "appearance": {
+      "emoji_label": "Emoji",
+      "color_label": "Farbe",
+      "none": "Keines",
+      "custom_emoji": "Benutzerdefiniert",
+      "custom_color": "Benutzerdefinierte Farbe",
+      "current": "Aktuell"
+    },
+    "guide": {
+      "button": "Anleitung",
+      "page_title": "Projektanleitung",
+      "description": "Erfahren Sie, wie Sie die Projektfunktion nutzen können.",
+      "what": {
+        "title": "Was ist ein Projekt?",
+        "body": "Ein Projekt ist eine Einheit zur Verwaltung von Aufgaben (TODOs) und Meilensteinen. Sie können Ziele und Fristen festlegen und den Fortschritt auf einen Blick verfolgen."
+      },
+      "create": {
+        "title": "So erstellen Sie ein Projekt",
+        "body": "Klicken Sie auf 'Projekt erstellen' und füllen Sie die folgenden Informationen aus.",
+        "item_title": "Titel (erforderlich): Name des Projekts",
+        "item_emoji": "Emoji: Symbol für das Projekt (aus Voreinstellungen wählen)",
+        "item_color": "Farbe: Erkennungsfarbe der Karte (aus Voreinstellungen wählen)",
+        "item_due_date": "Fälligkeitsdatum: Zieldatum für den Abschluss (optional)"
+      },
+      "milestone": {
+        "title": "Meilensteine und Tore",
+        "body": "Meilensteine sind Zwischenziele innerhalb eines Projekts. Wenn die Gate-Funktion aktiviert ist, wird der nächste Meilenstein gesperrt, bis der vorherige abgeschlossen ist.",
+        "completion_mode_label": "Über den Abschlussmodus",
+        "mode_auto": "Automatischer Abschluss",
+        "mode_auto_desc": "Wird automatisch als erreicht markiert, wenn alle TODOs im Meilenstein abgeschlossen sind.",
+        "mode_manual": "Manuell",
+        "mode_manual_desc": "Manuell als erreicht markieren, unabhängig vom TODO-Abschlussstatus."
+      },
+      "progress": {
+        "title": "Fortschritt verstehen",
+        "body": "Projektkarten zeigen einen Fortschrittsbalken, Abschlussrate und verbleibende Tage. Der Fortschrittsbalken wird automatisch aus abgeschlossenen TODOs / Gesamt-TODOs berechnet."
+      },
+      "scope": {
+        "title": "Persönliche vs. Team-Projekte",
+        "body": "Projekte haben zwei Arten von Umfang: 'persönlich' und 'Team'.",
+        "personal_title": "Persönliches Projekt",
+        "personal_desc": "Nur Sie können es anzeigen und verwalten. Zugriff über 'Meine Seite' → 'Projekte'.",
+        "team_title": "Team-Projekt",
+        "team_desc": "Mit Teammitgliedern teilen und gemeinsam verwalten. Zugriff über den Tab 'Projekte' auf der Teamseite."
+      },
+      "back_to_projects": "Zurück zur Projektliste"
+    },
+    "org_page": {
+      "title": "Projekte",
+      "empty": "Keine Projekte vorhanden",
+      "back_label": "Projektliste"
+    },
+    "error": {
+      "fetch_failed": "Projekte konnten nicht geladen werden",
+      "create_failed": "Projekt konnte nicht erstellt werden",
+      "update_failed": "Aktualisierung fehlgeschlagen",
+      "delete_failed": "Loeschen fehlgeschlagen",
+      "status_change_failed": "Statusaenderung fehlgeschlagen",
+      "milestone_save_failed": "Meilenstein konnte nicht gespeichert werden"
+    },
+    "status": {
+      "active": "Aktiv",
+      "completed": "Abgeschlossen",
+      "archived": "Archiviert"
+    },
+    "action": {
+      "edit": "Bearbeiten",
+      "complete": "Als abgeschlossen markieren",
+      "reopen": "Wieder oeffnen"
+    },
+    "stats": {
+      "progress": "Fortschritt",
+      "tasks": "Aufgaben",
+      "milestones": "Meilensteine",
+      "due_date": "Faelligkeitsdatum",
+      "no_due_date": "Nicht festgelegt"
+    },
+    "task_unit": "Aufgaben",
+    "days_remaining": "Noch {n} Tage",
+    "days_overdue": "{n} Tage ueberfaellig",
+    "related_tasks": "Verwandte Aufgaben",
+    "no_related_tasks": "Keine verwandten Aufgaben fuer dieses Projekt",
+    "widget": {
+      "label": "Projekte",
+      "description": "Projektfortschritt und Liste"
+    }
   },
   "inviteToken": {
     "printQrPdf": "QR PDF drucken",
@@ -1511,6 +1619,7 @@
       "prevPage": "Vorherige Seite",
       "nextPage": "Nächste Seite",
       "reorder": "Anzeigereihenfolge ändern",
+      "goToScopePage": "Zur Team-/Organisationsseite",
       "empty": "Du gehörst keinem Team oder keiner Organisation an",
       "folderEmpty": "Keine Bereiche in diesem Ordner",
       "loadError": "Tag-Liste konnte nicht geladen werden"

@@ -100,12 +100,10 @@ function goEntry() {
 
 <template>
   <div class="mx-auto max-w-2xl px-4 py-6">
-    <div class="mb-5 flex items-center gap-3">
-      <Button icon="pi pi-arrow-left" text rounded :aria-label="t('reflection.recall.back_to_entry')" @click="router.back()" />
-      <h1 class="flex-1 text-xl font-bold">
-        <i class="pi pi-bolt mr-2 text-primary" />{{ t('reflection.recall.heading') }}
-      </h1>
-    </div>
+    <PageHeader
+      :title="t('reflection.recall.heading')"
+      :back-label="t('button.back')"
+    />
 
     <div v-if="loading" class="space-y-3">
       <Skeleton height="120px" />

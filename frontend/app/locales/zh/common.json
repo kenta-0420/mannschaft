@@ -76,6 +76,7 @@
     "submit": "提交",
     "close": "关闭",
     "back": "返回",
+    "help": "使用方法",
     "next": "下一步",
     "search": "搜索",
     "loading": "加载中...",
@@ -229,6 +230,11 @@
     "AUTH_003": "账户已被锁定，请在30分钟后重试",
     "AUTH_004": "该邮箱已注册",
     "AUTH_005": "验证邮件的链接无效或已过期",
+    "AUTH_008": "密码至少需8个字符，并包含大写字母、小写字母、数字、符号中的3种以上",
+    "AUTH_015": "密码重置链接无效或已过期，请重新申请重置密码。",
+    "AUTH_009": "新密码必须与当前密码不同",
+    "AUTH_010": "当前密码不正确",
+    "AUTH_011": "尚未设置密码",
     "AUTH_044": "请求过于频繁，请稍后再试",
     "SURVEY_023": "匿名问卷无法启用团队明细"
   },
@@ -714,7 +720,109 @@
     "reorder_failed": "重新排序失败",
     "my_projects": "个人项目",
     "my_projects_description": "个人任务管理与目标",
-    "no_my_projects": "暂无个人项目"
+    "no_my_projects": "暂无个人项目",
+    "team_projects_section": "团队项目",
+    "no_team_projects": "您所在的团队暂无项目",
+    "org_projects_section": "组织项目",
+    "no_org_projects": "您所在的组织暂无项目",
+    "create_button": "创建项目",
+    "dialog": {
+      "create_title": "创建项目",
+      "edit_title": "编辑项目",
+      "title_label": "标题",
+      "title_placeholder": "项目名称",
+      "description_label": "描述",
+      "due_date_label": "截止日期",
+      "cancel": "取消",
+      "create": "创建",
+      "update": "更新"
+    },
+    "appearance": {
+      "emoji_label": "表情符号",
+      "color_label": "颜色",
+      "none": "无",
+      "custom_emoji": "自定义",
+      "custom_color": "自定义颜色",
+      "current": "当前值"
+    },
+    "guide": {
+      "button": "使用说明",
+      "page_title": "项目使用说明",
+      "description": "了解如何使用项目功能。",
+      "what": {
+        "title": "什么是项目？",
+        "body": "项目是统一管理任务（TODO）和里程碑的单元。您可以设置目标和截止日期，一目了然地跟踪进度。"
+      },
+      "create": {
+        "title": "如何创建项目",
+        "body": "点击“创建项目”按钮，填写以下信息。",
+        "item_title": "标题（必填）：项目名称",
+        "item_emoji": "表情符号：代表项目的图标（从预设中选择）",
+        "item_color": "颜色：卡片的识别颜色（从预设中选择）",
+        "item_due_date": "截止日期：目标完成日期（可选）"
+      },
+      "milestone": {
+        "title": "里程碑与关卡",
+        "body": "里程碑是项目中的阶段性目标。启用关卡功能后，在上一个里程碑完成之前，下一个里程碑将被锁定。",
+        "completion_mode_label": "关于完成模式",
+        "mode_auto": "自动完成",
+        "mode_auto_desc": "当里程碑中的所有TODO完成时，自动标记为已达成。",
+        "mode_manual": "手动",
+        "mode_manual_desc": "无论TODO完成状态如何，手动标记为已达成。"
+      },
+      "progress": {
+        "title": "如何查看进度",
+        "body": "项目卡片显示进度条、完成率和剩余天数。进度条根据已完成TODO/总TODO自动计算。"
+      },
+      "scope": {
+        "title": "个人项目与团队项目的区别",
+        "body": "项目有“个人”和“团队”两种范围。",
+        "personal_title": "个人项目",
+        "personal_desc": "只有您可以查看和管理。通过“我的页面”→“项目”访问。",
+        "team_title": "团队项目",
+        "team_desc": "与团队成员共享和共同管理。通过团队页面的“项目”标签访问。"
+      },
+      "back_to_projects": "返回项目列表"
+    },
+    "org_page": {
+      "title": "项目",
+      "empty": "暂无项目",
+      "back_label": "项目列表"
+    },
+    "error": {
+      "fetch_failed": "获取项目失败",
+      "create_failed": "创建项目失败",
+      "update_failed": "更新失败",
+      "delete_failed": "删除失败",
+      "status_change_failed": "更改状态失败",
+      "milestone_save_failed": "保存里程碑失败"
+    },
+    "status": {
+      "active": "进行中",
+      "completed": "已完成",
+      "archived": "已归档"
+    },
+    "action": {
+      "edit": "编辑",
+      "complete": "标记完成",
+      "reopen": "重新开始"
+    },
+    "stats": {
+      "progress": "进度",
+      "tasks": "任务",
+      "milestones": "里程碑",
+      "due_date": "截止日期",
+      "no_due_date": "未设置"
+    },
+    "task_unit": "个任务",
+    "days_remaining": "还有{n}天",
+    "days_overdue": "超期{n}天",
+    "related_tasks": "相关任务",
+    "no_related_tasks": "此项目没有相关任务",
+    "widget": {
+      "label": "项目",
+      "description": "项目进度与列表"
+    }
   },
   "inviteToken": {
     "printQrPdf": "打印二维码PDF",
@@ -1511,6 +1619,7 @@
       "prevPage": "上一页",
       "nextPage": "下一页",
       "reorder": "更改显示顺序",
+      "goToScopePage": "前往团队/组织页面",
       "empty": "您不属于任何团队/组织",
       "folderEmpty": "此文件夹中没有范围",
       "loadError": "获取标签列表失败"

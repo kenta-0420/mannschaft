@@ -16,6 +16,7 @@ import type {
   CreateRecallAttemptRequest,
   ExportToBlogRequest,
   UpdateReflectionSettingsRequest,
+  LinkableSlotResponse,
 } from '~/types/reflection'
 import type { BlogPostResponse } from '~/types/cms'
 
@@ -89,6 +90,13 @@ export function useReflectionApi() {
     return api<{ data: ReflectionTodayResponse }>(`${BASE}/today${qs}`)
   }
 
+  // ─── 科目紐づけ候補（§11.3） ────────────────────────────────────────────
+
+  /** 週全体のコマを科目単位で重複排除した紐づけ候補一覧（AC-30）。 */
+  async function listLinkableSlots() {
+    return api<{ data: LinkableSlotResponse[] }>(`${BASE}/linkable-slots`)
+  }
+
   // ─── ブログ輸出（§7 #13） ──────────────────────────────────────────────
 
   async function exportToBlog(entryId: string, body: ExportToBlogRequest) {
@@ -121,6 +129,7 @@ export function useReflectionApi() {
     recordRecall,
     listRecalls,
     getToday,
+    listLinkableSlots,
     exportToBlog,
     getSettings,
     updateSettings,

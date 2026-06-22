@@ -6,6 +6,7 @@ import com.mannschaft.app.seal.dto.StampRequest;
 import com.mannschaft.app.seal.dto.StampVerifyResponse;
 import com.mannschaft.app.seal.entity.ElectronicSealEntity;
 import com.mannschaft.app.seal.entity.SealStampLogEntity;
+import com.mannschaft.app.seal.repository.ElectronicSealRepository;
 import com.mannschaft.app.seal.repository.SealStampLogRepository;
 import com.mannschaft.app.seal.service.SealService;
 import com.mannschaft.app.seal.service.SealStampService;
@@ -17,12 +18,17 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.springframework.data.domain.Pageable;
+
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 
 /**
@@ -35,6 +41,9 @@ class SealStampServiceTest {
 
     @Mock
     private SealStampLogRepository stampLogRepository;
+
+    @Mock
+    private ElectronicSealRepository sealRepository;
 
     @Mock
     private SealService sealService;
@@ -50,7 +59,10 @@ class SealStampServiceTest {
     private static final Long STAMP_LOG_ID = 200L;
 
     private ElectronicSealEntity createActiveSeal() {
+        // id を SEAL_ID に固定する。listStampLogs は variant を sealId→印鑑.getId() の
+        // Map（buildVariantMap）で一括解決するため、印鑑の id が押印ログの sealId と一致している必要がある。
         return ElectronicSealEntity.builder()
+                .id(SEAL_ID)
                 .userId(USER_ID).variant(SealVariant.LAST_NAME)
                 .displayText("山田").svgData("<svg/>").sealHash("hash123").build();
     }
@@ -70,11 +82,11 @@ class SealStampServiceTest {
                     .userId(USER_ID).sealId(SEAL_ID).sealHashAtStamp("hash123")
                     .targetType(StampTargetType.CIRCULATION).targetId(100L).build();
             StampLogResponse response = new StampLogResponse(STAMP_LOG_ID, USER_ID, SEAL_ID, "hash123",
-                    "CIRCULATION", 100L, null, false, null, LocalDateTime.now(), null);
+                    SealVariant.LAST_NAME, "CIRCULATION", 100L, null, false, null, LocalDateTime.now(), null);
 
             given(sealService.getSealEntity(SEAL_ID)).willReturn(seal);
             given(stampLogRepository.save(any(SealStampLogEntity.class))).willReturn(savedLog);
-            given(sealMapper.toStampLogResponse(savedLog)).willReturn(response);
+            given(sealMapper.toStampLogResponse(savedLog, SealVariant.LAST_NAME)).willReturn(response);
 
             // When
             StampLogResponse result = sealStampService.stamp(USER_ID, request);
@@ -114,11 +126,13 @@ class SealStampServiceTest {
                     .userId(USER_ID).sealId(SEAL_ID).sealHashAtStamp("hash123")
                     .targetType(StampTargetType.CIRCULATION).targetId(100L).build();
             StampLogResponse response = new StampLogResponse(STAMP_LOG_ID, USER_ID, SEAL_ID, "hash123",
-                    "CIRCULATION", 100L, null, true, LocalDateTime.now(), LocalDateTime.now(), null);
+                    SealVariant.LAST_NAME, "CIRCULATION", 100L, null, true, LocalDateTime.now(), LocalDateTime.now(), null);
 
+            ElectronicSealEntity seal = createActiveSeal();
             given(stampLogRepository.findByIdAndUserId(STAMP_LOG_ID, USER_ID)).willReturn(Optional.of(entity));
             given(stampLogRepository.save(entity)).willReturn(entity);
-            given(sealMapper.toStampLogResponse(entity)).willReturn(response);
+            given(sealRepository.findById(SEAL_ID)).willReturn(Optional.of(seal));
+            given(sealMapper.toStampLogResponse(entity, SealVariant.LAST_NAME)).willReturn(response);
 
             // When
             sealStampService.revokeStamp(USER_ID, STAMP_LOG_ID);
@@ -143,6 +157,64 @@ class SealStampServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(SealErrorCode.ALREADY_REVOKED));
+        }
+    }
+
+    @Nested
+    @DisplayName("listStampLogs(カーソルページング)")
+    class ListStampLogsWithCursor {
+
+        @Test
+        @DisplayName("listStampLogs_variant付きでレスポンスが返る")
+        void listStampLogs_variant付き() {
+            // Given
+            SealStampLogEntity log = SealStampLogEntity.builder()
+                    .userId(USER_ID).sealId(SEAL_ID).sealHashAtStamp("hash123")
+                    .targetType(StampTargetType.CIRCULATION).targetId(100L)
+                    .isRevoked(false).stampedAt(LocalDateTime.now()).build();
+            ElectronicSealEntity seal = createActiveSeal();
+            StampLogResponse response = new StampLogResponse(STAMP_LOG_ID, USER_ID, SEAL_ID, "hash123",
+                    SealVariant.LAST_NAME, "CIRCULATION", 100L, null, false, null, LocalDateTime.now(), null);
+
+            given(stampLogRepository.findByUserIdWithCursor(
+                    eq(USER_ID), isNull(), isNull(), eq(true), any(Pageable.class)))
+                    .willReturn(List.of(log));
+            given(sealRepository.findAllById(java.util.Set.of(SEAL_ID)))
+                    .willReturn(List.of(seal));
+            given(sealMapper.toStampLogResponse(log, SealVariant.LAST_NAME)).willReturn(response);
+
+            // When
+            var result = sealStampService.listStampLogs(USER_ID, null, null, null, true);
+
+            // Then
+            assertThat(result.getData()).hasSize(1);
+            assertThat(result.getData().get(0).getVariant()).isEqualTo(SealVariant.LAST_NAME);
+        }
+
+        @Test
+        @DisplayName("listStampLogs_印鑑削除済みはvariantがnull")
+        void listStampLogs_印鑑削除済みはvariantがnull() {
+            // Given: seal が findAllById で返ってこない（削除済み）
+            SealStampLogEntity log = SealStampLogEntity.builder()
+                    .userId(USER_ID).sealId(SEAL_ID).sealHashAtStamp("hash123")
+                    .targetType(StampTargetType.CIRCULATION).targetId(100L)
+                    .isRevoked(false).stampedAt(LocalDateTime.now()).build();
+            StampLogResponse response = new StampLogResponse(STAMP_LOG_ID, USER_ID, SEAL_ID, "hash123",
+                    null, "CIRCULATION", 100L, null, false, null, LocalDateTime.now(), null);
+
+            given(stampLogRepository.findByUserIdWithCursor(
+                    eq(USER_ID), isNull(), isNull(), eq(false), any(Pageable.class)))
+                    .willReturn(List.of(log));
+            given(sealRepository.findAllById(java.util.Set.of(SEAL_ID)))
+                    .willReturn(List.of()); // 削除済みのため空
+            given(sealMapper.toStampLogResponse(log, (SealVariant) null)).willReturn(response);
+
+            // When
+            var result = sealStampService.listStampLogs(USER_ID, null, null, null, false);
+
+            // Then
+            assertThat(result.getData()).hasSize(1);
+            assertThat(result.getData().get(0).getVariant()).isNull();
         }
     }
 

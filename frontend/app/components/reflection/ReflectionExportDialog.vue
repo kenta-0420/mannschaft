@@ -10,6 +10,8 @@ import type { ExportToBlogRequest } from '~/types/reflection'
 const props = defineProps<{
   visible: boolean
   entryId: string
+  /** 既に輸出済みか（exportedBlogPostId != null）。輸出済みなら再輸出ボタンを無効化し案内を出す（409 回避・follow-up A④）。 */
+  alreadyExported?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -71,12 +73,18 @@ async function submit() {
     @update:visible="emit('update:visible', $event)"
   >
     <div class="space-y-3">
+      <Message v-if="alreadyExported" severity="info" :closable="false" class="m-0">
+        <span class="inline-flex items-center gap-1">
+          <i class="pi pi-bookmark" />{{ t('reflection.export.already_exported') }}
+        </span>
+      </Message>
       <div>
         <label class="mb-1 block text-sm font-medium">{{ t('reflection.export.title_label') }}</label>
         <InputText
           v-model="title"
           :placeholder="t('reflection.export.title_placeholder')"
           class="w-full"
+          :disabled="alreadyExported"
           maxlength="200"
         />
       </div>
@@ -84,7 +92,13 @@ async function submit() {
 
     <template #footer>
       <Button :label="t('reflection.common.cancel')" severity="secondary" text @click="close" />
-      <Button :label="t('reflection.export.submit')" :loading="submitting" icon="pi pi-upload" @click="submit" />
+      <Button
+        :label="t('reflection.export.submit')"
+        :loading="submitting"
+        :disabled="alreadyExported"
+        icon="pi pi-upload"
+        @click="submit"
+      />
     </template>
   </Dialog>
 </template>

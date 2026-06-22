@@ -4,7 +4,14 @@
     "nav": {
       "today": "Today's reflections",
       "themes": "Themes",
-      "settings": "Notification settings"
+      "settings": "Notification settings",
+      "dashboard": "Dashboard"
+    },
+    "widget": {
+      "pending_recall": "Pending recall",
+      "unwritten": "Not written",
+      "open_today": "Open today's reflections",
+      "empty": "No themes for today"
     },
     "today": {
       "heading": "Today's reflections",
@@ -19,7 +26,11 @@
       "open_recall": "Recall test",
       "masked_badge": "Awaiting recall",
       "has_entry": "Written",
-      "period_label": "Period {period}"
+      "period_label": "Period {period}",
+      "main_theme_label": "Main theme",
+      "created_at_label": "First created",
+      "last_reflected_label": "Last reflected",
+      "never_reflected": "Not yet"
     },
     "theme": {
       "list_heading": "Themes",
@@ -40,7 +51,12 @@
       "recall_interval_label": "Recall interval",
       "recall_interval_fixed": "Recall test {days} days later (fixed)",
       "open": "Open",
-      "view_entries": "View reflections"
+      "view_entries": "View reflections",
+      "subject_link_label": "Link to subject",
+      "subject_link_none": "No link",
+      "subject_link_placeholder": "Select from timetable subjects",
+      "subject_link_help": "This theme will appear on every class of the selected subject in today's view",
+      "subject_link_empty": "No timetable registered"
     },
     "source_type": {
       "SUBJECT": "Class",
@@ -165,6 +181,29 @@
       "close": "Close",
       "loading": "Loading...",
       "load_failed": "Failed to load"
+    },
+    "guide": {
+      "page_title": "How to use Active Recall Learning",
+      "what": {
+        "title": "What is Active Recall Learning?",
+        "body": "Active recall is a learning method that strengthens memory by actively retrieving what you have learned. Write today's reflection, then on subsequent days try to recall the content from memory before checking your answers."
+      },
+      "theme": {
+        "title": "Create a Theme",
+        "body": "A \"theme\" is the unit of your reflections. Create themes for subjects, qualifications, projects, a diary, or anything you want to keep reviewing. You can link a theme to a timetable slot or use it as a free-standing theme."
+      },
+      "today": {
+        "title": "Write Today's Reflection",
+        "body": "The \"Today's reflections\" view lists the day's slots and themes. Open each card, write what you learned and any insights, then save."
+      },
+      "recall": {
+        "title": "Recall Test (Retrieval Practice)",
+        "body": "From the next day onwards, your written content is automatically hidden. Try to recall it in your own words, then reveal the original to check yourself. The effort of recalling strengthens your memory."
+      },
+      "reminder": {
+        "title": "Reminders and Calendar",
+        "body": "You will receive notifications when it is time to review. Days on which you wrote a reflection are marked in My Calendar, so you can see your progress at a glance."
+      }
     }
   }
 }

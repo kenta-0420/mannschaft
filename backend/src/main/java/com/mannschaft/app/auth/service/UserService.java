@@ -25,6 +25,7 @@ import com.mannschaft.app.auth.event.PasswordSetupEvent;
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
 import com.mannschaft.app.auth.event.WithdrawalCancelledEvent;
 import com.mannschaft.app.auth.event.WithdrawalRequestedEvent;
+import com.mannschaft.app.auth.util.PasswordPolicyValidator;
 import com.mannschaft.app.weather.event.UserPostalCodeUpdatedEvent;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
@@ -68,13 +69,6 @@ public class UserService {
     private final UserRoleRepository userRoleRepository;
     private final ParentalConsentService parentalConsentService;
     private final AccessControlService accessControlService;
-
-    /**
-     * パスワードポリシー: 8文字以上、大文字・小文字・数字・記号をそれぞれ1文字以上含む
-     */
-    private static final Pattern PASSWORD_POLICY = Pattern.compile(
-            "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?]).{8,}$"
-    );
 
     /**
      * ISO 3166-1 alpha-2 国コード: アルファベット大文字2文字
@@ -534,11 +528,13 @@ public class UserService {
 
     /**
      * パスワードポリシーを検証する。違反時は AUTH_008 をスロー。
+     *
+     * <p>登録時（{@link com.mannschaft.app.auth.util.PasswordPolicyValidator}）と同一ポリシー
+     * （8文字以上 + 大文字/小文字/数字/記号のうち3種以上）に統一している。
+     * 以前は変更時のみ「4種すべて必須」だったため、登録できたパスワードが変更時に弾かれる不整合があった。</p>
      */
     private void validatePasswordPolicy(String password) {
-        if (!PASSWORD_POLICY.matcher(password).matches()) {
-            throw new BusinessException(AuthErrorCode.AUTH_008);
-        }
+        PasswordPolicyValidator.validate(password);
     }
 
     /**

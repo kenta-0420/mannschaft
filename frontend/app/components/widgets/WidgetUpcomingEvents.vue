@@ -51,7 +51,7 @@ onMounted(load)
       <div
         v-for="event in events"
         :key="event.id"
-        class="flex items-center gap-3 rounded-lg bg-surface-50 p-3 dark:bg-surface-700/50"
+        class="flex items-center gap-3 rounded-lg border-2 border-surface-300 bg-surface-50 p-3 dark:border-surface-600 dark:bg-surface-700/50"
       >
         <div class="flex-1">
           <p class="text-sm font-medium">{{ event.title }}</p>

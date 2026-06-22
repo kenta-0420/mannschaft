@@ -102,6 +102,40 @@
         "PENDING": "Pendiente",
         "REFUNDED": "Reembolsado",
         "CANCELLED": "Cancelado"
+      },
+      "method": {
+        "CASH": "Efectivo",
+        "BANK_TRANSFER": "Transferencia bancaria",
+        "MANUAL": "Registro manual"
+      },
+      "record": {
+        "recordButton": "Registrar pago",
+        "title": "Registrar pago",
+        "member": "Miembro",
+        "memberPlaceholder": "Selecciona un miembro",
+        "amount": "Importe pagado",
+        "paidAt": "Fecha de pago",
+        "method": "Método de pago",
+        "note": "Nota",
+        "notePlaceholder": "Opcional (máx. 500 caracteres)",
+        "submit": "Registrar",
+        "cancel": "Cancelar",
+        "success": "Pago registrado",
+        "error": "No se pudo registrar el pago"
+      },
+      "bulk": {
+        "bulkButton": "Registro masivo",
+        "title": "Registro masivo",
+        "description": "Selecciona los miembros sin pagar para registrar pagos en masa.",
+        "noUnpaid": "No hay miembros sin pagar",
+        "submit": "Registrar {count}",
+        "error": "Error en el registro masivo",
+        "resultSummary": "Creados {created}, omitidos {skipped}"
+      },
+      "cancel": {
+        "button": "Anular",
+        "success": "Pago anulado",
+        "error": "No se pudo anular"
       }
     },
     "receipt": {

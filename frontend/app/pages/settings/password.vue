@@ -3,11 +3,15 @@ definePageMeta({
   middleware: 'auth',
 })
 
+const { t } = useI18n()
 const notification = useNotification()
+const { resolveMessage } = useErrorHandler()
 const { getProfile, changePassword, setupPassword } = useUserSettingsApi()
+const authStore = useAuthStore()
 
 const loading = ref(true)
 const submitting = ref(false)
+const redirecting = ref(false)
 const hasPassword = ref(true)
 
 const form = ref({
@@ -21,32 +25,57 @@ onMounted(async () => {
     const res = await getProfile()
     hasPassword.value = res.data.hasPassword
   } catch {
-    notification.error('プロフィール情報の取得に失敗しました')
+    notification.error(t('settings.password.load_error'))
   } finally {
     loading.value = false
   }
 })
 
+// 登録時（register.vue）と同一ポリシー: 大文字/小文字/数字/記号のうち3種以上
+// utils/passwordPolicy.ts に移管済み
+const meetsPolicy = computed(
+  () => meetsPasswordPolicy(form.value.newPassword),
+)
+
 const passwordError = computed(() => {
   if (form.value.newPassword && form.value.newPassword.length < 8) {
-    return 'パスワードは8文字以上で入力してください'
+    return t('settings.password.length_error')
+  }
+  if (form.value.newPassword && countCharTypes(form.value.newPassword) < 3) {
+    return t('settings.password.policy_violation')
   }
   if (form.value.confirmPassword && form.value.newPassword !== form.value.confirmPassword) {
-    return 'パスワードが一致しません'
+    return t('settings.password.mismatch_error')
   }
   return null
 })
 
 const canSubmit = computed(() => {
+  const baseValid = meetsPolicy.value && form.value.newPassword === form.value.confirmPassword
   if (hasPassword.value) {
-    return (
-      form.value.currentPassword &&
-      form.value.newPassword.length >= 8 &&
-      form.value.newPassword === form.value.confirmPassword
-    )
+    return !!form.value.currentPassword && baseValid
   }
-  return form.value.newPassword.length >= 8 && form.value.newPassword === form.value.confirmPassword
+  return baseValid
 })
+
+function notifyError(e: unknown) {
+  const code = (e as { data?: { error?: { code?: string; message?: string } } })?.data?.error?.code
+  if (code) {
+    // error.${code} キーで6言語解決（AUTH_008/009/010/011 等）
+    const message = resolveMessage(
+      code,
+      (e as { data?: { error?: { message?: string } } })?.data?.error?.message,
+    )
+    notification.error(message)
+    return
+  }
+  // コードが取れない場合のみ汎用文言にフォールバック
+  notification.error(
+    hasPassword.value
+      ? t('settings.password.toast.change_error')
+      : t('settings.password.toast.setup_error'),
+  )
+}
 
 async function handleSubmit() {
   submitting.value = true
@@ -56,20 +85,21 @@ async function handleSubmit() {
         currentPassword: form.value.currentPassword,
         newPassword: form.value.newPassword,
       })
+      form.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
+      // パスワード変更後はBEが全リフレッシュトークンを失効させるため、
+      // 先手を打ってログアウトし /login へ誘導する（大量の401/429発生を防ぐ）。
+      // トーストは短時間表示されてからログイン画面に切り替わる。
+      notification.success(t('settings.password.toast.change_success'))
+      redirecting.value = true
+      await authStore.logout({ reason: 'password_changed' })
     } else {
       await setupPassword(form.value.newPassword)
       hasPassword.value = true
+      form.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
+      notification.success(t('settings.password.toast.setup_success'))
     }
-    form.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
-    notification.success(
-      hasPassword.value ? 'パスワードを変更しました' : 'パスワードを設定しました',
-    )
-  } catch {
-    notification.error(
-      hasPassword.value
-        ? 'パスワードの変更に失敗しました。現在のパスワードを確認してください'
-        : 'パスワードの設定に失敗しました',
-    )
+  } catch (e) {
+    notifyError(e)
   } finally {
     submitting.value = false
   }
@@ -78,14 +108,32 @@ async function handleSubmit() {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <PageHeader :title="hasPassword ? 'パスワード変更' : 'パスワード設定'" back-to="/settings" />
+    <!-- パスワード変更後のリダイレクト中オーバーレイ -->
+    <Teleport to="body">
+      <div
+        v-if="redirecting"
+        class="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-4 bg-black/60 dark:bg-black/75"
+      >
+        <LoadingBounce />
+        <p class="text-sm font-medium text-white">
+          {{ t('settings.password.redirecting') }}
+        </p>
+      </div>
+    </Teleport>
+
+    <PageHeader
+      :title="hasPassword ? t('settings.password.section_title_change') : t('settings.password.section_title_set')"
+      back-to="/settings"
+    />
 
     <PageLoading v-if="loading" />
 
     <SectionCard v-else class="fade-in">
       <div class="space-y-4">
         <div v-if="hasPassword">
-          <label class="mb-1 block text-sm font-medium">現在のパスワード</label>
+          <label class="mb-1 block text-sm font-medium">{{
+            t('settings.password.current_password')
+          }}</label>
           <Password
             v-model="form.currentPassword"
             :feedback="false"
@@ -97,17 +145,22 @@ async function handleSubmit() {
 
         <div v-if="!hasPassword">
           <p class="mb-4 text-sm text-surface-500">
-            現在パスワードが設定されていません。OAuth認証でログインしている場合、パスワードを設定することでメール・パスワードでもログインできるようになります。
+            {{ t('settings.password.no_password_description') }}
           </p>
         </div>
 
         <div>
-          <label class="mb-1 block text-sm font-medium">新しいパスワード</label>
+          <label class="mb-1 block text-sm font-medium">{{
+            t('settings.password.new_password')
+          }}</label>
           <Password v-model="form.newPassword" toggle-mask class="w-full" input-class="w-full" />
+          <p class="mt-1 text-xs text-surface-500">{{ t('settings.password.policy_hint') }}</p>
         </div>
 
         <div>
-          <label class="mb-1 block text-sm font-medium">新しいパスワード（確認）</label>
+          <label class="mb-1 block text-sm font-medium">{{
+            t('settings.password.confirm_password')
+          }}</label>
           <Password
             v-model="form.confirmPassword"
             :feedback="false"
@@ -121,7 +174,7 @@ async function handleSubmit() {
 
         <div class="flex justify-end">
           <Button
-            :label="hasPassword ? 'パスワードを変更' : 'パスワードを設定'"
+            :label="hasPassword ? t('settings.password.change_button') : t('settings.password.set_button')"
             icon="pi pi-lock"
             :loading="submitting"
             :disabled="!canSubmit"

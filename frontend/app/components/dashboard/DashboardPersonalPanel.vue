@@ -87,6 +87,8 @@ onMounted(async () => {
         <DashboardTimetableTodayWidget />
         <!-- F02.5: ポイっとメモ ダッシュボードウィジェット（未整理メモ最新 5 件） -->
         <DashboardQuickMemoWidget />
+        <!-- F06.5 follow-up A: 今日の振り返り導線（reflection の常設入口） -->
+        <WidgetReflectionToday />
         <WidgetUnreadThreads />
         <WidgetTeamAnnouncements />
         <WidgetOrgAnnouncements />

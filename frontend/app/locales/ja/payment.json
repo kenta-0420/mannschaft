@@ -102,6 +102,40 @@
         "PENDING": "保留中",
         "REFUNDED": "返金済み",
         "CANCELLED": "キャンセル"
+      },
+      "method": {
+        "CASH": "現金",
+        "BANK_TRANSFER": "銀行振込",
+        "MANUAL": "手動記録"
+      },
+      "record": {
+        "recordButton": "入金を記録",
+        "title": "入金を記録",
+        "member": "対象会員",
+        "memberPlaceholder": "会員を選択",
+        "amount": "入金額",
+        "paidAt": "入金日",
+        "method": "決済手段",
+        "note": "メモ",
+        "notePlaceholder": "任意（最大500文字）",
+        "submit": "記録する",
+        "cancel": "キャンセル",
+        "success": "入金を記録しました",
+        "error": "入金の記録に失敗しました"
+      },
+      "bulk": {
+        "bulkButton": "一括記録",
+        "title": "一括記録",
+        "description": "未払いの会員を選択して一括で入金を記録します。",
+        "noUnpaid": "未払いの会員はいません",
+        "submit": "{count}件を記録",
+        "error": "一括記録に失敗しました",
+        "resultSummary": "記録 {created}件・スキップ {skipped}件"
+      },
+      "cancel": {
+        "button": "取消",
+        "success": "入金を取り消しました",
+        "error": "取消に失敗しました"
       }
     },
     "receipt": {

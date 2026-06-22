@@ -59,6 +59,8 @@ class StandingsControllerVisibilityTest {
     private RankingsCalculationService rankingsCalculationService;
     @Mock
     private ContentVisibilityChecker contentVisibilityChecker;
+    @Mock
+    private com.mannschaft.app.team.service.TeamService teamService;
 
     @InjectMocks
     private StandingsController controller;

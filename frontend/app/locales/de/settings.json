@@ -10,7 +10,8 @@
     "step_completed": "Export abgeschlossen — Download läuft ab: {expiry}",
     "step_failed": "Export fehlgeschlagen",
     "step_processing": "Exportiere...",
-    "step_preparing": "Wird vorbereitet..."
+    "step_preparing": "Wird vorbereitet...",
+    "description": "Sie können Ihre persönlichen Daten als ZIP-Datei exportieren."
   },
   "deletion_preview": {
     "dialog_title": "Kontolöschung bestätigen",
@@ -41,7 +42,13 @@
     "myShift": "Meine Schicht",
     "myPage": "Meine Seite",
     "qa": "FAQ",
-    "blog": "Blog"
+    "blog": "Blog",
+    "reservations": "Reservierungen",
+    "wallet": "Punktekarten",
+    "inbox": "Posteingang",
+    "market": "Markt",
+    "jobs": "Stellenangebote",
+    "matching": "Matching"
   },
   "settings": {
     "navigation": {
@@ -51,6 +58,265 @@
       "resetToDefault": "Auf Standard zurücksetzen",
       "saveSuccess": "Einstellungen gespeichert",
       "saveError": "Einstellungen konnten nicht gespeichert werden"
+    },
+    "account": {
+      "page_title": "Kontoeinstellungen",
+      "notification_settings": "Benachrichtigungseinstellungen"
+    },
+    "profile": {
+      "section_title": "Profilinformationen",
+      "avatar_alt": "Avatar",
+      "change_image": "Bild ändern",
+      "image_hint": "JPG, PNG unter 5 MB",
+      "display_name": "Anzeigename",
+      "phone_number": "Telefonnummer",
+      "phone_placeholder": "090-0000-0000",
+      "postal_code": "Postleitzahl",
+      "postal_placeholder": "000-0000",
+      "searchable_label": "In Benutzersuche anzeigen",
+      "searchable_description": "Wenn aktiviert, können andere Benutzer Sie über die Suche finden",
+      "toast": {
+        "save_success": "Profil aktualisiert",
+        "save_error": "Profil konnte nicht aktualisiert werden",
+        "avatar_size_error": "Die Dateigröße darf maximal 5 MB betragen",
+        "avatar_success": "Avatar aktualisiert",
+        "avatar_error": "Avatar konnte nicht hochgeladen werden"
+      }
+    },
+    "email": {
+      "section_title": "E-Mail-Adresse ändern",
+      "current_email": "Aktuelle E-Mail-Adresse",
+      "new_email": "Neue E-Mail-Adresse",
+      "new_email_placeholder": "new{'@'}example.com",
+      "current_password": "Aktuelles Passwort",
+      "send_confirmation": "Bestätigungs-E-Mail senden",
+      "sent_title": "Bestätigungs-E-Mail gesendet",
+      "sent_description": "Eine Bestätigungs-E-Mail wurde an {email} gesendet. Klicken Sie auf den Link, um die Änderung abzuschließen.",
+      "toast": {
+        "send_success": "Bestätigungs-E-Mail gesendet",
+        "send_error": "Anfrage zur Änderung der E-Mail-Adresse fehlgeschlagen"
+      }
+    },
+    "password": {
+      "section_title_change": "Passwort ändern",
+      "section_title_set": "Passwort festlegen",
+      "no_password_description": "Derzeit ist kein Passwort festgelegt. Durch Festlegen eines Passworts können Sie sich auch mit E-Mail und Passwort anmelden.",
+      "current_password": "Aktuelles Passwort",
+      "new_password": "Neues Passwort",
+      "confirm_password": "Neues Passwort bestätigen",
+      "policy_hint": "Mindestens 8 Zeichen, davon 3 oder mehr aus: Großbuchstaben, Kleinbuchstaben, Ziffern und Symbole.",
+      "load_error": "Profilinformationen konnten nicht geladen werden",
+      "length_error": "Das Passwort muss mindestens 8 Zeichen lang sein",
+      "policy_violation": "Mindestens 3 aus: Großbuchstaben, Kleinbuchstaben, Ziffern und Symbole einschließen",
+      "mismatch_error": "Die Passwörter stimmen nicht überein",
+      "change_button": "Passwort ändern",
+      "set_button": "Passwort festlegen",
+      "change_success": "Passwort erfolgreich geändert",
+      "change_error": "Passwort konnte nicht geändert werden. Bitte überprüfen Sie Ihr aktuelles Passwort",
+      "toast": {
+        "change_success": "Passwort erfolgreich geändert",
+        "setup_success": "Passwort erfolgreich festgelegt",
+        "change_error": "Passwort konnte nicht geändert werden. Bitte überprüfen Sie Ihr aktuelles Passwort",
+        "setup_error": "Passwort konnte nicht festgelegt werden"
+      },
+      "redirecting": "Passwort wurde geändert. Sie werden zur Anmeldeseite weitergeleitet…"
+    },
+    "locale": {
+      "section_title": "Sprache & Zeitzone",
+      "display_language": "Anzeigesprache",
+      "timezone": "Zeitzone",
+      "toast": {
+        "save_success": "Sprache & Zeitzone aktualisiert",
+        "save_error": "Sprache & Zeitzone konnten nicht aktualisiert werden"
+      }
+    },
+    "appearance": {
+      "section_title": "Erscheinungsbild",
+      "hide_chat_preview_label": "Chat-Vorschau ausblenden",
+      "hide_chat_preview_description": "Chat-Inhalte nicht in Benachrichtigungsbannern anzeigen",
+      "save_button": "Erscheinungsbild speichern",
+      "save_success": "Erscheinungsbild-Einstellungen gespeichert"
+    },
+    "security": {
+      "two_fa_section_title": "Zwei-Faktor-Authentifizierung (2FA)",
+      "two_fa_description": "Verwenden Sie eine Authentifizierungs-App (z. B. Google Authenticator), um die Kontosicherheit zu stärken.",
+      "setup_2fa_button": "2FA einrichten",
+      "regenerate_backup_codes_button": "Backup-Codes neu generieren",
+      "scan_qr_description": "Scannen Sie den QR-Code mit Ihrer Authentifizierungs-App.",
+      "totp_qr_alt": "TOTP QR-Code",
+      "secret_key": "Geheimschlüssel",
+      "sessions_section_title": "Aktive Sitzungen",
+      "logout_all_button": "Alle abmelden",
+      "no_sessions": "Keine Sitzungsinformationen verfügbar",
+      "unknown_device": "Unbekanntes Gerät",
+      "current_session_tag": "Aktuell",
+      "webauthn_section_title": "Sicherheitsschlüssel (WebAuthn)",
+      "webauthn_description": "Registrieren Sie FIDO2/WebAuthn-kompatible Sicherheitsschlüssel oder biometrische Authentifizierung.",
+      "no_credentials": "Keine Sicherheitsschlüssel registriert",
+      "default_credential_name": "Sicherheitsschlüssel",
+      "last_used": "Zuletzt verwendet: {date}",
+      "registered": "Registriert: {date}",
+      "backup_codes_dialog_title": "Backup-Codes",
+      "backup_codes_description": "Bewahren Sie die folgenden Backup-Codes an einem sicheren Ort auf. Jeder Code kann nur einmal verwendet werden.",
+      "rename_dialog_title": "Gerät umbenennen",
+      "device_name_label": "Gerätename",
+      "session": {
+        "device_label": "{browser} unter {os}",
+        "unknown_device": "Unbekanntes Gerät"
+      },
+      "toast": {
+        "setup_2fa_error": "2FA-Einrichtung konnte nicht gestartet werden",
+        "regenerate_success": "Backup-Codes neu generiert",
+        "regenerate_error": "Backup-Codes konnten nicht neu generiert werden",
+        "revoke_success": "Sitzung widerrufen",
+        "revoke_error": "Sitzung konnte nicht widerrufen werden",
+        "revoke_all_success": "Von allen Geräten abgemeldet",
+        "revoke_all_error": "Abmeldung von allen Geräten fehlgeschlagen",
+        "delete_key_success": "Sicherheitsschlüssel gelöscht",
+        "delete_key_error": "Sicherheitsschlüssel konnte nicht gelöscht werden",
+        "rename_success": "Gerätename aktualisiert",
+        "rename_error": "Gerätename konnte nicht aktualisiert werden"
+      }
+    },
+    "linked_accounts": {
+      "oauth_section_title": "OAuth-Verbindungen",
+      "no_oauth": "Keine verbundenen Konten",
+      "connected_at": "Verbunden: {date}",
+      "unlink_button": "Trennen",
+      "line_section_title": "LINE-Verbindung",
+      "line_icon_alt": "LINE-Symbol",
+      "line_default_user": "LINE-Benutzer",
+      "line_linked_at": "Verbunden: {date}",
+      "line_unlink_button": "LINE trennen",
+      "line_not_linked": "Kein LINE-Konto verbunden",
+      "line_link_instruction": "Verbinden Sie LINE über die LINE-App",
+      "toast": {
+        "unlink_success": "{provider} getrennt",
+        "unlink_error": "Trennung fehlgeschlagen",
+        "line_unlink_success": "LINE getrennt",
+        "line_unlink_error": "LINE-Trennung fehlgeschlagen"
+      }
+    },
+    "member_card": {
+      "section_title": "QR-Mitgliedskarte",
+      "tab_list": "Kartenliste",
+      "tab_history": "Check-in-Verlauf",
+      "toast": {
+        "suspend_success": "Mitgliedskarte gesperrt",
+        "suspend_error": "Sperrung fehlgeschlagen",
+        "reactivate_success": "Mitgliedskarte reaktiviert",
+        "reactivate_error": "Reaktivierung fehlgeschlagen"
+      }
+    },
+    "social_profile": {
+      "section_title": "Soziale Profile",
+      "create_button": "Neu erstellen",
+      "count_description": "Sie können bis zu 3 Profile erstellen ({count}/3)",
+      "no_profiles": "Noch keine Profile vorhanden",
+      "dialog_title_create": "Profil erstellen",
+      "dialog_title_edit": "Profil bearbeiten",
+      "handle_label": "Handle *",
+      "handle_placeholder": "my_handle",
+      "handle_hint": "Nur alphanumerisch und Unterstriche (Änderungen einmal alle 30 Tage möglich)",
+      "display_name_label": "Anzeigename *",
+      "bio_label": "Biografie",
+      "bio_count": "{count}/300",
+      "update_button": "Aktualisieren",
+      "create_submit_button": "Erstellen",
+      "toast": {
+        "update_success": "Profil aktualisiert",
+        "create_success": "Profil erstellt",
+        "save_error": "Speichern fehlgeschlagen",
+        "delete_success": "Profil gelöscht",
+        "delete_error": "Löschen fehlgeschlagen"
+      }
+    },
+    "seal": {
+      "section_title": "Elektronisches Siegel",
+      "tab_preview": "Siegelvorschau",
+      "tab_defaults": "Standardeinstellungen",
+      "tab_history": "Stempelverlauf",
+      "regenerate_button": "Siegel neu generieren",
+      "regenerate_hint": "Siegel werden automatisch aus Ihrem registrierten Namen generiert (bis zu 3 Mal pro Stunde)",
+      "toast": {
+        "regenerate_success": "Siegel neu generiert",
+        "regenerate_error": "Neu generieren fehlgeschlagen (bis zu 3 Mal pro Stunde)",
+        "save_defaults_success": "Standardeinstellungen gespeichert",
+        "save_defaults_error": "Einstellungen konnten nicht gespeichert werden"
+      }
+    },
+    "login_history": {
+      "section_title": "Anmeldeverlauf",
+      "no_history": "Kein Anmeldeverlauf",
+      "load_more": "Mehr laden",
+      "event_login_success": "Anmeldung erfolgreich",
+      "event_login_failure": "Anmeldefehler",
+      "event_logout": "Abmeldung",
+      "event_token_refresh": "Token-Aktualisierung",
+      "event_password_change": "Passwortänderung",
+      "event_mfa_verify": "2FA-Verifizierung"
+    },
+    "gcal": {
+      "section_title": "Google Calendar Integration",
+      "connected_label": "Verbunden",
+      "last_synced": "Zuletzt synchronisiert: {date}",
+      "manual_sync_button": "Manuell synchronisieren",
+      "disconnect_button": "Verbindung trennen",
+      "sync_settings_title": "Synchronisationseinstellungen",
+      "personal_calendar_label": "Persönlicher Kalender",
+      "personal_calendar_description": "Persönliche Termine mit Google Calendar synchronisieren",
+      "team_calendars_label": "Team-Kalender",
+      "org_calendars_label": "Organisations-Kalender",
+      "save_settings_button": "Einstellungen speichern",
+      "not_connected_description": "Verbinden Sie Ihr Google-Konto, um Kalender zu synchronisieren",
+      "connect_button": "Google-Konto verbinden",
+      "toast": {
+        "connect_error": "Verbindung fehlgeschlagen",
+        "disconnect_success": "Verbindung getrennt",
+        "disconnect_error": "Trennung fehlgeschlagen",
+        "save_success": "Synchronisationseinstellungen gespeichert",
+        "save_error": "Speichern fehlgeschlagen",
+        "sync_success": "Synchronisation abgeschlossen",
+        "sync_error": "Synchronisation fehlgeschlagen"
+      }
+    },
+    "delete_account": {
+      "section_title": "Konto löschen",
+      "description": "Das Löschen Ihres Kontos entfernt alle Ihre Daten dauerhaft. Diese Aktion kann nicht rückgängig gemacht werden.",
+      "delete_button": "Konto löschen",
+      "confirm_message": "Das Löschen Ihres Kontos entfernt alle Ihre Daten dauerhaft. Möchten Sie wirklich fortfahren?",
+      "confirm_dialog_title": "Kontolöschung bestätigen",
+      "confirm_reject_label": "Abbrechen",
+      "confirm_accept_label": "Zur Löschung fortfahren",
+      "password_confirm_label": "Geben Sie zur Bestätigung Ihr aktuelles Passwort ein",
+      "password_placeholder": "Aktuelles Passwort",
+      "retention_note": "※ Einige Daten werden aufgrund gesetzlicher Anforderungen {days} Tage lang aufbewahrt, bevor sie gelöscht werden.",
+      "delete_success": "Ihr Konto wurde gelöscht. Vielen Dank für Ihre Nutzung.",
+      "delete_error": "Konto konnte nicht gelöscht werden"
+    },
+    "notification": {
+      "load_error": "Einstellungen konnten nicht geladen werden",
+      "save_success": "Benachrichtigungseinstellungen gespeichert",
+      "save_error": "Speichern fehlgeschlagen",
+      "save_button": "Einstellungen speichern",
+      "global_section_title": "Automatische Zustellung",
+      "priority_auto_delivery_label": "Automatische Zustellung nach Priorität",
+      "priority_auto_delivery_desc": "Sendet wichtige Benachrichtigungen automatisch auch als Push-Benachrichtigung.",
+      "scope_section_title": "Benachrichtigungen nach Team / Organisation",
+      "scope_section_desc": "Stellen Sie den Empfang von Benachrichtigungen für jedes Team oder jede Organisation ein, der Sie angehören.",
+      "scope_type_team": "Team",
+      "scope_type_organization": "Organisation",
+      "scope_receiving": "Empfang aktiv",
+      "scope_muted": "Stummgeschaltet",
+      "scope_empty": "Sie gehören keinem Team oder keiner Organisation an",
+      "type_section_title": "Benachrichtigungstypen",
+      "type_section_desc": "Empfang pro Typ einstellen. Mit „Erweitern“ können In-App und Push einzeln gesteuert werden.",
+      "expand": "Erweitern",
+      "collapse": "Einklappen",
+      "channel_in_app": "In-App",
+      "channel_push": "Push",
+      "locked_tag": "Dringend",
+      "locked_desc": "Diese Benachrichtigung kann nicht deaktiviert werden"
     }
   }
 }

@@ -76,6 +76,7 @@
     "submit": "Enviar",
     "close": "Cerrar",
     "back": "Volver",
+    "help": "Cómo usar",
     "next": "Siguiente",
     "search": "Buscar",
     "loading": "Cargando...",
@@ -229,6 +230,11 @@
     "AUTH_003": "Su cuenta está bloqueada. Inténtelo de nuevo en 30 minutos",
     "AUTH_004": "Este correo electrónico ya está registrado",
     "AUTH_005": "El enlace del correo de verificación no es válido o ha expirado",
+    "AUTH_008": "La contraseña debe tener al menos 8 caracteres e incluir 3 o más de: mayúsculas, minúsculas, números y símbolos",
+    "AUTH_015": "El enlace para restablecer la contraseña no es válido o ha expirado. Por favor, solicite un nuevo restablecimiento.",
+    "AUTH_009": "La nueva contraseña debe ser diferente de la contraseña actual",
+    "AUTH_010": "La contraseña actual no es correcta",
+    "AUTH_011": "Aún no se ha establecido ninguna contraseña",
     "AUTH_044": "Demasiadas solicitudes. Por favor, espere un momento y vuelva a intentarlo",
     "SURVEY_023": "No se puede activar el desglose por equipo en encuestas anonimas"
   },
@@ -714,7 +720,109 @@
     "reorder_failed": "Error al reordenar",
     "my_projects": "Mis proyectos",
     "my_projects_description": "Gestión personal de tareas y objetivos",
-    "no_my_projects": "Aún no hay proyectos personales"
+    "no_my_projects": "Aún no hay proyectos personales",
+    "team_projects_section": "Proyectos del equipo",
+    "no_team_projects": "Aún no hay proyectos en tus equipos",
+    "org_projects_section": "Proyectos de la organización",
+    "no_org_projects": "Aún no hay proyectos en tus organizaciones",
+    "create_button": "Crear proyecto",
+    "dialog": {
+      "create_title": "Crear proyecto",
+      "edit_title": "Editar proyecto",
+      "title_label": "Título",
+      "title_placeholder": "Nombre del proyecto",
+      "description_label": "Descripción",
+      "due_date_label": "Fecha límite",
+      "cancel": "Cancelar",
+      "create": "Crear",
+      "update": "Actualizar"
+    },
+    "appearance": {
+      "emoji_label": "Emoji",
+      "color_label": "Color",
+      "none": "Ninguno",
+      "custom_emoji": "Personalizado",
+      "custom_color": "Color personalizado",
+      "current": "Actual"
+    },
+    "guide": {
+      "button": "Cómo usar",
+      "page_title": "Cómo usar Proyectos",
+      "description": "Aprenda a utilizar la función de proyectos.",
+      "what": {
+        "title": "¿Qué es un proyecto?",
+        "body": "Un proyecto es una unidad para gestionar tareas (TODOs) e hitos juntos. Puede establecer objetivos y plazos, y realizar un seguimiento del progreso de un vistazo."
+      },
+      "create": {
+        "title": "Cómo crear un proyecto",
+        "body": "Haga clic en 'Crear proyecto' y complete la siguiente información.",
+        "item_title": "Título (obligatorio): Nombre del proyecto",
+        "item_emoji": "Emoji: Icono que representa el proyecto (elegir de los presets)",
+        "item_color": "Color: Color de identificación de la tarjeta (elegir de los presets)",
+        "item_due_date": "Fecha límite: Fecha objetivo de finalización (opcional)"
+      },
+      "milestone": {
+        "title": "Hitos y puertas",
+        "body": "Los hitos son objetivos intermedios dentro de un proyecto. Cuando la función de puertas está activada, el siguiente hito se bloquea hasta que se completa el anterior.",
+        "completion_mode_label": "Sobre el modo de finalización",
+        "mode_auto": "Completar automáticamente",
+        "mode_auto_desc": "Se marca automáticamente como logrado cuando se completan todos los TODOs del hito.",
+        "mode_manual": "Manual",
+        "mode_manual_desc": "Marcar manualmente como logrado independientemente del estado de los TODOs."
+      },
+      "progress": {
+        "title": "Cómo leer el progreso",
+        "body": "Las tarjetas de proyecto muestran una barra de progreso, tasa de finalización y días restantes. La barra de progreso se calcula automáticamente a partir de TODOs completados / total."
+      },
+      "scope": {
+        "title": "Proyectos personales vs. de equipo",
+        "body": "Los proyectos tienen dos tipos de alcance: 'personal' y 'equipo'.",
+        "personal_title": "Proyecto personal",
+        "personal_desc": "Solo usted puede verlo y gestionarlo. Acceso desde 'Mi página' → 'Proyectos'.",
+        "team_title": "Proyecto de equipo",
+        "team_desc": "Comparta y co-gestione con los miembros del equipo. Acceso desde la pestaña 'Proyectos' en la página del equipo."
+      },
+      "back_to_projects": "Volver a la lista de proyectos"
+    },
+    "org_page": {
+      "title": "Proyectos",
+      "empty": "No hay proyectos",
+      "back_label": "Lista de proyectos"
+    },
+    "error": {
+      "fetch_failed": "Error al obtener proyectos",
+      "create_failed": "Error al crear el proyecto",
+      "update_failed": "Error al actualizar",
+      "delete_failed": "Error al eliminar",
+      "status_change_failed": "Error al cambiar el estado",
+      "milestone_save_failed": "Error al guardar el hito"
+    },
+    "status": {
+      "active": "Activo",
+      "completed": "Completado",
+      "archived": "Archivado"
+    },
+    "action": {
+      "edit": "Editar",
+      "complete": "Marcar como completado",
+      "reopen": "Reabrir"
+    },
+    "stats": {
+      "progress": "Progreso",
+      "tasks": "Tareas",
+      "milestones": "Hitos",
+      "due_date": "Fecha de vencimiento",
+      "no_due_date": "Sin definir"
+    },
+    "task_unit": "tareas",
+    "days_remaining": "{n} dias restantes",
+    "days_overdue": "{n} dias de retraso",
+    "related_tasks": "Tareas relacionadas",
+    "no_related_tasks": "No hay tareas relacionadas con este proyecto",
+    "widget": {
+      "label": "Proyectos",
+      "description": "Progreso y lista de proyectos"
+    }
   },
   "inviteToken": {
     "printQrPdf": "Imprimir QR PDF",
@@ -1511,6 +1619,7 @@
       "prevPage": "Página anterior",
       "nextPage": "Página siguiente",
       "reorder": "Cambiar orden de visualización",
+      "goToScopePage": "Ir a la página del equipo/organización",
       "empty": "No perteneces a ningún equipo u organización",
       "folderEmpty": "No hay alcances en esta carpeta",
       "loadError": "Error al cargar la lista de etiquetas"

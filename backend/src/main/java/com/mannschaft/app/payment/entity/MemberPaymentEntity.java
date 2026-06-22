@@ -48,7 +48,7 @@ public class MemberPaymentEntity extends BaseEntity {
     private String currency = "JPY";
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
+    @Column(nullable = false, length = 16)
     private PaymentMethod paymentMethod;
 
     @Enumerated(EnumType.STRING)

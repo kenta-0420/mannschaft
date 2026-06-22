@@ -175,7 +175,9 @@ MyEntity updated = entity.toBuilder()
 myRepository.save(updated);  // → INSERT が発行される（id=null のため）
 ```
 
-**原因**: 本プロジェクトは `@Builder`（`@SuperBuilder` ではない）を使用している。Lombok の `@Builder(toBuilder = true)` による `toBuilder()` は**同一クラスのフィールドのみ**をコピーし、`BaseEntity` / `UuidV7Entity` 等の**親クラス由来の継承フィールド（`id`）はコピーしない**。その結果、再構築されたインスタンスの `id` が `null` になり、JPA は新規INSERT と判断する。
+**原因（歴史的）**: かつて一部の Entity が（継承しているにもかかわらず）`@Builder` を使用していた。Lombok の素の `@Builder(toBuilder = true)` による `toBuilder()` は**同一クラスのフィールドのみ**をコピーし、`BaseEntity` / `UuidV7Entity` 等の**親クラス由来の継承フィールド（`id`）はコピーしない**。その結果、再構築されたインスタンスの `id` が `null` になり、JPA は新規INSERT と判断する。
+
+**現在の実態**: 継承する Entity（`UuidV7Entity` / `BaseEntity` を継承するクラス）は **`@SuperBuilder(toBuilder = true)` が標準**（コードベースに 600 以上）。`@SuperBuilder` は親クラスのフィールド（`id` を含む）も `toBuilder()` でコピーするため、上記の toBuilder corruption は**構造的に解消済み**である。継承を持たない単純 DTO（例: `bulletin.dto.ThreadResponse`）はそのまま `@Builder` でよい（コピー対象がそのクラスのフィールドのみで完結するため安全）。
 
 - 一意制約があれば `500 Internal Server Error` が発生する
 - 一意制約がなければ**行が静かに二重化**する（検知が困難で非常に危険）
@@ -260,8 +262,11 @@ if (!oldName.equals(entity.getName())) {
 2026-06-19 の横断根治キャンペーンで約45箇所の `toBuilder().build() → save` を修正した。
 手本 PR: #1643（`EventService.updateEvent` + `EventEntity.applyUpdate` の直接ミューテートへの書き換え）、他 #1648 / #1651 / #1656 / #1667 等。
 
-`@SuperBuilder` を使えば継承フィールドも `toBuilder()` でコピーされ本問題は回避できるが、
-本プロジェクトは `@Builder` 統一のため上記ルールで運用面から担保する。
+継承する Entity は `@SuperBuilder(toBuilder = true)` を標準とすることで、継承フィールド（`id`）も
+`toBuilder()` でコピーされ、本問題は**構造的に回避**される。これにより `id=null` 起因の意図しない INSERT は発生しない。
+ただし「managed entity を直接ミューテートして save する」上記ルールは、監査ログの旧値キャプチャや
+更新意図の明確化の観点から引き続き推奨する（`@SuperBuilder` 化は安全網であって、更新フローの正準ではない）。
+非継承の単純 DTO は `@Builder`（`@SuperBuilder` ではない）でよい。
 
 ### Entity フィールドの @Column(name) 必須ルール
 

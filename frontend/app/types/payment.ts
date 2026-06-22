@@ -1,5 +1,5 @@
 export type PaymentItemType = 'ANNUAL_FEE' | 'MONTHLY_FEE' | 'ITEM' | 'DONATION' | 'TERM'
-export type PaymentMethod = 'STRIPE' | 'MANUAL'
+export type PaymentMethod = 'STRIPE' | 'MANUAL' | 'CASH' | 'BANK_TRANSFER'
 export type PaymentStatus = 'PENDING' | 'PAID' | 'REFUNDED' | 'CANCELLED'
 /** F08.9 P8: member_payments の集計3区分。valid_until + grace_period_days < CURDATE() を EXPIRED とする。 */
 export type MemberPaymentDisplayStatus = 'UNPAID' | 'PAID' | 'EXPIRED'
@@ -63,6 +63,16 @@ export interface MemberPaymentResponse {
     createdAt: string | null
     updatedAt: string | null
   }
+}
+
+/**
+ * F08.9 一括手動記録の結果（BE: BulkPaymentResponse）。
+ * createdCount=新規作成件数 / skippedCount=スキップ件数（既払い・重複・非対象等）。
+ */
+export interface BulkPaymentResponse {
+  createdCount: number
+  skippedCount: number
+  skipped: Array<{ userId: number; reason: string }>
 }
 
 export interface CheckoutSessionResponse {

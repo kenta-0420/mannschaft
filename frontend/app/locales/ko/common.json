@@ -76,6 +76,7 @@
     "submit": "제출",
     "close": "닫기",
     "back": "뒤로",
+    "help": "사용법",
     "next": "다음",
     "search": "검색",
     "loading": "로딩 중...",
@@ -229,6 +230,11 @@
     "AUTH_003": "계정이 잠겨 있습니다. 30분 후에 다시 시도해 주세요",
     "AUTH_004": "이미 등록된 이메일 주소입니다",
     "AUTH_005": "확인 이메일의 링크가 유효하지 않거나 만료되었습니다",
+    "AUTH_008": "비밀번호는 8자 이상이며 대문자·소문자·숫자·기호 중 3종류 이상을 포함해야 합니다",
+    "AUTH_015": "비밀번호 재설정 링크가 유효하지 않거나 만료되었습니다. 재설정을 다시 신청해 주세요.",
+    "AUTH_009": "새 비밀번호는 현재 비밀번호와 달라야 합니다",
+    "AUTH_010": "현재 비밀번호가 올바르지 않습니다",
+    "AUTH_011": "아직 비밀번호가 설정되지 않았습니다",
     "AUTH_044": "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요",
     "SURVEY_023": "익명 설문에서는 팀별 내역을 활성화할 수 없습니다"
   },
@@ -714,7 +720,109 @@
     "reorder_failed": "순서 변경에 실패했습니다",
     "my_projects": "개인 프로젝트",
     "my_projects_description": "개인 작업 관리 및 목표",
-    "no_my_projects": "아직 개인 프로젝트가 없습니다"
+    "no_my_projects": "아직 개인 프로젝트가 없습니다",
+    "team_projects_section": "팀 프로젝트",
+    "no_team_projects": "소속 팀에 아직 프로젝트가 없습니다",
+    "org_projects_section": "조직 프로젝트",
+    "no_org_projects": "소속 조직에 아직 프로젝트가 없습니다",
+    "create_button": "프로젝트 생성",
+    "dialog": {
+      "create_title": "프로젝트 생성",
+      "edit_title": "프로젝트 편집",
+      "title_label": "제목",
+      "title_placeholder": "프로젝트 이름",
+      "description_label": "설명",
+      "due_date_label": "마감일",
+      "cancel": "취소",
+      "create": "생성",
+      "update": "업데이트"
+    },
+    "appearance": {
+      "emoji_label": "이모지",
+      "color_label": "색상",
+      "none": "없음",
+      "custom_emoji": "사용자 지정",
+      "custom_color": "사용자 지정 색상",
+      "current": "현재 값"
+    },
+    "guide": {
+      "button": "사용 방법",
+      "page_title": "프로젝트 사용 방법",
+      "description": "프로젝트 기능의 기본 사용 방법을 알아보세요.",
+      "what": {
+        "title": "프로젝트란?",
+        "body": "프로젝트는 작업(TODO)과 마일스톤을 함께 관리하는 단위입니다. 목표와 마감일을 설정하고 진행 상황을 한눈에 파악할 수 있습니다."
+      },
+      "create": {
+        "title": "프로젝트 만들기",
+        "body": "'프로젝트 생성' 버튼을 클릭하고 다음 정보를 입력하세요.",
+        "item_title": "제목 (필수): 프로젝트 이름",
+        "item_emoji": "이모지: 프로젝트를 나타내는 아이콘 (프리셋에서 선택)",
+        "item_color": "색상: 카드의 식별 색상 (프리셋에서 선택)",
+        "item_due_date": "마감일: 완료 목표일 (선택사항)"
+      },
+      "milestone": {
+        "title": "마일스톤과 게이트",
+        "body": "마일스톤은 프로젝트 내의 중간 목표입니다. 게이트 기능을 활성화하면 이전 마일스톤이 완료될 때까지 다음 마일스톤이 잠깁니다.",
+        "completion_mode_label": "완료 모드에 대하여",
+        "mode_auto": "자동 완료",
+        "mode_auto_desc": "마일스톤의 모든 TODO가 완료되면 자동으로 달성 처리됩니다.",
+        "mode_manual": "수동",
+        "mode_manual_desc": "TODO 완료 여부와 관계없이 수동으로 달성 표시를 합니다."
+      },
+      "progress": {
+        "title": "진행 상황 보기",
+        "body": "프로젝트 카드에는 진행 바, 완료율, 남은 일수가 표시됩니다. 진행 바는 완료된 TODO / 전체 TODO 수에서 자동 계산됩니다."
+      },
+      "scope": {
+        "title": "개인 프로젝트 vs. 팀 프로젝트",
+        "body": "프로젝트에는 '개인'과 '팀' 두 가지 범위가 있습니다.",
+        "personal_title": "개인 프로젝트",
+        "personal_desc": "본인만 조회 및 관리할 수 있습니다. '마이 페이지' → '프로젝트'에서 접근하세요.",
+        "team_title": "팀 프로젝트",
+        "team_desc": "팀원과 공유하고 함께 관리합니다. 팀 페이지의 '프로젝트' 탭에서 접근하세요."
+      },
+      "back_to_projects": "프로젝트 목록으로 돌아가기"
+    },
+    "org_page": {
+      "title": "프로젝트",
+      "empty": "프로젝트가 없습니다",
+      "back_label": "프로젝트 목록"
+    },
+    "error": {
+      "fetch_failed": "프로젝트를 불러오지 못했습니다",
+      "create_failed": "프로젝트 생성에 실패했습니다",
+      "update_failed": "업데이트에 실패했습니다",
+      "delete_failed": "삭제에 실패했습니다",
+      "status_change_failed": "상태 변경에 실패했습니다",
+      "milestone_save_failed": "마일스톤 저장에 실패했습니다"
+    },
+    "status": {
+      "active": "진행 중",
+      "completed": "완료",
+      "archived": "보관됨"
+    },
+    "action": {
+      "edit": "편집",
+      "complete": "완료로 표시",
+      "reopen": "다시 열기"
+    },
+    "stats": {
+      "progress": "진행률",
+      "tasks": "작업",
+      "milestones": "마일스톤",
+      "due_date": "기한",
+      "no_due_date": "미설정"
+    },
+    "task_unit": "개 작업",
+    "days_remaining": "{n}일 남음",
+    "days_overdue": "{n}일 초과",
+    "related_tasks": "관련 작업",
+    "no_related_tasks": "이 프로젝트에 관련 작업이 없습니다",
+    "widget": {
+      "label": "프로젝트",
+      "description": "프로젝트 진행 상황 및 목록"
+    }
   },
   "inviteToken": {
     "printQrPdf": "QR코드 PDF 인쇄",
@@ -1511,6 +1619,7 @@
       "prevPage": "이전 페이지",
       "nextPage": "다음 페이지",
       "reorder": "표시 순서 변경",
+      "goToScopePage": "팀/조직 페이지로 이동",
       "empty": "소속된 팀/조직이 없습니다",
       "folderEmpty": "이 폴더에 범위가 없습니다",
       "loadError": "태그 목록을 불러오지 못했습니다"

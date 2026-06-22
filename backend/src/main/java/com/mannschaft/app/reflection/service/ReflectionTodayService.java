@@ -19,12 +19,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * 今日の振り返りビューのサービス（F06.5・§4.3 / §7 #12）。
@@ -77,13 +79,34 @@ public class ReflectionTodayService {
         for (ReflectionEntryEntity e : entries) {
             entryByThemeId.put(e.getThemeId(), e);
         }
-        // (slotKind文字列, slotId) → theme（時間割コマ紐付けテーマ）。
-        Map<String, ReflectionThemeEntity> themeBySlotKey = new HashMap<>();
+        // Phase 2: 2系統 Map で照合（§11.1）。
+        // bySlotKey  : "slotKind:slotId" → テーマ（条件A: linked_slot_id 優先経路・既存 Phase1 動作）
+        // bySubjectKey: "PERSONAL:subjectName:courseCode" or "TEAM:subjectName" → テーマリスト
+        //              （条件B: linked_subject_name 経路・linked_slot_id なしのみ登録）
+        Map<String, ReflectionThemeEntity> bySlotKey = new HashMap<>();
+        Map<String, List<ReflectionThemeEntity>> bySubjectKey = new HashMap<>();
         List<ReflectionThemeEntity> freeThemes = new ArrayList<>();
         for (ReflectionThemeEntity t : themes) {
             if (t.getLinkedSlotKind() != null && t.getLinkedSlotId() != null) {
-                themeBySlotKey.put(slotKey(t.getLinkedSlotKind().name(), t.getLinkedSlotId()), t);
+                // 条件A: linked_slot_id あり → bySlotKey のみ（両方持つ場合も条件A優先）
+                bySlotKey.put(slotKey(t.getLinkedSlotKind().name(), t.getLinkedSlotId()), t);
+            } else if (t.getLinkedSlotKind() != null && t.getLinkedSubjectName() != null) {
+                // 条件B: linked_subject_name あり・linked_slot_id なし → bySubjectKey
+                // courseCode が非 null の場合は精密キー（subjectName:courseCode）にも登録し、
+                // courseCode なしスロットとの照合に備えて subjectName のみのフォールバックキーにも登録する。
+                // これにより:
+                //   スロット side courseCode あり → 精密キーで同 courseCode のテーマのみヒット (AC-31)
+                //   スロット side courseCode なし → フォールバックキーで全 subjectName 一致テーマがヒット (AC-29)
+                String preciseKey = subjectKey(t.getLinkedSlotKind().name(), t.getLinkedSubjectName(),
+                        t.getLinkedCourseCode());
+                bySubjectKey.computeIfAbsent(preciseKey, k -> new ArrayList<>()).add(t);
+                if (t.getLinkedCourseCode() != null && !t.getLinkedCourseCode().isEmpty()) {
+                    // courseCode あり → フォールバックキー（courseCode なし扱い）にも登録
+                    String fallbackKey = subjectKey(t.getLinkedSlotKind().name(), t.getLinkedSubjectName(), null);
+                    bySubjectKey.computeIfAbsent(fallbackKey, k -> new ArrayList<>()).add(t);
+                }
             } else {
+                // 自由テーマ（linked_slot なし・linked_subject なし）
                 freeThemes.add(t);
             }
         }
@@ -93,14 +116,31 @@ public class ReflectionTodayService {
 
         // ① 時間割コマ由来 item（空きコマも item 化＝AC-17）。
         for (DashboardTimetableTodayResponse.TimetableTodayItem slot : dashboard.items()) {
-            ReflectionThemeEntity linkedTheme =
-                    themeBySlotKey.get(slotKey(slot.sourceKind(), slot.slotId()));
-            ReflectionEntryEntity todayEntry =
-                    linkedTheme != null ? entryByThemeId.get(linkedTheme.getId()) : null;
-            if (linkedTheme != null) {
-                consumedThemeIds.add(linkedTheme.getId());
+            // 条件A: bySlotKey でヒットするか確認
+            ReflectionThemeEntity linkedThemeA =
+                    bySlotKey.get(slotKey(slot.sourceKind(), slot.slotId()));
+            if (linkedThemeA != null) {
+                // 条件A ヒット → 既存 Phase1 動作（subjectName をテーマ名で上書き）
+                ReflectionEntryEntity todayEntry = entryByThemeId.get(linkedThemeA.getId());
+                consumedThemeIds.add(linkedThemeA.getId());
+                items.add(buildSlotItem(slot, linkedThemeA, todayEntry, target, true));
+            } else {
+                // 条件B: bySubjectKey で照合（条件A未ヒットのコマのみ）
+                String key = subjectKey(slot.sourceKind(), slot.subjectName(), slot.courseCode());
+                List<ReflectionThemeEntity> subjectThemes =
+                        bySubjectKey.getOrDefault(key, Collections.emptyList());
+                if (!subjectThemes.isEmpty()) {
+                    for (ReflectionThemeEntity subjectTheme : subjectThemes) {
+                        ReflectionEntryEntity todayEntry = entryByThemeId.get(subjectTheme.getId());
+                        consumedThemeIds.add(subjectTheme.getId());
+                        // 条件B: subjectName 上書きしない（コマの科目名を保持・§11.1）
+                        items.add(buildSlotItem(slot, subjectTheme, todayEntry, target, false));
+                    }
+                } else {
+                    // 空きコマ（テーマ未設定）→ themeId null で item 化（AC-17）
+                    items.add(buildSlotItem(slot, null, null, target, true));
+                }
             }
-            items.add(buildSlotItem(slot, linkedTheme, todayEntry, target));
         }
 
         // ② 自由テーマ由来 item（slotKind=null・時間割非依存ユーザーの主導線＝§4.3）。
@@ -113,22 +153,79 @@ public class ReflectionTodayService {
             items.add(buildFreeThemeItem(t, todayEntry, target));
         }
 
+        // AC-27: themeId を持つ item 群に対し、最新 targetDate を GROUP BY 1 クエリで一括取得（N+1 回避）。
+        Set<UUID> themeIdsInItems = items.stream()
+                .filter(i -> i.themeId() != null)
+                .map(i -> UUID.fromString(i.themeId()))
+                .collect(Collectors.toSet());
+
+        Map<UUID, LocalDate> lastReflectedByThemeId = new HashMap<>();
+        if (!themeIdsInItems.isEmpty()) {
+            reflectionEntryRepository.findLatestTargetDateByThemeIds(themeIdsInItems)
+                    .forEach(v -> lastReflectedByThemeId.put(v.getThemeId(), v.getLastDate()));
+        }
+
+        // themeId → theme メタ（title・createdAt）の Map を構築。
+        Map<UUID, ReflectionThemeEntity> themeById = new HashMap<>();
+        for (ReflectionThemeEntity t : themes) {
+            themeById.put(t.getId(), t);
+        }
+
+        // items に themeTitle・themeCreatedAt・lastReflectedAt を付与して再構築（AC-25/AC-26）。
+        List<ReflectionTodayResponse.ReflectionTodayItem> enrichedItems = new ArrayList<>(items.size());
+        for (ReflectionTodayResponse.ReflectionTodayItem item : items) {
+            if (item.themeId() == null) {
+                enrichedItems.add(item);
+                continue;
+            }
+            UUID themeId = UUID.fromString(item.themeId());
+            ReflectionThemeEntity theme = themeById.get(themeId);
+            enrichedItems.add(ReflectionTodayResponse.ReflectionTodayItem.builder()
+                    .slotKind(item.slotKind())
+                    .slotId(item.slotId())
+                    .periodLabel(item.periodLabel())
+                    .subjectName(item.subjectName())
+                    .themeId(item.themeId())
+                    .hasEntryToday(item.hasEntryToday())
+                    .entryId(item.entryId())
+                    .isMasked(item.isMasked())
+                    .themeTitle(theme != null ? theme.getTitle() : null)
+                    .themeCreatedAt(theme != null && theme.getCreatedAt() != null
+                            ? theme.getCreatedAt().toLocalDate() : null)
+                    .lastReflectedAt(lastReflectedByThemeId.get(themeId))
+                    .build());
+        }
+
         return ReflectionTodayResponse.builder()
                 .date(target)
-                .items(items)
+                .items(enrichedItems)
                 .build();
     }
 
+    /**
+     * 時間割コマ由来 item を組み立てる。
+     *
+     * @param overwriteSubjectName true=条件A（テーマ名で subjectName 上書き）、false=条件B（コマの科目名を保持）
+     */
     private ReflectionTodayResponse.ReflectionTodayItem buildSlotItem(
             DashboardTimetableTodayResponse.TimetableTodayItem slot,
             ReflectionThemeEntity linkedTheme,
             ReflectionEntryEntity todayEntry,
-            LocalDate today) {
+            LocalDate today,
+            boolean overwriteSubjectName) {
+        // 条件A: subjectName をテーマ名で上書き（Phase 1 後方互換）。
+        // 条件B: コマの科目名を保持（テーマ情報は themeTitle メタで表示・§11.1）。
+        String subjectName;
+        if (linkedTheme != null && overwriteSubjectName) {
+            subjectName = linkedTheme.getTitle();
+        } else {
+            subjectName = slot.subjectName();
+        }
         return ReflectionTodayResponse.ReflectionTodayItem.builder()
                 .slotKind(slot.sourceKind())
                 .slotId(slot.slotId())
                 .periodLabel(slot.periodLabel())
-                .subjectName(linkedTheme != null ? linkedTheme.getTitle() : slot.subjectName())
+                .subjectName(subjectName)
                 .themeId(linkedTheme != null ? linkedTheme.getId().toString() : null)
                 .hasEntryToday(todayEntry != null)
                 .entryId(todayEntry != null ? todayEntry.getId().toString() : null)
@@ -152,6 +249,20 @@ public class ReflectionTodayService {
 
     private String slotKey(String sourceKind, Long slotId) {
         return sourceKind + ":" + slotId;
+    }
+
+    /**
+     * Phase 2: 科目名照合キーを生成する（§11.1）。
+     * PERSONAL → "PERSONAL:subjectName:courseCode"（courseCode が null の場合は ""）
+     * TEAM     → "TEAM:subjectName"（courseCode は TEAM コマに存在しないため無視）
+     */
+    private String subjectKey(String sourceKind, String subjectName, String courseCode) {
+        if ("TEAM".equals(sourceKind)) {
+            return "TEAM:" + (subjectName != null ? subjectName : "");
+        }
+        // PERSONAL
+        return "PERSONAL:" + (subjectName != null ? subjectName : "")
+                + ":" + (courseCode != null ? courseCode : "");
     }
 
     /** ?date= の範囲検証（過去365〜未来30日・§2.5.1 c）。範囲外は 400。 */

@@ -57,7 +57,8 @@ test.beforeAll(async () => {
  */
 async function installApiBridge(page: Page, token: string): Promise<void> {
   // page.goto 前に設定するケースのため、origin を固定値で指定する（about:blank 対策）
-  const pageOrigin = 'http://localhost:3001'
+  // BASE_URL 環境変数が設定されている場合はそちらを使う（本陣:3000 / 検証 worktree:3001 等）
+  const pageOrigin = process.env.BASE_URL ?? 'http://localhost:3000'
   // 正規表現で /api/v1/ を含む全 URL をキャッチ
   // （NUXT_PUBLIC_API_BASE が絶対 URL 設定時にも確実に横取りできる）
   await page.route(/\/api\/v1\//, async (route) => {
@@ -235,48 +236,67 @@ async function dispatchTouchGesture(
 }
 
 test.describe('F10.1.1 管理者レンズ L1 トグル — emulated touch ジェスチャ', () => {
-  test('TOUCH-001: タップ（移動なし）でトグルが 1 回だけ切り替わる（ghost click 二重発火なし）', async ({
+  test('TOUCH-001: タップ（移動なし）でトグルが確定し ghost click 二重発火がない', async ({
     page,
   }) => {
     await loginViaApiBridge(page, ADMIN_EMAIL, ADMIN_PASSWORD)
     await openTeamLens(page)
 
-    const toggle = page.getByTestId('admin-lens-toggle-TEAM')
-    const before = await toggle.getAttribute('aria-checked')
+    const adminBtn = page.getByTestId('admin-lens-toggle-TEAM')
+    const memberBtn = page.getByTestId('admin-lens-member-TEAM')
 
-    // タップ（dx=0）: タップ判定 → toggle() 1 回 + ghost click は onClick が無視するはず。
+    // 管理者ボタンをタップ（dx=0）→ ON になる（setLens(true)）
     await dispatchTouchGesture(page, 'admin-lens-toggle-TEAM', 0)
+    await expect(adminBtn, 'タップ後 管理者ボタンが aria-pressed=true').toHaveAttribute(
+      'aria-pressed',
+      'true',
+      { timeout: 8_000 },
+    )
+    await expect(page.getByTestId('admin-widget-grid-TEAM'), '管理者グリッドが出現').toBeVisible({
+      timeout: 10_000,
+    })
 
-    // 状態が「1 回だけ」反転すること（二重発火なら元に戻ってしまう）。
-    const expectedAfter = before === 'true' ? 'false' : 'true'
-    await expect(
-      toggle,
-      'タップで aria-checked が 1 回だけ反転する（二重発火していない）',
-    ).toHaveAttribute('aria-checked', expectedAfter, { timeout: 8_000 })
+    // 同じ管理者ボタンを再タップ → ghost click 二重発火なら一旦 false に振れる
+    // 冪等（aria-pressed='true' のまま）であることを検証する
+    await dispatchTouchGesture(page, 'admin-lens-toggle-TEAM', 0)
+    await page.waitForTimeout(800)
+    await expect(adminBtn, '再タップでも aria-pressed は true のまま（ghost 二重発火なし）').toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await expect(page.getByTestId('admin-widget-grid-TEAM'), 'グリッドは visible のまま').toBeVisible()
 
-    // 反転後、ON ならグリッドが、OFF ならグリッドが消えていること（実挙動の裏取り）。
-    if (expectedAfter === 'true') {
-      await expect(page.getByTestId('admin-widget-grid-TEAM')).toBeVisible({ timeout: 10_000 })
-    } else {
-      await expect(page.getByTestId('admin-widget-grid-TEAM')).toBeHidden({ timeout: 10_000 })
-    }
+    // メンバーボタンをタップ → 管理者ボタンが false になりグリッドが消える
+    await dispatchTouchGesture(page, 'admin-lens-member-TEAM', 0)
+    await expect(adminBtn, 'メンバータップ後 管理者ボタンが aria-pressed=false').toHaveAttribute(
+      'aria-pressed',
+      'false',
+      { timeout: 8_000 },
+    )
+    await expect(memberBtn, 'メンバーボタンが aria-pressed=true').toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await expect(page.getByTestId('admin-widget-grid-TEAM'), 'グリッドが非表示').toBeHidden({
+      timeout: 10_000,
+    })
   })
 
-  test('TOUCH-002: 横スワイプ（閾値超）ではトグルが切り替わらない（カルーセルへ委譲）', async ({ page }) => {
+  test('TOUCH-002: 横スワイプ（閾値超）ではトグルしない（カルーセル委譲）', async ({ page }) => {
     await loginViaApiBridge(page, ADMIN_EMAIL, ADMIN_PASSWORD)
     await openTeamLens(page)
 
-    const toggle = page.getByTestId('admin-lens-toggle-TEAM')
-    const before = await toggle.getAttribute('aria-checked')
+    const adminBtn = page.getByTestId('admin-lens-toggle-TEAM')
+    const before = await adminBtn.getAttribute('aria-pressed')
 
-    // 横スワイプ（dx=80px、|Δx| > |Δy|*1.5 を満たす）: touchMoved=true → toggle() を呼ばない。
+    // 横スワイプ（dx=80px、|Δx| > |Δy|*1.5 を満たす）: touchMoved=true → setLens を呼ばない
     await dispatchTouchGesture(page, 'admin-lens-toggle-TEAM', 80)
 
-    // しばらく待っても aria-checked が変化しないこと（スワイプではトグルしない §1.3）。
+    // しばらく待っても aria-pressed が変化しないこと（スワイプではトグルしない §1.3）
     await page.waitForTimeout(800)
     await expect(
-      toggle,
-      'スワイプでは aria-checked が変化しない（トグル発火しない）',
-    ).toHaveAttribute('aria-checked', before ?? 'false')
+      adminBtn,
+      'スワイプでは aria-pressed が変化しない（トグル発火しない）',
+    ).toHaveAttribute('aria-pressed', before ?? 'false')
   })
 })

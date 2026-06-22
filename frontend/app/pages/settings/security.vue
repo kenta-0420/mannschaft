@@ -34,6 +34,9 @@ const renameDialog = ref(false)
 const renameTarget = ref<WebAuthnCredentialResponse | null>(null)
 const newDeviceName = ref('')
 
+// 使い方ガイド（モーダル）
+const showHelp = ref(false)
+
 onMounted(async () => {
   await loadData()
 })
@@ -134,7 +137,9 @@ async function handleRenameCredential() {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <PageHeader title="セキュリティ" back-to="/settings" />
+    <PageHeader title="セキュリティ" back-to="/settings" help @help="showHelp = true" />
+
+    <SecurityHelpDialog v-model:visible="showHelp" />
 
     <PageLoading v-if="loading" />
 

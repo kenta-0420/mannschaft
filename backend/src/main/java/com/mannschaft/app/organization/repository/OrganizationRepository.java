@@ -70,6 +70,32 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
     }
 
     /**
+     * マイページ 組織プロジェクト集約用: 指定 ID 集合の id → name（組織名）を一括取得する。
+     *
+     * <p>{@link #findIdAndSlugByIdIn(Collection)} の name 版。{@code @SQLRestriction("deleted_at IS NULL")}
+     * により論理削除済みは自動除外される。</p>
+     *
+     * @param ids 取得対象の組織 ID 集合（非空）
+     * @return id → name の Object[] リスト（[0]=id Long, [1]=name String）
+     */
+    @Query("SELECT o.id AS id, o.name AS name FROM OrganizationEntity o WHERE o.id IN :ids")
+    List<Object[]> findIdAndNameByIdIn(@Param("ids") Collection<Long> ids);
+
+    /**
+     * マイページ 組織プロジェクト集約用: ID → name（組織名）の Map を返すデフォルトメソッド。
+     *
+     * @param ids 取得対象の組織 ID 集合
+     * @return id → name の Map（論理削除済みは @SQLRestriction で自動除外）。ids が空なら空 Map
+     */
+    default Map<Long, String> findNameMapByIdIn(Collection<Long> ids) {
+        return findIdAndNameByIdIn(ids).stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (String) row[1]
+                ));
+    }
+
+    /**
      * 論理削除済みを含めてIDで検索する（restore用）。
      */
     @Query(value = "SELECT * FROM organizations WHERE id = :id", nativeQuery = true)

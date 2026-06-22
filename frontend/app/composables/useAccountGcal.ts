@@ -16,6 +16,7 @@ interface GcalSync {
 
 export function useAccountGcal() {
   const notification = useNotification()
+  const { t } = useI18n()
   const gcalApi = useGoogleCalendarApi()
 
   const gcalStatus = ref<GcalStatus | null>(null)
@@ -52,7 +53,7 @@ export function useAccountGcal() {
       const res = await gcalApi.connect()
       window.location.href = (res.data as { authUrl: string }).authUrl
     } catch {
-      notification.error('接続に失敗しました')
+      notification.error(t('settings.gcal.toast.connect_error'))
     }
   }
 
@@ -60,10 +61,10 @@ export function useAccountGcal() {
     if (!confirm('Google Calendar連携を解除しますか？')) return
     try {
       await gcalApi.disconnect()
-      notification.success('連携を解除しました')
+      notification.success(t('settings.gcal.toast.disconnect_success'))
       await loadGcal()
     } catch {
-      notification.error('解除に失敗しました')
+      notification.error(t('settings.gcal.toast.disconnect_error'))
     }
   }
 
@@ -71,9 +72,9 @@ export function useAccountGcal() {
     if (!gcalSyncSettings.value) return
     try {
       await gcalApi.updatePersonalSync(gcalSyncSettings.value as unknown as Record<string, unknown>)
-      notification.success('同期設定を保存しました')
+      notification.success(t('settings.gcal.toast.save_success'))
     } catch {
-      notification.error('保存に失敗しました')
+      notification.error(t('settings.gcal.toast.save_error'))
     }
   }
 
@@ -81,10 +82,10 @@ export function useAccountGcal() {
     gcalSyncing.value = true
     try {
       await gcalApi.manualSync()
-      notification.success('同期を実行しました')
+      notification.success(t('settings.gcal.toast.sync_success'))
       await loadGcal()
     } catch {
-      notification.error('同期に失敗しました')
+      notification.error(t('settings.gcal.toast.sync_error'))
     } finally {
       gcalSyncing.value = false
     }

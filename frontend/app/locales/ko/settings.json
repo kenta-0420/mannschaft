@@ -10,7 +10,8 @@
     "step_completed": "내보내기 완료 — 다운로드 만료: {expiry}",
     "step_failed": "내보내기에 실패했습니다",
     "step_processing": "내보내는 중...",
-    "step_preparing": "준비 중..."
+    "step_preparing": "준비 중...",
+    "description": "개인 데이터를 ZIP 파일로 내보낼 수 있습니다."
   },
   "deletion_preview": {
     "dialog_title": "계정 삭제 확인",
@@ -41,7 +42,13 @@
     "myShift": "내 시프트",
     "myPage": "마이페이지",
     "qa": "Q&A",
-    "blog": "블로그"
+    "blog": "블로그",
+    "reservations": "예약 확인",
+    "wallet": "포인트 카드",
+    "inbox": "받은 편지함",
+    "market": "마켓",
+    "jobs": "채용",
+    "matching": "매칭"
   },
   "settings": {
     "navigation": {
@@ -51,6 +58,265 @@
       "resetToDefault": "기본값으로 초기화",
       "saveSuccess": "설정이 저장되었습니다",
       "saveError": "설정 저장에 실패했습니다"
+    },
+    "account": {
+      "page_title": "계정 설정",
+      "notification_settings": "알림 설정"
+    },
+    "profile": {
+      "section_title": "프로필 정보",
+      "avatar_alt": "아바타",
+      "change_image": "이미지 변경",
+      "image_hint": "5MB 이하 JPG, PNG",
+      "display_name": "표시 이름",
+      "phone_number": "전화번호",
+      "phone_placeholder": "010-0000-0000",
+      "postal_code": "우편번호",
+      "postal_placeholder": "00000",
+      "searchable_label": "사용자 검색에 표시",
+      "searchable_description": "켜면 다른 사용자가 검색으로 찾을 수 있습니다",
+      "toast": {
+        "save_success": "프로필이 업데이트되었습니다",
+        "save_error": "프로필 업데이트에 실패했습니다",
+        "avatar_size_error": "파일 크기는 5MB 이하여야 합니다",
+        "avatar_success": "아바타가 업데이트되었습니다",
+        "avatar_error": "아바타 업로드에 실패했습니다"
+      }
+    },
+    "email": {
+      "section_title": "이메일 주소 변경",
+      "current_email": "현재 이메일 주소",
+      "new_email": "새 이메일 주소",
+      "new_email_placeholder": "new{'@'}example.com",
+      "current_password": "현재 비밀번호",
+      "send_confirmation": "확인 이메일 발송",
+      "sent_title": "확인 이메일이 발송되었습니다",
+      "sent_description": "{email}로 확인 이메일을 보냈습니다. 링크를 클릭하여 변경을 완료하세요.",
+      "toast": {
+        "send_success": "확인 이메일이 발송되었습니다",
+        "send_error": "이메일 주소 변경 요청에 실패했습니다"
+      }
+    },
+    "password": {
+      "section_title_change": "비밀번호 변경",
+      "section_title_set": "비밀번호 설정",
+      "no_password_description": "현재 비밀번호가 설정되지 않았습니다. 비밀번호를 설정하면 이메일과 비밀번호로 로그인할 수 있습니다.",
+      "current_password": "현재 비밀번호",
+      "new_password": "새 비밀번호",
+      "confirm_password": "새 비밀번호 확인",
+      "policy_hint": "8자 이상이며, 대문자·소문자·숫자·기호 중 3종류 이상을 포함해야 합니다.",
+      "load_error": "프로필 정보를 불러오지 못했습니다",
+      "length_error": "비밀번호는 8자 이상이어야 합니다",
+      "policy_violation": "대문자·소문자·숫자·기호 중 3종류 이상을 포함하세요",
+      "mismatch_error": "비밀번호가 일치하지 않습니다",
+      "change_button": "비밀번호 변경",
+      "set_button": "비밀번호 설정",
+      "change_success": "비밀번호가 변경되었습니다",
+      "change_error": "비밀번호 변경에 실패했습니다. 현재 비밀번호를 확인하세요",
+      "toast": {
+        "change_success": "비밀번호가 변경되었습니다",
+        "setup_success": "비밀번호가 설정되었습니다",
+        "change_error": "비밀번호 변경에 실패했습니다. 현재 비밀번호를 확인하세요",
+        "setup_error": "비밀번호 설정에 실패했습니다"
+      },
+      "redirecting": "비밀번호가 변경되었습니다. 로그인 화면으로 이동 중…"
+    },
+    "locale": {
+      "section_title": "언어 및 시간대",
+      "display_language": "표시 언어",
+      "timezone": "시간대",
+      "toast": {
+        "save_success": "언어 및 시간대가 업데이트되었습니다",
+        "save_error": "언어 및 시간대 업데이트에 실패했습니다"
+      }
+    },
+    "appearance": {
+      "section_title": "외관",
+      "hide_chat_preview_label": "채팅 미리보기 숨기기",
+      "hide_chat_preview_description": "알림 배너에서 채팅 내용을 표시하지 않습니다",
+      "save_button": "외관 저장",
+      "save_success": "외관 설정이 저장되었습니다"
+    },
+    "security": {
+      "two_fa_section_title": "이중 인증（2FA）",
+      "two_fa_description": "인증 앱（Google Authenticator 등）을 사용하여 계정 보안을 강화합니다.",
+      "setup_2fa_button": "2FA 설정",
+      "regenerate_backup_codes_button": "백업 코드 재생성",
+      "scan_qr_description": "인증 앱으로 QR 코드를 스캔하세요.",
+      "totp_qr_alt": "TOTP QR 코드",
+      "secret_key": "비밀 키",
+      "sessions_section_title": "활성 세션",
+      "logout_all_button": "모두 로그아웃",
+      "no_sessions": "세션 정보가 없습니다",
+      "unknown_device": "알 수 없는 기기",
+      "current_session_tag": "현재",
+      "webauthn_section_title": "보안 키（WebAuthn）",
+      "webauthn_description": "FIDO2/WebAuthn 호환 보안 키 또는 생체 인증을 등록할 수 있습니다.",
+      "no_credentials": "등록된 보안 키가 없습니다",
+      "default_credential_name": "보안 키",
+      "last_used": "마지막 사용: {date}",
+      "registered": "등록: {date}",
+      "backup_codes_dialog_title": "백업 코드",
+      "backup_codes_description": "아래 백업 코드를 안전한 곳에 보관하세요. 각 코드는 한 번만 사용할 수 있습니다.",
+      "rename_dialog_title": "기기 이름 변경",
+      "device_name_label": "기기 이름",
+      "session": {
+        "device_label": "{os}의 {browser}",
+        "unknown_device": "알 수 없는 기기"
+      },
+      "toast": {
+        "setup_2fa_error": "2FA 설정 시작에 실패했습니다",
+        "regenerate_success": "백업 코드가 재생성되었습니다",
+        "regenerate_error": "백업 코드 재생성에 실패했습니다",
+        "revoke_success": "세션이 무효화되었습니다",
+        "revoke_error": "세션 무효화에 실패했습니다",
+        "revoke_all_success": "모든 기기에서 로그아웃되었습니다",
+        "revoke_all_error": "모든 기기 로그아웃에 실패했습니다",
+        "delete_key_success": "보안 키가 삭제되었습니다",
+        "delete_key_error": "보안 키 삭제에 실패했습니다",
+        "rename_success": "기기 이름이 업데이트되었습니다",
+        "rename_error": "기기 이름 업데이트에 실패했습니다"
+      }
+    },
+    "linked_accounts": {
+      "oauth_section_title": "OAuth 연동",
+      "no_oauth": "연동된 계정이 없습니다",
+      "connected_at": "연동일: {date}",
+      "unlink_button": "해제",
+      "line_section_title": "LINE 연동",
+      "line_icon_alt": "LINE 아이콘",
+      "line_default_user": "LINE 사용자",
+      "line_linked_at": "연동일: {date}",
+      "line_unlink_button": "LINE 연동 해제",
+      "line_not_linked": "LINE 계정이 연동되지 않았습니다",
+      "line_link_instruction": "LINE 앱에서 연동을 진행해 주세요",
+      "toast": {
+        "unlink_success": "{provider} 연동이 해제되었습니다",
+        "unlink_error": "연동 해제에 실패했습니다",
+        "line_unlink_success": "LINE 연동이 해제되었습니다",
+        "line_unlink_error": "LINE 연동 해제에 실패했습니다"
+      }
+    },
+    "member_card": {
+      "section_title": "QR 회원증",
+      "tab_list": "회원증 목록",
+      "tab_history": "체크인 내역",
+      "toast": {
+        "suspend_success": "회원증이 일시 정지되었습니다",
+        "suspend_error": "일시 정지에 실패했습니다",
+        "reactivate_success": "회원증이 재개되었습니다",
+        "reactivate_error": "재개에 실패했습니다"
+      }
+    },
+    "social_profile": {
+      "section_title": "소셜 프로필",
+      "create_button": "새로 만들기",
+      "count_description": "최대 3개의 프로필을 만들 수 있습니다（{count}/3）",
+      "no_profiles": "아직 프로필이 없습니다",
+      "dialog_title_create": "프로필 만들기",
+      "dialog_title_edit": "프로필 편집",
+      "handle_label": "핸들 *",
+      "handle_placeholder": "my_handle",
+      "handle_hint": "영문자, 숫자, 밑줄만 가능（30일에 1회 변경 가능）",
+      "display_name_label": "표시 이름 *",
+      "bio_label": "자기소개",
+      "bio_count": "{count}/300",
+      "update_button": "업데이트",
+      "create_submit_button": "만들기",
+      "toast": {
+        "update_success": "프로필이 업데이트되었습니다",
+        "create_success": "프로필이 생성되었습니다",
+        "save_error": "저장에 실패했습니다",
+        "delete_success": "프로필이 삭제되었습니다",
+        "delete_error": "삭제에 실패했습니다"
+      }
+    },
+    "seal": {
+      "section_title": "전자 도장",
+      "tab_preview": "도장 미리보기",
+      "tab_defaults": "기본 설정",
+      "tab_history": "날인 내역",
+      "regenerate_button": "도장 재생성",
+      "regenerate_hint": "도장은 등록된 이름으로 자동 생성됩니다（1시간에 최대 3회）",
+      "toast": {
+        "regenerate_success": "도장이 재생성되었습니다",
+        "regenerate_error": "재생성에 실패했습니다（1시간에 최대 3회）",
+        "save_defaults_success": "기본 설정이 저장되었습니다",
+        "save_defaults_error": "설정 저장에 실패했습니다"
+      }
+    },
+    "login_history": {
+      "section_title": "로그인 내역",
+      "no_history": "로그인 내역이 없습니다",
+      "load_more": "더 보기",
+      "event_login_success": "로그인 성공",
+      "event_login_failure": "로그인 실패",
+      "event_logout": "로그아웃",
+      "event_token_refresh": "토큰 갱신",
+      "event_password_change": "비밀번호 변경",
+      "event_mfa_verify": "2FA 인증"
+    },
+    "gcal": {
+      "section_title": "Google 캘린더 연동",
+      "connected_label": "연결됨",
+      "last_synced": "마지막 동기화: {date}",
+      "manual_sync_button": "수동 동기화",
+      "disconnect_button": "연동 해제",
+      "sync_settings_title": "동기화 설정",
+      "personal_calendar_label": "개인 캘린더",
+      "personal_calendar_description": "개인 일정을 Google 캘린더에 동기화",
+      "team_calendars_label": "팀 캘린더",
+      "org_calendars_label": "조직 캘린더",
+      "save_settings_button": "설정 저장",
+      "not_connected_description": "Google 계정을 연결하여 캘린더를 동기화할 수 있습니다",
+      "connect_button": "Google 계정 연결",
+      "toast": {
+        "connect_error": "연결에 실패했습니다",
+        "disconnect_success": "연동이 해제되었습니다",
+        "disconnect_error": "해제에 실패했습니다",
+        "save_success": "동기화 설정이 저장되었습니다",
+        "save_error": "저장에 실패했습니다",
+        "sync_success": "동기화가 실행되었습니다",
+        "sync_error": "동기화에 실패했습니다"
+      }
+    },
+    "delete_account": {
+      "section_title": "계정 삭제",
+      "description": "계정을 삭제하면 모든 데이터가 영구적으로 삭제됩니다. 이 작업은 취소할 수 없습니다.",
+      "delete_button": "계정 삭제",
+      "confirm_message": "계정을 삭제하면 모든 데이터가 영구적으로 삭제됩니다. 정말 계속하시겠습니까?",
+      "confirm_dialog_title": "계정 삭제 확인",
+      "confirm_reject_label": "취소",
+      "confirm_accept_label": "삭제 절차로 이동",
+      "password_confirm_label": "확인을 위해 현재 비밀번호를 입력하세요",
+      "password_placeholder": "현재 비밀번호",
+      "retention_note": "※ 일부 데이터는 법적 요건에 따라 {days}일 후 삭제됩니다.",
+      "delete_success": "계정이 삭제되었습니다. 이용해 주셔서 감사합니다.",
+      "delete_error": "계정 삭제에 실패했습니다"
+    },
+    "notification": {
+      "load_error": "설정을 불러오지 못했습니다",
+      "save_success": "알림 설정을 저장했습니다",
+      "save_error": "저장에 실패했습니다",
+      "save_button": "설정 저장",
+      "global_section_title": "자동 전송",
+      "priority_auto_delivery_label": "우선순위에 따른 자동 전송",
+      "priority_auto_delivery_desc": "중요도가 높은 알림을 푸시 알림으로도 자동 전송합니다.",
+      "scope_section_title": "팀・조직별 알림",
+      "scope_section_desc": "소속된 팀・조직별로 알림 수신을 설정할 수 있습니다.",
+      "scope_type_team": "팀",
+      "scope_type_organization": "조직",
+      "scope_receiving": "수신 중",
+      "scope_muted": "음소거됨",
+      "scope_empty": "소속된 팀・조직이 없습니다",
+      "type_section_title": "알림 종류",
+      "type_section_desc": "종류별로 수신을 설정할 수 있습니다. \"펼치기\"로 앱 내・푸시를 개별 전환할 수 있습니다.",
+      "expand": "펼치기",
+      "collapse": "접기",
+      "channel_in_app": "앱 내",
+      "channel_push": "푸시",
+      "locked_tag": "긴급",
+      "locked_desc": "이 알림은 비활성화할 수 없습니다"
     }
   }
 }

@@ -99,7 +99,10 @@ public enum PaymentErrorCode implements ErrorCode {
     MEMBER_PAYMENT_NOT_FOUND("PAYMENT_029", "会費支払い記録が見つかりません", Severity.WARN),
 
     /** 領収書へのアクセスが拒否された（払い手・受益者以外）（F08.9 P8 領収書） */
-    PAYMENT_ACCESS_DENIED("PAYMENT_030", "この支払い記録へのアクセス権限がありません", Severity.WARN);
+    PAYMENT_ACCESS_DENIED("PAYMENT_030", "この支払い記録へのアクセス権限がありません", Severity.WARN),
+
+    /** STRIPE は手動記録では指定不可（オンライン決済の手動詐称防止・F08.9 手段拡張） */
+    STRIPE_NOT_ALLOWED_FOR_MANUAL("PAYMENT_031", "STRIPE は手動記録では指定できません", Severity.WARN);
 
     private final String code;
     private final String message;

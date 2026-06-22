@@ -4,7 +4,14 @@
     "nav": {
       "today": "Reflexiones de hoy",
       "themes": "Temas",
-      "settings": "Ajustes de notificación"
+      "settings": "Ajustes de notificación",
+      "dashboard": "Panel de control"
+    },
+    "widget": {
+      "pending_recall": "Pendiente de recuerdo",
+      "unwritten": "Sin escribir",
+      "open_today": "Abrir reflexiones de hoy",
+      "empty": "No hay temas para hoy"
     },
     "today": {
       "heading": "Reflexiones de hoy",
@@ -19,7 +26,11 @@
       "open_recall": "Prueba de recuerdo",
       "masked_badge": "Pendiente de recuerdo",
       "has_entry": "Escrito",
-      "period_label": "Período {period}"
+      "period_label": "Período {period}",
+      "main_theme_label": "Tema principal",
+      "created_at_label": "Primera creación",
+      "last_reflected_label": "Última reflexión",
+      "never_reflected": "Aún no"
     },
     "theme": {
       "list_heading": "Temas",
@@ -40,7 +51,12 @@
       "recall_interval_label": "Intervalo de recuerdo",
       "recall_interval_fixed": "Prueba de recuerdo {days} días después (fijo)",
       "open": "Abrir",
-      "view_entries": "Ver reflexiones"
+      "view_entries": "Ver reflexiones",
+      "subject_link_label": "Vincular a asignatura",
+      "subject_link_none": "Sin vínculo",
+      "subject_link_placeholder": "Seleccionar de las asignaturas del horario",
+      "subject_link_help": "Este tema aparecerá en todas las clases de la asignatura seleccionada en la vista de hoy",
+      "subject_link_empty": "No hay horario registrado"
     },
     "source_type": {
       "SUBJECT": "Clase",
@@ -165,6 +181,29 @@
       "close": "Cerrar",
       "loading": "Cargando...",
       "load_failed": "Error al cargar"
+    },
+    "guide": {
+      "page_title": "Cómo usar el aprendizaje por recuperación activa",
+      "what": {
+        "title": "¿Qué es el aprendizaje por recuperación activa?",
+        "body": "La recuperación activa es un método de aprendizaje que fortalece la memoria mediante el acto de «recordar» lo aprendido. Escribe tu reflexión de hoy y, a partir del día siguiente, intenta recordar el contenido con él oculto antes de verificar tus respuestas."
+      },
+      "theme": {
+        "title": "Crear un tema",
+        "body": "Un «tema» es la unidad básica de tus reflexiones. Crea temas para las asignaturas, certificaciones, proyectos, un diario u otras áreas que quieras seguir repasando. Puedes vincularlo a un horario o usarlo como tema libre independiente."
+      },
+      "today": {
+        "title": "Escribir la reflexión de hoy",
+        "body": "La vista «Reflexiones de hoy» muestra las clases y temas del día. Abre cada tarjeta, escribe lo que aprendiste y tus ideas, y guarda."
+      },
+      "recall": {
+        "title": "Prueba de recuerdo (recuperación activa)",
+        "body": "A partir del día siguiente, el contenido que escribiste se oculta automáticamente. Intenta recordarlo con tus propias palabras y luego comprueba tus respuestas. El esfuerzo de recordar fortalece tu memoria."
+      },
+      "reminder": {
+        "title": "Recordatorios y calendario",
+        "body": "Recibirás notificaciones cuando sea el momento de repasar. Los días en que escribiste una reflexión quedan marcados en Mi calendario, para que puedas ver tu progreso de un vistazo."
+      }
     }
   }
 }

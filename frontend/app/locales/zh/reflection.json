@@ -4,7 +4,14 @@
     "nav": {
       "today": "今日回顾",
       "themes": "主题列表",
-      "settings": "通知设置"
+      "settings": "通知设置",
+      "dashboard": "仪表盘"
+    },
+    "widget": {
+      "pending_recall": "待回想",
+      "unwritten": "未填写",
+      "open_today": "打开今日回顾",
+      "empty": "今天没有主题"
     },
     "today": {
       "heading": "今日回顾",
@@ -19,7 +26,11 @@
       "open_recall": "回忆测试",
       "masked_badge": "待回忆",
       "has_entry": "已填写",
-      "period_label": "第{period}节"
+      "period_label": "第{period}节",
+      "main_theme_label": "主题",
+      "created_at_label": "首次创建",
+      "last_reflected_label": "最近回顾",
+      "never_reflected": "尚未"
     },
     "theme": {
       "list_heading": "主题列表",
@@ -40,7 +51,12 @@
       "recall_interval_label": "回忆间隔",
       "recall_interval_fixed": "{days}天后进行回忆测试（固定）",
       "open": "打开",
-      "view_entries": "查看回顾"
+      "view_entries": "查看回顾",
+      "subject_link_label": "关联科目",
+      "subject_link_none": "不关联",
+      "subject_link_placeholder": "从课程表科目中选择",
+      "subject_link_help": "所选科目的全部课时将在今日视图中显示此主题",
+      "subject_link_empty": "尚未注册课程表"
     },
     "source_type": {
       "SUBJECT": "课程",
@@ -165,6 +181,29 @@
       "close": "关闭",
       "loading": "加载中…",
       "load_failed": "加载失败"
+    },
+    "guide": {
+      "page_title": "主动回忆学习使用指南",
+      "what": {
+        "title": "什么是主动回忆学习？",
+        "body": "主动回忆是一种通过「回想」所学内容来加深记忆的学习方法。先写下今天的回顾，之后在内容被隐藏的状态下尝试回忆，再进行答案对照。"
+      },
+      "theme": {
+        "title": "创建主题",
+        "body": "「主题」是回顾的基本单位。可以创建学科、资格考试、项目、日记等你想持续回顾的主题，既可以与课表的课时绑定，也可以作为独立的自由主题使用。"
+      },
+      "today": {
+        "title": "撰写今日回顾",
+        "body": "「今日回顾」视图会列出当天的课时和主题。打开各卡片，填写所学内容和心得，然后保存。"
+      },
+      "recall": {
+        "title": "回忆测试（主动提取）",
+        "body": "从第二天起，填写的内容会自动隐藏。先用自己的话尝试回忆，再核对答案。这种主动回想的努力能有效强化记忆。"
+      },
+      "reminder": {
+        "title": "提醒与日历",
+        "body": "到了复习时间，系统会发送通知提醒你。撰写了回顾的日期会在我的日历上标记，一目了然地了解你的坚持情况。"
+      }
     }
   }
 }

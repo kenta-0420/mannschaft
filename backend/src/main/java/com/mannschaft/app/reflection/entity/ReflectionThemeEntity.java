@@ -63,6 +63,14 @@ public class ReflectionThemeEntity extends UuidV7Entity {
     @Column(name = "linked_slot_id")
     private Long linkedSlotId;
 
+    /** Phase 2: 科目名紐づけ（personal_timetable_slots.subject_name と合わせる）。NULL=未紐づけ。 */
+    @Column(name = "linked_subject_name", length = 200)
+    private String linkedSubjectName;
+
+    /** Phase 2: 履修番号紐づけ（PERSONAL専用・TEAMは常にNULL）。NULL=指定なし。 */
+    @Column(name = "linked_course_code", length = 50)
+    private String linkedCourseCode;
+
     @Column(name = "exam_date")
     private LocalDate examDate;
 
@@ -127,6 +135,26 @@ public class ReflectionThemeEntity extends UuidV7Entity {
      */
     public void setExamDate(LocalDate examDate) {
         this.examDate = examDate;
+    }
+
+    /**
+     * Phase 2: 科目名紐づけを設定する（examDate と同型のミューテート方式）。
+     *
+     * @param subjectName 科目名（NULL 設定可）
+     * @param courseCode  履修番号（NULL 設定可）
+     */
+    public void setLinkedSubject(String subjectName, String courseCode) {
+        this.linkedSubjectName = subjectName;
+        this.linkedCourseCode = courseCode;
+    }
+
+    /**
+     * Phase 2: 科目名紐づけをクリアする（linked_subject_name / linked_course_code → NULL）。
+     * linked_slot_id はクリアしない（FEが clearLinkedSlot も送出する場合はService側で処理）。
+     */
+    public void clearLinkedSubject() {
+        this.linkedSubjectName = null;
+        this.linkedCourseCode = null;
     }
 
     /**

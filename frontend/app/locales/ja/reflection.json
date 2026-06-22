@@ -4,7 +4,14 @@
     "nav": {
       "today": "今日の振り返り",
       "themes": "テーマ一覧",
-      "settings": "通知設定"
+      "settings": "通知設定",
+      "dashboard": "ダッシュボード"
+    },
+    "widget": {
+      "pending_recall": "想起待ち",
+      "unwritten": "未記入",
+      "open_today": "今日の振り返りを開く",
+      "empty": "今日のテーマがありません"
     },
     "today": {
       "heading": "今日の振り返り",
@@ -19,7 +26,11 @@
       "open_recall": "想起テスト",
       "masked_badge": "想起待ち",
       "has_entry": "記入済み",
-      "period_label": "{period}限"
+      "period_label": "{period}限",
+      "main_theme_label": "メインテーマ",
+      "created_at_label": "初回作成",
+      "last_reflected_label": "振り返り実行",
+      "never_reflected": "まだなし"
     },
     "theme": {
       "list_heading": "テーマ一覧",
@@ -40,7 +51,12 @@
       "recall_interval_label": "想起間隔",
       "recall_interval_fixed": "{days} 日後に想起テスト（固定）",
       "open": "開く",
-      "view_entries": "振り返りを見る"
+      "view_entries": "振り返りを見る",
+      "subject_link_label": "科目に紐づける",
+      "subject_link_none": "紐づけなし",
+      "subject_link_placeholder": "時間割の科目から選択",
+      "subject_link_help": "選んだ科目の全コマに、このテーマが今日ビューで表示されます",
+      "subject_link_empty": "時間割が未登録です"
     },
     "source_type": {
       "SUBJECT": "授業",
@@ -165,6 +181,29 @@
       "close": "閉じる",
       "loading": "読み込み中…",
       "load_failed": "読み込みに失敗しました"
+    },
+    "guide": {
+      "page_title": "アクティブリコール学習の使い方",
+      "what": {
+        "title": "アクティブリコール学習とは",
+        "body": "学んだ内容を「思い出す」ことで記憶に定着させる学習法です。今日の振り返りを書き、翌日以降に内容を隠した状態で思い出してから答え合わせをします。"
+      },
+      "theme": {
+        "title": "テーマを作る",
+        "body": "振り返りの単位が「テーマ」です。教科・資格・プロジェクト・日記など続けたいテーマを作成します。時間割のコマと紐づけても、自由テーマとして単独で使ってもかまいません。"
+      },
+      "today": {
+        "title": "今日の振り返りを書く",
+        "body": "「今日の振り返り」ビューにその日のコマとテーマが並びます。各カードを開いて、学んだこと・気づきを記入して保存します。"
+      },
+      "recall": {
+        "title": "想起テスト（思い出し）",
+        "body": "翌日以降、記入した内容は自動で隠れます。隠れた内容を自分の言葉で思い出してから、答え合わせで確認します。思い出す負荷が記憶を強くします。"
+      },
+      "reminder": {
+        "title": "リマインドとカレンダー",
+        "body": "復習のタイミングを通知でお知らせします。振り返りを書いた日はマイカレンダーに印が付くので継続状況がひと目で分かります。"
+      }
     }
   }
 }

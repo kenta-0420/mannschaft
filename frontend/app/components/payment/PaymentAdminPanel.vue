@@ -1,10 +1,21 @@
 <script setup lang="ts">
-import type { PaymentItemResponse, MemberPaymentResponse, PaymentItemType, PaymentSummaryResponse } from '~/types/payment'
+import type { PaymentItemResponse, MemberPaymentResponse, PaymentItemType, PaymentSummaryResponse, PaymentMethod } from '~/types/payment'
+import type { MemberResponse } from '~/types/member'
 
 const props = defineProps<{ scopeType: 'team' | 'organization'; scopeId: string }>()
 
 const { t } = useI18n()
-const { getPaymentItems, getMemberPayments, sendReminder, getPaymentSummary, exportPayments } = usePaymentApi()
+const {
+  getPaymentItems,
+  getMemberPayments,
+  sendReminder,
+  getPaymentSummary,
+  exportPayments,
+  recordManualPayment,
+  bulkRecordPayment,
+  cancelPayment,
+} = usePaymentApi()
+const { getMembers } = useTeamApi()
 const { showSuccess, showError } = useNotification()
 
 /** F08.9 P8: CSV ダウンロード中フラグ */
@@ -44,6 +55,13 @@ const payments = ref<MemberPaymentResponse[]>([])
 const loading = ref(false)
 /** F08.9 P8: サマリー（支払い項目ごとの PAID/UNPAID/EXPIRED 件数）。 */
 const summary = ref<PaymentSummaryResponse | null>(null)
+/**
+ * チームメンバー一覧（team スコープの場合のみ）。
+ * 手動入金記録ダイアログのメンバー選択肢として使用する。
+ * 既存の payments から生成すると新規 payment-item では空になるため、
+ * チームメンバー一覧を別途取得する。
+ */
+const teamMembers = ref<MemberResponse[]>([])
 
 /** 選択中の支払い項目のサマリー行。 */
 const selectedSummaryItem = computed(() =>
@@ -59,6 +77,20 @@ async function loadItems() {
     items.value = itemsRes.data
     summary.value = summaryRes?.data ?? null
   } catch { showError(t('payment.admin.loadItemsError')) }
+}
+
+/**
+ * チームメンバー一覧を取得して teamMembers を更新する。
+ * team スコープの場合のみ実行（organization スコープは別 API のため対象外）。
+ */
+async function loadTeamMembers() {
+  if (props.scopeType !== 'team') return
+  try {
+    const res = await getMembers(props.scopeId, { size: 200 })
+    teamMembers.value = res.data
+  } catch {
+    // メンバー取得失敗はサイレント（payment 一覧からフォールバックする）
+  }
 }
 
 async function loadPayments(item: PaymentItemResponse) {
@@ -116,7 +148,87 @@ function statusLabel(status: string): string {
   return t(key, status)
 }
 
-onMounted(() => loadItems())
+/**
+ * AC-18: 決済手段ラベルを i18n キー `payment.admin.method.<ENUM>` から取得する。
+ * paymentMethod が null の行はラベルを表示しない（空文字を返す）。
+ */
+function methodLabel(method: PaymentMethod | null): string {
+  if (!method) return ''
+  return t(`payment.admin.method.${method}`, method)
+}
+
+// === AC-16/AC-17: 手動入金 記録ダイアログ ===
+const recordDialogVisible = ref(false)
+
+function openRecordDialog() {
+  recordDialogVisible.value = true
+}
+
+/**
+ * AC-17: 単一記録の実行。成功で一覧再取得＋成功トースト、失敗で error トースト。
+ */
+async function onRecordSubmit(body: Record<string, unknown>) {
+  if (!selectedItem.value) return
+  try {
+    await recordManualPayment(props.scopeType, props.scopeId, selectedItem.value.id, body)
+    recordDialogVisible.value = false
+    await loadPayments(selectedItem.value)
+    showSuccess(t('payment.admin.record.success'))
+  } catch {
+    showError(t('payment.admin.record.error'))
+  }
+}
+
+// === AC-20: 一括記録ダイアログ ===
+const bulkDialogVisible = ref(false)
+
+function openBulkDialog() {
+  bulkDialogVisible.value = true
+}
+
+/**
+ * AC-20: 一括記録の実行。成功件数/スキップ件数のサマリーをトースト表示する。
+ */
+async function onBulkSubmit(bodies: Array<Record<string, unknown>>) {
+  if (!selectedItem.value) return
+  try {
+    const res = await bulkRecordPayment(props.scopeType, props.scopeId, selectedItem.value.id, bodies)
+    bulkDialogVisible.value = false
+    await loadPayments(selectedItem.value)
+    // BE が返す実数（createdCount / skippedCount）でサマリーを出す。
+    // 件数を握りつぶさず、既払い・重複等でスキップされた件数も正直に表示する。
+    showSuccess(
+      t('payment.admin.bulk.resultSummary', {
+        created: res.data.createdCount,
+        skipped: res.data.skippedCount,
+      }),
+    )
+  } catch {
+    showError(t('payment.admin.bulk.error'))
+  }
+}
+
+// === AC-19: 取消（PAID 行のみ操作可） ===
+/** PAID 行のみ取消を許可する。 */
+function canCancel(p: MemberPaymentResponse): boolean {
+  return p.statusInfo.status === 'PAID'
+}
+
+async function onCancel(p: MemberPaymentResponse) {
+  if (!selectedItem.value || !canCancel(p)) return
+  try {
+    await cancelPayment(props.scopeType, props.scopeId, selectedItem.value.id, p.id)
+    await loadPayments(selectedItem.value)
+    showSuccess(t('payment.admin.cancel.success'))
+  } catch {
+    showError(t('payment.admin.cancel.error'))
+  }
+}
+
+onMounted(() => {
+  loadItems()
+  loadTeamMembers()
+})
 </script>
 
 <template>
@@ -179,15 +291,21 @@ onMounted(() => loadItems())
           </div>
         </div>
         <div class="flex items-center gap-2">
+          <Button :label="t('payment.admin.record.recordButton')" icon="pi pi-plus" size="small" data-testid="payment-record-open" @click="openRecordDialog" />
+          <Button :label="t('payment.admin.bulk.bulkButton')" icon="pi pi-users" outlined size="small" data-testid="payment-bulk-open" @click="openBulkDialog" />
           <Button :label="t('payment.exportCsv')" icon="pi pi-download" text size="small" :loading="csvDownloading" @click="onExportCsv" />
           <Button :label="t('payment.admin.remindUnpaid')" icon="pi pi-bell" text size="small" @click="onRemind" />
         </div>
       </div>
       <div v-if="loading" class="flex justify-center py-8"><LoadingBounce /></div>
       <div v-else-if="selectedItem" class="flex flex-col gap-1">
-        <div v-for="p in payments" :key="p.id" class="flex items-center gap-3 rounded-lg border border-surface-100 px-4 py-2">
+        <div v-for="p in payments" :key="p.id" class="flex items-center gap-3 rounded-lg border border-surface-100 px-4 py-2" :data-testid="`payment-row-${p.id}`">
           <Avatar :label="p.userName?.charAt(0)" shape="circle" size="small" />
           <span class="flex-1 text-sm">{{ p.userName }}</span>
+          <!-- AC-18: 決済手段ラベル（paymentMethod が null の行は非表示） -->
+          <span v-if="p.paymentMethod" class="rounded bg-surface-100 px-1.5 py-0.5 text-xs text-surface-600" :data-testid="`payment-method-${p.id}`">
+            {{ methodLabel(p.paymentMethod) }}
+          </span>
           <!-- F08.9 P8: PrimeVue Tag で状態を色分け表示（PAID=緑・UNPAID/PENDING=橙・EXPIRED=赤） -->
           <Tag
             :value="statusLabel(p.statusInfo.status)"
@@ -195,9 +313,39 @@ onMounted(() => loadItems())
             rounded
           />
           <span v-if="p.statusInfo.paidAt" class="text-xs text-surface-400">{{ p.statusInfo.paidAt }}</span>
+          <!-- AC-19: 取消（PAID 行のみ操作可） -->
+          <Button
+            v-if="canCancel(p)"
+            :label="t('payment.admin.cancel.button')"
+            icon="pi pi-times"
+            severity="danger"
+            text
+            size="small"
+            :data-testid="`payment-cancel-${p.id}`"
+            @click="onCancel(p)"
+          />
         </div>
       </div>
       <div v-else class="py-12 text-center text-surface-400">{{ $t('payment.admin.selectItem') }}</div>
     </div>
+
+    <!-- AC-16/AC-17: 手動入金 記録ダイアログ -->
+    <PaymentRecordDialog
+      v-if="selectedItem"
+      v-model:visible="recordDialogVisible"
+      :default-amount="selectedItem.money.amount"
+      :payments="payments"
+      :team-members="teamMembers"
+      @submit="onRecordSubmit"
+    />
+    <!-- AC-20: 一括記録ダイアログ -->
+    <PaymentBulkRecordDialog
+      v-if="selectedItem"
+      v-model:visible="bulkDialogVisible"
+      :default-amount="selectedItem.money.amount"
+      :payments="payments"
+      :team-members="teamMembers"
+      @submit="onBulkSubmit"
+    />
   </div>
 </template>

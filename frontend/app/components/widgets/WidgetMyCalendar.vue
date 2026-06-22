@@ -53,12 +53,17 @@ function onDateClick(date: string) {
 
 /**
  * reflection 印クリック（§6.2/AC-21）。
- * 想起予定（REFLECTION_RECALL）は想起テスト画面へ、振り返り記入（REFLECTION_ENTRY）はエントリ詳細へ遷移。
+ * - REFLECTION_RECALL（SPACED 間隔反復）: recall 画面（entry_id 指定）へ遷移。
+ * - REFLECTION_PRE_EXAM（考査前総まとめ）: テーマ詳細画面（theme_id 指定）へ遷移。
+ * - それ以外（REFLECTION_ENTRY 等）: エントリ詳細へ遷移。
  * referenceUuid は SPACED/エントリ＝entry UUID、PRE_EXAM＝theme UUID。
  */
 function onReflectionClick(referenceUuid: string, referenceKind: string) {
   if (referenceKind === 'REFLECTION_RECALL') {
     navigateTo(`/reflections/recall?entry=${referenceUuid}`)
+  }
+  else if (referenceKind === 'REFLECTION_PRE_EXAM') {
+    navigateTo(`/reflections/themes/${referenceUuid}`)
   }
   else {
     navigateTo(`/reflections/entries/${referenceUuid}`)
@@ -153,7 +158,7 @@ onMounted(() => {
 <template>
   <div>
     <div class="mb-2 flex items-center justify-between">
-      <h3 class="font-semibold text-sm text-surface-700 dark:text-surface-300">
+      <h3 class="font-semibold text-[22px] text-surface-700 dark:text-surface-200">
         <i class="pi pi-calendar mr-1.5 text-primary" />マイカレンダー
       </h3>
       <Button label="全画面で開く" icon="pi pi-external-link" text size="small" @click="navigateTo('/calendar')" />
