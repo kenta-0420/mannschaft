@@ -112,7 +112,8 @@
         "setup_success": "Contraseña establecida correctamente",
         "change_error": "No se pudo cambiar la contraseña. Compruebe su contraseña actual",
         "setup_error": "Error al establecer la contraseña"
-      }
+      },
+      "redirecting": "Contraseña cambiada. Redirigiendo a la página de inicio de sesión…"
     },
     "locale": {
       "section_title": "Idioma y zona horaria",

@@ -112,7 +112,8 @@
         "setup_success": "Password set successfully",
         "change_error": "Failed to change password. Please check your current password",
         "setup_error": "Failed to set password"
-      }
+      },
+      "redirecting": "Password changed. Redirecting to the login page…"
     },
     "locale": {
       "section_title": "Language & Timezone",

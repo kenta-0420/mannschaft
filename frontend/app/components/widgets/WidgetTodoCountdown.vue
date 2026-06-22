@@ -87,7 +87,7 @@ onUnmounted(() => clearInterval(intervalId))
       期限付きTODOはありません
     </div>
 
-    <div v-else class="divide-y divide-surface-100 dark:divide-surface-700">
+    <div v-else class="divide-y divide-surface-300 dark:divide-surface-600">
       <div
         v-for="todo in todos"
         :key="todo.id"

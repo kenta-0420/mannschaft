@@ -56,7 +56,7 @@ onMounted(load)
         <div
           v-for="post in posts"
           :key="post.id"
-          class="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-surface-50 dark:hover:bg-surface-700/50"
+          class="flex cursor-pointer items-center gap-3 rounded-lg border-2 border-surface-300 px-2 py-2 transition-colors hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-700/50"
           @click="navigateTo(`/blog/posts/${post.id}/edit`)"
         >
           <div class="min-w-0 flex-1">
