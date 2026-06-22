@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * 今日の振り返りビューのサービス（F06.5・§4.3 / §7 #12）。
@@ -113,9 +114,52 @@ public class ReflectionTodayService {
             items.add(buildFreeThemeItem(t, todayEntry, target));
         }
 
+        // AC-27: themeId を持つ item 群に対し、最新 targetDate を GROUP BY 1 クエリで一括取得（N+1 回避）。
+        Set<UUID> themeIdsInItems = items.stream()
+                .filter(i -> i.themeId() != null)
+                .map(i -> UUID.fromString(i.themeId()))
+                .collect(Collectors.toSet());
+
+        Map<UUID, LocalDate> lastReflectedByThemeId = new HashMap<>();
+        if (!themeIdsInItems.isEmpty()) {
+            reflectionEntryRepository.findLatestTargetDateByThemeIds(themeIdsInItems)
+                    .forEach(v -> lastReflectedByThemeId.put(v.getThemeId(), v.getLastDate()));
+        }
+
+        // themeId → theme メタ（title・createdAt）の Map を構築。
+        Map<UUID, ReflectionThemeEntity> themeById = new HashMap<>();
+        for (ReflectionThemeEntity t : themes) {
+            themeById.put(t.getId(), t);
+        }
+
+        // items に themeTitle・themeCreatedAt・lastReflectedAt を付与して再構築（AC-25/AC-26）。
+        List<ReflectionTodayResponse.ReflectionTodayItem> enrichedItems = new ArrayList<>(items.size());
+        for (ReflectionTodayResponse.ReflectionTodayItem item : items) {
+            if (item.themeId() == null) {
+                enrichedItems.add(item);
+                continue;
+            }
+            UUID themeId = UUID.fromString(item.themeId());
+            ReflectionThemeEntity theme = themeById.get(themeId);
+            enrichedItems.add(ReflectionTodayResponse.ReflectionTodayItem.builder()
+                    .slotKind(item.slotKind())
+                    .slotId(item.slotId())
+                    .periodLabel(item.periodLabel())
+                    .subjectName(item.subjectName())
+                    .themeId(item.themeId())
+                    .hasEntryToday(item.hasEntryToday())
+                    .entryId(item.entryId())
+                    .isMasked(item.isMasked())
+                    .themeTitle(theme != null ? theme.getTitle() : null)
+                    .themeCreatedAt(theme != null && theme.getCreatedAt() != null
+                            ? theme.getCreatedAt().toLocalDate() : null)
+                    .lastReflectedAt(lastReflectedByThemeId.get(themeId))
+                    .build());
+        }
+
         return ReflectionTodayResponse.builder()
                 .date(target)
-                .items(items)
+                .items(enrichedItems)
                 .build();
     }
 
