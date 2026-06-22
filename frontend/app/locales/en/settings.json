@@ -98,6 +98,11 @@
       "current_password": "Current Password",
       "new_password": "New Password",
       "confirm_password": "Confirm New Password",
+      "policy_hint": "At least 8 characters, including 3 or more of: uppercase, lowercase, digits, and symbols.",
+      "load_error": "Failed to load profile information",
+      "length_error": "Password must be at least 8 characters",
+      "policy_violation": "Include 3 or more of: uppercase, lowercase, digits, and symbols",
+      "mismatch_error": "Passwords do not match",
       "change_button": "Change Password",
       "set_button": "Set Password",
       "change_success": "Password changed successfully",
@@ -107,7 +112,8 @@
         "setup_success": "Password set successfully",
         "change_error": "Failed to change password. Please check your current password",
         "setup_error": "Failed to set password"
-      }
+      },
+      "redirecting": "Password changed. Redirecting to the login page…"
     },
     "locale": {
       "section_title": "Language & Timezone",

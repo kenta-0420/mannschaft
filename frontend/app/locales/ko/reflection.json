@@ -4,7 +4,8 @@
     "nav": {
       "today": "오늘의 회고",
       "themes": "테마 목록",
-      "settings": "알림 설정"
+      "settings": "알림 설정",
+      "dashboard": "대시보드"
     },
     "widget": {
       "pending_recall": "회상 대기",
@@ -25,7 +26,11 @@
       "open_recall": "상기 테스트",
       "masked_badge": "상기 대기",
       "has_entry": "작성됨",
-      "period_label": "{period}교시"
+      "period_label": "{period}교시",
+      "main_theme_label": "메인 테마",
+      "created_at_label": "최초 생성",
+      "last_reflected_label": "마지막 회고",
+      "never_reflected": "아직 없음"
     },
     "theme": {
       "list_heading": "테마 목록",
@@ -46,7 +51,12 @@
       "recall_interval_label": "상기 간격",
       "recall_interval_fixed": "{days}일 후 상기 테스트 (고정)",
       "open": "열기",
-      "view_entries": "회고 보기"
+      "view_entries": "회고 보기",
+      "subject_link_label": "과목에 연결",
+      "subject_link_none": "연결 안 함",
+      "subject_link_placeholder": "시간표 과목에서 선택",
+      "subject_link_help": "선택한 과목의 모든 수업 시간에 이 테마가 오늘 뷰에 표시됩니다",
+      "subject_link_empty": "시간표가 등록되지 않았습니다"
     },
     "source_type": {
       "SUBJECT": "수업",
@@ -171,6 +181,29 @@
       "close": "닫기",
       "loading": "불러오는 중…",
       "load_failed": "불러오기에 실패했습니다"
+    },
+    "guide": {
+      "page_title": "능동적 회상 학습 사용법",
+      "what": {
+        "title": "능동적 회상 학습이란?",
+        "body": "배운 내용을 「떠올리는」 행위로 기억을 강화하는 학습법입니다. 오늘의 회고를 작성하고, 다음 날 이후에 내용이 숨겨진 상태에서 떠올린 다음 정답과 대조합니다."
+      },
+      "theme": {
+        "title": "테마 만들기",
+        "body": "「테마」는 회고의 기본 단위입니다. 계속 복습하고 싶은 교과목, 자격증, 프로젝트, 일기 등의 테마를 만드세요. 시간표의 교시와 연결하거나, 독립적인 자유 테마로 사용할 수도 있습니다."
+      },
+      "today": {
+        "title": "오늘의 회고 작성하기",
+        "body": "「오늘의 회고」뷰에 당일의 교시와 테마가 나열됩니다. 각 카드를 열어 배운 내용과 깨달음을 입력한 후 저장하세요."
+      },
+      "recall": {
+        "title": "상기 테스트 (능동적 인출)",
+        "body": "다음 날부터 입력한 내용이 자동으로 숨겨집니다. 자신의 말로 떠올린 다음 정답과 대조하세요. 떠올리는 노력이 기억을 강화합니다."
+      },
+      "reminder": {
+        "title": "알림과 캘린더",
+        "body": "복습할 시간이 되면 알림으로 알려드립니다. 회고를 작성한 날은 내 캘린더에 표시되므로 지속 현황을 한눈에 확인할 수 있습니다."
+      }
     }
   }
 }

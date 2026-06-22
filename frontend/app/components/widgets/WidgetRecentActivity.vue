@@ -52,7 +52,7 @@ onMounted(load)
     refreshable
     @refresh="load"
   >
-    <div v-if="activities.length > 0" class="divide-y divide-surface-100 dark:divide-surface-700">
+    <div v-if="activities.length > 0" class="divide-y divide-surface-300 dark:divide-surface-600">
       <ActivityItem
         v-for="activity in activities"
         :key="activity.id"

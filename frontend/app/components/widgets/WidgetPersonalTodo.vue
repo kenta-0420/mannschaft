@@ -143,7 +143,7 @@ onMounted(load)
           <div
             v-for="todo in todosWithDue"
             :key="todo.id"
-            class="flex cursor-pointer flex-col gap-1 rounded-lg border border-surface-200 p-2 transition-colors hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-700/50"
+            class="flex cursor-pointer flex-col gap-1 rounded-lg border-2 border-surface-300 p-2 transition-colors hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-700/50"
             @click="navigateTo('/todos/' + todo.id)"
           >
             <div class="flex items-center justify-between gap-1">
@@ -191,7 +191,7 @@ onMounted(load)
           <div
             v-for="todo in todosNoDue"
             :key="todo.id"
-            class="flex cursor-pointer flex-col gap-1 rounded-lg border border-surface-200 p-2 transition-colors hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-700/50"
+            class="flex cursor-pointer flex-col gap-1 rounded-lg border-2 border-surface-300 p-2 transition-colors hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-700/50"
             @click="navigateTo('/todos/' + todo.id)"
           >
             <div class="flex items-center justify-between gap-1">

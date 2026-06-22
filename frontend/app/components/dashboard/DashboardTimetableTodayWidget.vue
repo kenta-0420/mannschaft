@@ -111,8 +111,8 @@ onMounted(load)
       <li
         v-for="(item, idx) in data.items"
         :key="`${item.source_kind}-${item.slot_id}-${idx}`"
-        class="border-l-4 pl-2 py-1 text-sm"
-        :style="item.color ? `border-color:${item.color}` : 'border-color:#cbd5e0'"
+        class="rounded-lg border-2 border-l-4 border-surface-300 px-2 py-1.5 text-sm dark:border-surface-600"
+        :style="item.color ? `border-left-color:${item.color}` : 'border-left-color:#cbd5e0'"
       >
         <!-- コマ本体 -->
         <div class="flex items-center">

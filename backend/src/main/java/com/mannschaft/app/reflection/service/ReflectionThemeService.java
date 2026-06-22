@@ -63,6 +63,9 @@ public class ReflectionThemeService {
                 .linkedSlotKind(request.linkedSlotKind())
                 .linkedSlotId(request.linkedSlotId())
                 .examDate(request.examDate())
+                // Phase 2: 科目名紐づけ（§11.1）
+                .linkedSubjectName(request.linkedSubjectName())
+                .linkedCourseCode(request.linkedCourseCode())
                 // visibility / recallIntervalDays は MVP 固定（@Builder.Default の PRIVATE / '1,3,7,14'）。
                 .build();
         ReflectionThemeEntity saved = reflectionThemeRepository.save(entity);
@@ -95,6 +98,17 @@ public class ReflectionThemeService {
         } else if (request.examDate() != null) {
             theme.setExamDate(request.examDate());
             newExamDate = request.examDate();
+        }
+        // Phase 2: linked_subject_name/linked_course_code（examDate と完全同型・§11.4）
+        if (request.clearLinkedSubject()) {
+            theme.clearLinkedSubject();
+        } else {
+            if (request.linkedSubjectName() != null) {
+                theme.setLinkedSubject(request.linkedSubjectName(), request.linkedCourseCode());
+            } else if (request.linkedCourseCode() != null) {
+                // subjectName 維持・courseCode のみ更新（保守的：subjectName変更なしケース）
+                theme.setLinkedSubject(theme.getLinkedSubjectName(), request.linkedCourseCode());
+            }
         }
         ReflectionThemeEntity saved = reflectionThemeRepository.save(theme);
 
@@ -143,6 +157,8 @@ public class ReflectionThemeService {
                 .sourceType(e.getSourceType())
                 .linkedSlotKind(e.getLinkedSlotKind())
                 .linkedSlotId(e.getLinkedSlotId())
+                .linkedSubjectName(e.getLinkedSubjectName())
+                .linkedCourseCode(e.getLinkedCourseCode())
                 .examDate(e.getExamDate())
                 .visibility(e.getVisibility())
                 .recallIntervalDays(e.getRecallIntervalDays())

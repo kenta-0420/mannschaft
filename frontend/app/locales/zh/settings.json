@@ -98,6 +98,11 @@
       "current_password": "当前密码",
       "new_password": "新密码",
       "confirm_password": "确认新密码",
+      "policy_hint": "至少8个字符，并包含大写字母、小写字母、数字、符号中的3种以上。",
+      "load_error": "获取个人资料信息失败",
+      "length_error": "密码至少需要8个字符",
+      "policy_violation": "请包含大写字母、小写字母、数字、符号中的3种以上",
+      "mismatch_error": "两次输入的密码不一致",
       "change_button": "更改密码",
       "set_button": "设置密码",
       "change_success": "密码已更改",
@@ -107,7 +112,8 @@
         "setup_success": "密码已设置",
         "change_error": "更改密码失败。请检查当前密码",
         "setup_error": "设置密码失败"
-      }
+      },
+      "redirecting": "密码已更改。正在跳转至登录页面…"
     },
     "locale": {
       "section_title": "语言与时区",

@@ -115,10 +115,10 @@ async function doDelete(theme: ReflectionThemeResponse) {
       <Skeleton height="64px" />
     </div>
 
-    <div v-else-if="themes.length === 0" class="rounded-xl border border-dashed border-surface-300 p-8 text-center dark:border-surface-600">
+    <SectionCard v-else-if="themes.length === 0" class="text-center">
       <p class="mb-3 text-sm text-surface-500">{{ t('reflection.theme.empty') }}</p>
       <Button :label="t('reflection.theme.create')" icon="pi pi-plus" @click="openCreate" />
-    </div>
+    </SectionCard>
 
     <div v-else class="space-y-2">
       <div

@@ -98,6 +98,11 @@
       "current_password": "Aktuelles Passwort",
       "new_password": "Neues Passwort",
       "confirm_password": "Neues Passwort bestätigen",
+      "policy_hint": "Mindestens 8 Zeichen, davon 3 oder mehr aus: Großbuchstaben, Kleinbuchstaben, Ziffern und Symbole.",
+      "load_error": "Profilinformationen konnten nicht geladen werden",
+      "length_error": "Das Passwort muss mindestens 8 Zeichen lang sein",
+      "policy_violation": "Mindestens 3 aus: Großbuchstaben, Kleinbuchstaben, Ziffern und Symbole einschließen",
+      "mismatch_error": "Die Passwörter stimmen nicht überein",
       "change_button": "Passwort ändern",
       "set_button": "Passwort festlegen",
       "change_success": "Passwort erfolgreich geändert",
@@ -107,7 +112,8 @@
         "setup_success": "Passwort erfolgreich festgelegt",
         "change_error": "Passwort konnte nicht geändert werden. Bitte überprüfen Sie Ihr aktuelles Passwort",
         "setup_error": "Passwort konnte nicht festgelegt werden"
-      }
+      },
+      "redirecting": "Passwort wurde geändert. Sie werden zur Anmeldeseite weitergeleitet…"
     },
     "locale": {
       "section_title": "Sprache & Zeitzone",

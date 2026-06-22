@@ -153,7 +153,7 @@ onMounted(() => {
 <template>
   <div>
     <div class="mb-2 flex items-center justify-between">
-      <h3 class="font-semibold text-sm text-surface-700 dark:text-surface-300">
+      <h3 class="font-semibold text-[22px] text-surface-700 dark:text-surface-200">
         <i class="pi pi-calendar mr-1.5 text-primary" />マイカレンダー
       </h3>
       <Button label="全画面で開く" icon="pi pi-external-link" text size="small" @click="navigateTo('/calendar')" />

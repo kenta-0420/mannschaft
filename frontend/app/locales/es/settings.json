@@ -98,6 +98,11 @@
       "current_password": "Contraseña actual",
       "new_password": "Nueva contraseña",
       "confirm_password": "Confirmar nueva contraseña",
+      "policy_hint": "Al menos 8 caracteres, incluyendo 3 o más de: mayúsculas, minúsculas, números y símbolos.",
+      "load_error": "No se pudo cargar la información del perfil",
+      "length_error": "La contraseña debe tener al menos 8 caracteres",
+      "policy_violation": "Incluya 3 o más de: mayúsculas, minúsculas, números y símbolos",
+      "mismatch_error": "Las contraseñas no coinciden",
       "change_button": "Cambiar contraseña",
       "set_button": "Establecer contraseña",
       "change_success": "Contraseña cambiada correctamente",
@@ -107,7 +112,8 @@
         "setup_success": "Contraseña establecida correctamente",
         "change_error": "No se pudo cambiar la contraseña. Compruebe su contraseña actual",
         "setup_error": "Error al establecer la contraseña"
-      }
+      },
+      "redirecting": "Contraseña cambiada. Redirigiendo a la página de inicio de sesión…"
     },
     "locale": {
       "section_title": "Idioma y zona horaria",
