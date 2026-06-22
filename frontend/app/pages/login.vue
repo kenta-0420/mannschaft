@@ -15,6 +15,19 @@ const route = useRoute()
 const { applyUserLocale } = useLocale()
 const { t } = useI18n()
 
+// パスワード変更・セッション失効などのログアウト後にログイン画面へ遷移した場合、
+// ?reason=xxx クエリパラメータに基づいて情報バナーを表示する。
+const sessionNoticeMessage = computed<string | null>(() => {
+  const reason = route.query.reason
+  if (reason === 'password_changed') {
+    return t('auth.session_notice.password_changed')
+  }
+  if (reason === 'session_expired') {
+    return t('auth.session_notice.session_expired')
+  }
+  return null
+})
+
 async function handleLogin() {
   loading.value = true
   try {
@@ -122,8 +135,19 @@ async function handleLogin() {
 <template>
   <form @submit.prevent="handleLogin">
     <div class="flex flex-col gap-4">
+      <!-- パスワード変更後・セッション失効後の案内バナー（info色・エラーではない） -->
+      <div
+        v-if="sessionNoticeMessage"
+        class="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-200"
+        role="status"
+        aria-live="polite"
+      >
+        <i class="pi pi-info-circle mt-0.5 shrink-0 text-blue-500 dark:text-blue-400" />
+        <span>{{ sessionNoticeMessage }}</span>
+      </div>
+
       <div class="flex flex-col gap-2">
-        <label for="email">メールアドレス</label>
+        <label for="email">{{ t('auth.login.email') }}</label>
         <InputText
           id="email"
           v-model="email"
@@ -133,7 +157,7 @@ async function handleLogin() {
         />
       </div>
       <div class="flex flex-col gap-2">
-        <label for="password">パスワード</label>
+        <label for="password">{{ t('auth.login.password') }}</label>
         <Password
           v-model="password"
           input-id="password"
@@ -143,13 +167,13 @@ async function handleLogin() {
           required
         />
       </div>
-      <Button type="submit" label="ログイン" icon="pi pi-sign-in" :loading="loading" class="mt-2" />
+      <Button type="submit" :label="t('auth.login.submit')" icon="pi pi-sign-in" :loading="loading" class="mt-2" />
       <div class="flex flex-col items-center gap-2">
         <NuxtLink to="/forgot-password" class="text-sm text-primary hover:underline">
-          パスワードをお忘れですか？
+          {{ t('auth.login.forgot_password') }}
         </NuxtLink>
         <NuxtLink to="/register" class="text-sm text-primary hover:underline">
-          新規アカウント作成
+          {{ t('auth.register.title') }}
         </NuxtLink>
       </div>
     </div>
