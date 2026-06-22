@@ -51,7 +51,12 @@
       "recall_interval_label": "Recall interval",
       "recall_interval_fixed": "Recall test {days} days later (fixed)",
       "open": "Open",
-      "view_entries": "View reflections"
+      "view_entries": "View reflections",
+      "subject_link_label": "Link to subject",
+      "subject_link_none": "No link",
+      "subject_link_placeholder": "Select from timetable subjects",
+      "subject_link_help": "This theme will appear on every class of the selected subject in today's view",
+      "subject_link_empty": "No timetable registered"
     },
     "source_type": {
       "SUBJECT": "Class",

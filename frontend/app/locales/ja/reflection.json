@@ -51,7 +51,12 @@
       "recall_interval_label": "想起間隔",
       "recall_interval_fixed": "{days} 日後に想起テスト（固定）",
       "open": "開く",
-      "view_entries": "振り返りを見る"
+      "view_entries": "振り返りを見る",
+      "subject_link_label": "科目に紐づける",
+      "subject_link_none": "紐づけなし",
+      "subject_link_placeholder": "時間割の科目から選択",
+      "subject_link_help": "選んだ科目の全コマに、このテーマが今日ビューで表示されます",
+      "subject_link_empty": "時間割が未登録です"
     },
     "source_type": {
       "SUBJECT": "授業",
