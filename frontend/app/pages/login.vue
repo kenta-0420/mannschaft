@@ -20,10 +20,10 @@ const { t } = useI18n()
 const sessionNoticeMessage = computed<string | null>(() => {
   const reason = route.query.reason
   if (reason === 'password_changed') {
-    return t('auth.session_notice.password_changed')
+    return t('session_notice.password_changed')
   }
   if (reason === 'session_expired') {
-    return t('auth.session_notice.session_expired')
+    return t('session_notice.session_expired')
   }
   return null
 })
@@ -115,16 +115,16 @@ async function handleLogin() {
     const code = err?.data?.error?.code
     if (code === 'AUTH_003') {
       // アカウントロック（5回失敗で30分ロック）
-      notification.error(t('auth.login.account_locked'), t('auth.login.account_locked_detail'))
+      notification.error(t('login.account_locked'), t('login.account_locked_detail'))
     } else if (code === 'AUTH_002') {
       // メール未確認
       notification.error(
-        t('auth.login.email_not_verified'),
-        t('auth.login.email_not_verified_detail'),
+        t('login.email_not_verified'),
+        t('login.email_not_verified_detail'),
       )
     } else {
       // AUTH_001 を含む既定（メールアドレスまたはパスワード不一致）
-      notification.error(t('auth.login.failed'), t('auth.login.invalid_credentials'))
+      notification.error(t('login.failed'), t('login.invalid_credentials'))
     }
   } finally {
     loading.value = false
@@ -147,7 +147,7 @@ async function handleLogin() {
       </div>
 
       <div class="flex flex-col gap-2">
-        <label for="email">{{ t('auth.login.email') }}</label>
+        <label for="email">{{ t('login.email') }}</label>
         <InputText
           id="email"
           v-model="email"
@@ -157,7 +157,7 @@ async function handleLogin() {
         />
       </div>
       <div class="flex flex-col gap-2">
-        <label for="password">{{ t('auth.login.password') }}</label>
+        <label for="password">{{ t('login.password') }}</label>
         <Password
           v-model="password"
           input-id="password"
@@ -167,13 +167,13 @@ async function handleLogin() {
           required
         />
       </div>
-      <Button type="submit" :label="t('auth.login.submit')" icon="pi pi-sign-in" :loading="loading" class="mt-2" />
+      <Button type="submit" :label="t('login.submit')" icon="pi pi-sign-in" :loading="loading" class="mt-2" />
       <div class="flex flex-col items-center gap-2">
         <NuxtLink to="/forgot-password" class="text-sm text-primary hover:underline">
-          {{ t('auth.login.forgot_password') }}
+          {{ t('login.forgot_password') }}
         </NuxtLink>
         <NuxtLink to="/register" class="text-sm text-primary hover:underline">
-          {{ t('auth.register.title') }}
+          {{ t('register.title') }}
         </NuxtLink>
       </div>
     </div>

@@ -114,9 +114,9 @@ const onSubmit = handleSubmit(async (values) => {
     if (code === 'AUTH_041') {
       notification.error('このメールアドレスは使用できません', message + '　→ ログインして退会を取り消してください。')
     } else if (code === 'AUTH_042') {
-      notification.error(t('auth.beta_invite_required'), t('auth.beta_invite_required_desc'))
+      notification.error(t('beta_invite_required'), t('beta_invite_required_desc'))
     } else if (code === 'AUTH_043') {
-      notification.error(t('auth.beta_invite_invalid'), t('auth.beta_invite_invalid_desc'))
+      notification.error(t('beta_invite_invalid'), t('beta_invite_invalid_desc'))
     } else {
       notification.error('登録に失敗しました', message)
     }
