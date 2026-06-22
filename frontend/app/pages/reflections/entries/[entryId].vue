@@ -72,10 +72,10 @@ function onExported() {
 
 <template>
   <div class="mx-auto max-w-2xl px-4 py-6">
-    <div class="mb-5 flex items-center gap-3">
-      <Button icon="pi pi-arrow-left" text rounded :aria-label="t('reflection.recall.back_to_entry')" @click="router.back()" />
-      <h1 class="flex-1 text-xl font-bold">{{ entry?.targetDate ?? t('reflection.title') }}</h1>
-    </div>
+    <PageHeader
+      :title="entry?.targetDate ?? t('reflection.title')"
+      :back-label="t('reflection.recall.back_to_entry')"
+    />
 
     <div v-if="loading" class="space-y-3">
       <Skeleton height="120px" />

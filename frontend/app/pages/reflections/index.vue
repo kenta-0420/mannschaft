@@ -87,10 +87,7 @@ function onSaved() {
 
 <template>
   <div class="mx-auto max-w-2xl px-4 py-6">
-    <div class="mb-5 flex items-center justify-between">
-      <h1 class="text-xl font-bold">
-        <i class="pi pi-book mr-2 text-primary" />{{ t('reflection.today.heading') }}
-      </h1>
+    <PageHeader :title="t('reflection.today.heading')" :back="false" class="justify-between">
       <div class="flex items-center gap-1">
         <Button
           icon="pi pi-list"
@@ -107,7 +104,7 @@ function onSaved() {
           @click="router.push('/reflections/settings')"
         />
       </div>
-    </div>
+    </PageHeader>
 
     <p v-if="date" class="mb-4 text-sm text-surface-500">{{ date }}</p>
 

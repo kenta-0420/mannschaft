@@ -72,11 +72,14 @@ function onSaved() {
 
 <template>
   <div class="mx-auto max-w-2xl px-4 py-6">
-    <div class="mb-5 flex items-center gap-3">
-      <Button icon="pi pi-arrow-left" text rounded :aria-label="t('reflection.nav.themes')" @click="router.push('/reflections/themes')" />
-      <h1 class="min-w-0 flex-1 truncate text-xl font-bold">{{ theme?.title ?? t('reflection.title') }}</h1>
+    <PageHeader
+      :title="theme?.title ?? t('reflection.title')"
+      back-to="/reflections/themes"
+      :back-label="t('reflection.nav.themes')"
+      class="flex-wrap justify-between"
+    >
       <Button :label="t('reflection.entry.create')" icon="pi pi-plus" size="small" @click="createToday" />
-    </div>
+    </PageHeader>
 
     <div v-if="loading" class="space-y-3">
       <Skeleton height="56px" />
