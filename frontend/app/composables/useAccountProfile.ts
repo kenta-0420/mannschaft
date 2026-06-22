@@ -12,6 +12,7 @@ export function useAccountProfile() {
     changePassword,
     setupPassword,
   } = useUserSettingsApi()
+  const { uploadAndCommit } = useProfileMediaApi()
 
   const savingProfile = ref(false)
   const profile = ref({
@@ -111,14 +112,9 @@ export function useAccountProfile() {
       notification.error(t('settings.profile.toast.avatar_size_error'))
       return
     }
-    const formData = new FormData()
-    formData.append('file', file)
     try {
-      const res = await api<{ data: { avatarUrl: string } }>('/api/v1/users/me/avatar', {
-        method: 'POST',
-        body: formData,
-      })
-      profile.value.avatarUrl = res.data.avatarUrl
+      const result = await uploadAndCommit('user', null, 'icon', file)
+      profile.value.avatarUrl = result.url
       notification.success(t('settings.profile.toast.avatar_success'))
     } catch {
       notification.error(t('settings.profile.toast.avatar_error'))
