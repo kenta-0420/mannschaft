@@ -101,24 +101,16 @@ onMounted(async () => {
 
 <template>
   <div>
-    <div class="mb-4 flex items-center justify-between">
-      <PageHeader :title="$t('project.org_page.title')" />
-      <div class="flex items-center gap-2">
-        <Button
-          icon="pi pi-question-circle"
-          :label="$t('project.guide.button')"
-          text
-          data-testid="project-help-link"
-          @click="showGuide = true"
-        />
+    <PageHeader :title="$t('project.org_page.title')" help @help="showGuide = true">
+      <template #actions>
         <Button
           v-if="isAdminOrDeputy"
           :label="$t('project.create_button')"
           icon="pi pi-plus"
           @click="openCreate"
         />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <PageLoading v-if="loading" size="40px" />
 
