@@ -7,6 +7,7 @@ import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.todo.dto.CreateMilestoneRequest;
 import com.mannschaft.app.todo.dto.CreateProjectRequest;
 import com.mannschaft.app.todo.dto.MilestoneResponse;
+import com.mannschaft.app.todo.dto.OrgProjectSummaryResponse;
 import com.mannschaft.app.todo.dto.ProjectDetailResponse;
 import com.mannschaft.app.todo.dto.ProjectResponse;
 import com.mannschaft.app.todo.dto.UpdateMilestoneRequest;
@@ -75,6 +76,9 @@ class ProjectServiceTest {
 
     @Mock
     private com.mannschaft.app.team.service.TeamService teamService;
+
+    @Mock
+    private com.mannschaft.app.organization.service.OrganizationService organizationService;
 
     @InjectMocks
     private ProjectService projectService;
@@ -1054,6 +1058,224 @@ class ProjectServiceTest {
             // Then: N+1 回避。proj が複数でも名前/slug 解決は各 1 回
             verify(teamService, org.mockito.Mockito.times(1)).getNamesByIds(anyCollection());
             verify(teamService, org.mockito.Mockito.times(1)).getSlugsByIds(anyCollection());
+        }
+    }
+
+    // ========================================
+    // listOrgProjectsForUser（マイページ 組織プロジェクト集約 /api/v1/me/org-projects）
+    // ========================================
+
+    /**
+     * {@code ProjectService.listOrgProjectsForUser} の試練（red）。
+     *
+     * <p>受け入れ条件 AC-O-2〜AC-O-8 を純 Mockito で検証する。
+     * {@link ListTeamProjectsForUser} の組織版（{@code ScopeType.ORGANIZATION} / orgId/orgName/orgSlug 付与）。</p>
+     */
+    @Nested
+    @DisplayName("listOrgProjectsForUser（組織プロジェクト集約）")
+    class ListOrgProjectsForUser {
+
+        private static final Long ORG_A = 21L;
+        private static final Long ORG_B = 32L;
+        private static final Long ORG_C_NOT_JOINED = 99L;
+
+        /** 指定組織（scopeId）に属する ACTIVE プロジェクトを生成する。 */
+        private ProjectEntity orgProject(Long orgScopeId, String title) {
+            return ProjectEntity.builder()
+                    .scopeType(TodoScopeType.ORGANIZATION)
+                    .scopeId(orgScopeId)
+                    .title(title)
+                    .emoji("🏢")
+                    .color("#0000FF")
+                    .dueDate(LocalDate.now().plusDays(30))
+                    .status(ProjectStatus.ACTIVE)
+                    .progressRate(BigDecimal.ZERO)
+                    .totalTodos((short) 0)
+                    .completedTodos((short) 0)
+                    .visibility(ProjectVisibility.MEMBERS_ONLY)
+                    .createdBy(USER_ID)
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
+                    .build();
+        }
+
+        private void stubMilestoneCounts() {
+            lenient().when(milestoneRepository.countByProjectId(any())).thenReturn(0L);
+            lenient().when(milestoneRepository.countByProjectIdAndIsCompletedTrue(any())).thenReturn(0L);
+        }
+
+        @Test
+        @DisplayName("AC-O-2: 複数組織所属_所属orgId集合で集約クエリが呼ばれ全projが返る")
+        void ACO2_複数組織所属_集約クエリのscopeId集合で全proj返却() {
+            // Given: ORG_A / ORG_B の 2 組織に所属
+            given(membershipService.getActiveOrgIdsByUser(USER_ID))
+                    .willReturn(List.of(ORG_A, ORG_B));
+            Page<ProjectEntity> page = new PageImpl<>(List.of(
+                    orgProject(ORG_A, "A組織プロジェクト"),
+                    orgProject(ORG_B, "B組織プロジェクト")));
+            given(projectRepository.findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
+                    eq(TodoScopeType.ORGANIZATION), anyCollection(), eq(ProjectStatus.ACTIVE), any(Pageable.class)))
+                    .willReturn(page);
+            given(organizationService.getNamesByIds(anyCollection()))
+                    .willReturn(Map.of(ORG_A, "組織A", ORG_B, "組織B"));
+            given(organizationService.getSlugsByIds(anyCollection()))
+                    .willReturn(Map.of(ORG_A, "org-a", ORG_B, "org-b"));
+            stubMilestoneCounts();
+
+            // When
+            PagedResponse<OrgProjectSummaryResponse> response =
+                    projectService.listOrgProjectsForUser(USER_ID, ProjectStatus.ACTIVE, 0, 20);
+
+            // Then: 集約クエリが所属 orgId 集合 {A, B} で呼ばれ、全 proj が返る
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<java.util.Collection<Long>> scopeIdsCaptor =
+                    ArgumentCaptor.forClass(java.util.Collection.class);
+            verify(projectRepository).findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
+                    eq(TodoScopeType.ORGANIZATION), scopeIdsCaptor.capture(),
+                    eq(ProjectStatus.ACTIVE), any(Pageable.class));
+            assertThat(scopeIdsCaptor.getValue()).containsExactlyInAnyOrder(ORG_A, ORG_B);
+            assertThat(response.getData()).hasSize(2);
+            assertThat(response.getData()).extracting(OrgProjectSummaryResponse::title)
+                    .containsExactlyInAnyOrder("A組織プロジェクト", "B組織プロジェクト");
+        }
+
+        @Test
+        @DisplayName("AC-O-3: 各レスポンスにorgId/orgName/orgSlugが正しく付与される")
+        void ACO3_orgId_orgName_orgSlugが付与される() {
+            given(membershipService.getActiveOrgIdsByUser(USER_ID))
+                    .willReturn(List.of(ORG_A, ORG_B));
+            given(projectRepository.findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
+                    eq(TodoScopeType.ORGANIZATION), anyCollection(), eq(ProjectStatus.ACTIVE), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(
+                            orgProject(ORG_A, "A組織プロジェクト"),
+                            orgProject(ORG_B, "B組織プロジェクト"))));
+            given(organizationService.getNamesByIds(anyCollection()))
+                    .willReturn(Map.of(ORG_A, "組織A", ORG_B, "組織B"));
+            given(organizationService.getSlugsByIds(anyCollection()))
+                    .willReturn(Map.of(ORG_A, "org-a", ORG_B, "org-b"));
+            stubMilestoneCounts();
+
+            PagedResponse<OrgProjectSummaryResponse> response =
+                    projectService.listOrgProjectsForUser(USER_ID, ProjectStatus.ACTIVE, 0, 20);
+
+            OrgProjectSummaryResponse a = response.getData().stream()
+                    .filter(r -> "A組織プロジェクト".equals(r.title())).findFirst().orElseThrow();
+            assertThat(a.orgId()).isEqualTo(ORG_A);
+            assertThat(a.orgName()).isEqualTo("組織A");
+            assertThat(a.orgSlug()).isEqualTo("org-a");
+        }
+
+        @Test
+        @DisplayName("AC-O-4: membershipが返さない組織のprojは含まれない（scopeIds集合に無い）")
+        void ACO4_所属外組織のscopeIdは集約クエリに渡らない() {
+            // Given: 所属は ORG_A のみ（ORG_C には未所属）
+            given(membershipService.getActiveOrgIdsByUser(USER_ID))
+                    .willReturn(List.of(ORG_A));
+            given(projectRepository.findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
+                    eq(TodoScopeType.ORGANIZATION), anyCollection(), eq(ProjectStatus.ACTIVE), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(orgProject(ORG_A, "A組織プロジェクト"))));
+            given(organizationService.getNamesByIds(anyCollection())).willReturn(Map.of(ORG_A, "組織A"));
+            given(organizationService.getSlugsByIds(anyCollection())).willReturn(Map.of(ORG_A, "org-a"));
+            stubMilestoneCounts();
+
+            projectService.listOrgProjectsForUser(USER_ID, ProjectStatus.ACTIVE, 0, 20);
+
+            // Then: 集約クエリの scopeIds に未所属 ORG_C は含まれない
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<java.util.Collection<Long>> scopeIdsCaptor =
+                    ArgumentCaptor.forClass(java.util.Collection.class);
+            verify(projectRepository).findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
+                    eq(TodoScopeType.ORGANIZATION), scopeIdsCaptor.capture(),
+                    eq(ProjectStatus.ACTIVE), any(Pageable.class));
+            assertThat(scopeIdsCaptor.getValue()).containsExactly(ORG_A);
+            assertThat(scopeIdsCaptor.getValue()).doesNotContain(ORG_C_NOT_JOINED);
+        }
+
+        @Test
+        @DisplayName("AC-O-5: 非アクティブ/退会組織はgetActiveOrgIdsByUserが返さず除外される")
+        void ACO5_非アクティブ所属は集約対象に含まれない() {
+            // Given: getActiveOrgIdsByUser は active な ORG_A のみ返す
+            //        （退会済み ORG_B は MembershipService が left_at IS NOT NULL で除外する前提）
+            given(membershipService.getActiveOrgIdsByUser(USER_ID))
+                    .willReturn(List.of(ORG_A));
+            given(projectRepository.findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
+                    eq(TodoScopeType.ORGANIZATION), anyCollection(), eq(ProjectStatus.ACTIVE), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(orgProject(ORG_A, "A組織プロジェクト"))));
+            given(organizationService.getNamesByIds(anyCollection())).willReturn(Map.of(ORG_A, "組織A"));
+            given(organizationService.getSlugsByIds(anyCollection())).willReturn(Map.of(ORG_A, "org-a"));
+            stubMilestoneCounts();
+
+            projectService.listOrgProjectsForUser(USER_ID, ProjectStatus.ACTIVE, 0, 20);
+
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<java.util.Collection<Long>> scopeIdsCaptor =
+                    ArgumentCaptor.forClass(java.util.Collection.class);
+            verify(projectRepository).findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
+                    eq(TodoScopeType.ORGANIZATION), scopeIdsCaptor.capture(),
+                    eq(ProjectStatus.ACTIVE), any(Pageable.class));
+            assertThat(scopeIdsCaptor.getValue()).containsExactly(ORG_A);
+            assertThat(scopeIdsCaptor.getValue()).doesNotContain(ORG_B);
+        }
+
+        @Test
+        @DisplayName("AC-O-6: status引数がfindBy...Statusに渡る（COMPLETED指定）")
+        void ACO6_status引数が集約クエリに渡る() {
+            given(membershipService.getActiveOrgIdsByUser(USER_ID))
+                    .willReturn(List.of(ORG_A));
+            given(projectRepository.findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
+                    eq(TodoScopeType.ORGANIZATION), anyCollection(), eq(ProjectStatus.COMPLETED), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of()));
+            lenient().when(organizationService.getNamesByIds(anyCollection())).thenReturn(Map.of());
+            lenient().when(organizationService.getSlugsByIds(anyCollection())).thenReturn(Map.of());
+            stubMilestoneCounts();
+
+            projectService.listOrgProjectsForUser(USER_ID, ProjectStatus.COMPLETED, 0, 20);
+
+            // Then: status=COMPLETED が集約クエリに渡る
+            verify(projectRepository).findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
+                    eq(TodoScopeType.ORGANIZATION), anyCollection(),
+                    eq(ProjectStatus.COMPLETED), any(Pageable.class));
+        }
+
+        @Test
+        @DisplayName("AC-O-7: 所属0（membershipが空）→所属解決のみ実施し集約クエリは呼ばず空リスト")
+        void ACO7_所属0_集約クエリを呼ばず空リスト() {
+            given(membershipService.getActiveOrgIdsByUser(USER_ID))
+                    .willReturn(List.of());
+
+            PagedResponse<OrgProjectSummaryResponse> response =
+                    projectService.listOrgProjectsForUser(USER_ID, ProjectStatus.ACTIVE, 0, 20);
+
+            // Then: 所属解決（getActiveOrgIdsByUser）は実施するが、
+            //       orgIds が空なので集約クエリは 1 度も呼ばず、空リストを返す。
+            verify(membershipService).getActiveOrgIdsByUser(USER_ID);
+            verify(projectRepository, org.mockito.Mockito.never())
+                    .findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
+                            any(), anyCollection(), any(), any(Pageable.class));
+            assertThat(response.getData()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("AC-O-8: orgName/slug解決はgetNamesByIds/getSlugsByIdsを各1回だけ呼ぶ（N+1でない）")
+        void ACO8_名前slug解決はバッチで各1回() {
+            given(membershipService.getActiveOrgIdsByUser(USER_ID))
+                    .willReturn(List.of(ORG_A, ORG_B));
+            given(projectRepository.findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
+                    eq(TodoScopeType.ORGANIZATION), anyCollection(), eq(ProjectStatus.ACTIVE), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(
+                            orgProject(ORG_A, "A組織プロジェクト"),
+                            orgProject(ORG_B, "B組織プロジェクト"))));
+            given(organizationService.getNamesByIds(anyCollection()))
+                    .willReturn(Map.of(ORG_A, "組織A", ORG_B, "組織B"));
+            given(organizationService.getSlugsByIds(anyCollection()))
+                    .willReturn(Map.of(ORG_A, "org-a", ORG_B, "org-b"));
+            stubMilestoneCounts();
+
+            projectService.listOrgProjectsForUser(USER_ID, ProjectStatus.ACTIVE, 0, 20);
+
+            // Then: N+1 回避。proj が複数でも名前/slug 解決は各 1 回
+            verify(organizationService, org.mockito.Mockito.times(1)).getNamesByIds(anyCollection());
+            verify(organizationService, org.mockito.Mockito.times(1)).getSlugsByIds(anyCollection());
         }
     }
 }

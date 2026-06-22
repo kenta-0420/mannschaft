@@ -717,6 +717,8 @@
     "no_my_projects": "暂无个人项目",
     "team_projects_section": "团队项目",
     "no_team_projects": "您所在的团队暂无项目",
+    "org_projects_section": "组织项目",
+    "no_org_projects": "您所在的组织暂无项目",
     "create_button": "创建项目",
     "dialog": {
       "create_title": "创建项目",

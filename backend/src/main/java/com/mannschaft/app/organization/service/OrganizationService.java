@@ -554,6 +554,23 @@ public class OrganizationService {
     }
 
     /**
+     * 指定 ID 集合に対して id → name（組織名）のマッピングを一括取得する（N+1 回避）。
+     *
+     * <p>マイページ 組織プロジェクト集約で {@code ProjectService} が組織名を付与する際に使用する。
+     * プリミティブ（Map&lt;Long, String&gt;）のみを返し、Entity は漏らさない。
+     * {@link #getSlugsByIds(Collection)} と対をなす。</p>
+     *
+     * @param ids 取得対象の組織 ID 集合
+     * @return id → name の Map（論理削除済みは除外）。ids が空の場合は空 Map を返す
+     */
+    public Map<Long, String> getNamesByIds(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return organizationRepository.findNameMapByIdIn(ids);
+    }
+
+    /**
      * 単一組織 ID から slug を取得する。
      *
      * <p>論理削除済み・存在しない場合は {@code null} を返す（例外を投げない）。</p>

@@ -717,6 +717,8 @@
     "no_my_projects": "No personal projects yet",
     "team_projects_section": "Team Projects",
     "no_team_projects": "No projects in your teams yet",
+    "org_projects_section": "Organization Projects",
+    "no_org_projects": "No projects in your organizations yet",
     "create_button": "Create project",
     "dialog": {
       "create_title": "Create project",
