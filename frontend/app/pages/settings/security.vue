@@ -5,7 +5,6 @@ definePageMeta({
   middleware: 'auth',
 })
 
-const { t } = useI18n()
 const notification = useNotification()
 const authStore = useAuthStore()
 const {
@@ -138,15 +137,7 @@ async function handleRenameCredential() {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <PageHeader title="セキュリティ" back-to="/settings">
-      <button
-        type="button"
-        class="ml-auto inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-        @click="showHelp = true"
-      >
-        {{ t('security_help.link_label') }}
-      </button>
-    </PageHeader>
+    <PageHeader title="セキュリティ" back-to="/settings" help @help="showHelp = true" />
 
     <SecurityHelpDialog v-model:visible="showHelp" />
 

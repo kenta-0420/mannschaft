@@ -108,22 +108,12 @@ onMounted(async () => {
 
 <template>
   <div>
-    <div class="mb-4 flex items-center justify-between">
-      <div>
-        <PageHeader :title="$t('project.my_projects')" back-to="/my" />
-        <p class="text-sm text-surface-500">{{ $t('project.my_projects_description') }}</p>
-      </div>
-      <div class="flex items-center gap-2">
-        <Button
-          icon="pi pi-question-circle"
-          :label="$t('project.guide.button')"
-          text
-          data-testid="project-help-link"
-          @click="showGuide = true"
-        />
+    <PageHeader :title="$t('project.my_projects')" back-to="/my" help @help="showGuide = true">
+      <template #actions>
         <Button :label="$t('project.create_button')" icon="pi pi-plus" @click="openCreate" />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
+    <p class="mb-4 text-sm text-surface-500">{{ $t('project.my_projects_description') }}</p>
 
     <PageLoading v-if="loading" size="40px" />
 

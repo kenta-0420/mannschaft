@@ -51,11 +51,15 @@ public class R2StorageService implements StorageService {
     @Override
     public PresignedUploadResult generateUploadUrl(String r2Key, String contentType, Duration ttl) {
         try {
+            // cache-control をここで設定してはいけない理由:
+            // presign リクエストに cache-control を含めると、署名ヘッダー（X-Amz-SignedHeaders）に
+            // "cache-control" が追加される。するとブラウザの fetch(PUT) が同一の Cache-Control
+            // 値を送らない限り署名不一致（403/AccessDenied）になり、ブラウザ直アップロードが
+            // 原理的に不可能になる。cache-control はサーバー側送信（upload メソッド）の関心事。
             PutObjectRequest objectRequest = PutObjectRequest.builder()
                     .bucket(storageProperties.getBucket())
                     .key(r2Key)
                     .contentType(contentType)
-                    .cacheControl(CachePolicy.resolve(r2Key))
                     .build();
 
             PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()

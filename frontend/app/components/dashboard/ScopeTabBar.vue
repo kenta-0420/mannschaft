@@ -190,8 +190,8 @@ async function onFolderChange(folderId: number | null) {
       >
         <Button
           icon="pi pi-external-link"
+          :label="$t('scopeDashboard.tagBar.goToScopePage')"
           text
-          rounded
           size="small"
           :aria-label="$t('scopeDashboard.tagBar.goToScopePage')"
         />
