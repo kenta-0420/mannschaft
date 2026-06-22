@@ -51,7 +51,12 @@
       "recall_interval_label": "상기 간격",
       "recall_interval_fixed": "{days}일 후 상기 테스트 (고정)",
       "open": "열기",
-      "view_entries": "회고 보기"
+      "view_entries": "회고 보기",
+      "subject_link_label": "과목에 연결",
+      "subject_link_none": "연결 안 함",
+      "subject_link_placeholder": "시간표 과목에서 선택",
+      "subject_link_help": "선택한 과목의 모든 수업 시간에 이 테마가 오늘 뷰에 표시됩니다",
+      "subject_link_empty": "시간표가 등록되지 않았습니다"
     },
     "source_type": {
       "SUBJECT": "수업",

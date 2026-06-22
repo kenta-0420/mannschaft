@@ -24,6 +24,7 @@ export type UpsertReflectionEntryRequest = components['schemas']['UpsertReflecti
 export type CreateRecallAttemptRequest = components['schemas']['CreateRecallAttemptRequest']
 export type ExportToBlogRequest = components['schemas']['ExportToBlogRequest']
 export type UpdateReflectionSettingsRequest = components['schemas']['UpdateReflectionSettingsRequest']
+export type LinkableSlotResponse = components['schemas']['LinkableSlotResponse']
 
 // 列挙（生成型に enum がある場合はそちらが優先。値の定数配列は UI 選択肢に使う）
 export type ReflectionSourceType = 'SUBJECT' | 'PROJECT' | 'DIARY' | 'FREE'

@@ -82,8 +82,15 @@ export const useAuthStore = defineStore('auth', {
       }
 
       // PWA: IndexedDB (Dexie) のオフライン DB をクリア
+      // close() を先に呼ぶことで、Dexie の onblocked（他接続が残っている状態の削除待ち）を回避し
+      // delete() を即時完了させる。
       try {
         const { offlineDb } = await import('~/composables/useOfflineDb')
+        try {
+          offlineDb.close()
+        } catch {
+          // close 失敗は無視して delete を続行
+        }
         await offlineDb.delete()
       } catch {
         // DB 削除失敗は処理継続
@@ -91,6 +98,7 @@ export const useAuthStore = defineStore('auth', {
 
       // F18 ウォレット: オフラインキャッシュ DB をクリア（鍵ごと削除）
       // 設計書 §7.4「ログアウト時に鍵を破棄 + IndexedDB の全レコードを削除」
+      // walletOfflineStore は各操作で open/close するため close() 事前呼び出し不要。
       try {
         const { deleteWalletOfflineDb } = await import('~/utils/walletOfflineStore')
         await deleteWalletOfflineDb()
@@ -148,7 +156,14 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * ログアウト処理。state/localStorage/PWAキャッシュを掃除して /login へ遷移する。
+     * ログアウト処理。state/localStorage を即時クリアして /login へ遷移し、
+     * PWA キャッシュ（Cache Storage + IndexedDB）の重い削除は遷移と並走させる。
+     *
+     * 【設計方針】
+     * - state クリア・localStorage クリア・navigateTo は同期的に先行する（遷移の即時化）。
+     * - Cache Storage 全削除・IndexedDB 削除は Promise を起動するが、await で遷移をブロックしない。
+     * - SPA 遷移では JS コンテキストが継続するため、navigateTo 後もクリーンアップ Promise は
+     *   走り続けて必ず完了する（fire-and-forget ではなく「遷移と並走」）。
      *
      * @param options.reason - ログイン画面に表示する遷移理由。
      *   - 'session_expired': セッション失効（refresh_token 無効。他タブやメール変更・退会後など）
@@ -156,6 +171,8 @@ export const useAuthStore = defineStore('auth', {
      *   省略時は従来どおり /login へ遷移（後方互換）。
      */
     async logout(options?: { reason?: string }) {
+      // ① 即時処理: in-memory state と localStorage を同期的にクリアする。
+      //   これ以降 isAuthenticated === false になり、ガードが /login にリダイレクトできる。
       this.accessToken = null
       this.refreshToken = null
       this.user = null
@@ -166,25 +183,39 @@ export const useAuthStore = defineStore('auth', {
         localStorage.removeItem('refreshToken')
         localStorage.removeItem('currentUser')
         localStorage.removeItem('tokenExpiresAt')
-
-        // PWA: Cache Storage を全クリア（api-cache + その他全エントリ）
-        // api-cache の破棄は clearUserCaches でも行われるが、
-        // ログアウト時はあらゆるキャッシュを完全消去するため全削除する。
-        if ('caches' in window) {
-          try {
-            const names = await caches.keys()
-            await Promise.all(names.map((name) => caches.delete(name)))
-          } catch {
-            // キャッシュ削除失敗は握りつぶす（ログアウト自体は継続）
-          }
-        }
-
-        // PWA: IndexedDB (Dexie) + F18 ウォレット DB をクリア（clearUserCaches と共通化）
-        await this.clearUserCaches()
       }
       useChatTabsStore().clearAll()
+
+      // ② 重いクリーンアップ（Cache Storage + IndexedDB）を並走で起動する。
+      //   navigateTo より前に起動することで「必ず走る」ことを保証しつつ、
+      //   await しないことで遷移をブロックしない。
+      //   SPA 遷移では JS コンテキストが継続するため、遷移後もこの Promise は完了する。
+      const cleanupPromise = import.meta.client
+        ? (async () => {
+            // PWA: Cache Storage を全クリア（api-cache + その他全エントリ）
+            // api-cache の破棄は clearUserCaches でも行われるが、
+            // ログアウト時はあらゆるキャッシュを完全消去するため全削除する。
+            if ('caches' in window) {
+              try {
+                const names = await caches.keys()
+                await Promise.all(names.map((name) => caches.delete(name)))
+              } catch {
+                // キャッシュ削除失敗は握りつぶす（ログアウト自体は継続）
+              }
+            }
+            // PWA: IndexedDB (Dexie) + F18 ウォレット DB をクリア（clearUserCaches と共通化）
+            await this.clearUserCaches()
+          })()
+        : Promise.resolve()
+
+      // ③ 遷移を即時実行（クリーンアップ完了を待たない）。
       const loginPath = options?.reason ? `/login?reason=${options.reason}` : '/login'
       navigateTo(loginPath)
+
+      // ④ 遷移後もクリーンアップ Promise が完了するまで呼び出し元が await できるよう返す。
+      //   通常の呼び出し元は await logout() で完了を待てるが、遷移は ③ で先行済みのため
+      //   UX 上の遅延は発生しない。
+      await cleanupPromise
     },
 
     async serverLogout() {
