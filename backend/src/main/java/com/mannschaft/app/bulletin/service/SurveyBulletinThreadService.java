@@ -1,6 +1,7 @@
 package com.mannschaft.app.bulletin.service;
 
 import com.mannschaft.app.bulletin.ScopeType;
+import com.mannschaft.app.bulletin.dto.ThreadResponse;
 import com.mannschaft.app.bulletin.entity.BulletinThreadEntity;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,8 @@ public class SurveyBulletinThreadService {
     private static final String SURVEY_SOURCE_TYPE = "SURVEY";
 
     private final BulletinThreadRepository bulletinThreadRepository;
+    /** フラット enrichment（投稿者名/アバター・カテゴリ・既読・リアクション）を共通経路で適用する。 */
+    private final BulletinThreadService bulletinThreadService;
 
     /**
      * アンケートに対応する掲示板スレッドを作成する。
@@ -103,6 +106,22 @@ public class SurveyBulletinThreadService {
      */
     public Optional<BulletinThreadEntity> findBySurveyId(long surveyId) {
         return bulletinThreadRepository.findBySourceTypeAndSourceIdAndDeletedAtIsNull(SURVEY_SOURCE_TYPE, surveyId);
+    }
+
+    /**
+     * アンケートIDに対応する掲示板スレッドをフラット enrich 済みレスポンスで取得する。
+     *
+     * <p>一覧/詳細と同じ enrichment（投稿者名/アバター・カテゴリ名/色・既読・リアクション集計）を通すため、
+     * {@link BulletinThreadService#enrichSingle} に委譲する。スレッドが無ければ empty。</p>
+     *
+     * @param surveyId      アンケートID
+     * @param currentUserId 操作ユーザーID（既読・myReactions の主体。null 可）
+     * @return enrich 済みスレッドレスポンス（存在しない場合は empty）
+     */
+    @Transactional(readOnly = true)
+    public Optional<ThreadResponse> findThreadResponseBySurveyId(long surveyId, Long currentUserId) {
+        return findBySurveyId(surveyId)
+                .map(thread -> bulletinThreadService.enrichSingle(thread, currentUserId));
     }
 
     /**
