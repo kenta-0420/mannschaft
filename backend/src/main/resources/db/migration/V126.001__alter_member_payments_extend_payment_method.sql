@@ -1,5 +1,6 @@
--- 採番: 当初 V124 採番だったが、並行 PR #1798（reflection）が V124.001 を先取りしたため
---       main 取込時に衝突 → V125.001 にリネーム（feedback_migration_version_collision）。
+-- 採番: 当初 V124 → #1798(reflection) が V124.001 先取り → V125.001 へ。
+--       さらにマージ直前の main 取込で #1806 が V125.001 を先取りしていたため
+--       V126.001 にリネーム（feedback_migration_version_collision / グローバル最大の次major）。
 -- 会費「手動入金管理の実用化」: member_payments.payment_method に CASH / BANK_TRANSFER を追加。
 -- MANUAL は「その他／不明」として温存（既存データ互換のため削除しない）。STRIPE はオンライン決済。
 -- 設計書: docs/features/F08.9_membership_billing_paywall
