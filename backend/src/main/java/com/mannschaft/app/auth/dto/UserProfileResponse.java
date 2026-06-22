@@ -24,6 +24,8 @@ public class UserProfileResponse {
     private final Boolean isSearchable;
     private final String avatarUrl;
     private final String phoneNumber;
+    /** 郵便番号（本人プロフィール専用。{@code EncryptedStringConverter} で復号済みの平文）。 */
+    private final String postalCode;
     private final String locale;
     /** ISO 3166-1 alpha-2 国コード。NULLの場合はlocaleから推定する。 */
     private final String countryCode;
