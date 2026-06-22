@@ -1,4 +1,5 @@
--- ※採番はマージ直前に origin/main 最大の次へ再確認すること（確認時点の最大 major=V123 → V124 を採用）
+-- 採番: 当初 V124 採番だったが、並行 PR #1798（reflection）が V124.001 を先取りしたため
+--       main 取込時に衝突 → V125.001 にリネーム（feedback_migration_version_collision）。
 -- 会費「手動入金管理の実用化」: member_payments.payment_method に CASH / BANK_TRANSFER を追加。
 -- MANUAL は「その他／不明」として温存（既存データ互換のため削除しない）。STRIPE はオンライン決済。
 -- 設計書: docs/features/F08.9_membership_billing_paywall
