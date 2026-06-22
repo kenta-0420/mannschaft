@@ -289,7 +289,7 @@ class MemberPaymentConnectCheckoutServiceTest {
             given(paymentMapper.toMemberPaymentResponse(any())).willReturn(null);
 
             var request = new com.mannschaft.app.payment.dto.CreateManualPaymentRequest(
-                    BENEFICIARY, new BigDecimal("5000"), java.time.LocalDateTime.now(), null, null, null);
+                    BENEFICIARY, new BigDecimal("5000"), java.time.LocalDateTime.now(), null, null, null, null);
 
             service.createManualPayment(ITEM_ID, OTHER_PAYER, request);
 
