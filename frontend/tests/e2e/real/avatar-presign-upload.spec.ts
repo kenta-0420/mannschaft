@@ -185,7 +185,7 @@ test.describe('AVATAR-PRESIGN: presigned アバターアップロード 実機E2
       minioPutStatus,
       `ブラウザ直PUTが 200/204 で返ること（実値=${minioPutStatus}）`,
     ).not.toBeNull()
-    expect([200, 204]).toContain(minioPutStatus as number)
+    expect([200, 204] as Array<number | null>).toContain(minioPutStatus)
 
     // (d) commit が成功
     expect(commitStatus, 'commit(PUT /profile-media/icon) が 200 で返ること').toBe(200)
