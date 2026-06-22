@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { MemberPaymentResponse } from '~/types/payment'
+import type { MemberResponse } from '~/types/member'
 
 /**
  * F08.9 手動入金 一括記録ダイアログ（AC-20）。
@@ -16,6 +17,12 @@ const props = defineProps<{
   defaultAmount: number
   /** 支払い一覧（このうち UNPAID のみを一括記録対象にする）。 */
   payments: MemberPaymentResponse[]
+  /**
+   * チームメンバー一覧（PaymentAdminPanel から渡される）。
+   * 一括記録では既存の UNPAID 行を対象にするため、このプロパティは現時点では使用しない。
+   * 将来の拡張（全メンバーへの一括記録）に備えて受け取るのみ。
+   */
+  teamMembers?: MemberResponse[]
 }>()
 
 const emit = defineEmits<{
