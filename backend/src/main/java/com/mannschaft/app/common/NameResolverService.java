@@ -65,6 +65,27 @@ public class NameResolverService {
     }
 
     /**
+     * ユーザーIDの集合からアバターURLマップを返す。avatarUrl 未設定のIDは含まれない。
+     *
+     * <p>{@code Collectors.toMap} は null 値で例外を投げるため、HashMap + null 除外で構築する。</p>
+     *
+     * @param userIds ユーザーIDの集合
+     * @return Map(userId → avatarUrl)。avatarUrl が null のIDは含まれない
+     */
+    public Map<Long, String> resolveUserAvatarUrls(Collection<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Long, String> result = new java.util.HashMap<>();
+        for (UserEntity u : userRepository.findAllById(userIds)) {
+            if (u.getAvatarUrl() != null) {
+                result.put(u.getId(), u.getAvatarUrl());
+            }
+        }
+        return result;
+    }
+
+    /**
      * 単一ユーザーの表示名を返す（ニックネーム）。
      * 外部公開スコープ専用。チーム内表示には {@link #resolveUserFullName(Long)} を使うこと。
      *
