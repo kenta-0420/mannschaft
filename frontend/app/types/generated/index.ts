@@ -69332,6 +69332,11 @@ export interface components {
             hasEntryToday?: boolean;
             entryId?: string;
             isMasked?: boolean;
+            themeTitle?: string;
+            /** Format: date */
+            themeCreatedAt?: string;
+            /** Format: date */
+            lastReflectedAt?: string;
         };
         ReflectionTodayResponse: {
             /** Format: date */

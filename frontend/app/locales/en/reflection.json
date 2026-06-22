@@ -26,7 +26,11 @@
       "open_recall": "Recall test",
       "masked_badge": "Awaiting recall",
       "has_entry": "Written",
-      "period_label": "Period {period}"
+      "period_label": "Period {period}",
+      "main_theme_label": "Main theme",
+      "created_at_label": "First created",
+      "last_reflected_label": "Last reflected",
+      "never_reflected": "Not yet"
     },
     "theme": {
       "list_heading": "Themes",

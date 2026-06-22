@@ -26,7 +26,11 @@
       "open_recall": "Abruftest",
       "masked_badge": "Abruf ausstehend",
       "has_entry": "Geschrieben",
-      "period_label": "{period}. Stunde"
+      "period_label": "{period}. Stunde",
+      "main_theme_label": "Hauptthema",
+      "created_at_label": "Erstellt am",
+      "last_reflected_label": "Zuletzt reflektiert",
+      "never_reflected": "Noch nicht"
     },
     "theme": {
       "list_heading": "Themen",

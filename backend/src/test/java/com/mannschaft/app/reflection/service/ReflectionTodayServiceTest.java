@@ -20,6 +20,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,6 +31,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 /**
  * {@link ReflectionTodayService} 単体テスト（F06.5・§4.3 / §7 #12）。
@@ -206,5 +210,147 @@ class ReflectionTodayServiceTest {
         ReflectionTodayResponse res = service.getToday(USER_ID, target);
 
         assertThat(res.date()).isEqualTo(target);
+    }
+
+    // ===== AC-25: themeTitle / themeCreatedAt / lastReflectedAt =====
+
+    @Test
+    @DisplayName("AC-25: themeId を持つ item に themeTitle・themeCreatedAt・lastReflectedAt が載る")
+    void getToday_themeMetaPopulatedForItemWithTheme() {
+        UUID themeId = UUID.randomUUID();
+        UUID entryId = UUID.randomUUID();
+        LocalDate lastDate = TODAY.minusDays(2);
+
+        DashboardTimetableTodayResponse.TimetableTodayItem teamSlot = slotItem("TEAM", 11L, "数学");
+        given(dashboardService.getTimetableToday(eq(USER_ID), any(LocalDate.class)))
+                .willReturn(dashboard(List.of(teamSlot)));
+
+        ReflectionThemeEntity linkedTheme = themeWithCreatedAt(themeId, ReflectionLinkedSlotKind.TEAM, 11L,
+                ReflectionSourceType.SUBJECT, LocalDateTime.of(2026, 1, 10, 9, 0));
+        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(linkedTheme));
+        given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any()))
+                .willReturn(List.of(entry(entryId, themeId, TODAY)));
+
+        // AC-26: lastReflectedAt = MAX(targetDate) を ThemeLastDateView スタブで返す
+        given(entryRepository.findLatestTargetDateByThemeIds(any()))
+                .willReturn(List.of(themeLastDateView(themeId, lastDate)));
+
+        ReflectionTodayResponse res = service.getToday(USER_ID, null);
+
+        ReflectionTodayResponse.ReflectionTodayItem item = res.items().get(0);
+        assertThat(item.themeId()).isEqualTo(themeId.toString());
+        assertThat(item.themeTitle()).isEqualTo("数学" + 11L);
+        assertThat(item.themeCreatedAt()).isEqualTo(LocalDate.of(2026, 1, 10));
+        assertThat(item.lastReflectedAt()).isEqualTo(lastDate);
+    }
+
+    @Test
+    @DisplayName("AC-25/AC-26: エントリなしテーマの lastReflectedAt は null")
+    void getToday_lastReflectedAt_nullWhenNoEntries() {
+        UUID themeId = UUID.randomUUID();
+
+        given(dashboardService.getTimetableToday(eq(USER_ID), any(LocalDate.class)))
+                .willReturn(dashboard(List.of()));
+        ReflectionThemeEntity freeTheme = themeWithCreatedAt(themeId, null, null,
+                ReflectionSourceType.DIARY, LocalDateTime.of(2026, 3, 1, 0, 0));
+        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(freeTheme));
+        given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any())).willReturn(List.of());
+
+        // GROUP BY クエリが themeId に対して行を返さない場合 → lastReflectedAt=null
+        given(entryRepository.findLatestTargetDateByThemeIds(any())).willReturn(List.of());
+
+        ReflectionTodayResponse res = service.getToday(USER_ID, null);
+
+        ReflectionTodayResponse.ReflectionTodayItem item = res.items().get(0);
+        assertThat(item.themeId()).isEqualTo(themeId.toString());
+        assertThat(item.lastReflectedAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("AC-27: themeId を持つ item が0件なら findLatestTargetDateByThemeIds を呼ばない（N+1 回避）")
+    void getToday_noThemeIds_noRepositoryCall() {
+        // 全コマが空きコマ（themeId なし）
+        DashboardTimetableTodayResponse.TimetableTodayItem emptySlot = slotItem("TEAM", 99L, "空き");
+        given(dashboardService.getTimetableToday(eq(USER_ID), any(LocalDate.class)))
+                .willReturn(dashboard(List.of(emptySlot)));
+        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of());
+        given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any())).willReturn(List.of());
+
+        service.getToday(USER_ID, null);
+
+        // themeId が空なので findLatestTargetDateByThemeIds は一切呼ばれない
+        verify(entryRepository, never()).findLatestTargetDateByThemeIds(any());
+    }
+
+    @Test
+    @DisplayName("AC-26: lastReflectedAt は当該テーマの最新 targetDate を選ぶ（最大値）")
+    void getToday_lastReflectedAt_isMaxTargetDate() {
+        UUID themeId = UUID.randomUUID();
+        LocalDate olderDate = TODAY.minusDays(10);
+        LocalDate newerDate = TODAY.minusDays(3);
+
+        given(dashboardService.getTimetableToday(eq(USER_ID), any(LocalDate.class)))
+                .willReturn(dashboard(List.of()));
+        ReflectionThemeEntity freeTheme = themeWithCreatedAt(themeId, null, null,
+                ReflectionSourceType.FREE, LocalDateTime.of(2026, 2, 1, 0, 0));
+        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(freeTheme));
+        given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any())).willReturn(List.of());
+        // MAX = newerDate を返す（GROUP BY 結果）
+        given(entryRepository.findLatestTargetDateByThemeIds(any()))
+                .willReturn(List.of(themeLastDateView(themeId, newerDate)));
+
+        ReflectionTodayResponse res = service.getToday(USER_ID, null);
+
+        assertThat(res.items().get(0).lastReflectedAt()).isEqualTo(newerDate);
+    }
+
+    @Test
+    @DisplayName("AC-25: 空きコマ（themeId=null）には themeTitle・themeCreatedAt・lastReflectedAt が出ない")
+    void getToday_emptySlot_noThemeMeta() {
+        DashboardTimetableTodayResponse.TimetableTodayItem emptySlot = slotItem("TEAM", 77L, "体育");
+        given(dashboardService.getTimetableToday(eq(USER_ID), any(LocalDate.class)))
+                .willReturn(dashboard(List.of(emptySlot)));
+        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of());
+        given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any())).willReturn(List.of());
+
+        ReflectionTodayResponse res = service.getToday(USER_ID, null);
+
+        ReflectionTodayResponse.ReflectionTodayItem item = res.items().get(0);
+        assertThat(item.themeId()).isNull();
+        assertThat(item.themeTitle()).isNull();
+        assertThat(item.themeCreatedAt()).isNull();
+        assertThat(item.lastReflectedAt()).isNull();
+    }
+
+    // ===== ヘルパー（新テスト用） =====
+
+    /** createdAt を指定できるテーマビルダー。 */
+    private ReflectionThemeEntity themeWithCreatedAt(UUID id, ReflectionLinkedSlotKind kind, Long slotId,
+                                                     ReflectionSourceType sourceType,
+                                                     LocalDateTime createdAt) {
+        ReflectionThemeEntity t = ReflectionThemeEntity.builder()
+                .userId(USER_ID).title("数学" + slotId)
+                .sourceType(sourceType)
+                .linkedSlotKind(kind).linkedSlotId(slotId)
+                .recallIntervalDays("1,3,7,14").build();
+        t.setId(id);
+        // createdAt は @PrePersist で設定されるがテストでは reflection で注入
+        try {
+            Field f = ReflectionThemeEntity.class.getDeclaredField("createdAt");
+            f.setAccessible(true);
+            f.set(t, createdAt);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return t;
+    }
+
+    /** ThemeLastDateView の匿名実装（テスト用スタブ）。 */
+    private com.mannschaft.app.reflection.repository.ReflectionEntryRepository.ThemeLastDateView themeLastDateView(
+            UUID themeId, LocalDate lastDate) {
+        return new com.mannschaft.app.reflection.repository.ReflectionEntryRepository.ThemeLastDateView() {
+            @Override public UUID getThemeId() { return themeId; }
+            @Override public LocalDate getLastDate() { return lastDate; }
+        };
     }
 }

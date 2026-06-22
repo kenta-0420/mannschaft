@@ -206529,6 +206529,17 @@
           },
           "isMasked": {
             "type": "boolean"
+          },
+          "themeTitle": {
+            "type": "string"
+          },
+          "themeCreatedAt": {
+            "type": "string",
+            "format": "date"
+          },
+          "lastReflectedAt": {
+            "type": "string",
+            "format": "date"
           }
         }
       },
