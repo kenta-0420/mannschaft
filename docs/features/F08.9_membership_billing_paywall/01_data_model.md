@@ -35,6 +35,20 @@
 - 既存の `user_id` は**受益者（beneficiary）**として意味を固定（ペイウォール・所属判定キー）。
 - `existsValidPaidPayment(beneficiaryUserId, paymentItemId)` は不変（`user_id` で引く）。**払い手では引かない**。
 - 追加インデックス：`idx_mp_payer (payer_user_id, status)`、`idx_mp_escrow (escrow_transaction_id)`、`idx_mp_subscription (membership_subscription_id)`。
+
+#### `payment_method`（手動入金管理の実用化・V124.001）
+
+会費の手動入金を実用化するため、`payment_method` ENUM に **`CASH`（現金）・`BANK_TRANSFER`（銀行振込）** を追加する（V124.001）。`MANUAL` は「その他／不明」として温存（既存データ互換のため削除しない）。
+
+| 値 | 意味 | 返金 / 再同期 |
+|---|---|---|
+| `STRIPE` | オンライン自動決済 | **可**（返金 `refundPayment`・再同期 `reconcile` の対象） |
+| `CASH` | 現金手渡し（手動記録） | 不可（取り消しで運用） |
+| `BANK_TRANSFER` | 銀行振込（手動記録） | 不可（取り消しで運用） |
+| `MANUAL` | その他／不明（手動記録の既定値） | 不可（取り消しで運用） |
+
+- 手動記録（`POST payments` / `payments/bulk`）は `CreateManualPaymentRequest.paymentMethod` で手段を選べる。**任意・未指定時は `MANUAL` にフォールバック**。**`STRIPE` 指定は 400 で禁止**（オンライン決済の手動詐称防止・`@AssertTrue`）。手段の訂正は「取り消し＋再記録」で運用（PATCH では手段不変）。
+- 返金可否・再同期可否は「`paymentMethod == STRIPE` か」で判定する（`!= STRIPE` は `MANUAL_PAYMENT_NOT_REFUNDABLE` / `STRIPE_PAYMENT_ONLY`）。`MemberPaymentEntity.paymentMethod` 列長は `length=16`（`BANK_TRANSFER`=13文字対応）。
 - **クロスドメイン FK は追加しない**（既存 `user_id` の FK は legacy。`payer_user_id` は論理参照のみ）。
 
 ### 1.2 `payment_items`（継続/期別・税からくり）
@@ -335,6 +349,7 @@ connect_accounts(F22.1・拡張: tax_registration_number/tax_status)
 | `V74.20260605120010__create_payment_requests.sql`（**P7 第一波・実装済 2026-06-05**） | 協会請求テーブル（UUIDv7）。タイムスタンプ式採番（origin/main 最大 `V74.20260605000020` の後にソート） |
 | `V74.006__create_payment_proxy_grants.sql`（P1・実装済） | 第三者代理払い許可テーブル（UUIDv7） |
 | `V74.20260605120020__create_team_payment_advances.sql`（**P7 第一波・実装済 2026-06-05**） | 立替/精算記録テーブル（UUIDv7・案3・§2.5）。`payment_request_id` に UNIQUE（1請求＝1立替の冪等） |
+| `V124.001__alter_member_payments_extend_payment_method.sql`（**手動入金管理の実用化・実装済**） | `member_payments.payment_method` ENUM に `CASH`/`BANK_TRANSFER` 追加（`STRIPE`/`MANUAL` は不変）。採番は origin/main 最大の次（確認時 V123 → V124） |
 
 > **採番方式の改定（2026-06-05）:** 当初 `V74.004/005` 等の連番を予定したが、並行 PR との衝突を避けるため
 > origin/main で既に採用済みのタイムスタンプ式（`V74.YYYYMMDDhhmmss`）に統一した。P7 第一波の 2 本は
