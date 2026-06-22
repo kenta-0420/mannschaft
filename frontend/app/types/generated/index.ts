@@ -42072,6 +42072,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/reflections/linkable-slots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 科目紐づけ候補一覧（週全体スロットを科目単位で重複排除） */
+        get: operations["listLinkableSlots"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -57588,6 +57605,8 @@ export interface components {
             linkedSlotId?: number;
             /** Format: date */
             examDate?: string;
+            linkedSubjectName?: string;
+            linkedCourseCode?: string;
         };
         ApiResponseReflectionThemeResponse: {
             data?: components["schemas"]["ReflectionThemeResponse"];
@@ -57604,6 +57623,8 @@ export interface components {
             linkedSlotKind?: "TEAM" | "PERSONAL";
             /** Format: int64 */
             linkedSlotId?: number;
+            linkedSubjectName?: string;
+            linkedCourseCode?: string;
             /** Format: date */
             examDate?: string;
             /** @enum {string} */
@@ -61821,6 +61842,9 @@ export interface components {
             /** Format: date */
             examDate?: string;
             examDateCleared?: boolean;
+            linkedSubjectName?: string;
+            linkedCourseCode?: string;
+            clearLinkedSubject?: boolean;
         };
         UpdatePersonalTimetableRequest: {
             name?: string;
@@ -71538,6 +71562,18 @@ export interface components {
         };
         RemoveParticipantsRequest: {
             userIds?: number[];
+        };
+        LinkableSlotResponse: {
+            kind?: string;
+            /** Format: int64 */
+            slotId?: number;
+            subjectName?: string;
+            courseCode?: string;
+            teacherName?: string;
+            periodLabel?: string;
+        };
+        ApiResponseListLinkableSlotResponse: {
+            data?: components["schemas"]["LinkableSlotResponse"][];
         };
     };
     responses: never;
@@ -148805,6 +148841,26 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    listLinkableSlots: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiResponseListLinkableSlotResponse"];
+                };
             };
         };
     };
