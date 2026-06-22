@@ -2,6 +2,7 @@
   "village": {
     "title": "Aldea",
     "subtitle": "Plaza comunitaria",
+    "archivedNotice": "Esta aldea está congelada. Es de solo lectura.",
     "action": {
       "create": "Crear aldea",
       "edit": "Editar aldea",

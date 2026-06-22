@@ -2,6 +2,7 @@
   "village": {
     "title": "마을",
     "subtitle": "커뮤니티 광장",
+    "archivedNotice": "이 마을은 동결되었습니다. 열람만 가능합니다.",
     "action": {
       "create": "마을 만들기",
       "edit": "마을 편집",

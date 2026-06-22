@@ -2,6 +2,7 @@
   "village": {
     "title": "村",
     "subtitle": "コミュニティ広場",
+    "archivedNotice": "この村は凍結されています。閲覧のみ可能です。",
     "action": {
       "create": "村を作る",
       "edit": "村を編集",
