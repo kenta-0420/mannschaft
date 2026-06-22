@@ -1,7 +1,5 @@
 package com.mannschaft.app.bulletin.service;
 
-import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.bulletin.BulletinErrorCode;
 import com.mannschaft.app.bulletin.BulletinMapper;
@@ -84,9 +82,6 @@ class BulletinThreadServiceTest {
 
     @Mock
     private NameResolverService nameResolverService;
-
-    @Mock
-    private UserRepository userRepository;
 
     @Mock
     private BulletinCategoryRepository categoryRepository;
@@ -1361,14 +1356,12 @@ class BulletinThreadServiceTest {
         }
 
         @Test
-        @DisplayName("AC-2: avatarUrl が UserRepository から解決される")
+        @DisplayName("AC-2: avatarUrl が NameResolverService から解決される（auth 直参照を避け common 経由）")
         void アバターURLが解決される() {
             BulletinThreadEntity t1 = threadWith(THREAD_ID, USER_ID, CATEGORY_ID);
             stubBaseMapper();
-            UserEntity user = org.mockito.Mockito.mock(UserEntity.class);
-            given(user.getId()).willReturn(USER_ID);
-            given(user.getAvatarUrl()).willReturn("https://cdn/avatar.png");
-            given(userRepository.findAllById(any())).willReturn(List.of(user));
+            given(nameResolverService.resolveUserAvatarUrls(any()))
+                    .willReturn(java.util.Map.of(USER_ID, "https://cdn/avatar.png"));
 
             List<ThreadResponse> result = bulletinThreadService.enrichThreads(List.of(t1), USER_ID);
 
@@ -1436,7 +1429,7 @@ class BulletinThreadServiceTest {
 
             // 件数に比例しない（各 1 回）
             verify(nameResolverService, org.mockito.Mockito.times(1)).resolveUserDisplayNames(any());
-            verify(userRepository, org.mockito.Mockito.times(1)).findAllById(any());
+            verify(nameResolverService, org.mockito.Mockito.times(1)).resolveUserAvatarUrls(any());
             verify(categoryRepository, org.mockito.Mockito.times(1)).findAllById(any());
             verify(readStatusRepository, org.mockito.Mockito.times(1)).findReadThreadIds(any(), eq(USER_ID));
             verify(reactionRepository, org.mockito.Mockito.times(1))

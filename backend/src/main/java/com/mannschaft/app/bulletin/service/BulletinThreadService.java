@@ -16,8 +16,6 @@ import com.mannschaft.app.bulletin.repository.BulletinReactionRepository;
 import com.mannschaft.app.bulletin.repository.BulletinReadStatusRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.auth.AuditEventType;
-import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
@@ -73,10 +71,8 @@ public class BulletinThreadService {
     private final TournamentContactAccessService tournamentContactAccessService;
 
     // --- enrichment 用依存（一覧/詳細の投稿者名・アバター・カテゴリ・既読・リアクションをバッチ解決）---
-    /** 投稿者表示名のバッチ解決（匿名/退会フォールバックは本サービス内で補完）。 */
+    /** 投稿者表示名・アバター URL のバッチ解決（匿名/退会フォールバックは本サービス内で補完。auth 直参照を避け common 経由）。 */
     private final NameResolverService nameResolverService;
-    /** 投稿者アバター URL の一括取得（findAllById）。 */
-    private final UserRepository userRepository;
     /** カテゴリ名/色の一括取得（findAllById）。 */
     private final BulletinCategoryRepository categoryRepository;
     /** 既読スレッド ID 集合のバッチ取得。 */
@@ -858,7 +854,7 @@ public class BulletinThreadService {
      * <ul>
      *   <li>displayName: {@link NameResolverService#resolveUserDisplayNames(java.util.Collection)}
      *       （未解決 ID は「不明なユーザー」フォールバック）</li>
-     *   <li>avatarUrl: {@link UserRepository#findAllById(Iterable)} → Map(userId → avatarUrl)</li>
+     *   <li>avatarUrl: {@link NameResolverService#resolveUserAvatarUrls(java.util.Collection)} → Map(userId → avatarUrl)</li>
      *   <li>categoryName/color: {@link BulletinCategoryRepository#findAllById(Iterable)} → Map</li>
      *   <li>isRead: {@link BulletinReadStatusRepository#findReadThreadIds(java.util.Collection, Long)} の Set 含有判定</li>
      *   <li>reactionSummary/myReactions: {@code countByTargetIdsGroupedByEmoji} /
@@ -891,13 +887,8 @@ public class BulletinThreadService {
         // --- 投稿者名（1 クエリ）---
         Map<Long, String> displayNames = nameResolverService.resolveUserDisplayNames(authorIds);
 
-        // --- 投稿者アバター（1 クエリ）---
-        Map<Long, String> avatarUrls = new HashMap<>();
-        if (!authorIds.isEmpty()) {
-            for (UserEntity user : userRepository.findAllById(authorIds)) {
-                avatarUrls.put(user.getId(), user.getAvatarUrl());
-            }
-        }
+        // --- 投稿者アバター（1 クエリ・common 解決サービス経由でドメイン境界を維持）---
+        Map<Long, String> avatarUrls = nameResolverService.resolveUserAvatarUrls(authorIds);
 
         // --- カテゴリ名/色（1 クエリ）---
         Map<Long, BulletinCategoryEntity> categories = new HashMap<>();
