@@ -26,7 +26,11 @@
       "open_recall": "Prueba de recuerdo",
       "masked_badge": "Pendiente de recuerdo",
       "has_entry": "Escrito",
-      "period_label": "Período {period}"
+      "period_label": "Período {period}",
+      "main_theme_label": "Tema principal",
+      "created_at_label": "Primera creación",
+      "last_reflected_label": "Última reflexión",
+      "never_reflected": "Aún no"
     },
     "theme": {
       "list_heading": "Temas",

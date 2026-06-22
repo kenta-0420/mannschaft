@@ -99,6 +99,14 @@ function onSaved() {
     >
       <template #actions>
         <Button
+          v-tooltip.bottom="t('reflection.theme.create')"
+          icon="pi pi-plus"
+          text
+          rounded
+          :aria-label="t('reflection.theme.create')"
+          @click="router.push('/reflections/themes?create=1')"
+        />
+        <Button
           v-tooltip.bottom="t('reflection.nav.themes')"
           icon="pi pi-list"
           text

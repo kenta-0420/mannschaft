@@ -26,7 +26,11 @@
       "open_recall": "回忆测试",
       "masked_badge": "待回忆",
       "has_entry": "已填写",
-      "period_label": "第{period}节"
+      "period_label": "第{period}节",
+      "main_theme_label": "主题",
+      "created_at_label": "首次创建",
+      "last_reflected_label": "最近回顾",
+      "never_reflected": "尚未"
     },
     "theme": {
       "list_heading": "主题列表",

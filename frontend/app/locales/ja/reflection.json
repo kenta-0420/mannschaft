@@ -26,7 +26,11 @@
       "open_recall": "想起テスト",
       "masked_badge": "想起待ち",
       "has_entry": "記入済み",
-      "period_label": "{period}限"
+      "period_label": "{period}限",
+      "main_theme_label": "メインテーマ",
+      "created_at_label": "初回作成",
+      "last_reflected_label": "振り返り実行",
+      "never_reflected": "まだなし"
     },
     "theme": {
       "list_heading": "テーマ一覧",
