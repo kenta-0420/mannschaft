@@ -5,15 +5,22 @@ import com.mannschaft.app.bulletin.BulletinMapper;
 import com.mannschaft.app.bulletin.Priority;
 import com.mannschaft.app.bulletin.ReadTrackingMode;
 import com.mannschaft.app.bulletin.ScopeType;
+import com.mannschaft.app.bulletin.TargetType;
 import com.mannschaft.app.bulletin.dto.CreateThreadRequest;
 import com.mannschaft.app.bulletin.dto.ThreadResponse;
 import com.mannschaft.app.bulletin.dto.UpdateThreadRequest;
 import com.mannschaft.app.bulletin.entity.BulletinCategoryEntity;
 import com.mannschaft.app.bulletin.entity.BulletinThreadEntity;
+import com.mannschaft.app.bulletin.repository.BulletinCategoryRepository;
+import com.mannschaft.app.bulletin.repository.BulletinReactionRepository;
+import com.mannschaft.app.bulletin.repository.BulletinReadStatusRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.auth.AuditEventType;
+import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.tournament.ContactSpaceKind;
 import com.mannschaft.app.tournament.ContactSpaceScopeType;
 import com.mannschaft.app.tournament.service.TournamentContactAccessService;
@@ -28,7 +35,16 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * 掲示板スレッドサービス。スレッドのCRUD・検索・状態管理を担当する。
@@ -56,6 +72,21 @@ public class BulletinThreadService {
     /** F08.7.1 連絡機能: 大会/ディビジョンスコープの閲覧・投稿認可を委譲する（クロスドメイン・原則1）。 */
     private final TournamentContactAccessService tournamentContactAccessService;
 
+    // --- enrichment 用依存（一覧/詳細の投稿者名・アバター・カテゴリ・既読・リアクションをバッチ解決）---
+    /** 投稿者表示名のバッチ解決（匿名/退会フォールバックは本サービス内で補完）。 */
+    private final NameResolverService nameResolverService;
+    /** 投稿者アバター URL の一括取得（findAllById）。 */
+    private final UserRepository userRepository;
+    /** カテゴリ名/色の一括取得（findAllById）。 */
+    private final BulletinCategoryRepository categoryRepository;
+    /** 既読スレッド ID 集合のバッチ取得。 */
+    private final BulletinReadStatusRepository readStatusRepository;
+    /** リアクション集計（reactionSummary / myReactions）のバッチ取得。 */
+    private final BulletinReactionRepository reactionRepository;
+
+    /** 投稿者解決に失敗した（退会/不明）場合の表示名フォールバック。 */
+    private static final String UNKNOWN_USER_DISPLAY_NAME = "不明なユーザー";
+
     /**
      * スコープのスレッド一覧をページング取得する。
      *
@@ -68,7 +99,7 @@ public class BulletinThreadService {
         accessGuard.checkMembership(userId, scopeType, scopeId);
         Page<BulletinThreadEntity> page =
                 threadRepository.findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(scopeType, scopeId, pageable);
-        return page.map(bulletinMapper::toThreadResponse);
+        return enrichPage(page, userId);
     }
 
     /**
@@ -85,7 +116,7 @@ public class BulletinThreadService {
         accessGuard.checkMembership(userId, scopeType, scopeId);
         Page<BulletinThreadEntity> page =
                 threadRepository.findByCategoryIdOrderByIsPinnedDescUpdatedAtDesc(categoryId, pageable);
-        return page.map(bulletinMapper::toThreadResponse);
+        return enrichPage(page, userId);
     }
 
     /**
@@ -100,7 +131,7 @@ public class BulletinThreadService {
     public ThreadResponse getThread(ScopeType scopeType, Long scopeId, Long threadId, Long userId) {
         accessGuard.checkMembership(userId, scopeType, scopeId);
         BulletinThreadEntity entity = findThreadOrThrow(scopeType, scopeId, threadId);
-        return bulletinMapper.toThreadResponse(entity);
+        return enrichSingle(entity, userId);
     }
 
     /**
@@ -125,7 +156,7 @@ public class BulletinThreadService {
         } else {
             page = threadRepository.findByScopeVillageIdOrderByIsPinnedDescUpdatedAtDesc(villageId, pageable);
         }
-        return page.map(bulletinMapper::toThreadResponse);
+        return enrichPage(page, userId);
     }
 
     /**
@@ -144,7 +175,7 @@ public class BulletinThreadService {
         villageBulletinAccessService.checkVillageBulletinViewAccess(villageId, userId);
         BulletinThreadEntity entity = threadRepository.findByIdAndScopeVillageId(threadId, villageId)
                 .orElseThrow(() -> new BusinessException(BulletinErrorCode.THREAD_NOT_FOUND));
-        return bulletinMapper.toThreadResponse(entity);
+        return enrichSingle(entity, userId);
     }
 
     /**
@@ -174,7 +205,7 @@ public class BulletinThreadService {
         } else {
             accessGuard.checkMembership(userId, entity.getScopeType(), entity.getScopeId());
         }
-        return bulletinMapper.toThreadResponse(entity);
+        return enrichSingle(entity, userId);
     }
 
     /** bulletin の scope_type が大会/ディビジョン連絡スペースか。 */
@@ -203,7 +234,7 @@ public class BulletinThreadService {
         accessGuard.checkMembership(userId, scopeType, scopeId);
         Page<BulletinThreadEntity> page =
                 threadRepository.searchByKeyword(scopeType.name(), scopeId, keyword, pageable);
-        return page.map(bulletinMapper::toThreadResponse);
+        return enrichPage(page, userId);
     }
 
     /**
@@ -242,7 +273,7 @@ public class BulletinThreadService {
             BulletinThreadEntity savedTournament = threadRepository.save(tournamentThread);
             log.info("大会連絡スレッド作成: scopeType={}, scopeId={}, threadId={}",
                     scopeType, scopeId, savedTournament.getId());
-            return bulletinMapper.toThreadResponse(savedTournament);
+            return enrichSingle(savedTournament, userId);
         }
 
         accessGuard.checkMembership(userId, scopeType, scopeId);
@@ -302,7 +333,7 @@ public class BulletinThreadService {
         BulletinThreadEntity saved = threadRepository.save(entity);
         log.info("スレッド作成: scopeType={}, scopeId={}, threadId={}, postedAs={}/{}",
                 scopeType, scopeId, saved.getId(), postedAsType, postedAsId);
-        return bulletinMapper.toThreadResponse(saved);
+        return enrichSingle(saved, userId);
     }
 
     /**
@@ -338,7 +369,7 @@ public class BulletinThreadService {
         entity.update(request.getTitle(), request.getBody(), priority);
         BulletinThreadEntity saved = threadRepository.save(entity);
         log.info("スレッド更新: threadId={}", threadId);
-        return bulletinMapper.toThreadResponse(saved);
+        return enrichSingle(saved, userId);
     }
 
     /**
@@ -396,7 +427,7 @@ public class BulletinThreadService {
         entity.togglePin();
         BulletinThreadEntity saved = threadRepository.save(entity);
         log.info("スレッドピン切替: threadId={}, isPinned={}", threadId, saved.getIsPinned());
-        return bulletinMapper.toThreadResponse(saved);
+        return enrichSingle(saved, userId);
     }
 
     /**
@@ -416,7 +447,7 @@ public class BulletinThreadService {
         entity.toggleLock();
         BulletinThreadEntity saved = threadRepository.save(entity);
         log.info("スレッドロック切替: threadId={}, isLocked={}", threadId, saved.getIsLocked());
-        return bulletinMapper.toThreadResponse(saved);
+        return enrichSingle(saved, userId);
     }
 
     /**
@@ -460,7 +491,7 @@ public class BulletinThreadService {
         BulletinThreadEntity saved = threadRepository.save(entity);
         log.info("スレッドアーカイブ状態変更: threadId={}, isArchived={}, folderId={}",
                 threadId, saved.getIsArchived(), saved.getArchiveFolderId());
-        return bulletinMapper.toThreadResponse(saved);
+        return enrichSingle(saved, userId);
     }
 
     // ========================================================================
@@ -515,7 +546,7 @@ public class BulletinThreadService {
             entity.update(request.getTitle(), request.getBody(), p);
             BulletinThreadEntity saved = threadRepository.save(entity);
             log.info("大会連絡スレッド更新: threadId={}, scopeType={}", threadId, entity.getScopeType());
-            return bulletinMapper.toThreadResponse(saved);
+            return enrichSingle(saved, userId);
         }
         if (entity.getScopeType() != ScopeType.VILLAGE) {
             return updateThread(entity.getScopeType(), entity.getScopeId(), threadId, userId, request);
@@ -534,7 +565,7 @@ public class BulletinThreadService {
         entity.update(request.getTitle(), request.getBody(), priority);
         BulletinThreadEntity saved = threadRepository.save(entity);
         log.info("村スレッド更新: threadId={}, villageId={}", threadId, entity.getScopeVillageId());
-        return bulletinMapper.toThreadResponse(saved);
+        return enrichSingle(saved, userId);
     }
 
     /**
@@ -610,7 +641,7 @@ public class BulletinThreadService {
         entity.update(entity.getTitle(), entity.getBody(), p);
         BulletinThreadEntity saved = threadRepository.save(entity);
         log.info("スレッド優先度変更: threadId={}, priority={}", threadId, saved.getPriority());
-        return bulletinMapper.toThreadResponse(saved);
+        return enrichSingle(saved, userId);
     }
 
     /**
@@ -628,7 +659,7 @@ public class BulletinThreadService {
         entity.setPinned(pinned);
         BulletinThreadEntity saved = threadRepository.save(entity);
         log.info("スレッドピン設定: threadId={}, isPinned={}", threadId, saved.getIsPinned());
-        return bulletinMapper.toThreadResponse(saved);
+        return enrichSingle(saved, userId);
     }
 
     /**
@@ -646,7 +677,7 @@ public class BulletinThreadService {
         entity.setLocked(locked);
         BulletinThreadEntity saved = threadRepository.save(entity);
         log.info("スレッドロック設定: threadId={}, isLocked={}", threadId, saved.getIsLocked());
-        return bulletinMapper.toThreadResponse(saved);
+        return enrichSingle(saved, userId);
     }
 
     /**
@@ -674,7 +705,7 @@ public class BulletinThreadService {
             }
             BulletinThreadEntity saved = threadRepository.save(entity);
             log.info("大会連絡スレッドアーカイブ状態変更: threadId={}, isArchived={}", threadId, saved.getIsArchived());
-            return bulletinMapper.toThreadResponse(saved);
+            return enrichSingle(saved, userId);
         }
         if (entity.getScopeType() != ScopeType.VILLAGE) {
             return archive(entity.getScopeType(), entity.getScopeId(), threadId, userId, isArchived, null);
@@ -688,7 +719,7 @@ public class BulletinThreadService {
         }
         BulletinThreadEntity saved = threadRepository.save(entity);
         log.info("村スレッドアーカイブ状態変更: threadId={}, isArchived={}", threadId, saved.getIsArchived());
-        return bulletinMapper.toThreadResponse(saved);
+        return enrichSingle(saved, userId);
     }
 
     /**
@@ -749,7 +780,7 @@ public class BulletinThreadService {
             page = threadRepository.findByScopeTypeAndScopeIdAndIsArchivedTrueAndArchiveFolderIdIsNull(
                     scopeType, scopeId, pageable);
         }
-        return page.map(bulletinMapper::toThreadResponse);
+        return enrichPage(page, userId);
     }
 
     /**
@@ -797,7 +828,7 @@ public class BulletinThreadService {
         auditLogService.record(AuditEventType.BULLETIN_THREAD_ARCHIVE_FOLDER_CHANGED.name(),
                 userId, null, teamId, organizationId, null, null, null, metadata);
 
-        return bulletinMapper.toThreadResponse(saved);
+        return enrichSingle(saved, userId);
     }
 
     /**
@@ -812,6 +843,148 @@ public class BulletinThreadService {
                 resourceId, ownerUserId, scopeType.name(), scopeId);
         auditLogService.record(eventType.name(), actorUserId, ownerUserId,
                 teamId, organizationId, null, null, null, metadata);
+    }
+
+    // ========================================================================
+    // enrichment（投稿者名/アバター・カテゴリ名/色・既読・リアクション集計のバッチ解決）
+    // ========================================================================
+
+    /**
+     * スレッド集合の enrichment 5 項目をバッチ解決し、フラット enrich 済みレスポンスを返す（N+1 厳禁）。
+     *
+     * <p>authorId 集合・categoryId 集合・threadId 集合を作り、各依存を「各 1 バッチクエリ」で解決して
+     * {@code toBuilder()} で inline 注入する。スレッド件数に比例した個別クエリは発行しない。</p>
+     *
+     * <ul>
+     *   <li>displayName: {@link NameResolverService#resolveUserDisplayNames(java.util.Collection)}
+     *       （未解決 ID は「不明なユーザー」フォールバック）</li>
+     *   <li>avatarUrl: {@link UserRepository#findAllById(Iterable)} → Map(userId → avatarUrl)</li>
+     *   <li>categoryName/color: {@link BulletinCategoryRepository#findAllById(Iterable)} → Map</li>
+     *   <li>isRead: {@link BulletinReadStatusRepository#findReadThreadIds(java.util.Collection, Long)} の Set 含有判定</li>
+     *   <li>reactionSummary/myReactions: {@code countByTargetIdsGroupedByEmoji} /
+     *       {@code findUserReactionsByTargetIds} の一括集計</li>
+     * </ul>
+     *
+     * @param entities      enrich 対象スレッド（順序維持）
+     * @param currentUserId 操作ユーザー ID（既読・myReactions の主体。null 可）
+     * @return enrich 済み {@link ThreadResponse} リスト（入力順を維持）
+     */
+    List<ThreadResponse> enrichThreads(List<BulletinThreadEntity> entities, Long currentUserId) {
+        if (entities == null || entities.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // --- ID 集合を抽出 ---
+        Set<Long> authorIds = entities.stream()
+                .map(BulletinThreadEntity::getAuthorId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toCollection(HashSet::new));
+        Set<Long> categoryIds = entities.stream()
+                .map(BulletinThreadEntity::getCategoryId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toCollection(HashSet::new));
+        Set<Long> threadIds = entities.stream()
+                .map(BulletinThreadEntity::getId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toCollection(HashSet::new));
+
+        // --- 投稿者名（1 クエリ）---
+        Map<Long, String> displayNames = nameResolverService.resolveUserDisplayNames(authorIds);
+
+        // --- 投稿者アバター（1 クエリ）---
+        Map<Long, String> avatarUrls = new HashMap<>();
+        if (!authorIds.isEmpty()) {
+            for (UserEntity user : userRepository.findAllById(authorIds)) {
+                avatarUrls.put(user.getId(), user.getAvatarUrl());
+            }
+        }
+
+        // --- カテゴリ名/色（1 クエリ）---
+        Map<Long, BulletinCategoryEntity> categories = new HashMap<>();
+        if (!categoryIds.isEmpty()) {
+            for (BulletinCategoryEntity category : categoryRepository.findAllById(categoryIds)) {
+                categories.put(category.getId(), category);
+            }
+        }
+
+        // --- 既読集合（1 クエリ）---
+        Set<Long> readThreadIds;
+        if (currentUserId != null && !threadIds.isEmpty()) {
+            readThreadIds = new HashSet<>(readStatusRepository.findReadThreadIds(threadIds, currentUserId));
+        } else {
+            readThreadIds = Collections.emptySet();
+        }
+
+        // --- リアクション集計（reactionSummary: 1 クエリ / myReactions: 1 クエリ）---
+        Map<Long, Map<String, Integer>> reactionSummaries = new HashMap<>();
+        Map<Long, List<String>> myReactions = new HashMap<>();
+        if (!threadIds.isEmpty()) {
+            for (Object[] row : reactionRepository.countByTargetIdsGroupedByEmoji(TargetType.THREAD, threadIds)) {
+                Long targetId = (Long) row[0];
+                String emoji = (String) row[1];
+                int count = ((Number) row[2]).intValue();
+                reactionSummaries
+                        .computeIfAbsent(targetId, k -> new LinkedHashMap<>())
+                        .put(emoji, count);
+            }
+            if (currentUserId != null) {
+                for (Object[] row : reactionRepository.findUserReactionsByTargetIds(
+                        TargetType.THREAD, threadIds, currentUserId)) {
+                    Long targetId = (Long) row[0];
+                    String emoji = (String) row[1];
+                    myReactions.computeIfAbsent(targetId, k -> new ArrayList<>()).add(emoji);
+                }
+            }
+        }
+
+        // --- inline 注入（順序維持）---
+        List<ThreadResponse> result = new ArrayList<>(entities.size());
+        for (BulletinThreadEntity entity : entities) {
+            ThreadResponse base = bulletinMapper.toThreadResponse(entity);
+            Long authorId = entity.getAuthorId();
+            Long categoryId = entity.getCategoryId();
+            Long threadId = entity.getId();
+
+            ThreadResponse.AuthorDto author;
+            if (authorId != null) {
+                String displayName = displayNames.getOrDefault(authorId, UNKNOWN_USER_DISPLAY_NAME);
+                author = new ThreadResponse.AuthorDto(authorId, displayName, avatarUrls.get(authorId));
+            } else {
+                // システム生成スレッド等（authorId=null）: 投稿者なし
+                author = new ThreadResponse.AuthorDto(null, null, null);
+            }
+
+            BulletinCategoryEntity category = categoryId != null ? categories.get(categoryId) : null;
+
+            result.add(base.toBuilder()
+                    .author(author)
+                    .categoryName(category != null ? category.getName() : null)
+                    .categoryColor(category != null ? category.getColor() : null)
+                    .isRead(threadId != null && readThreadIds.contains(threadId))
+                    .reactionSummary(reactionSummaries.getOrDefault(threadId, Collections.emptyMap()))
+                    .myReactions(myReactions.getOrDefault(threadId, Collections.emptyList()))
+                    .build());
+        }
+        return result;
+    }
+
+    /**
+     * 単一スレッドを enrich 済みレスポンスに変換する（{@link #enrichThreads} の単件版）。
+     *
+     * @param entity        スレッドエンティティ
+     * @param currentUserId 操作ユーザー ID（null 可）
+     * @return enrich 済み {@link ThreadResponse}
+     */
+    ThreadResponse enrichSingle(BulletinThreadEntity entity, Long currentUserId) {
+        return enrichThreads(List.of(entity), currentUserId).get(0);
+    }
+
+    /**
+     * スレッドページを enrich 済みレスポンスのページに変換する（順序・ページメタ維持）。
+     */
+    private Page<ThreadResponse> enrichPage(Page<BulletinThreadEntity> page, Long currentUserId) {
+        List<ThreadResponse> enriched = enrichThreads(page.getContent(), currentUserId);
+        return new org.springframework.data.domain.PageImpl<>(enriched, page.getPageable(), page.getTotalElements());
     }
 
     /**

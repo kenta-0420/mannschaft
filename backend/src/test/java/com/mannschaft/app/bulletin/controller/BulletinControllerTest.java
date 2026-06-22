@@ -207,12 +207,22 @@ class BulletinControllerTest {
         private ThreadResponse createThreadResponse() {
             return ThreadResponse.builder()
                     .id(THREAD_ID)
-                    .scope(new ThreadResponse.ThreadScopeDto(CATEGORY_ID, "TEAM", SCOPE_ID))
-                    .content(new ThreadResponse.ThreadContentDto("テストスレッド", "本文", "INFO", "COUNT_ONLY"))
-                    .state(new ThreadResponse.ThreadStateDto(false, false, false, null))
-                    .stats(new ThreadResponse.ThreadStatsDto(0, 0, null))
-                    .source(new ThreadResponse.ThreadSourceDto(null, null))
-                    .audit(new ThreadResponse.ThreadAuditDto(USER_ID, null, null))
+                    .categoryId(CATEGORY_ID)
+                    .scopeType("TEAM")
+                    .scopeId(SCOPE_ID)
+                    .author(new ThreadResponse.AuthorDto(USER_ID, "テストユーザー", null))
+                    .title("テストスレッド")
+                    .body("本文")
+                    .priority("INFO")
+                    .readTrackingMode("COUNT_ONLY")
+                    .isPinned(false)
+                    .isLocked(false)
+                    .isArchived(false)
+                    .replyCount(0)
+                    .readCount(0)
+                    .isRead(false)
+                    .reactionSummary(java.util.Collections.emptyMap())
+                    .myReactions(java.util.Collections.emptyList())
                     .build();
         }
 

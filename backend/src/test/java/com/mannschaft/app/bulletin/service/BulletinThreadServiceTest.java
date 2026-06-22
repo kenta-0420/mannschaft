@@ -1,19 +1,26 @@
 package com.mannschaft.app.bulletin.service;
 
+import com.mannschaft.app.auth.entity.UserEntity;
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.bulletin.BulletinErrorCode;
 import com.mannschaft.app.bulletin.BulletinMapper;
 import com.mannschaft.app.bulletin.Priority;
 import com.mannschaft.app.bulletin.ReadTrackingMode;
 import com.mannschaft.app.bulletin.ScopeType;
+import com.mannschaft.app.bulletin.TargetType;
 import com.mannschaft.app.bulletin.dto.CreateThreadRequest;
 import com.mannschaft.app.bulletin.dto.ThreadResponse;
 import com.mannschaft.app.bulletin.dto.UpdateThreadRequest;
 import com.mannschaft.app.bulletin.entity.BulletinCategoryEntity;
 import com.mannschaft.app.bulletin.entity.BulletinThreadEntity;
+import com.mannschaft.app.bulletin.repository.BulletinCategoryRepository;
+import com.mannschaft.app.bulletin.repository.BulletinReactionRepository;
+import com.mannschaft.app.bulletin.repository.BulletinReadStatusRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.service.PostingIdentityService;
@@ -75,6 +82,21 @@ class BulletinThreadServiceTest {
     @Mock
     private VillageBulletinAccessService villageBulletinAccessService;
 
+    @Mock
+    private NameResolverService nameResolverService;
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private BulletinCategoryRepository categoryRepository;
+
+    @Mock
+    private BulletinReadStatusRepository readStatusRepository;
+
+    @Mock
+    private BulletinReactionRepository reactionRepository;
+
     @InjectMocks
     private BulletinThreadService bulletinThreadService;
 
@@ -103,12 +125,22 @@ class BulletinThreadServiceTest {
     private ThreadResponse createThreadResponse() {
         return ThreadResponse.builder()
                 .id(THREAD_ID)
-                .scope(new ThreadResponse.ThreadScopeDto(CATEGORY_ID, "TEAM", SCOPE_ID))
-                .content(new ThreadResponse.ThreadContentDto("テストスレッド", "テスト本文", "INFO", "COUNT_ONLY"))
-                .state(new ThreadResponse.ThreadStateDto(false, false, false, null))
-                .stats(new ThreadResponse.ThreadStatsDto(0, 0, null))
-                .source(new ThreadResponse.ThreadSourceDto(null, null))
-                .audit(new ThreadResponse.ThreadAuditDto(USER_ID, null, null))
+                .categoryId(CATEGORY_ID)
+                .scopeType("TEAM")
+                .scopeId(SCOPE_ID)
+                .author(new ThreadResponse.AuthorDto(USER_ID, null, null))
+                .title("テストスレッド")
+                .body("テスト本文")
+                .priority("INFO")
+                .readTrackingMode("COUNT_ONLY")
+                .isPinned(false)
+                .isLocked(false)
+                .isArchived(false)
+                .replyCount(0)
+                .readCount(0)
+                .isRead(false)
+                .reactionSummary(java.util.Collections.emptyMap())
+                .myReactions(java.util.Collections.emptyList())
                 .build();
     }
 
@@ -205,7 +237,7 @@ class BulletinThreadServiceTest {
             ThreadResponse result = bulletinThreadService.getThread(SCOPE_TYPE, SCOPE_ID, THREAD_ID, USER_ID);
 
             // Then
-            assertThat(result.getContent().title()).isEqualTo("テストスレッド");
+            assertThat(result.getTitle()).isEqualTo("テストスレッド");
         }
 
         @Test
@@ -1245,6 +1277,183 @@ class BulletinThreadServiceTest {
             verify(accessGuard).checkMembership(USER_ID, ScopeType.VILLAGE, 0L);
             verify(postingIdentityService)
                     .validatePostingIdentity(USER_ID, VILLAGE_ID, VillageSubjectType.USER, USER_ID);
+        }
+    }
+
+    // ========================================================================
+    // enrichment（投稿者名/アバター・カテゴリ名/色・既読・リアクション集計）契約テスト
+    // ========================================================================
+
+    @Nested
+    @DisplayName("enrichThreads（一覧/詳細の enrichment 契約 + N+1 番人）")
+    class EnrichThreads {
+
+        private static final Long THREAD_ID_2 = 200L;
+        private static final Long THREAD_ID_3 = 300L;
+        private static final Long AUTHOR_2 = 22L;
+        private static final Long AUTHOR_3 = 33L;
+        private static final Long CATEGORY_ID_2 = 6L;
+
+        private BulletinThreadEntity threadWith(Long id, Long authorId, Long categoryId) {
+            BulletinThreadEntity e = BulletinThreadEntity.builder()
+                    .categoryId(categoryId)
+                    .scopeType(ScopeType.TEAM)
+                    .scopeId(SCOPE_ID)
+                    .authorId(authorId)
+                    .title("スレ" + id)
+                    .body("本文" + id)
+                    .priority(Priority.INFO)
+                    .readTrackingMode(ReadTrackingMode.COUNT_ONLY)
+                    .build();
+            org.springframework.test.util.ReflectionTestUtils.setField(e, "id", id);
+            return e;
+        }
+
+        private void stubBaseMapper() {
+            // 基底変換はフラット DTO を返す（実 mapper を模した素直なフラット応答）
+            given(bulletinMapper.toThreadResponse(any(BulletinThreadEntity.class)))
+                    .willAnswer(inv -> {
+                        BulletinThreadEntity e = inv.getArgument(0);
+                        return ThreadResponse.builder()
+                                .id(e.getId())
+                                .categoryId(e.getCategoryId())
+                                .scopeType("TEAM")
+                                .scopeId(e.getScopeId())
+                                .author(new ThreadResponse.AuthorDto(e.getAuthorId(), null, null))
+                                .title(e.getTitle())
+                                .body(e.getBody())
+                                .priority("INFO")
+                                .readTrackingMode("COUNT_ONLY")
+                                .isPinned(false).isLocked(false).isArchived(false)
+                                .replyCount(0).readCount(0).isRead(false)
+                                .reactionSummary(java.util.Collections.emptyMap())
+                                .myReactions(java.util.Collections.emptyList())
+                                .build();
+                    });
+        }
+
+        @Test
+        @DisplayName("AC-2: author.displayName が NameResolver 解決値で入る")
+        void 投稿者表示名が解決される() {
+            BulletinThreadEntity t1 = threadWith(THREAD_ID, USER_ID, CATEGORY_ID);
+            stubBaseMapper();
+            given(nameResolverService.resolveUserDisplayNames(any()))
+                    .willReturn(java.util.Map.of(USER_ID, "田中太郎"));
+
+            List<ThreadResponse> result = bulletinThreadService.enrichThreads(List.of(t1), USER_ID);
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getAuthor().id()).isEqualTo(USER_ID);
+            assertThat(result.get(0).getAuthor().displayName()).isEqualTo("田中太郎");
+        }
+
+        @Test
+        @DisplayName("AC-2: 未解決の投稿者はフォールバック表示名になる")
+        void 投稿者表示名_未解決はフォールバック() {
+            BulletinThreadEntity t1 = threadWith(THREAD_ID, USER_ID, CATEGORY_ID);
+            stubBaseMapper();
+            given(nameResolverService.resolveUserDisplayNames(any()))
+                    .willReturn(java.util.Collections.emptyMap());
+
+            List<ThreadResponse> result = bulletinThreadService.enrichThreads(List.of(t1), USER_ID);
+
+            assertThat(result.get(0).getAuthor().displayName()).isEqualTo("不明なユーザー");
+        }
+
+        @Test
+        @DisplayName("AC-2: avatarUrl が UserRepository から解決される")
+        void アバターURLが解決される() {
+            BulletinThreadEntity t1 = threadWith(THREAD_ID, USER_ID, CATEGORY_ID);
+            stubBaseMapper();
+            UserEntity user = org.mockito.Mockito.mock(UserEntity.class);
+            given(user.getId()).willReturn(USER_ID);
+            given(user.getAvatarUrl()).willReturn("https://cdn/avatar.png");
+            given(userRepository.findAllById(any())).willReturn(List.of(user));
+
+            List<ThreadResponse> result = bulletinThreadService.enrichThreads(List.of(t1), USER_ID);
+
+            assertThat(result.get(0).getAuthor().avatarUrl()).isEqualTo("https://cdn/avatar.png");
+        }
+
+        @Test
+        @DisplayName("AC-3: isRead が既読 threadId 集合に基づき true/false")
+        void 既読フラグが集合で決まる() {
+            BulletinThreadEntity read = threadWith(THREAD_ID, USER_ID, CATEGORY_ID);
+            BulletinThreadEntity unread = threadWith(THREAD_ID_2, AUTHOR_2, CATEGORY_ID);
+            stubBaseMapper();
+            given(readStatusRepository.findReadThreadIds(any(), eq(USER_ID)))
+                    .willReturn(List.of(THREAD_ID));
+
+            List<ThreadResponse> result = bulletinThreadService.enrichThreads(List.of(read, unread), USER_ID);
+
+            assertThat(result.get(0).getIsRead()).isTrue();
+            assertThat(result.get(1).getIsRead()).isFalse();
+        }
+
+        @Test
+        @DisplayName("AC-4: categoryName/color が categoryId から解決される")
+        void カテゴリ名と色が解決される() {
+            BulletinThreadEntity t1 = threadWith(THREAD_ID, USER_ID, CATEGORY_ID);
+            stubBaseMapper();
+            BulletinCategoryEntity category = BulletinCategoryEntity.builder()
+                    .scopeType(ScopeType.TEAM).scopeId(SCOPE_ID).name("お知らせ").color("#00FF00").build();
+            org.springframework.test.util.ReflectionTestUtils.setField(category, "id", CATEGORY_ID);
+            given(categoryRepository.findAllById(any())).willReturn(List.of(category));
+
+            List<ThreadResponse> result = bulletinThreadService.enrichThreads(List.of(t1), USER_ID);
+
+            assertThat(result.get(0).getCategoryName()).isEqualTo("お知らせ");
+            assertThat(result.get(0).getCategoryColor()).isEqualTo("#00FF00");
+        }
+
+        @Test
+        @DisplayName("AC-5: reactionSummary/myReactions が集計で入る")
+        void リアクション集計が入る() {
+            BulletinThreadEntity t1 = threadWith(THREAD_ID, USER_ID, CATEGORY_ID);
+            stubBaseMapper();
+            given(reactionRepository.countByTargetIdsGroupedByEmoji(eq(TargetType.THREAD), any()))
+                    .willReturn(List.of(
+                            new Object[]{THREAD_ID, "👍", 3L},
+                            new Object[]{THREAD_ID, "❤️", 1L}));
+            given(reactionRepository.findUserReactionsByTargetIds(eq(TargetType.THREAD), any(), eq(USER_ID)))
+                    .willReturn(List.of(new Object[]{THREAD_ID, "👍"}));
+
+            List<ThreadResponse> result = bulletinThreadService.enrichThreads(List.of(t1), USER_ID);
+
+            assertThat(result.get(0).getReactionSummary()).containsEntry("👍", 3).containsEntry("❤️", 1);
+            assertThat(result.get(0).getMyReactions()).containsExactly("👍");
+        }
+
+        @Test
+        @DisplayName("AC-8: N+1 番人 — スレッド3件でも各依存呼び出しは1回")
+        void N1番人_各依存は1回のみ() {
+            BulletinThreadEntity t1 = threadWith(THREAD_ID, USER_ID, CATEGORY_ID);
+            BulletinThreadEntity t2 = threadWith(THREAD_ID_2, AUTHOR_2, CATEGORY_ID_2);
+            BulletinThreadEntity t3 = threadWith(THREAD_ID_3, AUTHOR_3, CATEGORY_ID);
+            stubBaseMapper();
+
+            bulletinThreadService.enrichThreads(List.of(t1, t2, t3), USER_ID);
+
+            // 件数に比例しない（各 1 回）
+            verify(nameResolverService, org.mockito.Mockito.times(1)).resolveUserDisplayNames(any());
+            verify(userRepository, org.mockito.Mockito.times(1)).findAllById(any());
+            verify(categoryRepository, org.mockito.Mockito.times(1)).findAllById(any());
+            verify(readStatusRepository, org.mockito.Mockito.times(1)).findReadThreadIds(any(), eq(USER_ID));
+            verify(reactionRepository, org.mockito.Mockito.times(1))
+                    .countByTargetIdsGroupedByEmoji(eq(TargetType.THREAD), any());
+            verify(reactionRepository, org.mockito.Mockito.times(1))
+                    .findUserReactionsByTargetIds(eq(TargetType.THREAD), any(), eq(USER_ID));
+        }
+
+        @Test
+        @DisplayName("AC-10: 空一覧は空リストを返し例外を投げない")
+        void 空一覧は空リスト() {
+            List<ThreadResponse> result = bulletinThreadService.enrichThreads(List.of(), USER_ID);
+
+            assertThat(result).isEmpty();
+            // 空ならどの依存も呼ばれない
+            verify(nameResolverService, never()).resolveUserDisplayNames(any());
+            verify(reactionRepository, never()).countByTargetIdsGroupedByEmoji(any(), any());
         }
     }
 }
