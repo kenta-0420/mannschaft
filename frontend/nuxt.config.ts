@@ -33,9 +33,22 @@ const apiBaseSrc = apiBase
     ? [apiBase, apiBase.replace('http://', 'https://')]
     : [apiBase]
   : []
+
+// プロフィールメディアの presigned PUT はブラウザからストレージ（本番:R2 / ローカル:MinIO）へ
+// 直接 fetch するため connect-src に許可が必要。無いと CSP で Failed to fetch になりアップロード不能。
+// ローカル既定: MinIO http://localhost:9000 / 本番: NUXT_PUBLIC_MEDIA_UPLOAD_ORIGIN に R2 origin を注入。
+// 例: NUXT_PUBLIC_MEDIA_UPLOAD_ORIGIN=https://pub-xxxxx.r2.dev（R2 の公開エンドポイント origin）
+const mediaUploadOrigin = process.env.NUXT_PUBLIC_MEDIA_UPLOAD_ORIGIN ?? 'http://localhost:9000'
+const mediaUploadSrc = mediaUploadOrigin
+  ? mediaUploadOrigin.startsWith('http://')
+    ? [mediaUploadOrigin, mediaUploadOrigin.replace('http://', 'https://')]
+    : [mediaUploadOrigin]
+  : []
+
 const connectSrc = [
   "'self'",
   ...apiBaseSrc,
+  ...mediaUploadSrc,
   'https://fonts.googleapis.com',
   'https://fonts.gstatic.com',
   // STOMP WebSocket（@stomp/stompjs）と dev サーバ HMR。
@@ -443,6 +456,7 @@ export default defineNuxtConfig({
           'ja/schedule.json',
           'ja/payment.json',
           'ja/match.json',
+          'ja/tournament.json',
           'ja/admin_report.json',
           'ja/system_admin_incident_banner.json',
           'ja/admin_console.json',
@@ -506,6 +520,7 @@ export default defineNuxtConfig({
           'en/schedule.json',
           'en/payment.json',
           'en/match.json',
+          'en/tournament.json',
           'en/admin_report.json',
           'en/system_admin_incident_banner.json',
           'en/admin_console.json',
@@ -569,6 +584,7 @@ export default defineNuxtConfig({
           'zh/schedule.json',
           'zh/payment.json',
           'zh/match.json',
+          'zh/tournament.json',
           'zh/admin_report.json',
           'zh/system_admin_incident_banner.json',
           'zh/admin_console.json',
@@ -632,6 +648,7 @@ export default defineNuxtConfig({
           'ko/schedule.json',
           'ko/payment.json',
           'ko/match.json',
+          'ko/tournament.json',
           'ko/admin_report.json',
           'ko/system_admin_incident_banner.json',
           'ko/admin_console.json',
@@ -695,6 +712,7 @@ export default defineNuxtConfig({
           'es/schedule.json',
           'es/payment.json',
           'es/match.json',
+          'es/tournament.json',
           'es/admin_report.json',
           'es/system_admin_incident_banner.json',
           'es/admin_console.json',
@@ -758,6 +776,7 @@ export default defineNuxtConfig({
           'de/schedule.json',
           'de/payment.json',
           'de/match.json',
+          'de/tournament.json',
           'de/admin_report.json',
           'de/system_admin_incident_banner.json',
           'de/admin_console.json',
