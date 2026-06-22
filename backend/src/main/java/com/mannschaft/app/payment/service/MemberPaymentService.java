@@ -128,7 +128,7 @@ public class MemberPaymentService {
                 .paymentItemId(paymentItemId)
                 .amountPaid(request.getAmountPaid())
                 .currency(paymentItem.getCurrency())
-                .paymentMethod(PaymentMethod.MANUAL)
+                .paymentMethod(resolveManualPaymentMethod(request.getPaymentMethod()))
                 .status(PaymentStatus.PAID)
                 .validFrom(validFrom)
                 .validUntil(validUntil)
@@ -143,6 +143,17 @@ public class MemberPaymentService {
         log.info("手動支払い記録: id={}, userId={}, paymentItemId={}, payer={}, relationship={}",
                 saved.getId(), request.getUserId(), paymentItemId, recordedBy, relationship);
         return enrichUserName(paymentMapper.toMemberPaymentResponse(saved));
+    }
+
+    /**
+     * 手動記録の決済手段を解決する。未指定（null）時は {@link PaymentMethod#MANUAL}（その他／不明）にフォールバックする。
+     *
+     * <p>{@link PaymentMethod#STRIPE} は手動記録では DTO の BeanValidation
+     * （{@link CreateManualPaymentRequest#isPaymentMethodAllowedForManual()}）で 400 に弾かれるため、
+     * ここには到達しない（多層防御として STRIPE もそのまま返さず、不正値は呼出側で拒否済みの前提）。</p>
+     */
+    private PaymentMethod resolveManualPaymentMethod(PaymentMethod requested) {
+        return requested != null ? requested : PaymentMethod.MANUAL;
     }
 
     /**
@@ -209,7 +220,7 @@ public class MemberPaymentService {
                         .paymentItemId(paymentItemId)
                         .amountPaid(payment.getAmountPaid())
                         .currency(paymentItem.getCurrency())
-                        .paymentMethod(PaymentMethod.MANUAL)
+                        .paymentMethod(resolveManualPaymentMethod(payment.getPaymentMethod()))
                         .status(PaymentStatus.PAID)
                         .validFrom(validFrom)
                         .validUntil(validUntil)
@@ -237,7 +248,8 @@ public class MemberPaymentService {
         MemberPaymentEntity entity = memberPaymentRepository.findByIdAndPaymentItemId(paymentId, paymentItemId)
                 .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_NOT_FOUND));
 
-        if (entity.getPaymentMethod() == PaymentMethod.MANUAL) {
+        // STRIPE（オンライン決済）以外は返金不可（CASH/BANK_TRANSFER/MANUAL のオフライン記録は取り消しで運用）。
+        if (entity.getPaymentMethod() != PaymentMethod.STRIPE) {
             throw new BusinessException(PaymentErrorCode.MANUAL_PAYMENT_NOT_REFUNDABLE);
         }
         if (entity.getStatus() == PaymentStatus.REFUNDED || entity.getStatus() == PaymentStatus.CANCELLED) {
@@ -626,7 +638,8 @@ public class MemberPaymentService {
         MemberPaymentEntity entity = memberPaymentRepository.findById(paymentId)
                 .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_NOT_FOUND));
 
-        if (entity.getPaymentMethod() == PaymentMethod.MANUAL) {
+        // STRIPE（オンライン決済）以外は再同期不可（CASH/BANK_TRANSFER/MANUAL のオフライン記録は対象外）。
+        if (entity.getPaymentMethod() != PaymentMethod.STRIPE) {
             throw new BusinessException(PaymentErrorCode.STRIPE_PAYMENT_ONLY);
         }
 

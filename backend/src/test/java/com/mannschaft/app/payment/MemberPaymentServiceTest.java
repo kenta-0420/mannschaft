@@ -71,7 +71,7 @@ class MemberPaymentServiceTest {
 
             CreateManualPaymentRequest request = new CreateManualPaymentRequest(
                     USER_ID, new BigDecimal("5000"), LocalDateTime.now(),
-                    null, null, null);
+                    null, null, null, null);
 
             assertThatThrownBy(() -> service.createManualPayment(PAYMENT_ITEM_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
@@ -96,7 +96,7 @@ class MemberPaymentServiceTest {
 
             CreateManualPaymentRequest request = new CreateManualPaymentRequest(
                     USER_ID, new BigDecimal("5000"), LocalDateTime.now(),
-                    null, null, null);
+                    null, null, null, null);
 
             service.createManualPayment(PAYMENT_ITEM_ID, USER_ID, request);
 
@@ -122,12 +122,143 @@ class MemberPaymentServiceTest {
 
             CreateManualPaymentRequest request = new CreateManualPaymentRequest(
                     USER_ID, new BigDecimal("5000"), LocalDateTime.now(),
-                    null, null, null);
+                    null, null, null, null);
 
             MemberPaymentResponse response = service.createManualPayment(PAYMENT_ITEM_ID, USER_ID, request);
 
             assertThat(response.getUserName()).isEqualTo("山田 太郎");
             assertThat(response.getUserId()).isEqualTo(USER_ID);
+        }
+
+        @Test
+        @DisplayName("[AC-1] paymentMethod=CASH 指定で保存される payment_method が CASH")
+        void CASH指定で保存される() {
+            PaymentItemEntity item = PaymentItemEntity.builder()
+                    .type(PaymentItemType.ANNUAL_FEE).currency("JPY").build();
+            given(paymentItemService.findByIdOrThrow(PAYMENT_ITEM_ID)).willReturn(item);
+            given(memberPaymentRepository.existsValidPaidPayment(USER_ID, PAYMENT_ITEM_ID)).willReturn(false);
+            given(paymentAuthorizationService.authorizePayment(USER_ID, USER_ID, PAYMENT_ITEM_ID, true))
+                    .willReturn(PayerRelationship.SELF);
+
+            ArgumentCaptor<MemberPaymentEntity> captor = ArgumentCaptor.forClass(MemberPaymentEntity.class);
+            given(memberPaymentRepository.save(captor.capture()))
+                    .willReturn(MemberPaymentEntity.builder().userId(USER_ID).build());
+            given(paymentMapper.toMemberPaymentResponse(any())).willReturn(null);
+
+            CreateManualPaymentRequest request = new CreateManualPaymentRequest(
+                    USER_ID, new BigDecimal("5000"), LocalDateTime.now(),
+                    null, null, null, PaymentMethod.CASH);
+
+            service.createManualPayment(PAYMENT_ITEM_ID, USER_ID, request);
+
+            assertThat(captor.getValue().getPaymentMethod()).isEqualTo(PaymentMethod.CASH);
+        }
+
+        @Test
+        @DisplayName("[AC-1] paymentMethod=BANK_TRANSFER 指定で保存される payment_method が BANK_TRANSFER")
+        void BANK_TRANSFER指定で保存される() {
+            PaymentItemEntity item = PaymentItemEntity.builder()
+                    .type(PaymentItemType.ANNUAL_FEE).currency("JPY").build();
+            given(paymentItemService.findByIdOrThrow(PAYMENT_ITEM_ID)).willReturn(item);
+            given(memberPaymentRepository.existsValidPaidPayment(USER_ID, PAYMENT_ITEM_ID)).willReturn(false);
+            given(paymentAuthorizationService.authorizePayment(USER_ID, USER_ID, PAYMENT_ITEM_ID, true))
+                    .willReturn(PayerRelationship.SELF);
+
+            ArgumentCaptor<MemberPaymentEntity> captor = ArgumentCaptor.forClass(MemberPaymentEntity.class);
+            given(memberPaymentRepository.save(captor.capture()))
+                    .willReturn(MemberPaymentEntity.builder().userId(USER_ID).build());
+            given(paymentMapper.toMemberPaymentResponse(any())).willReturn(null);
+
+            CreateManualPaymentRequest request = new CreateManualPaymentRequest(
+                    USER_ID, new BigDecimal("5000"), LocalDateTime.now(),
+                    null, null, null, PaymentMethod.BANK_TRANSFER);
+
+            service.createManualPayment(PAYMENT_ITEM_ID, USER_ID, request);
+
+            assertThat(captor.getValue().getPaymentMethod()).isEqualTo(PaymentMethod.BANK_TRANSFER);
+        }
+
+        @Test
+        @DisplayName("[AC-2] paymentMethod 未指定(null)で保存される payment_method が MANUAL（後方互換）")
+        void 未指定でMANUALフォールバック() {
+            PaymentItemEntity item = PaymentItemEntity.builder()
+                    .type(PaymentItemType.ANNUAL_FEE).currency("JPY").build();
+            given(paymentItemService.findByIdOrThrow(PAYMENT_ITEM_ID)).willReturn(item);
+            given(memberPaymentRepository.existsValidPaidPayment(USER_ID, PAYMENT_ITEM_ID)).willReturn(false);
+            given(paymentAuthorizationService.authorizePayment(USER_ID, USER_ID, PAYMENT_ITEM_ID, true))
+                    .willReturn(PayerRelationship.SELF);
+
+            ArgumentCaptor<MemberPaymentEntity> captor = ArgumentCaptor.forClass(MemberPaymentEntity.class);
+            given(memberPaymentRepository.save(captor.capture()))
+                    .willReturn(MemberPaymentEntity.builder().userId(USER_ID).build());
+            given(paymentMapper.toMemberPaymentResponse(any())).willReturn(null);
+
+            CreateManualPaymentRequest request = new CreateManualPaymentRequest(
+                    USER_ID, new BigDecimal("5000"), LocalDateTime.now(),
+                    null, null, null, null);
+
+            service.createManualPayment(PAYMENT_ITEM_ID, USER_ID, request);
+
+            assertThat(captor.getValue().getPaymentMethod()).isEqualTo(PaymentMethod.MANUAL);
+        }
+
+        @Test
+        @DisplayName("[AC-5] 非ADMIN(無権原)はMEMBERSHIP_PAYER_NOT_AUTHORIZED(403)— authorizePayment 経路不変")
+        void 非ADMINは権原なしで拒否() {
+            PaymentItemEntity item = PaymentItemEntity.builder()
+                    .type(PaymentItemType.ANNUAL_FEE).currency("JPY").build();
+            given(paymentItemService.findByIdOrThrow(PAYMENT_ITEM_ID)).willReturn(item);
+            given(memberPaymentRepository.existsValidPaidPayment(any(), any())).willReturn(false);
+            // 受益者 != 記録者 で権原なし → authorizePayment が 403 を投げる
+            Long beneficiary = 999L;
+            given(paymentAuthorizationService.authorizePayment(USER_ID, beneficiary, PAYMENT_ITEM_ID, true))
+                    .willThrow(new BusinessException(
+                            com.mannschaft.app.payment.MembershipBillingErrorCode.MEMBERSHIP_PAYER_NOT_AUTHORIZED));
+
+            CreateManualPaymentRequest request = new CreateManualPaymentRequest(
+                    beneficiary, new BigDecimal("5000"), LocalDateTime.now(),
+                    null, null, null, PaymentMethod.CASH);
+
+            assertThatThrownBy(() -> service.createManualPayment(PAYMENT_ITEM_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(com.mannschaft.app.payment.MembershipBillingErrorCode.MEMBERSHIP_PAYER_NOT_AUTHORIZED);
+        }
+    }
+
+    @Nested
+    @DisplayName("createBulkPayments")
+    class CreateBulkPayments {
+
+        @Test
+        @DisplayName("[AC-3] bulk の各要素で手段が個別反映され createdCount が積まれる")
+        void 各要素で手段が個別反映される() {
+            PaymentItemEntity item = PaymentItemEntity.builder()
+                    .type(PaymentItemType.ANNUAL_FEE).currency("JPY").build();
+            given(paymentItemService.findByIdOrThrow(PAYMENT_ITEM_ID)).willReturn(item);
+            given(memberPaymentRepository.existsValidPaidPayment(any(), any())).willReturn(false);
+
+            ArgumentCaptor<MemberPaymentEntity> captor = ArgumentCaptor.forClass(MemberPaymentEntity.class);
+            given(memberPaymentRepository.save(captor.capture()))
+                    .willReturn(MemberPaymentEntity.builder().build());
+
+            CreateManualPaymentRequest cash = new CreateManualPaymentRequest(
+                    101L, new BigDecimal("5000"), LocalDateTime.now(), null, null, null, PaymentMethod.CASH);
+            CreateManualPaymentRequest bank = new CreateManualPaymentRequest(
+                    102L, new BigDecimal("3000"), LocalDateTime.now(), null, null, null, PaymentMethod.BANK_TRANSFER);
+            CreateManualPaymentRequest deflt = new CreateManualPaymentRequest(
+                    103L, new BigDecimal("2000"), LocalDateTime.now(), null, null, null, null);
+
+            com.mannschaft.app.payment.dto.BulkPaymentResponse response =
+                    service.createBulkPayments(PAYMENT_ITEM_ID, USER_ID,
+                            new com.mannschaft.app.payment.dto.BulkPaymentRequest(
+                                    java.util.List.of(cash, bank, deflt)));
+
+            assertThat(response.getCreatedCount()).isEqualTo(3);
+            assertThat(response.getSkippedCount()).isZero();
+            assertThat(captor.getAllValues())
+                    .extracting(MemberPaymentEntity::getPaymentMethod)
+                    .containsExactly(PaymentMethod.CASH, PaymentMethod.BANK_TRANSFER, PaymentMethod.MANUAL);
         }
     }
 
@@ -183,6 +314,192 @@ class MemberPaymentServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(PaymentErrorCode.PENDING_PAYMENT_NOT_REFUNDABLE);
+        }
+
+        @Test
+        @DisplayName("[AC-10] CASH の返金はMANUAL_PAYMENT_NOT_REFUNDABLE（非STRIPEは返金不可）")
+        void CASH返金不可() {
+            MemberPaymentEntity entity = MemberPaymentEntity.builder()
+                    .userId(USER_ID).paymentItemId(PAYMENT_ITEM_ID)
+                    .paymentMethod(PaymentMethod.CASH).status(PaymentStatus.PAID).build();
+            given(memberPaymentRepository.findByIdAndPaymentItemId(PAYMENT_ID, PAYMENT_ITEM_ID))
+                    .willReturn(Optional.of(entity));
+
+            assertThatThrownBy(() -> service.refundPayment(PAYMENT_ITEM_ID, PAYMENT_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(PaymentErrorCode.MANUAL_PAYMENT_NOT_REFUNDABLE);
+        }
+
+        @Test
+        @DisplayName("[AC-10] BANK_TRANSFER の返金はMANUAL_PAYMENT_NOT_REFUNDABLE（非STRIPEは返金不可）")
+        void BANK_TRANSFER返金不可() {
+            MemberPaymentEntity entity = MemberPaymentEntity.builder()
+                    .userId(USER_ID).paymentItemId(PAYMENT_ITEM_ID)
+                    .paymentMethod(PaymentMethod.BANK_TRANSFER).status(PaymentStatus.PAID).build();
+            given(memberPaymentRepository.findByIdAndPaymentItemId(PAYMENT_ID, PAYMENT_ITEM_ID))
+                    .willReturn(Optional.of(entity));
+
+            assertThatThrownBy(() -> service.refundPayment(PAYMENT_ITEM_ID, PAYMENT_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(PaymentErrorCode.MANUAL_PAYMENT_NOT_REFUNDABLE);
+        }
+
+        @Test
+        @DisplayName("[AC-14] 既存MANUALの返金はMANUAL_PAYMENT_NOT_REFUNDABLE（挙動不変）")
+        void MANUAL返金不可_挙動不変() {
+            MemberPaymentEntity entity = MemberPaymentEntity.builder()
+                    .userId(USER_ID).paymentItemId(PAYMENT_ITEM_ID)
+                    .paymentMethod(PaymentMethod.MANUAL).status(PaymentStatus.PAID).build();
+            given(memberPaymentRepository.findByIdAndPaymentItemId(PAYMENT_ID, PAYMENT_ITEM_ID))
+                    .willReturn(Optional.of(entity));
+
+            assertThatThrownBy(() -> service.refundPayment(PAYMENT_ITEM_ID, PAYMENT_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(PaymentErrorCode.MANUAL_PAYMENT_NOT_REFUNDABLE);
+        }
+
+        @Test
+        @DisplayName("[AC-11] STRIPE/PAID の返金は正常に実行される")
+        void STRIPE_PAID返金正常() {
+            MemberPaymentEntity entity = MemberPaymentEntity.builder()
+                    .userId(USER_ID).paymentItemId(PAYMENT_ITEM_ID)
+                    .paymentMethod(PaymentMethod.STRIPE).status(PaymentStatus.PAID)
+                    .stripePaymentIntentId("pi_123").build();
+            given(memberPaymentRepository.findByIdAndPaymentItemId(PAYMENT_ID, PAYMENT_ITEM_ID))
+                    .willReturn(Optional.of(entity));
+            given(stripePaymentProvider.createRefund("pi_123", PAYMENT_ID, USER_ID))
+                    .willReturn("re_456");
+            given(memberPaymentRepository.save(any())).willReturn(entity);
+            given(paymentMapper.toMemberPaymentResponse(any())).willReturn(null);
+
+            service.refundPayment(PAYMENT_ITEM_ID, PAYMENT_ID, USER_ID);
+
+            verify(stripePaymentProvider).createRefund("pi_123", PAYMENT_ID, USER_ID);
+            assertThat(entity.getStatus()).isEqualTo(PaymentStatus.REFUNDED);
+        }
+    }
+
+    @Nested
+    @DisplayName("reconcile")
+    class Reconcile {
+
+        @Test
+        @DisplayName("[AC-12] CASH の再同期はSTRIPE_PAYMENT_ONLY（非STRIPEは再同期不可）")
+        void CASH再同期不可() {
+            MemberPaymentEntity entity = MemberPaymentEntity.builder()
+                    .userId(USER_ID).paymentItemId(PAYMENT_ITEM_ID)
+                    .paymentMethod(PaymentMethod.CASH).status(PaymentStatus.PAID).build();
+            given(memberPaymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(entity));
+
+            assertThatThrownBy(() -> service.reconcile(PAYMENT_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(PaymentErrorCode.STRIPE_PAYMENT_ONLY);
+        }
+
+        @Test
+        @DisplayName("[AC-12] BANK_TRANSFER の再同期はSTRIPE_PAYMENT_ONLY（非STRIPEは再同期不可）")
+        void BANK_TRANSFER再同期不可() {
+            MemberPaymentEntity entity = MemberPaymentEntity.builder()
+                    .userId(USER_ID).paymentItemId(PAYMENT_ITEM_ID)
+                    .paymentMethod(PaymentMethod.BANK_TRANSFER).status(PaymentStatus.PAID).build();
+            given(memberPaymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(entity));
+
+            assertThatThrownBy(() -> service.reconcile(PAYMENT_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(PaymentErrorCode.STRIPE_PAYMENT_ONLY);
+        }
+
+        @Test
+        @DisplayName("[AC-12][AC-14] 既存MANULの再同期はSTRIPE_PAYMENT_ONLY（挙動不変）")
+        void MANUAL再同期不可_挙動不変() {
+            MemberPaymentEntity entity = MemberPaymentEntity.builder()
+                    .userId(USER_ID).paymentItemId(PAYMENT_ITEM_ID)
+                    .paymentMethod(PaymentMethod.MANUAL).status(PaymentStatus.PAID).build();
+            given(memberPaymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(entity));
+
+            assertThatThrownBy(() -> service.reconcile(PAYMENT_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(PaymentErrorCode.STRIPE_PAYMENT_ONLY);
+        }
+
+        @Test
+        @DisplayName("[AC-13] STRIPE/PENDING の再同期は succeeded で PAID に同期される")
+        void STRIPE再同期で同期される() {
+            MemberPaymentEntity entity = MemberPaymentEntity.builder()
+                    .userId(USER_ID).paymentItemId(PAYMENT_ITEM_ID)
+                    .amountPaid(new BigDecimal("5000")).currency("JPY")
+                    .paymentMethod(PaymentMethod.STRIPE).status(PaymentStatus.PENDING)
+                    .stripeCheckoutSessionId("cs_123").build();
+            given(memberPaymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(entity));
+
+            PaymentItemEntity item = PaymentItemEntity.builder()
+                    .type(PaymentItemType.ANNUAL_FEE).currency("JPY").build();
+            given(paymentItemService.findByIdOrThrow(PAYMENT_ITEM_ID)).willReturn(item);
+            given(stripePaymentProvider.retrieveSessionStatus("cs_123"))
+                    .willReturn(new StripePaymentProvider.SessionStatusInfo(
+                            "paid", "pi_789", "succeeded"));
+            given(memberPaymentRepository.save(any())).willReturn(entity);
+
+            com.mannschaft.app.payment.dto.ReconcileResponse response = service.reconcile(PAYMENT_ID);
+
+            assertThat(response.isReconciled()).isTrue();
+            assertThat(entity.getStatus()).isEqualTo(PaymentStatus.PAID);
+        }
+    }
+
+    @Nested
+    @DisplayName("exportPaymentsCsv")
+    class ExportPaymentsCsv {
+
+        @Test
+        @DisplayName("[AC-15] 既存MANULレコードのCSVは payment_method=MANUAL のまま表示される")
+        void MANUALレコードのCSVが値不変() {
+            PaymentItemEntity item = PaymentItemEntity.builder()
+                    .type(PaymentItemType.ANNUAL_FEE).currency("JPY").build();
+            given(paymentItemService.findByIdOrThrow(PAYMENT_ITEM_ID)).willReturn(item);
+
+            MemberPaymentEntity manual = MemberPaymentEntity.builder()
+                    .userId(USER_ID).paymentItemId(PAYMENT_ITEM_ID)
+                    .amountPaid(new BigDecimal("5000")).currency("JPY")
+                    .paymentMethod(PaymentMethod.MANUAL).status(PaymentStatus.PAID).build();
+            given(memberPaymentRepository.findByPaymentItemId(PAYMENT_ITEM_ID))
+                    .willReturn(java.util.List.of(manual));
+            given(nameResolverService.resolveUserDisplayNames(any()))
+                    .willReturn(java.util.Map.of(USER_ID, "山田 太郎"));
+
+            byte[] csv = service.exportPaymentsCsv(PAYMENT_ITEM_ID);
+            String text = new String(csv, java.nio.charset.StandardCharsets.UTF_8);
+
+            assertThat(text).contains("MANUAL");
+            assertThat(text).contains("山田 太郎");
+        }
+
+        @Test
+        @DisplayName("[AC-15] CASH レコードのCSVは payment_method=CASH で表示される")
+        void CASHレコードのCSV表示() {
+            PaymentItemEntity item = PaymentItemEntity.builder()
+                    .type(PaymentItemType.ANNUAL_FEE).currency("JPY").build();
+            given(paymentItemService.findByIdOrThrow(PAYMENT_ITEM_ID)).willReturn(item);
+
+            MemberPaymentEntity cash = MemberPaymentEntity.builder()
+                    .userId(USER_ID).paymentItemId(PAYMENT_ITEM_ID)
+                    .amountPaid(new BigDecimal("5000")).currency("JPY")
+                    .paymentMethod(PaymentMethod.CASH).status(PaymentStatus.PAID).build();
+            given(memberPaymentRepository.findByPaymentItemId(PAYMENT_ITEM_ID))
+                    .willReturn(java.util.List.of(cash));
+            given(nameResolverService.resolveUserDisplayNames(any()))
+                    .willReturn(java.util.Map.of(USER_ID, "山田 太郎"));
+
+            byte[] csv = service.exportPaymentsCsv(PAYMENT_ITEM_ID);
+            String text = new String(csv, java.nio.charset.StandardCharsets.UTF_8);
+
+            assertThat(text).contains("CASH");
         }
     }
 
