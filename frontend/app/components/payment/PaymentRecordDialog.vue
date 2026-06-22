@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { MemberPaymentResponse } from '~/types/payment'
+import type { MemberResponse } from '~/types/member'
 
 /**
  * F08.9 手動入金 記録ダイアログ（AC-16/AC-17）。
@@ -17,6 +18,12 @@ const props = defineProps<{
   defaultAmount: number
   /** メンバー選択肢の元データ（支払い一覧）。 */
   payments: MemberPaymentResponse[]
+  /**
+   * チームメンバー一覧（team スコープの場合のみ）。
+   * 指定されている場合は payments の代わりにこちらからメンバー選択肢を生成する。
+   * 新規 payment-item では payments が空になるため、チームメンバー全員を選択できるようにする。
+   */
+  teamMembers?: MemberResponse[]
 }>()
 
 const emit = defineEmits<{
@@ -34,10 +41,17 @@ const methodOptions = computed<Array<{ label: string; value: ManualPaymentMethod
   { label: t('payment.admin.method.MANUAL'), value: 'MANUAL' },
 ])
 
-/** メンバー選択肢（支払い一覧の userId / userName から生成）。 */
-const memberOptions = computed<Array<{ label: string; value: number }>>(() =>
-  props.payments.map((p) => ({ label: p.userName, value: p.userId })),
-)
+/**
+ * メンバー選択肢。
+ * teamMembers が指定されていればそこから生成（新規 payment-item でも全メンバー選択可）。
+ * teamMembers がない（organization スコープ等）場合は payments からフォールバック。
+ */
+const memberOptions = computed<Array<{ label: string; value: number }>>(() => {
+  if (props.teamMembers && props.teamMembers.length > 0) {
+    return props.teamMembers.map((m) => ({ label: m.displayName, value: m.userId }))
+  }
+  return props.payments.map((p) => ({ label: p.userName, value: p.userId }))
+})
 
 const userId = ref<number | null>(null)
 const amountPaid = ref<number>(props.defaultAmount)

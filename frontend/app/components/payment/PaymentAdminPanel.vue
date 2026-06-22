@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PaymentItemResponse, MemberPaymentResponse, PaymentItemType, PaymentSummaryResponse, PaymentMethod } from '~/types/payment'
+import type { MemberResponse } from '~/types/member'
 
 const props = defineProps<{ scopeType: 'team' | 'organization'; scopeId: string }>()
 
@@ -14,6 +15,7 @@ const {
   bulkRecordPayment,
   cancelPayment,
 } = usePaymentApi()
+const { getMembers } = useTeamApi()
 const { showSuccess, showError } = useNotification()
 
 /** F08.9 P8: CSV ダウンロード中フラグ */
@@ -53,6 +55,13 @@ const payments = ref<MemberPaymentResponse[]>([])
 const loading = ref(false)
 /** F08.9 P8: サマリー（支払い項目ごとの PAID/UNPAID/EXPIRED 件数）。 */
 const summary = ref<PaymentSummaryResponse | null>(null)
+/**
+ * チームメンバー一覧（team スコープの場合のみ）。
+ * 手動入金記録ダイアログのメンバー選択肢として使用する。
+ * 既存の payments から生成すると新規 payment-item では空になるため、
+ * チームメンバー一覧を別途取得する。
+ */
+const teamMembers = ref<MemberResponse[]>([])
 
 /** 選択中の支払い項目のサマリー行。 */
 const selectedSummaryItem = computed(() =>
@@ -68,6 +77,20 @@ async function loadItems() {
     items.value = itemsRes.data
     summary.value = summaryRes?.data ?? null
   } catch { showError(t('payment.admin.loadItemsError')) }
+}
+
+/**
+ * チームメンバー一覧を取得して teamMembers を更新する。
+ * team スコープの場合のみ実行（organization スコープは別 API のため対象外）。
+ */
+async function loadTeamMembers() {
+  if (props.scopeType !== 'team') return
+  try {
+    const res = await getMembers(props.scopeId, { size: 200 })
+    teamMembers.value = res.data
+  } catch {
+    // メンバー取得失敗はサイレント（payment 一覧からフォールバックする）
+  }
 }
 
 async function loadPayments(item: PaymentItemResponse) {
@@ -202,7 +225,10 @@ async function onCancel(p: MemberPaymentResponse) {
   }
 }
 
-onMounted(() => loadItems())
+onMounted(() => {
+  loadItems()
+  loadTeamMembers()
+})
 </script>
 
 <template>
@@ -309,6 +335,7 @@ onMounted(() => loadItems())
       v-model:visible="recordDialogVisible"
       :default-amount="selectedItem.money.amount"
       :payments="payments"
+      :team-members="teamMembers"
       @submit="onRecordSubmit"
     />
     <!-- AC-20: 一括記録ダイアログ -->
@@ -317,6 +344,7 @@ onMounted(() => loadItems())
       v-model:visible="bulkDialogVisible"
       :default-amount="selectedItem.money.amount"
       :payments="payments"
+      :team-members="teamMembers"
       @submit="onBulkSubmit"
     />
   </div>
