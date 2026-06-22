@@ -30,17 +30,9 @@ onMounted(async () => {
 })
 
 // 登録時（register.vue）と同一ポリシー: 大文字/小文字/数字/記号のうち3種以上
-function countCharTypes(value: string): number {
-  let count = 0
-  if (/[A-Z]/.test(value)) count++
-  if (/[a-z]/.test(value)) count++
-  if (/[0-9]/.test(value)) count++
-  if (/[^A-Za-z0-9]/.test(value)) count++
-  return count
-}
-
+// utils/passwordPolicy.ts に移管済み
 const meetsPolicy = computed(
-  () => form.value.newPassword.length >= 8 && countCharTypes(form.value.newPassword) >= 3,
+  () => meetsPasswordPolicy(form.value.newPassword),
 )
 
 const passwordError = computed(() => {

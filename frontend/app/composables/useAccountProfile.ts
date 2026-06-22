@@ -2,6 +2,7 @@ export function useAccountProfile() {
   const api = useApi()
   const notification = useNotification()
   const { t } = useI18n()
+  const { resolveMessage } = useErrorHandler()
   const { changeLocale } = useLocale()
   const authStore = useAuthStore()
   const {
@@ -34,28 +35,27 @@ export function useAccountProfile() {
 
   const savingLocale = ref(false)
 
+  // 金型（settings/password.vue）と同一ロジック。utils/passwordPolicy.ts を共用。
   const passwordError = computed(() => {
     if (passwordForm.value.newPassword && passwordForm.value.newPassword.length < 8)
-      return 'パスワードは8文字以上で入力してください'
+      return t('settings.password.length_error')
+    if (passwordForm.value.newPassword && countCharTypes(passwordForm.value.newPassword) < 3)
+      return t('settings.password.policy_violation')
     if (
       passwordForm.value.confirmPassword &&
       passwordForm.value.newPassword !== passwordForm.value.confirmPassword
     )
-      return 'パスワードが一致しません'
+      return t('settings.password.mismatch_error')
     return null
   })
 
   const canSubmitPassword = computed(() => {
-    if (profile.value.hasPassword)
-      return !!(
-        passwordForm.value.currentPassword &&
-        passwordForm.value.newPassword.length >= 8 &&
-        passwordForm.value.newPassword === passwordForm.value.confirmPassword
-      )
-    return (
-      passwordForm.value.newPassword.length >= 8 &&
+    const baseValid =
+      meetsPasswordPolicy(passwordForm.value.newPassword) &&
       passwordForm.value.newPassword === passwordForm.value.confirmPassword
-    )
+    if (profile.value.hasPassword)
+      return !!(passwordForm.value.currentPassword && baseValid)
+    return baseValid
   })
 
   const canSubmitEmail = computed(
@@ -161,6 +161,8 @@ export function useAccountProfile() {
 
   async function handlePasswordChange() {
     submittingPassword.value = true
+    // 変更前に hasPassword を記録しておく（成功後に true へ書き換わるため）
+    const wasHavingPassword = profile.value.hasPassword
     try {
       if (profile.value.hasPassword) {
         await changePassword({
@@ -173,16 +175,28 @@ export function useAccountProfile() {
       }
       passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
       notification.success(
-        profile.value.hasPassword
+        wasHavingPassword
           ? t('settings.password.toast.change_success')
           : t('settings.password.toast.setup_success'),
       )
-    } catch {
-      notification.error(
-        profile.value.hasPassword
-          ? t('settings.password.toast.change_error')
-          : t('settings.password.toast.setup_error'),
-      )
+    } catch (e) {
+      // error.code が取れれば resolveMessage で解決（AUTH_008/009/010/011 等）
+      const code = (e as { data?: { error?: { code?: string; message?: string } } })?.data?.error
+        ?.code
+      if (code) {
+        notification.error(
+          resolveMessage(
+            code,
+            (e as { data?: { error?: { message?: string } } })?.data?.error?.message,
+          ),
+        )
+      } else {
+        notification.error(
+          wasHavingPassword
+            ? t('settings.password.toast.change_error')
+            : t('settings.password.toast.setup_error'),
+        )
+      }
     } finally {
       submittingPassword.value = false
     }

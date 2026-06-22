@@ -231,6 +231,7 @@
     "AUTH_004": "Este correo electrónico ya está registrado",
     "AUTH_005": "El enlace del correo de verificación no es válido o ha expirado",
     "AUTH_008": "La contraseña debe tener al menos 8 caracteres e incluir 3 o más de: mayúsculas, minúsculas, números y símbolos",
+    "AUTH_015": "El enlace para restablecer la contraseña no es válido o ha expirado. Por favor, solicite un nuevo restablecimiento.",
     "AUTH_009": "La nueva contraseña debe ser diferente de la contraseña actual",
     "AUTH_010": "La contraseña actual no es correcta",
     "AUTH_011": "Aún no se ha establecido ninguna contraseña",
