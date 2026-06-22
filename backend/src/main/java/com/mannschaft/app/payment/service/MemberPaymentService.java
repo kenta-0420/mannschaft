@@ -149,10 +149,15 @@ public class MemberPaymentService {
      * 手動記録の決済手段を解決する。未指定（null）時は {@link PaymentMethod#MANUAL}（その他／不明）にフォールバックする。
      *
      * <p>{@link PaymentMethod#STRIPE} は手動記録では DTO の BeanValidation
-     * （{@link CreateManualPaymentRequest#isPaymentMethodAllowedForManual()}）で 400 に弾かれるため、
-     * ここには到達しない（多層防御として STRIPE もそのまま返さず、不正値は呼出側で拒否済みの前提）。</p>
+     * （{@link CreateManualPaymentRequest#isPaymentMethodAllowedForManual()}）で 400 に弾かれるが、
+     * 多層防御として Service 層でも明示的に拒否する（{@code @Valid} を経由しない内部呼び出し・
+     * 将来の別経路でも不変条件を Service 自身が保証するため）。STRIPE 指定時は
+     * {@link PaymentErrorCode#STRIPE_NOT_ALLOWED_FOR_MANUAL}（400）を投げる。</p>
      */
     private PaymentMethod resolveManualPaymentMethod(PaymentMethod requested) {
+        if (requested == PaymentMethod.STRIPE) {
+            throw new BusinessException(PaymentErrorCode.STRIPE_NOT_ALLOWED_FOR_MANUAL);
+        }
         return requested != null ? requested : PaymentMethod.MANUAL;
     }
 

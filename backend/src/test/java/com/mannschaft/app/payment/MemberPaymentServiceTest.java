@@ -30,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -224,6 +225,28 @@ class MemberPaymentServiceTest {
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(com.mannschaft.app.payment.MembershipBillingErrorCode.MEMBERSHIP_PAYER_NOT_AUTHORIZED);
         }
+
+        @Test
+        @DisplayName("[AC-7] paymentMethod=STRIPE の手動記録は Service 層でも STRIPE_NOT_ALLOWED_FOR_MANUAL（多層防御・詐称防止）")
+        void STRIPE指定はService層でも拒否() {
+            PaymentItemEntity item = PaymentItemEntity.builder()
+                    .type(PaymentItemType.ANNUAL_FEE).currency("JPY").build();
+            given(paymentItemService.findByIdOrThrow(PAYMENT_ITEM_ID)).willReturn(item);
+            given(memberPaymentRepository.existsValidPaidPayment(USER_ID, PAYMENT_ITEM_ID)).willReturn(false);
+            given(paymentAuthorizationService.authorizePayment(USER_ID, USER_ID, PAYMENT_ITEM_ID, true))
+                    .willReturn(PayerRelationship.SELF);
+
+            CreateManualPaymentRequest request = new CreateManualPaymentRequest(
+                    USER_ID, new BigDecimal("5000"), LocalDateTime.now(),
+                    null, null, null, PaymentMethod.STRIPE);
+
+            assertThatThrownBy(() -> service.createManualPayment(PAYMENT_ITEM_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(PaymentErrorCode.STRIPE_NOT_ALLOWED_FOR_MANUAL);
+            // STRIPE レコードは一切保存されない
+            verify(memberPaymentRepository, never()).save(any());
+        }
     }
 
     @Nested
@@ -259,6 +282,37 @@ class MemberPaymentServiceTest {
             assertThat(captor.getAllValues())
                     .extracting(MemberPaymentEntity::getPaymentMethod)
                     .containsExactly(PaymentMethod.CASH, PaymentMethod.BANK_TRANSFER, PaymentMethod.MANUAL);
+        }
+
+        @Test
+        @DisplayName("[AC-7] bulk に STRIPE 要素が混じると当該要素はスキップされ STRIPE レコードは作られない（多層防御・詐称防止）")
+        void bulk内STRIPEはスキップされ記録されない() {
+            PaymentItemEntity item = PaymentItemEntity.builder()
+                    .type(PaymentItemType.ANNUAL_FEE).currency("JPY").build();
+            given(paymentItemService.findByIdOrThrow(PAYMENT_ITEM_ID)).willReturn(item);
+            given(memberPaymentRepository.existsValidPaidPayment(any(), any())).willReturn(false);
+
+            ArgumentCaptor<MemberPaymentEntity> captor = ArgumentCaptor.forClass(MemberPaymentEntity.class);
+            given(memberPaymentRepository.save(captor.capture()))
+                    .willReturn(MemberPaymentEntity.builder().build());
+
+            CreateManualPaymentRequest cash = new CreateManualPaymentRequest(
+                    201L, new BigDecimal("5000"), LocalDateTime.now(), null, null, null, PaymentMethod.CASH);
+            CreateManualPaymentRequest stripe = new CreateManualPaymentRequest(
+                    202L, new BigDecimal("3000"), LocalDateTime.now(), null, null, null, PaymentMethod.STRIPE);
+
+            com.mannschaft.app.payment.dto.BulkPaymentResponse response =
+                    service.createBulkPayments(PAYMENT_ITEM_ID, USER_ID,
+                            new com.mannschaft.app.payment.dto.BulkPaymentRequest(
+                                    java.util.List.of(cash, stripe)));
+
+            // STRIPE 要素は resolveManualPaymentMethod が拒否 → ループ内 catch でスキップ。CASH のみ記録。
+            assertThat(response.getCreatedCount()).isEqualTo(1);
+            assertThat(response.getSkippedCount()).isEqualTo(1);
+            assertThat(captor.getAllValues())
+                    .extracting(MemberPaymentEntity::getPaymentMethod)
+                    .containsExactly(PaymentMethod.CASH)
+                    .doesNotContain(PaymentMethod.STRIPE);
         }
     }
 
