@@ -864,7 +864,13 @@
       "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('title:',d['title']\\); print\\('state:',d['state'],'mergeable:',d['mergeable'],'head:',d['headRefName']\\); [print\\(c.get\\('name'\\),c.get\\('conclusion'\\)\\) for c in d.get\\('statusCheckRollup',[]\\)]\")",
       "Bash(echo \"exit=$?\")",
       "Bash(BASE_URL=http://localhost:3001 rtk playwright test tests/e2e/real/admin/f1011-admin-console.spec.ts tests/e2e/real/admin/f1011-admin-lens-touch.spec.ts --project=chromium-real --reporter=list --timeout=120000)",
-      "PowerShell(git *)"
+      "PowerShell(git *)",
+      "Bash(python -c \"import json;d=json.load\\(open\\('tournament.json',encoding='utf-8'\\)\\);print\\(list\\(d.keys\\(\\)\\)\\)\")",
+      "Bash(python -c \"import json;d=json.load\\(open\\('tournament.json',encoding='utf-8'\\)\\);print\\(list\\(d.get\\('dashboard_widgets',{}\\).keys\\(\\)\\)\\)\")",
+      "Bash(curl.exe -s -o /dev/null -w \"BE8080_HTTP=%{http_code}\\\\n\" --max-time 8 http://127.0.0.1:8080/actuator/health)",
+      "Bash(curl.exe -s --max-time 8 http://127.0.0.1:8080/actuator/health)",
+      "Bash(echo \"WATCH_EXIT=$?\")",
+      "Bash(rtk docker *)"
     ],
     "deny": [
       "Write(**/.env)",
