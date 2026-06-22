@@ -101,11 +101,14 @@ async function doDelete(theme: ReflectionThemeResponse) {
 
 <template>
   <div class="mx-auto max-w-2xl px-4 py-6">
-    <div class="mb-5 flex items-center gap-3">
-      <Button icon="pi pi-arrow-left" text rounded :aria-label="t('reflection.nav.today')" @click="router.push('/reflections')" />
-      <h1 class="flex-1 text-xl font-bold">{{ t('reflection.theme.list_heading') }}</h1>
+    <PageHeader
+      :title="t('reflection.theme.list_heading')"
+      back-to="/reflections"
+      :back-label="t('reflection.nav.today')"
+      class="flex-wrap justify-between"
+    >
       <Button :label="t('reflection.theme.create')" icon="pi pi-plus" size="small" @click="openCreate" />
-    </div>
+    </PageHeader>
 
     <div v-if="loading" class="space-y-3">
       <Skeleton height="64px" />

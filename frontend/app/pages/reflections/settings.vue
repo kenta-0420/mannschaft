@@ -8,7 +8,6 @@ definePageMeta({ middleware: 'auth' })
 const { t } = useI18n()
 const notification = useNotification()
 const reflectionApi = useReflectionApi()
-const router = useRouter()
 
 const loading = ref(true)
 const saving = ref(false)
@@ -51,10 +50,11 @@ async function save() {
 
 <template>
   <div class="mx-auto max-w-xl px-4 py-6">
-    <div class="mb-5 flex items-center gap-3">
-      <Button icon="pi pi-arrow-left" text rounded :aria-label="t('reflection.nav.today')" @click="router.push('/reflections')" />
-      <h1 class="flex-1 text-xl font-bold">{{ t('reflection.settings.heading') }}</h1>
-    </div>
+    <PageHeader
+      :title="t('reflection.settings.heading')"
+      back-to="/reflections"
+      :back-label="t('reflection.nav.today')"
+    />
 
     <div v-if="loading" class="space-y-3">
       <Skeleton height="80px" />
