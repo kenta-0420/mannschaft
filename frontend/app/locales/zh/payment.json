@@ -102,6 +102,40 @@
         "PENDING": "待处理",
         "REFUNDED": "已退款",
         "CANCELLED": "已取消"
+      },
+      "method": {
+        "CASH": "现金",
+        "BANK_TRANSFER": "银行转账",
+        "MANUAL": "手动记录"
+      },
+      "record": {
+        "recordButton": "记录入账",
+        "title": "记录入账",
+        "member": "会员",
+        "memberPlaceholder": "选择会员",
+        "amount": "入账金额",
+        "paidAt": "入账日期",
+        "method": "支付方式",
+        "note": "备注",
+        "notePlaceholder": "可选（最多500字）",
+        "submit": "记录",
+        "cancel": "取消",
+        "success": "已记录入账",
+        "error": "记录入账失败"
+      },
+      "bulk": {
+        "bulkButton": "批量记录",
+        "title": "批量记录",
+        "description": "选择未付款会员以批量记录入账。",
+        "noUnpaid": "没有未付款的会员",
+        "submit": "记录{count}条",
+        "error": "批量记录失败",
+        "resultSummary": "已记录{created}条，跳过{skipped}条"
+      },
+      "cancel": {
+        "button": "撤销",
+        "success": "已撤销入账",
+        "error": "撤销失败"
       }
     },
     "receipt": {

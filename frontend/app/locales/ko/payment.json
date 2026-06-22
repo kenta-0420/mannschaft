@@ -102,6 +102,40 @@
         "PENDING": "보류 중",
         "REFUNDED": "환불됨",
         "CANCELLED": "취소됨"
+      },
+      "method": {
+        "CASH": "현금",
+        "BANK_TRANSFER": "계좌이체",
+        "MANUAL": "수동 기록"
+      },
+      "record": {
+        "recordButton": "입금 기록",
+        "title": "입금 기록",
+        "member": "대상 회원",
+        "memberPlaceholder": "회원 선택",
+        "amount": "입금액",
+        "paidAt": "입금일",
+        "method": "결제 수단",
+        "note": "메모",
+        "notePlaceholder": "선택 (최대 500자)",
+        "submit": "기록",
+        "cancel": "취소",
+        "success": "입금을 기록했습니다",
+        "error": "입금 기록에 실패했습니다"
+      },
+      "bulk": {
+        "bulkButton": "일괄 기록",
+        "title": "일괄 기록",
+        "description": "미납 회원을 선택하여 입금을 일괄 기록합니다.",
+        "noUnpaid": "미납 회원이 없습니다",
+        "submit": "{count}건 기록",
+        "error": "일괄 기록에 실패했습니다",
+        "resultSummary": "기록 {created}건 · 건너뜀 {skipped}건"
+      },
+      "cancel": {
+        "button": "취소",
+        "success": "입금을 취소했습니다",
+        "error": "취소에 실패했습니다"
       }
     },
     "receipt": {

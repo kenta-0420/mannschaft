@@ -102,6 +102,40 @@
         "PENDING": "Ausstehend",
         "REFUNDED": "Erstattet",
         "CANCELLED": "Storniert"
+      },
+      "method": {
+        "CASH": "Bargeld",
+        "BANK_TRANSFER": "Banküberweisung",
+        "MANUAL": "Manuelle Erfassung"
+      },
+      "record": {
+        "recordButton": "Zahlung erfassen",
+        "title": "Zahlung erfassen",
+        "member": "Mitglied",
+        "memberPlaceholder": "Mitglied auswählen",
+        "amount": "Gezahlter Betrag",
+        "paidAt": "Zahlungsdatum",
+        "method": "Zahlungsart",
+        "note": "Notiz",
+        "notePlaceholder": "Optional (max. 500 Zeichen)",
+        "submit": "Erfassen",
+        "cancel": "Abbrechen",
+        "success": "Zahlung erfasst",
+        "error": "Zahlung konnte nicht erfasst werden"
+      },
+      "bulk": {
+        "bulkButton": "Sammelerfassung",
+        "title": "Sammelerfassung",
+        "description": "Wähle unbezahlte Mitglieder, um Zahlungen gesammelt zu erfassen.",
+        "noUnpaid": "Keine unbezahlten Mitglieder",
+        "submit": "{count} erfassen",
+        "error": "Sammelerfassung fehlgeschlagen",
+        "resultSummary": "Erstellt {created}, übersprungen {skipped}"
+      },
+      "cancel": {
+        "button": "Stornieren",
+        "success": "Zahlung storniert",
+        "error": "Stornierung fehlgeschlagen"
       }
     },
     "receipt": {

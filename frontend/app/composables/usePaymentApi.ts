@@ -6,6 +6,7 @@ import type {
   MyPaymentResponse,
   MemberPaymentReceiptResponse,
   FeeStatementResponse,
+  BulkPaymentResponse,
 } from '~/types/payment'
 
 export function usePaymentApi() {
@@ -72,10 +73,13 @@ export function usePaymentApi() {
     itemId: number,
     payments: Array<Record<string, unknown>>,
   ) {
-    return api(`${base(scopeType, scopeId)}/payment-items/${itemId}/payments/bulk`, {
-      method: 'POST',
-      body: { payments },
-    })
+    return api<{ data: BulkPaymentResponse }>(
+      `${base(scopeType, scopeId)}/payment-items/${itemId}/payments/bulk`,
+      {
+        method: 'POST',
+        body: { payments },
+      },
+    )
   }
   async function cancelPayment(
     scopeType: 'team' | 'organization',
