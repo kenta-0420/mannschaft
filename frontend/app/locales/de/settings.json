@@ -112,7 +112,8 @@
         "setup_success": "Passwort erfolgreich festgelegt",
         "change_error": "Passwort konnte nicht geändert werden. Bitte überprüfen Sie Ihr aktuelles Passwort",
         "setup_error": "Passwort konnte nicht festgelegt werden"
-      }
+      },
+      "redirecting": "Passwort wurde geändert. Sie werden zur Anmeldeseite weitergeleitet…"
     },
     "locale": {
       "section_title": "Sprache & Zeitzone",
