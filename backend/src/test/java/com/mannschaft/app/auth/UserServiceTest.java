@@ -258,6 +258,46 @@ class UserServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("AUTH_009"));
         }
+
+        @Test
+        @DisplayName("正常系: 3種ちょうど（記号なし）のパスワードが変更時に受理される")
+        void changePassword_3種ちょうど記号なし_受理() {
+            // Given: "Passw0rd1" は 大文字+小文字+数字 = 3種（記号なし）。
+            //   旧ポリシー（4種すべて必須）では弾かれたが、登録時と統一した新ポリシー（3種以上）では受理されること。
+            String newPassword = "Passw0rd1";
+            ChangePasswordRequest req = new ChangePasswordRequest("OldPassword1!", newPassword);
+            UserEntity user = createActiveUser();
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(passwordEncoder.matches("OldPassword1!", ENCODED_PASSWORD)).willReturn(true);
+            given(passwordEncoder.matches(newPassword, ENCODED_PASSWORD)).willReturn(false);
+            given(passwordEncoder.encode(newPassword)).willReturn("$2a$12$newHash");
+            given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> invocation.getArgument(0));
+            given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(USER_ID)).willReturn(List.of());
+
+            // When
+            userService.changePassword(USER_ID, req, TEST_IP);
+
+            // Then: ポリシー違反でスローされず、更新が完了すること
+            verify(userRepository).save(any(UserEntity.class));
+            verify(authTokenService).setUserInvalidationTimestamp(USER_ID);
+        }
+
+        @Test
+        @DisplayName("異常系: 1種のみ（小文字のみ）の弱いパスワードはAUTH_008で拒否される")
+        void changePassword_1種のみ_AUTH008例外() {
+            // Given: "password" は小文字のみ = 1種。新ポリシー（3種以上）でも当然拒否されること。
+            ChangePasswordRequest req = new ChangePasswordRequest("OldPassword1!", "password");
+            UserEntity user = createActiveUser();
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(passwordEncoder.matches("OldPassword1!", ENCODED_PASSWORD)).willReturn(true);
+            given(passwordEncoder.matches("password", ENCODED_PASSWORD)).willReturn(false);
+
+            // When / Then
+            assertThatThrownBy(() -> userService.changePassword(USER_ID, req, TEST_IP))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_008"));
+        }
     }
 
     // ========================================
@@ -427,6 +467,30 @@ class UserServiceTest {
                     .status(UserEntity.UserStatus.ACTIVE)
                     .build();
             String newPassword = "NewPassword1!";
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(oauthUser));
+            given(passwordEncoder.encode(newPassword)).willReturn("$2a$12$newHash");
+            given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+            // When
+            ApiResponse<MessageResponse> response = userService.setupPassword(USER_ID, newPassword);
+
+            // Then
+            assertThat(response.getData().getMessage()).contains("パスワードを設定しました");
+            verify(userRepository).save(any(UserEntity.class));
+        }
+
+        @Test
+        @DisplayName("正常系: 3種ちょうど（記号なし）のパスワードが設定時に受理される")
+        void setupPassword_3種ちょうど記号なし_受理() {
+            // Given: setupPassword も changePassword と同じ統一ポリシー（3種以上）であることを確認する。
+            UserEntity oauthUser = UserEntity.builder()
+                    .email(TEST_EMAIL).passwordHash(null)
+                    .lastName("田中").firstName("花子")
+                    .displayName("hanako").isSearchable(true)
+                    .locale("ja").timezone("Asia/Tokyo")
+                    .status(UserEntity.UserStatus.ACTIVE)
+                    .build();
+            String newPassword = "Passw0rd1"; // 大文字+小文字+数字 = 3種（記号なし）
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(oauthUser));
             given(passwordEncoder.encode(newPassword)).willReturn("$2a$12$newHash");
             given(userRepository.save(any(UserEntity.class))).willAnswer(invocation -> invocation.getArgument(0));

@@ -1,7 +1,26 @@
 import { ofetch } from 'ofetch'
 import { resolveApiBaseUrl } from '~/composables/useApiBaseUrl'
 
-let refreshPromise: Promise<boolean> | null = null
+/**
+ * トークンリフレッシュの結果を表す 3 状態。
+ *
+ * boolean（成功/失敗）だと「本物の認証失敗（refresh_token 無効）」と
+ * 「一時的な失敗（timeout / ネットワーク / 5xx）」が区別できず、回線が遅いだけの
+ * ユーザーを誤ってログアウトさせてしまう。安全のため 3 状態に分離する。
+ *
+ * - 'refreshed'   : 更新成功（新トークンを setTokens 済み）
+ * - 'auth_failed' : refresh エンドポイントが 401/403 ＝ refresh_token が無効な本物の認証失敗
+ * - 'transient'   : timeout / abort / ネットワークエラー / 5xx ＝ 一時的（回線が遅い/詰まっただけ）
+ */
+export type TokenRefreshResult = 'refreshed' | 'auth_failed' | 'transient'
+
+// refresh API のハング保険。15 秒で abort する。
+// これが無いと refresh がハングした際に await が永久 pending となり、
+// 先回り更新を await している async プラグイン（auth.client）が app mount をブロックし、
+// layouts/default.vue の LoadingBounce フォールバックが固着して白画面化する。
+const REFRESH_TIMEOUT_MS = 15_000
+
+let refreshPromise: Promise<TokenRefreshResult> | null = null
 
 /**
  * access_token の先回り／事後リフレッシュを行うモジュールスコープ関数。
@@ -13,17 +32,23 @@ let refreshPromise: Promise<boolean> | null = null
  * config / authStore は引数で受け取る。リクエスト時コンテキスト（イベントハンドラ等）から
  * useRuntimeConfig() / useAuthStore() を呼ぶと Nuxt インスタンスが未解決になる落とし穴が
  * あるため、setup 時に capture したものを必ず渡すこと。
+ *
+ * 返り値は 3 状態（TokenRefreshResult）。呼び出し側は 'transient' でログアウトしないこと。
  */
 export function performTokenRefresh(
   config: ReturnType<typeof useRuntimeConfig>,
   authStore: ReturnType<typeof useAuthStore>,
-): Promise<boolean> {
+): Promise<TokenRefreshResult> {
   // 二重リフレッシュ防止
   if (refreshPromise) {
     return refreshPromise
   }
 
-  refreshPromise = (async () => {
+  refreshPromise = (async (): Promise<TokenRefreshResult> => {
+    // ofetch の timeout オプションに依存せず、確実に abort できるよう自前の
+    // AbortController + setTimeout で 15 秒のハング保険を張る。
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), REFRESH_TIMEOUT_MS)
     try {
       // バックエンドは refresh_token Cookie を読むため、body への refreshToken 送信は不要。
       // credentials: 'include' で Cookie が自動送信される。
@@ -33,13 +58,25 @@ export function performTokenRefresh(
           baseURL: resolveApiBaseUrl(config),
           method: 'POST',
           credentials: 'include',
+          signal: controller.signal,
         },
       )
       authStore.setTokens(data.data.accessToken, data.data.refreshToken)
-      return true
-    } catch {
-      return false
-    } finally {
+      return 'refreshed'
+    }
+    catch (error) {
+      // 401/403/400 ＝ refresh_token が無効な本物の認証失敗。
+      // 400: revoke 済みトークン（パスワード変更・退会・全デバイスログアウト後）でも返される。
+      // それ以外（timeout/abort/ネットワークエラー/レスポンス無し/5xx）は一時的とみなし、
+      // ログアウトさせない（回線が遅いだけのユーザーを誤ってログアウトさせないため）。
+      const status = (error as { response?: { status?: number } })?.response?.status
+      if (status === 400 || status === 401 || status === 403) {
+        return 'auth_failed'
+      }
+      return 'transient'
+    }
+    finally {
+      clearTimeout(timer)
       refreshPromise = null
     }
   })()
@@ -107,13 +144,21 @@ export function useApi() {
         opts._tokenRefreshed = true
 
         if (authStore.user) {
-          const success = await performTokenRefresh(config, authStore)
-          if (!success) {
-            await authStore.logout()
+          const result = await performTokenRefresh(config, authStore)
+          if (result === 'auth_failed') {
+            // refresh_token が無効な本物の認証失敗。ログアウトして /login へ誘導する。
+            // reason=session_expired を付与し、ログイン画面でセッション失効の案内を表示する。
+            await authStore.logout({ reason: 'session_expired' })
             // throw してリトライを中断する（リフレッシュ失敗 = ログアウト済み）
             throw new Error('token_refresh_failed')
           }
-          // throw しない → ofetch が onRequest で新トークンを付与して 1 回リトライ
+          if (result === 'transient') {
+            // timeout / ネットワーク / 5xx の一時的失敗。回線が遅いだけのユーザーを
+            // 誤ってログアウトさせないため、ログアウトせず元のエラーをそのまま伝播させる。
+            // throw すると ofetch はリトライせず、呼び出し元が 401 を受け取って再試行できる。
+            throw new Error('token_refresh_transient')
+          }
+          // 'refreshed': throw しない → ofetch が onRequest で新トークンを付与して 1 回リトライ
           return
         }
         else {

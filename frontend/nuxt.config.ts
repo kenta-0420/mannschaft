@@ -33,9 +33,22 @@ const apiBaseSrc = apiBase
     ? [apiBase, apiBase.replace('http://', 'https://')]
     : [apiBase]
   : []
+
+// プロフィールメディアの presigned PUT はブラウザからストレージ（本番:R2 / ローカル:MinIO）へ
+// 直接 fetch するため connect-src に許可が必要。無いと CSP で Failed to fetch になりアップロード不能。
+// ローカル既定: MinIO http://localhost:9000 / 本番: NUXT_PUBLIC_MEDIA_UPLOAD_ORIGIN に R2 origin を注入。
+// 例: NUXT_PUBLIC_MEDIA_UPLOAD_ORIGIN=https://pub-xxxxx.r2.dev（R2 の公開エンドポイント origin）
+const mediaUploadOrigin = process.env.NUXT_PUBLIC_MEDIA_UPLOAD_ORIGIN ?? 'http://localhost:9000'
+const mediaUploadSrc = mediaUploadOrigin
+  ? mediaUploadOrigin.startsWith('http://')
+    ? [mediaUploadOrigin, mediaUploadOrigin.replace('http://', 'https://')]
+    : [mediaUploadOrigin]
+  : []
+
 const connectSrc = [
   "'self'",
   ...apiBaseSrc,
+  ...mediaUploadSrc,
   'https://fonts.googleapis.com',
   'https://fonts.gstatic.com',
   // STOMP WebSocket（@stomp/stompjs）と dev サーバ HMR。
@@ -155,7 +168,10 @@ export default defineNuxtConfig({
         'font-src': ["'self'", 'https://fonts.gstatic.com', 'data:'],
         // img-src: アバター/アップロード画像/OGP。R2/CDN は環境依存のため https: を許容。
         // @nuxt/image の最適化経路（/_ipx/）は 'self' でカバーされる。
-        'img-src': ["'self'", 'data:', 'blob:', 'https:'],
+        // presigned アップロード後の画像表示元（本番:R2 https / ローカル:MinIO http://localhost:9000）も
+        // 許可する。connect-src だけだと直 PUT は通るが <img> 表示が img-src で CSP ブロックされる
+        // （本番 R2 は https: で既にカバーされるが、ローカル MinIO は http なので mediaUploadSrc が必要）。
+        'img-src': ["'self'", 'data:', 'blob:', 'https:', ...mediaUploadSrc],
         'connect-src': connectSrc,
         // frame-src: PublicMapEmbed.vue の Google Maps 埋め込み。
         // F08.9 P5: Stripe.js の PaymentElement iframe（js.stripe.com）と

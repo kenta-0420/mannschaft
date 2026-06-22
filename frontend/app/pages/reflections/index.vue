@@ -20,6 +20,9 @@ const loading = ref(true)
 const date = ref<string>('')
 const items = ref<ReflectionTodayItem[]>([])
 
+// 使い方モーダル
+const guideVisible = ref(false)
+
 // エントリダイアログ状態
 const dialogVisible = ref(false)
 const dialogThemeId = ref<string>('')
@@ -87,12 +90,24 @@ function onSaved() {
 
 <template>
   <div class="mx-auto max-w-2xl px-4 py-6">
-    <div class="mb-5 flex items-center justify-between">
-      <h1 class="text-xl font-bold">
-        <i class="pi pi-book mr-2 text-primary" />{{ t('reflection.today.heading') }}
-      </h1>
-      <div class="flex items-center gap-1">
+    <PageHeader
+      :title="t('reflection.today.heading')"
+      back-to="/dashboard"
+      :back-label="t('reflection.nav.dashboard')"
+      help
+      @help="guideVisible = true"
+    >
+      <template #actions>
         <Button
+          v-tooltip.bottom="t('reflection.theme.create')"
+          icon="pi pi-plus"
+          text
+          rounded
+          :aria-label="t('reflection.theme.create')"
+          @click="router.push('/reflections/themes?create=1')"
+        />
+        <Button
+          v-tooltip.bottom="t('reflection.nav.themes')"
           icon="pi pi-list"
           text
           rounded
@@ -100,14 +115,15 @@ function onSaved() {
           @click="router.push('/reflections/themes')"
         />
         <Button
+          v-tooltip.bottom="t('reflection.nav.settings')"
           icon="pi pi-cog"
           text
           rounded
           :aria-label="t('reflection.nav.settings')"
           @click="router.push('/reflections/settings')"
         />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <p v-if="date" class="mb-4 text-sm text-surface-500">{{ date }}</p>
 
@@ -117,17 +133,19 @@ function onSaved() {
       <Skeleton height="72px" />
     </div>
 
-    <div v-else-if="items.length === 0" class="rounded-xl border border-dashed border-surface-300 p-8 text-center dark:border-surface-600">
+    <SectionCard v-else-if="items.length === 0" class="text-center">
       <p class="mb-3 text-sm text-surface-500">{{ t('reflection.today.empty') }}</p>
       <Button :label="t('reflection.theme.create')" icon="pi pi-plus" @click="router.push('/reflections/themes?create=1')" />
-    </div>
+    </SectionCard>
 
     <div v-else class="space-y-6">
       <!-- 時間割コマ由来 -->
-      <section v-if="slotItems.length > 0">
-        <h2 class="mb-2 text-sm font-semibold text-surface-600 dark:text-surface-300">
-          {{ t('reflection.today.timetable_slots') }}
-        </h2>
+      <SectionCard v-if="slotItems.length > 0">
+        <template #header>
+          <h2 class="text-sm font-semibold text-surface-600 dark:text-surface-300">
+            {{ t('reflection.today.timetable_slots') }}
+          </h2>
+        </template>
         <div class="space-y-2">
           <ReflectionTodayItemCard
             v-for="(item, i) in slotItems"
@@ -137,13 +155,15 @@ function onSaved() {
             @create-theme="createThemeForSlot"
           />
         </div>
-      </section>
+      </SectionCard>
 
       <!-- 自由テーマ由来（社会人・日記の主導線） -->
-      <section v-if="freeItems.length > 0">
-        <h2 class="mb-2 text-sm font-semibold text-surface-600 dark:text-surface-300">
-          {{ t('reflection.today.free_themes') }}
-        </h2>
+      <SectionCard v-if="freeItems.length > 0">
+        <template #header>
+          <h2 class="text-sm font-semibold text-surface-600 dark:text-surface-300">
+            {{ t('reflection.today.free_themes') }}
+          </h2>
+        </template>
         <div class="space-y-2">
           <ReflectionTodayItemCard
             v-for="(item, i) in freeItems"
@@ -153,7 +173,7 @@ function onSaved() {
             @create-theme="createThemeForSlot"
           />
         </div>
-      </section>
+      </SectionCard>
     </div>
 
     <ReflectionEntryDialog
@@ -163,5 +183,6 @@ function onSaved() {
       :entry="dialogEntry"
       @saved="onSaved"
     />
+    <ReflectionGuideModal v-model:visible="guideVisible" />
   </div>
 </template>

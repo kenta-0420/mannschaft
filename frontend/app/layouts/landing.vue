@@ -17,7 +17,7 @@ const localeLabels: Record<string, string> = {
 </script>
 
 <template>
-  <div class="min-h-screen bg-white dark:bg-surface-900">
+  <div class="min-h-screen dark:bg-surface-900" style="background-color: var(--bg-color, #f3efe0)">
     <!-- スキップリンク -->
     <a
       href="#main-content"

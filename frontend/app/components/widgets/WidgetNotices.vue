@@ -276,7 +276,7 @@ onMounted(async () => {
         <Badge v-if="unreadCount > 0" :value="unreadCount" severity="danger" />
         <Button v-if="unreadCount > 0" label="全て既読" text size="small" @click="onMarkAllRead" />
       </div>
-      <div class="divide-y divide-surface-100 dark:divide-surface-700">
+      <div class="divide-y divide-surface-300 dark:divide-surface-600">
         <div
           v-for="notice in notices"
           :key="notice.id"

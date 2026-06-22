@@ -4,7 +4,8 @@
     "nav": {
       "today": "Heutige Rückblicke",
       "themes": "Themen",
-      "settings": "Benachrichtigungseinstellungen"
+      "settings": "Benachrichtigungseinstellungen",
+      "dashboard": "Dashboard"
     },
     "widget": {
       "pending_recall": "Abruf ausstehend",
@@ -25,7 +26,11 @@
       "open_recall": "Abruftest",
       "masked_badge": "Abruf ausstehend",
       "has_entry": "Geschrieben",
-      "period_label": "{period}. Stunde"
+      "period_label": "{period}. Stunde",
+      "main_theme_label": "Hauptthema",
+      "created_at_label": "Erstellt am",
+      "last_reflected_label": "Zuletzt reflektiert",
+      "never_reflected": "Noch nicht"
     },
     "theme": {
       "list_heading": "Themen",
@@ -46,7 +51,12 @@
       "recall_interval_label": "Abrufintervall",
       "recall_interval_fixed": "Abruftest {days} Tage später (fest)",
       "open": "Öffnen",
-      "view_entries": "Rückblicke ansehen"
+      "view_entries": "Rückblicke ansehen",
+      "subject_link_label": "Fach verknüpfen",
+      "subject_link_none": "Keine Verknüpfung",
+      "subject_link_placeholder": "Fach aus dem Stundenplan auswählen",
+      "subject_link_help": "Dieses Thema wird für alle Stunden des gewählten Fachs in der Tagesansicht angezeigt",
+      "subject_link_empty": "Kein Stundenplan eingetragen"
     },
     "source_type": {
       "SUBJECT": "Unterricht",
@@ -171,6 +181,29 @@
       "close": "Schließen",
       "loading": "Lädt...",
       "load_failed": "Laden fehlgeschlagen"
+    },
+    "guide": {
+      "page_title": "So verwendest du das aktive Abruflernen",
+      "what": {
+        "title": "Was ist aktives Abruflernen?",
+        "body": "Aktives Abrufen ist eine Lernmethode, die das Gedächtnis stärkt, indem du aktiv das Gelernte abrufst. Schreibe heute deinen Rückblick und versuche ab dem nächsten Tag, den Inhalt aus der Erinnerung wiederzugeben, bevor du die Antworten überprüfst."
+      },
+      "theme": {
+        "title": "Ein Thema erstellen",
+        "body": "Ein «Thema» ist die Grundeinheit deiner Rückblicke. Erstelle Themen für Unterrichtsfächer, Qualifikationen, Projekte, ein Tagebuch oder alles, was du regelmäßig wiederholen möchtest. Du kannst ein Thema mit einer Stunde im Stundenplan verknüpfen oder es als freies Thema verwenden."
+      },
+      "today": {
+        "title": "Den heutigen Rückblick schreiben",
+        "body": "In der Ansicht «Heutige Rückblicke» werden die Stunden und Themen des Tages aufgelistet. Öffne jede Karte, notiere, was du gelernt hast und welche Erkenntnisse du gewonnen hast, und speichere."
+      },
+      "recall": {
+        "title": "Abruftest (aktives Erinnern)",
+        "body": "Ab dem nächsten Tag wird der von dir geschriebene Inhalt automatisch verborgen. Versuche, ihn mit eigenen Worten abzurufen, und überprüfe dann deine Antworten. Die Anstrengung des Erinnerns stärkt dein Gedächtnis."
+      },
+      "reminder": {
+        "title": "Erinnerungen und Kalender",
+        "body": "Du erhältst Benachrichtigungen, wenn es Zeit ist, zu wiederholen. Tage, an denen du einen Rückblick geschrieben hast, werden in Mein Kalender markiert, sodass du deinen Fortschritt auf einen Blick siehst."
+      }
     }
   }
 }

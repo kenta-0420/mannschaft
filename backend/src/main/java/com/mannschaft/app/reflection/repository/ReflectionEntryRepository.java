@@ -47,4 +47,26 @@ public interface ReflectionEntryRepository extends JpaRepository<ReflectionEntry
             nativeQuery = true)
     Optional<ReflectionEntryEntity> findIncludingDeletedByThemeIdAndTargetDate(
             @Param("themeId") UUID themeId, @Param("targetDate") LocalDate targetDate);
+
+    /**
+     * テーマごとの最新エントリ targetDate を GROUP BY 1 クエリで一括取得（AC-26/AC-27）。
+     *
+     * <p>{@code @SQLRestriction("deleted_at IS NULL")} が Entity に設定されているため、
+     * JPQL クエリには論理削除済みエントリが含まれない（生存エントリのみが対象）。</p>
+     *
+     * @param themeIds 対象テーマIDのコレクション（空の場合は呼び出さないこと・N+1 回避）
+     * @return テーマID と最新 targetDate のプロジェクションリスト
+     */
+    @Query("SELECT e.themeId AS themeId, MAX(e.targetDate) AS lastDate "
+         + "FROM ReflectionEntryEntity e WHERE e.themeId IN :themeIds GROUP BY e.themeId")
+    List<ThemeLastDateView> findLatestTargetDateByThemeIds(
+            @Param("themeIds") java.util.Collection<UUID> themeIds);
+
+    /**
+     * {@link #findLatestTargetDateByThemeIds} の結果プロジェクション（AC-26）。
+     */
+    interface ThemeLastDateView {
+        UUID getThemeId();
+        LocalDate getLastDate();
+    }
 }

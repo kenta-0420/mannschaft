@@ -16,6 +16,7 @@ const { captureQuiet } = useErrorReport()
 interface ThreadWithScope extends BulletinThreadResponse {
   scopeName: string
   scopeId: string
+  scopeSlug: string
 }
 
 const threads = ref<ThreadWithScope[]>([])
@@ -41,6 +42,7 @@ async function load() {
               ...t,
               scopeName: org.nickname1 || org.name,
               scopeId: String(org.id),
+              scopeSlug: org.slug,
             })),
           )
           .catch((error) => {
@@ -77,11 +79,11 @@ onMounted(load)
     <div v-else-if="threads.length === 0">
       <DashboardEmptyState icon="pi pi-clipboard" message="組織からのお知らせはありません" />
     </div>
-    <div v-else class="divide-y divide-surface-100 dark:divide-surface-700">
+    <div v-else class="divide-y divide-surface-300 dark:divide-surface-600">
       <NuxtLink
         v-for="thread in threads"
         :key="`${thread.scopeType}-${thread.id}`"
-        :to="`/organizations/${thread.scopeId}/bulletin`"
+        :to="`/organizations/${thread.scopeSlug}/bulletin`"
         class="flex items-start gap-2 py-2.5 transition-colors hover:bg-surface-50 dark:hover:bg-surface-700/50"
       >
         <i v-if="thread.isPinned" class="pi pi-thumbtack mt-0.5 shrink-0 text-xs text-orange-500" />
@@ -118,11 +120,11 @@ onMounted(load)
     <div v-else-if="threads.length === 0">
       <DashboardEmptyState icon="pi pi-clipboard" message="組織からのお知らせはありません" />
     </div>
-    <div v-else class="divide-y divide-surface-100 dark:divide-surface-700">
+    <div v-else class="divide-y divide-surface-300 dark:divide-surface-600">
       <NuxtLink
         v-for="thread in threads"
         :key="`${thread.scopeType}-${thread.id}`"
-        :to="`/organizations/${thread.scopeId}/bulletin`"
+        :to="`/organizations/${thread.scopeSlug}/bulletin`"
         class="flex items-start gap-2 py-2.5 transition-colors hover:bg-surface-50 dark:hover:bg-surface-700/50"
       >
         <i v-if="thread.isPinned" class="pi pi-thumbtack mt-0.5 shrink-0 text-xs text-orange-500" />

@@ -10,7 +10,7 @@
  * - SSR フェーズ: Cookie (i18n_locale) からロケールを確定
  * - クライアントフェーズ: このプラグインが authStore のロケールで上書き（一致を保証）
  */
-export default defineNuxtPlugin(async (nuxtApp) => {
+export default defineNuxtPlugin((nuxtApp) => {
   const authStore = useAuthStore()
   // auth.client.ts が loadFromStorage() で user を復元した後なので、
   // user.locale が存在すれば i18n に反映する。
@@ -23,6 +23,12 @@ export default defineNuxtPlugin(async (nuxtApp) => {
     | { locale: { value: string }; setLocale: (code: string) => Promise<void> }
     | undefined
   if (i18n && i18n.locale.value !== userLocale) {
-    await i18n.setLocale(userLocale)
+    // setLocale 自体は必ず呼ぶ（リロード後の lang 追従を壊さない）が、
+    // ロケールチャンク取得のハング/失敗で app mount をブロックしないよう
+    // 非ブロッキング化（await しない）＋ 失敗は握って mount を止めない。
+    // ※ auth.client と同型の async プラグイン mount ブロック保険（#1763/#1775 の類似既往）。
+    void i18n.setLocale(userLocale).catch((error) => {
+      console.error('[locale.client] setLocale failed:', error)
+    })
   }
 })
