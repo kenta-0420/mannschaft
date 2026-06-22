@@ -4,7 +4,8 @@
     "nav": {
       "today": "Heutige Rückblicke",
       "themes": "Themen",
-      "settings": "Benachrichtigungseinstellungen"
+      "settings": "Benachrichtigungseinstellungen",
+      "dashboard": "Dashboard"
     },
     "widget": {
       "pending_recall": "Abruf ausstehend",
@@ -171,6 +172,29 @@
       "close": "Schließen",
       "loading": "Lädt...",
       "load_failed": "Laden fehlgeschlagen"
+    },
+    "guide": {
+      "page_title": "So verwendest du das aktive Abruflernen",
+      "what": {
+        "title": "Was ist aktives Abruflernen?",
+        "body": "Aktives Abrufen ist eine Lernmethode, die das Gedächtnis stärkt, indem du aktiv das Gelernte abrufst. Schreibe heute deinen Rückblick und versuche ab dem nächsten Tag, den Inhalt aus der Erinnerung wiederzugeben, bevor du die Antworten überprüfst."
+      },
+      "theme": {
+        "title": "Ein Thema erstellen",
+        "body": "Ein «Thema» ist die Grundeinheit deiner Rückblicke. Erstelle Themen für Unterrichtsfächer, Qualifikationen, Projekte, ein Tagebuch oder alles, was du regelmäßig wiederholen möchtest. Du kannst ein Thema mit einer Stunde im Stundenplan verknüpfen oder es als freies Thema verwenden."
+      },
+      "today": {
+        "title": "Den heutigen Rückblick schreiben",
+        "body": "In der Ansicht «Heutige Rückblicke» werden die Stunden und Themen des Tages aufgelistet. Öffne jede Karte, notiere, was du gelernt hast und welche Erkenntnisse du gewonnen hast, und speichere."
+      },
+      "recall": {
+        "title": "Abruftest (aktives Erinnern)",
+        "body": "Ab dem nächsten Tag wird der von dir geschriebene Inhalt automatisch verborgen. Versuche, ihn mit eigenen Worten abzurufen, und überprüfe dann deine Antworten. Die Anstrengung des Erinnerns stärkt dein Gedächtnis."
+      },
+      "reminder": {
+        "title": "Erinnerungen und Kalender",
+        "body": "Du erhältst Benachrichtigungen, wenn es Zeit ist, zu wiederholen. Tage, an denen du einen Rückblick geschrieben hast, werden in Mein Kalender markiert, sodass du deinen Fortschritt auf einen Blick siehst."
+      }
     }
   }
 }

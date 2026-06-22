@@ -5,6 +5,7 @@ import com.mannschaft.app.family.repository.UserCareLinkRepository;
 import com.mannschaft.app.gdpr.GdprErrorCode;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.role.entity.RoleEntity;
@@ -16,7 +17,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -462,6 +466,25 @@ public class AccessControlService {
         if (!linked) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
+    }
+
+    /**
+     * 指定スコープ種別でユーザーが現在 ACTIVE 所属している scopeId → joinedAt のマップを返す。
+     * 所属一覧 API（MeController）が membership 由来の所属を列挙するための Service 窓口。
+     * 他ドメインから membership.entity を直接参照させないための境界（D-1 クロスドメイン entity 依存の遮断）。
+     */
+    public Map<Long, LocalDateTime> findActiveMembershipJoinedAtByScope(Long userId, String scopeType) {
+        ScopeType scope = ScopeType.valueOf(scopeType);
+        Map<Long, LocalDateTime> result = new LinkedHashMap<>();
+        for (MembershipEntity m : membershipRepository.findActiveByUserAndScopeType(userId, scope)) {
+            result.putIfAbsent(m.getScopeId(), m.getJoinedAt());
+        }
+        return result;
+    }
+
+    /** 指定スコープの ACTIVE な distinct ユーザー数を返す（membership 基準）。 */
+    public int countActiveDistinctMembers(String scopeType, Long scopeId) {
+        return (int) membershipRepository.countActiveDistinctUsersByScope(ScopeType.valueOf(scopeType), scopeId);
     }
 
     // ========================================
