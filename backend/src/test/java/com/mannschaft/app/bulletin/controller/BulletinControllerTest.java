@@ -276,7 +276,7 @@ class BulletinControllerTest {
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(response.getBody().getData().getContent().title()).isEqualTo("テストスレッド");
+            assertThat(response.getBody().getData().getTitle()).isEqualTo("テストスレッド");
         }
 
         @Test

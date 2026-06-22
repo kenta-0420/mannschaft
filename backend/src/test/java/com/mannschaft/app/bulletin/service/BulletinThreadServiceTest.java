@@ -1416,7 +1416,7 @@ class BulletinThreadServiceTest {
                             new Object[]{THREAD_ID, "👍", 3L},
                             new Object[]{THREAD_ID, "❤️", 1L}));
             given(reactionRepository.findUserReactionsByTargetIds(eq(TargetType.THREAD), any(), eq(USER_ID)))
-                    .willReturn(List.of(new Object[]{THREAD_ID, "👍"}));
+                    .willReturn(List.<Object[]>of(new Object[]{THREAD_ID, "👍"}));
 
             List<ThreadResponse> result = bulletinThreadService.enrichThreads(List.of(t1), USER_ID);
 
