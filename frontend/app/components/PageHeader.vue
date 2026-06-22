@@ -45,18 +45,21 @@ const titleClass = computed(() =>
     <BackButton v-if="back" :to="backTo" :label="backLabel" />
     <div class="mb-6 flex items-end gap-3" v-bind="$attrs">
       <h1 :class="titleClass">{{ title }}</h1>
+      <!-- 既定スロットはタイトルのすぐ右（インラインのバッジ/タグ用。後方互換のため位置・挙動を変えない） -->
       <slot />
-      <!-- 「？使い方」ボタンは戻ると同じ流儀で内蔵し、ml-auto で右寄せにする -->
-      <Button
-        v-if="help"
-        class="ml-auto"
-        icon="pi pi-question-circle"
-        :label="helpLabel ?? t('button.help')"
-        text
-        size="small"
-        data-testid="page-header-help"
-        @click="emit('help')"
-      />
+      <!-- 「？使い方」と #actions を ml-auto の右寄せグループにまとめる。並び順は help → actions -->
+      <div v-if="help || $slots.actions" class="ml-auto flex items-center gap-2">
+        <Button
+          v-if="help"
+          icon="pi pi-question-circle"
+          :label="helpLabel ?? t('button.help')"
+          text
+          size="small"
+          data-testid="page-header-help"
+          @click="emit('help')"
+        />
+        <slot name="actions" />
+      </div>
     </div>
   </div>
 </template>
