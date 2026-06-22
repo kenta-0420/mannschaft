@@ -51,7 +51,12 @@
       "recall_interval_label": "Abrufintervall",
       "recall_interval_fixed": "Abruftest {days} Tage später (fest)",
       "open": "Öffnen",
-      "view_entries": "Rückblicke ansehen"
+      "view_entries": "Rückblicke ansehen",
+      "subject_link_label": "Fach verknüpfen",
+      "subject_link_none": "Keine Verknüpfung",
+      "subject_link_placeholder": "Fach aus dem Stundenplan auswählen",
+      "subject_link_help": "Dieses Thema wird für alle Stunden des gewählten Fachs in der Tagesansicht angezeigt",
+      "subject_link_empty": "Kein Stundenplan eingetragen"
     },
     "source_type": {
       "SUBJECT": "Unterricht",

@@ -7,9 +7,11 @@ const { t } = useI18n()
 const notification = useNotification()
 const { resolveMessage } = useErrorHandler()
 const { getProfile, changePassword, setupPassword } = useUserSettingsApi()
+const authStore = useAuthStore()
 
 const loading = ref(true)
 const submitting = ref(false)
+const redirecting = ref(false)
 const hasPassword = ref(true)
 
 const form = ref({
@@ -84,7 +86,12 @@ async function handleSubmit() {
         newPassword: form.value.newPassword,
       })
       form.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
+      // パスワード変更後はBEが全リフレッシュトークンを失効させるため、
+      // 先手を打ってログアウトし /login へ誘導する（大量の401/429発生を防ぐ）。
+      // トーストは短時間表示されてからログイン画面に切り替わる。
       notification.success(t('settings.password.toast.change_success'))
+      redirecting.value = true
+      await authStore.logout({ reason: 'password_changed' })
     } else {
       await setupPassword(form.value.newPassword)
       hasPassword.value = true
@@ -101,6 +108,19 @@ async function handleSubmit() {
 
 <template>
   <div class="mx-auto max-w-2xl">
+    <!-- パスワード変更後のリダイレクト中オーバーレイ -->
+    <Teleport to="body">
+      <div
+        v-if="redirecting"
+        class="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-4 bg-black/60 dark:bg-black/75"
+      >
+        <LoadingBounce />
+        <p class="text-sm font-medium text-white">
+          {{ t('settings.password.redirecting') }}
+        </p>
+      </div>
+    </Teleport>
+
     <PageHeader
       :title="hasPassword ? t('settings.password.section_title_change') : t('settings.password.section_title_set')"
       back-to="/settings"

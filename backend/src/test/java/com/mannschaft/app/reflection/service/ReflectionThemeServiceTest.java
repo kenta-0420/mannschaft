@@ -75,7 +75,7 @@ class ReflectionThemeServiceTest {
                 .willReturn((long) ReflectionConstants.MAX_THEMES_PER_USER);
 
         assertThatThrownBy(() -> service.createTheme(USER_ID,
-                new CreateReflectionThemeRequest("数学", null, null, null, null, null)))
+                new CreateReflectionThemeRequest("数学", null, null, null, null, null, null, null)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ReflectionErrorCode.REFLECTION_THEME_LIMIT_EXCEEDED);
@@ -95,7 +95,7 @@ class ReflectionThemeServiceTest {
         LocalDate exam = LocalDate.now().plusDays(30);
 
         service.createTheme(USER_ID,
-                new CreateReflectionThemeRequest("数学", null, null, null, null, exam));
+                new CreateReflectionThemeRequest("数学", null, null, null, null, exam, null, null));
 
         verify(reminderService).generatePreExamReminders(any(ReflectionThemeEntity.class));
     }
@@ -120,7 +120,7 @@ class ReflectionThemeServiceTest {
         LocalDate newExam = LocalDate.now().plusDays(40);
 
         service.updateTheme(USER_ID, THEME_ID,
-                new UpdateReflectionThemeRequest(null, null, null, newExam, false));
+                new UpdateReflectionThemeRequest(null, null, null, newExam, false, null, null, false));
 
         verify(reminderService).cancelPendingPreExamForTheme(THEME_ID);
         verify(reminderService).generatePreExamReminders(theme);
@@ -135,11 +135,65 @@ class ReflectionThemeServiceTest {
         given(themeRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         service.updateTheme(USER_ID, THEME_ID,
-                new UpdateReflectionThemeRequest(null, null, null, null, true));
+                new UpdateReflectionThemeRequest(null, null, null, null, true, null, null, false));
 
         assertThat(theme.getExamDate()).isNull();
         verify(reminderService).cancelPendingPreExamForTheme(THEME_ID);
         verify(reminderService, never()).generatePreExamReminders(any());
+    }
+
+    // ===== Phase 2: AC-28 科目名紐づけ保存・更新・クリア =====
+
+    @Test
+    @DisplayName("AC-28: createTheme で linkedSubjectName/linkedCourseCode が保存される")
+    void createTheme_withLinkedSubject_saved() {
+        given(themeRepository.countByUserId(USER_ID)).willReturn(0L);
+        given(themeRepository.save(any())).willAnswer(inv -> {
+            ReflectionThemeEntity t = inv.getArgument(0);
+            setId(t, THEME_ID);
+            return t;
+        });
+
+        ReflectionThemeResponse result = service.createTheme(USER_ID,
+                new CreateReflectionThemeRequest("数学テーマ", null, null, null, null, null,
+                        "数学I", "MA101"));
+
+        assertThat(result.linkedSubjectName()).isEqualTo("数学I");
+        assertThat(result.linkedCourseCode()).isEqualTo("MA101");
+    }
+
+    @Test
+    @DisplayName("AC-28: updateTheme で linkedSubjectName/linkedCourseCode が更新される")
+    void updateTheme_withLinkedSubject_updated() {
+        ReflectionThemeEntity theme = ownedTheme(null);
+        given(themeRepository.findByIdAndUserId(THEME_ID, USER_ID)).willReturn(Optional.of(theme));
+        given(themeRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+        ReflectionThemeResponse result = service.updateTheme(USER_ID, THEME_ID,
+                new UpdateReflectionThemeRequest(null, null, null, null, false,
+                        "数学II", "MA201", false));
+
+        assertThat(theme.getLinkedSubjectName()).isEqualTo("数学II");
+        assertThat(theme.getLinkedCourseCode()).isEqualTo("MA201");
+        assertThat(result.linkedSubjectName()).isEqualTo("数学II");
+        assertThat(result.linkedCourseCode()).isEqualTo("MA201");
+    }
+
+    @Test
+    @DisplayName("AC-28: updateTheme で clearLinkedSubject=true にすると NULL クリアされる")
+    void updateTheme_clearLinkedSubject_clearsToNull() {
+        ReflectionThemeEntity theme = ownedTheme(null);
+        // 事前にsubject紐づけを設定
+        theme.setLinkedSubject("数学I", "MA101");
+        given(themeRepository.findByIdAndUserId(THEME_ID, USER_ID)).willReturn(Optional.of(theme));
+        given(themeRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+        service.updateTheme(USER_ID, THEME_ID,
+                new UpdateReflectionThemeRequest(null, null, null, null, false,
+                        null, null, true));
+
+        assertThat(theme.getLinkedSubjectName()).isNull();
+        assertThat(theme.getLinkedCourseCode()).isNull();
     }
 
     @Test
