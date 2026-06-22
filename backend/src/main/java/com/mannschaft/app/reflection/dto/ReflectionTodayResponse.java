@@ -24,14 +24,17 @@ public record ReflectionTodayResponse(
     /**
      * 今日ビューの 1 item（コマ or 自由テーマ）。
      *
-     * @param slotKind      時間割スロット種別（"TEAM"/"PERSONAL"・自由テーマ由来は null）
-     * @param slotId        時間割スロットID（自由テーマ由来は null）
-     * @param periodLabel   時限ラベル（例 "1限"・自由テーマ由来は null）
-     * @param subjectName   科目名／コマ名（自由テーマ由来はテーマ名）
-     * @param themeId       対応するテーマID（未設定の空きコマは null）
-     * @param hasEntryToday 当日エントリが存在するか
-     * @param entryId       当日エントリID（無ければ null）
-     * @param isMasked      当日エントリがマスク中か（当日は通常 false・§3.1 step0）
+     * @param slotKind        時間割スロット種別（"TEAM"/"PERSONAL"・自由テーマ由来は null）
+     * @param slotId          時間割スロットID（自由テーマ由来は null）
+     * @param periodLabel     時限ラベル（例 "1限"・自由テーマ由来は null）
+     * @param subjectName     科目名／コマ名（自由テーマ由来はテーマ名）
+     * @param themeId         対応するテーマID（未設定の空きコマは null）
+     * @param hasEntryToday   当日エントリが存在するか
+     * @param entryId         当日エントリID（無ければ null）
+     * @param isMasked        当日エントリがマスク中か（当日は通常 false・§3.1 step0）
+     * @param themeTitle      テーマ名（AC-25・空きコマは null）
+     * @param themeCreatedAt  テーマの初回作成日（AC-25・空きコマは null）
+     * @param lastReflectedAt 当該テーマで最後に記入した日（最新エントリの targetDate・AC-26・未記入 or 空きコマは null）
      */
     @Builder
     public record ReflectionTodayItem(
@@ -42,7 +45,10 @@ public record ReflectionTodayResponse(
             String themeId,
             boolean hasEntryToday,
             String entryId,
-            boolean isMasked
+            boolean isMasked,
+            String themeTitle,
+            java.time.LocalDate themeCreatedAt,
+            java.time.LocalDate lastReflectedAt
     ) {
     }
 }

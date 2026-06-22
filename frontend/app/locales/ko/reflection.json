@@ -26,7 +26,11 @@
       "open_recall": "상기 테스트",
       "masked_badge": "상기 대기",
       "has_entry": "작성됨",
-      "period_label": "{period}교시"
+      "period_label": "{period}교시",
+      "main_theme_label": "메인 테마",
+      "created_at_label": "최초 생성",
+      "last_reflected_label": "마지막 회고",
+      "never_reflected": "아직 없음"
     },
     "theme": {
       "list_heading": "테마 목록",
