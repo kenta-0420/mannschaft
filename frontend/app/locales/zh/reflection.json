@@ -51,7 +51,12 @@
       "recall_interval_label": "回忆间隔",
       "recall_interval_fixed": "{days}天后进行回忆测试（固定）",
       "open": "打开",
-      "view_entries": "查看回顾"
+      "view_entries": "查看回顾",
+      "subject_link_label": "关联科目",
+      "subject_link_none": "不关联",
+      "subject_link_placeholder": "从课程表科目中选择",
+      "subject_link_help": "所选科目的全部课时将在今日视图中显示此主题",
+      "subject_link_empty": "尚未注册课程表"
     },
     "source_type": {
       "SUBJECT": "课程",

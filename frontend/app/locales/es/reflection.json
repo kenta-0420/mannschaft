@@ -51,7 +51,12 @@
       "recall_interval_label": "Intervalo de recuerdo",
       "recall_interval_fixed": "Prueba de recuerdo {days} días después (fijo)",
       "open": "Abrir",
-      "view_entries": "Ver reflexiones"
+      "view_entries": "Ver reflexiones",
+      "subject_link_label": "Vincular a asignatura",
+      "subject_link_none": "Sin vínculo",
+      "subject_link_placeholder": "Seleccionar de las asignaturas del horario",
+      "subject_link_help": "Este tema aparecerá en todas las clases de la asignatura seleccionada en la vista de hoy",
+      "subject_link_empty": "No hay horario registrado"
     },
     "source_type": {
       "SUBJECT": "Clase",

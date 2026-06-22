@@ -12,6 +12,7 @@ import com.mannschaft.app.timetable.notes.repository.TimetableSlotUserNoteAttach
 import com.mannschaft.app.timetable.notes.repository.TimetableSlotUserNoteRepository;
 import com.mannschaft.app.timetable.personal.PersonalTimetableStatus;
 import com.mannschaft.app.timetable.personal.dto.DashboardTimetableTodayResponse;
+import com.mannschaft.app.timetable.personal.dto.TimetableWeekSlotInfo;
 import com.mannschaft.app.timetable.personal.entity.PersonalTimetableEntity;
 import com.mannschaft.app.timetable.personal.entity.PersonalTimetablePeriodEntity;
 import com.mannschaft.app.timetable.personal.entity.PersonalTimetableSlotEntity;
@@ -33,8 +34,11 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * F03.15 Phase 3 ダッシュボード集約サービス。
@@ -61,6 +65,92 @@ public class PersonalTimetableDashboardService {
     private final TimetableSlotUserNoteAttachmentRepository attachmentRepository;
     private final UserRoleRepository userRoleRepository;
     private final TimetableChangeRepository timetableChangeRepository;
+
+    /**
+     * F06.5 Phase 2: 本人の週全体の時間割スロットを科目単位で重複排除した情報を返す（§11.3）。
+     *
+     * <p>母集合: 本人の「ACTIVE かつ today が effective 期間内」の個人時間割の全曜日スロット
+     * ＋ 所属 TEAM の全曜日スロット。メモ・臨時変更・添付カウント等の重い副問い合わせを含めない<b>軽量版</b>。
+     * dedup キー = {@code (kind, subjectName, courseCode)}。subjectName が空・NULL のコマは除外。
+     * 返り型は {@link TimetableWeekSlotInfo}（timetable ドメイン内部DTO）。
+     * reflection ドメインへのマッピングは呼び出し元（{@code ReflectionLinkableSlotService}）が担う。</p>
+     *
+     * @param userId 対象ユーザー
+     * @param today  今日の日付（effective 期間判定の基準日）
+     * @return 重複排除済みスロット情報一覧（時間割ゼロの場合は空リスト）
+     */
+    public List<TimetableWeekSlotInfo> listAllWeekSlots(Long userId, LocalDate today) {
+        // dedup 管理: キー = "kind:subjectName:courseCode"
+        Set<String> seenKeys = new LinkedHashSet<>();
+        List<TimetableWeekSlotInfo> result = new ArrayList<>();
+
+        // ---- PERSONAL: 自分の ACTIVE・today effective 範囲内の個人時間割の全曜日スロット ----
+        List<PersonalTimetableEntity> activePersonals = personalTimetableRepository
+                .findByUserIdAndStatusAndDeletedAtIsNull(userId, PersonalTimetableStatus.ACTIVE);
+        for (PersonalTimetableEntity personal : activePersonals) {
+            if (personal.getEffectiveFrom() != null && today.isBefore(personal.getEffectiveFrom())) continue;
+            if (personal.getEffectiveUntil() != null && today.isAfter(personal.getEffectiveUntil())) continue;
+
+            // 全曜日・全時限のスロットをまとめて取得（重い副問い合わせなし）
+            List<PersonalTimetableSlotEntity> slots = personalSlotRepository
+                    .findByPersonalTimetableIdOrderByDayOfWeekAscPeriodNumberAsc(personal.getId());
+
+            // periodLabel 用に period マップを取得
+            Map<Integer, PersonalTimetablePeriodEntity> periodMap = personalPeriodRepository
+                    .findByPersonalTimetableIdOrderByPeriodNumberAsc(personal.getId())
+                    .stream()
+                    .collect(java.util.stream.Collectors.toMap(
+                            PersonalTimetablePeriodEntity::getPeriodNumber, p -> p, (a, b) -> a));
+
+            for (PersonalTimetableSlotEntity slot : slots) {
+                String subjectName = slot.getSubjectName();
+                if (subjectName == null || subjectName.isBlank()) continue;
+                String courseCode = slot.getCourseCode();
+                String key = "PERSONAL:" + subjectName + ":" + Objects.toString(courseCode, "");
+                if (seenKeys.add(key)) {
+                    PersonalTimetablePeriodEntity period = periodMap.get(slot.getPeriodNumber());
+                    result.add(new TimetableWeekSlotInfo(
+                            "PERSONAL",
+                            slot.getId(),
+                            subjectName,
+                            courseCode,
+                            slot.getTeacherName(),
+                            period != null ? period.getLabel() : null
+                    ));
+                }
+            }
+        }
+
+        // ---- TEAM: 所属チームの ACTIVE 時間割（today effective）の全曜日スロット ----
+        List<Long> joinedTeamIds = listJoinedTeamIds(userId);
+        for (Long teamId : joinedTeamIds) {
+            List<TimetableEntity> active = teamTimetableRepository.findEffective(teamId, today);
+            for (TimetableEntity timetable : active) {
+                for (String dow : WEEK_DOWS) {
+                    List<TimetableSlotEntity> slots = teamSlotRepository
+                            .findByTimetableIdAndDayOfWeek(timetable.getId(), dow);
+                    for (TimetableSlotEntity slot : slots) {
+                        String subjectName = slot.getSubjectName();
+                        if (subjectName == null || subjectName.isBlank()) continue;
+                        // TEAM は courseCode なし → キーは subjectName のみ
+                        String key = "TEAM:" + subjectName;
+                        if (seenKeys.add(key)) {
+                            result.add(new TimetableWeekSlotInfo(
+                                    "TEAM",
+                                    slot.getId(),
+                                    subjectName,
+                                    null,          // TEAM は courseCode 常に null
+                                    slot.getTeacherName(),
+                                    null           // TEAM は periodLabel なし
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
 
     /**
      * 「今日の時間割」を取得する。
