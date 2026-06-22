@@ -1,5 +1,4 @@
 export function useAccountProfile() {
-  const api = useApi()
   const notification = useNotification()
   const { t } = useI18n()
   const { resolveMessage } = useErrorHandler()
