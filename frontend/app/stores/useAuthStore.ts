@@ -147,7 +147,15 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    async logout() {
+    /**
+     * ログアウト処理。state/localStorage/PWAキャッシュを掃除して /login へ遷移する。
+     *
+     * @param options.reason - ログイン画面に表示する遷移理由。
+     *   - 'session_expired': セッション失効（refresh_token 無効。他タブやメール変更・退会後など）
+     *   - 'password_changed': パスワード変更後の能動的ログアウト（password.vue から呼ばれる）
+     *   省略時は従来どおり /login へ遷移（後方互換）。
+     */
+    async logout(options?: { reason?: string }) {
       this.accessToken = null
       this.refreshToken = null
       this.user = null
@@ -175,7 +183,8 @@ export const useAuthStore = defineStore('auth', {
         await this.clearUserCaches()
       }
       useChatTabsStore().clearAll()
-      navigateTo('/login')
+      const loginPath = options?.reason ? `/login?reason=${options.reason}` : '/login'
+      navigateTo(loginPath)
     },
 
     async serverLogout() {
