@@ -42,7 +42,13 @@
     "myShift": "Mi Turno",
     "myPage": "Mi Página",
     "qa": "P&R",
-    "blog": "Blog"
+    "blog": "Blog",
+    "reservations": "Reservas",
+    "wallet": "Tarjetas de puntos",
+    "inbox": "Bandeja de entrada",
+    "market": "Mercado",
+    "jobs": "Empleos",
+    "matching": "Matching"
   },
   "settings": {
     "navigation": {
