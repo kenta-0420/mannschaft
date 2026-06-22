@@ -1,5 +1,5 @@
 export type PaymentItemType = 'ANNUAL_FEE' | 'MONTHLY_FEE' | 'ITEM' | 'DONATION' | 'TERM'
-export type PaymentMethod = 'STRIPE' | 'MANUAL'
+export type PaymentMethod = 'STRIPE' | 'MANUAL' | 'CASH' | 'BANK_TRANSFER'
 export type PaymentStatus = 'PENDING' | 'PAID' | 'REFUNDED' | 'CANCELLED'
 /** F08.9 P8: member_payments の集計3区分。valid_until + grace_period_days < CURDATE() を EXPIRED とする。 */
 export type MemberPaymentDisplayStatus = 'UNPAID' | 'PAID' | 'EXPIRED'

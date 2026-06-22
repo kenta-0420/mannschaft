@@ -102,6 +102,40 @@
         "PENDING": "Pending",
         "REFUNDED": "Refunded",
         "CANCELLED": "Cancelled"
+      },
+      "method": {
+        "CASH": "Cash",
+        "BANK_TRANSFER": "Bank transfer",
+        "MANUAL": "Manual record"
+      },
+      "record": {
+        "recordButton": "Record payment",
+        "title": "Record payment",
+        "member": "Member",
+        "memberPlaceholder": "Select a member",
+        "amount": "Amount paid",
+        "paidAt": "Payment date",
+        "method": "Payment method",
+        "note": "Note",
+        "notePlaceholder": "Optional (max 500 chars)",
+        "submit": "Record",
+        "cancel": "Cancel",
+        "success": "Payment recorded",
+        "error": "Failed to record payment"
+      },
+      "bulk": {
+        "bulkButton": "Bulk record",
+        "title": "Bulk record",
+        "description": "Select unpaid members to record payments in bulk.",
+        "noUnpaid": "No unpaid members",
+        "submit": "Record {count}",
+        "error": "Bulk record failed",
+        "resultSummary": "Created {created}, skipped {skipped}"
+      },
+      "cancel": {
+        "button": "Cancel",
+        "success": "Payment cancelled",
+        "error": "Failed to cancel"
       }
     },
     "receipt": {
