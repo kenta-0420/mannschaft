@@ -168,7 +168,10 @@ export default defineNuxtConfig({
         'font-src': ["'self'", 'https://fonts.gstatic.com', 'data:'],
         // img-src: アバター/アップロード画像/OGP。R2/CDN は環境依存のため https: を許容。
         // @nuxt/image の最適化経路（/_ipx/）は 'self' でカバーされる。
-        'img-src': ["'self'", 'data:', 'blob:', 'https:'],
+        // presigned アップロード後の画像表示元（本番:R2 https / ローカル:MinIO http://localhost:9000）も
+        // 許可する。connect-src だけだと直 PUT は通るが <img> 表示が img-src で CSP ブロックされる
+        // （本番 R2 は https: で既にカバーされるが、ローカル MinIO は http なので mediaUploadSrc が必要）。
+        'img-src': ["'self'", 'data:', 'blob:', 'https:', ...mediaUploadSrc],
         'connect-src': connectSrc,
         // frame-src: PublicMapEmbed.vue の Google Maps 埋め込み。
         // F08.9 P5: Stripe.js の PaymentElement iframe（js.stripe.com）と
