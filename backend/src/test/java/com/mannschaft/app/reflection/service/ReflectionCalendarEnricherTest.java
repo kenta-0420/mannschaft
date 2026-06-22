@@ -204,7 +204,7 @@ class ReflectionCalendarEnricherTest {
     }
 
     @Test
-    @DisplayName("§6.2: PRE_EXAM 想起予定（entry_id=null）はテーマ所有者本人なら referenceUuid=theme_id で出る")
+    @DisplayName("§6.2: PRE_EXAM 想起予定（entry_id=null）はテーマ所有者本人なら referenceKind=REFLECTION_PRE_EXAM・referenceUuid=theme_id で出る")
     void enrich_addsPreExamRecallMark() {
         UUID themeId = UUID.randomUUID();
         LocalDateTime remindAt = LocalDate.now().plusDays(1).atTime(9, 0);
@@ -221,9 +221,15 @@ class ReflectionCalendarEnricherTest {
 
         assertThat(result).hasSize(1);
         CalendarEntryResponse cal = result.get(0);
-        assertThat(cal.getContent().eventType()).isEqualTo("REFLECTION_RECALL");
+        // PRE_EXAM は REFLECTION_PRE_EXAM（SPACED の REFLECTION_RECALL とは別）。FE はテーマ詳細へ遷移する。
+        assertThat(cal.getContent().eventType()).isEqualTo("REFLECTION_PRE_EXAM");
+        assertThat(cal.getContent().referenceKind()).isEqualTo("REFLECTION_PRE_EXAM");
         assertThat(cal.getContent().referenceUuid()).isEqualTo(themeId.toString());
         assertThat(cal.getContent().title()).isEqualTo("英語表現");
+        // remind_at の日付の atStartOfDay()・allDay。
+        assertThat(cal.getTime().startAt()).isEqualTo(remindAt.toLocalDate().atStartOfDay());
+        assertThat(cal.getTime().allDay()).isTrue();
+        assertThat(cal.getScope().scopeType()).isEqualTo("PERSONAL");
     }
 
     @Test

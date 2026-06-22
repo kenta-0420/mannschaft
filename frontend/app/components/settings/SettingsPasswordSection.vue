@@ -37,6 +37,7 @@ defineEmits<{
           class="w-full"
           input-class="w-full"
         />
+        <p class="mt-1 text-xs text-surface-500">{{ $t('settings.password.policy_hint') }}</p>
       </div>
       <div>
         <label class="mb-1 block text-sm font-medium">{{ $t('settings.password.confirm_password') }}</label>
