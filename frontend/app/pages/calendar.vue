@@ -95,11 +95,16 @@ function onDateClick(date: string) {
 
 /**
  * reflection 印クリック（§6.2/AC-21・id 非依存）。
- * 想起予定は想起テスト画面へ、振り返り記入はエントリ詳細へ遷移する。
+ * - REFLECTION_RECALL（SPACED 間隔反復）: recall 画面（entry_id 指定）へ遷移。
+ * - REFLECTION_PRE_EXAM（考査前総まとめ）: テーマ詳細画面（theme_id 指定）へ遷移。
+ * - それ以外（REFLECTION_ENTRY 等）: エントリ詳細へ遷移。
  */
 async function onReflectionClick(referenceUuid: string, referenceKind: string) {
   if (referenceKind === 'REFLECTION_RECALL') {
     await router.push(`/reflections/recall?entry=${referenceUuid}`)
+  }
+  else if (referenceKind === 'REFLECTION_PRE_EXAM') {
+    await router.push(`/reflections/themes/${referenceUuid}`)
   }
   else {
     await router.push(`/reflections/entries/${referenceUuid}`)

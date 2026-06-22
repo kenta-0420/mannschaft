@@ -102,7 +102,7 @@ function goEntry() {
   <div class="mx-auto max-w-2xl px-4 py-6">
     <PageHeader
       :title="t('reflection.recall.heading')"
-      :back-label="t('reflection.recall.back_to_entry')"
+      :back-label="t('button.back')"
     />
 
     <div v-if="loading" class="space-y-3">
