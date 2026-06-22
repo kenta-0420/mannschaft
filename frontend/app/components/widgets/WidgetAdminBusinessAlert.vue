@@ -70,7 +70,7 @@ onUnmounted(() => clearInterval(timer))
     <div v-if="totalPending === 0 && !loading && !hasAnyInquiryChannel">
       <DashboardEmptyState icon="pi pi-check-circle" :message="t('admin.businessAlert.noAlerts')" />
     </div>
-    <div v-else class="divide-y divide-surface-100 dark:divide-surface-700">
+    <div v-else class="divide-y divide-surface-300 dark:divide-surface-600">
       <div
         v-for="team in teams"
         :key="team.teamId"
