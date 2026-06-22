@@ -42,7 +42,13 @@
     "myShift": "マイシフト",
     "myPage": "マイページ",
     "qa": "Q&A",
-    "blog": "ブログ"
+    "blog": "ブログ",
+    "reservations": "予約確認",
+    "wallet": "ポイントカード",
+    "inbox": "インボックス",
+    "market": "市",
+    "jobs": "求人",
+    "matching": "マッチング"
   },
   "settings": {
     "navigation": {

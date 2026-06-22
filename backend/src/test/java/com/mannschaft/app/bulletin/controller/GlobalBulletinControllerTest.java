@@ -79,8 +79,22 @@ class GlobalBulletinControllerTest {
     private ThreadResponse threadResponse() {
         return ThreadResponse.builder()
                 .id(THREAD_ID)
-                .scope(new ThreadResponse.ThreadScopeDto(CATEGORY_ID, "VILLAGE", 0L))
-                .content(new ThreadResponse.ThreadContentDto("題名", "本文", "INFO", "COUNT_ONLY"))
+                .categoryId(CATEGORY_ID)
+                .scopeType("VILLAGE")
+                .scopeId(0L)
+                .author(new ThreadResponse.AuthorDto(USER_ID, "テストユーザー", null))
+                .title("題名")
+                .body("本文")
+                .priority("INFO")
+                .readTrackingMode("COUNT_ONLY")
+                .isPinned(false)
+                .isLocked(false)
+                .isArchived(false)
+                .replyCount(0)
+                .readCount(0)
+                .isRead(false)
+                .reactionSummary(java.util.Collections.emptyMap())
+                .myReactions(java.util.Collections.emptyList())
                 .build();
     }
 
