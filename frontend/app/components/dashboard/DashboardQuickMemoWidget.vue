@@ -146,7 +146,7 @@ onMounted(load)
       <li
         v-for="memo in memos"
         :key="memo.id"
-        class="rounded border border-gray-200 dark:border-surface-700 px-2 py-1.5 text-sm"
+        class="rounded border-2 border-surface-300 dark:border-surface-600 px-2 py-1.5 text-sm"
       >
         <!-- タイトル行（クリックで編集モード） -->
         <div class="flex items-center gap-1">

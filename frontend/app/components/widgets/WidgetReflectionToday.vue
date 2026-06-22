@@ -52,14 +52,14 @@ onMounted(load)
         <div class="grid grid-cols-2 gap-2">
           <NuxtLink
             to="/reflections"
-            class="flex flex-col items-center rounded-lg border border-surface-200 px-3 py-3 transition-colors hover:border-primary hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-700/50"
+            class="flex flex-col items-center rounded-lg border-2 border-surface-300 px-3 py-3 transition-colors hover:border-primary hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-700/50"
           >
             <span class="text-2xl font-bold text-amber-600">{{ pendingRecallCount }}</span>
             <span class="mt-1 text-xs text-surface-500">{{ t('reflection.widget.pending_recall') }}</span>
           </NuxtLink>
           <NuxtLink
             to="/reflections"
-            class="flex flex-col items-center rounded-lg border border-surface-200 px-3 py-3 transition-colors hover:border-primary hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-700/50"
+            class="flex flex-col items-center rounded-lg border-2 border-surface-300 px-3 py-3 transition-colors hover:border-primary hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-700/50"
           >
             <span class="text-2xl font-bold text-primary">{{ unwrittenCount }}</span>
             <span class="mt-1 text-xs text-surface-500">{{ t('reflection.widget.unwritten') }}</span>
