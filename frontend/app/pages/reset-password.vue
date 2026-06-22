@@ -18,23 +18,31 @@ if (!token) {
   navigateTo('/forgot-password')
 }
 
-// ポリシー: utils/passwordPolicy.ts の meetsPasswordPolicy/countCharTypes を共用（auto-import）
-const schema = toTypedSchema(
-  z
-    .object({
-      newPassword: z
-        .string()
-        .min(8, () => t('settings.password.length_error'))
-        .refine((val) => countCharTypes(val) >= 3, () => t('settings.password.policy_violation')),
-      confirmPassword: z.string().min(1, () => t('settings.password.mismatch_error')),
-    })
-    .refine((data) => data.newPassword === data.confirmPassword, {
-      message: () => t('settings.password.mismatch_error'),
-      path: ['confirmPassword'],
-    }),
+// ポリシーメッセージは i18n から解決済み文字列として渡す（zod message は string のみ受け付けるため）。
+// countCharTypes は utils/passwordPolicy.ts から auto-import。
+const schema = computed(() =>
+  toTypedSchema(
+    z
+      .object({
+        newPassword: z
+          .string()
+          .min(8, t('settings.password.length_error'))
+          .refine(
+            (val) => countCharTypes(val) >= 3,
+            t('settings.password.policy_violation'),
+          ),
+        confirmPassword: z.string().min(1, t('settings.password.mismatch_error')),
+      })
+      .refine((data) => data.newPassword === data.confirmPassword, {
+        message: t('settings.password.mismatch_error'),
+        path: ['confirmPassword'],
+      }),
+  ),
 )
 
-const { defineField, handleSubmit, errors } = useForm({ validationSchema: schema })
+const { defineField, handleSubmit, errors } = useForm({
+  validationSchema: schema,
+})
 const [newPassword, newPasswordProps] = defineField('newPassword')
 const [confirmPassword, confirmPasswordProps] = defineField('confirmPassword')
 
