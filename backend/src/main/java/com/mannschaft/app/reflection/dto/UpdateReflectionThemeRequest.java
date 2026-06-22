@@ -11,11 +11,14 @@ import java.time.LocalDate;
  * <p>部分更新（null=現値維持セマンティクス）。{@code examDateCleared=true} で考査日を明示クリアする
  * （PATCH における「null＝未指定」と「null＝消去」の曖昧さを回避）。</p>
  *
- * @param title          新テーマ名（null なら現値維持）
- * @param description    新説明（null なら現値維持）
- * @param sourceType     新 source_type（null なら現値維持）
- * @param examDate       新考査日（null かつ examDateCleared=false なら現値維持）
- * @param examDateCleared true なら examDate を NULL にクリアする
+ * @param title              新テーマ名（null なら現値維持）
+ * @param description        新説明（null なら現値維持）
+ * @param sourceType         新 source_type（null なら現値維持）
+ * @param examDate           新考査日（null かつ examDateCleared=false なら現値維持）
+ * @param examDateCleared    true なら examDate を NULL にクリアする
+ * @param linkedSubjectName  Phase 2: 科目名紐づけ（null なら現値維持・§11.1）
+ * @param linkedCourseCode   Phase 2: 履修番号紐づけ（null なら現値維持・§11.1）
+ * @param clearLinkedSubject Phase 2: true なら linked_subject_name/linked_course_code を NULL クリア（§11.4）
  */
 public record UpdateReflectionThemeRequest(
 
@@ -29,6 +32,14 @@ public record UpdateReflectionThemeRequest(
 
         LocalDate examDate,
 
-        boolean examDateCleared
+        boolean examDateCleared,
+
+        @Size(max = 200, message = "科目名は200文字以内で入力してください")
+        String linkedSubjectName,
+
+        @Size(max = 50, message = "履修番号は50文字以内で入力してください")
+        String linkedCourseCode,
+
+        boolean clearLinkedSubject
 ) {
 }

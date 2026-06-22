@@ -353,4 +353,216 @@ class ReflectionTodayServiceTest {
             @Override public LocalDate getLastDate() { return lastDate; }
         };
     }
+
+    // ===== Phase 2: AC-29 / AC-31 / AC-32 / AC-35 / AC-36 =====
+
+    /**
+     * AC-29: 条件B照合（科目名紐づけ）で、当日の同科目コマ数だけ item が生成される。
+     * 各 item の subjectName はコマの科目名（テーマ名で上書きされない）。
+     */
+    @Test
+    @DisplayName("AC-29(a): 科目紐づけテーマが当日同科目の全コマに item 化される")
+    void getToday_conditionB_subjectMatchedThemeAppearsForEachSlot() {
+        UUID themeId = UUID.randomUUID();
+        // 同科目「数学」の2コマが存在する
+        DashboardTimetableTodayResponse.TimetableTodayItem slot1 = slotItem("PERSONAL", 10L, "数学");
+        DashboardTimetableTodayResponse.TimetableTodayItem slot2 = slotItem("PERSONAL", 20L, "数学");
+        given(dashboardService.getTimetableToday(eq(USER_ID), any(LocalDate.class)))
+                .willReturn(dashboard(List.of(slot1, slot2)));
+
+        // linked_subject_name="数学"、linked_slot_id=null のテーマ
+        ReflectionThemeEntity subjectTheme = themeBySubject(themeId, ReflectionLinkedSlotKind.PERSONAL,
+                "数学", "MA101");
+        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(subjectTheme));
+        given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any())).willReturn(List.of());
+        lenient().when(entryRepository.findLatestTargetDateByThemeIds(any())).thenReturn(List.of());
+
+        ReflectionTodayResponse res = service.getToday(USER_ID, null);
+
+        // 2コマ両方に同テーマで item 化される
+        assertThat(res.items()).hasSize(2);
+        assertThat(res.items()).allSatisfy(item -> {
+            assertThat(item.themeId()).isEqualTo(themeId.toString());
+        });
+    }
+
+    /**
+     * AC-29(b): 条件B由来 item の subjectName はコマの科目名（テーマ名で上書きされない）。
+     */
+    @Test
+    @DisplayName("AC-29(b): 条件B由来 item の subjectName はコマの科目名（上書きしない）")
+    void getToday_conditionB_subjectNameNotOverwritten() {
+        UUID themeId = UUID.randomUUID();
+        // コマの科目名は「数学I」
+        DashboardTimetableTodayResponse.TimetableTodayItem slot = slotItem("PERSONAL", 10L, "数学I");
+        given(dashboardService.getTimetableToday(eq(USER_ID), any(LocalDate.class)))
+                .willReturn(dashboard(List.of(slot)));
+
+        // テーマ名は「数学（私の勉強テーマ）」、subjectName紐づけ="数学I"
+        ReflectionThemeEntity subjectTheme = themeBySubjectWithTitle(themeId,
+                ReflectionLinkedSlotKind.PERSONAL, "数学I", null, "数学（私の勉強テーマ）");
+        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(subjectTheme));
+        given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any())).willReturn(List.of());
+        lenient().when(entryRepository.findLatestTargetDateByThemeIds(any())).thenReturn(List.of());
+
+        ReflectionTodayResponse res = service.getToday(USER_ID, null);
+
+        assertThat(res.items()).hasSize(1);
+        // subjectName はコマの科目名であり、テーマ名で上書きされない
+        assertThat(res.items().get(0).subjectName()).isEqualTo("数学I");
+    }
+
+    /**
+     * AC-31: 数学1と数学A（courseCode相違）が別 bySubjectKey エントリとして照合される。
+     */
+    @Test
+    @DisplayName("AC-31: courseCode 相違（数学1 vs 数学A）が別 bySubjectKey で別 item 化される")
+    void getToday_conditionB_differentCourseCodesAreDistinct() {
+        UUID themeId1 = UUID.randomUUID();
+        UUID themeId2 = UUID.randomUUID();
+        // 同科目名「数学」でcourseCode違いの2コマ
+        DashboardTimetableTodayResponse.TimetableTodayItem slot1 =
+                slotItemWithCourseCode("PERSONAL", 10L, "数学", "MA101");
+        DashboardTimetableTodayResponse.TimetableTodayItem slot2 =
+                slotItemWithCourseCode("PERSONAL", 20L, "数学", "MA201");
+        given(dashboardService.getTimetableToday(eq(USER_ID), any(LocalDate.class)))
+                .willReturn(dashboard(List.of(slot1, slot2)));
+
+        // courseCode=MA101 に紐づくテーマ
+        ReflectionThemeEntity theme1 = themeBySubject(themeId1, ReflectionLinkedSlotKind.PERSONAL, "数学", "MA101");
+        // courseCode=MA201 に紐づくテーマ
+        ReflectionThemeEntity theme2 = themeBySubject(themeId2, ReflectionLinkedSlotKind.PERSONAL, "数学", "MA201");
+        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(theme1, theme2));
+        given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any())).willReturn(List.of());
+        lenient().when(entryRepository.findLatestTargetDateByThemeIds(any())).thenReturn(List.of());
+
+        ReflectionTodayResponse res = service.getToday(USER_ID, null);
+
+        // slot1 → theme1、slot2 → theme2 でそれぞれ別の item
+        assertThat(res.items()).hasSize(2);
+        List<String> themeIds = res.items().stream().map(i -> i.themeId()).toList();
+        assertThat(themeIds).containsExactlyInAnyOrder(themeId1.toString(), themeId2.toString());
+    }
+
+    /**
+     * AC-32: 既存 linked_slot_id のみ持つテーマ（新カラム NULL）は従来通り条件A経路で動作。
+     * subjectName はテーマ名で上書きされる（後方互換）。
+     */
+    @Test
+    @DisplayName("AC-32: linked_slot_id のみテーマ（新カラムNULL）は条件A経路・subjectName はテーマ名で上書き")
+    void getToday_conditionA_existingSlotTheme_backwardCompatible() {
+        UUID themeId = UUID.randomUUID();
+        // コマの科目名「数学II」、スロットID=11
+        DashboardTimetableTodayResponse.TimetableTodayItem slot = slotItem("PERSONAL", 11L, "数学II");
+        given(dashboardService.getTimetableToday(eq(USER_ID), any(LocalDate.class)))
+                .willReturn(dashboard(List.of(slot)));
+
+        // Phase1形式: linkedSlotId=11、linkedSubjectName=null
+        ReflectionThemeEntity slotTheme = theme(themeId, ReflectionLinkedSlotKind.PERSONAL, 11L,
+                ReflectionSourceType.SUBJECT);
+        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(slotTheme));
+        given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any())).willReturn(List.of());
+        lenient().when(entryRepository.findLatestTargetDateByThemeIds(any())).thenReturn(List.of());
+
+        ReflectionTodayResponse res = service.getToday(USER_ID, null);
+
+        assertThat(res.items()).hasSize(1);
+        // 条件A: subjectName はテーマ名で上書き（既存動作保持）
+        assertThat(res.items().get(0).subjectName()).isEqualTo("数学" + 11L); // theme.getTitle()
+        assertThat(res.items().get(0).themeId()).isEqualTo(themeId.toString());
+    }
+
+    /**
+     * AC-35: 条件B でコマに乗ったテーマは consumedThemeIds に追加されるため、
+     * 自由テーマ枠（slotKind=null）に重複して出ない。
+     */
+    @Test
+    @DisplayName("AC-35: 条件B で item 化されたテーマは自由テーマ枠に二重列挙されない")
+    void getToday_conditionB_noDoubleListingInFreeThemes() {
+        UUID themeId = UUID.randomUUID();
+        DashboardTimetableTodayResponse.TimetableTodayItem slot = slotItem("PERSONAL", 10L, "数学");
+        given(dashboardService.getTimetableToday(eq(USER_ID), any(LocalDate.class)))
+                .willReturn(dashboard(List.of(slot)));
+
+        // linked_subject_name="数学"、linked_slot_id=null → 条件B
+        ReflectionThemeEntity subjectTheme = themeBySubject(themeId, ReflectionLinkedSlotKind.PERSONAL, "数学", null);
+        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(subjectTheme));
+        given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any())).willReturn(List.of());
+        lenient().when(entryRepository.findLatestTargetDateByThemeIds(any())).thenReturn(List.of());
+
+        ReflectionTodayResponse res = service.getToday(USER_ID, null);
+
+        // コマに1件だけ item 化され、自由テーマとして重複しない
+        assertThat(res.items()).hasSize(1);
+        assertThat(res.items().get(0).slotKind()).isEqualTo("PERSONAL");
+    }
+
+    /**
+     * AC-36: 同一コマに条件A（slotId紐づけ）と条件B（科目名紐づけ）の両方がマッチする場合、
+     * 条件A が優先され重複表示されない。
+     */
+    @Test
+    @DisplayName("AC-36: 同一コマに条件A/B 両方マッチ時、条件A 優先で単一 item のみ返る")
+    void getToday_conditionA_prioritizedOverConditionB() {
+        UUID themeIdA = UUID.randomUUID(); // slotId紐づけテーマ（条件A）
+        UUID themeIdB = UUID.randomUUID(); // subject紐づけテーマ（条件B）
+        DashboardTimetableTodayResponse.TimetableTodayItem slot = slotItem("PERSONAL", 11L, "数学");
+        given(dashboardService.getTimetableToday(eq(USER_ID), any(LocalDate.class)))
+                .willReturn(dashboard(List.of(slot)));
+
+        // 条件A: linked_slot_id=11
+        ReflectionThemeEntity themeA = theme(themeIdA, ReflectionLinkedSlotKind.PERSONAL, 11L,
+                ReflectionSourceType.SUBJECT);
+        // 条件B: linked_subject_name="数学"、linked_slot_id=null
+        ReflectionThemeEntity themeB = themeBySubject(themeIdB, ReflectionLinkedSlotKind.PERSONAL, "数学", null);
+        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(themeA, themeB));
+        given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any())).willReturn(List.of());
+        lenient().when(entryRepository.findLatestTargetDateByThemeIds(any())).thenReturn(List.of());
+
+        ReflectionTodayResponse res = service.getToday(USER_ID, null);
+
+        // 条件A優先のため item は1件のみ、themeId は条件Aのもの
+        assertThat(res.items()).hasSize(1);
+        assertThat(res.items().get(0).themeId()).isEqualTo(themeIdA.toString());
+    }
+
+    // ===== Phase 2 ヘルパー =====
+
+    /**
+     * 科目名紐づけテーマを生成（linked_subject_name 設定・linked_slot_id = null）。
+     * タイトルは「テーマ:subjectName」で識別できるようにする。
+     */
+    private ReflectionThemeEntity themeBySubject(UUID id, ReflectionLinkedSlotKind kind,
+                                                 String subjectName, String courseCode) {
+        return themeBySubjectWithTitle(id, kind, subjectName, courseCode, "テーマ:" + subjectName);
+    }
+
+    /**
+     * 科目名紐づけテーマをタイトル指定で生成。
+     */
+    private ReflectionThemeEntity themeBySubjectWithTitle(UUID id, ReflectionLinkedSlotKind kind,
+                                                          String subjectName, String courseCode,
+                                                          String title) {
+        ReflectionThemeEntity t = ReflectionThemeEntity.builder()
+                .userId(USER_ID)
+                .title(title)
+                .sourceType(ReflectionSourceType.SUBJECT)
+                .linkedSlotKind(kind)
+                .linkedSlotId(null)           // 条件B: slotId なし
+                .linkedSubjectName(subjectName)
+                .linkedCourseCode(courseCode)
+                .recallIntervalDays("1,3,7,14")
+                .build();
+        setId(t, id);
+        return t;
+    }
+
+    /** courseCode を含む TimetableTodayItem を生成するヘルパー。 */
+    private DashboardTimetableTodayResponse.TimetableTodayItem slotItemWithCourseCode(
+            String sourceKind, Long slotId, String subject, String courseCode) {
+        return new DashboardTimetableTodayResponse.TimetableTodayItem(
+                sourceKind, null, null, null, null, slotId,
+                "1限", 1, null, null, subject, courseCode, null, null, null, null,
+                null, Boolean.FALSE, null, Boolean.FALSE, null, Boolean.FALSE);
+    }
 }
