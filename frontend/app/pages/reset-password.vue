@@ -8,6 +8,9 @@ definePageMeta({
   middleware: 'guest',
 })
 
+const { t } = useI18n()
+const { resolveMessage } = useErrorHandler()
+
 const route = useRoute()
 const token = route.query.token as string | undefined
 
@@ -15,24 +18,31 @@ if (!token) {
   navigateTo('/forgot-password')
 }
 
-const schema = toTypedSchema(z.object({
-  newPassword: z.string()
-    .min(8, 'パスワードは8文字以上で入力してください')
-    .refine((val) => {
-      let count = 0
-      if (/[A-Z]/.test(val)) count++
-      if (/[a-z]/.test(val)) count++
-      if (/[0-9]/.test(val)) count++
-      if (/[^A-Za-z0-9]/.test(val)) count++
-      return count >= 3
-    }, '大文字・小文字・数字・記号のうち3種以上含めてください'),
-  confirmPassword: z.string().min(1, '確認用パスワードは必須です'),
-}).refine(data => data.newPassword === data.confirmPassword, {
-  message: 'パスワードが一致しません',
-  path: ['confirmPassword'],
-}))
+// ポリシーメッセージは i18n から解決済み文字列として渡す（zod message は string のみ受け付けるため）。
+// countCharTypes は utils/passwordPolicy.ts から auto-import。
+const schema = computed(() =>
+  toTypedSchema(
+    z
+      .object({
+        newPassword: z
+          .string()
+          .min(8, t('settings.password.length_error'))
+          .refine(
+            (val) => countCharTypes(val) >= 3,
+            t('settings.password.policy_violation'),
+          ),
+        confirmPassword: z.string().min(1, t('settings.password.mismatch_error')),
+      })
+      .refine((data) => data.newPassword === data.confirmPassword, {
+        message: t('settings.password.mismatch_error'),
+        path: ['confirmPassword'],
+      }),
+  ),
+)
 
-const { defineField, handleSubmit, errors } = useForm({ validationSchema: schema })
+const { defineField, handleSubmit, errors } = useForm({
+  validationSchema: schema,
+})
 const [newPassword, newPasswordProps] = defineField('newPassword')
 const [confirmPassword, confirmPasswordProps] = defineField('confirmPassword')
 
@@ -52,12 +62,21 @@ const onSubmit = handleSubmit(async (values) => {
       body: { token, newPassword: values.newPassword },
     })
     success.value = true
-    notification.success('パスワードが変更されました')
-  }
-  catch {
-    errorMessage.value = 'パスワードのリセットに失敗しました。リンクの有効期限が切れている可能性があります。'
-  }
-  finally {
+    notification.success(t('auth.password_reset.success_message'))
+  } catch (e) {
+    // error.code を判別して resolveMessage で解決。
+    // AUTH_015: トークン無効/期限切れ、AUTH_008: ポリシー違反
+    const code = (e as { data?: { error?: { code?: string; message?: string } } })?.data?.error
+      ?.code
+    if (code) {
+      errorMessage.value = resolveMessage(
+        code,
+        (e as { data?: { error?: { message?: string } } })?.data?.error?.message,
+      )
+    } else {
+      errorMessage.value = t('error.unknown')
+    }
+  } finally {
     loading.value = false
   }
 })
@@ -65,17 +84,13 @@ const onSubmit = handleSubmit(async (values) => {
 
 <template>
   <div v-if="!success">
-    <p class="mb-2 text-sm text-surface-500">
-      新しいパスワードを入力してください。
+    <p class="mb-4 text-sm text-surface-500">
+      {{ $t('auth.password_reset.confirm_description') }}
     </p>
-    <ul class="mb-4 text-xs text-surface-400 list-disc list-inside space-y-0.5">
-      <li>8文字以上</li>
-      <li>大文字・小文字・数字・記号のうち3種以上</li>
-    </ul>
     <form @submit.prevent="onSubmit">
       <div class="flex flex-col gap-4">
         <div class="flex flex-col gap-2">
-          <label for="newPassword">新しいパスワード</label>
+          <label for="newPassword">{{ $t('auth.password_reset.new_password_label') }}</label>
           <Password
             v-model="newPassword"
             input-id="newPassword"
@@ -85,10 +100,11 @@ const onSubmit = handleSubmit(async (values) => {
             fluid
             :invalid="!!errors.newPassword"
           />
+          <p class="mt-1 text-xs text-surface-500">{{ $t('settings.password.policy_hint') }}</p>
           <small v-if="errors.newPassword" class="text-red-500">{{ errors.newPassword }}</small>
         </div>
         <div class="flex flex-col gap-2">
-          <label for="confirmPassword">確認用パスワード</label>
+          <label for="confirmPassword">{{ $t('auth.password_reset.confirm_password_label') }}</label>
           <Password
             v-model="confirmPassword"
             input-id="confirmPassword"
@@ -105,14 +121,14 @@ const onSubmit = handleSubmit(async (values) => {
         </Message>
         <Button
           type="submit"
-          label="パスワードを変更"
+          :label="$t('auth.password_reset.submit_button')"
           icon="pi pi-lock"
           :loading="loading"
           class="mt-2"
         />
         <div class="text-center">
           <NuxtLink to="/login" class="text-sm text-primary hover:underline">
-            ログインに戻る
+            {{ $t('auth.password_reset.back_to_login') }}
           </NuxtLink>
         </div>
       </div>
@@ -120,9 +136,9 @@ const onSubmit = handleSubmit(async (values) => {
   </div>
   <div v-else class="flex flex-col items-center gap-4 text-center">
     <i class="pi pi-check-circle text-4xl text-green-500" />
-    <p>パスワードが変更されました。</p>
+    <p>{{ $t('auth.password_reset.success_message') }}</p>
     <NuxtLink to="/login">
-      <Button label="ログインへ" icon="pi pi-sign-in" />
+      <Button :label="$t('auth.password_reset.success_login_button')" icon="pi pi-sign-in" />
     </NuxtLink>
   </div>
 </template>

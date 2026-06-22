@@ -231,6 +231,7 @@
     "AUTH_004": "This email address is already registered",
     "AUTH_005": "The verification email link is invalid or has expired",
     "AUTH_008": "Your password must be at least 8 characters and include 3 or more of: uppercase, lowercase, digits, and symbols",
+    "AUTH_015": "The password reset link is invalid or has expired. Please request a new password reset.",
     "AUTH_009": "Your new password must be different from your current password",
     "AUTH_010": "Your current password is incorrect",
     "AUTH_011": "No password has been set yet",
