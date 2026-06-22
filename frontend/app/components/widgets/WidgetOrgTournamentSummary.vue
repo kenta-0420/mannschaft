@@ -56,7 +56,7 @@ watch(() => props.orgId, load)
       v-else-if="tournaments.length === 0"
       class="py-8 text-center text-sm text-surface-400"
     >
-      {{ $t('tournament.dashboard_widgets.empty_org_summary') }}
+      {{ $t('dashboard_widgets.empty_org_summary') }}
     </div>
 
     <div v-else class="max-h-96 space-y-4 overflow-y-auto pr-1">
@@ -73,9 +73,9 @@ watch(() => props.orgId, load)
         <table class="w-full text-left text-xs">
           <thead class="text-surface-400">
             <tr>
-              <th class="py-1">{{ $t('tournament.dashboard_widgets.division') }}</th>
-              <th class="py-1 text-center">{{ $t('tournament.dashboard_widgets.participant_count') }}</th>
-              <th class="py-1">{{ $t('tournament.dashboard_widgets.leader') }}</th>
+              <th class="py-1">{{ $t('dashboard_widgets.division') }}</th>
+              <th class="py-1 text-center">{{ $t('dashboard_widgets.participant_count') }}</th>
+              <th class="py-1">{{ $t('dashboard_widgets.leader') }}</th>
             </tr>
           </thead>
           <tbody>

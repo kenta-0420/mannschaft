@@ -49,34 +49,34 @@ watch(() => props.teamId, load)
       v-else-if="!hasData"
       class="py-8 text-center text-sm text-surface-400"
     >
-      {{ $t('tournament.dashboard_widgets.empty_team_record') }}
+      {{ $t('dashboard_widgets.empty_team_record') }}
     </div>
 
     <div v-else class="space-y-4">
       <!-- 通算成績サマリ -->
       <div v-if="stats" class="grid grid-cols-3 gap-2 text-center sm:grid-cols-6">
         <div class="rounded-lg bg-surface-50 p-2 dark:bg-surface-800">
-          <div class="text-[10px] text-surface-500">{{ $t('tournament.dashboard_widgets.tournaments') }}</div>
+          <div class="text-[10px] text-surface-500">{{ $t('dashboard_widgets.tournaments') }}</div>
           <div class="text-lg font-semibold">{{ stats.totalTournaments ?? 0 }}</div>
         </div>
         <div class="rounded-lg bg-surface-50 p-2 dark:bg-surface-800">
-          <div class="text-[10px] text-surface-500">{{ $t('tournament.dashboard_widgets.win_draw_loss') }}</div>
+          <div class="text-[10px] text-surface-500">{{ $t('dashboard_widgets.win_draw_loss') }}</div>
           <div class="text-sm font-semibold">
             {{ stats.totalWins ?? 0 }}/{{ stats.totalDraws ?? 0 }}/{{ stats.totalLosses ?? 0 }}
           </div>
         </div>
         <div class="rounded-lg bg-surface-50 p-2 dark:bg-surface-800">
-          <div class="text-[10px] text-surface-500">{{ $t('tournament.dashboard_widgets.played') }}</div>
+          <div class="text-[10px] text-surface-500">{{ $t('dashboard_widgets.played') }}</div>
           <div class="text-lg font-semibold">{{ stats.totalPlayed ?? 0 }}</div>
         </div>
         <div class="rounded-lg bg-surface-50 p-2 dark:bg-surface-800">
-          <div class="text-[10px] text-surface-500">{{ $t('tournament.dashboard_widgets.goals') }}</div>
+          <div class="text-[10px] text-surface-500">{{ $t('dashboard_widgets.goals') }}</div>
           <div class="text-sm font-semibold">
             {{ stats.totalScoreFor ?? 0 }}-{{ stats.totalScoreAgainst ?? 0 }}
           </div>
         </div>
         <div class="rounded-lg bg-surface-50 p-2 dark:bg-surface-800">
-          <div class="text-[10px] text-surface-500">{{ $t('tournament.dashboard_widgets.best_rank') }}</div>
+          <div class="text-[10px] text-surface-500">{{ $t('dashboard_widgets.best_rank') }}</div>
           <div class="text-lg font-semibold">
             {{ stats.bestRank != null ? stats.bestRank : '-' }}
           </div>
@@ -88,10 +88,10 @@ watch(() => props.teamId, load)
         <table class="w-full text-left text-xs">
           <thead class="text-surface-400">
             <tr>
-              <th class="py-1">{{ $t('tournament.dashboard_widgets.tournament') }}</th>
-              <th class="py-1">{{ $t('tournament.dashboard_widgets.division') }}</th>
-              <th class="py-1 text-center">{{ $t('tournament.dashboard_widgets.rank') }}</th>
-              <th class="py-1 text-center">{{ $t('tournament.dashboard_widgets.points') }}</th>
+              <th class="py-1">{{ $t('dashboard_widgets.tournament') }}</th>
+              <th class="py-1">{{ $t('dashboard_widgets.division') }}</th>
+              <th class="py-1 text-center">{{ $t('dashboard_widgets.rank') }}</th>
+              <th class="py-1 text-center">{{ $t('dashboard_widgets.points') }}</th>
             </tr>
           </thead>
           <tbody>
