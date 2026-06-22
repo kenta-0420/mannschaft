@@ -15,7 +15,8 @@ const {
   bulkRecordPayment,
   cancelPayment,
 } = usePaymentApi()
-const { getMembers } = useTeamApi()
+const { getMembers: getTeamMembers } = useTeamApi()
+const { getMembers: getOrgMembers } = useOrganizationApi()
 const { showSuccess, showError } = useNotification()
 
 /** F08.9 P8: CSV ダウンロード中フラグ */
@@ -56,12 +57,12 @@ const loading = ref(false)
 /** F08.9 P8: サマリー（支払い項目ごとの PAID/UNPAID/EXPIRED 件数）。 */
 const summary = ref<PaymentSummaryResponse | null>(null)
 /**
- * チームメンバー一覧（team スコープの場合のみ）。
+ * スコープメンバー一覧（team / organization 両スコープで取得する）。
  * 手動入金記録ダイアログのメンバー選択肢として使用する。
  * 既存の payments から生成すると新規 payment-item では空になるため、
- * チームメンバー一覧を別途取得する。
+ * スコープメンバー全員を別途取得する。
  */
-const teamMembers = ref<MemberResponse[]>([])
+const scopeMembers = ref<MemberResponse[]>([])
 
 /** 選択中の支払い項目のサマリー行。 */
 const selectedSummaryItem = computed(() =>
@@ -80,16 +81,23 @@ async function loadItems() {
 }
 
 /**
- * チームメンバー一覧を取得して teamMembers を更新する。
- * team スコープの場合のみ実行（organization スコープは別 API のため対象外）。
+ * スコープメンバー一覧を取得して scopeMembers を更新する。
+ * team / organization どちらのスコープにも対応する。
+ * 失敗時は scopeMembers を空のまま維持し、payment 一覧からのフォールバックに委ねる。
  */
-async function loadTeamMembers() {
-  if (props.scopeType !== 'team') return
+async function loadScopeMembers() {
   try {
-    const res = await getMembers(props.scopeId, { size: 200 })
-    teamMembers.value = res.data
-  } catch {
-    // メンバー取得失敗はサイレント（payment 一覧からフォールバックする）
+    if (props.scopeType === 'team') {
+      const res = await getTeamMembers(props.scopeId, { size: 200 })
+      scopeMembers.value = res.data
+    } else if (props.scopeType === 'organization') {
+      const res = await getOrgMembers(props.scopeId, { size: 200 })
+      scopeMembers.value = res.data
+    }
+  } catch (e) {
+    // メンバー取得失敗はサイレント（payment 一覧からフォールバックする）。
+    // 開発時の問題検知のため、エラー内容はコンソールに残す。
+    console.warn('[PaymentAdminPanel] loadScopeMembers failed:', e)
   }
 }
 
@@ -227,7 +235,7 @@ async function onCancel(p: MemberPaymentResponse) {
 
 onMounted(() => {
   loadItems()
-  loadTeamMembers()
+  loadScopeMembers()
 })
 </script>
 
@@ -335,7 +343,7 @@ onMounted(() => {
       v-model:visible="recordDialogVisible"
       :default-amount="selectedItem.money.amount"
       :payments="payments"
-      :team-members="teamMembers"
+      :scope-members="scopeMembers"
       @submit="onRecordSubmit"
     />
     <!-- AC-20: 一括記録ダイアログ -->
@@ -344,7 +352,7 @@ onMounted(() => {
       v-model:visible="bulkDialogVisible"
       :default-amount="selectedItem.money.amount"
       :payments="payments"
-      :team-members="teamMembers"
+      :scope-members="scopeMembers"
       @submit="onBulkSubmit"
     />
   </div>
