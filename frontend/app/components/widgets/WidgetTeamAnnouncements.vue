@@ -16,6 +16,7 @@ const { captureQuiet } = useErrorReport()
 interface ThreadWithScope extends BulletinThreadResponse {
   scopeName: string
   scopeId: string
+  scopeSlug: string
 }
 
 const threads = ref<ThreadWithScope[]>([])
@@ -41,6 +42,7 @@ async function load() {
               ...t,
               scopeName: team.nickname1 || team.name,
               scopeId: String(team.id),
+              scopeSlug: team.slug,
             })),
           )
           .catch((error) => {
@@ -83,7 +85,7 @@ onMounted(load)
       <NuxtLink
         v-for="thread in threads"
         :key="`${thread.scopeType}-${thread.id}`"
-        :to="`/teams/${thread.scopeId}/bulletin`"
+        :to="`/teams/${thread.scopeSlug}/bulletin`"
         class="flex items-start gap-2 py-2.5 transition-colors hover:bg-surface-50 dark:hover:bg-surface-700/50"
       >
         <i v-if="thread.isPinned" class="pi pi-thumbtack mt-0.5 shrink-0 text-xs text-orange-500" />
@@ -124,7 +126,7 @@ onMounted(load)
       <NuxtLink
         v-for="thread in threads"
         :key="`${thread.scopeType}-${thread.id}`"
-        :to="`/teams/${thread.scopeId}/bulletin`"
+        :to="`/teams/${thread.scopeSlug}/bulletin`"
         class="flex items-start gap-2 py-2.5 transition-colors hover:bg-surface-50 dark:hover:bg-surface-700/50"
       >
         <i v-if="thread.isPinned" class="pi pi-thumbtack mt-0.5 shrink-0 text-xs text-orange-500" />
