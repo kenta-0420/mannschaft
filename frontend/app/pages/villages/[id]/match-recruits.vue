@@ -29,7 +29,8 @@ const villageId = computed(() => String(route.params.id))
 const { t } = useI18n()
 const villageApi = useVillageApi()
 const { handleApiError } = useErrorHandler()
-const toast = useToast()
+const { success } = useNotification()
+const { confirmAction } = useConfirmDialog()
 
 // 権限・ユーザー id は親シェルから inject
 const { perms, currentUserId } = useVillageContext()
@@ -114,11 +115,7 @@ async function submitCreate(body: VillageMatchRecruitCreateRequest) {
   try {
     await villageApi.createMatchRecruit(villageId.value, body)
     showCreateDialog.value = false
-    toast.add({
-      severity: 'success',
-      summary: t('village.matchRecruit.saveSuccess'),
-      life: 3000,
-    })
+    success(t('village.matchRecruit.saveSuccess'))
     await loadRecruits()
   }
   catch (error) {
@@ -195,14 +192,11 @@ async function reviewApp(
       app.id,
       { action },
     )
-    toast.add({
-      severity: 'success',
-      summary:
-        action === 'accept'
-          ? t('village.matchApplication.acceptSuccess')
-          : t('village.matchApplication.rejectSuccess'),
-      life: 3000,
-    })
+    success(
+      action === 'accept'
+        ? t('village.matchApplication.acceptSuccess')
+        : t('village.matchApplication.rejectSuccess'),
+    )
     detailApplications.value = await villageApi.listApplications(
       villageId.value,
       detailRecruit.value.id,
@@ -213,43 +207,49 @@ async function reviewApp(
   }
 }
 
-async function withdrawApp(app: VillageMatchApplicationResponse) {
+function withdrawApp(app: VillageMatchApplicationResponse) {
   if (!detailRecruit.value) return
-  if (!window.confirm(t('village.matchApplication.confirmWithdraw'))) return
-  try {
-    await villageApi.withdrawApplication(
-      villageId.value,
-      detailRecruit.value.id,
-      app.id,
-    )
-    toast.add({
-      severity: 'success',
-      summary: t('village.matchApplication.withdrawSuccess'),
-      life: 3000,
-    })
-    if (isDetailOwner.value || canManage.value) {
-      detailApplications.value = await villageApi.listApplications(
-        villageId.value,
-        detailRecruit.value.id,
-      )
-    }
-  }
-  catch (error) {
-    handleApiError(error, t('village.matchApplication.withdraw'))
-  }
+  const recruit = detailRecruit.value
+  confirmAction({
+    message: t('village.matchApplication.confirmWithdraw'),
+    onAccept: async () => {
+      try {
+        await villageApi.withdrawApplication(
+          villageId.value,
+          recruit.id,
+          app.id,
+        )
+        success(t('village.matchApplication.withdrawSuccess'))
+        if (isDetailOwner.value || canManage.value) {
+          detailApplications.value = await villageApi.listApplications(
+            villageId.value,
+            recruit.id,
+          )
+        }
+      }
+      catch (error) {
+        handleApiError(error, t('village.matchApplication.withdraw'))
+      }
+    },
+  })
 }
 
-async function closeRecruit() {
+function closeRecruit() {
   if (!detailRecruit.value) return
-  if (!window.confirm(t('village.matchRecruit.confirmClose'))) return
-  try {
-    await villageApi.closeMatchRecruit(villageId.value, detailRecruit.value.id)
-    showDetailDialog.value = false
-    await loadRecruits()
-  }
-  catch (error) {
-    handleApiError(error, t('village.matchRecruit.close'))
-  }
+  const recruit = detailRecruit.value
+  confirmAction({
+    message: t('village.matchRecruit.confirmClose'),
+    onAccept: async () => {
+      try {
+        await villageApi.closeMatchRecruit(villageId.value, recruit.id)
+        showDetailDialog.value = false
+        await loadRecruits()
+      }
+      catch (error) {
+        handleApiError(error, t('village.matchRecruit.close'))
+      }
+    },
+  })
 }
 
 // =====================================================================

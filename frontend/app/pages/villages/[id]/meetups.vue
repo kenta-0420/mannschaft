@@ -29,7 +29,8 @@ const villageId = computed(() => String(route.params.id))
 const { t } = useI18n()
 const villageApi = useVillageApi()
 const { handleApiError } = useErrorHandler()
-const toast = useToast()
+const { success } = useNotification()
+const { confirmAction } = useConfirmDialog()
 
 // 権限・ユーザー id は親シェルから inject
 const { perms, currentUserId } = useVillageContext()
@@ -140,11 +141,7 @@ async function submitCreate() {
   try {
     await villageApi.createMeetup(villageId.value, body)
     showCreateDialog.value = false
-    toast.add({
-      severity: 'success',
-      summary: t('village.meetup.saveSuccess'),
-      life: 3000,
-    })
+    success(t('village.meetup.saveSuccess'))
     await loadMeetups()
   }
   catch (error) {
@@ -182,11 +179,7 @@ async function castVoteOn(candidate: VillageMeetupCandidateDateResponse, voteTyp
       candidateDateId: candidate.id,
       voteType,
     })
-    toast.add({
-      severity: 'success',
-      summary: t('village.meetup.voteSuccess'),
-      life: 2500,
-    })
+    success(t('village.meetup.voteSuccess'))
   }
   catch (error) {
     handleApiError(error, t('village.meetup.vote'))
@@ -201,11 +194,7 @@ async function confirmCandidate(candidate: VillageMeetupCandidateDateResponse) {
       detailMeetup.value.id,
       candidate.id,
     )
-    toast.add({
-      severity: 'success',
-      summary: t('village.meetup.confirmSuccess'),
-      life: 3000,
-    })
+    success(t('village.meetup.confirmSuccess'))
     await loadMeetups()
   }
   catch (error) {
@@ -213,22 +202,23 @@ async function confirmCandidate(candidate: VillageMeetupCandidateDateResponse) {
   }
 }
 
-async function cancelMeetup() {
+function cancelMeetup() {
   if (!detailMeetup.value) return
-  if (!window.confirm(t('village.meetup.confirmCancel'))) return
-  try {
-    await villageApi.cancelMeetup(villageId.value, detailMeetup.value.id)
-    showDetailDialog.value = false
-    toast.add({
-      severity: 'success',
-      summary: t('village.meetup.cancelSuccess'),
-      life: 3000,
-    })
-    await loadMeetups()
-  }
-  catch (error) {
-    handleApiError(error, t('village.meetup.cancel'))
-  }
+  const meetup = detailMeetup.value
+  confirmAction({
+    message: t('village.meetup.confirmCancel'),
+    onAccept: async () => {
+      try {
+        await villageApi.cancelMeetup(villageId.value, meetup.id)
+        showDetailDialog.value = false
+        success(t('village.meetup.cancelSuccess'))
+        await loadMeetups()
+      }
+      catch (error) {
+        handleApiError(error, t('village.meetup.cancel'))
+      }
+    },
+  })
 }
 
 // =====================================================================

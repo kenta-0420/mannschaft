@@ -27,7 +27,7 @@ const villageId = String(route.params.id)
 const { t } = useI18n()
 const villagePhase3Api = useVillagePhase3Api()
 const { handleApiError } = useErrorHandler()
-const toast = useToast()
+const { success } = useNotification()
 
 // 村本体・権限は親シェルから inject（再フェッチしない）
 const { village, perms } = useVillageContext()
@@ -74,11 +74,7 @@ async function saveSettings() {
     settings.value = await villagePhase3Api.updateNewsletterSettings(villageId, {
       frequency: selectedFrequency.value,
     })
-    toast.add({
-      severity: 'success',
-      summary: t('village.newsletter.saveSuccess'),
-      life: 3000,
-    })
+    success(t('village.newsletter.saveSuccess'))
   }
   catch (error) {
     handleApiError(error, t('village.newsletter.settings'))
@@ -93,19 +89,11 @@ async function toggleOptOut() {
   try {
     if (settings.value.optedOut) {
       await villagePhase3Api.optIn(villageId)
-      toast.add({
-        severity: 'success',
-        summary: t('village.newsletter.optInSuccess'),
-        life: 3000,
-      })
+      success(t('village.newsletter.optInSuccess'))
     }
     else {
       await villagePhase3Api.optOut(villageId)
-      toast.add({
-        severity: 'success',
-        summary: t('village.newsletter.optOutSuccess'),
-        life: 3000,
-      })
+      success(t('village.newsletter.optOutSuccess'))
     }
     await loadSettings()
   }
@@ -149,10 +137,7 @@ onMounted(() => {
 
         <div v-else-if="settings" class="flex flex-col gap-6">
           <!-- 配信頻度設定 -->
-          <section class="rounded-lg border border-surface-200 p-5 dark:border-surface-700">
-            <h2 class="font-semibold text-lg mb-3">
-              {{ t('village.newsletter.frequency') }}
-            </h2>
+          <SectionCard :title="t('village.newsletter.frequency')">
             <div class="flex flex-col gap-3">
               <div>
                 <Select
@@ -173,13 +158,10 @@ onMounted(() => {
                 />
               </div>
             </div>
-          </section>
+          </SectionCard>
 
           <!-- 配信状態 + opt-out -->
-          <section class="rounded-lg border border-surface-200 p-5 dark:border-surface-700">
-            <h2 class="font-semibold text-lg mb-3">
-              {{ t('village.newsletter.title') }}
-            </h2>
+          <SectionCard :title="t('village.newsletter.title')">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               <div>
                 <div class="text-xs text-surface-500">
@@ -211,7 +193,7 @@ onMounted(() => {
                 @click="toggleOptOut"
               />
             </div>
-          </section>
+          </SectionCard>
         </div>
       </div>
     </template>
