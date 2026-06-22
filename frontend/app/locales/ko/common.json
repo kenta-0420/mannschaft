@@ -723,6 +723,8 @@
     "no_my_projects": "아직 개인 프로젝트가 없습니다",
     "team_projects_section": "팀 프로젝트",
     "no_team_projects": "소속 팀에 아직 프로젝트가 없습니다",
+    "org_projects_section": "조직 프로젝트",
+    "no_org_projects": "소속 조직에 아직 프로젝트가 없습니다",
     "create_button": "프로젝트 생성",
     "dialog": {
       "create_title": "프로젝트 생성",

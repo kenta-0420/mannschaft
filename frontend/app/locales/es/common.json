@@ -723,6 +723,8 @@
     "no_my_projects": "Aún no hay proyectos personales",
     "team_projects_section": "Proyectos del equipo",
     "no_team_projects": "Aún no hay proyectos en tus equipos",
+    "org_projects_section": "Proyectos de la organización",
+    "no_org_projects": "Aún no hay proyectos en tus organizaciones",
     "create_button": "Crear proyecto",
     "dialog": {
       "create_title": "Crear proyecto",

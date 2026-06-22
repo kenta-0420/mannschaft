@@ -21,11 +21,13 @@ import com.mannschaft.app.todo.dto.UpdateMilestoneRequest;
 import com.mannschaft.app.todo.dto.UpdateProjectRequest;
 import com.mannschaft.app.todo.entity.ProjectEntity;
 import com.mannschaft.app.todo.entity.ProjectMilestoneEntity;
+import com.mannschaft.app.todo.dto.OrgProjectSummaryResponse;
 import com.mannschaft.app.todo.dto.TeamProjectSummaryResponse;
 import com.mannschaft.app.todo.repository.ProjectMilestoneRepository;
 import com.mannschaft.app.todo.repository.ProjectRepository;
 import com.mannschaft.app.todo.repository.TodoRepository;
 import com.mannschaft.app.membership.service.MembershipService;
+import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.team.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -63,6 +65,7 @@ public class ProjectService {
     private final AuditLogService auditLogService;
     private final MembershipService membershipService;
     private final TeamService teamService;
+    private final OrganizationService organizationService;
 
     /**
      * プロジェクト一覧を取得する。
@@ -136,6 +139,78 @@ public class ProjectService {
                     long milestoneTotal = milestoneRepository.countByProjectId(p.getId());
                     long milestoneCompleted = milestoneRepository.countByProjectIdAndIsCompletedTrue(p.getId());
                     return new TeamProjectSummaryResponse(
+                            p.getId(),
+                            p.getTitle(),
+                            p.getEmoji(),
+                            p.getColor(),
+                            p.getDueDate(),
+                            calculateDaysRemaining(p.getDueDate()),
+                            p.getStatus().name(),
+                            p.getProgressRate(),
+                            p.getTotalTodos(),
+                            p.getCompletedTodos(),
+                            new ProjectResponse.MilestoneSummary(milestoneTotal, milestoneCompleted),
+                            resolveUserInfo(p.getCreatedBy()),
+                            p.getCreatedAt(),
+                            p.getScopeId(),
+                            nameMap.getOrDefault(p.getScopeId(), ""),
+                            slugMap.getOrDefault(p.getScopeId(), "")
+                    );
+                })
+                .toList();
+
+        PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
+                pageResult.getTotalElements(), pageResult.getNumber(),
+                pageResult.getSize(), pageResult.getTotalPages());
+        return PagedResponse.of(responses, meta);
+    }
+
+    /**
+     * ログインユーザーが所属する全組織のプロジェクトを集約して取得する
+     * （マイページ 組織プロジェクト集約 {@code GET /api/v1/me/org-projects}）。
+     *
+     * <p>所属組織 ID 集合を {@code MembershipService.getActiveOrgIdsByUser(userId, ORGANIZATION)}
+     * から取得し、{@code findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(ORGANIZATION, orgIds, status, pageable)}
+     * で 1 クエリ取得する。各プロジェクトに {@link OrganizationService#getNamesByIds} /
+     * {@link OrganizationService#getSlugsByIds} のバッチ結果から orgName / orgSlug を付与して
+     * {@link OrgProjectSummaryResponse} のページを返す。</p>
+     *
+     * <p>{@link #listTeamProjectsForUser} の {@code ScopeType.ORGANIZATION} 版（対称設計）。</p>
+     *
+     * @param userId ログインユーザー ID
+     * @param status ステータスフィルタ
+     * @param page   ページ番号（0 始まり）
+     * @param size   ページサイズ
+     * @return 組織プロジェクト集約一覧
+     */
+    public PagedResponse<OrgProjectSummaryResponse> listOrgProjectsForUser(
+            Long userId, ProjectStatus status, int page, int size) {
+        // 所属組織 ID 集合を取得。MembershipService 経由でプリミティブのみ受け取り
+        // MembershipRepository への直接依存を避ける（D-3 ArchUnit 準拠）。
+        List<Long> orgIds = membershipService.getActiveOrgIdsByUser(userId);
+        if (orgIds.isEmpty()) {
+            // orgIds が空なら集約クエリを呼ばず空ページを返す
+            PagedResponse.PageMeta emptyMeta = new PagedResponse.PageMeta(0L, page, size, 0);
+            return PagedResponse.of(List.of(), emptyMeta);
+        }
+
+        PageRequest pageable = PageRequest.of(page, size, Sort.by("dueDate").ascending());
+        Page<ProjectEntity> pageResult = projectRepository
+                .findByScopeTypeAndScopeIdInAndStatusAndDeletedAtIsNull(
+                        TodoScopeType.ORGANIZATION, orgIds, status, pageable);
+
+        // orgName / orgSlug はバッチで各 1 回（N+1 回避）
+        Set<Long> scopeIds = pageResult.getContent().stream()
+                .map(ProjectEntity::getScopeId)
+                .collect(java.util.stream.Collectors.toSet());
+        Map<Long, String> nameMap = organizationService.getNamesByIds(scopeIds);
+        Map<Long, String> slugMap = organizationService.getSlugsByIds(scopeIds);
+
+        List<OrgProjectSummaryResponse> responses = pageResult.getContent().stream()
+                .map(p -> {
+                    long milestoneTotal = milestoneRepository.countByProjectId(p.getId());
+                    long milestoneCompleted = milestoneRepository.countByProjectIdAndIsCompletedTrue(p.getId());
+                    return new OrgProjectSummaryResponse(
                             p.getId(),
                             p.getTitle(),
                             p.getEmoji(),

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ProjectResponse, TeamProjectResponse, CreateProjectRequest } from '~/types/project'
+import type { ProjectResponse, TeamProjectResponse, OrgProjectResponse, CreateProjectRequest } from '~/types/project'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -11,6 +11,8 @@ const { showError } = useNotification()
 const projects = ref<ProjectResponse[]>([])
 // チームプロジェクト
 const teamProjects = ref<TeamProjectResponse[]>([])
+// 組織プロジェクト
+const orgProjects = ref<OrgProjectResponse[]>([])
 
 const loading = ref(true)
 const showDialog = ref(false)
@@ -27,14 +29,17 @@ const form = reactive<CreateProjectRequest>({
 async function load() {
   loading.value = true
   try {
-    const [personalRes, teamRes] = await Promise.all([
+    const [personalRes, teamRes, orgRes] = await Promise.all([
       // teamId = null で個人スコープ (`/api/v1/users/me/projects`) を取得
       projectApi.listProjects(null),
       // 所属チームのプロジェクトを集約取得 (`/api/v1/me/team-projects`)
       projectApi.listMyTeamProjects(),
+      // 所属組織のプロジェクトを集約取得 (`/api/v1/me/org-projects`)
+      projectApi.listMyOrgProjects(),
     ])
     projects.value = personalRes.data
     teamProjects.value = teamRes.data
+    orgProjects.value = orgRes.data
   } catch {
     showError('プロジェクトの取得に失敗しました')
   } finally {
@@ -63,6 +68,10 @@ function openProject(project: ProjectResponse) {
 
 function openTeamProject(project: TeamProjectResponse) {
   router.push(`/teams/${project.teamSlug}/projects/${project.id}`)
+}
+
+function openOrgProject(project: OrgProjectResponse) {
+  router.push(`/organizations/${project.orgSlug}/projects/${project.id}`)
 }
 
 async function remove(project: ProjectResponse) {
@@ -196,7 +205,7 @@ onMounted(async () => {
       <!-- ========================================
            チームのプロジェクト セクション
            ======================================== -->
-      <section>
+      <section class="mb-8">
         <h2 class="mb-3 text-base font-semibold text-surface-700">
           {{ $t('project.team_projects_section') }}
         </h2>
@@ -262,6 +271,80 @@ onMounted(async () => {
             v-if="teamProjects.length === 0"
             icon="pi pi-users"
             :message="$t('project.no_team_projects')"
+            class="col-span-full"
+          />
+        </div>
+      </section>
+
+      <!-- ========================================
+           組織のプロジェクト セクション
+           ======================================== -->
+      <section>
+        <h2 class="mb-3 text-base font-semibold text-surface-700">
+          {{ $t('project.org_projects_section') }}
+        </h2>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <SectionCard
+            v-for="project in orgProjects"
+            :key="project.id"
+            class="cursor-pointer transition-shadow hover:shadow-md"
+            :data-testid="`org-project-card-${project.id}`"
+            @click="openOrgProject(project)"
+          >
+            <div class="mb-2 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span v-if="project.emoji" class="text-xl">{{ project.emoji }}</span>
+                <h3 class="font-semibold">{{ project.title }}</h3>
+              </div>
+              <Tag :value="statusLabel(project.status)" :severity="statusSeverity(project.status)" />
+            </div>
+
+            <!-- 組織名バッジ -->
+            <div class="mb-2">
+              <span class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
+                <i class="pi pi-building text-[10px]" />
+                {{ project.orgName }}
+              </span>
+            </div>
+
+            <!-- 進捗バー -->
+            <div class="mb-2">
+              <div class="mb-1 flex justify-between text-xs text-surface-500">
+                <span>{{ project.completedTodos }}/{{ project.totalTodos }} タスク</span>
+                <span>{{ Math.round(project.progressRate * 100) }}%</span>
+              </div>
+              <ProgressBar
+                :value="Math.round(project.progressRate * 100)"
+                :show-value="false"
+                style="height: 6px"
+              />
+            </div>
+
+            <div class="flex items-center text-sm text-surface-500">
+              <div class="flex items-center gap-2">
+                <span v-if="project.dueDate">
+                  <i class="pi pi-calendar mr-1" />{{ project.dueDate }}
+                </span>
+                <span
+                  v-if="project.daysRemaining !== null && project.daysRemaining >= 0"
+                  class="text-xs"
+                >
+                  (あと{{ project.daysRemaining }}日)
+                </span>
+                <span
+                  v-else-if="project.daysRemaining !== null && project.daysRemaining < 0"
+                  class="text-xs text-red-500"
+                >
+                  ({{ Math.abs(project.daysRemaining) }}日超過)
+                </span>
+              </div>
+            </div>
+          </SectionCard>
+
+          <DashboardEmptyState
+            v-if="orgProjects.length === 0"
+            icon="pi pi-building"
+            :message="$t('project.no_org_projects')"
             class="col-span-full"
           />
         </div>

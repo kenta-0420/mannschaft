@@ -1,6 +1,7 @@
 import type {
   ProjectResponse,
   TeamProjectResponse,
+  OrgProjectResponse,
   CreateProjectRequest,
   UpdateProjectRequest,
   MilestoneResponse,
@@ -119,6 +120,15 @@ export function useProjectApi() {
    */
   async function listMyTeamProjects() {
     return api<{ data: TeamProjectResponse[] }>('/api/v1/me/team-projects')
+  }
+
+  /**
+   * マイページ 組織プロジェクト集約（GET /api/v1/me/org-projects）。
+   * ログインユーザーが所属する全組織のプロジェクトを一括取得する。
+   * listMyTeamProjects の組織版（対称設計）。
+   */
+  async function listMyOrgProjects() {
+    return api<{ data: OrgProjectResponse[] }>('/api/v1/me/org-projects')
   }
 
   async function getProject(teamId: string | null, projectId: number) {
@@ -263,6 +273,7 @@ export function useProjectApi() {
   return {
     listProjects,
     listMyTeamProjects,
+    listMyOrgProjects,
     getProject,
     createProject,
     updateProject,

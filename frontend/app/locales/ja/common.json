@@ -723,6 +723,8 @@
     "no_my_projects": "個人プロジェクトがまだありません",
     "team_projects_section": "チームのプロジェクト",
     "no_team_projects": "所属チームにプロジェクトがまだありません",
+    "org_projects_section": "組織のプロジェクト",
+    "no_org_projects": "所属組織にプロジェクトがまだありません",
     "create_button": "プロジェクト作成",
     "dialog": {
       "create_title": "プロジェクト作成",
