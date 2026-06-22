@@ -42,7 +42,13 @@
     "myShift": "我的班次",
     "myPage": "我的页面",
     "qa": "问答",
-    "blog": "博客"
+    "blog": "博客",
+    "reservations": "预约确认",
+    "wallet": "积分卡",
+    "inbox": "收件箱",
+    "market": "市集",
+    "jobs": "招聘",
+    "matching": "配对"
   },
   "settings": {
     "navigation": {
