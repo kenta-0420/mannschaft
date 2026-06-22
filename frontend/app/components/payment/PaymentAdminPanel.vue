@@ -169,13 +169,15 @@ function openBulkDialog() {
 async function onBulkSubmit(bodies: Array<Record<string, unknown>>) {
   if (!selectedItem.value) return
   try {
-    await bulkRecordPayment(props.scopeType, props.scopeId, selectedItem.value.id, bodies)
+    const res = await bulkRecordPayment(props.scopeType, props.scopeId, selectedItem.value.id, bodies)
     bulkDialogVisible.value = false
     await loadPayments(selectedItem.value)
+    // BE が返す実数（createdCount / skippedCount）でサマリーを出す。
+    // 件数を握りつぶさず、既払い・重複等でスキップされた件数も正直に表示する。
     showSuccess(
       t('payment.admin.bulk.resultSummary', {
-        created: bodies.length,
-        skipped: 0,
+        created: res.data.createdCount,
+        skipped: res.data.skippedCount,
       }),
     )
   } catch {

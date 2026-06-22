@@ -65,6 +65,16 @@ export interface MemberPaymentResponse {
   }
 }
 
+/**
+ * F08.9 一括手動記録の結果（BE: BulkPaymentResponse）。
+ * createdCount=新規作成件数 / skippedCount=スキップ件数（既払い・重複・非対象等）。
+ */
+export interface BulkPaymentResponse {
+  createdCount: number
+  skippedCount: number
+  skipped: Array<{ userId: number; reason: string }>
+}
+
 export interface CheckoutSessionResponse {
   checkoutUrl: string
   sessionId: string

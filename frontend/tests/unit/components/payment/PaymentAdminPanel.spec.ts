@@ -234,17 +234,24 @@ describe('PaymentAdminPanel.vue (AC-17/18/19/20)', () => {
     expect(mockGetMemberPayments.mock.calls.length).toBe(before) // reload されない
   })
 
-  it('AC-20: onBulkSubmit 成功で bulkRecordPayment + reload + サマリートースト', async () => {
-    mockBulkRecordPayment.mockResolvedValueOnce(undefined)
+  it('AC-20: onBulkSubmit 成功で bulkRecordPayment + reload + サマリートースト（BE実数の created/skipped を反映）', async () => {
+    // BE は createdCount / skippedCount を返す。送信件数ではなく BE 実数でサマリーを出すこと。
+    mockBulkRecordPayment.mockResolvedValueOnce({
+      data: { createdCount: 1, skippedCount: 1, skipped: [{ userId: 999, reason: 'ALREADY_PAID' }] },
+    })
     const wrapper = await mountSelected()
     const vm = wrapper.vm as unknown as { onBulkSubmit: (b: Array<Record<string, unknown>>) => Promise<void> }
     const before = mockGetMemberPayments.mock.calls.length
     await vm.onBulkSubmit([
       { userId: 200, amountPaid: 5000, paidAt: '2026-06-23T00:00:00', paymentMethod: 'CASH' },
+      { userId: 999, amountPaid: 5000, paidAt: '2026-06-23T00:00:00', paymentMethod: 'CASH' },
     ])
     expect(mockBulkRecordPayment).toHaveBeenCalledTimes(1)
     expect(mockGetMemberPayments.mock.calls.length).toBe(before + 1)
     expect(mockShowSuccess).toHaveBeenCalledTimes(1)
+    // サマリーに BE 実数（created=1 / skipped=1）が渡っていること
+    const summaryArg = mockShowSuccess.mock.calls[0]?.[0] as string
+    expect(summaryArg).toContain('1')
   })
 
   it('AC-16: 記録ダイアログを開くボタンが存在する', async () => {
