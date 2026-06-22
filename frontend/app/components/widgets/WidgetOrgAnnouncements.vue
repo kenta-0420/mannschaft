@@ -77,7 +77,7 @@ onMounted(load)
     <div v-else-if="threads.length === 0">
       <DashboardEmptyState icon="pi pi-clipboard" message="組織からのお知らせはありません" />
     </div>
-    <div v-else class="divide-y divide-surface-100 dark:divide-surface-700">
+    <div v-else class="divide-y divide-surface-300 dark:divide-surface-600">
       <NuxtLink
         v-for="thread in threads"
         :key="`${thread.scopeType}-${thread.id}`"
@@ -118,7 +118,7 @@ onMounted(load)
     <div v-else-if="threads.length === 0">
       <DashboardEmptyState icon="pi pi-clipboard" message="組織からのお知らせはありません" />
     </div>
-    <div v-else class="divide-y divide-surface-100 dark:divide-surface-700">
+    <div v-else class="divide-y divide-surface-300 dark:divide-surface-600">
       <NuxtLink
         v-for="thread in threads"
         :key="`${thread.scopeType}-${thread.id}`"
