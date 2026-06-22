@@ -65,10 +65,12 @@ export function performTokenRefresh(
       return 'refreshed'
     }
     catch (error) {
-      // 401/403 ＝ refresh_token が無効な本物の認証失敗。それ以外（timeout/abort/
-      // ネットワークエラー/レスポンス無し/5xx）は一時的とみなし、ログアウトさせない。
+      // 401/403/400 ＝ refresh_token が無効な本物の認証失敗。
+      // 400: revoke 済みトークン（パスワード変更・退会・全デバイスログアウト後）でも返される。
+      // それ以外（timeout/abort/ネットワークエラー/レスポンス無し/5xx）は一時的とみなし、
+      // ログアウトさせない（回線が遅いだけのユーザーを誤ってログアウトさせないため）。
       const status = (error as { response?: { status?: number } })?.response?.status
-      if (status === 401 || status === 403) {
+      if (status === 400 || status === 401 || status === 403) {
         return 'auth_failed'
       }
       return 'transient'
@@ -145,7 +147,8 @@ export function useApi() {
           const result = await performTokenRefresh(config, authStore)
           if (result === 'auth_failed') {
             // refresh_token が無効な本物の認証失敗。ログアウトして /login へ誘導する。
-            await authStore.logout()
+            // reason=session_expired を付与し、ログイン画面でセッション失効の案内を表示する。
+            await authStore.logout({ reason: 'session_expired' })
             // throw してリトライを中断する（リフレッシュ失敗 = ログアウト済み）
             throw new Error('token_refresh_failed')
           }

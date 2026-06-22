@@ -7,6 +7,7 @@ const { t } = useI18n()
 const notification = useNotification()
 const { resolveMessage } = useErrorHandler()
 const { getProfile, changePassword, setupPassword } = useUserSettingsApi()
+const authStore = useAuthStore()
 
 const loading = ref(true)
 const submitting = ref(false)
@@ -92,7 +93,11 @@ async function handleSubmit() {
         newPassword: form.value.newPassword,
       })
       form.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
+      // パスワード変更後はBEが全リフレッシュトークンを失効させるため、
+      // 先手を打ってログアウトし /login へ誘導する（大量の401/429発生を防ぐ）。
+      // トーストは短時間表示されてからログイン画面に切り替わる。
       notification.success(t('settings.password.toast.change_success'))
+      await authStore.logout({ reason: 'password_changed' })
     } else {
       await setupPassword(form.value.newPassword)
       hasPassword.value = true
