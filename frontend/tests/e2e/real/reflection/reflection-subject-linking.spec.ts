@@ -14,7 +14,7 @@
  * テストユーザー: e2e-user@test.mannschaft.local
  * パスワード: 環境変数 TEST_USER_PASSWORD（デフォルト: Passw0rd1）
  */
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { waitForHydration } from '../../helpers/wait'
 
 const BE = process.env.BE_ORIGIN ?? 'http://localhost:8080'
@@ -38,7 +38,7 @@ let createdThemeId = ''
  * - page.goto('/') で FE オリジンに遷移 → そのオリジンへ localStorage を書き込む
  * - FE の useAuthStore は localStorage['currentUser'] の有無で isAuthenticated を判定する
  */
-async function loginAndSetupStorage(page: Parameters<Parameters<typeof test>[1]>[0]['page']) {
+async function loginAndSetupStorage(page: Page) {
   // BE API で直接ログイン（HttpOnly cookie が page context に格納される）
   let loginData: { userId: number; email: string; fullName: string } | null = null
   let loggedIn = false
@@ -74,7 +74,7 @@ async function loginAndSetupStorage(page: Parameters<Parameters<typeof test>[1]>
       {
         id: me.id,
         email: me.email,
-        fullName: `${me.lastName ?? ''} ${me.firstName ?? ''}`.trim() || loginData?.fullName,
+        fullName: (`${me.lastName ?? ''} ${me.firstName ?? ''}`.trim() || loginData?.fullName) ?? '',
         profileImageUrl: me.avatarUrl ?? null,
         systemRole: me.systemRole ?? undefined,
         timezone: me.timezone ?? undefined,
@@ -111,7 +111,7 @@ test('REFLECT-SL-001: linkable-slots dedup — 数学II が2コマでも 1 件',
   // 数学II が dedup で 1 件のみ（週2コマあっても重複なし・AC-30）。
   const mathSlots = slots.filter(s => s.subjectName === '数学II')
   expect(mathSlots.length, '数学II は dedup されて 1 件').toBe(1)
-  expect(mathSlots[0].courseCode, '数学II の courseCode が MATH201').toBe('MATH201')
+  expect(mathSlots[0]!.courseCode, '数学II の courseCode が MATH201').toBe('MATH201')
 
   // subjectName が空・NULL のスロットは含まれない（§11.3 仕様）。
   const emptySubject = slots.filter(s => !s.subjectName)
@@ -282,7 +282,7 @@ test('REFLECT-SL-003: 今日ビュー — ページ正常表示・時間割コ�
     await expect(page.getByText('時間割コマ')).toBeVisible({ timeout: 10_000 })
 
     // 最初のコマの科目名が表示される
-    const firstSlotSubject = slotItems[0].subjectName
+    const firstSlotSubject = slotItems[0]!.subjectName
     if (firstSlotSubject) {
       await expect(page.getByText(firstSlotSubject).first()).toBeVisible({ timeout: 10_000 })
     }
