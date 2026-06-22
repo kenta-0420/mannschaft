@@ -3,9 +3,6 @@ package com.mannschaft.app.role.controller;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
-import com.mannschaft.app.membership.domain.ScopeType;
-import com.mannschaft.app.membership.entity.MembershipEntity;
-import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.role.dto.MyOrganizationResponse;
@@ -54,7 +51,6 @@ public class MeController {
     private final TeamOrgMembershipRepository teamOrgMembershipRepository;
     private final OrganizationRepository organizationRepository;
     private final AccessControlService accessControlService;
-    private final MembershipRepository membershipRepository;
 
     /**
      * 自分が所属するチーム一覧を取得する。
@@ -76,8 +72,10 @@ public class MeController {
         // 所属チーム ID を 2 系統の和集合で列挙する（user_roles ∪ memberships）。
         // 列挙順を安定させるため LinkedHashSet を使う（user_roles 先・memberships 後で追加）。
         List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
-        List<MembershipEntity> teamMemberships =
-                membershipRepository.findActiveByUserAndScopeType(userId, ScopeType.TEAM);
+        // membership 由来の所属は AccessControlService 経由で取得する
+        // （他ドメインから membership.entity を直接参照しない＝D-1 境界の遵守）。
+        Map<Long, LocalDateTime> teamMembershipJoinedAt =
+                accessControlService.findActiveMembershipJoinedAtByScope(userId, "TEAM");
 
         Set<Long> teamIds = new LinkedHashSet<>();
         // joined_at は membership.joinedAt を優先し、無ければ user_role.createdAt を用いる。
@@ -86,10 +84,10 @@ public class MeController {
             teamIds.add(ur.getTeamId());
             joinedAtByTeamId.putIfAbsent(ur.getTeamId(), ur.getCreatedAt());
         }
-        for (MembershipEntity m : teamMemberships) {
-            teamIds.add(m.getScopeId());
+        for (Map.Entry<Long, LocalDateTime> e : teamMembershipJoinedAt.entrySet()) {
+            teamIds.add(e.getKey());
             // membership.joinedAt を優先（user_role.createdAt があっても上書きする）。
-            joinedAtByTeamId.put(m.getScopeId(), m.getJoinedAt());
+            joinedAtByTeamId.put(e.getKey(), e.getValue());
         }
 
         // 親組織の数値 ID をバルク解決する（F08.10 試合 API の org コンテキスト解決用）。
@@ -111,8 +109,7 @@ public class MeController {
             if (roleName == null) {
                 roleName = "MEMBER";
             }
-            int memberCount = (int) membershipRepository
-                    .countActiveDistinctUsersByScope(ScopeType.TEAM, teamId);
+            int memberCount = accessControlService.countActiveDistinctMembers("TEAM", teamId);
             teams.add(new MyTeamResponse(
                     team.getId(),
                     team.getSlug(),
@@ -151,8 +148,9 @@ public class MeController {
 
         // 所属組織 ID を 2 系統の和集合で列挙する（user_roles ∪ memberships）。
         List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
-        List<MembershipEntity> orgMemberships =
-                membershipRepository.findActiveByUserAndScopeType(userId, ScopeType.ORGANIZATION);
+        // membership 由来の所属は AccessControlService 経由で取得する（D-1 境界の遵守）。
+        Map<Long, LocalDateTime> orgMembershipJoinedAt =
+                accessControlService.findActiveMembershipJoinedAtByScope(userId, "ORGANIZATION");
 
         Set<Long> orgIds = new LinkedHashSet<>();
         Map<Long, LocalDateTime> joinedAtByOrgId = new LinkedHashMap<>();
@@ -160,9 +158,9 @@ public class MeController {
             orgIds.add(ur.getOrganizationId());
             joinedAtByOrgId.putIfAbsent(ur.getOrganizationId(), ur.getCreatedAt());
         }
-        for (MembershipEntity m : orgMemberships) {
-            orgIds.add(m.getScopeId());
-            joinedAtByOrgId.put(m.getScopeId(), m.getJoinedAt());
+        for (Map.Entry<Long, LocalDateTime> e : orgMembershipJoinedAt.entrySet()) {
+            orgIds.add(e.getKey());
+            joinedAtByOrgId.put(e.getKey(), e.getValue());
         }
 
         List<MyOrganizationResponse> orgs = new ArrayList<>();
@@ -178,8 +176,7 @@ public class MeController {
             if (roleName == null) {
                 roleName = "MEMBER";
             }
-            int memberCount = (int) membershipRepository
-                    .countActiveDistinctUsersByScope(ScopeType.ORGANIZATION, orgId);
+            int memberCount = accessControlService.countActiveDistinctMembers("ORGANIZATION", orgId);
             orgs.add(new MyOrganizationResponse(
                     org.getId(),
                     org.getSlug(),
