@@ -3,7 +3,7 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <section id="hero" aria-labelledby="hero-heading" class="bg-surface-50 py-24 dark:bg-surface-900">
+  <section id="hero" aria-labelledby="hero-heading" class="py-24 dark:bg-surface-900">
     <div class="mx-auto max-w-6xl px-4 text-center">
       <div
         class="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-white px-4 py-1.5 text-sm font-medium text-primary shadow-sm dark:bg-surface-800"
