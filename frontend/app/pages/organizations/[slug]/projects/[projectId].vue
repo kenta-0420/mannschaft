@@ -15,7 +15,7 @@ const projectId = Number(route.params.projectId)
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
 const projectApi = useProjectApi()
 const notification = useNotification()
-const { success: showSuccess, error: showError } = notification
+const { error: showError } = notification
 const { t } = useI18n()
 
 const project = ref<ProjectResponse | null>(null)
