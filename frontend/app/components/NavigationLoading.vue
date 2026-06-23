@@ -36,7 +36,7 @@ onBeforeUnmount(() => {
         v-if="show"
         class="pointer-events-none fixed inset-0 z-[9998] flex items-center justify-center"
       >
-        <ProgressSpinner style="width: 48px; height: 48px" />
+        <LoadingBounce />
       </div>
     </Transition>
   </Teleport>
