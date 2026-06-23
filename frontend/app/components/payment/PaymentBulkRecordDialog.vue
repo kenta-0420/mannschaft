@@ -33,9 +33,15 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-/** 未払い（UNPAID）メンバーのみを一括記録の候補にする。 */
+/**
+ * 未払い（UNPAID または PENDING）メンバーのみを一括記録の候補にする。
+ * BE は Stripe 未決済を PENDING で保持し、手動記録対象の「未払い」は
+ * PENDING または UNPAID の両方が該当する（FE 表示は UNPAID に統一）。
+ */
 const unpaidMembers = computed(() =>
-  props.payments.filter((p) => p.statusInfo.status === 'UNPAID'),
+  props.payments.filter(
+    (p) => p.statusInfo.status === 'UNPAID' || p.statusInfo.status === 'PENDING',
+  ),
 )
 
 const selectedUserIds = ref<number[]>([])
