@@ -16,35 +16,31 @@
 import type {
   VillageNewsletterFrequency,
   VillageNewsletterSettingsResponse,
-  VillageResponse,
 } from '~/types/village'
+import { useVillageContext } from '~/composables/useVillageContext'
 
-definePageMeta({
-  middleware: 'auth',
-  layout: 'default',
-  key: route => route.fullPath,
-})
+// auth は各タブで明示宣言（本コードベースの規約。親シェルも auth を持つ）。
+definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
 const villageId = String(route.params.id)
 const { t } = useI18n()
-const villageApi = useVillageApi()
 const villagePhase3Api = useVillagePhase3Api()
 const { handleApiError } = useErrorHandler()
-const toast = useToast()
+const { success } = useNotification()
+
+// 村本体・権限は親シェルから inject（再フェッチしない）
+const { village, perms } = useVillageContext()
 
 // =====================================================================
 // State
 // =====================================================================
 
-const village = ref<VillageResponse | null>(null)
-const loading = ref(true)
-const notFound = ref(false)
 const settings = ref<VillageNewsletterSettingsResponse | null>(null)
 const settingsLoading = ref(false)
 const saving = ref(false)
 
-const isHeadman = computed(() => village.value?.myRole === 'HEADMAN')
+const isHeadman = computed(() => perms.value.isHeadman)
 
 const frequencyOptions = computed(() =>
   [
@@ -78,11 +74,7 @@ async function saveSettings() {
     settings.value = await villagePhase3Api.updateNewsletterSettings(villageId, {
       frequency: selectedFrequency.value,
     })
-    toast.add({
-      severity: 'success',
-      summary: t('village.newsletter.saveSuccess'),
-      life: 3000,
-    })
+    success(t('village.newsletter.saveSuccess'))
   }
   catch (error) {
     handleApiError(error, t('village.newsletter.settings'))
@@ -97,19 +89,11 @@ async function toggleOptOut() {
   try {
     if (settings.value.optedOut) {
       await villagePhase3Api.optIn(villageId)
-      toast.add({
-        severity: 'success',
-        summary: t('village.newsletter.optInSuccess'),
-        life: 3000,
-      })
+      success(t('village.newsletter.optInSuccess'))
     }
     else {
       await villagePhase3Api.optOut(villageId)
-      toast.add({
-        severity: 'success',
-        summary: t('village.newsletter.optOutSuccess'),
-        life: 3000,
-      })
+      success(t('village.newsletter.optOutSuccess'))
     }
     await loadSettings()
   }
@@ -118,49 +102,14 @@ async function toggleOptOut() {
   }
 }
 
-async function loadVillage() {
-  loading.value = true
-  notFound.value = false
-  try {
-    village.value = await villageApi.getVillage(villageId)
-    await loadSettings()
-  }
-  catch (error: unknown) {
-    const status = (error as { statusCode?: number; response?: { status?: number } })
-    const code = status?.statusCode ?? status?.response?.status
-    if (code === 404) {
-      notFound.value = true
-    }
-    else {
-      handleApiError(error, t('village.title'))
-    }
-  }
-  finally {
-    loading.value = false
-  }
-}
-
 onMounted(() => {
-  loadVillage()
+  void loadSettings()
 })
 </script>
 
 <template>
   <div>
-    <PageLoading v-if="loading" />
-
-    <div v-else-if="notFound" class="mx-auto max-w-2xl p-6 text-center">
-      <i class="pi pi-exclamation-circle text-4xl text-surface-400" />
-      <p class="mt-4 text-lg">
-        {{ t('village.error.VILLAGE_001') }}
-      </p>
-      <NuxtLink to="/villages" class="mt-4 inline-block text-primary-600 hover:underline">
-        <i class="pi pi-arrow-left mr-1" />
-        {{ t('village.error.backToList') }}
-      </NuxtLink>
-    </div>
-
-    <template v-else-if="village">
+    <template v-if="village">
       <div class="mx-auto max-w-3xl p-4 sm:p-6">
         <div class="flex items-center gap-3 mb-6">
           <NuxtLink :to="`/villages/${village.id}`" class="text-primary-600 hover:underline">
@@ -188,10 +137,7 @@ onMounted(() => {
 
         <div v-else-if="settings" class="flex flex-col gap-6">
           <!-- 配信頻度設定 -->
-          <section class="rounded-lg border border-surface-200 p-5 dark:border-surface-700">
-            <h2 class="font-semibold text-lg mb-3">
-              {{ t('village.newsletter.frequency') }}
-            </h2>
+          <SectionCard :title="t('village.newsletter.frequency')">
             <div class="flex flex-col gap-3">
               <div>
                 <Select
@@ -212,13 +158,10 @@ onMounted(() => {
                 />
               </div>
             </div>
-          </section>
+          </SectionCard>
 
           <!-- 配信状態 + opt-out -->
-          <section class="rounded-lg border border-surface-200 p-5 dark:border-surface-700">
-            <h2 class="font-semibold text-lg mb-3">
-              {{ t('village.newsletter.title') }}
-            </h2>
+          <SectionCard :title="t('village.newsletter.title')">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               <div>
                 <div class="text-xs text-surface-500">
@@ -250,7 +193,7 @@ onMounted(() => {
                 @click="toggleOptOut"
               />
             </div>
-          </section>
+          </SectionCard>
         </div>
       </div>
     </template>

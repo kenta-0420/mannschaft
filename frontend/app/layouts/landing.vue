@@ -102,7 +102,7 @@ const localeLabels: Record<string, string> = {
             <p class="text-sm text-surface-500">{{ t('landing.layout.footer_tagline') }}</p>
           </div>
           <div>
-            <div class="mb-3 text-sm font-semibold text-surface-700">{{ t('landing.layout.footer_product') }}</div>
+            <div class="mb-3 text-sm font-semibold text-surface-700 dark:text-surface-300">{{ t('landing.layout.footer_product') }}</div>
             <ul class="space-y-2 text-sm text-surface-500">
               <li><NuxtLink to="/register" class="hover:text-primary">{{ t('landing.layout.footer_start_free') }}</NuxtLink></li>
               <li><NuxtLink to="/login" class="hover:text-primary">{{ t('landing.layout.login') }}</NuxtLink></li>
@@ -111,7 +111,7 @@ const localeLabels: Record<string, string> = {
             </ul>
           </div>
           <div>
-            <div class="mb-3 text-sm font-semibold text-surface-700">{{ t('landing.layout.footer_use_cases') }}</div>
+            <div class="mb-3 text-sm font-semibold text-surface-700 dark:text-surface-300">{{ t('landing.layout.footer_use_cases') }}</div>
             <ul class="space-y-2 text-sm text-surface-500">
               <li><NuxtLink to="/use-cases/sports" class="hover:text-primary">{{ t('landing.layout.footer_sports') }}</NuxtLink></li>
               <li><NuxtLink to="/use-cases/community" class="hover:text-primary">{{ t('landing.layout.footer_community') }}</NuxtLink></li>
@@ -120,7 +120,7 @@ const localeLabels: Record<string, string> = {
             </ul>
           </div>
           <div>
-            <div class="mb-3 text-sm font-semibold text-surface-700">{{ t('landing.layout.footer_legal') }}</div>
+            <div class="mb-3 text-sm font-semibold text-surface-700 dark:text-surface-300">{{ t('landing.layout.footer_legal') }}</div>
             <ul class="space-y-2 text-sm text-surface-500">
               <li><NuxtLink to="/terms" class="hover:text-primary">{{ t('landing.layout.footer_terms') }}</NuxtLink></li>
               <li><NuxtLink to="/privacy" class="hover:text-primary">{{ t('landing.layout.footer_privacy') }}</NuxtLink></li>
@@ -128,7 +128,7 @@ const localeLabels: Record<string, string> = {
             </ul>
           </div>
         </div>
-        <div class="border-t border-surface-200 pt-6 text-center text-xs text-surface-400">
+        <div class="border-t border-surface-200 pt-6 text-center text-xs text-surface-400 dark:border-surface-700">
           © {{ dayjs().tz(userTimezone).year() }} Mannschaft. All rights reserved.
         </div>
       </div>
