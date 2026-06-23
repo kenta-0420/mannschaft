@@ -1,6 +1,7 @@
 {
   "appearance": {
     "bgColorLabel": "背景色",
+    "darkBgColorLabel": "ダーク背景色",
     "color": {
       "cream": "クリーム",
       "white": "ホワイト",
@@ -12,6 +13,16 @@
       "sand": "サンド",
       "sage": "セージ",
       "slate": "スレート"
+    },
+    "darkColor": {
+      "charcoal": "チャコール",
+      "black": "ブラック",
+      "graphite": "グラファイト",
+      "slate": "スレート",
+      "navy": "ネイビー",
+      "forest": "フォレスト",
+      "coffee": "コーヒー",
+      "wine": "ワイン"
     }
   }
 }

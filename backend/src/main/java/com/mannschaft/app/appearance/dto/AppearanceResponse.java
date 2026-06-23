@@ -20,8 +20,11 @@ public class AppearanceResponse {
     /** テーマモード（LIGHT / DARK）。 */
     private final ThemeMode theme;
 
-    /** 背景色 HEX コード（例: {@code #f3efe0}）。 */
+    /** 背景色 HEX コード（例: {@code #f3efe0}）。ライトモード用。 */
     private final String bgColor;
+
+    /** ダークモード用背景色 HEX コード（例: {@code #18181b}）。 */
+    private final String darkBgColor;
 
     /** 季節テーマ ID（null 許容）。 */
     private final Long seasonalThemeId;
