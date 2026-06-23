@@ -6,6 +6,11 @@
  * - exam_date クリアは examDateCleared=true で明示（PATCH の null 曖昧さ回避）。
  * - linked_subject クリアは clearLinkedSubject=true で明示（§11.4 PATCH 対称）。
  * - visibility / recallIntervalDays は MVP 固定ゆえ送らない（BE が PRIVATE / 1,3,7,14 固定）。
+ *
+ * Phase 3 追加（§12）:
+ * - 学年度（academicYear）・学期（termLabel）入力欄。
+ * - 自動提案: ダイアログ open 時（新規）と examDate 変更時に getTermSuggestion を呼び、未入力なら提案値で prefill。
+ * - 親テーマ（parentThemeId）セレクタ: 本人のトップレベルテーマ（parentThemeId なし・自身除外）から選択。
  */
 import {
   type ReflectionThemeResponse,
@@ -25,6 +30,8 @@ const props = defineProps<{
   presetSlotKind?: string | null
   presetSlotId?: number | null
   presetSourceType?: ReflectionSourceType | null
+  /** Phase 3: 親テーマ候補（トップレベルテーマの一覧。呼び元が渡す）。 */
+  topLevelThemes?: ReflectionThemeResponse[]
 }>()
 
 const emit = defineEmits<{
@@ -37,6 +44,8 @@ const notification = useNotification()
 const reflectionApi = useReflectionApi()
 
 const saving = ref(false)
+const termSuggestionLoading = ref(false)
+
 const form = ref({
   title: '',
   description: '',
@@ -45,6 +54,12 @@ const form = ref({
   examDate: null as Date | null,
   /** Phase 2: 科目紐づけ（§11.4）。選択中の LinkableSlotResponse、未選択は null。 */
   linkedSlot: null as LinkableSlotResponse | null,
+  /** Phase 3: 学年度（§12.1）。 */
+  academicYear: null as number | null,
+  /** Phase 3: 学期ラベル（§12.1）。 */
+  termLabel: null as string | null,
+  /** Phase 3: 親テーマID（§12.3）。 */
+  parentThemeId: null as string | null,
 })
 
 // Phase 2: 科目紐づけ候補一覧（§11.3）。
@@ -79,6 +94,17 @@ const sourceTypeOptions = computed(() =>
   REFLECTION_SOURCE_TYPES.map(s => ({ label: t(`reflection.source_type.${s}`), value: s })),
 )
 
+// Phase 3: 親テーマ候補（自身を除いたトップレベルテーマ）。
+const parentThemeOptions = computed(() => {
+  const candidates = (props.topLevelThemes ?? []).filter(
+    th => th.id && !th.parentThemeId && th.id !== props.theme?.id,
+  )
+  return [
+    { label: `（${t('reflection.theme.parent_none')}）`, value: null },
+    ...candidates.map(th => ({ label: th.title ?? th.id ?? '', value: th.id ?? null })),
+  ]
+})
+
 // 過去日の考査はリマインド生成されない（§5.5）。注意文を出す。
 const examDateIsPast = computed(() => {
   if (!form.value.examDate) return false
@@ -86,6 +112,39 @@ const examDateIsPast = computed(() => {
   today.setHours(0, 0, 0, 0)
   return new Date(form.value.examDate) < today
 })
+
+/**
+ * Phase 3: 基準日から term-suggestion EP を呼び、未入力フィールドのみ提案値で prefill する。
+ * @param baseDate YYYY-MM-DD（省略時はサーバが今日使用）
+ */
+async function fetchAndApplyTermSuggestion(baseDate?: string) {
+  termSuggestionLoading.value = true
+  try {
+    const res = await reflectionApi.getTermSuggestion(baseDate)
+    const suggestion = res.data
+    // 未入力の場合のみ提案値を適用（ユーザー入力済みは上書きしない）
+    if (form.value.academicYear == null && suggestion.academicYear != null) {
+      form.value.academicYear = suggestion.academicYear
+    }
+    if (!form.value.termLabel && suggestion.termLabel) {
+      form.value.termLabel = suggestion.termLabel
+    }
+  }
+  catch {
+    // 取得失敗は無視（提案なしとして扱う）
+  }
+  finally {
+    termSuggestionLoading.value = false
+  }
+}
+
+function toIsoDate(d: Date | null): string | null {
+  if (!d) return null
+  const dt = d instanceof Date ? d : new Date(d)
+  if (Number.isNaN(dt.getTime())) return null
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`
+}
 
 watch(
   () => props.visible,
@@ -105,6 +164,10 @@ watch(
         sourceType: (props.theme.sourceType as ReflectionSourceType) ?? 'FREE',
         examDate: props.theme.examDate ? new Date(props.theme.examDate) : null,
         linkedSlot: initialLinkedSlot,
+        // Phase 3: 既存テーマの値を復元
+        academicYear: props.theme.academicYear ?? null,
+        termLabel: props.theme.termLabel ?? null,
+        parentThemeId: props.theme.parentThemeId ?? null,
       }
     }
     else {
@@ -114,10 +177,26 @@ watch(
         sourceType: props.presetSourceType ?? 'FREE',
         examDate: null,
         linkedSlot: null,
+        academicYear: null,
+        termLabel: null,
+        parentThemeId: null,
       }
+      // 新規作成時: 今日を baseDate として自動提案を取得
+      fetchAndApplyTermSuggestion()
     }
   },
   { immediate: true },
+)
+
+// Phase 3: examDate 変更時に term-suggestion を再取得（未入力フィールドのみ更新）。
+watch(
+  () => form.value.examDate,
+  (newDate, oldDate) => {
+    if (!props.visible || props.theme) return // 編集時は手動で設定済みのため自動提案しない
+    if (newDate === oldDate) return
+    const baseDate = toIsoDate(newDate)
+    fetchAndApplyTermSuggestion(baseDate ?? undefined)
+  },
 )
 
 // ロード後に初期選択を補完（編集時に fetchLinkableSlots が完了したタイミング）。
@@ -134,14 +213,6 @@ function close() {
   emit('update:visible', false)
 }
 
-function toIsoDate(d: Date | null): string | null {
-  if (!d) return null
-  const dt = d instanceof Date ? d : new Date(d)
-  if (Number.isNaN(dt.getTime())) return null
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`
-}
-
 async function save() {
   if (!form.value.title.trim()) return
   saving.value = true
@@ -150,6 +221,7 @@ async function save() {
     const linkedSlot = form.value.linkedSlot
     if (isEdit.value && props.theme?.id) {
       const prevHadSubject = !!props.theme.linkedSubjectName
+      const prevHadParent = !!props.theme.parentThemeId
       const body: UpdateReflectionThemeRequest = {
         title: form.value.title,
         description: form.value.description || undefined,
@@ -160,6 +232,12 @@ async function save() {
         clearLinkedSubject: prevHadSubject && !linkedSlot,
         linkedSubjectName: linkedSlot?.subjectName ?? undefined,
         linkedCourseCode: linkedSlot?.courseCode ?? undefined,
+        // Phase 3: 学年/学期/親テーマ
+        academicYear: form.value.academicYear,
+        termLabel: form.value.termLabel ?? undefined,
+        parentThemeId: form.value.parentThemeId ?? undefined,
+        // clearParent: 直前に親があり今は「親なし」を選択した場合
+        clearParent: prevHadParent && !form.value.parentThemeId,
       }
       const res = await reflectionApi.updateTheme(props.theme.id, body)
       saved = res.data
@@ -175,6 +253,10 @@ async function save() {
         // Phase 2: 科目紐づけ（presetSlotId 未指定時のみ有効・§11.4）。
         linkedSubjectName: !props.presetSlotId ? (linkedSlot?.subjectName ?? undefined) : undefined,
         linkedCourseCode: !props.presetSlotId ? (linkedSlot?.courseCode ?? undefined) : undefined,
+        // Phase 3: 学年/学期/親テーマ
+        academicYear: form.value.academicYear,
+        termLabel: form.value.termLabel ?? undefined,
+        parentThemeId: form.value.parentThemeId ?? undefined,
       }
       const res = await reflectionApi.createTheme(body)
       saved = res.data
@@ -197,7 +279,7 @@ async function save() {
     :visible="visible"
     modal
     :header="isEdit ? t('reflection.theme.edit') : t('reflection.theme.create')"
-    :style="{ width: '520px', maxWidth: '95vw' }"
+    :style="{ width: '560px', maxWidth: '95vw' }"
     @update:visible="emit('update:visible', $event)"
   >
     <div class="space-y-4">
@@ -234,6 +316,36 @@ async function save() {
         />
       </div>
 
+      <!-- Phase 3: 学年度・学期（§12.1）。term-suggestion 自動提案付き。 -->
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="mb-1 block text-sm font-medium">
+            {{ t('reflection.theme.academic_year_label') }}
+            <i v-if="termSuggestionLoading" class="pi pi-spin pi-spinner ml-1 text-xs text-surface-400" />
+          </label>
+          <InputNumber
+            v-model="form.academicYear"
+            :placeholder="t('reflection.theme.academic_year_placeholder')"
+            :use-grouping="false"
+            :min="1900"
+            :max="2100"
+            class="w-full"
+          />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium">{{ t('reflection.theme.term_label_label') }}</label>
+          <InputText
+            v-model="form.termLabel"
+            :placeholder="t('reflection.theme.term_label_placeholder')"
+            class="w-full"
+            maxlength="50"
+          />
+        </div>
+      </div>
+      <p class="text-xs text-surface-400">
+        <i class="pi pi-info-circle mr-1" />{{ t('reflection.theme.suggest_from_timetable') }}
+      </p>
+
       <div>
         <label class="mb-1 block text-sm font-medium">{{ t('reflection.theme.exam_date_label') }}</label>
         <DatePicker
@@ -269,6 +381,18 @@ async function save() {
           class="w-full"
         />
         <p class="mt-1 text-xs text-surface-500">{{ t('reflection.theme.subject_link_help') }}</p>
+      </div>
+
+      <!-- Phase 3: 親テーマ（§12.3）。トップレベルテーマのみ選択可。 -->
+      <div v-if="parentThemeOptions.length > 1">
+        <label class="mb-1 block text-sm font-medium">{{ t('reflection.theme.parent_theme_label') }}</label>
+        <Select
+          v-model="form.parentThemeId"
+          :options="parentThemeOptions"
+          option-label="label"
+          option-value="value"
+          class="w-full"
+        />
       </div>
 
       <!-- 想起間隔は MVP 固定表示 -->
