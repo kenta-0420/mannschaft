@@ -15,7 +15,8 @@ import lombok.Setter;
  * <p>バリデーション:</p>
  * <ul>
  *   <li>{@code theme}: 必須・null 不可（不正値は JSON デシリアライズ時に 400）</li>
- *   <li>{@code bgColor}: 必須・HEX カラーコード形式（{@code #RRGGBB}）</li>
+ *   <li>{@code bgColor}: 必須・HEX カラーコード形式（{@code #RRGGBB}）。ライトモード用。</li>
+ *   <li>{@code darkBgColor}: 必須・HEX カラーコード形式（{@code #RRGGBB}）。ダークモード用。</li>
  *   <li>{@code seasonalThemeId}: null 許容</li>
  *   <li>{@code hideChatPreview}: 必須・null 不可</li>
  * </ul>
@@ -34,10 +35,15 @@ public class UpdateAppearanceRequest {
     @NotNull(message = "theme は必須です")
     private ThemeMode theme;
 
-    /** 背景色 HEX コード（必須・#RRGGBB 形式）。 */
+    /** 背景色 HEX コード（必須・#RRGGBB 形式）。ライトモード用。 */
     @NotNull(message = "bgColor は必須です")
     @Pattern(regexp = "^#[0-9a-fA-F]{6}$", message = "bgColor は #RRGGBB 形式で指定してください")
     private String bgColor;
+
+    /** ダークモード用背景色 HEX コード（必須・#RRGGBB 形式）。 */
+    @NotNull(message = "darkBgColor は必須です")
+    @Pattern(regexp = "^#[0-9a-fA-F]{6}$", message = "darkBgColor は #RRGGBB 形式で指定してください")
+    private String darkBgColor;
 
     /** 季節テーマ ID（null 許容）。 */
     private Long seasonalThemeId;

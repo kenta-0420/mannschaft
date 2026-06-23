@@ -57,7 +57,9 @@
       "required": "Required",
       "resetToDefault": "Reset to Default",
       "saveSuccess": "Settings saved",
-      "saveError": "Failed to save settings"
+      "saveError": "Failed to save settings",
+      "reorderHint": "Drag the handle to reorder the navigation items",
+      "dragHandleLabel": "Drag handle"
     },
     "account": {
       "page_title": "Account Settings",
@@ -80,7 +82,9 @@
         "save_error": "Failed to update profile",
         "avatar_size_error": "File size must be 5MB or less",
         "avatar_success": "Avatar updated",
-        "avatar_error": "Failed to upload avatar"
+        "avatar_error": "Failed to upload avatar",
+        "weather_postal_not_found": "Postal code saved, but your weather location could not be resolved. Please check that your postal code is correct",
+        "weather_country_not_supported": "Postal code saved, but weather information for your country or region is not yet available"
       }
     },
     "email": {

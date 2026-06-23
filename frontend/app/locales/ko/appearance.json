@@ -1,6 +1,7 @@
 {
   "appearance": {
     "bgColorLabel": "배경색",
+    "darkBgColorLabel": "다크 배경색",
     "color": {
       "cream": "크림",
       "white": "화이트",
@@ -12,6 +13,16 @@
       "sand": "샌드",
       "sage": "세이지",
       "slate": "슬레이트"
+    },
+    "darkColor": {
+      "charcoal": "차콜",
+      "black": "블랙",
+      "graphite": "그라파이트",
+      "slate": "슬레이트",
+      "navy": "네이비",
+      "forest": "포레스트",
+      "coffee": "커피",
+      "wine": "와인"
     }
   }
 }

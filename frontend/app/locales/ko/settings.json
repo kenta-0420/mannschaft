@@ -57,7 +57,9 @@
       "required": "필수",
       "resetToDefault": "기본값으로 초기화",
       "saveSuccess": "설정이 저장되었습니다",
-      "saveError": "설정 저장에 실패했습니다"
+      "saveError": "설정 저장에 실패했습니다",
+      "reorderHint": "핸들을 드래그하여 표시 순서를 변경할 수 있습니다",
+      "dragHandleLabel": "정렬 핸들"
     },
     "account": {
       "page_title": "계정 설정",
@@ -80,7 +82,9 @@
         "save_error": "프로필 업데이트에 실패했습니다",
         "avatar_size_error": "파일 크기는 5MB 이하여야 합니다",
         "avatar_success": "아바타가 업데이트되었습니다",
-        "avatar_error": "아바타 업로드에 실패했습니다"
+        "avatar_error": "아바타 업로드에 실패했습니다",
+        "weather_postal_not_found": "우편번호는 저장되었지만 날씨 지점을 도출할 수 없었습니다. 우편번호가 올바른지 확인해 주세요",
+        "weather_country_not_supported": "우편번호는 저장되었지만 현재 해당 국가 또는 지역의 날씨 정보를 지원하지 않습니다"
       }
     },
     "email": {

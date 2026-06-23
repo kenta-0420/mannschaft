@@ -50,10 +50,15 @@ public class AppearanceSettingsEntity extends UuidV7Entity {
     @Column(name = "theme", nullable = false, length = 8)
     private ThemeMode theme;
 
-    /** 背景色（HEX カラーコード、例: {@code #f3efe0}）。 */
+    /** 背景色（HEX カラーコード、例: {@code #f3efe0}）。ライトモード用。 */
     @Setter
     @Column(name = "bg_color", nullable = false, length = 32)
     private String bgColor;
+
+    /** ダークモード用背景色（HEX カラーコード、例: {@code #18181b}）。 */
+    @Setter
+    @Column(name = "dark_bg_color", nullable = false, length = 32)
+    private String darkBgColor;
 
     /** 季節テーマ ID（任意・null 許容）。seasonal_themes テーブルへの参照（FK なし）。 */
     @Setter

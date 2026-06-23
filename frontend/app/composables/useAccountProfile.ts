@@ -12,8 +12,11 @@ export function useAccountProfile() {
     setupPassword,
   } = useUserSettingsApi()
   const { uploadAndCommit } = useProfileMediaApi()
+  const { refreshWeatherLocation } = useWeatherApi()
 
   const savingProfile = ref(false)
+
+  const { redirecting, triggerRedirect } = usePasswordChangeRedirect()
   const profile = ref({
     nickname: '',
     email: '',
@@ -75,7 +78,7 @@ export function useAccountProfile() {
         nickname: d.nickname,
         email: d.email,
         phoneNumber: d.phoneNumber,
-        postalCode: '',
+        postalCode: d.postalCode ?? '',
         avatarUrl: d.avatarUrl,
         isSearchable: d.isSearchable,
         locale: d.locale || 'ja',
@@ -97,11 +100,37 @@ export function useAccountProfile() {
         isSearchable: profile.value.isSearchable,
       })
       notification.success(t('settings.profile.toast.save_success'))
+
+      // 郵便番号が入力されている場合、天気地点を同期的に再導出して結果をフィードバックする。
+      // 保存成功後のみ実行（保存失敗時は郵便番号が未確定なので実行しない）。
+      if (profile.value.postalCode) {
+        try {
+          await refreshWeatherLocation()
+          // 200 の場合は何もしない（天気ウィジェットが次回取得時に自動反映される）
+        } catch (weatherErr: unknown) {
+          const errorCode = extractWeatherErrorCode(weatherErr)
+          if (errorCode === 'POSTAL_CODE_NOT_FOUND') {
+            notification.warn(t('settings.profile.toast.weather_postal_not_found'))
+          } else if (errorCode === 'COUNTRY_NOT_SUPPORTED') {
+            notification.warn(t('settings.profile.toast.weather_country_not_supported'))
+          }
+          // その他のエラー（プロバイダー障害等）はサイレント（保存自体は成功している）
+        }
+      }
     } catch {
       notification.error(t('settings.profile.toast.save_error'))
     } finally {
       savingProfile.value = false
     }
+  }
+
+  /** 天気APIのエラーオブジェクトからエラーコードを取り出す。 */
+  function extractWeatherErrorCode(err: unknown): string | null {
+    if (err && typeof err === 'object' && 'data' in err) {
+      const data = (err as { data?: { error_code?: string } }).data
+      if (data?.error_code) return data.error_code
+    }
+    return null
   }
 
   async function uploadAvatar(event: Event) {
@@ -174,6 +203,12 @@ export function useAccountProfile() {
           ? t('settings.password.toast.change_success')
           : t('settings.password.toast.setup_success'),
       )
+      if (wasHavingPassword) {
+        // パスワード変更後はBEが全リフレッシュトークンを失効させるため、
+        // overlay フェードイン → 900ms 保持 → logout（/login へ遷移）。
+        // 初期設定（else分岐）は遷移しない。
+        await triggerRedirect()
+      }
     } catch (e) {
       // error.code が取れれば resolveMessage で解決（AUTH_008/009/010/011 等）
       const code = (e as { data?: { error?: { code?: string; message?: string } } })?.data?.error
@@ -205,6 +240,7 @@ export function useAccountProfile() {
     emailSent,
     passwordForm,
     submittingPassword,
+    redirecting,
     savingLocale,
     passwordError,
     canSubmitPassword,

@@ -19,11 +19,11 @@ const props = defineProps<{
   /** メンバー選択肢の元データ（支払い一覧）。 */
   payments: MemberPaymentResponse[]
   /**
-   * チームメンバー一覧（team スコープの場合のみ）。
+   * スコープメンバー一覧（team / organization 両スコープ）。
    * 指定されている場合は payments の代わりにこちらからメンバー選択肢を生成する。
-   * 新規 payment-item では payments が空になるため、チームメンバー全員を選択できるようにする。
+   * 新規 payment-item では payments が空になるため、スコープメンバー全員を選択できるようにする。
    */
-  teamMembers?: MemberResponse[]
+  scopeMembers?: MemberResponse[]
 }>()
 
 const emit = defineEmits<{
@@ -43,12 +43,12 @@ const methodOptions = computed<Array<{ label: string; value: ManualPaymentMethod
 
 /**
  * メンバー選択肢。
- * teamMembers が指定されていればそこから生成（新規 payment-item でも全メンバー選択可）。
- * teamMembers がない（organization スコープ等）場合は payments からフォールバック。
+ * scopeMembers が指定されていればそこから生成（新規 payment-item でも全メンバー選択可）。
+ * scopeMembers がない場合は payments からフォールバック。
  */
 const memberOptions = computed<Array<{ label: string; value: number }>>(() => {
-  if (props.teamMembers && props.teamMembers.length > 0) {
-    return props.teamMembers.map((m) => ({ label: m.displayName, value: m.userId }))
+  if (props.scopeMembers && props.scopeMembers.length > 0) {
+    return props.scopeMembers.map((m) => ({ label: m.displayName, value: m.userId }))
   }
   return props.payments.map((p) => ({ label: p.userName, value: p.userId }))
 })

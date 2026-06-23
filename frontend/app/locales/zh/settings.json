@@ -57,7 +57,9 @@
       "required": "必须",
       "resetToDefault": "恢复默认",
       "saveSuccess": "设置已保存",
-      "saveError": "保存失败"
+      "saveError": "保存失败",
+      "reorderHint": "拖动手柄即可调整导航项的显示顺序",
+      "dragHandleLabel": "拖动手柄"
     },
     "account": {
       "page_title": "账户设置",
@@ -80,7 +82,9 @@
         "save_error": "更新个人资料失败",
         "avatar_size_error": "文件大小必须在5MB以下",
         "avatar_success": "头像已更新",
-        "avatar_error": "上传头像失败"
+        "avatar_error": "上传头像失败",
+        "weather_postal_not_found": "邮政编码已保存，但无法推导天气地点。请确认邮政编码是否正确",
+        "weather_country_not_supported": "邮政编码已保存，但您所在国家或地区的天气信息暂未提供"
       }
     },
     "email": {

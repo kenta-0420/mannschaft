@@ -65,7 +65,11 @@ public class WeatherLocationDeriver {
      * @return 保存された地点エンティティ。ユーザーが存在しない場合は空
      * @throws WeatherLocationDeriveException 郵便番号未登録 / マスタ未ヒット / 国未対応の各ケース
      */
-    @Transactional
+    // noRollbackFor: WeatherLocationDeriveException は「マスタ未ヒット等の業務上想定される結果」であり
+    // ロールバック不要。非同期リスナー（@TransactionalEventListener(AFTER_COMMIT) + REQUIRES_NEW）が
+    // 例外を catch しても、これを付けないと共有トランザクションが rollback-only にマークされ、
+    // 最終 commit で UnexpectedRollbackException が発生する。本例外は DB 書き込み前に投げるため安全。
+    @Transactional(noRollbackFor = WeatherLocationDeriveException.class)
     public Optional<UserWeatherLocationEntity> deriveAndPersist(Long userId) {
         Optional<UserEntity> userOpt = userRepository.findById(userId);
         if (userOpt.isEmpty()) {

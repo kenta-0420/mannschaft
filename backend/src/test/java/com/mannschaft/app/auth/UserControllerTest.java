@@ -104,7 +104,7 @@ class UserControllerTest {
         var profile = new UserProfileResponse(
                 1L, "test@example.com", "田中", "太郎",
                 "タナカ", "タロウ", "taro", null,
-                true, null, "090-1234-5678",
+                true, null, "090-1234-5678", "150-0001",
                 "ja", null, "Asia/Tokyo", "ACTIVE",
                 true, false, 0, List.of("GOOGLE"),
                 LocalDateTime.of(2026, 3, 1, 10, 0),
@@ -130,7 +130,7 @@ class UserControllerTest {
         var updatedProfile = new UserProfileResponse(
                 1L, "test@example.com", "佐藤", "花子",
                 "サトウ", "ハナコ", "hanako", null,
-                true, null, "090-9876-5432",
+                true, null, "090-9876-5432", "150-0001",
                 "ja", null, "Asia/Tokyo", "ACTIVE",
                 true, false, 0, List.of(),
                 LocalDateTime.of(2026, 3, 1, 10, 0),
@@ -307,7 +307,7 @@ class UserControllerTest {
         var profile = new UserProfileResponse(
                 1L, "test@example.com", "田中", "太郎",
                 "タナカ", "タロウ", "taro", null,
-                true, null, "090-1234-5678",
+                true, null, "090-1234-5678", "150-0001",
                 "ja", null, "Asia/Tokyo", "ACTIVE",
                 true, false, 0, List.of("GOOGLE"),
                 LocalDateTime.of(2026, 3, 1, 10, 0),
@@ -330,7 +330,7 @@ class UserControllerTest {
         var profile = new UserProfileResponse(
                 1L, "test@example.com", "田中", "太郎",
                 null, null, "taro", null,
-                null, null, null,
+                null, null, null, null,
                 "ja", null, "Asia/Tokyo", "ACTIVE",
                 true, false, 0, List.of(),
                 null, LocalDateTime.of(2026, 1, 1, 0, 0), null, false);

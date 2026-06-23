@@ -22,6 +22,11 @@ public class UserNavSettingsEntity {
     @Column(name = "hidden_nav_keys", nullable = false, columnDefinition = "JSON")
     private String hiddenNavKeys;
 
+    // 個人別ナビ表示順。nav_features.key の配列（JSON）。
+    // NULL = マスタ sort_order 順で表示する。
+    @Column(name = "nav_display_order", columnDefinition = "JSON")
+    private String navDisplayOrder;
+
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
