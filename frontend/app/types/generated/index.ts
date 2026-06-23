@@ -46650,6 +46650,7 @@ export interface components {
             /** @enum {string} */
             theme: "LIGHT" | "DARK";
             bgColor: string;
+            darkBgColor: string;
             /** Format: int64 */
             seasonalThemeId?: number;
             hideChatPreview: boolean;
@@ -46661,6 +46662,7 @@ export interface components {
             /** @enum {string} */
             theme?: "LIGHT" | "DARK";
             bgColor?: string;
+            darkBgColor?: string;
             /** Format: int64 */
             seasonalThemeId?: number;
             hideChatPreview?: boolean;

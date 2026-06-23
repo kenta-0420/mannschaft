@@ -82,7 +82,9 @@
         "save_error": "Profil konnte nicht aktualisiert werden",
         "avatar_size_error": "Die Dateigröße darf maximal 5 MB betragen",
         "avatar_success": "Avatar aktualisiert",
-        "avatar_error": "Avatar konnte nicht hochgeladen werden"
+        "avatar_error": "Avatar konnte nicht hochgeladen werden",
+        "weather_postal_not_found": "Postleitzahl gespeichert, aber der Wetterort konnte nicht abgeleitet werden. Bitte überprüfen Sie Ihre Postleitzahl",
+        "weather_country_not_supported": "Postleitzahl gespeichert, aber Wetterinformationen für Ihr Land oder Ihre Region sind noch nicht verfügbar"
       }
     },
     "email": {

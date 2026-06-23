@@ -82,7 +82,9 @@
         "save_error": "更新个人资料失败",
         "avatar_size_error": "文件大小必须在5MB以下",
         "avatar_success": "头像已更新",
-        "avatar_error": "上传头像失败"
+        "avatar_error": "上传头像失败",
+        "weather_postal_not_found": "邮政编码已保存，但无法推导天气地点。请确认邮政编码是否正确",
+        "weather_country_not_supported": "邮政编码已保存，但您所在国家或地区的天气信息暂未提供"
       }
     },
     "email": {
