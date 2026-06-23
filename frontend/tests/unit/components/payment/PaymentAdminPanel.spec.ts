@@ -106,13 +106,13 @@ const PAYMENTS: MemberPaymentResponse[] = [
 
 /** テスト用メンバーデータ（MemberResponse 形式） */
 const TEAM_MEMBERS: MemberResponse[] = [
-  { userId: 100, displayName: '山田太郎', role: 'MEMBER', joinedAt: '2026-01-01' } as MemberResponse,
-  { userId: 200, displayName: '佐藤花子', role: 'MEMBER', joinedAt: '2026-01-01' } as MemberResponse,
+  { userId: 100, displayName: '山田太郎', avatarUrl: null, roleName: 'MEMBER', joinedAt: '2026-01-01' },
+  { userId: 200, displayName: '佐藤花子', avatarUrl: null, roleName: 'MEMBER', joinedAt: '2026-01-01' },
 ]
 
 const ORG_MEMBERS: MemberResponse[] = [
-  { userId: 500, displayName: '組織会員A', role: 'MEMBER', joinedAt: '2026-01-01' } as MemberResponse,
-  { userId: 600, displayName: '組織会員B', role: 'MEMBER', joinedAt: '2026-01-01' } as MemberResponse,
+  { userId: 500, displayName: '組織会員A', avatarUrl: null, roleName: 'MEMBER', joinedAt: '2026-01-01' },
+  { userId: 600, displayName: '組織会員B', avatarUrl: null, roleName: 'MEMBER', joinedAt: '2026-01-01' },
 ]
 
 beforeEach(() => {
@@ -190,8 +190,8 @@ describe('PaymentRecordDialog.vue (AC-16/AC-17)', () => {
 
   it('scopeMembers を渡すとそれが memberOptions に優先される（payments フォールバックより優先）', async () => {
     const scopeMembers: MemberResponse[] = [
-      { userId: 501, displayName: 'スコープ会員X', role: 'MEMBER', joinedAt: '2026-01-01' } as MemberResponse,
-      { userId: 502, displayName: 'スコープ会員Y', role: 'MEMBER', joinedAt: '2026-01-01' } as MemberResponse,
+      { userId: 501, displayName: 'スコープ会員X', avatarUrl: null, roleName: 'MEMBER', joinedAt: '2026-01-01' },
+      { userId: 502, displayName: 'スコープ会員Y', avatarUrl: null, roleName: 'MEMBER', joinedAt: '2026-01-01' },
     ]
     const wrapper = await mountSuspended(PaymentRecordDialog, {
       props: { visible: true, defaultAmount: 5000, payments: PAYMENTS, scopeMembers },
