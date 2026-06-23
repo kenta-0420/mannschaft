@@ -80,7 +80,9 @@
         "save_error": "Error al actualizar el perfil",
         "avatar_size_error": "El tamaño del archivo debe ser de 5MB o menos",
         "avatar_success": "Avatar actualizado",
-        "avatar_error": "Error al subir el avatar"
+        "avatar_error": "Error al subir el avatar",
+        "weather_postal_not_found": "Código postal guardado, pero no se pudo determinar la ubicación del tiempo. Por favor, verifique que el código postal sea correcto",
+        "weather_country_not_supported": "Código postal guardado, pero la información del tiempo para su país o región no está disponible aún"
       }
     },
     "email": {

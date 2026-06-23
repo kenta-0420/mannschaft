@@ -80,7 +80,9 @@
         "save_error": "プロフィールの更新に失敗しました",
         "avatar_size_error": "ファイルサイズは5MB以下にしてください",
         "avatar_success": "アバターを更新しました",
-        "avatar_error": "アバターのアップロードに失敗しました"
+        "avatar_error": "アバターのアップロードに失敗しました",
+        "weather_postal_not_found": "郵便番号は保存されましたが、天気地点を導出できませんでした。正しい郵便番号かご確認ください",
+        "weather_country_not_supported": "郵便番号は保存されましたが、お住まいの国・地域の天気情報は現在準備中です"
       }
     },
     "email": {
