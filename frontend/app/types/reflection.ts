@@ -119,9 +119,9 @@ export interface BulkArchiveResult {
 /** アーカイブ横断検索クエリパラメータ（EP #18・§12.4）。 */
 export interface ArchiveSearchParams {
   academicYear?: number | null
-  termLabel?: string | null
-  subjectName?: string | null
-  keyword?: string | null
+  termLabel?: string | null | undefined
+  subjectName?: string | null | undefined
+  keyword?: string | null | undefined
   archived?: boolean | null
   page?: number
   size?: number

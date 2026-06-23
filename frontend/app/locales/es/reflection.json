@@ -56,7 +56,37 @@
       "subject_link_none": "Sin vínculo",
       "subject_link_placeholder": "Seleccionar de las asignaturas del horario",
       "subject_link_help": "Este tema aparecerá en todas las clases de la asignatura seleccionada en la vista de hoy",
-      "subject_link_empty": "No hay horario registrado"
+      "subject_link_empty": "No hay horario registrado",
+      "academic_year_label": "Año académico",
+      "term_label_label": "Período",
+      "academic_year_placeholder": "Ej.: 2026",
+      "term_label_placeholder": "Ej.: 1.º trimestre, Primer semestre, Q1",
+      "suggest_from_timetable": "Sugerido automáticamente desde el horario (no sobreescribe los valores existentes)",
+      "parent_theme_label": "Tema padre (asignar asignatura sobre una unidad)",
+      "parent_none": "Sin padre (nivel superior)"
+    },
+    "archive": {
+      "label": "Archivo",
+      "action": {
+        "archive": "Archivar",
+        "restore": "Restaurar"
+      },
+      "confirm": {
+        "archive": "¿Archivar este tema? Se detendrán los recordatorios de repaso espaciado.",
+        "restore": "¿Restaurar este tema?"
+      },
+      "bulk_archive_button": "Archivar esta carpeta",
+      "folder": {
+        "title": "Carpetas de archivo",
+        "theme_count": "{n} temas",
+        "no_subject": "Sin asignatura",
+        "no_year": "Sin año",
+        "no_term": "Sin período"
+      },
+      "search": {
+        "placeholder": "Buscar por título o descripción",
+        "empty": "No se encontraron temas archivados"
+      }
     },
     "source_type": {
       "SUBJECT": "Clase",

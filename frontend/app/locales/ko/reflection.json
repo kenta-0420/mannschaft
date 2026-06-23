@@ -56,7 +56,37 @@
       "subject_link_none": "연결 안 함",
       "subject_link_placeholder": "시간표 과목에서 선택",
       "subject_link_help": "선택한 과목의 모든 수업 시간에 이 테마가 오늘 뷰에 표시됩니다",
-      "subject_link_empty": "시간표가 등록되지 않았습니다"
+      "subject_link_empty": "시간표가 등록되지 않았습니다",
+      "academic_year_label": "학년도",
+      "term_label_label": "학기",
+      "academic_year_placeholder": "예: 2026",
+      "term_label_placeholder": "예: 1학기, 전기, Q1",
+      "suggest_from_timetable": "시간표에서 자동 제안합니다（이미 입력된 경우 덮어쓰지 않습니다）",
+      "parent_theme_label": "부모 테마（단원 위에 교과목 설정）",
+      "parent_none": "부모 없음（최상위）"
+    },
+    "archive": {
+      "label": "보관",
+      "action": {
+        "archive": "보관하기",
+        "restore": "복원하기"
+      },
+      "confirm": {
+        "archive": "이 테마를 보관하시겠습니까？간격 반복 알림이 중지됩니다。",
+        "restore": "이 테마를 복원하시겠습니까？"
+      },
+      "bulk_archive_button": "이 폴더 일괄 보관",
+      "folder": {
+        "title": "보관 폴더",
+        "theme_count": "{n}개 테마",
+        "no_subject": "과목 미설정",
+        "no_year": "학년 미설정",
+        "no_term": "학기 미설정"
+      },
+      "search": {
+        "placeholder": "제목·설명으로 검색",
+        "empty": "해당하는 보관 항목이 없습니다"
+      }
     },
     "source_type": {
       "SUBJECT": "수업",

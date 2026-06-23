@@ -4,6 +4,10 @@
  *
  * エントリは BE 側でマスク適用済み（isMasked=true は structuredContent=null・maskedHint のみ）。
  * マスク中エントリは想起テスト導線、非マスクは編集導線を出す。
+ *
+ * Phase 3 追加（§12）:
+ * - アーカイブ/復元ボタン（PageHeader の #actions）。
+ * - アーカイブ中バナー（アーカイブ済みテーマには復元導線を表示）。
  */
 import type { ReflectionThemeResponse, ReflectionEntryResponse } from '~/types/reflection'
 
@@ -14,12 +18,17 @@ const notification = useNotification()
 const reflectionApi = useReflectionApi()
 const router = useRouter()
 const route = useRoute()
+const confirm = useConfirm()
 
 const themeId = computed(() => route.params.themeId as string)
 
 const loading = ref(true)
+const archiving = ref(false)
 const theme = ref<ReflectionThemeResponse | null>(null)
 const entries = ref<ReflectionEntryResponse[]>([])
+
+// Phase 3: アーカイブ済みかどうか
+const isArchived = computed(() => !!theme.value?.archivedAt)
 
 // 当日エントリ作成ダイアログ
 const dialogVisible = ref(false)
@@ -68,6 +77,64 @@ function onSaved() {
   dialogVisible.value = false
   load()
 }
+
+// Phase 3: アーカイブ確認
+function confirmArchive() {
+  confirm.require({
+    message: t('reflection.archive.confirm.archive'),
+    header: t('reflection.archive.action.archive'),
+    icon: 'pi pi-archive',
+    rejectLabel: t('reflection.common.cancel'),
+    acceptLabel: t('reflection.archive.action.archive'),
+    accept: doArchive,
+  })
+}
+
+async function doArchive() {
+  if (!theme.value?.id) return
+  archiving.value = true
+  try {
+    const res = await reflectionApi.archiveTheme(theme.value.id)
+    theme.value = res.data
+    notification.success(t('reflection.archive.action.archive') + ' ✓')
+    // アーカイブ後はテーマ一覧へ戻る（一覧から除外されるため）
+    router.push('/reflections/themes')
+  }
+  catch {
+    notification.error(t('reflection.entry.save_failed'))
+  }
+  finally {
+    archiving.value = false
+  }
+}
+
+// Phase 3: 復元確認
+function confirmRestore() {
+  confirm.require({
+    message: t('reflection.archive.confirm.restore'),
+    header: t('reflection.archive.action.restore'),
+    icon: 'pi pi-refresh',
+    rejectLabel: t('reflection.common.cancel'),
+    acceptLabel: t('reflection.archive.action.restore'),
+    accept: doRestore,
+  })
+}
+
+async function doRestore() {
+  if (!theme.value?.id) return
+  archiving.value = true
+  try {
+    const res = await reflectionApi.restoreTheme(theme.value.id)
+    theme.value = res.data
+    notification.success(t('reflection.archive.action.restore') + ' ✓')
+  }
+  catch {
+    notification.error(t('reflection.entry.save_failed'))
+  }
+  finally {
+    archiving.value = false
+  }
+}
 </script>
 
 <template>
@@ -78,8 +145,49 @@ function onSaved() {
       :back-label="t('reflection.nav.themes')"
       class="flex-wrap justify-between"
     >
-      <Button :label="t('reflection.entry.create')" icon="pi pi-plus" size="small" @click="createToday" />
+      <template #actions>
+        <!-- Phase 3: アーカイブ/復元ボタン -->
+        <Button
+          v-if="!isArchived"
+          v-tooltip.bottom="t('reflection.archive.action.archive')"
+          icon="pi pi-inbox"
+          text
+          rounded
+          severity="secondary"
+          :loading="archiving"
+          :aria-label="t('reflection.archive.action.archive')"
+          @click="confirmArchive"
+        />
+        <Button
+          v-else
+          v-tooltip.bottom="t('reflection.archive.action.restore')"
+          icon="pi pi-refresh"
+          text
+          rounded
+          severity="info"
+          :loading="archiving"
+          :aria-label="t('reflection.archive.action.restore')"
+          @click="confirmRestore"
+        />
+      </template>
+      <Button v-if="!isArchived" :label="t('reflection.entry.create')" icon="pi pi-plus" size="small" @click="createToday" />
     </PageHeader>
+
+    <!-- Phase 3: アーカイブ済みバナー -->
+    <div
+      v-if="isArchived"
+      class="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-700 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
+    >
+      <i class="pi pi-inbox" />
+      <span>{{ t('reflection.archive.label') }}</span>
+      <Button
+        :label="t('reflection.archive.action.restore')"
+        size="small"
+        text
+        class="ml-auto"
+        @click="confirmRestore"
+      />
+    </div>
 
     <div v-if="loading" class="space-y-3">
       <Skeleton height="56px" />
@@ -88,7 +196,7 @@ function onSaved() {
 
     <div v-else-if="entries.length === 0" class="rounded-xl border border-dashed border-surface-300 p-8 text-center dark:border-surface-600">
       <p class="mb-3 text-sm text-surface-500">{{ t('reflection.entry.empty') }}</p>
-      <Button :label="t('reflection.entry.create')" icon="pi pi-plus" @click="createToday" />
+      <Button v-if="!isArchived" :label="t('reflection.entry.create')" icon="pi pi-plus" @click="createToday" />
     </div>
 
     <div v-else class="space-y-2">
@@ -120,5 +228,6 @@ function onSaved() {
       :entry="dialogEntry"
       @saved="onSaved"
     />
+    <ConfirmDialog />
   </div>
 </template>
