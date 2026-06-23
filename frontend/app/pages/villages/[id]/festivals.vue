@@ -30,7 +30,8 @@ const villageId = computed(() => String(route.params.id))
 const { t } = useI18n()
 const villageApi = useVillageApi()
 const { handleApiError } = useErrorHandler()
-const toast = useToast()
+const { success } = useNotification()
+const { confirmAction } = useConfirmDialog()
 const config = useRuntimeConfig()
 
 // 権限は親シェルから inject
@@ -165,11 +166,7 @@ async function submitCreate() {
   try {
     await villageApi.createFestival(villageId.value, body)
     showCreateDialog.value = false
-    toast.add({
-      severity: 'success',
-      summary: t('village.festival.saveSuccess'),
-      life: 3000,
-    })
+    success(t('village.festival.saveSuccess'))
     await loadFestivals()
   }
   catch (error) {
@@ -190,11 +187,7 @@ async function submitEdit() {
   try {
     await villageApi.updateFestival(villageId.value, editTargetId.value, body)
     showEditDialog.value = false
-    toast.add({
-      severity: 'success',
-      summary: t('village.festival.saveSuccess'),
-      life: 3000,
-    })
+    success(t('village.festival.saveSuccess'))
     await loadFestivals()
   }
   catch (error) {
@@ -202,21 +195,21 @@ async function submitEdit() {
   }
 }
 
-async function submitCancel(f: VillageFestivalResponse) {
-  if (!window.confirm(t('village.festival.confirmCancel'))) return
-  try {
-    await villageApi.cancelFestival(villageId.value, f.id)
-    showDetailDialog.value = false
-    toast.add({
-      severity: 'success',
-      summary: t('village.festival.cancelSuccess'),
-      life: 3000,
-    })
-    await loadFestivals()
-  }
-  catch (error) {
-    handleApiError(error, t('village.festival.cancel'))
-  }
+function submitCancel(f: VillageFestivalResponse) {
+  confirmAction({
+    message: t('village.festival.confirmCancel'),
+    onAccept: async () => {
+      try {
+        await villageApi.cancelFestival(villageId.value, f.id)
+        showDetailDialog.value = false
+        success(t('village.festival.cancelSuccess'))
+        await loadFestivals()
+      }
+      catch (error) {
+        handleApiError(error, t('village.festival.cancel'))
+      }
+    },
+  })
 }
 
 // =====================================================================
