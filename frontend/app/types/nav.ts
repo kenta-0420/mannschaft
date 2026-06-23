@@ -13,6 +13,12 @@ export interface NavSettingsResponse {
   features: NavFeatureItem[]
 }
 
+export interface UpdateNavSettingsRequest {
+  hiddenNavKeys: string[]
+  /** 個人別ナビ表示順（nav_features.key の配列）。省略時はマスタ順にリセット。 */
+  navDisplayOrder?: string[]
+}
+
 export interface NavFeatureAdminItem {
   key: string
   labelKey: string
