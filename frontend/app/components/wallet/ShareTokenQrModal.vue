@@ -274,4 +274,8 @@ function handleClose() {
   color: #fff;
   border-color: transparent;
 }
+:global(.dark) .share-modal {
+  background: #1e1e1e;
+  color: #f4f4f5;
+}
 </style>
