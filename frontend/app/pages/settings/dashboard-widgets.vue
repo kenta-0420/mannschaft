@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useDashboardWidgets } from '~/composables/useDashboardWidgets'
 import { useTeamStore } from '~/stores/useTeamStore'
 import { useOrganizationStore } from '~/stores/useOrganizationStore'
 
@@ -67,57 +66,27 @@ watch(orgOptions, (opts) => {
   }
 })
 
-// 現在のスコープIDを算出
+// DashboardWidgetList への `:key` 生成（スコープ変更時にコンポーネントを再マウントして
+// composable を再初期化する。computedの中でcomposableを呼べないためこの方式を採る）
+const widgetListKey = computed(() => {
+  if (activeScope.value === 'team') return `team:${selectedTeamId.value ?? 'none'}`
+  if (activeScope.value === 'organization') return `org:${selectedOrgId.value ?? 'none'}`
+  return 'personal'
+})
+
+// 現在表示中のscopeId
 const currentScopeId = computed<string | undefined>(() => {
   if (activeScope.value === 'team') return selectedTeamId.value ?? undefined
   if (activeScope.value === 'organization') return selectedOrgId.value ?? undefined
   return undefined
 })
 
-// useDashboardWidgets に渡す viewerRole（設定ページではすべて表示するため ADMIN とする）
-const viewerRole = 'ADMIN' as const
-
-// useDashboardWidgets を scopeType / scopeId 変化に合わせて再生成
-// computedReactive パターン: activeScope や currentScopeId が変わるたびに再呼び出し
-const widgets = computed(() =>
-  useDashboardWidgets(activeScope.value, currentScopeId.value, viewerRole),
-)
-
-// ドラッグ&ドロップ状態
-const dragIndex = ref<number | null>(null)
-const dropTargetIndex = ref<number | null>(null)
-
-function onDragStart(index: number, e: DragEvent) {
-  dragIndex.value = index
-  if (e.dataTransfer) {
-    e.dataTransfer.effectAllowed = 'move'
-  }
-}
-
-function onDragOver(index: number, e: DragEvent) {
-  e.preventDefault()
-  if (e.dataTransfer) {
-    e.dataTransfer.dropEffect = 'move'
-  }
-  dropTargetIndex.value = index
-}
-
-function onDragLeave() {
-  dropTargetIndex.value = null
-}
-
-function onDrop(index: number) {
-  if (dragIndex.value !== null && dragIndex.value !== index) {
-    widgets.value.reorder(dragIndex.value, index)
-  }
-  dragIndex.value = null
-  dropTargetIndex.value = null
-}
-
-function onDragEnd() {
-  dragIndex.value = null
-  dropTargetIndex.value = null
-}
+// ウィジェット一覧を表示するかどうか
+const showWidgetList = computed(() => {
+  if (activeScope.value === 'team') return !!selectedTeamId.value
+  if (activeScope.value === 'organization') return !!selectedOrgId.value
+  return true
+})
 </script>
 
 <template>
@@ -159,7 +128,10 @@ function onDragEnd() {
 
     <!-- チーム選択 -->
     <div v-if="activeScope === 'team'" class="mb-4">
-      <div v-if="teamOptions.length === 0" class="rounded-lg border border-surface-200 p-4 text-center text-sm text-surface-400 dark:border-surface-600">
+      <div
+        v-if="teamOptions.length === 0"
+        class="rounded-lg border border-surface-200 p-4 text-center text-sm text-surface-400 dark:border-surface-600"
+      >
         {{ $t('dashboard.widget_settings.no_teams') }}
       </div>
       <Select
@@ -175,7 +147,10 @@ function onDragEnd() {
 
     <!-- 組織選択 -->
     <div v-if="activeScope === 'organization'" class="mb-4">
-      <div v-if="orgOptions.length === 0" class="rounded-lg border border-surface-200 p-4 text-center text-sm text-surface-400 dark:border-surface-600">
+      <div
+        v-if="orgOptions.length === 0"
+        class="rounded-lg border border-surface-200 p-4 text-center text-sm text-surface-400 dark:border-surface-600"
+      >
         {{ $t('dashboard.widget_settings.no_organizations') }}
       </div>
       <Select
@@ -189,52 +164,22 @@ function onDragEnd() {
       />
     </div>
 
-    <!-- ウィジェット一覧（ドラッグ並び替え + トグル） -->
-    <template v-if="activeScope !== 'team' || selectedTeamId">
-      <template v-if="activeScope !== 'organization' || selectedOrgId">
-        <p class="mb-3 text-sm text-surface-500">
-          {{ $t('dashboard.widget_settings.drag_hint') }}
-        </p>
-
-        <div
-          v-if="widgets.sortedWidgets.value.length === 0"
-          class="rounded-lg border border-surface-200 p-8 text-center text-sm text-surface-400 dark:border-surface-600"
-        >
-          {{ $t('dashboard.widget_settings.no_widgets_message') }}
-        </div>
-
-        <div v-else class="space-y-1">
-          <div
-            v-for="(w, index) in widgets.sortedWidgets.value"
-            :key="w.key"
-            draggable="true"
-            class="flex cursor-grab items-center gap-2 rounded-lg border p-3 transition-colors active:cursor-grabbing"
-            :class="[
-              dragIndex === index
-                ? 'border-primary/40 bg-primary/5 opacity-50'
-                : dropTargetIndex === index
-                  ? 'border-primary bg-primary/10'
-                  : 'border-surface-200 dark:border-surface-600',
-            ]"
-            @dragstart="onDragStart(index, $event)"
-            @dragover="onDragOver(index, $event)"
-            @dragleave="onDragLeave"
-            @drop="onDrop(index)"
-            @dragend="onDragEnd"
-          >
-            <i class="pi pi-bars text-sm text-surface-400" />
-            <i :class="w.icon" class="text-lg text-primary" />
-            <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium">{{ w.label }}</p>
-              <p class="text-xs text-surface-500">{{ w.description }}</p>
-            </div>
-            <ToggleSwitch
-              :model-value="widgets.isVisible(w.key)"
-              @update:model-value="widgets.toggleWidget(w.key)"
-            />
-          </div>
-        </div>
-      </template>
+    <!-- ウィジェット一覧（スコープが確定してから表示） -->
+    <template v-if="showWidgetList">
+      <p class="mb-3 text-sm text-surface-500">
+        {{ $t('dashboard.widget_settings.drag_hint') }}
+      </p>
+      <!--
+        :key でスコープ変更時に DashboardWidgetList を再マウントする。
+        これにより内部の useDashboardWidgets composable が新しいスコープで再初期化される。
+        computedの内部でcomposableを呼び出すことはVueのルール違反のため、このパターンを採用。
+      -->
+      <DashboardWidgetList
+        :key="widgetListKey"
+        :scope-type="activeScope"
+        :scope-id="currentScopeId"
+        viewer-role="ADMIN"
+      />
     </template>
   </div>
 </template>
