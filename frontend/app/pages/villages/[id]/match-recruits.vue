@@ -162,11 +162,7 @@ async function submitApply(body: VillageMatchApplicationCreateRequest) {
   try {
     await villageApi.applyToMatchRecruit(villageId.value, detailRecruit.value.id, body)
     showApplyDialog.value = false
-    toast.add({
-      severity: 'success',
-      summary: t('village.matchRecruit.applySuccess'),
-      life: 3000,
-    })
+    success(t('village.matchRecruit.applySuccess'))
     // 応募一覧を再取得
     if (detailRecruit.value && (isDetailOwner.value || canManage.value)) {
       detailApplications.value = await villageApi.listApplications(
