@@ -31,10 +31,11 @@ public class NavSettingsController {
 
     @PutMapping
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "ナビ設定更新", description = "非表示にするナビキーリストを全量上書き保存する。")
+    @Operation(summary = "ナビ設定更新",
+            description = "非表示にするナビキーリストと個人並び順を全量上書き保存する。navDisplayOrder 省略時はマスタ順にリセット。")
     public ResponseEntity<Void> updateNavSettings(@Valid @RequestBody UpdateNavSettingsRequest request) {
         Long userId = SecurityUtils.getCurrentUserId();
-        navSettingsService.updateMyNavSettings(userId, request.getHiddenNavKeys());
+        navSettingsService.updateMyNavSettings(userId, request.getHiddenNavKeys(), request.getNavDisplayOrder());
         return ResponseEntity.noContent().build();
     }
 }

@@ -57,7 +57,9 @@
       "required": "Obligatorio",
       "resetToDefault": "Restablecer valores predeterminados",
       "saveSuccess": "Configuración guardada",
-      "saveError": "Error al guardar la configuración"
+      "saveError": "Error al guardar la configuración",
+      "reorderHint": "Arrastra el controlador para reordenar los elementos de navegación",
+      "dragHandleLabel": "Controlador de arrastre"
     },
     "account": {
       "page_title": "Configuración de cuenta",
