@@ -594,7 +594,7 @@ class ReflectionTodayServiceTest {
     void getToday_activeThemeWithNullArchivedAt_displayed() {
         UUID themeId = UUID.randomUUID();
         // archived_at = null（アクティブ）のテーマ
-        ReflectionThemeEntity activeTheme = theme(themeId, null, null);
+        ReflectionThemeEntity activeTheme = theme(themeId, null, null, ReflectionSourceType.FREE);
         given(themeRepository.findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc(USER_ID))
                 .willReturn(List.of(activeTheme));
         given(entryRepository.findByUserIdAndTargetDate(USER_ID, TODAY)).willReturn(List.of());
