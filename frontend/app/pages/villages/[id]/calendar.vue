@@ -29,7 +29,8 @@ const villageId = computed(() => String(route.params.id))
 const { t } = useI18n()
 const villageApi = useVillageApi()
 const { handleApiError } = useErrorHandler()
-const toast = useToast()
+const { success } = useNotification()
+const { confirmAction } = useConfirmDialog()
 const { userTimezone } = useDatetime()
 
 // 権限は親シェルから inject
@@ -198,11 +199,7 @@ async function submitCreate() {
   try {
     await villageApi.createCalendarEvent(villageId.value, body)
     showCreateDialog.value = false
-    toast.add({
-      severity: 'success',
-      summary: t('village.calendar.saveSuccess'),
-      life: 3000,
-    })
+    success(t('village.calendar.saveSuccess'))
     await loadEvents()
   }
   catch (error) {
@@ -224,11 +221,7 @@ async function submitEdit() {
   try {
     await villageApi.updateCalendarEvent(villageId.value, editTargetId.value, body)
     showEditDialog.value = false
-    toast.add({
-      severity: 'success',
-      summary: t('village.calendar.saveSuccess'),
-      life: 3000,
-    })
+    success(t('village.calendar.saveSuccess'))
     await loadEvents()
   }
   catch (error) {
@@ -236,21 +229,21 @@ async function submitEdit() {
   }
 }
 
-async function submitDelete(ev: VillageCalendarEventResponse) {
-  if (!window.confirm(t('village.calendar.confirmDelete'))) return
-  try {
-    await villageApi.deleteCalendarEvent(villageId.value, ev.id)
-    showDetailDialog.value = false
-    toast.add({
-      severity: 'success',
-      summary: t('village.calendar.deleteSuccess'),
-      life: 3000,
-    })
-    await loadEvents()
-  }
-  catch (error) {
-    handleApiError(error, t('village.calendar.delete'))
-  }
+function submitDelete(ev: VillageCalendarEventResponse) {
+  confirmAction({
+    message: t('village.calendar.confirmDelete'),
+    onAccept: async () => {
+      try {
+        await villageApi.deleteCalendarEvent(villageId.value, ev.id)
+        showDetailDialog.value = false
+        success(t('village.calendar.deleteSuccess'))
+        await loadEvents()
+      }
+      catch (error) {
+        handleApiError(error, t('village.calendar.delete'))
+      }
+    },
+  })
 }
 
 // =====================================================================
