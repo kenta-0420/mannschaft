@@ -233,7 +233,7 @@ async function save() {
         linkedSubjectName: linkedSlot?.subjectName ?? undefined,
         linkedCourseCode: linkedSlot?.courseCode ?? undefined,
         // Phase 3: 学年/学期/親テーマ
-        academicYear: form.value.academicYear,
+        academicYear: form.value.academicYear ?? undefined,
         termLabel: form.value.termLabel ?? undefined,
         parentThemeId: form.value.parentThemeId ?? undefined,
         // clearParent: 直前に親があり今は「親なし」を選択した場合
@@ -254,7 +254,7 @@ async function save() {
         linkedSubjectName: !props.presetSlotId ? (linkedSlot?.subjectName ?? undefined) : undefined,
         linkedCourseCode: !props.presetSlotId ? (linkedSlot?.courseCode ?? undefined) : undefined,
         // Phase 3: 学年/学期/親テーマ
-        academicYear: form.value.academicYear,
+        academicYear: form.value.academicYear ?? undefined,
         termLabel: form.value.termLabel ?? undefined,
         parentThemeId: form.value.parentThemeId ?? undefined,
       }
