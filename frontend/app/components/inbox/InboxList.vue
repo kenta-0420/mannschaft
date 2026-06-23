@@ -459,7 +459,7 @@ const snoozePresets: SnoozePresetDef[] = [
         :class="
           inboxStore.priorityFilter.includes(priority)
             ? 'border-primary bg-primary/10 text-primary'
-            : 'border-surface-300 text-surface-600 hover:border-primary'
+            : 'border-surface-300 text-surface-600 hover:border-primary dark:border-surface-600 dark:text-surface-400'
         "
         @click="togglePriority(priority)"
       >
@@ -478,7 +478,7 @@ const snoozePresets: SnoozePresetDef[] = [
         :class="
           inboxStore.sourceTypeFilter.includes(sourceType)
             ? 'border-primary bg-primary/10 text-primary'
-            : 'border-surface-300 text-surface-600 hover:border-primary'
+            : 'border-surface-300 text-surface-600 hover:border-primary dark:border-surface-600 dark:text-surface-400'
         "
         @click="toggleSourceType(sourceType)"
       >
@@ -505,7 +505,7 @@ const snoozePresets: SnoozePresetDef[] = [
         "
         :class="
           inboxStore.labelFilter !== label.id
-            ? 'border-surface-300 text-surface-600 hover:border-primary'
+            ? 'border-surface-300 text-surface-600 hover:border-primary dark:border-surface-600 dark:text-surface-400'
             : ''
         "
         :data-testid="`inbox-label-filter-${label.id}`"
