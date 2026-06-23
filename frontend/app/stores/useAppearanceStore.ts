@@ -10,6 +10,7 @@ type ThemeMode = 'LIGHT' | 'DARK'
 interface AppearanceState {
   theme: ThemeMode
   bgColor: string
+  darkBgColor: string
   seasonalThemeId: number | null
   hideChatPreview: boolean
 }
@@ -18,6 +19,7 @@ export const useAppearanceStore = defineStore('appearance', {
   state: (): AppearanceState => ({
     theme: 'LIGHT',
     bgColor: '#f3efe0',
+    darkBgColor: '#18181b',
     seasonalThemeId: null,
     hideChatPreview: false,
   }),
@@ -41,6 +43,13 @@ export const useAppearanceStore = defineStore('appearance', {
       this.persistToStorage()
     },
 
+    setDarkBgColor(color: string) {
+      this.darkBgColor = color
+      this.applyBgColor()
+      this.persistToStorage()
+      this.syncWithServer()
+    },
+
     setHideChatPreview(hidden: boolean) {
       this.hideChatPreview = hidden
       this.persistToStorage()
@@ -55,15 +64,16 @@ export const useAppearanceStore = defineStore('appearance', {
       else {
         html.classList.remove('p-dark', 'dark')
       }
-      // テーマ切替時に背景色も再適用（ライトモード制御）
+      // テーマ切替時に背景色も再適用
       this.applyBgColor()
     },
 
     applyBgColor() {
       if (!import.meta.client) return
+      // ダークモード時は darkBgColor を、ライトモード時は bgColor を適用する
+      // （ダーク時に --bg-color を削除するとボディがクリーム色になるバグを根治）
       if (this.isDark) {
-        // ダークモード時は背景色選択を無効化し、bg-surface-ground に戻す
-        document.documentElement.style.removeProperty('--bg-color')
+        document.documentElement.style.setProperty('--bg-color', this.darkBgColor)
       }
       else {
         document.documentElement.style.setProperty('--bg-color', this.bgColor)
@@ -79,6 +89,7 @@ export const useAppearanceStore = defineStore('appearance', {
           const themeVal = parsed.theme
           this.theme = (themeVal === 'LIGHT' || themeVal === 'DARK') ? themeVal : 'LIGHT'
           this.bgColor = parsed.bgColor ?? '#f3efe0'
+          this.darkBgColor = parsed.darkBgColor ?? '#18181b'
           this.seasonalThemeId = parsed.seasonalThemeId ?? null
           this.hideChatPreview = parsed.hideChatPreview ?? false
         }
@@ -95,6 +106,7 @@ export const useAppearanceStore = defineStore('appearance', {
       localStorage.setItem('appearance', JSON.stringify({
         theme: this.theme,
         bgColor: this.bgColor,
+        darkBgColor: this.darkBgColor,
         seasonalThemeId: this.seasonalThemeId,
         hideChatPreview: this.hideChatPreview,
       }))
@@ -103,10 +115,11 @@ export const useAppearanceStore = defineStore('appearance', {
     async syncWithServer() {
       try {
         const api = useApi()
-        // 生成型 UpdateAppearanceRequest に合わせたボディ（seasonalThemeId は optional）
+        // 生成型 UpdateAppearanceRequest に合わせたボディ（darkBgColor は @NotNull 必須）
         const body: UpdateAppearanceRequest = {
           theme: this.theme,
           bgColor: this.bgColor,
+          darkBgColor: this.darkBgColor,
           hideChatPreview: this.hideChatPreview,
           ...(this.seasonalThemeId !== null ? { seasonalThemeId: this.seasonalThemeId } : {}),
         }
@@ -128,6 +141,7 @@ export const useAppearanceStore = defineStore('appearance', {
         const t = response.data.theme
         this.theme = (t === 'LIGHT' || t === 'DARK') ? t : 'LIGHT'
         this.bgColor = response.data.bgColor ?? '#f3efe0'
+        this.darkBgColor = response.data.darkBgColor ?? '#18181b'
         this.seasonalThemeId = response.data.seasonalThemeId ?? null
         this.hideChatPreview = response.data.hideChatPreview ?? false
         this.applyTheme()
