@@ -57,7 +57,9 @@
       "required": "必须",
       "resetToDefault": "恢复默认",
       "saveSuccess": "设置已保存",
-      "saveError": "保存失败"
+      "saveError": "保存失败",
+      "reorderHint": "拖动手柄即可调整导航项的显示顺序",
+      "dragHandleLabel": "拖动手柄"
     },
     "account": {
       "page_title": "账户设置",

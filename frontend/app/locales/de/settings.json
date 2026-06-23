@@ -57,7 +57,9 @@
       "required": "Erforderlich",
       "resetToDefault": "Auf Standard zurücksetzen",
       "saveSuccess": "Einstellungen gespeichert",
-      "saveError": "Einstellungen konnten nicht gespeichert werden"
+      "saveError": "Einstellungen konnten nicht gespeichert werden",
+      "reorderHint": "Ziehen Sie den Griff, um die Navigationspunkte neu anzuordnen",
+      "dragHandleLabel": "Ziehgriff"
     },
     "account": {
       "page_title": "Kontoeinstellungen",
