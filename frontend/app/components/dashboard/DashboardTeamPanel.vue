@@ -54,7 +54,14 @@ const hasResolvedSlug = computed(() =>
   selectedTeamId.value !== null && !isUnmigratedScopeId(selectedTeamId.value),
 )
 
+/**
+ * 直近に load() を発火した teamId（slug）。同一 slug の二重 fetch を防ぐガード。
+ * tabPages.TEAM の張り替えで watcher が再評価されても、既にロード済みなら再 fetch しない。
+ */
+const lastLoadedId = ref<string | null>(null)
+
 async function load(teamId: string) {
+  lastLoadedId.value = teamId
   loading.value = true
   errorKey.value = null
   try {
@@ -70,22 +77,41 @@ async function load(teamId: string) {
   }
 }
 
+/**
+ * 選択スコープ解決のメインロジック（不変条件）:
+ *   - id===null            → data=null, loading=false（空状態）
+ *   - 移行前 BIGINT（slug 未確定）→ loading=true（スピナー。load は呼ばない）
+ *   - slug 確定           → load(id) を必ず 1 回呼ぶ（lastLoadedId で二重 fetch を防ぐ）
+ *
+ * selectedTeamId だけでなく store.tabPages.TEAM も監視するのが要点。
+ * 旧実装は selectedTeamId のみ監視していたため、loadTabs が tabPages を埋めても
+ * 値が変わらない（slug がそのまま BIGINT 文字列だった等）と watcher が再発火せず、
+ * load() が永久に呼ばれず空白に落ちるレースがあった。tabPages の変化も監視することで、
+ * slug が確定（isUnmigratedScopeId が false へ転じる）した時点で確実に load() が走る。
+ */
+function resolveSelectedTeam() {
+  const id = selectedTeamId.value
+  if (id === null) {
+    data.value = null
+    loading.value = false
+    lastLoadedId.value = null
+    return
+  }
+  if (isUnmigratedScopeId(id)) {
+    // 内部 BIGINT（移行前）: loadTabs が slug に張り替えるまでスピナーを表示し、
+    // 空白状態（loading=false/data=null/errorKey=null かつ非 null id）を防ぐ。
+    loading.value = true
+    return
+  }
+  // slug（fc-u-18 等）が確定。既に同一 slug をロード済みなら二重 fetch しない。
+  if (lastLoadedId.value === id) return
+  // 404 時は errorKey で顕在化させ握り潰さない。
+  load(id)
+}
+
 watch(
-  selectedTeamId,
-  (id) => {
-    if (id === null) {
-      data.value = null
-      loading.value = false
-    } else if (isUnmigratedScopeId(id)) {
-      // 内部 BIGINT（移行前）: DashboardScopeCarousel.onMounted が loadTabs で slug に
-      // 張り替えるまでスピナーを表示し、空白状態（loading=false/data=null/errorKey=null
-      // かつ非null id）を防ぐ。
-      loading.value = true
-    } else {
-      // slug（fc-u-18 等）: そのまま表示。404 時は errorKey で顕在化させ握り潰さない。
-      load(id)
-    }
-  },
+  [selectedTeamId, () => store.tabPages.TEAM],
+  () => resolveSelectedTeam(),
   { immediate: true },
 )
 </script>
@@ -131,5 +157,13 @@ watch(
       :scope-id="selectedTeamId"
       :data="data"
     />
+
+    <!--
+      最終フォールバック（解決待ち）。
+      いずれの分岐にも当たらない状態（selectedTeamId 非 null / loading=false /
+      errorKey=null / data=null＝slug 確定直前のレース等）でも完全空白に落ちないよう、
+      解決待ちとして PageLoading を出す。新規 i18n キーは追加しない。
+    -->
+    <PageLoading v-else />
   </div>
 </template>

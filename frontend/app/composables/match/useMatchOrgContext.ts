@@ -71,8 +71,12 @@ export function useMatchOrgContext() {
       const res = await api<{ data: MyTeamItem[] }>('/api/v1/me/teams')
       const myTeam = (res.data ?? []).find((tm) => tm.slug === teamSlug)
       if (!myTeam || typeof myTeam.organizationId !== 'number') {
-        // チーム未所属 or 親組織未解決（試合 API は親組織コンテキスト必須）。
-        notification.warn(t('match.org_context.resolve_failed'))
+        // 「当該チームが /me/teams に無い」「親組織が無い（organizationId が数値でない）」は
+        // 単独チーム（＝親組織を持たないチーム）では想定内の正常状態（DB 上 88% が単独チーム）。
+        // チームダッシュボードを開くたびに警告トーストが出る不具合の根治のため、
+        // この想定内分岐では notification.warn を出さず、静かに null を返す
+        // （呼び出し側は ctx===null で空状態へ縮退する設計）。
+        // 真のエラー（/me/teams 取得失敗）は下の catch で従来どおり警告する。
         return null
       }
 
@@ -105,7 +109,9 @@ export function useMatchOrgContext() {
       const res = await api<{ data: MyTeamItem[] }>('/api/v1/me/teams')
       const myTeam = (res.data ?? []).find((tm) => tm.id === teamId)
       if (!myTeam || typeof myTeam.organizationId !== 'number') {
-        notification.warn(t('match.org_context.resolve_failed'))
+        // resolveContext と同様、チーム未所属／親組織なし（単独チーム）は想定内のため
+        // 警告トーストを出さず静かに null を返す（DB 上 88% が単独チーム）。
+        // 真のエラー（/me/teams 取得失敗）は下の catch で従来どおり警告する。
         return null
       }
 
