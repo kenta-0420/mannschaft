@@ -6,30 +6,17 @@
  * このファイルは「生成型の薄い別名」と、生成型では `JsonNode`（=構造未定義）になる
  * structured_content / recalled_content の **UI 用構造型** のみを手動で持つ（§2.3 スキーマ）。
  *
- * Phase 3 追加型: 生成型（index.ts）は BE の openapi.json 再生成前のため、
- * Phase 3 の新スキーマ（ArchiveFolderResponse / TermSuggestionResponse / BulkArchiveRequest /
- * BulkArchiveResult）は BE DTO（§12.4）から直接写した手動定義を使用する。
- * PR マージ・generate:types 実行後はこのファイルの手動定義を生成型別名に置き換えること。
+ * Phase 3 追加型: openapi.json に Phase 3 フィールドを補完し generate:types 再生成済み。
+ * ReflectionThemeResponse / CreateReflectionThemeRequest / UpdateReflectionThemeRequest は
+ * 生成型をそのまま参照する（academicYear / termLabel / parentThemeId / archivedAt / clearParent
+ * は生成型に含まれる）。
  */
 import type { components } from '~/types/generated'
 
 // ===== 生成型の別名（API req/res はこちらを使う） =====
 
-/**
- * テーマレスポンス（Phase 3 新フィールド academicYear / termLabel / parentThemeId / archivedAt を含む拡張型）。
- * 生成型（index.ts）は Phase 3 前の openapi.json から生成されているため、
- * 不足フィールドを intersection で補完する（generate:types 再生成後は通常別名に戻す）。
- */
-export type ReflectionThemeResponse = components['schemas']['ReflectionThemeResponse'] & {
-  /** Phase 3: 学年度（§12.1）。Integer型。null=未設定。 */
-  academicYear?: number | null
-  /** Phase 3: 学期ラベル（§12.1）。null=未設定。 */
-  termLabel?: string | null
-  /** Phase 3: 親テーマID（UUID文字列・§12.3）。null=トップレベル。 */
-  parentThemeId?: string | null
-  /** Phase 3: アーカイブ日時（§12.2）。null=アクティブ。 */
-  archivedAt?: string | null
-}
+/** テーマレスポンス（Phase 3: academicYear / termLabel / parentThemeId / archivedAt を含む）。 */
+export type ReflectionThemeResponse = components['schemas']['ReflectionThemeResponse']
 export type ReflectionEntryResponse = components['schemas']['ReflectionEntryResponse']
 export type ReflectionTodayResponse = components['schemas']['ReflectionTodayResponse']
 export type ReflectionTodayItem = components['schemas']['ReflectionTodayItem']
@@ -37,30 +24,10 @@ export type RecallAttemptResponse = components['schemas']['RecallAttemptResponse
 export type ReflectionSettingsResponse = components['schemas']['ReflectionSettingsResponse']
 export type MaskedHint = components['schemas']['MaskedHint']
 
-/**
- * テーマ作成リクエスト（Phase 3 新フィールド academicYear / termLabel / parentThemeId を含む拡張型）。
- */
-export type CreateReflectionThemeRequest = components['schemas']['CreateReflectionThemeRequest'] & {
-  /** Phase 3: 学年度（§12.1）。null=未設定。 */
-  academicYear?: number | null
-  /** Phase 3: 学期ラベル（§12.1）。null=未設定。 */
-  termLabel?: string | null
-  /** Phase 3: 親テーマID（UUID文字列・§12.3）。null=トップレベル。 */
-  parentThemeId?: string | null
-}
-/**
- * テーマ更新リクエスト（Phase 3 新フィールドを含む拡張型）。
- */
-export type UpdateReflectionThemeRequest = components['schemas']['UpdateReflectionThemeRequest'] & {
-  /** Phase 3: 学年度（§12.1）。null=未設定。 */
-  academicYear?: number | null
-  /** Phase 3: 学期ラベル（§12.1）。null=未設定。 */
-  termLabel?: string | null
-  /** Phase 3: 親テーマID（UUID文字列・§12.3）。null=トップレベル。 */
-  parentThemeId?: string | null
-  /** Phase 3: true で parent_theme_id を解除（Phase 2 の clearLinkedSubject と同型）。 */
-  clearParent?: boolean | null
-}
+/** テーマ作成リクエスト（Phase 3: academicYear / termLabel / parentThemeId を含む）。 */
+export type CreateReflectionThemeRequest = components['schemas']['CreateReflectionThemeRequest']
+/** テーマ更新リクエスト（Phase 3: academicYear / termLabel / parentThemeId / clearParent を含む）。 */
+export type UpdateReflectionThemeRequest = components['schemas']['UpdateReflectionThemeRequest']
 export type UpsertReflectionEntryRequest = components['schemas']['UpsertReflectionEntryRequest']
 export type CreateRecallAttemptRequest = components['schemas']['CreateRecallAttemptRequest']
 export type ExportToBlogRequest = components['schemas']['ExportToBlogRequest']

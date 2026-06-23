@@ -174656,6 +174656,18 @@
             "type": "string",
             "maxLength": 50,
             "minLength": 0
+          },
+          "academicYear": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "termLabel": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 0
+          },
+          "parentThemeId": {
+            "type": "string"
           }
         }
       },
@@ -174727,6 +174739,20 @@
             "format": "date-time"
           },
           "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "academicYear": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "termLabel": {
+            "type": "string"
+          },
+          "parentThemeId": {
+            "type": "string"
+          },
+          "archivedAt": {
             "type": "string",
             "format": "date-time"
           }
@@ -186687,6 +186713,21 @@
             "minLength": 0
           },
           "clearLinkedSubject": {
+            "type": "boolean"
+          },
+          "academicYear": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "termLabel": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 0
+          },
+          "parentThemeId": {
+            "type": "string"
+          },
+          "clearParent": {
             "type": "boolean"
           }
         }
