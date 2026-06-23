@@ -111,7 +111,7 @@ class ReflectionTodayServiceTest {
         DashboardTimetableTodayResponse.TimetableTodayItem teamSlot = slotItem("TEAM", 11L, "数学");
         given(dashboardService.getTimetableToday(eq(USER_ID), any(LocalDate.class)))
                 .willReturn(dashboard(List.of(teamSlot)));
-        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of());
+        given(themeRepository.findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc(USER_ID)).willReturn(List.of());
         given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any())).willReturn(List.of());
 
         ReflectionTodayResponse res = service.getToday(USER_ID, null);
@@ -135,7 +135,7 @@ class ReflectionTodayServiceTest {
                 .willReturn(dashboard(List.of(teamSlot)));
         ReflectionThemeEntity linkedTheme = theme(themeId, ReflectionLinkedSlotKind.TEAM, 11L,
                 ReflectionSourceType.SUBJECT);
-        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(linkedTheme));
+        given(themeRepository.findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(linkedTheme));
         given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any()))
                 .willReturn(List.of(entry(entryId, themeId, TODAY)));
 
@@ -156,7 +156,7 @@ class ReflectionTodayServiceTest {
         given(dashboardService.getTimetableToday(eq(USER_ID), any(LocalDate.class)))
                 .willReturn(dashboard(List.of()));
         ReflectionThemeEntity freeTheme = theme(freeThemeId, null, null, ReflectionSourceType.DIARY);
-        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(freeTheme));
+        given(themeRepository.findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(freeTheme));
         given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any())).willReturn(List.of());
 
         ReflectionTodayResponse res = service.getToday(USER_ID, null);
@@ -177,7 +177,7 @@ class ReflectionTodayServiceTest {
                 .willReturn(dashboard(List.of(slotItem("PERSONAL", 22L, "英語"))));
         ReflectionThemeEntity linkedTheme = theme(themeId, ReflectionLinkedSlotKind.PERSONAL, 22L,
                 ReflectionSourceType.SUBJECT);
-        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(linkedTheme));
+        given(themeRepository.findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(linkedTheme));
         ReflectionEntryEntity todayEntry = entry(entryId, themeId, TODAY);
         given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any()))
                 .willReturn(List.of(todayEntry));
@@ -204,7 +204,7 @@ class ReflectionTodayServiceTest {
     void getToday_explicitDate_used() {
         LocalDate target = TODAY.minusDays(3);
         given(dashboardService.getTimetableToday(USER_ID, target)).willReturn(dashboard(List.of()));
-        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of());
+        given(themeRepository.findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc(USER_ID)).willReturn(List.of());
         given(entryRepository.findByUserIdAndTargetDate(USER_ID, target)).willReturn(List.of());
 
         ReflectionTodayResponse res = service.getToday(USER_ID, target);
@@ -227,7 +227,7 @@ class ReflectionTodayServiceTest {
 
         ReflectionThemeEntity linkedTheme = themeWithCreatedAt(themeId, ReflectionLinkedSlotKind.TEAM, 11L,
                 ReflectionSourceType.SUBJECT, LocalDateTime.of(2026, 1, 10, 9, 0));
-        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(linkedTheme));
+        given(themeRepository.findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(linkedTheme));
         given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any()))
                 .willReturn(List.of(entry(entryId, themeId, TODAY)));
 
@@ -253,7 +253,7 @@ class ReflectionTodayServiceTest {
                 .willReturn(dashboard(List.of()));
         ReflectionThemeEntity freeTheme = themeWithCreatedAt(themeId, null, null,
                 ReflectionSourceType.DIARY, LocalDateTime.of(2026, 3, 1, 0, 0));
-        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(freeTheme));
+        given(themeRepository.findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(freeTheme));
         given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any())).willReturn(List.of());
 
         // GROUP BY クエリが themeId に対して行を返さない場合 → lastReflectedAt=null
@@ -273,7 +273,7 @@ class ReflectionTodayServiceTest {
         DashboardTimetableTodayResponse.TimetableTodayItem emptySlot = slotItem("TEAM", 99L, "空き");
         given(dashboardService.getTimetableToday(eq(USER_ID), any(LocalDate.class)))
                 .willReturn(dashboard(List.of(emptySlot)));
-        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of());
+        given(themeRepository.findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc(USER_ID)).willReturn(List.of());
         given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any())).willReturn(List.of());
 
         service.getToday(USER_ID, null);
@@ -293,7 +293,7 @@ class ReflectionTodayServiceTest {
                 .willReturn(dashboard(List.of()));
         ReflectionThemeEntity freeTheme = themeWithCreatedAt(themeId, null, null,
                 ReflectionSourceType.FREE, LocalDateTime.of(2026, 2, 1, 0, 0));
-        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(freeTheme));
+        given(themeRepository.findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(freeTheme));
         given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any())).willReturn(List.of());
         // MAX = newerDate を返す（GROUP BY 結果）
         given(entryRepository.findLatestTargetDateByThemeIds(any()))
@@ -310,7 +310,7 @@ class ReflectionTodayServiceTest {
         DashboardTimetableTodayResponse.TimetableTodayItem emptySlot = slotItem("TEAM", 77L, "体育");
         given(dashboardService.getTimetableToday(eq(USER_ID), any(LocalDate.class)))
                 .willReturn(dashboard(List.of(emptySlot)));
-        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of());
+        given(themeRepository.findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc(USER_ID)).willReturn(List.of());
         given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any())).willReturn(List.of());
 
         ReflectionTodayResponse res = service.getToday(USER_ID, null);
@@ -373,7 +373,7 @@ class ReflectionTodayServiceTest {
         // linked_subject_name="数学"、linked_slot_id=null のテーマ
         ReflectionThemeEntity subjectTheme = themeBySubject(themeId, ReflectionLinkedSlotKind.PERSONAL,
                 "数学", "MA101");
-        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(subjectTheme));
+        given(themeRepository.findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(subjectTheme));
         given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any())).willReturn(List.of());
         lenient().when(entryRepository.findLatestTargetDateByThemeIds(any())).thenReturn(List.of());
 
@@ -401,7 +401,7 @@ class ReflectionTodayServiceTest {
         // テーマ名は「数学（私の勉強テーマ）」、subjectName紐づけ="数学I"
         ReflectionThemeEntity subjectTheme = themeBySubjectWithTitle(themeId,
                 ReflectionLinkedSlotKind.PERSONAL, "数学I", null, "数学（私の勉強テーマ）");
-        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(subjectTheme));
+        given(themeRepository.findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(subjectTheme));
         given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any())).willReturn(List.of());
         lenient().when(entryRepository.findLatestTargetDateByThemeIds(any())).thenReturn(List.of());
 
@@ -432,7 +432,7 @@ class ReflectionTodayServiceTest {
         ReflectionThemeEntity theme1 = themeBySubject(themeId1, ReflectionLinkedSlotKind.PERSONAL, "数学", "MA101");
         // courseCode=MA201 に紐づくテーマ
         ReflectionThemeEntity theme2 = themeBySubject(themeId2, ReflectionLinkedSlotKind.PERSONAL, "数学", "MA201");
-        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(theme1, theme2));
+        given(themeRepository.findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(theme1, theme2));
         given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any())).willReturn(List.of());
         lenient().when(entryRepository.findLatestTargetDateByThemeIds(any())).thenReturn(List.of());
 
@@ -460,7 +460,7 @@ class ReflectionTodayServiceTest {
         // Phase1形式: linkedSlotId=11、linkedSubjectName=null
         ReflectionThemeEntity slotTheme = theme(themeId, ReflectionLinkedSlotKind.PERSONAL, 11L,
                 ReflectionSourceType.SUBJECT);
-        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(slotTheme));
+        given(themeRepository.findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(slotTheme));
         given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any())).willReturn(List.of());
         lenient().when(entryRepository.findLatestTargetDateByThemeIds(any())).thenReturn(List.of());
 
@@ -486,7 +486,7 @@ class ReflectionTodayServiceTest {
 
         // linked_subject_name="数学"、linked_slot_id=null → 条件B
         ReflectionThemeEntity subjectTheme = themeBySubject(themeId, ReflectionLinkedSlotKind.PERSONAL, "数学", null);
-        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(subjectTheme));
+        given(themeRepository.findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(subjectTheme));
         given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any())).willReturn(List.of());
         lenient().when(entryRepository.findLatestTargetDateByThemeIds(any())).thenReturn(List.of());
 
@@ -515,7 +515,7 @@ class ReflectionTodayServiceTest {
                 ReflectionSourceType.SUBJECT);
         // 条件B: linked_subject_name="数学"、linked_slot_id=null
         ReflectionThemeEntity themeB = themeBySubject(themeIdB, ReflectionLinkedSlotKind.PERSONAL, "数学", null);
-        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(themeA, themeB));
+        given(themeRepository.findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc(USER_ID)).willReturn(List.of(themeA, themeB));
         given(entryRepository.findByUserIdAndTargetDate(eq(USER_ID), any())).willReturn(List.of());
         lenient().when(entryRepository.findLatestTargetDateByThemeIds(any())).thenReturn(List.of());
 
@@ -576,7 +576,6 @@ class ReflectionTodayServiceTest {
         given(themeRepository.findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc(USER_ID))
                 .willReturn(List.of()); // アーカイブ済みは除外済みのリスト
         given(entryRepository.findByUserIdAndTargetDate(USER_ID, TODAY)).willReturn(List.of());
-        given(entryRepository.findLatestTargetDateByThemeIds(any())).willReturn(List.of());
         given(dashboardService.getTimetableToday(USER_ID, TODAY))
                 .willReturn(dashboard(List.of()));
 

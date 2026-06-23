@@ -262,12 +262,6 @@ class ReflectionThemeServiceTest {
     @Test
     @DisplayName("AC-44(c): 自己参照指定で REFLECTION_PARENT_SELF_REFERENCE (400)")
     void createTheme_parentSelfReference_throws() {
-        given(themeRepository.countByUserId(USER_ID)).willReturn(0L);
-        given(themeRepository.save(any())).willAnswer(inv -> {
-            ReflectionThemeEntity t = inv.getArgument(0);
-            setId(t, THEME_ID);
-            return t;
-        });
         // updateTheme 側で自己参照をテスト（id が確定してから）
         ReflectionThemeEntity theme = ownedTheme(null);
         given(themeRepository.findByIdAndUserId(THEME_ID, USER_ID)).willReturn(Optional.of(theme));
