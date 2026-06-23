@@ -1,5 +1,6 @@
 package com.mannschaft.app.payment;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.notification.service.NotificationHelper;
@@ -64,6 +65,7 @@ class MemberPaymentConnectCheckoutServiceTest {
     @Mock private PaymentAuthorizationService paymentAuthorizationService;
     @Mock private ConnectChargeService connectChargeService;
     @Mock private ConnectAccountRepository connectAccountRepository;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private MemberPaymentService service;
@@ -285,6 +287,8 @@ class MemberPaymentConnectCheckoutServiceTest {
             given(memberPaymentRepository.existsValidPaidPayment(BENEFICIARY, ITEM_ID)).willReturn(false);
             given(paymentAuthorizationService.authorizePayment(eq(OTHER_PAYER), eq(BENEFICIARY), eq(ITEM_ID), anyBoolean()))
                     .willReturn(PayerRelationship.ADMIN_MANUAL);
+            // AC-6: 受益者のスコープ所属検証（成功系ゆえ所属メンバーとして true を返す）
+            given(accessControlService.isMemberOrDescendant(any(), any(), any(), anyBoolean())).willReturn(true);
             given(memberPaymentRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
             given(paymentMapper.toMemberPaymentResponse(any())).willReturn(null);
 
