@@ -86,4 +86,12 @@ const { t } = useI18n()
   color: #111;
   border-color: transparent;
 }
+:global(.dark) .presentation__modal {
+  background: #1e1e1e;
+  color: #f4f4f5;
+}
+:global(.dark) .presentation__btn--primary {
+  background: #27272a;
+  color: #f4f4f5;
+}
 </style>
