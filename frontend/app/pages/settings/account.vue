@@ -159,10 +159,10 @@ onMounted(async () => {
       <Transition name="fade">
         <div
           v-if="redirecting"
-          class="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-4 bg-black/60 dark:bg-black/75"
+          class="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-4 bg-surface-0 dark:bg-surface-900"
         >
           <LoadingBounce />
-          <p class="text-sm font-medium text-white">
+          <p class="text-sm font-medium text-surface-600 dark:text-surface-300">
             {{ $t('settings.password.redirecting') }}
           </p>
         </div>
