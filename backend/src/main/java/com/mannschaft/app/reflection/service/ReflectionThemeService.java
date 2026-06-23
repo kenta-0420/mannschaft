@@ -40,10 +40,14 @@ public class ReflectionThemeService {
     private final ReflectionSpacedReminderRepository reflectionSpacedReminderRepository;
     private final ReflectionSpacedReminderService reflectionSpacedReminderService;
 
-    /** 自分のテーマ一覧（§7 #1）。 */
+    /**
+     * 自分のテーマ一覧（§7 #1）。
+     * Phase 3: アクティブテーマのみ（archived_at IS NULL）を返す新メソッドに切替（AC-39）。
+     * archived テーマは /archive/search EP で参照する。
+     */
     @Transactional(readOnly = true)
     public List<ReflectionThemeResponse> listMyThemes(Long userId) {
-        return reflectionThemeRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+        return reflectionThemeRepository.findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc(userId).stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -66,8 +70,16 @@ public class ReflectionThemeService {
                 // Phase 2: 科目名紐づけ（§11.1）
                 .linkedSubjectName(request.linkedSubjectName())
                 .linkedCourseCode(request.linkedCourseCode())
+                // Phase 3: 学年・学期・親テーマ（§12）
+                .academicYear(request.academicYear())
+                .termLabel(request.termLabel())
                 // visibility / recallIntervalDays は MVP 固定（@Builder.Default の PRIVATE / '1,3,7,14'）。
                 .build();
+        // Phase 3: 親テーマ指定のバリデーション＆セット
+        if (request.parentThemeId() != null) {
+            UUID parentId = UUID.fromString(request.parentThemeId());
+            validateAndSetParent(entity, userId, parentId);
+        }
         ReflectionThemeEntity saved = reflectionThemeRepository.save(entity);
         // exam_date が指定されていれば PRE_EXAM リマインダを生成（過去日ガード内包・§5.5）。
         if (saved.getExamDate() != null) {
@@ -110,6 +122,15 @@ public class ReflectionThemeService {
                 theme.setLinkedSubject(theme.getLinkedSubjectName(), request.linkedCourseCode());
             }
         }
+        // Phase 3: 学年・学期（null=現値維持・§12.1）
+        theme.setAcademicYearAndTerm(request.academicYear(), request.termLabel());
+        // Phase 3: 親テーマ（clearParent=true でクリア・examDateCleared と同型・§12.3）
+        if (request.clearParent()) {
+            theme.clearParentThemeId();
+        } else if (request.parentThemeId() != null) {
+            UUID parentId = UUID.fromString(request.parentThemeId());
+            validateAndSetParent(theme, userId, parentId);
+        }
         ReflectionThemeEntity saved = reflectionThemeRepository.save(theme);
 
         // exam_date が変化したら既存 PENDING PRE_EXAM を CANCELLED にして作り直す（§5.5）。
@@ -148,6 +169,14 @@ public class ReflectionThemeService {
                 .orElseThrow(() -> new BusinessException(ReflectionErrorCode.REFLECTION_NOT_FOUND));
     }
 
+    /**
+     * ReflectionArchiveService から利用するための公開版 toResponse。
+     * 内容は {@link #toResponse} と同一。
+     */
+    public ReflectionThemeResponse toResponsePublic(ReflectionThemeEntity e) {
+        return toResponse(e);
+    }
+
     private ReflectionThemeResponse toResponse(ReflectionThemeEntity e) {
         return ReflectionThemeResponse.builder()
                 .id(e.getId().toString())
@@ -164,7 +193,38 @@ public class ReflectionThemeService {
                 .recallIntervalDays(e.getRecallIntervalDays())
                 .createdAt(e.getCreatedAt())
                 .updatedAt(e.getUpdatedAt())
+                // Phase 3: アーカイブ＆分類フィールド（§12.5）
+                .academicYear(e.getAcademicYear())
+                .termLabel(e.getTermLabel())
+                .parentThemeId(e.getParentThemeId() != null ? e.getParentThemeId().toString() : null)
+                .archivedAt(e.getArchivedAt())
                 .build();
+    }
+
+    /**
+     * Phase 3: 親テーマのバリデーション（§12.3）:
+     * - 自己参照禁止（400）
+     * - depth 超過禁止（親の親は不可・400）
+     * - 他人テーマ禁止（404）
+     * - アーカイブ済み/削除済み禁止（400）
+     */
+    private void validateAndSetParent(ReflectionThemeEntity theme, Long userId, UUID parentId) {
+        // 自己参照チェック
+        if (theme.getId() != null && theme.getId().equals(parentId)) {
+            throw new BusinessException(ReflectionErrorCode.REFLECTION_PARENT_SELF_REFERENCE);
+        }
+        // 親テーマの取得（他人テーマは 404）
+        ReflectionThemeEntity parent = reflectionThemeRepository.findByIdAndUserId(parentId, userId)
+                .orElseThrow(() -> new BusinessException(ReflectionErrorCode.REFLECTION_NOT_FOUND));
+        // アーカイブ済み/削除済みチェック（@SQLRestriction で削除済みは取得されないが明示チェック）
+        if (parent.getArchivedAt() != null) {
+            throw new BusinessException(ReflectionErrorCode.REFLECTION_PARENT_INVALID_STATE);
+        }
+        // depth 超過チェック（親の親は不可）
+        if (parent.getParentThemeId() != null) {
+            throw new BusinessException(ReflectionErrorCode.REFLECTION_PARENT_DEPTH_EXCEEDED);
+        }
+        theme.setParentThemeId(parentId);
     }
 
     /** PENDING リマインダー総数（呼び出し補助・未使用箇所向け）。 */

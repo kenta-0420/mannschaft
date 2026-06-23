@@ -565,4 +565,47 @@ class ReflectionTodayServiceTest {
                 "1限", 1, null, null, subject, courseCode, null, null, null, null,
                 null, Boolean.FALSE, null, Boolean.FALSE, null, Boolean.FALSE);
     }
+
+    // ─── Phase 3: AC-39 / AC-45 ─────────────────────────────────────
+
+    @Test
+    @DisplayName("AC-39: アーカイブ済みテーマが今日ビューに出ない（findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc 切替）")
+    void getToday_archivedThemeExcluded() {
+        UUID archivedThemeId = UUID.randomUUID();
+        // アーカイブ済みテーマ（archived_at != null）を含まないリストを返す（新メソッド模擬）
+        given(themeRepository.findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc(USER_ID))
+                .willReturn(List.of()); // アーカイブ済みは除外済みのリスト
+        given(entryRepository.findByUserIdAndTargetDate(USER_ID, TODAY)).willReturn(List.of());
+        given(entryRepository.findLatestTargetDateByThemeIds(any())).willReturn(List.of());
+        given(dashboardService.getTimetableToday(USER_ID, TODAY))
+                .willReturn(dashboard(List.of()));
+
+        ReflectionTodayResponse response = service.getToday(USER_ID, TODAY);
+
+        assertThat(response.items()).isEmpty();
+        // 旧メソッド findByUserIdOrderByCreatedAtDesc は呼ばれない（切替検証）
+        verify(themeRepository, never()).findByUserIdOrderByCreatedAtDesc(USER_ID);
+        // 新メソッド findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc が呼ばれる
+        verify(themeRepository).findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc(USER_ID);
+    }
+
+    @Test
+    @DisplayName("AC-45: 後方互換 — archived_at が NULL の既存テーマは今日ビューに表示される")
+    void getToday_activeThemeWithNullArchivedAt_displayed() {
+        UUID themeId = UUID.randomUUID();
+        // archived_at = null（アクティブ）のテーマ
+        ReflectionThemeEntity activeTheme = theme(themeId, null, null);
+        given(themeRepository.findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc(USER_ID))
+                .willReturn(List.of(activeTheme));
+        given(entryRepository.findByUserIdAndTargetDate(USER_ID, TODAY)).willReturn(List.of());
+        given(entryRepository.findLatestTargetDateByThemeIds(any())).willReturn(List.of());
+        given(dashboardService.getTimetableToday(USER_ID, TODAY))
+                .willReturn(dashboard(List.of()));
+
+        ReflectionTodayResponse response = service.getToday(USER_ID, TODAY);
+
+        // 自由テーマとして 1 件表示される
+        assertThat(response.items()).hasSize(1);
+        assertThat(response.items().get(0).themeId()).isEqualTo(themeId.toString());
+    }
 }

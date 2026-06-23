@@ -71,7 +71,10 @@ public class ReflectionTodayService {
                 personalTimetableDashboardService.getTimetableToday(userId, target);
 
         // 当日の全テーマ・当日エントリを 1 度ずつ引いてメモリ上で照合する（N+1 回避）。
-        List<ReflectionThemeEntity> themes = reflectionThemeRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        // Phase 3: アクティブテーマのみ（archived_at IS NULL）を使用（AC-39・§12.5）。
+        // CalendarEnricher は既存 findByUserIdOrderByCreatedAtDesc で archived 込みのまま（据え置き）。
+        List<ReflectionThemeEntity> themes =
+                reflectionThemeRepository.findByUserIdAndArchivedAtIsNullOrderByCreatedAtDesc(userId);
         List<ReflectionEntryEntity> entries = reflectionEntryRepository.findByUserIdAndTargetDate(userId, target);
 
         // themeId → 当日エントリ。

@@ -20,6 +20,9 @@ import java.time.LocalDate;
  * @param examDate           定期考査日（任意・総まとめリマインド基準）
  * @param linkedSubjectName  Phase 2: 科目名紐づけ（任意・§11.1）
  * @param linkedCourseCode   Phase 2: 履修番号紐づけ（任意・PERSONAL専用・§11.1）
+ * @param academicYear       Phase 3: 学年度（任意・Integer型・§12.1）
+ * @param termLabel          Phase 3: 学期ラベル（任意・§12.1）
+ * @param parentThemeId      Phase 3: 親テーマID（UUID文字列・任意・§12.3）
  */
 public record CreateReflectionThemeRequest(
 
@@ -42,6 +45,16 @@ public record CreateReflectionThemeRequest(
         String linkedSubjectName,
 
         @Size(max = 50, message = "履修番号は50文字以内で入力してください")
-        String linkedCourseCode
+        String linkedCourseCode,
+
+        /** Phase 3: 学年度（§12.1）。Integer型（DB は SMALLINT・型統一方針）。 */
+        Integer academicYear,
+
+        /** Phase 3: 学期ラベル（§12.1）。 */
+        @Size(max = 50, message = "学期ラベルは50文字以内で入力してください")
+        String termLabel,
+
+        /** Phase 3: 親テーマID（UUID文字列・§12.3）。null=トップレベル。 */
+        String parentThemeId
 ) {
 }
