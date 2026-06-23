@@ -143947,6 +143947,10 @@
             "type": "string",
             "pattern": "^#[0-9a-fA-F]{6}$"
           },
+          "darkBgColor": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          },
           "seasonalThemeId": {
             "type": "integer",
             "format": "int64"
@@ -143957,6 +143961,7 @@
         },
         "required": [
           "bgColor",
+          "darkBgColor",
           "hideChatPreview",
           "theme"
         ]
@@ -143980,6 +143985,9 @@
             ]
           },
           "bgColor": {
+            "type": "string"
+          },
+          "darkBgColor": {
             "type": "string"
           },
           "seasonalThemeId": {
