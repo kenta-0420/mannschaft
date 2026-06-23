@@ -35,7 +35,9 @@ const { t } = useI18n()
 defineOptions({ inheritAttrs: false })
 
 const titleClass = computed(() =>
-  props.size === 'sm' ? 'text-2xl font-bold' : 'text-4xl font-bold',
+  props.size === 'sm'
+    ? 'text-2xl font-bold text-surface-900 dark:text-surface-200'
+    : 'text-4xl font-bold text-surface-900 dark:text-surface-200',
 )
 </script>
 

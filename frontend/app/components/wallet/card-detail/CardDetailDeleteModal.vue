@@ -109,4 +109,11 @@ const { t } = useI18n()
   color: #dc2626;
   border-color: #dc2626;
 }
+:global(.dark) .card-detail__modal {
+  background: #1e1e1e;
+  color: #f4f4f5;
+}
+:global(.dark) .card-detail__btn--danger {
+  background: #27272a;
+}
 </style>

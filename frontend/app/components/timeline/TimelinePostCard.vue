@@ -86,7 +86,7 @@ async function handleToggleMitayo() {
 
 <template>
   <div
-    class="cursor-pointer rounded-xl border-2 border-surface-400 bg-surface-0 p-4 transition-shadow hover:shadow-sm"
+    class="cursor-pointer rounded-xl border-2 border-surface-400 bg-surface-0 p-4 transition-shadow hover:shadow-sm dark:bg-surface-800"
     data-testid="team-timeline-post"
     @click="emit('clickPost', post.id)"
   >
@@ -134,7 +134,7 @@ async function handleToggleMitayo() {
     <!-- リポスト元 -->
     <div
       v-if="post.repostOf"
-      class="mb-2 rounded-lg border border-surface-100 bg-surface-50 p-3 text-sm"
+      class="mb-2 rounded-lg border border-surface-100 bg-surface-50 p-3 text-sm dark:border-surface-700 dark:bg-surface-900"
     >
       <template v-if="post.repostOf.deleted">
         <span class="text-surface-400">元の投稿は削除されました</span>
