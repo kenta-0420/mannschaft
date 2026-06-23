@@ -22,8 +22,11 @@ public class AppearanceSettingsService {
     /** デフォルトテーマ。 */
     private static final ThemeMode DEFAULT_THEME = ThemeMode.LIGHT;
 
-    /** デフォルト背景色（温かみのあるオフホワイト）。 */
+    /** デフォルト背景色（温かみのあるオフホワイト）。ライトモード用。 */
     private static final String DEFAULT_BG_COLOR = "#f3efe0";
+
+    /** デフォルトダークモード背景色（shadcn-ui zinc-950 相当の暗色系）。 */
+    private static final String DEFAULT_DARK_BG_COLOR = "#18181b";
 
     private final AppearanceSettingsRepository repository;
 
@@ -60,6 +63,7 @@ public class AppearanceSettingsService {
         // toBuilder().build() は UuidV7Entity 継承クラスで id が引き継がれず新インスタンス＝INSERT になるため使わない。
         entity.setTheme(request.getTheme());
         entity.setBgColor(request.getBgColor());
+        entity.setDarkBgColor(request.getDarkBgColor());
         entity.setSeasonalThemeId(request.getSeasonalThemeId());
         entity.setHideChatPreview(Boolean.TRUE.equals(request.getHideChatPreview()));
 
@@ -74,6 +78,7 @@ public class AppearanceSettingsService {
         return AppearanceResponse.builder()
                 .theme(entity.getTheme())
                 .bgColor(entity.getBgColor())
+                .darkBgColor(entity.getDarkBgColor())
                 .seasonalThemeId(entity.getSeasonalThemeId())
                 .hideChatPreview(entity.isHideChatPreview())
                 .build();
@@ -83,6 +88,7 @@ public class AppearanceSettingsService {
         return AppearanceResponse.builder()
                 .theme(DEFAULT_THEME)
                 .bgColor(DEFAULT_BG_COLOR)
+                .darkBgColor(DEFAULT_DARK_BG_COLOR)
                 .seasonalThemeId(null)
                 .hideChatPreview(false)
                 .build();
