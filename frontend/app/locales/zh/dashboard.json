@@ -7,7 +7,19 @@
       "no_widgets_message": "没有可显示的小部件",
       "add_widget_button": "添加小部件",
       "save_error_title": "保存失败",
-      "save_error_detail": "保存小部件设置失败。请重试。"
+      "save_error_detail": "保存小部件设置失败。请重试。",
+      "settings_page_title": "仪表盘小部件设置",
+      "settings_page_description": "按范围自定义小部件的显示和排列顺序",
+      "scope_personal": "个人",
+      "scope_team": "团队",
+      "scope_organization": "组织",
+      "select_team": "选择团队",
+      "select_organization": "选择组织",
+      "no_teams": "您不是任何团队的成员",
+      "no_organizations": "您不是任何组织的成员",
+      "drag_hint": "拖动以重新排序，切换以显示/隐藏小部件",
+      "settings_entry_label": "仪表盘小部件",
+      "settings_entry_description": "自定义仪表盘小部件显示和排列顺序"
     },
     "widget_visibility": {
       "tab_self": "我的显示／隐藏",

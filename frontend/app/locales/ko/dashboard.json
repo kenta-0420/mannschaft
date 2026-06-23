@@ -7,7 +7,19 @@
       "no_widgets_message": "표시할 위젯이 없습니다",
       "add_widget_button": "위젯 추가",
       "save_error_title": "저장 실패",
-      "save_error_detail": "위젯 설정 저장에 실패했습니다. 다시 시도해 주세요."
+      "save_error_detail": "위젯 설정 저장에 실패했습니다. 다시 시도해 주세요.",
+      "settings_page_title": "대시보드 위젯 설정",
+      "settings_page_description": "범위별 위젯 표시 및 순서 설정",
+      "scope_personal": "개인",
+      "scope_team": "팀",
+      "scope_organization": "조직",
+      "select_team": "팀 선택",
+      "select_organization": "조직 선택",
+      "no_teams": "소속된 팀이 없습니다",
+      "no_organizations": "소속된 조직이 없습니다",
+      "drag_hint": "드래그하여 순서 변경, 스위치로 표시/숨기기",
+      "settings_entry_label": "대시보드 위젯",
+      "settings_entry_description": "대시보드 위젯 표시 및 순서 설정"
     },
     "widget_visibility": {
       "tab_self": "내 표시／숨기기",
