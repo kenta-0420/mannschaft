@@ -134,7 +134,7 @@ function isActive(path: string, exact = false): boolean {
 
   <div v-else class="min-h-screen dark:bg-surface-ground" style="background-color: var(--bg-color, #f3efe0)">
     <!-- ヘッダー -->
-    <header class="sticky top-0 z-50 bg-surface-0 border-b border-surface shadow-sm">
+    <header class="sticky top-0 z-50 bg-surface-0 border-b border-surface shadow-sm dark:bg-surface-900 dark:border-surface-700">
       <div class="mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-4">
         <!-- 左: ロゴ + ナビゲーション -->
         <div class="flex min-w-0 flex-1 items-center gap-6">
@@ -163,8 +163,8 @@ function isActive(path: string, exact = false): boolean {
               <!-- ダッシュボード（最初に固定表示） -->
               <NuxtLink
                 to="/dashboard"
-                class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface-100"
-                :class="isActive('/dashboard') ? 'bg-primary/10 text-primary' : 'text-surface-600'"
+                class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
+                :class="isActive('/dashboard') ? 'bg-primary/10 text-primary' : 'text-surface-600 dark:text-surface-400'"
               >
                 <i class="pi pi-home" />
                 ダッシュボード
@@ -183,8 +183,8 @@ function isActive(path: string, exact = false): boolean {
                 v-for="item in navSettingsStore.visibleFeatures"
                 :key="item.key"
                 :to="item.path"
-                class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface-100"
-                :class="isActive(item.path) ? 'bg-primary/10 text-primary' : 'text-surface-600'"
+                class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
+                :class="isActive(item.path) ? 'bg-primary/10 text-primary' : 'text-surface-600 dark:text-surface-400'"
               >
                 <i :class="item.icon" />
                 {{ $t(item.labelKey, item.labelKey) }}
@@ -193,8 +193,8 @@ function isActive(path: string, exact = false): boolean {
               <NuxtLink
                 v-if="showProxyDeskNav"
                 :to="proxyDeskItem.to"
-                class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface-100"
-                :class="isActive(proxyDeskItem.to) ? 'bg-primary/10 text-primary' : 'text-surface-600'"
+                class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
+                :class="isActive(proxyDeskItem.to) ? 'bg-primary/10 text-primary' : 'text-surface-600 dark:text-surface-400'"
               >
                 <i :class="proxyDeskItem.icon" />
                 {{ proxyDeskItem.label }}
@@ -202,8 +202,8 @@ function isActive(path: string, exact = false): boolean {
               <NuxtLink
                 v-if="authStore.isSystemAdmin"
                 :to="systemAdminItem.to"
-                class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-red-50"
-                :class="isActive(systemAdminItem.to) ? 'bg-red-100 text-red-600' : 'text-red-500'"
+                class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-red-50 dark:hover:bg-red-900/30"
+                :class="isActive(systemAdminItem.to) ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400' : 'text-red-500 dark:text-red-400'"
               >
                 <i :class="systemAdminItem.icon" />
                 {{ systemAdminItem.label }}
@@ -212,8 +212,8 @@ function isActive(path: string, exact = false): boolean {
               <NuxtLink
                 v-if="showSyncNav"
                 to="/sync/conflicts"
-                class="relative flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface-100"
-                :class="isActive('/sync') ? 'bg-primary/10 text-primary' : 'text-surface-600'"
+                class="relative flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
+                :class="isActive('/sync') ? 'bg-primary/10 text-primary' : 'text-surface-600 dark:text-surface-400'"
               >
                 <i class="pi pi-sync" />
                 {{ t('sync.nav_label') }}
@@ -240,7 +240,7 @@ function isActive(path: string, exact = false): boolean {
                 :aria-label="t('inbox.title')"
                 :title="t('inbox.title')"
               >
-                <i class="pi pi-inbox text-surface-600" />
+                <i class="pi pi-inbox text-surface-600 dark:text-surface-300" />
                 <Badge
                   v-if="inboxStore.inboxCount > 0"
                   :value="inboxStore.inboxCount > 99 ? '99+' : inboxStore.inboxCount"
@@ -290,7 +290,7 @@ function isActive(path: string, exact = false): boolean {
       <!-- 後見切替中バナー -->
       <div
         v-if="guardianshipSwitchStore.isActingAs"
-        class="bg-orange-100 border-b border-orange-300 text-orange-800 text-sm py-1 px-4 flex items-center justify-between"
+        class="bg-orange-100 border-b border-orange-300 text-orange-800 text-sm py-1 px-4 flex items-center justify-between dark:bg-orange-900/30 dark:border-orange-700 dark:text-orange-300"
       >
         <span>{{ $t('proxy.guardianship.switch.actingAs', { name: guardianshipSwitchStore.activeChild?.displayName ?? '' }) }}</span>
         <button class="text-xs underline hover:no-underline" @click="handleEndSwitch">
@@ -320,8 +320,8 @@ function isActive(path: string, exact = false): boolean {
             v-for="item in navSettingsStore.visibleMobileFeatures"
             :key="item.key"
             :to="item.path"
-            class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-surface-100"
-            :class="isActive(item.path) ? 'bg-primary/10 text-primary' : 'text-surface-700'"
+            class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
+            :class="isActive(item.path) ? 'bg-primary/10 text-primary' : 'text-surface-700 dark:text-surface-300'"
             @click="showMobileMenu = false"
           >
             <i :class="[item.icon, 'text-base']" />
@@ -331,8 +331,8 @@ function isActive(path: string, exact = false): boolean {
           <NuxtLink
             v-if="showSyncNav"
             to="/sync/conflicts"
-            class="relative flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-surface-100"
-            :class="isActive('/sync') ? 'bg-primary/10 text-primary' : 'text-surface-700'"
+            class="relative flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
+            :class="isActive('/sync') ? 'bg-primary/10 text-primary' : 'text-surface-700 dark:text-surface-300'"
           >
             <i class="pi pi-sync text-base" />
             {{ t('sync.nav_label') }}
@@ -347,8 +347,8 @@ function isActive(path: string, exact = false): boolean {
           <NuxtLink
             v-if="showProxyDeskNav"
             :to="proxyDeskItem.to"
-            class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-surface-100"
-            :class="isActive(proxyDeskItem.to) ? 'bg-primary/10 text-primary' : 'text-surface-700'"
+            class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
+            :class="isActive(proxyDeskItem.to) ? 'bg-primary/10 text-primary' : 'text-surface-700 dark:text-surface-300'"
             @click="showMobileMenu = false"
           >
             <i :class="[proxyDeskItem.icon, 'text-base']" />
@@ -358,14 +358,14 @@ function isActive(path: string, exact = false): boolean {
           <NuxtLink
             v-if="authStore.isSystemAdmin"
             :to="systemAdminItem.to"
-            class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-red-50"
-            :class="isActive(systemAdminItem.to) ? 'bg-red-100 text-red-600' : 'text-red-500'"
+            class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-red-50 dark:hover:bg-red-900/30"
+            :class="isActive(systemAdminItem.to) ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400' : 'text-red-500 dark:text-red-400'"
           >
             <i :class="[systemAdminItem.icon, 'text-base']" />
             {{ systemAdminItem.label }}
           </NuxtLink>
         </nav>
-        <div class="mt-4 border-t border-surface-200 pt-4">
+        <div class="mt-4 border-t border-surface-200 pt-4 dark:border-surface-700">
           <Button
             label="ログアウト"
             icon="pi pi-sign-out"

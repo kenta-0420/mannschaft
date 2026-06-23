@@ -28,11 +28,14 @@ import static org.mockito.Mockito.when;
  *
  * <p>AC:</p>
  * <ul>
- *   <li>getOrDefault_無: DB未登録 → デフォルト値（LIGHT / #f3efe0 / null / false）を返す</li>
+ *   <li>getOrDefault_無: DB未登録 → デフォルト値（LIGHT / #f3efe0 / #18181b / null / false）を返す</li>
  *   <li>getOrDefault_有: DB登録済み → 保存値を返す</li>
  *   <li>save_新規insert: 未登録ユーザーに save → Repository の save が1回呼ばれる</li>
  *   <li>save_既存update: 登録済みユーザーに save → 同一行を更新（id が同じ）</li>
  *   <li>save_seasonalThemeId_null許容: seasonalThemeId=null で保存できる</li>
+ *   <li>getOrDefault_darkBgColor_デフォルト: DB未登録 → darkBgColor="#18181b" を返す</li>
+ *   <li>save_darkBgColor_永続化: save で darkBgColor が永続化され再取得で復元される</li>
+ *   <li>save_darkBgColor_upsert更新: 既存行の darkBgColor が更新される</li>
  * </ul>
  */
 @ExtendWith(MockitoExtension.class)
@@ -52,7 +55,7 @@ class AppearanceSettingsServiceTest {
     // ─────────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("getOrDefault_無: DB未登録 → デフォルト(LIGHT/#f3efe0/null/false)を返す")
+    @DisplayName("getOrDefault_無: DB未登録 → デフォルト(LIGHT/#f3efe0/#18181b/null/false)を返す")
     void getOrDefault_notFound_returnsDefault() {
         when(repository.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
@@ -60,6 +63,7 @@ class AppearanceSettingsServiceTest {
 
         assertThat(result.getTheme()).isEqualTo(ThemeMode.LIGHT);
         assertThat(result.getBgColor()).isEqualTo("#f3efe0");
+        assertThat(result.getDarkBgColor()).isEqualTo("#18181b");
         assertThat(result.getSeasonalThemeId()).isNull();
         assertThat(result.isHideChatPreview()).isFalse();
     }
@@ -142,6 +146,61 @@ class AppearanceSettingsServiceTest {
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    // AC: getOrDefault_darkBgColor_デフォルト → "#18181b" を返す
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("getOrDefault_darkBgColor_デフォルト: DB未登録 → darkBgColor=\"#18181b\" を返す")
+    void getOrDefault_notFound_returnsDarkBgColorDefault() {
+        when(repository.findByUserId(USER_ID)).thenReturn(Optional.empty());
+
+        AppearanceResponse result = service.getOrDefault(USER_ID);
+
+        assertThat(result.getDarkBgColor()).isEqualTo("#18181b");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // AC: save_darkBgColor_永続化 → save で darkBgColor が永続化され再取得で復元される
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("save_darkBgColor_永続化: save で darkBgColor が永続化され再取得で復元される")
+    void save_darkBgColor_isPersisted() {
+        when(repository.findByUserId(USER_ID)).thenReturn(Optional.empty());
+
+        // save は引数で渡された entity をそのまま返す（DB保存済みとして扱う）
+        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateAppearanceRequest req = buildRequestWithDark(ThemeMode.DARK, "#000000", "#2d2d2d", null, false);
+        AppearanceResponse result = service.save(USER_ID, req);
+
+        assertThat(result.getDarkBgColor()).isEqualTo("#2d2d2d");
+        verify(repository, times(1)).save(any(AppearanceSettingsEntity.class));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // AC: save_darkBgColor_upsert更新 → 既存行の darkBgColor が更新される
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("save_darkBgColor_upsert更新: 既存行の darkBgColor が更新される")
+    void save_darkBgColor_existingRow_isUpdated() {
+        UUID existingId = UUID.randomUUID();
+        AppearanceSettingsEntity existing = buildEntityWithDarkId(existingId, USER_ID,
+                ThemeMode.LIGHT, "#f3efe0", "#18181b", null, false);
+        when(repository.findByUserId(USER_ID)).thenReturn(Optional.of(existing));
+        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        // darkBgColor を更新する
+        UpdateAppearanceRequest req = buildRequestWithDark(ThemeMode.DARK, "#000000", "#3a3a3a", null, true);
+        AppearanceResponse result = service.save(USER_ID, req);
+
+        assertThat(result.getDarkBgColor()).isEqualTo("#3a3a3a");
+        assertThat(result.getBgColor()).isEqualTo("#000000");
+        verify(repository, times(1)).save(any(AppearanceSettingsEntity.class));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     // ヘルパー
     // ─────────────────────────────────────────────────────────────────────
 
@@ -151,6 +210,7 @@ class AppearanceSettingsServiceTest {
                 .userId(userId)
                 .theme(theme)
                 .bgColor(bgColor)
+                .darkBgColor("#18181b")
                 .seasonalThemeId(seasonalThemeId)
                 .hideChatPreview(hideChatPreview)
                 .build();
@@ -164,11 +224,38 @@ class AppearanceSettingsServiceTest {
         return entity;
     }
 
+    private AppearanceSettingsEntity buildEntityWithDarkId(UUID id, Long userId, ThemeMode theme,
+                                                            String bgColor, String darkBgColor,
+                                                            Long seasonalThemeId, boolean hideChatPreview) {
+        AppearanceSettingsEntity entity = AppearanceSettingsEntity.builder()
+                .userId(userId)
+                .theme(theme)
+                .bgColor(bgColor)
+                .darkBgColor(darkBgColor)
+                .seasonalThemeId(seasonalThemeId)
+                .hideChatPreview(hideChatPreview)
+                .build();
+        entity.setId(id);
+        return entity;
+    }
+
     private UpdateAppearanceRequest buildRequest(ThemeMode theme, String bgColor,
                                                   Long seasonalThemeId, boolean hideChatPreview) {
         return UpdateAppearanceRequest.builder()
                 .theme(theme)
                 .bgColor(bgColor)
+                .darkBgColor("#18181b")
+                .seasonalThemeId(seasonalThemeId)
+                .hideChatPreview(hideChatPreview)
+                .build();
+    }
+
+    private UpdateAppearanceRequest buildRequestWithDark(ThemeMode theme, String bgColor, String darkBgColor,
+                                                          Long seasonalThemeId, boolean hideChatPreview) {
+        return UpdateAppearanceRequest.builder()
+                .theme(theme)
+                .bgColor(bgColor)
+                .darkBgColor(darkBgColor)
                 .seasonalThemeId(seasonalThemeId)
                 .hideChatPreview(hideChatPreview)
                 .build();
