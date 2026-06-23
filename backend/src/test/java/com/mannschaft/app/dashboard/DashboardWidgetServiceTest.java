@@ -326,6 +326,76 @@ class DashboardWidgetServiceTest {
         }
 
         @Test
+        @DisplayName("正常系(対象3-A): 新規追加した PERSONAL_WEATHER が PUT で受理されINSERTされる")
+        void updateWidgetSettings_新規PERSONALキー_WEATHER_受理されINSERT() {
+            // Given: 対象3-A で追加した PERSONAL_WEATHER（旧 enum には無く DASHBOARD_001 で弾かれていたキー）
+            UpdateWidgetSettingsRequest.WidgetSettingItem item =
+                    new UpdateWidgetSettingsRequest.WidgetSettingItem("PERSONAL_WEATHER", true, 15);
+            UpdateWidgetSettingsRequest request =
+                    new UpdateWidgetSettingsRequest("PERSONAL", null, List.of(item));
+
+            given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdAndWidgetKey(
+                    USER_ID, ScopeType.PERSONAL, 0L, "PERSONAL_WEATHER"))
+                    .willReturn(Optional.empty());
+            given(widgetSettingRepository.save(any(DashboardWidgetSettingEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(accessControlService.isAdminOrAbove(USER_ID, 0L, "PERSONAL")).willReturn(false);
+            given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(USER_ID, ScopeType.PERSONAL, 0L))
+                    .willReturn(List.of());
+            given(dashboardMapper.toDefaultWidgetSettingResponse(any(WidgetKey.class), anyString(), anyBoolean(), any()))
+                    .willReturn(new WidgetSettingResponse("OTHER", "他", true, 0, true, null));
+
+            // When
+            dashboardWidgetService.updateWidgetSettings(USER_ID, request);
+
+            // Then: DASHBOARD_001 で弾かれず INSERT される（並び順 DB 永続化が成立）
+            verify(widgetSettingRepository).save(any(DashboardWidgetSettingEntity.class));
+        }
+
+        @Test
+        @DisplayName("正常系(対象3-A): 新規追加した PERSONAL_INBOX が PUT で受理されINSERTされる")
+        void updateWidgetSettings_新規PERSONALキー_INBOX_受理されINSERT() {
+            // Given: 対象3-A で追加した PERSONAL_INBOX
+            UpdateWidgetSettingsRequest.WidgetSettingItem item =
+                    new UpdateWidgetSettingsRequest.WidgetSettingItem("PERSONAL_INBOX", true, 23);
+            UpdateWidgetSettingsRequest request =
+                    new UpdateWidgetSettingsRequest("PERSONAL", null, List.of(item));
+
+            given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdAndWidgetKey(
+                    USER_ID, ScopeType.PERSONAL, 0L, "PERSONAL_INBOX"))
+                    .willReturn(Optional.empty());
+            given(widgetSettingRepository.save(any(DashboardWidgetSettingEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(accessControlService.isAdminOrAbove(USER_ID, 0L, "PERSONAL")).willReturn(false);
+            given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(USER_ID, ScopeType.PERSONAL, 0L))
+                    .willReturn(List.of());
+            given(dashboardMapper.toDefaultWidgetSettingResponse(any(WidgetKey.class), anyString(), anyBoolean(), any()))
+                    .willReturn(new WidgetSettingResponse("OTHER", "他", true, 0, true, null));
+
+            // When
+            dashboardWidgetService.updateWidgetSettings(USER_ID, request);
+
+            // Then
+            verify(widgetSettingRepository).save(any(DashboardWidgetSettingEntity.class));
+        }
+
+        @Test
+        @DisplayName("異常系(対象3-A): PERSONAL_WEATHER を TEAM スコープに送るとDASHBOARD_002")
+        void updateWidgetSettings_PERSONAL_キー_TEAMスコープ_DASHBOARD002() {
+            // Given: PERSONAL 専用キーを TEAM スコープに送る
+            UpdateWidgetSettingsRequest.WidgetSettingItem item =
+                    new UpdateWidgetSettingsRequest.WidgetSettingItem("PERSONAL_WEATHER", true, 0);
+            UpdateWidgetSettingsRequest request =
+                    new UpdateWidgetSettingsRequest("TEAM", TEAM_ID, List.of(item));
+
+            // When / Then
+            assertThatThrownBy(() -> dashboardWidgetService.updateWidgetSettings(USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("DASHBOARD_002"));
+        }
+
+        @Test
         @DisplayName("異常系(対象2): schedule 用の TEAM_SCHEDULE_CALENDAR を ORGANIZATION スコープに送るとDASHBOARD_002")
         void updateWidgetSettings_スコープ不一致_新規キー_DASHBOARD002() {
             // Given: TEAM 専用キーを ORGANIZATION スコープに送る（衝突解消した専用キーのスコープ検証）
