@@ -45,6 +45,8 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  /** 使い方モーダル表示要求 */
+  help: []
   /** FREE 村における即時参加要求 */
   join: []
   /** APPROVAL 村における参加申請フロー遷移要求 */
@@ -315,6 +317,17 @@ function onPinToggle() {
 
         <!-- 右: アクション群 -->
         <div class="flex items-center gap-2 flex-wrap">
+          <!-- 使い方モーダル（全員に常時表示） -->
+          <Button
+            :label="t('button.help')"
+            :aria-label="t('button.help')"
+            icon="pi pi-question-circle"
+            severity="secondary"
+            size="small"
+            text
+            data-testid="village-guide-help"
+            @click="emit('help')"
+          />
           <!-- 参加ボタン（未加入のみ） -->
           <Button
             v-if="!isMember"
