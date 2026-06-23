@@ -18,11 +18,11 @@ const props = defineProps<{
   /** 支払い一覧（このうち UNPAID のみを一括記録対象にする）。 */
   payments: MemberPaymentResponse[]
   /**
-   * チームメンバー一覧（PaymentAdminPanel から渡される）。
+   * スコープメンバー一覧（PaymentAdminPanel から渡される）。
    * 一括記録では既存の UNPAID 行を対象にするため、このプロパティは現時点では使用しない。
    * 将来の拡張（全メンバーへの一括記録）に備えて受け取るのみ。
    */
-  teamMembers?: MemberResponse[]
+  scopeMembers?: MemberResponse[]
 }>()
 
 const emit = defineEmits<{
