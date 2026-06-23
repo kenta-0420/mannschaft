@@ -5,7 +5,9 @@
       "config_button": "위젯 설정",
       "save": "저장",
       "no_widgets_message": "표시할 위젯이 없습니다",
-      "add_widget_button": "위젯 추가"
+      "add_widget_button": "위젯 추가",
+      "save_error_title": "저장 실패",
+      "save_error_detail": "위젯 설정 저장에 실패했습니다. 다시 시도해 주세요."
     },
     "widget_visibility": {
       "tab_self": "내 표시／숨기기",

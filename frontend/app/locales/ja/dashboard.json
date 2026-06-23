@@ -5,7 +5,9 @@
       "config_button": "ウィジェット設定",
       "save": "保存",
       "no_widgets_message": "表示するウィジェットがありません",
-      "add_widget_button": "ウィジェットを追加"
+      "add_widget_button": "ウィジェットを追加",
+      "save_error_title": "保存に失敗しました",
+      "save_error_detail": "ウィジェット設定の保存に失敗しました。再度お試しください"
     },
     "widget_visibility": {
       "tab_self": "自分の表示／非表示",

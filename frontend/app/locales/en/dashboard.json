@@ -5,7 +5,9 @@
       "config_button": "Widget Settings",
       "save": "Save",
       "no_widgets_message": "No widgets to display",
-      "add_widget_button": "Add Widget"
+      "add_widget_button": "Add Widget",
+      "save_error_title": "Save failed",
+      "save_error_detail": "Failed to save widget settings. Please try again."
     },
     "widget_visibility": {
       "tab_self": "My Show / Hide",

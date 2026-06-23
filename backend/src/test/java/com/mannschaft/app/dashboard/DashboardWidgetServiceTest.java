@@ -271,6 +271,77 @@ class DashboardWidgetServiceTest {
         }
 
         @Test
+        @DisplayName("正常系(対象2): 新規追加した TEAM_GALLERY が PUT で受理されINSERTされる")
+        void updateWidgetSettings_新規TEAMキー_受理されINSERT() {
+            // Given: 対象2 で追加した TEAM_GALLERY（旧 enum には無く DASHBOARD_001 で弾かれていたキー）
+            UpdateWidgetSettingsRequest.WidgetSettingItem item =
+                    new UpdateWidgetSettingsRequest.WidgetSettingItem("TEAM_GALLERY", true, 7);
+            UpdateWidgetSettingsRequest request =
+                    new UpdateWidgetSettingsRequest("TEAM", TEAM_ID, List.of(item));
+
+            given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdAndWidgetKey(
+                    USER_ID, ScopeType.TEAM, TEAM_ID, "TEAM_GALLERY"))
+                    .willReturn(Optional.empty());
+            given(widgetSettingRepository.save(any(DashboardWidgetSettingEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+            given(moduleService.isModuleEnabledForTeam(anyString(), eq(TEAM_ID))).willReturn(true);
+            given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(USER_ID, ScopeType.TEAM, TEAM_ID))
+                    .willReturn(List.of());
+            given(dashboardMapper.toDefaultWidgetSettingResponse(any(WidgetKey.class), anyString(), anyBoolean(), any()))
+                    .willReturn(new WidgetSettingResponse("OTHER", "他", true, 0, true, null));
+
+            // When
+            dashboardWidgetService.updateWidgetSettings(USER_ID, request);
+
+            // Then: DASHBOARD_001 で弾かれず INSERT される（並び順 DB 永続化が成立）
+            verify(widgetSettingRepository).save(any(DashboardWidgetSettingEntity.class));
+        }
+
+        @Test
+        @DisplayName("正常系(対象2): 新規追加した ORG_MEMBERS が PUT で受理されINSERTされる")
+        void updateWidgetSettings_新規ORGキー_受理されINSERT() {
+            // Given: 対象2 で追加した ORG_MEMBERS（組織スコープは従来マッピングが無く永続化不能だった）
+            UpdateWidgetSettingsRequest.WidgetSettingItem item =
+                    new UpdateWidgetSettingsRequest.WidgetSettingItem("ORG_MEMBERS", true, 5);
+            UpdateWidgetSettingsRequest request =
+                    new UpdateWidgetSettingsRequest("ORGANIZATION", ORG_ID, List.of(item));
+
+            given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdAndWidgetKey(
+                    USER_ID, ScopeType.ORGANIZATION, ORG_ID, "ORG_MEMBERS"))
+                    .willReturn(Optional.empty());
+            given(widgetSettingRepository.save(any(DashboardWidgetSettingEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(accessControlService.isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+            given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(USER_ID, ScopeType.ORGANIZATION, ORG_ID))
+                    .willReturn(List.of());
+            given(dashboardMapper.toDefaultWidgetSettingResponse(any(WidgetKey.class), anyString(), anyBoolean(), any()))
+                    .willReturn(new WidgetSettingResponse("OTHER", "他", true, 0, true, null));
+
+            // When
+            dashboardWidgetService.updateWidgetSettings(USER_ID, request);
+
+            // Then
+            verify(widgetSettingRepository).save(any(DashboardWidgetSettingEntity.class));
+        }
+
+        @Test
+        @DisplayName("異常系(対象2): schedule 用の TEAM_SCHEDULE_CALENDAR を ORGANIZATION スコープに送るとDASHBOARD_002")
+        void updateWidgetSettings_スコープ不一致_新規キー_DASHBOARD002() {
+            // Given: TEAM 専用キーを ORGANIZATION スコープに送る（衝突解消した専用キーのスコープ検証）
+            UpdateWidgetSettingsRequest.WidgetSettingItem item =
+                    new UpdateWidgetSettingsRequest.WidgetSettingItem("TEAM_SCHEDULE_CALENDAR", true, 0);
+            UpdateWidgetSettingsRequest request =
+                    new UpdateWidgetSettingsRequest("ORGANIZATION", ORG_ID, List.of(item));
+
+            // When / Then
+            assertThatThrownBy(() -> dashboardWidgetService.updateWidgetSettings(USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("DASHBOARD_002"));
+        }
+
+        @Test
         @DisplayName("異常系: 無効なウィジェットキーでDASHBOARD_001例外")
         void updateWidgetSettings_無効なウィジェットキー_DASHBOARD001例外() {
             // Given

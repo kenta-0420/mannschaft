@@ -55,6 +55,25 @@ public enum WidgetKey {
     ADMIN_TEAM_RESERVATIONS(ScopeType.TEAM, true, 14),
     /** F10.1.1 P3b Wave3: 管理者レンズ チーム予算サマリ（配分/実績/残/超過カテゴリ数・ADMIN/TEAM_BUDGET_VIEW 限定・コード固定 ADMINS_AND_ABOVE） */
     ADMIN_TEAM_BUDGET(ScopeType.TEAM, true, 15),
+    // --- 対象2: FE チームウィジェットと 1:1 対応するため追加（並び順 DB 永続化の根治）。---
+    // FE WidgetKeyMap（useDashboardWidgets.ts）の右辺が参照していたが enum に存在せず、
+    // PUT 時に DASHBOARD_001 で弾かれて並び順が DB 保存されなかった欠落キーを補完する。
+    /** FE: members（メンバー一覧） */
+    TEAM_MEMBERS(ScopeType.TEAM, true, 16),
+    /** FE: gallery（ギャラリー） */
+    TEAM_GALLERY(ScopeType.TEAM, true, 17),
+    /** FE: circulation（回覧板） */
+    TEAM_CIRCULATION(ScopeType.TEAM, true, 18),
+    /** FE: surveys（アンケート） */
+    TEAM_SURVEYS(ScopeType.TEAM, true, 19),
+    /** FE: survey-results（アンケート結果） */
+    TEAM_SURVEY_RESULTS(ScopeType.TEAM, true, 20),
+    /** FE: blog（ブログ） */
+    TEAM_BLOG(ScopeType.TEAM, true, 21),
+    /** FE: schedule（カレンダー）。upcoming-events と区別するため専用キー（旧: TEAM_UPCOMING_EVENTS と衝突していた） */
+    TEAM_SCHEDULE_CALENDAR(ScopeType.TEAM, true, 22),
+    /** FE: member-info（メンバー情報定期更新フォーム・F14.2） */
+    TEAM_MEMBER_INFO(ScopeType.TEAM, true, 23),
 
     // --- 組織ダッシュボード ---
     ORG_TEAM_LIST(ScopeType.ORGANIZATION, true, 0),
@@ -68,7 +87,34 @@ public enum WidgetKey {
     /** F10.1.1 P3b Wave2: 管理者レンズ 組織メンバー統計（総数/アクティブ/今月新規・ADMIN 限定・コード固定 ADMINS_AND_ABOVE） */
     ADMIN_ORG_MEMBERS(ScopeType.ORGANIZATION, true, 7),
     /** F10.1.1 P3b Wave3: 管理者レンズ 組織予算サマリ（配分/実績/残/超過カテゴリ数・ADMIN/BUDGET_VIEW 限定・コード固定 ADMINS_AND_ABOVE） */
-    ADMIN_ORG_BUDGET(ScopeType.ORGANIZATION, true, 8);
+    ADMIN_ORG_BUDGET(ScopeType.ORGANIZATION, true, 8),
+    // --- 対象2: FE 組織ウィジェットと 1:1 対応するため追加（並び順 DB 永続化の根治）。---
+    // 組織スコープは従来 FE WidgetKeyMap にマッピングが無く、並び順が一切 DB 保存されなかった。
+    // FE ALL_WIDGETS で organization スコープを持つ全ウィジェットへ専用キーを付与する。
+    /** FE: upcoming-events（今後の予定） */
+    ORG_UPCOMING_EVENTS(ScopeType.ORGANIZATION, true, 9),
+    /** FE: timeline（タイムライン） */
+    ORG_LATEST_POSTS(ScopeType.ORGANIZATION, true, 10),
+    /** FE: blog（ブログ） */
+    ORG_BLOG(ScopeType.ORGANIZATION, true, 11),
+    /** FE: chat（チャット） */
+    ORG_UNREAD_THREADS(ScopeType.ORGANIZATION, true, 12),
+    /** FE: schedule（カレンダー） */
+    ORG_SCHEDULE_CALENDAR(ScopeType.ORGANIZATION, true, 13),
+    /** FE: members（メンバー一覧） */
+    ORG_MEMBERS(ScopeType.ORGANIZATION, true, 14),
+    /** FE: activities（活動記録） */
+    ORG_ACTIVITY(ScopeType.ORGANIZATION, true, 15),
+    /** FE: gallery（ギャラリー） */
+    ORG_GALLERY(ScopeType.ORGANIZATION, true, 16),
+    /** FE: circulation（回覧板） */
+    ORG_CIRCULATION(ScopeType.ORGANIZATION, true, 17),
+    /** FE: surveys（アンケート） */
+    ORG_SURVEYS(ScopeType.ORGANIZATION, true, 18),
+    /** FE: survey-results（アンケート結果） */
+    ORG_SURVEY_RESULTS(ScopeType.ORGANIZATION, true, 19),
+    /** FE: attendance-results（出席確認状況） */
+    ORG_MEMBER_ATTENDANCE(ScopeType.ORGANIZATION, true, 20);
 
     private final ScopeType scopeType;
     private final boolean defaultVisible;

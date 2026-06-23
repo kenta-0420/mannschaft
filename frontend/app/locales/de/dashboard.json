@@ -5,7 +5,9 @@
       "config_button": "Widget-Einstellungen",
       "save": "Speichern",
       "no_widgets_message": "Keine Widgets zum Anzeigen",
-      "add_widget_button": "Widget hinzufügen"
+      "add_widget_button": "Widget hinzufügen",
+      "save_error_title": "Speichern fehlgeschlagen",
+      "save_error_detail": "Die Widget-Einstellungen konnten nicht gespeichert werden. Bitte versuchen Sie es erneut."
     },
     "widget_visibility": {
       "tab_self": "Meine Anzeige / Ausblenden",
