@@ -66,6 +66,12 @@ const individualItems = [
     to: '/settings/navigation',
   },
   {
+    label: 'ダッシュボードウィジェット',
+    description: 'ダッシュボードのウィジェット表示・並び順の設定',
+    icon: 'pi pi-th-large',
+    to: '/settings/dashboard-widgets',
+  },
+  {
     label: 'QR会員証',
     description: '会員証の表示・チェックイン履歴',
     icon: 'pi pi-id-card',
