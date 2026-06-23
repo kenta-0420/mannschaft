@@ -1,6 +1,8 @@
 package com.mannschaft.app.template.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.template.dto.TeamModuleResponse;
 import com.mannschaft.app.template.dto.ToggleModuleRequest;
 import com.mannschaft.app.template.service.ModuleService;
@@ -19,19 +21,20 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * チームモジュール管理コントローラー。チーム単位のモジュール有効化・テンプレート適用を提供する。
+ * パスの {@code slug} は {@link TeamService#resolveTeamId(String)} で内部IDに解決する
+ * （存在しない slug は TEAM_001 → 404）。
  */
 @RestController
-@RequestMapping("/api/v1/teams/{teamId}/modules")
+@RequestMapping("/api/v1/teams/{slug}/modules")
 @Tag(name = "チームモジュール管理")
 @RequiredArgsConstructor
 public class TeamModuleController {
 
     private final ModuleService moduleService;
-
+    private final TeamService teamService;
 
     /**
      * チームの有効モジュール一覧を取得する。
@@ -40,7 +43,8 @@ public class TeamModuleController {
     @Operation(summary = "チームモジュール一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TeamModuleResponse>>> getTeamModules(
-            @PathVariable Long teamId) {
+            @PathVariable String slug) {
+        Long teamId = teamService.resolveTeamId(slug);
         return ResponseEntity.ok(ApiResponse.of(moduleService.getTeamModules(teamId)));
     }
 
@@ -51,9 +55,10 @@ public class TeamModuleController {
     @Operation(summary = "モジュール有効/無効切替")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "切替成功")
     public ResponseEntity<Void> toggleTeamModule(
-            @PathVariable Long teamId,
+            @PathVariable String slug,
             @PathVariable Long moduleId,
             @Valid @RequestBody ToggleModuleRequest request) {
+        Long teamId = teamService.resolveTeamId(slug);
         moduleService.toggleTeamModule(teamId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok().build();
     }
@@ -65,8 +70,9 @@ public class TeamModuleController {
     @Operation(summary = "テンプレート適用")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "適用成功")
     public ResponseEntity<Void> applyTemplate(
-            @PathVariable Long teamId,
+            @PathVariable String slug,
             @RequestParam Long templateId) {
+        Long teamId = teamService.resolveTeamId(slug);
         moduleService.applyTemplate(teamId, templateId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok().build();
     }
