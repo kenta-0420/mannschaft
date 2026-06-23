@@ -5,7 +5,9 @@
       "config_button": "Configuración de widgets",
       "save": "Guardar",
       "no_widgets_message": "No hay widgets para mostrar",
-      "add_widget_button": "Añadir widget"
+      "add_widget_button": "Añadir widget",
+      "save_error_title": "Error al guardar",
+      "save_error_detail": "No se pudo guardar la configuración del widget. Inténtalo de nuevo."
     },
     "widget_visibility": {
       "tab_self": "Mostrar / Ocultar míos",

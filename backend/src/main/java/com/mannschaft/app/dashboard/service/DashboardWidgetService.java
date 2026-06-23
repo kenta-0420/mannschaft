@@ -64,13 +64,35 @@ public class DashboardWidgetService {
             Map.entry("TEAM_MATCH_SUMMARY", "試合サマリ"),
             Map.entry("TEAM_BILLING", "課金サマリー"),
             Map.entry("TEAM_PAGE_VIEWS", "アクセス解析"),
+            // 対象2: FE チームウィジェット対応の追加キー
+            Map.entry("TEAM_MEMBERS", "メンバー"),
+            Map.entry("TEAM_GALLERY", "ギャラリー"),
+            Map.entry("TEAM_CIRCULATION", "回覧板"),
+            Map.entry("TEAM_SURVEYS", "アンケート"),
+            Map.entry("TEAM_SURVEY_RESULTS", "アンケート結果"),
+            Map.entry("TEAM_BLOG", "ブログ"),
+            Map.entry("TEAM_SCHEDULE_CALENDAR", "カレンダー"),
+            Map.entry("TEAM_MEMBER_INFO", "メンバー情報"),
             Map.entry("ORG_TEAM_LIST", "傘下チーム一覧"),
             Map.entry("ORG_NOTICES", "組織お知らせ"),
             Map.entry("ORG_TODO", "組織TODO"),
             Map.entry("ORG_PROJECT_PROGRESS", "プロジェクト進捗"),
             Map.entry("ORG_STATS", "組織統計サマリー"),
             Map.entry("ORG_TOURNAMENT_SUMMARY", "主催大会サマリ"),
-            Map.entry("ORG_BILLING", "課金サマリー")
+            Map.entry("ORG_BILLING", "課金サマリー"),
+            // 対象2: FE 組織ウィジェット対応の追加キー
+            Map.entry("ORG_UPCOMING_EVENTS", "今後の予定"),
+            Map.entry("ORG_LATEST_POSTS", "タイムライン"),
+            Map.entry("ORG_BLOG", "ブログ"),
+            Map.entry("ORG_UNREAD_THREADS", "未読スレッド数"),
+            Map.entry("ORG_SCHEDULE_CALENDAR", "カレンダー"),
+            Map.entry("ORG_MEMBERS", "メンバー"),
+            Map.entry("ORG_ACTIVITY", "活動記録"),
+            Map.entry("ORG_GALLERY", "ギャラリー"),
+            Map.entry("ORG_CIRCULATION", "回覧板"),
+            Map.entry("ORG_SURVEYS", "アンケート"),
+            Map.entry("ORG_SURVEY_RESULTS", "アンケート結果"),
+            Map.entry("ORG_MEMBER_ATTENDANCE", "出席確認状況")
     );
 
     /**

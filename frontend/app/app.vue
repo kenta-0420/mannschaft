@@ -13,6 +13,7 @@ useHead(() => ({
     <ActiveIncidentBanner />
     <NuxtPage />
   </NuxtLayout>
+  <NavigationLoading />
   <Toast />
   <ConfirmDialog />
   <DynamicDialog />

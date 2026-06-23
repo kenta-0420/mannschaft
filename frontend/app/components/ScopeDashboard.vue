@@ -57,12 +57,11 @@ const showConfig = ref(false)
 const dragIndex = ref<number | null>(null)
 const dropTargetIndex = ref<number | null>(null)
 const collapsedKeys = ref<Set<string>>(new Set())
-// 初期表示時に localStorage の保存順が適用される際にアニメーションしないよう、
-// mount + nextTick 後にのみ move-class を有効にする
-const isReady = ref(false)
+// 対象2: team/organization は SSR（useAsyncData）で保存順を確定させるため、初回描画時点で
+// 既に保存順になっており、マウント後の再ソートが発生しない＝TransitionGroup の move アニメも
+// 初回は発火しない。よって旧 isReady による move-class 抑制は不要になったため撤廃した。
 onMounted(() => {
   nextTick(() => {
-    isReady.value = true
     // モバイルでは全ウィジェットをデフォルト折り畳み状態にする
     if (window.innerWidth < 768) {
       collapsedKeys.value = new Set(visibleWidgets.value.map((w) => w.key))
@@ -217,7 +216,7 @@ function onDragEnd() {
     <TransitionGroup
       tag="div"
       class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
-      :move-class="isReady ? 'transition-all duration-[350ms] ease-in-out' : ''"
+      move-class="transition-all duration-[350ms] ease-in-out"
     >
       <!-- 空状態 -->
       <div

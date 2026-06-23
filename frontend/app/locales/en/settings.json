@@ -57,7 +57,9 @@
       "required": "Required",
       "resetToDefault": "Reset to Default",
       "saveSuccess": "Settings saved",
-      "saveError": "Failed to save settings"
+      "saveError": "Failed to save settings",
+      "reorderHint": "Drag the handle to reorder the navigation items",
+      "dragHandleLabel": "Drag handle"
     },
     "account": {
       "page_title": "Account Settings",

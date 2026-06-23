@@ -57,7 +57,9 @@
       "required": "必須",
       "resetToDefault": "デフォルトに戻す",
       "saveSuccess": "設定を保存しました",
-      "saveError": "設定の保存に失敗しました"
+      "saveError": "設定の保存に失敗しました",
+      "reorderHint": "ハンドルをドラッグして表示順を並び替えできます",
+      "dragHandleLabel": "並び替えハンドル"
     },
     "account": {
       "page_title": "アカウント設定",

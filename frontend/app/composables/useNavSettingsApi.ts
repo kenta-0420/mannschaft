@@ -6,10 +6,14 @@ export function useNavSettingsApi() {
     return res.data
   }
 
-  async function updateNavSettings(hiddenNavKeys: string[]): Promise<void> {
+  async function updateNavSettings(hiddenNavKeys: string[], navDisplayOrder?: string[]): Promise<void> {
+    const body: import('~/types/nav').UpdateNavSettingsRequest = { hiddenNavKeys }
+    if (navDisplayOrder !== undefined) {
+      body.navDisplayOrder = navDisplayOrder
+    }
     await api('/api/v1/settings/nav', {
       method: 'PUT',
-      body: { hiddenNavKeys },
+      body,
     })
   }
 
