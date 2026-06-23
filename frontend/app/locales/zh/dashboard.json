@@ -5,7 +5,9 @@
       "config_button": "小部件设置",
       "save": "保存",
       "no_widgets_message": "没有可显示的小部件",
-      "add_widget_button": "添加小部件"
+      "add_widget_button": "添加小部件",
+      "save_error_title": "保存失败",
+      "save_error_detail": "保存小部件设置失败。请重试。"
     },
     "widget_visibility": {
       "tab_self": "我的显示／隐藏",

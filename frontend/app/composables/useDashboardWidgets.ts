@@ -1,4 +1,9 @@
+import type { Ref } from 'vue'
 import type { MinRole, ViewerRole, WidgetVisibilitySetting } from '~/types/dashboard'
+import type { components } from '~/types/generated'
+
+type WidgetSettingResponse = components['schemas']['WidgetSettingResponse']
+type WidgetSettingItem = components['schemas']['WidgetSettingItem']
 
 const MIN_ROLE_LEVEL: Record<MinRole, number> = { PUBLIC: 0, SUPPORTER: 1, MEMBER: 2 }
 
@@ -34,21 +39,32 @@ export interface WidgetDefinition {
   defaultMinRole?: MinRole
 }
 
+/**
+ * FE ケバブキー → BE WidgetKey enum（UPPER_SNAKE）の対応表。
+ *
+ * 対象2 の根治: team / organization スコープの「全」ウィジェットを BE enum と 1:1（一意）で対応させる。
+ * これにより並び順・表示設定が DB（dashboard_widget_settings）に永続化され、再描画で並びが戻る／
+ * リロードで並びが消える問題を解消する。
+ * 注意: schedule（カレンダー）は upcoming-events と区別するため専用キー TEAM_SCHEDULE_CALENDAR /
+ * ORG_SCHEDULE_CALENDAR を使う（旧実装は両者が TEAM_UPCOMING_EVENTS に衝突していた）。
+ */
 export const WidgetKeyMap: Record<string, { team?: string; organization?: string }> = {
   bulletin: { team: 'TEAM_NOTICES', organization: 'ORG_NOTICES' },
-  'upcoming-events': { team: 'TEAM_UPCOMING_EVENTS' },
+  'upcoming-events': { team: 'TEAM_UPCOMING_EVENTS', organization: 'ORG_UPCOMING_EVENTS' },
   todos: { team: 'TEAM_TODO', organization: 'ORG_TODO' },
-  timeline: { team: 'TEAM_LATEST_POSTS' },
-  chat: { team: 'TEAM_UNREAD_THREADS' },
-  schedule: { team: 'TEAM_UPCOMING_EVENTS' },
+  timeline: { team: 'TEAM_LATEST_POSTS', organization: 'ORG_LATEST_POSTS' },
+  chat: { team: 'TEAM_UNREAD_THREADS', organization: 'ORG_UNREAD_THREADS' },
+  schedule: { team: 'TEAM_SCHEDULE_CALENDAR', organization: 'ORG_SCHEDULE_CALENDAR' },
   members: { team: 'TEAM_MEMBERS', organization: 'ORG_MEMBERS' },
-  activities: { team: 'TEAM_ACTIVITY' },
-  gallery: { team: 'TEAM_GALLERY' },
-  circulation: { team: 'TEAM_CIRCULATION' },
-  surveys: { team: 'TEAM_SURVEYS' },
-  'survey-results': { team: 'TEAM_SURVEY_RESULTS' },
-  'attendance-results': { team: 'TEAM_MEMBER_ATTENDANCE' },
-  blog: { team: 'TEAM_BLOG' },
+  activities: { team: 'TEAM_ACTIVITY', organization: 'ORG_ACTIVITY' },
+  gallery: { team: 'TEAM_GALLERY', organization: 'ORG_GALLERY' },
+  circulation: { team: 'TEAM_CIRCULATION', organization: 'ORG_CIRCULATION' },
+  surveys: { team: 'TEAM_SURVEYS', organization: 'ORG_SURVEYS' },
+  'survey-results': { team: 'TEAM_SURVEY_RESULTS', organization: 'ORG_SURVEY_RESULTS' },
+  'attendance-results': { team: 'TEAM_MEMBER_ATTENDANCE', organization: 'ORG_MEMBER_ATTENDANCE' },
+  blog: { team: 'TEAM_BLOG', organization: 'ORG_BLOG' },
+  // F14.2 メンバー情報定期更新フォーム（team スコープのみ）
+  'member-info': { team: 'TEAM_MEMBER_INFO' },
   // F08.7.1 成績ウィジェット 3 種
   'team-standings-record': { team: 'TEAM_TOURNAMENT_RECORD' },
   'team-division-standings': { team: 'TEAM_DIVISION_STANDINGS' },
@@ -79,6 +95,27 @@ export const WidgetDefaultMinRoleMap: Record<string, MinRole> = {
   ORG_TOURNAMENT_SUMMARY: 'MEMBER',
   // F08.10 チーム試合サマリ（BE WidgetDefaultMinRoleMap と同期）
   TEAM_MATCH_SUMMARY: 'MEMBER',
+  // 対象2 追加分（BE WidgetDefaultMinRoleMap と同期）
+  TEAM_MEMBERS: 'SUPPORTER',
+  TEAM_GALLERY: 'SUPPORTER',
+  TEAM_CIRCULATION: 'MEMBER',
+  TEAM_SURVEYS: 'MEMBER',
+  TEAM_SURVEY_RESULTS: 'MEMBER',
+  TEAM_BLOG: 'PUBLIC',
+  TEAM_SCHEDULE_CALENDAR: 'SUPPORTER',
+  TEAM_MEMBER_INFO: 'MEMBER',
+  ORG_UPCOMING_EVENTS: 'PUBLIC',
+  ORG_LATEST_POSTS: 'SUPPORTER',
+  ORG_BLOG: 'PUBLIC',
+  ORG_UNREAD_THREADS: 'MEMBER',
+  ORG_SCHEDULE_CALENDAR: 'SUPPORTER',
+  ORG_MEMBERS: 'SUPPORTER',
+  ORG_ACTIVITY: 'SUPPORTER',
+  ORG_GALLERY: 'SUPPORTER',
+  ORG_CIRCULATION: 'MEMBER',
+  ORG_SURVEYS: 'MEMBER',
+  ORG_SURVEY_RESULTS: 'MEMBER',
+  ORG_MEMBER_ATTENDANCE: 'MEMBER',
 }
 
 export function backendKeyForWidget(
@@ -323,6 +360,7 @@ const ALL_WIDGETS: WidgetDefinition[] = [
   },
 ]
 
+/** PERSONAL スコープのフォールバック用 localStorage キー（対象2 では team/org を DB 化。personal は対象3 で共通化）。 */
 function hiddenStorageKey(scopeType: string, scopeId?: string): string {
   return scopeId ? `dashboard-widgets:${scopeType}:${scopeId}` : `dashboard-widgets:${scopeType}`
 }
@@ -331,6 +369,24 @@ function orderStorageKey(scopeType: string, scopeId?: string): string {
   return scopeId
     ? `dashboard-widget-order:${scopeType}:${scopeId}`
     : `dashboard-widget-order:${scopeType}`
+}
+
+/** FE ケバブキー → BE enum（スコープ別）。マッピングが無ければ undefined。 */
+function backendKey(
+  frontendKey: string,
+  scopeType: 'team' | 'organization',
+): string | undefined {
+  return WidgetKeyMap[frontendKey]?.[scopeType]
+}
+
+/** BE enum → FE ケバブキー（スコープ別の逆引き）。 */
+function buildReverseKeyMap(scopeType: 'team' | 'organization'): Map<string, string> {
+  const rev = new Map<string, string>()
+  for (const [feKey, be] of Object.entries(WidgetKeyMap)) {
+    const bk = be[scopeType]
+    if (bk) rev.set(bk, feKey)
+  }
+  return rev
 }
 
 export function useDashboardWidgets(
@@ -346,54 +402,11 @@ export function useDashboardWidgets(
   const hiddenKeys = ref<Set<string>>(new Set())
   const orderedKeys = ref<string[]>([])
 
-  function loadPreferences() {
-    if (import.meta.server) return
-    // hidden
-    const hKey = hiddenStorageKey(scopeType, resolvedId)
-    const rawHidden = localStorage.getItem(hKey)
-    if (rawHidden) {
-      try {
-        hiddenKeys.value = new Set(JSON.parse(rawHidden))
-      } catch {
-        hiddenKeys.value = new Set()
-      }
-    }
-    // order
-    const oKey = orderStorageKey(scopeType, resolvedId)
-    const rawOrder = localStorage.getItem(oKey)
-    if (rawOrder) {
-      try {
-        orderedKeys.value = JSON.parse(rawOrder)
-      } catch {
-        orderedKeys.value = []
-      }
-    }
-  }
-
-  function saveHidden() {
-    if (import.meta.server) return
-    const key = hiddenStorageKey(scopeType, resolvedId)
-    localStorage.setItem(key, JSON.stringify([...hiddenKeys.value]))
-  }
-
-  function saveOrder() {
-    if (import.meta.server) return
-    const key = orderStorageKey(scopeType, resolvedId)
-    localStorage.setItem(key, JSON.stringify(orderedKeys.value))
-  }
+  // team/organization は DB 永続化（対象2 の根治）。personal は従来の localStorage を踏襲。
+  const isApiScope = scopeType === 'team' || scopeType === 'organization'
 
   function isVisible(widgetKey: string): boolean {
     return !hiddenKeys.value.has(widgetKey)
-  }
-
-  function toggleWidget(widgetKey: string) {
-    if (hiddenKeys.value.has(widgetKey)) {
-      hiddenKeys.value.delete(widgetKey)
-    } else {
-      hiddenKeys.value.add(widgetKey)
-    }
-    hiddenKeys.value = new Set(hiddenKeys.value)
-    saveHidden()
   }
 
   /** availableWidgets をユーザー定義の順序でソート */
@@ -415,6 +428,178 @@ export function useDashboardWidgets(
       return viewerRoleLevel(viewerRole) >= MIN_ROLE_LEVEL[minRole]
     }),
   )
+
+  // ====================================================================
+  // team / organization: DB 永続化（SSR で順序確定 → 初回描画から保存順）
+  // ====================================================================
+  if (isApiScope) {
+    const apiScopeType = scopeType as 'team' | 'organization'
+    const reverseMap = buildReverseKeyMap(apiScopeType)
+    // useApi() は内部で useRuntimeConfig() / useAuthStore() を呼ぶため、setup 時に 1 度だけ捕捉して
+    // イベントハンドラ（reorder/toggle）からも安全に使えるようにする（visibility composable と同方針）。
+    const api = useApi()
+    const nuxtApp = useNuxtApp()
+
+    /** BE レスポンスを FE state（hiddenKeys / orderedKeys）へ反映する。 */
+    function applyServerSettings(settings: WidgetSettingResponse[]) {
+      const order: string[] = []
+      const hidden = new Set<string>()
+      // BE は sortOrder 昇順で返す（ない場合に備えソートしておく）。
+      const sorted = [...settings].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+      for (const s of sorted) {
+        if (!s.widgetKey) continue
+        const feKey = reverseMap.get(s.widgetKey)
+        if (!feKey) continue
+        order.push(feKey)
+        if (s.visible === false) hidden.add(feKey)
+      }
+      orderedKeys.value = order
+      hiddenKeys.value = hidden
+    }
+
+    // useAsyncData で SSR 時にサーバ取得し、初期描画時点で保存順を確定させる。
+    // これにより onMounted 後の再ソート＝再描画アニメ／hydration mismatch を排除する。
+    const dataKey = `dashboard-widgets:${apiScopeType}:${resolvedId ?? '0'}`
+    const { data: serverSettings } = useAsyncData(
+      dataKey,
+      async () => {
+        const res = await api<{ data: WidgetSettingResponse[] }>('/api/v1/dashboard/widgets', {
+          query: { scopeType: apiScopeType, scopeId: resolvedId },
+        })
+        return res.data
+      },
+      { default: () => [] as WidgetSettingResponse[] },
+    )
+
+    watch(
+      serverSettings,
+      (val) => {
+        if (val) applyServerSettings(val)
+      },
+      { immediate: true },
+    )
+
+    /**
+     * 現在の state（並び順・表示状態）を BE へ全量 PUT する。
+     * 楽観更新済みの state を送り、失敗時は呼び出し側で渡された prev へロールバックする。
+     */
+    async function persist(): Promise<void> {
+      const order = orderedKeys.value
+      const indexed = new Map(order.map((key, i) => [key, i]))
+      const widgets: WidgetSettingItem[] = []
+      for (const w of availableWidgets.value) {
+        const bk = backendKey(w.key, apiScopeType)
+        if (!bk) continue
+        widgets.push({
+          widgetKey: bk,
+          isVisible: !hiddenKeys.value.has(w.key),
+          sortOrder: indexed.get(w.key) ?? widgets.length,
+        })
+      }
+      if (widgets.length === 0) return
+      await api('/api/v1/dashboard/widgets', {
+        method: 'PUT',
+        body: { scopeType: apiScopeType, scopeId: resolvedId, widgets },
+      })
+    }
+
+    /** 楽観更新 → PUT。失敗したら snapshot へロールバックしトーストを表示する。 */
+    async function optimisticPersist(snapshot: {
+      hidden: Set<string>
+      order: string[]
+    }): Promise<void> {
+      try {
+        await persist()
+      } catch {
+        hiddenKeys.value = new Set(snapshot.hidden)
+        orderedKeys.value = [...snapshot.order]
+        // setup 外でも安全に呼べるよう $i18n / $toast 経由（useI18n は使わない）。
+        const t = (key: string) => nuxtApp.$i18n.t(key)
+        const toast = nuxtApp.$toast as
+          | { add: (opts: Record<string, unknown>) => void }
+          | undefined
+        toast?.add({
+          severity: 'error',
+          summary: t('dashboard.widget_settings.save_error_title'),
+          detail: t('dashboard.widget_settings.save_error_detail'),
+          life: 5000,
+        })
+      }
+    }
+
+    function toggleWidget(widgetKey: string) {
+      const snapshot = { hidden: new Set(hiddenKeys.value), order: [...orderedKeys.value] }
+      const next = new Set(hiddenKeys.value)
+      if (next.has(widgetKey)) next.delete(widgetKey)
+      else next.add(widgetKey)
+      hiddenKeys.value = next
+      void optimisticPersist(snapshot)
+    }
+
+    function reorder(fromIndex: number, toIndex: number) {
+      const snapshot = { hidden: new Set(hiddenKeys.value), order: [...orderedKeys.value] }
+      const list = sortedWidgets.value.map((w) => w.key)
+      const removed = list.splice(fromIndex, 1)
+      if (removed.length === 0) return
+      list.splice(toIndex, 0, removed[0] as string)
+      orderedKeys.value = list
+      void optimisticPersist(snapshot)
+    }
+
+    return {
+      availableWidgets,
+      sortedWidgets,
+      visibleWidgets,
+      isVisible,
+      toggleWidget,
+      reorder,
+      hiddenKeys,
+      orderedKeys,
+    }
+  }
+
+  // ====================================================================
+  // personal: 従来どおり localStorage（対象3 で共通化予定）
+  // ====================================================================
+  function loadPreferences() {
+    if (import.meta.server) return
+    const rawHidden = localStorage.getItem(hiddenStorageKey(scopeType, resolvedId))
+    if (rawHidden) {
+      try {
+        hiddenKeys.value = new Set(JSON.parse(rawHidden))
+      } catch {
+        hiddenKeys.value = new Set()
+      }
+    }
+    const rawOrder = localStorage.getItem(orderStorageKey(scopeType, resolvedId))
+    if (rawOrder) {
+      try {
+        orderedKeys.value = JSON.parse(rawOrder)
+      } catch {
+        orderedKeys.value = []
+      }
+    }
+  }
+
+  function saveHidden() {
+    if (import.meta.server) return
+    localStorage.setItem(
+      hiddenStorageKey(scopeType, resolvedId),
+      JSON.stringify([...hiddenKeys.value]),
+    )
+  }
+
+  function saveOrder() {
+    if (import.meta.server) return
+    localStorage.setItem(orderStorageKey(scopeType, resolvedId), JSON.stringify(orderedKeys.value))
+  }
+
+  function toggleWidget(widgetKey: string) {
+    if (hiddenKeys.value.has(widgetKey)) hiddenKeys.value.delete(widgetKey)
+    else hiddenKeys.value.add(widgetKey)
+    hiddenKeys.value = new Set(hiddenKeys.value)
+    saveHidden()
+  }
 
   function reorder(fromIndex: number, toIndex: number) {
     const list = sortedWidgets.value.map((w) => w.key)
