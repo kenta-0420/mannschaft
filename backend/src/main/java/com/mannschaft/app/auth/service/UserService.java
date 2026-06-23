@@ -110,6 +110,7 @@ public class UserService {
                 user.getIsSearchable(),
                 user.getAvatarUrl(),
                 user.getPhoneNumber(),
+                user.getPostalCode(),
                 user.getLocale(),
                 user.getCountryCode(),
                 user.getTimezone(),
