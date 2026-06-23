@@ -47,8 +47,8 @@ function selectColor(color: string) {
   }
   else {
     appearanceStore.setBgColor(color)
-    appearanceStore.syncWithServer()
   }
+  appearanceStore.syncWithServer()
 }
 </script>
 

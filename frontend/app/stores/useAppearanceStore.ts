@@ -47,7 +47,6 @@ export const useAppearanceStore = defineStore('appearance', {
       this.darkBgColor = color
       this.applyBgColor()
       this.persistToStorage()
-      this.syncWithServer()
     },
 
     setHideChatPreview(hidden: boolean) {
