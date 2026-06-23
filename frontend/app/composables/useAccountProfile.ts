@@ -14,6 +14,8 @@ export function useAccountProfile() {
   const { uploadAndCommit } = useProfileMediaApi()
 
   const savingProfile = ref(false)
+
+  const { redirecting, triggerRedirect } = usePasswordChangeRedirect()
   const profile = ref({
     nickname: '',
     email: '',
@@ -174,6 +176,12 @@ export function useAccountProfile() {
           ? t('settings.password.toast.change_success')
           : t('settings.password.toast.setup_success'),
       )
+      if (wasHavingPassword) {
+        // パスワード変更後はBEが全リフレッシュトークンを失効させるため、
+        // overlay フェードイン → 900ms 保持 → logout（/login へ遷移）。
+        // 初期設定（else分岐）は遷移しない。
+        await triggerRedirect()
+      }
     } catch (e) {
       // error.code が取れれば resolveMessage で解決（AUTH_008/009/010/011 等）
       const code = (e as { data?: { error?: { code?: string; message?: string } } })?.data?.error
@@ -205,6 +213,7 @@ export function useAccountProfile() {
     emailSent,
     passwordForm,
     submittingPassword,
+    redirecting,
     savingLocale,
     passwordError,
     canSubmitPassword,
