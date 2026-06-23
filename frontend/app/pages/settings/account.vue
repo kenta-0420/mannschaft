@@ -43,6 +43,7 @@ const {
   canSubmitEmail,
   passwordForm,
   submittingPassword,
+  redirecting,
   passwordError,
   canSubmitPassword,
   savingLocale,
@@ -153,6 +154,21 @@ onMounted(async () => {
 
 <template>
   <div class="mx-auto max-w-2xl">
+    <!-- パスワード変更後のリダイレクト中オーバーレイ（フェードイン表示） -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div
+          v-if="redirecting"
+          class="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-4 bg-black/60 dark:bg-black/75"
+        >
+          <LoadingBounce />
+          <p class="text-sm font-medium text-white">
+            {{ $t('settings.password.redirecting') }}
+          </p>
+        </div>
+      </Transition>
+    </Teleport>
+
     <PageHeader :title="$t('settings.account.page_title')" back-to="/settings" />
 
     <PageLoading v-if="!isMounted || loading" />

@@ -279,6 +279,9 @@ function onEdit() {
   showEditDialog.value = true
 }
 
+/** 使い方モーダル表示制御。 */
+const showGuide = ref(false)
+
 /** 編集 Dialog から更新成功時に村情報を差し替え、子へも反映。 */
 function onVillageUpdated(updated: VillageWithMonsho) {
   villageData.value = updated
@@ -355,6 +358,7 @@ provideVillageContext({
         @unpin="onUnpin"
         @report-click="onReportClick"
         @edit="onEdit"
+        @help="showGuide = true"
       />
 
       <!-- 凍結（archived）案内: 閲覧のみ可能 -->
@@ -384,6 +388,9 @@ provideVillageContext({
         :village="village"
         @updated="onVillageUpdated"
       />
+
+      <!-- 使い方モーダル -->
+      <VillageGuideModal v-model:visible="showGuide" />
     </template>
 
     <!--
