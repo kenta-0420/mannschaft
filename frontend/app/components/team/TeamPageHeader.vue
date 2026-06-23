@@ -44,7 +44,7 @@ const showBroadcastWizard = ref(false)
       <div class="flex flex-col gap-1 min-w-0">
         <div class="flex items-center gap-2 flex-wrap">
           <Button icon="pi pi-arrow-left" text rounded size="small" @click="emit('back')" />
-          <h1 class="text-xl sm:text-2xl font-bold truncate">
+          <h1 class="text-xl sm:text-2xl font-bold truncate text-surface-900 dark:text-surface-200">
             {{ displayName }}
           </h1>
           <Tag :value="templateLabel[team.location?.template ?? ''] ?? team.location?.template ?? ''" severity="info" />
