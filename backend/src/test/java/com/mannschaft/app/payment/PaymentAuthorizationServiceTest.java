@@ -288,6 +288,59 @@ class PaymentAuthorizationServiceTest {
     }
 
     @Nested
+    @DisplayName("authorizeBulkPaymentByAdmin（一括入金の払い手スコープ ADMIN 認可・欠落①）")
+    class AuthorizeBulkPaymentByAdmin {
+
+        @Test
+        @DisplayName("正常系: team スコープ ADMIN は通過（例外を投げない）")
+        void teamADMINは通過() {
+            when(paymentItemService.findByIdOrThrow(ITEM_ID)).thenReturn(teamItem());
+            when(accessControlService.isAdminOrAbove(PAYER_ID, TEAM_ID, "TEAM")).thenReturn(true);
+
+            service.authorizeBulkPaymentByAdmin(PAYER_ID, ITEM_ID);
+
+            verify(accessControlService).isAdminOrAbove(PAYER_ID, TEAM_ID, "TEAM");
+        }
+
+        @Test
+        @DisplayName("正常系: organization スコープ ADMIN は通過（例外を投げない）")
+        void orgADMINは通過() {
+            when(paymentItemService.findByIdOrThrow(ITEM_ID)).thenReturn(orgItem());
+            when(accessControlService.isAdminOrAbove(PAYER_ID, ORG_ID, "ORGANIZATION")).thenReturn(true);
+
+            service.authorizeBulkPaymentByAdmin(PAYER_ID, ITEM_ID);
+
+            verify(accessControlService).isAdminOrAbove(PAYER_ID, ORG_ID, "ORGANIZATION");
+        }
+
+        @Test
+        @DisplayName("異常系: 非 ADMIN は MEMBERSHIP_PAYER_NOT_AUTHORIZED(403)")
+        void 非ADMINは403() {
+            when(paymentItemService.findByIdOrThrow(ITEM_ID)).thenReturn(teamItem());
+            when(accessControlService.isAdminOrAbove(PAYER_ID, TEAM_ID, "TEAM")).thenReturn(false);
+
+            assertThatThrownBy(() -> service.authorizeBulkPaymentByAdmin(PAYER_ID, ITEM_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MembershipBillingErrorCode.MEMBERSHIP_PAYER_NOT_AUTHORIZED);
+        }
+
+        @Test
+        @DisplayName("異常系（fail-safe）: スコープ未設定の不整合 payment_item は ADMIN 判定不能で 403")
+        void スコープ未設定は403() {
+            when(paymentItemService.findByIdOrThrow(ITEM_ID))
+                    .thenReturn(PaymentItemEntity.builder().build()); // team/org 両方 null
+
+            assertThatThrownBy(() -> service.authorizeBulkPaymentByAdmin(PAYER_ID, ITEM_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MembershipBillingErrorCode.MEMBERSHIP_PAYER_NOT_AUTHORIZED);
+
+            verify(accessControlService, never()).isAdminOrAbove(anyLong(), anyLong(), any());
+        }
+    }
+
+    @Nested
     @DisplayName("無権原（他人）")
     class NotAuthorized {
 

@@ -1,5 +1,6 @@
 package com.mannschaft.app.payment.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.notification.NotificationScopeType;
@@ -71,6 +72,9 @@ public class MemberPaymentService {
     private final ConnectChargeService connectChargeService;
     private final ConnectAccountRepository connectAccountRepository;
 
+    // === F08.9 認可 AC-6: 受益者のスコープ所属検証（F00 正準の AccessControlService 経由）===
+    private final AccessControlService accessControlService;
+
     @Value("${app.base-url}")
     private String baseUrl;
 
@@ -115,6 +119,10 @@ public class MemberPaymentService {
         // 権原が成立しなければ MEMBERSHIP_PAYER_NOT_AUTHORIZED（403）。recorded_by は従来通り記録者を保持する。
         PayerRelationship relationship = paymentAuthorizationService.authorizePayment(
                 recordedBy, request.getUserId(), paymentItemId, true);
+
+        // AC-6: 受益者が当該スコープのメンバー（MEMBER 以上・純 SUPPORTER 除外・組織配下チーム所属者は許容・
+        // 退会/inactive は除外）であることを検証する。非所属は USER_NOT_MEMBER（PAYMENT_027）。
+        verifyBeneficiaryMembership(request.getUserId(), paymentItem);
 
         LocalDate validFrom = request.getValidFrom() != null
                 ? request.getValidFrom()
@@ -201,6 +209,11 @@ public class MemberPaymentService {
                                                    BulkPaymentRequest request) {
         PaymentItemEntity paymentItem = paymentItemService.findByIdOrThrow(paymentItemId);
 
+        // 欠落① 根治: 一括入金は ADMIN によるバッチ操作。ループに入る前に1度だけ払い手（記録者）の
+        // スコープ ADMIN 権原を検証する。非 ADMIN は MEMBERSHIP_PAYER_NOT_AUTHORIZED（403）を投げ、
+        // @Transactional により一括処理全体をロールバックする（1件も保存しない・部分保存しない）。
+        paymentAuthorizationService.authorizeBulkPaymentByAdmin(recordedBy, paymentItemId);
+
         int createdCount = 0;
         List<BulkPaymentResponse.SkippedEntry> skipped = new ArrayList<>();
 
@@ -210,6 +223,14 @@ public class MemberPaymentService {
                 if (paymentItem.getType() != PaymentItemType.DONATION
                         && memberPaymentRepository.existsValidPaidPayment(payment.getUserId(), paymentItemId)) {
                     skipped.add(new BulkPaymentResponse.SkippedEntry(payment.getUserId(), "ALREADY_PAID"));
+                    continue;
+                }
+
+                // AC-6: 受益者が当該スコープのメンバー（MEMBER 以上・純 SUPPORTER 除外・配下許容・退会除外）で
+                // なければ当該要素を USER_NOT_MEMBER 理由でスキップする（所属分は created）。
+                if (!isBeneficiaryMember(payment.getUserId(), paymentItem)) {
+                    skipped.add(new BulkPaymentResponse.SkippedEntry(
+                            payment.getUserId(), PaymentErrorCode.USER_NOT_MEMBER.getCode()));
                     continue;
                 }
 
@@ -513,6 +534,71 @@ public class MemberPaymentService {
         // 継続課金の初回単発 charge 由来（membership_subscription_id 連結）なら、その ID を返して
         // 呼び出し側（MembershipPaymentCaptureListener）が PENDING→ACTIVE 化を起こす（案b の活性化点・F08.9 P5 第三波）。
         return payment.getMembershipSubscriptionId();
+    }
+
+    /**
+     * 受益者が payment_item のスコープのメンバー（AC-6）であることを検証する。非所属は
+     * {@link PaymentErrorCode#USER_NOT_MEMBER}（PAYMENT_027・403/404 系の WARN）を投げる（単一記録用・死にコード解消）。
+     *
+     * <p>判定は {@link #isBeneficiaryMember} に委譲し、一括（skip）と検証ロジックを共通化する。</p>
+     */
+    private void verifyBeneficiaryMembership(Long beneficiaryUserId, PaymentItemEntity paymentItem) {
+        if (!isBeneficiaryMember(beneficiaryUserId, paymentItem)) {
+            log.info("会費受益者がスコープ非所属（手動入金拒否）: userId={}, itemId={}",
+                    beneficiaryUserId, paymentItem.getId());
+            throw new BusinessException(PaymentErrorCode.USER_NOT_MEMBER);
+        }
+    }
+
+    /**
+     * 受益者が payment_item のスコープのメンバーかどうかを返す（AC-6・単一/一括共通の所属判定）。
+     *
+     * <p>F00 正準の {@link AccessControlService#isMemberOrDescendant} に委譲する（{@code includeSupporters=false}）:</p>
+     * <ul>
+     *   <li><b>MEMBER 以上のみ許容・純 SUPPORTER は除外</b>（マスター御裁可②）。</li>
+     *   <li><b>組織配下チーム所属者は許容</b>（ORGANIZATION スコープの応答母集団・欠陥Z 根治の越境窓口）。</li>
+     *   <li><b>退会/inactive（{@code leftAt} 設定済）membership は除外</b>。
+     *       {@code isMemberOrDescendant} → {@code isMember} →
+     *       {@code MembershipRepository.existsActiveByUserAndScope}（{@code m.leftAt IS NULL} で絞る）ため、
+     *       退会者は false になる（AC-6d）。</li>
+     * </ul>
+     *
+     * <p>スコープ解決（team_id / organization_id → scopeId / scopeType）は {@link #resolveScopeType} /
+     * {@link #resolveScopeId} に共通化する（{@code isScopeAdmin} / {@code resolvePayeeConnectAccount} と同じ要領）。
+     * スコープ未設定の不整合データは所属判定不能のため非所属（false）に倒す（fail-safe・症状を隠さない）。</p>
+     */
+    private boolean isBeneficiaryMember(Long beneficiaryUserId, PaymentItemEntity paymentItem) {
+        String scopeType = resolveScopeType(paymentItem);
+        Long scopeId = resolveScopeId(paymentItem);
+        if (scopeType == null || scopeId == null) {
+            log.warn("payment_item にスコープ（team/org）が無く受益者の所属を判定できません: itemId={}", paymentItem.getId());
+            return false;
+        }
+        return accessControlService.isMemberOrDescendant(beneficiaryUserId, scopeId, scopeType, false);
+    }
+
+    /**
+     * payment_item のスコープ種別を解決する（{@code "TEAM"} / {@code "ORGANIZATION"}）。
+     * team_id 優先・いずれも未設定なら {@code null}（AC-6 / 払い手認可で共通使用）。
+     */
+    private String resolveScopeType(PaymentItemEntity paymentItem) {
+        if (paymentItem.getTeamId() != null) {
+            return "TEAM";
+        }
+        if (paymentItem.getOrganizationId() != null) {
+            return "ORGANIZATION";
+        }
+        return null;
+    }
+
+    /**
+     * payment_item のスコープ ID を解決する（team_id 優先・いずれも未設定なら {@code null}）。
+     */
+    private Long resolveScopeId(PaymentItemEntity paymentItem) {
+        if (paymentItem.getTeamId() != null) {
+            return paymentItem.getTeamId();
+        }
+        return paymentItem.getOrganizationId();
     }
 
     /**
