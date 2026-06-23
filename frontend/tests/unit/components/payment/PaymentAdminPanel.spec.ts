@@ -5,6 +5,7 @@ import PaymentAdminPanel from '~/components/payment/PaymentAdminPanel.vue'
 import PaymentRecordDialog from '~/components/payment/PaymentRecordDialog.vue'
 import PaymentBulkRecordDialog from '~/components/payment/PaymentBulkRecordDialog.vue'
 import type { MemberPaymentResponse, PaymentItemResponse } from '~/types/payment'
+import type { MemberResponse } from '~/types/member'
 
 /**
  * F08.9 手動入金管理UI ユニットテスト（AC-16〜20）。
@@ -14,6 +15,7 @@ import type { MemberPaymentResponse, PaymentItemResponse } from '~/types/payment
  *  AC-18: 各行に決済手段ラベルを表示（paymentMethod=null は非表示）
  *  AC-19: PAID 行のみ取消可・cancelPayment 呼出 + reload + toast
  *  AC-20: 一括ダイアログで未払いを複数選択 → bulkRecordPayment 呼出 + サマリー
+ *  (org) organization スコープで loadScopeMembers が useOrganizationApi.getMembers を使う
  */
 
 // === API モック ===
@@ -36,6 +38,22 @@ vi.mock('~/composables/usePaymentApi', () => ({
     cancelPayment: mockCancelPayment,
     sendReminder: mockSendReminder,
     exportPayments: mockExportPayments,
+  }),
+}))
+
+// === useTeamApi モック（team スコープのメンバー取得） ===
+const mockGetTeamMembers = vi.fn()
+vi.mock('~/composables/useTeamApi', () => ({
+  useTeamApi: () => ({
+    getMembers: mockGetTeamMembers,
+  }),
+}))
+
+// === useOrganizationApi モック（organization スコープのメンバー取得） ===
+const mockGetOrgMembers = vi.fn()
+vi.mock('~/composables/useOrganizationApi', () => ({
+  useOrganizationApi: () => ({
+    getMembers: mockGetOrgMembers,
   }),
 }))
 
@@ -86,18 +104,45 @@ const PAYMENTS: MemberPaymentResponse[] = [
   buildPayment({ id: 3, userId: 300, userName: '鈴木一郎', paymentMethod: 'BANK_TRANSFER', statusInfo: { status: 'PAID', validFrom: null, validUntil: null, paidAt: '2026-06-02' } }),
 ]
 
+/** テスト用メンバーデータ（MemberResponse 形式） */
+const TEAM_MEMBERS: MemberResponse[] = [
+  { userId: 100, displayName: '山田太郎', avatarUrl: null, roleName: 'MEMBER', joinedAt: '2026-01-01' },
+  { userId: 200, displayName: '佐藤花子', avatarUrl: null, roleName: 'MEMBER', joinedAt: '2026-01-01' },
+]
+
+const ORG_MEMBERS: MemberResponse[] = [
+  { userId: 500, displayName: '組織会員A', avatarUrl: null, roleName: 'MEMBER', joinedAt: '2026-01-01' },
+  { userId: 600, displayName: '組織会員B', avatarUrl: null, roleName: 'MEMBER', joinedAt: '2026-01-01' },
+]
+
 beforeEach(() => {
   setActivePinia(createPinia())
   vi.clearAllMocks()
   mockGetPaymentItems.mockResolvedValue({ data: [buildItem()] })
   mockGetPaymentSummary.mockResolvedValue({ data: { totalMembers: 3, items: [] } })
   mockGetMemberPayments.mockResolvedValue({ data: PAYMENTS })
+  // デフォルト: team スコープ用メンバー
+  mockGetTeamMembers.mockResolvedValue({ data: TEAM_MEMBERS })
+  // デフォルト: org スコープ用メンバー
+  mockGetOrgMembers.mockResolvedValue({ data: ORG_MEMBERS })
 })
 
-/** 項目を選択して支払い一覧をロードした状態の panel を返す。 */
+/** 項目を選択して支払い一覧をロードした状態の panel を返す（team スコープ）。 */
 async function mountSelected() {
   const wrapper = await mountSuspended(PaymentAdminPanel, {
-    props: { scopeType: 'team' as const, scopeId: '7' },
+    props: { scopeType: 'team' as const, scopeId: 'team-slug-1' },
+  })
+  await wrapper.vm.$nextTick()
+  const vm = wrapper.vm as unknown as { loadPayments: (i: PaymentItemResponse) => Promise<void> }
+  await vm.loadPayments(buildItem())
+  await wrapper.vm.$nextTick()
+  return wrapper
+}
+
+/** organization スコープでマウントした panel を返す。 */
+async function mountOrgSelected() {
+  const wrapper = await mountSuspended(PaymentAdminPanel, {
+    props: { scopeType: 'organization' as const, scopeId: 'org-slug-1' },
   })
   await wrapper.vm.$nextTick()
   const vm = wrapper.vm as unknown as { loadPayments: (i: PaymentItemResponse) => Promise<void> }
@@ -141,6 +186,29 @@ describe('PaymentRecordDialog.vue (AC-16/AC-17)', () => {
     expect(body.paymentMethod).toBe('BANK_TRANSFER')
     expect(body.paidAt).toMatch(/^\d{4}-\d{2}-\d{2}T00:00:00$/)
     expect(body.paymentMethod).not.toBe('STRIPE')
+  })
+
+  it('scopeMembers を渡すとそれが memberOptions に優先される（payments フォールバックより優先）', async () => {
+    const scopeMembers: MemberResponse[] = [
+      { userId: 501, displayName: 'スコープ会員X', avatarUrl: null, roleName: 'MEMBER', joinedAt: '2026-01-01' },
+      { userId: 502, displayName: 'スコープ会員Y', avatarUrl: null, roleName: 'MEMBER', joinedAt: '2026-01-01' },
+    ]
+    const wrapper = await mountSuspended(PaymentRecordDialog, {
+      props: { visible: true, defaultAmount: 5000, payments: PAYMENTS, scopeMembers },
+    })
+    const vm = wrapper.vm as unknown as { memberOptions: Array<{ label: string; value: number }> }
+    // scopeMembers 由来のオプションが出る（PAYMENTS 由来の userId 100/200/300 でなく 501/502）
+    expect(vm.memberOptions.map((o) => o.value)).toEqual([501, 502])
+    expect(vm.memberOptions.map((o) => o.label)).toEqual(['スコープ会員X', 'スコープ会員Y'])
+  })
+
+  it('scopeMembers が空の場合は payments からフォールバックする', async () => {
+    const wrapper = await mountSuspended(PaymentRecordDialog, {
+      props: { visible: true, defaultAmount: 5000, payments: PAYMENTS, scopeMembers: [] },
+    })
+    const vm = wrapper.vm as unknown as { memberOptions: Array<{ label: string; value: number }> }
+    // payments 由来のオプション（userId 100/200/300）
+    expect(vm.memberOptions.map((o) => o.value)).toEqual([100, 200, 300])
   })
 })
 
@@ -258,5 +326,43 @@ describe('PaymentAdminPanel.vue (AC-17/18/19/20)', () => {
     const wrapper = await mountSelected()
     expect(wrapper.find('[data-testid="payment-record-open"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="payment-bulk-open"]').exists()).toBe(true)
+  })
+
+  it('(org) team スコープでは useTeamApi.getMembers を呼び scopeMembers を設定する', async () => {
+    await mountSelected()
+    // team スコープのため useTeamApi.getMembers が呼ばれる
+    expect(mockGetTeamMembers).toHaveBeenCalledTimes(1)
+    expect(mockGetTeamMembers).toHaveBeenCalledWith('team-slug-1', { size: 200 })
+    // useOrganizationApi.getMembers は呼ばれない
+    expect(mockGetOrgMembers).not.toHaveBeenCalled()
+  })
+})
+
+describe('PaymentAdminPanel.vue — organization スコープ（org メンバー選択肢）', () => {
+  it('(org) organization スコープでは useOrganizationApi.getMembers を呼び scopeMembers を設定する', async () => {
+    await mountOrgSelected()
+    // org スコープのため useOrganizationApi.getMembers が呼ばれる
+    expect(mockGetOrgMembers).toHaveBeenCalledTimes(1)
+    expect(mockGetOrgMembers).toHaveBeenCalledWith('org-slug-1', { size: 200 })
+    // useTeamApi.getMembers は呼ばれない
+    expect(mockGetTeamMembers).not.toHaveBeenCalled()
+  })
+
+  it('(org) organization スコープで記録ダイアログの scopeMembers が org メンバー由来になる', async () => {
+    const wrapper = await mountOrgSelected()
+    const vm = wrapper.vm as unknown as { scopeMembers: MemberResponse[] }
+    // ORG_MEMBERS のデータが scopeMembers にセットされている
+    const userIds = vm.scopeMembers.map((m) => m.userId)
+    expect(userIds).toContain(500)
+    expect(userIds).toContain(600)
+    expect(userIds).not.toContain(100) // team メンバーは含まれない
+  })
+
+  it('(org) organization スコープで getMembers 失敗時は scopeMembers が空のまま（payments フォールバック用）', async () => {
+    mockGetOrgMembers.mockRejectedValueOnce(new Error('API error'))
+    const wrapper = await mountOrgSelected()
+    const vm = wrapper.vm as unknown as { scopeMembers: MemberResponse[] }
+    // エラー時はフォールバック（空配列のまま）
+    expect(vm.scopeMembers).toHaveLength(0)
   })
 })
