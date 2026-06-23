@@ -2,6 +2,7 @@
   "village": {
     "title": "村庄",
     "subtitle": "社区广场",
+    "archivedNotice": "该村庄已被冻结，仅可浏览。",
     "action": {
       "create": "创建村庄",
       "edit": "编辑村庄",

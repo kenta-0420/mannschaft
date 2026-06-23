@@ -1,59 +1,46 @@
 <script setup lang="ts">
 /**
- * F17.1 村機能 — メンバー一覧ページ
+ * F17.1 村機能 — メンバー一覧ページ（永続シェル子）
  *
  * 設計書: docs/features/F17.1_village_community.md §4.3 / §4.11
  *
+ * 永続シェル方式（SPA）: 村データ・権限・VillageHeader・join/leave/pin 等のアクションは
+ * 親 `pages/villages/[id].vue` に集約。本ファイルはメンバー一覧パネル本体（一覧取得・
+ * ロール変更・BAN・メンバー通報）のみを担う。
+ *
  * 画面構成:
- *   1. VillageHeader（FE2 成果物） — activeTab="members"
- *   2. メンバー一覧テーブル（VillageMembersTable 子コンポ）
- *   3. ロール変更 Dialog（VillageMembersRoleDialog 子コンポ・HEADMAN のみ）
- *   4. BAN 確認 Dialog（VillageMembersBanDialog 子コンポ・HEADMAN のみ）
- *   5. 通報 Dialog（VillageReportDialog 共通コンポ）
- *   6. 村本体編集 Dialog（VillageEditDialog 共通コンポ）
+ *   1. メンバー一覧テーブル（VillageMembersTable 子コンポ）
+ *   2. ロール変更 Dialog（VillageMembersRoleDialog 子コンポ・HEADMAN のみ）
+ *   3. BAN 確認 Dialog（VillageMembersBanDialog 子コンポ・HEADMAN のみ）
+ *   4. 通報 Dialog（VillageReportDialog 共通コンポ・MEMBERSHIP 対象）
  *
  * 権限:
  *   - 自分が HEADMAN（村長）の場合のみ「ロール変更」「BAN」操作ボタンを表示。
- *   - ELDER（長老）は本画面の範囲外（管理 UI は別途）。
- *
- * 通報:
- *   - 各メンバー行の通報ボタン → VillageReportDialog
- *     (targetType=MEMBERSHIP, targetRefId=membership.id)
- *   - VillageHeader の通報ボタン → VillageReportDialog
- *     (targetType=VILLAGE, targetRefId=village.id)
- *
- * リファクタ第 12 弾でテンプレート部を以下の子コンポーネントに分割。
- * 本ページは API 呼び出し・状態管理・各種ハンドラに専念する：
- *   - components/villages/members/VillageMembersTable.vue
- *   - components/villages/members/VillageMembersRoleDialog.vue
- *   - components/villages/members/VillageMembersBanDialog.vue
+ *   - HEADMAN 判定は親コンテキスト perms を主とし、members 配列をフォールバックに使う。
  */
-import VillageHeader from '~/components/VillageHeader.vue'
 import VillageReportDialog from '~/components/VillageReportDialog.vue'
 import VillageMembersBanDialog from '~/components/villages/members/VillageMembersBanDialog.vue'
 import VillageMembersRoleDialog from '~/components/villages/members/VillageMembersRoleDialog.vue'
 import VillageMembersTable from '~/components/villages/members/VillageMembersTable.vue'
-import { useAuthStore } from '~/stores/useAuthStore'
 import type {
   MembershipResponse,
   VillageReportTargetType,
-  VillageResponse,
   VillageRole,
 } from '~/types/village'
+import { useVillageContext } from '~/composables/useVillageContext'
 
-definePageMeta({
-  layout: 'default',
-  middleware: 'auth',
-  key: route => route.fullPath,
-})
+// auth は各タブで明示宣言（本コードベースの規約。親シェルも auth を持つ）。
+definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
 const { t } = useI18n()
 const villageApi = useVillageApi()
 const { showSuccess, showError, showWarn } = useNotification()
-const authStore = useAuthStore()
 
 const villageId = computed<string>(() => String(route.params.id))
+
+// 村本体・権限・ユーザー id は親シェルから inject
+const { village, perms, currentUserId } = useVillageContext()
 
 // =============================================================================
 // 定数
@@ -81,9 +68,6 @@ const roleOptions = computed<RoleOption[]>(() =>
 // 状態
 // =============================================================================
 
-const village = ref<VillageResponse | null>(null)
-const villageLoading = ref(false)
-
 const members = ref<MembershipResponse[]>([])
 const membersLoading = ref(false)
 const totalElements = ref(0)
@@ -110,18 +94,15 @@ const reportTargetRefId = ref<string>('')
 // 派生値
 // =============================================================================
 
-/** 自分の userId（auth store 由来） */
-const currentUserId = computed<number | null>(() => authStore.currentUser?.id ?? null)
-
 /**
  * 自分が HEADMAN かどうか。
  *
  * 判定方針:
- *   1. VillageResponse.myRole が 'HEADMAN' ならそれを採用
- *   2. それが取得できない場合は members 配列から自分の USER membership を探す
+ *   1. 親コンテキストの perms.isHeadman（VillageResponse.myRole 由来）を主に採用
+ *   2. それが false の場合は members 配列から自分の USER membership をフォールバック確認
  */
 const isHeadman = computed<boolean>(() => {
-  if (village.value?.myRole === 'HEADMAN') return true
+  if (perms.value.isHeadman) return true
   if (currentUserId.value == null) return false
   return members.value.some(
     m => m.subjectType === 'USER' && m.subjectId === currentUserId.value && m.role === 'HEADMAN' && !m.isBanned,
@@ -129,7 +110,7 @@ const isHeadman = computed<boolean>(() => {
 })
 
 // =============================================================================
-// 表示ヘルパ（本体に残すもの — 自身の判定など）
+// 表示ヘルパ（自身の判定など）
 // =============================================================================
 
 /** 自分自身の membership 行かどうか（自分への操作は禁止） */
@@ -179,20 +160,6 @@ function translateApiError(code: string | null, status: number | null): string {
 // =============================================================================
 // データロード
 // =============================================================================
-
-async function loadVillage() {
-  villageLoading.value = true
-  try {
-    village.value = await villageApi.getVillage(villageId.value)
-  }
-  catch (err) {
-    const { code, status } = extractApiError(err)
-    showError(translateApiError(code, status))
-  }
-  finally {
-    villageLoading.value = false
-  }
-}
 
 async function loadMembers() {
   membersLoading.value = true
@@ -321,7 +288,7 @@ async function submitBan() {
 }
 
 // =============================================================================
-// 通報
+// 通報（メンバー対象）
 // =============================================================================
 
 function openMemberReportDialog(m: MembershipResponse) {
@@ -330,132 +297,21 @@ function openMemberReportDialog(m: MembershipResponse) {
   reportDialogVisible.value = true
 }
 
-function openVillageReportDialog() {
-  if (!village.value) return
-  reportTargetType.value = 'VILLAGE'
-  reportTargetRefId.value = village.value.id
-  reportDialogVisible.value = true
-}
-
-// =============================================================================
-// VillageHeader からの emit ハンドラ
-// =============================================================================
-
-async function handleJoin() {
-  if (!village.value) return
-  if (currentUserId.value == null) {
-    showError(t('village.error.generic'))
-    return
-  }
-  try {
-    await villageApi.joinVillage(village.value.id, {
-      subjectType: 'USER',
-      subjectId: currentUserId.value,
-    })
-    showSuccess(t('village.success.joined'))
-    await Promise.all([loadVillage(), loadMembers()])
-  }
-  catch (err) {
-    const { code, status } = extractApiError(err)
-    showError(translateApiError(code, status))
-  }
-}
-
-function handleRequestJoin() {
-  // 承認制村: 別画面へ案内
-  if (!village.value) return
-  void navigateTo(`/villages/${village.value.id}/join-request`)
-}
-
-async function handleLeave() {
-  if (!village.value || currentUserId.value == null) return
-  // 自分の membership を探す（USER のみ対象）
-  const self = members.value.find(
-    m => m.subjectType === 'USER' && m.subjectId === currentUserId.value,
-  )
-  if (!self) {
-    showError(t('village.error.VILLAGE_007'))
-    return
-  }
-  try {
-    await villageApi.leaveVillage(village.value.id, self.id)
-    showSuccess(t('village.success.left'))
-    await Promise.all([loadVillage(), loadMembers()])
-  }
-  catch (err) {
-    const { code, status } = extractApiError(err)
-    showError(translateApiError(code, status))
-  }
-}
-
-async function handlePin() {
-  if (!village.value) return
-  try {
-    await villageApi.addPin(village.value.id)
-    showSuccess(t('village.success.pinned'))
-    await loadVillage()
-  }
-  catch (err) {
-    const { code, status } = extractApiError(err)
-    showError(translateApiError(code, status))
-  }
-}
-
-async function handleUnpin() {
-  if (!village.value) return
-  try {
-    await villageApi.removePin(village.value.id)
-    showSuccess(t('village.success.unpinned'))
-    await loadVillage()
-  }
-  catch (err) {
-    const { code, status } = extractApiError(err)
-    showError(translateApiError(code, status))
-  }
-}
-
-/** 村本体編集ダイアログ表示状態 — VillageEditDialog (FE α2 で新規実装) */
-const showVillageEditDialog = ref(false)
-function handleEdit() {
-  if (!village.value) return
-  showVillageEditDialog.value = true
-}
-
-/** 編集 Dialog から更新成功時に村情報を差し替え */
-function onVillageUpdated(updated: VillageResponse) {
-  village.value = updated
-}
-
 // =============================================================================
 // 初期化
 // =============================================================================
 
-onMounted(async () => {
-  await loadVillage()
-  await loadMembers()
+onMounted(() => {
+  void loadMembers()
 })
 </script>
 
 <template>
   <div>
-    <!-- ヘッダー -->
-    <VillageHeader
-      v-if="village"
-      :village="village"
-      active-tab="members"
-      @join="handleJoin"
-      @request-join="handleRequestJoin"
-      @leave="handleLeave"
-      @pin="handlePin"
-      @unpin="handleUnpin"
-      @report-click="openVillageReportDialog"
-      @edit="handleEdit"
-    />
-
     <!-- メンバー一覧本体 -->
     <VillageMembersTable
       :members="members"
-      :loading="membersLoading || villageLoading"
+      :loading="membersLoading"
       :village="village"
       :is-headman="isHeadman"
       :current-user-id="currentUserId"
@@ -492,25 +348,13 @@ onMounted(async () => {
       @cancel="closeBanDialog"
     />
 
-    <!-- ============================================================== -->
-    <!-- 通報 Dialog（FE5 共通コンポ）                                     -->
-    <!-- ============================================================== -->
+    <!-- 通報 Dialog（メンバー対象） -->
     <VillageReportDialog
       v-if="village"
       v-model:visible="reportDialogVisible"
       :village-id="village.id"
       :target-type="reportTargetType"
       :target-ref-id="reportTargetRefId"
-    />
-
-    <!-- ============================================================== -->
-    <!-- 村本体編集 Dialog（FE α2 共通コンポ・HEADMAN のみ）             -->
-    <!-- ============================================================== -->
-    <VillageEditDialog
-      v-if="village"
-      v-model:visible="showVillageEditDialog"
-      :village="village"
-      @updated="onVillageUpdated"
     />
   </div>
 </template>
