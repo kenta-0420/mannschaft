@@ -49,6 +49,7 @@ class UpdateAppearanceRequestValidationTest {
         return UpdateAppearanceRequest.builder()
                 .theme(ThemeMode.DARK)
                 .bgColor("#1a1a2e")
+                .darkBgColor("#18181b")
                 .seasonalThemeId(7L)
                 .hideChatPreview(true)
                 .build();
@@ -121,6 +122,37 @@ class UpdateAppearanceRequestValidationTest {
     void nullSeasonalThemeId_isAllowed() {
         UpdateAppearanceRequest req = validRequest();
         req.setSeasonalThemeId(null);
+        Set<ConstraintViolation<UpdateAppearanceRequest>> violations = validator.validate(req);
+        assertThat(violations).isEmpty();
+    }
+
+    @Test
+    @DisplayName("darkBgColor形式不正400: #RRGGBB 以外は @Pattern 違反")
+    void invalidDarkBgColor_violatesPattern() {
+        UpdateAppearanceRequest req = validRequest();
+        req.setDarkBgColor("#zzzzzz"); // 不正な HEX
+        Set<ConstraintViolation<UpdateAppearanceRequest>> violations = validator.validate(req);
+        assertThat(violations)
+                .extracting(v -> v.getPropertyPath().toString())
+                .contains("darkBgColor");
+    }
+
+    @Test
+    @DisplayName("darkBgColor必須400: darkBgColor=null は @NotNull 違反")
+    void nullDarkBgColor_violatesNotNull() {
+        UpdateAppearanceRequest req = validRequest();
+        req.setDarkBgColor(null);
+        Set<ConstraintViolation<UpdateAppearanceRequest>> violations = validator.validate(req);
+        assertThat(violations)
+                .extracting(v -> v.getPropertyPath().toString())
+                .contains("darkBgColor");
+    }
+
+    @Test
+    @DisplayName("darkBgColor正常値: 有効な HEX カラーは制約違反なし")
+    void validDarkBgColor_noViolation() {
+        UpdateAppearanceRequest req = validRequest();
+        req.setDarkBgColor("#18181b");
         Set<ConstraintViolation<UpdateAppearanceRequest>> violations = validator.validate(req);
         assertThat(violations).isEmpty();
     }
