@@ -5,7 +5,21 @@
       "config_button": "Widget Settings",
       "save": "Save",
       "no_widgets_message": "No widgets to display",
-      "add_widget_button": "Add Widget"
+      "add_widget_button": "Add Widget",
+      "save_error_title": "Save failed",
+      "save_error_detail": "Failed to save widget settings. Please try again.",
+      "settings_page_title": "Dashboard Widget Settings",
+      "settings_page_description": "Customize widget visibility and order per scope",
+      "scope_personal": "Personal",
+      "scope_team": "Team",
+      "scope_organization": "Organization",
+      "select_team": "Select Team",
+      "select_organization": "Select Organization",
+      "no_teams": "You are not a member of any teams",
+      "no_organizations": "You are not a member of any organizations",
+      "drag_hint": "Drag to reorder, toggle to show/hide widgets",
+      "settings_entry_label": "Dashboard Widgets",
+      "settings_entry_description": "Customize dashboard widget display and order"
     },
     "widget_visibility": {
       "tab_self": "My Show / Hide",

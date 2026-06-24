@@ -5,7 +5,21 @@
       "config_button": "Widget-Einstellungen",
       "save": "Speichern",
       "no_widgets_message": "Keine Widgets zum Anzeigen",
-      "add_widget_button": "Widget hinzufügen"
+      "add_widget_button": "Widget hinzufügen",
+      "save_error_title": "Speichern fehlgeschlagen",
+      "save_error_detail": "Die Widget-Einstellungen konnten nicht gespeichert werden. Bitte versuchen Sie es erneut.",
+      "settings_page_title": "Dashboard-Widget-Einstellungen",
+      "settings_page_description": "Widget-Sichtbarkeit und Reihenfolge nach Bereich anpassen",
+      "scope_personal": "Persönlich",
+      "scope_team": "Team",
+      "scope_organization": "Organisation",
+      "select_team": "Team auswählen",
+      "select_organization": "Organisation auswählen",
+      "no_teams": "Sie sind kein Mitglied eines Teams",
+      "no_organizations": "Sie sind kein Mitglied einer Organisation",
+      "drag_hint": "Ziehen zum Neuanordnen, schalten zum Ein-/Ausblenden von Widgets",
+      "settings_entry_label": "Dashboard-Widgets",
+      "settings_entry_description": "Dashboard-Widget-Anzeige und Reihenfolge anpassen"
     },
     "widget_visibility": {
       "tab_self": "Meine Anzeige / Ausblenden",

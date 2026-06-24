@@ -198,6 +198,31 @@ public class PaymentAuthorizationService {
     }
 
     /**
+     * 一括手動入金（bulk）の払い手が当該 payment_item のスコープ ADMIN 以上であることを検証する（欠落① 根治）。
+     *
+     * <p>一括記録は ADMIN によるバッチ操作であり、受益者は複数（自分以外が大半）になる。
+     * 単一記録のように受益者ごとに {@link #authorizePayment} を呼ぶと SELF/GUARDIAN/PROXY_GRANT の
+     * 個別権原まで評価してしまい「ADMIN バッチ」という性質に合わない。本メソッドは
+     * <b>ループに入る前に1度だけ</b>払い手のスコープ ADMIN 権原を検証する用途に用いる
+     * （{@code MemberPaymentService.createBulkPayments}）。</p>
+     *
+     * <p>非 ADMIN（スコープ未設定の不整合データを含む fail-safe）は単一記録と同じ
+     * {@code MEMBERSHIP_PAYER_NOT_AUTHORIZED}（403）で拒否する。呼び出し側の {@code @Transactional} 配下で
+     * 投げることで、一括処理全体をロールバックし1件も保存させない。</p>
+     *
+     * @param payerUserId   一括記録する払い手（＝記録者）ユーザーID
+     * @param paymentItemId 支払い対象の payment_items.id（スコープ解決に使用）
+     * @throws BusinessException スコープ ADMIN でない場合（{@code MEMBERSHIP_PAYER_NOT_AUTHORIZED} 403）
+     */
+    public void authorizeBulkPaymentByAdmin(Long payerUserId, Long paymentItemId) {
+        if (!isScopeAdmin(payerUserId, paymentItemId)) {
+            log.info("一括入金の払い手権原なし（スコープ ADMIN でない）: payer={}, itemId={}",
+                    payerUserId, paymentItemId);
+            throw new BusinessException(MembershipBillingErrorCode.MEMBERSHIP_PAYER_NOT_AUTHORIZED);
+        }
+    }
+
+    /**
      * 払い手が当該 payment_item のスコープ（team または organization）の ADMIN 以上かを判定する。
      *
      * <p>payment_items は team_id または organization_id のいずれかを持つ。

@@ -88,6 +88,10 @@ const { t } = useI18n()
   width: 100%;
   max-width: 520px;
 }
+:global(.dark) .presentation__card {
+  background: #1e1e1e;
+  color: #f4f4f5;
+}
 .presentation__logo {
   height: 32px;
   max-width: 60%;

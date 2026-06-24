@@ -51,6 +51,15 @@ public final class WidgetDefaultMinRoleMap {
         map.put(WidgetKey.TEAM_DIVISION_STANDINGS, MinRole.SUPPORTER);
         // F08.10: チーム試合サマリは選手・記録者向けの直近成績／記録再開導線 → MEMBER
         map.put(WidgetKey.TEAM_MATCH_SUMMARY, MinRole.MEMBER);
+        // 対象2: FE チームウィジェット 1:1 対応で追加したキーのデフォルト min_role。
+        map.put(WidgetKey.TEAM_MEMBERS, MinRole.SUPPORTER);
+        map.put(WidgetKey.TEAM_GALLERY, MinRole.SUPPORTER);
+        map.put(WidgetKey.TEAM_CIRCULATION, MinRole.MEMBER);
+        map.put(WidgetKey.TEAM_SURVEYS, MinRole.MEMBER);
+        map.put(WidgetKey.TEAM_SURVEY_RESULTS, MinRole.MEMBER);
+        map.put(WidgetKey.TEAM_BLOG, MinRole.PUBLIC);
+        map.put(WidgetKey.TEAM_SCHEDULE_CALENDAR, MinRole.SUPPORTER);
+        map.put(WidgetKey.TEAM_MEMBER_INFO, MinRole.MEMBER);
         // TEAM_BILLING / TEAM_PAGE_VIEWS は ADMIN 限定のため対象外
 
         // --- 組織ダッシュボード ---
@@ -61,6 +70,19 @@ public final class WidgetDefaultMinRoleMap {
         map.put(WidgetKey.ORG_STATS, MinRole.SUPPORTER);
         // F08.7.1: 主催大会サマリは参加数・首位など内部運用寄り → MEMBER
         map.put(WidgetKey.ORG_TOURNAMENT_SUMMARY, MinRole.MEMBER);
+        // 対象2: FE 組織ウィジェット 1:1 対応で追加したキーのデフォルト min_role。
+        map.put(WidgetKey.ORG_UPCOMING_EVENTS, MinRole.PUBLIC);
+        map.put(WidgetKey.ORG_LATEST_POSTS, MinRole.SUPPORTER);
+        map.put(WidgetKey.ORG_BLOG, MinRole.PUBLIC);
+        map.put(WidgetKey.ORG_UNREAD_THREADS, MinRole.MEMBER);
+        map.put(WidgetKey.ORG_SCHEDULE_CALENDAR, MinRole.SUPPORTER);
+        map.put(WidgetKey.ORG_MEMBERS, MinRole.SUPPORTER);
+        map.put(WidgetKey.ORG_ACTIVITY, MinRole.SUPPORTER);
+        map.put(WidgetKey.ORG_GALLERY, MinRole.SUPPORTER);
+        map.put(WidgetKey.ORG_CIRCULATION, MinRole.MEMBER);
+        map.put(WidgetKey.ORG_SURVEYS, MinRole.MEMBER);
+        map.put(WidgetKey.ORG_SURVEY_RESULTS, MinRole.MEMBER);
+        map.put(WidgetKey.ORG_MEMBER_ATTENDANCE, MinRole.MEMBER);
         // ORG_BILLING は ADMIN 限定のため対象外
 
         DEFAULTS = Collections.unmodifiableMap(map);

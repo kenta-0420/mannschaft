@@ -204,7 +204,7 @@ function onPopoverHide() {
     />
     <button
       type="button"
-      class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap text-surface-600 transition-colors hover:bg-surface-100"
+      class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap text-surface-600 dark:text-surface-400 transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
       aria-haspopup="menu"
       :aria-expanded="isPopoverOpen ? 'true' : 'false'"
       :aria-label="label"
@@ -223,7 +223,7 @@ function onPopoverHide() {
     >
       <div class="flex flex-col" style="min-width: 520px; max-width: 700px">
         <!-- メインコンテンツ: 2カラムレイアウト -->
-        <div class="flex gap-0 divide-x divide-surface-200">
+        <div class="flex gap-0 divide-x divide-surface-200 dark:divide-surface-700">
           <!-- 左カラム: フォルダ一覧 -->
           <div class="flex-1 min-w-0 py-2">
             <div class="px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-surface-400">
@@ -234,7 +234,7 @@ function onPopoverHide() {
             <button
               role="menuitem"
               type="button"
-              class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
+              class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-800 focus:bg-surface-100 dark:focus:bg-surface-800 focus:outline-none"
               @click="goAll"
             >
               <i class="pi pi-list text-base text-surface-500" />
@@ -246,7 +246,7 @@ function onPopoverHide() {
               />
               <!-- ハブ画面への遷移アイコン -->
               <span
-                class="ml-1 flex h-5 w-5 shrink-0 items-center justify-center rounded hover:bg-surface-200"
+                class="ml-1 flex h-5 w-5 shrink-0 items-center justify-center rounded hover:bg-surface-200 dark:hover:bg-surface-700"
                 :title="t('scopeFolder.nav.showAll')"
                 @click.stop="goAllHub"
               >
@@ -266,7 +266,7 @@ function onPopoverHide() {
                   :key="`all-member-${scope.id}`"
                   role="menuitem"
                   type="button"
-                  class="flex w-full items-center gap-3 py-1.5 pr-4 pl-10 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
+                  class="flex w-full items-center gap-3 py-1.5 pr-4 pl-10 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-800 focus:bg-surface-100 dark:focus:bg-surface-800 focus:outline-none"
                   @click="goScope(scope.slug)"
                 >
                   <i class="pi pi-arrow-right text-xs text-surface-400 shrink-0" aria-hidden="true" />
@@ -284,7 +284,7 @@ function onPopoverHide() {
                   :key="`all-supporter-${scope.id}`"
                   role="menuitem"
                   type="button"
-                  class="flex w-full items-center gap-3 py-1.5 pr-4 pl-10 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
+                  class="flex w-full items-center gap-3 py-1.5 pr-4 pl-10 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-800 focus:bg-surface-100 dark:focus:bg-surface-800 focus:outline-none"
                   @click="goScope(scope.slug)"
                 >
                   <i class="pi pi-arrow-right text-xs text-surface-400 shrink-0" aria-hidden="true" />
@@ -311,7 +311,7 @@ function onPopoverHide() {
               <button
                 role="menuitem"
                 type="button"
-                class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
+                class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-800 focus:bg-surface-100 dark:focus:bg-surface-800 focus:outline-none"
                 :data-testid="`scope-nav-dropdown-folder-${folder.id}`"
                 @click="toggleFolder(folder.id)"
               >
@@ -334,7 +334,7 @@ function onPopoverHide() {
                 />
                 <!-- ハブ遷移ボタン（外部リンクアイコン） -->
                 <span
-                  class="ml-1 flex h-5 w-5 shrink-0 items-center justify-center rounded hover:bg-surface-200"
+                  class="ml-1 flex h-5 w-5 shrink-0 items-center justify-center rounded hover:bg-surface-200 dark:hover:bg-surface-700"
                   :title="t('scopeFolder.nav.manage')"
                   @click.stop="goFolder(folder.id)"
                 >
@@ -349,7 +349,7 @@ function onPopoverHide() {
                   :key="`folder-${folder.id}-scope-${scope.id}`"
                   role="menuitem"
                   type="button"
-                  class="flex w-full items-center gap-3 py-1.5 pr-4 pl-10 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
+                  class="flex w-full items-center gap-3 py-1.5 pr-4 pl-10 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-800 focus:bg-surface-100 dark:focus:bg-surface-800 focus:outline-none"
                   @click="goScope(scope.slug)"
                 >
                   <i class="pi pi-arrow-right text-xs text-surface-400 shrink-0" aria-hidden="true" />
@@ -370,7 +370,7 @@ function onPopoverHide() {
               v-if="defaultFolder"
               role="menuitem"
               type="button"
-              class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
+              class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-800 focus:bg-surface-100 dark:focus:bg-surface-800 focus:outline-none"
               @click="goDefault"
             >
               <span
@@ -395,7 +395,7 @@ function onPopoverHide() {
               :key="`scope-${scope.id}`"
               role="menuitem"
               type="button"
-              class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 focus:bg-surface-100 focus:outline-none"
+              class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-100 dark:hover:bg-surface-800 focus:bg-surface-100 dark:focus:bg-surface-800 focus:outline-none"
               :data-testid="`scope-nav-dropdown-scope-${scope.id}`"
               @click="goScope(scope.slug)"
             >
@@ -406,10 +406,10 @@ function onPopoverHide() {
         </div>
 
         <!-- フッター: アクションボタン -->
-        <div class="flex items-center gap-1 border-t border-surface-200 px-4 py-2">
+        <div class="flex items-center gap-1 border-t border-surface-200 dark:border-surface-700 px-4 py-2">
           <button
             type="button"
-            class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-surface-600 hover:bg-surface-100 focus:outline-none"
+            class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 focus:outline-none"
             @click="goAllHub"
           >
             <i class="pi pi-list text-xs" aria-hidden="true" />
@@ -419,7 +419,7 @@ function onPopoverHide() {
           <div class="flex items-center gap-1">
             <button
               type="button"
-              class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-primary hover:bg-primary-50 focus:outline-none"
+              class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-primary hover:bg-primary-50 dark:hover:bg-primary-900/30 focus:outline-none"
               @click="goCreateNew"
             >
               <i class="pi pi-plus text-xs" aria-hidden="true" />
@@ -428,7 +428,7 @@ function onPopoverHide() {
 
             <button
               type="button"
-              class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-surface-600 hover:bg-surface-100 focus:outline-none"
+              class="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 focus:outline-none"
               @click="goManage"
             >
               <i class="pi pi-cog text-xs text-surface-500" aria-hidden="true" />
