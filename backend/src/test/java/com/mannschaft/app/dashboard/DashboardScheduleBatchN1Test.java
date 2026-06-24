@@ -4,7 +4,6 @@ import com.mannschaft.app.admin.repository.PlatformAnnouncementRepository;
 import com.mannschaft.app.bulletin.repository.BulletinReadStatusRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
@@ -81,7 +80,6 @@ class DashboardScheduleBatchN1Test {
 
     @Mock private DashboardWidgetService widgetService;
     @Mock private NameResolverService nameResolverService;
-    @Mock private AccessControlService accessControlService;
     @Mock private ActivityFeedService activityFeedService;
     @Mock private NotificationRepository notificationRepository;
     @Mock private ScheduleRepository scheduleRepository;
@@ -136,7 +134,6 @@ class DashboardScheduleBatchN1Test {
                 widgetService,
                 activityFeedService,
                 chatHubService,
-                accessControlService,
                 notificationRepository,
                 timelinePostRepository,
                 scheduleRepository,
