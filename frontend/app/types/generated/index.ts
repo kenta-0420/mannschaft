@@ -57784,6 +57784,10 @@ export interface components {
             examDate?: string;
             linkedSubjectName?: string;
             linkedCourseCode?: string;
+            /** Format: int32 */
+            academicYear?: number;
+            termLabel?: string;
+            parentThemeId?: string;
         };
         ApiResponseReflectionThemeResponse: {
             data?: components["schemas"]["ReflectionThemeResponse"];
@@ -57811,6 +57815,12 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+            /** Format: int32 */
+            academicYear?: number;
+            termLabel?: string;
+            parentThemeId?: string;
+            /** Format: date-time */
+            archivedAt?: string;
         };
         CreateRecallAttemptRequest: {
             recalledContent: components["schemas"]["JsonNode"];
@@ -62022,6 +62032,11 @@ export interface components {
             linkedSubjectName?: string;
             linkedCourseCode?: string;
             clearLinkedSubject?: boolean;
+            /** Format: int32 */
+            academicYear?: number;
+            termLabel?: string;
+            parentThemeId?: string;
+            clearParent?: boolean;
         };
         UpdatePersonalTimetableRequest: {
             name?: string;

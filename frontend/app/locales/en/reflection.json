@@ -56,7 +56,37 @@
       "subject_link_none": "No link",
       "subject_link_placeholder": "Select from timetable subjects",
       "subject_link_help": "This theme will appear on every class of the selected subject in today's view",
-      "subject_link_empty": "No timetable registered"
+      "subject_link_empty": "No timetable registered",
+      "academic_year_label": "Academic year",
+      "term_label_label": "Term",
+      "academic_year_placeholder": "e.g. 2026",
+      "term_label_placeholder": "e.g. Semester 1, Q1",
+      "suggest_from_timetable": "Automatically suggested from your timetable (won't overwrite existing values)",
+      "parent_theme_label": "Parent theme (set a subject above a unit)",
+      "parent_none": "No parent (top-level)"
+    },
+    "archive": {
+      "label": "Archive",
+      "action": {
+        "archive": "Archive",
+        "restore": "Restore"
+      },
+      "confirm": {
+        "archive": "Archive this theme? Spaced-recall reminders will be stopped.",
+        "restore": "Restore this theme?"
+      },
+      "bulk_archive_button": "Archive this folder",
+      "folder": {
+        "title": "Archive folders",
+        "theme_count": "{n} themes",
+        "no_subject": "No subject",
+        "no_year": "No year",
+        "no_term": "No term"
+      },
+      "search": {
+        "placeholder": "Search by title or description",
+        "empty": "No archived themes found"
+      }
     },
     "source_type": {
       "SUBJECT": "Class",

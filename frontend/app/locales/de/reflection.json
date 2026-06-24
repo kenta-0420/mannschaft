@@ -56,7 +56,37 @@
       "subject_link_none": "Keine Verknüpfung",
       "subject_link_placeholder": "Fach aus dem Stundenplan auswählen",
       "subject_link_help": "Dieses Thema wird für alle Stunden des gewählten Fachs in der Tagesansicht angezeigt",
-      "subject_link_empty": "Kein Stundenplan eingetragen"
+      "subject_link_empty": "Kein Stundenplan eingetragen",
+      "academic_year_label": "Schuljahr",
+      "term_label_label": "Halbjahr / Semester",
+      "academic_year_placeholder": "z. B. 2026",
+      "term_label_placeholder": "z. B. 1. Halbjahr, Wintersemester, Q1",
+      "suggest_from_timetable": "Automatisch aus dem Stundenplan vorgeschlagen (überschreibt keine vorhandenen Werte)",
+      "parent_theme_label": "Übergeordnetes Thema (Fach über einer Einheit festlegen)",
+      "parent_none": "Kein übergeordnetes Thema (oberste Ebene)"
+    },
+    "archive": {
+      "label": "Archiv",
+      "action": {
+        "archive": "Archivieren",
+        "restore": "Wiederherstellen"
+      },
+      "confirm": {
+        "archive": "Dieses Thema archivieren? Die Erinnerungen für verteiltes Lernen werden gestoppt.",
+        "restore": "Dieses Thema wiederherstellen?"
+      },
+      "bulk_archive_button": "Diesen Ordner archivieren",
+      "folder": {
+        "title": "Archivordner",
+        "theme_count": "{n} Themen",
+        "no_subject": "Kein Fach",
+        "no_year": "Kein Schuljahr",
+        "no_term": "Kein Semester"
+      },
+      "search": {
+        "placeholder": "Nach Titel oder Beschreibung suchen",
+        "empty": "Keine archivierten Themen gefunden"
+      }
     },
     "source_type": {
       "SUBJECT": "Unterricht",

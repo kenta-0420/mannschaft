@@ -9,7 +9,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * テーマレスポンス（F06.5・§7 #1〜#5）。Phase 2 で linkedSubjectName / linkedCourseCode を追加。
+ * テーマレスポンス（F06.5・§7 #1〜#5）。
+ * Phase 2 で linkedSubjectName / linkedCourseCode を追加。
+ * Phase 3 で academicYear / termLabel / parentThemeId / archivedAt を追加（§12.5）。
  */
 @Builder
 public record ReflectionThemeResponse(
@@ -28,6 +30,14 @@ public record ReflectionThemeResponse(
         ReflectionVisibility visibility,
         String recallIntervalDays,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        /** Phase 3: 学年度（§12.1）。Integer型（DB は SMALLINT・型統一方針）。null=未設定。 */
+        Integer academicYear,
+        /** Phase 3: 学期ラベル（§12.1）。null=未設定。 */
+        String termLabel,
+        /** Phase 3: 親テーマID（UUID文字列・§12.3）。null=トップレベル。 */
+        String parentThemeId,
+        /** Phase 3: アーカイブ日時（§12.2）。null=アクティブ。 */
+        LocalDateTime archivedAt
 ) {
 }
