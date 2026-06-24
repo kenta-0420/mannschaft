@@ -18,11 +18,12 @@ function effectiveMinRole(
   scopeType: 'personal' | 'team' | 'organization',
   visibilityMap: WidgetVisibilitySetting[],
 ): MinRole {
-  // バックエンドキーがある場合は visibilityMap（admin設定）を優先する
-  if (scopeType !== 'personal') {
-    const backendKey = backendKeyForWidget(widget.key, scopeType as 'team' | 'organization')
-    if (backendKey) {
-      const setting = visibilityMap.find((s) => s.widget_key === backendKey)
+  // team/organization の場合は visibilityMap（admin設定）を優先する
+  // personal は admin 可視性設定を持たないため除外
+  if (scopeType === 'team' || scopeType === 'organization') {
+    const bk = backendKeyForWidget(widget.key, scopeType)
+    if (bk) {
+      const setting = visibilityMap.find((s) => s.widget_key === bk)
       if (setting) return setting.min_role
     }
   }
@@ -43,14 +44,16 @@ export interface WidgetDefinition {
  * FE ケバブキー → BE WidgetKey enum（UPPER_SNAKE）の対応表。
  *
  * 対象2 の根治: team / organization スコープの「全」ウィジェットを BE enum と 1:1（一意）で対応させる。
+ * 対象3-B の実装: personal スコープも DB 永続化（#1849 で確定した BE PERSONAL_* キーと対応）。
  * これにより並び順・表示設定が DB（dashboard_widget_settings）に永続化され、再描画で並びが戻る／
  * リロードで並びが消える問題を解消する。
  * 注意: schedule（カレンダー）は upcoming-events と区別するため専用キー TEAM_SCHEDULE_CALENDAR /
  * ORG_SCHEDULE_CALENDAR を使う（旧実装は両者が TEAM_UPCOMING_EVENTS に衝突していた）。
  */
-export const WidgetKeyMap: Record<string, { team?: string; organization?: string }> = {
+export const WidgetKeyMap: Record<string, { team?: string; organization?: string; personal?: string }> = {
+  // --- team / organization スコープ ---
   bulletin: { team: 'TEAM_NOTICES', organization: 'ORG_NOTICES' },
-  'upcoming-events': { team: 'TEAM_UPCOMING_EVENTS', organization: 'ORG_UPCOMING_EVENTS' },
+  'upcoming-events': { team: 'TEAM_UPCOMING_EVENTS', organization: 'ORG_UPCOMING_EVENTS', personal: 'UPCOMING_EVENTS' },
   todos: { team: 'TEAM_TODO', organization: 'ORG_TODO' },
   timeline: { team: 'TEAM_LATEST_POSTS', organization: 'ORG_LATEST_POSTS' },
   chat: { team: 'TEAM_UNREAD_THREADS', organization: 'ORG_UNREAD_THREADS' },
@@ -73,6 +76,24 @@ export const WidgetKeyMap: Record<string, { team?: string; organization?: string
   'team-match-summary': { team: 'TEAM_MATCH_SUMMARY' },
   // F02.3 プロジェクト進捗
   projects: { team: 'TEAM_PROJECT_PROGRESS', organization: 'ORG_PROJECT_PROGRESS' },
+  // --- personal スコープ（対象3-B / #1849 で確定した BE WidgetKey） ---
+  'event-dismissal-reminder': { personal: 'PERSONAL_EVENT_DISMISSAL_REMINDER' },
+  notices: { personal: 'NOTICES' },
+  'my-calendar': { personal: 'PERSONAL_CALENDAR' },
+  weather: { personal: 'PERSONAL_WEATHER' },
+  'todo-countdown': { personal: 'PERSONAL_TODO_COUNTDOWN' },
+  'timetable-today': { personal: 'TIMETABLE_TODAY' },
+  'quick-memo': { personal: 'TIMETABLE_NOTES' },
+  'reflection-today': { personal: 'PERSONAL_REFLECTION_TODAY' },
+  'unread-threads': { personal: 'UNREAD_THREADS' },
+  'team-announcements': { personal: 'PERSONAL_TEAM_ANNOUNCEMENTS' },
+  'org-announcements': { personal: 'PERSONAL_ORG_ANNOUNCEMENTS' },
+  'my-blog': { personal: 'PERSONAL_BLOG' },
+  'my-teams': { personal: 'PERSONAL_MY_TEAMS' },
+  'my-organizations': { personal: 'PERSONAL_MY_ORGANIZATIONS' },
+  favorites: { personal: 'PERSONAL_FAVORITES' },
+  'recent-activity': { personal: 'RECENT_ACTIVITY' },
+  'personal-todo': { personal: 'PERSONAL_TODO' },
 }
 
 export const WidgetDefaultMinRoleMap: Record<string, MinRole> = {
@@ -120,33 +141,41 @@ export const WidgetDefaultMinRoleMap: Record<string, MinRole> = {
 
 export function backendKeyForWidget(
   frontendKey: string,
-  scopeType: 'team' | 'organization',
+  scopeType: 'personal' | 'team' | 'organization',
 ): string | undefined {
   return WidgetKeyMap[frontendKey]?.[scopeType]
 }
 
 const ALL_WIDGETS: WidgetDefinition[] = [
+  // =====================================================================
+  // personal スコープ（対象3-B: DB永続化対象18ウィジェット）
+  // 並び順はDashboardPersonalPanel.vue の初期描画順と一致させる
+  // =====================================================================
+  // F03.12 §16: 解散通知未送信リマインダー（主催者向け）
   {
-    key: 'announcements',
+    key: 'event-dismissal-reminder',
+    label: '解散通知リマインダー',
+    icon: 'pi pi-exclamation-circle',
+    description: '解散通知が未送信のイベントへのリマインダー',
+    scope: ['personal'],
+  },
+  // プラットフォームからのお知らせ（WidgetNotices）
+  {
+    key: 'notices',
     label: 'お知らせ',
     icon: 'pi pi-megaphone',
-    description: '運営からのお知らせ',
+    description: 'プラットフォームからのお知らせ',
     scope: ['personal'],
   },
+  // マイカレンダー（データウィジェット: lg:col-span-2）
   {
-    key: 'team-announcements',
-    label: 'チームのお知らせ',
-    icon: 'pi pi-users',
-    description: '所属チームからの掲示板・お知らせ',
+    key: 'my-calendar',
+    label: 'マイカレンダー',
+    icon: 'pi pi-calendar',
+    description: '自分のスケジュールをカレンダーで表示',
     scope: ['personal'],
   },
-  {
-    key: 'org-announcements',
-    label: '組織のお知らせ',
-    icon: 'pi pi-building',
-    description: '所属組織からの掲示板・お知らせ',
-    scope: ['personal'],
-  },
+  // 今後の予定（WidgetUpcomingEvents）
   {
     key: 'upcoming-events',
     label: '今後の予定',
@@ -154,19 +183,192 @@ const ALL_WIDGETS: WidgetDefinition[] = [
     description: '直近のスケジュール・イベント',
     scope: ['personal', 'team', 'organization'],
   },
+  // 個人TODO（WidgetPersonalTodo）
+  {
+    key: 'personal-todo',
+    label: '個人TODO',
+    icon: 'pi pi-check-square',
+    description: '個人の未完了TODO',
+    scope: ['personal'],
+  },
+  // F02.10: 天気ウィジェット
+  {
+    key: 'weather',
+    label: '天気',
+    icon: 'pi pi-cloud',
+    description: '登録郵便番号から導出した居住地点の今日・明日の予報',
+    scope: ['personal'],
+  },
+  // TODOカウントダウン（WidgetTodoCountdown）
+  {
+    key: 'todo-countdown',
+    label: 'TODOカウントダウン',
+    icon: 'pi pi-clock',
+    description: '期限が近いTODOのカウントダウン',
+    scope: ['personal'],
+  },
+  // F03.15 Phase 3: 個人時間割「今日の時間割」（データウィジェット）
+  {
+    key: 'timetable-today',
+    label: '今日の時間割',
+    icon: 'pi pi-table',
+    description: '本日の時間割とメモ',
+    scope: ['personal'],
+  },
+  // F02.5: ポイっとメモ（データウィジェット）
+  {
+    key: 'quick-memo',
+    label: 'ポイっとメモ',
+    icon: 'pi pi-pencil',
+    description: '未整理メモ最新5件',
+    scope: ['personal'],
+  },
+  // F06.5 follow-up A: 今日の振り返り導線
+  {
+    key: 'reflection-today',
+    label: '今日の振り返り',
+    icon: 'pi pi-star',
+    description: '今日の振り返り入力導線',
+    scope: ['personal'],
+  },
+  // 未読チャット（WidgetUnreadThreads）
+  {
+    key: 'unread-threads',
+    label: '未読チャット',
+    icon: 'pi pi-inbox',
+    description: '未読のチャットスレッド',
+    scope: ['personal'],
+  },
+  // チームのお知らせ（WidgetTeamAnnouncements）
+  {
+    key: 'team-announcements',
+    label: 'チームのお知らせ',
+    icon: 'pi pi-users',
+    description: '所属チームからの掲示板・お知らせ',
+    scope: ['personal'],
+  },
+  // 組織のお知らせ（WidgetOrgAnnouncements）
+  {
+    key: 'org-announcements',
+    label: '組織のお知らせ',
+    icon: 'pi pi-building',
+    description: '所属組織からの掲示板・お知らせ',
+    scope: ['personal'],
+  },
+  // マイブログ（WidgetMyBlog）
+  {
+    key: 'my-blog',
+    label: 'マイブログ',
+    icon: 'pi pi-book',
+    description: '自分のブログ記事',
+    scope: ['personal'],
+  },
+  // 所属チーム（WidgetMyTeams）
+  {
+    key: 'my-teams',
+    label: '所属チーム',
+    icon: 'pi pi-users',
+    description: '参加中のチーム一覧',
+    scope: ['personal'],
+  },
+  // 所属組織（WidgetMyOrganizations）
+  {
+    key: 'my-organizations',
+    label: '所属組織',
+    icon: 'pi pi-building',
+    description: '参加中の組織一覧',
+    scope: ['personal'],
+  },
+  // F02.9 Phase 2: お気に入り（WidgetFavorites）
+  {
+    key: 'favorites',
+    label: 'お気に入り',
+    icon: 'pi pi-heart',
+    description: 'お気に入りに登録したコンテンツ',
+    scope: ['personal'],
+  },
+  // 最近のアクティビティ（WidgetRecentActivity）
+  {
+    key: 'recent-activity',
+    label: '最近のアクティビティ',
+    icon: 'pi pi-history',
+    description: '最近の活動履歴',
+    scope: ['personal'],
+  },
+  // =====================================================================
+  // personal のみ（固定パネル・DB永続化対象外）
+  // FamilyHub と AdminBusinessAlert は DashboardPersonalPanel で v-if 固定描画
+  // 以下はその他の personal 専用ウィジェット
+  // =====================================================================
+  {
+    key: 'family-hub',
+    label: '家族',
+    icon: 'pi pi-home',
+    description: '家族チームのお知らせ・TODO',
+    scope: ['personal'],
+  },
+  {
+    key: 'notifications',
+    label: '通知',
+    icon: 'pi pi-bell',
+    description: '未読の通知',
+    scope: ['personal'],
+  },
+  // Phase 2: F03.11 募集型予約ウィジェット
+  {
+    key: 'recruitment-feed',
+    label: '新着募集',
+    icon: 'pi pi-megaphone',
+    description: 'フォロー先・サポーター先の新着募集',
+    scope: ['personal'],
+  },
+  {
+    key: 'my-recruitments',
+    label: '参加予定',
+    icon: 'pi pi-ticket',
+    description: '自分の確定・キャンセル待ち参加予定',
+    scope: ['personal'],
+  },
+  // F09.8.1 Phase 4: マイコルクボード
+  {
+    key: 'my-corkboard',
+    label: 'マイコルクボード',
+    icon: 'pi pi-bookmark-fill',
+    description: 'ピン止めしたカードの横断一覧',
+    scope: ['personal'],
+  },
+  // F17.1 §3.12.5: 井戸端ダイジェストウィジェット
+  {
+    key: 'village-lobby-digest',
+    label: '井戸端ダイジェスト',
+    icon: 'pi pi-comments',
+    description: 'ピン留め村の本日の井戸端在席状況',
+    scope: ['personal'],
+  },
+  // F04.11: 統合通知インボックスウィジェット
+  {
+    key: 'inbox',
+    label: 'インボックス',
+    icon: 'pi pi-inbox',
+    description: '通知を一箇所で仕分け',
+    scope: ['personal'],
+  },
+  // =====================================================================
+  // team / organization 共通スコープ
+  // =====================================================================
   {
     key: 'todos',
     label: 'TODO',
     icon: 'pi pi-check-square',
     description: '未完了のTODO',
-    scope: ['personal', 'team'],
+    scope: ['team'],
   },
   {
     key: 'timeline',
     label: 'タイムライン',
     icon: 'pi pi-comments',
     description: '最新の投稿',
-    scope: ['personal', 'team', 'organization'],
+    scope: ['team', 'organization'],
   },
   {
     key: 'bulletin',
@@ -180,14 +382,14 @@ const ALL_WIDGETS: WidgetDefinition[] = [
     label: 'ブログ',
     icon: 'pi pi-book',
     description: '最新の記事・記事作成',
-    scope: ['personal', 'team', 'organization'],
+    scope: ['team', 'organization'],
   },
   {
     key: 'chat',
     label: 'チャット',
     icon: 'pi pi-inbox',
     description: '未読メッセージ',
-    scope: ['personal', 'team', 'organization'],
+    scope: ['team', 'organization'],
   },
   {
     key: 'schedule',
@@ -218,20 +420,6 @@ const ALL_WIDGETS: WidgetDefinition[] = [
     scope: ['team', 'organization'],
   },
   {
-    key: 'family-hub',
-    label: '家族',
-    icon: 'pi pi-home',
-    description: '家族チームのお知らせ・TODO',
-    scope: ['personal'],
-  },
-  {
-    key: 'notifications',
-    label: '通知',
-    icon: 'pi pi-bell',
-    description: '未読の通知',
-    scope: ['personal'],
-  },
-  {
     key: 'circulation',
     label: '回覧板',
     icon: 'pi pi-send',
@@ -259,29 +447,6 @@ const ALL_WIDGETS: WidgetDefinition[] = [
     description: 'イベントごとの出欠状況と個人別回答',
     scope: ['team', 'organization'],
   },
-  // Phase 2: F03.11 募集型予約ウィジェット
-  {
-    key: 'recruitment-feed',
-    label: '新着募集',
-    icon: 'pi pi-megaphone',
-    description: 'フォロー先・サポーター先の新着募集',
-    scope: ['personal'],
-  },
-  {
-    key: 'my-recruitments',
-    label: '参加予定',
-    icon: 'pi pi-ticket',
-    description: '自分の確定・キャンセル待ち参加予定',
-    scope: ['personal'],
-  },
-  // F09.8.1 Phase 4: マイコルクボード
-  {
-    key: 'my-corkboard',
-    label: 'マイコルクボード',
-    icon: 'pi pi-bookmark-fill',
-    description: 'ピン止めしたカードの横断一覧',
-    scope: ['personal'],
-  },
   // F14.2: チームメンバー定期更新フォーム
   {
     key: 'member-info',
@@ -290,30 +455,6 @@ const ALL_WIDGETS: WidgetDefinition[] = [
     description: '連絡先・緊急連絡先等の定期更新フォーム',
     scope: ['team'],
     defaultMinRole: 'MEMBER' as MinRole,
-  },
-  // F02.10: 天気ウィジェット
-  {
-    key: 'weather',
-    label: '天気',
-    icon: 'pi pi-cloud',
-    description: '登録郵便番号から導出した居住地点の今日・明日の予報',
-    scope: ['personal'],
-  },
-  // F17.1 §3.12.5: 井戸端ダイジェストウィジェット
-  {
-    key: 'village-lobby-digest',
-    label: '井戸端ダイジェスト',
-    icon: 'pi pi-comments',
-    description: 'ピン留め村の本日の井戸端在席状況',
-    scope: ['personal'],
-  },
-  // F04.11: 統合通知インボックスウィジェット
-  {
-    key: 'inbox',
-    label: 'インボックス',
-    icon: 'pi pi-inbox',
-    description: '通知を一箇所で仕分け',
-    scope: ['personal'],
   },
   // F08.7.1: 成績ウィジェット 3 種（F02.2 系の詳細ダッシュボード）
   {
@@ -360,27 +501,16 @@ const ALL_WIDGETS: WidgetDefinition[] = [
   },
 ]
 
-/** PERSONAL スコープのフォールバック用 localStorage キー（対象2 では team/org を DB 化。personal は対象3 で共通化）。 */
-function hiddenStorageKey(scopeType: string, scopeId?: string): string {
-  return scopeId ? `dashboard-widgets:${scopeType}:${scopeId}` : `dashboard-widgets:${scopeType}`
-}
-
-function orderStorageKey(scopeType: string, scopeId?: string): string {
-  return scopeId
-    ? `dashboard-widget-order:${scopeType}:${scopeId}`
-    : `dashboard-widget-order:${scopeType}`
-}
-
 /** FE ケバブキー → BE enum（スコープ別）。マッピングが無ければ undefined。 */
 function backendKey(
   frontendKey: string,
-  scopeType: 'team' | 'organization',
+  scopeType: 'personal' | 'team' | 'organization',
 ): string | undefined {
   return WidgetKeyMap[frontendKey]?.[scopeType]
 }
 
 /** BE enum → FE ケバブキー（スコープ別の逆引き）。 */
-function buildReverseKeyMap(scopeType: 'team' | 'organization'): Map<string, string> {
+function buildReverseKeyMap(scopeType: 'personal' | 'team' | 'organization'): Map<string, string> {
   const rev = new Map<string, string>()
   for (const [feKey, be] of Object.entries(WidgetKeyMap)) {
     const bk = be[scopeType]
@@ -402,8 +532,9 @@ export function useDashboardWidgets(
   const hiddenKeys = ref<Set<string>>(new Set())
   const orderedKeys = ref<string[]>([])
 
-  // team/organization は DB 永続化（対象2 の根治）。personal は従来の localStorage を踏襲。
-  const isApiScope = scopeType === 'team' || scopeType === 'organization'
+  // team/organization/personal はすべて DB 永続化。
+  // personal は対象3-B で DB 化（scope_id=0 で BE が個人を識別）。
+  const isApiScope = scopeType === 'team' || scopeType === 'organization' || scopeType === 'personal'
 
   function isVisible(widgetKey: string): boolean {
     return !hiddenKeys.value.has(widgetKey)
@@ -430,10 +561,11 @@ export function useDashboardWidgets(
   )
 
   // ====================================================================
-  // team / organization: DB 永続化（SSR で順序確定 → 初回描画から保存順）
+  // personal / team / organization: DB 永続化（SSR で順序確定 → 初回描画から保存順）
+  // personal は scope_id=0 として BE が個人設定を識別する
   // ====================================================================
   if (isApiScope) {
-    const apiScopeType = scopeType as 'team' | 'organization'
+    const apiScopeType = scopeType as 'personal' | 'team' | 'organization'
     const reverseMap = buildReverseKeyMap(apiScopeType)
     // useApi() は内部で useRuntimeConfig() / useAuthStore() を呼ぶため、setup 時に 1 度だけ捕捉して
     // イベントハンドラ（reorder/toggle）からも安全に使えるようにする（visibility composable と同方針）。
@@ -459,12 +591,14 @@ export function useDashboardWidgets(
 
     // useAsyncData で SSR 時にサーバ取得し、初期描画時点で保存順を確定させる。
     // これにより onMounted 後の再ソート＝再描画アニメ／hydration mismatch を排除する。
-    const dataKey = `dashboard-widgets:${apiScopeType}:${resolvedId ?? '0'}`
+    // personal スコープの場合は scopeId=undefined（scope_id=0 相当として BE が識別）。
+    const effectiveScopeId = apiScopeType === 'personal' ? undefined : resolvedId
+    const dataKey = `dashboard-widgets:${apiScopeType}:${effectiveScopeId ?? '0'}`
     const { data: serverSettings } = useAsyncData(
       dataKey,
       async () => {
         const res = await api<{ data: WidgetSettingResponse[] }>('/api/v1/dashboard/widgets', {
-          query: { scopeType: apiScopeType, scopeId: resolvedId },
+          query: { scopeType: apiScopeType, scopeId: effectiveScopeId },
         })
         return res.data
       },
@@ -499,7 +633,7 @@ export function useDashboardWidgets(
       if (widgets.length === 0) return
       await api('/api/v1/dashboard/widgets', {
         method: 'PUT',
-        body: { scopeType: apiScopeType, scopeId: resolvedId, widgets },
+        body: { scopeType: apiScopeType, scopeId: effectiveScopeId, widgets },
       })
     }
 
@@ -558,59 +692,10 @@ export function useDashboardWidgets(
     }
   }
 
-  // ====================================================================
-  // personal: 従来どおり localStorage（対象3 で共通化予定）
-  // ====================================================================
-  function loadPreferences() {
-    if (import.meta.server) return
-    const rawHidden = localStorage.getItem(hiddenStorageKey(scopeType, resolvedId))
-    if (rawHidden) {
-      try {
-        hiddenKeys.value = new Set(JSON.parse(rawHidden))
-      } catch {
-        hiddenKeys.value = new Set()
-      }
-    }
-    const rawOrder = localStorage.getItem(orderStorageKey(scopeType, resolvedId))
-    if (rawOrder) {
-      try {
-        orderedKeys.value = JSON.parse(rawOrder)
-      } catch {
-        orderedKeys.value = []
-      }
-    }
-  }
-
-  function saveHidden() {
-    if (import.meta.server) return
-    localStorage.setItem(
-      hiddenStorageKey(scopeType, resolvedId),
-      JSON.stringify([...hiddenKeys.value]),
-    )
-  }
-
-  function saveOrder() {
-    if (import.meta.server) return
-    localStorage.setItem(orderStorageKey(scopeType, resolvedId), JSON.stringify(orderedKeys.value))
-  }
-
-  function toggleWidget(widgetKey: string) {
-    if (hiddenKeys.value.has(widgetKey)) hiddenKeys.value.delete(widgetKey)
-    else hiddenKeys.value.add(widgetKey)
-    hiddenKeys.value = new Set(hiddenKeys.value)
-    saveHidden()
-  }
-
-  function reorder(fromIndex: number, toIndex: number) {
-    const list = sortedWidgets.value.map((w) => w.key)
-    const removed = list.splice(fromIndex, 1)
-    if (removed.length === 0) return
-    list.splice(toIndex, 0, removed[0] as string)
-    orderedKeys.value = list
-    saveOrder()
-  }
-
-  onMounted(() => loadPreferences())
+  // isApiScope は常に true のため、このコードパスには到達しない
+  // 型エラー防止のための fallback return（実際には到達しない）
+  function toggleWidget(_widgetKey: string) { /* noop */ }
+  function reorder(_fromIndex: number, _toIndex: number) { /* noop */ }
 
   return {
     availableWidgets,

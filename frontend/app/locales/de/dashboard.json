@@ -71,6 +71,16 @@
         "thunderstorm": "Gewitter"
       }
     },
+    "personal": {
+      "find_team_title": "Neues Team oder Organisation finden",
+      "find_team_description": "Suche nach Teams oder Organisationen, denen du beitreten möchtest, und bewerbe dich als Unterstützer.\nEin Einladungslink ist erforderlich, um als Mitglied beizutreten.",
+      "find_team_button": "Teams suchen",
+      "find_org_button": "Organisationen suchen",
+      "create_team_title": "Neues Team oder Organisation erstellen",
+      "create_team_description": "Erstelle eine neue Gruppe für Familie, Sport, Gemeinschaft oder Unternehmen.\nDu kannst sofort nach der Erstellung Mitglieder einladen.",
+      "create_team_button": "Team erstellen",
+      "create_org_button": "Organisation erstellen"
+    },
     "myCorkboard": {
       "widgetTitle": "Meine Pinnwand",
       "viewAll": "Alle anzeigen",

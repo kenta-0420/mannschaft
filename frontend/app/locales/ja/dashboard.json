@@ -71,6 +71,16 @@
         "thunderstorm": "雷雨"
       }
     },
+    "personal": {
+      "find_team_title": "新しいチーム・組織を見つける",
+      "find_team_description": "参加したいチームや組織を検索してサポーターとして申請できます。\nメンバーとして参加するには招待リンクが必要です。",
+      "find_team_button": "チームを探す",
+      "find_org_button": "組織を探す",
+      "create_team_title": "新しいチーム・組織を作る",
+      "create_team_description": "家族・スポーツ・地域・企業など新しいグループを作成できます。\n作成後すぐにメンバーを招待して利用できます。",
+      "create_team_button": "チームを作る",
+      "create_org_button": "組織を作る"
+    },
     "myCorkboard": {
       "widgetTitle": "マイコルクボード",
       "viewAll": "すべて見る",
