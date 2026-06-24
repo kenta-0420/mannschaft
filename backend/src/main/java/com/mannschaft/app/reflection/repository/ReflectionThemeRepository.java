@@ -78,7 +78,7 @@ public interface ReflectionThemeRepository extends JpaRepository<ReflectionTheme
             + "   AND (:academicYear IS NULL OR t.academicYear = :academicYear)"
             + "   AND (:termLabel IS NULL OR t.termLabel = :termLabel)"
             + "   AND (:subjectName IS NULL OR t.linkedSubjectName = :subjectName)"
-            + "   AND (:keyword IS NULL OR t.title LIKE CONCAT('%', :keyword, '%') ESCAPE '\\\\' OR t.description LIKE CONCAT('%', :keyword, '%') ESCAPE '\\\\')"
+            + "   AND (:keyword IS NULL OR t.title LIKE CONCAT('%', :keyword, '%') ESCAPE '\\' OR t.description LIKE CONCAT('%', :keyword, '%') ESCAPE '\\')"
             + " ORDER BY t.createdAt DESC")
     Page<ReflectionThemeEntity> searchArchived(
             @Param("userId") Long userId,
