@@ -53,7 +53,7 @@
       "stale_warning": "预报信息可能已过期",
       "error_postal_missing": "邮政编码未注册",
       "error_postal_not_found": "您的邮政编码暂不支持天气信息。请确认正确的邮政编码",
-      "error_country_not_supported": "您所在国家或地区的天气信息目前尚未提供",
+      "error_country_not_supported": "您所在的国家或地区不支持天气信息和邮政编码验证",
       "error_provider_unavailable": "无法获取天气信息",
       "refresh": "刷新",
       "powered_by": "Powered by WeatherAPI.com",

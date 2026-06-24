@@ -53,7 +53,7 @@
       "stale_warning": "예보 정보가 오래되었을 수 있습니다",
       "error_postal_missing": "우편번호가 등록되지 않았습니다",
       "error_postal_not_found": "귀하의 우편번호는 날씨 정보를 지원하지 않습니다. 올바른 우편번호를 확인해 주세요",
-      "error_country_not_supported": "귀하의 국가 또는 지역의 날씨 정보는 현재 준비 중입니다",
+      "error_country_not_supported": "귀하의 국가 또는 지역은 날씨 정보 및 우편번호 유효성 검사를 지원하지 않습니다",
       "error_provider_unavailable": "날씨 정보를 가져올 수 없습니다",
       "refresh": "새로고침",
       "powered_by": "Powered by WeatherAPI.com",

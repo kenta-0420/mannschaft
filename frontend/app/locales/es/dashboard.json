@@ -53,7 +53,7 @@
       "stale_warning": "La información del pronóstico puede estar desactualizada",
       "error_postal_missing": "El código postal no está registrado",
       "error_postal_not_found": "Tu código postal no es compatible con la información meteorológica. Por favor, verifica tu código postal",
-      "error_country_not_supported": "La información meteorológica para tu país o región no está disponible actualmente",
+      "error_country_not_supported": "Tu país o región no es compatible con la información meteorológica ni con la validación del código postal",
       "error_provider_unavailable": "No se pudo obtener información meteorológica",
       "refresh": "Actualizar",
       "powered_by": "Powered by WeatherAPI.com",
