@@ -56,7 +56,37 @@
       "subject_link_none": "紐づけなし",
       "subject_link_placeholder": "時間割の科目から選択",
       "subject_link_help": "選んだ科目の全コマに、このテーマが今日ビューで表示されます",
-      "subject_link_empty": "時間割が未登録です"
+      "subject_link_empty": "時間割が未登録です",
+      "academic_year_label": "学年度",
+      "term_label_label": "学期",
+      "academic_year_placeholder": "例: 2026",
+      "term_label_placeholder": "例: 1学期、前期、Q1",
+      "suggest_from_timetable": "時間割から自動提案します（入力済みの場合は上書きしません）",
+      "parent_theme_label": "親テーマ（単元の上位に教科を設定）",
+      "parent_none": "親なし（トップレベル）"
+    },
+    "archive": {
+      "label": "アーカイブ",
+      "action": {
+        "archive": "アーカイブする",
+        "restore": "復元する"
+      },
+      "confirm": {
+        "archive": "このテーマをアーカイブしますか？想起リマインダーが停止されます。",
+        "restore": "このテーマを復元しますか？"
+      },
+      "bulk_archive_button": "このフォルダを一括アーカイブ",
+      "folder": {
+        "title": "アーカイブフォルダ",
+        "theme_count": "{n}件のテーマ",
+        "no_subject": "科目未設定",
+        "no_year": "学年未設定",
+        "no_term": "学期未設定"
+      },
+      "search": {
+        "placeholder": "タイトル・説明で検索",
+        "empty": "該当するアーカイブはありません"
+      }
     },
     "source_type": {
       "SUBJECT": "授業",

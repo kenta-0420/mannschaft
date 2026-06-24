@@ -56,7 +56,37 @@
       "subject_link_none": "不关联",
       "subject_link_placeholder": "从课程表科目中选择",
       "subject_link_help": "所选科目的全部课时将在今日视图中显示此主题",
-      "subject_link_empty": "尚未注册课程表"
+      "subject_link_empty": "尚未注册课程表",
+      "academic_year_label": "学年度",
+      "term_label_label": "学期",
+      "academic_year_placeholder": "例：2026",
+      "term_label_placeholder": "例：第一学期、前期、Q1",
+      "suggest_from_timetable": "从课程表自动提案（已填写的值不会被覆盖）",
+      "parent_theme_label": "父主题（在单元上方设置科目）",
+      "parent_none": "无父主题（顶层）"
+    },
+    "archive": {
+      "label": "归档",
+      "action": {
+        "archive": "归档",
+        "restore": "恢复"
+      },
+      "confirm": {
+        "archive": "归档此主题？间隔复习提醒将停止。",
+        "restore": "恢复此主题？"
+      },
+      "bulk_archive_button": "批量归档此文件夹",
+      "folder": {
+        "title": "归档文件夹",
+        "theme_count": "{n}个主题",
+        "no_subject": "未设置科目",
+        "no_year": "未设置学年",
+        "no_term": "未设置学期"
+      },
+      "search": {
+        "placeholder": "按标题或说明搜索",
+        "empty": "未找到归档主题"
+      }
     },
     "source_type": {
       "SUBJECT": "课程",

@@ -22,6 +22,7 @@ import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * 振り返りメインテーマ（F06.5・§2.1）。
@@ -70,6 +71,22 @@ public class ReflectionThemeEntity extends UuidV7Entity {
     /** Phase 2: 履修番号紐づけ（PERSONAL専用・TEAMは常にNULL）。NULL=指定なし。 */
     @Column(name = "linked_course_code", length = 50)
     private String linkedCourseCode;
+
+    /** Phase 3: 学年度（例: 2026）。実値保持・自由数値。NULL=未設定。DB列は SMALLINT だが Java 型は Integer（§12.1）。 */
+    @Column(name = "academic_year", columnDefinition = "SMALLINT")
+    private Integer academicYear;
+
+    /** Phase 3: 学期ラベル（例: 「1学期」「前期」「Q1」）。自由文字列。NULL=未設定。 */
+    @Column(name = "term_label", length = 50)
+    private String termLabel;
+
+    /** Phase 3: 親テーマの ID（自己参照・2階層固定）。NULL=トップレベル。 */
+    @Column(name = "parent_theme_id", columnDefinition = "BINARY(16)")
+    private UUID parentThemeId;
+
+    /** Phase 3: アーカイブ日時。NULL=アクティブ、非NULL=アーカイブ済み。deleted_at とは独立。 */
+    @Column(name = "archived_at")
+    private LocalDateTime archivedAt;
 
     @Column(name = "exam_date")
     private LocalDate examDate;
@@ -155,6 +172,51 @@ public class ReflectionThemeEntity extends UuidV7Entity {
     public void clearLinkedSubject() {
         this.linkedSubjectName = null;
         this.linkedCourseCode = null;
+    }
+
+    /**
+     * Phase 3: 学年度・学期ラベルを設定する（null は現値維持・examDate と同型のミューテート方式）。
+     *
+     * @param academicYear 学年度（null なら現値維持）
+     * @param termLabel    学期ラベル（null なら現値維持）
+     */
+    public void setAcademicYearAndTerm(Integer academicYear, String termLabel) {
+        if (academicYear != null) {
+            this.academicYear = academicYear;
+        }
+        if (termLabel != null) {
+            this.termLabel = termLabel;
+        }
+    }
+
+    /**
+     * Phase 3: 親テーマIDを設定する（2階層バリデーションは Service 層で実施済みの前提）。
+     *
+     * @param parentThemeId 親テーマのUUID（null でトップレベル）
+     */
+    public void setParentThemeId(UUID parentThemeId) {
+        this.parentThemeId = parentThemeId;
+    }
+
+    /**
+     * Phase 3: 親テーマIDをクリアする（clearParent=true の場合）。
+     */
+    public void clearParentThemeId() {
+        this.parentThemeId = null;
+    }
+
+    /**
+     * Phase 3: テーマをアーカイブする（archived_at = now）。
+     */
+    public void archive() {
+        this.archivedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Phase 3: アーカイブを解除する（archived_at = null）。
+     */
+    public void restore() {
+        this.archivedAt = null;
     }
 
     /**

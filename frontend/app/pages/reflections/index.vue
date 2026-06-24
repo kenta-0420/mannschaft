@@ -114,6 +114,15 @@ function onSaved() {
           :aria-label="t('reflection.nav.themes')"
           @click="router.push('/reflections/themes')"
         />
+        <!-- Phase 3: アーカイブページへの導線 -->
+        <Button
+          v-tooltip.bottom="t('reflection.archive.label')"
+          icon="pi pi-inbox"
+          text
+          rounded
+          :aria-label="t('reflection.archive.label')"
+          @click="router.push('/reflections/archive')"
+        />
         <Button
           v-tooltip.bottom="t('reflection.nav.settings')"
           icon="pi pi-cog"

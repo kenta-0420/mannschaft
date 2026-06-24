@@ -41,7 +41,33 @@ public enum ReflectionErrorCode implements ErrorCode {
 
     /** 既に輸出済みのエントリの再輸出（MVP はブロック・§6.3）。 */
     REFLECTION_ALREADY_EXPORTED("REFLECTION_008",
-            "このエントリは既にブログへ輸出済みです", Severity.WARN);
+            "このエントリは既にブログへ輸出済みです", Severity.WARN),
+
+    // ===== Phase 3: アーカイブ＆分類（§12） =====
+
+    /** 既にアーカイブ済みのテーマへの再 archive 操作（冪等にしない・誤操作防止・§12.4 EP#19）。 */
+    REFLECTION_ALREADY_ARCHIVED("REFLECTION_009",
+            "このテーマは既にアーカイブ済みです", Severity.WARN),
+
+    /** アクティブなテーマへの restore 操作（§12.4 EP#20）。 */
+    REFLECTION_NOT_ARCHIVED("REFLECTION_010",
+            "このテーマはアーカイブされていません", Severity.WARN),
+
+    /** bulk-archive で条件が1件も指定されていない（全件一括アーカイブ防止・§12.4 EP#21）。 */
+    REFLECTION_BULK_ARCHIVE_NO_CONDITION("REFLECTION_011",
+            "一括アーカイブには少なくとも1つの条件を指定してください", Severity.WARN),
+
+    /** parent_theme_id に親の親（depth超過）を指定（§12.3）。 */
+    REFLECTION_PARENT_DEPTH_EXCEEDED("REFLECTION_012",
+            "親テーマには既に親が設定されています（2階層まで）", Severity.WARN),
+
+    /** parent_theme_id に自分自身を指定（§12.3）。 */
+    REFLECTION_PARENT_SELF_REFERENCE("REFLECTION_013",
+            "自分自身を親テーマに指定することはできません", Severity.WARN),
+
+    /** parent_theme_id にアーカイブ済みまたは削除済みテーマを指定（§12.3）。 */
+    REFLECTION_PARENT_INVALID_STATE("REFLECTION_014",
+            "親テーマはアクティブなテーマを指定してください", Severity.WARN);
 
     private final String code;
     private final String message;
