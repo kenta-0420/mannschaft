@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -225,7 +226,6 @@ class DashboardWidgetServiceTest {
             given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdAndWidgetKey(
                     USER_ID, ScopeType.PERSONAL, 0L, "NOTICES"))
                     .willReturn(Optional.of(existingEntity));
-            given(accessControlService.isAdminOrAbove(USER_ID, 0L, "PERSONAL")).willReturn(false);
 
             // getWidgetSettings用のスタブ
             given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(USER_ID, ScopeType.PERSONAL, 0L))
@@ -256,7 +256,6 @@ class DashboardWidgetServiceTest {
                     .willReturn(Optional.empty());
             given(widgetSettingRepository.save(any(DashboardWidgetSettingEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
-            given(accessControlService.isAdminOrAbove(USER_ID, 0L, "PERSONAL")).willReturn(false);
 
             given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(USER_ID, ScopeType.PERSONAL, 0L))
                     .willReturn(List.of());
@@ -339,7 +338,6 @@ class DashboardWidgetServiceTest {
                     .willReturn(Optional.empty());
             given(widgetSettingRepository.save(any(DashboardWidgetSettingEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
-            given(accessControlService.isAdminOrAbove(USER_ID, 0L, "PERSONAL")).willReturn(false);
             given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(USER_ID, ScopeType.PERSONAL, 0L))
                     .willReturn(List.of());
             given(dashboardMapper.toDefaultWidgetSettingResponse(any(WidgetKey.class), anyString(), anyBoolean(), any()))
@@ -366,7 +364,6 @@ class DashboardWidgetServiceTest {
                     .willReturn(Optional.empty());
             given(widgetSettingRepository.save(any(DashboardWidgetSettingEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
-            given(accessControlService.isAdminOrAbove(USER_ID, 0L, "PERSONAL")).willReturn(false);
             given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(USER_ID, ScopeType.PERSONAL, 0L))
                     .willReturn(List.of());
             given(dashboardMapper.toDefaultWidgetSettingResponse(any(WidgetKey.class), anyString(), anyBoolean(), any()))
@@ -377,6 +374,32 @@ class DashboardWidgetServiceTest {
 
             // Then
             verify(widgetSettingRepository).save(any(DashboardWidgetSettingEntity.class));
+        }
+
+        @Test
+        @DisplayName("回帰: updateWidgetSettings の個人スコープでは accessControlService.isAdminOrAbove を呼ばない（PERSONAL は membership.ScopeType を持たないため500を防ぐ）")
+        void updateWidgetSettings_個人スコープ_isAdminOrAboveを呼ばない() {
+            // Given
+            UpdateWidgetSettingsRequest.WidgetSettingItem item =
+                    new UpdateWidgetSettingsRequest.WidgetSettingItem("NOTICES", true, 0);
+            UpdateWidgetSettingsRequest request =
+                    new UpdateWidgetSettingsRequest("PERSONAL", null, List.of(item));
+
+            given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdAndWidgetKey(
+                    USER_ID, ScopeType.PERSONAL, 0L, "NOTICES"))
+                    .willReturn(Optional.empty());
+            given(widgetSettingRepository.save(any(DashboardWidgetSettingEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(USER_ID, ScopeType.PERSONAL, 0L))
+                    .willReturn(List.of());
+            given(dashboardMapper.toDefaultWidgetSettingResponse(any(WidgetKey.class), anyString(), anyBoolean(), any()))
+                    .willReturn(new WidgetSettingResponse("OTHER", "他", true, 0, true, null));
+
+            // When
+            dashboardWidgetService.updateWidgetSettings(USER_ID, request);
+
+            // Then: 個人スコープでは isAdmin=false に短絡し、accessControlService.isAdminOrAbove を一切呼ばないこと
+            verify(accessControlService, never()).isAdminOrAbove(any(), any(), any());
         }
 
         @Test
