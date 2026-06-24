@@ -102,13 +102,19 @@ export const useAppearanceStore = defineStore('appearance', {
 
     persistToStorage() {
       if (!import.meta.client) return
-      localStorage.setItem('appearance', JSON.stringify({
+      const payload = JSON.stringify({
         theme: this.theme,
         bgColor: this.bgColor,
         darkBgColor: this.darkBgColor,
         seasonalThemeId: this.seasonalThemeId,
         hideChatPreview: this.hideChatPreview,
-      }))
+      })
+      localStorage.setItem('appearance', payload)
+      // SSR に初回テーマを伝えるために cookie にも鏡写し（HttpOnly 不可・クライアントで読む必要があるため）。
+      // cookie は localStorage の「複製」として扱い、正本は localStorage。
+      // max-age = 365 日（秒単位）
+      const maxAge = 60 * 60 * 24 * 365
+      document.cookie = `appearance=${encodeURIComponent(payload)}; path=/; max-age=${maxAge}; SameSite=Lax`
     },
 
     async syncWithServer() {
