@@ -12,5 +12,8 @@ onMounted(loadPermissions)
 </script>
 
 <template>
-  <TodoStatusLabelManagement scope="organization" :scope-id="orgSlug" :can-edit="isAdmin" />
+  <div>
+    <!-- pageTransition(out-in) は単一要素ルートを要求するため、コンポーネント単体ルートを <div> で包む。 -->
+    <TodoStatusLabelManagement scope="organization" :scope-id="orgSlug" :can-edit="isAdmin" />
+  </div>
 </template>

@@ -6,5 +6,8 @@ const orgSlug = String(route.params.slug)
 </script>
 
 <template>
-  <SignageManager scope-type="ORGANIZATION" :scope-id="orgSlug" />
+  <div>
+    <!-- pageTransition(out-in) は単一要素ルートを要求するため、コンポーネント単体ルートを <div> で包む。 -->
+    <SignageManager scope-type="ORGANIZATION" :scope-id="orgSlug" />
+  </div>
 </template>
