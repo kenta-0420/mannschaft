@@ -75,6 +75,10 @@ public class MemberPaymentService {
     // === F08.9 認可 AC-6: 受益者のスコープ所属検証（F00 正準の AccessControlService 経由）===
     private final AccessControlService accessControlService;
 
+    // === F08.9 受益者制限: チーム/組織別「受益者は会員のみ」設定（既定 ON）と組織配下 MEMBER 判定 ===
+    private final PaymentBeneficiarySettingService paymentBeneficiarySettingService;
+    private final com.mannschaft.app.organization.service.OrganizationMembershipService organizationMembershipService;
+
     @Value("${app.base-url}")
     private String baseUrl;
 
@@ -551,21 +555,33 @@ public class MemberPaymentService {
     }
 
     /**
-     * 受益者が payment_item のスコープのメンバーかどうかを返す（AC-6・単一/一括共通の所属判定）。
+     * 受益者が payment_item のスコープの受益者要件を満たすかを返す（AC-6・単一/一括共通の所属判定）。
      *
-     * <p>F00 正準の {@link AccessControlService#isMemberOrDescendant} に委譲する（{@code includeSupporters=false}）:</p>
+     * <p>判定はチーム/組織別の<b>「受益者は会員のみ」設定（{@link PaymentBeneficiarySettingService}・既定 ON）</b>で分岐する:</p>
+     *
+     * <p><b>memberOnly = false（応援者も受益者可）</b> — 従来挙動を維持し
+     * {@link AccessControlService#isMemberOrDescendant}（{@code includeSupporters=false}）に委譲する。
+     * ただし TEAM スコープでは {@code isMember} が role_kind を問わないため、純 SUPPORTER も所属していれば許容される
+     * （= 応援者も受益者可・設定 OFF の意図通り）。ORGANIZATION スコープは配下チームの SUPPORTER を除外する。</p>
+     *
+     * <p><b>memberOnly = true（既定・会員のみ）</b> — 全スコープで純 SUPPORTER を除外しつつ組織配下 MEMBER を許容する
+     * （実 {@link AccessControlService} の挙動を確認済・下記根拠）:</p>
      * <ul>
-     *   <li><b>MEMBER 以上のみ許容・純 SUPPORTER は除外</b>（マスター御裁可②）。</li>
-     *   <li><b>組織配下チーム所属者は許容</b>（ORGANIZATION スコープの応答母集団・欠陥Z 根治の越境窓口）。</li>
-     *   <li><b>退会/inactive（{@code leftAt} 設定済）membership は除外</b>。
-     *       {@code isMemberOrDescendant} → {@code isMember} →
-     *       {@code MembershipRepository.existsActiveByUserAndScope}（{@code m.leftAt IS NULL} で絞る）ため、
-     *       退会者は false になる（AC-6d）。</li>
+     *   <li><b>TEAM</b>: {@code hasRoleOrAbove(userId, scopeId, "TEAM", "MEMBER")}。
+     *       {@code resolveEffectiveRole} が user_roles＋memberships.role_kind を統合し priority 最小（最強）を採り、
+     *       {@code effective.priority() <= MEMBER.priority()} で比較する。priority は MEMBER(4) < SUPPORTER(5)
+     *       （V2.014__seed_roles.sql）なので純 SUPPORTER は false（確実に除外）。</li>
+     *   <li><b>ORGANIZATION</b>: 組織に直接 MEMBER 権限ロール/所属を持つ場合は {@code hasRoleOrAbove(.., "ORGANIZATION", "MEMBER")}
+     *       で許容。配下チームの MEMBER は直接 ORG ロールを持たないため {@code hasRoleOrAbove} では拾えないので、
+     *       {@code OrganizationMembershipService.isInOrgDistributionAudience(orgId, userId, false)}（純 SUPPORTER 除外・
+     *       配下 MEMBER 許容）との OR で合成する。これにより「配下チームの会員は受益者可・純 SUPPORTER は不可」を満たす。</li>
      * </ul>
      *
-     * <p>スコープ解決（team_id / organization_id → scopeId / scopeType）は {@link #resolveScopeType} /
-     * {@link #resolveScopeId} に共通化する（{@code isScopeAdmin} / {@code resolvePayeeConnectAccount} と同じ要領）。
-     * スコープ未設定の不整合データは所属判定不能のため非所属（false）に倒す（fail-safe・症状を隠さない）。</p>
+     * <p><b>退会/inactive 除外</b>はいずれの経路でも担保される（{@code isMember}/{@code resolveEffectiveRole} は
+     * {@code memberships.leftAt IS NULL}／アクティブな user_roles を見るため）。
+     * スコープ解決（team_id / organization_id → scopeId / scopeType）は {@link #resolveScopeType} /
+     * {@link #resolveScopeId} に共通化する。スコープ未設定の不整合データは判定不能のため非所属（false）に倒す
+     * （fail-safe・症状を隠さない）。</p>
      */
     private boolean isBeneficiaryMember(Long beneficiaryUserId, PaymentItemEntity paymentItem) {
         String scopeType = resolveScopeType(paymentItem);
@@ -574,7 +590,20 @@ public class MemberPaymentService {
             log.warn("payment_item にスコープ（team/org）が無く受益者の所属を判定できません: itemId={}", paymentItem.getId());
             return false;
         }
-        return accessControlService.isMemberOrDescendant(beneficiaryUserId, scopeId, scopeType, false);
+
+        boolean memberOnly = paymentBeneficiarySettingService.isMemberOnly(
+                paymentItem.getTeamId(), paymentItem.getOrganizationId());
+        if (!memberOnly) {
+            // 設定 OFF: 従来挙動（応援者も受益者可。TEAM は SUPPORTER 許容・ORG は配下 SUPPORTER 除外）。
+            return accessControlService.isMemberOrDescendant(beneficiaryUserId, scopeId, scopeType, false);
+        }
+
+        // 設定 ON（既定・会員のみ）: 全スコープで純 SUPPORTER を除外し、組織配下 MEMBER は許容する。
+        if ("ORGANIZATION".equals(scopeType)) {
+            return accessControlService.hasRoleOrAbove(beneficiaryUserId, scopeId, "ORGANIZATION", "MEMBER")
+                    || organizationMembershipService.isInOrgDistributionAudience(scopeId, beneficiaryUserId, false);
+        }
+        return accessControlService.hasRoleOrAbove(beneficiaryUserId, scopeId, "TEAM", "MEMBER");
     }
 
     /**

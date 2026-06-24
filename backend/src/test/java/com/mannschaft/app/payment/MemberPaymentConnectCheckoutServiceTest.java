@@ -66,6 +66,8 @@ class MemberPaymentConnectCheckoutServiceTest {
     @Mock private ConnectChargeService connectChargeService;
     @Mock private ConnectAccountRepository connectAccountRepository;
     @Mock private AccessControlService accessControlService;
+    @Mock private com.mannschaft.app.payment.service.PaymentBeneficiarySettingService paymentBeneficiarySettingService;
+    @Mock private com.mannschaft.app.organization.service.OrganizationMembershipService organizationMembershipService;
 
     @InjectMocks
     private MemberPaymentService service;
