@@ -176,7 +176,7 @@ onMounted(load)
       <!-- プロフィール編集リンク（郵便番号系エラー） -->
       <NuxtLink
         v-if="errorCode === 'POSTAL_CODE_MISSING' || errorCode === 'POSTAL_CODE_NOT_FOUND'"
-        to="/settings/account"
+        to="/settings/profile"
         class="text-sm text-primary hover:underline"
       >
         {{ t('dashboard.weather.edit_profile') }}

@@ -46,6 +46,7 @@ const profile = ref({
   nickname: '',
   email: '',
   phoneNumber: '',
+  postalCode: '',
   avatarUrl: null as string | null,
 })
 
@@ -69,6 +70,7 @@ async function saveProfile() {
       body: {
         nickname: profile.value.nickname,
         phoneNumber: profile.value.phoneNumber,
+        postalCode: profile.value.postalCode,
       },
     })
     notification.success('プロフィールを更新しました')
@@ -157,6 +159,11 @@ async function uploadAvatar(event: Event) {
           <div>
             <label class="mb-1 block text-sm font-medium">電話番号</label>
             <InputText v-model="profile.phoneNumber" class="w-full" placeholder="090-0000-0000" />
+          </div>
+
+          <div>
+            <label class="mb-1 block text-sm font-medium">郵便番号</label>
+            <InputText v-model="profile.postalCode" class="w-full" placeholder="123-4567" />
           </div>
 
           <div class="flex justify-end">
