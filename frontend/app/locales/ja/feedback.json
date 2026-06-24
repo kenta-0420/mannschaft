@@ -1,0 +1,30 @@
+{
+  "feedback": {
+    "nav_button": "目安箱",
+    "nav_tooltip": "ご意見・ご要望を送る",
+    "submit": {
+      "title": "ご意見・ご要望（目安箱）",
+      "success": "送信しました。ありがとうございます！",
+      "error": "送信に失敗しました"
+    },
+    "category": {
+      "label": "カテゴリ",
+      "placeholder": "選択してください",
+      "bug": "バグ報告",
+      "feature": "機能リクエスト",
+      "improvement": "改善提案",
+      "other": "その他"
+    },
+    "title": {
+      "label": "タイトル",
+      "placeholder": "件名を入力してください"
+    },
+    "body": {
+      "label": "内容",
+      "placeholder": "詳しい内容を入力してください"
+    },
+    "anonymous": {
+      "label": "匿名で送信する"
+    }
+  }
+}
