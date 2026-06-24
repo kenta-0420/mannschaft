@@ -233,3 +233,13 @@ export interface FeeStatementResponse {
   /** 発行者名（例: "Mannschaft"） */
   issuerName: string
 }
+
+/**
+ * F08.9: 受益者制限設定レスポンス（AC-S8）。
+ * BE: GET /api/v1/teams/{id}/payment-beneficiary-setting
+ *     GET /api/v1/organizations/{id}/payment-beneficiary-setting
+ */
+export interface BeneficiarySettingResponse {
+  /** true: 会員のみに受益者を限定（応援者を除外）。false: 応援者も受益者に含める。 */
+  beneficiaryMemberOnly: boolean
+}
