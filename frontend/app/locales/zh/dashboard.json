@@ -71,6 +71,16 @@
         "thunderstorm": "雷暴"
       }
     },
+    "personal": {
+      "find_team_title": "寻找新的团队或组织",
+      "find_team_description": "搜索您想加入的团队或组织，以支持者身份申请。\n以成员身份加入需要邀请链接。",
+      "find_team_button": "查找团队",
+      "find_org_button": "查找组织",
+      "create_team_title": "创建新的团队或组织",
+      "create_team_description": "为家庭、运动、社区或企业创建新的群组。\n创建后即可立即邀请成员。",
+      "create_team_button": "创建团队",
+      "create_org_button": "创建组织"
+    },
     "myCorkboard": {
       "widgetTitle": "我的软木板",
       "viewAll": "查看全部",
