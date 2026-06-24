@@ -27,6 +27,8 @@ const mockBulkRecordPayment = vi.fn()
 const mockCancelPayment = vi.fn()
 const mockSendReminder = vi.fn()
 const mockExportPayments = vi.fn()
+const mockGetBeneficiarySetting = vi.fn()
+const mockUpdateBeneficiarySetting = vi.fn()
 
 vi.mock('~/composables/usePaymentApi', () => ({
   usePaymentApi: () => ({
@@ -38,6 +40,8 @@ vi.mock('~/composables/usePaymentApi', () => ({
     cancelPayment: mockCancelPayment,
     sendReminder: mockSendReminder,
     exportPayments: mockExportPayments,
+    getBeneficiarySetting: mockGetBeneficiarySetting,
+    updateBeneficiarySetting: mockUpdateBeneficiarySetting,
   }),
 }))
 
@@ -125,6 +129,9 @@ beforeEach(() => {
   mockGetTeamMembers.mockResolvedValue({ data: TEAM_MEMBERS })
   // デフォルト: org スコープ用メンバー
   mockGetOrgMembers.mockResolvedValue({ data: ORG_MEMBERS })
+  // デフォルト: 受益者制限設定（false=制限なし）
+  mockGetBeneficiarySetting.mockResolvedValue({ data: { beneficiaryMemberOnly: false } })
+  mockUpdateBeneficiarySetting.mockResolvedValue(undefined)
 })
 
 /** 項目を選択して支払い一覧をロードした状態の panel を返す（team スコープ）。 */
@@ -364,5 +371,70 @@ describe('PaymentAdminPanel.vue — organization スコープ（org メンバー
     const vm = wrapper.vm as unknown as { scopeMembers: MemberResponse[] }
     // エラー時はフォールバック（空配列のまま）
     expect(vm.scopeMembers).toHaveLength(0)
+  })
+})
+
+describe('PaymentAdminPanel.vue — AC-S8: 受益者制限設定トグル', () => {
+  it('AC-S8: マウント時に getBeneficiarySetting を呼び初期値を反映する', async () => {
+    mockGetBeneficiarySetting.mockResolvedValueOnce({ data: { beneficiaryMemberOnly: true } })
+    const wrapper = await mountSuspended(PaymentAdminPanel, {
+      props: { scopeType: 'team' as const, scopeId: 'team-slug-1' },
+    })
+    await wrapper.vm.$nextTick()
+    expect(mockGetBeneficiarySetting).toHaveBeenCalledTimes(1)
+    expect(mockGetBeneficiarySetting).toHaveBeenCalledWith('team', 'team-slug-1')
+    const vm = wrapper.vm as unknown as { beneficiaryMemberOnly: boolean }
+    expect(vm.beneficiaryMemberOnly).toBe(true)
+  })
+
+  it('AC-S8: トグルが DOM に存在する（data-testid="beneficiary-member-only-toggle"）', async () => {
+    const wrapper = await mountSuspended(PaymentAdminPanel, {
+      props: { scopeType: 'team' as const, scopeId: 'team-slug-1' },
+    })
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('[data-testid="beneficiary-member-only-toggle"]').exists()).toBe(true)
+  })
+
+  it('AC-S8: onBeneficiarySettingChange 成功で updateBeneficiarySetting を呼び showSuccess を出す', async () => {
+    mockUpdateBeneficiarySetting.mockResolvedValueOnce(undefined)
+    const wrapper = await mountSuspended(PaymentAdminPanel, {
+      props: { scopeType: 'team' as const, scopeId: 'team-slug-1' },
+    })
+    await wrapper.vm.$nextTick()
+    const vm = wrapper.vm as unknown as {
+      onBeneficiarySettingChange: (value: boolean) => Promise<void>
+      beneficiaryMemberOnly: boolean
+    }
+    await vm.onBeneficiarySettingChange(true)
+    expect(mockUpdateBeneficiarySetting).toHaveBeenCalledWith('team', 'team-slug-1', true)
+    expect(mockShowSuccess).toHaveBeenCalledTimes(1)
+  })
+
+  it('AC-S8: onBeneficiarySettingChange 失敗でトグルを元に戻し showError を出す', async () => {
+    mockUpdateBeneficiarySetting.mockRejectedValueOnce(new Error('403 Forbidden'))
+    const wrapper = await mountSuspended(PaymentAdminPanel, {
+      props: { scopeType: 'team' as const, scopeId: 'team-slug-1' },
+    })
+    await wrapper.vm.$nextTick()
+    const vm = wrapper.vm as unknown as {
+      onBeneficiarySettingChange: (value: boolean) => Promise<void>
+      beneficiaryMemberOnly: boolean
+    }
+    // 初期値 false → true に切り替えて失敗
+    vm.beneficiaryMemberOnly = false
+    await vm.onBeneficiarySettingChange(true)
+    // 失敗したため false に戻る
+    expect(vm.beneficiaryMemberOnly).toBe(false)
+    expect(mockShowError).toHaveBeenCalledTimes(1)
+  })
+
+  it('AC-S8: getBeneficiarySetting 失敗時は beneficiaryMemberOnly が false のまま（フォールバック）', async () => {
+    mockGetBeneficiarySetting.mockRejectedValueOnce(new Error('500 Internal Server Error'))
+    const wrapper = await mountSuspended(PaymentAdminPanel, {
+      props: { scopeType: 'team' as const, scopeId: 'team-slug-1' },
+    })
+    await wrapper.vm.$nextTick()
+    const vm = wrapper.vm as unknown as { beneficiaryMemberOnly: boolean }
+    expect(vm.beneficiaryMemberOnly).toBe(false)
   })
 })

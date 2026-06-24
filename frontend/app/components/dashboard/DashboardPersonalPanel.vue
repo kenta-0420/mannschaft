@@ -99,7 +99,7 @@ function isDataWidget(key: string): boolean {
 /** ナビゲーション型ウィジェットのリンク先 */
 function linkTo(widgetKey: string): string | undefined {
   const personalLinks: Record<string, string> = {
-    'event-dismissal-reminder': '/calendar',
+    'event-dismissal-reminder': '/events',
     notices: '/notifications',
     'upcoming-events': '/calendar',
     'personal-todo': '/todos',

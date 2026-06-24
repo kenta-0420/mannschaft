@@ -136,6 +136,12 @@
         "button": "취소",
         "success": "입금을 취소했습니다",
         "error": "취소에 실패했습니다"
+      },
+      "beneficiarySetting": {
+        "label": "회원만 한정",
+        "description": "활성화하면 서포터(응원자)는 수혜자에서 제외됩니다. 회비 대상을 정회원으로만 제한하려는 경우 사용하세요.",
+        "saveSuccess": "수혜자 제한 설정을 저장했습니다",
+        "saveError": "설정 저장에 실패했습니다"
       }
     },
     "receipt": {

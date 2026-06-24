@@ -14,6 +14,8 @@ const {
   recordManualPayment,
   bulkRecordPayment,
   cancelPayment,
+  getBeneficiarySetting,
+  updateBeneficiarySetting,
 } = usePaymentApi()
 const { getMembers: getTeamMembers } = useTeamApi()
 const { getMembers: getOrgMembers } = useOrganizationApi()
@@ -21,6 +23,12 @@ const { showSuccess, showError } = useNotification()
 
 /** F08.9 P8: CSV ダウンロード中フラグ */
 const csvDownloading = ref(false)
+
+// === AC-S8: 受益者制限設定 ===
+/** 受益者を会員のみに限定する設定値。onMounted で取得。 */
+const beneficiaryMemberOnly = ref(false)
+/** 受益者制限設定の更新中フラグ */
+const beneficiarySettingUpdating = ref(false)
 
 /**
  * 支払い種別バッジのスタイルクラスを返す。
@@ -78,6 +86,38 @@ async function loadItems() {
     items.value = itemsRes.data
     summary.value = summaryRes?.data ?? null
   } catch { showError(t('payment.admin.loadItemsError')) }
+}
+
+/**
+ * AC-S8: 受益者制限設定を取得してトグル初期値を反映する。
+ * 失敗時はサイレント（false = 制限なし でフォールバック）。
+ */
+async function loadBeneficiarySetting() {
+  try {
+    const res = await getBeneficiarySetting(props.scopeType, props.scopeId)
+    beneficiaryMemberOnly.value = res.data.beneficiaryMemberOnly
+  } catch {
+    // 取得失敗時は false（制限なし）でフォールバック
+    beneficiaryMemberOnly.value = false
+  }
+}
+
+/**
+ * AC-S8: 受益者制限設定を切り替えて即時 PUT する。
+ * 成功で成功トースト、失敗でエラートースト＋値を元に戻す。
+ */
+async function onBeneficiarySettingChange(value: boolean) {
+  beneficiarySettingUpdating.value = true
+  try {
+    await updateBeneficiarySetting(props.scopeType, props.scopeId, value)
+    showSuccess(t('payment.admin.beneficiarySetting.saveSuccess'))
+  } catch {
+    // 失敗時はトグルを元の値に戻す
+    beneficiaryMemberOnly.value = !value
+    showError(t('payment.admin.beneficiarySetting.saveError'))
+  } finally {
+    beneficiarySettingUpdating.value = false
+  }
 }
 
 /**
@@ -236,11 +276,29 @@ async function onCancel(p: MemberPaymentResponse) {
 onMounted(() => {
   loadItems()
   loadScopeMembers()
+  loadBeneficiarySetting()
 })
 </script>
 
 <template>
-  <div class="flex gap-4">
+  <div class="flex flex-col gap-4">
+    <!-- AC-S8: 受益者制限設定トグル -->
+    <div class="rounded-xl border border-surface-200 bg-surface-0 p-4">
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <div class="text-sm font-semibold text-surface-700">{{ $t('payment.admin.beneficiarySetting.label') }}</div>
+          <div class="mt-0.5 text-xs text-surface-400">{{ $t('payment.admin.beneficiarySetting.description') }}</div>
+        </div>
+        <ToggleSwitch
+          v-model="beneficiaryMemberOnly"
+          :disabled="beneficiarySettingUpdating"
+          data-testid="beneficiary-member-only-toggle"
+          @update:model-value="onBeneficiarySettingChange"
+        />
+      </div>
+    </div>
+
+    <div class="flex gap-4">
     <!-- 項目一覧 -->
     <div class="w-64 shrink-0 rounded-xl border border-surface-300 bg-surface-0 p-3">
       <h3 class="mb-3 text-sm font-semibold">{{ $t('payment.admin.itemsTitle') }}</h3>
@@ -355,5 +413,6 @@ onMounted(() => {
       :scope-members="scopeMembers"
       @submit="onBulkSubmit"
     />
+    </div>
   </div>
 </template>
