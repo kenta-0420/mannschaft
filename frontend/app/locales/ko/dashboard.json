@@ -71,6 +71,16 @@
         "thunderstorm": "뇌우"
       }
     },
+    "personal": {
+      "find_team_title": "새로운 팀·조직 찾기",
+      "find_team_description": "참여하고 싶은 팀이나 조직을 검색하여 서포터로 신청할 수 있습니다.\n멤버로 참가하려면 초대 링크가 필요합니다.",
+      "find_team_button": "팀 찾기",
+      "find_org_button": "조직 찾기",
+      "create_team_title": "새로운 팀·조직 만들기",
+      "create_team_description": "가족·스포츠·지역·기업 등 새로운 그룹을 만들 수 있습니다.\n생성 후 바로 멤버를 초대할 수 있습니다.",
+      "create_team_button": "팀 만들기",
+      "create_org_button": "조직 만들기"
+    },
     "myCorkboard": {
       "widgetTitle": "내 코르크보드",
       "viewAll": "전체 보기",
