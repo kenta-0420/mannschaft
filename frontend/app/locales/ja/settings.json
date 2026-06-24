@@ -75,6 +75,7 @@
       "phone_placeholder": "090-0000-0000",
       "postal_code": "郵便番号",
       "postal_placeholder": "000-0000",
+      "postal_unsupported_region": "お住まいの地域は郵便番号バリデーションに未対応のため、フォーマット検証をスキップします",
       "searchable_label": "ユーザー検索への表示",
       "searchable_description": "オンにすると他のユーザーから検索で見つけられます",
       "toast": {

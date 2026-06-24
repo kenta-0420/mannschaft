@@ -75,6 +75,7 @@
       "phone_placeholder": "090-0000-0000",
       "postal_code": "邮政编码",
       "postal_placeholder": "000-0000",
+      "postal_unsupported_region": "您所在地区不支持邮政编码验证，将跳过格式检查。",
       "searchable_label": "在用户搜索中显示",
       "searchable_description": "开启后，其他用户可通过搜索找到您",
       "toast": {
