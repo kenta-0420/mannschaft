@@ -5,6 +5,7 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.reflection.dto.CreateReflectionThemeRequest;
 import com.mannschaft.app.reflection.dto.ReflectionThemeResponse;
 import com.mannschaft.app.reflection.dto.UpdateReflectionThemeRequest;
+import com.mannschaft.app.reflection.service.ReflectionArchiveService;
 import com.mannschaft.app.reflection.service.ReflectionThemeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -37,6 +38,7 @@ import java.util.UUID;
 public class ReflectionThemeController {
 
     private final ReflectionThemeService reflectionThemeService;
+    private final ReflectionArchiveService reflectionArchiveService;
 
     /** 自分のテーマ一覧（§7 #1）。 */
     @GetMapping
@@ -86,5 +88,31 @@ public class ReflectionThemeController {
     public ResponseEntity<Void> deleteTheme(@PathVariable UUID themeId) {
         reflectionThemeService.deleteTheme(SecurityUtils.getCurrentUserId(), themeId);
         return ResponseEntity.noContent().build();
+    }
+
+    // ─── Phase 3: アーカイブ操作（EP #19/#20・§12.4）───────────────
+
+    /**
+     * EP #19: テーマをアーカイブする（archived_at = now・PENDING リマインダー SPACED+PRE_EXAM CANCEL）。
+     */
+    @PatchMapping("/{themeId}/archive")
+    @Operation(summary = "テーマアーカイブ")
+    public ResponseEntity<ApiResponse<ReflectionThemeResponse>> archiveTheme(
+            @PathVariable UUID themeId) {
+        ReflectionThemeResponse result =
+                reflectionArchiveService.archiveTheme(SecurityUtils.getCurrentUserId(), themeId);
+        return ResponseEntity.ok(ApiResponse.of(result));
+    }
+
+    /**
+     * EP #20: アーカイブ済みテーマを復元する（archived_at = null・リマインダーは自動再生成しない）。
+     */
+    @PatchMapping("/{themeId}/restore")
+    @Operation(summary = "テーマ復元")
+    public ResponseEntity<ApiResponse<ReflectionThemeResponse>> restoreTheme(
+            @PathVariable UUID themeId) {
+        ReflectionThemeResponse result =
+                reflectionArchiveService.restoreTheme(SecurityUtils.getCurrentUserId(), themeId);
+        return ResponseEntity.ok(ApiResponse.of(result));
     }
 }

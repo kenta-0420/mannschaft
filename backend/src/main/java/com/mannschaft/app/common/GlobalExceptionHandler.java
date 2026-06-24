@@ -722,7 +722,14 @@ public class GlobalExceptionHandler {
             Map.entry("REFLECTION_005", HttpStatus.CONFLICT),              // VERSION_CONFLICT（楽観排他）
             Map.entry("REFLECTION_006", HttpStatus.CONFLICT),              // ENTRY_MASKED（マスク中直接 PUT）
             Map.entry("REFLECTION_007", HttpStatus.BAD_REQUEST),           // CONTENT_INVALID
-            Map.entry("REFLECTION_008", HttpStatus.CONFLICT)               // ALREADY_EXPORTED（再輸出ブロック）
+            Map.entry("REFLECTION_008", HttpStatus.CONFLICT),              // ALREADY_EXPORTED（再輸出ブロック）
+            // Phase 3: アーカイブ＆分類（§12）
+            Map.entry("REFLECTION_009", HttpStatus.CONFLICT),              // ALREADY_ARCHIVED（再アーカイブ防止）
+            Map.entry("REFLECTION_010", HttpStatus.CONFLICT),              // NOT_ARCHIVED（アクティブへの restore）
+            Map.entry("REFLECTION_011", HttpStatus.BAD_REQUEST),          // BULK_ARCHIVE_NO_CONDITION（条件なし）
+            Map.entry("REFLECTION_012", HttpStatus.BAD_REQUEST),          // PARENT_DEPTH_EXCEEDED（2階層超過）
+            Map.entry("REFLECTION_013", HttpStatus.BAD_REQUEST),          // PARENT_SELF_REFERENCE（自己参照）
+            Map.entry("REFLECTION_014", HttpStatus.BAD_REQUEST)           // PARENT_INVALID_STATE（archived/deleted 親）
     );
 
     /**

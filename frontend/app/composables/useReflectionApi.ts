@@ -3,6 +3,14 @@
  *
  * BE は全エンドポイントを `ApiResponse<T>`（`{ data: T }`）で返す（§7）。
  * 認可は「認証必須＋本人所有のみ」。req/res は生成型（`~/types/reflection` の別名経由）を使う。
+ *
+ * Phase 3 追加:
+ * - listArchiveFolders() → EP #17 GET /archive/folders
+ * - searchArchive(params) → EP #18 GET /archive/search
+ * - archiveTheme(id) → EP #19 PATCH /themes/{id}/archive
+ * - restoreTheme(id) → EP #20 PATCH /themes/{id}/restore
+ * - bulkArchive(body) → EP #21 POST /archive/bulk-archive
+ * - getTermSuggestion(baseDate?) → EP #22 GET /term-suggestion
  */
 import type {
   ReflectionThemeResponse,
@@ -17,6 +25,11 @@ import type {
   ExportToBlogRequest,
   UpdateReflectionSettingsRequest,
   LinkableSlotResponse,
+  ArchiveFolderResponse,
+  TermSuggestionResponse,
+  BulkArchiveRequest,
+  BulkArchiveResult,
+  ArchiveSearchParams,
 } from '~/types/reflection'
 import type { BlogPostResponse } from '~/types/cms'
 
@@ -116,6 +129,51 @@ export function useReflectionApi() {
     return api<{ data: ReflectionSettingsResponse }>(`${BASE}/settings`, { method: 'PUT', body })
   }
 
+  // ─── Phase 3: アーカイブ＆分類（§12・EP #17〜#22） ──────────────────────
+
+  /** EP #17: アーカイブ済みテーマの学年×学期×教科フォルダ集計。 */
+  async function listArchiveFolders() {
+    return api<{ data: ArchiveFolderResponse[] }>(`${BASE}/archive/folders`)
+  }
+
+  /** EP #18: アーカイブ済みテーマ横断検索（学年/学期/教科/キーワード AND・ページング）。 */
+  async function searchArchive(params: ArchiveSearchParams = {}) {
+    const qs = new URLSearchParams()
+    if (params.academicYear != null) qs.set('academicYear', String(params.academicYear))
+    if (params.termLabel != null) qs.set('termLabel', params.termLabel)
+    if (params.subjectName != null) qs.set('subjectName', params.subjectName)
+    if (params.keyword != null) qs.set('keyword', params.keyword)
+    if (params.archived != null) qs.set('archived', String(params.archived))
+    if (params.page != null) qs.set('page', String(params.page))
+    if (params.size != null) qs.set('size', String(params.size))
+    const query = qs.toString() ? `?${qs.toString()}` : ''
+    return api<{ data: { content: ReflectionThemeResponse[], totalElements: number, totalPages: number, number: number, size: number } }>(`${BASE}/archive/search${query}`)
+  }
+
+  /** EP #19: テーマをアーカイブ（PENDING リマインダーを CANCELLED に）。 */
+  async function archiveTheme(themeId: string) {
+    return api<{ data: ReflectionThemeResponse }>(`${BASE}/themes/${themeId}/archive`, { method: 'PATCH' })
+  }
+
+  /** EP #20: アーカイブ済みテーマを復元（今日ビュー・テーマ一覧に戻す）。 */
+  async function restoreTheme(themeId: string) {
+    return api<{ data: ReflectionThemeResponse }>(`${BASE}/themes/${themeId}/restore`, { method: 'PATCH' })
+  }
+
+  /** EP #21: 学年/学期/教科 条件でアクティブテーマを一括アーカイブ。 */
+  async function bulkArchive(body: BulkArchiveRequest) {
+    return api<{ data: BulkArchiveResult }>(`${BASE}/archive/bulk-archive`, { method: 'POST', body })
+  }
+
+  /**
+   * EP #22: 基準日から個人時間割の学年・学期を自動提案。
+   * @param baseDate YYYY-MM-DD 形式（省略時はサーバが今日を使用）
+   */
+  async function getTermSuggestion(baseDate?: string) {
+    const qs = baseDate ? `?baseDate=${encodeURIComponent(baseDate)}` : ''
+    return api<{ data: TermSuggestionResponse }>(`${BASE}/term-suggestion${qs}`)
+  }
+
   return {
     listThemes,
     getTheme,
@@ -133,5 +191,12 @@ export function useReflectionApi() {
     exportToBlog,
     getSettings,
     updateSettings,
+    // Phase 3
+    listArchiveFolders,
+    searchArchive,
+    archiveTheme,
+    restoreTheme,
+    bulkArchive,
+    getTermSuggestion,
   }
 }
