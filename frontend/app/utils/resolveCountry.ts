@@ -33,8 +33,10 @@ export function resolveCountry(
   }
 
   if (locale && locale.trim().length > 0) {
-    // "en-US" のような IETF タグは言語サブタグ（最初の "-" より前）を使う
-    const lang = locale.trim().split('-')[0].toLowerCase()
+    // "en-US" のような IETF タグは言語サブタグ（最初の "-" より前）を使う。
+    // noUncheckedIndexedAccess 有効のため split[0] の undefined を空文字でガードする
+    // （空文字なら LOCALE_TO_COUNTRY[''] が undefined → ?? null で解決不能扱いとなり挙動も正しい）。
+    const lang = (locale.trim().split('-')[0] ?? '').toLowerCase()
     return LOCALE_TO_COUNTRY[lang] ?? null
   }
 
