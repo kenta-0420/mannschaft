@@ -30,7 +30,6 @@ async function submit() {
   try {
     await feedbackApi.createFeedback({
       scopeType: 'GENERAL',
-      scopeId: '',
       category: form.value.category,
       title: form.value.title.trim(),
       body: form.value.body.trim(),
