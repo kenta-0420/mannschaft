@@ -170,76 +170,32 @@ public class DashboardService {
         builder.platformAnnouncements(announcementItems);
 
         if (!criticalOnly) {
-            // 第2段階ウィジェット
+            // 第2段階ウィジェット。
+            //
+            // 各ウィジェットは独立した読み取りで、相互に依存しないため CompletableFuture で
+            // 並列取得する（チームダッシュボードの SWIPE サマリと同じ作法）。open-in-view=false の
+            // ため、各 future 内では遅延ロードに依存せず、エンティティを Map / プリミティブへ
+            // 即時変換して返すことで Hibernate セッション越境を避ける。
+            final List<Long> finalTeamIds = teamIds;
+            // TimezoneContextHolder は inheritable=false の ThreadLocal のため、リクエストスレッドで
+            // 取得した ZoneId を future へ明示的に引き渡す（async ワーカーでは UTC に化けるのを防ぐ。
+            // チームダッシュボードの buildCalendarSummary と同じ作法）。
+            final java.time.ZoneId userZone = TimezoneContextHolder.get();
 
-            // timeline_posts 連携: 自分の最新投稿5件
-            List<TimelinePostEntity> myPosts = timelinePostRepository
-                    .findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, DASHBOARD_ITEM_LIMIT));
-            builder.myPosts(myPosts.stream().map(this::toTimelinePostMap).toList());
+            CompletableFuture<List<Map<String, Object>>> myPostsFuture =
+                    CompletableFuture.supplyAsync(() -> loadMyPosts(userId));
+            CompletableFuture<Map<String, Object>> unreadThreadsFuture =
+                    CompletableFuture.supplyAsync(() -> loadUnreadThreads(userId, finalTeamIds));
+            CompletableFuture<List<Map<String, Object>>> recentActivityFuture =
+                    CompletableFuture.supplyAsync(() -> loadRecentActivity(userId, finalTeamIds));
+            CompletableFuture<Map<String, Object>> personalCalendarFuture =
+                    CompletableFuture.supplyAsync(() -> loadPersonalCalendarCounts(userId, finalTeamIds, userZone));
 
-            // bulletin_threads + chat_channel_members 連携
-            // 掲示板: 所属チームのスレッドのうち未読のものをカウント
-            long totalUnreadBulletin = 0;
-            for (UserRoleEntity role : teamRoles) {
-                Page<com.mannschaft.app.bulletin.entity.BulletinThreadEntity> threads =
-                        bulletinThreadRepository.findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(
-                                com.mannschaft.app.bulletin.ScopeType.TEAM, role.getTeamId(), PageRequest.of(0, 100));
-                for (var thread : threads.getContent()) {
-                    boolean isRead = bulletinReadStatusRepository.existsByThreadIdAndUserId(thread.getId(), userId);
-                    if (!isRead) {
-                        totalUnreadBulletin++;
-                    }
-                }
-            }
-            // チャット: ユーザーが参加しているチャンネルの未読数合計
-            List<ChatChannelMemberEntity> chatMemberships = chatChannelMemberRepository.findByUserId(userId);
-            long totalUnreadChat = chatMemberships.stream()
-                    .mapToInt(ChatChannelMemberEntity::getUnreadCount)
-                    .sum();
-            builder.unreadThreads(Map.of(
-                    "bulletin_threads", List.of(),
-                    "chat_channels", List.of(),
-                    "total_unread_bulletin", totalUnreadBulletin,
-                    "total_unread_chat", totalUnreadChat
-            ));
-
-            // activity_feed 連携: ActivityFeedServiceに委譲
-            List<Long> scopeIds = teamRoles.stream().map(UserRoleEntity::getTeamId).toList();
-            List<ActivityFeedResponse> recentActivity = activityFeedService
-                    .getActivityFeed(userId, null, DASHBOARD_ITEM_LIMIT, scopeIds);
-            builder.recentActivity(recentActivity.stream()
-                    .map(a -> {
-                        Map<String, Object> map = new HashMap<>();
-                        map.put("id", a.getId());
-                        map.put("type", a.getType());
-                        map.put("actor", a.getActor());
-                        map.put("scope_name", a.getScopeName());
-                        map.put("created_at", a.getCreatedAt());
-                        return map;
-                    })
-                    .toList());
-
-            // schedules 個人 + チーム公開イベント連携: 件数集計
-            LocalDateTime todayStart = LocalDate.now(TimezoneContextHolder.get()).atStartOfDay();
-            LocalDateTime todayEnd = LocalDate.now(TimezoneContextHolder.get()).atTime(LocalTime.MAX);
-            LocalDateTime weekStart = todayStart;
-            LocalDateTime weekEnd = todayStart.plusDays(7);
-            LocalDateTime monthEnd = todayStart.plusMonths(1);
-
-            long eventsToday = scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, todayStart, todayEnd).size();
-            long eventsThisWeek = scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, weekStart, weekEnd).size();
-            long eventsThisMonth = scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, weekStart, monthEnd).size();
-            // チーム公開イベントも加算（N+1 解消: チーム ID を IN 句で一括取得し、期間ごと 1 クエリ）
-            if (!teamIds.isEmpty()) {
-                eventsToday += scheduleRepository.findByTeamIdInAndStartAtBetween(teamIds, todayStart, todayEnd).size();
-                eventsThisWeek += scheduleRepository.findByTeamIdInAndStartAtBetween(teamIds, weekStart, weekEnd).size();
-                eventsThisMonth += scheduleRepository.findByTeamIdInAndStartAtBetween(teamIds, weekStart, monthEnd).size();
-            }
-            builder.personalCalendar(Map.of(
-                    "events_today", eventsToday,
-                    "events_this_week", eventsThisWeek,
-                    "events_this_month", eventsThisMonth
-            ));
+            // すべて join（例外は CompletionException として伝播させ握り潰さない: 障害対応の原則）。
+            builder.myPosts(myPostsFuture.join());
+            builder.unreadThreads(unreadThreadsFuture.join());
+            builder.recentActivity(recentActivityFuture.join());
+            builder.personalCalendar(personalCalendarFuture.join());
 
             // パフォーマンス管理・プロジェクト進捗・チャットハブはウィジェット設定のモジュール有効判定で制御
             // データ取得は各モジュール実装完了後に連携予定
@@ -249,6 +205,117 @@ public class DashboardService {
         }
 
         return builder.build();
+    }
+
+    /**
+     * 第2段階: 自分の最新投稿（直近 {@value #DASHBOARD_ITEM_LIMIT} 件）を Map リストで取得する。
+     */
+    private List<Map<String, Object>> loadMyPosts(Long userId) {
+        List<TimelinePostEntity> myPosts = timelinePostRepository
+                .findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, DASHBOARD_ITEM_LIMIT));
+        return myPosts.stream().map(this::toTimelinePostMap).toList();
+    }
+
+    /**
+     * 第2段階: 掲示板・チャットの未読サマリを取得する（掲示板未読は N+1 を撲滅した 2 クエリ集計）。
+     *
+     * <p>掲示板: 所属チームのスレッド ID を 1 クエリで一括取得し（{@code findIdsByScopeTypeAndScopeIdIn}）、
+     * そのうち既読のスレッド ID を 1 クエリで取得（{@code findReadThreadIds}）。未読数 =
+     * 「対象スレッド ID 集合 − 既読スレッド ID 集合」の要素数。所属チームが無い場合は既読クエリを
+     * 発行しない（{@code IN ()} 非発行）。</p>
+     */
+    private Map<String, Object> loadUnreadThreads(Long userId, List<Long> teamIds) {
+        long totalUnreadBulletin = 0;
+        if (!teamIds.isEmpty()) {
+            List<Long> threadIds = bulletinThreadRepository.findIdsByScopeTypeAndScopeIdIn(
+                    com.mannschaft.app.bulletin.ScopeType.TEAM, teamIds);
+            if (!threadIds.isEmpty()) {
+                Set<Long> readThreadIds = new java.util.HashSet<>(
+                        bulletinReadStatusRepository.findReadThreadIds(threadIds, userId));
+                // distinct なスレッド ID のうち未読のものを数える（重複スレッド ID は集合化で吸収）。
+                totalUnreadBulletin = threadIds.stream()
+                        .distinct()
+                        .filter(id -> !readThreadIds.contains(id))
+                        .count();
+            }
+        }
+        // チャット: ユーザーが参加しているチャンネルの未読数合計。
+        List<ChatChannelMemberEntity> chatMemberships = chatChannelMemberRepository.findByUserId(userId);
+        long totalUnreadChat = chatMemberships.stream()
+                .mapToInt(ChatChannelMemberEntity::getUnreadCount)
+                .sum();
+        return Map.of(
+                "bulletin_threads", List.of(),
+                "chat_channels", List.of(),
+                "total_unread_bulletin", totalUnreadBulletin,
+                "total_unread_chat", totalUnreadChat
+        );
+    }
+
+    /**
+     * 第2段階: アクティビティフィードを Map リストで取得する（ActivityFeedService に委譲）。
+     */
+    private List<Map<String, Object>> loadRecentActivity(Long userId, List<Long> teamIds) {
+        List<ActivityFeedResponse> recentActivity = activityFeedService
+                .getActivityFeed(userId, null, DASHBOARD_ITEM_LIMIT, teamIds);
+        return recentActivity.stream()
+                .map(a -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", a.getId());
+                    map.put("type", a.getType());
+                    map.put("actor", a.getActor());
+                    map.put("scope_name", a.getScopeName());
+                    map.put("created_at", a.getCreatedAt());
+                    return map;
+                })
+                .toList();
+    }
+
+    /**
+     * 第2段階: 個人 + チーム公開イベントの today/week/month 件数を集計する。
+     *
+     * <p>従来は期間（today/week/month）ごとに個人・チームのスケジュールを取得しており、
+     * 同一テーブルへ計 6 クエリを発行していた。本メソッドは最大範囲（当日 0:00〜1か月後）を
+     * <b>個人 1 クエリ + チーム 1 バッチクエリ</b>で取得し、アプリ層で today/week/month を集計する。
+     * すべての期間が当日 0:00 起点で、境界は元の {@code BETWEEN}（両端含む）と同値になるよう
+     * {@code <=} で判定する。所属チームが無い場合はチーム取得を発行しない（{@code IN ()} 非発行）。</p>
+     */
+    private Map<String, Object> loadPersonalCalendarCounts(Long userId, List<Long> teamIds, java.time.ZoneId userZone) {
+        LocalDate today = LocalDate.now(userZone);
+        LocalDateTime todayStart = today.atStartOfDay();
+        LocalDateTime todayEnd = today.atTime(LocalTime.MAX);
+        LocalDateTime weekEnd = todayStart.plusDays(7);
+        LocalDateTime monthEnd = todayStart.plusMonths(1);
+
+        // 最大範囲（todayStart〜monthEnd）を 1 回だけ取得（個人 1 クエリ + チーム 1 バッチクエリ）。
+        List<ScheduleEntity> schedules = new ArrayList<>(
+                scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, todayStart, monthEnd));
+        if (!teamIds.isEmpty()) {
+            schedules.addAll(scheduleRepository.findByTeamIdInAndStartAtBetween(teamIds, todayStart, monthEnd));
+        }
+
+        long eventsToday = 0;
+        long eventsThisWeek = 0;
+        long eventsThisMonth = 0;
+        for (ScheduleEntity s : schedules) {
+            LocalDateTime startAt = s.getStartAt();
+            if (startAt == null) {
+                continue;
+            }
+            // monthEnd までを取得済みなので全件が month に含まれる（境界含む）。
+            eventsThisMonth++;
+            if (!startAt.isAfter(weekEnd)) {
+                eventsThisWeek++;
+            }
+            if (!startAt.isAfter(todayEnd)) {
+                eventsToday++;
+            }
+        }
+        return Map.of(
+                "events_today", eventsToday,
+                "events_this_week", eventsThisWeek,
+                "events_this_month", eventsThisMonth
+        );
     }
 
     /**
