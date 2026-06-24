@@ -57,39 +57,46 @@ function onForwardSuccess(forwardId: number) {
 </script>
 
 <template>
-  <PageLoading v-if="loading" />
+  <div>
+    <!--
+      pageTransition(out-in) は単一要素ルートを要求する。ルート直下のコメント＋
+      コンポーネント先頭の v-if はフラグメント根（非要素）となりアニメ不能 →
+      SPAバックで次ページが空白になる（#1863/#1866 と同型）。単一 <div> で包んで根治。
+    -->
+    <PageLoading v-if="loading" />
 
-  <!-- 権限不足 -->
-  <div v-else-if="permissionDenied" class="flex flex-col items-center justify-center py-16">
-    <i class="pi pi-lock mb-4 text-4xl text-surface-400" />
-    <p class="text-surface-500">{{ t('friend_feed.permission_denied') }}</p>
-    <BackButton class="mt-4" />
-  </div>
-
-  <!-- メインコンテンツ -->
-  <div v-else>
-    <div class="mb-4 flex items-center gap-3">
-      <PageHeader :title="t('friend_feed.title')">
-        <span class="text-sm text-surface-400">{{ t('friend_feed.subtitle') }}</span>
-      </PageHeader>
+    <!-- 権限不足 -->
+    <div v-else-if="permissionDenied" class="flex flex-col items-center justify-center py-16">
+      <i class="pi pi-lock mb-4 text-4xl text-surface-400" />
+      <p class="text-surface-500">{{ t('friend_feed.permission_denied') }}</p>
+      <BackButton class="mt-4" />
     </div>
 
-    <div class="mx-auto max-w-2xl">
-      <!-- 投稿一覧 -->
-      <FriendsFriendFeedPostList
-        ref="feedListRef"
+    <!-- メインコンテンツ -->
+    <div v-else>
+      <div class="mb-4 flex items-center gap-3">
+        <PageHeader :title="t('friend_feed.title')">
+          <span class="text-sm text-surface-400">{{ t('friend_feed.subtitle') }}</span>
+        </PageHeader>
+      </div>
+
+      <div class="mx-auto max-w-2xl">
+        <!-- 投稿一覧 -->
+        <FriendsFriendFeedPostList
+          ref="feedListRef"
+          :team-id="teamSlug"
+          @forward="onForward"
+        />
+      </div>
+
+      <!-- 転送モーダル -->
+      <FriendsFriendForwardModal
+        v-model="forwardModalVisible"
         :team-id="teamSlug"
-        @forward="onForward"
+        :post-id="forwardPostId"
+        :source-team-name="forwardSourceTeamName"
+        @success="onForwardSuccess"
       />
     </div>
-
-    <!-- 転送モーダル -->
-    <FriendsFriendForwardModal
-      v-model="forwardModalVisible"
-      :team-id="teamSlug"
-      :post-id="forwardPostId"
-      :source-team-name="forwardSourceTeamName"
-      @success="onForwardSuccess"
-    />
   </div>
 </template>
