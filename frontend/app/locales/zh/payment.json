@@ -136,6 +136,12 @@
         "button": "撤销",
         "success": "已撤销入账",
         "error": "撤销失败"
+      },
+      "beneficiarySetting": {
+        "label": "仅限会员",
+        "description": "启用后，应援者（支持者）将被排除在受益者之外。如果想将会费对象限定为正式会员，请使用此功能。",
+        "saveSuccess": "受益者限制设置已保存",
+        "saveError": "设置保存失败"
       }
     },
     "receipt": {

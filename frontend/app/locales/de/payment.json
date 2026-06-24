@@ -136,6 +136,12 @@
         "button": "Stornieren",
         "success": "Zahlung storniert",
         "error": "Stornierung fehlgeschlagen"
+      },
+      "beneficiarySetting": {
+        "label": "Nur Mitglieder",
+        "description": "Wenn aktiviert, werden Unterstützer (Supporter) als Begünstigte ausgeschlossen. Verwende diese Option, wenn der Beitrag nur für ordentliche Mitglieder gelten soll.",
+        "saveSuccess": "Einstellung für Begünstigtenbeschränkung gespeichert",
+        "saveError": "Einstellung konnte nicht gespeichert werden"
       }
     },
     "receipt": {

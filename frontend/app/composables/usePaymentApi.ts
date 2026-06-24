@@ -7,6 +7,7 @@ import type {
   MemberPaymentReceiptResponse,
   FeeStatementResponse,
   BulkPaymentResponse,
+  BeneficiarySettingResponse,
 } from '~/types/payment'
 
 export function usePaymentApi() {
@@ -202,6 +203,33 @@ export function usePaymentApi() {
     })
   }
 
+  // === Beneficiary Setting (AC-S8) ===
+  /**
+   * F08.9 AC-S8: 受益者を会員のみに限定する設定を取得する。
+   * BE: GET /api/v1/teams/{id}/payment-beneficiary-setting
+   *     GET /api/v1/organizations/{id}/payment-beneficiary-setting
+   */
+  async function getBeneficiarySetting(scopeType: 'team' | 'organization', scopeId: string) {
+    return api<{ data: BeneficiarySettingResponse }>(`${base(scopeType, scopeId)}/payment-beneficiary-setting`)
+  }
+
+  /**
+   * F08.9 AC-S8: 受益者を会員のみに限定する設定を更新する。
+   * BE: PUT /api/v1/teams/{id}/payment-beneficiary-setting
+   *     PUT /api/v1/organizations/{id}/payment-beneficiary-setting
+   * @param beneficiaryMemberOnly true=会員のみ（応援者除外）/ false=応援者も含める
+   */
+  async function updateBeneficiarySetting(
+    scopeType: 'team' | 'organization',
+    scopeId: string,
+    beneficiaryMemberOnly: boolean,
+  ) {
+    return api(`${base(scopeType, scopeId)}/payment-beneficiary-setting`, {
+      method: 'PUT',
+      body: { beneficiaryMemberOnly },
+    })
+  }
+
   return {
     getPaymentItems,
     createPaymentItem,
@@ -225,5 +253,7 @@ export function usePaymentApi() {
     resumeSubscription,
     getReceipt,
     getFeeStatement,
+    getBeneficiarySetting,
+    updateBeneficiarySetting,
   }
 }
