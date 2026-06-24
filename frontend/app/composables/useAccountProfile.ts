@@ -27,6 +27,8 @@ export function useAccountProfile() {
     locale: 'ja',
     timezone: 'Asia/Tokyo',
     hasPassword: true,
+    /** ISO 3166-1 alpha-2 国コード。未設定時は null。 */
+    countryCode: null as string | null,
   })
 
   const emailForm = ref({ newEmail: '', currentPassword: '' })
@@ -84,6 +86,7 @@ export function useAccountProfile() {
         locale: d.locale || 'ja',
         timezone: d.timezone || 'Asia/Tokyo',
         hasPassword: d.hasPassword,
+        countryCode: d.countryCode ?? null,
       }
     } catch {
       /* silent */

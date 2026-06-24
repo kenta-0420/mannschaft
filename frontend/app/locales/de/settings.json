@@ -75,6 +75,7 @@
       "phone_placeholder": "090-0000-0000",
       "postal_code": "Postleitzahl",
       "postal_placeholder": "000-0000",
+      "postal_unsupported_region": "Die Postleitzahlenvalidierung wird in Ihrer Region nicht unterstützt. Die Formatprüfung wird übersprungen.",
       "searchable_label": "In Benutzersuche anzeigen",
       "searchable_description": "Wenn aktiviert, können andere Benutzer Sie über die Suche finden",
       "toast": {

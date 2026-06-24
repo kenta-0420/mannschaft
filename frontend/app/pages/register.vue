@@ -3,6 +3,7 @@ import dayjs from 'dayjs'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import { z } from 'zod'
+import { resolveCountry } from '~/utils/resolveCountry'
 
 definePageMeta({
   layout: 'auth',
@@ -18,6 +19,17 @@ const loading = ref(false)
 
 // クエリパラメータから招待トークンを取得（ベータ制限対応）
 const inviteToken = computed(() => route.query.invite as string | undefined)
+
+// 郵便番号バリデーション（レジストリ駆動）
+// 登録画面では locale='ja' 固定のため実効国 = JP
+const { ensureLoaded, isSupported, validateFormat } = usePostalCodeValidation()
+
+// ページマウント時にポリシーを先読みしておく（フォームサブミット時の遅延を最小化）
+onMounted(() => {
+  ensureLoaded().catch(() => {
+    // 取得失敗はサイレント（BE が authoritative なので保存時に 400 が返る）
+  })
+})
 
 const schema = toTypedSchema(
   z.object({
@@ -44,8 +56,34 @@ const schema = toTypedSchema(
       .max(50, '表示名は50文字以内で入力してください'),
     postalCode: z
       .string()
-      .min(1, '郵便番号は必須です')
-      .regex(/^\d{3}-?\d{4}$/, '郵便番号の形式が正しくありません（例: 123-4567）'),
+      .superRefine(async (val, ctx) => {
+        // レジストリ駆動郵便番号検証（ハードコード regex を廃止）
+        // 登録画面は locale='ja' 固定 → 実効国 JP
+        const effectiveCountry = resolveCountry(null, 'ja')
+        if (!effectiveCountry) return // 解決不能は検証スキップ
+
+        // ポリシーをロード（既にキャッシュ済みの場合は即返る）
+        await ensureLoaded()
+
+        if (!isSupported(effectiveCountry)) return // 未対応国は検証スキップ
+
+        // 必須チェック
+        if (!val || val.length === 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: '郵便番号は必須です',
+          })
+          return
+        }
+
+        // フォーマットチェック（BE の pattern を使用）
+        if (!validateFormat(effectiveCountry, val)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: '郵便番号の形式が正しくありません（例: 123-4567）',
+          })
+        }
+      }),
     birthDate: z
       .string()
       .min(1, 'parental_consent.error_auth_050')
