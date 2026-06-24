@@ -13,15 +13,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * 対象3-A: 個人ダッシュボード PERSONAL スコープ WidgetKey 受け入れテスト。
  *
- * <p>FE useDashboardWidgets.ts の ALL_WIDGETS（personal スコープ）と BE WidgetKey enum の
- * 1:1 対応を検証する。新規追加した PERSONAL_* キーが enum に存在し、PUT で受理される
- * ことを確認する（試練フェーズ: 実装前は RED になることを確認してから実装する）。</p>
+ * <p>導出元は ALL_WIDGETS カタログではなく、実際に描画する
+ * {@code DashboardPersonalPanel.vue} の並び替え対象ウィジェット（殿の訂正・2026-06-24）。
+ * 実パネルが描画する 18 ウィジェットのうち、御裁可案A により除外する 4 種
+ * （FamilyHub / AdminBusinessAlert / AmazonAd / RakutenAd）を除いた残りを
+ * BE WidgetKey enum と 1:1 で対応させる。</p>
  *
  * <p>除外対象（BEキー不要）:
  * <ul>
- *   <li>family-hub (FamilyHub) → 条件付き固定パネル（案A固定2種）</li>
- *   <li>admin-business-alert (AdminBusinessAlert) → 条件付き固定パネル（案A固定2種）</li>
- *   <li>AmazonAd / RakutenAd → 広告（固定・非表示不可）</li>
+ *   <li>WidgetFamilyHub (v-if hasFamilyTeam) → 条件付き固定パネル（案A固定2種）</li>
+ *   <li>WidgetAdminBusinessAlert (v-if hasAdminOrDeputyRole) → 条件付き固定パネル（案A固定2種）</li>
+ *   <li>WidgetAmazonAd / WidgetRakutenAd → 広告（固定・非表示不可）</li>
  * </ul>
  * </p>
  */
@@ -33,63 +35,55 @@ class WidgetKeyPersonalEnumTest {
     // ========================================
 
     @Nested
-    @DisplayName("既存 PERSONAL キーの存在確認（回帰検知）")
+    @DisplayName("既存 PERSONAL キーの存在確認（再利用・回帰検知）")
     class ExistingPersonalKeys {
 
         @Test
-        @DisplayName("NOTICES が PERSONAL スコープで存在する")
+        @DisplayName("NOTICES が PERSONAL スコープで存在する（FE: WidgetNotices）")
         void notices_存在() {
-            WidgetKey wk = WidgetKey.valueOf("NOTICES");
-            assertThat(wk.getScopeType()).isEqualTo(ScopeType.PERSONAL);
+            assertThat(WidgetKey.valueOf("NOTICES").getScopeType()).isEqualTo(ScopeType.PERSONAL);
         }
 
         @Test
-        @DisplayName("PLATFORM_ANNOUNCEMENTS が PERSONAL スコープで存在する")
-        void platform_announcements_存在() {
-            WidgetKey wk = WidgetKey.valueOf("PLATFORM_ANNOUNCEMENTS");
-            assertThat(wk.getScopeType()).isEqualTo(ScopeType.PERSONAL);
+        @DisplayName("PERSONAL_CALENDAR が PERSONAL スコープで存在する（FE: WidgetMyCalendar）")
+        void personal_calendar_存在() {
+            assertThat(WidgetKey.valueOf("PERSONAL_CALENDAR").getScopeType()).isEqualTo(ScopeType.PERSONAL);
         }
 
         @Test
-        @DisplayName("UPCOMING_EVENTS が PERSONAL スコープで存在する")
+        @DisplayName("UPCOMING_EVENTS が PERSONAL スコープで存在する（FE: WidgetUpcomingEvents）")
         void upcoming_events_存在() {
-            WidgetKey wk = WidgetKey.valueOf("UPCOMING_EVENTS");
-            assertThat(wk.getScopeType()).isEqualTo(ScopeType.PERSONAL);
+            assertThat(WidgetKey.valueOf("UPCOMING_EVENTS").getScopeType()).isEqualTo(ScopeType.PERSONAL);
         }
 
         @Test
-        @DisplayName("PERSONAL_TODO が PERSONAL スコープで存在する")
+        @DisplayName("PERSONAL_TODO が PERSONAL スコープで存在する（FE: WidgetPersonalTodo）")
         void personal_todo_存在() {
-            WidgetKey wk = WidgetKey.valueOf("PERSONAL_TODO");
-            assertThat(wk.getScopeType()).isEqualTo(ScopeType.PERSONAL);
+            assertThat(WidgetKey.valueOf("PERSONAL_TODO").getScopeType()).isEqualTo(ScopeType.PERSONAL);
         }
 
         @Test
-        @DisplayName("MY_POSTS が PERSONAL スコープで存在する")
-        void my_posts_存在() {
-            WidgetKey wk = WidgetKey.valueOf("MY_POSTS");
-            assertThat(wk.getScopeType()).isEqualTo(ScopeType.PERSONAL);
-        }
-
-        @Test
-        @DisplayName("CHAT_HUB が PERSONAL スコープで存在する")
-        void chat_hub_存在() {
-            WidgetKey wk = WidgetKey.valueOf("CHAT_HUB");
-            assertThat(wk.getScopeType()).isEqualTo(ScopeType.PERSONAL);
-        }
-
-        @Test
-        @DisplayName("MY_CORKBOARD が PERSONAL スコープで存在する")
-        void my_corkboard_存在() {
-            WidgetKey wk = WidgetKey.valueOf("MY_CORKBOARD");
-            assertThat(wk.getScopeType()).isEqualTo(ScopeType.PERSONAL);
-        }
-
-        @Test
-        @DisplayName("TIMETABLE_TODAY が PERSONAL スコープで存在する")
+        @DisplayName("TIMETABLE_TODAY が PERSONAL スコープで存在する（FE: DashboardTimetableTodayWidget）")
         void timetable_today_存在() {
-            WidgetKey wk = WidgetKey.valueOf("TIMETABLE_TODAY");
-            assertThat(wk.getScopeType()).isEqualTo(ScopeType.PERSONAL);
+            assertThat(WidgetKey.valueOf("TIMETABLE_TODAY").getScopeType()).isEqualTo(ScopeType.PERSONAL);
+        }
+
+        @Test
+        @DisplayName("TIMETABLE_NOTES が PERSONAL スコープで存在する（FE: DashboardQuickMemoWidget が紐付け）")
+        void timetable_notes_存在() {
+            assertThat(WidgetKey.valueOf("TIMETABLE_NOTES").getScopeType()).isEqualTo(ScopeType.PERSONAL);
+        }
+
+        @Test
+        @DisplayName("UNREAD_THREADS が PERSONAL スコープで存在する（FE: WidgetUnreadThreads）")
+        void unread_threads_存在() {
+            assertThat(WidgetKey.valueOf("UNREAD_THREADS").getScopeType()).isEqualTo(ScopeType.PERSONAL);
+        }
+
+        @Test
+        @DisplayName("RECENT_ACTIVITY が PERSONAL スコープで存在する（FE: WidgetRecentActivity）")
+        void recent_activity_存在() {
+            assertThat(WidgetKey.valueOf("RECENT_ACTIVITY").getScopeType()).isEqualTo(ScopeType.PERSONAL);
         }
     }
 
@@ -98,70 +92,96 @@ class WidgetKeyPersonalEnumTest {
     // ========================================
 
     @Nested
-    @DisplayName("新規追加 PERSONAL_* キーの存在確認（対象3-A）")
+    @DisplayName("新規追加 PERSONAL_* キーの存在確認（対象3-A・実パネル正準）")
     class NewPersonalKeys {
 
         @Test
-        @DisplayName("PERSONAL_TEAM_ANNOUNCEMENTS が PERSONAL スコープで存在する（FE: team-announcements）")
-        void personal_team_announcements_存在() {
-            WidgetKey wk = WidgetKey.valueOf("PERSONAL_TEAM_ANNOUNCEMENTS");
-            assertThat(wk.getScopeType()).isEqualTo(ScopeType.PERSONAL);
+        @DisplayName("PERSONAL_EVENT_DISMISSAL_REMINDER が PERSONAL スコープで存在する（FE: WidgetEventDismissalReminder）")
+        void personal_event_dismissal_reminder_存在() {
+            assertThat(WidgetKey.valueOf("PERSONAL_EVENT_DISMISSAL_REMINDER").getScopeType())
+                    .isEqualTo(ScopeType.PERSONAL);
         }
 
         @Test
-        @DisplayName("PERSONAL_ORG_ANNOUNCEMENTS が PERSONAL スコープで存在する（FE: org-announcements）")
-        void personal_org_announcements_存在() {
-            WidgetKey wk = WidgetKey.valueOf("PERSONAL_ORG_ANNOUNCEMENTS");
-            assertThat(wk.getScopeType()).isEqualTo(ScopeType.PERSONAL);
-        }
-
-        @Test
-        @DisplayName("PERSONAL_BLOG が PERSONAL スコープで存在する（FE: blog）")
-        void personal_blog_存在() {
-            WidgetKey wk = WidgetKey.valueOf("PERSONAL_BLOG");
-            assertThat(wk.getScopeType()).isEqualTo(ScopeType.PERSONAL);
-        }
-
-        @Test
-        @DisplayName("PERSONAL_NOTIFICATIONS が PERSONAL スコープで存在する（FE: notifications）")
-        void personal_notifications_存在() {
-            WidgetKey wk = WidgetKey.valueOf("PERSONAL_NOTIFICATIONS");
-            assertThat(wk.getScopeType()).isEqualTo(ScopeType.PERSONAL);
-        }
-
-        @Test
-        @DisplayName("PERSONAL_RECRUITMENT_FEED が PERSONAL スコープで存在する（FE: recruitment-feed）")
-        void personal_recruitment_feed_存在() {
-            WidgetKey wk = WidgetKey.valueOf("PERSONAL_RECRUITMENT_FEED");
-            assertThat(wk.getScopeType()).isEqualTo(ScopeType.PERSONAL);
-        }
-
-        @Test
-        @DisplayName("PERSONAL_MY_RECRUITMENTS が PERSONAL スコープで存在する（FE: my-recruitments）")
-        void personal_my_recruitments_存在() {
-            WidgetKey wk = WidgetKey.valueOf("PERSONAL_MY_RECRUITMENTS");
-            assertThat(wk.getScopeType()).isEqualTo(ScopeType.PERSONAL);
-        }
-
-        @Test
-        @DisplayName("PERSONAL_WEATHER が PERSONAL スコープで存在する（FE: weather）")
+        @DisplayName("PERSONAL_WEATHER が PERSONAL スコープで存在する（FE: WidgetWeather）")
         void personal_weather_存在() {
-            WidgetKey wk = WidgetKey.valueOf("PERSONAL_WEATHER");
-            assertThat(wk.getScopeType()).isEqualTo(ScopeType.PERSONAL);
+            assertThat(WidgetKey.valueOf("PERSONAL_WEATHER").getScopeType()).isEqualTo(ScopeType.PERSONAL);
         }
 
         @Test
-        @DisplayName("PERSONAL_VILLAGE_LOBBY_DIGEST が PERSONAL スコープで存在する（FE: village-lobby-digest）")
-        void personal_village_lobby_digest_存在() {
-            WidgetKey wk = WidgetKey.valueOf("PERSONAL_VILLAGE_LOBBY_DIGEST");
-            assertThat(wk.getScopeType()).isEqualTo(ScopeType.PERSONAL);
+        @DisplayName("PERSONAL_TODO_COUNTDOWN が PERSONAL スコープで存在する（FE: WidgetTodoCountdown）")
+        void personal_todo_countdown_存在() {
+            assertThat(WidgetKey.valueOf("PERSONAL_TODO_COUNTDOWN").getScopeType()).isEqualTo(ScopeType.PERSONAL);
         }
 
         @Test
-        @DisplayName("PERSONAL_INBOX が PERSONAL スコープで存在する（FE: inbox）")
-        void personal_inbox_存在() {
-            WidgetKey wk = WidgetKey.valueOf("PERSONAL_INBOX");
-            assertThat(wk.getScopeType()).isEqualTo(ScopeType.PERSONAL);
+        @DisplayName("PERSONAL_REFLECTION_TODAY が PERSONAL スコープで存在する（FE: WidgetReflectionToday）")
+        void personal_reflection_today_存在() {
+            assertThat(WidgetKey.valueOf("PERSONAL_REFLECTION_TODAY").getScopeType()).isEqualTo(ScopeType.PERSONAL);
+        }
+
+        @Test
+        @DisplayName("PERSONAL_TEAM_ANNOUNCEMENTS が PERSONAL スコープで存在する（FE: WidgetTeamAnnouncements）")
+        void personal_team_announcements_存在() {
+            assertThat(WidgetKey.valueOf("PERSONAL_TEAM_ANNOUNCEMENTS").getScopeType()).isEqualTo(ScopeType.PERSONAL);
+        }
+
+        @Test
+        @DisplayName("PERSONAL_ORG_ANNOUNCEMENTS が PERSONAL スコープで存在する（FE: WidgetOrgAnnouncements）")
+        void personal_org_announcements_存在() {
+            assertThat(WidgetKey.valueOf("PERSONAL_ORG_ANNOUNCEMENTS").getScopeType()).isEqualTo(ScopeType.PERSONAL);
+        }
+
+        @Test
+        @DisplayName("PERSONAL_BLOG が PERSONAL スコープで存在する（FE: WidgetMyBlog）")
+        void personal_blog_存在() {
+            assertThat(WidgetKey.valueOf("PERSONAL_BLOG").getScopeType()).isEqualTo(ScopeType.PERSONAL);
+        }
+
+        @Test
+        @DisplayName("PERSONAL_MY_TEAMS が PERSONAL スコープで存在する（FE: WidgetMyTeams）")
+        void personal_my_teams_存在() {
+            assertThat(WidgetKey.valueOf("PERSONAL_MY_TEAMS").getScopeType()).isEqualTo(ScopeType.PERSONAL);
+        }
+
+        @Test
+        @DisplayName("PERSONAL_MY_ORGANIZATIONS が PERSONAL スコープで存在する（FE: WidgetMyOrganizations）")
+        void personal_my_organizations_存在() {
+            assertThat(WidgetKey.valueOf("PERSONAL_MY_ORGANIZATIONS").getScopeType()).isEqualTo(ScopeType.PERSONAL);
+        }
+
+        @Test
+        @DisplayName("PERSONAL_FAVORITES が PERSONAL スコープで存在する（FE: WidgetFavorites）")
+        void personal_favorites_存在() {
+            assertThat(WidgetKey.valueOf("PERSONAL_FAVORITES").getScopeType()).isEqualTo(ScopeType.PERSONAL);
+        }
+    }
+
+    // ========================================
+    // 誤キーが存在しないことの確認（前回の誤りの回帰防止）
+    // ========================================
+
+    @Nested
+    @DisplayName("ALL_WIDGETS カタログ由来の誤キーが存在しないこと（回帰防止）")
+    class ErroneousKeysAbsent {
+
+        @Test
+        @DisplayName("実パネルに描画されないキー（ALL_WIDGETS カタログ由来の誤り）は enum に存在しない")
+        void erroneous_keys_absent() {
+            List<String> personalKeyNames = Arrays.stream(WidgetKey.values())
+                    .filter(wk -> wk.getScopeType() == ScopeType.PERSONAL)
+                    .map(WidgetKey::name)
+                    .collect(Collectors.toList());
+
+            // 前回 ALL_WIDGETS から誤って導出したが、DashboardPersonalPanel.vue が描画しないキー
+            assertThat(personalKeyNames)
+                    .doesNotContain(
+                            "PERSONAL_NOTIFICATIONS",
+                            "PERSONAL_RECRUITMENT_FEED",
+                            "PERSONAL_MY_RECRUITMENTS",
+                            "PERSONAL_VILLAGE_LOBBY_DIGEST",
+                            "PERSONAL_INBOX"
+                    );
         }
     }
 
@@ -174,23 +194,20 @@ class WidgetKeyPersonalEnumTest {
     class PersonalScopeCount {
 
         @Test
-        @DisplayName("PERSONAL スコープのキーが 24 件（既存 15 件 + 新規 9 件）")
-        void personal_scope_total_24件() {
+        @DisplayName("PERSONAL スコープのキーが 25 件（既存 15 件 + 新規 10 件）")
+        void personal_scope_total_25件() {
             List<WidgetKey> personalKeys = Arrays.stream(WidgetKey.values())
                     .filter(wk -> wk.getScopeType() == ScopeType.PERSONAL)
                     .collect(Collectors.toList());
 
             assertThat(personalKeys)
-                    .as("PERSONAL スコープのキーが 24 件あること（既存 15 件 + 新規 9 件）")
-                    .hasSize(24);
+                    .as("PERSONAL スコープのキーが 25 件あること（既存 15 件 + 新規 10 件）")
+                    .hasSize(25);
         }
 
         @Test
         @DisplayName("除外対象（FamilyHub / AdminBusinessAlert / 広告）の BEキーが PERSONAL スコープに存在しない")
         void excluded_widgets_no_be_key() {
-            // FamilyHub → BEキー不要（条件付き固定）
-            // AdminBusinessAlert → BEキー不要（条件付き固定）
-            // AmazonAd / RakutenAd → BEキー不要（広告）
             List<String> personalKeyNames = Arrays.stream(WidgetKey.values())
                     .filter(wk -> wk.getScopeType() == ScopeType.PERSONAL)
                     .map(WidgetKey::name)
@@ -217,21 +234,21 @@ class WidgetKeyPersonalEnumTest {
     class ForScopePersonal {
 
         @Test
-        @DisplayName("forScope(PERSONAL) に新規追加キーが含まれる")
+        @DisplayName("forScope(PERSONAL) に新規追加キー 10 件が含まれる")
         void forScope_personal_新規キー含む() {
             List<WidgetKey> personalKeys = WidgetKey.forScope(ScopeType.PERSONAL);
 
-            // 新規追加キー
             assertThat(personalKeys).contains(
+                    WidgetKey.valueOf("PERSONAL_EVENT_DISMISSAL_REMINDER"),
+                    WidgetKey.valueOf("PERSONAL_WEATHER"),
+                    WidgetKey.valueOf("PERSONAL_TODO_COUNTDOWN"),
+                    WidgetKey.valueOf("PERSONAL_REFLECTION_TODAY"),
                     WidgetKey.valueOf("PERSONAL_TEAM_ANNOUNCEMENTS"),
                     WidgetKey.valueOf("PERSONAL_ORG_ANNOUNCEMENTS"),
                     WidgetKey.valueOf("PERSONAL_BLOG"),
-                    WidgetKey.valueOf("PERSONAL_NOTIFICATIONS"),
-                    WidgetKey.valueOf("PERSONAL_RECRUITMENT_FEED"),
-                    WidgetKey.valueOf("PERSONAL_MY_RECRUITMENTS"),
-                    WidgetKey.valueOf("PERSONAL_WEATHER"),
-                    WidgetKey.valueOf("PERSONAL_VILLAGE_LOBBY_DIGEST"),
-                    WidgetKey.valueOf("PERSONAL_INBOX")
+                    WidgetKey.valueOf("PERSONAL_MY_TEAMS"),
+                    WidgetKey.valueOf("PERSONAL_MY_ORGANIZATIONS"),
+                    WidgetKey.valueOf("PERSONAL_FAVORITES")
             );
         }
     }
@@ -245,7 +262,7 @@ class WidgetKeyPersonalEnumTest {
     class DefaultSortOrder {
 
         @Test
-        @DisplayName("新規追加キーの defaultSortOrder が既存の最大値（14）より大きい")
+        @DisplayName("新規追加キー 10 件の defaultSortOrder が既存の最大値（14）より大きい")
         void new_keys_sort_order_gt_14() {
             // MY_CORKBOARD が defaultSortOrder=14 で最後の既存キー
             List<WidgetKey> newKeys = Arrays.stream(WidgetKey.values())
@@ -253,8 +270,8 @@ class WidgetKeyPersonalEnumTest {
                     .filter(wk -> wk.getDefaultSortOrder() > 14)
                     .collect(Collectors.toList());
 
-            // 新規追加した 9 件全てが order > 14 であること
-            assertThat(newKeys).hasSize(9);
+            // 新規追加した 10 件全てが order > 14（連番 15〜24）であること
+            assertThat(newKeys).hasSize(10);
         }
     }
 }

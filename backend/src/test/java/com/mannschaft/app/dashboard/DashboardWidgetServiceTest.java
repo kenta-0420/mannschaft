@@ -326,16 +326,16 @@ class DashboardWidgetServiceTest {
         }
 
         @Test
-        @DisplayName("正常系(対象3-A): 新規追加した PERSONAL_WEATHER が PUT で受理されINSERTされる")
-        void updateWidgetSettings_新規PERSONALキー_WEATHER_受理されINSERT() {
-            // Given: 対象3-A で追加した PERSONAL_WEATHER（旧 enum には無く DASHBOARD_001 で弾かれていたキー）
+        @DisplayName("正常系(対象3-A): 新規追加した PERSONAL_FAVORITES が PUT で受理されINSERTされる")
+        void updateWidgetSettings_新規PERSONALキー_FAVORITES_受理されINSERT() {
+            // Given: 対象3-A で追加した PERSONAL_FAVORITES（実パネル WidgetFavorites・旧 enum には無く DASHBOARD_001 で弾かれていた）
             UpdateWidgetSettingsRequest.WidgetSettingItem item =
-                    new UpdateWidgetSettingsRequest.WidgetSettingItem("PERSONAL_WEATHER", true, 15);
+                    new UpdateWidgetSettingsRequest.WidgetSettingItem("PERSONAL_FAVORITES", true, 24);
             UpdateWidgetSettingsRequest request =
                     new UpdateWidgetSettingsRequest("PERSONAL", null, List.of(item));
 
             given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdAndWidgetKey(
-                    USER_ID, ScopeType.PERSONAL, 0L, "PERSONAL_WEATHER"))
+                    USER_ID, ScopeType.PERSONAL, 0L, "PERSONAL_FAVORITES"))
                     .willReturn(Optional.empty());
             given(widgetSettingRepository.save(any(DashboardWidgetSettingEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
@@ -353,16 +353,16 @@ class DashboardWidgetServiceTest {
         }
 
         @Test
-        @DisplayName("正常系(対象3-A): 新規追加した PERSONAL_INBOX が PUT で受理されINSERTされる")
-        void updateWidgetSettings_新規PERSONALキー_INBOX_受理されINSERT() {
-            // Given: 対象3-A で追加した PERSONAL_INBOX
+        @DisplayName("正常系(対象3-A): 新規追加した PERSONAL_MY_TEAMS が PUT で受理されINSERTされる")
+        void updateWidgetSettings_新規PERSONALキー_MY_TEAMS_受理されINSERT() {
+            // Given: 対象3-A で追加した PERSONAL_MY_TEAMS（実パネル WidgetMyTeams）
             UpdateWidgetSettingsRequest.WidgetSettingItem item =
-                    new UpdateWidgetSettingsRequest.WidgetSettingItem("PERSONAL_INBOX", true, 23);
+                    new UpdateWidgetSettingsRequest.WidgetSettingItem("PERSONAL_MY_TEAMS", true, 22);
             UpdateWidgetSettingsRequest request =
                     new UpdateWidgetSettingsRequest("PERSONAL", null, List.of(item));
 
             given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdAndWidgetKey(
-                    USER_ID, ScopeType.PERSONAL, 0L, "PERSONAL_INBOX"))
+                    USER_ID, ScopeType.PERSONAL, 0L, "PERSONAL_MY_TEAMS"))
                     .willReturn(Optional.empty());
             given(widgetSettingRepository.save(any(DashboardWidgetSettingEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
@@ -380,11 +380,11 @@ class DashboardWidgetServiceTest {
         }
 
         @Test
-        @DisplayName("異常系(対象3-A): PERSONAL_WEATHER を TEAM スコープに送るとDASHBOARD_002")
+        @DisplayName("異常系(対象3-A): PERSONAL_FAVORITES を TEAM スコープに送るとDASHBOARD_002")
         void updateWidgetSettings_PERSONAL_キー_TEAMスコープ_DASHBOARD002() {
             // Given: PERSONAL 専用キーを TEAM スコープに送る
             UpdateWidgetSettingsRequest.WidgetSettingItem item =
-                    new UpdateWidgetSettingsRequest.WidgetSettingItem("PERSONAL_WEATHER", true, 0);
+                    new UpdateWidgetSettingsRequest.WidgetSettingItem("PERSONAL_FAVORITES", true, 0);
             UpdateWidgetSettingsRequest request =
                     new UpdateWidgetSettingsRequest("TEAM", TEAM_ID, List.of(item));
 
