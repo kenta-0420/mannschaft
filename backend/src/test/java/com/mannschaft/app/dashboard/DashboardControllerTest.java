@@ -261,7 +261,6 @@ class DashboardControllerTest {
             // Given
             given(widgetService.parseScopeType("PERSONAL")).willReturn(ScopeType.PERSONAL);
             given(widgetService.resolveScopeId(ScopeType.PERSONAL, null)).willReturn(0L);
-            given(accessControlService.isAdminOrAbove(USER_ID, 0L, "PERSONAL")).willReturn(false);
             given(widgetService.getWidgetSettings(USER_ID, ScopeType.PERSONAL, 0L, false))
                     .willReturn(List.of());
 
@@ -272,6 +271,43 @@ class DashboardControllerTest {
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody().getData()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("回帰: 個人スコープでは accessControlService.isAdminOrAbove を呼ばない（PERSONAL は membership ScopeType を持たないため500を防ぐ）")
+        void getWidgetSettings_個人スコープ_isAdminOrAboveを呼ばない() {
+            // Given
+            given(widgetService.parseScopeType("PERSONAL")).willReturn(ScopeType.PERSONAL);
+            given(widgetService.resolveScopeId(ScopeType.PERSONAL, null)).willReturn(0L);
+            given(widgetService.getWidgetSettings(USER_ID, ScopeType.PERSONAL, 0L, false))
+                    .willReturn(List.of());
+
+            // When
+            ResponseEntity<ApiResponse<List<WidgetSettingResponse>>> response =
+                    dashboardController.getWidgetSettings("PERSONAL", null);
+
+            // Then: 個人スコープでは isAdmin=false に短絡し、accessControlService.isAdminOrAbove を呼ばないこと
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            verify(accessControlService, never()).isAdminOrAbove(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("正常系: チームスコープでは isAdminOrAbove を呼ぶ")
+        void getWidgetSettings_チームスコープ_isAdminOrAbove呼ぶ() {
+            // Given
+            given(widgetService.parseScopeType("TEAM")).willReturn(ScopeType.TEAM);
+            given(widgetService.resolveScopeId(ScopeType.TEAM, TEAM_ID)).willReturn(TEAM_ID);
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(widgetService.getWidgetSettings(USER_ID, ScopeType.TEAM, TEAM_ID, true))
+                    .willReturn(List.of());
+
+            // When
+            ResponseEntity<ApiResponse<List<WidgetSettingResponse>>> response =
+                    dashboardController.getWidgetSettings("TEAM", TEAM_ID);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            verify(accessControlService).isAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
         }
     }
 

@@ -182,9 +182,13 @@ public class DashboardWidgetService {
                 continue;
             }
 
-            // ロール制限ウィジェットはADMIN/DEPUTY_ADMIN以外は無視
+            // ロール制限ウィジェットはADMIN/DEPUTY_ADMIN以外は無視。
+            // 個人スコープにはメンバーシップ上の管理者ロール概念が無く、
+            // PERSONAL を membership.ScopeType.valueOf に渡すと例外になるため短絡で skip。
+            // （個人スコープには role-restricted ウィジェットは定義されていないため影響なし）
             if (wk.isRoleRestricted()
-                    && !accessControlService.isAdminOrAbove(userId, scopeId, scopeType.name())) {
+                    && (scopeType == ScopeType.PERSONAL
+                            || !accessControlService.isAdminOrAbove(userId, scopeId, scopeType.name()))) {
                 continue;
             }
 
@@ -209,7 +213,10 @@ public class DashboardWidgetService {
             );
         }
 
-        boolean isAdmin = accessControlService.isAdminOrAbove(userId, scopeId, scopeType.name());
+        // 個人スコープには管理者ロール概念が無いため短絡で false。
+        // PERSONAL を membership.ScopeType に渡すと IllegalArgumentException になる。
+        boolean isAdmin = scopeType != ScopeType.PERSONAL
+                && accessControlService.isAdminOrAbove(userId, scopeId, scopeType.name());
         return getWidgetSettings(userId, scopeType, scopeId, isAdmin);
     }
 
