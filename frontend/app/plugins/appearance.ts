@@ -63,7 +63,15 @@ export default defineNuxtPlugin(() => {
 
   // SSR 出力 HTML の <html> に class と --bg-color を最初から注入する。
   // これにより初回 paint 時から正しいテーマで描画され FOUC が消える。
-  // クライアント側では Vue の SSR hydration 後も htmlAttrs は維持される。
+  //
+  // 【client 側 applyTheme() との二重管理について（competing 懸念の検討結果）】
+  // ここで渡す isDark は非リアクティブな普通の const のため、unhead(@unhead/vue 2.x)
+  // はこの htmlAttrs エントリを「初回 patch のみ」で確定し、その後再評価しない。
+  // 一方クライアントではプラグイン実行順（appearance.ts → appearance.client.ts）で
+  // 後続の appearance.client.ts が loadFromStorage()→applyTheme() を呼び、
+  // <html> の class を classList で直接管理する（localStorage 正本に従う最終権威）。
+  // unhead はもう介入しないため、両者は競合しない。
+  // 通常ケースでは cookie と localStorage が一致するため値も同一。
   useHead({
     htmlAttrs: {
       // ダークモード: 'dark p-dark'、ライトモード: '' (クラス付与なし)

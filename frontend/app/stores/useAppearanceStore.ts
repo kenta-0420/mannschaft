@@ -82,6 +82,7 @@ export const useAppearanceStore = defineStore('appearance', {
     loadFromStorage() {
       if (!import.meta.client) return
       const saved = localStorage.getItem('appearance')
+      let loaded = false
       if (saved) {
         try {
           const parsed = JSON.parse(saved)
@@ -91,6 +92,7 @@ export const useAppearanceStore = defineStore('appearance', {
           this.darkBgColor = parsed.darkBgColor ?? '#18181b'
           this.seasonalThemeId = parsed.seasonalThemeId ?? null
           this.hideChatPreview = parsed.hideChatPreview ?? false
+          loaded = true
         }
         catch {
           // ignore
@@ -98,8 +100,21 @@ export const useAppearanceStore = defineStore('appearance', {
       }
       this.applyTheme()
       this.applyBgColor()
+      // FOUC 根治: localStorage に既存設定があれば cookie へ書き戻して同期する。
+      // 本デプロイより前から localStorage にダークを保存済みの既存ユーザーは cookie を
+      // 持っていないため、テーマを再保存しない限り SSR が request cookie を読めず
+      // FOUC が残り続ける。ここで読み込み成功時に cookie を生成することで、
+      // 「次にページを開いた1回」で cookie が作られ、その次の訪問の SSR から FOUC が消える。
+      // （同一リクエスト内の初回 SSR は localStorage を物理的に読めないため、
+      //   デプロイ後の初回1回のちらつきは技術的限界として許容する）
+      if (loaded) {
+        this.writeCookie()
+      }
     },
 
+    /**
+     * 現在の appearance 状態を localStorage と cookie の両方へ書き込む。
+     */
     persistToStorage() {
       if (!import.meta.client) return
       const payload = JSON.stringify({
@@ -110,11 +125,28 @@ export const useAppearanceStore = defineStore('appearance', {
         hideChatPreview: this.hideChatPreview,
       })
       localStorage.setItem('appearance', payload)
-      // SSR に初回テーマを伝えるために cookie にも鏡写し（HttpOnly 不可・クライアントで読む必要があるため）。
-      // cookie は localStorage の「複製」として扱い、正本は localStorage。
+      // SSR に初回テーマを伝えるために cookie にも鏡写し（正本は localStorage）。
+      this.writeCookie(payload)
+    },
+
+    /**
+     * appearance 設定を cookie に書き込む（SSR が初回テーマを読むための鏡）。
+     * HttpOnly は付けない（クライアント側でも読む必要があるため）。
+     * 引数 payload を省略した場合は現在の状態から JSON を生成する。
+     * @param payload 事前生成済みの JSON 文字列（省略時は現在状態から生成）
+     */
+    writeCookie(payload?: string) {
+      if (!import.meta.client) return
+      const json = payload ?? JSON.stringify({
+        theme: this.theme,
+        bgColor: this.bgColor,
+        darkBgColor: this.darkBgColor,
+        seasonalThemeId: this.seasonalThemeId,
+        hideChatPreview: this.hideChatPreview,
+      })
       // max-age = 365 日（秒単位）
       const maxAge = 60 * 60 * 24 * 365
-      document.cookie = `appearance=${encodeURIComponent(payload)}; path=/; max-age=${maxAge}; SameSite=Lax`
+      document.cookie = `appearance=${encodeURIComponent(json)}; path=/; max-age=${maxAge}; SameSite=Lax`
     },
 
     async syncWithServer() {

@@ -15,7 +15,8 @@
 export default defineNuxtPlugin(() => {
   const appearanceStore = useAppearanceStore()
   // localStorage の正本から読み込んで DOM クラスと CSS 変数を確定させる。
-  // persistToStorage が localStorage と cookie を同時に書くため、
-  // ここで loadFromStorage を呼べば cookie も自動的に最新に保たれる。
+  // loadFromStorage は localStorage 読み込み成功時に cookie へ書き戻す（writeCookie）ため、
+  // 既存ユーザー（localStorage にダーク設定があるが cookie が未生成）でも、
+  // ここを通った次回訪問の SSR から FOUC が消える。
   appearanceStore.loadFromStorage()
 })

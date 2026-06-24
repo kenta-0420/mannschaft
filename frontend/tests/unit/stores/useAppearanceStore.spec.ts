@@ -151,6 +151,76 @@ describe('useAppearanceStore', () => {
     })
   })
 
+  describe('AC6: loadFromStorage — 既存ユーザー救済（localStorage を cookie に書き戻す）', () => {
+    it('localStorage にダーク設定があり cookie が未生成でも、loadFromStorage で cookie が書き込まれる', () => {
+      // 既存ユーザーの状況を模倣: localStorage にダーク設定があるが cookie は空
+      const saved = JSON.stringify({
+        theme: 'DARK',
+        bgColor: '#f3efe0',
+        darkBgColor: '#222244',
+        seasonalThemeId: null,
+        hideChatPreview: false,
+      })
+      localStorageMock.getItem.mockReturnValue(saved)
+      cookieStore = '' // cookie 未生成
+
+      const store = useAppearanceStore()
+      store.loadFromStorage()
+
+      // loadFromStorage が cookie を書き戻している
+      expect(cookieDescriptor.set).toHaveBeenCalled()
+      const setCookieCall = cookieDescriptor.set.mock.calls[0]
+      expect(setCookieCall).toBeDefined()
+      const setCookieArg = String(setCookieCall![0])
+      expect(setCookieArg).toMatch(/^appearance=/)
+      expect(setCookieArg).toContain('SameSite=Lax')
+
+      const rawValue = (setCookieArg.split(';')[0] ?? '').replace('appearance=', '')
+      const parsed = JSON.parse(decodeURIComponent(rawValue)) as Record<string, unknown>
+      expect(parsed.theme).toBe('DARK')
+      expect(parsed.darkBgColor).toBe('#222244')
+    })
+
+    it('localStorage が空のときは cookie を書き込まない（不要な cookie 生成を避ける）', () => {
+      localStorageMock.getItem.mockReturnValue(null)
+      cookieStore = ''
+
+      const store = useAppearanceStore()
+      store.loadFromStorage()
+
+      // 読み込むデータが無いので cookie は書かれない
+      expect(cookieDescriptor.set).not.toHaveBeenCalled()
+    })
+
+    it('JSON が壊れている場合も cookie を書き込まない', () => {
+      localStorageMock.getItem.mockReturnValue('invalid-json')
+      cookieStore = ''
+
+      const store = useAppearanceStore()
+      store.loadFromStorage()
+
+      expect(cookieDescriptor.set).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('AC7: writeCookie — 引数なしでも現在状態から cookie を生成する', () => {
+    it('payload 省略時は store の現在状態から JSON を生成して cookie に書く', () => {
+      const store = useAppearanceStore()
+      store.theme = 'DARK'
+      store.darkBgColor = '#0a0a0a'
+
+      store.writeCookie()
+
+      expect(cookieDescriptor.set).toHaveBeenCalled()
+      const setCookieCall = cookieDescriptor.set.mock.calls[0]
+      const setCookieArg = String(setCookieCall![0])
+      const rawValue = (setCookieArg.split(';')[0] ?? '').replace('appearance=', '')
+      const parsed = JSON.parse(decodeURIComponent(rawValue)) as Record<string, unknown>
+      expect(parsed.theme).toBe('DARK')
+      expect(parsed.darkBgColor).toBe('#0a0a0a')
+    })
+  })
+
   describe('AC4 / AC5: setTheme — <html> クラスの付与と除去', () => {
     it('AC4: setTheme("DARK") で isDark が true になる', () => {
       const store = useAppearanceStore()
