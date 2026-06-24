@@ -75,6 +75,7 @@
       "phone_placeholder": "090-0000-0000",
       "postal_code": "Código postal",
       "postal_placeholder": "000-0000",
+      "postal_unsupported_region": "La validación del código postal no es compatible con su región. Se omitirá la verificación de formato.",
       "searchable_label": "Mostrar en búsqueda de usuarios",
       "searchable_description": "Cuando está activado, otros usuarios pueden encontrarte mediante búsqueda",
       "toast": {

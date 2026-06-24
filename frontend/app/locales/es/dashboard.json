@@ -53,7 +53,7 @@
       "stale_warning": "La información del pronóstico puede estar desactualizada",
       "error_postal_missing": "El código postal no está registrado",
       "error_postal_not_found": "Tu código postal no es compatible con la información meteorológica. Por favor, verifica tu código postal",
-      "error_country_not_supported": "La información meteorológica para tu país o región no está disponible actualmente",
+      "error_country_not_supported": "Tu país o región no es compatible con la información meteorológica ni con la validación del código postal",
       "error_provider_unavailable": "No se pudo obtener información meteorológica",
       "refresh": "Actualizar",
       "powered_by": "Powered by WeatherAPI.com",
@@ -70,6 +70,16 @@
         "sleet": "Aguanieve",
         "thunderstorm": "Tormenta eléctrica"
       }
+    },
+    "personal": {
+      "find_team_title": "Encontrar un nuevo equipo u organización",
+      "find_team_description": "Busca equipos u organizaciones a los que quieras unirte y solicita ser seguidor.\nSe necesita un enlace de invitación para unirse como miembro.",
+      "find_team_button": "Buscar equipos",
+      "find_org_button": "Buscar organizaciones",
+      "create_team_title": "Crear un nuevo equipo u organización",
+      "create_team_description": "Crea un nuevo grupo para familia, deportes, comunidad o empresa.\nPuedes invitar miembros inmediatamente después de la creación.",
+      "create_team_button": "Crear equipo",
+      "create_org_button": "Crear organización"
     },
     "myCorkboard": {
       "widgetTitle": "Mi tablero de corcho",

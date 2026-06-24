@@ -53,7 +53,7 @@
       "stale_warning": "Forecast data may be outdated",
       "error_postal_missing": "Postal code is not registered",
       "error_postal_not_found": "Your postal code is not supported for weather information. Please verify your postal code",
-      "error_country_not_supported": "Weather information for your country or region is currently unavailable",
+      "error_country_not_supported": "Your country or region is not supported for weather information and postal code validation",
       "error_provider_unavailable": "Could not retrieve weather information",
       "refresh": "Refresh",
       "powered_by": "Powered by WeatherAPI.com",
@@ -70,6 +70,16 @@
         "sleet": "Sleet",
         "thunderstorm": "Thunderstorm"
       }
+    },
+    "personal": {
+      "find_team_title": "Find a New Team or Organization",
+      "find_team_description": "Search for teams or organizations you want to join and apply as a supporter.\nAn invitation link is required to join as a member.",
+      "find_team_button": "Find Teams",
+      "find_org_button": "Find Organizations",
+      "create_team_title": "Create a New Team or Organization",
+      "create_team_description": "Create a new group for family, sports, community, or business.\nYou can invite members immediately after creation.",
+      "create_team_button": "Create Team",
+      "create_org_button": "Create Organization"
     },
     "myCorkboard": {
       "widgetTitle": "My Corkboard",

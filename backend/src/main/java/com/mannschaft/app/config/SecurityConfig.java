@@ -173,6 +173,9 @@ public class SecurityConfig {
                 ).permitAll()
                 // F11.3 UI i18n: 対応言語一覧（認証不要）
                 .requestMatchers("/api/i18n/**").permitAll()
+                // F02.10 §391 郵便番号検証ポリシー（認証不要・register 画面が未ログインで参照）
+                // フォーマット規則のみで機微情報なし。FE の単一真実源。
+                .requestMatchers(HttpMethod.GET, "/api/v1/postal-code/policies").permitAll()
                 // F12.5 フロントエンドエラー追跡（認証不要）
                 .requestMatchers(HttpMethod.POST, "/api/v1/error-reports").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/active-incidents").permitAll()

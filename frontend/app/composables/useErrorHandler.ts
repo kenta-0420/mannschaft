@@ -4,6 +4,10 @@ const FIELD_ERROR_PATTERNS: Array<{ pattern: RegExp; key: string }> = [
   { pattern: /email|must be a valid email/i, key: 'email' },
   { pattern: /too short|at least (\d+) char/i, key: 'min_length' },
   { pattern: /too long|at most (\d+) char|maximum (\d+)/i, key: 'max_length' },
+  // AUTH_072: 郵便番号フォーマット不正（BE エラーメッセージに "postal" を含む場合に解決）
+  { pattern: /postal.*format|format.*postal/i, key: 'postal_code_format' },
+  // AUTH_071: 郵便番号必須（BE エラーメッセージに "postal" + "required" を含む場合）
+  { pattern: /postal.*required|required.*postal/i, key: 'postal_code_required' },
   { pattern: /invalid (format|value)|not valid/i, key: 'invalid_format' },
   { pattern: /do not match|does not match/i, key: 'password_mismatch' },
 ]

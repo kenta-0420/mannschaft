@@ -10,6 +10,8 @@ import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EncryptionService;
+import com.mannschaft.app.postal.CountryResolver;
+import com.mannschaft.app.postal.PostalCodePolicyRegistry;
 import com.mannschaft.app.role.service.InviteService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -60,6 +62,10 @@ class AuthRegistrationServiceBirthDateTest {
     private BetaRestrictionService betaRestrictionService;
     @Mock
     private InviteService inviteService;
+    @Mock
+    private CountryResolver countryResolver;
+    @Mock
+    private PostalCodePolicyRegistry postalCodePolicyRegistry;
 
     private static final String TEST_EMAIL = "test@example.com";
     private static final String TEST_PASSWORD = "Password1!";

@@ -53,7 +53,7 @@
       "stale_warning": "预报信息可能已过期",
       "error_postal_missing": "邮政编码未注册",
       "error_postal_not_found": "您的邮政编码暂不支持天气信息。请确认正确的邮政编码",
-      "error_country_not_supported": "您所在国家或地区的天气信息目前尚未提供",
+      "error_country_not_supported": "您所在的国家或地区不支持天气信息和邮政编码验证",
       "error_provider_unavailable": "无法获取天气信息",
       "refresh": "刷新",
       "powered_by": "Powered by WeatherAPI.com",
@@ -70,6 +70,16 @@
         "sleet": "雨夹雪",
         "thunderstorm": "雷暴"
       }
+    },
+    "personal": {
+      "find_team_title": "寻找新的团队或组织",
+      "find_team_description": "搜索您想加入的团队或组织，以支持者身份申请。\n以成员身份加入需要邀请链接。",
+      "find_team_button": "查找团队",
+      "find_org_button": "查找组织",
+      "create_team_title": "创建新的团队或组织",
+      "create_team_description": "为家庭、运动、社区或企业创建新的群组。\n创建后即可立即邀请成员。",
+      "create_team_button": "创建团队",
+      "create_org_button": "创建组织"
     },
     "myCorkboard": {
       "widgetTitle": "我的软木板",

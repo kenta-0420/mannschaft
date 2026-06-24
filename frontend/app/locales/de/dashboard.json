@@ -53,7 +53,7 @@
       "stale_warning": "Die Vorhersage-Informationen könnten veraltet sein",
       "error_postal_missing": "Postleitzahl ist nicht registriert",
       "error_postal_not_found": "Ihre Postleitzahl wird für Wetterinformationen nicht unterstützt. Bitte überprüfen Sie Ihre Postleitzahl",
-      "error_country_not_supported": "Wetterinformationen für Ihr Land oder Ihre Region sind derzeit nicht verfügbar",
+      "error_country_not_supported": "Ihr Land oder Ihre Region wird für Wetterinformationen und Postleitzahlenvalidierung nicht unterstützt",
       "error_provider_unavailable": "Wetterinformationen konnten nicht abgerufen werden",
       "refresh": "Aktualisieren",
       "powered_by": "Powered by WeatherAPI.com",
@@ -70,6 +70,16 @@
         "sleet": "Schneeregen",
         "thunderstorm": "Gewitter"
       }
+    },
+    "personal": {
+      "find_team_title": "Neues Team oder Organisation finden",
+      "find_team_description": "Suche nach Teams oder Organisationen, denen du beitreten möchtest, und bewerbe dich als Unterstützer.\nEin Einladungslink ist erforderlich, um als Mitglied beizutreten.",
+      "find_team_button": "Teams suchen",
+      "find_org_button": "Organisationen suchen",
+      "create_team_title": "Neues Team oder Organisation erstellen",
+      "create_team_description": "Erstelle eine neue Gruppe für Familie, Sport, Gemeinschaft oder Unternehmen.\nDu kannst sofort nach der Erstellung Mitglieder einladen.",
+      "create_team_button": "Team erstellen",
+      "create_org_button": "Organisation erstellen"
     },
     "myCorkboard": {
       "widgetTitle": "Meine Pinnwand",
