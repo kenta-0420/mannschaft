@@ -1,0 +1,30 @@
+{
+  "feedback": {
+    "nav_button": "Feedback",
+    "nav_tooltip": "Send feedback or suggestions",
+    "submit": {
+      "title": "Feedback / Suggestion Box",
+      "success": "Sent successfully. Thank you!",
+      "error": "Failed to send feedback"
+    },
+    "category": {
+      "label": "Category",
+      "placeholder": "Please select",
+      "bug": "Bug Report",
+      "feature": "Feature Request",
+      "improvement": "Improvement",
+      "other": "Other"
+    },
+    "title": {
+      "label": "Title",
+      "placeholder": "Enter a subject"
+    },
+    "body": {
+      "label": "Details",
+      "placeholder": "Enter details here"
+    },
+    "anonymous": {
+      "label": "Send anonymously"
+    }
+  }
+}

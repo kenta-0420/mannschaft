@@ -53,6 +53,7 @@ const inboxStore = useInboxStore()
 
 const isMounted = ref(false)
 const showMobileMenu = ref(false)
+const feedbackModalVisible = ref(false)
 
 let inboxPollTimer: ReturnType<typeof setInterval> | null = null
 
@@ -233,6 +234,16 @@ function isActive(path: string, exact = false): boolean {
           <ClientOnly>
             <template v-if="authStore.isAuthenticated">
               <SyncProgressIndicator />
+              <!-- 目安箱ボタン -->
+              <Button
+                v-if="authStore.isAuthenticated"
+                v-tooltip.bottom="t('feedback.nav_tooltip')"
+                icon="pi pi-comment"
+                text
+                rounded
+                severity="secondary"
+                @click="feedbackModalVisible = true"
+              />
               <!-- F04.11: 受信箱アイコン（ナビバー常時表示） -->
               <NuxtLink
                 to="/inbox"
@@ -308,6 +319,7 @@ function isActive(path: string, exact = false): boolean {
       <ErrorReportDialog />
       <IosInstallGuideModal v-model:visible="iosInstallModalVisible" />
       <QuickMemoCaptureModal v-model:visible="quickMemoModalVisible" />
+      <FeedbackSubmitModal v-model:visible="feedbackModalVisible" />
 
       <!-- モバイルメニュー Drawer -->
       <Drawer v-model:visible="showMobileMenu" position="left" class="w-72">
@@ -366,6 +378,15 @@ function isActive(path: string, exact = false): boolean {
           </NuxtLink>
         </nav>
         <div class="mt-4 border-t border-surface-200 pt-4 dark:border-surface-700">
+          <Button
+            v-if="authStore.isAuthenticated"
+            :label="t('feedback.nav_button')"
+            icon="pi pi-comment"
+            text
+            severity="secondary"
+            class="w-full justify-start"
+            @click="() => { feedbackModalVisible = true; showMobileMenu = false }"
+          />
           <Button
             label="ログアウト"
             icon="pi pi-sign-out"
