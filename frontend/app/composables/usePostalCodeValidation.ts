@@ -2,7 +2,7 @@ import type { PostalCodePolicy } from '~/types/postal'
 
 // モジュールスコープキャッシュ（アプリ全体で一度だけ取得する）
 let _cached: PostalCodePolicy[] | null = null
-let _loadingPromise: Promise<PostalCodePolicy[]> | null = null
+let _fetchingPromise: Promise<void> | null = null
 
 /**
  * 国別郵便番号バリデーション composable。
@@ -20,25 +20,26 @@ export function usePostalCodeValidation() {
   async function ensureLoaded(): Promise<PostalCodePolicy[]> {
     if (_cached !== null) return _cached
 
-    if (_loadingPromise !== null) return _loadingPromise
+    // 既にフェッチ中なら待機する（二重リクエスト防止）
+    if (_fetchingPromise !== null) {
+      await _fetchingPromise
+      return _cached ?? []
+    }
 
-    _loadingPromise = api<{ data: PostalCodePolicy[] }>('/api/v1/postal-code/policies', {
-      // 未認証でも叩けるため credentials は不要だが、useApi のデフォルト（include）で問題なし
-    })
+    _fetchingPromise = api<{ data: PostalCodePolicy[] }>('/api/v1/postal-code/policies')
       .then((res) => {
         _cached = res.data
-        return _cached
       })
       .catch(() => {
-        // 通信失敗時はキャッシュしない（次回再試行できるよう Promise をクリアする）
-        _loadingPromise = null
-        return [] as PostalCodePolicy[]
+        // 通信失敗時はキャッシュしない（次回再試行できるよう null のまま）
+        _cached = null
       })
       .finally(() => {
-        _loadingPromise = null
+        _fetchingPromise = null
       })
 
-    return _loadingPromise
+    await _fetchingPromise
+    return _cached ?? []
   }
 
   /**
