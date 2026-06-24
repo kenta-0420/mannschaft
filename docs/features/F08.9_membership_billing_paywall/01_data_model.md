@@ -377,6 +377,27 @@ connect_accounts(F22.1・拡張: tax_registration_number/tax_status)
 
 ---
 
+## 6.5 受益者制限設定 `payment_beneficiary_settings`（会員のみ／応援者可）
+
+会費の**受益者を会員(MEMBER)のみに限定するか**をチーム/組織ごとに保持する（1スコープ1行・`V130.001`）。
+
+| 列 | 型 | 説明 |
+|---|---|---|
+| `id` | `BINARY(16)` | UUIDv7 主キー（原則6）|
+| `team_id` | `BIGINT NULL` | チームスコープ（org とは排他・FK なし・UNIQUE）|
+| `organization_id` | `BIGINT NULL` | 組織スコープ（team とは排他・FK なし・UNIQUE）|
+| `beneficiary_member_only` | `BOOLEAN NOT NULL DEFAULT TRUE` | **既定 ON＝会員のみ（純 SUPPORTER 除外）**。OFF で応援者も受益者可 |
+| `created_at`/`updated_at` | `DATETIME(6)` | |
+
+- `CHECK (team_id XOR organization_id)` でスコープ排他を保証。
+- **設定行が無いスコープは既定 `true`（会員のみ）として扱う**（後方互換・`PaymentBeneficiarySettingService.isMemberOnly` が行無し時 true）。
+- 受益者判定（`MemberPaymentService.isBeneficiaryMember`・AC-6）はこの設定で分岐する（03_security §2 / 受益者合成ロジック）:
+  - `memberOnly=false`: 従来 `AccessControlService.isMemberOrDescendant(..., false)`（TEAM は SUPPORTER 許容・ORG は配下 SUPPORTER 除外）。
+  - `memberOnly=true`（既定）: TEAM=`hasRoleOrAbove(.., "MEMBER")`（priority で SUPPORTER 除外）／ORG=`hasRoleOrAbove(.., "MEMBER") || isInOrgDistributionAudience(.., false)`（組織直接/配下チームの MEMBER を許容・純 SUPPORTER 除外）。
+- 設定 API（ADMIN 必須）: `GET|PUT /api/v1/teams/{id}/payment-beneficiary-setting`・`GET|PUT /api/v1/organizations/{id}/payment-beneficiary-setting`。
+
+---
+
 ## 7. 整合性・アプリ層保証（クロスドメイン FK の代替）
 
 物理 FK を張らない代わりにアプリ層で保証する不変条件：
