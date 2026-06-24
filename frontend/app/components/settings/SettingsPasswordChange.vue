@@ -73,6 +73,7 @@ async function changePassword() {
           class="w-full"
           input-class="w-full"
         />
+        <small class="mt-1 block text-surface-500">{{ $t('settings.password.policy_hint') }}</small>
       </div>
       <div>
         <label class="mb-1 block text-sm font-medium">{{ $t('settings.password.confirm_password') }}</label>
