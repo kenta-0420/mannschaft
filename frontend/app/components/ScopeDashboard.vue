@@ -273,14 +273,14 @@ function onDragEnd() {
             <h3
               class="text-[20px] font-semibold text-surface-700 transition-colors group-hover/title:text-primary dark:text-surface-200"
             >
-              {{ w.label }}
+              {{ $t(w.labelKey) }}
             </h3>
           </NuxtLink>
           <h3
             v-else
             class="flex-1 text-[20px] font-semibold text-surface-700 dark:text-surface-200"
           >
-            {{ w.label }}
+            {{ $t(w.labelKey) }}
           </h3>
           <!-- 折り畳みボタン (モバイルのみ) -->
           <button
@@ -314,7 +314,7 @@ function onDragEnd() {
           class="text-xs text-surface-500"
           :class="collapsedKeys.has(w.key) ? 'hidden md:block' : ''"
         >
-          {{ w.description }}
+          {{ $t(w.descriptionKey) }}
         </p>
 
         <!-- データウィジェット: 実コンテンツ -->
