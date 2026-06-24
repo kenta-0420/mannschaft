@@ -73,8 +73,8 @@ const postalCodeError = computed<string | null>(() => {
   if (!cc || !isSupported(cc)) return null
 
   const val = profile.value.postalCode ?? ''
-  if (val.length === 0) return t('validation.postal_code_required')
-  if (!validateFormat(cc, val)) return t('validation.postal_code_format')
+  if (val.length === 0) return t('postal_code_required')
+  if (!validateFormat(cc, val)) return t('postal_code_format')
   return null
 })
 

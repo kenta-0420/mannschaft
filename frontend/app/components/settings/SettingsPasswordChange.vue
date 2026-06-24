@@ -13,13 +13,13 @@ const passwordForm = ref({
 
 const passwordError = computed(() => {
   if (passwordForm.value.newPassword && passwordForm.value.newPassword.length < 8) {
-    return t('validation.min_length', { min: 8 })
+    return t('min_length', { min: 8 })
   }
   if (
     passwordForm.value.confirmPassword &&
     passwordForm.value.newPassword !== passwordForm.value.confirmPassword
   ) {
-    return t('validation.password_mismatch')
+    return t('password_mismatch')
   }
   return null
 })
