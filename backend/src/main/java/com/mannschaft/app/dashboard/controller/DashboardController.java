@@ -451,7 +451,7 @@ public class DashboardController {
     @Operation(summary = "ウィジェット設定一覧", description = "指定スコープのウィジェット設定一覧を取得する")
     public ResponseEntity<ApiResponse<List<WidgetSettingResponse>>> getWidgetSettings(
             @RequestParam String scopeType,
-            @RequestParam(required = false) Long scopeId) {
+            @RequestParam(required = false) String scopeId) {
         Long userId = SecurityUtils.getCurrentUserId();
         ScopeType parsed = widgetService.parseScopeType(scopeType);
         Long resolvedScopeId = widgetService.resolveScopeId(parsed, scopeId);
@@ -485,7 +485,7 @@ public class DashboardController {
     @Operation(summary = "ウィジェット設定リセット", description = "指定スコープの全設定を削除しデフォルトに復帰する")
     public ResponseEntity<Void> resetWidgetSettings(
             @RequestParam String scopeType,
-            @RequestParam(required = false) Long scopeId) {
+            @RequestParam(required = false) String scopeId) {
         Long userId = SecurityUtils.getCurrentUserId();
         ScopeType parsed = widgetService.parseScopeType(scopeType);
         Long resolvedScopeId = widgetService.resolveScopeId(parsed, scopeId);
