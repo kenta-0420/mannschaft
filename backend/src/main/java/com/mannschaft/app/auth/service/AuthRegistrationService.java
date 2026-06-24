@@ -18,6 +18,8 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.common.util.AgeGroupCalculator;
+import com.mannschaft.app.postal.CountryResolver;
+import com.mannschaft.app.postal.PostalCodePolicyRegistry;
 import com.mannschaft.app.role.service.InviteService;
 import com.mannschaft.app.weather.event.UserPostalCodeUpdatedEvent;
 import lombok.RequiredArgsConstructor;
@@ -58,6 +60,8 @@ public class AuthRegistrationService {
     private final EncryptionService encryptionService;
     private final BetaRestrictionService betaRestrictionService;
     private final InviteService inviteService;
+    private final CountryResolver countryResolver;
+    private final PostalCodePolicyRegistry postalCodePolicyRegistry;
 
     // レートリミット設定
     private static final int REGISTER_MAX_ATTEMPTS = 10;
@@ -127,6 +131,22 @@ public class AuthRegistrationService {
         if (birthDate.isBefore(today.minusYears(100))) {
             throw new BusinessException(AuthErrorCode.AUTH_053);
         }
+
+        // 3.6. 郵便番号検証（F02.10 §391・国別レジストリ駆動）
+        // RegisterRequest に countryCode は無いため locale（既定 "ja"）から実効国を解決する。
+        // 対応国では郵便番号必須・フォーマット検証あり。未対応国は検証スキップ。
+        String effectiveLocale = req.getLocale() != null ? req.getLocale() : "ja";
+        countryResolver.resolve(null, effectiveLocale)
+                .filter(postalCodePolicyRegistry::isSupported)
+                .ifPresent(country -> {
+                    String postal = req.getPostalCode();
+                    if (postal == null || postal.isBlank()) {
+                        throw new BusinessException(AuthErrorCode.AUTH_071);
+                    }
+                    if (!postalCodePolicyRegistry.isValidFormat(country, postal)) {
+                        throw new BusinessException(AuthErrorCode.AUTH_072);
+                    }
+                });
 
         // 4. ユーザー作成
         UserEntity user = UserEntity.builder()

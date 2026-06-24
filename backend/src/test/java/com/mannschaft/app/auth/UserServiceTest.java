@@ -14,6 +14,8 @@ import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.auth.service.ParentalConsentService;
 import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.postal.CountryResolver;
+import com.mannschaft.app.postal.PostalCodePolicyRegistry;
 import com.mannschaft.app.gdpr.GdprErrorCode;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.auth.dto.ChangePasswordRequest;
@@ -33,6 +35,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -94,6 +97,13 @@ class UserServiceTest {
 
     @Mock
     private AccessControlService accessControlService;
+
+    // F02.10 §391 郵便番号検証基盤: 実ロジック（JP 固定）を使う
+    @Spy
+    private CountryResolver countryResolver = new CountryResolver();
+
+    @Spy
+    private PostalCodePolicyRegistry postalCodePolicyRegistry = new PostalCodePolicyRegistry();
 
     @InjectMocks
     private UserService userService;
@@ -698,6 +708,103 @@ class UserServiceTest {
             ApiResponse<UserProfileResponse> response = userService.updateProfile(USER_ID, req);
 
             // Then
+            assertThat(response.getData()).isNotNull();
+            verify(userRepository).save(any(UserEntity.class));
+        }
+
+        // AC-1: JP・郵便番号フォーマット不正（"111"）→ AUTH_072
+        @Test
+        @DisplayName("AC-1 異常系: JP・郵便番号フォーマット不正でAUTH_072例外")
+        void updateProfile_郵便番号フォーマット不正_AUTH072例外() {
+            UpdateProfileRequest req = new UpdateProfileRequest(
+                    null, null, null, null, null, null, null, null, null,
+                    null, null, null, "111", null);
+            UserEntity user = createActiveUser(); // locale=ja → JP（対応国）
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+
+            assertThatThrownBy(() -> userService.updateProfile(USER_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_072"));
+            verify(userRepository, never()).save(any());
+        }
+
+        // AC-2: JP・正値（ハイフンあり "123-4567"）→ 成功
+        @Test
+        @DisplayName("AC-2 正常系: JP・正値（123-4567）で更新成功")
+        void updateProfile_正値ハイフンあり_成功() {
+            UpdateProfileRequest req = new UpdateProfileRequest(
+                    null, null, null, null, null, null, null, null, null,
+                    null, null, null, "123-4567", null);
+            UserEntity user = createActiveUser();
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(encryptionService.hmac(anyString())).willReturn("hashed-value");
+            given(userRepository.save(any(UserEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(twoFactorAuthRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(webauthnCredentialRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(oauthAccountRepository.findByUserId(USER_ID)).willReturn(List.of());
+
+            ApiResponse<UserProfileResponse> response = userService.updateProfile(USER_ID, req);
+
+            assertThat(response.getData()).isNotNull();
+            verify(userRepository).save(any(UserEntity.class));
+        }
+
+        // AC-3: JP・正値（ハイフンなし "1234567"）→ 成功
+        @Test
+        @DisplayName("AC-3 正常系: JP・正値（1234567）で更新成功")
+        void updateProfile_正値ハイフンなし_成功() {
+            UpdateProfileRequest req = new UpdateProfileRequest(
+                    null, null, null, null, null, null, null, null, null,
+                    null, null, null, "1234567", null);
+            UserEntity user = createActiveUser();
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(encryptionService.hmac(anyString())).willReturn("hashed-value");
+            given(userRepository.save(any(UserEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(twoFactorAuthRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(webauthnCredentialRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(oauthAccountRepository.findByUserId(USER_ID)).willReturn(List.of());
+
+            ApiResponse<UserProfileResponse> response = userService.updateProfile(USER_ID, req);
+
+            assertThat(response.getData()).isNotNull();
+            verify(userRepository).save(any(UserEntity.class));
+        }
+
+        // AC-7: 明示的に空文字 "" でクリア → 対応国では空に戻せない → AUTH_071
+        @Test
+        @DisplayName("AC-7 異常系: 明示的に空文字でクリアするとAUTH_071例外（対応国では空不可）")
+        void updateProfile_郵便番号空文字クリア_AUTH071例外() {
+            UpdateProfileRequest req = new UpdateProfileRequest(
+                    null, null, null, null, null, null, null, null, null,
+                    null, null, null, "", null);
+            UserEntity user = createActiveUser();
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+
+            assertThatThrownBy(() -> userService.updateProfile(USER_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_071"));
+            verify(userRepository, never()).save(any());
+        }
+
+        // AC-7: postalCode == null（欄据置・未変更）→ 検証スキップ・既存値維持で成功
+        @Test
+        @DisplayName("AC-7 正常系: postalCode=null（据置）は検証スキップで既存値維持")
+        void updateProfile_郵便番号null据置_検証スキップ_成功() {
+            UpdateProfileRequest req = new UpdateProfileRequest(
+                    "佐藤", null, null, null, null, null, null, null, null,
+                    null, null, null, null, null);
+            UserEntity user = createActiveUser();
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+            given(encryptionService.hmac(anyString())).willReturn("hashed-value");
+            given(userRepository.save(any(UserEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(twoFactorAuthRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+            given(webauthnCredentialRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(oauthAccountRepository.findByUserId(USER_ID)).willReturn(List.of());
+
+            ApiResponse<UserProfileResponse> response = userService.updateProfile(USER_ID, req);
+
             assertThat(response.getData()).isNotNull();
             verify(userRepository).save(any(UserEntity.class));
         }
