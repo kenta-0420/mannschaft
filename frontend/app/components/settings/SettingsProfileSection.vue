@@ -24,9 +24,10 @@ defineEmits<{
 }>()
 
 const { t } = useI18n()
-const { isSupported, validateFormat, ensureLoaded } = usePostalCodeValidation()
+const { isLoaded, isSupported, validateFormat, ensureLoaded } = usePostalCodeValidation()
 
-// ポリシーを事前ロード（onMounted で取得しておく）
+// ポリシーを事前ロード（onMounted で取得しておく）。
+// _policies はリアクティブな ref なので、ロード完了時に下記 computed が自動再評価される。
 onMounted(() => {
   ensureLoaded().catch(() => {
     // 取得失敗はサイレント（クライアント検証は best-effort）
@@ -38,20 +39,36 @@ const effectiveCountry = computed<string | null>(() =>
   resolveCountry(profile.value.countryCode, profile.value.locale),
 )
 
-/** 郵便番号バリデーションが対応している国かどうか */
+/**
+ * 郵便番号バリデーションが対応している国かどうか。
+ * ポリシー未ロード中（isLoaded=false）は false 扱い（必須マークを出さない）。
+ */
 const postalSupported = computed<boolean>(() => {
+  if (!isLoaded.value) return false
   const cc = effectiveCountry.value
   return cc !== null && isSupported(cc)
 })
 
 /**
+ * ポリシーがロード済み かつ 実効国が未対応 のときだけ true。
+ * 未ロード中は false（誤って「未対応」注記を出さないため）。
+ */
+const postalUnsupportedRegion = computed<boolean>(() => {
+  if (!isLoaded.value) return false
+  const cc = effectiveCountry.value
+  return cc !== null && !isSupported(cc)
+})
+
+/**
  * クライアントサイドの郵便番号エラー文言。
+ * - ポリシー未ロード中: null（誤検証を出さない）
  * - 未対応国: null（検証スキップ）
  * - 対応国かつ空欄: 必須エラー
  * - 対応国かつフォーマット不正: フォーマットエラー
  * - 対応国かつ正常: null
  */
 const postalCodeError = computed<string | null>(() => {
+  if (!isLoaded.value) return null
   const cc = effectiveCountry.value
   if (!cc || !isSupported(cc)) return null
 
@@ -130,8 +147,8 @@ const saveDisabled = computed<boolean>(() => postalCodeError.value !== null)
         <small v-if="postalCodeError" class="mt-1 block text-red-500">
           {{ postalCodeError }}
         </small>
-        <!-- AC-8: 未対応国への注記 -->
-        <small v-else-if="effectiveCountry && !postalSupported" class="mt-1 block text-surface-400">
+        <!-- AC-8: 未対応国への注記（ポリシーがロード済み かつ 未対応国のときだけ表示） -->
+        <small v-else-if="postalUnsupportedRegion" class="mt-1 block text-surface-400">
           {{ $t('settings.profile.postal_unsupported_region') }}
         </small>
       </div>
