@@ -98,8 +98,8 @@ function onDragEnd() {
         <i class="pi pi-bars text-sm text-surface-400" />
         <i :class="w.icon" class="text-lg text-primary" />
         <div class="min-w-0 flex-1">
-          <p class="text-sm font-medium">{{ w.label }}</p>
-          <p class="text-xs text-surface-500">{{ w.description }}</p>
+          <p class="text-sm font-medium">{{ $t(w.labelKey) }}</p>
+          <p class="text-xs text-surface-500">{{ $t(w.descriptionKey) }}</p>
         </div>
         <ToggleSwitch
           :model-value="isVisible(w.key)"
