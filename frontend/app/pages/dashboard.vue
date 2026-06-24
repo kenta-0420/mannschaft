@@ -25,12 +25,12 @@ onMounted(async () => {
 </script>
 
 <template>
-  <!--
-    pageTransition(out-in) は単一の「要素」ルートを要求する。コンポーネント単体を裸の
-    ルートにすると非要素（フラグメント）ルートとなりアニメ不能。単一 <div> で包むことで
-    enter 側でも Transition が正しく完了し、ブラウザバック時に確実に mount される。
-  -->
   <div>
+    <!--
+      pageTransition(out-in) は単一の「要素」ルートを要求する。コンポーネント単体を裸の
+      ルートにすると非要素（フラグメント）ルートとなりアニメ不能。単一 <div> で包むことで
+      enter 側でも Transition が正しく完了し、ブラウザバック時に確実に mount される。
+    -->
     <DashboardScopeCarousel />
   </div>
 </template>
