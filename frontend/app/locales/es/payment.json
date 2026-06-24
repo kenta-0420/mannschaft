@@ -136,6 +136,12 @@
         "button": "Anular",
         "success": "Pago anulado",
         "error": "No se pudo anular"
+      },
+      "beneficiarySetting": {
+        "label": "Solo miembros",
+        "description": "Cuando está activado, los seguidores (supporters) quedan excluidos como beneficiarios. Úsalo si deseas restringir la cuota solo a miembros regulares.",
+        "saveSuccess": "Configuración de restricción de beneficiarios guardada",
+        "saveError": "Error al guardar la configuración"
       }
     },
     "receipt": {

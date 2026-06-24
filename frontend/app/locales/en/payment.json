@@ -136,6 +136,12 @@
         "button": "Cancel",
         "success": "Payment cancelled",
         "error": "Failed to cancel"
+      },
+      "beneficiarySetting": {
+        "label": "Members only",
+        "description": "When enabled, supporters are excluded as beneficiaries. Use this to restrict fee eligibility to regular members only.",
+        "saveSuccess": "Beneficiary restriction setting saved",
+        "saveError": "Failed to save setting"
       }
     },
     "receipt": {

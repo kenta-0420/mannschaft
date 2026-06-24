@@ -136,6 +136,12 @@
         "button": "取消",
         "success": "入金を取り消しました",
         "error": "取消に失敗しました"
+      },
+      "beneficiarySetting": {
+        "label": "会員のみに限定",
+        "description": "ONにすると、応援者（サポーター）は受益者から除外されます。会費の対象を正会員のみに絞りたい場合に使用してください。",
+        "saveSuccess": "受益者制限設定を保存しました",
+        "saveError": "設定の保存に失敗しました"
       }
     },
     "receipt": {
