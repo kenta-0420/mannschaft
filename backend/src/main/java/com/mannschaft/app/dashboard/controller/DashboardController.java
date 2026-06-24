@@ -455,7 +455,13 @@ public class DashboardController {
         Long userId = SecurityUtils.getCurrentUserId();
         ScopeType parsed = widgetService.parseScopeType(scopeType);
         Long resolvedScopeId = widgetService.resolveScopeId(parsed, scopeId);
-        boolean isAdmin = accessControlService.isAdminOrAbove(userId, resolvedScopeId, parsed.name());
+        // 個人スコープには「メンバーシップ上の管理者ロール」の概念が無く、
+        // AccessControlService（membership.ScopeType を利用）に PERSONAL を渡すと
+        // IllegalArgumentException が発生して500になる。
+        // ドメイン的に正しい短絡として個人スコープでは isAdmin=false で確定させ、
+        // accessControlService.isAdminOrAbove を呼ばない。
+        boolean isAdmin = parsed != ScopeType.PERSONAL
+                && accessControlService.isAdminOrAbove(userId, resolvedScopeId, parsed.name());
         List<WidgetSettingResponse> response = widgetService.getWidgetSettings(userId, parsed, resolvedScopeId, isAdmin);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
