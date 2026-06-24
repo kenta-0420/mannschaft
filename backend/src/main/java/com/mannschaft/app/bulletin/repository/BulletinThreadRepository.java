@@ -51,6 +51,26 @@ public interface BulletinThreadRepository extends JpaRepository<BulletinThreadEn
     List<Long> findIdsByScopeTypeAndScopeId(@Param("scopeType") ScopeType scopeType, @Param("scopeId") Long scopeId);
 
     /**
+     * 同一スコープ種別の複数スコープ ID に属するスレッド ID を 1 クエリで一括取得する（N+1 解消用）。
+     *
+     * <p>個人ダッシュボードの掲示板未読集計は、所属チーム数 N に対して
+     * {@code findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc} を N 回呼び、
+     * さらに各スレッドごとに既読判定を発行していた（最悪 N(M+1) クエリ）。本メソッドで
+     * 対象スレッド ID を 1 クエリにまとめ、{@code BulletinReadStatusRepository#findReadThreadIds}
+     * と組み合わせて 2 クエリに圧縮する。論理削除済みは Entity の {@code @SQLRestriction} で自動除外される。</p>
+     *
+     * <p>呼び出し側は {@code scopeIds} が空の場合に本メソッドを呼ばないこと（{@code IN ()} 非発行）。</p>
+     *
+     * @param scopeType スコープ種別（例: {@link ScopeType#TEAM}）
+     * @param scopeIds  対象スコープ ID 集合（空集合で呼ばないこと）
+     * @return 対象スレッド ID のリスト（順序保証なし）
+     */
+    @Query("SELECT t.id FROM BulletinThreadEntity t "
+            + "WHERE t.scopeType = :scopeType AND t.scopeId IN :scopeIds")
+    List<Long> findIdsByScopeTypeAndScopeIdIn(
+            @Param("scopeType") ScopeType scopeType, @Param("scopeIds") Collection<Long> scopeIds);
+
+    /**
      * 村スコープ内の全スレッド ID を取得する（一括既読の対象抽出用）。
      *
      * <p>{@link #findIdsByScopeTypeAndScopeId} の村スコープ対称メソッド。</p>
