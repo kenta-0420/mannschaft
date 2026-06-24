@@ -31,6 +31,30 @@ public enum WidgetKey {
     TIMETABLE_NOTES(ScopeType.PERSONAL, true, 13),
     /** F09.8.1: マイコルクボードウィジェット（横断ピン止め一覧） */
     MY_CORKBOARD(ScopeType.PERSONAL, true, 14),
+    // --- 対象3-A: 個人ダッシュボード DashboardPersonalPanel.vue が実際に描画する並び替え対象ウィジェットと 1:1 対応。---
+    // 導出元は ALL_WIDGETS カタログではなく実パネル（殿の訂正・2026-06-24）。
+    // FamilyHub（v-if hasFamilyTeam）・AdminBusinessAlert（v-if hasAdminOrDeputyRole）・広告（Amazon/楽天）は
+    // 御裁可案A により対象外（並び替え・非表示の対象外＝BEキーを作らない）。
+    /** FE WidgetEventDismissalReminder: F03.12 §16 解散通知未送信リマインダー（主催者向け） */
+    PERSONAL_EVENT_DISMISSAL_REMINDER(ScopeType.PERSONAL, true, 15),
+    /** FE WidgetWeather: F02.10 登録郵便番号から導出した居住地点の天気予報 */
+    PERSONAL_WEATHER(ScopeType.PERSONAL, true, 16),
+    /** FE WidgetTodoCountdown: 締切が近い TODO のカウントダウン */
+    PERSONAL_TODO_COUNTDOWN(ScopeType.PERSONAL, true, 17),
+    /** FE WidgetReflectionToday: F06.5 follow-up A 今日の振り返り導線 */
+    PERSONAL_REFLECTION_TODAY(ScopeType.PERSONAL, true, 18),
+    /** FE WidgetTeamAnnouncements: 所属チームからの掲示板・お知らせ */
+    PERSONAL_TEAM_ANNOUNCEMENTS(ScopeType.PERSONAL, true, 19),
+    /** FE WidgetOrgAnnouncements: 所属組織からの掲示板・お知らせ */
+    PERSONAL_ORG_ANNOUNCEMENTS(ScopeType.PERSONAL, true, 20),
+    /** FE WidgetMyBlog: 自分のブログ記事・作成導線 */
+    PERSONAL_BLOG(ScopeType.PERSONAL, true, 21),
+    /** FE WidgetMyTeams: 参加チーム一覧 */
+    PERSONAL_MY_TEAMS(ScopeType.PERSONAL, true, 22),
+    /** FE WidgetMyOrganizations: 参加組織一覧 */
+    PERSONAL_MY_ORGANIZATIONS(ScopeType.PERSONAL, true, 23),
+    /** FE WidgetFavorites: F02.9 Phase 2 お気に入りウィジェット */
+    PERSONAL_FAVORITES(ScopeType.PERSONAL, true, 24),
 
     // --- チームダッシュボード ---
     TEAM_NOTICES(ScopeType.TEAM, true, 0),
