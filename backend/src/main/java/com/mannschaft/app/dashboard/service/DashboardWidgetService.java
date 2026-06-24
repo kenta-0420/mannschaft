@@ -10,6 +10,8 @@ import com.mannschaft.app.dashboard.dto.UpdateWidgetSettingsRequest;
 import com.mannschaft.app.dashboard.dto.WidgetSettingResponse;
 import com.mannschaft.app.dashboard.entity.DashboardWidgetSettingEntity;
 import com.mannschaft.app.dashboard.repository.DashboardWidgetSettingRepository;
+import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.template.service.ModuleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +38,9 @@ public class DashboardWidgetService {
     private final DashboardMapper dashboardMapper;
     private final AccessControlService accessControlService;
     private final ModuleService moduleService;
+    /** slug → 数値ID 解決に使用（クロスドメインだが Service メソッド経由のため許容。Entity 直接参照はしない）。 */
+    private final TeamService teamService;
+    private final OrganizationService organizationService;
 
     /** ウィジェット名のマッピング（将来的にはi18n対応） */
     private static final Map<String, String> WIDGET_NAMES = Map.ofEntries(
@@ -167,6 +172,8 @@ public class DashboardWidgetService {
     public List<WidgetSettingResponse> updateWidgetSettings(Long userId, UpdateWidgetSettingsRequest request) {
         ScopeType scopeType = parseScopeType(request.getScopeType());
         Long scopeId = resolveScopeId(scopeType, request.getScopeId());
+        // scopeId 以降は解決済みの数値 ID（slug ではない）。
+        // accessControlService.isAdminOrAbove / repository 検索には数値 ID を渡す。
 
         for (UpdateWidgetSettingsRequest.WidgetSettingItem item : request.getWidgets()) {
             validateWidgetKey(item.getWidgetKey(), scopeType);
@@ -222,12 +229,13 @@ public class DashboardWidgetService {
 
     /**
      * 指定スコープのウィジェット設定を全削除しデフォルトにリセットする。
+     *
+     * @param scopeId 解決済みの数値スコープID（呼び出し側で {@link #resolveScopeId(ScopeType, String)} を通すこと）
      */
     @Transactional
     public void resetWidgetSettings(Long userId, ScopeType scopeType, Long scopeId) {
-        Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
-        widgetSettingRepository.deleteByUserIdAndScopeTypeAndScopeId(userId, scopeType, resolvedScopeId);
-        log.info("ウィジェット設定リセット userId={}, scopeType={}, scopeId={}", userId, scopeType, resolvedScopeId);
+        widgetSettingRepository.deleteByUserIdAndScopeTypeAndScopeId(userId, scopeType, scopeId);
+        log.info("ウィジェット設定リセット userId={}, scopeType={}, scopeId={}", userId, scopeType, scopeId);
     }
 
     /**
@@ -244,15 +252,32 @@ public class DashboardWidgetService {
 
     /**
      * スコープIDを解決する。PERSONALの場合は0を返す。
+     *
+     * <p>TEAM/ORGANIZATION では slug 文字列（例: {@code org-000001} / {@code team-000017}）と
+     * 数値文字列の両方を受け付ける（slug-or-numeric）。数値であればそのまま {@code Long} へ、
+     * slug であれば {@link TeamService#resolveTeamId(String)} /
+     * {@link OrganizationService#resolveOrgId(String)} 経由で数値IDへ解決する。
+     * 数値ID呼び出しの後方互換を保ちつつ、FE が送る slug を受理して 400 を根治する。</p>
+     *
+     * @param scopeId slug もしくは数値文字列。PERSONAL の場合は無視する（null 可）。
+     * @return 解決済みの数値スコープID（PERSONAL は 0）
      */
-    public Long resolveScopeId(ScopeType scopeType, Long scopeId) {
+    public Long resolveScopeId(ScopeType scopeType, String scopeId) {
         if (scopeType == ScopeType.PERSONAL) {
             return 0L;
         }
         if (scopeId == null) {
             throw new BusinessException(DashboardErrorCode.DASHBOARD_014);
         }
-        return scopeId;
+        try {
+            // 数値文字列はそのまま数値IDとして解釈する（既存の数値ID呼び出しの退行防止）。
+            return Long.parseLong(scopeId);
+        } catch (NumberFormatException e) {
+            // 数値でない場合は slug として各ドメイン Service で解決する（解決不能時は Service が例外を投げる＝404相当）。
+            return scopeType == ScopeType.TEAM
+                    ? teamService.resolveTeamId(scopeId)
+                    : organizationService.resolveOrgId(scopeId);
+        }
     }
 
     /**

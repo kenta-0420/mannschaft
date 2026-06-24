@@ -7,6 +7,8 @@ import com.mannschaft.app.dashboard.dto.WidgetSettingResponse;
 import com.mannschaft.app.dashboard.entity.DashboardWidgetSettingEntity;
 import com.mannschaft.app.dashboard.repository.DashboardWidgetSettingRepository;
 import com.mannschaft.app.dashboard.service.DashboardWidgetService;
+import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.template.service.ModuleService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -45,6 +47,12 @@ class DashboardWidgetServiceTest {
 
     @Mock
     private ModuleService moduleService;
+
+    @Mock
+    private TeamService teamService;
+
+    @Mock
+    private OrganizationService organizationService;
 
     @InjectMocks
     private DashboardWidgetService dashboardWidgetService;
@@ -276,7 +284,7 @@ class DashboardWidgetServiceTest {
             UpdateWidgetSettingsRequest.WidgetSettingItem item =
                     new UpdateWidgetSettingsRequest.WidgetSettingItem("TEAM_GALLERY", true, 7);
             UpdateWidgetSettingsRequest request =
-                    new UpdateWidgetSettingsRequest("TEAM", TEAM_ID, List.of(item));
+                    new UpdateWidgetSettingsRequest("TEAM", String.valueOf(TEAM_ID), List.of(item));
 
             given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdAndWidgetKey(
                     USER_ID, ScopeType.TEAM, TEAM_ID, "TEAM_GALLERY"))
@@ -304,7 +312,7 @@ class DashboardWidgetServiceTest {
             UpdateWidgetSettingsRequest.WidgetSettingItem item =
                     new UpdateWidgetSettingsRequest.WidgetSettingItem("ORG_MEMBERS", true, 5);
             UpdateWidgetSettingsRequest request =
-                    new UpdateWidgetSettingsRequest("ORGANIZATION", ORG_ID, List.of(item));
+                    new UpdateWidgetSettingsRequest("ORGANIZATION", String.valueOf(ORG_ID), List.of(item));
 
             given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdAndWidgetKey(
                     USER_ID, ScopeType.ORGANIZATION, ORG_ID, "ORG_MEMBERS"))
@@ -409,7 +417,7 @@ class DashboardWidgetServiceTest {
             UpdateWidgetSettingsRequest.WidgetSettingItem item =
                     new UpdateWidgetSettingsRequest.WidgetSettingItem("PERSONAL_FAVORITES", true, 0);
             UpdateWidgetSettingsRequest request =
-                    new UpdateWidgetSettingsRequest("TEAM", TEAM_ID, List.of(item));
+                    new UpdateWidgetSettingsRequest("TEAM", String.valueOf(TEAM_ID), List.of(item));
 
             // When / Then
             assertThatThrownBy(() -> dashboardWidgetService.updateWidgetSettings(USER_ID, request))
@@ -425,7 +433,7 @@ class DashboardWidgetServiceTest {
             UpdateWidgetSettingsRequest.WidgetSettingItem item =
                     new UpdateWidgetSettingsRequest.WidgetSettingItem("TEAM_SCHEDULE_CALENDAR", true, 0);
             UpdateWidgetSettingsRequest request =
-                    new UpdateWidgetSettingsRequest("ORGANIZATION", ORG_ID, List.of(item));
+                    new UpdateWidgetSettingsRequest("ORGANIZATION", String.valueOf(ORG_ID), List.of(item));
 
             // When / Then
             assertThatThrownBy(() -> dashboardWidgetService.updateWidgetSettings(USER_ID, request))
@@ -563,17 +571,38 @@ class DashboardWidgetServiceTest {
     class ResolveScopeId {
 
         @Test
-        @DisplayName("正常系: PERSONALの場合は0を返す")
+        @DisplayName("正常系: PERSONALの場合は0を返す（slug解決サービスは呼ばない）")
         void resolveScopeId_PERSONAL_0を返す() {
             assertThat(dashboardWidgetService.resolveScopeId(ScopeType.PERSONAL, null)).isEqualTo(0L);
-            assertThat(dashboardWidgetService.resolveScopeId(ScopeType.PERSONAL, 999L)).isEqualTo(0L);
+            assertThat(dashboardWidgetService.resolveScopeId(ScopeType.PERSONAL, "999")).isEqualTo(0L);
         }
 
         @Test
-        @DisplayName("正常系: TEAM/ORGANIZATIONの場合はscopeIdをそのまま返す")
-        void resolveScopeId_非PERSONAL_そのまま返す() {
-            assertThat(dashboardWidgetService.resolveScopeId(ScopeType.TEAM, TEAM_ID)).isEqualTo(TEAM_ID);
-            assertThat(dashboardWidgetService.resolveScopeId(ScopeType.ORGANIZATION, ORG_ID)).isEqualTo(ORG_ID);
+        @DisplayName("正常系(退行防止): TEAM/ORGANIZATIONで数値文字列はそのままLongへ解決する（slug解決サービスは呼ばない）")
+        void resolveScopeId_非PERSONAL_数値文字列_そのまま返す() {
+            // 数値文字列は Long.parseLong で解釈され、slug 解決 Service には委譲しない（数値ID呼び出しの後方互換）
+            assertThat(dashboardWidgetService.resolveScopeId(ScopeType.TEAM, "123")).isEqualTo(123L);
+            assertThat(dashboardWidgetService.resolveScopeId(ScopeType.ORGANIZATION, "456")).isEqualTo(456L);
+            verify(teamService, never()).resolveTeamId(anyString());
+            verify(organizationService, never()).resolveOrgId(anyString());
+        }
+
+        @Test
+        @DisplayName("正常系: TEAMでslug文字列はteamService.resolveTeamId経由で数値へ解決する")
+        void resolveScopeId_TEAM_slug_resolveTeamId経由() {
+            given(teamService.resolveTeamId("team-000017")).willReturn(17L);
+
+            assertThat(dashboardWidgetService.resolveScopeId(ScopeType.TEAM, "team-000017")).isEqualTo(17L);
+            verify(teamService).resolveTeamId("team-000017");
+        }
+
+        @Test
+        @DisplayName("正常系: ORGANIZATIONでslug文字列はorganizationService.resolveOrgId経由で数値へ解決する")
+        void resolveScopeId_ORG_slug_resolveOrgId経由() {
+            given(organizationService.resolveOrgId("org-000001")).willReturn(1L);
+
+            assertThat(dashboardWidgetService.resolveScopeId(ScopeType.ORGANIZATION, "org-000001")).isEqualTo(1L);
+            verify(organizationService).resolveOrgId("org-000001");
         }
 
         @Test
