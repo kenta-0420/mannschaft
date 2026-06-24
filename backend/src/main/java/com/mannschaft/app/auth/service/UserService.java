@@ -32,6 +32,8 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EncryptionService;
+import com.mannschaft.app.postal.CountryResolver;
+import com.mannschaft.app.postal.PostalCodePolicyRegistry;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -69,6 +71,8 @@ public class UserService {
     private final UserRoleRepository userRoleRepository;
     private final ParentalConsentService parentalConsentService;
     private final AccessControlService accessControlService;
+    private final CountryResolver countryResolver;
+    private final PostalCodePolicyRegistry postalCodePolicyRegistry;
 
     /**
      * ISO 3166-1 alpha-2 国コード: アルファベット大文字2文字
@@ -142,6 +146,31 @@ public class UserService {
         if (req.getCountryCode() != null && !COUNTRY_CODE_PATTERN.matcher(req.getCountryCode()).matches()) {
             throw new BusinessException(AuthErrorCode.AUTH_040);
         }
+
+        // F02.10 §391: 郵便番号検証（国別レジストリ駆動）
+        // 実効国はこの更新適用後の国（req に countryCode があればそれ、無ければ既存値）/ locale で解決する。
+        // 対応国のときのみ検証する。AC-7 の据置/クリア/変更の区別:
+        //   - req.postalCode == null（欄据置・未変更）: 既存値を維持し検証スキップ
+        //   - req.postalCode == ""（明示クリア）: 対応国では空に戻せない → AUTH_071
+        //   - req.postalCode 非空: フォーマット不正なら AUTH_072
+        String effectiveCountryCode = req.getCountryCode() != null ? req.getCountryCode() : user.getCountryCode();
+        String effectiveLocale = req.getLocale() != null ? req.getLocale() : user.getLocale();
+        countryResolver.resolve(effectiveCountryCode, effectiveLocale)
+                .filter(postalCodePolicyRegistry::isSupported)
+                .ifPresent(country -> {
+                    String postal = req.getPostalCode();
+                    if (postal == null) {
+                        // 欄据置（未変更）: 既存値を維持。検証しない。
+                        return;
+                    }
+                    if (postal.isBlank()) {
+                        // 明示的に空文字でクリア: 対応国では必須のため不可。
+                        throw new BusinessException(AuthErrorCode.AUTH_071);
+                    }
+                    if (!postalCodePolicyRegistry.isValidFormat(country, postal)) {
+                        throw new BusinessException(AuthErrorCode.AUTH_072);
+                    }
+                });
 
         // F02.10: postalCode / countryCode の変更前の値を記録
         String oldPostalCode = user.getPostalCode();
