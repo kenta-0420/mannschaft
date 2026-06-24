@@ -292,18 +292,19 @@ class DashboardControllerTest {
         }
 
         @Test
-        @DisplayName("正常系: チームスコープでは isAdminOrAbove を呼ぶ")
+        @DisplayName("正常系: チームスコープでは isAdminOrAbove を呼ぶ（slug→数値解決後のIDを渡す）")
         void getWidgetSettings_チームスコープ_isAdminOrAbove呼ぶ() {
-            // Given
+            // Given: FE は slug 文字列（team-000010）を送る。resolveScopeId が数値 TEAM_ID へ解決し、
+            // isAdminOrAbove には解決後の数値IDを渡すこと（slug は渡さない）。
             given(widgetService.parseScopeType("TEAM")).willReturn(ScopeType.TEAM);
-            given(widgetService.resolveScopeId(ScopeType.TEAM, TEAM_ID)).willReturn(TEAM_ID);
+            given(widgetService.resolveScopeId(ScopeType.TEAM, "team-000010")).willReturn(TEAM_ID);
             given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(widgetService.getWidgetSettings(USER_ID, ScopeType.TEAM, TEAM_ID, true))
                     .willReturn(List.of());
 
             // When
             ResponseEntity<ApiResponse<List<WidgetSettingResponse>>> response =
-                    dashboardController.getWidgetSettings("TEAM", TEAM_ID);
+                    dashboardController.getWidgetSettings("TEAM", "team-000010");
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -323,7 +324,7 @@ class DashboardControllerTest {
         @DisplayName("正常系: ウィジェット設定が更新されて200が返る")
         void updateWidgetSettings_正常_200() {
             // Given
-            UpdateWidgetSettingsRequest request = new UpdateWidgetSettingsRequest("PERSONAL", 0L, List.of());
+            UpdateWidgetSettingsRequest request = new UpdateWidgetSettingsRequest("PERSONAL", null, List.of());
             given(widgetService.updateWidgetSettings(USER_ID, request)).willReturn(List.of());
 
             // When
@@ -347,12 +348,12 @@ class DashboardControllerTest {
         @Test
         @DisplayName("正常系: ウィジェット設定がリセットされて204が返る")
         void resetWidgetSettings_正常_204() {
-            // Given
+            // Given: FE は slug 文字列を送り、resolveScopeId が数値 TEAM_ID へ解決する。
             given(widgetService.parseScopeType("TEAM")).willReturn(ScopeType.TEAM);
-            given(widgetService.resolveScopeId(ScopeType.TEAM, TEAM_ID)).willReturn(TEAM_ID);
+            given(widgetService.resolveScopeId(ScopeType.TEAM, "team-000010")).willReturn(TEAM_ID);
 
             // When
-            ResponseEntity<Void> response = dashboardController.resetWidgetSettings("TEAM", TEAM_ID);
+            ResponseEntity<Void> response = dashboardController.resetWidgetSettings("TEAM", "team-000010");
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
