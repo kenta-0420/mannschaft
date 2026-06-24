@@ -110,6 +110,19 @@ public class DashboardWidgetService {
     );
 
     /**
+     * 指定スコープでユーザーが ADMIN 以上かを返す。
+     * PERSONAL スコープは所属/権限ロールの概念を持たない（本人所有の個人ダッシュボード）ため、
+     * membership ベースの {@link AccessControlService#isAdminOrAbove}（TEAM/ORGANIZATION 専用・
+     * PERSONAL を渡すと ScopeType.valueOf で IllegalArgumentException → 500）を呼ばず false を返す。
+     */
+    public boolean isAdminForScope(Long userId, ScopeType scopeType, Long scopeId) {
+        if (scopeType == ScopeType.PERSONAL) {
+            return false;
+        }
+        return accessControlService.isAdminOrAbove(userId, scopeId, scopeType.name());
+    }
+
+    /**
      * 指定スコープのウィジェット設定一覧を取得する。
      * レコードが存在しないウィジェットはデフォルト値で補完する。
      * ロール制限ウィジェットは isAdmin=false のユーザーには返却しない。
@@ -183,8 +196,10 @@ public class DashboardWidgetService {
             }
 
             // ロール制限ウィジェットはADMIN/DEPUTY_ADMIN以外は無視
+            // （PERSONAL スコープには role-restricted ウィジェットが存在しないためこの分岐は通らないが、
+            //   PERSONAL を AccessControlService へ渡さない isAdminForScope 経由で 500 を構造的に封じる）
             if (wk.isRoleRestricted()
-                    && !accessControlService.isAdminOrAbove(userId, scopeId, scopeType.name())) {
+                    && !isAdminForScope(userId, scopeType, scopeId)) {
                 continue;
             }
 
@@ -209,7 +224,7 @@ public class DashboardWidgetService {
             );
         }
 
-        boolean isAdmin = accessControlService.isAdminOrAbove(userId, scopeId, scopeType.name());
+        boolean isAdmin = isAdminForScope(userId, scopeType, scopeId);
         return getWidgetSettings(userId, scopeType, scopeId, isAdmin);
     }
 

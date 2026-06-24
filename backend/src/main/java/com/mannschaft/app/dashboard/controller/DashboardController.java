@@ -4,7 +4,6 @@ import com.mannschaft.app.bulletin.repository.BulletinReadStatusRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
-import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
@@ -78,7 +77,6 @@ public class DashboardController {
     private final DashboardWidgetService widgetService;
     private final ActivityFeedService activityFeedService;
     private final ChatHubService chatHubService;
-    private final AccessControlService accessControlService;
     private final NotificationRepository notificationRepository;
     private final TimelinePostRepository timelinePostRepository;
     private final ScheduleRepository scheduleRepository;
@@ -455,7 +453,7 @@ public class DashboardController {
         Long userId = SecurityUtils.getCurrentUserId();
         ScopeType parsed = widgetService.parseScopeType(scopeType);
         Long resolvedScopeId = widgetService.resolveScopeId(parsed, scopeId);
-        boolean isAdmin = accessControlService.isAdminOrAbove(userId, resolvedScopeId, parsed.name());
+        boolean isAdmin = widgetService.isAdminForScope(userId, parsed, resolvedScopeId);
         List<WidgetSettingResponse> response = widgetService.getWidgetSettings(userId, parsed, resolvedScopeId, isAdmin);
         return ResponseEntity.ok(ApiResponse.of(response));
     }

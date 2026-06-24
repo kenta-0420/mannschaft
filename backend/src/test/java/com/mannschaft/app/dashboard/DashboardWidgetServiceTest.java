@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -225,7 +226,7 @@ class DashboardWidgetServiceTest {
             given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdAndWidgetKey(
                     USER_ID, ScopeType.PERSONAL, 0L, "NOTICES"))
                     .willReturn(Optional.of(existingEntity));
-            given(accessControlService.isAdminOrAbove(USER_ID, 0L, "PERSONAL")).willReturn(false);
+            // PERSONAL は isAdminForScope で false に短絡され accessControlService を呼ばない（500 根治）
 
             // getWidgetSettings用のスタブ
             given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(USER_ID, ScopeType.PERSONAL, 0L))
@@ -256,7 +257,7 @@ class DashboardWidgetServiceTest {
                     .willReturn(Optional.empty());
             given(widgetSettingRepository.save(any(DashboardWidgetSettingEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
-            given(accessControlService.isAdminOrAbove(USER_ID, 0L, "PERSONAL")).willReturn(false);
+            // PERSONAL は isAdminForScope で false に短絡され accessControlService を呼ばない（500 根治）
 
             given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(USER_ID, ScopeType.PERSONAL, 0L))
                     .willReturn(List.of());
@@ -339,7 +340,7 @@ class DashboardWidgetServiceTest {
                     .willReturn(Optional.empty());
             given(widgetSettingRepository.save(any(DashboardWidgetSettingEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
-            given(accessControlService.isAdminOrAbove(USER_ID, 0L, "PERSONAL")).willReturn(false);
+            // PERSONAL は isAdminForScope で false に短絡され accessControlService を呼ばない（500 根治）
             given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(USER_ID, ScopeType.PERSONAL, 0L))
                     .willReturn(List.of());
             given(dashboardMapper.toDefaultWidgetSettingResponse(any(WidgetKey.class), anyString(), anyBoolean(), any()))
@@ -366,7 +367,7 @@ class DashboardWidgetServiceTest {
                     .willReturn(Optional.empty());
             given(widgetSettingRepository.save(any(DashboardWidgetSettingEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
-            given(accessControlService.isAdminOrAbove(USER_ID, 0L, "PERSONAL")).willReturn(false);
+            // PERSONAL は isAdminForScope で false に短絡され accessControlService を呼ばない（500 根治）
             given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(USER_ID, ScopeType.PERSONAL, 0L))
                     .willReturn(List.of());
             given(dashboardMapper.toDefaultWidgetSettingResponse(any(WidgetKey.class), anyString(), anyBoolean(), any()))
@@ -560,6 +561,85 @@ class DashboardWidgetServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("DASHBOARD_014"));
+        }
+    }
+
+    // ========================================
+    // isAdminForScope（PERSONAL 500 根治の回帰テスト）
+    // ========================================
+
+    /**
+     * 個人ダッシュボードの widget API（GET/PUT /widgets?scopeType=personal）が COMMON_999 (500) を返す
+     * 決定論的バグの回帰テスト。
+     *
+     * <p>真因: membership ドメインの {@code ScopeType} には PERSONAL が存在せず、
+     * {@code AccessControlService.isAdminOrAbove → resolveEffectiveRole} 内の
+     * {@code ScopeType.valueOf("PERSONAL")} が IllegalArgumentException を送出していた。
+     * {@code isAdminForScope} は PERSONAL を false に短絡し AccessControlService を呼ばないことで根治する。</p>
+     */
+    @Nested
+    @DisplayName("isAdminForScope")
+    class IsAdminForScope {
+
+        @Test
+        @DisplayName("根治: PERSONAL は例外を投げず false を返し AccessControlService を呼ばない")
+        void isAdminForScope_PERSONAL_例外なしfalse_AccessControl不使用() {
+            // When
+            boolean result = dashboardWidgetService.isAdminForScope(USER_ID, ScopeType.PERSONAL, 0L);
+
+            // Then: 旧実装では isAdminOrAbove → ScopeType.valueOf("PERSONAL") で例外 → 500 だった
+            assertThat(result).isFalse();
+            verify(accessControlService, never()).isAdminOrAbove(anyLong(), anyLong(), anyString());
+        }
+
+        @Test
+        @DisplayName("正常系: TEAM は AccessControlService.isAdminOrAbove に委譲する（true）")
+        void isAdminForScope_TEAM_委譲_true() {
+            // Given
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+
+            // When
+            boolean result = dashboardWidgetService.isAdminForScope(USER_ID, ScopeType.TEAM, TEAM_ID);
+
+            // Then
+            assertThat(result).isTrue();
+            verify(accessControlService).isAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+        }
+
+        @Test
+        @DisplayName("正常系: ORGANIZATION は AccessControlService.isAdminOrAbove に委譲する（false）")
+        void isAdminForScope_ORGANIZATION_委譲_false() {
+            // Given
+            given(accessControlService.isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+
+            // When
+            boolean result = dashboardWidgetService.isAdminForScope(USER_ID, ScopeType.ORGANIZATION, ORG_ID);
+
+            // Then
+            assertThat(result).isFalse();
+            verify(accessControlService).isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+        }
+
+        @Test
+        @DisplayName("根治: getWidgetSettings(PERSONAL, isAdmin=false) は例外なく個人ウィジェットを返す")
+        void getWidgetSettings_PERSONAL_例外なし_個人ウィジェット返却() {
+            // Given
+            given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(USER_ID, ScopeType.PERSONAL, 0L))
+                    .willReturn(List.of());
+            given(dashboardMapper.toDefaultWidgetSettingResponse(any(WidgetKey.class), anyString(), anyBoolean(), any()))
+                    .willAnswer(inv -> {
+                        WidgetKey wk = inv.getArgument(0);
+                        return new WidgetSettingResponse(wk.name(), inv.getArgument(1), true, 0, true, null);
+                    });
+
+            // When
+            List<WidgetSettingResponse> result =
+                    dashboardWidgetService.getWidgetSettings(USER_ID, ScopeType.PERSONAL, 0L, false);
+
+            // Then: 個人ウィジェット（PERSONAL_FAVORITES 等）が含まれる
+            assertThat(result).isNotEmpty();
+            assertThat(result.stream().map(WidgetSettingResponse::getWidgetKey))
+                    .contains("PERSONAL_FAVORITES");
         }
     }
 }
