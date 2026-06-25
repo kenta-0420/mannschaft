@@ -221,130 +221,136 @@ function onDragEnd() {
           />
         </div>
 
-        <DashboardWidgetCard
+        <div
           v-for="(w, index) in visibleWidgets"
           :key="w.key"
-          title=""
-          class="group cursor-default transition-all"
-          :col-span="isDataWidget(w.key) ? 2 : 1"
-          :scrollable="false"
-          :is-dragging="dragIndex === index"
-          :is-drop-target="dropTargetIndex === index && dragIndex !== index"
+          class="group relative cursor-default transition-all"
+          :class="[
+            isDataWidget(w.key) ? 'col-span-1 md:col-span-2' : 'col-span-1',
+            { 'opacity-40': dragIndex === index },
+          ]"
           draggable="true"
           @dragstart="onDragStart(index, $event)"
           @dragover="onDragOver(index, $event)"
           @dragleave="onDragLeave($event)"
           @drop.prevent="onDrop(index)"
           @dragend="onDragEnd"
-          @click="!isDataWidget(w.key) && dragIndex === null && navigateTo(linkTo(w.key) ?? '#')"
         >
-          <!-- ドラッグハンドル（hover 時に表示） -->
-          <i
-            class="pi pi-grip-vertical absolute right-3 top-3 cursor-grab text-sm text-surface-300 opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing dark:text-surface-600"
+          <!-- ドロップインジケーター（データウィジェット用） -->
+          <div
+            v-if="isDataWidget(w.key) && dropTargetIndex === index && dragIndex !== index"
+            class="pointer-events-none absolute inset-x-0 top-0 z-10 h-[3px] rounded-t-xl bg-primary"
           />
 
-          <div class="flex items-center gap-3" :class="collapsedKeys.has(w.key) || isDataWidget(w.key) ? '' : 'mb-3'">
-            <div
-              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/20"
-            >
-              <i :class="w.icon" class="text-xl" />
-            </div>
-            <NuxtLink
-              v-if="linkTo(w.key)"
-              :to="linkTo(w.key)"
-              class="group/title flex-1"
-              @click.stop
-            >
+          <!-- ─── データウィジェット ─── -->
+          <!-- 各ウィジェットが自前の DashboardWidgetCard を持つため、パネル側はコンポーネントを直接描画する -->
+          <template v-if="isDataWidget(w.key)">
+            <!-- マイカレンダー（SectionCard 内包） -->
+            <template v-if="w.key === 'my-calendar'">
+              <SectionCard>
+                <WidgetMyCalendar />
+              </SectionCard>
+            </template>
+            <!-- F03.15 Phase 3: 今日の時間割 -->
+            <DashboardTimetableTodayWidget v-else-if="w.key === 'timetable-today'" />
+            <!-- F02.5: ポイっとメモ -->
+            <DashboardQuickMemoWidget v-else-if="w.key === 'quick-memo'" />
+            <!-- F03.12 §16: 解散通知リマインダー -->
+            <WidgetEventDismissalReminder v-else-if="w.key === 'event-dismissal-reminder'" />
+            <!-- プラットフォームお知らせ -->
+            <WidgetPlatformAnnouncements v-else-if="w.key === 'notices'" />
+            <!-- 今後の予定 -->
+            <WidgetUpcomingEvents v-else-if="w.key === 'upcoming-events'" />
+            <!-- 個人TODO -->
+            <WidgetPersonalTodo v-else-if="w.key === 'personal-todo'" />
+            <!-- F02.10: 天気 -->
+            <WidgetWeather v-else-if="w.key === 'weather'" />
+            <!-- TODOカウントダウン -->
+            <WidgetTodoCountdown v-else-if="w.key === 'todo-countdown'" />
+            <!-- F06.5: 今日の振り返り -->
+            <WidgetReflectionToday v-else-if="w.key === 'reflection-today'" />
+            <!-- 未読チャット -->
+            <WidgetUnreadThreads v-else-if="w.key === 'unread-threads'" />
+            <!-- チームのお知らせ -->
+            <WidgetTeamAnnouncements v-else-if="w.key === 'team-announcements'" :embedded="true" />
+            <!-- 組織のお知らせ -->
+            <WidgetOrgAnnouncements v-else-if="w.key === 'org-announcements'" :embedded="true" />
+            <!-- マイブログ -->
+            <WidgetMyBlog v-else-if="w.key === 'my-blog'" />
+            <!-- 所属チーム -->
+            <WidgetMyTeams v-else-if="w.key === 'my-teams'" />
+            <!-- 所属組織 -->
+            <WidgetMyOrganizations v-else-if="w.key === 'my-organizations'" />
+            <!-- お気に入り -->
+            <WidgetFavorites v-else-if="w.key === 'favorites'" />
+            <!-- 最近のアクティビティ -->
+            <WidgetRecentActivity v-else-if="w.key === 'recent-activity'" />
+          </template>
+
+          <!-- ─── ナビゲーションウィジェット ─── -->
+          <!-- クリックで画面遷移 + DashboardWidgetCard がカードUIとドラッグ視覚フィードバックを担う -->
+          <DashboardWidgetCard
+            v-else
+            title=""
+            :scrollable="false"
+            :is-dragging="dragIndex === index"
+            :is-drop-target="dropTargetIndex === index && dragIndex !== index"
+            @click="dragIndex === null && navigateTo(linkTo(w.key) ?? '#')"
+          >
+            <!-- ドラッグハンドル（hover 時に表示） -->
+            <i
+              class="pi pi-grip-vertical absolute right-3 top-3 cursor-grab text-sm text-surface-300 opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing dark:text-surface-600"
+            />
+
+            <div class="flex items-center gap-3" :class="collapsedKeys.has(w.key) ? '' : 'mb-3'">
+              <div
+                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/20"
+              >
+                <i :class="w.icon" class="text-xl" />
+              </div>
+              <NuxtLink
+                v-if="linkTo(w.key)"
+                :to="linkTo(w.key)"
+                class="group/title flex-1"
+                @click.stop
+              >
+                <h3
+                  class="text-[20px] font-semibold text-surface-700 transition-colors group-hover/title:text-primary dark:text-surface-200"
+                >
+                  {{ $t(w.labelKey) }}
+                </h3>
+              </NuxtLink>
               <h3
-                class="text-[20px] font-semibold text-surface-700 transition-colors group-hover/title:text-primary dark:text-surface-200"
+                v-else
+                class="flex-1 text-[20px] font-semibold text-surface-700 dark:text-surface-200"
               >
                 {{ $t(w.labelKey) }}
               </h3>
-            </NuxtLink>
-            <h3
-              v-else
-              class="flex-1 text-[20px] font-semibold text-surface-700 dark:text-surface-200"
-            >
-              {{ $t(w.labelKey) }}
-            </h3>
-            <!-- 折り畳みボタン（モバイルのみ） -->
-            <button
-              class="md:hidden flex items-center justify-center rounded-lg p-1.5 text-surface-400 transition-colors hover:bg-surface-100"
-              @click.stop="toggleCollapse(w.key)"
-            >
+              <!-- 折り畳みボタン（モバイルのみ） -->
+              <button
+                class="md:hidden flex items-center justify-center rounded-lg p-1.5 text-surface-400 transition-colors hover:bg-surface-100"
+                @click.stop="toggleCollapse(w.key)"
+              >
+                <i
+                  class="pi text-sm transition-transform duration-200"
+                  :class="collapsedKeys.has(w.key) ? 'pi-chevron-down' : 'pi-chevron-up'"
+                />
+              </button>
+              <!-- ナビゲーション矢印 -->
               <i
-                class="pi text-sm transition-transform duration-200"
-                :class="collapsedKeys.has(w.key) ? 'pi-chevron-down' : 'pi-chevron-up'"
+                class="pi pi-chevron-right hidden md:block text-xs text-surface-400 opacity-0 transition-opacity group-hover:opacity-100"
               />
-            </button>
-            <!-- ナビゲーション矢印（ナビゲーションウィジェットのみ） -->
-            <i
-              v-if="!isDataWidget(w.key)"
-              class="pi pi-chevron-right hidden md:block text-xs text-surface-400 opacity-0 transition-opacity group-hover:opacity-100"
-            />
-          </div>
-
-          <!-- ナビゲーションウィジェット: 説明文 -->
-          <p
-            v-if="!isDataWidget(w.key)"
-            class="text-xs text-surface-500"
-            :class="collapsedKeys.has(w.key) ? 'hidden md:block' : ''"
-          >
-            {{ $t(w.descriptionKey) }}
-          </p>
-
-          <!-- データウィジェット: 実コンテンツ -->
-          <template v-if="isDataWidget(w.key)">
-            <div
-              class="mt-3"
-              :class="[
-                w.key === 'my-calendar' ? 'min-h-[28rem]' : 'max-h-96 overflow-y-auto pr-1',
-                collapsedKeys.has(w.key) ? 'hidden md:block' : '',
-              ]"
-            >
-              <!-- マイカレンダー（SectionCard 内包・旧来の lg:col-span-2 相当） -->
-              <template v-if="w.key === 'my-calendar'">
-                <SectionCard>
-                  <WidgetMyCalendar />
-                </SectionCard>
-              </template>
-              <!-- F03.15 Phase 3: 今日の時間割 -->
-              <DashboardTimetableTodayWidget v-else-if="w.key === 'timetable-today'" />
-              <!-- F02.5: ポイっとメモ -->
-              <DashboardQuickMemoWidget v-else-if="w.key === 'quick-memo'" />
-              <!-- F03.12 §16: 解散通知リマインダー -->
-              <WidgetEventDismissalReminder v-else-if="w.key === 'event-dismissal-reminder'" />
-              <!-- プラットフォームお知らせ -->
-              <WidgetPlatformAnnouncements v-else-if="w.key === 'notices'" />
-              <!-- 今後の予定 -->
-              <WidgetUpcomingEvents v-else-if="w.key === 'upcoming-events'" />
-              <!-- 個人TODO -->
-              <WidgetPersonalTodo v-else-if="w.key === 'personal-todo'" />
-              <!-- F02.10: 天気 -->
-              <WidgetWeather v-else-if="w.key === 'weather'" />
-              <!-- TODOカウントダウン -->
-              <WidgetTodoCountdown v-else-if="w.key === 'todo-countdown'" />
-              <!-- F06.5: 今日の振り返り -->
-              <WidgetReflectionToday v-else-if="w.key === 'reflection-today'" />
-              <!-- 未読チャット -->
-              <WidgetUnreadThreads v-else-if="w.key === 'unread-threads'" />
-              <!-- チームのお知らせ -->
-              <WidgetTeamAnnouncements v-else-if="w.key === 'team-announcements'" :embedded="true" />
-              <!-- 組織のお知らせ -->
-              <WidgetOrgAnnouncements v-else-if="w.key === 'org-announcements'" :embedded="true" />
-              <!-- マイブログ -->
-              <WidgetMyBlog v-else-if="w.key === 'my-blog'" />
-              <!-- 所属チーム -->
-              <WidgetMyTeams v-else-if="w.key === 'my-teams'" />
-              <!-- 所属組織 -->
-              <WidgetMyOrganizations v-else-if="w.key === 'my-organizations'" />
-              <!-- お気に入り -->
-              <WidgetFavorites v-else-if="w.key === 'favorites'" />
-              <!-- 最近のアクティビティ -->
-              <WidgetRecentActivity v-else-if="w.key === 'recent-activity'" />
             </div>
-          </template>
-        </DashboardWidgetCard>
+
+            <!-- 説明文 -->
+            <p
+              class="text-xs text-surface-500"
+              :class="collapsedKeys.has(w.key) ? 'hidden md:block' : ''"
+            >
+              {{ $t(w.descriptionKey) }}
+            </p>
+          </DashboardWidgetCard>
+        </div>
 
         <!-- 条件付き固定パネル: AdminBusinessAlert（v-if のまま・並び替え対象外・グリッド内末尾側） -->
         <!-- F10.7: 業務アラートウィジェット（ADMIN/DEPUTY_ADMIN のみ） -->

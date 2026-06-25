@@ -23,6 +23,7 @@
 import EventDismissalCard from '~/components/event/dismissal/EventDismissalCard.vue'
 import type { DismissalReminderTarget } from '~/types/care'
 
+const { t } = useI18n()
 const targets = ref<DismissalReminderTarget[]>([])
 const { fetchTargets } = useDismissalReminders()
 
@@ -50,14 +51,21 @@ onMounted(loadTargets)
 </script>
 
 <template>
-  <div v-if="targets.length > 0" class="space-y-3" data-testid="widget-event-dismissal-reminder">
-    <EventDismissalCard
-      v-for="t in targets"
-      :key="`${t.teamId}-${t.eventId}`"
-      :team-id="t.teamId"
-      :event-id="t.eventId"
-      :event-name="t.eventName"
-      @submitted="onSubmitted"
-    />
-  </div>
+  <DashboardWidgetCard
+    v-if="targets.length > 0"
+    :title="t('dashboard.widget_labels.event-dismissal-reminder')"
+    icon="pi pi-exclamation-circle"
+    data-testid="widget-event-dismissal-reminder"
+  >
+    <div class="space-y-3">
+      <EventDismissalCard
+        v-for="target in targets"
+        :key="`${target.teamId}-${target.eventId}`"
+        :team-id="target.teamId"
+        :event-id="target.eventId"
+        :event-name="target.eventName"
+        @submitted="onSubmitted"
+      />
+    </div>
+  </DashboardWidgetCard>
 </template>
