@@ -1,6 +1,7 @@
 package com.mannschaft.app.reflection.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.reflection.RecallDirection;
 import com.mannschaft.app.reflection.dto.ReflectionEntryResponse;
 import com.mannschaft.app.reflection.entity.ReflectionEntryEntity;
 import com.mannschaft.app.reflection.entity.ReflectionThemeEntity;
@@ -63,7 +64,20 @@ class ReflectionEntryResponseMapperTest {
 
     private void init() {
         sanitizer = new ReflectionContentSanitizer(objectMapper);
-        mapper = new ReflectionEntryResponseMapper(maskEvaluator, sanitizer);
+        mapper = new ReflectionEntryResponseMapper(
+                maskEvaluator, sanitizer, new ReflectionMaskedCueExtractor());
+    }
+
+    /** TERM_CARD section を含む本文を持つエントリ。 */
+    private ReflectionEntryEntity termCardEntry() {
+        String json = "{\"main_theme\":\"英単語\",\"sections\":["
+                + "{\"type\":\"TERM_CARD\",\"heading\":\"今日の単語\",\"cards\":["
+                + "{\"term\":\"abandon\",\"meaning\":\"見捨てる\"}]}]}";
+        ReflectionEntryEntity e = ReflectionEntryEntity.builder()
+                .themeId(UUID.randomUUID()).userId(1L).targetDate(TARGET)
+                .structuredContent(json).version(0L).build();
+        setId(e, UUID.randomUUID());
+        return e;
     }
 
     @Test
@@ -113,5 +127,116 @@ class ReflectionEntryResponseMapperTest {
 
         assertThat(resp.isMasked()).isFalse();
         assertThat(resp.structuredContent().get("main_theme").asText()).isEqualTo("秘密の本文");
+    }
+
+    // ===== Phase 4: マスク中の TERM_CARD cue（§13-C / AC-51 / AC-52） =====
+
+    @Test
+    @DisplayName("AC-51/AC-52: マスク中 MEANING_TO_TERM では cardQuiz に meaning だけ。term(答え)が漏れない")
+    void masked_termCard_meaningToTerm_noLeak() {
+        init();
+        ReflectionEntryEntity e = termCardEntry();
+        ReflectionThemeEntity t = theme();
+        LocalDate today = TARGET.plusDays(1);
+        given(maskEvaluator.isMasked(e, t, today)).willReturn(true);
+        given(maskEvaluator.dueRecallDates(any(), any(), any()))
+                .willReturn(List.of(TARGET.plusDays(1)));
+        given(maskEvaluator.resolveDirection(e, t, today))
+                .willReturn(RecallDirection.MEANING_TO_TERM);
+
+        ReflectionEntryResponse resp = mapper.toResponse(e, t, today);
+
+        assertThat(resp.isMasked()).isTrue();
+        assertThat(resp.structuredContent()).isNull();
+        assertThat(resp.maskedHint().recallDirection()).isEqualTo(RecallDirection.MEANING_TO_TERM);
+        assertThat(resp.maskedHint().cardQuiz()).hasSize(1);
+        assertThat(resp.maskedHint().cardQuiz().get(0).prompts().get(0).promptText())
+                .isEqualTo("見捨てる");
+        // 答え（term=abandon）がペイロード文字列に一切現れない（漏洩ゼロ）。
+        assertThat(resp.maskedHint().toString()).doesNotContain("abandon");
+    }
+
+    @Test
+    @DisplayName("AC-51: マスク中 TERM_TO_MEANING では cue=term のみ。meaning(答え)が漏れない")
+    void masked_termCard_termToMeaning_noLeak() {
+        init();
+        ReflectionEntryEntity e = termCardEntry();
+        ReflectionThemeEntity t = theme();
+        LocalDate today = TARGET.plusDays(3);
+        given(maskEvaluator.isMasked(e, t, today)).willReturn(true);
+        given(maskEvaluator.dueRecallDates(any(), any(), any())).willReturn(List.of());
+        given(maskEvaluator.resolveDirection(e, t, today))
+                .willReturn(RecallDirection.TERM_TO_MEANING);
+
+        ReflectionEntryResponse resp = mapper.toResponse(e, t, today);
+
+        assertThat(resp.maskedHint().cardQuiz().get(0).prompts().get(0).promptText())
+                .isEqualTo("abandon");
+        assertThat(resp.maskedHint().toString()).doesNotContain("見捨てる");
+    }
+
+    @Test
+    @DisplayName("AC-51: today=null（fail-closed 経路）では cardQuiz 空・recallDirection=null")
+    void masked_todayNull_failClosed() {
+        init();
+        ReflectionEntryEntity e = termCardEntry();
+        ReflectionThemeEntity t = theme();
+        // パース不能本文で revealedResponse→maskedResponse(today=null) 経路を踏ませる。
+        ReflectionEntryEntity broken = ReflectionEntryEntity.builder()
+                .themeId(UUID.randomUUID()).userId(1L).targetDate(TARGET)
+                .structuredContent("not-json").version(0L).build();
+        setId(broken, UUID.randomUUID());
+        given(maskEvaluator.isMasked(broken, t, TARGET)).willReturn(false);
+
+        ReflectionEntryResponse resp = mapper.toResponse(broken, t, TARGET);
+
+        assertThat(resp.isMasked()).isTrue();
+        assertThat(resp.structuredContent()).isNull();
+        assertThat(resp.maskedHint().recallDirection()).isNull();
+        assertThat(resp.maskedHint().cardQuiz()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("AC-56: OUTLINE のみのエントリのマスク挙動は従来どおり（cardQuiz 空・本文 null）")
+    void masked_outlineOnly_regression() {
+        init();
+        ReflectionEntryEntity e = entry(); // main_theme のみ（OUTLINE 相当・cards 無し）
+        ReflectionThemeEntity t = theme();
+        LocalDate today = TARGET.plusDays(1);
+        given(maskEvaluator.isMasked(e, t, today)).willReturn(true);
+        given(maskEvaluator.dueRecallDates(any(), any(), any()))
+                .willReturn(List.of(TARGET.plusDays(1)));
+        given(maskEvaluator.resolveDirection(e, t, today))
+                .willReturn(RecallDirection.MEANING_TO_TERM);
+
+        ReflectionEntryResponse resp = mapper.toResponse(e, t, today);
+
+        assertThat(resp.structuredContent()).isNull();
+        assertThat(resp.maskedHint().cardQuiz()).isEmpty(); // TERM_CARD が無いので cue も無い
+    }
+
+    @Test
+    @DisplayName("AC-50/AC-56: 旧形 JSON（type/cards 欠落）でもマスク中に壊れず cardQuiz 空（読取後方互換番人）")
+    void masked_legacyJson_backwardCompatible() {
+        init();
+        String legacy = "{\"main_theme\":\"既存\",\"sections\":["
+                + "{\"heading\":\"平方完成\",\"subsections\":["
+                + "{\"sub_heading\":\"基本形\",\"detail\":\"頂点を読む\"}]}]}";
+        ReflectionEntryEntity e = ReflectionEntryEntity.builder()
+                .themeId(UUID.randomUUID()).userId(1L).targetDate(TARGET)
+                .structuredContent(legacy).version(0L).build();
+        setId(e, UUID.randomUUID());
+        ReflectionThemeEntity t = theme();
+        LocalDate today = TARGET.plusDays(1);
+        given(maskEvaluator.isMasked(e, t, today)).willReturn(true);
+        given(maskEvaluator.dueRecallDates(any(), any(), any())).willReturn(List.of());
+        given(maskEvaluator.resolveDirection(e, t, today))
+                .willReturn(RecallDirection.MEANING_TO_TERM);
+
+        ReflectionEntryResponse resp = mapper.toResponse(e, t, today);
+
+        assertThat(resp.structuredContent()).isNull();
+        assertThat(resp.maskedHint().cardQuiz()).isEmpty(); // 旧形=OUTLINE 扱いで cue 無し
+        assertThat(resp.maskedHint().toString()).doesNotContain("頂点を読む");
     }
 }
