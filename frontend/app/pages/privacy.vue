@@ -3,16 +3,15 @@ const { t } = useI18n()
 
 definePageMeta({
   layout: 'landing',
-  middleware: 'guest',
 })
 
 useSeoMeta({
   title: () => t('landing.legal.privacy.title') + ' - Mannschaft',
-  description: () => t('landing.legal.privacy.placeholder'),
+  description: () => t('landing.legal.privacy.version_notice'),
 })
 
-type SectionKey = '1' | '2' | '3' | '4' | '5'
-const sections: SectionKey[] = ['1', '2', '3', '4', '5']
+type SectionKey = '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | '11' | '12' | '13' | '14' | '15'
+const sections: SectionKey[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15']
 </script>
 
 <template>
@@ -33,14 +32,8 @@ const sections: SectionKey[] = ['1', '2', '3', '4', '5']
           {{ t('landing.legal.privacy.title') }}
         </h1>
         <p class="mb-10 text-sm text-surface-400">
-          {{ t('landing.legal.privacy.last_updated') }}: 2026-05-06
+          {{ t('landing.legal.privacy.last_updated') }}: 2026-06-25
         </p>
-
-        <div class="mb-8 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
-          <p class="text-sm text-amber-700 dark:text-amber-300">
-            {{ t('landing.legal.privacy.placeholder') }}
-          </p>
-        </div>
 
         <div class="space-y-8">
           <section
@@ -50,10 +43,16 @@ const sections: SectionKey[] = ['1', '2', '3', '4', '5']
             <h2 class="mb-3 text-lg font-bold text-surface-900 dark:text-white">
               {{ t(`landing.legal.privacy.section${section}_title`) }}
             </h2>
-            <p class="leading-relaxed text-surface-600 dark:text-surface-300">
+            <p class="whitespace-pre-line leading-relaxed text-surface-600 dark:text-surface-300">
               {{ t(`landing.legal.privacy.section${section}_content`) }}
             </p>
           </section>
+        </div>
+
+        <div class="mt-10 border-t border-surface-100 pt-6 dark:border-surface-700">
+          <p class="text-xs text-surface-400">
+            {{ t('landing.legal.privacy.version_notice') }}
+          </p>
         </div>
       </div>
 

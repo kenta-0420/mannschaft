@@ -73,7 +73,8 @@ class AuthRegistrationServiceBirthDateTest {
 
     private RegisterRequest buildRequest(String birthDate) {
         return new RegisterRequest(
-                TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo", null, birthDate);
+                TEST_EMAIL, TEST_PASSWORD, "山田", "太郎", "yamada", null, "ja", "Asia/Tokyo", null, birthDate,
+                true, "1.1.0");
     }
 
     // ========================================

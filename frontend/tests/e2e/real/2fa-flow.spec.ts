@@ -176,8 +176,54 @@ test.describe('TWOFA: 2FA セットアップ・ログインフロー', () => {
   test('TWOFA-003: 2FA 設定後の /settings/security でセキュリティセクションが表示される', async ({
     page,
   }) => {
-    // 2FA が有効な状態（TWOFA-001 後）でセキュリティページを確認する
-    // storageState から再ログインが必要な場合は loginViaApi を使用
+    // TWOFA-001 で totpSecret が設定済みであること
+    expect(totpSecret, 'TWOFA-001 が先に実行されている必要があります').toBeTruthy()
+
+    // 2FA 有効状態では既存セッションが無効になるため、2FA ログインフローで新規セッションを確立する。
+    // 1. 既存セッションをログアウト
+    await page.request.post(`${API_BASE}/api/v1/auth/logout`)
+
+    // 2. メール/パスワードでログイン → 2FA 有効なので MfaRequiredResponse が返る
+    const loginRes = await page.request.post(`${API_BASE}/api/v1/auth/login`, {
+      data: { email: USER_EMAIL, password: USER_PASSWORD },
+    })
+    expect(loginRes.ok(), `ログイン失敗: ${loginRes.status()}`).toBeTruthy()
+    const loginBody = await loginRes.json()
+    const mfaSessionToken: string = loginBody.data?.mfaSessionToken
+    expect(mfaSessionToken, '2FA 有効なので mfaSessionToken が返るはず').toBeTruthy()
+
+    // 3. TOTP コードを生成して 2FA 検証 → 新しい認証セッション（Cookie）を取得
+    const totp = createTotp(totpSecret)
+    const code = await totp.generate()
+    const validateRes = await page.request.post(`${API_BASE}/api/v1/auth/2fa/validate`, {
+      data: { mfaSessionToken, totpCode: code },
+    })
+    expect(
+      validateRes.ok(),
+      `2FA validate 失敗: ${validateRes.status()} ${await validateRes.text()}`,
+    ).toBeTruthy()
+
+    // 4. 新しい Cookie で /api/v1/users/me を取得し、localStorage['currentUser'] を更新
+    const meRes = await page.request.get(`${API_BASE}/api/v1/users/me`)
+    if (meRes.ok()) {
+      const me = (await meRes.json()).data as {
+        id: number; email: string; lastName: string; firstName: string
+        avatarUrl: string | null; systemRole: string | null; timezone: string | null
+      }
+      await page.goto('/')
+      await page.evaluate((user) => {
+        localStorage.setItem('currentUser', JSON.stringify({
+          id: user.id,
+          email: user.email,
+          fullName: `${user.lastName} ${user.firstName}`,
+          profileImageUrl: user.avatarUrl,
+          systemRole: user.systemRole ?? undefined,
+          timezone: user.timezone ?? undefined,
+        }))
+      }, me)
+    }
+
+    // 5. セキュリティページに移動して確認
     await page.goto('/settings/security')
     await waitForHydration(page)
 
@@ -186,7 +232,7 @@ test.describe('TWOFA: 2FA セットアップ・ログインフロー', () => {
       timeout: 15_000,
     })
 
-    // 2FA セクションが存在すること（「2FAをセットアップ」または QR コードが表示）
+    // 2FA セクションが存在すること
     const hasTwoFaSection =
       (await page.getByText('二要素認証').count()) > 0 ||
       (await page.getByText('2FA').count()) > 0

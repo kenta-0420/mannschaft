@@ -43,6 +43,7 @@ const loadingCards = ref(false)
 const loadingGroups = ref(false)
 
 const showTerms = ref(false)
+const showGuide = ref(false)
 const searchQuery = ref('')
 
 // ─────────────────────────────────────────────
@@ -151,242 +152,137 @@ watch(activeTab, (newTab) => {
 </script>
 
 <template>
-  <div class="wallet-page">
-    <header class="wallet-page__header">
-      <h1 class="wallet-page__title">{{ t('wallet.title') }}</h1>
-      <NuxtLink
-        to="/wallet/settings"
-        class="wallet-page__settings-btn"
-        :aria-label="t('wallet.actions.settings')"
-      >
-        ⚙
-      </NuxtLink>
-    </header>
+  <div>
+    <PageHeader :title="t('wallet.title')" :back="false" help @help="showGuide = true">
+      <template #actions>
+        <NuxtLink
+          to="/wallet/settings"
+          class="inline-flex h-9 w-9 items-center justify-center rounded-full text-surface-600 transition-colors hover:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-700"
+          :aria-label="t('wallet.actions.settings')"
+        >
+          <i class="pi pi-cog text-lg" aria-hidden="true" />
+        </NuxtLink>
+      </template>
+    </PageHeader>
 
-    <div class="wallet-page__tabs" role="tablist">
-      <button
-        type="button"
-        role="tab"
-        :aria-selected="activeTab === 'cards'"
-        class="wallet-page__tab"
-        :class="{ 'wallet-page__tab--active': activeTab === 'cards' }"
-        @click="activeTab = 'cards'"
+    <div class="mx-auto max-w-[720px] px-4 pb-8">
+      <div
+        class="mb-4 flex gap-1 border-b border-surface-200 dark:border-surface-700"
+        role="tablist"
       >
-        {{ t('wallet.tabs.cards') }}
-      </button>
-      <button
-        type="button"
-        role="tab"
-        :aria-selected="activeTab === 'groups'"
-        class="wallet-page__tab"
-        :class="{ 'wallet-page__tab--active': activeTab === 'groups' }"
-        @click="activeTab = 'groups'"
-      >
-        {{ t('wallet.tabs.groups') }}
-      </button>
+        <button
+          type="button"
+          role="tab"
+          :aria-selected="activeTab === 'cards'"
+          class="flex-1 border-b-2 border-transparent px-3 py-3 text-sm font-semibold text-surface-500 transition-colors"
+          :class="{
+            'border-primary-500 text-primary-600 dark:text-primary-400': activeTab === 'cards',
+          }"
+          @click="activeTab = 'cards'"
+        >
+          {{ t('wallet.tabs.cards') }}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          :aria-selected="activeTab === 'groups'"
+          class="flex-1 border-b-2 border-transparent px-3 py-3 text-sm font-semibold text-surface-500 transition-colors"
+          :class="{
+            'border-primary-500 text-primary-600 dark:text-primary-400': activeTab === 'groups',
+          }"
+          @click="activeTab = 'groups'"
+        >
+          {{ t('wallet.tabs.groups') }}
+        </button>
+      </div>
+
+      <!-- ===== Cards タブ ===== -->
+      <section v-if="activeTab === 'cards'" class="flex flex-col gap-4">
+        <InputText
+          v-model="searchQuery"
+          class="w-full"
+          :placeholder="t('wallet.actions.search')"
+          :aria-label="t('wallet.actions.search')"
+        />
+
+        <div v-if="loadingCards" class="py-12 text-center text-surface-400">…</div>
+
+        <template v-else-if="cards.length === 0">
+          <div class="py-12 text-center text-surface-500">
+            <p class="mb-1 text-base font-semibold">{{ t('wallet.card.no_cards') }}</p>
+            <p class="text-sm">{{ t('wallet.card.no_cards_hint') }}</p>
+          </div>
+        </template>
+
+        <template v-else-if="filteredCards.length === 0">
+          <div class="py-12 text-center text-surface-500">
+            <p>{{ t('wallet.card.no_matches', { query: searchQuery }) }}</p>
+          </div>
+        </template>
+
+        <template v-else>
+          <div v-if="favoriteCards.length > 0" class="flex flex-col gap-2">
+            <h2 class="mt-2 text-xs font-semibold uppercase tracking-widest text-surface-400">
+              {{ t('wallet.card.favorites_section') }}
+            </h2>
+            <ul class="flex flex-col gap-2" style="list-style: none; margin: 0; padding: 0">
+              <li v-for="card in favoriteCards" :key="card.id">
+                <CardTile :card="card" />
+              </li>
+            </ul>
+          </div>
+
+          <div v-if="otherCards.length > 0" class="flex flex-col gap-2">
+            <h2
+              v-if="favoriteCards.length > 0"
+              class="mt-2 text-xs font-semibold uppercase tracking-widest text-surface-400"
+            >
+              {{ t('wallet.card.all_section') }}
+            </h2>
+            <ul class="flex flex-col gap-2" style="list-style: none; margin: 0; padding: 0">
+              <li v-for="card in otherCards" :key="card.id">
+                <CardTile :card="card" />
+              </li>
+            </ul>
+          </div>
+        </template>
+
+        <NuxtLink
+          to="/wallet/cards/new"
+          class="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-primary-500 text-2xl text-white shadow-xl"
+          :aria-label="t('wallet.actions.add_card')"
+        >
+          ＋
+        </NuxtLink>
+      </section>
+
+      <!-- ===== Groups タブ ===== -->
+      <section v-else class="flex flex-col gap-4">
+        <div v-if="loadingGroups" class="py-12 text-center text-surface-400">…</div>
+
+        <template v-else-if="groups.length === 0">
+          <div class="py-12 text-center text-surface-500">
+            <p class="mb-1 text-base font-semibold">{{ t('wallet.group.no_groups') }}</p>
+            <p class="text-sm">{{ t('wallet.group.no_groups_hint') }}</p>
+          </div>
+        </template>
+
+        <ul v-else class="flex flex-col gap-2" style="list-style: none; margin: 0; padding: 0">
+          <li v-for="group in groups" :key="group.id">
+            <GroupTile :group="group" />
+          </li>
+        </ul>
+
+        <NuxtLink
+          to="/wallet/groups/new"
+          class="mt-2 inline-flex items-center justify-center rounded-xl border border-dashed border-surface-300 px-4 py-3 font-semibold text-surface-700 no-underline dark:border-surface-600 dark:text-surface-200"
+        >
+          ＋ {{ t('wallet.actions.new_group') }}
+        </NuxtLink>
+      </section>
+
+      <TermsAcceptModal v-model="showTerms" mode="consent" @accepted="onTermsAccepted" />
+      <WalletGuideModal v-model:visible="showGuide" />
     </div>
-
-    <!-- ===== Cards タブ ===== -->
-    <section v-if="activeTab === 'cards'" class="wallet-page__section">
-      <InputText
-        v-model="searchQuery"
-        class="w-full"
-        :placeholder="t('wallet.actions.search')"
-        :aria-label="t('wallet.actions.search')"
-      />
-
-      <div v-if="loadingCards" class="wallet-page__loading">…</div>
-
-      <template v-else-if="cards.length === 0">
-        <div class="wallet-page__empty">
-          <p class="wallet-page__empty-title">{{ t('wallet.card.no_cards') }}</p>
-          <p class="wallet-page__empty-hint">{{ t('wallet.card.no_cards_hint') }}</p>
-        </div>
-      </template>
-
-      <template v-else-if="filteredCards.length === 0">
-        <div class="wallet-page__empty">
-          <p>{{ t('wallet.card.no_matches', { query: searchQuery }) }}</p>
-        </div>
-      </template>
-
-      <template v-else>
-        <div v-if="favoriteCards.length > 0" class="wallet-page__group">
-          <h2 class="wallet-page__group-title">
-            {{ t('wallet.card.favorites_section') }}
-          </h2>
-          <ul class="wallet-page__list">
-            <li v-for="card in favoriteCards" :key="card.id">
-              <CardTile :card="card" />
-            </li>
-          </ul>
-        </div>
-
-        <div v-if="otherCards.length > 0" class="wallet-page__group">
-          <h2 v-if="favoriteCards.length > 0" class="wallet-page__group-title">
-            {{ t('wallet.card.all_section') }}
-          </h2>
-          <ul class="wallet-page__list">
-            <li v-for="card in otherCards" :key="card.id">
-              <CardTile :card="card" />
-            </li>
-          </ul>
-        </div>
-      </template>
-
-      <NuxtLink
-        to="/wallet/cards/new"
-        class="wallet-page__fab"
-        :aria-label="t('wallet.actions.add_card')"
-      >
-        ＋
-      </NuxtLink>
-    </section>
-
-    <!-- ===== Groups タブ ===== -->
-    <section v-else class="wallet-page__section">
-      <div v-if="loadingGroups" class="wallet-page__loading">…</div>
-
-      <template v-else-if="groups.length === 0">
-        <div class="wallet-page__empty">
-          <p class="wallet-page__empty-title">{{ t('wallet.group.no_groups') }}</p>
-          <p class="wallet-page__empty-hint">{{ t('wallet.group.no_groups_hint') }}</p>
-        </div>
-      </template>
-
-      <ul v-else class="wallet-page__list">
-        <li v-for="group in groups" :key="group.id">
-          <GroupTile :group="group" />
-        </li>
-      </ul>
-
-      <NuxtLink to="/wallet/groups/new" class="wallet-page__new-group">
-        ＋ {{ t('wallet.actions.new_group') }}
-      </NuxtLink>
-    </section>
-
-    <TermsAcceptModal v-model="showTerms" mode="consent" @accepted="onTermsAccepted" />
   </div>
 </template>
-
-<style scoped>
-.wallet-page {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 1rem;
-  position: relative;
-  min-height: calc(100vh - 64px);
-}
-.wallet-page__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-}
-.wallet-page__title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 0;
-}
-.wallet-page__settings-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--p-surface-100, #f3f4f6);
-  text-decoration: none;
-  color: inherit;
-  font-size: 1.25rem;
-}
-.wallet-page__tabs {
-  display: flex;
-  gap: 0.25rem;
-  border-bottom: 1px solid var(--p-surface-200, #e5e7eb);
-  margin-bottom: 1rem;
-}
-.wallet-page__tab {
-  flex: 1;
-  padding: 0.75rem;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-weight: 600;
-  color: var(--p-text-muted-color, #6b7280);
-  border-bottom: 2px solid transparent;
-}
-.wallet-page__tab--active {
-  color: var(--p-primary-color, #3b82f6);
-  border-bottom-color: var(--p-primary-color, #3b82f6);
-}
-.wallet-page__section {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-.wallet-page__loading,
-.wallet-page__empty {
-  text-align: center;
-  padding: 3rem 1rem;
-  color: var(--p-text-muted-color, #6b7280);
-}
-.wallet-page__empty-title {
-  font-weight: 600;
-  font-size: 1rem;
-  margin: 0 0 0.5rem;
-}
-.wallet-page__empty-hint {
-  font-size: 0.875rem;
-  margin: 0;
-}
-.wallet-page__group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.wallet-page__group-title {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--p-text-muted-color, #6b7280);
-  margin: 0.5rem 0 0;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-.wallet-page__list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.wallet-page__fab {
-  position: fixed;
-  right: 1.5rem;
-  bottom: 1.5rem;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--p-primary-color, #3b82f6);
-  color: #fff;
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.75rem;
-  box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.3);
-}
-.wallet-page__new-group {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.75rem 1rem;
-  border: 1px dashed var(--p-surface-300, #d1d5db);
-  border-radius: 0.75rem;
-  text-decoration: none;
-  color: var(--p-text-color, #111827);
-  font-weight: 600;
-  margin-top: 0.5rem;
-}
-</style>

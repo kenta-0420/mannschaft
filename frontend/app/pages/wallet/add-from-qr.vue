@@ -239,17 +239,7 @@ function cancel() {
 
 <template>
   <div class="qr-add">
-    <header class="qr-add__header">
-      <button
-        type="button"
-        class="qr-add__back"
-        :aria-label="t('wallet.actions.cancel')"
-        @click="cancel"
-      >
-        ←
-      </button>
-      <h1 class="qr-add__title">{{ titleText }}</h1>
-    </header>
+    <PageHeader :title="titleText" />
 
     <p v-if="orgSubtitle" class="qr-add__org">{{ orgSubtitle }}</p>
 
@@ -370,31 +360,6 @@ function cancel() {
   flex-direction: column;
   gap: 1rem;
   position: relative;
-}
-.qr-add__header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.qr-add__back {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--p-surface-100, #f3f4f6);
-  border: none;
-  cursor: pointer;
-  font-size: 1.25rem;
-}
-.qr-add__title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin: 0;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .qr-add__org {
   margin: 0;

@@ -872,6 +872,10 @@
       "description": "F08.7 順位表・ランキング参照"
     },
     {
+      "name": "振り返り単語帳",
+      "description": "F06.5 Phase 4 期間横断 単語帳ビュー"
+    },
+    {
       "name": "振り返り通知設定",
       "description": "F06.5 アクティブリコール学習機能 — 想起通知の時刻設定"
     },
@@ -1794,6 +1798,10 @@
     {
       "name": "議決権行使・委任状",
       "description": "F08.3 委任状管理"
+    },
+    {
+      "name": "システム管理 - 目安箱",
+      "description": "F10.1 目安箱管理（システム管理者向け）"
     },
     {
       "name": "組織確認通知",
@@ -13154,7 +13162,7 @@
           "システム管理 - ナビ機能管理"
         ],
         "summary": "ナビ項目更新",
-        "description": "ナビ項目を更新する。is_fixed=TRUEの項目のfixedをFALSEには変更不可。",
+        "description": "ナビ項目を更新する。is_fixed\u003dTRUEの項目のfixedをFALSEには変更不可。",
         "operationId": "update_17",
         "parameters": [
           {
@@ -13194,7 +13202,7 @@
           "システム管理 - ナビ機能管理"
         ],
         "summary": "ナビ項目削除",
-        "description": "ナビ項目を削除する。is_fixed=TRUEの項目は削除不可。",
+        "description": "ナビ項目を削除する。is_fixed\u003dTRUEの項目は削除不可。",
         "operationId": "delete_18",
         "parameters": [
           {
@@ -13592,7 +13600,7 @@
           "システム管理 - 手数料パターン管理"
         ],
         "summary": "手数料パターン無効化",
-        "description": "パターンを無効化する（enabled=false）。DEFAULT は不可（409）。",
+        "description": "パターンを無効化する（enabled\u003dfalse）。DEFAULT は不可（409）。",
         "operationId": "disable",
         "parameters": [
           {
@@ -14622,7 +14630,7 @@
           "ナビゲーション設定"
         ],
         "summary": "ナビ設定取得",
-        "description": "現在ユーザーのナビ項目表示設定を返す。is_enabled=TRUE の項目のみ。",
+        "description": "現在ユーザーのナビ項目表示設定を返す。is_enabled\u003dTRUE の項目のみ。",
         "operationId": "getNavSettings",
         "responses": {
           "200": {
@@ -22649,8 +22657,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -22718,8 +22725,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -23138,7 +23144,7 @@
           "チャットフォルダ"
         ],
         "summary": "フォルダアイテム一覧",
-        "description": "フォルダ内のアイテム一覧を取得する。sort=LAST_MESSAGE で最終DM日時降順",
+        "description": "フォルダ内のアイテム一覧を取得する。sort\u003dLAST_MESSAGE で最終DM日時降順",
         "operationId": "getFolderItems",
         "parameters": [
           {
@@ -29414,7 +29420,7 @@
         "tags": [
           "村ニュースレター (F17.1 Phase 3-β-E)"
         ],
-        "summary": "当該ユーザーの opt-out を解除する（= opt-in に戻す）",
+        "summary": "当該ユーザーの opt-out を解除する（\u003d opt-in に戻す）",
         "operationId": "optIn",
         "parameters": [
           {
@@ -32266,7 +32272,7 @@
           "TODO 予算紐付 (F08.7)"
         ],
         "summary": "TODO/プロジェクトと予算割当を紐付ける",
-        "description": "project_id と todo_id はどちらか一方のみ指定。link_amount と link_percentage はどちらか一方（両方 NULL = 割当全額）。",
+        "description": "project_id と todo_id はどちらか一方のみ指定。link_amount と link_percentage はどちらか一方（両方 NULL \u003d 割当全額）。",
         "operationId": "createLink",
         "parameters": [
           {
@@ -44882,7 +44888,7 @@
           "告知ウィザード"
         ],
         "summary": "チームへの告知ウィザード実行",
-        "description": "F02.8 告知ウィザード。チームスコープでコンテンツ作成 + お知らせフィード登録を一括実行する。MEMBER は priority=NORMAL のみ使用可。ADMIN/DEPUTY_ADMIN は全優先度が使用可。",
+        "description": "F02.8 告知ウィザード。チームスコープでコンテンツ作成 + お知らせフィード登録を一括実行する。MEMBER は priority\u003dNORMAL のみ使用可。ADMIN/DEPUTY_ADMIN は全優先度が使用可。",
         "operationId": "broadcastToTeam",
         "parameters": [
           {
@@ -45582,7 +45588,7 @@
           "告知ウィザード範囲テンプレート"
         ],
         "summary": "チームテンプレート作成",
-        "description": "チームスコープの告知範囲テンプレートを作成する。ADMIN / DEPUTY_ADMIN のみ可。上限（20件）超過時は 409。is_default=true の場合、既存デフォルトを解除する。",
+        "description": "チームスコープの告知範囲テンプレートを作成する。ADMIN / DEPUTY_ADMIN のみ可。上限（20件）超過時は 409。is_default\u003dtrue の場合、既存デフォルトを解除する。",
         "operationId": "createTeamTemplate_1",
         "parameters": [
           {
@@ -48539,7 +48545,7 @@
           "システム管理 - 手数料パターン管理"
         ],
         "summary": "手数料パターン一覧",
-        "description": "全パターンを返す（enabled=false 含む全件・policy_key 昇順・割当数付き）。",
+        "description": "全パターンを返す（enabled\u003dfalse 含む全件・policy_key 昇順・割当数付き）。",
         "operationId": "list_35",
         "responses": {
           "200": {
@@ -51469,7 +51475,7 @@
           "F03.11 募集型予約 / NO_SHOW管理"
         ],
         "summary": "NO_SHOWマーク (管理者, §9.5)",
-        "description": "仮マーク。24h 後に確定バッチが confirmed=true にする。",
+        "description": "仮マーク。24h 後に確定バッチが confirmed\u003dtrue にする。",
         "operationId": "markNoShow_1",
         "parameters": [
           {
@@ -52884,7 +52890,7 @@
           "公開投稿コメント API (F19.1 Phase 6-B)"
         ],
         "summary": "公開投稿コメント一覧取得（未ログイン公開）",
-        "description": "未ログインでも実行可能。public_visible=true かつ visibility=PUBLIC かつ status=PUBLISHED の BlogPost のコメント一覧を返す。 対象投稿が存在しないか非公開の場合は 404。",
+        "description": "未ログインでも実行可能。public_visible\u003dtrue かつ visibility\u003dPUBLIC かつ status\u003dPUBLISHED の BlogPost のコメント一覧を返す。 対象投稿が存在しないか非公開の場合は 404。",
         "operationId": "getComments",
         "parameters": [
           {
@@ -53687,7 +53693,7 @@
         "tags": [
           "謝礼決済 返金"
         ],
-        "summary": "返金 / 与信取消（受取側 ADMIN・feeBearer=PAYER|PAYEE の 2モード）",
+        "summary": "返金 / 与信取消（受取側 ADMIN・feeBearer\u003dPAYER|PAYEE の 2モード）",
         "operationId": "refund_1",
         "parameters": [
           {
@@ -62373,7 +62379,7 @@
           "ポイントカード 自店プロバイダー"
         ],
         "summary": "自店プロバイダー一覧取得",
-        "description": "当該組織が発行した自店プロバイダー（type=SELF_ISSUED_STAMP）を返す。?active=true で is_active=true のみに絞り込み可能。",
+        "description": "当該組織が発行した自店プロバイダー（type\u003dSELF_ISSUED_STAMP）を返す。?active\u003dtrue で is_active\u003dtrue のみに絞り込み可能。",
         "operationId": "listProviders",
         "parameters": [
           {
@@ -62412,7 +62418,7 @@
           "ポイントカード 自店プロバイダー"
         ],
         "summary": "自店プロバイダー新規発行",
-        "description": "type=SELF_ISSUED_STAMP 固定で発行。code は org_{orgId}_{rand8} で自動生成。1 組織あたり 20 個上限。監査ログ POINT_CARD_PROVIDER_CREATED を 1 件記録。",
+        "description": "type\u003dSELF_ISSUED_STAMP 固定で発行。code は org_{orgId}_{rand8} で自動生成。1 組織あたり 20 個上限。監査ログ POINT_CARD_PROVIDER_CREATED を 1 件記録。",
         "operationId": "createProvider",
         "parameters": [
           {
@@ -65594,7 +65600,7 @@
           "告知ウィザード範囲テンプレート"
         ],
         "summary": "組織テンプレート作成",
-        "description": "組織スコープの告知範囲テンプレートを作成する。ADMIN / DEPUTY_ADMIN のみ可。上限（20件）超過時は 409。is_default=true の場合、既存デフォルトを解除する。",
+        "description": "組織スコープの告知範囲テンプレートを作成する。ADMIN / DEPUTY_ADMIN のみ可。上限（20件）超過時は 409。is_default\u003dtrue の場合、既存デフォルトを解除する。",
         "operationId": "createOrgTemplate_1",
         "parameters": [
           {
@@ -67929,7 +67935,7 @@
           "お気に入り"
         ],
         "summary": "お気に入り一覧取得",
-        "description": "認証ユーザーのお気に入りを表示順（displayOrder昇順）で返す。削除済みエンティティは available=false として含まれる。",
+        "description": "認証ユーザーのお気に入りを表示順（displayOrder昇順）で返す。削除済みエンティティは available\u003dfalse として含まれる。",
         "operationId": "listFavorites",
         "responses": {
           "200": {
@@ -67959,7 +67965,7 @@
           "お気に入り"
         ],
         "summary": "お気に入り追加",
-        "description": "指定エンティティをお気に入りに追加する。先頭（displayOrder=0）に挿入される。20件上限・重複チェック・エンティティ存在確認を行う。",
+        "description": "指定エンティティをお気に入りに追加する。先頭（displayOrder\u003d0）に挿入される。20件上限・重複チェック・エンティティ存在確認を行う。",
         "operationId": "addFavorite_1",
         "requestBody": {
           "content": {
@@ -72822,7 +72828,7 @@
           "チャットメッセージ"
         ],
         "summary": "メッセージ一覧",
-        "description": "カーソルベースページネーションでメッセージを取得する。direction=after でWebSocket再接続後のキャッチアップが可能。",
+        "description": "カーソルベースページネーションでメッセージを取得する。direction\u003dafter でWebSocket再接続後のキャッチアップが可能。",
         "operationId": "listMessages",
         "parameters": [
           {
@@ -76275,7 +76281,7 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/html;charset=UTF-8": {
+              "text/html;charset\u003dUTF-8": {
                 "schema": {
                   "type": "string"
                 }
@@ -86760,6 +86766,90 @@
         }
       }
     },
+    "/api/v1/system-admin/feedbacks/{id}/status": {
+      "patch": {
+        "tags": [
+          "システム管理 - 目安箱"
+        ],
+        "summary": "目安箱のステータスを変更する",
+        "operationId": "updateFeedbackStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "変更成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFeedbackResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/feedbacks/{id}/respond": {
+      "patch": {
+        "tags": [
+          "システム管理 - 目安箱"
+        ],
+        "summary": "目安箱に回答する",
+        "operationId": "respondToFeedback",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackRespondRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "回答成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFeedbackResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/system-admin/error-reports/{id}": {
       "get": {
         "tags": [
@@ -92367,7 +92457,7 @@
           "ポイントカード 自店プロバイダー"
         ],
         "summary": "自店プロバイダー停止",
-        "description": "is_active=false に更新（物理削除しない）。ADMIN のみ実行可能。監査ログ POINT_CARD_PROVIDER_DEACTIVATED を 1 件記録。",
+        "description": "is_active\u003dfalse に更新（物理削除しない）。ADMIN のみ実行可能。監査ログ POINT_CARD_PROVIDER_DEACTIVATED を 1 件記録。",
         "operationId": "deactivateProvider",
         "parameters": [
           {
@@ -95651,7 +95741,7 @@
         "tags": [
           "F03.11 募集型予約 / キャンセルポリシー"
         ],
-        "summary": "ポリシー編集 (is_template_policy=true のみ)",
+        "summary": "ポリシー編集 (is_template_policy\u003dtrue のみ)",
         "operationId": "update_52",
         "parameters": [
           {
@@ -96528,7 +96618,7 @@
           "Admin 投稿者識別モード切替 API (F19.1 Phase 2)"
         ],
         "summary": "チーム投稿者識別モード切替",
-        "description": "ADMIN または SYSTEM_ADMIN が teams.supporter_name_disclosure を変更する。 confirmed=true が必須（REAL_NAME への切替時は警告ダイアログで確認後に送信すること）。",
+        "description": "ADMIN または SYSTEM_ADMIN が teams.supporter_name_disclosure を変更する。 confirmed\u003dtrue が必須（REAL_NAME への切替時は警告ダイアログで確認後に送信すること）。",
         "operationId": "patchTeamDisclosure",
         "parameters": [
           {
@@ -97186,7 +97276,7 @@
           "Admin 投稿者識別モード切替 API (F19.1 Phase 2)"
         ],
         "summary": "組織投稿者識別モード切替",
-        "description": "ADMIN または SYSTEM_ADMIN が organizations.supporter_name_disclosure を変更する。 confirmed=true が必須。",
+        "description": "ADMIN または SYSTEM_ADMIN が organizations.supporter_name_disclosure を変更する。 confirmed\u003dtrue が必須。",
         "operationId": "patchOrganizationDisclosure",
         "parameters": [
           {
@@ -97297,7 +97387,7 @@
           "管理 - フィードバック"
         ],
         "summary": "フィードバックステータス変更",
-        "operationId": "updateFeedbackStatus",
+        "operationId": "updateFeedbackStatus_1",
         "parameters": [
           {
             "name": "id",
@@ -97339,7 +97429,7 @@
           "管理 - フィードバック"
         ],
         "summary": "フィードバック回答",
-        "operationId": "respondToFeedback",
+        "operationId": "respondToFeedback_1",
         "parameters": [
           {
             "name": "id",
@@ -97648,7 +97738,7 @@
           "200": {
             "description": "OK",
             "content": {
-              "application/xml;charset=UTF-8": {
+              "application/xml;charset\u003dUTF-8": {
                 "schema": {
                   "type": "string"
                 }
@@ -97681,7 +97771,7 @@
           "200": {
             "description": "OK",
             "content": {
-              "application/xml;charset=UTF-8": {
+              "application/xml;charset\u003dUTF-8": {
                 "schema": {
                   "type": "string"
                 }
@@ -97733,7 +97823,7 @@
           "200": {
             "description": "OK",
             "content": {
-              "text/plain;charset=UTF-8": {
+              "text/plain;charset\u003dUTF-8": {
                 "schema": {
                   "type": "string"
                 }
@@ -98159,13 +98249,13 @@
           "200": {
             "description": "取得成功",
             "content": {
-              "text/csv;charset=UTF-8": {
+              "text/csv;charset\u003dUTF-8": {
                 "schema": {
                   "type": "string",
                   "format": "byte"
                 }
               },
-              "text/csv; charset=UTF-8": {
+              "text/csv; charset\u003dUTF-8": {
                 "schema": {
                   "type": "string",
                   "format": "byte"
@@ -100020,6 +100110,45 @@
         }
       }
     },
+    "/api/v1/users/me/oauth/link/{provider}/auth-url": {
+      "get": {
+        "tags": [
+          "user-o-auth-link-controller"
+        ],
+        "operationId": "getAuthUrl",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeCalendar",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOAuthLinkAuthUrlResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/users/me/login-history": {
       "get": {
         "tags": [
@@ -100041,12 +100170,32 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "取得件数（デフォルト20）",
+            "description": "取得件数（デフォルト5）",
             "required": false,
             "schema": {
               "type": "integer",
               "format": "int32",
-              "default": 20
+              "default": 5
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "開始日時（yyyy-MM-dd\u0027T\u0027HH:mm:ss 形式）",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "終了日時（yyyy-MM-dd\u0027T\u0027HH:mm:ss 形式）",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
             }
           }
         ],
@@ -105249,7 +105398,7 @@
           "管理者フィード"
         ],
         "summary": "管理者フィード一覧取得",
-        "description": "フレンドチームの share_with_friends=TRUE 投稿を降順で返す。folderId で特定フォルダのフレンドに絞り込み可能。cursor ページングにより大量データを分割取得できる。ADMIN または MANAGE_FRIEND_TEAMS 権限が必要。",
+        "description": "フレンドチームの share_with_friends\u003dTRUE 投稿を降順で返す。folderId で特定フォルダのフレンドに絞り込み可能。cursor ページングにより大量データを分割取得できる。ADMIN または MANAGE_FRIEND_TEAMS 権限が必要。",
         "operationId": "getFeed_1",
         "parameters": [
           {
@@ -105701,7 +105850,7 @@
           "主催者点呼"
         ],
         "summary": "点呼候補者一覧取得",
-        "description": "RSVP=ATTENDING/MAYBEの参加予定者一覧。ケア対象フラグ・保護者数・既チェックイン状態を含む。権限: ADMIN/STAFF",
+        "description": "RSVP\u003dATTENDING/MAYBEの参加予定者一覧。ケア対象フラグ・保護者数・既チェックイン状態を含む。権限: ADMIN/STAFF",
         "operationId": "getCandidates",
         "parameters": [
           {
@@ -107012,7 +107161,7 @@
           "学校出欠管理"
         ],
         "summary": "移動検知アラート一覧取得",
-        "description": "指定日のクラスの移動検知アラート一覧を取得する。unresolvedOnly=true で未解決のみに絞り込み可能。",
+        "description": "指定日のクラスの移動検知アラート一覧を取得する。unresolvedOnly\u003dtrue で未解決のみに絞り込み可能。",
         "operationId": "getAlerts",
         "parameters": [
           {
@@ -108067,7 +108216,7 @@
           "フレンドチーム管理"
         ],
         "summary": "フレンドチーム一覧取得",
-        "description": "SUPPORTER には is_public = TRUE のフレンドのみ返却。その他のロールは全件取得可能。",
+        "description": "SUPPORTER には is_public \u003d TRUE のフレンドのみ返却。その他のロールは全件取得可能。",
         "operationId": "listFriends",
         "parameters": [
           {
@@ -108564,7 +108713,7 @@
           "システム管理 - セキュリティスキャン"
         ],
         "summary": "セキュリティスキャン状態取得",
-        "description": "GitHub Actions の OWASP Dependency-Check 週次スキャンの最新実行状態を返す。 GitHub API 失敗時は conclusion=UNKNOWN を返す（例外は握りつぶさずログに記録する）。",
+        "description": "GitHub Actions の OWASP Dependency-Check 週次スキャンの最新実行状態を返す。 GitHub API 失敗時は conclusion\u003dUNKNOWN を返す（例外は握りつぶさずログに記録する）。",
         "operationId": "getSecurityScanStatus",
         "responses": {
           "200": {
@@ -109030,6 +109179,45 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/StreamingResponseBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/feedbacks": {
+      "get": {
+        "tags": [
+          "システム管理 - 目安箱"
+        ],
+        "summary": "目安箱一覧取得（GENERAL スコープ・scopeId IS NULL 全件）",
+        "operationId": "getFeedbacks",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageable",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Pageable"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseFeedbackResponse"
                 }
               }
             }
@@ -112845,7 +113033,7 @@
           "公開ユーザープロフィール API (F19.1 Phase 6)"
         ],
         "summary": "ユーザープロフィール（未ログイン公開）",
-        "description": "未ログインでも実行可能。public_profile_enabled=true かつ未削除のユーザーのみ 200。 それ以外は 404（IDOR 対策で状態を区別しない）。",
+        "description": "未ログインでも実行可能。public_profile_enabled\u003dtrue かつ未削除のユーザーのみ 200。 それ以外は 404（IDOR 対策で状態を区別しない）。",
         "operationId": "getProfile_2",
         "parameters": [
           {
@@ -112878,7 +113066,7 @@
           "公開ユーザープロフィール API (F19.1 Phase 6)"
         ],
         "summary": "ユーザーの公開投稿一覧（未ログイン公開）",
-        "description": "未ログインでも実行可能。public_profile_enabled=true のユーザーの PUBLIC+PUBLISHED+public_visible=true 投稿のみ返す。 ユーザーが非公開の場合は 404（IDOR 対策）。",
+        "description": "未ログインでも実行可能。public_profile_enabled\u003dtrue のユーザーの PUBLIC+PUBLISHED+public_visible\u003dtrue 投稿のみ返す。 ユーザーが非公開の場合は 404（IDOR 対策）。",
         "operationId": "getPosts",
         "parameters": [
           {
@@ -112919,7 +113107,7 @@
           "公開タイムライン投稿 API (F19.1 Phase 7)"
         ],
         "summary": "チームの公開タイムライン投稿一覧（未ログイン公開）",
-        "description": "PUBLIC チームで timeline_posts_public=true の場合のみ PUBLISHED 投稿一覧を返す。 フラグが false / PRIVATE チームの場合は 404（IDOR 対策で隠蔽）。",
+        "description": "PUBLIC チームで timeline_posts_public\u003dtrue の場合のみ PUBLISHED 投稿一覧を返す。 フラグが false / PRIVATE チームの場合は 404（IDOR 対策で隠蔽）。",
         "operationId": "listTeamTimelinePosts",
         "parameters": [
           {
@@ -113103,7 +113291,7 @@
           "公開イベント API (F19.1 Phase 7)"
         ],
         "summary": "チームの公開イベント一覧（未ログイン公開）",
-        "description": "PUBLIC チームで public_events_enabled=true の場合のみ PUBLIC 可視性の PUBLISHED イベント一覧を返す。 フラグが false / PRIVATE チームの場合は 404（IDOR 対策で隠蔽）。",
+        "description": "PUBLIC チームで public_events_enabled\u003dtrue の場合のみ PUBLIC 可視性の PUBLISHED イベント一覧を返す。 フラグが false / PRIVATE チームの場合は 404（IDOR 対策で隠蔽）。",
         "operationId": "listTeamEvents",
         "parameters": [
           {
@@ -113271,7 +113459,7 @@
           "slug 解決 公開 API (F01.2 §5.9.5)"
         ],
         "summary": "チーム slug 解決（未ログイン公開・301 判定）",
-        "description": "現行 slug なら CURRENT、旧 slug なら MOVED（canonicalSlug=現行 slug）、該当なしは NOT_FOUND。canonicalSlug 以外の実データは返さない。",
+        "description": "現行 slug なら CURRENT、旧 slug なら MOVED（canonicalSlug\u003d現行 slug）、該当なしは NOT_FOUND。canonicalSlug 以外の実データは返さない。",
         "operationId": "resolveTeamSlug",
         "parameters": [
           {
@@ -113303,7 +113491,7 @@
           "公開チーム・組織検索 API (F19.1 Phase 4)"
         ],
         "summary": "公開チーム検索",
-        "description": "未ログインでも実行可能。keyword / prefecture（名称）/ prefectureCode（コード）でフィルタリングし、最近投稿があるチームを優先する（lastPostDate DESC NULLS LAST）。visibility=PUBLIC かつ未 archive / 未削除のチームのみ返す。F22.1: prefectureCode 指定時はコード優先、未指定なら prefecture 名称にフォールバック（dual-support）。",
+        "description": "未ログインでも実行可能。keyword / prefecture（名称）/ prefectureCode（コード）でフィルタリングし、最近投稿があるチームを優先する（lastPostDate DESC NULLS LAST）。visibility\u003dPUBLIC かつ未 archive / 未削除のチームのみ返す。F22.1: prefectureCode 指定時はコード優先、未指定なら prefecture 名称にフォールバック（dual-support）。",
         "operationId": "searchTeams_1",
         "parameters": [
           {
@@ -113683,7 +113871,7 @@
           "公開タイムライン投稿 API (F19.1 Phase 7)"
         ],
         "summary": "組織の公開タイムライン投稿一覧（未ログイン公開）",
-        "description": "PUBLIC 組織で timeline_posts_public=true の場合のみ PUBLISHED 投稿一覧を返す。 フラグが false / PRIVATE 組織の場合は 404（IDOR 対策で隠蔽）。",
+        "description": "PUBLIC 組織で timeline_posts_public\u003dtrue の場合のみ PUBLISHED 投稿一覧を返す。 フラグが false / PRIVATE 組織の場合は 404（IDOR 対策で隠蔽）。",
         "operationId": "listOrganizationTimelinePosts",
         "parameters": [
           {
@@ -113867,7 +114055,7 @@
           "公開イベント API (F19.1 Phase 7)"
         ],
         "summary": "組織の公開イベント一覧（未ログイン公開）",
-        "description": "PUBLIC 組織で public_events_enabled=true の場合のみ PUBLIC 可視性の PUBLISHED イベント一覧を返す。 フラグが false / PRIVATE 組織の場合は 404（IDOR 対策で隠蔽）。",
+        "description": "PUBLIC 組織で public_events_enabled\u003dtrue の場合のみ PUBLIC 可視性の PUBLISHED イベント一覧を返す。 フラグが false / PRIVATE 組織の場合は 404（IDOR 対策で隠蔽）。",
         "operationId": "listOrganizationEvents",
         "parameters": [
           {
@@ -114036,7 +114224,7 @@
           "slug 解決 公開 API (F01.2 §5.9.5)"
         ],
         "summary": "組織 slug 解決（未ログイン公開・301 判定）",
-        "description": "現行 slug なら CURRENT、旧 slug なら MOVED（canonicalSlug=現行 slug）、該当なしは NOT_FOUND。canonicalSlug 以外の実データは返さない。",
+        "description": "現行 slug なら CURRENT、旧 slug なら MOVED（canonicalSlug\u003d現行 slug）、該当なしは NOT_FOUND。canonicalSlug 以外の実データは返さない。",
         "operationId": "resolveOrganizationSlug",
         "parameters": [
           {
@@ -114068,7 +114256,7 @@
           "公開チーム・組織検索 API (F19.1 Phase 4)"
         ],
         "summary": "公開組織検索",
-        "description": "未ログインでも実行可能。keyword / prefecture でフィルタリングし、最近投稿がある組織を優先する（lastPostDate DESC NULLS LAST）。visibility=PUBLIC かつ未 archive / 未削除の組織のみ返す。",
+        "description": "未ログインでも実行可能。keyword / prefecture でフィルタリングし、最近投稿がある組織を優先する（lastPostDate DESC NULLS LAST）。visibility\u003dPUBLIC かつ未 archive / 未削除の組織のみ返す。",
         "operationId": "searchOrganizations",
         "parameters": [
           {
@@ -114204,7 +114392,7 @@
           "F22.1 市（Market）公開閲覧"
         ],
         "summary": "市の札一覧",
-        "description": "未ログインで実行可能。visibility=PUBLIC かつ status IN (OPEN,FULL) の札を返す。city 指定でその市区町村、prefecture のみで配下市区町村をロールアップ。",
+        "description": "未ログインで実行可能。visibility\u003dPUBLIC かつ status IN (OPEN,FULL) の札を返す。city 指定でその市区町村、prefecture のみで配下市区町村をロールアップ。",
         "operationId": "listListings",
         "parameters": [
           {
@@ -114306,7 +114494,7 @@
           "F22.1 市（Market）公開閲覧"
         ],
         "summary": "市の公開札詳細",
-        "description": "未ログインで実行可能。visibility != PUBLIC / 不在は 404 で存在秘匿。",
+        "description": "未ログインで実行可能。visibility !\u003d PUBLIC / 不在は 404 で存在秘匿。",
         "operationId": "getListing",
         "parameters": [
           {
@@ -114757,7 +114945,7 @@
           "ポイントカード プロバイダー"
         ],
         "summary": "プロバイダー一覧取得",
-        "description": "is_active=true のプロバイダーを category, display_name 昇順で返す",
+        "description": "is_active\u003dtrue のプロバイダーを category, display_name 昇順で返す",
         "operationId": "listProviders_1",
         "responses": {
           "200": {
@@ -114884,7 +115072,7 @@
         "tags": [
           "謝礼決済 確認/照会"
         ],
-        "summary": "エスクロー状態照会（支払者本人=clientSecret 含む / 受取側 ADMIN=状態・金額のみ）",
+        "summary": "エスクロー状態照会（支払者本人\u003dclientSecret 含む / 受取側 ADMIN\u003d状態・金額のみ）",
         "operationId": "getEscrow",
         "parameters": [
           {
@@ -115482,7 +115670,7 @@
           "組織管理"
         ],
         "summary": "直近の子組織一覧",
-        "description": "parent_organization_id = id かつ未削除の子組織のみ返す。PRIVATE 子組織は呼び出し者が直接所属メンバーの場合のみ含める。",
+        "description": "parent_organization_id \u003d id かつ未削除の子組織のみ返す。PRIVATE 子組織は呼び出し者が直接所属メンバーの場合のみ含める。",
         "operationId": "getChildren_1",
         "parameters": [
           {
@@ -115562,7 +115750,7 @@
           "組織管理"
         ],
         "summary": "祖先組織一覧（階層パンくず用）",
-        "description": "対象組織の上位組織チェーンを root から直近の親の順に返す。max-depth (default 5) を超える場合は途中で打ち切り、meta.truncated=true を立てる。",
+        "description": "対象組織の上位組織チェーンを root から直近の親の順に返す。max-depth (default 5) を超える場合は途中で打ち切り、meta.truncated\u003dtrue を立てる。",
         "operationId": "getAncestors",
         "parameters": [
           {
@@ -118411,7 +118599,7 @@
           "滞納エスカレーション（F09.15）"
         ],
         "summary": "未解決エスカレーション一覧（ADMIN 以上）",
-        "description": "組織内の未解決（resolvedAt = null）滞納エスカレーション一覧を返す。",
+        "description": "組織内の未解決（resolvedAt \u003d null）滞納エスカレーション一覧を返す。",
         "operationId": "listActive",
         "parameters": [
           {
@@ -121946,6 +122134,113 @@
         }
       }
     },
+    "/api/v1/me/reflections/cards": {
+      "get": {
+        "tags": [
+          "振り返り単語帳"
+        ],
+        "summary": "期間横断 単語帳ビュー取得",
+        "operationId": "getVocabCards",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "themeId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "subjects",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "sourceTypes",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "SUBJECT",
+                  "PROJECT",
+                  "DIARY",
+                  "FREE"
+                ]
+              }
+            }
+          },
+          {
+            "name": "shuffle",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseReflectionVocabCardsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/reflections/archive/search": {
       "get": {
         "tags": [
@@ -123890,7 +124185,7 @@
         "tags": [
           "家族個人時間割閲覧"
         ],
-        "summary": "家族メンバーの個人時間割一覧（status=ACTIVE のみ、共有設定済みのみ）",
+        "summary": "家族メンバーの個人時間割一覧（status\u003dACTIVE のみ、共有設定済みのみ）",
         "operationId": "list_78",
         "parameters": [
           {
@@ -124633,7 +124928,7 @@
           "ダッシュボード"
         ],
         "summary": "個人ダッシュボード一括取得",
-        "description": "ログインユーザーの個人ダッシュボードを取得する。priority=CRITICALで第1段階ウィジェットのみ高速返却",
+        "description": "ログインユーザーの個人ダッシュボードを取得する。priority\u003dCRITICALで第1段階ウィジェットのみ高速返却",
         "operationId": "getPersonalDashboard",
         "parameters": [
           {
@@ -124925,7 +125220,7 @@
           "ダッシュボード（管理者レンズサマリ）"
         ],
         "summary": "チーム 予算サマリ（管理者レンズ）",
-        "description": "ADMIN または TEAM_BUDGET_VIEW 保有 DEPUTY 向け。現年度の 配分/実績/残/超過カテゴリ数 を返す。現年度未設定時は has_current_fiscal_year=false",
+        "description": "ADMIN または TEAM_BUDGET_VIEW 保有 DEPUTY 向け。現年度の 配分/実績/残/超過カテゴリ数 を返す。現年度未設定時は has_current_fiscal_year\u003dfalse",
         "operationId": "getTeamBudgetSummary",
         "parameters": [
           {
@@ -124967,7 +125262,7 @@
           "ダッシュボード（管理者承認待ち）"
         ],
         "summary": "チーム横断承認待ち集約",
-        "description": "ADMIN/DEPUTY 向け。予約承認待ち/シフトリクエスト/マッチング応募を集約。preview_size=0 で件数のみ",
+        "description": "ADMIN/DEPUTY 向け。予約承認待ち/シフトリクエスト/マッチング応募を集約。preview_size\u003d0 で件数のみ",
         "operationId": "getTeamAdminActionRequired",
         "parameters": [
           {
@@ -125097,7 +125392,7 @@
           {
             "name": "page",
             "in": "query",
-            "description": "0 始まりのページ番号（1 ページ = 6 件）",
+            "description": "0 始まりのページ番号（1 ページ \u003d 6 件）",
             "required": false,
             "schema": {
               "type": "integer",
@@ -125296,7 +125591,7 @@
           "ダッシュボード（管理者レンズサマリ）"
         ],
         "summary": "組織 予算サマリ（管理者レンズ）",
-        "description": "ADMIN または BUDGET_VIEW 保有 DEPUTY 向け。現年度の 配分/実績/残/超過カテゴリ数 を返す。現年度未設定時は has_current_fiscal_year=false",
+        "description": "ADMIN または BUDGET_VIEW 保有 DEPUTY 向け。現年度の 配分/実績/残/超過カテゴリ数 を返す。現年度未設定時は has_current_fiscal_year\u003dfalse",
         "operationId": "getOrgBudgetSummary",
         "parameters": [
           {
@@ -125338,7 +125633,7 @@
           "ダッシュボード（管理者承認待ち）"
         ],
         "summary": "組織横断承認待ち集約",
-        "description": "ADMIN/DEPUTY 向け。組織が発行した未収請求（SENT/VIEWED/OVERDUE）を集約。preview_size=0 で件数のみ",
+        "description": "ADMIN/DEPUTY 向け。組織が発行した未収請求（SENT/VIEWED/OVERDUE）を集約。preview_size\u003d0 で件数のみ",
         "operationId": "getOrgAdminActionRequired",
         "parameters": [
           {
@@ -127081,6 +127376,53 @@
         }
       }
     },
+    "/api/v1/auth/oauth/link/{provider}/callback": {
+      "get": {
+        "tags": [
+          "auth-o-auth-callback-controller"
+        ],
+        "operationId": "handleCallback",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/applications/{id}": {
       "get": {
         "tags": [
@@ -128619,7 +128961,7 @@
           "管理 - フィードバック"
         ],
         "summary": "フィードバック一覧取得（管理者向け）",
-        "operationId": "getFeedbacks",
+        "operationId": "getFeedbacks_1",
         "parameters": [
           {
             "name": "scopeType",
@@ -130823,7 +131165,7 @@
           "F03.11 募集型予約 / 参加申込"
         ],
         "summary": "本人キャンセル",
-        "description": "acknowledged_fee=true 必須 (§9.10)",
+        "description": "acknowledged_fee\u003dtrue 必須 (§9.10)",
         "operationId": "cancelMyApplication",
         "parameters": [
           {
@@ -130900,7 +131242,7 @@
           "公開投稿コメント API (F19.1 Phase 6-B)"
         ],
         "summary": "公開投稿コメント削除（ログイン必須）",
-        "description": "投稿者本人または ADMIN（hasRole('ADMIN') or hasRole('SYSTEM_ADMIN')）のみ実行可能。 コメントが存在しない場合は 404（PUBLIC_009）。 権限がない場合は 403（PUBLIC_010）。 未ログインの場合は 401。",
+        "description": "投稿者本人または ADMIN（hasRole(\u0027ADMIN\u0027) or hasRole(\u0027SYSTEM_ADMIN\u0027)）のみ実行可能。 コメントが存在しない場合は 404（PUBLIC_009）。 権限がない場合は 403（PUBLIC_010）。 未ログインの場合は 401。",
         "operationId": "deleteComment_5",
         "parameters": [
           {
@@ -132571,96 +132913,6 @@
         "responses": {
           "200": {
             "description": "OK"
-          }
-        }
-      }
-    },
-    "/api/v1/me/reflections/cards": {
-      "get": {
-        "tags": [
-          "振り返り単語帳"
-        ],
-        "summary": "期間横断 単語帳ビュー取得",
-        "operationId": "getVocabCards",
-        "parameters": [
-          {
-            "name": "from",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "date"
-            }
-          },
-          {
-            "name": "to",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "date"
-            }
-          },
-          {
-            "name": "themeId",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "sourceType",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "SUBJECT",
-                "PROJECT",
-                "DIARY",
-                "FREE"
-              ]
-            }
-          },
-          {
-            "name": "subject",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "default": 0
-            }
-          },
-          {
-            "name": "size",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "default": 200
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseReflectionVocabCardsResponse"
-                }
-              }
-            }
           }
         }
       }
@@ -136076,8 +136328,8 @@
           },
           "progressRate": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0
+            "maximum": 100.00,
+            "minimum": 0.00
           }
         }
       },
@@ -136220,29 +136472,6 @@
           "audit": {
             "$ref": "#/components/schemas/TodoAuditDto"
           },
-          "descendantCompletedCount": {
-            "type": "integer",
-            "format": "int32",
-            "deprecated": true
-          },
-          "statusLabel": {
-            "$ref": "#/components/schemas/TodoStatusLabelInfo",
-            "deprecated": true
-          },
-          "descendantTotalCount": {
-            "type": "integer",
-            "format": "int32",
-            "deprecated": true
-          },
-          "daysRemaining": {
-            "type": "integer",
-            "format": "int64",
-            "deprecated": true
-          },
-          "title": {
-            "type": "string",
-            "deprecated": true
-          },
           "priority": {
             "type": "string",
             "deprecated": true
@@ -136264,13 +136493,24 @@
               "$ref": "#/components/schemas/TodoResponse"
             }
           },
-          "parentId": {
+          "dueTime": {
+            "type": "string",
+            "deprecated": true,
+            "example": "14:30:00"
+          },
+          "milestoneId": {
             "type": "integer",
             "format": "int64",
             "deprecated": true
           },
-          "description": {
+          "completedAt": {
             "type": "string",
+            "format": "date-time",
+            "deprecated": true
+          },
+          "parentId": {
+            "type": "integer",
+            "format": "int64",
             "deprecated": true
           },
           "depth": {
@@ -136278,18 +136518,8 @@
             "format": "int32",
             "deprecated": true
           },
-          "progressRate": {
-            "type": "number",
-            "deprecated": true
-          },
-          "createdAt": {
+          "description": {
             "type": "string",
-            "format": "date-time",
-            "deprecated": true
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time",
             "deprecated": true
           },
           "sortOrder": {
@@ -136305,34 +136535,8 @@
             "$ref": "#/components/schemas/UserInfo",
             "deprecated": true
           },
-          "dueDate": {
-            "type": "string",
-            "format": "date",
-            "deprecated": true
-          },
-          "startDate": {
-            "type": "string",
-            "format": "date",
-            "deprecated": true
-          },
-          "completedAt": {
-            "type": "string",
-            "format": "date-time",
-            "deprecated": true
-          },
-          "milestoneId": {
-            "type": "integer",
-            "format": "int64",
-            "deprecated": true
-          },
-          "dueTime": {
-            "type": "string",
-            "deprecated": true,
-            "example": "14:30:00"
-          },
-          "projectId": {
-            "type": "integer",
-            "format": "int64",
+          "completedBy": {
+            "$ref": "#/components/schemas/UserInfo",
             "deprecated": true
           },
           "progressManual": {
@@ -136344,8 +136548,56 @@
             "format": "int64",
             "deprecated": true
           },
-          "completedBy": {
-            "$ref": "#/components/schemas/UserInfo",
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "deprecated": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "deprecated": true
+          },
+          "progressRate": {
+            "type": "number",
+            "deprecated": true
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "deprecated": true
+          },
+          "title": {
+            "type": "string",
+            "deprecated": true
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "deprecated": true
+          },
+          "projectId": {
+            "type": "integer",
+            "format": "int64",
+            "deprecated": true
+          },
+          "descendantCompletedCount": {
+            "type": "integer",
+            "format": "int32",
+            "deprecated": true
+          },
+          "descendantTotalCount": {
+            "type": "integer",
+            "format": "int32",
+            "deprecated": true
+          },
+          "statusLabel": {
+            "$ref": "#/components/schemas/TodoStatusLabelInfo",
+            "deprecated": true
+          },
+          "daysRemaining": {
+            "type": "integer",
+            "format": "int64",
             "deprecated": true
           }
         }
@@ -136897,10 +137149,10 @@
             "type": "string",
             "format": "date-time"
           },
-          "editable": {
+          "ownMemo": {
             "type": "boolean"
           },
-          "ownMemo": {
+          "editable": {
             "type": "boolean"
           }
         }
@@ -141227,10 +141479,10 @@
           "note": {
             "type": "string"
           },
-          "xposition": {
+          "yposition": {
             "type": "number"
           },
-          "yposition": {
+          "xposition": {
             "type": "number"
           }
         }
@@ -141487,10 +141739,10 @@
             "maxLength": 300,
             "minLength": 0
           },
-          "xposition": {
+          "yposition": {
             "type": "number"
           },
-          "yposition": {
+          "xposition": {
             "type": "number"
           }
         },
@@ -142495,7 +142747,7 @@
         "properties": {
           "beneficiaryMemberOnly": {
             "type": "boolean",
-            "description": "受益者を会員のみに限定するか（true=会員のみ／false=応援者も可）",
+            "description": "受益者を会員のみに限定するか（true\u003d会員のみ／false\u003d応援者も可）",
             "example": true
           }
         },
@@ -142517,7 +142769,7 @@
         "properties": {
           "beneficiaryMemberOnly": {
             "type": "boolean",
-            "description": "受益者を会員のみに限定するか（true=会員のみ／false=応援者も可）",
+            "description": "受益者を会員のみに限定するか（true\u003d会員のみ／false\u003d応援者も可）",
             "example": true
           }
         }
@@ -144236,7 +144488,7 @@
           "maxMonthlyHours": {
             "type": "number",
             "maximum": 9999.99,
-            "minimum": 0.0
+            "minimum": 0.00
           },
           "maxMonthlyDays": {
             "type": "integer",
@@ -144259,7 +144511,7 @@
           "minRestHoursBetweenShifts": {
             "type": "number",
             "maximum": 99.99,
-            "minimum": 0.0
+            "minimum": 0.00
           },
           "note": {
             "type": "string",
@@ -147008,7 +147260,7 @@
           },
           "componentType": {
             "type": "string",
-            "description": "項目（フィギュア=TES/PCS/DEDUCTION・体操=D_SCORE/E_SCORE）",
+            "description": "項目（フィギュア\u003dTES/PCS/DEDUCTION・体操\u003dD_SCORE/E_SCORE）",
             "enum": [
               "TES",
               "PCS",
@@ -147150,7 +147402,7 @@
         "properties": {
           "winnerSide": {
             "type": "string",
-            "description": "勝者サイド（HOME/AWAY・NULL=引分け）",
+            "description": "勝者サイド（HOME/AWAY・NULL\u003d引分け）",
             "enum": [
               "HOME",
               "AWAY"
@@ -147897,7 +148149,11 @@
             }
           },
           "recallDirection": {
-            "$ref": "#/components/schemas/RecallDirection"
+            "type": "string",
+            "enum": [
+              "MEANING_TO_TERM",
+              "TERM_TO_MEANING"
+            ]
           },
           "cardQuiz": {
             "type": "array",
@@ -147946,6 +148202,38 @@
           "exportedBlogPostId": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "ReflectionMaskedCardPrompt": {
+        "type": "object",
+        "properties": {
+          "promptSide": {
+            "type": "string"
+          },
+          "promptText": {
+            "type": "string"
+          }
+        }
+      },
+      "ReflectionMaskedCardQuiz": {
+        "type": "object",
+        "properties": {
+          "heading": {
+            "type": "string"
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "MEANING_TO_TERM",
+              "TERM_TO_MEANING"
+            ]
+          },
+          "prompts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReflectionMaskedCardPrompt"
+            }
           }
         }
       },
@@ -149046,8 +149334,7 @@
             "minLength": 1
           },
           "scopeId": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string"
           },
           "widgets": {
             "type": "array",
@@ -151332,13 +151619,13 @@
           },
           "reserveInflationRate": {
             "type": "number",
-            "maximum": 0.2,
-            "minimum": -0.1
+            "maximum": 0.20,
+            "minimum": -0.10
           },
           "cpiInflationRate": {
             "type": "number",
-            "maximum": 0.2,
-            "minimum": -0.1
+            "maximum": 0.20,
+            "minimum": -0.10
           },
           "deferralYears": {
             "type": "integer",
@@ -154957,8 +155244,8 @@
           },
           "progressRate": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0
+            "maximum": 100.00,
+            "minimum": 0.00
           },
           "createLinkedSchedule": {
             "type": "boolean"
@@ -155001,8 +155288,8 @@
           },
           "link_percentage": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0
+            "maximum": 100.00,
+            "minimum": 0.00
           },
           "currency": {
             "type": "string",
@@ -155312,12 +155599,12 @@
           "scopeTypeOrDefault": {
             "type": "string"
           },
+          "postedAsTypeOrDefault": {
+            "type": "string"
+          },
           "scopeIdOrDefault": {
             "type": "integer",
             "format": "int64"
-          },
-          "postedAsTypeOrDefault": {
-            "type": "string"
           }
         }
       },
@@ -155919,10 +156206,10 @@
               "ABSOLUTE"
             ]
           },
-          "remindAtValid": {
+          "remindBeforeMinutesValid": {
             "type": "boolean"
           },
-          "remindBeforeMinutesValid": {
+          "remindAtValid": {
             "type": "boolean"
           }
         }
@@ -158975,7 +159262,7 @@
           },
           "payeeKind": {
             "type": "string",
-            "description": "受領主体種別（paymentEnabled=true のとき必須）",
+            "description": "受領主体種別（paymentEnabled\u003dtrue のとき必須）",
             "enum": [
               "USER",
               "TEAM",
@@ -158987,7 +159274,7 @@
           "payeeUserId": {
             "type": "integer",
             "format": "int64",
-            "description": "payeeKind=USER のとき必須の受領者ユーザー ID（users.id）",
+            "description": "payeeKind\u003dUSER のとき必須の受領者ユーザー ID（users.id）",
             "example": 123
           }
         },
@@ -173410,7 +173697,7 @@
           },
           "amount": {
             "type": "number",
-            "maximum": 1000000.0,
+            "maximum": 1000000.00,
             "minimum": 0.01
           },
           "note": {
@@ -175095,11 +175382,11 @@
           "recurrenceRule": {
             "$ref": "#/components/schemas/RecurrenceRuleDto"
           },
-          "reminderCountWithinLimit": {
-            "type": "boolean"
-          },
           "eventTypeOrDefault": {
             "type": "string"
+          },
+          "reminderCountWithinLimit": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -181957,8 +182244,8 @@
           },
           "progress_rate": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0
+            "maximum": 100.00,
+            "minimum": 0.00
           },
           "completes_todo": {
             "type": "boolean"
@@ -183095,8 +183382,8 @@
         "properties": {
           "progressRate": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0
+            "maximum": 100.00,
+            "minimum": 0.00
           }
         },
         "required": [
@@ -183291,10 +183578,10 @@
               "ABSOLUTE"
             ]
           },
-          "remindAtValid": {
+          "remindBeforeMinutesValid": {
             "type": "boolean"
           },
-          "remindBeforeMinutesValid": {
+          "remindAtValid": {
             "type": "boolean"
           }
         }
@@ -183616,12 +183903,12 @@
         "properties": {
           "allowPublicReservation": {
             "type": "boolean",
-            "description": "一般公開予約を許可するか（null=据え置き）",
+            "description": "一般公開予約を許可するか（null\u003d据え置き）",
             "example": false
           },
           "approvalMode": {
             "type": "string",
-            "description": "承認モードの既定値（AUTO/MANUAL / null=据え置き）",
+            "description": "承認モードの既定値（AUTO/MANUAL / null\u003d据え置き）",
             "enum": [
               "AUTO",
               "MANUAL"
@@ -183631,14 +183918,14 @@
           "cancelDeadlineHours": {
             "type": "integer",
             "format": "int32",
-            "description": "キャンセル受付の締切（予約開始の何時間前まで・0〜8760 / null=据え置き）",
+            "description": "キャンセル受付の締切（予約開始の何時間前まで・0〜8760 / null\u003d据え置き）",
             "example": 24,
             "maximum": 8760,
             "minimum": 0
           },
           "remindBeforeHours": {
             "type": "string",
-            "description": "リマインド送信タイミング（予約開始の何時間前か）の CSV 文字列（null=据え置き）",
+            "description": "リマインド送信タイミング（予約開始の何時間前か）の CSV 文字列（null\u003d据え置き）",
             "example": "24,1",
             "pattern": "^[1-9][0-9]*(,[1-9][0-9]*)*$"
           }
@@ -183669,12 +183956,12 @@
           },
           "allowPublicReservation": {
             "type": "boolean",
-            "description": "一般公開予約を許可するか（true=ログイン済みなら誰でも予約可 / false=チーム所属者のみ）",
+            "description": "一般公開予約を許可するか（true\u003dログイン済みなら誰でも予約可 / false\u003dチーム所属者のみ）",
             "example": false
           },
           "approvalMode": {
             "type": "string",
-            "description": "承認モードの既定値。AUTO=自動承認 / MANUAL=管理者の手動承認",
+            "description": "承認モードの既定値。AUTO\u003d自動承認 / MANUAL\u003d管理者の手動承認",
             "enum": [
               "AUTO",
               "MANUAL"
@@ -185080,19 +185367,19 @@
           "custom_fields": {
             "type": "boolean"
           },
-          "homepageUrlVisible": {
-            "type": "boolean"
-          },
-          "establishedDateVisible": {
-            "type": "boolean"
-          },
           "customFieldsVisible": {
+            "type": "boolean"
+          },
+          "philosophyVisible": {
             "type": "boolean"
           },
           "officersVisible": {
             "type": "boolean"
           },
-          "philosophyVisible": {
+          "establishedDateVisible": {
+            "type": "boolean"
+          },
+          "homepageUrlVisible": {
             "type": "boolean"
           }
         }
@@ -185349,6 +185636,27 @@
             "minLength": 1
           },
           "available": {
+            "type": "boolean"
+          }
+        }
+      },
+      "FeedbackStatusRequest": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "FeedbackRespondRequest": {
+        "type": "object",
+        "properties": {
+          "adminResponse": {
+            "type": "string",
+            "minLength": 1
+          },
+          "isPublicResponse": {
             "type": "boolean"
           }
         }
@@ -186423,7 +186731,7 @@
           "payeeUserId": {
             "type": "integer",
             "format": "int64",
-            "description": "payeeKind=USER のとき必須の受領者ユーザー ID（users.id・null は変更なし）",
+            "description": "payeeKind\u003dUSER のとき必須の受領者ユーザー ID（users.id・null は変更なし）",
             "example": 123
           }
         }
@@ -188444,27 +188752,6 @@
           }
         }
       },
-      "FeedbackStatusRequest": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
-      },
-      "FeedbackRespondRequest": {
-        "type": "object",
-        "properties": {
-          "adminResponse": {
-            "type": "string",
-            "minLength": 1
-          },
-          "isPublicResponse": {
-            "type": "boolean"
-          }
-        }
-      },
       "UpdateActionMemoRequest": {
         "type": "object",
         "properties": {
@@ -188514,8 +188801,8 @@
           },
           "progress_rate": {
             "type": "number",
-            "maximum": 100.0,
-            "minimum": 0.0
+            "maximum": 100.00,
+            "minimum": 0.00
           },
           "completes_todo": {
             "type": "boolean"
@@ -190019,13 +190306,19 @@
       "PageJoinRequestResponse": {
         "type": "object",
         "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -190051,12 +190344,6 @@
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "empty": {
             "type": "boolean"
           }
@@ -190075,6 +190362,9 @@
           "paged": {
             "type": "boolean"
           },
+          "unpaged": {
+            "type": "boolean"
+          },
           "pageNumber": {
             "type": "integer",
             "format": "int32"
@@ -190082,9 +190372,6 @@
           "pageSize": {
             "type": "integer",
             "format": "int32"
-          },
-          "unpaged": {
-            "type": "boolean"
           }
         }
       },
@@ -190094,10 +190381,10 @@
           "empty": {
             "type": "boolean"
           },
-          "sorted": {
+          "unsorted": {
             "type": "boolean"
           },
-          "unsorted": {
+          "sorted": {
             "type": "boolean"
           }
         }
@@ -190754,16 +191041,7 @@
           "audit": {
             "$ref": "#/components/schemas/ProjectAuditDto"
           },
-          "daysRemaining": {
-            "type": "integer",
-            "format": "int64",
-            "deprecated": true
-          },
-          "visibility": {
-            "type": "string",
-            "deprecated": true
-          },
-          "title": {
+          "status": {
             "type": "string",
             "deprecated": true
           },
@@ -190771,29 +191049,8 @@
             "type": "string",
             "deprecated": true
           },
-          "status": {
-            "type": "string",
-            "deprecated": true
-          },
-          "progressRate": {
-            "type": "number",
-            "deprecated": true
-          },
-          "color": {
-            "type": "string",
-            "deprecated": true
-          },
           "createdBy": {
             "$ref": "#/components/schemas/UserInfo",
-            "deprecated": true
-          },
-          "dueDate": {
-            "type": "string",
-            "format": "date",
-            "deprecated": true
-          },
-          "emoji": {
-            "type": "string",
             "deprecated": true
           },
           "totalTodos": {
@@ -190804,6 +191061,36 @@
           "completedTodos": {
             "type": "integer",
             "format": "int32",
+            "deprecated": true
+          },
+          "emoji": {
+            "type": "string",
+            "deprecated": true
+          },
+          "progressRate": {
+            "type": "number",
+            "deprecated": true
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date",
+            "deprecated": true
+          },
+          "title": {
+            "type": "string",
+            "deprecated": true
+          },
+          "color": {
+            "type": "string",
+            "deprecated": true
+          },
+          "visibility": {
+            "type": "string",
+            "deprecated": true
+          },
+          "daysRemaining": {
+            "type": "integer",
+            "format": "int64",
             "deprecated": true
           }
         }
@@ -190906,6 +191193,22 @@
           "connectedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "ApiResponseOAuthLinkAuthUrlResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/OAuthLinkAuthUrlResponse"
+          }
+        }
+      },
+      "OAuthLinkAuthUrlResponse": {
+        "type": "object",
+        "properties": {
+          "authUrl": {
+            "type": "string"
           }
         }
       },
@@ -197782,13 +198085,19 @@
       "PageNotificationResponse": {
         "type": "object",
         "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -197813,12 +198122,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -198676,13 +198979,19 @@
       "PagePurgeStatusRow": {
         "type": "object",
         "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -198707,12 +199016,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -198816,6 +199119,20 @@
       },
       "StreamingResponseBody": {
         "type": "object"
+      },
+      "PagedResponseFeedbackResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeedbackResponse"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
+          }
+        }
       },
       "ApiResponseListFeePolicyAssignmentResponse": {
         "type": "object",
@@ -199270,13 +199587,19 @@
       "PageEmailOutboxSummaryResponse": {
         "type": "object",
         "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -199301,12 +199624,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -199469,13 +199786,19 @@
       "PageUserEntity": {
         "type": "object",
         "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -199500,12 +199823,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -199719,13 +200036,19 @@
       "PageTeamEntity": {
         "type": "object",
         "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -199750,12 +200073,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -200020,13 +200337,19 @@
       "PageOrganizationEntity": {
         "type": "object",
         "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -200051,12 +200374,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -202773,13 +203090,19 @@
       "PagePublicUserPostSummaryResponse": {
         "type": "object",
         "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -202804,12 +203127,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -202844,13 +203161,19 @@
       "PagePublicTimelinePostResponse": {
         "type": "object",
         "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -202875,12 +203198,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -202924,13 +203241,19 @@
       "PagePublicPostSummary": {
         "type": "object",
         "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -202955,12 +203278,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -203057,13 +203374,19 @@
       "PagePublicEventResponse": {
         "type": "object",
         "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -203088,12 +203411,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -203233,13 +203550,19 @@
       "PagePublicTeamSearchResultResponse": {
         "type": "object",
         "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -203264,12 +203587,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -203719,13 +204036,19 @@
       "PagePublicOrganizationSearchResultResponse": {
         "type": "object",
         "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -203750,12 +204073,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -203977,13 +204294,19 @@
       "PagePublicPostCommentResponse": {
         "type": "object",
         "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -204008,12 +204331,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -206089,13 +206406,19 @@
       "PageSuccessionCovenantResponse": {
         "type": "object",
         "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -206120,12 +206443,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -206293,13 +206610,19 @@
       "PageStampEventResponse": {
         "type": "object",
         "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -206324,12 +206647,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -206376,13 +206693,19 @@
       "PageBalanceEventResponse": {
         "type": "object",
         "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -206407,12 +206730,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -206806,13 +207123,19 @@
       "PageCommitteeSummaryResponse": {
         "type": "object",
         "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -206837,12 +207160,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -208148,6 +208465,69 @@
           }
         }
       },
+      "ApiResponseReflectionVocabCardsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ReflectionVocabCardsResponse"
+          }
+        }
+      },
+      "ReflectionVocabCardItem": {
+        "type": "object",
+        "properties": {
+          "term": {
+            "type": "string"
+          },
+          "meaning": {
+            "type": "string"
+          },
+          "themeId": {
+            "type": "string"
+          },
+          "themeTitle": {
+            "type": "string"
+          },
+          "targetDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "sectionHeading": {
+            "type": "string"
+          }
+        }
+      },
+      "ReflectionVocabCardsResponse": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "totalCards": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReflectionVocabCardItem"
+            }
+          }
+        }
+      },
       "ApiResponsePageReflectionThemeResponse": {
         "type": "object",
         "properties": {
@@ -208159,13 +208539,19 @@
       "PageReflectionThemeResponse": {
         "type": "object",
         "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -208190,12 +208576,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -208825,10 +209205,10 @@
           "lastSyncError": {
             "$ref": "#/components/schemas/SyncErrorDetail"
           },
-          "connected": {
+          "active": {
             "type": "boolean"
           },
-          "active": {
+          "connected": {
             "type": "boolean"
           }
         }
@@ -209839,20 +210219,6 @@
             "items": {
               "$ref": "#/components/schemas/PermissionResponse"
             }
-          }
-        }
-      },
-      "PagedResponseFeedbackResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/FeedbackResponse"
-            }
-          },
-          "meta": {
-            "$ref": "#/components/schemas/PageMeta"
           }
         }
       },
@@ -211512,13 +211878,19 @@
       "PageCommitteeDistributionLogResponse": {
         "type": "object",
         "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -211543,12 +211915,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -212865,13 +213231,19 @@
       "PageVillageCreationRequestResponse": {
         "type": "object",
         "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -212896,12 +213268,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -213306,13 +213672,19 @@
       "PageUserRoleEntity": {
         "type": "object",
         "properties": {
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
           "totalElements": {
             "type": "integer",
             "format": "int64"
           },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "size": {
             "type": "integer",
@@ -213337,12 +213709,6 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -214119,101 +214485,6 @@
               "format": "int64"
             },
             "minItems": 1
-          }
-        }
-      },
-      "RecallDirection": {
-        "type": "string",
-        "enum": [
-          "MEANING_TO_TERM",
-          "TERM_TO_MEANING"
-        ]
-      },
-      "ReflectionMaskedCardPrompt": {
-        "type": "object",
-        "properties": {
-          "promptSide": {
-            "type": "string"
-          },
-          "promptText": {
-            "type": "string"
-          }
-        }
-      },
-      "ReflectionMaskedCardQuiz": {
-        "type": "object",
-        "properties": {
-          "heading": {
-            "type": "string"
-          },
-          "direction": {
-            "$ref": "#/components/schemas/RecallDirection"
-          },
-          "prompts": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ReflectionMaskedCardPrompt"
-            }
-          }
-        }
-      },
-      "ReflectionVocabCardItem": {
-        "type": "object",
-        "properties": {
-          "term": {
-            "type": "string"
-          },
-          "meaning": {
-            "type": "string"
-          },
-          "themeId": {
-            "type": "string"
-          },
-          "themeTitle": {
-            "type": "string"
-          },
-          "targetDate": {
-            "type": "string",
-            "format": "date"
-          },
-          "sectionHeading": {
-            "type": "string"
-          }
-        }
-      },
-      "ReflectionVocabCardsResponse": {
-        "type": "object",
-        "properties": {
-          "from": {
-            "type": "string",
-            "format": "date"
-          },
-          "to": {
-            "type": "string",
-            "format": "date"
-          },
-          "totalCards": {
-            "type": "integer"
-          },
-          "page": {
-            "type": "integer"
-          },
-          "size": {
-            "type": "integer"
-          },
-          "cards": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ReflectionVocabCardItem"
-            }
-          }
-        }
-      },
-      "ApiResponseReflectionVocabCardsResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/ReflectionVocabCardsResponse"
           }
         }
       }

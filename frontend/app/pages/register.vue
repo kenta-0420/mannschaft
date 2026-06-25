@@ -98,6 +98,9 @@ const schema = toTypedSchema(
         limit.setFullYear(limit.getFullYear() - 100)
         return d >= limit
       }, 'parental_consent.error_auth_053'),
+    privacyPolicyAccepted: z.literal(true, {
+      errorMap: () => ({ message: 'auth.register.privacy_consent_required' }),
+    }),
   }),
 )
 
@@ -111,6 +114,7 @@ const { defineField, handleSubmit, errors } = useForm({
     displayName: '',
     postalCode: '',
     birthDate: '',
+    privacyPolicyAccepted: false as unknown as true,
   },
 })
 
@@ -121,6 +125,7 @@ const [firstName, firstNameProps] = defineField('firstName')
 const [displayName, displayNameProps] = defineField('displayName')
 const [postalCode, postalCodeProps] = defineField('postalCode')
 const [birthDate, birthDateProps] = defineField('birthDate')
+const [privacyPolicyAccepted, privacyPolicyAcceptedProps] = defineField('privacyPolicyAccepted')
 
 const submitted = ref(false)
 
@@ -140,6 +145,8 @@ const onSubmit = handleSubmit(async (values) => {
         birth_date: values.birthDate,
         locale: 'ja',
         timezone: 'Asia/Tokyo',
+        privacyPolicyAccepted: true,
+        privacyPolicyVersion: '1.1.0',
         ...(inviteToken.value ? { inviteToken: inviteToken.value } : {}),
       },
     })
@@ -274,6 +281,29 @@ const onSubmit = handleSubmit(async (values) => {
         <small v-if="submitted && errors.displayName" class="text-red-500">{{
           errors.displayName
         }}</small>
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <div class="flex items-start gap-3 rounded-lg border border-surface-200 p-3 dark:border-surface-700">
+          <Checkbox
+            id="privacyPolicyAccepted"
+            v-model="privacyPolicyAccepted"
+            v-bind="privacyPolicyAcceptedProps"
+            :binary="true"
+            :invalid="submitted && !!errors.privacyPolicyAccepted"
+          />
+          <label for="privacyPolicyAccepted" class="cursor-pointer select-none text-sm leading-relaxed">
+            <NuxtLink
+              to="/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="font-medium text-primary hover:underline"
+            >{{ $t('landing.legal.privacy.title') }}</NuxtLink>{{ $t('auth.register.privacy_consent_suffix') }}
+          </label>
+        </div>
+        <small v-if="submitted && errors.privacyPolicyAccepted" class="text-red-500">
+          {{ $t(errors.privacyPolicyAccepted) }}
+        </small>
       </div>
 
       <Button
