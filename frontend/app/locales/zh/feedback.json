@@ -1,0 +1,30 @@
+{
+  "feedback": {
+    "nav_button": "意见箱",
+    "nav_tooltip": "发送意见或建议",
+    "submit": {
+      "title": "意见 / 建议箱",
+      "success": "发送成功，感谢您的反馈！",
+      "error": "发送失败"
+    },
+    "category": {
+      "label": "类别",
+      "placeholder": "请选择",
+      "bug": "错误报告",
+      "feature": "功能请求",
+      "improvement": "改善建议",
+      "other": "其他"
+    },
+    "title": {
+      "label": "标题",
+      "placeholder": "请输入标题"
+    },
+    "body": {
+      "label": "内容",
+      "placeholder": "请输入详细内容"
+    },
+    "anonymous": {
+      "label": "匿名发送"
+    }
+  }
+}

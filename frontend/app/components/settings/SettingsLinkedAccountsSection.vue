@@ -9,6 +9,7 @@ defineProps<{
 defineEmits<{
   unlinkOAuth: [provider: string]
   unlinkLine: []
+  linkOAuth: [provider: string]
 }>()
 
 const { formatDateTime } = useDatetime()
@@ -76,6 +77,15 @@ function providerIcon(provider: string) {
           @click="$emit('unlinkOAuth', provider.provider)"
         />
       </div>
+    </div>
+    <!-- Google未連携時のボタン -->
+    <div v-if="!oauthProviders.some(p => p.provider.toLowerCase() === 'google')" class="mt-3">
+      <Button
+        :label="$t('settings.linked_accounts.google_link_button')"
+        icon="pi pi-google"
+        size="small"
+        @click="$emit('linkOAuth', 'GOOGLE')"
+      />
     </div>
   </SectionCard>
 

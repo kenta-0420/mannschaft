@@ -33,9 +33,11 @@ function effectiveMinRole(
 
 export interface WidgetDefinition {
   key: string
-  label: string
+  label: string        // 後方互換のため残す（fallback表示用）
+  labelKey: string     // i18n キー (例: 'dashboard.widget_labels.weather')
   icon: string
-  description: string
+  description: string  // 後方互換のため残す
+  descriptionKey: string  // i18n キー (例: 'dashboard.widget_descriptions.weather')
   scope: Array<'personal' | 'team' | 'organization'>
   defaultMinRole?: MinRole
 }
@@ -155,144 +157,180 @@ const ALL_WIDGETS: WidgetDefinition[] = [
   {
     key: 'event-dismissal-reminder',
     label: '解散通知リマインダー',
+    labelKey: 'dashboard.widget_labels.event-dismissal-reminder',
     icon: 'pi pi-exclamation-circle',
     description: '解散通知が未送信のイベントへのリマインダー',
+    descriptionKey: 'dashboard.widget_descriptions.event-dismissal-reminder',
     scope: ['personal'],
   },
-  // プラットフォームからのお知らせ（WidgetNotices）
+  // プラットフォームからのお知らせ（WidgetPlatformAnnouncements）
   {
     key: 'notices',
     label: 'お知らせ',
+    labelKey: 'dashboard.widget_labels.notices',
     icon: 'pi pi-megaphone',
     description: 'プラットフォームからのお知らせ',
+    descriptionKey: 'dashboard.widget_descriptions.notices',
     scope: ['personal'],
   },
   // マイカレンダー（データウィジェット: lg:col-span-2）
   {
     key: 'my-calendar',
     label: 'マイカレンダー',
+    labelKey: 'dashboard.widget_labels.my-calendar',
     icon: 'pi pi-calendar',
     description: '自分のスケジュールをカレンダーで表示',
+    descriptionKey: 'dashboard.widget_descriptions.my-calendar',
     scope: ['personal'],
   },
   // 今後の予定（WidgetUpcomingEvents）
   {
     key: 'upcoming-events',
     label: '今後の予定',
+    labelKey: 'dashboard.widget_labels.upcoming-events',
     icon: 'pi pi-calendar',
     description: '直近のスケジュール・イベント',
+    descriptionKey: 'dashboard.widget_descriptions.upcoming-events',
     scope: ['personal', 'team', 'organization'],
   },
   // 個人TODO（WidgetPersonalTodo）
   {
     key: 'personal-todo',
     label: '個人TODO',
+    labelKey: 'dashboard.widget_labels.personal-todo',
     icon: 'pi pi-check-square',
     description: '個人の未完了TODO',
+    descriptionKey: 'dashboard.widget_descriptions.personal-todo',
     scope: ['personal'],
   },
   // F02.10: 天気ウィジェット
   {
     key: 'weather',
     label: '天気',
+    labelKey: 'dashboard.widget_labels.weather',
     icon: 'pi pi-cloud',
     description: '登録郵便番号から導出した居住地点の今日・明日の予報',
+    descriptionKey: 'dashboard.widget_descriptions.weather',
     scope: ['personal'],
   },
   // TODOカウントダウン（WidgetTodoCountdown）
   {
     key: 'todo-countdown',
     label: 'TODOカウントダウン',
+    labelKey: 'dashboard.widget_labels.todo-countdown',
     icon: 'pi pi-clock',
     description: '期限が近いTODOのカウントダウン',
+    descriptionKey: 'dashboard.widget_descriptions.todo-countdown',
     scope: ['personal'],
   },
   // F03.15 Phase 3: 個人時間割「今日の時間割」（データウィジェット）
   {
     key: 'timetable-today',
     label: '今日の時間割',
+    labelKey: 'dashboard.widget_labels.timetable-today',
     icon: 'pi pi-table',
     description: '本日の時間割とメモ',
+    descriptionKey: 'dashboard.widget_descriptions.timetable-today',
     scope: ['personal'],
   },
   // F02.5: ポイっとメモ（データウィジェット）
   {
     key: 'quick-memo',
     label: 'ポイっとメモ',
+    labelKey: 'dashboard.widget_labels.quick-memo',
     icon: 'pi pi-pencil',
     description: '未整理メモ最新5件',
+    descriptionKey: 'dashboard.widget_descriptions.quick-memo',
     scope: ['personal'],
   },
   // F06.5 follow-up A: 今日の振り返り導線
   {
     key: 'reflection-today',
     label: '今日の振り返り',
+    labelKey: 'dashboard.widget_labels.reflection-today',
     icon: 'pi pi-star',
     description: '今日の振り返り入力導線',
+    descriptionKey: 'dashboard.widget_descriptions.reflection-today',
     scope: ['personal'],
   },
   // 未読チャット（WidgetUnreadThreads）
   {
     key: 'unread-threads',
     label: '未読チャット',
+    labelKey: 'dashboard.widget_labels.unread-threads',
     icon: 'pi pi-inbox',
     description: '未読のチャットスレッド',
+    descriptionKey: 'dashboard.widget_descriptions.unread-threads',
     scope: ['personal'],
   },
   // チームのお知らせ（WidgetTeamAnnouncements）
   {
     key: 'team-announcements',
     label: 'チームのお知らせ',
+    labelKey: 'dashboard.widget_labels.team-announcements',
     icon: 'pi pi-users',
     description: '所属チームからの掲示板・お知らせ',
+    descriptionKey: 'dashboard.widget_descriptions.team-announcements',
     scope: ['personal'],
   },
   // 組織のお知らせ（WidgetOrgAnnouncements）
   {
     key: 'org-announcements',
     label: '組織のお知らせ',
+    labelKey: 'dashboard.widget_labels.org-announcements',
     icon: 'pi pi-building',
     description: '所属組織からの掲示板・お知らせ',
+    descriptionKey: 'dashboard.widget_descriptions.org-announcements',
     scope: ['personal'],
   },
   // マイブログ（WidgetMyBlog）
   {
     key: 'my-blog',
     label: 'マイブログ',
+    labelKey: 'dashboard.widget_labels.my-blog',
     icon: 'pi pi-book',
     description: '自分のブログ記事',
+    descriptionKey: 'dashboard.widget_descriptions.my-blog',
     scope: ['personal'],
   },
   // 所属チーム（WidgetMyTeams）
   {
     key: 'my-teams',
     label: '所属チーム',
+    labelKey: 'dashboard.widget_labels.my-teams',
     icon: 'pi pi-users',
     description: '参加中のチーム一覧',
+    descriptionKey: 'dashboard.widget_descriptions.my-teams',
     scope: ['personal'],
   },
   // 所属組織（WidgetMyOrganizations）
   {
     key: 'my-organizations',
     label: '所属組織',
+    labelKey: 'dashboard.widget_labels.my-organizations',
     icon: 'pi pi-building',
     description: '参加中の組織一覧',
+    descriptionKey: 'dashboard.widget_descriptions.my-organizations',
     scope: ['personal'],
   },
   // F02.9 Phase 2: お気に入り（WidgetFavorites）
   {
     key: 'favorites',
     label: 'お気に入り',
+    labelKey: 'dashboard.widget_labels.favorites',
     icon: 'pi pi-heart',
     description: 'お気に入りに登録したコンテンツ',
+    descriptionKey: 'dashboard.widget_descriptions.favorites',
     scope: ['personal'],
   },
   // 最近のアクティビティ（WidgetRecentActivity）
   {
     key: 'recent-activity',
     label: '最近のアクティビティ',
+    labelKey: 'dashboard.widget_labels.recent-activity',
     icon: 'pi pi-history',
     description: '最近の活動履歴',
+    descriptionKey: 'dashboard.widget_descriptions.recent-activity',
     scope: ['personal'],
   },
   // =====================================================================
@@ -303,54 +341,68 @@ const ALL_WIDGETS: WidgetDefinition[] = [
   {
     key: 'family-hub',
     label: '家族',
+    labelKey: 'dashboard.widget_labels.family-hub',
     icon: 'pi pi-home',
     description: '家族チームのお知らせ・TODO',
+    descriptionKey: 'dashboard.widget_descriptions.family-hub',
     scope: ['personal'],
   },
   {
     key: 'notifications',
     label: '通知',
+    labelKey: 'dashboard.widget_labels.notifications',
     icon: 'pi pi-bell',
     description: '未読の通知',
+    descriptionKey: 'dashboard.widget_descriptions.notifications',
     scope: ['personal'],
   },
   // Phase 2: F03.11 募集型予約ウィジェット
   {
     key: 'recruitment-feed',
     label: '新着募集',
+    labelKey: 'dashboard.widget_labels.recruitment-feed',
     icon: 'pi pi-megaphone',
     description: 'フォロー先・サポーター先の新着募集',
+    descriptionKey: 'dashboard.widget_descriptions.recruitment-feed',
     scope: ['personal'],
   },
   {
     key: 'my-recruitments',
     label: '参加予定',
+    labelKey: 'dashboard.widget_labels.my-recruitments',
     icon: 'pi pi-ticket',
     description: '自分の確定・キャンセル待ち参加予定',
+    descriptionKey: 'dashboard.widget_descriptions.my-recruitments',
     scope: ['personal'],
   },
   // F09.8.1 Phase 4: マイコルクボード
   {
     key: 'my-corkboard',
     label: 'マイコルクボード',
+    labelKey: 'dashboard.widget_labels.my-corkboard',
     icon: 'pi pi-bookmark-fill',
     description: 'ピン止めしたカードの横断一覧',
+    descriptionKey: 'dashboard.widget_descriptions.my-corkboard',
     scope: ['personal'],
   },
   // F17.1 §3.12.5: 井戸端ダイジェストウィジェット
   {
     key: 'village-lobby-digest',
     label: '井戸端ダイジェスト',
+    labelKey: 'dashboard.widget_labels.village-lobby-digest',
     icon: 'pi pi-comments',
     description: 'ピン留め村の本日の井戸端在席状況',
+    descriptionKey: 'dashboard.widget_descriptions.village-lobby-digest',
     scope: ['personal'],
   },
   // F04.11: 統合通知インボックスウィジェット
   {
     key: 'inbox',
     label: 'インボックス',
+    labelKey: 'dashboard.widget_labels.inbox',
     icon: 'pi pi-inbox',
     description: '通知を一箇所で仕分け',
+    descriptionKey: 'dashboard.widget_descriptions.inbox',
     scope: ['personal'],
   },
   // =====================================================================
@@ -359,100 +411,128 @@ const ALL_WIDGETS: WidgetDefinition[] = [
   {
     key: 'todos',
     label: 'TODO',
+    labelKey: 'dashboard.widget_labels.todos',
     icon: 'pi pi-check-square',
     description: '未完了のTODO',
+    descriptionKey: 'dashboard.widget_descriptions.todos',
     scope: ['team'],
   },
   {
     key: 'timeline',
     label: 'タイムライン',
+    labelKey: 'dashboard.widget_labels.timeline',
     icon: 'pi pi-comments',
     description: '最新の投稿',
+    descriptionKey: 'dashboard.widget_descriptions.timeline',
     scope: ['team', 'organization'],
   },
   {
     key: 'bulletin',
     label: '掲示板',
+    labelKey: 'dashboard.widget_labels.bulletin',
     icon: 'pi pi-clipboard',
     description: '最新のスレッド',
+    descriptionKey: 'dashboard.widget_descriptions.bulletin',
     scope: ['team', 'organization'],
   },
   {
     key: 'blog',
     label: 'ブログ',
+    labelKey: 'dashboard.widget_labels.blog',
     icon: 'pi pi-book',
     description: '最新の記事・記事作成',
+    descriptionKey: 'dashboard.widget_descriptions.blog',
     scope: ['team', 'organization'],
   },
   {
     key: 'chat',
     label: 'チャット',
+    labelKey: 'dashboard.widget_labels.chat',
     icon: 'pi pi-inbox',
     description: '未読メッセージ',
+    descriptionKey: 'dashboard.widget_descriptions.chat',
     scope: ['team', 'organization'],
   },
   {
     key: 'schedule',
     label: 'カレンダー',
+    labelKey: 'dashboard.widget_labels.schedule',
     icon: 'pi pi-calendar',
     description: '月のスケジュールをカレンダーで表示',
+    descriptionKey: 'dashboard.widget_descriptions.schedule',
     scope: ['team', 'organization'],
   },
   {
     key: 'members',
     label: 'メンバー',
+    labelKey: 'dashboard.widget_labels.members',
     icon: 'pi pi-users',
     description: 'メンバー一覧',
+    descriptionKey: 'dashboard.widget_descriptions.members',
     scope: ['team', 'organization'],
   },
   {
     key: 'activities',
     label: '活動記録',
+    labelKey: 'dashboard.widget_labels.activities',
     icon: 'pi pi-file-edit',
     description: '最近の活動',
+    descriptionKey: 'dashboard.widget_descriptions.activities',
     scope: ['team', 'organization'],
   },
   {
     key: 'gallery',
     label: 'ギャラリー',
+    labelKey: 'dashboard.widget_labels.gallery',
     icon: 'pi pi-images',
     description: '最新の写真',
+    descriptionKey: 'dashboard.widget_descriptions.gallery',
     scope: ['team', 'organization'],
   },
   {
     key: 'circulation',
     label: '回覧板',
+    labelKey: 'dashboard.widget_labels.circulation',
     icon: 'pi pi-send',
     description: '未読の回覧',
+    descriptionKey: 'dashboard.widget_descriptions.circulation',
     scope: ['team', 'organization'],
   },
   {
     key: 'surveys',
     label: 'アンケート',
+    labelKey: 'dashboard.widget_labels.surveys',
     icon: 'pi pi-chart-bar',
     description: '回答待ちのアンケート',
+    descriptionKey: 'dashboard.widget_descriptions.surveys',
     scope: ['team', 'organization'],
   },
   {
     key: 'survey-results',
     label: 'アンケート結果',
+    labelKey: 'dashboard.widget_labels.survey-results',
     icon: 'pi pi-chart-pie',
     description: 'アンケートの集計結果をグラフで表示',
+    descriptionKey: 'dashboard.widget_descriptions.survey-results',
     scope: ['team', 'organization'],
   },
   {
     key: 'attendance-results',
     label: '出席確認状況',
+    labelKey: 'dashboard.widget_labels.attendance-results',
     icon: 'pi pi-calendar-check',
     description: 'イベントごとの出欠状況と個人別回答',
+    descriptionKey: 'dashboard.widget_descriptions.attendance-results',
     scope: ['team', 'organization'],
   },
   // F14.2: チームメンバー定期更新フォーム
   {
     key: 'member-info',
     label: 'メンバー情報',
+    labelKey: 'dashboard.widget_labels.member-info',
     icon: 'pi pi-id-card',
     description: '連絡先・緊急連絡先等の定期更新フォーム',
+    descriptionKey: 'dashboard.widget_descriptions.member-info',
     scope: ['team'],
     defaultMinRole: 'MEMBER' as MinRole,
   },
@@ -460,24 +540,30 @@ const ALL_WIDGETS: WidgetDefinition[] = [
   {
     key: 'team-standings-record',
     label: '大会成績',
+    labelKey: 'dashboard.widget_labels.team-standings-record',
     icon: 'pi pi-trophy',
     description: '自チームの大会通算成績と順位履歴',
+    descriptionKey: 'dashboard.widget_descriptions.team-standings-record',
     scope: ['team'],
     defaultMinRole: 'SUPPORTER' as MinRole,
   },
   {
     key: 'team-division-standings',
     label: '順位表',
+    labelKey: 'dashboard.widget_labels.team-division-standings',
     icon: 'pi pi-list',
     description: '現在参加中のディビジョンの順位表',
+    descriptionKey: 'dashboard.widget_descriptions.team-division-standings',
     scope: ['team'],
     defaultMinRole: 'SUPPORTER' as MinRole,
   },
   {
     key: 'org-tournament-summary',
     label: '主催大会サマリ',
+    labelKey: 'dashboard.widget_labels.org-tournament-summary',
     icon: 'pi pi-sitemap',
     description: '主催する各大会×各部の首位・参加数・状態',
+    descriptionKey: 'dashboard.widget_descriptions.org-tournament-summary',
     scope: ['organization'],
     defaultMinRole: 'MEMBER' as MinRole,
   },
@@ -485,8 +571,10 @@ const ALL_WIDGETS: WidgetDefinition[] = [
   {
     key: 'team-match-summary',
     label: '試合サマリ',
+    labelKey: 'dashboard.widget_labels.team-match-summary',
     icon: 'pi pi-flag',
     description: '直近の試合成績と進行中試合の記録再開',
+    descriptionKey: 'dashboard.widget_descriptions.team-match-summary',
     scope: ['team'],
     defaultMinRole: 'MEMBER' as MinRole,
   },
@@ -494,8 +582,10 @@ const ALL_WIDGETS: WidgetDefinition[] = [
   {
     key: 'projects',
     label: 'プロジェクト',
+    labelKey: 'dashboard.widget_labels.projects',
     icon: 'pi pi-briefcase',
     description: 'プロジェクトの進捗状況と一覧',
+    descriptionKey: 'dashboard.widget_descriptions.projects',
     scope: ['team', 'organization'],
     defaultMinRole: 'MEMBER' as MinRole,
   },

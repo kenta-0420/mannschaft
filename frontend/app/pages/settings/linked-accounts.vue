@@ -5,17 +5,43 @@ definePageMeta({
   middleware: 'auth',
 })
 
+const { t } = useI18n()
+const route = useRoute()
+const router = useRouter()
 const notification = useNotification()
-const { getOAuthProviders, unlinkOAuthProvider, getLineStatus, unlinkLine } = useUserSettingsApi()
+const { getOAuthProviders, unlinkOAuthProvider, getLineStatus, unlinkLine, getOAuthLinkAuthUrl } = useUserSettingsApi()
 const { formatDateTime } = useDatetime()
 
 const loading = ref(true)
 const oauthProviders = ref<OAuthProviderResponse[]>([])
 const lineStatus = ref<UserLineStatusResponse | null>(null)
+const linkingGoogle = ref(false)
+const showHelp = ref(false)
 
 onMounted(async () => {
   await loadData()
+  handleQueryParams()
 })
+
+function handleQueryParams() {
+  const linked = route.query.linked
+  const error = route.query.error
+
+  if (linked) {
+    const provider = String(linked)
+    notification.success(t('settings.linked_accounts.toast.link_success', { provider }))
+  } else if (error === 'oauth_denied') {
+    notification.error(t('settings.linked_accounts.toast.oauth_denied'))
+  } else if (error === 'already_taken') {
+    notification.error(t('settings.linked_accounts.toast.taken_by_other', { provider: 'Google' }))
+  } else if (error === 'invalid_state') {
+    notification.error(t('settings.linked_accounts.toast.link_error'))
+  }
+
+  if (linked || error) {
+    router.replace({ query: {} })
+  }
+}
 
 async function loadData() {
   loading.value = true
@@ -24,7 +50,7 @@ async function loadData() {
     oauthProviders.value = oauthRes.data
     lineStatus.value = lineRes.data
   } catch {
-    notification.error('連携情報の取得に失敗しました')
+    notification.error(t('settings.linked_accounts.toast.load_error'))
   } finally {
     loading.value = false
   }
@@ -34,9 +60,9 @@ async function handleUnlinkOAuth(provider: string) {
   try {
     await unlinkOAuthProvider(provider)
     oauthProviders.value = oauthProviders.value.filter((p) => p.provider !== provider)
-    notification.success(`${providerLabel(provider)}の連携を解除しました`)
+    notification.success(t('settings.linked_accounts.toast.unlink_success', { provider: providerLabel(provider) }))
   } catch {
-    notification.error('連携解除に失敗しました')
+    notification.error(t('settings.linked_accounts.toast.unlink_error'))
   }
 }
 
@@ -50,9 +76,21 @@ async function handleUnlinkLine() {
       displayName: null,
       pictureUrl: null,
     }
-    notification.success('LINE連携を解除しました')
+    notification.success(t('settings.linked_accounts.toast.line_unlink_success'))
   } catch {
-    notification.error('LINE連携の解除に失敗しました')
+    notification.error(t('settings.linked_accounts.toast.line_unlink_error'))
+  }
+}
+
+async function handleLinkGoogle() {
+  linkingGoogle.value = true
+  try {
+    const res = await getOAuthLinkAuthUrl('GOOGLE')
+    window.location.href = res.data.authUrl
+  } catch {
+    notification.error(t('settings.linked_accounts.toast.link_error'))
+  } finally {
+    linkingGoogle.value = false
   }
 }
 
@@ -85,15 +123,17 @@ function formatDate(dateStr: string | null) {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <PageHeader title="アカウント連携" back-to="/settings" />
+    <PageHeader :title="$t('settings.linked_accounts.page_title')" back-to="/settings" help @help="showHelp = true" />
+
+    <LinkedAccountsGuideModal v-model:visible="showHelp" />
 
     <PageLoading v-if="loading" />
 
     <div v-else class="fade-in space-y-8">
       <!-- OAuth連携 -->
-      <SectionCard title="OAuth連携">
+      <SectionCard :title="$t('settings.linked_accounts.oauth_section_title')">
         <div v-if="oauthProviders.length === 0" class="py-4 text-center text-surface-400">
-          連携されたアカウントはありません
+          {{ $t('settings.linked_accounts.no_oauth') }}
         </div>
         <div v-else class="space-y-3">
           <div
@@ -104,15 +144,16 @@ function formatDate(dateStr: string | null) {
             <div class="flex items-center gap-3">
               <i :class="providerIcon(provider.provider)" class="text-xl" />
               <div>
-                <p class="font-medium">{{ providerLabel(provider.provider) }}</p>
+                <p class="font-medium" translate="no">{{ providerLabel(provider.provider) }}</p>
                 <p class="text-sm text-surface-500">{{ provider.providerEmail }}</p>
                 <p class="text-xs text-surface-400">
-                  連携日: {{ formatDate(provider.connectedAt) }}
+                  {{ $t('settings.linked_accounts.connected_at', { date: formatDate(provider.connectedAt) }) }}
                 </p>
               </div>
             </div>
             <Button
-              label="解除"
+              translate="no"
+              :label="$t('settings.linked_accounts.unlink_button')"
               severity="danger"
               text
               size="small"
@@ -120,16 +161,27 @@ function formatDate(dateStr: string | null) {
             />
           </div>
         </div>
+
+        <!-- Google未連携時のボタン -->
+        <div v-if="!oauthProviders.some(p => p.provider.toLowerCase() === 'google')" class="mt-3">
+          <Button
+            :label="$t('settings.linked_accounts.google_link_button')"
+            :loading="linkingGoogle"
+            icon="pi pi-google"
+            size="small"
+            @click="handleLinkGoogle"
+          />
+        </div>
       </SectionCard>
 
       <!-- LINE連携 -->
-      <SectionCard title="LINE連携">
+      <SectionCard :title="$t('settings.linked_accounts.line_section_title')">
         <div v-if="lineStatus?.isLinked" class="space-y-4">
           <div class="flex items-center gap-4">
             <img
               v-if="lineStatus.pictureUrl"
               :src="lineStatus.pictureUrl"
-              alt="LINEアイコン"
+              :alt="$t('settings.linked_accounts.line_icon_alt')"
               class="h-12 w-12 rounded-full"
             >
             <div
@@ -139,13 +191,14 @@ function formatDate(dateStr: string | null) {
               <i class="pi pi-comment text-xl" />
             </div>
             <div>
-              <p class="font-medium">{{ lineStatus.displayName || 'LINE ユーザー' }}</p>
-              <p class="text-xs text-surface-400">連携日: {{ formatDate(lineStatus.linkedAt) }}</p>
+              <p class="font-medium" translate="no">{{ lineStatus.displayName || $t('settings.linked_accounts.line_default_user') }}</p>
+              <p class="text-xs text-surface-400">{{ $t('settings.linked_accounts.line_linked_at', { date: formatDate(lineStatus.linkedAt) }) }}</p>
             </div>
           </div>
           <div class="flex justify-end">
             <Button
-              label="LINE連携を解除"
+              translate="no"
+              :label="$t('settings.linked_accounts.line_unlink_button')"
               severity="danger"
               outlined
               size="small"
@@ -155,8 +208,8 @@ function formatDate(dateStr: string | null) {
         </div>
 
         <div v-else class="py-4 text-center">
-          <p class="mb-4 text-surface-400">LINEアカウントは連携されていません</p>
-          <p class="text-sm text-surface-500">LINE連携はLINEアプリから行ってください</p>
+          <p class="mb-2 text-surface-400">{{ $t('settings.linked_accounts.line_not_linked') }}</p>
+          <p class="text-sm text-surface-500">{{ $t('settings.linked_accounts.line_link_instruction') }}</p>
         </div>
       </SectionCard>
     </div>
