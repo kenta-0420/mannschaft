@@ -141,4 +141,17 @@ public class SealController {
         sealService.deleteSeal(userId, sealId);
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * ユーザーの全印鑑を再生成する。
+     */
+    @PostMapping("/regenerate")
+    @Operation(summary = "印鑑一括再生成")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "再生成成功")
+    public ResponseEntity<ApiResponse<List<SealResponse>>> regenerateSeals(
+            @PathVariable Long userId) {
+        checkOwner(userId);
+        List<SealResponse> seals = sealService.regenerateSeals(userId);
+        return ResponseEntity.ok(ApiResponse.of(seals));
+    }
 }

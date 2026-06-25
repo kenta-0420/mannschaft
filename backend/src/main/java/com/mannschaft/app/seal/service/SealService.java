@@ -136,6 +136,27 @@ public class SealService {
     }
 
     /**
+     * ユーザーの全印鑑を再生成する（SVGデータの再構築）。
+     *
+     * @param userId ユーザーID
+     * @return 再生成後の印鑑レスポンスリスト
+     */
+    @Transactional
+    public List<SealResponse> regenerateSeals(Long userId) {
+        List<ElectronicSealEntity> seals = sealRepository.findByUserIdOrderByCreatedAtAsc(userId);
+        List<ElectronicSealEntity> updated = seals.stream()
+                .map(seal -> {
+                    String newSvgData = sealGenerator.generateSvg(seal.getDisplayText(), seal.getVariant());
+                    String newSealHash = sealGenerator.computeHash(newSvgData);
+                    seal.regenerate(newSvgData, newSealHash);
+                    return sealRepository.save(seal);
+                })
+                .toList();
+        log.info("印鑑一括再生成: userId={}, count={}", userId, updated.size());
+        return sealMapper.toSealResponseList(updated);
+    }
+
+    /**
      * スコープデフォルトを設定する。
      *
      * @param userId  ユーザーID
