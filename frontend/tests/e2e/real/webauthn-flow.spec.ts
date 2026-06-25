@@ -1,16 +1,21 @@
 /**
  * WebAuthn（パスキー）実機テスト。
  *
- * バックエンド (http://localhost:8080) とフロントエンド (http://localhost:8081) が
- * 起動中であることを前提とし、CDPSession の仮想認証器で WebAuthn フローを検証する。
- *
- * テストユーザー:
- *   e2e-user@test.mannschaft.local / TestPass2026!
- *
  * 前提:
- *   - BE に MANNSCHAFT_WEBAUTHN_RP_ID=localhost を設定すること（application-local.yml 参照）
- *   - WEBAUTHN-001/002: API 直接呼び出し + CDP 仮想認証器でフローを検証
- *   - WEBAUTHN-003: /settings/security の UI ボタンからパスキーを登録するフルフロー
+ *   - BE (http://localhost:8080) と FE (http://localhost:3000) が起動中であること
+ *   - BE application-local.yml に以下を設定すること:
+ *       mannschaft:
+ *         webauthn:
+ *           rp-id: localhost
+ *           origin: http://localhost:3000
+ *
+ * BE レスポンス形式:
+ *   WebAuthnRegisterBeginResponse: { challenge, rpId, rpName, userId, userDisplayName }
+ *   WebAuthnLoginBeginResponse:    { challenge, rpId, allowCredentials: string[], timeout }
+ *
+ * BE リクエスト形式:
+ *   WebAuthnRegisterCompleteRequest: { credentialId, attestationObject, clientDataJson, publicKey, deviceName? }
+ *   WebAuthnLoginCompleteRequest:    { credentialId, authenticatorData, clientDataJson, signature, signCount, userHandle? }
  */
 
 import { test, expect } from '@playwright/test'
@@ -18,23 +23,16 @@ import type { Page, CDPSession } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
 
 const USER_EMAIL = process.env.TEST_USER_EMAIL ?? 'e2e-user@test.mannschaft.local'
-// FE dev server が /api/v1/** をプロキシしていない場合 (NUXT_API_PROXY 未設定) は
-// BE に直接 API リクエストを送る。page.goto はそのまま FE (baseURL) を使う。
 const API_BASE = process.env.API_BASE_URL ?? 'http://localhost:8080'
 
 // ----------------------------------------------------------------------------------
-// 仮想 WebAuthn 認証器セットアップ
+// 仮想 WebAuthn 認証器
 // ----------------------------------------------------------------------------------
 
-interface VirtualAuthenticator {
-  client: CDPSession
-  authenticatorId: string
-}
-
-async function setupVirtualAuthenticator(page: Page): Promise<VirtualAuthenticator> {
+async function setupVirtualAuthenticator(page: Page): Promise<{ client: CDPSession }> {
   const client = await page.context().newCDPSession(page)
   await client.send('WebAuthn.enable', { enableUI: false })
-  const { authenticatorId } = await client.send('WebAuthn.addVirtualAuthenticator', {
+  await client.send('WebAuthn.addVirtualAuthenticator', {
     options: {
       protocol: 'ctap2',
       transport: 'internal',
@@ -43,23 +41,18 @@ async function setupVirtualAuthenticator(page: Page): Promise<VirtualAuthenticat
       isUserVerified: true,
     },
   })
-  return { client, authenticatorId }
+  return { client }
 }
 
 /**
- * FE ページが /api/v1/** を BE にプロキシしていない場合（NUXT_API_PROXY 未設定）でも
- * UI テストが動作するよう、page.route() で API 呼び出しを BE に中継する。
- * origin ヘッダーを FE オリジンに差し替えて CORS を通過させる。
+ * FE が NUXT_API_PROXY を持たない場合でも UI テストが動作するよう、
+ * WebAuthn API 呼び出しを playwright の page.route で BE に中継する。
  */
 async function setupApiRoute(page: Page): Promise<void> {
-  const feOrigin = new URL(page.url() || 'http://localhost').origin
+  const feOrigin = new URL(page.url()).origin
   await page.route('**/api/v1/auth/webauthn/**', async (route) => {
     const req = route.request()
-    const originalUrl = req.url()
-    // FE オリジン部分を BE に差し替え（相対パス→絶対パス）
-    const targetUrl = originalUrl.startsWith(API_BASE)
-      ? originalUrl
-      : originalUrl.replace(/^https?:\/\/[^/]+/, API_BASE)
+    const targetUrl = req.url().replace(/^https?:\/\/[^/]+/, API_BASE)
     const response = await route.fetch({
       url: targetUrl,
       headers: {
@@ -80,20 +73,17 @@ async function setupApiRoute(page: Page): Promise<void> {
 }
 
 // ----------------------------------------------------------------------------------
-// WEBAUTHN: パスキー登録・ログインフロー
+// WEBAUTHN テスト
 // ----------------------------------------------------------------------------------
 
 test.describe('WEBAUTHN: パスキー登録・ログインフロー', () => {
-  // WEBAUTHN-001 → WEBAUTHN-002 → WEBAUTHN-003 の順で実行（資格情報登録が前提）
   test.describe.configure({ mode: 'serial' })
 
-  // 各テスト前に登録済み資格情報をすべてクリーンアップ（テスト干渉防止）
   test.beforeEach(async ({ page }) => {
-    // storageState で認証済みのため、page.request でそのまま API 呼び出し可能
+    // 登録済み資格情報を全削除（テスト干渉防止）
     const credsRes = await page.request.get(`${API_BASE}/api/v1/auth/webauthn/credentials`)
     if (credsRes.ok()) {
-      const body = await credsRes.json()
-      const creds: { id: number }[] = body.data ?? []
+      const creds: { id: number }[] = ((await credsRes.json()).data) ?? []
       for (const cred of creds) {
         await page.request.delete(`${API_BASE}/api/v1/auth/webauthn/credentials/${cred.id}`)
       }
@@ -101,260 +91,255 @@ test.describe('WEBAUTHN: パスキー登録・ログインフロー', () => {
   })
 
   test('WEBAUTHN-001: パスキーを登録できる（API フロー）', async ({ page }) => {
-    // 仮想 WebAuthn 認証器をセットアップ
     const { client } = await setupVirtualAuthenticator(page)
-
     try {
-      // 1. 登録開始: BEGIN → チャレンジ取得
-      const beginRes = await page.request.post(`${API_BASE}/api/v1/auth/webauthn/register/begin`)
-      expect(beginRes.ok(), `register/begin が失敗: ${beginRes.status()}`).toBeTruthy()
-      const beginBody = await beginRes.json()
-      const options = beginBody.data
-
-      // 2. FE ページに移動して clientDataJSON.origin を FE オリジンに確立する
-      //    （BE の ServerProperty の origin と一致させるために必要）
+      // FE に移動して clientDataJSON.origin = FE オリジンを確立
       await page.goto('/')
 
-      // 3. ブラウザ側で navigator.credentials.create() を実行（仮想認証器が自動応答）
-      //    page.evaluate でブラウザコンテキストに入り WebAuthn 操作を実行する
-      const credential = await page.evaluate(async (rawOptions: unknown) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const creationOptions = rawOptions as any
+      // 1. 登録開始 → チャレンジ取得
+      const beginRes = await page.request.post(`${API_BASE}/api/v1/auth/webauthn/register/begin`)
+      expect(beginRes.ok(), `register/begin 失敗: ${beginRes.status()}`).toBeTruthy()
+      const beginData = (await beginRes.json()).data as {
+        challenge: string
+        rpId: string
+        rpName: string
+        userId: number
+        userDisplayName: string
+      }
 
-        // ArrayBuffer のフィールドを base64url 文字列から Uint8Array に変換するヘルパー
-        function base64urlToBuffer(b64url: string): ArrayBuffer {
-          const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/')
-          const binary = atob(b64)
-          const bytes = new Uint8Array(binary.length)
-          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-          return bytes.buffer
-        }
+      // 2. navigator.credentials.create() を実行（CDP 仮想認証器が自動応答）
+      const credential = await page.evaluate(
+        async (opts: { challenge: string; rpId: string; rpName: string; userId: number; displayName: string }) => {
+          function b64urlToBuf(b64url: string): ArrayBuffer {
+            const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/')
+            const binary = atob(b64)
+            const bytes = new Uint8Array(binary.length)
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+            return bytes.buffer
+          }
+          function bufToB64url(buffer: ArrayBuffer): string {
+            const bytes = new Uint8Array(buffer)
+            let binary = ''
+            for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+            return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+          }
+          function numberToArrayBuffer(n: number): ArrayBuffer {
+            const ab = new ArrayBuffer(8)
+            const buf = new Uint8Array(ab)
+            let val = n
+            for (let i = 0; i < 8; i++) { buf[i] = val & 0xff; val = Math.floor(val / 256) }
+            return ab
+          }
 
-        function bufferToBase64url(buffer: ArrayBuffer): string {
-          const bytes = new Uint8Array(buffer)
-          let binary = ''
-          for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]!)
-          const b64 = btoa(binary)
-          return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
-        }
+          const publicKey: PublicKeyCredentialCreationOptions = {
+            challenge: b64urlToBuf(opts.challenge),
+            rp: { id: opts.rpId, name: opts.rpName },
+            user: {
+              id: numberToArrayBuffer(opts.userId),
+              name: opts.displayName,
+              displayName: opts.displayName,
+            },
+            pubKeyCredParams: [
+              { alg: -7, type: 'public-key' },
+              { alg: -257, type: 'public-key' },
+            ],
+            authenticatorSelection: { userVerification: 'preferred', residentKey: 'preferred' },
+            timeout: 60000,
+            attestation: 'none',
+          }
+          const cred = (await navigator.credentials.create({ publicKey })) as PublicKeyCredential
+          const resp = cred.response as AuthenticatorAttestationResponse
+          return {
+            credentialId: bufToB64url(cred.rawId),
+            attestationObject: bufToB64url(resp.attestationObject),
+            clientDataJson: bufToB64url(resp.clientDataJSON),
+            publicKey: bufToB64url(resp.getPublicKey ? (resp.getPublicKey() ?? new ArrayBuffer(0)) : new ArrayBuffer(0)),
+          }
+        },
+        { challenge: beginData.challenge, rpId: beginData.rpId, rpName: beginData.rpName, userId: beginData.userId, displayName: beginData.userDisplayName },
+      )
 
-        // BE レスポンスの challenge / user.id は base64url 文字列で来る
-        const publicKey: PublicKeyCredentialCreationOptions = {
-          ...creationOptions,
-          challenge: base64urlToBuffer(creationOptions.challenge as string),
-          user: {
-            ...creationOptions.user,
-            id: base64urlToBuffer(creationOptions.user.id as string),
-          },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          excludeCredentials: ((creationOptions.excludeCredentials as any[]) ?? []).map((c: any) => ({
-            ...c,
-            id: base64urlToBuffer(c.id as string),
-          })),
-        }
-
-        const cred = (await navigator.credentials.create({ publicKey })) as PublicKeyCredential
-        const response = cred.response as AuthenticatorAttestationResponse
-
-        return {
-          id: cred.id,
-          rawId: bufferToBase64url(cred.rawId),
-          type: cred.type,
-          response: {
-            clientDataJSON: bufferToBase64url(response.clientDataJSON),
-            attestationObject: bufferToBase64url(response.attestationObject),
-          },
-        }
-      }, options)
-
-      // 3. 登録完了: COMPLETE → 201
+      // 3. 登録完了
       const completeRes = await page.request.post(`${API_BASE}/api/v1/auth/webauthn/register/complete`, {
         data: credential,
       })
-      expect(completeRes.ok(), `register/complete が失敗: ${completeRes.status()}`).toBeTruthy()
+      expect(completeRes.ok(), `register/complete 失敗: ${completeRes.status()} ${await completeRes.text()}`).toBeTruthy()
 
-      // 4. 資格情報一覧に登録されたことを確認
-      const credsRes = await page.request.get(`${API_BASE}/api/v1/auth/webauthn/credentials`)
-      expect(credsRes.ok()).toBeTruthy()
-      const credsBody = await credsRes.json()
-      expect(credsBody.data.length).toBeGreaterThanOrEqual(1)
+      // 4. BE に資格情報が登録されたことを確認
+      const listRes = await page.request.get(`${API_BASE}/api/v1/auth/webauthn/credentials`)
+      expect(listRes.ok()).toBeTruthy()
+      expect(((await listRes.json()).data as unknown[]).length, '資格情報が1件以上').toBeGreaterThanOrEqual(1)
     } finally {
       await client.detach()
     }
   })
 
   test('WEBAUTHN-002: パスキーでログインできる（API フロー）', async ({ page }) => {
-    // 事前: 資格情報を登録する（WEBAUTHN-001 と同様の手順）
     const { client } = await setupVirtualAuthenticator(page)
-
     try {
-      // === 資格情報登録 ===
-      // FE オリジンを確立してから evaluate を実行する（clientDataJSON.origin = FE オリジン）
+      // === 資格情報登録（WEBAUTHN-001 と同じ手順） ===
       await page.goto('/')
       const beginRegRes = await page.request.post(`${API_BASE}/api/v1/auth/webauthn/register/begin`)
       expect(beginRegRes.ok()).toBeTruthy()
-      const regOptions = (await beginRegRes.json()).data
+      const bd = (await beginRegRes.json()).data as {
+        challenge: string; rpId: string; rpName: string; userId: number; userDisplayName: string
+      }
 
-      const credential = await page.evaluate(async (rawOpts: unknown) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const opts = rawOpts as any
-        function base64urlToBuffer(b64url: string): ArrayBuffer {
-          const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/')
-          const binary = atob(b64)
-          const bytes = new Uint8Array(binary.length)
-          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-          return bytes.buffer
-        }
-        function bufferToBase64url(buffer: ArrayBuffer): string {
-          const bytes = new Uint8Array(buffer)
-          let binary = ''
-          for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]!)
-          const b64 = btoa(binary)
-          return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
-        }
-        const publicKey: PublicKeyCredentialCreationOptions = {
-          ...opts,
-          challenge: base64urlToBuffer(opts.challenge as string),
-          user: { ...opts.user, id: base64urlToBuffer(opts.user.id as string) },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          excludeCredentials: ((opts.excludeCredentials as any[]) ?? []).map((c: any) => ({
-            ...c,
-            id: base64urlToBuffer(c.id as string),
-          })),
-        }
-        const cred = (await navigator.credentials.create({ publicKey })) as PublicKeyCredential
-        const response = cred.response as AuthenticatorAttestationResponse
-        return {
-          id: cred.id,
-          rawId: bufferToBase64url(cred.rawId),
-          type: cred.type,
-          response: {
-            clientDataJSON: bufferToBase64url(response.clientDataJSON),
-            attestationObject: bufferToBase64url(response.attestationObject),
-          },
-        }
-      }, regOptions)
+      const regCredential = await page.evaluate(
+        async (opts: { challenge: string; rpId: string; rpName: string; userId: number; displayName: string }) => {
+          function b64urlToBuf(b64url: string): ArrayBuffer {
+            const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/')
+            const binary = atob(b64)
+            const bytes = new Uint8Array(binary.length)
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+            return bytes.buffer
+          }
+          function bufToB64url(buffer: ArrayBuffer): string {
+            const bytes = new Uint8Array(buffer)
+            let binary = ''
+            for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+            return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+          }
+          function numberToArrayBuffer(n: number): ArrayBuffer {
+            const ab = new ArrayBuffer(8)
+            const buf = new Uint8Array(ab)
+            let val = n
+            for (let i = 0; i < 8; i++) { buf[i] = val & 0xff; val = Math.floor(val / 256) }
+            return ab
+          }
+          const publicKey: PublicKeyCredentialCreationOptions = {
+            challenge: b64urlToBuf(opts.challenge),
+            rp: { id: opts.rpId, name: opts.rpName },
+            user: { id: numberToArrayBuffer(opts.userId), name: opts.displayName, displayName: opts.displayName },
+            pubKeyCredParams: [{ alg: -7, type: 'public-key' }, { alg: -257, type: 'public-key' }],
+            authenticatorSelection: { userVerification: 'preferred', residentKey: 'preferred' },
+            timeout: 60000,
+            attestation: 'none',
+          }
+          const cred = (await navigator.credentials.create({ publicKey })) as PublicKeyCredential
+          const resp = cred.response as AuthenticatorAttestationResponse
+          return {
+            credentialId: bufToB64url(cred.rawId),
+            attestationObject: bufToB64url(resp.attestationObject),
+            clientDataJson: bufToB64url(resp.clientDataJSON),
+            publicKey: bufToB64url(resp.getPublicKey ? (resp.getPublicKey() ?? new ArrayBuffer(0)) : new ArrayBuffer(0)),
+          }
+        },
+        { challenge: bd.challenge, rpId: bd.rpId, rpName: bd.rpName, userId: bd.userId, displayName: bd.userDisplayName },
+      )
 
-      const completeRegRes = await page.request.post(`${API_BASE}/api/v1/auth/webauthn/register/complete`, {
-        data: credential,
+      const regCompleteRes = await page.request.post(`${API_BASE}/api/v1/auth/webauthn/register/complete`, {
+        data: regCredential,
       })
-      expect(completeRegRes.ok(), `register/complete が失敗: ${completeRegRes.status()}`).toBeTruthy()
+      expect(regCompleteRes.ok(), `register/complete 失敗: ${regCompleteRes.status()}`).toBeTruthy()
 
       // === ログアウト ===
       await page.request.post(`${API_BASE}/api/v1/auth/logout`)
 
       // === パスキーでログイン ===
-      // 1. ログイン開始: email を渡してチャレンジ取得
+      // 1. login/begin → チャレンジと allowCredentials 取得
       const beginLoginRes = await page.request.post(
         `${API_BASE}/api/v1/auth/webauthn/login/begin?email=${encodeURIComponent(USER_EMAIL)}`,
       )
-      expect(beginLoginRes.ok(), `login/begin が失敗: ${beginLoginRes.status()}`).toBeTruthy()
-      const loginOptions = (await beginLoginRes.json()).data
+      expect(beginLoginRes.ok(), `login/begin 失敗: ${beginLoginRes.status()}`).toBeTruthy()
+      const ld = (await beginLoginRes.json()).data as {
+        challenge: string; rpId: string; allowCredentials: string[]; timeout: number
+      }
 
-      // 2. navigator.credentials.get() を実行（仮想認証器が自動応答）
-      // page に先にアクセスしてドメインを確立してから evaluate を実行
-      await page.goto('/')
+      // 2. navigator.credentials.get() を実行（CDP 仮想認証器が自動応答）
+      const assertion = await page.evaluate(
+        async (opts: { challenge: string; rpId: string; allowCredentials: string[]; timeout: number }) => {
+          function b64urlToBuf(b64url: string): ArrayBuffer {
+            const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/')
+            const binary = atob(b64)
+            const bytes = new Uint8Array(binary.length)
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+            return bytes.buffer
+          }
+          function bufToB64url(buffer: ArrayBuffer): string {
+            const bytes = new Uint8Array(buffer)
+            let binary = ''
+            for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+            return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+          }
+          function extractSignCount(authenticatorData: ArrayBuffer): number {
+            // rpIdHash(32) + flags(1) + signCount(4, big-endian)
+            return new DataView(authenticatorData).getUint32(33, false)
+          }
 
-      const assertion = await page.evaluate(async (rawLoginOpts: unknown) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const opts = rawLoginOpts as any
-        function base64urlToBuffer(b64url: string): ArrayBuffer {
-          const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/')
-          const binary = atob(b64)
-          const bytes = new Uint8Array(binary.length)
-          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-          return bytes.buffer
-        }
-        function bufferToBase64url(buffer: ArrayBuffer): string {
-          const bytes = new Uint8Array(buffer)
-          let binary = ''
-          for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]!)
-          const b64 = btoa(binary)
-          return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
-        }
-        const publicKey: PublicKeyCredentialRequestOptions = {
-          ...opts,
-          challenge: base64urlToBuffer(opts.challenge as string),
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          allowCredentials: ((opts.allowCredentials as any[]) ?? []).map((c: any) => ({
-            ...c,
-            id: base64urlToBuffer(c.id as string),
-          })),
-        }
-        const assertion = (await navigator.credentials.get({ publicKey })) as PublicKeyCredential
-        const response = assertion.response as AuthenticatorAssertionResponse
-        return {
-          id: assertion.id,
-          rawId: bufferToBase64url(assertion.rawId),
-          type: assertion.type,
-          response: {
-            clientDataJSON: bufferToBase64url(response.clientDataJSON),
-            authenticatorData: bufferToBase64url(response.authenticatorData),
-            signature: bufferToBase64url(response.signature),
-            userHandle: response.userHandle ? bufferToBase64url(response.userHandle) : null,
-          },
-        }
-      }, loginOptions)
+          const publicKey: PublicKeyCredentialRequestOptions = {
+            challenge: b64urlToBuf(opts.challenge),
+            rpId: opts.rpId,
+            timeout: opts.timeout || 300000,
+            userVerification: 'preferred',
+            allowCredentials: opts.allowCredentials.map((id) => ({
+              type: 'public-key' as const,
+              id: b64urlToBuf(id),
+            })),
+          }
+          const cred = (await navigator.credentials.get({ publicKey })) as PublicKeyCredential
+          const resp = cred.response as AuthenticatorAssertionResponse
+          return {
+            credentialId: bufToB64url(cred.rawId),
+            authenticatorData: bufToB64url(resp.authenticatorData),
+            clientDataJson: bufToB64url(resp.clientDataJSON),
+            signature: bufToB64url(resp.signature),
+            signCount: extractSignCount(resp.authenticatorData),
+            userHandle: resp.userHandle ? bufToB64url(resp.userHandle) : null,
+          }
+        },
+        { challenge: ld.challenge, rpId: ld.rpId, allowCredentials: ld.allowCredentials, timeout: ld.timeout },
+      )
 
-      // 3. ログイン完了: COMPLETE → 200 + トークン取得
+      // 3. login/complete → accessToken 取得
       const completeLoginRes = await page.request.post(`${API_BASE}/api/v1/auth/webauthn/login/complete`, {
         data: assertion,
       })
-      expect(completeLoginRes.ok(), `login/complete が失敗: ${completeLoginRes.status()}`).toBeTruthy()
+      expect(completeLoginRes.ok(), `login/complete 失敗: ${completeLoginRes.status()} ${await completeLoginRes.text()}`).toBeTruthy()
       const loginBody = await completeLoginRes.json()
-      expect(loginBody.data).toHaveProperty('accessToken')
+      expect(loginBody.data?.accessToken, 'accessToken が発行されること').toBeTruthy()
     } finally {
       await client.detach()
     }
   })
 
-  test('WEBAUTHN-003: /settings/security の UI ボタンからパスキーを登録できる（UI フロー）', async ({
-    page,
-  }) => {
-    // 1. ページ遷移前に仮想認証器をセットアップ
-    //    （CDP 仮想認証器はページコンテキストに紐づくため先にセットアップする）
+  test('WEBAUTHN-003: /settings/security の UI ボタンからパスキーを登録できる（UI フロー）', async ({ page }) => {
+    // CDP 仮想認証器はページ遷移前にセットアップする
     const { client } = await setupVirtualAuthenticator(page)
 
     try {
-      // 2. /settings/security ページに移動してハイドレーション待ち
+      // /settings/security に移動
       await page.goto('/settings/security')
       await waitForHydration(page)
 
-      // 3. API ブリッジ設定（NUXT_API_PROXY が未設定の場合の保険）
-      //    FE の /api/v1/** 呼び出しを BE (API_BASE) に中継する
+      // API ブリッジ設定（FE に NUXT_API_PROXY 未設定の場合の保険）
       await setupApiRoute(page)
 
-      // 4. 「パスキーを登録」ボタンが表示されるまで待つ
-      //    WebAuthn サポート検出は onMounted で行われるため、少し待つ必要がある
+      // 「パスキーを登録」ボタンを待つ（WebAuthn サポート検出は onMounted）
       const registerBtn = page.getByRole('button', { name: 'パスキーを登録' })
-      await expect(registerBtn, 'パスキーを登録ボタンが表示されること').toBeVisible({ timeout: 10_000 })
+      await expect(registerBtn, 'パスキーを登録ボタンが表示されること').toBeVisible({ timeout: 15_000 })
 
-      // 5. ボタンをクリックして登録ダイアログを開く
+      // ボタンクリック → ダイアログ開く
       await registerBtn.click()
-
-      // 6. ダイアログが開いたことを確認
       const dialog = page.getByRole('dialog', { name: 'パスキーを登録' })
-      await expect(dialog, 'パスキー登録ダイアログが開くこと').toBeVisible({ timeout: 5_000 })
+      await expect(dialog, 'ダイアログが開くこと').toBeVisible({ timeout: 5_000 })
 
-      // 7. 「登録する」ボタンをクリック
-      //    CDP 仮想認証器が navigator.credentials.create() を自動インターセプトする
-      const confirmBtn = dialog.getByRole('button', { name: '登録する' })
-      await confirmBtn.click()
+      // 「登録する」クリック → CDP 仮想認証器が credentials.create() を自動処理
+      await dialog.getByRole('button', { name: '登録する' }).click()
 
-      // 8. 成功トーストが表示されること
+      // 成功トーストを確認
       const successToast = page.locator('[role="alert"][data-p="success"]').first()
       await expect(successToast, '成功トーストが表示されること').toBeVisible({ timeout: 15_000 })
 
-      // 9. 資格情報一覧に新しいエントリが追加されたことを確認
-      //    pi pi-key アイコンを持つ要素が1件以上表示される
-      const credentialEntry = page.locator('.pi.pi-key').first()
-      await expect(credentialEntry, '資格情報エントリが表示されること').toBeVisible({ timeout: 5_000 })
+      // 資格情報が一覧に追加されたことを確認
+      await expect(page.locator('.pi.pi-key').first(), '資格情報エントリが表示されること').toBeVisible({
+        timeout: 5_000,
+      })
 
-      // 10. API でも確認（BE に永続化されていること）
-      const credsRes = await page.request.get(`${API_BASE}/api/v1/auth/webauthn/credentials`)
-      expect(credsRes.ok()).toBeTruthy()
-      const credsBody = await credsRes.json()
-      expect(credsBody.data.length, '資格情報が BE に登録されていること').toBeGreaterThanOrEqual(1)
+      // BE でも確認
+      const listRes = await page.request.get(`${API_BASE}/api/v1/auth/webauthn/credentials`)
+      expect(listRes.ok()).toBeTruthy()
+      expect(((await listRes.json()).data as unknown[]).length, '資格情報が BE に登録されていること').toBeGreaterThanOrEqual(1)
     } finally {
       await client.detach()
     }

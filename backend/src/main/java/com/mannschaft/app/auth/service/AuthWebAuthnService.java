@@ -160,7 +160,7 @@ public class AuthWebAuthnService {
             ServerProperty serverProperty = new ServerProperty(
                     new Origin(rpOrigin),
                     rpId,
-                    new DefaultChallenge(storedChallenge.getBytes()),
+                    new DefaultChallenge(Base64.getUrlDecoder().decode(storedChallenge)),
                     null
             );
             RegistrationParameters registrationParameters = new RegistrationParameters(
@@ -278,7 +278,7 @@ public class AuthWebAuthnService {
             ServerProperty serverProperty = new ServerProperty(
                     new Origin(rpOrigin),
                     rpId,
-                    new DefaultChallenge(storedChallenge.getBytes()),
+                    new DefaultChallenge(Base64.getUrlDecoder().decode(storedChallenge)),
                     null
             );
 
@@ -483,7 +483,7 @@ public class AuthWebAuthnService {
             ServerProperty serverProperty = new ServerProperty(
                     new Origin(rpOrigin),
                     rpId,
-                    new DefaultChallenge(storedChallenge.getBytes()),
+                    new DefaultChallenge(Base64.getUrlDecoder().decode(storedChallenge)),
                     null
             );
 
