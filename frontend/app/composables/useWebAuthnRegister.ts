@@ -38,7 +38,7 @@ export function useWebAuthnRegister() {
         user: {
           // userId は number（BE の Long 相当）。WebAuthn spec では BufferSource が必要なので
           // 8 バイトリトルエンディアンの ArrayBuffer に変換する。
-          id: numberToUint8Array(beginData.userId).buffer,
+          id: numberToArrayBuffer(beginData.userId),
           name: beginData.userDisplayName,
           displayName: beginData.userDisplayName,
         },
@@ -113,15 +113,16 @@ function b64urlToBuf(b64url: string): ArrayBuffer {
 }
 
 /**
- * number（userId）を 8 バイトリトルエンディアンの Uint8Array に変換する。
- * WebAuthn の user.id は ArrayBuffer 型が必要なため使用する。
+ * number（userId）を 8 バイトリトルエンディアンの ArrayBuffer に変換する。
+ * WebAuthn の user.id は BufferSource（ArrayBuffer | ArrayBufferView）が必要なため使用する。
  */
-function numberToUint8Array(n: number): Uint8Array {
-  const buf = new Uint8Array(8)
+function numberToArrayBuffer(n: number): ArrayBuffer {
+  const arrayBuffer = new ArrayBuffer(8)
+  const buf = new Uint8Array(arrayBuffer)
   let val = n
   for (let i = 0; i < 8; i++) {
     buf[i] = val & 0xff
     val = Math.floor(val / 256)
   }
-  return buf
+  return arrayBuffer
 }
