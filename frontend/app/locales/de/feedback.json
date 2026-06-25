@@ -1,0 +1,30 @@
+{
+  "feedback": {
+    "nav_button": "Feedback",
+    "nav_tooltip": "Feedback oder Vorschläge senden",
+    "submit": {
+      "title": "Feedback / Vorschlagskasten",
+      "success": "Erfolgreich gesendet. Danke!",
+      "error": "Senden fehlgeschlagen"
+    },
+    "category": {
+      "label": "Kategorie",
+      "placeholder": "Bitte auswählen",
+      "bug": "Fehlerbericht",
+      "feature": "Funktionsanfrage",
+      "improvement": "Verbesserungsvorschlag",
+      "other": "Sonstiges"
+    },
+    "title": {
+      "label": "Titel",
+      "placeholder": "Betreff eingeben"
+    },
+    "body": {
+      "label": "Details",
+      "placeholder": "Details hier eingeben"
+    },
+    "anonymous": {
+      "label": "Anonym senden"
+    }
+  }
+}

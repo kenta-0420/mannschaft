@@ -1,0 +1,30 @@
+{
+  "feedback": {
+    "nav_button": "Buzón",
+    "nav_tooltip": "Enviar comentarios o sugerencias",
+    "submit": {
+      "title": "Comentarios / Buzón de sugerencias",
+      "success": "¡Enviado correctamente. Gracias!",
+      "error": "Error al enviar el comentario"
+    },
+    "category": {
+      "label": "Categoría",
+      "placeholder": "Por favor seleccione",
+      "bug": "Reporte de error",
+      "feature": "Solicitud de función",
+      "improvement": "Sugerencia de mejora",
+      "other": "Otro"
+    },
+    "title": {
+      "label": "Título",
+      "placeholder": "Ingrese un asunto"
+    },
+    "body": {
+      "label": "Detalles",
+      "placeholder": "Ingrese los detalles aquí"
+    },
+    "anonymous": {
+      "label": "Enviar de forma anónima"
+    }
+  }
+}

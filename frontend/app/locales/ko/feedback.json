@@ -1,0 +1,30 @@
+{
+  "feedback": {
+    "nav_button": "의견함",
+    "nav_tooltip": "의견 또는 제안 보내기",
+    "submit": {
+      "title": "의견 / 제안함",
+      "success": "전송되었습니다. 감사합니다!",
+      "error": "전송에 실패했습니다"
+    },
+    "category": {
+      "label": "카테고리",
+      "placeholder": "선택해 주세요",
+      "bug": "버그 신고",
+      "feature": "기능 요청",
+      "improvement": "개선 제안",
+      "other": "기타"
+    },
+    "title": {
+      "label": "제목",
+      "placeholder": "제목을 입력하세요"
+    },
+    "body": {
+      "label": "내용",
+      "placeholder": "상세 내용을 입력하세요"
+    },
+    "anonymous": {
+      "label": "익명으로 보내기"
+    }
+  }
+}

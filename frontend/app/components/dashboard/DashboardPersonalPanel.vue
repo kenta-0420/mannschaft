@@ -87,9 +87,24 @@ const showConfig = ref(false)
  * 特に my-calendar は旧来の lg:col-span-2 レイアウトを維持するためここに含める。
  */
 const PERSONAL_DATA_WIDGET_KEYS = new Set([
-  'my-calendar',     // マイカレンダー（SectionCard 内包・lg:col-span-2）
-  'timetable-today', // F03.15 Phase 3: 今日の時間割
-  'quick-memo',      // F02.5: ポイっとメモ
+  'my-calendar',                 // マイカレンダー（SectionCard 内包・lg:col-span-2）
+  'timetable-today',             // F03.15 Phase 3: 今日の時間割
+  'quick-memo',                  // F02.5: ポイっとメモ
+  'event-dismissal-reminder',    // F03.12 §16: 解散通知リマインダー
+  'notices',                     // プラットフォームお知らせ
+  'upcoming-events',             // 今後の予定
+  'personal-todo',               // 個人TODO
+  'weather',                     // F02.10: 天気
+  'todo-countdown',              // TODOカウントダウン
+  'reflection-today',            // F06.5: 今日の振り返り
+  'unread-threads',              // 未読チャット
+  'team-announcements',          // チームのお知らせ
+  'org-announcements',           // 組織のお知らせ
+  'my-blog',                     // マイブログ
+  'my-teams',                    // 所属チーム
+  'my-organizations',            // 所属組織
+  'favorites',                   // お気に入り
+  'recent-activity',             // 最近のアクティビティ
 ])
 
 function isDataWidget(key: string): boolean {
@@ -243,14 +258,14 @@ function onDragEnd() {
               <h3
                 class="text-[20px] font-semibold text-surface-700 transition-colors group-hover/title:text-primary dark:text-surface-200"
               >
-                {{ w.label }}
+                {{ $t(w.labelKey) }}
               </h3>
             </NuxtLink>
             <h3
               v-else
               class="flex-1 text-[20px] font-semibold text-surface-700 dark:text-surface-200"
             >
-              {{ w.label }}
+              {{ $t(w.labelKey) }}
             </h3>
             <!-- 折り畳みボタン（モバイルのみ） -->
             <button
@@ -275,7 +290,7 @@ function onDragEnd() {
             class="text-xs text-surface-500"
             :class="collapsedKeys.has(w.key) ? 'hidden md:block' : ''"
           >
-            {{ w.description }}
+            {{ $t(w.descriptionKey) }}
           </p>
 
           <!-- データウィジェット: 実コンテンツ -->
@@ -297,6 +312,36 @@ function onDragEnd() {
               <DashboardTimetableTodayWidget v-else-if="w.key === 'timetable-today'" />
               <!-- F02.5: ポイっとメモ -->
               <DashboardQuickMemoWidget v-else-if="w.key === 'quick-memo'" />
+              <!-- F03.12 §16: 解散通知リマインダー -->
+              <WidgetEventDismissalReminder v-else-if="w.key === 'event-dismissal-reminder'" />
+              <!-- プラットフォームお知らせ -->
+              <WidgetPlatformAnnouncements v-else-if="w.key === 'notices'" />
+              <!-- 今後の予定 -->
+              <WidgetUpcomingEvents v-else-if="w.key === 'upcoming-events'" />
+              <!-- 個人TODO -->
+              <WidgetPersonalTodo v-else-if="w.key === 'personal-todo'" />
+              <!-- F02.10: 天気 -->
+              <WidgetWeather v-else-if="w.key === 'weather'" />
+              <!-- TODOカウントダウン -->
+              <WidgetTodoCountdown v-else-if="w.key === 'todo-countdown'" />
+              <!-- F06.5: 今日の振り返り -->
+              <WidgetReflectionToday v-else-if="w.key === 'reflection-today'" />
+              <!-- 未読チャット -->
+              <WidgetUnreadThreads v-else-if="w.key === 'unread-threads'" />
+              <!-- チームのお知らせ -->
+              <WidgetTeamAnnouncements v-else-if="w.key === 'team-announcements'" :embedded="true" />
+              <!-- 組織のお知らせ -->
+              <WidgetOrgAnnouncements v-else-if="w.key === 'org-announcements'" :embedded="true" />
+              <!-- マイブログ -->
+              <WidgetMyBlog v-else-if="w.key === 'my-blog'" />
+              <!-- 所属チーム -->
+              <WidgetMyTeams v-else-if="w.key === 'my-teams'" />
+              <!-- 所属組織 -->
+              <WidgetMyOrganizations v-else-if="w.key === 'my-organizations'" />
+              <!-- お気に入り -->
+              <WidgetFavorites v-else-if="w.key === 'favorites'" />
+              <!-- 最近のアクティビティ -->
+              <WidgetRecentActivity v-else-if="w.key === 'recent-activity'" />
             </div>
           </template>
         </DashboardWidgetCard>
