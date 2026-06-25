@@ -288,7 +288,7 @@ class AuthSessionServiceTest {
 
             // When
             CursorPagedResponse<LoginHistoryResponse> response =
-                    authSessionService.getLoginHistory(1L, null, 10);
+                    authSessionService.getLoginHistory(1L, null, 10, null, null);
 
             // Then
             assertThat(response.getData()).isEmpty();

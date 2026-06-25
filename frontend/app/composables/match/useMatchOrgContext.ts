@@ -69,7 +69,12 @@ export function useMatchOrgContext() {
 
     try {
       const res = await api<{ data: MyTeamItem[] }>('/api/v1/me/teams')
-      const myTeam = (res.data ?? []).find((tm) => tm.slug === teamSlug)
+      // Bug A 修正: BE の CalendarScopeDto.scopeId は Long（数値）を返すため、
+      // カレンダーから開いた場合は teamSlug が "12345" のような数値文字列になりうる。
+      // slug 一致だけでは永遠に null が返るため、数値 ID での一致も許容する。
+      const myTeam = (res.data ?? []).find(
+        (tm) => tm.slug === teamSlug || String(tm.id) === String(teamSlug),
+      )
       if (!myTeam || typeof myTeam.organizationId !== 'number') {
         // 「当該チームが /me/teams に無い」「親組織が無い（organizationId が数値でない）」は
         // 単独チーム（＝親組織を持たないチーム）では想定内の正常状態（DB 上 88% が単独チーム）。

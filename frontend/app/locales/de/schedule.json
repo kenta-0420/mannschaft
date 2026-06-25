@@ -87,6 +87,40 @@
       "fetchFailed": "Die Anwesenheitsaufschluesselung nach Team konnte nicht geladen werden.",
       "forbidden": "Sie haben keine Berechtigung, diese Aufschluesselung anzuzeigen.",
       "empty": "Keine Daten zur Anwesenheitsaufschluesselung nach Team verfuegbar."
+    },
+    "event_add": "Termin hinzufügen",
+    "calendar_guide": {
+      "page_title": "Mein Kalender",
+      "description": "Mein Kalender ermöglicht es Ihnen, persönliche Termine und Termine Ihrer Teams und Organisationen in einer Ansicht zu sehen.",
+      "what": {
+        "title": "Was ist Mein Kalender?",
+        "body": "Zeigt alle Termine Ihrer Teams, Organisationen und persönlichen Agenda in einem einzigen Kalender an. Sie können zwischen der Kalenderansicht und der Gantt-Ansicht (TODO-Liste) wechseln."
+      },
+      "add": {
+        "title": "Termin hinzufügen",
+        "body": "Klicken Sie auf die Schaltfläche 'Termin hinzufügen' oder auf ein Datum im Kalender, um einen Termin zu erstellen. Sie können persönliche sowie Team- oder Organisationstermine hinzufügen.",
+        "step1": "Klicken Sie auf 'Termin hinzufügen' oben rechts oder auf eine Datumszelle",
+        "step2": "Titel, Datum/Uhrzeit und Ort eingeben",
+        "step3": "Unter 'Bereich' persönlich, Team oder Organisation auswählen",
+        "step4": "Auf 'Speichern' klicken, um abzuschließen"
+      },
+      "filter": {
+        "title": "Ansicht filtern",
+        "body": "Verwenden Sie die Schaltflächen unten im Kalender, um die Anzeige jedes Bereichs (persönlich, Team, Organisation) einzeln umzuschalten. Bei 6 oder mehr verwenden Sie das Dropdown-Menü.",
+        "personal": "Grüner Punkt: persönliche Termine",
+        "team_org": "Indigopunkt: Team-/Organisationstermine"
+      },
+      "gantt": {
+        "title": "Gantt-Ansicht (TODO-Liste)",
+        "body": "Drücken Sie die Registerkarte 'Gantt', um TODOs mit Fälligkeitsdatum als Gantt-Diagramm anzuzeigen. Synchronisiert mit dem Bereichsschalter oben rechts."
+      },
+      "detail": {
+        "title": "Termindetails & Anwesenheit",
+        "body": "Klicken Sie auf einen Termin im Kalender, um das Detailfeld auf der rechten Seite zu öffnen.",
+        "item_edit": "Verwenden Sie das Bleistiftsymbol zum Bearbeiten oder das Papierkorbsymbol zum Löschen",
+        "item_attendance": "Für Termine mit Anwesenheitsverfolgung wählen Sie 'Teilnehmen', 'Nicht teilnehmen' oder 'Vielleicht'",
+        "item_match": "Verwenden Sie die Schaltfläche 'Dieses Spiel aufzeichnen' bei einem Teamtermin, um eine Spielaufzeichnung zu starten"
+      }
     }
   }
 }

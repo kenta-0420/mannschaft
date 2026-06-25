@@ -27,7 +27,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.RestController;
+import java.time.LocalDateTime;
 
 import java.util.List;
 import com.mannschaft.app.common.SecurityUtils;
@@ -199,10 +201,14 @@ public class UserController {
     public ResponseEntity<CursorPagedResponse<LoginHistoryResponse>> getLoginHistory(
             @Parameter(description = "ページングカーソル（nullで先頭から）")
             @RequestParam(required = false) String cursor,
-            @Parameter(description = "取得件数（デフォルト20）")
-            @RequestParam(defaultValue = "20") int limit) {
+            @Parameter(description = "取得件数（デフォルト5）")
+            @RequestParam(defaultValue = "5") int limit,
+            @Parameter(description = "開始日時（ISO 8601形式）")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @Parameter(description = "終了日時（ISO 8601形式）")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
         Long userId = SecurityUtils.getCurrentUserId();
-        CursorPagedResponse<LoginHistoryResponse> response = authService.getLoginHistory(userId, cursor, limit);
+        CursorPagedResponse<LoginHistoryResponse> response = authService.getLoginHistory(userId, cursor, limit, from, to);
         return ResponseEntity.ok(response);
     }
 }

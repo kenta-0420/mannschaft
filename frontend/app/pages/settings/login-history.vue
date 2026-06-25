@@ -15,18 +15,26 @@ const nextCursor = ref<string | null>(null)
 const hasNext = ref(false)
 const loadingMore = ref(false)
 
+const fromDate = ref<Date | null>(null)
+const toDate = ref<Date | null>(null)
+
 onMounted(async () => {
   await loadHistory()
 })
+
+function toIso(date: Date | null): string | undefined {
+  return date ? date.toISOString().replace('Z', '') : undefined
+}
 
 async function loadHistory(cursor?: string) {
   if (cursor) {
     loadingMore.value = true
   } else {
     loading.value = true
+    history.value = []
   }
   try {
-    const res = await getLoginHistory(cursor, 20)
+    const res = await getLoginHistory(cursor, 5, toIso(fromDate.value), toIso(toDate.value))
     if (cursor) {
       history.value.push(...res.data)
     } else {
@@ -48,6 +56,17 @@ function loadMore() {
   }
 }
 
+function onFilterChange() {
+  nextCursor.value = null
+  loadHistory()
+}
+
+function clearFilter() {
+  fromDate.value = null
+  toDate.value = null
+  nextCursor.value = null
+  loadHistory()
+}
 
 function eventLabel(eventType: string) {
   const labels: Record<string, string> = {
@@ -76,6 +95,44 @@ function eventSeverity(eventType: string) {
 <template>
   <div class="mx-auto max-w-2xl">
     <PageHeader title="ログイン履歴" back-to="/settings" />
+
+    <SectionCard class="mb-4">
+      <div class="flex flex-wrap items-end gap-3">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-surface-500">開始日</label>
+          <DatePicker
+            v-model="fromDate"
+            date-format="yy/mm/dd"
+            show-icon
+            :max-date="toDate ?? undefined"
+            class="w-40"
+            show-button-bar
+            @update:model-value="onFilterChange"
+          />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-surface-500">終了日</label>
+          <DatePicker
+            v-model="toDate"
+            date-format="yy/mm/dd"
+            show-icon
+            :min-date="fromDate ?? undefined"
+            class="w-40"
+            show-button-bar
+            @update:model-value="onFilterChange"
+          />
+        </div>
+        <Button
+          v-if="fromDate || toDate"
+          label="クリア"
+          severity="secondary"
+          text
+          size="small"
+          icon="pi pi-times"
+          @click="clearFilter"
+        />
+      </div>
+    </SectionCard>
 
     <PageLoading v-if="loading" />
 

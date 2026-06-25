@@ -311,8 +311,8 @@ public class AuthService {
      * ユーザーのログイン履歴をカーソルベースで取得する。
      * 詳細は {@link AuthSessionService#getLoginHistory} を参照。
      */
-    public CursorPagedResponse<LoginHistoryResponse> getLoginHistory(Long userId, String cursor, int limit) {
-        return authSessionService.getLoginHistory(userId, cursor, limit);
+    public CursorPagedResponse<LoginHistoryResponse> getLoginHistory(Long userId, String cursor, int limit, LocalDateTime from, LocalDateTime to) {
+        return authSessionService.getLoginHistory(userId, cursor, limit, from, to);
     }
 
     // ========================================
