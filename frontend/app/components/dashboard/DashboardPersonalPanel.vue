@@ -226,7 +226,7 @@ function onDragEnd() {
           :key="w.key"
           class="group relative cursor-default transition-all"
           :class="[
-            'col-span-1',
+            (w.key === 'notices' || w.key === 'my-calendar') ? 'col-span-1 md:col-span-2' : 'col-span-1',
             { 'opacity-40': dragIndex === index },
           ]"
           draggable="true"
@@ -272,9 +272,9 @@ function onDragEnd() {
             <!-- 未読チャット -->
             <WidgetUnreadThreads v-else-if="w.key === 'unread-threads'" />
             <!-- チームのお知らせ -->
-            <WidgetTeamAnnouncements v-else-if="w.key === 'team-announcements'" :embedded="true" />
+            <WidgetTeamAnnouncements v-else-if="w.key === 'team-announcements'" />
             <!-- 組織のお知らせ -->
-            <WidgetOrgAnnouncements v-else-if="w.key === 'org-announcements'" :embedded="true" />
+            <WidgetOrgAnnouncements v-else-if="w.key === 'org-announcements'" />
             <!-- マイブログ -->
             <WidgetMyBlog v-else-if="w.key === 'my-blog'" />
             <!-- 所属チーム -->
