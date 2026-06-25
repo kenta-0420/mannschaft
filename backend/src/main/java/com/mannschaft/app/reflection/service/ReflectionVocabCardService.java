@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -51,23 +52,25 @@ public class ReflectionVocabCardService {
     private final ReflectionContentSanitizer contentSanitizer;
 
     /**
-     * 期間横断 単語帳ビューを取得する（§13-F-1）。
+     * 期間横断 単語帳ビューを取得する（§13-F-1・Phase 4.1 AC-62/63/65/68）。
      *
-     * @param userId      本人ユーザーID（本人スコープ・AC-60）
-     * @param from        期間開始日（必須）
-     * @param to          期間終了日（必須）
-     * @param themeId     テーマIDフィルタ（null=絞らない）
-     * @param sourceType  source_type フィルタ（null=絞らない）
-     * @param subject     科目名フィルタ（linked_subject_name 完全一致・null=絞らない）
-     * @param page        ページ番号（0 始まり・負値は 0 に丸め）
-     * @param size        1 ページサイズ（≤ {@code MAX_VOCAB_PAGE_SIZE}・不正は既定/上限に丸め）
-     * @return 抽出カード（ページング適用済み）
+     * @param userId       本人ユーザーID（本人スコープ・AC-60）
+     * @param from         期間開始日（必須）
+     * @param to           期間終了日（必須）
+     * @param themeId      テーマIDフィルタ（null=絞らない）
+     * @param subjects     科目名フィルタ（OR 意味論・null/空=絞らない・AC-62）
+     * @param sourceTypes  source_type フィルタ（OR 意味論・null/空=絞らない・AC-65）
+     * @param shuffle      true でシャッフル全件返却（ページング無効・上限 500・AC-63）
+     * @param page         ページ番号（0 始まり・負値は 0 に丸め・shuffle=true 時は無効）
+     * @param size         1 ページサイズ（≤ {@code MAX_VOCAB_PAGE_SIZE}・shuffle=true 時は無効）
+     * @return 抽出カード（ページングまたはシャッフル全件）
      * @throws BusinessException 期間幅 366 日超（REFLECTION_015）
      */
     @Transactional(readOnly = true)
     public ReflectionVocabCardsResponse getVocabCards(
             Long userId, LocalDate from, LocalDate to, UUID themeId,
-            ReflectionSourceType sourceType, String subject, int page, int size) {
+            List<String> subjects, List<ReflectionSourceType> sourceTypes,
+            Boolean shuffle, int page, int size) {
 
         // 期間幅の検証（§13-F-1・AC-60）。from > to も 400 として弾く。
         if (from == null || to == null || from.isAfter(to)) {
@@ -78,6 +81,7 @@ public class ReflectionVocabCardService {
             throw new BusinessException(ReflectionErrorCode.REFLECTION_DATE_RANGE_INVALID);
         }
 
+        boolean doShuffle = Boolean.TRUE.equals(shuffle);
         int normalizedPage = Math.max(page, 0);
         int normalizedSize = normalizeSize(size);
 
@@ -97,13 +101,31 @@ public class ReflectionVocabCardService {
             if (theme == null) {
                 continue; // 本人所有テーマでないエントリは無視（本人スコープ・AC-60）。
             }
-            if (!matchesFilters(theme, themeId, sourceType, subject)) {
+            if (!matchesFilters(theme, themeId, subjects, sourceTypes)) {
                 continue;
             }
             allCards.addAll(extractCards(entry, theme));
         }
 
         int totalCards = allCards.size();
+
+        if (doShuffle) {
+            // AC-63: shuffle=true → Fisher-Yates シャッフル・ページング無効・上限 500 枚。
+            List<ReflectionVocabCardItem> shuffled = new ArrayList<>(allCards);
+            Collections.shuffle(shuffled);
+            List<ReflectionVocabCardItem> limited = shuffled.size() > ReflectionConstants.MAX_VOCAB_PAGE_SIZE
+                    ? shuffled.subList(0, ReflectionConstants.MAX_VOCAB_PAGE_SIZE)
+                    : shuffled;
+            return ReflectionVocabCardsResponse.builder()
+                    .from(from)
+                    .to(to)
+                    .totalCards(totalCards)
+                    .page(0)
+                    .size(limited.size())
+                    .cards(List.copyOf(limited))
+                    .build();
+        }
+
         List<ReflectionVocabCardItem> pageCards = paginate(allCards, normalizedPage, normalizedSize);
 
         return ReflectionVocabCardsResponse.builder()
@@ -117,16 +139,21 @@ public class ReflectionVocabCardService {
     }
 
     private boolean matchesFilters(ReflectionThemeEntity theme, UUID themeId,
-                                   ReflectionSourceType sourceType, String subject) {
+                                   List<String> subjects, List<ReflectionSourceType> sourceTypes) {
         if (themeId != null && !themeId.equals(theme.getId())) {
             return false;
         }
-        if (sourceType != null && sourceType != theme.getSourceType()) {
+        // AC-65: sourceTypes OR フィルタ（null/空=絞らない）
+        if (sourceTypes != null && !sourceTypes.isEmpty()
+                && !sourceTypes.contains(theme.getSourceType())) {
             return false;
         }
-        if (subject != null && !subject.isBlank()
-                && !subject.equals(theme.getLinkedSubjectName())) {
-            return false;
+        // AC-62: subjects OR フィルタ（null/空=絞らない）
+        if (subjects != null && !subjects.isEmpty()) {
+            String linkedSubject = theme.getLinkedSubjectName();
+            if (linkedSubject == null || !subjects.contains(linkedSubject)) {
+                return false;
+            }
         }
         return true;
     }

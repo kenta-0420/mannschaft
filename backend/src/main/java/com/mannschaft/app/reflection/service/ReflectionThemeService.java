@@ -75,6 +75,11 @@ public class ReflectionThemeService {
                 .termLabel(request.termLabel())
                 // visibility / recallIntervalDays は MVP 固定（@Builder.Default の PRIVATE / '1,3,7,14'）。
                 .build();
+        // Phase 4.1: 自由入力カテゴリ（linkedSlotId=null）の場合 linkedSlotKind を強制 NULL 化（AC-64）。
+        // 今日ビューの三分岐条件で freeThemes に正しく落ちるよう、スロット未紐づけ時は kind も消去する。
+        if (request.linkedSubjectName() != null && request.linkedSlotId() == null) {
+            entity.clearLinkedSlotKind();
+        }
         // Phase 3: 親テーマ指定のバリデーション＆セット
         if (request.parentThemeId() != null) {
             UUID parentId = UUID.fromString(request.parentThemeId());

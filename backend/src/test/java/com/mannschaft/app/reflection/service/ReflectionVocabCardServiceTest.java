@@ -108,7 +108,7 @@ class ReflectionVocabCardServiceTest {
                         entry(themeId, LocalDate.of(2026, 6, 11), outlineJson())));
 
         ReflectionVocabCardsResponse resp =
-                service.getVocabCards(USER_ID, FROM, TO, null, null, null, 0, 200);
+                service.getVocabCards(USER_ID, FROM, TO, null, null, null, false, 0, 200);
 
         assertThat(resp.totalCards()).isEqualTo(1);
         assertThat(resp.cards()).hasSize(1);
@@ -134,14 +134,14 @@ class ReflectionVocabCardServiceTest {
                         entry(theme2, LocalDate.of(2026, 6, 11), termCardJson("h", "math", "意味"))));
 
         ReflectionVocabCardsResponse resp =
-                service.getVocabCards(USER_ID, FROM, TO, theme1, null, null, 0, 200);
+                service.getVocabCards(USER_ID, FROM, TO, theme1, null, null, false, 0, 200);
 
         assertThat(resp.totalCards()).isEqualTo(1);
         assertThat(resp.cards().get(0).term()).isEqualTo("en");
     }
 
     @Test
-    @DisplayName("AC-58: subject フィルタで科目名一致のカードだけに絞られる")
+    @DisplayName("AC-58: subject フィルタで科目名一致のカードだけに絞られる（単数 subjects リスト）")
     void filterBySubject() {
         UUID theme1 = UUID.randomUUID();
         UUID theme2 = UUID.randomUUID();
@@ -155,14 +155,14 @@ class ReflectionVocabCardServiceTest {
                         entry(theme2, LocalDate.of(2026, 6, 11), termCardJson("h", "math", "意味"))));
 
         ReflectionVocabCardsResponse resp =
-                service.getVocabCards(USER_ID, FROM, TO, null, null, "数学", 0, 200);
+                service.getVocabCards(USER_ID, FROM, TO, null, List.of("数学"), null, false, 0, 200);
 
         assertThat(resp.totalCards()).isEqualTo(1);
         assertThat(resp.cards().get(0).term()).isEqualTo("math");
     }
 
     @Test
-    @DisplayName("AC-58: sourceType フィルタで該当 source_type のカードだけに絞られる")
+    @DisplayName("AC-58: sourceType フィルタで該当 source_type のカードだけに絞られる（単数 sourceTypes リスト）")
     void filterBySourceType() {
         UUID subjectTheme = UUID.randomUUID();
         UUID projectTheme = UUID.randomUUID();
@@ -176,7 +176,7 @@ class ReflectionVocabCardServiceTest {
                         entry(projectTheme, LocalDate.of(2026, 6, 11), termCardJson("h", "projectCard", "意味"))));
 
         ReflectionVocabCardsResponse resp = service.getVocabCards(
-                USER_ID, FROM, TO, null, ReflectionSourceType.PROJECT, null, 0, 200);
+                USER_ID, FROM, TO, null, null, List.of(ReflectionSourceType.PROJECT), false, 0, 200);
 
         assertThat(resp.totalCards()).isEqualTo(1);
         assertThat(resp.cards().get(0).term()).isEqualTo("projectCard");
@@ -194,7 +194,7 @@ class ReflectionVocabCardServiceTest {
                         entry(themeId, LocalDate.of(2026, 6, 11), termCardJson("h", "b", "意味"))));
 
         ReflectionVocabCardsResponse resp =
-                service.getVocabCards(USER_ID, FROM, TO, null, null, null, 0, 200);
+                service.getVocabCards(USER_ID, FROM, TO, null, null, null, false, 0, 200);
 
         assertThat(resp.totalCards()).isEqualTo(2);
     }
@@ -209,7 +209,7 @@ class ReflectionVocabCardServiceTest {
                 .willReturn(List.of(entry(themeId, LocalDate.of(2026, 6, 10),
                         termCardJson("h", "a", "意味"))));
 
-        service.getVocabCards(USER_ID, FROM, TO, null, null, null, 0, 200);
+        service.getVocabCards(USER_ID, FROM, TO, null, null, null, false, 0, 200);
 
         // RecallAttemptRepository は本サービスに注入もされていない（マスク状態を変えない）。
         verifyNoInteractions(recallAttemptRepository);
@@ -220,7 +220,7 @@ class ReflectionVocabCardServiceTest {
     void dateRangeTooWide_throws() {
         LocalDate to = FROM.plusDays(366); // 両端含むと 367 日
         assertThatThrownBy(() ->
-                service.getVocabCards(USER_ID, FROM, to, null, null, null, 0, 200))
+                service.getVocabCards(USER_ID, FROM, to, null, null, null, false, 0, 200))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ReflectionErrorCode.REFLECTION_DATE_RANGE_INVALID);
@@ -230,7 +230,7 @@ class ReflectionVocabCardServiceTest {
     @DisplayName("AC-60: from > to は 400（REFLECTION_015）")
     void fromAfterTo_throws() {
         assertThatThrownBy(() ->
-                service.getVocabCards(USER_ID, TO, FROM, null, null, null, 0, 200))
+                service.getVocabCards(USER_ID, TO, FROM, null, null, null, false, 0, 200))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ReflectionErrorCode.REFLECTION_DATE_RANGE_INVALID);
@@ -251,7 +251,7 @@ class ReflectionVocabCardServiceTest {
                         entry(foreignThemeId, LocalDate.of(2026, 6, 11), termCardJson("h", "leak", "意味"))));
 
         ReflectionVocabCardsResponse resp =
-                service.getVocabCards(USER_ID, FROM, TO, null, null, null, 0, 200);
+                service.getVocabCards(USER_ID, FROM, TO, null, null, null, false, 0, 200);
 
         assertThat(resp.totalCards()).isEqualTo(1);
         assertThat(resp.cards().get(0).term()).isEqualTo("mine");
@@ -265,7 +265,7 @@ class ReflectionVocabCardServiceTest {
                 .willReturn(List.of());
 
         ReflectionVocabCardsResponse resp =
-                service.getVocabCards(USER_ID, FROM, TO, null, null, null, 0, 200);
+                service.getVocabCards(USER_ID, FROM, TO, null, null, null, false, 0, 200);
 
         assertThat(resp.totalCards()).isZero();
         assertThat(resp.cards()).isEmpty();
@@ -286,12 +286,122 @@ class ReflectionVocabCardServiceTest {
                 .willReturn(List.of(entry(themeId, LocalDate.of(2026, 6, 10), json)));
 
         ReflectionVocabCardsResponse resp =
-                service.getVocabCards(USER_ID, FROM, TO, null, null, null, 1, 2);
+                service.getVocabCards(USER_ID, FROM, TO, null, null, null, false, 1, 2);
 
         assertThat(resp.totalCards()).isEqualTo(3);
         assertThat(resp.page()).isEqualTo(1);
         assertThat(resp.size()).isEqualTo(2);
         assertThat(resp.cards()).hasSize(1); // 2 枚目以降の残り 1 枚
         assertThat(resp.cards().get(0).term()).isEqualTo("c");
+    }
+
+    // ===== Phase 4.1: AC-62/63/65/68 追加フィルタ＆シャッフル =====
+
+    @Test
+    @DisplayName("AC-62: subjects（複数）で OR フィルタが機能し、指定外の科目は含まれない")
+    void testGetVocabCards_subjectsFilter_orSemantics() {
+        UUID theme1 = UUID.randomUUID();
+        UUID theme2 = UUID.randomUUID();
+        UUID theme3 = UUID.randomUUID();
+        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID))
+                .willReturn(List.of(
+                        theme(theme1, "英語テーマ", ReflectionSourceType.SUBJECT, "英語"),
+                        theme(theme2, "理科テーマ", ReflectionSourceType.SUBJECT, "理科"),
+                        theme(theme3, "数学テーマ", ReflectionSourceType.SUBJECT, "数学")));
+        given(entryRepository.findByUserIdAndTargetDateBetween(USER_ID, FROM, TO))
+                .willReturn(List.of(
+                        entry(theme1, LocalDate.of(2026, 6, 10), termCardJson("h", "english", "英語")),
+                        entry(theme2, LocalDate.of(2026, 6, 11), termCardJson("h", "science", "理科")),
+                        entry(theme3, LocalDate.of(2026, 6, 12), termCardJson("h", "math", "数学"))));
+
+        ReflectionVocabCardsResponse resp =
+                service.getVocabCards(USER_ID, FROM, TO, null, List.of("英語", "理科"), null, false, 0, 200);
+
+        assertThat(resp.totalCards()).isEqualTo(2);
+        assertThat(resp.cards()).extracting(com.mannschaft.app.reflection.dto.ReflectionVocabCardItem::term)
+                .containsExactlyInAnyOrder("english", "science");
+    }
+
+    @Test
+    @DisplayName("AC-62: subjects=null で全教科のカードが返る")
+    void testGetVocabCards_subjects_emptyMeansAll() {
+        UUID theme1 = UUID.randomUUID();
+        UUID theme2 = UUID.randomUUID();
+        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID))
+                .willReturn(List.of(
+                        theme(theme1, "英語テーマ", ReflectionSourceType.SUBJECT, "英語"),
+                        theme(theme2, "数学テーマ", ReflectionSourceType.SUBJECT, "数学")));
+        given(entryRepository.findByUserIdAndTargetDateBetween(USER_ID, FROM, TO))
+                .willReturn(List.of(
+                        entry(theme1, LocalDate.of(2026, 6, 10), termCardJson("h", "english", "英語")),
+                        entry(theme2, LocalDate.of(2026, 6, 11), termCardJson("h", "math", "数学"))));
+
+        ReflectionVocabCardsResponse resp =
+                service.getVocabCards(USER_ID, FROM, TO, null, null, null, false, 0, 200);
+
+        assertThat(resp.totalCards()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("AC-63: shuffle=true で返却カードが null でなく 0 件ではない（シャッフル自体の正常動作）")
+    void testGetVocabCards_shuffle_true() {
+        UUID themeId = UUID.randomUUID();
+        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID))
+                .willReturn(List.of(theme(themeId, "英語テーマ", ReflectionSourceType.SUBJECT, "英語")));
+        String json = "{\"main_theme\":\"x\",\"sections\":[{\"type\":\"TERM_CARD\",\"heading\":\"h\",\"cards\":["
+                + "{\"term\":\"a\",\"meaning\":\"1\"},{\"term\":\"b\",\"meaning\":\"2\"},{\"term\":\"c\",\"meaning\":\"3\"}]}]}";
+        given(entryRepository.findByUserIdAndTargetDateBetween(USER_ID, FROM, TO))
+                .willReturn(List.of(entry(themeId, LocalDate.of(2026, 6, 10), json)));
+
+        ReflectionVocabCardsResponse resp =
+                service.getVocabCards(USER_ID, FROM, TO, null, null, null, true, 0, 200);
+
+        assertThat(resp.cards()).isNotNull().hasSize(3);
+        assertThat(resp.totalCards()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("AC-63: shuffle=true + page=1 でも page=0 と同じ全件が返る（ページング無効）")
+    void testGetVocabCards_shuffle_paginationDisabled() {
+        UUID themeId = UUID.randomUUID();
+        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID))
+                .willReturn(List.of(theme(themeId, "英語テーマ", ReflectionSourceType.SUBJECT, "英語")));
+        String json = "{\"main_theme\":\"x\",\"sections\":[{\"type\":\"TERM_CARD\",\"heading\":\"h\",\"cards\":["
+                + "{\"term\":\"a\",\"meaning\":\"1\"},{\"term\":\"b\",\"meaning\":\"2\"},{\"term\":\"c\",\"meaning\":\"3\"}]}]}";
+        given(entryRepository.findByUserIdAndTargetDateBetween(USER_ID, FROM, TO))
+                .willReturn(List.of(entry(themeId, LocalDate.of(2026, 6, 10), json)));
+
+        // shuffle=true, page=1 でも全 3 件返る（ページング無効）
+        ReflectionVocabCardsResponse page0 =
+                service.getVocabCards(USER_ID, FROM, TO, null, null, null, true, 0, 200);
+        ReflectionVocabCardsResponse page1 =
+                service.getVocabCards(USER_ID, FROM, TO, null, null, null, true, 1, 200);
+
+        assertThat(page0.cards()).hasSize(3);
+        assertThat(page1.cards()).hasSize(3); // shuffle=true はページング無効
+    }
+
+    @Test
+    @DisplayName("AC-65: sourceTypes（List）で OR フィルタが機能する")
+    void testGetVocabCards_sourceTypesFilter() {
+        UUID diaryTheme = UUID.randomUUID();
+        UUID projectTheme = UUID.randomUUID();
+        UUID subjectTheme = UUID.randomUUID();
+        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID))
+                .willReturn(List.of(
+                        theme(diaryTheme, "日記テーマ", ReflectionSourceType.DIARY, null),
+                        theme(projectTheme, "案件テーマ", ReflectionSourceType.PROJECT, null),
+                        theme(subjectTheme, "科目テーマ", ReflectionSourceType.SUBJECT, "英語")));
+        given(entryRepository.findByUserIdAndTargetDateBetween(USER_ID, FROM, TO))
+                .willReturn(List.of(
+                        entry(diaryTheme, LocalDate.of(2026, 6, 10), termCardJson("h", "diary", "日記")),
+                        entry(projectTheme, LocalDate.of(2026, 6, 11), termCardJson("h", "project", "案件")),
+                        entry(subjectTheme, LocalDate.of(2026, 6, 12), termCardJson("h", "subject", "科目"))));
+
+        ReflectionVocabCardsResponse resp =
+                service.getVocabCards(USER_ID, FROM, TO, null, null, List.of(ReflectionSourceType.DIARY), false, 0, 200);
+
+        assertThat(resp.totalCards()).isEqualTo(1);
+        assertThat(resp.cards().get(0).term()).isEqualTo("diary");
     }
 }
