@@ -165,6 +165,16 @@
       "backup_codes_description": "请将以下备用代码保存在安全的地方。每个代码只能使用一次。",
       "rename_dialog_title": "重命名设备",
       "device_name_label": "设备名称",
+      "webauthn": {
+        "register_button": "注册通行密钥",
+        "register_dialog_title": "注册通行密钥",
+        "device_name_label": "设备名称（可选）",
+        "device_name_placeholder": "例：iPhone 的 Touch ID",
+        "register_confirm": "注册",
+        "register_cancel": "取消",
+        "register_success": "通行密钥注册成功",
+        "register_error": "通行密钥注册失败"
+      },
       "session": {
         "device_label": "{os} 上的 {browser}",
         "unknown_device": "未知设备"
@@ -184,10 +194,13 @@
       }
     },
     "linked_accounts": {
+      "page_title": "关联账户",
       "oauth_section_title": "OAuth 连接",
       "no_oauth": "暂无关联账户",
       "connected_at": "关联日期: {date}",
       "unlink_button": "解除",
+      "google_link_button": "与 Google 关联",
+      "google_link_loading": "关联中...",
       "line_section_title": "LINE 连接",
       "line_icon_alt": "LINE 图标",
       "line_default_user": "LINE 用户",
@@ -196,10 +209,25 @@
       "line_not_linked": "未关联 LINE 账户",
       "line_link_instruction": "请通过 LINE 应用进行关联",
       "toast": {
+        "load_error": "获取关联信息失败",
         "unlink_success": "已解除 {provider} 连接",
         "unlink_error": "解除连接失败",
         "line_unlink_success": "已解除 LINE 连接",
-        "line_unlink_error": "解除 LINE 连接失败"
+        "line_unlink_error": "解除 LINE 连接失败",
+        "link_success": "已与 {provider} 关联",
+        "link_error": "获取关联 URL 失败",
+        "already_linked": "此账户已与 {provider} 关联",
+        "taken_by_other": "此 Google 账户已被其他用户使用",
+        "oauth_denied": "Google 认证已取消"
+      },
+      "guide": {
+        "title": "关于账户关联",
+        "google_title": "使用 Google 登录",
+        "google_desc": "无需密码，即可使用 Google 账户轻松登录。",
+        "apple_title": "使用 Apple 登录（即将推出）",
+        "apple_desc": "为 iPhone 用户提供的便捷登录方式，即将推出。",
+        "line_title": "LINE 通知",
+        "line_desc": "将机器人添加到 LINE 群组后，即可通过 LINE 接收日程和出勤通知。请从 LINE 应用进行关联。"
       }
     },
     "member_card": {

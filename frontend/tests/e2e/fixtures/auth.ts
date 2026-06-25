@@ -15,8 +15,15 @@ import { waitForHydration } from '../helpers/wait'
 export async function loginViaApi(
   page: Page,
   credentials: { email: string; password: string },
+  options: { apiBaseUrl?: string } = {},
 ): Promise<void> {
-  const loginRes = await page.request.post('/api/v1/auth/login', {
+  // FE dev server が /api/v1/** をプロキシしていない場合 (NUXT_API_PROXY=true 未設定)、
+  // バックエンドへ完全 URL で直接リクエストする。
+  // Cookie の domain は 'localhost' で統一されているため、
+  // :8080 に送った Set-Cookie も :3000 起源のブラウザコンテキストで有効になる。
+  const apiBase = options.apiBaseUrl ?? process.env.API_BASE_URL ?? ''
+
+  const loginRes = await page.request.post(`${apiBase}/api/v1/auth/login`, {
     data: { email: credentials.email, password: credentials.password },
   })
   if (!loginRes.ok()) {
@@ -26,7 +33,7 @@ export async function loginViaApi(
   }
 
   // フルプロフィール取得（access_token Cookie は page.request が自動送信する）
-  const meRes = await page.request.get('/api/v1/users/me')
+  const meRes = await page.request.get(`${apiBase}/api/v1/users/me`)
   if (!meRes.ok()) {
     throw new Error(`/api/v1/users/me 取得失敗: ${meRes.status()} ${await meRes.text()}`)
   }

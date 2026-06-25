@@ -165,6 +165,16 @@
       "backup_codes_description": "Store the following backup codes in a safe place. Each code can only be used once.",
       "rename_dialog_title": "Rename Device",
       "device_name_label": "Device Name",
+      "webauthn": {
+        "register_button": "Register a passkey",
+        "register_dialog_title": "Register a passkey",
+        "device_name_label": "Device name (optional)",
+        "device_name_placeholder": "e.g. Touch ID on iPhone",
+        "register_confirm": "Register",
+        "register_cancel": "Cancel",
+        "register_success": "Passkey registered successfully",
+        "register_error": "Failed to register passkey"
+      },
       "session": {
         "device_label": "{browser} on {os}",
         "unknown_device": "Unknown device"
@@ -184,10 +194,13 @@
       }
     },
     "linked_accounts": {
+      "page_title": "Linked Accounts",
       "oauth_section_title": "OAuth Connections",
       "no_oauth": "No connected accounts",
       "connected_at": "Connected: {date}",
       "unlink_button": "Disconnect",
+      "google_link_button": "Link with Google",
+      "google_link_loading": "Linking...",
       "line_section_title": "LINE Connection",
       "line_icon_alt": "LINE Icon",
       "line_default_user": "LINE User",
@@ -196,10 +209,25 @@
       "line_not_linked": "No LINE account connected",
       "line_link_instruction": "Connect LINE from the LINE app",
       "toast": {
+        "load_error": "Failed to load linked accounts",
         "unlink_success": "{provider} disconnected",
         "unlink_error": "Failed to disconnect",
         "line_unlink_success": "LINE disconnected",
-        "line_unlink_error": "Failed to disconnect LINE"
+        "line_unlink_error": "Failed to disconnect LINE",
+        "link_success": "Linked with {provider}",
+        "link_error": "Failed to get link URL",
+        "already_linked": "This account is already linked to {provider}",
+        "taken_by_other": "This Google account is already used by another user",
+        "oauth_denied": "Google authentication was cancelled"
+      },
+      "guide": {
+        "title": "About Account Linking",
+        "google_title": "Sign in with Google",
+        "google_desc": "You can sign in easily without a password using your Google account.",
+        "apple_title": "Sign in with Apple (coming soon)",
+        "apple_desc": "A convenient sign-in method for iPhone users. Coming soon.",
+        "line_title": "LINE Notifications",
+        "line_desc": "Add the bot to your LINE group to receive schedule and attendance notifications on LINE. Link from the LINE app."
       }
     },
     "member_card": {

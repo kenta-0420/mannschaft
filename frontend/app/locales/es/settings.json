@@ -165,6 +165,16 @@
       "backup_codes_description": "Guarde los siguientes códigos de respaldo en un lugar seguro. Cada código solo se puede usar una vez.",
       "rename_dialog_title": "Renombrar dispositivo",
       "device_name_label": "Nombre del dispositivo",
+      "webauthn": {
+        "register_button": "Registrar una clave de acceso",
+        "register_dialog_title": "Registrar una clave de acceso",
+        "device_name_label": "Nombre del dispositivo (opcional)",
+        "device_name_placeholder": "ej. Touch ID en iPhone",
+        "register_confirm": "Registrar",
+        "register_cancel": "Cancelar",
+        "register_success": "Clave de acceso registrada correctamente",
+        "register_error": "Error al registrar la clave de acceso"
+      },
       "session": {
         "device_label": "{browser} en {os}",
         "unknown_device": "Dispositivo desconocido"
@@ -184,10 +194,13 @@
       }
     },
     "linked_accounts": {
+      "page_title": "Cuentas vinculadas",
       "oauth_section_title": "Conexiones OAuth",
       "no_oauth": "No hay cuentas conectadas",
       "connected_at": "Conectado: {date}",
       "unlink_button": "Desconectar",
+      "google_link_button": "Vincular con Google",
+      "google_link_loading": "Vinculando...",
       "line_section_title": "Conexión LINE",
       "line_icon_alt": "Icono de LINE",
       "line_default_user": "Usuario de LINE",
@@ -196,10 +209,25 @@
       "line_not_linked": "No hay cuenta LINE conectada",
       "line_link_instruction": "Conecte LINE desde la aplicación LINE",
       "toast": {
+        "load_error": "Error al cargar las cuentas vinculadas",
         "unlink_success": "{provider} desconectado",
         "unlink_error": "Error al desconectar",
         "line_unlink_success": "LINE desconectado",
-        "line_unlink_error": "Error al desconectar LINE"
+        "line_unlink_error": "Error al desconectar LINE",
+        "link_success": "Vinculado con {provider}",
+        "link_error": "Error al obtener URL de vinculación",
+        "already_linked": "Esta cuenta ya está vinculada a {provider}",
+        "taken_by_other": "Esta cuenta de Google ya es utilizada por otro usuario",
+        "oauth_denied": "La autenticación de Google fue cancelada"
+      },
+      "guide": {
+        "title": "Acerca de la vinculación de cuentas",
+        "google_title": "Iniciar sesión con Google",
+        "google_desc": "Puede iniciar sesión fácilmente con su cuenta de Google sin contraseña.",
+        "apple_title": "Iniciar sesión con Apple (próximamente)",
+        "apple_desc": "Un método de inicio de sesión conveniente para usuarios de iPhone. Próximamente.",
+        "line_title": "Notificaciones de LINE",
+        "line_desc": "Agregue el bot a su grupo de LINE para recibir notificaciones de horarios y asistencia en LINE. Vincule desde la aplicación LINE."
       }
     },
     "member_card": {

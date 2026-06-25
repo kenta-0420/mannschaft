@@ -86,6 +86,7 @@ const {
   loadLinkedAccounts,
   handleUnlinkOAuth,
   handleUnlinkLine,
+  handleLinkOAuth,
 } = useAccountLinkedAccounts()
 
 const {
@@ -235,6 +236,7 @@ onMounted(async () => {
         :line-status="lineStatus"
         @unlink-o-auth="handleUnlinkOAuth"
         @unlink-line="handleUnlinkLine"
+        @link-o-auth="handleLinkOAuth"
       />
 
       <SettingsMemberCardSection

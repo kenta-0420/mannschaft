@@ -165,6 +165,16 @@
       "backup_codes_description": "以下のバックアップコードを安全な場所に保管してください。各コードは一度だけ使用できます。",
       "rename_dialog_title": "デバイス名の変更",
       "device_name_label": "デバイス名",
+      "webauthn": {
+        "register_button": "パスキーを登録",
+        "register_dialog_title": "パスキーを登録",
+        "device_name_label": "デバイス名（任意）",
+        "device_name_placeholder": "例: iPhone の Touch ID",
+        "register_confirm": "登録する",
+        "register_cancel": "キャンセル",
+        "register_success": "パスキーを登録しました",
+        "register_error": "パスキーの登録に失敗しました"
+      },
       "session": {
         "device_label": "{os} の {browser}",
         "unknown_device": "不明なデバイス"
@@ -184,10 +194,13 @@
       }
     },
     "linked_accounts": {
+      "page_title": "アカウント連携",
       "oauth_section_title": "OAuth連携",
       "no_oauth": "連携されたアカウントはありません",
       "connected_at": "連携日: {date}",
       "unlink_button": "解除",
+      "google_link_button": "Googleと連携",
+      "google_link_loading": "連携中...",
       "line_section_title": "LINE連携",
       "line_icon_alt": "LINEアイコン",
       "line_default_user": "LINE ユーザー",
@@ -196,10 +209,25 @@
       "line_not_linked": "LINEアカウントは連携されていません",
       "line_link_instruction": "LINE連携はLINEアプリから行ってください",
       "toast": {
+        "load_error": "連携情報の取得に失敗しました",
         "unlink_success": "{provider}の連携を解除しました",
         "unlink_error": "連携解除に失敗しました",
         "line_unlink_success": "LINE連携を解除しました",
-        "line_unlink_error": "LINE連携の解除に失敗しました"
+        "line_unlink_error": "LINE連携の解除に失敗しました",
+        "link_success": "{provider}と連携しました",
+        "link_error": "連携URLの取得に失敗しました",
+        "already_linked": "このアカウントはすでに{provider}と連携されています",
+        "taken_by_other": "このGoogleアカウントは別のユーザーが使用中です",
+        "oauth_denied": "Googleの認証がキャンセルされました"
+      },
+      "guide": {
+        "title": "アカウント連携について",
+        "google_title": "Googleでログイン",
+        "google_desc": "パスワードを使わずに、Googleアカウントでかんたんにログインできるようになります。",
+        "apple_title": "Appleでログイン（準備中）",
+        "apple_desc": "iPhoneをお使いの方向けのログイン方法です。現在は準備中です。",
+        "line_title": "LINE通知",
+        "line_desc": "LINEグループにボットを追加すると、スケジュールや出欠の通知をLINEで受け取れます。連携はLINEアプリから行ってください。"
       }
     },
     "member_card": {

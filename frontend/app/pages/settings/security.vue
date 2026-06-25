@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { AuthSessionResponse, WebAuthnCredentialResponse } from '~/types/auth'
+import { useWebAuthnRegister } from '~/composables/useWebAuthnRegister'
 
 definePageMeta({
   middleware: 'auth',
@@ -34,8 +35,15 @@ const renameDialog = ref(false)
 const renameTarget = ref<WebAuthnCredentialResponse | null>(null)
 const newDeviceName = ref('')
 
+// WebAuthn register
+const { registerPasskey, isRegistering: isRegisteringPasskey, error: registerError } = useWebAuthnRegister()
+const registerDialog = ref(false)
+const newPasskeyName = ref('')
+
 // 使い方ガイド（モーダル）
 const showHelp = ref(false)
+
+const { t } = useI18n()
 
 onMounted(async () => {
   await loadData()
@@ -133,6 +141,25 @@ async function handleRenameCredential() {
     notification.error('デバイス名の更新に失敗しました')
   }
 }
+
+async function handlePasskeyRegister() {
+  const deviceName = newPasskeyName.value.trim() || undefined
+  const success = await registerPasskey(deviceName)
+  if (success) {
+    registerDialog.value = false
+    newPasskeyName.value = ''
+    notification.success(t('settings.security.webauthn.register_success'))
+    // 資格情報一覧を再取得
+    try {
+      const credRes = await getWebAuthnCredentials()
+      credentials.value = credRes.data
+    } catch {
+      // 再取得失敗は非致命的。次回リロード時に反映される。
+    }
+  } else if (registerError.value) {
+    notification.error(t('settings.security.webauthn.register_error'))
+  }
+}
 </script>
 
 <template>
@@ -154,6 +181,9 @@ async function handleRenameCredential() {
         :show-backup-codes-dialog="showBackupCodesDialog"
         :rename-dialog="renameDialog"
         :new-device-name="newDeviceName"
+        :is-registering-passkey="isRegisteringPasskey"
+        :register-dialog="registerDialog"
+        :new-passkey-name="newPasskeyName"
         @setup2fa="handleSetup2fa"
         @regenerate-backup-codes="handleRegenerateBackupCodes"
         @revoke-session="handleRevokeSession"
@@ -161,9 +191,12 @@ async function handleRenameCredential() {
         @delete-credential="handleDeleteCredential"
         @open-rename-dialog="openRenameDialog"
         @rename-credential="handleRenameCredential"
+        @passkey-register="handlePasskeyRegister"
         @update:show-backup-codes-dialog="showBackupCodesDialog = $event"
         @update:rename-dialog="renameDialog = $event"
         @update:new-device-name="newDeviceName = $event"
+        @update:register-dialog="registerDialog = $event"
+        @update:new-passkey-name="newPasskeyName = $event"
       />
     </div>
   </div>

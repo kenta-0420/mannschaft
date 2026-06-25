@@ -135,7 +135,7 @@ export function useAuthApi() {
   async function verifyTotpSetup(code: string) {
     return api<{ data: MessageResponse }>('/api/v1/auth/2fa/verify', {
       method: 'POST',
-      body: { code },
+      body: { totpCode: code },
     })
   }
 

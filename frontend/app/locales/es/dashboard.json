@@ -71,6 +71,14 @@
         "thunderstorm": "Tormenta eléctrica"
       }
     },
+    "upcoming_events": {
+      "today_title": "今日の予定",
+      "week_title": "今週の予定",
+      "toggle_today": "今日",
+      "toggle_week": "今週",
+      "empty_today": "今日の予定はありません",
+      "empty_week": "今週の予定はありません"
+    },
     "personal": {
       "find_team_title": "Encontrar un nuevo equipo u organización",
       "find_team_description": "Busca equipos u organizaciones a los que quieras unirte y solicita ser seguidor.\nSe necesita un enlace de invitación para unirse como miembro.",

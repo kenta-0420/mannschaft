@@ -165,6 +165,16 @@
       "backup_codes_description": "Bewahren Sie die folgenden Backup-Codes an einem sicheren Ort auf. Jeder Code kann nur einmal verwendet werden.",
       "rename_dialog_title": "Gerät umbenennen",
       "device_name_label": "Gerätename",
+      "webauthn": {
+        "register_button": "Passkey registrieren",
+        "register_dialog_title": "Passkey registrieren",
+        "device_name_label": "Gerätename (optional)",
+        "device_name_placeholder": "z.B. Touch ID auf iPhone",
+        "register_confirm": "Registrieren",
+        "register_cancel": "Abbrechen",
+        "register_success": "Passkey erfolgreich registriert",
+        "register_error": "Passkey-Registrierung fehlgeschlagen"
+      },
       "session": {
         "device_label": "{browser} unter {os}",
         "unknown_device": "Unbekanntes Gerät"
@@ -184,10 +194,13 @@
       }
     },
     "linked_accounts": {
+      "page_title": "Verknüpfte Konten",
       "oauth_section_title": "OAuth-Verbindungen",
       "no_oauth": "Keine verbundenen Konten",
       "connected_at": "Verbunden: {date}",
       "unlink_button": "Trennen",
+      "google_link_button": "Mit Google verknüpfen",
+      "google_link_loading": "Verknüpfung...",
       "line_section_title": "LINE-Verbindung",
       "line_icon_alt": "LINE-Symbol",
       "line_default_user": "LINE-Benutzer",
@@ -196,10 +209,25 @@
       "line_not_linked": "Kein LINE-Konto verbunden",
       "line_link_instruction": "Verbinden Sie LINE über die LINE-App",
       "toast": {
+        "load_error": "Verknüpfte Konten konnten nicht geladen werden",
         "unlink_success": "{provider} getrennt",
         "unlink_error": "Trennung fehlgeschlagen",
         "line_unlink_success": "LINE getrennt",
-        "line_unlink_error": "LINE-Trennung fehlgeschlagen"
+        "line_unlink_error": "LINE-Trennung fehlgeschlagen",
+        "link_success": "Mit {provider} verknüpft",
+        "link_error": "Verknüpfungs-URL konnte nicht abgerufen werden",
+        "already_linked": "Dieses Konto ist bereits mit {provider} verknüpft",
+        "taken_by_other": "Dieses Google-Konto wird bereits von einem anderen Benutzer verwendet",
+        "oauth_denied": "Google-Authentifizierung wurde abgebrochen"
+      },
+      "guide": {
+        "title": "Über die Kontoverknüpfung",
+        "google_title": "Mit Google anmelden",
+        "google_desc": "Sie können sich ohne Passwort ganz einfach mit Ihrem Google-Konto anmelden.",
+        "apple_title": "Mit Apple anmelden (demnächst)",
+        "apple_desc": "Eine bequeme Anmeldemethode für iPhone-Benutzer. Demnächst verfügbar.",
+        "line_title": "LINE-Benachrichtigungen",
+        "line_desc": "Fügen Sie den Bot zu Ihrer LINE-Gruppe hinzu, um Terminplan- und Anwesenheitsbenachrichtigungen über LINE zu erhalten. Verknüpfen Sie über die LINE-App."
       }
     },
     "member_card": {

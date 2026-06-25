@@ -71,6 +71,14 @@
         "thunderstorm": "뇌우"
       }
     },
+    "upcoming_events": {
+      "today_title": "今日の予定",
+      "week_title": "今週の予定",
+      "toggle_today": "今日",
+      "toggle_week": "今週",
+      "empty_today": "今日の予定はありません",
+      "empty_week": "今週の予定はありません"
+    },
     "personal": {
       "find_team_title": "새로운 팀·조직 찾기",
       "find_team_description": "참여하고 싶은 팀이나 조직을 검색하여 서포터로 신청할 수 있습니다.\n멤버로 참가하려면 초대 링크가 필요합니다.",

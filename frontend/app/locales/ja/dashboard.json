@@ -71,6 +71,14 @@
         "thunderstorm": "雷雨"
       }
     },
+    "upcoming_events": {
+      "today_title": "今日の予定",
+      "week_title": "今週の予定",
+      "toggle_today": "今日",
+      "toggle_week": "今週",
+      "empty_today": "今日の予定はありません",
+      "empty_week": "今週の予定はありません"
+    },
     "personal": {
       "find_team_title": "新しいチーム・組織を見つける",
       "find_team_description": "参加したいチームや組織を検索してサポーターとして申請できます。\nメンバーとして参加するには招待リンクが必要です。",
