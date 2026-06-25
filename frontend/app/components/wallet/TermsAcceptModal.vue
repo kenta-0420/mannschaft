@@ -33,6 +33,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const appearanceStore = useAppearanceStore()
 
 /** モーダル開いた瞬間にスクロール状態をリセットする */
 const scrollEl = ref<HTMLElement | null>(null)
@@ -102,7 +103,10 @@ const titleKey = computed(() =>
       :aria-modal="true"
       :aria-label="t(titleKey)"
     >
-      <div class="terms-modal__panel">
+      <div
+        class="terms-modal__panel"
+        :class="{ 'terms-modal__panel--dark': appearanceStore.isDark }"
+      >
         <header class="terms-modal__header">
           <h2 class="terms-modal__title">{{ t(titleKey) }}</h2>
           <button
@@ -191,6 +195,11 @@ const titleKey = computed(() =>
   overflow: hidden;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 }
+.terms-modal__panel--dark {
+  background: #1e1e1e;
+  color: #f4f4f5;
+  color-scheme: dark;
+}
 .terms-modal__header {
   display: flex;
   align-items: center;
@@ -209,6 +218,10 @@ const titleKey = computed(() =>
   cursor: pointer;
   color: var(--p-text-muted-color, #6b7280);
   padding: 0 0.5rem;
+}
+.terms-modal__panel--dark .terms-modal__close,
+.terms-modal__panel--dark .terms-modal__hint {
+  color: #a1a1aa;
 }
 .terms-modal__hint {
   padding: 0 1.5rem;
@@ -230,6 +243,9 @@ const titleKey = computed(() =>
 .terms-modal__item {
   padding: 0.875rem 0;
   border-bottom: 1px solid var(--p-surface-200, #e5e7eb);
+}
+.terms-modal__panel--dark .terms-modal__item {
+  border-bottom-color: #3f3f46;
 }
 .terms-modal__item:last-child {
   border-bottom: none;
@@ -261,6 +277,9 @@ const titleKey = computed(() =>
   padding: 1rem 1.5rem 1.25rem;
   border-top: 1px solid var(--p-surface-200, #e5e7eb);
 }
+.terms-modal__panel--dark .terms-modal__footer {
+  border-top-color: #3f3f46;
+}
 .terms-modal__btn {
   padding: 0.625rem 1.25rem;
   border-radius: 0.5rem;
@@ -271,7 +290,17 @@ const titleKey = computed(() =>
   background: var(--p-surface-0, #fff);
   color: var(--p-text-color, #111827);
 }
+.terms-modal__panel--dark .terms-modal__btn {
+  background: #27272a;
+  border-color: #3f3f46;
+  color: #f4f4f5;
+}
 .terms-modal__btn--primary {
+  background: var(--p-primary-color, #3b82f6);
+  border-color: var(--p-primary-color, #3b82f6);
+  color: #fff;
+}
+.terms-modal__panel--dark .terms-modal__btn--primary {
   background: var(--p-primary-color, #3b82f6);
   border-color: var(--p-primary-color, #3b82f6);
   color: #fff;
@@ -279,33 +308,5 @@ const titleKey = computed(() =>
 .terms-modal__btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-/* ダークモード: --p-* トークンが解決されず白背景に白文字となるため明示的に上書きする */
-:global(.dark) .terms-modal__panel {
-  background: #1e1e1e;
-  color: #f4f4f5;
-  /* ネイティブチェックボックスをダーク配色で描画させる */
-  color-scheme: dark;
-}
-:global(.dark) .terms-modal__close,
-:global(.dark) .terms-modal__hint {
-  color: #a1a1aa;
-}
-:global(.dark) .terms-modal__item {
-  border-bottom-color: #3f3f46;
-}
-:global(.dark) .terms-modal__footer {
-  border-top-color: #3f3f46;
-}
-:global(.dark) .terms-modal__btn {
-  background: #27272a;
-  border-color: #3f3f46;
-  color: #f4f4f5;
-}
-:global(.dark) .terms-modal__btn--primary {
-  background: var(--p-primary-color, #3b82f6);
-  border-color: var(--p-primary-color, #3b82f6);
-  color: #fff;
 }
 </style>
