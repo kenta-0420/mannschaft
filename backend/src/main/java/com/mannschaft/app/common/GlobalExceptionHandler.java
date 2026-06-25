@@ -729,7 +729,9 @@ public class GlobalExceptionHandler {
             Map.entry("REFLECTION_011", HttpStatus.BAD_REQUEST),          // BULK_ARCHIVE_NO_CONDITION（条件なし）
             Map.entry("REFLECTION_012", HttpStatus.BAD_REQUEST),          // PARENT_DEPTH_EXCEEDED（2階層超過）
             Map.entry("REFLECTION_013", HttpStatus.BAD_REQUEST),          // PARENT_SELF_REFERENCE（自己参照）
-            Map.entry("REFLECTION_014", HttpStatus.BAD_REQUEST)           // PARENT_INVALID_STATE（archived/deleted 親）
+            Map.entry("REFLECTION_014", HttpStatus.BAD_REQUEST),          // PARENT_INVALID_STATE（archived/deleted 親）
+            // Phase 4: 暗記カード／期間横断 単語帳（§13）
+            Map.entry("REFLECTION_015", HttpStatus.BAD_REQUEST)           // DATE_RANGE_INVALID（期間幅 366 日超）
     );
 
     /**

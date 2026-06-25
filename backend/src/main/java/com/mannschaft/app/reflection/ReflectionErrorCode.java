@@ -67,7 +67,13 @@ public enum ReflectionErrorCode implements ErrorCode {
 
     /** parent_theme_id にアーカイブ済みまたは削除済みテーマを指定（§12.3）。 */
     REFLECTION_PARENT_INVALID_STATE("REFLECTION_014",
-            "親テーマはアクティブなテーマを指定してください", Severity.WARN);
+            "親テーマはアクティブなテーマを指定してください", Severity.WARN),
+
+    // ===== Phase 4: 暗記カード／期間横断 単語帳（§13） =====
+
+    /** 期間横断 単語帳ビューの期間幅（from〜to）が上限（366 日）を超過（§13-F-1・EP #23）。 */
+    REFLECTION_DATE_RANGE_INVALID("REFLECTION_015",
+            "期間は最大366日まで指定できます", Severity.WARN);
 
     private final String code;
     private final String message;
