@@ -250,15 +250,17 @@ public class AuthSessionService {
      * @param userId ユーザーID
      * @param cursor カーソル（null=先頭から）
      * @param limit  取得件数
+     * @param from   開始日時（null=制限なし）
+     * @param to     終了日時（null=制限なし）
      * @return ログイン履歴
      */
-    public CursorPagedResponse<LoginHistoryResponse> getLoginHistory(Long userId, String cursor, int limit) {
+    public CursorPagedResponse<LoginHistoryResponse> getLoginHistory(Long userId, String cursor, int limit, LocalDateTime from, LocalDateTime to) {
         CursorPagedResponse<AuditLogResponse> logs = auditLogQueryService.getMyLogs(
                 userId,
                 null,
                 List.of(AuditEventCategory.AUTH),
-                null,
-                null,
+                from,
+                to,
                 cursor,
                 limit);
 
