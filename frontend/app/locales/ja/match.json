@@ -456,7 +456,8 @@
     "entry": {
       "record_from_schedule": "この試合を記録",
       "record_from_schedule_hint": "この予定の試合記録を開始します",
-      "resolving": "試合記録を準備中…"
+      "resolving": "試合記録を準備中…",
+      "no_org_for_record": "試合記録はチームが組織に所属している場合のみ利用できます"
     },
     "fixtures": {
       "title": "対戦表",

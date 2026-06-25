@@ -456,7 +456,8 @@
     "entry": {
       "record_from_schedule": "Record this match",
       "record_from_schedule_hint": "Start recording the match for this event",
-      "resolving": "Preparing match record…"
+      "resolving": "Preparing match record…",
+      "no_org_for_record": "Match recording is only available when the team belongs to an organization"
     },
     "fixtures": {
       "title": "Fixtures",

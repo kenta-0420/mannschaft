@@ -7,7 +7,7 @@ definePageMeta({
 
 const notification = useNotification()
 const { getLoginHistory } = useUserSettingsApi()
-const { formatDateTime } = useDatetime()
+const { formatDateTime, buildOffsetDateTimeStr } = useDatetime()
 
 const loading = ref(true)
 const history = ref<LoginHistoryResponse[]>([])
@@ -15,18 +15,32 @@ const nextCursor = ref<string | null>(null)
 const hasNext = ref(false)
 const loadingMore = ref(false)
 
+const fromDate = ref<Date | null>(null)
+const toDate = ref<Date | null>(null)
+
 onMounted(async () => {
   await loadHistory()
 })
+
+function toDateStart(date: Date | null): string | undefined {
+  const s = buildOffsetDateTimeStr(date, '00:00')
+  return s ?? undefined
+}
+
+function toDateEnd(date: Date | null): string | undefined {
+  const s = buildOffsetDateTimeStr(date, '23:59')
+  return s ?? undefined
+}
 
 async function loadHistory(cursor?: string) {
   if (cursor) {
     loadingMore.value = true
   } else {
     loading.value = true
+    history.value = []
   }
   try {
-    const res = await getLoginHistory(cursor, 20)
+    const res = await getLoginHistory(cursor, 5, toDateStart(fromDate.value), toDateEnd(toDate.value))
     if (cursor) {
       history.value.push(...res.data)
     } else {
@@ -48,6 +62,17 @@ function loadMore() {
   }
 }
 
+function onFilterChange() {
+  nextCursor.value = null
+  loadHistory()
+}
+
+function clearFilter() {
+  fromDate.value = null
+  toDate.value = null
+  nextCursor.value = null
+  loadHistory()
+}
 
 function eventLabel(eventType: string) {
   const labels: Record<string, string> = {
@@ -76,6 +101,48 @@ function eventSeverity(eventType: string) {
 <template>
   <div class="mx-auto max-w-2xl">
     <PageHeader title="ログイン履歴" back-to="/settings" />
+
+    <SectionCard class="mb-4">
+      <div class="flex flex-wrap items-end gap-3">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-surface-500">開始日</label>
+          <DatePicker
+            v-model="fromDate"
+            date-format="yy/mm/dd"
+            show-icon
+            :max-date="toDate ?? undefined"
+            class="w-40"
+            show-button-bar
+          />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-surface-500">終了日</label>
+          <DatePicker
+            v-model="toDate"
+            date-format="yy/mm/dd"
+            show-icon
+            :min-date="fromDate ?? undefined"
+            class="w-40"
+            show-button-bar
+          />
+        </div>
+        <Button
+          label="検索"
+          icon="pi pi-search"
+          size="small"
+          @click="onFilterChange"
+        />
+        <Button
+          v-if="fromDate || toDate"
+          label="クリア"
+          severity="secondary"
+          text
+          size="small"
+          icon="pi pi-times"
+          @click="clearFilter"
+        />
+      </div>
+    </SectionCard>
 
     <PageLoading v-if="loading" />
 

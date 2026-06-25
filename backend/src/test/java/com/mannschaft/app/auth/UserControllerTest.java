@@ -242,7 +242,7 @@ class UserControllerTest {
         var meta = new CursorPagedResponse.CursorMeta(null, false, 20);
         CursorPagedResponse<LoginHistoryResponse> pagedResp =
                 CursorPagedResponse.of(List.of(history), meta);
-        given(authService.getLoginHistory(anyLong(), any(), anyInt()))
+        given(authService.getLoginHistory(anyLong(), any(), anyInt(), any(), any()))
                 .willReturn(pagedResp);
 
         mockMvc.perform(get("/api/v1/users/me/login-history")
