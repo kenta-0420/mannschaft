@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
-import type { ReminderFormEntry, ScheduleEventFormState, TimeHistoryEntry } from './event-form/types'
+import type { RecurrenceEndType, RecurrenceType, ReminderFormEntry, ScheduleEventFormState, TimeHistoryEntry } from './event-form/types'
 
 interface ScopeOption {
   label: string
@@ -221,10 +221,10 @@ watch(
           const recurrenceRule = status.recurrenceRule as Record<string, unknown> | null
           if (recurrenceRule && typeof recurrenceRule === 'object') {
             form.value.recurrence = true
-            form.value.recurrenceType = (recurrenceRule.type as string) ?? 'WEEKLY'
+            form.value.recurrenceType = ((recurrenceRule.type as string) ?? 'WEEKLY') as RecurrenceType
             form.value.recurrenceInterval = (recurrenceRule.interval as number) ?? 1
             form.value.recurrenceDaysOfWeek = (recurrenceRule.daysOfWeek as string[]) ?? []
-            form.value.recurrenceEndType = (recurrenceRule.endType as string) ?? 'NEVER'
+            form.value.recurrenceEndType = ((recurrenceRule.endType as string) ?? 'NEVER') as RecurrenceEndType
             if (recurrenceRule.endDate) {
               form.value.recurrenceEndDate = new Date(recurrenceRule.endDate as string)
             }
