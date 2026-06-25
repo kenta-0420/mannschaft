@@ -24,6 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -96,7 +97,7 @@ class UserOAuthLinkControllerTest {
     @DisplayName("AC-1: GET /GOOGLE/auth-url — 正常系: 200 で認可URL（$.data.authUrl）を返す")
     void getAuthUrl_google_success_returns200WithAuthUrl() throws Exception {
         // Given: サービスが Google の認可URLを返す
-        given(authOAuthLinkService.generateAuthUrl(any(), eq("GOOGLE")))
+        given(authOAuthLinkService.generateAuthUrl(any(), eq("GOOGLE"), anyBoolean()))
                 .willReturn("https://accounts.google.com/o/oauth2/v2/auth?client_id=test-client-id"
                         + "&redirect_uri=http%3A%2F%2Flocalhost%2Fcallback&scope=openid&state=abc123");
 
@@ -116,7 +117,7 @@ class UserOAuthLinkControllerTest {
         // 未認証アクセスでは SecurityUtils.getCurrentUserId() が COMMON_000（→401）を投げる想定。
         // 現状はエンドポイント未実装のため 404 → RED。
         // addFilters=false でも、エンドポイント実装後に未認証時 401 を返す契約を検証する。
-        given(authOAuthLinkService.generateAuthUrl(any(), eq("GOOGLE")))
+        given(authOAuthLinkService.generateAuthUrl(any(), eq("GOOGLE"), anyBoolean()))
                 .willThrow(new BusinessException(
                         com.mannschaft.app.common.CommonErrorCode.COMMON_000));
 
@@ -132,7 +133,7 @@ class UserOAuthLinkControllerTest {
     @DisplayName("AC-3: GET /GOOGLE/auth-url — 既連携: 409（Conflict）を返す")
     void getAuthUrl_alreadyLinked_returns409() throws Exception {
         // Given: サービスが「既に連携済み」を表す 409 マッピングのエラーを投げる（AUTH_034 → CONFLICT）
-        given(authOAuthLinkService.generateAuthUrl(any(), eq("GOOGLE")))
+        given(authOAuthLinkService.generateAuthUrl(any(), eq("GOOGLE"), anyBoolean()))
                 .willThrow(new BusinessException(AuthErrorCode.AUTH_034));
 
         // When / Then: エンドポイント未実装のため現状は 404 → RED
@@ -148,7 +149,7 @@ class UserOAuthLinkControllerTest {
     @DisplayName("AC-4: GET /GITHUB/auth-url — 未サポートプロバイダ: 400（Bad Request）を返す")
     void getAuthUrl_unknownProvider_returns400() throws Exception {
         // Given: サポート外プロバイダで AUTH_028（→ デフォルト 400）が投げられる想定
-        given(authOAuthLinkService.generateAuthUrl(any(), eq("GITHUB")))
+        given(authOAuthLinkService.generateAuthUrl(any(), eq("GITHUB"), anyBoolean()))
                 .willThrow(new BusinessException(AuthErrorCode.AUTH_028));
 
         // When / Then: エンドポイント未実装のため現状は 404 → RED
