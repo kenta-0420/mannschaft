@@ -3,7 +3,7 @@ import type { OAuthProviderResponse, UserLineStatusResponse } from '~/types/user
 export function useAccountLinkedAccounts() {
   const notification = useNotification()
   const { t } = useI18n()
-  const { getOAuthProviders, unlinkOAuthProvider, getLineStatus, unlinkLine } =
+  const { getOAuthProviders, unlinkOAuthProvider, getLineStatus, unlinkLine, getOAuthLinkAuthUrl } =
     useUserSettingsApi()
 
   const oauthProviders = ref<OAuthProviderResponse[]>([])
@@ -59,6 +59,15 @@ export function useAccountLinkedAccounts() {
     )
   }
 
+  async function handleLinkOAuth(provider: string) {
+    try {
+      const res = await getOAuthLinkAuthUrl(provider)
+      window.location.href = res.data.authUrl
+    } catch {
+      notification.error(t('settings.linked_accounts.toast.link_error'))
+    }
+  }
+
   function providerIcon(provider: string) {
     return (
       (
@@ -78,6 +87,7 @@ export function useAccountLinkedAccounts() {
     loadLinkedAccounts,
     handleUnlinkOAuth,
     handleUnlinkLine,
+    handleLinkOAuth,
     providerLabel,
     providerIcon,
   }

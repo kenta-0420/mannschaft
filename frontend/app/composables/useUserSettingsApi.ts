@@ -155,6 +155,10 @@ export function useUserSettingsApi() {
     })
   }
 
+  async function getOAuthLinkAuthUrl(provider: string) {
+    return api<{ data: { authUrl: string } }>(`/api/v1/users/me/oauth/link/${encodeURIComponent(provider)}/auth-url`)
+  }
+
   // === LINE ===
   async function linkLine(body: LinkLineRequest) {
     return api<{ data: UserLineStatusResponse }>('/api/v1/users/me/line/link', {
@@ -240,6 +244,7 @@ export function useUserSettingsApi() {
     cancelWithdrawal,
     getOAuthProviders,
     unlinkOAuthProvider,
+    getOAuthLinkAuthUrl,
     linkLine,
     unlinkLine,
     getLineStatus,

@@ -184,10 +184,13 @@
       }
     },
     "linked_accounts": {
+      "page_title": "계정 연동",
       "oauth_section_title": "OAuth 연동",
       "no_oauth": "연동된 계정이 없습니다",
       "connected_at": "연동일: {date}",
       "unlink_button": "해제",
+      "google_link_button": "Google과 연동",
+      "google_link_loading": "연동 중...",
       "line_section_title": "LINE 연동",
       "line_icon_alt": "LINE 아이콘",
       "line_default_user": "LINE 사용자",
@@ -196,10 +199,25 @@
       "line_not_linked": "LINE 계정이 연동되지 않았습니다",
       "line_link_instruction": "LINE 앱에서 연동을 진행해 주세요",
       "toast": {
+        "load_error": "연동 정보를 불러오지 못했습니다",
         "unlink_success": "{provider} 연동이 해제되었습니다",
         "unlink_error": "연동 해제에 실패했습니다",
         "line_unlink_success": "LINE 연동이 해제되었습니다",
-        "line_unlink_error": "LINE 연동 해제에 실패했습니다"
+        "line_unlink_error": "LINE 연동 해제에 실패했습니다",
+        "link_success": "{provider}와(과) 연동되었습니다",
+        "link_error": "연동 URL을 가져오지 못했습니다",
+        "already_linked": "이 계정은 이미 {provider}와(과) 연동되어 있습니다",
+        "taken_by_other": "이 Google 계정은 다른 사용자가 사용 중입니다",
+        "oauth_denied": "Google 인증이 취소되었습니다"
+      },
+      "guide": {
+        "title": "계정 연동에 대해",
+        "google_title": "Google로 로그인",
+        "google_desc": "비밀번호 없이 Google 계정으로 간편하게 로그인할 수 있습니다.",
+        "apple_title": "Apple로 로그인（준비 중）",
+        "apple_desc": "iPhone 사용자를 위한 편리한 로그인 방법입니다. 현재 준비 중입니다.",
+        "line_title": "LINE 알림",
+        "line_desc": "LINE 그룹에 봇을 추가하면 일정 및 출석 알림을 LINE으로 받을 수 있습니다. LINE 앱에서 연동해 주세요."
       }
     },
     "member_card": {
