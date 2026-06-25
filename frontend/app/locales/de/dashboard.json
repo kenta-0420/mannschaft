@@ -71,6 +71,14 @@
         "thunderstorm": "Gewitter"
       }
     },
+    "upcoming_events": {
+      "today_title": "今日の予定",
+      "week_title": "今週の予定",
+      "toggle_today": "今日",
+      "toggle_week": "今週",
+      "empty_today": "今日の予定はありません",
+      "empty_week": "今週の予定はありません"
+    },
     "personal": {
       "find_team_title": "Neues Team oder Organisation finden",
       "find_team_description": "Suche nach Teams oder Organisationen, denen du beitreten möchtest, und bewerbe dich als Unterstützer.\nEin Einladungslink ist erforderlich, um als Mitglied beizutreten.",
