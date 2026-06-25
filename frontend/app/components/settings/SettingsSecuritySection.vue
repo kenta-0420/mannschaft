@@ -1,7 +1,7 @@
 ﻿<script setup lang="ts">
 import type { AuthSessionResponse, WebAuthnCredentialResponse } from '~/types/auth'
 
-const props = withDefaults(
+withDefaults(
   defineProps<{
     totpSetup: { secret: string; qrCodeUrl: string } | null
     setting2fa: boolean
