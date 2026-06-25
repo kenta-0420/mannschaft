@@ -2,6 +2,7 @@ package com.mannschaft.app.auth.controller;
 
 import com.mannschaft.app.auth.AuthErrorCode;
 import com.mannschaft.app.auth.service.AuthOAuthLinkService;
+import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.security.AccessGuard;
@@ -43,6 +44,9 @@ class UserOAuthLinkControllerTest {
     private AuthOAuthLinkService authOAuthLinkService;
 
     // ── @WebMvcTest コンテキストの依存解決用（AuthLoginControllerTest と同セット）──
+    /** JwtAuthenticationFilter の依存解決用。 */
+    @MockitoBean
+    private AuthTokenService authTokenService;
     /** F11.3: UserLocaleFilter の依存解決用。 */
     @MockitoBean
     private UserLocaleCache userLocaleCache;
