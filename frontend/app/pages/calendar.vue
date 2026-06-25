@@ -407,7 +407,7 @@ onMounted(() => {
             <span><span class="mr-1 inline-block h-3 w-3 rounded-full bg-green-500" />個人</span>
             <span><span class="mr-1 inline-block h-3 w-3 rounded-full bg-indigo-500" />チーム/組織</span>
             <!-- #51: スコープフィルタ（個人含む全スコープ） -->
-            <div v-if="allScopeOptions.length > 1" class="flex gap-2 flex-wrap items-center">
+            <div v-if="allScopeOptions.length > 0" class="flex gap-2 flex-wrap items-center">
               <span class="text-xs text-surface-400">表示:</span>
 
               <!-- ≤5件: 横並びトグルボタン -->

@@ -25,6 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -158,6 +159,56 @@ public class GoogleCalendarService {
 
         log.info("Google Calendar連携完了: userId={}, email={}", userId, googleAccountEmail);
         return new GoogleCalendarConnectResponse(googleAccountEmail, googleCalendarId, true);
+    }
+
+    /**
+     * Google OAuth 連携フロー経由の GCal 接続確立。
+     * <p>
+     * 通常の {@link #connect(GoogleCalendarConnectRequest, Long)} と異なり、
+     * token exchange は呼び出し元（{@code AuthOAuthLinkService}）で実施済みなため、
+     * access_token / refresh_token を直接受け取ってDB保存のみ行う。
+     *
+     * <p>TODO: auth ドメインから schedule ドメインへのクロスドメイン呼び出し。
+     * 将来は GoogleCalendarLinkedEvent 等のイベント駆動で分離予定。
+     *
+     * @param userId       対象ユーザーID
+     * @param accessToken  Google access_token（生値）
+     * @param refreshToken Google refresh_token（生値、null の場合あり）
+     * @param email        Google アカウントのメールアドレス
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void connectWithOAuthTokens(Long userId, String accessToken, String refreshToken, String email) {
+        log.info("Google Calendar連携開始(OAuth経由): userId={}", userId);
+
+        String googleCalendarId = "primary";
+
+        String encryptedAccessToken = encryptionService.encrypt(accessToken);
+        String encryptedRefreshToken = refreshToken != null
+                ? encryptionService.encrypt(refreshToken)
+                : null;
+
+        // 既存接続の確認（アカウント変更チェック）
+        connectionRepository.findByUserId(userId).ifPresent(existing -> {
+            if (!email.equals(existing.getGoogleAccountEmail())) {
+                googleEventRepository.deleteAllByUserId(userId);
+                log.info("Googleアカウント変更検出(OAuth経由): userId={}, 旧={}, 新={}",
+                        userId, existing.getGoogleAccountEmail(), email);
+            }
+        });
+
+        // UPSERT user_google_calendar_connections
+        connectionRepository.upsert(userId, email, googleCalendarId,
+                encryptedRefreshToken != null ? encryptedRefreshToken : "", true);
+
+        // アクセストークンと有効期限を保存（有効期限: 1時間後）
+        connectionRepository.findByUserId(userId).ifPresent(conn -> {
+            conn.updateTokens(encryptedAccessToken,
+                    encryptedRefreshToken != null ? encryptedRefreshToken : conn.getRefreshToken(),
+                    LocalDateTime.now().plusSeconds(3600));
+            connectionRepository.save(conn);
+        });
+
+        log.info("Google Calendar連携完了(OAuth経由): userId={}, email={}", userId, email);
     }
 
     /**

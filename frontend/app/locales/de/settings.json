@@ -218,8 +218,10 @@
         "link_error": "Verknüpfungs-URL konnte nicht abgerufen werden",
         "already_linked": "Dieses Konto ist bereits mit {provider} verknüpft",
         "taken_by_other": "Dieses Google-Konto wird bereits von einem anderen Benutzer verwendet",
-        "oauth_denied": "Google-Authentifizierung wurde abgebrochen"
+        "oauth_denied": "Google-Authentifizierung wurde abgebrochen",
+        "link_with_calendar_success": "Google-Konto und Kalender verknüpft"
       },
+      "calendar_sync_toggle": "Google Kalender-Synchronisierung gleichzeitig einrichten",
       "guide": {
         "title": "Über die Kontoverknüpfung",
         "google_title": "Mit Google anmelden",

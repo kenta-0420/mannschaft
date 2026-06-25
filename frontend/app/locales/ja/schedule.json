@@ -14,8 +14,8 @@
       "before": "前",
       "max_reached": "リマインダーは最大5件まで設定できます",
       "kind_label": "種別",
-      "kind_relative": "相対",
-      "kind_absolute": "絶対",
+      "kind_relative": "開始前（分/時間）",
+      "kind_absolute": "日時で指定",
       "unit_label": "単位",
       "unit_minutes": "分",
       "unit_hours": "時間",
@@ -87,6 +87,29 @@
       "fetchFailed": "チーム別出欠内訳の取得に失敗しました。",
       "forbidden": "この内訳を表示する権限がありません。",
       "empty": "チーム別出欠内訳の対象データがありません。"
+    },
+    "recurrence": {
+      "label": "繰り返し",
+      "interval": {
+        "DAILY": "日ごと",
+        "WEEKLY": "週ごと",
+        "MONTHLY": "ヶ月ごと",
+        "YEARLY": "年ごと"
+      },
+      "days": {
+        "SUNDAY": "日",
+        "MONDAY": "月",
+        "TUESDAY": "火",
+        "WEDNESDAY": "水",
+        "THURSDAY": "木",
+        "FRIDAY": "金",
+        "SATURDAY": "土"
+      },
+      "end_label": "終了",
+      "end_never": "指定なし",
+      "end_date": "日付",
+      "end_count": "回数",
+      "end_count_suffix": "回"
     },
     "event_add": "予定を追加",
     "calendar_guide": {

@@ -1,14 +1,14 @@
 <script setup lang="ts">
 /**
- * F06.5 構造化入力フォーム（§2.3）。
+ * F06.5 構造化入力フォーム（§2.3・Phase 4 §13-D/§13-E）。
  *
- * アウトライン固定 5 階層（main_theme → section[heading] → subsection[sub_heading/detail/supplement]）
- * ＋ free_note（マスク対象外）を編集する。v-model で ReflectionStructuredContent を双方向バインドする。
+ * Phase 4 追加: TERM_CARD section（暗記カード）・section 折りたたみ（初期 collapsed）。
  */
 import {
   type ReflectionStructuredContent,
   emptySection,
   emptySubsection,
+  emptyCard,
 } from '~/types/reflection'
 
 const props = defineProps<{
@@ -20,14 +20,57 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const notification = useNotification()
 
-// ローカルコピーで編集し、変更ごとに親へ通知（深い変更も拾うため deep watch）。
 const local = ref<ReflectionStructuredContent>(props.modelValue)
+
+// インライン「＋単語」クイックフォーム（AC-66〜68）
+const inlineTerm = ref('')
+const inlineMeaning = ref('')
+
+function addInlineCard() {
+  const term = inlineTerm.value.trim()
+  const meaning = inlineMeaning.value.trim()
+  if (!term || !meaning) return
+
+  // 最初の TERM_CARD section を探す
+  let termCardIdx = local.value.sections.findIndex(s => s.type === 'TERM_CARD')
+  if (termCardIdx === -1) {
+    // なければ先頭に TERM_CARD section を自動生成
+    local.value.sections.unshift({
+      heading: t('reflection.template.preset.vocab.cards'),
+      type: 'TERM_CARD',
+      subsections: [],
+      cards: [],
+    })
+    collapsed.value.unshift(false)
+    termCardIdx = 0
+  }
+
+  const section = local.value.sections[termCardIdx]
+  if (section) {
+    if (!section.cards) section.cards = []
+    section.cards = [...section.cards, { term, meaning }]
+    // TERM_CARD section を展開
+    collapsed.value[termCardIdx] = false
+  }
+
+  // 入力フィールドをクリア（連続入力対応）
+  inlineTerm.value = ''
+  inlineMeaning.value = ''
+  notification.success(t('reflection.vocab.inline.added'))
+}
+
+// 各 section の折りたたみ状態（初期: true=collapsed）
+const collapsed = ref<boolean[]>(local.value.sections.map(() => true))
 
 watch(
   () => props.modelValue,
   (v) => {
-    if (v !== local.value) local.value = v
+    if (v !== local.value) {
+      local.value = v
+      collapsed.value = v.sections.map(() => true)
+    }
   },
 )
 
@@ -39,10 +82,16 @@ watch(
 
 function addSection() {
   local.value.sections.push(emptySection())
+  collapsed.value.push(false) // 新規追加は展開
 }
 
 function removeSection(idx: number) {
   local.value.sections.splice(idx, 1)
+  collapsed.value.splice(idx, 1)
+}
+
+function toggleCollapse(idx: number) {
+  collapsed.value[idx] = !collapsed.value[idx]
 }
 
 function addSubsection(sectionIdx: number) {
@@ -51,6 +100,28 @@ function addSubsection(sectionIdx: number) {
 
 function removeSubsection(sectionIdx: number, subIdx: number) {
   local.value.sections[sectionIdx]?.subsections.splice(subIdx, 1)
+}
+
+function addCard(sectionIdx: number) {
+  const s = local.value.sections[sectionIdx]
+  if (!s) return
+  if (!s.cards) s.cards = []
+  s.cards.push(emptyCard())
+}
+
+function removeCard(sectionIdx: number, cardIdx: number) {
+  local.value.sections[sectionIdx]?.cards?.splice(cardIdx, 1)
+}
+
+function sectionSummary(sectionIdx: number): string {
+  const s = local.value.sections[sectionIdx]
+  if (!s) return ''
+  if (s.type === 'TERM_CARD') {
+    const n = s.cards?.length ?? 0
+    return t('reflection.section.summary_cards', { n })
+  }
+  const n = s.subsections.length
+  return t('reflection.section.summary_subsections', { n })
 }
 </script>
 
@@ -71,15 +142,25 @@ function removeSubsection(sectionIdx: number, subIdx: number) {
     <div
       v-for="(section, si) in local.sections"
       :key="si"
-      class="rounded-xl border border-surface-200 p-3 dark:border-surface-700"
+      class="rounded-xl border border-surface-200 dark:border-surface-700"
     >
-      <div class="mb-2 flex items-center gap-2">
+      <!-- section ヘッダー行（常時表示）-->
+      <div class="flex items-center gap-2 p-3">
+        <button
+          type="button"
+          class="text-sm text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200"
+          :aria-label="collapsed[si] ? t('reflection.section.expand') : t('reflection.section.collapse')"
+          @click="toggleCollapse(si)"
+        >
+          {{ collapsed[si] ? '+' : '−' }}
+        </button>
         <InputText
           v-model="section.heading"
           :placeholder="t('reflection.entry.section_heading_placeholder')"
           class="flex-1"
           maxlength="200"
         />
+        <span v-if="collapsed[si]" class="text-xs text-surface-400">{{ sectionSummary(si) }}</span>
         <Button
           icon="pi pi-trash"
           severity="danger"
@@ -90,53 +171,98 @@ function removeSubsection(sectionIdx: number, subIdx: number) {
         />
       </div>
 
-      <!-- 小見出し（subsection）一覧 -->
-      <div
-        v-for="(sub, subi) in section.subsections"
-        :key="subi"
-        class="mb-2 space-y-2 rounded-lg bg-surface-50 p-2 dark:bg-surface-800"
-      >
-        <div class="flex items-center gap-2">
-          <InputText
-            v-model="sub.sub_heading"
-            :placeholder="t('reflection.entry.sub_heading_placeholder')"
-            class="flex-1"
-            maxlength="200"
-          />
+      <!-- section 本体（展開時のみ表示）-->
+      <div v-if="!collapsed[si]" class="border-t border-surface-200 p-3 dark:border-surface-700">
+        <!-- OUTLINE: 小見出し一覧 -->
+        <template v-if="section.type !== 'TERM_CARD'">
+          <div
+            v-for="(sub, subi) in section.subsections"
+            :key="subi"
+            class="mb-2 space-y-2 rounded-lg bg-surface-50 p-2 dark:bg-surface-800"
+          >
+            <div class="flex items-center gap-2">
+              <InputText
+                v-model="sub.sub_heading"
+                :placeholder="t('reflection.entry.sub_heading_placeholder')"
+                class="flex-1"
+                maxlength="200"
+              />
+              <Button
+                icon="pi pi-times"
+                severity="secondary"
+                text
+                rounded
+                :aria-label="t('reflection.entry.remove_subsection')"
+                @click="removeSubsection(si, subi)"
+              />
+            </div>
+            <Textarea
+              v-model="sub.detail"
+              :placeholder="t('reflection.entry.detail_placeholder')"
+              class="w-full"
+              rows="2"
+              auto-resize
+              maxlength="2000"
+            />
+            <Textarea
+              v-model="sub.supplement"
+              :placeholder="t('reflection.entry.supplement_placeholder')"
+              class="w-full"
+              rows="1"
+              auto-resize
+              maxlength="2000"
+            />
+          </div>
           <Button
-            icon="pi pi-times"
-            severity="secondary"
+            :label="t('reflection.entry.add_subsection')"
+            icon="pi pi-plus"
+            size="small"
             text
-            rounded
-            :aria-label="t('reflection.entry.remove_subsection')"
-            @click="removeSubsection(si, subi)"
+            @click="addSubsection(si)"
           />
-        </div>
-        <Textarea
-          v-model="sub.detail"
-          :placeholder="t('reflection.entry.detail_placeholder')"
-          class="w-full"
-          rows="2"
-          auto-resize
-          maxlength="2000"
-        />
-        <Textarea
-          v-model="sub.supplement"
-          :placeholder="t('reflection.entry.supplement_placeholder')"
-          class="w-full"
-          rows="1"
-          auto-resize
-          maxlength="2000"
-        />
-      </div>
+        </template>
 
-      <Button
-        :label="t('reflection.entry.add_subsection')"
-        icon="pi pi-plus"
-        size="small"
-        text
-        @click="addSubsection(si)"
-      />
+        <!-- TERM_CARD: 暗記カード一覧 -->
+        <template v-else>
+          <div
+            v-for="(card, ci) in section.cards ?? []"
+            :key="ci"
+            class="mb-2 rounded-lg bg-surface-50 p-2 dark:bg-surface-800"
+          >
+            <div class="flex items-start gap-2">
+              <div class="flex-1 space-y-1">
+                <InputText
+                  v-model="card.term"
+                  :placeholder="t('reflection.card.term_label')"
+                  class="w-full"
+                  maxlength="200"
+                />
+                <InputText
+                  v-model="card.meaning"
+                  :placeholder="t('reflection.card.meaning_label')"
+                  class="w-full"
+                  maxlength="200"
+                />
+              </div>
+              <Button
+                icon="pi pi-trash"
+                severity="danger"
+                text
+                rounded
+                :aria-label="t('reflection.card.remove')"
+                @click="removeCard(si, ci)"
+              />
+            </div>
+          </div>
+          <Button
+            :label="t('reflection.card.add')"
+            icon="pi pi-plus"
+            size="small"
+            text
+            @click="addCard(si)"
+          />
+        </template>
+      </div>
     </div>
 
     <Button
@@ -147,6 +273,36 @@ function removeSubsection(sectionIdx: number, subIdx: number) {
       outlined
       @click="addSection"
     />
+
+    <!-- インライン「＋単語」クイックフォーム（AC-66〜68）-->
+    <div class="rounded-xl border border-surface-200 bg-surface-50 p-3 dark:border-surface-700 dark:bg-surface-900">
+      <p class="mb-2 text-sm font-medium text-surface-600 dark:text-surface-300">
+        {{ t('reflection.vocab.inline.title') }}
+      </p>
+      <div class="flex flex-wrap items-end gap-2">
+        <InputText
+          v-model="inlineTerm"
+          :placeholder="t('reflection.vocab.inline.term_placeholder')"
+          class="flex-1"
+          maxlength="200"
+          @keydown.enter="addInlineCard"
+        />
+        <InputText
+          v-model="inlineMeaning"
+          :placeholder="t('reflection.vocab.inline.meaning_placeholder')"
+          class="flex-1"
+          maxlength="200"
+          @keydown.enter="addInlineCard"
+        />
+        <Button
+          :label="t('reflection.vocab.inline.add_button')"
+          icon="pi pi-plus"
+          size="small"
+          :disabled="!inlineTerm.trim() || !inlineMeaning.trim()"
+          @click="addInlineCard"
+        />
+      </div>
+    </div>
 
     <!-- 自由メモ（マスク対象外） -->
     <div>

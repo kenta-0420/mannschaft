@@ -39,6 +39,11 @@ const submitting = ref(false)
 const recallText = ref('')
 const selfRating = ref<RecallSelfRating>('PARTIAL')
 
+// カード回答（quizIndex → promptIndex → 回答テキスト）
+const cardAnswers = ref<Record<number, Record<number, string>>>({})
+
+const hasCardQuiz = computed(() => (entry.value?.maskedHint?.cardQuiz?.length ?? 0) > 0)
+
 const ratingOptions = computed(() =>
   RECALL_SELF_RATINGS.map(r => ({ label: t(`reflection.recall.rating.${r}`), value: r })),
 )
@@ -77,6 +82,17 @@ async function submit() {
     // recalled_content は free_note に想起テキストを詰めた構造（§2.4 自由テキスト許容）。
     const recalledContent = emptyStructuredContent()
     recalledContent.free_note = recallText.value
+    // カード回答を sections として詰める
+    if (hasCardQuiz.value && entry.value?.maskedHint?.cardQuiz) {
+      recalledContent.sections = entry.value.maskedHint.cardQuiz.map((quiz, qi) => {
+        const answers = cardAnswers.value[qi] ?? {}
+        const cards = (quiz.prompts ?? []).map((p, pi) => ({
+          term: quiz.direction === 'MEANING_TO_TERM' ? (answers[pi] ?? '') : (p.promptText ?? ''),
+          meaning: quiz.direction === 'TERM_TO_MEANING' ? (answers[pi] ?? '') : (p.promptText ?? ''),
+        }))
+        return { heading: quiz.heading ?? '', type: 'TERM_CARD' as const, subsections: [], cards }
+      })
+    }
     const body: CreateRecallAttemptRequest = {
       recalledContent: toJsonNode(recalledContent) as CreateRecallAttemptRequest['recalledContent'],
       selfRating: selfRating.value,
@@ -154,6 +170,29 @@ function goEntry() {
 
         <!-- 想起入力 -->
         <div class="space-y-3">
+          <!-- 暗記カードクイズ（TERM_CARD section がある場合）-->
+          <div v-if="hasCardQuiz" class="space-y-4">
+            <div
+              v-for="(quiz, qi) in entry.maskedHint?.cardQuiz ?? []"
+              :key="qi"
+              class="rounded-xl border border-primary/30 bg-primary/5 p-4"
+            >
+              <p class="mb-3 text-sm font-semibold text-primary">{{ quiz.heading }}</p>
+              <div
+                v-for="(prompt, pi) in quiz.prompts ?? []"
+                :key="pi"
+                class="mb-3"
+              >
+                <p class="mb-1 text-sm font-medium">{{ prompt.promptText }}</p>
+                <InputText
+                  :model-value="cardAnswers[qi]?.[pi] ?? ''"
+                  class="w-full"
+                  :placeholder="t('reflection.recall.card_answer_placeholder')"
+                  @update:model-value="(v: string | undefined) => { if (!cardAnswers[qi]) cardAnswers[qi] = {}; cardAnswers[qi][pi] = v ?? '' }"
+                />
+              </div>
+            </div>
+          </div>
           <div>
             <label class="mb-1 block text-sm font-medium">{{ t('reflection.recall.input_label') }}</label>
             <Textarea

@@ -311,6 +311,41 @@ class ReflectionThemeServiceTest {
                 .isEqualTo(ReflectionErrorCode.REFLECTION_PARENT_DEPTH_EXCEEDED);
     }
 
+    // ===== Phase 4.1: AC-64 createTheme linkedSlotKind ガード =====
+
+    @Test
+    @DisplayName("AC-64: linkedSubjectName 指定 + linkedSlotId=null のとき linkedSlotKind は強制 NULL 化される")
+    void testCreateTheme_withLinkedSubjectNameAndNoLinkedSlotId_setsLinkedSlotKindNull() {
+        given(themeRepository.countByUserId(USER_ID)).willReturn(0L);
+        // save 時に entity を返す（引数そのまま）
+        given(themeRepository.save(any())).willAnswer(inv -> {
+            ReflectionThemeEntity t = inv.getArgument(0);
+            setId(t, THEME_ID);
+            return t;
+        });
+
+        // linkedSlotId=null + linkedSubjectName="TOEIC" + linkedSlotKind=SCIENCE(実際は enum TEAM/PERSONAL のどちらか)
+        // CreateReflectionThemeRequest: (title, desc, sourceType, linkedSlotKind, linkedSlotId, examDate,
+        //                                linkedSubjectName, linkedCourseCode, academicYear, termLabel, parentThemeId)
+        ReflectionThemeResponse result = service.createTheme(USER_ID,
+                new CreateReflectionThemeRequest(
+                        "TOEICテーマ",            // title
+                        null,                     // description
+                        null,                     // sourceType
+                        com.mannschaft.app.reflection.ReflectionLinkedSlotKind.PERSONAL, // linkedSlotKind (非NULL)
+                        null,                     // linkedSlotId=null ← AC-64 の鍵
+                        null,                     // examDate
+                        "TOEIC",                  // linkedSubjectName (指定あり)
+                        null,                     // linkedCourseCode
+                        null,                     // academicYear
+                        null,                     // termLabel
+                        null                      // parentThemeId
+                ));
+
+        // AC-64: linkedSlotId=null のとき linkedSlotKind は強制 NULL になること
+        assertThat(result.linkedSlotKind()).isNull();
+    }
+
     @Test
     @DisplayName("AC-44(a): 有効な親指定で parent_theme_id が保存される")
     void createTheme_validParent_saved() {

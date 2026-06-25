@@ -157,8 +157,10 @@ export function useUserSettingsApi() {
     })
   }
 
-  async function getOAuthLinkAuthUrl(provider: string) {
-    return api<{ data: { authUrl: string } }>(`/api/v1/users/me/oauth/link/${encodeURIComponent(provider)}/auth-url`)
+  async function getOAuthLinkAuthUrl(provider: string, includeCalendar = false) {
+    return api<{ data: { authUrl: string } }>(
+      `/api/v1/users/me/oauth/link/${encodeURIComponent(provider)}/auth-url?includeCalendar=${includeCalendar}`,
+    )
   }
 
   // === LINE ===

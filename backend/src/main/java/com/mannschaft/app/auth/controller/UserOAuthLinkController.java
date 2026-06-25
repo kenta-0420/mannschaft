@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -32,14 +33,16 @@ public class UserOAuthLinkController {
      * AC-3: 既連携 → 409（AuthOAuthLinkService が AUTH_034 を投げる）<br>
      * AC-4: 未サポートプロバイダ → 400（AuthOAuthLinkService が AUTH_028 を投げる）
      *
-     * @param provider プロバイダ識別子（例: {@code GOOGLE}）
+     * @param provider        プロバイダ識別子（例: {@code GOOGLE}）
+     * @param includeCalendar true の場合 Google Calendar スコープを追加し、コールバックでGCal接続も確立する（デフォルト: false）
      * @return 認可 URL レスポンス
      */
     @GetMapping("/{provider}/auth-url")
     public ResponseEntity<ApiResponse<OAuthLinkAuthUrlResponse>> getAuthUrl(
-            @PathVariable String provider) {
+            @PathVariable String provider,
+            @RequestParam(defaultValue = "false") boolean includeCalendar) {
         Long userId = SecurityUtils.getCurrentUserId();
-        String authUrl = authOAuthLinkService.generateAuthUrl(userId, provider.toUpperCase());
+        String authUrl = authOAuthLinkService.generateAuthUrl(userId, provider.toUpperCase(), includeCalendar);
         return ResponseEntity.ok(ApiResponse.of(new OAuthLinkAuthUrlResponse(authUrl)));
     }
 }

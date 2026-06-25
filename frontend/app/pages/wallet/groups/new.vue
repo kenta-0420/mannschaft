@@ -113,17 +113,7 @@ onMounted(loadCards)
 
 <template>
   <div class="group-new">
-    <header class="group-new__header">
-      <button
-        type="button"
-        class="group-new__back"
-        :aria-label="t('wallet.group_form.cancel')"
-        @click="cancel"
-      >
-        ←
-      </button>
-      <h1 class="group-new__title">{{ t('wallet.group_form.title_new') }}</h1>
-    </header>
+    <PageHeader :title="t('wallet.group_form.title_new')" />
 
     <section class="group-new__section">
       <div class="group-new__field">
@@ -220,28 +210,6 @@ onMounted(loadCards)
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-}
-.group-new__header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.group-new__back {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--p-surface-100, #f3f4f6);
-  border: none;
-  cursor: pointer;
-  font-size: 1.25rem;
-}
-.group-new__title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin: 0;
 }
 .group-new__section {
   display: flex;

@@ -218,8 +218,10 @@
         "link_error": "連携URLの取得に失敗しました",
         "already_linked": "このアカウントはすでに{provider}と連携されています",
         "taken_by_other": "このGoogleアカウントは別のユーザーが使用中です",
-        "oauth_denied": "Googleの認証がキャンセルされました"
+        "oauth_denied": "Googleの認証がキャンセルされました",
+        "link_with_calendar_success": "Googleアカウントとカレンダーを連携しました"
       },
+      "calendar_sync_toggle": "Googleカレンダーの同期も同時に設定する",
       "guide": {
         "title": "アカウント連携について",
         "google_title": "Googleでログイン",

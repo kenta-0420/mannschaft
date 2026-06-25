@@ -14,8 +14,8 @@
       "before": "before",
       "max_reached": "You can set up to 5 reminders",
       "kind_label": "Type",
-      "kind_relative": "Relative",
-      "kind_absolute": "Absolute",
+      "kind_relative": "Before event (min/hour)",
+      "kind_absolute": "Specific date/time",
       "unit_label": "Unit",
       "unit_minutes": "minutes",
       "unit_hours": "hours",
@@ -87,6 +87,29 @@
       "fetchFailed": "Failed to load the attendance breakdown by team.",
       "forbidden": "You do not have permission to view this breakdown.",
       "empty": "No attendance breakdown data available."
+    },
+    "recurrence": {
+      "label": "Repeat",
+      "interval": {
+        "DAILY": "Daily",
+        "WEEKLY": "Weekly",
+        "MONTHLY": "Monthly",
+        "YEARLY": "Yearly"
+      },
+      "days": {
+        "SUNDAY": "Sun",
+        "MONDAY": "Mon",
+        "TUESDAY": "Tue",
+        "WEDNESDAY": "Wed",
+        "THURSDAY": "Thu",
+        "FRIDAY": "Fri",
+        "SATURDAY": "Sat"
+      },
+      "end_label": "End",
+      "end_never": "Never",
+      "end_date": "On date",
+      "end_count": "After",
+      "end_count_suffix": "times"
     },
     "event_add": "Add event",
     "calendar_guide": {

@@ -121,8 +121,13 @@
           "learned": "What I learned",
           "stumble": "Stumbling points",
           "keypoint": "Key points to remember"
+        },
+        "vocab": {
+          "cards": "今日の単語"
         }
-      }
+      },
+      "VOCAB": "単語帳",
+      "vocab_desc": "語句と意味を暗記カードとして登録し、想起テストで交互に出題する"
     },
     "entry": {
       "list_heading": "Reflections",
@@ -179,7 +184,8 @@
       "history_heading": "Recall history",
       "history_empty": "No recall history yet.",
       "not_masked": "This entry is not masked. You can edit it normally.",
-      "back_to_entry": "Back to reflection"
+      "back_to_entry": "Back to reflection",
+      "card_answer_placeholder": "答えを入力..."
     },
     "export": {
       "button": "Export to blog",
@@ -233,6 +239,55 @@
       "reminder": {
         "title": "Reminders and Calendar",
         "body": "You will receive notifications when it is time to review. Days on which you wrote a reflection are marked in My Calendar, so you can see your progress at a glance."
+      }
+    },
+    "section": {
+      "type": {
+        "outline": "アウトライン",
+        "term_card": "暗記カード"
+      },
+      "type_label": "中見出しの型",
+      "expand": "展開する",
+      "collapse": "折りたたむ",
+      "summary_subsections": "小見出し{n}件",
+      "summary_cards": "カード{n}枚"
+    },
+    "card": {
+      "term_label": "語句",
+      "meaning_label": "意味",
+      "add": "カードを追加",
+      "remove": "カードを削除"
+    },
+    "vocab": {
+      "title": "単語帳（期間横断）",
+      "period_from": "開始日",
+      "period_to": "終了日",
+      "filter_theme": "テーマで絞り込み",
+      "filter_subject": "科目で絞り込み",
+      "mode": {
+        "view": "一覧",
+        "quiz": "自己クイズ"
+      },
+      "direction": {
+        "meaning_to_term": "意味→語句",
+        "term_to_meaning": "語句→意味",
+        "shuffle": "シャッフル"
+      },
+      "flip": "めくる",
+      "empty": "この期間に暗記カードはありません",
+      "total_cards": "{n}枚のカード",
+      "source_label": "出典",
+      "subjects_all": "全教科",
+      "subjects_filter": "教科フィルター",
+      "shuffle": "シャッフル",
+      "shuffle_note": "取得のたびに順番が変わります",
+      "card_limit_warning": "カードが多すぎます。教科または期間を絞ってください（最大500件）",
+      "inline": {
+        "title": "＋単語を追加",
+        "term_placeholder": "語句 (例: apple)",
+        "meaning_placeholder": "意味 (例: りんご)",
+        "add_button": "追加",
+        "added": "追加しました"
       }
     }
   }

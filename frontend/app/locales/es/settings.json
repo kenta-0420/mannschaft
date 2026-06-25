@@ -218,8 +218,10 @@
         "link_error": "Error al obtener URL de vinculación",
         "already_linked": "Esta cuenta ya está vinculada a {provider}",
         "taken_by_other": "Esta cuenta de Google ya es utilizada por otro usuario",
-        "oauth_denied": "La autenticación de Google fue cancelada"
+        "oauth_denied": "La autenticación de Google fue cancelada",
+        "link_with_calendar_success": "Cuenta de Google y Calendario vinculados"
       },
+      "calendar_sync_toggle": "Configurar también la sincronización de Google Calendar",
       "guide": {
         "title": "Acerca de la vinculación de cuentas",
         "google_title": "Iniciar sesión con Google",

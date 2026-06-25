@@ -218,8 +218,10 @@
         "link_error": "Failed to get link URL",
         "already_linked": "This account is already linked to {provider}",
         "taken_by_other": "This Google account is already used by another user",
-        "oauth_denied": "Google authentication was cancelled"
+        "oauth_denied": "Google authentication was cancelled",
+        "link_with_calendar_success": "Google account and Calendar linked"
       },
+      "calendar_sync_toggle": "Also set up Google Calendar sync",
       "guide": {
         "title": "About Account Linking",
         "google_title": "Sign in with Google",
