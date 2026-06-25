@@ -1,4 +1,4 @@
-﻿package com.mannschaft.app.auth;
+package com.mannschaft.app.auth;
 
 import com.mannschaft.app.auth.controller.AuthLoginController;
 import com.mannschaft.app.auth.service.AuthService;
