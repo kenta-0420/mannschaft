@@ -394,7 +394,7 @@ public class AuditLogEventListener {
             null,
             null,
             SecurityUtils.getCurrentSessionHash(),
-            toJson(Map.of("device_name", event.getDeviceName()))
+            toJson(Map.of("device_name", event.getDeviceName() != null ? event.getDeviceName() : ""))
         );
     }
 

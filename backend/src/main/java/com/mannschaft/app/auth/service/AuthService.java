@@ -90,7 +90,7 @@ public class AuthService {
     private static final Duration ACCOUNT_LOCK_DURATION = Duration.ofMinutes(30);
     private static final String ACCOUNT_LOCK_KEY_PREFIX = "mannschaft:auth:account_lock:";
     private static final String LOGIN_FAIL_COUNT_KEY_PREFIX = "mannschaft:auth:login_fail_count:";
-    private static final String MFA_SESSION_KEY_PREFIX = "mannschaft:auth:mfa_session:";
+    private static final String MFA_SESSION_KEY_PREFIX = "mannschaft:auth:mfa_session_token:";
 
     // トークン有効期限
     private static final Duration MFA_SESSION_EXPIRY = Duration.ofMinutes(5);
@@ -237,9 +237,9 @@ public class AuthService {
         // 7. 二要素認証チェック
         Optional<TwoFactorAuthEntity> mfaOpt = twoFactorAuthRepository.findByUserId(user.getId());
         if (mfaOpt.isPresent() && Boolean.TRUE.equals(mfaOpt.get().getIsEnabled())) {
-            // 2FA有効: MFAセッショントークンを生成してValkeyに保存
+            // 2FA有効: MFAセッショントークンを生成してValkeyに保存（ハッシュ化して保存）
             String mfaSessionToken = UUID.randomUUID().toString();
-            String mfaKey = MFA_SESSION_KEY_PREFIX + mfaSessionToken;
+            String mfaKey = MFA_SESSION_KEY_PREFIX + authTokenService.hashToken(mfaSessionToken);
             redisTemplate.opsForValue().set(mfaKey, String.valueOf(user.getId()),
                     MFA_SESSION_EXPIRY.getSeconds(), TimeUnit.SECONDS);
 
