@@ -13,6 +13,9 @@ export interface PagedResponse<T> {
 export interface PageMeta {
   page: number
   size: number
+  /** BE の PagedResponse.PageMeta#total に対応（正式フィールド名）*/
+  total?: number
+  /** 旧互換フィールド名。BE の PagedResponse は total を送信するが型の互換性のため残存 */
   totalElements: number
   totalPages: number
 }
