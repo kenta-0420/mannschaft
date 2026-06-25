@@ -1,6 +1,7 @@
 package com.mannschaft.app.reflection.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.mannschaft.app.reflection.RecallDirection;
 import com.mannschaft.app.reflection.dto.ReflectionEntryResponse;
 import com.mannschaft.app.reflection.entity.ReflectionEntryEntity;
 import com.mannschaft.app.reflection.entity.ReflectionThemeEntity;
@@ -26,6 +27,7 @@ public class ReflectionEntryResponseMapper {
 
     private final ReflectionMaskEvaluator maskEvaluator;
     private final ReflectionContentSanitizer contentSanitizer;
+    private final ReflectionMaskedCueExtractor maskedCueExtractor;
 
     /**
      * マスク判定を行ったうえでエントリ応答を生成する（一覧・詳細用）。
@@ -87,10 +89,31 @@ public class ReflectionEntryResponseMapper {
         List<LocalDate> dueDates = today != null
                 ? maskEvaluator.dueRecallDates(entry, theme, today)
                 : List.of();
+
+        // Phase 4（§13-C-1）: TERM_CARD の cue 側だけを抽出する。
+        // fail-closed: today=null（算出不能）・parse 失敗・型不整合では cardQuiz 空・recallDirection=null。
+        RecallDirection direction = null;
+        List<ReflectionEntryResponse.MaskedCardQuiz> cardQuiz = List.of();
+        if (today != null) {
+            try {
+                direction = maskEvaluator.resolveDirection(entry, theme, today);
+                JsonNode content = contentSanitizer.parse(entry.getStructuredContent());
+                cardQuiz = maskedCueExtractor.extractCardQuiz(content, direction);
+            } catch (Exception e) {
+                // cue 抽出で例外 → 答えを絶対に載せない（fail-closed・§13-C-1）。
+                log.warn("マスク中の cue 抽出に失敗のため fail-closed（cardQuiz 空）: entryId={}",
+                        entry.getId(), e);
+                direction = null;
+                cardQuiz = List.of();
+            }
+        }
+
         ReflectionEntryResponse.MaskedHint hint = ReflectionEntryResponse.MaskedHint.builder()
                 .themeTitle(theme != null ? theme.getTitle() : null)
                 .targetDate(entry.getTargetDate())
                 .dueRecallDates(dueDates)
+                .recallDirection(direction)
+                .cardQuiz(cardQuiz)
                 .build();
         return ReflectionEntryResponse.builder()
                 .id(entry.getId().toString())

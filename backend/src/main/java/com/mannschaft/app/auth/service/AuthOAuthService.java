@@ -350,6 +350,20 @@ public class AuthOAuthService {
     }
 
     /**
+     * Google OAuth 連携フロー専用: 任意の redirect_uri でトークン交換を行いユーザー情報を返す。
+     * <p>
+     * ログインフロー（{@link #fetchGoogleUserInfoPublic}）とは別の redirect_uri を使うため分離する。
+     *
+     * @param authorizationCode 認可コード
+     * @param redirectUri       認可 URL 生成時に使用した redirect_uri
+     * @return Googleユーザー情報
+     * @throws BusinessException AUTH_027 — Token Exchange失敗またはユーザー情報取得失敗
+     */
+    public OAuthUserInfo fetchGoogleUserInfoForLink(String authorizationCode, String redirectUri) {
+        return fetchGoogleUserInfo(authorizationCode, redirectUri);
+    }
+
+    /**
      * OAuthプロバイダAPIからユーザー情報を取得する。
      * <ul>
      *   <li>Google: 認可コード → Token Exchange → userinfo endpoint</li>
@@ -376,14 +390,26 @@ public class AuthOAuthService {
 
     /**
      * Google OAuth: 認可コードをアクセストークンに交換し、userinfo エンドポイントからユーザー情報を取得する。
+     * <p>
+     * ログインフローのデフォルト redirect_uri（{@code oAuthProperties.getGoogleRedirectUri()}）を使用する。
      */
     private OAuthUserInfo fetchGoogleUserInfo(String authorizationCode) {
+        return fetchGoogleUserInfo(authorizationCode, oAuthProperties.getGoogleRedirectUri());
+    }
+
+    /**
+     * Google OAuth: 任意の redirect_uri でトークン交換を行い、userinfo エンドポイントからユーザー情報を取得する。
+     * <p>
+     * Google OAuth 仕様では token exchange の redirect_uri は認可 URL 生成時と完全一致が必須。
+     * ログインフローと連携フローで異なる redirect_uri を使うため、引数で受け取る。
+     */
+    private OAuthUserInfo fetchGoogleUserInfo(String authorizationCode, String redirectUri) {
         // 1. Token Exchange
         MultiValueMap<String, String> tokenParams = new LinkedMultiValueMap<>();
         tokenParams.add("code", authorizationCode);
         tokenParams.add("client_id", oAuthProperties.getGoogleClientId());
         tokenParams.add("client_secret", oAuthProperties.getGoogleClientSecret());
-        tokenParams.add("redirect_uri", oAuthProperties.getGoogleRedirectUri());
+        tokenParams.add("redirect_uri", redirectUri);
         tokenParams.add("grant_type", "authorization_code");
 
         Map<?, ?> tokenResponse;

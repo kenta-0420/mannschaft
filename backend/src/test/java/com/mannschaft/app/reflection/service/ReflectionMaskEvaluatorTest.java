@@ -1,5 +1,6 @@
 package com.mannschaft.app.reflection.service;
 
+import com.mannschaft.app.reflection.RecallDirection;
 import com.mannschaft.app.reflection.RecallSelfRating;
 import com.mannschaft.app.reflection.entity.RecallAttemptEntity;
 import com.mannschaft.app.reflection.entity.ReflectionEntryEntity;
@@ -171,5 +172,92 @@ class ReflectionMaskEvaluatorTest {
     void dueRecallDates_all() {
         List<LocalDate> dates = evaluator.dueRecallDates(entry(TARGET), theme("1,3"), TARGET);
         assertThat(dates).containsExactly(TARGET.plusDays(1), TARGET.plusDays(3));
+    }
+
+    // ===== Phase 4: 出題方向（決定論・§13-B / AC-52） =====
+
+    @Test
+    @DisplayName("AC-52: arrivedDueDates は ≤today に絞った集合を返す（全件返す dueRecallDates と別物）")
+    void arrivedDueDates_filtersByToday() {
+        ReflectionEntryEntity e = entry(TARGET);
+        ReflectionThemeEntity t = theme("1,3,7,14");
+        // today=target+3 → 1,3 が到来（7,14 は未来）。
+        LocalDate today = TARGET.plusDays(3);
+        assertThat(evaluator.arrivedDueDates(e, t, today))
+                .containsExactly(TARGET.plusDays(1), TARGET.plusDays(3));
+        // 全件返す dueRecallDates は 4 件（≤today フィルタ無し）。
+        assertThat(evaluator.dueRecallDates(e, t, today)).hasSize(4);
+    }
+
+    @Test
+    @DisplayName("AC-52: today を進めると k=1,2,3 と増え、方向が MEANING_TO_TERM↔TERM_TO_MEANING と交互する")
+    void resolveDirection_alternatesAsTodayAdvances() {
+        ReflectionEntryEntity e = entry(TARGET);
+        ReflectionThemeEntity t = theme("1,3,7,14");
+        // k=1（n=0・偶）→ MEANING_TO_TERM
+        assertThat(evaluator.resolveDirection(e, t, TARGET.plusDays(1)))
+                .isEqualTo(RecallDirection.MEANING_TO_TERM);
+        // k=2（n=1・奇）→ TERM_TO_MEANING
+        assertThat(evaluator.resolveDirection(e, t, TARGET.plusDays(3)))
+                .isEqualTo(RecallDirection.TERM_TO_MEANING);
+        // k=3（n=2・偶）→ MEANING_TO_TERM
+        assertThat(evaluator.resolveDirection(e, t, TARGET.plusDays(7)))
+                .isEqualTo(RecallDirection.MEANING_TO_TERM);
+        // k=4（n=3・奇）→ TERM_TO_MEANING
+        assertThat(evaluator.resolveDirection(e, t, TARGET.plusDays(14)))
+                .isEqualTo(RecallDirection.TERM_TO_MEANING);
+    }
+
+    @Test
+    @DisplayName("AC-52: k=0（到来予定なし）・today=null は方向 null（fail-closed）")
+    void resolveDirection_noArrived_isNull() {
+        // 未来日エントリ → 到来済み 0 件。
+        assertThat(evaluator.resolveDirection(entry(TARGET), theme("1,3,7,14"), TARGET))
+                .isNull();
+        assertThat(evaluator.resolveDirection(entry(TARGET), theme("1,3,7,14"), null))
+                .isNull();
+    }
+
+    @Test
+    @DisplayName("AC-52: recall_attempts 件数に依存しない（決定論）。同じ today/theme なら方向不変")
+    void resolveDirection_independentOfRecallAttempts() {
+        // resolveDirection は recallAttemptRepository を一切呼ばない（決定論）。
+        // 同じ today・theme intervals なら毎回同じ向き。
+        ReflectionEntryEntity e = entry(TARGET);
+        ReflectionThemeEntity t = theme("1,3,7,14");
+        LocalDate today = TARGET.plusDays(3); // k=2 → TERM_TO_MEANING
+        RecallDirection first = evaluator.resolveDirection(e, t, today);
+        RecallDirection second = evaluator.resolveDirection(e, t, today);
+        RecallDirection third = evaluator.resolveDirection(e, t, today);
+        assertThat(first).isEqualTo(RecallDirection.TERM_TO_MEANING);
+        assertThat(second).isEqualTo(first);
+        assertThat(third).isEqualTo(first);
+        // recallAttemptRepository は方向算出で使われない（呼び出しゼロ＝厳密検証）。
+        org.mockito.Mockito.verifyNoInteractions(recallAttemptRepository);
+    }
+
+    @Test
+    @DisplayName("AC-53: FORGOT 再提示は同一 due slot（k 不変）で同方向／次の想起予定日到来で k+1 となり反転")
+    void resolveDirection_sameDueSlotSameDirection_nextDueReverses() {
+        ReflectionEntryEntity e = entry(TARGET);
+        ReflectionThemeEntity t = theme("1,3,7,14");
+
+        // --- 同一 due slot 内（today を 1 日後スロット内に固定）---
+        // 1 日後到来〜3 日後到来の手前までは k=1（n=0・偶）→ MEANING_TO_TERM のまま不変。
+        // FORGOT で翌日 SPACED 再提示されても today が同スロット内に留まる限り k は変わらず同方向。
+        LocalDate slot1Day = TARGET.plusDays(1);   // due=1 到来直後
+        LocalDate slot1NextDay = TARGET.plusDays(2); // FORGOT 翌日再提示（まだ due=3 未到来＝同スロット）
+        assertThat(evaluator.arrivedDueDates(e, t, slot1Day)).hasSize(1);
+        assertThat(evaluator.arrivedDueDates(e, t, slot1NextDay)).hasSize(1); // k 不変
+        assertThat(evaluator.resolveDirection(e, t, slot1Day))
+                .isEqualTo(RecallDirection.MEANING_TO_TERM);
+        assertThat(evaluator.resolveDirection(e, t, slot1NextDay))
+                .isEqualTo(RecallDirection.MEANING_TO_TERM); // 同一スロットは同方向
+
+        // --- 次の想起予定日（due=3）が到来すると k=2（n=1・奇）→ TERM_TO_MEANING に反転 ---
+        LocalDate slot2Day = TARGET.plusDays(3);
+        assertThat(evaluator.arrivedDueDates(e, t, slot2Day)).hasSize(2); // k+1
+        assertThat(evaluator.resolveDirection(e, t, slot2Day))
+                .isEqualTo(RecallDirection.TERM_TO_MEANING); // 次スロットで反転
     }
 }
