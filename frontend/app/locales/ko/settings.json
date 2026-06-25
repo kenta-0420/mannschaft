@@ -218,8 +218,10 @@
         "link_error": "연동 URL을 가져오지 못했습니다",
         "already_linked": "이 계정은 이미 {provider}와(과) 연동되어 있습니다",
         "taken_by_other": "이 Google 계정은 다른 사용자가 사용 중입니다",
-        "oauth_denied": "Google 인증이 취소되었습니다"
+        "oauth_denied": "Google 인증이 취소되었습니다",
+        "link_with_calendar_success": "Google 계정과 캘린더가 연결되었습니다"
       },
+      "calendar_sync_toggle": "Google 캘린더 동기화도 동시에 설정",
       "guide": {
         "title": "계정 연동에 대해",
         "google_title": "Google로 로그인",
