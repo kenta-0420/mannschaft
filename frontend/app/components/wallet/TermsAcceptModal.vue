@@ -81,9 +81,14 @@ watch(
         ? [true, true, true, true]
         : [false, false, false, false]
       scrolledToBottom.value = isViewMode.value
-      // スクロール位置を先頭に戻す
+      // スクロール位置を先頭に戻し、スクロール不要な高さなら即 true にする
       nextTick(() => {
-        scrollEl.value?.scrollTo({ top: 0 })
+        const el = scrollEl.value
+        if (!el) return
+        el.scrollTo({ top: 0 })
+        if (el.scrollHeight <= el.clientHeight) {
+          scrolledToBottom.value = true
+        }
       })
     }
   },
@@ -185,7 +190,7 @@ const titleKey = computed(() =>
 }
 .terms-modal__panel {
   background: var(--p-surface-0, #fff);
-  color: #1f2937;
+  color: #070707;
   border-radius: 1rem;
   max-width: 540px;
   width: 100%;
@@ -288,7 +293,7 @@ const titleKey = computed(() =>
   cursor: pointer;
   border: 1px solid var(--p-surface-300, #d1d5db);
   background: var(--p-surface-0, #fff);
-  color: #1f2937;
+  color: #070707;
 }
 .terms-modal__panel--dark .terms-modal__btn {
   background: #27272a;

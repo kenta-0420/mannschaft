@@ -3,6 +3,7 @@ package com.mannschaft.app.auth.service;
 import com.mannschaft.app.auth.OAuthProperties;
 import com.mannschaft.app.auth.entity.OAuthAccountEntity;
 import com.mannschaft.app.auth.repository.OAuthAccountRepository;
+import com.mannschaft.app.schedule.service.GoogleCalendarService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,7 @@ import org.mockito.quality.Strictness;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -25,19 +27,11 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 /**
- * {@link AuthOAuthLinkService} の単体テスト（試練 / red）。
+ * {@link AuthOAuthLinkService} の単体テスト。
  * <p>
  * {@code /settings/linked-accounts} の Google OAuth 連携の
- * 認可URL生成・コールバック処理ロジックについて、受け入れ条件 AC-5〜AC-10 を検証する。
- * <p>
- * <b>現時点では {@code generateAuthUrl} / {@code processCallback} が
- * {@link UnsupportedOperationException} を投げるため、すべて RED になるのが正しい。</b>
- * 出陣（実装）フェーズでロジックを充填し、本テストを green 化する。
- * <p>
- * 連携確定の正常系では state 検証 → ユーザー情報取得 → 重複チェック → 保存 という
- * 順序で複数のスタブを置くが、未実装段階では早期に例外で中断するため
- * {@code @MockitoSettings(strictness = LENIENT)} で UnnecessaryStubbing を抑止する
- * （RED の主因はあくまで実装の {@code UnsupportedOperationException} とアサーション不成立）。
+ * 認可URL生成・コールバック処理ロジックについて、受け入れ条件 AC-5〜AC-10 および
+ * Google Calendar 同時設定（includeCalendar）の AC-11〜AC-12 を検証する。
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -59,6 +53,9 @@ class AuthOAuthLinkServiceTest {
     /** fetchGoogleUserInfo 相当の流用元（実装が依存注入して使う想定）。private メソッドは直接モックしない。 */
     @Mock
     private AuthOAuthService authOAuthService;
+
+    @Mock
+    private GoogleCalendarService googleCalendarService;
 
     @InjectMocks
     private AuthOAuthLinkService authOAuthLinkService;
@@ -85,10 +82,11 @@ class AuthOAuthLinkServiceTest {
             given(oAuthProperties.getGoogleClientId()).willReturn("test-client-id");
             given(oAuthProperties.getGoogleLinkRedirectUri())
                     .willReturn("http://localhost:8080/api/v1/auth/oauth/link/GOOGLE/callback");
+            given(oauthAccountRepository.findByUserId(TEST_USER_ID)).willReturn(List.of());
             given(redisTemplate.opsForValue()).willReturn(valueOperations);
 
-            // When: 未実装のため UnsupportedOperationException → RED
-            String authUrl = authOAuthLinkService.generateAuthUrl(TEST_USER_ID, "GOOGLE");
+            // When
+            String authUrl = authOAuthLinkService.generateAuthUrl(TEST_USER_ID, "GOOGLE", false);
 
             // Then
             assertThat(authUrl)
@@ -96,6 +94,51 @@ class AuthOAuthLinkServiceTest {
                     .contains("redirect_uri=")
                     .contains("scope=openid")
                     .contains("state=");
+        }
+    }
+
+    // ──────────────────────────────────────────────
+    // AC-11 / AC-12: includeCalendar によるスコープ分岐
+    // ──────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("generateAuthUrl with includeCalendar")
+    class GenerateAuthUrlWithCalendar {
+
+        @Test
+        @DisplayName("AC-11: includeCalendar=true で calendar スコープが含まれる")
+        void includeCalendarTrueでcalendarスコープが含まれる() {
+            // Given
+            given(oAuthProperties.getGoogleClientId()).willReturn("client-id");
+            given(oAuthProperties.getGoogleLinkRedirectUri())
+                    .willReturn("http://localhost:8080/api/v1/auth/oauth/link/GOOGLE/callback");
+            given(oauthAccountRepository.findByUserId(TEST_USER_ID)).willReturn(List.of());
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+
+            // When
+            String authUrl = authOAuthLinkService.generateAuthUrl(TEST_USER_ID, "GOOGLE", true);
+
+            // Then: calendar スコープが含まれる
+            assertThat(authUrl).contains("calendar");
+            // prompt=consent も含まれる（refresh_token を確実に取得するため）
+            assertThat(authUrl).contains("prompt=consent");
+        }
+
+        @Test
+        @DisplayName("AC-12: includeCalendar=false で calendar スコープが含まれない")
+        void includeCalendarFalseでcalendarスコープが含まれない() {
+            // Given
+            given(oAuthProperties.getGoogleClientId()).willReturn("client-id");
+            given(oAuthProperties.getGoogleLinkRedirectUri())
+                    .willReturn("http://localhost:8080/api/v1/auth/oauth/link/GOOGLE/callback");
+            given(oauthAccountRepository.findByUserId(TEST_USER_ID)).willReturn(List.of());
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+
+            // When
+            String authUrl = authOAuthLinkService.generateAuthUrl(TEST_USER_ID, "GOOGLE", false);
+
+            // Then: calendar スコープが含まれない
+            assertThat(authUrl).doesNotContain("calendar");
         }
     }
 
@@ -110,14 +153,14 @@ class AuthOAuthLinkServiceTest {
         @Test
         @DisplayName("AC-6: 正常系: OAuthAccount を保存し linked=GOOGLE へリダイレクトする")
         void processCallback_正常_保存しリダイレクト() {
-            // Given: state が Redis に存在し userId=1 を指す
+            // Given: state が Redis に存在し userId=1 / includeCalendar=false を指す
             given(redisTemplate.opsForValue()).willReturn(valueOperations);
-            given(valueOperations.get(STATE_REDIS_KEY)).willReturn(String.valueOf(TEST_USER_ID));
-            // Google ユーザー情報取得のモック（fetchGoogleUserInfoPublic）
+            given(valueOperations.get(STATE_REDIS_KEY)).willReturn(TEST_USER_ID + ":false");
+            // Google ユーザー情報取得のモック
             given(authOAuthService.fetchGoogleUserInfoForLink(eq("auth-code"), any()))
                     .willReturn(new AuthOAuthService.OAuthUserInfo(
                             GOOGLE_SUB, "test@example.com", null, null, "Test User"));
-            // 既存連携なし（このユーザーの連携相手はまだ存在しない）
+            // 既存連携なし
             given(oauthAccountRepository.findByProviderAndProviderUserId(
                     OAuthAccountEntity.OAuthProvider.GOOGLE, GOOGLE_SUB))
                     .willReturn(Optional.empty());
@@ -139,7 +182,7 @@ class AuthOAuthLinkServiceTest {
             given(redisTemplate.opsForValue()).willReturn(valueOperations);
             given(valueOperations.get(anyString())).willReturn(null);
 
-            // When: 未実装のため UnsupportedOperationException → RED
+            // When
             String redirectUrl = authOAuthLinkService.processCallback("GOOGLE", "invalid-state", "auth-code");
 
             // Then
@@ -151,8 +194,7 @@ class AuthOAuthLinkServiceTest {
         void processCallback_別ユーザー連携済み_alreadyTakenリダイレクト() {
             // Given: state は有効（userId=1）だが、google-sub-123 は別ユーザー(userId=2)が既に連携済み
             given(redisTemplate.opsForValue()).willReturn(valueOperations);
-            given(valueOperations.get(anyString())).willReturn(String.valueOf(TEST_USER_ID));
-            // Google ユーザー情報取得のモック（fetchGoogleUserInfoPublic）
+            given(valueOperations.get(anyString())).willReturn(TEST_USER_ID + ":false");
             given(authOAuthService.fetchGoogleUserInfoForLink(eq("auth-code"), any()))
                     .willReturn(new AuthOAuthService.OAuthUserInfo(
                             GOOGLE_SUB, "test@example.com", null, null, "Test User"));
@@ -178,7 +220,7 @@ class AuthOAuthLinkServiceTest {
         @DisplayName("AC-9: Google 側エラー（code 欠落）: error=oauth_denied へリダイレクトする")
         void processCallback_codeなし_oauthDeniedリダイレクト() {
             // Given: プロバイダ側で認可拒否され code が来ない
-            // When: 未実装のため UnsupportedOperationException → RED
+            // When
             String redirectUrl = authOAuthLinkService.processCallback("GOOGLE", TEST_STATE, null);
 
             // Then
@@ -190,8 +232,7 @@ class AuthOAuthLinkServiceTest {
         void processCallback_成功後_state削除() {
             // Given: AC-6 と同様のセットアップ
             given(redisTemplate.opsForValue()).willReturn(valueOperations);
-            given(valueOperations.get(STATE_REDIS_KEY)).willReturn(String.valueOf(TEST_USER_ID));
-            // Google ユーザー情報取得のモック（fetchGoogleUserInfoPublic）
+            given(valueOperations.get(STATE_REDIS_KEY)).willReturn(TEST_USER_ID + ":false");
             given(authOAuthService.fetchGoogleUserInfoForLink(eq("auth-code"), any()))
                     .willReturn(new AuthOAuthService.OAuthUserInfo(
                             GOOGLE_SUB, "test@example.com", null, null, "Test User"));
@@ -206,6 +247,61 @@ class AuthOAuthLinkServiceTest {
 
             // Then: 使用済み state は削除される
             verify(redisTemplate).delete(STATE_REDIS_KEY);
+        }
+
+        @Test
+        @DisplayName("AC-13: includeCalendar=true の場合 googleCalendarService.connectWithOAuthTokens が呼ばれる")
+        void processCallback_includeCalendarTrue_GCal接続が呼ばれる() {
+            // Given: includeCalendar=true で state が保存されている
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+            given(valueOperations.get(STATE_REDIS_KEY)).willReturn(TEST_USER_ID + ":true");
+            given(authOAuthService.fetchGoogleUserInfoForLinkWithTokens(eq("auth-code"), any()))
+                    .willReturn(new AuthOAuthService.OAuthLinkTokenResult(
+                            new AuthOAuthService.OAuthUserInfo(
+                                    GOOGLE_SUB, "test@example.com", null, null, "Test User"),
+                            "access-token-123",
+                            "refresh-token-456"));
+            given(oauthAccountRepository.findByProviderAndProviderUserId(
+                    OAuthAccountEntity.OAuthProvider.GOOGLE, GOOGLE_SUB))
+                    .willReturn(Optional.empty());
+            given(oauthAccountRepository.save(any(OAuthAccountEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            // When
+            String redirectUrl = authOAuthLinkService.processCallback("GOOGLE", TEST_STATE, "auth-code");
+
+            // Then: GCal接続が呼ばれ calendarConnected=true が返る
+            verify(googleCalendarService).connectWithOAuthTokens(
+                    eq(TEST_USER_ID), eq("access-token-123"), eq("refresh-token-456"), eq("test@example.com"));
+            assertThat(redirectUrl).contains("calendarConnected=true");
+        }
+
+        @Test
+        @DisplayName("AC-14: includeCalendar=true でGCal接続失敗してもOAuth連携はOK（calendarConnected=false）")
+        void processCallback_includeCalendarTrue_GCal接続失敗でも連携は成功() {
+            // Given: GCal接続が例外を投げる
+            given(redisTemplate.opsForValue()).willReturn(valueOperations);
+            given(valueOperations.get(STATE_REDIS_KEY)).willReturn(TEST_USER_ID + ":true");
+            given(authOAuthService.fetchGoogleUserInfoForLinkWithTokens(eq("auth-code"), any()))
+                    .willReturn(new AuthOAuthService.OAuthLinkTokenResult(
+                            new AuthOAuthService.OAuthUserInfo(
+                                    GOOGLE_SUB, "test@example.com", null, null, "Test User"),
+                            "access-token-123",
+                            null));
+            given(oauthAccountRepository.findByProviderAndProviderUserId(
+                    OAuthAccountEntity.OAuthProvider.GOOGLE, GOOGLE_SUB))
+                    .willReturn(Optional.empty());
+            given(oauthAccountRepository.save(any(OAuthAccountEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+            org.mockito.Mockito.doThrow(new RuntimeException("GCal接続失敗"))
+                    .when(googleCalendarService).connectWithOAuthTokens(any(), any(), any(), any());
+
+            // When
+            String redirectUrl = authOAuthLinkService.processCallback("GOOGLE", TEST_STATE, "auth-code");
+
+            // Then: OAuth連携は完了、calendarConnected=false
+            verify(oauthAccountRepository).save(any(OAuthAccountEntity.class));
+            assertThat(redirectUrl).contains("calendarConnected=false");
         }
     }
 }
