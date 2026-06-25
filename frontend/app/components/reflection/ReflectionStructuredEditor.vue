@@ -20,8 +20,46 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const notification = useNotification()
 
 const local = ref<ReflectionStructuredContent>(props.modelValue)
+
+// インライン「＋単語」クイックフォーム（AC-66〜68）
+const inlineTerm = ref('')
+const inlineMeaning = ref('')
+
+function addInlineCard() {
+  const term = inlineTerm.value.trim()
+  const meaning = inlineMeaning.value.trim()
+  if (!term || !meaning) return
+
+  // 最初の TERM_CARD section を探す
+  let termCardIdx = local.value.sections.findIndex(s => s.type === 'TERM_CARD')
+  if (termCardIdx === -1) {
+    // なければ先頭に TERM_CARD section を自動生成
+    local.value.sections.unshift({
+      heading: t('reflection.template.preset.vocab.cards'),
+      type: 'TERM_CARD',
+      subsections: [],
+      cards: [],
+    })
+    collapsed.value.unshift(false)
+    termCardIdx = 0
+  }
+
+  const section = local.value.sections[termCardIdx]
+  if (section) {
+    if (!section.cards) section.cards = []
+    section.cards = [...section.cards, { term, meaning }]
+    // TERM_CARD section を展開
+    collapsed.value[termCardIdx] = false
+  }
+
+  // 入力フィールドをクリア（連続入力対応）
+  inlineTerm.value = ''
+  inlineMeaning.value = ''
+  notification.success(t('reflection.vocab.inline.added'))
+}
 
 // 各 section の折りたたみ状態（初期: true=collapsed）
 const collapsed = ref<boolean[]>(local.value.sections.map(() => true))
@@ -235,6 +273,36 @@ function sectionSummary(sectionIdx: number): string {
       outlined
       @click="addSection"
     />
+
+    <!-- インライン「＋単語」クイックフォーム（AC-66〜68）-->
+    <div class="rounded-xl border border-surface-200 bg-surface-50 p-3 dark:border-surface-700 dark:bg-surface-900">
+      <p class="mb-2 text-sm font-medium text-surface-600 dark:text-surface-300">
+        {{ t('reflection.vocab.inline.title') }}
+      </p>
+      <div class="flex flex-wrap items-end gap-2">
+        <InputText
+          v-model="inlineTerm"
+          :placeholder="t('reflection.vocab.inline.term_placeholder')"
+          class="flex-1"
+          maxlength="200"
+          @keydown.enter="addInlineCard"
+        />
+        <InputText
+          v-model="inlineMeaning"
+          :placeholder="t('reflection.vocab.inline.meaning_placeholder')"
+          class="flex-1"
+          maxlength="200"
+          @keydown.enter="addInlineCard"
+        />
+        <Button
+          :label="t('reflection.vocab.inline.add_button')"
+          icon="pi pi-plus"
+          size="small"
+          :disabled="!inlineTerm.trim() || !inlineMeaning.trim()"
+          @click="addInlineCard"
+        />
+      </div>
+    </div>
 
     <!-- 自由メモ（マスク対象外） -->
     <div>
