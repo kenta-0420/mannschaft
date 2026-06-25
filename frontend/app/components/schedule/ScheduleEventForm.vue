@@ -558,7 +558,6 @@ function resetForm() {
 
 function close() {
   emit('update:visible', false)
-  resetForm()
 }
 </script>
 
@@ -577,6 +576,7 @@ function close() {
     :style="{ width: '500px' }"
     modal
     @update:visible="close"
+    @hide="resetForm"
   >
     <div class="flex flex-col gap-4">
       <!-- スコープ選択（複数スコープがある場合のみ表示） -->
