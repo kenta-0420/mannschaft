@@ -136,6 +136,10 @@ public class ReflectionContentSanitizer {
             throw new BusinessException(ReflectionErrorCode.REFLECTION_CONTENT_INVALID);
         }
         ObjectNode section = (ObjectNode) sectionNode;
+
+        // Phase 4（§13-A-3）: section.type を許可リスト検証（欠落=OUTLINE 正規化・不正値は 400）。
+        sanitizeSectionType(section);
+
         String heading = textOf(section, "heading");
         if (heading != null) {
             section.put("heading", sanitize(heading, ReflectionConstants.MAX_HEADING_LENGTH));
@@ -151,6 +155,70 @@ public class ReflectionContentSanitizer {
             }
             for (JsonNode subNode : subs) {
                 sanitizeSubsection(subNode);
+            }
+        }
+
+        // Phase 4（§13-A-3）: TERM_CARD の cards[] 枚数・term/meaning を検証＋全 HTML 平文化。
+        sanitizeCards(section);
+    }
+
+    /**
+     * section.type を検証し OUTLINE/TERM_CARD のいずれかへ正規化する（§13-A-1 / §13-A-3）。
+     *
+     * <p>欠落・null・空文字は {@code OUTLINE} に正規化して書き戻す（後方互換・AC-50）。
+     * {@code OUTLINE}/{@code TERM_CARD} 以外の値は 400（REFLECTION_007・AC-54）。</p>
+     */
+    private void sanitizeSectionType(ObjectNode section) {
+        JsonNode typeNode = section.get("type");
+        if (typeNode == null || typeNode.isNull()) {
+            section.put("type", "OUTLINE");
+            return;
+        }
+        if (!typeNode.isTextual()) {
+            throw new BusinessException(ReflectionErrorCode.REFLECTION_CONTENT_INVALID);
+        }
+        String type = typeNode.asText();
+        if (type.isBlank()) {
+            section.put("type", "OUTLINE");
+            return;
+        }
+        if (!"OUTLINE".equals(type) && !"TERM_CARD".equals(type)) {
+            throw new BusinessException(ReflectionErrorCode.REFLECTION_CONTENT_INVALID);
+        }
+        section.put("type", type);
+    }
+
+    /**
+     * TERM_CARD の cards[] を検証・サニタイズする（§13-A-3 / AC-49 / AC-54）。
+     *
+     * <p>枚数 ≤ {@code MAX_CARDS_PER_SECTION}（50）・term/meaning 各 ≤ 200 字。各 term/meaning は
+     * {@link #sanitize}（=全 HTML 平文化）に通す（detail/supplement/heading と完全に同経路）。
+     * cards 欠落・空配列・非配列の扱い: 欠落/null は何もしない（後方互換）。配列でない場合は 400。</p>
+     */
+    private void sanitizeCards(ObjectNode section) {
+        JsonNode cardsNode = section.get("cards");
+        if (cardsNode == null || cardsNode.isNull()) {
+            return; // cards 欠落は OUTLINE/旧形と整合（後方互換・AC-50）。
+        }
+        if (!cardsNode.isArray()) {
+            throw new BusinessException(ReflectionErrorCode.REFLECTION_CONTENT_INVALID);
+        }
+        ArrayNode cards = (ArrayNode) cardsNode;
+        if (cards.size() > ReflectionConstants.MAX_CARDS_PER_SECTION) {
+            throw new BusinessException(ReflectionErrorCode.REFLECTION_CONTENT_INVALID);
+        }
+        for (JsonNode cardNode : cards) {
+            if (!cardNode.isObject()) {
+                throw new BusinessException(ReflectionErrorCode.REFLECTION_CONTENT_INVALID);
+            }
+            ObjectNode card = (ObjectNode) cardNode;
+            String term = textOf(card, "term");
+            if (term != null) {
+                card.put("term", sanitize(term, ReflectionConstants.MAX_CARD_TERM_LENGTH));
+            }
+            String meaning = textOf(card, "meaning");
+            if (meaning != null) {
+                card.put("meaning", sanitize(meaning, ReflectionConstants.MAX_CARD_MEANING_LENGTH));
             }
         }
     }

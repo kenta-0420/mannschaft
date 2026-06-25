@@ -116,4 +116,172 @@ class ReflectionContentSanitizerTest {
         String json = "{\"main_theme\":\"x\"}";
         assertThat(sanitizer.parse(json).get("main_theme").asText()).isEqualTo("x");
     }
+
+    // ===== Phase 4: 暗記カード（TERM_CARD）バリデーション（§13-A-3） =====
+
+    @Test
+    @DisplayName("AC-48: section.type に OUTLINE/TERM_CARD を指定すると型が保持される")
+    void sectionType_roundTrip() {
+        ObjectNode content = objectMapper.createObjectNode();
+        content.put("main_theme", "英単語 Unit 5");
+        ArrayNode sections = content.putArray("sections");
+        ObjectNode outline = sections.addObject();
+        outline.put("type", "OUTLINE");
+        outline.put("heading", "ポイント");
+        ObjectNode card = sections.addObject();
+        card.put("type", "TERM_CARD");
+        card.put("heading", "今日の単語");
+        ArrayNode cards = card.putArray("cards");
+        cards.addObject().put("term", "abandon").put("meaning", "見捨てる");
+
+        String json = sanitizer.sanitizeAndSerialize(content);
+
+        assertThat(json).contains("\"type\":\"OUTLINE\"");
+        assertThat(json).contains("\"type\":\"TERM_CARD\"");
+        assertThat(json).contains("abandon");
+    }
+
+    @Test
+    @DisplayName("AC-48/AC-50: section.type 欠落は OUTLINE に正規化される（後方互換）")
+    void sectionType_missing_normalizedToOutline() {
+        ObjectNode content = objectMapper.createObjectNode();
+        content.put("main_theme", "単元");
+        ArrayNode sections = content.putArray("sections");
+        sections.addObject().put("heading", "見出しのみ");
+
+        String json = sanitizer.sanitizeAndSerialize(content);
+
+        assertThat(json).contains("\"type\":\"OUTLINE\"");
+    }
+
+    @Test
+    @DisplayName("AC-49: TERM_CARD の cards[] 複数（term/meaning）が保持される")
+    void termCard_multipleCards_preserved() {
+        ObjectNode content = objectMapper.createObjectNode();
+        content.put("main_theme", "英単語");
+        ArrayNode sections = content.putArray("sections");
+        ObjectNode card = sections.addObject();
+        card.put("type", "TERM_CARD");
+        card.put("heading", "今日の単語");
+        ArrayNode cards = card.putArray("cards");
+        cards.addObject().put("term", "abandon").put("meaning", "見捨てる");
+        cards.addObject().put("term", "ambiguous").put("meaning", "曖昧な");
+
+        String json = sanitizer.sanitizeAndSerialize(content);
+
+        assertThat(json).contains("abandon");
+        assertThat(json).contains("見捨てる");
+        assertThat(json).contains("ambiguous");
+        assertThat(json).contains("曖昧な");
+    }
+
+    @Test
+    @DisplayName("AC-50: type/cards 欠落の旧形 JSON が OUTLINE・cards 無しで壊れず正規化される（後方互換番人）")
+    void legacyJson_typeAndCardsMissing_notBroken() {
+        ObjectNode content = objectMapper.createObjectNode();
+        content.put("main_theme", "既存エントリ");
+        ArrayNode sections = content.putArray("sections");
+        ObjectNode section = sections.addObject();
+        section.put("heading", "平方完成");
+        ArrayNode subs = section.putArray("subsections");
+        subs.addObject().put("sub_heading", "基本形").put("detail", "頂点を読む");
+
+        String json = sanitizer.sanitizeAndSerialize(content);
+
+        assertThat(json).contains("\"type\":\"OUTLINE\"");
+        assertThat(json).contains("平方完成");
+        assertThat(json).contains("基本形");
+        // cards を勝手に書き足さない（欠落のまま素通し・§13-A-3）。
+        assertThat(json).doesNotContain("\"cards\"");
+    }
+
+    @Test
+    @DisplayName("AC-54: cards が 51 枚なら 400（REFLECTION_007）")
+    void termCard_tooManyCards_throws() {
+        ObjectNode content = objectMapper.createObjectNode();
+        content.put("main_theme", "英単語");
+        ArrayNode sections = content.putArray("sections");
+        ObjectNode card = sections.addObject();
+        card.put("type", "TERM_CARD");
+        ArrayNode cards = card.putArray("cards");
+        for (int i = 0; i < ReflectionConstants.MAX_CARDS_PER_SECTION + 1; i++) {
+            cards.addObject().put("term", "t" + i).put("meaning", "m" + i);
+        }
+
+        assertThatThrownBy(() -> sanitizer.sanitizeAndSerialize(content))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ReflectionErrorCode.REFLECTION_CONTENT_INVALID);
+    }
+
+    @Test
+    @DisplayName("AC-54: card.term が 201 字なら 400")
+    void termCard_termTooLong_throws() {
+        ObjectNode content = objectMapper.createObjectNode();
+        content.put("main_theme", "英単語");
+        ArrayNode sections = content.putArray("sections");
+        ObjectNode card = sections.addObject();
+        card.put("type", "TERM_CARD");
+        ArrayNode cards = card.putArray("cards");
+        cards.addObject()
+                .put("term", "あ".repeat(ReflectionConstants.MAX_CARD_TERM_LENGTH + 1))
+                .put("meaning", "意味");
+
+        assertThatThrownBy(() -> sanitizer.sanitizeAndSerialize(content))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ReflectionErrorCode.REFLECTION_CONTENT_INVALID);
+    }
+
+    @Test
+    @DisplayName("AC-54: card.meaning が 201 字なら 400")
+    void termCard_meaningTooLong_throws() {
+        ObjectNode content = objectMapper.createObjectNode();
+        content.put("main_theme", "英単語");
+        ArrayNode sections = content.putArray("sections");
+        ObjectNode card = sections.addObject();
+        card.put("type", "TERM_CARD");
+        ArrayNode cards = card.putArray("cards");
+        cards.addObject()
+                .put("term", "abandon")
+                .put("meaning", "あ".repeat(ReflectionConstants.MAX_CARD_MEANING_LENGTH + 1));
+
+        assertThatThrownBy(() -> sanitizer.sanitizeAndSerialize(content))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ReflectionErrorCode.REFLECTION_CONTENT_INVALID);
+    }
+
+    @Test
+    @DisplayName("AC-54: section.type が不正値なら 400")
+    void sectionType_invalid_throws() {
+        ObjectNode content = objectMapper.createObjectNode();
+        content.put("main_theme", "英単語");
+        ArrayNode sections = content.putArray("sections");
+        ObjectNode section = sections.addObject();
+        section.put("type", "QUIZ"); // 許可リスト外
+        section.put("heading", "x");
+
+        assertThatThrownBy(() -> sanitizer.sanitizeAndSerialize(content))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ReflectionErrorCode.REFLECTION_CONTENT_INVALID);
+    }
+
+    @Test
+    @DisplayName("card.term の HTML は全て平文化される（XSS 二重防御・§13-A-3）")
+    void termCard_htmlStripped() {
+        ObjectNode content = objectMapper.createObjectNode();
+        content.put("main_theme", "英単語");
+        ArrayNode sections = content.putArray("sections");
+        ObjectNode card = sections.addObject();
+        card.put("type", "TERM_CARD");
+        ArrayNode cards = card.putArray("cards");
+        cards.addObject().put("term", "abandon<script>alert(1)</script>").put("meaning", "見捨てる");
+
+        String json = sanitizer.sanitizeAndSerialize(content);
+
+        assertThat(json).doesNotContain("<script>");
+        assertThat(json).contains("abandon");
+    }
 }

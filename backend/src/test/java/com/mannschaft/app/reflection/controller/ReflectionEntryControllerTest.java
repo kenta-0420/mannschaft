@@ -202,4 +202,85 @@ class ReflectionEntryControllerTest {
                 .andExpect(jsonPath("$.data.isMasked").value(false))
                 .andExpect(jsonPath("$.data.structuredContent.main_theme").value("開示本文"));
     }
+
+    // ===== Phase 4: 暗記カード（TERM_CARD・§13） =====
+
+    @Test
+    @DisplayName("AC-48: 当日（非マスク）upsert で応答 structuredContent に type/cards が反映される")
+    void upsert_termCard_typeReflected_200() throws Exception {
+        authenticate();
+        var content = objectMapper.createObjectNode();
+        content.put("main_theme", "英単語");
+        var sections = content.putArray("sections");
+        var card = sections.addObject();
+        card.put("type", "TERM_CARD");
+        card.put("heading", "今日の単語");
+        var cards = card.putArray("cards");
+        cards.addObject().put("term", "abandon").put("meaning", "見捨てる");
+
+        given(reflectionEntryService.upsertEntry(eq(USER_ID), any(UpsertReflectionEntryRequest.class)))
+                .willReturn(ReflectionEntryResponse.builder()
+                        .id(ENTRY_ID.toString()).themeId(THEME_ID.toString())
+                        .isMasked(false).structuredContent(content).version(0L).build());
+
+        var node = objectMapper.createObjectNode();
+        node.put("themeId", THEME_ID.toString());
+        node.put("targetDate", LocalDate.now().toString());
+        node.set("structuredContent", content);
+
+        mockMvc.perform(put("/api/v1/me/reflections/entries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(node)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.isMasked").value(false))
+                .andExpect(jsonPath("$.data.structuredContent.sections[0].type").value("TERM_CARD"))
+                .andExpect(jsonPath("$.data.structuredContent.sections[0].cards[0].term").value("abandon"));
+    }
+
+    @Test
+    @DisplayName("AC-54: cards/字数上限超過 upsert は 400＋errorCode=REFLECTION_007")
+    void upsert_termCardLimitExceeded_400() throws Exception {
+        authenticate();
+        given(reflectionEntryService.upsertEntry(eq(USER_ID), any()))
+                .willThrow(new BusinessException(ReflectionErrorCode.REFLECTION_CONTENT_INVALID));
+
+        mockMvc.perform(put("/api/v1/me/reflections/entries")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(upsertBody(null)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("REFLECTION_007"));
+    }
+
+    @Test
+    @DisplayName("AC-51: マスク中エントリ詳細に答え側の語が現れない（cue のみ・structuredContent=null）")
+    void getEntry_maskedTermCard_noAnswerLeak() throws Exception {
+        authenticate();
+        var quiz = ReflectionEntryResponse.MaskedCardQuiz.builder()
+                .heading("今日の単語")
+                .direction(com.mannschaft.app.reflection.RecallDirection.MEANING_TO_TERM)
+                .prompts(List.of(ReflectionEntryResponse.MaskedCardPrompt.builder()
+                        .promptSide("MEANING").promptText("見捨てる").build()))
+                .build();
+        given(reflectionEntryService.getEntry(USER_ID, ENTRY_ID))
+                .willReturn(ReflectionEntryResponse.builder()
+                        .id(ENTRY_ID.toString()).isMasked(true).structuredContent(null)
+                        .maskedHint(ReflectionEntryResponse.MaskedHint.builder()
+                                .themeTitle("英単語").targetDate(LocalDate.now())
+                                .recallDirection(com.mannschaft.app.reflection.RecallDirection.MEANING_TO_TERM)
+                                .cardQuiz(List.of(quiz)).build())
+                        .build());
+
+        String responseBody = mockMvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                                .get("/api/v1/me/reflections/entries/{entryId}", ENTRY_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.isMasked").value(true))
+                .andExpect(jsonPath("$.data.structuredContent").doesNotExist())
+                .andExpect(jsonPath("$.data.maskedHint.recallDirection").value("MEANING_TO_TERM"))
+                .andExpect(jsonPath("$.data.maskedHint.cardQuiz[0].prompts[0].promptText").value("見捨てる"))
+                .andReturn().getResponse().getContentAsString();
+
+        // 答え側（term=abandon）がペイロード文字列に一切含まれない（機械的検証・AC-51）。
+        org.assertj.core.api.Assertions.assertThat(responseBody).doesNotContain("abandon");
+    }
 }
