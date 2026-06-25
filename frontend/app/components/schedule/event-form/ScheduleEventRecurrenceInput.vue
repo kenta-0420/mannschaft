@@ -12,6 +12,13 @@ function toggleDay(day: string) {
     form.value.recurrenceDaysOfWeek.push(day)
   }
 }
+
+const countOptions = computed(() =>
+  Array.from({ length: 100 }, (_, i) => ({
+    label: `${i + 1}${t('schedule.recurrence.end_count_suffix')}`,
+    value: i + 1,
+  }))
+)
 </script>
 
 <template>
@@ -91,13 +98,13 @@ function toggleDay(day: string) {
           <label class="flex items-center gap-2 text-sm cursor-pointer">
             <RadioButton v-model="form.recurrenceEndType" value="COUNT" />
             <span class="shrink-0">{{ t('schedule.recurrence.end_count') }}</span>
-            <InputNumber
+            <Select
               v-if="form.recurrenceEndType === 'COUNT'"
               v-model="form.recurrenceCount"
-              :min="1" :max="365"
-              class="w-20"
-              input-class="text-center"
-              :suffix="` ${t('schedule.recurrence.end_count_suffix')}`"
+              :options="countOptions"
+              option-label="label"
+              option-value="value"
+              class="w-28"
             />
           </label>
         </div>
