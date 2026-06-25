@@ -50,6 +50,7 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.Base64;
+import java.util.UUID;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -188,6 +189,16 @@ public class AuthWebAuthnService {
                     .getCredentialId();
             String parsedCredIdB64url = Base64.getUrlEncoder().withoutPadding().encodeToString(parsedCredIdBytes);
 
+            // AAGUID を RegistrationData から抽出（null の場合はゼロ UUID）
+            com.webauthn4j.data.attestation.authenticator.AAGUID parsedAaguid =
+                    registrationData.getAttestationObject()
+                            .getAuthenticatorData()
+                            .getAttestedCredentialData()
+                            .getAaguid();
+            String aaguidStr = (parsedAaguid != null && parsedAaguid.getValue() != null)
+                    ? parsedAaguid.getValue().toString()
+                    : "00000000-0000-0000-0000-000000000000";
+
             // 2. credential_id重複チェック
             if (webAuthnCredentialRepository.findByCredentialId(parsedCredIdB64url).isPresent()) {
                 throw new BusinessException(AuthErrorCode.AUTH_025);
@@ -200,7 +211,7 @@ public class AuthWebAuthnService {
                     .publicKey(coseKeyB64url)
                     .signCount(0L)
                     .deviceName(req.getDeviceName())
-                    .aaguid(req.getAaguid())
+                    .aaguid(aaguidStr)
                     .build();
             webAuthnCredentialRepository.save(credential);
 
@@ -309,9 +320,15 @@ public class AuthWebAuthnService {
                     objectConverter.getCborConverter().readValue(
                             Base64.getUrlDecoder().decode(credential.getPublicKey()),
                             com.webauthn4j.data.attestation.authenticator.COSEKey.class);
+            // AAGUID を DB から復元（null の場合はゼロ UUID を使用）
+            String storedAaguidStr = credential.getAaguid();
+            com.webauthn4j.data.attestation.authenticator.AAGUID aaguid =
+                    (storedAaguidStr != null)
+                    ? new com.webauthn4j.data.attestation.authenticator.AAGUID(java.util.UUID.fromString(storedAaguidStr))
+                    : com.webauthn4j.data.attestation.authenticator.AAGUID.ZERO;
             com.webauthn4j.authenticator.Authenticator authenticator =
                     new com.webauthn4j.authenticator.AuthenticatorImpl(
-                            new AttestedCredentialData(null, credentialIdBytes, coseKey),
+                            new AttestedCredentialData(aaguid, credentialIdBytes, coseKey),
                             null, credential.getSignCount());
 
             AuthenticationParameters authenticationParameters = new AuthenticationParameters(
@@ -515,7 +532,11 @@ public class AuthWebAuthnService {
                             com.webauthn4j.data.attestation.authenticator.COSEKey.class);
             com.webauthn4j.authenticator.Authenticator authenticator =
                     new com.webauthn4j.authenticator.AuthenticatorImpl(
-                            new AttestedCredentialData(null, credentialIdBytes, coseKey),
+                            new AttestedCredentialData(
+                                    (credential.getAaguid() != null)
+                                    ? new com.webauthn4j.data.attestation.authenticator.AAGUID(java.util.UUID.fromString(credential.getAaguid()))
+                                    : com.webauthn4j.data.attestation.authenticator.AAGUID.ZERO,
+                                    credentialIdBytes, coseKey),
                             null, credential.getSignCount());
 
             AuthenticationParameters authenticationParameters = new AuthenticationParameters(
@@ -606,9 +627,11 @@ public class AuthWebAuthnService {
         String refreshToken = authTokenService.generateRefreshToken();
         String refreshTokenHash = authTokenService.hashToken(refreshToken);
 
+        String refreshTokenJti = UUID.randomUUID().toString();
         RefreshTokenEntity refreshTokenEntity = RefreshTokenEntity.builder()
                 .userId(userId)
                 .tokenHash(refreshTokenHash)
+                .jti(refreshTokenJti)
                 .rememberMe(false)
                 .ipAddress(ipAddress)
                 .userAgent(userAgent)
