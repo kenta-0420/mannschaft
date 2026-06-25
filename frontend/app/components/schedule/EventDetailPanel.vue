@@ -41,7 +41,8 @@ const notification = useNotification()
 const { resolveContext } = useMatchOrgContext()
 const { resolveMatchBySchedule, createMatch } = useMatchApi()
 // TEAM スコープ予定のみ記録ボタンを出す（teamId 文脈が要るため・organization/personal では非表示）。
-const canRecordMatch = computed(() => props.scopeType === 'team')
+// Bug B 修正: scopeId が空の場合（個人予定）はボタンを非表示にする。
+const canRecordMatch = computed(() => props.scopeType === 'team' && !!props.scopeId)
 const recordingMatch = ref(false)
 
 async function recordMatch(): Promise<void> {
@@ -49,7 +50,12 @@ async function recordMatch(): Promise<void> {
   recordingMatch.value = true
   try {
     const ctx = await resolveContext(props.scopeId)
-    if (!ctx) return // 解決失敗時は composable 内で通知済み
+    if (!ctx) {
+      // Bug C 修正: ctx が null の場合（チームが組織に所属していない等）はユーザーへ通知する。
+      // 以前のコメント「composable 内で通知済み」は誤記で、実際には通知されていなかった。
+      notification.warn(t('match.entry.no_org_for_record'))
+      return
+    }
 
     // 1) この予定に紐づく既存 match があれば live を開く
     const existing = await resolveMatchBySchedule(ctx.orgId, ctx.teamId, props.event.id)

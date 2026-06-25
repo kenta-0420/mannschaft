@@ -18,6 +18,7 @@ const ganttKey = ref(0)
 
 const showCreateDialog = ref(false)
 const showEditDialog = ref(false)
+const showGuide = ref(false)
 const selectedDate = ref<string | undefined>(undefined)
 
 // サイドパネル用
@@ -341,25 +342,23 @@ onMounted(() => {
 <template>
   <PageLoading v-if="loading" />
   <div v-else>
-    <div class="mb-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <Button icon="pi pi-arrow-left" text rounded @click="router.back()" />
-        <h1 class="text-2xl font-bold">マイカレンダー</h1>
-      </div>
+    <PageHeader :title="t('schedule.calendar_guide.page_title')" help @help="showGuide = true">
       <!-- #52: スコープ選択 + 予定を追加 -->
-      <div class="flex items-center gap-2">
-        <Select
-          v-if="createScopeOptions.length > 1"
-          v-model="createScopeKey"
-          :options="createScopeOptions"
-          option-label="label"
-          option-value="value"
-          class="text-sm"
-          style="min-width: 120px"
-        />
-        <Button label="予定を追加" icon="pi pi-plus" @click="showCreateDialog = true" />
-      </div>
-    </div>
+      <template #actions>
+        <div class="flex items-center gap-2">
+          <Select
+            v-if="createScopeOptions.length > 1"
+            v-model="createScopeKey"
+            :options="createScopeOptions"
+            option-label="label"
+            option-value="value"
+            class="text-sm"
+            style="min-width: 120px"
+          />
+          <Button :label="t('schedule.event_add')" icon="pi pi-plus" @click="showCreateDialog = true" />
+        </div>
+      </template>
+    </PageHeader>
 
     <!-- タブ切替 -->
     <div class="mb-4 flex gap-1 rounded-lg border border-surface-300 bg-surface-100 p-1 dark:border-surface-600 dark:bg-surface-700 w-fit">
@@ -557,6 +556,9 @@ onMounted(() => {
       :is-personal="selectedEventIsPersonal"
       @saved="onSaved"
     />
+
+    <!-- 使い方モーダル -->
+    <CalendarGuideModal v-model:visible="showGuide" />
   </div>
 </template>
 

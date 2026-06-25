@@ -87,6 +87,40 @@
       "fetchFailed": "No se pudo cargar el desglose de asistencia por equipo.",
       "forbidden": "No tienes permiso para ver este desglose.",
       "empty": "No hay datos de desglose de asistencia por equipo."
+    },
+    "event_add": "Agregar evento",
+    "calendar_guide": {
+      "page_title": "Mi Calendario",
+      "description": "Mi Calendario te permite ver tus eventos personales junto con los eventos de tus equipos y organizaciones, todo en una sola pantalla.",
+      "what": {
+        "title": "¿Qué es Mi Calendario?",
+        "body": "Muestra todos los eventos de tus equipos, organizaciones y agenda personal en un solo calendario. Puedes alternar entre la vista de calendario y la vista Gantt (lista de TODOs)."
+      },
+      "add": {
+        "title": "Agregar un evento",
+        "body": "Haz clic en el botón 'Agregar evento' o en una fecha del calendario para crear un evento. Puedes agregar eventos personales así como eventos de equipo u organización.",
+        "step1": "Haz clic en 'Agregar evento' en la parte superior derecha, o en una celda de fecha",
+        "step2": "Ingresa un título, fecha/hora y lugar",
+        "step3": "Selecciona personal, equipo u organización en 'Alcance'",
+        "step4": "Haz clic en 'Guardar' para finalizar"
+      },
+      "filter": {
+        "title": "Filtrar la vista",
+        "body": "Usa los botones en la parte inferior del calendario para alternar la visualización de cada alcance (personal, equipo, organización). Si hay 6 o más, usa el menú desplegable para seleccionar.",
+        "personal": "Punto verde: eventos personales",
+        "team_org": "Punto índigo: eventos de equipo/organización"
+      },
+      "gantt": {
+        "title": "Vista Gantt (lista de TODOs)",
+        "body": "Presiona la pestaña 'Gantt' para mostrar los TODOs con fecha límite como un diagrama de Gantt. Se sincroniza con el selector de alcance en la parte superior derecha."
+      },
+      "detail": {
+        "title": "Detalles del evento y asistencia",
+        "body": "Haz clic en un evento en el calendario para abrir el panel de detalles a la derecha.",
+        "item_edit": "Usa el icono de lápiz para editar, o el icono de papelera para eliminar",
+        "item_attendance": "Para eventos con seguimiento de asistencia, selecciona 'Asistir', 'No asistir' o 'Tal vez'",
+        "item_match": "Usa el botón 'Registrar este partido' desde un evento de equipo para iniciar un registro de partido"
+      }
     }
   }
 }
