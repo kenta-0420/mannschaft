@@ -2,6 +2,7 @@ package com.mannschaft.app.auth.dto;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -51,6 +52,23 @@ public class RegisterRequest {
     /** 生年月日（YYYY-MM-DD形式）。F01.9 年齢確認のため必須。 */
     private final String birthDate;
 
+    /**
+     * プライバシーポリシーへの同意フラグ（F_privacy_policy）。
+     *
+     * <p>登録時に {@code true} でなければならない。{@code false} の場合は
+     * {@code @AssertTrue} によって 400（AUTH_PP_001）として弾かれる。</p>
+     */
+    @AssertTrue(message = "AUTH_PP_001")
+    private final boolean privacyPolicyAccepted;
+
+    /**
+     * 同意したプライバシーポリシーのバージョン（F_privacy_policy）。
+     *
+     * <p>空文字・null の場合は 400（AUTH_PP_002）として弾かれる。</p>
+     */
+    @NotBlank(message = "AUTH_PP_002")
+    private final String privacyPolicyVersion;
+
     @JsonCreator
     public RegisterRequest(
             @JsonProperty("email") String email,
@@ -62,7 +80,9 @@ public class RegisterRequest {
             @JsonProperty("locale") String locale,
             @JsonProperty("timezone") String timezone,
             @JsonProperty("inviteToken") String inviteToken,
-            @JsonProperty("birth_date") String birthDate) {
+            @JsonProperty("birth_date") String birthDate,
+            @JsonProperty("privacyPolicyAccepted") boolean privacyPolicyAccepted,
+            @JsonProperty("privacyPolicyVersion") String privacyPolicyVersion) {
         this.email = email;
         this.password = password;
         this.lastName = lastName;
@@ -73,5 +93,7 @@ public class RegisterRequest {
         this.timezone = timezone;
         this.inviteToken = inviteToken;
         this.birthDate = birthDate;
+        this.privacyPolicyAccepted = privacyPolicyAccepted;
+        this.privacyPolicyVersion = privacyPolicyVersion;
     }
 }
