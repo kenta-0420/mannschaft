@@ -24,12 +24,13 @@ onMounted(async () => {
 
 function toDateStart(date: Date | null): string | undefined {
   const s = buildOffsetDateTimeStr(date, '00:00')
-  return s ?? undefined
+  // BEの LocalDateTime は +09:00 オフセットをパースできないため除去
+  return s ? s.replace(/[+-]\d{2}:\d{2}$/, '') : undefined
 }
 
 function toDateEnd(date: Date | null): string | undefined {
   const s = buildOffsetDateTimeStr(date, '23:59')
-  return s ?? undefined
+  return s ? s.replace(/[+-]\d{2}:\d{2}$/, '') : undefined
 }
 
 async function loadHistory(cursor?: string) {
