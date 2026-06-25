@@ -66,6 +66,22 @@ const MOCK_PAGINATED_EMPTY = {
 }
 
 async function mockSecurityApis(page: import('@playwright/test').Page) {
+  // auth ミドルウェアが useAuthStore.isAuthenticated をチェックするため、
+  // localStorage に currentUser を設定して認証済み状態を作る
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'currentUser',
+      JSON.stringify({
+        id: 1,
+        email: 'test@example.com',
+        fullName: 'テスト ユーザー',
+        profileImageUrl: null,
+        systemRole: null,
+        timezone: 'Asia/Tokyo',
+      }),
+    )
+  })
+
   // キャッチオール: 未モックのAPIエンドポイントが500/401を返してページ状態に影響しないよう空データを返す
   await page.route('**/api/v1/**', async (route) => {
     await route.fulfill({
