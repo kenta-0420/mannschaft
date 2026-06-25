@@ -30,6 +30,8 @@ import type {
   BulkArchiveRequest,
   BulkArchiveResult,
   ArchiveSearchParams,
+  ReflectionVocabCardsResponse,
+  VocabCardsParams,
 } from '~/types/reflection'
 import type { BlogPostResponse } from '~/types/cms'
 
@@ -174,6 +176,21 @@ export function useReflectionApi() {
     return api<{ data: TermSuggestionResponse }>(`${BASE}/term-suggestion${qs}`)
   }
 
+  // ─── Phase 4: 期間横断単語帳（EP #23） ───────────────────────────────────
+
+  /** EP #23: 期間内の TERM_CARD カードを横断抽出（recall_attempts 非書込・閲覧専用）。 */
+  async function getVocabCards(params: VocabCardsParams) {
+    const qs = new URLSearchParams()
+    qs.set('from', params.from)
+    qs.set('to', params.to)
+    if (params.themeId) qs.set('themeId', params.themeId)
+    if (params.sourceType) qs.set('sourceType', params.sourceType)
+    if (params.subject) qs.set('subject', params.subject)
+    if (params.page != null) qs.set('page', String(params.page))
+    if (params.size != null) qs.set('size', String(params.size))
+    return api<{ data: ReflectionVocabCardsResponse }>(`${BASE}/cards?${qs.toString()}`)
+  }
+
   return {
     listThemes,
     getTheme,
@@ -198,5 +215,7 @@ export function useReflectionApi() {
     restoreTheme,
     bulkArchive,
     getTermSuggestion,
+    // Phase 4
+    getVocabCards,
   }
 }

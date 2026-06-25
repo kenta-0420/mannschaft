@@ -1,6 +1,8 @@
 package com.mannschaft.app.auth.service;
 
+import com.mannschaft.app.auth.AuditEventCategory;
 import com.mannschaft.app.auth.AuthErrorCode;
+import com.mannschaft.app.auth.dto.AuditLogResponse;
 import com.mannschaft.app.auth.dto.LoginHistoryResponse;
 import com.mannschaft.app.auth.dto.SessionResponse;
 import com.mannschaft.app.auth.entity.RefreshTokenEntity;
@@ -40,6 +42,7 @@ public class AuthSessionService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final AuthTokenService authTokenService;
     private final DomainEventPublisher eventPublisher;
+    private final AuditLogQueryService auditLogQueryService;
 
     // セッション上限
     private static final int MAX_ACTIVE_SESSIONS = 10;
@@ -247,14 +250,39 @@ public class AuthSessionService {
      * @param userId ユーザーID
      * @param cursor カーソル（null=先頭から）
      * @param limit  取得件数
+     * @param from   開始日時（null=制限なし）
+     * @param to     終了日時（null=制限なし）
      * @return ログイン履歴
      */
-    public CursorPagedResponse<LoginHistoryResponse> getLoginHistory(Long userId, String cursor, int limit) {
-        // 監査ログからログイン関連イベントを取得
-        // NOTE: AuditLogRepositoryにカーソルベースクエリメソッドを追加後に実装を完成させる
-        List<LoginHistoryResponse> history = List.of();
-        CursorPagedResponse.CursorMeta meta = new CursorPagedResponse.CursorMeta(null, false, limit);
-        return CursorPagedResponse.of(history, meta);
+    public CursorPagedResponse<LoginHistoryResponse> getLoginHistory(Long userId, String cursor, int limit, LocalDateTime from, LocalDateTime to) {
+        CursorPagedResponse<AuditLogResponse> logs = auditLogQueryService.getMyLogs(
+                userId,
+                null,
+                List.of(AuditEventCategory.AUTH),
+                from,
+                to,
+                cursor,
+                limit);
+
+        List<LoginHistoryResponse> history = logs.getData().stream()
+                .map(log -> new LoginHistoryResponse(
+                        log.getId(),
+                        log.getEventType(),
+                        log.getIpAddress(),
+                        log.getUserAgent(),
+                        resolveMethod(log.getEventType()),
+                        log.getCreatedAt()))
+                .toList();
+
+        return CursorPagedResponse.of(history, logs.getMeta());
+    }
+
+    private String resolveMethod(String eventType) {
+        if (eventType == null) return null;
+        return switch (eventType) {
+            case "WEBAUTHN_LOGIN", "WEBAUTHN_LOGIN_FAILED" -> "WebAuthn";
+            default -> null;
+        };
     }
 
     // ========================================

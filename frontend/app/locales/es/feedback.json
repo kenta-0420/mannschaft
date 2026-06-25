@@ -25,6 +25,39 @@
     },
     "anonymous": {
       "label": "Enviar de forma anónima"
+    },
+    "submitter": "Remitente",
+    "votes": "Votos",
+    "status": {
+      "NEW": "Nuevo",
+      "OPEN": "Abierto",
+      "IN_PROGRESS": "En progreso",
+      "RESPONDED": "Respondido",
+      "CLOSED": "Cerrado"
+    },
+    "inbox": {
+      "title": "Buzón de comentarios (Global)",
+      "description": "Ver y responder a todos los comentarios del ámbito GENERAL",
+      "noData": "No hay comentarios",
+      "filter": {
+        "all": "Todos",
+        "label": "Filtrar por estado"
+      },
+      "respond": {
+        "title": "Responder",
+        "adminResponse": "Respuesta",
+        "adminResponsePlaceholder": "Ingrese su respuesta al usuario",
+        "publicResponse": "Mostrar como respuesta pública",
+        "submit": "Enviar respuesta",
+        "success": "Respuesta enviada",
+        "error": "Error al enviar respuesta"
+      },
+      "statusChange": {
+        "success": "Estado actualizado",
+        "error": "Error al actualizar estado"
+      },
+      "viewAsUser": "Ver como usuario",
+      "anonymous": "Anónimo"
     }
   }
 }

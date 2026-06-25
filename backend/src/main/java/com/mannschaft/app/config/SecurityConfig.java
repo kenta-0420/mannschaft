@@ -1,5 +1,6 @@
 package com.mannschaft.app.config;
 
+import com.mannschaft.app.admin.filter.AdminImpersonationFilter;
 import com.mannschaft.app.advertising.campaign.filter.AdPublicEndpointRateLimitFilter;
 import com.mannschaft.app.dashboard.DashboardScopeTabRateLimitFilter;
 import com.mannschaft.app.event.EventDelegationRateLimitFilter;
@@ -39,12 +40,26 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final AdminImpersonationFilter adminImpersonationFilter;
     private final ProxyInputContextFilter proxyInputContextFilter;
     private final PublicApiRateLimitFilter publicApiRateLimitFilter;
     private final AdPublicEndpointRateLimitFilter adPublicEndpointRateLimitFilter;
     private final ScheduleDelegationRateLimitFilter scheduleDelegationRateLimitFilter;
     private final EventDelegationRateLimitFilter eventDelegationRateLimitFilter;
     private final DashboardScopeTabRateLimitFilter dashboardScopeTabRateLimitFilter;
+
+    /**
+     * F10.1: AdminImpersonationFilter の @Component によるサーブレットフィルター自動登録を無効化。
+     * Spring Security フィルターチェーン経由（addFilterAfter）のみで動作させ、
+     * JWT 認証後の確定した SecurityContext を使って SYSTEM_ADMIN 判定を行う。
+     */
+    @Bean
+    public FilterRegistrationBean<AdminImpersonationFilter> adminImpersonationFilterRegistration() {
+        FilterRegistrationBean<AdminImpersonationFilter> registration =
+                new FilterRegistrationBean<>(adminImpersonationFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
 
     /**
      * ProxyInputContextFilter の @Component によるサーブレットフィルター自動登録を無効化。
@@ -358,6 +373,8 @@ public class SecurityConfig {
             .addFilterBefore(publicApiRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(adPublicEndpointRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(proxyInputContextFilter, JwtAuthenticationFilter.class)
+            // F10.1 管理者変身: JWT 認証後に動かし、SYSTEM_ADMIN 判定後に principal を置き換える
+            .addFilterAfter(adminImpersonationFilter, ProxyInputContextFilter.class)
             // F03.10 代理指定レートリミット（§6・10req/分/ユーザー）。
             // JWT 認証後に動かし、確定した SecurityContext から userId を解決する。
             .addFilterAfter(scheduleDelegationRateLimitFilter, JwtAuthenticationFilter.class)

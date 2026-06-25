@@ -7,7 +7,7 @@ definePageMeta({
 
 const notification = useNotification()
 const { getLoginHistory } = useUserSettingsApi()
-const { formatDateTime } = useDatetime()
+const { formatDateTime, buildOffsetDateTimeStr } = useDatetime()
 
 const loading = ref(true)
 const history = ref<LoginHistoryResponse[]>([])
@@ -15,18 +15,33 @@ const nextCursor = ref<string | null>(null)
 const hasNext = ref(false)
 const loadingMore = ref(false)
 
+const fromDate = ref<Date | null>(null)
+const toDate = ref<Date | null>(null)
+
 onMounted(async () => {
   await loadHistory()
 })
+
+function toDateStart(date: Date | null): string | undefined {
+  const s = buildOffsetDateTimeStr(date, '00:00')
+  // BEの LocalDateTime は +09:00 オフセットをパースできないため除去
+  return s ? s.replace(/[+-]\d{2}:\d{2}$/, '') : undefined
+}
+
+function toDateEnd(date: Date | null): string | undefined {
+  const s = buildOffsetDateTimeStr(date, '23:59')
+  return s ? s.replace(/[+-]\d{2}:\d{2}$/, '') : undefined
+}
 
 async function loadHistory(cursor?: string) {
   if (cursor) {
     loadingMore.value = true
   } else {
     loading.value = true
+    history.value = []
   }
   try {
-    const res = await getLoginHistory(cursor, 20)
+    const res = await getLoginHistory(cursor, 5, toDateStart(fromDate.value), toDateEnd(toDate.value))
     if (cursor) {
       history.value.push(...res.data)
     } else {
@@ -48,22 +63,38 @@ function loadMore() {
   }
 }
 
+function onFilterChange() {
+  nextCursor.value = null
+  loadHistory()
+}
+
+function clearFilter() {
+  fromDate.value = null
+  toDate.value = null
+  nextCursor.value = null
+  loadHistory()
+}
 
 function eventLabel(eventType: string) {
   const labels: Record<string, string> = {
     LOGIN_SUCCESS: 'ログイン成功',
-    LOGIN_FAILURE: 'ログイン失敗',
+    LOGIN_FAILED: 'ログイン失敗',
+    WEBAUTHN_LOGIN: 'WebAuthn ログイン',
+    WEBAUTHN_LOGIN_FAILED: 'WebAuthn ログイン失敗',
     LOGOUT: 'ログアウト',
-    TOKEN_REFRESH: 'トークン更新',
-    PASSWORD_CHANGE: 'パスワード変更',
-    MFA_VERIFY: '2FA認証',
+    LOGOUT_SESSION: 'セッションログアウト',
+    LOGOUT_ALL_SESSIONS: '全セッションログアウト',
+    TOKEN_REUSE_DETECTED: 'トークン再利用検知',
+    DEVICE_FINGERPRINT_MISMATCH: 'デバイス変更検知',
+    NEW_DEVICE_LOGIN: '新規デバイスログイン',
   }
   return labels[eventType] || eventType
 }
 
 function eventSeverity(eventType: string) {
-  if (eventType === 'LOGIN_FAILURE') return 'danger'
-  if (eventType === 'LOGOUT') return 'warn'
+  if (eventType === 'LOGIN_FAILED' || eventType === 'WEBAUTHN_LOGIN_FAILED') return 'danger'
+  if (eventType === 'TOKEN_REUSE_DETECTED' || eventType === 'DEVICE_FINGERPRINT_MISMATCH') return 'warn'
+  if (eventType.includes('LOGOUT')) return 'warn'
   return 'success'
 }
 </script>
@@ -71,6 +102,48 @@ function eventSeverity(eventType: string) {
 <template>
   <div class="mx-auto max-w-2xl">
     <PageHeader title="ログイン履歴" back-to="/settings" />
+
+    <SectionCard class="mb-4">
+      <div class="flex flex-wrap items-end gap-3">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-surface-500">開始日</label>
+          <DatePicker
+            v-model="fromDate"
+            date-format="yy/mm/dd"
+            show-icon
+            :max-date="toDate ?? undefined"
+            class="w-40"
+            show-button-bar
+          />
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-surface-500">終了日</label>
+          <DatePicker
+            v-model="toDate"
+            date-format="yy/mm/dd"
+            show-icon
+            :min-date="fromDate ?? undefined"
+            class="w-40"
+            show-button-bar
+          />
+        </div>
+        <Button
+          label="検索"
+          icon="pi pi-search"
+          size="small"
+          @click="onFilterChange"
+        />
+        <Button
+          v-if="fromDate || toDate"
+          label="クリア"
+          severity="secondary"
+          text
+          size="small"
+          icon="pi pi-times"
+          @click="clearFilter"
+        />
+      </div>
+    </SectionCard>
 
     <PageLoading v-if="loading" />
 

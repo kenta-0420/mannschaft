@@ -1414,7 +1414,12 @@
       "shiftBudget": "교대 예산",
       "betaRestriction": "베타 제한",
       "errorReports": "오류 보고서",
-      "gdprPurge": "GDPR 삭제 현황"
+      "gdprPurge": "GDPR 삭제 현황",
+      "feedbackInbox": "의견함 (전체)"
+    },
+    "impersonation": {
+      "banner": "관리자 위장 중: {label}",
+      "exit": "위장 종료"
     },
     "businessAlert": {
       "title": "업무 알림",

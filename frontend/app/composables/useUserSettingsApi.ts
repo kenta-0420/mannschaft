@@ -85,10 +85,12 @@ export function useUserSettingsApi() {
   }
 
   // === Login History ===
-  async function getLoginHistory(cursor?: string, limit?: number) {
+  async function getLoginHistory(cursor?: string, limit?: number, from?: string, to?: string) {
     const query = new URLSearchParams()
     if (cursor) query.set('cursor', cursor)
     if (limit) query.set('limit', String(limit))
+    if (from) query.set('from', from)
+    if (to) query.set('to', to)
     const qs = query.toString()
     return api<{ data: LoginHistoryResponse[]; meta: CursorMeta }>(
       `/api/v1/users/me/login-history${qs ? `?${qs}` : ''}`,

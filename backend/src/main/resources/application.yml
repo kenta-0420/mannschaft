@@ -179,6 +179,7 @@ mannschaft:
     calendar-api-base: https://www.googleapis.com/calendar/v3
     userinfo-uri: https://www.googleapis.com/oauth2/v3/userinfo
     redirect-uri: ${MANNSCHAFT_GOOGLE_REDIRECT_URI:https://app.mannschaft.com/auth/oauth/callback/google}
+    link-redirect-uri: ${MANNSCHAFT_GOOGLE_LINK_REDIRECT_URI:http://localhost:8080/api/v1/auth/oauth/link/GOOGLE/callback}
     places-api-key: ${MANNSCHAFT_GOOGLE_PLACES_API_KEY:}
     places-api-base: https://places.googleapis.com/v1
   line:

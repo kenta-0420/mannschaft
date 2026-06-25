@@ -79,6 +79,9 @@ function toggleCollapse(key: string) {
   collapsedKeys.value = new Set(collapsedKeys.value)
 }
 
+/** 解散通知リマインダーウィジェットにコンテンツがあるか（0件時のグリッドスロット占有防止） */
+const dismissalHasContent = ref(false)
+
 const showConfig = ref(false)
 
 /**
@@ -224,6 +227,7 @@ function onDragEnd() {
         <div
           v-for="(w, index) in visibleWidgets"
           :key="w.key"
+          v-show="w.key !== 'event-dismissal-reminder' || dismissalHasContent"
           class="group relative cursor-default transition-all"
           :class="[
             (w.key === 'notices' || w.key === 'my-calendar') ? 'col-span-1 md:col-span-2' : 'col-span-1',
@@ -256,7 +260,10 @@ function onDragEnd() {
             <!-- F02.5: ポイっとメモ -->
             <DashboardQuickMemoWidget v-else-if="w.key === 'quick-memo'" />
             <!-- F03.12 §16: 解散通知リマインダー -->
-            <WidgetEventDismissalReminder v-else-if="w.key === 'event-dismissal-reminder'" />
+            <WidgetEventDismissalReminder
+              v-else-if="w.key === 'event-dismissal-reminder'"
+              @has-content="dismissalHasContent = $event"
+            />
             <!-- プラットフォームお知らせ -->
             <WidgetPlatformAnnouncements v-else-if="w.key === 'notices'" />
             <!-- 今後の予定 -->

@@ -456,7 +456,8 @@
     "entry": {
       "record_from_schedule": "Registrar este partido",
       "record_from_schedule_hint": "Comienza a registrar el partido de este evento",
-      "resolving": "Preparando el registro del partido…"
+      "resolving": "Preparando el registro del partido…",
+      "no_org_for_record": "El registro de partidos solo está disponible cuando el equipo pertenece a una organización"
     },
     "fixtures": {
       "title": "Calendario de partidos",

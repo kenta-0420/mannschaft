@@ -94,6 +94,7 @@ export function useApi() {
   const authStore = useAuthStore()
   const proxyDeskStore = useProxyDeskStore()
   const guardianshipSwitchStore = useGuardianshipSwitchStore()
+  const adminImpersonationStore = useAdminImpersonationStore()
   const nuxtApp = useNuxtApp()
   const errorReport = useErrorReport()
 
@@ -128,6 +129,11 @@ export function useApi() {
         // X-Proxy-Consent-Id / X-Proxy-Input-Source は送らない（代理入力とは別経路）
         else if (guardianshipSwitchStore.isActingAs) {
           headers.set('X-Proxy-For-User-Id', String(guardianshipSwitchStore.activeChild!.childUserId))
+        }
+        // 管理者変身モードが有効な場合: X-Admin-Impersonate-User-Id を付与（F10.1）
+        // BE の AdminImpersonationFilter が SecurityContext の principal を対象ユーザー ID に置き換える
+        else if (adminImpersonationStore.isImpersonating) {
+          headers.set('X-Admin-Impersonate-User-Id', String(adminImpersonationStore.targetUserId))
         }
 
         options.headers = headers

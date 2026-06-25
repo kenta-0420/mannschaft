@@ -18,6 +18,7 @@ public class OAuthProperties {
     private final String googleTokenUri;
     private final String googleUserinfoUri;
     private final String googleRedirectUri;
+    private final String googleLinkRedirectUri;
 
     // ---- LINE ----
     private final String lineClientId;
@@ -38,6 +39,7 @@ public class OAuthProperties {
             @Value("${mannschaft.google.token-uri:https://oauth2.googleapis.com/token}") String googleTokenUri,
             @Value("${mannschaft.google.userinfo-uri:https://www.googleapis.com/oauth2/v3/userinfo}") String googleUserinfoUri,
             @Value("${mannschaft.google.redirect-uri:}") String googleRedirectUri,
+            @Value("${mannschaft.google.link-redirect-uri:http://localhost:8080/api/v1/auth/oauth/link/GOOGLE/callback}") String googleLinkRedirectUri,
             @Value("${mannschaft.line.client-id:}") String lineClientId,
             @Value("${mannschaft.line.client-secret:}") String lineClientSecret,
             @Value("${mannschaft.line.token-uri:https://api.line.me/oauth2/v2.1/token}") String lineTokenUri,
@@ -52,6 +54,7 @@ public class OAuthProperties {
         this.googleTokenUri = googleTokenUri;
         this.googleUserinfoUri = googleUserinfoUri;
         this.googleRedirectUri = googleRedirectUri;
+        this.googleLinkRedirectUri = googleLinkRedirectUri;
         this.lineClientId = lineClientId;
         this.lineClientSecret = lineClientSecret;
         this.lineTokenUri = lineTokenUri;
