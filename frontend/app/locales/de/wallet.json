@@ -428,6 +428,45 @@
       "error_delete": "Löschen fehlgeschlagen",
       "error_duplicate": "Dieses Synonym ist bereits registriert (Duplikat nach Normalisierung)",
       "error_provider_not_found": "Angegebener Anbieter nicht gefunden"
+    },
+    "wallet_guide": {
+      "title": "So verwenden Sie die Brieftasche",
+      "description": "Funktion zum Mitführen von Punktekarten auf dem Smartphone und Vorzeigen von Barcodes an der Kasse.",
+      "overview": {
+        "title": "Was ist die Brieftasche?",
+        "body": "Registrieren Sie die Barcodes Ihrer Punktekarten und Mitgliedskarten in der App und zeigen Sie sie auf Ihrem Smartphone-Bildschirm vor. Sie können bis zu 200 Karten registrieren.",
+        "hint": "Beim ersten Öffnen müssen Sie den Nutzungsbedingungen zustimmen."
+      },
+      "add_card": {
+        "title": "Eine Karte registrieren",
+        "body": "Sie können eine neue Karte über die Schaltfläche «+» unten rechts auf der Registerkarte Karten hinzufügen. Sparen Sie Zeit, indem Sie beliebte Geschäfte aus den Voreinstellungen auswählen.",
+        "steps": {
+          "step1": "Tippen Sie auf die Schaltfläche «+» unten rechts auf der Registerkarte Karten",
+          "step2": "Wählen Sie beliebte Geschäfte aus Voreinstellungen oder geben Sie einen Kartennamen direkt ein",
+          "step3": "Geben Sie den Barcode (Mitgliedsnummer) per Kamera, Bild oder manueller Eingabe ein",
+          "step4": "Überprüfen Sie die Vorschau und tippen Sie auf «Speichern»"
+        }
+      },
+      "groups": {
+        "title": "Mit Gruppen organisieren",
+        "body": "Fassen Sie mehrere Karten in einer Gruppe zusammen, um schnell zwischen Karten Ihrer Lieblingsgeschäfte zu wechseln.",
+        "steps": {
+          "step1": "Öffnen Sie die Registerkarte «Gruppen»",
+          "step2": "Tippen Sie auf «+ Neue Gruppe»",
+          "step3": "Geben Sie einen Gruppennamen und Emoji ein und markieren Sie die einzuschließenden Karten",
+          "step4": "Tippen Sie auf «Speichern», um die Gruppe fertigzustellen"
+        }
+      },
+      "present": {
+        "title": "Barcode an der Kasse vorzeigen",
+        "body": "Tippen Sie auf eine Karte aus der Liste, um den Barcode im Vollbildmodus anzuzeigen. Mit Gruppen können Sie per Wischen zwischen Karten wechseln.",
+        "steps": {
+          "step1": "Tippen Sie auf eine Karte aus der Kartenliste oder einer Gruppe",
+          "step2": "Der Barcode wird im Vollbildmodus angezeigt",
+          "step3": "Halten Sie den Smartphone-Bildschirm zum Scannen Richtung Personal",
+          "step4": "(Bei aktivierter biometrischer Authentifizierung) Zuerst mit Gesicht/Fingerabdruck entsperren"
+        }
+      }
     }
   }
 }

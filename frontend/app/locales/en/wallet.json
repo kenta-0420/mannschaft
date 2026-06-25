@@ -428,6 +428,45 @@
       "error_delete": "Failed to delete",
       "error_duplicate": "This synonym is already registered (duplicate after normalization)",
       "error_provider_not_found": "Provider not found"
+    },
+    "wallet_guide": {
+      "title": "How to use Wallet",
+      "description": "Carry your point cards on your smartphone and present barcodes at checkout.",
+      "overview": {
+        "title": "What is Wallet?",
+        "body": "Register barcodes from your point cards and membership cards in the app, and present them on your smartphone screen. You can register up to 200 cards.",
+        "hint": "You will need to agree to the terms of service the first time you open it."
+      },
+      "add_card": {
+        "title": "Register a Card",
+        "body": "You can add a new card using the \"+\" button at the bottom right of the Cards tab. Save time by selecting popular stores from the presets.",
+        "steps": {
+          "step1": "Tap the \"+\" button at the bottom right of the Cards tab",
+          "step2": "Select from presets for popular stores, or enter a card name directly",
+          "step3": "Enter the barcode (membership number) via camera, image, or manual input",
+          "step4": "Check the preview and tap \"Save\""
+        }
+      },
+      "groups": {
+        "title": "Organize with Groups",
+        "body": "Group multiple cards together to quickly switch between cards for your favorite stores.",
+        "steps": {
+          "step1": "Open the \"Groups\" tab",
+          "step2": "Tap \"+ New Group\"",
+          "step3": "Enter a group name and emoji, and check the cards to include",
+          "step4": "Tap \"Save\" to complete the group"
+        }
+      },
+      "present": {
+        "title": "Present Barcode at Checkout",
+        "body": "Tap a card from the list to display the barcode in full screen. With groups, you can swipe between cards.",
+        "steps": {
+          "step1": "Tap a card from the card list or a group",
+          "step2": "The barcode is displayed full screen",
+          "step3": "Hold your smartphone screen toward the staff for scanning",
+          "step4": "(If biometric authentication is enabled) Unlock with face/fingerprint first"
+        }
+      }
     }
   }
 }
