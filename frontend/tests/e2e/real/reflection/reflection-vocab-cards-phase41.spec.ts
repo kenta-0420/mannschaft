@@ -36,8 +36,8 @@ test.describe.configure({ mode: 'serial' })
 // ---------------------------------------------------------------------------
 let themeAId = ''
 let themeBId = ''
-let inlineTermValue = `inline-term-${RUN_ID}`
-let inlineMeaningValue = `inline-meaning-${RUN_ID}`
+const inlineTermValue = `inline-term-${RUN_ID}`
+const inlineMeaningValue = `inline-meaning-${RUN_ID}`
 
 // ---------------------------------------------------------------------------
 // セットアップ: 各テスト前に cookie fresh 化（単一セッション設計）
@@ -248,9 +248,7 @@ test('VOCAB-P41-003（AC-66/67）: エントリ編集ダイアログで単語カ
     `${BE_API}/me/reflections/cards?from=${today}&to=${today}&subjects=`,
   )
   // subjects= 空は全件返す想定
-  const beforeCount = ((await beforeRes.json()).data?.cards ?? []).filter(
-    (c: Record<string, string>) => c.themeId === themeAId,
-  ).length
+  await beforeRes.json() // レスポンス消費（beforeCount は不使用）
 
   // --- UI 操作: エントリダイアログを開いてカードを追加 ---
   await page.goto('/reflections')
