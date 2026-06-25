@@ -50,6 +50,7 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.Base64;
+import java.util.UUID;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -90,10 +91,12 @@ public class AuthWebAuthnService {
     private static final String REAUTH_VERIFIED_KEY_PREFIX = "mannschaft:auth:webauthn_reauth_verified:";
     private static final int CHALLENGE_TTL_MINUTES = 5;
     private static final int REAUTH_VERIFIED_TTL_MINUTES = 5;
-    private static final String RP_ID = "mannschaft.app";
     private static final String RP_NAME = "Mannschaft";
 
     private final WebAuthnManager webAuthnManager = WebAuthnManager.createNonStrictWebAuthnManager();
+
+    @Value("${mannschaft.webauthn.rp-id:mannschaft.app}")
+    private String rpId;
 
     @Value("${mannschaft.webauthn.origin:https://mannschaft.app}")
     private String rpOrigin;
@@ -116,7 +119,7 @@ public class AuthWebAuthnService {
         redisTemplate.opsForValue().set(challengeKey, challenge, CHALLENGE_TTL_MINUTES, TimeUnit.MINUTES);
 
         WebAuthnRegisterBeginResponse response = new WebAuthnRegisterBeginResponse(
-                challenge, RP_ID, RP_NAME, userId, user.getLastName() + " " + user.getFirstName());
+                challenge, rpId, RP_NAME, userId, user.getLastName() + " " + user.getFirstName());
 
         return ApiResponse.of(response);
     }
@@ -148,7 +151,7 @@ public class AuthWebAuthnService {
         }
         redisTemplate.delete(challengeKey);
 
-        // WebAuthn4J attestation 検証
+        // WebAuthn4J attestation 検証 + CBOR公開鍵抽出 + 保存
         try {
             byte[] attestationObject = Base64.getUrlDecoder().decode(req.getAttestationObject());
             byte[] clientDataJson = Base64.getUrlDecoder().decode(req.getClientDataJson());
@@ -157,8 +160,8 @@ public class AuthWebAuthnService {
 
             ServerProperty serverProperty = new ServerProperty(
                     new Origin(rpOrigin),
-                    RP_ID,
-                    new DefaultChallenge(storedChallenge.getBytes()),
+                    rpId,
+                    new DefaultChallenge(Base64.getUrlDecoder().decode(storedChallenge)),
                     null
             );
             RegistrationParameters registrationParameters = new RegistrationParameters(
@@ -166,26 +169,56 @@ public class AuthWebAuthnService {
 
             RegistrationData registrationData = webAuthnManager.parse(registrationRequest);
             webAuthnManager.validate(registrationData, registrationParameters);
+
+            // RegistrationData から COSEKey を抽出して CBOR シリアライズ
+            // FE から送られる getPublicKey() は DER(SubjectPublicKeyInfo)形式のため使用不可
+            com.webauthn4j.data.attestation.authenticator.COSEKey parsedCoseKey =
+                    registrationData.getAttestationObject()
+                            .getAuthenticatorData()
+                            .getAttestedCredentialData()
+                            .getCOSEKey();
+            com.webauthn4j.converter.util.ObjectConverter regObjectConverter =
+                    new com.webauthn4j.converter.util.ObjectConverter();
+            byte[] coseKeyBytes = regObjectConverter.getCborConverter().writeValueAsBytes(parsedCoseKey);
+            String coseKeyB64url = Base64.getUrlEncoder().withoutPadding().encodeToString(coseKeyBytes);
+
+            // 認証器が割り当てた credentialId を取得
+            byte[] parsedCredIdBytes = registrationData.getAttestationObject()
+                    .getAuthenticatorData()
+                    .getAttestedCredentialData()
+                    .getCredentialId();
+            String parsedCredIdB64url = Base64.getUrlEncoder().withoutPadding().encodeToString(parsedCredIdBytes);
+
+            // AAGUID を RegistrationData から抽出（null の場合はゼロ UUID）
+            com.webauthn4j.data.attestation.authenticator.AAGUID parsedAaguid =
+                    registrationData.getAttestationObject()
+                            .getAuthenticatorData()
+                            .getAttestedCredentialData()
+                            .getAaguid();
+            String aaguidStr = (parsedAaguid != null && parsedAaguid.getValue() != null)
+                    ? parsedAaguid.getValue().toString()
+                    : "00000000-0000-0000-0000-000000000000";
+
+            // 2. credential_id重複チェック
+            if (webAuthnCredentialRepository.findByCredentialId(parsedCredIdB64url).isPresent()) {
+                throw new BusinessException(AuthErrorCode.AUTH_025);
+            }
+
+            // 3. WebAuthnCredentialEntity保存
+            WebAuthnCredentialEntity credential = WebAuthnCredentialEntity.builder()
+                    .userId(userId)
+                    .credentialId(parsedCredIdB64url)
+                    .publicKey(coseKeyB64url)
+                    .signCount(0L)
+                    .deviceName(req.getDeviceName())
+                    .aaguid(aaguidStr)
+                    .build();
+            webAuthnCredentialRepository.save(credential);
+
         } catch (DataConversionException | VerificationException e) {
             log.warn("WebAuthn attestation検証失敗: userId={}", userId, e);
             throw new BusinessException(AuthErrorCode.AUTH_024, e);
         }
-
-        // 2. credential_id重複チェック
-        if (webAuthnCredentialRepository.findByCredentialId(req.getCredentialId()).isPresent()) {
-            throw new BusinessException(AuthErrorCode.AUTH_025);
-        }
-
-        // 3. WebAuthnCredentialEntity保存
-        WebAuthnCredentialEntity credential = WebAuthnCredentialEntity.builder()
-                .userId(userId)
-                .credentialId(req.getCredentialId())
-                .publicKey(req.getPublicKey())
-                .signCount(0L)
-                .deviceName(req.getDeviceName())
-                .aaguid(req.getAaguid())
-                .build();
-        webAuthnCredentialRepository.save(credential);
 
         // 4. イベント発行
         eventPublisher.publish(new WebAuthnRegisteredEvent(userId, req.getDeviceName()));
@@ -219,7 +252,7 @@ public class AuthWebAuthnService {
         redisTemplate.opsForValue().set(challengeKey, challenge, CHALLENGE_TTL_MINUTES, TimeUnit.MINUTES);
 
         WebAuthnLoginBeginResponse response = new WebAuthnLoginBeginResponse(
-                challenge, RP_ID, allowCredentials, 300000L);
+                challenge, rpId, allowCredentials, 300000L);
 
         return ApiResponse.of(response);
     }
@@ -275,8 +308,8 @@ public class AuthWebAuthnService {
 
             ServerProperty serverProperty = new ServerProperty(
                     new Origin(rpOrigin),
-                    RP_ID,
-                    new DefaultChallenge(storedChallenge.getBytes()),
+                    rpId,
+                    new DefaultChallenge(Base64.getUrlDecoder().decode(storedChallenge)),
                     null
             );
 
@@ -287,9 +320,15 @@ public class AuthWebAuthnService {
                     objectConverter.getCborConverter().readValue(
                             Base64.getUrlDecoder().decode(credential.getPublicKey()),
                             com.webauthn4j.data.attestation.authenticator.COSEKey.class);
+            // AAGUID を DB から復元（null の場合はゼロ UUID を使用）
+            String storedAaguidStr = credential.getAaguid();
+            com.webauthn4j.data.attestation.authenticator.AAGUID aaguid =
+                    (storedAaguidStr != null)
+                    ? new com.webauthn4j.data.attestation.authenticator.AAGUID(java.util.UUID.fromString(storedAaguidStr))
+                    : com.webauthn4j.data.attestation.authenticator.AAGUID.ZERO;
             com.webauthn4j.authenticator.Authenticator authenticator =
                     new com.webauthn4j.authenticator.AuthenticatorImpl(
-                            new AttestedCredentialData(null, credentialIdBytes, coseKey),
+                            new AttestedCredentialData(aaguid, credentialIdBytes, coseKey),
                             null, credential.getSignCount());
 
             AuthenticationParameters authenticationParameters = new AuthenticationParameters(
@@ -424,7 +463,7 @@ public class AuthWebAuthnService {
         redisTemplate.opsForValue().set(challengeKey, challenge, CHALLENGE_TTL_MINUTES, TimeUnit.MINUTES);
 
         WebAuthnReauthenticateBeginResponse response = new WebAuthnReauthenticateBeginResponse(
-                challenge, RP_ID, allowCredentials, userId, 60_000L);
+                challenge, rpId, allowCredentials, userId, 60_000L);
         return ApiResponse.of(response);
     }
 
@@ -480,8 +519,8 @@ public class AuthWebAuthnService {
 
             ServerProperty serverProperty = new ServerProperty(
                     new Origin(rpOrigin),
-                    RP_ID,
-                    new DefaultChallenge(storedChallenge.getBytes()),
+                    rpId,
+                    new DefaultChallenge(Base64.getUrlDecoder().decode(storedChallenge)),
                     null
             );
 
@@ -493,7 +532,11 @@ public class AuthWebAuthnService {
                             com.webauthn4j.data.attestation.authenticator.COSEKey.class);
             com.webauthn4j.authenticator.Authenticator authenticator =
                     new com.webauthn4j.authenticator.AuthenticatorImpl(
-                            new AttestedCredentialData(null, credentialIdBytes, coseKey),
+                            new AttestedCredentialData(
+                                    (credential.getAaguid() != null)
+                                    ? new com.webauthn4j.data.attestation.authenticator.AAGUID(java.util.UUID.fromString(credential.getAaguid()))
+                                    : com.webauthn4j.data.attestation.authenticator.AAGUID.ZERO,
+                                    credentialIdBytes, coseKey),
                             null, credential.getSignCount());
 
             AuthenticationParameters authenticationParameters = new AuthenticationParameters(
@@ -584,9 +627,11 @@ public class AuthWebAuthnService {
         String refreshToken = authTokenService.generateRefreshToken();
         String refreshTokenHash = authTokenService.hashToken(refreshToken);
 
+        String refreshTokenJti = UUID.randomUUID().toString();
         RefreshTokenEntity refreshTokenEntity = RefreshTokenEntity.builder()
                 .userId(userId)
                 .tokenHash(refreshTokenHash)
+                .jti(refreshTokenJti)
                 .rememberMe(false)
                 .ipAddress(ipAddress)
                 .userAgent(userAgent)

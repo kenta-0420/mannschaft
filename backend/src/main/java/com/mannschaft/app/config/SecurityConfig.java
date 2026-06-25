@@ -184,7 +184,14 @@ public class SecurityConfig {
                     "/api/v1/auth/refresh",
                     "/api/v1/auth/password-reset/**",
                     "/api/v1/auth/email-verification/**",
-                    "/api/v1/auth/oauth/**"
+                    "/api/v1/auth/oauth/**",
+                    // 2FA ログインフロー（MFA セッショントークンで認証するため既存セッション不要）
+                    "/api/v1/auth/2fa/validate",
+                    "/api/v1/auth/2fa/recovery/request",
+                    "/api/v1/auth/2fa/recovery/confirm",
+                    // WebAuthn パスキーログイン（第一要素として未認証で呼ばれるため公開必須）
+                    "/api/v1/auth/webauthn/login/begin",
+                    "/api/v1/auth/webauthn/login/complete"
                 ).permitAll()
                 // F11.3 UI i18n: 対応言語一覧（認証不要）
                 .requestMatchers("/api/i18n/**").permitAll()
