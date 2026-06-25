@@ -1,4 +1,4 @@
-package com.mannschaft.app.auth;
+﻿package com.mannschaft.app.auth;
 
 import com.mannschaft.app.auth.controller.AuthLoginController;
 import com.mannschaft.app.auth.service.AuthService;
@@ -84,7 +84,10 @@ class AuthLoginControllerTest {
                   "password": "Passw0rd!",
                   "lastName": "田中",
                   "firstName": "太郎",
-                  "nickname": "taro"
+                  "nickname": "taro",
+                  "birth_date": "1990-01-01",
+                  "privacyPolicyAccepted": true,
+                  "privacyPolicyVersion": "1.1.0"
                 }
                 """;
 

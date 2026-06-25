@@ -1,4 +1,4 @@
-package com.mannschaft.app.auth.controller;
+﻿package com.mannschaft.app.auth.controller;
 
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuthRegistrationService;
@@ -13,6 +13,7 @@ import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
+import org.springframework.data.redis.core.ValueOperations;
+import static org.mockito.Mockito.mock;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -172,6 +175,17 @@ class AuthRegisterPrivacyPolicyTest {
 
         @Autowired
         private UserRepository userRepository;
+
+        @BeforeEach
+        void setUpRedisMock() {
+            // redisTemplate.opsForValue() は Mockito デフォルト null を返すため NPE になる。
+            // checkRateLimit が DataAccessException 以外の例外をスローしないよう
+            // opsForValue() -> increment() をスタブ化する。
+            @SuppressWarnings("unchecked")
+            ValueOperations<String, String> ops = mock(ValueOperations.class);
+            given(redisTemplate.opsForValue()).willReturn(ops);
+            given(ops.increment(any())).willReturn(0L);
+        }
 
         @Test
         @DisplayName("AC-3: 正常登録後 privacy_policy_accepted_at が null でない")
