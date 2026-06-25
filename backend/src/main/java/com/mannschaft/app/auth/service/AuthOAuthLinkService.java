@@ -168,7 +168,7 @@ public class AuthOAuthLinkService {
      */
     private String buildGoogleAuthUrl(String state) {
         String clientId = oAuthProperties.getGoogleClientId();
-        String redirectUri = oAuthProperties.getGoogleRedirectUri();
+        String redirectUri = oAuthProperties.getGoogleLinkRedirectUri();
 
         return GOOGLE_AUTH_ENDPOINT
                 + "?client_id=" + encode(clientId)
