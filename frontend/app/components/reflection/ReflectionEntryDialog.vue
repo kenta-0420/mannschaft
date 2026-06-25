@@ -12,11 +12,9 @@ import {
   type ReflectionEntryResponse,
   type UpsertReflectionEntryRequest,
   emptyStructuredContent,
-  emptySection,
-  emptySubsection,
 } from '~/types/reflection'
 import type { JsonNode } from '~/composables/useReflectionStructuredContent'
-import { REFLECTION_TEMPLATES, type ReflectionTemplateKey } from '~/constants/reflectionTemplates'
+import { REFLECTION_TEMPLATES, type ReflectionTemplateKey, buildInitialSections } from '~/constants/reflectionTemplates'
 
 const props = defineProps<{
   visible: boolean
@@ -71,14 +69,10 @@ function applyTemplate(key: ReflectionTemplateKey) {
     content.value = emptyStructuredContent()
     return
   }
-  const sections = tpl.sectionHeadingKeys.map((hk) => {
-    const sec = emptySection(t(hk))
-    sec.subsections = [emptySubsection()]
-    return sec
-  })
+  const sections = buildInitialSections(tpl, t)
   content.value = {
     main_theme: '',
-    sections: sections.length > 0 ? sections : [],
+    sections,
     free_note: '',
   }
 }

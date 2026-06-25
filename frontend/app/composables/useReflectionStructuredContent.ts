@@ -9,6 +9,7 @@ import {
   type ReflectionStructuredContent,
   type ReflectionSection,
   type ReflectionSubsection,
+  type ReflectionCard,
   emptyStructuredContent,
 } from '~/types/reflection'
 
@@ -31,9 +32,17 @@ function normalizeSubsection(raw: unknown): ReflectionSubsection {
 function normalizeSection(raw: unknown): ReflectionSection {
   const o = (raw ?? {}) as Record<string, unknown>
   const subs = Array.isArray(o.subsections) ? o.subsections.map(normalizeSubsection) : []
+  const type: 'OUTLINE' | 'TERM_CARD' = o.type === 'TERM_CARD' ? 'TERM_CARD' : 'OUTLINE'
+  const rawCards = Array.isArray(o.cards) ? o.cards : []
+  const cards: ReflectionCard[] = rawCards.map((c: unknown) => {
+    const card = (c ?? {}) as Record<string, unknown>
+    return { term: asString(card.term), meaning: asString(card.meaning) }
+  })
   return {
     heading: asString(o.heading),
     subsections: subs,
+    type,
+    cards,
   }
 }
 
@@ -55,11 +64,13 @@ export function useReflectionStructuredContent() {
       main_theme: content.main_theme,
       sections: content.sections.map(s => ({
         heading: s.heading,
+        type: s.type ?? 'OUTLINE',
         subsections: s.subsections.map(sub => ({
           sub_heading: sub.sub_heading,
           detail: sub.detail,
           supplement: sub.supplement,
         })),
+        cards: (s.cards ?? []).map(c => ({ term: c.term, meaning: c.meaning })),
       })),
       free_note: content.free_note,
     }
