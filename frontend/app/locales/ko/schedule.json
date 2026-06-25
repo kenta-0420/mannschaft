@@ -14,8 +14,8 @@
       "before": "전",
       "max_reached": "리마인더는 최대 5개까지 설정할 수 있습니다",
       "kind_label": "유형",
-      "kind_relative": "상대",
-      "kind_absolute": "절대",
+      "kind_relative": "시작 전（분/시간）",
+      "kind_absolute": "날짜/시간 지정",
       "unit_label": "단위",
       "unit_minutes": "분",
       "unit_hours": "시간",
@@ -87,6 +87,29 @@
       "fetchFailed": "팀별 출결 내역을 불러오지 못했습니다.",
       "forbidden": "이 내역을 볼 권한이 없습니다.",
       "empty": "팀별 출결 내역 데이터가 없습니다."
+    },
+    "recurrence": {
+      "label": "반복",
+      "interval": {
+        "DAILY": "매일",
+        "WEEKLY": "매주",
+        "MONTHLY": "매월",
+        "YEARLY": "매년"
+      },
+      "days": {
+        "SUNDAY": "일",
+        "MONDAY": "월",
+        "TUESDAY": "화",
+        "WEDNESDAY": "수",
+        "THURSDAY": "목",
+        "FRIDAY": "금",
+        "SATURDAY": "토"
+      },
+      "end_label": "종료",
+      "end_never": "지정 안 함",
+      "end_date": "날짜",
+      "end_count": "횟수",
+      "end_count_suffix": "회"
     },
     "event_add": "일정 추가",
     "calendar_guide": {

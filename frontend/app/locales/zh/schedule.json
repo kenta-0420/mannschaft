@@ -14,8 +14,8 @@
       "before": "前",
       "max_reached": "最多可设置5个提醒",
       "kind_label": "类型",
-      "kind_relative": "相对",
-      "kind_absolute": "绝对",
+      "kind_relative": "活动开始前（分/时）",
+      "kind_absolute": "指定日期时间",
       "unit_label": "单位",
       "unit_minutes": "分钟",
       "unit_hours": "小时",
@@ -87,6 +87,29 @@
       "fetchFailed": "加载团队出勤明细失败。",
       "forbidden": "您没有查看此明细的权限。",
       "empty": "没有可用的团队出勤明细数据。"
+    },
+    "recurrence": {
+      "label": "重复",
+      "interval": {
+        "DAILY": "每天",
+        "WEEKLY": "每周",
+        "MONTHLY": "每月",
+        "YEARLY": "每年"
+      },
+      "days": {
+        "SUNDAY": "日",
+        "MONDAY": "一",
+        "TUESDAY": "二",
+        "WEDNESDAY": "三",
+        "THURSDAY": "四",
+        "FRIDAY": "五",
+        "SATURDAY": "六"
+      },
+      "end_label": "结束",
+      "end_never": "永不",
+      "end_date": "日期",
+      "end_count": "次数",
+      "end_count_suffix": "次"
     },
     "event_add": "添加日程",
     "calendar_guide": {

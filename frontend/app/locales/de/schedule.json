@@ -14,8 +14,8 @@
       "before": "vorher",
       "max_reached": "Sie können bis zu 5 Erinnerungen festlegen",
       "kind_label": "Typ",
-      "kind_relative": "Relativ",
-      "kind_absolute": "Absolut",
+      "kind_relative": "Vor Beginn (Min./Std.)",
+      "kind_absolute": "Datum/Uhrzeit angeben",
       "unit_label": "Einheit",
       "unit_minutes": "Minuten",
       "unit_hours": "Stunden",
@@ -87,6 +87,29 @@
       "fetchFailed": "Die Anwesenheitsaufschluesselung nach Team konnte nicht geladen werden.",
       "forbidden": "Sie haben keine Berechtigung, diese Aufschluesselung anzuzeigen.",
       "empty": "Keine Daten zur Anwesenheitsaufschluesselung nach Team verfuegbar."
+    },
+    "recurrence": {
+      "label": "Wiederholen",
+      "interval": {
+        "DAILY": "Täglich",
+        "WEEKLY": "Wöchentlich",
+        "MONTHLY": "Monatlich",
+        "YEARLY": "Jährlich"
+      },
+      "days": {
+        "SUNDAY": "So",
+        "MONDAY": "Mo",
+        "TUESDAY": "Di",
+        "WEDNESDAY": "Mi",
+        "THURSDAY": "Do",
+        "FRIDAY": "Fr",
+        "SATURDAY": "Sa"
+      },
+      "end_label": "Ende",
+      "end_never": "Nie",
+      "end_date": "Am Datum",
+      "end_count": "Nach",
+      "end_count_suffix": "Mal"
     },
     "event_add": "Termin hinzufügen",
     "calendar_guide": {

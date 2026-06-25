@@ -14,8 +14,8 @@
       "before": "antes",
       "max_reached": "Puedes configurar hasta 5 recordatorios",
       "kind_label": "Tipo",
-      "kind_relative": "Relativo",
-      "kind_absolute": "Absoluto",
+      "kind_relative": "Antes del evento (min/h)",
+      "kind_absolute": "Fecha/hora específica",
       "unit_label": "Unidad",
       "unit_minutes": "minutos",
       "unit_hours": "horas",
@@ -87,6 +87,29 @@
       "fetchFailed": "No se pudo cargar el desglose de asistencia por equipo.",
       "forbidden": "No tienes permiso para ver este desglose.",
       "empty": "No hay datos de desglose de asistencia por equipo."
+    },
+    "recurrence": {
+      "label": "Repetir",
+      "interval": {
+        "DAILY": "Diario",
+        "WEEKLY": "Semanal",
+        "MONTHLY": "Mensual",
+        "YEARLY": "Anual"
+      },
+      "days": {
+        "SUNDAY": "Do",
+        "MONDAY": "Lu",
+        "TUESDAY": "Ma",
+        "WEDNESDAY": "Mi",
+        "THURSDAY": "Ju",
+        "FRIDAY": "Vi",
+        "SATURDAY": "Sa"
+      },
+      "end_label": "Fin",
+      "end_never": "Nunca",
+      "end_date": "En fecha",
+      "end_count": "Después de",
+      "end_count_suffix": "veces"
     },
     "event_add": "Agregar evento",
     "calendar_guide": {
