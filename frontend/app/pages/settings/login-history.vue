@@ -7,7 +7,7 @@ definePageMeta({
 
 const notification = useNotification()
 const { getLoginHistory } = useUserSettingsApi()
-const { formatDateTime } = useDatetime()
+const { formatDateTime, buildOffsetDateTimeStr } = useDatetime()
 
 const loading = ref(true)
 const history = ref<LoginHistoryResponse[]>([])
@@ -22,8 +22,14 @@ onMounted(async () => {
   await loadHistory()
 })
 
-function toIso(date: Date | null): string | undefined {
-  return date ? date.toISOString().replace('Z', '') : undefined
+function toDateStart(date: Date | null): string | undefined {
+  const s = buildOffsetDateTimeStr(date, '00:00')
+  return s ?? undefined
+}
+
+function toDateEnd(date: Date | null): string | undefined {
+  const s = buildOffsetDateTimeStr(date, '23:59')
+  return s ?? undefined
 }
 
 async function loadHistory(cursor?: string) {
@@ -34,7 +40,7 @@ async function loadHistory(cursor?: string) {
     history.value = []
   }
   try {
-    const res = await getLoginHistory(cursor, 5, toIso(fromDate.value), toIso(toDate.value))
+    const res = await getLoginHistory(cursor, 5, toDateStart(fromDate.value), toDateEnd(toDate.value))
     if (cursor) {
       history.value.push(...res.data)
     } else {
@@ -107,7 +113,6 @@ function eventSeverity(eventType: string) {
             :max-date="toDate ?? undefined"
             class="w-40"
             show-button-bar
-            @update:model-value="onFilterChange"
           />
         </div>
         <div class="flex flex-col gap-1">
@@ -119,9 +124,14 @@ function eventSeverity(eventType: string) {
             :min-date="fromDate ?? undefined"
             class="w-40"
             show-button-bar
-            @update:model-value="onFilterChange"
           />
         </div>
+        <Button
+          label="検索"
+          icon="pi pi-search"
+          size="small"
+          @click="onFilterChange"
+        />
         <Button
           v-if="fromDate || toDate"
           label="クリア"
