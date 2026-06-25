@@ -152,6 +152,14 @@ const quickLinks: QuickLink[] = [
     color: 'text-orange-500',
     bg: 'bg-orange-50 dark:bg-orange-900/20',
   },
+  // F10.1: 目安箱 全体受信トレイ
+  {
+    label: t('admin.quickLinks.feedbackInbox'),
+    icon: 'pi pi-inbox',
+    to: '/system-admin/feedbacks',
+    color: 'text-lime-500',
+    bg: 'bg-lime-50 dark:bg-lime-900/20',
+  },
 ]
 </script>
 

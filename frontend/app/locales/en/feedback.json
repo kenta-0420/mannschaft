@@ -25,6 +25,39 @@
     },
     "anonymous": {
       "label": "Send anonymously"
+    },
+    "submitter": "Submitter",
+    "votes": "Votes",
+    "status": {
+      "NEW": "New",
+      "OPEN": "Open",
+      "IN_PROGRESS": "In Progress",
+      "RESPONDED": "Responded",
+      "CLOSED": "Closed"
+    },
+    "inbox": {
+      "title": "Feedback Inbox (Global)",
+      "description": "View and respond to all GENERAL scope feedback",
+      "noData": "No feedback found",
+      "filter": {
+        "all": "All",
+        "label": "Filter by status"
+      },
+      "respond": {
+        "title": "Respond",
+        "adminResponse": "Response",
+        "adminResponsePlaceholder": "Enter your response to the user",
+        "publicResponse": "Display as public response",
+        "submit": "Send Response",
+        "success": "Response sent",
+        "error": "Failed to send response"
+      },
+      "statusChange": {
+        "success": "Status updated",
+        "error": "Failed to update status"
+      },
+      "viewAsUser": "View as user",
+      "anonymous": "Anonymous"
     }
   }
 }

@@ -1414,7 +1414,12 @@
       "shiftBudget": "Shift Budget",
       "betaRestriction": "Beta Restriction",
       "errorReports": "Error Reports",
-      "gdprPurge": "GDPR Purge Status"
+      "gdprPurge": "GDPR Purge Status",
+      "feedbackInbox": "Feedback Inbox (Global)"
+    },
+    "impersonation": {
+      "banner": "Impersonating: {label}",
+      "exit": "Exit"
     },
     "businessAlert": {
       "title": "Business Alerts",

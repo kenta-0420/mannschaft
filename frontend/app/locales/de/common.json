@@ -1414,7 +1414,12 @@
       "shiftBudget": "Schichtbudget",
       "betaRestriction": "Beta-Einschränkung",
       "errorReports": "Fehlerberichte",
-      "gdprPurge": "DSGVO Bereinigungsstatus"
+      "gdprPurge": "DSGVO Bereinigungsstatus",
+      "feedbackInbox": "Feedback-Posteingang (Global)"
+    },
+    "impersonation": {
+      "banner": "Identitätswechsel: {label}",
+      "exit": "Beenden"
     },
     "businessAlert": {
       "title": "Geschäftswarnungen",
