@@ -25,7 +25,8 @@ export type ReflectionSettingsResponse = components['schemas']['ReflectionSettin
 export type MaskedHint = components['schemas']['MaskedHint']
 
 // Phase 4: 暗記カード・単語帳（EP #23・§13）
-export type RecallDirection = components['schemas']['RecallDirection']
+// RecallDirection は springdoc が MaskedHint 内にインライン化するため生成型に含まれない → 局所定義
+export type RecallDirection = 'MEANING_TO_TERM' | 'TERM_TO_MEANING'
 export type ReflectionMaskedCardQuiz = components['schemas']['ReflectionMaskedCardQuiz']
 export type ReflectionMaskedCardPrompt = components['schemas']['ReflectionMaskedCardPrompt']
 export type ReflectionVocabCardsResponse = components['schemas']['ReflectionVocabCardsResponse']

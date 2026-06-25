@@ -428,6 +428,45 @@
       "error_delete": "Error al eliminar",
       "error_duplicate": "Este sinónimo ya está registrado (duplicado tras normalización)",
       "error_provider_not_found": "No se encontró el proveedor especificado"
+    },
+    "wallet_guide": {
+      "title": "Cómo usar la billetera",
+      "description": "Función para llevar tus tarjetas de puntos en el smartphone y mostrar códigos de barras en caja.",
+      "overview": {
+        "title": "¿Qué es la billetera?",
+        "body": "Registra los códigos de barras de tus tarjetas de puntos y tarjetas de membresía en la aplicación y muéstralos en la pantalla de tu smartphone. Puedes registrar hasta 200 tarjetas.",
+        "hint": "La primera vez que la abras, deberás aceptar los términos de servicio."
+      },
+      "add_card": {
+        "title": "Registrar una tarjeta",
+        "body": "Puedes agregar una nueva tarjeta usando el botón «+» en la parte inferior derecha de la pestaña Tarjetas. Ahorra tiempo seleccionando tiendas populares de los presets.",
+        "steps": {
+          "step1": "Toca el botón «+» en la parte inferior derecha de la pestaña Tarjetas",
+          "step2": "Selecciona de presets para tiendas populares, o ingresa un nombre de tarjeta directamente",
+          "step3": "Ingresa el código de barras (número de membresía) mediante cámara, imagen o entrada manual",
+          "step4": "Verifica la vista previa y toca «Guardar»"
+        }
+      },
+      "groups": {
+        "title": "Organizar con grupos",
+        "body": "Agrupa varias tarjetas para cambiar rápidamente entre las tarjetas de tus tiendas favoritas.",
+        "steps": {
+          "step1": "Abre la pestaña «Grupos»",
+          "step2": "Toca «+ Nuevo grupo»",
+          "step3": "Ingresa un nombre de grupo y emoji, y marca las tarjetas a incluir",
+          "step4": "Toca «Guardar» para completar el grupo"
+        }
+      },
+      "present": {
+        "title": "Mostrar código de barras en caja",
+        "body": "Toca una tarjeta de la lista para mostrar el código de barras a pantalla completa. Con los grupos puedes deslizarte entre tarjetas.",
+        "steps": {
+          "step1": "Toca una tarjeta de la lista o de un grupo",
+          "step2": "El código de barras se muestra a pantalla completa",
+          "step3": "Acerca la pantalla del smartphone al personal para que lo escanee",
+          "step4": "(Si la autenticación biométrica está habilitada) Desbloquea con cara/huella primero"
+        }
+      }
     }
   }
 }

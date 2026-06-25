@@ -178,12 +178,7 @@ function cancel() {
 
 <template>
   <div class="card-new">
-    <header class="card-new__header">
-      <button type="button" class="card-new__back" :aria-label="t('wallet.add.cancel')" @click="cancel">
-        ←
-      </button>
-      <h1 class="card-new__title">{{ t('wallet.add.title') }}</h1>
-    </header>
+    <PageHeader :title="t('wallet.add.title')" />
 
     <!-- ===== Step 1: 入力 ===== -->
     <template v-if="step === 'input'">
@@ -319,28 +314,6 @@ function cancel() {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-}
-.card-new__header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.card-new__back {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--p-surface-100, #f3f4f6);
-  border: none;
-  cursor: pointer;
-  font-size: 1.25rem;
-}
-.card-new__title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin: 0;
 }
 .card-new__section {
   display: flex;
