@@ -185,7 +185,7 @@ const titleKey = computed(() =>
 }
 .terms-modal__panel {
   background: var(--p-surface-0, #fff);
-  color: var(--p-text-color, #111827);
+  color: #1f2937;
   border-radius: 1rem;
   max-width: 540px;
   width: 100%;
@@ -288,7 +288,7 @@ const titleKey = computed(() =>
   cursor: pointer;
   border: 1px solid var(--p-surface-300, #d1d5db);
   background: var(--p-surface-0, #fff);
-  color: var(--p-text-color, #111827);
+  color: #1f2937;
 }
 .terms-modal__panel--dark .terms-modal__btn {
   background: #27272a;
