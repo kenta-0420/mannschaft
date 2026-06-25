@@ -14,11 +14,6 @@
  *     リカバリーは POST /api/v1/auth/2fa/recovery/request → メールトークンが必要なため
  *     自動テストで完全無効化は困難。
  *     TWOFA-002 実行後は afterAll でリカバリーリクエストを送信しておく（メールは届くが確認まで不可）。
- *   - useAuthApi.ts の verifyTotpSetup が body: { code } で送っているが、
- *     BE は { totpCode } を期待している（フィールド名不整合）。
- *     このテストでは BE が期待する { totpCode } フィールドで直接 API を呼ぶ。
- *     FE の verifyTotpSetup を UI 経由でテストする場合は、この不整合を先に修正すること。
- *
  * テストユーザー:
  *   e2e-user@test.mannschaft.local / TestPass2026!
  */
@@ -102,9 +97,7 @@ test.describe('TWOFA: 2FA セットアップ・ログインフロー', () => {
     const code = await totp.generate()
     expect(code).toMatch(/^\d{6}$/)
 
-    // 3. 検証・有効化
-    // 注意: useAuthApi.ts の verifyTotpSetup は body: { code } だが BE は { totpCode } を期待している。
-    // ここでは BE 仕様に合わせて totpCode フィールドで直接呼び出す。
+    // 3. 検証・有効化（BE は totpCode フィールドを期待する）
     const verifyRes = await page.request.post(`${API_BASE}/api/v1/auth/2fa/verify`, {
       data: { totpCode: code },
     })
