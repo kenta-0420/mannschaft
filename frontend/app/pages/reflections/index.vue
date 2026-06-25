@@ -123,6 +123,15 @@ function onSaved() {
           :aria-label="t('reflection.archive.label')"
           @click="router.push('/reflections/archive')"
         />
+        <!-- Phase 4: 単語帳ページへの導線 -->
+        <Button
+          v-tooltip.bottom="t('reflection.vocab.title')"
+          icon="pi pi-book"
+          text
+          rounded
+          :aria-label="t('reflection.vocab.title')"
+          @click="router.push('/reflections/vocab')"
+        />
         <Button
           v-tooltip.bottom="t('reflection.nav.settings')"
           icon="pi pi-cog"
