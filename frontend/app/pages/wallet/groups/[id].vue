@@ -227,17 +227,7 @@ onMounted(load)
 
 <template>
   <div class="group-edit">
-    <header class="group-edit__header">
-      <button
-        type="button"
-        class="group-edit__back"
-        :aria-label="t('wallet.group_form.cancel')"
-        @click="backToWallet"
-      >
-        ←
-      </button>
-      <h1 class="group-edit__title">{{ t('wallet.group_form.title_edit') }}</h1>
-    </header>
+    <PageHeader :title="t('wallet.group_form.title_edit')" back-to="/wallet" />
 
     <div v-if="loading" class="group-edit__loading">…</div>
 
@@ -455,28 +445,6 @@ onMounted(load)
   flex-direction: column;
   gap: 1.25rem;
   position: relative;
-}
-.group-edit__header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.group-edit__back {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--p-surface-100, #f3f4f6);
-  border: none;
-  cursor: pointer;
-  font-size: 1.25rem;
-}
-.group-edit__title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin: 0;
 }
 .group-edit__loading,
 .group-edit__error {

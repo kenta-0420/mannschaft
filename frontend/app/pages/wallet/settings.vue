@@ -81,12 +81,9 @@ onMounted(() => {
 
 <template>
   <div class="settings-page">
-    <header class="settings-page__header">
-      <NuxtLink to="/wallet" class="settings-page__back" aria-label="戻る">‹</NuxtLink>
-      <h1 class="settings-page__title">{{ t('wallet.settings.title') }}</h1>
-    </header>
+    <PageHeader :title="t('wallet.settings.title')" back-to="/wallet" />
 
-    <div v-if="loading" class="settings-page__loading">…</div>
+    <PageLoading v-if="loading" />
 
     <template v-else-if="settings">
       <!-- 全般セクション -->
@@ -181,36 +178,6 @@ onMounted(() => {
   max-width: 720px;
   margin: 0 auto;
   padding: 1rem;
-}
-.settings-page__header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-.settings-page__back {
-  font-size: 1.5rem;
-  text-decoration: none;
-  color: inherit;
-  width: 40px;
-  height: 40px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-}
-.settings-page__back:hover {
-  background: var(--p-surface-100, #f3f4f6);
-}
-.settings-page__title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin: 0;
-}
-.settings-page__loading {
-  text-align: center;
-  padding: 3rem;
-  color: var(--p-text-muted-color, #6b7280);
 }
 .settings-page__section {
   margin-bottom: 2rem;

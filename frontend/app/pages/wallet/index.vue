@@ -152,16 +152,17 @@ watch(activeTab, (newTab) => {
 
 <template>
   <div class="wallet-page">
-    <header class="wallet-page__header">
-      <h1 class="wallet-page__title">{{ t('wallet.title') }}</h1>
-      <NuxtLink
-        to="/wallet/settings"
-        class="wallet-page__settings-btn"
-        :aria-label="t('wallet.actions.settings')"
-      >
-        ⚙
-      </NuxtLink>
-    </header>
+    <PageHeader :title="t('wallet.title')" :back="false">
+      <template #actions>
+        <NuxtLink
+          to="/wallet/settings"
+          class="wallet-page__settings-btn"
+          :aria-label="t('wallet.actions.settings')"
+        >
+          <i class="pi pi-cog" />
+        </NuxtLink>
+      </template>
+    </PageHeader>
 
     <div class="wallet-page__tabs" role="tablist">
       <button
@@ -276,17 +277,6 @@ watch(activeTab, (newTab) => {
   padding: 1rem;
   position: relative;
   min-height: calc(100vh - 64px);
-}
-.wallet-page__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-}
-.wallet-page__title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 0;
 }
 .wallet-page__settings-btn {
   display: inline-flex;
