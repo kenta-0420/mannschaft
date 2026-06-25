@@ -218,8 +218,10 @@
         "link_error": "获取关联 URL 失败",
         "already_linked": "此账户已与 {provider} 关联",
         "taken_by_other": "此 Google 账户已被其他用户使用",
-        "oauth_denied": "Google 认证已取消"
+        "oauth_denied": "Google 认证已取消",
+        "link_with_calendar_success": "Google 账号和日历已关联"
       },
+      "calendar_sync_toggle": "同时设置 Google 日历同步",
       "guide": {
         "title": "关于账户关联",
         "google_title": "使用 Google 登录",

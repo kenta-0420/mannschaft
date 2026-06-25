@@ -95,7 +95,8 @@ class ReflectionVocabCardControllerTest {
     void success_200() throws Exception {
         authenticate();
         given(vocabCardService.getVocabCards(
-                eq(USER_ID), any(), any(), any(), any(), any(), any(Integer.class), any(Integer.class)))
+                eq(USER_ID), any(), any(), any(), any(), any(),
+                any(Boolean.class), any(Integer.class), any(Integer.class)))
                 .willReturn(ReflectionVocabCardsResponse.builder()
                         .from(LocalDate.of(2026, 6, 1))
                         .to(LocalDate.of(2026, 6, 30))
@@ -118,7 +119,8 @@ class ReflectionVocabCardControllerTest {
     void dateRangeTooWide_400() throws Exception {
         authenticate();
         given(vocabCardService.getVocabCards(
-                eq(USER_ID), any(), any(), any(), any(), any(), any(Integer.class), any(Integer.class)))
+                eq(USER_ID), any(), any(), any(), any(), any(),
+                any(Boolean.class), any(Integer.class), any(Integer.class)))
                 .willThrow(new BusinessException(ReflectionErrorCode.REFLECTION_DATE_RANGE_INVALID));
 
         mockMvc.perform(get("/api/v1/me/reflections/cards")
@@ -129,23 +131,23 @@ class ReflectionVocabCardControllerTest {
     }
 
     @Test
-    @DisplayName("AC-60: sourceType が enum 外なら 400（型変換エラー）")
+    @DisplayName("AC-60: sourceTypes が enum 外なら 400（型変換エラー）")
     void invalidSourceType_400() throws Exception {
         authenticate();
         mockMvc.perform(get("/api/v1/me/reflections/cards")
                         .param("from", "2026-06-01")
                         .param("to", "2026-06-30")
-                        .param("sourceType", "NOT_A_TYPE"))
+                        .param("sourceTypes", "NOT_A_TYPE"))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    @DisplayName("AC-58: sourceType フィルタ付きで 200（サービスへ enum 伝搬）")
+    @DisplayName("AC-58 (後方互換): sourceTypes フィルタ付きで 200（サービスへ enum List 伝搬）")
     void withSourceTypeFilter_200() throws Exception {
         authenticate();
         given(vocabCardService.getVocabCards(
-                eq(USER_ID), any(), any(), any(), eq(ReflectionSourceType.SUBJECT), any(),
-                any(Integer.class), any(Integer.class)))
+                eq(USER_ID), any(), any(), any(), any(), any(),
+                any(Boolean.class), any(Integer.class), any(Integer.class)))
                 .willReturn(ReflectionVocabCardsResponse.builder()
                         .from(LocalDate.of(2026, 6, 1)).to(LocalDate.of(2026, 6, 30))
                         .totalCards(0).page(0).size(200).cards(List.of()).build());
@@ -153,7 +155,64 @@ class ReflectionVocabCardControllerTest {
         mockMvc.perform(get("/api/v1/me/reflections/cards")
                         .param("from", "2026-06-01")
                         .param("to", "2026-06-30")
-                        .param("sourceType", "SUBJECT"))
+                        .param("sourceTypes", "SUBJECT"))
+                .andExpect(status().isOk());
+    }
+
+    // ===== Phase 4.1: AC-62/63 新パラメータ受理テスト =====
+
+    @Test
+    @DisplayName("AC-62: subjects[] 繰り返し形式で 200 が返る")
+    void testGetVocabCards_subjectsRepeated_accepted() throws Exception {
+        authenticate();
+        given(vocabCardService.getVocabCards(
+                eq(USER_ID), any(), any(), any(), any(), any(),
+                any(Boolean.class), any(Integer.class), any(Integer.class)))
+                .willReturn(ReflectionVocabCardsResponse.builder()
+                        .from(LocalDate.of(2026, 6, 1)).to(LocalDate.of(2026, 6, 30))
+                        .totalCards(0).page(0).size(200).cards(List.of()).build());
+
+        mockMvc.perform(get("/api/v1/me/reflections/cards")
+                        .param("from", "2026-06-01")
+                        .param("to", "2026-06-30")
+                        .param("subjects", "英語")
+                        .param("subjects", "理科"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("AC-63: shuffle=true で 200 が返る")
+    void testGetVocabCards_shuffleTrue_accepted() throws Exception {
+        authenticate();
+        given(vocabCardService.getVocabCards(
+                eq(USER_ID), any(), any(), any(), any(), any(),
+                any(Boolean.class), any(Integer.class), any(Integer.class)))
+                .willReturn(ReflectionVocabCardsResponse.builder()
+                        .from(LocalDate.of(2026, 6, 1)).to(LocalDate.of(2026, 6, 30))
+                        .totalCards(0).page(0).size(200).cards(List.of()).build());
+
+        mockMvc.perform(get("/api/v1/me/reflections/cards")
+                        .param("from", "2026-06-01")
+                        .param("to", "2026-06-30")
+                        .param("shuffle", "true"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("subjects[] 形式が正しく受け付けられる（後方互換確認）")
+    void testGetVocabCards_legacySubjectParam_backwardCompat() throws Exception {
+        authenticate();
+        given(vocabCardService.getVocabCards(
+                eq(USER_ID), any(), any(), any(), any(), any(),
+                any(Boolean.class), any(Integer.class), any(Integer.class)))
+                .willReturn(ReflectionVocabCardsResponse.builder()
+                        .from(LocalDate.of(2026, 6, 1)).to(LocalDate.of(2026, 6, 30))
+                        .totalCards(0).page(0).size(200).cards(List.of()).build());
+
+        mockMvc.perform(get("/api/v1/me/reflections/cards")
+                        .param("from", "2026-06-01")
+                        .param("to", "2026-06-30")
+                        .param("subjects", "英語"))
                 .andExpect(status().isOk());
     }
 }
