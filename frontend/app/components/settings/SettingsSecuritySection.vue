@@ -11,6 +11,9 @@ defineProps<{
   showBackupCodesDialog: boolean
   renameDialog: boolean
   newDeviceName: string
+  isRegisteringPasskey: boolean
+  registerDialog: boolean
+  newPasskeyName: string
 }>()
 
 defineEmits<{
@@ -21,13 +24,22 @@ defineEmits<{
   deleteCredential: [id: number]
   openRenameDialog: [cred: WebAuthnCredentialResponse]
   renameCredential: []
+  passkeyRegister: []
   'update:showBackupCodesDialog': [value: boolean]
   'update:renameDialog': [value: boolean]
   'update:newDeviceName': [value: string]
+  'update:registerDialog': [value: boolean]
+  'update:newPasskeyName': [value: string]
 }>()
 
 const { t } = useI18n()
 const { formatDateTime } = useDatetime()
+
+// WebAuthn サポート検出（クライアントサイドのみ）
+const isWebAuthnSupported = ref(false)
+onMounted(() => {
+  isWebAuthnSupported.value = typeof window !== 'undefined' && !!window.PublicKeyCredential
+})
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '-'
@@ -138,6 +150,15 @@ function deviceLabel(userAgent: string | null): string {
     <p class="mb-4 text-sm text-surface-500">
       {{ $t('settings.security.webauthn_description') }}
     </p>
+    <div v-if="isWebAuthnSupported" class="mb-4">
+      <Button
+        translate="no"
+        :label="$t('settings.security.webauthn.register_button')"
+        icon="pi pi-key"
+        :loading="isRegisteringPasskey"
+        @click="$emit('update:registerDialog', true)"
+      />
+    </div>
     <div v-if="credentials.length === 0" class="py-4 text-center text-surface-400">
       {{ $t('settings.security.no_credentials') }}
     </div>
@@ -215,6 +236,40 @@ function deviceLabel(userAgent: string | null): string {
       <div class="flex justify-end gap-2">
         <Button translate="no" :label="$t('button.cancel')" severity="secondary" @click="$emit('update:renameDialog', false)" />
         <Button translate="no" :label="$t('button.save')" @click="$emit('renameCredential')" />
+      </div>
+    </div>
+  </Dialog>
+
+  <Dialog
+    :visible="registerDialog"
+    :header="$t('settings.security.webauthn.register_dialog_title')"
+    :modal="true"
+    class="w-full max-w-sm"
+    @update:visible="$emit('update:registerDialog', $event)"
+  >
+    <div class="space-y-4">
+      <div>
+        <label class="mb-1 block text-sm font-medium">{{ $t('settings.security.webauthn.device_name_label') }}</label>
+        <InputText
+          :model-value="newPasskeyName"
+          :placeholder="$t('settings.security.webauthn.device_name_placeholder')"
+          class="w-full"
+          @update:model-value="$emit('update:newPasskeyName', $event as string)"
+        />
+      </div>
+      <div class="flex justify-end gap-2">
+        <Button
+          translate="no"
+          :label="$t('settings.security.webauthn.register_cancel')"
+          severity="secondary"
+          @click="$emit('update:registerDialog', false)"
+        />
+        <Button
+          translate="no"
+          :label="$t('settings.security.webauthn.register_confirm')"
+          :loading="isRegisteringPasskey"
+          @click="$emit('passkeyRegister')"
+        />
       </div>
     </div>
   </Dialog>

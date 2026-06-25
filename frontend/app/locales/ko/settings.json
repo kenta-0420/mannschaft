@@ -165,6 +165,16 @@
       "backup_codes_description": "아래 백업 코드를 안전한 곳에 보관하세요. 각 코드는 한 번만 사용할 수 있습니다.",
       "rename_dialog_title": "기기 이름 변경",
       "device_name_label": "기기 이름",
+      "webauthn": {
+        "register_button": "패스키 등록",
+        "register_dialog_title": "패스키 등록",
+        "device_name_label": "기기 이름 (선택)",
+        "device_name_placeholder": "예: iPhone의 Touch ID",
+        "register_confirm": "등록",
+        "register_cancel": "취소",
+        "register_success": "패스키가 등록되었습니다",
+        "register_error": "패스키 등록에 실패했습니다"
+      },
       "session": {
         "device_label": "{os}의 {browser}",
         "unknown_device": "알 수 없는 기기"

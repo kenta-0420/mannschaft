@@ -165,6 +165,16 @@
       "backup_codes_description": "Bewahren Sie die folgenden Backup-Codes an einem sicheren Ort auf. Jeder Code kann nur einmal verwendet werden.",
       "rename_dialog_title": "Gerät umbenennen",
       "device_name_label": "Gerätename",
+      "webauthn": {
+        "register_button": "Passkey registrieren",
+        "register_dialog_title": "Passkey registrieren",
+        "device_name_label": "Gerätename (optional)",
+        "device_name_placeholder": "z.B. Touch ID auf iPhone",
+        "register_confirm": "Registrieren",
+        "register_cancel": "Abbrechen",
+        "register_success": "Passkey erfolgreich registriert",
+        "register_error": "Passkey-Registrierung fehlgeschlagen"
+      },
       "session": {
         "device_label": "{browser} unter {os}",
         "unknown_device": "Unbekanntes Gerät"

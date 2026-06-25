@@ -165,6 +165,16 @@
       "backup_codes_description": "请将以下备用代码保存在安全的地方。每个代码只能使用一次。",
       "rename_dialog_title": "重命名设备",
       "device_name_label": "设备名称",
+      "webauthn": {
+        "register_button": "注册通行密钥",
+        "register_dialog_title": "注册通行密钥",
+        "device_name_label": "设备名称（可选）",
+        "device_name_placeholder": "例：iPhone 的 Touch ID",
+        "register_confirm": "注册",
+        "register_cancel": "取消",
+        "register_success": "通行密钥注册成功",
+        "register_error": "通行密钥注册失败"
+      },
       "session": {
         "device_label": "{os} 上的 {browser}",
         "unknown_device": "未知设备"
