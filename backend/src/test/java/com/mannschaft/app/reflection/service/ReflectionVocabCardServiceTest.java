@@ -162,6 +162,27 @@ class ReflectionVocabCardServiceTest {
     }
 
     @Test
+    @DisplayName("AC-58: sourceType フィルタで該当 source_type のカードだけに絞られる")
+    void filterBySourceType() {
+        UUID subjectTheme = UUID.randomUUID();
+        UUID projectTheme = UUID.randomUUID();
+        given(themeRepository.findByUserIdOrderByCreatedAtDesc(USER_ID))
+                .willReturn(List.of(
+                        theme(subjectTheme, "英語", ReflectionSourceType.SUBJECT, "英語"),
+                        theme(projectTheme, "案件A", ReflectionSourceType.PROJECT, null)));
+        given(entryRepository.findByUserIdAndTargetDateBetween(USER_ID, FROM, TO))
+                .willReturn(List.of(
+                        entry(subjectTheme, LocalDate.of(2026, 6, 10), termCardJson("h", "subjectCard", "意味")),
+                        entry(projectTheme, LocalDate.of(2026, 6, 11), termCardJson("h", "projectCard", "意味"))));
+
+        ReflectionVocabCardsResponse resp = service.getVocabCards(
+                USER_ID, FROM, TO, null, ReflectionSourceType.PROJECT, null, 0, 200);
+
+        assertThat(resp.totalCards()).isEqualTo(1);
+        assertThat(resp.cards().get(0).term()).isEqualTo("projectCard");
+    }
+
+    @Test
     @DisplayName("AC-58: NULL フィルタは条件に含まれない（全カード返る）")
     void nullFilters_includeAll() {
         UUID themeId = UUID.randomUUID();

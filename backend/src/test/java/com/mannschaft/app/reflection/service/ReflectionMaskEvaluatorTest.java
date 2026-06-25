@@ -235,4 +235,29 @@ class ReflectionMaskEvaluatorTest {
         // recallAttemptRepository は方向算出で使われない（呼び出しゼロ＝厳密検証）。
         org.mockito.Mockito.verifyNoInteractions(recallAttemptRepository);
     }
+
+    @Test
+    @DisplayName("AC-53: FORGOT 再提示は同一 due slot（k 不変）で同方向／次の想起予定日到来で k+1 となり反転")
+    void resolveDirection_sameDueSlotSameDirection_nextDueReverses() {
+        ReflectionEntryEntity e = entry(TARGET);
+        ReflectionThemeEntity t = theme("1,3,7,14");
+
+        // --- 同一 due slot 内（today を 1 日後スロット内に固定）---
+        // 1 日後到来〜3 日後到来の手前までは k=1（n=0・偶）→ MEANING_TO_TERM のまま不変。
+        // FORGOT で翌日 SPACED 再提示されても today が同スロット内に留まる限り k は変わらず同方向。
+        LocalDate slot1Day = TARGET.plusDays(1);   // due=1 到来直後
+        LocalDate slot1NextDay = TARGET.plusDays(2); // FORGOT 翌日再提示（まだ due=3 未到来＝同スロット）
+        assertThat(evaluator.arrivedDueDates(e, t, slot1Day)).hasSize(1);
+        assertThat(evaluator.arrivedDueDates(e, t, slot1NextDay)).hasSize(1); // k 不変
+        assertThat(evaluator.resolveDirection(e, t, slot1Day))
+                .isEqualTo(RecallDirection.MEANING_TO_TERM);
+        assertThat(evaluator.resolveDirection(e, t, slot1NextDay))
+                .isEqualTo(RecallDirection.MEANING_TO_TERM); // 同一スロットは同方向
+
+        // --- 次の想起予定日（due=3）が到来すると k=2（n=1・奇）→ TERM_TO_MEANING に反転 ---
+        LocalDate slot2Day = TARGET.plusDays(3);
+        assertThat(evaluator.arrivedDueDates(e, t, slot2Day)).hasSize(2); // k+1
+        assertThat(evaluator.resolveDirection(e, t, slot2Day))
+                .isEqualTo(RecallDirection.TERM_TO_MEANING); // 次スロットで反転
+    }
 }

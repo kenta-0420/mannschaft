@@ -1,5 +1,6 @@
 package com.mannschaft.app.reflection.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.reflection.RecallDirection;
 import com.mannschaft.app.reflection.dto.ReflectionEntryResponse;
@@ -127,6 +128,24 @@ class ReflectionEntryResponseMapperTest {
 
         assertThat(resp.isMasked()).isFalse();
         assertThat(resp.structuredContent().get("main_theme").asText()).isEqualTo("秘密の本文");
+    }
+
+    @Test
+    @DisplayName("AC-53: recall 後の toRevealedResponse は TERM_CARD の term/meaning 両側を開示する")
+    void toRevealedResponse_termCard_disclosesBothSides() {
+        init();
+        ReflectionEntryEntity e = termCardEntry(); // term=abandon / meaning=見捨てる
+        ReflectionThemeEntity t = theme();
+
+        ReflectionEntryResponse resp = mapper.toRevealedResponse(e, t);
+
+        assertThat(resp.isMasked()).isFalse();
+        // recall 開示では cue だけでなく original 全文（両側）が structuredContent に載る（AC-53）。
+        JsonNode card = resp.structuredContent().get("sections").get(0).get("cards").get(0);
+        assertThat(card.get("term").asText()).isEqualTo("abandon");
+        assertThat(card.get("meaning").asText()).isEqualTo("見捨てる");
+        // 開示応答は maskedHint を持たない（cue 制限の対象外）。
+        assertThat(resp.maskedHint()).isNull();
     }
 
     // ===== Phase 4: マスク中の TERM_CARD cue（§13-C / AC-51 / AC-52） =====
