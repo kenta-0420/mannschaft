@@ -1,4 +1,4 @@
-﻿package com.mannschaft.app.auth.controller;
+package com.mannschaft.app.auth.controller;
 
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuthRegistrationService;
