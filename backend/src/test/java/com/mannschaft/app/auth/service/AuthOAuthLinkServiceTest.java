@@ -83,7 +83,7 @@ class AuthOAuthLinkServiceTest {
         void generateAuthUrl_google_含む必須パラメータ() {
             // Given
             given(oAuthProperties.getGoogleClientId()).willReturn("test-client-id");
-            given(oAuthProperties.getGoogleRedirectUri())
+            given(oAuthProperties.getGoogleLinkRedirectUri())
                     .willReturn("http://localhost:8080/api/v1/auth/oauth/link/GOOGLE/callback");
             given(redisTemplate.opsForValue()).willReturn(valueOperations);
 
@@ -114,7 +114,7 @@ class AuthOAuthLinkServiceTest {
             given(redisTemplate.opsForValue()).willReturn(valueOperations);
             given(valueOperations.get(STATE_REDIS_KEY)).willReturn(String.valueOf(TEST_USER_ID));
             // Google ユーザー情報取得のモック（fetchGoogleUserInfoPublic）
-            given(authOAuthService.fetchGoogleUserInfoPublic("auth-code"))
+            given(authOAuthService.fetchGoogleUserInfoForLink(eq("auth-code"), any()))
                     .willReturn(new AuthOAuthService.OAuthUserInfo(
                             GOOGLE_SUB, "test@example.com", null, null, "Test User"));
             // 既存連携なし（このユーザーの連携相手はまだ存在しない）
@@ -153,7 +153,7 @@ class AuthOAuthLinkServiceTest {
             given(redisTemplate.opsForValue()).willReturn(valueOperations);
             given(valueOperations.get(anyString())).willReturn(String.valueOf(TEST_USER_ID));
             // Google ユーザー情報取得のモック（fetchGoogleUserInfoPublic）
-            given(authOAuthService.fetchGoogleUserInfoPublic("auth-code"))
+            given(authOAuthService.fetchGoogleUserInfoForLink(eq("auth-code"), any()))
                     .willReturn(new AuthOAuthService.OAuthUserInfo(
                             GOOGLE_SUB, "test@example.com", null, null, "Test User"));
 
@@ -192,7 +192,7 @@ class AuthOAuthLinkServiceTest {
             given(redisTemplate.opsForValue()).willReturn(valueOperations);
             given(valueOperations.get(STATE_REDIS_KEY)).willReturn(String.valueOf(TEST_USER_ID));
             // Google ユーザー情報取得のモック（fetchGoogleUserInfoPublic）
-            given(authOAuthService.fetchGoogleUserInfoPublic("auth-code"))
+            given(authOAuthService.fetchGoogleUserInfoForLink(eq("auth-code"), any()))
                     .willReturn(new AuthOAuthService.OAuthUserInfo(
                             GOOGLE_SUB, "test@example.com", null, null, "Test User"));
             given(oauthAccountRepository.findByProviderAndProviderUserId(
