@@ -141,6 +141,93 @@ async function mockSecurityApis(page: import('@playwright/test').Page) {
   })
 }
 
+test.describe('WEBAUTHN-UI-001〜003: パスキー登録UI', () => {
+  test('WEBAUTHN-UI-001: パスキー登録ボタンが表示される', async ({ page }) => {
+    // WebAuthn 対応ブラウザをシミュレート
+    await page.addInitScript(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-extraneous-class
+      ;(window as any).PublicKeyCredential = class {}
+    })
+    await mockSecurityApis(page)
+    await page.goto('/settings/security')
+    await waitForHydration(page)
+    await expect(page.getByRole('button', { name: /パスキーを登録/i })).toBeVisible({
+      timeout: 10_000,
+    })
+  })
+
+  test('WEBAUTHN-UI-002: 登録ボタンクリックでダイアログが開く', async ({ page }) => {
+    await page.addInitScript(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-extraneous-class
+      ;(window as any).PublicKeyCredential = class {}
+    })
+    await mockSecurityApis(page)
+    await page.goto('/settings/security')
+    await waitForHydration(page)
+    await page.getByRole('button', { name: /パスキーを登録/i }).click()
+    await expect(page.getByText(/パスキーを登録/i).first()).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByPlaceholder(/Touch ID/i)).toBeVisible({ timeout: 5_000 })
+  })
+
+  test('WEBAUTHN-UI-003: 登録成功後にトーストが表示される', async ({ page }) => {
+    // navigator.credentials.create をモック（ページ読み込み前に設定する必要がある）
+    await page.addInitScript(() => {
+      // PublicKeyCredential クラスを差し替える
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const MockPKC = class MockPublicKeyCredential {
+        id = 'mock-credential-id'
+        rawId = new Uint8Array([1, 2, 3]).buffer
+        type = 'public-key'
+        response = {
+          attestationObject: new Uint8Array([4, 5, 6]).buffer,
+          clientDataJSON: new Uint8Array([7, 8, 9]).buffer,
+          getPublicKey: () => new Uint8Array([10, 11, 12]).buffer,
+        }
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(window as any).PublicKeyCredential = MockPKC
+      navigator.credentials.create = async () => new MockPKC() as unknown as Credential
+    })
+
+    // キャッチオールを先に登録し、その後で個別ルートを後着優先で上書きする
+    await mockSecurityApis(page)
+
+    // register/begin と register/complete のモック（mockSecurityApis より後に登録 = 後着優先で勝つ）
+    await page.route('**/api/v1/auth/webauthn/register/begin', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            // btoa('mock-challenge') = base64 文字列（b64urlToBuf が処理できる）
+            challenge: btoa('mock-challenge'),
+            rpId: 'localhost',
+            rpName: 'Mannschaft',
+            userId: 1,
+            userDisplayName: 'Test User',
+          },
+        }),
+      })
+    })
+    await page.route('**/api/v1/auth/webauthn/register/complete', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { message: 'OK' } }),
+      })
+    })
+
+    await page.goto('/settings/security')
+    await waitForHydration(page)
+
+    await page.getByRole('button', { name: /パスキーを登録/i }).click()
+    await page.getByRole('button', { name: /登録する/i }).click()
+
+    // トースト確認
+    await expect(page.getByText(/パスキーを登録しました/i)).toBeVisible({ timeout: 10_000 })
+  })
+})
+
 test.describe('SET-006〜008: セキュリティ設定', () => {
   test('SET-006: セキュリティページが表示される', async ({ page }) => {
     await mockSecurityApis(page)

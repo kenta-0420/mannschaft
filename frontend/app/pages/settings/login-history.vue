@@ -52,18 +52,23 @@ function loadMore() {
 function eventLabel(eventType: string) {
   const labels: Record<string, string> = {
     LOGIN_SUCCESS: 'ログイン成功',
-    LOGIN_FAILURE: 'ログイン失敗',
+    LOGIN_FAILED: 'ログイン失敗',
+    WEBAUTHN_LOGIN: 'WebAuthn ログイン',
+    WEBAUTHN_LOGIN_FAILED: 'WebAuthn ログイン失敗',
     LOGOUT: 'ログアウト',
-    TOKEN_REFRESH: 'トークン更新',
-    PASSWORD_CHANGE: 'パスワード変更',
-    MFA_VERIFY: '2FA認証',
+    LOGOUT_SESSION: 'セッションログアウト',
+    LOGOUT_ALL_SESSIONS: '全セッションログアウト',
+    TOKEN_REUSE_DETECTED: 'トークン再利用検知',
+    DEVICE_FINGERPRINT_MISMATCH: 'デバイス変更検知',
+    NEW_DEVICE_LOGIN: '新規デバイスログイン',
   }
   return labels[eventType] || eventType
 }
 
 function eventSeverity(eventType: string) {
-  if (eventType === 'LOGIN_FAILURE') return 'danger'
-  if (eventType === 'LOGOUT') return 'warn'
+  if (eventType === 'LOGIN_FAILED' || eventType === 'WEBAUTHN_LOGIN_FAILED') return 'danger'
+  if (eventType === 'TOKEN_REUSE_DETECTED' || eventType === 'DEVICE_FINGERPRINT_MISMATCH') return 'warn'
+  if (eventType.includes('LOGOUT')) return 'warn'
   return 'success'
 }
 </script>

@@ -165,6 +165,16 @@
       "backup_codes_description": "以下のバックアップコードを安全な場所に保管してください。各コードは一度だけ使用できます。",
       "rename_dialog_title": "デバイス名の変更",
       "device_name_label": "デバイス名",
+      "webauthn": {
+        "register_button": "パスキーを登録",
+        "register_dialog_title": "パスキーを登録",
+        "device_name_label": "デバイス名（任意）",
+        "device_name_placeholder": "例: iPhone の Touch ID",
+        "register_confirm": "登録する",
+        "register_cancel": "キャンセル",
+        "register_success": "パスキーを登録しました",
+        "register_error": "パスキーの登録に失敗しました"
+      },
       "session": {
         "device_label": "{os} の {browser}",
         "unknown_device": "不明なデバイス"
