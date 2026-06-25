@@ -29,9 +29,10 @@
     "submitter": "Remitente",
     "votes": "Votos",
     "status": {
+      "NEW": "Nuevo",
       "OPEN": "Abierto",
       "IN_PROGRESS": "En progreso",
-      "RESOLVED": "Resuelto",
+      "RESPONDED": "Respondido",
       "CLOSED": "Cerrado"
     },
     "inbox": {

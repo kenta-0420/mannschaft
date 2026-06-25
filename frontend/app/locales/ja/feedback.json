@@ -29,9 +29,10 @@
     "submitter": "送信者",
     "votes": "賛同数",
     "status": {
+      "NEW": "新規",
       "OPEN": "未対応",
       "IN_PROGRESS": "対応中",
-      "RESOLVED": "解決済み",
+      "RESPONDED": "回答済み",
       "CLOSED": "クローズ"
     },
     "inbox": {

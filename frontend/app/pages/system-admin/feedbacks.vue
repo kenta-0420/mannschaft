@@ -32,9 +32,10 @@ const statusFilter = ref<string | null>(null)
 // ─── ステータス一覧 ────────────────────────────────────────────────────────────
 const statusOptions = computed(() => [
   { label: t('feedback.inbox.filter.all'), value: null },
+  { label: t('feedback.status.NEW'), value: 'NEW' },
   { label: t('feedback.status.OPEN'), value: 'OPEN' },
   { label: t('feedback.status.IN_PROGRESS'), value: 'IN_PROGRESS' },
-  { label: t('feedback.status.RESOLVED'), value: 'RESOLVED' },
+  { label: t('feedback.status.RESPONDED'), value: 'RESPONDED' },
   { label: t('feedback.status.CLOSED'), value: 'CLOSED' },
 ])
 
@@ -78,9 +79,10 @@ watch(statusFilter, () => {
 // ─── ステータスバッジ ─────────────────────────────────────────────────────────
 function statusSeverity(status: string): 'info' | 'warn' | 'success' | 'secondary' {
   switch (status) {
+    case 'NEW': return 'info'
     case 'OPEN': return 'info'
     case 'IN_PROGRESS': return 'warn'
-    case 'RESOLVED': return 'success'
+    case 'RESPONDED': return 'success'
     case 'CLOSED': return 'secondary'
     default: return 'info'
   }

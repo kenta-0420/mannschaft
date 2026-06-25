@@ -29,9 +29,10 @@
     "submitter": "Einreicher",
     "votes": "Stimmen",
     "status": {
+      "NEW": "Neu",
       "OPEN": "Offen",
       "IN_PROGRESS": "In Bearbeitung",
-      "RESOLVED": "Gelöst",
+      "RESPONDED": "Beantwortet",
       "CLOSED": "Geschlossen"
     },
     "inbox": {

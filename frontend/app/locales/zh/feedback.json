@@ -29,9 +29,10 @@
     "submitter": "提交者",
     "votes": "赞同数",
     "status": {
+      "NEW": "新规",
       "OPEN": "未处理",
       "IN_PROGRESS": "处理中",
-      "RESOLVED": "已解决",
+      "RESPONDED": "已回复",
       "CLOSED": "已关闭"
     },
     "inbox": {

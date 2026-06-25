@@ -29,9 +29,10 @@
     "submitter": "제출자",
     "votes": "찬성 수",
     "status": {
+      "NEW": "신규",
       "OPEN": "미처리",
       "IN_PROGRESS": "처리 중",
-      "RESOLVED": "해결됨",
+      "RESPONDED": "답변됨",
       "CLOSED": "종료됨"
     },
     "inbox": {
