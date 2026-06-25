@@ -17,6 +17,7 @@ const oauthProviders = ref<OAuthProviderResponse[]>([])
 const lineStatus = ref<UserLineStatusResponse | null>(null)
 const linkingGoogle = ref(false)
 const showHelp = ref(false)
+const calendarToggle = ref(false)
 
 onMounted(async () => {
   await loadData()
@@ -28,8 +29,12 @@ function handleQueryParams() {
   const error = route.query.error
 
   if (linked) {
-    const provider = String(linked)
-    notification.success(t('settings.linked_accounts.toast.link_success', { provider }))
+    if (linked === 'GOOGLE' && route.query.calendarConnected === 'true') {
+      notification.success(t('settings.linked_accounts.toast.link_with_calendar_success'))
+    } else {
+      const provider = String(linked)
+      notification.success(t('settings.linked_accounts.toast.link_success', { provider }))
+    }
   } else if (error === 'oauth_denied') {
     notification.error(t('settings.linked_accounts.toast.oauth_denied'))
   } else if (error === 'already_taken') {
@@ -85,7 +90,7 @@ async function handleUnlinkLine() {
 async function handleLinkGoogle() {
   linkingGoogle.value = true
   try {
-    const res = await getOAuthLinkAuthUrl('GOOGLE')
+    const res = await getOAuthLinkAuthUrl('GOOGLE', calendarToggle.value)
     window.location.href = res.data.authUrl
   } catch {
     notification.error(t('settings.linked_accounts.toast.link_error'))
@@ -163,7 +168,12 @@ function formatDate(dateStr: string | null) {
         </div>
 
         <!-- Google未連携時のボタン -->
-        <div v-if="!oauthProviders.some(p => p.provider.toLowerCase() === 'google')" class="mt-3">
+        <div v-if="!oauthProviders.some(p => p.provider.toLowerCase() === 'google')" class="mt-3 flex flex-col gap-2">
+          <UCheckbox
+            v-model="calendarToggle"
+            :label="$t('settings.linked_accounts.calendar_sync_toggle')"
+            class="text-sm"
+          />
           <Button
             :label="$t('settings.linked_accounts.google_link_button')"
             :loading="linkingGoogle"
