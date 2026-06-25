@@ -71,6 +71,14 @@
         "thunderstorm": "雷暴"
       }
     },
+    "upcoming_events": {
+      "today_title": "今日の予定",
+      "week_title": "今週の予定",
+      "toggle_today": "今日",
+      "toggle_week": "今週",
+      "empty_today": "今日の予定はありません",
+      "empty_week": "今週の予定はありません"
+    },
     "personal": {
       "find_team_title": "寻找新的团队或组织",
       "find_team_description": "搜索您想加入的团队或组织，以支持者身份申请。\n以成员身份加入需要邀请链接。",

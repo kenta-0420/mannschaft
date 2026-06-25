@@ -71,6 +71,14 @@
         "thunderstorm": "Thunderstorm"
       }
     },
+    "upcoming_events": {
+      "today_title": "Today's Schedule",
+      "week_title": "This Week's Schedule",
+      "toggle_today": "Today",
+      "toggle_week": "This Week",
+      "empty_today": "No events today",
+      "empty_week": "No events this week"
+    },
     "personal": {
       "find_team_title": "Find a New Team or Organization",
       "find_team_description": "Search for teams or organizations you want to join and apply as a supporter.\nAn invitation link is required to join as a member.",
