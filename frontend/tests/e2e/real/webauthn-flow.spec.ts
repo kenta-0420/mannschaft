@@ -23,6 +23,7 @@ import type { Page, CDPSession } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
 
 const USER_EMAIL = process.env.TEST_USER_EMAIL ?? 'e2e-user@test.mannschaft.local'
+const USER_PASSWORD = process.env.TEST_USER_PASSWORD ?? 'TestPass2026!'
 const API_BASE = process.env.API_BASE_URL ?? 'http://localhost:8080'
 
 // ----------------------------------------------------------------------------------
@@ -80,6 +81,12 @@ test.describe('WEBAUTHN: パスキー登録・ログインフロー', () => {
   test.describe.configure({ mode: 'serial' })
 
   test.beforeEach(async ({ page }) => {
+    // 毎テスト前に API ログインで再認証（serial テスト間のトークンローテーション対策）
+    // page.goto('/') が token rotation を起こすため、次テストの storageState が失効する可能性がある
+    await page.request.post(`${API_BASE}/api/v1/auth/login`, {
+      data: { email: USER_EMAIL, password: USER_PASSWORD },
+    })
+
     // 登録済み資格情報を全削除（テスト干渉防止）
     const credsRes = await page.request.get(`${API_BASE}/api/v1/auth/webauthn/credentials`)
     if (credsRes.ok()) {
@@ -180,7 +187,7 @@ test.describe('WEBAUTHN: パスキー登録・ログインフロー', () => {
       // === 資格情報登録（WEBAUTHN-001 と同じ手順） ===
       await page.goto('/')
       const beginRegRes = await page.request.post(`${API_BASE}/api/v1/auth/webauthn/register/begin`)
-      expect(beginRegRes.ok()).toBeTruthy()
+      expect(beginRegRes.ok(), `register/begin 失敗: ${beginRegRes.status()} ${await beginRegRes.text()}`).toBeTruthy()
       const bd = (await beginRegRes.json()).data as {
         challenge: string; rpId: string; rpName: string; userId: number; userDisplayName: string
       }
