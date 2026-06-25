@@ -120,7 +120,7 @@ test.describe('WEBAUTHN: パスキー登録・ログインフロー', () => {
           function bufToB64url(buffer: ArrayBuffer): string {
             const bytes = new Uint8Array(buffer)
             let binary = ''
-            for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+            for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]!)
             return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
           }
           function numberToArrayBuffer(n: number): ArrayBuffer {
@@ -197,7 +197,7 @@ test.describe('WEBAUTHN: パスキー登録・ログインフロー', () => {
           function bufToB64url(buffer: ArrayBuffer): string {
             const bytes = new Uint8Array(buffer)
             let binary = ''
-            for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+            for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]!)
             return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
           }
           function numberToArrayBuffer(n: number): ArrayBuffer {
@@ -259,7 +259,7 @@ test.describe('WEBAUTHN: パスキー登録・ログインフロー', () => {
           function bufToB64url(buffer: ArrayBuffer): string {
             const bytes = new Uint8Array(buffer)
             let binary = ''
-            for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+            for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]!)
             return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
           }
           function extractSignCount(authenticatorData: ArrayBuffer): number {
