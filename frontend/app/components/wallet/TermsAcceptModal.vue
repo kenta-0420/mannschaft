@@ -181,6 +181,7 @@ const titleKey = computed(() =>
 }
 .terms-modal__panel {
   background: var(--p-surface-0, #fff);
+  color: var(--p-text-color, #111827);
   border-radius: 1rem;
   max-width: 540px;
   width: 100%;
@@ -278,5 +279,33 @@ const titleKey = computed(() =>
 .terms-modal__btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ダークモード: --p-* トークンが解決されず白背景に白文字となるため明示的に上書きする */
+:global(.dark) .terms-modal__panel {
+  background: #1e1e1e;
+  color: #f4f4f5;
+  /* ネイティブチェックボックスをダーク配色で描画させる */
+  color-scheme: dark;
+}
+:global(.dark) .terms-modal__close,
+:global(.dark) .terms-modal__hint {
+  color: #a1a1aa;
+}
+:global(.dark) .terms-modal__item {
+  border-bottom-color: #3f3f46;
+}
+:global(.dark) .terms-modal__footer {
+  border-top-color: #3f3f46;
+}
+:global(.dark) .terms-modal__btn {
+  background: #27272a;
+  border-color: #3f3f46;
+  color: #f4f4f5;
+}
+:global(.dark) .terms-modal__btn--primary {
+  background: var(--p-primary-color, #3b82f6);
+  border-color: var(--p-primary-color, #3b82f6);
+  color: #fff;
 }
 </style>

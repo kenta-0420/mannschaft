@@ -188,13 +188,12 @@ watch(activeTab, (newTab) => {
 
     <!-- ===== Cards タブ ===== -->
     <section v-if="activeTab === 'cards'" class="wallet-page__section">
-      <input
+      <InputText
         v-model="searchQuery"
-        type="search"
-        class="wallet-page__search"
+        class="w-full"
         :placeholder="t('wallet.actions.search')"
         :aria-label="t('wallet.actions.search')"
-      >
+      />
 
       <div v-if="loadingCards" class="wallet-page__loading">…</div>
 
@@ -325,14 +324,6 @@ watch(activeTab, (newTab) => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-}
-.wallet-page__search {
-  width: 100%;
-  padding: 0.625rem 0.875rem;
-  border: 1px solid var(--p-surface-300, #d1d5db);
-  border-radius: 0.5rem;
-  font-size: 0.9375rem;
-  background: var(--p-surface-0, #fff);
 }
 .wallet-page__loading,
 .wallet-page__empty {
