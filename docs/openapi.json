@@ -132574,6 +132574,96 @@
           }
         }
       }
+    },
+    "/api/v1/me/reflections/cards": {
+      "get": {
+        "tags": [
+          "振り返り単語帳"
+        ],
+        "summary": "期間横断 単語帳ビュー取得",
+        "operationId": "getVocabCards",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "themeId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "sourceType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "SUBJECT",
+                "PROJECT",
+                "DIARY",
+                "FREE"
+              ]
+            }
+          },
+          {
+            "name": "subject",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseReflectionVocabCardsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -147804,6 +147894,15 @@
             "items": {
               "type": "string",
               "format": "date"
+            }
+          },
+          "recallDirection": {
+            "$ref": "#/components/schemas/RecallDirection"
+          },
+          "cardQuiz": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReflectionMaskedCardQuiz"
             }
           }
         }
@@ -214020,6 +214119,101 @@
               "format": "int64"
             },
             "minItems": 1
+          }
+        }
+      },
+      "RecallDirection": {
+        "type": "string",
+        "enum": [
+          "MEANING_TO_TERM",
+          "TERM_TO_MEANING"
+        ]
+      },
+      "ReflectionMaskedCardPrompt": {
+        "type": "object",
+        "properties": {
+          "promptSide": {
+            "type": "string"
+          },
+          "promptText": {
+            "type": "string"
+          }
+        }
+      },
+      "ReflectionMaskedCardQuiz": {
+        "type": "object",
+        "properties": {
+          "heading": {
+            "type": "string"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/RecallDirection"
+          },
+          "prompts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReflectionMaskedCardPrompt"
+            }
+          }
+        }
+      },
+      "ReflectionVocabCardItem": {
+        "type": "object",
+        "properties": {
+          "term": {
+            "type": "string"
+          },
+          "meaning": {
+            "type": "string"
+          },
+          "themeId": {
+            "type": "string"
+          },
+          "themeTitle": {
+            "type": "string"
+          },
+          "targetDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "sectionHeading": {
+            "type": "string"
+          }
+        }
+      },
+      "ReflectionVocabCardsResponse": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "totalCards": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReflectionVocabCardItem"
+            }
+          }
+        }
+      },
+      "ApiResponseReflectionVocabCardsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ReflectionVocabCardsResponse"
           }
         }
       }
