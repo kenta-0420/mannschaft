@@ -226,7 +226,7 @@ function onDragEnd() {
           :key="w.key"
           class="group relative cursor-default transition-all"
           :class="[
-            isDataWidget(w.key) ? 'col-span-1 md:col-span-2' : 'col-span-1',
+            'col-span-1',
             { 'opacity-40': dragIndex === index },
           ]"
           draggable="true"
