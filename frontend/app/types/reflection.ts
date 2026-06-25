@@ -174,8 +174,16 @@ export interface VocabCardsParams {
   from: string
   to: string
   themeId?: string
-  sourceType?: string
+  /** 後方互換: 単一教科フィルタ（subjects[] が優先）。 */
   subject?: string
+  /** 複数教科 OR フィルタ（AC-62）。 */
+  subjects?: string[]
+  /** 後方互換: 単一 sourceType フィルタ（sourceTypes[] が優先）。 */
+  sourceType?: string
+  /** 複数 sourceType OR フィルタ（AC-65）。 */
+  sourceTypes?: string[]
+  /** シャッフル全件返却（AC-63）。true の場合は page/size 不要。 */
+  shuffle?: boolean
   page?: number
   size?: number
 }
