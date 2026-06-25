@@ -4,18 +4,18 @@
  * バックエンド (http://localhost:8080) とフロントエンド (http://localhost:8081) が
  * 起動中であることを前提とし、CDPSession の仮想認証器で WebAuthn フローを検証する。
  *
- * 注意:
- *   - 登録 UI (「パスキーを追加」ボタン) はまだ /settings/security に実装されていない。
- *     このため WEBAUTHN-001/002 は API 直接呼び出し + page.evaluate で
- *     navigator.credentials.create/get を仮想認証器経由で実行する。
- *   - 実際の UI ボタンが追加された際は、UI 操作に差し替えること。
- *
  * テストユーザー:
  *   e2e-user@test.mannschaft.local / TestPass2026!
+ *
+ * 前提:
+ *   - BE に MANNSCHAFT_WEBAUTHN_RP_ID=localhost を設定すること（application-local.yml 参照）
+ *   - WEBAUTHN-001/002: API 直接呼び出し + CDP 仮想認証器でフローを検証
+ *   - WEBAUTHN-003: /settings/security の UI ボタンからパスキーを登録するフルフロー
  */
 
 import { test, expect } from '@playwright/test'
 import type { Page, CDPSession } from '@playwright/test'
+import { waitForHydration } from '../helpers/wait'
 
 const USER_EMAIL = process.env.TEST_USER_EMAIL ?? 'e2e-user@test.mannschaft.local'
 // FE dev server が /api/v1/** をプロキシしていない場合 (NUXT_API_PROXY 未設定) は
@@ -46,12 +46,45 @@ async function setupVirtualAuthenticator(page: Page): Promise<VirtualAuthenticat
   return { client, authenticatorId }
 }
 
+/**
+ * FE ページが /api/v1/** を BE にプロキシしていない場合（NUXT_API_PROXY 未設定）でも
+ * UI テストが動作するよう、page.route() で API 呼び出しを BE に中継する。
+ * origin ヘッダーを FE オリジンに差し替えて CORS を通過させる。
+ */
+async function setupApiRoute(page: Page): Promise<void> {
+  const feOrigin = new URL(page.url() || 'http://localhost').origin
+  await page.route('**/api/v1/auth/webauthn/**', async (route) => {
+    const req = route.request()
+    const originalUrl = req.url()
+    // FE オリジン部分を BE に差し替え（相対パス→絶対パス）
+    const targetUrl = originalUrl.startsWith(API_BASE)
+      ? originalUrl
+      : originalUrl.replace(/^https?:\/\/[^/]+/, API_BASE)
+    const response = await route.fetch({
+      url: targetUrl,
+      headers: {
+        ...req.headers(),
+        origin: feOrigin,
+        'access-control-allow-origin': feOrigin,
+      },
+    })
+    const resHeaders = { ...response.headers() }
+    resHeaders['access-control-allow-origin'] = feOrigin
+    resHeaders['access-control-allow-credentials'] = 'true'
+    await route.fulfill({
+      status: response.status(),
+      headers: resHeaders,
+      body: await response.body(),
+    })
+  })
+}
+
 // ----------------------------------------------------------------------------------
 // WEBAUTHN: パスキー登録・ログインフロー
 // ----------------------------------------------------------------------------------
 
 test.describe('WEBAUTHN: パスキー登録・ログインフロー', () => {
-  // WEBAUTHN-001 → WEBAUTHN-002 の順で実行（資格情報登録が前提）
+  // WEBAUTHN-001 → WEBAUTHN-002 → WEBAUTHN-003 の順で実行（資格情報登録が前提）
   test.describe.configure({ mode: 'serial' })
 
   // 各テスト前に登録済み資格情報をすべてクリーンアップ（テスト干渉防止）
@@ -67,14 +100,7 @@ test.describe('WEBAUTHN: パスキー登録・ログインフロー', () => {
     }
   })
 
-  // WEBAUTHN-001/002 スキップ理由:
-  // BE の register/begin が rpId: "mannschaft.app" を返すが、テスト環境のオリジンは
-  // http://localhost:3000 のため、navigator.credentials.create() で SecurityError が発生する。
-  // (WebAuthn 仕様: rpId はオリジンの eTLD+1 と一致しなければならない)
-  // 解決策: BE に MANNSCHAFT_WEBAUTHN_RP_ID=localhost 環境変数を設定してテスト環境を構築する。
-  // または登録 UI が実装された際にブラウザ経由のフルフローでテストする。
-
-  test.skip('WEBAUTHN-001: パスキーを登録できる（API フロー・要 rpId=localhost 設定）', async ({ page }) => {
+  test('WEBAUTHN-001: パスキーを登録できる（API フロー）', async ({ page }) => {
     // 仮想 WebAuthn 認証器をセットアップ
     const { client } = await setupVirtualAuthenticator(page)
 
@@ -85,7 +111,11 @@ test.describe('WEBAUTHN: パスキー登録・ログインフロー', () => {
       const beginBody = await beginRes.json()
       const options = beginBody.data
 
-      // 2. ブラウザ側で navigator.credentials.create() を実行（仮想認証器が自動応答）
+      // 2. FE ページに移動して clientDataJSON.origin を FE オリジンに確立する
+      //    （BE の ServerProperty の origin と一致させるために必要）
+      await page.goto('/')
+
+      // 3. ブラウザ側で navigator.credentials.create() を実行（仮想認証器が自動応答）
       //    page.evaluate でブラウザコンテキストに入り WebAuthn 操作を実行する
       const credential = await page.evaluate(async (rawOptions: unknown) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -153,12 +183,14 @@ test.describe('WEBAUTHN: パスキー登録・ログインフロー', () => {
     }
   })
 
-  test.skip('WEBAUTHN-002: パスキーでログインできる（API フロー・要 rpId=localhost 設定）', async ({ page }) => {
+  test('WEBAUTHN-002: パスキーでログインできる（API フロー）', async ({ page }) => {
     // 事前: 資格情報を登録する（WEBAUTHN-001 と同様の手順）
     const { client } = await setupVirtualAuthenticator(page)
 
     try {
       // === 資格情報登録 ===
+      // FE オリジンを確立してから evaluate を実行する（clientDataJSON.origin = FE オリジン）
+      await page.goto('/')
       const beginRegRes = await page.request.post(`${API_BASE}/api/v1/auth/webauthn/register/begin`)
       expect(beginRegRes.ok()).toBeTruthy()
       const regOptions = (await beginRegRes.json()).data
@@ -271,6 +303,58 @@ test.describe('WEBAUTHN: パスキー登録・ログインフロー', () => {
       expect(completeLoginRes.ok(), `login/complete が失敗: ${completeLoginRes.status()}`).toBeTruthy()
       const loginBody = await completeLoginRes.json()
       expect(loginBody.data).toHaveProperty('accessToken')
+    } finally {
+      await client.detach()
+    }
+  })
+
+  test('WEBAUTHN-003: /settings/security の UI ボタンからパスキーを登録できる（UI フロー）', async ({
+    page,
+  }) => {
+    // 1. ページ遷移前に仮想認証器をセットアップ
+    //    （CDP 仮想認証器はページコンテキストに紐づくため先にセットアップする）
+    const { client } = await setupVirtualAuthenticator(page)
+
+    try {
+      // 2. /settings/security ページに移動してハイドレーション待ち
+      await page.goto('/settings/security')
+      await waitForHydration(page)
+
+      // 3. API ブリッジ設定（NUXT_API_PROXY が未設定の場合の保険）
+      //    FE の /api/v1/** 呼び出しを BE (API_BASE) に中継する
+      await setupApiRoute(page)
+
+      // 4. 「パスキーを登録」ボタンが表示されるまで待つ
+      //    WebAuthn サポート検出は onMounted で行われるため、少し待つ必要がある
+      const registerBtn = page.getByRole('button', { name: 'パスキーを登録' })
+      await expect(registerBtn, 'パスキーを登録ボタンが表示されること').toBeVisible({ timeout: 10_000 })
+
+      // 5. ボタンをクリックして登録ダイアログを開く
+      await registerBtn.click()
+
+      // 6. ダイアログが開いたことを確認
+      const dialog = page.getByRole('dialog', { name: 'パスキーを登録' })
+      await expect(dialog, 'パスキー登録ダイアログが開くこと').toBeVisible({ timeout: 5_000 })
+
+      // 7. 「登録する」ボタンをクリック
+      //    CDP 仮想認証器が navigator.credentials.create() を自動インターセプトする
+      const confirmBtn = dialog.getByRole('button', { name: '登録する' })
+      await confirmBtn.click()
+
+      // 8. 成功トーストが表示されること
+      const successToast = page.locator('[role="alert"][data-p="success"]').first()
+      await expect(successToast, '成功トーストが表示されること').toBeVisible({ timeout: 15_000 })
+
+      // 9. 資格情報一覧に新しいエントリが追加されたことを確認
+      //    pi pi-key アイコンを持つ要素が1件以上表示される
+      const credentialEntry = page.locator('.pi.pi-key').first()
+      await expect(credentialEntry, '資格情報エントリが表示されること').toBeVisible({ timeout: 5_000 })
+
+      // 10. API でも確認（BE に永続化されていること）
+      const credsRes = await page.request.get(`${API_BASE}/api/v1/auth/webauthn/credentials`)
+      expect(credsRes.ok()).toBeTruthy()
+      const credsBody = await credsRes.json()
+      expect(credsBody.data.length, '資格情報が BE に登録されていること').toBeGreaterThanOrEqual(1)
     } finally {
       await client.detach()
     }

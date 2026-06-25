@@ -169,6 +169,7 @@ mannschaft:
       cron: "0 0 * * * *"  # 毎時
       threshold-minutes: 5
   webauthn:
+    rp-id: ${MANNSCHAFT_WEBAUTHN_RP_ID:mannschaft.app}
     origin: ${MANNSCHAFT_WEBAUTHN_ORIGIN:https://mannschaft.app}
   google:
     client-id: ${MANNSCHAFT_GOOGLE_CLIENT_ID:}

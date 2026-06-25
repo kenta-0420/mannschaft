@@ -90,10 +90,12 @@ public class AuthWebAuthnService {
     private static final String REAUTH_VERIFIED_KEY_PREFIX = "mannschaft:auth:webauthn_reauth_verified:";
     private static final int CHALLENGE_TTL_MINUTES = 5;
     private static final int REAUTH_VERIFIED_TTL_MINUTES = 5;
-    private static final String RP_ID = "mannschaft.app";
     private static final String RP_NAME = "Mannschaft";
 
     private final WebAuthnManager webAuthnManager = WebAuthnManager.createNonStrictWebAuthnManager();
+
+    @Value("${mannschaft.webauthn.rp-id:mannschaft.app}")
+    private String rpId;
 
     @Value("${mannschaft.webauthn.origin:https://mannschaft.app}")
     private String rpOrigin;
@@ -116,7 +118,7 @@ public class AuthWebAuthnService {
         redisTemplate.opsForValue().set(challengeKey, challenge, CHALLENGE_TTL_MINUTES, TimeUnit.MINUTES);
 
         WebAuthnRegisterBeginResponse response = new WebAuthnRegisterBeginResponse(
-                challenge, RP_ID, RP_NAME, userId, user.getLastName() + " " + user.getFirstName());
+                challenge, rpId, RP_NAME, userId, user.getLastName() + " " + user.getFirstName());
 
         return ApiResponse.of(response);
     }
@@ -157,7 +159,7 @@ public class AuthWebAuthnService {
 
             ServerProperty serverProperty = new ServerProperty(
                     new Origin(rpOrigin),
-                    RP_ID,
+                    rpId,
                     new DefaultChallenge(storedChallenge.getBytes()),
                     null
             );
@@ -219,7 +221,7 @@ public class AuthWebAuthnService {
         redisTemplate.opsForValue().set(challengeKey, challenge, CHALLENGE_TTL_MINUTES, TimeUnit.MINUTES);
 
         WebAuthnLoginBeginResponse response = new WebAuthnLoginBeginResponse(
-                challenge, RP_ID, allowCredentials, 300000L);
+                challenge, rpId, allowCredentials, 300000L);
 
         return ApiResponse.of(response);
     }
@@ -275,7 +277,7 @@ public class AuthWebAuthnService {
 
             ServerProperty serverProperty = new ServerProperty(
                     new Origin(rpOrigin),
-                    RP_ID,
+                    rpId,
                     new DefaultChallenge(storedChallenge.getBytes()),
                     null
             );
@@ -424,7 +426,7 @@ public class AuthWebAuthnService {
         redisTemplate.opsForValue().set(challengeKey, challenge, CHALLENGE_TTL_MINUTES, TimeUnit.MINUTES);
 
         WebAuthnReauthenticateBeginResponse response = new WebAuthnReauthenticateBeginResponse(
-                challenge, RP_ID, allowCredentials, userId, 60_000L);
+                challenge, rpId, allowCredentials, userId, 60_000L);
         return ApiResponse.of(response);
     }
 
@@ -480,7 +482,7 @@ public class AuthWebAuthnService {
 
             ServerProperty serverProperty = new ServerProperty(
                     new Origin(rpOrigin),
-                    RP_ID,
+                    rpId,
                     new DefaultChallenge(storedChallenge.getBytes()),
                     null
             );
