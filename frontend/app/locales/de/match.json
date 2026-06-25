@@ -456,7 +456,8 @@
     "entry": {
       "record_from_schedule": "Dieses Spiel aufzeichnen",
       "record_from_schedule_hint": "Beginne mit der Aufzeichnung des Spiels für diesen Termin",
-      "resolving": "Spielaufzeichnung wird vorbereitet…"
+      "resolving": "Spielaufzeichnung wird vorbereitet…",
+      "no_org_for_record": "Die Spielaufzeichnung ist nur verfügbar, wenn das Team einer Organisation angehört"
     },
     "fixtures": {
       "title": "Spielplan",

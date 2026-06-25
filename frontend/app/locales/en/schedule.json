@@ -87,6 +87,40 @@
       "fetchFailed": "Failed to load the attendance breakdown by team.",
       "forbidden": "You do not have permission to view this breakdown.",
       "empty": "No attendance breakdown data available."
+    },
+    "event_add": "Add event",
+    "calendar_guide": {
+      "page_title": "My Calendar",
+      "description": "My Calendar lets you view your personal events alongside events from your teams and organizations, all in one screen.",
+      "what": {
+        "title": "What is My Calendar?",
+        "body": "View all events from your teams, organizations, and personal schedule in a single calendar. Switch between the calendar view and the Gantt view (TODO list)."
+      },
+      "add": {
+        "title": "Add an event",
+        "body": "Click the 'Add event' button or click on a date in the calendar to create an event. You can add personal events as well as team or organization events.",
+        "step1": "Click 'Add event' in the top right, or click on a date cell",
+        "step2": "Enter a title, date/time, and location",
+        "step3": "Select personal, team, or organization under 'Scope'",
+        "step4": "Click 'Save' to finish"
+      },
+      "filter": {
+        "title": "Filter the view",
+        "body": "Use the buttons at the bottom of the calendar to toggle the display of each scope (personal, team, organization). If there are 6 or more, use the dropdown to select.",
+        "personal": "Green dot: personal events",
+        "team_org": "Indigo dot: team / organization events"
+      },
+      "gantt": {
+        "title": "Gantt view (TODO list)",
+        "body": "Press the 'Gantt' tab to display deadline-based TODOs as a Gantt chart. It syncs with the scope switcher in the top right to show personal, team, or organization TODOs."
+      },
+      "detail": {
+        "title": "Event details & attendance",
+        "body": "Click on an event in the calendar to open the detail panel on the right.",
+        "item_edit": "Use the pencil icon to edit, or the trash icon to delete",
+        "item_attendance": "For events with attendance tracking, select 'Attending', 'Not attending', or 'Maybe'",
+        "item_match": "Use the 'Record this match' button from a team event to start a match record"
+      }
     }
   }
 }
