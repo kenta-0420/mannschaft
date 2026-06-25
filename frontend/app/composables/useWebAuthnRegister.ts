@@ -36,9 +36,9 @@ export function useWebAuthnRegister() {
         challenge,
         rp: { id: beginData.rpId, name: beginData.rpName },
         user: {
-          // userId は number（BE の Long 相当）。WebAuthn spec では ArrayBuffer が必要なので変換する。
-          // Long を BigInt 経由で 8 バイトリトルエンディアンに変換する。
-          id: numberToUint8Array(beginData.userId),
+          // userId は number（BE の Long 相当）。WebAuthn spec では BufferSource が必要なので
+          // 8 バイトリトルエンディアンの ArrayBuffer に変換する。
+          id: numberToUint8Array(beginData.userId).buffer,
           name: beginData.userDisplayName,
           displayName: beginData.userDisplayName,
         },

@@ -1,20 +1,28 @@
 ﻿<script setup lang="ts">
 import type { AuthSessionResponse, WebAuthnCredentialResponse } from '~/types/auth'
 
-defineProps<{
-  totpSetup: { secret: string; qrCodeUrl: string } | null
-  setting2fa: boolean
-  regenerating: boolean
-  sessions: AuthSessionResponse[]
-  credentials: WebAuthnCredentialResponse[]
-  backupCodes: string[]
-  showBackupCodesDialog: boolean
-  renameDialog: boolean
-  newDeviceName: string
-  isRegisteringPasskey: boolean
-  registerDialog: boolean
-  newPasskeyName: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    totpSetup: { secret: string; qrCodeUrl: string } | null
+    setting2fa: boolean
+    regenerating: boolean
+    sessions: AuthSessionResponse[]
+    credentials: WebAuthnCredentialResponse[]
+    backupCodes: string[]
+    showBackupCodesDialog: boolean
+    renameDialog: boolean
+    newDeviceName: string
+    // パスキー登録 UI（オプション: security.vue から利用。account.vue 等では省略可能）
+    isRegisteringPasskey?: boolean
+    registerDialog?: boolean
+    newPasskeyName?: string
+  }>(),
+  {
+    isRegisteringPasskey: false,
+    registerDialog: false,
+    newPasskeyName: '',
+  },
+)
 
 defineEmits<{
   setup2fa: []
