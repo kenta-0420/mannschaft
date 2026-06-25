@@ -25,6 +25,38 @@
     },
     "anonymous": {
       "label": "匿名发送"
+    },
+    "submitter": "提交者",
+    "votes": "赞同数",
+    "status": {
+      "OPEN": "未处理",
+      "IN_PROGRESS": "处理中",
+      "RESOLVED": "已解决",
+      "CLOSED": "已关闭"
+    },
+    "inbox": {
+      "title": "意见箱（全体）",
+      "description": "查看并回复所有 GENERAL 范围的反馈",
+      "noData": "没有反馈",
+      "filter": {
+        "all": "全部",
+        "label": "按状态筛选"
+      },
+      "respond": {
+        "title": "回复",
+        "adminResponse": "回复内容",
+        "adminResponsePlaceholder": "请输入对用户的回复",
+        "publicResponse": "显示为公开回复",
+        "submit": "发送回复",
+        "success": "回复成功",
+        "error": "回复失败"
+      },
+      "statusChange": {
+        "success": "状态已更新",
+        "error": "状态更新失败"
+      },
+      "viewAsUser": "以用户视角查看",
+      "anonymous": "匿名"
     }
   }
 }

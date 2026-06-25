@@ -25,6 +25,38 @@
     },
     "anonymous": {
       "label": "Anonym senden"
+    },
+    "submitter": "Einreicher",
+    "votes": "Stimmen",
+    "status": {
+      "OPEN": "Offen",
+      "IN_PROGRESS": "In Bearbeitung",
+      "RESOLVED": "Gelöst",
+      "CLOSED": "Geschlossen"
+    },
+    "inbox": {
+      "title": "Feedback-Posteingang (Global)",
+      "description": "Alle Feedbacks im GENERAL-Bereich anzeigen und beantworten",
+      "noData": "Kein Feedback vorhanden",
+      "filter": {
+        "all": "Alle",
+        "label": "Nach Status filtern"
+      },
+      "respond": {
+        "title": "Antworten",
+        "adminResponse": "Antwort",
+        "adminResponsePlaceholder": "Antwort an den Benutzer eingeben",
+        "publicResponse": "Als öffentliche Antwort anzeigen",
+        "submit": "Antwort senden",
+        "success": "Antwort gesendet",
+        "error": "Antwort senden fehlgeschlagen"
+      },
+      "statusChange": {
+        "success": "Status aktualisiert",
+        "error": "Status aktualisieren fehlgeschlagen"
+      },
+      "viewAsUser": "Als Benutzer anzeigen",
+      "anonymous": "Anonym"
     }
   }
 }

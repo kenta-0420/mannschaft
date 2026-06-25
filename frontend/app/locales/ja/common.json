@@ -1414,7 +1414,12 @@
       "shiftBudget": "シフト予算",
       "betaRestriction": "ベータ制限",
       "errorReports": "エラーレポート",
-      "gdprPurge": "GDPR パージ状況"
+      "gdprPurge": "GDPR パージ状況",
+      "feedbackInbox": "目安箱（全体）"
+    },
+    "impersonation": {
+      "banner": "管理者変身中: {label} のアカウントで操作しています",
+      "exit": "変身を終了"
     },
     "businessAlert": {
       "title": "業務アラート",

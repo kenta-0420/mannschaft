@@ -320,6 +320,8 @@ function isActive(path: string, exact = false): boolean {
       <IosInstallGuideModal v-model:visible="iosInstallModalVisible" />
       <QuickMemoCaptureModal v-model:visible="quickMemoModalVisible" />
       <FeedbackSubmitModal v-model:visible="feedbackModalVisible" />
+      <!-- F10.1: 管理者変身中バナー -->
+      <AdminImpersonationBanner />
 
       <!-- モバイルメニュー Drawer -->
       <Drawer v-model:visible="showMobileMenu" position="left" class="w-72">

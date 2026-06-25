@@ -1414,7 +1414,12 @@
       "shiftBudget": "班次预算",
       "betaRestriction": "测试版限制",
       "errorReports": "错误报告",
-      "gdprPurge": "GDPR 清除状态"
+      "gdprPurge": "GDPR 清除状态",
+      "feedbackInbox": "意见箱（全体）"
+    },
+    "impersonation": {
+      "banner": "管理员伪装中: {label}",
+      "exit": "退出伪装"
     },
     "businessAlert": {
       "title": "业务提醒",
