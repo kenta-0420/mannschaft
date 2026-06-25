@@ -113,6 +113,10 @@ class AuthOAuthLinkServiceTest {
             // Given: state が Redis に存在し userId=1 を指す
             given(redisTemplate.opsForValue()).willReturn(valueOperations);
             given(valueOperations.get(STATE_REDIS_KEY)).willReturn(String.valueOf(TEST_USER_ID));
+            // Google ユーザー情報取得のモック（fetchGoogleUserInfoPublic）
+            given(authOAuthService.fetchGoogleUserInfoPublic("auth-code"))
+                    .willReturn(new AuthOAuthService.OAuthUserInfo(
+                            GOOGLE_SUB, "test@example.com", null, null, "Test User"));
             // 既存連携なし（このユーザーの連携相手はまだ存在しない）
             given(oauthAccountRepository.findByProviderAndProviderUserId(
                     OAuthAccountEntity.OAuthProvider.GOOGLE, GOOGLE_SUB))
@@ -120,7 +124,7 @@ class AuthOAuthLinkServiceTest {
             given(oauthAccountRepository.save(any(OAuthAccountEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
 
-            // When: 未実装のため UnsupportedOperationException → RED
+            // When
             String redirectUrl = authOAuthLinkService.processCallback("GOOGLE", TEST_STATE, "auth-code");
 
             // Then
@@ -148,6 +152,10 @@ class AuthOAuthLinkServiceTest {
             // Given: state は有効（userId=1）だが、google-sub-123 は別ユーザー(userId=2)が既に連携済み
             given(redisTemplate.opsForValue()).willReturn(valueOperations);
             given(valueOperations.get(anyString())).willReturn(String.valueOf(TEST_USER_ID));
+            // Google ユーザー情報取得のモック（fetchGoogleUserInfoPublic）
+            given(authOAuthService.fetchGoogleUserInfoPublic("auth-code"))
+                    .willReturn(new AuthOAuthService.OAuthUserInfo(
+                            GOOGLE_SUB, "test@example.com", null, null, "Test User"));
 
             OAuthAccountEntity takenByOther = OAuthAccountEntity.builder()
                     .userId(2L)
@@ -159,7 +167,7 @@ class AuthOAuthLinkServiceTest {
                     OAuthAccountEntity.OAuthProvider.GOOGLE, GOOGLE_SUB))
                     .willReturn(Optional.of(takenByOther));
 
-            // When: 未実装のため UnsupportedOperationException → RED
+            // When
             String redirectUrl = authOAuthLinkService.processCallback("GOOGLE", TEST_STATE, "auth-code");
 
             // Then
@@ -183,13 +191,17 @@ class AuthOAuthLinkServiceTest {
             // Given: AC-6 と同様のセットアップ
             given(redisTemplate.opsForValue()).willReturn(valueOperations);
             given(valueOperations.get(STATE_REDIS_KEY)).willReturn(String.valueOf(TEST_USER_ID));
+            // Google ユーザー情報取得のモック（fetchGoogleUserInfoPublic）
+            given(authOAuthService.fetchGoogleUserInfoPublic("auth-code"))
+                    .willReturn(new AuthOAuthService.OAuthUserInfo(
+                            GOOGLE_SUB, "test@example.com", null, null, "Test User"));
             given(oauthAccountRepository.findByProviderAndProviderUserId(
                     OAuthAccountEntity.OAuthProvider.GOOGLE, GOOGLE_SUB))
                     .willReturn(Optional.empty());
             given(oauthAccountRepository.save(any(OAuthAccountEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
 
-            // When: 未実装のため UnsupportedOperationException → RED
+            // When
             authOAuthLinkService.processCallback("GOOGLE", TEST_STATE, "auth-code");
 
             // Then: 使用済み state は削除される

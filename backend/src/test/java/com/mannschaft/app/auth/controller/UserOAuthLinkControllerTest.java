@@ -8,13 +8,20 @@ import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.security.AccessGuard;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -58,6 +65,28 @@ class UserOAuthLinkControllerTest {
     /** @EnableMethodSecurity 有効化後の SpEL ガード依存解決用。 */
     @MockitoBean
     private AccessGuard accessGuard;
+
+    /** テスト用ユーザーID（SecurityContextHolder に設定する）。 */
+    private static final Long TEST_USER_ID = 1L;
+
+    /**
+     * 認証済みユーザー（userId=1）を SecurityContextHolder に設定する。
+     * {@code addFilters = false} でフィルターが無効なため、手動で設定する必要がある。
+     */
+    @BeforeEach
+    void setUpSecurityContext() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(String.valueOf(TEST_USER_ID), null,
+                        List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+    }
+
+    /**
+     * テスト後に SecurityContextHolder をクリアする。
+     */
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
 
     // ──────────────────────────────────────────────
     // AC-1: GET /{provider}/auth-url 正常系 → 200 + { data: { authUrl } }

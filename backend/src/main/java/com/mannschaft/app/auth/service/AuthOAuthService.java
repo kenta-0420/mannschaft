@@ -337,6 +337,19 @@ public class AuthOAuthService {
     }
 
     /**
+     * Google OAuth: 認可コードをアクセストークンに交換し、userinfo エンドポイントからユーザー情報を取得する。
+     * <p>
+     * {@code AuthOAuthLinkService}（設定画面での連携フロー）から利用するために public に公開する。
+     *
+     * @param authorizationCode 認可コード
+     * @return Googleユーザー情報
+     * @throws BusinessException AUTH_027 — Token Exchange失敗またはユーザー情報取得失敗
+     */
+    public OAuthUserInfo fetchGoogleUserInfoPublic(String authorizationCode) {
+        return fetchGoogleUserInfo(authorizationCode);
+    }
+
+    /**
      * OAuthプロバイダAPIからユーザー情報を取得する。
      * <ul>
      *   <li>Google: 認可コード → Token Exchange → userinfo endpoint</li>
