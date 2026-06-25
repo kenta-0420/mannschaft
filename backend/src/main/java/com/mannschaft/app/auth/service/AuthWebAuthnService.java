@@ -150,7 +150,7 @@ public class AuthWebAuthnService {
         }
         redisTemplate.delete(challengeKey);
 
-        // WebAuthn4J attestation 検証
+        // WebAuthn4J attestation 検証 + CBOR公開鍵抽出 + 保存
         try {
             byte[] attestationObject = Base64.getUrlDecoder().decode(req.getAttestationObject());
             byte[] clientDataJson = Base64.getUrlDecoder().decode(req.getClientDataJson());
@@ -168,26 +168,46 @@ public class AuthWebAuthnService {
 
             RegistrationData registrationData = webAuthnManager.parse(registrationRequest);
             webAuthnManager.validate(registrationData, registrationParameters);
+
+            // RegistrationData から COSEKey を抽出して CBOR シリアライズ
+            // FE から送られる getPublicKey() は DER(SubjectPublicKeyInfo)形式のため使用不可
+            com.webauthn4j.data.attestation.authenticator.COSEKey parsedCoseKey =
+                    registrationData.getAttestationObject()
+                            .getAuthenticatorData()
+                            .getAttestedCredentialData()
+                            .getCOSEKey();
+            com.webauthn4j.converter.util.ObjectConverter regObjectConverter =
+                    new com.webauthn4j.converter.util.ObjectConverter();
+            byte[] coseKeyBytes = regObjectConverter.getCborConverter().writeValueAsBytes(parsedCoseKey);
+            String coseKeyB64url = Base64.getUrlEncoder().withoutPadding().encodeToString(coseKeyBytes);
+
+            // 認証器が割り当てた credentialId を取得
+            byte[] parsedCredIdBytes = registrationData.getAttestationObject()
+                    .getAuthenticatorData()
+                    .getAttestedCredentialData()
+                    .getCredentialId();
+            String parsedCredIdB64url = Base64.getUrlEncoder().withoutPadding().encodeToString(parsedCredIdBytes);
+
+            // 2. credential_id重複チェック
+            if (webAuthnCredentialRepository.findByCredentialId(parsedCredIdB64url).isPresent()) {
+                throw new BusinessException(AuthErrorCode.AUTH_025);
+            }
+
+            // 3. WebAuthnCredentialEntity保存
+            WebAuthnCredentialEntity credential = WebAuthnCredentialEntity.builder()
+                    .userId(userId)
+                    .credentialId(parsedCredIdB64url)
+                    .publicKey(coseKeyB64url)
+                    .signCount(0L)
+                    .deviceName(req.getDeviceName())
+                    .aaguid(req.getAaguid())
+                    .build();
+            webAuthnCredentialRepository.save(credential);
+
         } catch (DataConversionException | VerificationException e) {
             log.warn("WebAuthn attestation検証失敗: userId={}", userId, e);
             throw new BusinessException(AuthErrorCode.AUTH_024, e);
         }
-
-        // 2. credential_id重複チェック
-        if (webAuthnCredentialRepository.findByCredentialId(req.getCredentialId()).isPresent()) {
-            throw new BusinessException(AuthErrorCode.AUTH_025);
-        }
-
-        // 3. WebAuthnCredentialEntity保存
-        WebAuthnCredentialEntity credential = WebAuthnCredentialEntity.builder()
-                .userId(userId)
-                .credentialId(req.getCredentialId())
-                .publicKey(req.getPublicKey())
-                .signCount(0L)
-                .deviceName(req.getDeviceName())
-                .aaguid(req.getAaguid())
-                .build();
-        webAuthnCredentialRepository.save(credential);
 
         // 4. イベント発行
         eventPublisher.publish(new WebAuthnRegisteredEvent(userId, req.getDeviceName()));
