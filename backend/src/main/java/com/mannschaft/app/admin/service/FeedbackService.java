@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -75,6 +76,25 @@ public class FeedbackService {
         } else {
             page = feedbackRepository.findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
                     scopeType, scopeId, pageable);
+        }
+        return toResponsePageWithVoteCounts(page);
+    }
+
+    /**
+     * システム管理者向けにプラットフォーム全体（GENERAL スコープ）のフィードバックを取得する。
+     * scopeId IS NULL（ナビバー目安箱からの投稿）のみ対象。
+     *
+     * @param status   ステータス（nullなら全件）
+     * @param pageable ページネーション情報
+     * @return フィードバックページ
+     */
+    public Page<FeedbackResponse> getGeneralFeedbacks(@Nullable String status, Pageable pageable) {
+        Page<FeedbackSubmissionEntity> page;
+        if (status != null && !status.isBlank()) {
+            page = feedbackRepository.findByScopeTypeAndScopeIdIsNullAndStatusOrderByCreatedAtDesc(
+                    "GENERAL", parseFeedbackStatus(status), pageable);
+        } else {
+            page = feedbackRepository.findByScopeTypeAndScopeIdIsNullOrderByCreatedAtDesc("GENERAL", pageable);
         }
         return toResponsePageWithVoteCounts(page);
     }

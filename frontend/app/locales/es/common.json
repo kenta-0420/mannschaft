@@ -1414,7 +1414,12 @@
       "shiftBudget": "Presupuesto de turno",
       "betaRestriction": "Restricción beta",
       "errorReports": "Informes de errores",
-      "gdprPurge": "Estado de Purga GDPR"
+      "gdprPurge": "Estado de Purga GDPR",
+      "feedbackInbox": "Buzón de comentarios (Global)"
+    },
+    "impersonation": {
+      "banner": "Suplantando a: {label}",
+      "exit": "Salir"
     },
     "businessAlert": {
       "title": "Alertas de negocio",

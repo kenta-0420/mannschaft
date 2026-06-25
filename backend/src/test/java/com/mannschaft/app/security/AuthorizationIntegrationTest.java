@@ -1,6 +1,7 @@
 package com.mannschaft.app.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.admin.filter.AdminImpersonationFilter;
 import com.mannschaft.app.advertising.campaign.filter.AdPublicEndpointRateLimitFilter;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.config.JwtAuthenticationFilter;
@@ -98,6 +99,12 @@ class AuthorizationIntegrationTest {
         @Bean
         JwtAuthenticationFilter jwtAuthenticationFilter() {
             return new JwtAuthenticationFilter(mock(AuthTokenService.class));
+        }
+
+        /** F10.1: AdminImpersonationFilter。ObjectMapper のみ依存。ヘッダー無しは即 chain.doFilter。 */
+        @Bean
+        AdminImpersonationFilter adminImpersonationFilter() {
+            return new AdminImpersonationFilter(mock(ObjectMapper.class));
         }
 
         @Bean
