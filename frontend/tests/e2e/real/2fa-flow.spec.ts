@@ -155,7 +155,7 @@ test.describe('TWOFA: 2FA セットアップ・ログインフロー', () => {
       // InputOtp: 各桁の入力フィールドに1文字ずつ
       for (let i = 0; i < 6; i++) {
         await otpInputs.nth(i).click()
-        await otpInputs.nth(i).fill(code[i])
+        await otpInputs.nth(i).fill(code[i]!)
       }
     } else {
       // フォールバック: 単一の input に6桁まとめて入力

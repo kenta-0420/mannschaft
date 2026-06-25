@@ -103,7 +103,7 @@ test.describe('WEBAUTHN: パスキー登録・ログインフロー', () => {
         function bufferToBase64url(buffer: ArrayBuffer): string {
           const bytes = new Uint8Array(buffer)
           let binary = ''
-          for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+          for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]!)
           const b64 = btoa(binary)
           return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
         }
@@ -176,7 +176,7 @@ test.describe('WEBAUTHN: パスキー登録・ログインフロー', () => {
         function bufferToBase64url(buffer: ArrayBuffer): string {
           const bytes = new Uint8Array(buffer)
           let binary = ''
-          for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+          for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]!)
           const b64 = btoa(binary)
           return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
         }
@@ -236,7 +236,7 @@ test.describe('WEBAUTHN: パスキー登録・ログインフロー', () => {
         function bufferToBase64url(buffer: ArrayBuffer): string {
           const bytes = new Uint8Array(buffer)
           let binary = ''
-          for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+          for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]!)
           const b64 = btoa(binary)
           return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
         }
