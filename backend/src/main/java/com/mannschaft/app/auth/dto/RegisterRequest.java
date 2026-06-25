@@ -67,6 +67,7 @@ public class RegisterRequest {
      * <p>空文字・null の場合は 400（AUTH_PP_002）として弾かれる。</p>
      */
     @NotBlank(message = "AUTH_PP_002")
+    @Size(max = 20, message = "AUTH_PP_003")
     private final String privacyPolicyVersion;
 
     @JsonCreator
