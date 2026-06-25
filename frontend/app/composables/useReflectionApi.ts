@@ -184,10 +184,28 @@ export function useReflectionApi() {
     qs.set('from', params.from)
     qs.set('to', params.to)
     if (params.themeId) qs.set('themeId', params.themeId)
-    if (params.sourceType) qs.set('sourceType', params.sourceType)
-    if (params.subject) qs.set('subject', params.subject)
-    if (params.page != null) qs.set('page', String(params.page))
-    if (params.size != null) qs.set('size', String(params.size))
+    // 複数教科 OR フィルタ（繰り返しパラメータ形式・AC-62）
+    if (params.subjects && params.subjects.length > 0) {
+      params.subjects.forEach(s => qs.append('subjects', s))
+    }
+    else if (params.subject) {
+      qs.set('subject', params.subject)
+    }
+    // 複数 sourceType OR フィルタ（AC-65）
+    if (params.sourceTypes && params.sourceTypes.length > 0) {
+      params.sourceTypes.forEach(t => qs.append('sourceTypes', t))
+    }
+    else if (params.sourceType) {
+      qs.set('sourceType', params.sourceType)
+    }
+    // shuffle=true の場合はページング不要（AC-63）
+    if (params.shuffle) {
+      qs.set('shuffle', 'true')
+    }
+    else {
+      if (params.page != null) qs.set('page', String(params.page))
+      if (params.size != null) qs.set('size', String(params.size))
+    }
     return api<{ data: ReflectionVocabCardsResponse }>(`${BASE}/cards?${qs.toString()}`)
   }
 

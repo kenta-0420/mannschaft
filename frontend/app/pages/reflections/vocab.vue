@@ -4,8 +4,13 @@
  *
  * 指定期間の TERM_CARD カードを横断抽出し、一覧表示または自己クイズで使える。
  * recall_attempts への書込は一切行わない（スケジュール想起と独立）。
+ *
+ * Phase 4.1 追加（AC-62〜68）:
+ * - 教科フィルタ（マルチセレクト・subjects[]）
+ * - シャッフルトグル（毎回順番が変わる）
+ * - 500件超警告（シャッフル時）
  */
-import type { ReflectionVocabCardItem, VocabQuizDirection } from '~/types/reflection'
+import type { ReflectionThemeResponse, ReflectionVocabCardItem, VocabQuizDirection } from '~/types/reflection'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -24,6 +29,13 @@ const toDate = ref(today.toISOString().slice(0, 10))
 const loading = ref(false)
 const cards = ref<ReflectionVocabCardItem[]>([])
 const totalCards = ref(0)
+
+// 教科フィルタ（AC-62）
+const allSubjects = ref<string[]>([])
+const selectedSubjects = ref<string[]>([])
+
+// シャッフルトグル（AC-63）
+const shuffleEnabled = ref(false)
 
 // クイズモード
 const mode = ref<'view' | 'quiz'>('view')
@@ -54,13 +66,53 @@ const answerText = computed(() => {
     : currentCard.value.meaning
 })
 
+// 500件超警告（シャッフル時・AC-63）
+const showCardLimitWarning = computed(() => shuffleEnabled.value && totalCards.value > 500)
+
+/** テーマ一覧から教科名を収集 */
+async function loadSubjects() {
+  try {
+    const res = await reflectionApi.listThemes()
+    const themes: ReflectionThemeResponse[] = res.data ?? []
+    const subjects = new Set<string>()
+    for (const theme of themes) {
+      if (theme.linkedSubjectName) {
+        subjects.add(theme.linkedSubjectName)
+      }
+    }
+    allSubjects.value = Array.from(subjects).sort()
+  }
+  catch {
+    // 教科一覧取得に失敗しても検索は続行できる
+  }
+}
+
+function toggleSubject(subject: string) {
+  const idx = selectedSubjects.value.indexOf(subject)
+  if (idx === -1) {
+    selectedSubjects.value = [...selectedSubjects.value, subject]
+  }
+  else {
+    selectedSubjects.value = selectedSubjects.value.filter(s => s !== subject)
+  }
+}
+
+function selectAllSubjects() {
+  selectedSubjects.value = []
+}
+
 async function search() {
   if (!fromDate.value || !toDate.value) return
   loading.value = true
   currentIndex.value = 0
   flipped.value = false
   try {
-    const res = await reflectionApi.getVocabCards({ from: fromDate.value, to: toDate.value })
+    const res = await reflectionApi.getVocabCards({
+      from: fromDate.value,
+      to: toDate.value,
+      subjects: selectedSubjects.value.length > 0 ? selectedSubjects.value : undefined,
+      shuffle: shuffleEnabled.value || undefined,
+    })
     cards.value = res.data.cards ?? []
     totalCards.value = res.data.totalCards ?? 0
   }
@@ -86,7 +138,10 @@ function prevCard() {
   }
 }
 
-onMounted(search)
+onMounted(async () => {
+  await loadSubjects()
+  await search()
+})
 </script>
 
 <template>
@@ -97,17 +152,65 @@ onMounted(search)
       back-to="/reflections"
     />
 
-    <!-- 期間フィルタ -->
-    <div class="mb-4 flex flex-wrap gap-3 rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800">
-      <div class="flex items-center gap-2">
-        <label class="text-sm text-surface-600">{{ t('reflection.vocab.period_from') }}</label>
-        <InputText v-model="fromDate" type="date" size="small" />
+    <!-- 期間・フィルタパネル -->
+    <div class="mb-4 space-y-3 rounded-xl border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800">
+      <!-- 期間フィルタ行 -->
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="flex items-center gap-2">
+          <label class="text-sm text-surface-600">{{ t('reflection.vocab.period_from') }}</label>
+          <InputText v-model="fromDate" type="date" size="small" />
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-sm text-surface-600">{{ t('reflection.vocab.period_to') }}</label>
+          <InputText v-model="toDate" type="date" size="small" />
+        </div>
+        <Button :label="t('button.search')" icon="pi pi-search" size="small" @click="search" />
       </div>
-      <div class="flex items-center gap-2">
-        <label class="text-sm text-surface-600">{{ t('reflection.vocab.period_to') }}</label>
-        <InputText v-model="toDate" type="date" size="small" />
+
+      <!-- 教科フィルタ（AC-62）: 教科が1件以上あるときのみ表示 -->
+      <div v-if="allSubjects.length > 0">
+        <p class="mb-1 text-xs text-surface-500">{{ t('reflection.vocab.subjects_filter') }}</p>
+        <div class="flex flex-wrap gap-2">
+          <!-- 「全教科」チップ -->
+          <button
+            type="button"
+            class="rounded-full border px-3 py-1 text-xs transition-colors"
+            :class="selectedSubjects.length === 0
+              ? 'border-primary bg-primary text-white'
+              : 'border-surface-300 bg-surface-0 text-surface-600 hover:border-primary dark:border-surface-600 dark:bg-surface-700 dark:text-surface-300'"
+            @click="selectAllSubjects"
+          >
+            {{ t('reflection.vocab.subjects_all') }}
+          </button>
+          <!-- 教科チップ -->
+          <button
+            v-for="subject in allSubjects"
+            :key="subject"
+            type="button"
+            class="rounded-full border px-3 py-1 text-xs transition-colors"
+            :class="selectedSubjects.includes(subject)
+              ? 'border-primary bg-primary text-white'
+              : 'border-surface-300 bg-surface-0 text-surface-600 hover:border-primary dark:border-surface-600 dark:bg-surface-700 dark:text-surface-300'"
+            @click="toggleSubject(subject)"
+          >
+            {{ subject }}
+          </button>
+        </div>
       </div>
-      <Button :label="t('button.search')" icon="pi pi-search" size="small" @click="search" />
+
+      <!-- シャッフルトグル（AC-63）-->
+      <div class="flex items-center gap-3">
+        <ToggleSwitch v-model="shuffleEnabled" input-id="shuffle-toggle" />
+        <label for="shuffle-toggle" class="cursor-pointer text-sm text-surface-600 dark:text-surface-300">
+          {{ t('reflection.vocab.shuffle') }}
+        </label>
+        <span class="text-xs text-surface-400">{{ t('reflection.vocab.shuffle_note') }}</span>
+      </div>
+
+      <!-- 500件超警告（AC-63）-->
+      <Message v-if="showCardLimitWarning" severity="warn" :closable="false">
+        {{ t('reflection.vocab.card_limit_warning') }}
+      </Message>
     </div>
 
     <!-- モード切替 -->
