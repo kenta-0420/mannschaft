@@ -155,6 +155,13 @@ public class ReflectionThemeEntity extends UuidV7Entity {
     }
 
     /**
+     * Phase 4.1: linkedSlotKind を NULL クリアする（AC-64: linkedSlotId=null 時の強制 NULL 化）。
+     */
+    public void clearLinkedSlotKind() {
+        this.linkedSlotKind = null;
+    }
+
+    /**
      * Phase 2: 科目名紐づけを設定する（examDate と同型のミューテート方式）。
      *
      * @param subjectName 科目名（NULL 設定可）

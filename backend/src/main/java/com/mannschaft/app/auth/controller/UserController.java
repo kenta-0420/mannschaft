@@ -203,10 +203,10 @@ public class UserController {
             @RequestParam(required = false) String cursor,
             @Parameter(description = "取得件数（デフォルト5）")
             @RequestParam(defaultValue = "5") int limit,
-            @Parameter(description = "開始日時（ISO 8601形式）")
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
-            @Parameter(description = "終了日時（ISO 8601形式）")
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
+            @Parameter(description = "開始日時（yyyy-MM-dd'T'HH:mm:ss 形式）")
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss") LocalDateTime from,
+            @Parameter(description = "終了日時（yyyy-MM-dd'T'HH:mm:ss 形式）")
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss") LocalDateTime to) {
         Long userId = SecurityUtils.getCurrentUserId();
         CursorPagedResponse<LoginHistoryResponse> response = authService.getLoginHistory(userId, cursor, limit, from, to);
         return ResponseEntity.ok(response);
