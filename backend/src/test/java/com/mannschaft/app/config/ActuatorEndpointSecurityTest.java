@@ -1,6 +1,7 @@
 package com.mannschaft.app.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.admin.filter.AdminImpersonationFilter;
 import com.mannschaft.app.advertising.campaign.filter.AdPublicEndpointRateLimitFilter;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.proxy.ProxyInputContext;
@@ -104,6 +105,15 @@ class ActuatorEndpointSecurityTest {
         @Bean
         JwtAuthenticationFilter jwtAuthenticationFilter() {
             return new JwtAuthenticationFilter(mock(AuthTokenService.class));
+        }
+
+        /**
+         * F10.1: AdminImpersonationFilter の本物インスタンス。ObjectMapper のみに依存。
+         * X-Admin-Impersonate-User-Id ヘッダーが無いリクエストでは何もせず chain に通す。
+         */
+        @Bean
+        AdminImpersonationFilter adminImpersonationFilter() {
+            return new AdminImpersonationFilter(mock(ObjectMapper.class));
         }
 
         /**
