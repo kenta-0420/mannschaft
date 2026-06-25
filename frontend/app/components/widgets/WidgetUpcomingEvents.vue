@@ -2,6 +2,7 @@
 const { getUpcomingEvents } = useDashboardApi()
 const { captureQuiet } = useErrorReport()
 const { formatDate, formatDateTime } = useDatetime()
+const { t } = useI18n()
 
 interface UpcomingEvent {
   id: number
@@ -16,12 +17,14 @@ interface UpcomingEvent {
 }
 
 const events = ref<UpcomingEvent[]>([])
-const loading = ref(true)
+const loading = ref(false)
+const viewMode = ref<'today' | 'week'>('week')
 
 async function load() {
   loading.value = true
   try {
-    const res = await getUpcomingEvents(7)
+    const days = viewMode.value === 'today' ? 1 : 7
+    const res = await getUpcomingEvents(days)
     events.value = res.data
   } catch (error) {
     captureQuiet(error, { context: 'WidgetUpcomingEvents: 直近イベント取得' })
@@ -35,18 +38,37 @@ function formatTime(dateStr: string): string {
   return formatDateTime(dateStr)
 }
 
+watch(viewMode, () => load())
 onMounted(load)
 </script>
 
 <template>
   <DashboardWidgetCard
-    title="今週の予定"
+    :title="viewMode === 'today' ? t('dashboard.upcoming_events.today_title') : t('dashboard.upcoming_events.week_title')"
     icon="pi pi-calendar"
     to="/calendar"
     :loading="loading"
     refreshable
     @refresh="load"
   >
+    <!-- 今日 / 今週 トグル -->
+    <div class="mb-3 flex gap-1">
+      <Button
+        :label="t('dashboard.upcoming_events.toggle_today')"
+        size="small"
+        :outlined="viewMode !== 'today'"
+        :text="viewMode !== 'today'"
+        @click="viewMode = 'today'"
+      />
+      <Button
+        :label="t('dashboard.upcoming_events.toggle_week')"
+        size="small"
+        :outlined="viewMode !== 'week'"
+        :text="viewMode !== 'week'"
+        @click="viewMode = 'week'"
+      />
+    </div>
+
     <div v-if="events.length > 0" class="space-y-3">
       <div
         v-for="event in events"
@@ -86,6 +108,10 @@ onMounted(load)
         <Tag v-if="event.all_day" value="終日" severity="secondary" rounded />
       </div>
     </div>
-    <DashboardEmptyState v-else icon="pi pi-calendar" message="今週の予定はありません" />
+    <DashboardEmptyState
+      v-else
+      icon="pi pi-calendar"
+      :message="viewMode === 'today' ? t('dashboard.upcoming_events.empty_today') : t('dashboard.upcoming_events.empty_week')"
+    />
   </DashboardWidgetCard>
 </template>
