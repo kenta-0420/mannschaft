@@ -216,6 +216,24 @@ watch(
               absoluteAt: null,
             }))
           }
+          // 個人予定: status.recurrenceRule から繰り返し設定をフォームに復元する
+          const status = (data.status as Record<string, unknown>) ?? {}
+          const recurrenceRule = status.recurrenceRule as Record<string, unknown> | null
+          if (recurrenceRule && typeof recurrenceRule === 'object') {
+            form.value.recurrence = true
+            form.value.recurrenceType = (recurrenceRule.type as string) ?? 'WEEKLY'
+            form.value.recurrenceInterval = (recurrenceRule.interval as number) ?? 1
+            form.value.recurrenceDaysOfWeek = (recurrenceRule.daysOfWeek as string[]) ?? []
+            form.value.recurrenceEndType = (recurrenceRule.endType as string) ?? 'NEVER'
+            if (recurrenceRule.endDate) {
+              form.value.recurrenceEndDate = new Date(recurrenceRule.endDate as string)
+            }
+            if (recurrenceRule.count != null) {
+              form.value.recurrenceCount = recurrenceRule.count as number
+            }
+          } else {
+            form.value.recurrence = false
+          }
         }
         else {
           form.value.title = (data.title as string) ?? ''
@@ -420,6 +438,9 @@ async function submit() {
         ? form.value.recurrenceCount
         : undefined,
     }
+  } else if (isEdit.value && effectiveScope.value.isPersonal) {
+    // 個人予定の編集で繰り返しを OFF にした場合は null を明示送信してクリアする
+    body.recurrenceRule = null
   }
 
   // === 機能55: リマインダー ===

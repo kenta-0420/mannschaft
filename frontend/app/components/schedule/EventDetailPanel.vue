@@ -157,8 +157,9 @@ onMounted(async () => {
       delegationCount.value = 0
     }
   }
-  // 機能55: 予約タスクは編集権限者にのみ表示・取消可能
-  if (props.canEdit) {
+  // 機能55: 予約タスクは編集権限者かつチーム/組織スコープにのみ表示・取消可能
+  // 個人予定（scopeId が空）の場合は GET /teams//schedules/{id} の二重スラッシュを避けるためスキップ
+  if (props.canEdit && props.scopeId) {
     await loadScheduledTasks()
   }
 })
