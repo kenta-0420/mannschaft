@@ -145,7 +145,7 @@ test.describe('WEBAUTHN-UI-001〜003: パスキー登録UI', () => {
   test('WEBAUTHN-UI-001: パスキー登録ボタンが表示される', async ({ page }) => {
     // WebAuthn 対応ブラウザをシミュレート
     await page.addInitScript(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-extraneous-class
       ;(window as any).PublicKeyCredential = class {}
     })
     await mockSecurityApis(page)
@@ -158,7 +158,7 @@ test.describe('WEBAUTHN-UI-001〜003: パスキー登録UI', () => {
 
   test('WEBAUTHN-UI-002: 登録ボタンクリックでダイアログが開く', async ({ page }) => {
     await page.addInitScript(() => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-extraneous-class
       ;(window as any).PublicKeyCredential = class {}
     })
     await mockSecurityApis(page)
