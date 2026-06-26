@@ -12,6 +12,7 @@ import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.dashboard.dto.ActivityFeedResponse;
 import com.mannschaft.app.dashboard.dto.ChatHubResponse;
+import com.mannschaft.app.dashboard.dto.DashboardAnnouncementResponse;
 import com.mannschaft.app.dashboard.dto.OrgDashboardResponse;
 import com.mannschaft.app.dashboard.dto.PersonalDashboardResponse;
 import com.mannschaft.app.dashboard.dto.TeamDashboardResponse;
@@ -94,6 +95,7 @@ public class DashboardController {
     private final com.mannschaft.app.dashboard.service.ScopeActionRequiredFacade scopeActionRequiredFacade;
     private final OrganizationService organizationService;
     private final TeamService teamService;
+    private final com.mannschaft.app.admin.service.PlatformAnnouncementService platformAnnouncementService;
 
     // ============================================
     // 個人ダッシュボード
@@ -110,6 +112,35 @@ public class DashboardController {
         Long userId = SecurityUtils.getCurrentUserId();
         PersonalDashboardResponse response = dashboardService.getPersonalDashboard(userId, priority);
         return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * プラットフォームお知らせ取得（WidgetPlatformAnnouncements 用）。
+     */
+    @GetMapping("/announcements")
+    @Operation(summary = "プラットフォームお知らせ取得", description = "公開中のプラットフォームお知らせ一覧を返す")
+    public ResponseEntity<ApiResponse<List<DashboardAnnouncementResponse>>> getAnnouncements() {
+        List<DashboardAnnouncementResponse> announcements = platformAnnouncementService
+                .getActiveAnnouncements()
+                .stream()
+                .map(a -> new DashboardAnnouncementResponse(
+                        a.getId(),
+                        a.getTitle(),
+                        a.getBody(),
+                        mapSeverity(a.getPriority()),
+                        a.getIsPinned(),
+                        a.getPublishedAt()))
+                .toList();
+        return ResponseEntity.ok(ApiResponse.of(announcements));
+    }
+
+    private static String mapSeverity(String priority) {
+        if (priority == null) return "INFO";
+        return switch (priority.toUpperCase()) {
+            case "URGENT", "CRITICAL" -> "URGENT";
+            case "HIGH", "WARNING" -> "WARNING";
+            default -> "INFO";
+        };
     }
 
     /**
