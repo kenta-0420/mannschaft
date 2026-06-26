@@ -88,6 +88,9 @@ class GoogleCalendarServicePhase4Test {
     @Mock
     private ValueOperations<String, String> valueOperations;
 
+    @Mock
+    private GoogleCalendarWebhookService webhookService;
+
     @InjectMocks
     private GoogleCalendarService googleCalendarService;
 
@@ -98,10 +101,10 @@ class GoogleCalendarServicePhase4Test {
 
     @BeforeEach
     void setUp() {
-        // NOTE: GoogleCalendarService は現在 createEvent が String（eventId のみ）を返す。
-        // Phase 4 では createEvent / updateEvent が ETag を含むレスポンスを返す必要がある。
-        // このセットアップは Phase 4 実装後に GoogleApiClient のモックをアップデートする。
-        given(encryptionService.decrypt(anyString())).willReturn("raw_access_token");
+        // lenient: GOOGLE_IMPORT テストでは encryptionService が呼ばれないため、
+        //          strict Mockito が UnnecessaryStubbingException を出さないよう lenient で設定する。
+        org.mockito.Mockito.lenient()
+                .when(encryptionService.decrypt(anyString())).thenReturn("raw_access_token");
     }
 
     // ========================================
@@ -129,20 +132,17 @@ class GoogleCalendarServicePhase4Test {
             given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.of(conn));
 
             // given: 既存マッピングなし（新規 push）
-            given(googleEventRepository.findByUserIdAndScheduleId(USER_ID, SCHEDULE_ID))
+            // NOTE: schedule.getId() は @GeneratedValue のためテスト時は null → anyLong() でマッチしない。
+            //       any() を使って引数問わず empty を返す。
+            given(googleEventRepository.findByUserIdAndScheduleId(any(Long.class), any()))
                     .willReturn(Optional.empty());
 
-            // given: Google createEvent が eventId を返す
-            // Phase 4 では createEvent のレスポンスが ETag も含む形に拡張される。
-            // 現状の GoogleApiClient.createEvent は String（eventId のみ）を返すため
-            // この given は現時点では "etag なし" を表現している。
+            // given: Google createEvent が eventId と ETag を返す（Phase 4 実装）
             given(googleApiClient.createEvent(
                     eq("raw_access_token"),
                     eq("primary"),
                     any(GoogleApiClient.CalendarEventRequest.class)))
-                    .willReturn(GOOGLE_EVENT_ID);
-            // NOTE: Phase 4 では以下に変更予定:
-            //   .willReturn(new GoogleApiClient.CreateEventResponse(GOOGLE_EVENT_ID, EXPECTED_ETAG));
+                    .willReturn(new GoogleApiClient.CreateEventResponse(GOOGLE_EVENT_ID, EXPECTED_ETAG));
 
             // given: 保存される UserScheduleGoogleEventEntity をキャプチャするための設定
             given(googleEventRepository.save(any(UserScheduleGoogleEventEntity.class)))
@@ -202,12 +202,17 @@ class GoogleCalendarServicePhase4Test {
                     .syncDirection(SyncDirection.PUSH_ONLY)
                     .googleEtag("\"W/oldEtag\"") // 古い ETag
                     .build();
-            given(googleEventRepository.findByUserIdAndScheduleId(USER_ID, SCHEDULE_ID))
+            // NOTE: schedule.getId() は @GeneratedValue のためテスト時は null → any() でマッチ
+            given(googleEventRepository.findByUserIdAndScheduleId(any(Long.class), any()))
                     .willReturn(Optional.of(existingMapping));
 
-            // given: Google updateEvent が（Phase 4 では）新しい ETag を返す
-            // 現状の updateEvent は void のため ETag を返せない:
-            //   注: Phase 4 実装で updateEvent の戻り値 or レスポンスヘッダから ETag を取得する必要がある
+            // given: Google updateEvent が（Phase 4 実装）新しい ETag を返す
+            given(googleApiClient.updateEvent(
+                    eq("raw_access_token"),
+                    eq("primary"),
+                    eq(GOOGLE_EVENT_ID),
+                    any(GoogleApiClient.CalendarEventRequest.class)))
+                    .willReturn(EXPECTED_ETAG);
             given(googleEventRepository.save(any(UserScheduleGoogleEventEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
 
@@ -242,18 +247,8 @@ class GoogleCalendarServicePhase4Test {
         @Test
         @DisplayName("AC-13: source=GOOGLE_IMPORT スケジュールは push しないため ETag 更新も発生しない（AC-12 との整合）")
         void googleImportSchedule_notPushed_etagNotUpdated() {
-            // given: アクティブな接続
-            UserGoogleCalendarConnectionEntity conn = UserGoogleCalendarConnectionEntity.builder()
-                    .userId(USER_ID)
-                    .googleAccountEmail("test@gmail.com")
-                    .googleCalendarId("primary")
-                    .accessToken("encrypted_access")
-                    .refreshToken("encrypted_refresh")
-                    .tokenExpiresAt(LocalDateTime.now().plusHours(1))
-                    .isActive(true)
-                    .personalSyncEnabled(false)
-                    .build();
-            given(connectionRepository.findByUserId(USER_ID)).willReturn(Optional.of(conn));
+            // NOTE: source=GOOGLE_IMPORT の場合は connectionRepository を参照する前に早期 return するため
+            //       connectionRepository の stubbing は不要（設定すると UnnecessaryStubbingException）。
 
             // given: source=GOOGLE_IMPORT のスケジュール
             ScheduleEntity googleImportSchedule = ScheduleEntity.builder()

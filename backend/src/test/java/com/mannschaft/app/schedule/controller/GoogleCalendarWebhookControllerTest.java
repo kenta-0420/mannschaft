@@ -1,6 +1,9 @@
 package com.mannschaft.app.schedule.controller;
 
+import com.mannschaft.app.schedule.entity.GoogleCalendarWebhookChannelEntity;
+import com.mannschaft.app.schedule.repository.GoogleCalendarWebhookChannelRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -8,6 +11,8 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.LocalDateTime;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -41,6 +46,9 @@ class GoogleCalendarWebhookControllerTest extends AbstractMySqlIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private GoogleCalendarWebhookChannelRepository channelRepository;
+
     // ========================================
     // AC-5: トークン不一致 → 403
     // ========================================
@@ -49,17 +57,31 @@ class GoogleCalendarWebhookControllerTest extends AbstractMySqlIntegrationTest {
     @DisplayName("AC-5: X-Goog-Channel-Token 不一致")
     class AC5TokenMismatch {
 
+        @BeforeEach
+        void setUp() {
+            // AC-5 のシナリオ: channel-id=test-channel-id-001 が DB に存在するが
+            // リクエストのトークンが "WRONG_TOKEN" で DB の "CORRECT_TOKEN_64CHARS_PADDED_______________X" と不一致
+            channelRepository.deleteAll();
+            channelRepository.save(
+                    GoogleCalendarWebhookChannelEntity.builder()
+                            .userId(1L)
+                            .channelId("test-channel-id-001")
+                            .resourceId("test-resource-001")
+                            .channelToken("CORRECT_TOKEN_64CHARS_PADDED_______________X")
+                            .expiresAt(LocalDateTime.now().plusDays(7))
+                            .build()
+            );
+        }
+
         @Test
         @DisplayName("AC-5: X-Goog-Channel-Token が DB に存在するトークンと不一致の場合、403 を返す")
         void tokenMismatch_returns403() throws Exception {
-            // given: Channel-ID は DB に存在するが Token が不一致のシナリオ
-            // （Phase 4 実装後: DB にチャンネルを登録してから不一致トークンを送る）
+            // given: Channel-ID は DB に存在するが Token が不一致
             mockMvc.perform(post(WEBHOOK_PATH)
                             .header("X-Goog-Channel-ID", "test-channel-id-001")
                             .header("X-Goog-Channel-Token", "WRONG_TOKEN")
                             .header("X-Goog-Resource-State", "exists")
                             .header("X-Goog-Resource-ID", "test-resource-001"))
-                    // red: Controller 未実装のため現在は 404。実装後は 403 を返す
                     .andExpect(status().isForbidden()); // 403
         }
     }

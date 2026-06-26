@@ -203,6 +203,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/v1/active-incidents").permitAll()
                 // CSP 違反レポート受信（ブラウザ自動送信のため認証不要）
                 .requestMatchers(HttpMethod.POST, "/api/v1/security/csp-reports").permitAll()
+                // F02.12 Phase 4: Google Calendar Webhook 受信（Google からの外部コールバック・認証不要）
+                // トークン検証は GoogleCalendarWebhookService 内で行う（定数時間比較 + DB 照合）
+                .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/google-calendar").permitAll()
                 // F10.6 Phase 10-γ-③-a: SSR エラー受信（認証不要。コントローラーが内部トークンで検証）
                 .requestMatchers(HttpMethod.POST, "/api/internal/ssr-logs").permitAll()
                 // F04.8 連絡先招待プレビュー（認証不要）

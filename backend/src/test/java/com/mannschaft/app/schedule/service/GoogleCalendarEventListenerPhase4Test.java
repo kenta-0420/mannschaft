@@ -101,24 +101,16 @@ class GoogleCalendarEventListenerPhase4Test {
                     .source(ScheduleSource.GOOGLE_IMPORT) // Google からのインポート
                     .build();
 
-            UserCalendarSyncSettingEntity syncSetting = UserCalendarSyncSettingEntity.builder()
-                    .userId(USER_ID)
-                    .scopeType("TEAM")
-                    .scopeId(TEAM_ID)
-                    .isEnabled(true)
-                    .build();
-
             given(scheduleRepository.findById(SCHEDULE_ID))
                     .willReturn(Optional.of(googleImportSchedule));
-            given(syncSettingRepository.findByScopeTypeAndScopeIdAndIsEnabledTrue("TEAM", TEAM_ID))
-                    .willReturn(List.of(syncSetting));
+            // NOTE: GOOGLE_IMPORT の場合は早期 return するため syncSettingRepository は呼ばれない。
+            // UnnecessaryStubbingException を避けるため stubbing を設定しない。
 
             // when: Mannschaft 上でスケジュールが更新されたイベントが発火
             ScheduleUpdatedEvent event = new ScheduleUpdatedEvent(SCHEDULE_ID, USER_ID);
             eventListener.onScheduleUpdated(event);
 
             // then: source=GOOGLE_IMPORT のため Google への push-back を抑止する
-            // red: 現在の実装は source を確認しないため syncScheduleToGoogle が呼ばれてしまう
             verify(googleCalendarService, never())
                     .syncScheduleToGoogle(any(ScheduleEntity.class), any(Long.class));
         }
