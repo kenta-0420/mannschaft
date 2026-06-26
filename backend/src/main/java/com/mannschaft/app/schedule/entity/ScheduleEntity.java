@@ -201,6 +201,15 @@ public class ScheduleEntity extends BaseEntity {
     }
 
     /**
+     * Google カレンダー同期で all_day フラグを更新する。
+     * Google 側で「時刻付き予定 <-> 全日予定」が変更されたとき、
+     * {@code updateScheduleFields} と組み合わせて呼び出す。
+     */
+    public void updateAllDay(boolean allDay) {
+        this.allDay = allDay;
+    }
+
+    /**
      * 個人スケジュールのPATCH更新を適用する。
      * toBuilder() は BaseEntity の id を継承しないため、直接フィールド変更方式を採用する。
      * null の項目はスキップ（PATCHセマンティクス）。

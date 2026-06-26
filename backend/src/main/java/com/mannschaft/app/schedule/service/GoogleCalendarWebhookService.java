@@ -300,11 +300,16 @@ public class GoogleCalendarWebhookService {
 
         LocalDateTime startAt;
         LocalDateTime endAt;
+        boolean allDay;
 
         if (start != null && start.getDateTime() != null) {
+            // 時刻付き予定
+            allDay = false;
             startAt = parseRfc3339DateTime(start.getDateTime());
             endAt = end != null && end.getDateTime() != null ? parseRfc3339DateTime(end.getDateTime()) : startAt.plusHours(1);
         } else {
+            // 全日予定（AC-11）
+            allDay = true;
             String dateStr = start != null ? start.getDate() : null;
             if (dateStr == null) return;
             LocalDate date = LocalDate.parse(dateStr.substring(0, 10));
@@ -321,6 +326,8 @@ public class GoogleCalendarWebhookService {
 
         // タイトル/日時/場所のみ更新（競合解決ルール: 次回 Mannschaft での更新時に Google の値が上書き）
         schedule.updateScheduleFields(title, schedule.getDescription(), event.getLocation(), startAt, endAt, schedule.getColor());
+        // Google 側で「時刻付き ↔ 全日」変更があった場合に all_day を反映（バグ修正: AC-11）
+        schedule.updateAllDay(allDay);
         scheduleRepository.save(schedule);
 
         // google_etag を最新値に更新
