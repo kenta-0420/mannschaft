@@ -20,6 +20,11 @@ public interface UserScheduleGoogleEventRepository extends JpaRepository<UserSch
     Optional<UserScheduleGoogleEventEntity> findByUserIdAndScheduleId(Long userId, Long scheduleId);
 
     /**
+     * Google イベントIDでマッピングを取得する（双方向同期のインポート冪等チェック用）。
+     */
+    Optional<UserScheduleGoogleEventEntity> findByGoogleEventId(String googleEventId);
+
+    /**
      * ユーザーIDでマッピング一覧を取得する。
      */
     List<UserScheduleGoogleEventEntity> findByUserId(Long userId);
