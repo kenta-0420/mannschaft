@@ -2,6 +2,7 @@ package com.mannschaft.app.schedule.repository;
 
 import com.mannschaft.app.schedule.entity.PersonalScheduleReminderEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
@@ -18,7 +19,10 @@ public interface PersonalScheduleReminderRepository extends JpaRepository<Person
 
     /**
      * スケジュールIDでリマインダーを削除する。
+     * flushAutomatically=true で DELETE を即時 DB に送出し、後続の saveAll() との
+     * 競合（uq_psr_schedule_minutes 重複エラー）を防ぐ。
      */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     void deleteByScheduleId(Long scheduleId);
 
     /**
