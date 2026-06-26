@@ -149,6 +149,13 @@ public class SealService {
         List<ElectronicSealEntity> seals = sealRepository.findByUserIdOrderByCreatedAtAsc(userId);
 
         if (seals.isEmpty()) {
+            // 論理削除済みのレコードがユニーク制約 (user_id, variant) に引っかかるため、
+            // 初回生成（INSERT）の前に物理削除しておく。
+            // @SQLRestriction は SELECT にのみ適用され、ここでの findByUserId... には作用しない。
+            int purged = sealRepository.deleteByUserIdAndDeletedAtIsNotNull(userId);
+            if (purged > 0) {
+                log.info("論理削除済み印鑑を物理削除: userId={}, count={}", userId, purged);
+            }
             return initializeSeals(userId);
         }
 
