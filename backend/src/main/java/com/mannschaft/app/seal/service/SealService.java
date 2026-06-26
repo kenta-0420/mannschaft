@@ -10,6 +10,7 @@ import com.mannschaft.app.seal.dto.CreateSealRequest;
 import com.mannschaft.app.seal.dto.ScopeDefaultResponse;
 import com.mannschaft.app.seal.dto.SealResponse;
 import com.mannschaft.app.seal.dto.SetScopeDefaultRequest;
+import com.mannschaft.app.seal.dto.UpdateScopeDefaultsRequest;
 import com.mannschaft.app.seal.dto.UpdateSealRequest;
 import com.mannschaft.app.seal.entity.ElectronicSealEntity;
 import com.mannschaft.app.seal.entity.SealScopeDefaultEntity;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -238,6 +240,48 @@ public class SealService {
                 .map(ElectronicSealEntity::getVariant)
                 .orElse(null);
         return sealMapper.toScopeDefaultResponse(saved, resolveScopeName(saved, teamNames, orgNames), variant);
+    }
+
+    /**
+     * ユーザーのスコープデフォルトを一括更新する。
+     * variant から sealId を自動解決し、スコープごとに upsert する。
+     *
+     * @param userId  ユーザーID
+     * @param request 一括更新リクエスト
+     * @return 更新後のスコープデフォルトレスポンスリスト
+     */
+    @Transactional
+    public List<ScopeDefaultResponse> updateScopeDefaults(Long userId, UpdateScopeDefaultsRequest request) {
+        for (UpdateScopeDefaultsRequest.ScopeDefaultItem item : request.getDefaults()) {
+            SealVariant variant = SealVariant.valueOf(item.getVariant());
+            SealScopeType scopeType = SealScopeType.valueOf(item.getScopeType());
+
+            // variant から sealId を解決（印鑑が存在しない場合はそのアイテムをスキップ）
+            Optional<ElectronicSealEntity> sealOpt = sealRepository.findByUserIdAndVariant(userId, variant);
+            if (sealOpt.isEmpty()) {
+                log.warn("スコープデフォルト更新スキップ: userId={}, variant={} の印鑑が存在しない", userId, variant);
+                continue;
+            }
+            Long sealId = sealOpt.get().getId();
+
+            SealScopeDefaultEntity entity = scopeDefaultRepository
+                    .findByUserIdAndScopeTypeAndScopeId(userId, scopeType, item.getScopeId())
+                    .map(existing -> {
+                        existing.changeSeal(sealId);
+                        return existing;
+                    })
+                    .orElseGet(() -> SealScopeDefaultEntity.builder()
+                            .userId(userId)
+                            .scopeType(scopeType)
+                            .scopeId(item.getScopeId())
+                            .sealId(sealId)
+                            .build());
+
+            scopeDefaultRepository.save(entity);
+            log.info("スコープデフォルト更新: userId={}, scopeType={}, sealId={}", userId, scopeType, sealId);
+        }
+
+        return listScopeDefaults(userId);
     }
 
     /**

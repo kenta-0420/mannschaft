@@ -7,6 +7,7 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.seal.dto.CreateSealRequest;
 import com.mannschaft.app.seal.dto.ScopeDefaultResponse;
 import com.mannschaft.app.seal.dto.SealResponse;
+import com.mannschaft.app.seal.dto.UpdateScopeDefaultsRequest;
 import com.mannschaft.app.seal.dto.UpdateSealRequest;
 import com.mannschaft.app.seal.service.SealService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -82,6 +83,20 @@ public class SealController {
             @PathVariable Long userId) {
         checkOwner(userId);
         List<ScopeDefaultResponse> defaults = sealService.listScopeDefaults(userId);
+        return ResponseEntity.ok(ApiResponse.of(defaults));
+    }
+
+    /**
+     * ユーザーのスコープデフォルトを一括更新する。
+     */
+    @PutMapping("/scope-defaults")
+    @Operation(summary = "スコープデフォルト一括更新")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    public ResponseEntity<ApiResponse<List<ScopeDefaultResponse>>> updateScopeDefaults(
+            @PathVariable Long userId,
+            @Valid @RequestBody UpdateScopeDefaultsRequest request) {
+        checkOwner(userId);
+        List<ScopeDefaultResponse> defaults = sealService.updateScopeDefaults(userId, request);
         return ResponseEntity.ok(ApiResponse.of(defaults));
     }
 
