@@ -48,6 +48,21 @@ public class AuthOAuthLinkService {
     private String appBaseUrl;
 
     /**
+     * Google Calendar のみを接続する OAuth 認可 URL を生成する。
+     * OAuthAccount が既に連携済みでも使用可能。
+     *
+     * @param userId 連携を要求するユーザーID
+     * @return 認可 URL（Google Calendar スコープ付き）
+     */
+    public String generateCalendarOnlyAuthUrl(Long userId) {
+        String state = UUID.randomUUID().toString();
+        String redisKey = STATE_KEY_PREFIX + state;
+        // "calendarOnly:{userId}" 形式で保存（processCallback で OAuthAccount 作成をスキップ）
+        redisTemplate.opsForValue().set(redisKey, "calendarOnly:" + userId, STATE_TTL);
+        return buildGoogleAuthUrl(state, true);
+    }
+
+    /**
      * 指定プロバイダの OAuth 認可 URL を生成し、state を Redis に保存する。
      *
      * @param userId          連携を要求するユーザーID
@@ -105,13 +120,21 @@ public class AuthOAuthLinkService {
             return appBaseUrl + LINKED_ACCOUNTS_PATH + "?error=invalid_state";
         }
 
-        // 3. userId と includeCalendar を解析（形式: "{userId}:{includeCalendar}"）
+        // 3. userId と includeCalendar を解析
+        //    形式A: "{userId}:{includeCalendar}"（通常の OAuth 連携）
+        //    形式B: "calendarOnly:{userId}"（カレンダー専用連携・OAuthAccount 作成スキップ）
         Long userId;
         boolean includeCalendar;
+        boolean calendarOnly = redisValue.startsWith("calendarOnly:");
         try {
-            String[] parts = redisValue.split(":", 2);
-            userId = Long.parseLong(parts[0]);
-            includeCalendar = parts.length > 1 && Boolean.parseBoolean(parts[1]);
+            if (calendarOnly) {
+                userId = Long.parseLong(redisValue.substring("calendarOnly:".length()));
+                includeCalendar = true;
+            } else {
+                String[] parts = redisValue.split(":", 2);
+                userId = Long.parseLong(parts[0]);
+                includeCalendar = parts.length > 1 && Boolean.parseBoolean(parts[1]);
+            }
         } catch (NumberFormatException e) {
             log.warn("Redis state のユーザーID形式が不正: key={}, value={}", redisKey, redisValue);
             return appBaseUrl + LINKED_ACCOUNTS_PATH + "?error=invalid_state";
@@ -148,13 +171,19 @@ public class AuthOAuthLinkService {
         }
 
         // 6. OAuthAccount を保存
-        OAuthAccountEntity oauthAccount = OAuthAccountEntity.builder()
-                .userId(userId)
-                .provider(OAuthAccountEntity.OAuthProvider.GOOGLE)
-                .providerUserId(userInfo.providerUserId())
-                .providerEmail(userInfo.email())
-                .build();
-        oauthAccountRepository.save(oauthAccount);
+        //    通常フロー: 常に保存。
+        //    calendarOnly フロー: 自分がまだ連携していない場合のみ保存（linked-accounts への反映）。
+        boolean alreadyLinkedBySelf = existingAccount.isPresent()
+                && existingAccount.get().getUserId().equals(userId);
+        if (!calendarOnly || !alreadyLinkedBySelf) {
+            OAuthAccountEntity oauthAccount = OAuthAccountEntity.builder()
+                    .userId(userId)
+                    .provider(OAuthAccountEntity.OAuthProvider.GOOGLE)
+                    .providerUserId(userInfo.providerUserId())
+                    .providerEmail(userInfo.email())
+                    .build();
+            oauthAccountRepository.save(oauthAccount);
+        }
 
         // 7. state を削除（使用済み）
         redisTemplate.delete(redisKey);
@@ -164,9 +193,17 @@ public class AuthOAuthLinkService {
             try {
                 googleCalendarService.connectWithOAuthTokens(
                         userId, accessToken, refreshToken, userInfo.email());
+                if (calendarOnly) {
+                    log.info("GCal接続完了(カレンダー専用フロー): userId={}", userId);
+                    return appBaseUrl + "/settings/calendar-sync?connected=true";
+                }
                 log.info("Google連携 + GCal接続完了: userId={}", userId);
                 return appBaseUrl + LINKED_ACCOUNTS_PATH + "?linked=GOOGLE&calendarConnected=true";
             } catch (Exception e) {
+                if (calendarOnly) {
+                    log.warn("GCal接続失敗(カレンダー専用フロー): userId={}", userId, e);
+                    return appBaseUrl + "/settings/calendar-sync?error=connect_failed";
+                }
                 // GCal接続失敗はOAuth連携自体はロールバックしない（警告のみ）
                 log.warn("GCal接続失敗（OAuth連携は完了）: userId={}", userId, e);
                 return appBaseUrl + LINKED_ACCOUNTS_PATH + "?linked=GOOGLE&calendarConnected=false";

@@ -35,6 +35,7 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Base64;
@@ -438,6 +439,24 @@ public class AuthOAuthService {
 
         OAuthUserInfo oauthUserInfo = new OAuthUserInfo(sub, email, familyName, givenName, displayName);
         return new OAuthLinkTokenResult(oauthUserInfo, accessToken, refreshToken);
+    }
+
+    /**
+     * Google OAuth ログインフロー用の認証 URL を生成する。
+     * フロントエンドのログイン画面から「Googleでログイン」ボタンがクリックされたとき呼び出す。
+     *
+     * @return Google OAuth 認証エンドポイント URL
+     */
+    public String generateGoogleLoginAuthUrl() {
+        String clientId = oAuthProperties.getGoogleClientId();
+        String redirectUri = oAuthProperties.getGoogleRedirectUri();
+        String scope = "openid email profile";
+
+        return "https://accounts.google.com/o/oauth2/v2/auth"
+                + "?client_id=" + URLEncoder.encode(clientId, StandardCharsets.UTF_8)
+                + "&redirect_uri=" + URLEncoder.encode(redirectUri, StandardCharsets.UTF_8)
+                + "&response_type=code"
+                + "&scope=" + URLEncoder.encode(scope, StandardCharsets.UTF_8);
     }
 
     /**

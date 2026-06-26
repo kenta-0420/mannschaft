@@ -4047,6 +4047,78 @@
         }
       }
     },
+    "/api/v1/users/{userId}/seals/scope-defaults": {
+      "get": {
+        "tags": [
+          "電子印鑑"
+        ],
+        "summary": "スコープデフォルト一覧",
+        "operationId": "getScopeDefaults",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListScopeDefaultResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "電子印鑑"
+        ],
+        "summary": "スコープデフォルト一括更新",
+        "operationId": "updateScopeDefaults",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateScopeDefaultsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListScopeDefaultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/users/me": {
       "get": {
         "tags": [
@@ -31154,6 +31226,38 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseSealResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{userId}/seals/regenerate": {
+      "post": {
+        "tags": [
+          "電子印鑑"
+        ],
+        "summary": "印鑑一括再生成",
+        "operationId": "regenerateSeals",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "再生成成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListSealResponse"
                 }
               }
             }
@@ -99690,38 +99794,6 @@
         }
       }
     },
-    "/api/v1/users/{userId}/seals/scope-defaults": {
-      "get": {
-        "tags": [
-          "電子印鑑"
-        ],
-        "summary": "スコープデフォルト一覧",
-        "operationId": "getScopeDefaults",
-        "parameters": [
-          {
-            "name": "userId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "取得成功",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListScopeDefaultResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/users/{userId}/following": {
       "get": {
         "tags": [
@@ -100135,6 +100207,26 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOAuthLinkAuthUrlResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/me/oauth/link/GOOGLE/calendar-only-auth-url": {
+      "get": {
+        "tags": [
+          "user-o-auth-link-controller"
+        ],
+        "operationId": "getCalendarOnlyAuthUrl",
         "responses": {
           "200": {
             "description": "OK",
@@ -125890,6 +125982,28 @@
         }
       }
     },
+    "/api/v1/dashboard/announcements": {
+      "get": {
+        "tags": [
+          "ダッシュボード"
+        ],
+        "summary": "プラットフォームお知らせ取得",
+        "description": "公開中のプラットフォームお知らせ一覧を返す",
+        "operationId": "getAnnouncements",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListDashboardAnnouncementResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/dashboard/activity": {
       "get": {
         "tags": [
@@ -127419,6 +127533,27 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/oauth/google/auth-url": {
+      "get": {
+        "tags": [
+          "OAuth"
+        ],
+        "summary": "Google OAuth 認証URL取得",
+        "operationId": "getGoogleAuthUrl",
+        "responses": {
+          "200": {
+            "description": "Google OAuth 認証URL",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMapStringString"
+                }
+              }
+            }
           }
         }
       }
@@ -135110,7 +135245,7 @@
       "SealResponse": {
         "type": "object",
         "properties": {
-          "id": {
+          "sealId": {
             "type": "integer",
             "format": "int64"
           },
@@ -135133,6 +135268,93 @@
           "generationVersion": {
             "type": "integer",
             "format": "int32"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ScopeDefaultItem": {
+        "type": "object",
+        "properties": {
+          "scopeType": {
+            "type": "string"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "variant": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scopeType",
+          "variant"
+        ]
+      },
+      "UpdateScopeDefaultsRequest": {
+        "type": "object",
+        "properties": {
+          "defaults": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScopeDefaultItem"
+            }
+          }
+        },
+        "required": [
+          "defaults"
+        ]
+      },
+      "ApiResponseListScopeDefaultResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScopeDefaultResponse"
+            }
+          }
+        }
+      },
+      "ScopeDefaultResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeType": {
+            "type": "string"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeName": {
+            "type": "string"
+          },
+          "sealId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "LAST_NAME",
+              "FULL_NAME",
+              "FIRST_NAME"
+            ]
           },
           "createdAt": {
             "type": "string",
@@ -136493,21 +136715,6 @@
               "$ref": "#/components/schemas/TodoResponse"
             }
           },
-          "dueTime": {
-            "type": "string",
-            "deprecated": true,
-            "example": "14:30:00"
-          },
-          "milestoneId": {
-            "type": "integer",
-            "format": "int64",
-            "deprecated": true
-          },
-          "completedAt": {
-            "type": "string",
-            "format": "date-time",
-            "deprecated": true
-          },
           "parentId": {
             "type": "integer",
             "format": "int64",
@@ -136522,38 +136729,11 @@
             "type": "string",
             "deprecated": true
           },
-          "sortOrder": {
-            "type": "integer",
-            "format": "int32",
-            "deprecated": true
-          },
-          "scopeType": {
+          "title": {
             "type": "string",
-            "deprecated": true
-          },
-          "createdBy": {
-            "$ref": "#/components/schemas/UserInfo",
-            "deprecated": true
-          },
-          "completedBy": {
-            "$ref": "#/components/schemas/UserInfo",
-            "deprecated": true
-          },
-          "progressManual": {
-            "type": "boolean",
-            "deprecated": true
-          },
-          "linkedScheduleId": {
-            "type": "integer",
-            "format": "int64",
             "deprecated": true
           },
           "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "deprecated": true
-          },
-          "updatedAt": {
             "type": "string",
             "format": "date-time",
             "deprecated": true
@@ -136562,33 +136742,23 @@
             "type": "number",
             "deprecated": true
           },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "deprecated": true
+          },
+          "scopeType": {
+            "type": "string",
+            "deprecated": true
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32",
+            "deprecated": true
+          },
           "dueDate": {
             "type": "string",
             "format": "date",
-            "deprecated": true
-          },
-          "title": {
-            "type": "string",
-            "deprecated": true
-          },
-          "startDate": {
-            "type": "string",
-            "format": "date",
-            "deprecated": true
-          },
-          "projectId": {
-            "type": "integer",
-            "format": "int64",
-            "deprecated": true
-          },
-          "descendantCompletedCount": {
-            "type": "integer",
-            "format": "int32",
-            "deprecated": true
-          },
-          "descendantTotalCount": {
-            "type": "integer",
-            "format": "int32",
             "deprecated": true
           },
           "statusLabel": {
@@ -136598,6 +136768,58 @@
           "daysRemaining": {
             "type": "integer",
             "format": "int64",
+            "deprecated": true
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/UserInfo",
+            "deprecated": true
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "deprecated": true
+          },
+          "descendantCompletedCount": {
+            "type": "integer",
+            "format": "int32",
+            "deprecated": true
+          },
+          "linkedScheduleId": {
+            "type": "integer",
+            "format": "int64",
+            "deprecated": true
+          },
+          "dueTime": {
+            "type": "string",
+            "deprecated": true,
+            "example": "14:30:00"
+          },
+          "completedBy": {
+            "$ref": "#/components/schemas/UserInfo",
+            "deprecated": true
+          },
+          "progressManual": {
+            "type": "boolean",
+            "deprecated": true
+          },
+          "projectId": {
+            "type": "integer",
+            "format": "int64",
+            "deprecated": true
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "deprecated": true
+          },
+          "milestoneId": {
+            "type": "integer",
+            "format": "int64",
+            "deprecated": true
+          },
+          "descendantTotalCount": {
+            "type": "integer",
+            "format": "int32",
             "deprecated": true
           }
         }
@@ -141479,10 +141701,10 @@
           "note": {
             "type": "string"
           },
-          "yposition": {
+          "xposition": {
             "type": "number"
           },
-          "xposition": {
+          "yposition": {
             "type": "number"
           }
         }
@@ -141739,10 +141961,10 @@
             "maxLength": 300,
             "minLength": 0
           },
-          "yposition": {
+          "xposition": {
             "type": "number"
           },
-          "xposition": {
+          "yposition": {
             "type": "number"
           }
         },
@@ -148150,6 +148372,7 @@
           },
           "recallDirection": {
             "type": "string",
+            "description": "暗記カード（TERM_CARD）の出題方向（§13-B）。到来済み想起予定日数のパリティで決定論的に算出する。",
             "enum": [
               "MEANING_TO_TERM",
               "TERM_TO_MEANING"
@@ -148224,6 +148447,7 @@
           },
           "direction": {
             "type": "string",
+            "description": "暗記カード（TERM_CARD）の出題方向（§13-B）。到来済み想起予定日数のパリティで決定論的に算出する。",
             "enum": [
               "MEANING_TO_TERM",
               "TERM_TO_MEANING"
@@ -154530,49 +154754,6 @@
           }
         }
       },
-      "ScopeDefaultResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "userId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "scopeType": {
-            "type": "string"
-          },
-          "scopeId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "scopeName": {
-            "type": "string"
-          },
-          "sealId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "variant": {
-            "type": "string",
-            "enum": [
-              "LAST_NAME",
-              "FULL_NAME",
-              "FIRST_NAME"
-            ]
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
       "CreateSealRequest": {
         "type": "object",
         "properties": {
@@ -154588,6 +154769,17 @@
         "required": [
           "variant"
         ]
+      },
+      "ApiResponseListSealResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SealResponse"
+            }
+          }
+        }
       },
       "ApiResponseMessageResponse": {
         "type": "object",
@@ -155596,15 +155788,15 @@
             "type": "string",
             "format": "uuid"
           },
-          "scopeTypeOrDefault": {
-            "type": "string"
+          "scopeIdOrDefault": {
+            "type": "integer",
+            "format": "int64"
           },
           "postedAsTypeOrDefault": {
             "type": "string"
           },
-          "scopeIdOrDefault": {
-            "type": "integer",
-            "format": "int64"
+          "scopeTypeOrDefault": {
+            "type": "string"
           }
         }
       },
@@ -156206,10 +156398,10 @@
               "ABSOLUTE"
             ]
           },
-          "remindBeforeMinutesValid": {
+          "remindAtValid": {
             "type": "boolean"
           },
-          "remindAtValid": {
+          "remindBeforeMinutesValid": {
             "type": "boolean"
           }
         }
@@ -180722,6 +180914,14 @@
             "type": "string",
             "writeOnly": true
           },
+          "privacyPolicyAccepted": {
+            "type": "boolean"
+          },
+          "privacyPolicyVersion": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 0
+          },
           "birthDate": {
             "type": "string"
           }
@@ -183578,10 +183778,10 @@
               "ABSOLUTE"
             ]
           },
-          "remindBeforeMinutesValid": {
+          "remindAtValid": {
             "type": "boolean"
           },
-          "remindAtValid": {
+          "remindBeforeMinutesValid": {
             "type": "boolean"
           }
         }
@@ -185367,13 +185567,13 @@
           "custom_fields": {
             "type": "boolean"
           },
+          "officersVisible": {
+            "type": "boolean"
+          },
           "customFieldsVisible": {
             "type": "boolean"
           },
           "philosophyVisible": {
-            "type": "boolean"
-          },
-          "officersVisible": {
             "type": "boolean"
           },
           "establishedDateVisible": {
@@ -190314,12 +190514,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -190344,6 +190538,12 @@
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
           },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          },
           "empty": {
             "type": "boolean"
           }
@@ -190359,19 +190559,19 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
-          "paged": {
-            "type": "boolean"
-          },
-          "unpaged": {
-            "type": "boolean"
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
           },
           "pageNumber": {
             "type": "integer",
             "format": "int32"
           },
-          "pageSize": {
-            "type": "integer",
-            "format": "int32"
+          "paged": {
+            "type": "boolean"
+          },
+          "unpaged": {
+            "type": "boolean"
           }
         }
       },
@@ -190611,28 +190811,6 @@
           },
           "message": {
             "type": "string"
-          }
-        }
-      },
-      "ApiResponseListSealResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/SealResponse"
-            }
-          }
-        }
-      },
-      "ApiResponseListScopeDefaultResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ScopeDefaultResponse"
-            }
           }
         }
       },
@@ -191049,21 +191227,7 @@
             "type": "string",
             "deprecated": true
           },
-          "createdBy": {
-            "$ref": "#/components/schemas/UserInfo",
-            "deprecated": true
-          },
-          "totalTodos": {
-            "type": "integer",
-            "format": "int32",
-            "deprecated": true
-          },
-          "completedTodos": {
-            "type": "integer",
-            "format": "int32",
-            "deprecated": true
-          },
-          "emoji": {
+          "title": {
             "type": "string",
             "deprecated": true
           },
@@ -191076,21 +191240,35 @@
             "format": "date",
             "deprecated": true
           },
-          "title": {
-            "type": "string",
-            "deprecated": true
-          },
           "color": {
-            "type": "string",
-            "deprecated": true
-          },
-          "visibility": {
             "type": "string",
             "deprecated": true
           },
           "daysRemaining": {
             "type": "integer",
             "format": "int64",
+            "deprecated": true
+          },
+          "visibility": {
+            "type": "string",
+            "deprecated": true
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/UserInfo",
+            "deprecated": true
+          },
+          "emoji": {
+            "type": "string",
+            "deprecated": true
+          },
+          "totalTodos": {
+            "type": "integer",
+            "format": "int32",
+            "deprecated": true
+          },
+          "completedTodos": {
+            "type": "integer",
+            "format": "int32",
             "deprecated": true
           }
         }
@@ -198093,12 +198271,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -198122,6 +198294,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -198987,12 +199165,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -199016,6 +199188,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -199595,12 +199773,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -199624,6 +199796,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -199794,12 +199972,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -199823,6 +199995,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -199973,6 +200151,13 @@
             "type": "string",
             "format": "date-time"
           },
+          "privacyPolicyAcceptedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "privacyPolicyVersion": {
+            "type": "string"
+          },
           "birthDate": {
             "type": "string"
           },
@@ -200044,12 +200229,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -200073,6 +200252,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -200345,12 +200530,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -200374,6 +200553,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -203098,12 +203283,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -203127,6 +203306,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -203169,12 +203354,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -203198,6 +203377,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -203249,12 +203434,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -203278,6 +203457,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -203382,12 +203567,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -203411,6 +203590,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -203558,12 +203743,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -203587,6 +203766,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -204044,12 +204229,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -204073,6 +204252,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -204302,12 +204487,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -204331,6 +204510,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -206414,12 +206599,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -206443,6 +206622,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -206618,12 +206803,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -206647,6 +206826,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -206701,12 +206886,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -206730,6 +206909,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -207131,12 +207316,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -207160,6 +207339,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -208547,12 +208732,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -208576,6 +208755,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -211599,6 +211784,42 @@
           }
         }
       },
+      "ApiResponseListDashboardAnnouncementResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardAnnouncementResponse"
+            }
+          }
+        }
+      },
+      "DashboardAnnouncementResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "isPinned": {
+            "type": "boolean"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "ActivityFeedResponse": {
         "type": "object",
         "properties": {
@@ -211886,12 +212107,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -211915,6 +212130,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -213239,12 +213460,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -213268,6 +213483,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -213680,12 +213901,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -213709,6 +213924,12 @@
           },
           "pageable": {
             "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
           },
           "empty": {
             "type": "boolean"
@@ -214487,6 +214708,14 @@
             "minItems": 1
           }
         }
+      },
+      "RecallDirection": {
+        "type": "string",
+        "description": "暗記カード（TERM_CARD）の出題方向（§13-B）。到来済み想起予定日数のパリティで決定論的に算出する。",
+        "enum": [
+          "MEANING_TO_TERM",
+          "TERM_TO_MEANING"
+        ]
       }
     }
   }

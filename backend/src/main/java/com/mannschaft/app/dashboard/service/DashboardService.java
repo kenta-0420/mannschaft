@@ -806,6 +806,38 @@ public class DashboardService {
     }
 
     /**
+     * ダッシュボードウィジェット用: 有効なプラットフォームお知らせをFE期待の形式で返す。
+     */
+    public List<Map<String, Object>> getActivePlatformAnnouncements() {
+        List<PlatformAnnouncementEntity> announcements =
+                platformAnnouncementRepository.findActiveAnnouncements(LocalDateTime.now());
+        return announcements.stream()
+                .map(a -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", a.getId());
+                    map.put("title", a.getTitle());
+                    map.put("content", a.getBody());
+                    map.put("severity", toSeverity(a.getPriority()));
+                    map.put("isPinned", a.getIsPinned());
+                    map.put("publishedAt", a.getPublishedAt());
+                    return map;
+                })
+                .toList();
+    }
+
+    /**
+     * priority 値を FE 期待の severity 値に変換する。
+     */
+    private String toSeverity(String priority) {
+        if (priority == null) return "INFO";
+        return switch (priority.toUpperCase()) {
+            case "HIGH" -> "WARNING";
+            case "URGENT" -> "URGENT";
+            default -> "INFO";
+        };
+    }
+
+    /**
      * プラットフォームお知らせエンティティをMap表現に変換する。
      */
     private Map<String, Object> toAnnouncementMap(PlatformAnnouncementEntity entity) {

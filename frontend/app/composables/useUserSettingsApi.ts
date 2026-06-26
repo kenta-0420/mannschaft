@@ -163,6 +163,10 @@ export function useUserSettingsApi() {
     )
   }
 
+  async function getCalendarOnlyAuthUrl() {
+    return api<{ data: { authUrl: string } }>('/api/v1/users/me/oauth/link/GOOGLE/calendar-only-auth-url')
+  }
+
   // === LINE ===
   async function linkLine(body: LinkLineRequest) {
     return api<{ data: UserLineStatusResponse }>('/api/v1/users/me/line/link', {
@@ -249,6 +253,7 @@ export function useUserSettingsApi() {
     getOAuthProviders,
     unlinkOAuthProvider,
     getOAuthLinkAuthUrl,
+    getCalendarOnlyAuthUrl,
     linkLine,
     unlinkLine,
     getLineStatus,

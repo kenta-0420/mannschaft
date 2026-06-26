@@ -2,9 +2,12 @@
 definePageMeta({ middleware: 'auth' })
 
 const gcalApi = useGoogleCalendarApi()
+const { getCalendarOnlyAuthUrl } = useUserSettingsApi()
 const teamStore = useTeamStore()
 const orgStore = useOrganizationStore()
 const notification = useNotification()
+const route = useRoute()
+const router = useRouter()
 const { formatDateTime } = useDatetime()
 
 interface ConnectionStatus {
@@ -42,11 +45,21 @@ async function load() {
 
 async function connectGoogle() {
   try {
-    const res = await gcalApi.connect()
-    const { authUrl } = res.data as { authUrl: string }
-    window.location.href = authUrl
+    const res = await getCalendarOnlyAuthUrl()
+    window.location.href = res.data.authUrl
   } catch {
     notification.error('接続に失敗しました')
+  }
+}
+
+function handleQueryParams() {
+  if (route.query.connected === 'true') {
+    notification.success('Google Calendarと連携しました')
+  } else if (route.query.error === 'connect_failed') {
+    notification.error('Google Calendar連携に失敗しました')
+  }
+  if (route.query.connected || route.query.error) {
+    router.replace({ query: {} })
   }
 }
 
@@ -103,7 +116,10 @@ function formatDate(dateStr: string | null): string {
   return formatDateTime(dateStr)
 }
 
-onMounted(load)
+onMounted(async () => {
+  handleQueryParams()
+  await load()
+})
 </script>
 
 <template>

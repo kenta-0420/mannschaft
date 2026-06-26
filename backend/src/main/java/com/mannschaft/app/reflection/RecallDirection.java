@@ -1,5 +1,7 @@
 package com.mannschaft.app.reflection;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * 暗記カード（TERM_CARD）の出題方向（F06.5 Phase 4・§13-B）。
  *
@@ -11,6 +13,7 @@ package com.mannschaft.app.reflection;
  *   <li>{@code n} 奇数 → {@link #TERM_TO_MEANING}: 語句を表示し意味を入力</li>
  * </ul>
  */
+@Schema(name = "RecallDirection", description = "暗記カード（TERM_CARD）の出題方向（§13-B）。到来済み想起予定日数のパリティで決定論的に算出する。")
 public enum RecallDirection {
     /** 意味を表示し語句を入力（cue=MEANING・answer=TERM）。 */
     MEANING_TO_TERM,
