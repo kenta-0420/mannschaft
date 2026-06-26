@@ -12,10 +12,23 @@ definePageMeta({
 
 const { t } = useI18n()
 const api = useApi()
+const { getGoogleAuthUrl } = useAuthApi()
 const route = useRoute()
 const notification = useNotification()
 const { userTimezone } = useDatetime()
 const loading = ref(false)
+const googleLoading = ref(false)
+
+async function registerWithGoogle() {
+  googleLoading.value = true
+  try {
+    const res = await getGoogleAuthUrl()
+    window.location.href = res.data.authUrl
+  } catch {
+    notification.error(t('auth.oauth.callback_error'))
+    googleLoading.value = false
+  }
+}
 
 // クエリパラメータから招待トークンを取得（ベータ制限対応）
 const inviteToken = computed(() => route.query.invite as string | undefined)
@@ -177,6 +190,25 @@ const onSubmit = handleSubmit(async (values) => {
     @submit.prevent="submitted = true; onSubmit()"
   >
     <div class="flex flex-col gap-4">
+      <!-- Google 登録ボタン -->
+      <Button
+        type="button"
+        :label="$t('auth.oauth.google_register')"
+        icon="pi pi-google"
+        severity="secondary"
+        outlined
+        class="w-full"
+        :loading="googleLoading"
+        @click="registerWithGoogle"
+      />
+
+      <!-- セパレーター -->
+      <div class="flex items-center gap-3">
+        <div class="flex-1 border-t border-surface-200 dark:border-surface-600" />
+        <span class="text-sm text-surface-400">{{ $t('auth.oauth.or') }}</span>
+        <div class="flex-1 border-t border-surface-200 dark:border-surface-600" />
+      </div>
+
       <div class="flex flex-col gap-2">
         <label for="email">メールアドレス <span class="text-red-500">※</span></label>
         <InputText

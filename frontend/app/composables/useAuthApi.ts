@@ -140,6 +140,10 @@ export function useAuthApi() {
   }
 
   // === OAuth ===
+  async function getGoogleAuthUrl() {
+    return api<{ data: { authUrl: string } }>('/api/v1/auth/oauth/google/auth-url')
+  }
+
   async function loginWithOAuth(provider: string, body: Record<string, unknown>) {
     return api<{ data: TokenResponse }>(`/api/v1/auth/oauth/${provider}`, {
       method: 'POST',
@@ -186,6 +190,7 @@ export function useAuthApi() {
     beginWebAuthnReauthenticate,
     completeWebAuthnReauthenticate,
     verifyTotpSetup,
+    getGoogleAuthUrl,
     loginWithOAuth,
     confirmOAuthLink,
     getInviteQrCode,

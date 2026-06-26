@@ -7,13 +7,20 @@ definePageMeta({
 const email = ref('')
 const password = ref('')
 const loading = ref(false)
+const googleLoading = ref(false)
 
 const api = useApi()
 const authStore = useAuthStore()
+const { getGoogleAuthUrl } = useAuthApi()
 const notification = useNotification()
 const route = useRoute()
 const { applyUserLocale } = useLocale()
 const { t } = useI18n()
+
+// OAuth競合メッセージ（/auth/oauth/callback → ?oauthConflict=true で遷移してきた場合）
+const oauthConflictMessage = computed<string | null>(() => {
+  return route.query.oauthConflict === 'true' ? t('auth.oauth.conflict_message') : null
+})
 
 // パスワード変更・セッション失効などのログアウト後にログイン画面へ遷移した場合、
 // ?reason=xxx クエリパラメータに基づいて情報バナーを表示する。
@@ -27,6 +34,17 @@ const sessionNoticeMessage = computed<string | null>(() => {
   }
   return null
 })
+
+async function loginWithGoogle() {
+  googleLoading.value = true
+  try {
+    const res = await getGoogleAuthUrl()
+    window.location.href = res.data.authUrl
+  } catch {
+    notification.error(t('auth.oauth.callback_error'))
+    googleLoading.value = false
+  }
+}
 
 async function handleLogin() {
   loading.value = true
@@ -144,6 +162,36 @@ async function handleLogin() {
       >
         <i class="pi pi-info-circle mt-0.5 shrink-0 text-blue-500 dark:text-blue-400" />
         <span>{{ sessionNoticeMessage }}</span>
+      </div>
+
+      <!-- OAuth競合バナー（メールアドレス一致で連携確認メール送信済み） -->
+      <div
+        v-if="oauthConflictMessage"
+        class="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
+        role="alert"
+        aria-live="polite"
+      >
+        <i class="pi pi-exclamation-triangle mt-0.5 shrink-0 text-amber-500 dark:text-amber-400" />
+        <span>{{ oauthConflictMessage }}</span>
+      </div>
+
+      <!-- Google ログインボタン -->
+      <Button
+        type="button"
+        :label="$t('auth.oauth.google_login')"
+        icon="pi pi-google"
+        severity="secondary"
+        outlined
+        class="w-full"
+        :loading="googleLoading"
+        @click="loginWithGoogle"
+      />
+
+      <!-- セパレーター -->
+      <div class="flex items-center gap-3">
+        <div class="flex-1 border-t border-surface-200 dark:border-surface-600" />
+        <span class="text-sm text-surface-400">{{ $t('auth.oauth.or') }}</span>
+        <div class="flex-1 border-t border-surface-200 dark:border-surface-600" />
       </div>
 
       <div class="flex flex-col gap-2">

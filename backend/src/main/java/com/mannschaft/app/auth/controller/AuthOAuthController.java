@@ -7,11 +7,14 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
 
 /**
  * OAuth認証コントローラー。
@@ -24,6 +27,18 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthOAuthController {
 
     private final AuthOAuthService authOAuthService;
+
+    /**
+     * Google OAuth 認証 URL を取得する。
+     * 認証不要エンドポイント。フロントエンドはこの URL に遷移してOAuth認証フローを開始する。
+     */
+    @GetMapping("/google/auth-url")
+    @Operation(summary = "Google OAuth 認証URL取得")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Google OAuth 認証URL")
+    public ResponseEntity<ApiResponse<Map<String, String>>> getGoogleAuthUrl() {
+        String authUrl = authOAuthService.generateGoogleLoginAuthUrl();
+        return ResponseEntity.ok(ApiResponse.of(Map.of("authUrl", authUrl)));
+    }
 
     /**
      * OAuthプロバイダを使用してログインする。

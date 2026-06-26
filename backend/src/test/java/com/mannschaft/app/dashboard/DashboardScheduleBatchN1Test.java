@@ -111,6 +111,7 @@ class DashboardScheduleBatchN1Test {
     @Mock private TeamService teamService;
     /** Controller の DashboardService 依存はモックに差し替える（getCalendar は service を呼ばないため挙動に影響なし）。 */
     @Mock private DashboardService dashboardServiceMock;
+    @Mock private com.mannschaft.app.admin.service.PlatformAnnouncementService platformAnnouncementService;
 
     private DashboardController dashboardController;
 
@@ -149,7 +150,8 @@ class DashboardScheduleBatchN1Test {
                 contentVisibilityChecker,
                 scopeActionRequiredFacade,
                 organizationService,
-                teamService);
+                teamService,
+                platformAnnouncementService);
 
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(USER_ID, null, List.of()));

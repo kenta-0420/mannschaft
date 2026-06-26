@@ -33,8 +33,8 @@ public class SealGenerator {
 
         StringBuilder svg = new StringBuilder();
         svg.append(String.format(
-                "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"%d\" height=\"%d\" viewBox=\"0 0 %d %d\">",
-                SEAL_SIZE, SEAL_SIZE, SEAL_SIZE, SEAL_SIZE));
+                "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"100%%\" height=\"100%%\" viewBox=\"0 0 %d %d\">",
+                SEAL_SIZE, SEAL_SIZE));
 
         // 背景透過
         svg.append(String.format(
