@@ -222,6 +222,27 @@ public class NameResolverService {
     }
 
     /**
+     * 印鑑初回生成用に姓・名を個別に返す。
+     * いずれかが null の場合は空文字で補完する。
+     *
+     * @param userId ユーザーID
+     * @return 姓名パーツ（姓・名が両方空の場合も返す）
+     */
+    public UserNameParts resolveUserNameParts(Long userId) {
+        if (userId == null) {
+            return new UserNameParts("", "");
+        }
+        return userRepository.findById(userId)
+                .map(u -> new UserNameParts(
+                        u.getLastName() != null ? u.getLastName() : "",
+                        u.getFirstName() != null ? u.getFirstName() : ""))
+                .orElse(new UserNameParts("", ""));
+    }
+
+    /** 電子印鑑初回生成用の氏名パーツ。 */
+    public record UserNameParts(String lastName, String firstName) {}
+
+    /**
      * スコープ種別とIDからスコープ名を返す。
      * scopeType は文字列で受け取り、各パッケージ固有の ScopeType enum に依存しない。
      *
