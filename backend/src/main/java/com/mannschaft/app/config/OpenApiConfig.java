@@ -1,5 +1,6 @@
 package com.mannschaft.app.config;
 
+import com.mannschaft.app.reflection.RecallDirection;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.media.StringSchema;
@@ -7,7 +8,8 @@ import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.List;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 /**
  * springdoc-openapi グローバル設定。
@@ -40,7 +42,9 @@ public class OpenApiConfig {
                 schema.setDescription(
                         "暗記カード（TERM_CARD）の出題方向（§13-B）。"
                                 + "到来済み想起予定日数のパリティで決定論的に算出する。");
-                schema.setEnum(List.of("MEANING_TO_TERM", "TERM_TO_MEANING"));
+                schema.setEnum(Arrays.stream(RecallDirection.values())
+                        .map(Enum::name)
+                        .collect(Collectors.toList()));
                 openApi.getComponents().addSchemas("RecallDirection", schema);
             }
         };
