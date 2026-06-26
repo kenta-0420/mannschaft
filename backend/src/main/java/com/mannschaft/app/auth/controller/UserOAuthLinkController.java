@@ -45,4 +45,18 @@ public class UserOAuthLinkController {
         String authUrl = authOAuthLinkService.generateAuthUrl(userId, provider.toUpperCase(), includeCalendar);
         return ResponseEntity.ok(ApiResponse.of(new OAuthLinkAuthUrlResponse(authUrl)));
     }
+
+    /**
+     * Google Calendar 専用の OAuth 認可 URL を取得する。
+     * OAuthAccount が既に連携済みでも使用可能（Google Calendar スコープを追加）。
+     * コールバック後は OAuthAccount 作成をスキップし、カレンダー接続のみ確立する。
+     *
+     * @return 認可 URL レスポンス
+     */
+    @GetMapping("/GOOGLE/calendar-only-auth-url")
+    public ResponseEntity<ApiResponse<OAuthLinkAuthUrlResponse>> getCalendarOnlyAuthUrl() {
+        Long userId = SecurityUtils.getCurrentUserId();
+        String authUrl = authOAuthLinkService.generateCalendarOnlyAuthUrl(userId);
+        return ResponseEntity.ok(ApiResponse.of(new OAuthLinkAuthUrlResponse(authUrl)));
+    }
 }
