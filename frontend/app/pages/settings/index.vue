@@ -130,18 +130,19 @@ const individualItems = [
 const searchQuery = ref('')
 const showIndividual = useState('settings-show-individual', () => false)
 const lastClickedTo = useState('settings-last-clicked', () => '')
+const savedScrollY = useState('settings-scroll-y', () => 0)
 
 const isSearching = computed(() => searchQuery.value.trim().length > 0)
 
 function handleNavigate(to: string) {
   lastClickedTo.value = to
+  savedScrollY.value = window.scrollY
 }
 
 onMounted(() => {
   if (lastClickedTo.value) {
     nextTick(() => {
-      const el = document.querySelector(`a[href="${lastClickedTo.value}"]`)
-      el?.scrollIntoView({ block: 'center' })
+      window.scrollTo({ top: savedScrollY.value, behavior: 'instant' })
     })
   }
 })
