@@ -60,6 +60,7 @@ const notification = useNotification()
 const { handleApiError, getFieldErrors } = useErrorHandler()
 const { userTimezone, buildOffsetDateTimeStr } = useDatetime()
 const { t } = useI18n()
+const { googleSyncEnabled, fetchPersonalSyncStatus } = useGoogleCalendarApi()
 
 const submitting = ref(false)
 const fieldErrors = ref<Record<string, string>>({})
@@ -169,6 +170,14 @@ watch(
     if (!form.value.endDate || form.value.endDate < newDate) {
       form.value.endDate = new Date(newDate)
     }
+  },
+)
+
+// ダイアログが開くたびに Google 連携ステータスを取得する
+watch(
+  () => props.visible,
+  (v) => {
+    if (v) fetchPersonalSyncStatus()
   },
 )
 
@@ -682,6 +691,15 @@ function close() {
         v-if="effectiveScope.isPersonal"
         v-model:color="form.color"
       />
+
+      <!-- Google カレンダー連携中の注意書き -->
+      <div
+        v-if="googleSyncEnabled"
+        class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200"
+      >
+        <i class="pi pi-info-circle mr-1" aria-hidden="true" />
+        {{ $t('schedule.google_sync_notice') }}
+      </div>
     </div>
     <template #footer>
       <Button label="キャンセル" text @click="close" />

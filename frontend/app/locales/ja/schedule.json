@@ -144,6 +144,7 @@
         "item_attendance": "出欠確認がある予定は「出席」「欠席」「未定」を選んで回答できます",
         "item_match": "チームの予定から「この試合を記録」ボタンで試合記録を開始できます"
       }
-    }
+    },
+    "google_sync_notice": "Google カレンダーと連携中です。Google 側で変更した内容は、次に Mannschaft で保存したときに Mannschaft の内容に置き換わります。"
   }
 }

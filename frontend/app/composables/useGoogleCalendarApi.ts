@@ -5,6 +5,27 @@ type PersonalSyncStatusResponse = components['schemas']['PersonalSyncStatusRespo
 export function useGoogleCalendarApi() {
   const api = useApi()
 
+  // Google カレンダー連携状態（コンポーネント側で fetchPersonalSyncStatus() を呼んでから参照する）
+  const personalSyncStatus = ref<PersonalSyncStatusResponse | null>(null)
+
+  // active === true かつ personalSyncEnabled === true のとき true
+  const googleSyncEnabled = computed(
+    () =>
+      personalSyncStatus.value?.active === true &&
+      personalSyncStatus.value?.personalSyncEnabled === true,
+  )
+
+  async function fetchPersonalSyncStatus(): Promise<void> {
+    try {
+      const res = await api<{ data: PersonalSyncStatusResponse }>(
+        '/api/v1/me/google-calendar/personal-sync',
+      )
+      personalSyncStatus.value = (res as { data: PersonalSyncStatusResponse }).data ?? null
+    } catch {
+      personalSyncStatus.value = null
+    }
+  }
+
   async function getConnectionStatus() {
     return api<{
       data: { isConnected: boolean; email: string | null; lastSyncedAt: string | null }
@@ -65,6 +86,9 @@ export function useGoogleCalendarApi() {
   }
 
   return {
+    personalSyncStatus,
+    googleSyncEnabled,
+    fetchPersonalSyncStatus,
     getConnectionStatus,
     connect,
     disconnect,

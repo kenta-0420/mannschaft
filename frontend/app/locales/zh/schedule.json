@@ -144,6 +144,7 @@
         "item_attendance": "有出勤确认的日程可选择「出席」、「缺席」或「未定」进行回复",
         "item_match": "从团队日程中点击「记录这场比赛」按钮可开始比赛记录"
       }
-    }
+    },
+    "google_sync_notice": "已连接 Google 日历。在 Google 中所做的更改将在您下次在此处保存时被 Mannschaft 的数据替换。"
   }
 }
