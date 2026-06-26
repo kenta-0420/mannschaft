@@ -1,5 +1,7 @@
 package com.mannschaft.app.dashboard.controller;
 
+import com.mannschaft.app.admin.entity.PlatformAnnouncementEntity;
+import com.mannschaft.app.admin.repository.PlatformAnnouncementRepository;
 import com.mannschaft.app.bulletin.repository.BulletinReadStatusRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
@@ -89,6 +91,7 @@ public class DashboardController {
     private final TeamRepository teamRepository;
     private final OrganizationRepository organizationRepository;
     private final ContentVisibilityChecker contentVisibilityChecker;
+    private final PlatformAnnouncementRepository platformAnnouncementRepository;
 
     /** F22.1 第二波: 統合「要対応」集計の遅延取得（第 2 段階）に使用する。 */
     private final com.mannschaft.app.dashboard.service.ScopeActionRequiredFacade scopeActionRequiredFacade;
@@ -110,6 +113,29 @@ public class DashboardController {
         Long userId = SecurityUtils.getCurrentUserId();
         PersonalDashboardResponse response = dashboardService.getPersonalDashboard(userId, priority);
         return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * プラットフォームお知らせ一覧を取得する（ダッシュボードウィジェット用）。
+     */
+    @GetMapping("/announcements")
+    @Operation(summary = "プラットフォームお知らせ一覧", description = "公開済みかつ有効期限内のプラットフォームお知らせを返す")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getPlatformAnnouncements() {
+        List<PlatformAnnouncementEntity> announcements =
+                platformAnnouncementRepository.findActiveAnnouncements(LocalDateTime.now());
+        List<Map<String, Object>> items = announcements.stream()
+                .map(a -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", a.getId());
+                    map.put("title", a.getTitle());
+                    map.put("content", a.getBody());
+                    map.put("severity", toSeverity(a.getPriority()));
+                    map.put("isPinned", a.getIsPinned());
+                    map.put("publishedAt", a.getPublishedAt());
+                    return map;
+                })
+                .toList();
+        return ResponseEntity.ok(ApiResponse.of(items));
     }
 
     /**
@@ -538,6 +564,19 @@ public class DashboardController {
             map.put("scope_icon_url", null);
         }
         return map;
+    }
+
+    /**
+     * priority 値を FE 期待の severity 値に変換する。
+     * NORMAL → INFO, HIGH → WARNING, URGENT → URGENT, その他 → INFO
+     */
+    private String toSeverity(String priority) {
+        if (priority == null) return "INFO";
+        return switch (priority.toUpperCase()) {
+            case "HIGH" -> "WARNING";
+            case "URGENT" -> "URGENT";
+            default -> "INFO";
+        };
     }
 
     /**
