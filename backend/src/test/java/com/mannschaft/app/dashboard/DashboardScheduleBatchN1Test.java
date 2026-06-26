@@ -147,6 +147,7 @@ class DashboardScheduleBatchN1Test {
                 teamRepository,
                 organizationRepository,
                 contentVisibilityChecker,
+                platformAnnouncementRepository,
                 scopeActionRequiredFacade,
                 organizationService,
                 teamService);
