@@ -136,6 +136,66 @@ public class SealService {
     }
 
     /**
+     * ユーザーの全印鑑を再生成する（SVGデータの再構築）。
+     * 印鑑が0件の場合はプロフィール氏名から3バリアント（姓・フルネーム・名）を初回生成する。
+     *
+     * @param userId ユーザーID
+     * @return 再生成／生成後の印鑑レスポンスリスト
+     */
+    @Transactional
+    public List<SealResponse> regenerateSeals(Long userId) {
+        List<ElectronicSealEntity> seals = sealRepository.findByUserIdOrderByCreatedAtAsc(userId);
+
+        if (seals.isEmpty()) {
+            return initializeSeals(userId);
+        }
+
+        List<ElectronicSealEntity> updated = seals.stream()
+                .map(seal -> {
+                    String newSvgData = sealGenerator.generateSvg(seal.getDisplayText(), seal.getVariant());
+                    String newSealHash = sealGenerator.computeHash(newSvgData);
+                    seal.regenerate(newSvgData, newSealHash);
+                    return sealRepository.save(seal);
+                })
+                .toList();
+        log.info("印鑑一括再生成: userId={}, count={}", userId, updated.size());
+        return sealMapper.toSealResponseList(updated);
+    }
+
+    /**
+     * プロフィール氏名から3バリアントの印鑑を初回生成する。
+     * 氏名が未設定のバリアントはスキップする。
+     */
+    private List<SealResponse> initializeSeals(Long userId) {
+        NameResolverService.UserNameParts nameParts = nameResolverService.resolveUserNameParts(userId);
+        String lastName = nameParts.lastName();
+        String firstName = nameParts.firstName();
+
+        List<ElectronicSealEntity> created = List.of(SealVariant.LAST_NAME, SealVariant.FULL_NAME, SealVariant.FIRST_NAME).stream()
+                .map(variant -> {
+                    String displayText = switch (variant) {
+                        case LAST_NAME -> lastName;
+                        case FULL_NAME -> lastName + firstName;
+                        case FIRST_NAME -> firstName;
+                    };
+                    if (displayText.isBlank()) return null;
+                    String svgData = sealGenerator.generateSvg(displayText, variant);
+                    String sealHash = sealGenerator.computeHash(svgData);
+                    return sealRepository.save(ElectronicSealEntity.builder()
+                            .userId(userId)
+                            .variant(variant)
+                            .displayText(displayText)
+                            .svgData(svgData)
+                            .sealHash(sealHash)
+                            .build());
+                })
+                .filter(e -> e != null)
+                .toList();
+        log.info("印鑑初回生成: userId={}, count={}", userId, created.size());
+        return sealMapper.toSealResponseList(created);
+    }
+
+    /**
      * スコープデフォルトを設定する。
      *
      * @param userId  ユーザーID

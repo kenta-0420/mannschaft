@@ -17,6 +17,7 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface SealMapper {
 
+    @Mapping(target = "sealId", source = "id")
     @Mapping(target = "variant", expression = "java(entity.getVariant().name())")
     SealResponse toSealResponse(ElectronicSealEntity entity);
 

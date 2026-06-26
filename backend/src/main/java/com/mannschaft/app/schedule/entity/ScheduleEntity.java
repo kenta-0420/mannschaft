@@ -232,6 +232,14 @@ public class ScheduleEntity extends BaseEntity {
     }
 
     /**
+     * 繰り返しルールを更新する（個人スケジュール PATCH 用）。
+     * null を渡すとルールを削除（繰り返しなし）。
+     */
+    public void setRecurrenceRule(String recurrenceRule) {
+        this.recurrenceRule = recurrenceRule;
+    }
+
+    /**
      * 繰り返しスケジュールかどうかを判定する。
      *
      * @return 繰り返しルールが設定されている場合 true

@@ -164,6 +164,9 @@ public class AuthRegistrationService {
                 .isSearchable(true)
                 .birthDate(req.getBirthDate())
                 .build();
+        // 4.1. プライバシーポリシー同意を記録する（F_privacy_policy。GDPR Art.7 準拠）
+        // privacyPolicyAccepted=false は @Valid で弾かれているため、ここに到達した場合は必ず true。
+        user.recordPrivacyPolicyConsent(LocalDateTime.now(), req.getPrivacyPolicyVersion());
         userRepository.save(user);
 
         // 4.5. ベータ招待トークンがあれば自動参加

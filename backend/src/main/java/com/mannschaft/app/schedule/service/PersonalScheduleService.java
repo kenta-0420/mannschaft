@@ -503,6 +503,11 @@ public class PersonalScheduleService {
                 eventType,
                 req.getColor()
         );
+        // 個人予定の繰り返しルール更新（非 null のときのみ上書き）
+        // FE は recurrence=true のとき非 null オブジェクトを送信し、それ以外は省略する
+        if (req.getRecurrenceRule() != null) {
+            schedule.setRecurrenceRule(serializeRecurrenceRule(req.getRecurrenceRule()));
+        }
         // 個人スケジュール固定値は変更不可（無視）
         // save() は呼び出し元（updatePersonalSchedule / updateFollowingSchedules / updateAllChildSchedules）で実行する
     }

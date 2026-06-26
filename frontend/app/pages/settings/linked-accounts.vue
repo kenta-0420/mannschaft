@@ -169,11 +169,10 @@ function formatDate(dateStr: string | null) {
 
         <!-- Google未連携時のボタン -->
         <div v-if="!oauthProviders.some(p => p.provider.toLowerCase() === 'google')" class="mt-3 flex flex-col gap-2">
-          <UCheckbox
-            v-model="calendarToggle"
-            :label="$t('settings.linked_accounts.calendar_sync_toggle')"
-            class="text-sm"
-          />
+          <div class="flex items-center gap-2 text-sm">
+            <Checkbox v-model="calendarToggle" :binary="true" input-id="calendarToggle" />
+            <label for="calendarToggle" class="cursor-pointer">{{ $t('settings.linked_accounts.calendar_sync_toggle') }}</label>
+          </div>
           <Button
             :label="$t('settings.linked_accounts.google_link_button')"
             :loading="linkingGoogle"
