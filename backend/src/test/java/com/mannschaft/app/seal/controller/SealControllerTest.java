@@ -103,7 +103,7 @@ class SealControllerTest {
                     controller.getSeal(USER_ID, SEAL_ID);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(response.getBody().getData().getId()).isEqualTo(SEAL_ID);
+            assertThat(response.getBody().getData().getSealId()).isEqualTo(SEAL_ID);
             assertThat(response.getBody().getData().getVariant()).isEqualTo("LAST_NAME");
         }
     }
@@ -151,6 +151,32 @@ class SealControllerTest {
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody().getData().getDisplayText()).isEqualTo("田中二郎");
+        }
+    }
+
+    // ========================================
+    // regenerateSeals
+    // ========================================
+    @Nested
+    @DisplayName("regenerateSeals")
+    class RegenerateSeals {
+
+        @Test
+        @DisplayName("正常系: 印鑑一括再生成")
+        void regenerateSeals_正常() {
+            // Given
+            List<SealResponse> seals = List.of(
+                    new SealResponse(1L, USER_ID, "LAST_NAME", "田中", "<svg/>", "hash1", 2, null, null));
+            given(sealService.regenerateSeals(USER_ID)).willReturn(seals);
+
+            // When
+            ResponseEntity<ApiResponse<List<SealResponse>>> response = controller.regenerateSeals(USER_ID);
+
+            // Then
+            assertThat(response.getStatusCode().value()).isEqualTo(200);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getData()).hasSize(1);
+            verify(sealService).regenerateSeals(USER_ID);
         }
     }
 
