@@ -128,7 +128,7 @@ function formatDate(dateStr: string | null) {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <PageHeader :title="$t('settings.linked_accounts.page_title')" back-to="/settings" help @help="showHelp = true" />
+    <PageHeader :title="$t('settings.linked_accounts.page_title')" help @help="showHelp = true" />
 
     <LinkedAccountsGuideModal v-model:visible="showHelp" />
 
