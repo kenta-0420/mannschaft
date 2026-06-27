@@ -66,7 +66,7 @@ async function installApibridge(page: import('@playwright/test').Page): Promise<
     headers['origin'] = FE_ORIGIN
 
     const postData = req.postDataBuffer()
-    const body = postData ?? undefined
+    const body = postData as BodyInit | null
 
     const beRes = await fetch(targetUrl, {
       method: req.method(),
