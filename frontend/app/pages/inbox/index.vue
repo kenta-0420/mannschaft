@@ -11,24 +11,17 @@ definePageMeta({
 })
 
 const { t } = useI18n()
-const router = useRouter()
+const showGuide = ref(false)
 </script>
 
 <template>
   <div>
-    <div class="mb-4 flex items-center gap-3">
-      <Button
-        icon="pi pi-arrow-left"
-        text
-        rounded
-        :aria-label="t('common.back')"
-        @click="router.back()"
-      />
-      <h1 class="text-2xl font-bold">{{ t('inbox.title') }}</h1>
-    </div>
+    <PageHeader :title="t('inbox.title')" help @help="showGuide = true" />
 
     <div class="mx-auto max-w-3xl">
       <InboxList />
     </div>
+
+    <InboxGuideModal v-model:visible="showGuide" />
   </div>
 </template>
