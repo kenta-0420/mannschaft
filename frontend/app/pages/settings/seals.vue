@@ -12,6 +12,7 @@ const scopeDefaults = ref<ScopeDefault[]>([])
 const loading = ref(true)
 const regenerating = ref(false)
 const activeTab = ref('0')
+const showGuide = ref(false)
 
 const userId = computed(() => authStore.user?.id)
 
@@ -63,7 +64,7 @@ onMounted(loadData)
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <PageHeader title="電子印鑑" />
+    <PageHeader title="電子印鑑" help @help="showGuide = true" />
 
     <PageLoading v-if="loading" />
 
@@ -101,5 +102,8 @@ onMounted(loadData)
         </TabPanels>
       </Tabs>
     </template>
+
+    <!-- 使い方説明モーダル -->
+    <SealGuideModal v-model:visible="showGuide" />
   </div>
 </template>
