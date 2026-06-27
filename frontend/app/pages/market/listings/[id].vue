@@ -164,17 +164,9 @@ const payeeScope = computed<{ kind: ScopeKind, id: number } | null>(() => {
     <PageLoading v-if="pageLoading" />
 
     <template v-else-if="listing">
-      <!-- 戻るボタン -->
-      <div class="mb-4">
-        <Button
-          icon="pi pi-arrow-left"
-          :label="$t('market.title')"
-          text
-          @click="navigateTo('/market')"
-        />
-      </div>
+      <PageHeader :title="listing.title" size="sm" back-to="/market" />
 
-      <div class="rounded-xl border border-surface-300 bg-surface-0 p-6 shadow-sm dark:border-surface-600 dark:bg-surface-900" data-testid="market-detail-card">
+      <SectionCard data-testid="market-detail-card">
         <!-- 主催（PII抑制: 公称名+アイコンのみ） -->
         <div class="mb-4 flex items-center gap-3" data-testid="market-detail-organizer">
           <Avatar
@@ -201,11 +193,6 @@ const payeeScope = computed<{ kind: ScopeKind, id: number } | null>(() => {
             class="ml-auto"
           />
         </div>
-
-        <!-- タイトル -->
-        <h1 class="mb-4 text-2xl font-bold text-surface-900 dark:text-surface-50" data-testid="market-detail-title">
-          {{ listing.title }}
-        </h1>
 
         <!-- カテゴリ -->
         <div class="mb-3 flex items-center gap-2">
@@ -305,7 +292,7 @@ const payeeScope = computed<{ kind: ScopeKind, id: number } | null>(() => {
             disabled
           />
         </div>
-      </div>
+      </SectionCard>
 
       <!-- 謝礼あり札の受取口座（Stripe Connect）登録導線（受取側・F22.1） -->
       <MarketConnectOnboarding

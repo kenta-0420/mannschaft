@@ -24,6 +24,8 @@ const marketApi = useMarketApi()
 const { handleApiError } = useErrorHandler()
 const authStore = useAuthStore()
 
+const showGuide = ref(false)
+
 const {
   prefectures,
   cities,
@@ -245,18 +247,19 @@ onMounted(async () => {
 <template>
   <div class="mx-auto max-w-6xl p-6" data-testid="market-page">
     <!-- ヘッダー -->
-    <div class="mb-4 flex flex-wrap items-center gap-3">
-      <PageHeader :title="$t('market.title')" class="flex-1" />
-      <!-- 市から直接札を立てない（導線のみ）-->
-      <Button
-        :label="$t('market.action.post')"
-        icon="pi pi-tag"
-        severity="secondary"
-        outlined
-        data-testid="market-post-link"
-        @click="navigateTo('/dashboard')"
-      />
-    </div>
+    <PageHeader :title="$t('market.title')" :back="false" help @help="showGuide = true">
+      <template #actions>
+        <!-- 市から直接札を立てない（導線のみ）-->
+        <Button
+          :label="$t('market.action.post')"
+          icon="pi pi-tag"
+          severity="secondary"
+          outlined
+          data-testid="market-post-link"
+          @click="navigateTo('/dashboard')"
+        />
+      </template>
+    </PageHeader>
 
     <!-- パンくず -->
     <nav class="mb-4 flex items-center gap-1 text-sm text-surface-500" aria-label="breadcrumb">
@@ -382,16 +385,13 @@ onMounted(async () => {
     <!-- 空状態（立場別3パターン） -->
     <template v-else-if="listings.length === 0">
       <!-- ログイン済み・権限ありを確認する方法がないためシンプルに2パターンで分岐 -->
-      <div class="flex flex-col items-center justify-center py-12 text-center" data-testid="market-empty-state">
-        <i class="pi pi-tag mb-4 text-5xl text-surface-300" />
-        <p class="mb-4 text-lg font-semibold text-surface-500">
-          {{ $t('market.empty.title') }}
-        </p>
+      <div class="flex flex-col items-center gap-3" data-testid="market-empty-state">
+        <DashboardEmptyState
+          icon="pi pi-tag"
+          :message="$t('market.empty.title')"
+        />
         <!-- 未ログイン -->
         <template v-if="!isAuthenticated">
-          <p class="mb-4 text-sm text-surface-400">
-            {{ $t('market.empty.cta.guest') }}
-          </p>
           <Button
             :label="$t('market.action.loginToApply')"
             icon="pi pi-sign-in"
@@ -400,9 +400,6 @@ onMounted(async () => {
         </template>
         <!-- ログイン済み -->
         <template v-else>
-          <p class="mb-4 text-sm text-surface-400">
-            {{ $t('market.empty.cta.canPost') }}
-          </p>
           <Button
             :label="$t('market.action.goToDashboard')"
             icon="pi pi-home"
@@ -504,5 +501,7 @@ onMounted(async () => {
         />
       </div>
     </template>
+
+    <MarketGuideModal v-model:visible="showGuide" />
   </div>
 </template>
