@@ -4,6 +4,7 @@ import com.mannschaft.app.schedule.entity.PersonalScheduleReminderEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
@@ -18,12 +19,14 @@ public interface PersonalScheduleReminderRepository extends JpaRepository<Person
     List<PersonalScheduleReminderEntity> findByScheduleIdOrderByRemindBeforeMinutesAsc(Long scheduleId);
 
     /**
-     * スケジュールIDでリマインダーを削除する。
-     * flushAutomatically=true で DELETE を即時 DB に送出し、後続の saveAll() との
+     * スケジュールIDでリマインダーを一括削除する。
+     * JPQL バルク DELETE で即時 SQL を発行し、後続の saveAll() との
      * 競合（uq_psr_schedule_minutes 重複エラー）を防ぐ。
+     * derived delete（select-then-remove）と異なり Hibernate の insert-before-delete 順序に影響されない。
      */
-    @Modifying(flushAutomatically = true, clearAutomatically = true)
-    void deleteByScheduleId(Long scheduleId);
+    @Modifying
+    @Query("DELETE FROM PersonalScheduleReminderEntity r WHERE r.scheduleId = :scheduleId")
+    void deleteByScheduleId(@Param("scheduleId") Long scheduleId);
 
     /**
      * 通知対象のリマインダーを取得する（機能55 第二陣で相対/絶対両対応）。
