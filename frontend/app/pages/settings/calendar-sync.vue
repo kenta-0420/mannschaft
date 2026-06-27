@@ -8,36 +8,55 @@ const orgStore = useOrganizationStore()
 const notification = useNotification()
 const route = useRoute()
 const router = useRouter()
-const { formatDateTime } = useDatetime()
 
+/**
+ * BE の GoogleCalendarStatusResponse に対応するインターフェース。
+ * フィールド名は BE の JSON キーに合わせること（isConnected, googleAccountEmail, ...）。
+ */
 interface ConnectionStatus {
   isConnected: boolean
-  email: string | null
-  lastSyncedAt: string | null
+  googleAccountEmail: string | null
+  googleCalendarId: string | null
+  isActive: boolean
+  personalSyncEnabled: boolean
+  lastSyncError: { type: string; message: string; occurredAt: string } | null
 }
-interface SyncSettings {
-  personalSync: boolean
-  teamSyncIds: number[]
-  orgSyncIds: number[]
+
+/**
+ * BE の PersonalSyncStatusResponse に対応するインターフェース。
+ */
+interface PersonalSyncStatus {
+  connected: boolean
+  active: boolean
+  personalSyncEnabled: boolean
+  googleAccountEmail: string | null
+  lastSyncError: { type: string; message: string; occurredAt: string } | null
 }
 
 const status = ref<ConnectionStatus | null>(null)
-const syncSettings = ref<SyncSettings | null>(null)
+const personalSyncStatus = ref<PersonalSyncStatus | null>(null)
 const loading = ref(true)
 const syncing = ref(false)
 
 async function load() {
   loading.value = true
   try {
-    const [statusRes, settingsRes] = await Promise.all([
-      gcalApi.getConnectionStatus(),
-      gcalApi.getPersonalSync(),
-    ])
+    // 接続状態を取得（getPersonalSync の失敗で接続状態表示が消えないよう分離して実行）
+    const statusRes = await gcalApi.getConnectionStatus()
     status.value = statusRes.data as ConnectionStatus
-    syncSettings.value = settingsRes as unknown as SyncSettings
-    await Promise.all([teamStore.fetchMyTeams(), orgStore.fetchMyOrganizations()])
-  } catch {
-    /* silent */
+
+    // 接続済みの場合のみ個人同期設定・チーム/組織一覧を取得
+    if (status.value?.isConnected) {
+      const [syncRes] = await Promise.all([
+        gcalApi.getPersonalSync(),
+        teamStore.fetchMyTeams(),
+        orgStore.fetchMyOrganizations(),
+      ])
+      personalSyncStatus.value = syncRes.data as PersonalSyncStatus
+    }
+  } catch (e) {
+    console.error('[calendar-sync load error]', e)
+    notification.error('読み込みに失敗しました。コンソールを確認してください。')
   } finally {
     loading.value = false
   }
@@ -75,9 +94,11 @@ async function disconnectGoogle() {
 }
 
 async function saveSettings() {
-  if (!syncSettings.value) return
+  if (!personalSyncStatus.value) return
   try {
-    await gcalApi.updatePersonalSync(syncSettings.value as unknown as Record<string, unknown>)
+    await gcalApi.updatePersonalSync({
+      personalSyncEnabled: personalSyncStatus.value.personalSyncEnabled,
+    })
     notification.success('同期設定を保存しました')
   } catch {
     notification.error('保存に失敗しました')
@@ -95,25 +116,6 @@ async function manualSync() {
   } finally {
     syncing.value = false
   }
-}
-
-function toggleTeamSync(teamId: number) {
-  if (!syncSettings.value) return
-  const idx = syncSettings.value.teamSyncIds.indexOf(teamId)
-  if (idx >= 0) syncSettings.value.teamSyncIds.splice(idx, 1)
-  else syncSettings.value.teamSyncIds.push(teamId)
-}
-
-function toggleOrgSync(orgId: number) {
-  if (!syncSettings.value) return
-  const idx = syncSettings.value.orgSyncIds.indexOf(orgId)
-  if (idx >= 0) syncSettings.value.orgSyncIds.splice(idx, 1)
-  else syncSettings.value.orgSyncIds.push(orgId)
-}
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '未同期'
-  return formatDateTime(dateStr)
 }
 
 onMounted(async () => {
@@ -143,10 +145,12 @@ onMounted(async () => {
             </div>
             <div>
               <p class="font-medium text-green-700 dark:text-green-400">接続中</p>
-              <p class="text-sm text-surface-500">{{ status.email }}</p>
+              <p class="text-sm text-surface-500">{{ status.googleAccountEmail }}</p>
             </div>
           </div>
-          <p class="text-xs text-surface-400">最終同期: {{ formatDate(status.lastSyncedAt) }}</p>
+          <p v-if="status.lastSyncError" class="text-xs text-red-500">
+            同期エラー: {{ status.lastSyncError.message }}
+          </p>
           <div class="flex gap-2">
             <Button
               label="手動同期"
@@ -180,7 +184,7 @@ onMounted(async () => {
 
       <!-- 同期設定 -->
       <SectionCard
-        v-if="status?.isConnected && syncSettings"
+        v-if="status?.isConnected && personalSyncStatus"
         title="同期設定"
       >
 
@@ -192,7 +196,7 @@ onMounted(async () => {
             <p class="font-medium">個人カレンダー</p>
             <p class="text-xs text-surface-500">個人の予定をGoogleカレンダーに同期</p>
           </div>
-          <ToggleSwitch v-model="syncSettings.personalSync" />
+          <ToggleSwitch v-model="personalSyncStatus.personalSyncEnabled" />
         </div>
 
         <!-- チーム -->
@@ -205,10 +209,6 @@ onMounted(async () => {
               class="flex items-center justify-between rounded-lg bg-surface-50 px-3 py-2 dark:bg-surface-700/50"
             >
               <span class="text-sm">{{ team.nickname1 || team.name }}</span>
-              <ToggleSwitch
-                :model-value="syncSettings.teamSyncIds.includes(team.id)"
-                @update:model-value="toggleTeamSync(team.id)"
-              />
             </div>
           </div>
         </div>
@@ -223,10 +223,6 @@ onMounted(async () => {
               class="flex items-center justify-between rounded-lg bg-surface-50 px-3 py-2 dark:bg-surface-700/50"
             >
               <span class="text-sm">{{ org.nickname1 || org.name }}</span>
-              <ToggleSwitch
-                :model-value="syncSettings.orgSyncIds.includes(org.id)"
-                @update:model-value="toggleOrgSync(org.id)"
-              />
             </div>
           </div>
         </div>

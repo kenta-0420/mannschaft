@@ -295,6 +295,7 @@
       "section_title": "Google 日历集成",
       "connected_label": "已连接",
       "last_synced": "最后同步: {date}",
+      "last_sync_error": "同步错误: {message}",
       "manual_sync_button": "手动同步",
       "disconnect_button": "解除连接",
       "sync_settings_title": "同步设置",

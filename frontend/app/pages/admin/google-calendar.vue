@@ -6,12 +6,13 @@ const scopeType = computed(() => scopeStore.current.type as 'team' | 'organizati
 const scopeId = computed(() => scopeStore.current.id ?? '')
 const { success, error: showError } = useNotification()
 const { getConnectionStatus, connect, disconnect, toggleTeamSync, toggleOrgSync } = useGoogleCalendarApi()
-const { formatDateTime } = useDatetime()
-
 interface ConnectionStatus {
   isConnected: boolean
-  email: string | null
-  lastSyncedAt: string | null
+  googleAccountEmail: string | null
+  googleCalendarId: string | null
+  isActive: boolean
+  personalSyncEnabled: boolean
+  lastSyncError: { type: string; message: string; occurredAt: string } | null
 }
 
 const status = ref<ConnectionStatus | null>(null)
@@ -91,7 +92,7 @@ onMounted(load)
               <i class="pi pi-check-circle text-green-500" />
               <span class="font-medium">接続済み</span>
             </div>
-            <p class="mt-1 text-sm text-surface-500">{{ status.email }}</p>
+            <p class="mt-1 text-sm text-surface-500">{{ status.googleAccountEmail }}</p>
           </div>
           <Button
             label="接続解除"
@@ -127,8 +128,8 @@ onMounted(load)
             @update:model-value="toggleSync"
           />
         </div>
-        <div v-if="status?.lastSyncedAt" class="mt-4 text-xs text-surface-400">
-          最終同期: {{ formatDateTime(status.lastSyncedAt) }}
+        <div v-if="status?.lastSyncError" class="mt-4 text-xs text-red-500">
+          同期エラー: {{ status.lastSyncError.message }}
         </div>
       </SectionCard>
     </div>

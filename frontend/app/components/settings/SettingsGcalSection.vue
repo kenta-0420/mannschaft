@@ -6,7 +6,14 @@ const gcalSyncSettings = defineModel<{
 } | null>('gcalSyncSettings', { required: true })
 
 defineProps<{
-  gcalStatus: { isConnected: boolean; email: string | null; lastSyncedAt: string | null } | null
+  gcalStatus: {
+    isConnected: boolean
+    googleAccountEmail: string | null
+    googleCalendarId: string | null
+    isActive: boolean
+    personalSyncEnabled: boolean
+    lastSyncError: { type: string; message: string; occurredAt: string } | null
+  } | null
   gcalSyncing: boolean
   teams: { id: number; name: string; nickname1?: string | null }[]
   organizations: { id: number; name: string; nickname1?: string | null }[]
@@ -21,12 +28,7 @@ defineEmits<{
   toggleOrgSync: [orgId: string]
 }>()
 
-const { formatDateTime } = useDatetime()
 
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '-'
-  return formatDateTime(dateStr)
-}
 </script>
 
 <template>
@@ -40,11 +42,11 @@ function formatDate(dateStr: string | null): string {
         </div>
         <div>
           <p class="font-medium text-green-700 dark:text-green-400">{{ $t('settings.gcal.connected_label') }}</p>
-          <p class="text-sm text-surface-500">{{ gcalStatus.email }}</p>
+          <p class="text-sm text-surface-500">{{ gcalStatus.googleAccountEmail }}</p>
         </div>
       </div>
-      <p class="text-xs text-surface-400">
-        {{ $t('settings.gcal.last_synced', { date: formatDate(gcalStatus.lastSyncedAt) }) }}
+      <p v-if="gcalStatus.lastSyncError" class="text-xs text-red-500">
+        {{ $t('settings.gcal.last_sync_error', { message: gcalStatus.lastSyncError.message }) }}
       </p>
       <div class="flex gap-2">
         <Button

@@ -28,7 +28,14 @@ export function useGoogleCalendarApi() {
 
   async function getConnectionStatus() {
     return api<{
-      data: { isConnected: boolean; email: string | null; lastSyncedAt: string | null }
+      data: {
+        isConnected: boolean
+        googleAccountEmail: string | null
+        googleCalendarId: string | null
+        isActive: boolean
+        personalSyncEnabled: boolean
+        lastSyncError: { type: string; message: string; occurredAt: string } | null
+      }
     }>('/api/v1/me/google-calendar/status')
   }
 

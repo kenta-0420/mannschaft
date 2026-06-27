@@ -295,6 +295,7 @@
       "section_title": "Google Calendar 連携",
       "connected_label": "接続中",
       "last_synced": "最終同期: {date}",
+      "last_sync_error": "同期エラー: {message}",
       "manual_sync_button": "手動同期",
       "disconnect_button": "連携解除",
       "sync_settings_title": "同期設定",
