@@ -14,6 +14,7 @@
       "apply": "Postularse",
       "takeDown": "Retirar",
       "loginToApply": "Inicia sesión",
+      "selectTeam": "Selecciona un equipo para postularte",
       "goToDashboard": "Ir al panel",
       "postFromDashboard": "Publica desde el panel de tu equipo/organización"
     },

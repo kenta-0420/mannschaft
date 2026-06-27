@@ -263,7 +263,8 @@ class MarketControllerTest {
                 1,
                 0,
                 "OPEN",
-                false);
+                false,
+                "INDIVIDUAL");
     }
 
     private MarketListingResponse multiRegionListing() {
@@ -284,6 +285,7 @@ class MarketControllerTest {
                 4,
                 0,
                 "OPEN",
-                false);
+                false,
+                "INDIVIDUAL");
     }
 }

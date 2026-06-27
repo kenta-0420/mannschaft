@@ -239,7 +239,8 @@ public class MarketQueryService {
                 e.getConfirmedCount(),
                 e.getStatus().name(),
                 // Phase 1 では決済は常に false（謝礼決済は Phase 2）。
-                Boolean.FALSE);
+                Boolean.FALSE,
+                e.getParticipationType().name());
     }
 
     private MarketCategoryDto resolveCategoryFromMap(Long categoryId, MarketResolverMaps maps) {
