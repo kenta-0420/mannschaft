@@ -108,7 +108,7 @@ async function save() {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <PageHeader :title="$t('settings.language.title')" back-to="/settings" />
+    <PageHeader :title="$t('settings.language.title')" />
 
     <PageLoading v-if="loading" />
 

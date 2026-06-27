@@ -44,7 +44,7 @@ async function onToggleVisibility(key: string, visible: boolean) {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <PageHeader :title="$t('settings.navigation.title')" back-to="/settings" />
+    <PageHeader :title="$t('settings.navigation.title')" />
     <p class="mb-2 text-sm text-surface-500">{{ $t('settings.navigation.description') }}</p>
     <p class="mb-4 text-xs text-surface-400">
       <i class="pi pi-bars mr-1" />{{ $t('settings.navigation.reorderHint') }}
