@@ -11,13 +11,14 @@ const router = useRouter()
 
 /**
  * BE の GoogleCalendarStatusResponse に対応するインターフェース。
- * フィールド名は BE の JSON キーに合わせること（isConnected, googleAccountEmail, ...）。
+ * Lombok @Getter が boolean isConnected を connected() として出力するため、
+ * Jackson シリアライズ結果は "connected"/"active" になる。
  */
 interface ConnectionStatus {
-  isConnected: boolean
+  connected: boolean
   googleAccountEmail: string | null
   googleCalendarId: string | null
-  isActive: boolean
+  active: boolean
   personalSyncEnabled: boolean
   lastSyncError: { type: string; message: string; occurredAt: string } | null
 }
@@ -46,7 +47,7 @@ async function load() {
     status.value = statusRes.data as ConnectionStatus
 
     // 接続済みの場合のみ個人同期設定・チーム/組織一覧を取得
-    if (status.value?.isConnected) {
+    if (status.value?.connected) {
       const [syncRes] = await Promise.all([
         gcalApi.getPersonalSync(),
         teamStore.fetchMyTeams(),
@@ -136,7 +137,7 @@ onMounted(async () => {
     <div v-else class="fade-in space-y-6">
       <!-- 接続状態 -->
       <SectionCard title="接続状態">
-        <div v-if="status?.isConnected" class="space-y-3">
+        <div v-if="status?.connected" class="space-y-3">
           <div class="flex items-center gap-3">
             <div
               class="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30"
@@ -184,7 +185,7 @@ onMounted(async () => {
 
       <!-- 同期設定 -->
       <SectionCard
-        v-if="status?.isConnected && personalSyncStatus"
+        v-if="status?.connected && personalSyncStatus"
         title="同期設定"
       >
 

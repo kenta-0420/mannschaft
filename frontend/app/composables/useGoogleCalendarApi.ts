@@ -29,10 +29,10 @@ export function useGoogleCalendarApi() {
   async function getConnectionStatus() {
     return api<{
       data: {
-        isConnected: boolean
+        connected: boolean
         googleAccountEmail: string | null
         googleCalendarId: string | null
-        isActive: boolean
+        active: boolean
         personalSyncEnabled: boolean
         lastSyncError: { type: string; message: string; occurredAt: string } | null
       }
