@@ -156,10 +156,12 @@ function isActive(path: string, exact = false): boolean {
           >
             Mannschaft
           </span>
+          <!-- overflow-x-auto が正しく発動するよう、HTML div で min-w-0 flex-1 を確保してから nav を内包する -->
+          <div class="hidden md:flex min-w-0 flex-1">
           <ClientOnly>
             <nav
               v-if="authStore.isAuthenticated"
-              class="hidden md:flex min-w-0 flex-1 items-center gap-1 overflow-x-auto scrollbar-thin-nav"
+              class="flex min-w-0 w-full items-center gap-1 overflow-x-auto scrollbar-thin-nav"
             >
               <!-- ダッシュボード（最初に固定表示） -->
               <NuxtLink
@@ -227,6 +229,7 @@ function isActive(path: string, exact = false): boolean {
               </NuxtLink>
             </nav>
           </ClientOnly>
+          </div>
         </div>
 
         <!-- 右: ユーザーメニュー -->
