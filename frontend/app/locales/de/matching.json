@@ -2,6 +2,36 @@
   "matching": {
     "pageTitle": "Spiele suchen",
     "teamPageTitle": "Matching",
-    "empty": "Keine Inserate"
+    "empty": "Keine Inserate",
+    "guide": {
+      "title": "Spiele suchen — Anleitung",
+      "browse": {
+        "title": "Inserate durchsuchen",
+        "body": "Alle Spiel- und Austausch-Inserate der Plattform werden hier aufgelistet. Jede Karte zeigt Teamname, Typ, Level und Anzahl der Bewerbungen. Suche nach Inseraten mit dem Status «Offen»."
+      },
+      "status": {
+        "title": "Status verstehen",
+        "body": "Das farbige Abzeichen oben links auf jeder Inseratskarte zeigt den aktuellen Status.",
+        "open": "Offen (grün) — Bewerbungen werden derzeit angenommen",
+        "matched": "Gematcht (blau) — Ein Gegner wurde bestätigt",
+        "cancelled": "Abgesagt (rot) — Das Inserat wurde zurückgezogen"
+      },
+      "types": {
+        "title": "Typen, Kategorien & Level",
+        "body": "Inseratskarten zeigen Typ, Kategorie und Level. Finde Inserate, die den Bedingungen deines Teams entsprechen.",
+        "competition": "Spiel — Inserate für offizielle oder Trainingspartien",
+        "practice": "Training — Inserate für gemeinsames Training oder Gastbeteiligung",
+        "exchange": "Austausch — Freundschaftsspiele oder Veranstaltungen",
+        "recruit": "Verstärkung — Inserate für Ersatzspieler oder Einmalpartizipation"
+      },
+      "create": {
+        "title": "Inserat von deinem Team erstellen",
+        "body": "Um Gegner oder Austauschpartner zu finden, erstelle ein Inserat über den Matching-Tab auf deiner Teamseite.",
+        "step1": "Teamseite öffnen",
+        "step2": "Tab «Matching» antippen",
+        "step3": "Schaltfläche «Inserat erstellen» antippen",
+        "step4": "Titel, Typ und Kategorie eingeben, dann «Erstellen» antippen"
+      }
+    }
   }
 }
