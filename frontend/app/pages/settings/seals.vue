@@ -63,7 +63,7 @@ onMounted(loadData)
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <PageHeader title="電子印鑑" back-to="/settings" />
+    <PageHeader title="電子印鑑" />
 
     <PageLoading v-if="loading" />
 
