@@ -182,10 +182,9 @@ onMounted(async () => {
 
       <template v-else>
         <div class="flex flex-col gap-4">
-          <div
+          <SectionCard
             v-for="(label, idx) in DOW_LABELS"
             :key="idx"
-            class="rounded-xl border border-surface-200 bg-surface-0 p-4"
           >
             <!-- 曜日ラベル -->
             <div class="mb-3 flex items-center gap-2">
@@ -216,11 +215,11 @@ onMounted(async () => {
                 {{ t(preferenceToI18nKey(pref)) }}
               </button>
             </div>
-          </div>
+          </SectionCard>
         </div>
 
         <!-- 凡例 -->
-        <div class="mt-4 rounded-xl border border-surface-200 bg-surface-0 p-4">
+        <SectionCard class="mt-4">
           <h4 class="mb-2 text-xs font-semibold text-surface-500">{{ t('shift.legend') }}</h4>
           <div class="flex flex-wrap gap-2">
             <span
@@ -232,7 +231,7 @@ onMounted(async () => {
               {{ t(preferenceToI18nKey(pref)) }}
             </span>
           </div>
-        </div>
+        </SectionCard>
 
         <!-- アクションボタン -->
         <div class="mt-6 flex flex-wrap items-center justify-between gap-3">

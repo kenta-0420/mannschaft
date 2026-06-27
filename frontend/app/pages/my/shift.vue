@@ -372,10 +372,10 @@ const DOW_KEYS = ['月', '火', '水', '木', '金', '土', '日'] as const
           v-else
           class="w-full sm:flex-1 flex flex-col gap-3"
         >
-          <div
+          <SectionCard
             v-for="day in weekDates"
             :key="dateKey(day)"
-            class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 overflow-hidden"
+            class="overflow-hidden"
           >
             <!-- 日付ヘッダー -->
             <button
@@ -453,14 +453,14 @@ const DOW_KEYS = ['月', '火', '水', '木', '金', '土', '日'] as const
                 </div>
               </div>
             </Transition>
-          </div>
+          </SectionCard>
         </div>
 
         <!-- ===== 詳細パネル（月次ビュー + 日付選択時） ===== -->
         <Transition name="slide-panel">
-          <div
+          <SectionCard
             v-if="viewMode === 'monthly' && selectedDate"
-            class="w-full sm:w-80 shrink-0 rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900"
+            class="w-full sm:w-80 shrink-0"
           >
             <div class="flex items-center justify-between border-b border-surface-200 dark:border-surface-700 px-4 py-3">
               <h3 class="text-sm font-semibold text-surface-800 dark:text-surface-200">
@@ -524,7 +524,7 @@ const DOW_KEYS = ['月', '火', '水', '木', '金', '土', '日'] as const
                 </div>
               </div>
             </div>
-          </div>
+          </SectionCard>
         </Transition>
       </div>
     </template>
