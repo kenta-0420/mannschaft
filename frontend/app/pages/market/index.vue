@@ -247,7 +247,7 @@ onMounted(async () => {
 <template>
   <div class="mx-auto max-w-6xl p-6" data-testid="market-page">
     <!-- ヘッダー -->
-    <PageHeader :title="$t('market.title')" :back="false" help @help="showGuide = true">
+    <PageHeader :title="$t('market.title')" help @help="showGuide = true">
       <template #actions>
         <!-- 市から直接札を立てない（導線のみ）-->
         <Button

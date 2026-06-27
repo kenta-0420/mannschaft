@@ -153,15 +153,16 @@ function openDetail(scheduleId: number) {
 <template>
   <div class="mx-auto max-w-6xl px-4 py-8">
     <!-- ヘッダー -->
-    <div class="mb-6 flex items-center justify-between">
-      <PageHeader :title="t('shift.index.title')" :back="false" help @help="showGuide = true" />
-      <Button
-        v-if="canManage"
-        icon="pi pi-plus"
-        :label="t('shift.index.createNew')"
-        @click="showCreateDialog = true"
-      />
-    </div>
+    <PageHeader :title="t('shift.index.title')" help @help="showGuide = true">
+      <template #actions>
+        <Button
+          v-if="canManage"
+          icon="pi pi-plus"
+          :label="t('shift.index.createNew')"
+          @click="showCreateDialog = true"
+        />
+      </template>
+    </PageHeader>
 
     <!-- フィルタバー -->
     <div class="mb-6 flex flex-wrap items-center gap-3">
