@@ -28,12 +28,7 @@ defineEmits<{
   toggleOrgSync: [orgId: string]
 }>()
 
-const { formatDateTime } = useDatetime()
 
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '-'
-  return formatDateTime(dateStr)
-}
 </script>
 
 <template>

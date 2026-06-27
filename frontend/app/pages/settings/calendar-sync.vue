@@ -8,7 +8,6 @@ const orgStore = useOrganizationStore()
 const notification = useNotification()
 const route = useRoute()
 const router = useRouter()
-const { formatDateTime } = useDatetime()
 
 /**
  * BE の GoogleCalendarStatusResponse に対応するインターフェース。
@@ -117,11 +116,6 @@ async function manualSync() {
   } finally {
     syncing.value = false
   }
-}
-
-function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return '未同期'
-  return formatDateTime(dateStr)
 }
 
 onMounted(async () => {

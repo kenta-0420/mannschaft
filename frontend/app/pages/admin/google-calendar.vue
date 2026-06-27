@@ -6,8 +6,6 @@ const scopeType = computed(() => scopeStore.current.type as 'team' | 'organizati
 const scopeId = computed(() => scopeStore.current.id ?? '')
 const { success, error: showError } = useNotification()
 const { getConnectionStatus, connect, disconnect, toggleTeamSync, toggleOrgSync } = useGoogleCalendarApi()
-const { formatDateTime } = useDatetime()
-
 interface ConnectionStatus {
   isConnected: boolean
   googleAccountEmail: string | null
