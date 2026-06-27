@@ -118,6 +118,8 @@ export interface MarketListingResponse {
   confirmedCount: number
   status: MarketListingStatus
   paymentEnabled: boolean
+  /** 参加種別。INDIVIDUAL=個人応募（participantType: USER）/ TEAM=チーム応募（participantType: TEAM + teamId 必須）。 */
+  participationType: 'INDIVIDUAL' | 'TEAM'
 }
 
 // ===========================================

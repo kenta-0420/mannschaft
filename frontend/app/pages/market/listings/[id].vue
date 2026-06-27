@@ -24,6 +24,7 @@ const route = useRoute()
 const marketApi = useMarketApi()
 const recruitmentApi = useRecruitmentApi()
 const authStore = useAuthStore()
+const teamStore = useTeamStore()
 const notification = useNotification()
 const { handleApiError } = useErrorHandler()
 
@@ -40,6 +41,8 @@ const listingId = computed(() => {
 const listing = ref<MarketListingResponse | null>(null)
 const pageLoading = ref(true)
 const applying = ref(false)
+/** TEAM 型募集のときに選択されたチームID。 */
+const selectedTeamId = ref<number | null>(null)
 
 async function load() {
   pageLoading.value = true
@@ -64,23 +67,33 @@ async function load() {
 
 await load()
 
+// TEAM 型の募集であれば所属チーム一覧を先読み。
+if (authStore.isAuthenticated && listing.value?.participationType === 'TEAM') {
+  await teamStore.fetchMyTeams()
+}
+
 // ロケール切替時に地域名表示を現在ロケールへ追従させる。
 watch(locale, async () => {
   await load()
 })
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
-const canApply = computed(() =>
-  isAuthenticated.value
-  && listing.value?.status === 'OPEN',
-)
+const isTeamListing = computed(() => listing.value?.participationType === 'TEAM')
+const canApply = computed(() => {
+  if (!isAuthenticated.value || listing.value?.status !== 'OPEN') return false
+  // TEAM 型はチームを選択するまで応募不可。
+  if (isTeamListing.value) return selectedTeamId.value !== null
+  return true
+})
 
 async function applyToListing() {
   if (!listing.value) return
   applying.value = true
   try {
+    const isTeam = listing.value.participationType === 'TEAM'
     await recruitmentApi.applyToListing(listing.value.id, {
-      participantType: 'TEAM',
+      participantType: isTeam ? 'TEAM' : 'USER',
+      teamId: isTeam ? selectedTeamId.value : undefined,
     })
     notification.success(t('recruitment.participantStatus.applied'))
     // 応募後に件数を更新するために再取得
@@ -250,7 +263,7 @@ const payeeScope = computed<{ kind: ScopeKind, id: number } | null>(() => {
         </div>
 
         <!-- 応募ボタン -->
-        <div class="flex justify-center" data-testid="market-detail-apply-area">
+        <div class="flex flex-col items-center gap-3" data-testid="market-detail-apply-area">
           <!-- 未ログイン: ログイン誘導 -->
           <Button
             v-if="!isAuthenticated"
@@ -260,19 +273,32 @@ const payeeScope = computed<{ kind: ScopeKind, id: number } | null>(() => {
             data-testid="market-login-to-apply-btn"
             @click="navigateTo('/login')"
           />
-          <!-- ログイン済み・OPEN: 応募ボタン -->
-          <Button
-            v-else-if="canApply"
-            :label="$t('market.action.apply')"
-            icon="pi pi-check"
-            size="large"
-            :loading="applying"
-            data-testid="market-apply-btn"
-            @click="applyToListing"
-          />
+          <template v-else-if="listing.status === 'OPEN'">
+            <!-- TEAM 型: チーム選択ドロップダウン -->
+            <Select
+              v-if="isTeamListing"
+              v-model="selectedTeamId"
+              :options="teamStore.myTeams"
+              option-label="name"
+              option-value="id"
+              :placeholder="$t('market.action.selectTeam')"
+              class="w-full max-w-xs"
+              data-testid="market-team-select"
+            />
+            <!-- 応募ボタン -->
+            <Button
+              :label="$t('market.action.apply')"
+              icon="pi pi-check"
+              size="large"
+              :loading="applying"
+              :disabled="!canApply"
+              data-testid="market-apply-btn"
+              @click="applyToListing"
+            />
+          </template>
           <!-- ログイン済み・OPEN以外 -->
           <Button
-            v-else-if="isAuthenticated"
+            v-else
             :label="$t(`market.status.${listing.status}`)"
             :severity="statusSeverity(listing.status)"
             size="large"
