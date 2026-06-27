@@ -65,6 +65,7 @@ public class PersonalScheduleService {
     private final ApplicationEventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
     private final NameResolverService nameResolverService;
+    private final ScheduleRecurrenceService recurrenceService;
 
     /**
      * 個人スケジュールを作成する。ソフトリミット1000件を超過している場合はエラーとする。
@@ -112,10 +113,10 @@ public class PersonalScheduleService {
 
         schedule = scheduleRepository.save(schedule);
 
-        // 繰り返しルールがある場合は ScheduleService の展開ロジックを経由
-        // （ScheduleService.expandRecurrenceSchedules はパッケージプライベートのため直接呼び出せない場合、
-        //   createSchedule を呼ぶか、展開ロジックをここで再実装する）
-        // 現時点では親スケジュールの recurrenceRule を保持し、子展開は ScheduleService に委譲
+        // 繰り返しルールがある場合は子スケジュールを展開
+        if (req.getRecurrenceRule() != null) {
+            recurrenceService.expandRecurrenceSchedules(schedule);
+        }
 
         List<Integer> savedReminders = saveReminders(
                 schedule.getId(), req.getReminders(), req.getAbsoluteReminders());
@@ -220,13 +221,21 @@ public class PersonalScheduleService {
 
         String updateScope = req.getUpdateScopeOrDefault();
 
-        if (schedule.isRecurring() || schedule.getParentScheduleId() != null) {
+        // save 前に繰り返し予定かどうかを記録（save 後は isRecurring() が変化しうる）
+        boolean wasRecurring = schedule.isRecurring() || schedule.getParentScheduleId() != null;
+
+        if (wasRecurring) {
             updateRecurringSchedule(schedule, req, updateScope);
         } else {
             applyUpdateToSchedule(schedule, req);
         }
 
         schedule = scheduleRepository.save(schedule);
+
+        // 非繰り返し予定に初めて繰り返しルールが設定された場合は子スケジュールを展開
+        if (req.getRecurrenceRule() != null && !wasRecurring) {
+            recurrenceService.expandRecurrenceSchedules(schedule);
+        }
 
         // 機能55 BE対応: 相対リマインダー（reminders）と絶対リマインダー（absoluteReminders）の更新
         // どちらかが非nullなら saveReminders で差し替え。両方 null なら既存を保持。
