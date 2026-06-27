@@ -3,10 +3,10 @@ import type { components } from '~/types/generated'
 type PersonalSyncStatusResponse = components['schemas']['PersonalSyncStatusResponse']
 
 interface GcalStatus {
-  isConnected: boolean
+  connected: boolean
   googleAccountEmail: string | null
   googleCalendarId: string | null
-  isActive: boolean
+  active: boolean
   personalSyncEnabled: boolean
   lastSyncError: { type: string; message: string; occurredAt: string } | null
 }

@@ -7,10 +7,10 @@ const gcalSyncSettings = defineModel<{
 
 defineProps<{
   gcalStatus: {
-    isConnected: boolean
+    connected: boolean
     googleAccountEmail: string | null
     googleCalendarId: string | null
-    isActive: boolean
+    active: boolean
     personalSyncEnabled: boolean
     lastSyncError: { type: string; message: string; occurredAt: string } | null
   } | null
@@ -33,7 +33,7 @@ defineEmits<{
 
 <template>
   <SectionCard :title="$t('settings.gcal.section_title')">
-    <div v-if="gcalStatus?.isConnected" class="space-y-4">
+    <div v-if="gcalStatus?.connected" class="space-y-4">
       <div class="flex items-center gap-3">
         <div
           class="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30"

@@ -7,10 +7,10 @@ const scopeId = computed(() => scopeStore.current.id ?? '')
 const { success, error: showError } = useNotification()
 const { getConnectionStatus, connect, disconnect, toggleTeamSync, toggleOrgSync } = useGoogleCalendarApi()
 interface ConnectionStatus {
-  isConnected: boolean
+  connected: boolean
   googleAccountEmail: string | null
   googleCalendarId: string | null
-  isActive: boolean
+  active: boolean
   personalSyncEnabled: boolean
   lastSyncError: { type: string; message: string; occurredAt: string } | null
 }
@@ -86,7 +86,7 @@ onMounted(load)
     <div v-else class="flex flex-col gap-4">
       <!-- 接続状態 -->
       <SectionCard title="接続状態">
-        <div v-if="status?.isConnected" class="flex items-center justify-between">
+        <div v-if="status?.connected" class="flex items-center justify-between">
           <div>
             <div class="flex items-center gap-2">
               <i class="pi pi-check-circle text-green-500" />
@@ -116,7 +116,7 @@ onMounted(load)
       </SectionCard>
 
       <!-- 同期設定 -->
-      <SectionCard v-if="status?.isConnected" title="同期設定">
+      <SectionCard v-if="status?.connected" title="同期設定">
         <div class="flex items-center justify-between">
           <div>
             <div class="font-medium">スケジュール同期</div>
