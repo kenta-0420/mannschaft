@@ -164,7 +164,7 @@ async function handlePasskeyRegister() {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <PageHeader title="セキュリティ" back-to="/settings" help @help="showHelp = true" />
+    <PageHeader title="セキュリティ" help @help="showHelp = true" />
 
     <SecurityHelpDialog v-model:visible="showHelp" />
 
