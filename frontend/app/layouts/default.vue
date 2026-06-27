@@ -238,7 +238,7 @@ function isActive(path: string, exact = false): boolean {
               <Button
                 v-if="authStore.isAuthenticated"
                 v-tooltip.bottom="t('feedback.nav_tooltip')"
-                icon="pi pi-comment"
+                icon="pi pi-box"
                 text
                 rounded
                 severity="secondary"
@@ -383,7 +383,7 @@ function isActive(path: string, exact = false): boolean {
           <Button
             v-if="authStore.isAuthenticated"
             :label="t('feedback.nav_button')"
-            icon="pi pi-comment"
+            icon="pi pi-box"
             text
             severity="secondary"
             class="w-full justify-start"
