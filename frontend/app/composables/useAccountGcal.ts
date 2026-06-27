@@ -4,8 +4,11 @@ type PersonalSyncStatusResponse = components['schemas']['PersonalSyncStatusRespo
 
 interface GcalStatus {
   isConnected: boolean
-  email: string | null
-  lastSyncedAt: string | null
+  googleAccountEmail: string | null
+  googleCalendarId: string | null
+  isActive: boolean
+  personalSyncEnabled: boolean
+  lastSyncError: { type: string; message: string; occurredAt: string } | null
 }
 
 interface GcalSync {

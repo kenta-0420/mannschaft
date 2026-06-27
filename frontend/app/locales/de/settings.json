@@ -295,6 +295,7 @@
       "section_title": "Google Calendar Integration",
       "connected_label": "Verbunden",
       "last_synced": "Zuletzt synchronisiert: {date}",
+      "last_sync_error": "Synchronisierungsfehler: {message}",
       "manual_sync_button": "Manuell synchronisieren",
       "disconnect_button": "Verbindung trennen",
       "sync_settings_title": "Synchronisationseinstellungen",
