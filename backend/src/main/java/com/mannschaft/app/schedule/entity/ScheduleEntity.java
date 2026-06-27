@@ -211,8 +211,8 @@ public class ScheduleEntity extends BaseEntity {
 
     /**
      * 個人スケジュールのPATCH更新を適用する。
-     * toBuilder() は BaseEntity の id を継承しないため、直接フィールド変更方式を採用する。
-     * null の項目はスキップ（PATCHセマンティクス）。
+     * toBuilder() は BaseEntity の id をコピーするため UPDATE になるが、ここでは既存レコードの更新が目的。
+     * null の項目はスキップ（PATCHセマンティクス）。直接フィールド変更方式を採用する。
      */
     public void applyPersonalScheduleUpdate(String title, String description, String location,
                                              LocalDateTime startAt, LocalDateTime endAt,
@@ -229,8 +229,7 @@ public class ScheduleEntity extends BaseEntity {
 
     /**
      * 繰り返しスケジュールの例外フラグを立てる（THIS_ONLY更新時に使用）。
-     * toBuilder().isException(true).build() は BaseEntity の id を引き継がないため、
-     * このメソッドで直接フィールドを変更する。
+     * toBuilder() は id を引き継ぐため UPDATE になるが、このメソッドは直接フィールド変更で簡潔かつ安全に例外フラグを立てる。
      */
     public void markAsException() {
         this.isException = true;
