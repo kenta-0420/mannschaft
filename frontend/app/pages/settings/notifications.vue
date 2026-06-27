@@ -6,7 +6,7 @@ definePageMeta({
 
 <template>
   <div>
-    <PageHeader title="通知設定" back-to="/settings" />
+    <PageHeader title="通知設定" />
 
     <div class="mx-auto max-w-2xl">
       <NotificationPreferences />

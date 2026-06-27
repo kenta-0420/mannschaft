@@ -5,6 +5,7 @@ const props = defineProps<{ teamId?: string }>()
 const emit = defineEmits<{ select: [req: MatchRequestResponse]; create: [] }>()
 
 const { searchRequests, getTeamRequests } = useMatchingApi()
+const { t } = useI18n()
 const { showError } = useNotification()
 const { relativeTime } = useRelativeTime()
 
@@ -41,6 +42,7 @@ defineExpose({ refresh: load })
       <Button v-if="teamId" label="募集を作成" icon="pi pi-plus" @click="emit('create')" />
     </div>
     <div v-if="loading" class="flex justify-center py-8"><LoadingBounce /></div>
+    <DashboardEmptyState v-else-if="requests.length === 0" icon="pi pi-search" :message="t('matching.empty')" />
     <div v-else class="flex flex-col gap-3">
       <button v-for="req in requests" :key="req.id" class="rounded-xl border border-surface-300 bg-surface-0 p-4 text-left transition-shadow hover:shadow-sm" @click="emit('select', req)">
         <div class="mb-2 flex items-center gap-2">
@@ -56,7 +58,6 @@ defineExpose({ refresh: load })
           <span><i class="pi pi-users" /> {{ req.status?.proposalCount }}件の応募</span>
         </div>
       </button>
-      <div v-if="requests.length === 0" class="py-12 text-center"><i class="pi pi-search mb-3 text-4xl text-surface-300" /><p class="text-surface-400">募集がありません</p></div>
     </div>
   </div>
 </template>

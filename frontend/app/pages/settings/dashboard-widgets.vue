@@ -91,10 +91,9 @@ const showWidgetList = computed(() => {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <!-- PageHeader: 戻るボタンは内蔵 back-to で処理（手動BackButton併置禁止） -->
+    <!-- PageHeader: 戻るボタンは router.back() で自動処理（手動BackButton併置禁止） -->
     <PageHeader
       :title="$t('dashboard.widget_settings.settings_page_title')"
-      back-to="/settings"
     />
 
     <p class="mb-6 text-sm text-surface-500">

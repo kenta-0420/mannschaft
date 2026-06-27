@@ -101,7 +101,7 @@ function eventSeverity(eventType: string) {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <PageHeader title="ログイン履歴" back-to="/settings" />
+    <PageHeader title="ログイン履歴" />
 
     <SectionCard class="mb-4">
       <div class="flex flex-wrap items-end gap-3">

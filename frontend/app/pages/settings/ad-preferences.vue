@@ -158,7 +158,7 @@ onMounted(loadPreferences)
 
 <template>
   <div>
-    <PageHeader :title="t('advertising.pages.settings_ad_preferences.title')" back-to="/settings" />
+    <PageHeader :title="t('advertising.pages.settings_ad_preferences.title')" />
 
     <div class="mx-auto max-w-2xl">
       <p class="mb-6 text-sm text-surface-500 dark:text-surface-300">

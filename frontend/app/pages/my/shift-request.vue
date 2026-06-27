@@ -352,24 +352,23 @@ onMounted(async () => {
         />
       </div>
 
-      <div
+      <SectionCard
         v-if="selectedSchedule"
-        class="mb-4 rounded-xl border border-surface-200 bg-surface-0 p-3"
+        class="mb-4"
       >
         <h3 class="text-sm font-semibold text-surface-800">{{ selectedSchedule.title }}</h3>
         <p class="mt-0.5 text-xs text-surface-500">
           {{ selectedSchedule.startDate }} 〜 {{ selectedSchedule.endDate }}
         </p>
-      </div>
+      </SectionCard>
 
       <PageLoading v-if="slotsLoading" size="40px" />
 
       <template v-else>
         <div class="flex flex-col gap-4">
-          <div
+          <SectionCard
             v-for="date in sortedDates"
             :key="date"
-            class="rounded-xl border border-surface-200 bg-surface-0 p-4"
           >
             <h4 class="mb-3 text-sm font-semibold text-surface-700">{{ formatDate(date) }}</h4>
             <div class="flex flex-col gap-4">
@@ -424,7 +423,7 @@ onMounted(async () => {
                 </div>
               </div>
             </div>
-          </div>
+          </SectionCard>
         </div>
 
         <!-- 次へボタン -->

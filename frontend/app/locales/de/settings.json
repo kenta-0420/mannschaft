@@ -266,6 +266,47 @@
         "delete_error": "Löschen fehlgeschlagen"
       }
     },
+    "seal_guide": {
+      "title": "Verwendung elektronischer Siegel",
+      "description": "Verwenden Sie elektronische Siegel, um Dokumente zu stempeln und zu verwalten.",
+      "preview": {
+        "title": "Siegelvorschau",
+        "body": "Zeigen Sie die 3 Arten elektronischer Siegel (Nachname, vollständiger Name, Vorname) an, die automatisch aus Ihrem registrierten Namen generiert werden.",
+        "steps": {
+          "step1": "Öffnen Sie die Registerkarte «Siegelvorschau»",
+          "step2": "Prüfen Sie die 3 Siegel (Nachname, vollständiger Name, Vorname) im Raster"
+        }
+      },
+      "regenerate": {
+        "title": "Siegel neu generieren",
+        "body": "Erstellen Sie Ihr aktuelles Siegel mit einem neuen Design neu. Verwenden Sie dies, wenn sich Ihr Name ändert oder Sie das Design aktualisieren möchten.",
+        "note": "Dies kann bis zu 3 Mal pro Stunde ausgeführt werden. Wenn Sie das Limit erreicht haben, warten Sie bitte, bevor Sie es erneut versuchen.",
+        "steps": {
+          "step1": "Öffnen Sie die Registerkarte «Siegelvorschau»",
+          "step2": "Klicken Sie auf die Schaltfläche «Siegel neu generieren»",
+          "step3": "Nach Abschluss wird das neue Siegel im Raster angezeigt"
+        }
+      },
+      "defaults": {
+        "title": "Standardeinstellungen",
+        "body": "Legen Sie fest, welche Variante (Nachname, vollständiger Name, Vorname) beim Stempeln von Dokumenten automatisch verwendet wird. Spart das erneute Auswählen.",
+        "note": "Derzeit kann nur der globale Standard festgelegt werden. Einstellungen pro Team und Organisation sind für die Zukunft geplant.",
+        "steps": {
+          "step1": "Öffnen Sie die Registerkarte «Standardeinstellungen»",
+          "step2": "Wählen Sie die bevorzugte Variante (Nachname, vollständiger Name, Vorname) aus dem Dropdown",
+          "step3": "Klicken Sie auf «Speichern», um die Einstellungen zu speichern"
+        }
+      },
+      "history": {
+        "title": "Stempelverlauf",
+        "body": "Zeigen Sie eine Liste Ihrer vergangenen Stempel an. Datum, verwendete Variante, Ziel und Status (gültig / storniert) werden angezeigt.",
+        "steps": {
+          "step1": "Öffnen Sie die Registerkarte «Stempelverlauf»",
+          "step2": "Scrollen Sie durch die Liste zur Überprüfung",
+          "step3": "Laden Sie älteren Verlauf mit der Schaltfläche «Mehr laden»"
+        }
+      }
+    },
     "seal": {
       "section_title": "Elektronisches Siegel",
       "tab_preview": "Siegelvorschau",

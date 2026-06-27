@@ -170,7 +170,7 @@ onMounted(async () => {
       </Transition>
     </Teleport>
 
-    <PageHeader :title="$t('settings.account.page_title')" back-to="/settings" />
+    <PageHeader :title="$t('settings.account.page_title')" />
 
     <PageLoading v-if="!isMounted || loading" />
 
