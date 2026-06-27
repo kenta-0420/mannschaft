@@ -66,6 +66,7 @@ public class ScheduleRecurrenceService {
             LocalDateTime endAt = durationMinutes > 0 ? startAt.plusMinutes(durationMinutes) : null;
 
             ScheduleEntity child = parent.toBuilder()
+                    .id(null)  // 新規 INSERT にするため id をリセット（toBuilder() は BaseEntity の id をコピーするため）
                     .parentScheduleId(parent.getId())
                     .startAt(startAt)
                     .endAt(endAt)
