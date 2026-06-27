@@ -290,7 +290,7 @@
       "defaults": {
         "title": "기본 설정",
         "body": "문서에 날인할 때 자동으로 사용할 변형（성·성명·이름）을 설정할 수 있습니다. 매번 다시 선택하는 번거로움을 줄입니다.",
-        "note": "현재는 기본값（전체 공통）만 설정할 수 있습니다. 팀·조직별 개별 설정은 향후 지원 예정입니다.",
+        "note": "「スコープを追加」でチームや組織ごとに使用する印鑑のバリアントを個別設定できます。",
         "steps": {
           "step1": "「기본 설정」탭을 열기",
           "step2": "드롭다운에서 사용할 변형（성·성명·이름）을 선택",
@@ -319,6 +319,27 @@
         "regenerate_error": "재생성에 실패했습니다（1시간에 최대 3회）",
         "save_defaults_success": "기본 설정이 저장되었습니다",
         "save_defaults_error": "설정 저장에 실패했습니다"
+      },
+      "scope_defaults": {
+        "section_title": "スコープ別デフォルト印鑑",
+        "add_button": "スコープを追加",
+        "add_dialog_title": "スコープを追加",
+        "scope_type_label": "スコープ種別",
+        "scope_type_team": "チーム",
+        "scope_type_org": "組織",
+        "scope_target_label": "対象",
+        "scope_target_placeholder": "選択してください",
+        "variant_label": "使用する印鑑",
+        "variant_last_name": "姓",
+        "variant_full_name": "フルネーム",
+        "variant_first_name": "名",
+        "default_label": "デフォルト（全体）",
+        "delete_tooltip": "このスコープを削除",
+        "no_teams": "所属チームがありません",
+        "no_orgs": "所属組織がありません",
+        "save_button": "保存",
+        "cancel_button": "キャンセル",
+        "add_scope_button": "追加"
       }
     },
     "login_history": {

@@ -290,7 +290,7 @@
       "defaults": {
         "title": "デフォルト設定",
         "body": "書類への押印時に自動的に使用するバリアント（姓・フルネーム・名）を設定できます。毎回選び直す手間が省けます。",
-        "note": "現在はデフォルト（全体共通）のみ設定可能です。チームや組織ごとの個別設定は今後対応予定です。",
+        "note": "「スコープを追加」でチームや組織ごとに使用する印鑑のバリアントを個別設定できます。",
         "steps": {
           "step1": "「デフォルト設定」タブを開く",
           "step2": "ドロップダウンで使用したいバリアント（姓・フルネーム・名）を選択する",
@@ -319,6 +319,27 @@
         "regenerate_error": "再生成に失敗しました（1時間に3回まで）",
         "save_defaults_success": "デフォルト設定を保存しました",
         "save_defaults_error": "設定の保存に失敗しました"
+      },
+      "scope_defaults": {
+        "section_title": "スコープ別デフォルト印鑑",
+        "add_button": "スコープを追加",
+        "add_dialog_title": "スコープを追加",
+        "scope_type_label": "スコープ種別",
+        "scope_type_team": "チーム",
+        "scope_type_org": "組織",
+        "scope_target_label": "対象",
+        "scope_target_placeholder": "選択してください",
+        "variant_label": "使用する印鑑",
+        "variant_last_name": "姓",
+        "variant_full_name": "フルネーム",
+        "variant_first_name": "名",
+        "default_label": "デフォルト（全体）",
+        "delete_tooltip": "このスコープを削除",
+        "no_teams": "所属チームがありません",
+        "no_orgs": "所属組織がありません",
+        "save_button": "保存",
+        "cancel_button": "キャンセル",
+        "add_scope_button": "追加"
       }
     },
     "login_history": {
