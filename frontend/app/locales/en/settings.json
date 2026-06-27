@@ -266,6 +266,47 @@
         "delete_error": "Failed to delete"
       }
     },
+    "seal_guide": {
+      "title": "How to Use Electronic Seals",
+      "description": "Use electronic seals to stamp and manage documents.",
+      "preview": {
+        "title": "Seal Preview",
+        "body": "View the 3 types of electronic seals (last name, full name, first name) automatically generated from your registered name.",
+        "steps": {
+          "step1": "Open the \"Seal Preview\" tab",
+          "step2": "Check the 3 seals (last name, full name, first name) displayed in the grid"
+        }
+      },
+      "regenerate": {
+        "title": "Regenerate Seal",
+        "body": "Recreate your current seal with a new design. Use this when your name changes or you want to update the design.",
+        "note": "You can run this up to 3 times per hour. If you reach the limit, please wait before trying again.",
+        "steps": {
+          "step1": "Open the \"Seal Preview\" tab",
+          "step2": "Click the \"Regenerate Seal\" button",
+          "step3": "After completion, the new seal will appear in the grid"
+        }
+      },
+      "defaults": {
+        "title": "Default Settings",
+        "body": "Set which variant (last name, full name, first name) is automatically used when stamping documents. Saves you from selecting each time.",
+        "note": "Currently only the global default can be set. Per-team and per-organization settings are planned for the future.",
+        "steps": {
+          "step1": "Open the \"Default Settings\" tab",
+          "step2": "Select your preferred variant (last name, full name, first name) from the dropdown",
+          "step3": "Click \"Save\" to save the settings"
+        }
+      },
+      "history": {
+        "title": "Stamp History",
+        "body": "View a list of your past stamps. The date, variant used, target, and status (valid / cancelled) are displayed.",
+        "steps": {
+          "step1": "Open the \"Stamp History\" tab",
+          "step2": "Scroll through the list to review",
+          "step3": "Load older history with the \"Load more\" button"
+        }
+      }
+    },
     "seal": {
       "section_title": "Electronic Seal",
       "tab_preview": "Seal Preview",
