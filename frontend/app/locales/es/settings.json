@@ -290,7 +290,7 @@
       "defaults": {
         "title": "Configuración predeterminada",
         "body": "Configure qué variante (apellido, nombre completo, nombre) se usa automáticamente al sellar documentos. Evita tener que seleccionarla cada vez.",
-        "note": "Actualmente solo se puede configurar el predeterminado global. La configuración por equipo u organización está planificada para el futuro.",
+        "note": "「スコープを追加」でチームや組織ごとに使用する印鑑のバリアントを個別設定できます。",
         "steps": {
           "step1": "Abra la pestaña «Configuración predeterminada»",
           "step2": "Seleccione la variante preferida (apellido, nombre completo, nombre) en el menú desplegable",
@@ -319,6 +319,27 @@
         "regenerate_error": "Error al regenerar (hasta 3 veces por hora)",
         "save_defaults_success": "Configuración predeterminada guardada",
         "save_defaults_error": "Error al guardar la configuración"
+      },
+      "scope_defaults": {
+        "section_title": "スコープ別デフォルト印鑑",
+        "add_button": "スコープを追加",
+        "add_dialog_title": "スコープを追加",
+        "scope_type_label": "スコープ種別",
+        "scope_type_team": "チーム",
+        "scope_type_org": "組織",
+        "scope_target_label": "対象",
+        "scope_target_placeholder": "選択してください",
+        "variant_label": "使用する印鑑",
+        "variant_last_name": "姓",
+        "variant_full_name": "フルネーム",
+        "variant_first_name": "名",
+        "default_label": "デフォルト（全体）",
+        "delete_tooltip": "このスコープを削除",
+        "no_teams": "所属チームがありません",
+        "no_orgs": "所属組織がありません",
+        "save_button": "保存",
+        "cancel_button": "キャンセル",
+        "add_scope_button": "追加"
       }
     },
     "login_history": {

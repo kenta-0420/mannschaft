@@ -290,7 +290,7 @@
       "defaults": {
         "title": "默认设置",
         "body": "设置在文件盖章时自动使用的变体（姓氏·全名·名字）。省去每次重新选择的麻烦。",
-        "note": "目前仅可设置默认（全局通用）。每个团队和组织的单独设置将在未来支持。",
+        "note": "「スコープを追加」でチームや組織ごとに使用する印鑑のバリアントを個別設定できます。",
         "steps": {
           "step1": "打开「默认设置」标签",
           "step2": "从下拉菜单中选择要使用的变体（姓氏·全名·名字）",
@@ -319,6 +319,27 @@
         "regenerate_error": "重新生成失败（每小时最多3次）",
         "save_defaults_success": "默认设置已保存",
         "save_defaults_error": "保存设置失败"
+      },
+      "scope_defaults": {
+        "section_title": "スコープ別デフォルト印鑑",
+        "add_button": "スコープを追加",
+        "add_dialog_title": "スコープを追加",
+        "scope_type_label": "スコープ種別",
+        "scope_type_team": "チーム",
+        "scope_type_org": "組織",
+        "scope_target_label": "対象",
+        "scope_target_placeholder": "選択してください",
+        "variant_label": "使用する印鑑",
+        "variant_last_name": "姓",
+        "variant_full_name": "フルネーム",
+        "variant_first_name": "名",
+        "default_label": "デフォルト（全体）",
+        "delete_tooltip": "このスコープを削除",
+        "no_teams": "所属チームがありません",
+        "no_orgs": "所属組織がありません",
+        "save_button": "保存",
+        "cancel_button": "キャンセル",
+        "add_scope_button": "追加"
       }
     },
     "login_history": {

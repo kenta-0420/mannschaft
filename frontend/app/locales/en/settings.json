@@ -290,7 +290,7 @@
       "defaults": {
         "title": "Default Settings",
         "body": "Set which variant (last name, full name, first name) is automatically used when stamping documents. Saves you from selecting each time.",
-        "note": "Currently only the global default can be set. Per-team and per-organization settings are planned for the future.",
+        "note": "「スコープを追加」でチームや組織ごとに使用する印鑑のバリアントを個別設定できます。",
         "steps": {
           "step1": "Open the \"Default Settings\" tab",
           "step2": "Select your preferred variant (last name, full name, first name) from the dropdown",
@@ -319,6 +319,27 @@
         "regenerate_error": "Failed to regenerate (up to 3 times per hour)",
         "save_defaults_success": "Default settings saved",
         "save_defaults_error": "Failed to save settings"
+      },
+      "scope_defaults": {
+        "section_title": "スコープ別デフォルト印鑑",
+        "add_button": "スコープを追加",
+        "add_dialog_title": "スコープを追加",
+        "scope_type_label": "スコープ種別",
+        "scope_type_team": "チーム",
+        "scope_type_org": "組織",
+        "scope_target_label": "対象",
+        "scope_target_placeholder": "選択してください",
+        "variant_label": "使用する印鑑",
+        "variant_last_name": "姓",
+        "variant_full_name": "フルネーム",
+        "variant_first_name": "名",
+        "default_label": "デフォルト（全体）",
+        "delete_tooltip": "このスコープを削除",
+        "no_teams": "所属チームがありません",
+        "no_orgs": "所属組織がありません",
+        "save_button": "保存",
+        "cancel_button": "キャンセル",
+        "add_scope_button": "追加"
       }
     },
     "login_history": {
