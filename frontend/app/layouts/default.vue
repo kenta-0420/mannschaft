@@ -55,22 +55,6 @@ const isMounted = ref(false)
 const showMobileMenu = ref(false)
 const feedbackModalVisible = ref(false)
 
-/**
- * ナビバーの横スクロール（トラックパッド2本指対応）。
- *
- * `overflow-x: auto` の要素は、ブラウザ既定では「縦ホイール(deltaY)」を横スクロールに
- * 変換しない。そのためトラックパッドの2本指縦スワイプではスクロールできず、ページ側が
- * 縦スクロールしてしまう（スクロールバーのドラッグや横スワイプ(deltaX)だけが効く状態）。
- * ここで縦ホイールを横スクロール量に振り替えることで、2本指スワイプでも横スクロールできるようにする。
- */
-function onNavWheel(e: WheelEvent) {
-  const el = e.currentTarget as HTMLElement
-  // 横方向にオーバーフローしていなければ何もしない（縦ホイールは通常どおりページに委ねる）
-  if (e.deltaY === 0 || el.scrollWidth <= el.clientWidth) return
-  el.scrollLeft += e.deltaY
-  e.preventDefault()
-}
-
 let inboxPollTimer: ReturnType<typeof setInterval> | null = null
 
 onMounted(() => {
@@ -175,10 +159,14 @@ function isActive(path: string, exact = false): boolean {
           <!-- overflow-x-auto が正しく発動するよう、HTML div で min-w-0 flex-1 を確保してから nav を内包する -->
           <div class="hidden md:flex min-w-0 flex-1">
           <ClientOnly>
+            <!--
+              横スクロール: ネイティブの横スワイプ(deltaX)で横スクロールさせる。
+              overscroll-x-contain で、スクロール端での横スワイプがブラウザの
+              「戻る/進む」ジェスチャーに横取りされるのを防ぐ。
+            -->
             <nav
               v-if="authStore.isAuthenticated"
-              class="flex min-w-0 w-full items-center gap-1 overflow-x-auto scrollbar-thin-nav"
-              @wheel="onNavWheel"
+              class="flex min-w-0 w-full items-center gap-1 overflow-x-auto overscroll-x-contain scrollbar-thin-nav"
             >
               <!-- ダッシュボード（最初に固定表示） -->
               <NuxtLink
