@@ -15,6 +15,8 @@ const { getRequestSummary } = useShiftRequestApi()
 const { handleApiError } = useErrorHandler()
 const { success } = useNotification()
 
+const showGuide = ref(false)
+
 // =====================================================
 // チーム選択
 // =====================================================
@@ -152,7 +154,7 @@ function openDetail(scheduleId: number) {
   <div class="mx-auto max-w-6xl px-4 py-8">
     <!-- ヘッダー -->
     <div class="mb-6 flex items-center justify-between">
-      <PageHeader :title="t('shift.index.title')" :back="false" />
+      <PageHeader :title="t('shift.index.title')" :back="false" help @help="showGuide = true" />
       <Button
         v-if="canManage"
         icon="pi pi-plus"
@@ -268,5 +270,7 @@ function openDetail(scheduleId: number) {
         />
       </template>
     </Dialog>
+
+    <ShiftGuideModal v-model:visible="showGuide" />
   </div>
 </template>

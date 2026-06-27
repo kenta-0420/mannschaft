@@ -198,19 +198,13 @@ const tabs = computed(() => [
 
     <template v-else-if="schedule">
       <!-- ヘッダー -->
-      <div class="mb-4 flex flex-wrap items-start gap-3">
-        <BackButton :to="`/shift`" />
-        <div class="min-w-0 flex-1">
-          <div class="flex flex-wrap items-center gap-2">
-            <h1 class="text-2xl font-bold text-surface-800 dark:text-surface-100">
-              {{ schedule.title }}
-            </h1>
-            <ShiftStatusBadge :status="schedule.status" />
-          </div>
-          <p class="mt-1 text-sm text-surface-500">
-            {{ schedule.startDate }} 〜 {{ schedule.endDate }}
-          </p>
-        </div>
+      <div class="mb-4">
+        <PageHeader :title="schedule.title" back-to="/shift">
+          <ShiftStatusBadge :status="schedule.status" />
+        </PageHeader>
+        <p class="mb-3 text-sm text-surface-500">
+          {{ schedule.startDate }} 〜 {{ schedule.endDate }}
+        </p>
         <div v-if="canManage" class="flex items-center gap-2">
           <Button
             icon="pi pi-pencil"
