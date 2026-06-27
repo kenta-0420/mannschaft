@@ -14,6 +14,7 @@
       "apply": "应募",
       "takeDown": "撤下",
       "loginToApply": "登录后应募",
+      "selectTeam": "选择应募的团队",
       "goToDashboard": "前往管理面板",
       "postFromDashboard": "在团队/组织管理面板发布招募"
     },
