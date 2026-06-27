@@ -159,7 +159,7 @@ function isActive(path: string, exact = false): boolean {
           <ClientOnly>
             <nav
               v-if="authStore.isAuthenticated"
-              class="hidden md:flex items-center gap-1 overflow-x-auto scrollbar-thin-nav"
+              class="hidden md:flex min-w-0 flex-1 items-center gap-1 overflow-x-auto scrollbar-thin-nav"
             >
               <!-- ダッシュボード（最初に固定表示） -->
               <NuxtLink

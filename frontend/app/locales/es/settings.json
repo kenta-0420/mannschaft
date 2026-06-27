@@ -266,6 +266,47 @@
         "delete_error": "Error al eliminar"
       }
     },
+    "seal_guide": {
+      "title": "Cómo usar los sellos electrónicos",
+      "description": "Use sellos electrónicos para estampar y gestionar documentos.",
+      "preview": {
+        "title": "Vista previa del sello",
+        "body": "Vea los 3 tipos de sellos electrónicos (apellido, nombre completo, nombre) generados automáticamente a partir de su nombre registrado.",
+        "steps": {
+          "step1": "Abra la pestaña «Vista previa del sello»",
+          "step2": "Revise los 3 sellos (apellido, nombre completo, nombre) mostrados en la cuadrícula"
+        }
+      },
+      "regenerate": {
+        "title": "Regenerar sello",
+        "body": "Recree su sello actual con un nuevo diseño. Úselo cuando cambie su nombre o desee actualizar el diseño.",
+        "note": "Puede ejecutar esto hasta 3 veces por hora. Si alcanza el límite, espere antes de intentarlo de nuevo.",
+        "steps": {
+          "step1": "Abra la pestaña «Vista previa del sello»",
+          "step2": "Haga clic en el botón «Regenerar sello»",
+          "step3": "Tras completarse, el nuevo sello aparecerá en la cuadrícula"
+        }
+      },
+      "defaults": {
+        "title": "Configuración predeterminada",
+        "body": "Configure qué variante (apellido, nombre completo, nombre) se usa automáticamente al sellar documentos. Evita tener que seleccionarla cada vez.",
+        "note": "Actualmente solo se puede configurar el predeterminado global. La configuración por equipo u organización está planificada para el futuro.",
+        "steps": {
+          "step1": "Abra la pestaña «Configuración predeterminada»",
+          "step2": "Seleccione la variante preferida (apellido, nombre completo, nombre) en el menú desplegable",
+          "step3": "Haga clic en «Guardar» para guardar la configuración"
+        }
+      },
+      "history": {
+        "title": "Historial de sellos",
+        "body": "Vea una lista de sus sellos anteriores. Se muestran la fecha, la variante usada, el destino y el estado (válido / cancelado).",
+        "steps": {
+          "step1": "Abra la pestaña «Historial de sellos»",
+          "step2": "Desplácese por la lista para revisar",
+          "step3": "Cargue historial más antiguo con el botón «Cargar más»"
+        }
+      }
+    },
     "seal": {
       "section_title": "Sello electrónico",
       "tab_preview": "Vista previa del sello",
