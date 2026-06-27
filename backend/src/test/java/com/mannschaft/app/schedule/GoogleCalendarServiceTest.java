@@ -16,6 +16,7 @@ import com.mannschaft.app.schedule.repository.UserGoogleCalendarConnectionReposi
 import com.mannschaft.app.schedule.repository.UserScheduleGoogleEventRepository;
 import com.mannschaft.app.schedule.service.GoogleApiClient;
 import com.mannschaft.app.schedule.service.GoogleCalendarService;
+import com.mannschaft.app.schedule.service.GoogleCalendarWebhookService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -69,6 +70,9 @@ class GoogleCalendarServiceTest {
 
     @Mock
     private ValueOperations<String, String> valueOperations;
+
+    @Mock
+    private com.mannschaft.app.schedule.service.GoogleCalendarWebhookService webhookService;
 
     @InjectMocks
     private GoogleCalendarService googleCalendarService;

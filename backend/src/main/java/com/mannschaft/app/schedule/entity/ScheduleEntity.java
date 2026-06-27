@@ -160,6 +160,16 @@ public class ScheduleEntity extends BaseEntity {
     private String googleCalendarEventId;
 
     /**
+     * スケジュールの作成元。
+     * Google カレンダーからインポートされたスケジュールを Mannschaft 作成分と区別するために使用する。
+     * @Builder.Default 必須（NULL 挿入バグ回避）。
+     */
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    @Column(name = "source", nullable = false, length = 14)
+    private ScheduleSource source = ScheduleSource.MANNSCHAFT;
+
+    /**
      * F03.15 等の外部参照 JSON（idempotency 用）。
      * 例: {"source":"F03.15","timetable_change_id":1,"personal_timetable_slot_id":2}
      */
@@ -188,6 +198,15 @@ public class ScheduleEntity extends BaseEntity {
         this.startAt = startAt;
         this.endAt = endAt;
         this.color = color;
+    }
+
+    /**
+     * Google カレンダー同期で all_day フラグを更新する。
+     * Google 側で「時刻付き予定 <-> 全日予定」が変更されたとき、
+     * {@code updateScheduleFields} と組み合わせて呼び出す。
+     */
+    public void updateAllDay(boolean allDay) {
+        this.allDay = allDay;
     }
 
     /**

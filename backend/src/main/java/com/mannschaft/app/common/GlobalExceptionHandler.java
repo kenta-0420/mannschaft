@@ -731,7 +731,10 @@ public class GlobalExceptionHandler {
             Map.entry("REFLECTION_013", HttpStatus.BAD_REQUEST),          // PARENT_SELF_REFERENCE（自己参照）
             Map.entry("REFLECTION_014", HttpStatus.BAD_REQUEST),          // PARENT_INVALID_STATE（archived/deleted 親）
             // Phase 4: 暗記カード／期間横断 単語帳（§13）
-            Map.entry("REFLECTION_015", HttpStatus.BAD_REQUEST)           // DATE_RANGE_INVALID（期間幅 366 日超）
+            Map.entry("REFLECTION_015", HttpStatus.BAD_REQUEST),          // DATE_RANGE_INVALID（期間幅 366 日超）
+            // F02.12 Phase 4: Google Calendar Webhook 検証（Severity.WARN 既定 400 を上書き）
+            Map.entry("GCAL_008", HttpStatus.NOT_FOUND),                  // GOOGLE_WEBHOOK_CHANNEL_NOT_FOUND → 404
+            Map.entry("GCAL_009", HttpStatus.FORBIDDEN)                   // GOOGLE_WEBHOOK_TOKEN_INVALID → 403
     );
 
     /**

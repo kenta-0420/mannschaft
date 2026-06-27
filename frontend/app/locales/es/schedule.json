@@ -144,6 +144,7 @@
         "item_attendance": "Para eventos con seguimiento de asistencia, selecciona 'Asistir', 'No asistir' o 'Tal vez'",
         "item_match": "Usa el botón 'Registrar este partido' desde un evento de equipo para iniciar un registro de partido"
       }
-    }
+    },
+    "google_sync_notice": "Conectado a Google Calendar. Los cambios realizados en Google serán reemplazados por los datos de Mannschaft la próxima vez que guardes aquí."
   }
 }

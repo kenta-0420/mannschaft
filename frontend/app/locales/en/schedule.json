@@ -144,6 +144,7 @@
         "item_attendance": "For events with attendance tracking, select 'Attending', 'Not attending', or 'Maybe'",
         "item_match": "Use the 'Record this match' button from a team event to start a match record"
       }
-    }
+    },
+    "google_sync_notice": "Connected to Google Calendar. Any changes made in Google will be replaced by Mannschaft data the next time you save this event here."
   }
 }

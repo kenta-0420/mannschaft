@@ -1,6 +1,7 @@
 package com.mannschaft.app.schedule.service;
 
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
+import com.mannschaft.app.schedule.entity.ScheduleSource;
 import com.mannschaft.app.schedule.entity.UserCalendarSyncSettingEntity;
 import com.mannschaft.app.schedule.event.ScheduleCancelledEvent;
 import com.mannschaft.app.schedule.event.ScheduleCreatedEvent;
@@ -49,6 +50,12 @@ public class GoogleCalendarEventListener {
             return;
         }
 
+        // AC-12: GOOGLE_IMPORT ソースは Phase 3 自動同期をスキップ（無限ループ防止）
+        if (ScheduleSource.GOOGLE_IMPORT.equals(schedule.getSource())) {
+            log.debug("GOOGLE_IMPORT ソースのスケジュール {}: Google への再プッシュをスキップ", event.getScheduleId());
+            return;
+        }
+
         List<Long> targetUserIds = resolveTargetUserIds(event.getScopeType(), event.getScopeId());
         for (Long userId : targetUserIds) {
             googleCalendarService.syncScheduleToGoogle(schedule, userId);
@@ -70,6 +77,12 @@ public class GoogleCalendarEventListener {
         ScheduleEntity schedule = scheduleRepository.findById(event.getScheduleId()).orElse(null);
         if (schedule == null) {
             log.warn("同期対象スケジュールが見つかりません: scheduleId={}", event.getScheduleId());
+            return;
+        }
+
+        // AC-12: GOOGLE_IMPORT ソースは Phase 3 自動同期をスキップ（無限ループ防止）
+        if (ScheduleSource.GOOGLE_IMPORT.equals(schedule.getSource())) {
+            log.debug("GOOGLE_IMPORT ソースのスケジュール {}: Google への再プッシュをスキップ", event.getScheduleId());
             return;
         }
 

@@ -53,6 +53,7 @@ public class GoogleCalendarService {
     private final EncryptionService encryptionService;
     private final GoogleApiClient googleApiClient;
     private final StringRedisTemplate redisTemplate;
+    private final GoogleCalendarWebhookService webhookService;
 
     /**
      * Google Calendar連携状態を取得する。
@@ -231,6 +232,9 @@ public class GoogleCalendarService {
         // 接続を無効化
         connectionRepository.deactivate(userId);
 
+        // AC-10: Webhook チャンネルを停止・DB から削除（ベストエフォート）
+        stopWebhookChannelIfExists(userId);
+
         log.info("Google Calendar連携解除完了: userId={}", userId);
     }
 
@@ -308,6 +312,11 @@ public class GoogleCalendarService {
         if (isEnabled) {
             backfillCount = googleEventRepository.countUnsyncedPersonalSchedules(userId);
             startPersonalBackfillSync(userId);
+            // AC-14: personal_sync ON → Webhook チャンネルを登録
+            registerWebhookChannelIfPersonalSync(userId);
+        } else {
+            // AC-14: personal_sync OFF → Webhook チャンネルを停止・削除
+            stopWebhookChannelIfExists(userId);
         }
 
         log.info("個人同期設定変更: userId={}, isEnabled={}, backfillCount={}",
@@ -330,8 +339,18 @@ public class GoogleCalendarService {
 
     /**
      * 単一スケジュールをGoogleカレンダーに同期する（内部用）。
+     *
+     * <p>AC-13: 同期後に Google API が返した ETag を {@link UserScheduleGoogleEventEntity} に保存する。</p>
      */
     public void syncScheduleToGoogle(ScheduleEntity schedule, Long userId) {
+        // AC-12/AC-13: GOOGLE_IMPORT ソースは Google への push-back をスキップ（無限ループ防止）
+        // 接続確認より先に source チェックすることで不要な DB アクセスを避ける
+        if (schedule.getSource() != null
+                && com.mannschaft.app.schedule.entity.ScheduleSource.GOOGLE_IMPORT.equals(schedule.getSource())) {
+            log.debug("GOOGLE_IMPORT ソースのスケジュール {}: syncScheduleToGoogle をスキップ", schedule.getId());
+            return;
+        }
+
         UserGoogleCalendarConnectionEntity connection = connectionRepository.findByUserId(userId)
                 .filter(UserGoogleCalendarConnectionEntity::getIsActive)
                 .orElse(null);
@@ -348,7 +367,7 @@ public class GoogleCalendarService {
                 schedule.getDescription(),
                 schedule.getLocation(),
                 GoogleApiClient.CalendarEventRequest.DateTimeValue.of(schedule.getStartAt(), DEFAULT_TIMEZONE),
-                GoogleApiClient.CalendarEventRequest.DateTimeValue.of(schedule.getEndAt(), DEFAULT_TIMEZONE)
+                GoogleApiClient.CalendarEventRequest.DateTimeValue.of(schedule.getEndAt() != null ? schedule.getEndAt() : schedule.getStartAt(), DEFAULT_TIMEZONE)
         );
 
         // 既存マッピング確認（UPDATE or INSERT）
@@ -357,19 +376,22 @@ public class GoogleCalendarService {
 
         try {
             if (existingMapping.isPresent()) {
-                // 既存イベントを更新
+                // 既存イベントを更新（AC-13: ETag を取得して保存）
                 String googleEventId = existingMapping.get().getGoogleEventId();
-                googleApiClient.updateEvent(accessToken, calendarId, googleEventId, eventRequest);
+                String newEtag = googleApiClient.updateEvent(accessToken, calendarId, googleEventId, eventRequest);
                 existingMapping.get().updateSyncedAt();
+                existingMapping.get().updateGoogleEtag(newEtag);
                 googleEventRepository.save(existingMapping.get());
             } else {
-                // 新規イベント作成
-                String googleEventId = googleApiClient.createEvent(accessToken, calendarId, eventRequest);
+                // 新規イベント作成（AC-13: ETag を取得して保存）
+                GoogleApiClient.CreateEventResponse createResponse =
+                        googleApiClient.createEvent(accessToken, calendarId, eventRequest);
                 UserScheduleGoogleEventEntity mapping = UserScheduleGoogleEventEntity.builder()
                         .userId(userId)
                         .scheduleId(schedule.getId())
-                        .googleEventId(googleEventId)
+                        .googleEventId(createResponse.eventId())
                         .lastSyncedAt(LocalDateTime.now())
+                        .googleEtag(createResponse.etag())
                         .build();
                 googleEventRepository.save(mapping);
             }
@@ -382,6 +404,29 @@ public class GoogleCalendarService {
             connectionRepository.save(connection);
             log.warn("Google Calendar同期失敗: scheduleId={}, userId={}", schedule.getId(), userId, e);
         }
+    }
+
+    /**
+     * personal_sync が ON の場合に Webhook チャンネルを登録する（AC-14/AC-15）。
+     *
+     * @param userId 対象ユーザーID
+     */
+    public void registerWebhookChannelIfPersonalSync(Long userId) {
+        connectionRepository.findByUserId(userId)
+                .filter(conn -> conn.getIsActive() && conn.getPersonalSyncEnabled())
+                .ifPresent(conn -> {
+                    log.info("personal_sync ON: チャンネル登録 userId={}", userId);
+                    webhookService.registerWebhookChannel(userId);
+                });
+    }
+
+    /**
+     * Webhook チャンネルが存在する場合に停止・削除する（AC-10/AC-14）。
+     *
+     * @param userId 対象ユーザーID
+     */
+    public void stopWebhookChannelIfExists(Long userId) {
+        webhookService.stopAndDeleteChannel(userId);
     }
 
     // --- プライベートメソッド ---
