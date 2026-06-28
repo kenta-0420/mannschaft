@@ -121,6 +121,13 @@ public class PersonalScheduleService {
         List<Integer> savedReminders = saveReminders(
                 schedule.getId(), req.getReminders(), req.getAbsoluteReminders());
 
+        // 繰り返しの子スケジュールにも相対リマインダーを複製する（各回ごとに通知するため）。
+        // 絶対リマインダー（固定時刻）は複製しない（親のみ）。
+        if (req.getRecurrenceRule() != null
+                && req.getReminders() != null && !req.getReminders().isEmpty()) {
+            propagateRelativeRemindersToChildren(schedule.getId(), req.getReminders());
+        }
+
         // イベント発行
         eventPublisher.publishEvent(new ScheduleCreatedEvent(
                 schedule.getId(), SCOPE_TYPE_PERSONAL, userId, userId, false));
@@ -657,5 +664,28 @@ public class PersonalScheduleService {
                 .audit(new PersonalScheduleResponse.PersonalAuditDto(
                         entity.getCreatedAt(), entity.getUpdatedAt(), createdByDisplayName))
                 .build();
+    }
+
+    /**
+     * 繰り返しの子スケジュールへ相対リマインダーを複製する。
+     * 各子は自身の startAt を基準に「開始N分前」で通知されるため、各回ごとの通知が実現する。
+     * 絶対リマインダー（固定時刻）は複製対象外（親のみ保持）。
+     */
+    private void propagateRelativeRemindersToChildren(Long parentId, List<Integer> relativeReminders) {
+        List<ScheduleEntity> children =
+                scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(parentId);
+        List<PersonalScheduleReminderEntity> entities = new ArrayList<>();
+        for (ScheduleEntity child : children) {
+            for (Integer minutes : relativeReminders) {
+                entities.add(PersonalScheduleReminderEntity.builder()
+                        .scheduleId(child.getId())
+                        .remindBeforeMinutes(minutes)
+                        .reminderKind(ReminderKind.RELATIVE)
+                        .build());
+            }
+        }
+        if (!entities.isEmpty()) {
+            reminderRepository.saveAll(entities);
+        }
     }
 }
