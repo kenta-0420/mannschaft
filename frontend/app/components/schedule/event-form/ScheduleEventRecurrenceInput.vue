@@ -32,11 +32,12 @@ const countOptions = computed(() =>
     <template v-if="form.recurrence">
       <!-- 種別 + 間隔 -->
       <div class="flex items-center gap-2">
-        <InputNumber
-          v-model="form.recurrenceInterval"
-          :min="1" :max="99"
-          class="w-20"
-          input-class="text-center"
+        <input
+          v-model.number="form.recurrenceInterval"
+          type="number"
+          min="1"
+          max="99"
+          class="h-10 w-16 rounded-lg border border-surface-300 dark:border-surface-600 bg-surface-100 dark:bg-surface-800 px-2 text-center text-sm text-surface-900 dark:text-surface-100 focus:outline-none focus:border-primary-400"
         />
         <Select
           v-model="form.recurrenceType"

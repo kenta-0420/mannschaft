@@ -14,7 +14,7 @@
       "before": "vorher",
       "max_reached": "Sie können bis zu 5 Erinnerungen festlegen",
       "kind_label": "Typ",
-      "kind_relative": "Vor Beginn (Min./Std.)",
+      "kind_relative": "Vor Beginn",
       "kind_absolute": "Datum/Uhrzeit angeben",
       "unit_label": "Einheit",
       "unit_minutes": "Minuten",
@@ -23,7 +23,11 @@
       "relative_value_label": "Wert",
       "absolute_at_label": "Benachrichtigen am",
       "error_absolute_required": "Bitte geben Sie Datum und Uhrzeit für die absolute Erinnerung ein",
-      "error_past": "Ein Datum in der Vergangenheit kann nicht angegeben werden"
+      "error_past": "Ein Datum in der Vergangenheit kann nicht angegeben werden",
+      "preset_minutes_before": "{n} Min. vorher",
+      "preset_hours_before": "{n} Std. vorher",
+      "preset_days_before": "{n} Tag vorher",
+      "preset_weeks_before": "{n} Woche vorher"
     },
     "scheduled_survey": {
       "label": "Umfrage planen",

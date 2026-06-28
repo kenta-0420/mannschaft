@@ -14,7 +14,7 @@
       "before": "전",
       "max_reached": "리마인더는 최대 5개까지 설정할 수 있습니다",
       "kind_label": "유형",
-      "kind_relative": "시작 전（분/시간）",
+      "kind_relative": "시작 전",
       "kind_absolute": "날짜/시간 지정",
       "unit_label": "단위",
       "unit_minutes": "분",
@@ -23,7 +23,11 @@
       "relative_value_label": "값",
       "absolute_at_label": "알림 일시",
       "error_absolute_required": "절대 리마인더의 일시를 입력해 주세요",
-      "error_past": "과거 일시는 지정할 수 없습니다"
+      "error_past": "과거 일시는 지정할 수 없습니다",
+      "preset_minutes_before": "{n}분 전",
+      "preset_hours_before": "{n}시간 전",
+      "preset_days_before": "{n}일 전",
+      "preset_weeks_before": "{n}주 전"
     },
     "scheduled_survey": {
       "label": "설문 예약 생성",

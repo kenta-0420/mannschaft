@@ -14,7 +14,7 @@
       "before": "前",
       "max_reached": "リマインダーは最大5件まで設定できます",
       "kind_label": "種別",
-      "kind_relative": "開始前（分/時間）",
+      "kind_relative": "開始前",
       "kind_absolute": "日時で指定",
       "unit_label": "単位",
       "unit_minutes": "分",
@@ -23,7 +23,11 @@
       "relative_value_label": "値",
       "absolute_at_label": "通知日時",
       "error_absolute_required": "絶対リマインダーの日時を入力してください",
-      "error_past": "過去の日時は指定できません"
+      "error_past": "過去の日時は指定できません",
+      "preset_minutes_before": "{n}分前",
+      "preset_hours_before": "{n}時間前",
+      "preset_days_before": "{n}日前",
+      "preset_weeks_before": "{n}週間前"
     },
     "scheduled_survey": {
       "label": "アンケートを予約作成",

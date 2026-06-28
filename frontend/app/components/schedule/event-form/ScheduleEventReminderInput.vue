@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ReminderFormEntry, ScheduleEventFormState } from './types'
+import type { RelativeReminderUnit, ReminderFormEntry, ScheduleEventFormState } from './types'
 
 const form = defineModel<ScheduleEventFormState>('form', { required: true })
 
@@ -7,16 +7,37 @@ const { t } = useI18n()
 
 const MAX_REMINDERS = 5
 
+const UNIT_TO_MINUTES: Record<RelativeReminderUnit, number> = {
+  MINUTES: 1,
+  HOURS: 60,
+  DAYS: 1440,
+}
+
 const kindOptions = computed(() => [
   { label: t('schedule.reminder.kind_relative'), value: 'RELATIVE' as const },
   { label: t('schedule.reminder.kind_absolute'), value: 'ABSOLUTE' as const },
 ])
 
-const unitOptions = computed(() => [
-  { label: t('schedule.reminder.unit_minutes'), value: 'MINUTES' as const },
-  { label: t('schedule.reminder.unit_hours'), value: 'HOURS' as const },
-  { label: t('schedule.reminder.unit_days'), value: 'DAYS' as const },
+const reminderPresets = computed(() => [
+  { label: t('schedule.reminder.preset_minutes_before', { n: 5 }),   minutes: 5 },
+  { label: t('schedule.reminder.preset_minutes_before', { n: 10 }),  minutes: 10 },
+  { label: t('schedule.reminder.preset_minutes_before', { n: 15 }),  minutes: 15 },
+  { label: t('schedule.reminder.preset_minutes_before', { n: 30 }),  minutes: 30 },
+  { label: t('schedule.reminder.preset_hours_before',   { n: 1 }),   minutes: 60 },
+  { label: t('schedule.reminder.preset_hours_before',   { n: 3 }),   minutes: 180 },
+  { label: t('schedule.reminder.preset_days_before',    { n: 1 }),   minutes: 1440 },
+  { label: t('schedule.reminder.preset_days_before',    { n: 2 }),   minutes: 2880 },
+  { label: t('schedule.reminder.preset_weeks_before',   { n: 1 }),   minutes: 10080 },
 ])
+
+function toMinutes(entry: ReminderFormEntry): number {
+  return entry.relativeValue * UNIT_TO_MINUTES[entry.relativeUnit]
+}
+
+function setPreset(entry: ReminderFormEntry, minutes: number): void {
+  entry.relativeValue = minutes
+  entry.relativeUnit = 'MINUTES'
+}
 
 function createEntry(): ReminderFormEntry {
   return {
@@ -50,50 +71,40 @@ function removeReminder(index: number) {
     <div
       v-for="(reminder, index) in form.reminders"
       :key="reminder.key"
-      class="flex flex-wrap items-center gap-2"
+      class="flex items-center gap-2"
     >
       <Select
         v-model="reminder.kind"
         :options="kindOptions"
         option-label="label"
         option-value="value"
-        class="w-32"
+        class="w-28"
         :aria-label="$t('schedule.reminder.kind_label')"
       />
 
-      <!-- 相対指定: 値 + 単位 -->
-      <template v-if="reminder.kind === 'RELATIVE'">
-        <InputNumber
-          v-model="reminder.relativeValue"
-          :min="1"
-          :max="9999"
-          class="w-24"
-          input-class="text-center"
-          :aria-label="$t('schedule.reminder.relative_value_label')"
-        />
-        <Select
-          v-model="reminder.relativeUnit"
-          :options="unitOptions"
-          option-label="label"
-          option-value="value"
-          class="w-28"
-          :aria-label="$t('schedule.reminder.unit_label')"
-        />
-        <span class="text-sm text-surface-500">{{ $t('schedule.reminder.before') }}</span>
-      </template>
+      <!-- 相対指定: プリセット選択 -->
+      <Select
+        v-if="reminder.kind === 'RELATIVE'"
+        :model-value="toMinutes(reminder)"
+        :options="reminderPresets"
+        option-label="label"
+        option-value="minutes"
+        class="flex-1"
+        :aria-label="$t('schedule.reminder.relative_value_label')"
+        @update:model-value="(val: number) => setPreset(reminder, val)"
+      />
 
       <!-- 絶対指定: 日時ピッカー -->
-      <template v-else>
-        <DatePicker
-          v-model="reminder.absoluteAt"
-          show-time
-          hour-format="24"
-          date-format="yy/mm/dd"
-          class="flex-1 min-w-[12rem]"
-          show-icon
-          :aria-label="$t('schedule.reminder.absolute_at_label')"
-        />
-      </template>
+      <DatePicker
+        v-else
+        v-model="reminder.absoluteAt"
+        show-time
+        hour-format="24"
+        date-format="yy/mm/dd"
+        class="flex-1 min-w-[12rem]"
+        show-icon
+        :aria-label="$t('schedule.reminder.absolute_at_label')"
+      />
 
       <Button
         icon="pi pi-trash"
