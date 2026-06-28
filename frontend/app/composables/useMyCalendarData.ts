@@ -1,4 +1,4 @@
-﻿import type { CalendarEventItem } from './useCalendarEvents'
+import type { CalendarEventItem } from './useCalendarEvents'
 import type { GanttTodo } from '~/types/todo'
 
 interface CalendarEntryRaw {

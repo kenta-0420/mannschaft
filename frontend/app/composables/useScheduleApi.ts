@@ -1,4 +1,4 @@
-﻿import { useScheduleCrud } from './schedule/useScheduleCrud'
+import { useScheduleCrud } from './schedule/useScheduleCrud'
 import { useScheduleAttendance } from './schedule/useScheduleAttendance'
 import { useSchedulePersonal } from './schedule/useSchedulePersonal'
 import { useScheduleAnalytics } from './schedule/useScheduleAnalytics'

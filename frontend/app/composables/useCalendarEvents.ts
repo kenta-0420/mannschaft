@@ -1,4 +1,4 @@
-﻿export interface CalendarEventItem {
+export interface CalendarEventItem {
   id: number
   /**
    * 一覧/ループの安定一意キー（v-for :key・ルックアップ用）。
