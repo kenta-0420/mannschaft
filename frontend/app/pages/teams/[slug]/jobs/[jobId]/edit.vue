@@ -155,14 +155,10 @@ onMounted(() => load())
 
 <template>
   <div class="container mx-auto max-w-3xl p-4">
-    <div class="mb-4">
-      <h1 class="text-2xl font-bold">
-        {{ t('jobmatching.edit.title') }}
-      </h1>
-      <p class="mt-1 text-sm text-surface-500">
-        {{ t('jobmatching.edit.description') }}
-      </p>
-    </div>
+    <PageHeader :title="t('jobmatching.edit.title')" :back-to="`/teams/${teamSlug}/jobs/${jobId}`" />
+    <p class="mb-4 text-sm text-surface-500">
+      {{ t('jobmatching.edit.description') }}
+    </p>
 
     <div
       v-if="loading"

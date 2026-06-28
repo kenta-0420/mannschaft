@@ -258,37 +258,19 @@ onMounted(async () => {
     </div>
 
     <div v-else>
-      <!-- 戻る -->
-      <div class="mb-3">
-        <Button
-          :label="t('jobmatching.detail.back')"
-          icon="pi pi-arrow-left"
-          severity="secondary"
-          text
-          @click="router.push(`/teams/${teamSlug}/jobs`)"
-        />
-      </div>
-
       <!-- ヘッダ -->
-      <header class="mb-4">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0 flex-1">
-            <h1 class="text-2xl font-bold">
-              {{ job.title }}
-            </h1>
-            <p
-              v-if="job.category"
-              class="mt-1 text-sm text-surface-500"
-            >
-              {{ job.category }}
-            </p>
-          </div>
-          <JobStatusBadge
-            kind="posting"
-            :status="job.status"
-          />
-        </div>
-      </header>
+      <PageHeader :title="job.title" :back-to="`/teams/${teamSlug}/jobs`">
+        <JobStatusBadge
+          kind="posting"
+          :status="job.status"
+        />
+      </PageHeader>
+      <p
+        v-if="job.category"
+        class="mb-4 text-sm text-surface-500"
+      >
+        {{ job.category }}
+      </p>
 
       <!-- アクションバー -->
       <div
