@@ -1,11 +1,11 @@
-/**
+﻿/**
  * 共有スケジュール CRUD / カテゴリ / 招待 / カレンダー月次 / グローバル操作。
  *
  * 提供する関数:
  * - CRUD:       listSchedules / getSchedule / createSchedule / updateSchedule / deleteSchedule / cancelSchedule / duplicateSchedule
  * - カテゴリ:   getCategories / createCategory
  * - 招待:       getScheduleInvitations / acceptScheduleInvitation / rejectScheduleInvitation / confirmScheduleInvitation
- * - カレンダー: getCalendarMonth
+ * - カレンダー: getCalendarMonth / getCalendarRange
  * - グローバル: remindSchedule / respondToSchedule
  */
 import type { ScheduleInvitationResponse } from '~/types/schedule'
@@ -144,6 +144,13 @@ export function useScheduleCrud() {
     return api<{ data: unknown }>(`/api/v1/my/calendar?${query}`)
   }
 
+  async function getCalendarRange(from: string, to: string) {
+    const query = new URLSearchParams()
+    query.set('from', from)
+    query.set('to', to)
+    return api<{ data: unknown }>(`/api/v1/my/calendar?${query}`)
+  }
+
   // === Event Categories ===
   async function getCategories(scopeType: 'team' | 'organization', scopeId: string) {
     return api<{ data: unknown[] }>(`${buildBase(scopeType, scopeId)}/event-categories`)
@@ -212,6 +219,7 @@ export function useScheduleCrud() {
     cancelScheduledTask,
     duplicateSchedule,
     getCalendarMonth,
+    getCalendarRange,
     getCategories,
     createCategory,
     remindSchedule,

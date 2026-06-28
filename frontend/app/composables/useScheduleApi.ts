@@ -1,4 +1,4 @@
-import { useScheduleCrud } from './schedule/useScheduleCrud'
+﻿import { useScheduleCrud } from './schedule/useScheduleCrud'
 import { useScheduleAttendance } from './schedule/useScheduleAttendance'
 import { useSchedulePersonal } from './schedule/useSchedulePersonal'
 import { useScheduleAnalytics } from './schedule/useScheduleAnalytics'
@@ -44,6 +44,7 @@ export function useScheduleApi() {
     deletePersonalSchedule: personal.deletePersonalSchedule,
     // === Calendar / Categories / Duplicate ===
     getCalendarMonth: crud.getCalendarMonth,
+    getCalendarRange: crud.getCalendarRange,
     getCategories: crud.getCategories,
     createCategory: crud.createCategory,
     duplicateSchedule: crud.duplicateSchedule,
