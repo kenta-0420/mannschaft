@@ -246,6 +246,45 @@
       "loadFailed": "Failed to load data",
       "applicationsLoadFailed": "Failed to load applications"
     },
+    "guide": {
+      "title": "How to Use Job Listings",
+      "description": "On this page, you can search for and apply to open job listings from your teams. Follow the steps below to find a job.",
+      "team": {
+        "title": "Select a Team to Browse Jobs",
+        "body": "Jobs on Mannschaft are posted through teams you belong to. Start by selecting a team from the selector at the top of the page.",
+        "step1": "Click the \"Select a Team\" selector at the top of the page",
+        "step2": "Choose one of your teams from the list",
+        "step3": "Open job listings for that team will be displayed"
+      },
+      "card": {
+        "title": "Reading a Job Card",
+        "body": "Each job card shows the key information about a position at a glance.",
+        "item_status": "Badge (top right) — shows current status such as \"Open\"",
+        "item_pay": "Pay amount and type (lump sum / hourly / daily)",
+        "item_schedule": "Work date/time, location, headcount, and application deadline"
+      },
+      "detail": {
+        "title": "View Job Details",
+        "body": "Click a card to open the detail page, where you can see the full job description, location, pay, and deadline.",
+        "step1": "Click on a job card you're interested in",
+        "step2": "Review the full job description, conditions, and pay",
+        "step3": "Click \"Apply\" when you're ready to apply"
+      },
+      "apply": {
+        "title": "Apply for a Job",
+        "body": "Click \"Apply\" and enter a cover message (up to 500 characters). This is the first thing the hiring manager will see, so write carefully.",
+        "step1": "Click the \"Apply\" button on the job detail page",
+        "step2": "Enter your cover message in the dialog (up to 500 characters — optional)",
+        "step3": "Click \"Submit\" to complete your application",
+        "step4": "After applying, check your application status on \"My Jobs\""
+      },
+      "pagination": {
+        "title": "Browse More Listings",
+        "body": "If there are more than 20 listings, a pagination control will appear at the bottom.",
+        "step1": "Click a page number or the \">\" button at the bottom",
+        "step2": "The next 20 listings will be displayed"
+      }
+    },
     "qr": {
       "display": {
         "title": {

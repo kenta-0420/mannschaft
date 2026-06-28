@@ -266,14 +266,10 @@ onMounted(async () => {
 
 <template>
   <div class="container mx-auto max-w-4xl p-4">
-    <div class="mb-4">
-      <h1 class="text-2xl font-bold">
-        {{ t('jobmatching.myJobs.title') }}
-      </h1>
-      <p class="mt-1 text-sm text-surface-500">
-        {{ t('jobmatching.myJobs.description') }}
-      </p>
-    </div>
+    <PageHeader :title="t('jobmatching.myJobs.title')" :back="false" />
+    <p class="mb-4 text-sm text-surface-500">
+      {{ t('jobmatching.myJobs.description') }}
+    </p>
 
     <!-- タブ -->
     <div class="mb-5">
