@@ -68,7 +68,9 @@
     "template_name_label": "템플릿 이름",
     "template_set_default": "기본값으로 설정",
     "template_create": "템플릿으로 저장",
+    "template_name_placeholder": "템플릿 이름 입력",
     "template_save_success": "템플릿이 저장되었습니다",
+    "template_save_failed": "템플릿 저장에 실패했습니다",
     "template_delete_confirm": "이 템플릿을 삭제하시겠습니까?",
     "incident": {
       "dismiss": "닫기"

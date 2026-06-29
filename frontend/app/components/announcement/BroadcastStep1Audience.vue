@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { AnnouncementScopeType } from '~/types/announcement'
-import type { AnnouncementTemplate, BroadcastTargetRole, WizardFormState } from '~/types/announcement_broadcast'
+import type { AnnouncementTemplate, AnnouncementTemplateRequest, BroadcastTargetRole, WizardFormState } from '~/types/announcement_broadcast'
 
 const props = defineProps<{
   modelValue: WizardFormState
   scopeType: AnnouncementScopeType
   scopeId: string
+  isAdmin?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -14,7 +15,9 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const notification = useNotification()
 const { getTeamsInOrg } = useOrganizationApi()
+const { createTemplate, saving } = useAnnouncementTemplates(props.scopeType, props.scopeId)
 
 const targetRole = computed({
   get() {
@@ -90,6 +93,45 @@ const templateId = computed({
     emit('update:modelValue', { ...props.modelValue, templateId: value })
   },
 })
+
+// ── 現在の範囲をテンプレートとして保存（ADMIN / DEPUTY_ADMIN のみ表示） ──
+const templateSelector = ref<{ refresh: () => Promise<void> } | null>(null)
+const showSaveForm = ref(false)
+const newTemplateName = ref('')
+
+function openSaveForm() {
+  newTemplateName.value = ''
+  showSaveForm.value = true
+}
+
+function cancelSaveForm() {
+  showSaveForm.value = false
+  newTemplateName.value = ''
+}
+
+async function saveAsTemplate() {
+  const name = newTemplateName.value.trim()
+  if (name.length === 0) return
+
+  const request: AnnouncementTemplateRequest = {
+    name,
+    targetRole: props.modelValue.targetRole,
+    targetTeamIds: props.modelValue.targetTeamIds,
+    preferredChannel: props.modelValue.selectedChannel,
+  }
+
+  try {
+    await createTemplate(request)
+    notification.success(t('announcement.template_save_success'))
+    showSaveForm.value = false
+    newTemplateName.value = ''
+    // 選択リストへ即時反映するため、セレクター側の一覧を再取得する
+    await templateSelector.value?.refresh()
+  } catch {
+    // createTemplate は失敗時に文字列を throw する（上限超過・認可エラー等）
+    notification.error(t('announcement.template_save_failed'))
+  }
+}
 </script>
 
 <template>
@@ -145,13 +187,52 @@ const templateId = computed({
     </div>
 
     <!-- テンプレート選択 -->
-    <div>
+    <div class="flex flex-col gap-3">
       <BroadcastTemplateSelector
+        ref="templateSelector"
         v-model="templateId"
         :scope-type="scopeType"
         :scope-id="scopeId"
         @apply="onTemplateApply"
       />
+
+      <!-- 現在の範囲をテンプレートとして保存（ADMIN / DEPUTY_ADMIN のみ） -->
+      <div v-if="isAdmin">
+        <Button
+          v-if="!showSaveForm"
+          :label="t('announcement.template_create')"
+          icon="pi pi-save"
+          severity="secondary"
+          text
+          size="small"
+          @click="openSaveForm"
+        />
+        <div v-else class="flex items-center gap-2">
+          <InputText
+            v-model="newTemplateName"
+            :placeholder="t('announcement.template_name_placeholder')"
+            class="flex-1"
+            :maxlength="100"
+            @keyup.enter="saveAsTemplate"
+          />
+          <Button
+            :label="$t('button.save')"
+            icon="pi pi-check"
+            size="small"
+            :disabled="newTemplateName.trim().length === 0"
+            :loading="saving"
+            @click="saveAsTemplate"
+          />
+          <Button
+            :label="$t('button.cancel')"
+            severity="secondary"
+            text
+            size="small"
+            :disabled="saving"
+            @click="cancelSaveForm"
+          />
+        </div>
+      </div>
     </div>
 
     <!-- ナビゲーション -->
