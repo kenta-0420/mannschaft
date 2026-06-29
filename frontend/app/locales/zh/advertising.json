@@ -1,324 +1,7 @@
 {
-  "ad_label": "广告",
-  "status": {
-    "draft": "草稿",
-    "review": "审核中",
-    "approved": "已批准",
-    "scheduled": "已排期",
-    "delivering": "投放中",
-    "paused": "已暂停",
-    "completed": "已结束",
-    "blocked": "已封禁",
-    "cancelled": "已取消"
-  },
-  "moderation_status": {
-    "pending": "待审核",
-    "auto_passed": "自动通过",
-    "auto_flagged": "需要复核",
-    "approved": "已批准",
-    "blocked": "已封禁"
-  },
-  "moderation_action": {
-    "approved": "批准",
-    "blocked": "封禁",
-    "unblocked": "解除封禁",
-    "auto_flagged": "自动标记",
-    "auto_passed": "自动通过"
-  },
-  "segment_type": {
-    "age_range": "年龄段",
-    "gender": "性别",
-    "region_prefecture": "都道府县",
-    "region_city": "市区县",
-    "interest_tag": "兴趣标签",
-    "org_type": "组织类型",
-    "locale": "语言",
-    "device": "设备"
-  },
-  "inclusion_mode": {
-    "include": "包含",
-    "exclude": "排除"
-  },
-  "report_reason": {
-    "offensive": "令人不适的内容",
-    "misleading": "误导性信息",
-    "spam": "垃圾内容",
-    "irrelevant": "与我无关",
-    "other": "其他"
-  },
-  "channel": {
-    "announcement": "公告",
-    "email": "邮件",
-    "push": "推送通知",
-    "banner": "横幅"
-  },
-  "reach_range": {
-    "under_100": "符合条件的用户太少",
-    "range_100_500": "约 100〜500 人",
-    "range_500_1k": "约 500〜1,000 人",
-    "range_1k_5k": "约 1,000〜5,000 人",
-    "range_5k_10k": "约 5,000〜10,000 人",
-    "range_10k_50k": "约 10,000〜50,000 人",
-    "range_50k_100k": "约 50,000〜100,000 人",
-    "over_100k": "约 100,000 人以上"
-  },
-  "actions": {
-    "submit": "提交审核",
-    "launch": "开始投放",
-    "pause": "暂停",
-    "resume": "恢复",
-    "cancel": "取消",
-    "approve": "批准",
-    "block": "封禁",
-    "save_draft": "保存草稿",
-    "preview": "预览",
-    "delete": "删除",
-    "edit": "编辑",
-    "create": "新建",
-    "add_channel": "添加渠道",
-    "remove_channel": "移除渠道",
-    "add_segment": "添加细分",
-    "remove_segment": "移除细分",
-    "report": "举报",
-    "unsubscribe": "取消订阅",
-    "block_advertiser": "屏蔽该广告主",
-    "stop_ads": "停止接收广告",
-    "unblock_advertiser": "解除屏蔽",
-    "export_csv": "导出 CSV",
-    "view_detail": "查看详情",
-    "back_to_queue": "返回审核队列",
-    "reload": "重新加载"
-  },
-  "pages": {
-    "advertiser_campaign_list": {
-      "title": "消息型广告活动",
-      "description": "管理面向特定受众的定向消息广告活动。",
-      "empty": "暂无广告活动。",
-      "filter_status": "按状态筛选",
-      "column_name": "活动名称",
-      "column_status": "状态",
-      "column_budget": "预算（日元）",
-      "column_consumed": "已消耗（日元）",
-      "column_period": "投放期间",
-      "column_updated": "更新时间"
-    },
-    "advertiser_campaign_create": {
-      "title": "创建广告活动",
-      "description": "设置投放渠道和目标受众条件。草稿可以随时编辑。",
-      "field_name": "活动名称",
-      "field_budget": "总预算（日元）",
-      "field_starts_at": "开始时间",
-      "field_ends_at": "结束时间",
-      "field_timezone": "时区",
-      "field_frequency_cap": "每周最大投放次数（默认 3 次）",
-      "step_basic": "基本信息",
-      "step_channels": "渠道设置",
-      "step_audience": "受众设置",
-      "step_review": "确认并提交",
-      "submitted": "广告活动已提交审核。",
-      "saved": "草稿已保存。"
-    },
-    "advertiser_campaign_detail": {
-      "title": "活动详情",
-      "section_summary": "概览",
-      "section_channels": "渠道",
-      "section_audience": "受众",
-      "section_moderation": "审核状态",
-      "section_report": "投放报告",
-      "blocked_reason": "封禁原因",
-      "preview_reach": "预估触达",
-      "no_channels": "未设置渠道。",
-      "no_segments": "未设置受众条件。"
-    },
-    "system_admin_moderation": {
-      "title": "广告活动审核",
-      "description": "审核待审广告活动并进行批准或封禁。",
-      "empty": "没有待审核的广告活动。",
-      "approve_dialog_title": "确认批准此活动？",
-      "approve_dialog_message": "批准后广告主可以开始投放。",
-      "block_dialog_title": "确认封禁此活动？",
-      "block_dialog_message": "请输入封禁原因（将通知广告主）。",
-      "block_reason_label": "封禁原因",
-      "block_reason_placeholder": "例如：用词不当",
-      "user_reports_section": "用户举报",
-      "queue_title": "审核队列",
-      "queue_description": "当前需要审核的广告活动列表。",
-      "filter_submitted_period": "按提交时间筛选",
-      "filter_auto_flag": "按自动标记筛选",
-      "filter_auto_flag_all": "全部",
-      "filter_auto_flag_only": "仅自动标记",
-      "filter_auto_flag_passed": "仅自动通过",
-      "card_advertiser": "广告主账号 ID",
-      "card_submitted_at": "提交时间"
-    },
-    "settings_ad_preferences": {
-      "title": "广告接收设置",
-      "description": "选择接收广告的渠道，或屏蔽指定广告主。",
-      "channel_section": "接收的渠道",
-      "channel_section_description": "关闭后将不再从该渠道接收广告。",
-      "blocked_section": "已屏蔽的广告主",
-      "blocked_section_description": "已屏蔽的广告主将无法向您投放广告（最多 100 个）。",
-      "blocked_empty": "当前没有屏蔽中的广告主。",
-      "blocked_limit_exceeded": "已达到屏蔽上限（100 个）。请先解除部分屏蔽后再添加。",
-      "add_block_label": "通过广告主 ID 添加",
-      "add_block_placeholder": "例如：12",
-      "add_block_button": "添加到屏蔽列表",
-      "rotate_tokens": "使取消订阅链接失效",
-      "rotate_tokens_help": "使过往邮件中的取消订阅链接全部失效。",
-      "rotate_tokens_section": "安全",
-      "rotate_tokens_confirm": "确定要使所有取消订阅链接失效吗？此操作不可撤销。",
-      "rotate_tokens_success": "邮件链接已失效。",
-      "consent_required": "接收广告需要首次同意。",
-      "consented_at": "首次同意时间",
-      "not_consented": "未同意",
-      "save_button": "保存",
-      "saved": "设置已保存。",
-      "save_rate_limited": "设置变更次数已达上限（每小时 10 次）。请稍后再试。",
-      "channel_announcement": "公告中的广告",
-      "channel_email": "邮件广告",
-      "channel_push": "推送通知广告",
-      "channel_banner": "站内横幅广告"
-    },
-    "me_ad_deliveries": {
-      "title": "已收到的广告",
-      "description": "您可以在此查看已投放给您的广告记录。",
-      "empty": "您还没有收到广告。",
-      "delivered_at": "投放时间",
-      "opened": "已查看",
-      "clicked": "已点击",
-      "filter_all": "全部",
-      "filter_announcement": "公告",
-      "filter_email": "邮件",
-      "filter_push": "推送",
-      "filter_banner": "横幅",
-      "column_campaign": "广告活动",
-      "column_advertiser": "广告主",
-      "column_channel": "渠道",
-      "column_engagement": "动作",
-      "column_actions": "操作",
-      "engagement_read": "已阅读",
-      "engagement_clicked": "已点击",
-      "engagement_none": "未阅读",
-      "load_more": "加载更多",
-      "delete_all_section": "数据删除（GDPR 删除权）",
-      "delete_all_description": "删除您收到的所有广告记录。广告主的计费记录和统计数据将保留，但与您的关联将被清除。",
-      "delete_all_button": "删除所有记录",
-      "delete_all_confirm": "确定要删除所有广告记录吗？此操作不可撤销。",
-      "delete_all_success": "广告记录已全部删除。"
-    },
-    "system_admin_dashboard": {
-      "title": "广告审核仪表板",
-      "description": "概览待审核数、用户举报情况及最近封禁情况。",
-      "kpi_review_pending": "待审核",
-      "kpi_auto_flagged": "自动标记",
-      "kpi_user_reports": "用户举报",
-      "kpi_recent_blocks": "最近 7 天封禁",
-      "auto_suspend_warning": "有 {count} 个广告活动短时间内被多次举报",
-      "shortcut_review_queue": "打开审核队列",
-      "shortcut_user_reports": "打开举报列表",
-      "load_failed": "广告审核信息加载失败",
-      "quick_link_label": "广告审核"
-    },
-    "system_admin_user_reports": {
-      "title": "广告用户举报列表",
-      "description": "查看用户举报并在必要时停止违规广告活动。",
-      "empty": "暂无待处理的举报。",
-      "filter_reason": "按举报理由筛选",
-      "filter_status": "按状态筛选",
-      "column_reported_at": "举报时间",
-      "column_campaign": "广告活动",
-      "column_reporter": "举报者",
-      "column_reason": "理由",
-      "column_status": "状态",
-      "auto_suspend_candidate": "举报集中",
-      "auto_suspend_candidate_tooltip": "短时间内收到多次举报，是自动停止的候选。",
-      "go_campaign": "查看广告活动详情"
-    },
-    "advertiser_campaign_report": {
-      "title": "广告活动绩效报告",
-      "description": "查看投放数据的汇总及每日趋势。可按期间筛选。",
-      "field_from": "开始日期",
-      "field_to": "结束日期",
-      "kpi_delivered": "投放数",
-      "kpi_opened": "打开数",
-      "kpi_clicked": "点击数",
-      "kpi_consumed": "已消耗预算（日元）",
-      "chart_title": "每日趋势",
-      "chart_delivered": "投放数",
-      "chart_open_rate": "打开率",
-      "chart_click_rate": "点击率",
-      "channel_breakdown_title": "按渠道分布",
-      "channel_breakdown_delivered": "投放",
-      "channel_breakdown_opened": "打开",
-      "channel_breakdown_clicked": "点击",
-      "no_data": "所选期间没有数据。",
-      "export_started": "CSV 导出已开始。"
-    },
-    "unsubscribe_spa": {
-      "title": "取消广告邮件订阅",
-      "description": "请选择要停止接收的渠道。未勾选的渠道将继续接收。",
-      "submit_button": "停止所选渠道",
-      "note": "本页面通过广告邮件中的退订链接访问。登录后可在「广告接收设置」页面随时修改。",
-      "success_message": "已停止接收所选渠道的广告。",
-      "done_title": "已停止接收广告",
-      "done_description": "您将不再通过所选渠道接收广告。",
-      "done_disabled_label": "已停止的渠道：",
-      "done_remaining_label": "仍继续接收的渠道：",
-      "done_login_hint": "登录后可在「广告接收设置」页面随时修改。",
-      "error_title": "无法停止订阅",
-      "error_invalid_or_expired": "此链接已过期或无效。请登录后在「广告接收设置」页面进行操作。",
-      "error_rate_limited": "短时间内请求过多，请稍后再试。",
-      "error_unknown": "发生了未知错误，请稍后再试。",
-      "error_login_hint": "登录后可在「广告接收设置」页面按渠道单独停止。"
-    },
-    "system_admin_moderation_detail": {
-      "title": "广告活动审核详情",
-      "section_channels": "各渠道正文",
-      "section_audience": "目标受众细分",
-      "section_ng_words": "检测到的违禁词",
-      "section_logs": "审核日志",
-      "no_ng_words": "未检测到违禁词。",
-      "preview_locale": "预览语言",
-      "approve_confirm": "确认批准此广告活动？",
-      "block_confirm": "确认封禁此广告活动？",
-      "approved_toast": "广告活动已批准。",
-      "blocked_toast": "广告活动已封禁。"
-    }
-  },
-  "report_dialog": {
-    "title": "举报此广告",
-    "description": "举报内容将由 SYSTEM_ADMIN 审核。",
-    "reason_label": "举报理由",
-    "detail_label": "详情（可选）",
-    "detail_placeholder": "请具体说明您关注的问题",
-    "submit": "提交举报",
-    "cancel": "取消",
-    "submitted": "举报已受理。",
-    "rate_limited": "举报次数已达上限（每天 20 次）。请明天再试。"
-  },
-  "consent_dialog": {
-    "title": "是否同意接收广告？",
-    "description": "Mannschaft 提供来自广告主的有限消息投放。接收设置可随时修改。",
-    "accept": "同意并继续",
-    "decline": "暂不接收",
-    "stop_all": "全部停止接收",
-    "stopped_message": "已停止所有广告接收。可在设置中随时变更。"
-  },
-  "error_codes": {
-    "AD_CAMPAIGN_NOT_FOUND": "未找到该广告活动。",
-    "AD_CAMPAIGN_NOT_EDITABLE": "当前状态下无法编辑该活动。",
-    "AD_CAMPAIGN_INVALID_TRANSITION": "不允许此状态变更。",
-    "AD_CAMPAIGN_BUDGET_INSUFFICIENT": "预算余额不足。",
-    "AD_CAMPAIGN_CREDIT_LIMIT_EXCEEDED": "已超出信用额度。",
-    "AD_CAMPAIGN_MODERATION_BLOCKED": "该活动在审核中被封禁。",
-    "AD_CAMPAIGN_NO_CHANNEL": "请至少设置一个渠道。",
-    "AD_PREFERENCES_BLOCKED_LIMIT": "最多可屏蔽 100 个广告主。",
-    "AD_REPORT_DUPLICATE": "该活动已被您举报过。",
-    "AD_RATE_LIMIT_EXCEEDED": "请求次数已达上限。请稍后再试。"
-  },
-  "advertiser_crud": {
-    "list_tab": {
-      "all": "全部",
+  "advertising": {
+    "ad_label": "广告",
+    "status": {
       "draft": "草稿",
       "review": "审核中",
       "approved": "已批准",
@@ -329,203 +12,522 @@
       "blocked": "已封禁",
       "cancelled": "已取消"
     },
-    "list_action": {
-      "create_button": "新建"
+    "moderation_status": {
+      "pending": "待审核",
+      "auto_passed": "自动通过",
+      "auto_flagged": "需要复核",
+      "approved": "已批准",
+      "blocked": "已封禁"
     },
-    "list_table": {
-      "name": "活动名称",
-      "status": "状态",
-      "period": "投放期间",
-      "total_budget": "总预算",
-      "consumed_budget": "已消耗",
-      "actions": "操作"
+    "moderation_action": {
+      "approved": "批准",
+      "blocked": "封禁",
+      "unblocked": "解除封禁",
+      "auto_flagged": "自动标记",
+      "auto_passed": "自动通过"
     },
-    "create_step": {
-      "basic": "基本信息",
-      "channels": "投放渠道",
-      "audience": "受众",
-      "preview": "预览 / 确认"
+    "segment_type": {
+      "age_range": "年龄段",
+      "gender": "性别",
+      "region_prefecture": "都道府县",
+      "region_city": "市区县",
+      "interest_tag": "兴趣标签",
+      "org_type": "组织类型",
+      "locale": "语言",
+      "device": "设备"
     },
-    "create_nav": {
-      "next": "下一步",
-      "back": "返回",
-      "submit": "保存为草稿"
+    "inclusion_mode": {
+      "include": "包含",
+      "exclude": "排除"
     },
-    "detail_tab": {
-      "overview": "概览",
-      "channels": "渠道",
-      "audience": "受众",
-      "moderation": "审核历史"
+    "report_reason": {
+      "offensive": "令人不适的内容",
+      "misleading": "误导性信息",
+      "spam": "垃圾内容",
+      "irrelevant": "与我无关",
+      "other": "其他"
     },
-    "detail_empty": {
-      "moderation_logs": "暂无审核历史。"
+    "channel": {
+      "announcement": "公告",
+      "email": "邮件",
+      "push": "推送通知",
+      "banner": "横幅"
     },
-    "form": {
-      "name": "活动名称",
-      "name_placeholder": "例如：春季活动",
-      "total_budget": "总预算（日元）",
-      "starts_at": "开始时间",
-      "ends_at": "结束时间",
-      "scheduled_timezone": "时区",
-      "frequency_cap_override": "频次上限覆盖（每周）",
-      "frequency_cap_help": "未指定时使用默认值（每周 3 次）。"
+    "reach_range": {
+      "under_100": "符合条件的用户太少",
+      "range_100_500": "约 100〜500 人",
+      "range_500_1k": "约 500〜1,000 人",
+      "range_1k_5k": "约 1,000〜5,000 人",
+      "range_5k_10k": "约 5,000〜10,000 人",
+      "range_10k_50k": "约 10,000〜50,000 人",
+      "range_50k_100k": "约 50,000〜100,000 人",
+      "over_100k": "约 100,000 人以上"
     },
-    "channel_form": {
-      "subject": "标题",
-      "body_markdown": "正文（Markdown）",
-      "image_url": "图片 URL",
-      "cta_label": "CTA 标签",
-      "cta_url": "CTA 链接 URL",
-      "banner_creative_id": "横幅素材 ID",
-      "select_channel": "选择渠道类型",
-      "select_locale": "选择语言"
+    "actions": {
+      "submit": "提交审核",
+      "launch": "开始投放",
+      "pause": "暂停",
+      "resume": "恢复",
+      "cancel": "取消",
+      "approve": "批准",
+      "block": "封禁",
+      "save_draft": "保存草稿",
+      "preview": "预览",
+      "delete": "删除",
+      "edit": "编辑",
+      "create": "新建",
+      "add_channel": "添加渠道",
+      "remove_channel": "移除渠道",
+      "add_segment": "添加细分",
+      "remove_segment": "移除细分",
+      "report": "举报",
+      "unsubscribe": "取消订阅",
+      "block_advertiser": "屏蔽该广告主",
+      "stop_ads": "停止接收广告",
+      "unblock_advertiser": "解除屏蔽",
+      "export_csv": "导出 CSV",
+      "view_detail": "查看详情",
+      "back_to_queue": "返回审核队列",
+      "reload": "重新加载"
     },
-    "segment_form": {
-      "select_type": "选择细分类型",
-      "inclusion_mode": "包含模式",
-      "age_min": "最小年龄",
-      "age_max": "最大年龄",
-      "genders": "性别",
-      "prefecture_codes": "都道府县代码（逗号分隔）",
-      "city_codes": "市区町村代码（逗号分隔）",
-      "interest_tags": "兴趣标签（逗号分隔）",
-      "org_types": "组织类型（逗号分隔）",
-      "locales": "语言",
-      "devices": "设备",
-      "remove": "删除"
-    },
-    "preview": {
-      "title": "预估触达",
-      "estimated_range": "预估触达人数（范围）",
-      "channel_breakdown": "按渠道预估",
-      "fetch": "获取预估触达",
-      "loading": "正在估算...",
-      "under_100_warning": "预估触达人数少于 100，受众可能过窄。",
-      "no_data": "暂无预览数据。请先点击「获取预估触达」。"
-    },
-    "errors": {
-      "load_failed": "数据加载失败。",
-      "save_failed": "保存失败。",
-      "transition_failed": "状态变更失败。",
-      "preview_failed": "预览获取失败。"
-    },
-    "confirm": {
-      "submit": "确认将该活动提交审核？",
-      "cancel": "取消后将无法恢复。是否继续？",
-      "launch": "即将开始投放，确认继续？",
-      "pause": "即将暂停投放，确认继续？",
-      "resume": "即将恢复投放，确认继续？",
-      "delete": "确认删除该草稿？"
-    },
-    "validation": {
-      "name_required": "活动名称为必填项。",
-      "name_max": "活动名称最多 120 个字符。",
-      "total_budget_min": "总预算需不低于 1,000 日元。",
-      "total_budget_max": "总预算不可超过 100,000,000 日元。",
-      "starts_at_required": "开始时间为必填项。",
-      "ends_at_required": "结束时间为必填项。",
-      "starts_before_ends": "开始时间必须早于结束时间。",
-      "frequency_cap_range": "频次上限需在 1〜30 之间。",
-      "at_least_one_channel": "请至少设置一个渠道。",
-      "at_least_one_segment": "请至少设置一个受众细分。"
-    },
-    "nav": {
-      "messaging_campaigns": "消息型广告活动"
-    }
-  },
-  "creative": {
-    "title": "广告素材列表",
-    "description": "管理与广告活动关联的广告素材。",
-    "empty": "暂无素材。",
-    "create_button": "新建",
-    "status": {
-      "DRAFT": "草稿",
-      "ACTIVE": "有效",
-      "PAUSED": "暂停",
-      "ENDED": "已结束"
-    },
-    "column_title": "标题",
-    "column_status": "状态",
-    "column_destination": "目标链接",
-    "column_created_at": "创建时间",
-    "column_actions": "操作",
-    "form": {
-      "title_label": "标题",
-      "title_placeholder": "例：春季促销广告",
-      "image_url_label": "图片 URL（可选）",
-      "image_url_placeholder": "https://example.com/image.png",
-      "destination_url_label": "目标链接 URL",
-      "destination_url_placeholder": "https://example.com/landing"
-    },
-    "dialog_create_title": "创建素材",
-    "dialog_edit_title": "编辑素材",
-    "delete_confirm": "此素材将被标记为 ENDED。是否继续？",
-    "created_toast": "素材已创建。",
-    "updated_toast": "素材已更新。",
-    "deleted_toast": "素材已删除。",
-    "error_load": "加载素材失败。",
-    "error_save": "保存失败。",
-    "error_delete": "删除失败。",
-    "back_to_advertiser": "返回广告主控制台"
-  },
-  "teams_page": {
-    "title": "团队广告主管理",
-    "description": "以团队为单位创建和投放消息型广告活动。",
-    "nav": {
-      "messaging_campaigns_description": "为团队成员创建消息型广告活动。"
-    },
-    "future_features_notice": "发票管理・与信额度申请・定期报告将在未来阶段支持。",
-    "register": {
-      "title": "广告主注册",
-      "submit": "提交申请",
-      "company_name_label": "公司名/广告主名",
-      "company_name_placeholder": "示例株式会社",
-      "contact_email_label": "联系邮箱地址",
-      "billing_method_label": "结算方式",
-      "billing_stripe": "信用卡（Stripe）",
-      "billing_invoice": "发票支付",
-      "success_message": "已提交广告主注册申请，审核后即可使用。",
-      "error_message": "注册失败"
-    }
-  },
-  "settings_ad_preferences_guide": {
-    "page_title": "広告の受信設定 — 使い方ガイド",
-    "description": "広告の受信設定ページの機能と使い方をご案内します。",
-    "channels": {
-      "title": "チャネル別の受信トグル",
-      "body": "お知らせフィード・メール・プッシュ通知・サイト内バナーの4チャネルごとに広告の受信をオン／オフできます。初回同意日時もこのセクションで確認できます。",
-      "steps": {
-        "step1": "受信したいチャネルのスイッチをオンにする",
-        "step2": "受信したくないチャネルのスイッチをオフにする",
-        "step3": "ページ右下の「保存」ボタンをクリックして設定を確定する"
+    "pages": {
+      "advertiser_campaign_list": {
+        "title": "消息型广告活动",
+        "description": "管理面向特定受众的定向消息广告活动。",
+        "empty": "暂无广告活动。",
+        "filter_status": "按状态筛选",
+        "column_name": "活动名称",
+        "column_status": "状态",
+        "column_budget": "预算（日元）",
+        "column_consumed": "已消耗（日元）",
+        "column_period": "投放期间",
+        "column_updated": "更新时间"
+      },
+      "advertiser_campaign_create": {
+        "title": "创建广告活动",
+        "description": "设置投放渠道和目标受众条件。草稿可以随时编辑。",
+        "field_name": "活动名称",
+        "field_budget": "总预算（日元）",
+        "field_starts_at": "开始时间",
+        "field_ends_at": "结束时间",
+        "field_timezone": "时区",
+        "field_frequency_cap": "每周最大投放次数（默认 3 次）",
+        "step_basic": "基本信息",
+        "step_channels": "渠道设置",
+        "step_audience": "受众设置",
+        "step_review": "确认并提交",
+        "submitted": "广告活动已提交审核。",
+        "saved": "草稿已保存。"
+      },
+      "advertiser_campaign_detail": {
+        "title": "活动详情",
+        "section_summary": "概览",
+        "section_channels": "渠道",
+        "section_audience": "受众",
+        "section_moderation": "审核状态",
+        "section_report": "投放报告",
+        "blocked_reason": "封禁原因",
+        "preview_reach": "预估触达",
+        "no_channels": "未设置渠道。",
+        "no_segments": "未设置受众条件。"
+      },
+      "system_admin_moderation": {
+        "title": "广告活动审核",
+        "description": "审核待审广告活动并进行批准或封禁。",
+        "empty": "没有待审核的广告活动。",
+        "approve_dialog_title": "确认批准此活动？",
+        "approve_dialog_message": "批准后广告主可以开始投放。",
+        "block_dialog_title": "确认封禁此活动？",
+        "block_dialog_message": "请输入封禁原因（将通知广告主）。",
+        "block_reason_label": "封禁原因",
+        "block_reason_placeholder": "例如：用词不当",
+        "user_reports_section": "用户举报",
+        "queue_title": "审核队列",
+        "queue_description": "当前需要审核的广告活动列表。",
+        "filter_submitted_period": "按提交时间筛选",
+        "filter_auto_flag": "按自动标记筛选",
+        "filter_auto_flag_all": "全部",
+        "filter_auto_flag_only": "仅自动标记",
+        "filter_auto_flag_passed": "仅自动通过",
+        "card_advertiser": "广告主账号 ID",
+        "card_submitted_at": "提交时间"
+      },
+      "settings_ad_preferences": {
+        "title": "广告接收设置",
+        "description": "选择接收广告的渠道，或屏蔽指定广告主。",
+        "channel_section": "接收的渠道",
+        "channel_section_description": "关闭后将不再从该渠道接收广告。",
+        "blocked_section": "已屏蔽的广告主",
+        "blocked_section_description": "已屏蔽的广告主将无法向您投放广告（最多 100 个）。",
+        "blocked_empty": "当前没有屏蔽中的广告主。",
+        "blocked_limit_exceeded": "已达到屏蔽上限（100 个）。请先解除部分屏蔽后再添加。",
+        "add_block_label": "通过广告主 ID 添加",
+        "add_block_placeholder": "例如：12",
+        "add_block_button": "添加到屏蔽列表",
+        "rotate_tokens": "使取消订阅链接失效",
+        "rotate_tokens_help": "使过往邮件中的取消订阅链接全部失效。",
+        "rotate_tokens_section": "安全",
+        "rotate_tokens_confirm": "确定要使所有取消订阅链接失效吗？此操作不可撤销。",
+        "rotate_tokens_success": "邮件链接已失效。",
+        "consent_required": "接收广告需要首次同意。",
+        "consented_at": "首次同意时间",
+        "not_consented": "未同意",
+        "save_button": "保存",
+        "saved": "设置已保存。",
+        "save_rate_limited": "设置变更次数已达上限（每小时 10 次）。请稍后再试。",
+        "channel_announcement": "公告中的广告",
+        "channel_email": "邮件广告",
+        "channel_push": "推送通知广告",
+        "channel_banner": "站内横幅广告"
+      },
+      "me_ad_deliveries": {
+        "title": "已收到的广告",
+        "description": "您可以在此查看已投放给您的广告记录。",
+        "empty": "您还没有收到广告。",
+        "delivered_at": "投放时间",
+        "opened": "已查看",
+        "clicked": "已点击",
+        "filter_all": "全部",
+        "filter_announcement": "公告",
+        "filter_email": "邮件",
+        "filter_push": "推送",
+        "filter_banner": "横幅",
+        "column_campaign": "广告活动",
+        "column_advertiser": "广告主",
+        "column_channel": "渠道",
+        "column_engagement": "动作",
+        "column_actions": "操作",
+        "engagement_read": "已阅读",
+        "engagement_clicked": "已点击",
+        "engagement_none": "未阅读",
+        "load_more": "加载更多",
+        "delete_all_section": "数据删除（GDPR 删除权）",
+        "delete_all_description": "删除您收到的所有广告记录。广告主的计费记录和统计数据将保留，但与您的关联将被清除。",
+        "delete_all_button": "删除所有记录",
+        "delete_all_confirm": "确定要删除所有广告记录吗？此操作不可撤销。",
+        "delete_all_success": "广告记录已全部删除。"
+      },
+      "system_admin_dashboard": {
+        "title": "广告审核仪表板",
+        "description": "概览待审核数、用户举报情况及最近封禁情况。",
+        "kpi_review_pending": "待审核",
+        "kpi_auto_flagged": "自动标记",
+        "kpi_user_reports": "用户举报",
+        "kpi_recent_blocks": "最近 7 天封禁",
+        "auto_suspend_warning": "有 {count} 个广告活动短时间内被多次举报",
+        "shortcut_review_queue": "打开审核队列",
+        "shortcut_user_reports": "打开举报列表",
+        "load_failed": "广告审核信息加载失败",
+        "quick_link_label": "广告审核"
+      },
+      "system_admin_user_reports": {
+        "title": "广告用户举报列表",
+        "description": "查看用户举报并在必要时停止违规广告活动。",
+        "empty": "暂无待处理的举报。",
+        "filter_reason": "按举报理由筛选",
+        "filter_status": "按状态筛选",
+        "column_reported_at": "举报时间",
+        "column_campaign": "广告活动",
+        "column_reporter": "举报者",
+        "column_reason": "理由",
+        "column_status": "状态",
+        "auto_suspend_candidate": "举报集中",
+        "auto_suspend_candidate_tooltip": "短时间内收到多次举报，是自动停止的候选。",
+        "go_campaign": "查看广告活动详情"
+      },
+      "advertiser_campaign_report": {
+        "title": "广告活动绩效报告",
+        "description": "查看投放数据的汇总及每日趋势。可按期间筛选。",
+        "field_from": "开始日期",
+        "field_to": "结束日期",
+        "kpi_delivered": "投放数",
+        "kpi_opened": "打开数",
+        "kpi_clicked": "点击数",
+        "kpi_consumed": "已消耗预算（日元）",
+        "chart_title": "每日趋势",
+        "chart_delivered": "投放数",
+        "chart_open_rate": "打开率",
+        "chart_click_rate": "点击率",
+        "channel_breakdown_title": "按渠道分布",
+        "channel_breakdown_delivered": "投放",
+        "channel_breakdown_opened": "打开",
+        "channel_breakdown_clicked": "点击",
+        "no_data": "所选期间没有数据。",
+        "export_started": "CSV 导出已开始。"
+      },
+      "unsubscribe_spa": {
+        "title": "取消广告邮件订阅",
+        "description": "请选择要停止接收的渠道。未勾选的渠道将继续接收。",
+        "submit_button": "停止所选渠道",
+        "note": "本页面通过广告邮件中的退订链接访问。登录后可在「广告接收设置」页面随时修改。",
+        "success_message": "已停止接收所选渠道的广告。",
+        "done_title": "已停止接收广告",
+        "done_description": "您将不再通过所选渠道接收广告。",
+        "done_disabled_label": "已停止的渠道：",
+        "done_remaining_label": "仍继续接收的渠道：",
+        "done_login_hint": "登录后可在「广告接收设置」页面随时修改。",
+        "error_title": "无法停止订阅",
+        "error_invalid_or_expired": "此链接已过期或无效。请登录后在「广告接收设置」页面进行操作。",
+        "error_rate_limited": "短时间内请求过多，请稍后再试。",
+        "error_unknown": "发生了未知错误，请稍后再试。",
+        "error_login_hint": "登录后可在「广告接收设置」页面按渠道单独停止。"
+      },
+      "system_admin_moderation_detail": {
+        "title": "广告活动审核详情",
+        "section_channels": "各渠道正文",
+        "section_audience": "目标受众细分",
+        "section_ng_words": "检测到的违禁词",
+        "section_logs": "审核日志",
+        "no_ng_words": "未检测到违禁词。",
+        "preview_locale": "预览语言",
+        "approve_confirm": "确认批准此广告活动？",
+        "block_confirm": "确认封禁此广告活动？",
+        "approved_toast": "广告活动已批准。",
+        "blocked_toast": "广告活动已封禁。"
       }
     },
-    "blocklist": {
-      "title": "ブロック済み広告主リスト",
-      "body": "特定の広告主からの広告を一切受け取りたくない場合は、広告主IDを入力してブロックできます（最大100件）。ブロック済みリストの各行の×ボタンでいつでも解除できます。",
-      "steps": {
-        "step1": "ブロックしたい広告主のIDを入力欄に入力する（例: 12）",
-        "step2": "「ブロックに追加」ボタンをクリックする",
-        "step3": "ページ右下の「保存」ボタンをクリックして設定を確定する",
-        "step4": "解除するには、一覧の×ボタンをクリックして再度「保存」する"
+    "report_dialog": {
+      "title": "举报此广告",
+      "description": "举报内容将由 SYSTEM_ADMIN 审核。",
+      "reason_label": "举报理由",
+      "detail_label": "详情（可选）",
+      "detail_placeholder": "请具体说明您关注的问题",
+      "submit": "提交举报",
+      "cancel": "取消",
+      "submitted": "举报已受理。",
+      "rate_limited": "举报次数已达上限（每天 20 次）。请明天再试。"
+    },
+    "consent_dialog": {
+      "title": "是否同意接收广告？",
+      "description": "Mannschaft 提供来自广告主的有限消息投放。接收设置可随时修改。",
+      "accept": "同意并继续",
+      "decline": "暂不接收",
+      "stop_all": "全部停止接收",
+      "stopped_message": "已停止所有广告接收。可在设置中随时变更。"
+    },
+    "error_codes": {
+      "AD_CAMPAIGN_NOT_FOUND": "未找到该广告活动。",
+      "AD_CAMPAIGN_NOT_EDITABLE": "当前状态下无法编辑该活动。",
+      "AD_CAMPAIGN_INVALID_TRANSITION": "不允许此状态变更。",
+      "AD_CAMPAIGN_BUDGET_INSUFFICIENT": "预算余额不足。",
+      "AD_CAMPAIGN_CREDIT_LIMIT_EXCEEDED": "已超出信用额度。",
+      "AD_CAMPAIGN_MODERATION_BLOCKED": "该活动在审核中被封禁。",
+      "AD_CAMPAIGN_NO_CHANNEL": "请至少设置一个渠道。",
+      "AD_PREFERENCES_BLOCKED_LIMIT": "最多可屏蔽 100 个广告主。",
+      "AD_REPORT_DUPLICATE": "该活动已被您举报过。",
+      "AD_RATE_LIMIT_EXCEEDED": "请求次数已达上限。请稍后再试。"
+    },
+    "advertiser_crud": {
+      "list_tab": {
+        "all": "全部",
+        "draft": "草稿",
+        "review": "审核中",
+        "approved": "已批准",
+        "scheduled": "已排期",
+        "delivering": "投放中",
+        "paused": "已暂停",
+        "completed": "已结束",
+        "blocked": "已封禁",
+        "cancelled": "已取消"
+      },
+      "list_action": {
+        "create_button": "新建"
+      },
+      "list_table": {
+        "name": "活动名称",
+        "status": "状态",
+        "period": "投放期间",
+        "total_budget": "总预算",
+        "consumed_budget": "已消耗",
+        "actions": "操作"
+      },
+      "create_step": {
+        "basic": "基本信息",
+        "channels": "投放渠道",
+        "audience": "受众",
+        "preview": "预览 / 确认"
+      },
+      "create_nav": {
+        "next": "下一步",
+        "back": "返回",
+        "submit": "保存为草稿"
+      },
+      "detail_tab": {
+        "overview": "概览",
+        "channels": "渠道",
+        "audience": "受众",
+        "moderation": "审核历史"
+      },
+      "detail_empty": {
+        "moderation_logs": "暂无审核历史。"
+      },
+      "form": {
+        "name": "活动名称",
+        "name_placeholder": "例如：春季活动",
+        "total_budget": "总预算（日元）",
+        "starts_at": "开始时间",
+        "ends_at": "结束时间",
+        "scheduled_timezone": "时区",
+        "frequency_cap_override": "频次上限覆盖（每周）",
+        "frequency_cap_help": "未指定时使用默认值（每周 3 次）。"
+      },
+      "channel_form": {
+        "subject": "标题",
+        "body_markdown": "正文（Markdown）",
+        "image_url": "图片 URL",
+        "cta_label": "CTA 标签",
+        "cta_url": "CTA 链接 URL",
+        "banner_creative_id": "横幅素材 ID",
+        "select_channel": "选择渠道类型",
+        "select_locale": "选择语言"
+      },
+      "segment_form": {
+        "select_type": "选择细分类型",
+        "inclusion_mode": "包含模式",
+        "age_min": "最小年龄",
+        "age_max": "最大年龄",
+        "genders": "性别",
+        "prefecture_codes": "都道府县代码（逗号分隔）",
+        "city_codes": "市区町村代码（逗号分隔）",
+        "interest_tags": "兴趣标签（逗号分隔）",
+        "org_types": "组织类型（逗号分隔）",
+        "locales": "语言",
+        "devices": "设备",
+        "remove": "删除"
+      },
+      "preview": {
+        "title": "预估触达",
+        "estimated_range": "预估触达人数（范围）",
+        "channel_breakdown": "按渠道预估",
+        "fetch": "获取预估触达",
+        "loading": "正在估算...",
+        "under_100_warning": "预估触达人数少于 100，受众可能过窄。",
+        "no_data": "暂无预览数据。请先点击「获取预估触达」。"
+      },
+      "errors": {
+        "load_failed": "数据加载失败。",
+        "save_failed": "保存失败。",
+        "transition_failed": "状态变更失败。",
+        "preview_failed": "预览获取失败。"
+      },
+      "confirm": {
+        "submit": "确认将该活动提交审核？",
+        "cancel": "取消后将无法恢复。是否继续？",
+        "launch": "即将开始投放，确认继续？",
+        "pause": "即将暂停投放，确认继续？",
+        "resume": "即将恢复投放，确认继续？",
+        "delete": "确认删除该草稿？"
+      },
+      "validation": {
+        "name_required": "活动名称为必填项。",
+        "name_max": "活动名称最多 120 个字符。",
+        "total_budget_min": "总预算需不低于 1,000 日元。",
+        "total_budget_max": "总预算不可超过 100,000,000 日元。",
+        "starts_at_required": "开始时间为必填项。",
+        "ends_at_required": "结束时间为必填项。",
+        "starts_before_ends": "开始时间必须早于结束时间。",
+        "frequency_cap_range": "频次上限需在 1〜30 之间。",
+        "at_least_one_channel": "请至少设置一个渠道。",
+        "at_least_one_segment": "请至少设置一个受众细分。"
+      },
+      "nav": {
+        "messaging_campaigns": "消息型广告活动"
       }
     },
-    "rotate_tokens": {
-      "title": "配信停止リンクの無効化（セキュリティ）",
-      "body": "過去に受け取ったメール内の配信停止リンクを一括で無効化できます。不正利用が心配なときやメールアドレスを変更したときに使用してください。この操作は元に戻せません。",
-      "steps": {
-        "step1": "「配信停止リンクを無効化する」ボタンをクリックする",
-        "step2": "確認ダイアログが表示されるので内容を確認して承認する",
-        "step3": "成功メッセージが表示されれば完了（新しいリンクは次回配信から有効）"
+    "creative": {
+      "title": "广告素材列表",
+      "description": "管理与广告活动关联的广告素材。",
+      "empty": "暂无素材。",
+      "create_button": "新建",
+      "status": {
+        "DRAFT": "草稿",
+        "ACTIVE": "有效",
+        "PAUSED": "暂停",
+        "ENDED": "已结束"
+      },
+      "column_title": "标题",
+      "column_status": "状态",
+      "column_destination": "目标链接",
+      "column_created_at": "创建时间",
+      "column_actions": "操作",
+      "form": {
+        "title_label": "标题",
+        "title_placeholder": "例：春季促销广告",
+        "image_url_label": "图片 URL（可选）",
+        "image_url_placeholder": "https://example.com/image.png",
+        "destination_url_label": "目标链接 URL",
+        "destination_url_placeholder": "https://example.com/landing"
+      },
+      "dialog_create_title": "创建素材",
+      "dialog_edit_title": "编辑素材",
+      "delete_confirm": "此素材将被标记为 ENDED。是否继续？",
+      "created_toast": "素材已创建。",
+      "updated_toast": "素材已更新。",
+      "deleted_toast": "素材已删除。",
+      "error_load": "加载素材失败。",
+      "error_save": "保存失败。",
+      "error_delete": "删除失败。",
+      "back_to_advertiser": "返回广告主控制台"
+    },
+    "teams_page": {
+      "title": "团队广告主管理",
+      "description": "以团队为单位创建和投放消息型广告活动。",
+      "nav": {
+        "messaging_campaigns_description": "为团队成员创建消息型广告活动。"
+      },
+      "future_features_notice": "发票管理・与信额度申请・定期报告将在未来阶段支持。",
+      "register": {
+        "title": "广告主注册",
+        "submit": "提交申请",
+        "company_name_label": "公司名/广告主名",
+        "company_name_placeholder": "示例株式会社",
+        "contact_email_label": "联系邮箱地址",
+        "billing_method_label": "结算方式",
+        "billing_stripe": "信用卡（Stripe）",
+        "billing_invoice": "发票支付",
+        "success_message": "已提交广告主注册申请，审核后即可使用。",
+        "error_message": "注册失败"
       }
     },
-    "save": {
-      "title": "設定の保存",
-      "body": "チャネルのオン／オフやブロックリストへの変更は、「保存」ボタンを押すまで確定されません。なお設定変更には1時間あたり10件のレート制限があります。",
-      "steps": {
-        "step1": "チャネルやブロックリストの設定を変更する",
-        "step2": "ページ右下の「保存」ボタンをクリックする",
-        "step3": "「設定を保存しました」のメッセージが表示されれば完了"
+    "settings_ad_preferences_guide": {
+      "page_title": "広告の受信設定 — 使い方ガイド",
+      "description": "広告の受信設定ページの機能と使い方をご案内します。",
+      "channels": {
+        "title": "チャネル別の受信トグル",
+        "body": "お知らせフィード・メール・プッシュ通知・サイト内バナーの4チャネルごとに広告の受信をオン／オフできます。初回同意日時もこのセクションで確認できます。",
+        "steps": {
+          "step1": "受信したいチャネルのスイッチをオンにする",
+          "step2": "受信したくないチャネルのスイッチをオフにする",
+          "step3": "ページ右下の「保存」ボタンをクリックして設定を確定する"
+        }
+      },
+      "blocklist": {
+        "title": "ブロック済み広告主リスト",
+        "body": "特定の広告主からの広告を一切受け取りたくない場合は、広告主IDを入力してブロックできます（最大100件）。ブロック済みリストの各行の×ボタンでいつでも解除できます。",
+        "steps": {
+          "step1": "ブロックしたい広告主のIDを入力欄に入力する（例: 12）",
+          "step2": "「ブロックに追加」ボタンをクリックする",
+          "step3": "ページ右下の「保存」ボタンをクリックして設定を確定する",
+          "step4": "解除するには、一覧の×ボタンをクリックして再度「保存」する"
+        }
+      },
+      "rotate_tokens": {
+        "title": "配信停止リンクの無効化（セキュリティ）",
+        "body": "過去に受け取ったメール内の配信停止リンクを一括で無効化できます。不正利用が心配なときやメールアドレスを変更したときに使用してください。この操作は元に戻せません。",
+        "steps": {
+          "step1": "「配信停止リンクを無効化する」ボタンをクリックする",
+          "step2": "確認ダイアログが表示されるので内容を確認して承認する",
+          "step3": "成功メッセージが表示されれば完了（新しいリンクは次回配信から有効）"
+        }
+      },
+      "save": {
+        "title": "設定の保存",
+        "body": "チャネルのオン／オフやブロックリストへの変更は、「保存」ボタンを押すまで確定されません。なお設定変更には1時間あたり10件のレート制限があります。",
+        "steps": {
+          "step1": "チャネルやブロックリストの設定を変更する",
+          "step2": "ページ右下の「保存」ボタンをクリックする",
+          "step3": "「設定を保存しました」のメッセージが表示されれば完了"
+        }
       }
     }
   }
