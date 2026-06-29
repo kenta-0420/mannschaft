@@ -138,7 +138,8 @@
       "book": "예약하기",
       "list": "예약 목록",
       "line_manage": "라인 관리",
-      "emergency_closure": "緊急休業"
+      "emergency_closure": "緊急休業",
+      "team_page": "예약"
     },
     "column": {
       "datetime": "일시",

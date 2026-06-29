@@ -31,6 +31,20 @@ const {
   fetch: fetchWidgetVisibility,
 } = useDashboardWidgetVisibility('team', teamSlug)
 
+const reservationEnabled = ref(false)
+
+async function fetchReservationEnabled() {
+  try {
+    const { getTeamModules } = useModuleApi()
+    const res = await getTeamModules(teamSlug.value)
+    reservationEnabled.value = res.data.some(m => m.slug === 'reservation' && m.isEnabled)
+  }
+  catch {
+    // 取得失敗はモジュール未有効と同義（false フォールバック）
+    reservationEnabled.value = false
+  }
+}
+
 const followStatus = ref<'NONE' | 'PENDING' | 'APPROVED'>('NONE')
 const followLoading = ref(false)
 const showCancelSupporterConfirm = ref(false)
@@ -135,8 +149,9 @@ async function leaveTeam() {
 onMounted(async () => {
   await Promise.all([fetchTeam(), loadPermissions()])
   await fetchFollowStatus()
-  // ウィジェット可視性設定を取得（非メンバー・サポーターは403になるため catch して空のまま = デフォルト適用）
+  // ウィジェット可視性設定と予約モジュール有効フラグを並列取得（失敗は無音 fallback）
   fetchWidgetVisibility().catch(() => {})
+  fetchReservationEnabled()
 })
 </script>
 
@@ -175,6 +190,7 @@ onMounted(async () => {
             <Tab v-if="isAdminOrDeputy" :value="3"> 招待 </Tab>
             <Tab v-if="isAdmin && team.visibility?.supporterEnabled" :value="4"> サポーター管理 </Tab>
             <Tab v-if="isAdmin" :value="5"> 機能設定 </Tab>
+            <Tab v-if="roleName && reservationEnabled" :value="6">{{ $t('reservation.tab.team_page') }}</Tab>
             <Tab v-if="roleName" :value="7"> {{ $t('nav.tab') }} </Tab>
           </TabList>
         </div>
@@ -255,6 +271,12 @@ onMounted(async () => {
             <TabPanel v-if="isAdmin" :value="5">
               <div class="mt-4">
                 <ModuleSettingsPanel scope-type="team" :scope-id="teamSlug" />
+              </div>
+            </TabPanel>
+
+            <TabPanel v-if="roleName && reservationEnabled" :value="6">
+              <div class="mt-4">
+                <TeamReservationsPanel :team-id="teamSlug" />
               </div>
             </TabPanel>
 
