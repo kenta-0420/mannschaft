@@ -2,11 +2,11 @@
 import type { SharedFolder, SharedFile } from '~/types/filesharing'
 
 const props = defineProps<{
-  scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: string
+  scopeType: 'TEAM' | 'ORGANIZATION' | 'PERSONAL'
+  scopeId?: string
 }>()
 
-const { getFolder, getFolders, getDownloadUrl, deleteFile, createFolder } = useFileSharingApi()
+const { getFolder, getFolders, getMyFolders, getDownloadUrl, deleteFile, createFolder, createMyFolder } = useFileSharingApi()
 const { showSuccess, showError } = useNotification()
 const { relativeTime } = useRelativeTime()
 
@@ -18,6 +18,8 @@ const loading = ref(false)
 const showNewFolderDialog = ref(false)
 const newFolderName = ref('')
 
+const isPersonal = computed(() => props.scopeType === 'PERSONAL')
+
 async function loadFolder(folderId: number | null) {
   loading.value = true
   try {
@@ -27,8 +29,14 @@ async function loadFolder(folderId: number | null) {
       files.value = res.data.files
       breadcrumbs.value = res.data.breadcrumbs
       currentFolderId.value = folderId
+    } else if (isPersonal.value) {
+      const res = await getMyFolders()
+      folders.value = res.data
+      files.value = []
+      breadcrumbs.value = []
+      currentFolderId.value = null
     } else {
-      const res = await getFolders(props.scopeType, props.scopeId)
+      const res = await getFolders(props.scopeType, props.scopeId!)
       folders.value = res.data
       files.value = []
       breadcrumbs.value = []
@@ -63,12 +71,19 @@ async function onDeleteFile(file: SharedFile) {
 async function onCreateFolder() {
   if (!newFolderName.value.trim()) return
   try {
-    await createFolder({
-      scopeType: props.scopeType,
-      scopeId: props.scopeId,
-      parentId: currentFolderId.value,
-      name: newFolderName.value.trim(),
-    })
+    if (isPersonal.value) {
+      await createMyFolder({
+        parentId: currentFolderId.value,
+        name: newFolderName.value.trim(),
+      })
+    } else {
+      await createFolder({
+        scopeType: props.scopeType,
+        scopeId: props.scopeId,
+        parentId: currentFolderId.value,
+        name: newFolderName.value.trim(),
+      })
+    }
     showSuccess('フォルダを作成しました')
     showNewFolderDialog.value = false
     newFolderName.value = ''

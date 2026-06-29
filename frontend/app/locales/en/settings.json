@@ -48,7 +48,8 @@
     "inbox": "Inbox",
     "market": "Market",
     "jobs": "Jobs",
-    "matching": "Matching"
+    "matching": "Matching",
+    "myFiles": "My Files"
   },
   "settings": {
     "navigation": {
