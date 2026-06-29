@@ -1,4 +1,79 @@
 {
+  "contact_invite": {
+    "page_title": "Einladungslink-Verwaltung",
+    "page_description": "Erstellen und verwalten Sie Einladungslinks zum Hinzufügen von Kontakten. Wer den Link erhält, kann Sie als Kontakt hinzufügen.",
+    "section_title": "Einladungslinks",
+    "create_button": "Neuen Link erstellen",
+    "form": {
+      "label": "Bezeichnung (optional)",
+      "label_placeholder": "z. B. Für soziale Medien",
+      "max_uses": "Verwendungsanzahl",
+      "expires_in": "Ablaufzeit",
+      "submit": "Erstellen",
+      "cancel": "Abbrechen"
+    },
+    "max_uses_options": {
+      "once": "1-mal",
+      "five": "5-mal",
+      "ten": "10-mal",
+      "fifty": "50-mal",
+      "unlimited": "Unbegrenzt"
+    },
+    "expires_options": {
+      "one_day": "1 Tag",
+      "seven_days": "7 Tage",
+      "thirty_days": "30 Tage",
+      "never": "Kein Ablauf"
+    },
+    "list": {
+      "empty": "Noch keine Einladungslinks erstellt",
+      "no_label": "(Keine Bezeichnung)",
+      "revoke_tooltip": "Widerrufen",
+      "uses_unit": "x",
+      "qr_alt": "QR-Code",
+      "qr_hint": "QR-Code scannen zum Hinzufügen"
+    },
+    "expiry": {
+      "never": "Kein Ablauf",
+      "expired": "Abgelaufen",
+      "until": "Bis {date}"
+    },
+    "messages": {
+      "create_success": "Einladungslink erfolgreich erstellt",
+      "create_error": "Fehler beim Erstellen",
+      "revoke_success": "Einladungslink widerrufen",
+      "revoke_error": "Fehler beim Widerrufen",
+      "copy_success": "Link kopiert",
+      "copy_error": "Fehler beim Kopieren"
+    }
+  },
+  "contact_invite_guide": {
+    "title": "So verwenden Sie die Einladungslink-Verwaltung",
+    "description": "Mit Einladungslinks können andere Sie als Kontakt hinzufügen, indem sie einfach einen Link oder QR-Code erhalten. Ideal für Social-Media-Profile oder als digitale Visitenkarte.",
+    "what": {
+      "title": "Was ist ein Einladungslink?",
+      "body": "Ein dedizierter Link, damit andere Sie als Kontakt hinzufügen können. Wenn Sie den Link teilen, kann die andere Person Sie mit einem Tipp hinzufügen – ohne dass Sie Ihre ID oder E-Mail-Adresse direkt mitteilen müssen."
+    },
+    "create": {
+      "title": "Einen Link erstellen",
+      "body": "Tippen Sie oben rechts auf «Neuen Link erstellen», um einen Link nach Ihren Bedürfnissen zu erstellen.",
+      "step1": "Tippen Sie oben rechts auf «Neuen Link erstellen».",
+      "step2": "Wählen Sie eine Bezeichnung (optionaler Hinweis), die Anzahl der erlaubten Verwendungen und die Ablaufzeit. Durch Festlegen von Limits können Sie Missbrauch verhindern.",
+      "step3": "Tippen Sie auf «Erstellen» und der neue Einladungslink sowie der QR-Code erscheinen in der Liste."
+    },
+    "share": {
+      "title": "Mit anderen teilen",
+      "body": "Sie können den Link teilen, indem Sie ihn kopieren und senden, oder indem jemand den QR-Code scannt.",
+      "step1": "Tippen Sie auf die Schaltfläche «Kopieren» neben dem Link.",
+      "step2": "Fügen Sie ihn in eine Nachricht, E-Mail oder Ihr Social-Media-Profil ein, um ihn zu teilen.",
+      "step3": "Persönlich können Sie den QR-Code zeigen und die andere Person bittet, ihn mit der Kamera zu scannen."
+    },
+    "manage": {
+      "title": "Nutzung verfolgen und widerrufen",
+      "body": "Alle erstellten Links sind in der Liste aufgeführt. Jeder Eintrag zeigt die Anzahl der Verwendungen, das Limit und das Ablaufdatum an.",
+      "note": "Sie können jeden Link jederzeit durch Tippen auf das Papierkorb-Symbol widerrufen. Nach dem Widerruf kann niemand mehr diesen Link verwenden, um Sie als Kontakt hinzuzufügen."
+    }
+  },
   "contact_privacy": {
     "title": "連絡先プライバシー設定",
     "description": "連絡先追加・DM・オンライン状態に関するプライバシーを設定します",

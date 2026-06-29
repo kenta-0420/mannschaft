@@ -1,4 +1,79 @@
 {
+  "contact_invite": {
+    "page_title": "邀请链接管理",
+    "page_description": "发行和管理用于添加联系人的邀请链接。收到链接的人可以将您添加为联系人。",
+    "section_title": "邀请链接",
+    "create_button": "发行新链接",
+    "form": {
+      "label": "标签（可选）",
+      "label_placeholder": "例如：用于社交媒体",
+      "max_uses": "使用次数",
+      "expires_in": "有效期",
+      "submit": "发行",
+      "cancel": "取消"
+    },
+    "max_uses_options": {
+      "once": "1次",
+      "five": "5次",
+      "ten": "10次",
+      "fifty": "50次",
+      "unlimited": "无限制"
+    },
+    "expires_options": {
+      "one_day": "1天",
+      "seven_days": "7天",
+      "thirty_days": "30天",
+      "never": "永久有效"
+    },
+    "list": {
+      "empty": "暂无已发行的邀请链接",
+      "no_label": "（无标签）",
+      "revoke_tooltip": "撤销",
+      "uses_unit": "次",
+      "qr_alt": "二维码",
+      "qr_hint": "扫描二维码添加"
+    },
+    "expiry": {
+      "never": "永久有效",
+      "expired": "已过期",
+      "until": "{date} 前有效"
+    },
+    "messages": {
+      "create_success": "邀请链接已发行",
+      "create_error": "发行失败",
+      "revoke_success": "邀请链接已撤销",
+      "revoke_error": "撤销失败",
+      "copy_success": "链接已复制",
+      "copy_error": "复制失败"
+    }
+  },
+  "contact_invite_guide": {
+    "title": "邀请链接管理使用指南",
+    "description": "使用邀请链接，只需分享URL或二维码，对方即可将您添加为联系人。也可以用于社交媒体简介或电子名片。",
+    "what": {
+      "title": "什么是邀请链接？",
+      "body": "这是专为被他人添加为联系人而设计的链接。您将链接分享给对方后，对方只需点击一下即可将您添加为联系人，无需直接提供您的ID或电子邮件地址。"
+    },
+    "create": {
+      "title": "发行链接",
+      "body": "点击右上角的「发行新链接」，即可根据需要创建链接。",
+      "step1": "点击右上角的「发行新链接」。",
+      "step2": "选择标签（可选备注）、可使用次数和有效期。设置次数和期限可防止滥用。",
+      "step3": "点击「发行」后，新的邀请链接和二维码将出现在列表中。"
+    },
+    "share": {
+      "title": "与他人分享",
+      "body": "您可以复制链接后发送，或让对方扫描二维码来分享。",
+      "step1": "点击链接旁边的「复制」按钮复制链接。",
+      "step2": "粘贴到微信、邮件或社交媒体简介中发送给对方。",
+      "step3": "面对面时，让对方用相机扫描显示的二维码即可立即添加。"
+    },
+    "manage": {
+      "title": "查看使用情况并撤销",
+      "body": "已发行的链接可在列表中统一管理，每条记录都会显示「已使用次数/上限」和「有效期」。",
+      "note": "不再需要的链接可随时点击垃圾桶图标撤销。撤销后，该链接将无法再用于添加联系人。"
+    }
+  },
   "contact_privacy": {
     "title": "連絡先プライバシー設定",
     "description": "連絡先追加・DM・オンライン状態に関するプライバシーを設定します",

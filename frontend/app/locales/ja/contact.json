@@ -1,4 +1,79 @@
 {
+  "contact_invite": {
+    "page_title": "招待URL管理",
+    "page_description": "連絡先追加用の招待URLを発行・管理します。URLを共有した相手があなたを連絡先に追加できます。",
+    "section_title": "招待URL",
+    "create_button": "新しいURLを発行",
+    "form": {
+      "label": "ラベル（任意）",
+      "label_placeholder": "SNS用など",
+      "max_uses": "利用回数",
+      "expires_in": "有効期限",
+      "submit": "発行",
+      "cancel": "キャンセル"
+    },
+    "max_uses_options": {
+      "once": "1回",
+      "five": "5回",
+      "ten": "10回",
+      "fifty": "50回",
+      "unlimited": "無制限"
+    },
+    "expires_options": {
+      "one_day": "1日",
+      "seven_days": "7日",
+      "thirty_days": "30日",
+      "never": "無期限"
+    },
+    "list": {
+      "empty": "発行済みの招待URLはありません",
+      "no_label": "（ラベルなし）",
+      "revoke_tooltip": "無効化",
+      "uses_unit": "回",
+      "qr_alt": "QRコード",
+      "qr_hint": "QRコードをスキャンして追加"
+    },
+    "expiry": {
+      "never": "無期限",
+      "expired": "期限切れ",
+      "until": "{date} まで"
+    },
+    "messages": {
+      "create_success": "招待URLを発行しました",
+      "create_error": "発行に失敗しました",
+      "revoke_success": "招待URLを無効化しました",
+      "revoke_error": "無効化に失敗しました",
+      "copy_success": "URLをコピーしました",
+      "copy_error": "コピーに失敗しました"
+    }
+  },
+  "contact_invite_guide": {
+    "title": "招待URL管理の使い方",
+    "description": "招待URLを使うと、URLやQRコードを共有するだけで相手があなたを連絡先に追加できます。SNSのプロフィールや名刺代わりにも使えます。",
+    "what": {
+      "title": "招待URLとは？",
+      "body": "連絡先に追加してもらうための専用リンクです。発行したURLを相手に渡すと、相手はワンタップであなたを連絡先に追加できます。あなたのIDやメールアドレスを直接教える必要はありません。"
+    },
+    "create": {
+      "title": "URLを発行する",
+      "body": "画面右上の「新しいURLを発行」から、用途に合わせてURLを作れます。",
+      "step1": "右上の「新しいURLを発行」を押します。",
+      "step2": "ラベル（任意のメモ）・利用できる回数・有効期限を選びます。回数や期限を決めておくと、使い回しを防げます。",
+      "step3": "「発行」を押すと、新しい招待URLとQRコードが一覧に追加されます。"
+    },
+    "share": {
+      "title": "相手に共有する",
+      "body": "発行したURLは、コピーして送るか、QRコードを読み取ってもらうことで共有できます。",
+      "step1": "URLの横の「コピー」ボタンを押して、URLをコピーします。",
+      "step2": "LINEやメール、SNSのプロフィールなどに貼り付けて相手に送ります。",
+      "step3": "対面のときは、表示されたQRコードを相手のカメラで読み取ってもらえばすぐに追加できます。"
+    },
+    "manage": {
+      "title": "利用状況の確認と無効化",
+      "body": "発行済みのURLは一覧で管理できます。それぞれ「使われた回数 / 上限」と「有効期限」が表示されます。",
+      "note": "使わなくなったURLは、ゴミ箱アイコンを押すといつでも無効化できます。無効化すると、そのURLからは連絡先に追加できなくなります。"
+    }
+  },
   "contact_privacy": {
     "title": "連絡先プライバシー設定",
     "description": "連絡先追加・DM・オンライン状態に関するプライバシーを設定します",
