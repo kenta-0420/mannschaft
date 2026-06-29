@@ -15,7 +15,7 @@ export type BroadcastChannel =
 
 /** 告知対象ロール */
 export type BroadcastTargetRole =
-  | 'MEMBERS_ONLY'
+  | 'MEMBERS_AND_ABOVE'
   | 'SUPPORTERS_AND_ABOVE'
   | 'PUBLIC'
 

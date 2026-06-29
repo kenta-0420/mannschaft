@@ -29,7 +29,7 @@ const targetRole = computed({
 })
 
 const targetRoleOptions: { label: string; value: BroadcastTargetRole }[] = [
-  { label: t('announcement.target_role_members_only'), value: 'MEMBERS_ONLY' },
+  { label: t('announcement.target_role_members_only'), value: 'MEMBERS_AND_ABOVE' },
   { label: t('announcement.target_role_supporters_and_above'), value: 'SUPPORTERS_AND_ABOVE' },
   { label: t('announcement.target_role_public'), value: 'PUBLIC' },
 ]
