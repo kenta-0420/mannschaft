@@ -1501,6 +1501,38 @@
       "submit": "Add",
       "scopeResolveError": "Failed to identify the target",
       "templatesLoadError": "Failed to load templates"
+    },
+    "guide": {
+      "title": "How to Use Activity Records",
+      "description": "Record your team or organization's activities (practice, matches, events, etc.) to review and share them.",
+      "list": {
+        "title": "Viewing Records",
+        "body": "Activities are displayed as cards in reverse chronological order. You can quickly see the title, date, location, and participant count. Records set to \"Public\" show a share button, letting you share the link externally."
+      },
+      "add": {
+        "title": "Adding a Record",
+        "body": "Tap \"Add Record\" in the top right to create a new activity record.",
+        "steps": {
+          "step1": "Tap \"Add Record\" in the top right",
+          "step2": "Choose a template",
+          "step3": "Enter a title and activity date (both required)",
+          "step4": "Select the visibility (Members Only / Public)",
+          "step5": "Fill in any custom fields defined by the template",
+          "step6": "Tap \"Add\" to save the record to the list"
+        }
+      },
+      "template": {
+        "title": "When a Template Is Needed",
+        "body": "A template is required to create a record. If no templates exist yet, a guidance screen appears instead of the input form. For teams, go to the \"Activity Templates\" page to create a template first, then add your record."
+      },
+      "visibility": {
+        "title": "Visibility (Who Can See It)",
+        "members_only_label": "Members Only",
+        "members_only_desc": "Only members of the team or organization can view this record.",
+        "public_label": "Public",
+        "public_desc": "Anyone with the link can view it. A share button appears in the list for easy external sharing.",
+        "note": "The default visibility is determined by the template's settings."
+      }
     }
   },
   "dashboard": {
