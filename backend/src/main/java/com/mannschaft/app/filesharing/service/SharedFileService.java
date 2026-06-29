@@ -9,6 +9,7 @@ import com.mannschaft.app.filesharing.FileSharingErrorCode;
 import com.mannschaft.app.filesharing.FileSharingMapper;
 import com.mannschaft.app.filesharing.dto.CreateFileRequest;
 import com.mannschaft.app.filesharing.dto.FileResponse;
+import com.mannschaft.app.filesharing.dto.SharedFileDownloadUrlResponse;
 import com.mannschaft.app.filesharing.dto.SharedFilePresignRequest;
 import com.mannschaft.app.filesharing.dto.SharedFilePresignResponse;
 import com.mannschaft.app.filesharing.dto.UpdateFileRequest;
@@ -44,6 +45,9 @@ public class SharedFileService {
     /** F13 Phase 5-a: presigned URL 発行に使用。 */
     private static final Duration PRESIGN_TTL = Duration.ofMinutes(15);
 
+    /** ダウンロード用 Presigned GET URL の有効期限。 */
+    private static final Duration PRESIGN_DOWNLOAD_TTL = Duration.ofMinutes(15);
+
     private final SharedFileRepository fileRepository;
     private final SharedFileVersionRepository versionRepository;
     private final FileSharingMapper fileSharingMapper;
@@ -51,6 +55,12 @@ public class SharedFileService {
     private final SharedFileQuotaService quotaService;
     /** F13 Phase 5-a: R2 presigned URL 発行に使用。 */
     private final R2StorageService r2StorageService;
+    /**
+     * ダウンロード URL 発行時のスコープ別閲覧認可に使用。
+     * ファイル → フォルダ → スコープの順に解決し、PERSONAL=本人以外404 / TEAM・ORG=非メンバー403 /
+     * 大会=連絡スペース認可を当てる（fileId を渡すだけで他チーム・他人のファイルを落とせないこと）。
+     */
+    private final SharedFolderQueryService folderQueryService;
     /**
      * F08.7.1 / 04: 大会・ディビジョンスコープのフォルダ／ファイルに対する横断認可ゲート。
      * 大会以外（TEAM/ORG/PERSONAL）のスコープでは no-op（既存挙動を変えない）。
@@ -105,6 +115,40 @@ public class SharedFileService {
                 folderId, actorId, scopeTypeStr, scopeId, fileKey);
 
         return new SharedFilePresignResponse(result.uploadUrl(), fileKey, result.expiresInSeconds());
+    }
+
+    /**
+     * ファイルダウンロード用の Presigned GET URL を発行する。
+     *
+     * <p><b>根治</b>: FE {@code useFileSharingApi.getDownloadUrl(fileId)} が叩く
+     * {@code GET /api/v1/files/{fileId}/download-url} に対応する EP がこれまで存在せず、
+     * 非存在ルート → NoResourceFound → catch-all で 500 になっていた。本メソッドで実装する。</p>
+     *
+     * <p><b>認可（漏洩防止の核）</b>: file → folder を解決し、
+     * {@link SharedFolderQueryService#authorizeFolderViewById} でフォルダスコープ別の閲覧認可を当てる。
+     * PERSONAL は所有者本人以外 404（存在隠蔽）・TEAM/ORG は非メンバー 403・大会は連絡スペース認可。
+     * fileId を渡すだけで他チーム・他人のファイルを落とせないことを保証する。
+     * 認可を通過した場合のみ R2 Presigned GET URL を発行する。</p>
+     *
+     * @param fileId  ファイル ID
+     * @param actorId 操作者ユーザー ID（未認証は呼び出し元 Controller で 401 となるため非 null 想定）
+     * @return ダウンロード URL レスポンス（downloadUrl / expiresInSeconds）
+     */
+    public SharedFileDownloadUrlResponse presignDownload(Long fileId, Long actorId) {
+        // 1. ファイル取得（存在しなければ FILE_NOT_FOUND → 404）
+        SharedFileEntity file = findFileOrThrow(fileId);
+
+        // 2. 認可: file → folder → スコープ別閲覧認可（PERSONAL 404 / TEAM・ORG 403 / 大会 連絡スペース認可）
+        //    認可が通らなければここで例外が飛び、URL は一切発行されない（漏洩防止）。
+        folderQueryService.authorizeFolderViewById(file.getFolderId(), actorId);
+
+        // 3. R2 Presigned GET URL 発行
+        String downloadUrl = r2StorageService.generateDownloadUrl(file.getFileKey(), PRESIGN_DOWNLOAD_TTL);
+
+        log.info("ファイル共有 download-url 発行: fileId={}, actorId={}, fileKey={}",
+                fileId, actorId, file.getFileKey());
+
+        return new SharedFileDownloadUrlResponse(downloadUrl, PRESIGN_DOWNLOAD_TTL.toSeconds());
     }
 
     /**
