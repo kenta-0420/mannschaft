@@ -1,0 +1,113 @@
+# =============================================================================
+# OpenAPI Drift Check — pull_request to main（Phase 2 / 源流①の機械強制）
+# =============================================================================
+# 「BE の API を変えたのに docs/openapi.json を再生成していない PR」を CI で機械的に弾く。
+#
+# 背景（同期チェーン）:
+#   BE コード ─①generateOpenApiDocs→ docs/openapi.json ─②generate:types→ 生成型
+#   ②（openapi.json → 生成型）は frontend-ci.yml / check-generated-types.yml で強制済み。
+#   ①（BE コード → openapi.json）だけ CI 不在だったのが慢性ドリフトの真因。本 workflow が①を担う。
+#
+# 決定性の前提（#2008 Phase0+1 で確立）:
+#   OpenApiConfig の server 正規化 + 全スキーマのプロパティをアルファベット順に正準化する
+#   customizer により docs/openapi.json はバイト決定的になった。よって main 同期済みの状態で
+#   ./gradlew generateOpenApiDocs を回せば diff ゼロになる。本ゲートはその決定性に立脚する。
+#
+# 生成方法:
+#   ./gradlew generateOpenApiDocs は openapi-gen プロファイル（application-openapi-gen.yml /
+#   H2 インメモリ・Flyway 無効・Redis lazy）で BE を :8082 にフォークし /v3/api-docs から
+#   docs/openapi.json を生成する。MySQL / Redis などの外部サービスは不要なため、
+#   GitHub Actions ubuntu-latest 上で DB サービスコンテナ無しに完走する。
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# 段階運用（Stage A → B → C）:
+#   - Stage A: 安定観測。本ゲートを「非必須チェック」として追加し、runner で
+#              generateOpenApiDocs が安定して完走することを観測する（← 現在ここ）。
+#   - Stage B: 実 fail 運用（非必須のまま）。ドリフト PR は本ゲートが赤くなるが、
+#              main ブランチ保護の required には未追加なのでマージ自体はブロックしない。
+#   - Stage C: 必須化。main ブランチ保護 Ruleset の required status checks に
+#              「OpenAPI Drift Check」を追加する（= リポジトリ設定。殿/マスターが別途実施）。
+#
+# 重要:
+#   - 本 workflow は新規追加のみ。既存の必須チェック（backend-ci.yml の "Compile & Test" 等）は
+#     一切改名・改変しない（既存 PR のマージ性を壊さないため）。
+#   - paths フィルタでコストを限定する。@Schema は controller / dto 配下に集中するため、
+#     これらと OpenApiConfig / openapi-gen プロファイル / build.gradle.kts / 本 workflow 以外を
+#     触らない PR では本 workflow は起動せず skip = CI コストが発生しない。
+# =============================================================================
+
+name: OpenAPI Drift Check
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "backend/src/main/java/**/controller/**"
+      - "backend/src/main/java/**/dto/**"
+      - "backend/src/main/java/**/config/OpenApiConfig.java"
+      - "backend/src/main/resources/application-openapi-gen.yml"
+      - "backend/build.gradle.kts"
+      - ".github/workflows/openapi-drift-check.yml"
+
+# 同一 PR の新規 push で前回 run をキャンセル（既存 CI と独立した group）
+concurrency:
+  group: openapi-drift-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: "21"
+
+jobs:
+  drift-check:
+    name: OpenAPI Drift Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          # Gradle キャッシュは下の setup-gradle に一本化するため、ここでは有効化しない。
+
+      # backend-ci.yml と同じ作法で Gradle 依存・wrapper・ビルドキャッシュを共有する。
+      # 本 workflow は on: pull_request のみで main への push では起動しないため、
+      # PR ビルドでもキャッシュを育てられるよう cache-read-only: false を明示する。
+      - name: Set up Gradle（依存＋ビルドキャッシュ）
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+          gradle-home-cache-includes: |
+            caches
+            notifications
+
+      - name: Grant Gradle wrapper execute permission
+        run: chmod +x gradlew
+
+      # openapi-gen プロファイル（H2・:8082 フォーク・MySQL/Redis 不要）で docs/openapi.json を生成。
+      # 生成先は build.gradle.kts の openApi{} 設定によりリポジトリルートの docs/openapi.json。
+      - name: Generate OpenAPI docs
+        run: ./gradlew generateOpenApiDocs --no-daemon --build-cache
+
+      # 生成後の docs/openapi.json に差分があれば「BE 変更が未反映」とみなして fail する。
+      # working-directory は backend なのでリポジトリルートのパスを ../ で指定する。
+      - name: Check for OpenAPI drift
+        run: |
+          if ! git diff --exit-code ../docs/openapi.json; then
+            echo ""
+            echo "::error title=docs/openapi.json が古い状態です::BE の API 変更が docs/openapi.json に未反映です。'cd backend && ./gradlew generateOpenApiDocs' を実行し docs/openapi.json をコミットしてください"
+            echo ""
+            echo "----- docs/openapi.json の差分（先頭のみ） -----"
+            git --no-pager diff ../docs/openapi.json | head -n 100
+            echo "------------------------------------------------"
+            exit 1
+          fi
+          echo "docs/openapi.json は BE の現状と同期しています。"
