@@ -44,6 +44,7 @@ export function useScheduleApi() {
     deletePersonalSchedule: personal.deletePersonalSchedule,
     // === Calendar / Categories / Duplicate ===
     getCalendarMonth: crud.getCalendarMonth,
+    getCalendarRange: crud.getCalendarRange,
     getCategories: crud.getCategories,
     createCategory: crud.createCategory,
     duplicateSchedule: crud.duplicateSchedule,

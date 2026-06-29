@@ -86,16 +86,15 @@ onMounted(() => {
 
 <template>
   <div class="container mx-auto max-w-4xl p-4">
-    <div class="mb-4 flex items-center justify-between gap-3">
-      <h1 class="text-2xl font-bold">
-        {{ t('jobmatching.list.teamTitle') }}
-      </h1>
-      <Button
-        :label="t('jobmatching.list.createButton')"
-        icon="pi pi-plus"
-        @click="goToNew"
-      />
-    </div>
+    <PageHeader :title="t('jobmatching.list.teamTitle')" :back="false">
+      <template #actions>
+        <Button
+          :label="t('jobmatching.list.createButton')"
+          icon="pi pi-plus"
+          @click="goToNew"
+        />
+      </template>
+    </PageHeader>
 
     <!-- ステータスフィルタ -->
     <div class="mb-4">

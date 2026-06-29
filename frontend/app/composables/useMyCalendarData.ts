@@ -47,11 +47,9 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
   const extendedEvents = ref<CalEvent[]>([])
 
   const fetcher = async (from: string, to: string): Promise<CalendarEventItem[]> => {
-    const year = parseInt(from.slice(0, 4), 10)
-    const month = parseInt(from.slice(5, 7), 10)
     const [personal, shared, todosRes] = await Promise.all([
       scheduleApi.listPersonalSchedules({ from, to }),
-      scheduleApi.getCalendarMonth(year, month),
+      scheduleApi.getCalendarRange(from, to),
       ganttApi.getPersonalGanttTodos(from, to).catch(() => ({ data: [] as GanttTodo[] })),
     ])
 

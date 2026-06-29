@@ -56,6 +56,15 @@ export function useCalendarEvents(
     }
   }
 
+  function buildGridRange(year: number, month: number): { from: string; to: string } {
+    const first = new Date(year, month - 1, 1)
+    const startOffset = first.getDay() // 0=日曜
+    const gridStart = new Date(year, month - 1, 1 - startOffset)
+    const gridEnd = new Date(year, month - 1, 1 - startOffset + 41) // 42セル=6週
+    const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+    return { from: `${fmt(gridStart)}T00:00:00`, to: `${fmt(gridEnd)}T23:59:59` }
+  }
+
   function addMonths(year: number, month: number, delta: number): { year: number; month: number } {
     const d = new Date(year, month - 1 + delta, 1)
     return { year: d.getFullYear(), month: d.getMonth() + 1 }
@@ -70,7 +79,7 @@ export function useCalendarEvents(
   }
 
   const events = computed<CalendarEventItem[]>(() => {
-    const { from, to } = buildMonthRange(currentYear.value, currentMonth.value)
+    const { from, to } = buildGridRange(currentYear.value, currentMonth.value)
     return allEvents.value.filter((e) => e.startAt >= from && e.startAt <= to)
   })
 
@@ -81,7 +90,7 @@ export function useCalendarEvents(
     let end: { year: number; month: number }
 
     if (cacheHalfMonths === 0) {
-      const range = buildMonthRange(centerYear, centerMonth)
+      const range = buildGridRange(centerYear, centerMonth)
       from = range.from
       to = range.to
       start = { year: centerYear, month: centerMonth }
@@ -150,4 +159,3 @@ export function useCalendarEvents(
     onNextMonth,
   }
 }
-
