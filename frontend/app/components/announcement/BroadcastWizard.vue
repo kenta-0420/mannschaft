@@ -183,6 +183,7 @@ watch(
         v-model="formState"
         :scope-type="scopeType"
         :scope-id="scopeId"
+        :is-admin="isAdmin"
         @next="goToNextStep"
       />
       <BroadcastStep2Channel

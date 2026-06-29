@@ -68,7 +68,9 @@
     "template_name_label": "Nombre de plantilla",
     "template_set_default": "Establecer como predeterminado",
     "template_create": "Guardar como plantilla",
+    "template_name_placeholder": "Introduce un nombre de plantilla",
     "template_save_success": "Plantilla guardada",
+    "template_save_failed": "No se pudo guardar la plantilla",
     "template_delete_confirm": "¿Está seguro de que desea eliminar esta plantilla?",
     "incident": {
       "dismiss": "Cerrar"
