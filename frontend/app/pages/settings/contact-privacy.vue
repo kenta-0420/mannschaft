@@ -10,9 +10,8 @@ const showGuide = ref(false)
 
 <template>
   <div>
-    <PageHeader :title="t('contact_privacy.title')" help @help="showGuide = true" />
-
-    <div class="mx-auto max-w-2xl">
+    <div class="mx-auto max-w-2xl p-6">
+      <PageHeader :title="t('contact_privacy.title')" help @help="showGuide = true" />
       <p class="mb-6 text-sm text-surface-500 dark:text-surface-300">
         {{ t('contact_privacy.description') }}
       </p>
