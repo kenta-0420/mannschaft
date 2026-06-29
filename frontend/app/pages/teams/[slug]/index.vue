@@ -24,8 +24,6 @@ const {
   isAdminOrDeputy,
 } = useRoleAccess('team', teamSlug)
 
-const viewerRole = computed<ViewerRole>(() => (roleName.value as ViewerRole | null) ?? 'PUBLIC')
-
 const {
   settings: widgetVisibilitySettings,
   fetch: fetchWidgetVisibility,
@@ -95,6 +93,25 @@ const team = ref<TeamResponse | null>(null)
 const loading = ref(false)
 const activeTab = ref(0)
 const showLeaveConfirm = ref(false)
+
+// 管理者レンズ（true=管理者ビュー, false=メンバービュー）
+// デフォルト: 管理者が来たら管理者ビューで開始
+const adminLens = ref(true)
+
+// 管理者専用タブの value（招待=3, サポーター管理=4, 機能設定=5）
+const ADMIN_ONLY_TABS = new Set([3, 4, 5])
+
+// メンバービューへ切り替えたとき、管理者専用タブが選択中なら 0 にリセット
+watch(adminLens, (isAdminView) => {
+  if (!isAdminView && ADMIN_ONLY_TABS.has(activeTab.value)) {
+    activeTab.value = 0
+  }
+})
+
+// メンバービュー時は ScopeDashboard に渡す viewerRole を MEMBER に変える
+const effectiveViewerRole = computed<ViewerRole>(() =>
+  adminLens.value ? ((roleName.value as ViewerRole | null) ?? 'PUBLIC') : 'MEMBER',
+)
 
 const displayName = computed(() => team.value?.basicInfo?.nickname1 || team.value?.basicInfo?.name || '')
 
@@ -183,16 +200,23 @@ onMounted(async () => {
       <Tabs v-model:value="activeTab">
         <!-- TabList を村スタイルで全幅表示 -->
         <div class="border-b border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900">
-          <TabList>
-            <Tab :value="0"> ダッシュボード </Tab>
-            <Tab :value="1"> 基本情報 </Tab>
-            <Tab :value="2"> メンバー </Tab>
-            <Tab v-if="isAdminOrDeputy" :value="3"> 招待 </Tab>
-            <Tab v-if="isAdmin && team.visibility?.supporterEnabled" :value="4"> サポーター管理 </Tab>
-            <Tab v-if="isAdmin" :value="5"> 機能設定 </Tab>
-            <Tab v-if="roleName && reservationEnabled" :value="6">{{ $t('reservation.tab.team_page') }}</Tab>
-            <Tab v-if="roleName" :value="7"> {{ $t('nav.tab') }} </Tab>
-          </TabList>
+          <div class="flex items-center">
+            <div class="flex-1 overflow-x-auto">
+              <TabList>
+                <Tab :value="0"> ダッシュボード </Tab>
+                <Tab :value="1"> 基本情報 </Tab>
+                <Tab :value="2"> メンバー </Tab>
+                <Tab v-if="isAdminOrDeputy && adminLens" :value="3"> 招待 </Tab>
+                <Tab v-if="isAdmin && team.visibility?.supporterEnabled && adminLens" :value="4"> サポーター管理 </Tab>
+                <Tab v-if="isAdmin && adminLens" :value="5"> 機能設定 </Tab>
+                <Tab v-if="roleName && reservationEnabled" :value="6">{{ $t('reservation.tab.team_page') }}</Tab>
+                <Tab v-if="roleName" :value="7"> {{ $t('nav.tab') }} </Tab>
+              </TabList>
+            </div>
+            <div v-if="isAdminOrDeputy" class="shrink-0 px-3">
+              <ScopeLensToggle v-model="adminLens" />
+            </div>
+          </div>
         </div>
 
         <!-- TabPanels はパディングあり -->
@@ -206,8 +230,8 @@ onMounted(async () => {
                   :scope-id="teamSlug"
                   :scope-name="displayName"
                   :scope-template="team.location?.template"
-                  :viewer-role="viewerRole"
-                  :is-admin-or-deputy="isAdminOrDeputy"
+                  :viewer-role="effectiveViewerRole"
+                  :is-admin-or-deputy="adminLens && isAdminOrDeputy"
                   :visibility-map="widgetVisibilitySettings"
                 />
               </div>
@@ -256,19 +280,19 @@ onMounted(async () => {
               </div>
             </TabPanel>
 
-            <TabPanel v-if="isAdminOrDeputy" :value="3">
+            <TabPanel v-if="isAdminOrDeputy && adminLens" :value="3">
               <div class="mt-4">
                 <InviteTokenList scope-type="team" :scope-id="teamSlug" />
               </div>
             </TabPanel>
 
-            <TabPanel v-if="isAdmin && team.visibility?.supporterEnabled" :value="4">
+            <TabPanel v-if="isAdmin && team.visibility?.supporterEnabled && adminLens" :value="4">
               <div class="mt-4">
                 <SupporterManagementPanel scope-type="team" :scope-id="teamSlug" />
               </div>
             </TabPanel>
 
-            <TabPanel v-if="isAdmin" :value="5">
+            <TabPanel v-if="isAdmin && adminLens" :value="5">
               <div class="mt-4">
                 <ModuleSettingsPanel scope-type="team" :scope-id="teamSlug" />
               </div>
