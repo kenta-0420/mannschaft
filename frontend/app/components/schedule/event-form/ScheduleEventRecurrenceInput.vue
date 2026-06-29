@@ -4,6 +4,20 @@ import type { ScheduleEventFormState } from './types'
 const form = defineModel<ScheduleEventFormState>('form', { required: true })
 const { t } = useI18n()
 
+// 繰り返し間隔の手入力を 1〜99 にクランプする。
+// native の number input は min/max を入力時に強制しない（フォーム送信時に検証されるのみ）ため、
+// BE の @Min(1)/@Max(99) で 400 になる前にクライアント側でも丸める。
+function clampInterval() {
+  const v = form.value.recurrenceInterval
+  if (!Number.isFinite(v) || v < 1) {
+    form.value.recurrenceInterval = 1
+  } else if (v > 99) {
+    form.value.recurrenceInterval = 99
+  } else {
+    form.value.recurrenceInterval = Math.floor(v)
+  }
+}
+
 function toggleDay(day: string) {
   const idx = form.value.recurrenceDaysOfWeek.indexOf(day)
   if (idx >= 0) {
@@ -38,7 +52,8 @@ const countOptions = computed(() =>
           min="1"
           max="99"
           class="h-10 w-16 rounded-lg border border-surface-300 dark:border-surface-600 bg-surface-100 dark:bg-surface-800 px-2 text-center text-sm text-surface-900 dark:text-surface-100 focus:outline-none focus:border-primary-400"
-        />
+          @blur="clampInterval"
+        >
         <Select
           v-model="form.recurrenceType"
           :options="[

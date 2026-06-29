@@ -18,20 +18,32 @@ const kindOptions = computed(() => [
   { label: t('schedule.reminder.kind_absolute'), value: 'ABSOLUTE' as const },
 ])
 
-const reminderPresets = computed(() => [
-  { label: t('schedule.reminder.preset_minutes_before', { n: 5 }),   minutes: 5 },
-  { label: t('schedule.reminder.preset_minutes_before', { n: 10 }),  minutes: 10 },
-  { label: t('schedule.reminder.preset_minutes_before', { n: 15 }),  minutes: 15 },
-  { label: t('schedule.reminder.preset_minutes_before', { n: 30 }),  minutes: 30 },
-  { label: t('schedule.reminder.preset_hours_before',   { n: 1 }),   minutes: 60 },
-  { label: t('schedule.reminder.preset_hours_before',   { n: 3 }),   minutes: 180 },
-  { label: t('schedule.reminder.preset_days_before',    { n: 1 }),   minutes: 1440 },
-  { label: t('schedule.reminder.preset_days_before',    { n: 2 }),   minutes: 2880 },
-  { label: t('schedule.reminder.preset_weeks_before',   { n: 1 }),   minutes: 10080 },
-])
+// プリセット（開始前の分数）。よく使う間隔のみを厳選して入力摩擦を抑える。
+const BASE_PRESET_MINUTES = [5, 10, 15, 30, 60, 180, 1440, 2880, 10080]
+
+// 分数を「○分前 / ○時間前 / ○日前 / ○週間前」の表示ラベルへ変換する。
+// プリセットに無い任意の分数（既存予定の編集で現れる 120 分=2時間 や 45 分など）も
+// 割り切れる最大単位を選んでラベル化し、適切に表示できるようにする。
+function labelForMinutes(minutes: number): string {
+  if (minutes % 10080 === 0) return t('schedule.reminder.preset_weeks_before', { n: minutes / 10080 })
+  if (minutes % 1440 === 0) return t('schedule.reminder.preset_days_before', { n: minutes / 1440 })
+  if (minutes % 60 === 0) return t('schedule.reminder.preset_hours_before', { n: minutes / 60 })
+  return t('schedule.reminder.preset_minutes_before', { n: minutes })
+}
 
 function toMinutes(entry: ReminderFormEntry): number {
   return entry.relativeValue * UNIT_TO_MINUTES[entry.relativeUnit]
+}
+
+// リマインダー1件分の選択肢を返す。既存値がプリセット集合に無い場合は、その値を
+// 選択肢へ補って必ずどれか1つに一致させる（プリセット外の既存値が「未選択」表示に
+// なる不具合の根治。一方向バインドの :model-value が options に無いと空表示になるため）。
+function optionsFor(entry: ReminderFormEntry): Array<{ label: string, minutes: number }> {
+  const current = toMinutes(entry)
+  const minutesList = current > 0 && !BASE_PRESET_MINUTES.includes(current)
+    ? [current, ...BASE_PRESET_MINUTES].sort((a, b) => a - b)
+    : [...BASE_PRESET_MINUTES]
+  return minutesList.map(minutes => ({ label: labelForMinutes(minutes), minutes }))
 }
 
 function setPreset(entry: ReminderFormEntry, minutes: number): void {
@@ -86,7 +98,7 @@ function removeReminder(index: number) {
       <Select
         v-if="reminder.kind === 'RELATIVE'"
         :model-value="toMinutes(reminder)"
-        :options="reminderPresets"
+        :options="optionsFor(reminder)"
         option-label="label"
         option-value="minutes"
         class="flex-1"
