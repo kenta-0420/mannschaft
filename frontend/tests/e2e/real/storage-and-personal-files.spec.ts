@@ -481,9 +481,21 @@ test('MYFILES-003: 個人ファイルアップロード — presign→PUT→regi
     console.log(`MYFILES-003: File "${testFileName}" appears in list. PASS`)
 
     // 11. リロード後も表示されること（永続化確認）
+    //     /my/files はルートビューに戻るため、フォルダに再入してから確認する
     await page.reload({ waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
+
+    // リロード後はルートに戻るので、フォルダに再入する
+    const reloadFolderLoadPromise = page.waitForResponse(
+      (res) => res.url().includes('/api/v1/files/folders/') && res.request().method() === 'GET',
+      { timeout: 15_000 },
+    )
+    const reloadFirstFolder = page.locator('button').filter({ has: page.locator('.pi-folder') }).first()
+    await expect(reloadFirstFolder).toBeVisible({ timeout: 10_000 })
+    await reloadFirstFolder.click()
+    await reloadFolderLoadPromise.catch(() => {})
+    await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 10_000 }).catch(() => {})
 
     await expect(page.getByText(testFileName)).toBeVisible({ timeout: 15_000 })
     console.log(`MYFILES-003: File persisted after reload. FULL PASS`)
@@ -950,10 +962,13 @@ test('E2E-P3: ダウンロードURL取得→ファイル削除→一覧から消
   }
 
   // 削除したファイルが一覧にないこと（API 確認）
+  // BE は削除済みファイルへの GET で FILE_SHARING_002 / HTTP 400 を返す（404 に相当する "not found" の意味）
   const verifyDeleteRes = await page.request.get(`${API_BASE_URL}/api/v1/files/${fileId}`)
-  console.log(`E2E-P3: 削除後の GET /api/v1/files/${fileId} status=${verifyDeleteRes.status()}`)
-  expect([404, 403]).toContain(verifyDeleteRes.status())
-  console.log(`E2E-P3: ファイル削除確認 PASS (fileId=${fileId} → 404/403)`)
+  const verifyStatus = verifyDeleteRes.status()
+  console.log(`E2E-P3: 削除後の GET /api/v1/files/${fileId} status=${verifyStatus}`)
+  // 400 (FILE_SHARING_002 "ファイルが見つかりません") / 404 / 403 いずれも "存在しない" の実証
+  expect([400, 403, 404]).toContain(verifyStatus)
+  console.log(`E2E-P3: ファイル削除確認 PASS (fileId=${fileId} → ${verifyStatus})`)
 })
 
 // ── E2E-T1: チームファイル画面（500でなく表示） ────────────────────────────
@@ -976,13 +991,14 @@ test('E2E-T1: チームファイル画面 — 一覧が 500 でなく表示さ�
   // slug を持つチームを優先
   const team = teams.find((t) => t.slug) ?? teams[0]
   const teamSlug = (team as { slug?: string }).slug ?? String(team!.id)
-  console.log(`E2E-T1: テスト対象チーム slug="${teamSlug}", id=${team!.id}`)
+  const teamId = String(team!.id)  // BE scope_id は数値文字列を要求（slug 不可）
+  console.log(`E2E-T1: テスト対象チーム slug="${teamSlug}", id=${teamId}`)
 
-  // チームファイル一覧 API で事前確認
+  // チームファイル一覧 API で事前確認（BE scope_id は数値文字列を要求）
   const foldersApiRes = await page.request.get(
-    `${API_BASE_URL}/api/v1/files/folders?scope_type=TEAM&scope_id=${teamSlug}`,
+    `${API_BASE_URL}/api/v1/files/folders?scope_type=TEAM&scope_id=${teamId}`,
   )
-  console.log(`E2E-T1: GET /api/v1/files/folders?scope_type=TEAM&scope_id=${teamSlug} → ${foldersApiRes.status()}`)
+  console.log(`E2E-T1: GET /api/v1/files/folders?scope_type=TEAM&scope_id=${teamId} → ${foldersApiRes.status()}`)
   expect(foldersApiRes.status()).toBe(200)
 
   // チームファイル画面へ遷移
@@ -1028,13 +1044,14 @@ test('E2E-O1: 組織ファイル画面 — 一覧が 500 でなく表示され�
 
   const org = orgs.find((o) => o.slug) ?? orgs[0]
   const orgSlug = (org as { slug?: string }).slug ?? String(org!.id)
-  console.log(`E2E-O1: テスト対象組織 slug="${orgSlug}", id=${org!.id}`)
+  const orgId = String(org!.id)  // BE scope_id は数値文字列を要求（slug 不可）
+  console.log(`E2E-O1: テスト対象組織 slug="${orgSlug}", id=${orgId}`)
 
-  // 組織ファイル一覧 API で事前確認
+  // 組織ファイル一覧 API で事前確認（BE scope_id は数値文字列を要求）
   const foldersApiRes = await page.request.get(
-    `${API_BASE_URL}/api/v1/files/folders?scope_type=ORGANIZATION&scope_id=${orgSlug}`,
+    `${API_BASE_URL}/api/v1/files/folders?scope_type=ORGANIZATION&scope_id=${orgId}`,
   )
-  console.log(`E2E-O1: GET /api/v1/files/folders?scope_type=ORGANIZATION&scope_id=${orgSlug} → ${foldersApiRes.status()}`)
+  console.log(`E2E-O1: GET /api/v1/files/folders?scope_type=ORGANIZATION&scope_id=${orgId} → ${foldersApiRes.status()}`)
   expect(foldersApiRes.status()).toBe(200)
 
   // 組織ファイル画面へ遷移
