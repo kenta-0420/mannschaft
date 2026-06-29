@@ -1,7 +1,7 @@
 export interface TeamModuleItem {
-  id: number
-  name: string
-  slug: string
+  moduleId: number
+  moduleName: string
+  moduleSlug: string
   isEnabled: boolean
   enabledAt: string | null
   trialExpiresAt: string | null

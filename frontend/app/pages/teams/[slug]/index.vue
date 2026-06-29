@@ -35,7 +35,7 @@ async function fetchReservationEnabled() {
   try {
     const { getTeamModules } = useModuleApi()
     const res = await getTeamModules(teamSlug.value)
-    reservationEnabled.value = res.data.some(m => m.slug === 'reservation' && m.isEnabled)
+    reservationEnabled.value = res.data.some(m => m.moduleSlug === 'reservation' && m.isEnabled)
   }
   catch {
     // 取得失敗はモジュール未有効と同義（false フォールバック）
