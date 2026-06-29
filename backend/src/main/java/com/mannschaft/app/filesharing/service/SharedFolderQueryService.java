@@ -201,8 +201,9 @@ public class SharedFolderQueryService {
      * サブフォルダが孤児化、(3) 容量戻しが無く {@code usedBytes} が減らない、という三重の欠陥が
      * あったため流用しない。本メソッドは:</p>
      * <ul>
-     *   <li><b>認可</b>: {@link #authorizeView} と同一のスコープ別ポリシー（他人個人=404・非所属=403・
-     *       大会=連絡スペース認可）を当て、IDOR / クロススコープ削除を防ぐ。</li>
+     *   <li><b>認可</b>: {@link #authorizeDelete} で「閲覧より強い」削除権限を当てる
+     *       （他人個人=404・TEAM/ORG は<b>管理者(ADMIN/DEPUTY_ADMIN)のみ</b>・一般メンバーは 403・
+     *       大会=編集認可）。IDOR / クロススコープ削除に加え、一般メンバーによる破壊操作も防ぐ。</li>
      *   <li><b>カスケード</b>: 当該フォルダを根とする部分木（自身＋全サブフォルダ）を再帰収集し、
      *       配下の全ファイルと全フォルダを soft-delete する。循環・異常データに備え
      *       {@value #MAX_DELETE_FOLDER_COUNT} 件の安全弁と訪問済み集合で無限ループを防ぐ。</li>
@@ -218,7 +219,8 @@ public class SharedFolderQueryService {
     public void deleteFolder(Long folderId, Long userId) {
         SharedFolderEntity root = findFolderOrThrow(folderId);
         // 認可は走査・削除の前に当てる（弾かれた場合は何も削除しない）。
-        authorizeView(root, userId);
+        // 削除は閲覧より強い権限を要求する（TEAM/ORG は管理者以上）→ authorizeDelete。
+        authorizeDelete(root, userId);
 
         List<SharedFolderEntity> subtree = collectSubtree(root);
         int deletedFiles = 0;
@@ -301,6 +303,37 @@ public class SharedFolderQueryService {
                     accessControlService.checkMembership(userId, folder.getOrganizationId(), "ORGANIZATION");
             case TOURNAMENT, TOURNAMENT_DIVISION ->
                     folderScopeAccessGuard.checkFolderViewByFolderId(folder.getId(), userId);
+        }
+    }
+
+    /**
+     * フォルダ実体のスコープに応じて<b>削除認可</b>を当てる（閲覧より強い権限を要求）。
+     *
+     * <p>マスター御裁可: チーム/組織のフォルダ削除は配下ファイルごと消える破壊操作のため
+     * <b>管理者（ADMIN / DEPUTY_ADMIN=副長）限定</b>とし、一般メンバー（MEMBER）は実行不可とする。
+     * 個人フォルダは従来どおり本人のみ。{@link #authorizeView} との差分:</p>
+     * <ul>
+     *   <li>PERSONAL: 本人以外は {@code FOLDER_NOT_FOUND}（404・存在隠蔽）。view と同一。</li>
+     *   <li>TEAM / ORGANIZATION: view は {@link AccessControlService#checkMembership}（メンバーなら可）だが、
+     *       delete は {@link AccessControlService#checkAdminOrAbove} に引き上げる。
+     *       {@code checkAdminOrAbove} は内部の {@code ADMIN_ROLES = {"ADMIN","DEPUTY_ADMIN"}} に基づき
+     *       <b>ADMIN と DEPUTY_ADMIN の両方を許可</b>し、一般 MEMBER 以下は 403（COMMON_002）で弾く。</li>
+     *   <li>TOURNAMENT / TOURNAMENT_DIVISION: 既存どおり編集認可
+     *       {@link FolderScopeAccessGuard#checkFolderPostByFolderId}（実質管理者）に委譲。</li>
+     * </ul>
+     */
+    private void authorizeDelete(SharedFolderEntity folder, Long userId) {
+        switch (folder.getScopeType()) {
+            case PERSONAL -> {
+                if (folder.getUserId() == null || !folder.getUserId().equals(userId)) {
+                    throw new BusinessException(FileSharingErrorCode.FOLDER_NOT_FOUND);
+                }
+            }
+            case TEAM -> accessControlService.checkAdminOrAbove(userId, folder.getTeamId(), "TEAM");
+            case ORGANIZATION ->
+                    accessControlService.checkAdminOrAbove(userId, folder.getOrganizationId(), "ORGANIZATION");
+            case TOURNAMENT, TOURNAMENT_DIVISION ->
+                    folderScopeAccessGuard.checkFolderPostByFolderId(folder.getId(), userId);
         }
     }
 
