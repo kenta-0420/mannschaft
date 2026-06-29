@@ -14,7 +14,7 @@
       "before": "antes",
       "max_reached": "Puedes configurar hasta 5 recordatorios",
       "kind_label": "Tipo",
-      "kind_relative": "Antes del evento (min/h)",
+      "kind_relative": "Antes del evento",
       "kind_absolute": "Fecha/hora específica",
       "unit_label": "Unidad",
       "unit_minutes": "minutos",
@@ -23,7 +23,11 @@
       "relative_value_label": "Valor",
       "absolute_at_label": "Notificar el",
       "error_absolute_required": "Introduce la fecha y hora del recordatorio absoluto",
-      "error_past": "No se puede indicar una fecha y hora pasada"
+      "error_past": "No se puede indicar una fecha y hora pasada",
+      "preset_minutes_before": "{n} min antes",
+      "preset_hours_before": "{n} h antes",
+      "preset_days_before": "{n} día antes",
+      "preset_weeks_before": "{n} semana antes"
     },
     "scheduled_survey": {
       "label": "Programar una encuesta",
