@@ -42,6 +42,31 @@
       }
     }
   },
+  "contact_request_blocks_help": {
+    "title": "Cómo usar la lista de bloqueo de solicitudes de contacto",
+    "description": "Esta configuración te permite ignorar automáticamente las solicitudes de «agregar como contacto» de personas específicas desde el principio.",
+    "what": {
+      "title": "¿Qué es la lista de bloqueo de solicitudes de contacto?",
+      "body": "Si alguien en esta lista intenta agregarte como contacto, su solicitud se ignora automáticamente. No recibirás ninguna notificación ni sabrás que lo intentaron.",
+      "note": "La otra persona nunca es informada de que fue bloqueada. Puedes detener silenciosamente las solicitudes de personas específicas sin crear ninguna incomodidad."
+    },
+    "list": {
+      "title": "Cómo leer la lista",
+      "body": "Todos los usuarios bloqueados se muestran en una lista. Cada fila contiene la siguiente información.",
+      "item_name": "Icono y nombre — quién estás bloqueando",
+      "item_handle": "Identificador de contacto que comienza con @ — el ID único de esa persona",
+      "item_date": "«Establecido el» — la fecha en que se registró el bloqueo"
+    },
+    "unblock": {
+      "title": "Cómo eliminar un bloqueo",
+      "body": "Puedes eliminar un bloqueo en cualquier momento. Una vez eliminado, esa persona podrá enviarte solicitudes de contacto nuevamente.",
+      "steps": {
+        "step1": "Encuentra la fila de la persona que quieres desbloquear.",
+        "step2": "Pulsa el botón «Desbloquear» en el lado derecho de la fila.",
+        "step3": "Cuando la persona desaparezca de la lista, el bloqueo habrá sido eliminado correctamente."
+      }
+    }
+  },
   "qa": {
     "title": "Preguntas frecuentes (Q&A)",
     "description": "Respuestas a preguntas comunes sobre el uso de Mannschaft, la instalacion de la PWA y mas.",
