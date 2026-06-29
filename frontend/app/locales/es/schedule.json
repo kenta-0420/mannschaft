@@ -142,6 +142,14 @@
         "item_edit": "Usa el icono de lápiz para editar, o el icono de papelera para eliminar",
         "item_attendance": "Para eventos con seguimiento de asistencia, selecciona 'Asistir', 'No asistir' o 'Tal vez'",
         "item_match": "Usa el botón 'Registrar este partido' desde un evento de equipo para iniciar un registro de partido"
+      },
+      "google_sync": {
+        "title": "Integración con Google Calendar",
+        "body": "Conecta tu cuenta de Google para sincronizar tus eventos personales con Google Calendar en ambas direcciones. Los eventos que añadas o edites en Mannschaft aparecen en Google Calendar, y los cambios hechos en Google Calendar se importan de vuelta.",
+        "step1": "Abre 'Ajustes' → 'Integración con Google Calendar'",
+        "step2": "Pulsa 'Conectar cuenta de Google' y autoriza la conexión",
+        "step3": "Activa 'Calendario personal' para habilitar la sincronización",
+        "step4": "Ejecuta 'Sincronización manual' cuando quieras que los cambios se reflejen al instante"
       }
     },
     "google_sync_notice": "Conectado a Google Calendar. Los cambios realizados en Google serán reemplazados por los datos de Mannschaft la próxima vez que guardes aquí."
