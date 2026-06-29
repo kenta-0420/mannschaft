@@ -138,7 +138,8 @@
       "book": "预约",
       "list": "预约列表",
       "line_manage": "线路管理",
-      "emergency_closure": "緊急休業"
+      "emergency_closure": "緊急休業",
+      "team_page": "预约"
     },
     "column": {
       "datetime": "日期时间",
