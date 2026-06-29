@@ -1480,7 +1480,28 @@
     "addRecord": "記録を追加",
     "participantCount": "参加者 {count}名",
     "noRecords": "活動記録がありません",
-    "loadError": "活動記録の取得に失敗しました"
+    "loadError": "活動記録の取得に失敗しました",
+    "create": {
+      "dialogTitle": "活動記録を追加",
+      "templateLabel": "テンプレート",
+      "templatePlaceholder": "テンプレートを選択",
+      "noTemplatesTitle": "テンプレートがありません",
+      "noTemplatesBody": "活動記録を作成するには、先にテンプレートを作成してください。",
+      "goToTemplates": "テンプレートを作成",
+      "titleLabel": "タイトル",
+      "titlePlaceholder": "活動のタイトル",
+      "dateLabel": "活動日",
+      "descriptionLabel": "説明（任意）",
+      "visibilityLabel": "公開範囲",
+      "visibilityPublic": "公開",
+      "visibilityMembersOnly": "メンバーのみ",
+      "requiredFieldError": "必須項目を入力してください",
+      "saveSuccess": "活動記録を追加しました",
+      "saveError": "活動記録の追加に失敗しました",
+      "submit": "追加",
+      "scopeResolveError": "対象の特定に失敗しました",
+      "templatesLoadError": "テンプレートの取得に失敗しました"
+    }
   },
   "dashboard": {
     "team_reservation_link": "予約管理"

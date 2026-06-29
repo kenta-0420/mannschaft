@@ -1480,7 +1480,28 @@
     "addRecord": "Eintrag hinzufügen",
     "participantCount": "{count} Teilnehmer",
     "noRecords": "Keine Aktivitätsprotokolle",
-    "loadError": "Fehler beim Laden der Aktivitätsprotokolle"
+    "loadError": "Fehler beim Laden der Aktivitätsprotokolle",
+    "create": {
+      "dialogTitle": "Aktivitätsprotokoll hinzufügen",
+      "templateLabel": "Vorlage",
+      "templatePlaceholder": "Vorlage auswählen",
+      "noTemplatesTitle": "Noch keine Vorlagen",
+      "noTemplatesBody": "Um ein Aktivitätsprotokoll zu erstellen, lege bitte zuerst eine Vorlage an.",
+      "goToTemplates": "Vorlage erstellen",
+      "titleLabel": "Titel",
+      "titlePlaceholder": "Titel der Aktivität",
+      "dateLabel": "Aktivitätsdatum",
+      "descriptionLabel": "Beschreibung (optional)",
+      "visibilityLabel": "Sichtbarkeit",
+      "visibilityPublic": "Öffentlich",
+      "visibilityMembersOnly": "Nur Mitglieder",
+      "requiredFieldError": "Bitte fülle die Pflichtfelder aus",
+      "saveSuccess": "Aktivitätsprotokoll hinzugefügt",
+      "saveError": "Fehler beim Hinzufügen des Aktivitätsprotokolls",
+      "submit": "Hinzufügen",
+      "scopeResolveError": "Ziel konnte nicht ermittelt werden",
+      "templatesLoadError": "Fehler beim Laden der Vorlagen"
+    }
   },
   "dashboard": {
     "team_reservation_link": "Reservierungen"

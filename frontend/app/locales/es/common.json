@@ -1480,7 +1480,28 @@
     "addRecord": "Agregar registro",
     "participantCount": "{count} participantes",
     "noRecords": "No hay registros de actividad",
-    "loadError": "Error al cargar los registros de actividad"
+    "loadError": "Error al cargar los registros de actividad",
+    "create": {
+      "dialogTitle": "Agregar registro de actividad",
+      "templateLabel": "Plantilla",
+      "templatePlaceholder": "Selecciona una plantilla",
+      "noTemplatesTitle": "Aún no hay plantillas",
+      "noTemplatesBody": "Para crear un registro de actividad, primero crea una plantilla.",
+      "goToTemplates": "Crear plantilla",
+      "titleLabel": "Título",
+      "titlePlaceholder": "Título de la actividad",
+      "dateLabel": "Fecha de la actividad",
+      "descriptionLabel": "Descripción (opcional)",
+      "visibilityLabel": "Visibilidad",
+      "visibilityPublic": "Público",
+      "visibilityMembersOnly": "Solo miembros",
+      "requiredFieldError": "Completa los campos obligatorios",
+      "saveSuccess": "Registro de actividad agregado",
+      "saveError": "Error al agregar el registro de actividad",
+      "submit": "Agregar",
+      "scopeResolveError": "No se pudo identificar el destino",
+      "templatesLoadError": "Error al cargar las plantillas"
+    }
   },
   "dashboard": {
     "team_reservation_link": "Gestión de reservas"

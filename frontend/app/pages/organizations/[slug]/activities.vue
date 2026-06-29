@@ -11,6 +11,7 @@ const { showError } = useNotification()
 
 const activities = ref<ActivityRecordResponse[]>([])
 const loading = ref(false)
+const showCreate = ref(false)
 
 async function load() {
   loading.value = true
@@ -34,7 +35,13 @@ onMounted(async () => {
   <div>
     <div class="mb-4 flex items-center justify-between">
       <PageHeader :title="$t('activity.pageTitle')" />
-      <Button v-if="isMember" :label="$t('activity.addRecord')" icon="pi pi-plus" />
+      <Button
+        v-if="isMember"
+        :label="$t('activity.addRecord')"
+        icon="pi pi-plus"
+        data-testid="activity-add-record"
+        @click="showCreate = true"
+      />
     </div>
     <PageLoading v-if="loading" size="40px" />
     <div v-else class="flex flex-col gap-3">
@@ -54,5 +61,12 @@ onMounted(async () => {
       </SectionCard>
       <DashboardEmptyState v-if="activities.length === 0" icon="pi pi-history" :message="$t('activity.noRecords')" />
     </div>
+
+    <ActivityCreateDialog
+      v-model:visible="showCreate"
+      scope-type="ORGANIZATION"
+      :scope-id="orgSlug"
+      @created="load"
+    />
   </div>
 </template>

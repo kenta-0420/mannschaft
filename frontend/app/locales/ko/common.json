@@ -1480,7 +1480,28 @@
     "addRecord": "기록 추가",
     "participantCount": "참가자 {count}명",
     "noRecords": "활동 기록이 없습니다",
-    "loadError": "활동 기록을 불러오지 못했습니다"
+    "loadError": "활동 기록을 불러오지 못했습니다",
+    "create": {
+      "dialogTitle": "활동 기록 추가",
+      "templateLabel": "템플릿",
+      "templatePlaceholder": "템플릿 선택",
+      "noTemplatesTitle": "템플릿이 없습니다",
+      "noTemplatesBody": "활동 기록을 작성하려면 먼저 템플릿을 만들어 주세요.",
+      "goToTemplates": "템플릿 만들기",
+      "titleLabel": "제목",
+      "titlePlaceholder": "활동 제목",
+      "dateLabel": "활동일",
+      "descriptionLabel": "설명(선택)",
+      "visibilityLabel": "공개 범위",
+      "visibilityPublic": "공개",
+      "visibilityMembersOnly": "멤버 전용",
+      "requiredFieldError": "필수 항목을 입력해 주세요",
+      "saveSuccess": "활동 기록을 추가했습니다",
+      "saveError": "활동 기록 추가에 실패했습니다",
+      "submit": "추가",
+      "scopeResolveError": "대상을 확인하지 못했습니다",
+      "templatesLoadError": "템플릿을 불러오지 못했습니다"
+    }
   },
   "dashboard": {
     "team_reservation_link": "예약 관리"

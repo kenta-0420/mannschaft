@@ -43,11 +43,20 @@ function initForm() {
     name.value = props.template.name
     description.value = props.template.description ?? ''
     fields.value = (props.template.fields ?? []).map((f) => ({
-      label: f.fieldName,
+      label: f.fieldLabel,
       fieldType: f.fieldType as FieldRow['fieldType'],
       required: f.isRequired,
-      isAggregatable: false,
-      optionsRaw: '',
+      isAggregatable: f.isAggregatable,
+      optionsRaw: (() => {
+        // SELECT 型の選択肢 JSON 文字列を編集用のカンマ区切りに展開する
+        if (f.fieldType !== 'SELECT' || !f.optionsJson) return ''
+        try {
+          const parsed: unknown = JSON.parse(f.optionsJson)
+          return Array.isArray(parsed) ? parsed.map((o) => String(o)).join(', ') : ''
+        } catch {
+          return ''
+        }
+      })(),
     }))
   } else {
     name.value = ''

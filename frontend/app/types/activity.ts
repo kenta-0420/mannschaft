@@ -17,15 +17,72 @@ export interface ActivityRecordResponse {
   updatedAt: string
 }
 
+/**
+ * 活動記録のカスタムフィールド型。
+ * バックエンド {@code com.mannschaft.app.activity.FieldType} と一致させる。
+ */
+export type ActivityFieldType = 'TEXT' | 'NUMBER' | 'DATE' | 'SELECT' | 'CHECKBOX' | 'TEXTAREA'
+
+/**
+ * 活動テンプレートのフィールド定義。
+ * バックエンド {@code ActivityTemplateResponse.TemplateFieldResponse} に準拠する。
+ * - {@code fieldKey}: 活動記録作成時の {@code fieldValues} のキーになる識別子（fieldName/id ではない）
+ * - {@code fieldLabel}: 画面表示用ラベル
+ * - {@code optionsJson}: SELECT 型の選択肢を表す JSON 文字列（例: {@code ["A","B"]}）
+ */
+export interface ActivityTemplateField {
+  id: number
+  fieldKey: string
+  fieldLabel: string
+  fieldType: ActivityFieldType
+  isRequired: boolean
+  optionsJson: string | null
+  placeholder: string | null
+  unit: string | null
+  isAggregatable: boolean
+  sortOrder: number
+}
+
 export interface ActivityTemplate {
   id: number
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: string
+  scopeId: number
   name: string
   description: string | null
-  fields: Array<{ id: number; fieldName: string; fieldType: string; isRequired: boolean; sortOrder: number }>
-  isOfficial: boolean
+  icon: string | null
+  color: string | null
+  isParticipantRequired: boolean
+  defaultVisibility: 'PUBLIC' | 'MEMBERS_ONLY' | null
+  sortOrder: number
+  fields: ActivityTemplateField[]
   createdAt: string
+  updatedAt: string
+}
+
+/**
+ * 活動記録作成リクエストボディ（手書き）。
+ * バックエンド {@code CreateActivityRequest} の body 部分に対応する。
+ * scope_type / scope_id はクエリパラメータで送るため body には含めない。
+ * NOTE: 作成 API には {@code location} フィールドは存在しない（一覧で返る location は送らない）。
+ * visibility は PUBLIC / MEMBERS_ONLY の2値のみ（PRIVATE は無い・未指定時 BE 既定 MEMBERS_ONLY）。
+ */
+export interface CreateActivityRequestBody {
+  templateId: number
+  title: string
+  /** "yyyy-MM-dd" */
+  activityDate: string
+  description?: string
+  /** "HH:mm" */
+  activityTimeStart?: string
+  /** "HH:mm" */
+  activityTimeEnd?: string
+  visibility?: 'PUBLIC' | 'MEMBERS_ONLY'
+  /** キーはテンプレの fieldKey。値は fieldType 別の素の型 */
+  fieldValues?: Record<string, string | number | boolean>
+  participantUserIds?: number[]
+  fileIds?: number[]
+  scheduleId?: number
+  postToTimeline?: boolean
 }
 
 export interface ActivityComment {
