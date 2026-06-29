@@ -42,6 +42,31 @@
       }
     }
   },
+  "contact_request_blocks_help": {
+    "title": "How to Use the Contact Request Block List",
+    "description": "This setting lets you automatically ignore contact-add requests from specific people before they reach you.",
+    "what": {
+      "title": "What is the Contact Request Block List?",
+      "body": "If someone on this list tries to add you as a contact, their request is automatically ignored. You won't receive any notification and won't even know they tried.",
+      "note": "The other person is never told they were blocked. You can quietly stop requests from specific people without any awkwardness."
+    },
+    "list": {
+      "title": "Reading the List",
+      "body": "All blocked users are shown in a list. Each row contains the following information.",
+      "item_name": "Icon and name — who you are blocking",
+      "item_handle": "Contact handle starting with {'@'} — the person's unique ID",
+      "item_date": "\"Set on\" — the date the block was registered"
+    },
+    "unblock": {
+      "title": "How to Remove a Block",
+      "body": "You can remove a block at any time. Once removed, that person can send you a contact-add request again.",
+      "steps": {
+        "step1": "Find the row of the person you want to unblock.",
+        "step2": "Press the \"Unblock\" button on the right side of the row.",
+        "step3": "When the person disappears from the list, the block has been successfully removed."
+      }
+    }
+  },
   "qa": {
     "title": "Frequently Asked Questions (Q&A)",
     "description": "Answers to common questions about using Mannschaft, installing the PWA, and more.",
