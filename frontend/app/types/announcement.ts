@@ -13,7 +13,7 @@ export type AnnouncementSourceType =
 
 export type AnnouncementPriority = 'URGENT' | 'IMPORTANT' | 'NORMAL'
 
-export type AnnouncementVisibility = 'PUBLIC' | 'MEMBERS_ONLY' | 'SUPPORTERS_AND_ABOVE'
+export type AnnouncementVisibility = 'PUBLIC' | 'MEMBERS_AND_ABOVE' | 'SUPPORTERS_AND_ABOVE'
 
 export interface AnnouncementAuthor {
   id: number
