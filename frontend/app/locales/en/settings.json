@@ -428,6 +428,13 @@
       "unlimited": "Unlimited",
       "error_fetch": "Failed to load storage usage",
       "empty": "No storage information to display"
+    },
+    "fileBrowser": {
+      "upload_button": "Upload File",
+      "upload_need_folder": "Please open a folder before uploading",
+      "upload_success": "\"{name}\" uploaded successfully",
+      "upload_error": "Failed to upload \"{name}\"",
+      "uploading": "Uploading..."
     }
   }
 }

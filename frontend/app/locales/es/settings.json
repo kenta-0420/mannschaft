@@ -428,6 +428,13 @@
       "unlimited": "Sin límite",
       "error_fetch": "No se pudo cargar el uso de almacenamiento",
       "empty": "No hay información de almacenamiento para mostrar"
+    },
+    "fileBrowser": {
+      "upload_button": "Subir archivo",
+      "upload_need_folder": "Abre una carpeta antes de subir archivos",
+      "upload_success": "«{name}» subido correctamente",
+      "upload_error": "Error al subir «{name}»",
+      "uploading": "Subiendo..."
     }
   }
 }

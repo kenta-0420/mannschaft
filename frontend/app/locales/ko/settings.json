@@ -428,6 +428,13 @@
       "unlimited": "무제한",
       "error_fetch": "스토리지 사용량 불러오기 실패",
       "empty": "표시할 스토리지 정보가 없습니다"
+    },
+    "fileBrowser": {
+      "upload_button": "파일 업로드",
+      "upload_need_folder": "폴더를 열고 나서 업로드해 주세요",
+      "upload_success": "「{name}」을(를) 업로드했습니다",
+      "upload_error": "「{name}」 업로드에 실패했습니다",
+      "uploading": "업로드 중..."
     }
   }
 }
