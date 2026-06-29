@@ -62,8 +62,17 @@ public record TeamPublicDetailResponse(
      * <p>memberCount は {@code TeamEntity#memberCount}（Long）→ Integer 変換。
      * 既存値が 0 / null の場合の挙動は呼び出し側に委ねる（本コンバータでは
      * null 安全のため defaultIfNull = 0 とする）。
+     *
+     * <p>画像 URL 根治 Phase 1: {@code iconUrl}/{@code bannerUrl} は DB の生 R2 キーをそのまま返さず、
+     * 呼び出し側で {@code MediaUrlResolver} を通して解決した署名付き表示 URL（絶対 URL）を受け取る。
+     * 解決不能（null/失敗）の場合は null を渡す。{@code mapEmbedUrl} は R2 キーではないため素通し。</p>
+     *
+     * @param entity           チームエンティティ
+     * @param resolvedIconUrl  解決済みアイコン表示 URL（署名付き絶対 URL。未解決時は null）
+     * @param resolvedBannerUrl 解決済みバナー表示 URL（署名付き絶対 URL。未解決時は null）
      */
-    public static TeamPublicDetailResponse from(TeamEntity entity) {
+    public static TeamPublicDetailResponse from(
+            TeamEntity entity, String resolvedIconUrl, String resolvedBannerUrl) {
         return new TeamPublicDetailResponse(
                 entity.getSlug(),
                 entity.getName(),
@@ -75,8 +84,8 @@ public record TeamPublicDetailResponse(
                 entity.getCity(),
                 entity.getPrefectureCode(),
                 entity.getCityCode(),
-                entity.getIconUrl(),
-                entity.getBannerUrl(),
+                resolvedIconUrl,
+                resolvedBannerUrl,
                 entity.getHomepageUrl(),
                 entity.getEstablishedDate(),
                 entity.getEstablishedDatePrecision() != null

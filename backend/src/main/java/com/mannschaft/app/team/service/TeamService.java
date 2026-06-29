@@ -15,6 +15,7 @@ import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.membership.domain.LeaveReason;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -84,6 +85,8 @@ public class TeamService {
     private final MemberQueryDispatcher memberQueryDispatcher;
     private final MembershipService membershipService;
     private final MembershipRepository membershipRepository;
+    /** 画像 URL 根治 Phase 1: 生 R2 キー → 署名付き表示 URL の解決を担う共通部品。 */
+    private final MediaUrlResolver mediaUrlResolver;
 
     /**
      * チームを作成し、作成者をADMINロールで紐付ける。
@@ -177,7 +180,11 @@ public class TeamService {
         if (team.getVisibility() != TeamEntity.Visibility.PUBLIC) {
             throw new BusinessException(TeamErrorCode.TEAM_001);
         }
-        return TeamPublicDetailResponse.from(team);
+        // 画像 URL 根治 Phase 1: icon/banner を署名付き表示 URL へ解決して渡す。
+        return TeamPublicDetailResponse.from(
+                team,
+                mediaUrlResolver.resolve(team.getIconUrl()),
+                mediaUrlResolver.resolve(team.getBannerUrl()));
     }
 
     /**
@@ -798,7 +805,11 @@ public class TeamService {
                         team.getSupporterEnabled()))
                 .metadata(new TeamResponse.TeamMetadataDto(
                         team.getVersion(), memberCount,
-                        team.getIconUrl(), team.getBannerUrl(), team.getMapEmbedUrl()))
+                        // 画像 URL 根治 Phase 1: icon/banner は生 R2 キーを署名付き表示 URL へ解決する。
+                        // mapEmbedUrl は R2 キーではない（Google Maps 埋め込み URL）ため素通し。
+                        mediaUrlResolver.resolve(team.getIconUrl()),
+                        mediaUrlResolver.resolve(team.getBannerUrl()),
+                        team.getMapEmbedUrl()))
                 .social(new TeamResponse.TeamSocialDto(teamFriendCount, supporterCount))
                 .timestamps(new TeamResponse.TeamTimestampsDto(
                         team.getArchivedAt(), team.getCreatedAt()))
