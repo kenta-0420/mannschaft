@@ -2,7 +2,6 @@
   "contact_invite": {
     "page_title": "招待URL管理",
     "page_description": "連絡先追加用の招待URLを発行・管理します。URLを共有した相手があなたを連絡先に追加できます。",
-    "section_title": "招待URL",
     "create_button": "新しいURLを発行",
     "form": {
       "label": "ラベル（任意）",

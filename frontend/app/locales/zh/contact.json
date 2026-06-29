@@ -2,7 +2,6 @@
   "contact_invite": {
     "page_title": "邀请链接管理",
     "page_description": "发行和管理用于添加联系人的邀请链接。收到链接的人可以将您添加为联系人。",
-    "section_title": "邀请链接",
     "create_button": "发行新链接",
     "form": {
       "label": "标签（可选）",
