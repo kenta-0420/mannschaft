@@ -393,6 +393,18 @@
       "delete_success": "アカウントを削除しました。ご利用ありがとうございました。",
       "delete_error": "アカウントの削除に失敗しました"
     },
+    "storage": {
+      "page_title": "ストレージ",
+      "group_personal": "個人",
+      "group_team": "チーム",
+      "group_org": "組織",
+      "scope_personal": "個人ストレージ",
+      "file_count": "{count}ファイル",
+      "limit": "上限",
+      "unlimited": "無制限",
+      "error_fetch": "ストレージ使用量の取得に失敗しました",
+      "empty": "表示できるストレージ情報がありません"
+    },
     "notification": {
       "load_error": "設定の取得に失敗しました",
       "save_success": "通知設定を保存しました",
