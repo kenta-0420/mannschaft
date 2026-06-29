@@ -1,0 +1,77 @@
+{
+  "contact_invite": {
+    "page_title": "Invite URL Management",
+    "page_description": "Issue and manage invite URLs for adding contacts. Anyone you share the URL with can add you as a contact.",
+    "section_title": "Invite URLs",
+    "create_button": "Issue New URL",
+    "form": {
+      "label": "Label (optional)",
+      "label_placeholder": "e.g. For SNS",
+      "max_uses": "Max Uses",
+      "expires_in": "Expiration",
+      "submit": "Issue",
+      "cancel": "Cancel"
+    },
+    "max_uses_options": {
+      "once": "1 time",
+      "five": "5 times",
+      "ten": "10 times",
+      "fifty": "50 times",
+      "unlimited": "Unlimited"
+    },
+    "expires_options": {
+      "one_day": "1 day",
+      "seven_days": "7 days",
+      "thirty_days": "30 days",
+      "never": "Never"
+    },
+    "list": {
+      "empty": "No invite URLs have been issued yet",
+      "no_label": "(No label)",
+      "revoke_tooltip": "Revoke",
+      "uses_unit": " uses",
+      "qr_alt": "QR Code",
+      "qr_hint": "Scan QR code to add"
+    },
+    "expiry": {
+      "never": "Never expires",
+      "expired": "Expired",
+      "until": "Until {date}"
+    },
+    "messages": {
+      "create_success": "Invite URL issued successfully",
+      "create_error": "Failed to issue invite URL",
+      "revoke_success": "Invite URL revoked",
+      "revoke_error": "Failed to revoke invite URL",
+      "copy_success": "URL copied",
+      "copy_error": "Failed to copy URL"
+    }
+  },
+  "contact_invite_guide": {
+    "title": "How to Use Invite URL Management",
+    "description": "With invite URLs, others can add you as a contact just by receiving a URL or scanning a QR code. Great for SNS profiles or as a digital business card.",
+    "what": {
+      "title": "What is an invite URL?",
+      "body": "A dedicated link that lets others add you as a contact. When you share the URL, the recipient can add you with a single tap — no need to share your ID or email address directly."
+    },
+    "create": {
+      "title": "Issue a URL",
+      "body": "Tap \"Issue New URL\" in the top right to create a URL tailored to your needs.",
+      "step1": "Tap \"Issue New URL\" in the top right.",
+      "step2": "Choose a label (optional note), the number of uses allowed, and an expiration period. Setting limits helps prevent misuse.",
+      "step3": "Tap \"Issue\" and the new invite URL and QR code will appear in the list."
+    },
+    "share": {
+      "title": "Share with others",
+      "body": "You can share the issued URL by copying it and sending it, or by having someone scan the QR code.",
+      "step1": "Tap the \"Copy\" button next to the URL.",
+      "step2": "Paste it into a LINE message, email, or your SNS profile to share.",
+      "step3": "In person, just show the QR code and have the other person scan it with their camera."
+    },
+    "manage": {
+      "title": "Track usage and revoke",
+      "body": "All issued URLs are listed so you can manage them at a glance. Each entry shows the number of times used, the usage limit, and the expiration date.",
+      "note": "You can revoke any URL at any time by tapping the trash icon. Once revoked, no one can use that URL to add you as a contact."
+    }
+  }
+}
