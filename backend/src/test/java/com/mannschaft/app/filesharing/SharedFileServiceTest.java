@@ -1,9 +1,11 @@
 package com.mannschaft.app.filesharing;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.filesharing.dto.CreateFileRequest;
 import com.mannschaft.app.filesharing.dto.FileResponse;
+import com.mannschaft.app.filesharing.dto.SharedFileDownloadUrlResponse;
 import com.mannschaft.app.filesharing.entity.SharedFileEntity;
 import com.mannschaft.app.filesharing.entity.SharedFileVersionEntity;
 import com.mannschaft.app.filesharing.entity.SharedFolderEntity;
@@ -12,6 +14,7 @@ import com.mannschaft.app.filesharing.repository.SharedFileVersionRepository;
 import com.mannschaft.app.filesharing.service.FolderScopeAccessGuard;
 import com.mannschaft.app.filesharing.service.SharedFileQuotaService;
 import com.mannschaft.app.filesharing.service.SharedFileService;
+import com.mannschaft.app.filesharing.service.SharedFolderQueryService;
 import com.mannschaft.app.filesharing.service.SharedFolderService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -65,6 +68,10 @@ class SharedFileServiceTest {
     /** F08.7.1 / 04: 大会フォルダ横断認可ゲート。大会以外（TEAM 等）の本テストでは no-op。 */
     @Mock
     private FolderScopeAccessGuard folderScopeAccessGuard;
+
+    /** download-url 発行時のフォルダスコープ別閲覧認可（漏洩防止の核）。 */
+    @Mock
+    private SharedFolderQueryService folderQueryService;
 
     @InjectMocks
     private SharedFileService sharedFileService;
@@ -182,6 +189,112 @@ class SharedFileServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(FileSharingErrorCode.FILE_NOT_FOUND));
             verify(quotaService, never()).recordFileDeletion(any(), anyLong(), anyLong(), anyLong());
+        }
+    }
+
+    // ========================================
+    // presignDownload（ダウンロード URL 発行 + 認可）
+    // ========================================
+
+    @Nested
+    @DisplayName("presignDownload")
+    class PresignDownload {
+
+        private static final Long FOLDER_OF_FILE = 7L;
+        private static final String FILE_KEY = "files/TEAM/5/abc-uuid.pdf";
+
+        private SharedFileEntity buildFile() {
+            return SharedFileEntity.builder()
+                    .folderId(FOLDER_OF_FILE).name("doc.pdf").fileKey(FILE_KEY)
+                    .fileSize(2048L).contentType("application/pdf").createdBy(USER_ID).build();
+        }
+
+        @Test
+        @DisplayName("AC-DL-1: 認可済みユーザーは downloadUrl（非空）を取得できる")
+        void AC_DL_1_認可済み_downloadUrl取得() {
+            // Given
+            SharedFileEntity file = buildFile();
+            given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
+            willDoNothing().given(folderQueryService).authorizeFolderViewById(FOLDER_OF_FILE, USER_ID);
+            given(r2StorageService.generateDownloadUrl(eq(FILE_KEY), any()))
+                    .willReturn("https://r2.example.com/" + FILE_KEY + "?X-Amz-Signature=xxx");
+
+            // When
+            SharedFileDownloadUrlResponse result = sharedFileService.presignDownload(FILE_ID, USER_ID);
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.downloadUrl()).isNotBlank().contains(FILE_KEY);
+            assertThat(result.expiresInSeconds()).isNotNull().isPositive();
+        }
+
+        @Test
+        @DisplayName("AC-DL-3: 他人の個人フォルダ配下のファイルは 404（FOLDER_NOT_FOUND・存在隠蔽）でURL未発行")
+        void AC_DL_3_他人の個人フォルダ_404_URL未発行() {
+            // Given
+            SharedFileEntity file = buildFile();
+            given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
+            // PERSONAL 本人不一致は authorizeFolderViewById が FOLDER_NOT_FOUND（→404）を投げる
+            willThrow(new BusinessException(FileSharingErrorCode.FOLDER_NOT_FOUND))
+                    .given(folderQueryService).authorizeFolderViewById(FOLDER_OF_FILE, USER_ID);
+
+            // When & Then
+            assertThatThrownBy(() -> sharedFileService.presignDownload(FILE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(FileSharingErrorCode.FOLDER_NOT_FOUND));
+            // 認可で弾かれた場合は URL を一切発行しない（漏洩防止）
+            verify(r2StorageService, never()).generateDownloadUrl(any(), any());
+        }
+
+        @Test
+        @DisplayName("AC-DL-4: 非所属チーム/組織のファイルは 403（COMMON_002）でURL未発行")
+        void AC_DL_4_非所属チーム_403_URL未発行() {
+            // Given
+            SharedFileEntity file = buildFile();
+            given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
+            // TEAM/ORG 非メンバーは authorizeFolderViewById（内部 checkMembership）が COMMON_002（→403）を投げる
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(folderQueryService).authorizeFolderViewById(FOLDER_OF_FILE, USER_ID);
+
+            // When & Then
+            assertThatThrownBy(() -> sharedFileService.presignDownload(FILE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+            verify(r2StorageService, never()).generateDownloadUrl(any(), any());
+        }
+
+        @Test
+        @DisplayName("AC-DL-5: 存在しない fileId は 404（FILE_NOT_FOUND・400/500でない）")
+        void AC_DL_5_存在しないファイル_404() {
+            // Given
+            given(fileRepository.findById(FILE_ID)).willReturn(Optional.empty());
+
+            // When & Then
+            assertThatThrownBy(() -> sharedFileService.presignDownload(FILE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(FileSharingErrorCode.FILE_NOT_FOUND));
+            // 存在しなければ認可も URL 発行も行わない
+            verify(folderQueryService, never()).authorizeFolderViewById(anyLong(), anyLong());
+            verify(r2StorageService, never()).generateDownloadUrl(any(), any());
+        }
+
+        @Test
+        @DisplayName("AC-DL-6: generateDownloadUrl に正しい fileKey を渡す")
+        void AC_DL_6_正しいfileKeyを渡す() {
+            // Given
+            SharedFileEntity file = buildFile();
+            given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
+            willDoNothing().given(folderQueryService).authorizeFolderViewById(FOLDER_OF_FILE, USER_ID);
+            given(r2StorageService.generateDownloadUrl(eq(FILE_KEY), any())).willReturn("https://r2/x");
+
+            // When
+            sharedFileService.presignDownload(FILE_ID, USER_ID);
+
+            // Then: file.getFileKey() がそのまま presign に渡る
+            verify(r2StorageService).generateDownloadUrl(eq(FILE_KEY), any());
         }
     }
 }

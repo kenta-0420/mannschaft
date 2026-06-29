@@ -185,6 +185,22 @@ public class SharedFolderQueryService {
     // ========================================
 
     /**
+     * フォルダ ID からスコープを解決して閲覧認可を当てる（外部ドメイン入口からの再利用用）。
+     *
+     * <p>ファイル単位のダウンロード URL 発行など、ファイル → フォルダの順で解決したうえで
+     * フォルダスコープ別の閲覧認可を当てたいケースで {@link SharedFileService} から呼ぶ。
+     * {@link #authorizeView} と同一の漏洩防止ポリシー（PERSONAL=本人以外404 /
+     * TEAM・ORG=checkMembership 403 / 大会=連絡スペース認可）を適用する。</p>
+     *
+     * @param folderId フォルダ ID
+     * @param userId   操作ユーザー ID（未認証は null。null は所有者不一致扱いで PERSONAL 404・TEAM/ORG 403）
+     */
+    public void authorizeFolderViewById(Long folderId, Long userId) {
+        SharedFolderEntity folder = findFolderOrThrow(folderId);
+        authorizeView(folder, userId);
+    }
+
+    /**
      * フォルダ実体のスコープに応じて閲覧認可を当てる（漏洩防止の核）。
      */
     private void authorizeView(SharedFolderEntity folder, Long userId) {

@@ -1,6 +1,8 @@
 package com.mannschaft.app.filesharing;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.filesharing.controller.SharedFileController;
 import com.mannschaft.app.filesharing.controller.TeamFolderController;
@@ -8,6 +10,7 @@ import com.mannschaft.app.filesharing.dto.CreateFileRequest;
 import com.mannschaft.app.filesharing.dto.CreateFolderRequest;
 import com.mannschaft.app.filesharing.dto.FileResponse;
 import com.mannschaft.app.filesharing.dto.FolderResponse;
+import com.mannschaft.app.filesharing.dto.SharedFileDownloadUrlResponse;
 import com.mannschaft.app.filesharing.dto.UpdateFileRequest;
 import com.mannschaft.app.filesharing.dto.UpdateFolderRequest;
 import com.mannschaft.app.filesharing.service.SharedFileService;
@@ -31,9 +34,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -145,6 +150,35 @@ class FileSharingControllerTest {
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
             // F13 Phase 4-ε: actorId（USER_ID）を渡す呼び出しに変更済み
             verify(fileService).deleteFile(FILE_ID, USER_ID);
+        }
+
+        @Test
+        @DisplayName("AC-DL-1: download-url が { data: { downloadUrl } } で返却される (200)")
+        void ダウンロードURL_正常_200() {
+            SharedFileDownloadUrlResponse url =
+                    new SharedFileDownloadUrlResponse("https://r2.example.com/files/x.pdf?sig=1", 900L);
+            given(fileService.presignDownload(FILE_ID, USER_ID)).willReturn(url);
+
+            ResponseEntity<ApiResponse<SharedFileDownloadUrlResponse>> result =
+                    fileController.getDownloadUrl(FILE_ID);
+
+            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(result.getBody().getData().downloadUrl())
+                    .isEqualTo("https://r2.example.com/files/x.pdf?sig=1");
+            assertThat(result.getBody().getData().expiresInSeconds()).isEqualTo(900L);
+        }
+
+        @Test
+        @DisplayName("AC-DL-2: 未認証は COMMON_000（→401）で弾かれ presignDownload を呼ばない")
+        void ダウンロードURL_未認証_401() {
+            // 認証コンテキストをクリアして未認証状態を作る
+            SecurityContextHolder.clearContext();
+
+            assertThatThrownBy(() -> fileController.getDownloadUrl(FILE_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_000));
+            verify(fileService, never()).presignDownload(any(), any());
         }
     }
 
