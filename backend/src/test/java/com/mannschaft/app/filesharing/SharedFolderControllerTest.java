@@ -92,6 +92,15 @@ class SharedFolderControllerTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(CommonErrorCode.COMMON_000));
         }
+
+        @Test
+        @DisplayName("AC-FD-2: フォルダ削除は未認証で COMMON_000（401）を投げる")
+        void 削除_未認証_401() {
+            assertThatThrownBy(() -> controller.deleteFolder(FOLDER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_000));
+        }
     }
 
     @Nested
@@ -142,6 +151,15 @@ class SharedFolderControllerTest {
 
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         }
+
+        @Test
+        @DisplayName("AC-FD-1/204: フォルダ削除は 204 No Content で返り service に委譲する")
+        void 削除_204() {
+            ResponseEntity<Void> result = controller.deleteFolder(FOLDER_ID);
+
+            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+            verify(folderQueryService).deleteFolder(FOLDER_ID, USER_ID);
+        }
     }
 
     @Nested
@@ -176,6 +194,18 @@ class SharedFolderControllerTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(FileSharingErrorCode.FOLDER_NOT_FOUND));
             verify(folderQueryService).getFolderDetail(FOLDER_ID, USER_ID);
+        }
+
+        @Test
+        @DisplayName("AC-FD-3/4/5: 削除でサービスが投げた認可/不存在例外がそのまま伝播する")
+        void 削除_認可例外伝播() {
+            willThrow(new BusinessException(FileSharingErrorCode.FOLDER_NOT_FOUND))
+                    .given(folderQueryService).deleteFolder(FOLDER_ID, USER_ID);
+
+            assertThatThrownBy(() -> controller.deleteFolder(FOLDER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(FileSharingErrorCode.FOLDER_NOT_FOUND));
         }
     }
 }

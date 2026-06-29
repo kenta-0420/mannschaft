@@ -11,6 +11,7 @@ import com.mannschaft.app.filesharing.entity.SharedFolderEntity;
 import com.mannschaft.app.filesharing.repository.SharedFileRepository;
 import com.mannschaft.app.filesharing.repository.SharedFolderRepository;
 import com.mannschaft.app.filesharing.service.FolderScopeAccessGuard;
+import com.mannschaft.app.filesharing.service.SharedFileQuotaService;
 import com.mannschaft.app.filesharing.service.SharedFolderQueryService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -31,6 +32,8 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -57,6 +60,9 @@ class SharedFolderQueryServiceTest {
 
     @Mock
     private NameResolverService nameResolverService;
+
+    @Mock
+    private SharedFileQuotaService sharedFileQuotaService;
 
     @InjectMocks
     private SharedFolderQueryService service;
@@ -420,6 +426,183 @@ class SharedFolderQueryServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(FileSharingErrorCode.FOLDER_NOT_FOUND));
+        }
+    }
+
+    /**
+     * フォルダ削除（{@code DELETE /api/v1/files/folders/{id}}）の核心。
+     *
+     * <p>① スコープ別の<b>削除認可</b>（PERSONAL=本人のみ / TEAM・ORG=管理者(ADMIN/DEPUTY_ADMIN)限定・
+     * 一般 MEMBER は 403 / 大会=編集認可）、② 部分木（自身＋サブフォルダ）の再帰カスケード soft-delete、
+     * ③ ファイルごとの {@link SharedFileQuotaService#recordFileDeletion} による容量戻し、を検証する。</p>
+     */
+    @Nested
+    @DisplayName("deleteFolder — 認可・カスケード・容量戻し")
+    class DeleteFolder {
+
+        private SharedFolderEntity sub(Long id, Long parentId) {
+            return SharedFolderEntity.builder()
+                    .id(id).scopeType(FileScopeType.PERSONAL).userId(USER_ID)
+                    .parentId(parentId).name("サブ" + id).createdBy(USER_ID).build();
+        }
+
+        private SharedFileEntity file(Long id, Long folderId, long size) {
+            return SharedFileEntity.builder()
+                    .id(id).folderId(folderId).name("f" + id).fileKey("k" + id).fileSize(size)
+                    .contentType("application/octet-stream").createdBy(USER_ID).currentVersion(1).build();
+        }
+
+        @Test
+        @DisplayName("AC-FD-1: 本人の個人フォルダ(ファイル2＋サブ1)を削除→全 softDelete・recordFileDeletion がファイル数分")
+        void ACFD1_本人個人フォルダ削除_カスケードと容量戻し() {
+            SharedFolderEntity root = personalFolder(USER_ID);
+            SharedFolderEntity subFolder = sub(101L, FOLDER_ID);
+            SharedFileEntity f1 = file(201L, FOLDER_ID, 10L);
+            SharedFileEntity f2 = file(202L, FOLDER_ID, 20L);
+
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(root));
+            given(folderRepository.findByParentIdOrderByNameAsc(FOLDER_ID)).willReturn(List.of(subFolder));
+            given(folderRepository.findByParentIdOrderByNameAsc(101L)).willReturn(List.of());
+            given(fileRepository.findByFolderIdOrderByNameAsc(FOLDER_ID)).willReturn(List.of(f1, f2));
+            given(fileRepository.findByFolderIdOrderByNameAsc(101L)).willReturn(List.of());
+
+            service.deleteFolder(FOLDER_ID, USER_ID);
+
+            // 全フォルダ・全ファイルが softDelete されている
+            assertThat(root.getDeletedAt()).isNotNull();
+            assertThat(subFolder.getDeletedAt()).isNotNull();
+            assertThat(f1.getDeletedAt()).isNotNull();
+            assertThat(f2.getDeletedAt()).isNotNull();
+            verify(folderRepository, times(2)).save(any(SharedFolderEntity.class)); // root + sub
+            verify(fileRepository, times(2)).save(any(SharedFileEntity.class));     // f1 + f2
+            // 容量戻しはファイル数分・正しい fileSize で（root スコープ解決は recordFileDeletion 内部）
+            verify(sharedFileQuotaService).recordFileDeletion(root, 201L, 10L, USER_ID);
+            verify(sharedFileQuotaService).recordFileDeletion(root, 202L, 20L, USER_ID);
+            verify(sharedFileQuotaService, times(2))
+                    .recordFileDeletion(any(SharedFolderEntity.class), anyLong(), anyLong(), anyLong());
+        }
+
+        @Test
+        @DisplayName("AC-FD-3: 他人の個人フォルダは 404（softDelete も recordFileDeletion も呼ばない）")
+        void ACFD3_他人個人_404() {
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(personalFolder(OTHER_USER_ID)));
+
+            assertThatThrownBy(() -> service.deleteFolder(FOLDER_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(FileSharingErrorCode.FOLDER_NOT_FOUND));
+
+            verify(folderRepository, never()).save(any());
+            verify(fileRepository, never()).save(any());
+            verify(sharedFileQuotaService, never())
+                    .recordFileDeletion(any(), anyLong(), anyLong(), anyLong());
+        }
+
+        @Test
+        @DisplayName("AC-FD-4: 非所属チームフォルダは 403（checkAdminOrAbove が COMMON_002・何も削除しない）")
+        void ACFD4_非所属チーム_403() {
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(teamFolder()));
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+
+            assertThatThrownBy(() -> service.deleteFolder(FOLDER_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+
+            verify(folderRepository, never()).save(any());
+            verify(fileRepository, never()).save(any());
+            verify(sharedFileQuotaService, never())
+                    .recordFileDeletion(any(), anyLong(), anyLong(), anyLong());
+        }
+
+        @Test
+        @DisplayName("AC-FD-4b: 所属していても一般 MEMBER は TEAM フォルダを削除できず 403（管理者限定・何も削除しない）")
+        void ACFD4b_一般MEMBER_403() {
+            // 一般メンバーは isMember=true でも isAdminOrAbove=false → checkAdminOrAbove が COMMON_002。
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(teamFolder()));
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+
+            assertThatThrownBy(() -> service.deleteFolder(FOLDER_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+
+            verify(folderRepository, never()).save(any());
+            verify(fileRepository, never()).save(any());
+            verify(sharedFileQuotaService, never())
+                    .recordFileDeletion(any(), anyLong(), anyLong(), anyLong());
+        }
+
+        @Test
+        @DisplayName("AC-FD-5: 存在しない folderId は 404（何も削除しない）")
+        void ACFD5_不存在_404() {
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.deleteFolder(FOLDER_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(FileSharingErrorCode.FOLDER_NOT_FOUND));
+
+            verify(folderRepository, never()).save(any());
+            verify(sharedFileQuotaService, never())
+                    .recordFileDeletion(any(), anyLong(), anyLong(), anyLong());
+        }
+
+        @Test
+        @DisplayName("AC-FD-6: サブフォルダ配下のファイルも再帰的に softDelete・recordFileDeletion される")
+        void ACFD6_再帰カスケード() {
+            SharedFolderEntity root = personalFolder(USER_ID);
+            SharedFolderEntity subFolder = sub(101L, FOLDER_ID);
+            SharedFileEntity nested = file(301L, 101L, 30L); // サブフォルダ配下のファイル
+
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(root));
+            given(folderRepository.findByParentIdOrderByNameAsc(FOLDER_ID)).willReturn(List.of(subFolder));
+            given(folderRepository.findByParentIdOrderByNameAsc(101L)).willReturn(List.of());
+            given(fileRepository.findByFolderIdOrderByNameAsc(FOLDER_ID)).willReturn(List.of());
+            given(fileRepository.findByFolderIdOrderByNameAsc(101L)).willReturn(List.of(nested));
+
+            service.deleteFolder(FOLDER_ID, USER_ID);
+
+            assertThat(nested.getDeletedAt()).isNotNull();
+            assertThat(subFolder.getDeletedAt()).isNotNull();
+            // 容量戻しはサブフォルダ自身のスコープで解決される（recordFileDeletion(subFolder, ...)）
+            verify(sharedFileQuotaService).recordFileDeletion(subFolder, 301L, 30L, USER_ID);
+        }
+
+        @Test
+        @DisplayName("AC-FD-8: TEAM の ADMIN は checkAdminOrAbove を通過して 204 削除可（checkMembership は使わない）")
+        void ACFD8_ADMIN_削除可() {
+            SharedFolderEntity root = teamFolder();
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(root));
+            given(folderRepository.findByParentIdOrderByNameAsc(FOLDER_ID)).willReturn(List.of());
+            given(fileRepository.findByFolderIdOrderByNameAsc(FOLDER_ID)).willReturn(List.of());
+            // ADMIN は checkAdminOrAbove が素通り（void・doNothing）→ 削除が進む。
+
+            service.deleteFolder(FOLDER_ID, USER_ID);
+
+            assertThat(root.getDeletedAt()).isNotNull();
+            // 削除権限の関門は checkAdminOrAbove（メンバーシップ判定では弱すぎる）。
+            verify(accessControlService).checkAdminOrAbove(USER_ID, TEAM_ID, "TEAM");
+            verify(accessControlService, never()).checkMembership(anyLong(), anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("AC-FD-8: ORGANIZATION の DEPUTY_ADMIN(副長) も checkAdminOrAbove を通過して 204 削除可")
+        void ACFD8_DEPUTY_ADMIN_削除可() {
+            // checkAdminOrAbove は内部 ADMIN_ROLES={ADMIN,DEPUTY_ADMIN} で副長も許可する（実コードで確認済み）。
+            // 副長許可は「checkAdminOrAbove が例外を投げない」ことで表現される（void・doNothing）。
+            SharedFolderEntity root = orgFolder();
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(root));
+            given(folderRepository.findByParentIdOrderByNameAsc(FOLDER_ID)).willReturn(List.of());
+            given(fileRepository.findByFolderIdOrderByNameAsc(FOLDER_ID)).willReturn(List.of());
+
+            service.deleteFolder(FOLDER_ID, USER_ID);
+
+            assertThat(root.getDeletedAt()).isNotNull();
+            verify(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+            verify(accessControlService, never()).checkMembership(anyLong(), anyLong(), any());
         }
     }
 }

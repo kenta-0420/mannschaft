@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -78,5 +79,20 @@ public class SharedFolderController {
         FolderDetailResponse.FolderSummary response =
                 folderQueryService.createFolder(request, request.getScopeId(), SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
+
+    /**
+     * フォルダをカスケード論理削除する（配下のファイル・サブフォルダごと削除し、容量を戻す）。
+     *
+     * <p>従来 DELETE マッピングが欠落しており、FE の {@code DELETE /api/v1/files/folders/{id}} が
+     * 非存在ルート（NoResourceFound）→ catch-all で 500 になっていた根治。認可・カスケード・容量戻しは
+     * {@link SharedFolderQueryService#deleteFolder} が担う。成功時は本文なし 204 を返す。</p>
+     */
+    @DeleteMapping("/{folderId}")
+    @Operation(summary = "フォルダ削除（カスケード）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
+    public ResponseEntity<Void> deleteFolder(@PathVariable Long folderId) {
+        folderQueryService.deleteFolder(folderId, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.noContent().build();
     }
 }
