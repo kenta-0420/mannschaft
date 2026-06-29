@@ -170,14 +170,14 @@ public class AuthService {
                 } else {
                     eventPublisher.publish(new LoginFailedEvent(
                             req.getEmail(), ipAddress, userAgent, "PENDING_DELETION_WRONG_PW"));
-                    throw new BusinessException(AuthErrorCode.AUTH_009);
+                    throw new BusinessException(AuthErrorCode.AUTH_001);
                 }
             } else {
                 // タイミング攻撃対策: ダミーのbcrypt検証を実行して処理時間を合わせる
                 passwordEncoder.matches(req.getPassword(), "$2a$12$000000000000000000000uGHJKLMNOPQRSTUVWXYZ012345678901");
                 eventPublisher.publish(new LoginFailedEvent(
                         req.getEmail(), ipAddress, userAgent, "USER_NOT_FOUND"));
-                throw new BusinessException(AuthErrorCode.AUTH_009);
+                throw new BusinessException(AuthErrorCode.AUTH_001);
             }
         }
 
@@ -213,7 +213,7 @@ public class AuthService {
         if (!passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
             // ログイン失敗回数をインクリメント
             handleLoginFailure(user.getId(), req.getEmail(), ipAddress, userAgent);
-            throw new BusinessException(AuthErrorCode.AUTH_009);
+            throw new BusinessException(AuthErrorCode.AUTH_001);
         }
 
         // パスワード検証成功 → 失敗カウンタをリセット（Valkey障害時はサイレント）

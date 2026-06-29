@@ -206,8 +206,8 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: パスワード不一致でAUTH_009例外")
-        void login_パスワード不一致_AUTH009例外() {
+        @DisplayName("異常系: パスワード不一致でAUTH_001例外")
+        void login_パスワード不一致_AUTH001例外() {
             // Given
             LoginRequest req = createLoginRequest();
             UserEntity user = createActiveUser();
@@ -221,7 +221,7 @@ class AuthServiceTest {
             assertThatThrownBy(() -> authService.login(req, TEST_IP, TEST_USER_AGENT))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("AUTH_009"));
+                            .isEqualTo("AUTH_001"));
         }
 
         @Test
@@ -284,8 +284,8 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: ユーザー不在でAUTH_009例外（タイミング攻撃対策あり）")
-        void login_ユーザー不在_AUTH009例外() {
+        @DisplayName("異常系: ユーザー不在でAUTH_001例外（タイミング攻撃対策あり）")
+        void login_ユーザー不在_AUTH001例外() {
             // Given
             LoginRequest req = createLoginRequest();
             given(userRepository.findByEmail(TEST_EMAIL)).willReturn(Optional.empty());
@@ -296,7 +296,7 @@ class AuthServiceTest {
             assertThatThrownBy(() -> authService.login(req, TEST_IP, TEST_USER_AGENT))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("AUTH_009"));
+                            .isEqualTo("AUTH_001"));
             verify(eventPublisher).publish(any());
         }
 
@@ -359,7 +359,7 @@ class AuthServiceTest {
             assertThatThrownBy(() -> authService.login(req, TEST_IP, TEST_USER_AGENT))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("AUTH_009"));
+                            .isEqualTo("AUTH_001"));
 
             // アカウントロックキーが設定されることを確認
             verify(valueOperations).set(contains("account_lock"), eq("1"), anyLong(), any());
