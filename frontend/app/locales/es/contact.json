@@ -1,0 +1,153 @@
+{
+  "contact_invite": {
+    "page_title": "Gestión de URL de invitación",
+    "page_description": "Emite y gestiona URLs de invitación para agregar contactos. Quien reciba la URL podrá agregarte como contacto.",
+    "section_title": "URLs de invitación",
+    "create_button": "Emitir nueva URL",
+    "form": {
+      "label": "Etiqueta (opcional)",
+      "label_placeholder": "Ej: Para redes sociales",
+      "max_uses": "Número de usos",
+      "expires_in": "Vencimiento",
+      "submit": "Emitir",
+      "cancel": "Cancelar"
+    },
+    "max_uses_options": {
+      "once": "1 vez",
+      "five": "5 veces",
+      "ten": "10 veces",
+      "fifty": "50 veces",
+      "unlimited": "Ilimitado"
+    },
+    "expires_options": {
+      "one_day": "1 día",
+      "seven_days": "7 días",
+      "thirty_days": "30 días",
+      "never": "Sin vencimiento"
+    },
+    "list": {
+      "empty": "No hay URLs de invitación emitidas",
+      "no_label": "(Sin etiqueta)",
+      "revoke_tooltip": "Revocar",
+      "uses_unit": " uso(s)",
+      "qr_alt": "Código QR",
+      "qr_hint": "Escanea el código QR para agregar"
+    },
+    "expiry": {
+      "never": "Sin vencimiento",
+      "expired": "Vencida",
+      "until": "Hasta el {date}"
+    },
+    "messages": {
+      "create_success": "URL de invitación emitida correctamente",
+      "create_error": "Error al emitir la URL",
+      "revoke_success": "URL de invitación revocada",
+      "revoke_error": "Error al revocar la URL",
+      "copy_success": "URL copiada",
+      "copy_error": "Error al copiar la URL"
+    }
+  },
+  "contact_invite_guide": {
+    "title": "Cómo usar la gestión de URLs de invitación",
+    "description": "Con las URLs de invitación, basta con compartir un enlace o un código QR para que otros puedan agregarte como contacto. También puedes usarlo en tu perfil de redes sociales o como tarjeta digital.",
+    "what": {
+      "title": "¿Qué es una URL de invitación?",
+      "body": "Es un enlace dedicado para que otros te agreguen como contacto. Al compartir la URL, la otra persona puede agregarte con un solo toque, sin necesidad de que compartas tu ID o correo electrónico directamente."
+    },
+    "create": {
+      "title": "Emitir una URL",
+      "body": "Toca «Emitir nueva URL» en la esquina superior derecha para crear una URL según tu necesidad.",
+      "step1": "Toca «Emitir nueva URL» en la esquina superior derecha.",
+      "step2": "Elige una etiqueta (nota opcional), el número de usos permitidos y el período de vencimiento. Establecer límites ayuda a prevenir el mal uso.",
+      "step3": "Toca «Emitir» y la nueva URL de invitación y el código QR aparecerán en la lista."
+    },
+    "share": {
+      "title": "Compartir con otros",
+      "body": "Puedes compartir la URL copiándola y enviándola, o haciendo que alguien escanee el código QR.",
+      "step1": "Toca el botón «Copiar» junto a la URL.",
+      "step2": "Pégala en un mensaje, correo electrónico o perfil de redes sociales para compartirla.",
+      "step3": "En persona, muestra el código QR y pide que lo escaneen con su cámara para agregarte de inmediato."
+    },
+    "manage": {
+      "title": "Ver uso y revocar",
+      "body": "Todas las URLs emitidas aparecen en la lista para gestión fácil. Cada entrada muestra el número de usos, el límite y la fecha de vencimiento.",
+      "note": "Puedes revocar cualquier URL en cualquier momento tocando el icono de papelera. Una vez revocada, nadie podrá usarla para agregarte como contacto."
+    }
+  },
+  "contact_privacy": {
+    "title": "連絡先プライバシー設定",
+    "description": "連絡先追加・DM・オンライン状態に関するプライバシーを設定します",
+    "handle_searchable": {
+      "label": "{'@'}ハンドルで検索を許可",
+      "help": "自分の{'@'}ハンドルを知っている人が検索できます"
+    },
+    "contact_approval": {
+      "label": "連絡先追加に承認が必要",
+      "help": "OFFにすると申請なしで即時追加されます（推奨: ON）"
+    },
+    "dm_section": {
+      "label": "DMを受信できる相手"
+    },
+    "dm_option": {
+      "anyone": "誰でも",
+      "team_members_only": "チームメンバーのみ",
+      "contacts_only": "連絡先のみ"
+    },
+    "online_section": {
+      "label": "オンライン状態の公開範囲",
+      "help": "最終オンライン時刻や現在のオンライン状態を誰に見せるかを設定します"
+    },
+    "online_option": {
+      "nobody": "誰にも見せない",
+      "contacts_only": "連絡先のみ",
+      "everyone": "全員"
+    },
+    "save": "保存",
+    "saved": "プライバシー設定を保存しました",
+    "save_failed": "保存に失敗しました",
+    "guide": {
+      "page_title": "連絡先プライバシー設定の使い方",
+      "description": "ここでは「誰があなたを見つけられるか」「誰からDMを受け取るか」「オンライン状態を誰に見せるか」をまとめて設定できます。初めての方は、上から順に設定すれば大丈夫です。迷ったら、まずは推奨設定（承認ON・公開範囲はせまめ）のままにしておきましょう。",
+      "search": {
+        "title": "{'@'}ハンドルで検索を許可",
+        "body": "あなたの{'@'}ハンドル（ユーザー名）を知っている人が、検索であなたを見つけられるかどうかの設定です。OFFにすると、{'@'}ハンドルを知っていても検索結果に出なくなります。",
+        "steps": {
+          "step1": "「{'@'}ハンドルで検索を許可」のスイッチを見つける",
+          "step2": "見つけてもらってよければON、検索されたくなければOFFにする",
+          "step3": "最後に「保存」を押す"
+        }
+      },
+      "approval": {
+        "title": "連絡先追加の承認",
+        "body": "誰かがあなたを連絡先に追加しようとしたとき、あなたの承認を必要とするかどうかの設定です。ONにすると、まず申請が届き、あなたが許可した相手だけが連絡先になります（推奨）。OFFにすると、申請なしでいきなり連絡先に追加されます。",
+        "steps": {
+          "step1": "「連絡先追加に承認が必要」のスイッチを見つける",
+          "step2": "知らない人に勝手に追加されたくなければON（推奨）のまま、保存する"
+        }
+      },
+      "dm": {
+        "title": "DMを受信できる相手",
+        "body": "ダイレクトメッセージ（DM）を、誰から受け取るかを選びます。3つから1つを選んでください。",
+        "options_intro": "選べる相手は次の3つです。",
+        "anyone": "誰でも … アプリ内の誰からでもDMが届きます",
+        "team_members_only": "チームメンバーのみ … 同じチームの人だけがDMを送れます",
+        "contacts_only": "連絡先のみ … あなたの連絡先にいる人だけがDMを送れます（いちばんせまい範囲）"
+      },
+      "online": {
+        "title": "オンライン状態の公開範囲",
+        "body": "「いまオンライン」「最後にオンラインだった時刻」を誰に見せるかを選びます。見られたくない場合は「誰にも見せない」を選びましょう。",
+        "nobody": "誰にも見せない … オンライン状態を一切公開しません",
+        "contacts_only": "連絡先のみ … 連絡先にいる人だけに見せます",
+        "everyone": "全員 … アプリ内の全員に見せます"
+      },
+      "save": {
+        "title": "設定の保存",
+        "body": "設定を変えたら、必ず最後に保存してください。保存しないと変更は反映されません。",
+        "steps": {
+          "step1": "上の項目を好きなように設定する",
+          "step2": "ページ下部の「保存」ボタンを押す"
+        }
+      }
+    }
+  }
+}

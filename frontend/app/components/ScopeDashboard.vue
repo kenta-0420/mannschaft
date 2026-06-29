@@ -21,7 +21,7 @@ const props = withDefaults(
   },
 )
 
-const { sortedWidgets, visibleWidgets, isVisible, toggleWidget, reorder } = useDashboardWidgets(
+const { sortedWidgets, visibleWidgets, isVisible, toggleWidget, reorder, ready } = useDashboardWidgets(
   props.scopeType,
   props.scopeId,
   props.viewerRole,
@@ -216,7 +216,7 @@ function onDragEnd() {
     <TransitionGroup
       tag="div"
       class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
-      move-class="transition-all duration-[350ms] ease-in-out"
+      :move-class="ready ? 'transition-all duration-[350ms] ease-in-out' : ''"
     >
       <!-- 空状態 -->
       <div
