@@ -153,19 +153,18 @@ watch(activeTab, (newTab) => {
 
 <template>
   <div>
-    <PageHeader :title="t('wallet.title')" :back="false" help @help="showGuide = true">
-      <template #actions>
-        <NuxtLink
-          to="/wallet/settings"
-          class="inline-flex h-9 w-9 items-center justify-center rounded-full text-surface-600 transition-colors hover:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-700"
-          :aria-label="t('wallet.actions.settings')"
-        >
-          <i class="pi pi-cog text-lg" aria-hidden="true" />
-        </NuxtLink>
-      </template>
-    </PageHeader>
-
     <div class="mx-auto max-w-[720px] px-4 pb-8">
+      <PageHeader :title="t('wallet.title')" :back="false" help @help="showGuide = true">
+        <template #actions>
+          <NuxtLink
+            to="/wallet/settings"
+            class="inline-flex h-9 w-9 items-center justify-center rounded-full text-surface-600 transition-colors hover:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-700"
+            :aria-label="t('wallet.actions.settings')"
+          >
+            <i class="pi pi-cog text-lg" aria-hidden="true" />
+          </NuxtLink>
+        </template>
+      </PageHeader>
       <div
         class="mb-4 flex gap-1 border-b border-surface-200 dark:border-surface-700"
         role="tablist"
