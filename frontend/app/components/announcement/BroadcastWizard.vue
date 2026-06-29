@@ -29,6 +29,9 @@ const { broadcast, broadcasting } = useAnnouncementBroadcast(props.scopeType, pr
 
 const currentStep = ref<WizardStep>(1)
 
+/** 使い方ガイドの展開状態（②インライン折りたたみ式） */
+const showHelp = ref(false)
+
 const initialFormState: WizardFormState = {
   step: 1,
   targetRole: 'MEMBERS_AND_ABOVE',
@@ -178,6 +181,28 @@ watch(
     @update:visible="handleClose"
   >
     <div class="py-2">
+      <!-- 使い方トグル（本文先頭・右寄せ・全ステップ共通） -->
+      <div class="mb-2 flex justify-end">
+        <Button
+          :label="$t('announcement.broadcast_guide.toggle')"
+          :icon="showHelp ? 'pi pi-chevron-up' : 'pi pi-question-circle'"
+          text
+          size="small"
+          :aria-expanded="showHelp"
+          data-testid="broadcast-guide-toggle"
+          @click="showHelp = !showHelp"
+        />
+      </div>
+
+      <!-- 使い方ガイド展開領域（同一モーダル内・重ねない） -->
+      <div
+        v-if="showHelp"
+        class="mb-4 rounded-lg border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800"
+        data-testid="broadcast-guide-panel"
+      >
+        <BroadcastGuideContent />
+      </div>
+
       <BroadcastStep1Audience
         v-if="currentStep === 1"
         v-model="formState"
