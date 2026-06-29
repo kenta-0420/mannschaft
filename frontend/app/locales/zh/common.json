@@ -1480,7 +1480,28 @@
     "addRecord": "添加记录",
     "participantCount": "{count} 名参与者",
     "noRecords": "暂无活动记录",
-    "loadError": "获取活动记录失败"
+    "loadError": "获取活动记录失败",
+    "create": {
+      "dialogTitle": "添加活动记录",
+      "templateLabel": "模板",
+      "templatePlaceholder": "选择模板",
+      "noTemplatesTitle": "暂无模板",
+      "noTemplatesBody": "创建活动记录前，请先创建模板。",
+      "goToTemplates": "创建模板",
+      "titleLabel": "标题",
+      "titlePlaceholder": "活动标题",
+      "dateLabel": "活动日期",
+      "descriptionLabel": "说明（可选）",
+      "visibilityLabel": "公开范围",
+      "visibilityPublic": "公开",
+      "visibilityMembersOnly": "仅成员",
+      "requiredFieldError": "请填写必填项",
+      "saveSuccess": "已添加活动记录",
+      "saveError": "添加活动记录失败",
+      "submit": "添加",
+      "scopeResolveError": "无法确定目标",
+      "templatesLoadError": "获取模板失败"
+    }
   },
   "dashboard": {
     "team_reservation_link": "预约管理"

@@ -1480,7 +1480,28 @@
     "addRecord": "Add Record",
     "participantCount": "{count} participants",
     "noRecords": "No activity records",
-    "loadError": "Failed to load activity records"
+    "loadError": "Failed to load activity records",
+    "create": {
+      "dialogTitle": "Add Activity Record",
+      "templateLabel": "Template",
+      "templatePlaceholder": "Select a template",
+      "noTemplatesTitle": "No templates yet",
+      "noTemplatesBody": "To create an activity record, please create a template first.",
+      "goToTemplates": "Create Template",
+      "titleLabel": "Title",
+      "titlePlaceholder": "Activity title",
+      "dateLabel": "Activity Date",
+      "descriptionLabel": "Description (optional)",
+      "visibilityLabel": "Visibility",
+      "visibilityPublic": "Public",
+      "visibilityMembersOnly": "Members only",
+      "requiredFieldError": "Please fill in the required fields",
+      "saveSuccess": "Activity record added",
+      "saveError": "Failed to add activity record",
+      "submit": "Add",
+      "scopeResolveError": "Failed to identify the target",
+      "templatesLoadError": "Failed to load templates"
+    }
   },
   "dashboard": {
     "team_reservation_link": "Reservations"

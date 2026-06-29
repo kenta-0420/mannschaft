@@ -3,6 +3,7 @@ import type {
   ActivityTemplate,
   ActivityComment,
   ActivityStats,
+  CreateActivityRequestBody,
 } from '~/types/activity'
 
 export function useActivityApi() {
@@ -28,8 +29,23 @@ export function useActivityApi() {
     return api<{ data: ActivityRecordResponse }>(`/api/v1/activities/${id}`)
   }
 
-  async function createActivity(body: Record<string, unknown>) {
-    return api<{ data: ActivityRecordResponse }>('/api/v1/activities', { method: 'POST', body })
+  /**
+   * 活動記録を作成する。
+   *
+   * scope_type / scope_id は **クエリパラメータ**で送る（BE {@code ActivityController.createActivity} の
+   * {@code @RequestParam("scope_type")} / {@code @RequestParam("scope_id")} に一致）。scope_id は数値 DB id。
+   * body は {@code CreateActivityRequest}（templateId / title / activityDate 等）。
+   */
+  async function createActivity(
+    scopeType: 'TEAM' | 'ORGANIZATION',
+    scopeId: number,
+    body: CreateActivityRequestBody,
+  ) {
+    const qs = buildQuery({ scope_type: scopeType, scope_id: scopeId })
+    return api<{ data: ActivityRecordResponse }>(`/api/v1/activities?${qs}`, {
+      method: 'POST',
+      body,
+    })
   }
 
   async function updateActivity(id: number, body: Record<string, unknown>) {
