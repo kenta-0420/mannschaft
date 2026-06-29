@@ -118,6 +118,37 @@
     "badge": "Cierre de emergencia"
   },
   "reservation": {
+    "guide": {
+      "title": "Cómo usar Mis reservas",
+      "description": "En esta página puede ver la lista de las franjas que ha reservado, junto con el estado actual de cada una.",
+      "overview": {
+        "title": "Qué es Mis reservas",
+        "body": "Esta página muestra las franjas que ha reservado. De un vistazo puede saber si cada una está aprobada y para cuándo está programada.",
+        "steps": {
+          "step1": "Al abrir la página, sus reservas se cargan automáticamente.",
+          "step2": "Cada tarjeta muestra el nombre de la línea, la fecha y la hora de inicio y fin."
+        }
+      },
+      "status": {
+        "title": "Cómo leer el estado",
+        "body": "La insignia de color de cada tarjeta de reserva indica el estado actual de esa reserva.",
+        "items": {
+          "item1": "Amarillo «Pendiente» … A la espera de aprobación.",
+          "item2": "Verde «Confirmada» … La reserva está confirmada.",
+          "item3": "Azul «Completada» … La franja ya se ha utilizado.",
+          "item4": "Rojo «Cancelada» … La reserva fue cancelada.",
+          "item5": "Gris «No presentado» … No se utilizó la franja el día reservado."
+        }
+      },
+      "empty": {
+        "title": "Cuando no se muestran reservas",
+        "body": "Qué hacer cuando no tiene ninguna reserva o cuando falla la carga.",
+        "steps": {
+          "step1": "Si aparece «No hay reservas», simplemente aún no tiene ninguna reserva.",
+          "step2": "Si aparece «Error al cargar las reservas», se trata de un error de conexión. Vuelva a cargar la página."
+        }
+      }
+    },
     "status": {
       "PENDING": "Pendiente",
       "CONFIRMED": "Confirmado",

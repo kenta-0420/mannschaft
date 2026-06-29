@@ -118,6 +118,37 @@
     "badge": "Emergency closure"
   },
   "reservation": {
+    "guide": {
+      "title": "How to use My Reservations",
+      "description": "On this page you can see a list of the slots you have booked, along with the current status of each one.",
+      "overview": {
+        "title": "What is My Reservations",
+        "body": "This page lists the slots you have booked. You can tell at a glance whether each one is approved and when it is scheduled.",
+        "steps": {
+          "step1": "When you open the page, your reservations load automatically.",
+          "step2": "Each card shows the line name, date, and start–end time."
+        }
+      },
+      "status": {
+        "title": "Reading the status",
+        "body": "The colored badge on each reservation card shows the current status of that reservation.",
+        "items": {
+          "item1": "Yellow \"Pending\" … Waiting for approval.",
+          "item2": "Green \"Confirmed\" … The reservation is confirmed.",
+          "item3": "Blue \"Completed\" … The slot has been used.",
+          "item4": "Red \"Cancelled\" … The reservation was cancelled.",
+          "item5": "Gray \"No-show\" … The slot was not used on the reserved day."
+        }
+      },
+      "empty": {
+        "title": "When no reservations are shown",
+        "body": "What to do when you have no reservations, or when loading fails.",
+        "steps": {
+          "step1": "If \"No reservations\" is shown, you simply have no reservations yet.",
+          "step2": "If \"Failed to load reservations\" is shown, it is a connection error. Please reload the page."
+        }
+      }
+    },
     "status": {
       "PENDING": "Pending",
       "CONFIRMED": "Confirmed",
