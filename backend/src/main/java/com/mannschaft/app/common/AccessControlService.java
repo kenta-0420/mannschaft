@@ -487,6 +487,43 @@ public class AccessControlService {
         return (int) membershipRepository.countActiveDistinctUsersByScope(ScopeType.valueOf(scopeType), scopeId);
     }
 
+    /**
+     * ユーザーが所属する指定スコープ種別の scopeId 群を「{@code user_roles} ∪ {@code memberships}」の
+     * 和集合で列挙する（{@link com.mannschaft.app.role.controller.MeController} の所属列挙ロジックを
+     * 共通窓口として集約したもの）。
+     *
+     * <p>F00.5 で MEMBER / SUPPORTER 所属が {@code user_roles} から {@code memberships} へ移管されたため、
+     * 所属の列挙は両系統の和集合を取る必要がある（{@code memberships} 専属の所属が欠落する退行を防ぐ）。
+     * 本メソッドは所属一覧 API（MeController）と同じ 2 系統を 1 箇所で UNION し、ストレージ使用量参照
+     * （{@code GET /api/v1/me/storage/usage}）など「本人の所属スコープを列挙する」用途で再利用する。</p>
+     *
+     * <p>列挙順は安定させる（{@code user_roles} 由来を先、{@code memberships} 由来を後に追加した
+     * {@link LinkedHashSet} の順）。本メソッドは両 Repository を<b>読むのみ・書かない</b>。</p>
+     *
+     * @param userId    操作ユーザー
+     * @param scopeType スコープ種別（{@code "TEAM"} または {@code "ORGANIZATION"}）
+     * @return 所属する scopeId の集合（重複なし・挿入順保持）。所属が無ければ空集合
+     * @throws IllegalArgumentException scopeType が TEAM / ORGANIZATION 以外の場合
+     */
+    public Set<Long> findAffiliatedScopeIds(Long userId, String scopeType) {
+        Set<Long> scopeIds = new java.util.LinkedHashSet<>();
+        if ("TEAM".equals(scopeType)) {
+            for (UserRoleEntity ur : userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId)) {
+                scopeIds.add(ur.getTeamId());
+            }
+        } else if ("ORGANIZATION".equals(scopeType)) {
+            for (UserRoleEntity ur : userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId)) {
+                scopeIds.add(ur.getOrganizationId());
+            }
+        } else {
+            throw new IllegalArgumentException(
+                    "findAffiliatedScopeIds は TEAM / ORGANIZATION スコープ専用です: " + scopeType);
+        }
+        // memberships 由来の所属を和集合に追加する（既存の Service 窓口を再利用）。
+        scopeIds.addAll(findActiveMembershipJoinedAtByScope(userId, scopeType).keySet());
+        return scopeIds;
+    }
+
     // ========================================
     // ヘルパー（private）
     // ========================================

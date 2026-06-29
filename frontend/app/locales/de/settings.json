@@ -48,7 +48,8 @@
     "inbox": "Posteingang",
     "market": "Markt",
     "jobs": "Stellenangebote",
-    "matching": "Matching"
+    "matching": "Matching",
+    "myFiles": "Meine Dateien"
   },
   "settings": {
     "navigation": {
@@ -415,6 +416,18 @@
       "channel_push": "Push",
       "locked_tag": "Dringend",
       "locked_desc": "Diese Benachrichtigung kann nicht deaktiviert werden"
+    },
+    "storage": {
+      "page_title": "Speicher",
+      "group_personal": "Persönlich",
+      "group_team": "Teams",
+      "group_org": "Organisationen",
+      "scope_personal": "Persönlicher Speicher",
+      "file_count": "{count} Dateien",
+      "limit": "Limit",
+      "unlimited": "Unbegrenzt",
+      "error_fetch": "Speichernutzung konnte nicht geladen werden",
+      "empty": "Keine Speicherinformationen verfügbar"
     }
   }
 }

@@ -185,6 +185,7 @@ onMounted(async () => {
             <TabPanel :value="0">
               <div class="mt-4">
                 <ScopeDashboard
+                  :key="teamSlug"
                   scope-type="team"
                   :scope-id="teamSlug"
                   :scope-name="displayName"

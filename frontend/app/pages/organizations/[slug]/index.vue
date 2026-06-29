@@ -152,6 +152,7 @@ onMounted(async () => {
             <TabPanel :value="0">
               <div class="mt-4">
                 <ScopeDashboard
+                  :key="orgSlug"
                   scope-type="organization"
                   :scope-id="orgSlug"
                   :scope-name="org.basicInfo?.nickname1 || org.basicInfo?.name || ''"

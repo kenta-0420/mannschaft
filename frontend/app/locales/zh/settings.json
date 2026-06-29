@@ -48,7 +48,8 @@
     "inbox": "收件箱",
     "market": "市集",
     "jobs": "招聘",
-    "matching": "配对"
+    "matching": "配对",
+    "myFiles": "我的文件"
   },
   "settings": {
     "navigation": {
@@ -415,6 +416,18 @@
       "channel_push": "推送",
       "locked_tag": "紧急",
       "locked_desc": "此通知无法关闭"
+    },
+    "storage": {
+      "page_title": "存储",
+      "group_personal": "个人",
+      "group_team": "团队",
+      "group_org": "组织",
+      "scope_personal": "个人存储",
+      "file_count": "{count}个文件",
+      "limit": "上限",
+      "unlimited": "无限制",
+      "error_fetch": "获取存储使用量失败",
+      "empty": "没有可显示的存储信息"
     }
   }
 }
