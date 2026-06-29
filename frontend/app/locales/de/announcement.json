@@ -68,7 +68,9 @@
     "template_name_label": "Vorlagenname",
     "template_set_default": "Als Standard festlegen",
     "template_create": "Als Vorlage speichern",
+    "template_name_placeholder": "Vorlagennamen eingeben",
     "template_save_success": "Vorlage gespeichert",
+    "template_save_failed": "Vorlage konnte nicht gespeichert werden",
     "template_delete_confirm": "Sind Sie sicher, dass Sie diese Vorlage löschen möchten?",
     "incident": {
       "dismiss": "Schließen"

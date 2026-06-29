@@ -68,7 +68,9 @@
     "template_name_label": "テンプレート名",
     "template_set_default": "デフォルトとして設定",
     "template_create": "テンプレートとして保存",
+    "template_name_placeholder": "テンプレート名を入力",
     "template_save_success": "テンプレートを保存しました",
+    "template_save_failed": "テンプレートの保存に失敗しました",
     "template_delete_confirm": "このテンプレートを削除しますか？",
     "incident": {
       "dismiss": "閉じる"

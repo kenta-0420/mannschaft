@@ -68,7 +68,9 @@
     "template_name_label": "模板名称",
     "template_set_default": "设为默认",
     "template_create": "保存为模板",
+    "template_name_placeholder": "输入模板名称",
     "template_save_success": "模板已保存",
+    "template_save_failed": "保存模板失败",
     "template_delete_confirm": "确定要删除此模板吗？",
     "incident": {
       "dismiss": "关闭"
