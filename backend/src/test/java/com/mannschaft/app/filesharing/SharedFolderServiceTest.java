@@ -56,7 +56,7 @@ class SharedFolderServiceTest {
         void チームフォルダ作成_正常_レスポンス返却() {
             // Given
             CreateFolderRequest request = new CreateFolderRequest(
-                    "新フォルダ", "説明", null, "TEAM");
+                    "新フォルダ", "説明", null, "TEAM", null);
 
             SharedFolderEntity savedEntity = SharedFolderEntity.builder()
                     .scopeType(FileScopeType.TEAM).teamId(TEAM_ID)
@@ -80,7 +80,7 @@ class SharedFolderServiceTest {
         void チームフォルダ作成_名前重複_BusinessException() {
             // Given
             CreateFolderRequest request = new CreateFolderRequest(
-                    "重複フォルダ", null, null, "TEAM");
+                    "重複フォルダ", null, null, "TEAM", null);
 
             given(folderRepository.existsByParentIdAndName(null, "重複フォルダ")).willReturn(true);
 

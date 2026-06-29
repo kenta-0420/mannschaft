@@ -387,6 +387,30 @@ class GlobalExceptionHandlerTest {
         }
 
         @Test
+        @DisplayName("F05.5: FOLDER_NOT_FOUND（FILE_SHARING_001）は個別マッピングで 404 NotFound になる（存在隠蔽・WARN 既定 400 の上書き回帰固定）")
+        void resolveHttpStatus_FILE_SHARING_001_404() {
+            // フォルダ詳細 API は他人/他チームのフォルダ ID を渡されても存在を漏らさず 404 を返す。
+            // FOLDER_NOT_FOUND は Severity.WARN 既定（400）のため、個別マッピングで 404 に上書きする。
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.filesharing.FileSharingErrorCode.FOLDER_NOT_FOUND);
+
+            assertThat(result).isEqualTo(HttpStatus.NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("F05.5: FOLDER_NOT_FOUND の BusinessException は 404 NotFound で返る")
+        void handleBusinessException_FILE_SHARING_001_404() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.filesharing.FileSharingErrorCode.FOLDER_NOT_FOUND);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("FILE_SHARING_001");
+        }
+
+        @Test
         @DisplayName("F03.4 バグ#5: INVALID_TIME_RANGE（start>=end）は WARN severity で 400 BadRequest になる（500 漏れ防止の回帰固定）")
         void resolveHttpStatus_INVALID_TIME_RANGE_400() {
             // 実機 E2E で start>=end が 500 を返していた（旧 Severity.ERROR）。
