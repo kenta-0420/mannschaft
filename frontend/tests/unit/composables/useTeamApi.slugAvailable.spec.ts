@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import type { SlugAvailabilityResponse } from '~/types/slug'
 
 /**
  * useTeamApi.checkTeamSlugAvailable / useOrganizationApi.checkOrganizationSlugAvailable
@@ -31,7 +30,7 @@ describe('useTeamApi.checkTeamSlugAvailable', () => {
   })
 
   it('`/api/v1/teams/slug-available?slug=xxx` を叩くこと', async () => {
-    mockApiFetch.mockResolvedValueOnce({ available: true } satisfies SlugAvailabilityResponse)
+    mockApiFetch.mockResolvedValueOnce({ data: { available: true } })
     const { checkTeamSlugAvailable } = useTeamApi()
     await checkTeamSlugAvailable('my-team')
 
@@ -41,7 +40,7 @@ describe('useTeamApi.checkTeamSlugAvailable', () => {
   })
 
   it('available=true をそのまま返す', async () => {
-    mockApiFetch.mockResolvedValueOnce({ available: true } satisfies SlugAvailabilityResponse)
+    mockApiFetch.mockResolvedValueOnce({ data: { available: true } })
     const { checkTeamSlugAvailable } = useTeamApi()
     const res = await checkTeamSlugAvailable('free-slug')
     expect(res.available).toBe(true)
@@ -50,9 +49,8 @@ describe('useTeamApi.checkTeamSlugAvailable', () => {
 
   it('available=false の reason をそのまま返す', async () => {
     mockApiFetch.mockResolvedValueOnce({
-      available: false,
-      reason: 'SLUG_ALREADY_TAKEN',
-    } satisfies SlugAvailabilityResponse)
+      data: { available: false, reason: 'SLUG_ALREADY_TAKEN' },
+    })
     const { checkTeamSlugAvailable } = useTeamApi()
     const res = await checkTeamSlugAvailable('taken-slug')
     expect(res.available).toBe(false)
@@ -61,9 +59,8 @@ describe('useTeamApi.checkTeamSlugAvailable', () => {
 
   it('予約語の reason を返す', async () => {
     mockApiFetch.mockResolvedValueOnce({
-      available: false,
-      reason: 'SLUG_RESERVED',
-    } satisfies SlugAvailabilityResponse)
+      data: { available: false, reason: 'SLUG_RESERVED' },
+    })
     const { checkTeamSlugAvailable } = useTeamApi()
     const res = await checkTeamSlugAvailable('admin')
     expect(res.reason).toBe('SLUG_RESERVED')
@@ -76,7 +73,7 @@ describe('useOrganizationApi.checkOrganizationSlugAvailable', () => {
   })
 
   it('`/api/v1/organizations/slug-available?slug=xxx` を叩くこと', async () => {
-    mockApiFetch.mockResolvedValueOnce({ available: true } satisfies SlugAvailabilityResponse)
+    mockApiFetch.mockResolvedValueOnce({ data: { available: true } })
     const { checkOrganizationSlugAvailable } = useOrganizationApi()
     await checkOrganizationSlugAvailable('my-org')
 
@@ -87,9 +84,8 @@ describe('useOrganizationApi.checkOrganizationSlugAvailable', () => {
 
   it('available=false(invalid format) の reason を返す', async () => {
     mockApiFetch.mockResolvedValueOnce({
-      available: false,
-      reason: 'SLUG_INVALID_FORMAT',
-    } satisfies SlugAvailabilityResponse)
+      data: { available: false, reason: 'SLUG_INVALID_FORMAT' },
+    })
     const { checkOrganizationSlugAvailable } = useOrganizationApi()
     const res = await checkOrganizationSlugAvailable('-bad-')
     expect(res.available).toBe(false)

@@ -122,7 +122,8 @@ export function useOrganizationApi() {
     slug: string,
   ): Promise<SlugAvailabilityResponse> {
     const query = new URLSearchParams({ slug })
-    return api<SlugAvailabilityResponse>(`/api/v1/organizations/slug-available?${query}`)
+    const res = await api<{ data: SlugAvailabilityResponse }>(`/api/v1/organizations/slug-available?${query}`)
+    return res.data
   }
 
   /**
