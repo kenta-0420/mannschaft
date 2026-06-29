@@ -125,6 +125,12 @@ const individualItems = [
     icon: 'pi pi-megaphone',
     to: '/settings/ad-preferences',
   },
+  {
+    label: 'ストレージ',
+    description: '個人・チーム・組織の容量使用状況を確認',
+    icon: 'pi pi-database',
+    to: '/settings/storage',
+  },
 ]
 
 const searchQuery = ref('')
