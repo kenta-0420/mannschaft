@@ -196,11 +196,14 @@ function onSwapSubmitted() {
 
 // ---- 週次の曜日ヘッダー ----
 const DOW_KEYS = ['月', '火', '水', '木', '金', '土', '日'] as const
+
+// ---- 使い方モーダル ----
+const showGuide = ref(false)
 </script>
 
 <template>
   <div class="mx-auto max-w-5xl">
-    <PageHeader :title="t('shift.page.myShift')" back-to="/my" />
+    <PageHeader :title="t('shift.page.myShift')" back-to="/my" help @help="showGuide = true" />
 
     <!-- ビュー切り替え・ナビゲーション -->
     <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -538,6 +541,9 @@ const DOW_KEYS = ['月', '火', '水', '木', '金', '土', '日'] as const
       :team-id="swapTeamId"
       @submitted="onSwapSubmitted"
     />
+
+    <!-- 使い方説明モーダル -->
+    <MyShiftGuideModal v-model:visible="showGuide" />
   </div>
 </template>
 
