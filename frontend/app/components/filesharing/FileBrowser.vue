@@ -150,11 +150,12 @@ async function onFilesSelected(event: Event) {
       }
 
       // 3. ファイルレコードを登録
+      // BE CreateFileRequest は name/contentType を期待（fileName/mimeType ではない）
       await registerFile({
         folderId,
         fileKey,
-        fileName: file.name,
-        mimeType,
+        name: file.name,
+        contentType: mimeType,
         fileSize: file.size,
       })
 
@@ -219,7 +220,7 @@ onMounted(() => loadFolder(null))
         class="hidden"
         data-testid="file-upload-input"
         @change="onFilesSelected"
-      />
+      >
     </div>
 
     <div v-if="loading" class="flex justify-center py-8">
