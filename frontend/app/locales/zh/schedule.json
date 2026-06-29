@@ -14,7 +14,7 @@
       "before": "前",
       "max_reached": "最多可设置5个提醒",
       "kind_label": "类型",
-      "kind_relative": "活动开始前（分/时）",
+      "kind_relative": "活动开始前",
       "kind_absolute": "指定日期时间",
       "unit_label": "单位",
       "unit_minutes": "分钟",
@@ -23,7 +23,11 @@
       "relative_value_label": "数值",
       "absolute_at_label": "通知时间",
       "error_absolute_required": "请输入绝对提醒的日期和时间",
-      "error_past": "不能指定过去的日期和时间"
+      "error_past": "不能指定过去的日期和时间",
+      "preset_minutes_before": "{n}分钟前",
+      "preset_hours_before": "{n}小时前",
+      "preset_days_before": "{n}天前",
+      "preset_weeks_before": "{n}周前"
     },
     "scheduled_survey": {
       "label": "预约创建问卷",

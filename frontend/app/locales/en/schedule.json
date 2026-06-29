@@ -14,7 +14,7 @@
       "before": "before",
       "max_reached": "You can set up to 5 reminders",
       "kind_label": "Type",
-      "kind_relative": "Before event (min/hour)",
+      "kind_relative": "Before event",
       "kind_absolute": "Specific date/time",
       "unit_label": "Unit",
       "unit_minutes": "minutes",
@@ -23,7 +23,11 @@
       "relative_value_label": "Value",
       "absolute_at_label": "Notify at",
       "error_absolute_required": "Please enter a date and time for the absolute reminder",
-      "error_past": "A past date and time cannot be specified"
+      "error_past": "A past date and time cannot be specified",
+      "preset_minutes_before": "{n} min before",
+      "preset_hours_before": "{n} hr before",
+      "preset_days_before": "{n} day before",
+      "preset_weeks_before": "{n} week before"
     },
     "scheduled_survey": {
       "label": "Schedule a survey",
