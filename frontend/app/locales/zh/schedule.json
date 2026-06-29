@@ -142,6 +142,14 @@
         "item_edit": "使用铅笔图标编辑，使用垃圾桶图标删除",
         "item_attendance": "有出勤确认的日程可选择「出席」、「缺席」或「未定」进行回复",
         "item_match": "从团队日程中点击「记录这场比赛」按钮可开始比赛记录"
+      },
+      "google_sync": {
+        "title": "Google 日历联动",
+        "body": "关联 Google 账号后，可将个人日程与 Google 日历双向同步。在 Mannschaft 中添加或编辑的日程会反映到 Google 日历，Google 日历中的更改也会被导入。",
+        "step1": "打开「设置」→「Google Calendar 联动」",
+        "step2": "点击「连接 Google 账号」并授权",
+        "step3": "打开「个人日历」开关以启用同步",
+        "step4": "需要立即反映时，执行「手动同步」"
       }
     },
     "google_sync_notice": "已连接 Google 日历。在 Google 中所做的更改将在您下次在此处保存时被 Mannschaft 的数据替换。"

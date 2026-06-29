@@ -142,6 +142,14 @@
         "item_edit": "鉛筆アイコンで編集、ゴミ箱アイコンで削除できます",
         "item_attendance": "出欠確認がある予定は「出席」「欠席」「未定」を選んで回答できます",
         "item_match": "チームの予定から「この試合を記録」ボタンで試合記録を開始できます"
+      },
+      "google_sync": {
+        "title": "Google カレンダー連携",
+        "body": "Google アカウントと連携すると、個人の予定を Google カレンダーと双方向に同期できます。Mannschaft で追加・編集した予定は Google カレンダーに反映され、Google カレンダー側で変更した内容も取り込まれます。",
+        "step1": "「設定」→「Google Calendar 連携」を開く",
+        "step2": "「Googleアカウントに接続」を押して連携を許可",
+        "step3": "「個人カレンダー」をオンにして同期を有効化",
+        "step4": "すぐに反映したいときは「手動同期」を実行"
       }
     },
     "google_sync_notice": "Google カレンダーと連携中です。Google 側で変更した内容は、次に Mannschaft で保存したときに Mannschaft の内容に置き換わります。"

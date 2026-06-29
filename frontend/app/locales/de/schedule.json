@@ -142,6 +142,14 @@
         "item_edit": "Verwenden Sie das Bleistiftsymbol zum Bearbeiten oder das Papierkorbsymbol zum Löschen",
         "item_attendance": "Für Termine mit Anwesenheitsverfolgung wählen Sie 'Teilnehmen', 'Nicht teilnehmen' oder 'Vielleicht'",
         "item_match": "Verwenden Sie die Schaltfläche 'Dieses Spiel aufzeichnen' bei einem Teamtermin, um eine Spielaufzeichnung zu starten"
+      },
+      "google_sync": {
+        "title": "Google Kalender-Integration",
+        "body": "Verbinden Sie Ihr Google-Konto, um Ihre persönlichen Termine in beide Richtungen mit Google Kalender zu synchronisieren. In Mannschaft hinzugefügte oder bearbeitete Termine erscheinen in Google Kalender, und Änderungen in Google Kalender werden zurück importiert.",
+        "step1": "Öffnen Sie 'Einstellungen' → 'Google Calendar-Integration'",
+        "step2": "Klicken Sie auf 'Google-Konto verbinden' und autorisieren Sie die Verbindung",
+        "step3": "Aktivieren Sie 'Persönlicher Kalender', um die Synchronisierung einzuschalten",
+        "step4": "Führen Sie 'Manuelle Synchronisierung' aus, wenn Änderungen sofort übernommen werden sollen"
       }
     },
     "google_sync_notice": "Mit Google Kalender verbunden. Änderungen in Google werden beim nächsten Speichern hier durch die Mannschaft-Daten ersetzt."
