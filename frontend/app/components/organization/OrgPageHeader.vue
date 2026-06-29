@@ -46,9 +46,9 @@ const showBroadcastWizard = ref(false)
     <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 pt-1">
       <!-- 左: 戻る + 名前 + メタ情報 -->
       <div class="flex flex-col gap-1 min-w-0">
-        <div class="flex items-center gap-2 flex-wrap">
+        <div class="flex items-center gap-2 flex-wrap tag-on-light-band">
           <Button icon="pi pi-arrow-left" text rounded size="small" @click="emit('back')" />
-          <h1 class="text-xl sm:text-2xl font-bold truncate text-surface-900 dark:text-surface-200">
+          <h1 class="text-xl sm:text-2xl font-bold truncate text-surface-900">
             {{ displayName }}
           </h1>
           <RoleBadge v-if="roleName" :role="roleName" />
@@ -155,3 +155,29 @@ const showBroadcastWizard = ref(false)
     :is-admin="isAdmin"
   />
 </template>
+
+<style scoped>
+/*
+ * ProfileHeader の情報バンドはダークモードでも bg-surface-0（白）固定。
+ * PrimeVue Tag のダークモード配色は淡色テキスト前提のため、白地では
+ * 「家族」「管理者」等のタグが薄れて読みにくい。バンドが白である以上、
+ * ダークモードでもライトモード相当の濃色トークンへ上書きする
+ * （CSS 変数は子孫の Tag へ継承される）。
+ */
+:global(.p-dark) .tag-on-light-band {
+  --p-tag-primary-background: var(--p-primary-100);
+  --p-tag-primary-color: var(--p-primary-700);
+  --p-tag-secondary-background: var(--p-surface-100);
+  --p-tag-secondary-color: var(--p-surface-600);
+  --p-tag-success-background: var(--p-green-100);
+  --p-tag-success-color: var(--p-green-700);
+  --p-tag-info-background: var(--p-sky-100);
+  --p-tag-info-color: var(--p-sky-700);
+  --p-tag-warn-background: var(--p-orange-100);
+  --p-tag-warn-color: var(--p-orange-700);
+  --p-tag-danger-background: var(--p-red-100);
+  --p-tag-danger-color: var(--p-red-700);
+  --p-tag-contrast-background: var(--p-surface-950);
+  --p-tag-contrast-color: var(--p-surface-0);
+}
+</style>
