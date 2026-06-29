@@ -117,7 +117,7 @@ test.describe('AUTH-006〜009: ログイン失敗フロー', () => {
   }) => {
     await performLogin(page, 'no-such-user@invalid.example.com', 'SomePassword123!')
 
-    // バックエンドは AUTH_009 を返し、フロントは notification.error でトースト表示
+    // バックエンドは AUTH_001 を返し、フロントは notification.error でトースト表示
     await expect(page.getByText('ログインに失敗しました')).toBeVisible({ timeout: 15_000 })
     // /login から遷移していないこと
     await expect(page).toHaveURL(/\/login/)
