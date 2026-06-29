@@ -73,6 +73,7 @@ async function onCreateFolder() {
   try {
     if (isPersonal.value) {
       await createMyFolder({
+        scopeType: 'PERSONAL',
         parentId: currentFolderId.value,
         name: newFolderName.value.trim(),
       })
