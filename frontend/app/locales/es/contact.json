@@ -1,0 +1,77 @@
+{
+  "contact_invite": {
+    "page_title": "Gestión de URL de invitación",
+    "page_description": "Emite y gestiona URLs de invitación para agregar contactos. Quien reciba la URL podrá agregarte como contacto.",
+    "section_title": "URLs de invitación",
+    "create_button": "Emitir nueva URL",
+    "form": {
+      "label": "Etiqueta (opcional)",
+      "label_placeholder": "Ej: Para redes sociales",
+      "max_uses": "Número de usos",
+      "expires_in": "Vencimiento",
+      "submit": "Emitir",
+      "cancel": "Cancelar"
+    },
+    "max_uses_options": {
+      "once": "1 vez",
+      "five": "5 veces",
+      "ten": "10 veces",
+      "fifty": "50 veces",
+      "unlimited": "Ilimitado"
+    },
+    "expires_options": {
+      "one_day": "1 día",
+      "seven_days": "7 días",
+      "thirty_days": "30 días",
+      "never": "Sin vencimiento"
+    },
+    "list": {
+      "empty": "No hay URLs de invitación emitidas",
+      "no_label": "(Sin etiqueta)",
+      "revoke_tooltip": "Revocar",
+      "uses_unit": " uso(s)",
+      "qr_alt": "Código QR",
+      "qr_hint": "Escanea el código QR para agregar"
+    },
+    "expiry": {
+      "never": "Sin vencimiento",
+      "expired": "Vencida",
+      "until": "Hasta el {date}"
+    },
+    "messages": {
+      "create_success": "URL de invitación emitida correctamente",
+      "create_error": "Error al emitir la URL",
+      "revoke_success": "URL de invitación revocada",
+      "revoke_error": "Error al revocar la URL",
+      "copy_success": "URL copiada",
+      "copy_error": "Error al copiar la URL"
+    }
+  },
+  "contact_invite_guide": {
+    "title": "Cómo usar la gestión de URLs de invitación",
+    "description": "Con las URLs de invitación, basta con compartir un enlace o un código QR para que otros puedan agregarte como contacto. También puedes usarlo en tu perfil de redes sociales o como tarjeta digital.",
+    "what": {
+      "title": "¿Qué es una URL de invitación?",
+      "body": "Es un enlace dedicado para que otros te agreguen como contacto. Al compartir la URL, la otra persona puede agregarte con un solo toque, sin necesidad de que compartas tu ID o correo electrónico directamente."
+    },
+    "create": {
+      "title": "Emitir una URL",
+      "body": "Toca «Emitir nueva URL» en la esquina superior derecha para crear una URL según tu necesidad.",
+      "step1": "Toca «Emitir nueva URL» en la esquina superior derecha.",
+      "step2": "Elige una etiqueta (nota opcional), el número de usos permitidos y el período de vencimiento. Establecer límites ayuda a prevenir el mal uso.",
+      "step3": "Toca «Emitir» y la nueva URL de invitación y el código QR aparecerán en la lista."
+    },
+    "share": {
+      "title": "Compartir con otros",
+      "body": "Puedes compartir la URL copiándola y enviándola, o haciendo que alguien escanee el código QR.",
+      "step1": "Toca el botón «Copiar» junto a la URL.",
+      "step2": "Pégala en un mensaje, correo electrónico o perfil de redes sociales para compartirla.",
+      "step3": "En persona, muestra el código QR y pide que lo escaneen con su cámara para agregarte de inmediato."
+    },
+    "manage": {
+      "title": "Ver uso y revocar",
+      "body": "Todas las URLs emitidas aparecen en la lista para gestión fácil. Cada entrada muestra el número de usos, el límite y la fecha de vencimiento.",
+      "note": "Puedes revocar cualquier URL en cualquier momento tocando el icono de papelera. Una vez revocada, nadie podrá usarla para agregarte como contacto."
+    }
+  }
+}
