@@ -48,7 +48,8 @@
     "inbox": "Bandeja de entrada",
     "market": "Mercado",
     "jobs": "Empleos",
-    "matching": "Matching"
+    "matching": "Matching",
+    "myFiles": "Mis Archivos"
   },
   "settings": {
     "navigation": {
@@ -415,6 +416,18 @@
       "channel_push": "Push",
       "locked_tag": "Urgente",
       "locked_desc": "Esta notificación no se puede desactivar"
+    },
+    "storage": {
+      "page_title": "Almacenamiento",
+      "group_personal": "Personal",
+      "group_team": "Equipos",
+      "group_org": "Organizaciones",
+      "scope_personal": "Almacenamiento personal",
+      "file_count": "{count} archivos",
+      "limit": "Límite",
+      "unlimited": "Sin límite",
+      "error_fetch": "No se pudo cargar el uso de almacenamiento",
+      "empty": "No hay información de almacenamiento para mostrar"
     }
   }
 }

@@ -48,7 +48,8 @@
     "inbox": "Inbox",
     "market": "Market",
     "jobs": "Jobs",
-    "matching": "Matching"
+    "matching": "Matching",
+    "myFiles": "My Files"
   },
   "settings": {
     "navigation": {
@@ -415,6 +416,18 @@
       "channel_push": "Push",
       "locked_tag": "Urgent",
       "locked_desc": "This notification cannot be disabled"
+    },
+    "storage": {
+      "page_title": "Storage",
+      "group_personal": "Personal",
+      "group_team": "Teams",
+      "group_org": "Organizations",
+      "scope_personal": "Personal Storage",
+      "file_count": "{count} files",
+      "limit": "Limit",
+      "unlimited": "Unlimited",
+      "error_fetch": "Failed to load storage usage",
+      "empty": "No storage information to display"
     }
   }
 }

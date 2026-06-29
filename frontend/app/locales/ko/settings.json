@@ -48,7 +48,8 @@
     "inbox": "받은 편지함",
     "market": "마켓",
     "jobs": "채용",
-    "matching": "매칭"
+    "matching": "매칭",
+    "myFiles": "내 파일"
   },
   "settings": {
     "navigation": {
@@ -415,6 +416,18 @@
       "channel_push": "푸시",
       "locked_tag": "긴급",
       "locked_desc": "이 알림은 비활성화할 수 없습니다"
+    },
+    "storage": {
+      "page_title": "스토리지",
+      "group_personal": "개인",
+      "group_team": "팀",
+      "group_org": "조직",
+      "scope_personal": "개인 스토리지",
+      "file_count": "{count}개 파일",
+      "limit": "상한",
+      "unlimited": "무제한",
+      "error_fetch": "스토리지 사용량 불러오기 실패",
+      "empty": "표시할 스토리지 정보가 없습니다"
     }
   }
 }
