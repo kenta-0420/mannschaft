@@ -204,7 +204,7 @@ class SharedFolderServiceAdditionalTest {
         @Test
         @DisplayName("正常系: 組織フォルダが作成される")
         void 組織フォルダ作成_正常() {
-            CreateFolderRequest request = new CreateFolderRequest("組織フォルダ", null, null, "ORGANIZATION");
+            CreateFolderRequest request = new CreateFolderRequest("組織フォルダ", null, null, "ORGANIZATION", null);
             SharedFolderEntity savedEntity = createFolder(FileScopeType.ORGANIZATION);
             given(folderRepository.existsByParentIdAndName(null, "組織フォルダ")).willReturn(false);
             given(folderRepository.save(any())).willReturn(savedEntity);
@@ -228,7 +228,7 @@ class SharedFolderServiceAdditionalTest {
         @Test
         @DisplayName("正常系: 個人フォルダが作成される")
         void 個人フォルダ作成_正常() {
-            CreateFolderRequest request = new CreateFolderRequest("個人フォルダ", null, null, "PERSONAL");
+            CreateFolderRequest request = new CreateFolderRequest("個人フォルダ", null, null, "PERSONAL", null);
             SharedFolderEntity savedEntity = createFolder(FileScopeType.PERSONAL);
             given(folderRepository.existsByParentIdAndName(null, "個人フォルダ")).willReturn(false);
             given(folderRepository.save(any())).willReturn(savedEntity);

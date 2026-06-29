@@ -362,6 +362,7 @@ public class GlobalExceptionHandler {
             Map.entry("CHAT_022", HttpStatus.PAYLOAD_TOO_LARGE),             // ICON_SIZE_EXCEEDED (2MB 超過)
             Map.entry("CHAT_023", HttpStatus.FORBIDDEN),                     // CHANNEL_ICON_PERMISSION_DENIED (OWNER/ADMIN ではない)
             // F05.5 ファイル共有（F13 Phase 4-epsilon）
+            Map.entry("FILE_SHARING_001", HttpStatus.NOT_FOUND),             // FOLDER_NOT_FOUND（IDOR 秘匿・存在隠蔽 → 404）
             Map.entry("FILE_SHARING_016", HttpStatus.CONFLICT),              // STORAGE_QUOTA_EXCEEDED (F13 統合クォータ超過)
             // F02.3 プロジェクト管理（IDOR 対策で 404 統一）
             Map.entry("TODO_001", HttpStatus.NOT_FOUND),                     // PROJECT_NOT_FOUND（IDOR 秘匿 → 404）
