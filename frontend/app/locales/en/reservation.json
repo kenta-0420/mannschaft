@@ -138,7 +138,8 @@
       "book": "Book",
       "list": "Reservations",
       "line_manage": "Manage Lines",
-      "emergency_closure": "緊急休業"
+      "emergency_closure": "緊急休業",
+      "team_page": "Reservations"
     },
     "column": {
       "datetime": "Date & Time",
