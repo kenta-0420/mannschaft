@@ -703,22 +703,11 @@ export function useDashboardWidgets(
       { immediate: true },
     )
 
-    // 保存順の「初回反映」では並べ替えアニメ（TransitionGroup move）を発火させない。
-    // クライアント遷移時は serverSettings が後追いで解決し orderedKeys が変化するため、
-    // そのままだと表示直後にウィジェットがスライド移動して見える（＝表示時に並び替えが起きる）。
-    // データ確定後の次フレームで初めてアニメを有効化し、以降のユーザー操作のみアニメさせる。
-    const ready = ref(false)
-    watch(
-      status,
-      (s) => {
-        if (s === 'success' || s === 'error') {
-          void nextTick(() => {
-            ready.value = true
-          })
-        }
-      },
-      { immediate: true },
-    )
+    // 並び順が確定する（success/error）まではウィジェットを描画させないためのフラグ。
+    // クライアント遷移時は useAsyncData が後追いで解決するため、確定前に描画すると
+    // 「デフォルト順→保存順」の位置ジャンプが見える。確定後に初描画することで根絶する。
+    // SSR/ペイロードキャッシュ時は描画時点で既に success のため初回から保存順で出る。
+    const ready = computed(() => status.value === 'success' || status.value === 'error')
 
     /**
      * 現在の state（並び順・表示状態）を BE へ全量 PUT する。

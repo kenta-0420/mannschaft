@@ -212,11 +212,27 @@ function onDragEnd() {
       />
     </div>
 
+    <!-- 並び順確定前: スケルトン（位置ジャンプ防止のためウィジェット本体は描画しない） -->
+    <div
+      v-if="!ready"
+      class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
+      aria-hidden="true"
+      data-testid="dashboard-widgets-skeleton"
+    >
+      <div
+        v-for="n in 6"
+        :key="`widget-skeleton-${n}`"
+        class="h-40 animate-pulse rounded-xl bg-surface-100 dark:bg-surface-800"
+      />
+    </div>
+
+    <!-- 並び順確定後: 保存順で初描画（ここで初めてマウントするためジャンプしない） -->
     <!-- ウィジェットグリッド -->
     <TransitionGroup
+      v-else
       tag="div"
       class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
-      :move-class="ready ? 'transition-all duration-[350ms] ease-in-out' : ''"
+      move-class="transition-all duration-[350ms] ease-in-out"
     >
       <!-- 空状態 -->
       <div
@@ -239,6 +255,7 @@ function onDragEnd() {
       <DashboardWidgetCard
         v-for="(w, index) in visibleWidgets"
         :key="w.key"
+        :data-widget-key="w.key"
         title=""
         class="group cursor-default transition-all"
         :col-span="isDataWidget(w.key) ? 2 : 1"
