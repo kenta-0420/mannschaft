@@ -16,6 +16,7 @@ interface Module {
 const modules = ref<Module[]>([])
 const loading = ref(false)
 const togglingIds = ref<string[]>([])
+const showGuide = ref(false)
 
 async function fetchModules() {
   loading.value = true
@@ -56,14 +57,24 @@ onMounted(fetchModules)
         <span class="font-semibold text-gray-800">{{ enabledCount }}</span>
         / {{ modules.length }}
       </p>
-      <Button
-        icon="pi pi-refresh"
-        text
-        rounded
-        size="small"
-        :loading="loading"
-        @click="fetchModules"
-      />
+      <div class="flex items-center gap-1">
+        <Button
+          icon="pi pi-question-circle"
+          text
+          rounded
+          size="small"
+          :aria-label="$t('module_settings_guide.title')"
+          @click="showGuide = true"
+        />
+        <Button
+          icon="pi pi-refresh"
+          text
+          rounded
+          size="small"
+          :loading="loading"
+          @click="fetchModules"
+        />
+      </div>
     </div>
 
     <div v-if="loading" class="flex justify-center py-10">
@@ -114,5 +125,7 @@ onMounted(fetchModules)
         />
       </div>
     </div>
+
+    <ModuleSettingsGuideModal v-model:visible="showGuide" />
   </div>
 </template>
