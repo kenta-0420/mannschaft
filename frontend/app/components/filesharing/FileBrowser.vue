@@ -6,9 +6,20 @@ const props = defineProps<{
   scopeId?: string
 }>()
 
-const { getFolder, getFolders, getMyFolders, getDownloadUrl, deleteFile, createFolder, createMyFolder } = useFileSharingApi()
+const {
+  getFolder,
+  getFolders,
+  getMyFolders,
+  getDownloadUrl,
+  deleteFile,
+  createFolder,
+  createMyFolder,
+  presignUpload,
+  registerFile,
+} = useFileSharingApi()
 const { showSuccess, showError } = useNotification()
 const { relativeTime } = useRelativeTime()
+const { t } = useI18n()
 
 const currentFolderId = ref<number | null>(null)
 const folders = ref<SharedFolder[]>([])
@@ -17,6 +28,8 @@ const breadcrumbs = ref<Array<{ id: number; name: string }>>([])
 const loading = ref(false)
 const showNewFolderDialog = ref(false)
 const newFolderName = ref('')
+const fileInputRef = ref<HTMLInputElement | null>(null)
+const uploading = ref(false)
 
 const isPersonal = computed(() => props.scopeType === 'PERSONAL')
 
@@ -72,7 +85,9 @@ async function onCreateFolder() {
   if (!newFolderName.value.trim()) return
   try {
     if (isPersonal.value) {
+      // バグ修正: scopeType: 'PERSONAL' が必要（欠落すると 400）
       await createMyFolder({
+        scopeType: 'PERSONAL',
         parentId: currentFolderId.value,
         name: newFolderName.value.trim(),
       })
@@ -91,6 +106,71 @@ async function onCreateFolder() {
   } catch {
     showError('作成に失敗しました')
   }
+}
+
+/** ファイル選択ダイアログを開く。フォルダ内でのみアップロード可能。 */
+function triggerFileInput() {
+  if (currentFolderId.value === null) {
+    showError(t('settings.fileBrowser.upload_need_folder'))
+    return
+  }
+  fileInputRef.value?.click()
+}
+
+/** ファイル選択後の処理: presign → R2 PUT → registerFile → 一覧更新 */
+async function onFilesSelected(event: Event) {
+  const input = event.target as HTMLInputElement
+  if (!input.files || input.files.length === 0) return
+  if (currentFolderId.value === null) return
+
+  const folderId = currentFolderId.value
+  uploading.value = true
+  const selectedFiles = Array.from(input.files)
+
+  for (const file of selectedFiles) {
+    const mimeType = file.type || 'application/octet-stream'
+    try {
+      // 1. Presigned URL を取得
+      const presignRes = await presignUpload({
+        folderId,
+        fileName: file.name,
+        contentType: mimeType,
+        fileSize: file.size,
+      })
+      const { uploadUrl, fileKey } = presignRes.data
+
+      // 2. ストレージへ直接 PUT（credentials なし・Content-Type 一致）
+      const putRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': mimeType },
+      })
+      if (!putRes.ok) {
+        throw new Error(`Storage PUT failed: ${putRes.status}`)
+      }
+
+      // 3. ファイルレコードを登録
+      // BE CreateFileRequest は name/contentType を期待（fileName/mimeType ではない）
+      await registerFile({
+        folderId,
+        fileKey,
+        name: file.name,
+        contentType: mimeType,
+        fileSize: file.size,
+      })
+
+      showSuccess(t('settings.fileBrowser.upload_success', { name: file.name }))
+    } catch {
+      showError(t('settings.fileBrowser.upload_error', { name: file.name }))
+    }
+  }
+
+  uploading.value = false
+  // 一覧を再取得して反映
+  await loadFolder(currentFolderId.value)
+
+  // 同じファイルを再選択できるよう input をリセット
+  input.value = ''
 }
 
 function formatSize(bytes: number): string {
@@ -124,6 +204,23 @@ onMounted(() => loadFolder(null))
     <!-- アクション -->
     <div class="mb-4 flex items-center gap-2">
       <Button label="フォルダ作成" icon="pi pi-folder-plus" text size="small" @click="showNewFolderDialog = true" />
+      <Button
+        :label="t('settings.fileBrowser.upload_button')"
+        icon="pi pi-upload"
+        text
+        size="small"
+        :loading="uploading"
+        @click="triggerFileInput"
+      />
+      <!-- 非表示のファイル入力（multiple で複数ファイル対応） -->
+      <input
+        ref="fileInputRef"
+        type="file"
+        multiple
+        class="hidden"
+        data-testid="file-upload-input"
+        @change="onFilesSelected"
+      >
     </div>
 
     <div v-if="loading" class="flex justify-center py-8">

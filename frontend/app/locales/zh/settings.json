@@ -428,6 +428,13 @@
       "unlimited": "无限制",
       "error_fetch": "获取存储使用量失败",
       "empty": "没有可显示的存储信息"
+    },
+    "fileBrowser": {
+      "upload_button": "上传文件",
+      "upload_need_folder": "请先打开文件夹后再上传",
+      "upload_success": "「{name}」上传成功",
+      "upload_error": "「{name}」上传失败",
+      "uploading": "上传中..."
     }
   }
 }

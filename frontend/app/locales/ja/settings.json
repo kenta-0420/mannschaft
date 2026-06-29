@@ -428,6 +428,13 @@
       "channel_push": "プッシュ",
       "locked_tag": "緊急",
       "locked_desc": "この通知は無効化できません"
+    },
+    "fileBrowser": {
+      "upload_button": "ファイルをアップロード",
+      "upload_need_folder": "フォルダを開いてからアップロードしてください",
+      "upload_success": "「{name}」をアップロードしました",
+      "upload_error": "「{name}」のアップロードに失敗しました",
+      "uploading": "アップロード中..."
     }
   }
 }
