@@ -54,7 +54,7 @@
       "title": "So lesen Sie die Liste",
       "body": "Alle gesperrten Benutzer werden in einer Liste angezeigt. Jede Zeile enthält die folgenden Informationen.",
       "item_name": "Symbol und Name — wen Sie sperren",
-      "item_handle": "Kontakt-Handle beginnend mit @ — die eindeutige ID der Person",
+      "item_handle": "Kontakt-Handle beginnend mit {'@'} — die eindeutige ID der Person",
       "item_date": "«Eingestellt am» — das Datum, an dem die Sperre registriert wurde"
     },
     "unblock": {

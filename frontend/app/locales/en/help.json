@@ -54,7 +54,7 @@
       "title": "Reading the List",
       "body": "All blocked users are shown in a list. Each row contains the following information.",
       "item_name": "Icon and name — who you are blocking",
-      "item_handle": "Contact handle starting with @ — the person's unique ID",
+      "item_handle": "Contact handle starting with {'@'} — the person's unique ID",
       "item_date": "\"Set on\" — the date the block was registered"
     },
     "unblock": {

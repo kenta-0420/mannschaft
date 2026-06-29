@@ -54,7 +54,7 @@
       "title": "Cómo leer la lista",
       "body": "Todos los usuarios bloqueados se muestran en una lista. Cada fila contiene la siguiente información.",
       "item_name": "Icono y nombre — quién estás bloqueando",
-      "item_handle": "Identificador de contacto que comienza con @ — el ID único de esa persona",
+      "item_handle": "Identificador de contacto que comienza con {'@'} — el ID único de esa persona",
       "item_date": "«Establecido el» — la fecha en que se registró el bloqueo"
     },
     "unblock": {
