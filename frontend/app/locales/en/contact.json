@@ -2,7 +2,6 @@
   "contact_invite": {
     "page_title": "Invite URL Management",
     "page_description": "Issue and manage invite URLs for adding contacts. Anyone you share the URL with can add you as a contact.",
-    "section_title": "Invite URLs",
     "create_button": "Issue New URL",
     "form": {
       "label": "Label (optional)",

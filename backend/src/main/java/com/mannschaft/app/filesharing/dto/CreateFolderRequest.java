@@ -24,4 +24,13 @@ public class CreateFolderRequest {
 
     @NotNull
     private final String scopeType;
+
+    /**
+     * スコープ ID（teamId / organizationId の文字列）。
+     *
+     * <p>汎用エンドポイント {@code POST /api/v1/files/folders} で TEAM / ORGANIZATION フォルダを
+     * 作成する際の認可・帰属先に使う。スコープを URL パスから受ける既存コントローラ
+     * （Team/Org/Personal Folder Controller）では {@code null} のままでよい。</p>
+     */
+    private final String scopeId;
 }

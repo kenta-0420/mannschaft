@@ -197,7 +197,7 @@ class FileSharingControllerTest {
         @Test
         @DisplayName("正常系: チームフォルダが作成される (201)")
         void チームフォルダ作成_正常_201() {
-            CreateFolderRequest request = new CreateFolderRequest("新フォルダ", null, null, "TEAM");
+            CreateFolderRequest request = new CreateFolderRequest("新フォルダ", null, null, "TEAM", null);
             given(folderService.createTeamFolder(eq(TEAM_ID), eq(USER_ID), any()))
                     .willReturn(mockFolderResponse());
 
