@@ -432,8 +432,8 @@
     "fileBrowser": {
       "upload_button": "Datei hochladen",
       "upload_need_folder": "Bitte öffne zuerst einen Ordner, bevor du hochlädst",
-      "upload_success": "„{name}" erfolgreich hochgeladen",
-      "upload_error": "Fehler beim Hochladen von „{name}"",
+      "upload_success": "„{name}“ erfolgreich hochgeladen",
+      "upload_error": "Fehler beim Hochladen von „{name}“",
       "uploading": "Wird hochgeladen..."
     }
   }
