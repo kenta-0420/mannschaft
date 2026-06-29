@@ -1501,6 +1501,38 @@
       "submit": "Agregar",
       "scopeResolveError": "No se pudo identificar el destino",
       "templatesLoadError": "Error al cargar las plantillas"
+    },
+    "guide": {
+      "title": "Cómo usar los registros de actividad",
+      "description": "Registra las actividades de tu equipo u organización (entrenamientos, partidos, eventos, etc.) para revisarlas y compartirlas.",
+      "list": {
+        "title": "Ver registros",
+        "body": "Las actividades se muestran como tarjetas en orden cronológico inverso. Puedes ver rápidamente el título, la fecha, el lugar y el número de participantes. Los registros marcados como «Público» muestran un botón para compartir el enlace externamente."
+      },
+      "add": {
+        "title": "Agregar un registro",
+        "body": "Pulsa «Agregar registro» en la parte superior derecha para crear un nuevo registro de actividad.",
+        "steps": {
+          "step1": "Pulsa «Agregar registro» en la parte superior derecha",
+          "step2": "Elige una plantilla",
+          "step3": "Introduce el título y la fecha de la actividad (ambos obligatorios)",
+          "step4": "Selecciona la visibilidad (Solo miembros / Público)",
+          "step5": "Rellena los campos personalizados de la plantilla si los hay",
+          "step6": "Pulsa «Agregar» para guardar el registro en la lista"
+        }
+      },
+      "template": {
+        "title": "Cuando se necesita una plantilla",
+        "body": "Es necesaria una plantilla para crear un registro. Si aún no existe ninguna, aparece una pantalla de orientación en lugar del formulario. En equipos, ve primero a la página «Plantillas de actividad» para crear una plantilla y luego añade tu registro."
+      },
+      "visibility": {
+        "title": "Visibilidad (quién puede ver el registro)",
+        "members_only_label": "Solo miembros",
+        "members_only_desc": "Solo los miembros del equipo u organización pueden ver este registro.",
+        "public_label": "Público",
+        "public_desc": "Cualquier persona con el enlace puede verlo. Aparece un botón de compartir en la lista para facilitar la difusión externa.",
+        "note": "La visibilidad predeterminada está determinada por la configuración de la plantilla."
+      }
     }
   },
   "dashboard": {

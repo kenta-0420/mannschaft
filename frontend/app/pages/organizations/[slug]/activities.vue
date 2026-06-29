@@ -12,6 +12,7 @@ const { showError } = useNotification()
 const activities = ref<ActivityRecordResponse[]>([])
 const loading = ref(false)
 const showCreate = ref(false)
+const showGuide = ref(false)
 
 async function load() {
   loading.value = true
@@ -34,7 +35,7 @@ onMounted(async () => {
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
-      <PageHeader :title="$t('activity.pageTitle')" />
+      <PageHeader :title="$t('activity.pageTitle')" help @help="showGuide = true" />
       <Button
         v-if="isMember"
         :label="$t('activity.addRecord')"
@@ -68,5 +69,7 @@ onMounted(async () => {
       :scope-id="orgSlug"
       @created="load"
     />
+
+    <ActivityGuideModal v-model:visible="showGuide" />
   </div>
 </template>
