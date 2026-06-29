@@ -99,7 +99,7 @@ onMounted(async () => {
 
 <template>
   <div class="mx-auto max-w-5xl">
-    <PageHeader title="マイページ" :back="false" />
+    <PageHeader title="マイページ" />
 
     <div class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
       <NuxtLink

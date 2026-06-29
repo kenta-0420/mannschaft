@@ -1501,6 +1501,38 @@
       "submit": "Hinzufügen",
       "scopeResolveError": "Ziel konnte nicht ermittelt werden",
       "templatesLoadError": "Fehler beim Laden der Vorlagen"
+    },
+    "guide": {
+      "title": "So verwendest du Aktivitätsprotokolle",
+      "description": "Halte die Aktivitäten deines Teams oder deiner Organisation fest (Training, Spiele, Events usw.), um sie nachzubereiten und zu teilen.",
+      "list": {
+        "title": "Protokolle anzeigen",
+        "body": "Aktivitäten werden als Karten in umgekehrter chronologischer Reihenfolge angezeigt. Titel, Datum, Ort und Teilnehmerzahl sind auf einen Blick sichtbar. Einträge mit der Sichtbarkeit „Öffentlich\" zeigen einen Teilen-Button, mit dem du den Link nach außen weitergeben kannst."
+      },
+      "add": {
+        "title": "Protokoll hinzufügen",
+        "body": "Tippe oben rechts auf „Protokoll hinzufügen\", um ein neues Aktivitätsprotokoll zu erstellen.",
+        "steps": {
+          "step1": "Oben rechts auf „Protokoll hinzufügen\" tippen",
+          "step2": "Eine Vorlage auswählen",
+          "step3": "Titel und Aktivitätsdatum eingeben (beide Pflichtfelder)",
+          "step4": "Sichtbarkeit wählen (Nur Mitglieder / Öffentlich)",
+          "step5": "Benutzerdefinierte Felder der Vorlage ausfüllen, falls vorhanden",
+          "step6": "Auf „Hinzufügen\" tippen, um den Eintrag in der Liste zu speichern"
+        }
+      },
+      "template": {
+        "title": "Wenn eine Vorlage benötigt wird",
+        "body": "Zum Erstellen eines Protokolls ist eine Vorlage erforderlich. Ist noch keine Vorlage vorhanden, wird ein Hinweisbildschirm anstelle des Formulars angezeigt. Bei Teams erstelle zuerst im Bereich „Aktivitätsvorlagen\" eine Vorlage, bevor du ein Protokoll hinzufügst."
+      },
+      "visibility": {
+        "title": "Sichtbarkeit (wer den Eintrag sehen kann)",
+        "members_only_label": "Nur Mitglieder",
+        "members_only_desc": "Nur Mitglieder des Teams oder der Organisation können diesen Eintrag sehen.",
+        "public_label": "Öffentlich",
+        "public_desc": "Jeder mit dem Link kann den Eintrag aufrufen. In der Liste wird ein Teilen-Button angezeigt, um den Link einfach weiterzugeben.",
+        "note": "Die Standard-Sichtbarkeit richtet sich nach den Einstellungen der Vorlage."
+      }
     }
   },
   "dashboard": {

@@ -4,7 +4,7 @@ const { t } = useI18n()
 </script>
 
 <template>
-  <div>
+  <div class="p-6">
     <PageHeader :title="t('nav.myFiles')" />
     <FileBrowser scope-type="PERSONAL" />
   </div>

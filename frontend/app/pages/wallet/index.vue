@@ -154,7 +154,7 @@ watch(activeTab, (newTab) => {
 <template>
   <div>
     <div class="mx-auto max-w-[720px] px-4 pb-8">
-      <PageHeader :title="t('wallet.title')" :back="false" help @help="showGuide = true">
+      <PageHeader :title="t('wallet.title')" help @help="showGuide = true">
         <template #actions>
           <NuxtLink
             to="/wallet/settings"

@@ -16,9 +16,8 @@ const showGuide = ref(false)
 
 <template>
   <div>
-    <PageHeader :title="t('inbox.title')" help @help="showGuide = true" />
-
-    <div class="mx-auto max-w-3xl">
+    <div class="mx-auto max-w-3xl p-6">
+      <PageHeader :title="t('inbox.title')" help @help="showGuide = true" />
       <InboxList />
     </div>
 

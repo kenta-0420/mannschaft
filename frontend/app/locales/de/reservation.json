@@ -118,6 +118,37 @@
     "badge": "Notfallschließung"
   },
   "reservation": {
+    "guide": {
+      "title": "So nutzen Sie Meine Reservierungen",
+      "description": "Auf dieser Seite sehen Sie eine Liste der von Ihnen gebuchten Zeitfenster sowie den aktuellen Status jedes einzelnen.",
+      "overview": {
+        "title": "Was sind Meine Reservierungen",
+        "body": "Diese Seite listet die von Ihnen gebuchten Zeitfenster auf. Sie erkennen auf einen Blick, ob ein Eintrag genehmigt ist und für wann er geplant ist.",
+        "steps": {
+          "step1": "Beim Öffnen der Seite werden Ihre Reservierungen automatisch geladen.",
+          "step2": "Jede Karte zeigt den Linienname, das Datum sowie die Start- und Endzeit an."
+        }
+      },
+      "status": {
+        "title": "So lesen Sie den Status",
+        "body": "Das farbige Abzeichen auf jeder Reservierungskarte zeigt den aktuellen Status dieser Reservierung an.",
+        "items": {
+          "item1": "Gelb „Ausstehend“ … Wartet auf Genehmigung.",
+          "item2": "Grün „Bestätigt“ … Die Reservierung ist bestätigt.",
+          "item3": "Blau „Abgeschlossen“ … Das Zeitfenster wurde genutzt.",
+          "item4": "Rot „Storniert“ … Die Reservierung wurde storniert.",
+          "item5": "Grau „Nicht erschienen“ … Das Zeitfenster wurde am reservierten Tag nicht genutzt."
+        }
+      },
+      "empty": {
+        "title": "Wenn keine Reservierungen angezeigt werden",
+        "body": "Was zu tun ist, wenn Sie keine Reservierungen haben oder das Laden fehlschlägt.",
+        "steps": {
+          "step1": "Wird „Keine Reservierungen“ angezeigt, haben Sie noch keine Reservierungen.",
+          "step2": "Wird „Reservierungen konnten nicht geladen werden“ angezeigt, liegt ein Verbindungsfehler vor. Bitte laden Sie die Seite neu."
+        }
+      }
+    },
     "status": {
       "PENDING": "Ausstehend",
       "CONFIRMED": "Bestätigt",

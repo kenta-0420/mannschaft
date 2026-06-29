@@ -31,7 +31,7 @@ const currentStep = ref<WizardStep>(1)
 
 const initialFormState: WizardFormState = {
   step: 1,
-  targetRole: 'MEMBERS_ONLY',
+  targetRole: 'MEMBERS_AND_ABOVE',
   targetTeamIds: null,
   selectedChannel: null,
   templateId: null,
