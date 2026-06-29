@@ -684,7 +684,7 @@ export function useDashboardWidgets(
     // personal スコープの場合は scopeId=undefined（scope_id=0 相当として BE が識別）。
     const effectiveScopeId = apiScopeType === 'personal' ? undefined : resolvedId
     const dataKey = `dashboard-widgets:${apiScopeType}:${effectiveScopeId ?? '0'}`
-    const { data: serverSettings } = useAsyncData(
+    const { data: serverSettings, status } = useAsyncData(
       dataKey,
       async () => {
         const res = await api<{ data: WidgetSettingResponse[] }>('/api/v1/dashboard/widgets', {
@@ -699,6 +699,23 @@ export function useDashboardWidgets(
       serverSettings,
       (val) => {
         if (val) applyServerSettings(val)
+      },
+      { immediate: true },
+    )
+
+    // 保存順の「初回反映」では並べ替えアニメ（TransitionGroup move）を発火させない。
+    // クライアント遷移時は serverSettings が後追いで解決し orderedKeys が変化するため、
+    // そのままだと表示直後にウィジェットがスライド移動して見える（＝表示時に並び替えが起きる）。
+    // データ確定後の次フレームで初めてアニメを有効化し、以降のユーザー操作のみアニメさせる。
+    const ready = ref(false)
+    watch(
+      status,
+      (s) => {
+        if (s === 'success' || s === 'error') {
+          void nextTick(() => {
+            ready.value = true
+          })
+        }
       },
       { immediate: true },
     )
@@ -779,6 +796,7 @@ export function useDashboardWidgets(
       reorder,
       hiddenKeys,
       orderedKeys,
+      ready,
     }
   }
 
@@ -796,5 +814,6 @@ export function useDashboardWidgets(
     reorder,
     hiddenKeys,
     orderedKeys,
+    ready: ref(true),
   }
 }
