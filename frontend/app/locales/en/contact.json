@@ -73,5 +73,81 @@
       "body": "All issued URLs are listed so you can manage them at a glance. Each entry shows the number of times used, the usage limit, and the expiration date.",
       "note": "You can revoke any URL at any time by tapping the trash icon. Once revoked, no one can use that URL to add you as a contact."
     }
+  },
+  "contact_privacy": {
+    "title": "Contact Privacy Settings",
+    "description": "Set your privacy preferences for contact requests, DMs, and online status",
+    "handle_searchable": {
+      "label": "Allow search by {'@'}handle",
+      "help": "People who know your {'@'}handle can find you in search"
+    },
+    "contact_approval": {
+      "label": "Require approval for contact requests",
+      "help": "If OFF, people are added instantly without a request (recommended: ON)"
+    },
+    "dm_section": {
+      "label": "Who can send you DMs"
+    },
+    "dm_option": {
+      "anyone": "Anyone",
+      "team_members_only": "Team members only",
+      "contacts_only": "Contacts only"
+    },
+    "online_section": {
+      "label": "Who can see your online status",
+      "help": "Choose who can see your last-seen time and current online status"
+    },
+    "online_option": {
+      "nobody": "Nobody",
+      "contacts_only": "Contacts only",
+      "everyone": "Everyone"
+    },
+    "save": "Save",
+    "saved": "Privacy settings saved",
+    "save_failed": "Failed to save",
+    "guide": {
+      "page_title": "How to use Contact Privacy Settings",
+      "description": "Here you can control who can find you, who can DM you, and who can see your online status, all in one place. If this is your first time, just go from top to bottom. When in doubt, leave the recommended settings (approval ON, narrow visibility) as they are.",
+      "search": {
+        "title": "Allow search by {'@'}handle",
+        "body": "This controls whether people who know your {'@'}handle (username) can find you in search. When OFF, you will not appear in search results even if someone knows your {'@'}handle.",
+        "steps": {
+          "step1": "Find the \"Allow search by {'@'}handle\" switch",
+          "step2": "Turn it ON if you want to be found, or OFF if you don't want to be searched",
+          "step3": "Press \"Save\" at the end"
+        }
+      },
+      "approval": {
+        "title": "Approval for contact requests",
+        "body": "This controls whether your approval is required when someone tries to add you as a contact. When ON, you first receive a request and only the people you approve become contacts (recommended). When OFF, people are added directly without any request.",
+        "steps": {
+          "step1": "Find the \"Require approval for contact requests\" switch",
+          "step2": "Keep it ON (recommended) so strangers can't add you without permission, then save"
+        }
+      },
+      "dm": {
+        "title": "Who can send you DMs",
+        "body": "Choose who can send you direct messages (DMs). Pick one of the three options.",
+        "options_intro": "There are three options to choose from.",
+        "anyone": "Anyone — anyone in the app can DM you",
+        "team_members_only": "Team members only — only people on your team can DM you",
+        "contacts_only": "Contacts only — only people in your contacts can DM you (the narrowest option)"
+      },
+      "online": {
+        "title": "Who can see your online status",
+        "body": "Choose who can see whether you are online now and when you were last online. Select \"Nobody\" if you don't want to be seen.",
+        "nobody": "Nobody — your online status is never shown",
+        "contacts_only": "Contacts only — only people in your contacts can see it",
+        "everyone": "Everyone — everyone in the app can see it"
+      },
+      "save": {
+        "title": "Saving your settings",
+        "body": "Whenever you change a setting, be sure to save at the end. Changes are not applied until you save.",
+        "steps": {
+          "step1": "Configure the options above as you like",
+          "step2": "Press the \"Save\" button at the bottom of the page"
+        }
+      }
+    }
   }
 }
