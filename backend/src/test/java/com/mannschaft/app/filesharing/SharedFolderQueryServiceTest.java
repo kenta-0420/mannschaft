@@ -359,4 +359,67 @@ class SharedFolderQueryServiceTest {
                             .isEqualTo(CommonErrorCode.COMMON_002));
         }
     }
+
+    /**
+     * download-url 発行（{@link com.mannschaft.app.filesharing.service.SharedFileService#presignDownload}）
+     * から呼ばれるファイル単位の閲覧認可入口。スコープ別ポリシーを再利用できることを検証する。
+     */
+    @Nested
+    @DisplayName("authorizeFolderViewById — ファイル単位ダウンロード認可の再利用入口")
+    class AuthorizeFolderViewById {
+
+        @Test
+        @DisplayName("PERSONAL 本人は通過する（例外なし）")
+        void PERSONAL本人_通過() {
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(personalFolder(USER_ID)));
+
+            service.authorizeFolderViewById(FOLDER_ID, USER_ID);
+            // 例外が出なければ OK（個人スコープでは外部サービス呼び出しなし）
+        }
+
+        @Test
+        @DisplayName("PERSONAL 他人は 404（FOLDER_NOT_FOUND・存在隠蔽）")
+        void PERSONAL他人_404() {
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(personalFolder(OTHER_USER_ID)));
+
+            assertThatThrownBy(() -> service.authorizeFolderViewById(FOLDER_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(FileSharingErrorCode.FOLDER_NOT_FOUND));
+        }
+
+        @Test
+        @DisplayName("TEAM メンバーは checkMembership を通して通過する")
+        void TEAMメンバー_通過() {
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(teamFolder()));
+
+            service.authorizeFolderViewById(FOLDER_ID, USER_ID);
+
+            verify(accessControlService).checkMembership(USER_ID, TEAM_ID, "TEAM");
+        }
+
+        @Test
+        @DisplayName("TEAM 非メンバーは 403（COMMON_002）")
+        void TEAM非メンバー_403() {
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(teamFolder()));
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkMembership(USER_ID, TEAM_ID, "TEAM");
+
+            assertThatThrownBy(() -> service.authorizeFolderViewById(FOLDER_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+        }
+
+        @Test
+        @DisplayName("存在しないフォルダは 404（FOLDER_NOT_FOUND）")
+        void フォルダ不存在_404() {
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.authorizeFolderViewById(FOLDER_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(FileSharingErrorCode.FOLDER_NOT_FOUND));
+        }
+    }
 }
