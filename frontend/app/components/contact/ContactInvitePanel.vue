@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ContactInviteTokenResponse, CreateInviteTokenBody } from '~/types/contact'
 
+const { t } = useI18n()
 const contactApi = useContactApi()
 const { captureQuiet } = useErrorReport()
 const notification = useNotification()
@@ -17,19 +18,19 @@ const form = ref<CreateInviteTokenBody>({
   expiresIn: '7d',
 })
 
-const expiresInOptions = [
-  { label: '1日', value: '1d' },
-  { label: '7日', value: '7d' },
-  { label: '30日', value: '30d' },
-  { label: '無期限', value: null },
-]
-const maxUsesOptions = [
-  { label: '1回', value: 1 },
-  { label: '5回', value: 5 },
-  { label: '10回', value: 10 },
-  { label: '50回', value: 50 },
-  { label: '無制限', value: null },
-]
+const expiresInOptions = computed(() => [
+  { label: t('contact_invite.expires_options.one_day'), value: '1d' },
+  { label: t('contact_invite.expires_options.seven_days'), value: '7d' },
+  { label: t('contact_invite.expires_options.thirty_days'), value: '30d' },
+  { label: t('contact_invite.expires_options.never'), value: null },
+])
+const maxUsesOptions = computed(() => [
+  { label: t('contact_invite.max_uses_options.once'), value: 1 },
+  { label: t('contact_invite.max_uses_options.five'), value: 5 },
+  { label: t('contact_invite.max_uses_options.ten'), value: 10 },
+  { label: t('contact_invite.max_uses_options.fifty'), value: 50 },
+  { label: t('contact_invite.max_uses_options.unlimited'), value: null },
+])
 
 async function fetchTokens() {
   loading.value = true
@@ -54,10 +55,10 @@ async function createToken() {
     tokens.value.unshift(result.data)
     showCreateForm.value = false
     form.value = { label: '', maxUses: 1, expiresIn: '7d' }
-    notification.success('招待URLを発行しました')
+    notification.success(t('contact_invite.messages.create_success'))
   } catch (e) {
     captureQuiet(e, { context: 'ContactInvitePanel: トークン発行' })
-    notification.error('発行に失敗しました')
+    notification.error(t('contact_invite.messages.create_error'))
   } finally {
     creating.value = false
   }
@@ -66,28 +67,28 @@ async function createToken() {
 async function revokeToken(id: number) {
   try {
     await contactApi.revokeInviteToken(id)
-    tokens.value = tokens.value.filter((t) => t.id !== id)
-    notification.success('招待URLを無効化しました')
+    tokens.value = tokens.value.filter((t2) => t2.id !== id)
+    notification.success(t('contact_invite.messages.revoke_success'))
   } catch (e) {
     captureQuiet(e, { context: 'ContactInvitePanel: トークン無効化' })
-    notification.error('無効化に失敗しました')
+    notification.error(t('contact_invite.messages.revoke_error'))
   }
 }
 
 async function copyUrl(url: string) {
   try {
     await navigator.clipboard.writeText(url)
-    notification.success('URLをコピーしました')
+    notification.success(t('contact_invite.messages.copy_success'))
   } catch {
-    notification.error('コピーに失敗しました')
+    notification.error(t('contact_invite.messages.copy_error'))
   }
 }
 
 function formatExpiry(token: ContactInviteTokenResponse): string {
-  if (!token.expiresAt) return '無期限'
+  if (!token.expiresAt) return t('contact_invite.expiry.never')
   const d = new Date(token.expiresAt)
-  if (d < new Date()) return '期限切れ'
-  return formatDate(token.expiresAt) + ' まで'
+  if (d < new Date()) return t('contact_invite.expiry.expired')
+  return t('contact_invite.expiry.until', { date: formatDate(token.expiresAt) })
 }
 
 onMounted(fetchTokens)
@@ -96,9 +97,9 @@ onMounted(fetchTokens)
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex items-center justify-between">
-      <h3 class="font-semibold">招待URL</h3>
+      <h3 class="font-semibold">{{ t('contact_invite.section_title') }}</h3>
       <Button
-        label="新しいURLを発行"
+        :label="t('contact_invite.create_button')"
         icon="pi pi-plus"
         size="small"
         @click="showCreateForm = !showCreateForm"
@@ -108,12 +109,17 @@ onMounted(fetchTokens)
     <div v-if="showCreateForm" class="rounded-lg border border-surface-300 p-4">
       <div class="flex flex-col gap-3">
         <div>
-          <label class="mb-1 block text-sm font-medium">ラベル（任意）</label>
-          <InputText v-model="form.label" placeholder="SNS用など" class="w-full" maxlength="50" />
+          <label class="mb-1 block text-sm font-medium">{{ t('contact_invite.form.label') }}</label>
+          <InputText
+            v-model="form.label"
+            :placeholder="t('contact_invite.form.label_placeholder')"
+            class="w-full"
+            maxlength="50"
+          />
         </div>
         <div class="flex gap-3">
           <div class="flex-1">
-            <label class="mb-1 block text-sm font-medium">利用回数</label>
+            <label class="mb-1 block text-sm font-medium">{{ t('contact_invite.form.max_uses') }}</label>
             <Select
               v-model="form.maxUses"
               :options="maxUsesOptions"
@@ -123,7 +129,7 @@ onMounted(fetchTokens)
             />
           </div>
           <div class="flex-1">
-            <label class="mb-1 block text-sm font-medium">有効期限</label>
+            <label class="mb-1 block text-sm font-medium">{{ t('contact_invite.form.expires_in') }}</label>
             <Select
               v-model="form.expiresIn"
               :options="expiresInOptions"
@@ -135,14 +141,14 @@ onMounted(fetchTokens)
         </div>
         <div class="flex gap-2">
           <Button
-            label="発行"
+            :label="t('contact_invite.form.submit')"
             icon="pi pi-link"
             class="flex-1"
             :loading="creating"
             @click="createToken"
           />
           <Button
-            label="キャンセル"
+            :label="t('contact_invite.form.cancel')"
             severity="secondary"
             outlined
             @click="showCreateForm = false"
@@ -153,16 +159,18 @@ onMounted(fetchTokens)
 
     <PageLoading v-if="loading" />
 
-    <div v-else-if="tokens.length === 0" class="py-6 text-center text-sm text-gray-400">
-      発行済みの招待URLはありません
-    </div>
+    <DashboardEmptyState
+      v-else-if="tokens.length === 0"
+      icon="pi pi-link"
+      :message="t('contact_invite.list.empty')"
+    />
 
     <div v-else class="flex flex-col gap-2">
       <div v-for="token in tokens" :key="token.id" class="rounded-lg border border-surface-300 p-3">
         <div class="mb-2 flex items-center justify-between">
-          <span class="text-sm font-medium">{{ token.label || '（ラベルなし）' }}</span>
+          <span class="text-sm font-medium">{{ token.label || t('contact_invite.list.no_label') }}</span>
           <Button
-            v-tooltip.top="'無効化'"
+            v-tooltip.top="t('contact_invite.list.revoke_tooltip')"
             icon="pi pi-trash"
             size="small"
             text
@@ -177,17 +185,17 @@ onMounted(fetchTokens)
         </div>
         <div class="flex items-center gap-3 text-xs text-gray-400">
           <span
-            ><i class="pi pi-users mr-1" />{{ token.usedCount }}/{{ token.maxUses ?? '∞' }}回</span
+            ><i class="pi pi-users mr-1" />{{ token.usedCount }}/{{ token.maxUses ?? '∞' }}{{ t('contact_invite.list.uses_unit') }}</span
           >
           <span><i class="pi pi-calendar mr-1" />{{ formatExpiry(token) }}</span>
         </div>
         <div class="mt-2 flex items-center gap-2">
           <img
             :src="token.qrCodeUrl"
-            alt="QRコード"
+            :alt="t('contact_invite.list.qr_alt')"
             class="h-16 w-16 rounded border border-surface-300"
           >
-          <span class="text-xs text-gray-400">QRコードをスキャンして追加</span>
+          <span class="text-xs text-gray-400">{{ t('contact_invite.list.qr_hint') }}</span>
         </div>
       </div>
     </div>

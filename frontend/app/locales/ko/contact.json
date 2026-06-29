@@ -1,0 +1,77 @@
+{
+  "contact_invite": {
+    "page_title": "초대 URL 관리",
+    "page_description": "연락처 추가용 초대 URL을 발행하고 관리합니다. URL을 공유받은 상대방이 당신을 연락처에 추가할 수 있습니다.",
+    "section_title": "초대 URL",
+    "create_button": "새 URL 발행",
+    "form": {
+      "label": "라벨 (선택)",
+      "label_placeholder": "예: SNS용",
+      "max_uses": "사용 횟수",
+      "expires_in": "유효 기간",
+      "submit": "발행",
+      "cancel": "취소"
+    },
+    "max_uses_options": {
+      "once": "1회",
+      "five": "5회",
+      "ten": "10회",
+      "fifty": "50회",
+      "unlimited": "무제한"
+    },
+    "expires_options": {
+      "one_day": "1일",
+      "seven_days": "7일",
+      "thirty_days": "30일",
+      "never": "무기한"
+    },
+    "list": {
+      "empty": "발행된 초대 URL이 없습니다",
+      "no_label": "（라벨 없음）",
+      "revoke_tooltip": "무효화",
+      "uses_unit": "회",
+      "qr_alt": "QR코드",
+      "qr_hint": "QR코드를 스캔하여 추가"
+    },
+    "expiry": {
+      "never": "무기한",
+      "expired": "만료됨",
+      "until": "{date} 까지"
+    },
+    "messages": {
+      "create_success": "초대 URL을 발행했습니다",
+      "create_error": "발행에 실패했습니다",
+      "revoke_success": "초대 URL을 무효화했습니다",
+      "revoke_error": "무효화에 실패했습니다",
+      "copy_success": "URL을 복사했습니다",
+      "copy_error": "복사에 실패했습니다"
+    }
+  },
+  "contact_invite_guide": {
+    "title": "초대 URL 관리 사용 방법",
+    "description": "초대 URL을 사용하면 URL이나 QR코드를 공유하는 것만으로 상대방이 당신을 연락처에 추가할 수 있습니다. SNS 프로필이나 명함 대신으로도 활용할 수 있습니다.",
+    "what": {
+      "title": "초대 URL이란?",
+      "body": "연락처에 추가받기 위한 전용 링크입니다. 발행한 URL을 상대방에게 전달하면, 상대방은 탭 한 번으로 당신을 연락처에 추가할 수 있습니다. ID나 이메일 주소를 직접 알려줄 필요가 없습니다."
+    },
+    "create": {
+      "title": "URL 발행하기",
+      "body": "화면 우측 상단의 「새 URL 발행」에서 용도에 맞게 URL을 만들 수 있습니다.",
+      "step1": "우측 상단의 「새 URL 발행」을 누릅니다.",
+      "step2": "라벨（선택 메모）, 사용 가능 횟수, 유효 기간을 선택합니다. 횟수와 기한을 설정하면 남용을 방지할 수 있습니다.",
+      "step3": "「발행」을 누르면 새 초대 URL과 QR코드가 목록에 추가됩니다."
+    },
+    "share": {
+      "title": "상대방과 공유하기",
+      "body": "발행한 URL은 복사해서 보내거나, QR코드를 스캔받는 방식으로 공유할 수 있습니다.",
+      "step1": "URL 옆의 「복사」 버튼을 눌러 URL을 복사합니다.",
+      "step2": "카카오톡, 이메일, SNS 프로필 등에 붙여넣어 상대방에게 보냅니다.",
+      "step3": "대면할 때는 표시된 QR코드를 상대방 카메라로 스캔받으면 바로 추가할 수 있습니다."
+    },
+    "manage": {
+      "title": "사용 현황 확인 및 무효화",
+      "body": "발행된 URL은 목록에서 관리할 수 있습니다. 각각 「사용된 횟수 / 상한」과 「유효 기간」이 표시됩니다.",
+      "note": "사용하지 않게 된 URL은 휴지통 아이콘을 누르면 언제든지 무효화할 수 있습니다. 무효화하면 그 URL로는 더 이상 연락처에 추가할 수 없게 됩니다."
+    }
+  }
+}
