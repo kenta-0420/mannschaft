@@ -53,6 +53,10 @@ services:
     image: valkey/valkey:8-alpine
     container_name: mannschaft-valkey
     restart: unless-stopped
+    # AOF（追記専用ファイル）永続化を有効化する。
+    # アカウントロック / レート制限 / JTI ブラックリスト等の認証防御状態を
+    # コンテナ再起動・再作成をまたいで保持し、無用な消失を防ぐ（保存先は valkey-data:/data）。
+    command: ["valkey-server", "--appendonly", "yes"]
     ports:
       - "6379:6379"
     volumes:

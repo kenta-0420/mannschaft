@@ -104,5 +104,24 @@ const { t } = useI18n()
         </div>
       </div>
     </SectionCard>
+
+    <!-- カード6: Google カレンダー連携（red, pi-google） -->
+    <SectionCard>
+      <div class="flex items-start gap-4">
+        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+          <i class="pi pi-google text-xl" aria-hidden="true" />
+        </div>
+        <div class="w-full">
+          <h2 class="mb-2 text-lg font-semibold">{{ t('schedule.calendar_guide.google_sync.title') }}</h2>
+          <p class="mb-3 text-sm leading-relaxed text-surface-600 dark:text-surface-300">{{ t('schedule.calendar_guide.google_sync.body') }}</p>
+          <ol class="list-decimal space-y-1 pl-5 text-sm text-surface-600 dark:text-surface-300">
+            <li>{{ t('schedule.calendar_guide.google_sync.step1') }}</li>
+            <li>{{ t('schedule.calendar_guide.google_sync.step2') }}</li>
+            <li>{{ t('schedule.calendar_guide.google_sync.step3') }}</li>
+            <li>{{ t('schedule.calendar_guide.google_sync.step4') }}</li>
+          </ol>
+        </div>
+      </div>
+    </SectionCard>
   </div>
 </template>

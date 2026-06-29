@@ -10,7 +10,7 @@ const { formatDate } = useDatetime()
 const tokens = ref<ContactInviteTokenResponse[]>([])
 const loading = ref(false)
 const creating = ref(false)
-const showCreateForm = ref(false)
+const showCreateForm = defineModel<boolean>('showCreateForm', { default: false })
 
 const form = ref<CreateInviteTokenBody>({
   label: '',
@@ -96,16 +96,6 @@ onMounted(fetchTokens)
 
 <template>
   <div class="flex flex-col gap-4">
-    <div class="flex items-center justify-between">
-      <h3 class="font-semibold">{{ t('contact_invite.section_title') }}</h3>
-      <Button
-        :label="t('contact_invite.create_button')"
-        icon="pi pi-plus"
-        size="small"
-        @click="showCreateForm = !showCreateForm"
-      />
-    </div>
-
     <div v-if="showCreateForm" class="rounded-lg border border-surface-300 p-4">
       <div class="flex flex-col gap-3">
         <div>

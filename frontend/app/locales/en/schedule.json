@@ -142,6 +142,14 @@
         "item_edit": "Use the pencil icon to edit, or the trash icon to delete",
         "item_attendance": "For events with attendance tracking, select 'Attending', 'Not attending', or 'Maybe'",
         "item_match": "Use the 'Record this match' button from a team event to start a match record"
+      },
+      "google_sync": {
+        "title": "Google Calendar integration",
+        "body": "Connect your Google account to sync your personal events with Google Calendar in both directions. Events you add or edit in Mannschaft appear in Google Calendar, and changes made in Google Calendar are imported back.",
+        "step1": "Open 'Settings' → 'Google Calendar integration'",
+        "step2": "Press 'Connect Google account' and authorize the connection",
+        "step3": "Turn on 'Personal calendar' to enable syncing",
+        "step4": "Run 'Manual sync' when you want changes reflected immediately"
       }
     },
     "google_sync_notice": "Connected to Google Calendar. Any changes made in Google will be replaced by Mannschaft data the next time you save this event here."
