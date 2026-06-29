@@ -2,7 +2,6 @@
   "contact_invite": {
     "page_title": "Gestión de URL de invitación",
     "page_description": "Emite y gestiona URLs de invitación para agregar contactos. Quien reciba la URL podrá agregarte como contacto.",
-    "section_title": "URLs de invitación",
     "create_button": "Emitir nueva URL",
     "form": {
       "label": "Etiqueta (opcional)",

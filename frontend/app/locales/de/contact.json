@@ -2,7 +2,6 @@
   "contact_invite": {
     "page_title": "Einladungslink-Verwaltung",
     "page_description": "Erstellen und verwalten Sie Einladungslinks zum Hinzufügen von Kontakten. Wer den Link erhält, kann Sie als Kontakt hinzufügen.",
-    "section_title": "Einladungslinks",
     "create_button": "Neuen Link erstellen",
     "form": {
       "label": "Bezeichnung (optional)",
