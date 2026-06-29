@@ -42,6 +42,31 @@
       }
     }
   },
+  "contact_request_blocks_help": {
+    "title": "So verwenden Sie die Kontaktanfragen-Sperrliste",
+    "description": "Mit dieser Einstellung können Sie Kontaktanfragen von bestimmten Personen von Anfang an automatisch ignorieren.",
+    "what": {
+      "title": "Was ist die Kontaktanfragen-Sperrliste?",
+      "body": "Wenn jemand auf dieser Liste versucht, Sie als Kontakt hinzuzufügen, wird seine Anfrage automatisch ignoriert. Sie erhalten keine Benachrichtigung und erfahren nichts von dem Versuch.",
+      "note": "Die andere Person wird nie darüber informiert, dass sie gesperrt wurde. Sie können Anfragen bestimmter Personen still und leise stoppen, ohne Unannehmlichkeiten zu verursachen."
+    },
+    "list": {
+      "title": "So lesen Sie die Liste",
+      "body": "Alle gesperrten Benutzer werden in einer Liste angezeigt. Jede Zeile enthält die folgenden Informationen.",
+      "item_name": "Symbol und Name — wen Sie sperren",
+      "item_handle": "Kontakt-Handle beginnend mit {'@'} — die eindeutige ID der Person",
+      "item_date": "«Eingestellt am» — das Datum, an dem die Sperre registriert wurde"
+    },
+    "unblock": {
+      "title": "So entfernen Sie eine Sperre",
+      "body": "Sie können eine Sperre jederzeit entfernen. Nach der Entfernung kann diese Person Ihnen wieder eine Kontaktanfrage senden.",
+      "steps": {
+        "step1": "Suchen Sie die Zeile der Person, die Sie entsperren möchten.",
+        "step2": "Drücken Sie die Schaltfläche «Entsperren» auf der rechten Seite der Zeile.",
+        "step3": "Wenn die Person aus der Liste verschwindet, wurde die Sperre erfolgreich entfernt."
+      }
+    }
+  },
   "qa": {
     "title": "Haeufig gestellte Fragen (Q&A)",
     "description": "Antworten auf haeufige Fragen zur Nutzung von Mannschaft, zur Installation der PWA und mehr.",
