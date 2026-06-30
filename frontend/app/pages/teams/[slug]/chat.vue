@@ -35,9 +35,9 @@ onMounted(() => loadPermissions())
       <PageHeader title="チャット" />
     </div>
 
-    <div class="flex h-[calc(100vh-12rem)] overflow-hidden rounded-xl border border-surface-300">
+    <div class="flex h-[calc(100vh-12rem)] overflow-hidden rounded-xl border-2 border-surface-400 dark:border-surface-500">
       <!-- サイドバー -->
-      <div class="w-64 shrink-0 border-r border-surface-200 bg-surface-50">
+      <div class="w-64 shrink-0 border-r border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800">
         <ChatChannelList
           ref="listRef"
           :team-id="teamSlug"
@@ -47,7 +47,7 @@ onMounted(() => loadPermissions())
       </div>
 
       <!-- メッセージパネル -->
-      <div class="flex-1 bg-surface-0">
+      <div class="flex-1 bg-surface-0 dark:bg-surface-900">
         <ChatMessagePanel
           v-if="selectedChannel"
           :channel="selectedChannel"

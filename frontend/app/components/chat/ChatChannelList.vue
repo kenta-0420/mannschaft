@@ -67,7 +67,7 @@ defineExpose({ refresh: loadChannels, refreshAndSelect })
 
 <template>
   <div class="flex h-full flex-col">
-    <div class="flex items-center justify-between border-b border-surface-200 px-3 py-2">
+    <div class="flex items-center justify-between border-b border-surface-200 dark:border-surface-700 px-3 py-2">
       <span class="text-sm font-semibold">チャット</span>
       <Button
         v-tooltip.right="'新しい会話'"
@@ -87,7 +87,7 @@ defineExpose({ refresh: loadChannels, refreshAndSelect })
 
       <template v-else>
         <!-- Kabine(DM) セクション -->
-        <div class="border-b border-surface-200">
+        <div class="border-b border-surface-200 dark:border-surface-700">
           <div class="flex items-center justify-between p-3">
             <h2 class="text-base font-semibold"><i class="pi pi-user mr-1 text-sm" />Kabine(DM)</h2>
           </div>
@@ -100,7 +100,7 @@ defineExpose({ refresh: loadChannels, refreshAndSelect })
           <button
             v-for="ch in dmChannels"
             :key="ch.id"
-            class="flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-surface-100"
+            class="flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
             :class="selectedId === ch.id ? 'bg-primary/10' : ''"
             :data-testid="`chat-channel-${ch.id}`"
             @click="selectChannel(ch)"
@@ -139,7 +139,7 @@ defineExpose({ refresh: loadChannels, refreshAndSelect })
           <button
             v-for="ch in roomChannels"
             :key="ch.id"
-            class="flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-surface-100"
+            class="flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
             :class="selectedId === ch.id ? 'bg-primary/10' : ''"
             :data-testid="`chat-channel-${ch.id}`"
             @click="selectChannel(ch)"

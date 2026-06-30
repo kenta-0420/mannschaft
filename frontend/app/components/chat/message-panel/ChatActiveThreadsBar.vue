@@ -11,7 +11,7 @@ const emit = defineEmits<{
 <template>
   <div
     v-if="count > 0"
-    class="flex cursor-pointer items-center gap-1.5 border-b border-surface-100 bg-primary/5 px-4 py-1.5 text-xs text-primary hover:bg-primary/10"
+    class="flex cursor-pointer items-center gap-1.5 border-b border-surface-100 dark:border-surface-800 bg-primary/5 px-4 py-1.5 text-xs text-primary hover:bg-primary/10"
     @click="emit('open')"
   >
     <i class="pi pi-comments text-xs" />

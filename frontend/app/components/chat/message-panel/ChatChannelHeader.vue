@@ -11,7 +11,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="flex items-center gap-3 border-b border-surface-200 px-4 py-3">
+  <div class="flex items-center gap-3 border-b border-surface-200 dark:border-surface-700 px-4 py-3">
     <i
       :class="
         channel.channelType === 'DIRECT'
