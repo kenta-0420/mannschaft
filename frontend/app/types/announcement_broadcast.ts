@@ -29,9 +29,9 @@ export interface BulletinThreadContent {
   body: string
 }
 
-/** チャネル別コンテンツ入力 — タイムライン */
+/** チャネル別コンテンツ入力 — タイムライン（BE アダプターは body を読む） */
 export interface TimelinePostContent {
-  content: string
+  body: string
 }
 
 /** チャネル別コンテンツ入力 — ブログ */
@@ -40,9 +40,10 @@ export interface BlogPostContent {
   body: string
 }
 
-/** チャネル別コンテンツ入力 — TODO */
+/** チャネル別コンテンツ入力 — TODO（body は BE で description として扱われる） */
 export interface TodoContent {
   title: string
+  body?: string
   description?: string
   dueDate?: string
   priority?: 'LOW' | 'MEDIUM' | 'HIGH'
