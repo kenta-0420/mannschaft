@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
 import { loginViaApi } from '../fixtures/auth'
 import * as path from 'path'
@@ -120,9 +120,9 @@ test.describe('チームチャット ダークモード実機E2E', () => {
       const sidebarEl = page.locator('.w-64.shrink-0').first()
       await expect(sidebarEl).toBeVisible()
 
-      const sidebarBg = await page.evaluate((el) => {
+      const sidebarBg = await sidebarEl.evaluate((el) => {
         return window.getComputedStyle(el).backgroundColor
-      }, await sidebarEl.elementHandle())
+      })
 
       // 修正後: dark:bg-surface-800 が適用され白(rgb(255, 255, 255))でなくなる
       // 修正前: bg-surface-50 が白に近い色のまま
