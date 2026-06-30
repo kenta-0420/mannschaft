@@ -101274,6 +101274,48 @@
         }
       }
     },
+    "/api/v1/timeline/my": {
+      "get": {
+        "tags": [
+          "タイムラインフィード"
+        ],
+        "summary": "個人集約タイムライン取得（所属team/org横断）",
+        "operationId": "getMyFeed",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimelineFeedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/timeline/feed": {
       "get": {
         "tags": [
@@ -192623,17 +192665,6 @@
           }
         }
       },
-      "ApiResponseListMuteResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/MuteResponse"
-            }
-          }
-        }
-      },
       "FeedData": {
         "type": "object",
         "properties": {
@@ -192675,6 +192706,17 @@
           },
           "meta": {
             "$ref": "#/components/schemas/FeedMeta"
+          }
+        }
+      },
+      "ApiResponseListMuteResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MuteResponse"
+            }
           }
         }
       },

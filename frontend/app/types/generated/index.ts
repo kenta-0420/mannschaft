@@ -29204,6 +29204,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/timeline/my": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 個人集約タイムライン取得（所属team/org横断） */
+        get: operations["getMyFeed"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/timeline/feed": {
         parameters: {
             query?: never;
@@ -64154,9 +64171,6 @@ export interface components {
             scope?: components["schemas"]["PostScopeDto"];
             stats?: components["schemas"]["PostStatsDto"];
         };
-        ApiResponseListMuteResponse: {
-            data?: components["schemas"]["MuteResponse"][];
-        };
         FeedData: {
             pinned?: components["schemas"]["PostResponse"][];
             posts?: components["schemas"]["PostResponse"][];
@@ -64171,6 +64185,9 @@ export interface components {
         TimelineFeedResponse: {
             data?: components["schemas"]["FeedData"];
             meta?: components["schemas"]["FeedMeta"];
+        };
+        ApiResponseListMuteResponse: {
+            data?: components["schemas"]["MuteResponse"][];
         };
         ApiResponseListBookmarkResponse: {
             data?: components["schemas"]["BookmarkResponse"][];
@@ -132738,6 +132755,29 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListPostResponse"];
+                };
+            };
+        };
+    };
+    getMyFeed: {
+        parameters: {
+            query?: {
+                cursor?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TimelineFeedResponse"];
                 };
             };
         };
