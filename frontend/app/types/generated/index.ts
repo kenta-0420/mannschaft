@@ -16978,7 +16978,7 @@ export interface paths {
         put?: never;
         /**
          * 組織への告知ウィザード実行
-         * @description F02.8 告知ウィザード。組織スコープでコンテンツ作成 + お知らせフィード登録を一括実行する。target_team_ids を指定した場合は組織配下チームであることを検証する。
+         * @description F02.8 告知ウィザード。組織スコープでコンテンツ作成 + お知らせフィード登録を一括実行する。targetTeamIds を指定した場合は組織配下チームであることを検証する。
          */
         post: operations["broadcastToOrg"];
         delete?: never;
@@ -46221,19 +46221,19 @@ export interface components {
         };
         TemplateResponseDto: {
             /** Format: date-time */
-            created_at?: string;
+            createdAt?: string;
             /** Format: int64 */
-            created_by?: number;
+            createdBy?: number;
             /** Format: int64 */
             id?: number;
-            is_default?: boolean;
+            isDefault?: boolean;
             name?: string;
-            preferred_channel?: string;
+            preferredChannel?: string;
             /** Format: int64 */
-            scope_id?: number;
-            scope_type?: string;
-            target_role?: string;
-            target_team_ids?: number[];
+            scopeId?: number;
+            scopeType?: string;
+            targetRole?: string;
+            targetTeamIds?: number[];
         };
         AnniversaryRequest: {
             /** Format: date */

@@ -66,4 +66,8 @@ jobs:
         run: npm run lint
 
       - name: Type check
+        # nuxt typecheck (vue-tsc) はプロジェクト成長で node 既定ヒープ(約4GB)を超過し
+        # CI ランナーで OOM(exit 134) する。ubuntu-latest は 16GB RAM のためヒープを 8GB に引き上げる。
         run: npm run typecheck
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192

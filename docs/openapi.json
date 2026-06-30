@@ -65435,7 +65435,7 @@
           "告知ウィザード"
         ],
         "summary": "組織への告知ウィザード実行",
-        "description": "F02.8 告知ウィザード。組織スコープでコンテンツ作成 + お知らせフィード登録を一括実行する。target_team_ids を指定した場合は組織配下チームであることを検証する。",
+        "description": "F02.8 告知ウィザード。組織スコープでコンテンツ作成 + お知らせフィード登録を一括実行する。targetTeamIds を指定した場合は組織配下チームであることを検証する。",
         "operationId": "broadcastToOrg",
         "parameters": [
           {
@@ -142667,11 +142667,11 @@
       "TemplateResponseDto": {
         "type": "object",
         "properties": {
-          "created_at": {
+          "createdAt": {
             "type": "string",
             "format": "date-time"
           },
-          "created_by": {
+          "createdBy": {
             "type": "integer",
             "format": "int64"
           },
@@ -142679,26 +142679,26 @@
             "type": "integer",
             "format": "int64"
           },
-          "is_default": {
+          "isDefault": {
             "type": "boolean"
           },
           "name": {
             "type": "string"
           },
-          "preferred_channel": {
+          "preferredChannel": {
             "type": "string"
           },
-          "scope_id": {
+          "scopeId": {
             "type": "integer",
             "format": "int64"
           },
-          "scope_type": {
+          "scopeType": {
             "type": "string"
           },
-          "target_role": {
+          "targetRole": {
             "type": "string"
           },
-          "target_team_ids": {
+          "targetTeamIds": {
             "type": "array",
             "items": {
               "type": "integer",
