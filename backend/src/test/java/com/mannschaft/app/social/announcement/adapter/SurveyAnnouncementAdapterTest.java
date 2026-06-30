@@ -2,6 +2,7 @@ package com.mannschaft.app.social.announcement.adapter;
 
 import com.mannschaft.app.social.announcement.AnnouncementContentRequest;
 import com.mannschaft.app.social.announcement.AnnouncementSourceType;
+import com.mannschaft.app.survey.ResultsVisibility;
 import com.mannschaft.app.survey.dto.CreateSurveyRequest;
 import com.mannschaft.app.survey.dto.SurveyDetailResponse;
 import com.mannschaft.app.survey.dto.SurveyResponse;
@@ -20,6 +21,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -140,6 +142,55 @@ class SurveyAnnouncementAdapterTest {
             // then
             verify(surveyService).createSurvey(anyString(), anyLong(), anyLong(), captor.capture());
             assertThat(captor.getValue().getExpiresAt()).isEqualTo(CLOSES_AT);
+        }
+
+        @Test
+        @DisplayName("resultsVisibility が ResultsVisibility の有効値（AFTER_RESPONSE）であること（SURVEY_024 回帰の防止）")
+        void passesValidResultsVisibility() {
+            // given
+            AnnouncementContentRequest content = AnnouncementContentRequest.builder()
+                    .title("結果公開設定の有効値テスト")
+                    .build();
+
+            given(surveyService.createSurvey(anyString(), anyLong(), anyLong(), any(CreateSurveyRequest.class)))
+                    .willReturn(buildSurveyDetailResponse(SURVEY_ID));
+
+            ArgumentCaptor<CreateSurveyRequest> captor =
+                    ArgumentCaptor.forClass(CreateSurveyRequest.class);
+
+            // when（第4引数は target_role。resultsVisibility に流用してはならない）
+            adapter.createContent(content, "TEAM", SCOPE_ID, "MEMBERS_AND_ABOVE", USER_ID);
+
+            // then: 実 enum の valueOf を実際に呼ぶ。アダプターが無効文字列（旧バグの
+            // "ALL_MEMBERS" 等）を渡したら IllegalArgumentException で必ず落ちる
+            // （SurveyService.parseEnumOrThrow が SURVEY_024 を投げる経路をモック無しで補完）。
+            verify(surveyService).createSurvey(anyString(), anyLong(), anyLong(), captor.capture());
+            String resultsVisibility = captor.getValue().getResultsVisibility();
+            assertThatCode(() -> ResultsVisibility.valueOf(resultsVisibility))
+                    .doesNotThrowAnyException();
+            assertThat(resultsVisibility).isEqualTo(ResultsVisibility.AFTER_RESPONSE.name());
+        }
+
+        @Test
+        @DisplayName("target_role が resultsVisibility に流用されていないこと")
+        void doesNotUseTargetRoleAsResultsVisibility() {
+            // given
+            AnnouncementContentRequest content = AnnouncementContentRequest.builder()
+                    .title("target_role 非流用テスト")
+                    .build();
+
+            given(surveyService.createSurvey(anyString(), anyLong(), anyLong(), any(CreateSurveyRequest.class)))
+                    .willReturn(buildSurveyDetailResponse(SURVEY_ID));
+
+            ArgumentCaptor<CreateSurveyRequest> captor =
+                    ArgumentCaptor.forClass(CreateSurveyRequest.class);
+
+            // when
+            adapter.createContent(content, "ORGANIZATION", SCOPE_ID, "PUBLIC", USER_ID);
+
+            // then: resultsVisibility に "PUBLIC"（target_role）が漏れていない
+            verify(surveyService).createSurvey(anyString(), anyLong(), anyLong(), captor.capture());
+            assertThat(captor.getValue().getResultsVisibility()).isNotEqualTo("PUBLIC");
         }
 
         @Test
