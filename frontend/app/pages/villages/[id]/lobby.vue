@@ -21,6 +21,7 @@
  */
 import dayjs from 'dayjs'
 import type { ChatMessageResponse } from '~/types/chat'
+import { mapBeMessage, type BeMessageResponse } from '~/composables/chat/chatMessageMapper'
 import type {
   DailyThreadResponse,
   LobbyChannelResponse,
@@ -56,6 +57,7 @@ const route = useRoute()
 const { t } = useI18n()
 const villageApi = useVillageApi()
 const chatApi = useChatApi()
+const authStore = useAuthStore()
 const { userTimezone } = useDatetime()
 
 const villageId = String(route.params.id)
@@ -154,7 +156,8 @@ const offWsEvent = wsEventBus.on((event) => {
   // 今日のチャネルへの MESSAGE_CREATED のみ反映
   if (!isTodaySelected.value || !lobbyChannel.value) return
   if (event.type === 'MESSAGE_CREATED') {
-    const newMsg = event.data as ChatMessageResponse
+    // WS の data は BE ネスト生形状のため、マッパーで FE フラット型へ変換する
+    const newMsg = mapBeMessage(event.data as BeMessageResponse, authStore.user?.id)
     if (newMsg.channelId !== lobbyChannel.value.chatChannelId) return
     if (!messages.value.some(m => m.id === newMsg.id)) {
       messages.value.push(newMsg)

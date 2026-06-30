@@ -3,7 +3,8 @@ import { Client as StompClient } from '@stomp/stompjs'
 import { useEventBus } from '@vueuse/core'
 import { ref } from 'vue'
 import { resolveApiBaseUrl } from '~/composables/useApiBaseUrl'
-import type { ChatChannelEvent, ChatMessageListResponse } from '~/types/chat'
+import type { ChatChannelEvent } from '~/types/chat'
+import type { BeMessageListResponse } from './chatMessageMapper'
 
 /**
  * API ベース URL から STOMP WebSocket の接続先 URL を導出する。
@@ -156,10 +157,14 @@ export function useChatWebSocket() {
     _stompSubscriptions.set(channelId, subscription)
   }
 
-  /** 切断中に届いたメッセージを REST API でフェッチしてEventBusに流す（キャッチアップ用）。 */
+  /**
+   * 切断中に届いたメッセージを REST API でフェッチしてEventBusに流す（キャッチアップ用）。
+   * REST は BE ネスト生形状を返すため、受信側ハンドラ（mapBeMessage）が変換できるよう
+   * 生のまま MESSAGE_CREATED として emit する。
+   */
   async function _catchupMessages(channelId: number, lastMessageId: number): Promise<void> {
     try {
-      const res = await api<ChatMessageListResponse>(
+      const res = await api<BeMessageListResponse>(
         `/api/v1/chat/channels/${channelId}/messages`,
         { query: { cursor: lastMessageId, direction: 'after', limit: 100 } },
       )
