@@ -4,12 +4,199 @@ import type {
   SurveyResultSummary,
   RespondentsResponse,
   RemindRespondentsResponse,
+  QuestionType,
+  ResultsVisibility,
+  SurveyQuestion,
+  BeQuestionType,
+  SurveyQuestionWire,
+  SurveyDetailWire,
+  SurveyResponseRowWire,
+  MyResponseWire,
 } from '~/types/survey'
 import type { components } from '~/types/generated'
 
 // F05.4 (B) チーム別内訳（by_team）の生成型エイリアス。
 // アンケート側は生成型が正準（survey.dto.SurveyTeamBreakdownResponse をそのまま反映している）。
 export type SurveyTeamBreakdownResponse = components['schemas']['SurveyTeamBreakdownResponse']
+
+// ---------------------------------------------------------------------------
+// BE ↔ FE 翻訳層（純関数）
+//
+// 実 BE が返す入れ子・enum 値の生形（wire）を、画面/フォームが期待するフラット形へ変換する。
+// 画面（pages/surveys/[surveyId].vue）と SurveyResponseForm.vue を無改修に保つための要。
+// すべて副作用なしの純関数。テスト（_helpers.ts）で逆写像 mapQuestionTypeToBe を再利用するため
+// それのみ export する。
+// ---------------------------------------------------------------------------
+
+/** BE questionType → FE QuestionType（FREE_TEXT→TEXT / SCALE→RATING、他は恒等）。 */
+function mapQuestionTypeToFe(be: BeQuestionType): QuestionType {
+  switch (be) {
+    case 'FREE_TEXT':
+      return 'TEXT'
+    case 'SCALE':
+      return 'RATING'
+    case 'SINGLE_CHOICE':
+      return 'SINGLE_CHOICE'
+    case 'MULTIPLE_CHOICE':
+      return 'MULTIPLE_CHOICE'
+  }
+}
+
+/**
+ * FE QuestionType → BE 値（TEXT→FREE_TEXT / RATING→SCALE、他は恒等）。
+ * 'DATE' は BE に対応値が無いが将来用にそのまま返す。
+ * テスト用ビルダ（_helpers.ts）で FE 値を wire 形へ寄せるために export する。
+ */
+export function mapQuestionTypeToBe(fe: QuestionType): string {
+  switch (fe) {
+    case 'TEXT':
+      return 'FREE_TEXT'
+    case 'RATING':
+      return 'SCALE'
+    default:
+      return fe
+  }
+}
+
+/**
+ * BE resultsVisibility → FE ResultsVisibility。
+ * AFTER_RESPONSE→RESPONDENTS / AFTER_CLOSE→AFTER_CLOSE /
+ * ADMINS_ONLY・VIEWERS_ONLY→CREATOR_ONLY。既に FE 値ならそのまま返す（防御）。
+ */
+function mapResultsVisibilityToFe(be: string): ResultsVisibility {
+  switch (be) {
+    case 'AFTER_RESPONSE':
+      return 'RESPONDENTS'
+    case 'AFTER_CLOSE':
+      return 'AFTER_CLOSE'
+    case 'ADMINS_ONLY':
+    case 'VIEWERS_ONLY':
+      return 'CREATOR_ONLY'
+    case 'CREATOR_ONLY':
+    case 'RESPONDENTS':
+    case 'ALL_MEMBERS':
+      return be
+    default:
+      // 未知値は最も閉じた CREATOR_ONLY に倒す（漏洩を作らない）
+      return 'CREATOR_ONLY'
+  }
+}
+
+/** BE 設問（入れ子）→ FE 設問（フラット）。RATING は options 空のため Form の 1〜5 フォールバックが効く。 */
+function adaptQuestion(w: SurveyQuestionWire): SurveyQuestion {
+  return {
+    id: w.id,
+    questionText: w.content.questionText,
+    questionType: mapQuestionTypeToFe(w.questionType),
+    isRequired: w.content.isRequired,
+    sortOrder: w.content.displayOrder,
+    options: (w.options ?? []).map((o) => ({
+      id: o.id,
+      optionText: o.optionText,
+      sortOrder: o.displayOrder,
+    })),
+  }
+}
+
+/** BE 詳細（survey/questions 分離）→ FE 詳細（フラット展開 + hasResponded 付与）。 */
+function adaptDetail(
+  wire: SurveyDetailWire['data'],
+  hasResponded: boolean,
+): SurveyDetailResponse['data'] {
+  return {
+    ...wire.survey,
+    policy: {
+      ...wire.survey.policy,
+      resultsVisibility: mapResultsVisibilityToFe(wire.survey.policy.resultsVisibility),
+    },
+    questions: wire.questions.map(adaptQuestion),
+    hasResponded,
+  }
+}
+
+/** Form の buildPayload() が作る FE answer entry の形。 */
+interface FeAnswerEntry {
+  questionId: number
+  optionId?: number
+  optionIds?: number[]
+  textValue?: string
+  ratingValue?: number
+  dateValue?: string
+}
+
+/** 送信ボディの BE 形（optionIds 複数形・textResponse のみ）。 */
+interface BeSubmitBody {
+  answers: Array<{ questionId: number; optionIds?: number[]; textResponse?: string }>
+}
+
+/** prefill 用に getMyResponse が返す FE 形。 */
+interface MyResponseFe {
+  answers: Array<{
+    questionId: number
+    optionId?: number
+    optionIds?: number[]
+    textValue?: string
+    ratingValue?: number
+    dateValue?: string
+  }>
+}
+
+/**
+ * FE 送信ボディ → BE 送信ボディ。
+ * optionId は optionIds:[optionId] に正規化、textValue/ratingValue/dateValue は textResponse に集約。
+ * 空フィールドは付けない。
+ */
+function adaptSubmit(feBody: { answers?: FeAnswerEntry[] }): BeSubmitBody {
+  const answers = (feBody.answers ?? []).map((a) => {
+    const entry: { questionId: number; optionIds?: number[]; textResponse?: string } = {
+      questionId: a.questionId,
+    }
+    if (Array.isArray(a.optionIds)) {
+      entry.optionIds = a.optionIds
+    } else if (typeof a.optionId === 'number') {
+      entry.optionIds = [a.optionId]
+    }
+    if (typeof a.textValue === 'string') {
+      entry.textResponse = a.textValue
+    } else if (typeof a.ratingValue === 'number') {
+      entry.textResponse = String(a.ratingValue)
+    } else if (typeof a.dateValue === 'string') {
+      entry.textResponse = a.dateValue
+    }
+    return entry
+  })
+  return { answers }
+}
+
+/**
+ * BE「自分の回答」行配列 → FE prefill 形。
+ * questionId でグループ化し、optionId 群を optionIds に集約（先頭を optionId にも）。
+ * textResponse は数値なら ratingValue にも、文字列として textValue/dateValue にも詰める
+ * （Form 側が questionType で適切なものを選ぶため、全部入れて構わない）。
+ */
+function adaptMyResponse(rows: SurveyResponseRowWire[]): MyResponseFe {
+  const byQuestion = new Map<number, MyResponseFe['answers'][number]>()
+  const list = Array.isArray(rows) ? rows : []
+  for (const row of list) {
+    let entry = byQuestion.get(row.questionId)
+    if (!entry) {
+      entry = { questionId: row.questionId }
+      byQuestion.set(row.questionId, entry)
+    }
+    if (typeof row.optionId === 'number') {
+      if (!entry.optionIds) entry.optionIds = []
+      entry.optionIds.push(row.optionId)
+      if (entry.optionId === undefined) entry.optionId = row.optionId
+    }
+    if (typeof row.textResponse === 'string' && row.textResponse.length > 0) {
+      entry.textValue = row.textResponse
+      const n = Number(row.textResponse)
+      if (!Number.isNaN(n)) entry.ratingValue = n
+      entry.dateValue = row.textResponse
+    }
+  }
+  return { answers: Array.from(byQuestion.values()) }
+}
 
 export function useSurveyApi() {
   const api = useApi()
@@ -48,10 +235,25 @@ export function useSurveyApi() {
     return api(`/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys/stats`)
   }
 
-  async function getSurvey(scopeType: string, scopeId: string, surveyId: number) {
-    return api<SurveyDetailResponse>(
+  async function getSurvey(
+    scopeType: string,
+    scopeId: string,
+    surveyId: number,
+  ): Promise<SurveyDetailResponse> {
+    // 実 BE は survey/questions を分離した入れ子・enum 生値で返すため wire 型で受ける。
+    const raw = await api<SurveyDetailWire>(
       `/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys/${surveyId}`,
     )
+    // 実 BE は hasResponded を返さないため、自分の回答（行配列）の有無から導出する。
+    let responded = false
+    try {
+      const mine = await api<MyResponseWire>(`/api/v1/surveys/${surveyId}/responses/me`)
+      responded = Array.isArray(mine.data) && mine.data.length > 0
+    } catch {
+      // 404（未回答）等は未回答扱い。可視性/モード判定は false で安全側に倒れる。
+      responded = false
+    }
+    return { data: adaptDetail(raw.data, responded) }
   }
 
   /**
@@ -126,11 +328,18 @@ export function useSurveyApi() {
 
   // === Responses ===
   async function submitResponse(surveyId: number, body: Record<string, unknown>) {
-    return api(`/api/v1/surveys/${surveyId}/responses`, { method: 'POST', body })
+    // Form は FE 形（optionId/textValue/ratingValue/dateValue）で渡してくるため
+    // BE 形（optionIds/textResponse）へ整形して送る。
+    return api(`/api/v1/surveys/${surveyId}/responses`, {
+      method: 'POST',
+      body: adaptSubmit(body as { answers?: Array<{ questionId: number }> }),
+    })
   }
 
-  async function getMyResponse(surveyId: number) {
-    return api(`/api/v1/surveys/${surveyId}/responses/me`)
+  async function getMyResponse(surveyId: number): Promise<{ data: MyResponseFe }> {
+    // 実 BE は行配列で返すため、Form の prefill が期待する {data:{answers:[...]}} 形へ畳み込む。
+    const raw = await api<MyResponseWire>(`/api/v1/surveys/${surveyId}/responses/me`)
+    return { data: adaptMyResponse(raw.data ?? []) }
   }
 
   // === Targets ===

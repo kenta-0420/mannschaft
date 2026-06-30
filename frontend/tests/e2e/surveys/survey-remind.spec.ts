@@ -98,11 +98,13 @@ async function mockMePermissions(
 
 /** 詳細ページ周辺の「叩かれうるが本テストで関係しない」API を空応答で潰す。 */
 async function mockSideApis(page: Page): Promise<void> {
+  // 実 BE wire 形（行配列）。督促テストは作成者・ADMIN 視点で結果可視は
+  // isCreator/isAdmin 短絡のため hasResponded 非依存だが、形は wire に統一する。
   await page.route('**/api/v1/surveys/*/responses/me', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: { answers: [] } }),
+      body: JSON.stringify({ data: [] }),
     })
   })
 }

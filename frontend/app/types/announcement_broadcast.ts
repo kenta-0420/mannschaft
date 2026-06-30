@@ -29,9 +29,9 @@ export interface BulletinThreadContent {
   body: string
 }
 
-/** チャネル別コンテンツ入力 — タイムライン */
+/** チャネル別コンテンツ入力 — タイムライン（BE アダプターは body を読む） */
 export interface TimelinePostContent {
-  content: string
+  body: string
 }
 
 /** チャネル別コンテンツ入力 — ブログ */
@@ -40,9 +40,10 @@ export interface BlogPostContent {
   body: string
 }
 
-/** チャネル別コンテンツ入力 — TODO */
+/** チャネル別コンテンツ入力 — TODO（body は BE で description として扱われる） */
 export interface TodoContent {
   title: string
+  body?: string
   description?: string
   dueDate?: string
   priority?: 'LOW' | 'MEDIUM' | 'HIGH'
@@ -68,7 +69,8 @@ export interface SurveyContent {
   title: string
   /** 説明（任意・最大5000文字） */
   description: string | null
-  questions: unknown[]
+  /** 設問（告知ウィザードでは未送信。作成後に編集画面で追加する前提のため任意） */
+  questions?: unknown[]
   /** 締切日時（任意・ISO 8601 形式） */
   closesAt: string | null
 }

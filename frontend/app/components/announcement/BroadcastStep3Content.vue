@@ -3,7 +3,6 @@ import type { AnnouncementScopeType } from '~/types/announcement'
 import type {
   BroadcastPriority,
   BulletinThreadContent,
-  TimelinePostContent,
   BlogPostContent,
   TodoContent,
   ScheduleContent,
@@ -27,6 +26,25 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+
+/**
+ * Date を ISO-8601 LocalDateTime 形式 (YYYY-MM-DDTHH:mm:ss) に変換する。
+ *
+ * <p>BE の {@code expiresAt}（リクエスト直下）と SURVEY の {@code closesAt} は
+ * {@code LocalDateTime}（タイムゾーンオフセット非対応）なので、{@code toISOString()} の
+ * 末尾 {@code Z}＋ミリ秒を送ると JavaTimeModule に弾かれ 400 になる。
+ * ユーザーが選んだローカルの壁時計時刻をオフセットなしでそのまま送る。
+ * 一方 SCHEDULE の startAt/endAt は OffsetDateTime なので {@code toISOString()} のままで良い。</p>
+ */
+function toLocalDateTimeString(d: Date): string {
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mi = String(d.getMinutes()).padStart(2, '0')
+  const ss = String(d.getSeconds()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}`
+}
 
 /** 共通タイトルフィールド（チャネルをまたいで引き継ぐ） */
 const title = computed({
@@ -56,20 +74,6 @@ const body = computed({
   },
 })
 
-/** タイムラインのcontentフィールド */
-const timelineContent = computed({
-  get() {
-    const c = props.modelValue.content as Partial<TimelinePostContent>
-    return c.content ?? ''
-  },
-  set(value: string) {
-    emit('update:modelValue', {
-      ...props.modelValue,
-      content: { ...props.modelValue.content, content: value },
-    })
-  },
-})
-
 const priority = computed({
   get() {
     return props.modelValue.priority
@@ -84,9 +88,10 @@ const expiresAt = computed({
     return props.modelValue.expiresAt ? new Date(props.modelValue.expiresAt) : null
   },
   set(value: Date | null) {
+    // expiresAt は BE で LocalDateTime（オフセット非対応）。Z 付き ISO は 400 になる。
     emit('update:modelValue', {
       ...props.modelValue,
-      expiresAt: value ? value.toISOString() : null,
+      expiresAt: value ? toLocalDateTimeString(value) : null,
     })
   },
 })
@@ -186,9 +191,10 @@ const surveyClosesAt = computed({
     return c.closesAt ? new Date(c.closesAt) : null
   },
   set(value: Date | null) {
+    // closesAt は BE で LocalDateTime（オフセット非対応）。Z 付き ISO は 400 になる。
     emit('update:modelValue', {
       ...props.modelValue,
-      content: { ...props.modelValue.content, closesAt: value ? value.toISOString() : null },
+      content: { ...props.modelValue.content, closesAt: value ? toLocalDateTimeString(value) : null },
     })
   },
 })
@@ -206,7 +212,7 @@ const canSubmit = computed(() => {
   if (!channel.value) return false
   const c = props.modelValue.content as Record<string, unknown>
   if (channel.value === 'TIMELINE_POST') {
-    return typeof c.content === 'string' && c.content.trim().length > 0
+    return typeof c.body === 'string' && c.body.trim().length > 0
   }
   if (channel.value === 'SCHEDULE') {
     // タイトルと開始日時が必須
@@ -246,7 +252,7 @@ const canSubmit = computed(() => {
           {{ $t('announcement.form_body') }}
           <span class="text-red-500">*</span>
         </label>
-        <Textarea v-model="timelineContent" rows="5" class="w-full resize-none" />
+        <Textarea v-model="body" rows="5" class="w-full resize-none" />
       </div>
     </template>
 

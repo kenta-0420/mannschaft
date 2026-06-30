@@ -55,6 +55,7 @@
     "submit_button": "Send Announcement",
     "unsaved_changes_warning": "Your input will be lost. Are you sure?",
     "broadcast_success": "Announcement sent",
+    "broadcast_error_generic": "Failed to send the announcement",
     "broadcast_success_cta": "Check the announcement widget",
     "form_title": "Title",
     "form_body": "Body",

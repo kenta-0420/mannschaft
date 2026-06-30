@@ -345,6 +345,36 @@ test.describe('SURVEY-001 / 002: アンケート CRUD', () => {
     }
     await page.route('**/api/v1/teams/*/surveys/*', detailOverride)
 
+    // getSurvey は hasResponded を responses/me（実 BE wire 形の行配列）の
+    // 行有無から導出する。回答前は空配列、回答後は非空配列を返すよう
+    // ミュータブルなフラグで切り替える（currentDetail の差し替えと同期）。
+    let responded = false
+    await page.route('**/api/v1/surveys/*/responses/me', async (route: Route) => {
+      if (route.request().method() !== 'GET') {
+        await route.continue()
+        return
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: responded
+            ? [
+                {
+                  id: 8001,
+                  surveyId: PUBLISHED_SURVEY_ID,
+                  questionId: PUBLISHED_QUESTION_ID,
+                  userId: MEMBER_USER_ID,
+                  optionId: PUBLISHED_OPTION_RED_ID,
+                  textResponse: null,
+                  createdAt: '2026-04-27T00:00:00Z',
+                },
+              ]
+            : [],
+        }),
+      })
+    })
+
     // 回答送信 API（POST /api/v1/surveys/{id}/responses）モック
     // 成功したら currentDetail を hasResponded=true 版に差し替える
     await page.route('**/api/v1/surveys/*/responses', async (route: Route) => {
@@ -352,7 +382,7 @@ test.describe('SURVEY-001 / 002: アンケート CRUD', () => {
         await route.continue()
         return
       }
-      // 成功 → 詳細を hasResponded=true に差し替える
+      // 成功 → 詳細を hasResponded=true 版に差し替え、responses/me も回答済みへ。
       currentDetail = buildSurveyDetail(
         buildPublishedSurvey({
           hasResponded: true,
@@ -360,6 +390,7 @@ test.describe('SURVEY-001 / 002: アンケート CRUD', () => {
         }),
         [question],
       )
+      responded = true
       await route.fulfill({
         status: 201,
         contentType: 'application/json',

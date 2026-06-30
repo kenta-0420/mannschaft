@@ -55,6 +55,7 @@
     "submit_button": "Ankündigung senden",
     "unsaved_changes_warning": "Der eingegebene Inhalt geht verloren. Sind Sie sicher?",
     "broadcast_success": "Ankündigung gesendet",
+    "broadcast_error_generic": "Senden der Ankündigung fehlgeschlagen",
     "broadcast_success_cta": "Ankündigungs-Widget prüfen",
     "form_title": "Titel",
     "form_body": "Inhalt",
