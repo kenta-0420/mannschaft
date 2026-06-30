@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { useDebounceFn, useEventBus } from '@vueuse/core'
 import type { ChatChannelResponse, ChatMessageResponse } from '~/types/chat'
+import {
+  mapBeMessage,
+  aggregateReactions,
+  type BeMessageResponse,
+  type BeReaction,
+} from '~/composables/chat/chatMessageMapper'
 import type { ActiveThreadItem } from './message-panel/ChatActiveThreadsDrawer.vue'
 
 const props = defineProps<{
@@ -227,15 +233,17 @@ const debouncedSendTyping = useDebounceFn(() => {
 const wsEventBus = useEventBus<{ type: string; data: unknown }>('chat:ws:event')
 
 const offWsEvent = wsEventBus.on((event) => {
+  const currentUserId = authStore.user?.id
   if (event.type === 'MESSAGE_CREATED') {
-    const newMsg = event.data as ChatMessageResponse
+    // WS の data は BE ネスト生形状のため、マッパーで FE フラット型へ変換する
+    const newMsg = mapBeMessage(event.data as BeMessageResponse, currentUserId)
     // 重複チェック: REST API で送信した直後にバックエンドが WS でも同一メッセージを返すことがあるため
     if (!messages.value.some((m) => m.id === newMsg.id)) {
       messages.value.push(newMsg)
       nextTick(() => scrollToBottom())
     }
   } else if (event.type === 'MESSAGE_UPDATED') {
-    const updated = event.data as ChatMessageResponse
+    const updated = mapBeMessage(event.data as BeMessageResponse, currentUserId)
     const idx = messages.value.findIndex((m) => m.id === updated.id)
     if (idx !== -1) {
       messages.value[idx] = updated
@@ -247,17 +255,19 @@ const offWsEvent = wsEventBus.on((event) => {
       messages.value[idx] = { ...messages.value[idx]!, isDeleted: true, body: null, sender: null }
     }
   } else if (event.type === 'REACTION_UPDATED') {
-    const reaction = event.data as {
-      messageId: number
-      reactionSummary: Record<string, number>
-      myReactions: string[]
-    }
+    // BE は { messageId, reactions[] }（生）を送るため、ここで集計形へ変換する
+    const reaction = event.data as { messageId: number; reactions: BeReaction[] }
     const idx = messages.value.findIndex((m) => m.id === reaction.messageId)
     if (idx !== -1) {
+      const { reactionSummary, myReactions } = aggregateReactions(
+        reaction.reactions ?? [],
+        currentUserId,
+      )
       messages.value[idx] = {
         ...messages.value[idx]!,
-        reactionSummary: reaction.reactionSummary,
-        myReactions: reaction.myReactions,
+        reactionSummary,
+        myReactions,
+        reactionCount: (reaction.reactions ?? []).length,
       }
     }
   } else if (event.type === 'TYPING') {
