@@ -55,6 +55,7 @@
     "submit_button": "Enviar anuncio",
     "unsaved_changes_warning": "Se perderá el contenido ingresado. ¿Está seguro?",
     "broadcast_success": "Anuncio enviado",
+    "broadcast_error_generic": "No se pudo enviar el anuncio",
     "broadcast_success_cta": "Ver el widget de anuncios",
     "form_title": "Título",
     "form_body": "Cuerpo",

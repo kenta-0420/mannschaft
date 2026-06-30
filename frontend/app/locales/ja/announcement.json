@@ -55,6 +55,7 @@
     "submit_button": "告知を送る",
     "unsaved_changes_warning": "入力内容が失われますがよいですか？",
     "broadcast_success": "告知を送信しました",
+    "broadcast_error_generic": "告知の送信に失敗しました",
     "broadcast_success_cta": "お知らせウィジェットを確認する",
     "form_title": "タイトル",
     "form_body": "本文",

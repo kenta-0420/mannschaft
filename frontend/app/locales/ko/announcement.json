@@ -55,6 +55,7 @@
     "submit_button": "공지 보내기",
     "unsaved_changes_warning": "입력 내용이 사라집니다. 계속하시겠습니까?",
     "broadcast_success": "공지를 전송했습니다",
+    "broadcast_error_generic": "공지 전송에 실패했습니다",
     "broadcast_success_cta": "공지 위젯 확인하기",
     "form_title": "제목",
     "form_body": "내용",

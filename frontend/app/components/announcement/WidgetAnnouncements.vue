@@ -126,7 +126,7 @@ async function onMarkAllRead() {
 
     <!-- お知らせ一覧 -->
     <div v-else role="list" class="divide-y divide-surface-100 dark:divide-surface-700">
-      <AnnouncementAnnouncementItem
+      <AnnouncementItem
         v-for="item in displayItems"
         :key="item.id"
         :item="item"
