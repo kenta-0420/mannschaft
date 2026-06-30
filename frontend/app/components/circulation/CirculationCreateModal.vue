@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { MemberResponse } from '~/types/member'
 import { useTeamMembers } from '~/composables/team/useTeamMembers'
+import { useTeamCrud } from '~/composables/team/useTeamCrud'
 
 /**
  * 回覧板 作成モーダル（③ 作成モーダル）。
