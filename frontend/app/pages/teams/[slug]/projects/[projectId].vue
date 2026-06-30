@@ -9,7 +9,7 @@ import type {
 } from '~/types/project'
 import type { TodoResponse } from '~/types/todo'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
 const teamSlug = String(route.params.slug)

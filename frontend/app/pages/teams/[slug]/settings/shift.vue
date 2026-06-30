@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { TeamShiftSettings, UpdateTeamShiftSettingsRequest } from '~/types/teamShiftSettings'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()

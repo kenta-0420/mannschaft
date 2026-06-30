@@ -6,7 +6,7 @@ import type {
   IndividualRanking,
 } from '~/types/tournament'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 const route = useRoute()
 const teamSlug = String(route.params.slug)
 
