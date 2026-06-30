@@ -1,0 +1,47 @@
+{
+  "circulation": {
+    "status": {
+      "DRAFT": "Entwurf",
+      "ACTIVE": "Im Umlauf",
+      "COMPLETED": "Abgeschlossen",
+      "CANCELLED": "Abgebrochen"
+    },
+    "recipient_status": {
+      "PENDING": "Ausstehend",
+      "STAMPED": "Abgestempelt",
+      "SKIPPED": "Übersprungen",
+      "REJECTED": "Abgelehnt"
+    },
+    "detail": {
+      "title": "Umlauf-Details",
+      "close": "Schließen",
+      "cancel": "Abbrechen",
+      "forbidden": "Sie haben keine Berechtigung, diesen Umlauf anzusehen (Sie sind kein Empfänger).",
+      "load_failed": "Umlauf konnte nicht geladen werden",
+      "unknown_user": "Unbekannter Benutzer",
+      "created_by": "{name}",
+      "due": "Fällig {date}",
+      "progress": "abgestempelt",
+      "recipients": "Empfänger",
+      "no_recipients": "Keine Empfänger",
+      "attachments": "Anhänge",
+      "comments": "Kommentare",
+      "no_comments": "Noch keine Kommentare",
+      "stamp": {
+        "open": "Abstempeln",
+        "choose_seal": "Wählen Sie ein Siegel zum Abstempeln",
+        "no_seal": "Kein Siegel verfügbar. Bitte erstellen Sie ein Siegel in den Einstellungen.",
+        "select_seal": "Bitte wählen Sie ein Siegel",
+        "comment_placeholder": "Stempelkommentar (optional)",
+        "submit": "Abstempeln",
+        "success": "Abgestempelt",
+        "failed": "Abstempeln fehlgeschlagen"
+      },
+      "comment": {
+        "placeholder": "Kommentar eingeben",
+        "submit": "Kommentar posten",
+        "failed": "Kommentar konnte nicht gepostet werden"
+      }
+    }
+  }
+}
