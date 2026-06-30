@@ -1,5 +1,7 @@
 package com.mannschaft.app.social.announcement.adapter;
 
+import com.mannschaft.app.schedule.MinViewRole;
+import com.mannschaft.app.schedule.ScheduleVisibility;
 import com.mannschaft.app.schedule.dto.CreateScheduleRequest;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
 import com.mannschaft.app.schedule.service.ScheduleService;
@@ -150,6 +152,97 @@ class ScheduleAnnouncementAdapterTest {
             verify(scheduleService).createSchedule(captor.capture(), anyLong(), anyString(), anyLong());
             assertThat(captor.getValue().getAllDay()).isTrue();
             assertThat(result).isEqualTo(SCHEDULE_ID);
+        }
+
+        @Test
+        @DisplayName("TEAM スコープ + MEMBERS_AND_ABOVE → visibility=MEMBERS_ONLY / minViewRole=MEMBER_PLUS に分解されること")
+        void decomposesTeamMembersAndAbove() {
+            // given
+            AnnouncementContentRequest content = AnnouncementContentRequest.builder()
+                    .title("ロール軸分解テスト")
+                    .startAt(START_AT)
+                    .build();
+            given(scheduleService.createSchedule(any(CreateScheduleRequest.class), anyLong(), anyString(), anyLong()))
+                    .willReturn(buildScheduleResponse(SCHEDULE_ID));
+            ArgumentCaptor<CreateScheduleRequest> captor =
+                    ArgumentCaptor.forClass(CreateScheduleRequest.class);
+
+            // when（第4引数は target_role）
+            adapter.createContent(content, "TEAM", SCOPE_ID, "MEMBERS_AND_ABOVE", USER_ID);
+
+            // then: 生の target_role を visibility に流さず2軸へ分解している
+            verify(scheduleService).createSchedule(captor.capture(), anyLong(), anyString(), anyLong());
+            assertThat(captor.getValue().getVisibility()).isEqualTo("MEMBERS_ONLY");
+            assertThat(captor.getValue().getMinViewRole()).isEqualTo("MEMBER_PLUS");
+        }
+
+        @Test
+        @DisplayName("ORGANIZATION スコープ + SUPPORTERS_AND_ABOVE → visibility=ORGANIZATION / minViewRole=SUPPORTER_PLUS に分解されること")
+        void decomposesOrgSupportersAndAbove() {
+            // given
+            AnnouncementContentRequest content = AnnouncementContentRequest.builder()
+                    .title("組織スコープ分解テスト")
+                    .startAt(START_AT)
+                    .build();
+            given(scheduleService.createSchedule(any(CreateScheduleRequest.class), anyLong(), anyString(), anyLong()))
+                    .willReturn(buildScheduleResponse(SCHEDULE_ID));
+            ArgumentCaptor<CreateScheduleRequest> captor =
+                    ArgumentCaptor.forClass(CreateScheduleRequest.class);
+
+            // when
+            adapter.createContent(content, "ORGANIZATION", SCOPE_ID, "SUPPORTERS_AND_ABOVE", USER_ID);
+
+            // then
+            verify(scheduleService).createSchedule(captor.capture(), anyLong(), anyString(), anyLong());
+            assertThat(captor.getValue().getVisibility()).isEqualTo("ORGANIZATION");
+            assertThat(captor.getValue().getMinViewRole()).isEqualTo("SUPPORTER_PLUS");
+        }
+
+        @Test
+        @DisplayName("PUBLIC → minViewRole=ANYONE に分解されること")
+        void decomposesPublic() {
+            // given
+            AnnouncementContentRequest content = AnnouncementContentRequest.builder()
+                    .title("PUBLIC 分解テスト")
+                    .startAt(START_AT)
+                    .build();
+            given(scheduleService.createSchedule(any(CreateScheduleRequest.class), anyLong(), anyString(), anyLong()))
+                    .willReturn(buildScheduleResponse(SCHEDULE_ID));
+            ArgumentCaptor<CreateScheduleRequest> captor =
+                    ArgumentCaptor.forClass(CreateScheduleRequest.class);
+
+            // when
+            adapter.createContent(content, "TEAM", SCOPE_ID, "PUBLIC", USER_ID);
+
+            // then
+            verify(scheduleService).createSchedule(captor.capture(), anyLong(), anyString(), anyLong());
+            assertThat(captor.getValue().getMinViewRole()).isEqualTo("ANYONE");
+        }
+
+        @Test
+        @DisplayName("渡された visibility/minViewRole が ScheduleVisibility/MinViewRole の有効値であること（valueOf 例外回帰の防止）")
+        void passesValidEnumNames() {
+            // given
+            AnnouncementContentRequest content = AnnouncementContentRequest.builder()
+                    .title("enum 有効値テスト")
+                    .startAt(START_AT)
+                    .build();
+            given(scheduleService.createSchedule(any(CreateScheduleRequest.class), anyLong(), anyString(), anyLong()))
+                    .willReturn(buildScheduleResponse(SCHEDULE_ID));
+            ArgumentCaptor<CreateScheduleRequest> captor =
+                    ArgumentCaptor.forClass(CreateScheduleRequest.class);
+
+            // when
+            adapter.createContent(content, "TEAM", SCOPE_ID, "MEMBERS_AND_ABOVE", USER_ID);
+
+            // then: ScheduleService 側の valueOf が例外にならない有効値であること
+            verify(scheduleService).createSchedule(captor.capture(), anyLong(), anyString(), anyLong());
+            String visibility = captor.getValue().getVisibility();
+            String minViewRole = captor.getValue().getMinViewRole();
+            assertThat(visibility).isIn(java.util.Arrays.stream(ScheduleVisibility.values())
+                    .map(Enum::name).toList());
+            assertThat(minViewRole).isIn(java.util.Arrays.stream(MinViewRole.values())
+                    .map(Enum::name).toList());
         }
 
         @Test

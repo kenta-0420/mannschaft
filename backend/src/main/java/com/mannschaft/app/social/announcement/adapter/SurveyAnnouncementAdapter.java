@@ -2,6 +2,7 @@ package com.mannschaft.app.social.announcement.adapter;
 
 import com.mannschaft.app.social.announcement.AnnouncementContentRequest;
 import com.mannschaft.app.social.announcement.AnnouncementSourceType;
+import com.mannschaft.app.survey.ResultsVisibility;
 import com.mannschaft.app.survey.dto.CreateSurveyRequest;
 import com.mannschaft.app.survey.dto.SurveyDetailResponse;
 import com.mannschaft.app.survey.service.SurveyService;
@@ -34,13 +35,13 @@ public class SurveyAnnouncementAdapter implements AnnouncementChannelAdapter {
 
     @Override
     public Long createContent(AnnouncementContentRequest content, String scopeType,
-                              Long scopeId, String visibility, Long userId) {
+                              Long scopeId, String targetRole, Long userId) {
         CreateSurveyRequest request = new CreateSurveyRequest(
                 content.getTitle(),
                 content.getDescription(),   // description
                 false,               // isAnonymous（デフォルト false）
                 false,               // allowMultipleSubmissions（デフォルト false）
-                "ALL_MEMBERS",       // resultsVisibility
+                ResultsVisibility.AFTER_RESPONSE.name(), // resultsVisibility（回答後に結果を閲覧可）
                 "ALL",               // distributionMode（全メンバー対象）
                 "CREATOR_AND_ADMIN", // unrespondedVisibility
                 false,               // autoPostToTimeline
