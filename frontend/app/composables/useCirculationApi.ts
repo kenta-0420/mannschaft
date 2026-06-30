@@ -1,5 +1,6 @@
 import type {
   CirculationResponse,
+  CirculationDocumentListItem,
   CirculationDetailResponse,
   CirculationComment,
   CirculationStampRequest,
@@ -121,15 +122,16 @@ export function useCirculationApi() {
   async function listScopedCirculations(
     scopeType: 'team' | 'organization',
     scopeId: string,
-    params?: { page?: number; size?: number },
+    params?: { page?: number; size?: number; status?: string },
   ) {
     const base =
       scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
     const query = new URLSearchParams()
     query.set('page', String(params?.page ?? 0))
     query.set('size', String(params?.size ?? 20))
+    if (params?.status) query.set('status', params.status)
     return api<{
-      data: CirculationResponse[]
+      data: CirculationDocumentListItem[]
       meta: { page: number; size: number; totalElements: number; totalPages: number }
     }>(`${base}/circulations?${query}`)
   }
