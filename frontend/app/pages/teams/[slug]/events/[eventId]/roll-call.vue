@@ -13,6 +13,7 @@ import type { AdvanceNoticeResponse, RollCallEntry } from '~/types/care'
  */
 
 definePageMeta({
+  layout: 'team',
   middleware: 'auth',
 })
 

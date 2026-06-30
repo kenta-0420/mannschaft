@@ -1,4 +1,5 @@
 <script setup lang="ts">
+definePageMeta({ layout: 'team' })
 import type {
   CreateJobPostingRequest,
   RewardType,

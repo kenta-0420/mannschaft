@@ -2,6 +2,7 @@
 import type { MemberCard, CheckinStats } from '~/types/member-card'
 
 definePageMeta({
+  layout: 'team',
   middleware: 'auth',
 })
 

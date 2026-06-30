@@ -10,7 +10,7 @@ import type {
   ChangeType,
 } from '~/types/timetable'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()

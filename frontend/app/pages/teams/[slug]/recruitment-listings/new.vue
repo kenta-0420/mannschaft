@@ -1,4 +1,5 @@
 <script setup lang="ts">
+definePageMeta({ layout: 'team' })
 import { ref, onMounted } from 'vue'
 import type {
   CreateRecruitmentListingRequest,

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { EquipmentType } from '~/types/equipment'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 const route = useRoute()
 const teamSlug = String(route.params.slug)
 const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)

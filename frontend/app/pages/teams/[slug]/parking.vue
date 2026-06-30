@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ParkingSpaceResponse } from '~/types/parking'
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 const route = useRoute()
 const teamSlug = String(route.params.slug)
 const { getSpaces } = useParkingApi()
