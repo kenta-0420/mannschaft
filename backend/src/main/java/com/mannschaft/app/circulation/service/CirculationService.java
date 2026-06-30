@@ -134,6 +134,17 @@ public class CirculationService {
      * @return 文書レスポンスのページ
      */
     public Page<DocumentResponse> listDocuments(String scopeType, Long scopeId, String status, Pageable pageable) {
+        // ① F00 漏洩根治: 一覧はスコープ所属者のみ。非所属は COMMON_002。
+        // GET /api/v1/teams/{teamId}/circulations（org 版含む）は .anyRequest().authenticated() のみで
+        // 認可ゲートが無く、認証済みなら非会員でも他チームの回覧タイトル/作成者/押印数を 200 で列挙できる
+        // （詳細取得 getDocument は recipients ACL で保護されているのに一覧だけ素通りだった）。
+        // checkMembershipOrDescendant(..., true) = 会員/応援者/(ORGANIZATION 時)配下ツリー所属を許可し、
+        // 非所属のみ弾く。Bean 不在のテスト構成では accessControlService が null 注入されガードはスキップされる。
+        if (accessControlService != null) {
+            accessControlService.checkMembershipOrDescendant(
+                    SecurityUtils.getCurrentUserId(), scopeId, scopeType, true);
+        }
+
         Page<CirculationDocumentEntity> page;
         if (status != null) {
             CirculationStatus circulationStatus = CirculationStatus.valueOf(status);
