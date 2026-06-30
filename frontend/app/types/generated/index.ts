@@ -59752,13 +59752,17 @@ export interface components {
         };
         ChannelResponse: {
             audit?: components["schemas"]["ChannelAuditDto"];
+            dmPartner?: components["schemas"]["DmPartnerDto"];
             /** Format: int64 */
             id?: number;
             identity?: components["schemas"]["ChannelIdentityDto"];
             lastMessage?: components["schemas"]["ChannelLastMessageDto"];
+            /** Format: int32 */
+            memberCount?: number;
             meta?: components["schemas"]["ChannelMetaDto"];
             settings?: components["schemas"]["ChannelSettingsDto"];
             source?: components["schemas"]["ChannelSourceDto"];
+            viewer?: components["schemas"]["ViewerStateDto"];
         };
         ChannelSettingsDto: {
             isArchived?: boolean;
@@ -59771,6 +59775,20 @@ export interface components {
             /** Format: int64 */
             sourceId?: number;
             sourceType?: string;
+        };
+        DmPartnerDto: {
+            avatarUrl?: string;
+            displayName?: string;
+            /** Format: int64 */
+            userId?: number;
+        };
+        ViewerStateDto: {
+            category?: string;
+            isMuted?: boolean;
+            isPinned?: boolean;
+            role?: string;
+            /** Format: int32 */
+            unreadCount?: number;
         };
         AttachmentRequest: {
             contentType?: string;
