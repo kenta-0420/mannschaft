@@ -480,7 +480,7 @@ onUnmounted(() => {
 
       <!-- お知らせウィジェット表示フラグ（チーム/組織スコープのみ） -->
       <div v-if="isTeamOrOrgScope" class="rounded-lg border border-surface-200 p-3 dark:border-surface-700">
-        <AnnouncementAnnouncementToggle v-model="displayInAnnouncement" />
+        <AnnouncementToggle v-model="displayInAnnouncement" />
         <p class="ml-6 mt-1 text-xs text-surface-400">
           ※「公開する」ボタン押下時に登録されます
         </p>
