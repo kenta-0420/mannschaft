@@ -174,6 +174,21 @@ export interface ChatThreadResponse {
   hasMore: boolean
 }
 
+/**
+ * ブックマーク (F04.x)。
+ *
+ * BE `BookmarkResponse` に対応。GET /chat/bookmarks は **ブックマーク自体**の配列
+ * （メッセージ本体ではない・ページング meta 無し）を返す。
+ * メッセージ本文を表示したい場合は messageId から別途取得すること。
+ */
+export interface ChatBookmark {
+  id: number
+  messageId: number
+  userId: number
+  note: string | null
+  createdAt: string
+}
+
 /** アクティブスレッド一覧アイテム (F04.2) */
 export interface ChatActiveThreadItem {
   id: number
