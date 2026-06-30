@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -160,12 +161,14 @@ class SurveyAnnouncementAdapterTest {
             // when（第4引数は target_role。resultsVisibility に流用してはならない）
             adapter.createContent(content, "TEAM", SCOPE_ID, "MEMBERS_AND_ABOVE", USER_ID);
 
-            // then: ResultsVisibility.valueOf が例外にならない有効値であること
+            // then: 実 enum の valueOf を実際に呼ぶ。アダプターが無効文字列（旧バグの
+            // "ALL_MEMBERS" 等）を渡したら IllegalArgumentException で必ず落ちる
+            // （SurveyService.parseEnumOrThrow が SURVEY_024 を投げる経路をモック無しで補完）。
             verify(surveyService).createSurvey(anyString(), anyLong(), anyLong(), captor.capture());
             String resultsVisibility = captor.getValue().getResultsVisibility();
+            assertThatCode(() -> ResultsVisibility.valueOf(resultsVisibility))
+                    .doesNotThrowAnyException();
             assertThat(resultsVisibility).isEqualTo(ResultsVisibility.AFTER_RESPONSE.name());
-            assertThat(resultsVisibility).isIn(java.util.Arrays.stream(ResultsVisibility.values())
-                    .map(Enum::name).toList());
         }
 
         @Test

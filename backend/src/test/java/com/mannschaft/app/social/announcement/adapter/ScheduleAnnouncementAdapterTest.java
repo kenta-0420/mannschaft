@@ -1,5 +1,6 @@
 package com.mannschaft.app.social.announcement.adapter;
 
+import com.mannschaft.app.schedule.EventType;
 import com.mannschaft.app.schedule.MinViewRole;
 import com.mannschaft.app.schedule.ScheduleVisibility;
 import com.mannschaft.app.schedule.dto.CreateScheduleRequest;
@@ -21,6 +22,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -220,8 +222,9 @@ class ScheduleAnnouncementAdapterTest {
         }
 
         @Test
-        @DisplayName("渡された visibility/minViewRole が ScheduleVisibility/MinViewRole の有効値であること（valueOf 例外回帰の防止）")
-        void passesValidEnumNames() {
+        @DisplayName("CreateScheduleRequest に渡す eventType/visibility/minViewRole が実 enum に存在すること"
+                + "（ScheduleService.buildScheduleEntity の null ガード無し valueOf を実際に呼んで回帰検出）")
+        void passedEnumStringsAreAcceptedByRealEnumValueOf() {
             // given
             AnnouncementContentRequest content = AnnouncementContentRequest.builder()
                     .title("enum 有効値テスト")
@@ -235,14 +238,18 @@ class ScheduleAnnouncementAdapterTest {
             // when
             adapter.createContent(content, "TEAM", SCOPE_ID, "MEMBERS_AND_ABOVE", USER_ID);
 
-            // then: ScheduleService 側の valueOf が例外にならない有効値であること
+            // then: 実 enum の valueOf を実際に呼ぶ。アダプターが無効文字列（例: 旧バグの
+            // eventType="NORMAL" や visibility="MEMBERS_AND_ABOVE"）を渡したら
+            // IllegalArgumentException で必ずこのテストが落ちる（モックでは踏まなかった経路を補完）。
             verify(scheduleService).createSchedule(captor.capture(), anyLong(), anyString(), anyLong());
-            String visibility = captor.getValue().getVisibility();
-            String minViewRole = captor.getValue().getMinViewRole();
-            assertThat(visibility).isIn(java.util.Arrays.stream(ScheduleVisibility.values())
-                    .map(Enum::name).toList());
-            assertThat(minViewRole).isIn(java.util.Arrays.stream(MinViewRole.values())
-                    .map(Enum::name).toList());
+            CreateScheduleRequest captured = captor.getValue();
+            assertThatCode(() -> {
+                EventType.valueOf(captured.getEventType());
+                ScheduleVisibility.valueOf(captured.getVisibility());
+                MinViewRole.valueOf(captured.getMinViewRole());
+            }).doesNotThrowAnyException();
+            // eventType は告知スケジュールでは EVENT 固定（"NORMAL" 回帰の検出）
+            assertThat(captured.getEventType()).isEqualTo(EventType.EVENT.name());
         }
 
         @Test
