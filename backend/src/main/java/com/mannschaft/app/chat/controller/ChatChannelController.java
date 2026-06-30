@@ -88,7 +88,7 @@ public class ChatChannelController {
     @Operation(summary = "チャンネル詳細")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ChannelResponse>> getChannel(@PathVariable Long channelId) {
-        ChannelResponse response = channelService.getChannel(channelId);
+        ChannelResponse response = channelService.getChannel(channelId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
