@@ -6,6 +6,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.template.dto.OrgModuleCatalogResponse;
 import com.mannschaft.app.template.dto.OrgModuleResponse;
 import com.mannschaft.app.template.dto.ToggleModuleRequest;
 import com.mannschaft.app.template.service.ModuleService;
@@ -54,6 +55,25 @@ public class OrganizationModuleController {
         // MEMBER以上であることを確認（SUPPORTER/GUESTは isMember=false のため 403）
         accessControlService.checkMembership(currentUserId, orgId, "ORGANIZATION");
         return ResponseEntity.ok(ApiResponse.of(moduleService.getOrganizationModules(orgId)));
+    }
+
+    /**
+     * 組織機能設定タブ向けの「利用可能 OPTIONAL モジュールのカタログ＋有効状態」を取得する。
+     * MEMBER 以上のユーザーが参照できる（SUPPORTER/GUEST/未加入は 403）。
+     *
+     * @param slug 組織スラッグ（URL識別子）
+     * @return カタログ＋有効状態レスポンス
+     */
+    @GetMapping("/catalog")
+    @Operation(summary = "組織機能カタログ＋有効状態取得")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<OrgModuleCatalogResponse>> getOrganizationModuleCatalog(
+            @PathVariable String slug) {
+        Long orgId = organizationService.resolveOrgId(slug);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        // MEMBER 以上であることを確認（SUPPORTER/GUEST/未加入は 403）
+        accessControlService.checkMembership(currentUserId, orgId, "ORGANIZATION");
+        return ResponseEntity.ok(ApiResponse.of(moduleService.getOrganizationModuleCatalog(orgId)));
     }
 
     /**

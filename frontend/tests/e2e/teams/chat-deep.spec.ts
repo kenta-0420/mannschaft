@@ -12,25 +12,18 @@ import { TEAM_ID, mockTeam, mockTeamFeatureApis } from './helpers'
 
 const MOCK_CHANNEL_ID = 42
 
+// BE ChannelResponse のネスト正準形
 const MOCK_CHANNEL = {
   id: MOCK_CHANNEL_ID,
-  channelType: 'TEAM',
-  team: { id: TEAM_ID, name: 'テストチーム' },
-  organization: null,
-  name: '雑談部屋',
-  iconUrl: null,
-  description: null,
-  isPrivate: false,
-  isArchived: false,
-  lastMessageAt: '2026-04-07T00:00:00Z',
-  lastMessagePreview: 'こんにちは',
-  unreadCount: 0,
-  isMuted: false,
-  isPinned: false,
+  identity: { channelType: 'TEAM_PUBLIC', teamId: TEAM_ID, organizationId: null },
+  meta: { name: '雑談部屋', iconKey: null, description: null },
+  settings: { isPrivate: false, isInquiryChannel: false, isArchived: false, version: 1 },
+  lastMessage: { lastMessageAt: '2026-04-07T00:00:00Z', lastMessagePreview: 'こんにちは' },
+  source: { sourceType: null, sourceId: null },
+  audit: { createdBy: null, createdAt: '2026-04-07T00:00:00Z', updatedAt: '2026-04-07T00:00:00Z' },
   memberCount: 5,
   dmPartner: null,
-  sourceType: null,
-  sourceId: null,
+  viewer: { unreadCount: 0, isMuted: false, isPinned: false, category: null, role: null },
 }
 
 const MOCK_MESSAGES = [

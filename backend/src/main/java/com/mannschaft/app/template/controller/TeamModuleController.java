@@ -1,8 +1,10 @@
 package com.mannschaft.app.template.controller;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.team.service.TeamService;
+import com.mannschaft.app.template.dto.TeamModuleCatalogResponse;
 import com.mannschaft.app.template.dto.TeamModuleResponse;
 import com.mannschaft.app.template.dto.ToggleModuleRequest;
 import com.mannschaft.app.template.service.ModuleService;
@@ -33,6 +35,7 @@ public class TeamModuleController {
 
     private final ModuleService moduleService;
     private final TeamService teamService;
+    private final AccessControlService accessControlService;
 
 
     /**
@@ -47,6 +50,24 @@ public class TeamModuleController {
             @PathVariable String slug) {
         Long teamId = teamService.resolveTeamId(slug);
         return ResponseEntity.ok(ApiResponse.of(moduleService.getTeamModules(teamId)));
+    }
+
+    /**
+     * チーム機能設定タブ向けの「利用可能 OPTIONAL モジュールのカタログ＋有効状態」を取得する。
+     * MEMBER 以上のユーザーが参照できる（SUPPORTER/GUEST/未加入は 403）。
+     *
+     * @param slug チームスラッグ（URL識別子）
+     * @return カタログ＋有効状態レスポンス
+     */
+    @GetMapping("/catalog")
+    @Operation(summary = "チーム機能カタログ＋有効状態取得")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<TeamModuleCatalogResponse>> getTeamModuleCatalog(
+            @PathVariable String slug) {
+        Long teamId = teamService.resolveTeamId(slug);
+        // MEMBER 以上であることを確認（SUPPORTER/GUEST/未加入は 403）
+        accessControlService.checkMembership(SecurityUtils.getCurrentUserId(), teamId, "TEAM");
+        return ResponseEntity.ok(ApiResponse.of(moduleService.getTeamModuleCatalog(teamId)));
     }
 
     /**

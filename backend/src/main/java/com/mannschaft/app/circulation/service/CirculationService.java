@@ -143,7 +143,26 @@ public class CirculationService {
             page = documentRepository.findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
                     scopeType, scopeId, pageable);
         }
-        return page.map(circulationMapper::toDocumentResponse);
+
+        // 作成者の表示名を充填する（per-page ≤ 20 件）。
+        // createdBy id の重複を避けるため distinct な id → displayName の Map を 1 パスで構築する。
+        Page<DocumentResponse> dtoPage = page.map(circulationMapper::toDocumentResponse);
+        if (userRepository != null) {
+            Map<Long, String> displayNameMap = new HashMap<>();
+            for (DocumentResponse dto : dtoPage.getContent()) {
+                Long createdBy = dto.getCreatedBy();
+                if (createdBy != null && !displayNameMap.containsKey(createdBy)) {
+                    String name = userRepository.findMemberSummaryById(createdBy)
+                            .map(MemberSummary::getDisplayName)
+                            .orElse(null);
+                    displayNameMap.put(createdBy, name);
+                }
+            }
+            return dtoPage.map(dto -> dto.toBuilder()
+                    .createdByName(displayNameMap.get(dto.getCreatedBy()))
+                    .build());
+        }
+        return dtoPage;
     }
 
     /**
@@ -208,7 +227,26 @@ public class CirculationService {
                     entity.getId(),
                     SecurityUtils.getCurrentUserIdOrNull());
         }
-        return circulationMapper.toDocumentResponse(entity);
+        return enrichCreatedByName(circulationMapper.toDocumentResponse(entity));
+    }
+
+    /**
+     * DocumentResponse に作成者の表示名（createdByName）を充填する。
+     *
+     * <p>{@code userRepository} が null のテスト構成ではそのまま返す（既存の防御パターン）。
+     * 解決できない場合は createdByName は null のまま。</p>
+     *
+     * @param dto 充填対象の DTO
+     * @return createdByName を充填した DTO（userRepository が null の場合は引数のまま）
+     */
+    private DocumentResponse enrichCreatedByName(DocumentResponse dto) {
+        if (userRepository == null || dto.getCreatedBy() == null) {
+            return dto;
+        }
+        String name = userRepository.findMemberSummaryById(dto.getCreatedBy())
+                .map(MemberSummary::getDisplayName)
+                .orElse(null);
+        return dto.toBuilder().createdByName(name).build();
     }
 
     /**

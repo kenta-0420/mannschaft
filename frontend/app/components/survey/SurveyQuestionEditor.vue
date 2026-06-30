@@ -188,7 +188,7 @@ function isChoiceType(type: QuestionType): boolean {
     <div
       v-for="(question, qIndex) in sortedQuestions"
       :key="qIndex"
-      class="rounded-xl border border-surface-300 bg-surface-0 p-4"
+      class="rounded-xl border border-surface-300 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800"
       :data-testid="`question-card-${qIndex}`"
     >
       <!-- ヘッダー: 番号 + 並び替え + 削除 -->
@@ -317,7 +317,7 @@ function isChoiceType(type: QuestionType): boolean {
       <!-- 評価スケール（RATING） -->
       <div
         v-else-if="question.questionType === 'RATING'"
-        class="rounded-lg bg-surface-50 px-3 py-2 text-sm text-surface-500"
+        class="rounded-lg bg-surface-50 px-3 py-2 text-sm text-surface-500 dark:bg-surface-800"
       >
         {{ t('surveys.create.questionEditor.ratingScale') }}
       </div>
@@ -325,13 +325,13 @@ function isChoiceType(type: QuestionType): boolean {
       <!-- TEXT / DATE は補足のみ -->
       <div
         v-else-if="question.questionType === 'TEXT'"
-        class="rounded-lg bg-surface-50 px-3 py-2 text-sm text-surface-500"
+        class="rounded-lg bg-surface-50 px-3 py-2 text-sm text-surface-500 dark:bg-surface-800"
       >
         {{ t('surveys.create.questionEditor.textHint') }}
       </div>
       <div
         v-else-if="question.questionType === 'DATE'"
-        class="rounded-lg bg-surface-50 px-3 py-2 text-sm text-surface-500"
+        class="rounded-lg bg-surface-50 px-3 py-2 text-sm text-surface-500 dark:bg-surface-800"
       >
         {{ t('surveys.create.questionEditor.dateHint') }}
       </div>

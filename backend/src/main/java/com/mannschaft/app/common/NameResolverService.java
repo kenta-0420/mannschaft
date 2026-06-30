@@ -2,6 +2,7 @@ package com.mannschaft.app.common;
 
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.team.entity.TeamEntity;
@@ -45,6 +46,7 @@ public class NameResolverService {
     private final UserRepository userRepository;
     private final TeamRepository teamRepository;
     private final OrganizationRepository organizationRepository;
+    private final MediaUrlResolver mediaUrlResolver;
 
     /**
      * ユーザーIDの集合から表示名マップを返す（ニックネーム）。
@@ -65,12 +67,14 @@ public class NameResolverService {
     }
 
     /**
-     * ユーザーIDの集合からアバターURLマップを返す。avatarUrl 未設定のIDは含まれない。
+     * ユーザーIDの集合からアバター表示URLマップを返す。avatarUrl 未設定／解決不能のIDは含まれない。
      *
-     * <p>{@code Collectors.toMap} は null 値で例外を投げるため、HashMap + null 除外で構築する。</p>
+     * <p>DB には生の R2 キーが格納されているため、{@link MediaUrlResolver} で署名付き表示 URL に解決する
+     * （生キーをそのまま返すと FE が相対 URL として解釈し 404 になる）。
+     * {@code Collectors.toMap} は null 値で例外を投げるため、HashMap + null 除外で構築する。</p>
      *
      * @param userIds ユーザーIDの集合
-     * @return Map(userId → avatarUrl)。avatarUrl が null のIDは含まれない
+     * @return Map(userId → 署名付きアバター表示URL)。avatarUrl が null／解決不能のIDは含まれない
      */
     public Map<Long, String> resolveUserAvatarUrls(Collection<Long> userIds) {
         if (userIds == null || userIds.isEmpty()) {
@@ -78,8 +82,9 @@ public class NameResolverService {
         }
         Map<Long, String> result = new java.util.HashMap<>();
         for (UserEntity u : userRepository.findAllById(userIds)) {
-            if (u.getAvatarUrl() != null) {
-                result.put(u.getId(), u.getAvatarUrl());
+            String resolved = mediaUrlResolver.resolve(u.getAvatarUrl());
+            if (resolved != null) {
+                result.put(u.getId(), resolved);
             }
         }
         return result;

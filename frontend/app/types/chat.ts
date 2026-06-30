@@ -1,4 +1,27 @@
-export type ChatChannelType = 'TEAM' | 'ORGANIZATION' | 'CROSS_TEAM' | 'DIRECT' | 'EVENT_CHAT'
+/**
+ * チャットチャンネルの種別。
+ *
+ * BE {@code com.mannschaft.app.chat.ChannelType} と一致させること。
+ * - DM: 1対1ダイレクトメッセージ
+ * - GROUP_DM: 複数人グループDM（Zimmer）
+ * - TEAM_PUBLIC / TEAM_PRIVATE: チーム公開 / 非公開チャンネル
+ * - ORG_PUBLIC / ORG_PRIVATE: 組織公開 / 非公開チャンネル
+ * - VILLAGE_LOBBY: 村ロビー（井戸端会議）
+ * - EVENT_CHAT: イベント専用チャット
+ * - TOURNAMENT_CHAT / TOURNAMENT_DIVISION_CHAT: 大会 / ディビジョン連絡チャット
+ */
+export type ChatChannelType =
+  | 'DM'
+  | 'GROUP_DM'
+  | 'TEAM_PUBLIC'
+  | 'TEAM_PRIVATE'
+  | 'ORG_PUBLIC'
+  | 'ORG_PRIVATE'
+  | 'VILLAGE_LOBBY'
+  | 'EVENT_CHAT'
+  | 'TOURNAMENT_CHAT'
+  | 'TOURNAMENT_DIVISION_CHAT'
+
 export type ChatMemberRole = 'OWNER' | 'ADMIN' | 'MEMBER'
 
 export interface ChatUser {
@@ -7,34 +30,92 @@ export interface ChatUser {
   avatarUrl?: string | null
 }
 
-export interface ChatChannelResponse {
-  id: number
+/** チャンネルの所属・種別情報（BE ChannelIdentityDto） */
+export interface ChatChannelIdentity {
   channelType: ChatChannelType
-  team: { id: number; name: string } | null
-  organization: { id: number; name: string } | null
+  teamId: number | null
+  organizationId: number | null
+}
+
+/** チャンネルの表示メタ情報（BE ChannelMetaDto） */
+export interface ChatChannelMeta {
   name: string | null
-  iconUrl: string | null
+  iconKey: string | null
   description: string | null
+}
+
+/** チャンネル設定（BE ChannelSettingsDto） */
+export interface ChatChannelSettings {
   isPrivate: boolean
+  isInquiryChannel: boolean
   isArchived: boolean
+  version: number | null
+}
+
+/** 最新メッセージサマリ（BE ChannelLastMessageDto） */
+export interface ChatChannelLastMessage {
   lastMessageAt: string | null
   lastMessagePreview: string | null
-  unreadCount: number
-  isMuted: boolean
-  isPinned: boolean
-  memberCount: number
-  dmPartner: ChatUser | null
+}
+
+/** チャンネルの紐付け元（BE ChannelSourceDto） */
+export interface ChatChannelSource {
   sourceType: string | null
   sourceId: number | null
 }
 
+/** 監査情報（BE ChannelAuditDto） */
+export interface ChatChannelAudit {
+  createdBy: number | null
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+/** DM 相手の情報（BE DmPartnerDto）。DM チャンネル以外では null */
+export interface ChatDmPartner {
+  userId: number
+  displayName: string
+  avatarUrl: string | null
+}
+
+/** 閲覧者ごとのチャンネル状態（BE ViewerStateDto）。非メンバー閲覧時は null */
+export interface ChatViewerState {
+  unreadCount: number
+  isMuted: boolean
+  isPinned: boolean
+  category: string | null
+  role: string | null
+}
+
+/**
+ * チャンネルレスポンス（BE ChannelResponse のネスト正準形）。
+ *
+ * BE が identity / meta / settings / lastMessage / source / audit のネスト構造で返すため、
+ * フラットなフィールド（旧 name / channelType / isPrivate 等）は存在しない。
+ * 表示名は DM なら {@code dmPartner.displayName}、それ以外は {@code meta.name} を使う。
+ */
+export interface ChatChannelResponse {
+  id: number
+  identity: ChatChannelIdentity
+  meta: ChatChannelMeta
+  settings: ChatChannelSettings
+  lastMessage: ChatChannelLastMessage | null
+  source: ChatChannelSource | null
+  audit: ChatChannelAudit
+  memberCount: number
+  dmPartner: ChatDmPartner | null
+  viewer: ChatViewerState | null
+}
+
+/**
+ * チャンネル詳細レスポンス。
+ *
+ * BE は素の {@link ChatChannelResponse}（ネスト）を {@code data} で返す。
+ * 旧版の members / pinnedMessages / sourceData は BE 未提供のため持たない
+ * （作成者は {@code data.audit.createdBy} を参照すること）。
+ */
 export interface ChatChannelDetailResponse {
-  data: ChatChannelResponse & {
-    createdBy: ChatUser | null
-    members: ChatMember[]
-    pinnedMessages: ChatMessageResponse[]
-    sourceData: Record<string, unknown> | null
-  }
+  data: ChatChannelResponse
 }
 
 export interface ChatMember {
@@ -119,12 +200,13 @@ export interface SendMessageRequest {
   attachmentKeys?: string[]
 }
 
+/**
+ * チャンネル一覧レスポンス。
+ *
+ * BE 実形状は {@code { data: ChannelResponse[] }} のみ（ページング meta は返らない）。
+ */
 export interface ChatChannelListResponse {
   data: ChatChannelResponse[]
-  meta: {
-    nextCursor: string | null
-    hasMore: boolean
-  }
 }
 
 export interface ChatMessageListResponse {

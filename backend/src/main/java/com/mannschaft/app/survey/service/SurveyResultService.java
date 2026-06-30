@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.organization.service.OrganizationMembershipService;
@@ -68,6 +69,7 @@ public class SurveyResultService {
     private final UserRoleRepository userRoleRepository;
     private final ContentVisibilityChecker contentVisibilityChecker;
     private final OrganizationMembershipService organizationMembershipService;
+    private final MediaUrlResolver mediaUrlResolver;
 
     /**
      * アンケート結果を取得する。閲覧権限チェックを行う。
@@ -179,12 +181,12 @@ public class SurveyResultService {
                 if (hasResponded) {
                     continue;
                 }
-                result.add(new RespondentResponse(u.getId(), u.getLastName() + " " + u.getFirstName(), u.getAvatarUrl(), false, null));
+                result.add(new RespondentResponse(u.getId(), u.getLastName() + " " + u.getFirstName(), mediaUrlResolver.resolve(u.getAvatarUrl()), false, null));
             } else {
                 java.time.LocalDateTime respondedAt = hasResponded
                         ? firstResponseByUser.get(uid).getCreatedAt()
                         : null;
-                result.add(new RespondentResponse(u.getId(), u.getLastName() + " " + u.getFirstName(), u.getAvatarUrl(),
+                result.add(new RespondentResponse(u.getId(), u.getLastName() + " " + u.getFirstName(), mediaUrlResolver.resolve(u.getAvatarUrl()),
                         hasResponded, respondedAt));
             }
         }

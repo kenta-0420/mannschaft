@@ -23,6 +23,7 @@ public interface CirculationMapper {
     @Mapping(target = "status", expression = "java(entity.getStatus().name())")
     @Mapping(target = "priority", expression = "java(entity.getPriority().name())")
     @Mapping(target = "stampDisplayStyle", expression = "java(entity.getStampDisplayStyle().name())")
+    @Mapping(target = "createdByName", ignore = true)
     DocumentResponse toDocumentResponse(CirculationDocumentEntity entity);
 
     List<DocumentResponse> toDocumentResponseList(List<CirculationDocumentEntity> entities);

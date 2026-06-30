@@ -79,20 +79,40 @@ public class TimelinePostService {
     private final AccessControlService accessControlService;
 
     /**
-     * 投稿を作成する。添付ファイル・投票も同時に作成する。
+     * 投稿を作成する（解決済みスコープ ID 版）。添付ファイル・投票も同時に作成する。
      *
-     * <p>TEAM/ORGANIZATION スコープへの投稿時はメンバーシップチェックを行い、
-     * 非メンバーによる投稿を禁止する。システム内部からの自動投稿には
+     * <p>コントローラーは {@code TimelineScopeIdResolver} で slug/Long 文字列を内部 Long ID に
+     * 解決してから本メソッドを呼ぶ。これにより GET feed（解決済み）と対称になり、FE が slug を
+     * 送る書き込み経路の 400 を根治する。TEAM/ORGANIZATION スコープへの投稿時は解決済み ID で
+     * メンバーシップチェックを行い、非メンバーによる投稿を禁止する。システム内部からの自動投稿には
      * {@link #createSystemPost(CreatePostRequest, Long)} を使うこと。</p>
      *
-     * @param req    作成リクエスト
+     * @param req             作成リクエスト
+     * @param resolvedScopeId 解決済みの内部スコープ Long ID
+     * @param userId          ユーザーID
+     * @return 作成された投稿
+     */
+    @Transactional
+    public PostResponse createPost(CreatePostRequest req, Long resolvedScopeId, Long userId) {
+        checkScopeMembership(req.getScopeTypeOrDefault(), resolvedScopeId, userId);
+        return doCreatePost(req, resolvedScopeId, userId);
+    }
+
+    /**
+     * 投稿を作成する（後方互換オーバーロード）。
+     *
+     * <p>{@code req.getScopeId()} が数値文字列であることを前提に内部 Long ID へ parse して
+     * {@link #createPost(CreatePostRequest, Long, Long)} に委譲する。slug 解決を伴わない
+     * システム内部・既存呼び出し元（例: {@code TimelinePostAnnouncementAdapter}）・テスト向け。
+     * HTTP 経由でユーザーが slug を送るケースはコントローラーで解決済みのため本オーバーロードは通らない。</p>
+     *
+     * @param req    作成リクエスト（scopeId は数値文字列または null）
      * @param userId ユーザーID
      * @return 作成された投稿
      */
     @Transactional
     public PostResponse createPost(CreatePostRequest req, Long userId) {
-        checkScopeMembership(req, userId);
-        return doCreatePost(req, userId);
+        return createPost(req, parseInternalScopeId(req), userId);
     }
 
     /**
@@ -110,7 +130,7 @@ public class TimelinePostService {
      */
     @Transactional
     public PostResponse createSystemPost(CreatePostRequest req, Long userId) {
-        return doCreatePost(req, userId);
+        return doCreatePost(req, parseInternalScopeId(req), userId);
     }
 
     /**
@@ -121,13 +141,36 @@ public class TimelinePostService {
      *   <li>ORGANIZATION スコープ: 同上で組織メンバー確認</li>
      *   <li>その他スコープ: チェックなし</li>
      * </ul>
+     *
+     * @param scopeTypeStr    スコープ種別文字列
+     * @param resolvedScopeId 解決済みの内部スコープ Long ID
+     * @param userId          操作ユーザーID
      */
-    private void checkScopeMembership(CreatePostRequest req, Long userId) {
-        PostScopeType scopeTypeEnum = PostScopeType.valueOf(req.getScopeTypeOrDefault());
-        if (scopeTypeEnum == PostScopeType.TEAM && req.getScopeId() != null) {
-            accessControlService.checkMembership(userId, req.getScopeId(), "TEAM");
-        } else if (scopeTypeEnum == PostScopeType.ORGANIZATION && req.getScopeId() != null) {
-            accessControlService.checkMembership(userId, req.getScopeId(), "ORGANIZATION");
+    private void checkScopeMembership(String scopeTypeStr, Long resolvedScopeId, Long userId) {
+        PostScopeType scopeTypeEnum = PostScopeType.valueOf(scopeTypeStr);
+        if (scopeTypeEnum == PostScopeType.TEAM && resolvedScopeId != null) {
+            accessControlService.checkMembership(userId, resolvedScopeId, "TEAM");
+        } else if (scopeTypeEnum == PostScopeType.ORGANIZATION && resolvedScopeId != null) {
+            accessControlService.checkMembership(userId, resolvedScopeId, "ORGANIZATION");
+        }
+    }
+
+    /**
+     * システム内部・後方互換経路向けに {@code req.getScopeId()}（数値文字列）を内部 Long ID へ parse する。
+     *
+     * <p>slug 解決は伴わない（HTTP 経由の slug はコントローラーで解決済み）。null/空文字は {@code 0L}、
+     * 数値文字列はそのまま parse する。万一 slug 等の非数値が来た場合は誤った scope への投稿を防ぐため
+     * {@link TimelineErrorCode#POST_NOT_FOUND} を投げる（握り潰さず根治）。</p>
+     */
+    private Long parseInternalScopeId(CreatePostRequest req) {
+        String raw = req.getScopeId();
+        if (raw == null || raw.isBlank()) {
+            return 0L;
+        }
+        try {
+            return Long.parseLong(raw.trim());
+        } catch (NumberFormatException e) {
+            throw new BusinessException(TimelineErrorCode.POST_NOT_FOUND);
         }
     }
 
@@ -140,8 +183,12 @@ public class TimelinePostService {
      * <p><b>リプライのスコープ継承</b>: {@code parentId} が指定されている場合、リクエストの
      * scopeType/scopeId/scopeVillageId を無視して親投稿のスコープを継承する。
      * これにより「TEAMスコープ投稿へのリプライがPUBLICで作成される」情報漏洩を防ぐ。</p>
+     *
+     * @param req             作成リクエスト
+     * @param resolvedScopeId 解決済みの内部スコープ Long ID（非リプライ時の {@code effectiveScopeId}）
+     * @param userId          投稿者ユーザーID
      */
-    private PostResponse doCreatePost(CreatePostRequest req, Long userId) {
+    private PostResponse doCreatePost(CreatePostRequest req, Long resolvedScopeId, Long userId) {
         if (req.getContent() == null || req.getContent().isBlank()) {
             if (req.getRepostOfId() == null && req.getPoll() == null) {
                 throw new BusinessException(TimelineErrorCode.EMPTY_POST_CONTENT);
@@ -186,7 +233,7 @@ public class TimelinePostService {
             scopeVillageId = parentPost.getScopeVillageId();
         } else {
             scopeTypeEnum = PostScopeType.valueOf(req.getScopeTypeOrDefault());
-            effectiveScopeId = req.getScopeIdOrDefault();
+            effectiveScopeId = resolvedScopeId != null ? resolvedScopeId : 0L;
             scopeVillageId = null;
         }
 
