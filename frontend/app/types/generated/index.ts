@@ -53947,6 +53947,7 @@ export interface components {
             createdAt?: string;
             /** Format: int64 */
             createdBy?: number;
+            createdByName?: string;
             /** Format: date */
             dueDate?: string;
             /** Format: int64 */
