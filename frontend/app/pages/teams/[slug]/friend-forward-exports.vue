@@ -7,7 +7,7 @@
  *
  * 権限: ADMIN or MANAGE_FRIEND_TEAMS 保持 DEPUTY_ADMIN
  */
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()

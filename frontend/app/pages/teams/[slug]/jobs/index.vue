@@ -5,6 +5,8 @@ import type {
   JobPostingSummaryResponse,
 } from '~/types/jobmatching'
 
+definePageMeta({ layout: 'team' })
+
 /**
  * F13.1 チーム配下求人一覧（Requester 視点）。
  *

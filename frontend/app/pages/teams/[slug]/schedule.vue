@@ -7,7 +7,7 @@ import {
   type NestedScheduleResponse,
 } from '~/utils/scheduleCalendar'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
 const teamSlug = String(route.params.slug)

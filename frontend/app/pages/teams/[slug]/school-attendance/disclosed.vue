@@ -2,6 +2,7 @@
 import { computed, onMounted } from 'vue'
 
 definePageMeta({
+  layout: 'team',
   middleware: 'auth',
 })
 

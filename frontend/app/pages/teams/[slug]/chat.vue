@@ -2,6 +2,7 @@
 import type { ChatChannelResponse } from '~/types/chat'
 
 definePageMeta({
+  layout: 'team',
   middleware: 'auth',
 })
 

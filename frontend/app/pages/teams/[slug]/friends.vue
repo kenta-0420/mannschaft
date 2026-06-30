@@ -15,7 +15,7 @@
  */
 import type { FollowTeamResponse } from '~/types/friends'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
 const teamSlug = computed(() => String(route.params.slug))

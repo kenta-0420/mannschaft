@@ -194,13 +194,17 @@ watch(
         />
       </div>
 
-      <!-- 使い方ガイド展開領域（同一モーダル内・重ねない） -->
+      <!-- 使い方ガイド展開領域（フェード＋高さスムーズ伸縮・同一モーダル内・重ねない） -->
       <div
-        v-if="showHelp"
-        class="mb-4 rounded-lg border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800"
+        class="grid transition-all duration-300 ease-in-out motion-reduce:transition-none"
+        :class="showHelp ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'"
         data-testid="broadcast-guide-panel"
       >
-        <BroadcastGuideContent />
+        <div class="overflow-hidden">
+          <div class="mb-4 rounded-lg border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800">
+            <BroadcastGuideContent />
+          </div>
+        </div>
       </div>
 
       <BroadcastStep1Audience

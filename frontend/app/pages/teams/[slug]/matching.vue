@@ -2,7 +2,7 @@
 import type { MatchActivityType, MatchCategory, MatchLevel, MatchVisibility } from '~/types/matching'
 
 const { t } = useI18n()
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 const route = useRoute()
 const teamSlug = String(route.params.slug)
 const { createRequest } = useMatchingApi()

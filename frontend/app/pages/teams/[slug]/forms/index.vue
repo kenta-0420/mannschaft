@@ -2,6 +2,7 @@
 import type { FormTemplateResponse } from '~/types/form'
 
 definePageMeta({
+  layout: 'team',
   middleware: 'auth',
 })
 
