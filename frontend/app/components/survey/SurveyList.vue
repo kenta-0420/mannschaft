@@ -78,7 +78,7 @@ defineExpose({ refresh: loadSurveys })
       <button
         v-for="survey in surveys"
         :key="survey.id"
-        class="flex items-center gap-4 rounded-xl border border-surface-300 bg-surface-0 p-4 text-left transition-shadow hover:shadow-sm"
+        class="flex items-center gap-4 rounded-xl border border-surface-300 bg-surface-0 p-4 text-left transition-shadow hover:shadow-sm dark:border-surface-700 dark:bg-surface-800"
         :data-testid="`survey-item-${survey.id}`"
         @click="emit('select', survey)"
       >
