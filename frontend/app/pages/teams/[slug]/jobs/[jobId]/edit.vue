@@ -1,5 +1,4 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'team' })
 import type {
   JobPostingResponse,
   UpdateJobPostingRequest,
@@ -8,6 +7,8 @@ import type {
   RewardType,
 } from '~/types/jobmatching'
 import type { JobPostingFormState } from '~/components/jobs/JobPostingForm.vue'
+
+definePageMeta({ layout: 'team' })
 
 /**
  * F13.1 求人編集ページ（Requester 視点）。

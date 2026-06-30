@@ -1,7 +1,8 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'team' })
 import { ref, onMounted } from 'vue'
 import type { RecruitmentListingSummaryResponse } from '~/types/recruitment'
+
+definePageMeta({ layout: 'team' })
 
 const route = useRoute()
 const router = useRouter()

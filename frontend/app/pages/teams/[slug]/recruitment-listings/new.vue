@@ -1,11 +1,12 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'team' })
 import { ref, onMounted } from 'vue'
 import type {
   CreateRecruitmentListingRequest,
   RecruitmentCategoryResponse,
 } from '~/types/recruitment'
 import type { FriendTargetInput, RegionInput } from '~/types/market'
+
+definePageMeta({ layout: 'team' })
 
 const route = useRoute()
 const router = useRouter()
