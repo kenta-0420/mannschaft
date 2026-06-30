@@ -2,6 +2,7 @@ package com.mannschaft.app.reflection.service;
 
 import com.mannschaft.app.reflection.RecallDirection;
 import com.mannschaft.app.reflection.RecallSelfRating;
+import com.mannschaft.app.reflection.ReflectionOutlineRevealLevel;
 import com.mannschaft.app.reflection.entity.RecallAttemptEntity;
 import com.mannschaft.app.reflection.entity.ReflectionEntryEntity;
 import com.mannschaft.app.reflection.entity.ReflectionThemeEntity;
@@ -259,5 +260,66 @@ class ReflectionMaskEvaluatorTest {
         assertThat(evaluator.arrivedDueDates(e, t, slot2Day)).hasSize(2); // k+1
         assertThat(evaluator.resolveDirection(e, t, slot2Day))
                 .isEqualTo(RecallDirection.TERM_TO_MEANING); // 次スロットで反転
+    }
+
+    // ===== §13-C 増分: OUTLINE 段階式マスク（足場ラダー）の開示レベル（AC-80〜85） =====
+
+    @Test
+    @DisplayName("AC-81: k=1,2 は FULL（足場全段）")
+    void resolveOutlineRevealLevel_k1_k2_full() {
+        ReflectionEntryEntity e = entry(TARGET);
+        ReflectionThemeEntity t = theme("1,3,7,14");
+        // today=target+1 → arrived {1} → k=1
+        assertThat(evaluator.resolveOutlineRevealLevel(e, t, TARGET.plusDays(1)))
+                .isEqualTo(ReflectionOutlineRevealLevel.FULL);
+        // today=target+3 → arrived {1,3} → k=2
+        assertThat(evaluator.resolveOutlineRevealLevel(e, t, TARGET.plusDays(3)))
+                .isEqualTo(ReflectionOutlineRevealLevel.FULL);
+    }
+
+    @Test
+    @DisplayName("AC-82: k=3 は PARTIAL（足場縮退）")
+    void resolveOutlineRevealLevel_k3_partial() {
+        ReflectionEntryEntity e = entry(TARGET);
+        ReflectionThemeEntity t = theme("1,3,7,14");
+        // today=target+7 → arrived {1,3,7} → k=3
+        assertThat(evaluator.resolveOutlineRevealLevel(e, t, TARGET.plusDays(7)))
+                .isEqualTo(ReflectionOutlineRevealLevel.PARTIAL);
+    }
+
+    @Test
+    @DisplayName("AC-83: k=4,5 は HIDDEN（足場ゼロ＝従来完全マスク）")
+    void resolveOutlineRevealLevel_k4_k5_hidden() {
+        ReflectionEntryEntity e = entry(TARGET);
+        // k=4: today=target+14 → arrived {1,3,7,14}
+        assertThat(evaluator.resolveOutlineRevealLevel(e, theme("1,3,7,14"), TARGET.plusDays(14)))
+                .isEqualTo(ReflectionOutlineRevealLevel.HIDDEN);
+        // k=5: 5 つの interval を到来させる
+        assertThat(evaluator.resolveOutlineRevealLevel(e, theme("1,3,7,14,30"), TARGET.plusDays(30)))
+                .isEqualTo(ReflectionOutlineRevealLevel.HIDDEN);
+    }
+
+    @Test
+    @DisplayName("AC-80/AC-85: k=0（到来予定なし）・today=null は HIDDEN（fail-closed）")
+    void resolveOutlineRevealLevel_k0_todayNull_hidden() {
+        // 未来日エントリ → 到来済み 0 件（k=0・マスク対象外）。
+        assertThat(evaluator.resolveOutlineRevealLevel(entry(TARGET), theme("1,3,7,14"), TARGET))
+                .isEqualTo(ReflectionOutlineRevealLevel.HIDDEN);
+        // today=null → 算出不能 → HIDDEN。
+        assertThat(evaluator.resolveOutlineRevealLevel(entry(TARGET), theme("1,3,7,14"), null))
+                .isEqualTo(ReflectionOutlineRevealLevel.HIDDEN);
+    }
+
+    @Test
+    @DisplayName("AC-84: 開示レベルは recall_attempts 非依存（決定論）。repository を呼ばない")
+    void resolveOutlineRevealLevel_independentOfRecallAttempts() {
+        ReflectionEntryEntity e = entry(TARGET);
+        ReflectionThemeEntity t = theme("1,3,7,14");
+        LocalDate today = TARGET.plusDays(7); // k=3 → PARTIAL
+        ReflectionOutlineRevealLevel first = evaluator.resolveOutlineRevealLevel(e, t, today);
+        ReflectionOutlineRevealLevel second = evaluator.resolveOutlineRevealLevel(e, t, today);
+        assertThat(first).isEqualTo(ReflectionOutlineRevealLevel.PARTIAL);
+        assertThat(second).isEqualTo(first);
+        org.mockito.Mockito.verifyNoInteractions(recallAttemptRepository);
     }
 }

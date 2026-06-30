@@ -48385,6 +48385,7 @@ export interface components {
         MaskedHint: {
             cardQuiz?: components["schemas"]["ReflectionMaskedCardQuiz"][];
             dueRecallDates?: string[];
+            outlineScaffold?: components["schemas"]["ReflectionMaskedOutlineScaffold"];
             /**
              * @description 暗記カード（TERM_CARD）の出題方向（§13-B）。到来済み想起予定日数のパリティで決定論的に算出する。
              * @enum {string}
@@ -48423,6 +48424,18 @@ export interface components {
             direction?: "MEANING_TO_TERM" | "TERM_TO_MEANING";
             heading?: string;
             prompts?: components["schemas"]["ReflectionMaskedCardPrompt"][];
+        };
+        ReflectionMaskedOutlineScaffold: {
+            /**
+             * @description OUTLINE 段階式マスク（足場ラダー）の開示レベル。到来済み想起予定日数 k で決定論的に決まる（k≤2=FULL/k==3=PARTIAL/k≥4=HIDDEN）。
+             * @enum {string}
+             */
+            level?: "FULL" | "PARTIAL" | "HIDDEN";
+            mainTheme?: string;
+            sections?: components["schemas"]["ReflectionMaskedOutlineSection"][];
+        };
+        ReflectionMaskedOutlineSection: {
+            heading?: string;
         };
         BulkPersonalTimetableSlotRequest: {
             slots: components["schemas"]["PersonalTimetableSlotRequest"][];
@@ -59752,13 +59765,17 @@ export interface components {
         };
         ChannelResponse: {
             audit?: components["schemas"]["ChannelAuditDto"];
+            dmPartner?: components["schemas"]["DmPartnerDto"];
             /** Format: int64 */
             id?: number;
             identity?: components["schemas"]["ChannelIdentityDto"];
             lastMessage?: components["schemas"]["ChannelLastMessageDto"];
+            /** Format: int32 */
+            memberCount?: number;
             meta?: components["schemas"]["ChannelMetaDto"];
             settings?: components["schemas"]["ChannelSettingsDto"];
             source?: components["schemas"]["ChannelSourceDto"];
+            viewer?: components["schemas"]["ViewerStateDto"];
         };
         ChannelSettingsDto: {
             isArchived?: boolean;
@@ -59771,6 +59788,20 @@ export interface components {
             /** Format: int64 */
             sourceId?: number;
             sourceType?: string;
+        };
+        DmPartnerDto: {
+            avatarUrl?: string;
+            displayName?: string;
+            /** Format: int64 */
+            userId?: number;
+        };
+        ViewerStateDto: {
+            category?: string;
+            isMuted?: boolean;
+            isPinned?: boolean;
+            role?: string;
+            /** Format: int32 */
+            unreadCount?: number;
         };
         AttachmentRequest: {
             contentType?: string;

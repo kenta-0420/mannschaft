@@ -148627,6 +148627,9 @@
               "format": "date"
             }
           },
+          "outlineScaffold": {
+            "$ref": "#/components/schemas/ReflectionMaskedOutlineScaffold"
+          },
           "recallDirection": {
             "type": "string",
             "description": "暗記カード（TERM_CARD）の出題方向（§13-B）。到来済み想起予定日数のパリティで決定論的に算出する。",
@@ -148716,6 +148719,37 @@
             "items": {
               "$ref": "#/components/schemas/ReflectionMaskedCardPrompt"
             }
+          }
+        }
+      },
+      "ReflectionMaskedOutlineScaffold": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "string",
+            "description": "OUTLINE 段階式マスク（足場ラダー）の開示レベル。到来済み想起予定日数 k で決定論的に決まる（k≤2\u003dFULL/k\u003d\u003d3\u003dPARTIAL/k≥4\u003dHIDDEN）。",
+            "enum": [
+              "FULL",
+              "PARTIAL",
+              "HIDDEN"
+            ]
+          },
+          "mainTheme": {
+            "type": "string"
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReflectionMaskedOutlineSection"
+            }
+          }
+        }
+      },
+      "ReflectionMaskedOutlineSection": {
+        "type": "object",
+        "properties": {
+          "heading": {
+            "type": "string"
           }
         }
       },
@@ -180256,6 +180290,9 @@
           "audit": {
             "$ref": "#/components/schemas/ChannelAuditDto"
           },
+          "dmPartner": {
+            "$ref": "#/components/schemas/DmPartnerDto"
+          },
           "id": {
             "type": "integer",
             "format": "int64"
@@ -180266,6 +180303,10 @@
           "lastMessage": {
             "$ref": "#/components/schemas/ChannelLastMessageDto"
           },
+          "memberCount": {
+            "type": "integer",
+            "format": "int32"
+          },
           "meta": {
             "$ref": "#/components/schemas/ChannelMetaDto"
           },
@@ -180274,6 +180315,9 @@
           },
           "source": {
             "$ref": "#/components/schemas/ChannelSourceDto"
+          },
+          "viewer": {
+            "$ref": "#/components/schemas/ViewerStateDto"
           }
         }
       },
@@ -180304,6 +180348,42 @@
           },
           "sourceType": {
             "type": "string"
+          }
+        }
+      },
+      "DmPartnerDto": {
+        "type": "object",
+        "properties": {
+          "avatarUrl": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ViewerStateDto": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "isMuted": {
+            "type": "boolean"
+          },
+          "isPinned": {
+            "type": "boolean"
+          },
+          "role": {
+            "type": "string"
+          },
+          "unreadCount": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },

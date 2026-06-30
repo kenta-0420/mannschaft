@@ -350,7 +350,7 @@ onUnmounted(() => {
         <!-- 入力 -->
         <ChatMessageInput
           :channel-id="channel.id"
-          :disabled="channel.isArchived"
+          :disabled="channel.settings.isArchived"
           @sent="onSent"
           @typing="debouncedSendTyping"
         />
@@ -387,7 +387,7 @@ onUnmounted(() => {
   <ChatInviteToZimmerDialog
     v-model:visible="showInviteDialog"
     :channel-id="channel.id"
-    :dm-partner-user-id="channel.dmPartner?.id"
+    :dm-partner-user-id="channel.dmPartner?.userId"
     :team-id="teamId"
     :organization-id="organizationId"
     @created="(ch) => emit('channelCreated', ch)"
@@ -402,6 +402,12 @@ onUnmounted(() => {
   font-size: 0.875rem;
   padding: 8px 16px;
   text-align: center;
+}
+
+:global(.dark) .reconnect-warning {
+  background-color: #451a03;
+  border-bottom-color: #92400e;
+  color: #fef3c7;
 }
 
 .slide-right-enter-active,

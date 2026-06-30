@@ -28,6 +28,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EncryptionService;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -97,6 +98,9 @@ class UserServiceTest {
 
     @Mock
     private AccessControlService accessControlService;
+
+    @Mock
+    private MediaUrlResolver mediaUrlResolver;
 
     // F02.10 §391 郵便番号検証基盤: 実ロジック（JP 固定）を使う
     @Spy

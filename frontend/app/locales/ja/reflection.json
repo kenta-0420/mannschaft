@@ -234,7 +234,13 @@
       "card_answer_placeholder": "答えを入力...",
       "history_empty": "まだ想起履歴がありません。",
       "not_masked": "このエントリはマスクされていません。通常編集できます。",
-      "back_to_entry": "振り返りへ戻る"
+      "back_to_entry": "振り返りへ戻る",
+      "outline_scaffold": {
+        "panel_heading": "足場ヒント",
+        "main_theme_label": "テーマ",
+        "level_note_partial": "各見出しの頭文字だけ表示しています。思い出しながら書いてみましょう。",
+        "aria_panel": "OUTLINE 足場ヒントパネル"
+      }
     },
     "export": {
       "button": "ブログへ輸出",
