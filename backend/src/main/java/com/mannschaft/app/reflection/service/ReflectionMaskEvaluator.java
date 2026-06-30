@@ -2,6 +2,7 @@ package com.mannschaft.app.reflection.service;
 
 import com.mannschaft.app.reflection.RecallDirection;
 import com.mannschaft.app.reflection.RecallSelfRating;
+import com.mannschaft.app.reflection.ReflectionConstants;
 import com.mannschaft.app.reflection.ReflectionOutlineRevealLevel;
 import com.mannschaft.app.reflection.entity.RecallAttemptEntity;
 import com.mannschaft.app.reflection.entity.ReflectionEntryEntity;
@@ -168,8 +169,20 @@ public class ReflectionMaskEvaluator {
     public ReflectionOutlineRevealLevel resolveOutlineRevealLevel(ReflectionEntryEntity entry,
                                                                   ReflectionThemeEntity theme,
                                                                   LocalDate today) {
-        // TODO(green): 足場ラダーの実装。red フェーズでは fail-closed の HIDDEN を返す。
-        return ReflectionOutlineRevealLevel.HIDDEN;
+        if (today == null) {
+            return ReflectionOutlineRevealLevel.HIDDEN; // fail-closed（算出不能）
+        }
+        int k = arrivedDueDates(entry, theme, today).size();
+        if (k <= 0) {
+            return ReflectionOutlineRevealLevel.HIDDEN; // マスク対象外・データ欠落（fail-closed）
+        }
+        if (k <= ReflectionConstants.OUTLINE_SCAFFOLD_FULL_MAX_K) {
+            return ReflectionOutlineRevealLevel.FULL; // k≤2
+        }
+        if (k == ReflectionConstants.OUTLINE_SCAFFOLD_PARTIAL_K) {
+            return ReflectionOutlineRevealLevel.PARTIAL; // k==3
+        }
+        return ReflectionOutlineRevealLevel.HIDDEN; // k≥4（足場ゼロ＝従来完全マスク）
     }
 
     /**
