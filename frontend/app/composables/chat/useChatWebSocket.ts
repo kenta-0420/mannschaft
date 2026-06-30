@@ -2,7 +2,22 @@ import type { Client, IFrame, StompSubscription } from '@stomp/stompjs'
 import { Client as StompClient } from '@stomp/stompjs'
 import { useEventBus } from '@vueuse/core'
 import { ref } from 'vue'
+import { resolveApiBaseUrl } from '~/composables/useApiBaseUrl'
 import type { ChatChannelEvent, ChatMessageListResponse } from '~/types/chat'
+
+/**
+ * API ベース URL から STOMP WebSocket の接続先 URL を導出する。
+ *
+ * - apiBase が絶対 URL（dev: `http://localhost:8080`）の場合:
+ *   スキームを http→ws / https→wss に変換して `/ws` を付加する。
+ *   例: `http://localhost:8080` → `ws://localhost:8080/ws`
+ * - apiBase が空・相対パス（本番: 同一オリジン構成）の場合:
+ *   `/ws` をそのまま返す（本番の挙動を変えない）。
+ */
+function buildWsUrl(apiBase: string): string {
+  if (!apiBase) return '/ws'
+  return apiBase.replace(/^http(s?)/, 'ws$1') + '/ws'
+}
 
 // ============================================================
 // モジュールレベルのシングルトン状態（composable再呼び出しを跨いで維持）
@@ -41,6 +56,11 @@ let _isFirstConnect = true
  */
 export function useChatWebSocket() {
   const api = useApi()
+  const config = useRuntimeConfig()
+  // dev 環境（FE :3000 / BE :8080 が別ポート）では apiBase が絶対 URL になるため、
+  // ws(s) スキームに変換してバックエンドの /ws エンドポイントへ正しく接続する。
+  // 本番（同一オリジン構成）では apiBase が空のため '/ws' のまま（挙動不変）。
+  const wsUrl = buildWsUrl(resolveApiBaseUrl(config))
 
   /**
    * STOMP クライアントが未接続なら接続する。
@@ -55,7 +75,7 @@ export function useChatWebSocket() {
 
       const auth = useAuthStore()
       const client = new StompClient({
-        webSocketFactory: () => new WebSocket('/ws'),
+        webSocketFactory: () => new WebSocket(wsUrl),
         connectHeaders: { Authorization: `Bearer ${auth.accessToken ?? ''}` },
         beforeConnect: () => {
           // 再接続時に最新トークンを差し替える（リフレッシュ後の再接続でも有効なトークンを使う）
