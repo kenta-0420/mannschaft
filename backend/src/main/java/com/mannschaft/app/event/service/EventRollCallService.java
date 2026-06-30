@@ -3,6 +3,7 @@ package com.mannschaft.app.event.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.event.CheckinType;
 import com.mannschaft.app.event.EventErrorCode;
 import com.mannschaft.app.event.dto.RollCallCandidateResponse;
@@ -56,6 +57,7 @@ public class EventRollCallService {
     private final UserRepository userRepository;
     private final CareLinkService careLinkService;
     private final CareEventNotificationService careEventNotificationService;
+    private final MediaUrlResolver mediaUrlResolver;
 
     // =========================================================
     // 公開 API
@@ -111,7 +113,7 @@ public class EventRollCallService {
             Long userId = rsvp.getUserId();
             UserEntity user = userMap.get(userId);
             String fullName = user != null ? user.getLastName() + " " + user.getFirstName() : "（不明）";
-            String avatarUrl = user != null ? user.getAvatarUrl() : null;
+            String avatarUrl = user != null ? mediaUrlResolver.resolve(user.getAvatarUrl()) : null;
             boolean isUnderCare = underCareUserIds.contains(userId);
             int watcherCount = watcherCountMap.getOrDefault(userId, 0L).intValue();
             boolean alreadyCheckedIn = checkedInUserIds.contains(userId);

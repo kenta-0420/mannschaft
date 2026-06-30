@@ -185,7 +185,13 @@
       "history_empty": "아직 상기 기록이 없습니다.",
       "not_masked": "이 항목은 마스크되지 않았습니다. 정상적으로 편집할 수 있습니다.",
       "back_to_entry": "회고로 돌아가기",
-      "card_answer_placeholder": "答えを入力..."
+      "card_answer_placeholder": "答えを入力...",
+      "outline_scaffold": {
+        "panel_heading": "발판 힌트",
+        "main_theme_label": "테마",
+        "level_note_partial": "각 제목의 첫 글자만 표시됩니다. 나머지를 떠올려 보세요.",
+        "aria_panel": "OUTLINE 발판 힌트 패널"
+      }
     },
     "export": {
       "button": "블로그로 내보내기",
