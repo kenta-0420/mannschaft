@@ -49,7 +49,8 @@ class CreatePostRequestDeserializeTest {
         assertThat(request).isNotNull();
         assertThat(request.getContent()).isEqualTo("テスト投稿");
         assertThat(request.getScopeType()).isEqualTo("PUBLIC");
-        assertThat(request.getScopeId()).isEqualTo(0L);
+        // scopeId は String 化されたため、数値 0 は文字列 "0" にコアースされる
+        assertThat(request.getScopeId()).isEqualTo("0");
     }
 
     @Test
@@ -75,10 +76,34 @@ class CreatePostRequestDeserializeTest {
         assertThat(request).isNotNull();
         assertThat(request.getContent()).isEqualTo("フル投稿");
         assertThat(request.getScopeType()).isEqualTo("TEAM");
-        assertThat(request.getScopeId()).isEqualTo(42L);
+        assertThat(request.getScopeId()).isEqualTo("42");
         assertThat(request.getPostedAsType()).isEqualTo("TEAM");
         assertThat(request.getPostedAsId()).isEqualTo(10L);
         assertThat(request.getStatus()).isEqualTo(PostStatus.DRAFT);
+    }
+
+    @Test
+    @DisplayName("slug文字列のscopeIdをデシリアライズできる（FEが team-000092 等を送るケース・400 COMMON_001 根治）")
+    void slug文字列scopeId_正常デシリアライズ() throws Exception {
+        // FE はチーム/組織タイムラインで scope-id に slug 文字列を渡す。
+        // scopeId が Long 型だと Jackson が "team-000092" を変換できず 400 COMMON_001 で落ちていた。
+        String json = "{\"content\":\"チーム投稿\",\"scopeType\":\"TEAM\",\"scopeId\":\"team-000092\"}";
+
+        CreatePostRequest request = objectMapper.readValue(json, CreatePostRequest.class);
+
+        assertThat(request).isNotNull();
+        assertThat(request.getScopeType()).isEqualTo("TEAM");
+        assertThat(request.getScopeId()).isEqualTo("team-000092");
+    }
+
+    @Test
+    @DisplayName("数値文字列のscopeIdをデシリアライズできる（後方互換: \"92\"）")
+    void 数値文字列scopeId_正常デシリアライズ() throws Exception {
+        String json = "{\"content\":\"投稿\",\"scopeType\":\"TEAM\",\"scopeId\":\"92\"}";
+
+        CreatePostRequest request = objectMapper.readValue(json, CreatePostRequest.class);
+
+        assertThat(request.getScopeId()).isEqualTo("92");
     }
 
     @Test
