@@ -1,0 +1,47 @@
+{
+  "circulation": {
+    "status": {
+      "DRAFT": "下書き",
+      "ACTIVE": "回覧中",
+      "COMPLETED": "完了",
+      "CANCELLED": "キャンセル"
+    },
+    "recipient_status": {
+      "PENDING": "未押印",
+      "STAMPED": "押印済み",
+      "SKIPPED": "スキップ",
+      "REJECTED": "拒否"
+    },
+    "detail": {
+      "title": "回覧の詳細",
+      "close": "閉じる",
+      "cancel": "キャンセル",
+      "forbidden": "この回覧の閲覧権限がありません（あて先ではありません）",
+      "load_failed": "回覧の取得に失敗しました",
+      "unknown_user": "不明なユーザー",
+      "created_by": "{name} さん",
+      "due": "締切 {date}",
+      "progress": "押印済み",
+      "recipients": "あて先",
+      "no_recipients": "あて先がありません",
+      "attachments": "添付ファイル",
+      "comments": "コメント",
+      "no_comments": "コメントはまだありません",
+      "stamp": {
+        "open": "押印する",
+        "choose_seal": "押印する印鑑を選択",
+        "no_seal": "押印できる印鑑がありません。設定から印鑑を作成してください。",
+        "select_seal": "印鑑を選択してください",
+        "comment_placeholder": "押印コメント（任意）",
+        "submit": "押印",
+        "success": "押印しました",
+        "failed": "押印に失敗しました"
+      },
+      "comment": {
+        "placeholder": "コメントを入力",
+        "submit": "コメント投稿",
+        "failed": "コメントの投稿に失敗しました"
+      }
+    }
+  }
+}

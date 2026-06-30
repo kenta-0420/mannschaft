@@ -1,0 +1,47 @@
+{
+  "circulation": {
+    "status": {
+      "DRAFT": "Borrador",
+      "ACTIVE": "En circulación",
+      "COMPLETED": "Completado",
+      "CANCELLED": "Cancelado"
+    },
+    "recipient_status": {
+      "PENDING": "Pendiente",
+      "STAMPED": "Sellado",
+      "SKIPPED": "Omitido",
+      "REJECTED": "Rechazado"
+    },
+    "detail": {
+      "title": "Detalles de la circulación",
+      "close": "Cerrar",
+      "cancel": "Cancelar",
+      "forbidden": "No tienes permiso para ver esta circulación (no eres destinatario).",
+      "load_failed": "No se pudo cargar la circulación",
+      "unknown_user": "Usuario desconocido",
+      "created_by": "{name}",
+      "due": "Vence {date}",
+      "progress": "sellado",
+      "recipients": "Destinatarios",
+      "no_recipients": "No hay destinatarios",
+      "attachments": "Adjuntos",
+      "comments": "Comentarios",
+      "no_comments": "Aún no hay comentarios",
+      "stamp": {
+        "open": "Sellar",
+        "choose_seal": "Elige un sello para estampar",
+        "no_seal": "No hay ningún sello disponible. Crea un sello en los ajustes.",
+        "select_seal": "Selecciona un sello",
+        "comment_placeholder": "Comentario del sello (opcional)",
+        "submit": "Sellar",
+        "success": "Sellado",
+        "failed": "No se pudo sellar"
+      },
+      "comment": {
+        "placeholder": "Escribe un comentario",
+        "submit": "Publicar comentario",
+        "failed": "No se pudo publicar el comentario"
+      }
+    }
+  }
+}

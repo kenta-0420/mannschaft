@@ -1,0 +1,47 @@
+{
+  "circulation": {
+    "status": {
+      "DRAFT": "초안",
+      "ACTIVE": "회람 중",
+      "COMPLETED": "완료",
+      "CANCELLED": "취소됨"
+    },
+    "recipient_status": {
+      "PENDING": "미날인",
+      "STAMPED": "날인 완료",
+      "SKIPPED": "건너뜀",
+      "REJECTED": "거부됨"
+    },
+    "detail": {
+      "title": "회람 상세",
+      "close": "닫기",
+      "cancel": "취소",
+      "forbidden": "이 회람을 볼 권한이 없습니다 (수신자가 아닙니다).",
+      "load_failed": "회람을 불러오지 못했습니다",
+      "unknown_user": "알 수 없는 사용자",
+      "created_by": "{name}",
+      "due": "마감 {date}",
+      "progress": "날인 완료",
+      "recipients": "수신자",
+      "no_recipients": "수신자가 없습니다",
+      "attachments": "첨부 파일",
+      "comments": "댓글",
+      "no_comments": "아직 댓글이 없습니다",
+      "stamp": {
+        "open": "날인하기",
+        "choose_seal": "날인할 인감 선택",
+        "no_seal": "사용할 수 있는 인감이 없습니다. 설정에서 인감을 만들어 주세요.",
+        "select_seal": "인감을 선택해 주세요",
+        "comment_placeholder": "날인 댓글 (선택)",
+        "submit": "날인",
+        "success": "날인했습니다",
+        "failed": "날인에 실패했습니다"
+      },
+      "comment": {
+        "placeholder": "댓글 입력",
+        "submit": "댓글 등록",
+        "failed": "댓글 등록에 실패했습니다"
+      }
+    }
+  }
+}

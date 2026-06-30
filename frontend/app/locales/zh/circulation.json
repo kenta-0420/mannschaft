@@ -1,0 +1,47 @@
+{
+  "circulation": {
+    "status": {
+      "DRAFT": "草稿",
+      "ACTIVE": "传阅中",
+      "COMPLETED": "已完成",
+      "CANCELLED": "已取消"
+    },
+    "recipient_status": {
+      "PENDING": "未盖章",
+      "STAMPED": "已盖章",
+      "SKIPPED": "已跳过",
+      "REJECTED": "已拒绝"
+    },
+    "detail": {
+      "title": "传阅详情",
+      "close": "关闭",
+      "cancel": "取消",
+      "forbidden": "您没有查看此传阅的权限（您不是收件人）。",
+      "load_failed": "加载传阅失败",
+      "unknown_user": "未知用户",
+      "created_by": "{name}",
+      "due": "截止 {date}",
+      "progress": "已盖章",
+      "recipients": "收件人",
+      "no_recipients": "没有收件人",
+      "attachments": "附件",
+      "comments": "评论",
+      "no_comments": "暂无评论",
+      "stamp": {
+        "open": "盖章",
+        "choose_seal": "选择用于盖章的印章",
+        "no_seal": "没有可用的印章。请在设置中创建印章。",
+        "select_seal": "请选择印章",
+        "comment_placeholder": "盖章评论（可选）",
+        "submit": "盖章",
+        "success": "已盖章",
+        "failed": "盖章失败"
+      },
+      "comment": {
+        "placeholder": "输入评论",
+        "submit": "发表评论",
+        "failed": "评论发表失败"
+      }
+    }
+  }
+}

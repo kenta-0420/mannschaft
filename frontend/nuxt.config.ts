@@ -467,6 +467,7 @@ export default defineNuxtConfig({
           'ja/system_admin_incident_banner.json',
           'ja/admin_console.json',
           'ja/feedback.json',
+          'ja/circulation.json',
         ],
       },
       {
@@ -535,6 +536,7 @@ export default defineNuxtConfig({
           'en/system_admin_incident_banner.json',
           'en/admin_console.json',
           'en/feedback.json',
+          'en/circulation.json',
         ],
       },
       {
@@ -603,6 +605,7 @@ export default defineNuxtConfig({
           'zh/system_admin_incident_banner.json',
           'zh/admin_console.json',
           'zh/feedback.json',
+          'zh/circulation.json',
         ],
       },
       {
@@ -671,6 +674,7 @@ export default defineNuxtConfig({
           'ko/system_admin_incident_banner.json',
           'ko/admin_console.json',
           'ko/feedback.json',
+          'ko/circulation.json',
         ],
       },
       {
@@ -739,6 +743,7 @@ export default defineNuxtConfig({
           'es/system_admin_incident_banner.json',
           'es/admin_console.json',
           'es/feedback.json',
+          'es/circulation.json',
         ],
       },
       {
@@ -807,6 +812,7 @@ export default defineNuxtConfig({
           'de/system_admin_incident_banner.json',
           'de/admin_console.json',
           'de/feedback.json',
+          'de/circulation.json',
         ],
       },
     ],
