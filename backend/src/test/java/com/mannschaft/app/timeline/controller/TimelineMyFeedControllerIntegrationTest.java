@@ -224,30 +224,30 @@ class TimelineMyFeedControllerIntegrationTest extends AbstractMySqlIntegrationTe
     // ─────────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("AC-9 カーソル: limit=2 で hasNext=true・nextCursor で続き取得（重複/欠落なし）")
+    @DisplayName("AC-9 カーソル: limit=2 で hasNext=true・nextCursor で続き取得（重複/欠落なし・終端は部分ページで hasNext=false）")
     void cursorPagination() {
+        // 3 件 / limit 2: 終端ページが部分ページ（1 件 < limit）になり hasNext=false を明確に検証する。
         Long p1 = savePost(PostScopeType.TEAM, TEAM_JOINED, OTHER_AUTHOR, PostStatus.PUBLISHED, null).getId();
         Long p2 = savePost(PostScopeType.TEAM, TEAM_JOINED, OTHER_AUTHOR, PostStatus.PUBLISHED, null).getId();
         Long p3 = savePost(PostScopeType.TEAM, TEAM_JOINED, OTHER_AUTHOR, PostStatus.PUBLISHED, null).getId();
-        Long p4 = savePost(PostScopeType.TEAM, TEAM_JOINED, OTHER_AUTHOR, PostStatus.PUBLISHED, null).getId();
 
         setAuthentication(USER_MEMBER);
 
-        // 1 ページ目
+        // 1 ページ目（最新 2 件・id 降順）
         TimelineFeedResponse page1 = body(controller.getMyFeed(null, 2));
         List<Long> ids1 = page1.getData().getPosts().stream().map(PostResponse::getId).toList();
-        assertThat(ids1).containsExactly(p4, p3);
+        assertThat(ids1).containsExactly(p3, p2);
         assertThat(page1.getMeta().isHasNext()).isTrue();
-        assertThat(page1.getMeta().getNextCursor()).isEqualTo(p3);
+        assertThat(page1.getMeta().getNextCursor()).isEqualTo(p2);
 
-        // 2 ページ目（nextCursor で続き）
+        // 2 ページ目（nextCursor で続き）。残り 1 件 < limit のため hasNext=false・nextCursor=null
         TimelineFeedResponse page2 = body(controller.getMyFeed(page1.getMeta().getNextCursor(), 2));
         List<Long> ids2 = page2.getData().getPosts().stream().map(PostResponse::getId).toList();
-        assertThat(ids2).containsExactly(p2, p1);
-        // 重複なし
+        assertThat(ids2).containsExactly(p1);
+        // 重複なし・欠落なし（全 3 件を 2 ページで網羅）
         assertThat(ids2).doesNotContainAnyElementsOf(ids1);
-        // 全 4 件を欠落なく取得
         assertThat(page2.getMeta().isHasNext()).isFalse();
+        assertThat(page2.getMeta().getNextCursor()).isNull();
     }
 
     // ─────────────────────────────────────────────────────────────────────
