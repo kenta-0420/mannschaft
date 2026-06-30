@@ -198,6 +198,11 @@ class ScheduleAnnouncementAdapterTest {
             verify(scheduleService).createSchedule(captor.capture(), anyLong(), anyString(), anyLong());
             assertThat(captor.getValue().getVisibility()).isEqualTo("ORGANIZATION");
             assertThat(captor.getValue().getMinViewRole()).isEqualTo("SUPPORTER_PLUS");
+            // 実 enum valueOf で有効性も保証（無効文字列なら IllegalArgumentException で落ちる）
+            assertThatCode(() -> {
+                ScheduleVisibility.valueOf(captor.getValue().getVisibility());
+                MinViewRole.valueOf(captor.getValue().getMinViewRole());
+            }).doesNotThrowAnyException();
         }
 
         @Test
@@ -219,6 +224,11 @@ class ScheduleAnnouncementAdapterTest {
             // then
             verify(scheduleService).createSchedule(captor.capture(), anyLong(), anyString(), anyLong());
             assertThat(captor.getValue().getMinViewRole()).isEqualTo("ANYONE");
+            // 実 enum valueOf で有効性も保証（無効文字列なら IllegalArgumentException で落ちる）
+            assertThatCode(() -> {
+                ScheduleVisibility.valueOf(captor.getValue().getVisibility());
+                MinViewRole.valueOf(captor.getValue().getMinViewRole());
+            }).doesNotThrowAnyException();
         }
 
         @Test

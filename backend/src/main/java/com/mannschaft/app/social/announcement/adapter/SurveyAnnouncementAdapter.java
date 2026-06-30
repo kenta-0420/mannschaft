@@ -48,7 +48,7 @@ public class SurveyAnnouncementAdapter implements AnnouncementChannelAdapter {
                 null,                // seriesId
                 null,                // remindBeforeHours
                 null,                    // startsAt（即時開始）
-                content.getClosesAt(),   // expiresAt（closes_at として使用）
+                content.getClosesAt(),   // expiresAt（closesAt として使用）
                 Collections.emptyList(), // questions（告知ウィザードは設問なしで作成）
                 null,                // targetUserIds（全対象）
                 null,                // resultViewerUserIds

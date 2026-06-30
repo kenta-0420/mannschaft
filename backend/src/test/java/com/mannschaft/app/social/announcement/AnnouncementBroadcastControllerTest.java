@@ -141,4 +141,27 @@ class AnnouncementBroadcastControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("COMMON_001"));
     }
+
+    @Test
+    @DisplayName("snake_case キー（target_role）は binding されず @NotNull 違反で 400 COMMON_001 となること"
+            + "（camelCase 強制の回帰防止・旧 snake_case 契約への逆戻り検出）")
+    void rejectsSnakeCaseTargetRoleWith400() throws Exception {
+        // given: targetRole の代わりに旧 snake_case の target_role を送る。
+        // @JsonProperty 撤去後は target_role キーはどのフィールドにも binding されず、
+        // 必須の targetRole が null のまま → @NotNull 違反になる。
+        String body = """
+                {
+                  "channel": "SCHEDULE",
+                  "target_role": "MEMBERS_AND_ABOVE",
+                  "content": { "title": "x" }
+                }
+                """;
+
+        // when / then
+        mockMvc.perform(post("/api/v1/teams/{teamId}/broadcast", TEAM_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("COMMON_001"));
+    }
 }
