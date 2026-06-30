@@ -42,6 +42,47 @@
         "submit": "コメント投稿",
         "failed": "コメントの投稿に失敗しました"
       }
+    },
+    "create": {
+      "title": "回覧の作成",
+      "cancel": "キャンセル",
+      "submit": "作成して回覧を開始",
+      "success": "回覧を作成し、回覧を開始しました",
+      "failed": "回覧の作成に失敗しました",
+      "no_members": "あて先に選べるメンバーがいません",
+      "recipients_selected": "{count} 人選択中",
+      "order_title": "回覧順（上から順に回ります）",
+      "move_up": "上へ移動",
+      "move_down": "下へ移動",
+      "field": {
+        "title": "タイトル",
+        "title_placeholder": "回覧のタイトルを入力",
+        "body": "本文",
+        "body_placeholder": "回覧する内容を入力",
+        "mode": "回覧方法",
+        "recipients": "あて先",
+        "priority": "優先度",
+        "due_date": "締切（任意）"
+      },
+      "mode": {
+        "SIMULTANEOUS": "一斉",
+        "SEQUENTIAL": "順番"
+      },
+      "mode_hint": {
+        "SIMULTANEOUS": "あて先全員に同時に回覧します",
+        "SEQUENTIAL": "あて先を上から順に1人ずつ回覧します"
+      },
+      "priority": {
+        "NORMAL": "通常",
+        "URGENT": "至急"
+      },
+      "error": {
+        "title_required": "タイトルを入力してください",
+        "title_too_long": "タイトルは200文字以内で入力してください",
+        "body_required": "本文を入力してください",
+        "recipients_required": "あて先を1人以上選択してください",
+        "members_load_failed": "メンバー一覧の取得に失敗しました"
+      }
     }
   }
 }

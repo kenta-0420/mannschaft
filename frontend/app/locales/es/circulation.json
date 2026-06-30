@@ -42,6 +42,47 @@
         "submit": "Publicar comentario",
         "failed": "No se pudo publicar el comentario"
       }
+    },
+    "create": {
+      "title": "Crear circulación",
+      "cancel": "Cancelar",
+      "submit": "Crear e iniciar",
+      "success": "Circulación creada e iniciada",
+      "failed": "No se pudo crear la circulación",
+      "no_members": "No hay miembros disponibles para añadir como destinatarios",
+      "recipients_selected": "{count} seleccionados",
+      "order_title": "Orden de circulación (de arriba abajo)",
+      "move_up": "Subir",
+      "move_down": "Bajar",
+      "field": {
+        "title": "Título",
+        "title_placeholder": "Introduce el título de la circulación",
+        "body": "Contenido",
+        "body_placeholder": "Introduce el contenido a circular",
+        "mode": "Método de circulación",
+        "recipients": "Destinatarios",
+        "priority": "Prioridad",
+        "due_date": "Fecha límite (opcional)"
+      },
+      "mode": {
+        "SIMULTANEOUS": "Simultánea",
+        "SEQUENTIAL": "Secuencial"
+      },
+      "mode_hint": {
+        "SIMULTANEOUS": "Circular a todos los destinatarios al mismo tiempo",
+        "SEQUENTIAL": "Circular uno a uno en orden desde arriba"
+      },
+      "priority": {
+        "NORMAL": "Normal",
+        "URGENT": "Urgente"
+      },
+      "error": {
+        "title_required": "Introduce un título",
+        "title_too_long": "El título debe tener 200 caracteres o menos",
+        "body_required": "Introduce el contenido",
+        "recipients_required": "Selecciona al menos un destinatario",
+        "members_load_failed": "No se pudo cargar la lista de miembros"
+      }
     }
   }
 }
