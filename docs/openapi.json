@@ -180290,6 +180290,9 @@
           "audit": {
             "$ref": "#/components/schemas/ChannelAuditDto"
           },
+          "dmPartner": {
+            "$ref": "#/components/schemas/DmPartnerDto"
+          },
           "id": {
             "type": "integer",
             "format": "int64"
@@ -180300,6 +180303,10 @@
           "lastMessage": {
             "$ref": "#/components/schemas/ChannelLastMessageDto"
           },
+          "memberCount": {
+            "type": "integer",
+            "format": "int32"
+          },
           "meta": {
             "$ref": "#/components/schemas/ChannelMetaDto"
           },
@@ -180308,6 +180315,9 @@
           },
           "source": {
             "$ref": "#/components/schemas/ChannelSourceDto"
+          },
+          "viewer": {
+            "$ref": "#/components/schemas/ViewerStateDto"
           }
         }
       },
@@ -180338,6 +180348,42 @@
           },
           "sourceType": {
             "type": "string"
+          }
+        }
+      },
+      "DmPartnerDto": {
+        "type": "object",
+        "properties": {
+          "avatarUrl": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ViewerStateDto": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "isMuted": {
+            "type": "boolean"
+          },
+          "isPinned": {
+            "type": "boolean"
+          },
+          "role": {
+            "type": "string"
+          },
+          "unreadCount": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
