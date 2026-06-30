@@ -5,6 +5,7 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.dashboard.DashboardScopeTabErrorCode;
 import com.mannschaft.app.dashboard.dto.ScopeTabItemResponse;
 import com.mannschaft.app.dashboard.dto.ScopeTabOrderUpdateRequest;
@@ -59,6 +60,7 @@ public class DashboardScopeTabService {
     private final OrganizationRepository organizationRepository;
     private final AccessControlService accessControlService;
     private final AuditLogService auditLogService;
+    private final MediaUrlResolver mediaUrlResolver;
 
     // ============================================
     // GET /dashboard/scope-tabs
@@ -203,7 +205,8 @@ public class DashboardScopeTabService {
                 .publicId(publicId)
                 .scopeType(scopeType)
                 .name(name)
-                .avatarUrl(avatarUrl)
+                // 画像 URL 根治 Phase 2: 生 R2 キー（team/org の iconUrl）を署名付き表示 URL へ解決
+                .avatarUrl(mediaUrlResolver.resolve(avatarUrl))
                 // Wave 2 で action-required 込みの未読集計に拡張予定。現時点では集計源がないため 0。
                 .unreadCount(0)
                 .sortOrder(sortOrder)

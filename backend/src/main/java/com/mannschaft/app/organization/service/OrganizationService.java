@@ -1,5 +1,6 @@
 package com.mannschaft.app.organization.service;
 
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.common.util.SlugGenerator;
 import com.mannschaft.app.common.util.SlugValidator;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
@@ -71,6 +72,7 @@ public class OrganizationService {
     private final OrganizationMembershipService organizationMembershipService;
     private final OrganizationHierarchyService organizationHierarchyService;
     private final MembershipService membershipService;
+    private final MediaUrlResolver mediaUrlResolver;
 
     /**
      * 組織を作成し、作成者をADMINロールで紐付ける。
@@ -629,7 +631,9 @@ public class OrganizationService {
                         org.getSupporterEnabled()))
                 .metadata(new OrganizationResponse.OrgMetadataDto(
                         org.getVersion(), memberCount,
-                        org.getIconUrl(), org.getBannerUrl()))
+                        // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL（絶対 URL）へ解決して返す。
+                        mediaUrlResolver.resolve(org.getIconUrl()),
+                        mediaUrlResolver.resolve(org.getBannerUrl())))
                 .timestamps(new OrganizationResponse.OrgTimestampsDto(
                         org.getArchivedAt(), org.getCreatedAt()))
                 .build();

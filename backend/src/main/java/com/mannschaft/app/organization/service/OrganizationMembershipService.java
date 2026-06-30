@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.membership.domain.LeaveReason;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -58,6 +59,7 @@ public class OrganizationMembershipService {
     private final MemberQueryDispatcher memberQueryDispatcher;
     private final MembershipService membershipService;
     private final MembershipRepository membershipRepository;
+    private final MediaUrlResolver mediaUrlResolver;
 
     /**
      * 組織配信の再帰的配下解決における再帰展開の最大深さ（サイクル防止上限・フェーズM1）。
@@ -191,7 +193,8 @@ public class OrganizationMembershipService {
                             result.add(new OrgAllMembersResponse(
                                     user.getId(),
                                     user.getLastName() + " " + user.getFirstName(),
-                                    user.getAvatarUrl(),
+                                    // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL へ解決
+                                    mediaUrlResolver.resolve(user.getAvatarUrl()),
                                     new OrgAllMembersResponse.MemberOf("ORGANIZATION", org.getId(), org.getName()),
                                     roleName));
                         }
@@ -214,7 +217,8 @@ public class OrganizationMembershipService {
                                         result.add(new OrgAllMembersResponse(
                                                 user.getId(),
                                                 user.getLastName() + " " + user.getFirstName(),
-                                                user.getAvatarUrl(),
+                                                // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL へ解決
+                                                mediaUrlResolver.resolve(user.getAvatarUrl()),
                                                 new OrgAllMembersResponse.MemberOf("TEAM", team.getId(), team.getName()),
                                                 roleName));
                                     }

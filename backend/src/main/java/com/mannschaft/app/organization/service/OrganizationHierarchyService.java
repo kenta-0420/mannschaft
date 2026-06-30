@@ -3,6 +3,7 @@ package com.mannschaft.app.organization.service;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.CursorPagedResponse;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.organization.OrgErrorCode;
 import com.mannschaft.app.organization.dto.AncestorOrganizationResponse;
 import com.mannschaft.app.organization.dto.AncestorsResponse;
@@ -44,6 +45,7 @@ public class OrganizationHierarchyService {
     private final OrganizationRepository organizationRepository;
     private final UserRoleRepository userRoleRepository;
     private final TeamOrgMembershipRepository teamOrgMembershipRepository;
+    private final MediaUrlResolver mediaUrlResolver;
 
     /** 祖先チェーン探索の最大深度。これを超える祖先は返さず {@code truncated: true} を立てる。 */
     @Value("${app.org.max-depth:5}")
@@ -189,7 +191,8 @@ public class OrganizationHierarchyService {
                         .slug(child.getSlug())
                         .name(child.getName())
                         .nickname1(child.getNickname1())
-                        .iconUrl(child.getIconUrl())
+                        // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL へ解決
+                        .iconUrl(mediaUrlResolver.resolve(child.getIconUrl()))
                         .visibility(child.getVisibility().name())
                         .memberCount((int) userRoleRepository.countByOrganizationId(child.getId()))
                         .archived(child.getArchivedAt() != null)
@@ -353,7 +356,7 @@ public class OrganizationHierarchyService {
                 .name(org.getName())
                 .nickname1(org.getNickname1())
                 .description(null) // organizations.description は現状未保持。philosophy 等は別 API で取得
-                .iconUrl(org.getIconUrl())
+                .iconUrl(mediaUrlResolver.resolve(org.getIconUrl()))
                 .visibility(org.getVisibility().name())
                 .hidden(false)
                 .build();
@@ -366,7 +369,7 @@ public class OrganizationHierarchyService {
                 .name(org.getName())
                 .nickname1(org.getNickname1())
                 .description(null)
-                .iconUrl(org.getIconUrl())
+                .iconUrl(mediaUrlResolver.resolve(org.getIconUrl()))
                 .visibility(org.getVisibility().name())
                 .hidden(false)
                 .build();
@@ -379,7 +382,7 @@ public class OrganizationHierarchyService {
                 .slug(org.getSlug())
                 .name(org.getName())
                 .nickname1(org.getNickname1())
-                .iconUrl(org.getIconUrl())
+                .iconUrl(mediaUrlResolver.resolve(org.getIconUrl()))
                 .visibility(org.getVisibility().name())
                 .hidden(false)
                 .build();

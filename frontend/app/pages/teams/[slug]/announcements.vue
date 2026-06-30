@@ -12,7 +12,7 @@
  */
 import type { GateCheckResponse } from '~/types/payment'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()

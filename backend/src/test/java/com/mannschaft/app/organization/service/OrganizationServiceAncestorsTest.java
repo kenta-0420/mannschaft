@@ -1,6 +1,7 @@
 package com.mannschaft.app.organization.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.organization.dto.AncestorOrganizationResponse;
 import com.mannschaft.app.organization.dto.AncestorsResponse;
 import com.mannschaft.app.organization.dto.ChildOrganizationResponse;
@@ -55,6 +56,7 @@ class OrganizationServiceAncestorsTest {
     @Mock private OrganizationRepository organizationRepository;
     @Mock private TeamOrgMembershipRepository teamOrgMembershipRepository;
     @Mock private UserRoleRepository userRoleRepository;
+    @Mock private MediaUrlResolver mediaUrlResolver;
 
     @InjectMocks
     private OrganizationHierarchyService organizationService;
@@ -71,6 +73,10 @@ class OrganizationServiceAncestorsTest {
         // 所属系 stub のデフォルトは「所属なし」
         given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(anyLong())).willReturn(List.of());
         given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(anyLong())).willReturn(List.of());
+
+        // 画像 URL 根治 Phase 2: 既存アサーション（iconUrl=生キー値）を温存するため、
+        // デフォルトは恒等変換（resolve(key)=key）にしておく。署名 URL 化の検証は専用テストで上書きする。
+        given(mediaUrlResolver.resolve(any())).willAnswer(inv -> inv.getArgument(0));
     }
 
     // ========================================
@@ -399,6 +405,31 @@ class OrganizationServiceAncestorsTest {
             assertThat(first.isArchived()).isFalse();
             assertThat(first.getIconUrl()).isEqualTo("c1.png");
             assertThat(response.getMeta().isHasNext()).isFalse();
+        }
+
+        @Test
+        @DisplayName("画像URL根治Phase2_子のiconUrlが署名付き表示URLへ解決される")
+        void 子のiconUrlが署名付き表示URLへ解決される() {
+            OrganizationEntity target = orgBuilder(TARGET_ORG_ID, "親")
+                    .visibility(OrganizationEntity.Visibility.PUBLIC).build();
+            OrganizationEntity child = orgBuilder(11L, "子")
+                    .visibility(OrganizationEntity.Visibility.PUBLIC)
+                    .parentOrganizationId(TARGET_ORG_ID)
+                    .iconUrl("org/11/icon/raw.png").build();
+
+            given(organizationRepository.findById(TARGET_ORG_ID)).willReturn(Optional.of(target));
+            given(organizationRepository.findByParentOrganizationIdAndDeletedAtIsNull(eq(TARGET_ORG_ID), any(Pageable.class)))
+                    .willReturn(List.of(child));
+            given(userRoleRepository.countByOrganizationId(11L)).willReturn(0L);
+            // setUp の恒等変換を上書きし、生キーが署名付き表示 URL へ解決されることを検証する
+            given(mediaUrlResolver.resolve("org/11/icon/raw.png"))
+                    .willReturn("https://cdn.example.com/signed/org-icon.png");
+
+            ChildrenResponse response = organizationService.getChildren(TARGET_ORG_ID, REQUESTER_ID, null, 50);
+
+            assertThat(response.getData()).hasSize(1);
+            assertThat(response.getData().get(0).getIconUrl())
+                    .isEqualTo("https://cdn.example.com/signed/org-icon.png");
         }
 
         @Test

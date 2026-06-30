@@ -2,6 +2,8 @@
 import { ref, onMounted } from 'vue'
 import type { RecruitmentListingSummaryResponse } from '~/types/recruitment'
 
+definePageMeta({ layout: 'team' })
+
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()

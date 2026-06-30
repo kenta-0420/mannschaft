@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ShoppingListResponse } from '~/types/shopping-list'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
 const teamSlug = String(route.params.slug)

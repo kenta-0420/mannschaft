@@ -4,6 +4,7 @@ import { computed, ref, onMounted } from 'vue'
 import type { DailyRollCallEntry, DailyRollCallSummary } from '~/types/school'
 
 definePageMeta({
+  layout: 'team',
   middleware: 'auth',
 })
 
