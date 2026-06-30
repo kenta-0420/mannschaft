@@ -53,7 +53,7 @@ public class ScheduleAnnouncementAdapter implements AnnouncementChannelAdapter {
                 content.getStartAt(),
                 content.getEndAt(),  // null 可（終日の場合は開始日と同日）
                 allDay,
-                "NORMAL",            // eventType（通常イベント）
+                "EVENT",             // eventType（告知スケジュールは一般イベント扱い。有効値=PRACTICE/MATCH/EVENT/MEETING/OTHER。"NORMAL" は EventType に存在せず valueOf で 500 になる）
                 visibility,          // ScheduleVisibility に対応する文字列（scope 軸）
                 minViewRole,         // MinViewRole に対応する文字列（role 軸）
                 null,                // minResponseRole（デフォルト）
