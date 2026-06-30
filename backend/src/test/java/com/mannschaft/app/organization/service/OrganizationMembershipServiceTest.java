@@ -1,8 +1,11 @@
 package com.mannschaft.app.organization.service;
 
+import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
+import com.mannschaft.app.organization.dto.OrgAllMembersResponse;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.dto.MemberDto;
@@ -14,6 +17,8 @@ import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.role.dto.MemberResponse;
+import com.mannschaft.app.role.entity.RoleEntity;
+import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
@@ -25,8 +30,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -35,6 +42,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -78,6 +86,9 @@ class OrganizationMembershipServiceTest {
 
     @Mock
     private MembershipRepository membershipRepository;
+
+    @Mock
+    private MediaUrlResolver mediaUrlResolver;
 
     @InjectMocks
     private OrganizationMembershipService organizationMembershipService;
@@ -137,6 +148,55 @@ class OrganizationMembershipServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ORG_001"));
+        }
+    }
+
+    // ========================================
+    // getAllMembers（画像URL根治Phase2）
+    // ========================================
+
+    @Nested
+    @DisplayName("getAllMembers")
+    class GetAllMembers {
+
+        @Test
+        @DisplayName("画像URL根治Phase2_直属メンバーのavatarが署名付き表示URLへ解決される")
+        void 直属メンバーのavatarが署名付き表示URLへ解決される() {
+            OrganizationEntity org = createOrganization();
+            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
+
+            Long roleId = 100L;
+            UserRoleEntity ur = UserRoleEntity.builder()
+                    .userId(USER_ID)
+                    .roleId(roleId)
+                    .organizationId(ORG_ID)
+                    .build();
+            given(userRoleRepository.findByOrganizationId(eq(ORG_ID), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(ur)));
+
+            UserEntity user = UserEntity.builder()
+                    .email("member@example.com")
+                    .passwordHash("hash")
+                    .lastName("山田")
+                    .firstName("太郎")
+                    .displayName("yamada")
+                    .avatarUrl("user/1/avatar/raw.png")
+                    .build();
+            ReflectionTestUtils.setField(user, "id", USER_ID);
+            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
+
+            RoleEntity role = RoleEntity.builder().name("MEMBER").build();
+            given(roleRepository.findById(roleId)).willReturn(Optional.of(role));
+
+            given(mediaUrlResolver.resolve("user/1/avatar/raw.png"))
+                    .willReturn("https://cdn.example.com/signed/avatar.png");
+
+            List<OrgAllMembersResponse> result =
+                    organizationMembershipService.getAllMembers(ORG_ID, "ORGANIZATION");
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getIconUrl())
+                    .isEqualTo("https://cdn.example.com/signed/avatar.png");
         }
     }
 

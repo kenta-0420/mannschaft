@@ -7,6 +7,7 @@ import com.mannschaft.app.chat.entity.ChatChannelEntity;
 import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.chat.repository.ChatChannelRepository;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.dashboard.FolderItemType;
 import com.mannschaft.app.dashboard.dto.ChatHubResponse;
 import com.mannschaft.app.dashboard.dto.ChatHubSummaryDto;
@@ -45,6 +46,7 @@ public class ChatHubService {
     private final ChatContactFolderRepository chatContactFolderRepository;
     private final ChatContactFolderItemRepository chatContactFolderItemRepository;
     private final UserRepository userRepository;
+    private final MediaUrlResolver mediaUrlResolver;
 
     /**
      * 指定ユーザーのチャットハブデータを取得する。
@@ -144,7 +146,8 @@ public class ChatHubService {
                     Long partnerUserId = dmChannelToPartnerUserId.getOrDefault(channel.getId(), null);
                     UserEntity partner = (partnerUserId != null) ? partnerUserMap.get(partnerUserId) : null;
                     String partnerDisplayName = (partner != null) ? partner.getLastName() + " " + partner.getFirstName() : "";
-                    String partnerAvatarUrl   = (partner != null) ? partner.getAvatarUrl() : null;
+                    // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL へ解決
+                    String partnerAvatarUrl   = (partner != null) ? mediaUrlResolver.resolve(partner.getAvatarUrl()) : null;
 
                     // lastMessagePreview: クエリコスト削減のため channel エンティティのプレビューを流用
                     // 最大50文字にトリム
@@ -211,7 +214,8 @@ public class ChatHubService {
                                 String displayName = (item.getCustomName() != null && !item.getCustomName().isBlank())
                                         ? item.getCustomName()
                                         : (user != null ? user.getLastName() + " " + user.getFirstName() : "");
-                                String avatarUrl = (user != null) ? user.getAvatarUrl() : null;
+                                // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL へ解決
+                                String avatarUrl = (user != null) ? mediaUrlResolver.resolve(user.getAvatarUrl()) : null;
 
                                 // アクティブ DM の有無と最終メッセージ日時
                                 ChatChannelEntity activeDm = dmByPartnerId.get(contactUserId);

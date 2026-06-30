@@ -3,6 +3,7 @@ package com.mannschaft.app.dashboard.service;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.dashboard.dto.ScopeTabItemResponse;
 import com.mannschaft.app.dashboard.dto.ScopeTabOrderUpdateRequest;
 import com.mannschaft.app.dashboard.dto.ScopeTabPageResponse;
@@ -64,6 +65,7 @@ class DashboardScopeTabServiceTest {
     @Mock private OrganizationRepository organizationRepository;
     @Mock private AccessControlService accessControlService;
     @Mock private AuditLogService auditLogService;
+    @Mock private MediaUrlResolver mediaUrlResolver;
 
     @InjectMocks private DashboardScopeTabService service;
 
@@ -178,6 +180,31 @@ class DashboardScopeTabServiceTest {
             assertThatThrownBy(() -> service.getScopeTabs("PERSONAL", 0, null))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("スコープ種別");
+        }
+
+        @Test
+        @DisplayName("画像URL根治Phase2_チームiconが署名付き表示URLへ解決されavatar_urlに乗る")
+        void チームiconが署名付き表示URLへ解決される() {
+            given(membershipRepository.findActiveByUserAndScopeType(eq(USER_ID), any()))
+                    .willReturn(List.of(activeMembership(10L,
+                            com.mannschaft.app.membership.domain.ScopeType.TEAM, LocalDateTime.now())));
+            // ②' 実在フィルタ（findAllById）で id=10 を実在として返す
+            TeamEntity existing = org.mockito.Mockito.mock(TeamEntity.class);
+            given(existing.getId()).willReturn(10L);
+            given(teamRepository.findAllById(any())).willReturn(List.of(existing));
+            given(scopeTabOrderRepository.findByUserIdAndScopeTypeOrderBySortOrderAsc(USER_ID, "TEAM"))
+                    .willReturn(List.of());
+            // buildItem 内の個別取得：生 R2 キーを持つチームを返す
+            given(teamRepository.findById(10L))
+                    .willReturn(Optional.of(team(10L, "Team-10", "team/10/icon/raw.png")));
+            given(mediaUrlResolver.resolve("team/10/icon/raw.png"))
+                    .willReturn("https://cdn.example.com/signed/team-icon.png");
+
+            ScopeTabPageResponse res = service.getScopeTabs("TEAM", 0, null);
+
+            assertThat(res.items()).hasSize(1);
+            assertThat(res.items().get(0).avatarUrl())
+                    .isEqualTo("https://cdn.example.com/signed/team-icon.png");
         }
     }
 

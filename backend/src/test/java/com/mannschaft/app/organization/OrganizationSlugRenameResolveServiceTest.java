@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.dto.SlugResolveResponse;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.entity.OrganizationSlugHistoryEntity;
@@ -47,6 +48,7 @@ class OrganizationSlugRenameResolveServiceTest {
     @Mock private OrganizationMembershipService organizationMembershipService;
     @Mock private OrganizationHierarchyService organizationHierarchyService;
     @Mock private MembershipService membershipService;
+    @Mock private MediaUrlResolver mediaUrlResolver;
     @InjectMocks private OrganizationService service;
 
     private static final Long ORG_ID = 20L;
