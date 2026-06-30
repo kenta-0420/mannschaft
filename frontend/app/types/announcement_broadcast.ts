@@ -69,7 +69,8 @@ export interface SurveyContent {
   title: string
   /** 説明（任意・最大5000文字） */
   description: string | null
-  questions: unknown[]
+  /** 設問（告知ウィザードでは未送信。作成後に編集画面で追加する前提のため任意） */
+  questions?: unknown[]
   /** 締切日時（任意・ISO 8601 形式） */
   closesAt: string | null
 }

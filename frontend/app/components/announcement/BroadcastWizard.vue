@@ -52,8 +52,7 @@ const isDirty = computed(() => {
   const c = formState.value.content as Record<string, unknown>
   const hasTitle = typeof c.title === 'string' && c.title.trim().length > 0
   const hasBody = typeof c.body === 'string' && c.body.trim().length > 0
-  const hasContent = typeof c.content === 'string' && (c.content as string).trim().length > 0
-  return hasTitle || hasBody || hasContent || formState.value.selectedChannel !== null
+  return hasTitle || hasBody || formState.value.selectedChannel !== null
 })
 
 const stepTitle = computed(() => {
