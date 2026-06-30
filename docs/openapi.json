@@ -108241,6 +108241,37 @@
         }
       }
     },
+    "/api/v1/teams/{slug}/modules/catalog": {
+      "get": {
+        "tags": [
+          "チームモジュール管理"
+        ],
+        "summary": "チーム機能カタログ＋有効状態取得",
+        "operationId": "getTeamModuleCatalog",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTeamModuleCatalog"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{slug}/members": {
       "get": {
         "tags": [
@@ -115711,6 +115742,37 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseListOrgModuleResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{slug}/modules/catalog": {
+      "get": {
+        "tags": [
+          "組織モジュール管理"
+        ],
+        "summary": "組織機能カタログ＋有効状態取得",
+        "operationId": "getOrganizationModuleCatalog",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOrgModuleCatalog"
                 }
               }
             }
@@ -198347,6 +198409,86 @@
           }
         }
       },
+      "ApiResponseTeamModuleCatalog": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TeamModuleCatalog"
+          }
+        }
+      },
+      "TeamModuleCatalog": {
+        "type": "object",
+        "description": "チーム向け機能カタログ＋有効状態",
+        "properties": {
+          "enabledCount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "現在有効化済みの OPTIONAL モジュール数"
+          },
+          "hasPaidPlan": {
+            "type": "boolean",
+            "description": "有料プラン加入済みか"
+          },
+          "modules": {
+            "type": "array",
+            "description": "カタログ要素（moduleNumber 昇順）",
+            "items": {
+              "$ref": "#/components/schemas/TeamModuleCatalogItem"
+            }
+          },
+          "planLimit": {
+            "type": "integer",
+            "format": "int32",
+            "description": "無料プランで有効化できるモジュール数の上限"
+          }
+        }
+      },
+      "TeamModuleCatalogItem": {
+        "type": "object",
+        "description": "チーム向け機能カタログ要素（定義＋有効状態）",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "説明"
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "このチームで有効化済みか"
+          },
+          "levelAvailable": {
+            "type": "boolean",
+            "description": "チームレベルで利用可能か（module_level_availability。レコード無は利用可）"
+          },
+          "moduleId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "モジュールID"
+          },
+          "moduleNumber": {
+            "type": "integer",
+            "format": "int32",
+            "description": "表示順序番号"
+          },
+          "name": {
+            "type": "string",
+            "description": "モジュール名"
+          },
+          "requiresPaidPlan": {
+            "type": "boolean",
+            "description": "有料プランが必要か"
+          },
+          "slug": {
+            "type": "string",
+            "description": "モジュールスラッグ"
+          },
+          "trialExpiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "トライアル期限（有効化行が持つ場合のみ。未登録は null）"
+          }
+        }
+      },
       "PagedResponseMemberResponse": {
         "type": "object",
         "properties": {
@@ -205701,6 +205843,81 @@
           },
           "moduleSlug": {
             "type": "string"
+          }
+        }
+      },
+      "ApiResponseOrgModuleCatalog": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/OrgModuleCatalog"
+          }
+        }
+      },
+      "OrgModuleCatalog": {
+        "type": "object",
+        "description": "組織向け機能カタログ＋有効状態",
+        "properties": {
+          "enabledCount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "現在有効化済みの OPTIONAL モジュール数"
+          },
+          "hasPaidPlan": {
+            "type": "boolean",
+            "description": "有料プラン加入済みか（組織側は有料プラン判定が無いため常に false）"
+          },
+          "modules": {
+            "type": "array",
+            "description": "カタログ要素（moduleNumber 昇順）",
+            "items": {
+              "$ref": "#/components/schemas/OrgModuleCatalogItem"
+            }
+          },
+          "planLimit": {
+            "type": "integer",
+            "format": "int32",
+            "description": "無料プランで有効化できるモジュール数の上限"
+          }
+        }
+      },
+      "OrgModuleCatalogItem": {
+        "type": "object",
+        "description": "組織向け機能カタログ要素（定義＋有効状態）",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "説明"
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "この組織で有効化済みか"
+          },
+          "levelAvailable": {
+            "type": "boolean",
+            "description": "組織レベルで利用可能か（module_level_availability。レコード無は利用可）"
+          },
+          "moduleId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "モジュールID"
+          },
+          "moduleNumber": {
+            "type": "integer",
+            "format": "int32",
+            "description": "表示順序番号"
+          },
+          "name": {
+            "type": "string",
+            "description": "モジュール名"
+          },
+          "requiresPaidPlan": {
+            "type": "boolean",
+            "description": "有料プランが必要か"
+          },
+          "slug": {
+            "type": "string",
+            "description": "モジュールスラッグ"
           }
         }
       },
