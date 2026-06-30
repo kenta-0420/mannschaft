@@ -385,4 +385,9 @@ class TimelineMyFeedControllerIntegrationTest extends AbstractMySqlIntegrationTe
         assertThat(resp.getBody()).isNotNull();
         return resp.getBody();
     }
+
+    private void setAuthentication(Long userId) {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(userId.toString(), null, java.util.List.of()));
+    }
 }
