@@ -1,6 +1,7 @@
 package com.mannschaft.app.village.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.PinListResponse;
 import com.mannschaft.app.village.dto.PinOrderUpdateRequest;
@@ -55,6 +56,9 @@ class VillagePinServiceTest {
     @Mock
     private VillageRepository villageRepository;
 
+    @Mock
+    private MediaUrlResolver mediaUrlResolver;
+
     @InjectMocks
     private VillagePinService pinService;
 
@@ -75,6 +79,9 @@ class VillagePinServiceTest {
                 .willReturn(List.of(p1, p2));
         given(villageRepository.findAllById(any(Iterable.class)))
                 .willReturn(List.of(village(vId1, "東村", "icon1"), village(vId2, "西村", "icon2")));
+        // villageIconUrl は生 R2 キーでなく署名付き表示 URL を返すこと（画像 404 根治 Phase3）。
+        given(mediaUrlResolver.resolve("icon1")).willReturn("https://cdn.example/signed/icon1");
+        given(mediaUrlResolver.resolve("icon2")).willReturn("https://cdn.example/signed/icon2");
 
         PinListResponse res = pinService.listMyPins(USER_ID);
 
@@ -83,7 +90,7 @@ class VillagePinServiceTest {
         assertThat(res.items()).extracting(PinResponse::villageName)
                 .containsExactly("東村", "西村");
         assertThat(res.items()).extracting(PinResponse::villageIconUrl)
-                .containsExactly("icon1", "icon2");
+                .containsExactly("https://cdn.example/signed/icon1", "https://cdn.example/signed/icon2");
     }
 
     @Test

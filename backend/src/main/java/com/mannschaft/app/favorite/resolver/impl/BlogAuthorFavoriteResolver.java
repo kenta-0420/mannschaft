@@ -2,6 +2,7 @@ package com.mannschaft.app.favorite.resolver.impl;
 
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.favorite.FavoriteEntityType;
 import com.mannschaft.app.favorite.dto.FavoriteEntityMetaDto;
 import com.mannschaft.app.favorite.dto.FavoriteEntityStatus;
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
 public class BlogAuthorFavoriteResolver implements FavoriteEntityResolver {
 
     private final UserRepository userRepository;
+    private final MediaUrlResolver mediaUrlResolver;
 
     @Override
     public FavoriteEntityType entityType() {
@@ -58,7 +60,8 @@ public class BlogAuthorFavoriteResolver implements FavoriteEntityResolver {
                         entityId,
                         FavoriteEntityType.BLOG_AUTHOR,
                         user.getDisplayName(),
-                        user.getAvatarUrl(),
+                        // DB には生の R2 キーが入る。表示用署名付き URL へ解決して返す（生キーは 404）。
+                        mediaUrlResolver.resolve(user.getAvatarUrl()),
                         "/users/" + user.getId() + "/blog",
                         canEdit,
                         FavoriteEntityStatus.AVAILABLE

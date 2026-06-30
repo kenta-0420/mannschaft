@@ -1,6 +1,7 @@
 package com.mannschaft.app.village.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.PinListResponse;
 import com.mannschaft.app.village.dto.PinOrderUpdateRequest;
@@ -47,6 +48,7 @@ public class VillagePinService {
 
     private final UserVillagePinRepository pinRepository;
     private final VillageRepository villageRepository;
+    private final MediaUrlResolver mediaUrlResolver;
 
     // ========================================================================
     // 一覧取得
@@ -262,12 +264,14 @@ public class VillagePinService {
 
     private PinResponse toResponse(UserVillagePinEntity pin, VillageEntity village) {
         String name = village != null ? village.getName() : null;
-        String icon = village != null ? village.getIconR2Key() : null;
+        // DB には生の R2 キーが入る。villageIconUrl は FE が img src に直接渡すため
+        // （pages/me/village-pins.vue）、表示用署名付き URL へ解決して返す（生キーは 404）。
+        String iconUrl = mediaUrlResolver.resolve(village != null ? village.getIconR2Key() : null);
         return PinResponse.builder()
                 .id(pin.getId())
                 .villageId(pin.getVillageId())
                 .villageName(name)
-                .villageIconUrl(icon)
+                .villageIconUrl(iconUrl)
                 .sortOrder(pin.getSortOrder() == null ? 0L : pin.getSortOrder())
                 .pinnedAt(pin.getPinnedAt())
                 .build();

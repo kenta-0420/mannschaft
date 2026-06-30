@@ -2,6 +2,7 @@ package com.mannschaft.app.tournament.service;
 
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.family.CareCategory;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
@@ -83,6 +84,7 @@ public class RankingsCalculationService {
     private final UserRepository userRepository;
     private final IdentityVisibilityResolver identityVisibilityResolver;
     private final ViewerContextBuilder viewerContextBuilder;
+    private final MediaUrlResolver mediaUrlResolver;
 
     /**
      * ランキング再計算イベントを受信する。
@@ -362,7 +364,7 @@ public class RankingsCalculationService {
                 user.getDisplayName(),
                 null, // ランキングは投稿時スナップショットを持たないため現在値で解決する
                 buildFullName(user),
-                user.getAvatarUrl(),
+                mediaUrlResolver.resolve(user.getAvatarUrl()),
                 isMinor);
     }
 

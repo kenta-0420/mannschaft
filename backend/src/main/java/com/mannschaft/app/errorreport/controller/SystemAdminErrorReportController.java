@@ -5,6 +5,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.errorreport.ErrorReportMapper;
 import com.mannschaft.app.errorreport.ErrorReportProperties;
 import com.mannschaft.app.errorreport.dto.AssignableUserResponse;
@@ -76,6 +77,7 @@ public class SystemAdminErrorReportController {
     /** F10.6 Phase 10-δ — 担当者候補一覧取得用。 */
     private final UserRoleRepository userRoleRepository;
     private final UserRepository userRepository;
+    private final MediaUrlResolver mediaUrlResolver;
 
     @Value("${mannschaft.claude.api-key:}")
     private String claudeApiKey;
@@ -328,7 +330,7 @@ public class SystemAdminErrorReportController {
                 .map(u -> AssignableUserResponse.builder()
                         .id(u.getId())
                         .displayName(u.getDisplayName())
-                        .profileImageUrl(u.getAvatarUrl())
+                        .profileImageUrl(mediaUrlResolver.resolve(u.getAvatarUrl()))
                         .build())
                 .sorted(Comparator.comparing(AssignableUserResponse::getDisplayName,
                         Comparator.nullsLast(String::compareTo)))

@@ -2,6 +2,7 @@ package com.mannschaft.app.reflection.dto;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.mannschaft.app.reflection.RecallDirection;
+import com.mannschaft.app.reflection.ReflectionOutlineRevealLevel;
 import com.mannschaft.app.reflection.ReflectionVisibility;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -53,6 +54,8 @@ public record ReflectionEntryResponse(
      * @param dueRecallDates  到来済み／予定の想起日（ヒント表示用・全件）
      * @param recallDirection 暗記カードの出題方向（§13-B・TERM_CARD が無い／today=null のとき null）
      * @param cardQuiz        TERM_CARD の cue 側だけを載せたクイズ（答え側フィールドは持たない・§13-C。空配列可）
+     * @param outlineScaffold OUTLINE 段階式マスク（足場ラダー）。許可テキスト（main_theme・heading）のみを
+     *                        開示レベルに応じて載せる。小見出し/詳細/補足は<b>フィールドごと非搭載</b>（§13-C 増分・fail-closed）
      */
     @Builder
     public record MaskedHint(
@@ -60,7 +63,47 @@ public record ReflectionEntryResponse(
             LocalDate targetDate,
             List<LocalDate> dueRecallDates,
             RecallDirection recallDirection,
-            List<MaskedCardQuiz> cardQuiz
+            List<MaskedCardQuiz> cardQuiz,
+            MaskedOutlineScaffold outlineScaffold
+    ) {
+    }
+
+    /**
+     * OUTLINE 段階式マスク（足場ラダー）の足場本体（§13-C 増分・セキュリティ核心）。
+     *
+     * <p><b>fail-closed</b>: 答え側（小見出し/詳細/補足）はこの構造にフィールドとして<b>存在しない</b>。
+     * 載せてよいのは {@code mainTheme}（OUTLINE のテーマ）と各 OUTLINE section の {@code heading} のみ。
+     * PARTIAL は<b>サーバ側で先頭 3 コードポイントに切ってから</b>詰める（heading 全文は payload に出ない）。
+     * HIDDEN は {@code mainTheme=null}・{@code sections} 空（従来の完全マスクと等価）。</p>
+     *
+     * <p>nested record 名前衝突回避（{@code feedback_openapi_nested_schema_name_collision}）のため
+     * {@code @Schema(name=...)} で一意名を付与する。</p>
+     *
+     * @param level     開示レベル（FULL/PARTIAL/HIDDEN）
+     * @param mainTheme OUTLINE のテーマ（FULL=全文 / PARTIAL=先頭 3 コードポイント / HIDDEN=null）
+     * @param sections  各 OUTLINE section の足場（TERM_CARD は含めない・HIDDEN なら空）
+     */
+    @Schema(name = "ReflectionMaskedOutlineScaffold")
+    @Builder
+    public record MaskedOutlineScaffold(
+            ReflectionOutlineRevealLevel level,
+            String mainTheme,
+            List<MaskedOutlineSection> sections
+    ) {
+    }
+
+    /**
+     * OUTLINE 段階式マスクの 1 section 分の足場（§13-C 増分）。
+     *
+     * <p><b>heading のみ</b>を持つ。小見出し/詳細/補足（答え側）は<b>フィールドごと非搭載</b>＝fail-closed。
+     * PARTIAL のときは heading が先頭 3 コードポイントに切り詰められている。</p>
+     *
+     * @param heading section 見出し（FULL=全文 / PARTIAL=先頭 3 コードポイント）
+     */
+    @Schema(name = "ReflectionMaskedOutlineSection")
+    @Builder
+    public record MaskedOutlineSection(
+            String heading
     ) {
     }
 
