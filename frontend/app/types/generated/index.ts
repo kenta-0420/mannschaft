@@ -51052,10 +51052,7 @@ export interface components {
             repostOfId?: number;
             /** Format: date-time */
             scheduledAt?: string;
-            /** Format: int64 */
-            scopeId?: number;
-            /** Format: int64 */
-            scopeIdOrDefault?: number;
+            scopeId?: string;
             scopeType?: string;
             scopeTypeOrDefault?: string;
             /** Format: uuid */
