@@ -1,5 +1,6 @@
 package com.mannschaft.app.chat.service;
 
+import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.chat.ChannelType;
 import com.mannschaft.app.chat.ChatErrorCode;
@@ -41,7 +42,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -56,6 +61,8 @@ public class ChatMessageService {
     private static final int DEFAULT_MESSAGE_LIMIT = 50;
     private static final int MAX_MESSAGE_LIMIT = 100;
     private static final int PREVIEW_LENGTH = 100;
+    /** 送信者の表示名が取得できない場合のフォールバック（既存規約に準拠）。 */
+    private static final String DEFAULT_SENDER_DISPLAY_NAME = "ユーザー";
 
     private final ChatMessageRepository messageRepository;
     private final ChatMessageAttachmentRepository attachmentRepository;
@@ -217,7 +224,10 @@ public class ChatMessageService {
         // 未読カウントのインクリメントはNotificationService側で管理
 
         log.info("メッセージ送信完了: messageId={}, channelId={}, senderId={}", saved.getId(), channelId, senderId);
-        MessageResponse response = chatMapper.toMessageResponseWithDetails(saved, attachmentResponses, List.of());
+        // 送信者ユーザーを 1 回だけ取得し、レスポンスの sender 付与と問い合わせ通知の displayName に共用する。
+        UserEntity senderUser = userRepository.findById(senderId).orElse(null);
+        MessageResponse response = chatMapper.toMessageResponseWithDetails(
+                saved, attachmentResponses, List.of(), buildSenderDto(senderId, senderUser));
         // F04.2: WebSocket でチャンネル参加者全員に配信（@Transactional 内だが配信タイミングは送信後で許容）
         chatMessagePublisher.publishCreated(channelId, response);
 
@@ -226,9 +236,9 @@ public class ChatMessageService {
         if (Boolean.TRUE.equals(channel.getIsInquiryChannel()) && channel.getTeamId() != null) {
             boolean isSenderAdmin = userRoleRepository.countTeamAdminByUserIdAndTeamId(senderId, channel.getTeamId()) > 0;
             if (!isSenderAdmin) {
-                String senderDisplayName = userRepository.findById(senderId)
-                        .map(u -> u.getDisplayName() != null ? u.getDisplayName() : "ユーザー")
-                        .orElse("ユーザー");
+                String senderDisplayName = senderUser != null && senderUser.getDisplayName() != null
+                        ? senderUser.getDisplayName()
+                        : DEFAULT_SENDER_DISPLAY_NAME;
                 eventPublisher.publishEvent(new InquiryReceivedEvent(
                         channel.getTeamId(),
                         channelId,
@@ -587,19 +597,68 @@ public class ChatMessageService {
     private MessageResponse enrichMessage(ChatMessageEntity message) {
         List<ChatMessageAttachmentEntity> attachments = attachmentRepository.findByMessageId(message.getId());
         List<ChatMessageReactionEntity> reactions = reactionRepository.findByMessageId(message.getId());
+        // 単発取得（N+1 にならない: 1 メッセージにつき 1 回のユーザー取得）
+        UserEntity sender = message.getSenderId() != null
+                ? userRepository.findById(message.getSenderId()).orElse(null)
+                : null;
         return chatMapper.toMessageResponseWithDetails(
                 message,
                 chatMapper.toAttachmentResponseList(attachments),
-                chatMapper.toReactionResponseList(reactions)
+                chatMapper.toReactionResponseList(reactions),
+                buildSenderDto(message.getSenderId(), sender)
         );
     }
 
     private List<MessageResponse> enrichMessages(List<ChatMessageEntity> messages) {
+        // N+1 回避: 全メッセージの senderId を集め、ユーザーを一括取得してから Map で引く
+        Map<Long, UserEntity> userMap = loadSenders(messages);
         List<MessageResponse> responses = new ArrayList<>();
         for (ChatMessageEntity message : messages) {
-            responses.add(enrichMessage(message));
+            List<ChatMessageAttachmentEntity> attachments = attachmentRepository.findByMessageId(message.getId());
+            List<ChatMessageReactionEntity> reactions = reactionRepository.findByMessageId(message.getId());
+            UserEntity sender = message.getSenderId() != null ? userMap.get(message.getSenderId()) : null;
+            responses.add(chatMapper.toMessageResponseWithDetails(
+                    message,
+                    chatMapper.toAttachmentResponseList(attachments),
+                    chatMapper.toReactionResponseList(reactions),
+                    buildSenderDto(message.getSenderId(), sender)
+            ));
         }
         return responses;
+    }
+
+    /**
+     * メッセージ群の送信者を一括取得して Map にする（N+1 回避の肝）。
+     * 重複・null の senderId を除いた一意 ID 群で {@code findAllById} を 1 回だけ呼ぶ。
+     */
+    private Map<Long, UserEntity> loadSenders(List<ChatMessageEntity> messages) {
+        Set<Long> senderIds = new LinkedHashSet<>();
+        for (ChatMessageEntity message : messages) {
+            if (message.getSenderId() != null) {
+                senderIds.add(message.getSenderId());
+            }
+        }
+        if (senderIds.isEmpty()) {
+            return Map.of();
+        }
+        return userRepository.findAllById(senderIds).stream()
+                .collect(Collectors.toMap(UserEntity::getId, Function.identity(), (a, b) -> a));
+    }
+
+    /**
+     * 送信者ユーザーから {@link MessageResponse.SenderDto} を構築する。
+     * displayName は {@link UserEntity#getDisplayName()}（null / ユーザー不在時は "ユーザー"）、
+     * avatarUrl はユーザーのアバター（不在時は null）。
+     */
+    private MessageResponse.SenderDto buildSenderDto(Long senderId, UserEntity user) {
+        if (senderId == null) {
+            return null;
+        }
+        String displayName = (user != null && user.getDisplayName() != null)
+                ? user.getDisplayName()
+                : DEFAULT_SENDER_DISPLAY_NAME;
+        String avatarUrl = user != null ? user.getAvatarUrl() : null;
+        return new MessageResponse.SenderDto(senderId, displayName, avatarUrl);
     }
 
     private void validateMessageOwner(ChatMessageEntity message, Long userId) {
