@@ -1,5 +1,6 @@
 package com.mannschaft.app.reflection.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.BusinessException;
@@ -8,10 +9,12 @@ import com.mannschaft.app.common.security.AccessGuard;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.reflection.ReflectionErrorCode;
+import com.mannschaft.app.reflection.ReflectionOutlineRevealLevel;
 import com.mannschaft.app.reflection.dto.ReflectionEntryResponse;
 import com.mannschaft.app.reflection.dto.UpsertReflectionEntryRequest;
 import com.mannschaft.app.reflection.service.RecallService;
 import com.mannschaft.app.reflection.service.ReflectionEntryService;
+import com.mannschaft.app.reflection.service.ReflectionMaskedOutlineExtractor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -290,13 +293,15 @@ class ReflectionEntryControllerTest {
     @DisplayName("AC-89: マスク詳細応答の足場 PARTIAL に detail/supplement・heading 4字目以降が現れない")
     void getEntry_maskedOutlineScaffold_partial_noLeak() throws Exception {
         authenticate();
-        // 足場はサーバ側で先頭3コードポイントに切られている前提（mainTheme/heading のみ・答え側非搭載）。
-        var scaffold = ReflectionEntryResponse.MaskedOutlineScaffold.builder()
-                .level(com.mannschaft.app.reflection.ReflectionOutlineRevealLevel.PARTIAL)
-                .mainTheme("二次関")
-                .sections(List.of(ReflectionEntryResponse.MaskedOutlineSection.builder()
-                        .heading("今日の").build()))
-                .build();
+        // 同義反復回避（誠実な漏洩番人）: 手組みの切り詰め済み値ではなく、実 SECRET を含む full 本文を
+        // real extractor で PARTIAL に切り詰めて足場を構築し、シリアライズ経路へ実コンテンツを通す。
+        // mapper テスト（masked_outlineScaffold_partial）と同じ本文を流用する。
+        JsonNode fullContent = objectMapper.readTree(
+                "{\"main_theme\":\"二次関数の最大最小\",\"sections\":["
+                        + "{\"type\":\"OUTLINE\",\"heading\":\"今日のポイント\",\"subsections\":["
+                        + "{\"sub_heading\":\"頂点SECRET\",\"detail\":\"詳細SECRET\",\"supplement\":\"補足SECRET\"}]}]}");
+        var scaffold = new ReflectionMaskedOutlineExtractor()
+                .extractScaffold(fullContent, ReflectionOutlineRevealLevel.PARTIAL);
         given(reflectionEntryService.getEntry(USER_ID, ENTRY_ID))
                 .willReturn(ReflectionEntryResponse.builder()
                         .id(ENTRY_ID.toString()).isMasked(true).structuredContent(null)
@@ -316,9 +321,12 @@ class ReflectionEntryControllerTest {
                 .andExpect(jsonPath("$.data.maskedHint.outlineScaffold.sections[0].heading").value("今日の"))
                 .andReturn().getResponse().getContentAsString();
 
-        // heading 4 字目以降・詳細/補足の語がペイロードに一切現れない（機械的検証・AC-89）。
-        org.assertj.core.api.Assertions.assertThat(responseBody).doesNotContain("ポイント");
-        org.assertj.core.api.Assertions.assertThat(responseBody).doesNotContain("detail");
-        org.assertj.core.api.Assertions.assertThat(responseBody).doesNotContain("supplement");
+        // 実データ漏洩番人: full 本文の答え側（小見出し/詳細/補足）と heading 4 字目以降が
+        // シリアライズ済みペイロードに一切現れないことを実 SECRET で検証（AC-89）。
+        org.assertj.core.api.Assertions.assertThat(responseBody)
+                .doesNotContain("頂点SECRET")
+                .doesNotContain("詳細SECRET")
+                .doesNotContain("補足SECRET")
+                .doesNotContain("ポイント");
     }
 }
