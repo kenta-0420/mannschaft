@@ -283,4 +283,42 @@ class ReflectionEntryControllerTest {
         // 答え側（term=abandon）がペイロード文字列に一切含まれない（機械的検証・AC-51）。
         org.assertj.core.api.Assertions.assertThat(responseBody).doesNotContain("abandon");
     }
+
+    // ===== §13-C 増分: OUTLINE 段階式マスク（足場ラダー・AC-89） =====
+
+    @Test
+    @DisplayName("AC-89: マスク詳細応答の足場 PARTIAL に detail/supplement・heading 4字目以降が現れない")
+    void getEntry_maskedOutlineScaffold_partial_noLeak() throws Exception {
+        authenticate();
+        // 足場はサーバ側で先頭3コードポイントに切られている前提（mainTheme/heading のみ・答え側非搭載）。
+        var scaffold = ReflectionEntryResponse.MaskedOutlineScaffold.builder()
+                .level(com.mannschaft.app.reflection.ReflectionOutlineRevealLevel.PARTIAL)
+                .mainTheme("二次関")
+                .sections(List.of(ReflectionEntryResponse.MaskedOutlineSection.builder()
+                        .heading("今日の").build()))
+                .build();
+        given(reflectionEntryService.getEntry(USER_ID, ENTRY_ID))
+                .willReturn(ReflectionEntryResponse.builder()
+                        .id(ENTRY_ID.toString()).isMasked(true).structuredContent(null)
+                        .maskedHint(ReflectionEntryResponse.MaskedHint.builder()
+                                .themeTitle("数学II").targetDate(LocalDate.now())
+                                .outlineScaffold(scaffold).build())
+                        .build());
+
+        String responseBody = mockMvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                                .get("/api/v1/me/reflections/entries/{entryId}", ENTRY_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.isMasked").value(true))
+                .andExpect(jsonPath("$.data.structuredContent").doesNotExist())
+                .andExpect(jsonPath("$.data.maskedHint.outlineScaffold.level").value("PARTIAL"))
+                .andExpect(jsonPath("$.data.maskedHint.outlineScaffold.mainTheme").value("二次関"))
+                .andExpect(jsonPath("$.data.maskedHint.outlineScaffold.sections[0].heading").value("今日の"))
+                .andReturn().getResponse().getContentAsString();
+
+        // heading 4 字目以降・詳細/補足の語がペイロードに一切現れない（機械的検証・AC-89）。
+        org.assertj.core.api.Assertions.assertThat(responseBody).doesNotContain("ポイント");
+        org.assertj.core.api.Assertions.assertThat(responseBody).doesNotContain("detail");
+        org.assertj.core.api.Assertions.assertThat(responseBody).doesNotContain("supplement");
+    }
 }
