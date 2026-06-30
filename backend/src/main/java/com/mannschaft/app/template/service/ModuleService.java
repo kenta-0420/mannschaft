@@ -7,7 +7,11 @@ import com.mannschaft.app.template.TemplateErrorCode;
 import com.mannschaft.app.template.dto.LevelAvailabilityResponse;
 import com.mannschaft.app.template.dto.ModuleResponse;
 import com.mannschaft.app.template.dto.ModuleSummaryResponse;
+import com.mannschaft.app.template.dto.OrgModuleCatalogItem;
+import com.mannschaft.app.template.dto.OrgModuleCatalogResponse;
 import com.mannschaft.app.template.dto.OrgModuleResponse;
+import com.mannschaft.app.template.dto.TeamModuleCatalogItem;
+import com.mannschaft.app.template.dto.TeamModuleCatalogResponse;
 import com.mannschaft.app.template.dto.TeamModuleResponse;
 import com.mannschaft.app.template.dto.ToggleModuleRequest;
 import com.mannschaft.app.template.entity.ModuleDefinitionEntity;
@@ -30,7 +34,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * モジュール管理サービス。モジュールカタログ参照・チームモジュール有効化を提供する。
@@ -64,6 +72,122 @@ public class ModuleService {
                 .filter(ModuleDefinitionEntity::getIsActive)
                 .map(this::toModuleResponse)
                 .toList();
+    }
+
+    /**
+     * チームの機能設定タブ向けカタログ＋有効状態を取得する。
+     *
+     * <p>利用可能な OPTIONAL かつ active なモジュール全件に対し、当該チームでの有効化状態・
+     * トライアル期限・チームレベル利用可否を結合して返す。enabledCount は有効化済み件数、
+     * planLimit は無料プラン上限、hasPaidPlan は有料プラン加入状況を含める。</p>
+     *
+     * @param teamId チームID
+     * @return チームカタログ＋有効状態レスポンス（modules は moduleNumber 昇順）
+     */
+    public TeamModuleCatalogResponse getTeamModuleCatalog(Long teamId) {
+        // 有効化行を一括取得し moduleId で引けるよう Map 化（N+1 回避）
+        Map<Long, TeamEnabledModuleEntity> enabledByModuleId = teamEnabledModuleRepository.findByTeamId(teamId)
+                .stream()
+                .collect(Collectors.toMap(TeamEnabledModuleEntity::getModuleId, Function.identity(), (a, b) -> a));
+
+        List<TeamModuleCatalogItem> items = activeOptionalModules().stream()
+                .map(module -> {
+                    TeamEnabledModuleEntity row = enabledByModuleId.get(module.getId());
+                    boolean enabled = row != null && Boolean.TRUE.equals(row.getIsEnabled());
+                    LocalDateTime trialExpiresAt = row != null ? row.getTrialExpiresAt() : null;
+                    return TeamModuleCatalogItem.builder()
+                            .moduleId(module.getId())
+                            .name(module.getName())
+                            .slug(module.getSlug())
+                            .description(module.getDescription())
+                            .moduleNumber(module.getModuleNumber())
+                            .isEnabled(enabled)
+                            .requiresPaidPlan(module.getRequiresPaidPlan())
+                            .levelAvailable(isLevelAvailable(module.getId(),
+                                    ModuleLevelAvailabilityEntity.Level.TEAM))
+                            .trialExpiresAt(trialExpiresAt)
+                            .build();
+                })
+                .toList();
+
+        long enabledCount = enabledByModuleId.values().stream()
+                .filter(row -> Boolean.TRUE.equals(row.getIsEnabled()))
+                .count();
+
+        return TeamModuleCatalogResponse.builder()
+                .planLimit(FREE_PLAN_MODULE_LIMIT)
+                .enabledCount(enabledCount)
+                .hasPaidPlan(teamPlanService.hasPaidPlan(teamId))
+                .modules(items)
+                .build();
+    }
+
+    /**
+     * 組織の機能設定タブ向けカタログ＋有効状態を取得する。
+     *
+     * <p>チーム版と対称。組織側には有料プラン判定が存在しないため hasPaidPlan は常に false、
+     * トライアル期限も持たない。利用可否判定は ORGANIZATION レベルで行う。</p>
+     *
+     * @param orgId 組織ID
+     * @return 組織カタログ＋有効状態レスポンス（modules は moduleNumber 昇順）
+     */
+    public OrgModuleCatalogResponse getOrganizationModuleCatalog(Long orgId) {
+        Map<Long, OrganizationEnabledModuleEntity> enabledByModuleId =
+                organizationEnabledModuleRepository.findByOrganizationId(orgId)
+                        .stream()
+                        .collect(Collectors.toMap(OrganizationEnabledModuleEntity::getModuleId,
+                                Function.identity(), (a, b) -> a));
+
+        List<OrgModuleCatalogItem> items = activeOptionalModules().stream()
+                .map(module -> {
+                    OrganizationEnabledModuleEntity row = enabledByModuleId.get(module.getId());
+                    boolean enabled = row != null && Boolean.TRUE.equals(row.getIsEnabled());
+                    return OrgModuleCatalogItem.builder()
+                            .moduleId(module.getId())
+                            .name(module.getName())
+                            .slug(module.getSlug())
+                            .description(module.getDescription())
+                            .moduleNumber(module.getModuleNumber())
+                            .isEnabled(enabled)
+                            .requiresPaidPlan(module.getRequiresPaidPlan())
+                            .levelAvailable(isLevelAvailable(module.getId(),
+                                    ModuleLevelAvailabilityEntity.Level.ORGANIZATION))
+                            .build();
+                })
+                .toList();
+
+        long enabledCount = enabledByModuleId.values().stream()
+                .filter(row -> Boolean.TRUE.equals(row.getIsEnabled()))
+                .count();
+
+        return OrgModuleCatalogResponse.builder()
+                .planLimit(FREE_PLAN_MODULE_LIMIT)
+                .enabledCount(enabledCount)
+                // 組織側に有料プラン判定が存在しないため false 固定
+                .hasPaidPlan(false)
+                .modules(items)
+                .build();
+    }
+
+    /**
+     * OPTIONAL かつ active なモジュールを moduleNumber 昇順で返す（カタログ母集合）。
+     */
+    private List<ModuleDefinitionEntity> activeOptionalModules() {
+        return moduleDefinitionRepository.findByModuleType(ModuleDefinitionEntity.ModuleType.OPTIONAL)
+                .stream()
+                .filter(ModuleDefinitionEntity::getIsActive)
+                .sorted(Comparator.comparing(ModuleDefinitionEntity::getModuleNumber))
+                .toList();
+    }
+
+    /**
+     * 指定レベルでモジュールが利用可能か判定する。
+     * module_level_availability にレコードが無い場合は「制約なし＝利用可」とみなす。
+     */
+    private boolean isLevelAvailable(Long moduleId, ModuleLevelAvailabilityEntity.Level level) {
+        return moduleLevelAvailabilityRepository.findByModuleIdAndLevel(moduleId, level)
+                .map(ModuleLevelAvailabilityEntity::getIsAvailable)
+                .orElse(true);
     }
 
     /**
