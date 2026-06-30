@@ -14,6 +14,8 @@ import com.mannschaft.app.circulation.repository.CirculationAttachmentRepository
 import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
 import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
 import com.mannschaft.app.circulation.service.CirculationService;
+import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.auth.repository.UserRepository.MemberSummary;
 import com.mannschaft.app.common.BusinessException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -34,6 +36,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -55,6 +59,9 @@ class CirculationServiceAdditionalTest {
     @Mock
     private CirculationMapper circulationMapper;
 
+    @Mock
+    private UserRepository userRepository;
+
     @InjectMocks
     private CirculationService service;
 
@@ -72,9 +79,20 @@ class CirculationServiceAdditionalTest {
     }
 
     private DocumentResponse mockDocResponse() {
-        return new DocumentResponse(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID, USER_ID,
-                "回覧テスト", "本文", "SIMULTANEOUS", 0, "DRAFT", "NORMAL",
-                null, false, (short) 24, "STANDARD", 0, 0, null, 0, 0, null, null);
+        return DocumentResponse.builder()
+                .id(DOCUMENT_ID).scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).createdBy(USER_ID)
+                .title("回覧テスト").body("本文").circulationMode("SIMULTANEOUS").sequentialCount(0)
+                .status("DRAFT").priority("NORMAL").stampDisplayStyle("STANDARD")
+                .totalRecipientCount(0).stampedCount(0).attachmentCount(0).commentCount(0)
+                .build();
+    }
+
+    /** displayName を返す {@link MemberSummary} のモックを生成する。 */
+    private MemberSummary memberSummary(Long id, String displayName) {
+        MemberSummary ms = mock(MemberSummary.class);
+        lenient().when(ms.getId()).thenReturn(id);
+        lenient().when(ms.getDisplayName()).thenReturn(displayName);
+        return ms;
     }
 
     // ========================================
@@ -113,6 +131,64 @@ class CirculationServiceAdditionalTest {
                     SCOPE_TYPE, SCOPE_ID, "DRAFT", PageRequest.of(0, 10));
 
             assertThat(result.getContent()).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("正常系: createdByName が findMemberSummaryById の displayName で充填される")
+        void 文書一覧_createdByName充填_正常() {
+            CirculationDocumentEntity entity = createDraft();
+            Page<CirculationDocumentEntity> page = new PageImpl<>(List.of(entity));
+            given(documentRepository.findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
+                    eq(SCOPE_TYPE), eq(SCOPE_ID), any())).willReturn(page);
+            given(circulationMapper.toDocumentResponse(entity)).willReturn(mockDocResponse());
+            MemberSummary summary = memberSummary(USER_ID, "山田太郎");
+            given(userRepository.findMemberSummaryById(USER_ID)).willReturn(Optional.of(summary));
+
+            Page<DocumentResponse> result = service.listDocuments(
+                    SCOPE_TYPE, SCOPE_ID, null, PageRequest.of(0, 10));
+
+            assertThat(result.getContent()).hasSize(1);
+            assertThat(result.getContent().get(0).getCreatedByName()).isEqualTo("山田太郎");
+        }
+
+        @Test
+        @DisplayName("正常系: createdBy が解決できない場合 createdByName は null")
+        void 文書一覧_createdByName未解決_null() {
+            CirculationDocumentEntity entity = createDraft();
+            Page<CirculationDocumentEntity> page = new PageImpl<>(List.of(entity));
+            given(documentRepository.findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
+                    eq(SCOPE_TYPE), eq(SCOPE_ID), any())).willReturn(page);
+            given(circulationMapper.toDocumentResponse(entity)).willReturn(mockDocResponse());
+            given(userRepository.findMemberSummaryById(USER_ID)).willReturn(Optional.empty());
+
+            Page<DocumentResponse> result = service.listDocuments(
+                    SCOPE_TYPE, SCOPE_ID, null, PageRequest.of(0, 10));
+
+            assertThat(result.getContent().get(0).getCreatedByName()).isNull();
+        }
+    }
+
+    // ========================================
+    // getDocument - createdByName 充填
+    // ========================================
+
+    @Nested
+    @DisplayName("getDocument createdByName")
+    class GetDocumentCreatedByName {
+
+        @Test
+        @DisplayName("正常系: createdByName が findMemberSummaryById の displayName で充填される")
+        void 文書詳細_createdByName充填_正常() {
+            CirculationDocumentEntity entity = createDraft();
+            given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(circulationMapper.toDocumentResponse(entity)).willReturn(mockDocResponse());
+            MemberSummary summary = memberSummary(USER_ID, "佐藤花子");
+            given(userRepository.findMemberSummaryById(USER_ID)).willReturn(Optional.of(summary));
+
+            DocumentResponse result = service.getDocument(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID);
+
+            assertThat(result.getCreatedByName()).isEqualTo("佐藤花子");
         }
     }
 

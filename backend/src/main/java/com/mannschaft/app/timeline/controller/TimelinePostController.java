@@ -6,6 +6,7 @@ import com.mannschaft.app.timeline.dto.PostDetailResponse;
 import com.mannschaft.app.timeline.dto.PostResponse;
 import com.mannschaft.app.timeline.dto.UpdatePostRequest;
 import com.mannschaft.app.timeline.service.TimelinePostService;
+import com.mannschaft.app.timeline.service.TimelineScopeIdResolver;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -35,17 +36,25 @@ import com.mannschaft.app.common.SecurityUtils;
 public class TimelinePostController {
 
     private final TimelinePostService postService;
+    /** slug/Long 文字列 → 内部 Long ID の共有リゾルバ（フィード取得経路と共通）。 */
+    private final TimelineScopeIdResolver scopeIdResolver;
 
 
     /**
      * 投稿を作成する。
+     *
+     * <p>FE はチーム/組織タイムラインで {@code scopeId} に slug 文字列（例 {@code "team-000092"}）を
+     * 送るため、サービスへ渡す前に {@link TimelineScopeIdResolver} で内部 Long ID に解決する。
+     * これにより GET feed（既に slug 解決済み）と対称になり、書き込み経路の 400 を根治する。</p>
      */
     @PostMapping
     @Operation(summary = "投稿作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<PostResponse>> createPost(
             @Valid @RequestBody CreatePostRequest request) {
-        PostResponse response = postService.createPost(request, SecurityUtils.getCurrentUserId());
+        Long resolvedScopeId = scopeIdResolver.resolve(request.getScopeTypeOrDefault(), request.getScopeId());
+        PostResponse response = postService.createPost(
+                request, resolvedScopeId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

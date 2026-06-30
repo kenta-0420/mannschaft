@@ -7,6 +7,7 @@ import com.mannschaft.app.auth.repository.TwoFactorAuthRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.repository.WebAuthnCredentialRepository;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -46,6 +47,8 @@ class UserServiceProfilePostalCodeTest {
     private OAuthAccountRepository oauthAccountRepository;
     @Mock
     private UserRoleRepository userRoleRepository;
+    @Mock
+    private MediaUrlResolver mediaUrlResolver;
 
     @InjectMocks
     private UserService userService;

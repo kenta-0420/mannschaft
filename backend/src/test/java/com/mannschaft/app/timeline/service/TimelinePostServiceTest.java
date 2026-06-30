@@ -155,8 +155,8 @@ class TimelinePostServiceTest {
             // given
             UUID villageId = UUID.randomUUID();
             Long orgSubjectId = 89L;
-            // 11 引数コンストラクタ + scopeVillageId は完全コンストラクタで指定
-            CreatePostRequest req = new CreatePostRequest("村への告知", "VILLAGE", 0L,
+            // 完全コンストラクタ（12 引数・scopeId は String）で scopeVillageId まで指定
+            CreatePostRequest req = new CreatePostRequest("村への告知", "VILLAGE", "0",
                     "ORGANIZATION", orgSubjectId, null, null, null, null, null, null, villageId);
             TimelinePostEntity savedPost = createPost();
             PostResponse expected = createPostResponse();
@@ -562,6 +562,49 @@ class TimelinePostServiceTest {
             assertThat(result).isNotNull();
             verify(accessControlService).checkMembership(USER_ID, orgId, "ORGANIZATION");
             verify(postRepository).save(any(TimelinePostEntity.class));
+        }
+
+        @Test
+        @DisplayName("AC-1: 解決済みscopeId版で投稿すると、slug文字列でなく解決済みLong IDが永続化される")
+        void 解決済みscopeId版_解決済みLongIDが永続化される() {
+            // given: コントローラーが slug "team-000092" を内部ID 92 に解決して渡すケース
+            Long resolvedTeamId = 92L;
+            CreatePostRequest req = new CreatePostRequest(
+                    "チーム投稿", "TEAM", "team-000092", "USER", null, null, null,
+                    null, null, null, null, null);
+            TimelinePostEntity savedPost = createPost();
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(savedPost);
+            given(timelineMapper.toPostResponse(any(TimelinePostEntity.class)))
+                    .willReturn(createPostResponse());
+
+            // when: 3引数版（解決済みID版）を直接呼ぶ
+            timelinePostService.createPost(req, resolvedTeamId, USER_ID);
+
+            // then: 永続化された scopeId は slug ではなく解決済み Long、会員チェックも解決済みIDで
+            verify(accessControlService).checkMembership(USER_ID, resolvedTeamId, "TEAM");
+            ArgumentCaptor<TimelinePostEntity> cap = ArgumentCaptor.forClass(TimelinePostEntity.class);
+            verify(postRepository).save(cap.capture());
+            assertThat(cap.getValue().getScopeType()).isEqualTo(PostScopeType.TEAM);
+            assertThat(cap.getValue().getScopeId()).isEqualTo(resolvedTeamId);
+        }
+
+        @Test
+        @DisplayName("AC-4: 解決済みscopeId版でも非メンバーは解決済みIDで会員チェックされ403・save非実行")
+        void 解決済みscopeId版_非メンバーは403() {
+            // given: slug は解決済みで内部ID 92 が渡る。その ID で会員チェックが効くこと
+            Long resolvedTeamId = 92L;
+            CreatePostRequest req = new CreatePostRequest(
+                    "非メンバー投稿", "TEAM", "team-000092", "USER", null, null, null,
+                    null, null, null, null, null);
+            org.mockito.Mockito.doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkMembership(USER_ID, resolvedTeamId, "TEAM");
+
+            // when & then
+            assertThatThrownBy(() -> timelinePostService.createPost(req, resolvedTeamId, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+            then(postRepository).shouldHaveNoInteractions();
         }
     }
 

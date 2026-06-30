@@ -7,6 +7,9 @@ function resolveSteps(key: string): string[] {
   return Object.keys(raw).map((k) => t(`${key}.${k}`))
 }
 const toggleSteps = computed<string[]>(() => resolveSteps('module_settings_guide.toggle.steps'))
+const restrictionItems = computed<string[]>(() =>
+  resolveSteps('module_settings_guide.restrictions.items'),
+)
 </script>
 
 <template>
@@ -57,7 +60,23 @@ const toggleSteps = computed<string[]>(() => resolveSteps('module_settings_guide
       </div>
     </SectionCard>
 
-    <!-- カード4: 機能が表示されないとき (amber / pi-info-circle) -->
+    <!-- カード4: 使えないスイッチがあるとき (rose / pi-lock) -->
+    <SectionCard>
+      <div class="flex items-start gap-4">
+        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400">
+          <i class="pi pi-lock text-xl" aria-hidden="true" />
+        </div>
+        <div class="w-full">
+          <h2 class="mb-2 text-lg font-semibold">{{ t('module_settings_guide.restrictions.title') }}</h2>
+          <p class="mb-3 text-sm leading-relaxed text-surface-600 dark:text-surface-300">{{ t('module_settings_guide.restrictions.body') }}</p>
+          <ul class="list-disc space-y-1 pl-5 text-sm text-surface-600 dark:text-surface-300">
+            <li v-for="(item, i) in restrictionItems" :key="i">{{ item }}</li>
+          </ul>
+        </div>
+      </div>
+    </SectionCard>
+
+    <!-- カード5: 機能が表示されないとき (amber / pi-info-circle) -->
     <SectionCard>
       <div class="flex items-start gap-4">
         <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
@@ -70,7 +89,7 @@ const toggleSteps = computed<string[]>(() => resolveSteps('module_settings_guide
       </div>
     </SectionCard>
 
-    <!-- カード5: 設定できる人 (teal / pi-shield) -->
+    <!-- カード6: 設定できる人 (teal / pi-shield) -->
     <SectionCard>
       <div class="flex items-start gap-4">
         <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400">

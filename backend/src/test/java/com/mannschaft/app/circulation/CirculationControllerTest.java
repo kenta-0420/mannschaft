@@ -67,10 +67,12 @@ class CirculationControllerTest {
     }
 
     private DocumentResponse mockDocumentResponse() {
-        return new DocumentResponse(DOC_ID, "TEAM", TEAM_ID, USER_ID,
-                "回覧文書", "本文", "SIMULTANEOUS", 0, "DRAFT", "NORMAL",
-                null, false, (short) 24, "STANDARD", 3, 0, null, 0, 0,
-                null, null);
+        return DocumentResponse.builder()
+                .id(DOC_ID).scopeType("TEAM").scopeId(TEAM_ID).createdBy(USER_ID)
+                .title("回覧文書").body("本文").circulationMode("SIMULTANEOUS").sequentialCount(0)
+                .status("DRAFT").priority("NORMAL").stampDisplayStyle("STANDARD")
+                .totalRecipientCount(3).stampedCount(0).attachmentCount(0).commentCount(0)
+                .build();
     }
 
     // ========================================
@@ -207,9 +209,12 @@ class CirculationControllerTest {
         @Test
         @DisplayName("正常系: 組織回覧文書一覧が返却される")
         void 組織回覧文書一覧_正常() {
-            DocumentResponse orgDoc = new DocumentResponse(DOC_ID, "ORGANIZATION", ORG_ID, USER_ID,
-                    "組織文書", "本文", "SIMULTANEOUS", 0, "DRAFT", "NORMAL",
-                    null, false, (short) 24, "STANDARD", 2, 0, null, 0, 0, null, null);
+            DocumentResponse orgDoc = DocumentResponse.builder()
+                    .id(DOC_ID).scopeType("ORGANIZATION").scopeId(ORG_ID).createdBy(USER_ID)
+                    .title("組織文書").body("本文").circulationMode("SIMULTANEOUS").sequentialCount(0)
+                    .status("DRAFT").priority("NORMAL").stampDisplayStyle("STANDARD")
+                    .totalRecipientCount(2).stampedCount(0).attachmentCount(0).commentCount(0)
+                    .build();
             Page<DocumentResponse> page = new PageImpl<>(List.of(orgDoc));
             given(circulationService.listDocuments(eq("ORGANIZATION"), eq(ORG_ID), eq(null), any()))
                     .willReturn(page);
@@ -224,9 +229,12 @@ class CirculationControllerTest {
         @Test
         @DisplayName("正常系: 組織回覧文書詳細が返却される")
         void 組織回覧文書詳細_正常() {
-            DocumentResponse orgDoc = new DocumentResponse(DOC_ID, "ORGANIZATION", ORG_ID, USER_ID,
-                    "組織文書", "本文", "SIMULTANEOUS", 0, "DRAFT", "NORMAL",
-                    null, false, (short) 24, "STANDARD", 2, 0, null, 0, 0, null, null);
+            DocumentResponse orgDoc = DocumentResponse.builder()
+                    .id(DOC_ID).scopeType("ORGANIZATION").scopeId(ORG_ID).createdBy(USER_ID)
+                    .title("組織文書").body("本文").circulationMode("SIMULTANEOUS").sequentialCount(0)
+                    .status("DRAFT").priority("NORMAL").stampDisplayStyle("STANDARD")
+                    .totalRecipientCount(2).stampedCount(0).attachmentCount(0).commentCount(0)
+                    .build();
             given(circulationService.getDocument("ORGANIZATION", ORG_ID, DOC_ID)).willReturn(orgDoc);
 
             ResponseEntity<ApiResponse<DocumentResponse>> result = orgController.getDocument(ORG_ID, DOC_ID);
@@ -240,9 +248,12 @@ class CirculationControllerTest {
             CreateDocumentRequest request = new CreateDocumentRequest(
                     "組織文書", "本文", null, null, null, null, null, null,
                     List.of(new RecipientEntry(50L, null)));
-            DocumentResponse orgDoc = new DocumentResponse(DOC_ID, "ORGANIZATION", ORG_ID, USER_ID,
-                    "組織文書", "本文", "SIMULTANEOUS", 0, "DRAFT", "NORMAL",
-                    null, false, (short) 24, "STANDARD", 1, 0, null, 0, 0, null, null);
+            DocumentResponse orgDoc = DocumentResponse.builder()
+                    .id(DOC_ID).scopeType("ORGANIZATION").scopeId(ORG_ID).createdBy(USER_ID)
+                    .title("組織文書").body("本文").circulationMode("SIMULTANEOUS").sequentialCount(0)
+                    .status("DRAFT").priority("NORMAL").stampDisplayStyle("STANDARD")
+                    .totalRecipientCount(1).stampedCount(0).attachmentCount(0).commentCount(0)
+                    .build();
             given(circulationService.createDocument(eq("ORGANIZATION"), eq(ORG_ID), eq(USER_ID), any()))
                     .willReturn(orgDoc);
 
@@ -255,9 +266,12 @@ class CirculationControllerTest {
         @Test
         @DisplayName("正常系: 組織回覧文書が公開される")
         void 組織回覧文書公開_正常() {
-            DocumentResponse orgDoc = new DocumentResponse(DOC_ID, "ORGANIZATION", ORG_ID, USER_ID,
-                    "組織文書", "本文", "SIMULTANEOUS", 0, "ACTIVE", "NORMAL",
-                    null, false, (short) 24, "STANDARD", 1, 0, null, 0, 0, null, null);
+            DocumentResponse orgDoc = DocumentResponse.builder()
+                    .id(DOC_ID).scopeType("ORGANIZATION").scopeId(ORG_ID).createdBy(USER_ID)
+                    .title("組織文書").body("本文").circulationMode("SIMULTANEOUS").sequentialCount(0)
+                    .status("ACTIVE").priority("NORMAL").stampDisplayStyle("STANDARD")
+                    .totalRecipientCount(1).stampedCount(0).attachmentCount(0).commentCount(0)
+                    .build();
             given(circulationService.activateDocument("ORGANIZATION", ORG_ID, DOC_ID))
                     .willReturn(orgDoc);
 

@@ -31,7 +31,10 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * チャットチャンネルサービス。チャンネルのCRUD・アーカイブを担当する。
@@ -57,23 +60,140 @@ public class ChatChannelService {
     /**
      * ユーザーが参加しているチャンネル一覧を取得する。
      *
+     * <p>各チャンネルに per-user 拡張（memberCount / viewer / dmPartner）を付与する。
+     * N+1 を避けるため、メンバー行・メンバー数・DM 相手はいずれもチャンネル数に依存しない
+     * 一括クエリで取得する（AC-B7）。</p>
+     *
      * @param userId ユーザーID
      * @return チャンネルレスポンスリスト
      */
     public List<ChannelResponse> listMyChannels(Long userId) {
         List<ChatChannelEntity> channels = channelRepository.findByMemberUserId(userId);
-        return chatMapper.toChannelResponseList(channels);
+        if (channels.isEmpty()) {
+            return List.of();
+        }
+        List<Long> channelIds = channels.stream().map(ChatChannelEntity::getId).toList();
+
+        // viewer: 呼出ユーザー自身のメンバー行を一括取得（1 クエリ）
+        Map<Long, ChatChannelMemberEntity> myMemberByChannel = memberRepository.findByUserId(userId).stream()
+                .filter(m -> m.getChannelId() != null)
+                .collect(Collectors.toMap(ChatChannelMemberEntity::getChannelId, m -> m, (a, b) -> a));
+
+        // memberCount: 一括集計（1 クエリ）
+        Map<Long, Integer> memberCountByChannel = new HashMap<>();
+        for (ChatChannelMemberRepository.ChannelMemberCount row
+                : memberRepository.countGroupedByChannelIds(channelIds)) {
+            memberCountByChannel.put(row.getChannelId(), (int) row.getMemberCount());
+        }
+
+        // dmPartner: DM チャンネルのみ、相手メンバー＋相手ユーザーを一括取得
+        Map<Long, ChannelResponse.DmPartnerDto> dmPartnerByChannel = resolveDmPartners(channels, userId);
+
+        return channels.stream()
+                .map(ch -> enrichChannel(ch,
+                        myMemberByChannel.get(ch.getId()),
+                        memberCountByChannel.get(ch.getId()),
+                        dmPartnerByChannel.get(ch.getId())))
+                .toList();
     }
 
     /**
-     * チャンネル詳細を取得する。
+     * チャンネル詳細を取得する。per-user 拡張（memberCount / viewer / dmPartner）を付与する。
      *
      * @param channelId チャンネルID
+     * @param userId    呼出ユーザーID
      * @return チャンネルレスポンス
      */
-    public ChannelResponse getChannel(Long channelId) {
+    public ChannelResponse getChannel(Long channelId, Long userId) {
         ChatChannelEntity entity = findChannelOrThrow(channelId);
-        return chatMapper.toChannelResponse(entity);
+
+        ChatChannelMemberEntity myMember =
+                memberRepository.findByChannelIdAndUserId(channelId, userId).orElse(null);
+        int memberCount = (int) memberRepository.countByChannelId(channelId);
+
+        ChannelResponse.DmPartnerDto dmPartner = null;
+        if (entity.getChannelType() == ChannelType.DM) {
+            dmPartner = memberRepository.findByChannelIdAndUserIdNot(channelId, userId).stream()
+                    .findFirst()
+                    .map(pm -> toDmPartner(pm, userRepository.findById(pm.getUserId()).orElse(null)))
+                    .orElse(null);
+        }
+
+        return enrichChannel(entity, myMember, memberCount, dmPartner);
+    }
+
+    /**
+     * DM チャンネル群の「呼出ユーザー以外の相手」を一括解決する。
+     * メンバー行とユーザーをそれぞれ 1 クエリで取得し、N+1 を避ける。
+     */
+    private Map<Long, ChannelResponse.DmPartnerDto> resolveDmPartners(
+            List<ChatChannelEntity> channels, Long callerId) {
+        List<Long> dmChannelIds = channels.stream()
+                .filter(c -> c.getChannelType() == ChannelType.DM)
+                .map(ChatChannelEntity::getId)
+                .toList();
+        if (dmChannelIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<ChatChannelMemberEntity> partnerMembers =
+                memberRepository.findByChannelIdInAndUserIdNot(dmChannelIds, callerId);
+        List<Long> partnerUserIds = partnerMembers.stream()
+                .map(ChatChannelMemberEntity::getUserId)
+                .distinct()
+                .toList();
+        Map<Long, UserEntity> userById = userRepository.findAllById(partnerUserIds).stream()
+                .collect(Collectors.toMap(UserEntity::getId, u -> u, (a, b) -> a));
+
+        Map<Long, ChannelResponse.DmPartnerDto> result = new HashMap<>();
+        for (ChatChannelMemberEntity pm : partnerMembers) {
+            // DM は 2 名構成のため、チャンネルごとに先頭の相手を採用する
+            result.putIfAbsent(pm.getChannelId(), toDmPartner(pm, userById.get(pm.getUserId())));
+        }
+        return result;
+    }
+
+    /**
+     * ベース変換（{@link ChatMapper#toChannelResponse}）に per-user 拡張を付与する。
+     */
+    private ChannelResponse enrichChannel(ChatChannelEntity entity,
+                                          ChatChannelMemberEntity myMember,
+                                          Integer memberCount,
+                                          ChannelResponse.DmPartnerDto dmPartner) {
+        ChannelResponse base = chatMapper.toChannelResponse(entity);
+        if (base == null) {
+            return null;
+        }
+        return base.toBuilder()
+                .memberCount(memberCount)
+                .viewer(buildViewer(myMember))
+                .dmPartner(dmPartner)
+                .build();
+    }
+
+    /**
+     * 呼出ユーザーのメンバー行から viewer 状態を構築する。非メンバー（null）の場合は null。
+     */
+    private ChannelResponse.ViewerStateDto buildViewer(ChatChannelMemberEntity member) {
+        if (member == null) {
+            return null;
+        }
+        return new ChannelResponse.ViewerStateDto(
+                member.getUnreadCount(),
+                member.getIsMuted(),
+                member.getIsPinned(),
+                member.getCategory(),
+                member.getRole() != null ? member.getRole().name() : null);
+    }
+
+    /**
+     * 相手メンバー行と相手ユーザーから DmPartnerDto を構築する。
+     * 表示名は {@code getDisplayName()}（null の場合は "ユーザー" にフォールバック）。
+     */
+    private ChannelResponse.DmPartnerDto toDmPartner(ChatChannelMemberEntity partnerMember, UserEntity user) {
+        String displayName = (user != null && user.getDisplayName() != null) ? user.getDisplayName() : "ユーザー";
+        String avatarUrl = user != null ? user.getAvatarUrl() : null;
+        return new ChannelResponse.DmPartnerDto(partnerMember.getUserId(), displayName, avatarUrl);
     }
 
     /**

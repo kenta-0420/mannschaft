@@ -1,5 +1,7 @@
 package com.mannschaft.app.chat.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
@@ -46,11 +48,20 @@ public class SendMessageRequest {
 
     /**
      * F17.1 Phase 3: 投稿主体を明示指定する完全コンストラクタ。
+     *
+     * <p>{@code @JsonCreator} を付与することで、複数コンストラクタ存在時に Jackson が
+     * デシリアライズ用コンストラクタを一意に特定できるようにしている。
+     * これがないと {@code POST /api/v1/chat/channels/{id}/messages} が
+     * 500（no suitable creator）で落ちる。</p>
      */
-    public SendMessageRequest(String body, Long parentId, LocalDateTime scheduledAt,
-                              List<AttachmentRequest> attachments,
-                              VillageSubjectType postedAsSubjectType,
-                              Long postedAsSubjectId) {
+    @JsonCreator
+    public SendMessageRequest(
+            @JsonProperty("body") String body,
+            @JsonProperty("parentId") Long parentId,
+            @JsonProperty("scheduledAt") LocalDateTime scheduledAt,
+            @JsonProperty("attachments") List<AttachmentRequest> attachments,
+            @JsonProperty("postedAsSubjectType") VillageSubjectType postedAsSubjectType,
+            @JsonProperty("postedAsSubjectId") Long postedAsSubjectId) {
         this.body = body;
         this.parentId = parentId;
         this.scheduledAt = scheduledAt;

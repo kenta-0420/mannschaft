@@ -1,4 +1,28 @@
-export type CirculationStatus = 'DRAFT' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+export type CirculationStatus = 'DRAFT' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED'
+
+/**
+ * 回覧文書一覧の 1 件分（BE `DocumentResponse` に一致）。
+ *
+ * <p>scoped 一覧 EP `GET /api/v1/teams/{id}/circulations`（および organizations 版）が返す
+ * フラットな DTO 形。{@link CirculationResponse}（ネストした createdBy オブジェクトを持つ手書き契約型）
+ * とは別物で、こちらが実 BE の応答に一致する。</p>
+ */
+export interface CirculationDocumentListItem {
+  id: number
+  scopeType: string
+  scopeId: number
+  title: string
+  body: string | null
+  status: CirculationStatus
+  createdBy: number
+  createdByName: string | null
+  dueDate: string | null
+  stampDisplayStyle: string
+  totalRecipientCount: number
+  stampedCount: number
+  createdAt: string
+  updatedAt: string
+}
 
 export interface CirculationRecipient {
   userId: number

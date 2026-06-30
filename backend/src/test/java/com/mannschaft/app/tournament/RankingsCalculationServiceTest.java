@@ -2,6 +2,7 @@ package com.mannschaft.app.tournament;
 
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.family.CareCategory;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
@@ -65,6 +66,7 @@ class RankingsCalculationServiceTest {
     @Mock private OrganizationRepository organizationRepository;
     @Mock private UserRepository userRepository;
     @Mock private ViewerContextBuilder viewerContextBuilder;
+    @Mock private MediaUrlResolver mediaUrlResolver;
 
     // F19.1 解決ロジックの本物を組み込む（トートロジー回避: 表示名の解決結果まで検証する）。
     @Spy private IdentityVisibilityResolver identityVisibilityResolver = new IdentityVisibilityResolver();

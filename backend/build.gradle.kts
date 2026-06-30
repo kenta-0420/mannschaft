@@ -414,9 +414,11 @@ openApi {
     outputDir.set(file("${projectDir.parentFile}/docs"))
     outputFileName.set("openapi.json")
     // フォーク先 Spring Boot が完全起動するまで待機する秒数
-    // ddl-auto:create-drop + 全 Entity 構築で 5 分前後かかるため、余裕を持って 300 秒に設定
-    // （CI 運用は廃止しローカル生成のみのため、長めの待機で問題ない）
-    waitTimeInSeconds.set(300)
+    // ddl-auto:create-drop + 全 Entity 構築で 5 分前後かかり、さらに初回 /v3/api-docs
+    // スキャンが ~1 分かかるため、300 秒では起動完了直後にタイムアウトする
+    // （worktree のコールド環境で実測: 起動完了 ~300s + 初回スキャン ~57s）。
+    // 余裕を持って 600 秒に設定する（CI 運用は廃止しローカル生成のみのため、長めの待機で問題ない）。
+    waitTimeInSeconds.set(600)
     customBootRun {
         // args.add は springdoc-openapi-gradle-plugin では機能しないため jvmArgs で -D オプションを使用する
         jvmArgs.add("-Dspring.profiles.active=openapi-gen")

@@ -3,6 +3,7 @@ package com.mannschaft.app.contact.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.contact.ContactErrorCode;
 import com.mannschaft.app.contact.dto.ContactHandleResponse;
 import com.mannschaft.app.contact.dto.HandleCheckResponse;
@@ -33,6 +34,7 @@ public class ContactHandleService {
     private final UserRepository userRepository;
     private final UserBlockRepository userBlockRepository;
     private final ContactRequestRepository contactRequestRepository;
+    private final MediaUrlResolver mediaUrlResolver;
 
     /**
      * 自分のハンドル情報を取得する。
@@ -129,7 +131,7 @@ public class ContactHandleService {
                 .userId(target.getId())
                 .fullName(target.getLastName() + " " + target.getFirstName())
                 .contactHandle(target.getContactHandle())
-                .avatarUrl(target.getAvatarUrl())
+                .avatarUrl(mediaUrlResolver.resolve(target.getAvatarUrl()))
                 .isContact(isContact)
                 .hasPendingRequest(hasPending)
                 .contactApprovalRequired(target.getContactApprovalRequired())

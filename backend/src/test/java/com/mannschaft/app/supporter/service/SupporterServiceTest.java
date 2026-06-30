@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.membership.domain.LeaveReason;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -66,6 +67,9 @@ class SupporterServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private MediaUrlResolver mediaUrlResolver;
 
     @InjectMocks
     private SupporterService service;

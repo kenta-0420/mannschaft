@@ -3,6 +3,7 @@ package com.mannschaft.app.contact.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.contact.ContactErrorCode;
 import com.mannschaft.app.contact.dto.ContactRequestBlockResponse;
 import com.mannschaft.app.contact.dto.ContactUserDto;
@@ -26,6 +27,7 @@ public class ContactRequestBlockService {
 
     private final ContactRequestBlockRepository contactRequestBlockRepository;
     private final UserRepository userRepository;
+    private final MediaUrlResolver mediaUrlResolver;
 
     /**
      * 事前拒否リストを取得する。
@@ -47,7 +49,7 @@ public class ContactRequestBlockService {
                             .id(u.getId())
                             .fullName(u.getLastName() + " " + u.getFirstName())
                             .contactHandle(u.getContactHandle())
-                            .avatarUrl(u.getAvatarUrl())
+                            .avatarUrl(mediaUrlResolver.resolve(u.getAvatarUrl()))
                             .build() : ContactUserDto.builder().id(block.getBlockedId()).build())
                     .createdAt(block.getCreatedAt())
                     .build();
@@ -76,7 +78,7 @@ public class ContactRequestBlockService {
                         .id(u.getId())
                         .fullName(u.getLastName() + " " + u.getFirstName())
                         .contactHandle(u.getContactHandle())
-                        .avatarUrl(u.getAvatarUrl())
+                        .avatarUrl(mediaUrlResolver.resolve(u.getAvatarUrl()))
                         .build() : ContactUserDto.builder().id(targetUserId).build())
                 .createdAt(saved.getCreatedAt())
                 .build();
