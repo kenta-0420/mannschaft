@@ -129,7 +129,7 @@ defineExpose({ refresh: loadRespondents })
     <div v-if="activeTab === 'unresponded'" class="flex flex-col gap-2">
       <div
         v-if="canRemind"
-        class="flex items-center justify-between gap-2 rounded-lg border border-surface-200 bg-surface-50 px-3 py-2"
+        class="flex items-center justify-between gap-2 rounded-lg border border-surface-200 bg-surface-50 px-3 py-2 dark:border-surface-700 dark:bg-surface-800"
       >
         <span class="text-xs text-surface-600">
           {{ t('surveys.respondents.remindHint', { count: unresponded.length }) }}
@@ -146,7 +146,7 @@ defineExpose({ refresh: loadRespondents })
       </div>
       <div
         v-else
-        class="rounded-lg border border-dashed border-surface-200 bg-surface-50 px-3 py-2 text-xs text-surface-500"
+        class="rounded-lg border border-dashed border-surface-200 bg-surface-50 px-3 py-2 text-xs text-surface-500 dark:border-surface-700 dark:bg-surface-800"
       >
         <i class="pi pi-info-circle mr-1" />
         {{ t('surveys.respondents.remindAutoNotice') }}
@@ -173,7 +173,7 @@ defineExpose({ refresh: loadRespondents })
       <li
         v-for="item in visibleList"
         :key="item.userId"
-        class="flex items-center gap-3 rounded-lg border border-surface-200 bg-surface-0 px-3 py-2"
+        class="flex items-center gap-3 rounded-lg border border-surface-200 bg-surface-0 px-3 py-2 dark:border-surface-700 dark:bg-surface-800"
         :data-testid="`respondent-item-${item.userId}`"
       >
         <!-- アバター -->
