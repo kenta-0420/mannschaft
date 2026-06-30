@@ -18,8 +18,13 @@ const channels = ref<ChatChannelResponse[]>([])
 const loading = ref(false)
 const selectedId = ref<number | null>(null)
 
-const dmChannels = computed(() => channels.value.filter((ch) => ch.channelType === 'DIRECT'))
-const roomChannels = computed(() => channels.value.filter((ch) => ch.channelType !== 'DIRECT'))
+/** DM / グループDM（Kabine・Zimmer）かどうか */
+function isDmChannel(ch: ChatChannelResponse): boolean {
+  return ch.identity.channelType === 'DM' || ch.identity.channelType === 'GROUP_DM'
+}
+
+const dmChannels = computed(() => channels.value.filter((ch) => isDmChannel(ch)))
+const roomChannels = computed(() => channels.value.filter((ch) => !isDmChannel(ch)))
 
 async function loadChannels() {
   loading.value = true
@@ -42,16 +47,27 @@ function selectChannel(ch: ChatChannelResponse) {
 }
 
 function getDisplayName(ch: ChatChannelResponse): string {
-  if (ch.channelType === 'DIRECT' && ch.dmPartner) {
+  if (ch.dmPartner) {
     return ch.dmPartner.displayName
   }
-  return ch.name || ''
+  return ch.meta.name || ''
 }
 
 function getIcon(ch: ChatChannelResponse): string {
-  if (ch.channelType === 'DIRECT') return 'pi pi-user'
-  if (ch.isPrivate) return 'pi pi-lock'
+  if (ch.dmPartner) return 'pi pi-user'
+  if (isDmChannel(ch)) return 'pi pi-users'
+  if (ch.settings.isPrivate) return 'pi pi-lock'
   return 'pi pi-hashtag'
+}
+
+/** 未読件数（閲覧者状態が無い場合は 0） */
+function getUnread(ch: ChatChannelResponse): number {
+  return ch.viewer?.unreadCount ?? 0
+}
+
+/** 最新メッセージプレビュー */
+function getPreview(ch: ChatChannelResponse): string | null {
+  return ch.lastMessage?.lastMessagePreview ?? null
 }
 
 onMounted(() => loadChannels())
@@ -110,14 +126,14 @@ defineExpose({ refresh: loadChannels, refreshAndSelect })
               <div class="flex items-center justify-between">
                 <span
                   class="truncate text-sm font-medium"
-                  :class="ch.unreadCount > 0 ? 'font-bold' : ''"
+                  :class="getUnread(ch) > 0 ? 'font-bold' : ''"
                 >
                   {{ getDisplayName(ch) }}
                 </span>
-                <Badge v-if="ch.unreadCount > 0" :value="ch.unreadCount" severity="danger" />
+                <Badge v-if="getUnread(ch) > 0" :value="getUnread(ch)" severity="danger" />
               </div>
-              <p v-if="ch.lastMessagePreview" class="truncate text-xs text-surface-400">
-                {{ ch.lastMessagePreview }}
+              <p v-if="getPreview(ch)" class="truncate text-xs text-surface-400">
+                {{ getPreview(ch) }}
               </p>
             </div>
           </button>
@@ -149,14 +165,14 @@ defineExpose({ refresh: loadChannels, refreshAndSelect })
               <div class="flex items-center justify-between">
                 <span
                   class="truncate text-sm font-medium"
-                  :class="ch.unreadCount > 0 ? 'font-bold' : ''"
+                  :class="getUnread(ch) > 0 ? 'font-bold' : ''"
                 >
                   {{ getDisplayName(ch) }}
                 </span>
-                <Badge v-if="ch.unreadCount > 0" :value="ch.unreadCount" severity="danger" />
+                <Badge v-if="getUnread(ch) > 0" :value="getUnread(ch)" severity="danger" />
               </div>
-              <p v-if="ch.lastMessagePreview" class="truncate text-xs text-surface-400">
-                {{ ch.lastMessagePreview }}
+              <p v-if="getPreview(ch)" class="truncate text-xs text-surface-400">
+                {{ getPreview(ch) }}
               </p>
             </div>
           </button>

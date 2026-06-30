@@ -31,14 +31,28 @@ const zimmer = useChatMemberSelect(members, currentUserId)
 
 const startingChat = ref(false)
 
+// Zimmer（部屋）作成フォームの入力状態
+const name = ref('')
+const description = ref('')
+const isPrivate = ref(false)
+const submitting = ref(false)
+
 const chatTypeLabel = computed(() =>
   contact.selected.value.length <= 1 ? 'Kabine(DM)' : 'Zimmer(部屋)',
 )
 
+/**
+ * 作成するチャンネルの種別を決定する。
+ *
+ * BE {@code ChannelType} の正準値に合わせる（valueOf で解決されるため不正値は 400/500）。
+ * - チーム文脈: 非公開トグルで TEAM_PRIVATE / TEAM_PUBLIC
+ * - 組織文脈: 非公開トグルで ORG_PRIVATE / ORG_PUBLIC
+ * - どちらでもない（横断チャット）: 複数人グループDM = GROUP_DM
+ */
 const channelType = computed<ChatChannelType>(() => {
-  if (props.teamId) return 'TEAM'
-  if (props.organizationId) return 'ORGANIZATION'
-  return 'CROSS_TEAM'
+  if (props.teamId) return isPrivate.value ? 'TEAM_PRIVATE' : 'TEAM_PUBLIC'
+  if (props.organizationId) return isPrivate.value ? 'ORG_PRIVATE' : 'ORG_PUBLIC'
+  return 'GROUP_DM'
 })
 
 async function loadMembers() {
@@ -90,11 +104,6 @@ async function startChat() {
     startingChat.value = false
   }
 }
-
-const name = ref('')
-const description = ref('')
-const isPrivate = ref(false)
-const submitting = ref(false)
 
 async function onSubmitZimmer() {
   if (!name.value.trim() || submitting.value) return
