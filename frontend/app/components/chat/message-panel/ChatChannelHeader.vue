@@ -14,9 +14,9 @@ const emit = defineEmits<{
   <div class="flex items-center gap-3 border-b border-surface-200 dark:border-surface-700 px-4 py-3">
     <i
       :class="
-        channel.channelType === 'DIRECT'
+        channel.dmPartner
           ? 'pi pi-user'
-          : channel.isPrivate
+          : channel.settings.isPrivate
             ? 'pi pi-lock'
             : 'pi pi-hashtag'
       "
@@ -24,17 +24,15 @@ const emit = defineEmits<{
     />
     <div>
       <h3 class="text-sm font-semibold">
-        {{
-          channel.channelType === 'DIRECT' && channel.dmPartner
-            ? channel.dmPartner.displayName
-            : channel.name
-        }}
+        {{ channel.dmPartner ? channel.dmPartner.displayName : channel.meta.name }}
       </h3>
-      <p v-if="channel.description" class="text-xs text-surface-400">{{ channel.description }}</p>
+      <p v-if="channel.meta.description" class="text-xs text-surface-400">
+        {{ channel.meta.description }}
+      </p>
     </div>
     <div class="ml-auto flex items-center gap-2">
       <Button
-        v-if="channel.channelType === 'DIRECT'"
+        v-if="channel.identity.channelType === 'DM'"
         v-tooltip.bottom="'Zimmerに招待'"
         icon="pi pi-user-plus"
         text

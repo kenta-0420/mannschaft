@@ -350,7 +350,7 @@ onUnmounted(() => {
         <!-- 入力 -->
         <ChatMessageInput
           :channel-id="channel.id"
-          :disabled="channel.isArchived"
+          :disabled="channel.settings.isArchived"
           @sent="onSent"
           @typing="debouncedSendTyping"
         />
@@ -387,7 +387,7 @@ onUnmounted(() => {
   <ChatInviteToZimmerDialog
     v-model:visible="showInviteDialog"
     :channel-id="channel.id"
-    :dm-partner-user-id="channel.dmPartner?.id"
+    :dm-partner-user-id="channel.dmPartner?.userId"
     :team-id="teamId"
     :organization-id="organizationId"
     @created="(ch) => emit('channelCreated', ch)"
