@@ -13,7 +13,7 @@ onMounted(async () => {
     const team = teams[idx]
     if (result.status === 'fulfilled' && result.value && team) {
       const modules = result.value.data ?? []
-      if (modules.some(m => m.slug === 'reservation' && m.isEnabled)) {
+      if (modules.some(m => m.moduleSlug === 'reservation' && m.isEnabled)) {
         enabled.push(team.id)
       }
     }

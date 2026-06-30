@@ -51,7 +51,7 @@ onMounted(loadData)
 
 <template>
   <div class="mx-auto max-w-6xl">
-    <PageHeader title="管理者ダッシュボード" :back="false" />
+    <PageHeader title="管理者ダッシュボード" />
 
     <PageLoading v-if="loading" />
 

@@ -63,7 +63,7 @@ onMounted(async () => {
       else {
         const res = await getTeamModules(props.scopeId)
         enabledSlugs.value = new Set(
-          res.data.filter(m => m.isEnabled).map(m => m.slug),
+          res.data.filter(m => m.isEnabled).map(m => m.moduleSlug),
         )
       }
     })(),
