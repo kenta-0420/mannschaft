@@ -107,6 +107,7 @@ const PERSONAL_DATA_WIDGET_KEYS = new Set([
   'my-teams',                    // 所属チーム
   'my-organizations',            // 所属組織
   'favorites',                   // お気に入り
+  'my-timeline',                 // 個人集約タイムライン（所属 team/org 横断）
   'recent-activity',             // 最近のアクティビティ
 ])
 
@@ -290,6 +291,8 @@ function onDragEnd() {
             <WidgetMyOrganizations v-else-if="w.key === 'my-organizations'" />
             <!-- お気に入り -->
             <WidgetFavorites v-else-if="w.key === 'favorites'" />
+            <!-- 個人集約タイムライン（所属 team/org 横断） -->
+            <WidgetMyTimeline v-else-if="w.key === 'my-timeline'" />
             <!-- 最近のアクティビティ -->
             <WidgetRecentActivity v-else-if="w.key === 'recent-activity'" />
           </template>

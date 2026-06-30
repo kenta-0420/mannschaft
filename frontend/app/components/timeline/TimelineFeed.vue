@@ -2,9 +2,18 @@
 import type { TimelinePostResponse, TimelineScopeType } from '~/types/timeline'
 
 const props = defineProps<{
-  scopeType: TimelineScopeType
+  /**
+   * スコープ種別。myFeed=true（個人集約タイムライン）の場合は不要。
+   * 単一スコープ表示時は必須（TEAM/ORGANIZATION/PUBLIC/VILLAGE）。
+   */
+  scopeType?: TimelineScopeType
   /** TEAM/ORGANIZATION は数値ID、VILLAGE は UUID 文字列 */
   scopeId?: string | number
+  /**
+   * 個人ダッシュボード集約タイムライン（所属 team/org 横断）モード。
+   * true の場合 GET /api/v1/timeline/my を使い、scopeType/scopeId は不要・pinned は常に空。
+   */
+  myFeed?: boolean
   canPin?: boolean
   canDeleteOthers?: boolean
 }>()
@@ -13,8 +22,16 @@ const emit = defineEmits<{
   clickPost: [postId: number]
 }>()
 
-const { getFeed, addBookmark, removeBookmark, pinPost, deletePost, createReply, repost } =
-  useTimelineApi()
+const {
+  getFeed,
+  getMyTimeline,
+  addBookmark,
+  removeBookmark,
+  pinPost,
+  deletePost,
+  createReply,
+  repost,
+} = useTimelineApi()
 const { showSuccess, showError } = useNotification()
 
 const pinnedPosts = ref<TimelinePostResponse[]>([])
@@ -36,11 +53,15 @@ const repostSubmitting = ref(false)
 async function loadFeed(cursor?: number) {
   loading.value = true
   try {
-    const res = await getFeed({
-      scopeType: props.scopeType,
-      scopeId: props.scopeId,
-      cursor,
-    })
+    // myFeed モード: 所属 team/org 横断の個人集約タイムライン（pinned は常に空）。
+    // 単一スコープモード: 従来通り scopeType/scopeId でフィード取得。
+    const res = props.myFeed
+      ? await getMyTimeline(cursor)
+      : await getFeed({
+          scopeType: props.scopeType ?? 'PUBLIC',
+          scopeId: props.scopeId,
+          cursor,
+        })
     if (!cursor) {
       pinnedPosts.value = res.data.pinned
       posts.value = res.data.posts

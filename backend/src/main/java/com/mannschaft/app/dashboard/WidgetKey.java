@@ -55,6 +55,8 @@ public enum WidgetKey {
     PERSONAL_MY_ORGANIZATIONS(ScopeType.PERSONAL, true, 23),
     /** FE WidgetFavorites: F02.9 Phase 2 お気に入りウィジェット */
     PERSONAL_FAVORITES(ScopeType.PERSONAL, true, 24),
+    /** FE WidgetMyTimeline: 所属 team/org 横断の個人集約タイムライン（GET /api/v1/timeline/my） */
+    PERSONAL_MY_TIMELINE(ScopeType.PERSONAL, true, 25),
 
     // --- チームダッシュボード ---
     TEAM_NOTICES(ScopeType.TEAM, true, 0),

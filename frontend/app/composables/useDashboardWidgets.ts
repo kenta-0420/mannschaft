@@ -94,6 +94,7 @@ export const WidgetKeyMap: Record<string, { team?: string; organization?: string
   'my-teams': { personal: 'PERSONAL_MY_TEAMS' },
   'my-organizations': { personal: 'PERSONAL_MY_ORGANIZATIONS' },
   favorites: { personal: 'PERSONAL_FAVORITES' },
+  'my-timeline': { personal: 'PERSONAL_MY_TIMELINE' },
   'recent-activity': { personal: 'RECENT_ACTIVITY' },
   'personal-todo': { personal: 'PERSONAL_TODO' },
 }
@@ -321,6 +322,16 @@ const ALL_WIDGETS: WidgetDefinition[] = [
     icon: 'pi pi-heart',
     description: 'お気に入りに登録したコンテンツ',
     descriptionKey: 'dashboard.widget_descriptions.favorites',
+    scope: ['personal'],
+  },
+  // 個人集約タイムライン（WidgetMyTimeline・所属 team/org 横断）
+  {
+    key: 'my-timeline',
+    label: '集約タイムライン',
+    labelKey: 'dashboard.widget_labels.my-timeline',
+    icon: 'pi pi-comments',
+    description: '所属チーム・組織の投稿を横断表示',
+    descriptionKey: 'dashboard.widget_descriptions.my-timeline',
     scope: ['personal'],
   },
   // 最近のアクティビティ（WidgetRecentActivity）

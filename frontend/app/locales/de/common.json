@@ -82,7 +82,8 @@
     "loading": "Laden...",
     "confirm": "Bestatigen",
     "logout": "Abmelden",
-    "update": "Aktualisieren"
+    "update": "Aktualisieren",
+    "see_more": "Mehr anzeigen"
   },
   "label": {
     "required": "Pflichtfeld",

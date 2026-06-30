@@ -29,6 +29,41 @@ public interface TimelinePostRepository extends JpaRepository<TimelinePostEntity
             Pageable pageable);
 
     /**
+     * 個人ダッシュボード集約タイムライン（マイフィード）を取得する。
+     *
+     * <p>ログインユーザーが所属する全チーム/組織（MEMBER / SUPPORTER 両方）の
+     * タイムライン投稿を横断集約し、新しい順（{@code id} 降順）で返す。
+     * timeline 投稿に可視性列は無く、所属スコープ一致＝可視であるため
+     * サポーターもメンバーと完全同一の投稿が見える。VILLAGE は集約対象外
+     * （呼び出し側で TEAM/ORGANIZATION の所属のみ渡す）。</p>
+     *
+     * <p>カーソルページネーション（id キーセット）: {@code cursorId} が null の場合は
+     * 先頭から、非 null の場合は {@code p.id < :cursorId} で続きを取得する。
+     * {@code teamIds} / {@code orgIds} は呼び出し側で空にならないことを保証すること
+     * （空の場合は JPQL の {@code IN ()} を避けるためダミー値を渡すか、そもそも呼ばない）。</p>
+     *
+     * @param teamIds  集約対象チーム scopeId 一覧（非空）
+     * @param orgIds   集約対象組織 scopeId 一覧（非空）
+     * @param cursorId カーソル（この id 未満を取得）。null なら先頭から
+     * @param pageable 取得件数
+     * @return マイフィード投稿一覧（id 降順）
+     */
+    @Query("""
+            SELECT p FROM TimelinePostEntity p
+            WHERE ((p.scopeType = com.mannschaft.app.timeline.PostScopeType.TEAM AND p.scopeId IN :teamIds)
+                OR (p.scopeType = com.mannschaft.app.timeline.PostScopeType.ORGANIZATION AND p.scopeId IN :orgIds))
+              AND p.parentId IS NULL
+              AND p.status = com.mannschaft.app.timeline.PostStatus.PUBLISHED
+              AND (:cursorId IS NULL OR p.id < :cursorId)
+            ORDER BY p.id DESC
+            """)
+    List<TimelinePostEntity> findMyFeed(
+            @Param("teamIds") List<Long> teamIds,
+            @Param("orgIds") List<Long> orgIds,
+            @Param("cursorId") Long cursorId,
+            Pageable pageable);
+
+    /**
      * ユーザーの投稿一覧を取得する。
      */
     @Query("SELECT p FROM TimelinePostEntity p WHERE p.userId = :userId "
