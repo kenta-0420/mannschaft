@@ -40,6 +40,8 @@ const BACKEND_URL = process.env.E2E_BACKEND_URL ?? 'http://localhost:8080'
 const FRONTEND_URL = process.env.E2E_FRONTEND_URL ?? 'http://localhost:3000'
 const E2E_USER = { email: 'e2e-user@test.mannschaft.local', password: 'TestPass2026!' }
 const E2E_ADMIN = { email: 'e2e-admin@test.mannschaft.local', password: 'TestPass2026!' }
+// TEAM 1 の SUPPORTER（受信側可視性マトリクス検証用・seed 投入済み）
+const E2E_SUPPORTER = { email: 'e2e-supporter@test.mannschaft.local', password: 'TestPass2026!' }
 const TEAM_ID = 1
 // チーム詳細ページ / 権限解決（/me/permissions）は slug 専用（数値 id は 404）。
 // お知らせ feed API は slug / 数値どちらも 200。UI ナビゲーションは slug を使う。
@@ -244,6 +246,7 @@ test.describe('チーム内告知（F02.8 告知ウィザード）実機 E2E', (
 
   let adminToken: string | null = null
   let userToken: string | null = null
+  let supporterToken: string | null = null
   let backendAlive = false
   let frontendAlive = false
   let scopeAccessible = false
@@ -266,6 +269,7 @@ test.describe('チーム内告知（F02.8 告知ウィザード）実機 E2E', (
     }
     adminToken = await getAuthToken(request, E2E_ADMIN.email, E2E_ADMIN.password)
     userToken = await getAuthToken(request, E2E_USER.email, E2E_USER.password)
+    supporterToken = await getAuthToken(request, E2E_SUPPORTER.email, E2E_SUPPORTER.password)
     if (!adminToken || !userToken) {
       console.warn('e2e ユーザーのログインに失敗しました')
       return
@@ -478,6 +482,94 @@ test.describe('チーム内告知（F02.8 告知ウィザード）実機 E2E', (
     if (out.status === 429) test.skip(true, 'broadcast レート制限に達したためスキップ')
     expect(out.status, '非会員 broadcast が拒否されなかった').toBe(403)
     expect(out.errorCode).toBe('COMMON_002')
+  })
+
+  // ════════════════════════════════════════════════════════════════════
+  // ③.5 受信側 可視性マトリクス（届くか）— target_role 別に「対象は届く / 対象外は届かない」を実証
+  //     MEMBER は SUPPORTER より上位。可視性ラダー:
+  //       MEMBERS_AND_ABOVE    → ADMIN/MEMBER に届く・SUPPORTER には届かない
+  //       SUPPORTERS_AND_ABOVE → ADMIN/MEMBER/SUPPORTER に届く
+  //       PUBLIC               → 全員に届く
+  // ════════════════════════════════════════════════════════════════════
+
+  // 受信側テストで作る 3 件の target_role 別告知のタイトル（一意化）
+  let visTitles: { members: string; supporters: string; pub: string } | null = null
+
+  /** 3 つの target_role で BLOG 告知を作成し、タイトルで識別できるようにする（レート制限時は skip）。 */
+  async function ensureVisibilityBroadcasts(request: APIRequestContext): Promise<{ members: string; supporters: string; pub: string }> {
+    if (visTitles) return visTitles
+    const ts = Date.now()
+    const titles = {
+      members: `VISTEST-MEMBERS-${ts}`,
+      supporters: `VISTEST-SUPPORTERS-${ts}`,
+      pub: `VISTEST-PUBLIC-${ts}`,
+    }
+    const specs: { role: string; title: string }[] = [
+      { role: 'MEMBERS_AND_ABOVE', title: titles.members },
+      { role: 'SUPPORTERS_AND_ABOVE', title: titles.supporters },
+      { role: 'PUBLIC', title: titles.pub },
+    ]
+    for (const s of specs) {
+      const out = await broadcast(request, adminToken!, {
+        channel: 'BLOG_POST',
+        targetRole: s.role,
+        content: { title: s.title, body: 'visibility check' },
+      })
+      if (out.status === 429) test.skip(true, '受信側可視性テスト: broadcast レート制限（5件/5分）に達したためスキップ')
+      const data = expect201OrSkip(out, `${s.role} broadcast`)
+      createdFeedIds.push(data.announcementFeedId)
+    }
+    visTitles = titles
+    return titles
+  }
+
+  /** 指定トークンのフィードに出現する VISTEST タイトル集合を返す。 */
+  async function visibleVistestTitles(request: APIRequestContext, token: string): Promise<Set<string>> {
+    const feed = await getFeed(request, token)
+    return new Set((feed?.data ?? []).map((i) => i.titleCache ?? '').filter((t) => t.startsWith('VISTEST')))
+  }
+
+  test('ANNC-VIS-001: MEMBER は MEMBERS/SUPPORTERS/PUBLIC すべての告知を受信できる', async ({ request }) => {
+    ensureApiReady()
+    const t = await ensureVisibilityBroadcasts(request)
+    const seen = await visibleVistestTitles(request, userToken!)
+    expect(seen.has(t.members), 'MEMBER に MEMBERS_AND_ABOVE が届いていない').toBe(true)
+    expect(seen.has(t.supporters), 'MEMBER に SUPPORTERS_AND_ABOVE が届いていない').toBe(true)
+    expect(seen.has(t.pub), 'MEMBER に PUBLIC が届いていない').toBe(true)
+  })
+
+  test('ANNC-VIS-002: SUPPORTER は SUPPORTERS/PUBLIC を受信し、MEMBERS 限定は受信しない（漏れ無し）', async ({ request }) => {
+    ensureApiReady()
+    if (!supporterToken) test.skip(true, 'e2e-supporter ログイン失敗のためスキップ')
+    const t = await ensureVisibilityBroadcasts(request)
+    const seen = await visibleVistestTitles(request, supporterToken!)
+    expect(seen.has(t.supporters), 'SUPPORTER に SUPPORTERS_AND_ABOVE が届いていない').toBe(true)
+    expect(seen.has(t.pub), 'SUPPORTER に PUBLIC が届いていない').toBe(true)
+    // 核心: メンバー限定告知は SUPPORTER に漏れてはならない
+    expect(seen.has(t.members), 'メンバー限定告知が SUPPORTER に漏れている').toBe(false)
+  })
+
+  test('ANNC-VIS-003: SUPPORTER が受信告知を既読にすると isRead=true・unreadCount が減る（確認できる）', async ({ request }) => {
+    ensureApiReady()
+    if (!supporterToken) test.skip(true, 'e2e-supporter ログイン失敗のためスキップ')
+    const t = await ensureVisibilityBroadcasts(request)
+    const before = await getFeed(request, supporterToken!)
+    const target = (before?.data ?? []).find((i) => i.titleCache === t.supporters)
+    expect(target, 'SUPPORTER 受信フィードに対象告知が無い').toBeTruthy()
+    expect(target!.isRead).toBe(false)
+    const unreadBefore = before?.meta.unreadCount ?? 0
+
+    const readRes = await request.post(
+      `${BACKEND_URL}/api/v1/teams/${TEAM_ID}/announcements/${target!.id}/read`,
+      { headers: authHeaders(supporterToken!) },
+    )
+    expect(readRes.status()).toBe(200)
+    expect((await readRes.json()).data.isRead).toBe(true)
+
+    const after = await getFeed(request, supporterToken!)
+    const afterTarget = (after?.data ?? []).find((i) => i.id === target!.id)
+    expect(afterTarget!.isRead, '既読化が反映されていない').toBe(true)
+    expect(after?.meta.unreadCount ?? 0, 'unreadCount が減っていない').toBeLessThan(unreadBefore)
   })
 
   // ════════════════════════════════════════════════════════════════════
