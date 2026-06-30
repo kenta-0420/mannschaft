@@ -441,6 +441,13 @@ public class CirculationService {
                                                  AddRecipientsRequest request) {
         CirculationDocumentEntity document = findDocumentOrThrow(scopeType, scopeId, documentId);
 
+        // per-scope 認可: あて先の追加は当該文書スコープの ADMIN/DEPUTY_ADMIN（または SYSTEM_ADMIN）のみ。
+        // scopeType/scopeId は Controller が文書エンティティ由来で解決して渡すため IDOR を防ぐ。
+        // Bean 不在のテスト構成では accessControlService が null 注入されガードはスキップされる。
+        if (accessControlService != null) {
+            checkScopeAdminAccess(document, SecurityUtils.getCurrentUserId());
+        }
+
         addRecipientsInternal(document, request.getRecipients());
 
         long count = recipientRepository.countByDocumentId(documentId);
@@ -463,7 +470,13 @@ public class CirculationService {
      */
     @Transactional
     public void removeRecipient(String scopeType, Long scopeId, Long documentId, Long recipientId) {
-        findDocumentOrThrow(scopeType, scopeId, documentId);
+        CirculationDocumentEntity targetDocument = findDocumentOrThrow(scopeType, scopeId, documentId);
+
+        // per-scope 認可: あて先の削除は当該文書スコープの ADMIN/DEPUTY_ADMIN（または SYSTEM_ADMIN）のみ。
+        // Bean 不在のテスト構成では accessControlService が null 注入されガードはスキップされる。
+        if (accessControlService != null) {
+            checkScopeAdminAccess(targetDocument, SecurityUtils.getCurrentUserId());
+        }
 
         CirculationRecipientEntity recipient = recipientRepository.findById(recipientId)
                 .filter(r -> r.getDocumentId().equals(documentId))
