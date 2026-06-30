@@ -141,8 +141,8 @@ class CirculationServiceAdditionalTest {
             given(documentRepository.findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
                     eq(SCOPE_TYPE), eq(SCOPE_ID), any())).willReturn(page);
             given(circulationMapper.toDocumentResponse(entity)).willReturn(mockDocResponse());
-            given(userRepository.findMemberSummaryById(USER_ID))
-                    .willReturn(Optional.of(memberSummary(USER_ID, "山田太郎")));
+            MemberSummary summary = memberSummary(USER_ID, "山田太郎");
+            given(userRepository.findMemberSummaryById(USER_ID)).willReturn(Optional.of(summary));
 
             Page<DocumentResponse> result = service.listDocuments(
                     SCOPE_TYPE, SCOPE_ID, null, PageRequest.of(0, 10));
@@ -183,8 +183,8 @@ class CirculationServiceAdditionalTest {
             given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.of(entity));
             given(circulationMapper.toDocumentResponse(entity)).willReturn(mockDocResponse());
-            given(userRepository.findMemberSummaryById(USER_ID))
-                    .willReturn(Optional.of(memberSummary(USER_ID, "佐藤花子")));
+            MemberSummary summary = memberSummary(USER_ID, "佐藤花子");
+            given(userRepository.findMemberSummaryById(USER_ID)).willReturn(Optional.of(summary));
 
             DocumentResponse result = service.getDocument(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID);
 
