@@ -292,7 +292,7 @@ async function onSubmit() {
 
     <!-- お知らせウィジェット表示フラグ（チーム/組織スコープのみ） -->
     <div v-if="isTeamOrOrgScope" class="mt-3 border-t border-surface-200 pt-3 dark:border-surface-700">
-      <AnnouncementAnnouncementToggle v-model="displayInAnnouncement" :disabled="submitting" />
+      <AnnouncementToggle v-model="displayInAnnouncement" :disabled="submitting" />
     </div>
 
     <TimelinePollForm v-model:visible="showPollDialog" @created="onPollCreated" />
