@@ -104,13 +104,43 @@ async function mockMePermissions(
 
 /** 詳細ページ周辺の「叩かれうるが本テストで関係しない」API を空応答で潰す。 */
 async function mockSideApis(page: Page): Promise<void> {
-  // SurveyResponseForm は alreadyResponded && allowMultiple の組合せでのみ
-  // /api/v1/surveys/{id}/responses/me を呼ぶが、保険で空 200 を用意。
+  // getSurvey は実 BE wire 形（行配列）の /api/v1/surveys/{id}/responses/me を叩き、
+  // 行の有無から hasResponded を導出する（useSurveyApi.adaptMyResponse / getSurvey）。
+  // 既定は「未回答」= 空配列の wire 形で返す。回答済みを期待するテスト
+  // （RESPONDENTS × 非作成者・非管理者）は、本ヘルパー呼び出し後に同 path を
+  // 非空 wire 配列で上書きすること（Playwright は後着優先）。
   await page.route('**/api/v1/surveys/*/responses/me', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: { answers: [] } }),
+      body: JSON.stringify({ data: [] }),
+    })
+  })
+}
+
+/**
+ * 「自分は回答済み」を表す wire 行配列で responses/me を上書きする。
+ * RESPONDENTS 可視性で非作成者・非管理者が結果を閲覧するシナリオで使用する
+ * （hasResponded を行有無から導出する getSurvey に整合させるため）。
+ */
+async function mockRespondedSelf(page: Page, viewerId: number): Promise<void> {
+  await page.route('**/api/v1/surveys/*/responses/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [
+          {
+            id: 1,
+            surveyId: SURVEY_ID,
+            questionId: QUESTION.id,
+            userId: viewerId,
+            optionId: null,
+            textResponse: 'x',
+            createdAt: '2026-04-20T00:00:00Z',
+          },
+        ],
+      }),
     })
   })
 }
@@ -302,6 +332,9 @@ test.describe('SURVEY-005b: 結果可視性 RESPONDENTS', () => {
       scopeId: TEAM_ID,
     })
     await mockMePermissions(page, 'MEMBER')
+    // RESPONDENTS 可視性で非作成者・非管理者が結果を見るには hasResponded=true が必須。
+    // getSurvey は responses/me の行有無から導出するため、非空 wire 配列で上書きする。
+    await mockRespondedSelf(page, MEMBER_ID)
 
     const survey = buildSurvey({
       id: SURVEY_ID,

@@ -178,3 +178,75 @@ export interface RemindRespondentsResponse {
     message: string
   }
 }
+
+// === Backend wire 型（実 BE が返す入れ子・enum 値の生形）===
+//
+// 詳細/回答取得の実 BE レスポンスは FE consumer が期待するフラット形と複数次元でズレるため、
+// useSurveyApi の翻訳層（アダプタ）が「wire 形 → フラット形」へ変換する。
+// 画面（pages/surveys/[surveyId].vue）と SurveyResponseForm.vue は無改修のまま、
+// 下記 wire 型は「BE が実際に返す形」を表現する受け皿として用いる。
+
+/** BE questionType enum（実 BE 値）。FE の {@link QuestionType} とは SCALE/FREE_TEXT が異なる。 */
+export type BeQuestionType = 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE' | 'FREE_TEXT' | 'SCALE'
+
+/** BE 設問選択肢の生形（options[]）。 */
+export interface SurveyOptionWire {
+  id: number
+  questionId: number
+  optionText: string
+  displayOrder: number
+}
+
+/** BE 設問の生形（content/scaleConfig が入れ子）。 */
+export interface SurveyQuestionWire {
+  id: number
+  surveyId: number
+  questionType: BeQuestionType
+  content: {
+    questionText: string
+    isRequired: boolean
+    displayOrder: number
+    maxSelections: number | null
+  }
+  scaleConfig: {
+    scaleMin: number | null
+    scaleMax: number | null
+    scaleMinLabel: string | null
+    scaleMaxLabel: string | null
+  }
+  createdAt?: string
+  options: SurveyOptionWire[]
+}
+
+/**
+ * BE survey の生形。
+ * policy.resultsVisibility のみ BE enum 値（AFTER_RESPONSE 等）で来るため、
+ * {@link SurveyResponse} の policy を string で受けられるよう緩める。
+ */
+export type SurveyResponseWire = Omit<SurveyResponse, 'policy'> & {
+  policy: Omit<SurveyPolicyDto, 'resultsVisibility'> & { resultsVisibility: string }
+}
+
+/** BE 詳細レスポンス全体（survey と questions が data 配下で分離）。 */
+export interface SurveyDetailWire {
+  data: {
+    survey: SurveyResponseWire
+    questions: SurveyQuestionWire[]
+  }
+}
+
+/** BE「自分の回答」1 行の生形。questionId 単位の行配列で返る。 */
+export interface SurveyResponseRowWire {
+  id: number
+  surveyId: number
+  questionId: number
+  userId: number
+  optionId: number | null
+  textResponse: string | null
+  createdAt?: string
+}
+
+/** BE「自分の回答」レスポンス全体（行配列）。 */
+export interface MyResponseWire {
+  data: SurveyResponseRowWire[]
+}

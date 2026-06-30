@@ -2,11 +2,32 @@ import type { Page, Route } from '@playwright/test'
 import type {
   SurveyResponse,
   SurveyStatus,
-  SurveyQuestion,
-  SurveyDetailResponse,
   SurveyResultSummary,
   RespondentItem,
+  SurveyQuestionWire,
+  SurveyDetailWire,
 } from '../../../app/types/survey'
+
+/**
+ * FE QuestionType → BE wire 値（mapQuestionTypeToBe と同等のローカル写像）。
+ * テスト専用に _helpers 内で複製しておく（プロダクション composable への結合を避ける）。
+ */
+function feQuestionTypeToWire(fe: 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE' | 'TEXT' | 'RATING' | 'DATE'): SurveyQuestionWire['questionType'] {
+  switch (fe) {
+    case 'TEXT':
+      return 'FREE_TEXT'
+    case 'RATING':
+      return 'SCALE'
+    case 'SINGLE_CHOICE':
+      return 'SINGLE_CHOICE'
+    case 'MULTIPLE_CHOICE':
+      return 'MULTIPLE_CHOICE'
+    // 'DATE' は BE に対応 enum が無いが、FE 詳細アダプタ側で恒等扱いされるため
+    // 便宜上 FREE_TEXT に寄せて wire 型（BeQuestionType）の制約を満たす。
+    case 'DATE':
+      return 'FREE_TEXT'
+  }
+}
 
 /**
  * F05.4 アンケート画面 E2E テスト 共通ヘルパー。
@@ -268,30 +289,53 @@ export interface BuildQuestionOptions {
   options?: Array<{ id: number; optionText: string; sortOrder: number }>
 }
 
-/** SurveyQuestion の雛形を生成する（選択肢なしのデフォルトは空配列）。 */
-export function buildQuestion(opts: BuildQuestionOptions): SurveyQuestion {
+/**
+ * 設問の wire（実 BE 入れ子）形雛形を生成する。
+ * 引数は従来どおり FE 風（questionType に 'RATING'/'TEXT' 等 FE 値が渡る）を受けつつ、
+ * 戻り値を {@link SurveyQuestionWire} 形（content/scaleConfig 入れ子・options に questionId/displayOrder）
+ * に変換する。これにより getSurvey の翻訳層アダプタが実走し、実 BE と同じ経路を踏める。
+ */
+export function buildQuestion(opts: BuildQuestionOptions): SurveyQuestionWire {
   return {
     id: opts.id,
-    questionText: opts.questionText,
-    questionType: opts.questionType,
-    isRequired: opts.isRequired ?? false,
-    sortOrder: opts.sortOrder ?? 1,
-    options: opts.options ?? [],
+    surveyId: opts.id,
+    questionType: feQuestionTypeToWire(opts.questionType),
+    content: {
+      questionText: opts.questionText,
+      isRequired: opts.isRequired ?? false,
+      displayOrder: opts.sortOrder ?? 1,
+      maxSelections: null,
+    },
+    scaleConfig: {
+      scaleMin: null,
+      scaleMax: null,
+      scaleMinLabel: null,
+      scaleMaxLabel: null,
+    },
+    options: (opts.options ?? []).map((o) => ({
+      id: o.id,
+      questionId: opts.id,
+      optionText: o.optionText,
+      displayOrder: o.sortOrder,
+    })),
   }
 }
 
 /**
- * SurveyDetailResponse 形式（API レスポンス全体）を生成する。
- * Backend は `{ data: SurveyResponse & { questions } }` 構造で返すため
- * fulfill 用の body にそのまま JSON.stringify できる。
+ * 詳細レスポンスの wire（実 BE 入れ子）形を生成する。
+ * 実 BE は `{ data: { survey, questions } }` と survey/questions を分離した入れ子で返すため、
+ * fulfill 用 body をその形に組み立てる。getSurvey の翻訳層がこれをフラット形へ変換する。
+ *
+ * 第 1 引数 survey は従来どおり {@link buildSurvey}（フラット形）の戻り値を受け取り、
+ * wire の data.survey にそのまま入れる（policy.resultsVisibility は文字列なので互換）。
  */
 export function buildSurveyDetail(
   survey: SurveyResponse,
-  questions: SurveyQuestion[],
-): SurveyDetailResponse {
+  questions: SurveyQuestionWire[],
+): SurveyDetailWire {
   return {
     data: {
-      ...survey,
+      survey,
       questions,
     },
   }
@@ -345,8 +389,8 @@ export function buildRespondent(
 export interface MockSurveyApiOptions {
   /** 一覧 API（GET /surveys）で返すアンケート群 */
   surveys?: SurveyResponse[]
-  /** 詳細 API（GET /surveys/{id}）で返すレスポンス（id をキーに分岐） */
-  detailById?: Record<number, SurveyDetailResponse>
+  /** 詳細 API（GET /surveys/{id}）で返すレスポンス（id をキーに分岐・実 BE 入れ子 wire 形） */
+  detailById?: Record<number, SurveyDetailWire>
   /** 集計 API（GET /surveys/{id}/results）で返すレスポンス（id をキー） */
   resultsById?: Record<number, SurveyResultSummary[]>
   /** 回答者 API（GET .../respondents）で返すレスポンス（id をキー） */
