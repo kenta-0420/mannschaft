@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.role.repository.UserRoleRepository;
@@ -77,6 +78,9 @@ class SurveyResultServiceTest {
 
     @Mock
     private com.mannschaft.app.organization.service.OrganizationMembershipService organizationMembershipService;
+
+    @Mock
+    private MediaUrlResolver mediaUrlResolver;
 
     @InjectMocks
     private SurveyResultService surveyResultService;

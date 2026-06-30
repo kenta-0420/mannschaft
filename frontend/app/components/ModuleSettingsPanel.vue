@@ -60,10 +60,9 @@ onMounted(fetchModules)
       <div class="flex items-center gap-1">
         <Button
           icon="pi pi-question-circle"
+          :label="$t('module_settings_guide.help_button')"
           text
-          rounded
           size="small"
-          :aria-label="$t('module_settings_guide.title')"
           @click="showGuide = true"
         />
         <Button

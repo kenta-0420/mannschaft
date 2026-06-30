@@ -2,6 +2,8 @@ package com.mannschaft.app.reflection.service;
 
 import com.mannschaft.app.reflection.RecallDirection;
 import com.mannschaft.app.reflection.RecallSelfRating;
+import com.mannschaft.app.reflection.ReflectionConstants;
+import com.mannschaft.app.reflection.ReflectionOutlineRevealLevel;
 import com.mannschaft.app.reflection.entity.RecallAttemptEntity;
 import com.mannschaft.app.reflection.entity.ReflectionEntryEntity;
 import com.mannschaft.app.reflection.entity.ReflectionThemeEntity;
@@ -144,6 +146,43 @@ public class ReflectionMaskEvaluator {
         }
         int n = k - 1;
         return (n % 2 == 0) ? RecallDirection.MEANING_TO_TERM : RecallDirection.TERM_TO_MEANING;
+    }
+
+    /**
+     * OUTLINE 段階式マスク（足場ラダー）の開示レベルを決定論的に算出する（§13-C 増分・AC-80〜85）。
+     *
+     * <p>{@code k = |arrivedDueDates|}（{@code resolveDirection} と同一真実源）で次のとおり決まる:</p>
+     * <ul>
+     *   <li>{@code k ≤ 2} → {@link ReflectionOutlineRevealLevel#FULL}</li>
+     *   <li>{@code k == 3} → {@link ReflectionOutlineRevealLevel#PARTIAL}</li>
+     *   <li>{@code k ≥ 4} → {@link ReflectionOutlineRevealLevel#HIDDEN}</li>
+     * </ul>
+     *
+     * <p><b>fail-closed</b>: {@code today == null}・{@code k ≤ 0}（マスク対象外・データ欠落）は
+     * {@link ReflectionOutlineRevealLevel#HIDDEN}（足場ゼロ）。{@code recall_attempts} には非依存。</p>
+     *
+     * @param entry 対象エントリ
+     * @param theme 親テーマ
+     * @param today ユーザー TZ の今日（null なら算出不能→HIDDEN）
+     * @return 開示レベル（算出不能・マスク対象外は HIDDEN）
+     */
+    public ReflectionOutlineRevealLevel resolveOutlineRevealLevel(ReflectionEntryEntity entry,
+                                                                  ReflectionThemeEntity theme,
+                                                                  LocalDate today) {
+        if (today == null) {
+            return ReflectionOutlineRevealLevel.HIDDEN; // fail-closed（算出不能）
+        }
+        int k = arrivedDueDates(entry, theme, today).size();
+        if (k <= 0) {
+            return ReflectionOutlineRevealLevel.HIDDEN; // マスク対象外・データ欠落（fail-closed）
+        }
+        if (k <= ReflectionConstants.OUTLINE_SCAFFOLD_FULL_MAX_K) {
+            return ReflectionOutlineRevealLevel.FULL; // k≤2
+        }
+        if (k == ReflectionConstants.OUTLINE_SCAFFOLD_PARTIAL_K) {
+            return ReflectionOutlineRevealLevel.PARTIAL; // k==3
+        }
+        return ReflectionOutlineRevealLevel.HIDDEN; // k≥4（足場ゼロ＝従来完全マスク）
     }
 
     /**
