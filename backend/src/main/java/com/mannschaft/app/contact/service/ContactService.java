@@ -3,6 +3,7 @@ package com.mannschaft.app.contact.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.contact.ContactErrorCode;
 import com.mannschaft.app.contact.dto.ContactResponse;
 import com.mannschaft.app.contact.dto.ContactUserDto;
@@ -30,6 +31,7 @@ public class ContactService {
     private final ChatContactFolderRepository folderRepository;
     private final ChatContactFolderItemRepository folderItemRepository;
     private final UserRepository userRepository;
+    private final MediaUrlResolver mediaUrlResolver;
 
     /**
      * 連絡先一覧を取得する。
@@ -91,7 +93,7 @@ public class ContactService {
                                     .id(u.getId())
                                     .fullName(u.getLastName() + " " + u.getFirstName())
                                     .contactHandle(u.getContactHandle())
-                                    .avatarUrl(u.getAvatarUrl())
+                                    .avatarUrl(mediaUrlResolver.resolve(u.getAvatarUrl()))
                                     .build() : null)
                             .customName(item.getCustomName())
                             .isPinned(item.getIsPinned())
