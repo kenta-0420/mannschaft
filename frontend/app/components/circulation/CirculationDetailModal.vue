@@ -6,6 +6,7 @@ import type {
   CirculationAttachment,
 } from '~/types/circulation'
 import type { ElectronicSeal } from '~/types/seal'
+import { useTeamMembers } from '~/composables/team/useTeamMembers'
 
 /**
  * 回覧板 詳細モーダル（③ 詳細モーダル＋押印UI）。
@@ -402,10 +403,7 @@ watch(
               @click="selectedSealId = seal.sealId"
             >
               <!-- eslint-disable-next-line vue/no-v-html -->
-              <div
-                class="mb-1 flex h-16 w-16 items-center justify-center"
-                v-html="sanitizeHtml(seal.svgData, { allowSvg: true })"
-              />
+              <div class="mb-1 flex h-16 w-16 items-center justify-center" v-html="sanitizeHtml(seal.svgData, { allowSvg: true })" />
               <span class="text-xs">{{ seal.displayText }}</span>
             </button>
           </div>
