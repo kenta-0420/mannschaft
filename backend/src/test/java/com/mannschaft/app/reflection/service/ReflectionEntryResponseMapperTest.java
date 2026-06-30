@@ -3,6 +3,7 @@ package com.mannschaft.app.reflection.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.reflection.RecallDirection;
+import com.mannschaft.app.reflection.ReflectionOutlineRevealLevel;
 import com.mannschaft.app.reflection.dto.ReflectionEntryResponse;
 import com.mannschaft.app.reflection.entity.ReflectionEntryEntity;
 import com.mannschaft.app.reflection.entity.ReflectionThemeEntity;
@@ -66,7 +67,8 @@ class ReflectionEntryResponseMapperTest {
     private void init() {
         sanitizer = new ReflectionContentSanitizer(objectMapper);
         mapper = new ReflectionEntryResponseMapper(
-                maskEvaluator, sanitizer, new ReflectionMaskedCueExtractor());
+                maskEvaluator, sanitizer, new ReflectionMaskedCueExtractor(),
+                new ReflectionMaskedOutlineExtractor());
     }
 
     /** TERM_CARD section を含む本文を持つエントリ。 */
@@ -213,6 +215,112 @@ class ReflectionEntryResponseMapperTest {
         assertThat(resp.structuredContent()).isNull();
         assertThat(resp.maskedHint().recallDirection()).isNull();
         assertThat(resp.maskedHint().cardQuiz()).isEmpty();
+    }
+
+    // ===== §13-C 増分: OUTLINE 段階式マスク（足場ラダー・AC-81/82/83/85/89） =====
+
+    /** OUTLINE section（heading + 小見出し/詳細/補足）を持つエントリ。 */
+    private ReflectionEntryEntity outlineEntry() {
+        String json = "{\"main_theme\":\"二次関数の最大最小\",\"sections\":["
+                + "{\"type\":\"OUTLINE\",\"heading\":\"今日のポイント\",\"subsections\":["
+                + "{\"sub_heading\":\"頂点SECRET\",\"detail\":\"詳細SECRET\",\"supplement\":\"補足SECRET\"}]}]}";
+        ReflectionEntryEntity e = ReflectionEntryEntity.builder()
+                .themeId(UUID.randomUUID()).userId(1L).targetDate(TARGET)
+                .structuredContent(json).version(0L).build();
+        setId(e, UUID.randomUUID());
+        return e;
+    }
+
+    @Test
+    @DisplayName("AC-81/AC-89: マスク中 FULL は main_theme/heading 全文。詳細/補足は漏れない")
+    void masked_outlineScaffold_full() {
+        init();
+        ReflectionEntryEntity e = outlineEntry();
+        ReflectionThemeEntity t = theme();
+        LocalDate today = TARGET.plusDays(1);
+        given(maskEvaluator.isMasked(e, t, today)).willReturn(true);
+        given(maskEvaluator.dueRecallDates(any(), any(), any())).willReturn(List.of());
+        given(maskEvaluator.resolveOutlineRevealLevel(e, t, today))
+                .willReturn(ReflectionOutlineRevealLevel.FULL);
+
+        ReflectionEntryResponse resp = mapper.toResponse(e, t, today);
+
+        assertThat(resp.isMasked()).isTrue();
+        assertThat(resp.structuredContent()).isNull();
+        ReflectionEntryResponse.MaskedOutlineScaffold scaffold = resp.maskedHint().outlineScaffold();
+        assertThat(scaffold.level()).isEqualTo(ReflectionOutlineRevealLevel.FULL);
+        assertThat(scaffold.mainTheme()).isEqualTo("二次関数の最大最小");
+        assertThat(scaffold.sections().get(0).heading()).isEqualTo("今日のポイント");
+        // 詳細/補足/小見出し（答え側）はペイロード文字列に現れない。
+        String dump = resp.maskedHint().toString();
+        assertThat(dump).doesNotContain("頂点SECRET");
+        assertThat(dump).doesNotContain("詳細SECRET");
+        assertThat(dump).doesNotContain("補足SECRET");
+    }
+
+    @Test
+    @DisplayName("AC-82: マスク中 PARTIAL は main_theme/heading が先頭3コードポイント。4字目以降は漏れない")
+    void masked_outlineScaffold_partial() {
+        init();
+        ReflectionEntryEntity e = outlineEntry();
+        ReflectionThemeEntity t = theme();
+        LocalDate today = TARGET.plusDays(7);
+        given(maskEvaluator.isMasked(e, t, today)).willReturn(true);
+        given(maskEvaluator.dueRecallDates(any(), any(), any())).willReturn(List.of());
+        given(maskEvaluator.resolveOutlineRevealLevel(e, t, today))
+                .willReturn(ReflectionOutlineRevealLevel.PARTIAL);
+
+        ReflectionEntryResponse resp = mapper.toResponse(e, t, today);
+
+        ReflectionEntryResponse.MaskedOutlineScaffold scaffold = resp.maskedHint().outlineScaffold();
+        assertThat(scaffold.level()).isEqualTo(ReflectionOutlineRevealLevel.PARTIAL);
+        assertThat(scaffold.mainTheme()).isEqualTo("二次関");
+        assertThat(scaffold.sections().get(0).heading()).isEqualTo("今日の");
+        // 4 字目以降は漏れない。
+        String dump = resp.maskedHint().toString();
+        assertThat(dump).doesNotContain("ポイント");
+        assertThat(dump).doesNotContain("詳細SECRET");
+    }
+
+    @Test
+    @DisplayName("AC-83: マスク中 HIDDEN（k≥4）は足場ゼロ（mainTheme=null・sections 空＝従来完全マスク等価）")
+    void masked_outlineScaffold_hidden() {
+        init();
+        ReflectionEntryEntity e = outlineEntry();
+        ReflectionThemeEntity t = theme();
+        LocalDate today = TARGET.plusDays(14);
+        given(maskEvaluator.isMasked(e, t, today)).willReturn(true);
+        given(maskEvaluator.dueRecallDates(any(), any(), any())).willReturn(List.of());
+        given(maskEvaluator.resolveOutlineRevealLevel(e, t, today))
+                .willReturn(ReflectionOutlineRevealLevel.HIDDEN);
+
+        ReflectionEntryResponse resp = mapper.toResponse(e, t, today);
+
+        ReflectionEntryResponse.MaskedOutlineScaffold scaffold = resp.maskedHint().outlineScaffold();
+        assertThat(scaffold.level()).isEqualTo(ReflectionOutlineRevealLevel.HIDDEN);
+        assertThat(scaffold.mainTheme()).isNull();
+        assertThat(scaffold.sections()).isEmpty();
+        // 本文・足場とも漏れない。
+        assertThat(resp.maskedHint().toString()).doesNotContain("二次関");
+    }
+
+    @Test
+    @DisplayName("AC-85: today=null（fail-closed 経路）では outlineScaffold が HIDDEN 空")
+    void masked_outlineScaffold_todayNull_failClosed() {
+        init();
+        ReflectionThemeEntity t = theme();
+        ReflectionEntryEntity broken = ReflectionEntryEntity.builder()
+                .themeId(UUID.randomUUID()).userId(1L).targetDate(TARGET)
+                .structuredContent("not-json").version(0L).build();
+        setId(broken, UUID.randomUUID());
+        given(maskEvaluator.isMasked(broken, t, TARGET)).willReturn(false);
+
+        ReflectionEntryResponse resp = mapper.toResponse(broken, t, TARGET);
+
+        ReflectionEntryResponse.MaskedOutlineScaffold scaffold = resp.maskedHint().outlineScaffold();
+        assertThat(scaffold.level()).isEqualTo(ReflectionOutlineRevealLevel.HIDDEN);
+        assertThat(scaffold.mainTheme()).isNull();
+        assertThat(scaffold.sections()).isEmpty();
     }
 
     @Test
