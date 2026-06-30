@@ -164350,10 +164350,10 @@
       "AnnouncementContentRequest": {
         "type": "object",
         "properties": {
-          "all_day": {
+          "allDay": {
             "type": "boolean"
           },
-          "assignee_ids": {
+          "assigneeIds": {
             "type": "array",
             "items": {
               "type": "integer",
@@ -164363,11 +164363,11 @@
           "body": {
             "type": "string"
           },
-          "category_id": {
+          "categoryId": {
             "type": "integer",
             "format": "int64"
           },
-          "closes_at": {
+          "closesAt": {
             "type": "string",
             "format": "date-time"
           },
@@ -164376,7 +164376,7 @@
             "maxLength": 5000,
             "minLength": 0
           },
-          "end_at": {
+          "endAt": {
             "type": "string",
             "format": "date-time"
           },
@@ -164385,7 +164385,7 @@
             "maxLength": 300,
             "minLength": 0
           },
-          "start_at": {
+          "startAt": {
             "type": "string",
             "format": "date-time"
           },
@@ -164411,26 +164411,26 @@
           "content": {
             "$ref": "#/components/schemas/AnnouncementContentRequest"
           },
-          "expires_at": {
+          "expiresAt": {
             "type": "string",
             "format": "date-time"
           },
           "priority": {
             "type": "string"
           },
-          "target_role": {
+          "targetRole": {
             "type": "string",
             "maxLength": 30,
             "minLength": 0
           },
-          "target_team_ids": {
+          "targetTeamIds": {
             "type": "array",
             "items": {
               "type": "integer",
               "format": "int64"
             }
           },
-          "template_id": {
+          "templateId": {
             "type": "integer",
             "format": "int64"
           }
@@ -164438,7 +164438,7 @@
         "required": [
           "channel",
           "content",
-          "target_role"
+          "targetRole"
         ]
       },
       "ApiResponseBroadcastResponseDto": {
@@ -164452,7 +164452,7 @@
       "BroadcastResponseDto": {
         "type": "object",
         "properties": {
-          "announcement_feed_id": {
+          "announcementFeedId": {
             "type": "integer",
             "format": "int64"
           },
@@ -164467,24 +164467,24 @@
               "SURVEY"
             ]
           },
-          "content_id": {
+          "contentId": {
             "type": "integer",
             "format": "int64"
           },
-          "content_url": {
+          "contentUrl": {
             "type": "string"
           },
-          "created_at": {
+          "createdAt": {
             "type": "string",
             "format": "date-time"
           },
           "priority": {
             "type": "string"
           },
-          "target_role": {
+          "targetRole": {
             "type": "string"
           },
-          "target_team_ids": {
+          "targetTeamIds": {
             "type": "array",
             "items": {
               "type": "integer",

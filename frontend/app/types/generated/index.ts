@@ -54100,19 +54100,19 @@ export interface components {
             updatedAt?: string;
         };
         AnnouncementContentRequest: {
-            all_day?: boolean;
-            assignee_ids?: number[];
+            allDay?: boolean;
+            assigneeIds?: number[];
             body?: string;
             /** Format: int64 */
-            category_id?: number;
+            categoryId?: number;
             /** Format: date-time */
-            closes_at?: string;
+            closesAt?: string;
             description?: string;
             /** Format: date-time */
-            end_at?: string;
+            endAt?: string;
             location?: string;
             /** Format: date-time */
-            start_at?: string;
+            startAt?: string;
             title?: string;
         };
         BroadcastRequestDto: {
@@ -54120,29 +54120,29 @@ export interface components {
             channel: "BULLETIN_THREAD" | "TIMELINE_POST" | "BLOG_POST" | "TODO" | "SCHEDULE" | "SURVEY";
             content: components["schemas"]["AnnouncementContentRequest"];
             /** Format: date-time */
-            expires_at?: string;
+            expiresAt?: string;
             priority?: string;
-            target_role: string;
-            target_team_ids?: number[];
+            targetRole: string;
+            targetTeamIds?: number[];
             /** Format: int64 */
-            template_id?: number;
+            templateId?: number;
         };
         ApiResponseBroadcastResponseDto: {
             data?: components["schemas"]["BroadcastResponseDto"];
         };
         BroadcastResponseDto: {
             /** Format: int64 */
-            announcement_feed_id?: number;
+            announcementFeedId?: number;
             /** @enum {string} */
             channel?: "BULLETIN_THREAD" | "TIMELINE_POST" | "BLOG_POST" | "TODO" | "SCHEDULE" | "SURVEY";
             /** Format: int64 */
-            content_id?: number;
-            content_url?: string;
+            contentId?: number;
+            contentUrl?: string;
             /** Format: date-time */
-            created_at?: string;
+            createdAt?: string;
             priority?: string;
-            target_role?: string;
-            target_team_ids?: number[];
+            targetRole?: string;
+            targetTeamIds?: number[];
         };
         TransitionAlertResolveRequest: {
             note?: string;
