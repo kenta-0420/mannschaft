@@ -31,6 +31,10 @@ export type ReflectionMaskedCardPrompt = components['schemas']['ReflectionMasked
 export type ReflectionVocabCardsResponse = components['schemas']['ReflectionVocabCardsResponse']
 export type ReflectionVocabCardItem = components['schemas']['ReflectionVocabCardItem']
 
+// Phase 5: OUTLINE 段階式マスク（足場ラダー・AC-91〜93）
+export type ReflectionMaskedOutlineScaffold = components['schemas']['ReflectionMaskedOutlineScaffold']
+export type ReflectionMaskedOutlineSection = components['schemas']['ReflectionMaskedOutlineSection']
+
 /** テーマ作成リクエスト（Phase 3: academicYear / termLabel / parentThemeId を含む）。 */
 export type CreateReflectionThemeRequest = components['schemas']['CreateReflectionThemeRequest']
 /** テーマ更新リクエスト（Phase 3: academicYear / termLabel / parentThemeId / clearParent を含む）。 */
