@@ -133,7 +133,8 @@
       "team-division-standings": "順位表",
       "org-tournament-summary": "主催大会サマリ",
       "team-match-summary": "試合サマリ",
-      "projects": "プロジェクト"
+      "projects": "プロジェクト",
+      "my-timeline": "集約タイムライン"
     },
     "widget_descriptions": {
       "event-dismissal-reminder": "解散通知が未送信のイベントへのリマインダー",
@@ -179,7 +180,8 @@
       "team-division-standings": "現在参加中のディビジョンの順位表",
       "org-tournament-summary": "主催する各大会×各部の首位・参加数・状態",
       "team-match-summary": "直近の試合成績と進行中試合の記録再開",
-      "projects": "プロジェクトの進捗状況と一覧"
+      "projects": "プロジェクトの進捗状況と一覧",
+      "my-timeline": "所属チーム・組織の投稿を横断表示"
     },
     "myCorkboard": {
       "widgetTitle": "マイコルクボード",

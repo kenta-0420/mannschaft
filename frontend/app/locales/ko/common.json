@@ -82,7 +82,8 @@
     "loading": "로딩 중...",
     "confirm": "확인",
     "logout": "로그아웃",
-    "update": "업데이트"
+    "update": "업데이트",
+    "see_more": "더 보기"
   },
   "label": {
     "required": "필수",

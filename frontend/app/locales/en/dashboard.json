@@ -133,7 +133,8 @@
       "team-division-standings": "Standings",
       "org-tournament-summary": "Tournament Summary",
       "team-match-summary": "Match Summary",
-      "projects": "Projects"
+      "projects": "Projects",
+      "my-timeline": "Aggregated Timeline"
     },
     "widget_descriptions": {
       "event-dismissal-reminder": "Reminder for events with unsent disbanding notifications",
@@ -179,7 +180,8 @@
       "team-division-standings": "Current division standings",
       "org-tournament-summary": "Summary of tournaments you organize",
       "team-match-summary": "Recent match results and records",
-      "projects": "Project progress and list"
+      "projects": "Project progress and list",
+      "my-timeline": "Cross-scope posts from your teams and organizations"
     },
     "myCorkboard": {
       "widgetTitle": "My Corkboard",

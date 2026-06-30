@@ -82,7 +82,8 @@
     "loading": "加载中...",
     "confirm": "确认",
     "logout": "退出登录",
-    "update": "更新"
+    "update": "更新",
+    "see_more": "查看更多"
   },
   "label": {
     "required": "必填",

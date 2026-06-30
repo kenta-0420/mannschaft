@@ -76,4 +76,29 @@ public class TimelineFeedResponse {
         FeedMeta feedMeta = new FeedMeta(null, limit, hasNext);
         return new TimelineFeedResponse(feedData, feedMeta);
     }
+
+    /**
+     * 個人ダッシュボード集約タイムライン（マイフィード）用のレスポンスを組み立てる。
+     *
+     * <p>{@code GET /api/v1/timeline/my} 専用。{@code /feed} のスタブ挙動（{@link #of} の
+     * {@code nextCursor=null}）とは異なり、id キーセットページネーションの実カーソルを埋める:</p>
+     * <ul>
+     *   <li>{@code pinned} は常に空（殿の確定仕様 c: /my では pinned を出さない）</li>
+     *   <li>{@code hasNext = posts.size() >= limit}</li>
+     *   <li>{@code nextCursor = hasNext ? 最後の post.id : null}（id 降順なので末尾が最小 id）</li>
+     * </ul>
+     *
+     * @param posts マイフィード投稿リスト（id 降順・最大 limit 件）
+     * @param limit リクエスト件数
+     * @return タイムラインフィードレスポンス（pinned 空・実カーソル付き）
+     */
+    public static TimelineFeedResponse ofMyFeed(List<PostResponse> posts, int limit) {
+        boolean hasNext = posts.size() >= limit;
+        Long nextCursor = (hasNext && !posts.isEmpty())
+                ? posts.get(posts.size() - 1).getId()
+                : null;
+        FeedData feedData = new FeedData(List.of(), posts);
+        FeedMeta feedMeta = new FeedMeta(nextCursor, limit, hasNext);
+        return new TimelineFeedResponse(feedData, feedMeta);
+    }
 }

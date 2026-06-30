@@ -82,7 +82,8 @@
     "loading": "Loading...",
     "confirm": "Confirm",
     "logout": "Logout",
-    "update": "Update"
+    "update": "Update",
+    "see_more": "See more"
   },
   "label": {
     "required": "Required",

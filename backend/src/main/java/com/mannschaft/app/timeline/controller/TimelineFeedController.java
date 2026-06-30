@@ -1,6 +1,7 @@
 package com.mannschaft.app.timeline.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.timeline.dto.PostResponse;
 import com.mannschaft.app.timeline.dto.TimelineFeedResponse;
 import com.mannschaft.app.timeline.service.TimelinePostService;
@@ -61,6 +62,34 @@ public class TimelineFeedController {
         List<PostResponse> pinned = postService.getPinnedPosts(scopeType, resolvedScopeId);
         TimelineFeedResponse response = TimelineFeedResponse.of(pinned, posts, size);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 個人ダッシュボード集約タイムライン（マイフィード）を取得する。
+     *
+     * <p>ログインユーザーが所属する全チーム/組織（MEMBER / SUPPORTER 両方）の投稿を
+     * 横断集約し、新しい順で返す。VILLAGE は集約対象外。自分の投稿も含む。</p>
+     *
+     * <p>認証必須: 本 EP は SecurityConfig の permitAll に含めない（deny-by-default で
+     * 未認証は 401）。{@link SecurityUtils#getCurrentUserId()} がトークンからユーザー ID を取得する。</p>
+     *
+     * <p>{@code /feed} と異なり pinned は常に空（data.pinned=[]）で、id キーセットの
+     * 実カーソル（meta.nextCursor）を返す。クエリパラメータは FE の {@code getMyTimeline}
+     * が送る {@code cursor} / {@code limit} に一致させる（{@code /feed} の {@code size} ではない）。</p>
+     *
+     * @param cursor カーソル（この投稿 id 未満を取得）。未指定なら最新から
+     * @param limit  取得件数（既定 20）
+     * @return マイフィード（pinned 空・実カーソル付き）
+     */
+    @GetMapping("/my")
+    @Operation(summary = "個人集約タイムライン取得（所属team/org横断）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<TimelineFeedResponse> getMyFeed(
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "20") int limit) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        List<PostResponse> posts = postService.getMyFeed(userId, cursor, limit);
+        return ResponseEntity.ok(TimelineFeedResponse.ofMyFeed(posts, limit));
     }
 
     /**

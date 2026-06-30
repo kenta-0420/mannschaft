@@ -77,6 +77,12 @@ public class TimelinePostService {
     private final PostingIdentityService postingIdentityService;
     /** TEAM/ORGANIZATION スコープへの投稿時のメンバーシップ検証。 */
     private final AccessControlService accessControlService;
+    /**
+     * 個人ダッシュボード集約タイムライン（マイフィード）の所属スコープ解決用。
+     * ドメイン境界原則に従い membership ドメインの Repository を直注入せず Service 経由で利用する
+     * （プリミティブ {@code List<Long>} のみを受け取り Entity を漏らさない）。
+     */
+    private final com.mannschaft.app.membership.service.MembershipService membershipService;
 
     /**
      * 投稿を作成する（解決済みスコープ ID 版）。添付ファイル・投票も同時に作成する。
@@ -463,6 +469,46 @@ public class TimelinePostService {
         } else {
             posts = postRepository.findFeedByScopeType(scopeTypeEnum, scopeId, PageRequest.of(0, feedSize));
         }
+        return timelineMapper.toPostResponseList(posts);
+    }
+
+    /**
+     * 個人ダッシュボード集約タイムライン（マイフィード）を取得する。
+     *
+     * <p>ログインユーザーが所属する全チーム/組織（MEMBER / SUPPORTER 両方）の
+     * タイムライン投稿を横断集約し、新しい順（id 降順）で返す。timeline 投稿に
+     * 可視性列は無く所属スコープ一致＝可視のため、サポーターもメンバーと完全同一の
+     * 投稿が見える。VILLAGE は集約対象外（殿の確定仕様 b）。自分の投稿も含む（仕様 a）。</p>
+     *
+     * <p>所属スコープ ID は {@link com.mannschaft.app.membership.service.MembershipService}
+     * 経由で解決する（ドメイン境界原則）。両メソッドは MEMBER / SUPPORTER 両方を含む。</p>
+     *
+     * <p>空ガード: 所属チーム・組織が両方空なら repo を呼ばず空リストを返す
+     * （JPQL の {@code IN ()} エラー回避）。片方だけ空の場合は実 scopeId と衝突しない
+     * ダミー値（{@code -1L}）で埋め、もう一方の OR 条件だけを実効化する。</p>
+     *
+     * @param userId 認証ユーザー ID
+     * @param cursor カーソル（この投稿 id 未満を取得）。null なら最新から
+     * @param limit  取得件数（1 件以上）
+     * @return マイフィード投稿一覧（id 降順・最大 limit 件）
+     */
+    public List<PostResponse> getMyFeed(Long userId, Long cursor, int limit) {
+        int feedSize = limit > 0 ? limit : DEFAULT_FEED_SIZE;
+        List<Long> teamIds = membershipService.getActiveTeamIdsByUser(userId);
+        List<Long> orgIds = membershipService.getActiveOrgIdsByUser(userId);
+
+        // 空ガード: 所属がゼロなら DB を叩かず空（JPQL IN () エラー回避）。
+        if (teamIds.isEmpty() && orgIds.isEmpty()) {
+            return List.of();
+        }
+
+        // 片方だけ空でも JPQL IN :emptyList が DB で問題になりうるため、
+        // 実 scopeId（常に正の値）と衝突しないダミー -1L を入れて当該 OR 条件を無効化する。
+        List<Long> safeTeamIds = teamIds.isEmpty() ? List.of(-1L) : teamIds;
+        List<Long> safeOrgIds = orgIds.isEmpty() ? List.of(-1L) : orgIds;
+
+        List<TimelinePostEntity> posts = postRepository.findMyFeed(
+                safeTeamIds, safeOrgIds, cursor, PageRequest.of(0, feedSize));
         return timelineMapper.toPostResponseList(posts);
     }
 
