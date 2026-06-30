@@ -152,7 +152,7 @@ function onDeleteConfirm(id: number) {
     <div v-else>
       <SectionCard>
         <div role="list" class="divide-y divide-surface-100 dark:divide-surface-700">
-          <AnnouncementAnnouncementItem
+          <AnnouncementItem
             v-for="item in feed"
             :key="item.id"
             :item="item"

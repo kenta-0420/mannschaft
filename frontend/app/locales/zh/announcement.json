@@ -55,6 +55,7 @@
     "submit_button": "发送通知",
     "unsaved_changes_warning": "输入内容将丢失，确定吗？",
     "broadcast_success": "通知已发送",
+    "broadcast_error_generic": "通知发送失败",
     "broadcast_success_cta": "查看公告小部件",
     "form_title": "标题",
     "form_body": "正文",
