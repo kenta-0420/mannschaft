@@ -1,13 +1,10 @@
 package com.mannschaft.app.timeline.controller;
 
 import com.mannschaft.app.common.ApiResponse;
-import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.organization.service.OrganizationService;
-import com.mannschaft.app.team.service.TeamService;
-import com.mannschaft.app.timeline.TimelineErrorCode;
 import com.mannschaft.app.timeline.dto.PostResponse;
 import com.mannschaft.app.timeline.dto.TimelineFeedResponse;
 import com.mannschaft.app.timeline.service.TimelinePostService;
+import com.mannschaft.app.timeline.service.TimelineScopeIdResolver;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -24,8 +21,10 @@ import java.util.UUID;
 /**
  * タイムラインフィードコントローラー。フィード取得・検索APIを提供する。
  *
- * <p>slug解決は {@link TeamService#resolveTeamId} / {@link OrganizationService#resolveOrgId}
- * のService経由で行い、Repositoryを直注入しない（ドメイン境界原則）。</p>
+ * <p>slug解決は {@link TimelineScopeIdResolver} に委譲する。投稿作成（書き込み）経路と
+ * 共有することで、読み書きで解決ロジックが乖離しない（書き込み側だけ slug 未対応で 400、
+ * の非対称を防ぐ）。リゾルバ内部は {@code TeamService}/{@code OrganizationService} 経由で
+ * 解決し、Repository を直注入しない（ドメイン境界原則）。</p>
  */
 @RestController
 @RequestMapping("/api/v1/timeline")
@@ -34,10 +33,8 @@ import java.util.UUID;
 public class TimelineFeedController {
 
     private final TimelinePostService postService;
-    /** slug解決用: ドメイン境界原則によりServiceを経由する（Repository直注入禁止）。 */
-    private final TeamService teamService;
-    /** slug解決用: ドメイン境界原則によりServiceを経由する（Repository直注入禁止）。 */
-    private final OrganizationService organizationService;
+    /** slug/Long 文字列 → 内部 Long ID の共有リゾルバ（書き込み経路と共通）。 */
+    private final TimelineScopeIdResolver scopeIdResolver;
 
     /**
      * スコープ別フィードを取得する。
@@ -46,8 +43,8 @@ public class TimelineFeedController {
      * scopeVillageId が省略された場合は空リストを返す。</p>
      *
      * <p>scopeId はチーム/組織ページの URL で使われる slug 文字列または
-     * 内部 Long ID 文字列を受け付ける。slug の場合は {@link TeamService#resolveTeamId} /
-     * {@link OrganizationService#resolveOrgId} で内部 ID に変換する。</p>
+     * 内部 Long ID 文字列を受け付ける。slug の場合は {@link TimelineScopeIdResolver} 経由で
+     * 内部 ID に変換する。</p>
      *
      * <p>レスポンス形式: {@code { "data": { "pinned": [...], "posts": [...] }, "meta": { ... } }}</p>
      */
@@ -59,46 +56,11 @@ public class TimelineFeedController {
             @RequestParam(defaultValue = "0") String scopeId,
             @RequestParam(required = false) UUID scopeVillageId,
             @RequestParam(defaultValue = "20") int size) {
-        Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
+        Long resolvedScopeId = scopeIdResolver.resolve(scopeType, scopeId);
         List<PostResponse> posts = postService.getFeed(scopeType, resolvedScopeId, scopeVillageId, size);
         List<PostResponse> pinned = postService.getPinnedPosts(scopeType, resolvedScopeId);
         TimelineFeedResponse response = TimelineFeedResponse.of(pinned, posts, size);
         return ResponseEntity.ok(response);
-    }
-
-    /**
-     * スコープID文字列（slug または Long文字列）を内部Long IDに解決する。
-     *
-     * <p>TEAM スコープ: {@link TeamService#resolveTeamId} でslugを内部IDに変換する。
-     * ORGANIZATION スコープ: {@link OrganizationService#resolveOrgId} で同様。
-     * その他のスコープ: Long 文字列はそのまま返し、変換不能な場合は {@code 0L} を返す。</p>
-     *
-     * @param scopeType    スコープ種別（例: "TEAM", "ORGANIZATION", "PUBLIC"）
-     * @param scopeIdStr   スコープID文字列（slug または Long 文字列）
-     * @return 内部Long ID
-     */
-    private Long resolveScopeId(String scopeType, String scopeIdStr) {
-        if (!"TEAM".equals(scopeType) && !"ORGANIZATION".equals(scopeType)) {
-            try {
-                return Long.parseLong(scopeIdStr);
-            } catch (NumberFormatException e) {
-                return 0L;
-            }
-        }
-        try {
-            return Long.parseLong(scopeIdStr);
-        } catch (NumberFormatException e) {
-            // 数値でない場合はslugとしてService経由で解決する（Repository直注入禁止）
-            try {
-                if ("TEAM".equals(scopeType)) {
-                    return teamService.resolveTeamId(scopeIdStr);
-                } else {
-                    return organizationService.resolveOrgId(scopeIdStr);
-                }
-            } catch (BusinessException ex) {
-                throw new BusinessException(TimelineErrorCode.POST_NOT_FOUND);
-            }
-        }
     }
 
     /**

@@ -156128,12 +156128,7 @@
             "format": "date-time"
           },
           "scopeId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "scopeIdOrDefault": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string"
           },
           "scopeType": {
             "type": "string"
