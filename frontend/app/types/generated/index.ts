@@ -31843,6 +31843,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{slug}/modules/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** チーム機能カタログ＋有効状態取得 */
+        get: operations["getTeamModuleCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{slug}/members": {
         parameters: {
             query?: never;
@@ -35098,6 +35115,23 @@ export interface paths {
         };
         /** 組織モジュール一覧取得 */
         get: operations["getOrganizationModules"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{slug}/modules/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 組織機能カタログ＋有効状態取得 */
+        get: operations["getOrganizationModuleCatalog"];
         put?: never;
         post?: never;
         delete?: never;
@@ -66251,6 +66285,56 @@ export interface components {
             /** Format: date-time */
             trialExpiresAt?: string;
         };
+        ApiResponseTeamModuleCatalog: {
+            data?: components["schemas"]["TeamModuleCatalog"];
+        };
+        /** @description チーム向け機能カタログ＋有効状態 */
+        TeamModuleCatalog: {
+            /**
+             * Format: int64
+             * @description 現在有効化済みの OPTIONAL モジュール数
+             */
+            enabledCount?: number;
+            /** @description 有料プラン加入済みか */
+            hasPaidPlan?: boolean;
+            /** @description カタログ要素（moduleNumber 昇順） */
+            modules?: components["schemas"]["TeamModuleCatalogItem"][];
+            /**
+             * Format: int32
+             * @description 無料プランで有効化できるモジュール数の上限
+             */
+            planLimit?: number;
+        };
+        /** @description チーム向け機能カタログ要素（定義＋有効状態） */
+        TeamModuleCatalogItem: {
+            /** @description 説明 */
+            description?: string;
+            /** @description このチームで有効化済みか */
+            isEnabled?: boolean;
+            /** @description チームレベルで利用可能か（module_level_availability。レコード無は利用可） */
+            levelAvailable?: boolean;
+            /**
+             * Format: int64
+             * @description モジュールID
+             */
+            moduleId?: number;
+            /**
+             * Format: int32
+             * @description 表示順序番号
+             */
+            moduleNumber?: number;
+            /** @description モジュール名 */
+            name?: string;
+            /** @description 有料プランが必要か */
+            requiresPaidPlan?: boolean;
+            /** @description モジュールスラッグ */
+            slug?: string;
+            /**
+             * Format: date-time
+             * @description トライアル期限（有効化行が持つ場合のみ。未登録は null）
+             */
+            trialExpiresAt?: string;
+        };
         PagedResponseMemberResponse: {
             data?: components["schemas"]["MemberResponse"][];
             meta?: components["schemas"]["PageMeta"];
@@ -68963,6 +69047,51 @@ export interface components {
             moduleId?: number;
             moduleName?: string;
             moduleSlug?: string;
+        };
+        ApiResponseOrgModuleCatalog: {
+            data?: components["schemas"]["OrgModuleCatalog"];
+        };
+        /** @description 組織向け機能カタログ＋有効状態 */
+        OrgModuleCatalog: {
+            /**
+             * Format: int64
+             * @description 現在有効化済みの OPTIONAL モジュール数
+             */
+            enabledCount?: number;
+            /** @description 有料プラン加入済みか（組織側は有料プラン判定が無いため常に false） */
+            hasPaidPlan?: boolean;
+            /** @description カタログ要素（moduleNumber 昇順） */
+            modules?: components["schemas"]["OrgModuleCatalogItem"][];
+            /**
+             * Format: int32
+             * @description 無料プランで有効化できるモジュール数の上限
+             */
+            planLimit?: number;
+        };
+        /** @description 組織向け機能カタログ要素（定義＋有効状態） */
+        OrgModuleCatalogItem: {
+            /** @description 説明 */
+            description?: string;
+            /** @description この組織で有効化済みか */
+            isEnabled?: boolean;
+            /** @description 組織レベルで利用可能か（module_level_availability。レコード無は利用可） */
+            levelAvailable?: boolean;
+            /**
+             * Format: int64
+             * @description モジュールID
+             */
+            moduleId?: number;
+            /**
+             * Format: int32
+             * @description 表示順序番号
+             */
+            moduleNumber?: number;
+            /** @description モジュール名 */
+            name?: string;
+            /** @description 有料プランが必要か */
+            requiresPaidPlan?: boolean;
+            /** @description モジュールスラッグ */
+            slug?: string;
         };
         CursorPagedResponseOrgAllMembersResponse: {
             data?: components["schemas"]["OrgAllMembersResponse"][];
@@ -136318,6 +136447,28 @@ export interface operations {
             };
         };
     };
+    getTeamModuleCatalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamModuleCatalog"];
+                };
+            };
+        };
+    };
     getMembers: {
         parameters: {
             query: {
@@ -140647,6 +140798,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListOrgModuleResponse"];
+                };
+            };
+        };
+    };
+    getOrganizationModuleCatalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOrgModuleCatalog"];
                 };
             };
         };
