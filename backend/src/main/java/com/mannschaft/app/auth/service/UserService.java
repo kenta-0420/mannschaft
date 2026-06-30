@@ -32,6 +32,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EncryptionService;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.postal.CountryResolver;
 import com.mannschaft.app.postal.PostalCodePolicyRegistry;
 import com.mannschaft.app.role.repository.UserRoleRepository;
@@ -73,6 +74,7 @@ public class UserService {
     private final AccessControlService accessControlService;
     private final CountryResolver countryResolver;
     private final PostalCodePolicyRegistry postalCodePolicyRegistry;
+    private final MediaUrlResolver mediaUrlResolver;
 
     /**
      * ISO 3166-1 alpha-2 国コード: アルファベット大文字2文字
@@ -112,7 +114,7 @@ public class UserService {
                 user.getDisplayName(),
                 user.getNickname2(),
                 user.getIsSearchable(),
-                user.getAvatarUrl(),
+                mediaUrlResolver.resolve(user.getAvatarUrl()),
                 user.getPhoneNumber(),
                 user.getPostalCode(),
                 user.getLocale(),
