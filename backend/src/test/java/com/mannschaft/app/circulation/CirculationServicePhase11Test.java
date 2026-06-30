@@ -15,6 +15,7 @@ import com.mannschaft.app.circulation.service.CirculationService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.notification.service.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,8 +25,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
@@ -38,7 +43,9 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -422,6 +429,70 @@ class CirculationServicePhase11Test {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(CommonErrorCode.COMMON_002));
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // 文書一覧の所属ゲート（F00 漏洩根治）
+    //
+    // GET /api/v1/teams/{teamId}/circulations（org 版含む）が認可ゲート皆無で、
+    // 認証済みなら非会員でも他チームの回覧タイトル/作成者/押印数を列挙できる
+    // F00 漏洩を根治する。listDocuments の冒頭で
+    // accessControlService.checkMembershipOrDescendant(..., includeSupporters=true)
+    // を通し、非所属（COMMON_002）を弾く。
+    // ─────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("listDocuments の所属ゲート")
+    class ListDocumentsAuthorization {
+
+        @Test
+        @DisplayName("AC-1: 非所属ユーザーは一覧取得が COMMON_002 で遮断される（文書は引かれない）")
+        void 一覧_非所属は弾かれる() {
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                // 非所属は所属ゲートで COMMON_002
+                doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                        .when(accessControlService)
+                        .checkMembershipOrDescendant(anyLong(), eq(SCOPE_ID), eq("TEAM"), eq(true));
+
+                assertThatThrownBy(() -> circulationService.listDocuments(
+                        "TEAM", SCOPE_ID, null, PageRequest.of(0, 10)))
+                        .isInstanceOf(BusinessException.class)
+                        .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                                .isEqualTo(CommonErrorCode.COMMON_002));
+
+                // ゲートで弾かれるため文書取得には到達しない
+                verify(documentRepository, org.mockito.Mockito.never())
+                        .findByScopeTypeAndScopeIdOrderByCreatedAtDesc(anyString(), anyLong(), any());
+            }
+        }
+
+        @Test
+        @DisplayName("AC-2: 所属者は通過し、ゲートは includeSupporters=true で呼ばれる")
+        void 一覧_所属者は通過() {
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                // 所属者は no-op（通過）
+                doNothing().when(accessControlService)
+                        .checkMembershipOrDescendant(anyLong(), eq(SCOPE_ID), eq("TEAM"), eq(true));
+
+                CirculationDocumentEntity entity = buildActive();
+                Page<CirculationDocumentEntity> page = new PageImpl<>(List.of(entity));
+                given(documentRepository.findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
+                        eq("TEAM"), eq(SCOPE_ID), any())).willReturn(page);
+                given(circulationMapper.toDocumentResponse(entity)).willReturn(mockResponse());
+                // userRepository は createdByName 充填で呼ばれる（解決不要なら empty）
+                given(userRepository.findMemberSummaryById(anyLong())).willReturn(Optional.empty());
+
+                Page<DocumentResponse> result = circulationService.listDocuments(
+                        "TEAM", SCOPE_ID, null, PageRequest.of(0, 10));
+
+                assertThat(result.getContent()).hasSize(1);
+                // 応援者も許可する includeSupporters=true で呼ばれること
+                verify(accessControlService)
+                        .checkMembershipOrDescendant(USER_ID, SCOPE_ID, "TEAM", true);
+            }
         }
     }
 }
