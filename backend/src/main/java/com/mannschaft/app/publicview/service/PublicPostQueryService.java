@@ -5,6 +5,7 @@ import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.family.CareCategory;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
@@ -66,6 +67,7 @@ public class PublicPostQueryService {
     private final com.mannschaft.app.team.repository.TeamRepository teamRepository;
     private final OrganizationRepository organizationRepository;
     private final IdentityVisibilityResolver identityVisibilityResolver;
+    private final MediaUrlResolver mediaUrlResolver;
 
     // ────────────────────────────────────────────────────────────
     // 一覧
@@ -245,7 +247,8 @@ public class PublicPostQueryService {
                 author != null ? author.getDisplayName() : null,
                 post.getAuthorRealNameSnapshot(),
                 fullName,
-                author != null ? author.getAvatarUrl() : null,
+                // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL へ解決してから識別解決へ渡す
+                author != null ? mediaUrlResolver.resolve(author.getAvatarUrl()) : null,
                 isMinor);
         DisplayIdentity result = identityVisibilityResolver.resolveIdentityForViewer(
                 postAuthor, viewerContext, scope, settings);
