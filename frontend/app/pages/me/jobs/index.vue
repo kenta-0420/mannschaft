@@ -266,7 +266,7 @@ onMounted(async () => {
 
 <template>
   <div class="container mx-auto max-w-4xl p-4">
-    <PageHeader :title="t('jobmatching.myJobs.title')" :back="false" />
+    <PageHeader :title="t('jobmatching.myJobs.title')" />
     <p class="mb-4 text-sm text-surface-500">
       {{ t('jobmatching.myJobs.description') }}
     </p>
