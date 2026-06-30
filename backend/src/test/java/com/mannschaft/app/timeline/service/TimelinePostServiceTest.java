@@ -155,8 +155,8 @@ class TimelinePostServiceTest {
             // given
             UUID villageId = UUID.randomUUID();
             Long orgSubjectId = 89L;
-            // 11 引数コンストラクタ + scopeVillageId は完全コンストラクタで指定
-            CreatePostRequest req = new CreatePostRequest("村への告知", "VILLAGE", 0L,
+            // 完全コンストラクタ（12 引数・scopeId は String）で scopeVillageId まで指定
+            CreatePostRequest req = new CreatePostRequest("村への告知", "VILLAGE", "0",
                     "ORGANIZATION", orgSubjectId, null, null, null, null, null, null, villageId);
             TimelinePostEntity savedPost = createPost();
             PostResponse expected = createPostResponse();
