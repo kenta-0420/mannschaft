@@ -16,7 +16,7 @@
  */
 import type { TeamFriendFolderView } from '~/types/friendFolders'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
 /** フォルダ数上限（設計書 §4） */
 const FOLDER_MAX = 20

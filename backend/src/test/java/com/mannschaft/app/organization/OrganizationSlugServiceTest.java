@@ -8,6 +8,7 @@ import static org.mockito.Mockito.lenient;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.organization.dto.CreateOrganizationRequest;
 import com.mannschaft.app.organization.dto.OrganizationResponse;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
@@ -51,6 +52,7 @@ class OrganizationSlugServiceTest {
     @Mock private OrganizationMembershipService organizationMembershipService;
     @Mock private OrganizationHierarchyService organizationHierarchyService;
     @Mock private MembershipService membershipService;
+    @Mock private MediaUrlResolver mediaUrlResolver;
     @InjectMocks private OrganizationService organizationService;
 
     private void givenCreateScaffold(String name) {

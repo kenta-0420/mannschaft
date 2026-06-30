@@ -1,6 +1,7 @@
 package com.mannschaft.app.favorite.resolver.impl;
 
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.favorite.FavoriteEntityType;
 import com.mannschaft.app.favorite.dto.FavoriteEntityMetaDto;
 import com.mannschaft.app.favorite.dto.FavoriteEntityStatus;
@@ -28,6 +29,7 @@ public class TeamFavoriteResolver implements FavoriteEntityResolver {
 
     private final TeamRepository teamRepository;
     private final AccessControlService accessControlService;
+    private final MediaUrlResolver mediaUrlResolver;
 
     @Override
     public FavoriteEntityType entityType() {
@@ -60,7 +62,8 @@ public class TeamFavoriteResolver implements FavoriteEntityResolver {
                         entityId,
                         FavoriteEntityType.TEAM,
                         team.getName(),
-                        team.getIconUrl(),
+                        // DB には生の R2 キーが入る。表示用署名付き URL へ解決して返す（生キーは 404）。
+                        mediaUrlResolver.resolve(team.getIconUrl()),
                         "/teams/" + team.getId(),
                         canEdit,
                         FavoriteEntityStatus.AVAILABLE

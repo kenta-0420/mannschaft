@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ProjectResponse, CreateProjectRequest } from '~/types/project'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
 const router = useRouter()

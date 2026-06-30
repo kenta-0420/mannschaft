@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { MemberProfile, MemberProfileField, CreateMemberProfileRequest } from '~/types/member-profile'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
 const teamSlug = computed(() => String(route.params.slug))

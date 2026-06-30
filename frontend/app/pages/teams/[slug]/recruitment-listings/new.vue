@@ -6,6 +6,8 @@ import type {
 } from '~/types/recruitment'
 import type { FriendTargetInput, RegionInput } from '~/types/market'
 
+definePageMeta({ layout: 'team' })
+
 const route = useRoute()
 const router = useRouter()
 const { t, te } = useI18n()

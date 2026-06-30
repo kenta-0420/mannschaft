@@ -3,7 +3,7 @@
  * F08.9: チーム支払い管理ページ。
  * チーム ADMIN のみアクセス可（BE: checkAdminOrAbove）。
  */
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
