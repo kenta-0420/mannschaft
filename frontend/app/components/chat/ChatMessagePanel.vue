@@ -404,6 +404,12 @@ onUnmounted(() => {
   text-align: center;
 }
 
+:global(.dark) .reconnect-warning {
+  background-color: #451a03;
+  border-bottom-color: #92400e;
+  color: #fef3c7;
+}
+
 .slide-right-enter-active,
 .slide-right-leave-active {
   transition: transform 0.25s ease, opacity 0.25s ease;
