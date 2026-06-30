@@ -1,7 +1,7 @@
 package com.mannschaft.app.circulation.dto;
 
+import lombok.Builder;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
  * 回覧文書レスポンスDTO。
  */
 @Getter
-@RequiredArgsConstructor
+@Builder(toBuilder = true)
 public class DocumentResponse {
 
     private final Long id;
@@ -34,4 +34,11 @@ public class DocumentResponse {
     private final Integer commentCount;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
+
+    /**
+     * Phase 11: 作成者の表示名。
+     * {@code CirculationService} が {@code UserRepository#findMemberSummaryById} で解決して充填する。
+     * 解決できない場合は {@code null}。
+     */
+    private final String createdByName;
 }

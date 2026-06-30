@@ -211,13 +211,13 @@ class DisclosureCirculationServiceTest {
     }
 
     private DocumentResponse documentResponse(Long id, CirculationStatus status) {
-        return new DocumentResponse(
-                id, "ORGANIZATION", 100L, 200L,
-                "重要事項説明書 承認回覧（exportId=7）", "本文",
-                "SEQUENTIAL", 0,
-                status.name(), "NORMAL",
-                null, false, (short) 24, "STANDARD",
-                3, 0, null, 0, 0, null, null);
+        return DocumentResponse.builder()
+                .id(id).scopeType("ORGANIZATION").scopeId(100L).createdBy(200L)
+                .title("重要事項説明書 承認回覧（exportId=7）").body("本文")
+                .circulationMode("SEQUENTIAL").sequentialCount(0)
+                .status(status.name()).priority("NORMAL").stampDisplayStyle("STANDARD")
+                .totalRecipientCount(3).stampedCount(0).attachmentCount(0).commentCount(0)
+                .build();
     }
 
     private static void setEntityIdViaReflection(DisclosureExportEntity entity, Long id)

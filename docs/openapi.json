@@ -163998,6 +163998,9 @@
             "type": "integer",
             "format": "int64"
           },
+          "createdByName": {
+            "type": "string"
+          },
           "dueDate": {
             "type": "string",
             "format": "date"

@@ -81,10 +81,12 @@ class CirculationServiceTest {
     }
 
     private DocumentResponse createDocumentResponse() {
-        return new DocumentResponse(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID, USER_ID,
-                "回覧テスト", "回覧本文", "SIMULTANEOUS", 0, "DRAFT", "NORMAL",
-                null, false, (short) 24, "STANDARD", 0, 0, null, 0, 0,
-                null, null);
+        return DocumentResponse.builder()
+                .id(DOCUMENT_ID).scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).createdBy(USER_ID)
+                .title("回覧テスト").body("回覧本文").circulationMode("SIMULTANEOUS").sequentialCount(0)
+                .status("DRAFT").priority("NORMAL").stampDisplayStyle("STANDARD")
+                .totalRecipientCount(0).stampedCount(0).attachmentCount(0).commentCount(0)
+                .build();
     }
 
     @Nested
