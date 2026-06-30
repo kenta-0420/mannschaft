@@ -42,6 +42,47 @@
         "submit": "Kommentar posten",
         "failed": "Kommentar konnte nicht gepostet werden"
       }
+    },
+    "create": {
+      "title": "Umlauf erstellen",
+      "cancel": "Abbrechen",
+      "submit": "Erstellen und starten",
+      "success": "Umlauf erstellt und gestartet",
+      "failed": "Umlauf konnte nicht erstellt werden",
+      "no_members": "Keine Mitglieder als Empfänger verfügbar",
+      "recipients_selected": "{count} ausgewählt",
+      "order_title": "Umlaufreihenfolge (von oben nach unten)",
+      "move_up": "Nach oben",
+      "move_down": "Nach unten",
+      "field": {
+        "title": "Titel",
+        "title_placeholder": "Titel des Umlaufs eingeben",
+        "body": "Inhalt",
+        "body_placeholder": "Umzulaufenden Inhalt eingeben",
+        "mode": "Umlaufart",
+        "recipients": "Empfänger",
+        "priority": "Priorität",
+        "due_date": "Fälligkeitsdatum (optional)"
+      },
+      "mode": {
+        "SIMULTANEOUS": "Gleichzeitig",
+        "SEQUENTIAL": "Nacheinander"
+      },
+      "mode_hint": {
+        "SIMULTANEOUS": "An alle Empfänger gleichzeitig in Umlauf bringen",
+        "SEQUENTIAL": "Von oben nach unten einzeln in Umlauf bringen"
+      },
+      "priority": {
+        "NORMAL": "Normal",
+        "URGENT": "Dringend"
+      },
+      "error": {
+        "title_required": "Bitte einen Titel eingeben",
+        "title_too_long": "Der Titel darf höchstens 200 Zeichen lang sein",
+        "body_required": "Bitte den Inhalt eingeben",
+        "recipients_required": "Bitte mindestens einen Empfänger auswählen",
+        "members_load_failed": "Mitgliederliste konnte nicht geladen werden"
+      }
     }
   }
 }
