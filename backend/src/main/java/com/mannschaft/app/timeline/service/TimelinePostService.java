@@ -3,6 +3,7 @@ package com.mannschaft.app.timeline.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.quota.StorageFeatureType;
 import com.mannschaft.app.common.storage.quota.StorageQuotaExceededException;
@@ -41,7 +42,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -83,6 +87,24 @@ public class TimelinePostService {
      * （プリミティブ {@code List<Long>} のみを受け取り Entity を漏らさない）。
      */
     private final com.mannschaft.app.membership.service.MembershipService membershipService;
+    /**
+     * 個人集約タイムラインの投稿元（team/org 名）・著者（表示名/アバター）・代理主体（team/org 名/ロゴ）の
+     * バッチ名前解決。N+1 を避けるため種別ごとに 1 回だけ呼ぶ（{@link #enrichMyFeed}）。
+     * ドメイン境界原則に従い team/organization/user の Entity を直参照せず、プリミティブ Map のみを受け取る。
+     */
+    private final NameResolverService nameResolverService;
+    /**
+     * 投稿元スコープの slug 一括解決用（TEAM）。ドメイン境界原則に従い Repository を直注入せず
+     * Service 経由で slug（プリミティブ）のみを取得する（{@code TimelineScopeIdResolver} と同方針）。
+     */
+    private final com.mannschaft.app.team.service.TeamService teamService;
+    /** 投稿元スコープの slug 一括解決用（ORGANIZATION）。 */
+    private final com.mannschaft.app.organization.service.OrganizationService organizationService;
+
+    /** 名前解決フォールバック（退会・削除・匿名化で Map に存在しない場合）。 */
+    private static final String UNKNOWN_USER_NAME = "不明なユーザー";
+    private static final String UNKNOWN_TEAM_NAME = "不明なチーム";
+    private static final String UNKNOWN_ORG_NAME = "不明な組織";
 
     /**
      * 投稿を作成する（解決済みスコープ ID 版）。添付ファイル・投票も同時に作成する。
@@ -509,7 +531,137 @@ public class TimelinePostService {
 
         List<TimelinePostEntity> posts = postRepository.findMyFeed(
                 safeTeamIds, safeOrgIds, cursor, PageRequest.of(0, feedSize));
-        return timelineMapper.toPostResponseList(posts);
+        return enrichMyFeed(timelineMapper.toPostResponseList(posts));
+    }
+
+    /**
+     * 個人集約タイムラインの投稿群に「投稿元（team/org 名・slug）」「著者（表示名・アバター）」
+     * 「代理投稿主体（team/org 名・ロゴ）」をバッチ enrich して付与する。
+     *
+     * <p><b>N+1 回避</b>: 全投稿から ID 集合を収集し、名前解決/slug 解決は種別ごとに 1 回だけ呼ぶ
+     * （{@link FriendFeedService} の enrich パターンを踏襲）。team/org 名・アイコンは「投稿元スコープ」と
+     * 「代理主体」の ID を和集合にして 1 回ずつ解決する。</p>
+     *
+     * <p><b>null 安全</b>: 退会・匿名化ユーザー／論理削除された team/org は各 Map に含まれないため、
+     * 表示名は既定文言（{@value #UNKNOWN_USER_NAME} 等）へフォールバックする（例外を投げない）。
+     * postedAsType=USER/SOCIAL_PROFILE の場合は {@code postedAs} を付与せず {@code null} のままとする。</p>
+     *
+     * <p>ドメイン境界: timeline → team/organization/user の参照は Service（NameResolver 等）経由で
+     * プリミティブのみを受け取り、Entity を跨いで持ち込まない（新規クロスドメイン FK は作らない）。</p>
+     *
+     * @param posts マッパー変換済みの投稿レスポンス（生 ID のみ）
+     * @return enrich 済みの投稿レスポンス（順序保持）
+     */
+    private List<PostResponse> enrichMyFeed(List<PostResponse> posts) {
+        if (posts == null || posts.isEmpty()) {
+            return posts;
+        }
+
+        // 1. ID 集合の収集（投稿元スコープ / 著者 / 代理主体を種別ごとに分ける）
+        Set<Long> scopeTeamIds = new HashSet<>();
+        Set<Long> scopeOrgIds = new HashSet<>();
+        Set<Long> authorUserIds = new HashSet<>();
+        Set<Long> postedAsTeamIds = new HashSet<>();
+        Set<Long> postedAsOrgIds = new HashSet<>();
+        for (PostResponse p : posts) {
+            if (p.getScope() != null && p.getScope().scopeId() != null) {
+                if (PostScopeType.TEAM.name().equals(p.getScope().scopeType())) {
+                    scopeTeamIds.add(p.getScope().scopeId());
+                } else if (PostScopeType.ORGANIZATION.name().equals(p.getScope().scopeType())) {
+                    scopeOrgIds.add(p.getScope().scopeId());
+                }
+            }
+            if (p.getAuthor() != null) {
+                if (p.getAuthor().userId() != null) {
+                    authorUserIds.add(p.getAuthor().userId());
+                }
+                Long paId = p.getAuthor().postedAsId();
+                if (paId != null) {
+                    if (PostedAsType.TEAM.name().equals(p.getAuthor().postedAsType())) {
+                        postedAsTeamIds.add(paId);
+                    } else if (PostedAsType.ORGANIZATION.name().equals(p.getAuthor().postedAsType())) {
+                        postedAsOrgIds.add(paId);
+                    }
+                }
+            }
+        }
+
+        // 2. バッチ解決（種別ごとに 1 回のみ = N+1 回避）
+        // 名前・アイコンは投稿元スコープと代理主体の ID を和集合にして重複解決を避ける。
+        Set<Long> allTeamIds = new HashSet<>(scopeTeamIds);
+        allTeamIds.addAll(postedAsTeamIds);
+        Set<Long> allOrgIds = new HashSet<>(scopeOrgIds);
+        allOrgIds.addAll(postedAsOrgIds);
+
+        Map<Long, String> teamNames = nameResolverService.resolveTeamNames(allTeamIds);
+        Map<Long, String> orgNames = nameResolverService.resolveOrganizationNames(allOrgIds);
+        Map<Long, String> teamSlugs = teamService.getSlugsByIds(scopeTeamIds);
+        Map<Long, String> orgSlugs = organizationService.getSlugsByIds(scopeOrgIds);
+        Map<Long, String> teamIcons = nameResolverService.resolveTeamIconUrls(postedAsTeamIds);
+        Map<Long, String> orgIcons = nameResolverService.resolveOrganizationIconUrls(postedAsOrgIds);
+        Map<Long, String> authorNames = nameResolverService.resolveUserDisplayNames(authorUserIds);
+        Map<Long, String> authorAvatars = nameResolverService.resolveUserAvatarUrls(authorUserIds);
+
+        // 3. 各投稿へ enrich（toBuilder で不変 DTO を再構築）
+        return posts.stream()
+                .map(p -> p.toBuilder()
+                        .scope(enrichScope(p.getScope(), teamNames, orgNames, teamSlugs, orgSlugs))
+                        .user(enrichUser(p.getAuthor(), authorNames, authorAvatars))
+                        .postedAs(enrichPostedAs(p.getAuthor(), teamNames, orgNames, teamIcons, orgIcons))
+                        .build())
+                .toList();
+    }
+
+    /** 投稿元スコープに team/org 名・slug を付与する（TEAM/ORGANIZATION のみ。それ以外は素通し）。 */
+    private PostResponse.PostScopeDto enrichScope(PostResponse.PostScopeDto scope,
+                                                  Map<Long, String> teamNames, Map<Long, String> orgNames,
+                                                  Map<Long, String> teamSlugs, Map<Long, String> orgSlugs) {
+        if (scope == null || scope.scopeId() == null) {
+            return scope;
+        }
+        if (PostScopeType.TEAM.name().equals(scope.scopeType())) {
+            return new PostResponse.PostScopeDto(scope.scopeType(), scope.scopeId(),
+                    teamNames.getOrDefault(scope.scopeId(), UNKNOWN_TEAM_NAME),
+                    teamSlugs.get(scope.scopeId()));
+        }
+        if (PostScopeType.ORGANIZATION.name().equals(scope.scopeType())) {
+            return new PostResponse.PostScopeDto(scope.scopeType(), scope.scopeId(),
+                    orgNames.getOrDefault(scope.scopeId(), UNKNOWN_ORG_NAME),
+                    orgSlugs.get(scope.scopeId()));
+        }
+        return scope;
+    }
+
+    /** 著者ユーザー（表示名・アバター）を付与する。userId が無ければ null。 */
+    private PostResponse.PostUserDto enrichUser(PostResponse.PostAuthorDto author,
+                                                Map<Long, String> authorNames, Map<Long, String> authorAvatars) {
+        if (author == null || author.userId() == null) {
+            return null;
+        }
+        Long uid = author.userId();
+        return new PostResponse.PostUserDto(
+                uid,
+                authorNames.getOrDefault(uid, UNKNOWN_USER_NAME),
+                authorAvatars.get(uid));
+    }
+
+    /** 代理投稿主体（team/org 名・ロゴ）を付与する。postedAsType=USER/SOCIAL_PROFILE は null。 */
+    private PostResponse.PostPostedAsDto enrichPostedAs(PostResponse.PostAuthorDto author,
+                                                        Map<Long, String> teamNames, Map<Long, String> orgNames,
+                                                        Map<Long, String> teamIcons, Map<Long, String> orgIcons) {
+        if (author == null || author.postedAsId() == null) {
+            return null;
+        }
+        Long paId = author.postedAsId();
+        if (PostedAsType.TEAM.name().equals(author.postedAsType())) {
+            String name = teamNames.getOrDefault(paId, UNKNOWN_TEAM_NAME);
+            return new PostResponse.PostPostedAsDto("TEAM", paId, name, name, teamIcons.get(paId), null, null);
+        }
+        if (PostedAsType.ORGANIZATION.name().equals(author.postedAsType())) {
+            String name = orgNames.getOrDefault(paId, UNKNOWN_ORG_NAME);
+            return new PostResponse.PostPostedAsDto("ORGANIZATION", paId, name, name, orgIcons.get(paId), null, null);
+        }
+        return null;
     }
 
     /**

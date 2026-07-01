@@ -456,7 +456,8 @@
     "imageUploadError": "Error al subir la imagen",
     "postSuccess": "Publicado correctamente",
     "postError": "Error al publicar",
-    "announcementRegisterError": "Error al registrar el anuncio. Por favor, regístralo manualmente más tarde."
+    "announcementRegisterError": "Error al registrar el anuncio. Por favor, regístralo manualmente más tarde.",
+    "postSource": "Publicado en"
   },
   "gallery": {
     "title": "Galería",

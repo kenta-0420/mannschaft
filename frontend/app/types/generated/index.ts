@@ -51153,19 +51153,33 @@ export interface components {
             scheduledAt?: string;
             status?: string;
         };
+        PostPostedAsDto: {
+            avatarUrl?: string;
+            displayName?: string;
+            handle?: string;
+            /** Format: int64 */
+            id?: number;
+            logoUrl?: string;
+            name?: string;
+            type?: string;
+        };
         PostResponse: {
             audit?: components["schemas"]["PostAuditDto"];
             author?: components["schemas"]["PostAuthorDto"];
             content?: components["schemas"]["PostContentDto"];
             /** Format: int64 */
             id?: number;
+            postedAs?: components["schemas"]["PostPostedAsDto"];
             scope?: components["schemas"]["PostScopeDto"];
             stats?: components["schemas"]["PostStatsDto"];
+            user?: components["schemas"]["PostUserDto"];
         };
         PostScopeDto: {
+            name?: string;
             /** Format: int64 */
             scopeId?: number;
             scopeType?: string;
+            slug?: string;
         };
         PostStatsDto: {
             /** Format: int32 */
@@ -51178,6 +51192,12 @@ export interface components {
             replyCount?: number;
             /** Format: int32 */
             repostCount?: number;
+        };
+        PostUserDto: {
+            avatarUrl?: string;
+            displayName?: string;
+            /** Format: int64 */
+            id?: number;
         };
         ApiResponseReactionResponse: {
             data?: components["schemas"]["ReactionResponse"];

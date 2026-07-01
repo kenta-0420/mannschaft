@@ -456,7 +456,8 @@
     "imageUploadError": "图片上传失败",
     "postSuccess": "发布成功",
     "postError": "发布失败",
-    "announcementRegisterError": "注册公告失败，请稍后手动注册。"
+    "announcementRegisterError": "注册公告失败，请稍后手动注册。",
+    "postSource": "发布于"
   },
   "gallery": {
     "title": "相册",

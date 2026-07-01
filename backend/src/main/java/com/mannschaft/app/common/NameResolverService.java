@@ -203,6 +203,52 @@ public class NameResolverService {
     }
 
     /**
+     * チームIDの集合からアイコン表示URLマップを返す（N+1 回避・バッチ）。
+     *
+     * <p>DB には生の R2 キーが格納されているため {@link MediaUrlResolver} で署名付き表示 URL に
+     * 解決する（{@link #resolveUserAvatarUrls} と同方針）。iconUrl が null／解決不能のIDは含めない
+     * （{@code Collectors.toMap} は null 値で例外を投げるため HashMap + null 除外で構築する）。</p>
+     *
+     * @param teamIds チームIDの集合
+     * @return Map(teamId → 署名付きアイコン表示URL)。未設定／解決不能のIDは含まれない
+     */
+    public Map<Long, String> resolveTeamIconUrls(Collection<Long> teamIds) {
+        if (teamIds == null || teamIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Long, String> result = new java.util.HashMap<>();
+        for (TeamEntity t : teamRepository.findAllById(teamIds)) {
+            String resolved = mediaUrlResolver.resolve(t.getIconUrl());
+            if (resolved != null) {
+                result.put(t.getId(), resolved);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 組織IDの集合からアイコン表示URLマップを返す（N+1 回避・バッチ）。
+     *
+     * <p>解決方針は {@link #resolveTeamIconUrls} と同じ（生 R2 キー → 署名付き URL）。</p>
+     *
+     * @param orgIds 組織IDの集合
+     * @return Map(orgId → 署名付きアイコン表示URL)。未設定／解決不能のIDは含まれない
+     */
+    public Map<Long, String> resolveOrganizationIconUrls(Collection<Long> orgIds) {
+        if (orgIds == null || orgIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Long, String> result = new java.util.HashMap<>();
+        for (OrganizationEntity o : organizationRepository.findAllById(orgIds)) {
+            String resolved = mediaUrlResolver.resolve(o.getIconUrl());
+            if (resolved != null) {
+                result.put(o.getId(), resolved);
+            }
+        }
+        return result;
+    }
+
+    /**
      * スコープ種別とIDからアイコン画像URLを返す。
      * scopeType は文字列で受け取り、各パッケージ固有の ScopeType enum に依存しない。
      * PERSONAL スコープまたは該当なしの場合は null を返す。
