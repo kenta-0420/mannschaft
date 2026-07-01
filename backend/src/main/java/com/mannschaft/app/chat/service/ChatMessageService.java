@@ -1,7 +1,5 @@
 package com.mannschaft.app.chat.service;
 
-import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.chat.ChannelType;
 import com.mannschaft.app.chat.ChatErrorCode;
 import com.mannschaft.app.chat.ChatMapper;
@@ -24,6 +22,7 @@ import com.mannschaft.app.chat.repository.ChatMessageReactionRepository;
 import com.mannschaft.app.chat.repository.ChatMessageRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.tournament.ContactSpaceKind;
 import com.mannschaft.app.tournament.ContactSpaceScopeType;
@@ -42,11 +41,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -78,8 +78,11 @@ public class ChatMessageService {
     private final PostingIdentityService postingIdentityService;
     /** F10.7: 問い合わせ通知イベント発行用。 */
     private final ApplicationEventPublisher eventPublisher;
-    /** F10.7: 送信者 displayName 取得 / ADMIN・DEPUTY_ADMIN ロール確認用。 */
-    private final UserRepository userRepository;
+    /**
+     * 送信者の表示名・アバター解決（クロスドメイン・原則1）。auth ドメインの UserEntity/UserRepository を
+     * 直接参照せず、common の {@link NameResolverService}（プリミティブ Map 返却・署名付きアバターURL解決）に委譲する。
+     */
+    private final NameResolverService nameResolver;
     /** F10.7: 送信者の ADMIN / DEPUTY_ADMIN ロール確認用。 */
     private final UserRoleRepository userRoleRepository;
     /** F08.7.1 連絡機能: 大会/ディビジョンチャットの閲覧・投稿認可を委譲する（クロスドメイン・原則1）。 */
@@ -224,10 +227,10 @@ public class ChatMessageService {
         // 未読カウントのインクリメントはNotificationService側で管理
 
         log.info("メッセージ送信完了: messageId={}, channelId={}, senderId={}", saved.getId(), channelId, senderId);
-        // 送信者ユーザーを 1 回だけ取得し、レスポンスの sender 付与と問い合わせ通知の displayName に共用する。
-        UserEntity senderUser = userRepository.findById(senderId).orElse(null);
+        // 送信者情報を 1 回だけ解決し、レスポンスの sender 付与と問い合わせ通知の displayName に共用する。
+        MessageResponse.SenderDto senderDto = senderDtoOf(senderId, resolveSenders(List.of(senderId)));
         MessageResponse response = chatMapper.toMessageResponseWithDetails(
-                saved, attachmentResponses, List.of(), buildSenderDto(senderId, senderUser));
+                saved, attachmentResponses, List.of(), senderDto);
         // F04.2: WebSocket でチャンネル参加者全員に配信（@Transactional 内だが配信タイミングは送信後で許容）
         chatMessagePublisher.publishCreated(channelId, response);
 
@@ -236,9 +239,7 @@ public class ChatMessageService {
         if (Boolean.TRUE.equals(channel.getIsInquiryChannel()) && channel.getTeamId() != null) {
             boolean isSenderAdmin = userRoleRepository.countTeamAdminByUserIdAndTeamId(senderId, channel.getTeamId()) > 0;
             if (!isSenderAdmin) {
-                String senderDisplayName = senderUser != null && senderUser.getDisplayName() != null
-                        ? senderUser.getDisplayName()
-                        : DEFAULT_SENDER_DISPLAY_NAME;
+                String senderDisplayName = senderDto != null ? senderDto.displayName() : DEFAULT_SENDER_DISPLAY_NAME;
                 eventPublisher.publishEvent(new InquiryReceivedEvent(
                         channel.getTeamId(),
                         channelId,
@@ -597,68 +598,74 @@ public class ChatMessageService {
     private MessageResponse enrichMessage(ChatMessageEntity message) {
         List<ChatMessageAttachmentEntity> attachments = attachmentRepository.findByMessageId(message.getId());
         List<ChatMessageReactionEntity> reactions = reactionRepository.findByMessageId(message.getId());
-        // 単発取得（N+1 にならない: 1 メッセージにつき 1 回のユーザー取得）
-        UserEntity sender = message.getSenderId() != null
-                ? userRepository.findById(message.getSenderId()).orElse(null)
-                : null;
+        Map<Long, MessageResponse.SenderDto> resolved = resolveSenders(
+                message.getSenderId() != null ? List.of(message.getSenderId()) : List.of());
         return chatMapper.toMessageResponseWithDetails(
                 message,
                 chatMapper.toAttachmentResponseList(attachments),
                 chatMapper.toReactionResponseList(reactions),
-                buildSenderDto(message.getSenderId(), sender)
+                senderDtoOf(message.getSenderId(), resolved)
         );
     }
 
     private List<MessageResponse> enrichMessages(List<ChatMessageEntity> messages) {
-        // N+1 回避: 全メッセージの senderId を集め、ユーザーを一括取得してから Map で引く
-        Map<Long, UserEntity> userMap = loadSenders(messages);
+        // N+1 回避: 全メッセージの senderId を集め、表示名・アバターを各 1 クエリで一括解決してから Map で引く
+        Map<Long, MessageResponse.SenderDto> resolved = resolveSenders(
+                messages.stream().map(ChatMessageEntity::getSenderId).collect(Collectors.toList()));
         List<MessageResponse> responses = new ArrayList<>();
         for (ChatMessageEntity message : messages) {
             List<ChatMessageAttachmentEntity> attachments = attachmentRepository.findByMessageId(message.getId());
             List<ChatMessageReactionEntity> reactions = reactionRepository.findByMessageId(message.getId());
-            UserEntity sender = message.getSenderId() != null ? userMap.get(message.getSenderId()) : null;
             responses.add(chatMapper.toMessageResponseWithDetails(
                     message,
                     chatMapper.toAttachmentResponseList(attachments),
                     chatMapper.toReactionResponseList(reactions),
-                    buildSenderDto(message.getSenderId(), sender)
+                    senderDtoOf(message.getSenderId(), resolved)
             ));
         }
         return responses;
     }
 
     /**
-     * メッセージ群の送信者を一括取得して Map にする（N+1 回避の肝）。
-     * 重複・null の senderId を除いた一意 ID 群で {@code findAllById} を 1 回だけ呼ぶ。
+     * 送信者 ID 群から表示情報を一括解決する（N+1 回避の肝）。
+     * <p>auth ドメインの UserEntity を直接参照せず、common の {@link NameResolverService} に委譲する。
+     * 重複・null を除いた一意 ID 群で表示名・アバターをそれぞれ 1 クエリ取得し、
+     * {@link MessageResponse.SenderDto} の Map を構築する。displayName が解決できない ID は
+     * "ユーザー" にフォールバックする。avatarUrl は署名付き表示 URL（未設定は null）。</p>
      */
-    private Map<Long, UserEntity> loadSenders(List<ChatMessageEntity> messages) {
-        Set<Long> senderIds = new LinkedHashSet<>();
-        for (ChatMessageEntity message : messages) {
-            if (message.getSenderId() != null) {
-                senderIds.add(message.getSenderId());
+    private Map<Long, MessageResponse.SenderDto> resolveSenders(Collection<Long> senderIds) {
+        Set<Long> ids = new LinkedHashSet<>();
+        for (Long id : senderIds) {
+            if (id != null) {
+                ids.add(id);
             }
         }
-        if (senderIds.isEmpty()) {
+        if (ids.isEmpty()) {
             return Map.of();
         }
-        return userRepository.findAllById(senderIds).stream()
-                .collect(Collectors.toMap(UserEntity::getId, Function.identity(), (a, b) -> a));
+        Map<Long, String> displayNames = nameResolver.resolveUserDisplayNames(ids);
+        Map<Long, String> avatarUrls = nameResolver.resolveUserAvatarUrls(ids);
+        Map<Long, MessageResponse.SenderDto> result = new HashMap<>();
+        for (Long id : ids) {
+            String displayName = displayNames.get(id);
+            if (displayName == null) {
+                displayName = DEFAULT_SENDER_DISPLAY_NAME;
+            }
+            result.put(id, new MessageResponse.SenderDto(id, displayName, avatarUrls.get(id)));
+        }
+        return result;
     }
 
     /**
-     * 送信者ユーザーから {@link MessageResponse.SenderDto} を構築する。
-     * displayName は {@link UserEntity#getDisplayName()}（null / ユーザー不在時は "ユーザー"）、
-     * avatarUrl はユーザーのアバター（不在時は null）。
+     * 解決済み Map から senderId に対応する {@link MessageResponse.SenderDto} を引く。
+     * senderId が null なら null、Map に無ければ "ユーザー" フォールバックの DTO を返す。
      */
-    private MessageResponse.SenderDto buildSenderDto(Long senderId, UserEntity user) {
+    private MessageResponse.SenderDto senderDtoOf(Long senderId, Map<Long, MessageResponse.SenderDto> resolved) {
         if (senderId == null) {
             return null;
         }
-        String displayName = (user != null && user.getDisplayName() != null)
-                ? user.getDisplayName()
-                : DEFAULT_SENDER_DISPLAY_NAME;
-        String avatarUrl = user != null ? user.getAvatarUrl() : null;
-        return new MessageResponse.SenderDto(senderId, displayName, avatarUrl);
+        MessageResponse.SenderDto dto = resolved.get(senderId);
+        return dto != null ? dto : new MessageResponse.SenderDto(senderId, DEFAULT_SENDER_DISPLAY_NAME, null);
     }
 
     private void validateMessageOwner(ChatMessageEntity message, Long userId) {

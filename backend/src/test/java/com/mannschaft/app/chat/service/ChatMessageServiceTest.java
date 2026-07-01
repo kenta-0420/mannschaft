@@ -84,9 +84,9 @@ class ChatMessageServiceTest {
     @Mock
     private com.mannschaft.app.tournament.service.TournamentContactAccessService tournamentContactAccessService;
 
-    /** 送信者の表示名・アバター解決用（sender 付与・N+1 回避の一括取得）。 */
+    /** 送信者の表示名・アバター解決用（common 経由・sender 付与・N+1 回避の一括解決）。 */
     @Mock
-    private com.mannschaft.app.auth.repository.UserRepository userRepository;
+    private com.mannschaft.app.common.NameResolverService nameResolver;
 
     @InjectMocks
     private ChatMessageService chatMessageService;
@@ -1000,14 +1000,6 @@ class ChatMessageServiceTest {
     @DisplayName("送信者情報(sender)の付与")
     class SenderEnrichment {
 
-        private com.mannschaft.app.auth.entity.UserEntity user(Long id, String displayName, String avatarUrl) {
-            return com.mannschaft.app.auth.entity.UserEntity.builder()
-                    .id(id)
-                    .displayName(displayName)
-                    .avatarUrl(avatarUrl)
-                    .build();
-        }
-
         @Test
         @DisplayName("正常系: enrich 後の sender に送信者の表示名・アバターが入る")
         void enrich後のsenderに表示名とアバターが入る() {
@@ -1020,8 +1012,10 @@ class ChatMessageServiceTest {
             given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(message);
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
             given(reactionRepository.findByMessageId(any())).willReturn(List.of());
-            given(userRepository.findById(SENDER_ID))
-                    .willReturn(Optional.of(user(SENDER_ID, "山田太郎", "https://cdn.example/a.png")));
+            given(nameResolver.resolveUserDisplayNames(any()))
+                    .willReturn(java.util.Map.of(SENDER_ID, "山田太郎"));
+            given(nameResolver.resolveUserAvatarUrls(any()))
+                    .willReturn(java.util.Map.of(SENDER_ID, "https://cdn.example/a.png"));
             given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
             given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
@@ -1041,9 +1035,9 @@ class ChatMessageServiceTest {
         }
 
         @Test
-        @DisplayName("正常系: 送信者ユーザーが存在しない場合は displayName=\"ユーザー\"・avatar=null")
+        @DisplayName("正常系: 送信者の表示名が解決できない場合は displayName=\"ユーザー\"・avatar=null")
         void 送信者不在時はユーザーにフォールバック() {
-            // given
+            // given: NameResolver が空 Map を返す（該当ユーザー解決不能）
             ChatMessageEntity message = createMessage();
             EditMessageRequest req = new EditMessageRequest("更新メッセージ");
             MessageResponse expected = createMessageResponse();
@@ -1052,7 +1046,8 @@ class ChatMessageServiceTest {
             given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(message);
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
             given(reactionRepository.findByMessageId(any())).willReturn(List.of());
-            given(userRepository.findById(SENDER_ID)).willReturn(Optional.empty());
+            given(nameResolver.resolveUserDisplayNames(any())).willReturn(java.util.Map.of());
+            given(nameResolver.resolveUserAvatarUrls(any())).willReturn(java.util.Map.of());
             given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
             given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
@@ -1072,8 +1067,8 @@ class ChatMessageServiceTest {
         }
 
         @Test
-        @DisplayName("N+1回避: メッセージ一覧の送信者は findAllById で一括取得し findById は呼ばない")
-        void メッセージ一覧はN1にならず一括取得する() {
+        @DisplayName("N+1回避: メッセージ一覧の送信者は表示名・アバターを各1回の一括解決で取得する")
+        void メッセージ一覧はN1にならず一括解決する() {
             // given: 2 名の送信者からなる 3 メッセージ
             Long cursor = 100L;
             ChatMessageEntity m1 = ChatMessageEntity.builder()
@@ -1088,9 +1083,9 @@ class ChatMessageServiceTest {
                     .willReturn(List.of(m1, m2, m3));
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
             given(reactionRepository.findByMessageId(any())).willReturn(List.of());
-            given(userRepository.findAllById(any())).willReturn(List.of(
-                    user(SENDER_ID, "山田太郎", null),
-                    user(OTHER_USER_ID, "佐藤花子", null)));
+            given(nameResolver.resolveUserDisplayNames(any()))
+                    .willReturn(java.util.Map.of(SENDER_ID, "山田太郎", OTHER_USER_ID, "佐藤花子"));
+            given(nameResolver.resolveUserAvatarUrls(any())).willReturn(java.util.Map.of());
             given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
             given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
@@ -1098,9 +1093,11 @@ class ChatMessageServiceTest {
             // when
             chatMessageService.listMessages(CHANNEL_ID, cursor, 10);
 
-            // then: 一括取得は 1 回、個別取得（findById）はゼロ
-            verify(userRepository).findAllById(any());
-            verify(userRepository, never()).findById(any());
+            // then: 3 メッセージでも表示名・アバターの一括解決はそれぞれ 1 回のみ（メッセージ数に依存しない）
+            verify(nameResolver, org.mockito.Mockito.times(1)).resolveUserDisplayNames(any());
+            verify(nameResolver, org.mockito.Mockito.times(1)).resolveUserAvatarUrls(any());
+            // 単発解決メソッドは呼ばれない
+            verify(nameResolver, never()).resolveUserDisplayName(any());
         }
     }
 }
