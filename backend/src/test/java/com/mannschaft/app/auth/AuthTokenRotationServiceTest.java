@@ -370,7 +370,6 @@ class AuthTokenRotationServiceTest {
             // Given
             String rawRefreshToken = "nonexistent-token";
             given(authTokenService.hashToken(rawRefreshToken)).willReturn("hashed-nonexistent");
-            given(refreshTokenRepository.findByTokenHash("hashed-nonexistent")).willReturn(Optional.empty());
             given(refreshTokenRepository.findByTokenHashForUpdate("hashed-nonexistent")).willReturn(Optional.empty());
 
             // When / Then
