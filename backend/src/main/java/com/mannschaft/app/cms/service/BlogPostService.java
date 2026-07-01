@@ -28,6 +28,9 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.payment.constant.ContentGateType;
+import com.mannschaft.app.payment.dto.GateCheckResponse;
+import com.mannschaft.app.payment.service.PaymentGateService;
 import com.mannschaft.app.publicview.service.PostAuthorSnapshotService;
 import com.mannschaft.app.team.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
@@ -73,6 +76,9 @@ public class BlogPostService {
     private final TeamRepository teamRepository;
     private final OrganizationRepository organizationRepository;
     private final AccessControlService accessControlService;
+    // TODO: cms ドメインが payment ドメインを参照（CLAUDE.md 原則5）。クロスドメイン FK は張らず
+    //       PaymentGateService のメソッド呼び（ID 渡し）に限定する。将来はイベント駆動化を検討。
+    private final PaymentGateService paymentGateService;
 
     /**
      * チーム別記事一覧をページング取得する。
@@ -85,7 +91,8 @@ public class BlogPostService {
         }
         Long teamId = resolveTeamId(teamIdStr);
         Page<BlogPostEntity> page = postRepository.findByTeamIdOrderByPinnedDescCreatedAtDesc(teamId, pageable);
-        return page.map(cmsMapper::toBlogPostResponse);
+        // 一覧は body 常時 null（詳細でのみ本文を返す。N+1 回避＋有料本文の一覧漏洩封鎖）
+        return page.map(e -> stripBody(cmsMapper.toBlogPostResponse(e)));
     }
 
     /**
@@ -99,7 +106,8 @@ public class BlogPostService {
         }
         Long organizationId = resolveOrganizationId(organizationIdStr);
         Page<BlogPostEntity> page = postRepository.findByOrganizationIdOrderByPinnedDescCreatedAtDesc(organizationId, pageable);
-        return page.map(cmsMapper::toBlogPostResponse);
+        // 一覧は body 常時 null（詳細でのみ本文を返す。N+1 回避＋有料本文の一覧漏洩封鎖）
+        return page.map(e -> stripBody(cmsMapper.toBlogPostResponse(e)));
     }
 
     /**
@@ -107,7 +115,8 @@ public class BlogPostService {
      */
     public Page<BlogPostResponse> listByUser(Long userId, Pageable pageable) {
         Page<BlogPostEntity> page = postRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
-        return page.map(cmsMapper::toBlogPostResponse);
+        // 一覧は body 常時 null（他者閲覧分の有料本文漏洩封鎖。本人編集は ID 指定詳細経路で全文取得）
+        return page.map(e -> stripBody(cmsMapper.toBlogPostResponse(e)));
     }
 
     /**
@@ -152,7 +161,8 @@ public class BlogPostService {
         // 可視性判定を ContentVisibilityChecker に一元化（getById と完全に同じ認可挙動）。
         Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
         contentVisibilityChecker.assertCanView(ReferenceType.BLOG_POST, entity.getId(), viewerUserId);
-        return cmsMapper.toBlogPostResponse(entity);
+        // 可視性(F00)通過の「後段」でペイウォール本文ゲートを適用する（可視性 deny が優先）。
+        return applyPaywallMask(cmsMapper.toBlogPostResponse(entity), entity, viewerUserId);
     }
 
     /**
@@ -169,7 +179,8 @@ public class BlogPostService {
         Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
         contentVisibilityChecker.assertCanView(ReferenceType.BLOG_POST, id, viewerUserId);
         BlogPostEntity entity = findPostOrThrow(id);
-        return cmsMapper.toBlogPostResponse(entity);
+        // 可視性(F00)通過の「後段」でペイウォール本文ゲートを適用する（可視性 deny が優先）。
+        return applyPaywallMask(cmsMapper.toBlogPostResponse(entity), entity, viewerUserId);
     }
 
     /**
@@ -479,7 +490,10 @@ public class BlogPostService {
         List<BlogPostEntity> filtered = all.stream()
                 .filter(e -> accessibleIds.contains(e.getId()))
                 .collect(Collectors.toList());
-        return cmsMapper.toBlogPostResponseList(filtered);
+        // フィード（RSS/Atom）は本文を出力しないが、有料本文が DTO に載るのを防ぐため一覧同様 body を落とす。
+        return cmsMapper.toBlogPostResponseList(filtered).stream()
+                .map(this::stripBody)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -553,6 +567,96 @@ public class BlogPostService {
         post.updatePublicVisible(publicVisible);
         postRepository.save(post);
         log.info("public_visible 更新: postId={}, publicVisible={}, userId={}", postId, publicVisible, requestUserId);
+    }
+
+    /**
+     * ペイウォール本文ゲートを適用する（F08.9 漏洩根治）。
+     *
+     * <p>判定の単一真実源は {@link PaymentGateService#checkAccess(String, Long, Long)}
+     * （content-gates/check と同一）。FE 専用ペイウォールではバイパス漏洩するため、
+     * 可視性(F00)通過の<b>後段</b>で BE 側でも本文をマスクする。</p>
+     *
+     * <ul>
+     *   <li>著者本人・SystemAdmin はゲート無視で全文（編集/プレビュー）。</li>
+     *   <li>{@code accessible=false} のとき body=null。{@code titleHidden=true} なら title も null。
+     *       {@code excerpt}/{@code coverImageUrl}/{@code title} はプレビュー素材として残す。</li>
+     *   <li>fail-closed: {@code checkAccess} が例外 → ゲート行有りなら body マスク、
+     *       ゲート行無し（=評価不能の真因がゲート不在）なら従来どおり body を返す。</li>
+     * </ul>
+     *
+     * @param dto          マッピング済みレスポンス
+     * @param entity       元エンティティ（authorId / id 参照用）
+     * @param viewerUserId 閲覧者ユーザー ID（未認証は null）
+     * @return ゲート適用後のレスポンス
+     */
+    private BlogPostResponse applyPaywallMask(BlogPostResponse dto, BlogPostEntity entity, Long viewerUserId) {
+        // 著者本人はゲート無視で全文
+        if (viewerUserId != null && viewerUserId.equals(entity.getAuthorId())) {
+            return dto;
+        }
+        // SystemAdmin はゲート無視で全文
+        if (viewerUserId != null && accessControlService.isSystemAdmin(viewerUserId)) {
+            return dto;
+        }
+
+        GateCheckResponse gate;
+        try {
+            gate = paymentGateService.checkAccess(ContentGateType.POST, entity.getId(), viewerUserId);
+        } catch (Exception e) {
+            // fail-closed: 評価不能時、ゲート行が有るなら本文をマスク（漏洩より過剰遮断）。
+            // ゲート行が無い（=非課金記事）なら従来どおり body を返す。
+            log.warn("ペイウォール判定失敗（記事詳細）: postId={} → fail-closed 判定へ", entity.getId(), e);
+            return safelyHasGate(entity.getId()) ? maskContent(dto, false) : dto;
+        }
+
+        if (gate.isAccessible()) {
+            // ゲートなし or 課金済 → 全文
+            return dto;
+        }
+        // 未課金 → body マスク。titleHidden=true なら title も。
+        return maskContent(dto, gate.isTitleHidden());
+    }
+
+    /**
+     * 本文（および任意で title）をマスクした新インスタンスを返す（{@code withReaction} と同じ toBuilder パターン）。
+     */
+    private BlogPostResponse maskContent(BlogPostResponse dto, boolean maskTitle) {
+        BlogPostResponse.BlogPostContentDto c = dto.getContent();
+        if (c == null) {
+            return dto;
+        }
+        BlogPostResponse.BlogPostContentDto masked = new BlogPostResponse.BlogPostContentDto(
+                maskTitle ? null : c.title(),
+                c.slug(),
+                null, // body をマスク（@JsonInclude(NON_NULL) でフィールド消滅）
+                c.excerpt(),
+                c.coverImageUrl());
+        return dto.toBuilder().content(masked).build();
+    }
+
+    /**
+     * 一覧用に body のみを落とした新インスタンスを返す（一覧は本文を一切返さない）。
+     */
+    private BlogPostResponse stripBody(BlogPostResponse dto) {
+        BlogPostResponse.BlogPostContentDto c = dto.getContent();
+        if (c == null || c.body() == null) {
+            return dto;
+        }
+        BlogPostResponse.BlogPostContentDto stripped = new BlogPostResponse.BlogPostContentDto(
+                c.title(), c.slug(), null, c.excerpt(), c.coverImageUrl());
+        return dto.toBuilder().content(stripped).build();
+    }
+
+    /**
+     * ゲート存在確認（fail-closed 判定用）。存在確認自体が失敗した場合は過剰遮断を避け false（非課金扱い）を返す。
+     */
+    private boolean safelyHasGate(Long postId) {
+        try {
+            return paymentGateService.hasGate(ContentGateType.POST, postId);
+        } catch (Exception e) {
+            log.warn("ペイウォールゲート存在確認に失敗: postId={} → ゲート無し扱い", postId, e);
+            return false;
+        }
     }
 
     /**
