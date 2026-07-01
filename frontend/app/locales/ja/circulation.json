@@ -62,16 +62,23 @@
         "mode": "回覧方法",
         "recipients": "あて先",
         "priority": "優先度",
-        "due_date": "締切（任意）"
+        "due_date": "締切（任意）",
+        "sequential_count": "順番で回す人数（先頭 N 人）",
+        "sequential_count_placeholder": "人数を入力"
       },
       "mode": {
         "SIMULTANEOUS": "一斉",
-        "SEQUENTIAL": "順番"
+        "SEQUENTIAL": "順番",
+        "HYBRID": "ハイブリッド"
       },
       "mode_hint": {
         "SIMULTANEOUS": "あて先全員に同時に回覧します",
-        "SEQUENTIAL": "あて先を上から順に1人ずつ回覧します"
+        "SEQUENTIAL": "あて先を上から順に1人ずつ回覧します",
+        "HYBRID": "先頭 N 人は順番に、残りの全員には一斉に回覧します"
       },
+      "hybrid_boundary": "↓ 以降は一斉回覧",
+      "hybrid_seq_count_hint": "1〜{max} の範囲で指定してください",
+      "hybrid_seq_count_needs_two": "あて先を2人以上選択するとN人数を指定できます",
       "priority": {
         "NORMAL": "通常",
         "URGENT": "至急"
@@ -81,7 +88,9 @@
         "title_too_long": "タイトルは200文字以内で入力してください",
         "body_required": "本文を入力してください",
         "recipients_required": "あて先を1人以上選択してください",
-        "members_load_failed": "メンバー一覧の取得に失敗しました"
+        "members_load_failed": "メンバー一覧の取得に失敗しました",
+        "hybrid_needs_two_or_more": "ハイブリッドモードはあて先を2人以上選択してください",
+        "sequential_count_range": "順番で回す人数は1以上かつあて先数未満（最大 {max}）にしてください"
       }
     }
   }

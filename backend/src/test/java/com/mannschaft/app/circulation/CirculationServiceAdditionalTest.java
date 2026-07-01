@@ -205,7 +205,7 @@ class CirculationServiceAdditionalTest {
         void 文書作成_正常() {
             CreateDocumentRequest request = new CreateDocumentRequest(
                     "新文書", "本文", null, null, null, null, null, null,
-                    List.of(new RecipientEntry(50L, null)));
+                    List.of(new RecipientEntry(50L, null)), null);
             CirculationDocumentEntity saved = createDraft();
             given(documentRepository.save(any())).willReturn(saved);
             given(recipientRepository.existsByDocumentIdAndUserId(any(), eq(50L))).willReturn(false);
@@ -218,11 +218,35 @@ class CirculationServiceAdditionalTest {
         }
 
         @Test
+        @DisplayName("AC-1: HYBRIDモードでsequentialCount=NがEntityに保存される")
+        void HYBRID作成_sequentialCount保存() {
+            // あて先3人・N=1（先頭1人順番 + 残り2人一斉）
+            CreateDocumentRequest request = new CreateDocumentRequest(
+                    "HYBRID文書", "本文", "HYBRID", null, null, null, null, null,
+                    List.of(new RecipientEntry(50L, 0), new RecipientEntry(51L, 1),
+                            new RecipientEntry(52L, 1)),
+                    1);
+            given(documentRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(recipientRepository.existsByDocumentIdAndUserId(any(), any())).willReturn(false);
+            given(circulationMapper.toDocumentResponse(any())).willReturn(mockDocResponse());
+
+            org.mockito.ArgumentCaptor<CirculationDocumentEntity> captor =
+                    org.mockito.ArgumentCaptor.forClass(CirculationDocumentEntity.class);
+
+            service.createDocument(SCOPE_TYPE, SCOPE_ID, USER_ID, request);
+
+            verify(documentRepository, org.mockito.Mockito.atLeastOnce()).save(captor.capture());
+            assertThat(captor.getAllValues())
+                    .anyMatch(e -> e.getCirculationMode() == CirculationMode.HYBRID
+                            && e.getSequentialCount() == 1);
+        }
+
+        @Test
         @DisplayName("異常系: 重複受信者でDUPLICATE_RECIPIENT例外")
         void 文書作成_重複受信者_例外() {
             CreateDocumentRequest request = new CreateDocumentRequest(
                     "新文書", "本文", null, null, null, null, null, null,
-                    List.of(new RecipientEntry(50L, null)));
+                    List.of(new RecipientEntry(50L, null)), null);
             CirculationDocumentEntity saved = createDraft();
             given(documentRepository.save(any())).willReturn(saved);
             given(recipientRepository.existsByDocumentIdAndUserId(any(), eq(50L))).willReturn(true);
@@ -489,6 +513,28 @@ class CirculationServiceAdditionalTest {
             service.activateDocument(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID);
 
             verify(documentRepository).save(any());
+        }
+
+        @Test
+        @DisplayName("AC-7: HYBRIDモードで公開してもsequentialCountはcreate時のNのまま上書きされない")
+        void HYBRID_公開_sequentialCount非上書き() {
+            // create 時に N=2 が入っている HYBRID 文書。activate で recipientCount(=5) に
+            // 上書きされてはならない（SEQUENTIAL のみ上書き対象）。
+            CirculationDocumentEntity entity = CirculationDocumentEntity.builder()
+                    .scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).createdBy(USER_ID)
+                    .title("文書").body("本文")
+                    .circulationMode(CirculationMode.HYBRID)
+                    .sequentialCount(2)
+                    .build();
+            given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(recipientRepository.countByDocumentId(DOCUMENT_ID)).willReturn(5L);
+            given(documentRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(circulationMapper.toDocumentResponse(any())).willReturn(mockDocResponse());
+
+            service.activateDocument(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID);
+
+            assertThat(entity.getSequentialCount()).isEqualTo(2);
         }
     }
 }

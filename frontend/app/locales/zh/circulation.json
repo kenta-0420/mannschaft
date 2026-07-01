@@ -62,16 +62,23 @@
         "mode": "传阅方式",
         "recipients": "收件人",
         "priority": "优先级",
-        "due_date": "截止日期（可选）"
+        "due_date": "截止日期（可选）",
+        "sequential_count": "顺序传阅人数（前 N 人）",
+        "sequential_count_placeholder": "请输入人数"
       },
       "mode": {
         "SIMULTANEOUS": "同时",
-        "SEQUENTIAL": "顺序"
+        "SEQUENTIAL": "顺序",
+        "HYBRID": "混合"
       },
       "mode_hint": {
         "SIMULTANEOUS": "同时向所有收件人传阅",
-        "SEQUENTIAL": "从上到下逐一传阅"
+        "SEQUENTIAL": "从上到下逐一传阅",
+        "HYBRID": "前 N 人按顺序传阅，其余人同时传阅"
       },
+      "hybrid_boundary": "↓ 以下同时传阅",
+      "hybrid_seq_count_hint": "请输入 1 至 {max} 之间的数字",
+      "hybrid_seq_count_needs_two": "请选择 2 名或以上收件人以指定 N 人数",
       "priority": {
         "NORMAL": "普通",
         "URGENT": "紧急"
@@ -81,7 +88,9 @@
         "title_too_long": "标题不能超过200个字符",
         "body_required": "请输入正文",
         "recipients_required": "请至少选择一名收件人",
-        "members_load_failed": "获取成员列表失败"
+        "members_load_failed": "获取成员列表失败",
+        "hybrid_needs_two_or_more": "混合模式请至少选择 2 名收件人",
+        "sequential_count_range": "顺序传阅人数须在 1 至收件人数之间（最大 {max}）"
       }
     }
   }

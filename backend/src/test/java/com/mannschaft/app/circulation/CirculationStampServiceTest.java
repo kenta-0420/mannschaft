@@ -187,4 +187,225 @@ class CirculationStampServiceTest {
             assertThat(recipient.getStatus()).isEqualTo(RecipientStatus.REJECTED);
         }
     }
+
+    // ========================================
+    // validateSequentialOrder — 押印順序検証（SEQUENTIAL / HYBRID / SIMULTANEOUS）
+    // ========================================
+
+    /**
+     * 指定 sortOrder / status の受信者を生成する。id を明示して設定する。
+     */
+    private CirculationRecipientEntity recipient(Long id, Long userId, int sortOrder,
+                                                 RecipientStatus status) {
+        CirculationRecipientEntity r = CirculationRecipientEntity.builder()
+                .documentId(DOCUMENT_ID).userId(userId).sortOrder(sortOrder).status(status).build();
+        // BaseEntity の id を反映（純 Mockito・DB 未使用のため手動設定）
+        org.springframework.test.util.ReflectionTestUtils.setField(r, "id", id);
+        return r;
+    }
+
+    private CirculationDocumentEntity activeDocumentWithMode(CirculationMode mode, int recipientCount) {
+        CirculationDocumentEntity entity = CirculationDocumentEntity.builder()
+                .scopeType("TEAM").scopeId(1L).createdBy(1L)
+                .title("テスト").body("本文")
+                .circulationMode(mode)
+                .build();
+        // BaseEntity の id を DOCUMENT_ID に固定（validateSequentialOrder が document.getId() を使うため）
+        org.springframework.test.util.ReflectionTestUtils.setField(entity, "id", DOCUMENT_ID);
+        entity.activate();
+        entity.updateRecipientCount(recipientCount);
+        return entity;
+    }
+
+    @Nested
+    @DisplayName("validateSequentialOrder (HYBRID)")
+    class HybridOrder {
+
+        // あて先5人・N=2 を想定:
+        //   sortOrder 0: userId=10 (先頭・順番)
+        //   sortOrder 1: userId=11 (先頭・順番)
+        //   sortOrder 2: userId=12,13,14 (残り・一斉)
+
+        private StampRequest stampReq() {
+            return new StampRequest(SEAL_ID, "CIRCLE", null, null);
+        }
+
+        @Test
+        @DisplayName("AC-3: HYBRID_自分より前(sortOrder小)にPENDINGが居る_SEQUENTIAL_ORDER_VIOLATION")
+        void HYBRID_前にPENDING_違反() {
+            // sortOrder=1(userId=11) が押印しようとするが sortOrder=0(userId=10) がまだPENDING
+            CirculationDocumentEntity document = activeDocumentWithMode(CirculationMode.HYBRID, 5);
+            CirculationRecipientEntity stamper = recipient(2L, 11L, 1, RecipientStatus.PENDING);
+
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(document));
+            given(recipientRepository.findByDocumentIdAndUserId(DOCUMENT_ID, 11L))
+                    .willReturn(Optional.of(stamper));
+            given(recipientRepository.findByDocumentIdOrderBySortOrderAsc(DOCUMENT_ID))
+                    .willReturn(java.util.List.of(
+                            recipient(1L, 10L, 0, RecipientStatus.PENDING),
+                            stamper,
+                            recipient(3L, 12L, 2, RecipientStatus.PENDING),
+                            recipient(4L, 13L, 2, RecipientStatus.PENDING),
+                            recipient(5L, 14L, 2, RecipientStatus.PENDING)));
+
+            assertThatThrownBy(() -> circulationStampService.stamp(DOCUMENT_ID, 11L, stampReq()))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CirculationErrorCode.SEQUENTIAL_ORDER_VIOLATION));
+        }
+
+        @Test
+        @DisplayName("AC-4: HYBRID_同一sortOrder(N群)にPENDINGが居ても違反にならない(一斉)")
+        void HYBRID_同一sortOrderPENDING_違反なし() {
+            // sortOrder=2(userId=12) が押印。前段(sortOrder 0,1)は全員完了。
+            // 同一 sortOrder=2 の userId=13,14 は PENDING でも一斉なのでブロックしない。
+            CirculationDocumentEntity document = activeDocumentWithMode(CirculationMode.HYBRID, 5);
+            CirculationRecipientEntity stamper = recipient(3L, 12L, 2, RecipientStatus.PENDING);
+            RecipientResponse response = new RecipientResponse(3L, DOCUMENT_ID, 12L, 2,
+                    "STAMPED", null, SEAL_ID, "CIRCLE", (short) 0, false, null, null);
+
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(document));
+            given(recipientRepository.findByDocumentIdAndUserId(DOCUMENT_ID, 12L))
+                    .willReturn(Optional.of(stamper));
+            given(recipientRepository.findByDocumentIdOrderBySortOrderAsc(DOCUMENT_ID))
+                    .willReturn(java.util.List.of(
+                            recipient(1L, 10L, 0, RecipientStatus.STAMPED),
+                            recipient(2L, 11L, 1, RecipientStatus.STAMPED),
+                            stamper,
+                            recipient(4L, 13L, 2, RecipientStatus.PENDING),
+                            recipient(5L, 14L, 2, RecipientStatus.PENDING)));
+            given(recipientRepository.save(stamper)).willReturn(stamper);
+            given(circulationMapper.toRecipientResponse(stamper)).willReturn(response);
+
+            circulationStampService.stamp(DOCUMENT_ID, 12L, stampReq());
+
+            assertThat(stamper.getStatus()).isEqualTo(RecipientStatus.STAMPED);
+        }
+
+        @Test
+        @DisplayName("AC-5: HYBRID_N群の押印者は前段が1人でもPENDINGなら違反")
+        void HYBRID_N群_前段PENDING_違反() {
+            // sortOrder=2(userId=12) が押印しようとするが sortOrder=1(userId=11) がまだPENDING
+            CirculationDocumentEntity document = activeDocumentWithMode(CirculationMode.HYBRID, 5);
+            CirculationRecipientEntity stamper = recipient(3L, 12L, 2, RecipientStatus.PENDING);
+
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(document));
+            given(recipientRepository.findByDocumentIdAndUserId(DOCUMENT_ID, 12L))
+                    .willReturn(Optional.of(stamper));
+            given(recipientRepository.findByDocumentIdOrderBySortOrderAsc(DOCUMENT_ID))
+                    .willReturn(java.util.List.of(
+                            recipient(1L, 10L, 0, RecipientStatus.STAMPED),
+                            recipient(2L, 11L, 1, RecipientStatus.PENDING),
+                            stamper,
+                            recipient(4L, 13L, 2, RecipientStatus.PENDING),
+                            recipient(5L, 14L, 2, RecipientStatus.PENDING)));
+
+            assertThatThrownBy(() -> circulationStampService.stamp(DOCUMENT_ID, 12L, stampReq()))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CirculationErrorCode.SEQUENTIAL_ORDER_VIOLATION));
+        }
+
+        @Test
+        @DisplayName("AC-5: HYBRID_N群の押印者は前段が全員完了なら押印可")
+        void HYBRID_N群_前段全完了_押印可() {
+            // sortOrder=2(userId=12) が押印。前段(sortOrder 0,1)は全員完了(STAMPED/SKIPPED)。
+            CirculationDocumentEntity document = activeDocumentWithMode(CirculationMode.HYBRID, 5);
+            CirculationRecipientEntity stamper = recipient(3L, 12L, 2, RecipientStatus.PENDING);
+            RecipientResponse response = new RecipientResponse(3L, DOCUMENT_ID, 12L, 2,
+                    "STAMPED", null, SEAL_ID, "CIRCLE", (short) 0, false, null, null);
+
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(document));
+            given(recipientRepository.findByDocumentIdAndUserId(DOCUMENT_ID, 12L))
+                    .willReturn(Optional.of(stamper));
+            given(recipientRepository.findByDocumentIdOrderBySortOrderAsc(DOCUMENT_ID))
+                    .willReturn(java.util.List.of(
+                            recipient(1L, 10L, 0, RecipientStatus.STAMPED),
+                            recipient(2L, 11L, 1, RecipientStatus.SKIPPED),
+                            stamper,
+                            recipient(4L, 13L, 2, RecipientStatus.PENDING),
+                            recipient(5L, 14L, 2, RecipientStatus.PENDING)));
+            given(recipientRepository.save(stamper)).willReturn(stamper);
+            given(circulationMapper.toRecipientResponse(stamper)).willReturn(response);
+
+            circulationStampService.stamp(DOCUMENT_ID, 12L, stampReq());
+
+            assertThat(stamper.getStatus()).isEqualTo(RecipientStatus.STAMPED);
+        }
+    }
+
+    @Nested
+    @DisplayName("validateSequentialOrder (SEQUENTIAL/SIMULTANEOUS 回帰)")
+    class SequentialSimultaneousRegression {
+
+        private StampRequest stampReq() {
+            return new StampRequest(SEAL_ID, "CIRCLE", null, null);
+        }
+
+        @Test
+        @DisplayName("AC-6: SEQUENTIAL_前にPENDINGが居る_従来通りSEQUENTIAL_ORDER_VIOLATION")
+        void SEQUENTIAL_前にPENDING_違反() {
+            // sortOrder=1 が押印しようとするが sortOrder=0 がPENDING（全distinct sortOrder）
+            CirculationDocumentEntity document = activeDocumentWithMode(CirculationMode.SEQUENTIAL, 3);
+            CirculationRecipientEntity stamper = recipient(2L, 11L, 1, RecipientStatus.PENDING);
+
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(document));
+            given(recipientRepository.findByDocumentIdAndUserId(DOCUMENT_ID, 11L))
+                    .willReturn(Optional.of(stamper));
+            given(recipientRepository.findByDocumentIdOrderBySortOrderAsc(DOCUMENT_ID))
+                    .willReturn(java.util.List.of(
+                            recipient(1L, 10L, 0, RecipientStatus.PENDING),
+                            stamper,
+                            recipient(3L, 12L, 2, RecipientStatus.PENDING)));
+
+            assertThatThrownBy(() -> circulationStampService.stamp(DOCUMENT_ID, 11L, stampReq()))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CirculationErrorCode.SEQUENTIAL_ORDER_VIOLATION));
+        }
+
+        @Test
+        @DisplayName("AC-6: SEQUENTIAL_前が全員完了_従来通り押印可")
+        void SEQUENTIAL_前が全完了_押印可() {
+            CirculationDocumentEntity document = activeDocumentWithMode(CirculationMode.SEQUENTIAL, 3);
+            CirculationRecipientEntity stamper = recipient(2L, 11L, 1, RecipientStatus.PENDING);
+            RecipientResponse response = new RecipientResponse(2L, DOCUMENT_ID, 11L, 1,
+                    "STAMPED", null, SEAL_ID, "CIRCLE", (short) 0, false, null, null);
+
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(document));
+            given(recipientRepository.findByDocumentIdAndUserId(DOCUMENT_ID, 11L))
+                    .willReturn(Optional.of(stamper));
+            given(recipientRepository.findByDocumentIdOrderBySortOrderAsc(DOCUMENT_ID))
+                    .willReturn(java.util.List.of(
+                            recipient(1L, 10L, 0, RecipientStatus.STAMPED),
+                            stamper,
+                            recipient(3L, 12L, 2, RecipientStatus.PENDING)));
+            given(recipientRepository.save(stamper)).willReturn(stamper);
+            given(circulationMapper.toRecipientResponse(stamper)).willReturn(response);
+
+            circulationStampService.stamp(DOCUMENT_ID, 11L, stampReq());
+
+            assertThat(stamper.getStatus()).isEqualTo(RecipientStatus.STAMPED);
+        }
+
+        @Test
+        @DisplayName("AC-6: SIMULTANEOUS_前にPENDINGが居ても素通り(順序検証しない)")
+        void SIMULTANEOUS_前にPENDING_押印可() {
+            CirculationDocumentEntity document = activeDocumentWithMode(CirculationMode.SIMULTANEOUS, 3);
+            CirculationRecipientEntity stamper = recipient(2L, 11L, 1, RecipientStatus.PENDING);
+            RecipientResponse response = new RecipientResponse(2L, DOCUMENT_ID, 11L, 1,
+                    "STAMPED", null, SEAL_ID, "CIRCLE", (short) 0, false, null, null);
+
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(document));
+            given(recipientRepository.findByDocumentIdAndUserId(DOCUMENT_ID, 11L))
+                    .willReturn(Optional.of(stamper));
+            given(recipientRepository.save(stamper)).willReturn(stamper);
+            given(circulationMapper.toRecipientResponse(stamper)).willReturn(response);
+
+            circulationStampService.stamp(DOCUMENT_ID, 11L, stampReq());
+
+            // SIMULTANEOUS は findByDocumentIdOrderBySortOrderAsc を呼ばずに素通りする
+            assertThat(stamper.getStatus()).isEqualTo(RecipientStatus.STAMPED);
+        }
+    }
 }

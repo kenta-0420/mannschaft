@@ -62,16 +62,23 @@
         "mode": "Umlaufart",
         "recipients": "Empfänger",
         "priority": "Priorität",
-        "due_date": "Fälligkeitsdatum (optional)"
+        "due_date": "Fälligkeitsdatum (optional)",
+        "sequential_count": "Anzahl sequenzieller Empfänger (erste N)",
+        "sequential_count_placeholder": "Anzahl eingeben"
       },
       "mode": {
         "SIMULTANEOUS": "Gleichzeitig",
-        "SEQUENTIAL": "Nacheinander"
+        "SEQUENTIAL": "Nacheinander",
+        "HYBRID": "Hybrid"
       },
       "mode_hint": {
         "SIMULTANEOUS": "An alle Empfänger gleichzeitig in Umlauf bringen",
-        "SEQUENTIAL": "Von oben nach unten einzeln in Umlauf bringen"
+        "SEQUENTIAL": "Von oben nach unten einzeln in Umlauf bringen",
+        "HYBRID": "Die ersten N Empfänger erhalten es nacheinander, der Rest gleichzeitig"
       },
+      "hybrid_boundary": "↓ Ab hier gleichzeitig",
+      "hybrid_seq_count_hint": "Bitte einen Wert zwischen 1 und {max} eingeben",
+      "hybrid_seq_count_needs_two": "Wählen Sie mindestens 2 Empfänger aus, um N festzulegen",
       "priority": {
         "NORMAL": "Normal",
         "URGENT": "Dringend"
@@ -81,7 +88,9 @@
         "title_too_long": "Der Titel darf höchstens 200 Zeichen lang sein",
         "body_required": "Bitte den Inhalt eingeben",
         "recipients_required": "Bitte mindestens einen Empfänger auswählen",
-        "members_load_failed": "Mitgliederliste konnte nicht geladen werden"
+        "members_load_failed": "Mitgliederliste konnte nicht geladen werden",
+        "hybrid_needs_two_or_more": "Der Hybridmodus erfordert mindestens 2 Empfänger",
+        "sequential_count_range": "Die sequenzielle Anzahl muss mindestens 1 und kleiner als die Empfängeranzahl sein (max. {max})"
       }
     }
   }

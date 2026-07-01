@@ -194,6 +194,7 @@ public class DisclosureCirculationService {
                 null,           // reminderEnabled: デフォルト false
                 null,           // reminderIntervalHours: デフォルト 24
                 null,           // stampDisplayStyle: デフォルト STANDARD
-                recipients);
+                recipients,
+                null);          // sequentialCount: HYBRID 未使用（重説回覧は SEQUENTIAL/SIMULTANEOUS のみ）
     }
 }

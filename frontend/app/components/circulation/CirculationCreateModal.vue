@@ -20,11 +20,12 @@ import { useTeamCrud } from '~/composables/team/useTeamCrud'
  *   <li>メンバー一覧: `GET /api/v1/teams/{slug}/members`（あて先選択肢）</li>
  * </ul>
  *
- * <p>回覧モードは BE の `CirculationMode` enum（SIMULTANEOUS / SEQUENTIAL）に合わせる。
- * BE には HYBRID は存在せず、`CirculationMode.valueOf("HYBRID")` は 500 になるため
- * 実装しない（根治治療の原則: BE が受け付けない値を送らない）。SEQUENTIAL 時の
- * 回覧順は recipients の sortOrder（選択順 = 0,1,2,…）で表現し、並べ替えできる。
- * sequentialCount は BE が activate 時にあて先数から自動算出するため送らない。</p>
+ * <p>回覧モードは BE の `CirculationMode` enum（SIMULTANEOUS / SEQUENTIAL / HYBRID）に合わせる。
+ * - SIMULTANEOUS: 全員 sortOrder=0（一斉回覧）
+ * - SEQUENTIAL: 選択順に sortOrder=0,1,2,…（全員順番に回覧）
+ * - HYBRID: 先頭 N 人が sortOrder=0,1,…,N-1（順番）、残り全員が sortOrder=N（一斉）。
+ *   sequentialCount=N を送信ボディに含める（BE が 1 ≤ N < あて先数 を検証する）。
+ * SEQUENTIAL / HYBRID 時の回覧順は recipients の sortOrder で表現し、並べ替えできる。</p>
  */
 const props = defineProps<{
   /** v-model:visible。 */
@@ -45,7 +46,7 @@ const { getMembers } = useTeamMembers()
 const { getTeam } = useTeamCrud()
 const { createScopedCirculation, activateCirculation } = useCirculationApi()
 
-type CirculationMode = 'SIMULTANEOUS' | 'SEQUENTIAL'
+type CirculationMode = 'SIMULTANEOUS' | 'SEQUENTIAL' | 'HYBRID'
 type CirculationPriority = 'NORMAL' | 'URGENT'
 
 // === フォーム状態 ===
@@ -61,6 +62,9 @@ const membersLoading = ref(false)
 /** 選択済みあて先の userId 配列。SEQUENTIAL 時はこの並び順が回覧順（先頭から sortOrder 0,1,2,…）。 */
 const selectedUserIds = ref<number[]>([])
 
+/** HYBRID モード: 先頭 N 人（順番）の人数。1 ≤ N < あて先数。 */
+const sequentialCount = ref<number>(1)
+
 const submitting = ref(false)
 
 const MAX_TITLE = 200
@@ -68,6 +72,7 @@ const MAX_TITLE = 200
 const modeOptions = computed(() => [
   { value: 'SIMULTANEOUS' as const, label: t('circulation.create.mode.SIMULTANEOUS') },
   { value: 'SEQUENTIAL' as const, label: t('circulation.create.mode.SEQUENTIAL') },
+  { value: 'HYBRID' as const, label: t('circulation.create.mode.HYBRID') },
 ])
 
 const priorityOptions = computed(() => [
@@ -83,7 +88,30 @@ const selectedMembers = computed<MemberResponse[]>(() => {
     .filter((m): m is MemberResponse => m !== undefined)
 })
 
-const isSequential = computed(() => circulationMode.value === 'SEQUENTIAL')
+/** 並び順 UI（moveUp/moveDown）を表示するモードか（SEQUENTIAL または HYBRID）。 */
+const showOrder = computed(() =>
+  circulationMode.value === 'SEQUENTIAL' || circulationMode.value === 'HYBRID',
+)
+
+/** HYBRID モードか。 */
+const isHybrid = computed(() => circulationMode.value === 'HYBRID')
+
+/** HYBRID 時の sequentialCount の有効な最大値（あて先数 - 1）。 */
+const maxSequentialCount = computed(() => Math.max(selectedUserIds.value.length - 1, 1))
+
+/** HYBRID 時の sequentialCount バリデーションエラー。 */
+const sequentialCountError = computed(() => {
+  if (!isHybrid.value) return null
+  const n = sequentialCount.value
+  const recipientCount = selectedUserIds.value.length
+  if (recipientCount <= 1) {
+    return t('circulation.create.error.hybrid_needs_two_or_more')
+  }
+  if (n < 1 || n >= recipientCount) {
+    return t('circulation.create.error.sequential_count_range', { max: recipientCount - 1 })
+  }
+  return null
+})
 
 // === バリデーション ===
 const titleError = computed(() => {
@@ -103,7 +131,8 @@ const canSubmit = computed(
     !submitting.value &&
     titleError.value === null &&
     bodyError.value === null &&
-    recipientsError.value === null,
+    recipientsError.value === null &&
+    sequentialCountError.value === null,
 )
 
 function displayMemberLabel(m: MemberResponse): string {
@@ -162,16 +191,25 @@ function resetForm() {
   priority.value = 'NORMAL'
   dueDate.value = ''
   selectedUserIds.value = []
+  sequentialCount.value = 1
 }
 
 /**
  * 選択あて先から recipients ペイロードを構築する。
  * - SIMULTANEOUS: 全員 sortOrder=0（同時回覧）
  * - SEQUENTIAL: 選択順に sortOrder=0,1,2,…（順次回覧）
+ * - HYBRID: 先頭 N 人が sortOrder=0,1,…,N-1（順番）、残り全員が sortOrder=N（一斉）
  */
 function buildRecipients(): Array<{ userId: number; sortOrder: number }> {
   if (circulationMode.value === 'SEQUENTIAL') {
     return selectedUserIds.value.map((userId, index) => ({ userId, sortOrder: index }))
+  }
+  if (circulationMode.value === 'HYBRID') {
+    const n = sequentialCount.value
+    return selectedUserIds.value.map((userId, index) => ({
+      userId,
+      sortOrder: index < n ? index : n,
+    }))
   }
   return selectedUserIds.value.map(userId => ({ userId, sortOrder: 0 }))
 }
@@ -193,6 +231,10 @@ async function submit() {
     }
     if (dueDate.value) {
       requestBody.dueDate = dueDate.value
+    }
+    // HYBRID 時のみ sequentialCount を送信（BE: 1 ≤ N < あて先数 を検証）。
+    if (circulationMode.value === 'HYBRID') {
+      requestBody.sequentialCount = sequentialCount.value
     }
 
     const created = await createScopedCirculation('team', teamId, requestBody)
@@ -296,6 +338,34 @@ watch(
         </p>
       </div>
 
+      <!-- HYBRID: 順番回覧の人数（先頭 N 人） -->
+      <div v-if="isHybrid" class="flex flex-col gap-1">
+        <label class="text-sm font-medium" for="circ-create-seq-count">
+          {{ t('circulation.create.field.sequential_count') }}
+          <span class="text-red-500">*</span>
+        </label>
+        <template v-if="selectedUserIds.length <= 1">
+          <p class="text-xs text-surface-400">
+            {{ t('circulation.create.hybrid_seq_count_needs_two') }}
+          </p>
+        </template>
+        <template v-else>
+          <InputNumber
+            id="circ-create-seq-count"
+            v-model="sequentialCount"
+            :min="1"
+            :max="maxSequentialCount"
+            :placeholder="t('circulation.create.field.sequential_count_placeholder')"
+            show-buttons
+            button-layout="horizontal"
+            class="w-36"
+          />
+          <p class="text-xs text-surface-400">
+            {{ t('circulation.create.hybrid_seq_count_hint', { max: maxSequentialCount }) }}
+          </p>
+        </template>
+      </div>
+
       <!-- あて先選択 -->
       <div class="flex flex-col gap-2">
         <span class="text-sm font-medium">
@@ -333,38 +403,60 @@ watch(
           </button>
         </div>
 
-        <!-- SEQUENTIAL: 回覧順（並べ替え可能） -->
-        <div v-if="isSequential && selectedMembers.length > 0" class="mt-1">
+        <!-- SEQUENTIAL / HYBRID: 回覧順（並べ替え可能） -->
+        <div v-if="showOrder && selectedMembers.length > 0" class="mt-1">
           <p class="mb-1 text-xs font-medium text-surface-500">
             {{ t('circulation.create.order_title') }}
           </p>
           <ul class="flex flex-col gap-1">
-            <li
+            <template
               v-for="(m, index) in selectedMembers"
               :key="m.userId"
-              class="flex items-center gap-2 rounded-lg border border-surface-200 px-2 py-1.5 text-sm"
             >
-              <span class="w-5 text-center text-xs font-semibold text-surface-400">{{ index + 1 }}</span>
-              <span class="min-w-0 flex-1 truncate">{{ displayMemberLabel(m) }}</span>
-              <Button
-                icon="pi pi-arrow-up"
-                text
-                rounded
-                size="small"
-                :disabled="index === 0"
-                :aria-label="t('circulation.create.move_up')"
-                @click="moveUp(index)"
-              />
-              <Button
-                icon="pi pi-arrow-down"
-                text
-                rounded
-                size="small"
-                :disabled="index === selectedMembers.length - 1"
-                :aria-label="t('circulation.create.move_down')"
-                @click="moveDown(index)"
-              />
-            </li>
+              <!-- HYBRID: 境界線（先頭 N 人 → 残り一斉）を区切り表示 -->
+              <li
+                v-if="isHybrid && index === sequentialCount"
+                class="flex items-center gap-2 py-0.5"
+              >
+                <div class="h-px flex-1 bg-primary-200" />
+                <span class="text-xs text-primary-500">
+                  {{ t('circulation.create.hybrid_boundary') }}
+                </span>
+                <div class="h-px flex-1 bg-primary-200" />
+              </li>
+              <li
+                class="flex items-center gap-2 rounded-lg border px-2 py-1.5 text-sm"
+                :class="isHybrid && index >= sequentialCount
+                  ? 'border-surface-100 bg-surface-50'
+                  : 'border-surface-200'"
+              >
+                <span
+                  class="w-5 text-center text-xs font-semibold"
+                  :class="isHybrid && index >= sequentialCount ? 'text-surface-300' : 'text-surface-400'"
+                >
+                  {{ isHybrid && index >= sequentialCount ? '―' : index + 1 }}
+                </span>
+                <span class="min-w-0 flex-1 truncate">{{ displayMemberLabel(m) }}</span>
+                <Button
+                  icon="pi pi-arrow-up"
+                  text
+                  rounded
+                  size="small"
+                  :disabled="index === 0"
+                  :aria-label="t('circulation.create.move_up')"
+                  @click="moveUp(index)"
+                />
+                <Button
+                  icon="pi pi-arrow-down"
+                  text
+                  rounded
+                  size="small"
+                  :disabled="index === selectedMembers.length - 1"
+                  :aria-label="t('circulation.create.move_down')"
+                  @click="moveDown(index)"
+                />
+              </li>
+            </template>
           </ul>
         </div>
       </div>
@@ -402,10 +494,11 @@ watch(
       </div>
 
       <!-- バリデーションメッセージ -->
-      <div v-if="titleError || bodyError || recipientsError" class="flex flex-col gap-1">
+      <div v-if="titleError || bodyError || recipientsError || sequentialCountError" class="flex flex-col gap-1">
         <p v-if="titleError" class="text-xs text-red-500">{{ titleError }}</p>
         <p v-if="bodyError" class="text-xs text-red-500">{{ bodyError }}</p>
         <p v-if="recipientsError" class="text-xs text-red-500">{{ recipientsError }}</p>
+        <p v-if="sequentialCountError" class="text-xs text-red-500">{{ sequentialCountError }}</p>
       </div>
     </div>
 
