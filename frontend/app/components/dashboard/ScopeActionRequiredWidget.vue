@@ -75,6 +75,12 @@ onBeforeUnmount(() => {
 const isEmpty = computed(
   () => loaded.value && (summary.value?.totalActionCount ?? 0) === 0,
 )
+
+const surveyListPath = computed(() =>
+  props.scopeType === 'TEAM'
+    ? `/teams/${props.scopeId}/surveys`
+    : `/organizations/${props.scopeId}/surveys`,
+)
 </script>
 
 <template>
@@ -120,7 +126,7 @@ const isEmpty = computed(
           <button
             type="button"
             class="flex w-full items-center justify-between text-left text-sm font-medium hover:text-primary"
-            @click="navigateTo('/surveys')"
+            @click="navigateTo(surveyListPath)"
           >
             <span><i class="pi pi-file-edit mr-2" />{{ $t('swipeWidgets.actionRequired.survey') }}</span>
             <span class="text-surface-500">
@@ -128,9 +134,16 @@ const isEmpty = computed(
               <i class="pi pi-chevron-right ml-1 text-xs" />
             </span>
           </button>
-          <ul class="mt-1 ml-6 list-disc text-xs text-surface-500">
-            <li v-for="item in summary.survey.items" :key="item.id" class="truncate">
-              {{ item.title }}
+          <ul class="mt-1 ml-6 list-none text-xs text-surface-500">
+            <li v-for="item in summary.survey.items" :key="item.id">
+              <button
+                type="button"
+                class="w-full truncate text-left hover:text-primary"
+                :data-testid="`action-required-survey-${item.id}`"
+                @click="navigateTo(`/surveys/${item.id}?scope=${props.scopeType}&scopeId=${props.scopeId}`)"
+              >
+                {{ item.title }}
+              </button>
             </li>
           </ul>
         </div>
