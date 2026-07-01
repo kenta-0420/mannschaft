@@ -84,6 +84,10 @@ class ChatMessageServiceTest {
     @Mock
     private com.mannschaft.app.tournament.service.TournamentContactAccessService tournamentContactAccessService;
 
+    /** 送信者の表示名・アバター解決用（common 経由・sender 付与・N+1 回避の一括解決）。 */
+    @Mock
+    private com.mannschaft.app.common.NameResolverService nameResolver;
+
     @InjectMocks
     private ChatMessageService chatMessageService;
 
@@ -139,7 +143,7 @@ class ChatMessageServiceTest {
 
             given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
             given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(saved);
-            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
 
             // when
             MessageResponse result = chatMessageService.sendMessage(CHANNEL_ID, req, SENDER_ID);
@@ -169,7 +173,7 @@ class ChatMessageServiceTest {
 
             given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(lobby);
             given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(saved);
-            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
 
             // when
             chatMessageService.sendMessage(CHANNEL_ID, req, SENDER_ID);
@@ -193,7 +197,7 @@ class ChatMessageServiceTest {
             given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
             given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(saved);
             given(messageRepository.findById(parentId)).willReturn(Optional.of(parent));
-            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
 
             // when
             chatMessageService.sendMessage(CHANNEL_ID, req, SENDER_ID);
@@ -223,7 +227,7 @@ class ChatMessageServiceTest {
             given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(saved);
             given(attachmentRepository.save(any(com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity.class)))
                     .willReturn(attachmentEntity);
-            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
 
             // when
             chatMessageService.sendMessage(CHANNEL_ID, req, SENDER_ID);
@@ -253,7 +257,7 @@ class ChatMessageServiceTest {
             given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(message);
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
             given(reactionRepository.findByMessageId(any())).willReturn(List.of());
-            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
             given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
 
@@ -365,7 +369,7 @@ class ChatMessageServiceTest {
             given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(original);
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
             given(reactionRepository.findByMessageId(any())).willReturn(List.of());
-            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
             given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
 
@@ -396,7 +400,7 @@ class ChatMessageServiceTest {
             given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(message);
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
             given(reactionRepository.findByMessageId(any())).willReturn(List.of());
-            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
             given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
 
@@ -441,7 +445,7 @@ class ChatMessageServiceTest {
                     .willReturn(List.of(message));
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
             given(reactionRepository.findByMessageId(any())).willReturn(List.of());
-            given(chatMapper.toMessageResponseWithDetails(any(), any(), any()))
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any()))
                     .willReturn(createMessageResponse());
             given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
@@ -467,7 +471,7 @@ class ChatMessageServiceTest {
                     .willReturn(List.of(msg1, msg2, msg3));
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
             given(reactionRepository.findByMessageId(any())).willReturn(List.of());
-            given(chatMapper.toMessageResponseWithDetails(any(), any(), any()))
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any()))
                     .willReturn(createMessageResponse());
             given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
@@ -535,7 +539,7 @@ class ChatMessageServiceTest {
             given(messageRepository.findByParentIdOrderByCreatedAtAsc(parentId)).willReturn(List.of(reply));
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
             given(reactionRepository.findByMessageId(any())).willReturn(List.of());
-            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
             given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
 
@@ -579,7 +583,7 @@ class ChatMessageServiceTest {
                     .willReturn(List.of(message));
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
             given(reactionRepository.findByMessageId(any())).willReturn(List.of());
-            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
             given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
 
@@ -630,7 +634,7 @@ class ChatMessageServiceTest {
             given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(original);
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
             given(reactionRepository.findByMessageId(any())).willReturn(List.of());
-            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
             given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
 
@@ -662,7 +666,7 @@ class ChatMessageServiceTest {
             given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(message);
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
             given(reactionRepository.findByMessageId(any())).willReturn(List.of());
-            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
             given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
 
@@ -694,7 +698,7 @@ class ChatMessageServiceTest {
 
             given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
             given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(saved);
-            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
 
             // when
             MessageResponse result = chatMessageService.sendMessage(CHANNEL_ID, req, SENDER_ID);
@@ -730,7 +734,7 @@ class ChatMessageServiceTest {
             given(messageRepository.findById(parentId)).willReturn(Optional.of(parent));
             // 最初の save: 新メッセージ保存。2回目: 親の replyCount 更新
             given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(savedReply);
-            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
 
             // when
             chatMessageService.sendMessage(CHANNEL_ID, req, SENDER_ID);
@@ -765,7 +769,7 @@ class ChatMessageServiceTest {
                 }
                 return arg;
             });
-            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
 
             // when
             chatMessageService.sendMessage(CHANNEL_ID, req, SENDER_ID);
@@ -790,7 +794,7 @@ class ChatMessageServiceTest {
             given(channelService.findChannelOrThrow(CHANNEL_ID)).willReturn(channel);
             given(messageRepository.findById(parentId)).willReturn(Optional.of(parent));
             given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(parent);
-            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
 
             // when
             chatMessageService.sendMessage(CHANNEL_ID, req, SENDER_ID);
@@ -844,7 +848,7 @@ class ChatMessageServiceTest {
                     eq(MESSAGE_ID), any(Pageable.class))).willReturn(replyPage);
             given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
             given(reactionRepository.findByMessageId(any())).willReturn(List.of());
-            given(chatMapper.toMessageResponseWithDetails(any(), any(), any())).willReturn(expected);
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
             given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
 
@@ -986,6 +990,114 @@ class ChatMessageServiceTest {
             assertThatThrownBy(() -> chatMessageService.togglePin(MESSAGE_ID, true, OTHER_USER_ID))
                     .isInstanceOf(com.mannschaft.app.common.BusinessException.class);
             verify(messageRepository, never()).save(any());
+        }
+    }
+
+    // ========================================
+    // 送信者情報（sender）付与 / N+1 回避
+    // ========================================
+    @Nested
+    @DisplayName("送信者情報(sender)の付与")
+    class SenderEnrichment {
+
+        @Test
+        @DisplayName("正常系: enrich 後の sender に送信者の表示名・アバターが入る")
+        void enrich後のsenderに表示名とアバターが入る() {
+            // given: editMessage は単発 enrich を通る
+            ChatMessageEntity message = createMessage(); // senderId = SENDER_ID
+            EditMessageRequest req = new EditMessageRequest("更新メッセージ");
+            MessageResponse expected = createMessageResponse();
+
+            given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(message));
+            given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(message);
+            given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
+            given(reactionRepository.findByMessageId(any())).willReturn(List.of());
+            given(nameResolver.resolveUserDisplayNames(any()))
+                    .willReturn(java.util.Map.of(SENDER_ID, "山田太郎"));
+            given(nameResolver.resolveUserAvatarUrls(any()))
+                    .willReturn(java.util.Map.of(SENDER_ID, "https://cdn.example/a.png"));
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
+            given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
+            given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
+
+            // when
+            chatMessageService.editMessage(MESSAGE_ID, req, SENDER_ID);
+
+            // then: mapper へ渡された SenderDto を捕捉して検証
+            org.mockito.ArgumentCaptor<MessageResponse.SenderDto> captor =
+                    org.mockito.ArgumentCaptor.forClass(MessageResponse.SenderDto.class);
+            verify(chatMapper).toMessageResponseWithDetails(any(), any(), any(), captor.capture());
+            MessageResponse.SenderDto sender = captor.getValue();
+            assertThat(sender).isNotNull();
+            assertThat(sender.id()).isEqualTo(SENDER_ID);
+            assertThat(sender.displayName()).isEqualTo("山田太郎");
+            assertThat(sender.avatarUrl()).isEqualTo("https://cdn.example/a.png");
+        }
+
+        @Test
+        @DisplayName("正常系: 送信者の表示名が解決できない場合は displayName=\"ユーザー\"・avatar=null")
+        void 送信者不在時はユーザーにフォールバック() {
+            // given: NameResolver が空 Map を返す（該当ユーザー解決不能）
+            ChatMessageEntity message = createMessage();
+            EditMessageRequest req = new EditMessageRequest("更新メッセージ");
+            MessageResponse expected = createMessageResponse();
+
+            given(messageRepository.findById(MESSAGE_ID)).willReturn(Optional.of(message));
+            given(messageRepository.save(any(ChatMessageEntity.class))).willReturn(message);
+            given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
+            given(reactionRepository.findByMessageId(any())).willReturn(List.of());
+            given(nameResolver.resolveUserDisplayNames(any())).willReturn(java.util.Map.of());
+            given(nameResolver.resolveUserAvatarUrls(any())).willReturn(java.util.Map.of());
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
+            given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
+            given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
+
+            // when
+            chatMessageService.editMessage(MESSAGE_ID, req, SENDER_ID);
+
+            // then
+            org.mockito.ArgumentCaptor<MessageResponse.SenderDto> captor =
+                    org.mockito.ArgumentCaptor.forClass(MessageResponse.SenderDto.class);
+            verify(chatMapper).toMessageResponseWithDetails(any(), any(), any(), captor.capture());
+            MessageResponse.SenderDto sender = captor.getValue();
+            assertThat(sender).isNotNull();
+            assertThat(sender.id()).isEqualTo(SENDER_ID);
+            assertThat(sender.displayName()).isEqualTo("ユーザー");
+            assertThat(sender.avatarUrl()).isNull();
+        }
+
+        @Test
+        @DisplayName("N+1回避: メッセージ一覧の送信者は表示名・アバターを各1回の一括解決で取得する")
+        void メッセージ一覧はN1にならず一括解決する() {
+            // given: 2 名の送信者からなる 3 メッセージ
+            Long cursor = 100L;
+            ChatMessageEntity m1 = ChatMessageEntity.builder()
+                    .channelId(CHANNEL_ID).senderId(SENDER_ID).body("a").build();
+            ChatMessageEntity m2 = ChatMessageEntity.builder()
+                    .channelId(CHANNEL_ID).senderId(OTHER_USER_ID).body("b").build();
+            ChatMessageEntity m3 = ChatMessageEntity.builder()
+                    .channelId(CHANNEL_ID).senderId(SENDER_ID).body("c").build();
+            MessageResponse expected = createMessageResponse();
+
+            given(messageRepository.findByChannelIdAndIdLessThan(eq(CHANNEL_ID), eq(cursor), any(Pageable.class)))
+                    .willReturn(List.of(m1, m2, m3));
+            given(attachmentRepository.findByMessageId(any())).willReturn(List.of());
+            given(reactionRepository.findByMessageId(any())).willReturn(List.of());
+            given(nameResolver.resolveUserDisplayNames(any()))
+                    .willReturn(java.util.Map.of(SENDER_ID, "山田太郎", OTHER_USER_ID, "佐藤花子"));
+            given(nameResolver.resolveUserAvatarUrls(any())).willReturn(java.util.Map.of());
+            given(chatMapper.toMessageResponseWithDetails(any(), any(), any(), any())).willReturn(expected);
+            given(chatMapper.toAttachmentResponseList(any())).willReturn(List.of());
+            given(chatMapper.toReactionResponseList(any())).willReturn(List.of());
+
+            // when
+            chatMessageService.listMessages(CHANNEL_ID, cursor, 10);
+
+            // then: 3 メッセージでも表示名・アバターの一括解決はそれぞれ 1 回のみ（メッセージ数に依存しない）
+            verify(nameResolver, org.mockito.Mockito.times(1)).resolveUserDisplayNames(any());
+            verify(nameResolver, org.mockito.Mockito.times(1)).resolveUserAvatarUrls(any());
+            // 単発解決メソッドは呼ばれない
+            verify(nameResolver, never()).resolveUserDisplayName(any());
         }
     }
 }
