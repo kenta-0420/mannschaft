@@ -187,7 +187,7 @@ function onDeleteConfirm(id: number) {
       :draggable="false"
       class="w-full max-w-md"
     >
-      <PaymentPaywallLock :loading="paywallGateLoading" :gate-result="paywallGateResult" />
+      <PaywallLock :loading="paywallGateLoading" :gate-result="paywallGateResult" />
     </Dialog>
   </div>
 </template>
