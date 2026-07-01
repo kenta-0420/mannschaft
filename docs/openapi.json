@@ -156261,6 +156261,33 @@
           }
         }
       },
+      "PostPostedAsDto": {
+        "type": "object",
+        "properties": {
+          "avatarUrl": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "handle": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "logoUrl": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
       "PostResponse": {
         "type": "object",
         "properties": {
@@ -156277,22 +156304,34 @@
             "type": "integer",
             "format": "int64"
           },
+          "postedAs": {
+            "$ref": "#/components/schemas/PostPostedAsDto"
+          },
           "scope": {
             "$ref": "#/components/schemas/PostScopeDto"
           },
           "stats": {
             "$ref": "#/components/schemas/PostStatsDto"
+          },
+          "user": {
+            "$ref": "#/components/schemas/PostUserDto"
           }
         }
       },
       "PostScopeDto": {
         "type": "object",
         "properties": {
+          "name": {
+            "type": "string"
+          },
           "scopeId": {
             "type": "integer",
             "format": "int64"
           },
           "scopeType": {
+            "type": "string"
+          },
+          "slug": {
             "type": "string"
           }
         }
@@ -156319,6 +156358,21 @@
           "repostCount": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "PostUserDto": {
+        "type": "object",
+        "properties": {
+          "avatarUrl": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
