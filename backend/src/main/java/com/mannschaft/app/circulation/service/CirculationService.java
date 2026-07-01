@@ -272,26 +272,36 @@ public class CirculationService {
     @Transactional
     public DocumentResponse createDocument(String scopeType, Long scopeId, Long userId,
                                            CreateDocumentRequest request) {
-        CirculationDocumentEntity entity = CirculationDocumentEntity.builder()
-                .scopeType(scopeType)
-                .scopeId(scopeId)
-                .createdBy(userId)
-                .title(request.getTitle())
-                .body(request.getBody())
-                .circulationMode(request.getCirculationMode() != null
-                        ? CirculationMode.valueOf(request.getCirculationMode())
-                        : CirculationMode.SIMULTANEOUS)
-                .priority(request.getPriority() != null
-                        ? CirculationPriority.valueOf(request.getPriority())
-                        : CirculationPriority.NORMAL)
-                .dueDate(request.getDueDate())
-                .reminderEnabled(request.getReminderEnabled() != null ? request.getReminderEnabled() : false)
-                .reminderIntervalHours(request.getReminderIntervalHours() != null
-                        ? request.getReminderIntervalHours() : (short) 24)
-                .stampDisplayStyle(request.getStampDisplayStyle() != null
-                        ? StampDisplayStyle.valueOf(request.getStampDisplayStyle())
-                        : StampDisplayStyle.STANDARD)
-                .build();
+        CirculationMode mode = request.getCirculationMode() != null
+                ? CirculationMode.valueOf(request.getCirculationMode())
+                : CirculationMode.SIMULTANEOUS;
+
+        CirculationDocumentEntity.CirculationDocumentEntityBuilder<?, ?> builder =
+                CirculationDocumentEntity.builder()
+                        .scopeType(scopeType)
+                        .scopeId(scopeId)
+                        .createdBy(userId)
+                        .title(request.getTitle())
+                        .body(request.getBody())
+                        .circulationMode(mode)
+                        .priority(request.getPriority() != null
+                                ? CirculationPriority.valueOf(request.getPriority())
+                                : CirculationPriority.NORMAL)
+                        .dueDate(request.getDueDate())
+                        .reminderEnabled(request.getReminderEnabled() != null ? request.getReminderEnabled() : false)
+                        .reminderIntervalHours(request.getReminderIntervalHours() != null
+                                ? request.getReminderIntervalHours() : (short) 24)
+                        .stampDisplayStyle(request.getStampDisplayStyle() != null
+                                ? StampDisplayStyle.valueOf(request.getStampDisplayStyle())
+                                : StampDisplayStyle.STANDARD);
+
+        // HYBRID は作成時に「先頭順番人数 N」を確定させる（DTO 相関バリデーション済み）。
+        // SEQUENTIAL は activate 時に受信者数へ、SIMULTANEOUS は既定 0 のまま。
+        if (mode == CirculationMode.HYBRID && request.getSequentialCount() != null) {
+            builder.sequentialCount(request.getSequentialCount());
+        }
+
+        CirculationDocumentEntity entity = builder.build();
 
         CirculationDocumentEntity saved = documentRepository.save(entity);
 

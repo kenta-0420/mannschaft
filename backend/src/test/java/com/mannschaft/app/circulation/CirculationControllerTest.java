@@ -128,7 +128,7 @@ class CirculationControllerTest {
         void チーム回覧文書作成_正常_201() {
             CreateDocumentRequest request = new CreateDocumentRequest(
                     "新文書", "本文", null, null, null, null, null, null,
-                    List.of(new RecipientEntry(50L, null)));
+                    List.of(new RecipientEntry(50L, null)), null);
             given(circulationService.createDocument(eq("TEAM"), eq(TEAM_ID), eq(USER_ID), any()))
                     .willReturn(mockDocumentResponse());
 
@@ -247,7 +247,7 @@ class CirculationControllerTest {
         void 組織回覧文書作成_正常_201() {
             CreateDocumentRequest request = new CreateDocumentRequest(
                     "組織文書", "本文", null, null, null, null, null, null,
-                    List.of(new RecipientEntry(50L, null)));
+                    List.of(new RecipientEntry(50L, null)), null);
             DocumentResponse orgDoc = DocumentResponse.builder()
                     .id(DOC_ID).scopeType("ORGANIZATION").scopeId(ORG_ID).createdBy(USER_ID)
                     .title("組織文書").body("本文").circulationMode("SIMULTANEOUS").sequentialCount(0)

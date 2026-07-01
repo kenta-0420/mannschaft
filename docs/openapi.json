@@ -163951,6 +163951,9 @@
             "type": "string",
             "format": "date"
           },
+          "hybridSequentialCountValid": {
+            "type": "boolean"
+          },
           "priority": {
             "type": "string"
           },
@@ -163966,6 +163969,10 @@
             "type": "boolean"
           },
           "reminderIntervalHours": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sequentialCount": {
             "type": "integer",
             "format": "int32"
           },
