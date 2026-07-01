@@ -42,6 +42,47 @@
         "submit": "Post comment",
         "failed": "Failed to post the comment"
       }
+    },
+    "create": {
+      "title": "Create circulation",
+      "cancel": "Cancel",
+      "submit": "Create and start",
+      "success": "Circulation created and started",
+      "failed": "Failed to create the circulation",
+      "no_members": "No members available to add as recipients",
+      "recipients_selected": "{count} selected",
+      "order_title": "Circulation order (top to bottom)",
+      "move_up": "Move up",
+      "move_down": "Move down",
+      "field": {
+        "title": "Title",
+        "title_placeholder": "Enter the circulation title",
+        "body": "Body",
+        "body_placeholder": "Enter the content to circulate",
+        "mode": "Circulation method",
+        "recipients": "Recipients",
+        "priority": "Priority",
+        "due_date": "Due date (optional)"
+      },
+      "mode": {
+        "SIMULTANEOUS": "Simultaneous",
+        "SEQUENTIAL": "Sequential"
+      },
+      "mode_hint": {
+        "SIMULTANEOUS": "Circulate to all recipients at the same time",
+        "SEQUENTIAL": "Circulate one by one in order from the top"
+      },
+      "priority": {
+        "NORMAL": "Normal",
+        "URGENT": "Urgent"
+      },
+      "error": {
+        "title_required": "Please enter a title",
+        "title_too_long": "The title must be 200 characters or fewer",
+        "body_required": "Please enter the body",
+        "recipients_required": "Please select at least one recipient",
+        "members_load_failed": "Failed to load the member list"
+      }
     }
   }
 }

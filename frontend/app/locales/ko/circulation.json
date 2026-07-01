@@ -42,6 +42,47 @@
         "submit": "댓글 등록",
         "failed": "댓글 등록에 실패했습니다"
       }
+    },
+    "create": {
+      "title": "회람 작성",
+      "cancel": "취소",
+      "submit": "작성하고 회람 시작",
+      "success": "회람을 작성하고 회람을 시작했습니다",
+      "failed": "회람 작성에 실패했습니다",
+      "no_members": "수신자로 선택할 수 있는 멤버가 없습니다",
+      "recipients_selected": "{count}명 선택됨",
+      "order_title": "회람 순서 (위에서부터 차례로)",
+      "move_up": "위로 이동",
+      "move_down": "아래로 이동",
+      "field": {
+        "title": "제목",
+        "title_placeholder": "회람 제목을 입력하세요",
+        "body": "본문",
+        "body_placeholder": "회람할 내용을 입력하세요",
+        "mode": "회람 방식",
+        "recipients": "수신자",
+        "priority": "우선순위",
+        "due_date": "마감일 (선택)"
+      },
+      "mode": {
+        "SIMULTANEOUS": "동시",
+        "SEQUENTIAL": "순차"
+      },
+      "mode_hint": {
+        "SIMULTANEOUS": "수신자 전원에게 동시에 회람합니다",
+        "SEQUENTIAL": "위에서부터 한 명씩 순서대로 회람합니다"
+      },
+      "priority": {
+        "NORMAL": "보통",
+        "URGENT": "긴급"
+      },
+      "error": {
+        "title_required": "제목을 입력하세요",
+        "title_too_long": "제목은 200자 이내로 입력하세요",
+        "body_required": "본문을 입력하세요",
+        "recipients_required": "수신자를 한 명 이상 선택하세요",
+        "members_load_failed": "멤버 목록을 불러오지 못했습니다"
+      }
     }
   }
 }

@@ -25,9 +25,16 @@ function onSelect(item: CirculationDocumentListItem) {
   detailVisible.value = true
 }
 
-// 作成モーダル（@create）は第二陣の別足軽が担当。ここでは雛形のみ。
+// 作成モーダルの状態。
+const createVisible = ref(false)
+
 function onCreate() {
-  // TODO: 作成モーダル（別足軽担当）
+  createVisible.value = true
+}
+
+// 作成 + 開始が完了したら一覧を再取得する（新しい回覧が「回覧中」で出る）。
+function onCreated() {
+  listRef.value?.refresh()
 }
 
 function onStamped() {
@@ -63,6 +70,11 @@ onMounted(async () => {
       :team-id="selectedTeamId"
       :team-slug="teamSlug"
       @stamped="onStamped"
+    />
+    <CirculationCreateModal
+      v-model:visible="createVisible"
+      :team-slug="teamSlug"
+      @created="onCreated"
     />
   </div>
 </template>

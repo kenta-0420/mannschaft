@@ -430,11 +430,20 @@ public class DashboardService {
 
         // F02.8: 親組織の告知フィードを取得（target_team_ids フィルタ付き）
         List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
-        List<AnnouncementFeedEntity> orgAnnouncementFeeds = orgRoles.stream()
+        // 多重 org ロール行に対する防御的な feedId 重複排除。
+        // 現状は user_roles の UNIQUE(user_id, scope_key) により 1 ユーザー 1 組織 1 行だが、
+        // 将来この制約が緩んで同一組織に複数ロール行を持つと flatMap で同一 feed が重複しうる。
+        // インボックス（AnnouncementInboxAdapter の feedById.putIfAbsent）と同等に feedId で先勝ち dedup する。
+        List<AnnouncementFeedEntity> orgAnnouncementFeeds = new ArrayList<>(orgRoles.stream()
                 .flatMap(role -> announcementFeedQueryRepository
                         .findByOrgScopeForTeamDashboard(role.getOrganizationId(), allowedVisibilities, 20).stream())
                 .filter(feed -> isTargetedToTeam(feed, teamId))
-                .toList();
+                .collect(java.util.stream.Collectors.toMap(
+                        AnnouncementFeedEntity::getId,
+                        feed -> feed,
+                        (existing, duplicate) -> existing,
+                        java.util.LinkedHashMap::new))
+                .values());
 
         // 結合して createdAt 降順で上位5件
         List<Map<String, Object>> teamNoticeItems = java.util.stream.Stream.concat(

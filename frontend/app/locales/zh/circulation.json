@@ -42,6 +42,47 @@
         "submit": "发表评论",
         "failed": "评论发表失败"
       }
+    },
+    "create": {
+      "title": "创建传阅",
+      "cancel": "取消",
+      "submit": "创建并开始传阅",
+      "success": "已创建并开始传阅",
+      "failed": "创建传阅失败",
+      "no_members": "没有可选为收件人的成员",
+      "recipients_selected": "已选择 {count} 人",
+      "order_title": "传阅顺序（从上到下依次传阅）",
+      "move_up": "上移",
+      "move_down": "下移",
+      "field": {
+        "title": "标题",
+        "title_placeholder": "请输入传阅标题",
+        "body": "正文",
+        "body_placeholder": "请输入传阅内容",
+        "mode": "传阅方式",
+        "recipients": "收件人",
+        "priority": "优先级",
+        "due_date": "截止日期（可选）"
+      },
+      "mode": {
+        "SIMULTANEOUS": "同时",
+        "SEQUENTIAL": "顺序"
+      },
+      "mode_hint": {
+        "SIMULTANEOUS": "同时向所有收件人传阅",
+        "SEQUENTIAL": "从上到下逐一传阅"
+      },
+      "priority": {
+        "NORMAL": "普通",
+        "URGENT": "紧急"
+      },
+      "error": {
+        "title_required": "请输入标题",
+        "title_too_long": "标题不能超过200个字符",
+        "body_required": "请输入正文",
+        "recipients_required": "请至少选择一名收件人",
+        "members_load_failed": "获取成员列表失败"
+      }
     }
   }
 }
