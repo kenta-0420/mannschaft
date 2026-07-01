@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { FetchError } from 'ofetch'
-import type { ChatChannelResponse } from '~/types/chat'
 import type { ViewerRole } from '~/types/dashboard'
 import type { TeamResponse } from '~/types/team'
 import { resolveSlugRedirectPath } from '~/utils/slugRedirect'
@@ -94,25 +93,6 @@ const team = ref<TeamResponse | null>(null)
 const loading = ref(false)
 const activeTab = ref(0)
 const showLeaveConfirm = ref(false)
-
-// チャットサイドバー
-const showChatSidebar = ref(false)
-const showChatCreateDialog = ref(false)
-const chatListRef = ref<{ refresh: () => void } | null>(null)
-const chatSelectedChannel = useState<ChatChannelResponse | null>(
-  `team-chat-channel-${teamSlug.value}`,
-  () => null,
-)
-
-function onChatChannelSelect(ch: ChatChannelResponse) {
-  chatSelectedChannel.value = ch
-  showChatSidebar.value = false
-  navigateTo(`/teams/${teamSlug.value}/chat`)
-}
-
-function onChatCreated() {
-  chatListRef.value?.refresh()
-}
 
 // 管理者レンズ（true=管理者ビュー, false=メンバービュー）
 // デフォルト: 管理者が来たら管理者ビューで開始
@@ -223,18 +203,7 @@ onMounted(async () => {
           <div class="flex items-center">
             <div class="flex-1 overflow-x-auto">
               <TabList>
-                <Tab :value="0">
-                  <span class="inline-flex items-center gap-1">
-                    ダッシュボード
-                    <span
-                      v-if="roleName"
-                      role="button"
-                      class="cursor-pointer text-surface-400 transition-colors hover:text-primary"
-                      aria-label="チャットサイドバーを開く"
-                      @click.stop="showChatSidebar = !showChatSidebar"
-                    ><i class="pi pi-table-columns text-xs" /></span>
-                  </span>
-                </Tab>
+                <Tab :value="0"> ダッシュボード </Tab>
                 <Tab :value="1"> 基本情報 </Tab>
                 <Tab :value="2"> メンバー </Tab>
                 <Tab v-if="isAdminOrDeputy && adminLens" :value="3"> 招待 </Tab>
@@ -391,26 +360,6 @@ onMounted(async () => {
         </div>
       </Tabs>
 
-      <!-- チャットサイドバー -->
-      <Drawer
-        v-model:visible="showChatSidebar"
-        position="left"
-        header="チャット"
-        class="!w-72"
-      >
-        <ChatChannelList
-          ref="chatListRef"
-          :team-id="teamSlug"
-          @select="onChatChannelSelect"
-          @create="showChatCreateDialog = true"
-        />
-      </Drawer>
-
-      <ChatCreateDialog
-        v-model:visible="showChatCreateDialog"
-        :team-id="teamSlug"
-        @created="onChatCreated"
-      />
     </template>
   </div>
 </template>
