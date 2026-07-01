@@ -275,11 +275,15 @@ public class PublicPostQueryService {
         try {
             gate = paymentGateService.checkAccess(ContentGateType.POST, post.getId(), viewerUserId);
         } catch (Exception e) {
-            // fail-closed: ゲート行が有るなら本文をマスク、無いなら従来どおり返す。
+            // 評価不能（例外）→ null 扱いで fail-closed 経路へ統一する。
             log.warn("ペイウォール判定失敗（公開詳細）: postId={} → fail-closed 判定へ", post.getId(), e);
-            return safelyHasGate(post.getId()) ? null : post.getBody();
+            gate = null;
         }
 
+        // checkAccess が null／例外のいずれでも、ゲート行が有るなら本文をマスク、無いなら従来どおり返す。
+        if (gate == null) {
+            return safelyHasGate(post.getId()) ? null : post.getBody();
+        }
         if (gate.isAccessible()) {
             return post.getBody();
         }

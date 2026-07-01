@@ -603,12 +603,16 @@ public class BlogPostService {
         try {
             gate = paymentGateService.checkAccess(ContentGateType.POST, entity.getId(), viewerUserId);
         } catch (Exception e) {
-            // fail-closed: 評価不能時、ゲート行が有るなら本文をマスク（漏洩より過剰遮断）。
-            // ゲート行が無い（=非課金記事）なら従来どおり body を返す。
+            // 評価不能（例外）→ null 扱いで fail-closed 経路へ統一する。
             log.warn("ペイウォール判定失敗（記事詳細）: postId={} → fail-closed 判定へ", entity.getId(), e);
-            return safelyHasGate(entity.getId()) ? maskContent(dto, false) : dto;
+            gate = null;
         }
 
+        // checkAccess が null／例外のいずれでも、ゲート行が有るなら本文をマスク（漏洩より過剰遮断）。
+        // ゲート行が無い（=評価不能の真因がゲート不在・非課金記事）なら従来どおり body を返す。
+        if (gate == null) {
+            return safelyHasGate(entity.getId()) ? maskContent(dto, false) : dto;
+        }
         if (gate.isAccessible()) {
             // ゲートなし or 課金済 → 全文
             return dto;

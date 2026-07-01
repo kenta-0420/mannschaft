@@ -30,6 +30,7 @@ import com.mannschaft.app.publicview.service.PostAuthorSnapshotService;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -52,6 +53,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -91,6 +93,17 @@ class BlogPostServiceTest {
 
     @InjectMocks
     private BlogPostService service;
+
+    /**
+     * 既存テストは新依存 {@code checkAccess} を stub しないため、既定で「アクセス可（ゲート無し相当）」を返す。
+     * これにより「ゲート無し既定＝body 返却」を既存テストが検証する形になる。
+     * 各ペイウォール AC テストは {@code given(...)} で個別に override する（lenient なので未使用でも警告にならない）。
+     */
+    @BeforeEach
+    void stubPaywallAccessibleByDefault() {
+        lenient().when(paymentGateService.checkAccess(any(), any(), any()))
+                .thenReturn(new GateCheckResponse(true, false, List.of()));
+    }
 
     private static final Long TEAM_ID = 1L;
     private static final String TEAM_ID_STR = TEAM_ID.toString();
@@ -856,6 +869,42 @@ class BlogPostServiceTest {
                 given(accessControlService.isSystemAdmin(VIEWER_ID)).willReturn(false);
                 given(paymentGateService.checkAccess(ContentGateType.POST, POST_ID, VIEWER_ID))
                         .willThrow(new RuntimeException("判定不能"));
+                given(paymentGateService.hasGate(ContentGateType.POST, POST_ID)).willReturn(false);
+
+                BlogPostResponse result = service.getById(POST_ID);
+
+                assertThat(result.getContent().body()).isEqualTo("有料本文フルテキスト");
+            }
+        }
+
+        @Test
+        @DisplayName("AC-10b: checkAccess が null を返す＋ゲート有り → fail-closed（body=null・NPE 再発防止）")
+        void AC10b_null時ゲート有り_failClosed() {
+            BlogPostEntity entity = postWithId();
+            stubGetById(entity);
+            try (MockedStatic<SecurityUtils> su = Mockito.mockStatic(SecurityUtils.class)) {
+                su.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
+                given(accessControlService.isSystemAdmin(VIEWER_ID)).willReturn(false);
+                given(paymentGateService.checkAccess(ContentGateType.POST, POST_ID, VIEWER_ID))
+                        .willReturn(null);
+                given(paymentGateService.hasGate(ContentGateType.POST, POST_ID)).willReturn(true);
+
+                BlogPostResponse result = service.getById(POST_ID);
+
+                assertThat(result.getContent().body()).isNull();
+            }
+        }
+
+        @Test
+        @DisplayName("AC-11b: checkAccess が null を返す＋ゲート無し → body は返る（NPE 再発防止）")
+        void AC11b_null時ゲート無し_body返却() {
+            BlogPostEntity entity = postWithId();
+            stubGetById(entity);
+            try (MockedStatic<SecurityUtils> su = Mockito.mockStatic(SecurityUtils.class)) {
+                su.when(SecurityUtils::getCurrentUserIdOrNull).thenReturn(VIEWER_ID);
+                given(accessControlService.isSystemAdmin(VIEWER_ID)).willReturn(false);
+                given(paymentGateService.checkAccess(ContentGateType.POST, POST_ID, VIEWER_ID))
+                        .willReturn(null);
                 given(paymentGateService.hasGate(ContentGateType.POST, POST_ID)).willReturn(false);
 
                 BlogPostResponse result = service.getById(POST_ID);
