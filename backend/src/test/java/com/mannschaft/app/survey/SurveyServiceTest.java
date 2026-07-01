@@ -486,11 +486,8 @@ class SurveyServiceTest {
             // UnnecessaryStubbingException が発生するため、引数ごとに分離する。
             given(surveyRepository.findByIdAndScopeTypeAndScopeId(SURVEY_ID, SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.of(source));
-            given(surveyRepository.findByIdAndScopeTypeAndScopeId(
-                    org.mockito.ArgumentMatchers.isNull(),
-                    org.mockito.ArgumentMatchers.eq(SCOPE_TYPE),
-                    org.mockito.ArgumentMatchers.eq(SCOPE_ID)))
-                    .willReturn(Optional.of(newEntity));
+            // duplicateSurvey は複製直後を非ガード toDetailResponse(savedNew) で返すため、
+            // 新規survey の再lookup（findByIdAndScopeTypeAndScopeId）は不要になった。
             given(accessControlService.isAdminOrAbove(USER_ID, SCOPE_ID, SCOPE_TYPE)).willReturn(true);
             // save の呼び出しでは引数のエンティティをそのまま返す
             given(surveyRepository.save(org.mockito.ArgumentMatchers.any(SurveyEntity.class)))
@@ -607,9 +604,7 @@ class SurveyServiceTest {
             ReflectionTestUtils.setField(saved, "id", 777L);
             given(surveyRepository.save(org.mockito.ArgumentMatchers.any(SurveyEntity.class)))
                     .willReturn(saved);
-            given(surveyRepository.findByIdAndScopeTypeAndScopeId(777L, "ORGANIZATION", 1L))
-                    .willReturn(Optional.of(saved));
-            // 末尾の getSurveyDetail（設問ビルド）が NPE しないよう空設問を返す。
+            // 末尾の toDetailResponse（設問ビルド）が NPE しないよう空設問を返す。
             given(questionRepository.findBySurveyIdOrderByDisplayOrderAsc(777L))
                     .willReturn(Collections.emptyList());
 
@@ -797,8 +792,6 @@ class SurveyServiceTest {
             ReflectionTestUtils.setField(saved, "id", 888L);
             given(surveyRepository.save(org.mockito.ArgumentMatchers.any(SurveyEntity.class)))
                     .willReturn(saved);
-            given(surveyRepository.findByIdAndScopeTypeAndScopeId(888L, "ORGANIZATION", 1L))
-                    .willReturn(Optional.of(saved));
             given(questionRepository.findBySurveyIdOrderByDisplayOrderAsc(888L))
                     .willReturn(Collections.emptyList());
 

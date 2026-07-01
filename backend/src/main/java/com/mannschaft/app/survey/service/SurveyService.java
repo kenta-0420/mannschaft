@@ -167,8 +167,18 @@ public class SurveyService {
         accessControlService.checkMembershipOrDescendant(
                 SecurityUtils.getCurrentUserId(), scopeId, scopeType, true);
         SurveyEntity entity = findSurveyOrThrow(scopeType, scopeId, surveyId);
+        return toDetailResponse(entity);
+    }
+
+    /**
+     * エンティティ→詳細レスポンスへの純マッピング（認可ゲート無し）。
+     *
+     * <p>作成/複製（作成者自身・SecurityContext 不在のバッチ materialize 含む）と、
+     * ガード付き HTTP GET 経路（{@link #getSurveyDetail}）が共用する。認可は呼び出し側で行う。</p>
+     */
+    private SurveyDetailResponse toDetailResponse(SurveyEntity entity) {
         SurveyResponse surveyResponse = surveyMapper.toSurveyResponse(entity);
-        List<QuestionResponse> questions = buildQuestionResponses(surveyId);
+        List<QuestionResponse> questions = buildQuestionResponses(entity.getId());
         return new SurveyDetailResponse(surveyResponse, questions);
     }
 
@@ -259,7 +269,8 @@ public class SurveyService {
         // 掲示板スレッド自動作成イベントを発行（AFTER_COMMIT で非同期実行）
         eventPublisher.publishEvent(new SurveyCreatedEvent(saved.getId(), scopeType, scopeId, saved.getTitle()));
 
-        return getSurveyDetail(scopeType, scopeId, saved.getId());
+        // 作成直後の詳細は非ガードマッパで返す（作成者自身・SecurityContext 不在のバッチ経路でも安全）。
+        return toDetailResponse(saved);
     }
 
     /**
@@ -695,7 +706,8 @@ public class SurveyService {
         }
 
         log.info("アンケート複製: source={}, new={}, by={}", surveyId, savedNew.getId(), currentUserId);
-        return getSurveyDetail(scopeType, scopeId, savedNew.getId());
+        // 複製直後の詳細も非ガードマッパで返す（getSurveyDetail のガードを経由しない）。
+        return toDetailResponse(savedNew);
     }
 
     /**
