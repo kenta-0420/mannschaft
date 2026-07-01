@@ -18,8 +18,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -49,12 +47,10 @@ import static org.mockito.Mockito.verify;
  * 真リプレイは「grace 超過」または「後継無し revoke」のみ検知する。
  * 本テスト群は受け入れ条件 AC-1〜AC-6 / AC-9 を表明し、実装本体が未達の間は red（失敗）で正しい。</p>
  *
- * <p>Strictness は LENIENT にしている。red 段階では実装が grace / 悲観ロック経路へ到達しないため
- * 一部スタブが未使用になり得るが、それを {@code UnnecessaryStubbingException} という別要因の red で
- * 濁らせず「実装未達ゆえの assert 失敗」を純粋に観測するための措置である（green 後は使用される）。</p>
+ * <p>取得は一貫して悲観ロック版 {@link RefreshTokenRepository#findByTokenHashForUpdate(String)} を経由するため、
+ * テストのスタブもこれのみを用意する（Strictness は既定の STRICT_STUBS）。</p>
  */
 @ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("AuthTokenRotationService 単体テスト（並行更新 競合制御）")
 class AuthTokenRotationServiceTest {
 
@@ -113,9 +109,8 @@ class AuthTokenRotationServiceTest {
         given(refreshTokenRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
     }
 
-    /** 両ファインダ（ロック版・非ロック版）に同じトークンを返させる。 */
-    private void stubBothFinders(String tokenHash, RefreshTokenEntity token) {
-        given(refreshTokenRepository.findByTokenHash(tokenHash)).willReturn(Optional.of(token));
+    /** 悲観ロック版ファインダにトークンを返させる（ローテーションはこの経路で取得する）。 */
+    private void stubTokenLookup(String tokenHash, RefreshTokenEntity token) {
         given(refreshTokenRepository.findByTokenHashForUpdate(tokenHash)).willReturn(Optional.of(token));
     }
 
@@ -141,7 +136,7 @@ class AuthTokenRotationServiceTest {
                     .revokedAt(justRevoked())
                     .replacedByTokenHash("successor-token-hash")
                     .build();
-            stubBothFinders(tokenHash, rotatedWithinGrace);
+            stubTokenLookup(tokenHash, rotatedWithinGrace);
             stubIssuePath(1L);
 
             // When
@@ -170,7 +165,7 @@ class AuthTokenRotationServiceTest {
                     .revokedAt(justRevoked())
                     .replacedByTokenHash("successor-token-hash-2")
                     .build();
-            stubBothFinders(tokenHash, rotatedWithinGrace);
+            stubTokenLookup(tokenHash, rotatedWithinGrace);
             stubIssuePath(2L);
 
             // When / Then: 例外を投げず、有効なトークンペアを返す
@@ -203,7 +198,7 @@ class AuthTokenRotationServiceTest {
                     .revokedAt(longAgoRevoked())
                     .replacedByTokenHash("successor-token-hash")
                     .build();
-            stubBothFinders(tokenHash, replayed);
+            stubTokenLookup(tokenHash, replayed);
 
             // When / Then
             assertThatThrownBy(() -> authTokenRotationService.refreshAccessToken(rawRefreshToken, null))
@@ -230,7 +225,7 @@ class AuthTokenRotationServiceTest {
                     .revokedAt(longAgoRevoked())
                     .replacedByTokenHash(null)
                     .build();
-            stubBothFinders(tokenHash, loggedOut);
+            stubTokenLookup(tokenHash, loggedOut);
 
             // When / Then
             assertThatThrownBy(() -> authTokenRotationService.refreshAccessToken(rawRefreshToken, null))
@@ -260,7 +255,7 @@ class AuthTokenRotationServiceTest {
                     .rememberMe(false)
                     .expiresAt(LocalDateTime.now().plusDays(7))
                     .build();
-            stubBothFinders(tokenHash, valid);
+            stubTokenLookup(tokenHash, valid);
             stubIssuePath(1L);
 
             // When: 例外の有無に関わらず、ファインダ呼び出しの事実を検証する
@@ -288,7 +283,7 @@ class AuthTokenRotationServiceTest {
                     .rememberMe(false)
                     .expiresAt(LocalDateTime.now().minusDays(1)) // 期限切れ
                     .build();
-            stubBothFinders(tokenHash, expired);
+            stubTokenLookup(tokenHash, expired);
 
             // When / Then: BusinessException は投げるが、そのコードは AUTH_032（退会申請不存在）であってはならない
             assertThatThrownBy(() -> authTokenRotationService.refreshAccessToken(rawRefreshToken, null))
@@ -319,7 +314,7 @@ class AuthTokenRotationServiceTest {
                     .userAgent(TEST_USER_AGENT)
                     .expiresAt(LocalDateTime.now().plusDays(7))
                     .build();
-            stubBothFinders(tokenHash, existingToken);
+            stubTokenLookup(tokenHash, existingToken);
             stubIssuePath(1L);
 
             // When
@@ -348,7 +343,7 @@ class AuthTokenRotationServiceTest {
                     .userAgent(TEST_USER_AGENT)
                     .expiresAt(LocalDateTime.now().plusDays(7))
                     .build();
-            stubBothFinders(tokenHash, existingToken);
+            stubTokenLookup(tokenHash, existingToken);
             given(userRepository.existsById(7L)).willReturn(true);
             given(roleClaimResolver.resolveRoles(7L)).willReturn(List.of("MEMBER", "SYSTEM_ADMIN"));
             given(authTokenService.issueAccessToken(eq(7L), eq(List.of("MEMBER", "SYSTEM_ADMIN"))))
@@ -399,7 +394,7 @@ class AuthTokenRotationServiceTest {
                     .rememberMe(false)
                     .expiresAt(LocalDateTime.now().plusDays(7))
                     .build();
-            stubBothFinders(tokenHash, existingToken);
+            stubTokenLookup(tokenHash, existingToken);
             given(userRepository.existsById(999L)).willReturn(false);
 
             // When / Then
