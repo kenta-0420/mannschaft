@@ -210,6 +210,8 @@ class CirculationStampServiceTest {
                 .title("テスト").body("本文")
                 .circulationMode(mode)
                 .build();
+        // BaseEntity の id を DOCUMENT_ID に固定（validateSequentialOrder が document.getId() を使うため）
+        org.springframework.test.util.ReflectionTestUtils.setField(entity, "id", DOCUMENT_ID);
         entity.activate();
         entity.updateRecipientCount(recipientCount);
         return entity;
