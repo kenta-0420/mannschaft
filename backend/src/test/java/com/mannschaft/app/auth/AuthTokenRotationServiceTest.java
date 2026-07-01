@@ -18,29 +18,44 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import java.util.List;
-
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
  * {@link AuthTokenRotationService} の単体テスト。
  * AuthService から分離された Refresh Token ローテーション / リプレイ検出ロジックを検証する。
  *
- * <p>セキュリティ重要案件として、AuthServiceTest から該当 nested クラス単位で
- * テスト挙動を完全保存したまま機械的に移送した。logoutAllDevices 呼び出し検証は
- * {@link AuthSessionService} のモック呼び出しを観測する形に置き換えている。</p>
+ * <p><b>本ファイルはリフレッシュトークン並行更新の自爆バグ根治（Phase1 試練）で全面改訂した。</b>
+ * 従来の実装は「行ロックなし・grace なし」で旧トークン revoke → 新トークン発行を行っていたため、
+ * 並行 refresh で片方 revoke 後にもう片方が使用済みトークンを再提示すると、これをリプレイと誤判定して
+ * {@link AuthSessionService#logoutAllDevices(Long)} を発火させ、全セッションを永久無効化していた。</p>
+ *
+ * <p>根治方式は「DB 行ロック（{@code findByTokenHashForUpdate}）で直列化 + grace window
+ * （後継ポインタ {@code replacedByTokenHash}）で並行更新を正規化」である。
+ * 真リプレイは「grace 超過」または「後継無し revoke」のみ検知する。
+ * 本テスト群は受け入れ条件 AC-1〜AC-6 / AC-9 を表明し、実装本体が未達の間は red（失敗）で正しい。</p>
+ *
+ * <p>Strictness は LENIENT にしている。red 段階では実装が grace / 悲観ロック経路へ到達しないため
+ * 一部スタブが未使用になり得るが、それを {@code UnnecessaryStubbingException} という別要因の red で
+ * 濁らせず「実装未達ゆえの assert 失敗」を純粋に観測するための措置である（green 後は使用される）。</p>
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("AuthTokenRotationService 単体テスト")
+@MockitoSettings(strictness = Strictness.LENIENT)
+@DisplayName("AuthTokenRotationService 単体テスト（並行更新 競合制御）")
 class AuthTokenRotationServiceTest {
 
     @Mock
@@ -67,13 +82,230 @@ class AuthTokenRotationServiceTest {
     private static final String TEST_IP = "127.0.0.1";
     private static final String TEST_USER_AGENT = "Mozilla/5.0";
 
+    /**
+     * grace window「以内」を表現するための近過去の revokedAt（1 秒前）。
+     * grace window は最低でも数十秒はある想定なので、1 秒前は確実に「以内」。
+     */
+    private static LocalDateTime justRevoked() {
+        return LocalDateTime.now().minusSeconds(1);
+    }
+
+    /**
+     * grace window「超過」を表現するための遠過去の revokedAt（10 分前）。
+     * いかなる現実的な grace window（推奨 60 秒）も確実に超過する。
+     */
+    private static LocalDateTime longAgoRevoked() {
+        return LocalDateTime.now().minusMinutes(10);
+    }
+
+    /**
+     * 正常ローテーション経路で必要になる発行系スタブをまとめて用意する。
+     * 悲観ロック版・非ロック版どちらのファインダを実装が使っても同じトークンを返すよう両方スタブする。
+     */
+    private void stubIssuePath(Long userId) {
+        given(userRepository.existsById(userId)).willReturn(true);
+        given(roleClaimResolver.resolveRoles(userId)).willReturn(List.of("MEMBER"));
+        given(authTokenService.issueAccessToken(any(), any())).willReturn("new-access-token");
+        given(authTokenService.generateRefreshToken()).willReturn("new-raw-refresh-token");
+        given(authTokenService.hashToken("new-raw-refresh-token")).willReturn("new-hashed-refresh-token");
+        given(authTokenService.getRefreshTokenExpirationSeconds()).willReturn(604800L);
+        given(authTokenService.getAccessTokenExpirationSeconds()).willReturn(900L);
+        given(refreshTokenRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+    }
+
+    /** 両ファインダ（ロック版・非ロック版）に同じトークンを返させる。 */
+    private void stubBothFinders(String tokenHash, RefreshTokenEntity token) {
+        given(refreshTokenRepository.findByTokenHash(tokenHash)).willReturn(Optional.of(token));
+        given(refreshTokenRepository.findByTokenHashForUpdate(tokenHash)).willReturn(Optional.of(token));
+    }
+
     @Nested
-    @DisplayName("refreshAccessToken")
-    class RefreshAccessToken {
+    @DisplayName("並行更新の正規化（grace window）")
+    class ConcurrencyGraceNormalization {
 
         @Test
-        @DisplayName("正常系: 新トークンペアが発行される")
-        void refreshAccessToken_正常_新トークン発行() {
+        @DisplayName("AC-1: 同一トークンでの並行refresh（grace内・後継有）は全セッション無効化を発火せず新トークンを得る")
+        void ac1_並行refresh_全セッション無効化しない() {
+            // Given: 直前にローテーションで正規に置換された（後継有・grace内）トークンを再提示
+            String rawRefreshToken = "raw-refresh-token";
+            String tokenHash = "hashed-refresh-token";
+            given(authTokenService.hashToken(rawRefreshToken)).willReturn(tokenHash);
+
+            RefreshTokenEntity rotatedWithinGrace = RefreshTokenEntity.builder()
+                    .userId(1L)
+                    .tokenHash(tokenHash)
+                    .rememberMe(false)
+                    .ipAddress(TEST_IP)
+                    .userAgent(TEST_USER_AGENT)
+                    .expiresAt(LocalDateTime.now().plusDays(7))
+                    .revokedAt(justRevoked())
+                    .replacedByTokenHash("successor-token-hash")
+                    .build();
+            stubBothFinders(tokenHash, rotatedWithinGrace);
+            stubIssuePath(1L);
+
+            // When
+            ApiResponse<TokenResponse> response =
+                    authTokenRotationService.refreshAccessToken(rawRefreshToken, null);
+
+            // Then: リプレイ誤判定による全セッション無効化は起こらず、新トークンが返る
+            assertThat(response.getData().getAccessToken()).isNotBlank();
+            verify(authSessionService, never()).logoutAllDevices(anyLong());
+            verify(authSessionService, never()).logoutAllDevices(anyLong(), any(), any(), org.mockito.ArgumentMatchers.anyBoolean());
+        }
+
+        @Test
+        @DisplayName("AC-2: grace window内（後継有）の旧トークン再提示はリプレイにせず成功応答を返す")
+        void ac2_grace内の旧トークン_成功応答() {
+            // Given
+            String rawRefreshToken = "raw-refresh-token-2";
+            String tokenHash = "hashed-refresh-token-2";
+            given(authTokenService.hashToken(rawRefreshToken)).willReturn(tokenHash);
+
+            RefreshTokenEntity rotatedWithinGrace = RefreshTokenEntity.builder()
+                    .userId(2L)
+                    .tokenHash(tokenHash)
+                    .rememberMe(false)
+                    .expiresAt(LocalDateTime.now().plusDays(7))
+                    .revokedAt(justRevoked())
+                    .replacedByTokenHash("successor-token-hash-2")
+                    .build();
+            stubBothFinders(tokenHash, rotatedWithinGrace);
+            stubIssuePath(2L);
+
+            // When / Then: 例外を投げず、有効なトークンペアを返す
+            assertThatCode(() -> {
+                ApiResponse<TokenResponse> response =
+                        authTokenRotationService.refreshAccessToken(rawRefreshToken, null);
+                assertThat(response.getData().getAccessToken()).isNotBlank();
+                assertThat(response.getData().getRefreshToken()).isNotBlank();
+            }).doesNotThrowAnyException();
+        }
+    }
+
+    @Nested
+    @DisplayName("真リプレイ検出とリボーク種別の区別")
+    class ReplayDetection {
+
+        @Test
+        @DisplayName("AC-3: grace超過（後継有）のリボーク済みトークン再提示は全セッション無効化＋AUTH_026")
+        void ac3_grace超過_全セッション無効化_AUTH026() {
+            // Given: 後継は有るが revoke から grace を大幅超過 = 真のリプレイ
+            String rawRefreshToken = "replayed-token";
+            String tokenHash = "hashed-replayed-token";
+            given(authTokenService.hashToken(rawRefreshToken)).willReturn(tokenHash);
+
+            RefreshTokenEntity replayed = RefreshTokenEntity.builder()
+                    .userId(1L)
+                    .tokenHash(tokenHash)
+                    .rememberMe(false)
+                    .expiresAt(LocalDateTime.now().plusDays(7))
+                    .revokedAt(longAgoRevoked())
+                    .replacedByTokenHash("successor-token-hash")
+                    .build();
+            stubBothFinders(tokenHash, replayed);
+
+            // When / Then
+            assertThatThrownBy(() -> authTokenRotationService.refreshAccessToken(rawRefreshToken, null))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_026"));
+
+            verify(authSessionService).logoutAllDevices(1L);
+        }
+
+        @Test
+        @DisplayName("AC-4: 後継無しのリボーク済みトークン（明示ログアウト等）再提示はAUTH_007・全セッション無効化しない")
+        void ac4_後継無しリボーク_AUTH007_無効化しない() {
+            // Given: replacedByTokenHash 無し = ローテーション以外の revoke（明示ログアウト等）。grace 対象外。
+            String rawRefreshToken = "explicitly-logged-out-token";
+            String tokenHash = "hashed-logged-out-token";
+            given(authTokenService.hashToken(rawRefreshToken)).willReturn(tokenHash);
+
+            RefreshTokenEntity loggedOut = RefreshTokenEntity.builder()
+                    .userId(1L)
+                    .tokenHash(tokenHash)
+                    .rememberMe(false)
+                    .expiresAt(LocalDateTime.now().plusDays(7))
+                    .revokedAt(longAgoRevoked())
+                    .replacedByTokenHash(null)
+                    .build();
+            stubBothFinders(tokenHash, loggedOut);
+
+            // When / Then
+            assertThatThrownBy(() -> authTokenRotationService.refreshAccessToken(rawRefreshToken, null))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_007"));
+
+            verify(authSessionService, never()).logoutAllDevices(anyLong());
+        }
+    }
+
+    @Nested
+    @DisplayName("行ロック直列化とエラーコード是正")
+    class LockingAndErrorCodes {
+
+        @Test
+        @DisplayName("AC-5: ローテーションでは悲観ロック版 findByTokenHashForUpdate が使われる")
+        void ac5_悲観ロック版ファインダが使われる() {
+            // Given: 正常な有効トークン
+            String rawRefreshToken = "valid-token";
+            String tokenHash = "hashed-valid-token";
+            given(authTokenService.hashToken(rawRefreshToken)).willReturn(tokenHash);
+
+            RefreshTokenEntity valid = RefreshTokenEntity.builder()
+                    .userId(1L)
+                    .tokenHash(tokenHash)
+                    .rememberMe(false)
+                    .expiresAt(LocalDateTime.now().plusDays(7))
+                    .build();
+            stubBothFinders(tokenHash, valid);
+            stubIssuePath(1L);
+
+            // When: 例外の有無に関わらず、ファインダ呼び出しの事実を検証する
+            try {
+                authTokenRotationService.refreshAccessToken(rawRefreshToken, null);
+            } catch (RuntimeException ignored) {
+                // 実装未達で throw され得るが、本 AC は「行ロック版ファインダの利用」を検証するため無視
+            }
+
+            // Then: DB 行ロックで直列化するため、非ロック版ではなくロック版が呼ばれること
+            verify(refreshTokenRepository).findByTokenHashForUpdate(tokenHash);
+        }
+
+        @Test
+        @DisplayName("AC-6: 期限切れトークンは期限切れ用のエラーコードを返す（退会申請 AUTH_032 の誤用でない）")
+        void ac6_期限切れ_AUTH032ではない() {
+            // Given: revoke されていないが期限切れのトークン
+            String rawRefreshToken = "expired-token";
+            String tokenHash = "hashed-expired-token";
+            given(authTokenService.hashToken(rawRefreshToken)).willReturn(tokenHash);
+
+            RefreshTokenEntity expired = RefreshTokenEntity.builder()
+                    .userId(1L)
+                    .tokenHash(tokenHash)
+                    .rememberMe(false)
+                    .expiresAt(LocalDateTime.now().minusDays(1)) // 期限切れ
+                    .build();
+            stubBothFinders(tokenHash, expired);
+
+            // When / Then: BusinessException は投げるが、そのコードは AUTH_032（退会申請不存在）であってはならない
+            assertThatThrownBy(() -> authTokenRotationService.refreshAccessToken(rawRefreshToken, null))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .as("期限切れに退会申請用の AUTH_032 を流用してはならない")
+                            .isNotEqualTo("AUTH_032"));
+        }
+    }
+
+    @Nested
+    @DisplayName("正常系 回帰")
+    class NormalRegression {
+
+        @Test
+        @DisplayName("AC-9: 正常な単発refreshで新トークンペアが発行される")
+        void ac9_正常_新トークン発行() {
             // Given
             String rawRefreshToken = "raw-refresh-token";
             String tokenHash = "hashed-refresh-token";
@@ -87,18 +319,12 @@ class AuthTokenRotationServiceTest {
                     .userAgent(TEST_USER_AGENT)
                     .expiresAt(LocalDateTime.now().plusDays(7))
                     .build();
-            given(refreshTokenRepository.findByTokenHash(tokenHash)).willReturn(Optional.of(existingToken));
-
-            given(userRepository.existsById(1L)).willReturn(true);
-            given(authTokenService.issueAccessToken(any(), any())).willReturn("new-access-token");
-            given(authTokenService.generateRefreshToken()).willReturn("new-raw-refresh-token");
-            given(authTokenService.hashToken("new-raw-refresh-token")).willReturn("new-hashed-refresh-token");
-            given(authTokenService.getRefreshTokenExpirationSeconds()).willReturn(604800L);
-            given(authTokenService.getAccessTokenExpirationSeconds()).willReturn(900L);
-            given(refreshTokenRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+            stubBothFinders(tokenHash, existingToken);
+            stubIssuePath(1L);
 
             // When
-            ApiResponse<TokenResponse> response = authTokenRotationService.refreshAccessToken(rawRefreshToken, null);
+            ApiResponse<TokenResponse> response =
+                    authTokenRotationService.refreshAccessToken(rawRefreshToken, null);
 
             // Then
             assertThat(response.getData().getAccessToken()).isEqualTo("new-access-token");
@@ -107,8 +333,8 @@ class AuthTokenRotationServiceTest {
         }
 
         @Test
-        @DisplayName("リフレッシュ時に SYSTEM_ADMIN を再判定し、解決した roles で新トークンを発行する")
-        void refreshAccessToken_リフレッシュ時にSYSTEM_ADMIN再判定() {
+        @DisplayName("AC-9: リフレッシュ時に SYSTEM_ADMIN を再判定し、解決した roles で新トークンを発行する")
+        void ac9_リフレッシュ時にSYSTEM_ADMIN再判定() {
             // Given: SYSTEM_ADMIN ユーザーが RoleClaimResolver で再判定されるケース
             String rawRefreshToken = "raw-refresh-token";
             String tokenHash = "hashed-refresh-token";
@@ -122,10 +348,8 @@ class AuthTokenRotationServiceTest {
                     .userAgent(TEST_USER_AGENT)
                     .expiresAt(LocalDateTime.now().plusDays(7))
                     .build();
-            given(refreshTokenRepository.findByTokenHash(tokenHash)).willReturn(Optional.of(existingToken));
+            stubBothFinders(tokenHash, existingToken);
             given(userRepository.existsById(7L)).willReturn(true);
-
-            // RoleClaimResolver が SYSTEM_ADMIN を含む roles を返す（=リフレッシュ時の再判定）
             given(roleClaimResolver.resolveRoles(7L)).willReturn(List.of("MEMBER", "SYSTEM_ADMIN"));
             given(authTokenService.issueAccessToken(eq(7L), eq(List.of("MEMBER", "SYSTEM_ADMIN"))))
                     .willReturn("new-access-token-with-sysadmin");
@@ -136,50 +360,23 @@ class AuthTokenRotationServiceTest {
             given(refreshTokenRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
 
             // When
-            ApiResponse<TokenResponse> response = authTokenRotationService.refreshAccessToken(rawRefreshToken, null);
+            ApiResponse<TokenResponse> response =
+                    authTokenRotationService.refreshAccessToken(rawRefreshToken, null);
 
-            // Then: resolveRoles が当該 userId で呼ばれ、その結果が issueAccessToken に渡る
+            // Then
             verify(roleClaimResolver).resolveRoles(7L);
             verify(authTokenService).issueAccessToken(7L, List.of("MEMBER", "SYSTEM_ADMIN"));
             assertThat(response.getData().getAccessToken()).isEqualTo("new-access-token-with-sysadmin");
         }
 
         @Test
-        @DisplayName("異常系: リボーク済みトークンで全トークン失効（リプレイ攻撃検出）")
-        void refreshAccessToken_リボーク済み_全トークン失効() {
-            // Given
-            String rawRefreshToken = "revoked-refresh-token";
-            String tokenHash = "hashed-revoked-token";
-            given(authTokenService.hashToken(rawRefreshToken)).willReturn(tokenHash);
-
-            RefreshTokenEntity revokedToken = RefreshTokenEntity.builder()
-                    .userId(1L)
-                    .tokenHash(tokenHash)
-                    .rememberMe(false)
-                    .expiresAt(LocalDateTime.now().plusDays(7))
-                    .build();
-            // revoke() を呼んで revokedAt を設定
-            revokedToken.revoke();
-
-            given(refreshTokenRepository.findByTokenHash(tokenHash)).willReturn(Optional.of(revokedToken));
-
-            // When / Then
-            assertThatThrownBy(() -> authTokenRotationService.refreshAccessToken(rawRefreshToken, null))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("AUTH_029"));
-
-            // 全デバイスログアウトが AuthSessionService 経由で発動されることを確認
-            verify(authSessionService).logoutAllDevices(1L);
-        }
-
-        @Test
-        @DisplayName("異常系: 存在しないRefresh TokenでAUTH_007例外")
-        void refreshAccessToken_存在しない_AUTH007例外() {
+        @DisplayName("AC-9: 存在しないRefresh TokenでAUTH_007例外")
+        void ac9_存在しない_AUTH007例外() {
             // Given
             String rawRefreshToken = "nonexistent-token";
             given(authTokenService.hashToken(rawRefreshToken)).willReturn("hashed-nonexistent");
             given(refreshTokenRepository.findByTokenHash("hashed-nonexistent")).willReturn(Optional.empty());
+            given(refreshTokenRepository.findByTokenHashForUpdate("hashed-nonexistent")).willReturn(Optional.empty());
 
             // When / Then
             assertThatThrownBy(() -> authTokenRotationService.refreshAccessToken(rawRefreshToken, null))
@@ -189,31 +386,8 @@ class AuthTokenRotationServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 期限切れRefresh TokenでAUTH_032例外")
-        void refreshAccessToken_期限切れ_AUTH032例外() {
-            // Given
-            String rawRefreshToken = "expired-refresh-token";
-            String tokenHash = "hashed-expired";
-            given(authTokenService.hashToken(rawRefreshToken)).willReturn(tokenHash);
-
-            RefreshTokenEntity expiredToken = RefreshTokenEntity.builder()
-                    .userId(1L)
-                    .tokenHash(tokenHash)
-                    .rememberMe(false)
-                    .expiresAt(LocalDateTime.now().minusDays(1)) // 期限切れ
-                    .build();
-            given(refreshTokenRepository.findByTokenHash(tokenHash)).willReturn(Optional.of(expiredToken));
-
-            // When / Then
-            assertThatThrownBy(() -> authTokenRotationService.refreshAccessToken(rawRefreshToken, null))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
-                            .isEqualTo("AUTH_032"));
-        }
-
-        @Test
-        @DisplayName("異常系: ユーザーが存在しない場合AUTH_007例外")
-        void refreshAccessToken_ユーザー不在_AUTH007例外() {
+        @DisplayName("AC-9: ユーザーが存在しない場合AUTH_007例外")
+        void ac9_ユーザー不在_AUTH007例外() {
             // Given
             String rawRefreshToken = "valid-refresh-token";
             String tokenHash = "hashed-valid";
@@ -225,7 +399,7 @@ class AuthTokenRotationServiceTest {
                     .rememberMe(false)
                     .expiresAt(LocalDateTime.now().plusDays(7))
                     .build();
-            given(refreshTokenRepository.findByTokenHash(tokenHash)).willReturn(Optional.of(existingToken));
+            stubBothFinders(tokenHash, existingToken);
             given(userRepository.existsById(999L)).willReturn(false);
 
             // When / Then
