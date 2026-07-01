@@ -62,16 +62,23 @@
         "mode": "Circulation method",
         "recipients": "Recipients",
         "priority": "Priority",
-        "due_date": "Due date (optional)"
+        "due_date": "Due date (optional)",
+        "sequential_count": "Number of sequential recipients (first N)",
+        "sequential_count_placeholder": "Enter count"
       },
       "mode": {
         "SIMULTANEOUS": "Simultaneous",
-        "SEQUENTIAL": "Sequential"
+        "SEQUENTIAL": "Sequential",
+        "HYBRID": "Hybrid"
       },
       "mode_hint": {
         "SIMULTANEOUS": "Circulate to all recipients at the same time",
-        "SEQUENTIAL": "Circulate one by one in order from the top"
+        "SEQUENTIAL": "Circulate one by one in order from the top",
+        "HYBRID": "First N recipients receive it sequentially, the rest simultaneously"
       },
+      "hybrid_boundary": "↓ Simultaneous from here",
+      "hybrid_seq_count_hint": "Enter a value between 1 and {max}",
+      "hybrid_seq_count_needs_two": "Select 2 or more recipients to specify N",
       "priority": {
         "NORMAL": "Normal",
         "URGENT": "Urgent"
@@ -81,7 +88,9 @@
         "title_too_long": "The title must be 200 characters or fewer",
         "body_required": "Please enter the body",
         "recipients_required": "Please select at least one recipient",
-        "members_load_failed": "Failed to load the member list"
+        "members_load_failed": "Failed to load the member list",
+        "hybrid_needs_two_or_more": "Hybrid mode requires at least 2 recipients",
+        "sequential_count_range": "Sequential count must be at least 1 and less than the recipient count (max {max})"
       }
     }
   }
