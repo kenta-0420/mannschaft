@@ -456,7 +456,8 @@
     "imageUploadError": "Failed to upload image",
     "postSuccess": "Posted successfully",
     "postError": "Failed to post",
-    "announcementRegisterError": "Failed to register as announcement. Please register manually later."
+    "announcementRegisterError": "Failed to register as announcement. Please register manually later.",
+    "postSource": "Posted in"
   },
   "gallery": {
     "title": "Gallery",

@@ -456,7 +456,8 @@
     "imageUploadError": "画像のアップロードに失敗しました",
     "postSuccess": "投稿しました",
     "postError": "投稿に失敗しました",
-    "announcementRegisterError": "お知らせへの登録に失敗しました。後から手動で登録してください。"
+    "announcementRegisterError": "お知らせへの登録に失敗しました。後から手動で登録してください。",
+    "postSource": "投稿元"
   },
   "gallery": {
     "title": "ギャラリー",

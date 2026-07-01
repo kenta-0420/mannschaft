@@ -76,6 +76,10 @@ export interface RepostOf {
 export interface PostScopeDto {
   scopeType: TimelineScopeType
   scopeId: string
+  /** 投稿元スコープ名（個人集約タイムラインで BE から enrich。TEAM/ORGANIZATION のみ・それ以外は null） */
+  name?: string | null
+  /** 投稿元スコープ slug（遷移先 /teams/{slug} or /organizations/{slug} の生成に使う。null 可） */
+  slug?: string | null
 }
 
 export interface PostAuthorDto {

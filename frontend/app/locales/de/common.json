@@ -456,7 +456,8 @@
     "imageUploadError": "Bild-Upload fehlgeschlagen",
     "postSuccess": "Erfolgreich gepostet",
     "postError": "Fehler beim Posten",
-    "announcementRegisterError": "Fehler bei der Ankündigung. Bitte manuell registrieren."
+    "announcementRegisterError": "Fehler bei der Ankündigung. Bitte manuell registrieren.",
+    "postSource": "Gepostet in"
   },
   "gallery": {
     "title": "Galerie",

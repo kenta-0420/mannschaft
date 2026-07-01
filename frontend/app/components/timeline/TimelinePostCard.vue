@@ -18,8 +18,25 @@ const emit = defineEmits<{
   mitayoToggled: [postId: number, mitayo: boolean, mitayoCount: number]
 }>()
 
+const { t } = useI18n()
 const { relativeTime } = useRelativeTime()
 const { addReaction, removeReaction } = useTimelineApi()
+
+/**
+ * 投稿元バッジ。個人集約タイムライン（所属 team/org 横断）で BE が scope.name を enrich したときのみ表示する。
+ * 単一スコープの TL では scope.name が付与されないため出ない（非劣化）。
+ * slug があれば該当スコープページへ遷移するリンクにする。
+ */
+const sourceBadge = computed(() => {
+  const scope = props.post.scope
+  if (!scope?.name) return null
+  let to: string | null = null
+  if (scope.slug) {
+    if (scope.scopeType === 'TEAM') to = `/teams/${scope.slug}`
+    else if (scope.scopeType === 'ORGANIZATION') to = `/organizations/${scope.slug}`
+  }
+  return { name: scope.name, to }
+})
 const menu = ref()
 const expanded = ref(false)
 const mitayoLoading = ref(false)
@@ -90,6 +107,30 @@ async function handleToggleMitayo() {
     data-testid="team-timeline-post"
     @click="emit('clickPost', post.id)"
   >
+    <!-- 投稿元バッジ（個人集約タイムラインのみ・scope.name enrich 時に表示） -->
+    <div v-if="sourceBadge" class="mb-2">
+      <NuxtLink
+        v-if="sourceBadge.to"
+        :to="sourceBadge.to"
+        class="inline-flex items-center gap-1 rounded-full bg-surface-100 px-2 py-0.5 text-xs font-medium text-surface-600 hover:bg-surface-200 dark:bg-surface-700 dark:text-surface-200"
+        :aria-label="`${t('timeline.postSource')}: ${sourceBadge.name}`"
+        data-testid="timeline-post-source"
+        @click.stop
+      >
+        <i class="pi pi-sitemap text-[10px]" />
+        <span>{{ sourceBadge.name }}</span>
+      </NuxtLink>
+      <span
+        v-else
+        class="inline-flex items-center gap-1 rounded-full bg-surface-100 px-2 py-0.5 text-xs font-medium text-surface-600 dark:bg-surface-700 dark:text-surface-200"
+        :aria-label="`${t('timeline.postSource')}: ${sourceBadge.name}`"
+        data-testid="timeline-post-source"
+      >
+        <i class="pi pi-sitemap text-[10px]" />
+        <span>{{ sourceBadge.name }}</span>
+      </span>
+    </div>
+
     <!-- ピン表示 -->
     <div v-if="post.content?.isPinned" class="mb-2 flex items-center gap-1 text-xs text-surface-400">
       <i class="pi pi-thumbtack" />
