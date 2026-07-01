@@ -53965,11 +53965,14 @@ export interface components {
             circulationMode?: string;
             /** Format: date */
             dueDate?: string;
+            hybridSequentialCountValid?: boolean;
             priority?: string;
             recipients: components["schemas"]["RecipientEntry"][];
             reminderEnabled?: boolean;
             /** Format: int32 */
             reminderIntervalHours?: number;
+            /** Format: int32 */
+            sequentialCount?: number;
             stampDisplayStyle?: string;
             title?: string;
         };
