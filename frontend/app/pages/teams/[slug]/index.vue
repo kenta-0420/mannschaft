@@ -223,7 +223,18 @@ onMounted(async () => {
           <div class="flex items-center">
             <div class="flex-1 overflow-x-auto">
               <TabList>
-                <Tab :value="0"> ダッシュボード </Tab>
+                <Tab :value="0">
+                  <span class="inline-flex items-center gap-1">
+                    ダッシュボード
+                    <span
+                      v-if="roleName"
+                      role="button"
+                      class="cursor-pointer text-surface-400 transition-colors hover:text-primary"
+                      aria-label="チャットサイドバーを開く"
+                      @click.stop="showChatSidebar = !showChatSidebar"
+                    ><i class="pi pi-table-columns text-xs" /></span>
+                  </span>
+                </Tab>
                 <Tab :value="1"> 基本情報 </Tab>
                 <Tab :value="2"> メンバー </Tab>
                 <Tab v-if="isAdminOrDeputy && adminLens" :value="3"> 招待 </Tab>
@@ -232,16 +243,6 @@ onMounted(async () => {
                 <Tab v-if="roleName && reservationEnabled" :value="6">{{ $t('reservation.tab.team_page') }}</Tab>
                 <Tab v-if="roleName" :value="7"> {{ $t('nav.tab') }} </Tab>
               </TabList>
-            </div>
-            <div v-if="roleName" class="shrink-0 px-1">
-              <Button
-                icon="pi pi-comments"
-                text
-                rounded
-                size="small"
-                aria-label="チャット"
-                @click="showChatSidebar = true"
-              />
             </div>
             <div v-if="isAdminOrDeputy" class="shrink-0 px-3">
               <ScopeLensToggle v-model="adminLens" />
