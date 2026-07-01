@@ -109,6 +109,10 @@ const PERSONAL_DATA_WIDGET_KEYS = new Set([
   'favorites',                   // お気に入り
   'my-timeline',                 // 個人集約タイムライン（所属 team/org 横断）
   'recent-activity',             // 最近のアクティビティ
+  'recruitment-feed',            // Phase2 F03.11 新着募集（WidgetRecruitmentFeed・自前カード）
+  'my-recruitments',             // Phase2 F03.11 参加予定（WidgetMyRecruitments・自前カード）
+  'my-corkboard',                // F09.8.1 マイコルクボード（WidgetMyCorkboard・内容のみ→外枠必要）
+  'village-lobby-digest',        // F17.1 井戸端ダイジェスト（WidgetVillageLobbyDigest・内容のみ→外枠必要）
 ])
 
 function isDataWidget(key: string): boolean {
@@ -133,8 +137,17 @@ function linkTo(widgetKey: string): string | undefined {
     'my-organizations': '/organizations',
     favorites: '/my/favorites',
     'recent-activity': '/timeline',
+    notifications: '/notifications',
+    inbox: '/inbox',
   }
   return personalLinks[widgetKey]
+}
+
+/** ナビ型カードのクリック。リンク未定義時は何もしない（'#' への遷移で上部に戻るのを防ぐ）。 */
+function onNavCardClick(widgetKey: string) {
+  if (dragIndex.value !== null) return
+  const to = linkTo(widgetKey)
+  if (to) navigateTo(to)
 }
 
 function onDragStart(index: number, e: DragEvent) {
@@ -295,6 +308,30 @@ function onDragEnd() {
             <WidgetMyTimeline v-else-if="w.key === 'my-timeline'" />
             <!-- 最近のアクティビティ -->
             <WidgetRecentActivity v-else-if="w.key === 'recent-activity'" />
+            <!-- Phase2 F03.11: 新着募集 -->
+            <WidgetRecruitmentFeed v-else-if="w.key === 'recruitment-feed'" />
+            <!-- Phase2 F03.11: 参加予定 -->
+            <WidgetMyRecruitments v-else-if="w.key === 'my-recruitments'" />
+            <!-- F09.8.1: マイコルクボード（内容のみ→外枠カードで包む） -->
+            <DashboardWidgetCard
+              v-else-if="w.key === 'my-corkboard'"
+              :title="$t(w.labelKey)"
+              :icon="w.icon"
+              to="/my/corkboard"
+              :scrollable="false"
+            >
+              <WidgetMyCorkboard />
+            </DashboardWidgetCard>
+            <!-- F17.1: 井戸端ダイジェスト（内容のみ→外枠カードで包む） -->
+            <DashboardWidgetCard
+              v-else-if="w.key === 'village-lobby-digest'"
+              :title="$t(w.labelKey)"
+              :icon="w.icon"
+              to="/villages"
+              :scrollable="false"
+            >
+              <WidgetVillageLobbyDigest />
+            </DashboardWidgetCard>
           </template>
 
           <!-- ─── ナビゲーションウィジェット ─── -->
@@ -305,7 +342,7 @@ function onDragEnd() {
             :scrollable="false"
             :is-dragging="dragIndex === index"
             :is-drop-target="dropTargetIndex === index && dragIndex !== index"
-            @click="dragIndex === null && navigateTo(linkTo(w.key) ?? '#')"
+            @click="onNavCardClick(w.key)"
           >
             <!-- ドラッグハンドル（hover 時に表示） -->
             <i
