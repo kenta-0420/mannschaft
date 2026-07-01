@@ -62,16 +62,23 @@
         "mode": "회람 방식",
         "recipients": "수신자",
         "priority": "우선순위",
-        "due_date": "마감일 (선택)"
+        "due_date": "마감일 (선택)",
+        "sequential_count": "순번 회람 인원수 (첫 N 명)",
+        "sequential_count_placeholder": "인원수 입력"
       },
       "mode": {
         "SIMULTANEOUS": "동시",
-        "SEQUENTIAL": "순차"
+        "SEQUENTIAL": "순차",
+        "HYBRID": "하이브리드"
       },
       "mode_hint": {
         "SIMULTANEOUS": "수신자 전원에게 동시에 회람합니다",
-        "SEQUENTIAL": "위에서부터 한 명씩 순서대로 회람합니다"
+        "SEQUENTIAL": "위에서부터 한 명씩 순서대로 회람합니다",
+        "HYBRID": "첫 N 명은 순서대로, 나머지는 동시에 회람합니다"
       },
+      "hybrid_boundary": "↓ 이후 동시 회람",
+      "hybrid_seq_count_hint": "1 이상 {max} 이하의 수를 입력하세요",
+      "hybrid_seq_count_needs_two": "수신자를 2명 이상 선택하면 N 인원수를 지정할 수 있습니다",
       "priority": {
         "NORMAL": "보통",
         "URGENT": "긴급"
@@ -81,7 +88,9 @@
         "title_too_long": "제목은 200자 이내로 입력하세요",
         "body_required": "본문을 입력하세요",
         "recipients_required": "수신자를 한 명 이상 선택하세요",
-        "members_load_failed": "멤버 목록을 불러오지 못했습니다"
+        "members_load_failed": "멤버 목록을 불러오지 못했습니다",
+        "hybrid_needs_two_or_more": "하이브리드 모드는 수신자를 2명 이상 선택하세요",
+        "sequential_count_range": "순번 회람 인원수는 1 이상 수신자 수 미만이어야 합니다 (최대 {max})"
       }
     }
   }
