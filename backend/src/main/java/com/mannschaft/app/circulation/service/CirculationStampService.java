@@ -402,20 +402,37 @@ public class CirculationStampService {
     }
 
     /**
-     * 順次回覧の順序を検証する。
+     * 押印順序を検証する（SEQUENTIAL / HYBRID 共通）。
+     *
+     * <p>判定は sortOrder ベースに一本化している。押印しようとする受信者より
+     * <strong>sortOrder が厳密に小さい</strong> 受信者に PENDING が 1 人でも居れば
+     * {@link CirculationErrorCode#SEQUENTIAL_ORDER_VIOLATION} を投げる。</p>
+     *
+     * <ul>
+     *   <li><b>SEQUENTIAL</b> — 各受信者の sortOrder は全て distinct なので、
+     *       「自分より前が全員完了するまで押せない」という従来の直列制約と等価。</li>
+     *   <li><b>HYBRID</b> — 先頭 N 人は sortOrder 0..N-1（distinct）で順番、
+     *       残りは同一 sortOrder N（一斉）。同一 sortOrder 同士は互いに厳密小でないため
+     *       ブロックせず一斉に押せる。N 群は sortOrder が小さい先頭 N 人が全員完了するまで押せない。</li>
+     *   <li><b>SIMULTANEOUS</b> — 順序検証せず即 return。</li>
+     * </ul>
      */
     private void validateSequentialOrder(CirculationDocumentEntity document,
                                          CirculationRecipientEntity recipient) {
-        if (document.getCirculationMode() != CirculationMode.SEQUENTIAL) {
+        CirculationMode mode = document.getCirculationMode();
+        if (mode != CirculationMode.SEQUENTIAL && mode != CirculationMode.HYBRID) {
             return;
         }
 
         List<CirculationRecipientEntity> recipients =
                 recipientRepository.findByDocumentIdOrderBySortOrderAsc(document.getId());
 
+        int stamperSortOrder = recipient.getSortOrder();
         for (CirculationRecipientEntity r : recipients) {
-            if (r.getId().equals(recipient.getId())) {
-                break;
+            // 自分より sortOrder が厳密に小さい受信者のみ検査する。
+            // 同一 sortOrder（HYBRID の一斉群）は互いにブロックしない。
+            if (r.getSortOrder() >= stamperSortOrder) {
+                continue;
             }
             if (r.getStatus() == RecipientStatus.PENDING) {
                 throw new BusinessException(CirculationErrorCode.SEQUENTIAL_ORDER_VIOLATION);
