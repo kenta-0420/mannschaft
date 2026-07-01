@@ -2,6 +2,8 @@ package com.mannschaft.app.survey;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
@@ -19,6 +21,8 @@ import com.mannschaft.app.survey.repository.SurveyResponseRepository;
 import com.mannschaft.app.survey.repository.SurveyResultViewerRepository;
 import com.mannschaft.app.survey.repository.SurveyTargetRepository;
 import com.mannschaft.app.survey.service.SurveyService;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -26,17 +30,28 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -90,6 +105,25 @@ class SurveyServiceTest {
     private static final Long SCOPE_ID = 1L;
     private static final Long USER_ID = 10L;
     private static final String SCOPE_TYPE = "TEAM";
+
+    /**
+     * 本体ガード（listSurveys/getSurveyDetail/getStats）は内部で
+     * {@link SecurityUtils#getCurrentUserId()} を呼ぶため、SecurityContext を張って
+     * 認証済みユーザー（USER_ID）を確立する。これにより既存の正常系テスト
+     * （createSurvey → getSurveyDetail、getStats 等）が新ガードで COMMON_000 に落ちない。
+     * accessControlService モックは既定で void（何もしない）ため所属チェックは通過する。
+     * 認可遮断を明示検証する所属ゲートテストは MockedStatic + doThrow で個別に上書きする。
+     */
+    @BeforeEach
+    void setUpSecurityContext() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(String.valueOf(USER_ID), null, List.of()));
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
 
     private SurveyEntity createDraftSurvey() {
         return SurveyEntity.builder()
@@ -772,6 +806,166 @@ class SurveyServiceTest {
                     Collections.emptyList());
             assertThat(surveyService.createSurvey("ORGANIZATION", 1L, 10L, req)).isNotNull();
             verify(surveyRepository).save(org.mockito.ArgumentMatchers.any(SurveyEntity.class));
+        }
+    }
+
+    /**
+     * 軍議③（BE セキュリティ・本体漏洩根治）: アンケート<b>本体</b>の一覧/詳細/集計取得に per-scope 認可を追加。
+     *
+     * <p>従来 {@code listSurveys}/{@code getSurveyDetail}/{@code getStats} は per-scope の所属チェックが無く、
+     * 認証済みかつ他スコープの slug + surveyId を知る任意ユーザーが本体（設問・選択肢）を 200 取得できる
+     * 漏洩があった。回覧板 {@code CirculationService.listDocuments} の手本を踏襲し、各メソッド冒頭で
+     * {@code accessControlService.checkMembershipOrDescendant(userId, scopeId, scopeType, true)} を通し、
+     * 非所属（{@code COMMON_002} = 403）を弾く。</p>
+     *
+     * <p>{@code ContentVisibilityChecker.canView(SURVEY,...)} は結果（resultsVisibility）専用のため本体ガードに
+     * 流用しない（DRAFT 非作成者等を誤 deny する）。本体は per-scope メンバーシップで守る。
+     * 応援者は閲覧可（{@code includeSupporters=true}）・組織発は配下再帰（AccessControlService の責務）。</p>
+     */
+    @Nested
+    @DisplayName("本体ガード（listSurveys/getSurveyDetail/getStats の per-scope 認可）")
+    class SurveyBodyAuthorization {
+
+        @Test
+        @DisplayName("AC-1: 非所属ユーザーの listSurveys は COMMON_002(403) で遮断される（リポジトリに到達しない）")
+        void 一覧_非所属はCOMMON_002で遮断() {
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                        .when(accessControlService)
+                        .checkMembershipOrDescendant(anyLong(), eq(SCOPE_ID), eq(SCOPE_TYPE), eq(true));
+
+                assertThatThrownBy(() -> surveyService.listSurveys(
+                        SCOPE_TYPE, SCOPE_ID, null,
+                        org.springframework.data.domain.Pageable.unpaged()))
+                        .isInstanceOf(BusinessException.class)
+                        .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                                .isEqualTo(CommonErrorCode.COMMON_002));
+
+                // ゲートで弾かれるため一覧クエリには到達しない
+                verify(surveyRepository, never())
+                        .findByScopeTypeAndScopeIdOrderByCreatedAtDesc(any(), any(), any());
+            }
+        }
+
+        @Test
+        @DisplayName("AC-2: 非所属ユーザーの getSurveyDetail は COMMON_002(403) で遮断される（存在露見前に弾く）")
+        void 詳細_非所属はCOMMON_002で遮断() {
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                        .when(accessControlService)
+                        .checkMembershipOrDescendant(anyLong(), eq(SCOPE_ID), eq(SCOPE_TYPE), eq(true));
+
+                assertThatThrownBy(() -> surveyService.getSurveyDetail(SCOPE_TYPE, SCOPE_ID, SURVEY_ID))
+                        .isInstanceOf(BusinessException.class)
+                        .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                                .isEqualTo(CommonErrorCode.COMMON_002));
+
+                // 存在露見前に弾くため findSurveyOrThrow（リポジトリ）には到達しない
+                verify(surveyRepository, never())
+                        .findByIdAndScopeTypeAndScopeId(any(), any(), any());
+            }
+        }
+
+        @Test
+        @DisplayName("AC-3: 非所属ユーザーの getStats は COMMON_002(403) で遮断される（集計に到達しない）")
+        void 集計_非所属はCOMMON_002で遮断() {
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                        .when(accessControlService)
+                        .checkMembershipOrDescendant(anyLong(), eq(SCOPE_ID), eq(SCOPE_TYPE), eq(true));
+
+                assertThatThrownBy(() -> surveyService.getStats(SCOPE_TYPE, SCOPE_ID))
+                        .isInstanceOf(BusinessException.class)
+                        .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                                .isEqualTo(CommonErrorCode.COMMON_002));
+
+                // ゲートで弾かれるため集計クエリには到達しない
+                verify(surveyRepository, never())
+                        .countByScopeTypeAndScopeIdAndStatus(any(), any(), any());
+            }
+        }
+
+        @Test
+        @DisplayName("AC-4: メンバーの listSurveys は正常に結果を返し、ゲートが includeSupporters=true で呼ばれる")
+        void 一覧_メンバーは通過しゲートがincludeSupportersTrueで呼ばれる() {
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                doNothing().when(accessControlService)
+                        .checkMembershipOrDescendant(anyLong(), eq(SCOPE_ID), eq(SCOPE_TYPE), eq(true));
+                given(surveyRepository.findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
+                        eq(SCOPE_TYPE), eq(SCOPE_ID), any()))
+                        .willReturn(org.springframework.data.domain.Page.empty());
+
+                org.springframework.data.domain.Page<SurveyResponse> result = surveyService.listSurveys(
+                        SCOPE_TYPE, SCOPE_ID, null,
+                        org.springframework.data.domain.Pageable.unpaged());
+
+                assertThat(result).isNotNull();
+                verify(accessControlService)
+                        .checkMembershipOrDescendant(USER_ID, SCOPE_ID, SCOPE_TYPE, true);
+            }
+        }
+
+        @Test
+        @DisplayName("AC-4: メンバーの getSurveyDetail は正常に結果を返し、ゲートが呼ばれる")
+        void 詳細_メンバーは通過しゲートが呼ばれる() {
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                doNothing().when(accessControlService)
+                        .checkMembershipOrDescendant(anyLong(), eq(SCOPE_ID), eq(SCOPE_TYPE), eq(true));
+                SurveyEntity entity = createDraftSurvey();
+                ReflectionTestUtils.setField(entity, "id", SURVEY_ID);
+                given(surveyRepository.findByIdAndScopeTypeAndScopeId(SURVEY_ID, SCOPE_TYPE, SCOPE_ID))
+                        .willReturn(Optional.of(entity));
+                given(surveyMapper.toSurveyResponse(entity)).willReturn(createSurveyResponse());
+                given(questionRepository.findBySurveyIdOrderByDisplayOrderAsc(SURVEY_ID))
+                        .willReturn(Collections.emptyList());
+
+                assertThat(surveyService.getSurveyDetail(SCOPE_TYPE, SCOPE_ID, SURVEY_ID)).isNotNull();
+                verify(accessControlService)
+                        .checkMembershipOrDescendant(USER_ID, SCOPE_ID, SCOPE_TYPE, true);
+            }
+        }
+
+        @Test
+        @DisplayName("AC-4: メンバーの getStats は正常に結果を返し、ゲートが呼ばれる")
+        void 集計_メンバーは通過しゲートが呼ばれる() {
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                doNothing().when(accessControlService)
+                        .checkMembershipOrDescendant(anyLong(), eq(SCOPE_ID), eq(SCOPE_TYPE), eq(true));
+
+                SurveyStatsResponse result = surveyService.getStats(SCOPE_TYPE, SCOPE_ID);
+
+                assertThat(result).isNotNull();
+                verify(accessControlService)
+                        .checkMembershipOrDescendant(USER_ID, SCOPE_ID, SCOPE_TYPE, true);
+            }
+        }
+
+        @Test
+        @DisplayName("AC-5/6: ORGANIZATION スコープでも同一 API 経由で includeSupporters=true でゲートが呼ばれる")
+        void 組織スコープ_同一API経由でincludeSupportersTrueで呼ばれる() {
+            String orgScopeType = "ORGANIZATION";
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                doNothing().when(accessControlService)
+                        .checkMembershipOrDescendant(anyLong(), eq(SCOPE_ID), eq(orgScopeType), eq(true));
+                given(surveyRepository.findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
+                        eq(orgScopeType), eq(SCOPE_ID), any()))
+                        .willReturn(org.springframework.data.domain.Page.empty());
+
+                surveyService.listSurveys(orgScopeType, SCOPE_ID, null,
+                        org.springframework.data.domain.Pageable.unpaged());
+
+                // 配下再帰の実判定は AccessControlService の責務。ここでは同一 API を
+                // includeSupporters=true で通していることを verify で担保する。
+                verify(accessControlService)
+                        .checkMembershipOrDescendant(USER_ID, SCOPE_ID, orgScopeType, true);
+            }
         }
     }
 

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.organization.service.OrganizationMembershipService;
@@ -84,6 +85,15 @@ public class SurveyService {
      */
     public Page<SurveyResponse> listSurveys(String scopeType, Long scopeId,
                                              String status, Pageable pageable) {
+        // 軍議③ F00 漏洩根治: 本体一覧はスコープ所属者のみ。非所属は COMMON_002(403)。
+        // GET /surveys（team/org 版）は認可ゲートが無く、認証済みかつ他スコープの slug + surveyId を
+        // 知る任意ユーザーが本体（設問・選択肢）を 200 で取得・列挙できる漏洩があった（回覧板 F00 と同型）。
+        // checkMembershipOrDescendant(..., includeSupporters=true) = 会員/応援者/(ORGANIZATION 時)配下ツリー
+        // 所属を許可し、非所属のみ弾く。ContentVisibilityChecker.canView(SURVEY,...) は結果専用のため
+        // 本体ガードには流用しない（DRAFT 非作成者等を誤 deny する）。手本: CirculationService.listDocuments。
+        accessControlService.checkMembershipOrDescendant(
+                SecurityUtils.getCurrentUserId(), scopeId, scopeType, true);
+
         Page<SurveyEntity> page;
         if (status != null) {
             // follow-up④: SurveyStatus.valueOf(status) は不正値で IllegalArgumentException → 500 に
@@ -151,6 +161,11 @@ public class SurveyService {
      * @return アンケート詳細レスポンス
      */
     public SurveyDetailResponse getSurveyDetail(String scopeType, Long scopeId, Long surveyId) {
+        // 軍議③ F00 漏洩根治: 本体詳細もスコープ所属者のみ。非所属は存在露見前に COMMON_002(403) で弾く
+        // （findSurveyOrThrow の前に置くことで、他スコープの surveyId 有無を漏らさない）。
+        // DRAFT はメンバーに従来どおり見せる（status ガードは足さない）。手本: CirculationService.getDocument。
+        accessControlService.checkMembershipOrDescendant(
+                SecurityUtils.getCurrentUserId(), scopeId, scopeType, true);
         SurveyEntity entity = findSurveyOrThrow(scopeType, scopeId, surveyId);
         SurveyResponse surveyResponse = surveyMapper.toSurveyResponse(entity);
         List<QuestionResponse> questions = buildQuestionResponses(surveyId);
@@ -691,6 +706,11 @@ public class SurveyService {
      * @return アンケート統計レスポンス
      */
     public SurveyStatsResponse getStats(String scopeType, Long scopeId) {
+        // 軍議③ F00 漏洩根治: 集計もスコープ所属者のみ。非所属は COMMON_002(403)。
+        // 件数集計から他スコープの本体規模（下書き数等）を推測される漏洩を防ぐ。
+        // 手本: CirculationService.listDocuments の per-scope 所属ゲートと同型。
+        accessControlService.checkMembershipOrDescendant(
+                SecurityUtils.getCurrentUserId(), scopeId, scopeType, true);
         long draft = surveyRepository.countByScopeTypeAndScopeIdAndStatus(scopeType, scopeId, SurveyStatus.DRAFT);
         long published = surveyRepository.countByScopeTypeAndScopeIdAndStatus(scopeType, scopeId, SurveyStatus.PUBLISHED);
         long closed = surveyRepository.countByScopeTypeAndScopeIdAndStatus(scopeType, scopeId, SurveyStatus.CLOSED);
