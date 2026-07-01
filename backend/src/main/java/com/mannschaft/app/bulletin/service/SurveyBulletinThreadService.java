@@ -31,6 +31,8 @@ public class SurveyBulletinThreadService {
     private final BulletinThreadRepository bulletinThreadRepository;
     /** フラット enrichment（投稿者名/アバター・カテゴリ・既読・リアクション）を共通経路で適用する。 */
     private final BulletinThreadService bulletinThreadService;
+    /** per-scope 所属認可ガード（掲示板ドメインのスレッド読取と同一・非所属は COMMON_002）。 */
+    private final BulletinAccessGuard accessGuard;
 
     /**
      * アンケートに対応する掲示板スレッドを作成する。
@@ -114,6 +116,12 @@ public class SurveyBulletinThreadService {
      * <p>一覧/詳細と同じ enrichment（投稿者名/アバター・カテゴリ名/色・既読・リアクション集計）を通すため、
      * {@link BulletinThreadService#enrichSingle} に委譲する。スレッドが無ければ empty。</p>
      *
+     * <p><b>認可（軍議④・F00漏洩根治）:</b> スレッドが存在する場合は、そのスレッド自身のスコープに対し
+     * {@link BulletinAccessGuard#checkMembership} で所属を検証する。非所属は COMMON_002(403)。
+     * これにより surveyId を知るだけで他スコープの専用スレッド本文/投稿を取得できる漏洩を塞ぐ。
+     * 掲示板ドメインのスレッド読取（{@link BulletinThreadService#getThreadGlobal}）と同一の手本。
+     * スレッド未存在（empty）はガード前に短絡し、従来どおり 404 となる。</p>
+     *
      * @param surveyId      アンケートID
      * @param currentUserId 操作ユーザーID（既読・myReactions の主体。null 可）
      * @return enrich 済みスレッドレスポンス（存在しない場合は empty）
@@ -121,7 +129,13 @@ public class SurveyBulletinThreadService {
     @Transactional(readOnly = true)
     public Optional<ThreadResponse> findThreadResponseBySurveyId(long surveyId, Long currentUserId) {
         return findBySurveyId(surveyId)
-                .map(thread -> bulletinThreadService.enrichSingle(thread, currentUserId));
+                .map(thread -> {
+                    // 軍議④ F00漏洩根治: アンケート専用スレッドも per-scope 所属者のみ閲覧可。
+                    // 掲示板ドメインのスレッド読取(BulletinThreadService)と同じ BulletinAccessGuard で守る。
+                    // 非所属は COMMON_002(403)。スレッド未存在は従来どおり empty→404（存在しないものは gate 前）。
+                    accessGuard.checkMembership(currentUserId, thread.getScopeType(), thread.getScopeId());
+                    return bulletinThreadService.enrichSingle(thread, currentUserId);
+                });
     }
 
     /**
