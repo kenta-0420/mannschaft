@@ -64191,6 +64191,7 @@ export interface components {
             /** Format: int64 */
             id?: number;
             poll?: components["schemas"]["PollResponse"];
+            recentReplies?: components["schemas"]["PostResponse"][];
             scope?: components["schemas"]["PostScopeDto"];
             stats?: components["schemas"]["PostStatsDto"];
         };
@@ -132740,7 +132741,8 @@ export interface operations {
     getReplies: {
         parameters: {
             query?: {
-                size?: number;
+                cursor?: number;
+                limit?: number;
             };
             header?: never;
             path: {
@@ -132756,7 +132758,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListPostResponse"];
+                    "*/*": components["schemas"]["TimelineFeedResponse"];
                 };
             };
         };
