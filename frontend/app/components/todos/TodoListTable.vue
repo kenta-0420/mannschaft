@@ -54,6 +54,9 @@ const page = ref(0)
 const rows = ref(20)
 const selectedTodos = ref<Todo[]>([])
 
+// ソート種別（RECENT=新着順 / PRIORITY=優先度順）
+const sortType = ref<'RECENT' | 'PRIORITY'>('RECENT')
+
 // フィルター
 const statusFilter = ref('')
 const priorityFilter = ref('')
@@ -81,6 +84,7 @@ async function loadTodos() {
       priority: priorityFilter.value || undefined,
       page: page.value,
       size: rows.value,
+      sort: sortType.value,
     })
     todos.value = res.data
     totalRecords.value = res.meta.totalElements
@@ -144,7 +148,7 @@ function formatDate(dateStr: string | null | undefined): string {
   return dayjs.tz(dateStr, userTimezone.value).format('YYYY/MM/DD')
 }
 
-watch([statusFilter, priorityFilter], () => {
+watch([statusFilter, priorityFilter, sortType], () => {
   page.value = 0
   loadTodos()
 })
@@ -159,12 +163,26 @@ defineExpose({ refresh: loadTodos, changeStatus: onStatusChange })
     <!-- フィルター -->
     <div class="mb-4 flex flex-wrap items-end gap-3">
       <div class="w-36">
-        <label class="mb-1 block text-xs font-medium">ステータス</label>
+        <label class="mb-1 block text-xs font-medium">{{ $t('todo.field.status') }}</label>
         <Select v-model="statusFilter" :options="statusOptions" option-label="label" option-value="value" class="w-full" />
       </div>
       <div class="w-36">
-        <label class="mb-1 block text-xs font-medium">優先度</label>
+        <label class="mb-1 block text-xs font-medium">{{ $t('todo.field.priority') }}</label>
         <Select v-model="priorityFilter" :options="priorityOptions" option-label="label" option-value="value" class="w-full" />
+      </div>
+      <!-- 並び順トグル -->
+      <div>
+        <label class="mb-1 block text-xs font-medium">{{ $t('todo.list.sortLabel') }}</label>
+        <SelectButton
+          v-model="sortType"
+          :options="[
+            { label: $t('todo.list.sortRecent'), value: 'RECENT' },
+            { label: $t('todo.list.sortPriority'), value: 'PRIORITY' },
+          ]"
+          option-label="label"
+          option-value="value"
+          data-testid="todo-sort-toggle"
+        />
       </div>
       <!-- 一括操作（バケット単位の一括変更のみ。ラベル変更は詳細ページで行う） -->
       <div v-if="selectedTodos.length > 0" class="flex items-center gap-2">

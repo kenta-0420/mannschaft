@@ -536,7 +536,10 @@
       "viewModeKanban": "칸반 보기",
       "deleteButton": "삭제",
       "deleteAriaLabel": "이 할 일 삭제",
-      "deleteConfirm": "이 할 일을 삭제하시겠습니까？삭제 후에는 복구할 수 없습니다。"
+      "deleteConfirm": "이 할 일을 삭제하시겠습니까？삭제 후에는 복구할 수 없습니다。",
+      "sortLabel": "정렬 기준",
+      "sortRecent": "최신순",
+      "sortPriority": "우선순위순"
     },
     "field": {
       "status": "상태",
