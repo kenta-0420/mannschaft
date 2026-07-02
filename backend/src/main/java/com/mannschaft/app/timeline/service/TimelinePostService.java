@@ -398,6 +398,18 @@ public class TimelinePostService {
         post.softDelete();
         postRepository.save(post);
 
+        // リプライ削除時は親投稿のリプライ数をデクリメントする（作成時 doCreatePost の +1 と対称）。
+        // findPostOrThrow は @SQLRestriction("deleted_at IS NULL") により削除済み投稿を取得しないため、
+        // 本メソッドに到達した時点で「今回初めて削除される」ことが保証される（二重デクリメント防止＝冪等）。
+        // 親が既に削除済み（findById が空）の場合は減算をスキップする（安全）。負値ガードは
+        // TimelinePostEntity#decrementReplyCount 内で担保する（0 でクランプ）。
+        if (post.getParentId() != null) {
+            postRepository.findById(post.getParentId()).ifPresent(parent -> {
+                parent.decrementReplyCount();
+                postRepository.save(parent);
+            });
+        }
+
         log.info("タイムライン投稿削除: id={}, userId={}", postId, userId);
 
         // F13 Phase 4-γ: ファイル系添付（IMAGE / VIDEO_FILE）の使用量減算

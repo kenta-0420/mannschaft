@@ -190,6 +190,16 @@ public class TimelinePostEntity extends BaseEntity {
     }
 
     /**
+     * リプライ数をデクリメントする（返信削除時。作成時の {@link #incrementReplyCount()} と対称）。
+     * 負値ガードを備え、0 未満にはならない（0 でクランプ）。
+     */
+    public void decrementReplyCount() {
+        if (this.replyCount > 0) {
+            this.replyCount--;
+        }
+    }
+
+    /**
      * リポスト数をインクリメントする。
      */
     public void incrementRepostCount() {
