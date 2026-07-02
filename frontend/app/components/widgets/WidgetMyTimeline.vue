@@ -18,13 +18,13 @@ const { t } = useI18n()
     :col-span="2"
     :to="'/timeline'"
   >
-    <TimelineFeed my-feed />
+    <TimelineFeed my-feed :limit="10" />
     <div class="flex justify-end pt-3">
       <NuxtLink
         to="/timeline"
         class="text-sm text-primary hover:underline"
       >
-        {{ t('common.button.see_more') }}
+        {{ t('common.button.view_all') }}
       </NuxtLink>
     </div>
   </DashboardWidgetCard>

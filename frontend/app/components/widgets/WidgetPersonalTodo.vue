@@ -63,7 +63,7 @@ async function load() {
         scopeType: t.scopeType,
         scopeId: t.scopeId,
       }))
-      .slice(0, 15)
+      .slice(0, 20)
     overdueCount.value = todos.value.filter(
       (t) => t.dueDate !== null && dayjs.tz(t.dueDate, userTimezone.value).isBefore(todayStart),
     ).length
@@ -222,6 +222,12 @@ onMounted(load)
             </span>
           </div>
         </div>
+      </div>
+
+      <div class="flex justify-end pt-1">
+        <NuxtLink to="/todos" class="text-sm text-primary hover:underline">
+          {{ $t('common.button.view_all') }}
+        </NuxtLink>
       </div>
     </div>
     <DashboardEmptyState v-else icon="pi pi-check-circle" message="TODOはすべて完了しています" />

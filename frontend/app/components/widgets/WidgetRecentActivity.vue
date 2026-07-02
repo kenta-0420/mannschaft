@@ -20,7 +20,7 @@ const loading = ref(true)
 async function load() {
   loading.value = true
   try {
-    const res = await getActivity({ limit: 8 })
+    const res = await getActivity({ limit: 20 })
     activities.value = res.data.map((a) => ({
       id: a.id,
       activityType: a.type,
@@ -63,6 +63,11 @@ onMounted(load)
         :scope-name="activity.scopeName"
         :created-at="activity.createdAt"
       />
+      <div class="flex justify-end pt-2">
+        <NuxtLink to="/timeline" class="text-sm text-primary hover:underline">
+          {{ $t('common.button.view_all') }}
+        </NuxtLink>
+      </div>
     </div>
     <DashboardEmptyState v-else icon="pi pi-history" message="まだアクティビティはありません" />
   </DashboardWidgetCard>

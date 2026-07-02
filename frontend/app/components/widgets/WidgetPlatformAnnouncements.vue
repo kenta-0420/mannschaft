@@ -13,6 +13,10 @@ interface Announcement {
 const announcements = ref<Announcement[]>([])
 const loading = ref(true)
 
+/** DOM 暴走防止の描画上限（3件ではなく20件・溢れは枠内スクロールで見える）。 */
+const DISPLAY_LIMIT = 20
+const visibleAnnouncements = computed(() => announcements.value.slice(0, DISPLAY_LIMIT))
+
 async function load() {
   loading.value = true
   try {
@@ -38,7 +42,7 @@ onMounted(load)
   <DashboardWidgetCard title="お知らせ" icon="pi pi-megaphone" :loading="loading">
     <div v-if="announcements.length > 0" class="space-y-2">
       <div
-        v-for="ann in announcements"
+        v-for="ann in visibleAnnouncements"
         :key="ann.id"
         class="rounded-lg border p-3"
         :class="{
@@ -60,6 +64,11 @@ onMounted(load)
             <p class="mt-1 text-xs text-surface-600 dark:text-surface-400">{{ ann.content }}</p>
           </div>
         </div>
+      </div>
+      <div class="flex justify-end pt-1">
+        <NuxtLink to="/notifications" class="text-sm text-primary hover:underline">
+          {{ $t('common.button.view_all') }}
+        </NuxtLink>
       </div>
     </div>
     <DashboardEmptyState v-else icon="pi pi-megaphone" message="運営からのお知らせはありません" />

@@ -16,6 +16,11 @@ const props = defineProps<{
   myFeed?: boolean
   canPin?: boolean
   canDeleteOthers?: boolean
+  /**
+   * ダッシュボードのウィジェット内など、狭い枠で先頭 N 件だけ表示したい場合の上限。
+   * 指定時は追加ロード（「もっと読む」）を無効化し、一覧ページ側へ委譲する。
+   */
+  limit?: number
 }>()
 
 const emit = defineEmits<{
@@ -36,6 +41,11 @@ const { showSuccess, showError } = useNotification()
 
 const pinnedPosts = ref<TimelinePostResponse[]>([])
 const posts = ref<TimelinePostResponse[]>([])
+
+/** limit 指定時は先頭 N 件だけ描画（ダッシュボード等の狭い枠向け）。未指定なら全件。 */
+const displayPosts = computed(() =>
+  props.limit != null ? posts.value.slice(0, props.limit) : posts.value,
+)
 const nextCursor = ref<number | null>(null)
 const hasNext = ref(false)
 const loading = ref(false)
@@ -211,7 +221,7 @@ defineExpose({ refresh })
 
     <!-- 通常投稿 -->
     <TimelinePostCard
-      v-for="post in posts"
+      v-for="post in displayPosts"
       :key="post.id"
       :post="post"
       :can-pin="canPin"
@@ -234,8 +244,8 @@ defineExpose({ refresh })
       <p class="text-surface-400">まだ投稿がありません</p>
     </div>
 
-    <!-- もっと読む -->
-    <div v-if="hasNext" class="flex justify-center py-4">
+    <!-- もっと読む（limit 指定時は追加ロードを無効化し、一覧ページ側へ委譲） -->
+    <div v-if="hasNext && limit == null" class="flex justify-center py-4">
       <Button label="もっと読む" text :loading="loading" @click="loadMore" />
     </div>
 

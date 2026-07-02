@@ -20,6 +20,10 @@ const events = ref<UpcomingEvent[]>([])
 const loading = ref(false)
 const viewMode = ref<'today' | 'week'>('week')
 
+/** DOM 暴走防止の描画上限（3件ではなく20件・溢れは枠内スクロールで見える）。 */
+const DISPLAY_LIMIT = 20
+const visibleEvents = computed(() => events.value.slice(0, DISPLAY_LIMIT))
+
 async function load() {
   loading.value = true
   try {
@@ -71,7 +75,7 @@ onMounted(load)
 
     <div v-if="events.length > 0" class="space-y-3">
       <div
-        v-for="event in events"
+        v-for="event in visibleEvents"
         :key="event.id"
         class="flex items-center gap-3 rounded-lg border-2 border-surface-300 bg-surface-50 p-3 dark:border-surface-600 dark:bg-surface-700/50"
       >
@@ -106,6 +110,11 @@ onMounted(load)
           </div>
         </div>
         <Tag v-if="event.all_day" value="終日" severity="secondary" rounded />
+      </div>
+      <div class="flex justify-end pt-1">
+        <NuxtLink to="/calendar" class="text-sm text-primary hover:underline">
+          {{ t('common.button.view_all') }}
+        </NuxtLink>
       </div>
     </div>
     <DashboardEmptyState
