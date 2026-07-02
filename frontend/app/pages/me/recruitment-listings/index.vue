@@ -56,7 +56,7 @@ onMounted(() => load())
       >
         <div class="flex flex-col">
           <div class="text-sm text-surface-500">
-            {{ t('recruitment.listingLabel', { id: p.listingId }) }}
+            {{ t('recruitment.label.listingLabel', { id: p.listingId }) }}
           </div>
           <div class="mt-1">
             <Tag :value="statusLabel(p.status)" />
