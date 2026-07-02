@@ -25,7 +25,10 @@ import { provideOrgShellContext } from '~/composables/useOrgShellContext'
 import { resolveSlugRedirectPath } from '~/utils/slugRedirect'
 
 definePageMeta({
-  middleware: 'auth',
+  // 親シェルには middleware を付けない。付けると子ルート全体に継承され、
+  // 認証不要の公開ページ（例 organizations/[slug]/teams/search=公開店舗検索,
+  // recruitment-listings/new 等）まで認証必須化してしまう（F15.4 退行の根治）。
+  // 認証は各シェル子ページ（index/info/... やウィジェット遷移先）が個別に持つ。
   layout: 'default',
 })
 
