@@ -20,7 +20,7 @@
       "no_provider": "(sin coincidencia)",
       "last4_format": "●●●● {last4}",
       "no_cards": "Aún no hay tarjetas registradas",
-      "no_cards_hint": "Use el botón '+' para añadir una tarjeta",
+      "no_cards_hint": "Usa el botón «Añadir tarjeta» de la parte superior para añadir una tarjeta",
       "no_matches": "No hay tarjetas que coincidan con '{query}'"
     },
     "group": {
@@ -439,9 +439,9 @@
       },
       "add_card": {
         "title": "Registrar una tarjeta",
-        "body": "Puedes agregar una nueva tarjeta usando el botón «+» en la parte inferior derecha de la pestaña Tarjetas. Ahorra tiempo seleccionando tiendas populares de los presets.",
+        "body": "Puedes agregar una nueva tarjeta usando el botón «Añadir tarjeta» en la parte superior de la pestaña Tarjetas. Ahorra tiempo seleccionando tiendas populares de los presets.",
         "steps": {
-          "step1": "Toca el botón «+» en la parte inferior derecha de la pestaña Tarjetas",
+          "step1": "Toca el botón «Añadir tarjeta» en la parte superior de la pestaña Tarjetas",
           "step2": "Selecciona de presets para tiendas populares, o ingresa un nombre de tarjeta directamente",
           "step3": "Ingresa el código de barras (número de membresía) mediante cámara, imagen o entrada manual",
           "step4": "Verifica la vista previa y toca «Guardar»"
