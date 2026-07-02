@@ -140,7 +140,41 @@ export default {
       "noFeedItems": "Keine neuen Ausschreibungen",
       "listing": "Ausschreibung",
       "waitlistPosition": "Warteliste #{n}",
-      "postedAt": "Veröffentlicht"
+      "postedAt": "Veröffentlicht",
+      "loadError": "Daten konnten nicht geladen werden",
+      "listingLabel": "Ausschreibung #{id}"
+    },
+    "guide": {
+      "feed": {
+        "title": "So nutzt du Neue Ausschreibungen",
+        "what": {
+          "title": "Was ist der Ausschreibungs-Feed?",
+          "body": "Ein schreibgeschützter Feed, der neue Ausschreibungen von Teams zeigt, denen du folgst oder die du unterstützt, sortiert nach Aktualität. Nutze ihn, um interessante Ausschreibungen zu entdecken."
+        },
+        "apply": {
+          "title": "Ansehen und bewerben",
+          "body": "Tippe auf eine Karte, um die Detailseite der Ausschreibung zu öffnen. Die Bewerbung oder Anmeldung zur Warteliste erfolgt auf dieser Detailseite."
+        },
+        "read": {
+          "title": "Die Karten lesen",
+          "body": "Tags wie \"Offen\" oder \"Voll\" zeigen den Status. Zahlen werden als \"bestätigt / Kapazität\" angezeigt, Preise mit \"¥\"."
+        }
+      },
+      "listings": {
+        "title": "So nutzt du Meine Teilnahmen",
+        "what": {
+          "title": "Was sind meine Teilnahmen?",
+          "body": "Ausschreibungen, für die du dich beworben hast oder bestätigt wurdest, erscheinen hier. Es werden nur aktive Teilnahmen angezeigt; abgesagte oder beendete nicht."
+        },
+        "status": {
+          "title": "Den Status lesen",
+          "body": "Tags wie \"Bestätigt\", \"Beworben\" oder \"Warteliste\" zeigen deinen aktuellen Status. Auf der Warteliste zeigt \"#Rang\" deine Position an."
+        },
+        "detail": {
+          "title": "Details und Stornierung",
+          "body": "Öffne die Ausschreibungsseite über \"Details ansehen\". Aktionen wie das Stornieren deiner Bewerbung erfolgen auf dieser Detailseite."
+        }
+      }
     },
     "distribution": {
       "title": "Empfänger",
