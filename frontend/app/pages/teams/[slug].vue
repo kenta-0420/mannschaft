@@ -32,7 +32,6 @@ definePageMeta({
 })
 
 const route = useRoute()
-const { t } = useI18n()
 const teamApi = useTeamApi()
 const notification = useNotification()
 const { handleApiError } = useErrorHandler()
