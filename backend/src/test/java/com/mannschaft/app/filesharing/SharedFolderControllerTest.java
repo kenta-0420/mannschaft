@@ -65,14 +65,14 @@ class SharedFolderControllerTest {
     private FolderDetailResponse mockDetail() {
         return new FolderDetailResponse(
                 FOLDER_ID, "TEAM", String.valueOf(TEAM_ID), null, "フォルダ", null,
-                new FolderDetailResponse.UserRef(USER_ID, "u1"), 0, 0, null, null,
+                new FolderDetailResponse.UserRef(USER_ID, "u1"), 0, 0, null, null, null, null,
                 List.of(), List.of(), List.of(new FolderDetailResponse.BreadcrumbItem(FOLDER_ID, "フォルダ")));
     }
 
     private FolderDetailResponse.FolderSummary mockSummary() {
         return new FolderDetailResponse.FolderSummary(
                 FOLDER_ID, "TEAM", String.valueOf(TEAM_ID), null, "フォルダ", null,
-                new FolderDetailResponse.UserRef(USER_ID, "u1"), 0, null, null, null);
+                new FolderDetailResponse.UserRef(USER_ID, "u1"), 0, null, null, null, null, null);
     }
 
     @Nested
@@ -142,7 +142,7 @@ class SharedFolderControllerTest {
         @DisplayName("201: フォルダ作成は 201 Created で返る")
         void 作成_201() {
             CreateFolderRequest request =
-                    new CreateFolderRequest("新規", null, null, "TEAM", String.valueOf(TEAM_ID));
+                    new CreateFolderRequest("新規", null, null, "TEAM", String.valueOf(TEAM_ID), null, null);
             given(folderQueryService.createFolder(any(), eq(String.valueOf(TEAM_ID)), eq(USER_ID)))
                     .willReturn(mockSummary());
 

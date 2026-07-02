@@ -65,7 +65,7 @@ class SharedFileLinkServiceTest {
                     .fileId(FILE_ID).token("valid-token")
                     .expiresAt(LocalDateTime.now().plusDays(1)).createdBy(USER_ID).build();
             FileResponse fileResponse = new FileResponse(FILE_ID, 1L, "test.pdf", "key",
-                    1024L, "application/pdf", null, USER_ID, 1, null, null);
+                    1024L, "application/pdf", null, USER_ID, 1, null, null, null, null);
 
             given(linkRepository.findByToken("valid-token")).willReturn(Optional.of(link));
             given(fileService.getFileForSharedLink(FILE_ID)).willReturn(fileResponse);

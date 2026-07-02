@@ -68,7 +68,7 @@ class SharedFileControllerTest {
 
     private FileResponse mockFile() {
         return new FileResponse(FILE_ID, FOLDER_ID, "doc.pdf", "files/TEAM/5/x.pdf",
-                2048L, "application/pdf", null, USER_ID, 1, null, null);
+                2048L, "application/pdf", null, USER_ID, 1, null, null, null, null);
     }
 
     @Nested

@@ -2,6 +2,7 @@ package com.mannschaft.app.filesharing.entity;
 
 import com.mannschaft.app.common.BaseEntity;
 import com.mannschaft.app.filesharing.FileScopeType;
+import com.mannschaft.app.filesharing.FileVisibilityRole;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -57,6 +58,22 @@ public class SharedFolderEntity extends BaseEntity {
 
     private Long createdBy;
 
+    /**
+     * B: 最低可視ロール。{@code NULL} なら所属者全員可視（SCOPE_AFFILIATED＝従来挙動）。
+     * TEAM / ORGANIZATION スコープでのみ意味を持つ（PERSONAL は所有者のみ・大会は主催組織 ORG ロールで判定）。
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 24)
+    private FileVisibilityRole minVisibleRole;
+
+    /**
+     * C: ダウンロード禁止フラグ。{@code true} なら配下ファイルの DL URL 発行を拒否する（禁止は単調・ファイルで解除不可）。
+     * <b>限界</b>: ブラウザ表示できる以上、完全な DL 防止は原理的に不可。運用上の抑止に留まる。
+     */
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean downloadDisabled = false;
+
     @Version
     @Column(nullable = false)
     @Builder.Default
@@ -89,6 +106,24 @@ public class SharedFolderEntity extends BaseEntity {
      */
     public void moveToParent(Long parentId) {
         this.parentId = parentId;
+    }
+
+    /**
+     * 最低可視ロールを変更する（B）。{@code null} で「所属者全員可視」へ戻す。
+     *
+     * @param minVisibleRole 新しい最低可視ロール（null 可）
+     */
+    public void changeMinVisibleRole(FileVisibilityRole minVisibleRole) {
+        this.minVisibleRole = minVisibleRole;
+    }
+
+    /**
+     * ダウンロード禁止フラグを変更する（C）。
+     *
+     * @param downloadDisabled 新しい DL 禁止フラグ
+     */
+    public void changeDownloadDisabled(boolean downloadDisabled) {
+        this.downloadDisabled = downloadDisabled;
     }
 
     /**

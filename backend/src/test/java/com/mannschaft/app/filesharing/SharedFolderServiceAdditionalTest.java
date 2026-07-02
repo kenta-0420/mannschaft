@@ -64,7 +64,7 @@ class SharedFolderServiceAdditionalTest {
 
     private FolderResponse mockFolderResponse(String scopeType) {
         return new FolderResponse(FOLDER_ID, scopeType, TEAM_ID, null, null,
-                null, "テストフォルダ", null, USER_ID, null, null);
+                null, "テストフォルダ", null, USER_ID, null, null, null, null);
     }
 
     // ========================================
@@ -204,7 +204,7 @@ class SharedFolderServiceAdditionalTest {
         @Test
         @DisplayName("正常系: 組織フォルダが作成される")
         void 組織フォルダ作成_正常() {
-            CreateFolderRequest request = new CreateFolderRequest("組織フォルダ", null, null, "ORGANIZATION", null);
+            CreateFolderRequest request = new CreateFolderRequest("組織フォルダ", null, null, "ORGANIZATION", null, null, null);
             SharedFolderEntity savedEntity = createFolder(FileScopeType.ORGANIZATION);
             given(folderRepository.existsByParentIdAndName(null, "組織フォルダ")).willReturn(false);
             given(folderRepository.save(any())).willReturn(savedEntity);
@@ -228,7 +228,7 @@ class SharedFolderServiceAdditionalTest {
         @Test
         @DisplayName("正常系: 個人フォルダが作成される")
         void 個人フォルダ作成_正常() {
-            CreateFolderRequest request = new CreateFolderRequest("個人フォルダ", null, null, "PERSONAL", null);
+            CreateFolderRequest request = new CreateFolderRequest("個人フォルダ", null, null, "PERSONAL", null, null, null);
             SharedFolderEntity savedEntity = createFolder(FileScopeType.PERSONAL);
             given(folderRepository.existsByParentIdAndName(null, "個人フォルダ")).willReturn(false);
             given(folderRepository.save(any())).willReturn(savedEntity);
@@ -257,7 +257,7 @@ class SharedFolderServiceAdditionalTest {
             given(folderRepository.save(entity)).willReturn(entity);
             given(fileSharingMapper.toFolderResponse(entity))
                     .willReturn(mockFolderResponse("TEAM"));
-            UpdateFolderRequest request = new UpdateFolderRequest("新名前", "新説明", 50L);
+            UpdateFolderRequest request = new UpdateFolderRequest("新名前", "新説明", 50L, null, null);
 
             FolderResponse result = service.updateFolder(FOLDER_ID, request);
 
@@ -275,7 +275,7 @@ class SharedFolderServiceAdditionalTest {
             given(folderRepository.save(entity)).willReturn(entity);
             given(fileSharingMapper.toFolderResponse(entity))
                     .willReturn(mockFolderResponse("TEAM"));
-            UpdateFolderRequest request = new UpdateFolderRequest(null, null, null);
+            UpdateFolderRequest request = new UpdateFolderRequest(null, null, null, null, null);
 
             service.updateFolder(FOLDER_ID, request);
 

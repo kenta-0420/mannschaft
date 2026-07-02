@@ -113,6 +113,8 @@ public class SharedFolderService {
                 .parentId(request.getParentId())
                 .name(request.getName())
                 .description(request.getDescription())
+                .minVisibleRole(request.getMinVisibleRole())
+                .downloadDisabled(Boolean.TRUE.equals(request.getDownloadDisabled()))
                 .createdBy(userId)
                 .build();
 
@@ -139,6 +141,8 @@ public class SharedFolderService {
                 .parentId(request.getParentId())
                 .name(request.getName())
                 .description(request.getDescription())
+                .minVisibleRole(request.getMinVisibleRole())
+                .downloadDisabled(Boolean.TRUE.equals(request.getDownloadDisabled()))
                 .createdBy(userId)
                 .build();
 
@@ -164,6 +168,8 @@ public class SharedFolderService {
                 .parentId(request.getParentId())
                 .name(request.getName())
                 .description(request.getDescription())
+                .minVisibleRole(request.getMinVisibleRole())
+                .downloadDisabled(Boolean.TRUE.equals(request.getDownloadDisabled()))
                 .createdBy(userId)
                 .build();
 
@@ -284,6 +290,13 @@ public class SharedFolderService {
         }
         if (request.getParentId() != null) {
             entity.moveToParent(request.getParentId());
+        }
+        // B/C: 指定時のみ更新（PATCH 意味論。未指定は現状維持）。
+        if (request.getMinVisibleRole() != null) {
+            entity.changeMinVisibleRole(request.getMinVisibleRole());
+        }
+        if (request.getDownloadDisabled() != null) {
+            entity.changeDownloadDisabled(request.getDownloadDisabled());
         }
 
         SharedFolderEntity saved = folderRepository.save(entity);

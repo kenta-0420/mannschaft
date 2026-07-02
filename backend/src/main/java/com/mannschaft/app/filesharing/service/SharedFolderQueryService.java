@@ -2,9 +2,11 @@ package com.mannschaft.app.filesharing.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.filesharing.FileScopeType;
 import com.mannschaft.app.filesharing.FileSharingErrorCode;
+import com.mannschaft.app.filesharing.FileVisibilityRole;
 import com.mannschaft.app.filesharing.dto.CreateFolderRequest;
 import com.mannschaft.app.filesharing.dto.FolderDetailResponse;
 import com.mannschaft.app.filesharing.entity.SharedFileEntity;
@@ -102,6 +104,8 @@ public class SharedFolderQueryService {
                 toUserRef(folder.getCreatedBy(), nameMap),
                 files.size(),
                 subfolders.size(),
+                folder.getMinVisibleRole(),
+                folder.getDownloadDisabled(),
                 folder.getCreatedAt(),
                 folder.getUpdatedAt(),
                 subSummaries,
@@ -172,6 +176,9 @@ public class SharedFolderQueryService {
                 .parentId(request.getParentId())
                 .name(request.getName())
                 .description(request.getDescription())
+                // B/C: 最低可視ロール・DL 禁止フラグ（未指定は NULL / false = 従来挙動）。
+                .minVisibleRole(request.getMinVisibleRole())
+                .downloadDisabled(Boolean.TRUE.equals(request.getDownloadDisabled()))
                 .createdBy(userId);
         switch (type) {
             case TEAM -> builder.teamId(parseScopeId(scopeId));
@@ -288,9 +295,69 @@ public class SharedFolderQueryService {
     }
 
     /**
-     * フォルダ実体のスコープに応じて閲覧認可を当てる（漏洩防止の核）。
+     * ファイル ID からファイル → フォルダを解決し、ファイル単位の閲覧認可を当てる（B: 最低可視ロール対応）。
+     *
+     * <p>{@link SharedFileService#getFile} / {@link SharedFileService#presignDownload} から呼ぶ。
+     * 認可は「①フォルダスコープの基本認可（PERSONAL 本人以外404 / TEAM・ORG 非メンバー403 / 大会 連絡スペース認可）
+     * ②B: 最低可視ロール（ファイル値優先 → フォルダ継承）」の順で当てる。ファイル個別値が {@code NULL} なら
+     * フォルダ値を継承し、フォルダも {@code NULL} なら判定スキップ（所属者全員可視＝従来挙動）。</p>
+     *
+     * @param fileId ファイル ID（不在は {@code FILE_NOT_FOUND} → 404）
+     * @param userId 操作ユーザー ID（未認証は null）
+     */
+    public void authorizeFileViewById(Long fileId, Long userId) {
+        SharedFileEntity file = findFileOrThrow(fileId);
+        SharedFolderEntity folder = findFolderOrThrow(file.getFolderId());
+        // ①基本認可（membership / owner / 大会 guard）。B の最低可視ロールはここでは当てない。
+        authorizeBaseView(folder, userId);
+        // ②B: 最低可視ロール（ファイル値優先 → フォルダ継承）。
+        applyMinVisibleRole(folder, effectiveMinRole(file, folder), userId);
+    }
+
+    /**
+     * ファイル単位の<b>ダウンロード認可</b>を当てる（B: 最低可視ロール ＋ C: DL 禁止フラグ）。
+     *
+     * <p>{@link SharedFileService#presignDownload} から呼ぶ。まず {@link #authorizeFileViewById} で閲覧認可
+     * （B 含む）を通し、その後 C: DL 禁止フラグを評価する。実効禁止 = フォルダ.downloadDisabled OR
+     * ファイル.downloadDisabled（禁止は単調・ファイルで解除不可）。{@code true} なら {@code DOWNLOAD_DISABLED}
+     * （403）をスローし DL URL を発行させない。SYSTEM_ADMIN は B/C を貫通する（全可視・全 DL 可）。</p>
+     *
+     * <p><b>設計上の限界</b>: ブラウザ表示できる以上、完全な DL 防止は原理的に不可。本フラグは運用上の抑止に留まる。</p>
+     *
+     * @param fileId ファイル ID
+     * @param userId 操作ユーザー ID
+     */
+    public void authorizeDownload(Long fileId, Long userId) {
+        SharedFileEntity file = findFileOrThrow(fileId);
+        SharedFolderEntity folder = findFolderOrThrow(file.getFolderId());
+        // ①閲覧認可（基本認可 + B: 最低可視ロール）。
+        authorizeBaseView(folder, userId);
+        applyMinVisibleRole(folder, effectiveMinRole(file, folder), userId);
+        // ②C: DL 禁止フラグ（SYSTEM_ADMIN は貫通）。
+        if (userId != null && accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        boolean effectiveDisabled =
+                Boolean.TRUE.equals(folder.getDownloadDisabled()) || Boolean.TRUE.equals(file.getDownloadDisabled());
+        if (effectiveDisabled) {
+            throw new BusinessException(FileSharingErrorCode.DOWNLOAD_DISABLED);
+        }
+    }
+
+    /**
+     * フォルダ実体のスコープに応じて閲覧認可を当てる（漏洩防止の核 ＋ B: フォルダ最低可視ロール）。
      */
     private void authorizeView(SharedFolderEntity folder, Long userId) {
+        authorizeBaseView(folder, userId);
+        // B: フォルダ自身の最低可視ロール（フォルダ詳細／一覧の経路）。
+        applyMinVisibleRole(folder, folder.getMinVisibleRole(), userId);
+    }
+
+    /**
+     * スコープ別の<b>基本認可</b>（membership / 個人所有 / 大会 guard）のみを当てる。
+     * B: 最低可視ロールは含まない（呼び出し側で {@link #applyMinVisibleRole} を別途当てる）。
+     */
+    private void authorizeBaseView(SharedFolderEntity folder, Long userId) {
         switch (folder.getScopeType()) {
             case PERSONAL -> {
                 if (folder.getUserId() == null || !folder.getUserId().equals(userId)) {
@@ -304,6 +371,52 @@ public class SharedFolderQueryService {
             case TOURNAMENT, TOURNAMENT_DIVISION ->
                     folderScopeAccessGuard.checkFolderViewByFolderId(folder.getId(), userId);
         }
+    }
+
+    /**
+     * B: 最低可視ロール判定を当てる。{@code role} が {@code null} なら判定スキップ（所属者全員可視）。
+     *
+     * <p>SYSTEM_ADMIN は貫通（全可視）。PERSONAL は所有者のみ（基本認可で担保済み）ゆえ min role は無視する。
+     * TEAM / ORGANIZATION は当該スコープで、大会系は主催組織（{@code organizationId}）の ORGANIZATION ロールで
+     * {@link AccessControlService#hasRoleOrAbove} を当て、満たさなければ 403（COMMON_002）。</p>
+     *
+     * @param folder 対象フォルダ（スコープ解決に使う）
+     * @param role   実効最低可視ロール（null なら判定スキップ）
+     * @param userId 操作ユーザー ID
+     */
+    private void applyMinVisibleRole(SharedFolderEntity folder, FileVisibilityRole role, Long userId) {
+        if (role == null) {
+            return; // 所属者全員可視（SCOPE_AFFILIATED＝従来挙動・非回帰）
+        }
+        if (userId != null && accessControlService.isSystemAdmin(userId)) {
+            return; // SYSTEM_ADMIN は B/C 貫通
+        }
+        String requiredRole = role.toRequiredRoleName();
+        boolean ok = switch (folder.getScopeType()) {
+            case PERSONAL -> true; // 所有者のみ（基本認可で担保）→ min role は無視
+            case TEAM -> accessControlService.hasRoleOrAbove(userId, folder.getTeamId(), "TEAM", requiredRole);
+            case ORGANIZATION ->
+                    accessControlService.hasRoleOrAbove(userId, folder.getOrganizationId(), "ORGANIZATION", requiredRole);
+            // 大会系は主催組織 ORG ロールで判定（既存 guard の委譲構造は壊さず、min role を追加で当てる）。
+            case TOURNAMENT, TOURNAMENT_DIVISION ->
+                    accessControlService.hasRoleOrAbove(userId, folder.getOrganizationId(), "ORGANIZATION", requiredRole);
+        };
+        if (!ok) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    /**
+     * 実効最低可視ロールを解決する（ファイル値優先 → フォルダ継承）。
+     * ファイル値が {@code null} ならフォルダ値、フォルダも {@code null} なら {@code null}（判定スキップ）。
+     */
+    private FileVisibilityRole effectiveMinRole(SharedFileEntity file, SharedFolderEntity folder) {
+        return file.getMinVisibleRole() != null ? file.getMinVisibleRole() : folder.getMinVisibleRole();
+    }
+
+    private SharedFileEntity findFileOrThrow(Long fileId) {
+        return fileRepository.findById(fileId)
+                .orElseThrow(() -> new BusinessException(FileSharingErrorCode.FILE_NOT_FOUND));
     }
 
     /**
@@ -410,6 +523,8 @@ public class SharedFolderQueryService {
                 toUserRef(folder.getCreatedBy(), nameMap),
                 fileCount,
                 null, // 孫フォルダ数は画面未使用・N+1 回避のため解決しない
+                folder.getMinVisibleRole(),
+                folder.getDownloadDisabled(),
                 folder.getCreatedAt(),
                 folder.getUpdatedAt());
     }
@@ -428,6 +543,8 @@ public class SharedFolderQueryService {
                 null, // currentVersionId は本詳細では解決しない
                 List.of(),
                 0,
+                file.getMinVisibleRole(),
+                file.getDownloadDisabled(),
                 file.getCreatedAt(),
                 file.getUpdatedAt());
     }
