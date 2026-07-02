@@ -148,7 +148,7 @@ class OrgTodoControllerTest {
             PagedResponse<TodoResponse> paged = PagedResponse.of(
                     List.of(sampleTodo()),
                     new PagedResponse.PageMeta(1L, 0, 20, 1));
-            given(todoService.listTodos(eq(TodoScopeType.ORGANIZATION), eq(ORG_ID), eq((TodoStatus) null), eq(0), eq(20)))
+            given(todoService.listTodos(eq(TodoScopeType.ORGANIZATION), eq(ORG_ID), eq((TodoStatus) null), eq(0), eq(20), eq("RECENT")))
                     .willReturn(paged);
 
             mockMvc.perform(get("/api/v1/organizations/{orgId}/todos", ORG_ID))
