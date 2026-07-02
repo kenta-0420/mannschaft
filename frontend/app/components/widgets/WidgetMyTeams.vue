@@ -4,7 +4,7 @@ const moduleApi = useModuleApi()
 const reservationEnabledTeamIds = ref<number[]>([])
 
 onMounted(async () => {
-  const teams = teamStore.myTeams.slice(0, 8)
+  const teams = teamStore.myTeams.slice(0, 20)
   const results = await Promise.allSettled(
     teams.map(team => moduleApi.getTeamModules(team.slug))
   )
@@ -27,7 +27,7 @@ onMounted(async () => {
     <template v-if="teamStore.myTeams.length > 0">
       <div class="flex flex-wrap gap-2">
         <div
-          v-for="team in teamStore.myTeams.slice(0, 8)"
+          v-for="team in teamStore.myTeams.slice(0, 20)"
           :key="team.id"
           class="flex items-center rounded-lg border border-surface-400 bg-surface-50 text-sm transition-shadow hover:shadow-md dark:border-surface-600 dark:bg-surface-700"
         >

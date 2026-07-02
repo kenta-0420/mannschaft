@@ -83,7 +83,8 @@
     "confirm": "Confirm",
     "logout": "Logout",
     "update": "Update",
-    "see_more": "See more"
+    "see_more": "See more",
+    "view_all": "View all"
   },
   "label": {
     "required": "Required",

@@ -21,7 +21,11 @@ withDefaults(
      */
     scrollable?: boolean
     /**
-     * scrollable=true 時の最大高さ（CSS 値）。デフォルト '24rem'。
+     * scrollable=true 時のカード全体の最大高さ（CSS 値）。デフォルト '15rem'。
+     *
+     * この値は「リスト項目が約3件ちょうど見える」高さの基準。カードルートに max-height として
+     * 付与することで、行内で最も中身の多いカード（ただしこの上限まで）が行の高さを決め、
+     * 隣接カードは h-full で同じ高さまで自動で伸びて揃う。上限を超えた分は本文が枠内で縦スクロール。
      */
     maxHeight?: string
   }>(),
@@ -31,7 +35,7 @@ withDefaults(
     colSpan: undefined,
     to: undefined,
     scrollable: true,
-    maxHeight: '24rem',
+    maxHeight: '15rem',
   },
 )
 
@@ -45,7 +49,7 @@ const collapsed = ref(false)
 <template>
   <div
     v-bind="$attrs"
-    class="relative rounded-xl border-[3px] bg-surface-0 p-4 shadow-sm transition-all hover:shadow-md focus-within:shadow-lg focus-within:-translate-y-0.5 dark:bg-surface-800"
+    class="relative flex flex-col rounded-xl border-[3px] bg-surface-0 p-4 shadow-sm transition-all hover:shadow-md focus-within:shadow-lg focus-within:-translate-y-0.5 dark:bg-surface-800"
     :class="{
       'col-span-1': !colSpan || colSpan === 1,
       'md:col-span-2': colSpan === 2,
@@ -53,7 +57,9 @@ const collapsed = ref(false)
       'opacity-40 shadow-none': isDragging,
       'border-primary border-t-[3px]': isDropTarget,
       'border-surface-400 dark:border-surface-500': !isDropTarget,
+      'h-full': scrollable,
     }"
+    :style="scrollable ? { maxHeight } : undefined"
   >
     <!-- ドロップインジケーター線 -->
     <div
@@ -61,10 +67,10 @@ const collapsed = ref(false)
       class="pointer-events-none absolute inset-x-0 top-0 h-[3px] rounded-t-xl bg-primary"
     />
 
-    <!-- ヘッダー -->
+    <!-- ヘッダー（固定・スクロールしない） -->
     <div
       v-if="title"
-      class="flex items-center justify-between"
+      class="flex flex-none items-center justify-between"
       :class="{ 'mb-3': !collapsed }"
     >
       <NuxtLink
@@ -109,9 +115,13 @@ const collapsed = ref(false)
       </div>
     </div>
 
-    <!-- ローディング＋コンテンツ（折り畳み制御） -->
+    <!-- ローディング＋コンテンツ（折り畳み制御）。
+         scrollable 時は flex-1 min-h-0 で余った縦を本文が埋め、溢れたら本文内でスクロールする。 -->
     <Transition name="widget-collapse">
-      <div v-show="!collapsed">
+      <div
+        v-show="!collapsed"
+        :class="scrollable ? 'flex min-h-0 flex-1 flex-col' : ''"
+      >
         <!-- ローディング -->
         <div v-if="loading" class="space-y-3">
           <Skeleton height="1.5rem" />
@@ -119,11 +129,10 @@ const collapsed = ref(false)
           <Skeleton height="1.5rem" width="60%" />
         </div>
 
-        <!-- コンテンツ -->
+        <!-- コンテンツ（scrollable 時のみ枠内スクロール） -->
         <div
           v-else
-          :class="scrollable ? 'overflow-y-auto pr-1' : ''"
-          :style="scrollable ? { maxHeight } : undefined"
+          :class="scrollable ? 'min-h-0 flex-1 overflow-y-auto pr-1' : ''"
         >
           <slot />
         </div>

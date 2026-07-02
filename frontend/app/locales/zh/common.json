@@ -83,7 +83,8 @@
     "confirm": "确认",
     "logout": "退出登录",
     "update": "更新",
-    "see_more": "查看更多"
+    "see_more": "查看更多",
+    "view_all": "查看全部"
   },
   "label": {
     "required": "必填",
