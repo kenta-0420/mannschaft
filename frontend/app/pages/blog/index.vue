@@ -11,6 +11,7 @@ const { formatDate } = useDatetime()
 const myPosts = ref<BlogPostResponse[]>([])
 const loadingMine = ref(false)
 const showCreateDialog = ref(false)
+const showGuide = ref(false)
 const deletingId = ref<number | null>(null)
 const publishingId = ref<number | null>(null)
 
@@ -98,9 +99,8 @@ onMounted(() => loadMyPosts())
 <template>
   <div class="mx-auto max-w-5xl px-4 py-8">
     <!-- ヘッダー -->
-    <div class="mb-6 flex items-center justify-between">
-      <PageHeader :title="$t('blog.post.myBlog')" />
-      <div class="flex items-center gap-2">
+    <PageHeader :title="$t('blog.post.myBlog')" help @help="showGuide = true">
+      <template #actions>
         <NuxtLink to="/me/blog/settings">
           <Button
             icon="pi pi-cog"
@@ -114,8 +114,8 @@ onMounted(() => loadMyPosts())
           :label="$t('blog.post.createNew')"
           @click="showCreateDialog = true"
         />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <!-- 上段: 自分の投稿（横スクロール） -->
     <section class="mb-8">
@@ -220,10 +220,13 @@ onMounted(() => loadMyPosts())
       <h2 class="mb-3 text-base font-semibold text-surface-800 dark:text-surface-100">
         {{ $t('blog.post.allPosts') }}
       </h2>
-      <BlogPostList />
+      <BlogPostList :show-create="false" />
     </section>
 
     <!-- 新規作成ダイアログ -->
     <BlogCreateDialog v-model:visible="showCreateDialog" />
+
+    <!-- 使い方ガイドモーダル -->
+    <BlogGuideModal v-model:visible="showGuide" />
   </div>
 </template>
