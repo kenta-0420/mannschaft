@@ -20,7 +20,7 @@
       "no_provider": "(unmatched)",
       "last4_format": "●●●● {last4}",
       "no_cards": "No cards registered yet",
-      "no_cards_hint": "Tap the '+' button to add your first card",
+      "no_cards_hint": "Tap the \"Add Card\" button at the top to add your first card",
       "no_matches": "No cards match '{query}'"
     },
     "group": {
@@ -439,9 +439,9 @@
       },
       "add_card": {
         "title": "Register a Card",
-        "body": "You can add a new card using the \"+\" button at the bottom right of the Cards tab. Save time by selecting popular stores from the presets.",
+        "body": "You can add a new card using the \"Add Card\" button at the top of the Cards tab. Save time by selecting popular stores from the presets.",
         "steps": {
-          "step1": "Tap the \"+\" button at the bottom right of the Cards tab",
+          "step1": "Tap the \"Add Card\" button at the top of the Cards tab",
           "step2": "Select from presets for popular stores, or enter a card name directly",
           "step3": "Enter the barcode (membership number) via camera, image, or manual input",
           "step4": "Check the preview and tap \"Save\""
