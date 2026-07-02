@@ -99,9 +99,8 @@ onMounted(() => loadMyPosts())
 <template>
   <div class="mx-auto max-w-5xl px-4 py-8">
     <!-- ヘッダー -->
-    <div class="mb-6 flex items-center justify-between">
-      <PageHeader :title="$t('blog.post.myBlog')" help @help="showGuide = true" />
-      <div class="flex items-center gap-2">
+    <PageHeader :title="$t('blog.post.myBlog')" help @help="showGuide = true">
+      <template #actions>
         <NuxtLink to="/me/blog/settings">
           <Button
             icon="pi pi-cog"
@@ -115,8 +114,8 @@ onMounted(() => loadMyPosts())
           :label="$t('blog.post.createNew')"
           @click="showCreateDialog = true"
         />
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <!-- 上段: 自分の投稿（横スクロール） -->
     <section class="mb-8">
