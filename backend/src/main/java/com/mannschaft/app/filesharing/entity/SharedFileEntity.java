@@ -60,7 +60,7 @@ public class SharedFileEntity extends BaseEntity {
      * C: ファイル個別のダウンロード禁止フラグ。
      * 実効禁止 = フォルダ.downloadDisabled OR ファイル.downloadDisabled（禁止は単調・ファイルで解除不可）。
      */
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
     @Builder.Default
     private Boolean downloadDisabled = false;
 

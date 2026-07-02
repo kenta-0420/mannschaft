@@ -70,7 +70,7 @@ public class SharedFolderEntity extends BaseEntity {
      * C: ダウンロード禁止フラグ。{@code true} なら配下ファイルの DL URL 発行を拒否する（禁止は単調・ファイルで解除不可）。
      * <b>限界</b>: ブラウザ表示できる以上、完全な DL 防止は原理的に不可。運用上の抑止に留まる。
      */
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
     @Builder.Default
     private Boolean downloadDisabled = false;
 
