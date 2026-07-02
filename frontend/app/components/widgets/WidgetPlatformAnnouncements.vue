@@ -67,7 +67,7 @@ onMounted(load)
       </div>
       <div class="flex justify-end pt-1">
         <NuxtLink to="/notifications" class="text-sm text-primary hover:underline">
-          {{ $t('common.button.view_all') }}
+          {{ $t('button.view_all') }}
         </NuxtLink>
       </div>
     </div>

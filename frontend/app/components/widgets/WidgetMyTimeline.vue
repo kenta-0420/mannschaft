@@ -24,7 +24,7 @@ const { t } = useI18n()
         to="/timeline"
         class="text-sm text-primary hover:underline"
       >
-        {{ t('common.button.view_all') }}
+        {{ t('button.view_all') }}
       </NuxtLink>
     </div>
   </DashboardWidgetCard>

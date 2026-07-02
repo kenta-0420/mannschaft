@@ -48,7 +48,7 @@ async function handleConfirm() {
     </p>
     <template #footer>
       <Button
-        :label="$t('common.button.cancel')"
+        :label="$t('button.cancel')"
         text
         @click="emit('update:visible', false)"
       />
