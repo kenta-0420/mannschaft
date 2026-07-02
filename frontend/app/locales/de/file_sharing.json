@@ -11,5 +11,22 @@
     "disabledLabel": "Downloads deaktivieren",
     "disabledHelp": "Blendet die Download-Schaltfläche aus und verweigert die Ausgabe von Download-URLs. Dies ist nur eine Abschreckung und verhindert die Anzeige im Browser nicht.",
     "disabledError": "Das Herunterladen dieser Datei ist deaktiviert"
+  },
+  "publicLink": {
+    "title": "Öffentlicher Link",
+    "description": "Teilen Sie diese Datei über einen öffentlichen Link auch mit nicht angemeldeten Personen. Standardmäßig nur Ansicht.",
+    "downloadAllowedLabel": "Download erlauben",
+    "downloadAllowedHelp": "Wenn aktiviert, erlaubt dieser Link Downloads. Wenn die Datei selbst Downloads verbietet, hat das Vorrang.",
+    "expiresLabel": "Ablauf (max. 30 Tage)",
+    "expiresHelp": "Ein öffentlicher Link muss ein Ablaufdatum haben. Es kann bis zu 30 Tage in der Zukunft liegen.",
+    "adminOnly": "Nur Administratoren und stellvertretende Administratoren können öffentliche Links erstellen und verwalten.",
+    "errors": {
+      "notFound": "Freigabelink nicht gefunden",
+      "inactive": "Dieser Freigabelink wurde deaktiviert",
+      "expired": "Dieser Freigabelink ist abgelaufen",
+      "passwordInvalid": "Falsches Passwort",
+      "downloadNotAllowed": "Für diesen Freigabelink ist kein Download erlaubt",
+      "expiryInvalid": "Ein Ablaufdatum ist erforderlich und darf höchstens 30 Tage in der Zukunft liegen"
+    }
   }
 }

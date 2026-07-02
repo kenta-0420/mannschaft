@@ -11,5 +11,22 @@
     "disabledLabel": "Deshabilitar descargas",
     "disabledHelp": "Oculta el botón de descarga y rechaza emitir URLs de descarga. Es solo un elemento disuasorio y no impide la visualización en el navegador.",
     "disabledError": "La descarga de este archivo está deshabilitada"
+  },
+  "publicLink": {
+    "title": "Enlace público",
+    "description": "Comparte este archivo mediante un enlace público con personas que no han iniciado sesión. Solo lectura por defecto.",
+    "downloadAllowedLabel": "Permitir descarga",
+    "downloadAllowedHelp": "Si se activa, este enlace permite descargas. Si el propio archivo prohíbe la descarga, eso tiene prioridad.",
+    "expiresLabel": "Caducidad (hasta 30 días)",
+    "expiresHelp": "Un enlace público debe tener caducidad. Puedes fijarla hasta 30 días en el futuro.",
+    "adminOnly": "Solo los administradores y subadministradores pueden emitir y gestionar enlaces públicos.",
+    "errors": {
+      "notFound": "Enlace compartido no encontrado",
+      "inactive": "Este enlace compartido ha sido desactivado",
+      "expired": "Este enlace compartido ha caducado",
+      "passwordInvalid": "Contraseña incorrecta",
+      "downloadNotAllowed": "La descarga no está permitida para este enlace compartido",
+      "expiryInvalid": "La caducidad es obligatoria y puede ser como máximo 30 días en el futuro"
+    }
   }
 }

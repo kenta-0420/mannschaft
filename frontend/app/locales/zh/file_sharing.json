@@ -11,5 +11,22 @@
     "disabledLabel": "禁止下载",
     "disabledHelp": "隐藏下载按钮并拒绝签发下载链接。这只是一种威慑，无法阻止浏览器查看。",
     "disabledError": "此文件已禁止下载"
+  },
+  "publicLink": {
+    "title": "公开链接",
+    "description": "通过公开链接与未登录的人分享此文件。默认仅可查看。",
+    "downloadAllowedLabel": "允许下载",
+    "downloadAllowedHelp": "开启后可通过此链接下载。若文件本身禁止下载，则以文件设置为准。",
+    "expiresLabel": "有效期（最长30天）",
+    "expiresHelp": "公开链接必须设置有效期，最长可设为30天后。",
+    "adminOnly": "仅管理员和副管理员可创建和管理公开链接。",
+    "errors": {
+      "notFound": "未找到共享链接",
+      "inactive": "此共享链接已被停用",
+      "expired": "此共享链接已过期",
+      "passwordInvalid": "密码不正确",
+      "downloadNotAllowed": "此共享链接不允许下载",
+      "expiryInvalid": "必须设置有效期，最长为30天后"
+    }
   }
 }

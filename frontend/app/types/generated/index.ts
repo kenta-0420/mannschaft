@@ -13505,6 +13505,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/file-links/{token}/download-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 公開リンク ダウンロードURL発行（未認証可・DL許可リンクのみ） */
+        post: operations["downloadUrl"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/file-links/{token}/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 公開リンクアクセス（未認証可・メタ返却） */
+        post: operations["access"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/public/confirm/{token}": {
         parameters: {
             query?: never;
@@ -28165,7 +28199,7 @@ export interface paths {
          * PDF ダウンロード URL 取得
          * @description 5 分有効の Pre-signed URL を発行する
          */
-        get: operations["downloadUrl"];
+        get: operations["downloadUrl_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -36624,7 +36658,7 @@ export interface paths {
             cookie?: never;
         };
         /** 局面写真の短命ダウンロード URL 発行（閲覧可視性・生 key は返さない） */
-        get: operations["downloadUrl_1"];
+        get: operations["downloadUrl_2"];
         put?: never;
         post?: never;
         delete?: never;
@@ -37497,7 +37531,7 @@ export interface paths {
             cookie?: never;
         };
         /** ダウンロード用 Pre-signed URL 発行（5分 TTL） */
-        get: operations["downloadUrl_2"];
+        get: operations["downloadUrl_3"];
         put?: never;
         post?: never;
         delete?: never;
@@ -39991,7 +40025,7 @@ export interface paths {
             cookie?: never;
         };
         /** 添付ファイルダウンロード用 presigned URL 発行 */
-        get: operations["downloadUrl_3"];
+        get: operations["downloadUrl_4"];
         put?: never;
         post?: never;
         delete?: never;
@@ -56504,6 +56538,23 @@ export interface components {
             /** Format: int64 */
             data?: number;
         };
+        ApiResponseSharedFileDownloadUrlResponse: {
+            data?: components["schemas"]["SharedFileDownloadUrlResponse"];
+        };
+        /** @description ファイル共有 ダウンロードURL レスポンス */
+        SharedFileDownloadUrlResponse: {
+            /**
+             * @description R2 Presigned GET URL
+             * @example https://r2.example.com/files/TEAM/5/uuid.pdf?X-Amz-...
+             */
+            downloadUrl?: string;
+            /**
+             * Format: int64
+             * @description URL 有効期限（秒）
+             * @example 900
+             */
+            expiresInSeconds?: number;
+        };
         ApiResponsePublicConfirmationResponse: {
             data?: components["schemas"]["PublicConfirmationResponse"];
         };
@@ -59063,8 +59114,18 @@ export interface components {
             userId?: number;
         };
         CreateLinkRequest: {
-            /** Format: date-time */
+            /**
+             * @description このリンクでのダウンロード許可。既定 false（閲覧のみ）。true でもファイル/フォルダの download_disabled が優先されDL不可
+             * @example false
+             */
+            downloadAllowed?: boolean;
+            /**
+             * Format: date-time
+             * @description リンクの有効期限（必須・最大30日先）
+             * @example 2026-07-30T00:00:00
+             */
             expiresAt?: string;
+            /** @description 任意の閲覧パスワード（設定するとアクセス時に照合） */
             password?: string;
         };
         ApiResponseLinkResponse: {
@@ -59073,10 +59134,12 @@ export interface components {
         LinkResponse: {
             /** Format: int32 */
             accessCount?: number;
+            active?: boolean;
             /** Format: date-time */
             createdAt?: string;
             /** Format: int64 */
             createdBy?: number;
+            downloadAllowed?: boolean;
             /** Format: date-time */
             expiresAt?: string;
             /** Format: int64 */
@@ -71089,23 +71152,6 @@ export interface components {
         };
         ApiResponseListLinkResponse: {
             data?: components["schemas"]["LinkResponse"][];
-        };
-        ApiResponseSharedFileDownloadUrlResponse: {
-            data?: components["schemas"]["SharedFileDownloadUrlResponse"];
-        };
-        /** @description ファイル共有 ダウンロードURL レスポンス */
-        SharedFileDownloadUrlResponse: {
-            /**
-             * @description R2 Presigned GET URL
-             * @example https://r2.example.com/files/TEAM/5/uuid.pdf?X-Amz-...
-             */
-            downloadUrl?: string;
-            /**
-             * Format: int64
-             * @description URL 有効期限（秒）
-             * @example 900
-             */
-            expiresInSeconds?: number;
         };
         ApiResponseListCommentResponse: {
             data?: components["schemas"]["CommentResponse"][];
@@ -103600,6 +103646,58 @@ export interface operations {
             };
         };
     };
+    downloadUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AccessLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description 発行成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseSharedFileDownloadUrlResponse"];
+                };
+            };
+        };
+    };
+    access: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AccessLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description アクセス成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFileResponse"];
+                };
+            };
+        };
+    };
     confirmByToken: {
         parameters: {
             query?: never;
@@ -131396,7 +131494,7 @@ export interface operations {
             };
         };
     };
-    downloadUrl: {
+    downloadUrl_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -143061,7 +143159,7 @@ export interface operations {
             };
         };
     };
-    downloadUrl_1: {
+    downloadUrl_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -144244,7 +144342,7 @@ export interface operations {
             };
         };
     };
-    downloadUrl_2: {
+    downloadUrl_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -147604,7 +147702,7 @@ export interface operations {
             };
         };
     };
-    downloadUrl_3: {
+    downloadUrl_4: {
         parameters: {
             query?: never;
             header?: never;
