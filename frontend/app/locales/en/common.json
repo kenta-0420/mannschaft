@@ -1188,6 +1188,49 @@
       "event": "Enter the numeric ID from an event detail URL (e.g. /events/77).",
       "document": "Enter the numeric ID from a document detail URL (e.g. /documents/55).",
       "url": "To create a URL card, change the card type above to URL."
+    },
+    "guide": {
+      "title": "How to use My Corkboard",
+      "description": "See all cards you have pinned across your corkboards in one place.",
+      "what": {
+        "title": "What is My Corkboard",
+        "body": "Cards you have 📌 pinned on each board are gathered here, sorted newest first."
+      },
+      "open": {
+        "title": "Open a card",
+        "body": "Tap a card to jump to its reference.",
+        "steps": {
+          "step1": "Tap a card to move to the original post, file, event, etc.",
+          "step2": "URL cards open in a new tab.",
+          "step3": "Cards you no longer have access to cannot be opened (shown as “No access”)."
+        }
+      },
+      "editNote": {
+        "title": "Edit a note",
+        "body": "You can attach a sticky note to a card.",
+        "steps": {
+          "step1": "Press the pencil button at the top right of the card.",
+          "step2": "Enter your note and save.",
+          "step3": "The saved note is shown on the card as a sticky note."
+        }
+      },
+      "unpinDelete": {
+        "title": "Unpin / Delete",
+        "body": "Remove cards you no longer need from the list or delete them.",
+        "steps": {
+          "step1": "Use the 📌 button to unpin; the card leaves this list (the original board card stays).",
+          "step2": "Use the 🗑 button to delete a card. Deletion cannot be undone."
+        }
+      },
+      "filterAndPin": {
+        "title": "Filter / New pin",
+        "body": "Narrow down the cards shown, or pin new ones.",
+        "steps": {
+          "step1": "Use the board selector in the toolbar to show only a specific board's cards.",
+          "step2": "Use “Load more” to show additional cards.",
+          "step3": "Use the “New pin” button to go to a corkboard and 📌 pin a card."
+        }
+      }
     }
   },
   "schedule": {

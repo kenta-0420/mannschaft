@@ -1188,6 +1188,49 @@
       "event": "Bitte die numerische ID aus der Termin-Detail-URL eingeben (z. B. /events/77).",
       "document": "Bitte die numerische ID aus der Dokument-Detail-URL eingeben (z. B. /documents/55).",
       "url": "Für eine URL-Karte oben den „Kartentyp“ auf URL ändern."
+    },
+    "guide": {
+      "title": "So funktioniert Meine Pinnwand",
+      "description": "Sieh alle Karten, die du in deinen Pinnwänden angeheftet hast, an einem Ort.",
+      "what": {
+        "title": "Was ist Meine Pinnwand",
+        "body": "Karten, die du auf jeder Pinnwand 📌 angeheftet hast, werden hier gesammelt und nach Neuestem zuerst sortiert."
+      },
+      "open": {
+        "title": "Eine Karte öffnen",
+        "body": "Tippe auf eine Karte, um zu ihrer Referenz zu springen.",
+        "steps": {
+          "step1": "Tippe auf eine Karte, um zum ursprünglichen Beitrag, zur Datei, zum Termin usw. zu gelangen.",
+          "step2": "URL-Karten öffnen sich in einem neuen Tab.",
+          "step3": "Karten, auf die du keinen Zugriff mehr hast, können nicht geöffnet werden (angezeigt als „Kein Zugriff“)."
+        }
+      },
+      "editNote": {
+        "title": "Notiz bearbeiten",
+        "body": "Du kannst einer Karte eine Haftnotiz hinzufügen.",
+        "steps": {
+          "step1": "Drücke die Stift-Schaltfläche oben rechts auf der Karte.",
+          "step2": "Gib deine Notiz ein und speichere sie.",
+          "step3": "Die gespeicherte Notiz wird als Haftnotiz auf der Karte angezeigt."
+        }
+      },
+      "unpinDelete": {
+        "title": "Lösen / Löschen",
+        "body": "Entferne nicht mehr benötigte Karten aus der Liste oder lösche sie.",
+        "steps": {
+          "step1": "Mit der 📌-Schaltfläche löst du die Anheftung; die Karte verlässt diese Liste (die Karte auf der ursprünglichen Pinnwand bleibt).",
+          "step2": "Mit der 🗑-Schaltfläche löschst du eine Karte. Das Löschen kann nicht rückgängig gemacht werden."
+        }
+      },
+      "filterAndPin": {
+        "title": "Filtern / Neu anheften",
+        "body": "Grenze die angezeigten Karten ein oder hefte neue an.",
+        "steps": {
+          "step1": "Nutze die Pinnwand-Auswahl in der Symbolleiste, um nur die Karten einer bestimmten Pinnwand anzuzeigen.",
+          "step2": "Nutze „Mehr laden“, um weitere Karten anzuzeigen.",
+          "step3": "Nutze die Schaltfläche „Neu anheften“, um zu einer Pinnwand zu gehen und eine Karte 📌 anzuheften."
+        }
+      }
     }
   },
   "schedule": {

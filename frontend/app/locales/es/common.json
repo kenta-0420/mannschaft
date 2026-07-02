@@ -1188,6 +1188,49 @@
       "event": "Introduce el ID numérico de la URL de detalle del evento (ej. /events/77).",
       "document": "Introduce el ID numérico de la URL de detalle del documento (ej. /documents/55).",
       "url": "Para crear una tarjeta URL, cambia el «Tipo de tarjeta» de arriba a URL."
+    },
+    "guide": {
+      "title": "Cómo usar Mi tablón",
+      "description": "Ve en un solo lugar todas las tarjetas que has fijado en tus tablones.",
+      "what": {
+        "title": "Qué es Mi tablón",
+        "body": "Las tarjetas que has fijado 📌 en cada tablón se reúnen aquí, ordenadas de más reciente a más antigua."
+      },
+      "open": {
+        "title": "Abrir una tarjeta",
+        "body": "Toca una tarjeta para ir a su referencia.",
+        "steps": {
+          "step1": "Toca una tarjeta para ir a la publicación, archivo o evento original.",
+          "step2": "Las tarjetas de URL se abren en una pestaña nueva.",
+          "step3": "Las tarjetas a las que ya no tienes acceso no se pueden abrir (se muestran como “Sin acceso”)."
+        }
+      },
+      "editNote": {
+        "title": "Editar una nota",
+        "body": "Puedes añadir una nota adhesiva a una tarjeta.",
+        "steps": {
+          "step1": "Pulsa el botón del lápiz en la esquina superior derecha de la tarjeta.",
+          "step2": "Escribe tu nota y guárdala.",
+          "step3": "La nota guardada se muestra en la tarjeta como una nota adhesiva."
+        }
+      },
+      "unpinDelete": {
+        "title": "Desfijar / Eliminar",
+        "body": "Quita de la lista o elimina las tarjetas que ya no necesitas.",
+        "steps": {
+          "step1": "Usa el botón 📌 para desfijar; la tarjeta sale de esta lista (la tarjeta del tablón original permanece).",
+          "step2": "Usa el botón 🗑 para eliminar una tarjeta. La eliminación no se puede deshacer."
+        }
+      },
+      "filterAndPin": {
+        "title": "Filtrar / Fijar nueva",
+        "body": "Filtra las tarjetas mostradas o fija nuevas.",
+        "steps": {
+          "step1": "Usa el selector de tablones en la barra de herramientas para mostrar solo las tarjetas de un tablón.",
+          "step2": "Usa “Cargar más” para mostrar tarjetas adicionales.",
+          "step3": "Usa el botón “Fijar nueva” para ir a un tablón y fijar 📌 una tarjeta."
+        }
+      }
     }
   },
   "schedule": {
