@@ -54,6 +54,10 @@ onMounted(async () => {
       // プロフィール取得失敗はサイレント（トークンは取得済み）
     }
 
+    // ログイン成立直後にアカウント設定（外観・ナビ）をサーバーから同期する。
+    // 新ブラウザ（シークレット等）で localStorage が空でも BEの保存済み設定が反映される。
+    authStore.syncAccountSettings()
+
     notification.success(t('auth.login.success'))
     if (authStore.isSystemAdmin) {
       await router.push('/system-admin')

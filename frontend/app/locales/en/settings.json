@@ -60,7 +60,8 @@
       "saveSuccess": "Settings saved",
       "saveError": "Failed to save settings",
       "reorderHint": "Drag the handle to reorder the navigation items",
-      "dragHandleLabel": "Drag handle"
+      "dragHandleLabel": "Drag handle",
+      "pinnedBottom": "Pinned to bottom"
     },
     "account": {
       "page_title": "Account Settings",

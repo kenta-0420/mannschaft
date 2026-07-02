@@ -60,7 +60,8 @@
       "saveSuccess": "Einstellungen gespeichert",
       "saveError": "Einstellungen konnten nicht gespeichert werden",
       "reorderHint": "Ziehen Sie den Griff, um die Navigationspunkte neu anzuordnen",
-      "dragHandleLabel": "Ziehgriff"
+      "dragHandleLabel": "Ziehgriff",
+      "pinnedBottom": "Am Ende fixiert"
     },
     "account": {
       "page_title": "Kontoeinstellungen",

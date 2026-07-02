@@ -71,6 +71,10 @@ async function handleVerify() {
       // プロフィール取得失敗時は 2FA 認証レスポンスの基本情報で続行
     }
 
+    // ログイン成立直後にアカウント設定（外観・ナビ）をサーバーから同期する。
+    // 新ブラウザ（シークレット等）で localStorage が空でも BEの保存済み設定が反映される。
+    authStore.syncAccountSettings()
+
     navigateTo('/')
   }
   catch {
