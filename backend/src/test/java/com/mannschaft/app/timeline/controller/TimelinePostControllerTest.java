@@ -4,6 +4,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.timeline.dto.CreatePostRequest;
 import com.mannschaft.app.timeline.dto.PostResponse;
+import com.mannschaft.app.timeline.dto.TimelineFeedResponse;
 import com.mannschaft.app.timeline.service.TimelinePostService;
 import com.mannschaft.app.timeline.service.TimelineScopeIdResolver;
 import org.junit.jupiter.api.AfterEach;
@@ -18,7 +19,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
@@ -110,5 +114,43 @@ class TimelinePostControllerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         verify(postService).createPost(request, 92L, USER_ID);
+    }
+
+    @Test
+    @DisplayName("AC-7: getReplies は TimelineFeedResponse 形状（data.pinned=[]・data.posts）で返す")
+    void getReplies_returnsTimelineFeedResponseShape() {
+        Long postId = 5L;
+        PostResponse reply1 = PostResponse.builder().id(101L).build();
+        PostResponse reply2 = PostResponse.builder().id(102L).build();
+        given(postService.getReplies(eq(postId), any(), eq(20)))
+                .willReturn(List.of(reply1, reply2));
+
+        ResponseEntity<TimelineFeedResponse> response = controller.getReplies(postId, null, 20);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        TimelineFeedResponse body = response.getBody();
+        assertThat(body).isNotNull();
+        // FE は res.data.posts / res.meta.nextCursor を読む
+        assertThat(body.getData().getPinned()).isEmpty();
+        assertThat(body.getData().getPosts()).containsExactly(reply1, reply2);
+        verify(postService).getReplies(eq(postId), any(), eq(20));
+    }
+
+    @Test
+    @DisplayName("AC-8: 返信0件は data.posts 空配列・meta.nextCursor=null・hasNext=false")
+    void getReplies_emptyRepliesReturnsEmptyPostsAndNullCursor() {
+        Long postId = 5L;
+        given(postService.getReplies(eq(postId), any(), eq(20)))
+                .willReturn(List.of());
+
+        ResponseEntity<TimelineFeedResponse> response = controller.getReplies(postId, null, 20);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        TimelineFeedResponse body = response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.getData().getPosts()).isEmpty();
+        assertThat(body.getData().getPinned()).isEmpty();
+        assertThat(body.getMeta().getNextCursor()).isNull();
+        assertThat(body.getMeta().isHasNext()).isFalse();
     }
 }
