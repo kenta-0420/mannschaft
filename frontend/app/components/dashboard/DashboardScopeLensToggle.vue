@@ -205,7 +205,7 @@ function onClickLens(on: boolean) {
         <button
           type="button"
           class="ml-1 shrink-0 rounded p-0.5 hover:bg-white/20"
-          :aria-label="$t('common.button.close')"
+          :aria-label="$t('button.close')"
           @click="dismissOnboardingHint"
         >
           <i class="pi pi-times text-[0.7rem]" aria-hidden="true" />

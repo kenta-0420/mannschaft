@@ -259,13 +259,13 @@ onMounted(load)
 
       <template #footer>
         <Button
-          :label="$t('common.button.cancel')"
+          :label="$t('button.cancel')"
           severity="secondary"
           text
           @click="showDialog = false"
         />
         <Button
-          :label="$t('common.button.save')"
+          :label="$t('button.save')"
           icon="pi pi-check"
           :loading="submitting"
           :disabled="!form.title || !form.destinationUrl"
