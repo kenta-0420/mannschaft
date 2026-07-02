@@ -4,18 +4,22 @@ import com.mannschaft.app.auth.entity.RefreshTokenEntity;
 import com.mannschaft.app.auth.repository.RefreshTokenRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.BDDMockito.given;
 
 /**
  * 真リプレイ攻撃検出時の「全デバイス無効化」がトランザクションのロールバックで巻き戻らず、
@@ -64,6 +68,27 @@ class AuthTokenReplayLogoutPersistenceIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    /** {@link AbstractMySqlIntegrationTest} が用意する {@code @MockitoBean} の Redis。 */
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    /**
+     * Valkey（Redis）が正常稼働している状態を模す。
+     *
+     * <p>モック既定では {@code opsForValue()} が {@code null} を返し、{@code @Transactional} な
+     * {@link AuthTokenService#setUserInvalidationTimestamp} が NPE を投げて<b>そのトランザクションを
+     * rollback-only にマークしてしまう</b>（本テストの関心である「呼び出し元の throw による巻き戻し」とは
+     * 別要因の巻き戻しが混入する）。本バグは Valkey 稼働時にも発生する（実機 E2E で確認）ため、
+     * Valkey 正常時を模して {@code opsForValue().set(...)} を no-op にし、純粋にトランザクション境界の
+     * 巻き戻し挙動のみを観測する。</p>
+     */
+    @BeforeEach
+    void stubRedisUp() {
+        @SuppressWarnings("unchecked")
+        ValueOperations<String, String> valueOps = Mockito.mock(ValueOperations.class);
+        given(redisTemplate.opsForValue()).willReturn(valueOps);
+    }
 
     /**
      * 真リプレイ（後継有り・grace 超過のリボーク済みトークン再提示）を検出したとき、
