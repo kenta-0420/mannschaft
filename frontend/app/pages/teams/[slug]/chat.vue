@@ -10,7 +10,7 @@ const route = useRoute()
 const teamSlug = String(route.params.slug)
 const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('team', teamSlug)
 
-const selectedChannel = ref<ChatChannelResponse | null>(null)
+const selectedChannel = useState<ChatChannelResponse | null>(`team-chat-channel-${teamSlug}`, () => null)
 const chatListRef = ref<{ refresh: () => void } | null>(null)
 const showCreateDialog = ref(false)
 
