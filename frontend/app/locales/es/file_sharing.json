@@ -1,7 +1,7 @@
 {
   "visibility": {
-    "label": "Rol mínimo de visibilidad",
-    "help": "Define el rol mínimo que puede ver o descargar esta carpeta/archivo. Si no se indica, todos los miembros pueden verlo.",
+    "label": "Rol minimo de visibilidad",
+    "help": "Define el rol minimo que puede ver o descargar esta carpeta/archivo. Si no se define, todos los miembros pueden verlo.",
     "all": "Todos los miembros (predeterminado)",
     "SUPPORTERS_AND_ABOVE": "Seguidores y superiores",
     "MEMBERS_AND_ABOVE": "Miembros y superiores",
@@ -9,24 +9,95 @@
   },
   "download": {
     "disabledLabel": "Deshabilitar descargas",
-    "disabledHelp": "Oculta el botón de descarga y rechaza emitir URLs de descarga. Es solo un elemento disuasorio y no impide la visualización en el navegador.",
-    "disabledError": "La descarga de este archivo está deshabilitada"
+    "disabledHelp": "Oculta el boton de descarga y rechaza emitir URLs de descarga. Como no se puede impedir la visualizacion en pantalla, no es una prevencion total.",
+    "disabledError": "Las descargas estan deshabilitadas para este archivo"
+  },
+  "settings": {
+    "title": "Ajustes del archivo",
+    "nameLabel": "Nombre del archivo",
+    "descriptionLabel": "Descripcion",
+    "saved": "Ajustes guardados",
+    "saveError": "No se pudieron guardar los ajustes"
   },
   "publicLink": {
-    "title": "Enlace público",
-    "description": "Comparte este archivo mediante un enlace público con personas que no han iniciado sesión. Solo lectura por defecto.",
-    "downloadAllowedLabel": "Permitir descarga",
-    "downloadAllowedHelp": "Si se activa, este enlace permite descargas. Si el propio archivo prohíbe la descarga, eso tiene prioridad.",
-    "expiresLabel": "Caducidad (hasta 30 días)",
-    "expiresHelp": "Un enlace público debe tener caducidad. Puedes fijarla hasta 30 días en el futuro.",
-    "adminOnly": "Solo los administradores y subadministradores pueden emitir y gestionar enlaces públicos.",
+    "title": "Enlace publico",
+    "description": "Comparte este archivo mediante un enlace publico, incluso con quienes no han iniciado sesion. Solo lectura por defecto.",
+    "downloadAllowedLabel": "Permitir descargas",
+    "downloadAllowedHelp": "Si se activa, este enlace permite descargas. No obstante, si el archivo tiene las descargas deshabilitadas, eso tiene prioridad.",
+    "expiresLabel": "Caducidad (max. 30 dias)",
+    "expiresHelp": "Un enlace publico siempre debe tener caducidad. Puedes fijarla hasta 30 dias en el futuro.",
+    "expiresPlaceholder": "Selecciona una caducidad",
+    "expiresAtLabel": "Caduca",
+    "passwordLabel": "Contrasena (opcional)",
+    "passwordPlaceholder": "Si se define, se pedira al acceder",
+    "createButton": "Crear enlace",
+    "createError": "No se pudo crear el enlace",
+    "created": "Enlace creado",
+    "loadError": "No se pudieron cargar los enlaces",
+    "existingTitle": "Enlaces creados",
+    "empty": "Aun no hay enlaces",
+    "copied": "Enlace copiado",
+    "copyError": "No se pudo copiar",
+    "copyButton": "Copiar enlace",
+    "revoked": "Enlace revocado",
+    "revokeError": "No se pudo revocar",
+    "revokeButton": "Revocar enlace",
+    "tagDownload": "Descargable",
+    "tagViewOnly": "Solo lectura",
+    "tagPassword": "Protegido con contrasena",
+    "adminOnly": "Solo los administradores y subadministradores pueden crear y gestionar enlaces publicos.",
     "errors": {
-      "notFound": "Enlace compartido no encontrado",
-      "inactive": "Este enlace compartido ha sido desactivado",
-      "expired": "Este enlace compartido ha caducado",
-      "passwordInvalid": "Contraseña incorrecta",
-      "downloadNotAllowed": "La descarga no está permitida para este enlace compartido",
-      "expiryInvalid": "La caducidad es obligatoria y puede ser como máximo 30 días en el futuro"
+      "notFound": "Enlace no encontrado",
+      "inactive": "Este enlace ha sido desactivado",
+      "expired": "Este enlace ha caducado",
+      "passwordInvalid": "La contrasena es incorrecta",
+      "downloadNotAllowed": "Este enlace no permite descargas",
+      "expiryInvalid": "La caducidad es obligatoria y puede ser como maximo de 30 dias"
     }
+  },
+  "guide": {
+    "title": "Como funciona el uso compartido de archivos",
+    "description": "Puedes limitar quien ve carpetas y archivos, o compartirlos externamente mediante un enlace publico que no requiere inicio de sesion. Combina los ajustes segun tus necesidades.",
+    "what": {
+      "title": "Sobre los ajustes de seguridad",
+      "body": "Para cada carpeta o archivo puedes definir quien puede verlo y si se permiten descargas. Tambien puedes emitir un enlace publico para compartir con quienes no han iniciado sesion."
+    },
+    "visibility": {
+      "title": "Limita la visibilidad con un rol minimo",
+      "body": "Elige el rol minimo que puede ver: seguidores y superiores, miembros y superiores, o solo administradores. Si no se define, todos los miembros pueden ver.",
+      "steps": {
+        "s1": "Abre el dialogo de creacion de carpeta o el icono de engranaje de un archivo.",
+        "s2": "Elige el alcance en Rol minimo de visibilidad.",
+        "s3": "Tras guardar, quienes esten por debajo del rol ya no lo veran."
+      }
+    },
+    "download": {
+      "title": "Deshabilitar descargas",
+      "body": "Usalo para archivos que quieras que se vean pero no se descarguen. Suprime el boton de descarga y la emision de URLs.",
+      "steps": {
+        "s1": "Abre los ajustes desde el icono de engranaje de un archivo.",
+        "s2": "Activa Deshabilitar descargas y guarda.",
+        "s3": "Ten en cuenta que no se puede impedir la visualizacion en pantalla, por lo que no es una prevencion total de copia."
+      }
+    },
+    "link": {
+      "title": "Comparte externamente con un enlace publico",
+      "body": "Emite un enlace que se abre sin iniciar sesion. Solo los administradores y subadministradores pueden emitirlos.",
+      "steps": {
+        "s1": "Abre la pantalla de enlace publico desde el icono de enlace de un archivo.",
+        "s2": "Fija una caducidad (max. 30 dias) y, si hace falta, permite descargas o define una contrasena.",
+        "s3": "Copia el enlace creado y compartelo. Puedes revocarlo cuando ya no lo necesites."
+      }
+    },
+    "note": "Los enlaces publicos no se indexan en los buscadores. No obstante, cualquiera que conozca el enlace puede acceder, asi que tratalo con cuidado."
+  },
+  "sharedPage": {
+    "pageTitle": "Archivo compartido",
+    "title": "Archivo compartido",
+    "passwordRequired": "Este archivo esta protegido con contrasena. Introduce la contrasena.",
+    "unlockButton": "Abrir",
+    "downloadButton": "Descargar",
+    "viewOnly": "Este archivo es solo de lectura y no se puede descargar.",
+    "footer": "Este es un enlace publico emitido por la funcion de uso compartido de archivos."
   }
 }
