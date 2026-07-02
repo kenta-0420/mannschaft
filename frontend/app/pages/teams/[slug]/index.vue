@@ -94,6 +94,8 @@ const loading = ref(false)
 const activeTab = ref(0)
 const showLeaveConfirm = ref(false)
 
+const showTeamNavDrawer = ref(false)
+
 // 管理者レンズ（true=管理者ビュー, false=メンバービュー）
 // デフォルト: 管理者が来たら管理者ビューで開始
 const adminLens = ref(true)
@@ -212,6 +214,16 @@ onMounted(async () => {
                 <Tab v-if="roleName && reservationEnabled" :value="6">{{ $t('reservation.tab.team_page') }}</Tab>
                 <Tab v-if="roleName" :value="7"> {{ $t('nav.tab') }} </Tab>
               </TabList>
+            </div>
+            <div class="shrink-0 px-1">
+              <Button
+                icon="pi pi-bars"
+                text
+                rounded
+                size="small"
+                aria-label="メニュー"
+                @click="showTeamNavDrawer = true"
+              />
             </div>
             <div v-if="isAdminOrDeputy" class="shrink-0 px-3">
               <ScopeLensToggle v-model="adminLens" />
@@ -360,6 +372,16 @@ onMounted(async () => {
         </div>
       </Tabs>
 
+      <Drawer
+        v-model:visible="showTeamNavDrawer"
+        position="left"
+        class="!w-72"
+      >
+        <template #header>
+          <span class="font-semibold">メニュー</span>
+        </template>
+        <TeamSidebar :team-id="teamSlug" />
+      </Drawer>
     </template>
   </div>
 </template>

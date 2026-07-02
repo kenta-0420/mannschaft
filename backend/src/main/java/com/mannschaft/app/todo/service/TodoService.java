@@ -61,13 +61,16 @@ public class TodoService {
      * @param status    ステータスフィルタ（NULLで全件）
      * @param page      ページ番号（0始まり）
      * @param size      ページサイズ
+     * @param sortType  ソート種別。"PRIORITY" = 優先度降順→期限昇順→作成日降順、
+     *                  それ以外（"RECENT" または未指定）= 作成日降順（新着順）。
      * @return TODO一覧
      */
     @Timed(value = "mannschaft.repository.query", extraTags = {"operation", "TodoService.listTodos"})
     public PagedResponse<TodoResponse> listTodos(TodoScopeType scopeType, Long scopeId,
-                                                  TodoStatus status, int page, int size) {
-        PageRequest pageable = PageRequest.of(page, size,
-                Sort.by("priority").descending().and(Sort.by("dueDate").ascending()));
+                                                  TodoStatus status, int page, int size,
+                                                  String sortType) {
+        Sort sort = buildSort(sortType);
+        PageRequest pageable = PageRequest.of(page, size, sort);
 
         Page<TodoEntity> pageResult;
         if (status != null) {
@@ -83,6 +86,24 @@ public class TodoService {
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 pageResult.getTotalElements(), pageResult.getNumber(), pageResult.getSize(), pageResult.getTotalPages());
         return PagedResponse.of(responses, meta);
+    }
+
+    /**
+     * ソート種別文字列から {@link Sort} を構築する。
+     *
+     * <ul>
+     *   <li>{@code "PRIORITY"} — 優先度降順 → 期限昇順 → 作成日降順</li>
+     *   <li>それ以外（{@code "RECENT"} / {@code null} / 不正値）— 作成日降順（新着順・既定）</li>
+     * </ul>
+     */
+    private Sort buildSort(String sortType) {
+        if ("PRIORITY".equals(sortType)) {
+            return Sort.by(Sort.Order.desc("priority"))
+                    .and(Sort.by(Sort.Order.asc("dueDate")))
+                    .and(Sort.by(Sort.Order.desc("createdAt")));
+        }
+        // RECENT（既定）: 作成新着順
+        return Sort.by(Sort.Order.desc("createdAt"));
     }
 
     /**

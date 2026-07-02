@@ -33607,6 +33607,15 @@
               "format": "int32",
               "default": 20
             }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "RECENT"
+            }
           }
         ],
         "responses": {
@@ -59341,6 +59350,15 @@
               "type": "integer",
               "format": "int32",
               "default": 20
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "RECENT"
             }
           }
         ],

@@ -76,6 +76,8 @@ public class TeamTodoController {
 
     /**
      * TODO一覧を取得する。
+     *
+     * @param sort ソート種別。"RECENT"（既定・作成新着順）または "PRIORITY"（優先度降順）。
      */
     @GetMapping
     @Operation(summary = "TODO一覧")
@@ -84,11 +86,12 @@ public class TeamTodoController {
             @PathVariable String teamId,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "RECENT") String sort) {
         Long internalTeamId = teamService.resolveTeamId(teamId);
         TodoStatus todoStatus = status != null ? TodoStatus.valueOf(status) : null;
         return ResponseEntity.ok(todoService.listTodos(
-                TodoScopeType.TEAM, internalTeamId, todoStatus, page, size));
+                TodoScopeType.TEAM, internalTeamId, todoStatus, page, size, sort));
     }
 
     /**
