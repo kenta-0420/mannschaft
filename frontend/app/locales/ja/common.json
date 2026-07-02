@@ -83,7 +83,8 @@
     "confirm": "確認",
     "logout": "ログアウト",
     "update": "更新",
-    "see_more": "もっと見る"
+    "see_more": "もっと見る",
+    "view_all": "すべて見る"
   },
   "label": {
     "required": "必須",

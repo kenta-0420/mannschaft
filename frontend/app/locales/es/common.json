@@ -83,7 +83,8 @@
     "confirm": "Confirmar",
     "logout": "Cerrar sesion",
     "update": "Actualizar",
-    "see_more": "Ver más"
+    "see_more": "Ver más",
+    "view_all": "Ver todo"
   },
   "label": {
     "required": "Obligatorio",

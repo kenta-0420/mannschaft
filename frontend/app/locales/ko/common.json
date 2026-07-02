@@ -83,7 +83,8 @@
     "confirm": "확인",
     "logout": "로그아웃",
     "update": "업데이트",
-    "see_more": "더 보기"
+    "see_more": "더 보기",
+    "view_all": "모두 보기"
   },
   "label": {
     "required": "필수",
