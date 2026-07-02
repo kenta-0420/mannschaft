@@ -6,10 +6,12 @@ import type { RecruitmentFeedItem } from '~/types/recruitment'
 const api = useRecruitmentApi()
 const { error } = useNotification()
 const router = useRouter()
+const { t } = useI18n()
 const { userTimezone } = useDatetime()
 
 const feedItems = ref<RecruitmentFeedItem[]>([])
 const loading = ref(false)
+const showGuide = ref(false)
 
 async function load() {
   loading.value = true
@@ -17,8 +19,8 @@ async function load() {
     const result = await api.getMyFeed()
     feedItems.value = result.data
   }
-  catch (e) {
-    error(String(e))
+  catch {
+    error(t('recruitment.label.loadError'))
   }
   finally {
     loading.value = false
@@ -38,27 +40,24 @@ onMounted(() => load())
 
 <template>
   <div class="container mx-auto max-w-3xl p-4">
-    <PageHeader :title="$t('recruitment.page.myFeed')" />
+    <PageHeader :title="$t('recruitment.page.myFeed')" help @help="showGuide = true" />
     <p class="mb-6 text-sm text-surface-500">
       {{ $t('recruitment.label.feedDescription') }}
     </p>
 
-    <div v-if="loading" class="flex justify-center p-8">
-      <LoadingBounce />
-    </div>
+    <PageLoading v-if="loading" />
 
-    <div
+    <DashboardEmptyState
       v-else-if="feedItems.length === 0"
-      class="rounded border border-dashed p-8 text-center text-gray-500"
-    >
-      {{ $t('recruitment.label.noFeedItems') }}
-    </div>
+      icon="pi pi-megaphone"
+      :message="$t('recruitment.label.noFeedItems')"
+    />
 
     <div v-else class="flex flex-col gap-4">
-      <div
+      <SectionCard
         v-for="item in feedItems"
         :key="item.id"
-        class="cursor-pointer rounded-lg border border-surface-200 p-4 shadow-sm transition-shadow hover:shadow-md dark:border-surface-700"
+        class="cursor-pointer transition-shadow hover:shadow-md"
         @click="goToListing(item.id)"
       >
         <div class="mb-2 flex items-start justify-between gap-2">
@@ -97,7 +96,9 @@ onMounted(() => load())
         <div class="mt-2 text-right text-xs text-surface-400">
           {{ $t('recruitment.label.postedAt') }} {{ formatDate(item.createdAt) }}
         </div>
-      </div>
+      </SectionCard>
     </div>
+
+    <RecruitmentFeedGuideModal v-model:visible="showGuide" />
   </div>
 </template>

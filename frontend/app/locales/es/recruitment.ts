@@ -140,7 +140,41 @@ export default {
       "noFeedItems": "No hay nuevas convocatorias",
       "listing": "Convocatoria",
       "waitlistPosition": "Lista de espera #{n}",
-      "postedAt": "Publicado"
+      "postedAt": "Publicado",
+      "loadError": "No se pudieron cargar los datos",
+      "listingLabel": "Convocatoria #{id}"
+    },
+    "guide": {
+      "feed": {
+        "title": "Cómo usar Nuevas convocatorias",
+        "what": {
+          "title": "¿Qué es el feed de convocatorias?",
+          "body": "Un feed de solo lectura que muestra las nuevas convocatorias de los equipos que sigues o apoyas, ordenadas de más recientes a más antiguas. Úsalo para descubrir convocatorias que te interesen."
+        },
+        "apply": {
+          "title": "Ver e inscribirse",
+          "body": "Toca una tarjeta para abrir la página de detalle de la convocatoria. La inscripción o el registro en lista de espera se hacen desde esa página de detalle."
+        },
+        "read": {
+          "title": "Cómo leer las tarjetas",
+          "body": "Las etiquetas como \"Abierta\" o \"Completa\" indican el estado. Los números se muestran como \"confirmados / cupo\" y los precios con \"¥\"."
+        }
+      },
+      "listings": {
+        "title": "Cómo usar Mis participaciones",
+        "what": {
+          "title": "¿Qué son mis participaciones?",
+          "body": "Aquí aparecen las convocatorias en las que te has inscrito o has sido confirmado. Solo se muestran las participaciones activas; las canceladas o finalizadas no aparecen."
+        },
+        "status": {
+          "title": "Cómo leer el estado",
+          "body": "Las etiquetas como \"Confirmada\", \"Inscrito\" o \"En lista de espera\" indican tu estado actual. En lista de espera, \"#posición\" muestra tu lugar en la cola."
+        },
+        "detail": {
+          "title": "Detalles y cancelación",
+          "body": "Abre la página de la convocatoria con \"Ver detalles\". Acciones como cancelar tu inscripción se realizan desde esa página de detalle."
+        }
+      }
     },
     "distribution": {
       "title": "Destinatarios",
