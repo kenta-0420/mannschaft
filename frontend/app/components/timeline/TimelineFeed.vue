@@ -23,9 +23,8 @@ const props = defineProps<{
   limit?: number
 }>()
 
-const emit = defineEmits<{
-  clickPost: [postId: number]
-}>()
+// 投稿カード本体クリックは各カード内の返信アコーディオン開閉に統一済み。
+// 旧 clickPost（詳細遷移）の中継はどのページからも購読されなくなったため撤去した。
 
 const {
   getFeed,
@@ -189,7 +188,6 @@ defineExpose({ refresh })
       @pin="onPin"
       @delete="onDelete"
       @repost="onRepost"
-      @click-post="(id) => emit('clickPost', id)"
     />
 
     <!-- 通常投稿 -->
@@ -205,7 +203,6 @@ defineExpose({ refresh })
       @pin="onPin"
       @delete="onDelete"
       @repost="onRepost"
-      @click-post="(id) => emit('clickPost', id)"
     />
 
     <!-- 空状態 -->
@@ -214,7 +211,7 @@ defineExpose({ refresh })
       class="py-12 text-center"
     >
       <i class="pi pi-comments mb-3 text-4xl text-surface-300" />
-      <p class="text-surface-400">まだ投稿がありません</p>
+      <p class="text-surface-400 dark:text-surface-300">まだ投稿がありません</p>
     </div>
 
     <!-- もっと読む（limit 指定時は追加ロードを無効化し、一覧ページ側へ委譲） -->

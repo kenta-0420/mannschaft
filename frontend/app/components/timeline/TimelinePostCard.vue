@@ -119,19 +119,33 @@ const replyCursor = ref<number | null>(null)
 const repliesHasNext = ref(false)
 const replyContent = ref('')
 const replySubmitting = ref(false)
+/**
+ * 初回ロード（一覧を丸ごと代入する loadReplies）の in-flight promise。
+ * これが解決する前に返信送信で楽観追加すると、後着の代入で追加分が消えるため、
+ * submitReply はこの promise を待ってから push する（競合根治）。
+ */
+let repliesLoadPromise: Promise<void> | null = null
 
 async function loadReplies() {
   repliesLoading.value = true
+  const promise = (async () => {
+    try {
+      const res = await getReplies(props.post.id)
+      replies.value = res.data.posts
+      replyCursor.value = res.meta.nextCursor
+      repliesHasNext.value = res.meta.hasNext
+      repliesLoaded.value = true
+    } catch {
+      showError(t('timeline.postError'))
+    } finally {
+      repliesLoading.value = false
+    }
+  })()
+  repliesLoadPromise = promise
   try {
-    const res = await getReplies(props.post.id)
-    replies.value = res.data.posts
-    replyCursor.value = res.meta.nextCursor
-    repliesHasNext.value = res.meta.hasNext
-    repliesLoaded.value = true
-  } catch {
-    showError(t('timeline.postError'))
+    await promise
   } finally {
-    repliesLoading.value = false
+    if (repliesLoadPromise === promise) repliesLoadPromise = null
   }
 }
 
@@ -181,6 +195,8 @@ async function submitReply() {
   if (!content || replySubmitting.value) return
   replySubmitting.value = true
   try {
+    // 初回ロードが in-flight なら先に確定させ、後着の一覧代入で楽観追加が消えるのを防ぐ。
+    if (repliesLoadPromise) await repliesLoadPromise
     const res = await createReply(props.post.id, content)
     // 会話は古い順のため末尾に追加。返信数の +1 は親（shared ref）へ委譲（prop 直接変更を避ける）。
     replies.value.push(res.data)
@@ -236,7 +252,7 @@ function replyAvatar(r: TimelinePostResponse): string | null {
     </div>
 
     <!-- ピン表示 -->
-    <div v-if="post.content?.isPinned" class="mb-2 flex items-center gap-1 text-xs text-surface-400">
+    <div v-if="post.content?.isPinned" class="mb-2 flex items-center gap-1 text-xs text-surface-400 dark:text-surface-300">
       <i class="pi pi-thumbtack" />
       <span>ピン留め</span>
     </div>
@@ -289,10 +305,10 @@ function replyAvatar(r: TimelinePostResponse): string | null {
       class="mb-2 rounded-lg border border-surface-100 bg-surface-50 p-3 text-sm dark:border-surface-700 dark:bg-surface-900"
     >
       <template v-if="post.repostOf.deleted">
-        <span class="text-surface-400">元の投稿は削除されました</span>
+        <span class="text-surface-400 dark:text-surface-300">元の投稿は削除されました</span>
       </template>
       <template v-else>
-        <div class="mb-1 flex items-center gap-2 text-xs text-surface-400">
+        <div class="mb-1 flex items-center gap-2 text-xs text-surface-400 dark:text-surface-300">
           <i class="pi pi-replay" />
           <span>{{ post.repostOf.user?.displayName }}</span>
         </div>
@@ -362,7 +378,7 @@ function replyAvatar(r: TimelinePostResponse): string | null {
           <img v-if="att.ogImageUrl" :src="att.ogImageUrl" class="h-16 w-16 rounded object-cover" >
           <div class="min-w-0">
             <p class="truncate text-sm font-medium">{{ att.ogTitle }}</p>
-            <p class="truncate text-xs text-surface-400">{{ att.ogSiteName }}</p>
+            <p class="truncate text-xs text-surface-400 dark:text-surface-300">{{ att.ogSiteName }}</p>
           </div>
         </a>
       </template>
@@ -386,11 +402,11 @@ function replyAvatar(r: TimelinePostResponse): string | null {
           />
           <div class="relative flex items-center justify-between">
             <span>{{ opt.optionText }}</span>
-            <span class="text-xs text-surface-400">{{ opt.voteCount }}票</span>
+            <span class="text-xs text-surface-400 dark:text-surface-300">{{ opt.voteCount }}票</span>
           </div>
         </div>
       </div>
-      <p class="mt-2 text-xs text-surface-400">
+      <p class="mt-2 text-xs text-surface-400 dark:text-surface-300">
         {{ post.poll.totalVoteCount }}票
         <span v-if="post.poll.isClosed"> ・終了</span>
         <span v-else-if="post.poll.expiresAt"> ・{{ relativeTime(post.poll.expiresAt) }}まで</span>
@@ -420,7 +436,7 @@ function replyAvatar(r: TimelinePostResponse): string | null {
       </button>
       <button
         class="flex items-center gap-1 text-xs transition-colors hover:text-green-500"
-        :class="(post.stats?.repostCount ?? 0) > 0 ? 'text-green-500' : 'text-surface-400'"
+        :class="(post.stats?.repostCount ?? 0) > 0 ? 'text-green-500' : 'text-surface-400 dark:text-surface-300'"
         @click="emit('repost', post.id)"
       >
         <i class="pi pi-replay" />
@@ -428,7 +444,7 @@ function replyAvatar(r: TimelinePostResponse): string | null {
       </button>
       <button
         class="flex items-center gap-1 text-xs transition-colors hover:text-amber-500"
-        :class="post.isBookmarked ? 'text-amber-500' : 'text-surface-400'"
+        :class="post.isBookmarked ? 'text-amber-500' : 'text-surface-400 dark:text-surface-300'"
         @click="emit('bookmark', post.id)"
       >
         <i :class="post.isBookmarked ? 'pi pi-bookmark-fill' : 'pi pi-bookmark'" />

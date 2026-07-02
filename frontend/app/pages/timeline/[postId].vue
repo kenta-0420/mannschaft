@@ -30,7 +30,13 @@ async function loadPost() {
   try {
     const res = await getPost(postId)
     post.value = res.data
-    replies.value = res.data.recentReplies || []
+    const recent = res.data.recentReplies || []
+    replies.value = recent
+    // recentReplies は会話の古い順・先頭最大 N 件のプレビュー。返信総数がプレビュー件数を超えるなら続きがある。
+    // 返信一覧APIのカーソルは「その ID より後（新しい）」を返すため、末尾（=最新 ID）を起点にする。
+    const total = res.data.stats?.replyCount ?? recent.length
+    hasMoreReplies.value = total > recent.length
+    replyCursor.value = recent.length > 0 ? recent[recent.length - 1]!.id : null
   } catch {
     showError('投稿の取得に失敗しました')
   }
@@ -44,6 +50,8 @@ async function loadMoreReplies() {
     replies.value.push(...res.data.posts)
     replyCursor.value = res.meta.nextCursor
     hasMoreReplies.value = res.meta.hasNext
+  } catch {
+    showError('返信の取得に失敗しました')
   } finally {
     loadingMore.value = false
   }
