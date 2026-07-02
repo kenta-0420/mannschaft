@@ -2,16 +2,21 @@ package com.mannschaft.app.social.announcement.adapter;
 
 import com.mannschaft.app.social.announcement.AnnouncementContentRequest;
 import com.mannschaft.app.social.announcement.AnnouncementSourceType;
+import com.mannschaft.app.survey.QuestionType;
 import com.mannschaft.app.survey.ResultsVisibility;
+import com.mannschaft.app.survey.SurveyStatus;
+import com.mannschaft.app.survey.dto.CreateQuestionRequest;
 import com.mannschaft.app.survey.dto.CreateSurveyRequest;
 import com.mannschaft.app.survey.dto.SurveyDetailResponse;
 import com.mannschaft.app.survey.dto.SurveyResponse;
+import com.mannschaft.app.survey.entity.SurveyEntity;
 import com.mannschaft.app.survey.service.SurveyService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -25,7 +30,9 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -194,11 +201,11 @@ class SurveyAnnouncementAdapterTest {
         }
 
         @Test
-        @DisplayName("questions が空リスト（設問なし）で作成されること（設計方針）")
-        void createsWithEmptyQuestions() {
+        @DisplayName("AC-1: 自由記述の既定設問 1 問を同梱して作成されること（設問ゼロで回答不可の根治）")
+        void createsWithDefaultFreeTextQuestion() {
             // given
             AnnouncementContentRequest content = AnnouncementContentRequest.builder()
-                    .title("設問なし告知アンケート")
+                    .title("既定設問付き告知アンケート")
                     .build();
 
             given(surveyService.createSurvey(anyString(), anyLong(), anyLong(), any(CreateSurveyRequest.class)))
@@ -210,9 +217,75 @@ class SurveyAnnouncementAdapterTest {
             // when
             adapter.createContent(content, "ORGANIZATION", SCOPE_ID, "PUBLIC", USER_ID);
 
-            // then
+            // then: 設問が 1 件・自由記述（FREE_TEXT）・任意回答（required=false）で同梱される
             verify(surveyService).createSurvey(anyString(), anyLong(), anyLong(), captor.capture());
-            assertThat(captor.getValue().getQuestions()).isEmpty();
+            List<CreateQuestionRequest> questions = captor.getValue().getQuestions();
+            assertThat(questions).hasSize(1);
+            CreateQuestionRequest defaultQuestion = questions.get(0);
+            assertThat(defaultQuestion.getQuestionType()).isEqualTo(QuestionType.FREE_TEXT.name());
+            assertThat(defaultQuestion.getIsRequired()).isFalse();
+            assertThat(defaultQuestion.getQuestionText()).isNotBlank();
+        }
+
+        @Test
+        @DisplayName("AC-2: createSurvey の直後に publishSurvey が呼ばれ PUBLISHED 化されること")
+        void publishesSurveyAfterCreate() {
+            // given
+            AnnouncementContentRequest content = AnnouncementContentRequest.builder()
+                    .title("即公開アンケート")
+                    .build();
+
+            given(surveyService.createSurvey(anyString(), anyLong(), anyLong(), any(CreateSurveyRequest.class)))
+                    .willReturn(buildSurveyDetailResponse(SURVEY_ID));
+
+            // when
+            adapter.createContent(content, "TEAM", SCOPE_ID, "MEMBERS_AND_ABOVE", USER_ID);
+
+            // then: createSurvey → publishSurvey の順で呼ばれ、公開対象は作成された surveyId
+            InOrder inOrder = inOrder(surveyService);
+            inOrder.verify(surveyService)
+                    .createSurvey(anyString(), anyLong(), anyLong(), any(CreateSurveyRequest.class));
+            inOrder.verify(surveyService)
+                    .publishSurvey(eq("TEAM"), eq(SCOPE_ID), eq(SURVEY_ID));
+        }
+
+        @Test
+        @DisplayName("AC-4: closesAt 指定時も publishSurvey が呼ばれ公開されること")
+        void publishesEvenWhenClosesAtSet() {
+            // given
+            AnnouncementContentRequest content = AnnouncementContentRequest.builder()
+                    .title("締切付き即公開アンケート")
+                    .closesAt(CLOSES_AT)
+                    .build();
+
+            given(surveyService.createSurvey(anyString(), anyLong(), anyLong(), any(CreateSurveyRequest.class)))
+                    .willReturn(buildSurveyDetailResponse(SURVEY_ID));
+
+            // when
+            adapter.createContent(content, "ORGANIZATION", SCOPE_ID, "PUBLIC", USER_ID);
+
+            // then
+            verify(surveyService).publishSurvey(eq("ORGANIZATION"), eq(SCOPE_ID), eq(SURVEY_ID));
+        }
+
+        @Test
+        @DisplayName("AC-3: 公開された設問 1 問のアンケートは回答受付状態（isAcceptingResponses=true）になること")
+        void publishedSurveyWithOneQuestionAcceptsResponses() {
+            // given: DRAFT（既定）の設問 1 問アンケート
+            SurveyEntity survey = SurveyEntity.builder()
+                    .scopeType("TEAM")
+                    .scopeId(SCOPE_ID)
+                    .title("回答受付確認")
+                    .build();
+            assertThat(survey.getStatus()).isEqualTo(SurveyStatus.DRAFT);
+            assertThat(survey.isAcceptingResponses()).isFalse();
+
+            // when: publishSurvey 相当の状態遷移
+            survey.publish();
+
+            // then: PUBLISHED かつ期限未設定 → 受信直後から回答可能
+            assertThat(survey.getStatus()).isEqualTo(SurveyStatus.PUBLISHED);
+            assertThat(survey.isAcceptingResponses()).isTrue();
         }
     }
 
