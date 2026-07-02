@@ -74,8 +74,6 @@ export interface OrgShellContext {
   showChildrenTab: ComputedRef<boolean>
   /** 組織内チーム検索ページへの導線を表示するか。 */
   showTeamSearchLink: ComputedRef<boolean>
-  /** orgType コード → 日本語ラベルの対応表。 */
-  orgTypeLabel: Record<string, string>
   /** 組織再取得（状態同期用）。 */
   refresh: () => Promise<void>
   /** 親 org ref を部分更新するミューテータ群。 */

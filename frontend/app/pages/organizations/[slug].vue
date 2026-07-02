@@ -31,7 +31,6 @@ definePageMeta({
 
 const route = useRoute()
 const orgSlug = computed(() => String(route.params.slug))
-const { orgTypeLabel } = useScopeLabels()
 
 const {
   roleName,
@@ -357,7 +356,6 @@ provideOrgShellContext({
   permissionGroups,
   showChildrenTab,
   showTeamSearchLink,
-  orgTypeLabel,
   refresh,
   mutators: orgMutators,
 })
