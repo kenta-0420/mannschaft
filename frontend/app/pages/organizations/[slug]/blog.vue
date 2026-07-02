@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'organization', middleware: 'auth' })
+definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const orgId = String(route.params.slug)
 // メンバー判定はロールシステムに委譲する（全メンバー取得→線形探索のアンチパターンを排除）

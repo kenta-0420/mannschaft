@@ -1886,5 +1886,17 @@
       "supporters": "サポーター管理",
       "modules": "機能設定"
     }
+  },
+  "orgShell": {
+    "tab": {
+      "dashboard": "ダッシュボード",
+      "info": "基本情報",
+      "members": "メンバー",
+      "member_teams": "所属チーム",
+      "invites": "招待",
+      "permission_groups": "権限グループ",
+      "supporters": "サポーター管理",
+      "modules": "機能設定"
+    }
   }
 }

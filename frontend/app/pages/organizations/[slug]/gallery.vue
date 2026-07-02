@@ -1,5 +1,5 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'organization', middleware: 'auth' })
+definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const orgSlug = String(route.params.slug)
 </script>

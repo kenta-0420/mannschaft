@@ -1886,5 +1886,17 @@
       "supporters": "서포터 관리",
       "modules": "기능 설정"
     }
+  },
+  "orgShell": {
+    "tab": {
+      "dashboard": "대시보드",
+      "info": "기본 정보",
+      "members": "멤버",
+      "member_teams": "소속 팀",
+      "invites": "초대",
+      "permission_groups": "권한 그룹",
+      "supporters": "서포터 관리",
+      "modules": "기능 설정"
+    }
   }
 }

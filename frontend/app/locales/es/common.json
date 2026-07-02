@@ -1886,5 +1886,17 @@
       "supporters": "Gestión de seguidores",
       "modules": "Funciones"
     }
+  },
+  "orgShell": {
+    "tab": {
+      "dashboard": "Panel",
+      "info": "Información básica",
+      "members": "Miembros",
+      "member_teams": "Equipos",
+      "invites": "Invitaciones",
+      "permission_groups": "Grupos de permisos",
+      "supporters": "Gestión de seguidores",
+      "modules": "Funciones"
+    }
   }
 }

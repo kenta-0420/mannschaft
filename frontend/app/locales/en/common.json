@@ -1886,5 +1886,17 @@
       "supporters": "Supporter Management",
       "modules": "Features"
     }
+  },
+  "orgShell": {
+    "tab": {
+      "dashboard": "Dashboard",
+      "info": "Basic Info",
+      "members": "Members",
+      "member_teams": "Teams",
+      "invites": "Invites",
+      "permission_groups": "Permission Groups",
+      "supporters": "Supporter Management",
+      "modules": "Features"
+    }
   }
 }

@@ -1886,5 +1886,17 @@
       "supporters": "支持者管理",
       "modules": "功能设置"
     }
+  },
+  "orgShell": {
+    "tab": {
+      "dashboard": "仪表板",
+      "info": "基本信息",
+      "members": "成员",
+      "member_teams": "所属团队",
+      "invites": "邀请",
+      "permission_groups": "权限组",
+      "supporters": "支持者管理",
+      "modules": "功能设置"
+    }
   }
 }

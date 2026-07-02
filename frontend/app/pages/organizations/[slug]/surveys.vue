@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { SurveyResponse } from '~/types/survey'
 
-definePageMeta({ layout: 'organization', middleware: 'auth' })
+definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
 const orgSlug = String(route.params.slug)
