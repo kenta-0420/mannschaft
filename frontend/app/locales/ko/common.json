@@ -688,6 +688,10 @@
     "custom_field_deleted": "사용자 정의 필드가 삭제되었습니다"
   },
   "notification": {
+    "todoHandedOff": {
+      "title": "할 일이 넘겨졌습니다",
+      "body": "{from}님으로부터 「{title}」을（를） 받았습니다（상태: {label}）"
+    },
     "pageTitle": "通知",
     "guide": {
       "title": "通知の使い方",
@@ -1229,12 +1233,6 @@
       "title": "전달 기록",
       "empty": "아직 기록이 없습니다",
       "deletedLabel": "（삭제됨）"
-    }
-  },
-  "notification": {
-    "todoHandedOff": {
-      "title": "할 일이 넘겨졌습니다",
-      "body": "{from}님으로부터 「{title}」을（를） 받았습니다（상태: {label}）"
     }
   },
   "common": {

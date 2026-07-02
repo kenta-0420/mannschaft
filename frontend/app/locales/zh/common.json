@@ -688,6 +688,10 @@
     "custom_field_deleted": "自定义字段已删除"
   },
   "notification": {
+    "todoHandedOff": {
+      "title": "收到待办",
+      "body": "{from} 将「{title}」传递给您（状态：{label}）"
+    },
     "pageTitle": "通知",
     "guide": {
       "title": "通知の使い方",
@@ -1229,12 +1233,6 @@
       "title": "传递历史",
       "empty": "暂无历史",
       "deletedLabel": "（已删除）"
-    }
-  },
-  "notification": {
-    "todoHandedOff": {
-      "title": "收到待办",
-      "body": "{from} 将「{title}」传递给您（状态：{label}）"
     }
   },
   "common": {

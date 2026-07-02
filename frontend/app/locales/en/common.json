@@ -688,6 +688,10 @@
     "custom_field_deleted": "Custom field deleted"
   },
   "notification": {
+    "todoHandedOff": {
+      "title": "A TODO was passed to you",
+      "body": "{from} passed \"{title}\" to you (status: {label})"
+    },
     "pageTitle": "通知",
     "guide": {
       "title": "通知の使い方",
@@ -1229,12 +1233,6 @@
       "title": "Handoff history",
       "empty": "No history yet",
       "deletedLabel": "(deleted)"
-    }
-  },
-  "notification": {
-    "todoHandedOff": {
-      "title": "A TODO was passed to you",
-      "body": "{from} passed \"{title}\" to you (status: {label})"
     }
   },
   "common": {

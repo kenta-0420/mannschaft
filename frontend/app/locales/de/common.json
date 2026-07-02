@@ -688,6 +688,10 @@
     "custom_field_deleted": "Benutzerdefiniertes Feld gelöscht"
   },
   "notification": {
+    "todoHandedOff": {
+      "title": "Aufgabe wurde weitergegeben",
+      "body": "{from} hat \"{title}\" an dich weitergegeben (Status: {label})"
+    },
     "pageTitle": "通知",
     "guide": {
       "title": "通知の使い方",
@@ -1229,12 +1233,6 @@
       "title": "Weitergabeverlauf",
       "empty": "Noch kein Verlauf",
       "deletedLabel": "(gelöscht)"
-    }
-  },
-  "notification": {
-    "todoHandedOff": {
-      "title": "Aufgabe wurde weitergegeben",
-      "body": "{from} hat \"{title}\" an dich weitergegeben (Status: {label})"
     }
   },
   "common": {

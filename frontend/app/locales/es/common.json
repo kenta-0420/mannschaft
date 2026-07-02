@@ -688,6 +688,10 @@
     "custom_field_deleted": "Campo personalizado eliminado"
   },
   "notification": {
+    "todoHandedOff": {
+      "title": "Se te pasó una tarea",
+      "body": "{from} te pasó \"{title}\" (estado: {label})"
+    },
     "pageTitle": "通知",
     "guide": {
       "title": "通知の使い方",
@@ -1229,12 +1233,6 @@
       "title": "Historial de transferencias",
       "empty": "Sin historial todavía",
       "deletedLabel": "(eliminado)"
-    }
-  },
-  "notification": {
-    "todoHandedOff": {
-      "title": "Se te pasó una tarea",
-      "body": "{from} te pasó \"{title}\" (estado: {label})"
     }
   },
   "common": {

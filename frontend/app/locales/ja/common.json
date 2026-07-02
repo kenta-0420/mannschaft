@@ -688,6 +688,10 @@
     "custom_field_deleted": "カスタムフィールドを削除しました"
   },
   "notification": {
+    "todoHandedOff": {
+      "title": "TODOが渡されました",
+      "body": "{from}さんから「{title}」を渡されました（ステータス: {label}）"
+    },
     "pageTitle": "通知",
     "guide": {
       "title": "通知の使い方",
@@ -1229,12 +1233,6 @@
       "title": "キャッチボール履歴",
       "empty": "まだ履歴はありません",
       "deletedLabel": "（削除済み）"
-    }
-  },
-  "notification": {
-    "todoHandedOff": {
-      "title": "TODOが渡されました",
-      "body": "{from}さんから「{title}」を渡されました（ステータス: {label}）"
     }
   },
   "common": {
