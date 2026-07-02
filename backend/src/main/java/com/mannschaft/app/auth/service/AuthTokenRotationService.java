@@ -41,7 +41,11 @@ import java.util.UUID;
  *       grace 超過の後継有りトークン再提示のみを真リプレイとして全セッション無効化する。</li>
  * </ol>
  *
- * <p>リプレイ検出時の全デバイス無効化（logoutAllDevices）は {@link AuthSessionService} へ委譲する。</p>
+ * <p>リプレイ検出時の全デバイス無効化（logoutAllDevices）は {@link AuthSessionService} へ委譲する。
+ * 当メソッドは {@code @Transactional}（REQUIRED）で動作し、真リプレイ検出時は全デバイス無効化の直後に
+ * {@code BusinessException(AUTH_026)} を送出してこのトランザクションをロールバックさせる（新トークンは発行しない）。
+ * このロールバックで全トークン revoke が巻き戻らないよう、{@link AuthSessionService#logoutAllDevices(Long)} は
+ * {@code REQUIRES_NEW} の独立トランザクションで即コミットする（盗難トークン検出時の無効化を確実に永続化する）。</p>
  */
 @Service
 @Transactional(readOnly = true)
@@ -106,6 +110,9 @@ public class AuthTokenRotationService {
                         existingToken.getUserId(), existingToken.getId(),
                         secondsSinceRevoke, refreshRotationGraceSeconds);
                 eventPublisher.publish(new TokenReuseDetectedEvent(existingToken.getUserId(), existingToken.getId()));
+                // logoutAllDevices は REQUIRES_NEW（独立トランザクション）で即コミットするため、
+                // 直後の AUTH_026 throw による当メソッドのトランザクションのロールバックでは巻き戻らない。
+                // これにより盗難トークン検出時の全デバイス無効化が確実に永続化される。
                 authSessionService.logoutAllDevices(existingToken.getUserId());
                 throw new BusinessException(AuthErrorCode.AUTH_026);
             }
