@@ -29,10 +29,10 @@ const submitting = ref(false)
 const downloadNotice = ref(false)
 
 // 検索エンジンにインデックスさせない（公開リンクの秘匿）
-useHead({
-  title: () => t('file_sharing.sharedPage.pageTitle'),
+useHead(() => ({
+  title: t('file_sharing.sharedPage.pageTitle'),
   meta: [{ name: 'robots', content: 'noindex, nofollow' }],
-})
+}))
 
 function statusOf(err: unknown): number | undefined {
   const e = err as { response?: { status?: number }, status?: number, statusCode?: number }
