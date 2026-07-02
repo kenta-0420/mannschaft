@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { FetchError } from 'ofetch'
-import type { ChatChannelResponse } from '~/types/chat'
 import type { ViewerRole } from '~/types/dashboard'
 import type { TeamResponse } from '~/types/team'
 import { resolveSlugRedirectPath } from '~/utils/slugRedirect'
@@ -95,23 +94,7 @@ const loading = ref(false)
 const activeTab = ref(0)
 const showLeaveConfirm = ref(false)
 
-const showChatSidebar = ref(false)
-const showChatCreateDialog = ref(false)
-const chatListRef = ref<{ refresh: () => void } | null>(null)
-const chatSelectedChannel = useState<ChatChannelResponse | null>(
-  `team-chat-channel-${teamSlug.value}`,
-  () => null,
-)
-
-function onChatChannelSelect(ch: ChatChannelResponse) {
-  chatSelectedChannel.value = ch
-  showChatSidebar.value = false
-  navigateTo(`/teams/${teamSlug.value}/chat`)
-}
-
-function onChatCreated() {
-  chatListRef.value?.refresh()
-}
+const showTeamNavDrawer = ref(false)
 
 // 管理者レンズ（true=管理者ビュー, false=メンバービュー）
 // デフォルト: 管理者が来たら管理者ビューで開始
@@ -232,14 +215,14 @@ onMounted(async () => {
                 <Tab v-if="roleName" :value="7"> {{ $t('nav.tab') }} </Tab>
               </TabList>
             </div>
-            <div v-if="roleName" class="shrink-0 px-1">
+            <div class="shrink-0 px-1">
               <Button
-                icon="pi pi-comments"
+                icon="pi pi-bars"
                 text
                 rounded
                 size="small"
-                aria-label="チャット"
-                @click="showChatSidebar = true"
+                aria-label="メニュー"
+                @click="showTeamNavDrawer = true"
               />
             </div>
             <div v-if="isAdminOrDeputy" class="shrink-0 px-3">
@@ -390,24 +373,15 @@ onMounted(async () => {
       </Tabs>
 
       <Drawer
-        v-model:visible="showChatSidebar"
+        v-model:visible="showTeamNavDrawer"
         position="left"
-        header="チャット"
         class="!w-72"
       >
-        <ChatChannelList
-          ref="chatListRef"
-          :team-id="teamSlug"
-          @select="onChatChannelSelect"
-          @create="showChatCreateDialog = true"
-        />
+        <template #header>
+          <span class="font-semibold">メニュー</span>
+        </template>
+        <TeamSidebar :team-id="teamSlug" />
       </Drawer>
-
-      <ChatCreateDialog
-        v-model:visible="showChatCreateDialog"
-        :team-id="teamSlug"
-        @created="onChatCreated"
-      />
     </template>
   </div>
 </template>
