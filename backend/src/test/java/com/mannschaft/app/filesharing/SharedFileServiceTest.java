@@ -105,14 +105,14 @@ class SharedFileServiceTest {
         void ファイル作成_正常_バージョン1も作成_クォータ加算() {
             // Given
             CreateFileRequest request = new CreateFileRequest(
-                    FOLDER_ID, "test.pdf", "files/test.pdf", 1024L, "application/pdf", null);
+                    FOLDER_ID, "test.pdf", "files/test.pdf", 1024L, "application/pdf", null, null, null);
 
             SharedFolderEntity folder = buildFolder();
             SharedFileEntity savedFile = SharedFileEntity.builder()
                     .folderId(FOLDER_ID).name("test.pdf").fileKey("files/test.pdf")
                     .fileSize(1024L).contentType("application/pdf").createdBy(USER_ID).build();
             FileResponse response = new FileResponse(FILE_ID, FOLDER_ID, "test.pdf", "files/test.pdf",
-                    1024L, "application/pdf", null, USER_ID, 1, null, null);
+                    1024L, "application/pdf", null, USER_ID, 1, null, null, null, null);
 
             given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(folder);
             willDoNothing().given(quotaService).checkFileQuota(any(SharedFolderEntity.class), eq(1024L));
@@ -135,7 +135,7 @@ class SharedFileServiceTest {
         void ファイル作成_クォータ超過_BusinessException_DB登録されない() {
             // Given
             CreateFileRequest request = new CreateFileRequest(
-                    FOLDER_ID, "big.pdf", "files/big.pdf", 999999L, "application/pdf", null);
+                    FOLDER_ID, "big.pdf", "files/big.pdf", 999999L, "application/pdf", null, null, null);
             SharedFolderEntity folder = buildFolder();
 
             given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(folder);
@@ -219,7 +219,7 @@ class SharedFileServiceTest {
             // Given
             SharedFileEntity file = buildFile();
             given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
-            willDoNothing().given(folderQueryService).authorizeFolderViewById(FOLDER_OF_FILE, USER_ID);
+            willDoNothing().given(folderQueryService).authorizeDownload(FILE_ID, USER_ID);
             given(r2StorageService.generateDownloadUrl(eq(FILE_KEY), any()))
                     .willReturn("https://r2.example.com/" + FILE_KEY + "?X-Amz-Signature=xxx");
 
@@ -240,7 +240,7 @@ class SharedFileServiceTest {
             given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
             // PERSONAL 本人不一致は authorizeFolderViewById が FOLDER_NOT_FOUND（→404）を投げる
             willThrow(new BusinessException(FileSharingErrorCode.FOLDER_NOT_FOUND))
-                    .given(folderQueryService).authorizeFolderViewById(FOLDER_OF_FILE, USER_ID);
+                    .given(folderQueryService).authorizeDownload(FILE_ID, USER_ID);
 
             // When & Then
             assertThatThrownBy(() -> sharedFileService.presignDownload(FILE_ID, USER_ID))
@@ -259,7 +259,7 @@ class SharedFileServiceTest {
             given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
             // TEAM/ORG 非メンバーは authorizeFolderViewById（内部 checkMembership）が COMMON_002（→403）を投げる
             willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(folderQueryService).authorizeFolderViewById(FOLDER_OF_FILE, USER_ID);
+                    .given(folderQueryService).authorizeDownload(FILE_ID, USER_ID);
 
             // When & Then
             assertThatThrownBy(() -> sharedFileService.presignDownload(FILE_ID, USER_ID))
@@ -281,7 +281,7 @@ class SharedFileServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(FileSharingErrorCode.FILE_NOT_FOUND));
             // 存在しなければ認可も URL 発行も行わない
-            verify(folderQueryService, never()).authorizeFolderViewById(anyLong(), anyLong());
+            verify(folderQueryService, never()).authorizeDownload(anyLong(), anyLong());
             verify(r2StorageService, never()).generateDownloadUrl(any(), any());
         }
 
@@ -291,7 +291,7 @@ class SharedFileServiceTest {
             // Given
             SharedFileEntity file = buildFile();
             given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
-            willDoNothing().given(folderQueryService).authorizeFolderViewById(FOLDER_OF_FILE, USER_ID);
+            willDoNothing().given(folderQueryService).authorizeDownload(FILE_ID, USER_ID);
             given(r2StorageService.generateDownloadUrl(eq(FILE_KEY), any())).willReturn("https://r2/x");
 
             // When
@@ -299,6 +299,24 @@ class SharedFileServiceTest {
 
             // Then: file.getFileKey() がそのまま presign に渡る
             verify(r2StorageService).generateDownloadUrl(eq(FILE_KEY), any());
+        }
+
+        @Test
+        @DisplayName("AC-C1相当: DL 禁止(authorizeDownload が DOWNLOAD_DISABLED)なら 403 で URL 未発行（generateDownloadUrl を呼ばない）")
+        void AC_C_DL禁止_403_URL未発行() {
+            // Given
+            SharedFileEntity file = buildFile();
+            given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
+            willThrow(new BusinessException(FileSharingErrorCode.DOWNLOAD_DISABLED))
+                    .given(folderQueryService).authorizeDownload(FILE_ID, USER_ID);
+
+            // When & Then
+            assertThatThrownBy(() -> sharedFileService.presignDownload(FILE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(FileSharingErrorCode.DOWNLOAD_DISABLED));
+            // DL 禁止で弾かれたら presigned URL を一切発行しない。
+            verify(r2StorageService, never()).generateDownloadUrl(any(), any());
         }
     }
 
@@ -400,7 +418,7 @@ class SharedFileServiceTest {
             SharedFileEntity file = buildFile();
             given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
             willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(folderQueryService).authorizeFolderViewById(FOLDER_OF_FILE, USER_ID);
+                    .given(folderQueryService).authorizeFileViewById(FILE_ID, USER_ID);
 
             // When & Then
             assertThatThrownBy(() -> sharedFileService.getFile(FILE_ID, USER_ID))
@@ -418,7 +436,7 @@ class SharedFileServiceTest {
             SharedFileEntity file = buildFile();
             given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
             willThrow(new BusinessException(FileSharingErrorCode.FOLDER_NOT_FOUND))
-                    .given(folderQueryService).authorizeFolderViewById(FOLDER_OF_FILE, USER_ID);
+                    .given(folderQueryService).authorizeFileViewById(FILE_ID, USER_ID);
 
             // When & Then
             assertThatThrownBy(() -> sharedFileService.getFile(FILE_ID, USER_ID))
@@ -440,7 +458,7 @@ class SharedFileServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(FileSharingErrorCode.FILE_NOT_FOUND));
             // 実在確認（404）が先。存在しないファイルではフォルダ認可を呼ばない
-            verify(folderQueryService, never()).authorizeFolderViewById(anyLong(), anyLong());
+            verify(folderQueryService, never()).authorizeFileViewById(anyLong(), anyLong());
         }
 
         @Test
@@ -449,9 +467,9 @@ class SharedFileServiceTest {
             // Given
             SharedFileEntity file = buildFile();
             FileResponse response = new FileResponse(FILE_ID, FOLDER_OF_FILE, "doc.pdf",
-                    "files/TEAM/5/x.pdf", 2048L, "application/pdf", null, USER_ID, 1, null, null);
+                    "files/TEAM/5/x.pdf", 2048L, "application/pdf", null, USER_ID, 1, null, null, null, null);
             given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
-            willDoNothing().given(folderQueryService).authorizeFolderViewById(FOLDER_OF_FILE, USER_ID);
+            willDoNothing().given(folderQueryService).authorizeFileViewById(FILE_ID, USER_ID);
             given(fileSharingMapper.toFileResponse(file)).willReturn(response);
 
             // When
@@ -461,7 +479,7 @@ class SharedFileServiceTest {
             assertThat(result).isNotNull();
             InOrder order = inOrder(fileRepository, folderQueryService, fileSharingMapper);
             order.verify(fileRepository).findById(FILE_ID);
-            order.verify(folderQueryService).authorizeFolderViewById(FOLDER_OF_FILE, USER_ID);
+            order.verify(folderQueryService).authorizeFileViewById(FILE_ID, USER_ID);
             order.verify(fileSharingMapper).toFileResponse(file);
         }
     }

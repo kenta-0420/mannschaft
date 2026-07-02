@@ -56,13 +56,13 @@ class SharedFolderServiceTest {
         void チームフォルダ作成_正常_レスポンス返却() {
             // Given
             CreateFolderRequest request = new CreateFolderRequest(
-                    "新フォルダ", "説明", null, "TEAM", null);
+                    "新フォルダ", "説明", null, "TEAM", null, null, null);
 
             SharedFolderEntity savedEntity = SharedFolderEntity.builder()
                     .scopeType(FileScopeType.TEAM).teamId(TEAM_ID)
                     .name("新フォルダ").createdBy(USER_ID).build();
             FolderResponse response = new FolderResponse(FOLDER_ID, "TEAM", TEAM_ID, null, null,
-                    null, "新フォルダ", "説明", USER_ID, null, null);
+                    null, "新フォルダ", "説明", USER_ID, null, null, null, null);
 
             given(folderRepository.existsByParentIdAndName(null, "新フォルダ")).willReturn(false);
             given(folderRepository.save(any(SharedFolderEntity.class))).willReturn(savedEntity);
@@ -80,7 +80,7 @@ class SharedFolderServiceTest {
         void チームフォルダ作成_名前重複_BusinessException() {
             // Given
             CreateFolderRequest request = new CreateFolderRequest(
-                    "重複フォルダ", null, null, "TEAM", null);
+                    "重複フォルダ", null, null, "TEAM", null, null, null);
 
             given(folderRepository.existsByParentIdAndName(null, "重複フォルダ")).willReturn(true);
 

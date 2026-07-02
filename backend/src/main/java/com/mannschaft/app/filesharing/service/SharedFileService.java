@@ -139,8 +139,9 @@ public class SharedFileService {
         SharedFileEntity file = findFileOrThrow(fileId);
 
         // 2. 認可: file → folder → スコープ別閲覧認可（PERSONAL 404 / TEAM・ORG 403 / 大会 連絡スペース認可）
-        //    認可が通らなければここで例外が飛び、URL は一切発行されない（漏洩防止）。
-        folderQueryService.authorizeFolderViewById(file.getFolderId(), actorId);
+        //    ＋ B: 最低可視ロール（ファイル値優先→フォルダ継承）＋ C: DL 禁止フラグ（実効=フォルダ OR ファイル）。
+        //    認可が通らなければここで例外が飛び、URL は一切発行されない（漏洩防止・DL 抑止）。
+        folderQueryService.authorizeDownload(fileId, actorId);
 
         // 3. R2 Presigned GET URL 発行
         String downloadUrl = r2StorageService.generateDownloadUrl(file.getFileKey(), PRESIGN_DOWNLOAD_TTL);
@@ -206,8 +207,8 @@ public class SharedFileService {
     public FileResponse getFile(Long fileId, Long userId) {
         // 1. fileId 実在確認（不在は FILE_NOT_FOUND → 404）。
         SharedFileEntity entity = findFileOrThrow(fileId);
-        // 2. file → folder を解決し、フォルダスコープ別の閲覧認可を当てる（IDOR 封鎖）。
-        folderQueryService.authorizeFolderViewById(entity.getFolderId(), userId);
+        // 2. file → folder を解決し、フォルダスコープ別の閲覧認可＋B: 最低可視ロール（ファイル値優先→フォルダ継承）を当てる（IDOR 封鎖）。
+        folderQueryService.authorizeFileViewById(fileId, userId);
         return fileSharingMapper.toFileResponse(entity);
     }
 
@@ -252,6 +253,9 @@ public class SharedFileService {
                 .fileSize(request.getFileSize())
                 .contentType(request.getContentType())
                 .description(request.getDescription())
+                // B/C: ファイル個別の最低可視ロール・DL 禁止フラグ（未指定は NULL / false = 従来挙動）。
+                .minVisibleRole(request.getMinVisibleRole())
+                .downloadDisabled(Boolean.TRUE.equals(request.getDownloadDisabled()))
                 .createdBy(userId)
                 .build();
 
@@ -301,6 +305,13 @@ public class SharedFileService {
         }
         if (request.getFolderId() != null) {
             entity.moveToFolder(request.getFolderId());
+        }
+        // B/C: 指定時のみ更新（PATCH 意味論。未指定は現状維持）。
+        if (request.getMinVisibleRole() != null) {
+            entity.changeMinVisibleRole(request.getMinVisibleRole());
+        }
+        if (request.getDownloadDisabled() != null) {
+            entity.changeDownloadDisabled(request.getDownloadDisabled());
         }
 
         SharedFileEntity saved = fileRepository.save(entity);

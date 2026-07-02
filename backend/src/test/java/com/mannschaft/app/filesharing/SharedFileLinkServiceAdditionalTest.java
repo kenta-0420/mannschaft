@@ -191,7 +191,7 @@ class SharedFileLinkServiceAdditionalTest {
             com.mannschaft.app.filesharing.dto.FileResponse fileResponse =
                     new com.mannschaft.app.filesharing.dto.FileResponse(
                             FILE_ID, 1L, "secure.pdf", "key", 2048L, "application/pdf",
-                            null, USER_ID, 1, null, null);
+                            null, USER_ID, 1, null, null, null, null);
             given(linkRepository.findByToken("pw-token")).willReturn(Optional.of(link));
             given(passwordEncoder.matches("correct", "$2a$hashed")).willReturn(true);
             given(fileService.getFileForSharedLink(FILE_ID)).willReturn(fileResponse);

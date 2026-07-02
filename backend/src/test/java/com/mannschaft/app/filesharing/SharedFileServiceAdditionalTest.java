@@ -93,7 +93,7 @@ class SharedFileServiceAdditionalTest {
 
     private FileResponse mockFileResponse() {
         return new FileResponse(FILE_ID, FOLDER_ID, "test.pdf", "uploads/test.pdf",
-                1024L, "application/pdf", null, USER_ID, 1, null, null);
+                1024L, "application/pdf", null, USER_ID, 1, null, null, null, null);
     }
 
     // ========================================
@@ -271,7 +271,7 @@ class SharedFileServiceAdditionalTest {
             given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(entity));
             given(fileRepository.save(entity)).willReturn(entity);
             given(fileSharingMapper.toFileResponse(entity)).willReturn(mockFileResponse());
-            UpdateFileRequest request = new UpdateFileRequest("renamed.pdf", "新説明", 300L);
+            UpdateFileRequest request = new UpdateFileRequest("renamed.pdf", "新説明", 300L, null, null);
 
             FileResponse result = service.updateFile(FILE_ID, request);
 
@@ -288,7 +288,7 @@ class SharedFileServiceAdditionalTest {
             given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(entity));
             given(fileRepository.save(entity)).willReturn(entity);
             given(fileSharingMapper.toFileResponse(entity)).willReturn(mockFileResponse());
-            UpdateFileRequest request = new UpdateFileRequest(null, null, null);
+            UpdateFileRequest request = new UpdateFileRequest(null, null, null, null, null);
 
             service.updateFile(FILE_ID, request);
 

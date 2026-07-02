@@ -1,8 +1,11 @@
 package com.mannschaft.app.filesharing.entity;
 
 import com.mannschaft.app.common.BaseEntity;
+import com.mannschaft.app.filesharing.FileVisibilityRole;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
@@ -44,6 +47,22 @@ public class SharedFileEntity extends BaseEntity {
     private String description;
 
     private Long createdBy;
+
+    /**
+     * B: ファイル個別の最低可視ロール。{@code NULL} ならフォルダ値を継承（フォルダも NULL なら所属者全員可視）。
+     * ファイル経路（詳細取得 / DL URL 発行）は「ファイル値優先 → フォルダ継承」で評価する。
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 24)
+    private FileVisibilityRole minVisibleRole;
+
+    /**
+     * C: ファイル個別のダウンロード禁止フラグ。
+     * 実効禁止 = フォルダ.downloadDisabled OR ファイル.downloadDisabled（禁止は単調・ファイルで解除不可）。
+     */
+    @Column(nullable = false, columnDefinition = "BOOLEAN NOT NULL DEFAULT FALSE")
+    @Builder.Default
+    private Boolean downloadDisabled = false;
 
     @Column(nullable = false)
     @Builder.Default
@@ -96,6 +115,24 @@ public class SharedFileEntity extends BaseEntity {
         this.fileSize = fileSize;
         this.contentType = contentType;
         this.currentVersion = versionNumber;
+    }
+
+    /**
+     * ファイル個別の最低可視ロールを変更する（B）。{@code null} でフォルダ継承へ戻す。
+     *
+     * @param minVisibleRole 新しい最低可視ロール（null 可）
+     */
+    public void changeMinVisibleRole(FileVisibilityRole minVisibleRole) {
+        this.minVisibleRole = minVisibleRole;
+    }
+
+    /**
+     * ファイル個別のダウンロード禁止フラグを変更する（C）。
+     *
+     * @param downloadDisabled 新しい DL 禁止フラグ
+     */
+    public void changeDownloadDisabled(boolean downloadDisabled) {
+        this.downloadDisabled = downloadDisabled;
     }
 
     /**

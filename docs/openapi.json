@@ -155682,6 +155682,17 @@
             "maxLength": 500,
             "minLength": 0
           },
+          "downloadDisabled": {
+            "type": "boolean"
+          },
+          "minVisibleRole": {
+            "type": "string",
+            "enum": [
+              "SUPPORTERS_AND_ABOVE",
+              "MEMBERS_AND_ABOVE",
+              "ADMINS_AND_ABOVE"
+            ]
+          },
           "name": {
             "type": "string",
             "maxLength": 255,
@@ -155724,9 +155735,20 @@
           "description": {
             "type": "string"
           },
+          "downloadDisabled": {
+            "type": "boolean"
+          },
           "id": {
             "type": "integer",
             "format": "int64"
+          },
+          "minVisibleRole": {
+            "type": "string",
+            "enum": [
+              "SUPPORTERS_AND_ABOVE",
+              "MEMBERS_AND_ABOVE",
+              "ADMINS_AND_ABOVE"
+            ]
           },
           "name": {
             "type": "string"
@@ -170235,6 +170257,9 @@
           "description": {
             "type": "string"
           },
+          "downloadDisabled": {
+            "type": "boolean"
+          },
           "fileKey": {
             "type": "string"
           },
@@ -170249,6 +170274,14 @@
           "id": {
             "type": "integer",
             "format": "int64"
+          },
+          "minVisibleRole": {
+            "type": "string",
+            "enum": [
+              "SUPPORTERS_AND_ABOVE",
+              "MEMBERS_AND_ABOVE",
+              "ADMINS_AND_ABOVE"
+            ]
           },
           "name": {
             "type": "string"
@@ -178190,6 +178223,9 @@
             "maxLength": 500,
             "minLength": 0
           },
+          "downloadDisabled": {
+            "type": "boolean"
+          },
           "fileKey": {
             "type": "string",
             "maxLength": 500,
@@ -178202,6 +178238,14 @@
           "folderId": {
             "type": "integer",
             "format": "int64"
+          },
+          "minVisibleRole": {
+            "type": "string",
+            "enum": [
+              "SUPPORTERS_AND_ABOVE",
+              "MEMBERS_AND_ABOVE",
+              "ADMINS_AND_ABOVE"
+            ]
           },
           "name": {
             "type": "string",
@@ -178613,6 +178657,9 @@
           "description": {
             "type": "string"
           },
+          "downloadDisabled": {
+            "type": "boolean"
+          },
           "fileCount": {
             "type": "integer",
             "format": "int32"
@@ -178620,6 +178667,14 @@
           "id": {
             "type": "integer",
             "format": "int64"
+          },
+          "minVisibleRole": {
+            "type": "string",
+            "enum": [
+              "SUPPORTERS_AND_ABOVE",
+              "MEMBERS_AND_ABOVE",
+              "ADMINS_AND_ABOVE"
+            ]
           },
           "name": {
             "type": "string"
@@ -188762,9 +188817,20 @@
             "maxLength": 500,
             "minLength": 0
           },
+          "downloadDisabled": {
+            "type": "boolean"
+          },
           "folderId": {
             "type": "integer",
             "format": "int64"
+          },
+          "minVisibleRole": {
+            "type": "string",
+            "enum": [
+              "SUPPORTERS_AND_ABOVE",
+              "MEMBERS_AND_ABOVE",
+              "ADMINS_AND_ABOVE"
+            ]
           },
           "name": {
             "type": "string",
@@ -211295,6 +211361,9 @@
             "type": "integer",
             "format": "int32"
           },
+          "downloadDisabled": {
+            "type": "boolean"
+          },
           "fileName": {
             "type": "string"
           },
@@ -211312,6 +211381,14 @@
           },
           "mimeType": {
             "type": "string"
+          },
+          "minVisibleRole": {
+            "type": "string",
+            "enum": [
+              "SUPPORTERS_AND_ABOVE",
+              "MEMBERS_AND_ABOVE",
+              "ADMINS_AND_ABOVE"
+            ]
           },
           "originalFileName": {
             "type": "string"
@@ -211355,6 +211432,9 @@
           "description": {
             "type": "string"
           },
+          "downloadDisabled": {
+            "type": "boolean"
+          },
           "fileCount": {
             "type": "integer",
             "format": "int32"
@@ -211368,6 +211448,14 @@
           "id": {
             "type": "integer",
             "format": "int64"
+          },
+          "minVisibleRole": {
+            "type": "string",
+            "enum": [
+              "SUPPORTERS_AND_ABOVE",
+              "MEMBERS_AND_ABOVE",
+              "ADMINS_AND_ABOVE"
+            ]
           },
           "name": {
             "type": "string"
