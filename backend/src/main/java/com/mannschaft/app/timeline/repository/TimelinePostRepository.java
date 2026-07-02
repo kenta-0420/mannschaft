@@ -72,12 +72,33 @@ public interface TimelinePostRepository extends JpaRepository<TimelinePostEntity
             @Param("userId") Long userId, Pageable pageable);
 
     /**
-     * 投稿のリプライ一覧を取得する。
+     * 投稿のリプライ一覧を取得する（時系列昇順・先頭から）。
+     *
+     * <p>投稿詳細の {@code recentReplies}（直近数件プレビュー）取得に使う。</p>
      */
     @Query("SELECT p FROM TimelinePostEntity p WHERE p.parentId = :parentId "
             + "AND p.status = 'PUBLISHED' ORDER BY p.createdAt ASC")
     List<TimelinePostEntity> findRepliesByParentId(
             @Param("parentId") Long parentId, Pageable pageable);
+
+    /**
+     * 投稿のリプライ一覧をカーソル（投稿 ID 昇順）で取得する。
+     *
+     * <p>リプライ一覧 API（{@code GET /timeline/posts/{id}/replies}）のページネーション用。
+     * リプライは時系列（= ID 昇順・auto-increment のため単調増加）で並べ、{@code cursor} が指定された
+     * 場合は「その ID より後（新しい）」のリプライを取得する。{@code cursor} が null なら先頭から。</p>
+     *
+     * @param parentId 親投稿 ID
+     * @param cursor   起点カーソル（この ID より大きい ID を取得）。null なら先頭から
+     * @param pageable ページング（件数）
+     * @return リプライ一覧（ID 昇順）
+     */
+    @Query("SELECT p FROM TimelinePostEntity p WHERE p.parentId = :parentId "
+            + "AND p.status = 'PUBLISHED' "
+            + "AND (:cursor IS NULL OR p.id > :cursor) "
+            + "ORDER BY p.id ASC")
+    List<TimelinePostEntity> findRepliesByParentIdAfterCursor(
+            @Param("parentId") Long parentId, @Param("cursor") Long cursor, Pageable pageable);
 
     /**
      * ピン留め投稿一覧を取得する。
