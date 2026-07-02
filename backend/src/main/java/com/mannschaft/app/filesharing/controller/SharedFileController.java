@@ -50,7 +50,8 @@ public class SharedFileController {
             @RequestParam Long folderId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<FileResponse> result = fileService.listFilesPaged(folderId, PageRequest.of(page, size));
+        Page<FileResponse> result = fileService.listFilesPaged(
+                folderId, SecurityUtils.getCurrentUserId(), PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -64,7 +65,7 @@ public class SharedFileController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<FileResponse>> getFile(
             @PathVariable Long fileId) {
-        FileResponse response = fileService.getFile(fileId);
+        FileResponse response = fileService.getFile(fileId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

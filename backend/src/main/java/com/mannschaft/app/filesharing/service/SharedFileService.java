@@ -154,12 +154,21 @@ public class SharedFileService {
     /**
      * フォルダ内のファイル一覧を取得する。
      *
+     * <p><b>IDOR 封鎖（情報漏洩根治）</b>: 先頭で {@link SharedFolderQueryService#authorizeFolderViewById}
+     * を通し、フォルダスコープ別の閲覧認可を当てる。従来は {@link FolderScopeAccessGuard} のみを呼んでおり、
+     * 大会以外（TEAM / ORGANIZATION / PERSONAL）では認可が no-op（素通り）だったため、folderId を渡す
+     * だけで他チーム・他人のファイルメタが取得できた。QueryService へ一本化することで、
+     * PERSONAL=本人以外404（存在隠蔽）/ TEAM・ORG=非メンバー403 / 大会=連絡スペース認可（guard 委譲）を
+     * 適用する。</p>
+     *
      * @param folderId フォルダID
+     * @param userId   操作ユーザーID（未認証は呼び出し元 Controller で 401 となるため非 null 想定）
      * @return ファイルレスポンスリスト
      */
-    public List<FileResponse> listFiles(Long folderId) {
-        // F08.7.1 / 04 §3: 大会フォルダは閲覧認可を通す（非公開大会の非メンバー/未ログインは 403/404）。
-        folderScopeAccessGuard.checkFolderViewByFolderId(folderId, SecurityUtils.getCurrentUserIdOrNull());
+    public List<FileResponse> listFiles(Long folderId, Long userId) {
+        // IDOR 封鎖: フォルダスコープ別の閲覧認可（PERSONAL 本人以外404 / TEAM・ORG 非メンバー403 / 大会 連絡スペース認可）。
+        // authorizeFolderViewById は内部で大会スコープを FolderScopeAccessGuard へ委譲するため、大会の従来挙動は不変。
+        folderQueryService.authorizeFolderViewById(folderId, userId);
         List<SharedFileEntity> files = fileRepository.findByFolderIdOrderByNameAsc(folderId);
         return fileSharingMapper.toFileResponseList(files);
     }
@@ -167,13 +176,17 @@ public class SharedFileService {
     /**
      * フォルダ内のファイル一覧をページングで取得する。
      *
+     * <p><b>IDOR 封鎖（情報漏洩根治）</b>: {@link #listFiles} と同じくフォルダスコープ別の閲覧認可を
+     * 先頭で通す（folderId を渡すだけで他チーム・他人のファイルメタを列挙できないことを保証する）。</p>
+     *
      * @param folderId フォルダID
+     * @param userId   操作ユーザーID
      * @param pageable ページング情報
      * @return ファイルレスポンスのページ
      */
-    public Page<FileResponse> listFilesPaged(Long folderId, Pageable pageable) {
-        // F08.7.1 / 04 §3: 大会フォルダは閲覧認可を通す。
-        folderScopeAccessGuard.checkFolderViewByFolderId(folderId, SecurityUtils.getCurrentUserIdOrNull());
+    public Page<FileResponse> listFilesPaged(Long folderId, Long userId, Pageable pageable) {
+        // IDOR 封鎖: フォルダスコープ別の閲覧認可（PERSONAL 本人以外404 / TEAM・ORG 非メンバー403 / 大会 連絡スペース認可）。
+        folderQueryService.authorizeFolderViewById(folderId, userId);
         Page<SharedFileEntity> page = fileRepository.findByFolderIdOrderByNameAsc(folderId, pageable);
         return page.map(fileSharingMapper::toFileResponse);
     }
@@ -181,13 +194,20 @@ public class SharedFileService {
     /**
      * ファイル詳細を取得する。
      *
+     * <p><b>IDOR 封鎖（情報漏洩根治）</b>: まず {@link #findFileOrThrow} でファイル実在を確認（不在は 404）し、
+     * 次に解決した folderId で {@link SharedFolderQueryService#authorizeFolderViewById} を通す。順序は
+     * 「fileId 実在確認（404）→ フォルダ認可（TEAM/ORG 非メンバー403 / 他人 PERSONAL 404）」を保ち、存在秘匿の
+     * 一貫性を担保する。従来は {@link FolderScopeAccessGuard} のみで大会以外が素通りしていた漏洩の根治。</p>
+     *
      * @param fileId ファイルID
+     * @param userId 操作ユーザーID
      * @return ファイルレスポンス
      */
-    public FileResponse getFile(Long fileId) {
-        // F08.7.1 / 04 §3: 大会フォルダ配下のファイルは閲覧認可を通す。
-        folderScopeAccessGuard.checkFolderViewByFileId(fileId, SecurityUtils.getCurrentUserIdOrNull());
+    public FileResponse getFile(Long fileId, Long userId) {
+        // 1. fileId 実在確認（不在は FILE_NOT_FOUND → 404）。
         SharedFileEntity entity = findFileOrThrow(fileId);
+        // 2. file → folder を解決し、フォルダスコープ別の閲覧認可を当てる（IDOR 封鎖）。
+        folderQueryService.authorizeFolderViewById(entity.getFolderId(), userId);
         return fileSharingMapper.toFileResponse(entity);
     }
 

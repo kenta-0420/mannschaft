@@ -98,7 +98,7 @@ class FileSharingControllerTest {
         @DisplayName("正常系: フォルダ内のファイル一覧が返却される")
         void ファイル一覧_正常() {
             Page<FileResponse> page = new PageImpl<>(List.of(mockFileResponse()));
-            given(fileService.listFilesPaged(eq(FOLDER_ID), any())).willReturn(page);
+            given(fileService.listFilesPaged(eq(FOLDER_ID), eq(USER_ID), any())).willReturn(page);
 
             ResponseEntity<PagedResponse<FileResponse>> result =
                     fileController.listFiles(FOLDER_ID, 0, 20);
@@ -110,7 +110,7 @@ class FileSharingControllerTest {
         @Test
         @DisplayName("正常系: ファイル詳細が返却される")
         void ファイル詳細_正常() {
-            given(fileService.getFile(FILE_ID)).willReturn(mockFileResponse());
+            given(fileService.getFile(FILE_ID, USER_ID)).willReturn(mockFileResponse());
 
             ResponseEntity<ApiResponse<FileResponse>> result = fileController.getFile(FILE_ID);
 
