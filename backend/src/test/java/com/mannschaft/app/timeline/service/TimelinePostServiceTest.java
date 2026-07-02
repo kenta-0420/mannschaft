@@ -821,6 +821,127 @@ class TimelinePostServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(TimelineErrorCode.NOT_POST_OWNER));
         }
+
+        /** 指定 parentId を親に持つ返信投稿を作る（削除対象）。 */
+        private TimelinePostEntity createReply(Long parentId) {
+            return TimelinePostEntity.builder()
+                    .scopeType(PostScopeType.PUBLIC)
+                    .scopeId(0L)
+                    .userId(USER_ID)
+                    .postedAsType(PostedAsType.USER)
+                    .content("返信")
+                    .parentId(parentId)
+                    .status(PostStatus.PUBLISHED)
+                    .build();
+        }
+
+        /** 指定 replyCount を持つ親投稿を作る。 */
+        private TimelinePostEntity createParentWithReplyCount(int replyCount) {
+            return TimelinePostEntity.builder()
+                    .scopeType(PostScopeType.PUBLIC)
+                    .scopeId(0L)
+                    .userId(USER_ID)
+                    .postedAsType(PostedAsType.USER)
+                    .content("親投稿")
+                    .status(PostStatus.PUBLISHED)
+                    .replyCount(replyCount)
+                    .build();
+        }
+
+        @Test
+        @DisplayName("AC-A: 返信を削除すると親投稿のreply_countが-1される（作成時+1と対称）")
+        void AC_A_返信削除で親のリプライ数がデクリメントされる() {
+            // given: 親は reply_count=1、その返信を削除する
+            Long parentId = 10L;
+            TimelinePostEntity reply = createReply(parentId);
+            TimelinePostEntity parent = createParentWithReplyCount(1);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(reply));
+            given(postRepository.findById(parentId)).willReturn(Optional.of(parent));
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(reply);
+            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
+                    .willReturn(List.of());
+
+            // when
+            timelinePostService.deletePost(POST_ID, USER_ID);
+
+            // then: 親の reply_count が 1 → 0 に減算され、親が保存される
+            assertThat(parent.getReplyCount()).isEqualTo(0);
+            verify(postRepository).save(parent);
+        }
+
+        @Test
+        @DisplayName("AC-B: 既に削除済みの返信を再削除しても親のreply_countは二重に減らない（冪等）")
+        void AC_B_削除済み返信の再削除で二重デクリメントしない() {
+            // given: @SQLRestriction("deleted_at IS NULL") により削除済み返信は findById で取得されない。
+            // よって 2 度目の削除は POST_NOT_FOUND となり、親デクリメントには到達しない。
+            given(postRepository.findById(POST_ID)).willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() -> timelinePostService.deletePost(POST_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(TimelineErrorCode.POST_NOT_FOUND));
+            // 親の save（デクリメント）は一切走らない
+            then(postRepository).should(org.mockito.Mockito.never()).save(any(TimelinePostEntity.class));
+        }
+
+        @Test
+        @DisplayName("AC-C: 返信でない通常投稿の削除は他投稿のreply_countに影響しない")
+        void AC_C_通常投稿の削除は親デクリメントを行わない() {
+            // given: parentId=null の通常投稿
+            TimelinePostEntity post = createPost();
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(post);
+            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
+                    .willReturn(List.of());
+
+            // when
+            timelinePostService.deletePost(POST_ID, USER_ID);
+
+            // then: findById は削除対象自身の 1 回のみ（親デクリメント用の追加 lookup が無い）、
+            // save も削除対象自身の 1 回のみ
+            verify(postRepository, org.mockito.Mockito.times(1)).findById(anyLong());
+            verify(postRepository, org.mockito.Mockito.times(1)).save(any(TimelinePostEntity.class));
+        }
+
+        @Test
+        @DisplayName("AC-D: 親のreply_countが既に0でも返信削除で負数にならない（0でクランプ）")
+        void AC_D_親リプライ数0で返信削除しても負数にならない() {
+            // given: 親の reply_count が既に 0（整合ズレ状態）
+            Long parentId = 10L;
+            TimelinePostEntity reply = createReply(parentId);
+            TimelinePostEntity parent = createParentWithReplyCount(0);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(reply));
+            given(postRepository.findById(parentId)).willReturn(Optional.of(parent));
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(reply);
+            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
+                    .willReturn(List.of());
+
+            // when
+            timelinePostService.deletePost(POST_ID, USER_ID);
+
+            // then: -1 にならず 0 でクランプされる
+            assertThat(parent.getReplyCount()).isEqualTo(0);
+        }
+
+        @Test
+        @DisplayName("AC-E: 親が既に削除済みでも返信削除は例外を投げない（減算スキップ）")
+        void AC_E_親削除済みでも返信削除は安全() {
+            // given: 親は削除済みで findById が空を返す
+            Long parentId = 10L;
+            TimelinePostEntity reply = createReply(parentId);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(reply));
+            given(postRepository.findById(parentId)).willReturn(Optional.empty());
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(reply);
+            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
+                    .willReturn(List.of());
+
+            // when & then: 例外を投げず、返信自身は削除保存される
+            org.assertj.core.api.Assertions.assertThatCode(
+                    () -> timelinePostService.deletePost(POST_ID, USER_ID))
+                    .doesNotThrowAnyException();
+            verify(postRepository).save(reply);
+        }
     }
 
     // ========================================
