@@ -20,7 +20,7 @@
       "no_provider": "(kein Match)",
       "last4_format": "●●●● {last4}",
       "no_cards": "Noch keine Karten registriert",
-      "no_cards_hint": "Verwenden Sie die '+'-Schaltfläche, um Karten hinzuzufügen",
+      "no_cards_hint": "Verwenden Sie die Schaltfläche «Karte hinzufügen» oben, um Karten hinzuzufügen",
       "no_matches": "Keine Karten, die '{query}' entsprechen"
     },
     "group": {
@@ -439,9 +439,9 @@
       },
       "add_card": {
         "title": "Eine Karte registrieren",
-        "body": "Sie können eine neue Karte über die Schaltfläche «+» unten rechts auf der Registerkarte Karten hinzufügen. Sparen Sie Zeit, indem Sie beliebte Geschäfte aus den Voreinstellungen auswählen.",
+        "body": "Sie können eine neue Karte über die Schaltfläche «Karte hinzufügen» oben auf der Registerkarte Karten hinzufügen. Sparen Sie Zeit, indem Sie beliebte Geschäfte aus den Voreinstellungen auswählen.",
         "steps": {
-          "step1": "Tippen Sie auf die Schaltfläche «+» unten rechts auf der Registerkarte Karten",
+          "step1": "Tippen Sie auf die Schaltfläche «Karte hinzufügen» oben auf der Registerkarte Karten",
           "step2": "Wählen Sie beliebte Geschäfte aus Voreinstellungen oder geben Sie einen Kartennamen direkt ein",
           "step3": "Geben Sie den Barcode (Mitgliedsnummer) per Kamera, Bild oder manueller Eingabe ein",
           "step4": "Überprüfen Sie die Vorschau und tippen Sie auf «Speichern»"

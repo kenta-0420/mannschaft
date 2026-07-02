@@ -458,7 +458,11 @@
     "postSuccess": "Posted successfully",
     "postError": "Failed to post",
     "announcementRegisterError": "Failed to register as announcement. Please register manually later.",
-    "postSource": "Posted in"
+    "postSource": "Posted in",
+    "writeReply": "Write a reply",
+    "replySubmit": "Reply",
+    "noReplies": "No replies yet",
+    "loadMoreReplies": "Show more"
   },
   "gallery": {
     "title": "Gallery",

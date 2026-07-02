@@ -161,7 +161,6 @@ watch(activeTab, (newTab) => {
               :label="t('wallet.actions.add_card')"
               icon="pi pi-plus"
               size="small"
-              severity="secondary"
             />
           </NuxtLink>
           <NuxtLink

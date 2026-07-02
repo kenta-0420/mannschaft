@@ -23,9 +23,8 @@ const props = defineProps<{
   limit?: number
 }>()
 
-const emit = defineEmits<{
-  clickPost: [postId: number]
-}>()
+// 投稿カード本体クリックは各カード内の返信アコーディオン開閉に統一済み。
+// 旧 clickPost（詳細遷移）の中継はどのページからも購読されなくなったため撤去した。
 
 const {
   getFeed,
@@ -34,7 +33,6 @@ const {
   removeBookmark,
   pinPost,
   deletePost,
-  createReply,
   repost,
 } = useTimelineApi()
 const { showSuccess, showError } = useNotification()
@@ -50,11 +48,6 @@ const nextCursor = ref<number | null>(null)
 const hasNext = ref(false)
 const loading = ref(false)
 const initialLoaded = ref(false)
-
-// --- 返信フォーム ---
-const replyTargetId = ref<number | null>(null)
-const replyContent = ref('')
-const replySubmitting = ref(false)
 
 // --- リポスト確認 ---
 const repostTargetId = ref<number | null>(null)
@@ -92,6 +85,12 @@ function loadMore() {
   if (nextCursor.value && !loading.value) {
     loadFeed(nextCursor.value)
   }
+}
+
+/** 返信アコーディオンで返信が追加されたら返信数を +1（対象 post の shared ref を更新）。 */
+function onReplyAdded(postId: number) {
+  const post = [...pinnedPosts.value, ...posts.value].find((p) => p.id === postId)
+  if (post?.stats) post.stats.replyCount += 1
 }
 
 function onMitayoToggled(postId: number, mitayo: boolean, mitayoCount: number) {
@@ -141,33 +140,6 @@ async function onDelete(postId: number) {
   }
 }
 
-// --- 返信 ---
-function onReply(postId: number) {
-  replyTargetId.value = postId
-  replyContent.value = ''
-}
-
-function cancelReply() {
-  replyTargetId.value = null
-  replyContent.value = ''
-}
-
-async function submitReply() {
-  if (!replyTargetId.value || !replyContent.value.trim()) return
-  replySubmitting.value = true
-  try {
-    await createReply(replyTargetId.value, replyContent.value.trim())
-    showSuccess('返信しました')
-    replyTargetId.value = null
-    replyContent.value = ''
-    refresh()
-  } catch {
-    showError('返信に失敗しました')
-  } finally {
-    replySubmitting.value = false
-  }
-}
-
 // --- リポスト ---
 function onRepost(postId: number) {
   repostTargetId.value = postId
@@ -211,12 +183,11 @@ defineExpose({ refresh })
       :can-pin="canPin"
       :can-delete-others="canDeleteOthers"
       @mitayo-toggled="onMitayoToggled"
+      @reply-added="onReplyAdded"
       @bookmark="onBookmark"
       @pin="onPin"
       @delete="onDelete"
-      @reply="onReply"
       @repost="onRepost"
-      @click-post="(id) => emit('clickPost', id)"
     />
 
     <!-- 通常投稿 -->
@@ -227,12 +198,11 @@ defineExpose({ refresh })
       :can-pin="canPin"
       :can-delete-others="canDeleteOthers"
       @mitayo-toggled="onMitayoToggled"
+      @reply-added="onReplyAdded"
       @bookmark="onBookmark"
       @pin="onPin"
       @delete="onDelete"
-      @reply="onReply"
       @repost="onRepost"
-      @click-post="(id) => emit('clickPost', id)"
     />
 
     <!-- 空状態 -->
@@ -241,7 +211,7 @@ defineExpose({ refresh })
       class="py-12 text-center"
     >
       <i class="pi pi-comments mb-3 text-4xl text-surface-300" />
-      <p class="text-surface-400">まだ投稿がありません</p>
+      <p class="text-surface-400 dark:text-surface-300">まだ投稿がありません</p>
     </div>
 
     <!-- もっと読む（limit 指定時は追加ロードを無効化し、一覧ページ側へ委譲） -->
@@ -255,34 +225,6 @@ defineExpose({ refresh })
     </div>
   </div>
 
-  <!-- 返信フォームダイアログ -->
-  <Dialog
-    :visible="replyTargetId !== null"
-    modal
-    header="返信する"
-    :style="{ width: '480px' }"
-    @update:visible="(v) => { if (!v) cancelReply() }"
-  >
-    <Textarea
-      v-model="replyContent"
-      placeholder="返信を入力..."
-      auto-resize
-      rows="3"
-      class="w-full"
-      data-testid="team-timeline-comment-input"
-    />
-    <template #footer>
-      <Button label="キャンセル" severity="secondary" text @click="cancelReply" />
-      <Button
-        label="返信"
-        :loading="replySubmitting"
-        :disabled="!replyContent.trim()"
-        data-testid="team-timeline-comment-submit"
-        @click="submitReply"
-      />
-    </template>
-  </Dialog>
-
   <!-- リポスト確認ダイアログ -->
   <Dialog
     :visible="repostTargetId !== null"
@@ -291,7 +233,7 @@ defineExpose({ refresh })
     :style="{ width: '360px' }"
     @update:visible="(v) => { if (!v) cancelRepost() }"
   >
-    <p class="text-sm text-surface-600">この投稿をリポストしますか？</p>
+    <p class="text-sm text-surface-600 dark:text-surface-300">この投稿をリポストしますか？</p>
     <template #footer>
       <Button label="キャンセル" severity="secondary" text @click="cancelRepost" />
       <Button
