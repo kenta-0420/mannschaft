@@ -369,8 +369,14 @@ public class GlobalExceptionHandler {
             // F05.5 ファイル共有（F13 Phase 4-epsilon）
             Map.entry("FILE_SHARING_001", HttpStatus.NOT_FOUND),             // FOLDER_NOT_FOUND（IDOR 秘匿・存在隠蔽 → 404）
             Map.entry("FILE_SHARING_002", HttpStatus.NOT_FOUND),             // FILE_NOT_FOUND（IDOR 秘匿・存在隠蔽 → 404。download-url 等で 400 化を防ぐ）
+            Map.entry("FILE_SHARING_007", HttpStatus.NOT_FOUND),             // LINK_NOT_FOUND（公開リンク存在秘匿 → 404。総当りに存在を漏らさない）
+            Map.entry("FILE_SHARING_011", HttpStatus.GONE),                  // LINK_EXPIRED（期限切れ公開リンク → 410 Gone。マスター確定仕様）
+            Map.entry("FILE_SHARING_012", HttpStatus.FORBIDDEN),             // LINK_PASSWORD_INVALID（パスワード不一致 → 403）
             Map.entry("FILE_SHARING_016", HttpStatus.CONFLICT),              // STORAGE_QUOTA_EXCEEDED (F13 統合クォータ超過)
             Map.entry("FILE_SHARING_017", HttpStatus.FORBIDDEN),             // DOWNLOAD_DISABLED（DL 禁止フラグ → 403。閲覧は通し DL URL 発行のみ拒否）
+            Map.entry("FILE_SHARING_018", HttpStatus.GONE),                  // LINK_INACTIVE（手動失効した公開リンク → 410 Gone）
+            Map.entry("FILE_SHARING_019", HttpStatus.FORBIDDEN),             // LINK_DOWNLOAD_NOT_ALLOWED（DL 未許可リンク → 403）
+            // FILE_SHARING_020 (LINK_EXPIRY_INVALID) は Severity.WARN 既定の 400 のまま（発行時バリデーション）
             // F02.3 プロジェクト管理（IDOR 対策で 404 統一）
             Map.entry("TODO_001", HttpStatus.NOT_FOUND),                     // PROJECT_NOT_FOUND（IDOR 秘匿 → 404）
             // F02.3.1 TODO カスタムステータスラベル

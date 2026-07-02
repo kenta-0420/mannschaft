@@ -49,6 +49,10 @@ class SharedFileLinkServiceAdditionalTest {
     @Mock
     private FolderScopeAccessGuard folderScopeAccessGuard;
 
+    // PR-D: createLink/listLinks/deleteLink の発行認可（ADMIN/DEPUTY 限定）と C: download_disabled 貫通防御を担う新依存。
+    @Mock
+    private com.mannschaft.app.filesharing.service.SharedFolderQueryService folderQueryService;
+
     @InjectMocks
     private SharedFileLinkService service;
 
@@ -57,8 +61,8 @@ class SharedFileLinkServiceAdditionalTest {
     private static final Long USER_ID = 10L;
 
     private LinkResponse mockLinkResponse(boolean hasPassword) {
-        // LinkResponse(id, fileId, token, expiresAt, hasPassword, accessCount, lastAccessedAt, createdBy, createdAt)
-        return new LinkResponse(LINK_ID, FILE_ID, "tok123", null, hasPassword, 0, null, USER_ID, null);
+        // LinkResponse(id, fileId, token, expiresAt, hasPassword, accessCount, lastAccessedAt, createdBy, createdAt, active, downloadAllowed)
+        return new LinkResponse(LINK_ID, FILE_ID, "tok123", null, hasPassword, 0, null, USER_ID, null, true, false);
     }
 
     // ========================================
@@ -97,7 +101,7 @@ class SharedFileLinkServiceAdditionalTest {
         @DisplayName("正常系: パスワードなしリンクが作成される")
         void リンク作成_パスワードなし_正常() {
             CreateLinkRequest request = new CreateLinkRequest(
-                    LocalDateTime.now().plusDays(7), null);
+                    LocalDateTime.now().plusDays(7), null, false);
             SharedFileLinkEntity saved = SharedFileLinkEntity.builder()
                     .fileId(FILE_ID).token("gen-token").accessCount(0).createdBy(USER_ID).build();
             given(linkRepository.save(any())).willReturn(saved);
@@ -113,7 +117,7 @@ class SharedFileLinkServiceAdditionalTest {
         @DisplayName("正常系: パスワードありリンクが作成される")
         void リンク作成_パスワードあり_正常() {
             CreateLinkRequest request = new CreateLinkRequest(
-                    LocalDateTime.now().plusDays(7), "secret");
+                    LocalDateTime.now().plusDays(7), "secret", false);
             given(passwordEncoder.encode("secret")).willReturn("$2a$hashed");
             SharedFileLinkEntity saved = SharedFileLinkEntity.builder()
                     .fileId(FILE_ID).token("gen-token").passwordHash("$2a$hashed")
@@ -130,7 +134,8 @@ class SharedFileLinkServiceAdditionalTest {
         @Test
         @DisplayName("正常系: 空白パスワードはハッシュ化されない")
         void リンク作成_空白パスワード_ハッシュなし() {
-            CreateLinkRequest request = new CreateLinkRequest(null, "   ");
+            // PR-D: expiresAt は必須（null は LINK_EXPIRY_INVALID）になったため有効な期限を指定する。
+            CreateLinkRequest request = new CreateLinkRequest(LocalDateTime.now().plusDays(7), "   ", false);
             SharedFileLinkEntity saved = SharedFileLinkEntity.builder()
                     .fileId(FILE_ID).token("gen-token").accessCount(0).createdBy(USER_ID).build();
             given(linkRepository.save(any())).willReturn(saved);

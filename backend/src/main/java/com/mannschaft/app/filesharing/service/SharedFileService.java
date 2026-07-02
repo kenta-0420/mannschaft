@@ -228,6 +228,27 @@ public class SharedFileService {
     }
 
     /**
+     * PR-D: 公開リンク経由の DL URL を発行する（フォルダスコープ認可を <b>通さない</b>）。
+     *
+     * <p>公開リンクはトークンが capability のため membership / role 認可は当てないが、
+     * <b>C: DL 禁止フラグ（download_disabled・実効 = フォルダ OR ファイル）は必ず貫通防御</b>する
+     * （{@link SharedFolderQueryService#checkDownloadDisabledForSharedLink}）。呼び出し側
+     * {@link SharedFileLinkService#presignDownloadForLink} が事前にリンクの download_allowed（B'）を
+     * 確認済みであること（download_allowed かつ NOT download_disabled の AND）を前提とする。</p>
+     *
+     * @param fileId ファイル ID
+     * @return ダウンロード URL レスポンス（downloadUrl / expiresInSeconds）
+     */
+    public SharedFileDownloadUrlResponse presignDownloadForSharedLink(Long fileId) {
+        SharedFileEntity file = findFileOrThrow(fileId);
+        // C: DL 禁止フラグ（フォルダ OR ファイル）。公開リンクでも C は貫通防御（C 優先の AND 評価）。
+        folderQueryService.checkDownloadDisabledForSharedLink(fileId);
+        String downloadUrl = r2StorageService.generateDownloadUrl(file.getFileKey(), PRESIGN_DOWNLOAD_TTL);
+        log.info("ファイル共有 公開リンク download-url 発行: fileId={}, fileKey={}", fileId, file.getFileKey());
+        return new SharedFileDownloadUrlResponse(downloadUrl, PRESIGN_DOWNLOAD_TTL.toSeconds());
+    }
+
+    /**
      * ファイルを作成する。
      *
      * <p>F13 Phase 4-ε: DB 登録前に {@link SharedFileQuotaService#checkFileQuota} でクォータを確認し、
