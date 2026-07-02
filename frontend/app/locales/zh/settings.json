@@ -60,7 +60,8 @@
       "saveSuccess": "设置已保存",
       "saveError": "保存失败",
       "reorderHint": "拖动手柄即可调整导航项的显示顺序",
-      "dragHandleLabel": "拖动手柄"
+      "dragHandleLabel": "拖动手柄",
+      "pinnedBottom": "固定在底部"
     },
     "account": {
       "page_title": "账户设置",

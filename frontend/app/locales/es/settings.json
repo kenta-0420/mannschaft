@@ -60,7 +60,8 @@
       "saveSuccess": "Configuración guardada",
       "saveError": "Error al guardar la configuración",
       "reorderHint": "Arrastra el controlador para reordenar los elementos de navegación",
-      "dragHandleLabel": "Controlador de arrastre"
+      "dragHandleLabel": "Controlador de arrastre",
+      "pinnedBottom": "Fijado al final"
     },
     "account": {
       "page_title": "Configuración de cuenta",

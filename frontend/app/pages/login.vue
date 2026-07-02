@@ -111,6 +111,10 @@ async function handleLogin() {
         })
       }
 
+      // ログイン成立直後にアカウント設定（外観・ナビ）をサーバーから同期する。
+      // 新ブラウザ（シークレット等）で localStorage が空でも BEの保存済み設定が反映される。
+      authStore.syncAccountSettings()
+
       if (data.data.reactivated) {
         notification.success('ログインしました')
         navigateTo('/account-restore')
