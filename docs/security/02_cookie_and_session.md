@@ -108,6 +108,15 @@ access_token（JWT）の `roles` claim は **認可（authority）の起点**で
 
 シングルポイント Valkey での本番稼働は禁止する。詳細は [09 キー管理・ローテーション](09_key_management_and_rotation.md) の Valkey 冗長化要件も参照すること。
 
+#### 4.1.1 実装上の担保 — Valkey 障害が DB トランザクションを汚さないこと（2026-07-02 根治）
+
+Fail-Open は「Valkey が落ちても **DB 側の無効化（refresh_token の revoke）は必ず貫く**」ことが前提である。これを成立させるには、Valkey 操作の例外が呼び出し元の **DB トランザクションを rollback-only にマークしてはならない**。
+
+- `AuthTokenService`（`setUserInvalidationTimestamp` / `addJtiToBlacklist` / `clearUserInvalidationTimestamp` / レートリミット）は **DB を一切触らず Valkey と JWT のみ**を扱うため、**クラスに `@Transactional` を付与しない**（非トランザクショナルに保つ）。
+- 過去、誤ってクラスレベル `@Transactional(readOnly = true)` が付いており、これらの Valkey 専用メソッドが Spring プロキシ経由で呼び出し元（例: `AuthSessionService.logoutAllDevices`、`AuthTokenRotationService.refreshAccessToken` の真リプレイ検出経路）の DB トランザクションに参加していた。この状態で Valkey が例外を投げると、内側のトランザクション境界で現在のトランザクションが rollback-only にマークされ、呼び出し元が `try-catch` で例外を握って Fail-Open を意図しても、コミット時に `UnexpectedRollbackException` が発生し **DB revoke ごと巻き戻る**（＝ Fail-Open が実際には fail 側に倒れ、セッション無効化が永続化されない過小無効化）不具合があった。
+- 根治として `AuthTokenService` から `@Transactional` を撤去し、Valkey 例外が呼び出し元の `try-catch` へ素通しで届くようにした。これにより Valkey 障害時も DB 側の無効化は確定コミットされる。
+- **番人テスト**: `AuthLogoutValkeyFailOpenPersistenceIT`（実 MySQL Testcontainers ＋ Valkey 例外注入）が「Valkey 障害中でも全 refresh_token が `revoked_at NOT NULL` で永続化される」ことを守る。純 Mockito UT はトランザクション境界を踏まないため、この巻き戻りを検知できない（false-green）ことに注意。
+
 ---
 
 ## 5. ブルートフォース・リスト型攻撃対策
@@ -142,4 +151,5 @@ access_token（JWT）の `roles` claim は **認可（authority）の起点**で
 | 2026-05-26 | 認証コア強化: Argon2id 段階移行（`DelegatingPasswordEncoder`・ログイン時透過 upgrade）と refresh_token Cookie 発行一元化（デュアルモード）を実装。§3/§5/§6 を実装済みに更新 |
 | 2026-05-30 | §3.1 を新設。access_token の roles claim の現状（`["MEMBER"]` 固定）と SYSTEM_ADMIN を roles 配列に載せる改善を追記。詳細は [03](03_role_authority_model.md) を正典として参照 |
 | 2026-06-02 | §2 Cookie 属性テーブルの `Max-Age` を 900→890 秒（Clock Skew 対策）に修正。§2.3 Clock Skew 対策セクションを新設（JWT `exp` より 10 秒短く設定する根拠・設定値を明記）。§4.1 Valkey 障害時 Fail-Open 方針を新設（本番 Sentinel/Cluster 必須・シングルポイント禁止）。§5 レートリミットテーブルにパスワードリセット申請（3回/分）・メール認証コード送信（3回/分）の数値を追記 |
+| 2026-07-02 | §4.1.1 を新設。`AuthTokenService` のクラスレベル `@Transactional` により Valkey 専用メソッドが呼び出し元 DB トランザクションに参加し、Valkey 例外が rollback-only マーク → コミット時 `UnexpectedRollbackException` でセッション無効化の DB revoke ごと巻き戻る（Fail-Open が fail 側に倒れる）不具合を根治。`AuthTokenService` を非トランザクショナル化。番人 `AuthLogoutValkeyFailOpenPersistenceIT` を追加 |
 | 2026-07-02 | §4 を更新: リフレッシュトークンローテーションの競合制御を DB 行ロック（`PESSIMISTIC_WRITE`）+ grace window 方式に変更（F01.1 自爆バグ根治）。失効済みトークン再提示を一律リプレイ扱いにせず、後継ポインタ（`replaced_by_token_hash`）× grace window（既定 60 秒）で並行更新の正規化と真リプレイを区別するよう記述を更新。詳細は [06 §7](06_business_logic_and_abuse_prevention.md#7-jwt-refresh-token-ローテーションの競合制御2026-07-02-実装済みに更新) を正典として参照 |
