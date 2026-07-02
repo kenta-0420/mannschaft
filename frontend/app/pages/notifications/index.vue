@@ -7,12 +7,10 @@ const showGuide = ref(false)
 </script>
 
 <template>
-  <div>
+  <div class="mx-auto max-w-2xl">
     <PageHeader :title="$t('notification.pageTitle')" help @help="showGuide = true" />
 
-    <div class="mx-auto max-w-2xl">
-      <NotificationList />
-    </div>
+    <NotificationList />
 
     <!-- 使い方説明モーダル -->
     <NotificationGuideModal v-model:visible="showGuide" />

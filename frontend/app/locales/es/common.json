@@ -1920,5 +1920,50 @@
       "leave_confirm_body": "¿Seguro que quieres salir de esta organización? No se puede deshacer.",
       "left": "Has salido de la organización"
     }
+  },
+  "blog_guide": {
+    "title": "Cómo usar Mi Blog",
+    "description": "Escribe artículos y compártelos con los miembros de tu equipo y organización. Guarda como borrador primero, luego publica cuando estés listo.",
+    "what": {
+      "title": "¿Qué es un Blog?",
+      "body": "Un lugar para escribir tus pensamientos y aprendizajes como artículos y compartirlos con los miembros de tu equipo y organización. Los artículos pueden gestionarse en estados de borrador, publicado, programado o archivado."
+    },
+    "create": {
+      "title": "Escribir un Artículo",
+      "body": "Simplemente haz clic en '+ Nuevo Artículo' para crear un artículo en borrador. Puedes cambiar el título más tarde.",
+      "steps": {
+        "step1": "Haz clic en '+ Nuevo Artículo' en la parte superior derecha",
+        "step2": "Ingresa el título del artículo (puede cambiarse más tarde)",
+        "step3": "Selecciona el destino de publicación (personal, equipo u organización)",
+        "step4": "Haz clic en 'Crear y Editar' para ir al editor"
+      }
+    },
+    "publish": {
+      "title": "Publicar un Artículo",
+      "body": "Haz clic en el ícono de ojo en cada tarjeta de 'Mis Publicaciones' para alternar entre público y privado.",
+      "steps": {
+        "step1": "Haz clic en el ícono de ojo en una tarjeta de artículo en borrador",
+        "step2": "Cambia a 'Publicado' y se vuelve visible para los miembros del equipo y la organización",
+        "step3": "Haz clic de nuevo para volver a privado (borrador)"
+      }
+    },
+    "manage": {
+      "title": "Gestionar Artículos",
+      "body": "'Mis Publicaciones' muestra los últimos 5 artículos en un desplazamiento horizontal. Usa los íconos en cada tarjeta para editar o eliminar.",
+      "item_edit": "Ícono de lápiz → Editar contenido del artículo",
+      "item_delete": "Ícono de papelera → Eliminar artículo (no se puede deshacer)",
+      "item_count": "Verifica el conteo de artículos en la parte superior derecha",
+      "item_all": "Todos los artículos están listados en la sección 'Publicaciones de Todos'"
+    },
+    "settings": {
+      "title": "Configuración del Blog",
+      "body": "Puedes configurar el título de tu blog, la descripción y el período de autorrevisión.",
+      "steps": {
+        "step1": "Haz clic en '⚙ Configuración del Blog' en la parte superior derecha",
+        "step2": "Ingresa el título y la descripción de tu blog",
+        "step3": "Establece el período de autorrevisión (período de revisión antes de publicar)",
+        "step4": "Haz clic en 'Guardar Configuración'"
+      }
+    }
   }
 }

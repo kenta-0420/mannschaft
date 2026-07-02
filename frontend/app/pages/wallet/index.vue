@@ -156,6 +156,14 @@ watch(activeTab, (newTab) => {
     <div class="mx-auto max-w-[720px] px-4 pb-8">
       <PageHeader :title="t('wallet.title')" help @help="showGuide = true">
         <template #actions>
+          <NuxtLink v-if="activeTab === 'cards'" to="/wallet/cards/new">
+            <Button
+              :label="t('wallet.actions.add_card')"
+              icon="pi pi-plus"
+              size="small"
+              severity="secondary"
+            />
+          </NuxtLink>
           <NuxtLink
             to="/wallet/settings"
             class="inline-flex h-9 w-9 items-center justify-center rounded-full text-surface-600 transition-colors hover:bg-surface-100 dark:text-surface-300 dark:hover:bg-surface-700"
@@ -246,13 +254,6 @@ watch(activeTab, (newTab) => {
           </div>
         </template>
 
-        <NuxtLink
-          to="/wallet/cards/new"
-          class="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-primary-500 text-2xl text-white shadow-xl"
-          :aria-label="t('wallet.actions.add_card')"
-        >
-          ＋
-        </NuxtLink>
       </section>
 
       <!-- ===== Groups タブ ===== -->
