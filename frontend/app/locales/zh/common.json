@@ -1393,7 +1393,19 @@
       "excelPreviewUnavailable": "浏览器无法预览 Excel 文件",
       "downloadLabel": "下载 {format}（{type}）"
     },
-    "menu": "菜单"
+    "menu": "菜单",
+    "scopeShell": {
+      "supporter_cancel_confirm_title": "要取消支持吗？",
+      "supporter_cancel_confirm_body": "将取消对{name}的支持。确定吗？",
+      "supporter_cancel_action": "取消支持",
+      "supporter_registered": "已注册为支持者",
+      "supporter_applied": "已发送支持者申请",
+      "supporter_canceled": "已取消支持",
+      "leave_action": "退出",
+      "load_error_title": "无法获取信息",
+      "load_error_body": "请稍后再试。如果没有权限，可能无法显示。",
+      "back_to_dashboard": "返回仪表板"
+    }
   },
   "teamHub": {
     "pageTitle": "我的团队",
@@ -1885,6 +1897,11 @@
       "invites": "邀请",
       "supporters": "支持者管理",
       "modules": "功能设置"
+    },
+    "action": {
+      "leave_confirm_title": "退出团队",
+      "leave_confirm_body": "确定要退出该团队吗？此操作无法撤销。",
+      "left": "已退出团队"
     }
   },
   "orgShell": {
@@ -1897,6 +1914,11 @@
       "permission_groups": "权限组",
       "supporters": "支持者管理",
       "modules": "功能设置"
+    },
+    "action": {
+      "leave_confirm_title": "退出组织",
+      "leave_confirm_body": "确定要退出该组织吗？此操作无法撤销。",
+      "left": "已退出组织"
     }
   }
 }

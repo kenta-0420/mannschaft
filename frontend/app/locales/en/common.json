@@ -1393,7 +1393,19 @@
       "excelPreviewUnavailable": "Excel file preview is not available in the browser",
       "downloadLabel": "Download {format} ({type})"
     },
-    "menu": "Menu"
+    "menu": "Menu",
+    "scopeShell": {
+      "supporter_cancel_confirm_title": "Stop supporting?",
+      "supporter_cancel_confirm_body": "Stop supporting {name}. Are you sure?",
+      "supporter_cancel_action": "Stop",
+      "supporter_registered": "Registered as a supporter",
+      "supporter_applied": "Supporter application sent",
+      "supporter_canceled": "Stopped supporting",
+      "leave_action": "Leave",
+      "load_error_title": "Could not load information",
+      "load_error_body": "Please try again later. It may be hidden if you do not have permission.",
+      "back_to_dashboard": "Back to dashboard"
+    }
   },
   "teamHub": {
     "pageTitle": "My Teams",
@@ -1885,6 +1897,11 @@
       "invites": "Invites",
       "supporters": "Supporter Management",
       "modules": "Features"
+    },
+    "action": {
+      "leave_confirm_title": "Leave team",
+      "leave_confirm_body": "Are you sure you want to leave this team? This cannot be undone.",
+      "left": "Left the team"
     }
   },
   "orgShell": {
@@ -1897,6 +1914,11 @@
       "permission_groups": "Permission Groups",
       "supporters": "Supporter Management",
       "modules": "Features"
+    },
+    "action": {
+      "leave_confirm_title": "Leave organization",
+      "leave_confirm_body": "Are you sure you want to leave this organization? This cannot be undone.",
+      "left": "Left the organization"
     }
   }
 }

@@ -1393,7 +1393,19 @@
       "excelPreviewUnavailable": "La vista previa de archivos Excel no está disponible en el navegador",
       "downloadLabel": "Descargar {format} ({type})"
     },
-    "menu": "Menú"
+    "menu": "Menú",
+    "scopeShell": {
+      "supporter_cancel_confirm_title": "¿Dejar de apoyar?",
+      "supporter_cancel_confirm_body": "Dejarás de apoyar a {name}. ¿Estás seguro?",
+      "supporter_cancel_action": "Dejar",
+      "supporter_registered": "Registrado como seguidor",
+      "supporter_applied": "Solicitud de seguidor enviada",
+      "supporter_canceled": "Has dejado de apoyar",
+      "leave_action": "Salir",
+      "load_error_title": "No se pudo cargar la información",
+      "load_error_body": "Inténtalo de nuevo más tarde. Puede estar oculto si no tienes permiso.",
+      "back_to_dashboard": "Volver al panel"
+    }
   },
   "teamHub": {
     "pageTitle": "Mis equipos",
@@ -1885,6 +1897,11 @@
       "invites": "Invitaciones",
       "supporters": "Gestión de seguidores",
       "modules": "Funciones"
+    },
+    "action": {
+      "leave_confirm_title": "Salir del equipo",
+      "leave_confirm_body": "¿Seguro que quieres salir de este equipo? No se puede deshacer.",
+      "left": "Has salido del equipo"
     }
   },
   "orgShell": {
@@ -1897,6 +1914,11 @@
       "permission_groups": "Grupos de permisos",
       "supporters": "Gestión de seguidores",
       "modules": "Funciones"
+    },
+    "action": {
+      "leave_confirm_title": "Salir de la organización",
+      "leave_confirm_body": "¿Seguro que quieres salir de esta organización? No se puede deshacer.",
+      "left": "Has salido de la organización"
     }
   }
 }

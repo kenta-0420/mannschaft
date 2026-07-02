@@ -1393,7 +1393,19 @@
       "excelPreviewUnavailable": "Excel ファイルのプレビューはブラウザで表示できません",
       "downloadLabel": "{format}ダウンロード（{type}）"
     },
-    "menu": "メニュー"
+    "menu": "メニュー",
+    "scopeShell": {
+      "supporter_cancel_confirm_title": "サポーターをやめますか？",
+      "supporter_cancel_confirm_body": "{name}のサポーターをやめます。よろしいですか？",
+      "supporter_cancel_action": "やめる",
+      "supporter_registered": "サポーターとして登録しました",
+      "supporter_applied": "サポーター申請を送信しました",
+      "supporter_canceled": "サポーターをやめました",
+      "leave_action": "退出する",
+      "load_error_title": "情報を取得できませんでした",
+      "load_error_body": "時間をおいて再度お試しください。権限がない場合は表示できないことがあります。",
+      "back_to_dashboard": "ダッシュボードへ戻る"
+    }
   },
   "teamHub": {
     "pageTitle": "マイチーム",
@@ -1885,6 +1897,11 @@
       "invites": "招待",
       "supporters": "サポーター管理",
       "modules": "機能設定"
+    },
+    "action": {
+      "leave_confirm_title": "チームから退出",
+      "leave_confirm_body": "本当にこのチームから退出しますか？この操作は取り消せません。",
+      "left": "チームから退出しました"
     }
   },
   "orgShell": {
@@ -1897,6 +1914,11 @@
       "permission_groups": "権限グループ",
       "supporters": "サポーター管理",
       "modules": "機能設定"
+    },
+    "action": {
+      "leave_confirm_title": "組織から退出",
+      "leave_confirm_body": "本当にこの組織から退出しますか？この操作は取り消せません。",
+      "left": "組織から退出しました"
     }
   }
 }

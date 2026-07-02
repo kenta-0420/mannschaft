@@ -32,6 +32,7 @@ definePageMeta({
 })
 
 const route = useRoute()
+const { t } = useI18n()
 const teamApi = useTeamApi()
 const notification = useNotification()
 const { handleApiError } = useErrorHandler()
@@ -92,8 +93,8 @@ async function applySupporter() {
     followStatus.value = res.data.status
     notification.success(
       followStatus.value === 'APPROVED'
-        ? 'サポーターとして登録しました'
-        : 'サポーター申請を送信しました',
+        ? t('common.scopeShell.supporter_registered')
+        : t('common.scopeShell.supporter_applied'),
     )
   }
   catch (error) {
@@ -110,7 +111,7 @@ async function cancelSupporter() {
     await teamApi.unfollowTeam(teamSlug.value)
     followStatus.value = 'NONE'
     showCancelSupporterConfirm.value = false
-    notification.success('サポーターをやめました')
+    notification.success(t('common.scopeShell.supporter_canceled'))
   }
   catch (error) {
     handleApiError(error, 'サポーター解除')
@@ -174,7 +175,7 @@ async function tryRedirectMovedSlug(): Promise<boolean> {
 async function leaveTeam() {
   try {
     await teamApi.leaveTeam(teamSlug.value)
-    notification.success('チームから退出しました')
+    notification.success(t('teamShell.action.left'))
     navigateTo('/dashboard')
   }
   catch (error) {
@@ -250,28 +251,35 @@ const SHELL_SEGMENTS = new Set([
 ])
 
 /**
- * パス全体のセグメント配列（teams/{slug} 以降）。
- * ネスト子ルート（例 /teams/x/schedule/123・/teams/x/tournaments/999/roster）でも
- * シェルを維持するため、末尾だけでなく全セグメントを見て判定する（村金型の考え方）。
+ * パス全体のセグメント配列（先頭 '' は除去済み。例 ['teams', '{slug}', 'schedule', '123']）。
  */
 const pathSegments = computed<string[]>(() =>
   route.path.replace(/\/+$/, '').split('/').filter(Boolean),
 )
 
-/** SHELL_SEGMENTS に一致する最初のセグメント（無ければ null）。 */
+/**
+ * SHELL_SEGMENTS に一致する最初のセグメント（無ければ null）。
+ *
+ * # slug 衝突・深ネストの根治
+ *  照合対象は index 2 以降（= 'teams' と '{slug}' を除いた残り）に限定する。
+ *  こうしないと slug 自身がタブ名（info/members/schedule 等）と一致した場合に
+ *  slug セグメントがヒットして activeTab が誤る。slice(2) で slug を照合から外す。
+ */
 const matchedShellSegment = computed<string | null>(() => {
-  for (const seg of pathSegments.value) {
+  for (const seg of pathSegments.value.slice(2)) {
     if (SHELL_SEGMENTS.has(seg)) return seg
   }
   return null
 })
 
-const isShellRoute = computed<boolean>(() => {
-  // `/teams/{slug}`（ダッシュボード・タブ未指定）はシェル対象。
-  const segments = pathSegments.value
-  if (segments[segments.length - 1] === teamSlug.value) return true
-  return matchedShellSegment.value !== null
-})
+/** ちょうど `/teams/{slug}`（タブ未指定・ダッシュボード）か。 */
+const isDashboardRoute = computed<boolean>(() =>
+  pathSegments.value.length === 2 && pathSegments.value[1] === teamSlug.value,
+)
+
+const isShellRoute = computed<boolean>(() =>
+  isDashboardRoute.value || matchedShellSegment.value !== null,
+)
 
 const activeTab = computed<string>(() => {
   const seg = matchedShellSegment.value
@@ -478,18 +486,36 @@ provideTeamShellContext({
         <NuxtPage />
       </ScopePageShell>
 
+      <!--
+        取得失敗フォールバック（loading 完了かつ team=null: 403/404/503 等）。
+        村金型 villages/[id].vue に倣い、白画面ではなくエラー文言＋戻り導線を出す。
+      -->
+      <div v-else class="mx-auto max-w-2xl p-6 text-center">
+        <i class="pi pi-exclamation-triangle text-4xl text-surface-400" aria-hidden="true" />
+        <p class="mt-4 text-lg font-medium text-surface-700 dark:text-surface-200">
+          {{ t('common.scopeShell.load_error_title') }}
+        </p>
+        <p class="mt-1 text-sm text-surface-500">
+          {{ t('common.scopeShell.load_error_body') }}
+        </p>
+        <NuxtLink to="/dashboard" class="mt-4 inline-block text-primary-600 hover:underline">
+          <i class="pi pi-arrow-left mr-1" />
+          {{ t('common.scopeShell.back_to_dashboard') }}
+        </NuxtLink>
+      </div>
+
       <!-- サポーター解除 / チーム退出の確認ダイアログ（親集約） -->
       <Dialog
         v-model:visible="showCancelSupporterConfirm"
-        header="サポーターをやめますか？"
+        :header="t('common.scopeShell.supporter_cancel_confirm_title')"
         :style="{ width: '400px' }"
         modal
       >
-        <p>{{ displayName }}のサポーターをやめます。よろしいですか？</p>
+        <p>{{ t('common.scopeShell.supporter_cancel_confirm_body', { name: displayName }) }}</p>
         <template #footer>
-          <Button label="キャンセル" text @click="showCancelSupporterConfirm = false" />
+          <Button :label="t('button.cancel')" text @click="showCancelSupporterConfirm = false" />
           <Button
-            label="やめる"
+            :label="t('common.scopeShell.supporter_cancel_action')"
             severity="danger"
             :loading="followLoading"
             @click="cancelSupporter"
@@ -499,14 +525,14 @@ provideTeamShellContext({
 
       <Dialog
         v-model:visible="showLeaveConfirm"
-        header="チームから退出"
+        :header="t('teamShell.action.leave_confirm_title')"
         :style="{ width: '400px' }"
         modal
       >
-        <p>本当にこのチームから退出しますか？この操作は取り消せません。</p>
+        <p>{{ t('teamShell.action.leave_confirm_body') }}</p>
         <template #footer>
-          <Button label="キャンセル" text @click="showLeaveConfirm = false" />
-          <Button label="退出する" severity="danger" @click="leaveTeam" />
+          <Button :label="t('button.cancel')" text @click="showLeaveConfirm = false" />
+          <Button :label="t('common.scopeShell.leave_action')" severity="danger" @click="leaveTeam" />
         </template>
       </Dialog>
     </template>

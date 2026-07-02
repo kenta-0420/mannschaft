@@ -1393,7 +1393,19 @@
       "excelPreviewUnavailable": "Excel-Dateivorschau ist im Browser nicht verfügbar",
       "downloadLabel": "{format} herunterladen ({type})"
     },
-    "menu": "Menü"
+    "menu": "Menü",
+    "scopeShell": {
+      "supporter_cancel_confirm_title": "Unterstützung beenden?",
+      "supporter_cancel_confirm_body": "Du beendest die Unterstützung von {name}. Bist du sicher?",
+      "supporter_cancel_action": "Beenden",
+      "supporter_registered": "Als Unterstützer registriert",
+      "supporter_applied": "Unterstützerantrag gesendet",
+      "supporter_canceled": "Unterstützung beendet",
+      "leave_action": "Verlassen",
+      "load_error_title": "Informationen konnten nicht geladen werden",
+      "load_error_body": "Bitte versuche es später erneut. Ohne Berechtigung ist die Anzeige evtl. nicht möglich.",
+      "back_to_dashboard": "Zurück zum Dashboard"
+    }
   },
   "teamHub": {
     "pageTitle": "Meine Teams",
@@ -1885,6 +1897,11 @@
       "invites": "Einladungen",
       "supporters": "Unterstützerverwaltung",
       "modules": "Funktionen"
+    },
+    "action": {
+      "leave_confirm_title": "Team verlassen",
+      "leave_confirm_body": "Möchtest du dieses Team wirklich verlassen? Dies kann nicht rückgängig gemacht werden.",
+      "left": "Team verlassen"
     }
   },
   "orgShell": {
@@ -1897,6 +1914,11 @@
       "permission_groups": "Berechtigungsgruppen",
       "supporters": "Unterstützerverwaltung",
       "modules": "Funktionen"
+    },
+    "action": {
+      "leave_confirm_title": "Organisation verlassen",
+      "leave_confirm_body": "Möchtest du diese Organisation wirklich verlassen? Dies kann nicht rückgängig gemacht werden.",
+      "left": "Organisation verlassen"
     }
   }
 }
