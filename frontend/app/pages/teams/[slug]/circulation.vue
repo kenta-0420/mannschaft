@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { CirculationDocumentListItem } from '~/types/circulation'
 
-definePageMeta({ layout: 'team', middleware: 'auth' })
+definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
 const teamSlug = String(route.params.slug)

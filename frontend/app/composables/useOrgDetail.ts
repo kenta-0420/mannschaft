@@ -28,6 +28,7 @@ export function useOrgDetail(orgId: Ref<string>) {
   const orgApi = useOrganizationApi()
   const notification = useNotification()
   const { handleApiError } = useErrorHandler()
+  const { t } = useI18n()
 
   const org = ref<OrgDetail | null>(null)
   const orgTeams = ref<OrgTeam[]>([])
@@ -87,8 +88,8 @@ export function useOrgDetail(orgId: Ref<string>) {
       followStatus.value = res.data.status
       notification.success(
         followStatus.value === 'APPROVED'
-          ? 'サポーターとして登録しました'
-          : 'サポーター申請を送信しました',
+          ? t('common.scopeShell.supporter_registered')
+          : t('common.scopeShell.supporter_applied'),
       )
     } catch (error) {
       handleApiError(error, 'サポーター申請')
@@ -103,7 +104,7 @@ export function useOrgDetail(orgId: Ref<string>) {
       await orgApi.unfollowOrganization(orgId.value)
       followStatus.value = 'NONE'
       showCancelSupporterConfirm.value = false
-      notification.success('サポーターをやめました')
+      notification.success(t('common.scopeShell.supporter_canceled'))
     } catch (error) {
       handleApiError(error, 'サポーター解除')
     } finally {
@@ -114,7 +115,7 @@ export function useOrgDetail(orgId: Ref<string>) {
   async function leaveOrganization() {
     try {
       await orgApi.leaveOrganization(orgId.value)
-      notification.success('組織から退出しました')
+      notification.success(t('orgShell.action.left'))
       navigateTo('/dashboard')
     } catch (error) {
       handleApiError(error, '組織退出')

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ActivityRecordResponse } from '~/types/activity'
-definePageMeta({ layout: 'organization', middleware: 'auth' })
+definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const { t } = useI18n()
 const orgSlug = String(route.params.slug)

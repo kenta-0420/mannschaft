@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { MemberProfile, CreateMemberProfileRequest } from '~/types/member-profile'
 
-definePageMeta({ layout: 'organization', middleware: 'auth' })
+definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
 const orgSlug = computed(() => String(route.params.slug))
