@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -333,7 +334,7 @@ class SharedFolderQueryServiceTest {
         @DisplayName("TEAM フォルダ作成はメンバーシップ検証を通し保存する")
         void TEAMフォルダ作成_メンバー検証() {
             CreateFolderRequest request =
-                    new CreateFolderRequest("新規", null, null, "TEAM", String.valueOf(TEAM_ID));
+                    new CreateFolderRequest("新規", null, null, "TEAM", String.valueOf(TEAM_ID), null, null);
             SharedFolderEntity saved = SharedFolderEntity.builder()
                     .id(101L).scopeType(FileScopeType.TEAM).teamId(TEAM_ID)
                     .name("新規").createdBy(USER_ID).build();
@@ -354,7 +355,7 @@ class SharedFolderQueryServiceTest {
         @DisplayName("TEAM 非メンバーは作成で 403（保存しない）")
         void TEAM非メンバー_作成403() {
             CreateFolderRequest request =
-                    new CreateFolderRequest("新規", null, null, "TEAM", String.valueOf(TEAM_ID));
+                    new CreateFolderRequest("新規", null, null, "TEAM", String.valueOf(TEAM_ID), null, null);
             willThrow(new BusinessException(CommonErrorCode.COMMON_002))
                     .given(accessControlService).checkMembership(USER_ID, TEAM_ID, "TEAM");
 
@@ -603,6 +604,265 @@ class SharedFolderQueryServiceTest {
             assertThat(root.getDeletedAt()).isNotNull();
             verify(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
             verify(accessControlService, never()).checkMembership(anyLong(), anyLong(), any());
+        }
+    }
+
+    // ============================================================
+    // B: 最低可視ロール（表示制御）
+    // ============================================================
+
+    private static final Long FILE_ID = 300L;
+
+    private SharedFolderEntity teamFolder(FileVisibilityRole minRole) {
+        return SharedFolderEntity.builder()
+                .id(FOLDER_ID).scopeType(FileScopeType.TEAM).teamId(TEAM_ID)
+                .minVisibleRole(minRole)
+                .name("チームフォルダ").createdBy(USER_ID).build();
+    }
+
+    private SharedFileEntity fileIn(SharedFolderEntity folder, FileVisibilityRole fileMinRole, boolean dlDisabled) {
+        return SharedFileEntity.builder()
+                .id(FILE_ID).folderId(folder.getId()).name("doc.pdf").fileKey("k").fileSize(10L)
+                .contentType("application/pdf").createdBy(USER_ID).currentVersion(1)
+                .minVisibleRole(fileMinRole).downloadDisabled(dlDisabled).build();
+    }
+
+    @Nested
+    @DisplayName("B: 最低可視ロール — フォルダ詳細（getFolderDetail）")
+    class MinVisibleRoleFolder {
+
+        @Test
+        @DisplayName("AC-B1: min=ADMINS_AND_ABOVE のチームフォルダを非管理者 MEMBER が閲覧→403(COMMON_002)")
+        void ACB1_ADMINS_MEMBER_403() {
+            given(folderRepository.findById(FOLDER_ID))
+                    .willReturn(Optional.of(teamFolder(FileVisibilityRole.ADMINS_AND_ABOVE)));
+            // メンバーシップは通過（checkMembership は void・doNothing）だが ADMIN 未満で min role が弾く。
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "ADMIN")).willReturn(false);
+
+            assertThatThrownBy(() -> service.getFolderDetail(FOLDER_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+        }
+
+        @Test
+        @DisplayName("AC-B2: 同フォルダを ADMIN/DEPUTY_ADMIN(hasRoleOrAbove ADMIN=true) が閲覧→200")
+        void ACB2_ADMINS_ADMIN_200() {
+            given(folderRepository.findById(FOLDER_ID))
+                    .willReturn(Optional.of(teamFolder(FileVisibilityRole.ADMINS_AND_ABOVE)));
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "ADMIN")).willReturn(true);
+            given(folderRepository.findByParentIdOrderByNameAsc(FOLDER_ID)).willReturn(List.of());
+            given(fileRepository.findByFolderIdOrderByNameAsc(FOLDER_ID)).willReturn(List.of());
+            given(nameResolverService.resolveUserDisplayNames(any())).willReturn(Map.of());
+
+            FolderDetailResponse result = service.getFolderDetail(FOLDER_ID, USER_ID);
+
+            assertThat(result.minVisibleRole()).isEqualTo(FileVisibilityRole.ADMINS_AND_ABOVE);
+        }
+
+        @Test
+        @DisplayName("AC-B3: MEMBERS_AND_ABOVE を SUPPORTER(hasRoleOrAbove MEMBER=false) が閲覧→403")
+        void ACB3_MEMBERS_SUPPORTER_403() {
+            given(folderRepository.findById(FOLDER_ID))
+                    .willReturn(Optional.of(teamFolder(FileVisibilityRole.MEMBERS_AND_ABOVE)));
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "MEMBER")).willReturn(false);
+
+            assertThatThrownBy(() -> service.getFolderDetail(FOLDER_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+        }
+
+        @Test
+        @DisplayName("AC-B3: MEMBERS_AND_ABOVE を MEMBER(hasRoleOrAbove MEMBER=true) が閲覧→200")
+        void ACB3_MEMBERS_MEMBER_200() {
+            given(folderRepository.findById(FOLDER_ID))
+                    .willReturn(Optional.of(teamFolder(FileVisibilityRole.MEMBERS_AND_ABOVE)));
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "MEMBER")).willReturn(true);
+            given(folderRepository.findByParentIdOrderByNameAsc(FOLDER_ID)).willReturn(List.of());
+            given(fileRepository.findByFolderIdOrderByNameAsc(FOLDER_ID)).willReturn(List.of());
+            given(nameResolverService.resolveUserDisplayNames(any())).willReturn(Map.of());
+
+            assertThatCode(() -> service.getFolderDetail(FOLDER_ID, USER_ID)).doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("AC-B6: min=NULL（既存データ）は所属者全員可視（hasRoleOrAbove を呼ばず非回帰）")
+        void ACB6_NULL_非回帰() {
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(teamFolder(null)));
+            given(folderRepository.findByParentIdOrderByNameAsc(FOLDER_ID)).willReturn(List.of());
+            given(fileRepository.findByFolderIdOrderByNameAsc(FOLDER_ID)).willReturn(List.of());
+            given(nameResolverService.resolveUserDisplayNames(any())).willReturn(Map.of());
+
+            service.getFolderDetail(FOLDER_ID, USER_ID);
+
+            verify(accessControlService).checkMembership(USER_ID, TEAM_ID, "TEAM");
+            verify(accessControlService, never()).hasRoleOrAbove(anyLong(), anyLong(), any(), any());
+            verify(accessControlService, never()).isSystemAdmin(anyLong());
+        }
+
+        @Test
+        @DisplayName("SYSTEM_ADMIN は min role を貫通して閲覧できる（B 貫通）")
+        void SYSTEM_ADMIN_貫通() {
+            given(folderRepository.findById(FOLDER_ID))
+                    .willReturn(Optional.of(teamFolder(FileVisibilityRole.ADMINS_AND_ABOVE)));
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(true);
+            given(folderRepository.findByParentIdOrderByNameAsc(FOLDER_ID)).willReturn(List.of());
+            given(fileRepository.findByFolderIdOrderByNameAsc(FOLDER_ID)).willReturn(List.of());
+            given(nameResolverService.resolveUserDisplayNames(any())).willReturn(Map.of());
+
+            assertThatCode(() -> service.getFolderDetail(FOLDER_ID, USER_ID)).doesNotThrowAnyException();
+            verify(accessControlService, never()).hasRoleOrAbove(anyLong(), anyLong(), any(), any());
+        }
+    }
+
+    @Nested
+    @DisplayName("B: 最低可視ロール — ファイル経路（authorizeFileViewById・ファイル値優先→フォルダ継承）")
+    class MinVisibleRoleFile {
+
+        @Test
+        @DisplayName("AC-B4: フォルダ=MEMBERS_AND_ABOVE・ファイル=NULL→フォルダ継承で MEMBER 可視")
+        void ACB4_ファイルNULL_フォルダ継承() {
+            SharedFolderEntity folder = teamFolder(FileVisibilityRole.MEMBERS_AND_ABOVE);
+            SharedFileEntity file = fileIn(folder, null, false);
+            given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(folder));
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "MEMBER")).willReturn(true);
+
+            assertThatCode(() -> service.authorizeFileViewById(FILE_ID, USER_ID)).doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("AC-B5: ファイル=ADMINS_AND_ABOVE・フォルダ=NULL→ファイル優先で ADMIN のみ（非管理者は403）")
+        void ACB5_ファイル優先_非管理者403() {
+            SharedFolderEntity folder = teamFolder(null);
+            SharedFileEntity file = fileIn(folder, FileVisibilityRole.ADMINS_AND_ABOVE, false);
+            given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(folder));
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "ADMIN")).willReturn(false);
+
+            assertThatThrownBy(() -> service.authorizeFileViewById(FILE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+        }
+
+        @Test
+        @DisplayName("AC-B5: ファイル=ADMINS_AND_ABOVE・フォルダ=NULL→ADMIN は可視")
+        void ACB5_ファイル優先_ADMIN可視() {
+            SharedFolderEntity folder = teamFolder(null);
+            SharedFileEntity file = fileIn(folder, FileVisibilityRole.ADMINS_AND_ABOVE, false);
+            given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(folder));
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "ADMIN")).willReturn(true);
+
+            assertThatCode(() -> service.authorizeFileViewById(FILE_ID, USER_ID)).doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("AC-B8: min role は authorizeDownload(DL URL 発行)にも効く（フォルダ ADMINS を非管理者→403）")
+        void ACB8_DL認可にも効く() {
+            SharedFolderEntity folder = teamFolder(FileVisibilityRole.ADMINS_AND_ABOVE);
+            SharedFileEntity file = fileIn(folder, null, false);
+            given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(folder));
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "ADMIN")).willReturn(false);
+
+            assertThatThrownBy(() -> service.authorizeDownload(FILE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+        }
+    }
+
+    // ============================================================
+    // C: ダウンロード禁止フラグ（authorizeDownload）
+    // ============================================================
+
+    @Nested
+    @DisplayName("C: ダウンロード禁止フラグ — authorizeDownload / 閲覧は通す")
+    class DownloadDisabled {
+
+        @Test
+        @DisplayName("AC-C1: file.downloadDisabled=true→authorizeDownload が DOWNLOAD_DISABLED(403)")
+        void ACC1_ファイル禁止_403() {
+            SharedFolderEntity folder = teamFolder(null);
+            SharedFileEntity file = fileIn(folder, null, true);
+            given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(folder));
+
+            assertThatThrownBy(() -> service.authorizeDownload(FILE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(FileSharingErrorCode.DOWNLOAD_DISABLED));
+        }
+
+        @Test
+        @DisplayName("AC-C2: DL 禁止でも閲覧（authorizeFileViewById）は通る")
+        void ACC2_禁止でも閲覧可() {
+            SharedFolderEntity folder = teamFolder(null);
+            SharedFileEntity file = fileIn(folder, null, true);
+            given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(folder));
+
+            assertThatCode(() -> service.authorizeFileViewById(FILE_ID, USER_ID)).doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("AC-C3: フォルダ=true・ファイル未設定→配下 DL は 403（継承）")
+        void ACC3_フォルダ禁止_継承403() {
+            SharedFolderEntity folder = SharedFolderEntity.builder()
+                    .id(FOLDER_ID).scopeType(FileScopeType.TEAM).teamId(TEAM_ID)
+                    .downloadDisabled(true).name("f").createdBy(USER_ID).build();
+            SharedFileEntity file = fileIn(folder, null, false);
+            given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(folder));
+
+            assertThatThrownBy(() -> service.authorizeDownload(FILE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(FileSharingErrorCode.DOWNLOAD_DISABLED));
+        }
+
+        @Test
+        @DisplayName("AC-C4: フォルダ=true・ファイル=false→それでも403（禁止は単調・ファイルで解除不可）")
+        void ACC4_単調_ファイルfalseでも403() {
+            SharedFolderEntity folder = SharedFolderEntity.builder()
+                    .id(FOLDER_ID).scopeType(FileScopeType.TEAM).teamId(TEAM_ID)
+                    .downloadDisabled(true).name("f").createdBy(USER_ID).build();
+            SharedFileEntity file = fileIn(folder, null, false); // ファイル側 false
+            given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(folder));
+
+            assertThatThrownBy(() -> service.authorizeDownload(FILE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(FileSharingErrorCode.DOWNLOAD_DISABLED));
+        }
+
+        @Test
+        @DisplayName("AC-C5: 既定 false→従来どおり DL 可（非回帰）")
+        void ACC5_既定false_DL可() {
+            SharedFolderEntity folder = teamFolder(null);
+            SharedFileEntity file = fileIn(folder, null, false);
+            given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(folder));
+
+            assertThatCode(() -> service.authorizeDownload(FILE_ID, USER_ID)).doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("AC-C6: SYSTEM_ADMIN は DL 禁止を貫通して DL 可（B/C 貫通）")
+        void ACC6_SYSTEM_ADMIN_貫通() {
+            SharedFolderEntity folder = SharedFolderEntity.builder()
+                    .id(FOLDER_ID).scopeType(FileScopeType.TEAM).teamId(TEAM_ID)
+                    .downloadDisabled(true).name("f").createdBy(USER_ID).build();
+            SharedFileEntity file = fileIn(folder, null, true);
+            given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(folder));
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(true);
+
+            assertThatCode(() -> service.authorizeDownload(FILE_ID, USER_ID)).doesNotThrowAnyException();
         }
     }
 }

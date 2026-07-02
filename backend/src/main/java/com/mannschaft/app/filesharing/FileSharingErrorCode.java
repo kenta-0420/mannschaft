@@ -57,7 +57,19 @@ public enum FileSharingErrorCode implements ErrorCode {
     INSUFFICIENT_PERMISSION("FILE_SHARING_015", "この操作を実行する権限がありません", Severity.WARN),
 
     /** ストレージクォータ超過 */
-    STORAGE_QUOTA_EXCEEDED("FILE_SHARING_016", "ストレージ使用量の上限に達しています", Severity.WARN);
+    STORAGE_QUOTA_EXCEEDED("FILE_SHARING_016", "ストレージ使用量の上限に達しています", Severity.WARN),
+
+    /**
+     * ダウンロード禁止（C: download_disabled）。
+     *
+     * <p>フォルダ／ファイルに DL 禁止フラグが立っている場合、DL URL 発行（presignDownload）を拒否する。
+     * <b>設計上の限界</b>: ブラウザで表示できる以上、完全なダウンロード防止は原理的に不可能。本フラグは
+     * DL ボタン抑止＋DL URL 発行拒否による<b>運用上の抑止</b>であり、完全防止ではない。</p>
+     *
+     * <p>HTTP は 403（{@link com.mannschaft.app.common.GlobalExceptionHandler} で FILE_SHARING_017 →
+     * FORBIDDEN を明示登録）。閲覧（メタ／一覧／詳細）は通し、DL URL 発行のみ拒否する。</p>
+     */
+    DOWNLOAD_DISABLED("FILE_SHARING_017", "このファイルはダウンロードが禁止されています", Severity.WARN);
 
     private final String code;
     private final String message;

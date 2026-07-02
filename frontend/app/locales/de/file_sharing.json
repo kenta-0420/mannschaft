@@ -1,0 +1,15 @@
+{
+  "visibility": {
+    "label": "Mindestrolle für Sichtbarkeit",
+    "help": "Legt die Mindestrolle fest, die diesen Ordner/diese Datei ansehen oder herunterladen darf. Ohne Angabe können alle Mitglieder sie ansehen.",
+    "all": "Alle Mitglieder (Standard)",
+    "SUPPORTERS_AND_ABOVE": "Unterstützer und höher",
+    "MEMBERS_AND_ABOVE": "Mitglieder und höher",
+    "ADMINS_AND_ABOVE": "Nur Administratoren"
+  },
+  "download": {
+    "disabledLabel": "Downloads deaktivieren",
+    "disabledHelp": "Blendet die Download-Schaltfläche aus und verweigert die Ausgabe von Download-URLs. Dies ist nur eine Abschreckung und verhindert die Anzeige im Browser nicht.",
+    "disabledError": "Das Herunterladen dieser Datei ist deaktiviert"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "visibility": {
+    "label": "Minimum visible role",
+    "help": "Sets the minimum role that can view or download this folder/file. When unset, all members can view it.",
+    "all": "All members (default)",
+    "SUPPORTERS_AND_ABOVE": "Supporters and above",
+    "MEMBERS_AND_ABOVE": "Members and above",
+    "ADMINS_AND_ABOVE": "Admins only"
+  },
+  "download": {
+    "disabledLabel": "Disable downloads",
+    "disabledHelp": "Hides the download button and refuses to issue download URLs. This is a deterrent only and cannot prevent browser viewing.",
+    "disabledError": "Downloading this file is disabled"
+  }
+}

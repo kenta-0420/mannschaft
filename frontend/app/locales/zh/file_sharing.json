@@ -1,0 +1,15 @@
+{
+  "visibility": {
+    "label": "最低可见角色",
+    "help": "设置可以查看或下载此文件夹/文件的最低角色。未设置时，所有成员均可查看。",
+    "all": "全体成员（默认）",
+    "SUPPORTERS_AND_ABOVE": "支持者及以上",
+    "MEMBERS_AND_ABOVE": "正式会员及以上",
+    "ADMINS_AND_ABOVE": "仅管理员"
+  },
+  "download": {
+    "disabledLabel": "禁止下载",
+    "disabledHelp": "隐藏下载按钮并拒绝签发下载链接。这只是一种威慑，无法阻止浏览器查看。",
+    "disabledError": "此文件已禁止下载"
+  }
+}
