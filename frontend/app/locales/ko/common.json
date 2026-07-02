@@ -458,7 +458,11 @@
     "postSuccess": "게시되었습니다",
     "postError": "게시에 실패했습니다",
     "announcementRegisterError": "공지 등록에 실패했습니다. 나중에 수동으로 등록해 주세요.",
-    "postSource": "게시 위치"
+    "postSource": "게시 위치",
+    "writeReply": "답글 작성",
+    "replySubmit": "답글",
+    "noReplies": "아직 답글이 없습니다",
+    "loadMoreReplies": "더 보기"
   },
   "gallery": {
     "title": "갤러리",
