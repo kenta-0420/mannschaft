@@ -23,6 +23,10 @@ function onChannelCreated(ch: ChatChannelResponse) {
   chatListRef.value?.refresh()
 }
 
+function onCreated() {
+  chatListRef.value?.refresh()
+}
+
 onMounted(() => loadPermissions())
 </script>
 
@@ -62,7 +66,7 @@ onMounted(() => loadPermissions())
     <ChatCreateDialog
       v-model:visible="showCreateDialog"
       :team-id="teamSlug"
-      @created="onChannelCreated"
+      @created="onCreated"
     />
   </div>
 </template>
