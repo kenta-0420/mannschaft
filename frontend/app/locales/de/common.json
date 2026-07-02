@@ -1875,5 +1875,50 @@
       "title": "設定できる人",
       "body": "機能設定はチーム・組織の管理者だけが開けます。管理者でも、画面右上の表示切り替えが「メンバー表示」になっているとこのタブは隠れます。設定したいときは「管理者表示」に切り替えてください。"
     }
+  },
+  "blog_guide": {
+    "title": "So verwenden Sie Mein Blog",
+    "description": "Schreiben Sie Artikel und teilen Sie sie mit Ihren Team- und Organisationsmitgliedern. Speichern Sie zuerst als Entwurf, dann veröffentlichen Sie, wenn Sie bereit sind.",
+    "what": {
+      "title": "Was ist ein Blog?",
+      "body": "Ein Ort, um Ihre Gedanken und Lernerkenntnisse als Artikel zu schreiben und mit Ihren Team- und Organisationsmitgliedern zu teilen. Artikel können im Entwurfs-, Veröffentlicht-, Geplant- oder Archiviert-Zustand verwaltet werden."
+    },
+    "create": {
+      "title": "Einen Artikel schreiben",
+      "body": "Klicken Sie einfach auf '+ Neuer Artikel', um einen Entwurfsartikel zu erstellen. Sie können den Titel später ändern.",
+      "steps": {
+        "step1": "Klicken Sie oben rechts auf '+ Neuer Artikel'",
+        "step2": "Geben Sie den Artikeltitel ein (kann später geändert werden)",
+        "step3": "Wählen Sie das Veröffentlichungsziel (persönlich, Team oder Organisation)",
+        "step4": "Klicken Sie auf 'Erstellen und Bearbeiten', um zum Editor zu gelangen"
+      }
+    },
+    "publish": {
+      "title": "Einen Artikel veröffentlichen",
+      "body": "Klicken Sie auf das Augensymbol auf jeder Karte in 'Meine Beiträge', um zwischen öffentlich und privat zu wechseln.",
+      "steps": {
+        "step1": "Klicken Sie auf das Augensymbol auf einer Entwurfsartikelkarte",
+        "step2": "Wechselt zu 'Veröffentlicht' und wird für Team- und Organisationsmitglieder sichtbar",
+        "step3": "Erneut klicken, um wieder privat (Entwurf) zu werden"
+      }
+    },
+    "manage": {
+      "title": "Artikel verwalten",
+      "body": "'Meine Beiträge' zeigt die neuesten 5 Artikel in einem horizontalen Scroll. Verwenden Sie die Symbole auf jeder Karte zum Bearbeiten oder Löschen.",
+      "item_edit": "Bleistiftsymbol → Artikelinhalt bearbeiten",
+      "item_delete": "Papierkorbsymbol → Artikel löschen (kann nicht rückgängig gemacht werden)",
+      "item_count": "Überprüfen Sie die Artikelanzahl oben rechts",
+      "item_all": "Alle Artikel werden im Abschnitt 'Aller Beiträge' aufgelistet"
+    },
+    "settings": {
+      "title": "Blog-Einstellungen",
+      "body": "Sie können Ihren Blog-Titel, die Beschreibung und den Selbstüberprüfungszeitraum festlegen.",
+      "steps": {
+        "step1": "Klicken Sie oben rechts auf '⚙ Blog-Einstellungen'",
+        "step2": "Geben Sie Ihren Blog-Titel und Ihre Beschreibung ein",
+        "step3": "Legen Sie den Selbstüberprüfungszeitraum fest (Überprüfungszeitraum vor dem Posten)",
+        "step4": "Klicken Sie auf 'Einstellungen speichern'"
+      }
+    }
   }
 }

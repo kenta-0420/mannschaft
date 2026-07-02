@@ -6,9 +6,11 @@ const props = withDefaults(
     scopeType?: string
     scopeId?: string
     canCreate?: boolean
+    showCreate?: boolean
   }>(),
   {
     canCreate: false,
+    showCreate: undefined,
   },
 )
 
@@ -20,9 +22,11 @@ const { getPosts, createPost } = useBlogApi()
 const { error: showError } = useNotification()
 const { relativeTime } = useRelativeTime()
 
-// scopeType が未指定（個人ブログ）の場合は常に作成可能
+// scopeType が未指定（個人ブログ）の場合は常に作成可能。showCreate=false で明示的に非表示化
 const showCreateButton = computed(
-  () => props.canCreate || !props.scopeType || props.scopeType === 'PERSONAL',
+  () =>
+    props.showCreate !== false &&
+    (props.canCreate || !props.scopeType || props.scopeType === 'PERSONAL'),
 )
 
 const posts = ref<BlogPostResponse[]>([])

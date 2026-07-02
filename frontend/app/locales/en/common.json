@@ -1875,5 +1875,50 @@
       "title": "設定できる人",
       "body": "機能設定はチーム・組織の管理者だけが開けます。管理者でも、画面右上の表示切り替えが「メンバー表示」になっているとこのタブは隠れます。設定したいときは「管理者表示」に切り替えてください。"
     }
+  },
+  "blog_guide": {
+    "title": "How to Use My Blog",
+    "description": "Write articles and share them with your team and organization members. Save as a draft first, then publish when ready.",
+    "what": {
+      "title": "What is a Blog?",
+      "body": "A place to write your thoughts and learnings as articles and share them with your team and organization members. Articles can be managed in draft, published, scheduled, or archived states."
+    },
+    "create": {
+      "title": "Writing an Article",
+      "body": "Just click '+ New Article' to create a draft article. You can change the title later.",
+      "steps": {
+        "step1": "Click '+ New Article' in the top right",
+        "step2": "Enter the article title (can be changed later)",
+        "step3": "Select the posting destination (personal, team, or organization)",
+        "step4": "Click 'Create and Edit' to proceed to the editor"
+      }
+    },
+    "publish": {
+      "title": "Publishing an Article",
+      "body": "Click the eye icon on each card in 'My Posts' to toggle between public and private.",
+      "steps": {
+        "step1": "Click the eye icon on a draft article card",
+        "step2": "It switches to 'Published' and becomes visible to team and organization members",
+        "step3": "Click again to make it private (draft) again"
+      }
+    },
+    "manage": {
+      "title": "Managing Articles",
+      "body": "'My Posts' shows the latest 5 articles in a horizontal scroll. Use the icons on each card to edit or delete.",
+      "item_edit": "Pencil icon → Edit article content",
+      "item_delete": "Trash icon → Delete article (cannot be undone)",
+      "item_count": "Check the article count in the top right",
+      "item_all": "All articles are listed in the 'Everyone's Posts' section"
+    },
+    "settings": {
+      "title": "Blog Settings",
+      "body": "You can set your blog title, description, and self-review time period.",
+      "steps": {
+        "step1": "Click '⚙ Blog Settings' in the top right",
+        "step2": "Enter your blog title and description",
+        "step3": "Set the self-review time period (review period before posting)",
+        "step4": "Click 'Save Settings'"
+      }
+    }
   }
 }
