@@ -353,7 +353,7 @@ revoke した直後にもう片方が使用済みの旧トークンを再提示�
 | ケース | 条件 | 挙動 | エラーコード |
 |---|---|---|---|
 | 並行更新の正規化 | 後継ポインタ有り × grace window 内 | `logoutAllDevices` は呼ばない。負け側にも新しい Access Token + Refresh Token を発行して返す（2 タブとも独立した有効トークンへ収束させる。後継の生トークンは復元不能なため新規発行が最も安全） | なし（200 で新トークンを返す） |
-| 真リプレイ攻撃 | 後継ポインタ有り × grace window 超過 | `TokenReuseDetectedEvent` 発行 + `AuthSessionService.logoutAllDevices()` で全デバイス無効化 | `AUTH_026`（401） |
+| 真リプレイ攻撃 | 後継ポインタ有り × grace window 超過 | `TokenReuseDetectedEvent` 発行 + `AuthSessionService.logoutAllDevices()` で全デバイス無効化（**別トランザクションで確実にコミット。§7.7 参照**） | `AUTH_026`（401） |
 | 失効済み（後継無し） | 後継ポインタ無し（明示ログアウト等） | grace window の対象外。全無効化はしない | `AUTH_007`（401） |
 
 有効期限切れのトークン再提示も、退会申請不存在の意味を持つ `AUTH_032` の誤用をやめ、
@@ -369,11 +369,39 @@ revoke した直後にもう片方が使用済みの旧トークンを再提示�
 | `AUTH_026` | 401 | リプレイ検出・全セッション無効化 |
 | `AUTH_039` | 401 | 全デバイスセッション無効化後のアクセス |
 
-### 7.6 テスト戦略
+### 7.7 真リプレイ検出時の全デバイス無効化は別トランザクションで確実にコミットする（REQUIRES_NEW）
+
+`AuthTokenRotationService#refreshAccessToken` は `@Transactional`（`REQUIRED`）で動作し、真リプレイ検出時は
+`AuthSessionService.logoutAllDevices()` で全トークンを revoke した**直後に** `BusinessException(AUTH_026)`
+（`RuntimeException`）を送出してこのトランザクションをロールバックさせる（新トークンは発行しない）。
+
+ここで `logoutAllDevices` が呼び出し元と**同一トランザクション**（`REQUIRED`）で動いていると、この throw による
+ロールバックで全トークンの revoke（JPA のダーティ状態でありコミット時にフラッシュされる）が**巻き戻り**、
+盗難トークン検出時の全デバイス無効化が実際には永続化されない。結果として「`AUTH_026`/401 は返るが、その後も
+生存トークンで refresh が 200 通ってしまう」（＝過小無効化・防御の無力化）という状態に陥る（実機 E2E で確認）。
+
+**根治**: `AuthSessionService.logoutAllDevices()`（両オーバーロード）を `@Transactional(propagation = REQUIRES_NEW)`
+とし、セッションの一斉無効化を**独立したトランザクションで即コミット**する。これにより呼び出し元トランザクションの
+ロールバックでは巻き戻らない。セッション kill はセキュリティ上「呼び出し元トランザクションの結末に関わらず必ず永続化
+されねばならない」操作であり、REQUIRES_NEW は同メソッドの全呼び出し元（真リプレイ検出・パスワードリセット完了・
+セッション画面からの一斉ログアウト）で意味論的に正しい。呼び出し元がロールバックしてもセッション kill は残る
+（fail-closed で安全側）。逆に無効化処理自体が失敗すれば例外が呼び出し元へ伝播し、呼び出し元も含めてロールバックされる。
+
+> 悲観ロックとの共存: 真リプレイ経路の呼び出し元トランザクションは再提示トークン（既に `revoked_at != null`）の行に
+> `PESSIMISTIC_WRITE` ロックを保持するが、REQUIRES_NEW の新トランザクションが無効化対象として読むのは「生存中
+> （`revoked_at IS NULL`）」のトークンのみで、再提示トークン行は対象外・かつ非ロック読み取り（MVCC）のためロック競合は生じない。
+
+### 7.8 テスト戦略
 
 `AuthTokenRotationServiceTest` は悲観ロック版ファインダ（`findByTokenHashForUpdate`）をスタブし、
 grace window 内正規化・grace window 超過リプレイ・後継無し失効の 3 分岐と、有効期限切れ時の
 エラーコード是正（`AUTH_032`→`AUTH_007`）を STRICT モードで検証する。
+
+§7.7 のトランザクション巻き戻しは**純 Mockito UT では検知できない**（`logoutAllDevices` を mock で `verify` する
+だけでトランザクション境界＝ロールバックを踏まないため、REQUIRES_NEW を外しても緑のまま = false-green）。そのため
+実 MySQL（Testcontainers）＋実トランザクション境界を踏む結合テスト `AuthTokenReplayLogoutPersistenceIT` を追加し、
+`AUTH_026` 送出**後**に実 DB を（JPA 一次キャッシュを介さず JDBC で）読んで、当該ユーザーの全 `refresh_token` の
+`revoked_at` が確定的に NOT NULL であること（生存トークン 0 件）をアサートする。
 
 ---
 
@@ -386,3 +414,4 @@ grace window 内正規化・grace window 超過リプレイ・後継無し失効
 | 2026-06-12 | §4.3.1 追加: レートリミット共通基盤の Valkey 化 第一陣完了。`com.mannschaft.app.common.ratelimit`（`ValkeyRateLimiter` + `AbstractRateLimitFilter`）新設、Lua で INCR+EXPIRE 原子化、fail-open（`mannschaft.ratelimit.failopen` メトリクス）。18 フィルタ中 `ActionMemoRateLimitFilter` / `PublicApiRateLimitFilter` の 2 つを移行（残 16 は第二陣） |
 | 2026-06-12 | §4.3.1 更新: 第二陣A (#1471)・第二陣B (#1472) マージで**全 18 フィルタの Valkey 移行完了**（Bucket4j+Caffeine プロセス内カウント全廃・ECS 複数タスクで実効上限が正確に）。§4.3 の「スライディングウィンドウ」文言を実態（固定ウィンドウ）に訂正。意図的挙動変更（429 標準形統一 / Sync per-user 化 / RepairPlanSimulate 短絡評価 / XFF 統一）を互換性注記として明文化 |
 | 2026-07-02 | §7 JWT Refresh Token 競合制御を実装に同期。並行更新を一律リプレイ誤判定して全デバイス無効化する自爆バグ（F01.1）を根治。旧設計（Valkey `SET NX` 分散ロック・409 Conflict）は fail-open と両立しない／負け側を救済できないため不採用と明記し、DB `PESSIMISTIC_WRITE` 行ロック + grace window（`replaced_by_token_hash` 後継ポインタ・既定 60 秒）方式に更新。`AUTH_026`/`AUTH_039` の 401 マッピングを追記 |
+| 2026-07-02 | §7.7 追加: 真リプレイ検出時の全デバイス無効化が呼び出し元トランザクションのロールバックで巻き戻り永続化されない過小無効化バグ（実機 E2E で発見）を根治。`AuthSessionService.logoutAllDevices()` を `@Transactional(REQUIRES_NEW)` 化し独立トランザクションで即コミット。純 Mockito UT では検知不能なため実 tx 境界を踏む結合テスト `AuthTokenReplayLogoutPersistenceIT` を追加（§7.8） |

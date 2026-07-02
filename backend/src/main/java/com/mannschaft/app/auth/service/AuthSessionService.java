@@ -18,6 +18,7 @@ import com.mannschaft.app.common.util.SessionHashUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -94,9 +95,20 @@ public class AuthSessionService {
      * 全デバイスからのログアウトを行う（後方互換）。
      * 全RefreshToken失効 + Valkeyにuser_invalidated_at設定。
      *
+     * <p><b>トランザクション境界（{@link Propagation#REQUIRES_NEW}）</b>:
+     * セッションの一斉無効化はセキュリティ上「呼び出し元トランザクションの結末に関わらず必ず永続化されねばならない」
+     * 操作である。特に {@link AuthTokenRotationService#refreshAccessToken} の<b>真リプレイ検出</b>経路は、
+     * 本メソッドで全トークンを revoke した直後に {@code BusinessException(AUTH_026)}（RuntimeException）を送出する。
+     * 本メソッドが呼び出し元と同一トランザクション（{@code REQUIRED}）で動いていると、この throw による
+     * ロールバックで revoke が巻き戻り、盗難トークン検出時の全デバイス無効化が実際には永続化されない
+     * （＝過小無効化・防御の無力化）。独立トランザクションで即コミットすることでこの巻き戻りを根治する。</p>
+     *
+     * <p>呼び出し元でロールバックが発生してもセッション kill は残る（fail-closed で安全側）。逆に本メソッド内で
+     * 例外が起きれば呼び出し元へ伝播し、呼び出し元も含めてロールバックされる（一貫性は保たれる）。</p>
+     *
      * @param userId ユーザーID
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void logoutAllDevices(Long userId) {
         logoutAllDevices(userId, null, null, false);
     }
@@ -105,12 +117,18 @@ public class AuthSessionService {
      * 全デバイスからのログアウトを行う。
      * keepCurrent=true の場合は現セッションを除外して無効化する。
      *
+     * <p><b>トランザクション境界（{@link Propagation#REQUIRES_NEW}）</b>: 1 引数版と同じく、セッションの一斉無効化は
+     * 呼び出し元トランザクションの巻き戻しで消えてはならないため独立トランザクションで即コミットする。
+     * なお 1 引数版 {@link #logoutAllDevices(Long)} は本メソッドを<b>自己呼び出し（同一 Bean 内呼び出し）</b>するため、
+     * その経路では本アノテーションはプロキシを経由せず効かない（1 引数版が張った新トランザクションにそのまま参加する）。
+     * 本アノテーションが効くのは本メソッドが<b>外部 Bean から直接</b>呼ばれる経路（例: セッション画面からの一斉ログアウト）である。</p>
+     *
      * @param userId           ユーザーID
      * @param currentTokenHash 現セッションのトークンハッシュ（nullable）
      * @param currentSessionId 現セッションのID（nullable）
      * @param keepCurrent      true の場合、現セッションを維持する
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void logoutAllDevices(Long userId, String currentTokenHash, Long currentSessionId, boolean keepCurrent) {
         // 1. 全アクティブRefreshToken取得
         List<RefreshTokenEntity> activeTokens = refreshTokenRepository
