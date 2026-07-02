@@ -14,6 +14,7 @@ import com.mannschaft.app.filesharing.repository.SharedFileVersionRepository;
 import com.mannschaft.app.filesharing.service.FolderScopeAccessGuard;
 import com.mannschaft.app.filesharing.service.SharedFileQuotaService;
 import com.mannschaft.app.filesharing.service.SharedFileService;
+import com.mannschaft.app.filesharing.service.SharedFolderQueryService;
 import com.mannschaft.app.filesharing.service.SharedFolderService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -68,6 +69,10 @@ class SharedFileServiceAdditionalTest {
     @Mock
     private FolderScopeAccessGuard folderScopeAccessGuard;
 
+    /** IDOR 封鎖のためのフォルダスコープ別閲覧認可（一覧・詳細で必ず通す）。void mock は既定で通過する。 */
+    @Mock
+    private SharedFolderQueryService folderQueryService;
+
     @InjectMocks
     private SharedFileService service;
 
@@ -108,7 +113,7 @@ class SharedFileServiceAdditionalTest {
             given(fileSharingMapper.toFileResponseList(any()))
                     .willReturn(List.of(mockFileResponse()));
 
-            List<FileResponse> result = service.listFiles(FOLDER_ID);
+            List<FileResponse> result = service.listFiles(FOLDER_ID, USER_ID);
 
             assertThat(result).hasSize(1);
         }
@@ -131,7 +136,7 @@ class SharedFileServiceAdditionalTest {
                     .willReturn(page);
             given(fileSharingMapper.toFileResponse(entity)).willReturn(mockFileResponse());
 
-            Page<FileResponse> result = service.listFilesPaged(FOLDER_ID, PageRequest.of(0, 10));
+            Page<FileResponse> result = service.listFilesPaged(FOLDER_ID, USER_ID, PageRequest.of(0, 10));
 
             assertThat(result.getContent()).hasSize(1);
         }
@@ -152,7 +157,7 @@ class SharedFileServiceAdditionalTest {
             given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(entity));
             given(fileSharingMapper.toFileResponse(entity)).willReturn(mockFileResponse());
 
-            FileResponse result = service.getFile(FILE_ID);
+            FileResponse result = service.getFile(FILE_ID, USER_ID);
 
             assertThat(result.getName()).isEqualTo("test.pdf");
         }
@@ -162,7 +167,7 @@ class SharedFileServiceAdditionalTest {
         void ファイル詳細_不在_例外() {
             given(fileRepository.findById(FILE_ID)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.getFile(FILE_ID))
+            assertThatThrownBy(() -> service.getFile(FILE_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(FileSharingErrorCode.FILE_NOT_FOUND));
