@@ -63,6 +63,8 @@ public class TimelinePostService {
 
     private static final int MAX_ATTACHMENTS = 10;
     private static final int DEFAULT_FEED_SIZE = 20;
+    /** 投稿詳細に同梱するリプライプレビュー（会話の古い順・先頭から）の最大件数。 */
+    private static final int RECENT_REPLIES_LIMIT = 5;
 
     /** F13 Phase 4-γ: storage_usage_logs.reference_type に記録するテーブル名。 */
     private static final String REFERENCE_TYPE = "timeline_post_attachments";
@@ -89,7 +91,7 @@ public class TimelinePostService {
     private final com.mannschaft.app.membership.service.MembershipService membershipService;
     /**
      * 個人集約タイムラインの投稿元（team/org 名）・著者（表示名/アバター）・代理主体（team/org 名/ロゴ）の
-     * バッチ名前解決。N+1 を避けるため種別ごとに 1 回だけ呼ぶ（{@link #enrichMyFeed}）。
+     * バッチ名前解決。N+1 を避けるため種別ごとに 1 回だけ呼ぶ（{@link #enrichPosts}）。
      * ドメイン境界原則に従い team/organization/user の Entity を直参照せず、プリミティブ Map のみを受け取る。
      */
     private final NameResolverService nameResolverService;
@@ -433,6 +435,12 @@ public class TimelinePostService {
 
         PollResponse pollResponse = pollService.getPollByPostId(postId, userId);
 
+        // リプライのプレビュー（会話の古い順＝createdAt 昇順・先頭最大 RECENT_REPLIES_LIMIT 件）を enrich して同梱する。
+        // リプライ一覧 API の ID 昇順キーセットページングと一貫させ「古い順・先頭N件」で統一する（最新N件ではない）。
+        // enrichPosts を通すことで一覧と同じく著者名/アバター・投稿元名/slug・代理主体が付与される。
+        List<PostResponse> recentReplies = enrichPosts(timelineMapper.toPostResponseList(
+                postRepository.findRepliesByParentId(postId, PageRequest.of(0, RECENT_REPLIES_LIMIT))));
+
         return PostDetailResponse.builder()
                 .id(post.getId())
                 .scope(new PostDetailResponse.PostScopeDto(
@@ -463,6 +471,7 @@ public class TimelinePostService {
                 .audit(new PostDetailResponse.PostAuditDto(
                         post.getCreatedAt(),
                         post.getUpdatedAt()))
+                .recentReplies(recentReplies)
                 .build();
     }
 
@@ -491,7 +500,9 @@ public class TimelinePostService {
         } else {
             posts = postRepository.findFeedByScopeType(scopeTypeEnum, scopeId, PageRequest.of(0, feedSize));
         }
-        return timelineMapper.toPostResponseList(posts);
+        // スコープ別フィードにも著者名/アバター・投稿元名/slug・代理主体を enrich する
+        // （マイフィードと同じ enrichPosts を通す）。
+        return enrichPosts(timelineMapper.toPostResponseList(posts));
     }
 
     /**
@@ -531,12 +542,15 @@ public class TimelinePostService {
 
         List<TimelinePostEntity> posts = postRepository.findMyFeed(
                 safeTeamIds, safeOrgIds, cursor, PageRequest.of(0, feedSize));
-        return enrichMyFeed(timelineMapper.toPostResponseList(posts));
+        return enrichPosts(timelineMapper.toPostResponseList(posts));
     }
 
     /**
-     * 個人集約タイムラインの投稿群に「投稿元（team/org 名・slug）」「著者（表示名・アバター）」
+     * 投稿群に「投稿元（team/org 名・slug）」「著者（表示名・アバター）」
      * 「代理投稿主体（team/org 名・ロゴ）」をバッチ enrich して付与する。
+     *
+     * <p>マイフィード・スコープ別フィード・ピン留め一覧・リプライ一覧・投稿詳細の直近リプライの
+     * すべてから共通で呼ばれる（myFeed 固有依存は無い）。</p>
      *
      * <p><b>N+1 回避</b>: 全投稿から ID 集合を収集し、名前解決/slug 解決は種別ごとに 1 回だけ呼ぶ
      * （{@link FriendFeedService} の enrich パターンを踏襲）。team/org 名・アイコンは「投稿元スコープ」と
@@ -544,7 +558,8 @@ public class TimelinePostService {
      *
      * <p><b>null 安全</b>: 退会・匿名化ユーザー／論理削除された team/org は各 Map に含まれないため、
      * 表示名は既定文言（{@value #UNKNOWN_USER_NAME} 等）へフォールバックする（例外を投げない）。
-     * postedAsType=USER/SOCIAL_PROFILE の場合は {@code postedAs} を付与せず {@code null} のままとする。</p>
+     * postedAsType=USER/SOCIAL_PROFILE の場合は {@code postedAs} を付与せず {@code null} のままとする。
+     * 投稿が空（enrich 対象 ID が無い）の場合は解決を一切呼ばずそのまま返す。</p>
      *
      * <p>ドメイン境界: timeline → team/organization/user の参照は Service（NameResolver 等）経由で
      * プリミティブのみを受け取り、Entity を跨いで持ち込まない（新規クロスドメイン FK は作らない）。</p>
@@ -552,7 +567,7 @@ public class TimelinePostService {
      * @param posts マッパー変換済みの投稿レスポンス（生 ID のみ）
      * @return enrich 済みの投稿レスポンス（順序保持）
      */
-    private List<PostResponse> enrichMyFeed(List<PostResponse> posts) {
+    private List<PostResponse> enrichPosts(List<PostResponse> posts) {
         if (posts == null || posts.isEmpty()) {
             return posts;
         }
@@ -679,17 +694,21 @@ public class TimelinePostService {
     }
 
     /**
-     * 投稿のリプライ一覧を取得する。
+     * 投稿のリプライ一覧をカーソルページネーションで取得する。
      *
-     * @param postId 投稿ID
-     * @param size   取得件数
-     * @return リプライ一覧
+     * <p>著者名/アバター・投稿元名/slug・代理主体を {@link #enrichPosts} で付与する
+     * （一覧フィードと同一の表示情報）。ID 昇順で並べ、{@code cursor} 指定時はその ID より後を返す。</p>
+     *
+     * @param postId 親投稿ID
+     * @param cursor 起点カーソル（この投稿 ID より後を取得）。null なら先頭から
+     * @param size   取得件数（1 件以上・0 以下は既定 20）
+     * @return enrich 済みリプライ一覧（ID 昇順）
      */
-    public List<PostResponse> getReplies(Long postId, int size) {
+    public List<PostResponse> getReplies(Long postId, Long cursor, int size) {
         int feedSize = size > 0 ? size : DEFAULT_FEED_SIZE;
-        List<TimelinePostEntity> replies = postRepository.findRepliesByParentId(
-                postId, PageRequest.of(0, feedSize));
-        return timelineMapper.toPostResponseList(replies);
+        List<TimelinePostEntity> replies = postRepository.findRepliesByParentIdAfterCursor(
+                postId, cursor, PageRequest.of(0, feedSize));
+        return enrichPosts(timelineMapper.toPostResponseList(replies));
     }
 
     /**
@@ -702,7 +721,8 @@ public class TimelinePostService {
     public List<PostResponse> getPinnedPosts(String scopeType, Long scopeId) {
         PostScopeType scopeTypeEnum = PostScopeType.valueOf(scopeType);
         List<TimelinePostEntity> posts = postRepository.findPinnedPosts(scopeTypeEnum, scopeId);
-        return timelineMapper.toPostResponseList(posts);
+        // ピン留め一覧にも著者名/アバター・投稿元名/slug・代理主体を enrich する。
+        return enrichPosts(timelineMapper.toPostResponseList(posts));
     }
 
     /**

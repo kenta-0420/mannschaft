@@ -4,6 +4,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.timeline.dto.CreatePostRequest;
 import com.mannschaft.app.timeline.dto.PostDetailResponse;
 import com.mannschaft.app.timeline.dto.PostResponse;
+import com.mannschaft.app.timeline.dto.TimelineFeedResponse;
 import com.mannschaft.app.timeline.dto.UpdatePostRequest;
 import com.mannschaft.app.timeline.service.TimelinePostService;
 import com.mannschaft.app.timeline.service.TimelineScopeIdResolver;
@@ -95,15 +96,24 @@ public class TimelinePostController {
 
     /**
      * 投稿のリプライ一覧を取得する。
+     *
+     * <p>FE の {@code getReplies} は {@code TimelineFeedResponse}
+     * （{@code {data:{pinned:[],posts:[...]},meta:{nextCursor,...}}}）を期待し
+     * {@code res.data.posts} / {@code res.meta.nextCursor} を読む。フィード（{@code /feed}・
+     * {@code /my}）と同一形式で返すことで、旧 {@code {data:[配列]}} 形状による
+     * 「返信が表示されない（常に undefined）」を根治する。クエリは FE が送る
+     * {@code cursor} / {@code limit} に一致させる。リプライも {@code enrichPosts} を通して
+     * 著者名/アバター・投稿元名/slug・代理主体を付与する。</p>
      */
     @GetMapping("/{id}/replies")
     @Operation(summary = "リプライ一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<List<PostResponse>>> getReplies(
+    public ResponseEntity<TimelineFeedResponse> getReplies(
             @PathVariable Long id,
-            @RequestParam(defaultValue = "20") int size) {
-        List<PostResponse> replies = postService.getReplies(id, size);
-        return ResponseEntity.ok(ApiResponse.of(replies));
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "20") int limit) {
+        List<PostResponse> replies = postService.getReplies(id, cursor, limit);
+        return ResponseEntity.ok(TimelineFeedResponse.ofReplies(replies, limit));
     }
 
     /**

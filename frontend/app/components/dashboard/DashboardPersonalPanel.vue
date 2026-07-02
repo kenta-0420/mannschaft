@@ -137,8 +137,6 @@ function linkTo(widgetKey: string): string | undefined {
     'my-organizations': '/organizations',
     favorites: '/my/favorites',
     'recent-activity': '/timeline',
-    notifications: '/notifications',
-    inbox: '/inbox',
   }
   return personalLinks[widgetKey]
 }
