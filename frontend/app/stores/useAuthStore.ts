@@ -107,6 +107,33 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    /**
+     * ログイン直後にアカウント設定（外観・ナビ）をサーバーから同期する。
+     *
+     * 【呼び出しタイミング】
+     * 実ログイン成立後（login.vue・2fa-verify.vue・OAuth コールバック）にのみ呼ぶこと。
+     * プロフィール更新（locale/avatar 変更等）での setUser 呼び出し時には呼ばない。
+     *
+     * 【設計方針】
+     * 外観・ナビ設定の同期失敗でログイン遷移をブロックしない（fire-and-forget）。
+     * BEに保存済み設定が新ブラウザ（シークレット等）でも反映されるよう、
+     * ログイン直後に localStorage/cookie へ永続化し DOM に適用する。
+     *
+     * loadFromServer() は成功時に localStorage/cookie へ永続化・DOM 適用まで完了するため、
+     * 呼び出し元で追加処理は不要。
+     */
+    syncAccountSettings() {
+      if (!import.meta.client) return
+      // ログイン遷移をブロックしないよう void で fire-and-forget する。
+      // 失敗は握りつぶす（表示設定の同期失敗でログインを止めない設計判断）。
+      void Promise.all([
+        useAppearanceStore().loadFromServer(),
+        useNavSettingsStore().loadFromServer(),
+      ]).catch((err) => {
+        console.error('[syncAccountSettings] 設定同期失敗:', err)
+      })
+    },
+
     async setUser(user: AuthUser) {
       // 処理順: 旧ユーザー ID を先読み → state/localStorage を即時設定 → 非同期破棄を後置。
       // state 先行により、直後の isSystemAdmin 等の getter が新ユーザーの値で正しく評価される。
