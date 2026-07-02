@@ -1392,6 +1392,19 @@
       "skillsSummaryHint": "活かせる経験・知識・技術を自由に記述してください（構造化スキルは下のスキルセクションに入力）",
       "excelPreviewUnavailable": "Excel ファイルのプレビューはブラウザで表示できません",
       "downloadLabel": "{format}ダウンロード（{type}）"
+    },
+    "menu": "メニュー",
+    "scopeShell": {
+      "supporter_cancel_confirm_title": "サポーターをやめますか？",
+      "supporter_cancel_confirm_body": "{name}のサポーターをやめます。よろしいですか？",
+      "supporter_cancel_action": "やめる",
+      "supporter_registered": "サポーターとして登録しました",
+      "supporter_applied": "サポーター申請を送信しました",
+      "supporter_canceled": "サポーターをやめました",
+      "leave_action": "退出する",
+      "load_error_title": "情報を取得できませんでした",
+      "load_error_body": "時間をおいて再度お試しください。権限がない場合は表示できないことがあります。",
+      "back_to_dashboard": "ダッシュボードへ戻る"
     }
   },
   "teamHub": {
@@ -1874,6 +1887,38 @@
     "permission": {
       "title": "設定できる人",
       "body": "機能設定はチーム・組織の管理者だけが開けます。管理者でも、画面右上の表示切り替えが「メンバー表示」になっているとこのタブは隠れます。設定したいときは「管理者表示」に切り替えてください。"
+    }
+  },
+  "teamShell": {
+    "tab": {
+      "dashboard": "ダッシュボード",
+      "info": "基本情報",
+      "members": "メンバー",
+      "invites": "招待",
+      "supporters": "サポーター管理",
+      "modules": "機能設定"
+    },
+    "action": {
+      "leave_confirm_title": "チームから退出",
+      "leave_confirm_body": "本当にこのチームから退出しますか？この操作は取り消せません。",
+      "left": "チームから退出しました"
+    }
+  },
+  "orgShell": {
+    "tab": {
+      "dashboard": "ダッシュボード",
+      "info": "基本情報",
+      "members": "メンバー",
+      "member_teams": "所属チーム",
+      "invites": "招待",
+      "permission_groups": "権限グループ",
+      "supporters": "サポーター管理",
+      "modules": "機能設定"
+    },
+    "action": {
+      "leave_confirm_title": "組織から退出",
+      "leave_confirm_body": "本当にこの組織から退出しますか？この操作は取り消せません。",
+      "left": "組織から退出しました"
     }
   },
   "blog_guide": {

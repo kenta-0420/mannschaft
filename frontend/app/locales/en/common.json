@@ -1392,6 +1392,19 @@
       "skillsSummaryHint": "Describe your experience, knowledge, and skills freely (add structured skills in the skills section below)",
       "excelPreviewUnavailable": "Excel file preview is not available in the browser",
       "downloadLabel": "Download {format} ({type})"
+    },
+    "menu": "Menu",
+    "scopeShell": {
+      "supporter_cancel_confirm_title": "Stop supporting?",
+      "supporter_cancel_confirm_body": "Stop supporting {name}. Are you sure?",
+      "supporter_cancel_action": "Stop",
+      "supporter_registered": "Registered as a supporter",
+      "supporter_applied": "Supporter application sent",
+      "supporter_canceled": "Stopped supporting",
+      "leave_action": "Leave",
+      "load_error_title": "Could not load information",
+      "load_error_body": "Please try again later. It may be hidden if you do not have permission.",
+      "back_to_dashboard": "Back to dashboard"
     }
   },
   "teamHub": {
@@ -1874,6 +1887,38 @@
     "permission": {
       "title": "設定できる人",
       "body": "機能設定はチーム・組織の管理者だけが開けます。管理者でも、画面右上の表示切り替えが「メンバー表示」になっているとこのタブは隠れます。設定したいときは「管理者表示」に切り替えてください。"
+    }
+  },
+  "teamShell": {
+    "tab": {
+      "dashboard": "Dashboard",
+      "info": "Basic Info",
+      "members": "Members",
+      "invites": "Invites",
+      "supporters": "Supporter Management",
+      "modules": "Features"
+    },
+    "action": {
+      "leave_confirm_title": "Leave team",
+      "leave_confirm_body": "Are you sure you want to leave this team? This cannot be undone.",
+      "left": "Left the team"
+    }
+  },
+  "orgShell": {
+    "tab": {
+      "dashboard": "Dashboard",
+      "info": "Basic Info",
+      "members": "Members",
+      "member_teams": "Teams",
+      "invites": "Invites",
+      "permission_groups": "Permission Groups",
+      "supporters": "Supporter Management",
+      "modules": "Features"
+    },
+    "action": {
+      "leave_confirm_title": "Leave organization",
+      "leave_confirm_body": "Are you sure you want to leave this organization? This cannot be undone.",
+      "left": "Left the organization"
     }
   },
   "blog_guide": {

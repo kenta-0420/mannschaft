@@ -7,7 +7,7 @@ import {
   type TournamentVisibility,
 } from '~/utils/tournamentStandings'
 
-definePageMeta({ layout: 'organization', middleware: 'auth' })
+definePageMeta({ middleware: 'auth' })
 const route = useRoute()
 const orgId = String(route.params.slug)
 

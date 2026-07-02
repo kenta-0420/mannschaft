@@ -1392,6 +1392,19 @@
       "skillsSummaryHint": "활용 가능한 경험·지식·기술을 자유롭게 기술해 주세요（구조화된 스킬은 아래 스킬 섹션에 입력）",
       "excelPreviewUnavailable": "브라우저에서 Excel 파일을 미리 볼 수 없습니다",
       "downloadLabel": "{format} 다운로드（{type}）"
+    },
+    "menu": "메뉴",
+    "scopeShell": {
+      "supporter_cancel_confirm_title": "서포터를 그만두시겠습니까？",
+      "supporter_cancel_confirm_body": "{name}의 서포터를 그만둡니다. 괜찮으신가요？",
+      "supporter_cancel_action": "그만두기",
+      "supporter_registered": "서포터로 등록했습니다",
+      "supporter_applied": "서포터 신청을 보냈습니다",
+      "supporter_canceled": "서포터를 그만두었습니다",
+      "leave_action": "나가기",
+      "load_error_title": "정보를 가져올 수 없습니다",
+      "load_error_body": "잠시 후 다시 시도해 주세요. 권한이 없으면 표시되지 않을 수 있습니다.",
+      "back_to_dashboard": "대시보드로 돌아가기"
     }
   },
   "teamHub": {
@@ -1874,6 +1887,38 @@
     "permission": {
       "title": "設定できる人",
       "body": "機能設定はチーム・組織の管理者だけが開けます。管理者でも、画面右上の表示切り替えが「メンバー表示」になっているとこのタブは隠れます。設定したいときは「管理者表示」に切り替えてください。"
+    }
+  },
+  "teamShell": {
+    "tab": {
+      "dashboard": "대시보드",
+      "info": "기본 정보",
+      "members": "멤버",
+      "invites": "초대",
+      "supporters": "서포터 관리",
+      "modules": "기능 설정"
+    },
+    "action": {
+      "leave_confirm_title": "팀에서 나가기",
+      "leave_confirm_body": "정말 이 팀에서 나가시겠습니까? 이 작업은 취소할 수 없습니다.",
+      "left": "팀에서 나갔습니다"
+    }
+  },
+  "orgShell": {
+    "tab": {
+      "dashboard": "대시보드",
+      "info": "기본 정보",
+      "members": "멤버",
+      "member_teams": "소속 팀",
+      "invites": "초대",
+      "permission_groups": "권한 그룹",
+      "supporters": "서포터 관리",
+      "modules": "기능 설정"
+    },
+    "action": {
+      "leave_confirm_title": "조직에서 나가기",
+      "leave_confirm_body": "정말 이 조직에서 나가시겠습니까? 이 작업은 취소할 수 없습니다.",
+      "left": "조직에서 나갔습니다"
     }
   },
   "blog_guide": {

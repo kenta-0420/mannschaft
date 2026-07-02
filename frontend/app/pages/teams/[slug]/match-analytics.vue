@@ -12,7 +12,7 @@
  */
 import type { TeamMatchStatsResponse } from '~/types/match'
 
-definePageMeta({ layout: 'team', middleware: 'auth' })
+definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
 // [slug] ルートでは params.slug を使う（params.id は undefined）

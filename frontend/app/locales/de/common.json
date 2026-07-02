@@ -1392,6 +1392,19 @@
       "skillsSummaryHint": "Beschreibe frei deine Erfahrungen, Kenntnisse und Fähigkeiten (strukturierte Skills bitte im unten stehenden Skills-Bereich eintragen)",
       "excelPreviewUnavailable": "Excel-Dateivorschau ist im Browser nicht verfügbar",
       "downloadLabel": "{format} herunterladen ({type})"
+    },
+    "menu": "Menü",
+    "scopeShell": {
+      "supporter_cancel_confirm_title": "Unterstützung beenden?",
+      "supporter_cancel_confirm_body": "Du beendest die Unterstützung von {name}. Bist du sicher?",
+      "supporter_cancel_action": "Beenden",
+      "supporter_registered": "Als Unterstützer registriert",
+      "supporter_applied": "Unterstützerantrag gesendet",
+      "supporter_canceled": "Unterstützung beendet",
+      "leave_action": "Verlassen",
+      "load_error_title": "Informationen konnten nicht geladen werden",
+      "load_error_body": "Bitte versuche es später erneut. Ohne Berechtigung ist die Anzeige evtl. nicht möglich.",
+      "back_to_dashboard": "Zurück zum Dashboard"
     }
   },
   "teamHub": {
@@ -1874,6 +1887,38 @@
     "permission": {
       "title": "設定できる人",
       "body": "機能設定はチーム・組織の管理者だけが開けます。管理者でも、画面右上の表示切り替えが「メンバー表示」になっているとこのタブは隠れます。設定したいときは「管理者表示」に切り替えてください。"
+    }
+  },
+  "teamShell": {
+    "tab": {
+      "dashboard": "Dashboard",
+      "info": "Basisinfo",
+      "members": "Mitglieder",
+      "invites": "Einladungen",
+      "supporters": "Unterstützerverwaltung",
+      "modules": "Funktionen"
+    },
+    "action": {
+      "leave_confirm_title": "Team verlassen",
+      "leave_confirm_body": "Möchtest du dieses Team wirklich verlassen? Dies kann nicht rückgängig gemacht werden.",
+      "left": "Team verlassen"
+    }
+  },
+  "orgShell": {
+    "tab": {
+      "dashboard": "Dashboard",
+      "info": "Basisinfo",
+      "members": "Mitglieder",
+      "member_teams": "Teams",
+      "invites": "Einladungen",
+      "permission_groups": "Berechtigungsgruppen",
+      "supporters": "Unterstützerverwaltung",
+      "modules": "Funktionen"
+    },
+    "action": {
+      "leave_confirm_title": "Organisation verlassen",
+      "leave_confirm_body": "Möchtest du diese Organisation wirklich verlassen? Dies kann nicht rückgängig gemacht werden.",
+      "left": "Organisation verlassen"
     }
   },
   "blog_guide": {

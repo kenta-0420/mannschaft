@@ -3,7 +3,6 @@ import type { ChatChannelResponse } from '~/types/chat'
 
 definePageMeta({
   middleware: 'auth',
-  layout: 'organization',
 })
 
 const route = useRoute()
