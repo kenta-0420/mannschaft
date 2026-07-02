@@ -345,6 +345,50 @@ public class SharedFolderQueryService {
     }
 
     /**
+     * PR-D: ファイルの<b>公開リンク管理認可</b>（発行 / 一覧 / 削除）を当てる。
+     *
+     * <p>マスター確定仕様: 公開リンクは未認証・非会員にファイルを開く capability を配る強力な操作のため、
+     * 発行・一覧・削除は<b>管理者（ADMIN / DEPUTY_ADMIN）限定</b>とする（一般 MEMBER は 403）。
+     * これは削除認可 {@link #authorizeDelete} と同じ「閲覧より強い」権限で、fileId → folder を解決して当てる。
+     * 従来 {@link SharedFileLinkService} は大会フォルダ以外で認可が no-op（素通り）だった穴を本メソッドで是正する。</p>
+     *
+     * <ul>
+     *   <li>PERSONAL: 所有者本人のみ。他人は {@code FOLDER_NOT_FOUND}（404・存在隠蔽）。</li>
+     *   <li>TEAM / ORGANIZATION: {@link AccessControlService#checkAdminOrAbove}（ADMIN / DEPUTY_ADMIN のみ・一般は 403）。</li>
+     *   <li>TOURNAMENT / TOURNAMENT_DIVISION: 既存の編集認可（実質管理者）に委譲。</li>
+     * </ul>
+     *
+     * @param fileId 対象ファイル ID
+     * @param userId 操作ユーザー ID
+     */
+    public void authorizeLinkManageByFileId(Long fileId, Long userId) {
+        SharedFileEntity file = findFileOrThrow(fileId);
+        SharedFolderEntity folder = findFolderOrThrow(file.getFolderId());
+        // 公開リンク管理は削除と同一の「閲覧より強い」権限（管理者 / 所有者限定）を要求する。
+        authorizeDelete(folder, userId);
+    }
+
+    /**
+     * PR-D: 公開リンク経由 DL の <b>C: ダウンロード禁止フラグ（download_disabled）</b>のみを評価する。
+     *
+     * <p>公開リンクはトークンが capability のためフォルダスコープ認可（membership / role）は<b>通さない</b>が、
+     * C: DL 禁止フラグ（実効 = フォルダ OR ファイル）は公開リンクでも<b>必ず</b>貫通防御する。
+     * これにより「リンクで download_allowed=true にしても、ファイル/フォルダが DL 禁止なら DL 不可」
+     * （C 優先の AND 評価）を保証する。禁止なら {@code DOWNLOAD_DISABLED}（403）。</p>
+     *
+     * @param fileId 対象ファイル ID
+     */
+    public void checkDownloadDisabledForSharedLink(Long fileId) {
+        SharedFileEntity file = findFileOrThrow(fileId);
+        SharedFolderEntity folder = findFolderOrThrow(file.getFolderId());
+        boolean effectiveDisabled =
+                Boolean.TRUE.equals(folder.getDownloadDisabled()) || Boolean.TRUE.equals(file.getDownloadDisabled());
+        if (effectiveDisabled) {
+            throw new BusinessException(FileSharingErrorCode.DOWNLOAD_DISABLED);
+        }
+    }
+
+    /**
      * フォルダ実体のスコープに応じて閲覧認可を当てる（漏洩防止の核 ＋ B: フォルダ最低可視ロール）。
      */
     private void authorizeView(SharedFolderEntity folder, Long userId) {

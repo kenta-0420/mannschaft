@@ -227,6 +227,14 @@ public class SecurityConfig {
                 // 設計書: docs/features/F08.7.1_tournament_extensions/04_file_storage.md §3 / §5
                 .requestMatchers(HttpMethod.GET, "/api/v1/tournaments/*/folders").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/tournaments/*/divisions/*/folders").permitAll()
+                // F05.5 PR-D: 公開ファイルリンク（Google Drive 風・未認証可）。
+                // トークンが capability。access=メタ / download-url=DL URL 発行。POST のみ permitAll。
+                // 設計書 §7.4 IDOR 規約どおり `*`（1 階層厳格）で限定・`/**`（再帰）は使わない。
+                // is_active / expires_at / password / download_allowed / download_disabled の各検証は
+                // Service 層（SharedFileLinkService / SharedFolderQueryService）で必ず通す（多層防御）。
+                // トークン総当りは PublicApiRateLimitFilter で公開 file-links バケットとしてレート制限する。
+                .requestMatchers(HttpMethod.POST, "/api/v1/public/file-links/*/access").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/public/file-links/*/download-url").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/*/posts").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/teams/*/posts/*").permitAll()

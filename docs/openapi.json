@@ -347,6 +347,10 @@
       "description": "Phase 1: 井戸端会議チャネル + 日次スレッド"
     },
     {
+      "name": "ファイル共有 - 公開リンク",
+      "description": "F05.5 PR-D 公開ファイルリンク（未認証可）"
+    },
+    {
       "name": "カルテ",
       "description": "F07.4 カルテCRUD・コピー・共有・ピン留め"
     },
@@ -53012,6 +53016,86 @@
         }
       }
     },
+    "/api/v1/public/file-links/{token}/download-url": {
+      "post": {
+        "tags": [
+          "ファイル共有 - 公開リンク"
+        ],
+        "summary": "公開リンク ダウンロードURL発行（未認証可・DL許可リンクのみ）",
+        "operationId": "downloadUrl",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccessLinkRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "発行成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseSharedFileDownloadUrlResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/file-links/{token}/access": {
+      "post": {
+        "tags": [
+          "ファイル共有 - 公開リンク"
+        ],
+        "summary": "公開リンクアクセス（未認証可・メタ返却）",
+        "operationId": "access",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccessLinkRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "アクセス成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseFileResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/public/confirm/{token}": {
       "post": {
         "tags": [
@@ -98901,7 +98985,7 @@
         ],
         "summary": "PDF ダウンロード URL 取得",
         "description": "5 分有効の Pre-signed URL を発行する",
-        "operationId": "downloadUrl",
+        "operationId": "downloadUrl_1",
         "parameters": [
           {
             "name": "scopeType",
@@ -120048,7 +120132,7 @@
           "試合局面写真"
         ],
         "summary": "局面写真の短命ダウンロード URL 発行（閲覧可視性・生 key は返さない）",
-        "operationId": "downloadUrl_1",
+        "operationId": "downloadUrl_2",
         "parameters": [
           {
             "name": "orgId",
@@ -122074,7 +122158,7 @@
           "個人メモ-添付"
         ],
         "summary": "ダウンロード用 Pre-signed URL 発行（5分 TTL）",
-        "operationId": "downloadUrl_2",
+        "operationId": "downloadUrl_3",
         "parameters": [
           {
             "name": "attachmentId",
@@ -127364,7 +127448,7 @@
           "掲示板添付ファイル"
         ],
         "summary": "添付ファイルダウンロード用 presigned URL 発行",
-        "operationId": "downloadUrl_3",
+        "operationId": "downloadUrl_4",
         "parameters": [
           {
             "name": "id",
@@ -171118,6 +171202,31 @@
           }
         }
       },
+      "ApiResponseSharedFileDownloadUrlResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SharedFileDownloadUrlResponse"
+          }
+        }
+      },
+      "SharedFileDownloadUrlResponse": {
+        "type": "object",
+        "description": "ファイル共有 ダウンロードURL レスポンス",
+        "properties": {
+          "downloadUrl": {
+            "type": "string",
+            "description": "R2 Presigned GET URL",
+            "example": "https://r2.example.com/files/TEAM/5/uuid.pdf?X-Amz-..."
+          },
+          "expiresInSeconds": {
+            "type": "integer",
+            "format": "int64",
+            "description": "URL 有効期限（秒）",
+            "example": 900
+          }
+        }
+      },
       "ApiResponsePublicConfirmationResponse": {
         "type": "object",
         "properties": {
@@ -178363,12 +178472,20 @@
       "CreateLinkRequest": {
         "type": "object",
         "properties": {
+          "downloadAllowed": {
+            "type": "boolean",
+            "description": "このリンクでのダウンロード許可。既定 false（閲覧のみ）。true でもファイル/フォルダの download_disabled が優先されDL不可",
+            "example": false
+          },
           "expiresAt": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "リンクの有効期限（必須・最大30日先）",
+            "example": "2026-07-30T00:00:00"
           },
           "password": {
             "type": "string",
+            "description": "任意の閲覧パスワード（設定するとアクセス時に照合）",
             "maxLength": 255,
             "minLength": 0
           }
@@ -178389,6 +178506,9 @@
             "type": "integer",
             "format": "int32"
           },
+          "active": {
+            "type": "boolean"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -178396,6 +178516,9 @@
           "createdBy": {
             "type": "integer",
             "format": "int64"
+          },
+          "downloadAllowed": {
+            "type": "boolean"
           },
           "expiresAt": {
             "type": "string",
@@ -211271,31 +211394,6 @@
             "items": {
               "$ref": "#/components/schemas/LinkResponse"
             }
-          }
-        }
-      },
-      "ApiResponseSharedFileDownloadUrlResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/SharedFileDownloadUrlResponse"
-          }
-        }
-      },
-      "SharedFileDownloadUrlResponse": {
-        "type": "object",
-        "description": "ファイル共有 ダウンロードURL レスポンス",
-        "properties": {
-          "downloadUrl": {
-            "type": "string",
-            "description": "R2 Presigned GET URL",
-            "example": "https://r2.example.com/files/TEAM/5/uuid.pdf?X-Amz-..."
-          },
-          "expiresInSeconds": {
-            "type": "integer",
-            "format": "int64",
-            "description": "URL 有効期限（秒）",
-            "example": 900
           }
         }
       },

@@ -47,6 +47,10 @@ class SharedFileLinkServiceTest {
     @Mock
     private FolderScopeAccessGuard folderScopeAccessGuard;
 
+    // PR-D: createLink/listLinks/deleteLink の発行認可（ADMIN/DEPUTY 限定）と C: download_disabled 貫通防御を担う新依存。
+    @Mock
+    private com.mannschaft.app.filesharing.service.SharedFolderQueryService folderQueryService;
+
     @InjectMocks
     private SharedFileLinkService sharedFileLinkService;
 

@@ -11,5 +11,22 @@
     "disabledLabel": "Disable downloads",
     "disabledHelp": "Hides the download button and refuses to issue download URLs. This is a deterrent only and cannot prevent browser viewing.",
     "disabledError": "Downloading this file is disabled"
+  },
+  "publicLink": {
+    "title": "Public link",
+    "description": "Share this file via a public link with people who are not signed in. View-only by default.",
+    "downloadAllowedLabel": "Allow download",
+    "downloadAllowedHelp": "When on, this link allows downloads. If the file itself disallows downloads, that takes precedence.",
+    "expiresLabel": "Expiry (up to 30 days)",
+    "expiresHelp": "A public link must have an expiry. You can set it up to 30 days ahead.",
+    "adminOnly": "Only admins and deputy admins can issue and manage public links.",
+    "errors": {
+      "notFound": "Shared link not found",
+      "inactive": "This shared link has been deactivated",
+      "expired": "This shared link has expired",
+      "passwordInvalid": "Incorrect password",
+      "downloadNotAllowed": "Download is not allowed for this shared link",
+      "expiryInvalid": "An expiry is required and can be at most 30 days ahead"
+    }
   }
 }

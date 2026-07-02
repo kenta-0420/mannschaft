@@ -130,6 +130,17 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
     private static final Pattern MARKET_API_PATH =
             Pattern.compile("^/api/v1/public/market/(listings(/[^/]+)?|regions|summary|categories)$");
 
+    /**
+     * F05.5 PR-D: 公開ファイルリンク（未認証可）POST 経路のパスパターン。
+     * {@code POST /api/v1/public/file-links/{token}/(access|download-url)} をマッチする。
+     *
+     * <p>公開リンクは未認証で開けるため、トークン総当り（存在するトークンを探す列挙攻撃）を
+     * レート制限で抑止する。PUBLIC_API バケット（60/min/IP・200/min/user）を共有する。
+     * 他の公開 API と異なり本経路は <b>POST</b> のため、{@link #shouldNotFilter} で POST を許可する。</p>
+     */
+    private static final Pattern PUBLIC_FILE_LINKS_PATH =
+            Pattern.compile("^/api/v1/public/file-links/([^/]+)/(access|download-url)$");
+
     /** F15.4 Phase 5-α 互換: 単独詳細パスのみマッチ（PUBLIC_TEAM_DETAIL_RATE_LIMIT_EXCEEDED 維持用）。 */
     private static final Pattern PUBLIC_TEAM_DETAIL_PATH =
             Pattern.compile("^/api/v1/public/teams/([^/]+)$");
@@ -178,11 +189,16 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        // 対象パス以外は全てスキップ
+        String path = request.getServletPath();
+        // F05.5 PR-D: 公開ファイルリンクは POST 経路のためレート制限対象に含める（トークン総当り防止）。
+        if (PUBLIC_FILE_LINKS_PATH.matcher(path).matches()) {
+            return !"POST".equalsIgnoreCase(request.getMethod());
+        }
+        // それ以外の公開 API は GET のみ対象。
         if (!"GET".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
-        return resolveTarget(request.getServletPath()) == null;
+        return resolveTarget(path) == null;
     }
 
     @Override
@@ -202,7 +218,8 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
         }
         if (PUBLIC_API_PATH.matcher(path).matches()
                 || PUBLIC_SEARCH_PATH.matcher(path).matches()
-                || MARKET_API_PATH.matcher(path).matches()) {
+                || MARKET_API_PATH.matcher(path).matches()
+                || PUBLIC_FILE_LINKS_PATH.matcher(path).matches()) {
             return Target.PUBLIC_API;
         }
         return null;
@@ -293,8 +310,13 @@ public class PublicApiRateLimitFilter extends AbstractRateLimitFilter {
         if (path == null) {
             return "*";
         }
+        // F05.5 PR-D: 公開ファイルリンクのトークン（UUID）を * に正規化（cardinality 爆発防止）。
+        // 数値正規化より先に行う（トークンは非数値のため後段の数値置換では潰せない）。
+        String normalized = path.replaceAll(
+                "/api/v1/public/file-links/[^/]+/(access|download-url)",
+                "/api/v1/public/file-links/*/$1");
         // 数値（Long range）を * に置換
-        return path.replaceAll("/[0-9]+", "/*");
+        return normalized.replaceAll("/[0-9]+", "/*");
     }
 
     /**

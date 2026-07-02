@@ -69,7 +69,36 @@ public enum FileSharingErrorCode implements ErrorCode {
      * <p>HTTP は 403（{@link com.mannschaft.app.common.GlobalExceptionHandler} で FILE_SHARING_017 →
      * FORBIDDEN を明示登録）。閲覧（メタ／一覧／詳細）は通し、DL URL 発行のみ拒否する。</p>
      */
-    DOWNLOAD_DISABLED("FILE_SHARING_017", "このファイルはダウンロードが禁止されています", Severity.WARN);
+    DOWNLOAD_DISABLED("FILE_SHARING_017", "このファイルはダウンロードが禁止されています", Severity.WARN),
+
+    /**
+     * PR-D: 公開リンクが手動失効している（is_active=false）。
+     *
+     * <p>発行者がリンクを無効化した場合、以降のアクセスを拒否する。HTTP は 410 Gone
+     * （{@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録）。意図的に無効化された
+     * リソースは「もう存在しない」セマンティクスの 410 が適切（期限切れ LINK_EXPIRED と同じ扱い）。</p>
+     */
+    LINK_INACTIVE("FILE_SHARING_018", "この共有リンクは無効化されています", Severity.WARN),
+
+    /**
+     * PR-D: 公開リンクにダウンロードが許可されていない（download_allowed=false）。
+     *
+     * <p>マスター確定仕様で公開リンクは既定「閲覧のみ」。DL URL 発行はリンク発行時に明示オプトインした
+     * リンクのみ許す。未許可リンクで download-url を叩くと 403 Forbidden
+     * （{@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録）。
+     * なお download_allowed=true でもファイル/フォルダの download_disabled（C）が true なら
+     * {@link #DOWNLOAD_DISABLED}（C 優先）で拒否される。</p>
+     */
+    LINK_DOWNLOAD_NOT_ALLOWED("FILE_SHARING_019", "この共有リンクではダウンロードできません", Severity.WARN),
+
+    /**
+     * PR-D: 公開リンク発行時の有効期限が不正（未指定・過去・30日超）。
+     *
+     * <p>マスター確定仕様で expires_at は必須・最大30日。無期限リンクは不可。未指定 / 過去 / 30日超で
+     * 発行しようとすると 400 Bad Request（Severity.WARN の既定マッピング）。</p>
+     */
+    LINK_EXPIRY_INVALID("FILE_SHARING_020",
+            "共有リンクの有効期限は必須で、最大30日先まで指定できます", Severity.WARN);
 
     private final String code;
     private final String message;
