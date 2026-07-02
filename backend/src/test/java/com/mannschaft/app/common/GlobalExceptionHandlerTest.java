@@ -504,6 +504,48 @@ class GlobalExceptionHandlerTest {
             assertThat(response.getBody()).isNotNull();
             assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_013");
         }
+
+        // ========================================
+        // AC-7: セッション失効系（AUTH_039 等）は 401 Unauthorized
+        // リフレッシュトークン並行更新の自爆バグ根治で、全セッション無効化後のアクセスは
+        // 401 で返さないとクライアントが再ログインに遷移できない。
+        // AUTH_039 / AUTH_026 は Severity.WARN 既定（400）のため個別マッピングで 401 に上書きする。
+        // ========================================
+
+        @Test
+        @DisplayName("AC-7: AUTH_039（全デバイス無効化後アクセス）は resolveHttpStatus で 401 Unauthorized になる")
+        void ac7_resolveHttpStatus_AUTH039_401() {
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.auth.AuthErrorCode.AUTH_039);
+
+            assertThat(result).isEqualTo(HttpStatus.UNAUTHORIZED);
+        }
+
+        @Test
+        @DisplayName("AC-7: AUTH_039 の BusinessException は 401 Unauthorized で返る")
+        void ac7_handleBusinessException_AUTH039_401() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.auth.AuthErrorCode.AUTH_039);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("AUTH_039");
+        }
+
+        @Test
+        @DisplayName("AC-7: AUTH_026（リプレイ検出・全セッション無効化）も 401 Unauthorized で返る")
+        void ac7_handleBusinessException_AUTH026_401() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.auth.AuthErrorCode.AUTH_026);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("AUTH_026");
+        }
     }
 
     // ========================================

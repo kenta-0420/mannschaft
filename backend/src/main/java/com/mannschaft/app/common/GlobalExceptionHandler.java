@@ -124,6 +124,11 @@ public class GlobalExceptionHandler {
             Map.entry("AUTH_033", HttpStatus.NOT_FOUND),
             Map.entry("AUTH_034", HttpStatus.CONFLICT),
             Map.entry("AUTH_044", HttpStatus.TOO_MANY_REQUESTS), // レート制限超過 → 429
+            // F01.1 リフレッシュトークン並行更新 競合制御（docs/security/06 §7）:
+            //   セッション失効系は 401 で返さないとクライアントが再ログインへ遷移できない
+            //   （Severity.WARN 既定の 400 を上書き）。
+            Map.entry("AUTH_026", HttpStatus.UNAUTHORIZED), // リプレイ検出・全セッション無効化 → 401
+            Map.entry("AUTH_039", HttpStatus.UNAUTHORIZED), // 全デバイスセッション無効化後のアクセス → 401
             // F02.5 行動メモ: IDOR 対策で 403 ではなく 404 を返す
             Map.entry("ACTION_MEMO_001", HttpStatus.NOT_FOUND),
             Map.entry("ACTION_MEMO_006", HttpStatus.NOT_FOUND),

@@ -86,7 +86,8 @@ access_token（JWT）の `roles` claim は **認可（authority）の起点**で
 
 ## 4. セッション無効化・ローテーション
 
-- **リフレッシュトークンローテーション**: `AuthTokenRotationService` がリフレッシュ毎にトークンを再発行し、旧トークンを失効。失効済みトークンの再利用を検出した場合は全デバイスを無効化（リプレイ攻撃対策）
+- **リフレッシュトークンローテーション**: `AuthTokenRotationService` がリフレッシュ毎にトークンを再発行し、旧トークンに後継ポインタ（`replaced_by_token_hash`）を記録して失効させる。取得は DB 行ロック（`PESSIMISTIC_WRITE`）で直列化（詳細: [06 §7](06_business_logic_and_abuse_prevention.md#7-jwt-refresh-token-ローテーションの競合制御2026-07-02-実装済みに更新)）
+- **並行更新の正規化と真リプレイの区別（2026-07-02 実装済み）**: 失効済みトークンの再提示は一律リプレイ扱いにしない。後継ポインタ有り × grace window（既定 60 秒、`mannschaft.jwt.refresh-rotation-grace-seconds`）以内なら「並行更新の負け側」として正規化し新トークンを発行（全デバイス無効化しない）。grace window 超過の後継有りトークン再提示のみを真リプレイとして `AuthSessionService.logoutAllDevices()` で全デバイス無効化する
 - **JTI ブラックリスト**: ログアウト時、access_token の JTI を Valkey に残存 TTL 分だけ登録して無効化
 - **全デバイス無効化**: ユーザー単位の無効化タイムスタンプを Valkey に保持
 - **セッション一覧・個別無効化・新規デバイス検知**: F12.4 を参照
@@ -141,3 +142,4 @@ access_token（JWT）の `roles` claim は **認可（authority）の起点**で
 | 2026-05-26 | 認証コア強化: Argon2id 段階移行（`DelegatingPasswordEncoder`・ログイン時透過 upgrade）と refresh_token Cookie 発行一元化（デュアルモード）を実装。§3/§5/§6 を実装済みに更新 |
 | 2026-05-30 | §3.1 を新設。access_token の roles claim の現状（`["MEMBER"]` 固定）と SYSTEM_ADMIN を roles 配列に載せる改善を追記。詳細は [03](03_role_authority_model.md) を正典として参照 |
 | 2026-06-02 | §2 Cookie 属性テーブルの `Max-Age` を 900→890 秒（Clock Skew 対策）に修正。§2.3 Clock Skew 対策セクションを新設（JWT `exp` より 10 秒短く設定する根拠・設定値を明記）。§4.1 Valkey 障害時 Fail-Open 方針を新設（本番 Sentinel/Cluster 必須・シングルポイント禁止）。§5 レートリミットテーブルにパスワードリセット申請（3回/分）・メール認証コード送信（3回/分）の数値を追記 |
+| 2026-07-02 | §4 を更新: リフレッシュトークンローテーションの競合制御を DB 行ロック（`PESSIMISTIC_WRITE`）+ grace window 方式に変更（F01.1 自爆バグ根治）。失効済みトークン再提示を一律リプレイ扱いにせず、後継ポインタ（`replaced_by_token_hash`）× grace window（既定 60 秒）で並行更新の正規化と真リプレイを区別するよう記述を更新。詳細は [06 §7](06_business_logic_and_abuse_prevention.md#7-jwt-refresh-token-ローテーションの競合制御2026-07-02-実装済みに更新) を正典として参照 |
