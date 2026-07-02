@@ -536,7 +536,10 @@
       "viewModeKanban": "カンバン表示",
       "deleteButton": "削除",
       "deleteAriaLabel": "このTODOを削除",
-      "deleteConfirm": "このTODOを削除しますか？削除後は元に戻せません。"
+      "deleteConfirm": "このTODOを削除しますか？削除後は元に戻せません。",
+      "sortLabel": "並び順",
+      "sortRecent": "新着順",
+      "sortPriority": "優先度順"
     },
     "field": {
       "status": "ステータス",

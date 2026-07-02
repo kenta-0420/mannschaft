@@ -91741,6 +91741,7 @@ export interface operations {
                 status?: string;
                 page?: number;
                 size?: number;
+                sort?: string;
             };
             header?: never;
             path: {
@@ -107140,6 +107141,7 @@ export interface operations {
                 status?: string;
                 page?: number;
                 size?: number;
+                sort?: string;
             };
             header?: never;
             path: {

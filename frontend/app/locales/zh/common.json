@@ -536,7 +536,10 @@
       "viewModeKanban": "看板视图",
       "deleteButton": "删除",
       "deleteAriaLabel": "删除此待办",
-      "deleteConfirm": "确认删除此待办事项？删除后无法恢复。"
+      "deleteConfirm": "确认删除此待办事项？删除后无法恢复。",
+      "sortLabel": "排序方式",
+      "sortRecent": "最新",
+      "sortPriority": "优先级"
     },
     "field": {
       "status": "状态",

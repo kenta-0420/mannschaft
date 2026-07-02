@@ -536,7 +536,10 @@
       "viewModeKanban": "Kanban view",
       "deleteButton": "Delete",
       "deleteAriaLabel": "Delete this TODO",
-      "deleteConfirm": "Delete this TODO? This cannot be undone."
+      "deleteConfirm": "Delete this TODO? This cannot be undone.",
+      "sortLabel": "Sort by",
+      "sortRecent": "Newest",
+      "sortPriority": "Priority"
     },
     "field": {
       "status": "Status",

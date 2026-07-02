@@ -536,7 +536,10 @@
       "viewModeKanban": "Vista Kanban",
       "deleteButton": "Eliminar",
       "deleteAriaLabel": "Eliminar este TODO",
-      "deleteConfirm": "¿Eliminar este TODO? Esta acción no se puede deshacer."
+      "deleteConfirm": "¿Eliminar este TODO? Esta acción no se puede deshacer.",
+      "sortLabel": "Ordenar por",
+      "sortRecent": "Más reciente",
+      "sortPriority": "Prioridad"
     },
     "field": {
       "status": "Estado",

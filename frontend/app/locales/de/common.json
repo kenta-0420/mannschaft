@@ -536,7 +536,10 @@
       "viewModeKanban": "Kanban-Ansicht",
       "deleteButton": "Löschen",
       "deleteAriaLabel": "Diesen Eintrag löschen",
-      "deleteConfirm": "Diesen Eintrag löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+      "deleteConfirm": "Diesen Eintrag löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "sortLabel": "Sortieren nach",
+      "sortRecent": "Neueste",
+      "sortPriority": "Priorität"
     },
     "field": {
       "status": "Status",

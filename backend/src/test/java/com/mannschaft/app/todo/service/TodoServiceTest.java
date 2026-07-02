@@ -28,9 +28,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -233,7 +235,7 @@ class TodoServiceTest {
 
             // When
             PagedResponse<TodoResponse> response = todoService.listTodos(
-                    SCOPE_TYPE, SCOPE_ID, TodoStatus.OPEN, 0, 20);
+                    SCOPE_TYPE, SCOPE_ID, TodoStatus.OPEN, 0, 20, "RECENT");
 
             // Then
             assertThat(response.getData()).hasSize(1);
@@ -252,7 +254,7 @@ class TodoServiceTest {
 
             // When
             PagedResponse<TodoResponse> response = todoService.listTodos(
-                    SCOPE_TYPE, SCOPE_ID, null, 0, 20);
+                    SCOPE_TYPE, SCOPE_ID, null, 0, 20, "RECENT");
 
             // Then
             assertThat(response.getData()).isEmpty();
@@ -919,6 +921,101 @@ class TodoServiceTest {
 
             // then
             assertThat(result.getData()).hasSize(2);
+        }
+    }
+
+    // ========================================
+    // listTodos ソート種別
+    // ========================================
+
+    @Nested
+    @DisplayName("listTodos ソート種別")
+    class ListTodosSortType {
+
+        @Test
+        @DisplayName("AC-1: sort=RECENT(既定) で createdAt DESC 順になる")
+        void listTodos_sortRecent_createdAtDesc() {
+            // Given
+            ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+            Page<TodoEntity> page = new PageImpl<>(List.of());
+            given(todoRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(
+                    eq(SCOPE_TYPE), eq(SCOPE_ID), pageableCaptor.capture()))
+                    .willReturn(page);
+
+            // When
+            todoService.listTodos(SCOPE_TYPE, SCOPE_ID, null, 0, 20, "RECENT");
+
+            // Then
+            Sort sort = pageableCaptor.getValue().getSort();
+            Sort.Order order = sort.getOrderFor("createdAt");
+            assertThat(order).isNotNull();
+            assertThat(order.getDirection()).isEqualTo(Sort.Direction.DESC);
+        }
+
+        @Test
+        @DisplayName("AC-2: sort=PRIORITY で priority DESC → dueDate ASC → createdAt DESC になる")
+        void listTodos_sortPriority_priorityDescDueDateAscCreatedAtDesc() {
+            // Given
+            ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+            Page<TodoEntity> page = new PageImpl<>(List.of());
+            given(todoRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(
+                    eq(SCOPE_TYPE), eq(SCOPE_ID), pageableCaptor.capture()))
+                    .willReturn(page);
+
+            // When
+            todoService.listTodos(SCOPE_TYPE, SCOPE_ID, null, 0, 20, "PRIORITY");
+
+            // Then
+            Sort sort = pageableCaptor.getValue().getSort();
+            Sort.Order priorityOrder = sort.getOrderFor("priority");
+            Sort.Order dueDateOrder = sort.getOrderFor("dueDate");
+            Sort.Order createdAtOrder = sort.getOrderFor("createdAt");
+            assertThat(priorityOrder).isNotNull();
+            assertThat(priorityOrder.getDirection()).isEqualTo(Sort.Direction.DESC);
+            assertThat(dueDateOrder).isNotNull();
+            assertThat(dueDateOrder.getDirection()).isEqualTo(Sort.Direction.ASC);
+            assertThat(createdAtOrder).isNotNull();
+            assertThat(createdAtOrder.getDirection()).isEqualTo(Sort.Direction.DESC);
+        }
+
+        @Test
+        @DisplayName("AC-3: 不正値は RECENT にフォールバックする（createdAt DESC になる）")
+        void listTodos_invalidSortValue_fallbackToRecent() {
+            // Given
+            ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+            Page<TodoEntity> page = new PageImpl<>(List.of());
+            given(todoRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(
+                    eq(SCOPE_TYPE), eq(SCOPE_ID), pageableCaptor.capture()))
+                    .willReturn(page);
+
+            // When: 不正な値 → RECENT フォールバック
+            todoService.listTodos(SCOPE_TYPE, SCOPE_ID, null, 0, 20, "INVALID_VALUE");
+
+            // Then
+            Sort sort = pageableCaptor.getValue().getSort();
+            Sort.Order order = sort.getOrderFor("createdAt");
+            assertThat(order).isNotNull();
+            assertThat(order.getDirection()).isEqualTo(Sort.Direction.DESC);
+        }
+
+        @Test
+        @DisplayName("AC-3: null は RECENT にフォールバックする（createdAt DESC になる）")
+        void listTodos_nullSortValue_fallbackToRecent() {
+            // Given
+            ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+            Page<TodoEntity> page = new PageImpl<>(List.of());
+            given(todoRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(
+                    eq(SCOPE_TYPE), eq(SCOPE_ID), pageableCaptor.capture()))
+                    .willReturn(page);
+
+            // When: null → RECENT フォールバック
+            todoService.listTodos(SCOPE_TYPE, SCOPE_ID, null, 0, 20, null);
+
+            // Then
+            Sort sort = pageableCaptor.getValue().getSort();
+            Sort.Order order = sort.getOrderFor("createdAt");
+            assertThat(order).isNotNull();
+            assertThat(order.getDirection()).isEqualTo(Sort.Direction.DESC);
         }
     }
 
