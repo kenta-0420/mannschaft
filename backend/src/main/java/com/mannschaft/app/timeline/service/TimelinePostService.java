@@ -63,7 +63,7 @@ public class TimelinePostService {
 
     private static final int MAX_ATTACHMENTS = 10;
     private static final int DEFAULT_FEED_SIZE = 20;
-    /** 投稿詳細に同梱する直近リプライ（プレビュー）の最大件数。 */
+    /** 投稿詳細に同梱するリプライプレビュー（会話の古い順・先頭から）の最大件数。 */
     private static final int RECENT_REPLIES_LIMIT = 5;
 
     /** F13 Phase 4-γ: storage_usage_logs.reference_type に記録するテーブル名。 */
@@ -435,7 +435,8 @@ public class TimelinePostService {
 
         PollResponse pollResponse = pollService.getPollByPostId(postId, userId);
 
-        // 直近リプライ（最大 RECENT_REPLIES_LIMIT 件・時系列昇順）を enrich して同梱する。
+        // リプライのプレビュー（会話の古い順＝createdAt 昇順・先頭最大 RECENT_REPLIES_LIMIT 件）を enrich して同梱する。
+        // リプライ一覧 API の ID 昇順キーセットページングと一貫させ「古い順・先頭N件」で統一する（最新N件ではない）。
         // enrichPosts を通すことで一覧と同じく著者名/アバター・投稿元名/slug・代理主体が付与される。
         List<PostResponse> recentReplies = enrichPosts(timelineMapper.toPostResponseList(
                 postRepository.findRepliesByParentId(postId, PageRequest.of(0, RECENT_REPLIES_LIMIT))));

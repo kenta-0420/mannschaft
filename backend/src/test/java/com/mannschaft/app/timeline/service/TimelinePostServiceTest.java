@@ -1211,9 +1211,12 @@ class TimelinePostServiceTest {
         }
 
         @Test
-        @DisplayName("AC-13: 詳細レスポンスに recentReplies（直近最大5件・enrich済み）が含まれる")
+        @DisplayName("AC-13: recentReplies は会話の古い順（createdAt昇順）・先頭最大5件に切られ enrich される")
         void AC13_recentRepliesが含まれる() {
-            // given: 親投稿 + 返信2件
+            // given: 親投稿。返信は 6 件以上存在するが、詳細は先頭5件のみプレビューする。
+            // 単体テストではリポジトリ mock が LIMIT を適用しないため、
+            // 「PageRequest.of(0,5) で問い合わせる」ことで DB 側 LIMIT 5 を強制する契約を検証する。
+            // mock 返却は LIMIT 5 の DB 結果を模し、ASC 先頭5件（id/createdAt 昇順の 11..15）とする。
             TimelinePostEntity post = createPost();
             given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
             given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
@@ -1221,25 +1224,36 @@ class TimelinePostServiceTest {
             given(timelineMapper.toAttachmentResponseList(any())).willReturn(List.of());
             given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
 
-            // 直近返信は findRepliesByParentId（既存・ASC）で最大5件取得する
+            // DB は createdAt 昇順・先頭5件（id 11〜15）を返す。id=16 の6件目は LIMIT 5 で含まれない。
+            List<TimelinePostEntity> firstFiveEntities = List.of(
+                    createPost(), createPost(), createPost(), createPost(), createPost());
             given(postRepository.findRepliesByParentId(eq(POST_ID), eq(PageRequest.of(0, 5))))
-                    .willReturn(List.of(createPost(), createPost()));
+                    .willReturn(firstFiveEntities);
             given(timelineMapper.toPostResponseList(any())).willReturn(List.of(
                     rawFeedPost(11L, "TEAM", 50L, 100L, "USER", null),
-                    rawFeedPost(12L, "TEAM", 50L, 101L, "USER", null)));
+                    rawFeedPost(12L, "TEAM", 50L, 101L, "USER", null),
+                    rawFeedPost(13L, "TEAM", 50L, 102L, "USER", null),
+                    rawFeedPost(14L, "TEAM", 50L, 103L, "USER", null),
+                    rawFeedPost(15L, "TEAM", 50L, 104L, "USER", null)));
             stubAllResolversEmpty();
             given(nameResolverService.resolveUserDisplayNames(anySet()))
-                    .willReturn(Map.of(100L, "返信者A", 101L, "返信者B"));
+                    .willReturn(Map.of(100L, "返信者A"));
 
             // when
             PostDetailResponse result = timelinePostService.getPostDetail(POST_ID, USER_ID);
 
-            // then: recentReplies が非null・2件・著者名が enrich されている
+            // then: 先頭5件に切られる（6件目 id=16 は含まれない）
             assertThat(result.getRecentReplies()).isNotNull();
-            assertThat(result.getRecentReplies()).hasSize(2);
+            assertThat(result.getRecentReplies()).hasSize(5);
+            assertThat(result.getRecentReplies()).extracting(PostResponse::getId)
+                    .doesNotContain(16L);
+            // 会話の古い順（createdAt昇順＝id 11→15）で並ぶこと（順序が保たれる）
+            assertThat(result.getRecentReplies()).extracting(PostResponse::getId)
+                    .containsExactly(11L, 12L, 13L, 14L, 15L);
+            // enrich が適用されている（著者名の付与）
             assertThat(result.getRecentReplies().get(0).getUser()).isNotNull();
             assertThat(result.getRecentReplies().get(0).getUser().displayName()).isEqualTo("返信者A");
-            // 直近5件に制限するため PageRequest(0,5) で取得すること
+            // 先頭5件に制限するため PageRequest(0,5) で取得すること（DB 側 LIMIT が上限の実体）
             verify(postRepository).findRepliesByParentId(eq(POST_ID), eq(PageRequest.of(0, 5)));
         }
     }

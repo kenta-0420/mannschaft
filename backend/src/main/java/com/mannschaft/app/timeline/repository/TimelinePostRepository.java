@@ -72,9 +72,10 @@ public interface TimelinePostRepository extends JpaRepository<TimelinePostEntity
             @Param("userId") Long userId, Pageable pageable);
 
     /**
-     * 投稿のリプライ一覧を取得する（時系列昇順・先頭から）。
+     * 投稿のリプライ一覧を会話の古い順（{@code createdAt} 昇順）で先頭から取得する。
      *
-     * <p>投稿詳細の {@code recentReplies}（直近数件プレビュー）取得に使う。</p>
+     * <p>投稿詳細の {@code recentReplies}（会話の古い順・先頭 N 件のプレビュー）取得に使う。
+     * 「最新 N 件」ではなく「先頭 N 件」である点に注意（リプライ一覧の ID 昇順ページングと一貫させるため）。</p>
      */
     @Query("SELECT p FROM TimelinePostEntity p WHERE p.parentId = :parentId "
             + "AND p.status = 'PUBLISHED' ORDER BY p.createdAt ASC")
