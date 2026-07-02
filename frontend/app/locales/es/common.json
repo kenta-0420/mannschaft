@@ -458,7 +458,11 @@
     "postSuccess": "Publicado correctamente",
     "postError": "Error al publicar",
     "announcementRegisterError": "Error al registrar el anuncio. Por favor, regístralo manualmente más tarde.",
-    "postSource": "Publicado en"
+    "postSource": "Publicado en",
+    "writeReply": "Escribir una respuesta",
+    "replySubmit": "Responder",
+    "noReplies": "Aún no hay respuestas",
+    "loadMoreReplies": "Ver más"
   },
   "gallery": {
     "title": "Galería",

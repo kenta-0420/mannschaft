@@ -458,7 +458,11 @@
     "postSuccess": "发布成功",
     "postError": "发布失败",
     "announcementRegisterError": "注册公告失败，请稍后手动注册。",
-    "postSource": "发布于"
+    "postSource": "发布于",
+    "writeReply": "写回复",
+    "replySubmit": "回复",
+    "noReplies": "还没有回复",
+    "loadMoreReplies": "查看更多"
   },
   "gallery": {
     "title": "相册",

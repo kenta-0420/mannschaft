@@ -458,7 +458,11 @@
     "postSuccess": "Erfolgreich gepostet",
     "postError": "Fehler beim Posten",
     "announcementRegisterError": "Fehler bei der Ankündigung. Bitte manuell registrieren.",
-    "postSource": "Gepostet in"
+    "postSource": "Gepostet in",
+    "writeReply": "Antwort schreiben",
+    "replySubmit": "Antworten",
+    "noReplies": "Noch keine Antworten",
+    "loadMoreReplies": "Mehr anzeigen"
   },
   "gallery": {
     "title": "Galerie",
