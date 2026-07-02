@@ -1,7 +1,7 @@
 {
   "visibility": {
     "label": "Minimum visible role",
-    "help": "Sets the minimum role that can view or download this folder/file. When unset, all members can view it.",
+    "help": "Set the minimum role that can view or download this folder/file. If unset, all members can view it.",
     "all": "All members (default)",
     "SUPPORTERS_AND_ABOVE": "Supporters and above",
     "MEMBERS_AND_ABOVE": "Members and above",
@@ -9,24 +9,95 @@
   },
   "download": {
     "disabledLabel": "Disable downloads",
-    "disabledHelp": "Hides the download button and refuses to issue download URLs. This is a deterrent only and cannot prevent browser viewing.",
-    "disabledError": "Downloading this file is disabled"
+    "disabledHelp": "Hides the download button and refuses to issue download URLs. Since on-screen viewing cannot be blocked, this is not a complete prevention.",
+    "disabledError": "Downloads are disabled for this file"
+  },
+  "settings": {
+    "title": "File settings",
+    "nameLabel": "File name",
+    "descriptionLabel": "Description",
+    "saved": "Settings saved",
+    "saveError": "Failed to save settings"
   },
   "publicLink": {
     "title": "Public link",
-    "description": "Share this file via a public link with people who are not signed in. View-only by default.",
-    "downloadAllowedLabel": "Allow download",
-    "downloadAllowedHelp": "When on, this link allows downloads. If the file itself disallows downloads, that takes precedence.",
-    "expiresLabel": "Expiry (up to 30 days)",
-    "expiresHelp": "A public link must have an expiry. You can set it up to 30 days ahead.",
-    "adminOnly": "Only admins and deputy admins can issue and manage public links.",
+    "description": "Share this file via a public link, even with people who are not logged in. View-only by default.",
+    "downloadAllowedLabel": "Allow downloads",
+    "downloadAllowedHelp": "When on, this link allows downloads. However, if downloads are disabled on the file itself, that takes precedence.",
+    "expiresLabel": "Expiry (max 30 days)",
+    "expiresHelp": "A public link must always have an expiry. You can set it up to 30 days ahead.",
+    "expiresPlaceholder": "Select an expiry",
+    "expiresAtLabel": "Expires",
+    "passwordLabel": "Password (optional)",
+    "passwordPlaceholder": "If set, it must be entered on access",
+    "createButton": "Create share link",
+    "createError": "Failed to create the share link",
+    "created": "Share link created",
+    "loadError": "Failed to load share links",
+    "existingTitle": "Existing links",
+    "empty": "No share links yet",
+    "copied": "Link copied",
+    "copyError": "Failed to copy",
+    "copyButton": "Copy link",
+    "revoked": "Share link revoked",
+    "revokeError": "Failed to revoke",
+    "revokeButton": "Revoke link",
+    "tagDownload": "Downloadable",
+    "tagViewOnly": "View only",
+    "tagPassword": "Password protected",
+    "adminOnly": "Only admins and deputy admins can create and manage public links.",
     "errors": {
-      "notFound": "Shared link not found",
-      "inactive": "This shared link has been deactivated",
-      "expired": "This shared link has expired",
-      "passwordInvalid": "Incorrect password",
-      "downloadNotAllowed": "Download is not allowed for this shared link",
-      "expiryInvalid": "An expiry is required and can be at most 30 days ahead"
+      "notFound": "Share link not found",
+      "inactive": "This share link has been deactivated",
+      "expired": "This share link has expired",
+      "passwordInvalid": "The password is incorrect",
+      "downloadNotAllowed": "This share link does not allow downloads",
+      "expiryInvalid": "Expiry is required and can be at most 30 days ahead"
     }
+  },
+  "guide": {
+    "title": "How file sharing works",
+    "description": "You can narrow who can see folders and files, or share them externally via a public link that needs no login. Combine the settings to fit your needs.",
+    "what": {
+      "title": "About security settings",
+      "body": "For each folder or file you can set who can view it and whether downloads are allowed. You can also issue a public link to share with people who are not logged in."
+    },
+    "visibility": {
+      "title": "Narrow visibility with a minimum role",
+      "body": "Choose the minimum role that can view: supporters and above, members and above, or admins only. If unset, all members can view.",
+      "steps": {
+        "s1": "Open the folder-create dialog or the gear icon on a file.",
+        "s2": "Pick the audience from Minimum visible role.",
+        "s3": "After saving, people below the role can no longer see it."
+      }
+    },
+    "download": {
+      "title": "Disable downloads",
+      "body": "Use this for files you want people to view but not download. It suppresses the download button and URL issuance.",
+      "steps": {
+        "s1": "Open settings from the gear icon on a file.",
+        "s2": "Turn on Disable downloads and save.",
+        "s3": "Note that on-screen viewing cannot be blocked, so this is not full copy prevention."
+      }
+    },
+    "link": {
+      "title": "Share externally with a public link",
+      "body": "Issue a link that opens without login. Only admins and deputy admins can issue links.",
+      "steps": {
+        "s1": "Open the public-link screen from the link icon on a file.",
+        "s2": "Set an expiry (max 30 days) and, if needed, allow downloads or set a password.",
+        "s3": "Copy the created link and share it. You can revoke it when it is no longer needed."
+      }
+    },
+    "note": "Public links are not indexed by search engines. However, anyone who knows the link can access it, so handle it with care."
+  },
+  "sharedPage": {
+    "pageTitle": "Shared file",
+    "title": "Shared file",
+    "passwordRequired": "This file is password protected. Please enter the password.",
+    "unlockButton": "Open",
+    "downloadButton": "Download",
+    "viewOnly": "This file is view-only and cannot be downloaded.",
+    "footer": "This is a public link issued by the file sharing feature."
   }
 }
