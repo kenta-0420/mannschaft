@@ -101,6 +101,13 @@ const systemAdminItem = { label: 'SYSTEM', icon: 'pi pi-shield', to: '/system-ad
 
 const proxyDeskItem = { label: t('proxy.title'), icon: 'pi pi-tablet', to: '/admin/proxy-desk' }
 
+// 全ナビアイテムのパス一覧（現在ルートが完全一致している場合に prefix match を無効化するため）
+const allNavPaths = computed(() => [
+  '/dashboard',
+  ...navSettingsStore.visibleFeatures.map((f) => f.path),
+  ...(showProxyDeskNav.value ? [proxyDeskItem.to] : []),
+])
+
 const guardianshipSwitchStore = useGuardianshipSwitchStore()
 const { endSwitch: apiEndSwitch } = useGuardianshipApi()
 const notification = useNotification()
@@ -118,8 +125,11 @@ async function handleEndSwitch() {
 
 function isActive(path: string, exact = false): boolean {
   if (exact) return route.path === path
-  // スラッシュ境界で判定: /my/shift が /my にマッチしないよう path + '/' で比較
-  return route.path === path || route.path.startsWith(path + '/')
+  if (route.path === path) return true
+  // 現在ルートがいずれかのナビアイテムと完全一致する場合、prefix match は採用しない
+  // （例: /my/shift が /my/shift と完全一致 → /my の startsWith 判定を無効化）
+  if (allNavPaths.value.some((p) => p === route.path)) return false
+  return route.path.startsWith(path + '/')
 }
 </script>
 
