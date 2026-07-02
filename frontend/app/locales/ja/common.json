@@ -1392,7 +1392,8 @@
       "skillsSummaryHint": "活かせる経験・知識・技術を自由に記述してください（構造化スキルは下のスキルセクションに入力）",
       "excelPreviewUnavailable": "Excel ファイルのプレビューはブラウザで表示できません",
       "downloadLabel": "{format}ダウンロード（{type}）"
-    }
+    },
+    "menu": "メニュー"
   },
   "teamHub": {
     "pageTitle": "マイチーム",
@@ -1874,6 +1875,16 @@
     "permission": {
       "title": "設定できる人",
       "body": "機能設定はチーム・組織の管理者だけが開けます。管理者でも、画面右上の表示切り替えが「メンバー表示」になっているとこのタブは隠れます。設定したいときは「管理者表示」に切り替えてください。"
+    }
+  },
+  "teamShell": {
+    "tab": {
+      "dashboard": "ダッシュボード",
+      "info": "基本情報",
+      "members": "メンバー",
+      "invites": "招待",
+      "supporters": "サポーター管理",
+      "modules": "機能設定"
     }
   }
 }

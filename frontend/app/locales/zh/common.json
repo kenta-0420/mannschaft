@@ -1392,7 +1392,8 @@
       "skillsSummaryHint": "自由填写可发挥的经验、知识和技术（结构化技能请在下方技能区填写）",
       "excelPreviewUnavailable": "浏览器无法预览 Excel 文件",
       "downloadLabel": "下载 {format}（{type}）"
-    }
+    },
+    "menu": "菜单"
   },
   "teamHub": {
     "pageTitle": "我的团队",
@@ -1874,6 +1875,16 @@
     "permission": {
       "title": "設定できる人",
       "body": "機能設定はチーム・組織の管理者だけが開けます。管理者でも、画面右上の表示切り替えが「メンバー表示」になっているとこのタブは隠れます。設定したいときは「管理者表示」に切り替えてください。"
+    }
+  },
+  "teamShell": {
+    "tab": {
+      "dashboard": "仪表板",
+      "info": "基本信息",
+      "members": "成员",
+      "invites": "邀请",
+      "supporters": "支持者管理",
+      "modules": "功能设置"
     }
   }
 }

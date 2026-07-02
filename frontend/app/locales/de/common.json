@@ -1392,7 +1392,8 @@
       "skillsSummaryHint": "Beschreibe frei deine Erfahrungen, Kenntnisse und Fähigkeiten (strukturierte Skills bitte im unten stehenden Skills-Bereich eintragen)",
       "excelPreviewUnavailable": "Excel-Dateivorschau ist im Browser nicht verfügbar",
       "downloadLabel": "{format} herunterladen ({type})"
-    }
+    },
+    "menu": "Menü"
   },
   "teamHub": {
     "pageTitle": "Meine Teams",
@@ -1874,6 +1875,16 @@
     "permission": {
       "title": "設定できる人",
       "body": "機能設定はチーム・組織の管理者だけが開けます。管理者でも、画面右上の表示切り替えが「メンバー表示」になっているとこのタブは隠れます。設定したいときは「管理者表示」に切り替えてください。"
+    }
+  },
+  "teamShell": {
+    "tab": {
+      "dashboard": "Dashboard",
+      "info": "Basisinfo",
+      "members": "Mitglieder",
+      "invites": "Einladungen",
+      "supporters": "Unterstützerverwaltung",
+      "modules": "Funktionen"
     }
   }
 }

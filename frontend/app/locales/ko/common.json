@@ -1392,7 +1392,8 @@
       "skillsSummaryHint": "활용 가능한 경험·지식·기술을 자유롭게 기술해 주세요（구조화된 스킬은 아래 스킬 섹션에 입력）",
       "excelPreviewUnavailable": "브라우저에서 Excel 파일을 미리 볼 수 없습니다",
       "downloadLabel": "{format} 다운로드（{type}）"
-    }
+    },
+    "menu": "메뉴"
   },
   "teamHub": {
     "pageTitle": "내 팀",
@@ -1874,6 +1875,16 @@
     "permission": {
       "title": "設定できる人",
       "body": "機能設定はチーム・組織の管理者だけが開けます。管理者でも、画面右上の表示切り替えが「メンバー表示」になっているとこのタブは隠れます。設定したいときは「管理者表示」に切り替えてください。"
+    }
+  },
+  "teamShell": {
+    "tab": {
+      "dashboard": "대시보드",
+      "info": "기본 정보",
+      "members": "멤버",
+      "invites": "초대",
+      "supporters": "서포터 관리",
+      "modules": "기능 설정"
     }
   }
 }
