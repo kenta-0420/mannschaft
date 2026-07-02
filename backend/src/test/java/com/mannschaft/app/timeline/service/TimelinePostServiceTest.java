@@ -136,6 +136,38 @@ class TimelinePostServiceTest {
                 .build();
     }
 
+    /**
+     * enrich 前の生 PostResponse（生 ID のみ・name/slug/user/postedAs 未設定）を作る共通ヘルパー。
+     * getFeed / getPinnedPosts / getReplies / getPostDetail#recentReplies の enrich 検証で使う。
+     */
+    private PostResponse rawFeedPost(long id, String scopeType, Long scopeId,
+                                     Long userId, String postedAsType, Long postedAsId) {
+        return PostResponse.builder()
+                .id(id)
+                .scope(new PostResponse.PostScopeDto(scopeType, scopeId))
+                .author(new PostResponse.PostAuthorDto(userId, null, postedAsType, postedAsId))
+                .content(new PostResponse.PostContentDto("本文", null, null, "PUBLISHED", null, false))
+                .stats(new PostResponse.PostStatsDto(0, 0, 0, (short) 0, (short) 0))
+                .audit(new PostResponse.PostAuditDto(LocalDateTime.now(), LocalDateTime.now()))
+                .build();
+    }
+
+    /**
+     * enrich が呼ぶ 8 種の名前/slug/アイコン解決をすべて空 Map で lenient スタブする。
+     * lenient のため、各テストで一部を strict {@code given} で上書きしても
+     * UnnecessaryStubbing にならない（上書きは最後の宣言が優先される）。
+     */
+    private void stubAllResolversEmpty() {
+        org.mockito.Mockito.lenient().when(nameResolverService.resolveTeamNames(anySet())).thenReturn(Map.of());
+        org.mockito.Mockito.lenient().when(nameResolverService.resolveOrganizationNames(anySet())).thenReturn(Map.of());
+        org.mockito.Mockito.lenient().when(teamService.getSlugsByIds(anySet())).thenReturn(Map.of());
+        org.mockito.Mockito.lenient().when(organizationService.getSlugsByIds(anySet())).thenReturn(Map.of());
+        org.mockito.Mockito.lenient().when(nameResolverService.resolveTeamIconUrls(anySet())).thenReturn(Map.of());
+        org.mockito.Mockito.lenient().when(nameResolverService.resolveOrganizationIconUrls(anySet())).thenReturn(Map.of());
+        org.mockito.Mockito.lenient().when(nameResolverService.resolveUserDisplayNames(anySet())).thenReturn(Map.of());
+        org.mockito.Mockito.lenient().when(nameResolverService.resolveUserAvatarUrls(anySet())).thenReturn(Map.of());
+    }
+
     // ========================================
     // createPost
     // ========================================
@@ -1177,6 +1209,53 @@ class TimelinePostServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(TimelineErrorCode.POST_NOT_FOUND));
         }
+
+        @Test
+        @DisplayName("AC-13: recentReplies は会話の古い順（createdAt昇順）・先頭最大5件に切られ enrich される")
+        void AC13_recentRepliesが含まれる() {
+            // given: 親投稿。返信は 6 件以上存在するが、詳細は先頭5件のみプレビューする。
+            // 単体テストではリポジトリ mock が LIMIT を適用しないため、
+            // 「PageRequest.of(0,5) で問い合わせる」ことで DB 側 LIMIT 5 を強制する契約を検証する。
+            // mock 返却は LIMIT 5 の DB 結果を模し、ASC 先頭5件（id/createdAt 昇順の 11..15）とする。
+            TimelinePostEntity post = createPost();
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(post));
+            given(attachmentRepository.findByTimelinePostIdOrderBySortOrderAsc(POST_ID))
+                    .willReturn(List.of());
+            given(timelineMapper.toAttachmentResponseList(any())).willReturn(List.of());
+            given(pollService.getPollByPostId(POST_ID, USER_ID)).willReturn(null);
+
+            // DB は createdAt 昇順・先頭5件（id 11〜15）を返す。id=16 の6件目は LIMIT 5 で含まれない。
+            List<TimelinePostEntity> firstFiveEntities = List.of(
+                    createPost(), createPost(), createPost(), createPost(), createPost());
+            given(postRepository.findRepliesByParentId(eq(POST_ID), eq(PageRequest.of(0, 5))))
+                    .willReturn(firstFiveEntities);
+            given(timelineMapper.toPostResponseList(any())).willReturn(List.of(
+                    rawFeedPost(11L, "TEAM", 50L, 100L, "USER", null),
+                    rawFeedPost(12L, "TEAM", 50L, 101L, "USER", null),
+                    rawFeedPost(13L, "TEAM", 50L, 102L, "USER", null),
+                    rawFeedPost(14L, "TEAM", 50L, 103L, "USER", null),
+                    rawFeedPost(15L, "TEAM", 50L, 104L, "USER", null)));
+            stubAllResolversEmpty();
+            given(nameResolverService.resolveUserDisplayNames(anySet()))
+                    .willReturn(Map.of(100L, "返信者A"));
+
+            // when
+            PostDetailResponse result = timelinePostService.getPostDetail(POST_ID, USER_ID);
+
+            // then: 先頭5件に切られる（6件目 id=16 は含まれない）
+            assertThat(result.getRecentReplies()).isNotNull();
+            assertThat(result.getRecentReplies()).hasSize(5);
+            assertThat(result.getRecentReplies()).extracting(PostResponse::getId)
+                    .doesNotContain(16L);
+            // 会話の古い順（createdAt昇順＝id 11→15）で並ぶこと（順序が保たれる）
+            assertThat(result.getRecentReplies()).extracting(PostResponse::getId)
+                    .containsExactly(11L, 12L, 13L, 14L, 15L);
+            // enrich が適用されている（著者名の付与）
+            assertThat(result.getRecentReplies().get(0).getUser()).isNotNull();
+            assertThat(result.getRecentReplies().get(0).getUser().displayName()).isEqualTo("返信者A");
+            // 先頭5件に制限するため PageRequest(0,5) で取得すること（DB 側 LIMIT が上限の実体）
+            verify(postRepository).findRepliesByParentId(eq(POST_ID), eq(PageRequest.of(0, 5)));
+        }
     }
 
     // ========================================
@@ -1228,19 +1307,19 @@ class TimelinePostServiceTest {
     class GetReplies {
 
         @Test
-        @DisplayName("正常系: リプライ一覧を取得できる")
+        @DisplayName("正常系: リプライ一覧を取得できる（enrich 適用・カーソル対応）")
         void リプライ一覧を取得できる() {
             // given
             Long parentId = 5L;
             List<TimelinePostEntity> replies = List.of(createPost());
-            List<PostResponse> expected = List.of(createPostResponse());
+            List<PostResponse> mapped = List.of(createPostResponse());
 
-            given(postRepository.findRepliesByParentId(eq(parentId), any(PageRequest.class)))
+            given(postRepository.findRepliesByParentIdAfterCursor(eq(parentId), any(), any(PageRequest.class)))
                     .willReturn(replies);
-            given(timelineMapper.toPostResponseList(replies)).willReturn(expected);
+            given(timelineMapper.toPostResponseList(replies)).willReturn(mapped);
 
             // when
-            List<PostResponse> result = timelinePostService.getReplies(parentId, 10);
+            List<PostResponse> result = timelinePostService.getReplies(parentId, null, 10);
 
             // then
             assertThat(result).hasSize(1);
@@ -1251,15 +1330,204 @@ class TimelinePostServiceTest {
         void sizeが0以下_デフォルトサイズ() {
             // given
             Long parentId = 5L;
-            given(postRepository.findRepliesByParentId(eq(parentId), any(PageRequest.class)))
+            given(postRepository.findRepliesByParentIdAfterCursor(eq(parentId), any(), any(PageRequest.class)))
                     .willReturn(List.of());
             given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
 
             // when
-            timelinePostService.getReplies(parentId, -1);
+            timelinePostService.getReplies(parentId, null, -1);
 
             // then
-            verify(postRepository).findRepliesByParentId(eq(parentId), eq(PageRequest.of(0, 20)));
+            verify(postRepository).findRepliesByParentIdAfterCursor(eq(parentId), isNull(), eq(PageRequest.of(0, 20)));
+        }
+
+        @Test
+        @DisplayName("正常系: cursor 指定時はそのカーソルでリポジトリを呼ぶ")
+        void cursor指定時はカーソルでリポジトリを呼ぶ() {
+            // given
+            Long parentId = 5L;
+            Long cursor = 42L;
+            given(postRepository.findRepliesByParentIdAfterCursor(eq(parentId), eq(cursor), any(PageRequest.class)))
+                    .willReturn(List.of());
+            given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
+
+            // when
+            timelinePostService.getReplies(parentId, cursor, 20);
+
+            // then
+            verify(postRepository).findRepliesByParentIdAfterCursor(eq(parentId), eq(cursor), eq(PageRequest.of(0, 20)));
+        }
+    }
+
+    // ========================================
+    // getFeed enrich（AC-1〜4,6: フィードにも著者・投稿元・代理主体を付与）
+    // ========================================
+    @Nested
+    @DisplayName("getFeed enrich（PR: タイムライン著者名/投稿元/代理主体の付与）")
+    class GetFeedEnrich {
+
+        private static final Long TEAM_ID = 50L;
+        private static final Long ORG_ID = 70L;
+
+        private void givenFeedEntities() {
+            given(postRepository.findFeedByScopeType(any(PostScopeType.class), any(), any(PageRequest.class)))
+                    .willReturn(List.of(createPost()));
+        }
+
+        @Test
+        @DisplayName("AC-1 getFeed: 各投稿に著者 user{displayName, avatarUrl} が付与される（非null）")
+        void AC1_getFeed_userが付与される() {
+            // given
+            givenFeedEntities();
+            given(timelineMapper.toPostResponseList(any()))
+                    .willReturn(List.of(rawFeedPost(1L, "TEAM", TEAM_ID, 100L, "USER", null)));
+            stubAllResolversEmpty();
+            given(nameResolverService.resolveUserDisplayNames(anySet())).willReturn(Map.of(100L, "山田太郎"));
+            given(nameResolverService.resolveUserAvatarUrls(anySet())).willReturn(Map.of(100L, "https://cdn/a.png"));
+            given(nameResolverService.resolveTeamNames(anySet())).willReturn(Map.of(TEAM_ID, "チームA"));
+            given(teamService.getSlugsByIds(anySet())).willReturn(Map.of(TEAM_ID, "team-a"));
+
+            // when
+            List<PostResponse> result = timelinePostService.getFeed("TEAM", TEAM_ID, null, 20);
+
+            // then
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getUser()).isNotNull();
+            assertThat(result.get(0).getUser().id()).isEqualTo(100L);
+            assertThat(result.get(0).getUser().displayName()).isEqualTo("山田太郎");
+            assertThat(result.get(0).getUser().avatarUrl()).isEqualTo("https://cdn/a.png");
+        }
+
+        @Test
+        @DisplayName("AC-2 getFeed: 代理投稿 postedAs(TEAM) の名前/ロゴが付与され、USER は null")
+        void AC2_getFeed_代理主体が付与される() {
+            // given: 1件は TEAM 代理投稿、1件は USER 投稿
+            Long proxyTeamId = 55L;
+            givenFeedEntities();
+            given(timelineMapper.toPostResponseList(any())).willReturn(List.of(
+                    rawFeedPost(1L, "TEAM", TEAM_ID, 100L, "TEAM", proxyTeamId),
+                    rawFeedPost(2L, "TEAM", TEAM_ID, 101L, "USER", null)));
+            stubAllResolversEmpty();
+            given(nameResolverService.resolveTeamNames(anySet()))
+                    .willReturn(Map.of(TEAM_ID, "チームA", proxyTeamId, "代理チーム"));
+            given(nameResolverService.resolveTeamIconUrls(anySet()))
+                    .willReturn(Map.of(proxyTeamId, "https://cdn/logo.png"));
+
+            // when
+            List<PostResponse> result = timelinePostService.getFeed("TEAM", TEAM_ID, null, 20);
+
+            // then
+            assertThat(result.get(0).getPostedAs()).isNotNull();
+            assertThat(result.get(0).getPostedAs().type()).isEqualTo("TEAM");
+            assertThat(result.get(0).getPostedAs().id()).isEqualTo(proxyTeamId);
+            assertThat(result.get(0).getPostedAs().name()).isEqualTo("代理チーム");
+            assertThat(result.get(0).getPostedAs().logoUrl()).isEqualTo("https://cdn/logo.png");
+            assertThat(result.get(1).getPostedAs()).isNull();
+        }
+
+        @Test
+        @DisplayName("AC-3 getFeed: scope.name/slug は TEAM/ORGANIZATION のみ付与、PUBLIC は null")
+        void AC3_getFeed_scope名slugはTEAM_ORGのみ() {
+            // given: TEAM / ORGANIZATION / PUBLIC の3件
+            givenFeedEntities();
+            given(timelineMapper.toPostResponseList(any())).willReturn(List.of(
+                    rawFeedPost(1L, "TEAM", TEAM_ID, 100L, "USER", null),
+                    rawFeedPost(2L, "ORGANIZATION", ORG_ID, 101L, "USER", null),
+                    rawFeedPost(3L, "PUBLIC", 0L, 102L, "USER", null)));
+            stubAllResolversEmpty();
+            given(nameResolverService.resolveTeamNames(anySet())).willReturn(Map.of(TEAM_ID, "チームA"));
+            given(nameResolverService.resolveOrganizationNames(anySet())).willReturn(Map.of(ORG_ID, "組織B"));
+            given(teamService.getSlugsByIds(anySet())).willReturn(Map.of(TEAM_ID, "team-a"));
+            given(organizationService.getSlugsByIds(anySet())).willReturn(Map.of(ORG_ID, "org-b"));
+
+            // when
+            List<PostResponse> result = timelinePostService.getFeed("PUBLIC", 0L, null, 20);
+
+            // then
+            assertThat(result.get(0).getScope().name()).isEqualTo("チームA");
+            assertThat(result.get(0).getScope().slug()).isEqualTo("team-a");
+            assertThat(result.get(1).getScope().name()).isEqualTo("組織B");
+            assertThat(result.get(1).getScope().slug()).isEqualTo("org-b");
+            // PUBLIC は enrich 対象外 → name/slug は null のまま
+            assertThat(result.get(2).getScope().name()).isNull();
+            assertThat(result.get(2).getScope().slug()).isNull();
+        }
+
+        @Test
+        @DisplayName("AC-4 getFeed: 投稿N件でも各バッチ解決は種別ごとに1回だけ（N+1回避）")
+        void AC4_getFeed_バッチ解決は種別ごとに1回のみ() {
+            // given: 別々のチーム・別々の著者 3件
+            givenFeedEntities();
+            given(timelineMapper.toPostResponseList(any())).willReturn(List.of(
+                    rawFeedPost(1L, "TEAM", 51L, 100L, "USER", null),
+                    rawFeedPost(2L, "TEAM", 52L, 101L, "USER", null),
+                    rawFeedPost(3L, "TEAM", 53L, 102L, "USER", null)));
+            stubAllResolversEmpty();
+
+            // when
+            timelinePostService.getFeed("TEAM", 51L, null, 20);
+
+            // then: 各解決メソッドは 3 投稿分ではなく 1 回のみ
+            verify(nameResolverService, org.mockito.Mockito.times(1)).resolveTeamNames(anySet());
+            verify(nameResolverService, org.mockito.Mockito.times(1)).resolveOrganizationNames(anySet());
+            verify(teamService, org.mockito.Mockito.times(1)).getSlugsByIds(anySet());
+            verify(organizationService, org.mockito.Mockito.times(1)).getSlugsByIds(anySet());
+            verify(nameResolverService, org.mockito.Mockito.times(1)).resolveTeamIconUrls(anySet());
+            verify(nameResolverService, org.mockito.Mockito.times(1)).resolveOrganizationIconUrls(anySet());
+            verify(nameResolverService, org.mockito.Mockito.times(1)).resolveUserDisplayNames(anySet());
+            verify(nameResolverService, org.mockito.Mockito.times(1)).resolveUserAvatarUrls(anySet());
+        }
+
+        @Test
+        @DisplayName("AC-6 getFeed: 投稿0件（enrich対象IDが空）でも例外なく空リストを返す（解決は呼ばない）")
+        void AC6_getFeed_空でも安全() {
+            // given
+            given(postRepository.findFeedByScopeType(any(PostScopeType.class), any(), any(PageRequest.class)))
+                    .willReturn(List.of());
+            given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
+
+            // when
+            List<PostResponse> result = timelinePostService.getFeed("PUBLIC", 0L, null, 20);
+
+            // then: 例外なし・空・名前解決は一切呼ばれない
+            assertThat(result).isEmpty();
+            then(nameResolverService).shouldHaveNoInteractions();
+            then(teamService).shouldHaveNoInteractions();
+            then(organizationService).shouldHaveNoInteractions();
+        }
+    }
+
+    // ========================================
+    // getPinnedPosts enrich（AC-5）
+    // ========================================
+    @Nested
+    @DisplayName("getPinnedPosts enrich")
+    class GetPinnedPostsEnrich {
+
+        private static final Long TEAM_ID = 50L;
+
+        @Test
+        @DisplayName("AC-5 getPinnedPosts: ピン留め投稿にも著者/投稿元 enrich が適用される")
+        void AC5_getPinnedPosts_enrich適用() {
+            // given
+            given(postRepository.findPinnedPosts(PostScopeType.TEAM, TEAM_ID))
+                    .willReturn(List.of(createPost()));
+            given(timelineMapper.toPostResponseList(any()))
+                    .willReturn(List.of(rawFeedPost(1L, "TEAM", TEAM_ID, 100L, "USER", null)));
+            stubAllResolversEmpty();
+            given(nameResolverService.resolveTeamNames(anySet())).willReturn(Map.of(TEAM_ID, "チームA"));
+            given(teamService.getSlugsByIds(anySet())).willReturn(Map.of(TEAM_ID, "team-a"));
+            given(nameResolverService.resolveUserDisplayNames(anySet())).willReturn(Map.of(100L, "山田太郎"));
+
+            // when
+            List<PostResponse> result = timelinePostService.getPinnedPosts("TEAM", TEAM_ID);
+
+            // then
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getScope().name()).isEqualTo("チームA");
+            assertThat(result.get(0).getScope().slug()).isEqualTo("team-a");
+            assertThat(result.get(0).getUser()).isNotNull();
+            assertThat(result.get(0).getUser().displayName()).isEqualTo("山田太郎");
         }
     }
 

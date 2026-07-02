@@ -349,24 +349,6 @@ const ALL_WIDGETS: WidgetDefinition[] = [
   // FamilyHub と AdminBusinessAlert は DashboardPersonalPanel で v-if 固定描画
   // 以下はその他の personal 専用ウィジェット
   // =====================================================================
-  {
-    key: 'family-hub',
-    label: '家族',
-    labelKey: 'dashboard.widget_labels.family-hub',
-    icon: 'pi pi-home',
-    description: '家族チームのお知らせ・TODO',
-    descriptionKey: 'dashboard.widget_descriptions.family-hub',
-    scope: ['personal'],
-  },
-  {
-    key: 'notifications',
-    label: '通知',
-    labelKey: 'dashboard.widget_labels.notifications',
-    icon: 'pi pi-bell',
-    description: '未読の通知',
-    descriptionKey: 'dashboard.widget_descriptions.notifications',
-    scope: ['personal'],
-  },
   // Phase 2: F03.11 募集型予約ウィジェット
   {
     key: 'recruitment-feed',
@@ -404,16 +386,6 @@ const ALL_WIDGETS: WidgetDefinition[] = [
     icon: 'pi pi-comments',
     description: 'ピン留め村の本日の井戸端在席状況',
     descriptionKey: 'dashboard.widget_descriptions.village-lobby-digest',
-    scope: ['personal'],
-  },
-  // F04.11: 統合通知インボックスウィジェット
-  {
-    key: 'inbox',
-    label: 'インボックス',
-    labelKey: 'dashboard.widget_labels.inbox',
-    icon: 'pi pi-inbox',
-    description: '通知を一箇所で仕分け',
-    descriptionKey: 'dashboard.widget_descriptions.inbox',
     scope: ['personal'],
   },
   // =====================================================================

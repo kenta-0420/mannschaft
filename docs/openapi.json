@@ -101226,7 +101226,16 @@
             }
           },
           {
-            "name": "size",
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "limit",
             "in": "query",
             "required": false,
             "schema": {
@@ -101242,7 +101251,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListPostResponse"
+                  "$ref": "#/components/schemas/TimelineFeedResponse"
                 }
               }
             }
@@ -192735,6 +192744,12 @@
           },
           "poll": {
             "$ref": "#/components/schemas/PollResponse"
+          },
+          "recentReplies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PostResponse"
+            }
           },
           "scope": {
             "$ref": "#/components/schemas/PostScopeDto"

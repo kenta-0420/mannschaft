@@ -101,4 +101,21 @@ public class TimelineFeedResponse {
         FeedMeta feedMeta = new FeedMeta(nextCursor, limit, hasNext);
         return new TimelineFeedResponse(feedData, feedMeta);
     }
+
+    /**
+     * リプライ一覧（{@code GET /timeline/posts/{id}/replies}）用のレスポンスを組み立てる。
+     *
+     * <p>FE の {@code getReplies} は {@code TimelineFeedResponse}（{@code res.data.posts} /
+     * {@code res.meta.nextCursor}）を期待するため、マイフィードと同形式で返す。
+     * リプライに pinned の概念は無いため {@code data.pinned} は常に空。
+     * ページネーション（{@code hasNext}/{@code nextCursor}）は {@link #ofMyFeed} と同じ
+     * ID キーセット方式（ID 昇順の末尾 = 最大 ID を次カーソルとする）。</p>
+     *
+     * @param replies enrich 済みリプライ一覧（ID 昇順・最大 limit 件）
+     * @param limit   リクエスト件数
+     * @return タイムラインフィードレスポンス（pinned 空・実カーソル付き）
+     */
+    public static TimelineFeedResponse ofReplies(List<PostResponse> replies, int limit) {
+        return ofMyFeed(replies, limit);
+    }
 }
