@@ -105,6 +105,7 @@ onMounted(() => loadPost())
       <!-- メイン投稿 -->
       <TimelinePostCard
         :post="post"
+        :replies-accordion="false"
         @mitayo-toggled="onMitayoToggled"
         @bookmark="onBookmark"
         @click-post="() => {}"
@@ -139,6 +140,7 @@ onMounted(() => loadPost())
           v-for="reply in replies"
           :key="reply.id"
           :post="reply"
+          :replies-accordion="false"
           @mitayo-toggled="onMitayoToggled"
           @bookmark="onBookmark"
           @click-post="(id) => router.push(`/timeline/${id}`)"

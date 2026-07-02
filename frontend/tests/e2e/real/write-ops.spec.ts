@@ -332,7 +332,7 @@ test.describe('WRITE-005〜009: チームタイムライン投稿', () => {
 
   test('WRITE-007: 投稿に返信（コメント）を追加できる', async ({ page }) => {
     // Track C (#1585) で CreatePostRequest の @JsonCreator 欠如が根治済み → skip 解除
-    // 親投稿を API で作成し、UIで返信ボタン→返信入力→送信→フォームが閉じることを確認する。
+    // 親投稿を API で作成し、UIで返信ボタン→インライン返信入力→送信→一覧へ即反映されることを確認する。
     const timestamp = Date.now()
     const postText = `E2Eテスト返信用投稿 ${timestamp}`
     const commentText = `E2Eテスト返信 ${timestamp}`
@@ -357,18 +357,18 @@ test.describe('WRITE-005〜009: チームタイムライン投稿', () => {
     const postCard = page.getByTestId('team-timeline-post').filter({ hasText: postText })
     await expect(postCard.first()).toBeVisible({ timeout: 15_000 })
 
-    // 返信ボタンをクリック（team-timeline-reply-btn）
+    // 返信ボタンをクリック（team-timeline-reply-btn）→ インライン返信アコーディオンが開く
     const replyBtn = postCard.first().getByTestId('team-timeline-reply-btn')
     await expect(replyBtn).toBeVisible({ timeout: 5_000 })
     await replyBtn.click()
 
-    // 返信ダイアログの入力欄に入力
-    const commentInput = page.getByTestId('team-timeline-comment-input')
+    // インライン返信フォームの入力欄に入力（カード内にスコープ）
+    const commentInput = postCard.first().getByTestId('team-timeline-comment-input')
     await expect(commentInput).toBeVisible({ timeout: 5_000 })
     await commentInput.fill(commentText)
 
     // 返信送信（waitForResponse でAPIの201を確認）
-    const commentSubmit = page.getByTestId('team-timeline-comment-submit')
+    const commentSubmit = postCard.first().getByTestId('team-timeline-comment-submit')
     await expect(commentSubmit).toBeVisible()
     const [replyRes] = await Promise.all([
       page.waitForResponse(
@@ -379,8 +379,9 @@ test.describe('WRITE-005〜009: チームタイムライン投稿', () => {
     ])
     expect(replyRes.status()).toBe(201)
 
-    // 返信成功: ダイアログが閉じること（返信フォームが消える）
-    await expect(commentInput).not.toBeVisible({ timeout: 10_000 })
+    // 返信成功: インライン展開のまま入力欄がクリアされ、返信本文が一覧へ即反映される
+    await expect(commentInput).toHaveValue('', { timeout: 10_000 })
+    await expect(postCard.first().getByText(commentText)).toBeVisible({ timeout: 10_000 })
 
     // クリーンアップ: 作成した投稿を API で削除
     if (createdPostId) {

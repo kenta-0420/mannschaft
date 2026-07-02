@@ -2,11 +2,19 @@
 import type { TimelinePostResponse } from '~/types/timeline'
 import { CONTENT_TRUNCATE_LENGTH } from '~/types/timeline'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   post: TimelinePostResponse
   canPin?: boolean
   canDeleteOthers?: boolean
-}>()
+  /**
+   * カード本体クリックで返信アコーディオンを開閉する（フィード用）。
+   * false の場合はレガシー動作（clickPost emit）となり、アコーディオンUIは描画しない。
+   * 返信アイテム（1段）や投稿詳細ページのカードでは false を渡してネストを防ぐ。
+   */
+  repliesAccordion?: boolean
+}>(), {
+  repliesAccordion: true,
+})
 
 const emit = defineEmits<{
   reply: [postId: number]
@@ -16,11 +24,13 @@ const emit = defineEmits<{
   repost: [postId: number]
   clickPost: [postId: number]
   mitayoToggled: [postId: number, mitayo: boolean, mitayoCount: number]
+  replyAdded: [postId: number]
 }>()
 
 const { t } = useI18n()
 const { relativeTime } = useRelativeTime()
-const { addReaction, removeReaction } = useTimelineApi()
+const { addReaction, removeReaction, getReplies, createReply } = useTimelineApi()
+const { showError } = useNotification()
 
 /**
  * 投稿元バッジ。個人集約タイムライン（所属 team/org 横断）で BE が scope.name を enrich したときのみ表示する。
@@ -99,13 +109,107 @@ async function handleToggleMitayo() {
     mitayoLoading.value = false
   }
 }
+
+// --- 返信アコーディオン ---
+const repliesExpanded = ref(false)
+const replies = ref<TimelinePostResponse[]>([])
+const repliesLoading = ref(false)
+const repliesLoaded = ref(false)
+const replyCursor = ref<number | null>(null)
+const repliesHasNext = ref(false)
+const replyContent = ref('')
+const replySubmitting = ref(false)
+
+async function loadReplies() {
+  repliesLoading.value = true
+  try {
+    const res = await getReplies(props.post.id)
+    replies.value = res.data.posts
+    replyCursor.value = res.meta.nextCursor
+    repliesHasNext.value = res.meta.hasNext
+    repliesLoaded.value = true
+  } catch {
+    showError(t('timeline.postError'))
+  } finally {
+    repliesLoading.value = false
+  }
+}
+
+async function loadMoreReplies() {
+  if (!replyCursor.value || repliesLoading.value) return
+  repliesLoading.value = true
+  try {
+    const res = await getReplies(props.post.id, replyCursor.value)
+    replies.value.push(...res.data.posts)
+    replyCursor.value = res.meta.nextCursor
+    repliesHasNext.value = res.meta.hasNext
+  } catch {
+    showError(t('timeline.postError'))
+  } finally {
+    repliesLoading.value = false
+  }
+}
+
+/** カード本体クリック。フィードではアコーディオン開閉、レガシー（詳細/返信）では clickPost emit。 */
+function onCardClick() {
+  if (props.repliesAccordion) {
+    void toggleReplies()
+  } else {
+    emit('clickPost', props.post.id)
+  }
+}
+
+async function toggleReplies() {
+  repliesExpanded.value = !repliesExpanded.value
+  if (repliesExpanded.value && !repliesLoaded.value) {
+    await loadReplies()
+  }
+}
+
+/** 返信ボタン。アコーディオン有効時は展開してフォームへ、無効時はレガシー emit。 */
+async function onReplyButton() {
+  if (props.repliesAccordion) {
+    if (!repliesExpanded.value) repliesExpanded.value = true
+    if (!repliesLoaded.value) await loadReplies()
+  } else {
+    emit('reply', props.post.id)
+  }
+}
+
+async function submitReply() {
+  const content = replyContent.value.trim()
+  if (!content || replySubmitting.value) return
+  replySubmitting.value = true
+  try {
+    const res = await createReply(props.post.id, content)
+    // 会話は古い順のため末尾に追加。返信数の +1 は親（shared ref）へ委譲（prop 直接変更を避ける）。
+    replies.value.push(res.data)
+    emit('replyAdded', props.post.id)
+    repliesLoaded.value = true
+    replyContent.value = ''
+  } catch {
+    showError(t('timeline.postError'))
+  } finally {
+    replySubmitting.value = false
+  }
+}
+
+function replyDisplayName(r: TimelinePostResponse): string {
+  if (r.postedAs) return r.postedAs.displayName || r.postedAs.name || ''
+  return r.user?.displayName || ''
+}
+
+function replyAvatar(r: TimelinePostResponse): string | null {
+  if (r.postedAs) return r.postedAs.avatarUrl || r.postedAs.logoUrl || null
+  return r.user?.avatarUrl || null
+}
 </script>
 
 <template>
   <div
     class="cursor-pointer rounded-xl border-2 border-surface-400 bg-surface-0 p-4 transition-shadow hover:shadow-sm dark:bg-surface-800"
     data-testid="team-timeline-post"
-    @click="emit('clickPost', post.id)"
+    @click="onCardClick"
   >
     <!-- 投稿元バッジ（個人集約タイムラインのみ・scope.name enrich 時に表示） -->
     <div v-if="sourceBadge" class="mb-2">
@@ -149,12 +253,19 @@ async function handleToggleMitayo() {
         <div>
           <div class="flex items-center gap-2">
             <span class="text-sm font-semibold">{{ displayName }}</span>
-            <span v-if="post.postedAs?.handle" class="text-xs text-surface-400">
+            <span v-if="post.postedAs?.handle" class="text-xs text-surface-400 dark:text-surface-300">
               {{ post.postedAs.handle }}
             </span>
           </div>
-          <div class="flex items-center gap-1 text-xs text-surface-400">
-            <span>{{ relativeTime(post.audit?.createdAt) }}</span>
+          <div class="flex items-center gap-1 text-xs text-surface-400 dark:text-surface-300">
+            <NuxtLink
+              :to="`/timeline/${post.id}`"
+              class="hover:underline"
+              data-testid="timeline-post-permalink"
+              @click.stop
+            >
+              {{ relativeTime(post.audit?.createdAt) }}
+            </NuxtLink>
             <span v-if="post.isEdited" class="text-surface-300">・編集済み</span>
           </div>
         </div>
@@ -185,13 +296,13 @@ async function handleToggleMitayo() {
           <i class="pi pi-replay" />
           <span>{{ post.repostOf.user?.displayName }}</span>
         </div>
-        <p class="text-surface-600">{{ post.repostOf.contentPreview }}</p>
+        <p class="text-surface-600 dark:text-surface-300">{{ post.repostOf.contentPreview }}</p>
       </template>
     </div>
 
     <!-- 本文 -->
     <div v-if="post.content?.content" class="mb-3">
-      <p class="whitespace-pre-wrap text-sm leading-relaxed text-surface-700">
+      <p class="whitespace-pre-wrap text-sm leading-relaxed text-surface-700 dark:text-surface-100">
         {{ displayContent }}
       </p>
       <button
@@ -258,7 +369,7 @@ async function handleToggleMitayo() {
     </div>
 
     <!-- 投票 -->
-    <div v-if="post.poll" class="mb-3 rounded-lg border border-surface-300 p-3">
+    <div v-if="post.poll" class="mb-3 rounded-lg border border-surface-300 p-3" @click.stop>
       <p class="mb-2 text-sm font-medium">{{ post.poll.question }}</p>
       <div class="flex flex-col gap-2">
         <div
@@ -300,9 +411,9 @@ async function handleToggleMitayo() {
     <!-- アクションバー -->
     <div class="flex items-center gap-4 border-t border-surface-100 pt-2" @click.stop>
       <button
-        class="flex items-center gap-1 text-xs text-surface-400 transition-colors hover:text-primary"
+        class="flex items-center gap-1 text-xs text-surface-400 transition-colors hover:text-primary dark:text-surface-300"
         data-testid="team-timeline-reply-btn"
-        @click="emit('reply', post.id)"
+        @click="onReplyButton"
       >
         <i class="pi pi-comment" />
         <span v-if="post.stats?.replyCount">{{ post.stats.replyCount }}</span>
@@ -322,6 +433,80 @@ async function handleToggleMitayo() {
       >
         <i :class="post.isBookmarked ? 'pi pi-bookmark-fill' : 'pi pi-bookmark'" />
       </button>
+    </div>
+
+    <!-- 返信アコーディオン（フィード用・repliesAccordion=true のときのみ） -->
+    <div
+      v-if="repliesAccordion && repliesExpanded"
+      class="mt-3 border-t border-surface-100 pt-3 dark:border-surface-700"
+      data-testid="timeline-replies-accordion"
+      @click.stop
+    >
+      <!-- インライン返信フォーム -->
+      <div class="mb-3">
+        <Textarea
+          v-model="replyContent"
+          :placeholder="t('timeline.writeReply')"
+          auto-resize
+          rows="2"
+          class="w-full"
+          data-testid="team-timeline-comment-input"
+        />
+        <div class="mt-2 flex justify-end">
+          <Button
+            :label="t('timeline.replySubmit')"
+            size="small"
+            :loading="replySubmitting"
+            :disabled="!replyContent.trim()"
+            data-testid="team-timeline-comment-submit"
+            @click="submitReply"
+          />
+        </div>
+      </div>
+
+      <!-- ローディング -->
+      <div v-if="repliesLoading && !repliesLoaded" class="flex justify-center py-4">
+        <i class="pi pi-spin pi-spinner text-surface-400" />
+      </div>
+
+      <!-- 0件 -->
+      <p
+        v-else-if="repliesLoaded && replies.length === 0"
+        class="py-2 text-center text-sm text-surface-400 dark:text-surface-300"
+      >
+        {{ t('timeline.noReplies') }}
+      </p>
+
+      <!-- 返信一覧（1段のみ・簡易行） -->
+      <div v-else class="flex flex-col gap-3">
+        <div v-for="reply in replies" :key="reply.id" class="flex gap-2">
+          <Avatar
+            :image="replyAvatar(reply) || undefined"
+            :label="replyAvatar(reply) ? undefined : replyDisplayName(reply).charAt(0)"
+            shape="circle"
+            size="normal"
+          />
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-semibold">{{ replyDisplayName(reply) }}</span>
+              <span class="text-xs text-surface-400 dark:text-surface-300">
+                {{ relativeTime(reply.audit?.createdAt) }}
+              </span>
+            </div>
+            <p class="whitespace-pre-wrap text-sm leading-relaxed text-surface-700 dark:text-surface-100">
+              {{ reply.content?.content }}
+            </p>
+          </div>
+        </div>
+        <Button
+          v-if="repliesHasNext"
+          :label="t('timeline.loadMoreReplies')"
+          text
+          size="small"
+          :loading="repliesLoading"
+          @click="loadMoreReplies"
+        />
+      </div>
     </div>
   </div>
 </template>
