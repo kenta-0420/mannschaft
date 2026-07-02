@@ -12,7 +12,7 @@
  */
 import type { UserMatchStatsResponse } from '~/types/match'
 
-definePageMeta({ layout: 'team', middleware: 'auth' })
+definePageMeta({ middleware: 'auth' })
 
 const route = useRoute()
 const { t } = useI18n()

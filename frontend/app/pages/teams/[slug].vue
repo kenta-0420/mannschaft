@@ -205,31 +205,25 @@ const SEGMENT_TO_TAB: Record<string, string> = {
   nav: 'nav',
 }
 
-/** ルート末尾セグメント（末尾スラッシュ除去後）。 */
-const lastSegment = computed<string>(() => {
-  const segments = route.path.replace(/\/+$/, '').split('/')
-  return segments[segments.length - 1] ?? ''
-})
-
-const activeTab = computed<string>(() => {
-  const last = lastSegment.value
-  // `/teams/{slug}`（タブ未指定）は last === slug となり dashboard を既定にする。
-  if (last === teamSlug.value) return 'dashboard'
-  return SEGMENT_TO_TAB[last] ?? 'dashboard'
-})
-
 /**
- * 永続シェル（ヘッダ＋タブ）で包む対象ルートか。
+ * 永続シェル（ヘッダ＋タブ）で包む対象セグメント。
  *
  * `pages/teams/[slug].vue` は teams/[slug] 配下の全ページ（schedule / chat / budget …
  * 約 100 ページ・多くは layout:'team' の独立ページ）の親ルート record になる。
  * そのため無条件にシェルを描画すると、全ページにチームヘッダ＋タブが被さり大規模退行する。
  *
- * 第一陣で永続シェル化するのは「8 タブ」のルートのみ。それ以外の子ルートでは
- * bare <NuxtPage/> を描画し、各ページが持つ layout:'team' の見た目を一切変えない。
- * （遷移先ページの layout 撤去・完全 SPA 化は第三陣で行う。）
+ * シェル化対象は以下の 2 系統に限定する:
+ *  1. 8 タブのルート（info / members / invites / supporters / modules / reservations / nav
+ *     ＋ダッシュボード=slug 自身）
+ *  2. ダッシュボードのウィジェット遷移先（ScopeDashboard.vue の team向け scopeLinks が正本）。
+ *     schedule / todos / timeline / bulletin / blog / chat / member-profiles / activities /
+ *     gallery / circulation / surveys / member-info / tournaments / match-analytics / projects
+ *
+ * これ以外の子ルート（settings 配下 / admin console / 深いネスト等）は bare <NuxtPage/> の
+ * ままにして各ページの layout:'team' の見た目を変えない。
  */
 const SHELL_SEGMENTS = new Set([
+  // --- 8 タブ ---
   'info',
   'members',
   'invites',
@@ -237,13 +231,53 @@ const SHELL_SEGMENTS = new Set([
   'modules',
   'reservations',
   'nav',
+  // --- ウィジェット遷移先（ScopeDashboard.vue scopeLinks 正本・15 セグメント） ---
+  'schedule',
+  'todos',
+  'timeline',
+  'bulletin',
+  'blog',
+  'chat',
+  'member-profiles',
+  'activities',
+  'gallery',
+  'circulation',
+  'surveys',
+  'member-info',
+  'tournaments',
+  'match-analytics',
+  'projects',
 ])
 
+/**
+ * パス全体のセグメント配列（teams/{slug} 以降）。
+ * ネスト子ルート（例 /teams/x/schedule/123・/teams/x/tournaments/999/roster）でも
+ * シェルを維持するため、末尾だけでなく全セグメントを見て判定する（村金型の考え方）。
+ */
+const pathSegments = computed<string[]>(() =>
+  route.path.replace(/\/+$/, '').split('/').filter(Boolean),
+)
+
+/** SHELL_SEGMENTS に一致する最初のセグメント（無ければ null）。 */
+const matchedShellSegment = computed<string | null>(() => {
+  for (const seg of pathSegments.value) {
+    if (SHELL_SEGMENTS.has(seg)) return seg
+  }
+  return null
+})
+
 const isShellRoute = computed<boolean>(() => {
-  const last = lastSegment.value
-  // `/teams/{slug}`（ダッシュボード）はシェル対象。
-  if (last === teamSlug.value) return true
-  return SHELL_SEGMENTS.has(last)
+  // `/teams/{slug}`（ダッシュボード・タブ未指定）はシェル対象。
+  const segments = pathSegments.value
+  if (segments[segments.length - 1] === teamSlug.value) return true
+  return matchedShellSegment.value !== null
+})
+
+const activeTab = computed<string>(() => {
+  const seg = matchedShellSegment.value
+  if (!seg) return 'dashboard'
+  // SEGMENT_TO_TAB 未登録のウィジェット遷移先（schedule 等）は dashboard をハイライト（AC-2）。
+  return SEGMENT_TO_TAB[seg] ?? 'dashboard'
 })
 
 // =============================================================================

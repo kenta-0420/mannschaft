@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { MemberInfoResponseMeItem } from '~/types/memberInfo'
 
-definePageMeta({ layout: 'team', middleware: 'auth' })
+definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()
