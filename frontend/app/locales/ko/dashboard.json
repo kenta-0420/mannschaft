@@ -210,6 +210,18 @@
       "empty": "처리가 필요한 항목이 없습니다",
       "loadError": "처리 필요 항목 불러오기 실패"
     },
-    "emptyState": "아직 게시물이 없습니다"
+    "emptyState": "아직 게시물이 없습니다",
+    "list": {
+      "allDay": "종일",
+      "overdue": "기한 초과",
+      "nextEvent": "다음 일정",
+      "noNextEvent": "예정된 일정이 없습니다",
+      "eventsThisWeek": "이번 주 {count}건",
+      "upcomingEmpty": "예정된 일정이 없습니다",
+      "blogEmpty": "블로그 글이 없습니다",
+      "chatEmpty": "채팅이 없습니다",
+      "todoEmpty": "TODO가 없습니다",
+      "calendarEmpty": "일정이 없습니다"
+    }
   }
 }

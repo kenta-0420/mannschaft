@@ -210,6 +210,18 @@
       "empty": "没有需要处理的项目",
       "loadError": "获取待处理项目失败"
     },
-    "emptyState": "还没有投稿"
+    "emptyState": "还没有投稿",
+    "list": {
+      "allDay": "全天",
+      "overdue": "已逾期",
+      "nextEvent": "下一个日程",
+      "noNextEvent": "暂无日程",
+      "eventsThisWeek": "本周 {count} 个",
+      "upcomingEmpty": "暂无即将到来的日程",
+      "blogEmpty": "暂无博客文章",
+      "chatEmpty": "暂无聊天",
+      "todoEmpty": "暂无待办事项",
+      "calendarEmpty": "暂无日程"
+    }
   }
 }
