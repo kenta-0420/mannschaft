@@ -50920,6 +50920,9 @@ export interface components {
         };
         CreateFolderRequest: {
             description?: string;
+            downloadDisabled?: boolean;
+            /** @enum {string} */
+            minVisibleRole?: "SUPPORTERS_AND_ABOVE" | "MEMBERS_AND_ABOVE" | "ADMINS_AND_ABOVE";
             name?: string;
             /** Format: int64 */
             parentId?: number;
@@ -50935,8 +50938,11 @@ export interface components {
             /** Format: int64 */
             createdBy?: number;
             description?: string;
+            downloadDisabled?: boolean;
             /** Format: int64 */
             id?: number;
+            /** @enum {string} */
+            minVisibleRole?: "SUPPORTERS_AND_ABOVE" | "MEMBERS_AND_ABOVE" | "ADMINS_AND_ABOVE";
             name?: string;
             /** Format: int64 */
             organizationId?: number;
@@ -56190,6 +56196,7 @@ export interface components {
             /** Format: int32 */
             currentVersion?: number;
             description?: string;
+            downloadDisabled?: boolean;
             fileKey?: string;
             /** Format: int64 */
             fileSize?: number;
@@ -56197,6 +56204,8 @@ export interface components {
             folderId?: number;
             /** Format: int64 */
             id?: number;
+            /** @enum {string} */
+            minVisibleRole?: "SUPPORTERS_AND_ABOVE" | "MEMBERS_AND_ABOVE" | "ADMINS_AND_ABOVE";
             name?: string;
             /** Format: date-time */
             updatedAt?: string;
@@ -59003,11 +59012,14 @@ export interface components {
         CreateFileRequest: {
             contentType?: string;
             description?: string;
+            downloadDisabled?: boolean;
             fileKey?: string;
             /** Format: int64 */
             fileSize: number;
             /** Format: int64 */
             folderId: number;
+            /** @enum {string} */
+            minVisibleRole?: "SUPPORTERS_AND_ABOVE" | "MEMBERS_AND_ABOVE" | "ADMINS_AND_ABOVE";
             name?: string;
         };
         CreateVersionRequest: {
@@ -59160,10 +59172,13 @@ export interface components {
             createdAt?: string;
             createdBy?: components["schemas"]["FileSharingUserRef"];
             description?: string;
+            downloadDisabled?: boolean;
             /** Format: int32 */
             fileCount?: number;
             /** Format: int64 */
             id?: number;
+            /** @enum {string} */
+            minVisibleRole?: "SUPPORTERS_AND_ABOVE" | "MEMBERS_AND_ABOVE" | "ADMINS_AND_ABOVE";
             name?: string;
             /** Format: int64 */
             parentId?: number;
@@ -62765,8 +62780,11 @@ export interface components {
         };
         UpdateFileRequest: {
             description?: string;
+            downloadDisabled?: boolean;
             /** Format: int64 */
             folderId?: number;
+            /** @enum {string} */
+            minVisibleRole?: "SUPPORTERS_AND_ABOVE" | "MEMBERS_AND_ABOVE" | "ADMINS_AND_ABOVE";
             name?: string;
         };
         UpdateTimetableItemRequest: {
@@ -71113,6 +71131,7 @@ export interface components {
             description?: string;
             /** Format: int32 */
             downloadCount?: number;
+            downloadDisabled?: boolean;
             fileName?: string;
             /** Format: int64 */
             fileSize?: number;
@@ -71121,6 +71140,8 @@ export interface components {
             /** Format: int64 */
             id?: number;
             mimeType?: string;
+            /** @enum {string} */
+            minVisibleRole?: "SUPPORTERS_AND_ABOVE" | "MEMBERS_AND_ABOVE" | "ADMINS_AND_ABOVE";
             originalFileName?: string;
             tags?: string[];
             /** Format: date-time */
@@ -71136,11 +71157,14 @@ export interface components {
             createdAt?: string;
             createdBy?: components["schemas"]["FileSharingUserRef"];
             description?: string;
+            downloadDisabled?: boolean;
             /** Format: int32 */
             fileCount?: number;
             files?: components["schemas"]["FileSharingFileSummary"][];
             /** Format: int64 */
             id?: number;
+            /** @enum {string} */
+            minVisibleRole?: "SUPPORTERS_AND_ABOVE" | "MEMBERS_AND_ABOVE" | "ADMINS_AND_ABOVE";
             name?: string;
             /** Format: int64 */
             parentId?: number;

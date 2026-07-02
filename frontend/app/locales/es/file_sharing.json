@@ -1,0 +1,15 @@
+{
+  "visibility": {
+    "label": "Rol mínimo de visibilidad",
+    "help": "Define el rol mínimo que puede ver o descargar esta carpeta/archivo. Si no se indica, todos los miembros pueden verlo.",
+    "all": "Todos los miembros (predeterminado)",
+    "SUPPORTERS_AND_ABOVE": "Seguidores y superiores",
+    "MEMBERS_AND_ABOVE": "Miembros y superiores",
+    "ADMINS_AND_ABOVE": "Solo administradores"
+  },
+  "download": {
+    "disabledLabel": "Deshabilitar descargas",
+    "disabledHelp": "Oculta el botón de descarga y rechaza emitir URLs de descarga. Es solo un elemento disuasorio y no impide la visualización en el navegador.",
+    "disabledError": "La descarga de este archivo está deshabilitada"
+  }
+}

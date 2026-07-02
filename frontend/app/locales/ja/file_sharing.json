@@ -1,0 +1,15 @@
+{
+  "visibility": {
+    "label": "最低可視ロール",
+    "help": "このフォルダ・ファイルを閲覧／ダウンロードできる最低限のロールを指定します。未指定なら所属者全員が閲覧できます。",
+    "all": "所属者全員（既定）",
+    "SUPPORTERS_AND_ABOVE": "応援者以上",
+    "MEMBERS_AND_ABOVE": "正会員以上",
+    "ADMINS_AND_ABOVE": "管理者のみ"
+  },
+  "download": {
+    "disabledLabel": "ダウンロードを禁止する",
+    "disabledHelp": "ダウンロードボタンを隠し、ダウンロードURLの発行を拒否します。ブラウザ表示は防げないため完全な防止ではありません。",
+    "disabledError": "このファイルはダウンロードが禁止されています"
+  }
+}
