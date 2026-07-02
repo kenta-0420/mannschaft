@@ -273,6 +273,17 @@ watch(isShellRoute, (shell) => {
   if (shell) void loadShellData()
 })
 
+// 永続シェルを維持したまま別チームへ遷移した場合（同一親ルート record）に再取得する。
+// useRoleAccess / useDashboardWidgetVisibility は内部で teamSlug を watch して再取得するが、
+// team 本体・follow・予約フラグは本ページ側で明示的に再ロードする必要がある。
+watch(teamSlug, () => {
+  teamLoaded.value = false
+  team.value = null
+  followStatus.value = 'NONE'
+  reservationEnabled.value = false
+  if (isShellRoute.value) void loadShellData()
+})
+
 /** 管理系タブ key（レンズ OFF・非管理者では滞在させない）。 */
 const ADMIN_ONLY_SEGMENTS = new Set(['invites', 'supporters', 'modules'])
 
