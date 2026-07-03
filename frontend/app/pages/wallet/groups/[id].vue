@@ -582,7 +582,7 @@ onMounted(load)
   padding: 1rem;
 }
 .group-edit__modal {
-  background: #fff;
+  background: var(--p-content-background, #fff);
   border-radius: 0.75rem;
   padding: 1.25rem;
   max-width: 420px;
