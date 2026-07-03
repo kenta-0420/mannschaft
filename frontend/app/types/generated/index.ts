@@ -8445,6 +8445,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/reservation-notification-recipients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 予約通知メール宛先 一覧（フリーミアム状態付き） */
+        get: operations["listRecipients"];
+        put?: never;
+        /** 予約通知メール宛先 追加 */
+        post: operations["addRecipient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/reservation-lines": {
         parameters: {
             query?: never;
@@ -19569,7 +19587,7 @@ export interface paths {
             cookie?: never;
         };
         /** 受信者一覧 */
-        get: operations["listRecipients"];
+        get: operations["listRecipients_1"];
         put?: never;
         /** 受信者追加 */
         post: operations["addRecipients"];
@@ -23015,6 +23033,24 @@ export interface paths {
         head?: never;
         /** ブロック時間更新 */
         patch: operations["updateBlockedTime"];
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/reservation-notification-recipients/{recipientId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 予約通知メール宛先 削除 */
+        delete: operations["deleteRecipient"];
+        options?: never;
+        head?: never;
+        /** 予約通知メール宛先 更新 */
+        patch: operations["updateRecipient"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/reservation-lines/{lineId}": {
@@ -31321,7 +31357,7 @@ export interface paths {
             cookie?: never;
         };
         /** 受信者一覧 */
-        get: operations["listRecipients_1"];
+        get: operations["listRecipients_2"];
         put?: never;
         post?: never;
         delete?: never;
@@ -36847,7 +36883,7 @@ export interface paths {
             cookie?: never;
         };
         /** 組織DM受信者一覧 */
-        get: operations["listRecipients_2"];
+        get: operations["listRecipients_3"];
         put?: never;
         post?: never;
         delete?: never;
@@ -52334,6 +52370,38 @@ export interface components {
             /** @example 14:30:00 */
             startTime?: string;
         };
+        CreateNotificationRecipientRequest: {
+            email?: string;
+            isEnabled?: boolean;
+            label?: string;
+        };
+        ApiResponseNotificationRecipientResponse: {
+            data?: components["schemas"]["NotificationRecipientResponse"];
+        };
+        /** @description 予約通知メール宛先 */
+        NotificationRecipientResponse: {
+            /**
+             * Format: date-time
+             * @description 作成日時
+             */
+            createdAt?: string;
+            /**
+             * @description 通知先メールアドレス
+             * @example shop@example.com
+             */
+            email?: string;
+            enabled?: boolean;
+            /**
+             * Format: uuid
+             * @description 宛先ID（UUIDv7）
+             */
+            id?: string;
+            /**
+             * @description 宛先ラベル
+             * @example 店代表
+             */
+            label?: string;
+        };
         CreateReservationLineRequest: {
             /** Format: int64 */
             defaultStaffUserId?: number;
@@ -61421,6 +61489,10 @@ export interface components {
              */
             teamId?: number;
         };
+        UpdateNotificationRecipientRequest: {
+            isEnabled?: boolean;
+            label?: string;
+        };
         UpdateReservationLineRequest: {
             /** Format: int64 */
             defaultStaffUserId?: number;
@@ -64799,6 +64871,43 @@ export interface components {
         };
         ApiResponseListBlockedTimeResponse: {
             data?: components["schemas"]["BlockedTimeResponse"][];
+        };
+        ApiResponseNotificationRecipientListResponse: {
+            data?: components["schemas"]["NotificationRecipientListResponse"];
+        };
+        /** @description 予約通知メール宛先の一覧＋フリーミアム状態 */
+        NotificationRecipientListResponse: {
+            /**
+             * Format: int32
+             * @description 有効宛先数（is_enabled=true の件数）
+             * @example 1
+             */
+            enabledCount?: number;
+            /**
+             * Format: int32
+             * @description 無料プランで登録できる上限件数
+             * @example 3
+             */
+            freeLimit?: number;
+            /**
+             * @description 有料プラン加入中か
+             * @example false
+             */
+            hasPaidPlan?: boolean;
+            /**
+             * Format: int32
+             * @description 有料プランでの最大登録件数
+             * @example 10
+             */
+            maxLimit?: number;
+            /** @description 宛先一覧（有効・無効を含む全登録行） */
+            recipients?: components["schemas"]["NotificationRecipientResponse"][];
+            /**
+             * Format: int32
+             * @description 登録宛先の総数（有効・無効を問わない・件数ゲートの分母）
+             * @example 1
+             */
+            totalCount?: number;
         };
         ApiResponseListReservationLineResponse: {
             data?: components["schemas"]["ReservationLineResponse"][];
@@ -93762,6 +93871,54 @@ export interface operations {
             };
         };
     };
+    listRecipients: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseNotificationRecipientListResponse"];
+                };
+            };
+        };
+    };
+    addRecipient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateNotificationRecipientRequest"];
+            };
+        };
+        responses: {
+            /** @description 作成成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseNotificationRecipientResponse"];
+                };
+            };
+        };
+    };
     listLines: {
         parameters: {
             query?: never;
@@ -115267,7 +115424,7 @@ export interface operations {
             };
         };
     };
-    listRecipients: {
+    listRecipients_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -121669,6 +121826,54 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseBlockedTimeResponse"];
+                };
+            };
+        };
+    };
+    deleteRecipient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                recipientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 削除成功 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateRecipient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                recipientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateNotificationRecipientRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseNotificationRecipientResponse"];
                 };
             };
         };
@@ -135865,7 +136070,7 @@ export interface operations {
             };
         };
     };
-    listRecipients_1: {
+    listRecipients_2: {
         parameters: {
             query: {
                 pageable: components["schemas"]["Pageable"];
@@ -143423,7 +143628,7 @@ export interface operations {
             };
         };
     };
-    listRecipients_2: {
+    listRecipients_3: {
         parameters: {
             query: {
                 pageable: components["schemas"]["Pageable"];

@@ -142,7 +142,9 @@ public class ReservationRecipientEmailEventListener {
         sb.append("メニュー: ").append(menuTitle != null ? menuTitle : "（未設定）").append("\n");
         sb.append("予約者名: ").append(reserverName).append("\n");
         if (bookedAtFormatted != null && !bookedAtFormatted.isBlank()) {
-            sb.append("\n（申込日時: ").append(bookedAtFormatted).append("）");
+            // 補助情報。本文の「日時」＝来店日時とは別物のため、ラベルに「日時」を含めない
+            //（"日時:" が来店日時の行だけを一意に指すようにする）。
+            sb.append("\n（申込受付: ").append(bookedAtFormatted).append("）");
         }
         return sb.toString();
     }

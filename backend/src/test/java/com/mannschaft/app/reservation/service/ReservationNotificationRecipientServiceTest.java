@@ -68,8 +68,8 @@ class ReservationNotificationRecipientServiceTest {
         @Test
         @DisplayName("無料プランで2件登録済み → 3件目は登録できる（境界・3件目まで可）")
         void 無料3件目まで可() {
+            // count=2 は FREE(3) 未満のため hasPaidPlan は評価されない（短絡）→ 有料判定の stub は置かない。
             when(recipientRepository.countByTeamId(TEAM_ID)).thenReturn(2L);
-            when(teamPlanService.hasPaidPlan(TEAM_ID)).thenReturn(false);
             when(recipientRepository.existsByTeamIdAndEmail(TEAM_ID, "a@example.com")).thenReturn(false);
             when(recipientRepository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
 
