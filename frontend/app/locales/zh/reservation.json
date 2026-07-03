@@ -351,6 +351,62 @@
         "reopened": "时段已重新开放",
         "status_change_failed": "状态更改失败"
       }
+    },
+    "unavailability": {
+      "section_label": "预约不可时段",
+      "help": "登记无法接受预约的时间段，例如临时停业或员工休息。选择模板后会根据营业时间自动填入时间段（之后可手动修改）。登记前，如该时间段存在预约将会提示。",
+      "scope": {
+        "label": "对象",
+        "team": "整个团队",
+        "staff": "负责人"
+      },
+      "staff": {
+        "label": "预约对象（负责人）",
+        "placeholder": "选择预约对象",
+        "hint": "未设置负责人的预约对象无法选择。"
+      },
+      "field": {
+        "date": "日期",
+        "time_range": "时间段",
+        "time_range_hint": "留空则整天不可预约。",
+        "start_time": "开始",
+        "end_time": "结束",
+        "reason": "原因（可选）",
+        "reason_placeholder": "例如：临时停业、员工培训"
+      },
+      "template": {
+        "label": "模板",
+        "full_day": "全天休",
+        "late": "晚到（上午不可）",
+        "early_leave": "早退（傍晚不可）",
+        "midday": "午休（休息）",
+        "custom": "手动输入",
+        "no_business_hours": "未设置营业时间，无法自动填入。请手动输入时间段。"
+      },
+      "impact": {
+        "warning": "该时间段有 {count} 个预约。改期或取消后即可登记。",
+        "hint": "存在预约时无法登记。",
+        "checking": "正在确认对预约的影响…"
+      },
+      "button": {
+        "register": "设为不可预约",
+        "delete": "删除"
+      },
+      "message": {
+        "create_success": "已登记预约不可时段",
+        "delete_success": "已删除预约不可时段"
+      },
+      "error": {
+        "has_active_reservations": "该时间段仍有预约，无法登记。请改期或取消后再试。"
+      },
+      "dialog": {
+        "delete_confirm": "要删除该预约不可时段吗？"
+      },
+      "list": {
+        "title": "已登记的预约不可时段",
+        "empty": "尚未登记预约不可时段",
+        "all_day": "全天"
+      }
     }
   }
 }

@@ -1,4 +1,16 @@
 import type { ReservationResponse, ReservationSettingsResponse, UpdateReservationSettingRequest, CreateSlotRequest, UpdateSlotRequest } from '~/types/reservation'
+import type { components } from '~/types/generated'
+
+// === 生成型（真実のソース = openapi-typescript）===
+// 機能B（予約不可枠）は BE #2109 で resourceType/resourceId/impact を追加済み。
+type BlockedTimeRequest = components['schemas']['BlockedTimeRequest']
+type BlockedTimeResponse = components['schemas']['BlockedTimeResponse']
+type BlockedTimeImpactResponse = components['schemas']['BlockedTimeImpactResponse']
+type ReservationLineResponse = components['schemas']['ReservationLineResponse']
+type BusinessHourResponse = components['schemas']['BusinessHourResponse']
+
+/** 予約不可枠の対象軸（機能B）。MVP で enforce するのは TEAM / STAFF の2軸。 */
+export type BlockedResourceType = NonNullable<BlockedTimeRequest['resourceType']>
 
 export function useReservationApi() {
   const api = useApi()
@@ -9,7 +21,7 @@ export function useReservationApi() {
 
   // === Lines ===
   async function getLines(teamId: string) {
-    return api<{ data: unknown[] }>(`${base(teamId)}/reservation-lines`)
+    return api<{ data: ReservationLineResponse[] }>(`${base(teamId)}/reservation-lines`)
   }
 
   async function createLine(
@@ -180,7 +192,7 @@ export function useReservationApi() {
   }
 
   async function getBusinessHours(teamId: string) {
-    return api<{ data: unknown[] }>(`${base(teamId)}/reservation-settings/business-hours`)
+    return api<{ data: BusinessHourResponse[] }>(`${base(teamId)}/reservation-settings/business-hours`)
   }
 
   async function updateBusinessHours(
@@ -195,23 +207,26 @@ export function useReservationApi() {
     return api(`${base(teamId)}/reservation-settings/business-hours`, { method: 'PUT', body })
   }
 
-  async function listBlockedTimes(teamId: string) {
-    return api<{ data: unknown[] }>(`${base(teamId)}/reservation-settings/blocked-times`)
+  // BE: GET /reservation-settings/blocked-times は from/to（取得期間。ISO DATE）が必須クエリ。
+  async function listBlockedTimes(teamId: string, params: { from: string; to: string }) {
+    const query = new URLSearchParams()
+    query.set('from', params.from)
+    query.set('to', params.to)
+    return api<{ data: BlockedTimeResponse[] }>(
+      `${base(teamId)}/reservation-settings/blocked-times?${query}`,
+    )
   }
 
-  async function createBlockedTime(teamId: string, body: Record<string, unknown>) {
-    return api<{ data: unknown }>(`${base(teamId)}/reservation-settings/blocked-times`, {
+  // 機能B: resourceType/resourceId 対応（生成型 BlockedTimeRequest を使用）。
+  async function createBlockedTime(teamId: string, body: BlockedTimeRequest) {
+    return api<{ data: BlockedTimeResponse }>(`${base(teamId)}/reservation-settings/blocked-times`, {
       method: 'POST',
       body,
     })
   }
 
-  async function updateBlockedTime(
-    teamId: string,
-    blockedId: number,
-    body: Record<string, unknown>,
-  ) {
-    return api<{ data: unknown }>(
+  async function updateBlockedTime(teamId: string, blockedId: number, body: BlockedTimeRequest) {
+    return api<{ data: BlockedTimeResponse }>(
       `${base(teamId)}/reservation-settings/blocked-times/${blockedId}`,
       { method: 'PATCH', body },
     )
@@ -221,6 +236,32 @@ export function useReservationApi() {
     return api(`${base(teamId)}/reservation-settings/blocked-times/${blockedId}`, {
       method: 'DELETE',
     })
+  }
+
+  /**
+   * 機能B: 予約不可枠 登録前の影響プレビュー。
+   * overlap する既存 active 予約（PENDING/CONFIRMED）の件数＋一覧を返す（副作用ゼロ）。
+   * BE: GET /reservation-settings/blocked-times/impact
+   */
+  async function getBlockedTimeImpact(
+    teamId: string,
+    params: {
+      date: string
+      resourceType?: BlockedResourceType
+      resourceId?: number
+      startTime?: string
+      endTime?: string
+    },
+  ) {
+    const query = new URLSearchParams()
+    query.set('date', params.date)
+    if (params.resourceType) query.set('resourceType', params.resourceType)
+    if (params.resourceId != null) query.set('resourceId', String(params.resourceId))
+    if (params.startTime) query.set('startTime', params.startTime)
+    if (params.endTime) query.set('endTime', params.endTime)
+    return api<{ data: BlockedTimeImpactResponse }>(
+      `${base(teamId)}/reservation-settings/blocked-times/impact?${query}`,
+    )
   }
 
   // === My Reservations ===
@@ -278,6 +319,7 @@ export function useReservationApi() {
     createBlockedTime,
     updateBlockedTime,
     deleteBlockedTime,
+    getBlockedTimeImpact,
     listMyReservations,
     listUpcomingReservations,
     cancelMyReservation,

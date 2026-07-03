@@ -176,6 +176,19 @@ onMounted(async () => {
                         @changed="onPolicyChanged"
                       />
                     </div>
+
+                    <Divider />
+
+                    <!-- 予約不可枠（機能B）: 対象別・時間帯単位の予約不可 -->
+                    <div>
+                      <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-surface-500">
+                        {{ t('reservation.unavailability.section_label') }}
+                      </p>
+                      <ReservationUnavailabilityManager
+                        :team-id="props.teamId"
+                        :disabled="!isAdmin"
+                      />
+                    </div>
                   </div>
                 </AccordionContent>
               </AccordionPanel>
