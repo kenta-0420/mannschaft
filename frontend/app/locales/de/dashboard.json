@@ -210,6 +210,18 @@
       "empty": "Keine Aufgaben erforderlich",
       "loadError": "Fehler beim Laden der Aufgaben"
     },
-    "emptyState": "Noch keine Beiträge"
+    "emptyState": "Noch keine Beiträge",
+    "list": {
+      "allDay": "Ganztägig",
+      "overdue": "Überfällig",
+      "nextEvent": "Nächster Termin",
+      "noNextEvent": "Keine anstehenden Termine",
+      "eventsThisWeek": "{count} diese Woche",
+      "upcomingEmpty": "Keine anstehenden Termine",
+      "blogEmpty": "Keine Blogbeiträge",
+      "chatEmpty": "Keine Chats",
+      "todoEmpty": "Keine TODOs",
+      "calendarEmpty": "Keine Termine"
+    }
   }
 }

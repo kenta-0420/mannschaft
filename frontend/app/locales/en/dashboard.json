@@ -210,6 +210,18 @@
       "empty": "No action items",
       "loadError": "Failed to load action items"
     },
-    "emptyState": "No posts yet"
+    "emptyState": "No posts yet",
+    "list": {
+      "allDay": "All day",
+      "overdue": "Overdue",
+      "nextEvent": "Next event",
+      "noNextEvent": "No upcoming events",
+      "eventsThisWeek": "{count} this week",
+      "upcomingEmpty": "No upcoming events",
+      "blogEmpty": "No blog posts",
+      "chatEmpty": "No chats",
+      "todoEmpty": "No TODOs",
+      "calendarEmpty": "No events"
+    }
   }
 }

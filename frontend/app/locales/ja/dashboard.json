@@ -210,6 +210,18 @@
       "empty": "対応が必要な項目はありません",
       "loadError": "要対応の取得に失敗しました"
     },
-    "emptyState": "まだ投稿がありません"
+    "emptyState": "まだ投稿がありません",
+    "list": {
+      "allDay": "終日",
+      "overdue": "期限切れ",
+      "nextEvent": "次の予定",
+      "noNextEvent": "予定はありません",
+      "eventsThisWeek": "今週 {count} 件",
+      "upcomingEmpty": "今後の予定はありません",
+      "blogEmpty": "ブログ記事はありません",
+      "chatEmpty": "チャットはありません",
+      "todoEmpty": "TODO はありません",
+      "calendarEmpty": "予定はありません"
+    }
   }
 }
