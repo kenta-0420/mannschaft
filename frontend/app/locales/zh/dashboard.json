@@ -221,7 +221,9 @@
       "blogEmpty": "暂无博客文章",
       "chatEmpty": "暂无聊天",
       "todoEmpty": "暂无待办事项",
-      "calendarEmpty": "暂无日程"
+      "calendarEmpty": "暂无日程",
+      "bulletinEmpty": "暂无公告栏话题",
+      "unread": "未读"
     }
   }
 }

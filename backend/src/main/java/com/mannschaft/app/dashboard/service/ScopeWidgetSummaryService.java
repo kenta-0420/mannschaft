@@ -262,6 +262,9 @@ public class ScopeWidgetSummaryService {
             }
         }
 
+        // 直近スレッド一覧（クエリ順 = isPinned降順→updated_at降順 の先頭3件）を同時に構築する。
+        List<Map<String, Object>> threadList = mapRecentThreads(threads.getContent(), userId);
+
         // 組織スコープのチャット未読合計（当該ユーザーが参加するチャンネルのみ）
         List<ChatChannelEntity> channels = scopeChannels(true, orgId);
         long unreadChat = 0;
@@ -276,6 +279,54 @@ public class ScopeWidgetSummaryService {
         Map<String, Object> result = new HashMap<>();
         result.put("bulletin_count", unreadBulletin);
         result.put("chat_count", unreadChat);
+        result.put("bulletin_threads", threadList);
+        return result;
+    }
+
+    /**
+     * dashboard-scope-panel-content 第二陣: 指定スコープの直近掲示板スレッド一覧（直近 3 件）を返す。
+     *
+     * <p>掲示板の「件数のみ」ウィジェットを「直近スレッド一覧」にコンテンツ化するための共通メソッド。
+     * 既存クエリ {@code findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc}
+     * （isPinned 降順 → updated_at 降順）で取得し、先頭 3 件を {@code {id,title,updated_at,is_read}} の
+     * Map へ変換する。nested DTO / record は作らず Map で統一する（同名 record 衝突・OpenAPI nested
+     * schema 衝突回避）。実体が無ければ空配列を正直に返す（握り潰さない）。</p>
+     *
+     * <p>IDOR 注意: {@code scopeType/scopeId} で取得スレッドを当該スコープに限定する。
+     * 呼び出し元（DashboardService）が会員コンテキストで動くため、これで当該スコープの会員のみに閉じる。</p>
+     *
+     * @param scopeType {@code "TEAM"} / {@code "ORGANIZATION"}
+     * @param scopeId   スコープ ID
+     * @param userId    閲覧ユーザー ID（is_read 判定に使用）
+     * @return id / title / updated_at / is_read を含む Map のリスト（直近 3 件・スレッド無しは空配列）
+     */
+    public List<Map<String, Object>> buildThreadListForScope(String scopeType, Long scopeId, Long userId) {
+        com.mannschaft.app.bulletin.ScopeType type = isOrganization(scopeType)
+                ? com.mannschaft.app.bulletin.ScopeType.ORGANIZATION
+                : com.mannschaft.app.bulletin.ScopeType.TEAM;
+        Page<BulletinThreadEntity> threads = bulletinThreadRepository
+                .findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(
+                        type, scopeId, PageRequest.of(0, RECENT_LIMIT));
+        return mapRecentThreads(threads.getContent(), userId);
+    }
+
+    /**
+     * 掲示板スレッドエンティティ列を直近 3 件の表示用 Map リストへ変換する。
+     * 入力はクエリ順（isPinned 降順 → updated_at 降順）を前提とし、その順のまま先頭 3 件を採る。
+     */
+    private List<Map<String, Object>> mapRecentThreads(List<BulletinThreadEntity> threads, Long userId) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (BulletinThreadEntity thread : threads) {
+            if (result.size() >= RECENT_LIMIT) {
+                break;
+            }
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", thread.getId());
+            map.put("title", thread.getTitle());
+            map.put("updated_at", thread.getUpdatedAt());
+            map.put("is_read", bulletinReadStatusRepository.existsByThreadIdAndUserId(thread.getId(), userId));
+            result.add(map);
+        }
         return result;
     }
 
