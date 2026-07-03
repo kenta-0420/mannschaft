@@ -10,7 +10,6 @@ import com.mannschaft.app.common.storage.quota.repository.StorageUsageLogReposit
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -33,6 +32,7 @@ public class StorageQuotaService {
     private final StoragePlanRepository planRepository;
     private final StorageSubscriptionRepository subscriptionRepository;
     private final StorageUsageLogRepository usageLogRepository;
+    private final StorageSubscriptionProvisioningService subscriptionProvisioningService;
 
     /**
      * アップロード前のクォータチェック。
@@ -134,26 +134,15 @@ public class StorageQuotaService {
 
     /**
      * サブスクリプションを取得し、未存在ならデフォルトプランで自動作成する。
+     *
+     * <p>存在確認（読み取り）は本メソッド内で行い、<b>未存在時の作成は
+     * {@link StorageSubscriptionProvisioningService#getOrCreateDefault} に委譲する</b>。
+     * 作成は別 Bean の {@code REQUIRES_NEW} トランザクションで実行されるため、
+     * 外側が {@code readOnly = true}（レプリカ）でも INSERT は必ずプライマリで行われる
+     * （自己呼び出しによる {@code REQUIRES_NEW} 無効化と read-only コネクションでの INSERT を根治）。</p>
      */
-    @Transactional(propagation = Propagation.REQUIRED)
-    protected StorageSubscriptionEntity ensureSubscription(StorageScopeType scopeType, Long scopeId) {
+    private StorageSubscriptionEntity ensureSubscription(StorageScopeType scopeType, Long scopeId) {
         return subscriptionRepository.findByScopeTypeAndScopeId(scopeType.name(), scopeId)
-                .orElseGet(() -> createDefault(scopeType, scopeId));
-    }
-
-    private StorageSubscriptionEntity createDefault(StorageScopeType scopeType, Long scopeId) {
-        StoragePlanEntity defaultPlan = planRepository
-                .findFirstByScopeLevelAndIsDefaultTrueAndDeletedAtIsNull(scopeType.name())
-                .orElseThrow(() -> new BusinessException(StorageQuotaErrorCode.SUBSCRIPTION_NOT_FOUND));
-        StorageSubscriptionEntity entity = StorageSubscriptionEntity.builder()
-                .scopeType(scopeType.name())
-                .scopeId(scopeId)
-                .planId(defaultPlan.getId())
-                .usedBytes(0L)
-                .fileCount(0)
-                .build();
-        log.info("F13 ストレージサブスクリプションを自動作成: scope={}/{}, planId={}",
-                scopeType, scopeId, defaultPlan.getId());
-        return subscriptionRepository.save(entity);
+                .orElseGet(() -> subscriptionProvisioningService.getOrCreateDefault(scopeType, scopeId));
     }
 }

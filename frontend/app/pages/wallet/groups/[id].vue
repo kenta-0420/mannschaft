@@ -233,22 +233,18 @@ onMounted(load)
 
     <div v-else-if="loadError || !group" class="group-edit__error" role="alert">
       <p>{{ t('wallet.group_form.not_found') }}</p>
-      <button type="button" class="group-edit__btn" @click="backToWallet">
-        ←
-      </button>
+      <Button label="←" severity="secondary" @click="backToWallet" />
     </div>
 
     <template v-else>
       <!-- 提示モード起動ボタン（編集中でも常設） -->
       <section class="group-edit__section">
-        <button
-          type="button"
-          class="group-edit__btn group-edit__btn--accent"
+        <Button
+          :label="`▶ ${t('wallet.group_form.start_presentation')}`"
+          class="group-edit__btn--accent w-full"
           :disabled="draftCardIds.length === 0"
           @click="startPresentation"
-        >
-          ▶ {{ t('wallet.group_form.start_presentation') }}
-        </button>
+        />
       </section>
 
       <!-- name / emoji -->
@@ -257,25 +253,23 @@ onMounted(load)
           <label for="g-name" class="group-edit__label">
             {{ t('wallet.group_form.name') }} <span class="group-edit__required">*</span>
           </label>
-          <input
+          <InputText
             id="g-name"
             v-model="draftName"
-            type="text"
-            class="group-edit__input"
+            class="w-full"
             :placeholder="t('wallet.group_form.name_placeholder')"
-            maxlength="50"
-          >
+            :maxlength="50"
+          />
         </div>
         <div class="group-edit__field">
           <label for="g-emoji" class="group-edit__label">{{ t('wallet.group_form.emoji') }}</label>
-          <input
+          <InputText
             id="g-emoji"
             v-model="draftEmoji"
-            type="text"
-            class="group-edit__input group-edit__input--small"
+            class="w-24"
             :placeholder="t('wallet.group_form.emoji_placeholder')"
-            maxlength="4"
-          >
+            :maxlength="4"
+          />
         </div>
       </section>
 
@@ -376,28 +370,31 @@ onMounted(load)
 
       <!-- 保存フッタ -->
       <div class="group-edit__footer">
-        <button type="button" class="group-edit__btn" :disabled="saving" @click="backToWallet">
-          {{ t('wallet.group_form.cancel') }}
-        </button>
-        <button
-          type="button"
-          class="group-edit__btn group-edit__btn--primary"
+        <Button
+          :label="t('wallet.group_form.cancel')"
+          severity="secondary"
+          class="flex-1"
+          :disabled="saving"
+          @click="backToWallet"
+        />
+        <Button
+          :label="t('wallet.group_form.save')"
+          class="flex-1"
           :disabled="!canSave"
+          :loading="saving"
           @click="save"
-        >
-          {{ saving ? '…' : t('wallet.group_form.save') }}
-        </button>
+        />
       </div>
 
       <!-- 削除セクション -->
       <section class="group-edit__danger">
-        <button
-          type="button"
-          class="group-edit__btn group-edit__btn--danger"
+        <Button
+          :label="t('wallet.group_form.delete')"
+          severity="danger"
+          outlined
+          class="w-full"
           @click="showDeleteConfirm = true"
-        >
-          {{ t('wallet.group_form.delete') }}
-        </button>
+        />
       </section>
     </template>
 
@@ -414,22 +411,19 @@ onMounted(load)
         <h2 class="group-edit__modal-title">{{ t('wallet.group_form.delete_confirm_title') }}</h2>
         <p class="group-edit__modal-body">{{ t('wallet.group_form.delete_confirm') }}</p>
         <div class="group-edit__modal-actions">
-          <button
-            type="button"
-            class="group-edit__btn"
+          <Button
+            :label="t('wallet.group_form.cancel')"
+            severity="secondary"
             :disabled="deleting"
             @click="showDeleteConfirm = false"
-          >
-            {{ t('wallet.group_form.cancel') }}
-          </button>
-          <button
-            type="button"
-            class="group-edit__btn group-edit__btn--danger"
+          />
+          <Button
+            :label="t('wallet.group_form.delete_confirm_ok')"
+            severity="danger"
             :disabled="deleting"
+            :loading="deleting"
             @click="confirmDelete"
-          >
-            {{ deleting ? '…' : t('wallet.group_form.delete_confirm_ok') }}
-          </button>
+          />
         </div>
       </div>
     </div>
@@ -482,16 +476,6 @@ onMounted(load)
 }
 .group-edit__required {
   color: #dc2626;
-}
-.group-edit__input {
-  padding: 0.625rem 0.75rem;
-  border: 1px solid var(--p-surface-300, #d1d5db);
-  border-radius: 0.5rem;
-  background: var(--p-surface-0, #fff);
-  font-size: 0.9375rem;
-}
-.group-edit__input--small {
-  width: 6rem;
 }
 .group-edit__hint {
   font-size: 0.8125rem;
@@ -553,7 +537,7 @@ onMounted(load)
   height: 36px;
   border-radius: 0.375rem;
   border: 1px solid var(--p-surface-300, #d1d5db);
-  background: var(--p-surface-0, #fff);
+  background: var(--p-content-background, #fff);
   cursor: pointer;
   font-size: 1rem;
 }
@@ -583,36 +567,6 @@ onMounted(load)
   padding-top: 0.75rem;
   border-top: 1px solid var(--p-surface-200, #e5e7eb);
 }
-.group-edit__btn {
-  flex: 1;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid var(--p-surface-300, #d1d5db);
-  background: var(--p-surface-0, #fff);
-  color: var(--p-text-color, #111827);
-  font-weight: 600;
-  cursor: pointer;
-}
-.group-edit__btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.group-edit__btn--primary {
-  background: var(--p-primary-color, #3b82f6);
-  color: #fff;
-  border-color: transparent;
-}
-.group-edit__btn--accent {
-  background: #10b981;
-  color: #fff;
-  border-color: transparent;
-  font-size: 1rem;
-}
-.group-edit__btn--danger {
-  background: #fff;
-  color: #dc2626;
-  border-color: #dc2626;
-}
 .group-edit__danger {
   margin-top: 0.5rem;
   padding-top: 0.5rem;
@@ -628,7 +582,7 @@ onMounted(load)
   padding: 1rem;
 }
 .group-edit__modal {
-  background: #fff;
+  background: var(--p-content-background, #fff);
   border-radius: 0.75rem;
   padding: 1.25rem;
   max-width: 420px;

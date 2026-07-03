@@ -120,25 +120,23 @@ onMounted(loadCards)
         <label for="group-name" class="group-new__label">
           {{ t('wallet.group_form.name') }} <span class="group-new__required">*</span>
         </label>
-        <input
+        <InputText
           id="group-name"
           v-model="name"
-          type="text"
-          class="group-new__input"
+          class="w-full"
           :placeholder="t('wallet.group_form.name_placeholder')"
-          maxlength="50"
-        >
+          :maxlength="50"
+        />
       </div>
       <div class="group-new__field">
         <label for="group-emoji" class="group-new__label">{{ t('wallet.group_form.emoji') }}</label>
-        <input
+        <InputText
           id="group-emoji"
           v-model="emoji"
-          type="text"
-          class="group-new__input group-new__input--small"
+          class="w-24"
           :placeholder="t('wallet.group_form.emoji_placeholder')"
-          maxlength="4"
-        >
+          :maxlength="4"
+        />
       </div>
     </section>
 
@@ -159,13 +157,14 @@ onMounted(loadCards)
 
       <ul v-else class="group-new__card-list">
         <li v-for="card in cards" :key="card.id">
-          <label class="group-new__card-row">
-            <input
-              type="checkbox"
-              :checked="selectedIds.has(card.id)"
+          <label class="group-new__card-row" :for="`card-check-${card.id}`">
+            <Checkbox
+              :input-id="`card-check-${card.id}`"
+              :model-value="selectedIds.has(card.id)"
+              binary
               :disabled="!selectedIds.has(card.id) && selectedCount >= MAX_CARDS_PER_GROUP"
-              @change="toggle(card.id)"
-            >
+              @update:model-value="() => toggle(card.id)"
+            />
             <span class="group-new__card-name">{{ card.displayName }}</span>
             <span v-if="card.providerDisplayName && card.providerDisplayName !== card.displayName" class="group-new__card-provider">
               {{ card.providerDisplayName }}
@@ -187,17 +186,20 @@ onMounted(loadCards)
     </p>
 
     <div class="group-new__footer">
-      <button type="button" class="group-new__btn" :disabled="saving" @click="cancel">
-        {{ t('wallet.group_form.cancel') }}
-      </button>
-      <button
-        type="button"
-        class="group-new__btn group-new__btn--primary"
+      <Button
+        :label="t('wallet.group_form.cancel')"
+        severity="secondary"
+        class="flex-1"
+        :disabled="saving"
+        @click="cancel"
+      />
+      <Button
+        :label="t('wallet.group_form.save')"
+        class="flex-1"
         :disabled="!canSave"
+        :loading="saving"
         @click="save"
-      >
-        {{ saving ? '…' : t('wallet.group_form.save') }}
-      </button>
+      />
     </div>
   </div>
 </template>
@@ -246,16 +248,6 @@ onMounted(loadCards)
 }
 .group-new__required {
   color: #dc2626;
-}
-.group-new__input {
-  padding: 0.625rem 0.75rem;
-  border: 1px solid var(--p-surface-300, #d1d5db);
-  border-radius: 0.5rem;
-  background: var(--p-surface-0, #fff);
-  font-size: 0.9375rem;
-}
-.group-new__input--small {
-  width: 6rem;
 }
 .group-new__loading,
 .group-new__empty {
@@ -317,24 +309,5 @@ onMounted(loadCards)
   gap: 0.5rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--p-surface-200, #e5e7eb);
-}
-.group-new__btn {
-  flex: 1;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid var(--p-surface-300, #d1d5db);
-  background: var(--p-surface-0, #fff);
-  color: var(--p-text-color, #111827);
-  font-weight: 600;
-  cursor: pointer;
-}
-.group-new__btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.group-new__btn--primary {
-  background: var(--p-primary-color, #3b82f6);
-  color: #fff;
-  border-color: transparent;
 }
 </style>
