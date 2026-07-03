@@ -25,7 +25,7 @@ let refreshPromise: Promise<TokenRefreshResult> | null = null
 /**
  * access_token の先回り／事後リフレッシュを行うモジュールスコープ関数。
  *
- * 起動時の先回りリフレッシュ（auth.client プラグイン）と interceptor の 401 リカバリの
+ * 定期的な先回りリフレッシュ（armProactiveRefresh スケジューラ）と interceptor の 401 リカバリの
  * 両方から呼ばれ、モジュール level の refreshPromise で二重リフレッシュを防止する
  * （同時に複数の呼び出しが来ても 1 本の Promise を共有する）。
  *
@@ -82,6 +82,104 @@ export function performTokenRefresh(
   })()
 
   return refreshPromise
+}
+
+/**
+ * access_token の先回り（proactive）リフレッシュタイマーの武装遅延を計算する純粋関数。
+ *
+ * expiresAtMs（失効時刻）から bufferMs（安全マージン）を差し引いた時刻までの残り時間を返す。
+ * 既に過去/バッファ以内の場合は負の遅延にせず 0（即時実行）を返す（AC-4）。
+ */
+export function computeProactiveRefreshDelayMs(
+  expiresAtMs: number,
+  nowMs: number,
+  bufferMs: number,
+): number {
+  return Math.max(0, expiresAtMs - nowMs - bufferMs)
+}
+
+// 失効の何 ms 前に先回りリフレッシュを発火するかの安全マージン。
+const PROACTIVE_REFRESH_BUFFER_MS = 60_000
+// 先回りリフレッシュが失敗した場合（transient / auth_failed 等・新しい expiry が得られない）の
+// 再武装遅延。リアクティブ 401 ノイズに戻さず、短い間隔でリトライして回復を試みる（AC-7）。
+const PROACTIVE_REFRESH_RETRY_DELAY_MS = 30_000
+
+// タイマーハンドルは module-scope で保持する（refreshPromise と同様の single-flight パターン。AC-5）。
+let proactiveRefreshTimer: ReturnType<typeof setTimeout> | null = null
+
+/**
+ * 武装中の先回りリフレッシュタイマーを解除する（AC-3）。ログアウト時に呼ぶこと。
+ */
+export function disarmProactiveRefresh(): void {
+  if (proactiveRefreshTimer !== null) {
+    clearTimeout(proactiveRefreshTimer)
+    proactiveRefreshTimer = null
+  }
+}
+
+/**
+ * access_token の先回りリフレッシュタイマーを（再）武装するモジュールスコープ関数。
+ *
+ * 【呼び出しタイミング】
+ * setTokens（ログイン成功時・リフレッシュ成功時の両方。useAuthStore 側でフック）、
+ * auth.client プラグインの起動時（認証済みなら）から呼ばれる。
+ *
+ * 【挙動】
+ * - 常に 1 本のみ武装する。呼び出し時に既存タイマーをクリアしてから張り直す（AC-5）。
+ * - localStorage の tokenExpiresAt から、失効の PROACTIVE_REFRESH_BUFFER_MS（60秒）前に
+ *   発火するよう遅延を計算する。既に過去/バッファ以内なら即時（遅延0）で発火する（AC-4）。
+ * - 発火後 performTokenRefresh が 'refreshed' を返せば、setTokens 内で書き込まれた新しい
+ *   tokenExpiresAt に基づいて次のタイマーを再武装する（AC-2。セッションが続く限り失効させない）。
+ * - 'refreshed' 以外（transient / auth_failed）の場合は諦めず、短い遅延で再武装してリトライする
+ *   （AC-7。リアクティブ 401 ノイズに戻さないため）。
+ * - SSR では張らない（AC-6。import.meta.client ガード）。
+ *
+ * config / authStore は performTokenRefresh と同様に引数で受け取る。setTimeout コールバック内で
+ * useRuntimeConfig() / useAuthStore() を呼ぶと Nuxt インスタンスが未解決になる落とし穴があるため、
+ * 呼び出し元（setTokens・auth.client プラグイン等の同期コンテキスト）で capture したものを渡すこと。
+ *
+ * 【遅延0（即時）の特別扱い】
+ * delayMs が 0 の場合は setTimeout を挟まず、呼び出しと同じ同期フェーズで refresh の fetch を
+ * 開始する。auth.client プラグインの起動時武装（リロード直後に Cookie が失効済みのケース）では、
+ * 後続のアルファベット順プラグイン（nav-settings.client 等）が先に認証付き API を撃って 401 を
+ * 出す前に、refresh のリクエストを確実に先行させる必要がある。setTimeout(fn, 0) はマクロタスクの
+ * ため、後続プラグインの同期実行より後回しになってしまいレースに負ける（実機E2E
+ * auth-proactive-refresh.spec.ts の PRR-001 が検証するリグレッションの再発になる）。
+ */
+export function armProactiveRefresh(
+  config: ReturnType<typeof useRuntimeConfig>,
+  authStore: ReturnType<typeof useAuthStore>,
+): void {
+  if (!import.meta.client) return
+
+  disarmProactiveRefresh()
+
+  const raw = localStorage.getItem('tokenExpiresAt')
+  const expiresAtMs = raw ? Number(raw) : 0
+  const delayMs = computeProactiveRefreshDelayMs(expiresAtMs, Date.now(), PROACTIVE_REFRESH_BUFFER_MS)
+
+  const fire = (): void => {
+    void (async () => {
+      const result = await performTokenRefresh(config, authStore)
+      if (result === 'refreshed') {
+        // 新しい tokenExpiresAt（setTokens 内で書き込み済み）に基づいて次のタイマーを再武装する。
+        armProactiveRefresh(config, authStore)
+      }
+      else {
+        // transient / auth_failed は諦めず短い遅延で再武装し回復を試みる。
+        proactiveRefreshTimer = setTimeout(() => {
+          armProactiveRefresh(config, authStore)
+        }, PROACTIVE_REFRESH_RETRY_DELAY_MS)
+      }
+    })()
+  }
+
+  if (delayMs === 0) {
+    fire()
+  }
+  else {
+    proactiveRefreshTimer = setTimeout(fire, delayMs)
+  }
 }
 
 // 短時間に複数の 5xx が発生した場合のトースト集約
@@ -165,6 +263,12 @@ export function useApi() {
             throw new Error('token_refresh_transient')
           }
           // 'refreshed': throw しない → ofetch が onRequest で新トークンを付与して 1 回リトライ
+          // リアクティブ経路（この 401 ハンドラ）でリフレッシュが成立した場合も、先回りタイマーを
+          // 新しい失効時刻で（再）武装しておく。通常は先回りタイマーが常時武装されているため
+          // ここへは来ないが、万一先回りが未武装のまま 401 を踏んだ場合でも、以後はリアクティブ 401 を
+          // 出さず先回り経路へ復帰できるようにする防御。useApi() setup で capture 済みの
+          // config / authStore を渡すため、この async コンテキストでも composable は呼ばない。
+          armProactiveRefresh(config, authStore)
           return
         }
         else {

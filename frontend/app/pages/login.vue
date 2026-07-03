@@ -11,6 +11,9 @@ const googleLoading = ref(false)
 
 const api = useApi()
 const authStore = useAuthStore()
+// 先回りリフレッシュ武装に渡す runtimeConfig は、必ず setup コンテキストで capture しておく
+// （イベントハンドラ内で useRuntimeConfig() を呼ぶ落とし穴を避ける。armProactiveRefresh 参照）。
+const runtimeConfig = useRuntimeConfig()
 const { getGoogleAuthUrl } = useAuthApi()
 const notification = useNotification()
 const route = useRoute()
@@ -68,6 +71,8 @@ async function handleLogin() {
       navigateTo(`/2fa-verify?session=${data.data.mfaSessionToken}`)
     } else {
       authStore.setTokens(data.data.accessToken, data.data.refreshToken)
+      // ログイン成功直後に先回りリフレッシュタイマーを武装する（capture 済み runtimeConfig を渡す）。
+      armProactiveRefresh(runtimeConfig, authStore)
 
       // /api/v1/users/me でフルプロフィール（systemRole・locale・avatarUrl 等）を一括取得
       try {
