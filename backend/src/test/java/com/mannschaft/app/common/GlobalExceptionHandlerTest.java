@@ -505,6 +505,58 @@ class GlobalExceptionHandlerTest {
             assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_013");
         }
 
+        @Test
+        @DisplayName("F03.4 機能D 上限超過: NOTIFY_RECIPIENT_LIMIT_EXCEEDED は 400 Bad Request（code=RESERVATION_028・個別 map なし WARN 既定）")
+        void handleBusinessException_NOTIFY_RECIPIENT_LIMIT_EXCEEDED_400() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.reservation.ReservationErrorCode.NOTIFY_RECIPIENT_LIMIT_EXCEEDED);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_028");
+        }
+
+        @Test
+        @DisplayName("F03.4 機能D 有料必須: NOTIFY_RECIPIENT_PAID_PLAN_REQUIRED は 402 Payment Required（code=RESERVATION_029）")
+        void handleBusinessException_NOTIFY_RECIPIENT_PAID_PLAN_REQUIRED_402() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.reservation.ReservationErrorCode.NOTIFY_RECIPIENT_PAID_PLAN_REQUIRED);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.PAYMENT_REQUIRED);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_029");
+        }
+
+        @Test
+        @DisplayName("F03.4 機能D 重複: NOTIFY_RECIPIENT_DUPLICATE は 409 Conflict（code=RESERVATION_030）")
+        void handleBusinessException_NOTIFY_RECIPIENT_DUPLICATE_409() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.reservation.ReservationErrorCode.NOTIFY_RECIPIENT_DUPLICATE);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_030");
+        }
+
+        @Test
+        @DisplayName("F03.4 機能D 不在: NOTIFY_RECIPIENT_NOT_FOUND は 404 Not Found（code=RESERVATION_031）")
+        void handleBusinessException_NOTIFY_RECIPIENT_NOT_FOUND_404() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.reservation.ReservationErrorCode.NOTIFY_RECIPIENT_NOT_FOUND);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_031");
+        }
+
         // ========================================
         // AC-7: セッション失効系（AUTH_039 等）は 401 Unauthorized
         // リフレッシュトークン並行更新の自爆バグ根治で、全セッション無効化後のアクセスは

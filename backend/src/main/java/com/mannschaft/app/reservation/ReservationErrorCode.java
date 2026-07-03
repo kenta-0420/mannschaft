@@ -122,7 +122,47 @@ public enum ReservationErrorCode implements ErrorCode {
      * 判定は注入 {@code Clock} 基準。管理者（ADMIN）キャンセルは締切の対象外（常時キャンセル可）。
      * Severity.WARN のため {@code GlobalExceptionHandler} の既定マッピングで 400 になる（個別 map 不要）。</p>
      */
-    CANCEL_DEADLINE_PASSED("RESERVATION_026", "キャンセル締切を過ぎているためキャンセルできません", Severity.WARN);
+    CANCEL_DEADLINE_PASSED("RESERVATION_026", "キャンセル締切を過ぎているためキャンセルできません", Severity.WARN),
+
+    // ===== 機能D: 予約通知メール宛先（フリーミアム件数ゲート）=====
+    // ※ RESERVATION_027（UNAVAILABILITY_HAS_ACTIVE_RESERVATIONS）は機能B（別 PR）で追加する。
+    //    D は 028〜030 を使う（設計 §8 エラーコード表）。マージ順により最終採番は再確認する。
+
+    /**
+     * 予約通知メール宛先が上限（10 件）に到達（入力上限超過なので 400）。
+     *
+     * <p>F03.4 §4.D/§5.D「{@code count >= MAX_RECIPIENT_LIMIT(10)}」を Service 層
+     * （{@code ReservationNotificationRecipientService.addRecipient}）で担保する。
+     * 有料でも 10 件超は不可。Severity.WARN のため {@code GlobalExceptionHandler} の
+     * 既定マッピングで 400 になる（個別 map 不要）。</p>
+     */
+    NOTIFY_RECIPIENT_LIMIT_EXCEEDED("RESERVATION_028", "予約通知メール宛先はチームあたり最大10件までです", Severity.WARN),
+
+    /**
+     * 無料プランで 4 件目以降の宛先を追加（有料プラン必須なので 402 Payment Required）。
+     *
+     * <p>F03.4 §4.D/§5.D「{@code count >= FREE_RECIPIENT_LIMIT(3)} かつ {@code !hasPaidPlan}」を
+     * {@code TeamPlanService.hasPaidPlan} で判定して担保する。HTTP は 402（Payment Required＝
+     * 有料課金で解放される意味論）。{@code GlobalExceptionHandler} の個別マッピングで 402 に上書きする。</p>
+     */
+    NOTIFY_RECIPIENT_PAID_PLAN_REQUIRED("RESERVATION_029", "無料プランでは予約通知メール宛先は3件までです。4件目以降は有料プランが必要です", Severity.WARN),
+
+    /**
+     * 同一チームで email 重複（リソース競合なので 409 Conflict）。
+     *
+     * <p>F03.4 §4.D「同一チームで {@code email} 重複」を Service 層で事前に 409 として弾く。
+     * DB {@code UNIQUE(team_id, email)} が最終防御。{@code GlobalExceptionHandler} の
+     * 個別マッピングで 409 に上書きする。</p>
+     */
+    NOTIFY_RECIPIENT_DUPLICATE("RESERVATION_030", "この宛先メールアドレスは既に登録されています", Severity.WARN),
+
+    /**
+     * 予約通知メール宛先が見つからない（PATCH/DELETE 対象不在・404）。
+     *
+     * <p>{@code findByIdAndTeamId} で解決できない場合に throw する（他チームの宛先を掴んだ場合も
+     * IDOR 対策として同一の 404 で隠蔽する）。{@code GlobalExceptionHandler} の個別マッピングで 404。</p>
+     */
+    NOTIFY_RECIPIENT_NOT_FOUND("RESERVATION_031", "予約通知メール宛先が見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;
