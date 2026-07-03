@@ -390,8 +390,11 @@ public class ReservationService {
      * @return 予約レスポンスリスト
      */
     public List<ReservationResponse> listUpcomingReservations(Long userId) {
+        // 直近予約は「申込時刻（booked_at）」ではなく「来店日時（枠の日付＋開始時刻）」で判定する。
+        // 現在時刻は注入 Clock 基準（cancel_deadline 等と同様）。
+        LocalDateTime now = LocalDateTime.now(clock);
         List<ReservationEntity> reservations =
-                reservationRepository.findUpcomingByUserId(userId, LocalDateTime.now());
+                reservationRepository.findUpcomingByUserId(userId, now.toLocalDate(), now.toLocalTime());
         return enrichList(reservations);
     }
 
