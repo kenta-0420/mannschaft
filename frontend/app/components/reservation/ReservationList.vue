@@ -46,18 +46,50 @@ function statusLabel(status?: string): string {
 async function loadReservations() {
   loading.value = true
   try {
-    // mine モードは自分の予約のみを取得する（他人の予約・氏名は API 段階で返らない）。
-    const res = props.mode === 'mine'
-      ? await reservationApi.listMyReservations({ status: statusFilter.value || undefined, page: page.value, size: 20 })
-      : await reservationApi.listReservations(props.teamId, { status: statusFilter.value || undefined, page: page.value, size: 20 })
-    reservations.value = res.data as ReservationResponse[]
-    totalRecords.value = res.meta.totalElements
+    if (props.mode === 'mine') {
+      // BE GET /reservations/my は全件返却（meta なし・status/page クエリ非対応）。
+      // 件数は data.length で算出する。status 絞り込み・ページングはクライアント側で行う
+      // （displayedReservations と DataTable 非 lazy）。他人の予約・氏名は API 段階で一切返らない。
+      const res = await reservationApi.listMyReservations()
+      reservations.value = res.data
+      totalRecords.value = res.data.length
+    }
+    else {
+      // team モードは BE がサーバー側で status 絞り込み・ページングを行い meta を返す。
+      const res = await reservationApi.listReservations(props.teamId, {
+        status: statusFilter.value || undefined,
+        page: page.value,
+        size: 20,
+      })
+      reservations.value = res.data as ReservationResponse[]
+      totalRecords.value = res.meta.totalElements
+    }
   }
   catch {
-    // 取得失敗時は空表示にフォールバック
+    // 取得失敗は症状を隠さずユーザーへ通知する（catch での握り潰し＝対処療法を避ける）。
+    // 表示は空へフォールバックしつつ、失敗した事実は隠さない。
     reservations.value = []
+    totalRecords.value = 0
+    notification.error(t('reservation.message.my_load_failed'))
   }
   finally { loading.value = false }
+}
+
+// mine モードの status 絞り込みはクライアント側で行う（BE /my はフィルタ非対応）。
+// team モードは既にサーバー側で絞り込み済みのためそのまま表示する。
+const displayedReservations = computed<ReservationResponse[]>(() => {
+  if (props.mode === 'mine' && statusFilter.value) {
+    return reservations.value.filter(r => r.status?.status === statusFilter.value)
+  }
+  return reservations.value
+})
+
+// team のみサーバー側ページング。mine は DataTable のクライアント側ページングに委ねる。
+function onPage(e: { page: number }) {
+  if (props.mode === 'team') {
+    page.value = e.page
+    loadReservations()
+  }
 }
 
 // 承認 = PENDING→CONFIRMED（BE: POST /reservations/{id}/confirm）
@@ -90,7 +122,13 @@ async function cancel(id: number) {
   })
 }
 
-watch(statusFilter, () => { page.value = 0; loadReservations() })
+watch(statusFilter, () => {
+  // team はサーバー再取得。mine はクライアント側フィルタ（displayedReservations）が反応するため再取得不要。
+  if (props.mode === 'team') {
+    page.value = 0
+    loadReservations()
+  }
+})
 onMounted(loadReservations)
 </script>
 
@@ -100,7 +138,7 @@ onMounted(loadReservations)
     <div class="mb-4">
       <Select v-model="statusFilter" :options="statusOptions" option-label="label" option-value="value" class="w-40" />
     </div>
-    <DataTable :value="reservations" :loading="loading" lazy paginator :rows="20" :total-records="totalRecords" data-key="id" row-hover @page="(e: { page: number }) => { page = e.page; loadReservations() }">
+    <DataTable :value="displayedReservations" :loading="loading" :lazy="mode === 'team'" paginator :rows="20" :total-records="mode === 'team' ? totalRecords : undefined" data-key="id" row-hover @page="onPage">
       <Column :header="t('reservation.column.datetime')" style="width: 160px">
         <template #body="{ data }">
           <div class="text-sm">
