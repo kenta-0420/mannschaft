@@ -103084,6 +103084,59 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/reservation-slots/grid": {
+      "get": {
+        "tags": [
+          "予約スロット管理"
+        ],
+        "summary": "空きグリッド（複数予約対象）",
+        "operationId": "getGrid",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "staffUserIds",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseReservationGridResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/reservation-slots/available": {
       "get": {
         "tags": [
@@ -194482,6 +194535,83 @@
             "items": {
               "$ref": "#/components/schemas/ReservationSlotResponse"
             }
+          }
+        }
+      },
+      "ApiResponseReservationGridResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ReservationGridResponse"
+          }
+        }
+      },
+      "GridCellDto": {
+        "type": "object",
+        "properties": {
+          "endTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "price": {
+            "type": "number"
+          },
+          "slotId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "startTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "BOOKED",
+              "CLOSED",
+              "UNAVAILABLE"
+            ]
+          }
+        }
+      },
+      "GridColumnDto": {
+        "type": "object",
+        "properties": {
+          "cells": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GridCellDto"
+            }
+          },
+          "lineIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "staffName": {
+            "type": "string"
+          },
+          "staffUserId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ReservationGridResponse": {
+        "type": "object",
+        "properties": {
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GridColumnDto"
+            }
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
           }
         }
       },

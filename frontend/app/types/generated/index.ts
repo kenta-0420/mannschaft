@@ -29908,6 +29908,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/reservation-slots/grid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 空きグリッド（複数予約対象） */
+        get: operations["getGrid"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/reservation-slots/available": {
         parameters: {
             query?: never;
@@ -64824,6 +64841,32 @@ export interface components {
         };
         ApiResponseListReservationSlotResponse: {
             data?: components["schemas"]["ReservationSlotResponse"][];
+        };
+        ApiResponseReservationGridResponse: {
+            data?: components["schemas"]["ReservationGridResponse"];
+        };
+        GridCellDto: {
+            /** @example 14:30:00 */
+            endTime?: string;
+            price?: number;
+            /** Format: int64 */
+            slotId?: number;
+            /** @example 14:30:00 */
+            startTime?: string;
+            /** @enum {string} */
+            state?: "AVAILABLE" | "BOOKED" | "CLOSED" | "UNAVAILABLE";
+        };
+        GridColumnDto: {
+            cells?: components["schemas"]["GridCellDto"][];
+            lineIds?: number[];
+            staffName?: string;
+            /** Format: int64 */
+            staffUserId?: number;
+        };
+        ReservationGridResponse: {
+            columns?: components["schemas"]["GridColumnDto"][];
+            /** Format: date */
+            date?: string;
         };
         ApiResponseListBlockedTimeResponse: {
             data?: components["schemas"]["BlockedTimeResponse"][];
@@ -133893,6 +133936,31 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseReservationStatsResponse"];
+                };
+            };
+        };
+    };
+    getGrid: {
+        parameters: {
+            query: {
+                date: string;
+                staffUserIds?: number[];
+            };
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReservationGridResponse"];
                 };
             };
         };

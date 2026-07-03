@@ -115,13 +115,16 @@ class ReservationAuthorizationDeclarationTest {
         }
 
         @Test
-        @DisplayName("listSlots / listAvailableSlots / getSlot は開放維持（予約フローが使用）")
+        @DisplayName("listSlots / listAvailableSlots / getSlot / getGrid は開放維持（予約フローが使用）")
         void 参照は開放() {
             assertOpen(TeamReservationSlotController.class, "listSlots",
                     Long.class, LocalDate.class, LocalDate.class);
             assertOpen(TeamReservationSlotController.class, "listAvailableSlots",
                     Long.class, LocalDate.class, LocalDate.class);
             assertOpen(TeamReservationSlotController.class, "getSlot", Long.class, Long.class);
+            // 機能C: 空きグリッドは会員/公開が使う view ゲート（Service 層）のため @PreAuthorize を付けない（C-7）。
+            assertOpen(TeamReservationSlotController.class, "getGrid",
+                    Long.class, LocalDate.class, java.util.List.class);
         }
     }
 

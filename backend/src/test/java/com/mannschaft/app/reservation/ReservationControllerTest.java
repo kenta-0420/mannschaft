@@ -335,6 +335,9 @@ class ReservationControllerTest {
         @Mock
         private ReservationSlotService slotService;
 
+        @Mock
+        private com.mannschaft.app.reservation.service.ReservationGridService gridService;
+
         @InjectMocks
         private TeamReservationSlotController controller;
 
@@ -364,6 +367,30 @@ class ReservationControllerTest {
                     controller.listAvailableSlots(TEAM_ID, from, to);
 
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        }
+
+        @Test
+        @DisplayName("機能C: 空きグリッド取得_正常_200返却（会員が到達＝ADMIN限定でない・C-7）かつ userId を service へ委譲")
+        void 空きグリッド取得_正常_200返却() {
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                LocalDate date = LocalDate.of(2026, 4, 1);
+                List<Long> staffUserIds = List.of(50L, 60L);
+                com.mannschaft.app.reservation.dto.ReservationGridResponse grid =
+                        com.mannschaft.app.reservation.dto.ReservationGridResponse.builder()
+                                .date(date)
+                                .columns(List.of())
+                                .build();
+                given(gridService.getGrid(TEAM_ID, USER_ID, date, staffUserIds)).willReturn(grid);
+
+                ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.ReservationGridResponse>> result =
+                        controller.getGrid(TEAM_ID, date, staffUserIds);
+
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData().getDate()).isEqualTo(date);
+                // コントローラは SecurityUtils の userId を Service へ委譲する（view ゲートの主体）。
+                verify(gridService).getGrid(TEAM_ID, USER_ID, date, staffUserIds);
+            }
         }
 
         @Test
