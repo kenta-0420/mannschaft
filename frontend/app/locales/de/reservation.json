@@ -351,6 +351,62 @@
         "reopened": "Slot wieder geöffnet",
         "status_change_failed": "Statusänderung fehlgeschlagen"
       }
+    },
+    "unavailability": {
+      "section_label": "Sperrzeiten",
+      "help": "Legen Sie Zeiträume fest, in denen keine Reservierungen angenommen werden, etwa bei vorübergehenden Schließungen oder freien Tagen von Mitarbeitenden. Bei Auswahl einer Vorlage wird der Zeitraum aus den Öffnungszeiten automatisch ausgefüllt (später anpassbar). Vor dem Speichern wird gewarnt, falls bestehende Reservierungen in diesen Zeitraum fallen.",
+      "scope": {
+        "label": "Ziel",
+        "team": "Gesamtes Team",
+        "staff": "Mitarbeiter"
+      },
+      "staff": {
+        "label": "Reservierungsziel (Mitarbeiter)",
+        "placeholder": "Ziel auswählen",
+        "hint": "Ziele ohne Standardmitarbeiter können nicht ausgewählt werden."
+      },
+      "field": {
+        "date": "Datum",
+        "time_range": "Zeitraum",
+        "time_range_hint": "Leer lassen, um den ganzen Tag zu sperren.",
+        "start_time": "Beginn",
+        "end_time": "Ende",
+        "reason": "Grund (optional)",
+        "reason_placeholder": "z. B. Vorübergehende Schließung, Mitarbeiterschulung"
+      },
+      "template": {
+        "label": "Vorlage",
+        "full_day": "Ganztägig",
+        "late": "Später Beginn (Vormittag frei)",
+        "early_leave": "Früher Feierabend (Abend frei)",
+        "midday": "Mittagspause",
+        "custom": "Manuell",
+        "no_business_hours": "Öffnungszeiten sind nicht festgelegt, daher keine automatische Ausfüllung. Bitte Zeitraum manuell eingeben."
+      },
+      "impact": {
+        "warning": "In diesem Zeitraum gibt es {count} Reservierungen. Nach Umbuchung oder Stornierung können Sie speichern.",
+        "hint": "Solange Reservierungen bestehen, ist kein Speichern möglich.",
+        "checking": "Auswirkung auf Reservierungen wird geprüft…"
+      },
+      "button": {
+        "register": "Reservierungen sperren",
+        "delete": "Löschen"
+      },
+      "message": {
+        "create_success": "Sperrzeit gespeichert",
+        "delete_success": "Sperrzeit gelöscht"
+      },
+      "error": {
+        "has_active_reservations": "In diesem Zeitraum bestehen noch Reservierungen, daher kein Speichern möglich. Bitte umbuchen oder stornieren und erneut versuchen."
+      },
+      "dialog": {
+        "delete_confirm": "Diese Sperrzeit löschen?"
+      },
+      "list": {
+        "title": "Gespeicherte Sperrzeiten",
+        "empty": "Keine Sperrzeiten gespeichert",
+        "all_day": "Ganztägig"
+      }
     }
   }
 }

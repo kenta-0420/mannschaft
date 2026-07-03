@@ -351,6 +351,62 @@
         "reopened": "슬롯이 재개되었습니다",
         "status_change_failed": "상태 변경에 실패했습니다"
       }
+    },
+    "unavailability": {
+      "section_label": "예약 불가 시간대",
+      "help": "임시 휴업이나 담당자 휴무 등 예약을 받지 않는 시간대를 등록합니다. 템플릿을 선택하면 영업시간을 기준으로 시간대가 자동 입력됩니다(이후 수정 가능). 등록 전에 해당 시간대에 기존 예약이 있으면 경고합니다.",
+      "scope": {
+        "label": "대상",
+        "team": "팀 전체",
+        "staff": "담당자"
+      },
+      "staff": {
+        "label": "예약 대상(담당자)",
+        "placeholder": "예약 대상 선택",
+        "hint": "담당자가 미설정된 예약 대상은 선택할 수 없습니다."
+      },
+      "field": {
+        "date": "날짜",
+        "time_range": "시간대",
+        "time_range_hint": "비워 두면 종일 예약 불가가 됩니다.",
+        "start_time": "시작",
+        "end_time": "종료",
+        "reason": "사유(선택)",
+        "reason_placeholder": "예: 임시 휴업, 직원 교육"
+      },
+      "template": {
+        "label": "템플릿",
+        "full_day": "종일 휴무",
+        "late": "늦은 출근(오전 불가)",
+        "early_leave": "조기 퇴근(저녁 불가)",
+        "midday": "점심 휴식",
+        "custom": "직접 입력",
+        "no_business_hours": "영업시간이 설정되지 않아 자동 입력할 수 없습니다. 시간대를 직접 입력해 주세요."
+      },
+      "impact": {
+        "warning": "이 시간대에 예약이 {count}건 있습니다. 변경·취소 후 등록할 수 있습니다.",
+        "hint": "예약이 남아 있는 동안에는 등록할 수 없습니다.",
+        "checking": "예약 영향 확인 중…"
+      },
+      "button": {
+        "register": "예약 불가로 설정",
+        "delete": "삭제"
+      },
+      "message": {
+        "create_success": "예약 불가 시간대를 등록했습니다",
+        "delete_success": "예약 불가 시간대를 삭제했습니다"
+      },
+      "error": {
+        "has_active_reservations": "이 시간대에 예약이 남아 있어 등록할 수 없습니다. 변경·취소 후 다시 시도해 주세요."
+      },
+      "dialog": {
+        "delete_confirm": "이 예약 불가 시간대를 삭제하시겠습니까?"
+      },
+      "list": {
+        "title": "등록된 예약 불가 시간대",
+        "empty": "등록된 예약 불가 시간대가 없습니다",
+        "all_day": "종일"
+      }
     }
   }
 }

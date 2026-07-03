@@ -351,6 +351,62 @@
         "reopened": "Franja reabierta",
         "status_change_failed": "Error al cambiar el estado"
       }
+    },
+    "unavailability": {
+      "section_label": "Franjas no reservables",
+      "help": "Registra franjas horarias en las que no se aceptan reservas, como cierres temporales o días libres del personal. Al elegir una plantilla se rellena la franja según el horario comercial (puedes ajustarla después). Antes de registrar, se avisa si hay reservas existentes en esa franja.",
+      "scope": {
+        "label": "Destino",
+        "team": "Todo el equipo",
+        "staff": "Personal"
+      },
+      "staff": {
+        "label": "Objeto de reserva (personal)",
+        "placeholder": "Selecciona un objeto",
+        "hint": "No se pueden seleccionar objetos sin personal predeterminado."
+      },
+      "field": {
+        "date": "Fecha",
+        "time_range": "Franja horaria",
+        "time_range_hint": "Déjalo en blanco para bloquear todo el día.",
+        "start_time": "Inicio",
+        "end_time": "Fin",
+        "reason": "Motivo (opcional)",
+        "reason_placeholder": "p. ej. Cierre temporal, formación del personal"
+      },
+      "template": {
+        "label": "Plantilla",
+        "full_day": "Día completo",
+        "late": "Entrada tarde (mañana no)",
+        "early_leave": "Salida temprana (tarde no)",
+        "midday": "Pausa del mediodía (almuerzo)",
+        "custom": "Manual",
+        "no_business_hours": "El horario comercial no está configurado, no se puede rellenar automáticamente. Introduce la franja manualmente."
+      },
+      "impact": {
+        "warning": "Hay {count} reservas en esta franja. Puedes registrarla tras reprogramarlas o cancelarlas.",
+        "hint": "No puedes registrar mientras haya reservas.",
+        "checking": "Comprobando el impacto en las reservas…"
+      },
+      "button": {
+        "register": "Bloquear reservas",
+        "delete": "Eliminar"
+      },
+      "message": {
+        "create_success": "Franja no reservable registrada",
+        "delete_success": "Franja no reservable eliminada"
+      },
+      "error": {
+        "has_active_reservations": "Quedan reservas en esta franja, no se puede registrar. Reprograma o cancela e inténtalo de nuevo."
+      },
+      "dialog": {
+        "delete_confirm": "¿Eliminar esta franja no reservable?"
+      },
+      "list": {
+        "title": "Franjas no reservables registradas",
+        "empty": "No hay franjas no reservables registradas",
+        "all_day": "Todo el día"
+      }
     }
   }
 }
