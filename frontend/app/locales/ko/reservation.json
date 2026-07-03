@@ -126,7 +126,7 @@
         "body": "내가 예약한 슬롯을 목록으로 확인할 수 있는 페이지입니다. 승인 여부와 언제 예약했는지 한눈에 알 수 있습니다.",
         "steps": {
           "step1": "페이지를 열면 내 예약이 자동으로 불러와집니다.",
-          "step2": "각 카드에 「라인 이름·날짜·시작~종료 시간」이 표시됩니다."
+          "step2": "각 카드에 「예약 대상 이름·날짜·시작~종료 시간」이 표시됩니다."
         }
       },
       "status": {
@@ -163,34 +163,34 @@
       "my_title": "내 예약",
       "team_title": "예약 관리",
       "settings_title": "예약 관리 설정",
-      "settings_subtitle": "예약 라인(직원 / 창구)을 관리합니다"
+      "settings_subtitle": "예약 대상(직원 / 창구)을 관리합니다"
     },
     "tab": {
       "book": "예약하기",
       "list": "예약 목록",
-      "line_manage": "라인 관리",
+      "line_manage": "예약 대상 관리",
       "emergency_closure": "緊急休業",
       "team_page": "예약"
     },
     "column": {
       "datetime": "일시",
-      "line": "라인",
+      "line": "예약 대상",
       "reserver": "예약자",
       "status": "상태",
       "action": "작업",
-      "line_name": "라인 이름",
+      "line_name": "예약 대상 이름",
       "description": "설명",
       "display_order": "표시 순서",
       "state": "상태"
     },
     "field": {
       "date": "날짜",
-      "line": "라인",
+      "line": "예약 대상",
       "name": "이름",
       "description": "설명",
       "display_order": "표시 순서",
       "active": "활성",
-      "line_name_required": "라인 이름",
+      "line_name_required": "예약 대상 이름",
       "note": "비고(선택)",
       "time": "시간"
     },
@@ -209,8 +209,8 @@
       "full": "만석"
     },
     "button": {
-      "add_line": "라인 추가",
-      "add_line_long": "라인 추가",
+      "add_line": "예약 대상 추가",
+      "add_line_long": "예약 대상 추가",
       "save": "저장",
       "cancel": "취소",
       "reserve": "예약하기",
@@ -219,13 +219,13 @@
     },
     "dialog": {
       "title": "확인",
-      "line_create": "라인 생성",
-      "line_edit": "라인 편집",
-      "line_create_long": "예약 라인 추가",
-      "line_edit_long": "예약 라인 편집",
+      "line_create": "예약 대상 생성",
+      "line_edit": "예약 대상 편집",
+      "line_create_long": "예약 대상 추가",
+      "line_edit_long": "예약 대상 편집",
       "reserve_confirm": "예약 확인",
       "cancel_confirm": "이 예약을 취소하시겠습니까?",
-      "line_delete_confirm": "이 라인을 삭제하시겠습니까?",
+      "line_delete_confirm": "이 예약 대상을 삭제하시겠습니까?",
       "line_delete_named_confirm": "「{name}」을(를) 삭제하시겠습니까?"
     },
     "message": {
@@ -234,14 +234,14 @@
       "cancel_success": "예약을 취소했습니다",
       "reserve_success": "예약이 완료되었습니다",
       "reserve_failed": "예약에 실패했습니다",
-      "line_create_success": "라인을 생성했습니다",
-      "line_update_success": "라인을 수정했습니다",
-      "line_delete_success": "라인을 삭제했습니다",
+      "line_create_success": "예약 대상을 생성했습니다",
+      "line_update_success": "예약 대상을 수정했습니다",
+      "line_delete_success": "예약 대상을 삭제했습니다",
       "line_save_failed": "저장에 실패했습니다",
-      "line_create_success_long": "예약 라인을 생성했습니다",
-      "line_update_success_long": "예약 라인을 수정했습니다",
-      "line_delete_success_long": "예약 라인을 삭제했습니다",
-      "line_load_failed": "예약 라인 조회에 실패했습니다",
+      "line_create_success_long": "예약 대상을 생성했습니다",
+      "line_update_success_long": "예약 대상을 수정했습니다",
+      "line_delete_success_long": "예약 대상을 삭제했습니다",
+      "line_load_failed": "예약 대상 조회에 실패했습니다",
       "save_failed": "저장에 실패했습니다",
       "delete_failed": "삭제에 실패했습니다",
       "my_load_failed": "예약 정보 조회에 실패했습니다",
@@ -250,11 +250,11 @@
     "empty": {
       "no_reservations": "예약이 없습니다",
       "no_my_reservations": "예약이 없습니다",
-      "no_lines": "예약 라인이 없습니다",
-      "no_lines_yet": "아직 라인이 없습니다",
+      "no_lines": "예약 대상이 없습니다",
+      "no_lines_yet": "아직 예약 대상이 없습니다",
       "no_available_slots": "이 날에 예약 가능한 시간대가 없습니다"
     },
-    "line_manage_title": "예약 라인 관리",
+    "line_manage_title": "예약 대상 관리",
     "settings": {
       "advanced": {
         "title": "고급 설정"

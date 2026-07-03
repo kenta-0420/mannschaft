@@ -126,7 +126,7 @@
         "body": "Esta página muestra las franjas que ha reservado. De un vistazo puede saber si cada una está aprobada y para cuándo está programada.",
         "steps": {
           "step1": "Al abrir la página, sus reservas se cargan automáticamente.",
-          "step2": "Cada tarjeta muestra el nombre de la línea, la fecha y la hora de inicio y fin."
+          "step2": "Cada tarjeta muestra el nombre del elemento reservable, la fecha y la hora de inicio y fin."
         }
       },
       "status": {
@@ -163,34 +163,34 @@
       "my_title": "Mis reservas",
       "team_title": "Gestión de reservas",
       "settings_title": "Configuración de reservas",
-      "settings_subtitle": "Gestione las líneas de reserva (personal / mostradores)"
+      "settings_subtitle": "Gestione los elementos reservables (personal / mostradores)"
     },
     "tab": {
       "book": "Reservar",
       "list": "Reservas",
-      "line_manage": "Gestionar líneas",
+      "line_manage": "Gestionar elementos reservables",
       "emergency_closure": "緊急休業",
       "team_page": "Reservas"
     },
     "column": {
       "datetime": "Fecha y hora",
-      "line": "Línea",
+      "line": "Elemento reservable",
       "reserver": "Reservante",
       "status": "Estado",
       "action": "Acciones",
-      "line_name": "Nombre de línea",
+      "line_name": "Nombre del elemento reservable",
       "description": "Descripción",
       "display_order": "Orden",
       "state": "Estado"
     },
     "field": {
       "date": "Fecha",
-      "line": "Línea",
+      "line": "Elemento reservable",
       "name": "Nombre",
       "description": "Descripción",
       "display_order": "Orden de visualización",
       "active": "Activo",
-      "line_name_required": "Nombre de línea",
+      "line_name_required": "Nombre del elemento reservable",
       "note": "Notas (opcional)",
       "time": "Hora"
     },
@@ -209,8 +209,8 @@
       "full": "Completo"
     },
     "button": {
-      "add_line": "Agregar línea",
-      "add_line_long": "Agregar línea",
+      "add_line": "Agregar elemento reservable",
+      "add_line_long": "Agregar elemento reservable",
       "save": "Guardar",
       "cancel": "Cancelar",
       "reserve": "Reservar",
@@ -219,13 +219,13 @@
     },
     "dialog": {
       "title": "Confirmar",
-      "line_create": "Crear línea",
-      "line_edit": "Editar línea",
-      "line_create_long": "Agregar línea de reserva",
-      "line_edit_long": "Editar línea de reserva",
+      "line_create": "Crear elemento reservable",
+      "line_edit": "Editar elemento reservable",
+      "line_create_long": "Agregar elemento reservable",
+      "line_edit_long": "Editar elemento reservable",
       "reserve_confirm": "Confirmar reserva",
       "cancel_confirm": "¿Cancelar esta reserva?",
-      "line_delete_confirm": "¿Eliminar esta línea?",
+      "line_delete_confirm": "¿Eliminar este elemento reservable?",
       "line_delete_named_confirm": "¿Eliminar \"{name}\"?"
     },
     "message": {
@@ -234,14 +234,14 @@
       "cancel_success": "Reserva cancelada",
       "reserve_success": "Reserva completada",
       "reserve_failed": "No se pudo realizar la reserva",
-      "line_create_success": "Línea creada",
-      "line_update_success": "Línea actualizada",
-      "line_delete_success": "Línea eliminada",
+      "line_create_success": "Elemento reservable creado",
+      "line_update_success": "Elemento reservable actualizado",
+      "line_delete_success": "Elemento reservable eliminado",
       "line_save_failed": "No se pudo guardar",
-      "line_create_success_long": "Línea de reserva creada",
-      "line_update_success_long": "Línea de reserva actualizada",
-      "line_delete_success_long": "Línea de reserva eliminada",
-      "line_load_failed": "No se pudieron cargar las líneas de reserva",
+      "line_create_success_long": "Elemento reservable creado",
+      "line_update_success_long": "Elemento reservable actualizado",
+      "line_delete_success_long": "Elemento reservable eliminado",
+      "line_load_failed": "No se pudieron cargar los elementos reservables",
       "save_failed": "No se pudo guardar",
       "delete_failed": "No se pudo eliminar",
       "my_load_failed": "No se pudo cargar la información de reservas",
@@ -250,11 +250,11 @@
     "empty": {
       "no_reservations": "No hay reservas",
       "no_my_reservations": "No hay reservas",
-      "no_lines": "No hay líneas de reserva",
-      "no_lines_yet": "Aún no hay líneas",
+      "no_lines": "No hay elementos reservables",
+      "no_lines_yet": "Aún no hay elementos reservables",
       "no_available_slots": "No hay horarios disponibles este día"
     },
-    "line_manage_title": "Gestión de líneas de reserva",
+    "line_manage_title": "Gestión de elementos reservables",
     "settings": {
       "advanced": {
         "title": "Configuración avanzada"

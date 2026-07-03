@@ -224,12 +224,11 @@ export function useReservationApi() {
   }
 
   // === My Reservations ===
-  async function listMyReservations(params?: { status?: string; page?: number; size?: number }) {
-    const query = new URLSearchParams()
-    if (params?.status) query.set('status', params.status)
-    query.set('page', String(params?.page ?? 0))
-    query.set('size', String(params?.size ?? 20))
-    return api<{ data: ReservationResponse[]; meta: unknown }>(`/api/v1/reservations/my?${query}`)
+  // BE: GET /reservations/my は ApiResponse<List<ReservationResponse>> ＝ { data: [...] } を返す。
+  // meta（ページング情報）は無く、status/page/size クエリも受け付けない（全件返却）。
+  // 実体に合わせて戻り型は { data: ReservationResponse[] } のみとし、meta の嘘を持たせない。
+  async function listMyReservations() {
+    return api<{ data: ReservationResponse[] }>(`/api/v1/reservations/my`)
   }
 
   async function listUpcomingReservations(params?: { limit?: number }) {

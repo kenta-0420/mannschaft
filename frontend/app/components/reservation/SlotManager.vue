@@ -14,6 +14,9 @@ const props = defineProps<{
 const { t } = useI18n()
 const reservationApi = useReservationApi()
 const notification = useNotification()
+// 多重防御（defense-in-depth）: 親タブの v-if に加え、破壊的操作ボタンを本コンポーネントでも
+// ロールで制御する。BE が本防御線だが、別画面から再利用された際の誤表示を防ぐ。
+const { isAdmin, loadPermissions } = useRoleAccess('team', computed(() => props.teamId))
 
 const slots = ref<ReservationSlotResponse[]>([])
 const loading = ref(true)
@@ -82,7 +85,10 @@ function approvalModeLabel(slot: ReservationSlotResponse): string {
 }
 
 watch(selectedDate, loadSlots)
-onMounted(loadSlots)
+onMounted(async () => {
+  await loadPermissions()
+  await loadSlots()
+})
 </script>
 
 <template>
@@ -97,6 +103,7 @@ onMounted(loadSlots)
           class="w-40"
         />
         <Button
+          v-if="isAdmin"
           :label="t('reservation.slot_manager.button.add_slot')"
           icon="pi pi-plus"
           size="small"
@@ -138,6 +145,7 @@ onMounted(loadSlots)
             : slot.status?.slotStatus === 'FULL' ? 'warn' : 'success'"
         />
         <Button
+          v-if="isAdmin"
           icon="pi pi-pencil"
           text
           rounded
@@ -146,6 +154,7 @@ onMounted(loadSlots)
           @click="openEdit(slot)"
         />
         <Button
+          v-if="isAdmin"
           :icon="slot.status?.slotStatus === 'CLOSED' ? 'pi pi-play' : 'pi pi-pause'"
           text
           rounded

@@ -8,6 +8,9 @@ const props = defineProps<{
 const { t } = useI18n()
 const reservationApi = useReservationApi()
 const notification = useNotification()
+// 多重防御（defense-in-depth）: 親タブの v-if に加え、破壊的操作ボタンを本コンポーネントでも
+// ロールで制御する。BE が本防御線だが、別画面から再利用された際の誤表示を防ぐ。
+const { isAdmin, loadPermissions } = useRoleAccess('team', computed(() => props.teamId))
 
 const lines = ref<ReservationLineResponse[]>([])
 const loading = ref(true)
@@ -60,14 +63,17 @@ async function remove(lineId: number) {
   await loadLines()
 }
 
-onMounted(loadLines)
+onMounted(async () => {
+  await loadPermissions()
+  await loadLines()
+})
 </script>
 
 <template>
   <div>
     <div class="mb-4 flex items-center justify-between">
       <h3 class="text-lg font-semibold">{{ t('reservation.line_manage_title') }}</h3>
-      <Button :label="t('reservation.button.add_line')" icon="pi pi-plus" size="small" @click="openCreate" />
+      <Button v-if="isAdmin" :label="t('reservation.button.add_line')" icon="pi pi-plus" size="small" @click="openCreate" />
     </div>
     <div v-if="loading"><Skeleton v-for="i in 3" :key="i" height="3rem" class="mb-2" /></div>
     <div v-else-if="lines.length > 0" class="space-y-2">
@@ -76,8 +82,8 @@ onMounted(loadLines)
           <p class="font-medium">{{ line.meta?.name }}</p>
           <p class="text-xs text-surface-500">{{ line.meta?.isActive ? t('reservation.state.active') : t('reservation.state.inactive') }}</p>
         </div>
-        <Button icon="pi pi-pencil" text rounded size="small" @click="openEdit(line)" />
-        <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="remove(line.id ?? 0)" />
+        <Button v-if="isAdmin" icon="pi pi-pencil" text rounded size="small" @click="openEdit(line)" />
+        <Button v-if="isAdmin" icon="pi pi-trash" text rounded size="small" severity="danger" @click="remove(line.id ?? 0)" />
       </div>
     </div>
     <DashboardEmptyState v-else icon="pi pi-list" :message="t('reservation.empty.no_lines_yet')" />

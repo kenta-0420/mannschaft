@@ -126,7 +126,7 @@
         "body": "あなたが予約した枠を一覧で確認できるページです。承認されたか、いつの予約かが一目で分かります。",
         "steps": {
           "step1": "ページを開くと、自動であなたの予約が読み込まれます。",
-          "step2": "各カードに「ライン名・日付・開始〜終了時刻」が表示されます。"
+          "step2": "各カードに「予約対象名・日付・開始〜終了時刻」が表示されます。"
         }
       },
       "status": {
@@ -163,34 +163,34 @@
       "my_title": "マイ予約",
       "team_title": "予約管理",
       "settings_title": "予約管理設定",
-      "settings_subtitle": "予約ライン（スタッフ・窓口）を管理します"
+      "settings_subtitle": "予約対象（スタッフ・窓口）を管理します"
     },
     "tab": {
       "book": "予約する",
       "list": "予約一覧",
-      "line_manage": "ライン管理",
+      "line_manage": "予約対象の管理",
       "emergency_closure": "緊急休業",
       "team_page": "予約"
     },
     "column": {
       "datetime": "日時",
-      "line": "ライン",
+      "line": "予約対象",
       "reserver": "予約者",
       "status": "ステータス",
       "action": "操作",
-      "line_name": "ライン名",
+      "line_name": "予約対象名",
       "description": "説明",
       "display_order": "表示順",
       "state": "状態"
     },
     "field": {
       "date": "日付",
-      "line": "ライン",
+      "line": "予約対象",
       "name": "名前",
       "description": "説明",
       "display_order": "表示順",
       "active": "有効",
-      "line_name_required": "ライン名",
+      "line_name_required": "予約対象名",
       "note": "備考（任意）",
       "time": "時間"
     },
@@ -209,8 +209,8 @@
       "full": "満席"
     },
     "button": {
-      "add_line": "ライン追加",
-      "add_line_long": "ラインを追加",
+      "add_line": "予約対象を追加",
+      "add_line_long": "予約対象を追加",
       "save": "保存",
       "cancel": "キャンセル",
       "reserve": "予約する",
@@ -219,13 +219,13 @@
     },
     "dialog": {
       "title": "確認",
-      "line_create": "ライン作成",
-      "line_edit": "ライン編集",
-      "line_create_long": "予約ライン追加",
-      "line_edit_long": "予約ライン編集",
+      "line_create": "予約対象を作成",
+      "line_edit": "予約対象を編集",
+      "line_create_long": "予約対象を追加",
+      "line_edit_long": "予約対象を編集",
       "reserve_confirm": "予約確認",
       "cancel_confirm": "この予約をキャンセルしますか？",
-      "line_delete_confirm": "このラインを削除しますか？",
+      "line_delete_confirm": "この予約対象を削除しますか？",
       "line_delete_named_confirm": "「{name}」を削除しますか？"
     },
     "message": {
@@ -234,14 +234,14 @@
       "cancel_success": "予約をキャンセルしました",
       "reserve_success": "予約が完了しました",
       "reserve_failed": "予約に失敗しました",
-      "line_create_success": "ラインを作成しました",
-      "line_update_success": "ラインを更新しました",
-      "line_delete_success": "ラインを削除しました",
+      "line_create_success": "予約対象を作成しました",
+      "line_update_success": "予約対象を更新しました",
+      "line_delete_success": "予約対象を削除しました",
       "line_save_failed": "保存に失敗しました",
-      "line_create_success_long": "予約ラインを作成しました",
-      "line_update_success_long": "予約ラインを更新しました",
-      "line_delete_success_long": "予約ラインを削除しました",
-      "line_load_failed": "予約ラインの取得に失敗しました",
+      "line_create_success_long": "予約対象を作成しました",
+      "line_update_success_long": "予約対象を更新しました",
+      "line_delete_success_long": "予約対象を削除しました",
+      "line_load_failed": "予約対象の取得に失敗しました",
       "save_failed": "保存に失敗しました",
       "delete_failed": "削除に失敗しました",
       "my_load_failed": "予約情報の取得に失敗しました",
@@ -250,11 +250,11 @@
     "empty": {
       "no_reservations": "予約はありません",
       "no_my_reservations": "予約がありません",
-      "no_lines": "予約ラインがありません",
-      "no_lines_yet": "ラインはまだありません",
+      "no_lines": "予約対象がありません",
+      "no_lines_yet": "予約対象はまだありません",
       "no_available_slots": "この日の空き枠はありません"
     },
-    "line_manage_title": "予約ライン管理",
+    "line_manage_title": "予約対象の管理",
     "settings": {
       "advanced": {
         "title": "詳細設定"

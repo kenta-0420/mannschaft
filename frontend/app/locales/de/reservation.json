@@ -126,7 +126,7 @@
         "body": "Diese Seite listet die von Ihnen gebuchten Zeitfenster auf. Sie erkennen auf einen Blick, ob ein Eintrag genehmigt ist und für wann er geplant ist.",
         "steps": {
           "step1": "Beim Öffnen der Seite werden Ihre Reservierungen automatisch geladen.",
-          "step2": "Jede Karte zeigt den Linienname, das Datum sowie die Start- und Endzeit an."
+          "step2": "Jede Karte zeigt den Namen des buchbaren Elements, das Datum sowie die Start- und Endzeit an."
         }
       },
       "status": {
@@ -163,34 +163,34 @@
       "my_title": "Meine Reservierungen",
       "team_title": "Reservierungsverwaltung",
       "settings_title": "Reservierungseinstellungen",
-      "settings_subtitle": "Reservierungslinien (Personal / Schalter) verwalten"
+      "settings_subtitle": "Buchbare Elemente (Personal / Schalter) verwalten"
     },
     "tab": {
       "book": "Reservieren",
       "list": "Reservierungen",
-      "line_manage": "Linien verwalten",
+      "line_manage": "Buchbare Elemente verwalten",
       "emergency_closure": "緊急休業",
       "team_page": "Reservierung"
     },
     "column": {
       "datetime": "Datum & Uhrzeit",
-      "line": "Linie",
+      "line": "Buchbares Element",
       "reserver": "Reservierende Person",
       "status": "Status",
       "action": "Aktionen",
-      "line_name": "Linienname",
+      "line_name": "Name des buchbaren Elements",
       "description": "Beschreibung",
       "display_order": "Reihenfolge",
       "state": "Status"
     },
     "field": {
       "date": "Datum",
-      "line": "Linie",
+      "line": "Buchbares Element",
       "name": "Name",
       "description": "Beschreibung",
       "display_order": "Anzeigereihenfolge",
       "active": "Aktiv",
-      "line_name_required": "Linienname",
+      "line_name_required": "Name des buchbaren Elements",
       "note": "Notizen (optional)",
       "time": "Uhrzeit"
     },
@@ -209,8 +209,8 @@
       "full": "Ausgebucht"
     },
     "button": {
-      "add_line": "Linie hinzufügen",
-      "add_line_long": "Linie hinzufügen",
+      "add_line": "Buchbares Element hinzufügen",
+      "add_line_long": "Buchbares Element hinzufügen",
       "save": "Speichern",
       "cancel": "Abbrechen",
       "reserve": "Reservieren",
@@ -219,13 +219,13 @@
     },
     "dialog": {
       "title": "Bestätigen",
-      "line_create": "Linie erstellen",
-      "line_edit": "Linie bearbeiten",
-      "line_create_long": "Reservierungslinie hinzufügen",
-      "line_edit_long": "Reservierungslinie bearbeiten",
+      "line_create": "Buchbares Element erstellen",
+      "line_edit": "Buchbares Element bearbeiten",
+      "line_create_long": "Buchbares Element hinzufügen",
+      "line_edit_long": "Buchbares Element bearbeiten",
       "reserve_confirm": "Reservierung bestätigen",
       "cancel_confirm": "Diese Reservierung stornieren?",
-      "line_delete_confirm": "Diese Linie löschen?",
+      "line_delete_confirm": "Dieses buchbare Element löschen?",
       "line_delete_named_confirm": "\"{name}\" löschen?"
     },
     "message": {
@@ -234,14 +234,14 @@
       "cancel_success": "Reservierung storniert",
       "reserve_success": "Reservierung abgeschlossen",
       "reserve_failed": "Reservierung fehlgeschlagen",
-      "line_create_success": "Linie erstellt",
-      "line_update_success": "Linie aktualisiert",
-      "line_delete_success": "Linie gelöscht",
+      "line_create_success": "Buchbares Element erstellt",
+      "line_update_success": "Buchbares Element aktualisiert",
+      "line_delete_success": "Buchbares Element gelöscht",
       "line_save_failed": "Speichern fehlgeschlagen",
-      "line_create_success_long": "Reservierungslinie erstellt",
-      "line_update_success_long": "Reservierungslinie aktualisiert",
-      "line_delete_success_long": "Reservierungslinie gelöscht",
-      "line_load_failed": "Reservierungslinien konnten nicht geladen werden",
+      "line_create_success_long": "Buchbares Element erstellt",
+      "line_update_success_long": "Buchbares Element aktualisiert",
+      "line_delete_success_long": "Buchbares Element gelöscht",
+      "line_load_failed": "Buchbare Elemente konnten nicht geladen werden",
       "save_failed": "Speichern fehlgeschlagen",
       "delete_failed": "Löschen fehlgeschlagen",
       "my_load_failed": "Reservierungsinformationen konnten nicht geladen werden",
@@ -250,11 +250,11 @@
     "empty": {
       "no_reservations": "Keine Reservierungen",
       "no_my_reservations": "Keine Reservierungen",
-      "no_lines": "Keine Reservierungslinien",
-      "no_lines_yet": "Noch keine Linien",
+      "no_lines": "Keine buchbaren Elemente",
+      "no_lines_yet": "Noch keine buchbaren Elemente",
       "no_available_slots": "An diesem Tag keine freien Zeitfenster"
     },
-    "line_manage_title": "Reservierungslinienverwaltung",
+    "line_manage_title": "Verwaltung buchbarer Elemente",
     "settings": {
       "advanced": {
         "title": "Erweiterte Einstellungen"

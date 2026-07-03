@@ -11,6 +11,9 @@ const { t } = useI18n()
 const closureApi = useEmergencyClosureApi()
 const notification = useNotification()
 const { userTimezone } = useDatetime()
+// 多重防御（defense-in-depth）: 親タブの v-if に加え、一括送信ボタンを本コンポーネントでも
+// ロールで制御する（緊急休業は副管理者=DEPUTY_ADMIN まで許可）。BE が本防御線。
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('team', computed(() => props.teamId))
 
 // --- 日付 ---
 const today = dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
@@ -369,6 +372,7 @@ async function toggleConfirmations(closureId: number) {
 }
 
 onMounted(() => {
+  void loadPermissions()
   void loadHistory()
   window.addEventListener('online', onOnline)
   window.addEventListener('offline', onOffline)
@@ -452,6 +456,7 @@ onUnmounted(() => {
       </div>
 
       <Button
+        v-if="isAdminOrDeputy"
         :label="$t('emergency_closure.button.bulk_send')"
         icon="pi pi-send"
         severity="danger"
