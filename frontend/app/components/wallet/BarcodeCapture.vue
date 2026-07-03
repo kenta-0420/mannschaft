@@ -222,22 +222,17 @@ onBeforeUnmount(stopCamera)
       </div>
 
       <div class="barcode-capture__btn-row">
-        <button
+        <Button
           v-if="!cameraActive"
-          type="button"
-          class="barcode-capture__btn barcode-capture__btn--primary"
+          :label="t('wallet.scan.start_camera')"
           @click="startCamera"
-        >
-          {{ t('wallet.scan.start_camera') }}
-        </button>
-        <button
+        />
+        <Button
           v-else
-          type="button"
-          class="barcode-capture__btn"
+          :label="t('wallet.scan.stop_camera')"
+          severity="secondary"
           @click="stopCamera"
-        >
-          {{ t('wallet.scan.stop_camera') }}
-        </button>
+        />
       </div>
 
       <p v-if="cameraError === 'denied'" class="barcode-capture__error" role="alert">
@@ -278,48 +273,42 @@ onBeforeUnmount(stopCamera)
         <label class="barcode-capture__label" for="bc-manual-value">
           {{ t('wallet.add.manual_input') }}
         </label>
-        <input
+        <InputText
           id="bc-manual-value"
           v-model="manualValue"
-          type="text"
-          class="barcode-capture__input"
+          class="w-full"
           :placeholder="t('wallet.add.manual_input_placeholder')"
           autocomplete="off"
           inputmode="numeric"
-        >
+        />
       </div>
       <div class="barcode-capture__field">
         <label class="barcode-capture__label" for="bc-manual-format">
           {{ t('wallet.add.manual_format') }}
         </label>
-        <select
+        <Select
           id="bc-manual-format"
           v-model="manualFormat"
-          class="barcode-capture__input"
-        >
-          <option v-for="fmt in SUPPORTED_FORMATS" :key="fmt" :value="fmt">
-            {{ fmt }}
-          </option>
-        </select>
+          :options="SUPPORTED_FORMATS"
+          class="w-full"
+        />
       </div>
-      <button
-        type="button"
-        class="barcode-capture__btn barcode-capture__btn--primary"
+      <Button
+        :label="t('wallet.add.next')"
         :disabled="!manualValue.trim()"
+        class="w-full"
         @click="submitManual"
-      >
-        {{ t('wallet.add.next') }}
-      </button>
+      />
     </section>
 
     <!-- バーコード持たないカード用ボタン（タブ共通フッタ） -->
-    <button
-      type="button"
+    <Button
+      :label="t('wallet.add.no_barcode')"
+      severity="secondary"
+      text
       class="barcode-capture__no-barcode"
       @click="emitNoBarcode"
-    >
-      {{ t('wallet.add.no_barcode') }}
-    </button>
+    />
   </div>
 </template>
 
@@ -427,13 +416,6 @@ onBeforeUnmount(stopCamera)
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--p-text-muted-color, #6b7280);
-}
-.barcode-capture__input {
-  padding: 0.625rem 0.75rem;
-  border: 1px solid var(--p-surface-300, #d1d5db);
-  border-radius: 0.5rem;
-  background: var(--p-surface-0, #fff);
-  font-size: 0.9375rem;
 }
 .barcode-capture__file-label {
   display: inline-block;

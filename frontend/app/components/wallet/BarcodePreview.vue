@@ -177,7 +177,7 @@ onMounted(() => {
   align-items: center;
   gap: 0.5rem;
   padding: 1rem;
-  background: #fff;
+  background: var(--p-content-background, #fff);
   border-radius: 0.75rem;
   border: 1px solid var(--p-surface-200, #e5e7eb);
 }

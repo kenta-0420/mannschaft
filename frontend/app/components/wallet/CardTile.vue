@@ -131,7 +131,7 @@ const ariaLabel = computed(() => {
   gap: 0.75rem;
   padding: 0.75rem;
   border-radius: 0.75rem;
-  background: var(--p-surface-0, #fff);
+  background: var(--p-content-background, #fff);
   border: 1px solid var(--p-surface-200, #e5e7eb);
   text-decoration: none;
   color: inherit;

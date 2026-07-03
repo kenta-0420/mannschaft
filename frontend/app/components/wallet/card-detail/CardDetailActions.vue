@@ -23,37 +23,31 @@ const { t } = useI18n()
 
 <template>
   <section class="card-detail__actions">
-    <button
+    <Button
       v-if="isSelfIssued"
-      type="button"
-      class="card-detail__btn card-detail__btn--primary"
+      :label="t('wallet.share.open_button')"
+      class="w-full"
       @click="emit('open-share')"
-    >
-      {{ t('wallet.share.open_button') }}
-    </button>
-    <button
-      type="button"
-      class="card-detail__btn"
-      :class="{ 'card-detail__btn--primary': !isSelfIssued }"
+    />
+    <Button
+      :label="t('wallet.detail.record_used')"
+      :severity="isSelfIssued ? 'secondary' : undefined"
       :disabled="recordingUsed"
+      class="w-full"
       @click="emit('record-used')"
-    >
-      {{ t('wallet.detail.record_used') }}
-    </button>
-    <button
-      type="button"
-      class="card-detail__btn"
+    />
+    <Button
+      :label="favorite ? t('wallet.detail.favorite_off') : t('wallet.detail.favorite_on')"
+      severity="secondary"
+      class="w-full"
       @click="emit('toggle-favorite')"
-    >
-      {{ favorite ? t('wallet.detail.favorite_off') : t('wallet.detail.favorite_on') }}
-    </button>
-    <button
-      type="button"
-      class="card-detail__btn"
+    />
+    <Button
+      :label="t('wallet.detail.edit')"
+      severity="secondary"
+      class="w-full"
       @click="emit('enter-edit')"
-    >
-      {{ t('wallet.detail.edit') }}
-    </button>
+    />
   </section>
 </template>
 
@@ -62,23 +56,5 @@ const { t } = useI18n()
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-}
-.card-detail__btn {
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid var(--p-surface-300, #d1d5db);
-  background: var(--p-surface-0, #fff);
-  color: var(--p-text-color, #111827);
-  font-weight: 600;
-  cursor: pointer;
-}
-.card-detail__btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.card-detail__btn--primary {
-  background: var(--p-primary-color, #3b82f6);
-  color: #fff;
-  border-color: transparent;
 }
 </style>
