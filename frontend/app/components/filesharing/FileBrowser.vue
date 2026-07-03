@@ -276,7 +276,7 @@ onMounted(() => loadFolder(null))
       <button
         v-for="folder in folders"
         :key="`f-${folder.id}`"
-        class="flex items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors hover:bg-surface-100"
+        class="flex items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
         @click="loadFolder(folder.id)"
       >
         <i class="pi pi-folder text-xl text-amber-500" />
@@ -303,7 +303,7 @@ onMounted(() => loadFolder(null))
       <div
         v-for="file in files"
         :key="`file-${file.id}`"
-        class="flex items-center gap-3 rounded-lg px-4 py-3 transition-colors hover:bg-surface-50"
+        class="flex items-center gap-3 rounded-lg px-4 py-3 transition-colors hover:bg-surface-50 dark:hover:bg-surface-800"
       >
         <i :class="getFileIcon(file.mimeType)" class="text-xl text-surface-500" />
         <div class="min-w-0 flex-1">
