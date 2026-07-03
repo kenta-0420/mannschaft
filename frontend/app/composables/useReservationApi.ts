@@ -229,7 +229,10 @@ export function useReservationApi() {
     if (params?.status) query.set('status', params.status)
     query.set('page', String(params?.page ?? 0))
     query.set('size', String(params?.size ?? 20))
-    return api<{ data: ReservationResponse[]; meta: unknown }>(`/api/v1/reservations/my?${query}`)
+    return api<{
+      data: ReservationResponse[]
+      meta: { page: number; size: number; totalElements: number; totalPages: number }
+    }>(`/api/v1/reservations/my?${query}`)
   }
 
   async function listUpcomingReservations(params?: { limit?: number }) {

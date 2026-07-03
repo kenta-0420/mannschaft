@@ -92,7 +92,7 @@ onMounted(async () => {
       <TabList>
         <Tab :value="0">{{ t('reservation.tab.book') }}</Tab>
         <Tab :value="1">{{ t('reservation.tab.list') }}</Tab>
-        <Tab :value="2">{{ t('reservation.tab.line_manage') }}</Tab>
+        <Tab v-if="isAdmin" :value="2">{{ t('reservation.tab.line_manage') }}</Tab>
         <Tab v-if="isAdminOrDeputy" :value="3">{{ t('reservation.tab.emergency_closure') }}</Tab>
       </TabList>
       <TabPanels>
@@ -115,8 +115,20 @@ onMounted(async () => {
           </div>
         </TabPanel>
 
+        <!-- 予約一覧タブ: 管理者はチーム全件、非管理者は自分の予約のみ（他人の氏名・予約は非表示）-->
         <TabPanel :value="1">
-          <ReservationList :team-id="props.teamId" :can-manage="isAdminOrDeputy" />
+          <ReservationList
+            v-if="isAdminOrDeputy"
+            :team-id="props.teamId"
+            :can-manage="true"
+            mode="team"
+          />
+          <ReservationList
+            v-else
+            :team-id="props.teamId"
+            :can-manage="false"
+            mode="mine"
+          />
         </TabPanel>
 
         <!-- ライン管理タブ（ADMIN限定）+ 枠管理 + 詳細設定アコーディオン -->

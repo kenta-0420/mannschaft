@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import type { ReservationResponse } from '~/types/reservation'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   teamId: string
   canManage: boolean
-}>()
+  /**
+   * 表示モード。
+   * - 'team' … チーム全件（管理者向け・予約者名を含む）
+   * - 'mine' … ログインユーザー自身の予約のみ（非管理者向け・他人の情報を一切表示しない）
+   */
+  mode?: 'team' | 'mine'
+}>(), { mode: 'team' })
 
 const { t } = useI18n()
 const reservationApi = useReservationApi()
@@ -40,7 +46,10 @@ function statusLabel(status?: string): string {
 async function loadReservations() {
   loading.value = true
   try {
-    const res = await reservationApi.listReservations(props.teamId, { status: statusFilter.value || undefined, page: page.value, size: 20 })
+    // mine モードは自分の予約のみを取得する（他人の予約・氏名は API 段階で返らない）。
+    const res = props.mode === 'mine'
+      ? await reservationApi.listMyReservations({ status: statusFilter.value || undefined, page: page.value, size: 20 })
+      : await reservationApi.listReservations(props.teamId, { status: statusFilter.value || undefined, page: page.value, size: 20 })
     reservations.value = res.data as ReservationResponse[]
     totalRecords.value = res.meta.totalElements
   }
@@ -103,7 +112,7 @@ onMounted(loadReservations)
       <Column :header="t('reservation.column.line')" style="width: 120px">
         <template #body="{ data }">{{ data.slot?.lineName }}</template>
       </Column>
-      <Column :header="t('reservation.column.reserver')" style="width: 140px">
+      <Column v-if="mode === 'team'" :header="t('reservation.column.reserver')" style="width: 140px">
         <template #body="{ data }">{{ data.identifier?.userName }}</template>
       </Column>
       <Column :header="t('reservation.column.status')" style="width: 100px">
