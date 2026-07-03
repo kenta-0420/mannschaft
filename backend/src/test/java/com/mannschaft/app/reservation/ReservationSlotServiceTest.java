@@ -53,6 +53,13 @@ class ReservationSlotServiceTest {
     @Mock
     private ReservationMapper reservationMapper;
 
+    @Mock
+    private com.mannschaft.app.reservation.repository.ReservationBlockedTimeRepository blockedTimeRepository;
+
+    /** 機能B: overlap 判定は純ロジックのため実インスタンスを注入（listAvailableSlots の除外挙動を実検証）。 */
+    private final com.mannschaft.app.reservation.service.ReservationUnavailabilityChecker unavailabilityChecker =
+            new com.mannschaft.app.reservation.service.ReservationUnavailabilityChecker();
+
     private ReservationSlotService service;
 
     // ========================================
@@ -75,7 +82,8 @@ class ReservationSlotServiceTest {
     void setUp() {
         // @InjectMocks は Clock を mock で埋めてしまい LocalDate.now(clock) が NPE になるため、
         // 固定 Clock を明示注入してサービスを生成する。
-        service = new ReservationSlotService(slotRepository, reservationRepository, reservationMapper, FIXED_CLOCK);
+        service = new ReservationSlotService(slotRepository, reservationRepository, reservationMapper,
+                blockedTimeRepository, unavailabilityChecker, FIXED_CLOCK);
     }
 
     private ReservationSlotEntity createSlotEntity() {
@@ -160,6 +168,105 @@ class ReservationSlotServiceTest {
 
             // Then
             assertThat(result).hasSize(1);
+        }
+    }
+
+    // ========================================
+    // 機能B: listAvailableSlots からの予約不可枠除外（§5.B / 受け入れ条件 B-1〜B-4・B-8）
+    // ========================================
+
+    @Nested
+    @DisplayName("listAvailableSlots 機能B 予約不可枠除外")
+    class ListAvailableSlotsUnavailability {
+
+        private final LocalDate from = SLOT_DATE;
+        private final LocalDate to = SLOT_DATE.plusDays(7);
+
+        /** 指定 staff・時間帯の AVAILABLE slot を組み立てる。 */
+        private ReservationSlotEntity slot(Long staffUserId, LocalTime start, LocalTime end) {
+            return ReservationSlotEntity.builder()
+                    .teamId(TEAM_ID).staffUserId(staffUserId).slotDate(SLOT_DATE)
+                    .startTime(start).endTime(end).build();
+        }
+
+        private com.mannschaft.app.reservation.entity.ReservationBlockedTimeEntity block(
+                com.mannschaft.app.reservation.ReservationBlockedResourceType type, Long resourceId,
+                LocalTime start, LocalTime end) {
+            return com.mannschaft.app.reservation.entity.ReservationBlockedTimeEntity.builder()
+                    .teamId(TEAM_ID).blockedDate(SLOT_DATE)
+                    .startTime(start).endTime(end)
+                    .resourceType(type).resourceId(resourceId).build();
+        }
+
+        /** listAvailableSlots が mapper に渡す（＝除外後の）slot リストを捕捉する。 */
+        @SuppressWarnings("unchecked")
+        private List<ReservationSlotEntity> captureVisibleSlots() {
+            org.mockito.ArgumentCaptor<List<ReservationSlotEntity>> captor =
+                    org.mockito.ArgumentCaptor.forClass(List.class);
+            given(reservationMapper.toSlotResponseList(captor.capture())).willReturn(List.of());
+            service.listAvailableSlots(TEAM_ID, from, to);
+            return captor.getValue();
+        }
+
+        @Test
+        @DisplayName("B-1: TEAM 予約不可枠がある日は当日の全 slot が除外される")
+        void B1_TEAM全日除外() {
+            List<ReservationSlotEntity> slots = List.of(
+                    slot(50L, LocalTime.of(10, 0), LocalTime.of(11, 0)),
+                    slot(60L, LocalTime.of(11, 0), LocalTime.of(12, 0)),
+                    slot(null, LocalTime.of(12, 0), LocalTime.of(13, 0)));
+            given(slotRepository.findByTeamIdAndSlotStatusAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
+                    TEAM_ID, SlotStatus.AVAILABLE, from, to)).willReturn(slots);
+            given(blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(
+                    TEAM_ID, from, to)).willReturn(List.of(
+                    block(com.mannschaft.app.reservation.ReservationBlockedResourceType.TEAM, null, null, null)));
+
+            assertThat(captureVisibleSlots()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("B-2: STAFF 予約不可枠は対象スタッフの slot のみ除外し他スタッフ/共通は残す")
+        void B2_STAFF軸のみ除外() {
+            ReservationSlotEntity target = slot(50L, LocalTime.of(10, 0), LocalTime.of(11, 0));
+            ReservationSlotEntity otherStaff = slot(60L, LocalTime.of(10, 0), LocalTime.of(11, 0));
+            ReservationSlotEntity common = slot(null, LocalTime.of(10, 0), LocalTime.of(11, 0));
+            given(slotRepository.findByTeamIdAndSlotStatusAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
+                    TEAM_ID, SlotStatus.AVAILABLE, from, to)).willReturn(List.of(target, otherStaff, common));
+            given(blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(
+                    TEAM_ID, from, to)).willReturn(List.of(
+                    block(com.mannschaft.app.reservation.ReservationBlockedResourceType.STAFF, 50L, null, null)));
+
+            assertThat(captureVisibleSlots()).containsExactly(otherStaff, common);
+        }
+
+        @Test
+        @DisplayName("B-3: 部分ブロック[10:00,11:00]は該当slotを除外し隣接[11:00,12:00]は残す（半開区間）")
+        void B3_部分ブロック半開境界() {
+            ReservationSlotEntity blocked = slot(50L, LocalTime.of(10, 0), LocalTime.of(11, 0));
+            ReservationSlotEntity adjacent = slot(50L, LocalTime.of(11, 0), LocalTime.of(12, 0));
+            given(slotRepository.findByTeamIdAndSlotStatusAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
+                    TEAM_ID, SlotStatus.AVAILABLE, from, to)).willReturn(List.of(blocked, adjacent));
+            given(blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(
+                    TEAM_ID, from, to)).willReturn(List.of(
+                    block(com.mannschaft.app.reservation.ReservationBlockedResourceType.TEAM, null,
+                            LocalTime.of(10, 0), LocalTime.of(11, 0))));
+
+            assertThat(captureVisibleSlots()).containsExactly(adjacent);
+        }
+
+        @Test
+        @DisplayName("B-8: 既存行（resourceType=TEAM/resourceId=null＝ALTER前互換）は全 slot 対象として判定される")
+        void B8_後方互換TEAM() {
+            ReservationSlotEntity s1 = slot(50L, LocalTime.of(10, 0), LocalTime.of(11, 0));
+            ReservationSlotEntity s2 = slot(null, LocalTime.of(11, 0), LocalTime.of(12, 0));
+            given(slotRepository.findByTeamIdAndSlotStatusAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
+                    TEAM_ID, SlotStatus.AVAILABLE, from, to)).willReturn(List.of(s1, s2));
+            // ALTER 前データを模した TEAM/null 全日枠。
+            given(blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(
+                    TEAM_ID, from, to)).willReturn(List.of(
+                    block(com.mannschaft.app.reservation.ReservationBlockedResourceType.TEAM, null, null, null)));
+
+            assertThat(captureVisibleSlots()).isEmpty();
         }
     }
 

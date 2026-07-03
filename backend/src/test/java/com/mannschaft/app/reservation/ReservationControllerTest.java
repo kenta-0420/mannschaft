@@ -583,7 +583,7 @@ class ReservationControllerTest {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
                 BlockedTimeRequest request = new BlockedTimeRequest(
-                        LocalDate.now(), LocalTime.of(12, 0), LocalTime.of(13, 0), "昼休憩");
+                        LocalDate.now(), LocalTime.of(12, 0), LocalTime.of(13, 0), "昼休憩", null, null);
                 given(businessHourService.createBlockedTime(TEAM_ID, request, USER_ID))
                         .willReturn(createBlockedTimeResponse());
 
@@ -599,7 +599,7 @@ class ReservationControllerTest {
         void ブロック時間更新_正常_200返却() {
             Long blockedId = 1L;
             BlockedTimeRequest request = new BlockedTimeRequest(
-                    LocalDate.now(), LocalTime.of(12, 0), LocalTime.of(13, 0), "変更理由");
+                    LocalDate.now(), LocalTime.of(12, 0), LocalTime.of(13, 0), "変更理由", null, null);
             given(businessHourService.updateBlockedTime(TEAM_ID, blockedId, request))
                     .willReturn(createBlockedTimeResponse());
 

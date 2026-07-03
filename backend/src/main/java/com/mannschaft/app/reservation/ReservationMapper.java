@@ -78,6 +78,8 @@ public interface ReservationMapper {
     List<BusinessHourResponse> toBusinessHourResponseList(List<ReservationBusinessHourEntity> entities);
 
     @Mapping(target = "timeSlot", expression = "java(new com.mannschaft.app.reservation.dto.BlockedTimeResponse.TimeSlotDto(entity.getBlockedDate(), entity.getStartTime(), entity.getEndTime()))")
+    // 機能B: resourceName（STAFF 時の担当スタッフ表示名）は NameResolver 一括解決のため Service 層で後付けする（ここでは null）。
+    @Mapping(target = "resource", expression = "java(new com.mannschaft.app.reservation.dto.BlockedTimeResponse.ResourceDto(entity.getResourceType() != null ? entity.getResourceType().name() : null, entity.getResourceId(), null))")
     @Mapping(target = "audit", expression = "java(new com.mannschaft.app.reservation.dto.BlockedTimeResponse.BlockedAuditDto(entity.getReason(), entity.getCreatedBy(), entity.getCreatedAt(), entity.getUpdatedAt()))")
     BlockedTimeResponse toBlockedTimeResponse(ReservationBlockedTimeEntity entity);
 

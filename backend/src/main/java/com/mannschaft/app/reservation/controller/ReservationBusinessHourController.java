@@ -1,6 +1,8 @@
 package com.mannschaft.app.reservation.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.reservation.ReservationBlockedResourceType;
+import com.mannschaft.app.reservation.dto.BlockedTimeImpactResponse;
 import com.mannschaft.app.reservation.dto.BlockedTimeRequest;
 import com.mannschaft.app.reservation.dto.BlockedTimeResponse;
 import com.mannschaft.app.reservation.dto.BusinessHourResponse;
@@ -31,6 +33,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import com.mannschaft.app.common.SecurityUtils;
 
@@ -114,6 +117,28 @@ public class ReservationBusinessHourController {
             @PathVariable Long blockedId,
             @Valid @RequestBody BlockedTimeRequest request) {
         BlockedTimeResponse response = businessHourService.updateBlockedTime(teamId, blockedId, request);
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 予約不可枠 登録前の影響プレビュー（機能B・§4.B）。
+     *
+     * <p>overlap する既存 active 予約（PENDING/CONFIRMED）の件数＋一覧（管理用・氏名込み）を返す。
+     * 副作用ゼロ。ADMIN + DEPUTY_ADMIN（副管理者）許可。</p>
+     */
+    @GetMapping("/blocked-times/impact")
+    @Operation(summary = "予約不可枠 登録前の影響プレビュー")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
+    public ResponseEntity<ApiResponse<BlockedTimeImpactResponse>> getBlockedTimeImpact(
+            @PathVariable Long teamId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false, defaultValue = "TEAM") ReservationBlockedResourceType resourceType,
+            @RequestParam(required = false) Long resourceId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime startTime,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime endTime) {
+        BlockedTimeImpactResponse response = businessHourService.getBlockedTimeImpact(
+                teamId, date, resourceType, resourceId, startTime, endTime);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
