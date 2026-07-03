@@ -126,7 +126,7 @@
         "body": "这是一个列出您所预约时段的页面。您可以一目了然地了解每个预约是否已获批准以及预约的时间。",
         "steps": {
           "step1": "打开页面后，系统会自动加载您的预约。",
-          "step2": "每张卡片会显示“线路名称、日期、开始～结束时间”。"
+          "step2": "每张卡片会显示“预约对象名称、日期、开始～结束时间”。"
         }
       },
       "status": {
@@ -163,34 +163,34 @@
       "my_title": "我的预约",
       "team_title": "预约管理",
       "settings_title": "预约管理设置",
-      "settings_subtitle": "管理预约线路（员工 / 窗口）"
+      "settings_subtitle": "管理预约对象（员工 / 窗口）"
     },
     "tab": {
       "book": "预约",
       "list": "预约列表",
-      "line_manage": "线路管理",
+      "line_manage": "预约对象管理",
       "emergency_closure": "緊急休業",
       "team_page": "预约"
     },
     "column": {
       "datetime": "日期时间",
-      "line": "线路",
+      "line": "预约对象",
       "reserver": "预约人",
       "status": "状态",
       "action": "操作",
-      "line_name": "线路名称",
+      "line_name": "预约对象名称",
       "description": "说明",
       "display_order": "显示顺序",
       "state": "状态"
     },
     "field": {
       "date": "日期",
-      "line": "线路",
+      "line": "预约对象",
       "name": "名称",
       "description": "说明",
       "display_order": "显示顺序",
       "active": "启用",
-      "line_name_required": "线路名称",
+      "line_name_required": "预约对象名称",
       "note": "备注（可选）",
       "time": "时间"
     },
@@ -209,8 +209,8 @@
       "full": "已满"
     },
     "button": {
-      "add_line": "添加线路",
-      "add_line_long": "添加线路",
+      "add_line": "添加预约对象",
+      "add_line_long": "添加预约对象",
       "save": "保存",
       "cancel": "取消",
       "reserve": "预约",
@@ -219,13 +219,13 @@
     },
     "dialog": {
       "title": "确认",
-      "line_create": "创建线路",
-      "line_edit": "编辑线路",
-      "line_create_long": "添加预约线路",
-      "line_edit_long": "编辑预约线路",
+      "line_create": "创建预约对象",
+      "line_edit": "编辑预约对象",
+      "line_create_long": "添加预约对象",
+      "line_edit_long": "编辑预约对象",
       "reserve_confirm": "预约确认",
       "cancel_confirm": "要取消此预约吗？",
-      "line_delete_confirm": "要删除此线路吗？",
+      "line_delete_confirm": "要删除此预约对象吗？",
       "line_delete_named_confirm": "要删除「{name}」吗？"
     },
     "message": {
@@ -234,14 +234,14 @@
       "cancel_success": "已取消预约",
       "reserve_success": "预约完成",
       "reserve_failed": "预约失败",
-      "line_create_success": "已创建线路",
-      "line_update_success": "已更新线路",
-      "line_delete_success": "已删除线路",
+      "line_create_success": "已创建预约对象",
+      "line_update_success": "已更新预约对象",
+      "line_delete_success": "已删除预约对象",
       "line_save_failed": "保存失败",
-      "line_create_success_long": "已创建预约线路",
-      "line_update_success_long": "已更新预约线路",
-      "line_delete_success_long": "已删除预约线路",
-      "line_load_failed": "获取预约线路失败",
+      "line_create_success_long": "已创建预约对象",
+      "line_update_success_long": "已更新预约对象",
+      "line_delete_success_long": "已删除预约对象",
+      "line_load_failed": "获取预约对象失败",
       "save_failed": "保存失败",
       "delete_failed": "删除失败",
       "my_load_failed": "获取预约信息失败",
@@ -250,11 +250,11 @@
     "empty": {
       "no_reservations": "没有预约",
       "no_my_reservations": "没有预约",
-      "no_lines": "没有预约线路",
-      "no_lines_yet": "还没有线路",
+      "no_lines": "没有预约对象",
+      "no_lines_yet": "还没有预约对象",
       "no_available_slots": "当天没有空闲时段"
     },
-    "line_manage_title": "预约线路管理",
+    "line_manage_title": "预约对象管理",
     "settings": {
       "advanced": {
         "title": "高级设置"

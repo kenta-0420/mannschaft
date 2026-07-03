@@ -126,7 +126,7 @@
         "body": "This page lists the slots you have booked. You can tell at a glance whether each one is approved and when it is scheduled.",
         "steps": {
           "step1": "When you open the page, your reservations load automatically.",
-          "step2": "Each card shows the line name, date, and start–end time."
+          "step2": "Each card shows the bookable item name, date, and start–end time."
         }
       },
       "status": {
@@ -163,34 +163,34 @@
       "my_title": "My Reservations",
       "team_title": "Reservation Management",
       "settings_title": "Reservation Settings",
-      "settings_subtitle": "Manage reservation lines (staff / counters)"
+      "settings_subtitle": "Manage bookable items (staff / counters)"
     },
     "tab": {
       "book": "Book",
       "list": "Reservations",
-      "line_manage": "Manage Lines",
+      "line_manage": "Manage Bookable Items",
       "emergency_closure": "緊急休業",
       "team_page": "Reservations"
     },
     "column": {
       "datetime": "Date & Time",
-      "line": "Line",
+      "line": "Bookable Item",
       "reserver": "Reserver",
       "status": "Status",
       "action": "Actions",
-      "line_name": "Line Name",
+      "line_name": "Bookable Item Name",
       "description": "Description",
       "display_order": "Order",
       "state": "State"
     },
     "field": {
       "date": "Date",
-      "line": "Line",
+      "line": "Bookable Item",
       "name": "Name",
       "description": "Description",
       "display_order": "Display Order",
       "active": "Active",
-      "line_name_required": "Line Name",
+      "line_name_required": "Bookable Item Name",
       "note": "Notes (optional)",
       "time": "Time"
     },
@@ -209,8 +209,8 @@
       "full": "Full"
     },
     "button": {
-      "add_line": "Add Line",
-      "add_line_long": "Add Line",
+      "add_line": "Add Bookable Item",
+      "add_line_long": "Add Bookable Item",
       "save": "Save",
       "cancel": "Cancel",
       "reserve": "Reserve",
@@ -219,13 +219,13 @@
     },
     "dialog": {
       "title": "Confirm",
-      "line_create": "Create Line",
-      "line_edit": "Edit Line",
-      "line_create_long": "Add Reservation Line",
-      "line_edit_long": "Edit Reservation Line",
+      "line_create": "Create Bookable Item",
+      "line_edit": "Edit Bookable Item",
+      "line_create_long": "Add Bookable Item",
+      "line_edit_long": "Edit Bookable Item",
       "reserve_confirm": "Confirm Reservation",
       "cancel_confirm": "Cancel this reservation?",
-      "line_delete_confirm": "Delete this line?",
+      "line_delete_confirm": "Delete this bookable item?",
       "line_delete_named_confirm": "Delete \"{name}\"?"
     },
     "message": {
@@ -234,14 +234,14 @@
       "cancel_success": "Reservation cancelled",
       "reserve_success": "Reservation completed",
       "reserve_failed": "Failed to make reservation",
-      "line_create_success": "Line created",
-      "line_update_success": "Line updated",
-      "line_delete_success": "Line deleted",
+      "line_create_success": "Bookable item created",
+      "line_update_success": "Bookable item updated",
+      "line_delete_success": "Bookable item deleted",
       "line_save_failed": "Failed to save",
-      "line_create_success_long": "Reservation line created",
-      "line_update_success_long": "Reservation line updated",
-      "line_delete_success_long": "Reservation line deleted",
-      "line_load_failed": "Failed to load reservation lines",
+      "line_create_success_long": "Bookable item created",
+      "line_update_success_long": "Bookable item updated",
+      "line_delete_success_long": "Bookable item deleted",
+      "line_load_failed": "Failed to load bookable items",
       "save_failed": "Failed to save",
       "delete_failed": "Failed to delete",
       "my_load_failed": "Failed to load reservations",
@@ -250,11 +250,11 @@
     "empty": {
       "no_reservations": "No reservations",
       "no_my_reservations": "No reservations",
-      "no_lines": "No reservation lines",
-      "no_lines_yet": "No lines yet",
+      "no_lines": "No bookable items",
+      "no_lines_yet": "No bookable items yet",
       "no_available_slots": "No available slots on this day"
     },
-    "line_manage_title": "Reservation Line Management",
+    "line_manage_title": "Bookable Item Management",
     "settings": {
       "advanced": {
         "title": "Advanced Settings"
