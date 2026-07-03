@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -85,6 +86,7 @@ public class TeamReservationSlotController {
     @PostMapping
     @Operation(summary = "スロット作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<ReservationSlotResponse>> createSlot(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateSlotRequest request) {
@@ -98,6 +100,7 @@ public class TeamReservationSlotController {
     @PatchMapping("/{slotId}")
     @Operation(summary = "スロット更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<ReservationSlotResponse>> updateSlot(
             @PathVariable Long teamId,
             @PathVariable Long slotId,
@@ -112,6 +115,7 @@ public class TeamReservationSlotController {
     @DeleteMapping("/{slotId}")
     @Operation(summary = "スロット削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<Void> deleteSlot(
             @PathVariable Long teamId,
             @PathVariable Long slotId) {
@@ -125,6 +129,7 @@ public class TeamReservationSlotController {
     @PostMapping("/{slotId}/close")
     @Operation(summary = "スロットクローズ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "クローズ成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<ReservationSlotResponse>> closeSlot(
             @PathVariable Long teamId,
             @PathVariable Long slotId,
@@ -139,6 +144,7 @@ public class TeamReservationSlotController {
     @PostMapping("/{slotId}/reopen")
     @Operation(summary = "スロット再開")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "再開成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<ReservationSlotResponse>> reopenSlot(
             @PathVariable Long teamId,
             @PathVariable Long slotId) {
