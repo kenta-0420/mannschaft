@@ -7,6 +7,7 @@ import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.filesharing.FileScopeType;
 import com.mannschaft.app.filesharing.FileSharingErrorCode;
 import com.mannschaft.app.filesharing.FileSharingMapper;
+import com.mannschaft.app.filesharing.FileVisibilityRole;
 import com.mannschaft.app.filesharing.dto.CreateFileRequest;
 import com.mannschaft.app.filesharing.dto.FileResponse;
 import com.mannschaft.app.filesharing.dto.SharedFileDownloadUrlResponse;
@@ -27,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -170,7 +172,17 @@ public class SharedFileService {
         // IDOR 封鎖: フォルダスコープ別の閲覧認可（PERSONAL 本人以外404 / TEAM・ORG 非メンバー403 / 大会 連絡スペース認可）。
         // authorizeFolderViewById は内部で大会スコープを FolderScopeAccessGuard へ委譲するため、大会の従来挙動は不変。
         folderQueryService.authorizeFolderViewById(folderId, userId);
-        List<SharedFileEntity> files = fileRepository.findByFolderIdOrderByNameAsc(folderId);
+        // B: フォルダより厳しいファイル個別 min role のメタ露出を封鎖する。ユーザーが満たすレベルをクエリ段階で絞る
+        //    （NULL ファイルはフォルダ継承で常に可視・全許可時＝SYSTEM_ADMIN/PERSONAL は従来の絞り無しクエリ）。
+        Set<FileVisibilityRole> allowedLevels = folderQueryService.resolveVisibleFileLevels(folderId, userId);
+        List<SharedFileEntity> files;
+        if (allowedLevels == null) {
+            files = fileRepository.findByFolderIdOrderByNameAsc(folderId); // 全許可（フィルタ不要）
+        } else if (allowedLevels.isEmpty()) {
+            files = fileRepository.findByFolderIdAndMinVisibleRoleIsNullOrderByNameAsc(folderId); // NULL のみ可視
+        } else {
+            files = fileRepository.findVisibleByFolderIdAndLevels(folderId, allowedLevels);
+        }
         return fileSharingMapper.toFileResponseList(files);
     }
 
@@ -188,7 +200,17 @@ public class SharedFileService {
     public Page<FileResponse> listFilesPaged(Long folderId, Long userId, Pageable pageable) {
         // IDOR 封鎖: フォルダスコープ別の閲覧認可（PERSONAL 本人以外404 / TEAM・ORG 非メンバー403 / 大会 連絡スペース認可）。
         folderQueryService.authorizeFolderViewById(folderId, userId);
-        Page<SharedFileEntity> page = fileRepository.findByFolderIdOrderByNameAsc(folderId, pageable);
+        // B: ファイル個別 min role の絞り込みをクエリ段階で行い、ページング総件数・総ページ数を整合させる
+        //    （取得後 Java フィルタだと Page の件数がズレるため必ず SQL 段階で絞る）。
+        Set<FileVisibilityRole> allowedLevels = folderQueryService.resolveVisibleFileLevels(folderId, userId);
+        Page<SharedFileEntity> page;
+        if (allowedLevels == null) {
+            page = fileRepository.findByFolderIdOrderByNameAsc(folderId, pageable); // 全許可（フィルタ不要）
+        } else if (allowedLevels.isEmpty()) {
+            page = fileRepository.findByFolderIdAndMinVisibleRoleIsNullOrderByNameAsc(folderId, pageable); // NULL のみ可視
+        } else {
+            page = fileRepository.findVisibleByFolderIdAndLevels(folderId, allowedLevels, pageable);
+        }
         return page.map(fileSharingMapper::toFileResponse);
     }
 

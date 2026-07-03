@@ -24,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -863,6 +864,139 @@ class SharedFolderQueryServiceTest {
             given(accessControlService.isSystemAdmin(USER_ID)).willReturn(true);
 
             assertThatCode(() -> service.authorizeDownload(FILE_ID, USER_ID)).doesNotThrowAnyException();
+        }
+    }
+
+    // ============================================================
+    // B: 一覧経路の許可レベル解決（resolveVisibleFileLevels）
+    //    フォルダより厳しいファイル個別 min role のメタ露出をクエリ段階で絞るための土台。
+    // ============================================================
+
+    @Nested
+    @DisplayName("B: resolveVisibleFileLevels — 一覧の許可レベル集合解決")
+    class ResolveVisibleFileLevels {
+
+        @Test
+        @DisplayName("AC-2相当: TEAM で ADMIN 相当（全レベル満たす）→ 3 レベル全部を返す")
+        void ADMIN_全レベル() {
+            SharedFolderEntity folder = teamFolder(null);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "SUPPORTER")).willReturn(true);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "MEMBER")).willReturn(true);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "ADMIN")).willReturn(true);
+
+            Set<FileVisibilityRole> result = service.resolveVisibleFileLevels(folder, USER_ID);
+
+            assertThat(result).containsExactlyInAnyOrder(
+                    FileVisibilityRole.SUPPORTERS_AND_ABOVE,
+                    FileVisibilityRole.MEMBERS_AND_ABOVE,
+                    FileVisibilityRole.ADMINS_AND_ABOVE);
+        }
+
+        @Test
+        @DisplayName("AC-1相当: TEAM で MEMBER 相当（ADMIN 未満）→ ADMINS_AND_ABOVE を含まない")
+        void MEMBER_ADMINS除外() {
+            SharedFolderEntity folder = teamFolder(null);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "SUPPORTER")).willReturn(true);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "MEMBER")).willReturn(true);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "ADMIN")).willReturn(false);
+
+            Set<FileVisibilityRole> result = service.resolveVisibleFileLevels(folder, USER_ID);
+
+            assertThat(result).containsExactlyInAnyOrder(
+                    FileVisibilityRole.SUPPORTERS_AND_ABOVE, FileVisibilityRole.MEMBERS_AND_ABOVE);
+            assertThat(result).doesNotContain(FileVisibilityRole.ADMINS_AND_ABOVE);
+        }
+
+        @Test
+        @DisplayName("AC-3相当: TEAM で SUPPORTER 相当（MEMBER 未満）→ SUPPORTERS_AND_ABOVE のみ")
+        void SUPPORTER_MEMBERS除外() {
+            SharedFolderEntity folder = teamFolder(null);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "SUPPORTER")).willReturn(true);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "MEMBER")).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "ADMIN")).willReturn(false);
+
+            Set<FileVisibilityRole> result = service.resolveVisibleFileLevels(folder, USER_ID);
+
+            assertThat(result).containsExactly(FileVisibilityRole.SUPPORTERS_AND_ABOVE);
+        }
+
+        @Test
+        @DisplayName("どのレベルも満たさない→空集合（NULL ファイルのみ可視の合図）")
+        void 満たさない_空集合() {
+            SharedFolderEntity folder = teamFolder(null);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "SUPPORTER")).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "MEMBER")).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "ADMIN")).willReturn(false);
+
+            Set<FileVisibilityRole> result = service.resolveVisibleFileLevels(folder, USER_ID);
+
+            assertThat(result).isNotNull().isEmpty();
+        }
+
+        @Test
+        @DisplayName("AC-5相当: SYSTEM_ADMIN は全許可（null＝フィルタ不要・hasRoleOrAbove を呼ばない）")
+        void SYSTEM_ADMIN_null() {
+            SharedFolderEntity folder = teamFolder(null);
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(true);
+
+            Set<FileVisibilityRole> result = service.resolveVisibleFileLevels(folder, USER_ID);
+
+            assertThat(result).isNull();
+            verify(accessControlService, never()).hasRoleOrAbove(anyLong(), anyLong(), any(), any());
+        }
+
+        @Test
+        @DisplayName("PERSONAL は全許可（null＝所有者のみ・authorizeView で担保・role 判定しない）")
+        void PERSONAL_null() {
+            SharedFolderEntity folder = personalFolder(USER_ID);
+
+            Set<FileVisibilityRole> result = service.resolveVisibleFileLevels(folder, USER_ID);
+
+            assertThat(result).isNull();
+            verify(accessControlService, never()).hasRoleOrAbove(anyLong(), anyLong(), any(), any());
+        }
+
+        @Test
+        @DisplayName("ORGANIZATION は organizationId/\"ORGANIZATION\" で判定する")
+        void ORG_スコープ解決() {
+            SharedFolderEntity folder = orgFolder();
+            given(accessControlService.hasRoleOrAbove(USER_ID, ORG_ID, "ORGANIZATION", "SUPPORTER")).willReturn(true);
+            given(accessControlService.hasRoleOrAbove(USER_ID, ORG_ID, "ORGANIZATION", "MEMBER")).willReturn(true);
+            given(accessControlService.hasRoleOrAbove(USER_ID, ORG_ID, "ORGANIZATION", "ADMIN")).willReturn(false);
+
+            Set<FileVisibilityRole> result = service.resolveVisibleFileLevels(folder, USER_ID);
+
+            assertThat(result).containsExactlyInAnyOrder(
+                    FileVisibilityRole.SUPPORTERS_AND_ABOVE, FileVisibilityRole.MEMBERS_AND_ABOVE);
+            verify(accessControlService).hasRoleOrAbove(USER_ID, ORG_ID, "ORGANIZATION", "ADMIN");
+        }
+
+        @Test
+        @DisplayName("TOURNAMENT は主催組織 organizationId/\"ORGANIZATION\" ロールで判定する")
+        void TOURNAMENT_主催組織で判定() {
+            SharedFolderEntity folder = SharedFolderEntity.builder()
+                    .id(FOLDER_ID).scopeType(FileScopeType.TOURNAMENT).organizationId(ORG_ID)
+                    .scopeRefId(42L).name("大会フォルダ").createdBy(USER_ID).build();
+            given(accessControlService.hasRoleOrAbove(USER_ID, ORG_ID, "ORGANIZATION", "SUPPORTER")).willReturn(true);
+            given(accessControlService.hasRoleOrAbove(USER_ID, ORG_ID, "ORGANIZATION", "MEMBER")).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, ORG_ID, "ORGANIZATION", "ADMIN")).willReturn(false);
+
+            Set<FileVisibilityRole> result = service.resolveVisibleFileLevels(folder, USER_ID);
+
+            assertThat(result).containsExactly(FileVisibilityRole.SUPPORTERS_AND_ABOVE);
+        }
+
+        @Test
+        @DisplayName("folderId 受け口: フォルダを読み込んで同じ結果を返す")
+        void folderId受け口() {
+            given(folderRepository.findById(FOLDER_ID)).willReturn(Optional.of(teamFolder(null)));
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "SUPPORTER")).willReturn(true);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "MEMBER")).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "ADMIN")).willReturn(false);
+
+            Set<FileVisibilityRole> result = service.resolveVisibleFileLevels(FOLDER_ID, USER_ID);
+
+            assertThat(result).containsExactly(FileVisibilityRole.SUPPORTERS_AND_ABOVE);
         }
     }
 }
