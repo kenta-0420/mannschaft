@@ -537,7 +537,7 @@ onMounted(load)
   height: 36px;
   border-radius: 0.375rem;
   border: 1px solid var(--p-surface-300, #d1d5db);
-  background: var(--p-surface-0, #fff);
+  background: var(--p-content-background, #fff);
   cursor: pointer;
   font-size: 1rem;
 }

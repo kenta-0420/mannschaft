@@ -188,7 +188,7 @@ onMounted(() => {
   justify-content: space-between;
   gap: 1rem;
   padding: 1rem;
-  background: var(--p-surface-0, #fff);
+  background: var(--p-content-background, #fff);
   border-radius: 0.75rem;
   border: 1px solid var(--p-surface-200, #e5e7eb);
   margin-bottom: 0.5rem;
@@ -211,7 +211,7 @@ onMounted(() => {
   display: block;
   width: 100%;
   padding: 0.875rem 1rem;
-  background: var(--p-surface-0, #fff);
+  background: var(--p-content-background, #fff);
   border: 1px solid var(--p-surface-200, #e5e7eb);
   border-radius: 0.75rem;
   text-align: left;
@@ -240,7 +240,7 @@ onMounted(() => {
   padding: 1rem;
 }
 .settings-page__modal {
-  background: var(--p-surface-0, #fff);
+  background: var(--p-content-background, #fff);
   border-radius: 1rem;
   max-width: 420px;
   width: 100%;
