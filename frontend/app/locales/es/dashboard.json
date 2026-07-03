@@ -221,7 +221,9 @@
       "blogEmpty": "Sin entradas de blog",
       "chatEmpty": "Sin chats",
       "todoEmpty": "Sin tareas",
-      "calendarEmpty": "Sin eventos"
+      "calendarEmpty": "Sin eventos",
+      "bulletinEmpty": "No hay temas del tablón",
+      "unread": "No leído"
     }
   }
 }

@@ -173,10 +173,24 @@ export interface ScopeTodoSummary {
   total_incomplete: number
 }
 
-/** ③ 未読スレッド集計（teamUnreadThreads / orgUnreadThreads）。リスト無し（第二陣で拡張予定）。 */
+/** ③ 掲示板スレッド一覧の 1 エントリ（unreadThreads.bulletin_threads の要素）。 */
+export interface ScopeBulletinThreadItem {
+  id: number
+  title: string
+  updated_at: string
+  is_read: boolean
+}
+
+/**
+ * ③ 未読スレッド集計（teamUnreadThreads / orgUnreadThreads）。
+ *
+ * 第二陣（dashboard-scope-panel-content）で直近スレッド一覧 bulletin_threads を追加。
+ * BE 未デプロイ環境では undefined になりうるため任意扱いとし、FE は空配列へ縮退する。
+ */
 export interface ScopeUnreadThreads {
   bulletin_count: number
   chat_count: number
+  bulletin_threads?: ScopeBulletinThreadItem[] | null
 }
 
 // -----------------------------------------------------------------------
