@@ -210,6 +210,18 @@
       "empty": "No hay elementos que requieran acción",
       "loadError": "Error al cargar los elementos de acción"
     },
-    "emptyState": "Sin publicaciones aún"
+    "emptyState": "Sin publicaciones aún",
+    "list": {
+      "allDay": "Todo el día",
+      "overdue": "Vencido",
+      "nextEvent": "Próximo evento",
+      "noNextEvent": "Sin próximos eventos",
+      "eventsThisWeek": "{count} esta semana",
+      "upcomingEmpty": "Sin próximos eventos",
+      "blogEmpty": "Sin entradas de blog",
+      "chatEmpty": "Sin chats",
+      "todoEmpty": "Sin tareas",
+      "calendarEmpty": "Sin eventos"
+    }
   }
 }
