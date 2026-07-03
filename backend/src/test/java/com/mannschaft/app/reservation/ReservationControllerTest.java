@@ -708,9 +708,10 @@ class ReservationControllerTest {
         }
 
         @Test
-        @DisplayName("予約設定更新_ADMIN限定_PreAuthorize宣言を検証")
-        void 予約公開設定更新_ADMIN限定宣言() throws NoSuchMethodException {
-            // @PreAuthorize の SpEL が ADMIN 限定（isScopeStrictAdmin）であることを宣言レベルで保証する。
+        @DisplayName("予約設定更新_管理者限定_PreAuthorize宣言を検証")
+        void 予約公開設定更新_管理者限定宣言() throws NoSuchMethodException {
+            // @PreAuthorize の SpEL が 管理者＋副管理者（isScopeAdmin）であることを宣言レベルで保証する。
+            // F03.4 認可漏れ根治で isScopeStrictAdmin（ADMIN のみ）→ isScopeAdmin（ADMIN+DEPUTY_ADMIN）へ揃えた。
             // 実際の認可強制は @EnableMethodSecurity + AccessGuard（AccessGuardTest で検証済み）が担う。
             java.lang.reflect.Method method = ReservationBusinessHourController.class.getMethod(
                     "updateReservationSetting", Long.class,
@@ -719,7 +720,7 @@ class ReservationControllerTest {
                     method.getAnnotation(org.springframework.security.access.prepost.PreAuthorize.class);
             assertThat(preAuthorize).isNotNull();
             assertThat(preAuthorize.value())
-                    .isEqualTo("@accessGuard.isScopeStrictAdmin(authentication, #teamId, 'TEAM')");
+                    .isEqualTo("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')");
         }
     }
 
