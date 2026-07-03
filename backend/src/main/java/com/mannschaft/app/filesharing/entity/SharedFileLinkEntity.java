@@ -46,9 +46,11 @@ public class SharedFileLinkEntity {
 
     /**
      * PR-D: 手動失効フラグ。{@code false} で発行者がリンクを即時無効化できる（アクセス時 410 Gone）。
-     * {@code columnDefinition} を DDL（V136.001）と揃え、ddl-auto テストのデフォルト不一致を防ぐ。
+     * <p>Flyway V136.001 は {@code is_active} という列名で追加する。Hibernate の camelCase→snake_case
+     * 変換は {@code active} → {@code active}（変換なし）のため、{@code name="is_active"} を明示しないと
+     * 実 DB の列名と不一致になり {@code Unknown column 'active'} が発生する（根治 #XXXX）。</p>
      */
-    @Column(nullable = false, columnDefinition = "BOOLEAN NOT NULL DEFAULT TRUE")
+    @Column(name = "is_active", nullable = false, columnDefinition = "BOOLEAN NOT NULL DEFAULT TRUE")
     @Builder.Default
     private boolean active = true;
 
