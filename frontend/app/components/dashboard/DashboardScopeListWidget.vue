@@ -7,7 +7,7 @@
  * ウィジェットごとに異なるため、item スロットで呼び出し側が描画を差し込む。
  *
  * - 0 件時は emptyMessage を空状態として表示する（エラーを握り潰さない）。
- * - to 指定時のみ「すべて見る」導線をカード下部に出す（common.button.view_all）。
+ * - to 指定時のみ「すべて見る」導線をカード下部に出す（button.view_all）。
  *
  * 設計書: docs/features/F22.1_swipe_scope_dashboard/04_widgets.md §3 / §4
  */
@@ -52,7 +52,7 @@ const visibleItems = computed<T[]>(() => list.value.slice(0, DISPLAY_LIMIT))
 
       <div v-if="to" class="flex justify-end pt-1">
         <NuxtLink :to="to" class="text-sm text-primary hover:underline">
-          {{ $t('common.button.view_all') }}
+          {{ $t('button.view_all') }}
         </NuxtLink>
       </div>
     </div>
