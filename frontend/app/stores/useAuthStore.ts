@@ -61,14 +61,21 @@ export const useAuthStore = defineStore('auth', {
           // JWT デコード失敗・exp 欠落時は保存をスキップ（例外は投げない）。
           // tokenExpiresAt が無ければプラグイン側は「期限不明＝失効扱い」で先回りリフレッシュする。
         }
-
-        // 先回り（proactive）リフレッシュタイマーを（再）武装する。
-        // ログイン成功時（login.vue/2fa-verify.vue/2fa-recovery.vue/OAuth コールバック）・
-        // リフレッシュ成功時（performTokenRefresh 内の setTokens 呼び出し）の両方でここを通るため、
-        // セッションが続く限り access_token を失効前に更新し続け、背景ポーラー
-        // （通知unread-count/chat channels/mentions/inbox summary）の 401 ノイズを未然に防ぐ。
-        armProactiveRefresh(useRuntimeConfig(), useAuthStore())
       }
+
+      // 先回り（proactive）リフレッシュタイマーの武装は、ここ（setTokens）では行わない。
+      //
+      // 【理由】setTokens はタイマー起点のリフレッシュ経路（armProactiveRefresh の fire →
+      // performTokenRefresh → 内部で setTokens）からも呼ばれる。その経路では setTokens は
+      // setTimeout の非同期コンテキスト（await 後）で実行されるため、ここで useRuntimeConfig() /
+      // useAuthStore() を呼ぶのは「composable は同期 Nuxt コンテキストでのみ呼ぶ」不変条件に反する
+      // （memory feedback_nuxt_plugin_no_setup_composables）。実機検証では現状 Nuxt3 の client
+      // フォールバックで例外は出なかったが、Nuxt 内部実装の変更で将来落ちうる潜在リスクであり、
+      // かつ fire 側が成功時に captured config で再武装するため setTokens 内の arm は冗長な二重武装
+      // だった。よって arm は「必ず同期コンテキストである呼び出し元」に寄せる:
+      //   - ログイン成功各所（login.vue / 2fa-verify.vue / 2fa-recovery.vue / OAuth コールバック）
+      //   - auth.client プラグイン起動時（認証済みなら）
+      // リフレッシュ成功後の再武装は useApi.ts の fire コールバックが captured config で担う。
     },
 
     /**

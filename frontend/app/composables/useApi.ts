@@ -263,6 +263,12 @@ export function useApi() {
             throw new Error('token_refresh_transient')
           }
           // 'refreshed': throw しない → ofetch が onRequest で新トークンを付与して 1 回リトライ
+          // リアクティブ経路（この 401 ハンドラ）でリフレッシュが成立した場合も、先回りタイマーを
+          // 新しい失効時刻で（再）武装しておく。通常は先回りタイマーが常時武装されているため
+          // ここへは来ないが、万一先回りが未武装のまま 401 を踏んだ場合でも、以後はリアクティブ 401 を
+          // 出さず先回り経路へ復帰できるようにする防御。useApi() setup で capture 済みの
+          // config / authStore を渡すため、この async コンテキストでも composable は呼ばない。
+          armProactiveRefresh(config, authStore)
           return
         }
         else {

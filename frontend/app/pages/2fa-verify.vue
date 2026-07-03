@@ -6,6 +6,8 @@ definePageMeta({
 const route = useRoute()
 const api = useApi()
 const authStore = useAuthStore()
+// 先回りリフレッシュ武装用に runtimeConfig を setup コンテキストで capture する（armProactiveRefresh 参照）。
+const runtimeConfig = useRuntimeConfig()
 const notification = useNotification()
 const { applyUserLocale } = useLocale()
 
@@ -39,6 +41,8 @@ async function handleVerify() {
       },
     })
     authStore.setTokens(data.data.accessToken, data.data.refreshToken)
+    // 2FA 検証成功直後に先回りリフレッシュタイマーを武装する。
+    armProactiveRefresh(runtimeConfig, authStore)
     await authStore.setUser(data.data.user)
 
     // フルプロフィール（timezone・locale 等）を取得して store を更新

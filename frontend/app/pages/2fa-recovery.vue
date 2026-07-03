@@ -5,6 +5,8 @@ definePageMeta({
 
 const route = useRoute()
 const authStore = useAuthStore()
+// 先回りリフレッシュ武装用に runtimeConfig を setup コンテキストで capture する（armProactiveRefresh 参照）。
+const runtimeConfig = useRuntimeConfig()
 const notification = useNotification()
 const { requestMfaRecovery, confirmMfaRecovery } = useAuthApi()
 
@@ -42,6 +44,8 @@ async function handleConfirmRecovery() {
   try {
     const data = await confirmMfaRecovery(recoveryToken.value)
     authStore.setTokens(data.data.accessToken, data.data.refreshToken)
+    // リカバリーログイン成功直後に先回りリフレッシュタイマーを武装する。
+    armProactiveRefresh(runtimeConfig, authStore)
     navigateTo('/')
   } catch {
     notification.error('リカバリーコードが正しくありません')
