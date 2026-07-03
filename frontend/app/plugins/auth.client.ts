@@ -3,22 +3,17 @@ export default defineNuxtPlugin(() => {
   authStore.loadFromStorage()
 
   if (authStore.isAuthenticated) {
-    const raw = localStorage.getItem('tokenExpiresAt')
-    const expiresAt = raw ? Number(raw) : 0
-    const SKEW_MS = 30_000 // 時計ズレ・往復遅延の安全マージン
-    // access_token Cookie が失効済み（or 期限不明）の場合のみ、認証付きAPIを撃つ前に先回り更新。
-    // 有効期限内のリロードでは更新しない＝無駄な往復ゼロ。
-    if (!expiresAt || Date.now() > expiresAt - SKEW_MS) {
-      const config = useRuntimeConfig()
-      // 先回り更新は「最初の認証付き API を撃つ前に新トークンを用意する」最適化に過ぎない。
-      // 失敗しても useApi の 401 interceptor が回収する（refresh → 自動リトライ）ため await しない。
-      //
-      // ★白画面根治の要★ ここで await すると、refresh API がハングした際に
-      //   async プラグインの await が永久 pending になり Nuxt の app mount をブロックし、
-      //   layouts/default.vue の LoadingBounce フォールバックが固着して白画面化する。
-      // fire-and-forget（void）にすることで mount を一切ブロックしない。
-      // refresh 失敗時もここでログアウト等はしない（誤ログアウト回避。最終判断は interceptor に委ねる）。
-      void performTokenRefresh(config, authStore)
-    }
+    // 先回り（proactive）リフレッシュタイマーを武装する。
+    // tokenExpiresAt が失効済み・期限不明（0）の場合は armProactiveRefresh 内部で
+    // computeProactiveRefreshDelayMs が遅延0（即時）を返すため、従来の「失効済みなら即時更新」
+    // 挙動もこの一本化されたスケジューラでカバーされる。以後もセッションが続く限り
+    // 失効の約60秒前に自動で再武装され続ける（通知/chat/mentions/inbox 等の背景ポーラーが
+    // 401 ノイズを出す前にトークンを常に新鮮に保つ）。
+    //
+    // ★白画面根治の要★ armProactiveRefresh は setTimeout を張るだけの同期関数で、
+    //   performTokenRefresh の Promise を await しない（void 化済み）ため、
+    //   async プラグインの app mount を一切ブロックしない。
+    const config = useRuntimeConfig()
+    armProactiveRefresh(config, authStore)
   }
 })

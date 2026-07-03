@@ -61,6 +61,13 @@ export const useAuthStore = defineStore('auth', {
           // JWT デコード失敗・exp 欠落時は保存をスキップ（例外は投げない）。
           // tokenExpiresAt が無ければプラグイン側は「期限不明＝失効扱い」で先回りリフレッシュする。
         }
+
+        // 先回り（proactive）リフレッシュタイマーを（再）武装する。
+        // ログイン成功時（login.vue/2fa-verify.vue/2fa-recovery.vue/OAuth コールバック）・
+        // リフレッシュ成功時（performTokenRefresh 内の setTokens 呼び出し）の両方でここを通るため、
+        // セッションが続く限り access_token を失効前に更新し続け、背景ポーラー
+        // （通知unread-count/chat channels/mentions/inbox summary）の 401 ノイズを未然に防ぐ。
+        armProactiveRefresh(useRuntimeConfig(), useAuthStore())
       }
     },
 
@@ -203,6 +210,8 @@ export const useAuthStore = defineStore('auth', {
       this.accessToken = null
       this.refreshToken = null
       this.user = null
+      // 武装中の先回りリフレッシュタイマーを解除する（AC-3）。以後リフレッシュは発火しない。
+      disarmProactiveRefresh()
       if (import.meta.client) {
         // accessToken・refreshToken の localStorage エントリは廃止済みだが、
         // 移行前の古いデータが残っている場合のクリーンアップとして削除する。
