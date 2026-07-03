@@ -221,7 +221,9 @@
       "blogEmpty": "블로그 글이 없습니다",
       "chatEmpty": "채팅이 없습니다",
       "todoEmpty": "TODO가 없습니다",
-      "calendarEmpty": "일정이 없습니다"
+      "calendarEmpty": "일정이 없습니다",
+      "bulletinEmpty": "게시판 스레드가 없습니다",
+      "unread": "읽지 않음"
     }
   }
 }

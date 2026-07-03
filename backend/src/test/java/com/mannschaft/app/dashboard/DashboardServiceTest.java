@@ -43,6 +43,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -623,6 +624,141 @@ class DashboardServiceTest {
             assertThat(result.getTeamTodo().get("overdue_count")).isEqualTo(1L);
             assertThat(result.getTeamTodo().get("total_incomplete")).isEqualTo(1L);
         }
+
+        // ========================================
+        // 掲示板スレッド一覧（dashboard-scope-panel-content 第二陣・AC-B1〜B5）
+        // ========================================
+
+        /** チーム掲示板テスト用の共通スタブ（threads / readStatus 以外）。 */
+        private void stubTeamDashboardCommon() {
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+            given(widgetService.getWidgetSettings(eq(USER_ID), eq(ScopeType.TEAM), eq(TEAM_ID), eq(false)))
+                    .willReturn(List.of());
+            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(eq(TEAM_ID), any(), any()))
+                    .willReturn(List.of());
+            given(todoRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(any(), eq(TEAM_ID), any(PageRequest.class)))
+                    .willReturn(new PageImpl<>(List.of()));
+            given(timelinePostRepository.findFeedByScopeType(eq(com.mannschaft.app.timeline.PostScopeType.TEAM), eq(TEAM_ID), any(PageRequest.class)))
+                    .willReturn(List.of());
+            given(userRoleRepository.countByTeamId(TEAM_ID)).willReturn(5L);
+            given(chatChannelMemberRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
+        }
+
+        private com.mannschaft.app.bulletin.entity.BulletinThreadEntity thread(
+                Long id, String title, boolean pinned, LocalDateTime updatedAt) {
+            return com.mannschaft.app.bulletin.entity.BulletinThreadEntity.builder()
+                    .id(id)
+                    .scopeType(com.mannschaft.app.bulletin.ScopeType.TEAM)
+                    .scopeId(TEAM_ID)
+                    .title(title)
+                    .body("body")
+                    .isPinned(pinned)
+                    .updatedAt(updatedAt)
+                    .build();
+        }
+
+        @Test
+        @DisplayName("正常系: teamUnreadThreads に bulletin_threads(List) が含まれ既存キーも保持される（AC-B1）")
+        @SuppressWarnings("unchecked")
+        void getTeamDashboard_bulletinThreads_含む既存保持() {
+            // Given
+            stubTeamDashboardCommon();
+            var t1 = thread(101L, "スレA", false, LocalDateTime.of(2026, 7, 1, 12, 0));
+            given(bulletinThreadRepository.findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(any(), eq(TEAM_ID), any()))
+                    .willReturn(new PageImpl<>(List.of(t1)));
+            given(bulletinReadStatusRepository.existsByThreadIdAndUserId(eq(101L), eq(USER_ID))).willReturn(false);
+
+            // When
+            TeamDashboardResponse result = dashboardService.getTeamDashboard(USER_ID, TEAM_ID, "WEEK");
+
+            // Then
+            assertThat(result.getTeamUnreadThreads()).isNotNull();
+            assertThat(result.getTeamUnreadThreads()).containsKey("bulletin_count");
+            assertThat(result.getTeamUnreadThreads()).containsKey("chat_count");
+            List<Map<String, Object>> threads =
+                    (List<Map<String, Object>>) result.getTeamUnreadThreads().get("bulletin_threads");
+            assertThat(threads).isNotNull();
+            assertThat(threads).hasSize(1);
+            assertThat(threads.get(0)).containsKeys("id", "title", "updated_at", "is_read");
+            assertThat(threads.get(0).get("id")).isEqualTo(101L);
+            assertThat(threads.get(0).get("title")).isEqualTo("スレA");
+        }
+
+        @Test
+        @DisplayName("正常系: bulletin_threads は最大3件・クエリ順を保持する（AC-B2）")
+        @SuppressWarnings("unchecked")
+        void getTeamDashboard_bulletinThreads_最大3件_順序保持() {
+            // Given: リポジトリは isPinned降順→updated_at降順 の順で返す（クエリが保証する順）
+            stubTeamDashboardCommon();
+            var pinned = thread(1L, "固定", true, LocalDateTime.of(2026, 6, 1, 0, 0));
+            var newest = thread(2L, "最新", false, LocalDateTime.of(2026, 7, 2, 0, 0));
+            var mid = thread(3L, "中間", false, LocalDateTime.of(2026, 7, 1, 0, 0));
+            var old = thread(4L, "古い", false, LocalDateTime.of(2026, 6, 30, 0, 0));
+            given(bulletinThreadRepository.findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(any(), eq(TEAM_ID), any()))
+                    .willReturn(new PageImpl<>(List.of(pinned, newest, mid, old)));
+            given(bulletinReadStatusRepository.existsByThreadIdAndUserId(anyLong(), eq(USER_ID))).willReturn(false);
+
+            // When
+            TeamDashboardResponse result = dashboardService.getTeamDashboard(USER_ID, TEAM_ID, "WEEK");
+
+            // Then
+            List<Map<String, Object>> threads =
+                    (List<Map<String, Object>>) result.getTeamUnreadThreads().get("bulletin_threads");
+            assertThat(threads).hasSize(3);
+            assertThat(threads).extracting(m -> m.get("id"))
+                    .containsExactly(1L, 2L, 3L); // pinned → newest → mid（クエリ順の先頭3件）
+        }
+
+        @Test
+        @DisplayName("正常系: is_read は既読/未読で正しく判定される（AC-B3）")
+        @SuppressWarnings("unchecked")
+        void getTeamDashboard_bulletinThreads_既読未読判定() {
+            // Given
+            stubTeamDashboardCommon();
+            var read = thread(10L, "既読スレ", false, LocalDateTime.of(2026, 7, 2, 0, 0));
+            var unread = thread(11L, "未読スレ", false, LocalDateTime.of(2026, 7, 1, 0, 0));
+            given(bulletinThreadRepository.findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(any(), eq(TEAM_ID), any()))
+                    .willReturn(new PageImpl<>(List.of(read, unread)));
+            given(bulletinReadStatusRepository.existsByThreadIdAndUserId(eq(10L), eq(USER_ID))).willReturn(true);
+            given(bulletinReadStatusRepository.existsByThreadIdAndUserId(eq(11L), eq(USER_ID))).willReturn(false);
+
+            // When
+            TeamDashboardResponse result = dashboardService.getTeamDashboard(USER_ID, TEAM_ID, "WEEK");
+
+            // Then
+            List<Map<String, Object>> threads =
+                    (List<Map<String, Object>>) result.getTeamUnreadThreads().get("bulletin_threads");
+            assertThat(threads).hasSize(2);
+            assertThat(threads.get(0).get("id")).isEqualTo(10L);
+            assertThat(threads.get(0).get("is_read")).isEqualTo(true);
+            assertThat(threads.get(1).get("id")).isEqualTo(11L);
+            assertThat(threads.get(1).get("is_read")).isEqualTo(false);
+        }
+
+        @Test
+        @DisplayName("正常系: ウィジェット非表示（min_role未満）で teamUnreadThreads が null になる挙動を壊さない（AC-B5）")
+        void getTeamDashboard_bulletinThreads_非表示でnull() {
+            // Given: SUPPORTER 視点 + TEAM_UNREAD_THREADS の min_role=MEMBER で不可視
+            stubTeamDashboardCommon();
+            given(bulletinThreadRepository.findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(any(), eq(TEAM_ID), any()))
+                    .willReturn(new PageImpl<>(List.of(
+                            thread(20L, "スレ", false, LocalDateTime.of(2026, 7, 1, 0, 0)))));
+            org.mockito.Mockito.lenient().when(bulletinReadStatusRepository.existsByThreadIdAndUserId(anyLong(), eq(USER_ID)))
+                    .thenReturn(false);
+            given(roleResolver.resolveViewerRole(eq(USER_ID), eq("TEAM"), eq(TEAM_ID)))
+                    .willReturn(com.mannschaft.app.dashboard.ViewerRole.SUPPORTER);
+            given(widgetVisibilityResolver.resolve(eq("TEAM"), eq(TEAM_ID)))
+                    .willReturn(java.util.Map.of(
+                            com.mannschaft.app.dashboard.WidgetKey.TEAM_UNREAD_THREADS,
+                            com.mannschaft.app.dashboard.MinRole.MEMBER));
+
+            // When
+            TeamDashboardResponse result = dashboardService.getTeamDashboard(USER_ID, TEAM_ID, "WEEK");
+
+            // Then
+            assertThat(result.getTeamUnreadThreads()).isNull();
+        }
     }
 
     // ========================================
@@ -721,6 +857,39 @@ class DashboardServiceTest {
             assertThat(result.getOrgTodo()).isNotNull();
             assertThat(result.getOrgTodo().get("overdue_count")).isEqualTo(1L);
             assertThat(result.getOrgTodo().get("total_incomplete")).isEqualTo(2L);
+        }
+
+        @Test
+        @DisplayName("正常系: orgUnreadThreads.bulletin_threads が同形で返る（AC-B4）")
+        @SuppressWarnings("unchecked")
+        void getOrgDashboard_bulletinThreads_同形() {
+            // Given
+            given(accessControlService.isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+            given(widgetService.getWidgetSettings(eq(USER_ID), eq(ScopeType.ORGANIZATION), eq(ORG_ID), eq(false)))
+                    .willReturn(List.of());
+            given(todoRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(any(), eq(ORG_ID), any(PageRequest.class)))
+                    .willReturn(new PageImpl<>(List.of()));
+            given(userRoleRepository.countByOrganizationId(ORG_ID)).willReturn(10L);
+            given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
+
+            // scopeWidgetSummaryService はモックのため、buildOrgUnreadThreads を明示スタブ（兄弟 mock）。
+            java.util.Map<String, Object> orgUnread = new java.util.HashMap<>();
+            orgUnread.put("bulletin_count", 2L);
+            orgUnread.put("chat_count", 0L);
+            orgUnread.put("bulletin_threads", List.of(
+                    java.util.Map.of("id", 100L, "title", "組織スレッド", "is_read", false)));
+            given(scopeWidgetSummaryService.buildOrgUnreadThreads(eq(ORG_ID), eq(USER_ID)))
+                    .willReturn(orgUnread);
+
+            // When
+            OrgDashboardResponse result = dashboardService.getOrgDashboard(USER_ID, ORG_ID, "WEEK");
+
+            // Then
+            assertThat(result.getOrgUnreadThreads()).isNotNull();
+            assertThat(result.getOrgUnreadThreads().get("bulletin_count")).isEqualTo(2L);
+            assertThat(result.getOrgUnreadThreads().get("chat_count")).isEqualTo(0L);
+            List<Object> threads = (List<Object>) result.getOrgUnreadThreads().get("bulletin_threads");
+            assertThat(threads).hasSize(1);
         }
 
         @Test

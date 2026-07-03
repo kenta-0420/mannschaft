@@ -221,7 +221,9 @@
       "blogEmpty": "Keine Blogbeiträge",
       "chatEmpty": "Keine Chats",
       "todoEmpty": "Keine TODOs",
-      "calendarEmpty": "Keine Termine"
+      "calendarEmpty": "Keine Termine",
+      "bulletinEmpty": "Keine Pinnwand-Themen",
+      "unread": "Ungelesen"
     }
   }
 }

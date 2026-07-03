@@ -352,8 +352,8 @@ function isActive(path: string, exact = false): boolean {
             v-for="item in navSettingsStore.visibleMobileFeatures"
             :key="item.key"
             :to="item.path"
-            class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
-            :class="isActive(item.path) ? 'bg-primary/10 text-primary' : 'text-surface-700 dark:text-surface-300'"
+            class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-surface-50 dark:hover:bg-surface-800"
+            :class="isActive(item.path) ? 'bg-primary/10 text-primary' : 'text-surface-700 dark:text-surface-200'"
             @click="showMobileMenu = false"
           >
             <i :class="[item.icon, 'text-base']" />
@@ -363,8 +363,8 @@ function isActive(path: string, exact = false): boolean {
           <NuxtLink
             v-if="showSyncNav"
             to="/sync/conflicts"
-            class="relative flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
-            :class="isActive('/sync') ? 'bg-primary/10 text-primary' : 'text-surface-700 dark:text-surface-300'"
+            class="relative flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-surface-50 dark:hover:bg-surface-800"
+            :class="isActive('/sync') ? 'bg-primary/10 text-primary' : 'text-surface-700 dark:text-surface-200'"
           >
             <i class="pi pi-sync text-base" />
             {{ t('sync.nav_label') }}
@@ -379,8 +379,8 @@ function isActive(path: string, exact = false): boolean {
           <NuxtLink
             v-if="showProxyDeskNav"
             :to="proxyDeskItem.to"
-            class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
-            :class="isActive(proxyDeskItem.to) ? 'bg-primary/10 text-primary' : 'text-surface-700 dark:text-surface-300'"
+            class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors hover:bg-surface-50 dark:hover:bg-surface-800"
+            :class="isActive(proxyDeskItem.to) ? 'bg-primary/10 text-primary' : 'text-surface-700 dark:text-surface-200'"
             @click="showMobileMenu = false"
           >
             <i :class="[proxyDeskItem.icon, 'text-base']" />
