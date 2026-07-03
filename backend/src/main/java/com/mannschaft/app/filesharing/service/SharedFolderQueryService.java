@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -435,19 +436,89 @@ public class SharedFolderQueryService {
         if (userId != null && accessControlService.isSystemAdmin(userId)) {
             return; // SYSTEM_ADMIN は B/C 貫通
         }
-        String requiredRole = role.toRequiredRoleName();
-        boolean ok = switch (folder.getScopeType()) {
-            case PERSONAL -> true; // 所有者のみ（基本認可で担保）→ min role は無視
-            case TEAM -> accessControlService.hasRoleOrAbove(userId, folder.getTeamId(), "TEAM", requiredRole);
-            case ORGANIZATION ->
-                    accessControlService.hasRoleOrAbove(userId, folder.getOrganizationId(), "ORGANIZATION", requiredRole);
-            // 大会系は主催組織 ORG ロールで判定（既存 guard の委譲構造は壊さず、min role を追加で当てる）。
-            case TOURNAMENT, TOURNAMENT_DIVISION ->
-                    accessControlService.hasRoleOrAbove(userId, folder.getOrganizationId(), "ORGANIZATION", requiredRole);
-        };
+        RoleScope scope = resolveRoleScope(folder);
+        if (scope == null) {
+            return; // PERSONAL: 所有者のみ（基本認可で担保）→ min role は無視
+        }
+        boolean ok = accessControlService.hasRoleOrAbove(
+                userId, scope.scopeId(), scope.scopeType(), role.toRequiredRoleName());
         if (!ok) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
+    }
+
+    /**
+     * B: 一覧経路（{@code list}）用に、ユーザーが満たす<b>ファイル最低可視ロールのレベル集合</b>を解決する。
+     *
+     * <p>{@link com.mannschaft.app.filesharing.service.SharedFileService#listFiles} /
+     * {@code listFilesPaged} から、フォルダ閲覧認可（{@link #authorizeFolderViewById}）通過後に呼ぶ。
+     * 返り値をリポジトリのクエリ段階の絞り込みに使うことで、フォルダより厳しいファイル個別 min role の
+     * メタ（ファイル名等）が下位ロールの一覧に露出するのを防ぐ（ページング総件数も SQL 段階で整合）。</p>
+     *
+     * <p>返り値の意味:</p>
+     * <ul>
+     *   <li>{@code null} … <b>全許可</b>（フィルタ不要）。PERSONAL スコープ（所有者のみ＝基本認可で担保）
+     *       または SYSTEM_ADMIN（B/C 貫通）。呼び出し側は従来の絞り無しクエリを使う。</li>
+     *   <li>空集合 … 非 NULL レベルを 1 つも満たさない。呼び出し側は {@code min_visible_role IS NULL} の
+     *       ファイルのみ返す。</li>
+     *   <li>非空集合 … 満たす {@link FileVisibilityRole} 群。呼び出し側は {@code IS NULL} ＋ この集合で絞る。</li>
+     * </ul>
+     *
+     * <p>NULL の {@code min_visible_role} を持つファイルは「フォルダ継承（フォルダ認可を通過した時点で可視）」
+     * のため、この集合には含めず、呼び出し側クエリで常に返す（NULL ファイルを誤って隠さない）。</p>
+     *
+     * @param folder 対象フォルダ（スコープ解決に使う）
+     * @param userId 操作ユーザー ID
+     * @return 満たすレベル集合（全許可なら {@code null}）
+     */
+    public Set<FileVisibilityRole> resolveVisibleFileLevels(SharedFolderEntity folder, Long userId) {
+        if (userId != null && accessControlService.isSystemAdmin(userId)) {
+            return null; // SYSTEM_ADMIN は全可視（フィルタ不要）
+        }
+        RoleScope scope = resolveRoleScope(folder);
+        if (scope == null) {
+            return null; // PERSONAL: 所有者のみ（authorizeView で担保）→ フィルタ不要
+        }
+        Set<FileVisibilityRole> allowed = EnumSet.noneOf(FileVisibilityRole.class);
+        for (FileVisibilityRole level : FileVisibilityRole.values()) {
+            if (accessControlService.hasRoleOrAbove(
+                    userId, scope.scopeId(), scope.scopeType(), level.toRequiredRoleName())) {
+                allowed.add(level);
+            }
+        }
+        return allowed;
+    }
+
+    /**
+     * B: {@link #resolveVisibleFileLevels(SharedFolderEntity, Long)} の folderId 受け口。
+     * フォルダを読み込んでレベル集合を解決する（同一トランザクション内の一次キャッシュで再取得は DB 往復なし）。
+     *
+     * @param folderId フォルダ ID（不在は {@code FOLDER_NOT_FOUND} → 404）
+     * @param userId   操作ユーザー ID
+     * @return 満たすレベル集合（全許可なら {@code null}）
+     */
+    public Set<FileVisibilityRole> resolveVisibleFileLevels(Long folderId, Long userId) {
+        return resolveVisibleFileLevels(findFolderOrThrow(folderId), userId);
+    }
+
+    /**
+     * B/min role 判定用のスコープ解決（{@code applyMinVisibleRole} と {@code resolveVisibleFileLevels} で共用）。
+     *
+     * <p>TEAM→(teamId,"TEAM") / ORGANIZATION・大会系→(organizationId,"ORGANIZATION") /
+     * PERSONAL→{@code null}（所有者のみ・min role 無視）。大会系（TOURNAMENT / TOURNAMENT_DIVISION）は
+     * 主催組織の ORG ロールで判定する（既存 guard の委譲構造は壊さず min role を追加で当てる）。</p>
+     */
+    private RoleScope resolveRoleScope(SharedFolderEntity folder) {
+        return switch (folder.getScopeType()) {
+            case TEAM -> new RoleScope(folder.getTeamId(), "TEAM");
+            case ORGANIZATION, TOURNAMENT, TOURNAMENT_DIVISION ->
+                    new RoleScope(folder.getOrganizationId(), "ORGANIZATION");
+            case PERSONAL -> null;
+        };
+    }
+
+    /** min role 判定に使う (scopeId, scopeType) の組。PERSONAL では {@code null}。 */
+    private record RoleScope(Long scopeId, String scopeType) {
     }
 
     /**

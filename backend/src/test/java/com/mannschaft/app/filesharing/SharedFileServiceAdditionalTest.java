@@ -108,6 +108,8 @@ class SharedFileServiceAdditionalTest {
         @DisplayName("正常系: フォルダ内のファイル一覧が返却される")
         void ファイル一覧_正常() {
             SharedFileEntity entity = createFile();
+            // 全許可(null)＝従来の絞り無しクエリ経路（SYSTEM_ADMIN / PERSONAL 相当）。
+            given(folderQueryService.resolveVisibleFileLevels(FOLDER_ID, USER_ID)).willReturn(null);
             given(fileRepository.findByFolderIdOrderByNameAsc(FOLDER_ID))
                     .willReturn(List.of(entity));
             given(fileSharingMapper.toFileResponseList(any()))
@@ -132,6 +134,8 @@ class SharedFileServiceAdditionalTest {
         void ファイル一覧ページング_正常() {
             SharedFileEntity entity = createFile();
             Page<SharedFileEntity> page = new PageImpl<>(List.of(entity));
+            // 全許可(null)＝従来の絞り無しクエリ経路（SYSTEM_ADMIN / PERSONAL 相当）。
+            given(folderQueryService.resolveVisibleFileLevels(FOLDER_ID, USER_ID)).willReturn(null);
             given(fileRepository.findByFolderIdOrderByNameAsc(eq(FOLDER_ID), any()))
                     .willReturn(page);
             given(fileSharingMapper.toFileResponse(entity)).willReturn(mockFileResponse());

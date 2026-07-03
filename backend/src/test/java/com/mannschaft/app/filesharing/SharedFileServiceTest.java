@@ -27,7 +27,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 
+import java.util.EnumSet;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -367,6 +370,8 @@ class SharedFileServiceTest {
         void listFilesPaged_正規会員_200相当() {
             // Given
             willDoNothing().given(folderQueryService).authorizeFolderViewById(FOLDER_ID, USER_ID);
+            // 全許可(null)＝従来の絞り無しクエリ経路（SYSTEM_ADMIN / PERSONAL 相当）。
+            given(folderQueryService.resolveVisibleFileLevels(FOLDER_ID, USER_ID)).willReturn(null);
             given(fileRepository.findByFolderIdOrderByNameAsc(eq(FOLDER_ID), any()))
                     .willReturn(Page.empty());
 
@@ -391,6 +396,106 @@ class SharedFileServiceTest {
             // When & Then
             assertThatThrownBy(() -> sharedFileService.listFiles(FOLDER_ID, USER_ID))
                     .isInstanceOf(BusinessException.class);
+            verify(fileRepository, never()).findByFolderIdOrderByNameAsc(anyLong());
+        }
+    }
+
+    // ========================================
+    // listFilesPaged / listFiles — B: ファイル個別 min role のクエリ段階絞り込み
+    // （フォルダより厳しいファイルのメタ露出封鎖。全許可/空/非空の 3 分岐を結線検証）
+    // ========================================
+
+    @Nested
+    @DisplayName("listFilesPaged / listFiles — B: ファイル個別 min role 絞り込みの結線")
+    class ListFilesLevelFilter {
+
+        @Test
+        @DisplayName("AC-B-list-1: 許可レベルが非空→findVisibleByFolderIdAndLevels に許可集合を渡して絞る（隠しファイル除外）")
+        void 非空_絞り込みクエリ() {
+            // Given: 認可通過・MEMBER 相当（ADMINS_AND_ABOVE を含まない集合）
+            willDoNothing().given(folderQueryService).authorizeFolderViewById(FOLDER_ID, USER_ID);
+            Set<FileVisibilityRole> allowed = EnumSet.of(
+                    FileVisibilityRole.SUPPORTERS_AND_ABOVE, FileVisibilityRole.MEMBERS_AND_ABOVE);
+            given(folderQueryService.resolveVisibleFileLevels(FOLDER_ID, USER_ID)).willReturn(allowed);
+            given(fileRepository.findVisibleByFolderIdAndLevels(eq(FOLDER_ID), eq(allowed), any()))
+                    .willReturn(Page.empty());
+
+            // When
+            sharedFileService.listFilesPaged(FOLDER_ID, USER_ID, PageRequest.of(0, 20));
+
+            // Then: 絞り込みクエリのみ使用（従来の絞り無しクエリは使わない）
+            verify(fileRepository).findVisibleByFolderIdAndLevels(eq(FOLDER_ID), eq(allowed), any());
+            verify(fileRepository, never()).findByFolderIdOrderByNameAsc(anyLong(), any());
+            verify(fileRepository, never())
+                    .findByFolderIdAndMinVisibleRoleIsNullOrderByNameAsc(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("AC-B-list-2: 許可レベルが空→NULL のみクエリ（min role 付きファイルは全て除外）")
+        void 空_NULLのみクエリ() {
+            // Given
+            willDoNothing().given(folderQueryService).authorizeFolderViewById(FOLDER_ID, USER_ID);
+            given(folderQueryService.resolveVisibleFileLevels(FOLDER_ID, USER_ID))
+                    .willReturn(EnumSet.noneOf(FileVisibilityRole.class));
+            given(fileRepository.findByFolderIdAndMinVisibleRoleIsNullOrderByNameAsc(eq(FOLDER_ID), any()))
+                    .willReturn(Page.empty());
+
+            // When
+            sharedFileService.listFilesPaged(FOLDER_ID, USER_ID, PageRequest.of(0, 20));
+
+            // Then
+            verify(fileRepository).findByFolderIdAndMinVisibleRoleIsNullOrderByNameAsc(eq(FOLDER_ID), any());
+            verify(fileRepository, never()).findByFolderIdOrderByNameAsc(anyLong(), any());
+            verify(fileRepository, never()).findVisibleByFolderIdAndLevels(anyLong(), any(), any());
+        }
+
+        @Test
+        @DisplayName("AC-B-list-3: 全許可(null=SYSTEM_ADMIN/PERSONAL)→従来の絞り無しクエリ（非回帰）")
+        void 全許可_従来クエリ() {
+            // Given: resolveVisibleFileLevels が null（全許可）
+            willDoNothing().given(folderQueryService).authorizeFolderViewById(FOLDER_ID, USER_ID);
+            given(folderQueryService.resolveVisibleFileLevels(FOLDER_ID, USER_ID)).willReturn(null);
+            given(fileRepository.findByFolderIdOrderByNameAsc(eq(FOLDER_ID), any())).willReturn(Page.empty());
+
+            // When
+            sharedFileService.listFilesPaged(FOLDER_ID, USER_ID, PageRequest.of(0, 20));
+
+            // Then
+            verify(fileRepository).findByFolderIdOrderByNameAsc(eq(FOLDER_ID), any());
+            verify(fileRepository, never()).findVisibleByFolderIdAndLevels(anyLong(), any(), any());
+            verify(fileRepository, never())
+                    .findByFolderIdAndMinVisibleRoleIsNullOrderByNameAsc(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("順序: 認可→許可レベル解決→リポジトリ絞り込み の順で呼ばれる")
+        void 順序_認可先行() {
+            willDoNothing().given(folderQueryService).authorizeFolderViewById(FOLDER_ID, USER_ID);
+            Set<FileVisibilityRole> allowed = EnumSet.of(FileVisibilityRole.MEMBERS_AND_ABOVE);
+            given(folderQueryService.resolveVisibleFileLevels(FOLDER_ID, USER_ID)).willReturn(allowed);
+            given(fileRepository.findVisibleByFolderIdAndLevels(eq(FOLDER_ID), eq(allowed), any()))
+                    .willReturn(Page.empty());
+
+            sharedFileService.listFilesPaged(FOLDER_ID, USER_ID, PageRequest.of(0, 20));
+
+            InOrder order = inOrder(folderQueryService, fileRepository);
+            order.verify(folderQueryService).authorizeFolderViewById(FOLDER_ID, USER_ID);
+            order.verify(folderQueryService).resolveVisibleFileLevels(FOLDER_ID, USER_ID);
+            order.verify(fileRepository).findVisibleByFolderIdAndLevels(eq(FOLDER_ID), eq(allowed), any());
+        }
+
+        @Test
+        @DisplayName("listFiles（非ページング）も同様に許可レベルで絞る（非空→findVisibleByFolderIdAndLevels）")
+        void listFiles_非空_絞り込み() {
+            willDoNothing().given(folderQueryService).authorizeFolderViewById(FOLDER_ID, USER_ID);
+            Set<FileVisibilityRole> allowed = EnumSet.of(FileVisibilityRole.SUPPORTERS_AND_ABOVE);
+            given(folderQueryService.resolveVisibleFileLevels(FOLDER_ID, USER_ID)).willReturn(allowed);
+            given(fileRepository.findVisibleByFolderIdAndLevels(FOLDER_ID, allowed)).willReturn(List.of());
+            given(fileSharingMapper.toFileResponseList(List.of())).willReturn(List.of());
+
+            sharedFileService.listFiles(FOLDER_ID, USER_ID);
+
+            verify(fileRepository).findVisibleByFolderIdAndLevels(FOLDER_ID, allowed);
             verify(fileRepository, never()).findByFolderIdOrderByNameAsc(anyLong());
         }
     }
