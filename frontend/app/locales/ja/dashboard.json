@@ -221,7 +221,9 @@
       "blogEmpty": "ブログ記事はありません",
       "chatEmpty": "チャットはありません",
       "todoEmpty": "TODO はありません",
-      "calendarEmpty": "予定はありません"
+      "calendarEmpty": "予定はありません",
+      "bulletinEmpty": "掲示板スレッドはありません",
+      "unread": "未読"
     }
   }
 }

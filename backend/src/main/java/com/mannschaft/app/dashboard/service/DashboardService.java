@@ -94,6 +94,8 @@ public class DashboardService {
     private static final int MAX_DISPLAY_SCOPES = 20;
     /** ダッシュボード表示用の最新件数 */
     private static final int DASHBOARD_ITEM_LIMIT = 5;
+    /** 掲示板の直近スレッド一覧の表示件数（dashboard-scope-panel-content 第二陣） */
+    private static final int DASHBOARD_ITEM_LIMIT_THREADS = 3;
 
     /**
      * 個人ダッシュボードを一括取得する。
@@ -403,9 +405,21 @@ public class DashboardService {
                 bulletinThreadRepository.findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(
                         com.mannschaft.app.bulletin.ScopeType.TEAM, teamId, PageRequest.of(0, 100));
         long unreadBulletinCount = 0;
+        // dashboard-scope-panel-content 第二陣: 直近スレッド一覧（クエリ順の先頭3件）を件数集計と
+        // 同一ループで構築する（各スレッドの is_read は existsByThreadIdAndUserId で判定）。
+        List<Map<String, Object>> teamBulletinThreads = new ArrayList<>();
         for (var thread : teamThreads.getContent()) {
-            if (!bulletinReadStatusRepository.existsByThreadIdAndUserId(thread.getId(), userId)) {
+            boolean read = bulletinReadStatusRepository.existsByThreadIdAndUserId(thread.getId(), userId);
+            if (!read) {
                 unreadBulletinCount++;
+            }
+            if (teamBulletinThreads.size() < DASHBOARD_ITEM_LIMIT_THREADS) {
+                Map<String, Object> threadMap = new HashMap<>();
+                threadMap.put("id", thread.getId());
+                threadMap.put("title", thread.getTitle());
+                threadMap.put("updated_at", thread.getUpdatedAt());
+                threadMap.put("is_read", read);
+                teamBulletinThreads.add(threadMap);
             }
         }
 
@@ -464,7 +478,9 @@ public class DashboardService {
                 "active_members_this_week", 0,
                 "total_members", totalMembers);
         Map<String, Object> teamUnreadData = Map.of(
-                "bulletin_count", unreadBulletinCount, "chat_count", unreadChatCount);
+                "bulletin_count", unreadBulletinCount,
+                "chat_count", unreadChatCount,
+                "bulletin_threads", teamBulletinThreads);
         Map<String, Object> teamAttendanceData = Map.of("attending", 0, "absent", 0, "pending", 0);
 
         // F22.1 第二波: 厳選ウィジェットサマリ（④ブログ/⑤チャット/⑥カレンダー/⑧要対応）を並行取得し、
