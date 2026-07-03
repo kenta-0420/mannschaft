@@ -15,12 +15,14 @@ import com.mannschaft.app.reservation.dto.CreateReservationRequest;
 import com.mannschaft.app.reservation.dto.RescheduleRequest;
 import com.mannschaft.app.reservation.dto.ReservationResponse;
 import com.mannschaft.app.reservation.dto.ReservationStatsResponse;
+import com.mannschaft.app.reservation.entity.ReservationBlockedTimeEntity;
 import com.mannschaft.app.reservation.entity.ReservationEntity;
 import com.mannschaft.app.reservation.entity.ReservationLineEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import com.mannschaft.app.reservation.event.ReservationCancelledByMemberEvent;
 import com.mannschaft.app.reservation.event.ReservationConfirmedEvent;
 import com.mannschaft.app.reservation.event.ReservationCreatedEvent;
+import com.mannschaft.app.reservation.repository.ReservationBlockedTimeRepository;
 import com.mannschaft.app.reservation.repository.ReservationLineRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
@@ -66,6 +68,10 @@ public class ReservationService {
     private final ReservationTeamSettingService settingService;
     private final AccessControlService accessControlService;
     private final ReservationPolicyService reservationPolicyService;
+    /** 機能B: 予約作成時に対象枠と overlap する予約不可枠を検出するためのブロック時間参照。 */
+    private final ReservationBlockedTimeRepository blockedTimeRepository;
+    /** 機能B: 予約不可枠の overlap 判定を共有する単一ユーティリティ（§5.B）。 */
+    private final ReservationUnavailabilityChecker unavailabilityChecker;
     private final Clock clock;
 
     /**
@@ -139,6 +145,14 @@ public class ReservationService {
                     slot.getSlotStatus() == com.mannschaft.app.reservation.SlotStatus.FULL
                             ? ReservationErrorCode.SLOT_FULL
                             : ReservationErrorCode.SLOT_CLOSED);
+        }
+
+        // 機能B（§5.B）: 対象枠が予約不可枠と overlap するなら予約作成を拒否（RESERVATION_009・400）。
+        // 判定は空き枠除外・グリッドと共有の単一 overlap ユーティリティを用いる（別実装厳禁）。
+        List<ReservationBlockedTimeEntity> blocks =
+                blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(teamId, slot.getSlotDate());
+        if (unavailabilityChecker.isBlockedByAny(slot, blocks)) {
+            throw new BusinessException(ReservationErrorCode.BLOCKED_TIME_CONFLICT);
         }
 
         boolean exists = reservationRepository.existsByReservationSlotIdAndUserIdAndStatusIn(

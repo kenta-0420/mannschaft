@@ -89,6 +89,13 @@ class ReservationServiceTest {
     @Mock
     private com.mannschaft.app.reservation.service.ReservationPolicyService reservationPolicyService;
 
+    @Mock
+    private com.mannschaft.app.reservation.repository.ReservationBlockedTimeRepository blockedTimeRepository;
+
+    /** 機能B: overlap 判定は純ロジックのため実インスタンスを注入（RESERVATION_009 の実 throw を実検証）。 */
+    private final com.mannschaft.app.reservation.service.ReservationUnavailabilityChecker unavailabilityChecker =
+            new com.mannschaft.app.reservation.service.ReservationUnavailabilityChecker();
+
     private ReservationService service;
 
     // ========================================
@@ -122,7 +129,7 @@ class ReservationServiceTest {
         service = new ReservationService(
                 reservationRepository, slotRepository, lineRepository, slotService, reservationMapper,
                 nameResolverService, eventPublisher, settingService, accessControlService,
-                reservationPolicyService, FIXED_CLOCK);
+                reservationPolicyService, blockedTimeRepository, unavailabilityChecker, FIXED_CLOCK);
 
         given(slotRepository.findById(any())).willReturn(Optional.empty());
         given(lineRepository.findById(any())).willReturn(Optional.empty());
@@ -158,7 +165,7 @@ class ReservationServiceTest {
         service = new ReservationService(
                 reservationRepository, slotRepository, lineRepository, slotService, reservationMapper,
                 nameResolverService, eventPublisher, settingService, accessControlService,
-                reservationPolicyService, fixed);
+                reservationPolicyService, blockedTimeRepository, unavailabilityChecker, fixed);
     }
 
     private ReservationEntity createReservationEntity() {
@@ -457,6 +464,27 @@ class ReservationServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ReservationErrorCode.SLOT_CLOSED);
+        }
+
+        @Test
+        @DisplayName("B-5: 予約不可枠と overlap する枠への予約作成は BLOCKED_TIME_CONFLICT（RESERVATION_009・400）")
+        void 予約作成_予約不可枠overlap() {
+            // Given: slot は 2026-04-01 10:00-11:00（createAvailableSlotEntity）。同日 TEAM 全日ブロックを設定。
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null);
+            ReservationSlotEntity slot = createAvailableSlotEntity();
+            given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
+            given(blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(
+                    eq(TEAM_ID), eq(slot.getSlotDate())))
+                    .willReturn(List.of(com.mannschaft.app.reservation.entity.ReservationBlockedTimeEntity.builder()
+                            .teamId(TEAM_ID).blockedDate(slot.getSlotDate())
+                            .resourceType(com.mannschaft.app.reservation.ReservationBlockedResourceType.TEAM)
+                            .build()));
+
+            // When / Then
+            assertThatThrownBy(() -> service.createReservation(TEAM_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ReservationErrorCode.BLOCKED_TIME_CONFLICT);
         }
 
         @Test

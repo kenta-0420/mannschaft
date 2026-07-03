@@ -204,6 +204,11 @@ class ReservationAuthorizationDeclarationTest {
                     Long.class, Long.class, BlockedTimeRequest.class);
             assertGated(ReservationBusinessHourController.class, "deleteBlockedTime",
                     Long.class, Long.class);
+            // 機能B: 予約不可枠 impact プレビューも ADMIN+（副管理者可）ゲート。
+            assertGated(ReservationBusinessHourController.class, "getBlockedTimeImpact",
+                    Long.class, LocalDate.class,
+                    com.mannschaft.app.reservation.ReservationBlockedResourceType.class,
+                    Long.class, LocalTime.class, LocalTime.class);
         }
 
         @Test

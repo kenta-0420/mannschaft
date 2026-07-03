@@ -728,6 +728,8 @@ public class GlobalExceptionHandler {
             Map.entry("RESERVATION_020", HttpStatus.CONFLICT),               // SLOT_HAS_ACTIVE_RESERVATIONS
             // F03.4 予約認可ゲート: 非所属者が一般公開OFFのチームに予約 → 403（Severity.WARN 既定の 400 を上書き）
             Map.entry("RESERVATION_021", HttpStatus.FORBIDDEN),              // RESERVATION_PERMISSION_DENIED
+            // F03.4 機能B 予約不可枠 409 ガード: overlap する active 予約が存在 → 409（Severity.WARN 既定の 400 を上書き）
+            Map.entry("RESERVATION_027", HttpStatus.CONFLICT),               // UNAVAILABILITY_HAS_ACTIVE_RESERVATIONS
             // F06.5 アクティブリコール学習（IDOR 対策で 404、上限/範囲外は 400、楽観排他/マスク中編集/再輸出は 409）
             Map.entry("REFLECTION_001", HttpStatus.NOT_FOUND),              // NOT_FOUND（他人所有も IDOR 対策で 404）
             Map.entry("REFLECTION_002", HttpStatus.BAD_REQUEST),           // THEME_LIMIT_EXCEEDED
