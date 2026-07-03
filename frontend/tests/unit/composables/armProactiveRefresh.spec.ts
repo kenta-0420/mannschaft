@@ -72,11 +72,19 @@ describe('armProactiveRefresh / disarmProactiveRefresh', () => {
   it('AC-1: 武装した遅延(ms)経過後に performTokenRefresh が発火する（ofetch 呼び出しで検証）', async () => {
     const nowMs = Date.now()
     localStorage.setItem('tokenExpiresAt', String(nowMs + 5 * 60_000)) // 5分後に失効
-    mockOfetch.mockResolvedValue({
+    const authStore = makeAuthStore()
+    // 実 store の setTokens は成功時に tokenExpiresAt を新しい値へ更新する。このモックも同じ挙動に
+    // しておかないと、成功後の再武装（AC-2）が「期限不明のまま」延々と即時発火を繰り返してしまう
+    // （performTokenRefresh 自体は 1 回しか解決しないよう mockResolvedValueOnce で止めてあるため
+    //   実害は無いが、モックの挙動を実 store に近づけて意図を明確にする）。
+    authStore.setTokens.mockImplementation(() => {
+      localStorage.setItem('tokenExpiresAt', String(Date.now() + 15 * 60_000))
+    })
+    mockOfetch.mockResolvedValueOnce({
       data: { accessToken: 'a1', refreshToken: 'r1' },
     })
 
-    armProactiveRefresh(makeConfig(), asAuthStore(makeAuthStore()))
+    armProactiveRefresh(makeConfig(), asAuthStore(authStore))
 
     // まだ発火していない
     await vi.advanceTimersByTimeAsync(5 * 60_000 - 60_000 - 1_000)
@@ -88,13 +96,25 @@ describe('armProactiveRefresh / disarmProactiveRefresh', () => {
     expect(mockOfetch).toHaveBeenCalledTimes(1)
   })
 
-  it('AC-4: tokenExpiresAt が既に過去の場合、即時（遅延0）で発火する', async () => {
+  it('AC-4: tokenExpiresAt が既に過去の場合、setTimeout を挟まず同期的に即時発火する', async () => {
     localStorage.setItem('tokenExpiresAt', String(Date.now() - 10_000))
-    mockOfetch.mockResolvedValue({
+    const authStore = makeAuthStore()
+    // AC-1 と同様、成功後の再武装ループが「期限不明のまま」延々と即時発火し続けないよう、
+    // 実 store と同じく setTokens が tokenExpiresAt を更新する挙動にしておく。
+    authStore.setTokens.mockImplementation(() => {
+      localStorage.setItem('tokenExpiresAt', String(Date.now() + 15 * 60_000))
+    })
+    mockOfetch.mockResolvedValueOnce({
       data: { accessToken: 'a1', refreshToken: 'r1' },
     })
 
-    armProactiveRefresh(makeConfig(), asAuthStore(makeAuthStore()))
+    armProactiveRefresh(makeConfig(), asAuthStore(authStore))
+
+    // タイマーを一切進めていない時点で、既に refresh の fetch が同期的に開始されているはず。
+    // setTimeout(fn, 0) 経由だと後続の起動プラグイン（nav-settings.client 等）に
+    // 実行順で先を越され PRR-001（実機E2E）のリロード直後レースに負けるため、
+    // 遅延0は setTimeout を挟まず同一 tick で発火する実装であることをここで直接検証する。
+    expect(mockOfetch).toHaveBeenCalledTimes(1)
 
     await vi.advanceTimersByTimeAsync(0)
     await flushPromises()
@@ -132,7 +152,9 @@ describe('armProactiveRefresh / disarmProactiveRefresh', () => {
   })
 
   it('AC-3: disarmProactiveRefresh 後はタイマーが発火しない', async () => {
-    localStorage.setItem('tokenExpiresAt', String(Date.now() + 60_000))
+    // 遅延0（同期即時発火）ケースだと disarm する前に既に fetch が走ってしまうため、
+    // ここでは正の遅延（未来の失効時刻）で実際にタイマーが張られるケースを検証する。
+    localStorage.setItem('tokenExpiresAt', String(Date.now() + 5 * 60_000))
     mockOfetch.mockResolvedValue({
       data: { accessToken: 'a1', refreshToken: 'r1' },
     })
@@ -145,11 +167,11 @@ describe('armProactiveRefresh / disarmProactiveRefresh', () => {
     expect(mockOfetch).not.toHaveBeenCalled()
   })
 
-  it('AC-5: 多重に arm しても常にタイマーは1本のみ（前のタイマーはクリアされる）', async () => {
-    localStorage.setItem('tokenExpiresAt', String(Date.now() + 60_000))
-    mockOfetch.mockResolvedValue({
-      data: { accessToken: 'a1', refreshToken: 'r1' },
-    })
+  it('AC-5: 多重に arm しても常にタイマーは1本のみ（前のタイマーはクリアされる）', () => {
+    // vi.getTimerCount() で「実際に張られているタイマーの本数」を直接検証する
+    // （fetch 呼び出し回数の一致だけでは、performTokenRefresh の single-flight dedup が
+    //   多重タイマーのバグを隠してしまい、AC-5 の意図（タイマー本数）を検証できないため）。
+    localStorage.setItem('tokenExpiresAt', String(Date.now() + 5 * 60_000))
     const authStore = asAuthStore(makeAuthStore())
     const config = makeConfig()
 
@@ -157,11 +179,7 @@ describe('armProactiveRefresh / disarmProactiveRefresh', () => {
     armProactiveRefresh(config, authStore)
     armProactiveRefresh(config, authStore)
 
-    await vi.advanceTimersByTimeAsync(0)
-    await flushPromises()
-
-    // 3回武装しても発火は1回分のみ（多重発火していない）
-    expect(mockOfetch).toHaveBeenCalledTimes(1)
+    expect(vi.getTimerCount()).toBe(1)
   })
 
   // AC-6（クライアント限定・SSR でタイマーを張らない）について:

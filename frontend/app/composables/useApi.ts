@@ -137,6 +137,14 @@ export function disarmProactiveRefresh(): void {
  * config / authStore は performTokenRefresh と同様に引数で受け取る。setTimeout コールバック内で
  * useRuntimeConfig() / useAuthStore() を呼ぶと Nuxt インスタンスが未解決になる落とし穴があるため、
  * 呼び出し元（setTokens・auth.client プラグイン等の同期コンテキスト）で capture したものを渡すこと。
+ *
+ * 【遅延0（即時）の特別扱い】
+ * delayMs が 0 の場合は setTimeout を挟まず、呼び出しと同じ同期フェーズで refresh の fetch を
+ * 開始する。auth.client プラグインの起動時武装（リロード直後に Cookie が失効済みのケース）では、
+ * 後続のアルファベット順プラグイン（nav-settings.client 等）が先に認証付き API を撃って 401 を
+ * 出す前に、refresh のリクエストを確実に先行させる必要がある。setTimeout(fn, 0) はマクロタスクの
+ * ため、後続プラグインの同期実行より後回しになってしまいレースに負ける（実機E2E
+ * auth-proactive-refresh.spec.ts の PRR-001 が検証するリグレッションの再発になる）。
  */
 export function armProactiveRefresh(
   config: ReturnType<typeof useRuntimeConfig>,
@@ -150,7 +158,7 @@ export function armProactiveRefresh(
   const expiresAtMs = raw ? Number(raw) : 0
   const delayMs = computeProactiveRefreshDelayMs(expiresAtMs, Date.now(), PROACTIVE_REFRESH_BUFFER_MS)
 
-  proactiveRefreshTimer = setTimeout(() => {
+  const fire = (): void => {
     void (async () => {
       const result = await performTokenRefresh(config, authStore)
       if (result === 'refreshed') {
@@ -164,7 +172,14 @@ export function armProactiveRefresh(
         }, PROACTIVE_REFRESH_RETRY_DELAY_MS)
       }
     })()
-  }, delayMs)
+  }
+
+  if (delayMs === 0) {
+    fire()
+  }
+  else {
+    proactiveRefreshTimer = setTimeout(fire, delayMs)
+  }
 }
 
 // 短時間に複数の 5xx が発生した場合のトースト集約
