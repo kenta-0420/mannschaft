@@ -135,12 +135,13 @@ const titleKey = computed(() =>
           <ol class="terms-modal__list">
             <li v-for="i in [1, 2, 3, 4]" :key="i" class="terms-modal__item">
               <label class="terms-modal__label">
-                <input
+                <Checkbox
                   v-model="checked[i - 1]"
-                  type="checkbox"
+                  binary
+                  :input-id="`terms-item-${i}`"
                   :disabled="!canCheck || isViewMode"
                   class="terms-modal__checkbox"
-                >
+                />
                 <span class="terms-modal__item-text">
                   {{ t(`wallet.terms.item${i}`) }}
                 </span>
@@ -150,26 +151,22 @@ const titleKey = computed(() =>
         </div>
 
         <footer class="terms-modal__footer">
-          <button
+          <Button
             v-if="isViewMode"
-            type="button"
-            class="terms-modal__btn terms-modal__btn--primary"
+            :label="t('wallet.actions.close')"
             @click="close"
-          >
-            {{ t('wallet.actions.close') }}
-          </button>
+          />
           <template v-else>
-            <button type="button" class="terms-modal__btn" @click="close">
-              {{ t('wallet.actions.cancel') }}
-            </button>
-            <button
-              type="button"
-              class="terms-modal__btn terms-modal__btn--primary"
+            <Button
+              :label="t('wallet.actions.cancel')"
+              severity="secondary"
+              @click="close"
+            />
+            <Button
+              :label="t('wallet.terms.accept')"
               :disabled="!canSubmit"
               @click="accept"
-            >
-              {{ t('wallet.terms.accept') }}
-            </button>
+            />
           </template>
         </footer>
       </div>
@@ -266,10 +263,7 @@ const titleKey = computed(() =>
   opacity: 0.6;
 }
 .terms-modal__checkbox {
-  margin-top: 0.25rem;
   flex-shrink: 0;
-  width: 1.125rem;
-  height: 1.125rem;
 }
 .terms-modal__item-text {
   font-size: 0.9375rem;
@@ -284,34 +278,5 @@ const titleKey = computed(() =>
 }
 .terms-modal__panel--dark .terms-modal__footer {
   border-top-color: #3f3f46;
-}
-.terms-modal__btn {
-  padding: 0.625rem 1.25rem;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  font-size: 0.9375rem;
-  cursor: pointer;
-  border: 1px solid var(--p-surface-300, #d1d5db);
-  background: var(--p-surface-0, #fff);
-  color: #070707;
-}
-.terms-modal__panel--dark .terms-modal__btn {
-  background: #27272a;
-  border-color: #3f3f46;
-  color: #f4f4f5;
-}
-.terms-modal__btn--primary {
-  background: var(--p-primary-color, #3b82f6);
-  border-color: var(--p-primary-color, #3b82f6);
-  color: #fff;
-}
-.terms-modal__panel--dark .terms-modal__btn--primary {
-  background: var(--p-primary-color, #3b82f6);
-  border-color: var(--p-primary-color, #3b82f6);
-  color: #fff;
-}
-.terms-modal__btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 </style>

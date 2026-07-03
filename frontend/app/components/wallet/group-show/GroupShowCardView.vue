@@ -32,14 +32,12 @@ const { t } = useI18n()
 
     <div v-else-if="loadError" class="presentation__error" role="alert">
       <p>{{ loadError }}</p>
-      <button
+      <Button
         v-if="!biometricFailed"
-        type="button"
-        class="presentation__btn"
+        :label="`↻ ${t('wallet.presentation.reload')}`"
+        severity="secondary"
         @click="emit('reload')"
-      >
-        ↻ {{ t('wallet.presentation.reload') }}
-      </button>
+      />
     </div>
 
     <p v-else-if="total === 0" class="presentation__empty">
@@ -76,8 +74,8 @@ const { t } = useI18n()
   overflow: hidden;
 }
 .presentation__card {
-  background: #fff;
-  color: #111;
+  background: var(--p-content-background, #fff);
+  color: var(--p-text-color, #111);
   border-radius: 1rem;
   padding: 1.5rem 1.25rem;
   display: flex;
@@ -87,10 +85,6 @@ const { t } = useI18n()
   max-width: 96%;
   width: 100%;
   max-width: 520px;
-}
-:global(.dark) .presentation__card {
-  background: #1e1e1e;
-  color: #f4f4f5;
 }
 .presentation__logo {
   height: 32px;
@@ -118,14 +112,5 @@ const { t } = useI18n()
   flex-direction: column;
   align-items: center;
   gap: 1rem;
-}
-.presentation__btn {
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  cursor: pointer;
-  font-weight: 600;
 }
 </style>

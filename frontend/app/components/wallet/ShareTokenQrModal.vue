@@ -151,22 +151,20 @@ function handleClose() {
       </p>
 
       <div class="share-modal__actions">
-        <button
+        <Button
           v-if="expired || error"
-          type="button"
-          class="share-modal__btn share-modal__btn--primary"
+          :label="t('wallet.share.regenerate')"
           :disabled="issuing"
+          :loading="issuing"
+          class="flex-1"
           @click="issue"
-        >
-          {{ t('wallet.share.regenerate') }}
-        </button>
-        <button
-          type="button"
-          class="share-modal__btn"
+        />
+        <Button
+          :label="t('wallet.actions.close')"
+          severity="secondary"
+          class="flex-1"
           @click="handleClose"
-        >
-          {{ t('wallet.actions.close') }}
-        </button>
+        />
       </div>
     </div>
   </div>
@@ -184,7 +182,7 @@ function handleClose() {
   padding: 1rem;
 }
 .share-modal {
-  background: #fff;
+  background: var(--p-content-background, #fff);
   border-radius: 0.75rem;
   padding: 1.5rem 1.25rem;
   max-width: 420px;
@@ -254,28 +252,5 @@ function handleClose() {
   gap: 0.5rem;
   margin-top: 0.5rem;
   width: 100%;
-}
-.share-modal__btn {
-  flex: 1;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid var(--p-surface-300, #d1d5db);
-  background: var(--p-surface-0, #fff);
-  color: var(--p-text-color, #111827);
-  font-weight: 600;
-  cursor: pointer;
-}
-.share-modal__btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.share-modal__btn--primary {
-  background: var(--p-primary-color, #3b82f6);
-  color: #fff;
-  border-color: transparent;
-}
-:global(.dark) .share-modal {
-  background: #1e1e1e;
-  color: #f4f4f5;
 }
 </style>
