@@ -34,6 +34,7 @@ import org.springframework.data.domain.Pageable;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -43,8 +44,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyIterable;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -1161,7 +1164,8 @@ class ReservationServiceTest {
             // Given
             List<ReservationEntity> entities = List.of(createReservationEntity());
             List<ReservationResponse> responses = List.of(createReservationResponse());
-            given(reservationRepository.findUpcomingByUserId(eq(USER_ID), any(LocalDateTime.class)))
+            given(reservationRepository.findUpcomingByUserId(
+                    eq(USER_ID), any(LocalDate.class), any(LocalTime.class)))
                     .willReturn(entities);
             given(reservationMapper.toReservationResponseList(entities)).willReturn(responses);
 
@@ -1170,6 +1174,26 @@ class ReservationServiceTest {
 
             // Then
             assertThat(result).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("注入 Clock 基準の来店日時（日付・時刻）でリポジトリを引く")
+        void 来店日時基準_Clock由来の日付時刻を渡す() {
+            // Given: 固定 Clock を 2026-04-01 09:30 に設定
+            reinitServiceWithClockAt(LocalDateTime.of(2026, 4, 1, 9, 30));
+            given(reservationRepository.findUpcomingByUserId(
+                    eq(USER_ID), any(LocalDate.class), any(LocalTime.class)))
+                    .willReturn(List.of());
+            given(reservationMapper.toReservationResponseList(anyList())).willReturn(List.of());
+
+            // When
+            service.listUpcomingReservations(USER_ID);
+
+            // Then: 申込時刻ではなく「現在の日付＋時刻」で来店日時を絞り込む
+            then(reservationRepository).should().findUpcomingByUserId(
+                    eq(USER_ID),
+                    eq(LocalDate.of(2026, 4, 1)),
+                    eq(LocalTime.of(9, 30)));
         }
     }
 
