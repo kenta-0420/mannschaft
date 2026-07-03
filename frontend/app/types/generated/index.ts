@@ -29925,6 +29925,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/reservation-settings/blocked-times/impact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 予約不可枠 登録前の影響プレビュー */
+        get: operations["getBlockedTimeImpact"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/repair-plan/terms/{termId}": {
         parameters: {
             query?: never;
@@ -52303,6 +52320,10 @@ export interface components {
             /** @example 14:30:00 */
             endTime?: string;
             reason?: string;
+            /** Format: int64 */
+            resourceId?: number;
+            /** @enum {string} */
+            resourceType?: "TEAM" | "STAFF" | "LINE" | "RESOURCE";
             /** @example 14:30:00 */
             startTime?: string;
         };
@@ -52322,9 +52343,16 @@ export interface components {
             audit?: components["schemas"]["BlockedAuditDto"];
             /** Format: int64 */
             id?: number;
+            resource?: components["schemas"]["ResourceDto"];
             /** Format: int64 */
             teamId?: number;
             timeSlot?: components["schemas"]["TimeSlotDto"];
+        };
+        ResourceDto: {
+            /** Format: int64 */
+            resourceId?: number;
+            resourceName?: string;
+            resourceType?: string;
         };
         TimeSlotDto: {
             /** Format: date */
@@ -64799,6 +64827,29 @@ export interface components {
         };
         ApiResponseListBlockedTimeResponse: {
             data?: components["schemas"]["BlockedTimeResponse"][];
+        };
+        ApiResponseBlockedTimeImpactResponse: {
+            data?: components["schemas"]["BlockedTimeImpactResponse"];
+        };
+        BlockedTimeImpactResponse: {
+            /** Format: int32 */
+            affectedCount?: number;
+            reservations?: components["schemas"]["ImpactedReservationDto"][];
+        };
+        ImpactedReservationDto: {
+            /** @example 14:30:00 */
+            endTime?: string;
+            /** Format: int64 */
+            reservationId?: number;
+            /** Format: int64 */
+            slotId?: number;
+            staffName?: string;
+            /** @example 14:30:00 */
+            startTime?: string;
+            status?: string;
+            /** Format: int64 */
+            userId?: number;
+            userName?: string;
         };
         ApiResponseListReservationLineResponse: {
             data?: components["schemas"]["ReservationLineResponse"][];
@@ -133867,6 +133918,34 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListReservationSlotResponse"];
+                };
+            };
+        };
+    };
+    getBlockedTimeImpact: {
+        parameters: {
+            query: {
+                date: string;
+                resourceType?: "TEAM" | "STAFF" | "LINE" | "RESOURCE";
+                resourceId?: number;
+                startTime?: string;
+                endTime?: string;
+            };
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBlockedTimeImpactResponse"];
                 };
             };
         };
