@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -46,6 +47,7 @@ public class TeamEmergencyClosureController {
     @GetMapping("/preview")
     @Operation(summary = "臨時休業プレビュー")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<EmergencyClosurePreviewResponse>> previewClosure(
             @PathVariable Long teamId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
@@ -63,6 +65,7 @@ public class TeamEmergencyClosureController {
     @PostMapping
     @Operation(summary = "臨時休業通知送信")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "送信成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<EmergencyClosureResponse>> sendClosure(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateEmergencyClosureRequest request) {
@@ -78,6 +81,7 @@ public class TeamEmergencyClosureController {
     @GetMapping
     @Operation(summary = "臨時休業通知履歴一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<List<EmergencyClosureResponse>>> listClosures(
             @PathVariable Long teamId) {
         List<EmergencyClosureResponse> response = emergencyClosureService.listClosures(teamId);
@@ -101,6 +105,7 @@ public class TeamEmergencyClosureController {
      */
     @GetMapping("/{closureId}/confirmations")
     @Operation(summary = "確認状況一覧")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<List<EmergencyClosureConfirmationResponse>>> getConfirmations(
             @PathVariable Long teamId,
             @PathVariable Long closureId) {

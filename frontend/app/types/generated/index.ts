@@ -22995,7 +22995,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** 予約設定（チームポリシー）の更新（ADMIN限定） */
+        /** 予約設定（チームポリシー）の更新（管理者・副管理者限定） */
         patch: operations["updateReservationSetting"];
         trace?: never;
     };

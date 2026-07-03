@@ -20,6 +20,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -50,6 +51,7 @@ public class TeamReservationController {
     @GetMapping
     @Operation(summary = "チーム予約一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<PagedResponse<ReservationResponse>> listReservations(
             @PathVariable Long teamId,
             @RequestParam(required = false) String status,
@@ -94,6 +96,7 @@ public class TeamReservationController {
     @PostMapping("/{reservationId}/confirm")
     @Operation(summary = "予約確定")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "確定成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<ReservationResponse>> confirmReservation(
             @PathVariable Long teamId,
             @PathVariable Long reservationId) {
@@ -107,6 +110,7 @@ public class TeamReservationController {
     @PostMapping("/{reservationId}/cancel")
     @Operation(summary = "予約キャンセル（管理者）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "キャンセル成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<ReservationResponse>> cancelReservation(
             @PathVariable Long teamId,
             @PathVariable Long reservationId,
@@ -121,6 +125,7 @@ public class TeamReservationController {
     @PostMapping("/{reservationId}/complete")
     @Operation(summary = "予約完了")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "完了成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<ReservationResponse>> completeReservation(
             @PathVariable Long teamId,
             @PathVariable Long reservationId) {
@@ -134,6 +139,7 @@ public class TeamReservationController {
     @PostMapping("/{reservationId}/no-show")
     @Operation(summary = "ノーショー")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "マーク成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<ReservationResponse>> markNoShow(
             @PathVariable Long teamId,
             @PathVariable Long reservationId) {
@@ -147,6 +153,7 @@ public class TeamReservationController {
     @PostMapping("/{reservationId}/reschedule")
     @Operation(summary = "予約リスケジュール")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "リスケ成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<ReservationResponse>> rescheduleReservation(
             @PathVariable Long teamId,
             @PathVariable Long reservationId,
@@ -161,6 +168,7 @@ public class TeamReservationController {
     @PatchMapping("/{reservationId}/admin-note")
     @Operation(summary = "管理者メモ更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<ReservationResponse>> updateAdminNote(
             @PathVariable Long teamId,
             @PathVariable Long reservationId,
@@ -175,6 +183,7 @@ public class TeamReservationController {
     @GetMapping("/stats")
     @Operation(summary = "予約統計")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<ReservationStatsResponse>> getStats(
             @PathVariable Long teamId) {
         ReservationStatsResponse response = reservationService.getStats(teamId);
@@ -187,6 +196,7 @@ public class TeamReservationController {
     @GetMapping("/{reservationId}/reminders")
     @Operation(summary = "リマインダー一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<List<ReminderResponse>>> listReminders(
             @PathVariable Long teamId,
             @PathVariable Long reservationId) {
@@ -200,6 +210,7 @@ public class TeamReservationController {
     @PostMapping("/{reservationId}/reminders")
     @Operation(summary = "リマインダー作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<ReminderResponse>> createReminder(
             @PathVariable Long teamId,
             @PathVariable Long reservationId,

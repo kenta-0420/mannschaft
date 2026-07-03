@@ -66,6 +66,7 @@ public class ReservationBusinessHourController {
     @PutMapping("/business-hours")
     @Operation(summary = "営業時間一括更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<List<BusinessHourResponse>>> updateBusinessHours(
             @PathVariable Long teamId,
             @Valid @RequestBody BusinessHoursUpdateRequest request) {
@@ -93,6 +94,7 @@ public class ReservationBusinessHourController {
     @PostMapping("/blocked-times")
     @Operation(summary = "ブロック時間作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<BlockedTimeResponse>> createBlockedTime(
             @PathVariable Long teamId,
             @Valid @RequestBody BlockedTimeRequest request) {
@@ -106,6 +108,7 @@ public class ReservationBusinessHourController {
     @PatchMapping("/blocked-times/{blockedId}")
     @Operation(summary = "ブロック時間更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<BlockedTimeResponse>> updateBlockedTime(
             @PathVariable Long teamId,
             @PathVariable Long blockedId,
@@ -120,6 +123,7 @@ public class ReservationBusinessHourController {
     @DeleteMapping("/blocked-times/{blockedId}")
     @Operation(summary = "ブロック時間削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<Void> deleteBlockedTime(
             @PathVariable Long teamId,
             @PathVariable Long blockedId) {
@@ -153,7 +157,7 @@ public class ReservationBusinessHourController {
     }
 
     /**
-     * 予約設定（チームポリシー）を更新する。ADMIN 限定。
+     * 予約設定（チームポリシー）を更新する。管理者・副管理者（ADMIN + DEPUTY_ADMIN）限定。
      *
      * <p>PATCH の部分更新セマンティクス: null フィールドは据え置き。</p>
      *
@@ -165,9 +169,9 @@ public class ReservationBusinessHourController {
      * </ul>
      */
     @PatchMapping
-    @Operation(summary = "予約設定（チームポリシー）の更新（ADMIN限定）")
+    @Operation(summary = "予約設定（チームポリシー）の更新（管理者・副管理者限定）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
-    @PreAuthorize("@accessGuard.isScopeStrictAdmin(authentication, #teamId, 'TEAM')")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<ReservationSettingsResponse>> updateReservationSetting(
             @PathVariable Long teamId,
             @Valid @RequestBody UpdateReservationSettingRequest request) {

@@ -3,6 +3,7 @@ package com.mannschaft.app.reservation.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.reservation.ApprovalMode;
 import com.mannschaft.app.reservation.CancelledBy;
 import com.mannschaft.app.reservation.ReservationErrorCode;
@@ -89,12 +90,25 @@ public class ReservationService {
     /**
      * 予約詳細を取得する。
      *
+     * <p><strong>認可（F03.4 認可漏れ根治）:</strong> 管理者・副管理者（ADMIN + DEPUTY_ADMIN／SYSTEM_ADMIN）
+     * <em>または</em> 予約の本人（所有者）のみ閲覧可能。それ以外（同一チームの一般会員が他人の予約を覗く等）は
+     * {@link ReservationErrorCode#RESERVATION_PERMISSION_DENIED}（HTTP 403）を投げる。</p>
+     *
+     * <p>この所有権ゲートは public な read 入口（本メソッド）に置く。共有 private mapper に置くと
+     * バッチ/リスナー（SecurityContext 無し）を巻き添えにするため。</p>
+     *
      * @param teamId        チームID
      * @param reservationId 予約ID
      * @return 予約レスポンス
      */
     public ReservationResponse getReservation(Long teamId, Long reservationId) {
         ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        boolean isAdmin = accessControlService.isAdminOrAbove(currentUserId, teamId, "TEAM");
+        boolean isOwner = currentUserId.equals(entity.getUserId());
+        if (!isAdmin && !isOwner) {
+            throw new BusinessException(ReservationErrorCode.RESERVATION_PERMISSION_DENIED);
+        }
         return enrich(entity);
     }
 
