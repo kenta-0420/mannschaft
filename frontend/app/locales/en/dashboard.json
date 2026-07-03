@@ -221,7 +221,9 @@
       "blogEmpty": "No blog posts",
       "chatEmpty": "No chats",
       "todoEmpty": "No TODOs",
-      "calendarEmpty": "No events"
+      "calendarEmpty": "No events",
+      "bulletinEmpty": "No bulletin threads",
+      "unread": "Unread"
     }
   }
 }
