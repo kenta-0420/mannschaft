@@ -10,7 +10,7 @@ export default defineNuxtPlugin(() => {
     // 失効の約60秒前に自動で再武装され続ける（通知/chat/mentions/inbox 等の背景ポーラーが
     // 401 ノイズを出す前にトークンを常に新鮮に保つ）。
     //
-    // ★白画面根治の要★ armProactiveRefresh は setTimeout を張るだけの同期関数で、
+    // ★白画面根治の要★ armProactiveRefresh 自体は同期関数で、内部で
     //   performTokenRefresh の Promise を await しない（void 化済み）ため、
     //   async プラグインの app mount を一切ブロックしない。
     const config = useRuntimeConfig()
