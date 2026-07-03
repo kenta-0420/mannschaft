@@ -207,13 +207,27 @@ class SharedFileLinkFlywayColumnIT {
         assertThat(rows)
                 .as("ネイティブクエリ（is_active, download_allowed 列名指定）で 1 件取得できること").hasSize(1);
         Object[] row = rows.get(0);
-        // is_active=false を確認（MySQL の BOOLEAN は 0/1 で返る）
-        assertThat(((Number) row[0]).intValue())
-                .as("ネイティブ SELECT is_active の値が 0（false）であること")
-                .isEqualTo(0);
-        // download_allowed=true を確認
-        assertThat(((Number) row[1]).intValue())
-                .as("ネイティブ SELECT download_allowed の値が 1（true）であること")
-                .isEqualTo(1);
+        // MySQL の BOOLEAN(TINYINT(1)) は Connector/J のバージョン・設定により Boolean で返る場合と
+        // Number(0/1) で返る場合がある。環境依存を根治するため toBool() で両対応の検証を行う。
+        assertThat(toBool(row[0]))
+                .as("ネイティブ SELECT is_active の値が false であること")
+                .isFalse();
+        assertThat(toBool(row[1]))
+                .as("ネイティブ SELECT download_allowed の値が true であること")
+                .isTrue();
+    }
+
+    /**
+     * ネイティブクエリで得た BOOLEAN 列値を boolean に正規化する。
+     * MySQL Connector/J は TINYINT(1) を Boolean で返すことも Number(0/1) で返すこともあるため、両対応する。
+     */
+    private static boolean toBool(Object v) {
+        if (v instanceof Boolean b) {
+            return b;
+        }
+        if (v instanceof Number n) {
+            return n.intValue() != 0;
+        }
+        throw new IllegalStateException("想定外の型: " + (v == null ? "null" : v.getClass()));
     }
 }
