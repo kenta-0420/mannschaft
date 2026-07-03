@@ -158,5 +158,74 @@ class ScopeWidgetSummaryServiceTest {
             assertThat(result).hasSize(1);
             assertThat(result.get(0).get("title")).isEqualTo("総会");
         }
+
+        @Test
+        @DisplayName("buildOrgUnreadThreads: bulletin_threads(直近3件) と bulletin_count を同時に返す（AC-B4）")
+        @SuppressWarnings("unchecked")
+        void orgUnreadThreads_bulletinThreads() {
+            var t1 = thread(1L, "組織スレA", false, LocalDateTime.of(2026, 7, 2, 0, 0));
+            var t2 = thread(2L, "組織スレB", false, LocalDateTime.of(2026, 7, 1, 0, 0));
+            given(bulletinThreadRepository.findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(
+                    eq(com.mannschaft.app.bulletin.ScopeType.ORGANIZATION), eq(20L), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(t1, t2)));
+            given(bulletinReadStatusRepository.existsByThreadIdAndUserId(eq(1L), eq(7L))).willReturn(false);
+            given(bulletinReadStatusRepository.existsByThreadIdAndUserId(eq(2L), eq(7L))).willReturn(true);
+            // チャンネルなし（未読チャット 0）
+            given(chatChannelRepository.findByOrganizationIdAndIsArchivedFalseOrderByLastMessageAtDesc(20L))
+                    .willReturn(List.of());
+
+            Map<String, Object> result = service.buildOrgUnreadThreads(20L, 7L);
+
+            assertThat(result).containsKeys("bulletin_count", "chat_count", "bulletin_threads");
+            assertThat(result.get("bulletin_count")).isEqualTo(1L); // t1 のみ未読
+            List<Map<String, Object>> threads = (List<Map<String, Object>>) result.get("bulletin_threads");
+            assertThat(threads).hasSize(2);
+            assertThat(threads.get(0)).containsKeys("id", "title", "updated_at", "is_read");
+            assertThat(threads.get(0).get("id")).isEqualTo(1L);
+            assertThat(threads.get(0).get("is_read")).isEqualTo(false);
+            assertThat(threads.get(1).get("is_read")).isEqualTo(true);
+        }
+
+        @Test
+        @DisplayName("buildThreadListForScope: 直近3件をクエリ順で id/title/updated_at/is_read 付きで返す（AC-B2/B3）")
+        @SuppressWarnings("unchecked")
+        void threadList_直近3件() {
+            var pinned = thread(1L, "固定", true, LocalDateTime.of(2026, 6, 1, 0, 0));
+            var newest = thread(2L, "最新", false, LocalDateTime.of(2026, 7, 2, 0, 0));
+            var mid = thread(3L, "中間", false, LocalDateTime.of(2026, 7, 1, 0, 0));
+            given(bulletinThreadRepository.findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(
+                    eq(com.mannschaft.app.bulletin.ScopeType.TEAM), eq(10L), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of(pinned, newest, mid)));
+            given(bulletinReadStatusRepository.existsByThreadIdAndUserId(anyLong(), eq(7L))).willReturn(false);
+
+            List<Map<String, Object>> result = service.buildThreadListForScope("TEAM", 10L, 7L);
+
+            assertThat(result).hasSize(3);
+            assertThat(result).extracting(m -> m.get("id")).containsExactly(1L, 2L, 3L);
+            assertThat(result.get(0)).containsKeys("id", "title", "updated_at", "is_read");
+        }
+
+        @Test
+        @DisplayName("buildThreadListForScope: スレッドなしは空配列を正直に返す")
+        void threadList_空() {
+            given(bulletinThreadRepository.findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(
+                    eq(com.mannschaft.app.bulletin.ScopeType.ORGANIZATION), eq(20L), any(Pageable.class)))
+                    .willReturn(new PageImpl<>(List.of()));
+
+            assertThat(service.buildThreadListForScope("ORGANIZATION", 20L, 7L)).isEmpty();
+        }
+
+        private com.mannschaft.app.bulletin.entity.BulletinThreadEntity thread(
+                Long id, String title, boolean pinned, LocalDateTime updatedAt) {
+            return com.mannschaft.app.bulletin.entity.BulletinThreadEntity.builder()
+                    .id(id)
+                    .scopeType(com.mannschaft.app.bulletin.ScopeType.TEAM)
+                    .scopeId(10L)
+                    .title(title)
+                    .body("body")
+                    .isPinned(pinned)
+                    .updatedAt(updatedAt)
+                    .build();
+        }
     }
 }

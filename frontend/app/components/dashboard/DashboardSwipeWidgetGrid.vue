@@ -29,6 +29,7 @@ import type {
   ScopeChatSummary,
   ScopeCalendarSummary,
   ScopeUnreadThreads,
+  ScopeBulletinThreadItem,
 } from '~/types/dashboard-scope'
 
 const props = defineProps<{
@@ -97,11 +98,14 @@ function isTodoOverdue(item: ScopeTodoItem): boolean {
   return dayjs(item.due_date).isBefore(dayjs(), 'day')
 }
 
-// ③ 掲示板（リスト無し・件数タイルのまま現状維持）
-const bulletinThreads = computed<ScopeUnreadThreads | null>(() =>
+// ③ 掲示板（直近スレッド一覧へコンテンツ化・第二陣）
+// BE 未デプロイ環境では bulletin_threads が undefined になりうるため空配列へ縮退する。
+const bulletinData = computed<ScopeUnreadThreads | null>(() =>
   (team.value ? team.value.teamUnreadThreads : org.value?.orgUnreadThreads) ?? null,
 )
-const bulletinUnread = computed(() => bulletinThreads.value?.bulletin_count ?? 0)
+const bulletinThreadItems = computed<ScopeBulletinThreadItem[]>(
+  () => bulletinData.value?.bulletin_threads ?? [],
+)
 </script>
 
 <template>
@@ -151,14 +155,37 @@ const bulletinUnread = computed(() => bulletinThreads.value?.bulletin_count ?? 0
       />
     </DashboardWidgetCard>
 
-    <!-- ③ 掲示板（リスト未整備・件数タイルのまま現状維持） -->
-    <SectionCard :title="$t('swipeWidgets.bulletin')">
-      <div class="flex items-center gap-3">
-        <i class="pi pi-megaphone text-2xl text-primary" />
-        <span v-if="bulletinUnread > 0" class="text-2xl font-bold">{{ bulletinUnread }}</span>
-        <span v-else class="text-sm text-surface-500">{{ $t('swipeWidgets.emptyState') }}</span>
-      </div>
-    </SectionCard>
+    <!-- ③ 掲示板（スレッド名 + 更新日時 + 未読ドット。導線無し） -->
+    <DashboardScopeListWidget
+      :title="$t('swipeWidgets.bulletin')"
+      icon="pi pi-megaphone"
+      :items="bulletinThreadItems"
+      :empty-message="$t('swipeWidgets.list.bulletinEmpty')"
+    >
+      <template #item="{ item }: { item: ScopeBulletinThreadItem }">
+        <div
+          class="flex items-center gap-3 rounded-lg border-2 border-surface-300 bg-surface-50 p-3 dark:border-surface-600 dark:bg-surface-700/50"
+        >
+          <span
+            v-if="!item.is_read"
+            class="h-2 w-2 flex-shrink-0 rounded-full bg-primary"
+            :aria-label="$t('swipeWidgets.list.unread')"
+          />
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-sm font-medium">{{ item.title }}</p>
+            <p class="text-xs text-surface-500">
+              <i class="pi pi-clock mr-1" />{{ formatDateTime(item.updated_at) }}
+            </p>
+          </div>
+          <Tag
+            v-if="!item.is_read"
+            :value="$t('swipeWidgets.list.unread')"
+            severity="danger"
+            rounded
+          />
+        </div>
+      </template>
+    </DashboardScopeListWidget>
 
     <!-- ④ ブログ（タイトル + 著者 + 公開日。導線無し） -->
     <DashboardScopeListWidget
