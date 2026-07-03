@@ -82546,7 +82546,7 @@
         "tags": [
           "予約設定管理"
         ],
-        "summary": "予約設定（チームポリシー）の更新（ADMIN限定）",
+        "summary": "予約設定（チームポリシー）の更新（管理者・副管理者限定）",
         "operationId": "updateReservationSetting",
         "parameters": [
           {
