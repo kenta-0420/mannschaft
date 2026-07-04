@@ -42,10 +42,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@link #ensureFulltextIndex()} で本番同等の FULLTEXT インデックスを補完する（症状隠しではなく、
  * 本番スキーマの再現）。</p>
  *
- * <h3>キーワードの制約（ngram パーサ未指定）</h3>
- * <p>{@code ft_mr_search} は ngram パーサ未指定のため日本語部分一致は効かない。テストデータの
- * title/activity_detail は英語スペース区切りトークンにし、keyword も 3 文字以上のトークンを使う
- * （MySQL InnoDB の {@code innodb_ft_min_token_size} 既定=3）。BOOLEAN MODE 前提。</p>
+ * <h3>キーワードの制約（V139 で ngram パーサへ移行）</h3>
+ * <p>{@code ft_mr_search} は V139 マイグレーションで {@code WITH PARSER ngram} 化され、日本語の
+ * 部分一致検索（最小 2 文字。{@code ngram_token_size} 既定値）に対応した。英語トークンの既存ケース
+ * （AC-1〜AC-11）は 3 文字以上のトークン・BOOLEAN MODE を前提に維持し、ngram 化後も回帰なく通ることを
+ * 検証する（AC-J3）。日本語ケース（AC-J1・AC-J2・AC-J5）は {@link #ensureFulltextIndex()} が本番同等の
+ * ngram パーサ付き FULLTEXT インデックスを補完することで検証する。</p>
  */
 @DisplayName("MatchRequestController キーワード複合検索 統合テスト（F08.1）")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
@@ -299,6 +301,61 @@ class MatchRequestControllerKeywordSearchIntegrationTest extends AbstractMySqlIn
     }
 
     // ============================================================
+    // AC-J1: 日本語キーワード（2文字以上）の部分一致がヒットする（ngram パーサ対応）
+    // ============================================================
+    private static final String JP_KEYWORD = "サッカー";
+
+    @Test
+    @DisplayName("AC-J1: 日本語キーワード（2文字以上）でtitle/activity_detailの部分一致がヒットする（ngramパーサ対応）")
+    void japaneseKeywordPartialMatch() {
+        MatchRequestEntity hitTitle = persistOpen(TEAM_A, "週末サッカー練習試合", "13", null,
+                MatchCategory.ANY, MatchLevel.ANY, MatchVisibility.PLATFORM);
+        MatchRequestEntity hitDetail = persistOpenWithDetail(TEAM_B, "合同練習会のお知らせ", "サッカーボール持参のこと", "13", null,
+                MatchCategory.ANY, MatchLevel.ANY, MatchVisibility.PLATFORM);
+        persistOpen(TEAM_C, "野球全国大会の告知", "13", null,
+                MatchCategory.ANY, MatchLevel.ANY, MatchVisibility.PLATFORM); // 非該当 → 除外
+
+        List<MatchRequestResponse> content = search(JP_KEYWORD, "13", null, null, null, null, null, 0, 20);
+
+        assertThat(content).extracting(MatchRequestResponse::getId)
+                .containsExactlyInAnyOrder(hitTitle.getId(), hitDetail.getId());
+    }
+
+    // ============================================================
+    // AC-J2: 日本語キーワード＋prefectureCode＋category の複合 AND
+    // ============================================================
+    @Test
+    @DisplayName("AC-J2: 日本語キーワード＋prefectureCode＋category の複合ANDが効く")
+    void japaneseKeywordAndPrefectureAndCategory() {
+        MatchRequestEntity hit = persistOpen(TEAM_A, "週末サッカー練習会", "13", null,
+                MatchCategory.JUNIOR_HIGH, MatchLevel.ANY, MatchVisibility.PLATFORM);
+        persistOpen(TEAM_B, "週末サッカー練習会", "27", null,
+                MatchCategory.JUNIOR_HIGH, MatchLevel.ANY, MatchVisibility.PLATFORM); // 県違い → 除外
+        persistOpen(TEAM_C, "週末サッカー練習会", "13", null,
+                MatchCategory.ADULT, MatchLevel.ANY, MatchVisibility.PLATFORM); // カテゴリ違い → 除外
+
+        List<MatchRequestResponse> content = search(JP_KEYWORD, "13", null, null, "JUNIOR_HIGH", null, null, 0, 20);
+
+        assertThat(content).extracting(MatchRequestResponse::getId).containsExactly(hit.getId());
+    }
+
+    // ============================================================
+    // AC-J5: 該当語を含まない募集は日本語キーワード検索結果に含まれない（ネガティブ）
+    // ============================================================
+    @Test
+    @DisplayName("AC-J5: 該当語を含まない募集は日本語キーワード検索結果に含まれない")
+    void japaneseKeywordExcludesNonMatching() {
+        persistOpen(TEAM_A, "野球全国大会の告知", "13", null,
+                MatchCategory.ANY, MatchLevel.ANY, MatchVisibility.PLATFORM);
+        persistOpen(TEAM_B, "バスケットボール交流戦のお知らせ", "13", null,
+                MatchCategory.ANY, MatchLevel.ANY, MatchVisibility.PLATFORM);
+
+        List<MatchRequestResponse> content = search(JP_KEYWORD, "13", null, null, null, null, null, 0, 20);
+
+        assertThat(content).isEmpty();
+    }
+
+    // ============================================================
     // ヘルパ
     // ============================================================
 
@@ -315,6 +372,24 @@ class MatchRequestControllerKeywordSearchIntegrationTest extends AbstractMySqlIn
                                            MatchCategory category, MatchLevel level, MatchVisibility visibility) {
         return persist(teamId, title, prefectureCode, cityCode, category, level, visibility,
                 MatchRequestStatus.OPEN, null, false);
+    }
+
+    private MatchRequestEntity persistOpenWithDetail(Long teamId, String title, String activityDetail,
+                                           String prefectureCode, String cityCode,
+                                           MatchCategory category, MatchLevel level, MatchVisibility visibility) {
+        MatchRequestEntity e = MatchRequestEntity.builder()
+                .teamId(teamId)
+                .title(title)
+                .activityType(ActivityType.PRACTICE)
+                .activityDetail(activityDetail)
+                .category(category)
+                .level(level)
+                .visibility(visibility)
+                .prefectureCode(prefectureCode)
+                .cityCode(cityCode)
+                .status(MatchRequestStatus.OPEN)
+                .build();
+        return requestRepository.saveAndFlush(e);
     }
 
     private MatchRequestEntity persistOpen(Long teamId, String title, String prefectureCode, String cityCode,
