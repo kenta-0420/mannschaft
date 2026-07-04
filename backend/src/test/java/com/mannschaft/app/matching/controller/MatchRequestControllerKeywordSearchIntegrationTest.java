@@ -427,7 +427,7 @@ class MatchRequestControllerKeywordSearchIntegrationTest extends AbstractMySqlIn
     }
 
     /**
-     * FULLTEXT インデックス ft_mr_search を補完する（本番 V8.003 と同等）。
+     * FULLTEXT インデックス ft_mr_search を補完する（本番 V139 と同等・ngram パーサ付き）。
      * ddl-auto:create では Hibernate が FULLTEXT を作らないため、MATCH ... AGAINST が成立しない。
      * 既に存在する場合は何もしない（information_schema で判定）。
      */
@@ -439,7 +439,8 @@ class MatchRequestControllerKeywordSearchIntegrationTest extends AbstractMySqlIn
                 Integer.class);
         if (count == null || count == 0) {
             jdbcTemplate.execute(
-                    "ALTER TABLE match_requests ADD FULLTEXT INDEX ft_mr_search (title, activity_detail)");
+                    "ALTER TABLE match_requests ADD FULLTEXT INDEX ft_mr_search (title, activity_detail) "
+                            + "WITH PARSER ngram");
         }
     }
 }
