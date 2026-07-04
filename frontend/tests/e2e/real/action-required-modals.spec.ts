@@ -24,7 +24,7 @@
  *   AR-010: 空状態の場合は「すべて対応済み」メッセージが表示される
  */
 
-import { test, expect, type APIRequestContext } from '@playwright/test'
+import { test, expect, type APIRequestContext, type Page } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
 
 // ---------------------------------------------------------------------------
@@ -129,7 +129,7 @@ test.describe('AR-003〜010: ダッシュボード要対応ウィジェット実
    * ログインしてダッシュボードへ遷移する共通ヘルパー。
    * storageState の access_token が期限切れでも確実にログインする。
    */
-  async function loginAndGoDashboard(page: Parameters<typeof test.beforeEach>[0]['page']): Promise<void> {
+  async function loginAndGoDashboard(page: Page): Promise<void> {
     // ログインページから確実にログインする（storageState の access_token が期限切れでも動作する）
     await page.goto(`${BASE_URL}/login`, { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
@@ -172,7 +172,7 @@ test.describe('AR-003〜010: ダッシュボード要対応ウィジェット実
    * 返値: 選択されたチームチップの data-testid サフィックス（またはnull）
    */
   async function switchToTeamPanel(
-    page: Parameters<typeof test.beforeEach>[0]['page'],
+    page: Page,
   ): Promise<string | null> {
     // TEAM セグメントに切り替え
     const teamSegment = page.getByTestId('scope-segment-TEAM')
