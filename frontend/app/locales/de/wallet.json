@@ -97,7 +97,46 @@
       "next": "Weiter",
       "save_failed": "Kartenregistrierung fehlgeschlagen",
       "validation_required": "Bitte geben Sie den Kartennamen ein",
-      "validation_barcode_required": "Bitte geben Sie den Barcode-Wert ein oder wählen Sie 'Kein Barcode'"
+      "validation_barcode_required": "Bitte geben Sie den Barcode-Wert ein oder wählen Sie 'Kein Barcode'",
+      "format_labels": {
+        "CODE128": "CODE128 (allgemeine Mitgliedskarten – nehmen Sie dies, wenn Sie unsicher sind)",
+        "CODE39": "CODE39 (alphanumerische Mitgliedskarten)",
+        "EAN13": "EAN13 (13-stelliger Produktbarcode)",
+        "EAN8": "EAN8 (8-stelliger Produktbarcode)",
+        "JAN13": "JAN13 (japanischer 13-stelliger Produktbarcode)",
+        "QR": "QR (quadratisches Punktmuster)",
+        "PDF417": "PDF417 (Führerschein usw.)",
+        "ITF": "ITF (Logistik / einige Mitgliedskarten)"
+      },
+      "help": {
+        "title": "Anleitung zum Hinzufügen einer Karte",
+        "description": "Registrieren Sie den Barcode Ihrer Treuekarte oder Mitgliedskarte, um ihn an der Kasse vorzuzeigen.",
+        "easiest": {
+          "title": "Der einfachste Weg zum Hinzufügen",
+          "body": "Durch Auswahl eines Presets werden Kartenname und Format automatisch ausgefüllt. Das Scannen mit Kamera oder Bild erkennt das Format ebenfalls automatisch.",
+          "steps": {
+            "step1": "Wenn Ihr Geschäft in den Presets erscheint, tippen Sie darauf (Name und Format werden automatisch eingetragen)",
+            "step2": "Andernfalls geben Sie den Geschäftsnamen in das Feld 'Kartenname' ein",
+            "step3": "Scannen Sie den Barcode Ihrer Karte mit der Kamera oder einem Bild",
+            "step4": "Überprüfen Sie die Vorschau und tippen Sie auf 'Weiter' → 'Speichern'"
+          }
+        },
+        "format_guide": {
+          "title": "Barcode-Format unbekannt?",
+          "body": "Das Format muss nur bei manueller Eingabe gewählt werden. Kamera- und Bildscan erkennen es automatisch.",
+          "steps": {
+            "step1": "Bei Unsicherheit 'CODE128' wählen (funktioniert bei den meisten Mitgliedskarten)",
+            "step2": "Bei 13-stelliger Zahl 'EAN13' wählen",
+            "step3": "Bei 8-stelliger Zahl 'EAN8' wählen",
+            "step4": "Bei quadratischem Punktmuster 'QR' wählen"
+          }
+        },
+        "verify": {
+          "title": "Nach dem Speichern unbedingt prüfen",
+          "body": "Überprüfen Sie nach dem Speichern, ob der angezeigte Barcode an der Kasse gescannt werden kann. Falls nicht, löschen Sie die Karte und registrieren Sie sie mit einem anderen Format neu.",
+          "hint": "Das Barcode-Format kann nach dem Speichern nicht geändert werden. Zum Ändern löschen und neu registrieren."
+        }
+      }
     },
     "detail": {
       "edit": "Bearbeiten",
@@ -163,7 +202,8 @@
       "error_no_camera": "Keine Kamera gefunden",
       "error_denied": "Kamerazugriff verweigert",
       "error_decode_failed": "Barcode konnte nicht gelesen werden",
-      "retry": "Erneut versuchen"
+      "retry": "Erneut versuchen",
+      "manual_recommend_scan": "Kamera- oder Bildscan füllt das Format automatisch aus. Manuelle Eingabe ist das letzte Mittel."
     },
     "barcode": {
       "no_barcode_label": "Kein Barcode",

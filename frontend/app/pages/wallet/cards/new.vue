@@ -88,6 +88,9 @@ const saving = ref(false)
 const saveError = ref<string | null>(null)
 const validationError = ref<string | null>(null)
 
+// 使い方モーダルの開閉状態
+const showGuide = ref(false)
+
 // ─────────────────────────────────────────────
 // Computed
 // ─────────────────────────────────────────────
@@ -178,7 +181,7 @@ function cancel() {
 
 <template>
   <div class="card-new">
-    <PageHeader :title="t('wallet.add.title')" />
+    <PageHeader :title="t('wallet.add.title')" help @help="showGuide = true" />
 
     <!-- ===== Step 1: 入力 ===== -->
     <template v-if="step === 'input'">
@@ -301,6 +304,8 @@ function cancel() {
         />
       </div>
     </template>
+    <!-- カード追加の使い方モーダル -->
+    <CardAddGuideModal v-model:visible="showGuide" />
   </div>
 </template>
 
