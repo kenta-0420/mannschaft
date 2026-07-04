@@ -730,6 +730,11 @@ public class GlobalExceptionHandler {
             Map.entry("RESERVATION_021", HttpStatus.FORBIDDEN),              // RESERVATION_PERMISSION_DENIED
             // F03.4 機能B 予約不可枠 409 ガード: overlap する active 予約が存在 → 409（Severity.WARN 既定の 400 を上書き）
             Map.entry("RESERVATION_027", HttpStatus.CONFLICT),               // UNAVAILABILITY_HAS_ACTIVE_RESERVATIONS
+            // F03.4 機能D 予約通知メール宛先フリーミアム: 有料必須 → 402、email 重複 → 409、不在 → 404。
+            // 028（上限10件超過）は入力上限超過として WARN 既定の 400 のまま（個別 map 不要）。
+            Map.entry("RESERVATION_029", HttpStatus.PAYMENT_REQUIRED),       // NOTIFY_RECIPIENT_PAID_PLAN_REQUIRED
+            Map.entry("RESERVATION_030", HttpStatus.CONFLICT),               // NOTIFY_RECIPIENT_DUPLICATE
+            Map.entry("RESERVATION_031", HttpStatus.NOT_FOUND),              // NOTIFY_RECIPIENT_NOT_FOUND
             // F06.5 アクティブリコール学習（IDOR 対策で 404、上限/範囲外は 400、楽観排他/マスク中編集/再輸出は 409）
             Map.entry("REFLECTION_001", HttpStatus.NOT_FOUND),              // NOT_FOUND（他人所有も IDOR 対策で 404）
             Map.entry("REFLECTION_002", HttpStatus.BAD_REQUEST),           // THEME_LIMIT_EXCEEDED

@@ -65,8 +65,9 @@ public class ReservationService {
     private final ReservationMapper reservationMapper;
     private final NameResolverService nameResolverService;
     private final ApplicationEventPublisher eventPublisher;
-    private final ReservationTeamSettingService settingService;
     private final AccessControlService accessControlService;
+    /** 予約閲覧の view ゲート（会員 or 公開）。機能C グリッドと同一述語を共有する（§4.C）。 */
+    private final ReservationViewAccessGuard viewAccessGuard;
     private final ReservationPolicyService reservationPolicyService;
     /** 機能B: 予約作成時に対象枠と overlap する予約不可枠を検出するためのブロック時間参照。 */
     private final ReservationBlockedTimeRepository blockedTimeRepository;
@@ -128,15 +129,10 @@ public class ReservationService {
      */
     @Transactional
     public ReservationResponse createReservation(Long teamId, Long userId, CreateReservationRequest request) {
-        // 予約認可ゲート（Service 一本化）。
-        // teamId は数値（TeamReservationController の @PathVariable Long teamId）であり、
-        // AccessControlService.isMember は Long scopeId を期待するため slug 解決は不要。
+        // 予約認可ゲート（Service 一本化）。機能C グリッドと同一述語（会員 or 公開）を共有する（§4.C）。
         // 既定（allow_public_reservation=false）→ チーム所属（SUPPORTER 以上＝memberships 存在）必須。
         // 裏設定 ON → 所属チェックをスキップ（匿名は呼出元の認証層で 401 担保）。
-        if (!settingService.isAllowPublic(teamId)
-                && !accessControlService.isMember(userId, teamId, "TEAM")) {
-            throw new BusinessException(ReservationErrorCode.RESERVATION_PERMISSION_DENIED);
-        }
+        viewAccessGuard.assertCanView(teamId, userId);
 
         ReservationSlotEntity slot = slotService.getSlotEntity(request.getReservationSlotId());
 

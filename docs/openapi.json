@@ -947,6 +947,10 @@
       "description": "F05.3 押印実行・取消・検証"
     },
     {
+      "name": "予約通知メール宛先",
+      "description": "F03.4 機能D 予約通知メール宛先（フリーミアム件数ゲート）"
+    },
+    {
       "name": "行事カテゴリ共通管理",
       "description": "F03.10 スコープ共通の行事カテゴリ更新・削除"
     },
@@ -37029,6 +37033,78 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/reservation-notification-recipients": {
+      "get": {
+        "tags": [
+          "予約通知メール宛先"
+        ],
+        "summary": "予約通知メール宛先 一覧（フリーミアム状態付き）",
+        "operationId": "listRecipients",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseNotificationRecipientListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "予約通知メール宛先"
+        ],
+        "summary": "予約通知メール宛先 追加",
+        "operationId": "addRecipient",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateNotificationRecipientRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "作成成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseNotificationRecipientResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/reservation-lines": {
       "get": {
         "tags": [
@@ -72394,7 +72470,7 @@
           "回覧受信者"
         ],
         "summary": "受信者一覧",
-        "operationId": "listRecipients",
+        "operationId": "listRecipients_1",
         "parameters": [
           {
             "name": "documentId",
@@ -82659,6 +82735,89 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseBlockedTimeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/reservation-notification-recipients/{recipientId}": {
+      "delete": {
+        "tags": [
+          "予約通知メール宛先"
+        ],
+        "summary": "予約通知メール宛先 削除",
+        "operationId": "deleteRecipient",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "recipientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "削除成功"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "予約通知メール宛先"
+        ],
+        "summary": "予約通知メール宛先 更新",
+        "operationId": "updateRecipient",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "recipientId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateNotificationRecipientRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseNotificationRecipientResponse"
                 }
               }
             }
@@ -103084,6 +103243,59 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/reservation-slots/grid": {
+      "get": {
+        "tags": [
+          "予約スロット管理"
+        ],
+        "summary": "空きグリッド（複数予約対象）",
+        "operationId": "getGrid",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "staffUserIds",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseReservationGridResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/reservation-slots/available": {
       "get": {
         "tags": [
@@ -106928,7 +107140,7 @@
           "チームダイレクトメール"
         ],
         "summary": "受信者一覧",
-        "operationId": "listRecipients_1",
+        "operationId": "listRecipients_2",
         "parameters": [
           {
             "name": "teamId",
@@ -120722,7 +120934,7 @@
           "組織ダイレクトメール"
         ],
         "summary": "組織DM受信者一覧",
-        "operationId": "listRecipients_2",
+        "operationId": "listRecipients_3",
         "parameters": [
           {
             "name": "orgId",
@@ -159586,6 +159798,61 @@
           }
         }
       },
+      "CreateNotificationRecipientRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          }
+        }
+      },
+      "ApiResponseNotificationRecipientResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/NotificationRecipientResponse"
+          }
+        }
+      },
+      "NotificationRecipientResponse": {
+        "type": "object",
+        "description": "予約通知メール宛先",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "作成日時"
+          },
+          "email": {
+            "type": "string",
+            "description": "通知先メールアドレス",
+            "example": "shop@example.com"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "宛先ID（UUIDv7）"
+          },
+          "label": {
+            "type": "string",
+            "description": "宛先ラベル",
+            "example": "店代表"
+          }
+        }
+      },
       "CreateReservationLineRequest": {
         "type": "object",
         "properties": {
@@ -185070,6 +185337,19 @@
           }
         }
       },
+      "UpdateNotificationRecipientRequest": {
+        "type": "object",
+        "properties": {
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          }
+        }
+      },
       "UpdateReservationLineRequest": {
         "type": "object",
         "properties": {
@@ -194485,6 +194765,83 @@
           }
         }
       },
+      "ApiResponseReservationGridResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ReservationGridResponse"
+          }
+        }
+      },
+      "GridCellDto": {
+        "type": "object",
+        "properties": {
+          "endTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "price": {
+            "type": "number"
+          },
+          "slotId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "startTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "BOOKED",
+              "CLOSED",
+              "UNAVAILABLE"
+            ]
+          }
+        }
+      },
+      "GridColumnDto": {
+        "type": "object",
+        "properties": {
+          "cells": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GridCellDto"
+            }
+          },
+          "lineIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "staffName": {
+            "type": "string"
+          },
+          "staffUserId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ReservationGridResponse": {
+        "type": "object",
+        "properties": {
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GridColumnDto"
+            }
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
       "ApiResponseListBlockedTimeResponse": {
         "type": "object",
         "properties": {
@@ -194550,6 +194907,56 @@
           },
           "userName": {
             "type": "string"
+          }
+        }
+      },
+      "ApiResponseNotificationRecipientListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/NotificationRecipientListResponse"
+          }
+        }
+      },
+      "NotificationRecipientListResponse": {
+        "type": "object",
+        "description": "予約通知メール宛先の一覧＋フリーミアム状態",
+        "properties": {
+          "enabledCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "有効宛先数（is_enabled\u003dtrue の件数）",
+            "example": 1
+          },
+          "freeLimit": {
+            "type": "integer",
+            "format": "int32",
+            "description": "無料プランで登録できる上限件数",
+            "example": 3
+          },
+          "hasPaidPlan": {
+            "type": "boolean",
+            "description": "有料プラン加入中か",
+            "example": false
+          },
+          "maxLimit": {
+            "type": "integer",
+            "format": "int32",
+            "description": "有料プランでの最大登録件数",
+            "example": 10
+          },
+          "recipients": {
+            "type": "array",
+            "description": "宛先一覧（有効・無効を含む全登録行）",
+            "items": {
+              "$ref": "#/components/schemas/NotificationRecipientResponse"
+            }
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "登録宛先の総数（有効・無効を問わない・件数ゲートの分母）",
+            "example": 1
           }
         }
       },
