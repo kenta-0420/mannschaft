@@ -69,7 +69,7 @@ const ganttLoading = ref(false)
 const pad = (n: number) => String(n).padStart(2, '0')
 
 const {
-  currentYear, currentMonth, loading, loadEvents, refresh,
+  currentYear, currentMonth, loading, calendarLoading, loadEvents, refresh,
   onPrevMonth: calPrevMonth, onNextMonth: calNextMonth,
   extendedEvents, availableScopes, allScopeOptions, selectedScopes,
   filteredEvents, toggleScope, multiSelectScopes, initStorage,
@@ -389,18 +389,28 @@ onMounted(() => {
       <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <!-- カレンダー（2列） -->
         <div class="lg:col-span-2">
-          <DashboardWidgetCard :scrollable="false">
-            <CalendarGrid
-              :year="currentYear"
-              :month="currentMonth"
-              :events="filteredEvents"
-              @date-click="onDateClick"
-              @event-click="onEventClick"
-              @reflection-click="onReflectionClick"
-              @prev-month="onPrevMonth"
-              @next-month="onNextMonth"
-            />
-          </DashboardWidgetCard>
+          <div class="relative">
+            <DashboardWidgetCard :scrollable="false">
+              <CalendarGrid
+                :year="currentYear"
+                :month="currentMonth"
+                :events="filteredEvents"
+                @date-click="onDateClick"
+                @event-click="onEventClick"
+                @reflection-click="onReflectionClick"
+                @prev-month="onPrevMonth"
+                @next-month="onNextMonth"
+              />
+            </DashboardWidgetCard>
+            <Transition name="fade">
+              <div
+                v-if="calendarLoading"
+                class="absolute inset-0 flex items-center justify-center rounded-xl bg-surface-0/70 dark:bg-surface-900/70 z-10"
+              >
+                <ProgressSpinner style="width: 40px; height: 40px" stroke-width="4" />
+              </div>
+            </Transition>
+          </div>
 
           <!-- 凡例 + フィルタ -->
           <div class="mt-4 flex flex-wrap items-center gap-4 text-xs text-surface-500">
