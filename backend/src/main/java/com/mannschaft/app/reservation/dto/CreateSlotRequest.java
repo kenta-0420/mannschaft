@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation.dto;
 
 import com.mannschaft.app.reservation.ApprovalMode;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -46,4 +47,13 @@ public class CreateSlotRequest {
      * 不正な enum 値は Jackson のデシリアライズ段階で 400 となる。</p>
      */
     private final ApprovalMode approvalMode;
+
+    /**
+     * 予約枠の定員（任意）。同時にこの枠を予約できる人数の上限。
+     *
+     * <p>{@code null} / 未指定 = 既定 1（＝美容院の 1:1 指名など、同一枠 1 名のみ）。
+     * {@code booked_count} が {@code capacity} に達すると満席（受付終了）になる。1 以上を指定すること。</p>
+     */
+    @Min(1)
+    private final Integer capacity;
 }

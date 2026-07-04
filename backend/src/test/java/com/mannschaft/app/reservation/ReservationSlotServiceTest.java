@@ -106,7 +106,7 @@ class ReservationSlotServiceTest {
                 .teamId(TEAM_ID)
                 .staffUserId(STAFF_USER_ID)
                 .basic(new ReservationSlotResponse.SlotBasicDto("テストスロット", SLOT_DATE, START_TIME, END_TIME))
-                .status(new ReservationSlotResponse.SlotStatusDto("AVAILABLE", 0, false, null, "テストメモ"))
+                .status(new ReservationSlotResponse.SlotStatusDto("AVAILABLE", 0, 1, false, null, "テストメモ"))
                 .recurrence(new ReservationSlotResponse.RecurrenceDto(null, null))
                 .pricing(new ReservationSlotResponse.SlotPricingDto(new BigDecimal("1000")))
                 .policy(new ReservationSlotResponse.SlotPolicyDto(null))
@@ -323,7 +323,7 @@ class ReservationSlotServiceTest {
             // Given
             CreateSlotRequest request = new CreateSlotRequest(
                     STAFF_USER_ID, "新スロット", SLOT_DATE, START_TIME, END_TIME,
-                    null, new BigDecimal("2000"), "メモ", null);
+                    null, new BigDecimal("2000"), "メモ", null, null);
             ReservationSlotEntity savedEntity = createSlotEntity();
             ReservationSlotResponse response = createSlotResponse();
 
@@ -344,7 +344,7 @@ class ReservationSlotServiceTest {
             // Given
             CreateSlotRequest request = new CreateSlotRequest(
                     STAFF_USER_ID, "手動承認枠", SLOT_DATE, START_TIME, END_TIME,
-                    null, null, null, ApprovalMode.MANUAL);
+                    null, null, null, ApprovalMode.MANUAL, null);
             given(slotRepository.save(any(ReservationSlotEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
             given(reservationMapper.toSlotResponse(any(ReservationSlotEntity.class)))
@@ -365,7 +365,7 @@ class ReservationSlotServiceTest {
             // Given
             CreateSlotRequest request = new CreateSlotRequest(
                     STAFF_USER_ID, "継承枠", SLOT_DATE, START_TIME, END_TIME,
-                    null, null, null, null);
+                    null, null, null, null, null);
             given(slotRepository.save(any(ReservationSlotEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
             given(reservationMapper.toSlotResponse(any(ReservationSlotEntity.class)))
@@ -387,7 +387,7 @@ class ReservationSlotServiceTest {
             CreateSlotRequest request = new CreateSlotRequest(
                     STAFF_USER_ID, "不正スロット", SLOT_DATE,
                     LocalTime.of(14, 0), LocalTime.of(10, 0),
-                    null, null, null, null);
+                    null, null, null, null, null);
 
             // When / Then
             assertThatThrownBy(() -> service.createSlot(TEAM_ID, request, CREATED_BY))
@@ -403,7 +403,7 @@ class ReservationSlotServiceTest {
             CreateSlotRequest request = new CreateSlotRequest(
                     STAFF_USER_ID, "不正スロット", SLOT_DATE,
                     LocalTime.of(10, 0), LocalTime.of(10, 0),
-                    null, null, null, null);
+                    null, null, null, null, null);
 
             // When / Then
             assertThatThrownBy(() -> service.createSlot(TEAM_ID, request, CREATED_BY))
@@ -420,7 +420,7 @@ class ReservationSlotServiceTest {
             CreateSlotRequest request = new CreateSlotRequest(
                     STAFF_USER_ID, "不正グリッド", SLOT_DATE,
                     LocalTime.of(10, 15), LocalTime.of(11, 0),
-                    null, null, null, null);
+                    null, null, null, null, null);
 
             // When / Then
             assertThatThrownBy(() -> service.createSlot(TEAM_ID, request, CREATED_BY))
@@ -436,7 +436,7 @@ class ReservationSlotServiceTest {
             CreateSlotRequest request = new CreateSlotRequest(
                     STAFF_USER_ID, "不正グリッド", SLOT_DATE,
                     LocalTime.of(10, 0), LocalTime.of(10, 45),
-                    null, null, null, null);
+                    null, null, null, null, null);
 
             // When / Then
             assertThatThrownBy(() -> service.createSlot(TEAM_ID, request, CREATED_BY))
@@ -454,7 +454,7 @@ class ReservationSlotServiceTest {
             CreateSlotRequest request = new CreateSlotRequest(
                     STAFF_USER_ID, "最小枠30分", SLOT_DATE,
                     LocalTime.of(10, 0), LocalTime.of(10, 30),
-                    null, null, null, null);
+                    null, null, null, null, null);
             given(slotRepository.save(any(ReservationSlotEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
             given(reservationMapper.toSlotResponse(any(ReservationSlotEntity.class)))
@@ -473,7 +473,7 @@ class ReservationSlotServiceTest {
             // Given
             CreateSlotRequest request = new CreateSlotRequest(
                     STAFF_USER_ID, "過去枠", LocalDate.of(2026, 2, 28),
-                    START_TIME, END_TIME, null, null, null, null);
+                    START_TIME, END_TIME, null, null, null, null, null);
 
             // When / Then
             assertThatThrownBy(() -> service.createSlot(TEAM_ID, request, CREATED_BY))
@@ -488,7 +488,7 @@ class ReservationSlotServiceTest {
             // Given
             CreateSlotRequest request = new CreateSlotRequest(
                     STAFF_USER_ID, "当日枠", LocalDate.of(2026, 3, 1),
-                    START_TIME, END_TIME, null, null, null, null);
+                    START_TIME, END_TIME, null, null, null, null, null);
             given(slotRepository.save(any(ReservationSlotEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
             given(reservationMapper.toSlotResponse(any(ReservationSlotEntity.class)))
@@ -513,7 +513,7 @@ class ReservationSlotServiceTest {
         void スロット更新_正常() {
             // Given
             UpdateSlotRequest request = new UpdateSlotRequest(
-                    null, "更新後タイトル", null, null, null, null, null, null, null);
+                    null, "更新後タイトル", null, null, null, null, null, null, null, null);
             ReservationSlotEntity entity = createSlotEntity();
             ReservationSlotResponse response = createSlotResponse();
 
@@ -534,7 +534,7 @@ class ReservationSlotServiceTest {
         void スロット更新_時間帯変更() {
             // Given
             UpdateSlotRequest request = new UpdateSlotRequest(
-                    null, null, null, LocalTime.of(9, 0), LocalTime.of(12, 0), null, null, null, null);
+                    null, null, null, LocalTime.of(9, 0), LocalTime.of(12, 0), null, null, null, null, null);
             ReservationSlotEntity entity = createSlotEntity();
             ReservationSlotResponse response = createSlotResponse();
 
@@ -554,7 +554,7 @@ class ReservationSlotServiceTest {
         void スロット更新_時刻逆転() {
             // Given
             UpdateSlotRequest request = new UpdateSlotRequest(
-                    null, null, null, LocalTime.of(14, 0), LocalTime.of(10, 0), null, null, null, null);
+                    null, null, null, LocalTime.of(14, 0), LocalTime.of(10, 0), null, null, null, null, null);
             ReservationSlotEntity entity = createSlotEntity();
             given(slotRepository.findByIdAndTeamId(SLOT_ID, TEAM_ID)).willReturn(Optional.of(entity));
 
@@ -570,7 +570,7 @@ class ReservationSlotServiceTest {
         void スロット更新_承認モード上書き設定() {
             // Given
             UpdateSlotRequest request = new UpdateSlotRequest(
-                    null, null, null, null, null, null, null, ApprovalMode.MANUAL, null);
+                    null, null, null, null, null, null, null, ApprovalMode.MANUAL, null, null);
             ReservationSlotEntity entity = createSlotEntity();
             given(slotRepository.findByIdAndTeamId(SLOT_ID, TEAM_ID)).willReturn(Optional.of(entity));
             given(slotRepository.save(any(ReservationSlotEntity.class)))
@@ -592,7 +592,7 @@ class ReservationSlotServiceTest {
         void スロット更新_承認モード上書き解除() {
             // Given: 既に MANUAL で上書きされている枠
             UpdateSlotRequest request = new UpdateSlotRequest(
-                    null, null, null, null, null, null, null, null, true);
+                    null, null, null, null, null, null, null, null, true, null);
             ReservationSlotEntity entity = ReservationSlotEntity.builder()
                     .teamId(TEAM_ID)
                     .slotDate(SLOT_DATE)
@@ -620,7 +620,7 @@ class ReservationSlotServiceTest {
         void スロット更新_承認モード据え置き() {
             // Given: MANUAL で上書き済みの枠を、approvalMode 非指定で更新
             UpdateSlotRequest request = new UpdateSlotRequest(
-                    null, "タイトルだけ変更", null, null, null, null, null, null, null);
+                    null, "タイトルだけ変更", null, null, null, null, null, null, null, null);
             ReservationSlotEntity entity = ReservationSlotEntity.builder()
                     .teamId(TEAM_ID)
                     .slotDate(SLOT_DATE)
@@ -849,21 +849,33 @@ class ReservationSlotServiceTest {
     // ========================================
 
     @Nested
-    @DisplayName("incrementAndCheckFull")
+    @DisplayName("incrementAndCheckFull（オーバーブッキング防止・条件付きアトミック UPDATE）")
     class IncrementAndCheckFull {
 
         @Test
-        @DisplayName("正常系: 予約数がインクリメントされる")
-        void インクリメント_正常() {
-            // Given
+        @DisplayName("正常系: 確保成功（UPDATE 1 行）なら例外を投げない")
+        void インクリメント_確保成功() {
+            // Given: 条件付きアトミック UPDATE が 1 行更新（＝空き枠を確保できた）
             ReservationSlotEntity entity = createSlotEntity();
+            given(slotRepository.incrementBookedCountIfAvailable(any())).willReturn(1);
 
-            // When
+            // When / Then: 例外なく完了し、アトミック UPDATE が呼ばれる
             service.incrementAndCheckFull(entity);
+            verify(slotRepository).incrementBookedCountIfAvailable(any());
+        }
 
-            // Then
-            assertThat(entity.getBookedCount()).isEqualTo(1);
-            verify(slotRepository).save(entity);
+        @Test
+        @DisplayName("異常系: 満席で 0 行更新なら SLOT_FULL（オーバーブッキング拒否）")
+        void インクリメント_満席拒否() {
+            // Given: 条件付きアトミック UPDATE が 0 行更新（＝満席 or CLOSED で確保できない）
+            ReservationSlotEntity entity = createSlotEntity();
+            given(slotRepository.incrementBookedCountIfAvailable(any())).willReturn(0);
+
+            // When / Then: SLOT_FULL を投げる（呼び出し元の予約 INSERT ごとロールバックさせる）
+            assertThatThrownBy(() -> service.incrementAndCheckFull(entity))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ReservationErrorCode.SLOT_FULL);
         }
     }
 
@@ -872,39 +884,20 @@ class ReservationSlotServiceTest {
     // ========================================
 
     @Nested
-    @DisplayName("decrementAndReopen")
+    @DisplayName("decrementAndReopen（アトミック UPDATE）")
     class DecrementAndReopen {
 
         @Test
-        @DisplayName("正常系: AVAILABLEスロットの予約数がデクリメントされる")
-        void デクリメント_AVAILABLE() {
+        @DisplayName("正常系: アトミックなデクリメント＋AVAILABLE 復帰 UPDATE が呼ばれる")
+        void デクリメント() {
             // Given
             ReservationSlotEntity entity = createSlotEntity();
-            entity.incrementBookedCount();
 
             // When
             service.decrementAndReopen(entity);
 
-            // Then
-            assertThat(entity.getBookedCount()).isEqualTo(0);
-            assertThat(entity.getSlotStatus()).isEqualTo(SlotStatus.AVAILABLE);
-            verify(slotRepository).save(entity);
-        }
-
-        @Test
-        @DisplayName("正常系: FULLスロットがデクリメント後にAVAILABLEに戻る")
-        void デクリメント_FULL_から_AVAILABLE() {
-            // Given
-            ReservationSlotEntity entity = createSlotEntity();
-            entity.incrementBookedCount();
-            entity.markFull();
-
-            // When
-            service.decrementAndReopen(entity);
-
-            // Then
-            assertThat(entity.getSlotStatus()).isEqualTo(SlotStatus.AVAILABLE);
-            verify(slotRepository).save(entity);
+            // Then: 満席解消＋空き復帰を 1 SQL で行うアトミック UPDATE が呼ばれる
+            verify(slotRepository).decrementBookedCountAndReopen(any());
         }
     }
 }

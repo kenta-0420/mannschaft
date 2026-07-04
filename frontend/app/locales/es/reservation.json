@@ -308,6 +308,8 @@
         "start_time": "Hora de inicio",
         "end_time": "Hora de fin",
         "title": "Título（opcional）",
+        "capacity": "Capacidad",
+        "capacity_hint": "Número máximo de reservas para este horario (predeterminado 1 = reserva 1:1)",
         "note": "Nota（opcional）"
       },
       "placeholder": {
@@ -342,6 +344,7 @@
         "closed": "Cerrado"
       },
       "booked_count": "{count} reservas",
+      "booked_capacity": "{count}/{capacity} reservas",
       "empty": {
         "no_slots": "No hay franjas para este día"
       },

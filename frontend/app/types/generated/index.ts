@@ -52318,6 +52318,8 @@ export interface components {
         CreateSlotRequest: {
             /** @enum {string} */
             approvalMode?: "AUTO" | "MANUAL";
+            /** Format: int32 */
+            capacity?: number;
             /** @example 14:30:00 */
             endTime: string;
             note?: string;
@@ -52379,6 +52381,8 @@ export interface components {
         SlotStatusDto: {
             /** Format: int32 */
             bookedCount?: number;
+            /** Format: int32 */
+            capacity?: number;
             closedReason?: string;
             isException?: boolean;
             note?: string;
@@ -61478,6 +61482,8 @@ export interface components {
         UpdateSlotRequest: {
             /** @enum {string} */
             approvalMode?: "AUTO" | "MANUAL";
+            /** Format: int32 */
+            capacity?: number;
             clearApprovalMode?: boolean;
             /** @example 14:30:00 */
             endTime?: string;

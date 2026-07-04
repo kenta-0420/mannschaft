@@ -308,6 +308,8 @@
         "start_time": "시작 시간",
         "end_time": "종료 시간",
         "title": "제목（선택 사항）",
+        "capacity": "정원",
+        "capacity_hint": "이 시간대에 동시에 예약할 수 있는 인원 상한 (기본 1＝1:1 지명)",
         "note": "메모（선택 사항）"
       },
       "placeholder": {
@@ -342,6 +344,7 @@
         "closed": "닫힘"
       },
       "booked_count": "예약 {count}건",
+      "booked_capacity": "예약 {count}/{capacity}건",
       "empty": {
         "no_slots": "이 날의 슬롯이 없습니다"
       },

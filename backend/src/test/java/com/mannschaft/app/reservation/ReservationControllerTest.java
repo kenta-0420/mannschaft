@@ -91,7 +91,7 @@ class ReservationControllerTest {
                 .teamId(TEAM_ID)
                 .staffUserId(USER_ID)
                 .basic(new ReservationSlotResponse.SlotBasicDto("相談枠", LocalDate.now(), LocalTime.of(10, 0), LocalTime.of(11, 0)))
-                .status(new ReservationSlotResponse.SlotStatusDto("OPEN", 0, false, null, null))
+                .status(new ReservationSlotResponse.SlotStatusDto("OPEN", 0, 1, false, null, null))
                 .recurrence(new ReservationSlotResponse.RecurrenceDto(null, null))
                 .pricing(new ReservationSlotResponse.SlotPricingDto(BigDecimal.ZERO))
                 .audit(new ReservationSlotResponse.SlotAuditDto(USER_ID, LocalDateTime.now(), LocalDateTime.now()))
@@ -413,7 +413,7 @@ class ReservationControllerTest {
                 CreateSlotRequest request = new CreateSlotRequest(
                         USER_ID, "相談枠", LocalDate.now(),
                         LocalTime.of(10, 0), LocalTime.of(11, 0),
-                        null, BigDecimal.ZERO, null, null
+                        null, BigDecimal.ZERO, null, null, null
                 );
                 given(slotService.createSlot(TEAM_ID, request, USER_ID))
                         .willReturn(createSlotResponse());
@@ -428,7 +428,7 @@ class ReservationControllerTest {
         @Test
         @DisplayName("スロット更新_正常_200返却")
         void スロット更新_正常_200返却() {
-            UpdateSlotRequest request = new UpdateSlotRequest(null, "更新枠", null, null, null, null, null, null, null);
+            UpdateSlotRequest request = new UpdateSlotRequest(null, "更新枠", null, null, null, null, null, null, null, null);
             given(slotService.updateSlot(TEAM_ID, SLOT_ID, request))
                     .willReturn(createSlotResponse());
 

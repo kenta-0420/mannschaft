@@ -308,6 +308,8 @@
         "start_time": "开始时间",
         "end_time": "结束时间",
         "title": "标题（可选）",
+        "capacity": "容量",
+        "capacity_hint": "该时段可同时预约的人数上限（默认 1＝一对一指定）",
         "note": "备注（可选）"
       },
       "placeholder": {
@@ -342,6 +344,7 @@
         "closed": "已关闭"
       },
       "booked_count": "已预约 {count} 件",
+      "booked_capacity": "已预约 {count}/{capacity} 件",
       "empty": {
         "no_slots": "当天没有时段"
       },

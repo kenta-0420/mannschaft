@@ -52,6 +52,16 @@ public class ReservationSlotEntity extends BaseEntity {
     @Builder.Default
     private Integer bookedCount = 0;
 
+    /**
+     * 予約枠の定員。{@code booked_count} がこの値に達すると満席（{@link SlotStatus#FULL}）になる。
+     *
+     * <p>既定は 1（＝美容院の 1:1 指名など、同一枠 1 名のみ受付）。
+     * {@code @Builder.Default} で NULL 挿入を防ぐ（toBuilder 更新破壊キャンペーン §注意）。</p>
+     */
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer capacity = 1;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
@@ -91,19 +101,63 @@ public class ReservationSlotEntity extends BaseEntity {
     private LocalDateTime deletedAt;
 
     /**
-     * 予約数をインクリメントする。
+     * 予約数をインクリメントし、定員に達したら満席（FULL）にする。
+     *
+     * <p>ドメイン整合のための単体（非並行）ロジック。実際の予約作成時の並行制御は
+     * {@code ReservationSlotRepository.incrementBookedCountIfAvailable}（条件付きアトミック
+     * UPDATE）が担い、複数ユーザーの同時予約でも {@code capacity} を超えないことを保証する。
+     * 両者は「{@code bookedCount + 1 >= capacity} で FULL」という同一ルールを表す。</p>
      */
     public void incrementBookedCount() {
         this.bookedCount++;
+        if (this.capacity != null && this.bookedCount >= this.capacity) {
+            this.slotStatus = SlotStatus.FULL;
+        }
     }
 
     /**
-     * 予約数をデクリメントする。
+     * 予約数をデクリメントし、満席が解消されたら利用可能（AVAILABLE）へ戻す。
+     *
+     * <p>{@link SlotStatus#CLOSED}（スタッフ操作による受付終了）は据え置く。FULL のみ復帰させる。</p>
      */
     public void decrementBookedCount() {
         if (this.bookedCount > 0) {
             this.bookedCount--;
         }
+        if (this.slotStatus == SlotStatus.FULL
+                && this.capacity != null && this.bookedCount < this.capacity) {
+            this.slotStatus = SlotStatus.AVAILABLE;
+        }
+    }
+
+    /**
+     * 定員を変更する（部分更新）。変更後の定員と予約数の関係で満席/空きを再評価する。
+     *
+     * <p>定員を減らして {@code bookedCount >= capacity} になれば FULL 化し、
+     * 逆に増やして {@code bookedCount < capacity} になれば（FULL だった枠を）AVAILABLE へ戻す。
+     * CLOSED は据え置く。</p>
+     *
+     * @param capacity 新しい定員（1 以上）
+     */
+    public void changeCapacity(Integer capacity) {
+        this.capacity = capacity;
+        if (capacity == null) {
+            return;
+        }
+        if (this.slotStatus == SlotStatus.AVAILABLE && this.bookedCount >= capacity) {
+            this.slotStatus = SlotStatus.FULL;
+        } else if (this.slotStatus == SlotStatus.FULL && this.bookedCount < capacity) {
+            this.slotStatus = SlotStatus.AVAILABLE;
+        }
+    }
+
+    /**
+     * 満席かどうかを判定する（予約数が定員に達している）。
+     *
+     * @return {@code bookedCount >= capacity} の場合 true
+     */
+    public boolean isFull() {
+        return this.capacity != null && this.bookedCount >= this.capacity;
     }
 
     /**

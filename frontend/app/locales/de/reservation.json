@@ -308,6 +308,8 @@
         "start_time": "Startzeit",
         "end_time": "Endzeit",
         "title": "Titel（optional）",
+        "capacity": "Kapazität",
+        "capacity_hint": "Maximale Anzahl der Reservierungen für diesen Slot (Standard 1 = 1:1-Buchung)",
         "note": "Notiz（optional）"
       },
       "placeholder": {
@@ -342,6 +344,7 @@
         "closed": "Geschlossen"
       },
       "booked_count": "{count} gebucht",
+      "booked_capacity": "{count}/{capacity} gebucht",
       "empty": {
         "no_slots": "Keine Slots für diesen Tag"
       },

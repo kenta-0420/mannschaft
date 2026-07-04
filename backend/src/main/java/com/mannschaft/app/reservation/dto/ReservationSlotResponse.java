@@ -27,7 +27,7 @@ public class ReservationSlotResponse {
 
     public record SlotBasicDto(String title, LocalDate slotDate, LocalTime startTime, LocalTime endTime) {}
 
-    public record SlotStatusDto(String slotStatus, Integer bookedCount, Boolean isException, String closedReason, String note) {}
+    public record SlotStatusDto(String slotStatus, Integer bookedCount, Integer capacity, Boolean isException, String closedReason, String note) {}
 
     public record RecurrenceDto(String recurrenceRule, Long parentSlotId) {}
 

@@ -130,7 +130,10 @@ onMounted(async () => {
           </p>
           <div class="mt-0.5 flex flex-wrap gap-2 text-xs text-surface-500">
             <span>{{ approvalModeLabel(slot) }}</span>
-            <span v-if="slot.status?.bookedCount != null">
+            <span v-if="slot.status?.bookedCount != null && slot.status?.capacity != null">
+              {{ t('reservation.slot_manager.booked_capacity', { count: slot.status.bookedCount, capacity: slot.status.capacity }) }}
+            </span>
+            <span v-else-if="slot.status?.bookedCount != null">
               {{ t('reservation.slot_manager.booked_count', { count: slot.status.bookedCount }) }}
             </span>
           </div>

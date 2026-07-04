@@ -30,7 +30,7 @@ public interface ReservationMapper {
     List<ReservationLineResponse> toLineResponseList(List<ReservationLineEntity> entities);
 
     @Mapping(target = "basic", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotBasicDto(entity.getTitle(), entity.getSlotDate(), entity.getStartTime(), entity.getEndTime()))")
-    @Mapping(target = "status", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotStatusDto(entity.getSlotStatus() != null ? entity.getSlotStatus().name() : null, entity.getBookedCount(), entity.getIsException(), entity.getClosedReason(), entity.getNote()))")
+    @Mapping(target = "status", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotStatusDto(entity.getSlotStatus() != null ? entity.getSlotStatus().name() : null, entity.getBookedCount(), entity.getCapacity(), entity.getIsException(), entity.getClosedReason(), entity.getNote()))")
     @Mapping(target = "recurrence", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.RecurrenceDto(entity.getRecurrenceRule(), entity.getParentSlotId()))")
     @Mapping(target = "pricing", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotPricingDto(entity.getPrice()))")
     @Mapping(target = "policy", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotPolicyDto(entity.getApprovalMode() != null ? entity.getApprovalMode().name() : null))")
