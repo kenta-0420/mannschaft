@@ -97,7 +97,46 @@
       "next": "Next",
       "save_failed": "Failed to register the card",
       "validation_required": "Please enter a card name",
-      "validation_barcode_required": "Please enter a barcode value or select 'no barcode'"
+      "validation_barcode_required": "Please enter a barcode value or select 'no barcode'",
+      "format_labels": {
+        "CODE128": "CODE128 (membership cards in general — use this if unsure)",
+        "CODE39": "CODE39 (alphanumeric membership cards)",
+        "EAN13": "EAN13 (13-digit product barcode)",
+        "EAN8": "EAN8 (8-digit product barcode)",
+        "JAN13": "JAN13 (Japanese 13-digit product barcode)",
+        "QR": "QR (square dot pattern)",
+        "PDF417": "PDF417 (driver's license, etc.)",
+        "ITF": "ITF (logistics / some membership cards)"
+      },
+      "help": {
+        "title": "How to Add a Card",
+        "description": "Register your store loyalty or membership card barcode in the app so you can present it at the register.",
+        "easiest": {
+          "title": "Easiest Way to Add a Card",
+          "body": "Selecting a preset fills in the card name and format automatically. Scanning with camera or image auto-detects the format too.",
+          "steps": {
+            "step1": "If your store appears in the presets, tap it (card name and format are filled in automatically)",
+            "step2": "Otherwise, type the store name in the 'Card name' field",
+            "step3": "Scan the barcode on your card using camera or an image",
+            "step4": "Check the preview and tap 'Next' → 'Save'"
+          }
+        },
+        "format_guide": {
+          "title": "Not Sure About the Barcode Format?",
+          "body": "You only need to select the format when entering manually. Camera and image scanning detect it automatically.",
+          "steps": {
+            "step1": "When in doubt, choose 'CODE128' (works for most membership cards)",
+            "step2": "If the number has 13 digits, choose 'EAN13'",
+            "step3": "If the number has 8 digits, choose 'EAN8'",
+            "step4": "If it looks like a square dot pattern, choose 'QR'"
+          }
+        },
+        "verify": {
+          "title": "Always Test After Saving",
+          "body": "After saving, check that the barcode shown in the detail screen can be scanned at the register. If it cannot be read, delete the card and re-register with a different format.",
+          "hint": "The barcode format cannot be changed after saving. Delete and re-register to change it."
+        }
+      }
     },
     "detail": {
       "edit": "Edit",
@@ -163,7 +202,8 @@
       "error_no_camera": "No camera available",
       "error_denied": "Camera access was denied",
       "error_decode_failed": "Could not decode any barcode",
-      "retry": "Retry"
+      "retry": "Retry",
+      "manual_recommend_scan": "Camera or image scanning fills in the format automatically. Manual entry is a last resort."
     },
     "barcode": {
       "no_barcode_label": "No barcode",

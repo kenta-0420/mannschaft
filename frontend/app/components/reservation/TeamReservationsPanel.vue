@@ -7,6 +7,12 @@ const { t } = useI18n()
 const { isAdmin, isAdminOrDeputy, isMember, roleName, loadPermissions } = useRoleAccess('team', computed(() => props.teamId))
 
 const activeTab = ref(0)
+/** 予約タブの表示切替: リスト（既存 SlotPicker）／グリッド（機能C SlotGridPicker）。 */
+const bookDisplayMode = ref<'list' | 'grid'>('list')
+const bookDisplayOptions = computed(() => [
+  { label: t('reservation.grid.display_toggle.list'), value: 'list' as const },
+  { label: t('reservation.grid.display_toggle.grid'), value: 'grid' as const },
+])
 const showBookDialog = ref(false)
 const selectedSlot = ref({ slotId: 0, lineId: 0, lineName: '', date: '', startTime: '', endTime: '' })
 
@@ -102,7 +108,25 @@ onMounted(async () => {
             <Skeleton height="4rem" width="100%" />
           </div>
           <template v-else-if="canBook">
-            <SlotPicker :team-id="props.teamId" @slot-selected="onSlotSelected" />
+            <div class="mb-3 flex justify-end">
+              <SelectButton
+                v-model="bookDisplayMode"
+                :options="bookDisplayOptions"
+                option-label="label"
+                option-value="value"
+                :allow-empty="false"
+              />
+            </div>
+            <SlotGridPicker
+              v-if="bookDisplayMode === 'grid'"
+              :team-id="props.teamId"
+              @slot-selected="onSlotSelected"
+            />
+            <SlotPicker
+              v-else
+              :team-id="props.teamId"
+              @slot-selected="onSlotSelected"
+            />
           </template>
           <div v-else class="rounded-lg border border-surface-200 p-6 text-center dark:border-surface-700">
             <i class="pi pi-lock mb-3 block text-3xl text-surface-400" />

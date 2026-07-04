@@ -8,6 +8,8 @@ type BlockedTimeResponse = components['schemas']['BlockedTimeResponse']
 type BlockedTimeImpactResponse = components['schemas']['BlockedTimeImpactResponse']
 type ReservationLineResponse = components['schemas']['ReservationLineResponse']
 type BusinessHourResponse = components['schemas']['BusinessHourResponse']
+// 機能C（複数予約対象の空きグリッド）は BE #2112 で grid API を追加済み。
+type ReservationGridResponse = components['schemas']['ReservationGridResponse']
 // 機能D（予約通知メール宛先）は BE #2110 でフリーミアム件数ゲート付きの CRUD を追加済み。
 type NotificationRecipientListResponse = components['schemas']['NotificationRecipientListResponse']
 type NotificationRecipientResponse = components['schemas']['NotificationRecipientResponse']
@@ -96,6 +98,20 @@ export function useReservationApi() {
     query.set('from', params.from)
     query.set('to', params.to)
     return api<{ data: unknown[] }>(`${base(teamId)}/reservation-slots/available?${query}`)
+  }
+
+  // 機能C: 複数予約対象の空きグリッド（列=予約対象／セル=時間帯 state）。
+  // BE: GET /reservation-slots/grid は date（単日・必須）＋ staffUserIds（CSV・任意）。
+  // 週表示は FE がこの単日 API を7日分呼び出して構成する（レスポンスDTOは2次元を保つ）。
+  async function getSlotGrid(teamId: string, params: { date: string; staffUserIds?: number[] }) {
+    const query = new URLSearchParams()
+    query.set('date', params.date)
+    if (params.staffUserIds && params.staffUserIds.length > 0) {
+      query.set('staffUserIds', params.staffUserIds.join(','))
+    }
+    return api<{ data: ReservationGridResponse }>(
+      `${base(teamId)}/reservation-slots/grid?${query}`,
+    )
   }
 
   // === Reservations ===
@@ -334,6 +350,7 @@ export function useReservationApi() {
     deleteLine,
     getSlots,
     getSlot,
+    getSlotGrid,
     createSlot,
     updateSlot,
     deleteSlot,

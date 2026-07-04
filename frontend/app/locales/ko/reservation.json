@@ -450,6 +450,39 @@
         "duplicate": "이 메일 주소는 이미 등록되어 있습니다.",
         "invalid_email": "메일 주소 형식이 올바르지 않습니다."
       }
+    },
+    "grid": {
+      "title": "예약 가능 그리드",
+      "help": "세로는 시간대, 가로는 예약 대상입니다. 초록색 \"빈자리\"를 누르면 예약으로 넘어갑니다. 회색·빗금 칸은 예약할 수 없습니다. \"주\" 탭에서 7일치를 한 번에 볼 수 있습니다.",
+      "display_toggle": {
+        "list": "목록 보기",
+        "grid": "그리드 보기"
+      },
+      "view": {
+        "single": "단일",
+        "week": "주"
+      },
+      "axis": {
+        "label": "축",
+        "time_rows": "시간을 세로로",
+        "time_cols": "시간을 가로로"
+      },
+      "column": {
+        "common": "공통",
+        "time": "시간"
+      },
+      "staff_filter": {
+        "label": "예약 대상으로 필터",
+        "placeholder": "모든 예약 대상"
+      },
+      "state": {
+        "available": "빈자리",
+        "booked": "만석",
+        "closed": "접수 마감",
+        "unavailable": "예약 불가"
+      },
+      "empty": "이 날의 예약 가능한 시간이 없습니다",
+      "load_error": "그리드를 불러오지 못했습니다"
     }
   }
 }
