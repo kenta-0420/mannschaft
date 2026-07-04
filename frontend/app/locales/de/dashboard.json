@@ -208,7 +208,28 @@
       "unconfirmed": "{count} unbestätigt",
       "unanswered": "{count} unbeantwortet",
       "empty": "Keine Aufgaben erforderlich",
-      "loadError": "Fehler beim Laden der Aufgaben"
+      "loadError": "Fehler beim Laden der Aufgaben",
+      "circulationModal": {
+        "title": "Umlauf bestätigen",
+        "circulatedAt": "Umlaufdatum",
+        "deadline": "Frist",
+        "confirm": "Bestätigt",
+        "noSealMessage": "Kein Siegel konfiguriert. Bitte zuerst ein Siegel einrichten.",
+        "goToSealSettings": "Zu den Siegeleinstellungen",
+        "stampSuccess": "Gestempelt",
+        "stampError": "Stempeln fehlgeschlagen"
+      },
+      "surveyModal": {
+        "loadError": "Umfrage konnte nicht geladen werden"
+      },
+      "attendanceModal": {
+        "title": "Anwesenheit bestätigen",
+        "attending": "Anwesend",
+        "absent": "Abwesend",
+        "undecided": "Unentschieden",
+        "success": "Anwesenheit gespeichert",
+        "error": "Anwesenheit konnte nicht gespeichert werden"
+      }
     },
     "emptyState": "Noch keine Beiträge",
     "list": {

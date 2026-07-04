@@ -1,8 +1,36 @@
 {
   "matching": {
-    "pageTitle": "Find Matches",
+    "pageTitle": "Matching",
     "teamPageTitle": "Matching",
+    "listHeading": "Match & Exchange Listings",
     "empty": "No listings found",
+    "filter": {
+      "prefecture": "Prefecture",
+      "allPrefectures": "All prefectures",
+      "city": "City",
+      "allCities": "All cities",
+      "category": "Category",
+      "allCategories": "All categories",
+      "keyword": "Search by keyword",
+      "search": "Search",
+      "clear": "Clear",
+      "mobileToggle": "Filters"
+    },
+    "category": {
+      "ANY": "Any",
+      "ELEMENTARY": "Elementary school",
+      "JUNIOR_HIGH": "Junior high school",
+      "HIGH_SCHOOL": "High school",
+      "UNIVERSITY": "University",
+      "ADULT": "Adult",
+      "SENIOR": "Senior"
+    },
+    "history": {
+      "title": "Recent searches"
+    },
+    "create": {
+      "button": "Create listing"
+    },
     "guide": {
       "title": "Find Matches — How to Use",
       "browse": {

@@ -208,7 +208,28 @@
       "unconfirmed": "{count} sin confirmar",
       "unanswered": "{count} sin responder",
       "empty": "No hay elementos que requieran acción",
-      "loadError": "Error al cargar los elementos de acción"
+      "loadError": "Error al cargar los elementos de acción",
+      "circulationModal": {
+        "title": "Confirmar circulación",
+        "circulatedAt": "Fecha de circulación",
+        "deadline": "Fecha límite",
+        "confirm": "Confirmado",
+        "noSealMessage": "No hay sello configurado. Configure un sello antes de estampar.",
+        "goToSealSettings": "Ir a configuración de sello",
+        "stampSuccess": "Sellado correctamente",
+        "stampError": "Error al sellar"
+      },
+      "surveyModal": {
+        "loadError": "Error al cargar la encuesta"
+      },
+      "attendanceModal": {
+        "title": "Confirmar asistencia",
+        "attending": "Asistiendo",
+        "absent": "Ausente",
+        "undecided": "Indeciso",
+        "success": "Asistencia registrada",
+        "error": "Error al registrar la asistencia"
+      }
     },
     "emptyState": "Sin publicaciones aún",
     "list": {
