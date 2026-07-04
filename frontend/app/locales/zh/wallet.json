@@ -95,6 +95,8 @@
       "cancel": "取消",
       "back": "返回",
       "next": "下一步",
+      "manual_confirm": "确定",
+      "next_disabled_hint": "输入卡片名称和条形码后即可进入「下一步」",
       "save_failed": "卡片注册失败",
       "validation_required": "请输入卡片名称",
       "validation_barcode_required": "请输入条形码值或选择「无条形码」",

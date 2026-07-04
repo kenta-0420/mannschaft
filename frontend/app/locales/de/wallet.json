@@ -95,6 +95,8 @@
       "cancel": "Abbrechen",
       "back": "Zurück",
       "next": "Weiter",
+      "manual_confirm": "Bestätigen",
+      "next_disabled_hint": "Geben Sie Kartenname und Barcode ein, um zu «Weiter» fortzufahren",
       "save_failed": "Kartenregistrierung fehlgeschlagen",
       "validation_required": "Bitte geben Sie den Kartennamen ein",
       "validation_barcode_required": "Bitte geben Sie den Barcode-Wert ein oder wählen Sie 'Kein Barcode'",

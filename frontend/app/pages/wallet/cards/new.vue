@@ -226,6 +226,11 @@ function cancel() {
         {{ validationError }}
       </p>
 
+      <!-- 次へボタンが押せない理由の案内（まだ進めない状態のときのみ表示） -->
+      <p v-if="!canProceedToPreview" class="card-new__hint card-new__next-hint">
+        {{ t('wallet.add.next_disabled_hint') }}
+      </p>
+
       <!-- フッタ -->
       <div class="card-new__footer">
         <Button :label="t('wallet.add.cancel')" severity="secondary" class="flex-1" @click="cancel" />
@@ -366,6 +371,9 @@ function cancel() {
   color: #dc2626;
   font-size: 0.875rem;
   margin: 0;
+  text-align: center;
+}
+.card-new__next-hint {
   text-align: center;
 }
 .card-new__footer {
