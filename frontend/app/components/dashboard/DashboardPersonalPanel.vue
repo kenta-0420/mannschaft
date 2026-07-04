@@ -276,8 +276,8 @@ function onDragEnd() {
               v-else-if="w.key === 'event-dismissal-reminder'"
               @has-content="dismissalHasContent = $event"
             />
-            <!-- プラットフォームお知らせ -->
-            <WidgetPlatformAnnouncements v-else-if="w.key === 'notices'" />
+            <!-- プラットフォームお知らせ（WidgetNotices に統合済み） -->
+            <WidgetNotices v-else-if="w.key === 'notices'" />
             <!-- 今後の予定 -->
             <WidgetUpcomingEvents v-else-if="w.key === 'upcoming-events'" />
             <!-- 個人TODO -->

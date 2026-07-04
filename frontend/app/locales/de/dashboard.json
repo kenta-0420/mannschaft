@@ -179,7 +179,9 @@
     },
     "notices": {
       "actionRequiredTab": "Handlungsbedarf",
-      "actionRequiredEmpty": "Keine Elemente erfordern Ihre Aufmerksamkeit"
+      "actionRequiredEmpty": "Keine Elemente erfordern Ihre Aufmerksamkeit",
+      "widget_notices_tab_platform": "Ankündigungen",
+      "widget_notices_platform_empty": "Keine Ankündigungen"
     },
     "myCorkboard": {
       "widgetTitle": "Meine Pinnwand",

@@ -179,7 +179,9 @@
     },
     "notices": {
       "actionRequiredTab": "처리 필요",
-      "actionRequiredEmpty": "처리가 필요한 항목이 없습니다"
+      "actionRequiredEmpty": "처리가 필요한 항목이 없습니다",
+      "widget_notices_tab_platform": "공지사항",
+      "widget_notices_platform_empty": "현재 공지사항이 없습니다"
     },
     "myCorkboard": {
       "widgetTitle": "내 코르크보드",

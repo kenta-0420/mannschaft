@@ -179,7 +179,9 @@
     },
     "notices": {
       "actionRequiredTab": "要対応",
-      "actionRequiredEmpty": "対応が必要な項目はありません"
+      "actionRequiredEmpty": "対応が必要な項目はありません",
+      "widget_notices_tab_platform": "運営お知らせ",
+      "widget_notices_platform_empty": "現在お知らせはありません"
     },
     "myCorkboard": {
       "widgetTitle": "マイコルクボード",
