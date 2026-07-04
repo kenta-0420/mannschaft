@@ -66,41 +66,6 @@ async function loginToken(
   }
 }
 
-/**
- * scope-tabs API から指定チームスラッグの public_id（チップ testid に使われる値）を取得する。
- * ScopeTabBar の data-testid は `scope-tab-chip-TEAM-{public_id ?? scopeId}` の形式。
- *
- * scope-tabs は最大 9 ページ（6件/ページ）あるため全ページを検索する。
- *
- * @returns チームの testid サフィックス（public_id があれば UUID、なければ scopeId の文字列）
- */
-async function getTeamChipId(
-  request: APIRequestContext,
-  token: string,
-  teamSlug: string,
-): Promise<string | null> {
-  try {
-    // 全ページを巡回して teamSlug に一致する public_id を探す
-    const MAX_PAGES = 15
-    for (let page = 0; page < MAX_PAGES; page++) {
-      const tabsRes = await request.get(
-        `${BACKEND_URL}/api/v1/dashboard/scope-tabs?scopeType=TEAM&page=${page}`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      )
-      if (!tabsRes.ok()) break
-      const tabsBody = await tabsRes.json()
-      const items: Array<{ scope_id: number; public_id: string | null; name?: string }> =
-        tabsBody?.data?.items ?? []
-      const found = items.find((i) => i.public_id === teamSlug)
-      if (found) return found.public_id ?? String(found.scope_id)
-      if (!tabsBody?.data?.has_next) break
-    }
-    return null
-  } catch {
-    return null
-  }
-}
-
 // ---------------------------------------------------------------------------
 // AR-001〜002: API 疎通確認（ブラウザ不使用）
 // ---------------------------------------------------------------------------
