@@ -179,7 +179,9 @@
     },
     "notices": {
       "actionRequiredTab": "需要处理",
-      "actionRequiredEmpty": "没有需要处理的项目"
+      "actionRequiredEmpty": "没有需要处理的项目",
+      "widget_notices_tab_platform": "平台公告",
+      "widget_notices_platform_empty": "暂无公告"
     },
     "myCorkboard": {
       "widgetTitle": "我的软木板",

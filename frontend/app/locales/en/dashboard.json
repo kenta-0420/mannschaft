@@ -179,7 +179,9 @@
     },
     "notices": {
       "actionRequiredTab": "Action Required",
-      "actionRequiredEmpty": "No items require your attention"
+      "actionRequiredEmpty": "No items require your attention",
+      "widget_notices_tab_platform": "Announcements",
+      "widget_notices_platform_empty": "No announcements at this time"
     },
     "myCorkboard": {
       "widgetTitle": "My Corkboard",

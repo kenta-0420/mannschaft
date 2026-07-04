@@ -24,7 +24,7 @@
  *   AR-010: 空状態の場合は「すべて対応済み」メッセージが表示される
  */
 
-import { test, expect, type APIRequestContext, type Page } from '@playwright/test'
+import { test, expect, type APIRequestContext, type Page, type Response } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
 
 // ---------------------------------------------------------------------------
@@ -238,7 +238,7 @@ test.describe('AR-003〜010: ダッシュボード要対応ウィジェット実
       // action-required API レスポンスを待機するプロミスを先に作成する（クリック前に登録）
       const actionRequiredApiPattern = /\/api\/v1\/dashboard\/team\/[^/]+\/action-required/
       const actionRequiredPromise = page
-        .waitForResponse((r) => actionRequiredApiPattern.test(r.url()) && r.request().method() === 'GET', {
+        .waitForResponse((r: Response) => actionRequiredApiPattern.test(r.url()) && r.request().method() === 'GET', {
           timeout: 40_000,
         })
         .catch(() => null)

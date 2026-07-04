@@ -179,7 +179,9 @@
     },
     "notices": {
       "actionRequiredTab": "Acción requerida",
-      "actionRequiredEmpty": "No hay elementos que requieran su atención"
+      "actionRequiredEmpty": "No hay elementos que requieran su atención",
+      "widget_notices_tab_platform": "Anuncios",
+      "widget_notices_platform_empty": "No hay anuncios en este momento"
     },
     "myCorkboard": {
       "widgetTitle": "Mi tablero de corcho",

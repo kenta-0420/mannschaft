@@ -24,7 +24,7 @@ import type { PersonalActionItem } from '~/composables/usePersonalActionRequired
  *  - 各アイテムクリックでモーダルを開き押印・回答ができる（AC-19）
  */
 
-const { getNotices, markNoticeRead, markAllNoticesRead } = useDashboardApi()
+const { getNotices, markNoticeRead, markAllNoticesRead, getPlatformAnnouncements } = useDashboardApi()
 const api = useApi()
 const { captureQuiet } = useErrorReport()
 const notification = useNotification()
@@ -42,10 +42,11 @@ interface Notice {
   linkUrl: string | null
 }
 
-/** タブの選択状態。`'all'` は全件、`'action-required'` は要対応タブ、それ以外は `{ scopeType, folderId }`。 */
+/** タブの選択状態。`'all'` は全件、`'action-required'` は要対応タブ、`'platform-announcements'` は運営お知らせ、それ以外は `{ scopeType, folderId }`。 */
 type TabKey =
   | { kind: 'all' }
   | { kind: 'action-required' }
+  | { kind: 'platform-announcements' }
   | { kind: 'folder', scopeType: ScopeType, folderId: number }
 
 const notices = ref<Notice[]>([])
@@ -65,6 +66,20 @@ interface NotificationItem {
   actionUrl: string | null
   createdAt: string
 }
+
+interface PlatformAnnouncementItem {
+  id: number
+  title: string
+  content: string
+  severity: 'INFO' | 'WARNING' | 'URGENT'
+  isPinned: boolean
+  publishedAt: string
+}
+
+// === 運営お知らせタブ状態 ===
+const platformAnnouncements = ref<PlatformAnnouncementItem[]>([])
+const platformAnnouncementsLoading = ref(false)
+const platformAnnouncementsLoaded = ref(false)
 
 // === 要対応タブ状態 ===
 const actionRequiredItems = ref<PersonalActionItem[]>([])
@@ -110,6 +125,7 @@ const attendanceModal = ref<{
 function tabCacheKey(tab: TabKey): string {
   if (tab.kind === 'all') return 'all'
   if (tab.kind === 'action-required') return 'action-required'
+  if (tab.kind === 'platform-announcements') return 'platform-announcements'
   return `${tab.scopeType}-${tab.folderId}`
 }
 
@@ -132,6 +148,10 @@ async function fetchForTab(tab: TabKey): Promise<Notice[]> {
   }
   if (tab.kind === 'action-required') {
     // 要対応タブは notices キャッシュに入れない（別ステートで管理）
+    return []
+  }
+  if (tab.kind === 'platform-announcements') {
+    // 運営お知らせタブは notices キャッシュに入れない（別ステートで管理）
     return []
   }
   const params = new URLSearchParams()
@@ -171,15 +191,34 @@ async function loadActionRequired() {
   }
 }
 
+/** 運営お知らせタブ: API からアイテム一覧を取得。 */
+async function loadPlatformAnnouncements() {
+  if (platformAnnouncementsLoaded.value) return
+  platformAnnouncementsLoading.value = true
+  try {
+    const res = await getPlatformAnnouncements()
+    platformAnnouncements.value = res.data
+    platformAnnouncementsLoaded.value = true
+  }
+  catch {
+    platformAnnouncements.value = []
+  }
+  finally {
+    platformAnnouncementsLoading.value = false
+  }
+}
+
 /** 全タブ分を並列プリフェッチしてキャッシュに保存し、現在タブを表示する。 */
 async function load() {
   loading.value = true
   noticeCache.clear()
   actionRequiredLoaded.value = false
+  platformAnnouncementsLoaded.value = false
   try {
     await Promise.all(
       tabs.value.map(async (tabDef) => {
         if (tabDef.tab.kind === 'action-required') return // 別ステートで管理
+        if (tabDef.tab.kind === 'platform-announcements') return // 別ステートで管理
         try {
           noticeCache.set(tabCacheKey(tabDef.tab), await fetchForTab(tabDef.tab))
         }
@@ -189,11 +228,11 @@ async function load() {
         }
       }),
     )
-    // 要対応タブも並列取得
-    await loadActionRequired()
+    // 要対応タブ・運営お知らせタブも並列取得
+    await Promise.all([loadActionRequired(), loadPlatformAnnouncements()])
   }
   finally {
-    if (currentTab.value.kind !== 'action-required') {
+    if (currentTab.value.kind !== 'action-required' && currentTab.value.kind !== 'platform-announcements') {
       notices.value = noticeCache.get(tabCacheKey(currentTab.value)) ?? []
     }
     loading.value = false
@@ -219,8 +258,11 @@ const unreadCount = computed(() => notices.value.filter(n => !n.isRead).length)
 /** タブ切替。キャッシュから即座に表示するだけ（API呼び出しなし）。 */
 function switchTab(tab: TabKey) {
   currentTab.value = tab
-  if (tab.kind !== 'action-required') {
+  if (tab.kind !== 'action-required' && tab.kind !== 'platform-announcements') {
     notices.value = noticeCache.get(tabCacheKey(tab)) ?? []
+  }
+  if (tab.kind === 'platform-announcements') {
+    loadPlatformAnnouncements()
   }
 }
 
@@ -278,6 +320,12 @@ const tabs = computed<FolderTabDef[]>(() => {
       tab: { kind: 'action-required' },
       unreadBadge: actionRequiredItems.value.length,
     },
+    {
+      key: 'platform-announcements',
+      label: t('dashboard.notices.widget_notices_tab_platform'),
+      tab: { kind: 'platform-announcements' },
+      unreadBadge: 0,
+    },
   ]
 
   const appendFor = (scopeType: ScopeType) => {
@@ -300,6 +348,7 @@ function isActiveTab(tab: TabKey): boolean {
   const cur = currentTab.value
   if (cur.kind === 'all' && tab.kind === 'all') return true
   if (cur.kind === 'action-required' && tab.kind === 'action-required') return true
+  if (cur.kind === 'platform-announcements' && tab.kind === 'platform-announcements') return true
   if (cur.kind === 'folder' && tab.kind === 'folder') {
     return cur.scopeType === tab.scopeType && cur.folderId === tab.folderId
   }
@@ -439,7 +488,7 @@ onMounted(async () => {
     </div>
 
     <!-- 通常タブ（すべて・フォルダ別） -->
-    <template v-if="currentTab.kind !== 'action-required'">
+    <template v-if="currentTab.kind !== 'action-required' && currentTab.kind !== 'platform-announcements'">
       <div v-if="notices.length > 0">
         <div class="mb-2 flex items-center justify-between">
           <Badge v-if="unreadCount > 0" :value="unreadCount" severity="danger" />
@@ -482,6 +531,41 @@ onMounted(async () => {
         </NuxtLink>
       </div>
       <DashboardEmptyState v-else icon="pi pi-bell-slash" message="お知らせはありません" />
+    </template>
+
+    <!-- 運営お知らせタブ -->
+    <template v-else-if="currentTab.kind === 'platform-announcements'">
+      <div v-if="platformAnnouncementsLoading" class="flex justify-center py-4">
+        <i class="pi pi-spin pi-spinner text-xl" />
+      </div>
+      <div
+        v-else-if="platformAnnouncements.length === 0"
+        class="py-6 text-center text-surface-400 dark:text-surface-500 text-sm"
+      >
+        {{ t('dashboard.notices.widget_notices_platform_empty') }}
+      </div>
+      <ul v-else class="divide-y divide-surface-200 dark:divide-surface-700">
+        <li
+          v-for="item in platformAnnouncements"
+          :key="item.id"
+          class="py-3 px-2"
+        >
+          <div class="flex items-start gap-2">
+            <span
+              class="mt-0.5 shrink-0 text-xs font-bold px-1.5 py-0.5 rounded"
+              :class="{
+                'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200': item.severity === 'INFO',
+                'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-200': item.severity === 'WARNING',
+                'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200': item.severity === 'URGENT',
+              }"
+            >{{ item.severity }}</span>
+            <div class="min-w-0">
+              <p class="text-sm font-medium text-surface-800 dark:text-surface-100 truncate">{{ item.title }}</p>
+              <p class="text-xs text-surface-500 dark:text-surface-400 mt-0.5 line-clamp-2">{{ item.content }}</p>
+            </div>
+          </div>
+        </li>
+      </ul>
     </template>
 
     <!-- 要対応タブ -->
