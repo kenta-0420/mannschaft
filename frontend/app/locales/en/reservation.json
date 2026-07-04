@@ -408,6 +408,49 @@
         "all_day": "All day"
       }
     },
+    "notify_recipients": {
+      "section_label": "Reservation notification emails",
+      "help": "Register email addresses that are notified whenever a reservation is made. You can add addresses that are not app users, such as your shop's main address. The free plan allows up to 3 addresses; a paid plan is required from the 4th (up to 10).",
+      "pii_notice": "Registered addresses receive the booker's name, arrival date/time, and menu. Take care when registering addresses that are shared externally.",
+      "field": {
+        "email": "Email address",
+        "email_placeholder": "e.g. shop{'@'}example.com",
+        "label": "Label (optional)",
+        "label_placeholder": "e.g. Front desk, Reservations"
+      },
+      "paid_lock": {
+        "title": "The free plan allows up to {free} addresses",
+        "detail": "Upgrade to a paid plan to register the 4th and beyond (up to {max})."
+      },
+      "limit_reached": "You can register up to {max} addresses. No more can be added.",
+      "count_status": "Registered {total} / {max}",
+      "button": {
+        "add": "Add recipient",
+        "delete": "Delete"
+      },
+      "list": {
+        "title": "Registered notification emails",
+        "empty": "No recipients registered",
+        "disabled": "Disabled"
+      },
+      "toggle": {
+        "aria": "Enable notifications for {email}"
+      },
+      "message": {
+        "create_success": "Notification recipient added",
+        "delete_success": "Notification recipient deleted"
+      },
+      "dialog": {
+        "delete_confirm": "Delete this notification recipient?"
+      },
+      "error": {
+        "paid_required_title": "Paid plan required",
+        "paid_required_detail": "The free plan allows up to 3 recipients. Upgrade to a paid plan to register the 4th and beyond.",
+        "limit_exceeded": "You can register up to {limit} recipients.",
+        "duplicate": "This email address is already registered.",
+        "invalid_email": "The email address format is invalid."
+      }
+    },
     "grid": {
       "title": "Availability grid",
       "help": "Rows are time slots and columns are reservation targets. Tap a green \"Open\" cell to book. Grey or hatched cells cannot be booked. Use the \"Week\" tab to view seven days at once.",

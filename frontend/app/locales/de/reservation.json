@@ -408,6 +408,49 @@
         "all_day": "Ganztägig"
       }
     },
+    "notify_recipients": {
+      "section_label": "Benachrichtigungs-E-Mails für Reservierungen",
+      "help": "Legen Sie E-Mail-Adressen fest, die bei jeder Reservierung benachrichtigt werden. Sie können auch Adressen von Nicht-App-Nutzern hinzufügen, z. B. die Hauptadresse Ihres Geschäfts. Der kostenlose Tarif erlaubt bis zu 3 Adressen; ab der 4. ist ein kostenpflichtiger Tarif erforderlich (bis zu 10).",
+      "pii_notice": "Registrierte Adressen erhalten den Namen der buchenden Person, das Ankunftsdatum/-zeit und das Menü. Seien Sie vorsichtig beim Registrieren von Adressen, die extern geteilt werden.",
+      "field": {
+        "email": "E-Mail-Adresse",
+        "email_placeholder": "z. B. shop{'@'}example.com",
+        "label": "Bezeichnung (optional)",
+        "label_placeholder": "z. B. Empfang, Reservierungen"
+      },
+      "paid_lock": {
+        "title": "Der kostenlose Tarif erlaubt bis zu {free} Adressen",
+        "detail": "Führen Sie ein Upgrade auf einen kostenpflichtigen Tarif durch, um die 4. und weitere zu registrieren (bis zu {max})."
+      },
+      "limit_reached": "Sie können bis zu {max} Adressen registrieren. Es können keine weiteren hinzugefügt werden.",
+      "count_status": "Registriert {total} / {max}",
+      "button": {
+        "add": "Empfänger hinzufügen",
+        "delete": "Löschen"
+      },
+      "list": {
+        "title": "Registrierte Benachrichtigungs-E-Mails",
+        "empty": "Keine Empfänger registriert",
+        "disabled": "Deaktiviert"
+      },
+      "toggle": {
+        "aria": "Benachrichtigungen für {email} aktivieren"
+      },
+      "message": {
+        "create_success": "Benachrichtigungsempfänger hinzugefügt",
+        "delete_success": "Benachrichtigungsempfänger gelöscht"
+      },
+      "dialog": {
+        "delete_confirm": "Diesen Benachrichtigungsempfänger löschen?"
+      },
+      "error": {
+        "paid_required_title": "Kostenpflichtiger Tarif erforderlich",
+        "paid_required_detail": "Der kostenlose Tarif erlaubt bis zu 3 Empfänger. Führen Sie ein Upgrade auf einen kostenpflichtigen Tarif durch, um die 4. und weitere zu registrieren.",
+        "limit_exceeded": "Sie können bis zu {limit} Empfänger registrieren.",
+        "duplicate": "Diese E-Mail-Adresse ist bereits registriert.",
+        "invalid_email": "Das Format der E-Mail-Adresse ist ungültig."
+      }
+    },
     "grid": {
       "title": "Verfügbarkeitsraster",
       "help": "Zeilen sind Zeitfenster, Spalten sind Reservierungsziele. Tippe auf eine grüne Zelle „Frei\", um zu buchen. Graue oder schraffierte Zellen können nicht gebucht werden. Über den Tab „Woche\" siehst du sieben Tage auf einmal.",

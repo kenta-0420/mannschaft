@@ -408,6 +408,49 @@
         "all_day": "全天"
       }
     },
+    "notify_recipients": {
+      "section_label": "预约通知邮件收件人",
+      "help": "登记每次预约成立时通过邮件通知的收件人。可添加非应用用户的邮箱，如店铺代表邮箱。免费方案最多3个，第4个及以后需要付费方案（最多10个）。",
+      "pii_notice": "登记的邮箱将收到预约者的姓名、到店日期时间和项目。登记会向外部共享的邮箱时请注意。",
+      "field": {
+        "email": "邮箱地址",
+        "email_placeholder": "例：shop{'@'}example.com",
+        "label": "标签（可选）",
+        "label_placeholder": "例：店铺代表、预约负责人"
+      },
+      "paid_lock": {
+        "title": "免费方案最多{free}个",
+        "detail": "登记第4个及以后需要升级到付费方案（最多{max}个）。"
+      },
+      "limit_reached": "最多可登记{max}个收件人，无法再添加。",
+      "count_status": "已登记 {total} / {max}",
+      "button": {
+        "add": "添加收件人",
+        "delete": "删除"
+      },
+      "list": {
+        "title": "已登记的通知邮件收件人",
+        "empty": "尚未登记收件人",
+        "disabled": "已停用"
+      },
+      "toggle": {
+        "aria": "启用 {email} 的通知"
+      },
+      "message": {
+        "create_success": "已添加通知收件人",
+        "delete_success": "已删除通知收件人"
+      },
+      "dialog": {
+        "delete_confirm": "要删除此通知收件人吗？"
+      },
+      "error": {
+        "paid_required_title": "需要付费方案",
+        "paid_required_detail": "免费方案最多可登记3个收件人。登记第4个及以后需要升级到付费方案。",
+        "limit_exceeded": "最多可登记{limit}个收件人。",
+        "duplicate": "该邮箱地址已登记。",
+        "invalid_email": "邮箱地址格式不正确。"
+      }
+    },
     "grid": {
       "title": "空位表格",
       "help": "纵向为时间段，横向为预约对象。点按绿色“空位”即可预约。灰色或斜线格无法预约。使用“周”标签可一次查看七天。",

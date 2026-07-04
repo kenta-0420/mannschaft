@@ -408,6 +408,49 @@
         "all_day": "종일"
       }
     },
+    "notify_recipients": {
+      "section_label": "예약 알림 메일 수신처",
+      "help": "예약이 성립될 때마다 메일로 알릴 수신처를 등록합니다. 매장 대표 주소 등 앱 사용자가 아닌 메일도 등록할 수 있습니다. 무료 플랜은 3건까지이며, 4건째부터는 유료 플랜이 필요합니다(최대 10건).",
+      "pii_notice": "등록한 주소로 예약자의 이름, 방문 일시, 메뉴가 전송됩니다. 외부에 공유되는 주소를 등록할 때는 주의하세요.",
+      "field": {
+        "email": "메일 주소",
+        "email_placeholder": "예: shop{'@'}example.com",
+        "label": "라벨(선택)",
+        "label_placeholder": "예: 매장 대표, 예약 담당"
+      },
+      "paid_lock": {
+        "title": "무료 플랜은 {free}건까지입니다",
+        "detail": "4건째부터 등록하려면 유료 플랜으로 업그레이드해야 합니다(최대 {max}건)."
+      },
+      "limit_reached": "등록할 수 있는 수신처는 최대 {max}건입니다. 더 이상 추가할 수 없습니다.",
+      "count_status": "등록 {total} / {max}건",
+      "button": {
+        "add": "수신처 추가",
+        "delete": "삭제"
+      },
+      "list": {
+        "title": "등록된 알림 메일 수신처",
+        "empty": "등록된 수신처가 없습니다",
+        "disabled": "비활성"
+      },
+      "toggle": {
+        "aria": "{email} 알림 활성화"
+      },
+      "message": {
+        "create_success": "알림 수신처를 추가했습니다",
+        "delete_success": "알림 수신처를 삭제했습니다"
+      },
+      "dialog": {
+        "delete_confirm": "이 알림 수신처를 삭제하시겠습니까?"
+      },
+      "error": {
+        "paid_required_title": "유료 플랜이 필요합니다",
+        "paid_required_detail": "무료 플랜으로 등록할 수 있는 수신처는 3건까지입니다. 4건째부터 등록하려면 유료 플랜으로 업그레이드해야 합니다.",
+        "limit_exceeded": "등록할 수 있는 수신처는 최대 {limit}건입니다.",
+        "duplicate": "이 메일 주소는 이미 등록되어 있습니다.",
+        "invalid_email": "메일 주소 형식이 올바르지 않습니다."
+      }
+    },
     "grid": {
       "title": "예약 가능 그리드",
       "help": "세로는 시간대, 가로는 예약 대상입니다. 초록색 \"빈자리\"를 누르면 예약으로 넘어갑니다. 회색·빗금 칸은 예약할 수 없습니다. \"주\" 탭에서 7일치를 한 번에 볼 수 있습니다.",

@@ -213,6 +213,19 @@ onMounted(async () => {
                         :disabled="!isAdmin"
                       />
                     </div>
+
+                    <Divider />
+
+                    <!-- 予約通知メール宛先（機能D）: 予約成立時に通知するメール宛先の管理 -->
+                    <div>
+                      <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-surface-500">
+                        {{ t('reservation.notify_recipients.section_label') }}
+                      </p>
+                      <ReservationNotificationRecipientsManager
+                        :team-id="props.teamId"
+                        :disabled="!isAdmin"
+                      />
+                    </div>
                   </div>
                 </AccordionContent>
               </AccordionPanel>
