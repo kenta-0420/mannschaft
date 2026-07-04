@@ -73,16 +73,31 @@ public class MatchRequestService {
     }
 
     /**
-     * キーワード検索する。
+     * キーワード検索する（FULLTEXT ＋ 全フィルタ条件の複合検索）。
+     *
+     * <p>keyword と prefecture/city/activityType/category/level/visibility を同時に AND で絞る。
+     * enum 文字列は {@code valueOf().name()} で検証・正規化してからネイティブクエリへ渡す
+     * （条件検索経路 {@link #searchRequests} と同じ入力検証を維持）。</p>
      */
-    public Page<MatchRequestResponse> searchByKeyword(Long currentTeamId, String keyword, Pageable pageable) {
+    public Page<MatchRequestResponse> searchByKeyword(Long currentTeamId, String keyword,
+                                                      String prefectureCode, String cityCode,
+                                                      String activityTypeStr, String categoryStr,
+                                                      String levelStr, String visibilityStr,
+                                                      Pageable pageable) {
         List<Long> excludedTeamIds = ngTeamRepository.findBidirectionalBlockedTeamIds(currentTeamId);
         if (excludedTeamIds.isEmpty()) {
             excludedTeamIds = List.of(-1L);
         }
 
+        String activityType = activityTypeStr != null ? ActivityType.valueOf(activityTypeStr).name() : null;
+        String category = categoryStr != null ? MatchCategory.valueOf(categoryStr).name() : null;
+        String level = levelStr != null ? MatchLevel.valueOf(levelStr).name() : null;
+        String visibility = visibilityStr != null ? MatchVisibility.valueOf(visibilityStr).name() : null;
+
         Page<MatchRequestEntity> page = requestRepository.searchByKeyword(
-                MatchRequestStatus.OPEN.name(), excludedTeamIds, keyword, LocalDateTime.now(), pageable);
+                MatchRequestStatus.OPEN.name(), excludedTeamIds, keyword,
+                prefectureCode, cityCode, activityType, category, level, visibility,
+                LocalDateTime.now(), pageable);
 
         LocalDateTime since = LocalDateTime.now().minusYears(REVIEW_RETENTION_YEARS);
         return page.map(entity -> toResponse(entity, since));

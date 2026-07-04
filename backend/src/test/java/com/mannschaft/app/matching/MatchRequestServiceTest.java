@@ -372,16 +372,43 @@ class MatchRequestServiceTest {
                     .teamId(999L).title("テスト募集").activityType(ActivityType.PRACTICE)
                     .status(MatchRequestStatus.OPEN).prefectureCode("13").build();
             given(ngTeamRepository.findBidirectionalBlockedTeamIds(TEAM_ID)).willReturn(List.of());
-            given(requestRepository.searchByKeyword(anyString(), anyList(), anyString(), any(), eq(pageable)))
+            given(requestRepository.searchByKeyword(anyString(), anyList(), anyString(),
+                    isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(), eq(pageable)))
                     .willReturn(new PageImpl<>(List.of(entity)));
             given(reviewRepository.findAverageRating(anyLong(), any())).willReturn(null);
             given(reviewRepository.countByRevieweeTeamIdAndCreatedAtAfter(anyLong(), any())).willReturn(0L);
             given(proposalRepository.countCancellationsByTeam(anyLong(), any())).willReturn(0L);
 
             // When
-            Page<MatchRequestResponse> result = service.searchByKeyword(TEAM_ID, "サッカー", pageable);
+            Page<MatchRequestResponse> result = service.searchByKeyword(
+                    TEAM_ID, "サッカー", null, null, null, null, null, null, pageable);
 
             // Then
+            assertThat(result.getContent()).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("正常系: キーワード＋全フィルタを正規化して Repository へ渡す（条件を落とさない）")
+        void キーワード複合検索_フィルタ転送() {
+            // Given
+            Pageable pageable = PageRequest.of(0, 10);
+            MatchRequestEntity entity = MatchRequestEntity.builder()
+                    .teamId(999L).title("テスト募集").activityType(ActivityType.PRACTICE)
+                    .status(MatchRequestStatus.OPEN).prefectureCode("13").build();
+            given(ngTeamRepository.findBidirectionalBlockedTeamIds(TEAM_ID)).willReturn(List.of());
+            given(requestRepository.searchByKeyword(eq("OPEN"), anyList(), eq("サッカー"),
+                    eq("13"), eq("13101"), eq("PRACTICE"), eq("JUNIOR_HIGH"),
+                    eq("BEGINNER"), eq("PLATFORM"), any(), eq(pageable)))
+                    .willReturn(new PageImpl<>(List.of(entity)));
+            given(reviewRepository.findAverageRating(anyLong(), any())).willReturn(null);
+            given(reviewRepository.countByRevieweeTeamIdAndCreatedAtAfter(anyLong(), any())).willReturn(0L);
+            given(proposalRepository.countCancellationsByTeam(anyLong(), any())).willReturn(0L);
+
+            // When
+            Page<MatchRequestResponse> result = service.searchByKeyword(
+                    TEAM_ID, "サッカー", "13", "13101", "PRACTICE", "JUNIOR_HIGH", "BEGINNER", "PLATFORM", pageable);
+
+            // Then: eq(...) マッチャに合致した場合のみ 1 件返る＝全フィルタが正規化されて転送されている
             assertThat(result.getContent()).hasSize(1);
         }
     }
