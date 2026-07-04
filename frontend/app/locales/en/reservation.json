@@ -351,6 +351,62 @@
         "reopened": "Slot reopened",
         "status_change_failed": "Failed to change status"
       }
+    },
+    "unavailability": {
+      "section_label": "Blocked Times",
+      "help": "Register time ranges when reservations cannot be accepted, such as temporary closures or staff days off. Choosing a template auto-fills the time range from business hours (you can adjust it afterward). Before registering, you are warned if existing reservations fall within that range.",
+      "scope": {
+        "label": "Target",
+        "team": "Whole team",
+        "staff": "Staff"
+      },
+      "staff": {
+        "label": "Reservation target (staff)",
+        "placeholder": "Select a target",
+        "hint": "Targets without a default staff member cannot be selected."
+      },
+      "field": {
+        "date": "Date",
+        "time_range": "Time range",
+        "time_range_hint": "Leave blank to block the entire day.",
+        "start_time": "Start",
+        "end_time": "End",
+        "reason": "Reason (optional)",
+        "reason_placeholder": "e.g. Temporary closure, staff training"
+      },
+      "template": {
+        "label": "Template",
+        "full_day": "Full day",
+        "late": "Late start (morning off)",
+        "early_leave": "Early leave (evening off)",
+        "midday": "Midday break (lunch)",
+        "custom": "Manual",
+        "no_business_hours": "Business hours are not set, so times cannot be auto-filled. Please enter the time range manually."
+      },
+      "impact": {
+        "warning": "There are {count} reservations in this time range. You can register after rescheduling or cancelling them.",
+        "hint": "You cannot register while reservations remain.",
+        "checking": "Checking impact on reservations…"
+      },
+      "button": {
+        "register": "Block reservations",
+        "delete": "Delete"
+      },
+      "message": {
+        "create_success": "Blocked time registered",
+        "delete_success": "Blocked time deleted"
+      },
+      "error": {
+        "has_active_reservations": "Reservations remain in this time range, so it cannot be registered. Please reschedule or cancel them and try again."
+      },
+      "dialog": {
+        "delete_confirm": "Delete this blocked time?"
+      },
+      "list": {
+        "title": "Registered blocked times",
+        "empty": "No blocked times registered",
+        "all_day": "All day"
+      }
     }
   }
 }

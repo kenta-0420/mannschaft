@@ -351,6 +351,62 @@
         "reopened": "枠を再開しました",
         "status_change_failed": "状態の変更に失敗しました"
       }
+    },
+    "unavailability": {
+      "section_label": "予約不可枠",
+      "help": "臨時休業や担当者の休みなど、予約を受け付けない時間帯を登録します。テンプレートを選ぶと営業時間から時間帯を自動入力します（後から手直しできます）。登録前に、その時間帯に既存の予約があれば警告します。",
+      "scope": {
+        "label": "対象",
+        "team": "チーム全体",
+        "staff": "担当者"
+      },
+      "staff": {
+        "label": "予約対象（担当者）",
+        "placeholder": "予約対象を選択",
+        "hint": "担当者が未設定の予約対象は選択できません。"
+      },
+      "field": {
+        "date": "日付",
+        "time_range": "時間帯",
+        "time_range_hint": "空欄のままにすると終日が予約不可になります。",
+        "start_time": "開始",
+        "end_time": "終了",
+        "reason": "理由（任意）",
+        "reason_placeholder": "例: 臨時休業、スタッフ研修"
+      },
+      "template": {
+        "label": "テンプレート",
+        "full_day": "全休",
+        "late": "遅出（午前不可）",
+        "early_leave": "早上がり（夕方不可）",
+        "midday": "中抜け（昼休憩）",
+        "custom": "手入力",
+        "no_business_hours": "営業時間が未設定のため自動入力できません。時間帯を手入力してください。"
+      },
+      "impact": {
+        "warning": "この時間帯に予約が{count}件あります。振替・キャンセル後に登録できます。",
+        "hint": "予約が残っている間は登録できません。",
+        "checking": "予約への影響を確認中…"
+      },
+      "button": {
+        "register": "予約不可にする",
+        "delete": "削除"
+      },
+      "message": {
+        "create_success": "予約不可枠を登録しました",
+        "delete_success": "予約不可枠を削除しました"
+      },
+      "error": {
+        "has_active_reservations": "この時間帯に予約が残っているため登録できません。振替・キャンセルしてからお試しください。"
+      },
+      "dialog": {
+        "delete_confirm": "この予約不可枠を削除しますか？"
+      },
+      "list": {
+        "title": "登録済みの予約不可枠",
+        "empty": "登録された予約不可枠はありません",
+        "all_day": "終日"
+      }
     }
   }
 }

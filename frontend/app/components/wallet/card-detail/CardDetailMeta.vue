@@ -46,14 +46,13 @@ const { t } = useI18n()
         <dt>{{ t('wallet.card_id_label') }}</dt>
         <dd class="card-detail__id-cell">
           <code class="card-detail__id-code">{{ card.id }}</code>
-          <button
-            type="button"
-            class="card-detail__copy-btn"
+          <Button
+            :label="t('wallet.copy_card_id')"
             :aria-label="t('wallet.copy_card_id')"
+            severity="secondary"
+            size="small"
             @click="emit('copy-card-id')"
-          >
-            {{ t('wallet.copy_card_id') }}
-          </button>
+          />
         </dd>
       </div>
       <div class="card-detail__dl-row">
@@ -134,19 +133,5 @@ const { t } = useI18n()
   padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
   word-break: break-all;
-}
-.card-detail__copy-btn {
-  padding: 0.25rem 0.625rem;
-  border-radius: 0.375rem;
-  border: 1px solid var(--p-surface-300, #d1d5db);
-  background: var(--p-surface-0, #fff);
-  color: var(--p-text-color, #111827);
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.card-detail__copy-btn:hover {
-  background: var(--p-surface-50, #f9fafb);
 }
 </style>

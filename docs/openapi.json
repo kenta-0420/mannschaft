@@ -103293,6 +103293,89 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/reservation-settings/blocked-times/impact": {
+      "get": {
+        "tags": [
+          "予約設定管理"
+        ],
+        "summary": "予約不可枠 登録前の影響プレビュー",
+        "operationId": "getBlockedTimeImpact",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "resourceType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "TEAM",
+              "enum": [
+                "TEAM",
+                "STAFF",
+                "LINE",
+                "RESOURCE"
+              ]
+            }
+          },
+          {
+            "name": "resourceId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "startTime",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "endTime",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBlockedTimeImpactResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/repair-plan/terms/{termId}": {
       "get": {
         "tags": [
@@ -159558,6 +159641,19 @@
             "maxLength": 200,
             "minLength": 0
           },
+          "resourceId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "resourceType": {
+            "type": "string",
+            "enum": [
+              "TEAM",
+              "STAFF",
+              "LINE",
+              "RESOURCE"
+            ]
+          },
           "startTime": {
             "type": "string",
             "example": "14:30:00"
@@ -159605,12 +159701,30 @@
             "type": "integer",
             "format": "int64"
           },
+          "resource": {
+            "$ref": "#/components/schemas/ResourceDto"
+          },
           "teamId": {
             "type": "integer",
             "format": "int64"
           },
           "timeSlot": {
             "$ref": "#/components/schemas/TimeSlotDto"
+          }
+        }
+      },
+      "ResourceDto": {
+        "type": "object",
+        "properties": {
+          "resourceId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "resourceName": {
+            "type": "string"
+          },
+          "resourceType": {
+            "type": "string"
           }
         }
       },
@@ -194606,6 +194720,63 @@
             "items": {
               "$ref": "#/components/schemas/BlockedTimeResponse"
             }
+          }
+        }
+      },
+      "ApiResponseBlockedTimeImpactResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BlockedTimeImpactResponse"
+          }
+        }
+      },
+      "BlockedTimeImpactResponse": {
+        "type": "object",
+        "properties": {
+          "affectedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reservations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImpactedReservationDto"
+            }
+          }
+        }
+      },
+      "ImpactedReservationDto": {
+        "type": "object",
+        "properties": {
+          "endTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "reservationId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "slotId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "staffName": {
+            "type": "string"
+          },
+          "startTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "status": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "userName": {
+            "type": "string"
           }
         }
       },

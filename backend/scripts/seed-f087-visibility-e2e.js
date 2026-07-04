@@ -39,6 +39,7 @@ function encryptForTest(plain) {
   const conn = await mysql.createConnection({
     host: "127.0.0.1", port: 3306,
     user: "mannschaft", password: "mannschaft", database: "mannschaft",
+    charset: "utf8mb4", // 二重エンコード再発防止のため接続文字コードを明示
   });
 
   const now = new Date().toISOString().slice(0, 19).replace("T", " ");

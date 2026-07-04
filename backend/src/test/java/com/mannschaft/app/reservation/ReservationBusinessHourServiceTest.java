@@ -8,6 +8,8 @@ import com.mannschaft.app.reservation.dto.BusinessHourResponse;
 import com.mannschaft.app.reservation.dto.BusinessHoursUpdateRequest;
 import com.mannschaft.app.reservation.entity.ReservationBlockedTimeEntity;
 import com.mannschaft.app.reservation.entity.ReservationBusinessHourEntity;
+import com.mannschaft.app.reservation.entity.ReservationEntity;
+import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import com.mannschaft.app.reservation.repository.ReservationBlockedTimeRepository;
 import com.mannschaft.app.reservation.repository.ReservationBusinessHourRepository;
 import com.mannschaft.app.reservation.service.ReservationBusinessHourService;
@@ -46,6 +48,15 @@ class ReservationBusinessHourServiceTest {
 
     @Mock
     private ReservationMapper reservationMapper;
+
+    @Mock
+    private com.mannschaft.app.reservation.repository.ReservationRepository reservationRepository;
+
+    @Mock
+    private com.mannschaft.app.reservation.repository.ReservationSlotRepository slotRepository;
+
+    @Mock
+    private com.mannschaft.app.common.NameResolverService nameResolverService;
 
     @InjectMocks
     private ReservationBusinessHourService service;
@@ -249,7 +260,9 @@ class ReservationBusinessHourServiceTest {
             List<BlockedTimeResponse> responses = List.of(createBlockedTimeResponse());
             given(blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(TEAM_ID, date))
                     .willReturn(entities);
-            given(reservationMapper.toBlockedTimeResponseList(entities)).willReturn(responses);
+            // 機能B: 一覧は resourceName 一括解決のため singular mapper を entity ごとに呼ぶ。
+            given(reservationMapper.toBlockedTimeResponse(any(ReservationBlockedTimeEntity.class)))
+                    .willReturn(responses.get(0));
 
             // When
             List<BlockedTimeResponse> result = service.getBlockedTimes(TEAM_ID, date);
@@ -278,7 +291,9 @@ class ReservationBusinessHourServiceTest {
             List<BlockedTimeResponse> responses = List.of(createBlockedTimeResponse());
             given(blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(
                     TEAM_ID, from, to)).willReturn(entities);
-            given(reservationMapper.toBlockedTimeResponseList(entities)).willReturn(responses);
+            // 機能B: 一覧は resourceName 一括解決のため singular mapper を entity ごとに呼ぶ。
+            given(reservationMapper.toBlockedTimeResponse(any(ReservationBlockedTimeEntity.class)))
+                    .willReturn(responses.get(0));
 
             // When
             List<BlockedTimeResponse> result = service.listBlockedTimes(TEAM_ID, from, to);
@@ -301,7 +316,7 @@ class ReservationBusinessHourServiceTest {
         void ブロック時間作成_正常() {
             // Given
             BlockedTimeRequest request = new BlockedTimeRequest(
-                    LocalDate.of(2026, 4, 2), LocalTime.of(12, 0), LocalTime.of(13, 0), "昼休み");
+                    LocalDate.of(2026, 4, 2), LocalTime.of(12, 0), LocalTime.of(13, 0), "昼休み", null, null);
             ReservationBlockedTimeEntity savedEntity = createBlockedTimeEntity();
             BlockedTimeResponse response = createBlockedTimeResponse();
 
@@ -322,7 +337,7 @@ class ReservationBusinessHourServiceTest {
         void ブロック時間作成_時刻逆転() {
             // Given
             BlockedTimeRequest request = new BlockedTimeRequest(
-                    LocalDate.of(2026, 4, 2), LocalTime.of(15, 0), LocalTime.of(12, 0), "理由");
+                    LocalDate.of(2026, 4, 2), LocalTime.of(15, 0), LocalTime.of(12, 0), "理由", null, null);
 
             // When / Then
             assertThatThrownBy(() -> service.createBlockedTime(TEAM_ID, request, CREATED_BY))
@@ -336,7 +351,7 @@ class ReservationBusinessHourServiceTest {
         void ブロック時間作成_終日() {
             // Given
             BlockedTimeRequest request = new BlockedTimeRequest(
-                    LocalDate.of(2026, 4, 2), null, null, "終日休業");
+                    LocalDate.of(2026, 4, 2), null, null, "終日休業", null, null);
             ReservationBlockedTimeEntity savedEntity = createBlockedTimeEntity();
             BlockedTimeResponse response = createBlockedTimeResponse();
 
@@ -364,7 +379,7 @@ class ReservationBusinessHourServiceTest {
         void ブロック時間更新_正常() {
             // Given
             BlockedTimeRequest request = new BlockedTimeRequest(
-                    LocalDate.of(2026, 4, 3), LocalTime.of(14, 0), LocalTime.of(15, 0), "休憩");
+                    LocalDate.of(2026, 4, 3), LocalTime.of(14, 0), LocalTime.of(15, 0), "休憩", null, null);
             ReservationBlockedTimeEntity entity = createBlockedTimeEntity();
             BlockedTimeResponse response = createBlockedTimeResponse();
 
@@ -386,7 +401,7 @@ class ReservationBusinessHourServiceTest {
         void ブロック時間更新_存在しない() {
             // Given
             BlockedTimeRequest request = new BlockedTimeRequest(
-                    LocalDate.of(2026, 4, 3), null, null, "理由");
+                    LocalDate.of(2026, 4, 3), null, null, "理由", null, null);
             given(blockedTimeRepository.findByIdAndTeamId(BLOCKED_ID, TEAM_ID))
                     .willReturn(Optional.empty());
 
@@ -402,7 +417,7 @@ class ReservationBusinessHourServiceTest {
         void ブロック時間更新_時刻逆転() {
             // Given
             BlockedTimeRequest request = new BlockedTimeRequest(
-                    LocalDate.of(2026, 4, 3), LocalTime.of(16, 0), LocalTime.of(14, 0), "理由");
+                    LocalDate.of(2026, 4, 3), LocalTime.of(16, 0), LocalTime.of(14, 0), "理由", null, null);
             ReservationBlockedTimeEntity entity = createBlockedTimeEntity();
             given(blockedTimeRepository.findByIdAndTeamId(BLOCKED_ID, TEAM_ID))
                     .willReturn(Optional.of(entity));
@@ -485,6 +500,120 @@ class ReservationBusinessHourServiceTest {
 
             // Then
             assertThat(result).isFalse();
+        }
+    }
+
+    // ========================================
+    // 機能B: 予約不可枠の 409 ガード・impact・軸バリデーション（受け入れ条件 B-6/B-7/B-9）
+    // ========================================
+
+    @Nested
+    @DisplayName("機能B 予約不可枠 409ガード / impact / 軸")
+    class Unavailability {
+
+        private static final List<ReservationStatus> ACTIVE =
+                List.of(ReservationStatus.PENDING, ReservationStatus.CONFIRMED);
+
+        private ReservationEntity reservation(Long id, Long slotId, Long userId, ReservationStatus status) {
+            ReservationEntity e = ReservationEntity.builder()
+                    .reservationSlotId(slotId).lineId(1L).teamId(TEAM_ID).userId(userId).build();
+            org.springframework.test.util.ReflectionTestUtils.setField(e, "id", id);
+            org.springframework.test.util.ReflectionTestUtils.setField(e, "status", status);
+            return e;
+        }
+
+        @Test
+        @DisplayName("B-6: overlap する active 予約が存在すると RESERVATION_027（409）で拒否し blocked_times に書き込まない")
+        void B6_409ガード() {
+            // Given: 全日 TEAM 枠 → [MIN, MAX] で query → active 予約 1 件ヒット。
+            BlockedTimeRequest request = new BlockedTimeRequest(
+                    LocalDate.of(2026, 4, 2), null, null, "臨時休業", null, null);
+            given(reservationRepository.findActiveReservationsOverlappingUnavailability(
+                    org.mockito.ArgumentMatchers.eq(TEAM_ID),
+                    org.mockito.ArgumentMatchers.eq(LocalDate.of(2026, 4, 2)),
+                    org.mockito.ArgumentMatchers.isNull(),
+                    org.mockito.ArgumentMatchers.eq(LocalTime.MIN),
+                    org.mockito.ArgumentMatchers.eq(LocalTime.MAX),
+                    org.mockito.ArgumentMatchers.eq(ACTIVE)))
+                    .willReturn(List.of(reservation(10L, 1L, 789L, ReservationStatus.CONFIRMED)));
+
+            // When / Then
+            assertThatThrownBy(() -> service.createBlockedTime(TEAM_ID, request, CREATED_BY))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ReservationErrorCode.UNAVAILABILITY_HAS_ACTIVE_RESERVATIONS);
+            // 副作用ゼロ: blocked_times に保存しない。
+            verify(blockedTimeRepository, org.mockito.Mockito.never()).save(any(ReservationBlockedTimeEntity.class));
+        }
+
+        @Test
+        @DisplayName("B-6: overlap 0 件（終端状態のみ）なら登録される（CANCELLED/COMPLETED/NO_SHOW は observ 対象外）")
+        void B6_終端状態は登録可() {
+            BlockedTimeRequest request = new BlockedTimeRequest(
+                    LocalDate.of(2026, 4, 2), null, null, "臨時休業", null, null);
+            // ACTIVE(PENDING/CONFIRMED) のクエリは 0 件（終端状態は observ 点である本クエリに含まれない）。
+            given(reservationRepository.findActiveReservationsOverlappingUnavailability(
+                    any(), any(), org.mockito.ArgumentMatchers.isNull(), any(), any(), any()))
+                    .willReturn(List.of());
+            ReservationBlockedTimeEntity saved = createBlockedTimeEntity();
+            given(blockedTimeRepository.save(any(ReservationBlockedTimeEntity.class))).willReturn(saved);
+            given(reservationMapper.toBlockedTimeResponse(saved)).willReturn(createBlockedTimeResponse());
+
+            BlockedTimeResponse result = service.createBlockedTime(TEAM_ID, request, CREATED_BY);
+
+            assertThat(result).isNotNull();
+            verify(blockedTimeRepository).save(any(ReservationBlockedTimeEntity.class));
+        }
+
+        @Test
+        @DisplayName("B-7: impact は overlap する active 予約の件数＋一覧（氏名込み）を返し副作用ゼロ")
+        void B7_impact() {
+            ReservationEntity r1 = reservation(10L, 100L, 789L, ReservationStatus.CONFIRMED);
+            ReservationEntity r2 = reservation(11L, 101L, 790L, ReservationStatus.PENDING);
+            given(reservationRepository.findActiveReservationsOverlappingUnavailability(
+                    org.mockito.ArgumentMatchers.eq(TEAM_ID),
+                    org.mockito.ArgumentMatchers.eq(LocalDate.of(2026, 4, 2)),
+                    org.mockito.ArgumentMatchers.eq(50L),
+                    org.mockito.ArgumentMatchers.eq(LocalTime.of(10, 0)),
+                    org.mockito.ArgumentMatchers.eq(LocalTime.of(11, 0)),
+                    org.mockito.ArgumentMatchers.eq(ACTIVE)))
+                    .willReturn(List.of(r1, r2));
+            given(slotRepository.findAllById(any())).willReturn(List.of(
+                    slotEntity(100L, 50L), slotEntity(101L, 50L)));
+            given(nameResolverService.resolveUserFullNames(any()))
+                    .willReturn(java.util.Map.of(789L, "山田太郎", 790L, "鈴木花子", 50L, "田中スタッフ"));
+
+            var result = service.getBlockedTimeImpact(TEAM_ID, LocalDate.of(2026, 4, 2),
+                    com.mannschaft.app.reservation.ReservationBlockedResourceType.STAFF, 50L,
+                    LocalTime.of(10, 0), LocalTime.of(11, 0));
+
+            assertThat(result.getAffectedCount()).isEqualTo(2);
+            assertThat(result.getReservations()).extracting(
+                    com.mannschaft.app.reservation.dto.BlockedTimeImpactResponse.ImpactedReservationDto::userName)
+                    .containsExactlyInAnyOrder("山田太郎", "鈴木花子");
+            // 副作用ゼロ: blocked_times を触らない。
+            verify(blockedTimeRepository, org.mockito.Mockito.never()).save(any(ReservationBlockedTimeEntity.class));
+        }
+
+        @Test
+        @DisplayName("B-9: resourceType=STAFF かつ resourceId 未指定は 400（COMMON_001）")
+        void B9_STAFF未指定は400() {
+            BlockedTimeRequest request = new BlockedTimeRequest(
+                    LocalDate.of(2026, 4, 2), null, null, "スタッフ研修",
+                    com.mannschaft.app.reservation.ReservationBlockedResourceType.STAFF, null);
+
+            assertThatThrownBy(() -> service.createBlockedTime(TEAM_ID, request, CREATED_BY))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(com.mannschaft.app.common.CommonErrorCode.COMMON_001);
+        }
+
+        private ReservationSlotEntity slotEntity(Long id, Long staffUserId) {
+            ReservationSlotEntity s = ReservationSlotEntity.builder()
+                    .teamId(TEAM_ID).staffUserId(staffUserId).slotDate(LocalDate.of(2026, 4, 2))
+                    .startTime(LocalTime.of(10, 0)).endTime(LocalTime.of(11, 0)).build();
+            org.springframework.test.util.ReflectionTestUtils.setField(s, "id", id);
+            return s;
         }
     }
 }

@@ -2,13 +2,16 @@ package com.mannschaft.app.reservation.repository;
 
 import com.mannschaft.app.reservation.ReservationStatus;
 import com.mannschaft.app.reservation.entity.ReservationEntity;
+import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -82,10 +85,30 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
             Long teamId, ReservationStatus status, LocalDateTime createdAtFrom);
 
     /**
-     * ユーザーの直近の予約を取得する（CONFIRMED かつ booked_at が未来）。
+     * ユーザーの直近の予約を取得する（CONFIRMED かつ「来店日時（枠の日付＋開始時刻）が現在以降」）。
+     *
+     * <p>直近予約は「申込時刻（{@code booked_at}）」ではなく「来店日時（予約枠 {@code reservation_slots}
+     * の {@code slot_date} ＋ {@code start_time}）」で判定する。過去に申し込んだ未来枠の予約を正しく
+     * 直近予約として拾うため、{@link ReservationSlotEntity} を結合して枠の来店日時で絞り込む。</p>
+     *
+     * <p>来店日時の比較は「日付が今日より後」または「日付が今日ちょうどで開始時刻が現在時刻以降」で表現する。
+     * これにより枠開始ちょうど（{@code start_time == :nowTime}）の予約も直近予約に含める（半開ではなく閉区間の下限）。
+     * 並び順は来店日時（日付→開始時刻）の昇順。{@code @SQLRestriction("deleted_at IS NULL")} により
+     * 論理削除済みの予約・枠は自動除外される。</p>
+     *
+     * @param userId  対象ユーザーID
+     * @param today   現在の日付（{@code LocalDateTime.now(clock).toLocalDate()}）
+     * @param nowTime 現在の時刻（{@code LocalDateTime.now(clock).toLocalTime()}）
      */
-    @Query("SELECT r FROM ReservationEntity r WHERE r.userId = :userId AND r.status = 'CONFIRMED' AND r.bookedAt >= :now ORDER BY r.bookedAt ASC")
-    List<ReservationEntity> findUpcomingByUserId(@Param("userId") Long userId, @Param("now") LocalDateTime now);
+    @Query("SELECT r FROM ReservationEntity r, ReservationSlotEntity s " +
+            "WHERE r.reservationSlotId = s.id " +
+            "AND r.userId = :userId AND r.status = 'CONFIRMED' " +
+            "AND (s.slotDate > :today OR (s.slotDate = :today AND s.startTime >= :nowTime)) " +
+            "ORDER BY s.slotDate ASC, s.startTime ASC")
+    List<ReservationEntity> findUpcomingByUserId(
+            @Param("userId") Long userId,
+            @Param("today") LocalDate today,
+            @Param("nowTime") LocalTime nowTime);
 
     /**
      * 指定期間内のチームの予約件数を取得する。
@@ -146,4 +169,46 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
             "GROUP BY r.team_id",
             nativeQuery = true)
     List<Object[]> countPendingByTeamIds(@Param("teamIds") List<Long> teamIds);
+
+    /**
+     * 機能B（§5.B・§4.B）: 提案された予約不可枠と時間帯 overlap する active 予約を取得する。
+     *
+     * <p>「当該 {@code teamId} × {@code blockedDate} の slot（{@code resourceType='STAFF'} のときは
+     * {@code staff_user_id = resourceId} に絞る）に紐づき、時間帯が半開区間で overlap する
+     * {@code status IN (PENDING, CONFIRMED)} の予約」を引く。予約不可枠 作成/更新の 409 ガード
+     * （RESERVATION_027）と impact API の観測点。</p>
+     *
+     * <p>対象軸の切り替えは {@code :resourceId} で行う: TEAM 軸のときは {@code null} を渡すと
+     * {@code (:resourceId IS NULL OR ...)} が常に真になり全 slot を対象にする。STAFF 軸のときは
+     * 対象スタッフ user_id を渡すと {@code s.staffUserId = :resourceId} で絞られる。</p>
+     *
+     * <p>時間帯 overlap は<b>半開区間</b>（{@code s.startTime < :endTimeExclusive AND
+     * :startTimeInclusive < s.endTime}）。全日ブロックは呼び出し側で
+     * {@code [LocalTime.MIN, LocalTime.MAX]} を渡すことで「その日の全 slot」に一致させる
+     * （{@link ReservationUnavailabilityChecker} の全日 = 真と結果一致）。</p>
+     *
+     * <p>{@code ReservationEntity} / {@code ReservationSlotEntity} 双方の {@code @SQLRestriction}
+     * （{@code deleted_at IS NULL}）により論理削除済みは自動除外される。</p>
+     *
+     * @param teamId             チームID
+     * @param blockedDate        予約不可にしたい日
+     * @param resourceId         STAFF 軸のときの対象スタッフ user_id。TEAM 軸のときは null（全 slot）
+     * @param startTimeInclusive overlap 判定の開始（全日は {@code LocalTime.MIN}）
+     * @param endTimeExclusive   overlap 判定の終了（全日は {@code LocalTime.MAX}）
+     * @param statuses           active とみなすステータス（PENDING / CONFIRMED）
+     * @return overlap する active 予約のリスト
+     */
+    @Query("SELECT r FROM ReservationEntity r, ReservationSlotEntity s " +
+            "WHERE r.reservationSlotId = s.id " +
+            "AND r.teamId = :teamId AND r.status IN :statuses " +
+            "AND s.slotDate = :blockedDate " +
+            "AND (:resourceId IS NULL OR s.staffUserId = :resourceId) " +
+            "AND s.startTime < :endTimeExclusive AND :startTimeInclusive < s.endTime")
+    List<ReservationEntity> findActiveReservationsOverlappingUnavailability(
+            @Param("teamId") Long teamId,
+            @Param("blockedDate") LocalDate blockedDate,
+            @Param("resourceId") Long resourceId,
+            @Param("startTimeInclusive") LocalTime startTimeInclusive,
+            @Param("endTimeExclusive") LocalTime endTimeExclusive,
+            @Param("statuses") List<ReservationStatus> statuses);
 }

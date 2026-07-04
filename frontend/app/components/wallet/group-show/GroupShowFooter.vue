@@ -39,9 +39,12 @@ const { t } = useI18n()
         :class="{ 'presentation__dot--active': idx === currentIndex }"
       />
     </div>
-    <button type="button" class="presentation__btn" @click="emit('reload')">
-      ↻ {{ t('wallet.presentation.reload') }}
-    </button>
+    <Button
+      :label="`↻ ${t('wallet.presentation.reload')}`"
+      severity="secondary"
+      size="small"
+      @click="emit('reload')"
+    />
   </footer>
 </template>
 
@@ -76,14 +79,5 @@ const { t } = useI18n()
 .presentation__dot--active {
   background: #fff;
   transform: scale(1.3);
-}
-.presentation__btn {
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  cursor: pointer;
-  font-weight: 600;
 }
 </style>

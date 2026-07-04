@@ -9,7 +9,9 @@ import com.mannschaft.app.reservation.dto.CloseSlotRequest;
 import com.mannschaft.app.reservation.dto.CreateSlotRequest;
 import com.mannschaft.app.reservation.dto.ReservationSlotResponse;
 import com.mannschaft.app.reservation.dto.UpdateSlotRequest;
+import com.mannschaft.app.reservation.entity.ReservationBlockedTimeEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
+import com.mannschaft.app.reservation.repository.ReservationBlockedTimeRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +37,10 @@ public class ReservationSlotService {
     private final ReservationSlotRepository slotRepository;
     private final ReservationRepository reservationRepository;
     private final ReservationMapper reservationMapper;
+    /** 機能B: 空き枠一覧から予約不可枠に該当する slot を除外するためのブロック時間参照。 */
+    private final ReservationBlockedTimeRepository blockedTimeRepository;
+    /** 機能B: 予約不可枠の overlap 判定を共有する単一ユーティリティ（§5.B）。 */
+    private final ReservationUnavailabilityChecker unavailabilityChecker;
     /** 過去日判定の基準時刻（チーム TZ は将来拡張。現状はシステム既定 Clock）。テストは固定 Clock を注入する。 */
     private final Clock clock;
 
@@ -75,7 +81,18 @@ public class ReservationSlotService {
         List<ReservationSlotEntity> slots =
                 slotRepository.findByTeamIdAndSlotStatusAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
                         teamId, SlotStatus.AVAILABLE, from, to);
-        return reservationMapper.toSlotResponseList(slots);
+
+        // 機能B（§5.B）: 予約不可枠に該当する slot を空き枠一覧から除外する。
+        // 判定は createReservation / グリッドと共有の単一 overlap ユーティリティを用いる（別実装厳禁）。
+        List<ReservationBlockedTimeEntity> blocks =
+                blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(teamId, from, to);
+        List<ReservationSlotEntity> visible = blocks.isEmpty()
+                ? slots
+                : slots.stream()
+                        .filter(slot -> !unavailabilityChecker.isBlockedByAny(slot, blocks))
+                        .toList();
+
+        return reservationMapper.toSlotResponseList(visible);
     }
 
     /**

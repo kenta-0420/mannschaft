@@ -124,9 +124,19 @@ public enum ReservationErrorCode implements ErrorCode {
      */
     CANCEL_DEADLINE_PASSED("RESERVATION_026", "キャンセル締切を過ぎているためキャンセルできません", Severity.WARN),
 
+    /**
+     * 予約不可枠（機能B）の登録/更新時、対象枠と時間帯 overlap する active 予約
+     * （{@code PENDING} / {@code CONFIRMED}）が既に存在する（リソース競合・409）。
+     *
+     * <p>F03.4 §3.B/§5.B「予約不可枠 作成/更新の 409 ガード」を担保する。
+     * 既存予約は強制キャンセルせず、管理者が impact API（{@code .../blocked-times/impact}）で
+     * 確認 → 振替/キャンセルしてから登録する運用の最終防御。
+     * Severity.WARN だが {@code GlobalExceptionHandler} の個別マッピングで HTTP 409 に上書きする。</p>
+     */
+    UNAVAILABILITY_HAS_ACTIVE_RESERVATIONS("RESERVATION_027",
+            "この予約不可枠と重複する有効な予約が存在します。先に振替またはキャンセルしてください", Severity.WARN),
+
     // ===== 機能D: 予約通知メール宛先（フリーミアム件数ゲート）=====
-    // ※ RESERVATION_027（UNAVAILABILITY_HAS_ACTIVE_RESERVATIONS）は機能B（別 PR）で追加する。
-    //    D は 028〜030 を使う（設計 §8 エラーコード表）。マージ順により最終採番は再確認する。
 
     /**
      * 予約通知メール宛先が上限（10 件）に到達（入力上限超過なので 400）。
