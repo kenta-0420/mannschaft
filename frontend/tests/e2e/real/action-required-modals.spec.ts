@@ -1,3 +1,4 @@
+// @see docs/features/F22.1_swipe_scope_dashboard/04_widgets.md
 /**
  * 実機E2E（モック不使用・実BE/実FE）: ScopeActionRequiredWidget モーダル化テスト。
  *
