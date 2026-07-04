@@ -6,8 +6,15 @@
  * - 回覧板 / アンケート / 出席確認 の 3 区分を 1 枚に集約。
  * - ビューポート進入時に GET /dashboard/{scope}/{id}/action-required を遅延取得（02 §3.3）。
  * - 各ドメインの per-scope 認可は BE 側で必ず通る。FE は集計結果を表示するのみ。
+ * - 各アイテムクリックでモーダルを開き、ページ遷移なしで回答・押印できる。
  */
-import type { ScopeTabType, ActionRequiredSummary } from '~/types/dashboard-scope'
+import type {
+  ScopeTabType,
+  ActionRequiredSummary,
+  CirculationActionItem,
+  SurveyActionItem,
+  AttendanceActionItem,
+} from '~/types/dashboard-scope'
 
 const props = defineProps<{
   scopeType: ScopeTabType
@@ -23,6 +30,20 @@ const loaded = ref(false)
 
 const rootEl = ref<HTMLElement | null>(null)
 let observer: IntersectionObserver | null = null
+
+// === モーダル状態 ===
+const circulationModal = ref<{ visible: boolean; item: CirculationActionItem | null }>({
+  visible: false,
+  item: null,
+})
+const surveyModal = ref<{ visible: boolean; item: SurveyActionItem | null }>({
+  visible: false,
+  item: null,
+})
+const attendanceModal = ref<{ visible: boolean; item: AttendanceActionItem | null }>({
+  visible: false,
+  item: null,
+})
 
 async function fetchSummary() {
   if (loaded.value || loading.value) return
@@ -93,6 +114,47 @@ const schedulePath = computed(() =>
     ? `/teams/${props.scopeId}/schedule`
     : `/organizations/${props.scopeId}/schedule`,
 )
+
+// === 件数減算 ===
+function decrementCirculation() {
+  if (!summary.value) return
+  summary.value.totalActionCount = Math.max(0, summary.value.totalActionCount - 1)
+  summary.value.circulation.unconfirmedCount = Math.max(
+    0,
+    summary.value.circulation.unconfirmedCount - 1,
+  )
+  if (circulationModal.value.item) {
+    const removedId = circulationModal.value.item.id
+    summary.value.circulation.items = summary.value.circulation.items.filter(
+      (i) => i.id !== removedId,
+    )
+  }
+}
+
+function decrementSurvey() {
+  if (!summary.value) return
+  summary.value.totalActionCount = Math.max(0, summary.value.totalActionCount - 1)
+  summary.value.survey.unansweredCount = Math.max(0, summary.value.survey.unansweredCount - 1)
+  if (surveyModal.value.item) {
+    const removedId = surveyModal.value.item.id
+    summary.value.survey.items = summary.value.survey.items.filter((i) => i.id !== removedId)
+  }
+}
+
+function decrementAttendance() {
+  if (!summary.value) return
+  summary.value.totalActionCount = Math.max(0, summary.value.totalActionCount - 1)
+  summary.value.attendance.unansweredCount = Math.max(
+    0,
+    summary.value.attendance.unansweredCount - 1,
+  )
+  if (attendanceModal.value.item) {
+    const removedId = attendanceModal.value.item.scheduleId
+    summary.value.attendance.items = summary.value.attendance.items.filter(
+      (i) => i.scheduleId !== removedId,
+    )
+  }
+}
 </script>
 
 <template>
@@ -126,9 +188,16 @@ const schedulePath = computed(() =>
               <i class="pi pi-chevron-right ml-1 text-xs" />
             </span>
           </button>
-          <ul class="mt-1 ml-6 list-disc text-xs text-surface-500">
-            <li v-for="item in summary.circulation.items" :key="item.id" class="truncate">
-              {{ item.title }}
+          <ul class="mt-1 ml-6 list-none text-xs text-surface-500">
+            <li v-for="item in summary.circulation.items" :key="item.id">
+              <button
+                type="button"
+                class="w-full truncate text-left hover:text-primary"
+                :data-testid="`action-required-circulation-${item.id}`"
+                @click="circulationModal = { visible: true, item }"
+              >
+                {{ item.title }}
+              </button>
             </li>
           </ul>
         </div>
@@ -152,7 +221,7 @@ const schedulePath = computed(() =>
                 type="button"
                 class="w-full truncate text-left hover:text-primary"
                 :data-testid="`action-required-survey-${item.id}`"
-                @click="navigateTo(`/surveys/${item.id}?scope=${props.scopeType}&scopeId=${props.scopeId}`)"
+                @click="surveyModal = { visible: true, item }"
               >
                 {{ item.title }}
               </button>
@@ -178,7 +247,8 @@ const schedulePath = computed(() =>
               <button
                 type="button"
                 class="w-full truncate text-left hover:text-primary"
-                @click="navigateTo(props.scopeType === 'TEAM' ? `/teams/${props.scopeId}/events/${item.scheduleId}` : schedulePath)"
+                :data-testid="`action-required-attendance-${item.scheduleId}`"
+                @click="attendanceModal = { visible: true, item }"
               >
                 {{ item.eventTitle }}
               </button>
@@ -188,4 +258,37 @@ const schedulePath = computed(() =>
       </div>
     </SectionCard>
   </div>
+
+  <!-- 回覧板確認モーダル -->
+  <CirculationConfirmModal
+    v-if="circulationModal.item"
+    :visible="circulationModal.visible"
+    :item="circulationModal.item"
+    :scope-type="scopeType"
+    :scope-id="scopeId"
+    @update:visible="circulationModal.visible = $event"
+    @confirmed="decrementCirculation"
+  />
+
+  <!-- アンケート回答モーダル -->
+  <SurveyAnswerModal
+    v-if="surveyModal.item"
+    :visible="surveyModal.visible"
+    :item="surveyModal.item"
+    :scope-type="scopeType"
+    :scope-id="scopeId"
+    @update:visible="surveyModal.visible = $event"
+    @submitted="decrementSurvey"
+  />
+
+  <!-- 出席確認モーダル -->
+  <AttendanceQuickModal
+    v-if="attendanceModal.item"
+    :visible="attendanceModal.visible"
+    :item="attendanceModal.item"
+    :scope-type="scopeType"
+    :scope-id="scopeId"
+    @update:visible="attendanceModal.visible = $event"
+    @submitted="decrementAttendance"
+  />
 </template>

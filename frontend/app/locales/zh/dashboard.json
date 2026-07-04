@@ -208,7 +208,28 @@
       "unconfirmed": "{count}件未确认",
       "unanswered": "{count}件未回答",
       "empty": "没有需要处理的项目",
-      "loadError": "获取待处理项目失败"
+      "loadError": "获取待处理项目失败",
+      "circulationModal": {
+        "title": "确认传阅",
+        "circulatedAt": "传阅日期",
+        "deadline": "截止日期",
+        "confirm": "已确认",
+        "noSealMessage": "未设置印章。请先设置印章再进行盖章。",
+        "goToSealSettings": "前往印章设置",
+        "stampSuccess": "盖章成功",
+        "stampError": "盖章失败"
+      },
+      "surveyModal": {
+        "loadError": "问卷加载失败"
+      },
+      "attendanceModal": {
+        "title": "出席确认",
+        "attending": "出席",
+        "absent": "缺席",
+        "undecided": "未定",
+        "success": "出席回答已提交",
+        "error": "出席回答提交失败"
+      }
     },
     "emptyState": "还没有投稿",
     "list": {

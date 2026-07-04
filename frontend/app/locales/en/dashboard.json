@@ -208,7 +208,28 @@
       "unconfirmed": "{count} unconfirmed",
       "unanswered": "{count} unanswered",
       "empty": "No action items",
-      "loadError": "Failed to load action items"
+      "loadError": "Failed to load action items",
+      "circulationModal": {
+        "title": "Confirm circulation",
+        "circulatedAt": "Circulated at",
+        "deadline": "Deadline",
+        "confirm": "Confirm",
+        "noSealMessage": "No seal is set. Please set up a seal before stamping.",
+        "goToSealSettings": "Go to seal settings",
+        "stampSuccess": "Stamped successfully",
+        "stampError": "Failed to stamp"
+      },
+      "surveyModal": {
+        "loadError": "Failed to load survey"
+      },
+      "attendanceModal": {
+        "title": "Attendance",
+        "attending": "Attending",
+        "absent": "Absent",
+        "undecided": "Undecided",
+        "success": "Attendance recorded",
+        "error": "Failed to record attendance"
+      }
     },
     "emptyState": "No posts yet",
     "list": {
