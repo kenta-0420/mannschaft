@@ -64,8 +64,8 @@ async function onPrefectureChange() {
 
 function buildParams(): MatchRequestSearchParams {
   return {
-    prefecture_code: selectedPrefecture.value ?? undefined,
-    city_code: selectedCity.value ?? undefined,
+    prefectureCode: selectedPrefecture.value ?? undefined,
+    cityCode: selectedCity.value ?? undefined,
     category: selectedCategory.value ?? undefined,
     keyword: keyword.value.trim() || undefined,
   }
@@ -73,12 +73,12 @@ function buildParams(): MatchRequestSearchParams {
 
 /** 検索条件をフィルタUIへ反映し、検索を実行する（履歴・自動記憶への反映有無を指定可能） */
 async function applyParams(params: MatchRequestSearchParams, persistHistory: boolean): Promise<void> {
-  selectedPrefecture.value = params.prefecture_code ?? null
-  selectedCategory.value = (params.category as MatchCategory | undefined) ?? null
+  selectedPrefecture.value = params.prefectureCode ?? null
+  selectedCategory.value = params.category ?? null
   keyword.value = params.keyword ?? ''
-  if (params.prefecture_code) {
-    await loadCities(params.prefecture_code)
-    selectedCity.value = params.city_code ?? null
+  if (params.prefectureCode) {
+    await loadCities(params.prefectureCode)
+    selectedCity.value = params.cityCode ?? null
   } else {
     selectedCity.value = null
     cities.value = []
@@ -109,12 +109,12 @@ function applyHistoryItem(params: MatchRequestSearchParams) {
 /** 検索履歴チップの要約ラベル（都道府県名 / カテゴリ名 / キーワード） */
 function historyLabel(params: MatchRequestSearchParams): string {
   const parts: string[] = []
-  if (params.prefecture_code) {
-    const pref = prefectures.value.find(p => p.code === params.prefecture_code)
-    parts.push(pref?.name ?? params.prefecture_code)
+  if (params.prefectureCode) {
+    const pref = prefectures.value.find(p => p.code === params.prefectureCode)
+    parts.push(pref?.name ?? params.prefectureCode)
   }
-  if (params.city_code) {
-    const city = cities.value.find(c => c.code === params.city_code)
+  if (params.cityCode) {
+    const city = cities.value.find(c => c.code === params.cityCode)
     if (city) parts.push(city.name)
   }
   if (params.category) {

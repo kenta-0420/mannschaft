@@ -11,7 +11,7 @@ const HISTORY_KEY_PREFIX = 'matching:search:history:'
 const MAX_HISTORY = 5
 
 /** 履歴の重複判定・要約表示に用いる検索条件キー */
-const PARAM_KEYS: (keyof MatchRequestSearchParams)[] = ['prefecture_code', 'city_code', 'category', 'keyword']
+const PARAM_KEYS: (keyof MatchRequestSearchParams)[] = ['prefectureCode', 'cityCode', 'category', 'keyword']
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
