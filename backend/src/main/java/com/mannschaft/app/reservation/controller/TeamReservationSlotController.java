@@ -3,8 +3,10 @@ package com.mannschaft.app.reservation.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.reservation.dto.CloseSlotRequest;
 import com.mannschaft.app.reservation.dto.CreateSlotRequest;
+import com.mannschaft.app.reservation.dto.ReservationGridResponse;
 import com.mannschaft.app.reservation.dto.ReservationSlotResponse;
 import com.mannschaft.app.reservation.dto.UpdateSlotRequest;
+import com.mannschaft.app.reservation.service.ReservationGridService;
 import com.mannschaft.app.reservation.service.ReservationSlotService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -38,6 +40,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class TeamReservationSlotController {
 
     private final ReservationSlotService slotService;
+    private final ReservationGridService gridService;
 
     /**
      * スロット一覧を取得する。
@@ -65,6 +68,26 @@ public class TeamReservationSlotController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         List<ReservationSlotResponse> slots = slotService.listAvailableSlots(teamId, from, to);
         return ResponseEntity.ok(ApiResponse.of(slots));
+    }
+
+    /**
+     * 複数予約対象の空きグリッドを取得する（機能C・§4.C）。
+     *
+     * <p>列＝予約対象（スタッフ・共通）、各セル＝時間帯の状態。単日（{@code date}）のみ。
+     * 認可は {@code @PreAuthorize} では表現せず（会員/公開ユーザーが使うため {@code isScopeAdmin} を付けない）、
+     * Service 層（{@link ReservationGridService}）で予約閲覧の view ゲート（会員 or 公開）を適用する。
+     * 未認証は認証層で 401、非会員かつ非公開は 403（RESERVATION_021）。</p>
+     */
+    @GetMapping("/grid")
+    @Operation(summary = "空きグリッド（複数予約対象）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<ReservationGridResponse>> getGrid(
+            @PathVariable Long teamId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) List<Long> staffUserIds) {
+        ReservationGridResponse response =
+                gridService.getGrid(teamId, SecurityUtils.getCurrentUserId(), date, staffUserIds);
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
