@@ -59,7 +59,10 @@ public class MatchRequestController {
 
         Page<MatchRequestResponse> result;
         if (keyword != null && !keyword.isBlank()) {
-            result = requestService.searchByKeyword(currentTeamId, keyword, PageRequest.of(page, Math.min(size, 50)));
+            // keyword 指定時も全フィルタ条件を Service 経由で渡し、条件を落とさない（複合 AND 検索）。
+            result = requestService.searchByKeyword(currentTeamId, keyword,
+                    prefectureCode, cityCode, activityType, category, level, visibility,
+                    PageRequest.of(page, Math.min(size, 50)));
         } else {
             result = requestService.searchRequests(currentTeamId,
                     prefectureCode, cityCode, activityType, category, level, visibility,
