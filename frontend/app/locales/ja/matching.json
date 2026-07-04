@@ -1,8 +1,36 @@
 {
   "matching": {
-    "pageTitle": "対戦・交流を探す",
+    "pageTitle": "マッチング",
     "teamPageTitle": "マッチング",
+    "listHeading": "対戦・交流募集",
     "empty": "募集がありません",
+    "filter": {
+      "prefecture": "都道府県",
+      "allPrefectures": "都道府県（すべて）",
+      "city": "市区町村",
+      "allCities": "市区町村（すべて）",
+      "category": "カテゴリー",
+      "allCategories": "カテゴリー（すべて）",
+      "keyword": "キーワード検索",
+      "search": "検索",
+      "clear": "クリア",
+      "mobileToggle": "絞り込み"
+    },
+    "category": {
+      "ANY": "指定なし",
+      "ELEMENTARY": "小学生",
+      "JUNIOR_HIGH": "中学生",
+      "HIGH_SCHOOL": "高校生",
+      "UNIVERSITY": "大学生",
+      "ADULT": "一般",
+      "SENIOR": "シニア"
+    },
+    "history": {
+      "title": "最近の検索条件"
+    },
+    "create": {
+      "button": "募集を作成"
+    },
     "guide": {
       "title": "対戦・交流を探す — 使い方",
       "browse": {

@@ -1,8 +1,36 @@
 {
   "matching": {
-    "pageTitle": "Buscar encuentros",
+    "pageTitle": "Emparejamiento",
     "teamPageTitle": "Emparejamiento",
+    "listHeading": "Anuncios de encuentros e intercambios",
     "empty": "Sin anuncios",
+    "filter": {
+      "prefecture": "Prefectura",
+      "allPrefectures": "Todas las prefecturas",
+      "city": "Ciudad",
+      "allCities": "Todas las ciudades",
+      "category": "Categoría",
+      "allCategories": "Todas las categorías",
+      "keyword": "Buscar por palabra clave",
+      "search": "Buscar",
+      "clear": "Limpiar",
+      "mobileToggle": "Filtros"
+    },
+    "category": {
+      "ANY": "Sin especificar",
+      "ELEMENTARY": "Primaria",
+      "JUNIOR_HIGH": "Secundaria básica",
+      "HIGH_SCHOOL": "Secundaria",
+      "UNIVERSITY": "Universidad",
+      "ADULT": "Adultos",
+      "SENIOR": "Sénior"
+    },
+    "history": {
+      "title": "Búsquedas recientes"
+    },
+    "create": {
+      "button": "Crear anuncio"
+    },
     "guide": {
       "title": "Buscar encuentros — Cómo usar",
       "browse": {
