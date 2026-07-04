@@ -39664,6 +39664,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard/action-required": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 個人横断「要対応」集計
+         * @description 所属する全チーム・組織の回覧板/アンケート/出席確認の未対応アイテムをスコープ情報付きで返す。1スコープがエラーでも他スコープは返す縮退設計（AC-12）。認証必須（未認証は401）。
+         */
+        get: operations["getPersonalActionRequired"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/corkboards/{boardId}": {
         parameters: {
             query?: never;
@@ -71993,6 +72013,28 @@ export interface components {
         };
         ApiResponseListActivityFeedResponse: {
             data?: components["schemas"]["ActivityFeedResponse"][];
+        };
+        ActionItem: {
+            /** Format: date-time */
+            deadline?: string;
+            item_id?: string;
+            item_type?: string;
+            /** Format: int64 */
+            scope_id?: number;
+            scope_name?: string;
+            scope_slug?: string;
+            scope_type?: string;
+            /** Format: date-time */
+            starts_at?: string;
+            title?: string;
+        };
+        ApiResponsePersonalActionRequiredResponse: {
+            data?: components["schemas"]["PersonalActionRequiredResponse"];
+        };
+        PersonalActionRequiredResponse: {
+            items?: components["schemas"]["ActionItem"][];
+            /** Format: int32 */
+            total_count?: number;
         };
         ApiResponseGateCheckResponse: {
             data?: components["schemas"]["GateCheckResponse"];
@@ -147475,6 +147517,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListActivityFeedResponse"];
+                };
+            };
+        };
+    };
+    getPersonalActionRequired: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePersonalActionRequiredResponse"];
                 };
             };
         };

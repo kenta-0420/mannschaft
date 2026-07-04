@@ -1,8 +1,36 @@
 {
   "matching": {
-    "pageTitle": "Spiele suchen",
+    "pageTitle": "Matching",
     "teamPageTitle": "Matching",
+    "listHeading": "Spiel- und Austausch-Inserate",
     "empty": "Keine Inserate",
+    "filter": {
+      "prefecture": "Präfektur",
+      "allPrefectures": "Alle Präfekturen",
+      "city": "Stadt",
+      "allCities": "Alle Städte",
+      "category": "Kategorie",
+      "allCategories": "Alle Kategorien",
+      "keyword": "Stichwortsuche",
+      "search": "Suchen",
+      "clear": "Zurücksetzen",
+      "mobileToggle": "Filter"
+    },
+    "category": {
+      "ANY": "Keine Angabe",
+      "ELEMENTARY": "Grundschule",
+      "JUNIOR_HIGH": "Mittelschule",
+      "HIGH_SCHOOL": "Oberschule",
+      "UNIVERSITY": "Universität",
+      "ADULT": "Erwachsene",
+      "SENIOR": "Senioren"
+    },
+    "history": {
+      "title": "Letzte Suchen"
+    },
+    "create": {
+      "button": "Inserat erstellen"
+    },
     "guide": {
       "title": "Spiele suchen — Anleitung",
       "browse": {

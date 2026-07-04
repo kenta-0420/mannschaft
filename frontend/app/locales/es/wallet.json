@@ -95,6 +95,8 @@
       "cancel": "Cancelar",
       "back": "Volver",
       "next": "Siguiente",
+      "manual_confirm": "Confirmar",
+      "next_disabled_hint": "Ingrese el nombre de la tarjeta y el código de barras para continuar",
       "save_failed": "Error al registrar la tarjeta",
       "validation_required": "Por favor ingrese el nombre de la tarjeta",
       "validation_barcode_required": "Ingrese el valor del código de barras o seleccione 'Sin código de barras'",

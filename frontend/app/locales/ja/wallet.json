@@ -95,6 +95,8 @@
       "cancel": "キャンセル",
       "back": "戻る",
       "next": "次へ",
+      "manual_confirm": "確定",
+      "next_disabled_hint": "カード名とバーコードを入力すると「次へ」に進めます",
       "save_failed": "カードの登録に失敗しました",
       "validation_required": "カード名を入力してください",
       "validation_barcode_required": "バーコード値を入力するか「バーコードなし」を選択してください",

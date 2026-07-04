@@ -95,6 +95,8 @@
       "cancel": "Cancel",
       "back": "Back",
       "next": "Next",
+      "manual_confirm": "Confirm",
+      "next_disabled_hint": "Enter a card name and barcode to proceed to Next",
       "save_failed": "Failed to register the card",
       "validation_required": "Please enter a card name",
       "validation_barcode_required": "Please enter a barcode value or select 'no barcode'",
