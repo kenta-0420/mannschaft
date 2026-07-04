@@ -342,7 +342,7 @@ onBeforeUnmount(stopCamera)
         />
       </div>
       <Button
-        :label="t('wallet.add.next')"
+        :label="t('wallet.add.manual_confirm')"
         :disabled="!manualValue.trim()"
         class="w-full"
         @click="submitManual"
