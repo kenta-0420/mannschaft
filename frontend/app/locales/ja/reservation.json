@@ -407,6 +407,49 @@
         "empty": "登録された予約不可枠はありません",
         "all_day": "終日"
       }
+    },
+    "notify_recipients": {
+      "section_label": "予約通知メール宛先",
+      "help": "予約が成立するたびにメールでお知らせする宛先を登録します。店舗の代表アドレスなど、アプリ利用者でないメールも登録できます。無料プランは3件まで、4件目以降は有料プランが必要です（最大10件）。",
+      "pii_notice": "登録したアドレスには、予約者の氏名・来店日時・メニューが送信されます。外部に共有されるアドレスの登録にはご注意ください。",
+      "field": {
+        "email": "メールアドレス",
+        "email_placeholder": "例: shop@example.com",
+        "label": "ラベル（任意）",
+        "label_placeholder": "例: 店代表、予約担当"
+      },
+      "paid_lock": {
+        "title": "無料プランは{free}件までです",
+        "detail": "4件目以降を登録するには有料プランへのアップグレードが必要です（最大{max}件）。"
+      },
+      "limit_reached": "登録できる宛先は最大{max}件です。これ以上は追加できません。",
+      "count_status": "登録済み {total} / {max} 件",
+      "button": {
+        "add": "宛先を追加",
+        "delete": "削除"
+      },
+      "list": {
+        "title": "登録済みの通知メール宛先",
+        "empty": "登録された宛先はありません",
+        "disabled": "無効"
+      },
+      "toggle": {
+        "aria": "{email} の通知を有効化"
+      },
+      "message": {
+        "create_success": "通知メール宛先を追加しました",
+        "delete_success": "通知メール宛先を削除しました"
+      },
+      "dialog": {
+        "delete_confirm": "この通知メール宛先を削除しますか？"
+      },
+      "error": {
+        "paid_required_title": "有料プランが必要です",
+        "paid_required_detail": "無料プランで登録できる宛先は3件までです。4件目以降を登録するには有料プランへのアップグレードが必要です。",
+        "limit_exceeded": "登録できる宛先は最大{limit}件です。",
+        "duplicate": "このメールアドレスは既に登録されています。",
+        "invalid_email": "メールアドレスの形式が正しくありません。"
+      }
     }
   }
 }

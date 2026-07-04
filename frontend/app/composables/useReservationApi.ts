@@ -8,6 +8,11 @@ type BlockedTimeResponse = components['schemas']['BlockedTimeResponse']
 type BlockedTimeImpactResponse = components['schemas']['BlockedTimeImpactResponse']
 type ReservationLineResponse = components['schemas']['ReservationLineResponse']
 type BusinessHourResponse = components['schemas']['BusinessHourResponse']
+// 機能D（予約通知メール宛先）は BE #2110 でフリーミアム件数ゲート付きの CRUD を追加済み。
+type NotificationRecipientListResponse = components['schemas']['NotificationRecipientListResponse']
+type NotificationRecipientResponse = components['schemas']['NotificationRecipientResponse']
+type CreateNotificationRecipientRequest = components['schemas']['CreateNotificationRecipientRequest']
+type UpdateNotificationRecipientRequest = components['schemas']['UpdateNotificationRecipientRequest']
 
 /** 予約不可枠の対象軸（機能B）。MVP で enforce するのは TEAM / STAFF の2軸。 */
 export type BlockedResourceType = NonNullable<BlockedTimeRequest['resourceType']>
@@ -264,6 +269,42 @@ export function useReservationApi() {
     )
   }
 
+  // === Notification Recipients（機能D・予約通知メール宛先）===
+  // teamId 配下の宛先 CRUD。全操作 ADMIN 限定（最終ゲートは BE）。
+  // recipientId は UUIDv7（文字列）。GET はフリーミアム状態（enabledCount/freeLimit/maxLimit/hasPaidPlan）を同梱する。
+  async function listNotificationRecipients(teamId: string) {
+    return api<{ data: NotificationRecipientListResponse }>(
+      `${base(teamId)}/reservation-notification-recipients`,
+    )
+  }
+
+  async function createNotificationRecipient(
+    teamId: string,
+    body: CreateNotificationRecipientRequest,
+  ) {
+    return api<{ data: NotificationRecipientResponse }>(
+      `${base(teamId)}/reservation-notification-recipients`,
+      { method: 'POST', body },
+    )
+  }
+
+  async function updateNotificationRecipient(
+    teamId: string,
+    recipientId: string,
+    body: UpdateNotificationRecipientRequest,
+  ) {
+    return api<{ data: NotificationRecipientResponse }>(
+      `${base(teamId)}/reservation-notification-recipients/${recipientId}`,
+      { method: 'PATCH', body },
+    )
+  }
+
+  async function deleteNotificationRecipient(teamId: string, recipientId: string) {
+    return api(`${base(teamId)}/reservation-notification-recipients/${recipientId}`, {
+      method: 'DELETE',
+    })
+  }
+
   // === My Reservations ===
   // BE: GET /reservations/my は ApiResponse<List<ReservationResponse>> ＝ { data: [...] } を返す。
   // meta（ページング情報）は無く、status/page/size クエリも受け付けない（全件返却）。
@@ -320,6 +361,10 @@ export function useReservationApi() {
     updateBlockedTime,
     deleteBlockedTime,
     getBlockedTimeImpact,
+    listNotificationRecipients,
+    createNotificationRecipient,
+    updateNotificationRecipient,
+    deleteNotificationRecipient,
     listMyReservations,
     listUpcomingReservations,
     cancelMyReservation,

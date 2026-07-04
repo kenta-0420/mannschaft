@@ -407,6 +407,49 @@
         "empty": "No hay franjas no reservables registradas",
         "all_day": "Todo el día"
       }
+    },
+    "notify_recipients": {
+      "section_label": "Correos de notificación de reservas",
+      "help": "Registra las direcciones de correo que se notifican cada vez que se realiza una reserva. Puedes añadir direcciones que no sean de usuarios de la app, como la dirección principal del negocio. El plan gratuito permite hasta 3 direcciones; a partir de la 4ª se requiere un plan de pago (hasta 10).",
+      "pii_notice": "Las direcciones registradas reciben el nombre de quien reserva, la fecha y hora de llegada y el menú. Ten cuidado al registrar direcciones que se comparten externamente.",
+      "field": {
+        "email": "Dirección de correo",
+        "email_placeholder": "p. ej. shop@example.com",
+        "label": "Etiqueta (opcional)",
+        "label_placeholder": "p. ej. Recepción, Reservas"
+      },
+      "paid_lock": {
+        "title": "El plan gratuito permite hasta {free} direcciones",
+        "detail": "Actualiza a un plan de pago para registrar la 4ª y siguientes (hasta {max})."
+      },
+      "limit_reached": "Puedes registrar hasta {max} direcciones. No se pueden añadir más.",
+      "count_status": "Registradas {total} / {max}",
+      "button": {
+        "add": "Añadir destinatario",
+        "delete": "Eliminar"
+      },
+      "list": {
+        "title": "Correos de notificación registrados",
+        "empty": "No hay destinatarios registrados",
+        "disabled": "Desactivado"
+      },
+      "toggle": {
+        "aria": "Activar notificaciones para {email}"
+      },
+      "message": {
+        "create_success": "Destinatario de notificación añadido",
+        "delete_success": "Destinatario de notificación eliminado"
+      },
+      "dialog": {
+        "delete_confirm": "¿Eliminar este destinatario de notificación?"
+      },
+      "error": {
+        "paid_required_title": "Se requiere un plan de pago",
+        "paid_required_detail": "El plan gratuito permite hasta 3 destinatarios. Actualiza a un plan de pago para registrar la 4ª y siguientes.",
+        "limit_exceeded": "Puedes registrar hasta {limit} destinatarios.",
+        "duplicate": "Esta dirección de correo ya está registrada.",
+        "invalid_email": "El formato de la dirección de correo no es válido."
+      }
     }
   }
 }
