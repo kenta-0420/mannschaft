@@ -97,7 +97,46 @@
       "next": "Siguiente",
       "save_failed": "Error al registrar la tarjeta",
       "validation_required": "Por favor ingrese el nombre de la tarjeta",
-      "validation_barcode_required": "Ingrese el valor del código de barras o seleccione 'Sin código de barras'"
+      "validation_barcode_required": "Ingrese el valor del código de barras o seleccione 'Sin código de barras'",
+      "format_labels": {
+        "CODE128": "CODE128 (tarjetas de socio en general, elija este si no sabe)",
+        "CODE39": "CODE39 (tarjetas de socio alfanuméricas)",
+        "EAN13": "EAN13 (código de barras de producto de 13 dígitos)",
+        "EAN8": "EAN8 (código de barras de producto de 8 dígitos)",
+        "JAN13": "JAN13 (código de barras japonés de 13 dígitos)",
+        "QR": "QR (patrón de puntos cuadrados)",
+        "PDF417": "PDF417 (licencia de conducir, etc.)",
+        "ITF": "ITF (logística / algunas tarjetas de socio)"
+      },
+      "help": {
+        "title": "Cómo añadir una tarjeta",
+        "description": "Registre el código de barras de su tarjeta de fidelización o membresía para presentarlo en caja.",
+        "easiest": {
+          "title": "La forma más sencilla de añadir una tarjeta",
+          "body": "Seleccionar un preset rellena automáticamente el nombre y el formato. Escanear con cámara o imagen también detecta el formato automáticamente.",
+          "steps": {
+            "step1": "Si su tienda aparece en los presets, tóquela (nombre y formato se rellenan solos)",
+            "step2": "Si no, escriba el nombre de la tienda en el campo 'Nombre de tarjeta'",
+            "step3": "Escanee el código de barras de su tarjeta con la cámara o una imagen",
+            "step4": "Revise la vista previa y toque 'Siguiente' → 'Guardar'"
+          }
+        },
+        "format_guide": {
+          "title": "¿No sabe qué formato de código de barras elegir?",
+          "body": "Solo necesita seleccionar el formato en la entrada manual. El escaneo por cámara o imagen lo detecta automáticamente.",
+          "steps": {
+            "step1": "Si tiene dudas, elija 'CODE128' (funciona para la mayoría de tarjetas de socio)",
+            "step2": "Si el número tiene 13 dígitos, elija 'EAN13'",
+            "step3": "Si el número tiene 8 dígitos, elija 'EAN8'",
+            "step4": "Si parece un patrón de puntos cuadrados, elija 'QR'"
+          }
+        },
+        "verify": {
+          "title": "Compruebe siempre después de guardar",
+          "body": "Tras guardar, verifique que el código de barras mostrado pueda escanearse en caja. Si no se puede leer, elimine la tarjeta y vuelva a registrarla con otro formato.",
+          "hint": "El formato del código de barras no puede cambiarse después de guardar. Para cambiarlo, elimínelo y vuelva a registrarlo."
+        }
+      }
     },
     "detail": {
       "edit": "Editar",
@@ -163,7 +202,8 @@
       "error_no_camera": "No se encontró cámara",
       "error_denied": "Acceso a cámara denegado",
       "error_decode_failed": "No se pudo leer el código de barras",
-      "retry": "Reintentar"
+      "retry": "Reintentar",
+      "manual_recommend_scan": "Escanear con cámara o imagen rellena el formato automáticamente. La entrada manual es el último recurso."
     },
     "barcode": {
       "no_barcode_label": "Sin código de barras",
