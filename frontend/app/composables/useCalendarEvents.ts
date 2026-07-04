@@ -43,6 +43,7 @@ export function useCalendarEvents(
   const currentMonth = ref(now.getMonth() + 1)
   const allEvents = ref<CalendarEventItem[]>([])
   const loading = ref(true)
+  const calendarLoading = ref(false)
   const cacheFrom = ref<{ year: number; month: number } | null>(null)
   const cacheTo = ref<{ year: number; month: number } | null>(null)
 
@@ -134,9 +135,10 @@ export function useCalendarEvents(
     currentMonth.value = next.month
 
     if (cacheHalfMonths === 0 || !isWithinCache(currentYear.value, currentMonth.value)) {
-      fetchAndCache(currentYear.value, currentMonth.value).catch((error) => {
-        onError?.(error)
-      })
+      calendarLoading.value = true
+      fetchAndCache(currentYear.value, currentMonth.value)
+        .catch((error) => { onError?.(error) })
+        .finally(() => { calendarLoading.value = false })
     }
   }
 
@@ -153,6 +155,7 @@ export function useCalendarEvents(
     currentMonth,
     events,
     loading,
+    calendarLoading,
     loadEvents,
     refresh,
     onPrevMonth,
