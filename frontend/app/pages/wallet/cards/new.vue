@@ -304,10 +304,9 @@ function cancel() {
         />
       </div>
     </template>
+    <!-- カード追加の使い方モーダル -->
+    <CardAddGuideModal v-model:visible="showGuide" />
   </div>
-
-  <!-- カード追加の使い方モーダル -->
-  <CardAddGuideModal v-model:visible="showGuide" />
 </template>
 
 <style scoped>
