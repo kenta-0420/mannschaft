@@ -407,6 +407,39 @@
         "empty": "No blocked times registered",
         "all_day": "All day"
       }
+    },
+    "grid": {
+      "title": "Availability grid",
+      "help": "Rows are time slots and columns are reservation targets. Tap a green \"Open\" cell to book. Grey or hatched cells cannot be booked. Use the \"Week\" tab to view seven days at once.",
+      "display_toggle": {
+        "list": "List view",
+        "grid": "Grid view"
+      },
+      "view": {
+        "single": "Day",
+        "week": "Week"
+      },
+      "axis": {
+        "label": "Axis",
+        "time_rows": "Time as rows",
+        "time_cols": "Time as columns"
+      },
+      "column": {
+        "common": "Common",
+        "time": "Time"
+      },
+      "staff_filter": {
+        "label": "Filter by target",
+        "placeholder": "All targets"
+      },
+      "state": {
+        "available": "Open",
+        "booked": "Full",
+        "closed": "Closed",
+        "unavailable": "Unavailable"
+      },
+      "empty": "No slots for this day",
+      "load_error": "Failed to load the grid"
     }
   }
 }
