@@ -407,6 +407,39 @@
         "empty": "Keine Sperrzeiten gespeichert",
         "all_day": "Ganztägig"
       }
+    },
+    "grid": {
+      "title": "Verfügbarkeitsraster",
+      "help": "Zeilen sind Zeitfenster, Spalten sind Reservierungsziele. Tippe auf eine grüne Zelle „Frei\", um zu buchen. Graue oder schraffierte Zellen können nicht gebucht werden. Über den Tab „Woche\" siehst du sieben Tage auf einmal.",
+      "display_toggle": {
+        "list": "Listenansicht",
+        "grid": "Rasteransicht"
+      },
+      "view": {
+        "single": "Tag",
+        "week": "Woche"
+      },
+      "axis": {
+        "label": "Achse",
+        "time_rows": "Zeit als Zeilen",
+        "time_cols": "Zeit als Spalten"
+      },
+      "column": {
+        "common": "Gemeinsam",
+        "time": "Zeit"
+      },
+      "staff_filter": {
+        "label": "Nach Ziel filtern",
+        "placeholder": "Alle Ziele"
+      },
+      "state": {
+        "available": "Frei",
+        "booked": "Voll",
+        "closed": "Geschlossen",
+        "unavailable": "Nicht verfügbar"
+      },
+      "empty": "Keine Zeitfenster für diesen Tag",
+      "load_error": "Raster konnte nicht geladen werden"
     }
   }
 }

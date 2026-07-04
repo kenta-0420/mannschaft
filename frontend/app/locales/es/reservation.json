@@ -407,6 +407,39 @@
         "empty": "No hay franjas no reservables registradas",
         "all_day": "Todo el día"
       }
+    },
+    "grid": {
+      "title": "Cuadrícula de disponibilidad",
+      "help": "Las filas son franjas horarias y las columnas son objetivos de reserva. Toca una celda verde \"Libre\" para reservar. Las celdas grises o rayadas no se pueden reservar. Usa la pestaña \"Semana\" para ver siete días a la vez.",
+      "display_toggle": {
+        "list": "Vista de lista",
+        "grid": "Vista de cuadrícula"
+      },
+      "view": {
+        "single": "Día",
+        "week": "Semana"
+      },
+      "axis": {
+        "label": "Eje",
+        "time_rows": "Tiempo en filas",
+        "time_cols": "Tiempo en columnas"
+      },
+      "column": {
+        "common": "Común",
+        "time": "Hora"
+      },
+      "staff_filter": {
+        "label": "Filtrar por objetivo",
+        "placeholder": "Todos los objetivos"
+      },
+      "state": {
+        "available": "Libre",
+        "booked": "Lleno",
+        "closed": "Cerrado",
+        "unavailable": "No disponible"
+      },
+      "empty": "No hay franjas para este día",
+      "load_error": "Error al cargar la cuadrícula"
     }
   }
 }
