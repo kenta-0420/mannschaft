@@ -25,14 +25,15 @@ import type { BarcodeFormat } from '~/types/pointCard'
  */
 export function isValidEan13(value: string): boolean {
   if (!/^\d{13}$/.test(value)) return false
-  const digits = value.split('').map(Number)
+  // charCodeAt を使い noUncheckedIndexedAccess の影響を受けずに各桁を取得する
   let sum = 0
   for (let i = 0; i < 12; i++) {
     // GS1 EAN-13: 奇数位置（0-based偶数インデックス）×1、偶数位置（0-based奇数インデックス）×3
-    sum += digits[i] * (i % 2 === 0 ? 1 : 3)
+    const digit = value.charCodeAt(i) - 48 // '0'.charCodeAt(0) === 48
+    sum += digit * (i % 2 === 0 ? 1 : 3)
   }
   const checkDigit = (10 - (sum % 10)) % 10
-  return checkDigit === digits[12]
+  return checkDigit === (value.charCodeAt(12) - 48)
 }
 
 /**
@@ -47,14 +48,15 @@ export function isValidEan13(value: string): boolean {
  */
 export function isValidEan8(value: string): boolean {
   if (!/^\d{8}$/.test(value)) return false
-  const digits = value.split('').map(Number)
+  // charCodeAt を使い noUncheckedIndexedAccess の影響を受けずに各桁を取得する
   let sum = 0
   for (let i = 0; i < 7; i++) {
     // GS1 EAN-8: 奇数位置（0-based偶数インデックス）×3、偶数位置（0-based奇数インデックス）×1
-    sum += digits[i] * (i % 2 === 0 ? 3 : 1)
+    const digit = value.charCodeAt(i) - 48 // '0'.charCodeAt(0) === 48
+    sum += digit * (i % 2 === 0 ? 3 : 1)
   }
   const checkDigit = (10 - (sum % 10)) % 10
-  return checkDigit === digits[7]
+  return checkDigit === (value.charCodeAt(7) - 48)
 }
 
 /**
