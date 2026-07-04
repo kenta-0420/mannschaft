@@ -414,7 +414,7 @@
       "pii_notice": "Registered addresses receive the booker's name, arrival date/time, and menu. Take care when registering addresses that are shared externally.",
       "field": {
         "email": "Email address",
-        "email_placeholder": "e.g. shop@example.com",
+        "email_placeholder": "e.g. shop{'@'}example.com",
         "label": "Label (optional)",
         "label_placeholder": "e.g. Front desk, Reservations"
       },

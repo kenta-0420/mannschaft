@@ -414,7 +414,7 @@
       "pii_notice": "등록한 주소로 예약자의 이름, 방문 일시, 메뉴가 전송됩니다. 외부에 공유되는 주소를 등록할 때는 주의하세요.",
       "field": {
         "email": "메일 주소",
-        "email_placeholder": "예: shop@example.com",
+        "email_placeholder": "예: shop{'@'}example.com",
         "label": "라벨(선택)",
         "label_placeholder": "예: 매장 대표, 예약 담당"
       },

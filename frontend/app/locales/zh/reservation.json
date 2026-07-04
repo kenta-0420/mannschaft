@@ -414,7 +414,7 @@
       "pii_notice": "登记的邮箱将收到预约者的姓名、到店日期时间和项目。登记会向外部共享的邮箱时请注意。",
       "field": {
         "email": "邮箱地址",
-        "email_placeholder": "例：shop@example.com",
+        "email_placeholder": "例：shop{'@'}example.com",
         "label": "标签（可选）",
         "label_placeholder": "例：店铺代表、预约负责人"
       },

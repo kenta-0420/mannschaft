@@ -414,7 +414,7 @@
       "pii_notice": "Las direcciones registradas reciben el nombre de quien reserva, la fecha y hora de llegada y el menú. Ten cuidado al registrar direcciones que se comparten externamente.",
       "field": {
         "email": "Dirección de correo",
-        "email_placeholder": "p. ej. shop@example.com",
+        "email_placeholder": "p. ej. shop{'@'}example.com",
         "label": "Etiqueta (opcional)",
         "label_placeholder": "p. ej. Recepción, Reservas"
       },

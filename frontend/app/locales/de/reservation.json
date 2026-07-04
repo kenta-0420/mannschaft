@@ -414,7 +414,7 @@
       "pii_notice": "Registrierte Adressen erhalten den Namen der buchenden Person, das Ankunftsdatum/-zeit und das Menü. Seien Sie vorsichtig beim Registrieren von Adressen, die extern geteilt werden.",
       "field": {
         "email": "E-Mail-Adresse",
-        "email_placeholder": "z. B. shop@example.com",
+        "email_placeholder": "z. B. shop{'@'}example.com",
         "label": "Bezeichnung (optional)",
         "label_placeholder": "z. B. Empfang, Reservierungen"
       },

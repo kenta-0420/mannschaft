@@ -414,7 +414,7 @@
       "pii_notice": "登録したアドレスには、予約者の氏名・来店日時・メニューが送信されます。外部に共有されるアドレスの登録にはご注意ください。",
       "field": {
         "email": "メールアドレス",
-        "email_placeholder": "例: shop@example.com",
+        "email_placeholder": "例: shop{'@'}example.com",
         "label": "ラベル（任意）",
         "label_placeholder": "例: 店代表、予約担当"
       },
