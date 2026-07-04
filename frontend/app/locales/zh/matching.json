@@ -1,8 +1,36 @@
 {
   "matching": {
-    "pageTitle": "寻找对手",
+    "pageTitle": "配对",
     "teamPageTitle": "配对",
+    "listHeading": "对战・交流招募",
     "empty": "暂无招募",
+    "filter": {
+      "prefecture": "都道府县",
+      "allPrefectures": "都道府县（全部）",
+      "city": "市区町村",
+      "allCities": "市区町村（全部）",
+      "category": "分类",
+      "allCategories": "分类（全部）",
+      "keyword": "关键词搜索",
+      "search": "搜索",
+      "clear": "清除",
+      "mobileToggle": "筛选"
+    },
+    "category": {
+      "ANY": "不限",
+      "ELEMENTARY": "小学生",
+      "JUNIOR_HIGH": "初中生",
+      "HIGH_SCHOOL": "高中生",
+      "UNIVERSITY": "大学生",
+      "ADULT": "成人",
+      "SENIOR": "老年组"
+    },
+    "history": {
+      "title": "最近的搜索条件"
+    },
+    "create": {
+      "button": "创建招募"
+    },
     "guide": {
       "title": "对战・交流 — 使用说明",
       "browse": {

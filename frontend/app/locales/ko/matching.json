@@ -1,8 +1,36 @@
 {
   "matching": {
-    "pageTitle": "대결 · 교류 찾기",
+    "pageTitle": "매칭",
     "teamPageTitle": "매칭",
+    "listHeading": "대결 · 교류 모집",
     "empty": "모집이 없습니다",
+    "filter": {
+      "prefecture": "도도부현",
+      "allPrefectures": "도도부현（전체）",
+      "city": "시구정촌",
+      "allCities": "시구정촌（전체）",
+      "category": "카테고리",
+      "allCategories": "카테고리（전체）",
+      "keyword": "키워드 검색",
+      "search": "검색",
+      "clear": "초기화",
+      "mobileToggle": "필터"
+    },
+    "category": {
+      "ANY": "지정 없음",
+      "ELEMENTARY": "초등학생",
+      "JUNIOR_HIGH": "중학생",
+      "HIGH_SCHOOL": "고등학생",
+      "UNIVERSITY": "대학생",
+      "ADULT": "일반",
+      "SENIOR": "시니어"
+    },
+    "history": {
+      "title": "최근 검색 조건"
+    },
+    "create": {
+      "button": "모집 작성"
+    },
     "guide": {
       "title": "대결 · 교류 찾기 — 사용 방법",
       "browse": {
