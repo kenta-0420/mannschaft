@@ -177,6 +177,10 @@
       "projects": "プロジェクトの進捗状況と一覧",
       "my-timeline": "所属チーム・組織の投稿を横断表示"
     },
+    "notices": {
+      "actionRequiredTab": "要対応",
+      "actionRequiredEmpty": "対応が必要な項目はありません"
+    },
     "myCorkboard": {
       "widgetTitle": "マイコルクボード",
       "viewAll": "すべて見る",

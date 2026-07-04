@@ -177,6 +177,10 @@
       "projects": "プロジェクトの進捗状況と一覧",
       "my-timeline": "所属チーム・組織の投稿を横断表示"
     },
+    "notices": {
+      "actionRequiredTab": "需要处理",
+      "actionRequiredEmpty": "没有需要处理的项目"
+    },
     "myCorkboard": {
       "widgetTitle": "我的软木板",
       "viewAll": "查看全部",

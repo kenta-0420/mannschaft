@@ -177,6 +177,10 @@
       "projects": "Project progress and list",
       "my-timeline": "Cross-scope posts from your teams and organizations"
     },
+    "notices": {
+      "actionRequiredTab": "Action Required",
+      "actionRequiredEmpty": "No items require your attention"
+    },
     "myCorkboard": {
       "widgetTitle": "My Corkboard",
       "viewAll": "View all",

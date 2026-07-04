@@ -1,5 +1,12 @@
 <script setup lang="ts">
 import type { ScopeType } from '~/types/scopeFolder'
+import type {
+  CirculationActionItem,
+  SurveyActionItem,
+  AttendanceActionItem,
+  ScopeTabType,
+} from '~/types/dashboard-scope'
+import type { PersonalActionItem } from '~/composables/usePersonalActionRequired'
 
 /**
  * F15.3 改修ポイント:
@@ -11,6 +18,10 @@ import type { ScopeType } from '~/types/scopeFolder'
  *
  * 設計書 §7.5 に準拠。フォルダタブと種別タブの二軸混在は混乱招くため、
  * 本フェーズはフォルダタブのみとする（plan §⑤）。
+ *
+ * F15.3 第二陣追加:
+ *  - 「要対応」タブ追加: GET /api/v1/dashboard/action-required で全スコープ横断アイテム表示
+ *  - 各アイテムクリックでモーダルを開き押印・回答ができる（AC-19）
  */
 
 const { getNotices, markNoticeRead, markAllNoticesRead } = useDashboardApi()
@@ -19,6 +30,7 @@ const { captureQuiet } = useErrorReport()
 const notification = useNotification()
 const { t } = useI18n()
 const foldersStore = useScopeFoldersStore()
+const { fetchActionRequired } = usePersonalActionRequired()
 
 interface Notice {
   id: number
@@ -30,9 +42,10 @@ interface Notice {
   linkUrl: string | null
 }
 
-/** タブの選択状態。`'all'` は全件、それ以外は `{ scopeType, folderId }`。 */
+/** タブの選択状態。`'all'` は全件、`'action-required'` は要対応タブ、それ以外は `{ scopeType, folderId }`。 */
 type TabKey =
   | { kind: 'all' }
+  | { kind: 'action-required' }
   | { kind: 'folder', scopeType: ScopeType, folderId: number }
 
 const notices = ref<Notice[]>([])
@@ -53,9 +66,51 @@ interface NotificationItem {
   createdAt: string
 }
 
+// === 要対応タブ状態 ===
+const actionRequiredItems = ref<PersonalActionItem[]>([])
+const actionRequiredLoading = ref(false)
+const actionRequiredLoaded = ref(false)
+
+// === 要対応モーダル状態 ===
+const circulationModal = ref<{
+  visible: boolean
+  item: CirculationActionItem | null
+  scopeType: ScopeTabType
+  scopeId: string
+}>({
+  visible: false,
+  item: null,
+  scopeType: 'TEAM',
+  scopeId: '',
+})
+const surveyModal = ref<{
+  visible: boolean
+  item: SurveyActionItem | null
+  scopeType: ScopeTabType
+  scopeId: string
+}>({
+  visible: false,
+  item: null,
+  scopeType: 'TEAM',
+  scopeId: '',
+})
+const attendanceModal = ref<{
+  visible: boolean
+  item: AttendanceActionItem | null
+  scopeType: ScopeTabType
+  scopeId: string
+}>({
+  visible: false,
+  item: null,
+  scopeType: 'TEAM',
+  scopeId: '',
+})
+
 /** タブキーを文字列化（キャッシュのキーとして使用）。 */
 function tabCacheKey(tab: TabKey): string {
-  return tab.kind === 'all' ? 'all' : `${tab.scopeType}-${tab.folderId}`
+  if (tab.kind === 'all') return 'all'
+  if (tab.kind === 'action-required') return 'action-required'
+  return `${tab.scopeType}-${tab.folderId}`
 }
 
 /** タブ別データキャッシュ。初回マウント時に全タブ分を一括取得して保持する。 */
@@ -74,6 +129,10 @@ async function fetchForTab(tab: TabKey): Promise<Notice[]> {
       createdAt: n.created_at,
       linkUrl: n.action_url,
     }))
+  }
+  if (tab.kind === 'action-required') {
+    // 要対応タブは notices キャッシュに入れない（別ステートで管理）
+    return []
   }
   const params = new URLSearchParams()
   params.set('folderId', String(tab.folderId))
@@ -94,13 +153,33 @@ async function fetchForTab(tab: TabKey): Promise<Notice[]> {
   }))
 }
 
+/** 要対応タブ: API からアイテム一覧を取得。 */
+async function loadActionRequired() {
+  if (actionRequiredLoaded.value) return
+  actionRequiredLoading.value = true
+  try {
+    const res = await fetchActionRequired()
+    actionRequiredItems.value = res.items
+    actionRequiredLoaded.value = true
+  }
+  catch (error) {
+    captureQuiet(error, { context: 'WidgetNotices: 要対応取得' })
+    actionRequiredItems.value = []
+  }
+  finally {
+    actionRequiredLoading.value = false
+  }
+}
+
 /** 全タブ分を並列プリフェッチしてキャッシュに保存し、現在タブを表示する。 */
 async function load() {
   loading.value = true
   noticeCache.clear()
+  actionRequiredLoaded.value = false
   try {
     await Promise.all(
       tabs.value.map(async (tabDef) => {
+        if (tabDef.tab.kind === 'action-required') return // 別ステートで管理
         try {
           noticeCache.set(tabCacheKey(tabDef.tab), await fetchForTab(tabDef.tab))
         }
@@ -110,9 +189,13 @@ async function load() {
         }
       }),
     )
+    // 要対応タブも並列取得
+    await loadActionRequired()
   }
   finally {
-    notices.value = noticeCache.get(tabCacheKey(currentTab.value)) ?? []
+    if (currentTab.value.kind !== 'action-required') {
+      notices.value = noticeCache.get(tabCacheKey(currentTab.value)) ?? []
+    }
     loading.value = false
   }
 }
@@ -136,7 +219,9 @@ const unreadCount = computed(() => notices.value.filter(n => !n.isRead).length)
 /** タブ切替。キャッシュから即座に表示するだけ（API呼び出しなし）。 */
 function switchTab(tab: TabKey) {
   currentTab.value = tab
-  notices.value = noticeCache.get(tabCacheKey(tab)) ?? []
+  if (tab.kind !== 'action-required') {
+    notices.value = noticeCache.get(tabCacheKey(tab)) ?? []
+  }
 }
 
 /**
@@ -178,7 +263,7 @@ interface FolderTabDef {
   unreadBadge: number
 }
 
-/** タブ定義（表示順: すべて → TEAM 各フォルダ → ORG 各フォルダ）。 */
+/** タブ定義（表示順: すべて → 要対応 → TEAM 各フォルダ → ORG 各フォルダ）。 */
 const tabs = computed<FolderTabDef[]>(() => {
   const result: FolderTabDef[] = [
     {
@@ -186,6 +271,12 @@ const tabs = computed<FolderTabDef[]>(() => {
       label: t('scopeFolder.all'),
       tab: { kind: 'all' },
       unreadBadge: 0, // 「すべて」は集計 API が無いためバッジ非表示
+    },
+    {
+      key: 'action-required',
+      label: t('dashboard.notices.actionRequiredTab'),
+      tab: { kind: 'action-required' },
+      unreadBadge: actionRequiredItems.value.length,
     },
   ]
 
@@ -208,6 +299,7 @@ const tabs = computed<FolderTabDef[]>(() => {
 function isActiveTab(tab: TabKey): boolean {
   const cur = currentTab.value
   if (cur.kind === 'all' && tab.kind === 'all') return true
+  if (cur.kind === 'action-required' && tab.kind === 'action-required') return true
   if (cur.kind === 'folder' && tab.kind === 'folder') {
     return cur.scopeType === tab.scopeType && cur.folderId === tab.folderId
   }
@@ -222,6 +314,81 @@ const moreLink = computed<string>(() => {
   }
   return '/notifications'
 })
+
+// === 要対応アイテムクリック → モーダル表示 ===
+function onActionItemClick(item: PersonalActionItem) {
+  if (item.itemType === 'CIRCULATION') {
+    circulationModal.value = {
+      visible: true,
+      item: {
+        id: item.itemId,
+        title: item.title,
+        circulatedAt: '',
+        deadline: item.deadline,
+      },
+      scopeType: item.scopeType,
+      scopeId: String(item.scopeId),
+    }
+  }
+  else if (item.itemType === 'SURVEY') {
+    surveyModal.value = {
+      visible: true,
+      item: {
+        id: Number(item.itemId),
+        title: item.title,
+        deadline: item.deadline,
+      },
+      scopeType: item.scopeType,
+      scopeId: String(item.scopeId),
+    }
+  }
+  else if (item.itemType === 'ATTENDANCE') {
+    attendanceModal.value = {
+      visible: true,
+      item: {
+        scheduleId: Number(item.itemId),
+        eventTitle: item.title,
+        startsAt: item.startsAt ?? '',
+      },
+      scopeType: item.scopeType,
+      scopeId: String(item.scopeId),
+    }
+  }
+}
+
+/** 完了後にアイテムをリストから除去 */
+function removeActionItem(item: PersonalActionItem) {
+  actionRequiredItems.value = actionRequiredItems.value.filter(
+    i => !(i.itemType === item.itemType && i.itemId === item.itemId && i.scopeId === item.scopeId),
+  )
+}
+
+function onCirculationConfirmed() {
+  if (circulationModal.value.item) {
+    const target = actionRequiredItems.value.find(
+      i => i.itemType === 'CIRCULATION' && i.itemId === circulationModal.value.item!.id,
+    )
+    if (target) removeActionItem(target)
+  }
+}
+
+function onSurveySubmitted() {
+  if (surveyModal.value.item) {
+    const target = actionRequiredItems.value.find(
+      i => i.itemType === 'SURVEY' && Number(i.itemId) === surveyModal.value.item!.id,
+    )
+    if (target) removeActionItem(target)
+  }
+}
+
+function onAttendanceSubmitted() {
+  if (attendanceModal.value.item) {
+    const target = actionRequiredItems.value.find(
+      i => i.itemType === 'ATTENDANCE' && Number(i.itemId) === attendanceModal.value.item!.scheduleId,
+    )
+    if (target) removeActionItem(target)
+  }
+}
 
 onMounted(async () => {
   await ensureFoldersLoaded()
@@ -271,47 +438,123 @@ onMounted(async () => {
       </button>
     </div>
 
-    <div v-if="notices.length > 0">
-      <div class="mb-2 flex items-center justify-between">
-        <Badge v-if="unreadCount > 0" :value="unreadCount" severity="danger" />
-        <Button v-if="unreadCount > 0" label="全て既読" text size="small" @click="onMarkAllRead" />
-      </div>
-      <div class="divide-y divide-surface-300 dark:divide-surface-600">
-        <div
-          v-for="notice in notices"
-          :key="notice.id"
-          class="flex items-start gap-3 py-2"
-          :class="{ 'opacity-60': notice.isRead }"
-        >
+    <!-- 通常タブ（すべて・フォルダ別） -->
+    <template v-if="currentTab.kind !== 'action-required'">
+      <div v-if="notices.length > 0">
+        <div class="mb-2 flex items-center justify-between">
+          <Badge v-if="unreadCount > 0" :value="unreadCount" severity="danger" />
+          <Button v-if="unreadCount > 0" label="全て既読" text size="small" @click="onMarkAllRead" />
+        </div>
+        <div class="divide-y divide-surface-300 dark:divide-surface-600">
           <div
-            class="mt-1 h-2 w-2 shrink-0 rounded-full"
-            :class="notice.isRead ? 'bg-surface-300' : 'bg-primary'"
-          />
-          <div class="min-w-0 flex-1">
-            <NuxtLink
-              v-if="notice.linkUrl"
-              :to="notice.linkUrl"
-              class="text-sm font-medium hover:text-primary"
-              @click="onMarkRead(notice.id)"
-            >
-              {{ notice.title }}
-            </NuxtLink>
-            <p v-else class="text-sm font-medium" @click="onMarkRead(notice.id)">
-              {{ notice.title }}
-            </p>
-            <p v-if="notice.message" class="truncate text-xs text-surface-500">
-              {{ notice.message }}
-            </p>
+            v-for="notice in notices"
+            :key="notice.id"
+            class="flex items-start gap-3 py-2"
+            :class="{ 'opacity-60': notice.isRead }"
+          >
+            <div
+              class="mt-1 h-2 w-2 shrink-0 rounded-full"
+              :class="notice.isRead ? 'bg-surface-300' : 'bg-primary'"
+            />
+            <div class="min-w-0 flex-1">
+              <NuxtLink
+                v-if="notice.linkUrl"
+                :to="notice.linkUrl"
+                class="text-sm font-medium hover:text-primary"
+                @click="onMarkRead(notice.id)"
+              >
+                {{ notice.title }}
+              </NuxtLink>
+              <p v-else class="text-sm font-medium" @click="onMarkRead(notice.id)">
+                {{ notice.title }}
+              </p>
+              <p v-if="notice.message" class="truncate text-xs text-surface-500">
+                {{ notice.message }}
+              </p>
+            </div>
           </div>
         </div>
+        <NuxtLink
+          :to="moreLink"
+          class="mt-2 block text-center text-xs text-primary hover:underline"
+        >
+          すべて表示
+        </NuxtLink>
       </div>
-      <NuxtLink
-        :to="moreLink"
-        class="mt-2 block text-center text-xs text-primary hover:underline"
-      >
-        すべて表示
-      </NuxtLink>
-    </div>
-    <DashboardEmptyState v-else icon="pi pi-bell-slash" message="お知らせはありません" />
+      <DashboardEmptyState v-else icon="pi pi-bell-slash" message="お知らせはありません" />
+    </template>
+
+    <!-- 要対応タブ -->
+    <template v-else>
+      <div v-if="actionRequiredLoading" class="py-4 text-center">
+        <i class="pi pi-spin pi-spinner text-surface-400" />
+      </div>
+      <DashboardEmptyState
+        v-else-if="actionRequiredItems.length === 0"
+        icon="pi pi-check-circle"
+        :message="t('dashboard.notices.actionRequiredEmpty')"
+      />
+      <div v-else class="divide-y divide-surface-300 dark:divide-surface-600">
+        <button
+          v-for="item in actionRequiredItems"
+          :key="`${item.itemType}-${item.scopeId}-${item.itemId}`"
+          type="button"
+          class="flex w-full items-start gap-2 py-2 text-left hover:text-primary"
+          :data-testid="`action-required-item-${item.itemType}-${item.itemId}`"
+          @click="onActionItemClick(item)"
+        >
+          <i
+            class="mt-0.5 shrink-0 text-xs"
+            :class="{
+              'pi pi-clipboard': item.itemType === 'CIRCULATION',
+              'pi pi-file-edit': item.itemType === 'SURVEY',
+              'pi pi-check-square': item.itemType === 'ATTENDANCE',
+            }"
+          />
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-sm font-medium">
+              {{ item.title }}
+            </p>
+            <p class="text-xs text-surface-500">
+              {{ item.scopeName }}
+            </p>
+          </div>
+          <i class="pi pi-chevron-right shrink-0 text-xs text-surface-400" />
+        </button>
+      </div>
+    </template>
   </DashboardWidgetCard>
+
+  <!-- 回覧板確認モーダル -->
+  <CirculationConfirmModal
+    v-if="circulationModal.item"
+    :visible="circulationModal.visible"
+    :item="circulationModal.item"
+    :scope-type="circulationModal.scopeType"
+    :scope-id="circulationModal.scopeId"
+    @update:visible="circulationModal.visible = $event"
+    @confirmed="onCirculationConfirmed"
+  />
+
+  <!-- アンケート回答モーダル -->
+  <SurveyAnswerModal
+    v-if="surveyModal.item"
+    :visible="surveyModal.visible"
+    :item="surveyModal.item"
+    :scope-type="surveyModal.scopeType"
+    :scope-id="surveyModal.scopeId"
+    @update:visible="surveyModal.visible = $event"
+    @submitted="onSurveySubmitted"
+  />
+
+  <!-- 出席確認モーダル -->
+  <AttendanceQuickModal
+    v-if="attendanceModal.item"
+    :visible="attendanceModal.visible"
+    :item="attendanceModal.item"
+    :scope-type="attendanceModal.scopeType"
+    :scope-id="attendanceModal.scopeId"
+    @update:visible="attendanceModal.visible = $event"
+    @submitted="onAttendanceSubmitted"
+  />
 </template>
