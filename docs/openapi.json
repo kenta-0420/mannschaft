@@ -126815,6 +126815,28 @@
         }
       }
     },
+    "/api/v1/dashboard/action-required": {
+      "get": {
+        "tags": [
+          "ダッシュボード"
+        ],
+        "summary": "個人横断「要対応」集計",
+        "description": "所属する全チーム・組織の回覧板/アンケート/出席確認の未対応アイテムをスコープ情報付きで返す。1スコープがエラーでも他スコープは返す縮退設計（AC-12）。認証必須（未認証は401）。",
+        "operationId": "getPersonalActionRequired",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePersonalActionRequiredResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/corkboards/{boardId}": {
       "get": {
         "tags": [
@@ -213648,6 +213670,64 @@
             "items": {
               "$ref": "#/components/schemas/ActivityFeedResponse"
             }
+          }
+        }
+      },
+      "ActionItem": {
+        "type": "object",
+        "properties": {
+          "deadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "item_id": {
+            "type": "string"
+          },
+          "item_type": {
+            "type": "string"
+          },
+          "scope_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scope_name": {
+            "type": "string"
+          },
+          "scope_slug": {
+            "type": "string"
+          },
+          "scope_type": {
+            "type": "string"
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponsePersonalActionRequiredResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PersonalActionRequiredResponse"
+          }
+        }
+      },
+      "PersonalActionRequiredResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActionItem"
+            }
+          },
+          "total_count": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
