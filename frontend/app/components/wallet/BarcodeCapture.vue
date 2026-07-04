@@ -6,6 +6,7 @@ import {
 } from '@zxing/browser'
 import type { Result } from '@zxing/library'
 import type { BarcodeFormat } from '~/types/pointCard'
+import { guessBarcodeFormat } from '~/utils/barcodeFormatGuess'
 
 /**
  * F18 ウォレット — バーコードキャプチャコンポーネント。
@@ -54,22 +55,21 @@ function onFormatChange() {
   userTouchedFormat.value = true
 }
 
-/** バーコード値の桁数から形式を自動推測し、ユーザーが未操作の間だけセットする */
+/**
+ * バーコード値からチェックディジット検証済みの形式を自動推測し、ユーザーが未操作の間だけセットする。
+ *
+ * <p>旧実装は桁数のみで EAN13/EAN8 を判定していたため、GS1 チェックディジットが
+ * 不正な値（例: 会員カードの任意13桁番号）を EAN13 と誤推測し、
+ * JsBarcode が例外を投げて「バーコードの描画に失敗しました」エラーを引き起こしていた。</p>
+ *
+ * <p>guessBarcodeFormat はチェックディジット検証を行い、不正値は CODE128 に
+ * 安全フォールバックするため、描画失敗を原理的になくす。</p>
+ */
 watch(manualValue, (newVal) => {
   // ユーザーが一度でも Select を操作した場合は自動上書きしない
   if (userTouchedFormat.value) return
 
-  const digits = newVal.trim()
-  if (/^\d{13}$/.test(digits)) {
-    // 数字のみ・ちょうど13桁 → EAN13
-    manualFormat.value = 'EAN13'
-  }
-  else if (/^\d{8}$/.test(digits)) {
-    // 数字のみ・ちょうど8桁 → EAN8
-    manualFormat.value = 'EAN8'
-  }
-  // QR/PDF417 等は桁数から判定不能なので絶対に自動変更しない。
-  // その他のケースは初期値 CODE128 を維持する。
+  manualFormat.value = guessBarcodeFormat(newVal.trim())
 })
 
 // 画像読込タブの状態
