@@ -47,6 +47,8 @@ interface SlotForm {
   title: string
   note: string
   approvalMode: ApprovalModeOption
+  /** 予約枠の定員（既定 1＝1:1 指名）。1 以上。 */
+  capacity: number
 }
 
 const form = ref<SlotForm>({
@@ -56,6 +58,7 @@ const form = ref<SlotForm>({
   title: '',
   note: '',
   approvalMode: 'INHERIT',
+  capacity: 1,
 })
 
 const saving = ref(false)
@@ -82,6 +85,7 @@ watch(
         title: slot.basic?.title ?? '',
         note: slot.status?.note ?? '',
         approvalMode: (serverMode === 'AUTO' || serverMode === 'MANUAL') ? serverMode : 'INHERIT',
+        capacity: slot.status?.capacity ?? 1,
       }
     }
     else {
@@ -93,6 +97,7 @@ watch(
         title: '',
         note: '',
         approvalMode: 'INHERIT',
+        capacity: 1,
       }
     }
   },
@@ -105,26 +110,26 @@ async function save() {
 
   saving.value = true
   try {
+    // 定員は 1 以上に正規化して送る（既定 1＝1:1 指名）。
+    const capacity = form.value.capacity != null && form.value.capacity >= 1
+      ? Math.floor(form.value.capacity)
+      : 1
+    // 全モード共通の枠フィールド。
+    const base = {
+      slotDate: form.value.slotDate,
+      startTime: `${form.value.startTime}:00`,
+      endTime: `${form.value.endTime}:00`,
+      title: form.value.title || undefined,
+      note: form.value.note || undefined,
+      capacity,
+    }
+
     if (isEdit.value && props.editingSlot?.id != null) {
       // 編集: clearApprovalMode か approvalMode を送る
       const body =
         form.value.approvalMode === 'INHERIT'
-          ? {
-              slotDate: form.value.slotDate,
-              startTime: `${form.value.startTime}:00`,
-              endTime: `${form.value.endTime}:00`,
-              title: form.value.title || undefined,
-              note: form.value.note || undefined,
-              clearApprovalMode: true,
-            }
-          : {
-              slotDate: form.value.slotDate,
-              startTime: `${form.value.startTime}:00`,
-              endTime: `${form.value.endTime}:00`,
-              title: form.value.title || undefined,
-              note: form.value.note || undefined,
-              approvalMode: form.value.approvalMode,
-            }
+          ? { ...base, clearApprovalMode: true }
+          : { ...base, approvalMode: form.value.approvalMode }
 
       await reservationApi.updateSlot(props.teamId, props.editingSlot.id, body)
       notification.success(t('reservation.slot_form.message.update_success'))
@@ -133,21 +138,8 @@ async function save() {
       // 作成: INHERIT なら approvalMode を省略
       const body =
         form.value.approvalMode === 'INHERIT'
-          ? {
-              slotDate: form.value.slotDate,
-              startTime: `${form.value.startTime}:00`,
-              endTime: `${form.value.endTime}:00`,
-              title: form.value.title || undefined,
-              note: form.value.note || undefined,
-            }
-          : {
-              slotDate: form.value.slotDate,
-              startTime: `${form.value.startTime}:00`,
-              endTime: `${form.value.endTime}:00`,
-              title: form.value.title || undefined,
-              note: form.value.note || undefined,
-              approvalMode: form.value.approvalMode,
-            }
+          ? { ...base }
+          : { ...base, approvalMode: form.value.approvalMode }
 
       await reservationApi.createSlot(props.teamId, body)
       notification.success(t('reservation.slot_form.message.create_success'))
@@ -218,6 +210,18 @@ async function save() {
           class="w-full"
           :placeholder="t('reservation.slot_form.placeholder.title')"
         />
+      </div>
+
+      <!-- 定員（既定1） -->
+      <div>
+        <label class="mb-1 block text-sm font-medium">{{ t('reservation.slot_form.field.capacity') }}</label>
+        <InputNumber
+          v-model="form.capacity"
+          :min="1"
+          show-buttons
+          class="w-full"
+        />
+        <p class="mt-1 text-xs text-surface-500">{{ t('reservation.slot_form.field.capacity_hint') }}</p>
       </div>
 
       <!-- メモ（任意） -->

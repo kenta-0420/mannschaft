@@ -159500,6 +159500,11 @@
               "MANUAL"
             ]
           },
+          "capacity": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1
+          },
           "endTime": {
             "type": "string",
             "example": "14:30:00"
@@ -159651,6 +159656,10 @@
         "type": "object",
         "properties": {
           "bookedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "capacity": {
             "type": "integer",
             "format": "int32"
           },
@@ -185219,6 +185228,11 @@
               "AUTO",
               "MANUAL"
             ]
+          },
+          "capacity": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1
           },
           "clearApprovalMode": {
             "type": "boolean"

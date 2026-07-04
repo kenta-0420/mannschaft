@@ -130,6 +130,9 @@ public class ReservationSlotService {
                 .slotDate(request.getSlotDate())
                 .startTime(request.getStartTime())
                 .endTime(request.getEndTime())
+                // 定員。未指定（null）は既定 1（＝1:1 指名）。builder に null を渡すと @Builder.Default を
+                // 上書きして NULL 挿入になるため、必ず normalizeCapacity で 1 以上へ正規化する。
+                .capacity(normalizeCapacity(request.getCapacity()))
                 .recurrenceRule(request.getRecurrenceRule())
                 .price(request.getPrice())
                 .note(request.getNote())
@@ -179,6 +182,10 @@ public class ReservationSlotService {
         }
         if (request.getNote() != null) {
             entity.changeNote(request.getNote());
+        }
+        // 定員変更。null = 据え置き（部分更新）。指定時は 1 以上へ正規化し、予約数との関係で満席/空きを再評価する。
+        if (request.getCapacity() != null) {
+            entity.changeCapacity(normalizeCapacity(request.getCapacity()));
         }
         // 承認モード上書き:
         //   clearApprovalMode=true → null（チーム既定に従う）へ戻す
@@ -278,28 +285,52 @@ public class ReservationSlotService {
     }
 
     /**
-     * スロットの予約数をインクリメントし、満席チェックを行う。
+     * スロットの予約数を +1 し、定員に達したら満席（FULL）にする。<b>オーバーブッキング防止の並行制御</b>。
      *
-     * @param entity スロットエンティティ
+     * <p>設計書 F03.4 §3 に従い、条件付きアトミック UPDATE
+     * （{@code WHERE slot_status='AVAILABLE' AND booked_count < capacity}）で満席超過を防ぐ。
+     * 複数ユーザーが同一枠へ同時予約しても、確保できるのは定員数までで、超過分は <b>0 行更新</b>となり
+     * {@link ReservationErrorCode#SLOT_FULL} を投げる。呼び出し元の予約作成トランザクション（予約 INSERT）ごと
+     * ロールバックされるため、確保に失敗したユーザーの予約は残らない。</p>
+     *
+     * <p>以前はこのメソッドが名前に反して {@code markFull()} を呼ばず、かつ枠に定員も無かったため、
+     * 同一枠へ無制限に予約できるオーバーブッキング事故が起きていた（実機E2Eで発見）。</p>
+     *
+     * @param entity スロットエンティティ（ID のみ使用）
+     * @throws BusinessException 満席 or CLOSED で枠を確保できない場合（{@link ReservationErrorCode#SLOT_FULL}）
      */
     @Transactional
     public void incrementAndCheckFull(ReservationSlotEntity entity) {
-        entity.incrementBookedCount();
-        slotRepository.save(entity);
+        int updated = slotRepository.incrementBookedCountIfAvailable(entity.getId());
+        if (updated == 0) {
+            throw new BusinessException(ReservationErrorCode.SLOT_FULL);
+        }
     }
 
     /**
-     * スロットの予約数をデクリメントし、利用可能に戻す。
+     * スロットの予約数を -1 し、満席が解消されたら利用可能（AVAILABLE）に戻す（キャンセル時）。
      *
-     * @param entity スロットエンティティ
+     * <p>アトミック UPDATE で {@code booked_count} を下限 0 でクランプしつつ減算し、
+     * {@code FULL} だった枠が定員未満に戻れば {@code AVAILABLE} へ復帰させる（CLOSED は据え置き）。</p>
+     *
+     * @param entity スロットエンティティ（ID のみ使用）
      */
     @Transactional
     public void decrementAndReopen(ReservationSlotEntity entity) {
-        entity.decrementBookedCount();
-        if (entity.getSlotStatus() == SlotStatus.FULL) {
-            entity.markAvailable();
+        slotRepository.decrementBookedCountAndReopen(entity.getId());
+    }
+
+    /**
+     * 定員を 1 以上へ正規化する。{@code null}（未指定）は既定 1（＝1:1 指名）、1 未満は 1 に丸める。
+     *
+     * <p>DTO 側の {@code @Min(1)} で 0 以下は 400 になるが、Service 直接呼び出し（テスト等）や
+     * 未指定時の防御として最終的にここでも 1 以上を保証し、builder への NULL 混入を防ぐ。</p>
+     */
+    private Integer normalizeCapacity(Integer capacity) {
+        if (capacity == null || capacity < 1) {
+            return 1;
         }
-        slotRepository.save(entity);
+        return capacity;
     }
 
     /**

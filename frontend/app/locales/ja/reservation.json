@@ -308,6 +308,8 @@
         "start_time": "開始時刻",
         "end_time": "終了時刻",
         "title": "タイトル（任意）",
+        "capacity": "定員",
+        "capacity_hint": "同時にこの枠を予約できる人数の上限（既定 1＝1:1 指名）",
         "note": "メモ（任意）"
       },
       "placeholder": {
@@ -342,6 +344,7 @@
         "closed": "クローズ済み"
       },
       "booked_count": "予約 {count}件",
+      "booked_capacity": "予約 {count}/{capacity}件",
       "empty": {
         "no_slots": "この日の枠はありません"
       },

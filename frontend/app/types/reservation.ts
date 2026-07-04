@@ -80,6 +80,8 @@ export interface SlotBasicDto {
 export interface SlotStatusDto {
   slotStatus?: string
   bookedCount?: number
+  /** 予約枠の定員（同時にこの枠を予約できる人数の上限。既定 1） */
+  capacity?: number
   isException?: boolean
   closedReason?: string
   note?: string
@@ -235,6 +237,8 @@ export interface CreateSlotRequest {
   note?: string
   /** 枠単位の承認モード上書き（省略=チーム設定に従う） */
   approvalMode?: 'AUTO' | 'MANUAL'
+  /** 予約枠の定員（同時にこの枠を予約できる人数の上限。省略=既定 1・1 以上） */
+  capacity?: number
 }
 
 export interface UpdateSlotRequest {
@@ -252,4 +256,6 @@ export interface UpdateSlotRequest {
   approvalMode?: 'AUTO' | 'MANUAL'
   /** true にすると承認モード上書きを解除（チーム設定に従う状態に戻す） */
   clearApprovalMode?: boolean
+  /** 予約枠の定員（省略=据え置き・1 以上） */
+  capacity?: number
 }
