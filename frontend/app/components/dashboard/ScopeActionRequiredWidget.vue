@@ -81,6 +81,18 @@ const surveyListPath = computed(() =>
     ? `/teams/${props.scopeId}/surveys`
     : `/organizations/${props.scopeId}/surveys`,
 )
+
+const circulationPath = computed(() =>
+  props.scopeType === 'TEAM'
+    ? `/teams/${props.scopeId}/circulation`
+    : `/organizations/${props.scopeId}/circulation`,
+)
+
+const schedulePath = computed(() =>
+  props.scopeType === 'TEAM'
+    ? `/teams/${props.scopeId}/schedule`
+    : `/organizations/${props.scopeId}/schedule`,
+)
 </script>
 
 <template>
@@ -106,7 +118,7 @@ const surveyListPath = computed(() =>
           <button
             type="button"
             class="flex w-full items-center justify-between text-left text-sm font-medium hover:text-primary"
-            @click="navigateTo('/circulation')"
+            @click="navigateTo(circulationPath)"
           >
             <span><i class="pi pi-clipboard mr-2" />{{ $t('swipeWidgets.actionRequired.circulation') }}</span>
             <span class="text-surface-500">
@@ -153,7 +165,7 @@ const surveyListPath = computed(() =>
           <button
             type="button"
             class="flex w-full items-center justify-between text-left text-sm font-medium hover:text-primary"
-            @click="navigateTo('/calendar')"
+            @click="navigateTo(schedulePath)"
           >
             <span><i class="pi pi-check-square mr-2" />{{ $t('swipeWidgets.actionRequired.attendance') }}</span>
             <span class="text-surface-500">
@@ -161,9 +173,15 @@ const surveyListPath = computed(() =>
               <i class="pi pi-chevron-right ml-1 text-xs" />
             </span>
           </button>
-          <ul class="mt-1 ml-6 list-disc text-xs text-surface-500">
-            <li v-for="item in summary.attendance.items" :key="item.scheduleId" class="truncate">
-              {{ item.eventTitle }}
+          <ul class="mt-1 ml-6 list-none text-xs text-surface-500">
+            <li v-for="item in summary.attendance.items" :key="item.scheduleId">
+              <button
+                type="button"
+                class="w-full truncate text-left hover:text-primary"
+                @click="navigateTo(props.scopeType === 'TEAM' ? `/teams/${props.scopeId}/events/${item.scheduleId}` : schedulePath)"
+              >
+                {{ item.eventTitle }}
+              </button>
             </li>
           </ul>
         </div>
