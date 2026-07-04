@@ -177,6 +177,10 @@
       "projects": "プロジェクトの進捗状況と一覧",
       "my-timeline": "所属チーム・組織の投稿を横断表示"
     },
+    "notices": {
+      "actionRequiredTab": "Acción requerida",
+      "actionRequiredEmpty": "No hay elementos que requieran su atención"
+    },
     "myCorkboard": {
       "widgetTitle": "Mi tablero de corcho",
       "viewAll": "Ver todo",
