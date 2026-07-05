@@ -19,6 +19,7 @@ useSeoMeta({
     <LpHero />
     <LpFeatureChips />
     <LpUseCaseRow />
+    <LpPwaInstall />
     <LpFinalCta />
   </div>
 </template>

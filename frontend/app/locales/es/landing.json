@@ -443,7 +443,8 @@
         ],
         "subtitle_segments": [
           "Una plataforma todo en uno para gestionar — seas quien seas: una persona, un equipo o una organización."
-        ]
+        ],
+        "no_download_note": "Sin descargar ninguna app: empieza directamente en tu navegador"
       },
       "scope": {
         "heading": "¿Cuál es tu entrada?",
@@ -899,6 +900,15 @@
             "Formularios"
           ]
         }
+      },
+      "pwa": {
+        "heading_segments": [
+          "Sin tienda de aplicaciones. Úsalo como app, aquí mismo."
+        ],
+        "desc_segments": [
+          "Mannschaft es una PWA: añádelo a tu pantalla de inicio y se abre como una app, sin descargas."
+        ],
+        "button": "Añadir a la pantalla de inicio"
       }
     }
   }

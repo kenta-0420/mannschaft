@@ -443,7 +443,8 @@
         ],
         "subtitle_segments": [
           "Eine All-in-One-Plattform für die Organisation — egal wer du bist: Einzelperson, Team oder Organisation."
-        ]
+        ],
+        "no_download_note": "Kein App-Download nötig — starte direkt im Browser"
       },
       "scope": {
         "heading": "Welcher Eingang ist deiner?",
@@ -899,6 +900,15 @@
             "Formulare"
           ]
         }
+      },
+      "pwa": {
+        "heading_segments": [
+          "Kein App-Store nötig. Nutze es direkt als App."
+        ],
+        "desc_segments": [
+          "Mannschaft ist eine PWA — zum Startbildschirm hinzugefügt öffnet es sich wie eine App, ganz ohne Download."
+        ],
+        "button": "Zum Startbildschirm hinzufügen"
       }
     }
   }

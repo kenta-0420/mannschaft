@@ -53,6 +53,9 @@ const titleSegments = computed(() => {
             {{ t('landing.v2.hero.login_link') }}
           </NuxtLink>
         </p>
+        <p class="text-xs text-surface-400">
+          {{ t('landing.v2.hero.no_download_note') }}
+        </p>
       </div>
 
       <!-- スコープ切替（個人／チーム／組織）＋登録数カウンタ -->

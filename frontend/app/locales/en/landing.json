@@ -443,7 +443,8 @@
         ],
         "subtitle_segments": [
           "An all-in-one platform for running things — whoever you are: an individual, a team, or an organization."
-        ]
+        ],
+        "no_download_note": "No app download needed — start right in your browser"
       },
       "scope": {
         "heading": "Which door is yours?",
@@ -899,6 +900,15 @@
             "Forms"
           ]
         }
+      },
+      "pwa": {
+        "heading_segments": [
+          "No app store needed. Use it as an app, right here."
+        ],
+        "desc_segments": [
+          "Mannschaft is a PWA — add it to your home screen and it opens like an app, no download required."
+        ],
+        "button": "Add to home screen"
       }
     }
   }
