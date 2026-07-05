@@ -27,7 +27,10 @@
       "card_count": "{count} tarjeta(s)",
       "no_emoji": "📋",
       "no_groups": "No hay grupos todavía",
-      "no_groups_hint": "Agrupa las tarjetas que sueles presentar juntas para cambiar rápidamente en caja"
+      "no_groups_hint": "Agrupa las tarjetas que sueles presentar juntas para cambiar rápidamente en caja",
+      "edit": "Editar",
+      "edit_group": "Editar {name}",
+      "start_presentation_for": "Iniciar modo presentación de {name}"
     },
     "settings": {
       "title": "Configuración de la cartera",
@@ -186,6 +189,7 @@
       "start_presentation": "Iniciar modo presentación",
       "validation_name_required": "Por favor ingrese el nombre del grupo",
       "validation_max_cards": "Un grupo puede contener hasta 20 tarjetas",
+      "saved": "Guardado",
       "save_failed": "Error al guardar",
       "not_found": "Grupo no encontrado"
     },

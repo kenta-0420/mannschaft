@@ -27,7 +27,10 @@
       "card_count": "{count} Karte(n)",
       "no_emoji": "📋",
       "no_groups": "Noch keine Gruppen",
-      "no_groups_hint": "Gruppieren Sie Karten, die Sie oft zusammen vorzeigen, für schnelles Wechseln an der Kasse"
+      "no_groups_hint": "Gruppieren Sie Karten, die Sie oft zusammen vorzeigen, für schnelles Wechseln an der Kasse",
+      "edit": "Bearbeiten",
+      "edit_group": "{name} bearbeiten",
+      "start_presentation_for": "Präsentationsmodus für {name} starten"
     },
     "settings": {
       "title": "Wallet-Einstellungen",
@@ -186,6 +189,7 @@
       "start_presentation": "Präsentationsmodus starten",
       "validation_name_required": "Bitte geben Sie den Gruppennamen ein",
       "validation_max_cards": "Eine Gruppe kann maximal 20 Karten enthalten",
+      "saved": "Gespeichert",
       "save_failed": "Speichern fehlgeschlagen",
       "not_found": "Gruppe nicht gefunden"
     },

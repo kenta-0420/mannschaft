@@ -102,6 +102,7 @@ async function setup(): Promise<void> {
 
     // 2. グループ取得（オンライン優先、失敗時 IndexedDB 復元）。
     //    成功時はサーバーで POINT_CARD_VIEWED 監査ログが記録される。
+    //    ここが本質的な失敗の境界線。この後のステップが失敗しても loadError にしない。
     const result = await walletOffline.getGroupForPresentation(groupId.value)
     group.value = result.group
     cachedFromOffline.value = result.cachedFromOffline
@@ -112,12 +113,7 @@ async function setup(): Promise<void> {
       && localStorage.getItem(SCREEN_CAPTURE_WARNING_KEY) === '1'
     showScreenCaptureWarning.value = !acked
 
-    // 4. Wake Lock 取得 + Fullscreen 要求
-    //    警告モーダル表示中も裏で取得を進めておく（ユーザー操作前に確保）。
-    await acquireWakeLock()
-    await enterFullscreen()
-
-    // 5. 初枚目の last_used_at を fire-and-forget で更新
+    // 4. 初枚目の last_used_at を fire-and-forget で更新
     recordUsedForCurrent()
   }
   catch (e) {
@@ -126,6 +122,21 @@ async function setup(): Promise<void> {
   }
   finally {
     loading.value = false
+  }
+
+  // 5. Wake Lock 取得 + Fullscreen 要求（付加機能・best-effort）。
+  //    グループ取得の成否に関係なく独立して実行し、失敗しても提示モードを継続する。
+  //    onMounted 経由では requestFullscreen がジェスチャーコンテキスト外になるブラウザがあるが、
+  //    その場合も catch で吸収する（useWakeLockWithFallback 内部実装で対処済み）。
+  //    ここを setup() の try-catch 外に置くことで、Wake Lock/Fullscreen の失敗が
+  //    グループ取得失敗（loadError）と誤って混同されるのを防ぐ。
+  if (!loadError.value) {
+    acquireWakeLock().catch((e) => {
+      if (import.meta.dev) console.warn('[presentation] acquireWakeLock (outer) failed', e)
+    })
+    enterFullscreen().catch((e) => {
+      if (import.meta.dev) console.warn('[presentation] enterFullscreen (outer) failed', e)
+    })
   }
 }
 
