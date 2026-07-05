@@ -38120,6 +38120,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/guardianship/children/{childUserId}/schedules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 子の予定閲覧
+         * @description 12歳未満の子の横断カレンダーを閲覧専用で取得する（有効な保護者のみ・子基準の可視性）
+         */
+        get: operations["getChildSchedules"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/guardianship/children/{childUserId}/proxy-actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 子の代理入力履歴閲覧
+         * @description 子の代わりに誰が何をしたか（代理入力記録・subject=子）を閲覧専用で取得する（有効な保護者のみ）
+         */
+        get: operations["getChildProxyActions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/guardianship/children/{childUserId}/memberships": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 子の所属閲覧
+         * @description 12歳未満の子が所属するチーム・組織を閲覧専用で取得する（有効な保護者のみ）
+         */
+        get: operations["getChildMemberships"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/guardianship/children/{childUserId}/independence-status": {
         parameters: {
             query?: never;
@@ -38132,6 +38192,46 @@ export interface paths {
          * @description 子の現在段階・封印境界日・パスワード設定有無を返す（有効な保護者のみ・IDOR 防止）
          */
         get: operations["getIndependenceStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/guardianship/children/{childUserId}/attendance/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 子の出欠状況閲覧
+         * @description 12歳未満の子の出席率統計を閲覧専用で取得する（有効な保護者のみ）
+         */
+        get: operations["getChildAttendanceStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/guardianship/children/{childUserId}/announcements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 子のお知らせ閲覧
+         * @description 12歳未満の子が所属する全スコープの掲示板お知らせを合算し閲覧専用で取得する（有効な保護者のみ・子基準）
+         */
+        get: operations["getChildAnnouncements"];
         put?: never;
         post?: never;
         delete?: never;
@@ -71001,6 +71101,37 @@ export interface components {
             blockedChildren?: components["schemas"]["BlockedChildDto"][];
             children?: components["schemas"]["SwitchableChildDto"][];
         };
+        ApiResponseGuardianChildProxyActionsResponse: {
+            data?: components["schemas"]["GuardianChildProxyActionsResponse"];
+        };
+        GuardianChildProxyActionsResponse: {
+            items?: components["schemas"]["ProxyActionItem"][];
+        };
+        ProxyActionItem: {
+            /** Format: date-time */
+            createdAt?: string;
+            featureScope?: string;
+            /** Format: int64 */
+            id?: number;
+            inputSource?: string;
+            /** Format: int64 */
+            proxyUserId?: number;
+            /** Format: int64 */
+            targetEntityId?: number;
+            targetEntityType?: string;
+        };
+        ApiResponseGuardianChildMembershipsResponse: {
+            data?: components["schemas"]["GuardianChildMembershipsResponse"];
+        };
+        GuardianChildMembershipsResponse: {
+            organizations?: components["schemas"]["ScopeRef"][];
+            teams?: components["schemas"]["ScopeRef"][];
+        };
+        ScopeRef: {
+            name?: string;
+            /** Format: int64 */
+            scopeId?: number;
+        };
         ApiResponseIndependenceStatusResponse: {
             data?: components["schemas"]["IndependenceStatusResponse"];
         };
@@ -71012,6 +71143,35 @@ export interface components {
             sealDate?: string;
             stageKey?: string;
             switchAllowed?: boolean;
+        };
+        ApiResponseAttendanceStatsResponse: {
+            data?: components["schemas"]["AttendanceStatsResponse"];
+        };
+        AnnouncementItem: {
+            /** Format: date-time */
+            createdAt?: string;
+            priority?: string;
+            /** Format: int64 */
+            scopeId?: number;
+            scopeName?: string;
+            scopeType?: string;
+            /** Format: int64 */
+            threadId?: number;
+            title?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        ApiResponseGuardianChildAnnouncementsResponse: {
+            data?: components["schemas"]["GuardianChildAnnouncementsResponse"];
+        };
+        GuardianChildAnnouncementsResponse: {
+            items?: components["schemas"]["AnnouncementItem"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            totalElements?: number;
         };
         ApiResponseGoogleCalendarStatusResponse: {
             data?: components["schemas"]["GoogleCalendarStatusResponse"];
@@ -71208,9 +71368,6 @@ export interface components {
             teamId?: number;
             /** Format: date-time */
             updatedAt?: string;
-        };
-        ApiResponseAttendanceStatsResponse: {
-            data?: components["schemas"]["AttendanceStatsResponse"];
         };
         PagedResponseJobApplicationResponse: {
             data?: components["schemas"]["JobApplicationResponse"][];
@@ -145448,6 +145605,75 @@ export interface operations {
             };
         };
     };
+    getChildSchedules: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                childUserId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListCalendarEntryResponse"];
+                };
+            };
+        };
+    };
+    getChildProxyActions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                childUserId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseGuardianChildProxyActionsResponse"];
+                };
+            };
+        };
+    };
+    getChildMemberships: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                childUserId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseGuardianChildMembershipsResponse"];
+                };
+            };
+        };
+    };
     getIndependenceStatus: {
         parameters: {
             query?: never;
@@ -145466,6 +145692,56 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseIndependenceStatusResponse"];
+                };
+            };
+        };
+    };
+    getChildAttendanceStats: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                childUserId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAttendanceStatsResponse"];
+                };
+            };
+        };
+    };
+    getChildAnnouncements: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                childUserId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseGuardianChildAnnouncementsResponse"];
                 };
             };
         };
