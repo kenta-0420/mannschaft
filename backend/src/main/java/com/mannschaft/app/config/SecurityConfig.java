@@ -296,6 +296,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/market/regions").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/market/summary").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/market/categories").permitAll()
+                // 早馬: ランディングページ公開統計 API（認証不要）。
+                // PublicStatsController が「認証不要エンドポイント」と明記しているにもかかわらず
+                // permitAll 登録漏れで 401 になっていた（未ログイン訪問者がトップページで /login へ
+                // 強制遷移させられる致命的バグ。useApi.ts の 401 ハンドラが原因を増幅）。根治登録。
+                .requestMatchers(HttpMethod.GET, "/api/v1/public/stats").permitAll()
                 // F19.1 Phase 6 公開ユーザープロフィール API（認証不要・レート制限あり）
                 // 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §6.6 Phase 6
                 .requestMatchers(HttpMethod.GET, "/api/v1/public/users/*").permitAll()
