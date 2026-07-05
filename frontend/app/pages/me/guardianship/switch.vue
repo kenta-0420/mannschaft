@@ -113,11 +113,20 @@ onMounted(loadChildren)
             </p>
           </div>
           <div class="flex items-center gap-2">
+            <!-- 見守り（閲覧専用）リンク。切替（操作）とは明確に分離する -->
+            <NuxtLink
+              v-tooltip.top="$t('proxy.guardianship.watch.linkTooltip')"
+              :to="`/me/guardianship/children/${child.childUserId}/watch?displayName=${encodeURIComponent(child.displayName ?? '')}`"
+              class="inline-flex items-center justify-center w-8 h-8 rounded-full text-surface-500 hover:bg-surface-100 transition-colors"
+              :data-testid="`guardianship-watch-link-${child.childUserId}`"
+            >
+              <i class="pi pi-eye" />
+            </NuxtLink>
             <!-- 自立移行状況リンク -->
             <NuxtLink
+              v-tooltip.top="$t('proxy.guardianship.independence.title')"
               :to="`/me/guardianship/children/${child.childUserId}/independence`"
               class="inline-flex items-center justify-center w-8 h-8 rounded-full text-surface-500 hover:bg-surface-100 transition-colors"
-              v-tooltip.top="$t('proxy.guardianship.independence.title')"
             >
               <i class="pi pi-info-circle" />
             </NuxtLink>
