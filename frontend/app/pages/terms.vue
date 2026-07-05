@@ -48,18 +48,42 @@ const sections = computed<TermsSection[]>(() => {
         <h1 class="mb-2 text-3xl font-bold text-surface-900 dark:text-white">
           {{ t('landing.legal.terms.title') }}
         </h1>
-        <p class="mb-2 text-sm text-surface-400">
-          {{ t('landing.legal.terms.last_updated') }}: {{ t('landing.legal.terms.effective_date') }}
+        <p class="mb-1 text-sm text-surface-400">
+          {{ t('landing.legal.terms.version_notice') }}
+        </p>
+        <p class="mb-2 text-xs text-surface-400">
+          {{ t('landing.legal.terms.enacted_label') }}: {{ t('landing.legal.terms.enacted_date') }}
+          <span class="mx-1.5">·</span>
+          {{ t('landing.legal.terms.revised_label') }}: {{ t('landing.legal.terms.revised_date') }}
         </p>
         <!-- 言語条項の注記（日本語版が正文） -->
-        <p class="mb-10 text-xs text-surface-400">
+        <p class="mb-8 text-xs text-surface-400">
           {{ t('landing.legal.terms.language_note') }}
         </p>
+
+        <!-- 目次（条タイトルから生成・アンカーリンク） -->
+        <nav
+          :aria-label="t('landing.legal.terms.toc_label')"
+          class="mb-10 rounded-xl bg-surface-50 p-4 dark:bg-surface-900"
+        >
+          <p class="mb-2 text-sm font-semibold text-surface-700 dark:text-surface-200">
+            {{ t('landing.legal.terms.toc_label') }}
+          </p>
+          <ol class="grid gap-1 text-sm sm:grid-cols-2">
+            <li v-for="(section, idx) in sections" :key="idx">
+              <a :href="`#terms-sec-${idx + 1}`" class="text-primary hover:underline">
+                {{ section.title }}
+              </a>
+            </li>
+          </ol>
+        </nav>
 
         <div class="space-y-8 text-left">
           <section
             v-for="(section, idx) in sections"
+            :id="`terms-sec-${idx + 1}`"
             :key="idx"
+            class="scroll-mt-20"
           >
             <h2 class="mb-3 text-lg font-bold text-surface-900 dark:text-white">
               {{ section.title }}
