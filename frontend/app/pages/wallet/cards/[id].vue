@@ -327,6 +327,7 @@ onMounted(load)
         v-if="!editMode"
         :card="card"
         :last-used-display="lastUsedDisplay"
+        :is-self-issued="isSelfIssued"
         @copy-card-id="copyCardId"
       />
 
