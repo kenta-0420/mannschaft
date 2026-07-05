@@ -384,6 +384,19 @@ class SecurityConfigAuthorizationTest {
                 "POST /api/v1/auth/login");
     }
 
+    // ---- 早馬: ランディングページ公開統計 API（GET /api/v1/public/stats）が permitAll であること ----
+    // PublicStatsController は「認証不要エンドポイント」と明記されているが、SecurityConfig の
+    // permitAll 一覧に登録漏れがあり未認証 401 になっていた（未ログイン訪問者がトップページ / で
+    // 401 → useApi.ts の 401 ハンドラにより /login へ強制遷移させられる致命的バグ）。
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("匿名: GET /api/v1/public/stats は認証で弾かれない（ランディングページ公開統計）")
+    void anonymous_public_stats_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(mockMvc.perform(get("/api/v1/public/stats")),
+                "GET /api/v1/public/stats");
+    }
+
     // ---- F08.7 項目① 公開大会参照 API（PublicTournamentController）が permitAll であること ----
 
     @Test
