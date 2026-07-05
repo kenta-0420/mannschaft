@@ -11,8 +11,8 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.payment.MembershipBillingErrorCode;
-import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
-import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
+import com.mannschaft.app.proxy.dto.ProxyActionView;
+import com.mannschaft.app.proxy.service.ProxyInputQueryService;
 import com.mannschaft.app.schedule.dto.AttendanceStatsResponse;
 import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
 import com.mannschaft.app.schedule.service.ScheduleAttendanceService;
@@ -49,7 +49,7 @@ import java.util.List;
  *
  * <p><b>ドメイン境界</b>: 他ドメインの Entity を直接参照せず、必ず各ドメインの Service メソッドを
  * ID 経由で呼ぶ（{@link ScheduleQueryService}/{@link ScheduleAttendanceService}/{@link MembershipService}/
- * {@link BulletinThreadService}/{@link ProxyInputRecordRepository}）。読み取り集約のため
+ * {@link BulletinThreadService}/{@link ProxyInputQueryService}）。読み取り集約のため
  * {@code @Transactional(readOnly = true)}（{@link GuardianshipSwitchService} と同型・各委譲先が独自 tx を持つ）。</p>
  *
  * <p><b>F00 可視性は子基準</b>: 予定・お知らせはいずれも viewer=childUserId で評価されるため、
@@ -67,7 +67,7 @@ public class GuardianChildViewService {
     private final MembershipService membershipService;
     private final NameResolverService nameResolverService;
     private final BulletinThreadService bulletinThreadService;
-    private final ProxyInputRecordRepository proxyInputRecordRepository;
+    private final ProxyInputQueryService proxyInputQueryService;
 
     /** {@link NameResolverService#resolveScopeName} 用の scopeType 文字列。 */
     private static final String SCOPE_TYPE_TEAM = "TEAM";
@@ -198,7 +198,7 @@ public class GuardianChildViewService {
         assertGuardianCanView(guardianUserId, childUserId);
 
         List<GuardianChildProxyActionsResponse.ProxyActionItem> items =
-                proxyInputRecordRepository.findBySubjectUserIdOrderByCreatedAtDesc(childUserId).stream()
+                proxyInputQueryService.getActionsBySubject(childUserId).stream()
                         .map(this::toProxyActionItem)
                         .toList();
         return new GuardianChildProxyActionsResponse(items);
@@ -239,15 +239,15 @@ public class GuardianChildViewService {
                 t.getTitle(), t.getPriority(), t.getCreatedAt(), t.getUpdatedAt());
     }
 
-    /** 代理入力エンティティを代理履歴 DTO へ写像する。subject=子 は自明ゆえ返さない。 */
-    private GuardianChildProxyActionsResponse.ProxyActionItem toProxyActionItem(ProxyInputRecordEntity r) {
+    /** proxy ドメインの代理入力ビューを、auth 側の代理履歴 DTO へ写像する。subject=子 は自明ゆえ返さない。 */
+    private GuardianChildProxyActionsResponse.ProxyActionItem toProxyActionItem(ProxyActionView v) {
         return new GuardianChildProxyActionsResponse.ProxyActionItem(
-                r.getId(),
-                r.getProxyUserId(),
-                r.getFeatureScope(),
-                r.getTargetEntityType(),
-                r.getTargetEntityId(),
-                r.getInputSource() != null ? r.getInputSource().name() : null,
-                r.getCreatedAt());
+                v.id(),
+                v.proxyUserId(),
+                v.featureScope(),
+                v.targetEntityType(),
+                v.targetEntityId(),
+                v.inputSource(),
+                v.createdAt());
     }
 }

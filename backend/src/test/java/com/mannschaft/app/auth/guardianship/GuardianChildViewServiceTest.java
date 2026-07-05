@@ -19,8 +19,8 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.payment.MembershipBillingErrorCode;
-import com.mannschaft.app.proxy.entity.ProxyInputRecordEntity;
-import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
+import com.mannschaft.app.proxy.dto.ProxyActionView;
+import com.mannschaft.app.proxy.service.ProxyInputQueryService;
 import com.mannschaft.app.schedule.dto.AttendanceStatsResponse;
 import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
 import com.mannschaft.app.schedule.service.ScheduleAttendanceService;
@@ -37,7 +37,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * {@link GuardianChildViewService} の単体テスト（F08.9 件2 保護者による子データ閲覧専用見守り）。
@@ -74,7 +73,7 @@ class GuardianChildViewServiceTest {
     @Mock
     private BulletinThreadService bulletinThreadService;
     @Mock
-    private ProxyInputRecordRepository proxyInputRecordRepository;
+    private ProxyInputQueryService proxyInputQueryService;
 
     @InjectMocks
     private GuardianChildViewService service;
@@ -230,27 +229,19 @@ class GuardianChildViewServiceTest {
     // ========================================
 
     @Test
-    @DisplayName("AC-6: proxy-actions は subject=子 のレコードのみ（findBySubjectUserIdOrderByCreatedAtDesc）")
+    @DisplayName("AC-6: proxy-actions は subject=子 のレコードのみ（ProxyInputQueryService.getActionsBySubject 経由）")
     void proxyActions_subjectChildOnly() {
         given(guardianshipSwitchService.evaluateSwitch(GUARDIAN_ID, CHILD_ID))
                 .willReturn(SwitchVerdict.ALLOWED);
-        ProxyInputRecordEntity record = ProxyInputRecordEntity.builder()
-                .subjectUserId(CHILD_ID)
-                .proxyUserId(GUARDIAN_ID)
-                .featureScope("SCHEDULE_ATTENDANCE")
-                .targetEntityType("SCHEDULE_ATTENDANCE")
-                .targetEntityId(999L)
-                .inputSource(ProxyInputRecordEntity.InputSource.GUARDIANSHIP_SWITCH)
-                .originalStorageLocation("N/A")
-                .build();
-        ReflectionTestUtils.setField(record, "id", 77L);
-        ReflectionTestUtils.setField(record, "createdAt", LocalDateTime.parse("2026-07-04T09:00:00"));
-        given(proxyInputRecordRepository.findBySubjectUserIdOrderByCreatedAtDesc(CHILD_ID))
-                .willReturn(List.of(record));
+        ProxyActionView view = new ProxyActionView(
+                77L, CHILD_ID, GUARDIAN_ID, "SCHEDULE_ATTENDANCE", "SCHEDULE_ATTENDANCE", 999L,
+                "GUARDIANSHIP_SWITCH", LocalDateTime.parse("2026-07-04T09:00:00"));
+        given(proxyInputQueryService.getActionsBySubject(CHILD_ID)).willReturn(List.of(view));
 
         GuardianChildProxyActionsResponse result = service.getChildProxyActions(GUARDIAN_ID, CHILD_ID);
 
-        verify(proxyInputRecordRepository).findBySubjectUserIdOrderByCreatedAtDesc(CHILD_ID);
+        // 委譲は proxy ドメインの query service 経由（Entity/Repository 直参照なし＝ドメイン境界）。
+        verify(proxyInputQueryService).getActionsBySubject(CHILD_ID);
         assertThat(result.items()).hasSize(1);
         GuardianChildProxyActionsResponse.ProxyActionItem item = result.items().get(0);
         assertThat(item.id()).isEqualTo(77L);
@@ -270,7 +261,7 @@ class GuardianChildViewServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(MembershipBillingErrorCode.GUARDIANSHIP_LINK_NOT_FOUND);
 
-        verify(proxyInputRecordRepository, never()).findBySubjectUserIdOrderByCreatedAtDesc(any());
+        verify(proxyInputQueryService, never()).getActionsBySubject(any());
     }
 
     private static Page<ThreadResponse> page(List<ThreadResponse> content) {

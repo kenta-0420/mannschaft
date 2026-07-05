@@ -134,6 +134,19 @@ class GuardianChildViewControllerTest {
     }
 
     @Test
+    @DisplayName("② attendance/stats リンクなし: 403 MEMBERSHIP_BILLING_005（AC-2）")
+    void attendance_linkNotFound_403() throws Exception {
+        given(guardianChildViewService.getChildAttendanceStats(eq(GUARDIAN_USER_ID), eq(11L), any(), any()))
+                .willThrow(new BusinessException(MembershipBillingErrorCode.GUARDIANSHIP_LINK_NOT_FOUND));
+
+        mockMvc.perform(get(BASE + "/attendance/stats")
+                        .param("from", "2026-07-01T00:00:00")
+                        .param("to", "2026-07-31T23:59:59"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("MEMBERSHIP_BILLING_005"));
+    }
+
+    @Test
     @DisplayName("② attendance/stats 年齢封印: 403 GUARDIANSHIP_SWITCH_AGE_LOCKED（MEMBERSHIP_BILLING_004）")
     void attendance_ageLocked_403() throws Exception {
         given(guardianChildViewService.getChildAttendanceStats(eq(GUARDIAN_USER_ID), eq(11L), any(), any()))
@@ -199,6 +212,17 @@ class GuardianChildViewControllerTest {
     }
 
     @Test
+    @DisplayName("④ announcements リンクなし: 403 MEMBERSHIP_BILLING_005（AC-2）")
+    void announcements_linkNotFound_403() throws Exception {
+        given(guardianChildViewService.getChildAnnouncements(eq(GUARDIAN_USER_ID), eq(11L), any(Integer.class), any(Integer.class)))
+                .willThrow(new BusinessException(MembershipBillingErrorCode.GUARDIANSHIP_LINK_NOT_FOUND));
+
+        mockMvc.perform(get(BASE + "/announcements"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("MEMBERSHIP_BILLING_005"));
+    }
+
+    @Test
     @DisplayName("④ announcements 年齢封印: 403 MEMBERSHIP_BILLING_004")
     void announcements_ageLocked_403() throws Exception {
         given(guardianChildViewService.getChildAnnouncements(eq(GUARDIAN_USER_ID), eq(11L), any(Integer.class), any(Integer.class)))
@@ -257,6 +281,33 @@ class GuardianChildViewControllerTest {
     @DisplayName("AC-7: proxy-actions への POST は 405（書き込み経路を持たない）")
     void proxyActions_post_405() throws Exception {
         mockMvc.perform(post(BASE + "/proxy-actions")
+                        .contentType("application/json")
+                        .content("{}"))
+                .andExpect(status().isMethodNotAllowed());
+    }
+
+    @Test
+    @DisplayName("AC-7: memberships への POST は 405（書き込み経路を持たない）")
+    void memberships_post_405() throws Exception {
+        mockMvc.perform(post(BASE + "/memberships")
+                        .contentType("application/json")
+                        .content("{}"))
+                .andExpect(status().isMethodNotAllowed());
+    }
+
+    @Test
+    @DisplayName("AC-7: attendance/stats への POST は 405（書き込み経路を持たない）")
+    void attendance_post_405() throws Exception {
+        mockMvc.perform(post(BASE + "/attendance/stats")
+                        .contentType("application/json")
+                        .content("{}"))
+                .andExpect(status().isMethodNotAllowed());
+    }
+
+    @Test
+    @DisplayName("AC-7: announcements への POST は 405（書き込み経路を持たない）")
+    void announcements_post_405() throws Exception {
+        mockMvc.perform(post(BASE + "/announcements")
                         .contentType("application/json")
                         .content("{}"))
                 .andExpect(status().isMethodNotAllowed());

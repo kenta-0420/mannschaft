@@ -65,7 +65,7 @@ Mannschaft の「子ども」に対する年齢しきい値は **2 系統** あ�
 | GET | `/children/{childUserId}/attendance/stats?from=&to=` | `ScheduleAttendanceService.getMyAttendanceStats(childUserId, from, to)` | `AttendanceStatsResponse`（既存 DTO 再利用） |
 | GET | `/children/{childUserId}/memberships` | `MembershipService.getActiveTeamIdsByUser` / `getActiveOrgIdsByUser` ＋ `NameResolverService` で名称合成 | `GuardianChildMembershipsResponse` |
 | GET | `/children/{childUserId}/announcements?page=&size=` | 子の所属スコープ列挙 → `BulletinThreadService.listThreads(TEAM/ORG, scopeId, childUserId, pageable)` を合成 | `GuardianChildAnnouncementsResponse` |
-| GET | `/children/{childUserId}/proxy-actions` | `ProxyInputRecordRepository.findBySubjectUserIdOrderByCreatedAtDesc(childUserId)` | `GuardianChildProxyActionsResponse` |
+| GET | `/children/{childUserId}/proxy-actions` | `ProxyInputQueryService.getActionsBySubject(childUserId)`（proxy ドメインの取得系サービス経由・`ProxyActionView` を受領） | `GuardianChildProxyActionsResponse` |
 
 `from`/`to` は `@DateTimeFormat(iso = DATE_TIME)` の `LocalDateTime`（schedule 系既存 EP と同一流儀）。
 
@@ -152,7 +152,7 @@ GuardianChildProxyActionsResponse
 
 ## 8. 実装メモ（ドメイン境界）
 
-- 新規 Service `GuardianChildViewService` は **他ドメインの Entity を直接参照せず、必ず各ドメインの Service メソッドを ID 経由で呼ぶ**（[CLAUDE.md ドメイン境界]／既存 `GuardianshipSwitchService` が `ParentalConsentService`/`CareLinkService` を呼ぶのと同型）。
+- 新規 Service `GuardianChildViewService` は **他ドメインの Entity/Repository を直接参照せず、必ず各ドメインの Service メソッドを ID 経由で呼ぶ**（[CLAUDE.md ドメイン境界]／既存 `GuardianshipSwitchService` が `ParentalConsentService`/`CareLinkService` を呼ぶのと同型）。代理履歴は proxy ドメインに新設した `ProxyInputQueryService.getActionsBySubject`（`ProxyActionView` プリミティブ DTO を返す）経由で取得し、`proxy.entity`/`proxy.repository` を一切 import しない（ArchUnit D-1/D-3 遵守）。
 - 返却は schedule ドメインの既存 DTO（`CalendarEntryResponse`/`AttendanceStatsResponse`）を再利用し、membership/bulletin/proxy 面は auth ドメイン側の軽量 DTO に写像する（bulletin の `ThreadResponse` を素で外へ出さず `AnnouncementItem` へ縮約）。
 - `SecurityConfig` 等に新フィルタ／新必須 Bean 依存を足さない（フルシャード `@SpringBootTest` context を壊さないため）。通常の `@RestController` ＋ 純 Mockito UT ＋ 契約テストで検証する。
 - お知らせ（④）は「子の所属スコープ列挙 → 各スコープで `listThreads` → 合算 → `updatedAt` 降順 → ページ窓で切り出し」で全体ページングを近似する（各スコープから `(page+1)*size` 件を取り、グローバル最新 `offset+size` 件を保証）。4 面で最も高コストのため、規模拡大時は専用集約クエリへの置換余地を残す。
