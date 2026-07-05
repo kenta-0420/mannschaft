@@ -215,7 +215,9 @@
       "cancel": "Cancel",
       "reserve": "Reserve",
       "cancel_reservation": "Cancel",
-      "back": "Back"
+      "back": "Back",
+      "go_to_line_manage": "Go to manage reservation targets",
+      "manage_slots": "Manage slots"
     },
     "dialog": {
       "title": "Confirm",
@@ -252,7 +254,17 @@
       "no_my_reservations": "No reservations",
       "no_lines": "No bookable items",
       "no_lines_yet": "No bookable items yet",
-      "no_available_slots": "No available slots on this day"
+      "no_available_slots": "No available slots on this day",
+      "book": {
+        "admin_no_lines": "No reservation targets yet",
+        "admin_no_lines_hint": "Create reservation targets and slots in \"Manage reservation targets\" to show slots here",
+        "admin_no_slots": "No open slots on this day",
+        "admin_no_slots_hint": "You can add slots from \"Manage reservation targets\"",
+        "member_no_lines": "Reservations are being set up",
+        "member_no_lines_hint": "Please wait until the administrator prepares reservation slots",
+        "member_no_slots": "No open slots on this day",
+        "member_no_slots_hint": "Please try another day"
+      }
     },
     "line_manage_title": "Bookable Item Management",
     "settings": {
@@ -486,6 +498,52 @@
       },
       "empty": "No slots for this day",
       "load_error": "Failed to load the grid"
+    },
+    "team_guide": {
+      "title": "How reservations work",
+      "help_button": "How to use",
+      "admin": {
+        "lines_title": "1. Create reservation targets",
+        "lines_steps": {
+          "0": "Open the \"Manage reservation targets\" tab.",
+          "1": "Use \"Add reservation target\" to register staff, counters, or other bookable targets.",
+          "2": "Without a reservation target, no slots appear on the member's \"Reserve\" screen."
+        },
+        "slots_title": "2. Create reservation slots",
+        "slots_steps": {
+          "0": "In the same \"Manage reservation targets\" tab, press \"Add slot\".",
+          "1": "Set the date, start/end time, and capacity, then save.",
+          "2": "The saved slots appear on the member's \"Reserve\" screen."
+        },
+        "publish_title": "3. Decide who can book",
+        "publish_steps": {
+          "0": "In advanced settings \"Public reservations\", choose members-only or open to the public.",
+          "1": "Set the approval mode to auto-confirm or manual approval."
+        },
+        "manage_title": "Check reservations & emergency closures",
+        "manage_steps": {
+          "0": "The \"Reservations\" tab lets you review, approve, and cancel the whole team's reservations.",
+          "1": "For sudden closures, use the \"Emergency closure\" tab to close a period and notify affected people at once."
+        }
+      },
+      "member": {
+        "book_title": "How to book",
+        "book_steps": {
+          "0": "Choose a date and reservation target to see the open slots for that day.",
+          "1": "Pick an \"Available\" slot, review the details, and book."
+        },
+        "status_title": "Reading the status",
+        "status_steps": {
+          "0": "\"Pending\" ... awaiting administrator approval.",
+          "1": "\"Approved\" ... your reservation is confirmed.",
+          "2": "\"Completed\" ... the visit has finished."
+        },
+        "cancel_title": "How to cancel",
+        "cancel_steps": {
+          "0": "Open your reservation from the \"Reservations\" tab.",
+          "1": "If within the cancellation deadline, use \"Cancel\" to withdraw it."
+        }
+      }
     }
   }
 }

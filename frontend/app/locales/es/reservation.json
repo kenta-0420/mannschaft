@@ -215,7 +215,9 @@
       "cancel": "Cancelar",
       "reserve": "Reservar",
       "cancel_reservation": "Cancelar",
-      "back": "Volver"
+      "back": "Volver",
+      "go_to_line_manage": "Ir a gestionar objetivos de reserva",
+      "manage_slots": "Gestionar franjas"
     },
     "dialog": {
       "title": "Confirmar",
@@ -252,7 +254,17 @@
       "no_my_reservations": "No hay reservas",
       "no_lines": "No hay elementos reservables",
       "no_lines_yet": "Aún no hay elementos reservables",
-      "no_available_slots": "No hay horarios disponibles este día"
+      "no_available_slots": "No hay horarios disponibles este día",
+      "book": {
+        "admin_no_lines": "Aún no hay objetivos de reserva",
+        "admin_no_lines_hint": "Crea objetivos de reserva y franjas en \"Gestionar objetivos de reserva\" para mostrar las franjas aquí",
+        "admin_no_slots": "No hay franjas libres este día",
+        "admin_no_slots_hint": "Puedes añadir franjas desde \"Gestionar objetivos de reserva\"",
+        "member_no_lines": "Las reservas se están preparando",
+        "member_no_lines_hint": "Espera a que el administrador prepare las franjas de reserva",
+        "member_no_slots": "No hay franjas libres este día",
+        "member_no_slots_hint": "Prueba con otro día"
+      }
     },
     "line_manage_title": "Gestión de elementos reservables",
     "settings": {
@@ -486,6 +498,52 @@
       },
       "empty": "No hay franjas para este día",
       "load_error": "Error al cargar la cuadrícula"
+    },
+    "team_guide": {
+      "title": "Cómo funcionan las reservas",
+      "help_button": "Cómo usar",
+      "admin": {
+        "lines_title": "1. Crear objetivos de reserva",
+        "lines_steps": {
+          "0": "Abre la pestaña \"Gestionar objetivos de reserva\".",
+          "1": "Usa \"Añadir objetivo de reserva\" para registrar personal, mostradores u otros objetivos reservables.",
+          "2": "Sin un objetivo de reserva, no aparecen franjas en la pantalla \"Reservar\" del usuario."
+        },
+        "slots_title": "2. Crear franjas de reserva",
+        "slots_steps": {
+          "0": "En la misma pestaña \"Gestionar objetivos de reserva\", pulsa \"Añadir franja\".",
+          "1": "Configura la fecha, la hora de inicio/fin y el aforo, y guarda.",
+          "2": "Las franjas guardadas aparecen en la pantalla \"Reservar\" del usuario."
+        },
+        "publish_title": "3. Decidir quién puede reservar",
+        "publish_steps": {
+          "0": "En ajustes avanzados \"Reservas públicas\", elige solo para miembros o abierto al público.",
+          "1": "Configura el modo de aprobación como confirmación automática o aprobación manual."
+        },
+        "manage_title": "Revisar reservas y cierres de emergencia",
+        "manage_steps": {
+          "0": "La pestaña \"Reservas\" permite revisar, aprobar y cancelar las reservas de todo el equipo.",
+          "1": "Para cierres imprevistos, usa la pestaña \"Cierre de emergencia\" para cerrar un periodo y notificar a los afectados a la vez."
+        }
+      },
+      "member": {
+        "book_title": "Cómo reservar",
+        "book_steps": {
+          "0": "Elige una fecha y un objetivo de reserva para ver las franjas libres de ese día.",
+          "1": "Elige una franja \"Disponible\", revisa los detalles y reserva."
+        },
+        "status_title": "Cómo leer el estado",
+        "status_steps": {
+          "0": "\"Pendiente\" ... a la espera de la aprobación del administrador.",
+          "1": "\"Aprobada\" ... tu reserva está confirmada.",
+          "2": "\"Completada\" ... la visita ha finalizado."
+        },
+        "cancel_title": "Cómo cancelar",
+        "cancel_steps": {
+          "0": "Abre tu reserva desde la pestaña \"Reservas\".",
+          "1": "Si estás dentro del plazo de cancelación, usa \"Cancelar\" para anularla."
+        }
+      }
     }
   }
 }
