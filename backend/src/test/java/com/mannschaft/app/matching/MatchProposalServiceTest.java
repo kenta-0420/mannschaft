@@ -362,7 +362,8 @@ class MatchProposalServiceTest {
                     .status(MatchRequestStatus.OPEN).prefectureCode("13").build();
             given(proposalRepository.findById(PROPOSAL_ID)).willReturn(Optional.of(proposal));
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(request));
-            // 相手チーム(OTHER_TEAM_ID)の管理者ではない（未スタブ＝false）が、キャンセルした側(TEAM_ID)の管理者
+            // 相手チーム(OTHER_TEAM_ID)の管理者ではない一方、キャンセルした側(TEAM_ID)の管理者
+            given(accessControlService.isAdminOrAbove(ACTOR_ID, OTHER_TEAM_ID, "TEAM")).willReturn(false);
             given(accessControlService.isAdminOrAbove(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(true);
 
             // When / Then

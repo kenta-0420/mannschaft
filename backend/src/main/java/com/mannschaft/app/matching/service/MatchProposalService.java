@@ -1,5 +1,6 @@
 package com.mannschaft.app.matching.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.matching.CancellationType;
 import com.mannschaft.app.matching.MatchProposalStatus;
@@ -52,6 +53,7 @@ public class MatchProposalService {
     private final MatchRequestRepository requestRepository;
     private final NgTeamRepository ngTeamRepository;
     private final MatchingMapper matchingMapper;
+    private final AccessControlService accessControlService;
 
     /**
      * 募集への応募を作成する。
@@ -148,15 +150,15 @@ public class MatchProposalService {
      * 応募を承諾する（マッチング成立）。
      */
     @Transactional
-    public AcceptProposalResponse acceptProposal(Long proposalId, Long teamId, AcceptProposalRequest request) {
+    public AcceptProposalResponse acceptProposal(Long proposalId, Long actorUserId, AcceptProposalRequest request) {
         MatchProposalEntity proposal = findProposalOrThrow(proposalId);
 
         // 募集を悲観ロックで取得
         MatchRequestEntity matchRequest = requestRepository.findByIdForUpdate(proposal.getRequestId())
                 .orElseThrow(() -> new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND));
 
-        // 権限チェック（募集チームのADMINのみ）
-        if (!matchRequest.getTeamId().equals(teamId)) {
+        // 権限チェック（募集チームの管理者/副管理者のみ・userID≠teamID の誤比較を撤廃）
+        if (!accessControlService.isAdminOrAbove(actorUserId, matchRequest.getTeamId(), "TEAM")) {
             throw new BusinessException(MatchingErrorCode.INSUFFICIENT_PERMISSION);
         }
 
@@ -211,12 +213,13 @@ public class MatchProposalService {
      * 応募を拒否する。
      */
     @Transactional
-    public ProposalStatusResponse rejectProposal(Long proposalId, Long teamId, String statusReason) {
+    public ProposalStatusResponse rejectProposal(Long proposalId, Long actorUserId, String statusReason) {
         MatchProposalEntity proposal = findProposalOrThrow(proposalId);
         MatchRequestEntity matchRequest = requestRepository.findById(proposal.getRequestId())
                 .orElseThrow(() -> new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND));
 
-        if (!matchRequest.getTeamId().equals(teamId)) {
+        // 権限チェック（募集チームの管理者/副管理者のみ）
+        if (!accessControlService.isAdminOrAbove(actorUserId, matchRequest.getTeamId(), "TEAM")) {
             throw new BusinessException(MatchingErrorCode.INSUFFICIENT_PERMISSION);
         }
         if (proposal.getStatus() != MatchProposalStatus.PENDING) {
@@ -234,10 +237,11 @@ public class MatchProposalService {
      * 応募を取り下げる。
      */
     @Transactional
-    public ProposalStatusResponse withdrawProposal(Long proposalId, Long teamId, String statusReason) {
+    public ProposalStatusResponse withdrawProposal(Long proposalId, Long actorUserId, String statusReason) {
         MatchProposalEntity proposal = findProposalOrThrow(proposalId);
 
-        if (!proposal.getProposingTeamId().equals(teamId)) {
+        // 権限チェック（応募チームの管理者/副管理者のみ・userID≠teamID の誤比較を撤廃）
+        if (!accessControlService.isAdminOrAbove(actorUserId, proposal.getProposingTeamId(), "TEAM")) {
             throw new BusinessException(MatchingErrorCode.INSUFFICIENT_PERMISSION);
         }
         if (proposal.getStatus() != MatchProposalStatus.PENDING) {
@@ -261,7 +265,7 @@ public class MatchProposalService {
      * マッチング成立後のキャンセルを行う。
      */
     @Transactional
-    public ProposalStatusResponse cancelProposal(Long proposalId, Long teamId, CancelProposalRequest request) {
+    public ProposalStatusResponse cancelProposal(Long proposalId, Long actorUserId, CancelProposalRequest request) {
         MatchProposalEntity proposal = findProposalOrThrow(proposalId);
 
         if (proposal.getStatus() != MatchProposalStatus.ACCEPTED) {
@@ -271,13 +275,19 @@ public class MatchProposalService {
         MatchRequestEntity matchRequest = requestRepository.findById(proposal.getRequestId())
                 .orElseThrow(() -> new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND));
 
-        // 募集チームまたは応募チームのADMINのみ
-        if (!matchRequest.getTeamId().equals(teamId) && !proposal.getProposingTeamId().equals(teamId)) {
+        // 募集チームまたは応募チームの管理者/副管理者のみ（userID≠teamID の誤比較を撤廃）。
+        // キャンセル実行チームは actor が管理する側とする（記録用の cancelledByTeamId）。
+        Long actingTeamId;
+        if (accessControlService.isAdminOrAbove(actorUserId, matchRequest.getTeamId(), "TEAM")) {
+            actingTeamId = matchRequest.getTeamId();
+        } else if (accessControlService.isAdminOrAbove(actorUserId, proposal.getProposingTeamId(), "TEAM")) {
+            actingTeamId = proposal.getProposingTeamId();
+        } else {
             throw new BusinessException(MatchingErrorCode.INSUFFICIENT_PERMISSION);
         }
 
         boolean mutual = request.getMutual() != null && request.getMutual();
-        proposal.cancel(teamId, request.getReason(), mutual);
+        proposal.cancel(actingTeamId, request.getReason(), mutual);
         proposalRepository.save(proposal);
 
         // 募集をOPENに復元
@@ -294,7 +304,7 @@ public class MatchProposalService {
      * 合意キャンセルを承認する。
      */
     @Transactional
-    public AgreeCancelResponse agreeCancellation(Long proposalId, Long teamId) {
+    public AgreeCancelResponse agreeCancellation(Long proposalId, Long actorUserId) {
         MatchProposalEntity proposal = findProposalOrThrow(proposalId);
 
         if (proposal.getStatus() != MatchProposalStatus.CANCELLED) {
@@ -303,16 +313,26 @@ public class MatchProposalService {
         if (proposal.getCancellationType() != CancellationType.MUTUAL_PENDING) {
             throw new BusinessException(MatchingErrorCode.INVALID_CANCELLATION_TYPE);
         }
-        if (proposal.getCancelledByTeamId().equals(teamId)) {
-            throw new BusinessException(MatchingErrorCode.CANNOT_AGREE_OWN_CANCEL);
+
+        MatchRequestEntity matchRequest = requestRepository.findById(proposal.getRequestId())
+                .orElseThrow(() -> new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND));
+
+        // 権限チェック（userID≠teamID の誤比較を撤廃）: 合意承認できるのは「キャンセルを実行した相手チーム」の
+        // 管理者/副管理者のみ。キャンセル実行チーム側の管理者は自分のキャンセルを承認できない。
+        Long cancellerTeamId = proposal.getCancelledByTeamId();
+        Long counterpartyTeamId = cancellerTeamId.equals(matchRequest.getTeamId())
+                ? proposal.getProposingTeamId() : matchRequest.getTeamId();
+        if (!accessControlService.isAdminOrAbove(actorUserId, counterpartyTeamId, "TEAM")) {
+            if (accessControlService.isAdminOrAbove(actorUserId, cancellerTeamId, "TEAM")) {
+                throw new BusinessException(MatchingErrorCode.CANNOT_AGREE_OWN_CANCEL);
+            }
+            throw new BusinessException(MatchingErrorCode.INSUFFICIENT_PERMISSION);
         }
 
         proposal.agreeCancellation();
         proposalRepository.save(proposal);
 
         // cancel_countを戻す
-        MatchRequestEntity matchRequest = requestRepository.findById(proposal.getRequestId())
-                .orElseThrow(() -> new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND));
         matchRequest.decrementCancelCount();
         requestRepository.save(matchRequest);
 
