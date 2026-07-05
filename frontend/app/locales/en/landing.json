@@ -910,7 +910,23 @@
         "desc_segments": [
           "Mannschaft is a PWA — add it to your home screen and it opens like an app, no download required."
         ],
-        "button": "Add to home screen"
+        "button": "Add to home screen",
+        "guide": {
+          "guide_button": "See how to add it",
+          "guide_title": "How to add to your home screen",
+          "tab_ios": "iPhone / iPad",
+          "tab_android": "Android",
+          "tab_desktop": "PC (Chrome / Edge)",
+          "android_step1": "Open this page in Chrome",
+          "android_step2": "Tap the menu (⋮) at the top right",
+          "android_step3": "Choose “Install app” or “Add to Home screen”",
+          "android_step4": "Tap “Install” to finish",
+          "desktop_step1": "Open this page in Chrome or Edge",
+          "desktop_step2": "Click the install icon (⊕) at the right end of the address bar",
+          "desktop_step3": "Or choose “Install app” from the menu",
+          "desktop_step4": "Click “Install” to finish",
+          "close": "Close"
+        }
       }
     }
   }

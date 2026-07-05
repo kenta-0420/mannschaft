@@ -911,7 +911,23 @@
         "desc_segments": [
           "Mannschaft는 PWA 지원. 홈 화면에 추가하면 다운로드 없이 앱처럼 열립니다."
         ],
-        "button": "홈 화면에 추가"
+        "button": "홈 화면에 추가",
+        "guide": {
+          "guide_button": "추가 방법 보기",
+          "guide_title": "홈 화면에 추가하는 방법",
+          "tab_ios": "iPhone / iPad",
+          "tab_android": "Android",
+          "tab_desktop": "PC (Chrome / Edge)",
+          "android_step1": "Chrome에서 이 페이지를 엽니다",
+          "android_step2": "오른쪽 위 메뉴(⋮)를 탭합니다",
+          "android_step3": "“앱 설치” 또는 “홈 화면에 추가”를 선택합니다",
+          "android_step4": "“설치”를 탭하면 완료",
+          "desktop_step1": "Chrome 또는 Edge에서 이 페이지를 엽니다",
+          "desktop_step2": "주소창 오른쪽 끝의 설치 아이콘(⊕)을 클릭합니다",
+          "desktop_step3": "메뉴에서는 “앱 설치”를 선택합니다",
+          "desktop_step4": "“설치”를 클릭하면 완료",
+          "close": "닫기"
+        }
       }
     }
   }

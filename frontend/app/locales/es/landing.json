@@ -910,7 +910,23 @@
         "desc_segments": [
           "Mannschaft es una PWA: añádelo a tu pantalla de inicio y se abre como una app, sin descargas."
         ],
-        "button": "Añadir a la pantalla de inicio"
+        "button": "Añadir a la pantalla de inicio",
+        "guide": {
+          "guide_button": "Ver cómo añadirlo",
+          "guide_title": "Cómo añadirlo a la pantalla de inicio",
+          "tab_ios": "iPhone / iPad",
+          "tab_android": "Android",
+          "tab_desktop": "PC (Chrome / Edge)",
+          "android_step1": "Abre esta página en Chrome",
+          "android_step2": "Toca el menú (⋮) arriba a la derecha",
+          "android_step3": "Elige “Instalar aplicación” o “Añadir a la pantalla de inicio”",
+          "android_step4": "Toca “Instalar” para terminar",
+          "desktop_step1": "Abre esta página en Chrome o Edge",
+          "desktop_step2": "Haz clic en el icono de instalar (⊕) al final de la barra de direcciones",
+          "desktop_step3": "O elige “Instalar aplicación” en el menú",
+          "desktop_step4": "Haz clic en “Instalar” para terminar",
+          "close": "Cerrar"
+        }
       }
     }
   }

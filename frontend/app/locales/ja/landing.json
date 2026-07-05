@@ -706,7 +706,23 @@
           "ホーム画面に追加すれば、",
           "ダウンロードなしでアプリのように開けます。"
         ],
-        "button": "ホーム画面に追加"
+        "button": "ホーム画面に追加",
+        "guide": {
+          "guide_button": "追加方法を見る",
+          "guide_title": "ホーム画面への追加方法",
+          "tab_ios": "iPhone / iPad",
+          "tab_android": "Android",
+          "tab_desktop": "PC（Chrome / Edge）",
+          "android_step1": "Chromeでこのページを開く",
+          "android_step2": "右上のメニュー（⋮）をタップ",
+          "android_step3": "「アプリをインストール」または「ホーム画面に追加」を選択",
+          "android_step4": "「インストール」をタップして完了",
+          "desktop_step1": "Chrome または Edge でこのページを開く",
+          "desktop_step2": "アドレスバー右端のインストールアイコン（⊕）をクリック",
+          "desktop_step3": "メニューからの場合は「アプリをインストール」を選択",
+          "desktop_step4": "「インストール」をクリックして完了",
+          "close": "閉じる"
+        }
       }
     }
   }

@@ -2,35 +2,32 @@
 /**
  * LP v2: PWA インストール導線ブロック。
  *
- * 既存の F12.6 実装（usePWAInstall / IosInstallGuideModal）を再利用する。
- * - Chromium 系: beforeinstallprompt を捕捉済みなら prompt() を発火
- * - iOS: 共有ボタン→ホーム画面に追加の手順モーダルを表示
- * - スタンドアロン起動中・イベント未発火環境: ボタンは出さず説明文のみ（UIは壊れない）
+ * 既存の F12.6 実装（usePWAInstall）を再利用しつつ、どの環境でも導線が出るようにする。
+ * - canInstall（Chromium でネイティブプロンプト可）: 「ホーム画面に追加」で prompt() ＋「追加方法を見る」モーダル
+ * - それ以外（PC Chrome/Edge の未発火・iOS 含む非 installed）: 「ホーム画面への追加方法」モーダル
+ * - isInstalled（スタンドアロン起動中）: バッジのみ
+ * → インストール済み以外は必ず何らかの導線が出る。
  */
 import { usePWAInstall } from '~/composables/usePWAInstall'
-import IosInstallGuideModal from '~/components/pwa/IosInstallGuideModal.vue'
+import LpPwaGuideModal from '~/components/landing/v2/LpPwaGuideModal.vue'
 
 const { t } = useI18n()
-const { canInstall, isInstalled, isIOS, promptInstall } = usePWAInstall()
+const { canInstall, isInstalled, promptInstall } = usePWAInstall()
 
-const iosModalVisible = ref(false)
+const guideVisible = ref(false)
 const installing = ref(false)
 
-// 押して意味のあるインストール導線があるときだけボタンを出す
-const showInstallButton = computed(() => !isInstalled.value && (canInstall.value || isIOS.value))
-
-async function handleClick() {
-  // iOS は beforeinstallprompt 非対応のため手順モーダルへ（既存モーダルを再利用）
-  if (isIOS.value && !canInstall.value) {
-    iosModalVisible.value = true
-    return
-  }
+async function handleInstall() {
   installing.value = true
   try {
     await promptInstall()
   } finally {
     installing.value = false
   }
+}
+
+function openGuide() {
+  guideVisible.value = true
 }
 </script>
 
@@ -48,27 +45,46 @@ async function handleClick() {
           <LpWrapText path="landing.v2.pwa.desc_segments" />
         </p>
 
-        <!-- インストール導線（環境に応じて出し分け・未発火環境ではボタンなしでも文面が成立する） -->
-        <div v-if="showInstallButton" class="mt-4">
-          <Button
-            :label="t('landing.v2.pwa.button')"
-            icon="pi pi-plus"
-            size="small"
-            outlined
-            :loading="installing"
-            @click="handleClick"
-          />
-        </div>
+        <!-- インストール済み: バッジのみ -->
         <p
-          v-else-if="isInstalled"
+          v-if="isInstalled"
           class="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary"
         >
           <i class="pi pi-check-circle" />
           {{ t('pwa.installed') }}
         </p>
+
+        <!-- ネイティブプロンプト可能: 追加ボタン＋追加方法リンク -->
+        <div v-else-if="canInstall" class="mt-4 flex flex-col items-center gap-2">
+          <Button
+            :label="t('landing.v2.pwa.button')"
+            icon="pi pi-plus"
+            size="small"
+            :loading="installing"
+            @click="handleInstall"
+          />
+          <button
+            type="button"
+            class="text-xs font-medium text-primary hover:underline"
+            @click="openGuide"
+          >
+            {{ t('landing.v2.pwa.guide.guide_button') }}
+          </button>
+        </div>
+
+        <!-- 未発火（PC Chrome/Edge・iOS 等）: 必ず「追加方法」モーダル導線を出す -->
+        <div v-else class="mt-4">
+          <Button
+            :label="t('landing.v2.pwa.guide.guide_button')"
+            icon="pi pi-mobile"
+            size="small"
+            outlined
+            @click="openGuide"
+          />
+        </div>
       </div>
     </div>
 
-    <IosInstallGuideModal v-model:visible="iosModalVisible" :show-memo-shortcut="false" />
+    <LpPwaGuideModal v-model:visible="guideVisible" />
   </section>
 </template>

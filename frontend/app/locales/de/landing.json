@@ -910,7 +910,23 @@
         "desc_segments": [
           "Mannschaft ist eine PWA — zum Startbildschirm hinzugefügt öffnet es sich wie eine App, ganz ohne Download."
         ],
-        "button": "Zum Startbildschirm hinzufügen"
+        "button": "Zum Startbildschirm hinzufügen",
+        "guide": {
+          "guide_button": "Anleitung ansehen",
+          "guide_title": "So fügst du es zum Startbildschirm hinzu",
+          "tab_ios": "iPhone / iPad",
+          "tab_android": "Android",
+          "tab_desktop": "PC (Chrome / Edge)",
+          "android_step1": "Öffne diese Seite in Chrome",
+          "android_step2": "Tippe oben rechts auf das Menü (⋮)",
+          "android_step3": "Wähle „App installieren“ oder „Zum Startbildschirm hinzufügen“",
+          "android_step4": "Tippe auf „Installieren“, um abzuschließen",
+          "desktop_step1": "Öffne diese Seite in Chrome oder Edge",
+          "desktop_step2": "Klicke auf das Installieren-Symbol (⊕) am rechten Rand der Adressleiste",
+          "desktop_step3": "Oder wähle im Menü „App installieren“",
+          "desktop_step4": "Klicke auf „Installieren“, um abzuschließen",
+          "close": "Schließen"
+        }
       }
     }
   }
