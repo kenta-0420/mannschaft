@@ -26,6 +26,8 @@ export interface ReflectionTemplateSectionPreset {
  * - `sectionHeadingKeys`: 初期 section の見出しに使う i18n キー（reflection.template.preset.*）。
  *   空配列なら見出しなしの自由記述（NORMAL）。
  * - `sectionPresets`: type 付き section プリセット（あればこちらを優先）。
+ * - `optionalSectionKeys`: 感情・内省系など、デフォルトOFF（オプトイン）にする見出しキー一覧。
+ *   sectionHeadingKeys に含まれるキーのうち、ここに列挙したものはチェックボックスのデフォルトが外れた状態になる。
  */
 export interface ReflectionTemplateDef {
   key: ReflectionTemplateKey
@@ -38,6 +40,12 @@ export interface ReflectionTemplateDef {
   sectionHeadingKeys: string[]
   /** type 付き section プリセット（あればこちらを優先）。 */
   sectionPresets?: ReflectionTemplateSectionPreset[]
+  /**
+   * 感情・内省系など、デフォルト OFF（オプトイン）にする見出しキー一覧。
+   * sectionHeadingKeys のサブセット。ここに含まれるキーは選択 UI でチェックが外れた状態で表示される。
+   * ADHD ドライモード優先設計: 感情・自己内省を促す見出しは初期値 OFF。
+   */
+  optionalSectionKeys?: string[]
 }
 
 export const REFLECTION_TEMPLATES: ReflectionTemplateDef[] = [
@@ -57,6 +65,10 @@ export const REFLECTION_TEMPLATES: ReflectionTemplateDef[] = [
       'reflection.template.preset.diary.event',
       'reflection.template.preset.diary.feeling',
       'reflection.template.preset.diary.tomorrow',
+    ],
+    // 感情・内省系はデフォルト OFF（ADHD ドライモード優先設計）
+    optionalSectionKeys: [
+      'reflection.template.preset.diary.feeling',
     ],
   },
   {
@@ -112,10 +124,16 @@ export function templateKeyForSourceType(sourceType: ReflectionSourceType | null
  * テンプレートから初期 section 一覧を生成する。
  * sectionPresets がある場合はそちらを使い type 付き section を生成。
  * 無ければ sectionHeadingKeys から OUTLINE section を生成（後方互換）。
+ *
+ * @param template テンプレート定義
+ * @param t i18n 翻訳関数
+ * @param enabledKeys 有効にする見出しキーの Set。省略時は全キー有効（後方互換）。
+ *   optionalSectionKeys による UI チェックボックスの選択結果をここに渡す。
  */
 export function buildInitialSections(
   template: ReflectionTemplateDef,
   t: (key: string) => string,
+  enabledKeys?: Set<string>,
 ): ReflectionSection[] {
   if (template.sectionPresets && template.sectionPresets.length > 0) {
     return template.sectionPresets.map(preset => {
@@ -126,5 +144,19 @@ export function buildInitialSections(
       return emptySection(heading)
     })
   }
-  return template.sectionHeadingKeys.map(k => emptySection(t(k)))
+  const keys = enabledKeys
+    ? template.sectionHeadingKeys.filter(k => enabledKeys.has(k))
+    : template.sectionHeadingKeys
+  return keys.map(k => emptySection(t(k)))
+}
+
+/**
+ * テンプレートの見出しキーごとのデフォルト有効状態を返す。
+ * optionalSectionKeys に含まれるキーは false（デフォルト OFF）、それ以外は true。
+ */
+export function getDefaultEnabledKeys(template: ReflectionTemplateDef): Record<string, boolean> {
+  const optionalSet = new Set(template.optionalSectionKeys ?? [])
+  return Object.fromEntries(
+    template.sectionHeadingKeys.map(k => [k, !optionalSet.has(k)]),
+  )
 }
