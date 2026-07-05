@@ -148,7 +148,6 @@
       "delete_confirm_title": "要删除卡片吗？",
       "delete_confirm": "彻底删除此卡片。无法恢复。",
       "delete_confirm_ok": "删除",
-      "record_used": "记录为已使用",
       "favorite_on": "添加到收藏",
       "favorite_off": "从收藏中移除",
       "section_meta": "卡片信息",
@@ -160,8 +159,7 @@
       "barcode_locked_hint": "出于安全原因，条形码值・格式无法编辑。如需更改，请删除后重新注册。",
       "not_found": "找不到卡片",
       "back_to_list": "返回列表",
-      "save_failed": "更新失败",
-      "used_recorded": "已记录为已使用"
+      "save_failed": "更新失败"
     },
     "group_form": {
       "title_new": "新建群组",
