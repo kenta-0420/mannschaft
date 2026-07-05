@@ -30,7 +30,9 @@
       "no_groups_hint": "Agrupa las tarjetas que sueles presentar juntas para cambiar rápidamente en caja",
       "edit": "Editar",
       "edit_group": "Editar {name}",
-      "start_presentation_for": "Iniciar modo presentación de {name}"
+      "start_presentation_for": "Iniciar modo presentación de {name}",
+      "show_barcode_tooltip": "Mostrar código de barras",
+      "edit_tooltip": "Editar grupo"
     },
     "settings": {
       "title": "Configuración de la cartera",
