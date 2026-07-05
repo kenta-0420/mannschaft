@@ -64,6 +64,7 @@ public class Auth2faService {
     private final DomainEventPublisher eventPublisher;
     private final EncryptionService encryptionService;
     private final RoleClaimResolver roleClaimResolver;
+    private final StatusClaimResolver statusClaimResolver;
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final String TOTP_USED_KEY_PREFIX = "mannschaft:auth:totp_used:";
@@ -471,7 +472,8 @@ public class Auth2faService {
      */
     private TokenResponse issueTokenPair(Long userId) {
         // 認可基盤完全根治 Phase 1（§3.2）: RoleClaimResolver で SYSTEM_ADMIN を判定して roles に載せる。
-        String accessToken = authTokenService.issueAccessToken(userId, roleClaimResolver.resolveRoles(userId));
+        String accessToken = authTokenService.issueAccessToken(userId, roleClaimResolver.resolveRoles(userId),
+                statusClaimResolver.isPendingParentalConsent(userId));
         String refreshToken = authTokenService.generateRefreshToken();
         String refreshTokenHash = authTokenService.hashToken(refreshToken);
 

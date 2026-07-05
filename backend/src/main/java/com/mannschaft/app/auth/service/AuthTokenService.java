@@ -74,13 +74,30 @@ public class AuthTokenService {
     // ========================================
 
     /**
-     * Access Token を発行する。
+     * Access Token を発行する（後方互換オーバーロード。{@code ppc=false} 相当）。
      *
      * @param userId ユーザーID
      * @param roles  ロール一覧
      * @return JWT文字列
      */
     public String issueAccessToken(Long userId, List<String> roles) {
+        return issueAccessToken(userId, roles, false);
+    }
+
+    /**
+     * Access Token を発行する。
+     *
+     * <p>F01.9 保護者同意ゲート: {@code ppc}（pending parental consent）クレームを載せる。
+     * {@code true} の場合、{@link com.mannschaft.app.config.ParentalConsentGateFilter} が
+     * 許可リスト外の保護 API を 403 {@code AUTH_070} で遮断する。判定は
+     * {@link StatusClaimResolver} が発行・更新の全経路で行う。</p>
+     *
+     * @param userId                  ユーザーID
+     * @param roles                   ロール一覧
+     * @param pendingParentalConsent  保護者同意待ち（未成年・同意未完了）なら true
+     * @return JWT文字列
+     */
+    public String issueAccessToken(Long userId, List<String> roles, boolean pendingParentalConsent) {
         Instant now = Instant.now();
         Instant expiry = now.plusSeconds(accessTokenExpirationSeconds);
 
@@ -88,6 +105,7 @@ public class AuthTokenService {
                 .subject(String.valueOf(userId))
                 .id(UUID.randomUUID().toString())
                 .claim("roles", roles)
+                .claim("ppc", pendingParentalConsent)
                 .issuer(ISSUER)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))

@@ -61,6 +61,19 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
     long countByStatus(UserEntity.UserStatus status);
 
+    /**
+     * F01.9 保護者同意ゲート: ユーザーの現在ステータスのみを軽量取得する。
+     *
+     * <p>{@link com.mannschaft.app.auth.service.StatusClaimResolver} が JWT の {@code ppc}
+     * クレーム（PENDING_PARENTAL_CONSENT 判定）を解決する際に使用する。エンティティ全体を
+     * ロードせず status 列のみを射影することで、トークン発行・更新の全経路で軽量に判定できる。</p>
+     *
+     * @param userId 対象ユーザー ID
+     * @return ステータス（未削除ユーザーのみ。存在しない場合は空）
+     */
+    @Query("SELECT u.status FROM UserEntity u WHERE u.id = :userId")
+    Optional<UserStatus> findStatusById(@Param("userId") Long userId);
+
     long countByLastLoginAtAfterAndStatusAndDeletedAtIsNull(LocalDateTime since, UserEntity.UserStatus status);
 
     // === Analytics 集計用クエリ ===
