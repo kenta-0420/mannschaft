@@ -13,8 +13,13 @@ import type {
  *   <li>含まれるカードの並び替え（上下ボタン）</li>
  *   <li>カード追加 / 削除（チェックボックス UI で「他のカード」セクションから追加）</li>
  *   <li>削除ボタン（カード本体は消えない旨注意表示）</li>
- *   <li>「提示モードを開始」ボタンで {@code /wallet/groups/[id]/show} へ遷移（show.vue は第五陣で実装）</li>
  * </ul>
+ *
+ * <p>提示モードへの導線はグループタイル（{@code GroupTile.vue}）本体タップに集約したため、
+ * 編集ページからは撤去した（UX 再構成・案A）。加えて、このページは
+ * {@code pages/wallet/groups/[id]/index.vue} として {@code show.vue} と兄弟ルートに置く。
+ * 旧構成（{@code [id].vue} + {@code [id]/show.vue}）では [id].vue が親ルートになり
+ * {@code <NuxtPage>} 不在で子ルート show.vue がマウントされず提示モードが無限ローディングになった。</p>
  *
  * <p>並び替えは設計書要件「ドラッグ&ドロップ or 上下ボタン」のうち、後者を採用。
  * モバイルでの操作確実性と Mannschaft 既存 UI の傾向に合わせる。</p>
@@ -215,11 +220,6 @@ async function confirmDelete() {
   }
 }
 
-function startPresentation() {
-  // 提示モード実装は第五陣（show.vue）。本陣ではナビゲーションのみ。
-  router.push(`/wallet/groups/${groupId.value}/show`)
-}
-
 function backToWallet() {
   router.push('/wallet')
 }
@@ -239,16 +239,6 @@ onMounted(load)
     </div>
 
     <template v-else>
-      <!-- 提示モード起動ボタン（編集中でも常設） -->
-      <section class="group-edit__section">
-        <Button
-          :label="`▶ ${t('wallet.group_form.start_presentation')}`"
-          class="group-edit__btn--accent w-full"
-          :disabled="draftCardIds.length === 0"
-          @click="startPresentation"
-        />
-      </section>
-
       <!-- name / emoji -->
       <section class="group-edit__section">
         <div class="group-edit__field">

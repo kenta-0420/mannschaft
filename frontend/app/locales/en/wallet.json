@@ -27,7 +27,10 @@
       "card_count": "{count} card(s)",
       "no_emoji": "📋",
       "no_groups": "No groups yet",
-      "no_groups_hint": "Group cards you often present together to switch quickly at the register"
+      "no_groups_hint": "Group cards you often present together to switch quickly at the register",
+      "edit": "Edit",
+      "edit_group": "Edit {name}",
+      "start_presentation_for": "Start presentation mode for {name}"
     },
     "settings": {
       "title": "Wallet Settings",

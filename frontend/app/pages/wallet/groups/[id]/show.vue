@@ -113,7 +113,7 @@ async function setup(): Promise<void> {
       && localStorage.getItem(SCREEN_CAPTURE_WARNING_KEY) === '1'
     showScreenCaptureWarning.value = !acked
 
-    // 5. 初枚目の last_used_at を fire-and-forget で更新
+    // 4. 初枚目の last_used_at を fire-and-forget で更新
     recordUsedForCurrent()
   }
   catch (e) {
@@ -124,7 +124,7 @@ async function setup(): Promise<void> {
     loading.value = false
   }
 
-  // 4. Wake Lock 取得 + Fullscreen 要求（付加機能・best-effort）。
+  // 5. Wake Lock 取得 + Fullscreen 要求（付加機能・best-effort）。
   //    グループ取得の成否に関係なく独立して実行し、失敗しても提示モードを継続する。
   //    onMounted 経由では requestFullscreen がジェスチャーコンテキスト外になるブラウザがあるが、
   //    その場合も catch で吸収する（useWakeLockWithFallback 内部実装で対処済み）。

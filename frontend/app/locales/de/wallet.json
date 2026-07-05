@@ -27,7 +27,10 @@
       "card_count": "{count} Karte(n)",
       "no_emoji": "📋",
       "no_groups": "Noch keine Gruppen",
-      "no_groups_hint": "Gruppieren Sie Karten, die Sie oft zusammen vorzeigen, für schnelles Wechseln an der Kasse"
+      "no_groups_hint": "Gruppieren Sie Karten, die Sie oft zusammen vorzeigen, für schnelles Wechseln an der Kasse",
+      "edit": "Bearbeiten",
+      "edit_group": "{name} bearbeiten",
+      "start_presentation_for": "Präsentationsmodus für {name} starten"
     },
     "settings": {
       "title": "Wallet-Einstellungen",
