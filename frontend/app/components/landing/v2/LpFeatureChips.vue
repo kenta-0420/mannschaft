@@ -65,16 +65,19 @@ function openFeature(f: LpFeature) {
       </p>
 
       <!-- みんなで作っていく（成長中の正直な一言） -->
+      <!-- 本文ブロックは中央揃えをやめ左揃えに（中央揃え＋和文で語中改行が起きるため） -->
       <div
-        class="mx-auto mt-10 max-w-xl rounded-2xl border border-dashed border-primary/40 bg-primary/5 px-6 py-5 text-center"
+        class="mx-auto mt-10 flex max-w-xl items-start gap-3 rounded-2xl border border-dashed border-primary/40 bg-primary/5 px-6 py-5 text-left"
       >
-        <p class="text-sm font-semibold text-surface-800 dark:text-surface-100">
-          <i class="pi pi-wrench mr-1.5 text-primary" />
-          {{ t('landing.v2.features.growing_title') }}
-        </p>
-        <p class="mt-1.5 text-sm leading-relaxed text-surface-500">
-          <LpWrapText path="landing.v2.features.growing_note_segments" />
-        </p>
+        <i class="pi pi-wrench mt-0.5 shrink-0 text-primary" />
+        <div>
+          <p class="text-sm font-semibold text-surface-800 dark:text-surface-100">
+            {{ t('landing.v2.features.growing_title') }}
+          </p>
+          <p class="mt-1.5 text-sm leading-relaxed text-surface-500">
+            <LpWrapText path="landing.v2.features.growing_note_segments" />
+          </p>
+        </div>
       </div>
     </div>
 
