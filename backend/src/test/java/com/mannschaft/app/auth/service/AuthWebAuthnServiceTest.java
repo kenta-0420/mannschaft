@@ -71,6 +71,9 @@ class AuthWebAuthnServiceTest {
     @Mock
     private RoleClaimResolver roleClaimResolver;
 
+    @Mock
+    private StatusClaimResolver statusClaimResolver;
+
     @InjectMocks
     private AuthWebAuthnService authWebAuthnService;
 

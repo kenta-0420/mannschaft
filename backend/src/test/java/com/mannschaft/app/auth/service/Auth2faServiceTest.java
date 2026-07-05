@@ -78,6 +78,9 @@ class Auth2faServiceTest {
     @Mock
     private RoleClaimResolver roleClaimResolver;
 
+    @Mock
+    private StatusClaimResolver statusClaimResolver;
+
     @InjectMocks
     private Auth2faService auth2faService;
 

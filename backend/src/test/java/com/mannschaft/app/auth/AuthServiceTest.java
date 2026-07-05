@@ -100,6 +100,9 @@ class AuthServiceTest {
     @Mock
     private com.mannschaft.app.auth.service.RoleClaimResolver roleClaimResolver;
 
+    @Mock
+    private com.mannschaft.app.auth.service.StatusClaimResolver statusClaimResolver;
+
     @InjectMocks
     private AuthService authService;
 

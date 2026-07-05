@@ -8,6 +8,7 @@ import com.mannschaft.app.auth.service.AuthSessionService;
 import com.mannschaft.app.auth.service.AuthTokenRotationService;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.auth.service.RoleClaimResolver;
+import com.mannschaft.app.auth.service.StatusClaimResolver;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
@@ -71,6 +72,9 @@ class AuthTokenRotationServiceTest {
 
     @Mock
     private RoleClaimResolver roleClaimResolver;
+
+    @Mock
+    private StatusClaimResolver statusClaimResolver;
 
     @InjectMocks
     private AuthTokenRotationService authTokenRotationService;

@@ -73,6 +73,9 @@ class AuthOAuthServiceTest {
     @Mock
     private RoleClaimResolver roleClaimResolver;
 
+    @Mock
+    private StatusClaimResolver statusClaimResolver;
+
     @InjectMocks
     private AuthOAuthService authOAuthService;
 
