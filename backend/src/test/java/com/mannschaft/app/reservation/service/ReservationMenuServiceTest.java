@@ -3,6 +3,7 @@ package com.mannschaft.app.reservation.service;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.reservation.ReservationErrorCode;
 import com.mannschaft.app.reservation.dto.CreateReservationMenuRequest;
 import com.mannschaft.app.reservation.dto.ReservationMenuDeleteResponse;
@@ -182,6 +183,38 @@ class ReservationMenuServiceTest {
             assertThat(response.getName()).isEqualTo("カット");
             assertThat(response.getDescription()).isEqualTo("説明です");
         }
+
+        @Test
+        @DisplayName("§6: タグのみの name はサニタイズ後に空となり 400（@NotBlank 迂回の穴を塞ぐ・検分 #2160-3）")
+        void 作成_サニタイズ後に空になるnameは拒否される() {
+            given(menuRepository.countByTeamIdAndDeletedAtIsNull(TEAM_ID)).willReturn(0L);
+
+            // "<b></b>" はサニタイズ前は非 blank のため @NotBlank を通過するが、タグ除去後は空文字。
+            CreateReservationMenuRequest request = new CreateReservationMenuRequest(
+                    "<b></b>", 60, null, null, null, null);
+
+            assertThatThrownBy(() -> service.createMenu(TEAM_ID, request, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_001);
+            verify(menuRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("§6: PATCH でもサニタイズ後に空になる name は拒否される")
+        void 更新_サニタイズ後に空になるnameは拒否される() {
+            UUID menuId = UUID.randomUUID();
+            given(menuRepository.findByIdAndTeamId(menuId, TEAM_ID))
+                    .willReturn(Optional.of(menu(menuId, "カット", 60, true)));
+
+            UpdateReservationMenuRequest request = new UpdateReservationMenuRequest(
+                    "<i> </i>", null, null, null, null, null, null, null);
+
+            assertThatThrownBy(() -> service.updateMenu(TEAM_ID, menuId, request, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_001);
+        }
     }
 
     // ── E-2: 提供可否指定つき作成 ────────────────────────────────
@@ -305,6 +338,24 @@ class ReservationMenuServiceTest {
 
             assertThatThrownBy(() ->
                     service.createMenu(TEAM_ID, createRequest("カット", 60, List.of(1L, 99L)), USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ReservationErrorCode.MENU_LINE_IDS_INVALID);
+            verify(menuRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("E-5: 他チームのライン ID を含む POST も RESERVATION_035（存在秘匿・専用コードを分けない）")
+        void 作成_他チームのラインIDは拒否される() {
+            given(menuRepository.countByTeamIdAndDeletedAtIsNull(TEAM_ID)).willReturn(0L);
+            // 自チーム（TEAM_ID=10）の active ラインは [1] のみ。500 は他チーム（例: teamId=20）の実在ライン
+            // だが、findByTeamIdOrderByDisplayOrderAsc(TEAM_ID) には現れない＝「不存在」と同一経路で
+            // RESERVATION_035 に落ちる（他チームのラインの実在有無を応答から推測させない＝存在秘匿・§4/§9）。
+            given(lineRepository.findByTeamIdOrderByDisplayOrderAsc(TEAM_ID))
+                    .willReturn(List.of(line(1L)));
+
+            assertThatThrownBy(() ->
+                    service.createMenu(TEAM_ID, createRequest("カット", 60, List.of(500L)), USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ReservationErrorCode.MENU_LINE_IDS_INVALID);

@@ -210,4 +210,26 @@ class ReservationMenuPersistenceIntegrationTest
         assertThat(menuLineRepository.findByMenuId(created.getId())).isEmpty();
     }
 
+    @Test
+    @DisplayName("E-6: 既存行と重複するラインを含む列挙全置換が実 DB で成功する（DELETE 先行 flush・検分 #2160-1）")
+    void 更新の重複含む列挙全置換が複合PK衝突しない() {
+        Long teamId = createTeam();
+        Long line1 = createLine(teamId, "席1").getId();
+        Long line2 = createLine(teamId, "席2").getId();
+        // 既存の提供可否 = [line1]
+        ReservationMenuResponse created =
+                menuService.createMenu(teamId, request("カット", 60, List.of(line1)), ACTOR_USER_ID);
+        assertThat(menuLineRepository.findByMenuId(created.getId())).hasSize(1);
+
+        // [line1, line2] へ全置換: line1 は既存行と重複。Hibernate が INSERT を DELETE より先に
+        // flush すると複合 PK (menu_id, line_id) 衝突で失敗する — deleteByMenuId 直後の flush() が番人。
+        UpdateReservationMenuRequest patch = new UpdateReservationMenuRequest(
+                null, null, null, null, null, null, null, List.of(line1, line2));
+        ReservationMenuResponse updated =
+                menuService.updateMenu(teamId, created.getId(), patch, ACTOR_USER_ID);
+
+        assertThat(updated.getLineIds()).containsExactlyInAnyOrder(line1, line2);
+        assertThat(menuLineRepository.findByMenuId(created.getId())).hasSize(2);
+    }
+
 }

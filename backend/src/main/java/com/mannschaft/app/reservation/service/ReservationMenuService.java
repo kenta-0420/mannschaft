@@ -3,6 +3,7 @@ package com.mannschaft.app.reservation.service;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.security.HtmlSanitizer;
 import com.mannschaft.app.reservation.ReservationErrorCode;
 import com.mannschaft.app.reservation.dto.CreateReservationMenuRequest;
@@ -131,7 +132,7 @@ public class ReservationMenuService {
 
         ReservationMenuEntity entity = ReservationMenuEntity.builder()
                 .teamId(teamId)
-                .name(HtmlSanitizer.sanitizePlainText(request.getName()))
+                .name(sanitizeRequiredName(request.getName()))
                 .durationMinutes(request.getDurationMinutes())
                 .price(request.getPrice())
                 .description(HtmlSanitizer.sanitizePlainText(request.getDescription()))
@@ -169,7 +170,7 @@ public class ReservationMenuService {
         ReservationMenuEntity entity = findMenuOrThrow(teamId, menuId);
 
         if (request.getName() != null) {
-            entity.changeName(HtmlSanitizer.sanitizePlainText(request.getName()));
+            entity.changeName(sanitizeRequiredName(request.getName()));
         }
         if (request.getDurationMinutes() != null) {
             // 将来枠に既存予約グループがあっても変更可（新規予約から適用・遡及なし原則 §4）。
@@ -201,6 +202,10 @@ public class ReservationMenuService {
             // 全置換: 空配列 = 全ライン提供可へ戻す（行 0 件）。列挙 = 検証のうえ削除→挿入。
             List<Long> newLineIds = normalizeLineIds(request.getLineIds(), teamId);
             menuLineRepository.deleteByMenuId(menuId);
+            // Hibernate は flush 時に INSERT を DELETE より先に並べ替えるため、既存行と重複する
+            // (menu_id, line_id) を含む再列挙で複合 PK 衝突が起きる。DELETE を即時 flush して
+            // 置換順序を DB 上でも確定させる（検分指摘 #2160-1）。
+            menuLineRepository.flush();
             if (!newLineIds.isEmpty()) {
                 menuLineRepository.saveAll(toMenuLineEntities(menuId, newLineIds));
             }
@@ -248,6 +253,21 @@ public class ReservationMenuService {
     }
 
     // ── 内部ヘルパー ────────────────────────────────────────────
+
+    /**
+     * name を HTML タグ除去（§6 XSS 対策）し、<b>サニタイズ後に空になる入力を 400 で拒否</b>する。
+     *
+     * <p>{@code <b></b>} のようなタグのみの入力は {@code @NotBlank}/{@code @Size}（サニタイズ前の
+     * Bean Validation）を迂回して空文字が保存される穴になるため、サニタイズ後にも空チェックを行う
+     * （COMMON_001・検分指摘 #2160-3）。</p>
+     */
+    private String sanitizeRequiredName(String name) {
+        String sanitized = HtmlSanitizer.sanitizePlainText(name);
+        if (sanitized == null || sanitized.isBlank()) {
+            throw new BusinessException(CommonErrorCode.COMMON_001);
+        }
+        return sanitized;
+    }
 
     /**
      * 所要時間が 30 の倍数・30〜480 かを検証する（E-3・400 = RESERVATION_034）。
