@@ -186,6 +186,7 @@
       "start_presentation": "Präsentationsmodus starten",
       "validation_name_required": "Bitte geben Sie den Gruppennamen ein",
       "validation_max_cards": "Eine Gruppe kann maximal 20 Karten enthalten",
+      "saved": "Gespeichert",
       "save_failed": "Speichern fehlgeschlagen",
       "not_found": "Gruppe nicht gefunden"
     },

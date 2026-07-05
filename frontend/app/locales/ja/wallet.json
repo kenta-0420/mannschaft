@@ -186,6 +186,7 @@
       "start_presentation": "提示モードを開始",
       "validation_name_required": "グループ名を入力してください",
       "validation_max_cards": "1 つのグループに含められるカードは最大 20 枚です",
+      "saved": "保存しました",
       "save_failed": "保存に失敗しました",
       "not_found": "グループが見つかりません"
     },

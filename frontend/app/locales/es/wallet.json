@@ -186,6 +186,7 @@
       "start_presentation": "Iniciar modo presentación",
       "validation_name_required": "Por favor ingrese el nombre del grupo",
       "validation_max_cards": "Un grupo puede contener hasta 20 tarjetas",
+      "saved": "Guardado",
       "save_failed": "Error al guardar",
       "not_found": "Grupo no encontrado"
     },

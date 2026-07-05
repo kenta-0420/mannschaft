@@ -186,6 +186,7 @@
       "start_presentation": "Start presentation mode",
       "validation_name_required": "Please enter a group name",
       "validation_max_cards": "A group can include up to 20 cards",
+      "saved": "Saved",
       "save_failed": "Failed to save",
       "not_found": "Group not found"
     },

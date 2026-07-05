@@ -186,6 +186,7 @@
       "start_presentation": "开始展示模式",
       "validation_name_required": "请输入群组名称",
       "validation_max_cards": "一个群组最多包含20张卡片",
+      "saved": "已保存",
       "save_failed": "保存失败",
       "not_found": "找不到群组"
     },

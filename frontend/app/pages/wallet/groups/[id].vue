@@ -31,6 +31,7 @@ const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const walletApi = useWalletApi()
+const toast = useToast()
 
 const MAX_CARDS_PER_GROUP = 20
 const groupId = computed(() => route.params.id as string)
@@ -190,6 +191,7 @@ async function save() {
       emoji: draftEmoji.value.trim() || null,
       cardIds: draftCardIds.value.slice(),
     })
+    toast.add({ severity: 'success', summary: t('wallet.group_form.saved'), life: 3000 })
   }
   catch (e) {
     console.error('[wallet/groups/[id]] save failed', e)
