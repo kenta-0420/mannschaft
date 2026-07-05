@@ -823,8 +823,8 @@
         "title": "プロジェクトの作り方",
         "body": "「プロジェクト作成」ボタンをクリックし、以下の情報を入力して作成します。",
         "item_title": "タイトル（必須）: プロジェクトの名前",
-        "item_emoji": "絵文字: プロジェクトを表すアイコン（プリセットから選択）",
-        "item_color": "カラー: カードの識別色（プリセットから選択）",
+        "item_emoji": "絵文字: プロジェクトを表すアイコン（ひな形から選択）",
+        "item_color": "カラー: カードの識別色（ひな形から選択）",
         "item_due_date": "期限: 完了目標日（任意）"
       },
       "milestone": {
@@ -896,7 +896,7 @@
   },
   "visibilityTemplate": {
     "title": "公開範囲テンプレート",
-    "systemPresets": "システムプリセット",
+    "systemPresets": "既定のひな形",
     "userTemplates": "マイテンプレート",
     "createNew": "テンプレートを作成",
     "noUserTemplates": "まだテンプレートがありません",
