@@ -35,7 +35,9 @@ import java.util.Map;
  * <ul>
  *   <li>{@code /api/v1/parental-consent/**} — 同意管理専用 API（招待・保護者一覧・承認/否認）は丸ごと許可</li>
  *   <li>{@code GET /api/v1/users/me} — 本人状態確認のみ。退会（DELETE）・プロフィール編集（PATCH）は許可しない</li>
- *   <li>{@code /api/v1/auth/**} — 認証ライフサイクル（ログアウト・リフレッシュ・2FA 等）。多重防御</li>
+ *   <li>{@code POST /api/v1/auth/logout} / {@code POST /api/v1/auth/refresh} — 同意前の未成年に必要な
+ *       認証ライフサイクル 2 経路のみ明示許可。{@code /api/v1/auth/**} の一括許可は 2FA setup・
+ *       WebAuthn register・OAuth link/confirm・セッション管理を開く過剰許可のため採らない</li>
  *   <li>{@code /api/i18n/**}, {@code /api/v1/public/**} — permitAll 系プレフィックス。多重防御</li>
  * </ul>
  */
@@ -110,8 +112,16 @@ public class ParentalConsentGateFilter extends OncePerRequestFilter {
         if (HttpMethod.GET.matches(method) && path.equals("/api/v1/users/me")) {
             return true;
         }
-        // 認証ライフサイクル（ログアウト・リフレッシュ・2FA・WebAuthn・OAuth 等）は多重防御で許可。
-        if (path.startsWith("/api/v1/auth/")) {
+        // 認証ライフサイクルは「同意前の未成年に本当に必要な 2 経路のみ」を明示許可する。
+        // /api/v1/auth/ を丸ごと通すと 2FA setup・WebAuthn register・OAuth link/confirm・
+        // セッション管理（DELETE/PATCH /sessions）まで開いてしまう過剰許可になるため撤回した。
+        // login/register/verify-email/password-reset/oauth-login/webauthn-login/2fa-validate 等の
+        // 未認証エンドポイントは、本ゲートが「認証済み ppc==true 時のみ発火」なので許可リスト不要（素通り）。
+        if (HttpMethod.POST.matches(method) && path.equals("/api/v1/auth/logout")) {
+            return true;
+        }
+        // proactive refresh 対応（アクセストークンが有効なまま refresh を叩く経路を塞がない）。
+        if (HttpMethod.POST.matches(method) && path.equals("/api/v1/auth/refresh")) {
             return true;
         }
         // permitAll 系プレフィックス（多重防御。ゲートは認証済み ppc ユーザーのみ発火するため実質冗長）。

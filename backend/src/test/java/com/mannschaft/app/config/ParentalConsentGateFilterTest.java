@@ -201,6 +201,43 @@ class ParentalConsentGateFilterTest {
         assertThat(res.getStatus()).isNotEqualTo(403);
     }
 
+    // ---- /api/v1/auth/** の過剰許可是正: 同意前の未成年に不要な認証系は遮断する ----
+
+    @Test
+    @DisplayName("過剰許可是正: POST /api/v1/auth/2fa/setup は 403 AUTH_070（一括許可撤回）")
+    void auth_2fa_setup_is_blocked() throws Exception {
+        authenticateAsPendingParentalConsent();
+        MockHttpServletResponse res = invoke("POST", "/api/v1/auth/2fa/setup");
+        assertThat(res.getStatus()).isEqualTo(403);
+        assertThat(res.getContentAsString()).contains("AUTH_070");
+    }
+
+    @Test
+    @DisplayName("過剰許可是正: POST /api/v1/auth/oauth/link/confirm は 403 AUTH_070")
+    void auth_oauth_link_confirm_is_blocked() throws Exception {
+        authenticateAsPendingParentalConsent();
+        MockHttpServletResponse res = invoke("POST", "/api/v1/auth/oauth/link/confirm");
+        assertThat(res.getStatus()).isEqualTo(403);
+        assertThat(res.getContentAsString()).contains("AUTH_070");
+    }
+
+    @Test
+    @DisplayName("過剰許可是正: DELETE /api/v1/auth/sessions は 403 AUTH_070（セッション管理は遮断）")
+    void auth_sessions_delete_is_blocked() throws Exception {
+        authenticateAsPendingParentalConsent();
+        MockHttpServletResponse res = invoke("DELETE", "/api/v1/auth/sessions");
+        assertThat(res.getStatus()).isEqualTo(403);
+        assertThat(res.getContentAsString()).contains("AUTH_070");
+    }
+
+    @Test
+    @DisplayName("メソッド厳密一致: GET /api/v1/auth/logout（非POST）は遮断される")
+    void auth_logout_non_post_is_blocked() throws Exception {
+        authenticateAsPendingParentalConsent();
+        MockHttpServletResponse res = invoke("GET", "/api/v1/auth/logout");
+        assertThat(res.getStatus()).isEqualTo(403);
+    }
+
     // ---- ゲート無発火（ppc != true）----
 
     @Nested
