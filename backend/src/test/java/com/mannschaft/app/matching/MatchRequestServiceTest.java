@@ -1,5 +1,6 @@
 package com.mannschaft.app.matching;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.matching.dto.ActivitySuggestionResponse;
 import com.mannschaft.app.matching.dto.CreateMatchRequestRequest;
@@ -27,6 +28,7 @@ import org.springframework.data.domain.Pageable;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -40,6 +42,17 @@ import static org.mockito.BDDMockito.given;
 
 /**
  * {@link MatchRequestService} の単体テスト。
+ *
+ * <p>認可根治（IDOR/所有権）反映後の契約:
+ * <ul>
+ *   <li><b>更新/削除</b>: Controller から渡される actor（{@code currentUserId}）に対し
+ *       {@code accessControlService.isAdminOrAbove(currentUserId, entity.getTeamId(), "TEAM")}
+ *       が true の場合のみ許可（従来の {@code entity.getTeamId().equals(teamId)} という userID≠teamID の
+ *       誤比較を撤廃）。非権限は {@link MatchingErrorCode#INSUFFICIENT_PERMISSION}。</li>
+ *   <li><b>詳細/検索</b>: NG 除外・可視性判定は「閲覧ユーザーの所属チーム群」
+ *       （{@code accessControlService.findAffiliatedScopeIds(currentUserId, "TEAM")}）を基準にする
+ *       （従来の userID を teamId として扱う誤りを撤廃）。</li>
+ * </ul>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("MatchRequestService 単体テスト")
@@ -53,10 +66,15 @@ class MatchRequestServiceTest {
     private MatchReviewRepository reviewRepository;
     @Mock
     private NgTeamRepository ngTeamRepository;
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private MatchRequestService service;
 
+    /** 操作/閲覧ユーザー（＝認証プリンシパル）。teamId とは別物であることを明示するため teamId とは異なる値にする。 */
+    private static final Long USER_ID = 500L;
+    /** 募集を所有する / ユーザーが所属するチーム。 */
     private static final Long TEAM_ID = 1L;
     private static final Long REQUEST_ID = 10L;
 
@@ -70,7 +88,7 @@ class MatchRequestServiceTest {
             // Given
             CreateMatchRequestRequest request = new CreateMatchRequestRequest(
                     "テスト募集", null, "PRACTICE", null, null,
-                    null, null, null, null, null, null, null, null,
+                    "13", null, null, null, null, null, null, null,
                     null, null, null, null);
 
             MatchRequestEntity saved = MatchRequestEntity.builder()
@@ -92,7 +110,7 @@ class MatchRequestServiceTest {
             // Given
             CreateMatchRequestRequest request = new CreateMatchRequestRequest(
                     "テスト募集", null, "PRACTICE", null, null,
-                    null, null, null,
+                    "13", null, null,
                     LocalDate.of(2026, 4, 10), LocalDate.of(2026, 4, 5),
                     null, null, null, null, null, null, null);
 
@@ -109,7 +127,7 @@ class MatchRequestServiceTest {
             // Given
             CreateMatchRequestRequest request = new CreateMatchRequestRequest(
                     "テスト募集", null, "PRACTICE", null, null,
-                    null, null, null, null, null, null, null, null,
+                    "13", null, null, null, null, null, null, null,
                     (short) 20, (short) 10, null, null);
 
             // When & Then
@@ -121,26 +139,27 @@ class MatchRequestServiceTest {
     }
 
     @Nested
-    @DisplayName("updateRequest")
+    @DisplayName("updateRequest — 認可（所有権）")
     class UpdateRequest {
 
         @Test
-        @DisplayName("異常系: 他チームの募集は更新不可")
-        void 他チーム更新不可() {
-            // Given
+        @DisplayName("AC-2 異常系: 募集チームの管理者/副管理者でないユーザーは更新不可（403相当）")
+        void 非管理者は更新不可() {
+            // Given: entity.teamId=TEAM_ID の募集に対し、actor(USER_ID) は管理者ではない
             MatchRequestEntity entity = MatchRequestEntity.builder()
-                    .teamId(999L)
-                    .title("他チーム募集")
+                    .teamId(TEAM_ID)
+                    .title("募集")
                     .build();
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
 
             CreateMatchRequestRequest request = new CreateMatchRequestRequest(
                     "更新", null, "PRACTICE", null, null,
-                    null, null, null, null, null, null, null, null,
+                    "13", null, null, null, null, null, null, null,
                     null, null, null, null);
 
             // When & Then
-            assertThatThrownBy(() -> service.updateRequest(REQUEST_ID, TEAM_ID, request))
+            assertThatThrownBy(() -> service.updateRequest(REQUEST_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(MatchingErrorCode.INSUFFICIENT_PERMISSION);
@@ -148,7 +167,7 @@ class MatchRequestServiceTest {
     }
 
     @Nested
-    @DisplayName("deleteRequest")
+    @DisplayName("deleteRequest — 認可（所有権）")
     class DeleteRequest {
 
         @Test
@@ -158,46 +177,48 @@ class MatchRequestServiceTest {
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> service.deleteRequest(REQUEST_ID, TEAM_ID))
+            assertThatThrownBy(() -> service.deleteRequest(REQUEST_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(MatchingErrorCode.REQUEST_NOT_FOUND);
         }
 
         @Test
-        @DisplayName("異常系: 他チームの募集は削除不可")
-        void 他チーム削除不可() {
+        @DisplayName("AC-3 異常系: 募集チームの管理者/副管理者でないユーザーは削除不可（403相当）")
+        void 非管理者は削除不可() {
             // Given
             MatchRequestEntity entity = MatchRequestEntity.builder()
-                    .teamId(999L).title("他チーム").activityType(ActivityType.PRACTICE)
+                    .teamId(TEAM_ID).title("募集").activityType(ActivityType.PRACTICE)
                     .status(MatchRequestStatus.OPEN).prefectureCode("13").build();
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
 
             // When / Then
-            assertThatThrownBy(() -> service.deleteRequest(REQUEST_ID, TEAM_ID))
+            assertThatThrownBy(() -> service.deleteRequest(REQUEST_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(MatchingErrorCode.INSUFFICIENT_PERMISSION));
         }
 
         @Test
-        @DisplayName("異常系: MATCHED状態の募集は削除不可")
+        @DisplayName("異常系: MATCHED状態の募集は削除不可（認可通過後）")
         void MATCHED状態削除不可() {
             // Given
             MatchRequestEntity entity = MatchRequestEntity.builder()
                     .teamId(TEAM_ID).title("テスト").activityType(ActivityType.PRACTICE)
                     .status(MatchRequestStatus.MATCHED).prefectureCode("13").build();
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
 
             // When / Then
-            assertThatThrownBy(() -> service.deleteRequest(REQUEST_ID, TEAM_ID))
+            assertThatThrownBy(() -> service.deleteRequest(REQUEST_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(MatchingErrorCode.REQUEST_MATCHED_CANNOT_DELETE));
         }
 
         @Test
-        @DisplayName("正常系: PENDING応募を一括REJECTして削除される")
+        @DisplayName("AC-3 正常系: 正当な管理者は削除でき、PENDING応募が一括REJECTされる")
         void 正常削除_PENDING応募REJECT() {
             // Given
             MatchRequestEntity entity = MatchRequestEntity.builder()
@@ -206,12 +227,13 @@ class MatchRequestServiceTest {
             MatchProposalEntity pending = MatchProposalEntity.builder()
                     .requestId(REQUEST_ID).proposingTeamId(99L).build();
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(proposalRepository.findByRequestIdAndStatus(any(), any())).willReturn(List.of(pending));
             given(proposalRepository.save(any())).willReturn(pending);
             given(requestRepository.save(any())).willReturn(entity);
 
             // When
-            service.deleteRequest(REQUEST_ID, TEAM_ID);
+            service.deleteRequest(REQUEST_ID, USER_ID);
 
             // Then
             assertThat(pending.getStatus()).isEqualTo(MatchProposalStatus.REJECTED);
@@ -219,56 +241,80 @@ class MatchRequestServiceTest {
     }
 
     @Nested
-    @DisplayName("getRequest")
+    @DisplayName("getRequest — 可視性（所属チーム群）")
     class GetRequest {
 
         @Test
-        @DisplayName("異常系: NGチームの募集は取得不可")
+        @DisplayName("AC-4 異常系: 所属チーム群がブロックしている募集は取得不可")
         void NGチーム_取得不可() {
-            // Given
+            // Given: entity.teamId=999 は、ユーザーの所属チーム(TEAM_ID)がブロックしている
             MatchRequestEntity entity = MatchRequestEntity.builder()
                     .teamId(999L).title("テスト").activityType(ActivityType.PRACTICE)
                     .status(MatchRequestStatus.OPEN).prefectureCode("13").build();
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.findAffiliatedScopeIds(USER_ID, "TEAM")).willReturn(Set.of(TEAM_ID));
             given(ngTeamRepository.findBidirectionalBlockedTeamIds(TEAM_ID)).willReturn(List.of(999L));
 
             // When / Then
-            assertThatThrownBy(() -> service.getRequest(REQUEST_ID, TEAM_ID))
+            assertThatThrownBy(() -> service.getRequest(REQUEST_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(MatchingErrorCode.REQUEST_NOT_FOUND));
         }
 
         @Test
-        @DisplayName("異常系: 他チームのOPEN以外の募集は取得不可")
+        @DisplayName("AC-4 異常系: 所属チーム群に属さない他チームのOPEN以外の募集は取得不可")
         void 他チームOPEN以外_取得不可() {
             // Given
             MatchRequestEntity entity = MatchRequestEntity.builder()
                     .teamId(999L).title("テスト").activityType(ActivityType.PRACTICE)
                     .status(MatchRequestStatus.EXPIRED).prefectureCode("13").build();
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.findAffiliatedScopeIds(USER_ID, "TEAM")).willReturn(Set.of(TEAM_ID));
             given(ngTeamRepository.findBidirectionalBlockedTeamIds(TEAM_ID)).willReturn(List.of());
 
             // When / Then
-            assertThatThrownBy(() -> service.getRequest(REQUEST_ID, TEAM_ID))
+            assertThatThrownBy(() -> service.getRequest(REQUEST_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(MatchingErrorCode.REQUEST_NOT_FOUND));
         }
+
+        @Test
+        @DisplayName("AC-4 正常系: 自チーム（所属チーム群に含む）のMATCHED状態募集は取得できる")
+        void 自チームMATCHED_取得成功() {
+            // Given: entity.teamId=TEAM_ID はユーザーの所属チーム群に含まれる
+            MatchRequestEntity entity = MatchRequestEntity.builder()
+                    .teamId(TEAM_ID).title("テスト").activityType(ActivityType.PRACTICE)
+                    .status(MatchRequestStatus.MATCHED).prefectureCode("13").build();
+            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.findAffiliatedScopeIds(USER_ID, "TEAM")).willReturn(Set.of(TEAM_ID));
+            given(ngTeamRepository.findBidirectionalBlockedTeamIds(TEAM_ID)).willReturn(List.of());
+            given(reviewRepository.findAverageRating(anyLong(), any())).willReturn(null);
+            given(reviewRepository.countByRevieweeTeamIdAndCreatedAtAfter(anyLong(), any())).willReturn(0L);
+            given(proposalRepository.countCancellationsByTeam(anyLong(), any())).willReturn(0L);
+
+            // When
+            MatchRequestResponse result = service.getRequest(REQUEST_ID, USER_ID);
+
+            // Then
+            assertThat(result).isNotNull();
+        }
     }
 
     @Nested
-    @DisplayName("updateRequest")
+    @DisplayName("updateRequest — ステータス/正常系")
     class UpdateRequestAdditional {
 
         @Test
-        @DisplayName("異常系: OPEN以外の募集は更新不可")
+        @DisplayName("異常系: OPEN以外の募集は更新不可（認可通過後）")
         void OPEN以外_更新不可() {
             // Given
             MatchRequestEntity entity = MatchRequestEntity.builder()
                     .teamId(TEAM_ID).title("テスト").activityType(ActivityType.PRACTICE)
                     .status(MatchRequestStatus.MATCHED).prefectureCode("13").build();
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
 
             CreateMatchRequestRequest request = new CreateMatchRequestRequest(
                     "更新", null, "SOCCER", null, null,
@@ -276,20 +322,21 @@ class MatchRequestServiceTest {
                     null, null, null, null);
 
             // When / Then
-            assertThatThrownBy(() -> service.updateRequest(REQUEST_ID, TEAM_ID, request))
+            assertThatThrownBy(() -> service.updateRequest(REQUEST_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(MatchingErrorCode.REQUEST_NOT_EDITABLE));
         }
 
         @Test
-        @DisplayName("正常系: OPEN状態の募集が更新される")
+        @DisplayName("AC-2 正常系: 正当な管理者はOPEN状態の募集を更新できる")
         void OPEN状態_更新成功() {
             // Given
             MatchRequestEntity entity = MatchRequestEntity.builder()
                     .teamId(TEAM_ID).title("テスト").activityType(ActivityType.PRACTICE)
                     .status(MatchRequestStatus.OPEN).prefectureCode("13").build();
             given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
             given(requestRepository.save(any())).willReturn(entity);
             given(reviewRepository.findAverageRating(anyLong(), any())).willReturn(null);
             given(reviewRepository.countByRevieweeTeamIdAndCreatedAtAfter(anyLong(), any())).willReturn(0L);
@@ -301,7 +348,7 @@ class MatchRequestServiceTest {
                     null, null, null, null);
 
             // When
-            MatchRequestResponse result = service.updateRequest(REQUEST_ID, TEAM_ID, request);
+            MatchRequestResponse result = service.updateRequest(REQUEST_ID, USER_ID, request);
 
             // Then
             assertThat(result).isNotNull();
@@ -309,17 +356,18 @@ class MatchRequestServiceTest {
     }
 
     @Nested
-    @DisplayName("searchRequests")
+    @DisplayName("searchRequests — 所属チーム群ベースのNG除外")
     class SearchRequests {
 
         @Test
-        @DisplayName("正常系: フィルタなしで検索できる")
+        @DisplayName("正常系: フィルタなしで検索できる（所属なし＝除外なし）")
         void フィルタなし_検索成功() {
-            // Given
+            // Given: ユーザーは TEAM_ID に所属
             Pageable pageable = PageRequest.of(0, 10);
             MatchRequestEntity entity = MatchRequestEntity.builder()
                     .teamId(999L).title("テスト募集").activityType(ActivityType.PRACTICE)
                     .status(MatchRequestStatus.OPEN).prefectureCode("13").build();
+            given(accessControlService.findAffiliatedScopeIds(USER_ID, "TEAM")).willReturn(Set.of(TEAM_ID));
             given(ngTeamRepository.findBidirectionalBlockedTeamIds(TEAM_ID)).willReturn(List.of());
             given(requestRepository.searchRequests(any(), anyList(), isNull(), isNull(),
                     isNull(), isNull(), isNull(), isNull(), any(), eq(pageable)))
@@ -329,20 +377,21 @@ class MatchRequestServiceTest {
             given(proposalRepository.countCancellationsByTeam(anyLong(), any())).willReturn(0L);
 
             // When
-            Page<MatchRequestResponse> result = service.searchRequests(TEAM_ID, null, null, null, null, null, null, pageable);
+            Page<MatchRequestResponse> result = service.searchRequests(USER_ID, null, null, null, null, null, null, pageable);
 
             // Then
             assertThat(result.getContent()).hasSize(1);
         }
 
         @Test
-        @DisplayName("正常系: フィルタあり（prefecture指定）で検索できる")
+        @DisplayName("正常系: フィルタあり（prefecture指定）で検索でき、所属チームのNG除外が適用される")
         void フィルタあり_検索成功() {
             // Given
             Pageable pageable = PageRequest.of(0, 10);
             MatchRequestEntity entity = MatchRequestEntity.builder()
                     .teamId(999L).title("テスト募集").activityType(ActivityType.PRACTICE)
                     .status(MatchRequestStatus.OPEN).prefectureCode("13").build();
+            given(accessControlService.findAffiliatedScopeIds(USER_ID, "TEAM")).willReturn(Set.of(TEAM_ID));
             given(ngTeamRepository.findBidirectionalBlockedTeamIds(TEAM_ID)).willReturn(List.of(888L));
             given(requestRepository.searchRequests(any(), anyList(), eq("13"), isNull(),
                     any(), isNull(), isNull(), isNull(), any(), eq(pageable)))
@@ -352,7 +401,7 @@ class MatchRequestServiceTest {
             given(proposalRepository.countCancellationsByTeam(anyLong(), any())).willReturn(1L);
 
             // When
-            Page<MatchRequestResponse> result = service.searchRequests(TEAM_ID, "13", null, "PRACTICE", null, null, null, pageable);
+            Page<MatchRequestResponse> result = service.searchRequests(USER_ID, "13", null, "PRACTICE", null, null, null, pageable);
 
             // Then
             assertThat(result.getContent()).hasSize(1);
@@ -360,7 +409,7 @@ class MatchRequestServiceTest {
     }
 
     @Nested
-    @DisplayName("searchByKeyword")
+    @DisplayName("searchByKeyword — 所属チーム群ベースのNG除外")
     class SearchByKeyword {
 
         @Test
@@ -371,6 +420,7 @@ class MatchRequestServiceTest {
             MatchRequestEntity entity = MatchRequestEntity.builder()
                     .teamId(999L).title("テスト募集").activityType(ActivityType.PRACTICE)
                     .status(MatchRequestStatus.OPEN).prefectureCode("13").build();
+            given(accessControlService.findAffiliatedScopeIds(USER_ID, "TEAM")).willReturn(Set.of(TEAM_ID));
             given(ngTeamRepository.findBidirectionalBlockedTeamIds(TEAM_ID)).willReturn(List.of());
             given(requestRepository.searchByKeyword(anyString(), anyList(), anyString(),
                     isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(), eq(pageable)))
@@ -381,7 +431,7 @@ class MatchRequestServiceTest {
 
             // When
             Page<MatchRequestResponse> result = service.searchByKeyword(
-                    TEAM_ID, "サッカー", null, null, null, null, null, null, pageable);
+                    USER_ID, "サッカー", null, null, null, null, null, null, pageable);
 
             // Then
             assertThat(result.getContent()).hasSize(1);
@@ -395,6 +445,7 @@ class MatchRequestServiceTest {
             MatchRequestEntity entity = MatchRequestEntity.builder()
                     .teamId(999L).title("テスト募集").activityType(ActivityType.PRACTICE)
                     .status(MatchRequestStatus.OPEN).prefectureCode("13").build();
+            given(accessControlService.findAffiliatedScopeIds(USER_ID, "TEAM")).willReturn(Set.of(TEAM_ID));
             given(ngTeamRepository.findBidirectionalBlockedTeamIds(TEAM_ID)).willReturn(List.of());
             given(requestRepository.searchByKeyword(eq("OPEN"), anyList(), eq("サッカー"),
                     eq("13"), eq("13101"), eq("PRACTICE"), eq("JUNIOR_HIGH"),
@@ -406,7 +457,7 @@ class MatchRequestServiceTest {
 
             // When
             Page<MatchRequestResponse> result = service.searchByKeyword(
-                    TEAM_ID, "サッカー", "13", "13101", "PRACTICE", "JUNIOR_HIGH", "BEGINNER", "PLATFORM", pageable);
+                    USER_ID, "サッカー", "13", "13101", "PRACTICE", "JUNIOR_HIGH", "BEGINNER", "PLATFORM", pageable);
 
             // Then: eq(...) マッチャに合致した場合のみ 1 件返る＝全フィルタが正規化されて転送されている
             assertThat(result.getContent()).hasSize(1);
@@ -436,31 +487,6 @@ class MatchRequestServiceTest {
 
             // Then
             assertThat(result.getContent()).hasSize(1);
-        }
-    }
-
-    @Nested
-    @DisplayName("getRequest")
-    class GetRequestAdditional {
-
-        @Test
-        @DisplayName("正常系: 自チームのMATCHED状態募集は取得できる")
-        void 自チームMATCHED_取得成功() {
-            // Given
-            MatchRequestEntity entity = MatchRequestEntity.builder()
-                    .teamId(TEAM_ID).title("テスト").activityType(ActivityType.PRACTICE)
-                    .status(MatchRequestStatus.MATCHED).prefectureCode("13").build();
-            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(entity));
-            given(ngTeamRepository.findBidirectionalBlockedTeamIds(TEAM_ID)).willReturn(List.of());
-            given(reviewRepository.findAverageRating(anyLong(), any())).willReturn(null);
-            given(reviewRepository.countByRevieweeTeamIdAndCreatedAtAfter(anyLong(), any())).willReturn(0L);
-            given(proposalRepository.countCancellationsByTeam(anyLong(), any())).willReturn(0L);
-
-            // When
-            MatchRequestResponse result = service.getRequest(REQUEST_ID, TEAM_ID);
-
-            // Then
-            assertThat(result).isNotNull();
         }
     }
 
