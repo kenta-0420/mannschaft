@@ -337,17 +337,170 @@
       "terms": {
         "title": "Nutzungsbedingungen",
         "last_updated": "Zuletzt aktualisiert",
-        "placeholder": "Der Inhalt der Nutzungsbedingungen wird hier platziert. Bitte ersetze es durch das tatsächliche Rechtsdokument.",
-        "section1_title": "Artikel 1 (Anwendung)",
-        "section1_content": "Diese Bedingungen legen die Nutzungsbedingungen für Mannschaft (den \"Dienst\") fest.",
-        "section2_title": "Artikel 2 (Registrierung)",
-        "section2_content": "Nutzer*innen registrieren sich nach Zustimmung zu diesen Bedingungen gemäß den vorgeschriebenen Verfahren.",
-        "section3_title": "Artikel 3 (Verbotene Aktivitäten)",
-        "section3_content": "Nutzer*innen dürfen keine Aktivitäten durchführen, die gegen Gesetze oder die öffentliche Ordnung verstoßen, oder sonstige vom Dienst als unangemessen erachtete Aktivitäten.",
-        "section4_title": "Artikel 4 (Haftungsausschluss)",
-        "section4_content": "Der Dienst übernimmt keine Haftung für Unterbrechung, Beendigung oder Änderung des Dienstes.",
-        "section5_title": "Artikel 5 (Anwendbares Recht & Gerichtsstand)",
-        "section5_content": "Diese Bedingungen unterliegen japanischem Recht. Das Bezirksgericht Tokio hat die ausschließliche Zuständigkeit für alle Streitigkeiten."
+        "effective_date": "2026-07-05",
+        "seo_description": "Nutzungsbedingungen von Mannschaft: Geltungsbereich, Kontoverwaltung, Pflichten der Team-Administratoren, Entgelte, Nutzerinhalte, Haftungsausschluss und anwendbares Recht.",
+        "language_note": "Maßgeblich ist die japanische Fassung dieser Bedingungen. Übersetzungen dienen nur der Information; bei Abweichungen geht die japanische Fassung vor.",
+        "sections": [
+          {
+            "title": "Artikel 1 (Geltungsbereich und Begriffe)",
+            "content": [
+              "Diese Nutzungsbedingungen (die „Bedingungen“) regeln die Nutzung der Plattform „Mannschaft“ (der „Dienst“), die vom Betreiber von Mannschaft (das „Unternehmen“) bereitgestellt wird. Nutzer verwenden den Dienst erst nach Zustimmung zu diesen Bedingungen.",
+              "In diesen Bedingungen bedeutet: (1) „Nutzer“ jede Person, die den Dienst nutzt; (2) „Team“ jedes im Dienst erstellte Team, jede Organisation oder sonstige Gruppe; (3) „Administrator“ ein Nutzer mit Verwaltungsbefugnis für ein Team; (4) „Inhalte“ Texte, Bilder, Dateien und sonstige Informationen, die Nutzer im Dienst veröffentlichen oder speichern."
+            ]
+          },
+          {
+            "title": "Artikel 2 (Registrierung)",
+            "content": [
+              "Interessenten beantragen die Registrierung nach Zustimmung zu diesen Bedingungen auf dem vom Unternehmen vorgesehenen Weg. Die Registrierung wird mit der Genehmigung durch das Unternehmen wirksam.",
+              "Das Unternehmen kann eine Registrierung in folgenden Fällen ablehnen und ist nicht verpflichtet, Gründe offenzulegen: (1) falsche Angaben, Fehler oder Auslassungen bei der Registrierung; (2) frühere Sperrung oder Löschung wegen Verstoßes gegen diese Bedingungen; (3) Zugehörigkeit zu oder Verbindung mit antisozialen Kräften nach Einschätzung des Unternehmens; (4) sonstige Fälle, in denen das Unternehmen die Registrierung für unangemessen hält."
+            ]
+          },
+          {
+            "title": "Artikel 3 (Kontoverwaltung)",
+            "content": [
+              "Nutzer verwalten E-Mail-Adresse, Passwort und sonstige Zugangsdaten eigenverantwortlich und dürfen diese nicht an Dritte weitergeben, verleihen oder übertragen. Das Unternehmen empfiehlt Zwei-Faktor-Authentifizierung (SMS oder Authenticator-App) und Passkeys.",
+              "Schäden aus unzureichender Verwaltung der Zugangsdaten oder aus der Nutzung durch Dritte trägt der Nutzer, außer bei Vorsatz oder grober Fahrlässigkeit des Unternehmens. Bei Verdacht auf unbefugte Kontonutzung informiert der Nutzer das Unternehmen unverzüglich."
+            ]
+          },
+          {
+            "title": "Artikel 4 (Nutzung durch Minderjährige)",
+            "content": [
+              "Minderjährige holen vor der Nutzung des Dienstes die Zustimmung eines gesetzlichen Vertreters (z. B. der Eltern) ein. Mit Abschluss der Registrierung gilt diese Zustimmung als erteilt.",
+              "Nutzt eine Schule oder andere Einrichtung den Dienst unter Beteiligung von Kindern oder Schülern, ist der Administrator dieser Einrichtung für die Einholung der erforderlichen Zustimmungen und sonstige geeignete Maßnahmen verantwortlich. Für personenbezogene Daten Minderjähriger gilt die Datenschutzerklärung."
+            ]
+          },
+          {
+            "title": "Artikel 5 (Pflichten von Teams und Administratoren)",
+            "content": [
+              "Administratoren erkennen an, dass sie durch die Verwaltung eines Teams personenbezogene Daten der Mitglieder verarbeiten (einschließlich Namen und Kontaktdaten sowie Anwesenheit, Beitragsstatus und gesundheitsbezogener Informationen wie Behandlungsaufzeichnungen in der Aktenfunktion), und halten das Gesetz zum Schutz personenbezogener Daten sowie alle sonstigen anwendbaren Gesetze ein.",
+              "Administratoren verwenden die Daten der Mitglieder nur für Zwecke der Teamverwaltung, nutzen sie nicht zweckfremd, geben sie nicht ohne Zustimmung an Dritte weiter und erklären den Mitgliedern angemessen, wofür ihre Daten verwendet werden.",
+              "Streitigkeiten innerhalb eines Teams (Beiträge, Führungsfragen, Konflikte zwischen Mitgliedern usw.) werden zwischen den Beteiligten gelöst. Das Unternehmen ist zu einer Beteiligung nicht verpflichtet, außer bei eigenem Vorsatz oder grober Fahrlässigkeit."
+            ]
+          },
+          {
+            "title": "Artikel 6 (Entgelte und Zahlung)",
+            "content": [
+              "Die Grundfunktionen des Dienstes sind kostenlos. Bestimmte Zusatzfunktionen (etwa Wahlmodule) können je nach Anzahl oder Art kostenpflichtig sein; Entgelte und Abrechnungsbedingungen werden im Dienst angezeigt.",
+              "Das Unternehmen kann Inhalt und Entgelte kostenpflichtiger Tarife ändern. Änderungen werden vorab im Dienst oder auf andere geeignete Weise angekündigt.",
+              "Bereits gezahlte Entgelte werden grundsätzlich nicht erstattet, es sei denn, eine Erstattung ist gesetzlich vorgeschrieben."
+            ]
+          },
+          {
+            "title": "Artikel 7 (Zahlungsabwicklung und Beitragseinzug)",
+            "content": [
+              "Zahlungen im Dienst werden über Zahlungsdienstleister (z. B. Stripe) abgewickelt. Das Unternehmen speichert keine Kreditkartennummern oder sonstige rohe Zahlungsdaten (Details in der Datenschutzerklärung).",
+              "Die Beitragsfunktion stellt lediglich ein Mittel für Geldflüsse zwischen einem Team und seinen Mitgliedern bereit. Festsetzung, Einzug und Erstattung von Beiträgen sowie jeder sonstige Umgang mit Geld liegen in der Verantwortung des Teams; daraus entstehende Streitigkeiten werden zwischen den Beteiligten gelöst."
+            ]
+          },
+          {
+            "title": "Artikel 8 (Nutzerinhalte)",
+            "content": [
+              "Urheberrechte und sonstige Rechte an Inhalten stehen dem Nutzer oder dem jeweiligen Rechteinhaber zu.",
+              "Nutzer räumen dem Unternehmen ein nicht ausschließliches, unentgeltliches Recht ein, Inhalte in dem Umfang zu nutzen (Vervielfältigung, Anzeige, Bearbeitung usw.), der für Bereitstellung, Betrieb, Verbesserung und Fehlerbehebung des Dienstes erforderlich ist.",
+              "Nutzer bemühen sich, wichtige Daten auch selbst zu sichern, etwa über die Exportfunktionen des Dienstes."
+            ]
+          },
+          {
+            "title": "Artikel 9 (Verbotene Handlungen)",
+            "content": [
+              "Nutzern ist Folgendes untersagt: (1) Verstöße gegen Gesetze oder die guten Sitten; (2) Verletzung von Immaterialgüterrechten, Bildrechten, Privatsphäre, Ehre oder sonstigen Rechten und Interessen Dritter; (3) Identitätsanmaßung oder Registrierung bzw. Verbreitung falscher Informationen; (4) unbefugter Zugriff, übermäßige Belastung der Server oder Netze des Dienstes oder sonstige Störung des Betriebs; (5) Sammeln von Informationen aus dem Dienst durch Scraping oder andere automatisierte Mittel ohne vorherige Zustimmung des Unternehmens; (6) Sammeln, Veröffentlichen oder Weitergeben personenbezogener Daten anderer Nutzer ohne deren Zustimmung; (7) Spam, wahllose Werbung oder Geschäftsstörung; (8) Zuwendungen an oder sonstige Zusammenarbeit mit antisozialen Kräften; (9) sonstige Handlungen, die das Unternehmen vernünftigerweise als unangemessen einstuft."
+            ]
+          },
+          {
+            "title": "Artikel 10 (Geistiges Eigentum)",
+            "content": [
+              "Rechte des geistigen Eigentums an Programmen, Designs, Logos, Dokumenten und sonstigen Elementen des Dienstes stehen dem Unternehmen oder Rechteinhabern zu, die dem Unternehmen Lizenzen erteilen. Nutzer dürfen diese nicht über den in diesen Bedingungen erlaubten Umfang hinaus vervielfältigen, übernehmen, verändern oder verbreiten."
+            ]
+          },
+          {
+            "title": "Artikel 11 (Datenschutz und personenbezogene Daten)",
+            "content": [
+              "Der Umgang des Unternehmens mit personenbezogenen Daten richtet sich nach der Datenschutzerklärung. Nutzer stimmen dieser vor Nutzung des Dienstes zu.",
+              "Innerhalb eines Teams werden grundsätzlich der registrierte Name und der Anzeigename (Klarname) anderen Mitgliedern angezeigt. Nutzer treten Teams in Kenntnis und mit Zustimmung hierzu bei.",
+              "In den sozialen Funktionen können Nutzer anonyme Personas (bis zu drei) anlegen und verwenden. Auch für Aktivitäten unter anonymen Personas gelten diese Bedingungen; auf rechtmäßige Auskunftsersuchen reagiert das Unternehmen auf Grundlage der Registrierungsdaten im gesetzlich vorgesehenen Umfang."
+            ]
+          },
+          {
+            "title": "Artikel 12 (Sicherheit)",
+            "content": [
+              "Das Unternehmen trifft angemessene Sicherheitsmaßnahmen, darunter verschlüsselte Kommunikation, Zugriffskontrolle und die Bereitstellung von Mehrfaktor-Authentifizierung (Details in der Datenschutzerklärung).",
+              "Nutzer wirken am Schutz ihres Kontos mit, etwa durch sorgfältige Passwortverwaltung und Abmelden an gemeinsam genutzten Geräten."
+            ]
+          },
+          {
+            "title": "Artikel 13 (Änderung, Unterbrechung und Einstellung des Dienstes)",
+            "content": [
+              "Das Unternehmen kann den Inhalt des Dienstes jederzeit ändern, ergänzen oder einstellen. Änderungen mit wesentlichen Auswirkungen auf Nutzer werden vorab im Dienst oder auf andere geeignete Weise angekündigt.",
+              "Das Unternehmen kann den Dienst wegen Wartung, Störungen, Naturkatastrophen oder anderer unvermeidbarer Umstände ganz oder teilweise vorübergehend unterbrechen.",
+              "Bei Einstellung des gesamten Dienstes kündigt das Unternehmen dies grundsätzlich mit angemessener Frist an und bemüht sich, Nutzern Gelegenheit zum Export ihrer Daten zu geben."
+            ]
+          },
+          {
+            "title": "Artikel 14 (Austritt)",
+            "content": [
+              "Nutzer können jederzeit über das vorgesehene Verfahren den Austritt beantragen.",
+              "Beim Austritt anonymisiert das Unternehmen personenbezogene Daten wie Name, E-Mail-Adresse und Avatar. Beiträge, Aktivitätsverlauf und Statistikdaten verbleiben in nicht identifizierbarer Form im Dienst. Zeitpunkt der Löschung personenbezogener Daten und das Verfahren für Löschersuchen nach anwendbarem Recht richten sich nach Artikel 11 der Datenschutzerklärung."
+            ]
+          },
+          {
+            "title": "Artikel 15 (Sperrung und Löschung der Registrierung)",
+            "content": [
+              "Beurteilt das Unternehmen vernünftigerweise, dass ein Nutzer gegen diese Bedingungen verstößt oder zu verstoßen droht, kann es ohne Vorankündigung Beiträge löschen, die Nutzung vorübergehend sperren oder die Registrierung löschen.",
+              "Für Schäden aus Maßnahmen nach diesem Artikel haftet das Unternehmen nicht, außer bei Vorsatz oder grober Fahrlässigkeit."
+            ]
+          },
+          {
+            "title": "Artikel 16 (Gewährleistungsausschluss; Haftungsbeschränkung)",
+            "content": [
+              "Das Unternehmen stellt den Dienst wie besehen bereit und übernimmt keine Gewähr für Eignung zu einem bestimmten Zweck, Vollständigkeit, Richtigkeit oder Kontinuität.",
+              "Entsteht einem Nutzer ein vom Unternehmen zu vertretender Schaden, haftet das Unternehmen — außer bei Vorsatz oder grober Fahrlässigkeit — nur für unmittelbare und typische Schäden, begrenzt auf die Gesamtentgelte, die der Nutzer in den zwölf Monaten vor Schadenseintritt an das Unternehmen gezahlt hat.",
+              "Ungeachtet des vorstehenden Absatzes gilt: Wird eine haftungsbeschränkende Klausel nach dem Verbrauchervertragsgesetz oder anderen Gesetzen für unwirksam erklärt, findet sie in dem nach diesen Gesetzen zulässigen Umfang Anwendung."
+            ]
+          },
+          {
+            "title": "Artikel 17 (Schadensersatz durch Nutzer)",
+            "content": [
+              "Verstößt ein Nutzer gegen diese Bedingungen und fügt dadurch dem Unternehmen oder Dritten Schaden zu, ist er zum Ersatz dieses Schadens (einschließlich angemessener Anwaltskosten) verpflichtet."
+            ]
+          },
+          {
+            "title": "Artikel 18 (Ausschluss antisozialer Kräfte)",
+            "content": [
+              "Nutzer versichern für Gegenwart und Zukunft, dass sie keiner kriminellen Vereinigung, deren Mitgliedern oder vergleichbaren Personen („antisoziale Kräfte“) angehören und keine gesellschaftlich zu missbilligende Beziehung zu antisozialen Kräften unterhalten. Bei Verstoß kann das Unternehmen die Registrierung ohne Vorankündigung löschen."
+            ]
+          },
+          {
+            "title": "Artikel 19 (Änderung der Bedingungen)",
+            "content": [
+              "Diese Bedingungen können gemäß Artikel 548-4 des japanischen Zivilgesetzbuchs (Änderung von Standardbedingungen) geändert werden, wenn die Änderung dem allgemeinen Interesse der Nutzer entspricht oder sachgerecht ist und dem Vertragszweck nicht widerspricht.",
+              "Bei einer Änderung legt das Unternehmen den Zeitpunkt des Wirksamwerdens fest und macht Inhalt und Zeitpunkt vorab im Dienst oder auf andere geeignete Weise bekannt."
+            ]
+          },
+          {
+            "title": "Artikel 20 (Mitteilungen)",
+            "content": [
+              "Mitteilungen des Unternehmens an Nutzer erfolgen durch Anzeige im Dienst oder per E-Mail an die registrierte Adresse und gelten als zugegangen, wenn sie üblicherweise zugehen würden. Mitteilungen der Nutzer an das Unternehmen erfolgen über das Kontaktformular im Dienst."
+            ]
+          },
+          {
+            "title": "Artikel 21 (Salvatorische Klausel)",
+            "content": [
+              "Sollte eine Bestimmung dieser Bedingungen oder ein Teil davon nach geltendem Recht unwirksam oder undurchsetzbar sein, bleiben die übrigen Bestimmungen in vollem Umfang wirksam."
+            ]
+          },
+          {
+            "title": "Artikel 22 (Anwendbares Recht und Gerichtsstand)",
+            "content": [
+              "Diese Bedingungen unterliegen japanischem Recht. Für alle Streitigkeiten aus oder im Zusammenhang mit dem Dienst sind in erster Instanz ausschließlich das Distriktgericht Oita oder das Amtsgericht Oita (Summary Court) zuständig."
+            ]
+          },
+          {
+            "title": "Artikel 23 (Sprache)",
+            "content": [
+              "Maßgeblich ist der japanische Wortlaut dieser Bedingungen. Auch wenn das Unternehmen Übersetzungen zur Information bereitstellt, geht bei Abweichungen die japanische Fassung vor."
+            ]
+          }
+        ]
       },
       "privacy": {
         "title": "Datenschutzerklärung",

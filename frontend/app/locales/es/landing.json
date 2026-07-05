@@ -335,19 +335,172 @@
     },
     "legal": {
       "terms": {
-        "title": "Términos de servicio",
+        "title": "Términos del Servicio",
         "last_updated": "Última actualización",
-        "placeholder": "El contenido de los Términos de servicio se colocará aquí. Por favor, reemplácelo con el documento legal real.",
-        "section1_title": "Artículo 1 (Aplicación)",
-        "section1_content": "Estos términos establecen las condiciones de uso de Mannschaft (el \"Servicio\").",
-        "section2_title": "Artículo 2 (Registro)",
-        "section2_content": "Los usuarios se registrarán de acuerdo con los procedimientos prescritos tras aceptar estos términos.",
-        "section3_title": "Artículo 3 (Actividades prohibidas)",
-        "section3_content": "Los usuarios no podrán participar en actividades que violen leyes o el orden público, ni en ninguna otra actividad considerada inapropiada por el Servicio.",
-        "section4_title": "Artículo 4 (Exención de responsabilidad)",
-        "section4_content": "El Servicio no acepta ninguna responsabilidad por la interrupción, terminación o modificación del Servicio.",
-        "section5_title": "Artículo 5 (Ley aplicable y jurisdicción)",
-        "section5_content": "Estos términos se rigen por la ley japonesa. El Tribunal de Distrito de Tokio tendrá jurisdicción exclusiva sobre cualquier disputa."
+        "effective_date": "2026-07-05",
+        "seo_description": "Términos del Servicio de Mannschaft: ámbito de aplicación, gestión de cuentas, responsabilidades de los administradores de equipos, tarifas, contenido de usuario, exención de responsabilidad y ley aplicable.",
+        "language_note": "La versión japonesa de estos Términos es el texto auténtico. Las traducciones se ofrecen solo a título informativo; en caso de discrepancia, prevalece la versión japonesa.",
+        "sections": [
+          {
+            "title": "Artículo 1 (Ámbito y definiciones)",
+            "content": [
+              "Estos Términos del Servicio (los «Términos») establecen las condiciones de uso de la plataforma «Mannschaft» (el «Servicio») que ofrece el operador de Mannschaft (la «Compañía»). Los usuarios utilizarán el Servicio únicamente tras aceptar estos Términos.",
+              "En estos Términos: (1) «Usuario» es toda persona que utiliza el Servicio; (2) «Equipo» es todo equipo, organización u otro grupo creado en el Servicio; (3) «Administrador» es el Usuario con facultades de gestión de un Equipo; (4) «Contenido» son los textos, imágenes, archivos y demás información que los Usuarios publican o guardan en el Servicio."
+            ]
+          },
+          {
+            "title": "Artículo 2 (Registro)",
+            "content": [
+              "Quien desee registrarse solicitará el registro por el método establecido por la Compañía tras aceptar estos Términos. El registro se completa con la aprobación de la Compañía.",
+              "La Compañía podrá denegar el registro en los siguientes casos, sin obligación de revelar los motivos: (1) datos falsos, erróneos o incompletos en la solicitud; (2) antecedentes de suspensión o cancelación por incumplimiento de estos Términos; (3) pertenencia o vinculación, a juicio de la Compañía, con fuerzas antisociales; (4) cualquier otro caso en que la Compañía considere inapropiado el registro."
+            ]
+          },
+          {
+            "title": "Artículo 3 (Gestión de la cuenta)",
+            "content": [
+              "El Usuario gestionará bajo su responsabilidad su correo electrónico, contraseña y demás credenciales, y no las compartirá, prestará ni cederá a terceros. La Compañía recomienda la autenticación de dos factores (SMS o aplicación de autenticación) y las passkeys.",
+              "Salvo dolo o negligencia grave de la Compañía, los daños derivados de una gestión insuficiente de las credenciales o del uso por terceros correrán a cargo del Usuario. Ante sospecha de uso no autorizado de la cuenta, el Usuario avisará sin demora a la Compañía."
+            ]
+          },
+          {
+            "title": "Artículo 4 (Uso por menores)",
+            "content": [
+              "Los menores de edad obtendrán previamente el consentimiento de su representante legal (padres o tutores) para usar el Servicio. Al completar el registro se presume otorgado dicho consentimiento.",
+              "Cuando un colegio u otra entidad utilice el Servicio con participación de niños o alumnos, el Administrador de dicha entidad será responsable de obtener los consentimientos necesarios y de adoptar las demás medidas apropiadas. El tratamiento de los datos personales de menores se rige por la Política de Privacidad."
+            ]
+          },
+          {
+            "title": "Artículo 5 (Responsabilidades de Equipos y Administradores)",
+            "content": [
+              "El Administrador reconoce que, al gestionar un Equipo, trata datos personales de los miembros (incluidos nombre y datos de contacto, así como asistencia, estado de pago de cuotas e información relacionada con la salud, como los registros de tratamientos de la función de ficha clínica) y cumplirá la Ley de Protección de la Información Personal y demás normativa aplicable.",
+              "El Administrador utilizará los datos personales de los miembros únicamente para la gestión del Equipo, no los usará con otros fines ni los facilitará a terceros sin consentimiento, y explicará adecuadamente a los miembros el uso de su información.",
+              "Las disputas surgidas dentro de un Equipo (cuotas, política de gestión, conflictos entre miembros, etc.) se resolverán entre las partes. La Compañía no está obligada a intervenir, salvo dolo o negligencia grave por su parte."
+            ]
+          },
+          {
+            "title": "Artículo 6 (Tarifas y pago)",
+            "content": [
+              "Las funciones básicas del Servicio son gratuitas. Algunas funciones adicionales (como los módulos opcionales) pueden ser de pago según su número o naturaleza; las tarifas y condiciones de facturación se muestran dentro del Servicio.",
+              "La Compañía podrá modificar el contenido y las tarifas de los planes de pago. Los cambios se anunciarán con antelación dentro del Servicio o por otros medios adecuados.",
+              "Las tarifas ya abonadas no se reembolsan, por regla general, salvo que la ley exija el reembolso."
+            ]
+          },
+          {
+            "title": "Artículo 7 (Pagos y cobro de cuotas)",
+            "content": [
+              "El procesamiento de pagos del Servicio se realiza a través de proveedores de pago (como Stripe). La Compañía no conserva números de tarjeta ni otros datos de pago en bruto (véase la Política de Privacidad).",
+              "La función de cobro de cuotas se limita a proporcionar un medio de intercambio de dinero entre un Equipo y sus miembros. La fijación, el cobro y la devolución de cuotas y cualquier otro manejo de dinero son responsabilidad del Equipo, y las disputas derivadas se resolverán entre las partes."
+            ]
+          },
+          {
+            "title": "Artículo 8 (Contenido de usuario)",
+            "content": [
+              "Los derechos de autor y demás derechos sobre el Contenido pertenecen al Usuario o a su legítimo titular.",
+              "El Usuario concede a la Compañía una licencia no exclusiva y gratuita para usar el Contenido (reproducción, visualización, adaptación, etc.) en la medida necesaria para prestar, mantener y mejorar el Servicio y corregir defectos.",
+              "El Usuario procurará conservar sus propias copias de seguridad de los datos importantes, por ejemplo mediante las funciones de exportación del Servicio."
+            ]
+          },
+          {
+            "title": "Artículo 9 (Conductas prohibidas)",
+            "content": [
+              "El Usuario no realizará ninguna de las siguientes conductas: (1) actos contrarios a la ley o al orden público y las buenas costumbres; (2) infracción de la propiedad intelectual, el derecho a la propia imagen, la privacidad, el honor u otros derechos o intereses de terceros; (3) suplantación de identidad o registro o difusión de información falsa; (4) acceso no autorizado, sobrecarga de los servidores o redes del Servicio u otra obstrucción de su funcionamiento; (5) recopilación de información del Servicio mediante scraping u otros medios automatizados sin consentimiento previo de la Compañía; (6) recopilación, publicación o cesión a terceros de datos personales de otros Usuarios sin su consentimiento; (7) spam, captación indiscriminada u obstrucción de negocios; (8) aportación de beneficios u otra colaboración con fuerzas antisociales; (9) cualquier otra conducta que la Compañía considere razonablemente inapropiada."
+            ]
+          },
+          {
+            "title": "Artículo 10 (Propiedad intelectual)",
+            "content": [
+              "Los derechos de propiedad intelectual sobre los programas, diseños, logotipos, documentos y demás elementos del Servicio pertenecen a la Compañía o a los titulares que le otorgan licencia. El Usuario no los reproducirá, republicará, modificará ni distribuirá más allá de lo permitido por estos Términos."
+            ]
+          },
+          {
+            "title": "Artículo 11 (Privacidad y datos personales)",
+            "content": [
+              "El tratamiento de los datos personales por la Compañía se rige por la Política de Privacidad, que el Usuario aceptará antes de usar el Servicio.",
+              "Dentro de un Equipo se muestran, por regla general, el nombre registrado y el nombre visible (nombre real) a los demás miembros. El Usuario se une a los Equipos conociendo y aceptando este principio.",
+              "En las funciones sociales, el Usuario puede crear y usar personas anónimas (hasta tres). Estos Términos se aplican también a la actividad bajo personas anónimas, y la Compañía responderá a las solicitudes legales de divulgación sobre la base de los datos registrados, en la medida exigida por la ley."
+            ]
+          },
+          {
+            "title": "Artículo 12 (Seguridad)",
+            "content": [
+              "La Compañía adopta medidas de seguridad razonables, incluidas la comunicación cifrada, el control de accesos y la autenticación multifactor (véase la Política de Privacidad).",
+              "El Usuario colaborará en la seguridad de su cuenta, por ejemplo gestionando adecuadamente sus contraseñas y cerrando sesión en dispositivos compartidos."
+            ]
+          },
+          {
+            "title": "Artículo 13 (Modificación, suspensión y terminación del Servicio)",
+            "content": [
+              "La Compañía podrá modificar, ampliar o suprimir el contenido del Servicio en cualquier momento. Los cambios que afecten sustancialmente a los Usuarios se anunciarán con antelación dentro del Servicio o por otros medios adecuados.",
+              "La Compañía podrá suspender temporalmente la totalidad o parte del Servicio por mantenimiento, averías, desastres naturales u otras circunstancias inevitables.",
+              "Si la Compañía pone fin al Servicio en su conjunto, lo anunciará, por regla general, con antelación razonable y procurará ofrecer a los Usuarios la oportunidad de exportar sus datos."
+            ]
+          },
+          {
+            "title": "Artículo 14 (Baja)",
+            "content": [
+              "El Usuario podrá solicitar la baja en cualquier momento mediante el procedimiento establecido por la Compañía.",
+              "Al darse de baja, la Compañía anonimiza los datos personales como el nombre, el correo electrónico y el avatar. Las publicaciones, el historial de actividad y los datos estadísticos permanecen en el Servicio en una forma que no permite identificar a la persona. El momento del borrado de los datos personales y el procedimiento de solicitud de supresión conforme a la ley se rigen por el artículo 11 de la Política de Privacidad."
+            ]
+          },
+          {
+            "title": "Artículo 15 (Suspensión y cancelación del registro)",
+            "content": [
+              "Si la Compañía juzga razonablemente que un Usuario ha incumplido o puede incumplir estos Términos, podrá, sin previo aviso, eliminar sus publicaciones, suspender temporalmente su uso o cancelar su registro.",
+              "La Compañía no responderá de los daños causados al Usuario por las medidas de este artículo, salvo dolo o negligencia grave."
+            ]
+          },
+          {
+            "title": "Artículo 16 (Exclusión de garantías; limitación de responsabilidad)",
+            "content": [
+              "La Compañía presta el Servicio tal cual y no garantiza su idoneidad para un fin determinado, su integridad, exactitud o continuidad.",
+              "Si el Usuario sufre daños imputables a la Compañía, y salvo dolo o negligencia grave de esta, la responsabilidad de la Compañía se limitará a los daños directos y ordinarios, con el límite del total de las tarifas pagadas por el Usuario a la Compañía en los doce meses anteriores al hecho dañoso.",
+              "No obstante lo anterior, si alguna cláusula limitativa de la responsabilidad de la Compañía resultara nula conforme a la Ley de Contratos con Consumidores u otras normas, dicha cláusula se aplicará en la máxima medida que tales normas permitan."
+            ]
+          },
+          {
+            "title": "Artículo 17 (Indemnización por el Usuario)",
+            "content": [
+              "El Usuario que incumpla estos Términos y cause daños a la Compañía o a terceros deberá indemnizarlos (incluidos los honorarios razonables de abogados)."
+            ]
+          },
+          {
+            "title": "Artículo 18 (Exclusión de fuerzas antisociales)",
+            "content": [
+              "El Usuario declara y garantiza, ahora y en el futuro, que no pertenece a grupos de crimen organizado, a sus miembros ni a personas equivalentes («fuerzas antisociales») y que no mantiene relaciones socialmente reprobables con ellas. En caso de incumplimiento, la Compañía podrá cancelar el registro sin previo aviso."
+            ]
+          },
+          {
+            "title": "Artículo 19 (Modificación de los Términos)",
+            "content": [
+              "Estos Términos podrán modificarse conforme al artículo 548-4 del Código Civil de Japón (modificación de condiciones generales) cuando la modificación convenga al interés general de los Usuarios o sea razonable y no contraria a la finalidad del contrato.",
+              "Al modificar estos Términos, la Compañía fijará la fecha de entrada en vigor y anunciará con antelación el contenido y dicha fecha dentro del Servicio o por otros medios adecuados."
+            ]
+          },
+          {
+            "title": "Artículo 20 (Comunicaciones y notificaciones)",
+            "content": [
+              "Las comunicaciones de la Compañía al Usuario se realizarán mediante avisos dentro del Servicio o por correo electrónico a la dirección registrada, y se considerarán recibidas cuando normalmente deberían llegar. Las comunicaciones del Usuario a la Compañía se realizarán a través del formulario de contacto del Servicio."
+            ]
+          },
+          {
+            "title": "Artículo 21 (Divisibilidad)",
+            "content": [
+              "Aunque alguna disposición de estos Términos o parte de ella sea declarada nula o inaplicable conforme a la ley, las demás disposiciones conservarán plena validez y eficacia."
+            ]
+          },
+          {
+            "title": "Artículo 22 (Ley aplicable y jurisdicción)",
+            "content": [
+              "Estos Términos se rigen por el Derecho japonés. Para toda controversia derivada del Servicio o relacionada con él, el Tribunal de Distrito de Oita o el Tribunal Sumario de Oita tendrán competencia exclusiva en primera instancia."
+            ]
+          },
+          {
+            "title": "Artículo 23 (Idioma)",
+            "content": [
+              "El texto japonés de estos Términos es el auténtico. Aunque la Compañía ofrezca traducciones a título informativo, en caso de discrepancia entre la versión japonesa y una traducción prevalecerá la versión japonesa."
+            ]
+          }
+        ]
       },
       "privacy": {
         "title": "Política de privacidad",
