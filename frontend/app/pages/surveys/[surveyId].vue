@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { SurveyDetailResponse } from '~/types/survey'
 import type { BulletinThreadResponse } from '~/types/bulletin'
+import type { QuestionDraft } from '~/components/survey/SurveyQuestionEditor.vue'
 import SurveyRespondentsList from '~/components/survey/SurveyRespondentsList.vue'
 
 definePageMeta({ middleware: 'auth' })
@@ -14,7 +15,7 @@ const scopeType = (rawScope === 'TEAM' || rawScope === 'ORGANIZATION'
 const scopeId = String(route.query.scopeId ?? '')
 
 const { t } = useI18n()
-const { getSurvey, publishSurvey, closeSurvey, deleteSurvey } = useSurveyApi()
+const { getSurvey, publishSurvey, closeSurvey, deleteSurvey, addQuestion } = useSurveyApi()
 const { getSurveyThread } = useSurveyBulletinThread()
 const { error: showError, success: showSuccess } = useNotification()
 const { confirmAction } = useConfirmDialog()
@@ -38,6 +39,46 @@ const survey = ref<SurveyDetailResponse['data'] | null>(null)
 const loading = ref(true)
 const fetchError = ref(false)
 const actionLoading = ref(false)
+
+// === DRAFTモード用: インライン設問追加 ===
+// SurveyQuestionEditor は QuestionDraft[] を v-model で扱うため、
+// DRAFT詳細画面でも同一エディタを再利用する。
+// 「設問を保存して公開」ボタン押下時に addQuestion を順次呼び出してから publish する。
+const draftQuestions = ref<QuestionDraft[]>([])
+const draftQuestionsSubmitting = ref(false)
+
+/** DRAFTの設問を一括保存 → publish する */
+async function onSaveQuestionsAndPublish() {
+  if (!survey.value) return
+  draftQuestionsSubmitting.value = true
+  try {
+    // 設問を順次追加（BE addQuestion API を呼ぶ）
+    for (const q of draftQuestions.value) {
+      const beBody: Record<string, unknown> = {
+        questionText: q.questionText.trim(),
+        questionType: q.questionType,
+        isRequired: q.isRequired,
+        sortOrder: q.sortOrder,
+      }
+      if (q.questionType !== 'TEXT' && q.questionType !== 'DATE' && q.options && q.options.length > 0) {
+        beBody.options = q.options.map((o) => ({
+          optionText: o.optionText.trim(),
+          sortOrder: o.sortOrder,
+        }))
+      }
+      await addQuestion(scopeType as 'TEAM' | 'ORGANIZATION', scopeId, surveyId, beBody)
+    }
+    // 公開
+    await publishSurvey(scopeType as 'TEAM' | 'ORGANIZATION', scopeId, surveyId)
+    showSuccess(t('surveys.detail.publishSuccess'))
+    draftQuestions.value = []
+    await fetchDetail()
+  } catch {
+    showError(t('surveys.detail.publishFailed'))
+  } finally {
+    draftQuestionsSubmitting.value = false
+  }
+}
 
 const currentUserId = computed<number | null>(() => authStore.currentUser?.id ?? null)
 
@@ -314,30 +355,61 @@ onMounted(async () => {
       <!-- DRAFT -->
       <div
         v-if="displayMode === 'draft'"
-        class="rounded-lg border border-surface-200 bg-surface-50 p-6 dark:border-surface-700 dark:bg-surface-800"
+        class="flex flex-col gap-4"
         data-testid="survey-mode-draft"
       >
-        <p class="mb-4 text-sm text-surface-600 dark:text-surface-300">
-          <i class="pi pi-info-circle mr-1" />
-          {{ t('surveys.detail.draftHint') }}
-        </p>
-        <div v-if="isCreator || isAdminPlus" class="flex flex-wrap gap-2">
-          <Button
-            :label="t('surveys.detail.publishButton')"
-            icon="pi pi-send"
-            :loading="actionLoading"
-            data-testid="survey-publish-button"
-            @click="onPublish"
-          />
-          <Button
-            :label="t('surveys.detail.deleteButton')"
-            icon="pi pi-trash"
-            severity="danger"
-            outlined
-            :loading="actionLoading"
-            data-testid="survey-delete-button"
-            @click="onDelete"
-          />
+        <!-- ステータスバナー -->
+        <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-700/40 dark:bg-amber-900/10">
+          <p class="mb-2 text-sm text-amber-700 dark:text-amber-200">
+            <i class="pi pi-info-circle mr-1" />
+            {{ t('surveys.detail.draftHint') }}
+          </p>
+          <p class="text-xs text-amber-600 dark:text-amber-300">
+            {{ t('surveys.detail.draftAddQuestionsHint') }}
+          </p>
+        </div>
+
+        <!-- 作成者・ADMIN+: 設問追加 & 公開 -->
+        <div v-if="isCreator || isAdminPlus">
+          <!-- インライン設問エディタ -->
+          <div class="mb-4 rounded-lg border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800">
+            <p class="mb-3 text-sm font-medium text-surface-700 dark:text-surface-200">
+              {{ t('surveys.detail.draftQuestionsSection') }}
+            </p>
+            <SurveyQuestionEditor v-model="draftQuestions" />
+          </div>
+
+          <!-- 操作ボタン群 -->
+          <div class="flex flex-wrap gap-2">
+            <!-- 設問を追加して公開（設問が1つ以上あるときに強調） -->
+            <Button
+              v-if="draftQuestions.length > 0"
+              :label="t('surveys.detail.publishButton')"
+              icon="pi pi-send"
+              :loading="draftQuestionsSubmitting"
+              data-testid="survey-publish-with-questions-button"
+              @click="onSaveQuestionsAndPublish"
+            />
+            <!-- 設問なしでそのまま公開（設問ゼロでも可、グレー強調） -->
+            <Button
+              :label="t('surveys.detail.publishButton')"
+              icon="pi pi-send"
+              :severity="draftQuestions.length > 0 ? 'secondary' : 'primary'"
+              :outlined="draftQuestions.length > 0"
+              :loading="actionLoading"
+              data-testid="survey-publish-button"
+              @click="onPublish"
+            />
+            <Button
+              :label="t('surveys.detail.deleteButton')"
+              icon="pi pi-trash"
+              severity="danger"
+              outlined
+              :loading="actionLoading || draftQuestionsSubmitting"
+              data-testid="survey-delete-button"
+              @click="onDelete"
+            />
+          </div>
         </div>
       </div>
 
