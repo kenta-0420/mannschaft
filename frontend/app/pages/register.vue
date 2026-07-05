@@ -197,6 +197,14 @@ const onSubmit = handleSubmit(async (values) => {
     @submit.prevent="submitted = true; onSubmit()"
   >
     <div class="flex flex-col gap-4">
+      <!-- 戻るリンク -->
+      <NuxtLink
+        to="/"
+        class="inline-flex items-center gap-2 text-sm text-surface-500 transition-colors hover:text-primary"
+      >
+        {{ $t('landing.features_detail.back_to_top') }}
+      </NuxtLink>
+
       <!-- Google 登録ボタン -->
       <Button
         type="button"

@@ -162,6 +162,14 @@ async function handleLogin() {
 <template>
   <form @submit.prevent="handleLogin">
     <div class="flex flex-col gap-4">
+      <!-- 戻るリンク -->
+      <NuxtLink
+        to="/"
+        class="inline-flex items-center gap-2 text-sm text-surface-500 transition-colors hover:text-primary"
+      >
+        {{ $t('landing.features_detail.back_to_top') }}
+      </NuxtLink>
+
       <!-- パスワード変更後・セッション失効後の案内バナー（info色・エラーではない） -->
       <div
         v-if="sessionNoticeMessage"
