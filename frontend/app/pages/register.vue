@@ -114,6 +114,9 @@ const schema = toTypedSchema(
     privacyPolicyAccepted: z.literal(true, {
       errorMap: () => ({ message: 'auth.register.privacy_consent_required' }),
     }),
+    termsAccepted: z.literal(true, {
+      errorMap: () => ({ message: 'auth.register.terms_consent_required' }),
+    }),
   }),
 )
 
@@ -128,6 +131,7 @@ const { defineField, handleSubmit, errors } = useForm({
     postalCode: '',
     birthDate: '',
     privacyPolicyAccepted: false as unknown as true,
+    termsAccepted: false as unknown as true,
   },
 })
 
@@ -139,6 +143,7 @@ const [displayName, displayNameProps] = defineField('displayName')
 const [postalCode, postalCodeProps] = defineField('postalCode')
 const [birthDate, birthDateProps] = defineField('birthDate')
 const [privacyPolicyAccepted, privacyPolicyAcceptedProps] = defineField('privacyPolicyAccepted')
+const [termsAccepted, termsAcceptedProps] = defineField('termsAccepted')
 
 const submitted = ref(false)
 
@@ -259,13 +264,14 @@ const onSubmit = handleSubmit(async (values) => {
 
       <div class="flex flex-col gap-2">
         <label for="birthDate">{{ $t('parental_consent.birth_date_label') }} <span class="text-red-500">※</span></label>
-        <input
+        <InputText
           id="birthDate"
-          v-bind="birthDateProps"
           v-model="birthDate"
+          v-bind="birthDateProps"
           type="date"
           :max="dayjs().tz(userTimezone).format('YYYY-MM-DD')"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+          class="w-full"
+          :invalid="submitted && !!errors.birthDate"
         />
         <small v-if="submitted && errors.birthDate" class="text-red-500">{{ $t(errors.birthDate) }}</small>
       </div>
@@ -335,6 +341,29 @@ const onSubmit = handleSubmit(async (values) => {
         </div>
         <small v-if="submitted && errors.privacyPolicyAccepted" class="text-red-500">
           {{ $t(errors.privacyPolicyAccepted) }}
+        </small>
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <div class="flex items-start gap-3 rounded-lg border border-surface-200 p-3 dark:border-surface-700">
+          <Checkbox
+            id="termsAccepted"
+            v-model="termsAccepted"
+            v-bind="termsAcceptedProps"
+            :binary="true"
+            :invalid="submitted && !!errors.termsAccepted"
+          />
+          <label for="termsAccepted" class="cursor-pointer select-none text-sm leading-relaxed">
+            <NuxtLink
+              to="/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="font-medium text-primary hover:underline"
+            >{{ $t('landing.legal.terms.title') }}</NuxtLink>{{ $t('auth.register.privacy_consent_suffix') }}
+          </label>
+        </div>
+        <small v-if="submitted && errors.termsAccepted" class="text-red-500">
+          {{ $t(errors.termsAccepted) }}
         </small>
       </div>
 
