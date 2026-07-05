@@ -74,6 +74,7 @@ public class AuthService {
     private final StringRedisTemplate redisTemplate;
     private final NewDeviceDetectionService newDeviceDetectionService;
     private final RoleClaimResolver roleClaimResolver;
+    private final StatusClaimResolver statusClaimResolver;
 
     // サブサービス（委譲先）
     private final AuthRegistrationService authRegistrationService;
@@ -414,7 +415,8 @@ public class AuthService {
         // Access Token発行
         // 認可基盤完全根治 Phase 1（§3.2）: 固定 MEMBER ではなく user_roles から SYSTEM_ADMIN を
         // 判定した roles を載せる（RoleClaimResolver に一元化。5発行経路で同一ロジック）。
-        String accessToken = authTokenService.issueAccessToken(user.getId(), roleClaimResolver.resolveRoles(user.getId()));
+        String accessToken = authTokenService.issueAccessToken(user.getId(), roleClaimResolver.resolveRoles(user.getId()),
+                statusClaimResolver.isPendingParentalConsent(user.getId()));
 
         // Refresh Token発行（DB保存）
         String rawRefreshToken = authTokenService.generateRefreshToken();

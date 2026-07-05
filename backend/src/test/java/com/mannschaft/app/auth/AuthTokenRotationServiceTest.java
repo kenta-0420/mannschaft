@@ -8,6 +8,7 @@ import com.mannschaft.app.auth.service.AuthSessionService;
 import com.mannschaft.app.auth.service.AuthTokenRotationService;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.auth.service.RoleClaimResolver;
+import com.mannschaft.app.auth.service.StatusClaimResolver;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
@@ -27,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -72,6 +74,9 @@ class AuthTokenRotationServiceTest {
     @Mock
     private RoleClaimResolver roleClaimResolver;
 
+    @Mock
+    private StatusClaimResolver statusClaimResolver;
+
     @InjectMocks
     private AuthTokenRotationService authTokenRotationService;
 
@@ -101,7 +106,7 @@ class AuthTokenRotationServiceTest {
     private void stubIssuePath(Long userId) {
         given(userRepository.existsById(userId)).willReturn(true);
         given(roleClaimResolver.resolveRoles(userId)).willReturn(List.of("MEMBER"));
-        given(authTokenService.issueAccessToken(any(), any())).willReturn("new-access-token");
+        given(authTokenService.issueAccessToken(any(), any(), anyBoolean())).willReturn("new-access-token");
         given(authTokenService.generateRefreshToken()).willReturn("new-raw-refresh-token");
         given(authTokenService.hashToken("new-raw-refresh-token")).willReturn("new-hashed-refresh-token");
         given(authTokenService.getRefreshTokenExpirationSeconds()).willReturn(604800L);
@@ -346,7 +351,7 @@ class AuthTokenRotationServiceTest {
             stubTokenLookup(tokenHash, existingToken);
             given(userRepository.existsById(7L)).willReturn(true);
             given(roleClaimResolver.resolveRoles(7L)).willReturn(List.of("MEMBER", "SYSTEM_ADMIN"));
-            given(authTokenService.issueAccessToken(eq(7L), eq(List.of("MEMBER", "SYSTEM_ADMIN"))))
+            given(authTokenService.issueAccessToken(eq(7L), eq(List.of("MEMBER", "SYSTEM_ADMIN")), anyBoolean()))
                     .willReturn("new-access-token-with-sysadmin");
             given(authTokenService.generateRefreshToken()).willReturn("new-raw-refresh-token");
             given(authTokenService.hashToken("new-raw-refresh-token")).willReturn("new-hashed-refresh-token");
@@ -360,7 +365,7 @@ class AuthTokenRotationServiceTest {
 
             // Then
             verify(roleClaimResolver).resolveRoles(7L);
-            verify(authTokenService).issueAccessToken(7L, List.of("MEMBER", "SYSTEM_ADMIN"));
+            verify(authTokenService).issueAccessToken(eq(7L), eq(List.of("MEMBER", "SYSTEM_ADMIN")), anyBoolean());
             assertThat(response.getData().getAccessToken()).isEqualTo("new-access-token-with-sysadmin");
         }
 

@@ -30,7 +30,9 @@
       "no_groups_hint": "자주 함께 제시하는 카드를 그룹화하면 계산대에서 전환이 쉬워집니다",
       "edit": "편집",
       "edit_group": "{name} 편집",
-      "start_presentation_for": "{name} 제시 모드 시작"
+      "start_presentation_for": "{name} 제시 모드 시작",
+      "show_barcode_tooltip": "바코드 표시",
+      "edit_tooltip": "그룹 편집"
     },
     "settings": {
       "title": "지갑 설정",

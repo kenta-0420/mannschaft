@@ -67,6 +67,7 @@ public class AuthOAuthService {
     private final EncryptionService encryptionService;
     private final OAuthProperties oAuthProperties;
     private final RoleClaimResolver roleClaimResolver;
+    private final StatusClaimResolver statusClaimResolver;
 
     /** OAuthプロバイダとのHTTP通信に使用するWebClient。@PostConstructで初期化する。 */
     private WebClient webClient;
@@ -320,7 +321,8 @@ public class AuthOAuthService {
      */
     private TokenResponse issueTokenPair(Long userId, String ipAddress, String userAgent) {
         // 認可基盤完全根治 Phase 1（§3.2）: RoleClaimResolver で SYSTEM_ADMIN を判定して roles に載せる。
-        String accessToken = authTokenService.issueAccessToken(userId, roleClaimResolver.resolveRoles(userId));
+        String accessToken = authTokenService.issueAccessToken(userId, roleClaimResolver.resolveRoles(userId),
+                statusClaimResolver.isPendingParentalConsent(userId));
         String refreshToken = authTokenService.generateRefreshToken();
         String refreshTokenHash = authTokenService.hashToken(refreshToken);
 
