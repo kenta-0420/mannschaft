@@ -656,6 +656,23 @@
         "saving": "Saving...",
         "saved": "Saved"
       }
+    },
+    "create": {
+      "dialog_title": "Create TODO",
+      "title_label": "Title",
+      "title_placeholder": "TODO title",
+      "details_toggle": "Set details (optional)",
+      "description_label": "Description (optional)",
+      "description_placeholder": "Details or notes",
+      "scope_label": "Share with",
+      "priority_label": "Priority",
+      "start_date_label": "Start date (optional)",
+      "due_date_label": "Due date (optional)",
+      "submit_button": "Create",
+      "cancel_button": "Cancel",
+      "draft_restored": "Draft restored",
+      "create_success": "TODO created",
+      "create_failed": "Failed to create TODO"
     }
   },
   "extended_profile": {

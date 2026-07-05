@@ -656,6 +656,23 @@
         "saving": "저장 중...",
         "saved": "저장됨"
       }
+    },
+    "create": {
+      "dialog_title": "TODO 만들기",
+      "title_label": "제목",
+      "title_placeholder": "TODO 제목",
+      "details_toggle": "세부 사항 설정（선택사항）",
+      "description_label": "설명（선택사항）",
+      "description_placeholder": "세부 내용이나 보충 설명",
+      "scope_label": "공유 대상",
+      "priority_label": "우선순위",
+      "start_date_label": "시작일（선택사항）",
+      "due_date_label": "마감일（선택사항）",
+      "submit_button": "만들기",
+      "cancel_button": "취소",
+      "draft_restored": "임시 저장 내용을 복원했습니다",
+      "create_success": "TODO를 만들었습니다",
+      "create_failed": "만들기에 실패했습니다"
     }
   },
   "extended_profile": {
