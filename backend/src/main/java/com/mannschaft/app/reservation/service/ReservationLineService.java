@@ -166,8 +166,8 @@ public class ReservationLineService {
      *       紐づかない枠を一括論理削除（予約が紐づく枠・過去枠は履歴として残す）。
      *       論理削除行も uq_rs_template_cell に残るが、テンプレは停止済みのため再生成は起きない。
      *       将来テンプレを再 ON した場合の UNIQUE 衝突は生成側の INSERT IGNORE が吸収する（§5.3）</li>
-     *   <li><b>reservation_menu_lines 行の削除</b>: F03.4.1（並行開発・マージ順不定）のテーブルのため
-     *       本枝番では未結線。TODO 参照</li>
+     *   <li><b>reservation_menu_lines 行の削除</b>: F03.4.1（並行開発）のテーブルの line_id FK が
+     *       ON DELETE RESTRICT のため、論理削除前にアプリ層で提供可否行を明示削除する（結線済み）</li>
      *   <li><b>ライン本体の論理削除</b>（deleted_at セット）</li>
      * </ol>
      *
