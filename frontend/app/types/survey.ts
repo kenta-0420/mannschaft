@@ -120,7 +120,11 @@ export interface CreateSurveyRequest {
    * 生成型 components['schemas']['CreateSurveyRequest'].teamBreakdownEnabled と同値。
    */
   teamBreakdownEnabled?: boolean
-  questions: Array<{
+  /**
+   * 設問リスト。下書き作成時は省略可（BE 側で @NotEmpty なし）。
+   * 設問なし＝DRAFT として保存し、後から設問を追加して公開する二段フロー用。
+   */
+  questions?: Array<{
     questionText: string
     questionType: QuestionType
     isRequired?: boolean

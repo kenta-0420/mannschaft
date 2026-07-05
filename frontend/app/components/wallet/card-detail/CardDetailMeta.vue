@@ -14,6 +14,13 @@ interface Props {
   card: UserPointCardDetail
   /** 親で整形した最終使用日時表示。 */
   lastUsedDisplay: string
+  /**
+   * 自店発行カード（SELF_ISSUED_STAMP / SELF_ISSUED_BALANCE）のとき true。
+   * カード ID 行（店員が押印時に客のカードを特定する識別子・UC-9）の表示判定に使う。
+   * EXTERNAL カードでは用途が無く紛らわしいため非表示にする。
+   * 親 `[id].vue` の `isSelfIssued` computed と同一の条件（「店舗で提示」ボタンと揃える）。
+   */
+  isSelfIssued: boolean
 }
 
 defineProps<Props>()
@@ -42,10 +49,12 @@ const { t } = useI18n()
         <dt>Format</dt>
         <dd>{{ card.barcodeFormat }}</dd>
       </div>
-      <div class="card-detail__dl-row">
+      <!-- カード ID 行は自店発行カードのみ表示（店員が押印時に客カードを特定する識別子・UC-9）。
+           EXTERNAL カードでは用途が無く紛らわしいため非表示。「店舗で提示」ボタンと同一条件。 -->
+      <div v-if="isSelfIssued" class="card-detail__dl-row">
         <dt>{{ t('wallet.card_id_label') }}</dt>
         <dd class="card-detail__id-cell">
-          <code class="card-detail__id-code">{{ card.id }}</code>
+          <code class="card-detail__id-code bg-surface-100 dark:bg-surface-800 text-surface-700 dark:text-surface-200">{{ card.id }}</code>
           <Button
             :label="t('wallet.copy_card_id')"
             :aria-label="t('wallet.copy_card_id')"
@@ -129,7 +138,7 @@ const { t } = useI18n()
 .card-detail__id-code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.8125rem;
-  background: var(--p-surface-100, #f3f4f6);
+  /* 背景・文字色は Tailwind の dark: クラス（bg-surface-100 dark:bg-surface-800 text-surface-700 dark:text-surface-200）で追従 */
   padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
   word-break: break-all;

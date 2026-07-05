@@ -27,7 +27,10 @@
       "card_count": "{count} 张",
       "no_emoji": "📋",
       "no_groups": "还没有群组",
-      "no_groups_hint": "将常一起出示的卡片分组，收银台切换会更方便"
+      "no_groups_hint": "将常一起出示的卡片分组，收银台切换会更方便",
+      "edit": "编辑",
+      "edit_group": "编辑 {name}",
+      "start_presentation_for": "开始 {name} 的展示模式"
     },
     "settings": {
       "title": "钱包设置",
@@ -186,6 +189,7 @@
       "start_presentation": "开始展示模式",
       "validation_name_required": "请输入群组名称",
       "validation_max_cards": "一个群组最多包含20张卡片",
+      "saved": "已保存",
       "save_failed": "保存失败",
       "not_found": "找不到群组"
     },

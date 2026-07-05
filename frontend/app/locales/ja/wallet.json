@@ -27,7 +27,10 @@
       "card_count": "{count} 枚",
       "no_emoji": "📋",
       "no_groups": "まだグループがありません",
-      "no_groups_hint": "よく一緒に提示するカードをグループ化すると、レジで切り替えやすくなります"
+      "no_groups_hint": "よく一緒に提示するカードをグループ化すると、レジで切り替えやすくなります",
+      "edit": "編集",
+      "edit_group": "{name} を編集",
+      "start_presentation_for": "{name} の提示モードを開始"
     },
     "settings": {
       "title": "ウォレット設定",
@@ -186,6 +189,7 @@
       "start_presentation": "提示モードを開始",
       "validation_name_required": "グループ名を入力してください",
       "validation_max_cards": "1 つのグループに含められるカードは最大 20 枚です",
+      "saved": "保存しました",
       "save_failed": "保存に失敗しました",
       "not_found": "グループが見つかりません"
     },

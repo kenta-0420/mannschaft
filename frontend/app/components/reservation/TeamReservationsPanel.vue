@@ -7,6 +7,8 @@ const { t } = useI18n()
 const { isAdmin, isAdminOrDeputy, isMember, roleName, loadPermissions } = useRoleAccess('team', computed(() => props.teamId))
 
 const activeTab = ref(0)
+/** 使い方ガイドモーダルの表示状態。 */
+const showGuide = ref(false)
 /** 予約タブの表示切替: リスト（既存 SlotPicker）／グリッド（機能C SlotGridPicker）。 */
 const bookDisplayMode = ref<'list' | 'grid'>('list')
 const bookDisplayOptions = computed(() => [
@@ -94,6 +96,17 @@ onMounted(async () => {
 
 <template>
   <div>
+    <!-- ツールバー: 使い方ガイド入口（常時表示）-->
+    <div class="mb-3 flex items-center justify-end">
+      <Button
+        icon="pi pi-question-circle"
+        :label="t('reservation.team_guide.help_button')"
+        text
+        size="small"
+        @click="showGuide = true"
+      />
+    </div>
+
     <Tabs v-model:value="activeTab">
       <TabList>
         <Tab :value="0">{{ t('reservation.tab.book') }}</Tab>
@@ -120,12 +133,16 @@ onMounted(async () => {
             <SlotGridPicker
               v-if="bookDisplayMode === 'grid'"
               :team-id="props.teamId"
+              :is-admin="isAdmin"
               @slot-selected="onSlotSelected"
+              @manage-lines="activeTab = 2"
             />
             <SlotPicker
               v-else
               :team-id="props.teamId"
+              :is-admin="isAdmin"
               @slot-selected="onSlotSelected"
+              @manage-lines="activeTab = 2"
             />
           </template>
           <div v-else class="rounded-lg border border-surface-200 p-6 text-center dark:border-surface-700">
@@ -249,5 +266,7 @@ onMounted(async () => {
       :start-time="selectedSlot.startTime"
       :end-time="selectedSlot.endTime"
     />
+
+    <TeamReservationGuideModal v-model:visible="showGuide" :is-admin="isAdmin" />
   </div>
 </template>

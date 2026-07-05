@@ -27,7 +27,10 @@
       "card_count": "{count}장",
       "no_emoji": "📋",
       "no_groups": "아직 그룹이 없습니다",
-      "no_groups_hint": "자주 함께 제시하는 카드를 그룹화하면 계산대에서 전환이 쉬워집니다"
+      "no_groups_hint": "자주 함께 제시하는 카드를 그룹화하면 계산대에서 전환이 쉬워집니다",
+      "edit": "편집",
+      "edit_group": "{name} 편집",
+      "start_presentation_for": "{name} 제시 모드 시작"
     },
     "settings": {
       "title": "지갑 설정",
@@ -186,6 +189,7 @@
       "start_presentation": "제시 모드 시작",
       "validation_name_required": "그룹 이름을 입력해 주세요",
       "validation_max_cards": "하나의 그룹에 포함할 수 있는 카드는 최대 20장입니다",
+      "saved": "저장되었습니다",
       "save_failed": "저장 실패",
       "not_found": "그룹을 찾을 수 없습니다"
     },

@@ -10,14 +10,24 @@ import com.mannschaft.app.config.JwtAuthenticationFilter;
 import com.mannschaft.app.config.SecurityConfig;
 import com.mannschaft.app.dashboard.DashboardScopeTabRateLimitFilter;
 import com.mannschaft.app.event.EventDelegationRateLimitFilter;
+import com.mannschaft.app.common.GlobalExceptionHandler;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.matching.MatchingErrorCode;
 import com.mannschaft.app.matching.dto.CancellationSummaryResponse;
 import com.mannschaft.app.matching.dto.MatchRequestCreateResponse;
 import com.mannschaft.app.matching.dto.MatchRequestResponse;
 import com.mannschaft.app.matching.dto.NgTeamResponse;
+import com.mannschaft.app.matching.dto.NotificationPreferenceResponse;
 import com.mannschaft.app.matching.dto.ProposalCreateResponse;
 import com.mannschaft.app.matching.dto.ProposalResponse;
+import com.mannschaft.app.matching.dto.ReviewCreateResponse;
+import com.mannschaft.app.matching.dto.TemplateCreateResponse;
+import com.mannschaft.app.matching.dto.TemplateResponse;
+import com.mannschaft.app.matching.service.MatchNotificationService;
 import com.mannschaft.app.matching.service.MatchProposalService;
 import com.mannschaft.app.matching.service.MatchRequestService;
+import com.mannschaft.app.matching.service.MatchReviewService;
+import com.mannschaft.app.matching.service.MatchTemplateService;
 import com.mannschaft.app.matching.service.NgTeamService;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.ProxyInputContextFilter;
@@ -52,10 +62,12 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -101,10 +113,24 @@ class MatchingAuthorizationEnforcementTest {
     private static final String TEAM_PROPOSALS_PATH = "/api/v1/teams/" + TEAM_ID + "/matching/proposals";
     private static final String CANCELLATIONS_PATH = "/api/v1/teams/" + TEAM_ID + "/matching/cancellations";
 
+    private static final Long TEMPLATE_ID = 77L;
+    private static final Long PROPOSAL_ID = 88L;
+    private static final Long REVIEWEE_TEAM_ID = 20L;
+
+    private static final String TEMPLATES_PATH = "/api/v1/teams/" + TEAM_ID + "/matching/templates";
+    private static final String TEMPLATE_ITEM_PATH = TEMPLATES_PATH + "/" + TEMPLATE_ID;
+    private static final String NOTIFICATION_PREF_PATH =
+            "/api/v1/teams/" + TEAM_ID + "/matching/notification-preferences";
+    private static final String CREATE_REVIEW_PATH = "/api/v1/matching/reviews";
+
     private static final String VALID_REQUEST_BODY =
             "{\"title\":\"練習試合募集\",\"activityType\":\"PRACTICE\",\"prefectureCode\":\"13\"}";
     private static final String VALID_PROPOSE_BODY = "{\"message\":\"ぜひお願いします\"}";
     private static final String VALID_NG_BODY = "{\"blockedTeamId\":999,\"reason\":\"マナー違反\"}";
+    private static final String VALID_TEMPLATE_BODY = "{\"name\":\"標準テンプレ\",\"templateJson\":\"{}\"}";
+    private static final String VALID_NOTIFICATION_BODY = "{\"isEnabled\":true}";
+    private static final String VALID_REVIEW_BODY =
+            "{\"proposalId\":" + PROPOSAL_ID + ",\"rating\":5,\"comment\":\"良い試合でした\",\"isPublic\":true}";
 
     /**
      * SecurityConfig（{@code @EnableMethodSecurity} を内包）＋マッチング 3 コントローラのみを最小コンテキストで読み込む。
@@ -122,9 +148,13 @@ class MatchingAuthorizationEnforcementTest {
     })
     @Import({
             SecurityConfig.class,
+            GlobalExceptionHandler.class,
             MatchRequestController.class,
             MatchProposalController.class,
-            NgTeamController.class
+            NgTeamController.class,
+            MatchTemplateController.class,
+            MatchNotificationController.class,
+            MatchReviewController.class
     })
     static class MinimalMatchingSecurityConfig {
 
@@ -220,6 +250,15 @@ class MatchingAuthorizationEnforcementTest {
 
     @MockitoBean
     private NgTeamService ngTeamService;
+
+    @MockitoBean
+    private MatchTemplateService matchTemplateService;
+
+    @MockitoBean
+    private MatchNotificationService matchNotificationService;
+
+    @MockitoBean
+    private MatchReviewService matchReviewService;
 
     /** ProxyInputContextFilter 依存の JPA ロード防止（ReservationAuthorizationEnforcementTest と同様）。 */
     @MockitoBean
@@ -447,5 +486,216 @@ class MatchingAuthorizationEnforcementTest {
 
         mockMvc.perform(get(NG_TEAMS_PATH))
                 .andExpect(status().isOk());
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // 第2弾: テンプレCRUD・通知設定・レビュー（マスター御裁可）
+    // ════════════════════════════════════════════════════════════
+
+    // ────────────────────────────────────────────────────────────
+    // AC-T: 募集テンプレの作成/更新/削除は管理者/副管理者のみ（isScopeAdmin）、
+    //       テンプレ一覧の閲覧は所属者のみ（isScopeMember）
+    // ────────────────────────────────────────────────────────────
+
+    @Test
+    @WithMockUser(username = "200", roles = "MEMBER")
+    @DisplayName("AC-T red→green: 非管理者が POST テンプレ作成 → 403（isScopeAdmin 発火）")
+    void member_createTemplate_forbidden() throws Exception {
+        given(accessControlService.isSystemAdmin(MEMBER_USER_ID)).willReturn(false);
+        given(accessControlService.isAdminOrAbove(MEMBER_USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+
+        mockMvc.perform(post(TEMPLATES_PATH)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_TEMPLATE_BODY))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "100", roles = "MEMBER")
+    @DisplayName("AC-T: 管理者が POST テンプレ作成 → 201（認可通過）")
+    void admin_createTemplate_created() throws Exception {
+        given(accessControlService.isSystemAdmin(ADMIN_USER_ID)).willReturn(false);
+        given(accessControlService.isAdminOrAbove(ADMIN_USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        given(matchTemplateService.createTemplate(eq(TEAM_ID), any()))
+                .willReturn(new TemplateCreateResponse(TEMPLATE_ID, "標準テンプレ"));
+
+        mockMvc.perform(post(TEMPLATES_PATH)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_TEMPLATE_BODY))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    @WithMockUser(username = "200", roles = "MEMBER")
+    @DisplayName("AC-T red→green: 非管理者が PUT テンプレ更新 → 403（isScopeAdmin 発火）")
+    void member_updateTemplate_forbidden() throws Exception {
+        given(accessControlService.isSystemAdmin(MEMBER_USER_ID)).willReturn(false);
+        given(accessControlService.isAdminOrAbove(MEMBER_USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+
+        mockMvc.perform(put(TEMPLATE_ITEM_PATH)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_TEMPLATE_BODY))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "100", roles = "MEMBER")
+    @DisplayName("AC-T: 管理者が PUT テンプレ更新 → 200（認可通過）")
+    void admin_updateTemplate_ok() throws Exception {
+        given(accessControlService.isSystemAdmin(ADMIN_USER_ID)).willReturn(false);
+        given(accessControlService.isAdminOrAbove(ADMIN_USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        given(matchTemplateService.updateTemplate(eq(TEAM_ID), eq(TEMPLATE_ID), any()))
+                .willReturn(new TemplateResponse(TEMPLATE_ID, "標準テンプレ", "{}", null));
+
+        mockMvc.perform(put(TEMPLATE_ITEM_PATH)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_TEMPLATE_BODY))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "300", roles = "MEMBER")
+    @DisplayName("AC-T red→green: 他チームなりすまし（非管理者）が DELETE テンプレ削除 → 403（IDOR封鎖）")
+    void outsider_deleteTemplate_forbidden() throws Exception {
+        given(accessControlService.isSystemAdmin(OUTSIDER_USER_ID)).willReturn(false);
+        given(accessControlService.isAdminOrAbove(OUTSIDER_USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+
+        mockMvc.perform(delete(TEMPLATE_ITEM_PATH).with(csrf()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "100", roles = "MEMBER")
+    @DisplayName("AC-T: 管理者が DELETE テンプレ削除 → 204（認可通過）")
+    void admin_deleteTemplate_noContent() throws Exception {
+        given(accessControlService.isSystemAdmin(ADMIN_USER_ID)).willReturn(false);
+        given(accessControlService.isAdminOrAbove(ADMIN_USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+
+        mockMvc.perform(delete(TEMPLATE_ITEM_PATH).with(csrf()))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @WithMockUser(username = "300", roles = "MEMBER")
+    @DisplayName("AC-T read red→green: 非所属が GET テンプレ一覧 → 403（isScopeMember 発火）")
+    void outsider_listTemplates_forbidden() throws Exception {
+        given(accessControlService.isSystemAdmin(OUTSIDER_USER_ID)).willReturn(false);
+        given(accessControlService.isMember(OUTSIDER_USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+
+        mockMvc.perform(get(TEMPLATES_PATH))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "200", roles = "MEMBER")
+    @DisplayName("AC-T read: 所属者が GET テンプレ一覧 → 200（認可通過）")
+    void member_listTemplates_ok() throws Exception {
+        given(accessControlService.isSystemAdmin(MEMBER_USER_ID)).willReturn(false);
+        given(accessControlService.isMember(MEMBER_USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        given(matchTemplateService.listTemplates(eq(TEAM_ID))).willReturn(List.of());
+
+        mockMvc.perform(get(TEMPLATES_PATH))
+                .andExpect(status().isOk());
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // AC-N: 推薦通知設定の更新は管理者/副管理者のみ（isScopeAdmin）、
+    //       自チーム通知設定の閲覧は所属者のみ（isScopeMember）
+    // ────────────────────────────────────────────────────────────
+
+    @Test
+    @WithMockUser(username = "200", roles = "MEMBER")
+    @DisplayName("AC-N red→green: 非管理者が PUT 通知設定更新 → 403（isScopeAdmin 発火）")
+    void member_updateNotification_forbidden() throws Exception {
+        given(accessControlService.isSystemAdmin(MEMBER_USER_ID)).willReturn(false);
+        given(accessControlService.isAdminOrAbove(MEMBER_USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+
+        mockMvc.perform(put(NOTIFICATION_PREF_PATH)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_NOTIFICATION_BODY))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "100", roles = "MEMBER")
+    @DisplayName("AC-N: 管理者が PUT 通知設定更新 → 200（認可通過）")
+    void admin_updateNotification_ok() throws Exception {
+        given(accessControlService.isSystemAdmin(ADMIN_USER_ID)).willReturn(false);
+        given(accessControlService.isAdminOrAbove(ADMIN_USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        given(matchNotificationService.updatePreference(eq(TEAM_ID), any()))
+                .willReturn(new NotificationPreferenceResponse(null, null, null, null, true));
+
+        mockMvc.perform(put(NOTIFICATION_PREF_PATH)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_NOTIFICATION_BODY))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "300", roles = "MEMBER")
+    @DisplayName("AC-N read red→green: 非所属が GET 通知設定 → 403（isScopeMember 発火）")
+    void outsider_getNotification_forbidden() throws Exception {
+        given(accessControlService.isSystemAdmin(OUTSIDER_USER_ID)).willReturn(false);
+        given(accessControlService.isMember(OUTSIDER_USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+
+        mockMvc.perform(get(NOTIFICATION_PREF_PATH))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "200", roles = "MEMBER")
+    @DisplayName("AC-N read: 所属者が GET 通知設定 → 200（認可通過）")
+    void member_getNotification_ok() throws Exception {
+        given(accessControlService.isSystemAdmin(MEMBER_USER_ID)).willReturn(false);
+        given(accessControlService.isMember(MEMBER_USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        given(matchNotificationService.getPreference(eq(TEAM_ID)))
+                .willReturn(new NotificationPreferenceResponse(null, null, null, null, false));
+
+        mockMvc.perform(get(NOTIFICATION_PREF_PATH))
+                .andExpect(status().isOk());
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // AC-R: レビュー投稿は「対戦参加チームの管理者/副管理者」のみ。
+    //       認可判定は path に teamId が無いためサービス内で行い（proposal 経由でレビュアーチームを解決）、
+    //       非参加/非管理者は REVIEW_NOT_PARTICIPANT → 403 にマップされることを実 HTTP 経路で担保する。
+    //       レビュアーチーム解決ロジックそのものの網羅は MatchReviewServiceTest（単体）で行う。
+    // ────────────────────────────────────────────────────────────
+
+    @Test
+    @WithMockUser(username = "300", roles = "MEMBER")
+    @DisplayName("AC-R red→green: 対戦非参加/非管理者が POST レビュー → 403（REVIEW_NOT_PARTICIPANT マップ）")
+    void nonParticipant_createReview_forbidden() throws Exception {
+        // サービスが認可拒否（対戦参加チームの管理者でない）を検出し REVIEW_NOT_PARTICIPANT を送出。
+        // GlobalExceptionHandler が 403 にマップすることを検証（デフォルト 400 のままだと red）。
+        willThrow(new BusinessException(MatchingErrorCode.REVIEW_NOT_PARTICIPANT))
+                .given(matchReviewService).createReview(eq(OUTSIDER_USER_ID), any());
+
+        mockMvc.perform(post(CREATE_REVIEW_PATH)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_REVIEW_BODY))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "100", roles = "MEMBER")
+    @DisplayName("AC-R: 対戦相手チームの管理者が POST レビュー → 201（currentUserId を渡す配線・認可通過）")
+    void participantAdmin_createReview_created() throws Exception {
+        // 認可根治の配線検証: コントローラは userID（=100）をサービスへ渡す（従来は userID を teamId と誤用）。
+        given(matchReviewService.createReview(eq(ADMIN_USER_ID), any()))
+                .willReturn(new ReviewCreateResponse(1L, REVIEWEE_TEAM_ID, (short) 5));
+
+        mockMvc.perform(post(CREATE_REVIEW_PATH)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_REVIEW_BODY))
+                .andExpect(status().isCreated());
     }
 }
