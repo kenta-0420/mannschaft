@@ -174,8 +174,43 @@ public enum ReservationErrorCode implements ErrorCode {
      */
     NOTIFY_RECIPIENT_NOT_FOUND("RESERVATION_031", "予約通知メール宛先が見つかりません", Severity.WARN),
 
-    // ===== 機能F: 枠ライン軸＋週間テンプレート（F03.4.2）=====
-    // 032〜035 は F03.4.1（予約メニュー）が採番予定のため空けてある（v2 通し採番）。
+    // ===== F03.4.1 機能E: 予約メニュー（v2 第一弾）=====
+
+    /**
+     * メニュー不存在（PATCH/DELETE 対象不在・404）。
+     *
+     * <p>F03.4.1 §4/§6: {@code findByIdAndTeamId} で解決できない場合に throw する。
+     * 他チームのメニュー ID を掴んだ場合も IDOR 対策として同一の 404 で隠蔽する。
+     * {@code GlobalExceptionHandler} の個別マッピングで 404。</p>
+     */
+    MENU_NOT_FOUND("RESERVATION_032", "メニューが見つかりません", Severity.WARN),
+
+    /**
+     * メニュー上限（1 チームあたり 20 件）超過（入力上限超過なので 400）。
+     *
+     * <p>F03.4.1 §3: 論理削除済みは数えない（有効・無効は問わず数える）。
+     * Service 層（{@code ReservationMenuService.createMenu}）で担保する。</p>
+     */
+    MENU_LIMIT_EXCEEDED("RESERVATION_033", "メニューはチームあたり最大20件までです", Severity.WARN),
+
+    /**
+     * 所要時間が 30 の倍数でない / 30〜480 範囲外（入力不正なので 400）。
+     *
+     * <p>F03.4.1 §3: {@code duration_minutes} は 30 の倍数・30〜480。Service 層が一次検証、
+     * DB の CHECK 制約（MySQL 8.0.16+ 実 enforce）が最終防御。</p>
+     */
+    INVALID_MENU_DURATION("RESERVATION_034", "所要時間は30分単位（30〜480分）で指定してください", Severity.WARN),
+
+    /**
+     * <b>メニュー定義時（POST/PATCH）</b>の {@code lineIds} 不正（入力不正なので 400）。
+     *
+     * <p>F03.4.1 §4/§9: 不正 ID / 他チームのライン / 削除済みラインを含む場合。
+     * 他チームのライン ID も同コード（存在秘匿）。予約時の「提供不可ラインでの確保」は
+     * 別コード RESERVATION_043（F03.4.3 で採番）— 意味衝突の回避。</p>
+     */
+    MENU_LINE_IDS_INVALID("RESERVATION_035", "選択した予約対象が無効です", Severity.WARN),
+
+    // ===== F03.4.2 機能F: 枠ライン軸＋週間テンプレート =====
 
     /**
      * 週間テンプレートが見つからない（PATCH/DELETE 対象不在・404）。

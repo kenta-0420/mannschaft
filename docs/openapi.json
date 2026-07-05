@@ -243,6 +243,10 @@
       "description": "募集への申込・キャンセル・参加者管理"
     },
     {
+      "name": "予約メニュー管理",
+      "description": "F03.4.1 チーム予約メニューCRUD（所要時間・提供可否・料金表示のみ）"
+    },
+    {
       "name": "マイシフト",
       "description": "F03.5 ログインユーザー自身の確定シフト照会"
     },
@@ -2013,10 +2017,6 @@
     {
       "name": "ファイル共有 - コメント",
       "description": "F05.5 ファイルコメント管理"
-    },
-    {
-      "name": "予約枠週間テンプレート",
-      "description": "F03.4.2 週間テンプレートCRUD＋一括生成"
     },
     {
       "name": "回覧添付ファイル",
@@ -36947,120 +36947,6 @@
         }
       }
     },
-    "/api/v1/teams/{teamId}/reservation-slot-templates": {
-      "get": {
-        "tags": [
-          "予約枠週間テンプレート"
-        ],
-        "summary": "週間テンプレート一覧",
-        "operationId": "listTemplates_3",
-        "parameters": [
-          {
-            "name": "teamId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "取得成功",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseSlotTemplateListResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "予約枠週間テンプレート"
-        ],
-        "summary": "週間テンプレート作成",
-        "operationId": "createTemplate_3",
-        "parameters": [
-          {
-            "name": "teamId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateSlotTemplateRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "作成成功",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseSlotTemplateResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/teams/{teamId}/reservation-slot-templates/generate": {
-      "post": {
-        "tags": [
-          "予約枠週間テンプレート"
-        ],
-        "summary": "週間テンプレート一括生成",
-        "operationId": "generate_1",
-        "parameters": [
-          {
-            "name": "teamId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GenerateSlotsRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "生成成功",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseGenerateSlotsResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/teams/{teamId}/reservation-settings/blocked-times": {
       "get": {
         "tags": [
@@ -37216,6 +37102,78 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseNotificationRecipientResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/reservation-menus": {
+      "get": {
+        "tags": [
+          "予約メニュー管理"
+        ],
+        "summary": "予約メニュー一覧",
+        "operationId": "listMenus",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListReservationMenuResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "予約メニュー管理"
+        ],
+        "summary": "予約メニュー作成",
+        "operationId": "createMenu",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReservationMenuRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "作成成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseReservationMenuResponse"
                 }
               }
             }
@@ -40621,7 +40579,7 @@
           "募集テンプレート"
         ],
         "summary": "テンプレート一覧",
-        "operationId": "listTemplates_4",
+        "operationId": "listTemplates_3",
         "parameters": [
           {
             "name": "teamId",
@@ -40651,7 +40609,7 @@
           "募集テンプレート"
         ],
         "summary": "テンプレート作成",
-        "operationId": "createTemplate_4",
+        "operationId": "createTemplate_3",
         "parameters": [
           {
             "name": "teamId",
@@ -41011,7 +40969,7 @@
         "tags": [
           "kb-template-controller"
         ],
-        "operationId": "createTemplate_5",
+        "operationId": "createTemplate_4",
         "parameters": [
           {
             "name": "teamId",
@@ -43816,7 +43774,7 @@
           "チームDMテンプレート"
         ],
         "summary": "チームDMテンプレート一覧",
-        "operationId": "listTemplates_5",
+        "operationId": "listTemplates_4",
         "parameters": [
           {
             "name": "teamId",
@@ -43846,7 +43804,7 @@
           "チームDMテンプレート"
         ],
         "summary": "チームDMテンプレート作成",
-        "operationId": "createTemplate_6",
+        "operationId": "createTemplate_5",
         "parameters": [
           {
             "name": "teamId",
@@ -48234,7 +48192,7 @@
           "システム管理 - テンプレート"
         ],
         "summary": "テンプレート作成",
-        "operationId": "createTemplate_7",
+        "operationId": "createTemplate_6",
         "requestBody": {
           "content": {
             "application/json": {
@@ -48388,7 +48346,7 @@
           "安否確認管理者"
         ],
         "summary": "テンプレート一覧（管理者用）",
-        "operationId": "listTemplates_6",
+        "operationId": "listTemplates_5",
         "responses": {
           "200": {
             "description": "取得成功",
@@ -48407,7 +48365,7 @@
           "安否確認管理者"
         ],
         "summary": "テンプレート作成（管理者用）",
-        "operationId": "createTemplate_8",
+        "operationId": "createTemplate_7",
         "requestBody": {
           "content": {
             "application/json": {
@@ -48540,7 +48498,7 @@
           "SYSTEM_ADMINモデレーション"
         ],
         "summary": "対応テンプレート作成",
-        "operationId": "createTemplate_9",
+        "operationId": "createTemplate_8",
         "requestBody": {
           "content": {
             "application/json": {
@@ -52365,7 +52323,7 @@
           "安否確認テンプレート管理"
         ],
         "summary": "テンプレート一覧",
-        "operationId": "listTemplates_7",
+        "operationId": "listTemplates_6",
         "parameters": [
           {
             "name": "scopeType",
@@ -52403,7 +52361,7 @@
           "安否確認テンプレート管理"
         ],
         "summary": "テンプレート作成",
-        "operationId": "createTemplate_10",
+        "operationId": "createTemplate_9",
         "requestBody": {
           "content": {
             "application/json": {
@@ -59458,7 +59416,7 @@
           "大会テンプレート管理"
         ],
         "summary": "テンプレート一覧",
-        "operationId": "listTemplates_8",
+        "operationId": "listTemplates_7",
         "parameters": [
           {
             "name": "orgId",
@@ -59508,7 +59466,7 @@
           "大会テンプレート管理"
         ],
         "summary": "テンプレート作成（ゼロから）",
-        "operationId": "createTemplate_11",
+        "operationId": "createTemplate_10",
         "parameters": [
           {
             "name": "orgId",
@@ -60456,7 +60414,7 @@
           "エントリーテンプレート"
         ],
         "summary": "エントリーテンプレート作成",
-        "operationId": "createTemplate_12",
+        "operationId": "createTemplate_11",
         "parameters": [
           {
             "name": "orgId",
@@ -64936,7 +64894,7 @@
           "組織DMテンプレート"
         ],
         "summary": "組織DMテンプレート一覧",
-        "operationId": "listTemplates_9",
+        "operationId": "listTemplates_8",
         "parameters": [
           {
             "name": "orgId",
@@ -64966,7 +64924,7 @@
           "組織DMテンプレート"
         ],
         "summary": "組織DMテンプレート作成",
-        "operationId": "createTemplate_13",
+        "operationId": "createTemplate_12",
         "parameters": [
           {
             "name": "orgId",
@@ -74738,7 +74696,7 @@
         "tags": [
           "budget-report-controller"
         ],
-        "operationId": "generate_2",
+        "operationId": "generate_1",
         "parameters": [
           {
             "name": "fiscalYearId",
@@ -78269,7 +78227,7 @@
           "管理 - アクションテンプレート"
         ],
         "summary": "アクションテンプレート作成",
-        "operationId": "createTemplate_14",
+        "operationId": "createTemplate_13",
         "requestBody": {
           "content": {
             "application/json": {
@@ -78333,7 +78291,7 @@
           "活動テンプレート"
         ],
         "summary": "テンプレート一覧",
-        "operationId": "listTemplates_10",
+        "operationId": "listTemplates_9",
         "parameters": [
           {
             "name": "scope_type",
@@ -78371,7 +78329,7 @@
           "活動テンプレート"
         ],
         "summary": "テンプレート作成",
-        "operationId": "createTemplate_15",
+        "operationId": "createTemplate_14",
         "parameters": [
           {
             "name": "scope_type",
@@ -82705,96 +82663,6 @@
         }
       }
     },
-    "/api/v1/teams/{teamId}/reservation-slot-templates/{templateId}": {
-      "delete": {
-        "tags": [
-          "予約枠週間テンプレート"
-        ],
-        "summary": "週間テンプレート削除",
-        "operationId": "deleteTemplate_10",
-        "parameters": [
-          {
-            "name": "teamId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "templateId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "削除成功",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseDeleteSlotTemplateResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "patch": {
-        "tags": [
-          "予約枠週間テンプレート"
-        ],
-        "summary": "週間テンプレート更新",
-        "operationId": "updateTemplate_10",
-        "parameters": [
-          {
-            "name": "teamId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "templateId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateSlotTemplateRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "更新成功",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseSlotTemplateResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/teams/{teamId}/reservation-settings": {
       "get": {
         "tags": [
@@ -83026,6 +82894,96 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseNotificationRecipientResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/reservation-menus/{menuId}": {
+      "delete": {
+        "tags": [
+          "予約メニュー管理"
+        ],
+        "summary": "予約メニュー削除（論理削除）",
+        "operationId": "deleteMenu",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "menuId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "削除成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseReservationMenuDeleteResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "予約メニュー管理"
+        ],
+        "summary": "予約メニュー更新",
+        "operationId": "updateMenu",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "menuId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateReservationMenuRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseReservationMenuResponse"
                 }
               }
             }
@@ -84303,7 +84261,7 @@
         "tags": [
           "kb-template-controller"
         ],
-        "operationId": "deleteTemplate_11",
+        "operationId": "deleteTemplate_10",
         "parameters": [
           {
             "name": "teamId",
@@ -84334,7 +84292,7 @@
         "tags": [
           "kb-template-controller"
         ],
-        "operationId": "updateTemplate_11",
+        "operationId": "updateTemplate_10",
         "parameters": [
           {
             "name": "teamId",
@@ -87173,7 +87131,7 @@
           "システム管理 - テンプレート"
         ],
         "summary": "テンプレート削除",
-        "operationId": "deleteTemplate_12",
+        "operationId": "deleteTemplate_11",
         "parameters": [
           {
             "name": "id",
@@ -87196,7 +87154,7 @@
           "システム管理 - テンプレート"
         ],
         "summary": "テンプレート更新",
-        "operationId": "updateTemplate_12",
+        "operationId": "updateTemplate_11",
         "parameters": [
           {
             "name": "id",
@@ -87281,7 +87239,7 @@
           "安否確認管理者"
         ],
         "summary": "テンプレート削除（管理者用）",
-        "operationId": "deleteTemplate_13",
+        "operationId": "deleteTemplate_12",
         "parameters": [
           {
             "name": "templateId",
@@ -87304,7 +87262,7 @@
           "安否確認管理者"
         ],
         "summary": "テンプレート更新（管理者用）",
-        "operationId": "updateTemplate_13",
+        "operationId": "updateTemplate_12",
         "parameters": [
           {
             "name": "templateId",
@@ -88976,7 +88934,7 @@
           "安否確認テンプレート管理"
         ],
         "summary": "テンプレート更新",
-        "operationId": "updateTemplate_14",
+        "operationId": "updateTemplate_13",
         "parameters": [
           {
             "name": "templateId",
@@ -89092,7 +89050,7 @@
         ],
         "summary": "募集テンプレート編集",
         "description": "ADMIN/DEPUTY_ADMIN 権限が必要",
-        "operationId": "updateTemplate_15",
+        "operationId": "updateTemplate_14",
         "parameters": [
           {
             "name": "id",
@@ -92435,7 +92393,7 @@
           "大会テンプレート管理"
         ],
         "summary": "テンプレート論理削除",
-        "operationId": "deleteTemplate_14",
+        "operationId": "deleteTemplate_13",
         "parameters": [
           {
             "name": "orgId",
@@ -92467,7 +92425,7 @@
           "大会テンプレート管理"
         ],
         "summary": "テンプレート更新",
-        "operationId": "updateTemplate_16",
+        "operationId": "updateTemplate_15",
         "parameters": [
           {
             "name": "orgId",
@@ -115885,7 +115843,7 @@
           "パフォーマンス個人"
         ],
         "summary": "指標テンプレート一覧",
-        "operationId": "listTemplates_11",
+        "operationId": "listTemplates_10",
         "parameters": [
           {
             "name": "sportCategory",
@@ -123762,6 +123720,123 @@
         }
       }
     },
+    "/api/v1/me/guardianship/children/{childUserId}/schedules": {
+      "get": {
+        "tags": [
+          "保護者による子データ閲覧見守り"
+        ],
+        "summary": "子の予定閲覧",
+        "description": "12歳未満の子の横断カレンダーを閲覧専用で取得する（有効な保護者のみ・子基準の可視性）",
+        "operationId": "getChildSchedules",
+        "parameters": [
+          {
+            "name": "childUserId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListCalendarEntryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/guardianship/children/{childUserId}/proxy-actions": {
+      "get": {
+        "tags": [
+          "保護者による子データ閲覧見守り"
+        ],
+        "summary": "子の代理入力履歴閲覧",
+        "description": "子の代わりに誰が何をしたか（代理入力記録・subject\u003d子）を閲覧専用で取得する（有効な保護者のみ）",
+        "operationId": "getChildProxyActions",
+        "parameters": [
+          {
+            "name": "childUserId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGuardianChildProxyActionsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/guardianship/children/{childUserId}/memberships": {
+      "get": {
+        "tags": [
+          "保護者による子データ閲覧見守り"
+        ],
+        "summary": "子の所属閲覧",
+        "description": "12歳未満の子が所属するチーム・組織を閲覧専用で取得する（有効な保護者のみ）",
+        "operationId": "getChildMemberships",
+        "parameters": [
+          {
+            "name": "childUserId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGuardianChildMembershipsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/guardianship/children/{childUserId}/independence-status": {
       "get": {
         "tags": [
@@ -123788,6 +123863,110 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseIndependenceStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/guardianship/children/{childUserId}/attendance/stats": {
+      "get": {
+        "tags": [
+          "保護者による子データ閲覧見守り"
+        ],
+        "summary": "子の出欠状況閲覧",
+        "description": "12歳未満の子の出席率統計を閲覧専用で取得する（有効な保護者のみ）",
+        "operationId": "getChildAttendanceStats",
+        "parameters": [
+          {
+            "name": "childUserId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAttendanceStatsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/guardianship/children/{childUserId}/announcements": {
+      "get": {
+        "tags": [
+          "保護者による子データ閲覧見守り"
+        ],
+        "summary": "子のお知らせ閲覧",
+        "description": "12歳未満の子が所属する全スコープの掲示板お知らせを合算し閲覧専用で取得する（有効な保護者のみ・子基準）",
+        "operationId": "getChildAnnouncements",
+        "parameters": [
+          {
+            "name": "childUserId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGuardianChildAnnouncementsResponse"
                 }
               }
             }
@@ -159739,10 +159918,6 @@
             "type": "string",
             "example": "14:30:00"
           },
-          "lineId": {
-            "type": "integer",
-            "format": "int64"
-          },
           "note": {
             "type": "string",
             "maxLength": 2000,
@@ -159750,6 +159925,9 @@
           },
           "price": {
             "type": "number"
+          },
+          "recurrenceRule": {
+            "type": "string"
           },
           "slotDate": {
             "type": "string",
@@ -159808,13 +159986,6 @@
             "type": "integer",
             "format": "int64"
           },
-          "lineId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "lineName": {
-            "type": "string"
-          },
           "policy": {
             "$ref": "#/components/schemas/SlotPolicyDto"
           },
@@ -159834,10 +160005,6 @@
           "teamId": {
             "type": "integer",
             "format": "int64"
-          },
-          "templateId": {
-            "type": "string",
-            "format": "uuid"
           }
         }
       },
@@ -159926,192 +160093,6 @@
             "type": "string",
             "maxLength": 20,
             "minLength": 0
-          }
-        }
-      },
-      "CreateSlotTemplateRequest": {
-        "type": "object",
-        "properties": {
-          "approvalMode": {
-            "type": "string",
-            "enum": [
-              "AUTO",
-              "MANUAL"
-            ]
-          },
-          "capacity": {
-            "type": "integer",
-            "format": "int32",
-            "maximum": 99,
-            "minimum": 1
-          },
-          "dayOfWeek": {
-            "type": "string",
-            "enum": [
-              "MON",
-              "TUE",
-              "WED",
-              "THU",
-              "FRI",
-              "SAT",
-              "SUN"
-            ]
-          },
-          "endTime": {
-            "type": "string",
-            "example": "14:30:00"
-          },
-          "lineId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "name": {
-            "type": "string",
-            "maxLength": 100,
-            "minLength": 0
-          },
-          "price": {
-            "type": "number",
-            "minimum": 0
-          },
-          "staffUserId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "startTime": {
-            "type": "string",
-            "example": "14:30:00"
-          },
-          "title": {
-            "type": "string",
-            "maxLength": 200,
-            "minLength": 0
-          }
-        },
-        "required": [
-          "dayOfWeek",
-          "endTime",
-          "startTime"
-        ]
-      },
-      "ApiResponseSlotTemplateResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/SlotTemplateResponse"
-          }
-        }
-      },
-      "SlotTemplateResponse": {
-        "type": "object",
-        "properties": {
-          "approvalMode": {
-            "type": "string"
-          },
-          "capacity": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "cellCount": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "dayOfWeek": {
-            "type": "string"
-          },
-          "endTime": {
-            "type": "string",
-            "example": "14:30:00"
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "isActive": {
-            "type": "boolean"
-          },
-          "lineId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "lineName": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "price": {
-            "type": "number"
-          },
-          "staffName": {
-            "type": "string"
-          },
-          "staffUserId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "startTime": {
-            "type": "string",
-            "example": "14:30:00"
-          },
-          "title": {
-            "type": "string"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "GenerateSlotsRequest": {
-        "type": "object",
-        "properties": {
-          "weeks": {
-            "type": "integer",
-            "format": "int32",
-            "maximum": 4,
-            "minimum": 1
-          }
-        }
-      },
-      "ApiResponseGenerateSlotsResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/GenerateSlotsResponse"
-          }
-        }
-      },
-      "GenerateSlotsResponse": {
-        "type": "object",
-        "properties": {
-          "generatedCount": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "horizonFrom": {
-            "type": "string",
-            "format": "date"
-          },
-          "horizonTo": {
-            "type": "string",
-            "format": "date"
-          },
-          "skippedClosedDayCount": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "skippedExistingCount": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "skippedOutsideHoursCount": {
-            "type": "integer",
-            "format": "int32"
           }
         }
       },
@@ -160287,6 +160268,99 @@
             "type": "string",
             "description": "宛先ラベル",
             "example": "店代表"
+          }
+        }
+      },
+      "CreateReservationMenuRequest": {
+        "type": "object",
+        "description": "予約メニュー作成リクエスト",
+        "properties": {
+          "description": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 20,
+            "minimum": 1
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lineIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "durationMinutes"
+        ]
+      },
+      "ApiResponseReservationMenuResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ReservationMenuResponse"
+          }
+        }
+      },
+      "ReservationMenuResponse": {
+        "type": "object",
+        "description": "予約メニュー",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string"
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "lineIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "requiredSlotCount": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -185669,10 +185743,6 @@
             "type": "string",
             "example": "14:30:00"
           },
-          "lineId": {
-            "type": "integer",
-            "format": "int64"
-          },
           "note": {
             "type": "string",
             "maxLength": 2000,
@@ -185684,72 +185754,6 @@
           "slotDate": {
             "type": "string",
             "format": "date"
-          },
-          "staffUserId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "startTime": {
-            "type": "string",
-            "example": "14:30:00"
-          },
-          "title": {
-            "type": "string",
-            "maxLength": 200,
-            "minLength": 0
-          }
-        }
-      },
-      "UpdateSlotTemplateRequest": {
-        "type": "object",
-        "properties": {
-          "approvalMode": {
-            "type": "string",
-            "enum": [
-              "AUTO",
-              "MANUAL"
-            ]
-          },
-          "capacity": {
-            "type": "integer",
-            "format": "int32",
-            "maximum": 99,
-            "minimum": 1
-          },
-          "clearLineId": {
-            "type": "boolean"
-          },
-          "dayOfWeek": {
-            "type": "string",
-            "enum": [
-              "MON",
-              "TUE",
-              "WED",
-              "THU",
-              "FRI",
-              "SAT",
-              "SUN"
-            ]
-          },
-          "endTime": {
-            "type": "string",
-            "example": "14:30:00"
-          },
-          "isActive": {
-            "type": "boolean"
-          },
-          "lineId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "name": {
-            "type": "string",
-            "maxLength": 100,
-            "minLength": 0
-          },
-          "price": {
-            "type": "number",
-            "minimum": 0
           },
           "staffUserId": {
             "type": "integer",
@@ -185859,6 +185863,49 @@
             "type": "string",
             "maxLength": 100,
             "minLength": 0
+          }
+        }
+      },
+      "UpdateReservationMenuRequest": {
+        "type": "object",
+        "description": "予約メニュー部分更新リクエスト",
+        "properties": {
+          "clearPrice": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 20,
+            "minimum": 1
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "lineIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0
           }
         }
       },
@@ -195354,41 +195401,6 @@
           }
         }
       },
-      "ApiResponseSlotTemplateListResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/SlotTemplateListResponse"
-          }
-        }
-      },
-      "SlotTemplateListResponse": {
-        "type": "object",
-        "properties": {
-          "meta": {
-            "$ref": "#/components/schemas/TemplateListMetaDto"
-          },
-          "templates": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/SlotTemplateResponse"
-            }
-          }
-        }
-      },
-      "TemplateListMetaDto": {
-        "type": "object",
-        "properties": {
-          "limit": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "totalTemplates": {
-            "type": "integer",
-            "format": "int64"
-          }
-        }
-      },
       "ApiResponseListBlockedTimeResponse": {
         "type": "object",
         "properties": {
@@ -195504,6 +195516,17 @@
             "format": "int32",
             "description": "登録宛先の総数（有効・無効を問わない・件数ゲートの分母）",
             "example": 1
+          }
+        }
+      },
+      "ApiResponseListReservationMenuResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReservationMenuResponse"
+            }
           }
         }
       },
@@ -211474,6 +211497,92 @@
           }
         }
       },
+      "ApiResponseGuardianChildProxyActionsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/GuardianChildProxyActionsResponse"
+          }
+        }
+      },
+      "GuardianChildProxyActionsResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProxyActionItem"
+            }
+          }
+        }
+      },
+      "ProxyActionItem": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "featureScope": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "inputSource": {
+            "type": "string"
+          },
+          "proxyUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetEntityId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetEntityType": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseGuardianChildMembershipsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/GuardianChildMembershipsResponse"
+          }
+        }
+      },
+      "GuardianChildMembershipsResponse": {
+        "type": "object",
+        "properties": {
+          "organizations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScopeRef"
+            }
+          },
+          "teams": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScopeRef"
+            }
+          }
+        }
+      },
+      "ScopeRef": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "ApiResponseIndependenceStatusResponse": {
         "type": "object",
         "properties": {
@@ -211501,6 +211610,78 @@
           },
           "switchAllowed": {
             "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseAttendanceStatsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AttendanceStatsResponse"
+          }
+        }
+      },
+      "AnnouncementItem": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeName": {
+            "type": "string"
+          },
+          "scopeType": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ApiResponseGuardianChildAnnouncementsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/GuardianChildAnnouncementsResponse"
+          }
+        }
+      },
+      "GuardianChildAnnouncementsResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnnouncementItem"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -212025,14 +212206,6 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
-          }
-        }
-      },
-      "ApiResponseAttendanceStatsResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/AttendanceStatsResponse"
           }
         }
       },
@@ -216965,27 +217138,25 @@
           }
         }
       },
-      "ApiResponseDeleteSlotTemplateResponse": {
+      "ApiResponseReservationMenuDeleteResponse": {
         "type": "object",
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/DeleteSlotTemplateResponse"
+            "$ref": "#/components/schemas/ReservationMenuDeleteResponse"
           }
         }
       },
-      "DeleteSlotTemplateResponse": {
+      "ReservationMenuDeleteResponse": {
         "type": "object",
+        "description": "予約メニュー削除結果",
         "properties": {
-          "deleted": {
-            "type": "boolean"
+          "deletedAt": {
+            "type": "string",
+            "format": "date-time"
           },
           "id": {
             "type": "string",
             "format": "uuid"
-          },
-          "orphanedSlotCount": {
-            "type": "integer",
-            "format": "int64"
           }
         }
       },

@@ -740,6 +740,9 @@ public class GlobalExceptionHandler {
             Map.entry("RESERVATION_029", HttpStatus.PAYMENT_REQUIRED),       // NOTIFY_RECIPIENT_PAID_PLAN_REQUIRED
             Map.entry("RESERVATION_030", HttpStatus.CONFLICT),               // NOTIFY_RECIPIENT_DUPLICATE
             Map.entry("RESERVATION_031", HttpStatus.NOT_FOUND),              // NOTIFY_RECIPIENT_NOT_FOUND
+            // F03.4.1 機能E 予約メニュー: 不在（IDOR 秘匿含む）→ 404。
+            // 033（上限20件）/ 034（所要時間不正）/ 035（lineIds 不正）は WARN 既定の 400 のまま（個別 map 不要）。
+            Map.entry("RESERVATION_032", HttpStatus.NOT_FOUND),              // MENU_NOT_FOUND
             // F03.4.2 機能F 週間テンプレート: 不在（IDOR 秘匿含む）→ 404、generate レート制限 → 429、
             // ライン削除ガード（active 予約あり）→ 409。037（上限500行）/038（ライン不一致）は WARN 既定の 400。
             Map.entry("RESERVATION_036", HttpStatus.NOT_FOUND),              // TEMPLATE_NOT_FOUND

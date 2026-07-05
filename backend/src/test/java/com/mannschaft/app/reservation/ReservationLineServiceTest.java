@@ -65,6 +65,9 @@ class ReservationLineServiceTest {
     @Mock
     private ReservationSlotRepository slotRepository;
 
+    @Mock
+    private com.mannschaft.app.reservation.repository.ReservationMenuLineRepository menuLineRepository;
+
     private ReservationLineService service;
 
     // ========================================
@@ -84,7 +87,7 @@ class ReservationLineServiceTest {
         // @InjectMocks は final Clock を mock で埋めるため、固定 Clock を明示注入して生成する。
         service = new ReservationLineService(
                 lineRepository, reservationMapper, templateRepository, reservationRepository,
-                slotRepository, FIXED_CLOCK);
+                slotRepository, menuLineRepository, FIXED_CLOCK);
     }
 
     private ReservationLineEntity createLineEntity() {
@@ -432,6 +435,8 @@ class ReservationLineServiceTest {
             // 3. 予約なし未来枠のみ論理削除（102 は残す）
             assertThat(purgeable.getDeletedAt()).isNotNull();
             assertThat(reserved.getDeletedAt()).isNull();
+            // 4. reservation_menu_lines 行の削除（F03.4.1 §3 RESTRICT 対応・同一 tx）
+            verify(menuLineRepository).deleteByLineId(LINE_ID);
             // 5. ライン本体の論理削除
             assertThat(entity.getDeletedAt()).isNotNull();
             verify(lineRepository).save(entity);
@@ -455,6 +460,7 @@ class ReservationLineServiceTest {
                     .isEqualTo(ReservationErrorCode.LINE_HAS_ACTIVE_RESERVATIONS);
             // ガード以降の手順（3〜5）が実行されないこと
             verify(slotRepository, never()).findByLineIdAndSlotDateGreaterThanEqual(any(), any());
+            verify(menuLineRepository, never()).deleteByLineId(any());
             assertThat(entity.getDeletedAt()).isNull();
             verify(lineRepository, never()).save(any(ReservationLineEntity.class));
         }

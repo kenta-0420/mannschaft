@@ -31,7 +31,9 @@
       "shift_request": "Schichtanfrage",
       "announcement_read": "Ankündigung gelesen",
       "parking_application": "Parkantrag",
-      "circular": "Rundschreiben"
+      "circular": "Rundschreiben",
+      "supporter_view": "Betreuungsansicht",
+      "payment": "Stellvertretende Zahlung"
     },
     "desk": {
       "pinSubject": "Bewohner anheften",
@@ -42,7 +44,8 @@
         "label": "Eingabequelle",
         "paper_form": "Papierformular",
         "phone_interview": "Telefoninterview",
-        "in_person": "Persönlich vor Ort"
+        "in_person": "Persönlich vor Ort",
+        "guardianship_switch": "Vormund-Wechsel"
       },
       "originalStorage": {
         "label": "Originalspeicherort",
@@ -106,6 +109,74 @@
         "junior_high": "Mittelschule",
         "high_school": "Oberschule",
         "adult": "Erwachsener"
+      },
+      "watch": {
+        "title": "Betreuung",
+        "linkLabel": "Betreuung",
+        "linkTooltip": "Betreuungsansicht öffnen (nur Ansicht)",
+        "readonlyNotice": "Diese Ansicht ist nur zur Anzeige. Aktionen oder Antworten sind hier nicht möglich.",
+        "loadError": "Betreuungsdaten konnten nicht geladen werden",
+        "sections": {
+          "schedules": {
+            "title": "Anstehende Termine",
+            "empty": "Keine anstehenden Termine"
+          },
+          "attendance": {
+            "title": "Anwesenheit",
+            "attended": "Anwesend",
+            "partial": "Teilweise",
+            "absent": "Abwesend",
+            "total": "Gesamt",
+            "rate": "Anwesenheitsquote",
+            "empty": "Keine Anwesenheitsdaten"
+          },
+          "memberships": {
+            "title": "Teams / Organisationen",
+            "teams": "Teams",
+            "organizations": "Organisationen",
+            "empty": "Kein Mitglied in einem Team oder einer Organisation"
+          },
+          "announcements": {
+            "title": "Ankündigungen",
+            "empty": "Keine Ankündigungen"
+          }
+        },
+        "attendanceStatus": {
+          "ATTENDING": "Anwesend",
+          "PARTIAL": "Teilweise",
+          "ABSENT": "Abwesend",
+          "UNDECIDED": "Unentschieden"
+        },
+        "proxyActions": {
+          "title": "Stellvertretungs-Verlauf",
+          "badge": "Stellvertretung (Erziehungsberechtigter)",
+          "empty": "Keine Stellvertretungsaktionen vorhanden"
+        },
+        "forbidden": {
+          "ageLocked": {
+            "title": "Dieses Kind ist nicht für die Betreuung berechtigt",
+            "body": "Kinder ab 12 Jahren haben die Unabhängigkeitsstufe erreicht und sind für die reine Ansichts-Betreuung nicht berechtigt."
+          },
+          "linkNotFound": {
+            "title": "Dieses Kind kann nicht betreut werden",
+            "body": "Ihre Vormund-Verknüpfung konnte nicht bestätigt werden. Bitte überprüfen Sie Ihre Verknüpfungseinstellungen."
+          }
+        },
+        "guide": {
+          "title": "So funktioniert die Betreuungsansicht",
+          "readonly": {
+            "title": "Dies ist nur eine Ansicht",
+            "body": "In dieser Ansicht können Sie nur die Termine, die Anwesenheit, die Mitgliedschaften und die Ankündigungen des Kindes einsehen — Aktionen oder Antworten sind nicht möglich. Nutzen Sie den „Vormund-Wechsel“, wenn Sie im Namen des Kindes handeln müssen."
+          },
+          "ageLimit": {
+            "title": "Nur für Kinder unter 12 Jahren",
+            "body": "Kinder ab 12 Jahren haben die Unabhängigkeitsstufe erreicht und sind (zum Schutz ihrer Privatsphäre) von der Betreuung ausgeschlossen."
+          },
+          "proxyBadge": {
+            "title": "Bedeutung der Markierung „Stellvertretung“",
+            "body": "Aktionen, die der Erziehungsberechtigte im Namen des Kindes ausführt (z. B. über den Vormund-Wechsel), werden mit „Stellvertretung (Erziehungsberechtigter)“ markiert. Im Abschnitt Stellvertretungs-Verlauf sehen Sie, wann und für welche Funktion eine Stellvertretungsaktion stattgefunden hat."
+          }
+        }
       }
     },
     "delegation": {

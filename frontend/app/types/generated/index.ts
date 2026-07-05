@@ -8427,41 +8427,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{teamId}/reservation-slot-templates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 週間テンプレート一覧 */
-        get: operations["listTemplates_3"];
-        put?: never;
-        /** 週間テンプレート作成 */
-        post: operations["createTemplate_3"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/teams/{teamId}/reservation-slot-templates/generate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** 週間テンプレート一括生成 */
-        post: operations["generate_1"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/teams/{teamId}/reservation-settings/blocked-times": {
         parameters: {
             query?: never;
@@ -8492,6 +8457,24 @@ export interface paths {
         put?: never;
         /** 予約通知メール宛先 追加 */
         post: operations["addRecipient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/reservation-menus": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 予約メニュー一覧 */
+        get: operations["listMenus"];
+        put?: never;
+        /** 予約メニュー作成 */
+        post: operations["createMenu"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9437,10 +9420,10 @@ export interface paths {
             cookie?: never;
         };
         /** テンプレート一覧 */
-        get: operations["listTemplates_4"];
+        get: operations["listTemplates_3"];
         put?: never;
         /** テンプレート作成 */
-        post: operations["createTemplate_4"];
+        post: operations["createTemplate_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9541,7 +9524,7 @@ export interface paths {
         };
         get: operations["getTemplates"];
         put?: never;
-        post: operations["createTemplate_5"];
+        post: operations["createTemplate_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10339,10 +10322,10 @@ export interface paths {
             cookie?: never;
         };
         /** チームDMテンプレート一覧 */
-        get: operations["listTemplates_5"];
+        get: operations["listTemplates_4"];
         put?: never;
         /** チームDMテンプレート作成 */
-        post: operations["createTemplate_6"];
+        post: operations["createTemplate_5"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11681,7 +11664,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** テンプレート作成 */
-        post: operations["createTemplate_7"];
+        post: operations["createTemplate_6"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11755,10 +11738,10 @@ export interface paths {
             cookie?: never;
         };
         /** テンプレート一覧（管理者用） */
-        get: operations["listTemplates_6"];
+        get: operations["listTemplates_5"];
         put?: never;
         /** テンプレート作成（管理者用） */
-        post: operations["createTemplate_8"];
+        post: operations["createTemplate_7"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11817,7 +11800,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** 対応テンプレート作成 */
-        post: operations["createTemplate_9"];
+        post: operations["createTemplate_8"];
         delete?: never;
         options?: never;
         head?: never;
@@ -13232,10 +13215,10 @@ export interface paths {
             cookie?: never;
         };
         /** テンプレート一覧 */
-        get: operations["listTemplates_7"];
+        get: operations["listTemplates_6"];
         put?: never;
         /** テンプレート作成 */
-        post: operations["createTemplate_10"];
+        post: operations["createTemplate_9"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15357,10 +15340,10 @@ export interface paths {
             cookie?: never;
         };
         /** テンプレート一覧 */
-        get: operations["listTemplates_8"];
+        get: operations["listTemplates_7"];
         put?: never;
         /** テンプレート作成（ゼロから） */
-        post: operations["createTemplate_11"];
+        post: operations["createTemplate_10"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15555,7 +15538,7 @@ export interface paths {
         get: operations["getTemplates_1"];
         put?: never;
         /** エントリーテンプレート作成 */
-        post: operations["createTemplate_12"];
+        post: operations["createTemplate_11"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16852,10 +16835,10 @@ export interface paths {
             cookie?: never;
         };
         /** 組織DMテンプレート一覧 */
-        get: operations["listTemplates_9"];
+        get: operations["listTemplates_8"];
         put?: never;
         /** 組織DMテンプレート作成 */
-        post: operations["createTemplate_13"];
+        post: operations["createTemplate_12"];
         delete?: never;
         options?: never;
         head?: never;
@@ -20385,7 +20368,7 @@ export interface paths {
         };
         get: operations["listByFiscalYear_1"];
         put?: never;
-        post: operations["generate_2"];
+        post: operations["generate_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -21729,7 +21712,7 @@ export interface paths {
         get: operations["getTemplates_2"];
         put?: never;
         /** アクションテンプレート作成 */
-        post: operations["createTemplate_14"];
+        post: operations["createTemplate_13"];
         delete?: never;
         options?: never;
         head?: never;
@@ -21764,10 +21747,10 @@ export interface paths {
             cookie?: never;
         };
         /** テンプレート一覧 */
-        get: operations["listTemplates_10"];
+        get: operations["listTemplates_9"];
         put?: never;
         /** テンプレート作成 */
-        post: operations["createTemplate_15"];
+        post: operations["createTemplate_14"];
         delete?: never;
         options?: never;
         head?: never;
@@ -23034,24 +23017,6 @@ export interface paths {
         patch: operations["updateSlot_1"];
         trace?: never;
     };
-    "/api/v1/teams/{teamId}/reservation-slot-templates/{templateId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** 週間テンプレート削除 */
-        delete: operations["deleteTemplate_10"];
-        options?: never;
-        head?: never;
-        /** 週間テンプレート更新 */
-        patch: operations["updateTemplate_10"];
-        trace?: never;
-    };
     "/api/v1/teams/{teamId}/reservation-settings": {
         parameters: {
             query?: never;
@@ -23104,6 +23069,24 @@ export interface paths {
         head?: never;
         /** 予約通知メール宛先 更新 */
         patch: operations["updateRecipient"];
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/reservation-menus/{menuId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 予約メニュー削除（論理削除） */
+        delete: operations["deleteMenu"];
+        options?: never;
+        head?: never;
+        /** 予約メニュー更新 */
+        patch: operations["updateMenu"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/reservation-lines/{lineId}": {
@@ -23528,10 +23511,10 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete: operations["deleteTemplate_11"];
+        delete: operations["deleteTemplate_10"];
         options?: never;
         head?: never;
-        patch: operations["updateTemplate_11"];
+        patch: operations["updateTemplate_10"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/knowledge-base/pages/{pageId}": {
@@ -24353,11 +24336,11 @@ export interface paths {
         put?: never;
         post?: never;
         /** テンプレート削除 */
-        delete: operations["deleteTemplate_12"];
+        delete: operations["deleteTemplate_11"];
         options?: never;
         head?: never;
         /** テンプレート更新 */
-        patch: operations["updateTemplate_12"];
+        patch: operations["updateTemplate_11"];
         trace?: never;
     };
     "/api/v1/system-admin/security-incidents/{id}": {
@@ -24391,11 +24374,11 @@ export interface paths {
         put?: never;
         post?: never;
         /** テンプレート削除（管理者用） */
-        delete: operations["deleteTemplate_13"];
+        delete: operations["deleteTemplate_12"];
         options?: never;
         head?: never;
         /** テンプレート更新（管理者用） */
-        patch: operations["updateTemplate_13"];
+        patch: operations["updateTemplate_12"];
         trace?: never;
     };
     "/api/v1/system-admin/safety-checks/presets/{presetId}": {
@@ -25021,7 +25004,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** テンプレート更新 */
-        patch: operations["updateTemplate_14"];
+        patch: operations["updateTemplate_13"];
         trace?: never;
     };
     "/api/v1/safety-checks/followups/{followupId}": {
@@ -25062,7 +25045,7 @@ export interface paths {
          * 募集テンプレート編集
          * @description ADMIN/DEPUTY_ADMIN 権限が必要
          */
-        patch: operations["updateTemplate_15"];
+        patch: operations["updateTemplate_14"];
         trace?: never;
     };
     "/api/v1/recruitment-listings/{listingId}/participants/{participantId}/attend": {
@@ -26104,11 +26087,11 @@ export interface paths {
         put?: never;
         post?: never;
         /** テンプレート論理削除 */
-        delete: operations["deleteTemplate_14"];
+        delete: operations["deleteTemplate_13"];
         options?: never;
         head?: never;
         /** テンプレート更新 */
-        patch: operations["updateTemplate_16"];
+        patch: operations["updateTemplate_15"];
         trace?: never;
     };
     "/api/v1/organizations/{orgId}/todos/{id}/status": {
@@ -35078,7 +35061,7 @@ export interface paths {
             cookie?: never;
         };
         /** 指標テンプレート一覧 */
-        get: operations["listTemplates_11"];
+        get: operations["listTemplates_10"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38173,6 +38156,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/guardianship/children/{childUserId}/schedules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 子の予定閲覧
+         * @description 12歳未満の子の横断カレンダーを閲覧専用で取得する（有効な保護者のみ・子基準の可視性）
+         */
+        get: operations["getChildSchedules"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/guardianship/children/{childUserId}/proxy-actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 子の代理入力履歴閲覧
+         * @description 子の代わりに誰が何をしたか（代理入力記録・subject=子）を閲覧専用で取得する（有効な保護者のみ）
+         */
+        get: operations["getChildProxyActions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/guardianship/children/{childUserId}/memberships": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 子の所属閲覧
+         * @description 12歳未満の子が所属するチーム・組織を閲覧専用で取得する（有効な保護者のみ）
+         */
+        get: operations["getChildMemberships"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/guardianship/children/{childUserId}/independence-status": {
         parameters: {
             query?: never;
@@ -38185,6 +38228,46 @@ export interface paths {
          * @description 子の現在段階・封印境界日・パスワード設定有無を返す（有効な保護者のみ・IDOR 防止）
          */
         get: operations["getIndependenceStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/guardianship/children/{childUserId}/attendance/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 子の出欠状況閲覧
+         * @description 12歳未満の子の出席率統計を閲覧専用で取得する（有効な保護者のみ）
+         */
+        get: operations["getChildAttendanceStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/guardianship/children/{childUserId}/announcements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 子のお知らせ閲覧
+         * @description 12歳未満の子が所属する全スコープの掲示板お知らせを合算し閲覧専用で取得する（有効な保護者のみ・子基準）
+         */
+        get: operations["getChildAnnouncements"];
         put?: never;
         post?: never;
         delete?: never;
@@ -52375,10 +52458,9 @@ export interface components {
             capacity?: number;
             /** @example 14:30:00 */
             endTime: string;
-            /** Format: int64 */
-            lineId?: number;
             note?: string;
             price?: number;
+            recurrenceRule?: string;
             /** Format: date */
             slotDate: string;
             /** Format: int64 */
@@ -52400,9 +52482,6 @@ export interface components {
             basic?: components["schemas"]["SlotBasicDto"];
             /** Format: int64 */
             id?: number;
-            /** Format: int64 */
-            lineId?: number;
-            lineName?: string;
             policy?: components["schemas"]["SlotPolicyDto"];
             pricing?: components["schemas"]["SlotPricingDto"];
             recurrence?: components["schemas"]["RecurrenceDto"];
@@ -52411,8 +52490,6 @@ export interface components {
             status?: components["schemas"]["SlotStatusDto"];
             /** Format: int64 */
             teamId?: number;
-            /** Format: uuid */
-            templateId?: string;
         };
         SlotAuditDto: {
             /** Format: date-time */
@@ -52449,77 +52526,6 @@ export interface components {
         };
         CloseSlotRequest: {
             reason?: string;
-        };
-        CreateSlotTemplateRequest: {
-            /** @enum {string} */
-            approvalMode?: "AUTO" | "MANUAL";
-            /** Format: int32 */
-            capacity?: number;
-            /** @enum {string} */
-            dayOfWeek: "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
-            /** @example 14:30:00 */
-            endTime: string;
-            /** Format: int64 */
-            lineId?: number;
-            name?: string;
-            price?: number;
-            /** Format: int64 */
-            staffUserId?: number;
-            /** @example 14:30:00 */
-            startTime: string;
-            title?: string;
-        };
-        ApiResponseSlotTemplateResponse: {
-            data?: components["schemas"]["SlotTemplateResponse"];
-        };
-        SlotTemplateResponse: {
-            approvalMode?: string;
-            /** Format: int32 */
-            capacity?: number;
-            /** Format: int32 */
-            cellCount?: number;
-            /** Format: date-time */
-            createdAt?: string;
-            dayOfWeek?: string;
-            /** @example 14:30:00 */
-            endTime?: string;
-            /** Format: uuid */
-            id?: string;
-            isActive?: boolean;
-            /** Format: int64 */
-            lineId?: number;
-            lineName?: string;
-            name?: string;
-            price?: number;
-            staffName?: string;
-            /** Format: int64 */
-            staffUserId?: number;
-            /** @example 14:30:00 */
-            startTime?: string;
-            title?: string;
-            /** Format: date-time */
-            updatedAt?: string;
-        };
-        GenerateSlotsRequest: {
-            /** Format: int32 */
-            weeks?: number;
-        };
-        ApiResponseGenerateSlotsResponse: {
-            data?: components["schemas"]["GenerateSlotsResponse"];
-        };
-        GenerateSlotsResponse: {
-            /** Format: int32 */
-            generatedCount?: number;
-            /** Format: date */
-            horizonFrom?: string;
-            /** Format: date */
-            horizonTo?: string;
-            /** Format: int32 */
-            skippedClosedDayCount?: number;
-            /** Format: int32 */
-            skippedExistingCount?: number;
-            /** Format: int32 */
-            skippedOutsideHoursCount?: number;
         };
         BlockedTimeRequest: {
             /** Format: date */
@@ -52600,6 +52606,38 @@ export interface components {
              * @example 店代表
              */
             label?: string;
+        };
+        /** @description 予約メニュー作成リクエスト */
+        CreateReservationMenuRequest: {
+            description?: string;
+            /** Format: int32 */
+            displayOrder?: number;
+            /** Format: int32 */
+            durationMinutes: number;
+            lineIds?: number[];
+            name?: string;
+            price?: number;
+        };
+        ApiResponseReservationMenuResponse: {
+            data?: components["schemas"]["ReservationMenuResponse"];
+        };
+        /** @description 予約メニュー */
+        ReservationMenuResponse: {
+            /** Format: date-time */
+            createdAt?: string;
+            description?: string;
+            /** Format: int32 */
+            displayOrder?: number;
+            /** Format: int32 */
+            durationMinutes?: number;
+            /** Format: uuid */
+            id?: string;
+            isActive?: boolean;
+            lineIds?: number[];
+            name?: string;
+            price?: number;
+            /** Format: int32 */
+            requiredSlotCount?: number;
         };
         CreateReservationLineRequest: {
             /** Format: int64 */
@@ -61617,33 +61655,10 @@ export interface components {
             clearApprovalMode?: boolean;
             /** @example 14:30:00 */
             endTime?: string;
-            /** Format: int64 */
-            lineId?: number;
             note?: string;
             price?: number;
             /** Format: date */
             slotDate?: string;
-            /** Format: int64 */
-            staffUserId?: number;
-            /** @example 14:30:00 */
-            startTime?: string;
-            title?: string;
-        };
-        UpdateSlotTemplateRequest: {
-            /** @enum {string} */
-            approvalMode?: "AUTO" | "MANUAL";
-            /** Format: int32 */
-            capacity?: number;
-            clearLineId?: boolean;
-            /** @enum {string} */
-            dayOfWeek?: "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
-            /** @example 14:30:00 */
-            endTime?: string;
-            isActive?: boolean;
-            /** Format: int64 */
-            lineId?: number;
-            name?: string;
-            price?: number;
             /** Format: int64 */
             staffUserId?: number;
             /** @example 14:30:00 */
@@ -61716,6 +61731,19 @@ export interface components {
         UpdateNotificationRecipientRequest: {
             isEnabled?: boolean;
             label?: string;
+        };
+        /** @description 予約メニュー部分更新リクエスト */
+        UpdateReservationMenuRequest: {
+            clearPrice?: boolean;
+            description?: string;
+            /** Format: int32 */
+            displayOrder?: number;
+            /** Format: int32 */
+            durationMinutes?: number;
+            isActive?: boolean;
+            lineIds?: number[];
+            name?: string;
+            price?: number;
         };
         UpdateReservationLineRequest: {
             /** Format: int64 */
@@ -65119,19 +65147,6 @@ export interface components {
             /** Format: date */
             date?: string;
         };
-        ApiResponseSlotTemplateListResponse: {
-            data?: components["schemas"]["SlotTemplateListResponse"];
-        };
-        SlotTemplateListResponse: {
-            meta?: components["schemas"]["TemplateListMetaDto"];
-            templates?: components["schemas"]["SlotTemplateResponse"][];
-        };
-        TemplateListMetaDto: {
-            /** Format: int32 */
-            limit?: number;
-            /** Format: int64 */
-            totalTemplates?: number;
-        };
         ApiResponseListBlockedTimeResponse: {
             data?: components["schemas"]["BlockedTimeResponse"][];
         };
@@ -65194,6 +65209,9 @@ export interface components {
              * @example 1
              */
             totalCount?: number;
+        };
+        ApiResponseListReservationMenuResponse: {
+            data?: components["schemas"]["ReservationMenuResponse"][];
         };
         ApiResponseListReservationLineResponse: {
             data?: components["schemas"]["ReservationLineResponse"][];
@@ -71167,6 +71185,37 @@ export interface components {
             blockedChildren?: components["schemas"]["BlockedChildDto"][];
             children?: components["schemas"]["SwitchableChildDto"][];
         };
+        ApiResponseGuardianChildProxyActionsResponse: {
+            data?: components["schemas"]["GuardianChildProxyActionsResponse"];
+        };
+        GuardianChildProxyActionsResponse: {
+            items?: components["schemas"]["ProxyActionItem"][];
+        };
+        ProxyActionItem: {
+            /** Format: date-time */
+            createdAt?: string;
+            featureScope?: string;
+            /** Format: int64 */
+            id?: number;
+            inputSource?: string;
+            /** Format: int64 */
+            proxyUserId?: number;
+            /** Format: int64 */
+            targetEntityId?: number;
+            targetEntityType?: string;
+        };
+        ApiResponseGuardianChildMembershipsResponse: {
+            data?: components["schemas"]["GuardianChildMembershipsResponse"];
+        };
+        GuardianChildMembershipsResponse: {
+            organizations?: components["schemas"]["ScopeRef"][];
+            teams?: components["schemas"]["ScopeRef"][];
+        };
+        ScopeRef: {
+            name?: string;
+            /** Format: int64 */
+            scopeId?: number;
+        };
         ApiResponseIndependenceStatusResponse: {
             data?: components["schemas"]["IndependenceStatusResponse"];
         };
@@ -71178,6 +71227,35 @@ export interface components {
             sealDate?: string;
             stageKey?: string;
             switchAllowed?: boolean;
+        };
+        ApiResponseAttendanceStatsResponse: {
+            data?: components["schemas"]["AttendanceStatsResponse"];
+        };
+        AnnouncementItem: {
+            /** Format: date-time */
+            createdAt?: string;
+            priority?: string;
+            /** Format: int64 */
+            scopeId?: number;
+            scopeName?: string;
+            scopeType?: string;
+            /** Format: int64 */
+            threadId?: number;
+            title?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        ApiResponseGuardianChildAnnouncementsResponse: {
+            data?: components["schemas"]["GuardianChildAnnouncementsResponse"];
+        };
+        GuardianChildAnnouncementsResponse: {
+            items?: components["schemas"]["AnnouncementItem"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            totalElements?: number;
         };
         ApiResponseGoogleCalendarStatusResponse: {
             data?: components["schemas"]["GoogleCalendarStatusResponse"];
@@ -71374,9 +71452,6 @@ export interface components {
             teamId?: number;
             /** Format: date-time */
             updatedAt?: string;
-        };
-        ApiResponseAttendanceStatsResponse: {
-            data?: components["schemas"]["AttendanceStatsResponse"];
         };
         PagedResponseJobApplicationResponse: {
             data?: components["schemas"]["JobApplicationResponse"][];
@@ -73220,15 +73295,15 @@ export interface components {
         RequestWithdrawalRequest: {
             currentPassword?: string;
         };
-        ApiResponseDeleteSlotTemplateResponse: {
-            data?: components["schemas"]["DeleteSlotTemplateResponse"];
+        ApiResponseReservationMenuDeleteResponse: {
+            data?: components["schemas"]["ReservationMenuDeleteResponse"];
         };
-        DeleteSlotTemplateResponse: {
-            deleted?: boolean;
+        /** @description 予約メニュー削除結果 */
+        ReservationMenuDeleteResponse: {
+            /** Format: date-time */
+            deletedAt?: string;
             /** Format: uuid */
             id?: string;
-            /** Format: int64 */
-            orphanedSlotCount?: number;
         };
         CancelBookingRequest: {
             cancellationReason?: string;
@@ -94138,80 +94213,6 @@ export interface operations {
             };
         };
     };
-    listTemplates_3: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                teamId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 取得成功 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseSlotTemplateListResponse"];
-                };
-            };
-        };
-    };
-    createTemplate_3: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                teamId: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateSlotTemplateRequest"];
-            };
-        };
-        responses: {
-            /** @description 作成成功 */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseSlotTemplateResponse"];
-                };
-            };
-        };
-    };
-    generate_1: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                teamId: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["GenerateSlotsRequest"];
-            };
-        };
-        responses: {
-            /** @description 生成成功 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseGenerateSlotsResponse"];
-                };
-            };
-        };
-    };
     listBlockedTimes: {
         parameters: {
             query: {
@@ -94307,6 +94308,54 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseNotificationRecipientResponse"];
+                };
+            };
+        };
+    };
+    listMenus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListReservationMenuResponse"];
+                };
+            };
+        };
+    };
+    createMenu: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateReservationMenuRequest"];
+            };
+        };
+        responses: {
+            /** @description 作成成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReservationMenuResponse"];
                 };
             };
         };
@@ -96250,7 +96299,7 @@ export interface operations {
             };
         };
     };
-    listTemplates_4: {
+    listTemplates_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -96272,7 +96321,7 @@ export interface operations {
             };
         };
     };
-    createTemplate_4: {
+    createTemplate_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -96496,7 +96545,7 @@ export interface operations {
             };
         };
     };
-    createTemplate_5: {
+    createTemplate_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -98138,7 +98187,7 @@ export interface operations {
             };
         };
     };
-    listTemplates_5: {
+    listTemplates_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -98160,7 +98209,7 @@ export interface operations {
             };
         };
     };
-    createTemplate_6: {
+    createTemplate_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -100778,7 +100827,7 @@ export interface operations {
             };
         };
     };
-    createTemplate_7: {
+    createTemplate_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -100910,7 +100959,7 @@ export interface operations {
             };
         };
     };
-    listTemplates_6: {
+    listTemplates_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -100930,7 +100979,7 @@ export interface operations {
             };
         };
     };
-    createTemplate_8: {
+    createTemplate_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -101042,7 +101091,7 @@ export interface operations {
             };
         };
     };
-    createTemplate_9: {
+    createTemplate_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -103624,7 +103673,7 @@ export interface operations {
             };
         };
     };
-    listTemplates_7: {
+    listTemplates_6: {
         parameters: {
             query: {
                 scopeType: string;
@@ -103647,7 +103696,7 @@ export interface operations {
             };
         };
     };
-    createTemplate_10: {
+    createTemplate_9: {
         parameters: {
             query?: never;
             header?: never;
@@ -107733,7 +107782,7 @@ export interface operations {
             };
         };
     };
-    listTemplates_8: {
+    listTemplates_7: {
         parameters: {
             query?: {
                 page?: number;
@@ -107758,7 +107807,7 @@ export interface operations {
             };
         };
     };
-    createTemplate_11: {
+    createTemplate_10: {
         parameters: {
             query?: never;
             header?: never;
@@ -108243,7 +108292,7 @@ export interface operations {
             };
         };
     };
-    createTemplate_12: {
+    createTemplate_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -110793,7 +110842,7 @@ export interface operations {
             };
         };
     };
-    listTemplates_9: {
+    listTemplates_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -110815,7 +110864,7 @@ export interface operations {
             };
         };
     };
-    createTemplate_13: {
+    createTemplate_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -117220,7 +117269,7 @@ export interface operations {
             };
         };
     };
-    generate_2: {
+    generate_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -119512,7 +119561,7 @@ export interface operations {
             };
         };
     };
-    createTemplate_14: {
+    createTemplate_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -119558,7 +119607,7 @@ export interface operations {
             };
         };
     };
-    listTemplates_10: {
+    listTemplates_9: {
         parameters: {
             query: {
                 scope_type: string;
@@ -119581,7 +119630,7 @@ export interface operations {
             };
         };
     };
-    createTemplate_15: {
+    createTemplate_14: {
         parameters: {
             query: {
                 scope_type: string;
@@ -122126,56 +122175,6 @@ export interface operations {
             };
         };
     };
-    deleteTemplate_10: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                teamId: number;
-                templateId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 削除成功 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseDeleteSlotTemplateResponse"];
-                };
-            };
-        };
-    };
-    updateTemplate_10: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                teamId: number;
-                templateId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateSlotTemplateRequest"];
-            };
-        };
-        responses: {
-            /** @description 更新成功 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseSlotTemplateResponse"];
-                };
-            };
-        };
-    };
     getSettings_14: {
         parameters: {
             query?: never;
@@ -122316,6 +122315,56 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseNotificationRecipientResponse"];
+                };
+            };
+        };
+    };
+    deleteMenu: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                menuId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 削除成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReservationMenuDeleteResponse"];
+                };
+            };
+        };
+    };
+    updateMenu: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                menuId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateReservationMenuRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReservationMenuResponse"];
                 };
             };
         };
@@ -123012,7 +123061,7 @@ export interface operations {
             };
         };
     };
-    deleteTemplate_11: {
+    deleteTemplate_10: {
         parameters: {
             query?: never;
             header?: never;
@@ -123033,7 +123082,7 @@ export interface operations {
             };
         };
     };
-    updateTemplate_11: {
+    updateTemplate_10: {
         parameters: {
             query?: never;
             header?: never;
@@ -124726,7 +124775,7 @@ export interface operations {
             };
         };
     };
-    deleteTemplate_12: {
+    deleteTemplate_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -124746,7 +124795,7 @@ export interface operations {
             };
         };
     };
-    updateTemplate_12: {
+    updateTemplate_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -124798,7 +124847,7 @@ export interface operations {
             };
         };
     };
-    deleteTemplate_13: {
+    deleteTemplate_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -124818,7 +124867,7 @@ export interface operations {
             };
         };
     };
-    updateTemplate_13: {
+    updateTemplate_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -125939,7 +125988,7 @@ export interface operations {
             };
         };
     };
-    updateTemplate_14: {
+    updateTemplate_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -126013,7 +126062,7 @@ export interface operations {
             };
         };
     };
-    updateTemplate_15: {
+    updateTemplate_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -127963,7 +128012,7 @@ export interface operations {
             };
         };
     };
-    deleteTemplate_14: {
+    deleteTemplate_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -127984,7 +128033,7 @@ export interface operations {
             };
         };
     };
-    updateTemplate_16: {
+    updateTemplate_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -141423,7 +141472,7 @@ export interface operations {
             };
         };
     };
-    listTemplates_11: {
+    listTemplates_10: {
         parameters: {
             query?: {
                 sportCategory?: string;
@@ -145748,6 +145797,75 @@ export interface operations {
             };
         };
     };
+    getChildSchedules: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                childUserId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListCalendarEntryResponse"];
+                };
+            };
+        };
+    };
+    getChildProxyActions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                childUserId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseGuardianChildProxyActionsResponse"];
+                };
+            };
+        };
+    };
+    getChildMemberships: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                childUserId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseGuardianChildMembershipsResponse"];
+                };
+            };
+        };
+    };
     getIndependenceStatus: {
         parameters: {
             query?: never;
@@ -145766,6 +145884,56 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseIndependenceStatusResponse"];
+                };
+            };
+        };
+    };
+    getChildAttendanceStats: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                childUserId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAttendanceStatsResponse"];
+                };
+            };
+        };
+    };
+    getChildAnnouncements: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                childUserId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseGuardianChildAnnouncementsResponse"];
                 };
             };
         };

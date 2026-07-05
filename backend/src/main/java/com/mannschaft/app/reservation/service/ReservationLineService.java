@@ -32,6 +32,8 @@ public class ReservationLineService {
     private final com.mannschaft.app.reservation.repository.ReservationRepository reservationRepository;
     /** F03.4.2 §5.5: ライン削除フロー手順3（予約なし未来枠の purge）用。 */
     private final com.mannschaft.app.reservation.repository.ReservationSlotRepository slotRepository;
+    /** F03.4.2 §5.5: ライン削除フロー手順4（reservation_menu_lines 行の明示削除・F03.4.1 §3 RESTRICT 対応）用。 */
+    private final com.mannschaft.app.reservation.repository.ReservationMenuLineRepository menuLineRepository;
     /** F03.4.2 §5.5: 「今日以降」判定の基準時刻。テストは固定 Clock を注入する。 */
     private final java.time.Clock clock;
 
@@ -209,11 +211,11 @@ public class ReservationLineService {
                     teamId, lineId, purgeable.size(), futureSlots.size());
         }
 
-        // 4. reservation_menu_lines 行の削除（F03.4.1 §3 の RESTRICT 判断に対応）
-        // TODO(F03.4.1 統合時に結線): reservation_menu_lines は並行隊（F03.4.1 予約メニュー）が作成中で
-        //   本ブランチ時点の main に存在しないため、テーブル存在に依存しない実装としてここでは削除しない。
-        //   F03.4.1 マージ後の統合で ReservationMenuLineRepository.deleteByLineId(lineId) を本手順に挿入すること
-        //   （挿入位置は本メソッドの手順3と5の間・同一 tx — 設計書 §5.5 手順4）。
+        // 4. reservation_menu_lines 行の削除（F03.4.1 §3 の RESTRICT 判断に対応・同一 tx）。
+        //    line_id の FK は ON DELETE RESTRICT のため、論理削除前にアプリ層で提供可否行を明示削除する。
+        //    行削除後にメニューの提供可否行が 0 件になった場合の意味論は F03.4.1 §3 の既定
+        //    （0 件 = 全ラインで提供可）に自然に合流する。
+        menuLineRepository.deleteByLineId(lineId);
 
         // 5. ライン本体の論理削除
         entity.softDelete();
