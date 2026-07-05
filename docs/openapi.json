@@ -2015,6 +2015,10 @@
       "description": "F05.5 ファイルコメント管理"
     },
     {
+      "name": "予約枠週間テンプレート",
+      "description": "F03.4.2 週間テンプレートCRUD＋一括生成"
+    },
+    {
       "name": "回覧添付ファイル",
       "description": "F05.2 回覧文書の添付ファイル管理"
     },
@@ -36943,6 +36947,120 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/reservation-slot-templates": {
+      "get": {
+        "tags": [
+          "予約枠週間テンプレート"
+        ],
+        "summary": "週間テンプレート一覧",
+        "operationId": "listTemplates_3",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseSlotTemplateListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "予約枠週間テンプレート"
+        ],
+        "summary": "週間テンプレート作成",
+        "operationId": "createTemplate_3",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSlotTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "作成成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseSlotTemplateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/reservation-slot-templates/generate": {
+      "post": {
+        "tags": [
+          "予約枠週間テンプレート"
+        ],
+        "summary": "週間テンプレート一括生成",
+        "operationId": "generate_1",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateSlotsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "生成成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGenerateSlotsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/reservation-settings/blocked-times": {
       "get": {
         "tags": [
@@ -40503,7 +40621,7 @@
           "募集テンプレート"
         ],
         "summary": "テンプレート一覧",
-        "operationId": "listTemplates_3",
+        "operationId": "listTemplates_4",
         "parameters": [
           {
             "name": "teamId",
@@ -40533,7 +40651,7 @@
           "募集テンプレート"
         ],
         "summary": "テンプレート作成",
-        "operationId": "createTemplate_3",
+        "operationId": "createTemplate_4",
         "parameters": [
           {
             "name": "teamId",
@@ -40893,7 +41011,7 @@
         "tags": [
           "kb-template-controller"
         ],
-        "operationId": "createTemplate_4",
+        "operationId": "createTemplate_5",
         "parameters": [
           {
             "name": "teamId",
@@ -43698,7 +43816,7 @@
           "チームDMテンプレート"
         ],
         "summary": "チームDMテンプレート一覧",
-        "operationId": "listTemplates_4",
+        "operationId": "listTemplates_5",
         "parameters": [
           {
             "name": "teamId",
@@ -43728,7 +43846,7 @@
           "チームDMテンプレート"
         ],
         "summary": "チームDMテンプレート作成",
-        "operationId": "createTemplate_5",
+        "operationId": "createTemplate_6",
         "parameters": [
           {
             "name": "teamId",
@@ -48116,7 +48234,7 @@
           "システム管理 - テンプレート"
         ],
         "summary": "テンプレート作成",
-        "operationId": "createTemplate_6",
+        "operationId": "createTemplate_7",
         "requestBody": {
           "content": {
             "application/json": {
@@ -48270,7 +48388,7 @@
           "安否確認管理者"
         ],
         "summary": "テンプレート一覧（管理者用）",
-        "operationId": "listTemplates_5",
+        "operationId": "listTemplates_6",
         "responses": {
           "200": {
             "description": "取得成功",
@@ -48289,7 +48407,7 @@
           "安否確認管理者"
         ],
         "summary": "テンプレート作成（管理者用）",
-        "operationId": "createTemplate_7",
+        "operationId": "createTemplate_8",
         "requestBody": {
           "content": {
             "application/json": {
@@ -48422,7 +48540,7 @@
           "SYSTEM_ADMINモデレーション"
         ],
         "summary": "対応テンプレート作成",
-        "operationId": "createTemplate_8",
+        "operationId": "createTemplate_9",
         "requestBody": {
           "content": {
             "application/json": {
@@ -52247,7 +52365,7 @@
           "安否確認テンプレート管理"
         ],
         "summary": "テンプレート一覧",
-        "operationId": "listTemplates_6",
+        "operationId": "listTemplates_7",
         "parameters": [
           {
             "name": "scopeType",
@@ -52285,7 +52403,7 @@
           "安否確認テンプレート管理"
         ],
         "summary": "テンプレート作成",
-        "operationId": "createTemplate_9",
+        "operationId": "createTemplate_10",
         "requestBody": {
           "content": {
             "application/json": {
@@ -59340,7 +59458,7 @@
           "大会テンプレート管理"
         ],
         "summary": "テンプレート一覧",
-        "operationId": "listTemplates_7",
+        "operationId": "listTemplates_8",
         "parameters": [
           {
             "name": "orgId",
@@ -59390,7 +59508,7 @@
           "大会テンプレート管理"
         ],
         "summary": "テンプレート作成（ゼロから）",
-        "operationId": "createTemplate_10",
+        "operationId": "createTemplate_11",
         "parameters": [
           {
             "name": "orgId",
@@ -60338,7 +60456,7 @@
           "エントリーテンプレート"
         ],
         "summary": "エントリーテンプレート作成",
-        "operationId": "createTemplate_11",
+        "operationId": "createTemplate_12",
         "parameters": [
           {
             "name": "orgId",
@@ -64818,7 +64936,7 @@
           "組織DMテンプレート"
         ],
         "summary": "組織DMテンプレート一覧",
-        "operationId": "listTemplates_8",
+        "operationId": "listTemplates_9",
         "parameters": [
           {
             "name": "orgId",
@@ -64848,7 +64966,7 @@
           "組織DMテンプレート"
         ],
         "summary": "組織DMテンプレート作成",
-        "operationId": "createTemplate_12",
+        "operationId": "createTemplate_13",
         "parameters": [
           {
             "name": "orgId",
@@ -74620,7 +74738,7 @@
         "tags": [
           "budget-report-controller"
         ],
-        "operationId": "generate_1",
+        "operationId": "generate_2",
         "parameters": [
           {
             "name": "fiscalYearId",
@@ -78151,7 +78269,7 @@
           "管理 - アクションテンプレート"
         ],
         "summary": "アクションテンプレート作成",
-        "operationId": "createTemplate_13",
+        "operationId": "createTemplate_14",
         "requestBody": {
           "content": {
             "application/json": {
@@ -78215,7 +78333,7 @@
           "活動テンプレート"
         ],
         "summary": "テンプレート一覧",
-        "operationId": "listTemplates_9",
+        "operationId": "listTemplates_10",
         "parameters": [
           {
             "name": "scope_type",
@@ -78253,7 +78371,7 @@
           "活動テンプレート"
         ],
         "summary": "テンプレート作成",
-        "operationId": "createTemplate_14",
+        "operationId": "createTemplate_15",
         "parameters": [
           {
             "name": "scope_type",
@@ -82587,6 +82705,96 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/reservation-slot-templates/{templateId}": {
+      "delete": {
+        "tags": [
+          "予約枠週間テンプレート"
+        ],
+        "summary": "週間テンプレート削除",
+        "operationId": "deleteTemplate_10",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "templateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "削除成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseDeleteSlotTemplateResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "予約枠週間テンプレート"
+        ],
+        "summary": "週間テンプレート更新",
+        "operationId": "updateTemplate_10",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "templateId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSlotTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseSlotTemplateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/reservation-settings": {
       "get": {
         "tags": [
@@ -84095,7 +84303,7 @@
         "tags": [
           "kb-template-controller"
         ],
-        "operationId": "deleteTemplate_10",
+        "operationId": "deleteTemplate_11",
         "parameters": [
           {
             "name": "teamId",
@@ -84126,7 +84334,7 @@
         "tags": [
           "kb-template-controller"
         ],
-        "operationId": "updateTemplate_10",
+        "operationId": "updateTemplate_11",
         "parameters": [
           {
             "name": "teamId",
@@ -86965,7 +87173,7 @@
           "システム管理 - テンプレート"
         ],
         "summary": "テンプレート削除",
-        "operationId": "deleteTemplate_11",
+        "operationId": "deleteTemplate_12",
         "parameters": [
           {
             "name": "id",
@@ -86988,7 +87196,7 @@
           "システム管理 - テンプレート"
         ],
         "summary": "テンプレート更新",
-        "operationId": "updateTemplate_11",
+        "operationId": "updateTemplate_12",
         "parameters": [
           {
             "name": "id",
@@ -87073,7 +87281,7 @@
           "安否確認管理者"
         ],
         "summary": "テンプレート削除（管理者用）",
-        "operationId": "deleteTemplate_12",
+        "operationId": "deleteTemplate_13",
         "parameters": [
           {
             "name": "templateId",
@@ -87096,7 +87304,7 @@
           "安否確認管理者"
         ],
         "summary": "テンプレート更新（管理者用）",
-        "operationId": "updateTemplate_12",
+        "operationId": "updateTemplate_13",
         "parameters": [
           {
             "name": "templateId",
@@ -88768,7 +88976,7 @@
           "安否確認テンプレート管理"
         ],
         "summary": "テンプレート更新",
-        "operationId": "updateTemplate_13",
+        "operationId": "updateTemplate_14",
         "parameters": [
           {
             "name": "templateId",
@@ -88884,7 +89092,7 @@
         ],
         "summary": "募集テンプレート編集",
         "description": "ADMIN/DEPUTY_ADMIN 権限が必要",
-        "operationId": "updateTemplate_14",
+        "operationId": "updateTemplate_15",
         "parameters": [
           {
             "name": "id",
@@ -92227,7 +92435,7 @@
           "大会テンプレート管理"
         ],
         "summary": "テンプレート論理削除",
-        "operationId": "deleteTemplate_13",
+        "operationId": "deleteTemplate_14",
         "parameters": [
           {
             "name": "orgId",
@@ -92259,7 +92467,7 @@
           "大会テンプレート管理"
         ],
         "summary": "テンプレート更新",
-        "operationId": "updateTemplate_15",
+        "operationId": "updateTemplate_16",
         "parameters": [
           {
             "name": "orgId",
@@ -115677,7 +115885,7 @@
           "パフォーマンス個人"
         ],
         "summary": "指標テンプレート一覧",
-        "operationId": "listTemplates_10",
+        "operationId": "listTemplates_11",
         "parameters": [
           {
             "name": "sportCategory",
@@ -159531,6 +159739,10 @@
             "type": "string",
             "example": "14:30:00"
           },
+          "lineId": {
+            "type": "integer",
+            "format": "int64"
+          },
           "note": {
             "type": "string",
             "maxLength": 2000,
@@ -159538,9 +159750,6 @@
           },
           "price": {
             "type": "number"
-          },
-          "recurrenceRule": {
-            "type": "string"
           },
           "slotDate": {
             "type": "string",
@@ -159599,6 +159808,13 @@
             "type": "integer",
             "format": "int64"
           },
+          "lineId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lineName": {
+            "type": "string"
+          },
           "policy": {
             "$ref": "#/components/schemas/SlotPolicyDto"
           },
@@ -159618,6 +159834,10 @@
           "teamId": {
             "type": "integer",
             "format": "int64"
+          },
+          "templateId": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -159706,6 +159926,192 @@
             "type": "string",
             "maxLength": 20,
             "minLength": 0
+          }
+        }
+      },
+      "CreateSlotTemplateRequest": {
+        "type": "object",
+        "properties": {
+          "approvalMode": {
+            "type": "string",
+            "enum": [
+              "AUTO",
+              "MANUAL"
+            ]
+          },
+          "capacity": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 99,
+            "minimum": 1
+          },
+          "dayOfWeek": {
+            "type": "string",
+            "enum": [
+              "MON",
+              "TUE",
+              "WED",
+              "THU",
+              "FRI",
+              "SAT",
+              "SUN"
+            ]
+          },
+          "endTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "lineId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0
+          },
+          "staffUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "startTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "dayOfWeek",
+          "endTime",
+          "startTime"
+        ]
+      },
+      "ApiResponseSlotTemplateResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SlotTemplateResponse"
+          }
+        }
+      },
+      "SlotTemplateResponse": {
+        "type": "object",
+        "properties": {
+          "approvalMode": {
+            "type": "string"
+          },
+          "capacity": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cellCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dayOfWeek": {
+            "type": "string"
+          },
+          "endTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "lineId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lineName": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "staffName": {
+            "type": "string"
+          },
+          "staffUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "startTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "GenerateSlotsRequest": {
+        "type": "object",
+        "properties": {
+          "weeks": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 4,
+            "minimum": 1
+          }
+        }
+      },
+      "ApiResponseGenerateSlotsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/GenerateSlotsResponse"
+          }
+        }
+      },
+      "GenerateSlotsResponse": {
+        "type": "object",
+        "properties": {
+          "generatedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "horizonFrom": {
+            "type": "string",
+            "format": "date"
+          },
+          "horizonTo": {
+            "type": "string",
+            "format": "date"
+          },
+          "skippedClosedDayCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skippedExistingCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skippedOutsideHoursCount": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -185263,6 +185669,10 @@
             "type": "string",
             "example": "14:30:00"
           },
+          "lineId": {
+            "type": "integer",
+            "format": "int64"
+          },
           "note": {
             "type": "string",
             "maxLength": 2000,
@@ -185274,6 +185684,72 @@
           "slotDate": {
             "type": "string",
             "format": "date"
+          },
+          "staffUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "startTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          }
+        }
+      },
+      "UpdateSlotTemplateRequest": {
+        "type": "object",
+        "properties": {
+          "approvalMode": {
+            "type": "string",
+            "enum": [
+              "AUTO",
+              "MANUAL"
+            ]
+          },
+          "capacity": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 99,
+            "minimum": 1
+          },
+          "clearLineId": {
+            "type": "boolean"
+          },
+          "dayOfWeek": {
+            "type": "string",
+            "enum": [
+              "MON",
+              "TUE",
+              "WED",
+              "THU",
+              "FRI",
+              "SAT",
+              "SUN"
+            ]
+          },
+          "endTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "lineId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0
           },
           "staffUserId": {
             "type": "integer",
@@ -194875,6 +195351,41 @@
           "date": {
             "type": "string",
             "format": "date"
+          }
+        }
+      },
+      "ApiResponseSlotTemplateListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SlotTemplateListResponse"
+          }
+        }
+      },
+      "SlotTemplateListResponse": {
+        "type": "object",
+        "properties": {
+          "meta": {
+            "$ref": "#/components/schemas/TemplateListMetaDto"
+          },
+          "templates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SlotTemplateResponse"
+            }
+          }
+        }
+      },
+      "TemplateListMetaDto": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalTemplates": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -216451,6 +216962,30 @@
         "properties": {
           "currentPassword": {
             "type": "string"
+          }
+        }
+      },
+      "ApiResponseDeleteSlotTemplateResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DeleteSlotTemplateResponse"
+          }
+        }
+      },
+      "DeleteSlotTemplateResponse": {
+        "type": "object",
+        "properties": {
+          "deleted": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orphanedSlotCount": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },

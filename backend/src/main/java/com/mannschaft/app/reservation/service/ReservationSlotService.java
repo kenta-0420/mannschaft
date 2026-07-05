@@ -20,7 +20,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -46,9 +45,6 @@ public class ReservationSlotService {
     /** 過去日判定の基準時刻（チーム TZ は将来拡張。現状はシステム既定 Clock）。テストは固定 Clock を注入する。 */
     private final Clock clock;
 
-    /** 予約枠の最小グリッド（分）。start/end の分はこの倍数（00 / 30）でなければならない。 */
-    private static final int SLOT_GRANULARITY_MINUTES = 30;
-
     /**
      * スロット削除ガードで「予約が紐づいている」と見なす active ステータス。
      * PENDING / CONFIRMED は将来の来店が期待されており、枠を消すとオーファン化する。
@@ -68,7 +64,7 @@ public class ReservationSlotService {
     public List<ReservationSlotResponse> listSlots(Long teamId, LocalDate from, LocalDate to) {
         List<ReservationSlotEntity> slots =
                 slotRepository.findByTeamIdAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(teamId, from, to);
-        return reservationMapper.toSlotResponseList(slots);
+        return enrichLineNames(reservationMapper.toSlotResponseList(slots));
     }
 
     /**
@@ -94,7 +90,7 @@ public class ReservationSlotService {
                         .filter(slot -> !unavailabilityChecker.isBlockedByAny(slot, blocks))
                         .toList();
 
-        return reservationMapper.toSlotResponseList(visible);
+        return enrichLineNames(reservationMapper.toSlotResponseList(visible));
     }
 
     /**
@@ -106,7 +102,7 @@ public class ReservationSlotService {
      */
     public ReservationSlotResponse getSlot(Long teamId, Long slotId) {
         ReservationSlotEntity entity = findSlotOrThrow(teamId, slotId);
-        return reservationMapper.toSlotResponse(entity);
+        return enrichLineNames(List.of(reservationMapper.toSlotResponse(entity))).get(0);
     }
 
     /**
@@ -124,10 +120,14 @@ public class ReservationSlotService {
             throw new BusinessException(ReservationErrorCode.PAST_DATE_SLOT);
         }
         validateTimeRange(request.getStartTime(), request.getEndTime());
+        // F03.4.2: ライン軸（lineId・任意）。指定時は当該チームのラインであることを検証する
+        // （FK は「行の存在」しか守れず他チームのラインを掴めるため、チーム帰属はアプリ層で担保する）。
+        validateLineBelongsToTeam(teamId, request.getLineId());
 
         ReservationSlotEntity entity = ReservationSlotEntity.builder()
                 .teamId(teamId)
                 .staffUserId(request.getStaffUserId())
+                .lineId(request.getLineId())
                 .title(request.getTitle())
                 .slotDate(request.getSlotDate())
                 .startTime(request.getStartTime())
@@ -167,6 +167,11 @@ public class ReservationSlotService {
 
         if (request.getStaffUserId() != null) {
             entity.changeStaffUser(request.getStaffUserId());
+        }
+        // F03.4.2: ライン軸の変更（null = 据え置き・部分更新）。チーム帰属を検証する。
+        if (request.getLineId() != null) {
+            validateLineBelongsToTeam(teamId, request.getLineId());
+            entity.changeLine(request.getLineId());
         }
         if (request.getTitle() != null) {
             entity.changeTitle(request.getTitle());
@@ -343,37 +348,52 @@ public class ReservationSlotService {
     }
 
     /**
-     * 時間範囲のバリデーション。createSlot / updateSlot の両方から呼ばれる単一の検証点。
+     * 時間範囲のバリデーション。createSlot / updateSlot / テンプレ CRUD から呼ばれる単一の検証点。
      *
-     * <p>検証内容:</p>
-     * <ol>
-     *   <li>start &lt; end（{@link ReservationErrorCode#INVALID_TIME_RANGE}・400）</li>
-     *   <li>② 30 分グリッド: start/end の分が {@code 00} または {@code 30} のみ、かつ枠長 &ge; 30 分
-     *       （{@link ReservationErrorCode#INVALID_SLOT_GRANULARITY}・400）</li>
-     * </ol>
+     * <p>F03.4.2 で検証本体を {@link SlotTimeValidator} へ抽出し、週間テンプレート
+     * （{@code ReservationSlotTemplateService}）と共有する（007/022 の再利用・別実装厳禁）。
      * 片方のみ指定（updateSlot で時刻据え置き等）の場合は検証をスキップする
-     * （updateSlot 側で「両方非 null のときのみ」呼ぶ前提）。
+     * （updateSlot 側で「両方非 null のときのみ」呼ぶ前提）。</p>
      */
     private void validateTimeRange(LocalTime startTime, LocalTime endTime) {
-        if (startTime == null || endTime == null) {
-            return;
-        }
-        if (!startTime.isBefore(endTime)) {
-            throw new BusinessException(ReservationErrorCode.INVALID_TIME_RANGE);
-        }
-        // ② 30 分グリッド + 最小枠 30 分
-        if (!isOnGranularityGrid(startTime) || !isOnGranularityGrid(endTime)
-                || Duration.between(startTime, endTime).toMinutes() < SLOT_GRANULARITY_MINUTES) {
-            throw new BusinessException(ReservationErrorCode.INVALID_SLOT_GRANULARITY);
-        }
+        SlotTimeValidator.validateTimeRange(startTime, endTime);
     }
 
     /**
-     * 時刻が 30 分グリッド（分が 00 / 30、秒・ナノ秒が 0）に乗っているか判定する。
+     * F03.4.2: lineId のチーム帰属検証（null = 共通枠で検証不要）。
+     *
+     * <p>他チーム/不存在（論理削除済み含む — {@code @SQLRestriction}）のラインは
+     * 400（{@link ReservationErrorCode#LINE_NOT_FOUND}=001 再利用）。</p>
      */
-    private boolean isOnGranularityGrid(LocalTime time) {
-        return time.getMinute() % SLOT_GRANULARITY_MINUTES == 0
-                && time.getSecond() == 0
-                && time.getNano() == 0;
+    private void validateLineBelongsToTeam(Long teamId, Long lineId) {
+        if (lineId == null) {
+            return;
+        }
+        lineRepository.findByIdAndTeamId(lineId, teamId)
+                .orElseThrow(() -> new BusinessException(ReservationErrorCode.LINE_NOT_FOUND));
+    }
+
+    /**
+     * F03.4.2: レスポンスへライン名を一括解決して後付けする（F-11 の {@code lineName}）。
+     *
+     * <p>ライン軸枠（lineId 非 null）が 1 件もなければ何もしない（既存挙動と追加クエリゼロで互換）。</p>
+     */
+    private List<ReservationSlotResponse> enrichLineNames(List<ReservationSlotResponse> responses) {
+        List<Long> lineIds = responses.stream()
+                .map(ReservationSlotResponse::getLineId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        if (lineIds.isEmpty()) {
+            return responses;
+        }
+        java.util.Map<Long, String> names = new java.util.HashMap<>();
+        lineRepository.findAllById(lineIds)
+                .forEach(line -> names.put(line.getId(), line.getName()));
+        return responses.stream()
+                .map(response -> response.getLineId() != null
+                        ? response.toBuilder().lineName(names.get(response.getLineId())).build()
+                        : response)
+                .toList();
     }
 }

@@ -81,6 +81,46 @@ public interface ReservationSlotRepository extends JpaRepository<ReservationSlot
     List<ReservationSlotEntity> findByLineIdAndSlotDateGreaterThanEqual(Long lineId, LocalDate date);
 
     /**
+     * 生成セル 1 枠の INSERT（冪等の最終防御込み・F03.4.2 §5.2/§5.3）。
+     *
+     * <p>{@code INSERT IGNORE} は冪等 UNIQUE {@code uq_rs_template_cell} との衝突
+     * （並行 generate / 日次バッチ競合・purge 済み論理削除行との衝突）を<b>例外ではなく 0 行更新</b>として
+     * 返す — §5.3「UNIQUE 制約違反を捕捉してスキップ扱い（エラーにしない）」の実装。
+     * 例外方式（DataIntegrityViolationException 捕捉）だと Hibernate セッションが汚染され
+     * 日付チャンク内の後続セルを巻き込むため、IGNORE 方式で同一意味論を実現する。</p>
+     *
+     * <p>Hibernate のネイティブクエリとして実行することで、TIME/DATE/BINARY(16) のパラメータバインドが
+     * エンティティ永続化と<b>同一の変換規則</b>になる（素の JdbcTemplate 直挿入は MySQL Connector/J の
+     * タイムゾーン変換が Hibernate 読取と非対称になり、JVM≠DB タイムゾーン環境で時刻が +9h ずれる
+     * 実測バグがあったため禁止）。{@code booked_count}/{@code slot_status}/{@code is_exception} は
+     * DDL 既定値（0 / 'AVAILABLE' / FALSE）に委ねる。</p>
+     *
+     * @param templateId 生成元テンプレート ID（UUIDv7 の BINARY(16) 表現・{@code UuidV7Entity} と同じ
+     *                   ビッグエンディアン MSB→LSB）
+     * @return 1 = 挿入成功 / 0 = UNIQUE 衝突スキップ
+     */
+    @Modifying
+    @Query(value = "INSERT IGNORE INTO reservation_slots "
+            + "(team_id, line_id, staff_user_id, template_id, slot_date, start_time, end_time, "
+            + " capacity, title, price, approval_mode, created_by, created_at, updated_at) "
+            + "VALUES (:teamId, :lineId, :staffUserId, :templateId, :slotDate, :startTime, :endTime, "
+            + " :capacity, :title, :price, :approvalMode, :createdBy, NOW(6), NOW(6))",
+            nativeQuery = true)
+    int insertGeneratedCellIgnoreDuplicate(
+            @Param("teamId") Long teamId,
+            @Param("lineId") Long lineId,
+            @Param("staffUserId") Long staffUserId,
+            @Param("templateId") byte[] templateId,
+            @Param("slotDate") LocalDate slotDate,
+            @Param("startTime") java.time.LocalTime startTime,
+            @Param("endTime") java.time.LocalTime endTime,
+            @Param("capacity") Integer capacity,
+            @Param("title") String title,
+            @Param("price") java.math.BigDecimal price,
+            @Param("approvalMode") String approvalMode,
+            @Param("createdBy") Long createdBy);
+
+    /**
      * 予約数を +1 し、定員に達したら FULL 化する<b>条件付きアトミック UPDATE</b>（オーバーブッキング防止の並行制御）。
      *
      * <p>設計書 F03.4 §3 の「booked_count の並行更新」に従い、単一行のアトミック更新で満席超過を防ぐ

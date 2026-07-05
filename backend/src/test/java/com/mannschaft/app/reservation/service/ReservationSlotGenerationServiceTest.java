@@ -18,8 +18,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionStatus;
@@ -36,7 +34,6 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -66,9 +63,6 @@ class ReservationSlotGenerationServiceTest {
 
     @Mock
     private ReservationBusinessHourRepository businessHourRepository;
-
-    @Mock
-    private NamedParameterJdbcTemplate jdbcTemplate;
 
     private ReservationSlotGenerationService service;
 
@@ -104,12 +98,17 @@ class ReservationSlotGenerationServiceTest {
     @BeforeEach
     void setUp() {
         service = new ReservationSlotGenerationService(
-                templateRepository, slotRepository, businessHourRepository,
-                jdbcTemplate, NO_OP_TXM, FIXED_CLOCK);
+                templateRepository, slotRepository, businessHourRepository, NO_OP_TXM, FIXED_CLOCK);
         // 既定スタブ: 既存セルなし・INSERT は常に成功（1 行）
         given(slotRepository.findGeneratedCellKeysByTeamIdAndSlotDateBetween(eq(TEAM_ID), any(), any()))
                 .willReturn(List.of());
-        given(jdbcTemplate.update(anyString(), any(SqlParameterSource.class))).willReturn(1);
+        stubInsertReturning(1);
+    }
+
+    private void stubInsertReturning(int affectedRows) {
+        given(slotRepository.insertGeneratedCellIgnoreDuplicate(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .willReturn(affectedRows);
     }
 
     private ReservationSlotTemplateEntity monTemplate(LocalTime start, LocalTime end) {
@@ -125,14 +124,37 @@ class ReservationSlotGenerationServiceTest {
         return entity;
     }
 
-    private ReservationBusinessHourEntity openMonday(LocalTime open, LocalTime close) {
+    private ReservationBusinessHourEntity openDay(String dow, LocalTime open, LocalTime close) {
         return ReservationBusinessHourEntity.builder()
                 .teamId(TEAM_ID)
-                .dayOfWeek("MON")
+                .dayOfWeek(dow)
                 .isOpen(true)
                 .openTime(open)
                 .closeTime(close)
                 .build();
+    }
+
+    private ReservationBusinessHourEntity openMonday(LocalTime open, LocalTime close) {
+        return openDay("MON", open, close);
+    }
+
+    /** 挿入呼び出しの (slotDate, startTime, endTime) を呼び出し順に検証するヘルパー。 */
+    private record InsertedCell(LocalDate slotDate, LocalTime startTime, LocalTime endTime) {}
+
+    private List<InsertedCell> captureInsertedCells(int expectedCount) {
+        ArgumentCaptor<LocalDate> dateCaptor = ArgumentCaptor.forClass(LocalDate.class);
+        ArgumentCaptor<LocalTime> startCaptor = ArgumentCaptor.forClass(LocalTime.class);
+        ArgumentCaptor<LocalTime> endCaptor = ArgumentCaptor.forClass(LocalTime.class);
+        verify(slotRepository, times(expectedCount)).insertGeneratedCellIgnoreDuplicate(
+                any(), any(), any(), any(),
+                dateCaptor.capture(), startCaptor.capture(), endCaptor.capture(),
+                any(), any(), any(), any(), any());
+        return java.util.stream.IntStream.range(0, expectedCount)
+                .mapToObj(i -> new InsertedCell(
+                        dateCaptor.getAllValues().get(i),
+                        startCaptor.getAllValues().get(i),
+                        endCaptor.getAllValues().get(i)))
+                .toList();
     }
 
     // ========================================
@@ -161,20 +183,16 @@ class ReservationSlotGenerationServiceTest {
             assertThat(result.getHorizonFrom()).isEqualTo(TOMORROW);
             assertThat(result.getHorizonTo()).isEqualTo(LocalDate.of(2026, 7, 12));
 
-            ArgumentCaptor<SqlParameterSource> captor = ArgumentCaptor.forClass(SqlParameterSource.class);
-            verify(jdbcTemplate, times(6)).update(anyString(), captor.capture());
-            List<SqlParameterSource> params = captor.getAllValues();
-            // 先頭セル: 2026-07-06 10:00-10:30・line/capacity/team が引き継がれる
-            assertThat(params.get(0).getValue("slotDate")).isEqualTo(LocalDate.of(2026, 7, 6));
-            assertThat(params.get(0).getValue("startTime")).isEqualTo(LocalTime.of(10, 0));
-            assertThat(params.get(0).getValue("endTime")).isEqualTo(LocalTime.of(10, 30));
-            assertThat(params.get(0).getValue("teamId")).isEqualTo(TEAM_ID);
-            assertThat(params.get(0).getValue("lineId")).isEqualTo(LINE_ID);
-            assertThat(params.get(0).getValue("capacity")).isEqualTo(1);
-            assertThat(params.get(0).getValue("createdBy")).isEqualTo(USER_ID);
-            // 末尾セル: 12:30-13:00
-            assertThat(params.get(5).getValue("startTime")).isEqualTo(LocalTime.of(12, 30));
-            assertThat(params.get(5).getValue("endTime")).isEqualTo(LocalTime.of(13, 0));
+            List<InsertedCell> cells = captureInsertedCells(6);
+            // 先頭セル: 2026-07-06 10:00-10:30 / 末尾セル: 12:30-13:00
+            assertThat(cells.get(0)).isEqualTo(
+                    new InsertedCell(LocalDate.of(2026, 7, 6), LocalTime.of(10, 0), LocalTime.of(10, 30)));
+            assertThat(cells.get(5)).isEqualTo(
+                    new InsertedCell(LocalDate.of(2026, 7, 6), LocalTime.of(12, 30), LocalTime.of(13, 0)));
+            // ライン・チーム・capacity=1・実行者が引き継がれる
+            verify(slotRepository, times(6)).insertGeneratedCellIgnoreDuplicate(
+                    eq(TEAM_ID), eq(LINE_ID), any(), any(byte[].class),
+                    any(), any(), any(), eq(1), any(), any(), any(), eq(USER_ID));
         }
 
         @Test
@@ -187,18 +205,15 @@ class ReservationSlotGenerationServiceTest {
             sunTpl.setId(UUID.randomUUID());
             given(templateRepository.findByTeamIdAndIsActiveTrue(TEAM_ID)).willReturn(List.of(sunTpl));
             given(businessHourRepository.findByTeamIdOrderByIdAsc(TEAM_ID))
-                    .willReturn(List.of(ReservationBusinessHourEntity.builder()
-                            .teamId(TEAM_ID).dayOfWeek("SUN").isOpen(true)
-                            .openTime(LocalTime.of(9, 0)).closeTime(LocalTime.of(18, 0)).build()));
+                    .willReturn(List.of(openDay("SUN", LocalTime.of(9, 0), LocalTime.of(18, 0))));
 
             // When
             GenerateSlotsResponse result = service.generateForTeam(TEAM_ID, 1, USER_ID);
 
             // Then: 生成は 7/12（翌週日曜）の 1 セルのみ。当日 7/5 は含まれない。
             assertThat(result.getGeneratedCount()).isEqualTo(1);
-            ArgumentCaptor<SqlParameterSource> captor = ArgumentCaptor.forClass(SqlParameterSource.class);
-            verify(jdbcTemplate).update(anyString(), captor.capture());
-            assertThat(captor.getValue().getValue("slotDate")).isEqualTo(LocalDate.of(2026, 7, 12));
+            List<InsertedCell> cells = captureInsertedCells(1);
+            assertThat(cells.get(0).slotDate()).isEqualTo(LocalDate.of(2026, 7, 12));
         }
 
         @Test
@@ -220,7 +235,8 @@ class ReservationSlotGenerationServiceTest {
             // Then
             assertThat(result.getGeneratedCount()).isZero();
             assertThat(result.getSkippedExistingCount()).isEqualTo(6);
-            verify(jdbcTemplate, never()).update(anyString(), any(SqlParameterSource.class));
+            verify(slotRepository, never()).insertGeneratedCellIgnoreDuplicate(
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
         }
 
         private Object[] key(LocalTime startTime) {
@@ -228,14 +244,14 @@ class ReservationSlotGenerationServiceTest {
         }
 
         @Test
-        @DisplayName("F-6: 並行実行で先読みをすり抜けた UNIQUE 衝突（INSERT 0 行）はエラーにせず skippedExistingCount 扱い")
+        @DisplayName("F-6: 並行実行で先読みをすり抜けた UNIQUE 衝突（INSERT IGNORE=0 行）はエラーにせず skippedExistingCount 扱い")
         void 生成_UNIQUE衝突はスキップ扱い() {
             // Given: INSERT IGNORE が重複により 0 行を返す（DB 最終防御）
             given(templateRepository.findByTeamIdAndIsActiveTrue(TEAM_ID))
                     .willReturn(List.of(monTemplate(LocalTime.of(10, 0), LocalTime.of(11, 0))));
             given(businessHourRepository.findByTeamIdOrderByIdAsc(TEAM_ID))
                     .willReturn(List.of(openMonday(LocalTime.of(9, 0), LocalTime.of(18, 0))));
-            given(jdbcTemplate.update(anyString(), any(SqlParameterSource.class))).willReturn(0);
+            stubInsertReturning(0);
 
             // When
             GenerateSlotsResponse result = service.generateForTeam(TEAM_ID, 1, USER_ID);
@@ -261,7 +277,8 @@ class ReservationSlotGenerationServiceTest {
             // Then
             assertThat(result.getGeneratedCount()).isZero();
             assertThat(result.getSkippedClosedDayCount()).isEqualTo(6);
-            verify(jdbcTemplate, never()).update(anyString(), any(SqlParameterSource.class));
+            verify(slotRepository, never()).insertGeneratedCellIgnoreDuplicate(
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
         }
 
         @Test
@@ -280,10 +297,9 @@ class ReservationSlotGenerationServiceTest {
             assertThat(result.getGeneratedCount()).isEqualTo(4);
             assertThat(result.getSkippedOutsideHoursCount()).isEqualTo(4);
             // 境界: close_time ちょうど（11:30-12:00）で終わるセルは生成される（セル全体が営業時間内判定）
-            ArgumentCaptor<SqlParameterSource> captor = ArgumentCaptor.forClass(SqlParameterSource.class);
-            verify(jdbcTemplate, times(4)).update(anyString(), captor.capture());
-            assertThat(captor.getAllValues().get(3).getValue("startTime")).isEqualTo(LocalTime.of(11, 30));
-            assertThat(captor.getAllValues().get(3).getValue("endTime")).isEqualTo(LocalTime.of(12, 0));
+            List<InsertedCell> cells = captureInsertedCells(4);
+            assertThat(cells.get(3).startTime()).isEqualTo(LocalTime.of(11, 30));
+            assertThat(cells.get(3).endTime()).isEqualTo(LocalTime.of(12, 0));
         }
 
         @Test
@@ -298,7 +314,8 @@ class ReservationSlotGenerationServiceTest {
             GenerateSlotsResponse result = service.generateForTeam(TEAM_ID, 1, USER_ID);
             assertThat(result.getGeneratedCount()).isZero();
             assertThat(result.getSkippedClosedDayCount()).isEqualTo(6);
-            verify(jdbcTemplate, never()).update(anyString(), any(SqlParameterSource.class));
+            verify(slotRepository, never()).insertGeneratedCellIgnoreDuplicate(
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
         }
 
         @Test
@@ -324,11 +341,18 @@ class ReservationSlotGenerationServiceTest {
             // Given
             given(templateRepository.findByTeamIdAndIsActiveTrue(TEAM_ID)).willReturn(List.of());
 
-            // When / Then
+            // When / Then: 汎用 400（COMMON_001・新規コードなし）＋フィールドエラーで具体メッセージを返す（§4）
             assertThatThrownBy(() -> service.generateForTeam(TEAM_ID, null, USER_ID))
                     .isInstanceOf(BusinessException.class)
-                    .hasMessageContaining("有効なテンプレート");
-            verify(jdbcTemplate, never()).update(anyString(), any(SqlParameterSource.class));
+                    .satisfies(e -> {
+                        BusinessException be = (BusinessException) e;
+                        assertThat(be.getErrorCode().getCode()).isEqualTo("COMMON_001");
+                        assertThat(be.getFieldErrors())
+                                .anySatisfy(fe -> assertThat(fe.getMessage())
+                                        .contains("有効なテンプレートがありません"));
+                    });
+            verify(slotRepository, never()).insertGeneratedCellIgnoreDuplicate(
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
         }
 
         @Test
@@ -360,18 +384,14 @@ class ReservationSlotGenerationServiceTest {
         @Test
         @DisplayName("F-9①: 前日実行済み（MAX(slot_date)=horizon末尾-1）なら新規 INSERT は末尾1日分のみ（自然収束）")
         void 差分生成_通常運転は末尾1日() {
-            // Given: 生成済み最終日 = 2026-08-01（tomorrow+26日）。差分レンジ = [8/2, 8/2]。
-            //        8/2 は日曜のため MON テンプレは 0 件…では観測できないので、
-            //        テンプレは全曜日相当として SUN を使う（8/2 = 日曜）。
+            // Given: SUN テンプレ・生成済み最終日 = 2026-08-01。差分レンジ = [8/2, 8/2]（8/2 は日曜）。
             ReservationSlotTemplateEntity sunTpl = ReservationSlotTemplateEntity.builder()
                     .teamId(TEAM_ID).dayOfWeek(ReservationDayOfWeek.SUN)
                     .startTime(LocalTime.of(10, 0)).endTime(LocalTime.of(11, 0)).capacity(1).build();
             sunTpl.setId(TEMPLATE_ID);
             given(templateRepository.findByTeamIdAndIsActiveTrue(TEAM_ID)).willReturn(List.of(sunTpl));
             given(businessHourRepository.findByTeamIdOrderByIdAsc(TEAM_ID))
-                    .willReturn(List.of(ReservationBusinessHourEntity.builder()
-                            .teamId(TEAM_ID).dayOfWeek("SUN").isOpen(true)
-                            .openTime(LocalTime.of(9, 0)).closeTime(LocalTime.of(18, 0)).build()));
+                    .willReturn(List.of(openDay("SUN", LocalTime.of(9, 0), LocalTime.of(18, 0))));
             given(slotRepository.findMaxGeneratedSlotDateByTemplateId(TEMPLATE_ID))
                     .willReturn(LocalDate.of(2026, 8, 1));
 
@@ -380,16 +400,14 @@ class ReservationSlotGenerationServiceTest {
 
             // Then: 差分 [8/2, 8/2] に日曜 8/2 が 1 回 → 2 セルのみ生成
             assertThat(result.getGeneratedCount()).isEqualTo(2);
-            ArgumentCaptor<SqlParameterSource> captor = ArgumentCaptor.forClass(SqlParameterSource.class);
-            verify(jdbcTemplate, times(2)).update(anyString(), captor.capture());
-            assertThat(captor.getAllValues().get(0).getValue("slotDate")).isEqualTo(LocalDate.of(2026, 8, 2));
+            List<InsertedCell> cells = captureInsertedCells(2);
+            assertThat(cells.get(0).slotDate()).isEqualTo(LocalDate.of(2026, 8, 2));
         }
 
         @Test
-        @DisplayName("F-9②a: weeks=1 で手動 generate 済み（MAX=7/12）のチームは day8〜27 が埋まる（生成穴の自己修復）")
+        @DisplayName("F-9②a: weeks=1 で手動 generate 済み（MON の MAX=7/6）のチームは day8〜27 が埋まる（生成穴の自己修復）")
         void 差分生成_weeks1の穴が埋まる() {
-            // Given: MON テンプレ・生成済み最終日 7/12…ではなく MON の最終生成日 7/6。
-            //        差分レンジ = [7/7, 8/2] に月曜 7/13, 7/20, 7/27 の 3 回 → 3 セル。
+            // Given: MON テンプレ・生成済み最終日 7/6。差分レンジ = [7/7, 8/2] に月曜 7/13, 7/20, 7/27 → 3 セル。
             given(templateRepository.findByTeamIdAndIsActiveTrue(TEAM_ID))
                     .willReturn(List.of(monTemplate(LocalTime.of(10, 0), LocalTime.of(10, 30))));
             given(businessHourRepository.findByTeamIdOrderByIdAsc(TEAM_ID))
@@ -402,10 +420,9 @@ class ReservationSlotGenerationServiceTest {
 
             // Then
             assertThat(result.getGeneratedCount()).isEqualTo(3);
-            ArgumentCaptor<SqlParameterSource> captor = ArgumentCaptor.forClass(SqlParameterSource.class);
-            verify(jdbcTemplate, times(3)).update(anyString(), captor.capture());
-            assertThat(captor.getAllValues().get(0).getValue("slotDate")).isEqualTo(LocalDate.of(2026, 7, 13));
-            assertThat(captor.getAllValues().get(2).getValue("slotDate")).isEqualTo(LocalDate.of(2026, 7, 27));
+            List<InsertedCell> cells = captureInsertedCells(3);
+            assertThat(cells.get(0).slotDate()).isEqualTo(LocalDate.of(2026, 7, 13));
+            assertThat(cells.get(2).slotDate()).isEqualTo(LocalDate.of(2026, 7, 27));
         }
 
         @Test
@@ -441,7 +458,8 @@ class ReservationSlotGenerationServiceTest {
 
             // Then
             assertThat(result.getGeneratedCount()).isZero();
-            verify(jdbcTemplate, never()).update(anyString(), any(SqlParameterSource.class));
+            verify(slotRepository, never()).insertGeneratedCellIgnoreDuplicate(
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
         }
 
         @Test

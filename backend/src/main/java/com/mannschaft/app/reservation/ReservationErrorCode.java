@@ -98,20 +98,20 @@ public enum ReservationErrorCode implements ErrorCode {
     PAST_DATE_SLOT("RESERVATION_023", "過去の日付には予約枠を作成できません", Severity.WARN),
 
     /**
-     * 予約ライン数の上限（5 本）超過（入力不正なので 400）。
+     * 予約ライン数の上限（20 本）超過（入力不正なので 400）。
      *
-     * <p>F03.4 §1/§2 「1 チームあたり最大 5 本の予約ライン」を Service 層
-     * （{@code ReservationLineService.createLine}）で担保する（段階拡張バックログ ④）。</p>
+     * <p>F03.4 §1/§2 の上限を Service 層（{@code ReservationLineService.createLine}）で担保する
+     * （段階拡張バックログ ④）。F03.4.2 §3.4 で 5→20 へ拡張（コード再利用・番号変更なし）。</p>
      */
-    LINE_LIMIT_EXCEEDED("RESERVATION_024", "予約ラインはチームあたり最大5本までです", Severity.WARN),
+    LINE_LIMIT_EXCEEDED("RESERVATION_024", "予約ラインはチームあたり最大20本までです", Severity.WARN),
 
     /**
-     * 予約ラインの表示順（display_order）がチーム内許可範囲（1〜5）外（入力不正なので 400）。
+     * 予約ラインの表示順（display_order）がチーム内許可範囲（1〜20）外（入力不正なので 400）。
      *
-     * <p>F03.4 §2 「{@code display_order} はチーム内で 1〜5 の範囲。Service 層で保証」を担保する
-     * （段階拡張バックログ ④ の付随検証）。</p>
+     * <p>F03.4 §2 「{@code display_order} は Service 層で保証」を担保する（段階拡張バックログ ④ の付随検証）。
+     * F03.4.2 §3.4 で範囲を 1〜5 → 1〜20 へ拡張。</p>
      */
-    INVALID_DISPLAY_ORDER("RESERVATION_025", "表示順は1〜5の範囲で指定してください", Severity.WARN),
+    INVALID_DISPLAY_ORDER("RESERVATION_025", "表示順は1〜20の範囲で指定してください", Severity.WARN),
 
     /**
      * キャンセル締切超過（会員キャンセル拒否・入力不正なので 400）。
