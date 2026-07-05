@@ -92,9 +92,9 @@ async function setup(): Promise<void> {
         biometricFailed.value = true
         loadError.value = t('wallet.presentation.biometric_failed')
         loading.value = false
-        // 編集画面へ戻すまでの猶予として 1.5 秒だけメッセージを表示
+        // グループ選択画面へ戻すまでの猶予として 1.5 秒だけメッセージを表示
         window.setTimeout(() => {
-          router.push(`/wallet/groups/${groupId.value}`)
+          router.push('/wallet')
         }, 1500)
         return
       }
@@ -193,7 +193,9 @@ function previousCard(): void {
 }
 
 async function closePresentation(): Promise<void> {
-  await router.push(`/wallet/groups/${groupId.value}`)
+  // UX 再構成（案A）でグループ選択タイルから提示モードを開くため、
+  // 閉じたらグループ選択画面（/wallet）へ戻る。グループ編集画面には戻さない。
+  await router.push('/wallet')
 }
 
 // ─────────────────────────────────────────────

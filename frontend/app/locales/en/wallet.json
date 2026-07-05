@@ -30,7 +30,9 @@
       "no_groups_hint": "Group cards you often present together to switch quickly at the register",
       "edit": "Edit",
       "edit_group": "Edit {name}",
-      "start_presentation_for": "Start presentation mode for {name}"
+      "start_presentation_for": "Start presentation mode for {name}",
+      "show_barcode_tooltip": "Show barcode",
+      "edit_tooltip": "Edit group"
     },
     "settings": {
       "title": "Wallet Settings",

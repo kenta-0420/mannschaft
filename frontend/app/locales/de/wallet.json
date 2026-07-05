@@ -30,7 +30,9 @@
       "no_groups_hint": "Gruppieren Sie Karten, die Sie oft zusammen vorzeigen, für schnelles Wechseln an der Kasse",
       "edit": "Bearbeiten",
       "edit_group": "{name} bearbeiten",
-      "start_presentation_for": "Präsentationsmodus für {name} starten"
+      "start_presentation_for": "Präsentationsmodus für {name} starten",
+      "show_barcode_tooltip": "Barcode anzeigen",
+      "edit_tooltip": "Gruppe bearbeiten"
     },
     "settings": {
       "title": "Wallet-Einstellungen",

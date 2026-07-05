@@ -43,12 +43,20 @@ const primaryAriaLabel = computed(() =>
     ? t('wallet.group.edit_group', { name: props.group.name })
     : t('wallet.group.start_presentation_for', { name: props.group.name }),
 )
+
+/** ツールチップ: 空グループは編集、それ以外はバーコード表示を示す。 */
+const primaryTooltip = computed(() =>
+  isEmpty.value
+    ? t('wallet.group.edit_tooltip')
+    : t('wallet.group.show_barcode_tooltip'),
+)
 </script>
 
 <template>
   <div class="group-tile">
     <NuxtLink
       :to="primaryTarget"
+      v-tooltip.top="primaryTooltip"
       class="group-tile__main hover:bg-surface-50 focus-visible:bg-surface-50 dark:hover:bg-surface-800 dark:focus-visible:bg-surface-800"
       :aria-label="primaryAriaLabel"
     >

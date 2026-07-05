@@ -30,7 +30,9 @@
       "no_groups_hint": "よく一緒に提示するカードをグループ化すると、レジで切り替えやすくなります",
       "edit": "編集",
       "edit_group": "{name} を編集",
-      "start_presentation_for": "{name} の提示モードを開始"
+      "start_presentation_for": "{name} の提示モードを開始",
+      "show_barcode_tooltip": "バーコードを表示",
+      "edit_tooltip": "グループを編集"
     },
     "settings": {
       "title": "ウォレット設定",
