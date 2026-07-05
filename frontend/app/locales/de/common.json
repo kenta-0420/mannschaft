@@ -84,7 +84,8 @@
     "logout": "Abmelden",
     "update": "Aktualisieren",
     "see_more": "Mehr anzeigen",
-    "view_all": "Alle anzeigen"
+    "view_all": "Alle anzeigen",
+    "undo": "Rückgängig"
   },
   "label": {
     "required": "Pflichtfeld",

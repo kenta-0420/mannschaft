@@ -84,7 +84,8 @@
     "logout": "Cerrar sesion",
     "update": "Actualizar",
     "see_more": "Ver más",
-    "view_all": "Ver todo"
+    "view_all": "Ver todo",
+    "undo": "Deshacer"
   },
   "label": {
     "required": "Obligatorio",
