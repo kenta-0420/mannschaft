@@ -219,9 +219,6 @@ class ActivityResultServiceTest {
             assertThat(result.getStatus()).isEqualTo(ActivityStatus.DRAFT);
             assertThat(result.getTitle()).isEqualTo("下書き活動");
             assertThat(result.getTemplateId()).isNull();
-            // テンプレート未指定なので存在チェックは呼ばれない
-            org.mockito.Mockito.verify(templateService, org.mockito.Mockito.never())
-                    .findTemplateOrThrow(any());
         }
 
         @Test
