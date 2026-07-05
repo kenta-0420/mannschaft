@@ -336,10 +336,14 @@
     "legal": {
       "terms": {
         "title": "Terms of Service",
-        "last_updated": "Last updated",
-        "effective_date": "2026-07-05",
         "seo_description": "Mannschaft Terms of Service: scope, account management, responsibilities of team administrators, fees, user content, disclaimers and governing law.",
         "language_note": "The Japanese version of these Terms is the authoritative text. Translations are provided for reference only; in case of any discrepancy, the Japanese version prevails.",
+        "version_notice": "Version 1.0.0 — Enacted July 5, 2026",
+        "enacted_label": "Effective date",
+        "enacted_date": "2026-07-05",
+        "revised_label": "Last revised",
+        "revised_date": "2026-07-05",
+        "toc_label": "Table of contents",
         "sections": [
           {
             "title": "Article 1 (Scope and Definitions)",
@@ -358,15 +362,16 @@
           {
             "title": "Article 3 (Account Management)",
             "content": [
-              "Users shall manage their email address, password and other credentials at their own responsibility and shall not share, lend or transfer them to any third party. The Company recommends the use of two-factor authentication (SMS or authenticator apps) and passkeys.",
-              "Except where the Company acts intentionally or with gross negligence, damage arising from inadequate management of credentials or from third-party use shall be borne by the User. Users shall promptly notify the Company upon becoming aware of possible unauthorized use of their account."
+              "Users shall manage their email address, password and other credentials at their own responsibility and shall not share, lend or transfer them to any third party. The Company recommends the use of two-factor authentication (authenticator apps) and passkeys.",
+              "Except where the Company acts intentionally or with gross negligence, damage arising from inadequate management of credentials or from third-party use shall be borne by the User. Users shall promptly notify the Company upon becoming aware of possible unauthorized use of their account.",
+              "Users shall prepare, at their own cost and responsibility, the communication devices, software and other environment necessary to use the Service, and shall bear their own communication charges. The recommended environment is indicated within the Service."
             ]
           },
           {
             "title": "Article 4 (Use by Minors)",
             "content": [
-              "Minors shall obtain the consent of a legal representative (such as a parent) before using the Service. By completing registration, a minor is deemed to have obtained such consent.",
-              "Where a school or other institution uses the Service with the participation of children or students, the Administrator of that institution is responsible for obtaining the necessary consents and taking other appropriate measures. The handling of minors’ personal data is governed by the Privacy Policy."
+              "Minors shall obtain the consent of a legal representative (parent or guardian) before using the Service. Registration by a person under 18 becomes effective only once linkage with the legal representative’s account (approval of consent) is completed, and the Service may not be used until such linkage is completed. The Company may request confirmation of consent where necessary.",
+              "Where a school or other organization creates a Team and uses the Service with the participation of children or students, the Administrator of that Team is responsible for obtaining the necessary consents and taking other appropriate measures. The handling of minors’ personal data is governed by the Privacy Policy."
             ]
           },
           {
@@ -374,7 +379,8 @@
             "content": [
               "Administrators acknowledge that, through the management of a Team, they handle members’ personal data (including names and contact details as well as attendance, dues payment status and health-related information such as treatment records stored in the health-record feature) and shall comply with the Act on the Protection of Personal Information and all other applicable laws.",
               "Administrators shall use members’ personal data only for the purpose of managing the Team, shall not use it for other purposes or provide it to third parties without consent, and are responsible for properly explaining to members how their information is used.",
-              "Disputes arising within a Team (regarding dues, management policy, conflicts between members, etc.) shall be resolved between the parties concerned. The Company has no obligation to intervene except where it acts intentionally or with gross negligence."
+              "Disputes arising within a Team (regarding dues, management policy, conflicts between members, etc.) shall be resolved between the parties concerned. The Company has no obligation to intervene except where it acts intentionally or with gross negligence.",
+              "Where a Team is dissolved or deleted, the handling of data stored in that Team (notifying members, preserving necessary data, etc.) is the responsibility of the Administrator. If an Administrator withdraws or is absent for an extended period, the Company may transfer authority to another member or take other measures necessary to maintain the operation of the Team."
             ]
           },
           {
@@ -382,7 +388,8 @@
             "content": [
               "The core features of the Service are free of charge. Certain additional features (such as optional modules) may be subject to fees depending on the number or nature of the features selected; fees and billing conditions are displayed within the Service.",
               "The Company may change the content and fees of paid plans. Any change will be announced in advance within the Service or by other appropriate means.",
-              "Fees already paid are, in principle, non-refundable, except where a refund is required by law."
+              "Fees already paid are, in principle, non-refundable, except where a refund is required by law.",
+              "Paid plans renew automatically on the same conditions unless the User completes the cancellation procedure. Cancellation takes effect at the end of the current billing period, and no pro-rata refund is made for mid-period cancellation, except where a refund is required by law."
             ]
           },
           {
@@ -393,11 +400,12 @@
             ]
           },
           {
-            "title": "Article 8 (User Content)",
+            "title": "Article 8 (Content)",
             "content": [
               "Copyright and other rights in Content belong to the User or the rightful owner.",
               "Users grant the Company a non-exclusive, royalty-free licence to use Content (by reproduction, display, adaptation, etc.) to the extent necessary to provide, maintain and improve the Service and to address defects.",
-              "Users shall endeavour to keep their own backups of important data, for example by using the Service’s export features."
+              "Users shall endeavour to keep their own backups of important data, for example by using the Service’s export features.",
+              "Content that a User or Administrator sets to public may be viewed by an unspecified audience, including third parties not registered with the Service. The User or Administrator who made the Content public is responsible for the visibility settings and the consequences of publication."
             ]
           },
           {
@@ -416,7 +424,7 @@
             "title": "Article 11 (Privacy and Personal Data)",
             "content": [
               "The Company’s handling of personal data is governed by the Privacy Policy. Users shall agree to the Privacy Policy before using the Service.",
-              "Within a Team, the registered name and display name (real name) are, in principle, visible to other members. Users join Teams on the understanding of and with consent to this.",
+              "Within a Team, the registered full name is, in principle, displayed to other members. Publicly visible profiles use a separately configured nickname (display name). Users join Teams with knowledge of and consent to the foregoing.",
               "In the social features, Users may create and act through anonymous personas (up to three). These Terms also apply to activity under anonymous personas, and the Company will respond to lawful disclosure requests based on registered information to the extent required by law."
             ]
           },
@@ -428,7 +436,15 @@
             ]
           },
           {
-            "title": "Article 13 (Changes, Suspension and Termination of the Service)",
+            "title": "Article 13 (Outsourcing and Advertising)",
+            "content": [
+              "The Company may outsource all or part of the operation of the Service to third parties. The handling of personal data by contractors is governed by the Privacy Policy.",
+              "The Company may display advertisements of the Company or third parties on the Service. Transactions with advertisers are conducted at the User’s own responsibility, and the Company is not liable for damage arising from such transactions except in cases of the Company’s intent or gross negligence.",
+              "The types of targeted advertising and the opt-out procedure are governed by the Privacy Policy."
+            ]
+          },
+          {
+            "title": "Article 14 (Changes, Suspension and Termination of the Service)",
             "content": [
               "The Company may change, add to or discontinue the content of the Service at any time. Changes that materially affect Users will be announced in advance within the Service or by other appropriate means.",
               "The Company may temporarily suspend all or part of the Service due to maintenance, failures, natural disasters or other unavoidable circumstances.",
@@ -436,66 +452,78 @@
             ]
           },
           {
-            "title": "Article 14 (Withdrawal)",
+            "title": "Article 15 (Withdrawal)",
             "content": [
               "Users may request withdrawal at any time through the procedure prescribed by the Company.",
               "Upon withdrawal, the Company anonymizes personal data such as name, email address and avatar. Posts, activity history and statistical data remain on the Service in a form that cannot identify the individual. The timing of erasure of personal data and the procedure for deletion requests under applicable law are governed by Article 11 of the Privacy Policy."
             ]
           },
           {
-            "title": "Article 15 (Suspension and Deregistration)",
+            "title": "Article 16 (Suspension and Deregistration)",
             "content": [
               "If the Company reasonably judges that a User has breached or is likely to breach these Terms, it may, without prior notice, delete the User’s posts, temporarily suspend use or deregister the User.",
               "The Company is not liable for damage caused to Users by measures under this Article, except where it acts intentionally or with gross negligence."
             ]
           },
           {
-            "title": "Article 16 (No Warranty; Limitation of Liability)",
+            "title": "Article 17 (No Assignment; Business Transfer)",
             "content": [
-              "The Company provides the Service on an as-is basis and does not warrant its fitness for any particular purpose, completeness, accuracy or continuity.",
-              "Where a User suffers damage attributable to the Company, and except in cases of the Company’s intent or gross negligence, the Company’s liability is limited to direct and ordinary damage and capped at the total fees the User paid to the Company in the twelve months preceding the occurrence of the damage.",
-              "Notwithstanding the preceding paragraph, if any clause limiting the Company’s liability is held invalid under the Consumer Contract Act or other laws, that clause shall apply to the maximum extent permitted by such laws."
+              "Users may not assign, transfer or pledge as security their contractual status or their rights and obligations under these Terms to any third party without the Company’s prior written consent.",
+              "If the Company transfers the business relating to the Service to a third party (including business transfers, company splits and any other case in which the business is transferred), the Company may, in connection with such transfer, assign to the transferee the contractual status, the rights and obligations under these Terms and the Users’ registered and other information, and Users hereby consent in advance to such succession."
             ]
           },
           {
-            "title": "Article 17 (Compensation by Users)",
+            "title": "Article 18 (No Warranty; Limitation of Liability)",
+            "content": [
+              "The Company provides the Service on an as-is basis and does not warrant its fitness for any particular purpose, completeness, accuracy or continuity.",
+              "Where a User suffers damage attributable to the Company, the Company’s liability is limited to direct and ordinary damage and capped at the total fees the User paid to the Company in the twelve months preceding the occurrence of the damage (or 10,000 yen if that total is less than 10,000 yen); provided that this limitation does not apply in cases of the Company’s intent or gross negligence or where limitation of liability is not permitted by law."
+            ]
+          },
+          {
+            "title": "Article 19 (Compensation by Users)",
             "content": [
               "A User who breaches these Terms and thereby causes damage to the Company or a third party shall be liable to compensate for that damage (including reasonable attorney fees)."
             ]
           },
           {
-            "title": "Article 18 (Exclusion of Anti-Social Forces)",
+            "title": "Article 20 (Exclusion of Anti-Social Forces)",
             "content": [
               "Users represent and warrant, now and in the future, that they are not organized crime groups, members thereof or persons equivalent thereto (\"Anti-Social Forces\") and that they have no socially condemnable relationship with Anti-Social Forces. The Company may deregister a User without prior notice for breach of this Article."
             ]
           },
           {
-            "title": "Article 19 (Amendment of the Terms)",
+            "title": "Article 21 (Amendment of the Terms)",
             "content": [
               "These Terms may be amended pursuant to Article 548-4 of the Civil Code of Japan (amendment of standard terms) where the amendment conforms to the general interest of Users or is reasonable and not contrary to the purpose of the contract.",
               "When amending these Terms, the Company will set an effective date and announce the amended content and effective date in advance within the Service or by other appropriate means."
             ]
           },
           {
-            "title": "Article 20 (Communications and Notices)",
+            "title": "Article 22 (Communications and Notices)",
             "content": [
               "Communications and notices from the Company to Users are made by display within the Service or by email to the registered address, and are deemed to have arrived at the time they would normally arrive. Communications from Users to the Company shall be made through the contact form within the Service."
             ]
           },
           {
-            "title": "Article 21 (Severability)",
+            "title": "Article 23 (Severability)",
             "content": [
               "Even if any provision of these Terms or part thereof is held invalid or unenforceable under law, the remaining provisions shall continue in full force and effect."
             ]
           },
           {
-            "title": "Article 22 (Governing Law and Jurisdiction)",
+            "title": "Article 24 (Survival)",
+            "content": [
+              "Articles 8, 10, 18, 19, 22, 23, 25 and 26, together with this Article, shall survive the termination of the use contract."
+            ]
+          },
+          {
+            "title": "Article 25 (Governing Law and Jurisdiction)",
             "content": [
               "These Terms are governed by the laws of Japan. The Oita District Court or the Oita Summary Court has exclusive jurisdiction in the first instance over any dispute arising out of or in connection with the Service."
             ]
           },
           {
-            "title": "Article 23 (Language)",
+            "title": "Article 26 (Language)",
             "content": [
               "The Japanese text of these Terms is authoritative. Even where the Company provides translations for reference, the Japanese version prevails in case of any discrepancy between the Japanese version and a translation."
             ]
@@ -525,13 +553,13 @@
         "section9_title": "Article 9: Administrator Account Access",
         "section9_content": "To maintain service quality, provide customer support, and investigate unauthorized use, authorized system administrators may operate the Service on behalf of your account.\n\n[Conditions]\n1. Limited purpose: Only for customer support, technical investigation, and legal compliance checks\n2. Limited personnel: Only system administrators with explicit authorization\n3. Audit logging: All access is logged with the operator, purpose, reason, and timestamp\n4. Minimum necessary: Access is limited to the minimum scope required to achieve the purpose\n\nThis feature is a standard support practice used by major SaaS platforms such as Zendesk and Shopify.",
         "section10_title": "Article 10: Security",
-        "section10_content": "We implement the following technical and organizational measures:\n\n- Encrypted communications (TLS/HTTPS)\n- bcrypt password hashing (no plain-text storage)\n- Role-based access control (RBAC)\n- Multi-factor authentication (SMS, TOTP, Passkey/WebAuthn)\n- Regular vulnerability scanning of dependencies\n\nIn the event of a personal information breach, we will promptly notify you and the relevant supervisory authority.",
+        "section10_content": "We implement the following technical and organizational measures:\n\n- Encrypted communications (TLS/HTTPS)\n- bcrypt password hashing (no plain-text storage)\n- Role-based access control (RBAC)\n- Multi-factor authentication (TOTP authenticator apps, Passkey/WebAuthn)\n- Regular vulnerability scanning of dependencies\n\nIn the event of a personal information breach, we will promptly notify you and the relevant supervisory authority.",
         "section11_title": "Article 11: Your Rights",
         "section11_content": "- Access & Correction: You can review and update your personal information in Account Settings (/settings/profile)\n- Data Portability: You can request a data export from Account Settings\n- Withdrawal & Deletion: Upon withdrawal, we will erase your personal information within 30 days as required by GDPR Art. 17. Data required to be retained by law and anonymized aggregate data may be kept\n- Advertising Opt-Out: See Article 4\n\nUsers in the EU/EEA may also exercise rights under GDPR Art. 15-22 (restriction of processing, right to object, etc.).",
         "section12_title": "Article 12: International Data Transfers",
         "section12_content": "The Service uses AWS, Cloudflare, and other providers headquartered in the United States, so your personal information may be transferred to and stored outside Japan.\n\nFor data of EU/EEA residents, transfers are made under Standard Contractual Clauses (SCCs) pursuant to GDPR Art. 46, or other appropriate safeguards.",
         "section13_title": "Article 13: Minors' Personal Information",
-        "section13_content": "The Service is intended for users aged 18 and over in accordance with our Terms of Service.\n\n- We do not deliver targeted advertising to users under 18\n- If we learn that a user is under 18, we will suspend their account and promptly delete the personal information collected\n- Date of birth collected at registration is used solely for age verification; only age groups (e.g., 20s, 30s) are used for ad targeting",
+        "section13_content": "Minors may use the Service in accordance with Article 4 of the Terms of Service: the prior consent of a legal representative (parent or guardian) and linkage with the guardian’s account (approval of consent) are required.\n\n- We do not deliver targeted advertising to users under 18\n- If we learn that the Service is being used without the consent of a legal representative, we may suspend use or take other appropriate measures\n- Date of birth collected at registration is used solely for age verification; only age groups (e.g., 20s, 30s) are used for ad targeting",
         "section14_title": "Article 14: Changes to This Policy",
         "section14_content": "We may update this Policy from time to time in response to legal changes or service updates.\n\n- Material changes (new purposes, new data collection, new third-party sharing, etc.) will be notified in advance via in-service notice or email\n- Minor changes will be indicated by updating the \"Last Updated\" date on this page\n- Your continued use of the Service after any revision constitutes your acceptance of the updated Policy",
         "section15_title": "Article 15: Contact Us",
@@ -846,7 +874,7 @@
           },
           "4": {
             "q": "How about security?",
-            "a": "Traffic is TLS-encrypted, with two-factor authentication (SMS, authenticator app, passkeys) and role-based access control."
+            "a": "Traffic is TLS-encrypted, with two-factor authentication (authenticator app, passkeys) and role-based access control."
           },
           "5": {
             "q": "What happens to my data if I leave?",

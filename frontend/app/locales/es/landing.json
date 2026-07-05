@@ -336,10 +336,14 @@
     "legal": {
       "terms": {
         "title": "Términos del Servicio",
-        "last_updated": "Última actualización",
-        "effective_date": "2026-07-05",
         "seo_description": "Términos del Servicio de Mannschaft: ámbito de aplicación, gestión de cuentas, responsabilidades de los administradores de equipos, tarifas, contenido de usuario, exención de responsabilidad y ley aplicable.",
         "language_note": "La versión japonesa de estos Términos es el texto auténtico. Las traducciones se ofrecen solo a título informativo; en caso de discrepancia, prevalece la versión japonesa.",
+        "version_notice": "Versión 1.0.0 — promulgada el 5 de julio de 2026",
+        "enacted_label": "Fecha de entrada en vigor",
+        "enacted_date": "2026-07-05",
+        "revised_label": "Última revisión",
+        "revised_date": "2026-07-05",
+        "toc_label": "Índice",
         "sections": [
           {
             "title": "Artículo 1 (Ámbito y definiciones)",
@@ -358,15 +362,16 @@
           {
             "title": "Artículo 3 (Gestión de la cuenta)",
             "content": [
-              "El Usuario gestionará bajo su responsabilidad su correo electrónico, contraseña y demás credenciales, y no las compartirá, prestará ni cederá a terceros. La Compañía recomienda la autenticación de dos factores (SMS o aplicación de autenticación) y las passkeys.",
-              "Salvo dolo o negligencia grave de la Compañía, los daños derivados de una gestión insuficiente de las credenciales o del uso por terceros correrán a cargo del Usuario. Ante sospecha de uso no autorizado de la cuenta, el Usuario avisará sin demora a la Compañía."
+              "El Usuario gestionará bajo su responsabilidad su correo electrónico, contraseña y demás credenciales, y no las compartirá, prestará ni cederá a terceros. La Compañía recomienda la autenticación de dos factores (aplicación de autenticación) y las passkeys.",
+              "Salvo dolo o negligencia grave de la Compañía, los daños derivados de una gestión insuficiente de las credenciales o del uso por terceros correrán a cargo del Usuario. Ante sospecha de uso no autorizado de la cuenta, el Usuario avisará sin demora a la Compañía.",
+              "El Usuario preparará, a su costa y bajo su responsabilidad, los dispositivos de comunicación, el software y demás entorno necesarios para usar el Servicio, y asumirá sus gastos de comunicación. El entorno recomendado se indica dentro del Servicio."
             ]
           },
           {
             "title": "Artículo 4 (Uso por menores)",
             "content": [
-              "Los menores de edad obtendrán previamente el consentimiento de su representante legal (padres o tutores) para usar el Servicio. Al completar el registro se presume otorgado dicho consentimiento.",
-              "Cuando un colegio u otra entidad utilice el Servicio con participación de niños o alumnos, el Administrador de dicha entidad será responsable de obtener los consentimientos necesarios y de adoptar las demás medidas apropiadas. El tratamiento de los datos personales de menores se rige por la Política de Privacidad."
+              "Los menores de edad obtendrán previamente el consentimiento de su representante legal (padres o tutores) para usar el Servicio. El registro de una persona menor de 18 años solo surte efecto una vez completada la vinculación con la cuenta del representante legal (aprobación del consentimiento), y el Servicio no podrá utilizarse hasta que dicha vinculación se complete. La Compañía podrá solicitar la confirmación del consentimiento cuando sea necesario.",
+              "Cuando un colegio u otra entidad cree un Equipo y utilice el Servicio con participación de niños o alumnos, el Administrador de dicho Equipo será responsable de obtener los consentimientos necesarios y de adoptar las demás medidas apropiadas. El tratamiento de los datos personales de menores se rige por la Política de Privacidad."
             ]
           },
           {
@@ -374,7 +379,8 @@
             "content": [
               "El Administrador reconoce que, al gestionar un Equipo, trata datos personales de los miembros (incluidos nombre y datos de contacto, así como asistencia, estado de pago de cuotas e información relacionada con la salud, como los registros de tratamientos de la función de ficha clínica) y cumplirá la Ley de Protección de la Información Personal y demás normativa aplicable.",
               "El Administrador utilizará los datos personales de los miembros únicamente para la gestión del Equipo, no los usará con otros fines ni los facilitará a terceros sin consentimiento, y explicará adecuadamente a los miembros el uso de su información.",
-              "Las disputas surgidas dentro de un Equipo (cuotas, política de gestión, conflictos entre miembros, etc.) se resolverán entre las partes. La Compañía no está obligada a intervenir, salvo dolo o negligencia grave por su parte."
+              "Las disputas surgidas dentro de un Equipo (cuotas, política de gestión, conflictos entre miembros, etc.) se resolverán entre las partes. La Compañía no está obligada a intervenir, salvo dolo o negligencia grave por su parte.",
+              "En caso de disolución o eliminación de un Equipo, el tratamiento de los datos guardados en él (aviso a los miembros, conservación de los datos necesarios, etc.) será responsabilidad del Administrador. Si un Administrador se da de baja o permanece ausente durante un periodo prolongado, la Compañía podrá transferir las facultades a otro miembro o adoptar otras medidas necesarias para mantener el funcionamiento del Equipo."
             ]
           },
           {
@@ -382,7 +388,8 @@
             "content": [
               "Las funciones básicas del Servicio son gratuitas. Algunas funciones adicionales (como los módulos opcionales) pueden ser de pago según su número o naturaleza; las tarifas y condiciones de facturación se muestran dentro del Servicio.",
               "La Compañía podrá modificar el contenido y las tarifas de los planes de pago. Los cambios se anunciarán con antelación dentro del Servicio o por otros medios adecuados.",
-              "Las tarifas ya abonadas no se reembolsan, por regla general, salvo que la ley exija el reembolso."
+              "Las tarifas ya abonadas no se reembolsan, por regla general, salvo que la ley exija el reembolso.",
+              "Los planes de pago se renuevan automáticamente en las mismas condiciones salvo que el Usuario complete el procedimiento de cancelación. La cancelación surte efecto al final del periodo de facturación en curso, y no se realizan reembolsos prorrateados por cancelaciones a mitad de periodo, salvo que la ley exija el reembolso."
             ]
           },
           {
@@ -393,11 +400,12 @@
             ]
           },
           {
-            "title": "Artículo 8 (Contenido de usuario)",
+            "title": "Artículo 8 (Contenido)",
             "content": [
               "Los derechos de autor y demás derechos sobre el Contenido pertenecen al Usuario o a su legítimo titular.",
               "El Usuario concede a la Compañía una licencia no exclusiva y gratuita para usar el Contenido (reproducción, visualización, adaptación, etc.) en la medida necesaria para prestar, mantener y mejorar el Servicio y corregir defectos.",
-              "El Usuario procurará conservar sus propias copias de seguridad de los datos importantes, por ejemplo mediante las funciones de exportación del Servicio."
+              "El Usuario procurará conservar sus propias copias de seguridad de los datos importantes, por ejemplo mediante las funciones de exportación del Servicio.",
+              "El Contenido que un Usuario o Administrador configure como público podrá ser visto por un público indeterminado, incluidos terceros no registrados en el Servicio. El Usuario o Administrador que hizo público el Contenido es responsable de la configuración de visibilidad y de las consecuencias de la publicación."
             ]
           },
           {
@@ -416,7 +424,7 @@
             "title": "Artículo 11 (Privacidad y datos personales)",
             "content": [
               "El tratamiento de los datos personales por la Compañía se rige por la Política de Privacidad, que el Usuario aceptará antes de usar el Servicio.",
-              "Dentro de un Equipo se muestran, por regla general, el nombre registrado y el nombre visible (nombre real) a los demás miembros. El Usuario se une a los Equipos conociendo y aceptando este principio.",
+              "Dentro de un Equipo se muestra a los demás miembros, por regla general, el nombre y apellidos registrados. En los perfiles visibles al público se utiliza un apodo (nombre visible) configurado por separado. El Usuario se une a los Equipos conociendo y aceptando lo anterior.",
               "En las funciones sociales, el Usuario puede crear y usar personas anónimas (hasta tres). Estos Términos se aplican también a la actividad bajo personas anónimas, y la Compañía responderá a las solicitudes legales de divulgación sobre la base de los datos registrados, en la medida exigida por la ley."
             ]
           },
@@ -428,7 +436,15 @@
             ]
           },
           {
-            "title": "Artículo 13 (Modificación, suspensión y terminación del Servicio)",
+            "title": "Artículo 13 (Subcontratación y publicidad)",
+            "content": [
+              "La Compañía podrá encomendar a terceros la totalidad o parte de la explotación del Servicio. El tratamiento de los datos personales por los encargados se rige por la Política de Privacidad.",
+              "La Compañía podrá mostrar en el Servicio publicidad propia o de terceros. Las transacciones con los anunciantes se realizan bajo la responsabilidad del Usuario, y la Compañía no responderá de los daños derivados de ellas, salvo dolo o negligencia grave.",
+              "Los tipos de publicidad segmentada y el procedimiento de exclusión se rigen por la Política de Privacidad."
+            ]
+          },
+          {
+            "title": "Artículo 14 (Modificación, suspensión y terminación del Servicio)",
             "content": [
               "La Compañía podrá modificar, ampliar o suprimir el contenido del Servicio en cualquier momento. Los cambios que afecten sustancialmente a los Usuarios se anunciarán con antelación dentro del Servicio o por otros medios adecuados.",
               "La Compañía podrá suspender temporalmente la totalidad o parte del Servicio por mantenimiento, averías, desastres naturales u otras circunstancias inevitables.",
@@ -436,66 +452,78 @@
             ]
           },
           {
-            "title": "Artículo 14 (Baja)",
+            "title": "Artículo 15 (Baja)",
             "content": [
               "El Usuario podrá solicitar la baja en cualquier momento mediante el procedimiento establecido por la Compañía.",
               "Al darse de baja, la Compañía anonimiza los datos personales como el nombre, el correo electrónico y el avatar. Las publicaciones, el historial de actividad y los datos estadísticos permanecen en el Servicio en una forma que no permite identificar a la persona. El momento del borrado de los datos personales y el procedimiento de solicitud de supresión conforme a la ley se rigen por el artículo 11 de la Política de Privacidad."
             ]
           },
           {
-            "title": "Artículo 15 (Suspensión y cancelación del registro)",
+            "title": "Artículo 16 (Suspensión y cancelación del registro)",
             "content": [
               "Si la Compañía juzga razonablemente que un Usuario ha incumplido o puede incumplir estos Términos, podrá, sin previo aviso, eliminar sus publicaciones, suspender temporalmente su uso o cancelar su registro.",
               "La Compañía no responderá de los daños causados al Usuario por las medidas de este artículo, salvo dolo o negligencia grave."
             ]
           },
           {
-            "title": "Artículo 16 (Exclusión de garantías; limitación de responsabilidad)",
+            "title": "Artículo 17 (Prohibición de cesión; transmisión del negocio)",
             "content": [
-              "La Compañía presta el Servicio tal cual y no garantiza su idoneidad para un fin determinado, su integridad, exactitud o continuidad.",
-              "Si el Usuario sufre daños imputables a la Compañía, y salvo dolo o negligencia grave de esta, la responsabilidad de la Compañía se limitará a los daños directos y ordinarios, con el límite del total de las tarifas pagadas por el Usuario a la Compañía en los doce meses anteriores al hecho dañoso.",
-              "No obstante lo anterior, si alguna cláusula limitativa de la responsabilidad de la Compañía resultara nula conforme a la Ley de Contratos con Consumidores u otras normas, dicha cláusula se aplicará en la máxima medida que tales normas permitan."
+              "El Usuario no podrá ceder, transmitir ni dar en garantía a terceros su posición contractual ni los derechos y obligaciones derivados de estos Términos sin el consentimiento previo y por escrito de la Compañía.",
+              "Si la Compañía transmite a un tercero el negocio relativo al Servicio (incluidas la transmisión de negocio, la escisión societaria y cualquier otra forma de transferencia del negocio), podrá ceder al adquirente la posición contractual, los derechos y obligaciones derivados de estos Términos y la información registrada y demás información de los Usuarios, y el Usuario presta desde ahora su consentimiento a dicha sucesión."
             ]
           },
           {
-            "title": "Artículo 17 (Indemnización por el Usuario)",
+            "title": "Artículo 18 (Exclusión de garantías; limitación de responsabilidad)",
+            "content": [
+              "La Compañía presta el Servicio tal cual y no garantiza su idoneidad para un fin determinado, su integridad, exactitud o continuidad.",
+              "Si el Usuario sufre daños imputables a la Compañía, la responsabilidad de la Compañía se limitará a los daños directos y ordinarios, con el límite del total de las tarifas pagadas por el Usuario a la Compañía en los doce meses anteriores al hecho dañoso (o 10.000 yenes si dicho total es inferior a 10.000 yenes). Esta limitación no se aplicará en caso de dolo o negligencia grave de la Compañía, ni cuando la ley no permita limitar la responsabilidad."
+            ]
+          },
+          {
+            "title": "Artículo 19 (Indemnización por el Usuario)",
             "content": [
               "El Usuario que incumpla estos Términos y cause daños a la Compañía o a terceros deberá indemnizarlos (incluidos los honorarios razonables de abogados)."
             ]
           },
           {
-            "title": "Artículo 18 (Exclusión de fuerzas antisociales)",
+            "title": "Artículo 20 (Exclusión de fuerzas antisociales)",
             "content": [
               "El Usuario declara y garantiza, ahora y en el futuro, que no pertenece a grupos de crimen organizado, a sus miembros ni a personas equivalentes («fuerzas antisociales») y que no mantiene relaciones socialmente reprobables con ellas. En caso de incumplimiento, la Compañía podrá cancelar el registro sin previo aviso."
             ]
           },
           {
-            "title": "Artículo 19 (Modificación de los Términos)",
+            "title": "Artículo 21 (Modificación de los Términos)",
             "content": [
               "Estos Términos podrán modificarse conforme al artículo 548-4 del Código Civil de Japón (modificación de condiciones generales) cuando la modificación convenga al interés general de los Usuarios o sea razonable y no contraria a la finalidad del contrato.",
               "Al modificar estos Términos, la Compañía fijará la fecha de entrada en vigor y anunciará con antelación el contenido y dicha fecha dentro del Servicio o por otros medios adecuados."
             ]
           },
           {
-            "title": "Artículo 20 (Comunicaciones y notificaciones)",
+            "title": "Artículo 22 (Comunicaciones y notificaciones)",
             "content": [
               "Las comunicaciones de la Compañía al Usuario se realizarán mediante avisos dentro del Servicio o por correo electrónico a la dirección registrada, y se considerarán recibidas cuando normalmente deberían llegar. Las comunicaciones del Usuario a la Compañía se realizarán a través del formulario de contacto del Servicio."
             ]
           },
           {
-            "title": "Artículo 21 (Divisibilidad)",
+            "title": "Artículo 23 (Divisibilidad)",
             "content": [
               "Aunque alguna disposición de estos Términos o parte de ella sea declarada nula o inaplicable conforme a la ley, las demás disposiciones conservarán plena validez y eficacia."
             ]
           },
           {
-            "title": "Artículo 22 (Ley aplicable y jurisdicción)",
+            "title": "Artículo 24 (Supervivencia)",
+            "content": [
+              "Los artículos 8, 10, 18, 19, 22, 23, 25 y 26, junto con el presente artículo, seguirán vigentes tras la terminación del contrato de uso."
+            ]
+          },
+          {
+            "title": "Artículo 25 (Ley aplicable y jurisdicción)",
             "content": [
               "Estos Términos se rigen por el Derecho japonés. Para toda controversia derivada del Servicio o relacionada con él, el Tribunal de Distrito de Oita o el Tribunal Sumario de Oita tendrán competencia exclusiva en primera instancia."
             ]
           },
           {
-            "title": "Artículo 23 (Idioma)",
+            "title": "Artículo 26 (Idioma)",
             "content": [
               "El texto japonés de estos Términos es el auténtico. Aunque la Compañía ofrezca traducciones a título informativo, en caso de discrepancia entre la versión japonesa y una traducción prevalecerá la versión japonesa."
             ]
@@ -525,13 +553,13 @@
         "section9_title": "Artículo 9: Acceso de administrador a la cuenta",
         "section9_content": "Para mantener la calidad del servicio, proporcionar soporte al cliente e investigar el uso no autorizado, los administradores de sistema autorizados pueden operar el Servicio en nombre de su cuenta.\n\n[Condiciones]\n1. Propósito limitado: Solo para soporte al cliente, investigación técnica y verificaciones de cumplimiento legal\n2. Personal limitado: Solo administradores de sistema con autorización explícita\n3. Registro de auditoría: Todo acceso se registra con el operador, propósito, motivo y marca de tiempo\n4. Mínimo necesario: El acceso está limitado al alcance mínimo necesario para lograr el propósito\n\nEsta función es una práctica de soporte estándar utilizada por las principales plataformas SaaS como Zendesk y Shopify.",
         "section10_title": "Artículo 10: Seguridad",
-        "section10_content": "Implementamos las siguientes medidas técnicas y organizativas:\n\n- Comunicaciones cifradas (TLS/HTTPS)\n- Hash de contraseñas bcrypt (sin almacenamiento en texto plano)\n- Control de acceso basado en roles (RBAC)\n- Autenticación multifactor (SMS, TOTP, Passkey/WebAuthn)\n- Escaneo regular de vulnerabilidades de dependencias\n\nEn caso de una violación de información personal, le notificaremos a usted y a la autoridad supervisora relevante con prontitud.",
+        "section10_content": "Implementamos las siguientes medidas técnicas y organizativas:\n\n- Comunicaciones cifradas (TLS/HTTPS)\n- Hash de contraseñas bcrypt (sin almacenamiento en texto plano)\n- Control de acceso basado en roles (RBAC)\n- Autenticación multifactor (aplicación TOTP, Passkey/WebAuthn)\n- Escaneo regular de vulnerabilidades de dependencias\n\nEn caso de una violación de información personal, le notificaremos a usted y a la autoridad supervisora relevante con prontitud.",
         "section11_title": "Artículo 11: Sus derechos",
         "section11_content": "- Acceso y corrección: Puede revisar y actualizar su información personal en Configuración de cuenta (/settings/profile)\n- Portabilidad de datos: Puede solicitar una exportación de datos desde Configuración de cuenta\n- Retiro y eliminación: Tras el retiro, borraremos su información personal en un plazo de 30 días según lo requiere el RGPD Art. 17. Los datos que deben conservarse por ley y los datos agregados anonimizados pueden conservarse\n- Exclusión publicitaria: Ver Artículo 4\n\nLos usuarios en la UE/EEE también pueden ejercer derechos bajo el RGPD Art. 15-22 (restricción del procesamiento, derecho a objetar, etc.).",
         "section12_title": "Artículo 12: Transferencias internacionales de datos",
         "section12_content": "El Servicio utiliza AWS, Cloudflare y otros proveedores con sede en los Estados Unidos, por lo que su información personal puede ser transferida y almacenada fuera de Japón.\n\nPara los datos de residentes de la UE/EEE, las transferencias se realizan bajo Cláusulas Contractuales Estándar (SCC) de conformidad con el RGPD Art. 46, u otras salvaguardas apropiadas.",
         "section13_title": "Artículo 13: Información personal de menores",
-        "section13_content": "El Servicio está destinado a usuarios mayores de 18 años de acuerdo con nuestros Términos de servicio.\n\n- No entregamos publicidad dirigida a usuarios menores de 18 años\n- Si descubrimos que un usuario es menor de 18 años, suspenderemos su cuenta y eliminaremos con prontitud la información personal recopilada\n- La fecha de nacimiento recopilada en el registro se usa únicamente para verificación de edad; solo se usan grupos de edad (p. ej., 20s, 30s) para la segmentación publicitaria",
+        "section13_content": "Los menores pueden usar el Servicio conforme al artículo 4 de los Términos del Servicio: se requieren el consentimiento previo de un representante legal (padres o tutores) y la vinculación con la cuenta del tutor (aprobación del consentimiento).\n\n- No entregamos publicidad dirigida a usuarios menores de 18 años\n- Si descubrimos que el Servicio se usa sin el consentimiento del representante legal, podremos suspender el uso o adoptar otras medidas apropiadas\n- La fecha de nacimiento recopilada en el registro se usa únicamente para verificación de edad; solo se usan grupos de edad (p. ej., 20s, 30s) para la segmentación publicitaria",
         "section14_title": "Artículo 14: Cambios a esta Política",
         "section14_content": "Podemos actualizar esta Política de vez en cuando en respuesta a cambios legales o actualizaciones del servicio.\n\n- Los cambios materiales (nuevos propósitos, nueva recopilación de datos, nuevo intercambio con terceros, etc.) se notificarán con anticipación mediante aviso en el servicio o correo electrónico\n- Los cambios menores se indicarán actualizando la fecha de «Última actualización» en esta página\n- El uso continuo del Servicio después de cualquier revisión constituye su aceptación de la Política actualizada",
         "section15_title": "Artículo 15: Contáctenos",
@@ -846,7 +874,7 @@
           },
           "4": {
             "q": "¿Qué hay de la seguridad?",
-            "a": "La conexión va cifrada con TLS, con autenticación de dos factores (SMS, app de autenticación, passkeys) y control de acceso por roles."
+            "a": "La conexión va cifrada con TLS, con autenticación de dos factores (app de autenticación, passkeys) y control de acceso por roles."
           },
           "5": {
             "q": "¿Qué pasa con mis datos si me doy de baja?",

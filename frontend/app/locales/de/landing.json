@@ -336,10 +336,14 @@
     "legal": {
       "terms": {
         "title": "Nutzungsbedingungen",
-        "last_updated": "Zuletzt aktualisiert",
-        "effective_date": "2026-07-05",
         "seo_description": "Nutzungsbedingungen von Mannschaft: Geltungsbereich, Kontoverwaltung, Pflichten der Team-Administratoren, Entgelte, Nutzerinhalte, Haftungsausschluss und anwendbares Recht.",
         "language_note": "Maßgeblich ist die japanische Fassung dieser Bedingungen. Übersetzungen dienen nur der Information; bei Abweichungen geht die japanische Fassung vor.",
+        "version_notice": "Version 1.0.0 — in Kraft getreten am 5. Juli 2026",
+        "enacted_label": "Datum des Inkrafttretens",
+        "enacted_date": "2026-07-05",
+        "revised_label": "Zuletzt geändert",
+        "revised_date": "2026-07-05",
+        "toc_label": "Inhaltsverzeichnis",
         "sections": [
           {
             "title": "Artikel 1 (Geltungsbereich und Begriffe)",
@@ -358,15 +362,16 @@
           {
             "title": "Artikel 3 (Kontoverwaltung)",
             "content": [
-              "Nutzer verwalten E-Mail-Adresse, Passwort und sonstige Zugangsdaten eigenverantwortlich und dürfen diese nicht an Dritte weitergeben, verleihen oder übertragen. Das Unternehmen empfiehlt Zwei-Faktor-Authentifizierung (SMS oder Authenticator-App) und Passkeys.",
-              "Schäden aus unzureichender Verwaltung der Zugangsdaten oder aus der Nutzung durch Dritte trägt der Nutzer, außer bei Vorsatz oder grober Fahrlässigkeit des Unternehmens. Bei Verdacht auf unbefugte Kontonutzung informiert der Nutzer das Unternehmen unverzüglich."
+              "Nutzer verwalten E-Mail-Adresse, Passwort und sonstige Zugangsdaten eigenverantwortlich und dürfen diese nicht an Dritte weitergeben, verleihen oder übertragen. Das Unternehmen empfiehlt Zwei-Faktor-Authentifizierung (Authenticator-App) und Passkeys.",
+              "Schäden aus unzureichender Verwaltung der Zugangsdaten oder aus der Nutzung durch Dritte trägt der Nutzer, außer bei Vorsatz oder grober Fahrlässigkeit des Unternehmens. Bei Verdacht auf unbefugte Kontonutzung informiert der Nutzer das Unternehmen unverzüglich.",
+              "Die für die Nutzung des Dienstes erforderlichen Kommunikationsgeräte, Software und sonstige Nutzungsumgebung stellen Nutzer auf eigene Kosten und Verantwortung bereit; Verbindungskosten tragen die Nutzer. Die empfohlene Umgebung wird im Dienst angezeigt."
             ]
           },
           {
             "title": "Artikel 4 (Nutzung durch Minderjährige)",
             "content": [
-              "Minderjährige holen vor der Nutzung des Dienstes die Zustimmung eines gesetzlichen Vertreters (z. B. der Eltern) ein. Mit Abschluss der Registrierung gilt diese Zustimmung als erteilt.",
-              "Nutzt eine Schule oder andere Einrichtung den Dienst unter Beteiligung von Kindern oder Schülern, ist der Administrator dieser Einrichtung für die Einholung der erforderlichen Zustimmungen und sonstige geeignete Maßnahmen verantwortlich. Für personenbezogene Daten Minderjähriger gilt die Datenschutzerklärung."
+              "Minderjährige holen vor der Nutzung des Dienstes die Zustimmung eines gesetzlichen Vertreters (Eltern oder Erziehungsberechtigte) ein. Die Registrierung von Personen unter 18 Jahren wird erst wirksam, wenn die Verknüpfung mit dem Konto des gesetzlichen Vertreters (Bestätigung der Zustimmung) abgeschlossen ist; bis dahin kann der Dienst nicht genutzt werden. Das Unternehmen kann bei Bedarf einen Nachweis der Zustimmung verlangen.",
+              "Erstellt eine Schule oder andere Einrichtung ein Team und nutzt den Dienst unter Beteiligung von Kindern oder Schülern, ist der Administrator dieses Teams für die Einholung der erforderlichen Zustimmungen und sonstige geeignete Maßnahmen verantwortlich. Für personenbezogene Daten Minderjähriger gilt die Datenschutzerklärung."
             ]
           },
           {
@@ -374,7 +379,8 @@
             "content": [
               "Administratoren erkennen an, dass sie durch die Verwaltung eines Teams personenbezogene Daten der Mitglieder verarbeiten (einschließlich Namen und Kontaktdaten sowie Anwesenheit, Beitragsstatus und gesundheitsbezogener Informationen wie Behandlungsaufzeichnungen in der Aktenfunktion), und halten das Gesetz zum Schutz personenbezogener Daten sowie alle sonstigen anwendbaren Gesetze ein.",
               "Administratoren verwenden die Daten der Mitglieder nur für Zwecke der Teamverwaltung, nutzen sie nicht zweckfremd, geben sie nicht ohne Zustimmung an Dritte weiter und erklären den Mitgliedern angemessen, wofür ihre Daten verwendet werden.",
-              "Streitigkeiten innerhalb eines Teams (Beiträge, Führungsfragen, Konflikte zwischen Mitgliedern usw.) werden zwischen den Beteiligten gelöst. Das Unternehmen ist zu einer Beteiligung nicht verpflichtet, außer bei eigenem Vorsatz oder grober Fahrlässigkeit."
+              "Streitigkeiten innerhalb eines Teams (Beiträge, Führungsfragen, Konflikte zwischen Mitgliedern usw.) werden zwischen den Beteiligten gelöst. Das Unternehmen ist zu einer Beteiligung nicht verpflichtet, außer bei eigenem Vorsatz oder grober Fahrlässigkeit.",
+              "Wird ein Team aufgelöst oder gelöscht, liegt der Umgang mit den dort gespeicherten Daten (Information der Mitglieder, Sicherung erforderlicher Daten usw.) in der Verantwortung des Administrators. Tritt ein Administrator aus oder ist er über längere Zeit abwesend, kann das Unternehmen zur Aufrechterhaltung des Teambetriebs Befugnisse auf andere Mitglieder übertragen oder sonstige erforderliche Maßnahmen ergreifen."
             ]
           },
           {
@@ -382,7 +388,8 @@
             "content": [
               "Die Grundfunktionen des Dienstes sind kostenlos. Bestimmte Zusatzfunktionen (etwa Wahlmodule) können je nach Anzahl oder Art kostenpflichtig sein; Entgelte und Abrechnungsbedingungen werden im Dienst angezeigt.",
               "Das Unternehmen kann Inhalt und Entgelte kostenpflichtiger Tarife ändern. Änderungen werden vorab im Dienst oder auf andere geeignete Weise angekündigt.",
-              "Bereits gezahlte Entgelte werden grundsätzlich nicht erstattet, es sei denn, eine Erstattung ist gesetzlich vorgeschrieben."
+              "Bereits gezahlte Entgelte werden grundsätzlich nicht erstattet, es sei denn, eine Erstattung ist gesetzlich vorgeschrieben.",
+              "Kostenpflichtige Tarife verlängern sich automatisch zu denselben Bedingungen, sofern der Nutzer nicht kündigt. Die Kündigung wird zum Ende des laufenden Abrechnungszeitraums wirksam; eine anteilige Erstattung bei Kündigung während des Zeitraums erfolgt nicht, außer eine Erstattung ist gesetzlich vorgeschrieben."
             ]
           },
           {
@@ -393,11 +400,12 @@
             ]
           },
           {
-            "title": "Artikel 8 (Nutzerinhalte)",
+            "title": "Artikel 8 (Inhalte)",
             "content": [
               "Urheberrechte und sonstige Rechte an Inhalten stehen dem Nutzer oder dem jeweiligen Rechteinhaber zu.",
               "Nutzer räumen dem Unternehmen ein nicht ausschließliches, unentgeltliches Recht ein, Inhalte in dem Umfang zu nutzen (Vervielfältigung, Anzeige, Bearbeitung usw.), der für Bereitstellung, Betrieb, Verbesserung und Fehlerbehebung des Dienstes erforderlich ist.",
-              "Nutzer bemühen sich, wichtige Daten auch selbst zu sichern, etwa über die Exportfunktionen des Dienstes."
+              "Nutzer bemühen sich, wichtige Daten auch selbst zu sichern, etwa über die Exportfunktionen des Dienstes.",
+              "Inhalte, die ein Nutzer oder Administrator öffentlich gestellt hat, können von einem unbestimmten Personenkreis eingesehen werden, einschließlich Dritter, die nicht im Dienst registriert sind. Für die Sichtbarkeitseinstellungen und die Folgen der Veröffentlichung ist der Nutzer oder Administrator verantwortlich, der die Inhalte öffentlich gestellt hat."
             ]
           },
           {
@@ -416,7 +424,7 @@
             "title": "Artikel 11 (Datenschutz und personenbezogene Daten)",
             "content": [
               "Der Umgang des Unternehmens mit personenbezogenen Daten richtet sich nach der Datenschutzerklärung. Nutzer stimmen dieser vor Nutzung des Dienstes zu.",
-              "Innerhalb eines Teams werden grundsätzlich der registrierte Name und der Anzeigename (Klarname) anderen Mitgliedern angezeigt. Nutzer treten Teams in Kenntnis und mit Zustimmung hierzu bei.",
+              "Innerhalb eines Teams wird anderen Mitgliedern grundsätzlich der registrierte vollständige Name angezeigt. In öffentlich sichtbaren Profilen wird ein separat festgelegter Nickname (Anzeigename) verwendet. Nutzer treten Teams in Kenntnis und mit Zustimmung hierzu bei.",
               "In den sozialen Funktionen können Nutzer anonyme Personas (bis zu drei) anlegen und verwenden. Auch für Aktivitäten unter anonymen Personas gelten diese Bedingungen; auf rechtmäßige Auskunftsersuchen reagiert das Unternehmen auf Grundlage der Registrierungsdaten im gesetzlich vorgesehenen Umfang."
             ]
           },
@@ -428,7 +436,15 @@
             ]
           },
           {
-            "title": "Artikel 13 (Änderung, Unterbrechung und Einstellung des Dienstes)",
+            "title": "Artikel 13 (Beauftragung Dritter und Werbung)",
+            "content": [
+              "Das Unternehmen kann den Betrieb des Dienstes ganz oder teilweise Dritten übertragen. Der Umgang der Auftragnehmer mit personenbezogenen Daten richtet sich nach der Datenschutzerklärung.",
+              "Das Unternehmen kann im Dienst Werbung des Unternehmens oder Dritter anzeigen. Geschäfte mit Werbetreibenden erfolgen auf eigene Verantwortung der Nutzer; für daraus entstehende Schäden haftet das Unternehmen nicht, außer bei Vorsatz oder grober Fahrlässigkeit.",
+              "Art der zielgerichteten Werbung und Opt-out-Verfahren richten sich nach der Datenschutzerklärung."
+            ]
+          },
+          {
+            "title": "Artikel 14 (Änderung, Unterbrechung und Einstellung des Dienstes)",
             "content": [
               "Das Unternehmen kann den Inhalt des Dienstes jederzeit ändern, ergänzen oder einstellen. Änderungen mit wesentlichen Auswirkungen auf Nutzer werden vorab im Dienst oder auf andere geeignete Weise angekündigt.",
               "Das Unternehmen kann den Dienst wegen Wartung, Störungen, Naturkatastrophen oder anderer unvermeidbarer Umstände ganz oder teilweise vorübergehend unterbrechen.",
@@ -436,66 +452,78 @@
             ]
           },
           {
-            "title": "Artikel 14 (Austritt)",
+            "title": "Artikel 15 (Austritt)",
             "content": [
               "Nutzer können jederzeit über das vorgesehene Verfahren den Austritt beantragen.",
               "Beim Austritt anonymisiert das Unternehmen personenbezogene Daten wie Name, E-Mail-Adresse und Avatar. Beiträge, Aktivitätsverlauf und Statistikdaten verbleiben in nicht identifizierbarer Form im Dienst. Zeitpunkt der Löschung personenbezogener Daten und das Verfahren für Löschersuchen nach anwendbarem Recht richten sich nach Artikel 11 der Datenschutzerklärung."
             ]
           },
           {
-            "title": "Artikel 15 (Sperrung und Löschung der Registrierung)",
+            "title": "Artikel 16 (Sperrung und Löschung der Registrierung)",
             "content": [
               "Beurteilt das Unternehmen vernünftigerweise, dass ein Nutzer gegen diese Bedingungen verstößt oder zu verstoßen droht, kann es ohne Vorankündigung Beiträge löschen, die Nutzung vorübergehend sperren oder die Registrierung löschen.",
               "Für Schäden aus Maßnahmen nach diesem Artikel haftet das Unternehmen nicht, außer bei Vorsatz oder grober Fahrlässigkeit."
             ]
           },
           {
-            "title": "Artikel 16 (Gewährleistungsausschluss; Haftungsbeschränkung)",
+            "title": "Artikel 17 (Abtretungsverbot; Unternehmensübertragung)",
             "content": [
-              "Das Unternehmen stellt den Dienst wie besehen bereit und übernimmt keine Gewähr für Eignung zu einem bestimmten Zweck, Vollständigkeit, Richtigkeit oder Kontinuität.",
-              "Entsteht einem Nutzer ein vom Unternehmen zu vertretender Schaden, haftet das Unternehmen — außer bei Vorsatz oder grober Fahrlässigkeit — nur für unmittelbare und typische Schäden, begrenzt auf die Gesamtentgelte, die der Nutzer in den zwölf Monaten vor Schadenseintritt an das Unternehmen gezahlt hat.",
-              "Ungeachtet des vorstehenden Absatzes gilt: Wird eine haftungsbeschränkende Klausel nach dem Verbrauchervertragsgesetz oder anderen Gesetzen für unwirksam erklärt, findet sie in dem nach diesen Gesetzen zulässigen Umfang Anwendung."
+              "Nutzer dürfen ihre Vertragsstellung sowie Rechte und Pflichten aus diesen Bedingungen ohne vorherige schriftliche Zustimmung des Unternehmens nicht an Dritte abtreten, übertragen oder als Sicherheit stellen.",
+              "Überträgt das Unternehmen das den Dienst betreffende Geschäft auf einen Dritten (einschließlich Unternehmensübertragung, Spaltung und aller sonstigen Fälle der Geschäftsübertragung), kann es die Vertragsstellung, die Rechte und Pflichten aus diesen Bedingungen sowie die Registrierungs- und sonstigen Informationen der Nutzer auf den Erwerber übertragen; die Nutzer stimmen einer solchen Übertragung bereits im Voraus zu."
             ]
           },
           {
-            "title": "Artikel 17 (Schadensersatz durch Nutzer)",
+            "title": "Artikel 18 (Gewährleistungsausschluss; Haftungsbeschränkung)",
+            "content": [
+              "Das Unternehmen stellt den Dienst wie besehen bereit und übernimmt keine Gewähr für Eignung zu einem bestimmten Zweck, Vollständigkeit, Richtigkeit oder Kontinuität.",
+              "Entsteht einem Nutzer ein vom Unternehmen zu vertretender Schaden, haftet das Unternehmen nur für unmittelbare und typische Schäden, begrenzt auf die Gesamtentgelte, die der Nutzer in den zwölf Monaten vor Schadenseintritt an das Unternehmen gezahlt hat (mindestens jedoch 10.000 Yen, wenn dieser Betrag darunter liegt). Dies gilt nicht bei Vorsatz oder grober Fahrlässigkeit des Unternehmens oder soweit eine Haftungsbeschränkung gesetzlich nicht zulässig ist."
+            ]
+          },
+          {
+            "title": "Artikel 19 (Schadensersatz durch Nutzer)",
             "content": [
               "Verstößt ein Nutzer gegen diese Bedingungen und fügt dadurch dem Unternehmen oder Dritten Schaden zu, ist er zum Ersatz dieses Schadens (einschließlich angemessener Anwaltskosten) verpflichtet."
             ]
           },
           {
-            "title": "Artikel 18 (Ausschluss antisozialer Kräfte)",
+            "title": "Artikel 20 (Ausschluss antisozialer Kräfte)",
             "content": [
               "Nutzer versichern für Gegenwart und Zukunft, dass sie keiner kriminellen Vereinigung, deren Mitgliedern oder vergleichbaren Personen („antisoziale Kräfte“) angehören und keine gesellschaftlich zu missbilligende Beziehung zu antisozialen Kräften unterhalten. Bei Verstoß kann das Unternehmen die Registrierung ohne Vorankündigung löschen."
             ]
           },
           {
-            "title": "Artikel 19 (Änderung der Bedingungen)",
+            "title": "Artikel 21 (Änderung der Bedingungen)",
             "content": [
               "Diese Bedingungen können gemäß Artikel 548-4 des japanischen Zivilgesetzbuchs (Änderung von Standardbedingungen) geändert werden, wenn die Änderung dem allgemeinen Interesse der Nutzer entspricht oder sachgerecht ist und dem Vertragszweck nicht widerspricht.",
               "Bei einer Änderung legt das Unternehmen den Zeitpunkt des Wirksamwerdens fest und macht Inhalt und Zeitpunkt vorab im Dienst oder auf andere geeignete Weise bekannt."
             ]
           },
           {
-            "title": "Artikel 20 (Mitteilungen)",
+            "title": "Artikel 22 (Mitteilungen)",
             "content": [
               "Mitteilungen des Unternehmens an Nutzer erfolgen durch Anzeige im Dienst oder per E-Mail an die registrierte Adresse und gelten als zugegangen, wenn sie üblicherweise zugehen würden. Mitteilungen der Nutzer an das Unternehmen erfolgen über das Kontaktformular im Dienst."
             ]
           },
           {
-            "title": "Artikel 21 (Salvatorische Klausel)",
+            "title": "Artikel 23 (Salvatorische Klausel)",
             "content": [
               "Sollte eine Bestimmung dieser Bedingungen oder ein Teil davon nach geltendem Recht unwirksam oder undurchsetzbar sein, bleiben die übrigen Bestimmungen in vollem Umfang wirksam."
             ]
           },
           {
-            "title": "Artikel 22 (Anwendbares Recht und Gerichtsstand)",
+            "title": "Artikel 24 (Fortgeltung)",
+            "content": [
+              "Die Artikel 8, 10, 18, 19, 22, 23, 25 und 26 sowie dieser Artikel gelten auch nach Beendigung des Nutzungsvertrags fort."
+            ]
+          },
+          {
+            "title": "Artikel 25 (Anwendbares Recht und Gerichtsstand)",
             "content": [
               "Diese Bedingungen unterliegen japanischem Recht. Für alle Streitigkeiten aus oder im Zusammenhang mit dem Dienst sind in erster Instanz ausschließlich das Distriktgericht Oita oder das Amtsgericht Oita (Summary Court) zuständig."
             ]
           },
           {
-            "title": "Artikel 23 (Sprache)",
+            "title": "Artikel 26 (Sprache)",
             "content": [
               "Maßgeblich ist der japanische Wortlaut dieser Bedingungen. Auch wenn das Unternehmen Übersetzungen zur Information bereitstellt, geht bei Abweichungen die japanische Fassung vor."
             ]
@@ -525,13 +553,13 @@
         "section9_title": "Artikel 9: Administrator-Kontozugriff",
         "section9_content": "Um die Servicequalität aufrechtzuerhalten, Kundensupport bereitzustellen und unbefugte Nutzung zu untersuchen, können autorisierte Systemadministratoren den Dienst im Namen Ihres Kontos bedienen.\n\n[Bedingungen]\n1. Eingeschränkter Zweck: Nur für Kundensupport, technische Untersuchungen und gesetzliche Compliance-Prüfungen\n2. Eingeschränktes Personal: Nur Systemadministratoren mit ausdrücklicher Berechtigung\n3. Prüfprotokollierung: Alle Zugriffe werden mit Operator, Zweck, Grund und Zeitstempel protokolliert\n4. Mindesterforderlich: Der Zugriff ist auf den Mindestumfang beschränkt, der zur Erreichung des Zwecks erforderlich ist\n\nDiese Funktion ist eine Standardsupportpraxis, die von wichtigen SaaS-Plattformen wie Zendesk und Shopify verwendet wird.",
         "section10_title": "Artikel 10: Sicherheit",
-        "section10_content": "Wir implementieren folgende technische und organisatorische Maßnahmen:\n\n- Verschlüsselte Kommunikation (TLS/HTTPS)\n- bcrypt-Passwort-Hashing (keine Klartextspeicherung)\n- Rollenbasierte Zugriffskontrolle (RBAC)\n- Multi-Faktor-Authentifizierung (SMS, TOTP, Passkey/WebAuthn)\n- Regelmäßige Schwachstellenscans von Abhängigkeiten\n\nIm Falle einer Verletzung personenbezogener Daten werden wir Sie und die zuständige Aufsichtsbehörde umgehend benachrichtigen.",
+        "section10_content": "Wir implementieren folgende technische und organisatorische Maßnahmen:\n\n- Verschlüsselte Kommunikation (TLS/HTTPS)\n- bcrypt-Passwort-Hashing (keine Klartextspeicherung)\n- Rollenbasierte Zugriffskontrolle (RBAC)\n- Multi-Faktor-Authentifizierung (TOTP-Authenticator-App, Passkey/WebAuthn)\n- Regelmäßige Schwachstellenscans von Abhängigkeiten\n\nIm Falle einer Verletzung personenbezogener Daten werden wir Sie und die zuständige Aufsichtsbehörde umgehend benachrichtigen.",
         "section11_title": "Artikel 11: Ihre Rechte",
         "section11_content": "- Zugriff und Berichtigung: Sie können Ihre personenbezogenen Daten in den Kontoeinstellungen (/settings/profile) einsehen und aktualisieren\n- Datenportabilität: Sie können einen Datenexport aus den Kontoeinstellungen anfordern\n- Widerruf und Löschung: Nach dem Widerruf löschen wir Ihre personenbezogenen Daten innerhalb von 30 Tagen gemäß DSGVO Art. 17. Daten, die gesetzlich aufbewahrt werden müssen, und anonymisierte aggregierte Daten können aufbewahrt werden\n- Werbe-Opt-out: Siehe Artikel 4\n\nBenutzer in der EU/EWR können auch Rechte nach DSGVO Art. 15-22 ausüben (Einschränkung der Verarbeitung, Widerspruchsrecht usw.).",
         "section12_title": "Artikel 12: Internationale Datenübertragungen",
         "section12_content": "Der Dienst nutzt AWS, Cloudflare und andere Anbieter mit Hauptsitz in den Vereinigten Staaten, daher können Ihre personenbezogenen Daten außerhalb Japans übertragen und gespeichert werden.\n\nFür Daten von Einwohnern der EU/EWR erfolgen Übertragungen gemäß Standardvertragsklauseln (SCC) nach DSGVO Art. 46 oder anderen geeigneten Schutzmaßnahmen.",
         "section13_title": "Artikel 13: Personenbezogene Daten Minderjähriger",
-        "section13_content": "Der Dienst richtet sich gemäß unseren Nutzungsbedingungen an Benutzer ab 18 Jahren.\n\n- Wir liefern keine verhaltensbasierte Werbung an Benutzer unter 18 Jahren\n- Wenn wir erfahren, dass ein Benutzer unter 18 Jahre alt ist, sperren wir sein Konto und löschen die erhobenen personenbezogenen Daten umgehend\n- Das bei der Registrierung erhobene Geburtsdatum wird ausschließlich zur Altersverifizierung verwendet; für die Anzeigenausrichtung werden nur Altersgruppen (z. B. 20er, 30er) verwendet",
+        "section13_content": "Minderjährige können den Dienst gemäß Artikel 4 der Nutzungsbedingungen nutzen: Erforderlich sind die vorherige Zustimmung eines gesetzlichen Vertreters (Eltern oder Erziehungsberechtigte) und die Verknüpfung mit dem Konto des Erziehungsberechtigten (Bestätigung der Zustimmung).\n\n- Wir liefern keine zielgerichtete Werbung an Benutzer unter 18 Jahren\n- Erfahren wir, dass der Dienst ohne Zustimmung eines gesetzlichen Vertreters genutzt wird, können wir die Nutzung aussetzen oder andere geeignete Maßnahmen ergreifen\n- Das bei der Registrierung erhobene Geburtsdatum wird ausschließlich zur Altersverifizierung verwendet; für die Anzeigenausrichtung werden nur Altersgruppen (z. B. 20er, 30er) verwendet",
         "section14_title": "Artikel 14: Änderungen dieser Erklärung",
         "section14_content": "Wir können diese Erklärung gelegentlich als Reaktion auf rechtliche Änderungen oder Dienst-Updates aktualisieren.\n\n- Wesentliche Änderungen (neue Zwecke, neue Datenerhebung, neue Drittpartei-Weitergabe usw.) werden im Voraus per In-Service-Benachrichtigung oder E-Mail mitgeteilt\n- Geringfügige Änderungen werden durch Aktualisierung des Datums „Zuletzt aktualisiert“ auf dieser Seite angezeigt\n- Ihre fortgesetzte Nutzung des Dienstes nach einer Überarbeitung stellt Ihre Zustimmung zur aktualisierten Erklärung dar",
         "section15_title": "Artikel 15: Kontakt",
@@ -846,7 +874,7 @@
           },
           "4": {
             "q": "Wie steht es um die Sicherheit?",
-            "a": "Die Verbindung ist TLS-verschlüsselt, mit Zwei-Faktor-Authentifizierung (SMS, Authenticator-App, Passkeys) und rollenbasierter Zugriffskontrolle."
+            "a": "Die Verbindung ist TLS-verschlüsselt, mit Zwei-Faktor-Authentifizierung (Authenticator-App, Passkeys) und rollenbasierter Zugriffskontrolle."
           },
           "5": {
             "q": "Was passiert mit meinen Daten beim Austritt?",
