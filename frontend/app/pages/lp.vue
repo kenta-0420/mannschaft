@@ -14,8 +14,8 @@ useSeoMeta({
 </script>
 
 <template>
-  <!-- pageTransition out-in の制約によりルートは単一要素の <div> を厳守する -->
   <div>
+    <!-- pageTransition out-in の制約により template 直下はこの <div> 1ノードのみ（コメントも置くと非要素根で遷移先が空白になる） -->
     <LpHero />
     <LpFeatureChips />
     <LpUseCaseRow />
