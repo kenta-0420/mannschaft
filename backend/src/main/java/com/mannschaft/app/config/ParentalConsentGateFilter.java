@@ -34,7 +34,9 @@ import java.util.Map;
  * <p><b>許可リスト</b>:</p>
  * <ul>
  *   <li>{@code /api/v1/parental-consent/**} — 同意管理専用 API（招待・保護者一覧・承認/否認）は丸ごと許可</li>
- *   <li>{@code GET /api/v1/users/me} — 本人状態確認のみ。退会（DELETE）・プロフィール編集（PATCH）は許可しない</li>
+ *   <li>{@code GET /api/v1/users/me} — 本人状態確認のみ。プロフィール編集（{@code PUT /me}）は許可しない</li>
+ *   <li>{@code DELETE /api/v1/users/me} — 退会（アカウント削除）は GDPR 削除権に基づき同意前でも本人に許可する
+ *       （2026-07 マスター裁可・件1追従）。プロフィール編集・パスワード変更等の他の書き込みはブロック維持</li>
  *   <li>{@code POST /api/v1/auth/logout} / {@code POST /api/v1/auth/refresh} — 同意前の未成年に必要な
  *       認証ライフサイクル 2 経路のみ明示許可。{@code /api/v1/auth/**} の一括許可は 2FA setup・
  *       WebAuthn register・OAuth link/confirm・セッション管理を開く過剰許可のため採らない</li>
@@ -108,8 +110,13 @@ public class ParentalConsentGateFilter extends OncePerRequestFilter {
                 || path.startsWith("/api/v1/parental-consent/")) {
             return true;
         }
-        // 本人状態確認のみ許可（GET 限定）。退会 DELETE / プロフィール編集 PATCH は遮断する。
+        // 本人状態確認のみ許可（GET 限定）。プロフィール編集（PUT）は遮断する。
         if (HttpMethod.GET.matches(method) && path.equals("/api/v1/users/me")) {
+            return true;
+        }
+        // 退会（アカウント削除）は GDPR 削除権に基づき同意前でも本人に許可する（件1追従）。
+        // メソッド＋パス厳密一致（DELETE のみ）。プロフィール編集・パスワード変更は引き続き遮断。
+        if (HttpMethod.DELETE.matches(method) && path.equals("/api/v1/users/me")) {
             return true;
         }
         // 認証ライフサイクルは「同意前の未成年に本当に必要な 2 経路のみ」を明示許可する。

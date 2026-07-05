@@ -117,20 +117,44 @@ class ParentalConsentGateFilterTest {
     }
 
     @Test
-    @DisplayName("未成年本人の退会 DELETE /api/v1/users/me は遮断される（GET のみ許可）")
-    void pending_delete_users_me_is_blocked() throws Exception {
-        authenticateAsPendingParentalConsent();
-        MockHttpServletResponse res = invoke("DELETE", "/api/v1/users/me");
-        assertThat(res.getStatus()).isEqualTo(403);
-        assertThat(res.getContentAsString()).contains("AUTH_070");
-    }
-
-    @Test
     @DisplayName("未成年本人のプロフィール編集 PATCH /api/v1/users/me は遮断される")
     void pending_patch_users_me_is_blocked() throws Exception {
         authenticateAsPendingParentalConsent();
         MockHttpServletResponse res = invoke("PATCH", "/api/v1/users/me");
         assertThat(res.getStatus()).isEqualTo(403);
+    }
+
+    @Test
+    @DisplayName("未成年本人のパスワード変更 PATCH /api/v1/users/me/password は遮断される（ブロック維持）")
+    void pending_patch_password_is_blocked() throws Exception {
+        authenticateAsPendingParentalConsent();
+        MockHttpServletResponse res = invoke("PATCH", "/api/v1/users/me/password");
+        assertThat(res.getStatus()).isEqualTo(403);
+        assertThat(res.getContentAsString()).contains("AUTH_070");
+    }
+
+    // ---- 件1追従: 承認前未成年の退会（DELETE /api/v1/users/me）は許可する ----
+
+    @Test
+    @DisplayName("件1追従: 未成年本人の退会 DELETE /api/v1/users/me はゲート通過（GDPR 削除権）")
+    void pending_delete_users_me_is_allowed() throws Exception {
+        authenticateAsPendingParentalConsent();
+        MockHttpServletRequest request = new MockHttpServletRequest("DELETE", "/api/v1/users/me");
+        request.setServletPath("/api/v1/users/me");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+        filter.doFilter(request, response, chain);
+        assertThat(response.getStatus()).isNotEqualTo(403);
+        assertThat(chainProceeded(chain)).isTrue();
+    }
+
+    @Test
+    @DisplayName("メソッド厳密一致: GET 以外の /api/v1/users/me（PUT・プロフィール編集）は遮断される")
+    void pending_put_users_me_is_blocked() throws Exception {
+        authenticateAsPendingParentalConsent();
+        MockHttpServletResponse res = invoke("PUT", "/api/v1/users/me");
+        assertThat(res.getStatus()).isEqualTo(403);
+        assertThat(res.getContentAsString()).contains("AUTH_070");
     }
 
     // ---- 許可ケース（ppc==true・許可リスト内）----
