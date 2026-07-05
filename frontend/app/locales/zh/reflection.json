@@ -97,6 +97,8 @@
     "template": {
       "label": "模板",
       "help": "可从预设中选择输入标题",
+      "heading_selector_label": "包含的标题",
+      "heading_optional_badge": "可选",
       "NORMAL": "普通",
       "DIARY": "日记",
       "WORK": "工作回顾",

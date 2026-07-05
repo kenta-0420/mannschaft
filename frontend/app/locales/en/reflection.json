@@ -97,6 +97,8 @@
     "template": {
       "label": "Template",
       "help": "Choose preset headings for your input",
+      "heading_selector_label": "Headings to include",
+      "heading_optional_badge": "optional",
       "NORMAL": "Normal",
       "DIARY": "Diary",
       "WORK": "Work reflection",

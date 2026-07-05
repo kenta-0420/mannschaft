@@ -96,8 +96,10 @@
     },
     "template": {
       "label": "テンプレート",
-      "help": "入力の見出しをプリセットから選べます",
-      "NORMAL": "ノーマル",
+      "help": "入力の見出しをひな形から選べます",
+      "heading_selector_label": "含める見出し",
+      "heading_optional_badge": "任意",
+      "NORMAL": "標準",
       "DIARY": "日記",
       "WORK": "仕事の振り返り",
       "CLASS": "授業の振り返り",

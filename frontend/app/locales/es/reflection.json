@@ -97,6 +97,8 @@
     "template": {
       "label": "Plantilla",
       "help": "Elige encabezados predefinidos para tu entrada",
+      "heading_selector_label": "Encabezados a incluir",
+      "heading_optional_badge": "opcional",
       "NORMAL": "Normal",
       "DIARY": "Diario",
       "WORK": "Reflexión laboral",
