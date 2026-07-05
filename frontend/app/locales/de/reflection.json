@@ -97,6 +97,8 @@
     "template": {
       "label": "Vorlage",
       "help": "Wähle voreingestellte Überschriften für deine Eingabe",
+      "heading_selector_label": "Enthaltene Überschriften",
+      "heading_optional_badge": "optional",
       "NORMAL": "Normal",
       "DIARY": "Tagebuch",
       "WORK": "Arbeitsrückblick",

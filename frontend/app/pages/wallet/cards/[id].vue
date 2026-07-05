@@ -327,6 +327,7 @@ onMounted(load)
         v-if="!editMode"
         :card="card"
         :last-used-display="lastUsedDisplay"
+        :is-self-issued="isSelfIssued"
         @copy-card-id="copyCardId"
       />
 
@@ -344,7 +345,7 @@ onMounted(load)
       <section v-if="!editMode" class="card-detail__danger">
         <button
           type="button"
-          class="card-detail__btn card-detail__btn--danger"
+          class="card-detail__btn card-detail__btn--danger bg-white dark:bg-surface-900"
           @click="showDeleteConfirm = true"
         >
           {{ t('wallet.detail.delete') }}
@@ -410,7 +411,8 @@ onMounted(load)
   padding: 0.75rem 1rem;
   border-radius: 0.5rem;
   border: 1px solid var(--p-surface-300, #d1d5db);
-  background: var(--p-surface-0, #fff);
+  /* 背景は Tailwind dark: クラスで追従（デフォルト=var(--p-surface-0)、ダーク=surface-900）。
+     danger ボタンは bg-white dark:bg-surface-900 クラスを直接付与 */
   color: var(--p-text-color, #111827);
   font-weight: 600;
   cursor: pointer;
@@ -420,7 +422,7 @@ onMounted(load)
   cursor: not-allowed;
 }
 .card-detail__btn--danger {
-  background: #fff;
+  /* 背景は Tailwind dark: クラスで追従。文字色・ボーダーは danger 用固定値 */
   color: #dc2626;
   border-color: #dc2626;
 }

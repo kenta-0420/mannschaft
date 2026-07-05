@@ -39,8 +39,10 @@ public class MatchReviewController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<ReviewCreateResponse>> createReview(
             @Valid @RequestBody CreateReviewRequest request) {
-        Long currentTeamId = SecurityUtils.getCurrentUserId();
-        ReviewCreateResponse response = reviewService.createReview(currentTeamId, request);
+        // 認可根治: 認証プリンシパルは userID。レビュアーチームの特定と管理者/副管理者判定は
+        // proposal 経由で Service 内で行う（userID を teamId として扱う誤りを撤廃）。
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        ReviewCreateResponse response = reviewService.createReview(currentUserId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

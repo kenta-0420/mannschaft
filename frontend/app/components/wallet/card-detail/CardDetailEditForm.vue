@@ -37,7 +37,7 @@ const { t } = useI18n()
 
 <template>
   <section class="card-detail__section">
-    <p class="card-detail__hint">{{ t('wallet.detail.barcode_locked_hint') }}</p>
+    <p class="card-detail__hint bg-surface-50 dark:bg-surface-800 text-surface-600 dark:text-surface-300">{{ t('wallet.detail.barcode_locked_hint') }}</p>
 
     <div class="card-detail__field">
       <label for="edit-name" class="card-detail__label">{{ t('wallet.add.display_name') }}</label>
@@ -137,10 +137,9 @@ const { t } = useI18n()
 }
 .card-detail__hint {
   font-size: 0.8125rem;
-  color: var(--p-text-muted-color, #6b7280);
+  /* 背景・文字色は Tailwind dark: クラス（bg-surface-50 dark:bg-surface-800 text-surface-600 dark:text-surface-300）で追従 */
   margin: 0 0 0.5rem;
   padding: 0.5rem 0.75rem;
-  background: var(--p-surface-50, #f9fafb);
   border-radius: 0.5rem;
 }
 .card-detail__error {

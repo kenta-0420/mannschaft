@@ -4,10 +4,14 @@ import type { ReservationLineResponse, ReservationSlotResponse } from '~/types/r
 
 const props = defineProps<{
   teamId: string
+  /** 管理者（ADMIN）か否か。空状態の文言・管理CTAの出し分けに使う。 */
+  isAdmin: boolean
 }>()
 
 const emit = defineEmits<{
   slotSelected: [slotId: number, lineId: number, lineName: string, date: string, startTime: string, endTime: string]
+  /** 「予約対象の管理」タブへの誘導。親が activeTab を切り替える。 */
+  manageLines: []
 }>()
 
 const { t } = useI18n()
@@ -25,6 +29,9 @@ const loading = ref(false)
 const selectedLineName = computed(
   () => lines.value.find(l => l.id === selectedLineId.value)?.name ?? '',
 )
+
+/** 予約対象（Line）が1件でも存在するか。空状態を「対象ゼロ」か「枠ゼロ」で出し分けるための判定。 */
+const hasLines = computed(() => lines.value.length > 0)
 
 async function loadLines() {
   const res = await reservationApi.getLines(props.teamId)
@@ -112,6 +119,38 @@ onMounted(async () => { await loadLines(); await loadSlots() })
         </p>
       </button>
     </div>
-    <DashboardEmptyState v-else icon="pi pi-calendar-times" :message="t('reservation.empty.no_available_slots')" />
+    <!-- 予約対象ゼロ: セットアップ導線（管理者のみCTA）-->
+    <DashboardEmptyState
+      v-else-if="!hasLines"
+      icon="pi pi-list"
+      :message="isAdmin ? t('reservation.empty.book.admin_no_lines') : t('reservation.empty.book.member_no_lines')"
+      :sub-message="isAdmin ? t('reservation.empty.book.admin_no_lines_hint') : t('reservation.empty.book.member_no_lines_hint')"
+    >
+      <template v-if="isAdmin" #action>
+        <Button
+          :label="t('reservation.button.go_to_line_manage')"
+          icon="pi pi-arrow-right"
+          icon-pos="right"
+          size="small"
+          @click="emit('manageLines')"
+        />
+      </template>
+    </DashboardEmptyState>
+    <!-- 予約対象あり・当日枠ゼロ: 枠追加導線（管理者のみCTA）-->
+    <DashboardEmptyState
+      v-else
+      icon="pi pi-calendar-times"
+      :message="isAdmin ? t('reservation.empty.book.admin_no_slots') : t('reservation.empty.book.member_no_slots')"
+      :sub-message="isAdmin ? t('reservation.empty.book.admin_no_slots_hint') : t('reservation.empty.book.member_no_slots_hint')"
+    >
+      <template v-if="isAdmin" #action>
+        <Button
+          :label="t('reservation.button.manage_slots')"
+          icon="pi pi-cog"
+          size="small"
+          @click="emit('manageLines')"
+        />
+      </template>
+    </DashboardEmptyState>
   </div>
 </template>
