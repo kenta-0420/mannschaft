@@ -37,8 +37,12 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.todo.TodoErrorCode;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -173,6 +177,49 @@ class PersonalTodoControllerTest {
                                 .content(json))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.data.status").value("IN_PROGRESS"));
+            }
+        }
+    }
+
+    // ============================================================
+    // POST /api/v1/todos/{id}/restore（AC-5 / AC-6）
+    // ============================================================
+
+    @Nested
+    @DisplayName("POST /api/v1/todos/{id}/restore — TODO復元")
+    class RestorePersonalTodo {
+
+        @Test
+        @DisplayName("AC-5 正常系: restoreで200と復元後のTODOが返る")
+        void POST_restore_正常系_200で復元後TODOが返る() throws Exception {
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+
+                // assertDeletedTodoScope / restorePersonalTodo は void（正常系は例外なし）
+                given(todoService.getTodo(TODO_ID)).willReturn(ApiResponse.of(sampleTodo()));
+
+                mockMvc.perform(post("/api/v1/todos/{id}/restore", TODO_ID))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.data.id").value(TODO_ID));
+
+                verify(todoService).assertDeletedTodoScope(eq(TODO_ID), eq(TodoScopeType.PERSONAL), eq(null));
+                verify(todoService).restorePersonalTodo(TODO_ID, USER_ID);
+            }
+        }
+
+        @Test
+        @DisplayName("AC-6 異常系: 他人（担当者でない）のrestoreはTODO_NOT_FOUNDで拒否（削除EPと同一認可境界）")
+        void POST_restore_非担当者_TODO_NOT_FOUNDで拒否() throws Exception {
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+
+                // 削除EPと同じ認可境界: 担当者でなければ TODO_NOT_FOUND
+                doThrow(new BusinessException(TodoErrorCode.TODO_NOT_FOUND))
+                        .when(todoService).restorePersonalTodo(TODO_ID, USER_ID);
+
+                mockMvc.perform(post("/api/v1/todos/{id}/restore", TODO_ID))
+                        .andExpect(status().is4xxClientError())
+                        .andExpect(jsonPath("$.error.code").value("TODO_010"));
             }
         }
     }
