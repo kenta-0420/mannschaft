@@ -56,6 +56,24 @@ const titleSegments = computed(() => {
         <p class="text-xs text-surface-400">
           {{ t('landing.v2.hero.no_download_note') }}
         </p>
+
+        <!-- 未ログイン者向け: 公開チーム／組織の閲覧導線（主CTAを喰わない控えめなテキストリンク） -->
+        <div class="mt-1 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm">
+          <NuxtLink
+            to="/discover/teams"
+            class="font-medium text-surface-500 hover:text-primary hover:underline dark:text-surface-400"
+          >
+            {{ t('landing.hero.discoverTeams') }}
+            <i class="pi pi-arrow-right text-xs" />
+          </NuxtLink>
+          <NuxtLink
+            to="/discover/organizations"
+            class="font-medium text-surface-500 hover:text-primary hover:underline dark:text-surface-400"
+          >
+            {{ t('landing.hero.discoverOrganizations') }}
+            <i class="pi pi-arrow-right text-xs" />
+          </NuxtLink>
+        </div>
       </div>
 
       <!-- スコープ切替（個人／チーム／組織）＋登録数カウンタ -->
