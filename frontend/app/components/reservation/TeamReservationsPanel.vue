@@ -172,9 +172,19 @@ onMounted(async () => {
           />
         </TabPanel>
 
-        <!-- ライン管理タブ（ADMIN限定）+ 枠管理 + 詳細設定アコーディオン -->
+        <!-- ライン管理タブ（ADMIN限定）+ メニュー管理 + 週間テンプレート + 枠管理 + 詳細設定アコーディオン -->
         <TabPanel v-if="isAdmin" :value="2">
           <LineManager :team-id="props.teamId" />
+
+          <!-- メニュー管理セクション（機能E・F03.4.1） -->
+          <div class="mt-6">
+            <MenuManager :team-id="props.teamId" />
+          </div>
+
+          <!-- 週間テンプレート管理セクション（F03.4.2） -->
+          <div class="mt-6">
+            <SlotTemplateManager :team-id="props.teamId" />
+          </div>
 
           <!-- 枠（Slot）管理セクション -->
           <div class="mt-6">
