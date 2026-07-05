@@ -743,6 +743,11 @@ public class GlobalExceptionHandler {
             // F03.4.1 機能E 予約メニュー: 不在（IDOR 秘匿含む）→ 404。
             // 033（上限20件）/ 034（所要時間不正）/ 035（lineIds 不正）は WARN 既定の 400 のまま（個別 map 不要）。
             Map.entry("RESERVATION_032", HttpStatus.NOT_FOUND),              // MENU_NOT_FOUND
+            // F03.4.2 機能F 週間テンプレート: 不在（IDOR 秘匿含む）→ 404、generate レート制限 → 429、
+            // ライン削除ガード（active 予約あり）→ 409。037（上限500行）/038（ライン不一致）は WARN 既定の 400。
+            Map.entry("RESERVATION_036", HttpStatus.NOT_FOUND),              // TEMPLATE_NOT_FOUND
+            Map.entry("RESERVATION_044", HttpStatus.TOO_MANY_REQUESTS),      // TEMPLATE_GENERATE_RATE_LIMITED
+            Map.entry("RESERVATION_045", HttpStatus.CONFLICT),               // LINE_HAS_ACTIVE_RESERVATIONS
             // F06.5 アクティブリコール学習（IDOR 対策で 404、上限/範囲外は 400、楽観排他/マスク中編集/再輸出は 409）
             Map.entry("REFLECTION_001", HttpStatus.NOT_FOUND),              // NOT_FOUND（他人所有も IDOR 対策で 404）
             Map.entry("REFLECTION_002", HttpStatus.BAD_REQUEST),           // THEME_LIMIT_EXCEEDED

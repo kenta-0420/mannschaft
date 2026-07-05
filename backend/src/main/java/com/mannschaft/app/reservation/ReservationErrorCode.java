@@ -98,20 +98,20 @@ public enum ReservationErrorCode implements ErrorCode {
     PAST_DATE_SLOT("RESERVATION_023", "過去の日付には予約枠を作成できません", Severity.WARN),
 
     /**
-     * 予約ライン数の上限（5 本）超過（入力不正なので 400）。
+     * 予約ライン数の上限（20 本）超過（入力不正なので 400）。
      *
-     * <p>F03.4 §1/§2 「1 チームあたり最大 5 本の予約ライン」を Service 層
-     * （{@code ReservationLineService.createLine}）で担保する（段階拡張バックログ ④）。</p>
+     * <p>F03.4 §1/§2 の上限を Service 層（{@code ReservationLineService.createLine}）で担保する
+     * （段階拡張バックログ ④）。F03.4.2 §3.4 で 5→20 へ拡張（コード再利用・番号変更なし）。</p>
      */
-    LINE_LIMIT_EXCEEDED("RESERVATION_024", "予約ラインはチームあたり最大5本までです", Severity.WARN),
+    LINE_LIMIT_EXCEEDED("RESERVATION_024", "予約ラインはチームあたり最大20本までです", Severity.WARN),
 
     /**
-     * 予約ラインの表示順（display_order）がチーム内許可範囲（1〜5）外（入力不正なので 400）。
+     * 予約ラインの表示順（display_order）がチーム内許可範囲（1〜20）外（入力不正なので 400）。
      *
-     * <p>F03.4 §2 「{@code display_order} はチーム内で 1〜5 の範囲。Service 層で保証」を担保する
-     * （段階拡張バックログ ④ の付随検証）。</p>
+     * <p>F03.4 §2 「{@code display_order} は Service 層で保証」を担保する（段階拡張バックログ ④ の付随検証）。
+     * F03.4.2 §3.4 で範囲を 1〜5 → 1〜20 へ拡張。</p>
      */
-    INVALID_DISPLAY_ORDER("RESERVATION_025", "表示順は1〜5の範囲で指定してください", Severity.WARN),
+    INVALID_DISPLAY_ORDER("RESERVATION_025", "表示順は1〜20の範囲で指定してください", Severity.WARN),
 
     /**
      * キャンセル締切超過（会員キャンセル拒否・入力不正なので 400）。
@@ -208,7 +208,58 @@ public enum ReservationErrorCode implements ErrorCode {
      * 他チームのライン ID も同コード（存在秘匿）。予約時の「提供不可ラインでの確保」は
      * 別コード RESERVATION_043（F03.4.3 で採番）— 意味衝突の回避。</p>
      */
-    MENU_LINE_IDS_INVALID("RESERVATION_035", "選択した予約対象が無効です", Severity.WARN);
+    MENU_LINE_IDS_INVALID("RESERVATION_035", "選択した予約対象が無効です", Severity.WARN),
+
+    // ===== F03.4.2 機能F: 枠ライン軸＋週間テンプレート =====
+
+    /**
+     * 週間テンプレートが見つからない（PATCH/DELETE 対象不在・404）。
+     *
+     * <p>F03.4.2 §4/§6: {@code findByIdAndTeamId} で解決できない場合に throw する。
+     * 他チームのテンプレートを掴んだ場合も IDOR 対策として同一の 404 で秘匿する。
+     * {@code GlobalExceptionHandler} の個別マッピングで 404。</p>
+     */
+    TEMPLATE_NOT_FOUND("RESERVATION_036", "週間テンプレートが見つかりません", Severity.WARN),
+
+    /**
+     * 週間テンプレートの行数上限（1チーム 500 行）超過（入力上限超過なので 400）。
+     *
+     * <p>F03.4.2 §3.2: 20ライン × 7曜日 × 帯3本/日 = 420 行 &lt; 500 の試算で、
+     * フル運用チームを包含しつつ生成暴走を防ぐ。Severity.WARN のため既定マッピングで 400。</p>
+     */
+    TEMPLATE_LIMIT_EXCEEDED("RESERVATION_037", "週間テンプレートはチームあたり最大500行までです", Severity.WARN),
+
+    /**
+     * 選択枠とラインの不一致（入力不正なので 400）。
+     *
+     * <p>F03.4.2 §5.6: ライン軸枠（{@code slot.line_id} 非 NULL）の単枠予約で
+     * {@code request.lineId != slot.lineId} の場合に拒否する（枠の帰属と矛盾する予約を防ぐ）。
+     * F03.4.3（予約グループ）の「選択枠が非連続/同一日でない/ライン不一致」も<b>同一コードを共用</b>する
+     * （同一意味論のため単枠専用の新規採番はしない — F03.4.3 §9 の定数名案は
+     * {@code GROUP_SLOTS_NOT_CONSECUTIVE}。グループ実装時に用途拡張する）。</p>
+     */
+    SLOT_LINE_MISMATCH("RESERVATION_038", "選択した枠とラインが一致しません", Severity.WARN),
+
+    /**
+     * 一括生成（generate）のレートリミット超過（429 Too Many Requests）。
+     *
+     * <p>F03.4.2 §6「generate は 1 チーム 1 分間に 2 回まで」の資源保護。
+     * §9 の採番表には現れないが §6 が要求する挙動のための採番（039〜043 は F03.4.3/4 が
+     * 採番予定のため 044 を使用）。{@code GlobalExceptionHandler} の個別マッピングで 429。</p>
+     */
+    TEMPLATE_GENERATE_RATE_LIMITED("RESERVATION_044",
+            "枠の一括作成が短時間に繰り返されています。しばらく待ってから再実行してください", Severity.WARN),
+
+    /**
+     * ライン削除ガード: 当該ラインに active 予約（PENDING / CONFIRMED）が存在する（409）。
+     *
+     * <p>F03.4.2 §5.5（精査2パス A1 再設計）: ライン削除の<b>唯一の</b> 409 事由。
+     * 「予約のない未来のライン軸枠が存在する」ことは 409 事由にしない（旧設計の循環デッドロックの根を除去）。
+     * §9 の採番表には現れないが §5.5 が要求する挙動のための採番。
+     * {@code GlobalExceptionHandler} の個別マッピングで 409。</p>
+     */
+    LINE_HAS_ACTIVE_RESERVATIONS("RESERVATION_045",
+            "このラインには有効な予約があります。先に振替またはキャンセルしてください", Severity.WARN);
 
     private final String code;
     private final String message;

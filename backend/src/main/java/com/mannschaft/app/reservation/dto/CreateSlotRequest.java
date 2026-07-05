@@ -32,7 +32,17 @@ public class CreateSlotRequest {
     @NotNull
     private final LocalTime endTime;
 
-    private final String recurrenceRule;
+    /**
+     * ライン軸（任意・F03.4.2 §3.1/§4）。
+     *
+     * <p>{@code null} / 未指定 = 共通枠（既存互換。予約時にユーザーがラインを選ぶ）。
+     * 指定するとこの枠は「そのライン専用の枠」になる（予約時のライン選択は枠から自動決定）。
+     * 当該チームの active ライン以外は 400（LINE_NOT_FOUND=001 再利用）。</p>
+     *
+     * <p>※ 旧 {@code recurrenceRule}（休眠足場）は F03.4.2 §3.3 で入力側を廃止した。
+     * unknown property は Jackson 既定で無視されるため、送信しても壊れない（F-12）。</p>
+     */
+    private final Long lineId;
 
     private final BigDecimal price;
 

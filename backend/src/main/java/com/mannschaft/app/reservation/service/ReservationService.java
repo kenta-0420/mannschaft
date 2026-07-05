@@ -157,9 +157,24 @@ public class ReservationService {
             throw new BusinessException(ReservationErrorCode.DUPLICATE_RESERVATION);
         }
 
+        // F03.4.2 §5.6/§3.1: 枠のライン整合検証。
+        //   ライン軸枠（slot.line_id 非 NULL）= そのライン専用の枠。予約行のラインは枠から自動決定され、
+        //   request.lineId が指定されていて枠と食い違う場合は 400（RESERVATION_038・枠の帰属と矛盾する予約を防ぐ）。
+        //   共通枠（slot.line_id NULL）は従来どおりユーザー選択の lineId をそのまま保存（挙動後退ゼロ。
+        //   共通枠の有効ライン検証は F03.4.3 で追加予定）。
+        Long effectiveLineId;
+        if (slot.getLineId() != null) {
+            if (request.getLineId() != null && !slot.getLineId().equals(request.getLineId())) {
+                throw new BusinessException(ReservationErrorCode.SLOT_LINE_MISMATCH);
+            }
+            effectiveLineId = slot.getLineId();
+        } else {
+            effectiveLineId = request.getLineId();
+        }
+
         ReservationEntity entity = ReservationEntity.builder()
                 .reservationSlotId(request.getReservationSlotId())
-                .lineId(request.getLineId())
+                .lineId(effectiveLineId)
                 .teamId(teamId)
                 .userId(userId)
                 .userNote(request.getUserNote())

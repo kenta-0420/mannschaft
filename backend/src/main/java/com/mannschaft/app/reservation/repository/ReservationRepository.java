@@ -72,6 +72,22 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
             Long slotId, List<ReservationStatus> statuses);
 
     /**
+     * 指定ラインに active（指定ステータスのいずれか）な予約が存在するか確認する
+     * （ライン削除フロー手順2の唯一の 409 ガード・F03.4.2 §5.5）。
+     */
+    boolean existsByLineIdAndStatusIn(Long lineId, List<ReservationStatus> statuses);
+
+    /**
+     * 指定スロット群のうち active（指定ステータスのいずれか）な予約が紐づくスロット ID を列挙する
+     * （ライン削除フロー手順3の purge 除外判定・F03.4.2 §5.5。N+1 回避の一括クエリ）。
+     */
+    @Query("SELECT DISTINCT r.reservationSlotId FROM ReservationEntity r "
+            + "WHERE r.reservationSlotId IN :slotIds AND r.status IN :statuses")
+    List<Long> findSlotIdsWithActiveReservations(
+            @Param("slotIds") List<Long> slotIds,
+            @Param("statuses") List<ReservationStatus> statuses);
+
+    /**
      * チームの予約統計: ステータス別件数を取得する。
      */
     long countByTeamIdAndStatus(Long teamId, ReservationStatus status);

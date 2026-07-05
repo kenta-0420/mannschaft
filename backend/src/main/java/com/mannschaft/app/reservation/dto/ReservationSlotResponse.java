@@ -18,6 +18,12 @@ public class ReservationSlotResponse {
     Long id;
     Long teamId;
     Long staffUserId;
+    /** ライン軸（F03.4.2）。null = 共通枠（既存互換）。 */
+    Long lineId;
+    /** ライン名（lineId 非 null のとき Service 層で一括解決。null = 共通枠）。 */
+    String lineName;
+    /** 生成元テンプレート（F03.4.2）。null = 手動作成枠。 */
+    java.util.UUID templateId;
     SlotBasicDto basic;
     SlotStatusDto status;
     RecurrenceDto recurrence;

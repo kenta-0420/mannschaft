@@ -8427,6 +8427,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/reservation-slot-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 週間テンプレート一覧 */
+        get: operations["listTemplates_3"];
+        put?: never;
+        /** 週間テンプレート作成 */
+        post: operations["createTemplate_3"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/reservation-slot-templates/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 週間テンプレート一括生成 */
+        post: operations["generate_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/reservation-settings/blocked-times": {
         parameters: {
             query?: never;
@@ -9420,10 +9455,10 @@ export interface paths {
             cookie?: never;
         };
         /** テンプレート一覧 */
-        get: operations["listTemplates_3"];
+        get: operations["listTemplates_4"];
         put?: never;
         /** テンプレート作成 */
-        post: operations["createTemplate_3"];
+        post: operations["createTemplate_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9524,7 +9559,7 @@ export interface paths {
         };
         get: operations["getTemplates"];
         put?: never;
-        post: operations["createTemplate_4"];
+        post: operations["createTemplate_5"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10322,10 +10357,10 @@ export interface paths {
             cookie?: never;
         };
         /** チームDMテンプレート一覧 */
-        get: operations["listTemplates_4"];
+        get: operations["listTemplates_5"];
         put?: never;
         /** チームDMテンプレート作成 */
-        post: operations["createTemplate_5"];
+        post: operations["createTemplate_6"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11664,7 +11699,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** テンプレート作成 */
-        post: operations["createTemplate_6"];
+        post: operations["createTemplate_7"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11738,10 +11773,10 @@ export interface paths {
             cookie?: never;
         };
         /** テンプレート一覧（管理者用） */
-        get: operations["listTemplates_5"];
+        get: operations["listTemplates_6"];
         put?: never;
         /** テンプレート作成（管理者用） */
-        post: operations["createTemplate_7"];
+        post: operations["createTemplate_8"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11800,7 +11835,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** 対応テンプレート作成 */
-        post: operations["createTemplate_8"];
+        post: operations["createTemplate_9"];
         delete?: never;
         options?: never;
         head?: never;
@@ -13215,10 +13250,10 @@ export interface paths {
             cookie?: never;
         };
         /** テンプレート一覧 */
-        get: operations["listTemplates_6"];
+        get: operations["listTemplates_7"];
         put?: never;
         /** テンプレート作成 */
-        post: operations["createTemplate_9"];
+        post: operations["createTemplate_10"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15340,10 +15375,10 @@ export interface paths {
             cookie?: never;
         };
         /** テンプレート一覧 */
-        get: operations["listTemplates_7"];
+        get: operations["listTemplates_8"];
         put?: never;
         /** テンプレート作成（ゼロから） */
-        post: operations["createTemplate_10"];
+        post: operations["createTemplate_11"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15538,7 +15573,7 @@ export interface paths {
         get: operations["getTemplates_1"];
         put?: never;
         /** エントリーテンプレート作成 */
-        post: operations["createTemplate_11"];
+        post: operations["createTemplate_12"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16835,10 +16870,10 @@ export interface paths {
             cookie?: never;
         };
         /** 組織DMテンプレート一覧 */
-        get: operations["listTemplates_8"];
+        get: operations["listTemplates_9"];
         put?: never;
         /** 組織DMテンプレート作成 */
-        post: operations["createTemplate_12"];
+        post: operations["createTemplate_13"];
         delete?: never;
         options?: never;
         head?: never;
@@ -20368,7 +20403,7 @@ export interface paths {
         };
         get: operations["listByFiscalYear_1"];
         put?: never;
-        post: operations["generate_1"];
+        post: operations["generate_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -21712,7 +21747,7 @@ export interface paths {
         get: operations["getTemplates_2"];
         put?: never;
         /** アクションテンプレート作成 */
-        post: operations["createTemplate_13"];
+        post: operations["createTemplate_14"];
         delete?: never;
         options?: never;
         head?: never;
@@ -21747,10 +21782,10 @@ export interface paths {
             cookie?: never;
         };
         /** テンプレート一覧 */
-        get: operations["listTemplates_9"];
+        get: operations["listTemplates_10"];
         put?: never;
         /** テンプレート作成 */
-        post: operations["createTemplate_14"];
+        post: operations["createTemplate_15"];
         delete?: never;
         options?: never;
         head?: never;
@@ -23017,6 +23052,24 @@ export interface paths {
         patch: operations["updateSlot_1"];
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/reservation-slot-templates/{templateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 週間テンプレート削除 */
+        delete: operations["deleteTemplate_10"];
+        options?: never;
+        head?: never;
+        /** 週間テンプレート更新 */
+        patch: operations["updateTemplate_10"];
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/reservation-settings": {
         parameters: {
             query?: never;
@@ -23511,10 +23564,10 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete: operations["deleteTemplate_10"];
+        delete: operations["deleteTemplate_11"];
         options?: never;
         head?: never;
-        patch: operations["updateTemplate_10"];
+        patch: operations["updateTemplate_11"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/knowledge-base/pages/{pageId}": {
@@ -24336,11 +24389,11 @@ export interface paths {
         put?: never;
         post?: never;
         /** テンプレート削除 */
-        delete: operations["deleteTemplate_11"];
+        delete: operations["deleteTemplate_12"];
         options?: never;
         head?: never;
         /** テンプレート更新 */
-        patch: operations["updateTemplate_11"];
+        patch: operations["updateTemplate_12"];
         trace?: never;
     };
     "/api/v1/system-admin/security-incidents/{id}": {
@@ -24374,11 +24427,11 @@ export interface paths {
         put?: never;
         post?: never;
         /** テンプレート削除（管理者用） */
-        delete: operations["deleteTemplate_12"];
+        delete: operations["deleteTemplate_13"];
         options?: never;
         head?: never;
         /** テンプレート更新（管理者用） */
-        patch: operations["updateTemplate_12"];
+        patch: operations["updateTemplate_13"];
         trace?: never;
     };
     "/api/v1/system-admin/safety-checks/presets/{presetId}": {
@@ -25004,7 +25057,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** テンプレート更新 */
-        patch: operations["updateTemplate_13"];
+        patch: operations["updateTemplate_14"];
         trace?: never;
     };
     "/api/v1/safety-checks/followups/{followupId}": {
@@ -25045,7 +25098,7 @@ export interface paths {
          * 募集テンプレート編集
          * @description ADMIN/DEPUTY_ADMIN 権限が必要
          */
-        patch: operations["updateTemplate_14"];
+        patch: operations["updateTemplate_15"];
         trace?: never;
     };
     "/api/v1/recruitment-listings/{listingId}/participants/{participantId}/attend": {
@@ -26087,11 +26140,11 @@ export interface paths {
         put?: never;
         post?: never;
         /** テンプレート論理削除 */
-        delete: operations["deleteTemplate_13"];
+        delete: operations["deleteTemplate_14"];
         options?: never;
         head?: never;
         /** テンプレート更新 */
-        patch: operations["updateTemplate_15"];
+        patch: operations["updateTemplate_16"];
         trace?: never;
     };
     "/api/v1/organizations/{orgId}/todos/{id}/status": {
@@ -35061,7 +35114,7 @@ export interface paths {
             cookie?: never;
         };
         /** 指標テンプレート一覧 */
-        get: operations["listTemplates_10"];
+        get: operations["listTemplates_11"];
         put?: never;
         post?: never;
         delete?: never;
@@ -52458,9 +52511,10 @@ export interface components {
             capacity?: number;
             /** @example 14:30:00 */
             endTime: string;
+            /** Format: int64 */
+            lineId?: number;
             note?: string;
             price?: number;
-            recurrenceRule?: string;
             /** Format: date */
             slotDate: string;
             /** Format: int64 */
@@ -52482,6 +52536,9 @@ export interface components {
             basic?: components["schemas"]["SlotBasicDto"];
             /** Format: int64 */
             id?: number;
+            /** Format: int64 */
+            lineId?: number;
+            lineName?: string;
             policy?: components["schemas"]["SlotPolicyDto"];
             pricing?: components["schemas"]["SlotPricingDto"];
             recurrence?: components["schemas"]["RecurrenceDto"];
@@ -52490,6 +52547,8 @@ export interface components {
             status?: components["schemas"]["SlotStatusDto"];
             /** Format: int64 */
             teamId?: number;
+            /** Format: uuid */
+            templateId?: string;
         };
         SlotAuditDto: {
             /** Format: date-time */
@@ -52526,6 +52585,77 @@ export interface components {
         };
         CloseSlotRequest: {
             reason?: string;
+        };
+        CreateSlotTemplateRequest: {
+            /** @enum {string} */
+            approvalMode?: "AUTO" | "MANUAL";
+            /** Format: int32 */
+            capacity?: number;
+            /** @enum {string} */
+            dayOfWeek: "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
+            /** @example 14:30:00 */
+            endTime: string;
+            /** Format: int64 */
+            lineId?: number;
+            name?: string;
+            price?: number;
+            /** Format: int64 */
+            staffUserId?: number;
+            /** @example 14:30:00 */
+            startTime: string;
+            title?: string;
+        };
+        ApiResponseSlotTemplateResponse: {
+            data?: components["schemas"]["SlotTemplateResponse"];
+        };
+        SlotTemplateResponse: {
+            approvalMode?: string;
+            /** Format: int32 */
+            capacity?: number;
+            /** Format: int32 */
+            cellCount?: number;
+            /** Format: date-time */
+            createdAt?: string;
+            dayOfWeek?: string;
+            /** @example 14:30:00 */
+            endTime?: string;
+            /** Format: uuid */
+            id?: string;
+            isActive?: boolean;
+            /** Format: int64 */
+            lineId?: number;
+            lineName?: string;
+            name?: string;
+            price?: number;
+            staffName?: string;
+            /** Format: int64 */
+            staffUserId?: number;
+            /** @example 14:30:00 */
+            startTime?: string;
+            title?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        GenerateSlotsRequest: {
+            /** Format: int32 */
+            weeks?: number;
+        };
+        ApiResponseGenerateSlotsResponse: {
+            data?: components["schemas"]["GenerateSlotsResponse"];
+        };
+        GenerateSlotsResponse: {
+            /** Format: int32 */
+            generatedCount?: number;
+            /** Format: date */
+            horizonFrom?: string;
+            /** Format: date */
+            horizonTo?: string;
+            /** Format: int32 */
+            skippedClosedDayCount?: number;
+            /** Format: int32 */
+            skippedExistingCount?: number;
+            /** Format: int32 */
+            skippedOutsideHoursCount?: number;
         };
         BlockedTimeRequest: {
             /** Format: date */
@@ -61655,10 +61785,33 @@ export interface components {
             clearApprovalMode?: boolean;
             /** @example 14:30:00 */
             endTime?: string;
+            /** Format: int64 */
+            lineId?: number;
             note?: string;
             price?: number;
             /** Format: date */
             slotDate?: string;
+            /** Format: int64 */
+            staffUserId?: number;
+            /** @example 14:30:00 */
+            startTime?: string;
+            title?: string;
+        };
+        UpdateSlotTemplateRequest: {
+            /** @enum {string} */
+            approvalMode?: "AUTO" | "MANUAL";
+            /** Format: int32 */
+            capacity?: number;
+            clearLineId?: boolean;
+            /** @enum {string} */
+            dayOfWeek?: "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
+            /** @example 14:30:00 */
+            endTime?: string;
+            isActive?: boolean;
+            /** Format: int64 */
+            lineId?: number;
+            name?: string;
+            price?: number;
             /** Format: int64 */
             staffUserId?: number;
             /** @example 14:30:00 */
@@ -65146,6 +65299,19 @@ export interface components {
             columns?: components["schemas"]["GridColumnDto"][];
             /** Format: date */
             date?: string;
+        };
+        ApiResponseSlotTemplateListResponse: {
+            data?: components["schemas"]["SlotTemplateListResponse"];
+        };
+        SlotTemplateListResponse: {
+            meta?: components["schemas"]["TemplateListMetaDto"];
+            templates?: components["schemas"]["SlotTemplateResponse"][];
+        };
+        TemplateListMetaDto: {
+            /** Format: int32 */
+            limit?: number;
+            /** Format: int64 */
+            totalTemplates?: number;
         };
         ApiResponseListBlockedTimeResponse: {
             data?: components["schemas"]["BlockedTimeResponse"][];
@@ -73294,6 +73460,16 @@ export interface components {
         };
         RequestWithdrawalRequest: {
             currentPassword?: string;
+        };
+        ApiResponseDeleteSlotTemplateResponse: {
+            data?: components["schemas"]["DeleteSlotTemplateResponse"];
+        };
+        DeleteSlotTemplateResponse: {
+            deleted?: boolean;
+            /** Format: uuid */
+            id?: string;
+            /** Format: int64 */
+            orphanedSlotCount?: number;
         };
         ApiResponseReservationMenuDeleteResponse: {
             data?: components["schemas"]["ReservationMenuDeleteResponse"];
@@ -94213,6 +94389,80 @@ export interface operations {
             };
         };
     };
+    listTemplates_3: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseSlotTemplateListResponse"];
+                };
+            };
+        };
+    };
+    createTemplate_3: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSlotTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description 作成成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseSlotTemplateResponse"];
+                };
+            };
+        };
+    };
+    generate_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateSlotsRequest"];
+            };
+        };
+        responses: {
+            /** @description 生成成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseGenerateSlotsResponse"];
+                };
+            };
+        };
+    };
     listBlockedTimes: {
         parameters: {
             query: {
@@ -96299,7 +96549,7 @@ export interface operations {
             };
         };
     };
-    listTemplates_3: {
+    listTemplates_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -96321,7 +96571,7 @@ export interface operations {
             };
         };
     };
-    createTemplate_3: {
+    createTemplate_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -96545,7 +96795,7 @@ export interface operations {
             };
         };
     };
-    createTemplate_4: {
+    createTemplate_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -98187,7 +98437,7 @@ export interface operations {
             };
         };
     };
-    listTemplates_4: {
+    listTemplates_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -98209,7 +98459,7 @@ export interface operations {
             };
         };
     };
-    createTemplate_5: {
+    createTemplate_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -100827,7 +101077,7 @@ export interface operations {
             };
         };
     };
-    createTemplate_6: {
+    createTemplate_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -100959,7 +101209,7 @@ export interface operations {
             };
         };
     };
-    listTemplates_5: {
+    listTemplates_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -100979,7 +101229,7 @@ export interface operations {
             };
         };
     };
-    createTemplate_7: {
+    createTemplate_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -101091,7 +101341,7 @@ export interface operations {
             };
         };
     };
-    createTemplate_8: {
+    createTemplate_9: {
         parameters: {
             query?: never;
             header?: never;
@@ -103673,7 +103923,7 @@ export interface operations {
             };
         };
     };
-    listTemplates_6: {
+    listTemplates_7: {
         parameters: {
             query: {
                 scopeType: string;
@@ -103696,7 +103946,7 @@ export interface operations {
             };
         };
     };
-    createTemplate_9: {
+    createTemplate_10: {
         parameters: {
             query?: never;
             header?: never;
@@ -107782,7 +108032,7 @@ export interface operations {
             };
         };
     };
-    listTemplates_7: {
+    listTemplates_8: {
         parameters: {
             query?: {
                 page?: number;
@@ -107807,7 +108057,7 @@ export interface operations {
             };
         };
     };
-    createTemplate_10: {
+    createTemplate_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -108292,7 +108542,7 @@ export interface operations {
             };
         };
     };
-    createTemplate_11: {
+    createTemplate_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -110842,7 +111092,7 @@ export interface operations {
             };
         };
     };
-    listTemplates_8: {
+    listTemplates_9: {
         parameters: {
             query?: never;
             header?: never;
@@ -110864,7 +111114,7 @@ export interface operations {
             };
         };
     };
-    createTemplate_12: {
+    createTemplate_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -117269,7 +117519,7 @@ export interface operations {
             };
         };
     };
-    generate_1: {
+    generate_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -119561,7 +119811,7 @@ export interface operations {
             };
         };
     };
-    createTemplate_13: {
+    createTemplate_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -119607,7 +119857,7 @@ export interface operations {
             };
         };
     };
-    listTemplates_9: {
+    listTemplates_10: {
         parameters: {
             query: {
                 scope_type: string;
@@ -119630,7 +119880,7 @@ export interface operations {
             };
         };
     };
-    createTemplate_14: {
+    createTemplate_15: {
         parameters: {
             query: {
                 scope_type: string;
@@ -122175,6 +122425,56 @@ export interface operations {
             };
         };
     };
+    deleteTemplate_10: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 削除成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseDeleteSlotTemplateResponse"];
+                };
+            };
+        };
+    };
+    updateTemplate_10: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSlotTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseSlotTemplateResponse"];
+                };
+            };
+        };
+    };
     getSettings_14: {
         parameters: {
             query?: never;
@@ -123061,7 +123361,7 @@ export interface operations {
             };
         };
     };
-    deleteTemplate_10: {
+    deleteTemplate_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -123082,7 +123382,7 @@ export interface operations {
             };
         };
     };
-    updateTemplate_10: {
+    updateTemplate_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -124775,7 +125075,7 @@ export interface operations {
             };
         };
     };
-    deleteTemplate_11: {
+    deleteTemplate_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -124795,7 +125095,7 @@ export interface operations {
             };
         };
     };
-    updateTemplate_11: {
+    updateTemplate_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -124847,7 +125147,7 @@ export interface operations {
             };
         };
     };
-    deleteTemplate_12: {
+    deleteTemplate_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -124867,7 +125167,7 @@ export interface operations {
             };
         };
     };
-    updateTemplate_12: {
+    updateTemplate_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -125988,7 +126288,7 @@ export interface operations {
             };
         };
     };
-    updateTemplate_13: {
+    updateTemplate_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -126062,7 +126362,7 @@ export interface operations {
             };
         };
     };
-    updateTemplate_14: {
+    updateTemplate_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -128012,7 +128312,7 @@ export interface operations {
             };
         };
     };
-    deleteTemplate_13: {
+    deleteTemplate_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -128033,7 +128333,7 @@ export interface operations {
             };
         };
     };
-    updateTemplate_15: {
+    updateTemplate_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -141472,7 +141772,7 @@ export interface operations {
             };
         };
     };
-    listTemplates_10: {
+    listTemplates_11: {
         parameters: {
             query?: {
                 sportCategory?: string;

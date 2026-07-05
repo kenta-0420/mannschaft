@@ -95,7 +95,7 @@ class ReservationSlotServicePersistenceIntegrationTest extends AbstractMySqlInte
             Long slotId = createSlot(null);
 
             UpdateSlotRequest request = new UpdateSlotRequest(
-                    null, "更新後タイトル", null, null, null, null, null, null, null, null);
+                    null, "更新後タイトル", null, null, null, null, null, null, null, null, null);
             ReservationSlotEntity reloaded = updateAndReload(slotId, request);
 
             assertThat(reloaded.getTitle())
@@ -109,7 +109,7 @@ class ReservationSlotServicePersistenceIntegrationTest extends AbstractMySqlInte
             Long slotId = createSlot(null);
 
             UpdateSlotRequest request = new UpdateSlotRequest(
-                    null, null, null, LocalTime.of(13, 0), LocalTime.of(15, 0),
+                    null, null, null, LocalTime.of(13, 0), LocalTime.of(15, 0), null,
                     new BigDecimal("2500"), "更新後メモ", null, null, null);
             ReservationSlotEntity reloaded = updateAndReload(slotId, request);
 
@@ -131,7 +131,7 @@ class ReservationSlotServicePersistenceIntegrationTest extends AbstractMySqlInte
             Long slotId = createSlot(null);
 
             UpdateSlotRequest request = new UpdateSlotRequest(
-                    null, null, null, null, null, null, null, ApprovalMode.MANUAL, null, null);
+                    null, null, null, null, null, null, null, null, ApprovalMode.MANUAL, null, null);
             ReservationSlotEntity reloaded = updateAndReload(slotId, request);
 
             assertThat(reloaded.getApprovalMode())
@@ -146,7 +146,7 @@ class ReservationSlotServicePersistenceIntegrationTest extends AbstractMySqlInte
             Long slotId = createSlot(ApprovalMode.MANUAL);
 
             UpdateSlotRequest request = new UpdateSlotRequest(
-                    null, null, null, null, null, null, null, null, true, null);
+                    null, null, null, null, null, null, null, null, null, true, null);
             ReservationSlotEntity reloaded = updateAndReload(slotId, request);
 
             assertThat(reloaded.getApprovalMode())
@@ -161,7 +161,7 @@ class ReservationSlotServicePersistenceIntegrationTest extends AbstractMySqlInte
             Long slotId = createSlot(ApprovalMode.MANUAL);
 
             UpdateSlotRequest request = new UpdateSlotRequest(
-                    null, "タイトルだけ変更", null, null, null, null, null, null, null, null);
+                    null, "タイトルだけ変更", null, null, null, null, null, null, null, null, null);
             ReservationSlotEntity reloaded = updateAndReload(slotId, request);
 
             assertThat(reloaded.getApprovalMode())

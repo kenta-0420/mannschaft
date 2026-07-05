@@ -29,6 +29,8 @@ public interface ReservationMapper {
 
     List<ReservationLineResponse> toLineResponseList(List<ReservationLineEntity> entities);
 
+    // F03.4.2: lineName（ライン名）は NameResolver と同じ発想で Service 層が一括解決して後付けする（ここでは null）。
+    @Mapping(target = "lineName", ignore = true)
     @Mapping(target = "basic", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotBasicDto(entity.getTitle(), entity.getSlotDate(), entity.getStartTime(), entity.getEndTime()))")
     @Mapping(target = "status", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotStatusDto(entity.getSlotStatus() != null ? entity.getSlotStatus().name() : null, entity.getBookedCount(), entity.getCapacity(), entity.getIsException(), entity.getClosedReason(), entity.getNote()))")
     @Mapping(target = "recurrence", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.RecurrenceDto(entity.getRecurrenceRule(), entity.getParentSlotId()))")
