@@ -396,7 +396,7 @@ onMounted(async () => {
               icon="pi pi-send"
               :severity="draftQuestions.length > 0 ? 'secondary' : 'primary'"
               :outlined="draftQuestions.length > 0"
-              :loading="actionLoading"
+              :loading="actionLoading || draftQuestionsSubmitting"
               data-testid="survey-publish-button"
               @click="onPublish"
             />

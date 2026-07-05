@@ -89,7 +89,7 @@ const formSnapshot = computed<SurveyDraftShape>(() => ({
   questions: questions.value,
 }))
 
-const { save: saveDraftNow, clear: clearDraft, restore: restoreDraft, savedFlash } = useFormDraft<SurveyDraftShape>(
+const { clear: clearDraft, restore: restoreDraft, savedFlash } = useFormDraft<SurveyDraftShape>(
   draftKey.value,
   { source: formSnapshot, debounceMs: 1000, flashMs: 2000 },
 )
@@ -407,7 +407,6 @@ function submitAndPublish() {
       <div>
         <label class="mb-2 block text-sm font-medium">
           {{ t('surveys.create.questions') }}
-          <span class="ml-1 text-xs font-normal text-surface-400">({{ t('surveys.create.draftHint').split('。')[0] }})</span>
         </label>
         <SurveyQuestionEditor v-model="questions" />
       </div>
