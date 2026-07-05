@@ -187,7 +187,7 @@ class AuthOAuthServiceTest {
             given(oauthAccountRepository.save(any(OAuthAccountEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
 
-            given(authTokenService.issueAccessToken(any(), any())).willReturn("jwt-access-token");
+            given(authTokenService.issueAccessToken(any(), any(), anyBoolean())).willReturn("jwt-access-token");
             given(authTokenService.generateRefreshToken()).willReturn("raw-refresh-token");
             given(authTokenService.hashToken("raw-refresh-token")).willReturn("hashed-refresh-token");
             given(refreshTokenRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));

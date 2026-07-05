@@ -189,7 +189,7 @@ class AuthServiceTest {
             given(userRepository.findByEmail(TEST_EMAIL)).willReturn(Optional.of(user));
             given(passwordEncoder.matches(TEST_PASSWORD, ENCODED_PASSWORD)).willReturn(true);
             given(twoFactorAuthRepository.findByUserId(any())).willReturn(Optional.empty());
-            given(authTokenService.issueAccessToken(any(), any())).willReturn("jwt-access-token");
+            given(authTokenService.issueAccessToken(any(), any(), anyBoolean())).willReturn("jwt-access-token");
             given(authTokenService.generateRefreshToken()).willReturn("raw-refresh-token");
             given(authTokenService.hashToken("raw-refresh-token")).willReturn("hashed-refresh-token");
             given(authTokenService.getRefreshTokenExpirationSeconds()).willReturn(604800L);
@@ -329,7 +329,7 @@ class AuthServiceTest {
             given(userRepository.findByEmail(TEST_EMAIL)).willReturn(Optional.of(archivedUser));
             given(passwordEncoder.matches(TEST_PASSWORD, ENCODED_PASSWORD)).willReturn(true);
             given(twoFactorAuthRepository.findByUserId(any())).willReturn(Optional.empty());
-            given(authTokenService.issueAccessToken(any(), any())).willReturn("jwt-access-token");
+            given(authTokenService.issueAccessToken(any(), any(), anyBoolean())).willReturn("jwt-access-token");
             given(authTokenService.generateRefreshToken()).willReturn("raw-refresh-token");
             given(authTokenService.hashToken("raw-refresh-token")).willReturn("hashed-refresh-token");
             given(authTokenService.getRefreshTokenExpirationSeconds()).willReturn(604800L);
@@ -379,7 +379,7 @@ class AuthServiceTest {
             given(passwordEncoder.upgradeEncoding(ENCODED_PASSWORD)).willReturn(true);
             given(passwordEncoder.encode(TEST_PASSWORD)).willReturn("{argon2}$argon2id$v=19$rehashed");
             given(twoFactorAuthRepository.findByUserId(any())).willReturn(Optional.empty());
-            given(authTokenService.issueAccessToken(any(), any())).willReturn("jwt-access-token");
+            given(authTokenService.issueAccessToken(any(), any(), anyBoolean())).willReturn("jwt-access-token");
             given(authTokenService.generateRefreshToken()).willReturn("raw-refresh-token");
             given(authTokenService.hashToken("raw-refresh-token")).willReturn("hashed-refresh-token");
             given(authTokenService.getRefreshTokenExpirationSeconds()).willReturn(604800L);
@@ -407,7 +407,7 @@ class AuthServiceTest {
             given(passwordEncoder.matches(TEST_PASSWORD, ENCODED_PASSWORD)).willReturn(true);
             given(passwordEncoder.upgradeEncoding(ENCODED_PASSWORD)).willReturn(false);
             given(twoFactorAuthRepository.findByUserId(any())).willReturn(Optional.empty());
-            given(authTokenService.issueAccessToken(any(), any())).willReturn("jwt-access-token");
+            given(authTokenService.issueAccessToken(any(), any(), anyBoolean())).willReturn("jwt-access-token");
             given(authTokenService.generateRefreshToken()).willReturn("raw-refresh-token");
             given(authTokenService.hashToken("raw-refresh-token")).willReturn("hashed-refresh-token");
             given(authTokenService.getRefreshTokenExpirationSeconds()).willReturn(604800L);
