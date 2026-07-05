@@ -656,6 +656,24 @@
         "saving": "Wird gespeichert...",
         "saved": "Gespeichert"
       }
+    },
+    "create": {
+      "dialog_title": "TODO erstellen",
+      "title_label": "Titel",
+      "title_placeholder": "TODO-Titel",
+      "details_toggle": "Details festlegen (optional)",
+      "description_label": "Beschreibung (optional)",
+      "description_placeholder": "Details oder Notizen",
+      "scope_label": "Teilen mit",
+      "scope_personal": "Persönlich",
+      "priority_label": "Priorität",
+      "start_date_label": "Startdatum (optional)",
+      "due_date_label": "Fälligkeitsdatum (optional)",
+      "submit_button": "Erstellen",
+      "cancel_button": "Abbrechen",
+      "draft_restored": "Entwurf wiederhergestellt",
+      "create_success": "TODO erstellt",
+      "create_failed": "Erstellen fehlgeschlagen"
     }
   },
   "extended_profile": {
