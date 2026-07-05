@@ -148,7 +148,6 @@
       "delete_confirm_title": "カードを削除しますか？",
       "delete_confirm": "このカードを完全に削除します。元には戻せません。",
       "delete_confirm_ok": "削除する",
-      "record_used": "使用済みとして記録",
       "favorite_on": "お気に入りに追加",
       "favorite_off": "お気に入りから外す",
       "section_meta": "カード情報",
@@ -160,8 +159,7 @@
       "barcode_locked_hint": "バーコード値・形式はセキュリティ上の理由で編集できません。変更したい場合は削除して再登録してください。",
       "not_found": "カードが見つかりません",
       "back_to_list": "一覧に戻る",
-      "save_failed": "更新に失敗しました",
-      "used_recorded": "使用済みとして記録しました"
+      "save_failed": "更新に失敗しました"
     },
     "group_form": {
       "title_new": "新規グループ",

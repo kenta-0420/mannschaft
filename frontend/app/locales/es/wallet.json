@@ -148,7 +148,6 @@
       "delete_confirm_title": "¿Eliminar la tarjeta?",
       "delete_confirm": "Esto eliminará la tarjeta permanentemente. No se puede deshacer.",
       "delete_confirm_ok": "Eliminar",
-      "record_used": "Registrar como usado",
       "favorite_on": "Añadir a favoritos",
       "favorite_off": "Quitar de favoritos",
       "section_meta": "Información de la tarjeta",
@@ -160,8 +159,7 @@
       "barcode_locked_hint": "El valor y formato del código de barras no pueden editarse por razones de seguridad. Para cambiarlos, elimine la tarjeta y vuelva a registrarla.",
       "not_found": "Tarjeta no encontrada",
       "back_to_list": "Volver a la lista",
-      "save_failed": "Error al actualizar",
-      "used_recorded": "Registrado como usado"
+      "save_failed": "Error al actualizar"
     },
     "group_form": {
       "title_new": "Nuevo grupo",
