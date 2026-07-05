@@ -647,7 +647,9 @@
         "growing_note_segments": [
           "쓰는 사람들의 목소리로, 기능은 앞으로도 늘어납니다."
         ],
-        "can_do_label": "할 수 있는 것"
+        "can_do_label": "할 수 있는 것",
+        "more_label": "더 자세히",
+        "less_label": "자세히 닫기"
       },
       "usecases": {
         "sports_team": "스포츠 팀",

@@ -647,7 +647,9 @@
         "growing_note_segments": [
           "Features keep being added, shaped by the voices of the people who use it."
         ],
-        "can_do_label": "What you can do"
+        "can_do_label": "What you can do",
+        "more_label": "More details",
+        "less_label": "Hide details"
       },
       "usecases": {
         "sports_team": "Sports team",

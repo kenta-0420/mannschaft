@@ -655,7 +655,9 @@
           "功能会随着使用者的声音，",
           "不断增加。"
         ],
-        "can_do_label": "可以做什么"
+        "can_do_label": "可以做什么",
+        "more_label": "了解更多",
+        "less_label": "收起详情"
       },
       "usecases": {
         "sports_team": "运动团队",

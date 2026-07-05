@@ -647,7 +647,9 @@
         "growing_note_segments": [
           "Las funciones siguen aumentando, moldeadas por la voz de quienes la usan."
         ],
-        "can_do_label": "Qué puedes hacer"
+        "can_do_label": "Qué puedes hacer",
+        "more_label": "Más detalles",
+        "less_label": "Ocultar detalles"
       },
       "usecases": {
         "sports_team": "Equipo deportivo",

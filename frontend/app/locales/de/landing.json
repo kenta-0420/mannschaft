@@ -647,7 +647,9 @@
         "growing_note_segments": [
           "Die Funktionen wachsen weiter — geprägt von den Stimmen der Menschen, die sie nutzen."
         ],
-        "can_do_label": "Was du tun kannst"
+        "can_do_label": "Was du tun kannst",
+        "more_label": "Mehr Details",
+        "less_label": "Details ausblenden"
       },
       "usecases": {
         "sports_team": "Sportverein",

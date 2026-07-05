@@ -438,7 +438,9 @@
           "使う人の声で、",
           "機能はこれからも増えていきます。"
         ],
-        "can_do_label": "できること"
+        "can_do_label": "できること",
+        "more_label": "もっと詳しく",
+        "less_label": "詳細を閉じる"
       },
       "usecases": {
         "sports_team": "スポーツチーム",
