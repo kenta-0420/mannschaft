@@ -18,6 +18,8 @@ const notification = useNotification()
 const { userTimezone } = useDatetime()
 const loading = ref(false)
 const googleLoading = ref(false)
+const termsModalVisible = ref(false)
+const privacyModalVisible = ref(false)
 
 async function registerWithGoogle() {
   googleLoading.value = true
@@ -324,29 +326,6 @@ const onSubmit = handleSubmit(async (values) => {
       <div class="flex flex-col gap-1">
         <div class="flex items-start gap-3 rounded-lg border border-surface-200 p-3 dark:border-surface-700">
           <Checkbox
-            id="privacyPolicyAccepted"
-            v-model="privacyPolicyAccepted"
-            v-bind="privacyPolicyAcceptedProps"
-            :binary="true"
-            :invalid="submitted && !!errors.privacyPolicyAccepted"
-          />
-          <label for="privacyPolicyAccepted" class="cursor-pointer select-none text-sm leading-relaxed">
-            <NuxtLink
-              to="/privacy"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="font-medium text-primary hover:underline"
-            >{{ $t('landing.legal.privacy.title') }}</NuxtLink>{{ $t('auth.register.privacy_consent_suffix') }}
-          </label>
-        </div>
-        <small v-if="submitted && errors.privacyPolicyAccepted" class="text-red-500">
-          {{ $t(errors.privacyPolicyAccepted) }}
-        </small>
-      </div>
-
-      <div class="flex flex-col gap-1">
-        <div class="flex items-start gap-3 rounded-lg border border-surface-200 p-3 dark:border-surface-700">
-          <Checkbox
             id="termsAccepted"
             v-model="termsAccepted"
             v-bind="termsAcceptedProps"
@@ -354,16 +333,37 @@ const onSubmit = handleSubmit(async (values) => {
             :invalid="submitted && !!errors.termsAccepted"
           />
           <label for="termsAccepted" class="cursor-pointer select-none text-sm leading-relaxed">
-            <NuxtLink
-              to="/terms"
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
               class="font-medium text-primary hover:underline"
-            >{{ $t('landing.legal.terms.title') }}</NuxtLink>{{ $t('auth.register.privacy_consent_suffix') }}
+              @click.stop.prevent="termsModalVisible = true"
+            >{{ $t('landing.legal.terms.title') }}</button>{{ $t('auth.register.privacy_consent_suffix') }}
           </label>
         </div>
         <small v-if="submitted && errors.termsAccepted" class="text-red-500">
           {{ $t(errors.termsAccepted) }}
+        </small>
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <div class="flex items-start gap-3 rounded-lg border border-surface-200 p-3 dark:border-surface-700">
+          <Checkbox
+            id="privacyPolicyAccepted"
+            v-model="privacyPolicyAccepted"
+            v-bind="privacyPolicyAcceptedProps"
+            :binary="true"
+            :invalid="submitted && !!errors.privacyPolicyAccepted"
+          />
+          <label for="privacyPolicyAccepted" class="cursor-pointer select-none text-sm leading-relaxed">
+            <button
+              type="button"
+              class="font-medium text-primary hover:underline"
+              @click.stop.prevent="privacyModalVisible = true"
+            >{{ $t('landing.legal.privacy.title') }}</button>{{ $t('auth.register.privacy_consent_suffix') }}
+          </label>
+        </div>
+        <small v-if="submitted && errors.privacyPolicyAccepted" class="text-red-500">
+          {{ $t(errors.privacyPolicyAccepted) }}
         </small>
       </div>
 
@@ -381,5 +381,8 @@ const onSubmit = handleSubmit(async (values) => {
         </NuxtLink>
       </div>
     </div>
+
+    <TermsModal v-model:visible="termsModalVisible" />
+    <PrivacyModal v-model:visible="privacyModalVisible" />
   </form>
 </template>
