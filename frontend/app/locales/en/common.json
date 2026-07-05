@@ -84,7 +84,8 @@
     "logout": "Logout",
     "update": "Update",
     "see_more": "See more",
-    "view_all": "View all"
+    "view_all": "View all",
+    "undo": "Undo"
   },
   "label": {
     "required": "Required",

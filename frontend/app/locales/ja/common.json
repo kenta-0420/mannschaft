@@ -84,7 +84,8 @@
     "logout": "ログアウト",
     "update": "更新",
     "see_more": "もっと見る",
-    "view_all": "すべて見る"
+    "view_all": "すべて見る",
+    "undo": "元に戻す"
   },
   "label": {
     "required": "必須",
