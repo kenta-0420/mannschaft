@@ -31,6 +31,7 @@
     "dashboard_widget": {
       "title": "Quick Memos",
       "empty": "No unsorted quick memos",
+      "empty_hint": "Jot down anything that comes to mind. Long-press the logo or press Ctrl+Shift+M to capture anytime",
       "click_to_edit": "Click to edit",
       "open_detail": "Open detail",
       "see_all": "See all",
@@ -104,6 +105,38 @@
       "saved": "Settings saved",
       "load_error": "Failed to load settings",
       "save_error": "Failed to save settings"
+    },
+    "guide": {
+      "title": "How to use Quick Memo",
+      "description": "Capture anything instantly with zero friction. Organize and convert to TODOs whenever you're ready.",
+      "capture": {
+        "title": "Capture instantly",
+        "body": "Long-press the logo or use the keyboard shortcut to open a capture popup anytime. Organize later.",
+        "steps": {
+          "step1": "Long-press the logo or press Ctrl+Shift+M to open the popup",
+          "step2": "Type your thought in one line and press save",
+          "step3": "Hit 'Save!' and it's recorded"
+        }
+      },
+      "organize": {
+        "title": "Organize your memos",
+        "body": "Convert memos to TODOs or archive them to keep things tidy. Aim to organize before hitting 500.",
+        "steps": {
+          "step1": "Check the 'Unsorted' tab for your memo list",
+          "step2": "Click the checkmark to promote to TODO, or the inbox icon to archive",
+          "step3": "Click a title to edit it inline"
+        }
+      },
+      "search": {
+        "title": "Search your memos",
+        "body": "Find past memos instantly with keyword search.",
+        "steps": {
+          "step1": "Type a keyword in the search bar at the top",
+          "step2": "Results filter in real time",
+          "step3": "Click a memo to view or edit details"
+        }
+      }
     }
   }
+}
 }

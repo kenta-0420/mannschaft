@@ -31,6 +31,7 @@
     "dashboard_widget": {
       "title": "Notas rápidas",
       "empty": "No hay notas rápidas sin clasificar",
+      "empty_hint": "Anota lo que se te ocurra al instante. Mantén pulsado el logo o usa Ctrl+Shift+M para capturar en cualquier momento",
       "click_to_edit": "Clic para editar",
       "open_detail": "Abrir detalle",
       "see_all": "Ver todas",
@@ -104,6 +105,37 @@
       "saved": "Configuración guardada",
       "load_error": "Error al cargar configuración",
       "save_error": "Error al guardar configuración"
+    },
+    "guide": {
+      "title": "Cómo usar Notas rápidas",
+      "description": "Captura cualquier pensamiento al instante sin fricción. Organiza y convierte a TODOs cuando estés listo.",
+      "capture": {
+        "title": "Capturar al instante",
+        "body": "Mantén pulsado el logo o usa el atajo de teclado para abrir el popup en cualquier momento.",
+        "steps": {
+          "step1": "Mantén pulsado el logo o presiona Ctrl+Shift+M para abrir el popup",
+          "step2": "Escribe tu idea en una línea y guarda",
+          "step3": "Haz clic en '¡Guardar!' para registrar"
+        }
+      },
+      "organize": {
+        "title": "Organizar notas",
+        "body": "Convierte notas en TODOs o archívalas para mantener el orden. Organiza antes de llegar a 500.",
+        "steps": {
+          "step1": "Revisa la lista en la pestaña 'Sin clasificar'",
+          "step2": "Haz clic en el icono de marca para promover a TODO, o en el de bandeja para archivar",
+          "step3": "Haz clic en el título para editar en línea"
+        }
+      },
+      "search": {
+        "title": "Buscar notas",
+        "body": "Encuentra notas pasadas al instante con la búsqueda por palabras clave.",
+        "steps": {
+          "step1": "Escribe una palabra clave en la barra de búsqueda superior",
+          "step2": "Los resultados se filtran en tiempo real",
+          "step3": "Haz clic en una nota para ver o editar detalles"
+        }
+      }
     }
   }
 }
