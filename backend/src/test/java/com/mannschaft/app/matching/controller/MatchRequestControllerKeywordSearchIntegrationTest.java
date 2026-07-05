@@ -11,6 +11,10 @@ import com.mannschaft.app.matching.entity.MatchRequestEntity;
 import com.mannschaft.app.matching.entity.NgTeamEntity;
 import com.mannschaft.app.matching.repository.MatchRequestRepository;
 import com.mannschaft.app.matching.repository.NgTeamRepository;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.entity.MembershipEntity;
+import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,10 +67,15 @@ class MatchRequestControllerKeywordSearchIntegrationTest extends AbstractMySqlIn
     private NgTeamRepository ngTeamRepository;
 
     @Autowired
+    private MembershipRepository membershipRepository;
+
+    @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    /** 検索を行うチーム（＝認証済みプリンシパル）。 */
+    /** 検索を行うユーザー（＝認証済みプリンシパル。user_id であってチーム id ではない）。 */
     private static final Long SEARCHER = 700_001L;
+    /** SEARCHER が所属するチーム。NG 除外は「閲覧ユーザーの所属チーム群」基準で行われる（認可根治後）。 */
+    private static final Long SEARCHER_TEAM = 700_200L;
     private static final Long TEAM_A = 700_101L;
     private static final Long TEAM_B = 700_102L;
     private static final Long TEAM_C = 700_103L;
@@ -80,6 +89,15 @@ class MatchRequestControllerKeywordSearchIntegrationTest extends AbstractMySqlIn
         // トランザクションを張らず（FULLTEXT 索引は commit 後に検索可能なため）、毎回 native DELETE で掃除する。
         jdbcTemplate.update("DELETE FROM match_requests");
         jdbcTemplate.update("DELETE FROM ng_teams");
+        jdbcTemplate.update("DELETE FROM memberships WHERE user_id = ?", SEARCHER);
+        // 認可根治後、検索の NG 除外は「閲覧ユーザーの所属チーム群」基準。SEARCHER を SEARCHER_TEAM に所属させる。
+        membershipRepository.saveAndFlush(MembershipEntity.builder()
+                .userId(SEARCHER)
+                .scopeType(ScopeType.TEAM)
+                .scopeId(SEARCHER_TEAM)
+                .roleKind(RoleKind.MEMBER)
+                .joinedAt(LocalDateTime.now())
+                .build());
         authenticateAs(SEARCHER);
     }
 
@@ -217,9 +235,9 @@ class MatchRequestControllerKeywordSearchIntegrationTest extends AbstractMySqlIn
                 MatchCategory.ANY, MatchLevel.ANY, MatchVisibility.PLATFORM);
         persistOpen(TEAM_NG, "Blocked practice session", "13", null,
                 MatchCategory.ANY, MatchLevel.ANY, MatchVisibility.PLATFORM);
-        // SEARCHER が TEAM_NG をブロック
+        // SEARCHER の所属チーム(SEARCHER_TEAM) が TEAM_NG をブロック（双方向ブロックは所属チーム基準で効く）
         ngTeamRepository.saveAndFlush(NgTeamEntity.builder()
-                .teamId(SEARCHER).blockedTeamId(TEAM_NG).reason("test").build());
+                .teamId(SEARCHER_TEAM).blockedTeamId(TEAM_NG).reason("test").build());
 
         List<MatchRequestResponse> content = search(KEYWORD, null, null, null, null, null, null, 0, 20);
 
