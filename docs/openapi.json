@@ -243,6 +243,10 @@
       "description": "募集への申込・キャンセル・参加者管理"
     },
     {
+      "name": "予約メニュー管理",
+      "description": "F03.4.1 チーム予約メニューCRUD（所要時間・提供可否・料金表示のみ）"
+    },
+    {
       "name": "マイシフト",
       "description": "F03.5 ログインユーザー自身の確定シフト照会"
     },
@@ -37098,6 +37102,78 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseNotificationRecipientResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/reservation-menus": {
+      "get": {
+        "tags": [
+          "予約メニュー管理"
+        ],
+        "summary": "予約メニュー一覧",
+        "operationId": "listMenus",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListReservationMenuResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "予約メニュー管理"
+        ],
+        "summary": "予約メニュー作成",
+        "operationId": "createMenu",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReservationMenuRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "作成成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseReservationMenuResponse"
                 }
               }
             }
@@ -82818,6 +82894,96 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseNotificationRecipientResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/reservation-menus/{menuId}": {
+      "delete": {
+        "tags": [
+          "予約メニュー管理"
+        ],
+        "summary": "予約メニュー削除（論理削除）",
+        "operationId": "deleteMenu",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "menuId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "削除成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseReservationMenuDeleteResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "予約メニュー管理"
+        ],
+        "summary": "予約メニュー更新",
+        "operationId": "updateMenu",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "menuId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateReservationMenuRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseReservationMenuResponse"
                 }
               }
             }
@@ -160105,6 +160271,99 @@
           }
         }
       },
+      "CreateReservationMenuRequest": {
+        "type": "object",
+        "description": "予約メニュー作成リクエスト",
+        "properties": {
+          "description": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 20,
+            "minimum": 1
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lineIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "durationMinutes"
+        ]
+      },
+      "ApiResponseReservationMenuResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ReservationMenuResponse"
+          }
+        }
+      },
+      "ReservationMenuResponse": {
+        "type": "object",
+        "description": "予約メニュー",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string"
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "lineIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "requiredSlotCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "CreateReservationLineRequest": {
         "type": "object",
         "properties": {
@@ -185607,6 +185866,49 @@
           }
         }
       },
+      "UpdateReservationMenuRequest": {
+        "type": "object",
+        "description": "予約メニュー部分更新リクエスト",
+        "properties": {
+          "clearPrice": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "displayOrder": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 20,
+            "minimum": 1
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "lineIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      },
       "UpdateReservationLineRequest": {
         "type": "object",
         "properties": {
@@ -195214,6 +195516,17 @@
             "format": "int32",
             "description": "登録宛先の総数（有効・無効を問わない・件数ゲートの分母）",
             "example": 1
+          }
+        }
+      },
+      "ApiResponseListReservationMenuResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReservationMenuResponse"
+            }
           }
         }
       },
@@ -216822,6 +217135,28 @@
         "properties": {
           "currentPassword": {
             "type": "string"
+          }
+        }
+      },
+      "ApiResponseReservationMenuDeleteResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ReservationMenuDeleteResponse"
+          }
+        }
+      },
+      "ReservationMenuDeleteResponse": {
+        "type": "object",
+        "description": "予約メニュー削除結果",
+        "properties": {
+          "deletedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },

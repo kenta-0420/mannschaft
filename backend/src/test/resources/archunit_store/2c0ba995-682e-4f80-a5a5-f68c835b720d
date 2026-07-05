@@ -365,6 +365,7 @@ Class <com.mannschaft.app.reservation.entity.ReservationBlockedTimeEntity> is no
 Class <com.mannschaft.app.reservation.entity.ReservationBusinessHourEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (ReservationBusinessHourEntity.java:0)
 Class <com.mannschaft.app.reservation.entity.ReservationEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (ReservationEntity.java:0)
 Class <com.mannschaft.app.reservation.entity.ReservationLineEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (ReservationLineEntity.java:0)
+Class <com.mannschaft.app.reservation.entity.ReservationMenuLineEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (ReservationMenuLineEntity.java:0)
 Class <com.mannschaft.app.reservation.entity.ReservationReminderEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (ReservationReminderEntity.java:0)
 Class <com.mannschaft.app.reservation.entity.ReservationSlotEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (ReservationSlotEntity.java:0)
 Class <com.mannschaft.app.resident.entity.DwellingUnitEntity> is not assignable to com.mannschaft.app.common.entity.UuidV7Entity in (DwellingUnitEntity.java:0)
