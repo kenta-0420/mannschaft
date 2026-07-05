@@ -1,17 +1,17 @@
 <script setup lang="ts">
 const { t } = useI18n()
 
-const faqIds = [0, 1, 2]
+const faqIds = [0, 1, 2, 3, 4, 5, 6, 7]
 </script>
 
 <template>
   <section id="lp-cta" aria-labelledby="lp-cta-heading" class="py-20 dark:bg-surface-900">
     <div class="mx-auto max-w-2xl px-4 text-center">
       <h2 id="lp-cta-heading" class="text-3xl font-black text-surface-900 dark:text-white md:text-4xl">
-        {{ t('landing.v2.cta.heading') }}
+        <LpWrapText path="landing.v2.cta.heading_segments" />
       </h2>
       <p class="mt-4 text-surface-600 dark:text-surface-300">
-        {{ t('landing.v2.cta.subheading') }}
+        <LpWrapText path="landing.v2.cta.subheading_segments" />
       </p>
 
       <div class="mt-8 flex flex-col items-center gap-2">
@@ -32,7 +32,7 @@ const faqIds = [0, 1, 2]
         </p>
       </div>
 
-      <!-- FAQ 最小（3件） -->
+      <!-- FAQ（アコーディオン閉状態で8件・シンプルさは維持） -->
       <div class="mt-14 text-left">
         <h3 class="mb-4 text-center text-lg font-bold text-surface-800 dark:text-surface-100">
           {{ t('landing.v2.cta.faq_heading') }}

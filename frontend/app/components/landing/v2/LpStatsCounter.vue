@@ -62,7 +62,7 @@ const cells = computed(() => [
 <template>
   <div class="mx-auto max-w-md" aria-live="polite">
     <p class="mb-2 text-center text-xs font-medium text-surface-400">
-      {{ t('landing.v2.stats.heading') }}
+      <LpWrapText path="landing.v2.stats.heading_segments" />
     </p>
     <div class="grid grid-cols-3 gap-2 text-center">
       <div v-for="(c, i) in cells" :key="i" class="py-1">

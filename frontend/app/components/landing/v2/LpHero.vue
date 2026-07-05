@@ -1,5 +1,14 @@
 <script setup lang="ts">
-const { t } = useI18n()
+const { t, tm, rt } = useI18n()
+
+// 見出しは意味句単位のセグメント配列で折返し制御（末尾セグメントがアクセント色）。
+// 配列ロケールは tm() + rt() で解決する（t() は文字列しか返せない）
+const titleSegments = computed(() => {
+  // tm() は compiled message AST を返すため raw は unknown で受け、rt() で文字列化する
+  const raw: unknown = tm('landing.v2.hero.title_segments')
+  if (Array.isArray(raw)) return raw.map((seg) => rt(seg as Parameters<typeof rt>[0]))
+  return []
+})
 </script>
 
 <template>
@@ -16,12 +25,16 @@ const { t } = useI18n()
         id="lp-hero-heading"
         class="mx-auto mb-5 max-w-3xl text-3xl font-black leading-tight tracking-tight text-surface-900 dark:text-white md:text-5xl"
       >
-        {{ t('landing.v2.hero.title_pre') }}
-        <span class="text-primary">{{ t('landing.v2.hero.title_accent') }}</span>{{ t('landing.v2.hero.title_post') }}
+        <span
+          v-for="(seg, i) in titleSegments"
+          :key="i"
+          class="inline-block"
+          :class="i === titleSegments.length - 1 ? 'text-primary' : ''"
+        >{{ seg }}</span>
       </h1>
 
       <p class="mx-auto mb-8 max-w-2xl text-lg leading-relaxed text-surface-600 dark:text-surface-300">
-        {{ t('landing.v2.hero.subtitle') }}
+        <LpWrapText path="landing.v2.hero.subtitle_segments" />
       </p>
 
       <div class="flex flex-col items-center justify-center gap-2">

@@ -1,18 +1,18 @@
 <script setup lang="ts">
 const { t } = useI18n()
 
-// slug は既存 /use-cases/{slug}（sports / community / business / education）に対応。
+// slug は業種別ページ /use-cases/{slug}（LP v2 で10業種に本格化）に対応。
 const presets: { key: string; icon: string; slug: string }[] = [
-  { key: 'sports_team', icon: 'pi pi-flag', slug: 'sports' },
-  { key: 'clinic', icon: 'pi pi-heart', slug: 'business' },
-  { key: 'school', icon: 'pi pi-graduation-cap', slug: 'education' },
-  { key: 'alumni', icon: 'pi pi-users', slug: 'community' },
-  { key: 'salon', icon: 'pi pi-star', slug: 'business' },
-  { key: 'mansion', icon: 'pi pi-building', slug: 'community' },
-  { key: 'neighborhood', icon: 'pi pi-home', slug: 'community' },
-  { key: 'gym', icon: 'pi pi-bolt', slug: 'business' },
-  { key: 'restaurant', icon: 'pi pi-shopping-bag', slug: 'business' },
-  { key: 'circle', icon: 'pi pi-sparkles', slug: 'community' },
+  { key: 'sports_team', icon: 'pi pi-flag', slug: 'sports-team' },
+  { key: 'clinic', icon: 'pi pi-heart', slug: 'clinic' },
+  { key: 'school', icon: 'pi pi-graduation-cap', slug: 'school' },
+  { key: 'alumni', icon: 'pi pi-users', slug: 'alumni' },
+  { key: 'salon', icon: 'pi pi-star', slug: 'salon' },
+  { key: 'mansion', icon: 'pi pi-building', slug: 'mansion' },
+  { key: 'neighborhood', icon: 'pi pi-home', slug: 'neighborhood' },
+  { key: 'gym', icon: 'pi pi-bolt', slug: 'gym' },
+  { key: 'restaurant', icon: 'pi pi-shopping-bag', slug: 'restaurant' },
+  { key: 'circle', icon: 'pi pi-sparkles', slug: 'circle' },
 ]
 </script>
 
@@ -21,9 +21,11 @@ const presets: { key: string; icon: string; slug: string }[] = [
     <div class="mx-auto max-w-5xl px-4">
       <div class="mb-8 text-center">
         <h2 id="lp-usecases-heading" class="text-2xl font-bold text-surface-900 dark:text-white md:text-3xl">
-          {{ t('landing.v2.usecases.heading') }}
+          <LpWrapText path="landing.v2.usecases.heading_segments" />
         </h2>
-        <p class="mt-3 text-surface-500">{{ t('landing.v2.usecases.subheading') }}</p>
+        <p class="mt-3 text-surface-500">
+          <LpWrapText path="landing.v2.usecases.subheading_segments" />
+        </p>
       </div>
     </div>
 

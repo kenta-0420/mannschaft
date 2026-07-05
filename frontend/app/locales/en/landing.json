@@ -434,13 +434,16 @@
       "seo_title": "Mannschaft — Which door is yours?",
       "hero": {
         "badge": "Individuals, teams, organizations — all in one",
-        "title_pre": "Chat apps, spreadsheets, single-purpose tools — bring it all into ",
-        "title_accent": "one",
-        "title_post": " place.",
-        "subtitle": "An all-in-one platform for running things — whoever you are: an individual, a team, or an organization.",
         "cta_register": "Start free",
         "login_prompt": "Already have an account?",
-        "login_link": "Log in"
+        "login_link": "Log in",
+        "title_segments": [
+          "Chat apps, spreadsheets, single-purpose tools — bring it all into ",
+          "one place."
+        ],
+        "subtitle_segments": [
+          "An all-in-one platform for running things — whoever you are: an individual, a team, or an organization."
+        ]
       },
       "scope": {
         "heading": "Which door is yours?",
@@ -474,86 +477,178 @@
         }
       },
       "stats": {
-        "heading": "This many people are already on board",
         "users": "Users",
         "teams": "Teams",
-        "organizations": "Organizations"
+        "organizations": "Organizations",
+        "heading_segments": [
+          "This many people are already on board"
+        ]
       },
       "features": {
-        "heading": "Features, right when you need them.",
-        "subheading": "Tap any feature to open a quick explanation.",
         "detail_link": "Learn more",
         "close": "Close",
         "items": {
           "team": {
             "title": "Team & organization management",
-            "desc": "Invite members and set roles and permissions with clarity. See who can do what at a glance."
+            "desc": "Invite members and set roles and permissions with clarity. See who can do what at a glance.",
+            "points": [
+              "Invite members and set roles and permissions",
+              "Toggle only the features you use on or off (admins)",
+              "Manage team and organization levels under one account"
+            ]
           },
           "schedule": {
             "title": "Schedule & attendance",
-            "desc": "Share plans and confirm attendance with one tap. Reminders are sent automatically."
+            "desc": "Share plans and confirm attendance with one tap. Reminders are sent automatically.",
+            "points": [
+              "See all your teams' and personal events in one calendar",
+              "Answer attendance with one tap: attend, absent, undecided",
+              "Two-way sync of personal events with Google Calendar"
+            ]
           },
           "reservation": {
             "title": "Reservations",
-            "desc": "Accept bookings by time slot or by staff. Capacity, full slots and cancellations are handled automatically."
+            "desc": "Accept bookings by time slot or by staff. Capacity, full slots and cancellations are handled automatically.",
+            "points": [
+              "Book by tapping an open slot on the availability grid",
+              "Track status with badges: pending, confirmed, cancelled",
+              "Manage blocked slots and notification email recipients"
+            ]
           },
           "shift": {
             "title": "Shift management",
-            "desc": "From gathering preferences and building the roster to notifying everyone once it is set."
+            "desc": "From gathering preferences and building the roster to notifying everyone once it is set.",
+            "points": [
+              "Collect shift preferences on a 5-level scale and review them in a matrix",
+              "Track progress through draft, collecting, adjusting and published stages",
+              "Members view confirmed shifts by month or week and request swaps"
+            ]
           },
           "chat": {
             "title": "Chat",
-            "desc": "Keep conversations tidy with channels, and reply casually with threads and reactions."
+            "desc": "Keep conversations tidy with channels, and reply casually with threads and reactions.",
+            "points": [
+              "Organize conversations into channels per topic",
+              "Create channels per team or organization",
+              "React to messages casually with emoji"
+            ]
           },
           "timeline": {
             "title": "Timeline",
-            "desc": "Share what is happening in your team through a familiar feed."
+            "desc": "Share what is happening in your team through a familiar feed.",
+            "points": [
+              "Post short updates to a per-team feed",
+              "Keep loose conversations going with replies",
+              "Admins can pin important posts"
+            ]
           },
           "circulation": {
             "title": "Circulars & digital seals",
-            "desc": "Pass documents around in sequence or all at once, with stamps and read status made visible."
+            "desc": "Pass documents around in sequence or all at once, with stamps and read status made visible.",
+            "points": [
+              "Circulate documents in order or to everyone at once",
+              "Recipients confirm by stamping with their registered digital seal",
+              "Track progress such as the number of stamps in real time"
+            ]
           },
           "survey": {
             "title": "Surveys & voting",
-            "desc": "Build questions and tally answers, anonymous or named, with results shown as charts."
+            "desc": "Build questions and tally answers, anonymous or named, with results shown as charts.",
+            "points": [
+              "Question types: single choice, multiple choice, free text, rating and date",
+              "Fine-grained settings for anonymity and result visibility",
+              "Manage responses with statuses and response counts"
+            ]
           },
           "files": {
             "title": "File sharing",
-            "desc": "Organize documents and photos into folders and share them safely with the right people."
+            "desc": "Organize documents and photos into folders and share them safely with the right people.",
+            "points": [
+              "Set the minimum role that can view each folder or file",
+              "Disable downloads per file when needed",
+              "Share externally with expiring public links (admin-issued)"
+            ]
           },
           "billing": {
             "title": "Dues & payments",
-            "desc": "From issuing dues to checking payment status and sending reminders, all online."
+            "desc": "From issuing dues to checking payment status and sending reminders, all online.",
+            "points": [
+              "Manage dues invoices and payment status online",
+              "Recurring payments run automatically once a card is registered",
+              "Unpaid content stays protected behind a paywall"
+            ]
           },
           "matching": {
             "title": "Matching & tournaments",
-            "desc": "From finding opponents to running tournaments and recording results."
+            "desc": "From finding opponents to running tournaments and recording results.",
+            "points": [
+              "Search the whole platform for opponents and exchanges",
+              "Filter by type — match, practice, exchange — and level",
+              "Tournament management automates standings, fixtures and rankings"
+            ]
           },
           "safety": {
             "title": "Emergency safety check",
-            "desc": "In a disaster or emergency, ask everyone at once and tally their status."
+            "desc": "In a disaster or emergency, ask everyone at once and tally their status.",
+            "points": [
+              "Admins trigger a safety check for everyone at once (drill mode available)",
+              "Tally responses and response rates in real time",
+              "Review past checks and details afterwards"
+            ]
           },
           "qr": {
             "title": "QR member pass",
-            "desc": "Issue member passes as QR codes and verify identity with a simple scan at the door."
+            "desc": "Issue member passes as QR codes and verify identity with a simple scan at the door.",
+            "points": [
+              "Issue digital member passes as QR codes",
+              "Check the check-in history",
+              "Suspend and resume passes as needed"
+            ]
           },
           "wallet": {
             "title": "Point card wallet",
-            "desc": "Keep point cards from every shop together on your phone."
+            "desc": "Keep point cards from every shop together on your phone.",
+            "points": [
+              "Register up to 200 of your point cards",
+              "Group cards and switch quickly with a swipe",
+              "Show the barcode full-screen at the register, with biometric lock support"
+            ]
           },
           "karte": {
             "title": "Health records",
-            "desc": "Keep intake forms, treatment records and progress together with photos and charts."
+            "desc": "Keep intake forms, treatment records and progress together with photos and charts.",
+            "points": [
+              "Create records for treatments and progress",
+              "Organize with draft and final statuses plus pinning",
+              "Open details quickly in a dialog"
+            ]
           },
           "village": {
             "title": "Village (community)",
-            "desc": "A relaxed common ground that connects people beyond a single team."
+            "desc": "A relaxed common ground that connects people beyond a single team.",
+            "points": [
+              "Join villages of people who share your purpose (approval-based too)",
+              "Mingle via boards, timelines and the well-side lobby",
+              "From festival calls to meeting date votes and monthly chronicles"
+            ]
           }
-        }
+        },
+        "heading_segments": [
+          "Features, right when you need them."
+        ],
+        "subheading_segments": [
+          "Tap any feature to open a quick explanation."
+        ],
+        "pricing_note_segments": [
+          "Core features are free. Add-on modules are opt-in — pick only what you need (picking many may require a paid plan)."
+        ],
+        "growing_title": "Mannschaft is still growing.",
+        "growing_note_segments": [
+          "Features keep being added, shaped by the voices of the people who use it."
+        ],
+        "can_do_label": "What you can do"
       },
       "usecases": {
-        "heading": "The ways to use it are endless.",
-        "subheading": "The same tools, a different role for every user.",
         "sports_team": "Sports team",
         "clinic": "Osteopathic clinic",
         "school": "School",
@@ -563,11 +658,15 @@
         "neighborhood": "Neighborhood association",
         "gym": "Gym",
         "restaurant": "Restaurant",
-        "circle": "Club / circle"
+        "circle": "Club / circle",
+        "heading_segments": [
+          "The ways to use it are endless."
+        ],
+        "subheading_segments": [
+          "The same tools, a different role for every user."
+        ]
       },
       "cta": {
-        "heading": "Start free.",
-        "subheading": "A personal account is free. You can create a team later.",
         "register": "Start free",
         "pricing_prompt": "Curious about pricing?",
         "pricing_link": "See pricing plans",
@@ -575,18 +674,231 @@
         "faq": {
           "0": {
             "q": "Is it free to use?",
-            "a": "Personal accounts and core features are free. Paid plans are available for larger scale and extra features."
+            "a": "Personal accounts and core features are free. Add-on modules are opt-in, and picking many may require a paid plan."
           },
           "1": {
             "q": "Can I use it on my phone?",
-            "a": "Yes. It works right in your browser on phones and tablets."
+            "a": "Yes. It works right in your browser on phones and tablets — no app install needed."
           },
           "2": {
-            "q": "Can I manage several teams together?",
+            "q": "Can I belong to several teams?",
             "a": "With a single account you can belong to multiple teams and organizations and switch between them."
+          },
+          "3": {
+            "q": "Can I export my data?",
+            "a": "Yes. Bulk export in CSV and JSON formats is supported."
+          },
+          "4": {
+            "q": "How about security?",
+            "a": "Traffic is TLS-encrypted, with two-factor authentication (SMS, authenticator app, passkeys) and role-based access control."
+          },
+          "5": {
+            "q": "What happens to my data if I leave?",
+            "a": "Personal data is erased within 30 days of a withdrawal request (GDPR-compliant). Posts and statistics remain in a form that cannot identify you."
+          },
+          "6": {
+            "q": "Which languages are supported?",
+            "a": "Six languages: Japanese, English, German, Spanish, Korean and Chinese."
+          },
+          "7": {
+            "q": "What if a feature I want is missing?",
+            "a": "Send us a request via the contact form. Mannschaft is a growing platform that adds features based on user feedback."
           }
         },
-        "retro_hint": "🎮 Sometimes the screen goes retro… maybe?"
+        "retro_hint": "🎮 Sometimes the screen goes retro… maybe?",
+        "heading_segments": [
+          "Start free."
+        ],
+        "subheading_segments": [
+          "A personal account is free. You can create a team later."
+        ]
+      },
+      "usecase_pages": {
+        "common": {
+          "back": "← Back to top",
+          "story_heading": "With Mannschaft, it goes like this",
+          "chips_heading": "Features used",
+          "cta": "Start free"
+        },
+        "sports_team": {
+          "title": "Sports team",
+          "problem": "Attendance gets lost in chat threads, dues are collected in cash, and photos live on someone else’s phone. Is one person carrying all the busywork?",
+          "story": [
+            "Add practices and matches to the calendar — members get attendance requests and reminders automatically",
+            "Bill monthly dues online, see who has paid at a glance, and let overdue reminders send themselves",
+            "Find opponents through matching, and let tournament management compute standings automatically",
+            "Collect match photos in the gallery and chat about the game afterwards",
+            "Settle trip expenses and pick dates with polls in the same place"
+          ],
+          "chips": [
+            "Schedule & attendance",
+            "Dues & payments",
+            "Matching & tournaments",
+            "Gallery",
+            "Chat"
+          ]
+        },
+        "clinic": {
+          "title": "Osteopathic clinic",
+          "problem": "Phone bookings interrupt treatments, and paper records take time to find and hand over.",
+          "story": [
+            "Publish booking slots so patients pick an opening from their phone",
+            "Automatic reminders the day before reduce no-shows",
+            "Record treatments and progress in health records, together with photos and body charts",
+            "Check-in is a single scan of the QR member pass",
+            "At busy times, the queue manager shows live waiting status"
+          ],
+          "chips": [
+            "Reservations",
+            "Health records",
+            "QR member pass",
+            "Queue management",
+            "Service history"
+          ]
+        },
+        "school": {
+          "title": "School",
+          "problem": "Parent communication relies on printed notes, and tallying event attendance or managing PTA dues eats time.",
+          "story": [
+            "Share events and open days on the calendar and tally attendance automatically",
+            "Send notices via boards and circulars — read receipts end the \"did it reach them?\" worry",
+            "Collect PTA dues online and check payment status in one list",
+            "Run parent surveys with forms and see results as charts",
+            "Manage timetables per term, including notices for last-minute changes"
+          ],
+          "chips": [
+            "Schedule & attendance",
+            "Circulars",
+            "Dues & payments",
+            "Surveys",
+            "Timetables"
+          ]
+        },
+        "alumni": {
+          "title": "Alumni association",
+          "problem": "Confirming contact details every few years is a huge task, and the organizer burden pushes reunions further away.",
+          "story": [
+            "Keep the member roster online — members update their own contact details",
+            "Send reunion invitations in one go and collect RSVPs with a tap",
+            "Collect fees cashlessly with online payments",
+            "Share photos from the day in the gallery as an archive",
+            "Pick the next date with a quick poll"
+          ],
+          "chips": [
+            "Member management",
+            "Schedule & attendance",
+            "Dues & payments",
+            "Gallery",
+            "Surveys"
+          ]
+        },
+        "salon": {
+          "title": "Hair salon",
+          "problem": "Phone bookings pile up, and each customer’s history lives only in the staff’s memory.",
+          "story": [
+            "Publish per-stylist booking slots so customers book their favorite from their phone",
+            "Day-before reminders reduce no-shows",
+            "Record treatments and products used in service history to shape the next visit",
+            "Handle staff shifts from preference collection to confirmation in the app",
+            "Encourage repeat visits with QR member passes and mail campaigns"
+          ],
+          "chips": [
+            "Reservations",
+            "Service history",
+            "Shift management",
+            "QR member pass",
+            "Mail delivery"
+          ]
+        },
+        "mansion": {
+          "title": "Condo management association",
+          "problem": "Proxies for the general meeting come back on paper, and circulars stall — nobody knows who has read what.",
+          "story": [
+            "Vote on meeting agenda items electronically, with online proxy submission",
+            "Distribute board decisions via circulars, with digital seals making confirmation visible",
+            "Manage unit and resident information safely in the resident register",
+            "Handle parking space assignment and vacancies in the app",
+            "Take guest room and common room bookings online"
+          ],
+          "chips": [
+            "Voting & proxies",
+            "Circulars & digital seals",
+            "Resident register",
+            "Parking management",
+            "Facility reservations"
+          ]
+        },
+        "neighborhood": {
+          "title": "Neighborhood association",
+          "problem": "The paper circular is slow to arrive, and in an emergency the only channel is a phone tree.",
+          "story": [
+            "Digitize the circular — pass it in sequence or send it to everyone, with visible read status",
+            "Share festival and clean-up dates on the calendar and tally participants automatically",
+            "Collect association dues online, ending door-to-door collection",
+            "In a disaster, send a safety check to everyone at once and tally the answers",
+            "Share event photos in the gallery as a community record"
+          ],
+          "chips": [
+            "Circulars",
+            "Emergency safety check",
+            "Schedule & attendance",
+            "Dues & payments",
+            "Gallery"
+          ]
+        },
+        "gym": {
+          "title": "Gym",
+          "problem": "Member passes, entry checks and monthly fees are scattered across separate tools.",
+          "story": [
+            "Issue QR member passes — a scan at the entrance checks members in",
+            "Publish class booking slots that close automatically when full",
+            "Collect monthly fees online, with automatic reminders for overdue members",
+            "Manage staff and trainer shifts from preferences to confirmation",
+            "Announce new programs to everyone at once"
+          ],
+          "chips": [
+            "QR member pass",
+            "Reservations",
+            "Dues & payments",
+            "Shift management",
+            "Announcements"
+          ]
+        },
+        "restaurant": {
+          "title": "Restaurant",
+          "problem": "Shift preferences drown in the group chat, and there are no hands free for the waiting line at peak time.",
+          "story": [
+            "Collect staff shift preferences in the app, build the roster and notify once confirmed",
+            "Hourly wage settings give you a running view of labor costs",
+            "Run the waiting list by QR code — guests check their place from their phone and get called when it’s their turn",
+            "Take and manage table reservations online in one place",
+            "Keep staff communication tidy in a store channel"
+          ],
+          "chips": [
+            "Shift management",
+            "Queue management",
+            "Reservations",
+            "Chat"
+          ]
+        },
+        "circle": {
+          "title": "Club / circle",
+          "problem": "Attendance is unpredictable, which makes booking venues hard — and trip expenses live in someone’s notes.",
+          "story": [
+            "Put activity days on the calendar and collect attendance automatically",
+            "Settle trip and event expenses transparently",
+            "Chat for daily talk, the board for announcements that matter",
+            "Turn activity photos into albums in the gallery",
+            "Take newcomer sign-ups with a form"
+          ],
+          "chips": [
+            "Schedule & attendance",
+            "Dues & payments",
+            "Chat",
+            "Gallery",
+            "Forms"
+          ]
+        }
       }
     }
   }

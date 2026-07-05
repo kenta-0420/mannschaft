@@ -38,9 +38,11 @@ function openFeature(f: LpFeature) {
     <div class="mx-auto max-w-4xl px-4">
       <div class="mb-8 text-center">
         <h2 id="lp-features-heading" class="text-2xl font-bold text-surface-900 dark:text-white md:text-3xl">
-          {{ t('landing.v2.features.heading') }}
+          <LpWrapText path="landing.v2.features.heading_segments" />
         </h2>
-        <p class="mt-3 text-surface-500">{{ t('landing.v2.features.subheading') }}</p>
+        <p class="mt-3 text-surface-500">
+          <LpWrapText path="landing.v2.features.subheading_segments" />
+        </p>
       </div>
 
       <div class="flex flex-wrap justify-center gap-2.5">
@@ -54,6 +56,25 @@ function openFeature(f: LpFeature) {
           <i :class="[f.icon, 'text-primary']" />
           {{ t(`landing.v2.features.items.${f.key}.title`) }}
         </button>
+      </div>
+
+      <!-- 料金の正直な説明 -->
+      <p class="mt-6 text-center text-sm text-surface-500">
+        <i class="pi pi-info-circle mr-1 text-xs" />
+        <LpWrapText path="landing.v2.features.pricing_note_segments" />
+      </p>
+
+      <!-- みんなで作っていく（成長中の正直な一言） -->
+      <div
+        class="mx-auto mt-10 max-w-xl rounded-2xl border border-dashed border-primary/40 bg-primary/5 px-6 py-5 text-center"
+      >
+        <p class="text-sm font-semibold text-surface-800 dark:text-surface-100">
+          <i class="pi pi-wrench mr-1.5 text-primary" />
+          {{ t('landing.v2.features.growing_title') }}
+        </p>
+        <p class="mt-1.5 text-sm leading-relaxed text-surface-500">
+          <LpWrapText path="landing.v2.features.growing_note_segments" />
+        </p>
       </div>
     </div>
 
