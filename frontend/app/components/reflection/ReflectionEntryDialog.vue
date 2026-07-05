@@ -52,6 +52,12 @@ const selectedTemplate = ref<ReflectionTemplateKey>('NORMAL')
  */
 const sectionKeyEnabled = ref<Record<string, boolean>>({})
 
+/**
+ * applyTemplate が sectionKeyEnabled を書き換える際にウォッチャーの二重発火を防ぐフラグ。
+ * applyTemplate は自前で content を生成するため、watch による再生成は不要。
+ */
+let _skipHeadingWatch = false
+
 const templateOptions = computed(() =>
   REFLECTION_TEMPLATES.map(tpl => ({ label: t(tpl.labelKey), value: tpl.key })),
 )
@@ -93,12 +99,17 @@ watch(
 function applyTemplate(key: ReflectionTemplateKey) {
   const tpl = REFLECTION_TEMPLATES.find(x => x.key === key)
   if (!tpl) {
-    content.value = emptyStructuredContent()
+    _skipHeadingWatch = true
     sectionKeyEnabled.value = {}
+    _skipHeadingWatch = false
+    content.value = emptyStructuredContent()
     return
   }
   // チェックボックス状態をデフォルトにリセット（感情/内省系は OFF）
+  // watch 二重発火防止: applyTemplate は直後に content を自分で組み立てる
+  _skipHeadingWatch = true
   sectionKeyEnabled.value = getDefaultEnabledKeys(tpl)
+  _skipHeadingWatch = false
   const enabledSet = new Set(
     Object.entries(sectionKeyEnabled.value)
       .filter(([, v]) => v)
@@ -117,22 +128,31 @@ function onTemplateChange(key: ReflectionTemplateKey) {
   applyTemplate(key)
 }
 
-/** チェックボックス変更時: content を即時再生成する */
-function onHeadingToggle() {
-  const tpl = currentTemplate.value
-  if (!tpl) return
-  const enabledSet = new Set(
-    Object.entries(sectionKeyEnabled.value)
-      .filter(([, v]) => v)
-      .map(([k]) => k),
-  )
-  const sections = buildInitialSections(tpl, t, enabledSet)
-  content.value = {
-    main_theme: content.value.main_theme,
-    sections,
-    free_note: content.value.free_note,
-  }
-}
+/**
+ * sectionKeyEnabled の変化を監視し、チェックボックス変更時に content を再生成する。
+ * deep watch により Object 内のフラグ変更を検知する。
+ * applyTemplate による書き換え時は _skipHeadingWatch フラグで二重発火をスキップする。
+ */
+watch(
+  sectionKeyEnabled,
+  () => {
+    if (_skipHeadingWatch) return
+    const tpl = currentTemplate.value
+    if (!tpl) return
+    const enabledSet = new Set(
+      Object.entries(sectionKeyEnabled.value)
+        .filter(([, v]) => v)
+        .map(([k]) => k),
+    )
+    const sections = buildInitialSections(tpl, t, enabledSet)
+    content.value = {
+      main_theme: content.value.main_theme,
+      sections,
+      free_note: content.value.free_note,
+    }
+  },
+  { deep: true },
+)
 
 function close() {
   emit('update:visible', false)
@@ -200,10 +220,9 @@ async function save() {
             class="flex items-center gap-2"
           >
             <Checkbox
-              :input-id="`heading-check-${key}`"
               v-model="sectionKeyEnabled[key]"
+              :input-id="`heading-check-${key}`"
               :binary="true"
-              @update:model-value="onHeadingToggle"
             />
             <label :for="`heading-check-${key}`" class="cursor-pointer select-none text-sm">
               {{ t(key) }}
