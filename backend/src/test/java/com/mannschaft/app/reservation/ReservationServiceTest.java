@@ -487,6 +487,84 @@ class ReservationServiceTest {
         }
 
         @Test
+        @DisplayName("F03.4.2 §5.6: ライン軸枠で request.lineId != slot.lineId は SLOT_LINE_MISMATCH=RESERVATION_038（400）")
+        void 予約作成_ライン軸枠の不一致は038() {
+            // Given: 枠はライン 30 専用（line_id=30）だがリクエストはライン 99 を指定
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, 99L, null);
+            ReservationSlotEntity slot = createAvailableSlotEntity().toBuilder().lineId(LINE_ID).build();
+            given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
+
+            // When / Then: 枠の帰属と矛盾する予約は拒否・保存されない
+            assertThatThrownBy(() -> service.createReservation(TEAM_ID, USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ReservationErrorCode.SLOT_LINE_MISMATCH);
+            then(reservationRepository).should(org.mockito.Mockito.never())
+                    .save(any(ReservationEntity.class));
+        }
+
+        @Test
+        @DisplayName("F03.4.2 §3.1: ライン軸枠では予約行の line_id が枠から自動決定される（request.lineId 省略可）")
+        void 予約作成_ライン軸枠は枠のラインが自動採用() {
+            // Given: 枠はライン 30 専用・リクエストは lineId 省略（null）
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, null, null);
+            ReservationSlotEntity slot = createAvailableSlotEntity().toBuilder().lineId(LINE_ID).build();
+            given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
+            given(reservationRepository.existsByReservationSlotIdAndUserIdAndStatusIn(
+                    eq(SLOT_ID), eq(USER_ID), any())).willReturn(false);
+            given(reservationRepository.save(any(ReservationEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            // When
+            service.createReservation(TEAM_ID, USER_ID, request);
+
+            // Then: 保存される予約行の line_id は枠の line_id（reservations.line_id NOT NULL と整合）
+            org.mockito.ArgumentCaptor<ReservationEntity> captor =
+                    org.mockito.ArgumentCaptor.forClass(ReservationEntity.class);
+            verify(reservationRepository, org.mockito.Mockito.atLeastOnce()).save(captor.capture());
+            assertThat(captor.getAllValues().get(0).getLineId()).isEqualTo(LINE_ID);
+        }
+
+        @Test
+        @DisplayName("F03.4.2 §5.6: ライン軸枠で request.lineId == slot.lineId は従来どおり作成される")
+        void 予約作成_ライン軸枠の一致は成功() {
+            // Given
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null);
+            ReservationSlotEntity slot = createAvailableSlotEntity().toBuilder().lineId(LINE_ID).build();
+            given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
+            given(reservationRepository.existsByReservationSlotIdAndUserIdAndStatusIn(
+                    eq(SLOT_ID), eq(USER_ID), any())).willReturn(false);
+            given(reservationRepository.save(any(ReservationEntity.class))).willReturn(createReservationEntity());
+            given(reservationMapper.toReservationResponse(any(ReservationEntity.class)))
+                    .willReturn(createReservationResponse());
+
+            // When / Then
+            assertThat(service.createReservation(TEAM_ID, USER_ID, request)).isNotNull();
+        }
+
+        @Test
+        @DisplayName("F03.4.2 §5.6: 共通枠（slot.lineId NULL）は従来どおり request.lineId をそのまま保存（挙動後退ゼロ）")
+        void 予約作成_共通枠は従来どおり() {
+            // Given: 共通枠（createAvailableSlotEntity は lineId 未設定 = NULL）
+            CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null);
+            ReservationSlotEntity slot = createAvailableSlotEntity();
+            given(slotService.getSlotEntity(SLOT_ID)).willReturn(slot);
+            given(reservationRepository.existsByReservationSlotIdAndUserIdAndStatusIn(
+                    eq(SLOT_ID), eq(USER_ID), any())).willReturn(false);
+            given(reservationRepository.save(any(ReservationEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+
+            // When
+            service.createReservation(TEAM_ID, USER_ID, request);
+
+            // Then
+            org.mockito.ArgumentCaptor<ReservationEntity> captor =
+                    org.mockito.ArgumentCaptor.forClass(ReservationEntity.class);
+            verify(reservationRepository, org.mockito.Mockito.atLeastOnce()).save(captor.capture());
+            assertThat(captor.getAllValues().get(0).getLineId()).isEqualTo(LINE_ID);
+        }
+
+        @Test
         @DisplayName("異常系: 重複予約の場合DUPLICATE_RESERVATIONエラー")
         void 予約作成_重複() {
             // Given

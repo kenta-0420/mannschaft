@@ -5,22 +5,36 @@ import com.mannschaft.app.reservation.dto.CreateReservationLineRequest;
 import com.mannschaft.app.reservation.dto.ReservationLineResponse;
 import com.mannschaft.app.reservation.dto.UpdateReservationLineRequest;
 import com.mannschaft.app.reservation.entity.ReservationLineEntity;
+import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
+import com.mannschaft.app.reservation.entity.ReservationSlotTemplateEntity;
 import com.mannschaft.app.reservation.repository.ReservationLineRepository;
+import com.mannschaft.app.reservation.repository.ReservationRepository;
+import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
+import com.mannschaft.app.reservation.repository.ReservationSlotTemplateRepository;
 import com.mannschaft.app.reservation.service.ReservationLineService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -28,8 +42,11 @@ import static org.mockito.Mockito.verify;
 /**
  * {@link ReservationLineService} の単体テスト。
  * 予約ラインのCRUD操作を検証する。
+ *
+ * <p>F03.4.2 改訂: ライン上限 5→20（F-10・§3.4）とライン削除フロー再設計（F-15・§5.5）を反映。</p>
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("ReservationLineService 単体テスト")
 class ReservationLineServiceTest {
 
@@ -39,7 +56,15 @@ class ReservationLineServiceTest {
     @Mock
     private ReservationMapper reservationMapper;
 
-    @InjectMocks
+    @Mock
+    private ReservationSlotTemplateRepository templateRepository;
+
+    @Mock
+    private ReservationRepository reservationRepository;
+
+    @Mock
+    private ReservationSlotRepository slotRepository;
+
     private ReservationLineService service;
 
     // ========================================
@@ -49,6 +74,18 @@ class ReservationLineServiceTest {
     private static final Long TEAM_ID = 1L;
     private static final Long LINE_ID = 10L;
     private static final Long STAFF_USER_ID = 50L;
+
+    /** ライン削除フローの「今日以降」判定用の固定 Clock（2026-07-05）。 */
+    private static final Clock FIXED_CLOCK =
+            Clock.fixed(LocalDate.of(2026, 7, 5).atStartOfDay(ZoneOffset.UTC).toInstant(), ZoneId.of("UTC"));
+
+    @BeforeEach
+    void setUp() {
+        // @InjectMocks は final Clock を mock で埋めるため、固定 Clock を明示注入して生成する。
+        service = new ReservationLineService(
+                lineRepository, reservationMapper, templateRepository, reservationRepository,
+                slotRepository, FIXED_CLOCK);
+    }
 
     private ReservationLineEntity createLineEntity() {
         return ReservationLineEntity.builder()
@@ -168,14 +205,14 @@ class ReservationLineServiceTest {
             verify(lineRepository).save(any(ReservationLineEntity.class));
         }
 
-        // ④ ライン最大5本
+        // F-10（F03.4.2 §3.4）: ライン上限 5→20
         @Test
-        @DisplayName("正常系: 既存4本（5本目）なら作成できる")
-        void ライン作成_5本目まで可() {
-            // Given: 既存 4 本 → 5 本目は許可
+        @DisplayName("F-10: 既存19本（20本目）なら作成できる")
+        void ライン作成_20本目まで可() {
+            // Given: 既存 19 本 → 20 本目は許可
             CreateReservationLineRequest request = new CreateReservationLineRequest(
-                    "5本目メニュー", null, null, null);
-            given(lineRepository.countByTeamId(TEAM_ID)).willReturn(4L);
+                    "20本目メニュー", null, null, null);
+            given(lineRepository.countByTeamId(TEAM_ID)).willReturn(19L);
             given(lineRepository.save(any(ReservationLineEntity.class))).willReturn(createLineEntity());
             given(reservationMapper.toLineResponse(any(ReservationLineEntity.class)))
                     .willReturn(createLineResponse());
@@ -189,27 +226,43 @@ class ReservationLineServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 既存5本（6本目）はLINE_LIMIT_EXCEEDED（400）で拒否され保存されない")
-        void ライン作成_6本目拒否() {
-            // Given: 既存 5 本 → 6 本目は拒否
+        @DisplayName("F-10: 既存20本（21本目）はLINE_LIMIT_EXCEEDED=024（400・メッセージ「最大20本」）で拒否され保存されない")
+        void ライン作成_21本目拒否() {
+            // Given: 既存 20 本 → 21 本目は拒否
             CreateReservationLineRequest request = new CreateReservationLineRequest(
-                    "6本目メニュー", null, null, null);
-            given(lineRepository.countByTeamId(TEAM_ID)).willReturn(5L);
+                    "21本目メニュー", null, null, null);
+            given(lineRepository.countByTeamId(TEAM_ID)).willReturn(20L);
 
-            // When / Then
+            // When / Then: コードは 024 再利用・メッセージが 20 本へ改訂されていること
             assertThatThrownBy(() -> service.createLine(TEAM_ID, request))
                     .isInstanceOf(BusinessException.class)
+                    .hasMessageContaining("20")
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ReservationErrorCode.LINE_LIMIT_EXCEEDED);
             verify(lineRepository, never()).save(any(ReservationLineEntity.class));
         }
 
         @Test
-        @DisplayName("異常系: display_orderが範囲外（6）はINVALID_DISPLAY_ORDER（400）")
-        void ライン作成_表示順範囲外() {
-            // Given: 上限未満だが display_order=6（範囲外）
+        @DisplayName("F-10: display_order=20 は有効（境界）")
+        void ライン作成_表示順20は有効() {
+            // Given
             CreateReservationLineRequest request = new CreateReservationLineRequest(
-                    "範囲外メニュー", null, 6, null);
+                    "20列目メニュー", null, 20, null);
+            given(lineRepository.countByTeamId(TEAM_ID)).willReturn(0L);
+            given(lineRepository.save(any(ReservationLineEntity.class))).willReturn(createLineEntity());
+            given(reservationMapper.toLineResponse(any(ReservationLineEntity.class)))
+                    .willReturn(createLineResponse());
+
+            // When / Then
+            assertThat(service.createLine(TEAM_ID, request)).isNotNull();
+        }
+
+        @Test
+        @DisplayName("F-10: display_orderが範囲外（21）はINVALID_DISPLAY_ORDER=025（400・範囲1〜20）")
+        void ライン作成_表示順範囲外() {
+            // Given: 上限未満だが display_order=21（範囲外）
+            CreateReservationLineRequest request = new CreateReservationLineRequest(
+                    "範囲外メニュー", null, 21, null);
             given(lineRepository.countByTeamId(TEAM_ID)).willReturn(0L);
 
             // When / Then
@@ -317,15 +370,117 @@ class ReservationLineServiceTest {
     // ========================================
 
     @Nested
-    @DisplayName("deleteLine")
+    @DisplayName("deleteLine（F-15・F03.4.2 §5.5 再設計フロー）")
     class DeleteLine {
 
+        private ReservationSlotTemplateEntity activeTemplateForLine() {
+            ReservationSlotTemplateEntity tpl = ReservationSlotTemplateEntity.builder()
+                    .teamId(TEAM_ID)
+                    .lineId(LINE_ID)
+                    .dayOfWeek(ReservationDayOfWeek.MON)
+                    .startTime(LocalTime.of(10, 0))
+                    .endTime(LocalTime.of(13, 0))
+                    .build();
+            tpl.setId(java.util.UUID.randomUUID());
+            return tpl;
+        }
+
+        private ReservationSlotEntity futureLineSlot(Long id) {
+            ReservationSlotEntity slot = ReservationSlotEntity.builder()
+                    .teamId(TEAM_ID)
+                    .lineId(LINE_ID)
+                    .slotDate(LocalDate.of(2026, 7, 10))
+                    .startTime(LocalTime.of(10, 0))
+                    .endTime(LocalTime.of(10, 30))
+                    .build();
+            // BaseEntity の id は @GeneratedValue のため reflection でセットする（purge 対象の識別用）
+            try {
+                java.lang.reflect.Field idField =
+                        com.mannschaft.app.common.BaseEntity.class.getDeclaredField("id");
+                idField.setAccessible(true);
+                idField.set(slot, id);
+            } catch (ReflectiveOperationException e) {
+                throw new IllegalStateException(e);
+            }
+            return slot;
+        }
+
         @Test
-        @DisplayName("正常系: ラインが論理削除される")
-        void ライン削除_正常() {
+        @DisplayName("F-15①: active予約なし・未来のライン軸枠あり・activeテンプレあり → 200（旧設計なら409）。"
+                + "テンプレis_active=FALSE・予約なし未来枠purge・ライン論理削除の番号順")
+        void ライン削除_非循環フロー成功() {
             // Given
             ReservationLineEntity entity = createLineEntity();
+            ReservationSlotTemplateEntity tpl = activeTemplateForLine();
+            ReservationSlotEntity purgeable = futureLineSlot(101L);
+            ReservationSlotEntity reserved = futureLineSlot(102L);
             given(lineRepository.findByIdAndTeamId(LINE_ID, TEAM_ID)).willReturn(Optional.of(entity));
+            given(templateRepository.findByLineIdAndIsActiveTrue(LINE_ID)).willReturn(List.of(tpl));
+            given(reservationRepository.existsByLineIdAndStatusIn(eq(LINE_ID), anyList())).willReturn(false);
+            given(slotRepository.findByLineIdAndSlotDateGreaterThanEqual(eq(LINE_ID), any(LocalDate.class)))
+                    .willReturn(List.of(purgeable, reserved));
+            // 102 だけ active 予約が紐づく（枠は履歴として残す）
+            given(reservationRepository.findSlotIdsWithActiveReservations(anyList(), anyList()))
+                    .willReturn(List.of(102L));
+
+            // When
+            service.deleteLine(TEAM_ID, LINE_ID);
+
+            // Then: 1. テンプレ停止
+            assertThat(tpl.getIsActive()).isFalse();
+            verify(templateRepository).saveAll(List.of(tpl));
+            // 3. 予約なし未来枠のみ論理削除（102 は残す）
+            assertThat(purgeable.getDeletedAt()).isNotNull();
+            assertThat(reserved.getDeletedAt()).isNull();
+            // 5. ライン本体の論理削除
+            assertThat(entity.getDeletedAt()).isNotNull();
+            verify(lineRepository).save(entity);
+        }
+
+        @Test
+        @DisplayName("F-15②: active予約（PENDING/CONFIRMED）を持つラインの削除は LINE_HAS_ACTIVE_RESERVATIONS=RESERVATION_045（409）。"
+                + "purge・ライン削除は実行されない（txロールバックで手順1も巻き戻る前提）")
+        void ライン削除_active予約ありは409() {
+            // Given
+            ReservationLineEntity entity = createLineEntity();
+            ReservationSlotTemplateEntity tpl = activeTemplateForLine();
+            given(lineRepository.findByIdAndTeamId(LINE_ID, TEAM_ID)).willReturn(Optional.of(entity));
+            given(templateRepository.findByLineIdAndIsActiveTrue(LINE_ID)).willReturn(List.of(tpl));
+            given(reservationRepository.existsByLineIdAndStatusIn(eq(LINE_ID), anyList())).willReturn(true);
+
+            // When / Then: 唯一の 409 事由（「予約のない未来枠あり」は 409 にしない — 循環の根の除去）
+            assertThatThrownBy(() -> service.deleteLine(TEAM_ID, LINE_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ReservationErrorCode.LINE_HAS_ACTIVE_RESERVATIONS);
+            // ガード以降の手順（3〜5）が実行されないこと
+            verify(slotRepository, never()).findByLineIdAndSlotDateGreaterThanEqual(any(), any());
+            assertThat(entity.getDeletedAt()).isNull();
+            verify(lineRepository, never()).save(any(ReservationLineEntity.class));
+        }
+
+        @Test
+        @DisplayName("F-15②続: 409 は @Transactional 単一 tx 内で投げられ、手順1（テンプレ停止）が部分適用されない")
+        void ライン削除_単一tx宣言() throws Exception {
+            // deleteLine が @Transactional であること（409 時に手順1がロールバックされる構造保証）
+            java.lang.reflect.Method method =
+                    ReservationLineService.class.getMethod("deleteLine", Long.class, Long.class);
+            org.springframework.transaction.annotation.Transactional tx =
+                    method.getAnnotation(org.springframework.transaction.annotation.Transactional.class);
+            assertThat(tx).as("deleteLine は書き込み @Transactional（単一tx）であること").isNotNull();
+            assertThat(tx.readOnly()).isFalse();
+        }
+
+        @Test
+        @DisplayName("F-15③: 予約振替後の再実行（active予約なし）は 200 相当で完走する（再実行可能）")
+        void ライン削除_振替後の再実行成功() {
+            // Given: テンプレは前回の実行途中で既に停止済み（findByLineIdAndIsActiveTrue が空）でも落ちない
+            ReservationLineEntity entity = createLineEntity();
+            given(lineRepository.findByIdAndTeamId(LINE_ID, TEAM_ID)).willReturn(Optional.of(entity));
+            given(templateRepository.findByLineIdAndIsActiveTrue(LINE_ID)).willReturn(List.of());
+            given(reservationRepository.existsByLineIdAndStatusIn(eq(LINE_ID), anyList())).willReturn(false);
+            given(slotRepository.findByLineIdAndSlotDateGreaterThanEqual(eq(LINE_ID), any(LocalDate.class)))
+                    .willReturn(List.of());
 
             // When
             service.deleteLine(TEAM_ID, LINE_ID);

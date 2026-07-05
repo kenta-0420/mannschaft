@@ -36,6 +36,27 @@ public class ReservationSlotEntity extends BaseEntity {
 
     private Long staffUserId;
 
+    /**
+     * ライン軸（F03.4.2 §3.1）。<b>NULL = 共通枠 = 既存互換</b>（従来の全枠は NULL のまま・backfill しない）。
+     *
+     * <p>ライン軸枠（非 NULL）は「そのライン専用の枠」で、予約時のライン選択は枠から自動決定される。
+     * 共通枠は従来どおり予約時にユーザーがラインを選ぶ。両者は無期限に併存できる（挙動後退ゼロ）。
+     * FK → {@code reservation_lines.id} ON DELETE RESTRICT（同一 reservation ドメイン内 FK）。</p>
+     */
+    @Column(name = "line_id")
+    private Long lineId;
+
+    /**
+     * 生成元テンプレート（F03.4.2 §3.1）。NULL = 手動作成枠。
+     *
+     * <p>FK → {@code reservation_slot_templates.id} ON DELETE SET NULL
+     * （テンプレ物理削除後も生成済み枠は独立して残る）。
+     * 冪等キー {@code uq_rs_template_cell (template_id, slot_date, start_time)} の構成カラム
+     * （NULL 行＝手動枠は MySQL の UNIQUE 仕様により制約対象外 — §5.3）。</p>
+     */
+    @Column(name = "template_id")
+    private java.util.UUID templateId;
+
     @Column(length = 200)
     private String title;
 
@@ -191,6 +212,15 @@ public class ReservationSlotEntity extends BaseEntity {
      */
     public void changeStaffUser(Long staffUserId) {
         this.staffUserId = staffUserId;
+    }
+
+    /**
+     * ライン軸を変更する（部分更新・F03.4.2 §4）。
+     *
+     * @param lineId ラインID（null = 共通枠へ）
+     */
+    public void changeLine(Long lineId) {
+        this.lineId = lineId;
     }
 
     /**

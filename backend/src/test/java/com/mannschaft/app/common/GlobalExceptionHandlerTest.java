@@ -545,6 +545,71 @@ class GlobalExceptionHandlerTest {
         }
 
         @Test
+        @DisplayName("F03.4.2 テンプレ不在: TEMPLATE_NOT_FOUND は 404 Not Found（code=RESERVATION_036・IDOR 秘匿）")
+        void handleBusinessException_TEMPLATE_NOT_FOUND_404() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.reservation.ReservationErrorCode.TEMPLATE_NOT_FOUND);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_036");
+        }
+
+        @Test
+        @DisplayName("F03.4.2 テンプレ上限: TEMPLATE_LIMIT_EXCEEDED は 400 Bad Request（code=RESERVATION_037・個別 map なし WARN 既定）")
+        void handleBusinessException_TEMPLATE_LIMIT_EXCEEDED_400() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.reservation.ReservationErrorCode.TEMPLATE_LIMIT_EXCEEDED);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_037");
+        }
+
+        @Test
+        @DisplayName("F03.4.2 §5.6 ライン不一致: SLOT_LINE_MISMATCH は 400 Bad Request（code=RESERVATION_038）")
+        void handleBusinessException_SLOT_LINE_MISMATCH_400() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.reservation.ReservationErrorCode.SLOT_LINE_MISMATCH);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_038");
+        }
+
+        @Test
+        @DisplayName("F03.4.2 §6 生成レート制限: TEMPLATE_GENERATE_RATE_LIMITED は 429 Too Many Requests（code=RESERVATION_044）")
+        void handleBusinessException_TEMPLATE_GENERATE_RATE_LIMITED_429() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.reservation.ReservationErrorCode.TEMPLATE_GENERATE_RATE_LIMITED);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_044");
+        }
+
+        @Test
+        @DisplayName("F03.4.2 §5.5 ライン削除ガード: LINE_HAS_ACTIVE_RESERVATIONS は 409 Conflict（code=RESERVATION_045）")
+        void handleBusinessException_LINE_HAS_ACTIVE_RESERVATIONS_409() {
+            BusinessException ex = new BusinessException(
+                    com.mannschaft.app.reservation.ReservationErrorCode.LINE_HAS_ACTIVE_RESERVATIONS);
+
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleBusinessException(ex);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("RESERVATION_045");
+        }
+
+        @Test
         @DisplayName("F03.4 機能D 不在: NOTIFY_RECIPIENT_NOT_FOUND は 404 Not Found（code=RESERVATION_031）")
         void handleBusinessException_NOTIFY_RECIPIENT_NOT_FOUND_404() {
             BusinessException ex = new BusinessException(

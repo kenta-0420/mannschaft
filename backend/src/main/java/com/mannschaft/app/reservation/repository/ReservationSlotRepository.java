@@ -40,14 +40,45 @@ public interface ReservationSlotRepository extends JpaRepository<ReservationSlot
     Optional<ReservationSlotEntity> findByIdAndTeamId(Long id, Long teamId);
 
     /**
-     * 親スロットに紐付く子スロットを取得する。
-     */
-    List<ReservationSlotEntity> findByParentSlotIdOrderBySlotDateAsc(Long parentSlotId);
-
-    /**
      * チームの特定日のスロット数を取得する。
      */
     long countByTeamIdAndSlotDate(Long teamId, LocalDate slotDate);
+
+    /**
+     * 生成冪等の一括先読み（F03.4.2 §5.3）: 対象期間内の「テンプレ生成済みセル」の
+     * {@code (template_id, slot_date, start_time)} 組を 1 クエリで取得する。
+     *
+     * <p>セル単位の {@code existsBy...} を都度発行すると最悪 13,440 クエリの N+1 になるため、
+     * 呼び出し側（{@code ReservationSlotGenerationService}）はこの結果を Set 化してメモリ突合で
+     * スキップ判定する。{@code @SQLRestriction} により論理削除済みセルは含まれない（purge 済みセルへの
+     * 再生成は DB の UNIQUE 制約 {@code uq_rs_template_cell} が最終防御し、INSERT IGNORE でスキップされる）。</p>
+     *
+     * @return {@code [templateId(UUID), slotDate(LocalDate), startTime(LocalTime)]} の配列リスト
+     */
+    @Query("SELECT s.templateId, s.slotDate, s.startTime FROM ReservationSlotEntity s "
+            + "WHERE s.teamId = :teamId AND s.slotDate BETWEEN :from AND :to "
+            + "AND s.templateId IS NOT NULL")
+    List<Object[]> findGeneratedCellKeysByTeamIdAndSlotDateBetween(
+            @Param("teamId") Long teamId, @Param("from") LocalDate from, @Param("to") LocalDate to);
+
+    /**
+     * テンプレートが生成したセルの最終日を導出する（日次バッチの差分レンジ計算・F03.4.2 §5.4）。
+     *
+     * <p>専用カラムは持たず生成実績そのものを正とする（二重管理しない）。生成実績ゼロ（新規テンプレ）は
+     * {@code null}。導出が並行 generate とズレても冪等キー（§5.3）が二重生成を最終防御するため安全。</p>
+     */
+    @Query("SELECT MAX(s.slotDate) FROM ReservationSlotEntity s WHERE s.templateId = :templateId")
+    LocalDate findMaxGeneratedSlotDateByTemplateId(@Param("templateId") java.util.UUID templateId);
+
+    /**
+     * テンプレートが生成した枠数を数える（テンプレ物理削除時の {@code orphanedSlotCount}・F03.4.2 §4）。
+     */
+    long countByTemplateId(java.util.UUID templateId);
+
+    /**
+     * 指定ラインのライン軸枠を対象日以降で取得する（ライン削除フロー手順3の purge 対象列挙・F03.4.2 §5.5）。
+     */
+    List<ReservationSlotEntity> findByLineIdAndSlotDateGreaterThanEqual(Long lineId, LocalDate date);
 
     /**
      * 予約数を +1 し、定員に達したら FULL 化する<b>条件付きアトミック UPDATE</b>（オーバーブッキング防止の並行制御）。

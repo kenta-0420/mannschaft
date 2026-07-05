@@ -172,7 +172,59 @@ public enum ReservationErrorCode implements ErrorCode {
      * <p>{@code findByIdAndTeamId} で解決できない場合に throw する（他チームの宛先を掴んだ場合も
      * IDOR 対策として同一の 404 で隠蔽する）。{@code GlobalExceptionHandler} の個別マッピングで 404。</p>
      */
-    NOTIFY_RECIPIENT_NOT_FOUND("RESERVATION_031", "予約通知メール宛先が見つかりません", Severity.WARN);
+    NOTIFY_RECIPIENT_NOT_FOUND("RESERVATION_031", "予約通知メール宛先が見つかりません", Severity.WARN),
+
+    // ===== 機能F: 枠ライン軸＋週間テンプレート（F03.4.2）=====
+    // 032〜035 は F03.4.1（予約メニュー）が採番予定のため空けてある（v2 通し採番）。
+
+    /**
+     * 週間テンプレートが見つからない（PATCH/DELETE 対象不在・404）。
+     *
+     * <p>F03.4.2 §4/§6: {@code findByIdAndTeamId} で解決できない場合に throw する。
+     * 他チームのテンプレートを掴んだ場合も IDOR 対策として同一の 404 で秘匿する。
+     * {@code GlobalExceptionHandler} の個別マッピングで 404。</p>
+     */
+    TEMPLATE_NOT_FOUND("RESERVATION_036", "週間テンプレートが見つかりません", Severity.WARN),
+
+    /**
+     * 週間テンプレートの行数上限（1チーム 500 行）超過（入力上限超過なので 400）。
+     *
+     * <p>F03.4.2 §3.2: 20ライン × 7曜日 × 帯3本/日 = 420 行 &lt; 500 の試算で、
+     * フル運用チームを包含しつつ生成暴走を防ぐ。Severity.WARN のため既定マッピングで 400。</p>
+     */
+    TEMPLATE_LIMIT_EXCEEDED("RESERVATION_037", "週間テンプレートはチームあたり最大500行までです", Severity.WARN),
+
+    /**
+     * 選択枠とラインの不一致（入力不正なので 400）。
+     *
+     * <p>F03.4.2 §5.6: ライン軸枠（{@code slot.line_id} 非 NULL）の単枠予約で
+     * {@code request.lineId != slot.lineId} の場合に拒否する（枠の帰属と矛盾する予約を防ぐ）。
+     * F03.4.3（予約グループ）の「選択枠が非連続/同一日でない/ライン不一致」も<b>同一コードを共用</b>する
+     * （同一意味論のため単枠専用の新規採番はしない — F03.4.3 §9 の定数名案は
+     * {@code GROUP_SLOTS_NOT_CONSECUTIVE}。グループ実装時に用途拡張する）。</p>
+     */
+    SLOT_LINE_MISMATCH("RESERVATION_038", "選択した枠とラインが一致しません", Severity.WARN),
+
+    /**
+     * 一括生成（generate）のレートリミット超過（429 Too Many Requests）。
+     *
+     * <p>F03.4.2 §6「generate は 1 チーム 1 分間に 2 回まで」の資源保護。
+     * §9 の採番表には現れないが §6 が要求する挙動のための採番（039〜043 は F03.4.3/4 が
+     * 採番予定のため 044 を使用）。{@code GlobalExceptionHandler} の個別マッピングで 429。</p>
+     */
+    TEMPLATE_GENERATE_RATE_LIMITED("RESERVATION_044",
+            "枠の一括作成が短時間に繰り返されています。しばらく待ってから再実行してください", Severity.WARN),
+
+    /**
+     * ライン削除ガード: 当該ラインに active 予約（PENDING / CONFIRMED）が存在する（409）。
+     *
+     * <p>F03.4.2 §5.5（精査2パス A1 再設計）: ライン削除の<b>唯一の</b> 409 事由。
+     * 「予約のない未来のライン軸枠が存在する」ことは 409 事由にしない（旧設計の循環デッドロックの根を除去）。
+     * §9 の採番表には現れないが §5.5 が要求する挙動のための採番。
+     * {@code GlobalExceptionHandler} の個別マッピングで 409。</p>
+     */
+    LINE_HAS_ACTIVE_RESERVATIONS("RESERVATION_045",
+            "このラインには有効な予約があります。先に振替またはキャンセルしてください", Severity.WARN);
 
     private final String code;
     private final String message;

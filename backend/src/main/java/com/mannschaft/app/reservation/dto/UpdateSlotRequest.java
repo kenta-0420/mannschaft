@@ -30,6 +30,14 @@ public class UpdateSlotRequest {
 
     private final LocalTime endTime;
 
+    /**
+     * ライン軸の変更（任意・F03.4.2 §4）。
+     *
+     * <p>{@code null} / 未指定 = 据え置き（他フィールドと同じ部分更新セマンティクス）。
+     * 当該チームの active ライン以外は 400（LINE_NOT_FOUND=001 再利用）。</p>
+     */
+    private final Long lineId;
+
     private final BigDecimal price;
 
     @Size(max = 2000)

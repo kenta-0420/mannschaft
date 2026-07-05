@@ -26,6 +26,14 @@ public class ReservationLineService {
 
     private final ReservationLineRepository lineRepository;
     private final ReservationMapper reservationMapper;
+    /** F03.4.2 §5.5: ライン削除フロー手順1（active テンプレの生成停止）用。 */
+    private final com.mannschaft.app.reservation.repository.ReservationSlotTemplateRepository templateRepository;
+    /** F03.4.2 §5.5: ライン削除フロー手順2（active 予約ガード）・手順3（purge 除外判定）用。 */
+    private final com.mannschaft.app.reservation.repository.ReservationRepository reservationRepository;
+    /** F03.4.2 §5.5: ライン削除フロー手順3（予約なし未来枠の purge）用。 */
+    private final com.mannschaft.app.reservation.repository.ReservationSlotRepository slotRepository;
+    /** F03.4.2 §5.5: 「今日以降」判定の基準時刻。テストは固定 Clock を注入する。 */
+    private final java.time.Clock clock;
 
     /** F03.4 §1/§2: 1 チームあたりの予約ライン上限。 */
     private static final long MAX_LINES_PER_TEAM = 5L;

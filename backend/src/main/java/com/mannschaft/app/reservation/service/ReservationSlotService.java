@@ -41,6 +41,8 @@ public class ReservationSlotService {
     private final ReservationBlockedTimeRepository blockedTimeRepository;
     /** 機能B: 予約不可枠の overlap 判定を共有する単一ユーティリティ（§5.B）。 */
     private final ReservationUnavailabilityChecker unavailabilityChecker;
+    /** F03.4.2: 枠のライン軸（lineId）検証用のライン参照（同一 reservation ドメイン内）。 */
+    private final com.mannschaft.app.reservation.repository.ReservationLineRepository lineRepository;
     /** 過去日判定の基準時刻（チーム TZ は将来拡張。現状はシステム既定 Clock）。テストは固定 Clock を注入する。 */
     private final Clock clock;
 
@@ -133,7 +135,6 @@ public class ReservationSlotService {
                 // 定員。未指定（null）は既定 1（＝1:1 指名）。builder に null を渡すと @Builder.Default を
                 // 上書きして NULL 挿入になるため、必ず normalizeCapacity で 1 以上へ正規化する。
                 .capacity(normalizeCapacity(request.getCapacity()))
-                .recurrenceRule(request.getRecurrenceRule())
                 .price(request.getPrice())
                 .note(request.getNote())
                 // 枠単位の承認モード上書き。null = チーム既定に従う（継承）。
