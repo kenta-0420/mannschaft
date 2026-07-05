@@ -8463,6 +8463,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/reservation-menus": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 予約メニュー一覧 */
+        get: operations["listMenus"];
+        put?: never;
+        /** 予約メニュー作成 */
+        post: operations["createMenu"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/reservation-lines": {
         parameters: {
             query?: never;
@@ -23051,6 +23069,24 @@ export interface paths {
         head?: never;
         /** 予約通知メール宛先 更新 */
         patch: operations["updateRecipient"];
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/reservation-menus/{menuId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 予約メニュー削除（論理削除） */
+        delete: operations["deleteMenu"];
+        options?: never;
+        head?: never;
+        /** 予約メニュー更新 */
+        patch: operations["updateMenu"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/reservation-lines/{lineId}": {
@@ -52471,6 +52507,38 @@ export interface components {
              */
             label?: string;
         };
+        /** @description 予約メニュー作成リクエスト */
+        CreateReservationMenuRequest: {
+            description?: string;
+            /** Format: int32 */
+            displayOrder?: number;
+            /** Format: int32 */
+            durationMinutes: number;
+            lineIds?: number[];
+            name?: string;
+            price?: number;
+        };
+        ApiResponseReservationMenuResponse: {
+            data?: components["schemas"]["ReservationMenuResponse"];
+        };
+        /** @description 予約メニュー */
+        ReservationMenuResponse: {
+            /** Format: date-time */
+            createdAt?: string;
+            description?: string;
+            /** Format: int32 */
+            displayOrder?: number;
+            /** Format: int32 */
+            durationMinutes?: number;
+            /** Format: uuid */
+            id?: string;
+            isActive?: boolean;
+            lineIds?: number[];
+            name?: string;
+            price?: number;
+            /** Format: int32 */
+            requiredSlotCount?: number;
+        };
         CreateReservationLineRequest: {
             /** Format: int64 */
             defaultStaffUserId?: number;
@@ -61564,6 +61632,19 @@ export interface components {
             isEnabled?: boolean;
             label?: string;
         };
+        /** @description 予約メニュー部分更新リクエスト */
+        UpdateReservationMenuRequest: {
+            clearPrice?: boolean;
+            description?: string;
+            /** Format: int32 */
+            displayOrder?: number;
+            /** Format: int32 */
+            durationMinutes?: number;
+            isActive?: boolean;
+            lineIds?: number[];
+            name?: string;
+            price?: number;
+        };
         UpdateReservationLineRequest: {
             /** Format: int64 */
             defaultStaffUserId?: number;
@@ -65028,6 +65109,9 @@ export interface components {
              * @example 1
              */
             totalCount?: number;
+        };
+        ApiResponseListReservationMenuResponse: {
+            data?: components["schemas"]["ReservationMenuResponse"][];
         };
         ApiResponseListReservationLineResponse: {
             data?: components["schemas"]["ReservationLineResponse"][];
@@ -73053,6 +73137,16 @@ export interface components {
         };
         RequestWithdrawalRequest: {
             currentPassword?: string;
+        };
+        ApiResponseReservationMenuDeleteResponse: {
+            data?: components["schemas"]["ReservationMenuDeleteResponse"];
+        };
+        /** @description 予約メニュー削除結果 */
+        ReservationMenuDeleteResponse: {
+            /** Format: date-time */
+            deletedAt?: string;
+            /** Format: uuid */
+            id?: string;
         };
         CancelBookingRequest: {
             cancellationReason?: string;
@@ -94057,6 +94151,54 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseNotificationRecipientResponse"];
+                };
+            };
+        };
+    };
+    listMenus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListReservationMenuResponse"];
+                };
+            };
+        };
+    };
+    createMenu: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateReservationMenuRequest"];
+            };
+        };
+        responses: {
+            /** @description 作成成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReservationMenuResponse"];
                 };
             };
         };
@@ -122016,6 +122158,56 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseNotificationRecipientResponse"];
+                };
+            };
+        };
+    };
+    deleteMenu: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                menuId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 削除成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReservationMenuDeleteResponse"];
+                };
+            };
+        };
+    };
+    updateMenu: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                menuId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateReservationMenuRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReservationMenuResponse"];
                 };
             };
         };
