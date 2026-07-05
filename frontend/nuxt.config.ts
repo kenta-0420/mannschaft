@@ -469,6 +469,7 @@ export default defineNuxtConfig({
           'ja/admin_console.json',
           'ja/feedback.json',
           'ja/circulation.json',
+          'ja/parental-consent.json',
         ],
       },
       {
@@ -539,6 +540,7 @@ export default defineNuxtConfig({
           'en/admin_console.json',
           'en/feedback.json',
           'en/circulation.json',
+          'en/parental-consent.json',
         ],
       },
       {
@@ -609,6 +611,7 @@ export default defineNuxtConfig({
           'zh/admin_console.json',
           'zh/feedback.json',
           'zh/circulation.json',
+          'zh/parental-consent.json',
         ],
       },
       {
@@ -679,6 +682,7 @@ export default defineNuxtConfig({
           'ko/admin_console.json',
           'ko/feedback.json',
           'ko/circulation.json',
+          'ko/parental-consent.json',
         ],
       },
       {
@@ -749,6 +753,7 @@ export default defineNuxtConfig({
           'es/admin_console.json',
           'es/feedback.json',
           'es/circulation.json',
+          'es/parental-consent.json',
         ],
       },
       {
@@ -819,6 +824,7 @@ export default defineNuxtConfig({
           'de/admin_console.json',
           'de/feedback.json',
           'de/circulation.json',
+          'de/parental-consent.json',
         ],
       },
     ],
