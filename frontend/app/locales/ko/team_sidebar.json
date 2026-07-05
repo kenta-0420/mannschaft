@@ -6,6 +6,8 @@
       "match": "경기",
       "member": "멤버",
       "ops": "업무 운영",
+      "ops_work": "태스크 및 진행",
+      "ops_admin": "운영 및 예산",
       "facility": "시설 관리",
       "data": "데이터",
       "settings": "설정"

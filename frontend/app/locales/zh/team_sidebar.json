@@ -6,6 +6,8 @@
       "match": "比赛",
       "member": "成员",
       "ops": "业务运营",
+      "ops_work": "任务与进度",
+      "ops_admin": "运营与预算",
       "facility": "设施管理",
       "data": "数据",
       "settings": "设置"
