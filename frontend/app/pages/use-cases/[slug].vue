@@ -95,7 +95,7 @@ useSeoMeta({
       <!-- 戻るリンク -->
       <div class="mb-8">
         <NuxtLink
-          to="/lp"
+          to="/"
           class="inline-flex items-center gap-2 text-sm text-surface-500 transition-colors hover:text-primary"
         >
           {{ t('landing.v2.usecase_pages.common.back') }}
