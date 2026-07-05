@@ -215,7 +215,9 @@
       "cancel": "Abbrechen",
       "reserve": "Reservieren",
       "cancel_reservation": "Stornieren",
-      "back": "Zurück"
+      "back": "Zurück",
+      "go_to_line_manage": "Zu Reservierungsziele verwalten",
+      "manage_slots": "Zeitfenster verwalten"
     },
     "dialog": {
       "title": "Bestätigen",
@@ -252,7 +254,17 @@
       "no_my_reservations": "Keine Reservierungen",
       "no_lines": "Keine buchbaren Elemente",
       "no_lines_yet": "Noch keine buchbaren Elemente",
-      "no_available_slots": "An diesem Tag keine freien Zeitfenster"
+      "no_available_slots": "An diesem Tag keine freien Zeitfenster",
+      "book": {
+        "admin_no_lines": "Noch keine Reservierungsziele",
+        "admin_no_lines_hint": "Erstelle unter \"Reservierungsziele verwalten\" Ziele und Zeitfenster, damit hier Zeitfenster erscheinen",
+        "admin_no_slots": "An diesem Tag keine freien Zeitfenster",
+        "admin_no_slots_hint": "Du kannst Zeitfenster unter \"Reservierungsziele verwalten\" hinzufügen",
+        "member_no_lines": "Reservierungen werden vorbereitet",
+        "member_no_lines_hint": "Bitte warte, bis der Administrator Reservierungszeitfenster bereitstellt",
+        "member_no_slots": "An diesem Tag keine freien Zeitfenster",
+        "member_no_slots_hint": "Bitte versuche es an einem anderen Tag"
+      }
     },
     "line_manage_title": "Verwaltung buchbarer Elemente",
     "settings": {
@@ -486,6 +498,52 @@
       },
       "empty": "Keine Zeitfenster für diesen Tag",
       "load_error": "Raster konnte nicht geladen werden"
+    },
+    "team_guide": {
+      "title": "So funktionieren Reservierungen",
+      "help_button": "Anleitung",
+      "admin": {
+        "lines_title": "1. Reservierungsziele erstellen",
+        "lines_steps": {
+          "0": "Öffne den Tab \"Reservierungsziele verwalten\".",
+          "1": "Registriere mit \"Reservierungsziel hinzufügen\" Mitarbeiter, Schalter oder andere buchbare Ziele.",
+          "2": "Ohne Reservierungsziel erscheinen keine Zeitfenster im \"Reservieren\"-Bildschirm der Nutzer."
+        },
+        "slots_title": "2. Reservierungszeitfenster erstellen",
+        "slots_steps": {
+          "0": "Klicke im selben Tab \"Reservierungsziele verwalten\" auf \"Zeitfenster hinzufügen\".",
+          "1": "Lege Datum, Start-/Endzeit und Kapazität fest und speichere.",
+          "2": "Die gespeicherten Zeitfenster erscheinen im \"Reservieren\"-Bildschirm der Nutzer."
+        },
+        "publish_title": "3. Festlegen, wer buchen darf",
+        "publish_steps": {
+          "0": "Wähle in den erweiterten Einstellungen \"Öffentliche Reservierungen\" zwischen nur für Mitglieder oder öffentlich.",
+          "1": "Stelle den Genehmigungsmodus auf automatische Bestätigung oder manuelle Genehmigung."
+        },
+        "manage_title": "Reservierungen prüfen & Notfallschließung",
+        "manage_steps": {
+          "0": "Im Tab \"Reservierungen\" kannst du die Reservierungen des gesamten Teams prüfen, genehmigen und stornieren.",
+          "1": "Für kurzfristige Ausfälle kannst du im Tab \"Notfallschließung\" einen Zeitraum schließen und die Betroffenen auf einmal benachrichtigen."
+        }
+      },
+      "member": {
+        "book_title": "So reservierst du",
+        "book_steps": {
+          "0": "Wähle ein Datum und ein Reservierungsziel, um die freien Zeitfenster dieses Tages zu sehen.",
+          "1": "Wähle ein \"Verfügbar\"-Zeitfenster, prüfe die Details und reserviere."
+        },
+        "status_title": "Den Status lesen",
+        "status_steps": {
+          "0": "\"Ausstehend\" ... wartet auf die Genehmigung des Administrators.",
+          "1": "\"Genehmigt\" ... deine Reservierung ist bestätigt.",
+          "2": "\"Abgeschlossen\" ... der Besuch ist beendet."
+        },
+        "cancel_title": "So stornierst du",
+        "cancel_steps": {
+          "0": "Öffne deine Reservierung im Tab \"Reservierungen\".",
+          "1": "Wenn du innerhalb der Stornofrist bist, storniere mit \"Stornieren\"."
+        }
+      }
     }
   }
 }

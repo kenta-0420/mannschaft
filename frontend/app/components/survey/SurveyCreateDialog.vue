@@ -1,8 +1,9 @@
 <script setup lang="ts">
-// F05.4 アンケート新規作成ダイアログ
-// - PrimeVue Dialog で全項目を1ページに集約
-// - 設問編集は SurveyQuestionEditor を v-model で組み込み
-// - 簡易バリデーションを通過後 useSurveyApi().createSurvey を呼び出す
+// F05.4 アンケート新規作成ダイアログ（ADHD配慮・二段フロー対応）
+//
+// 二段フロー: タイトルのみで下書き保存 → 詳細画面で設問追加 → 公開
+// BE CreateSurveyRequest.questions は @NotEmpty なしのため、設問ゼロでDRAFT作成が可能。
+// useFormDraft で入力途中を localStorage に自動保存し、ダイアログを閉じても復元する。
 
 import type {
   CreateSurveyRequest,
@@ -28,6 +29,7 @@ const { t } = useI18n()
 const { createSurvey } = useSurveyApi()
 const { error: showError, success: showSuccess } = useNotification()
 const { handleApiError } = useErrorHandler()
+const authStore = useAuthStore()
 
 // === フォーム状態 ===
 const title = ref('')
@@ -53,6 +55,69 @@ const deadline = ref<Date | null>(null)
 const questions = ref<QuestionDraft[]>([])
 
 const submitting = ref(false)
+
+// === useFormDraft（ADHD配慮・自動保存）===
+// キーにuserId・scopeType・scopeIdを含めてスコープ間の衝突を防ぐ
+const draftKey = computed(
+  () =>
+    `survey-create-draft-${authStore.currentUser?.id ?? 'guest'}-${props.scopeType}-${props.scopeId}`,
+)
+
+// フォーム状態全体をオブジェクトとして型付けする
+interface SurveyDraftShape {
+  title: string
+  description: string
+  isAnonymous: boolean
+  allowMultipleSubmissions: boolean
+  teamBreakdownEnabled: boolean
+  resultsVisibility: ResultsVisibility
+  unrespondedVisibility: UnrespondedVisibility
+  deadline: string | null
+  questions: QuestionDraft[]
+}
+
+// source にフォーム全体の computed を渡して自動保存
+const formSnapshot = computed<SurveyDraftShape>(() => ({
+  title: title.value,
+  description: description.value,
+  isAnonymous: isAnonymous.value,
+  allowMultipleSubmissions: allowMultipleSubmissions.value,
+  teamBreakdownEnabled: teamBreakdownEnabled.value,
+  resultsVisibility: resultsVisibility.value,
+  unrespondedVisibility: unrespondedVisibility.value,
+  deadline: deadline.value ? deadline.value.toISOString() : null,
+  questions: questions.value,
+}))
+
+const { clear: clearDraft, restore: restoreDraft, savedFlash } = useFormDraft<SurveyDraftShape>(
+  draftKey.value,
+  { source: formSnapshot, debounceMs: 1000, flashMs: 2000 },
+)
+
+// 復元済みフラグ（ダイアログを開いた直後に1回だけ復元トースト表示）
+const restoredFlash = ref(false)
+
+// ダイアログが開くたびにlocaleストレージから復元を試みる
+watch(visible, (nowVisible) => {
+  if (!nowVisible) return
+  const saved = restoreDraft()
+  if (saved) {
+    title.value = saved.title ?? ''
+    description.value = saved.description ?? ''
+    isAnonymous.value = saved.isAnonymous ?? false
+    allowMultipleSubmissions.value = saved.allowMultipleSubmissions ?? false
+    teamBreakdownEnabled.value = saved.teamBreakdownEnabled ?? false
+    resultsVisibility.value = saved.resultsVisibility ?? 'RESPONDENTS'
+    unrespondedVisibility.value = saved.unrespondedVisibility ?? 'CREATOR_AND_ADMIN'
+    deadline.value = saved.deadline ? new Date(saved.deadline) : null
+    questions.value = saved.questions ?? []
+    // 復元フラッシュ
+    restoredFlash.value = true
+    setTimeout(() => {
+      restoredFlash.value = false
+    }, 3000)
+  }
+})
 
 // === 選択肢定義 ===
 const resultsVisibilityOptions = computed<Array<{ label: string; value: ResultsVisibility }>>(() => [
@@ -86,7 +151,8 @@ function close() {
 }
 
 // === バリデーション ===
-function validate(): string | null {
+// mode: 'draft' = 設問不要、'publish' = 設問1つ以上必須
+function validate(mode: 'draft' | 'publish'): string | null {
   if (!title.value.trim()) {
     return t('surveys.create.validation.titleRequired')
   }
@@ -96,7 +162,7 @@ function validate(): string | null {
   if (description.value.length > 1000) {
     return t('surveys.create.validation.descriptionTooLong')
   }
-  if (questions.value.length === 0) {
+  if (mode === 'publish' && questions.value.length === 0) {
     return t('surveys.create.validation.questionsRequired')
   }
   for (let i = 0; i < questions.value.length; i++) {
@@ -119,9 +185,9 @@ function validate(): string | null {
   return null
 }
 
-// === 保存 ===
-async function submit() {
-  const errorMsg = validate()
+// === 送信共通処理 ===
+async function submitWith(mode: 'draft' | 'publish') {
+  const errorMsg = validate(mode)
   if (errorMsg) {
     showError(errorMsg)
     return
@@ -139,19 +205,23 @@ async function submit() {
       resultsVisibility: resultsVisibility.value,
       unrespondedVisibility: unrespondedVisibility.value,
       deadline: deadline.value ? deadline.value.toISOString() : undefined,
-      questions: questions.value.map((q) => ({
-        questionText: q.questionText.trim(),
-        questionType: q.questionType,
-        isRequired: q.isRequired,
-        sortOrder: q.sortOrder,
-        options:
-          q.questionType === 'TEXT' || q.questionType === 'DATE'
-            ? undefined
-            : (q.options ?? []).map((o) => ({
-                optionText: o.optionText.trim(),
-                sortOrder: o.sortOrder,
-              })),
-      })),
+      // 設問ゼロの場合は空配列を送る（BEはDRAFTとして保存）
+      questions:
+        questions.value.length > 0
+          ? questions.value.map((q) => ({
+              questionText: q.questionText.trim(),
+              questionType: q.questionType,
+              isRequired: q.isRequired,
+              sortOrder: q.sortOrder,
+              options:
+                q.questionType === 'TEXT' || q.questionType === 'DATE'
+                  ? undefined
+                  : (q.options ?? []).map((o) => ({
+                      optionText: o.optionText.trim(),
+                      sortOrder: o.sortOrder,
+                    })),
+            }))
+          : [],
     }
 
     const res = await createSurvey(
@@ -159,7 +229,16 @@ async function submit() {
       props.scopeId,
       body as unknown as Record<string, unknown>,
     )
-    showSuccess(t('surveys.create.successToast'))
+
+    // 成功 → 下書き削除
+    clearDraft()
+
+    if (mode === 'draft') {
+      showSuccess(t('surveys.create.draftSuccessToast'))
+    } else {
+      showSuccess(t('surveys.create.successToast'))
+    }
+
     emit('created', res.data)
     resetForm()
     close()
@@ -176,6 +255,14 @@ async function submit() {
     submitting.value = false
   }
 }
+
+function submitDraft() {
+  return submitWith('draft')
+}
+
+function submitAndPublish() {
+  return submitWith('publish')
+}
 </script>
 
 <template>
@@ -188,6 +275,32 @@ async function submit() {
     @hide="resetForm"
   >
     <div class="flex flex-col gap-4" data-testid="survey-create-dialog">
+      <!-- 復元フラッシュ -->
+      <div
+        v-if="restoredFlash"
+        class="flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700 dark:bg-blue-900/30 dark:text-blue-200"
+        data-testid="survey-draft-restored-flash"
+      >
+        <i class="pi pi-history" />
+        {{ t('surveys.create.draftRestored') }}
+      </div>
+
+      <!-- 下書き保存済みフラッシュ -->
+      <div
+        v-if="savedFlash"
+        class="flex items-center gap-2 rounded-lg bg-surface-50 px-3 py-2 text-xs text-surface-500 dark:bg-surface-800 dark:text-surface-400"
+        data-testid="survey-draft-saved-flash"
+      >
+        <i class="pi pi-save" />
+        {{ t('surveys.create.draftSaved') }}
+      </div>
+
+      <!-- ADHD配慮ヒント: 設問は後で追加できる旨を案内 -->
+      <div class="flex items-start gap-2 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-600 dark:bg-blue-900/20 dark:text-blue-300">
+        <i class="pi pi-lightbulb mt-0.5 shrink-0" />
+        <span>{{ t('surveys.create.draftHint') }}</span>
+      </div>
+
       <!-- タイトル -->
       <div>
         <label class="mb-1 block text-sm font-medium">
@@ -290,10 +403,10 @@ async function submit() {
         />
       </div>
 
-      <!-- 設問エディタ -->
+      <!-- 設問エディタ（任意: 下書き保存は設問ゼロでも可） -->
       <div>
         <label class="mb-2 block text-sm font-medium">
-          {{ t('surveys.create.questions') }} <span class="text-red-500">*</span>
+          {{ t('surveys.create.questions') }}
         </label>
         <SurveyQuestionEditor v-model="questions" />
       </div>
@@ -308,12 +421,23 @@ async function submit() {
         data-testid="survey-create-cancel"
         @click="close"
       />
+      <!-- 下書きで保存: 設問不要、DRAFTとして作成 -->
       <Button
-        :label="t('surveys.create.save')"
-        icon="pi pi-check"
+        :label="t('surveys.create.saveDraft')"
+        icon="pi pi-save"
+        severity="secondary"
+        outlined
+        :loading="submitting"
+        data-testid="survey-create-save-draft"
+        @click="submitDraft"
+      />
+      <!-- 公開して作成: 設問1つ以上必須 -->
+      <Button
+        :label="t('surveys.create.saveAndPublish')"
+        icon="pi pi-send"
         :loading="submitting"
         data-testid="survey-create-submit"
-        @click="submit"
+        @click="submitAndPublish"
       />
     </template>
   </Dialog>

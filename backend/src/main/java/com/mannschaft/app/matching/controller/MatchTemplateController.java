@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,6 +40,7 @@ public class MatchTemplateController {
     @GetMapping
     @Operation(summary = "テンプレート一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @PreAuthorize("@accessGuard.isScopeMember(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<List<TemplateResponse>>> listTemplates(@PathVariable Long teamId) {
         List<TemplateResponse> response = templateService.listTemplates(teamId);
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -50,6 +52,7 @@ public class MatchTemplateController {
     @PostMapping
     @Operation(summary = "テンプレート作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<TemplateCreateResponse>> createTemplate(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateTemplateRequest request) {
@@ -63,6 +66,7 @@ public class MatchTemplateController {
     @PutMapping("/{id}")
     @Operation(summary = "テンプレート更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<TemplateResponse>> updateTemplate(
             @PathVariable Long teamId,
             @PathVariable Long id,
@@ -77,6 +81,7 @@ public class MatchTemplateController {
     @DeleteMapping("/{id}")
     @Operation(summary = "テンプレート削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<Void> deleteTemplate(
             @PathVariable Long teamId,
             @PathVariable Long id) {

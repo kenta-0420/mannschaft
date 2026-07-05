@@ -97,6 +97,8 @@
     "template": {
       "label": "템플릿",
       "help": "입력 제목을 프리셋에서 선택할 수 있습니다",
+      "heading_selector_label": "포함할 제목",
+      "heading_optional_badge": "선택",
       "NORMAL": "보통",
       "DIARY": "일기",
       "WORK": "업무 회고",

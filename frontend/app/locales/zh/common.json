@@ -656,6 +656,24 @@
         "saving": "保存中...",
         "saved": "已保存"
       }
+    },
+    "create": {
+      "dialog_title": "创建TODO",
+      "title_label": "标题",
+      "title_placeholder": "TODO标题",
+      "details_toggle": "设置详情（可选）",
+      "description_label": "描述（可选）",
+      "description_placeholder": "详情或补充说明",
+      "scope_label": "分享给",
+      "scope_personal": "个人",
+      "priority_label": "优先级",
+      "start_date_label": "开始日期（可选）",
+      "due_date_label": "截止日期（可选）",
+      "submit_button": "创建",
+      "cancel_button": "取消",
+      "draft_restored": "已恢复草稿",
+      "create_success": "TODO已创建",
+      "create_failed": "创建失败"
     }
   },
   "extended_profile": {
