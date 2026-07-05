@@ -11,11 +11,15 @@ type CellState = NonNullable<GridCellDto['state']>
 
 const props = defineProps<{
   teamId: string
+  /** 管理者（ADMIN）か否か。空状態の文言・管理CTAの出し分けに使う。 */
+  isAdmin: boolean
 }>()
 
 // 既存 SlotPicker と同一シグネチャで emit（TeamReservationsPanel の onSlotSelected を共有）
 const emit = defineEmits<{
   slotSelected: [slotId: number, lineId: number, lineName: string, date: string, startTime: string, endTime: string]
+  /** 「予約対象の管理」タブへの誘導。親が activeTab を切り替える。 */
+  manageLines: []
 }>()
 
 const { t } = useI18n()
@@ -63,6 +67,9 @@ const staffOptions = computed<StaffOption[]>(() => {
   }
   return [...map.entries()].map(([staffUserId, staffName]) => ({ staffUserId, staffName }))
 })
+
+/** 予約対象（Line）が1件でも存在するか。空状態を「対象ゼロ」か「枠ゼロ」で出し分ける。 */
+const hasLines = computed(() => lines.value.length > 0)
 
 function fmt(time: string): string {
   // "10:00:00" / "10:00" いずれも HH:mm へ整形
@@ -322,11 +329,39 @@ onMounted(async () => {
           {{ dayLabel(day.date) }}
         </p>
 
+        <!-- 予約対象ゼロ: セットアップ導線（管理者のみCTA）-->
         <DashboardEmptyState
-          v-if="day.empty"
+          v-if="day.empty && !hasLines"
+          icon="pi pi-list"
+          :message="isAdmin ? t('reservation.empty.book.admin_no_lines') : t('reservation.empty.book.member_no_lines')"
+          :sub-message="isAdmin ? t('reservation.empty.book.admin_no_lines_hint') : t('reservation.empty.book.member_no_lines_hint')"
+        >
+          <template v-if="isAdmin" #action>
+            <Button
+              :label="t('reservation.button.go_to_line_manage')"
+              icon="pi pi-arrow-right"
+              icon-pos="right"
+              size="small"
+              @click="emit('manageLines')"
+            />
+          </template>
+        </DashboardEmptyState>
+        <!-- 予約対象あり・枠ゼロ: 枠追加導線（管理者のみCTA）-->
+        <DashboardEmptyState
+          v-else-if="day.empty"
           icon="pi pi-calendar-times"
-          :message="t('reservation.grid.empty')"
-        />
+          :message="isAdmin ? t('reservation.empty.book.admin_no_slots') : t('reservation.empty.book.member_no_slots')"
+          :sub-message="isAdmin ? t('reservation.empty.book.admin_no_slots_hint') : t('reservation.empty.book.member_no_slots_hint')"
+        >
+          <template v-if="isAdmin" #action>
+            <Button
+              :label="t('reservation.button.manage_slots')"
+              icon="pi pi-cog"
+              size="small"
+              @click="emit('manageLines')"
+            />
+          </template>
+        </DashboardEmptyState>
 
         <div v-else class="overflow-x-auto">
           <div class="inline-grid min-w-full gap-1" :style="gridStyle(day.header.length)">
