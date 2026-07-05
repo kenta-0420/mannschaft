@@ -59,6 +59,7 @@ public class AuthTokenRotationService {
     private final AuthSessionService authSessionService;
     private final DomainEventPublisher eventPublisher;
     private final RoleClaimResolver roleClaimResolver;
+    private final StatusClaimResolver statusClaimResolver;
 
     /**
      * リフレッシュトークン ローテーションの grace window（秒）。
@@ -161,7 +162,8 @@ public class AuthTokenRotationService {
         // 再判定する。これにより SYSTEM_ADMIN を剥奪されたユーザーは次回リフレッシュ（最長 15 分）で
         // SYSTEM_ADMIN authority を失う。即時失効が必要な場合は剥奪処理側で
         // AuthTokenService#setUserInvalidationTimestamp を併用する（§6）。
-        String newAccessToken = authTokenService.issueAccessToken(userId, roleClaimResolver.resolveRoles(userId));
+        String newAccessToken = authTokenService.issueAccessToken(userId, roleClaimResolver.resolveRoles(userId),
+                statusClaimResolver.isPendingParentalConsent(userId));
         String newRawRefreshToken = authTokenService.generateRefreshToken();
         String newTokenHash = authTokenService.hashToken(newRawRefreshToken);
         // ローテーション時も新しい jti を生成する

@@ -876,7 +876,11 @@
       "Bash(echo \"watch_exit=$?\")",
       "Bash(curl.exe -s --noproxy \"*\" -X POST http://localhost:8080/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"e2e-user@example.com\",\"password\":\"Passw0rd!2026\"}' -i)",
       "PowerShell(Write-Host '=== MySQL \\(3306\\) ===' ; \\(Test-NetConnection -ComputerName localhost -Port 3306 -WarningAction SilentlyContinue\\).TcpTestSucceeded ; Write-Host '=== Valkey \\(6379\\) ===' ; \\(Test-NetConnection -ComputerName localhost -Port 6379 -WarningAction SilentlyContinue\\).TcpTestSucceeded ; Write-Host '=== Jaeger \\(4318\\) ===' ; \\(Test-NetConnection -ComputerName localhost -Port 4318 -WarningAction SilentlyContinue\\).TcpTestSucceeded)",
-      "PowerShell(Get-Content \"C:\\\\Claude\\\\mannschaft\\\\frontend\\\\app\\\\composables\\\\useUserSettingsApi.ts\" | Select-Object -Index 93 | ForEach-Object { [System.Text.Encoding]::UTF8.GetBytes\\($_\\) | ForEach-Object { $_.ToString\\(\"X2\"\\) } | Join-String -Separator \" \" })"
+      "PowerShell(Get-Content \"C:\\\\Claude\\\\mannschaft\\\\frontend\\\\app\\\\composables\\\\useUserSettingsApi.ts\" | Select-Object -Index 93 | ForEach-Object { [System.Text.Encoding]::UTF8.GetBytes\\($_\\) | ForEach-Object { $_.ToString\\(\"X2\"\\) } | Join-String -Separator \" \" })",
+      "Bash(xargs grep -l \"usage\\\\|quota\\\\|capacity\\\\|storage\")",
+      "Bash(curl.exe -s http://localhost:8080/actuator/health --noproxy \"*\")",
+      "Bash(curl.exe -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/ --noproxy \"*\")",
+      "Bash(curl.exe -s -o /dev/null -w \"%{http_code}\" http://localhost:3001/ --noproxy \"*\")"
     ],
     "deny": [
       "Write(**/.env)",
@@ -893,6 +897,22 @@
       "Edit(**/.git/hooks/**)",
       "Write(**/.git/config)",
       "Edit(**/.git/config)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-honjin-git.ps1\"",
+            "if": "Bash(git *)",
+            "timeout": 15,
+            "statusMessage": "本陣git操作ガード"
+          }
+        ]
+      }
     ]
   }
 }

@@ -40,6 +40,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final ParentalConsentGateFilter parentalConsentGateFilter;
     private final AdminImpersonationFilter adminImpersonationFilter;
     private final ProxyInputContextFilter proxyInputContextFilter;
     private final PublicApiRateLimitFilter publicApiRateLimitFilter;
@@ -386,6 +387,9 @@ public class SecurityConfig {
                     org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter
                         .ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN)))
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            // F01.9 保護者同意ゲート: JWT 認証直後に動かし、確定した SecurityContext の ppc クレームを見て
+            // 保護者同意待ちユーザーの許可リスト外 API を 403 AUTH_070 で遮断する（401 は返さない）。
+            .addFilterAfter(parentalConsentGateFilter, JwtAuthenticationFilter.class)
             .addFilterBefore(publicApiRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(adPublicEndpointRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(proxyInputContextFilter, JwtAuthenticationFilter.class)
