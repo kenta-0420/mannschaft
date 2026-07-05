@@ -9,6 +9,7 @@ import com.mannschaft.app.publicview.filter.PublicApiRateLimitFilter;
 import com.mannschaft.app.schedule.ScheduleDelegationRateLimitFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.boot.actuate.health.HealthEndpoint;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -40,7 +41,16 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final ParentalConsentGateFilter parentalConsentGateFilter;
+    /**
+     * F01.9 保護者同意ゲート。横断フィルタは {@link ObjectProvider} で遅延解決する（正道）。
+     * SecurityConfig を最小構成で組むスライステスト（{@code MinimalActuatorTestConfig} 等）は
+     * このフィルタの Bean を供給しないため、必須コンストラクタ依存にすると context ロードが失敗する。
+     * Provider にすることで Bean 不在（getIfAvailable()==null）でも context が成立し、
+     * 本番・フル @SpringBootTest（@Component により Bean 生成済み）では従来どおりゲートが有効になる。
+     * 既存の {@code PublicApiRateLimitFilter} 等が {@code ObjectProvider<ValkeyRateLimiter>} で
+     * 弱結合化しているのと同じ、コードベース内で実証済みのパターンに合わせる。
+     */
+    private final ObjectProvider<ParentalConsentGateFilter> parentalConsentGateFilterProvider;
     private final AdminImpersonationFilter adminImpersonationFilter;
     private final ProxyInputContextFilter proxyInputContextFilter;
     private final PublicApiRateLimitFilter publicApiRateLimitFilter;
@@ -386,10 +396,20 @@ public class SecurityConfig {
                 .referrerPolicy(referrer -> referrer.policy(
                     org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter
                         .ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN)))
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            // F01.9 保護者同意ゲート: JWT 認証直後に動かし、確定した SecurityContext の ppc クレームを見て
-            // 保護者同意待ちユーザーの許可リスト外 API を 403 AUTH_070 で遮断する（401 は返さない）。
-            .addFilterAfter(parentalConsentGateFilter, JwtAuthenticationFilter.class)
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        // F01.9 保護者同意ゲート: JWT 認証直後に動かし、確定した SecurityContext の ppc クレームを見て
+        // 保護者同意待ちユーザーの許可リスト外 API を 403 AUTH_070 で遮断する（401 は返さない）。
+        // ObjectProvider で遅延解決し、Bean が存在するとき（本番・フル @SpringBootTest）のみ差す。
+        // スライステスト（SecurityConfig 最小構成）では Bean 不在で getIfAvailable()==null → スキップ。
+        // 呼び出し位置は従来どおり proxyInputContextFilter 等の後段フィルタ登録より前に保ち、
+        // フィルタ順序（JwtAuthenticationFilter 直後）を不変に保つ。
+        ParentalConsentGateFilter gateFilter = parentalConsentGateFilterProvider.getIfAvailable();
+        if (gateFilter != null) {
+            http.addFilterAfter(gateFilter, JwtAuthenticationFilter.class);
+        }
+
+        http
             .addFilterBefore(publicApiRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(adPublicEndpointRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(proxyInputContextFilter, JwtAuthenticationFilter.class)
