@@ -429,6 +429,165 @@
         "made_with": "♦ Made with Notepad ♦",
         "welcome_message": "★ Willkommen bei Mannschaft! Die Plattform zur Maximierung Ihrer Teamkraft ★"
       }
+    },
+    "v2": {
+      "seo_title": "Mannschaft — Welcher Eingang ist deiner?",
+      "hero": {
+        "badge": "Einzelperson, Team, Organisation — alles in einem",
+        "title_pre": "Chat-Apps, Tabellen und Einzweck-Tools — bring alles an ",
+        "title_accent": "einen",
+        "title_post": " Ort.",
+        "subtitle": "Eine All-in-One-Plattform für die Organisation — egal wer du bist: Einzelperson, Team oder Organisation.",
+        "cta_register": "Kostenlos starten",
+        "login_prompt": "Schon ein Konto?",
+        "login_link": "Anmelden"
+      },
+      "scope": {
+        "heading": "Welcher Eingang ist deiner?",
+        "subheading": "Dein Einstieg in Mannschaft hängt von deiner Rolle ab.",
+        "tab_personal": "Einzelperson",
+        "tab_team": "Team",
+        "tab_org": "Organisation",
+        "personal": {
+          "role_badge": "Teilnehmende Seite",
+          "tagline": "Für dich — der du buchst und teilnimmst.",
+          "f0": "Punktekarten und QR-Mitgliedsausweise in einer Wallet",
+          "f1": "Deine Termine und Anwesenheit in einem Kalender",
+          "f2": "Ein persönliches Dashboard über alle deine Teams hinweg",
+          "mock_caption": "Mein Dashboard"
+        },
+        "team": {
+          "role_badge": "Organisierende Seite",
+          "tagline": "Für dich — der du den Betrieb führst.",
+          "f0": "Schichtpläne erstellen, Wünsche sammeln, Bestätigung senden",
+          "f1": "Teilnahme an Veranstaltungen auswerten und erinnern",
+          "f2": "Beiträge einziehen und Zahlungsstand auf einen Blick",
+          "mock_caption": "Team-Dashboard"
+        },
+        "org": {
+          "role_badge": "Bündelnde Seite",
+          "tagline": "Für dich — der du eine größere Organisation leitest.",
+          "f0": "Stimmrechte und Vollmachten für Versammlungen digitalisieren",
+          "f1": "Dokumente mit digitalen Siegeln und Lesebestätigung umlaufen lassen",
+          "f2": "Bewohnerverzeichnisse und Listen sicher verwalten",
+          "mock_caption": "Organisations-Dashboard"
+        }
+      },
+      "stats": {
+        "heading": "So viele sind schon dabei",
+        "users": "Nutzer",
+        "teams": "Teams",
+        "organizations": "Organisationen"
+      },
+      "features": {
+        "heading": "Funktionen, genau wenn du sie brauchst.",
+        "subheading": "Tippe auf eine Funktion für eine kurze Erklärung.",
+        "detail_link": "Mehr erfahren",
+        "close": "Schließen",
+        "items": {
+          "team": {
+            "title": "Team- und Organisationsverwaltung",
+            "desc": "Lade Mitglieder ein und lege Rollen und Rechte klar fest. Sieh auf einen Blick, wer was darf."
+          },
+          "schedule": {
+            "title": "Termine und Anwesenheit",
+            "desc": "Teile Pläne und bestätige die Teilnahme mit einem Tipp. Erinnerungen werden automatisch gesendet."
+          },
+          "reservation": {
+            "title": "Reservierungen",
+            "desc": "Nimm Buchungen nach Zeitfenster oder Mitarbeiter an. Kapazität, volle Slots und Stornos laufen automatisch."
+          },
+          "shift": {
+            "title": "Schichtplanung",
+            "desc": "Vom Sammeln der Wünsche über den Plan bis zur Benachrichtigung, sobald er steht."
+          },
+          "chat": {
+            "title": "Chat",
+            "desc": "Halte Gespräche mit Kanälen geordnet und antworte locker mit Threads und Reaktionen."
+          },
+          "timeline": {
+            "title": "Timeline",
+            "desc": "Teile Neuigkeiten aus deinem Team in einem vertrauten Feed."
+          },
+          "circulation": {
+            "title": "Umlauf und digitale Siegel",
+            "desc": "Lass Dokumente nacheinander oder gleichzeitig umlaufen — mit Stempel und sichtbarem Lesestatus."
+          },
+          "survey": {
+            "title": "Umfragen und Abstimmungen",
+            "desc": "Erstelle Fragen und werte Antworten aus, anonym oder namentlich, mit Ergebnissen als Diagramm."
+          },
+          "files": {
+            "title": "Dateifreigabe",
+            "desc": "Ordne Dokumente und Fotos in Ordnern und teile sie sicher mit den richtigen Personen."
+          },
+          "billing": {
+            "title": "Beiträge und Zahlungen",
+            "desc": "Vom Beitrag bis zur Prüfung des Zahlungsstands und Erinnerungen — alles online."
+          },
+          "matching": {
+            "title": "Matching und Turniere",
+            "desc": "Von der Gegnersuche bis zur Turnierorganisation und Ergebniserfassung."
+          },
+          "safety": {
+            "title": "Notfall-Sicherheitsabfrage",
+            "desc": "Frage bei Katastrophen oder Notfällen alle auf einmal ab und werte den Status aus."
+          },
+          "qr": {
+            "title": "QR-Mitgliedsausweis",
+            "desc": "Gib Mitgliedsausweise als QR-Code aus und bestätige die Identität per Scan am Eingang."
+          },
+          "wallet": {
+            "title": "Punktekarten-Wallet",
+            "desc": "Bündle Punktekarten aller Läden auf deinem Smartphone."
+          },
+          "karte": {
+            "title": "Patientenakte",
+            "desc": "Führe Anamnese, Behandlungsverlauf und Fortschritt zusammen mit Fotos und Diagrammen."
+          },
+          "village": {
+            "title": "Dorf (Community)",
+            "desc": "Ein lockerer gemeinsamer Ort, der Menschen über ein einzelnes Team hinaus verbindet."
+          }
+        }
+      },
+      "usecases": {
+        "heading": "Die Einsatzmöglichkeiten sind grenzenlos.",
+        "subheading": "Dieselben Werkzeuge, für jeden eine andere Rolle.",
+        "sports_team": "Sportverein",
+        "clinic": "Osteopathie-Praxis",
+        "school": "Schule",
+        "alumni": "Ehemaligenverein",
+        "salon": "Friseursalon",
+        "mansion": "Eigentümergemeinschaft",
+        "neighborhood": "Nachbarschaftsverein",
+        "gym": "Fitnessstudio",
+        "restaurant": "Restaurant",
+        "circle": "Verein / Gruppe"
+      },
+      "cta": {
+        "heading": "Kostenlos starten.",
+        "subheading": "Ein persönliches Konto ist kostenlos. Ein Team kannst du später erstellen.",
+        "register": "Kostenlos starten",
+        "pricing_prompt": "Neugierig auf die Preise?",
+        "pricing_link": "Preise ansehen",
+        "faq_heading": "Häufige Fragen",
+        "faq": {
+          "0": {
+            "q": "Ist die Nutzung kostenlos?",
+            "a": "Persönliche Konten und Kernfunktionen sind kostenlos. Für größeren Umfang und Zusatzfunktionen gibt es kostenpflichtige Tarife."
+          },
+          "1": {
+            "q": "Kann ich es auf dem Handy nutzen?",
+            "a": "Ja. Es läuft direkt im Browser auf Handy und Tablet."
+          },
+          "2": {
+            "q": "Kann ich mehrere Teams zusammen verwalten?",
+            "a": "Mit einem Konto kannst du mehreren Teams und Organisationen angehören und zwischen ihnen wechseln."
+          }
+        },
+        "retro_hint": "🎮 Manchmal wird der Bildschirm retro … vielleicht?"
+      }
     }
   }
 }

@@ -429,6 +429,165 @@
         "made_with": "♦ Made with Notepad ♦",
         "welcome_message": "★ ¡Bienvenido a Mannschaft! La plataforma para maximizar el poder de tu equipo ★"
       }
+    },
+    "v2": {
+      "seo_title": "Mannschaft — ¿Cuál es tu entrada?",
+      "hero": {
+        "badge": "Persona, equipo, organización: todo en uno",
+        "title_pre": "Apps de chat, hojas de cálculo y herramientas sueltas: reúnelo todo en ",
+        "title_accent": "un",
+        "title_post": " solo lugar.",
+        "subtitle": "Una plataforma todo en uno para gestionar — seas quien seas: una persona, un equipo o una organización.",
+        "cta_register": "Empieza gratis",
+        "login_prompt": "¿Ya tienes una cuenta?",
+        "login_link": "Inicia sesión"
+      },
+      "scope": {
+        "heading": "¿Cuál es tu entrada?",
+        "subheading": "Tu punto de entrada a Mannschaft depende de tu rol.",
+        "tab_personal": "Persona",
+        "tab_team": "Equipo",
+        "tab_org": "Organización",
+        "personal": {
+          "role_badge": "Quien participa",
+          "tagline": "Para ti, que reservas y participas.",
+          "f0": "Reúne tarjetas de puntos y carnés QR en una sola cartera",
+          "f1": "Tu agenda y asistencia en un único calendario",
+          "f2": "Un panel personal que abarca todos tus equipos",
+          "mock_caption": "Mi panel"
+        },
+        "team": {
+          "role_badge": "Quien organiza",
+          "tagline": "Para ti, que llevas la gestión.",
+          "f0": "Crea turnos, recoge preferencias y avisa al confirmarlos",
+          "f1": "Cuenta la asistencia a eventos y envía recordatorios",
+          "f2": "Cobra cuotas y ve quién ha pagado de un vistazo",
+          "mock_caption": "Panel del equipo"
+        },
+        "org": {
+          "role_badge": "Quien lo une todo",
+          "tagline": "Para ti, que diriges una organización mayor.",
+          "f0": "Digitaliza el voto y los poderes de las asambleas",
+          "f1": "Haz circular documentos con sellos digitales y acuse de lectura",
+          "f2": "Gestiona padrones y listados de forma segura",
+          "mock_caption": "Panel de la organización"
+        }
+      },
+      "stats": {
+        "heading": "Ya somos esta gente",
+        "users": "Usuarios",
+        "teams": "Equipos",
+        "organizations": "Organizaciones"
+      },
+      "features": {
+        "heading": "Funciones, justo cuando las necesitas.",
+        "subheading": "Toca cualquier función para ver una breve explicación.",
+        "detail_link": "Ver más",
+        "close": "Cerrar",
+        "items": {
+          "team": {
+            "title": "Gestión de equipos y organizaciones",
+            "desc": "Invita a miembros y define roles y permisos con claridad. Ve quién puede hacer qué de un vistazo."
+          },
+          "schedule": {
+            "title": "Agenda y asistencia",
+            "desc": "Comparte planes y confirma la asistencia con un toque. Los recordatorios se envían solos."
+          },
+          "reservation": {
+            "title": "Reservas",
+            "desc": "Acepta reservas por franja horaria o por personal. Aforo, plazas llenas y cancelaciones se gestionan solos."
+          },
+          "shift": {
+            "title": "Gestión de turnos",
+            "desc": "Desde recoger preferencias y crear el cuadrante hasta avisar a todos al confirmarlo."
+          },
+          "chat": {
+            "title": "Chat",
+            "desc": "Mantén las conversaciones ordenadas con canales y responde con hilos y reacciones."
+          },
+          "timeline": {
+            "title": "Muro",
+            "desc": "Comparte lo que pasa en tu equipo con un muro familiar."
+          },
+          "circulation": {
+            "title": "Circulares y sellos digitales",
+            "desc": "Haz circular documentos en orden o a la vez, con sellos y estado de lectura a la vista."
+          },
+          "survey": {
+            "title": "Encuestas y votaciones",
+            "desc": "Crea preguntas y cuenta respuestas, anónimas o con nombre, con resultados en gráficos."
+          },
+          "files": {
+            "title": "Compartir archivos",
+            "desc": "Organiza documentos y fotos en carpetas y compártelos con seguridad con quien corresponda."
+          },
+          "billing": {
+            "title": "Cuotas y pagos",
+            "desc": "Desde emitir cuotas hasta ver el estado de pago y enviar recordatorios, todo en línea."
+          },
+          "matching": {
+            "title": "Emparejamientos y torneos",
+            "desc": "Desde buscar rivales hasta organizar torneos y registrar resultados."
+          },
+          "safety": {
+            "title": "Comprobación de seguridad",
+            "desc": "En caso de desastre o emergencia, pregunta a todos a la vez y cuenta su estado."
+          },
+          "qr": {
+            "title": "Carné de socio QR",
+            "desc": "Emite carnés como código QR y verifica la identidad con un simple escaneo en la puerta."
+          },
+          "wallet": {
+            "title": "Cartera de tarjetas de puntos",
+            "desc": "Reúne las tarjetas de puntos de cada tienda en tu móvil."
+          },
+          "karte": {
+            "title": "Ficha clínica",
+            "desc": "Reúne anamnesis, historial de tratamientos y evolución con fotos y gráficas."
+          },
+          "village": {
+            "title": "Aldea (comunidad)",
+            "desc": "Un espacio común y relajado que conecta a la gente más allá de un solo equipo."
+          }
+        }
+      },
+      "usecases": {
+        "heading": "Las formas de usarlo son infinitas.",
+        "subheading": "Las mismas herramientas, un papel distinto para cada persona.",
+        "sports_team": "Equipo deportivo",
+        "clinic": "Clínica de osteopatía",
+        "school": "Colegio",
+        "alumni": "Asociación de antiguos alumnos",
+        "salon": "Peluquería",
+        "mansion": "Comunidad de propietarios",
+        "neighborhood": "Asociación vecinal",
+        "gym": "Gimnasio",
+        "restaurant": "Restaurante",
+        "circle": "Club / grupo"
+      },
+      "cta": {
+        "heading": "Empieza gratis.",
+        "subheading": "La cuenta personal es gratis. Podrás crear un equipo más tarde.",
+        "register": "Empieza gratis",
+        "pricing_prompt": "¿Te interesan los precios?",
+        "pricing_link": "Ver planes de precios",
+        "faq_heading": "Preguntas frecuentes",
+        "faq": {
+          "0": {
+            "q": "¿Se puede usar gratis?",
+            "a": "Las cuentas personales y las funciones básicas son gratis. Hay planes de pago para mayor escala y funciones extra."
+          },
+          "1": {
+            "q": "¿Puedo usarlo en el móvil?",
+            "a": "Sí. Funciona directamente en el navegador de móviles y tabletas."
+          },
+          "2": {
+            "q": "¿Puedo gestionar varios equipos a la vez?",
+            "a": "Con una sola cuenta puedes pertenecer a varios equipos y organizaciones y cambiar entre ellos."
+          }
+        },
+        "retro_hint": "🎮 A veces la pantalla se vuelve retro… ¿tal vez?"
+      }
     }
   }
 }

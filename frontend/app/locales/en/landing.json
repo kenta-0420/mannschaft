@@ -429,6 +429,165 @@
         "made_with": "♦ Made with Notepad ♦",
         "welcome_message": "★ Welcome to Mannschaft! The all-in-one platform to maximize your team's power ★"
       }
+    },
+    "v2": {
+      "seo_title": "Mannschaft — Which door is yours?",
+      "hero": {
+        "badge": "Individuals, teams, organizations — all in one",
+        "title_pre": "Chat apps, spreadsheets, single-purpose tools — bring it all into ",
+        "title_accent": "one",
+        "title_post": " place.",
+        "subtitle": "An all-in-one platform for running things — whoever you are: an individual, a team, or an organization.",
+        "cta_register": "Start free",
+        "login_prompt": "Already have an account?",
+        "login_link": "Log in"
+      },
+      "scope": {
+        "heading": "Which door is yours?",
+        "subheading": "Your entry point to Mannschaft depends on where you stand.",
+        "tab_personal": "Individual",
+        "tab_team": "Team",
+        "tab_org": "Organization",
+        "personal": {
+          "role_badge": "The participant",
+          "tagline": "For you — the one who books and takes part.",
+          "f0": "Keep point cards and QR member passes in one wallet",
+          "f1": "Your schedule and attendance in a single calendar",
+          "f2": "A personal dashboard across every team you belong to",
+          "mock_caption": "My dashboard"
+        },
+        "team": {
+          "role_badge": "The organizer",
+          "tagline": "For you — the one who runs the show.",
+          "f0": "Build shift tables, gather preferences, notify when set",
+          "f1": "Tally event attendance and send reminders",
+          "f2": "Collect dues and see who has paid at a glance",
+          "mock_caption": "Team dashboard"
+        },
+        "org": {
+          "role_badge": "The one who binds it together",
+          "tagline": "For you — the one who leads a larger organization.",
+          "f0": "Digitize voting rights and proxies for general meetings",
+          "f1": "Circulate documents with digital seals and read receipts",
+          "f2": "Keep resident registers and rosters safe",
+          "mock_caption": "Organization dashboard"
+        }
+      },
+      "stats": {
+        "heading": "This many people are already on board",
+        "users": "Users",
+        "teams": "Teams",
+        "organizations": "Organizations"
+      },
+      "features": {
+        "heading": "Features, right when you need them.",
+        "subheading": "Tap any feature to open a quick explanation.",
+        "detail_link": "Learn more",
+        "close": "Close",
+        "items": {
+          "team": {
+            "title": "Team & organization management",
+            "desc": "Invite members and set roles and permissions with clarity. See who can do what at a glance."
+          },
+          "schedule": {
+            "title": "Schedule & attendance",
+            "desc": "Share plans and confirm attendance with one tap. Reminders are sent automatically."
+          },
+          "reservation": {
+            "title": "Reservations",
+            "desc": "Accept bookings by time slot or by staff. Capacity, full slots and cancellations are handled automatically."
+          },
+          "shift": {
+            "title": "Shift management",
+            "desc": "From gathering preferences and building the roster to notifying everyone once it is set."
+          },
+          "chat": {
+            "title": "Chat",
+            "desc": "Keep conversations tidy with channels, and reply casually with threads and reactions."
+          },
+          "timeline": {
+            "title": "Timeline",
+            "desc": "Share what is happening in your team through a familiar feed."
+          },
+          "circulation": {
+            "title": "Circulars & digital seals",
+            "desc": "Pass documents around in sequence or all at once, with stamps and read status made visible."
+          },
+          "survey": {
+            "title": "Surveys & voting",
+            "desc": "Build questions and tally answers, anonymous or named, with results shown as charts."
+          },
+          "files": {
+            "title": "File sharing",
+            "desc": "Organize documents and photos into folders and share them safely with the right people."
+          },
+          "billing": {
+            "title": "Dues & payments",
+            "desc": "From issuing dues to checking payment status and sending reminders, all online."
+          },
+          "matching": {
+            "title": "Matching & tournaments",
+            "desc": "From finding opponents to running tournaments and recording results."
+          },
+          "safety": {
+            "title": "Emergency safety check",
+            "desc": "In a disaster or emergency, ask everyone at once and tally their status."
+          },
+          "qr": {
+            "title": "QR member pass",
+            "desc": "Issue member passes as QR codes and verify identity with a simple scan at the door."
+          },
+          "wallet": {
+            "title": "Point card wallet",
+            "desc": "Keep point cards from every shop together on your phone."
+          },
+          "karte": {
+            "title": "Health records",
+            "desc": "Keep intake forms, treatment records and progress together with photos and charts."
+          },
+          "village": {
+            "title": "Village (community)",
+            "desc": "A relaxed common ground that connects people beyond a single team."
+          }
+        }
+      },
+      "usecases": {
+        "heading": "The ways to use it are endless.",
+        "subheading": "The same tools, a different role for every user.",
+        "sports_team": "Sports team",
+        "clinic": "Osteopathic clinic",
+        "school": "School",
+        "alumni": "Alumni association",
+        "salon": "Hair salon",
+        "mansion": "Condo management association",
+        "neighborhood": "Neighborhood association",
+        "gym": "Gym",
+        "restaurant": "Restaurant",
+        "circle": "Club / circle"
+      },
+      "cta": {
+        "heading": "Start free.",
+        "subheading": "A personal account is free. You can create a team later.",
+        "register": "Start free",
+        "pricing_prompt": "Curious about pricing?",
+        "pricing_link": "See pricing plans",
+        "faq_heading": "Frequently asked questions",
+        "faq": {
+          "0": {
+            "q": "Is it free to use?",
+            "a": "Personal accounts and core features are free. Paid plans are available for larger scale and extra features."
+          },
+          "1": {
+            "q": "Can I use it on my phone?",
+            "a": "Yes. It works right in your browser on phones and tablets."
+          },
+          "2": {
+            "q": "Can I manage several teams together?",
+            "a": "With a single account you can belong to multiple teams and organizations and switch between them."
+          }
+        },
+        "retro_hint": "🎮 Sometimes the screen goes retro… maybe?"
+      }
     }
   }
 }
