@@ -45,7 +45,7 @@ const { t } = useI18n()
       <div class="card-detail__dl-row">
         <dt>{{ t('wallet.card_id_label') }}</dt>
         <dd class="card-detail__id-cell">
-          <code class="card-detail__id-code">{{ card.id }}</code>
+          <code class="card-detail__id-code bg-surface-100 dark:bg-surface-800 text-surface-700 dark:text-surface-200">{{ card.id }}</code>
           <Button
             :label="t('wallet.copy_card_id')"
             :aria-label="t('wallet.copy_card_id')"
@@ -129,7 +129,7 @@ const { t } = useI18n()
 .card-detail__id-code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.8125rem;
-  background: var(--p-surface-100, #f3f4f6);
+  /* 背景・文字色は Tailwind の dark: クラス（bg-surface-100 dark:bg-surface-800 text-surface-700 dark:text-surface-200）で追従 */
   padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
   word-break: break-all;
