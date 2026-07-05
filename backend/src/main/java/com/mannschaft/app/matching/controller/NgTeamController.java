@@ -38,6 +38,7 @@ public class NgTeamController {
     @GetMapping
     @Operation(summary = "NGリスト取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @PreAuthorize("@accessGuard.isScopeMember(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<List<NgTeamResponse>>> listNgTeams(@PathVariable Long teamId) {
         List<NgTeamResponse> response = ngTeamService.listNgTeams(teamId);
         return ResponseEntity.ok(ApiResponse.of(response));

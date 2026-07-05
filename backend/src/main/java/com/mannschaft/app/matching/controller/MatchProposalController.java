@@ -67,7 +67,10 @@ public class MatchProposalController {
             @PathVariable Long id,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<ProposalResponse> result = proposalService.listProposals(id, PageRequest.of(page, Math.min(size, 50)));
+        // 応募者一覧は募集を出したチームの私的情報。path に teamId が無いため、対象募集のチームに対する
+        // 所属判定を Service 内で行う（非所属は 403）。
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        Page<ProposalResponse> result = proposalService.listProposals(id, currentUserId, PageRequest.of(page, Math.min(size, 50)));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -149,6 +152,7 @@ public class MatchProposalController {
     @GetMapping("/api/v1/teams/{teamId}/matching/proposals")
     @Operation(summary = "自チームの応募一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @PreAuthorize("@accessGuard.isScopeMember(authentication, #teamId, 'TEAM')")
     public ResponseEntity<PagedResponse<ProposalResponse>> listTeamProposals(
             @PathVariable Long teamId,
             @RequestParam(required = false) String status,
@@ -166,6 +170,7 @@ public class MatchProposalController {
     @GetMapping("/api/v1/teams/{teamId}/matching/cancellations")
     @Operation(summary = "チームのキャンセル履歴一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @PreAuthorize("@accessGuard.isScopeMember(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<CancellationSummaryResponse>> getCancellationHistory(
             @PathVariable Long teamId,
             @RequestParam(defaultValue = "0") int page,

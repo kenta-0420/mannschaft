@@ -127,7 +127,16 @@ public class MatchProposalService {
     /**
      * 募集への応募一覧を取得する。
      */
-    public Page<ProposalResponse> listProposals(Long requestId, Pageable pageable) {
+    public Page<ProposalResponse> listProposals(Long requestId, Long currentUserId, Pageable pageable) {
+        MatchRequestEntity matchRequest = requestRepository.findById(requestId)
+                .orElseThrow(() -> new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND));
+
+        // 応募者一覧は募集を出したチームの私的情報。所属者（SYSTEM_ADMIN 含む）のみ閲覧可・非所属は 403。
+        if (!accessControlService.isSystemAdmin(currentUserId)
+                && !accessControlService.isMember(currentUserId, matchRequest.getTeamId(), "TEAM")) {
+            throw new BusinessException(MatchingErrorCode.INSUFFICIENT_PERMISSION);
+        }
+
         Page<MatchProposalEntity> page = proposalRepository.findByRequestIdOrderByCreatedAtDesc(requestId, pageable);
         return page.map(this::toProposalResponse);
     }

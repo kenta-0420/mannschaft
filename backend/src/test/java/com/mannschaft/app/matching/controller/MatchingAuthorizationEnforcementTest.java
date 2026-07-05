@@ -10,10 +10,12 @@ import com.mannschaft.app.config.JwtAuthenticationFilter;
 import com.mannschaft.app.config.SecurityConfig;
 import com.mannschaft.app.dashboard.DashboardScopeTabRateLimitFilter;
 import com.mannschaft.app.event.EventDelegationRateLimitFilter;
+import com.mannschaft.app.matching.dto.CancellationSummaryResponse;
 import com.mannschaft.app.matching.dto.MatchRequestCreateResponse;
 import com.mannschaft.app.matching.dto.MatchRequestResponse;
 import com.mannschaft.app.matching.dto.NgTeamResponse;
 import com.mannschaft.app.matching.dto.ProposalCreateResponse;
+import com.mannschaft.app.matching.dto.ProposalResponse;
 import com.mannschaft.app.matching.service.MatchProposalService;
 import com.mannschaft.app.matching.service.MatchRequestService;
 import com.mannschaft.app.matching.service.NgTeamService;
@@ -96,6 +98,8 @@ class MatchingAuthorizationEnforcementTest {
             "/api/v1/teams/" + TEAM_ID + "/matching/requests/" + REQUEST_ID + "/propose";
     private static final String NG_TEAMS_PATH = "/api/v1/teams/" + TEAM_ID + "/matching/ng-teams";
     private static final String NG_TEAM_REMOVE_PATH = NG_TEAMS_PATH + "/999";
+    private static final String TEAM_PROPOSALS_PATH = "/api/v1/teams/" + TEAM_ID + "/matching/proposals";
+    private static final String CANCELLATIONS_PATH = "/api/v1/teams/" + TEAM_ID + "/matching/cancellations";
 
     private static final String VALID_REQUEST_BODY =
             "{\"title\":\"練習試合募集\",\"activityType\":\"PRACTICE\",\"prefectureCode\":\"13\"}";
@@ -367,6 +371,81 @@ class MatchingAuthorizationEnforcementTest {
                 .willReturn(new PageImpl<>(List.<MatchRequestResponse>of()));
 
         mockMvc.perform(get(LIST_TEAM_REQUESTS_PATH))
+                .andExpect(status().isOk());
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // 読み取り系のチーム私的データは所属者のみ（@PreAuthorize isScopeMember・全体一括根治の仕上げ）
+    // ────────────────────────────────────────────────────────────
+
+    @Test
+    @WithMockUser(username = "300", roles = "MEMBER")
+    @DisplayName("read red→green: 非所属が GET 自チーム応募一覧 → 403（isScopeMember 発火）")
+    void outsider_listTeamProposals_forbidden() throws Exception {
+        given(accessControlService.isSystemAdmin(OUTSIDER_USER_ID)).willReturn(false);
+        given(accessControlService.isMember(OUTSIDER_USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+
+        mockMvc.perform(get(TEAM_PROPOSALS_PATH))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "200", roles = "MEMBER")
+    @DisplayName("read: 所属者が GET 自チーム応募一覧 → 200（認可通過）")
+    void member_listTeamProposals_ok() throws Exception {
+        given(accessControlService.isSystemAdmin(MEMBER_USER_ID)).willReturn(false);
+        given(accessControlService.isMember(MEMBER_USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        given(matchProposalService.listTeamProposals(eq(TEAM_ID), any(), any()))
+                .willReturn(new PageImpl<>(List.<ProposalResponse>of()));
+
+        mockMvc.perform(get(TEAM_PROPOSALS_PATH))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "300", roles = "MEMBER")
+    @DisplayName("read red→green: 非所属が GET キャンセル履歴 → 403（isScopeMember 発火）")
+    void outsider_getCancellationHistory_forbidden() throws Exception {
+        given(accessControlService.isSystemAdmin(OUTSIDER_USER_ID)).willReturn(false);
+        given(accessControlService.isMember(OUTSIDER_USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+
+        mockMvc.perform(get(CANCELLATIONS_PATH))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "200", roles = "MEMBER")
+    @DisplayName("read: 所属者が GET キャンセル履歴 → 200（認可通過）")
+    void member_getCancellationHistory_ok() throws Exception {
+        given(accessControlService.isSystemAdmin(MEMBER_USER_ID)).willReturn(false);
+        given(accessControlService.isMember(MEMBER_USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        given(matchProposalService.getCancellationHistory(eq(TEAM_ID), any()))
+                .willReturn(new CancellationSummaryResponse(TEAM_ID, 0L, List.of()));
+
+        mockMvc.perform(get(CANCELLATIONS_PATH))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "300", roles = "MEMBER")
+    @DisplayName("read red→green: 非所属が GET NGリスト → 403（isScopeMember 発火）")
+    void outsider_listNgTeams_forbidden() throws Exception {
+        given(accessControlService.isSystemAdmin(OUTSIDER_USER_ID)).willReturn(false);
+        given(accessControlService.isMember(OUTSIDER_USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+
+        mockMvc.perform(get(NG_TEAMS_PATH))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "200", roles = "MEMBER")
+    @DisplayName("read: 所属者が GET NGリスト → 200（認可通過）")
+    void member_listNgTeams_ok() throws Exception {
+        given(accessControlService.isSystemAdmin(MEMBER_USER_ID)).willReturn(false);
+        given(accessControlService.isMember(MEMBER_USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        given(ngTeamService.listNgTeams(eq(TEAM_ID))).willReturn(List.of());
+
+        mockMvc.perform(get(NG_TEAMS_PATH))
                 .andExpect(status().isOk());
     }
 }

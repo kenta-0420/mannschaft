@@ -8,6 +8,7 @@ import com.mannschaft.app.matching.dto.AgreeCancelResponse;
 import com.mannschaft.app.matching.dto.CancelProposalRequest;
 import com.mannschaft.app.matching.dto.CreateProposalRequest;
 import com.mannschaft.app.matching.dto.ProposalCreateResponse;
+import com.mannschaft.app.matching.dto.ProposalResponse;
 import com.mannschaft.app.matching.dto.ProposalStatusResponse;
 import com.mannschaft.app.matching.entity.MatchProposalEntity;
 import com.mannschaft.app.matching.entity.MatchRequestEntity;
@@ -24,6 +25,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -76,6 +81,56 @@ class MatchProposalServiceTest {
                 .title("テスト募集")
                 .status(MatchRequestStatus.OPEN)
                 .build();
+    }
+
+    @Nested
+    @DisplayName("listProposals — 認可（募集チームの所属者のみ・応募者一覧は私的情報）")
+    class ListProposals {
+
+        @Test
+        @DisplayName("異常系: 募集チームに所属しないユーザーは応募一覧を閲覧不可（403相当）")
+        void 非所属は閲覧不可() {
+            // Given: 募集チーム=TEAM_ID。actor は所属者でも SYSTEM_ADMIN でもない（未スタブ＝false）。
+            MatchRequestEntity request = MatchRequestEntity.builder()
+                    .teamId(TEAM_ID).title("募集").status(MatchRequestStatus.OPEN).build();
+            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(request));
+
+            // When / Then
+            assertThatThrownBy(() -> service.listProposals(REQUEST_ID, ACTOR_ID, PageRequest.of(0, 20)))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MatchingErrorCode.INSUFFICIENT_PERMISSION);
+        }
+
+        @Test
+        @DisplayName("正常系: 募集チームの所属者は応募一覧を閲覧できる")
+        void 所属者は閲覧可() {
+            // Given
+            Pageable pageable = PageRequest.of(0, 20);
+            MatchRequestEntity request = MatchRequestEntity.builder()
+                    .teamId(TEAM_ID).title("募集").status(MatchRequestStatus.OPEN).build();
+            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.of(request));
+            given(accessControlService.isMember(ACTOR_ID, TEAM_ID, "TEAM")).willReturn(true);
+            given(proposalRepository.findByRequestIdOrderByCreatedAtDesc(REQUEST_ID, pageable))
+                    .willReturn(new PageImpl<>(List.<MatchProposalEntity>of()));
+
+            // When
+            Page<ProposalResponse> result = service.listProposals(REQUEST_ID, ACTOR_ID, pageable);
+
+            // Then
+            assertThat(result.getContent()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("異常系: 募集が見つからない場合は 404 相当")
+        void 募集不存在() {
+            given(requestRepository.findById(REQUEST_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.listProposals(REQUEST_ID, ACTOR_ID, PageRequest.of(0, 20)))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(MatchingErrorCode.REQUEST_NOT_FOUND);
+        }
     }
 
     @Nested
