@@ -6,6 +6,8 @@
       "match": "Spiele",
       "member": "Mitglieder",
       "ops": "Betrieb",
+      "ops_work": "Aufgaben und Fortschritt",
+      "ops_admin": "Verwaltung und Budget",
       "facility": "Einrichtungsverwaltung",
       "data": "Daten",
       "settings": "Einstellungen"
