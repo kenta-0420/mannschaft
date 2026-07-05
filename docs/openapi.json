@@ -123554,6 +123554,123 @@
         }
       }
     },
+    "/api/v1/me/guardianship/children/{childUserId}/schedules": {
+      "get": {
+        "tags": [
+          "保護者による子データ閲覧見守り"
+        ],
+        "summary": "子の予定閲覧",
+        "description": "12歳未満の子の横断カレンダーを閲覧専用で取得する（有効な保護者のみ・子基準の可視性）",
+        "operationId": "getChildSchedules",
+        "parameters": [
+          {
+            "name": "childUserId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListCalendarEntryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/guardianship/children/{childUserId}/proxy-actions": {
+      "get": {
+        "tags": [
+          "保護者による子データ閲覧見守り"
+        ],
+        "summary": "子の代理入力履歴閲覧",
+        "description": "子の代わりに誰が何をしたか（代理入力記録・subject\u003d子）を閲覧専用で取得する（有効な保護者のみ）",
+        "operationId": "getChildProxyActions",
+        "parameters": [
+          {
+            "name": "childUserId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGuardianChildProxyActionsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/guardianship/children/{childUserId}/memberships": {
+      "get": {
+        "tags": [
+          "保護者による子データ閲覧見守り"
+        ],
+        "summary": "子の所属閲覧",
+        "description": "12歳未満の子が所属するチーム・組織を閲覧専用で取得する（有効な保護者のみ）",
+        "operationId": "getChildMemberships",
+        "parameters": [
+          {
+            "name": "childUserId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGuardianChildMembershipsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/guardianship/children/{childUserId}/independence-status": {
       "get": {
         "tags": [
@@ -123580,6 +123697,110 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseIndependenceStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/guardianship/children/{childUserId}/attendance/stats": {
+      "get": {
+        "tags": [
+          "保護者による子データ閲覧見守り"
+        ],
+        "summary": "子の出欠状況閲覧",
+        "description": "12歳未満の子の出席率統計を閲覧専用で取得する（有効な保護者のみ）",
+        "operationId": "getChildAttendanceStats",
+        "parameters": [
+          {
+            "name": "childUserId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAttendanceStatsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/guardianship/children/{childUserId}/announcements": {
+      "get": {
+        "tags": [
+          "保護者による子データ閲覧見守り"
+        ],
+        "summary": "子のお知らせ閲覧",
+        "description": "12歳未満の子が所属する全スコープの掲示板お知らせを合算し閲覧専用で取得する（有効な保護者のみ・子基準）",
+        "operationId": "getChildAnnouncements",
+        "parameters": [
+          {
+            "name": "childUserId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGuardianChildAnnouncementsResponse"
                 }
               }
             }
@@ -210963,6 +211184,92 @@
           }
         }
       },
+      "ApiResponseGuardianChildProxyActionsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/GuardianChildProxyActionsResponse"
+          }
+        }
+      },
+      "GuardianChildProxyActionsResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProxyActionItem"
+            }
+          }
+        }
+      },
+      "ProxyActionItem": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "featureScope": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "inputSource": {
+            "type": "string"
+          },
+          "proxyUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetEntityId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "targetEntityType": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseGuardianChildMembershipsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/GuardianChildMembershipsResponse"
+          }
+        }
+      },
+      "GuardianChildMembershipsResponse": {
+        "type": "object",
+        "properties": {
+          "organizations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScopeRef"
+            }
+          },
+          "teams": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScopeRef"
+            }
+          }
+        }
+      },
+      "ScopeRef": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "ApiResponseIndependenceStatusResponse": {
         "type": "object",
         "properties": {
@@ -210990,6 +211297,78 @@
           },
           "switchAllowed": {
             "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseAttendanceStatsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AttendanceStatsResponse"
+          }
+        }
+      },
+      "AnnouncementItem": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeName": {
+            "type": "string"
+          },
+          "scopeType": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ApiResponseGuardianChildAnnouncementsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/GuardianChildAnnouncementsResponse"
+          }
+        }
+      },
+      "GuardianChildAnnouncementsResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnnouncementItem"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -211514,14 +211893,6 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
-          }
-        }
-      },
-      "ApiResponseAttendanceStatsResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/AttendanceStatsResponse"
           }
         }
       },
