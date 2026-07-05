@@ -164,3 +164,4 @@ GuardianChildProxyActionsResponse
 | 日付 | 内容 |
 |---|---|
 | 2026-07-05 | 初版。件2（保護者の子データ閲覧専用見守り）をマスター御裁可方針で起草。4 面（予定・出欠・所属・お知らせ）＋代理履歴の read-only API・`evaluateSwitch` 再利用の認可・12歳未満のみ・F00 子基準を確定。AC-1〜7 を列挙し test-first で BE 実装 |
+| 2026-07-05 | FE 実装（件2 FE ＋ 件3 代理マーク）。`pages/me/guardianship/children/[childUserId]/watch.vue` を新設し、4 面＋代理操作履歴（proxy-actions の subject=子 レコードをそのまま「代理(保護者)」バッジ付き一覧として表示する MVP 方式・個別項目への突合は行わない）を閲覧専用で描画。導線は `switch.vue` の子一覧に既存の「自立移行状況」リンクと並べて「見守り」アイコンリンクを追加し、操作（切替）と閲覧（見守り）を明確に分離。403（AGE_LOCKED / LINK_NOT_FOUND）は握りつぶさず理由別の案内 UI で表示。`/統一`・`/手助け` 適用済み |
