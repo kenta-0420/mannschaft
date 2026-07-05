@@ -665,6 +665,7 @@
       "description_label": "Beschreibung (optional)",
       "description_placeholder": "Details oder Notizen",
       "scope_label": "Teilen mit",
+      "scope_personal": "Persönlich",
       "priority_label": "Priorität",
       "start_date_label": "Startdatum (optional)",
       "due_date_label": "Fälligkeitsdatum (optional)",

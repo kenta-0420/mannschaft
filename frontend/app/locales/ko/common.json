@@ -665,6 +665,7 @@
       "description_label": "설명（선택사항）",
       "description_placeholder": "세부 내용이나 보충 설명",
       "scope_label": "공유 대상",
+      "scope_personal": "개인",
       "priority_label": "우선순위",
       "start_date_label": "시작일（선택사항）",
       "due_date_label": "마감일（선택사항）",

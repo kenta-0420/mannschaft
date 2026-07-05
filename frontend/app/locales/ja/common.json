@@ -665,6 +665,7 @@
       "description_label": "説明（任意）",
       "description_placeholder": "詳細や補足",
       "scope_label": "共有先",
+      "scope_personal": "個人",
       "priority_label": "優先度",
       "start_date_label": "開始日（任意）",
       "due_date_label": "期限（任意）",

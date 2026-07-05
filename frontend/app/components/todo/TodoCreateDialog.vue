@@ -47,7 +47,7 @@ const { clear, restore, savedFlash } = useFormDraft<CreateForm>(draftKey.value, 
 
 const scopeOptions = computed(() => {
   const opts: Array<{ label: string; scopeType: string; scopeId: string | null }> = [
-    { label: t('common.personal') ?? '個人', scopeType: 'PERSONAL', scopeId: null },
+    { label: t('todo.create.scope_personal'), scopeType: 'PERSONAL', scopeId: null },
   ]
   teamStore.myTeams.forEach((t) =>
     opts.push({ label: t.nickname1 || t.name, scopeType: 'TEAM', scopeId: String(t.id) }),
