@@ -76,7 +76,8 @@ authorizePayment(payerUserId, beneficiaryUserId, paymentItemId):
   - 現状ガード適用済み EP：`PATCH /me/password`・`PATCH /me/email`・`POST /me/email/confirm`・`DELETE /me`（退会）・`POST /me/withdrawal/cancel`（退会取消）・`POST /auth/2fa/setup`・`POST /auth/2fa/verify`・`POST /auth/2fa/backup-codes/regenerate`。
   - **2FA 無効化 EP**（`DELETE /auth/2fa` 相当）は現在未実装。将来実装時は本ガードの適用対象とすること（認証クリティカル）。
   - **親リンク削除**（`DELETE /api/v1/parental-consent/parents/{linkId}`・子側操作）は **P3c で `assertNotActingAs()` ガード適用済**（2026-06-05）。保護者が子として acting-as し、共同親権者のリンクを削除する経路を塞ぐ（なりすまし防止の安全境界）。
-- 切替中に行えること：会費支払い・所属管理（参加/退会の申請補助）・プロフィール編集・閲覧。
+- 切替中に行えること：会費支払い・所属管理（参加/退会の申請補助）・プロフィール編集。
+  - **「閲覧」の実態補正（件1追従・2026-07）**：切替（acting-as）中でも、`ProxyInputContext` を見ない大多数の読み取り系 API は §3.2.2 のとおり `SecurityUtils.getCurrentUserId()`＝**保護者自身の ID** で評価されるため、子のデータは露出しない（＝実質ノーオペ。保護者が「切替」しても保護者自身の画面が見えるだけで子の画面は開けない）。子データの見守り（12歳未満対象の継続監視）は、本節の「切替」とは別に**専用の閲覧 API**で提供する必要があるが、本設計時点ではその汎用閲覧 API は未整備（現存するのは F03.12 のイベント参加見守り通知のみ）。将来拡張として別途設計が必要（README.md §11 未解決→確定に準ずる残課題として記録）。
 - **実装（P3c・2026-06-05）**：切替の開始/終了は `POST`/`DELETE /api/v1/me/guardianship/switch`（サーバ側ステートレス＝セッションテーブルなし・検証＋監査記録のみ）。以降クライアントが `X-Proxy-For-User-Id=childUserId` を保持し、**毎リクエストを `ProxyInputContextFilter` の「後見切替経路」が再検証**する（consent-id ヘッダなし＝後見切替経路／consent-id ありは従来 F14.1 紙同意書経路）。再検証は (a) 保護者リンク有効（`isApprovedGuardian` または `isActiveParentWatcher`）(b) 年齢ゲート（`evaluateSwitch`）で、合格時のみ `FeatureScope.PAYMENT` のみを `ProxyInputContext.activate(...)` する（最小権限）。**境界日跨ぎ（年度末・誕生日）の自動失効は本実行時ゲートが担保**（封印後の子へは 403）。エラーコード：`GUARDIANSHIP_LINK_NOT_FOUND`（`MEMBERSHIP_BILLING_005`・403）／`GUARDIANSHIP_SWITCH_AGE_LOCKED`（`MEMBERSHIP_BILLING_004`・403）。
 - 監査：切替の開始/終了・代理操作を `audit_logs`（センシティブ）＋`proxy_input_records` に二重記録。`unconfirmedVisibility` 等は対象外。
   - **実装（P3c・2026-06-05）**：開始は `audit_logs`（`GUARDIANSHIP_SWITCH_STARTED`・userId=保護者/targetUserId=子）＋ `proxy_input_records`（consent_id=NULL・`input_source=GUARDIANSHIP_SWITCH`・`feature_scope=PAYMENT`）の二重記録。終了は `audit_logs`（`GUARDIANSHIP_SWITCH_ENDED`）のみ（ステートレスゆえ解除すべきサーバ状態なし）。`proxy_input_records.proxy_input_consent_id` の NULLABLE 化は V74.010（01_data_model §6 参照）。
@@ -104,7 +105,7 @@ authorizePayment(payerUserId, beneficiaryUserId, paymentItemId):
 
 #### 3.2.2 ProxyInputContext を参照しない機能（チャット等）は保護者として実行されなりすましは発生しない
 
-切替は **JWT を再発行しない**（actor=保護者のまま）。`ProxyInputContext` を見ない機能（例：チャット送信は `ChatMessageService` 等が `SecurityUtils.getCurrentUserId()`＝JWT の保護者 ID を author に用いる）は、切替中でも**保護者本人として**実行・記録される。つまり「切替中に子名義でチャット送信する」ような**なりすましは構造的に発生しない**。`X-Proxy-For-User-Id` を消費するのは §3.2.1 の F14.1 経路と決済の代理払い判定（`PaymentAuthorizationService`）だけであり、それ以外は保護者の権原で動く。
+切替は **JWT を再発行しない**（actor=保護者のまま）。`ProxyInputContext` を見ない機能（例：チャット送信は `ChatMessageService` 等が `SecurityUtils.getCurrentUserId()`＝JWT の保護者 ID を author に用いる）は、切替中でも**保護者本人として**実行・記録される。つまり「切替中に子名義でチャット送信する」ような**なりすましは構造的に発生しない**。`X-Proxy-For-User-Id` を消費するのは §3.2.1 の F14.1 経路と決済の代理払い判定（`PaymentAuthorizationService`）だけであり、それ以外は保護者の権原で動く。**この「actor=保護者IDで評価される」性質は、なりすまし防止の根拠であると同時に、§3.2 で補記した「閲覧が実質ノーオペになる」根拠でもある**（同一メカニズムの表裏）。
 
 ---
 
