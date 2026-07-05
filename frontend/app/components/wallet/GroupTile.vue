@@ -55,8 +55,8 @@ const primaryTooltip = computed(() =>
 <template>
   <div class="group-tile">
     <NuxtLink
-      :to="primaryTarget"
       v-tooltip.top="primaryTooltip"
+      :to="primaryTarget"
       class="group-tile__main hover:bg-surface-50 focus-visible:bg-surface-50 dark:hover:bg-surface-800 dark:focus-visible:bg-surface-800"
       :aria-label="primaryAriaLabel"
     >
