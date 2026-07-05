@@ -7,6 +7,7 @@ import com.mannschaft.app.activity.ActivityVisibility;
 import com.mannschaft.app.activity.dto.ActivityParticipantResponse;
 import com.mannschaft.app.activity.dto.AddParticipantsRequest;
 import com.mannschaft.app.activity.dto.CreateActivityRequest;
+import com.mannschaft.app.activity.dto.CreateDraftActivityRequest;
 import com.mannschaft.app.activity.dto.DuplicateActivityRequest;
 import com.mannschaft.app.activity.dto.RemoveParticipantsRequest;
 import com.mannschaft.app.activity.dto.UpdateActivityRequest;
@@ -62,12 +63,27 @@ public class ActivityResultService {
         if (scopeType == ActivityScopeType.TEAM || scopeType == ActivityScopeType.ORGANIZATION) {
             accessControlService.checkMembership(userId, scopeId, scopeType.name());
         }
-        if (templateId != null) {
-            return resultRepository.findByScopeTypeAndScopeIdAndTemplateIdOrderByActivityDateDescIdDesc(
-                    scopeType, scopeId, templateId, pageable);
+        Page<ActivityResultEntity> page = templateId != null
+                ? resultRepository.findByScopeTypeAndScopeIdAndTemplateIdOrderByActivityDateDescIdDesc(
+                        scopeType, scopeId, templateId, pageable)
+                : resultRepository.findByScopeTypeAndScopeIdOrderByActivityDateDescIdDesc(
+                        scopeType, scopeId, pageable);
+
+        // AC-10: DRAFT（下書き）は作成者・SystemAdmin のみ可視。
+        // F00 ContentVisibilityChecker 経由で status × visibility を一元評価し、
+        // 閲覧不可（他人の DRAFT 等）を一覧から除外する（可視性判定は F00 正準経由）。
+        List<ActivityResultEntity> content = page.getContent();
+        if (content.isEmpty()) {
+            return page;
         }
-        return resultRepository.findByScopeTypeAndScopeIdOrderByActivityDateDescIdDesc(
-                scopeType, scopeId, pageable);
+        Set<Long> accessibleIds = contentVisibilityChecker.filterAccessible(
+                ReferenceType.ACTIVITY_RESULT,
+                content.stream().map(ActivityResultEntity::getId).collect(Collectors.toSet()),
+                userId);
+        List<ActivityResultEntity> filtered = content.stream()
+                .filter(e -> accessibleIds.contains(e.getId()))
+                .collect(Collectors.toList());
+        return new PageImpl<>(filtered, pageable, filtered.size());
     }
 
     /**
@@ -121,6 +137,18 @@ public class ActivityResultService {
         if (scopeType == ActivityScopeType.TEAM || scopeType == ActivityScopeType.ORGANIZATION) {
             accessControlService.checkMembership(userId, entity.getScopeId(), scopeType.name());
         }
+        // AC-10: DRAFT（下書き）は作成者本人（または管理者以上）のみ閲覧可。
+        // それ以外の会員には「存在しない」ものとして扱う（ACTIVITY_NOT_FOUND で漏洩防止）。
+        if (entity.getStatus() == com.mannschaft.app.activity.ActivityStatus.DRAFT
+                && !userId.equals(entity.getCreatedBy())) {
+            boolean adminOrAbove = false;
+            if (scopeType == ActivityScopeType.TEAM || scopeType == ActivityScopeType.ORGANIZATION) {
+                adminOrAbove = accessControlService.isAdminOrAbove(userId, entity.getScopeId(), scopeType.name());
+            }
+            if (!adminOrAbove) {
+                throw new BusinessException(ActivityErrorCode.ACTIVITY_NOT_FOUND);
+            }
+        }
         return entity;
     }
 
@@ -150,6 +178,7 @@ public class ActivityResultService {
         }
         // テンプレート存在チェック
         templateService.findTemplateOrThrow(request.getTemplateId());
+        // 従来経路（createActivity）は作成即公開（status=PUBLISHED, Entity の @Builder.Default）
 
         // 時刻バリデーション
         if (request.getActivityTimeStart() != null && request.getActivityTimeEnd() != null
@@ -193,6 +222,81 @@ public class ActivityResultService {
         }
 
         log.info("活動記録作成: activityId={}, title={}", saved.getId(), saved.getTitle());
+        return saved;
+    }
+
+    /**
+     * 下書き（DRAFT）活動記録を作成する（F06.4 下書き対応）。
+     *
+     * <p>AC-8: title + activityDate のみの最小項目で作成できる。テンプレートは任意。
+     * status は {@link com.mannschaft.app.activity.ActivityStatus#DRAFT}。DRAFT は
+     * 作成者・SystemAdmin のみ閲覧可（F00 可視性で status=DRAFT が author 限定になる）。</p>
+     */
+    @Transactional
+    public ActivityResultEntity createDraftActivity(Long userId, ActivityScopeType scopeType,
+                                                    Long scopeId, CreateDraftActivityRequest request) {
+        // スコープメンバーシップ検証: 非メンバーは403
+        if (scopeType == ActivityScopeType.TEAM || scopeType == ActivityScopeType.ORGANIZATION) {
+            accessControlService.checkMembership(userId, scopeId, scopeType.name());
+        }
+        // テンプレートは任意。指定された場合のみ存在チェック。
+        if (request.getTemplateId() != null) {
+            templateService.findTemplateOrThrow(request.getTemplateId());
+        }
+
+        // 時刻バリデーション
+        if (request.getActivityTimeStart() != null && request.getActivityTimeEnd() != null
+                && request.getActivityTimeEnd().isBefore(request.getActivityTimeStart())) {
+            throw new BusinessException(ActivityErrorCode.INVALID_TIME_RANGE);
+        }
+
+        ActivityVisibility visibility = request.getVisibility() != null
+                ? ActivityVisibility.valueOf(request.getVisibility()) : ActivityVisibility.MEMBERS_ONLY;
+
+        ActivityResultEntity entity = ActivityResultEntity.builder()
+                .scopeType(scopeType)
+                .scopeId(scopeId)
+                .templateId(request.getTemplateId())
+                .title(request.getTitle())
+                .activityDate(request.getActivityDate())
+                .activityTimeStart(request.getActivityTimeStart())
+                .activityTimeEnd(request.getActivityTimeEnd())
+                .description(request.getDescription())
+                .fieldValues(serializeFieldValues(request.getFieldValues()))
+                .visibility(visibility)
+                .status(com.mannschaft.app.activity.ActivityStatus.DRAFT)
+                .createdBy(userId)
+                .build();
+
+        ActivityResultEntity saved = resultRepository.save(entity);
+        log.info("活動記録(下書き)作成: activityId={}, title={}", saved.getId(), saved.getTitle());
+        return saved;
+    }
+
+    /**
+     * 下書き活動記録を公開する（DRAFT → PUBLISHED）。
+     *
+     * <p>AC-9: publish EP で DRAFT→PUBLISHED。既に PUBLISHED のものを publish すると
+     * {@link ActivityErrorCode#INVALID_ACTIVITY_STATUS}（400）。
+     * 認可は作成者本人または管理者以上（update/delete と同一境界）。</p>
+     */
+    @Transactional
+    public ActivityResultEntity publishActivity(Long id, Long userId) {
+        ActivityResultEntity entity = findActivityOrThrow(id);
+        // 本人または管理者のみ公開可能（update/delete と同一境界）
+        ActivityScopeType scopeType = entity.getScopeType();
+        if (scopeType == ActivityScopeType.TEAM || scopeType == ActivityScopeType.ORGANIZATION) {
+            if (!userId.equals(entity.getCreatedBy())) {
+                accessControlService.checkAdminOrAbove(userId, entity.getScopeId(), scopeType.name());
+            }
+        }
+        if (!entity.isPublishable()) {
+            // 既に PUBLISHED（DRAFT 以外）の状態からの publish は不正
+            throw new BusinessException(ActivityErrorCode.INVALID_ACTIVITY_STATUS);
+        }
+        entity.publish();
+        ActivityResultEntity saved = resultRepository.save(entity);
+        log.info("活動記録公開: activityId={}", id);
         return saved;
     }
 
