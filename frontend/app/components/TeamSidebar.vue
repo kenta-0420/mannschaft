@@ -48,14 +48,23 @@ const categories: SidebarCategory[] = [
     ],
   },
   {
-    key: 'ops',
-    labelKey: 'teamSidebar.category.ops',
+    // タスク・進行系（MEMBER 以上で使う日常実務）
+    key: 'ops_work',
+    labelKey: 'teamSidebar.category.ops_work',
     icon: 'pi pi-briefcase',
     items: [
       { labelKey: 'teamSidebar.item.todos', icon: 'pi pi-check-square', path: 'todos', moduleSlug: 'todo', requiredRole: 'MEMBER' },
       { labelKey: 'teamSidebar.item.workflows', icon: 'pi pi-sitemap', path: 'workflows', moduleSlug: null, requiredRole: 'MEMBER' },
       { labelKey: 'teamSidebar.item.forms', icon: 'pi pi-file-edit', path: 'forms', moduleSlug: 'survey', requiredRole: 'MEMBER' },
       { labelKey: 'teamSidebar.item.projects', icon: 'pi pi-folder', path: 'projects', moduleSlug: null, requiredRole: 'MEMBER' },
+    ],
+  },
+  {
+    // 運営・予算系（DEPUTY_ADMIN/ADMIN 以上の管理・カネ業務）
+    key: 'ops_admin',
+    labelKey: 'teamSidebar.category.ops_admin',
+    icon: 'pi pi-wallet',
+    items: [
       { labelKey: 'teamSidebar.item.budget', icon: 'pi pi-wallet', path: 'budget', moduleSlug: null, requiredRole: 'DEPUTY_ADMIN' },
       // F09.17 Phase 11-d-4: チーム広告主機能（チーム ADMIN のみ表示。
       // moduleSlug は組織版と同じ 'ad_display' を流用し、有効化判定を統一する）。

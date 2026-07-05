@@ -148,7 +148,6 @@
       "delete_confirm_title": "Delete this card?",
       "delete_confirm": "This card will be permanently deleted. This action cannot be undone.",
       "delete_confirm_ok": "Delete",
-      "record_used": "Record as used",
       "favorite_on": "Add to favorites",
       "favorite_off": "Remove from favorites",
       "section_meta": "Card information",
@@ -160,8 +159,7 @@
       "barcode_locked_hint": "Barcode value and format cannot be edited for security reasons. To change them, delete this card and re-register it.",
       "not_found": "Card not found",
       "back_to_list": "Back to list",
-      "save_failed": "Failed to update",
-      "used_recorded": "Recorded as used"
+      "save_failed": "Failed to update"
     },
     "group_form": {
       "title_new": "New group",

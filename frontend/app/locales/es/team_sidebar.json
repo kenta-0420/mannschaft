@@ -6,6 +6,8 @@
       "match": "Partidos",
       "member": "Miembros",
       "ops": "Operaciones",
+      "ops_work": "Tareas y progreso",
+      "ops_admin": "Administración y presupuesto",
       "facility": "Instalaciones",
       "data": "Datos",
       "settings": "Configuración"

@@ -6,6 +6,8 @@
       "match": "Matches",
       "member": "Members",
       "ops": "Operations",
+      "ops_work": "Tasks & Progress",
+      "ops_admin": "Admin & Budget",
       "facility": "Facility",
       "data": "Data",
       "settings": "Settings"

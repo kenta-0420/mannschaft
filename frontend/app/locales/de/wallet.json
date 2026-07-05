@@ -148,7 +148,6 @@
       "delete_confirm_title": "Karte löschen?",
       "delete_confirm": "Diese Karte wird dauerhaft gelöscht. Kann nicht rückgängig gemacht werden.",
       "delete_confirm_ok": "Löschen",
-      "record_used": "Als verwendet markieren",
       "favorite_on": "Zu Favoriten hinzufügen",
       "favorite_off": "Aus Favoriten entfernen",
       "section_meta": "Karteninformationen",
@@ -160,8 +159,7 @@
       "barcode_locked_hint": "Barcode-Wert und -Format können aus Sicherheitsgründen nicht bearbeitet werden. Löschen und neu registrieren zum Ändern.",
       "not_found": "Karte nicht gefunden",
       "back_to_list": "Zurück zur Liste",
-      "save_failed": "Aktualisierung fehlgeschlagen",
-      "used_recorded": "Als verwendet registriert"
+      "save_failed": "Aktualisierung fehlgeschlagen"
     },
     "group_form": {
       "title_new": "Neue Gruppe",

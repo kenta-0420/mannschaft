@@ -4,7 +4,6 @@ import CardDetailActions from '~/components/wallet/card-detail/CardDetailActions
 import CardDetailBalanceSection from '~/components/wallet/card-detail/CardDetailBalanceSection.vue'
 import CardDetailDeleteModal from '~/components/wallet/card-detail/CardDetailDeleteModal.vue'
 import CardDetailEditForm from '~/components/wallet/card-detail/CardDetailEditForm.vue'
-import CardDetailHeader from '~/components/wallet/card-detail/CardDetailHeader.vue'
 import CardDetailMeta from '~/components/wallet/card-detail/CardDetailMeta.vue'
 import ShareTokenQrModal from '~/components/wallet/ShareTokenQrModal.vue'
 import type { UpdateUserPointCardRequest, UserPointCardDetail } from '~/types/pointCard'
@@ -17,7 +16,7 @@ import type { UpdateUserPointCardRequest, UserPointCardDetail } from '~/types/po
  *   <li>バーコードプレビュー大きく表示（カード番号も同時に大きく表示）</li>
  *   <li>編集モードトグル: displayName / nickname / memo / favorite / displayOrder</li>
  *   <li>削除ボタン（確認モーダル必須、物理削除）</li>
- *   <li>「使用済み」ボタンで {@link useWalletApi#recordUsed} を呼び lastUsedAt を更新</li>
+ *   <li>カード詳細表示時に自動で {@link useWalletApi#recordUsed} を呼び lastUsedAt を更新（背景・ベストエフォート）</li>
  * </ul>
  *
  * <p>barcodeValue / barcodeFormat は仕様上編集不可（設計書 §6 / §9.3）。
@@ -63,8 +62,6 @@ const saveError = ref<string | null>(null)
 
 const showDeleteConfirm = ref(false)
 const deleting = ref(false)
-const recordingUsed = ref(false)
-const usedToast = ref(false)
 const cardIdCopiedToast = ref(false)
 const showShareQrModal = ref(false)
 
@@ -143,6 +140,16 @@ async function load() {
   loadError.value = false
   try {
     card.value = await walletApi.getCard(cardId.value)
+    // カード詳細表示時に last_used_at を自動更新（ベストエフォート・背景処理）
+    walletApi.recordUsed(cardId.value)
+      .then(() => {
+        if (card.value) {
+          card.value = { ...card.value, lastUsedAt: new Date().toISOString() }
+        }
+      })
+      .catch((e) => {
+        console.warn('[wallet/cards/[id]] auto recordUsed failed (non-blocking)', e)
+      })
   }
   catch (e) {
     console.error('[wallet/cards/[id]] load failed', e)
@@ -215,24 +222,6 @@ async function toggleFavorite() {
   }
 }
 
-async function recordUsed() {
-  if (!card.value || recordingUsed.value) return
-  recordingUsed.value = true
-  try {
-    await walletApi.recordUsed(cardId.value)
-    // 楽観的に lastUsedAt を更新（API が成功した時点で表示更新）
-    card.value = { ...card.value, lastUsedAt: new Date().toISOString() }
-    usedToast.value = true
-    setTimeout(() => { usedToast.value = false }, 2500)
-  }
-  catch (e) {
-    console.error('[wallet/cards/[id]] recordUsed failed', e)
-  }
-  finally {
-    recordingUsed.value = false
-  }
-}
-
 async function confirmDelete() {
   if (deleting.value) return
   deleting.value = true
@@ -289,9 +278,9 @@ onMounted(load)
 
 <template>
   <div class="card-detail">
-    <CardDetailHeader
-      :title="card?.displayName"
-      @back="backToWallet"
+    <PageHeader
+      :title="card?.displayName ?? '…'"
+      back-to="/wallet"
     />
 
     <div v-if="loading" class="card-detail__loading">…</div>
@@ -323,14 +312,12 @@ onMounted(load)
         :balance-enabled="balanceEnabled"
       />
 
-      <!-- 使用済み記録ボタン（編集モード以外で表示） -->
+      <!-- アクションボタン群（店舗で提示 / お気に入り / 編集・編集モード以外で表示） -->
       <CardDetailActions
         v-if="!editMode"
         :is-self-issued="isSelfIssued"
         :favorite="card.favorite"
-        :recording-used="recordingUsed"
         @open-share="showShareQrModal = true"
-        @record-used="recordUsed"
         @toggle-favorite="toggleFavorite"
         @enter-edit="enterEdit"
       />
@@ -364,16 +351,6 @@ onMounted(load)
         </button>
       </section>
     </template>
-
-    <!-- 使用済みトースト -->
-    <div
-      v-if="usedToast"
-      class="card-detail__toast"
-      role="status"
-      aria-live="polite"
-    >
-      {{ t('wallet.detail.used_recorded') }}
-    </div>
 
     <!-- カード ID コピートースト -->
     <div
