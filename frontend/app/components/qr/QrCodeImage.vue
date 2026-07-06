@@ -25,12 +25,20 @@ const props = withDefaults(
     errorCorrectionLevel?: 'L' | 'M' | 'Q' | 'H'
     /** QR コード外周の余白モジュール数 */
     margin?: number
+    /**
+     * QR 暗モジュールの色（HEX）。既定はブランド primary 緑の濃い版 #047857（primary-700 相当）。
+     * ブランド primary の #10b981（primary-500）は白背景とのコントラスト比が 2.54:1 で
+     * QR スキャンに不十分（3:1 未満）なため、同じ緑ランプで白コントラスト 5.48:1 を確保できる
+     * #047857 を採用している。バッジ枠は明るい primary 緑のままで、QR 本体だけ可読性優先で濃くする。
+     */
+    moduleColor?: string
   }>(),
   {
     size: 320,
     centerLabel: 'Mannschaft',
     errorCorrectionLevel: 'H',
     margin: 1,
+    moduleColor: '#047857',
   },
 )
 
@@ -49,6 +57,7 @@ async function renderQr() {
       width: props.size,
       margin: props.margin,
       errorCorrectionLevel: props.errorCorrectionLevel,
+      color: { dark: props.moduleColor, light: '#ffffff' },
     })
   }
   catch (e) {
@@ -63,7 +72,7 @@ onMounted(() => {
 })
 
 watch(
-  () => [props.value, props.size, props.errorCorrectionLevel, props.margin],
+  () => [props.value, props.size, props.errorCorrectionLevel, props.margin, props.moduleColor],
   () => {
     renderQr()
   },
@@ -74,15 +83,15 @@ watch(
  * 中央ブランドバッジの寸法を size に比例させるインラインスタイル。
  * scoped CSS で固定 px にすると小さい QR で比率が崩れるため、
  * フォント・パディング・縁取り幅・角丸・白ハローをすべて size 連動にする。
- * 例: size=320 → fontSize≈17px / border≈3px / radius≈10px。
+ * 例: size=320 → fontSize≈17px / padding≈7px 16px / border≈3px / radius≈16px。
  */
 const badgeStyle = computed(() => {
   const s = props.size
   return {
     fontSize: `${Math.round(s * 0.052)}px`,
-    padding: `${Math.round(s * 0.014)}px ${Math.round(s * 0.032)}px`,
+    padding: `${Math.round(s * 0.022)}px ${Math.round(s * 0.05)}px`,
     borderWidth: `${Math.max(2, Math.round(s * 0.009))}px`,
-    borderRadius: `${Math.round(s * 0.03)}px`,
+    borderRadius: `${Math.round(s * 0.05)}px`,
     boxShadow: `0 0 0 ${Math.max(3, Math.round(s * 0.013))}px #fff`,
   }
 })
