@@ -69,6 +69,23 @@ watch(
   },
   { immediate: false },
 )
+
+/**
+ * 中央ブランドバッジの寸法を size に比例させるインラインスタイル。
+ * scoped CSS で固定 px にすると小さい QR で比率が崩れるため、
+ * フォント・パディング・縁取り幅・角丸・白ハローをすべて size 連動にする。
+ * 例: size=320 → fontSize≈17px / border≈3px / radius≈10px。
+ */
+const badgeStyle = computed(() => {
+  const s = props.size
+  return {
+    fontSize: `${Math.round(s * 0.052)}px`,
+    padding: `${Math.round(s * 0.014)}px ${Math.round(s * 0.032)}px`,
+    borderWidth: `${Math.max(2, Math.round(s * 0.009))}px`,
+    borderRadius: `${Math.round(s * 0.03)}px`,
+    boxShadow: `0 0 0 ${Math.max(3, Math.round(s * 0.013))}px #fff`,
+  }
+})
 </script>
 
 <template>
@@ -79,7 +96,11 @@ watch(
     <div class="qr-code-image__svg" v-html="qrSvg" />
     <!-- eslint-enable vue/no-v-html -->
 
-    <span v-if="centerLabel" class="qr-code-image__label">{{ centerLabel }}</span>
+    <span
+      v-if="centerLabel"
+      class="qr-code-image__badge"
+      :style="badgeStyle"
+    >{{ centerLabel }}</span>
   </div>
 </template>
 
@@ -94,24 +115,28 @@ watch(
   width: 100%;
   height: auto;
 }
-.qr-code-image__label {
+/**
+ * 中央ブランドバッジ。四角い縁取り（角丸）＋白背景＋太字で "Mannschaft" をフル表示。
+ * ellipsis は使わずフル表示する（省略防止）。寸法は badgeStyle（インライン）で size 連動。
+ * ブランド色の縁取り＋白ハローで周囲モジュールから分離しスキャン性を確保する。
+ * 被覆は ~30% 想定でも ECL=H（~30% 復元）内に収まる。
+ */
+.qr-code-image__badge {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: #fff;
   color: #111827;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.72rem;
-  font-weight: 700;
+  border-style: solid;
+  border-color: var(--p-primary-color, #4f46e5);
+  font-weight: 800;
   letter-spacing: 0.01em;
   white-space: nowrap;
-  max-width: 24%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  /* 白フチで周囲モジュールと分離しスキャン性を確保 */
-  box-shadow: 0 0 0 3px #fff;
+  max-width: 46%;
   pointer-events: none;
   user-select: none;
 }
