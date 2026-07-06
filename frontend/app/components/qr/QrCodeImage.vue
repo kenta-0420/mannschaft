@@ -144,7 +144,9 @@ const badgeStyle = computed(() => {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
+  /* 水平は中央維持。垂直は中央(-50%)からバッジ自身の高さ1.5個分(+150%)下げる = 100%。
+     translateY(%) は要素自身の高さ基準なので size 非依存で「1.5個分下」に寄る。 */
+  transform: translate(-50%, 100%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
