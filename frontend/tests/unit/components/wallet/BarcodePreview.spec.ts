@@ -14,7 +14,7 @@ import BarcodePreview from '~/components/wallet/BarcodePreview.vue'
  *   - bwip-js は toCanvas を vi.fn() に差し替え（PDF417 経路で動的 import される）</p>
  *
  * <p>テストケース一覧:
- *   BPR-001: format=QR で QRCode.toCanvas が呼ばれる
+ *   BPR-001: format=QR で共有コンポーネント QrCodeImage が描画され QRCode.toCanvas は呼ばれない
  *   BPR-002: format=PDF417 で bwip-js.toCanvas が呼ばれる
  *   BPR-003: format=CODE128 で JsBarcode が呼ばれる
  *   BPR-004: format=NONE で描画系は一切呼ばれず no_barcode 表示が出る
@@ -24,9 +24,11 @@ import BarcodePreview from '~/components/wallet/BarcodePreview.vue'
 // === モジュールモック ===
 // vi.mock は hoist されるため、参照する mock 関数も vi.hoisted で作成する必要がある。
 
-const { mockJsBarcode, mockQrToCanvas, mockBwipToCanvas } = vi.hoisted(() => ({
+const { mockJsBarcode, mockQrToCanvas, mockQrToString, mockBwipToCanvas } = vi.hoisted(() => ({
   mockJsBarcode: vi.fn(),
   mockQrToCanvas: vi.fn().mockResolvedValue(undefined),
+  // 共有コンポーネント QrCodeImage は QRCode.toString(type:'svg') を使う。
+  mockQrToString: vi.fn().mockResolvedValue('<svg data-testid="qr-svg"></svg>'),
   mockBwipToCanvas: vi.fn(),
 }))
 
@@ -37,6 +39,7 @@ vi.mock('jsbarcode', () => ({
 vi.mock('qrcode', () => ({
   default: {
     toCanvas: mockQrToCanvas,
+    toString: mockQrToString,
   },
 }))
 
@@ -53,17 +56,24 @@ describe('BarcodePreview.vue', () => {
     mockJsBarcode.mockReset()
     mockQrToCanvas.mockReset()
     mockQrToCanvas.mockResolvedValue(undefined)
+    mockQrToString.mockReset()
+    mockQrToString.mockResolvedValue('<svg data-testid="qr-svg"></svg>')
     mockBwipToCanvas.mockReset()
   })
 
-  it('BPR-001: format=QR で QRCode.toCanvas が呼ばれる', async () => {
-    await mountSuspended(BarcodePreview, {
+  it('BPR-001: format=QR で共有コンポーネント QrCodeImage が描画され QRCode.toCanvas は呼ばれない', async () => {
+    const wrapper = await mountSuspended(BarcodePreview, {
       props: { value: 'https://example.com/abc', format: 'QR' },
     })
-    // watch + nextTick + onMounted 経由で render が走る
+    // QrCodeImage の onMounted → QRCode.toString(svg) 描画を待つ
     await new Promise(r => setTimeout(r, 10))
-    expect(mockQrToCanvas).toHaveBeenCalled()
-    const [, value] = mockQrToCanvas.mock.calls[0]!
+    // QR は canvas ではなく共有コンポーネント QrCodeImage(SVG) で描画される
+    expect(wrapper.html()).toContain('qr-code-image')
+    // 従来の canvas 版 QR 生成（toCanvas）は使わない
+    expect(mockQrToCanvas).not.toHaveBeenCalled()
+    // 共有コンポーネントは SVG 生成（toString）を props.value で呼ぶ
+    expect(mockQrToString).toHaveBeenCalled()
+    const [value] = mockQrToString.mock.calls[0]!
     expect(value).toBe('https://example.com/abc')
     expect(mockJsBarcode).not.toHaveBeenCalled()
     expect(mockBwipToCanvas).not.toHaveBeenCalled()

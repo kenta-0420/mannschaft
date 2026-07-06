@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import QRCode from 'qrcode'
-
 /**
  * F18 Phase 3 「店舗で提示」QR コードモーダル。
  *
@@ -26,7 +24,7 @@ const api = useWalletApi()
 
 const token = ref<string | null>(null)
 const expiresAt = ref<Date | null>(null)
-const qrSvg = ref<string>('')
+const qrValue = ref<string | null>(null)
 const remainingMs = ref<number>(0)
 const issuing = ref<boolean>(false)
 const error = ref<string | null>(null)
@@ -40,12 +38,7 @@ async function issue() {
     const res = await api.generateShareToken(props.cardId)
     token.value = res.token
     expiresAt.value = new Date(res.expiresAt)
-    qrSvg.value = await QRCode.toString(res.deepLinkUrl, {
-      type: 'svg',
-      width: 320,
-      margin: 1,
-      errorCorrectionLevel: 'M',
-    })
+    qrValue.value = res.deepLinkUrl
     startCountdown()
   }
   catch (e) {
@@ -89,7 +82,7 @@ watch(() => props.show, (v) => {
     // モーダルを開いたとき必ず再発行（古い token が残っていても新しい 5 分を取得）
     token.value = null
     expiresAt.value = null
-    qrSvg.value = ''
+    qrValue.value = null
     remainingMs.value = 0
     issue()
   }
@@ -124,7 +117,7 @@ function handleClose() {
         {{ t('wallet.share.instruction') }}
       </p>
 
-      <div v-if="issuing && !qrSvg" class="share-modal__loading">
+      <div v-if="issuing && !qrValue" class="share-modal__loading">
         …
       </div>
 
@@ -132,18 +125,15 @@ function handleClose() {
         {{ error }}
       </div>
 
-      <!-- qrcode ライブラリが返す自前生成の SVG マークアップを描画。
-           ユーザー入力ではなく信頼できるソースのため XSS リスクは無し。 -->
-      <!-- eslint-disable vue/no-v-html -->
       <div
-        v-else-if="qrSvg"
+        v-else-if="qrValue"
         class="share-modal__qr"
         :class="{ 'share-modal__qr--expired': expired }"
-        v-html="qrSvg"
-      />
-      <!-- eslint-enable vue/no-v-html -->
+      >
+        <QrCodeImage :value="qrValue" :size="320" />
+      </div>
 
-      <p v-if="qrSvg && !expired" class="share-modal__countdown" aria-live="polite">
+      <p v-if="qrValue && !expired" class="share-modal__countdown" aria-live="polite">
         {{ t('wallet.share.remaining', { time: remainingText }) }}
       </p>
       <p v-else-if="expired" class="share-modal__expired" role="alert">
