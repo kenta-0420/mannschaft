@@ -29,9 +29,14 @@ const props = withDefaults(
      * QR 暗モジュールの色（HEX）。既定はブランド primary 緑の濃い版 #047857（primary-700 相当）。
      * ブランド primary の #10b981（primary-500）は白背景とのコントラスト比が 2.54:1 で
      * QR スキャンに不十分（3:1 未満）なため、同じ緑ランプで白コントラスト 5.48:1 を確保できる
-     * #047857 を採用している。バッジ枠は明るい primary 緑のままで、QR 本体だけ可読性優先で濃くする。
+     * #047857 を採用している。バッジ枠・文字は灰色（frameColor）で、QR 本体だけ緑にする。
      */
     moduleColor?: string
+    /**
+     * 中央バッジの枠線色＋文字色（HEX）。既定は灰色 #6b7280（gray-500、白背景コントラスト約4.6:1で可読）。
+     * QR 本体の緑（moduleColor）とは独立。緑QR＋灰色バッジの組み合わせにする。
+     */
+    frameColor?: string
   }>(),
   {
     size: 320,
@@ -39,6 +44,7 @@ const props = withDefaults(
     errorCorrectionLevel: 'H',
     margin: 1,
     moduleColor: '#047857',
+    frameColor: '#6b7280',
   },
 )
 
@@ -83,16 +89,19 @@ watch(
  * 中央ブランドバッジの寸法を size に比例させるインラインスタイル。
  * scoped CSS で固定 px にすると小さい QR で比率が崩れるため、
  * フォント・パディング・縁取り幅・角丸・白ハローをすべて size 連動にする。
- * 例: size=320 → fontSize≈17px / padding≈7px 16px / border≈3px / radius≈16px。
+ * 例: size=320 → fontSize≈17px / padding≈13px 16px / border≈3px / radius≈16px。
+ * 枠線色・文字色は frameColor（灰色）を適用する。
  */
 const badgeStyle = computed(() => {
   const s = props.size
   return {
     fontSize: `${Math.round(s * 0.052)}px`,
-    padding: `${Math.round(s * 0.022)}px ${Math.round(s * 0.05)}px`,
+    padding: `${Math.round(s * 0.04)}px ${Math.round(s * 0.05)}px`,
     borderWidth: `${Math.max(2, Math.round(s * 0.009))}px`,
     borderRadius: `${Math.round(s * 0.05)}px`,
     boxShadow: `0 0 0 ${Math.max(3, Math.round(s * 0.013))}px #fff`,
+    borderColor: props.frameColor,
+    color: props.frameColor,
   }
 })
 </script>
@@ -127,7 +136,8 @@ const badgeStyle = computed(() => {
 /**
  * 中央ブランドバッジ。四角い縁取り（角丸）＋白背景＋太字で "Mannschaft" をフル表示。
  * ellipsis は使わずフル表示する（省略防止）。寸法は badgeStyle（インライン）で size 連動。
- * ブランド色の縁取り＋白ハローで周囲モジュールから分離しスキャン性を確保する。
+ * 枠線色・文字色は badgeStyle 側で frameColor（灰色）を与える（緑QRから独立）。
+ * 灰色枠＋白ハローで周囲の緑モジュールから分離しスキャン性を確保する。
  * 被覆は ~30% 想定でも ECL=H（~30% 復元）内に収まる。
  */
 .qr-code-image__badge {
@@ -139,9 +149,7 @@ const badgeStyle = computed(() => {
   align-items: center;
   justify-content: center;
   background: #fff;
-  color: #111827;
   border-style: solid;
-  border-color: var(--p-primary-color, #4f46e5);
   font-weight: 800;
   letter-spacing: 0.01em;
   white-space: nowrap;
