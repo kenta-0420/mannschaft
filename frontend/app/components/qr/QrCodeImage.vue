@@ -104,6 +104,15 @@ const badgeStyle = computed(() => {
     color: props.frameColor,
   }
 })
+
+/**
+ * 親コンポーネントが現在描画中の QR SVG マークアップを取得できるよう公開する。
+ * 用途: SVG ダウンロード等（バッジ span は含まない純粋な QR モジュール SVG）。
+ * 未描画時は空文字を返す。
+ */
+defineExpose({
+  getSvg: (): string => qrSvg.value,
+})
 </script>
 
 <template>
