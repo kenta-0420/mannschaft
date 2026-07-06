@@ -144,9 +144,10 @@ const badgeStyle = computed(() => {
   position: absolute;
   top: 50%;
   left: 50%;
-  /* 水平は中央維持。垂直は中央(-50%)からバッジ自身の高さ1.5個分(+150%)下げる = 100%。
-     translateY(%) は要素自身の高さ基準なので size 非依存で「1.5個分下」に寄る。 */
-  transform: translate(-50%, 100%);
+  /* 水平は中央維持。垂直は translateY=0（中央から自身の高さ0.5個分下）。
+     top:50% で上端が中央 → translateY(0) だと要素の上端が QR 中央に来る＝中央から0.5個分下。
+     translateY(%) は要素自身の高さ基準なので size 非依存。 */
+  transform: translate(-50%, 0);
   display: inline-flex;
   align-items: center;
   justify-content: center;
