@@ -144,10 +144,10 @@ const badgeStyle = computed(() => {
   position: absolute;
   top: 50%;
   left: 50%;
-  /* 水平は中央維持。垂直は translateY=20%（中央から自身の高さ0.7個分下）。
-     中央=translateY(-50%)、1個分=100% → 0.7個分下 = -50% + 70% = 20%。
+  /* 水平は中央維持。垂直は translateY=10%（中央から自身の高さ0.6個分下）。
+     中央=translateY(-50%)、1個分=100% → 0.6個分下 = -50% + 60% = 10%。
      translateY(%) は要素自身の高さ基準なので size 非依存。 */
-  transform: translate(-50%, 20%);
+  transform: translate(-50%, 10%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
