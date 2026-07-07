@@ -127,6 +127,14 @@ export function useTodoApi() {
   }
 
   /**
+   * 論理削除済みの個人 TODO を復元する（Undo Toast の「元に戻す」から呼ぶ）。
+   * BE: {@code POST /api/v1/todos/{id}/restore}
+   */
+  async function restorePersonalTodo(todoId: number) {
+    return api(`/api/v1/todos/${todoId}/restore`, { method: 'POST' })
+  }
+
+  /**
    * スコープを問わず使える汎用ステータス変更
    *
    * F02.3.1 でリクエストボディが拡張され、`status` / `statusLabelId` のいずれか（または両方）を指定可能。
@@ -197,6 +205,14 @@ export function useTodoApi() {
 
   async function deleteTodo(scopeType: 'team' | 'organization', scopeId: string, todoId: number) {
     return api(`${buildBase(scopeType, scopeId)}/todos/${todoId}`, { method: 'DELETE' })
+  }
+
+  /**
+   * 論理削除済みのチーム / 組織 TODO を復元する（Undo Toast の「元に戻す」から呼ぶ）。
+   * BE: {@code POST /api/v1/{teams|organizations}/{scopeId}/todos/{id}/restore}
+   */
+  async function restoreTodo(scopeType: 'team' | 'organization', scopeId: string, todoId: number) {
+    return api(`${buildBase(scopeType, scopeId)}/todos/${todoId}/restore`, { method: 'POST' })
   }
 
   // === Status ===
@@ -340,12 +356,14 @@ export function useTodoApi() {
     createPersonalTodo,
     updatePersonalTodo,
     deletePersonalTodo,
+    restorePersonalTodo,
     changeTodoStatusById,
     listTodos,
     getTodo,
     createTodo,
     updateTodo,
     deleteTodo,
+    restoreTodo,
     changeTodoStatus,
     bulkChangeTodoStatus,
     addAssignee,

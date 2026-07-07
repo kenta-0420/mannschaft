@@ -545,7 +545,11 @@
       "deleteConfirm": "Diesen Eintrag löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
       "sortLabel": "Sortieren nach",
       "sortRecent": "Neueste",
-      "sortPriority": "Priorität"
+      "sortPriority": "Priorität",
+      "deletedToast": "TODO gelöscht",
+      "restoredToast": "TODO wiederhergestellt",
+      "deleteFailed": "Löschen fehlgeschlagen",
+      "restoreFailed": "Rückgängig nicht möglich"
     },
     "field": {
       "status": "Status",
@@ -1740,7 +1744,9 @@
       "KB_PAGE": "KB",
       "BLOG_AUTHOR": "Autor",
       "VILLAGE": "Dorf"
-    }
+    },
+    "restoredToast": "Zu Favoriten wiederhergestellt",
+    "restoreFailed": "Rückgängig nicht möglich"
   },
   "succession": {
     "legalFilings": {
