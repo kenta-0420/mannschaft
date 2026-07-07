@@ -887,6 +887,10 @@
           "7": {
             "q": "What if a feature I want is missing?",
             "a": "Send us a request via the contact form. Mannschaft is a growing platform that adds features based on user feedback."
+          },
+          "8": {
+            "q": "Can children use it?",
+            "a": "Users under 18 can use the service only after linking to a parent (legal guardian) account and receiving their consent approval. The service cannot be used until linking is complete. See Article 4 of the Terms of Service for details."
           }
         },
         "retro_hint": "🎮 Sometimes the screen goes retro… maybe?",
@@ -1107,6 +1111,16 @@
           "desktop_step3": "Or choose “Install app” from the menu",
           "desktop_step4": "Click “Install” to finish",
           "close": "Close"
+        }
+      },
+      "trust": {
+        "heading": "Our commitment to safety and security",
+        "badges": {
+          "minor": "Parental link required under 18",
+          "auth": "Two-factor auth & passkeys",
+          "i18n": "6 languages supported",
+          "encryption": "Encrypted communication & data",
+          "gdpr": "GDPR compliant"
         }
       }
     }

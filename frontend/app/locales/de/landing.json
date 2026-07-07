@@ -887,6 +887,10 @@
           "7": {
             "q": "Was, wenn eine Funktion fehlt?",
             "a": "Schick uns deinen Wunsch über das Kontaktformular. Mannschaft ist eine wachsende Plattform, die Funktionen nach dem Feedback der Nutzer ergänzt."
+          },
+          "8": {
+            "q": "Können auch Kinder es nutzen?",
+            "a": "Personen unter 18 Jahren können den Dienst erst nutzen, nachdem sie mit dem Konto eines Elternteils (gesetzlichen Vertreters) verknüpft wurden und dessen Einwilligung erhalten haben. Bis zum Abschluss der Verknüpfung ist die Nutzung nicht möglich. Einzelheiten finden Sie in Artikel 4 der Nutzungsbedingungen."
           }
         },
         "retro_hint": "🎮 Manchmal wird der Bildschirm retro … vielleicht?",
@@ -1107,6 +1111,16 @@
           "desktop_step3": "Oder wähle im Menü „App installieren“",
           "desktop_step4": "Klicke auf „Installieren“, um abzuschließen",
           "close": "Schließen"
+        }
+      },
+      "trust": {
+        "heading": "Unser Einsatz für Sicherheit und Schutz",
+        "badges": {
+          "minor": "Elternverknüpfung unter 18 Pflicht",
+          "auth": "Zwei-Faktor-Auth & Passkeys",
+          "i18n": "6 Sprachen",
+          "encryption": "Verschlüsselte Kommunikation & Daten",
+          "gdpr": "DSGVO-konform"
         }
       }
     }
