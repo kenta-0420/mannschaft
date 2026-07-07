@@ -53,7 +53,8 @@
 - **[F09.17-E02]** 年齢セグメント+フリークエンシーキャップ: 月内3配信成功→4件目 402(週3上限)、`user_ad_delivery_counters`=3。（§3 user_ad_delivery_counters）★Valkey週境界
 - **[F09.17-E03]** 受信者通報→3件で自動BLOCK→`ad_messaging_campaigns.status=BLOCKED`+監査ログ CAMPAIGN_AUTO_BLOCKED。（§3 ad_user_reports/§1）**※通報BEはF09.19.9実装後に実施可能（現状404）**
 - **[F09.11-E01]** 広告主登録(PENDING)→SYSTEM_ADMIN承認(ACTIVE/Stripe Customer)→配信→月次バッチで請求書(DRAFT→ISSUED)→PDF DL。（§4）
-- **[F09.19-E01]** 運用型一気通貫: 広告主登録→承認→キャンペーン作成(unit_price_snapshot)→クリエイティブ入稿→双方審査承認→受信者ダッシュボードに SpotlightSlot 表示→view/visit 計上→日次集計(手動実行)→ad_daily_stats→月次請求金額反映。（F09.19 §16 F09.19.8）
+- **[F09.19-E01]** 運用型一気通貫: 広告主登録→承認→キャンペーン作成(unit_price_snapshot)→クリエイティブ入稿→双方審査承認→受信者ダッシュボードに SpotlightSlot 表示→view/visit 計上→日次集計(`spotlight/daily-stats/run` targetDate=当日)→ad_daily_stats→月次請求(`spotlight/invoices/run` month=当月)で金額反映。**手動トリガー2本で当日中にクローズ可能（cron待ち・日付跨ぎ不要）**。（F09.19 §16 F09.19.8）
+- **[F09.19-E04]** BANNER課金（新規実装）: F09.17 BANNER 予約 served 5行+未表示3行→BillingBridge→invoice item = channel_type=BANNER・数量5・¥15（¥3×served のみ・クリック無関係）。（F09.19 §7.4）
 - **[F09.19-E02]** 予約バナー意味論: F09.17 BANNER 予約→`ad_banner_deliveries.served_at IS NULL`→serve+view で充足→BillingBridge が未表示予約を課金しない。（F09.19 §7.4）
 - **[F09.19-E03]** 通報自動停止と解除: ACTIVE 運用型に 3 ユーザー通報→PAUSED+`report_suspended_at`→広告主 resume 403(AD_033)→SYSTEM_ADMIN `unsuspend`→ACTIVE 復帰。ENDED への 3 件目通報では status が巻き戻らない。（F09.19 §12・F09.19.9 実装後）
 
