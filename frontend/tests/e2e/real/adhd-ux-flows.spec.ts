@@ -633,7 +633,6 @@ test.describe('フローC: 二段公開（AC-17, 18）', () => {
         // 活動日を入力（canSaveDraft はタイトル+活動日の両方が必須）
         // DatePicker の中の input 要素を直接 fill する
         const dateInput = dialog.locator('[data-testid="activity-date-input"] input, [data-testid="activity-date-input"]').first()
-        const today = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/')
         // PrimeVue DatePicker は yy/mm/dd フォーマット: 2026/07/07
         const todayYMD = new Date().toISOString().slice(0, 10).replace(/-/g, '/')
         await dateInput.fill(todayYMD).catch(async () => {
