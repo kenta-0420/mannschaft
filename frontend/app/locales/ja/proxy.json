@@ -116,6 +116,7 @@
         "linkTooltip": "見守り画面を開く（閲覧専用）",
         "readonlyNotice": "この画面は閲覧専用です。操作や回答はできません。",
         "loadError": "見守りデータの取得に失敗しました",
+        "retryButton": "再試行",
         "sections": {
           "schedules": {
             "title": "今後の予定",
