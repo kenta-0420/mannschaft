@@ -63,7 +63,10 @@ public enum ActivityErrorCode implements ErrorCode {
     FIELD_KEY_RENAME_NOT_ALLOWED("ACTIVITY_019", "フィールドキーの変更はできません", Severity.WARN),
 
     /** 終了時刻が開始時刻より前 */
-    INVALID_TIME_RANGE("ACTIVITY_020", "終了時刻は開始時刻より後に設定してください", Severity.WARN);
+    INVALID_TIME_RANGE("ACTIVITY_020", "終了時刻は開始時刻より後に設定してください", Severity.WARN),
+
+    /** 現在のステータスでは実行できない操作（例: 既に公開済みの活動記録の publish） */
+    INVALID_ACTIVITY_STATUS("ACTIVITY_021", "この操作は現在の活動記録ステータスでは実行できません", Severity.WARN);
 
     private final String code;
     private final String message;

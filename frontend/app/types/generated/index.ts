@@ -7112,6 +7112,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/todos/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 個人TODO復元 */
+        post: operations["restorePersonalTodo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/todos/{id}/link-schedule": {
         parameters: {
             query?: never;
@@ -7522,6 +7539,23 @@ export interface paths {
         put?: never;
         /** TODO キャッチボール（引き渡し） */
         post: operations["handoff"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/todos/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** TODO復元 */
+        post: operations["restoreTodo"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15437,6 +15471,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{orgId}/todos/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 組織TODO復元 */
+        post: operations["restoreTodo_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{orgId}/todos/{id}/memos": {
         parameters: {
             query?: never;
@@ -21844,6 +21895,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/activities/{id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 活動記録 公開 */
+        post: operations["publishActivity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/activities/{id}/participants": {
         parameters: {
             query?: never;
@@ -21891,6 +21959,23 @@ export interface paths {
         put?: never;
         /** コメント投稿 */
         post: operations["createComment_4"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/activities/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 活動記録 下書き作成 */
+        post: operations["createDraftActivity"];
         delete?: never;
         options?: never;
         head?: never;
@@ -49733,12 +49818,15 @@ export interface components {
             /** Format: int64 */
             id?: number;
             location?: string;
+            publishable?: boolean;
             /** Format: int64 */
             scheduleId?: number;
             /** Format: int64 */
             scopeId?: number;
             /** @enum {string} */
             scopeType?: "TEAM" | "ORGANIZATION" | "COMMITTEE";
+            /** @enum {string} */
+            status?: "DRAFT" | "PUBLISHED";
             /** Format: int64 */
             templateId?: number;
             title?: string;
@@ -61198,6 +61286,22 @@ export interface components {
             /** Format: date */
             activityDate?: string;
             title?: string;
+        };
+        CreateDraftActivityRequest: {
+            /** Format: date */
+            activityDate: string;
+            /** @example 14:30:00 */
+            activityTimeEnd?: string;
+            /** @example 14:30:00 */
+            activityTimeStart?: string;
+            description?: string;
+            fieldValues?: {
+                [key: string]: Record<string, never>;
+            };
+            /** Format: int64 */
+            templateId?: number;
+            title?: string;
+            visibility?: string;
         };
         CreateActionMemoRequest: {
             /** @enum {string} */
@@ -91735,6 +91839,28 @@ export interface operations {
             };
         };
     };
+    restorePersonalTodo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 復元成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTodoResponse"];
+                };
+            };
+        };
+    };
     linkSchedule: {
         parameters: {
             query?: never;
@@ -92560,6 +92686,29 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseTodoHandoffResponse"];
+                };
+            };
+        };
+    };
+    restoreTodo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: string;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 復元成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTodoResponse"];
                 };
             };
         };
@@ -108186,6 +108335,29 @@ export interface operations {
             };
         };
     };
+    restoreTodo_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 復元成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTodoResponse"];
+                };
+            };
+        };
+    };
     listSharedMemos_1: {
         parameters: {
             query?: {
@@ -120009,6 +120181,28 @@ export interface operations {
             };
         };
     };
+    publishActivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 公開成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseActivityResultEntity"];
+                };
+            };
+        };
+    };
     addParticipants: {
         parameters: {
             query?: never;
@@ -120131,6 +120325,33 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseActivityCommentResponse"];
+                };
+            };
+        };
+    };
+    createDraftActivity: {
+        parameters: {
+            query: {
+                scope_type: string;
+                scope_id: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDraftActivityRequest"];
+            };
+        };
+        responses: {
+            /** @description 作成成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseActivityResultEntity"];
                 };
             };
         };

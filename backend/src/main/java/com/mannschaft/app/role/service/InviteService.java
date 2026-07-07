@@ -18,12 +18,7 @@ import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.dto.MembershipCreateRequest;
 import com.mannschaft.app.membership.service.MembershipService;
-import com.google.zxing.BarcodeFormat;
-import com.google.zxing.EncodeHintType;
-import com.google.zxing.WriterException;
-import com.google.zxing.client.j2se.MatrixToImageWriter;
-import com.google.zxing.common.BitMatrix;
-import com.google.zxing.qrcode.QRCodeWriter;
+import com.mannschaft.app.common.qr.BrandedQrImageWriter;
 import org.springframework.beans.factory.annotation.Value;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
@@ -43,13 +38,9 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Base64;
-import java.util.EnumMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -79,6 +70,7 @@ public class InviteService {
     private final MyScopeFolderService myScopeFolderService;
     private final MyScopeFolderRepository myScopeFolderRepository;
     private final MembershipService membershipService;
+    private final BrandedQrImageWriter brandedQrImageWriter;
 
     /**
      * 招待トークンを作成する。
@@ -363,7 +355,7 @@ public class InviteService {
 
     /**
      * 招待QRコード画像（PNG）を生成して返す。
-     * ZXingを使用してフロントエンドの招待URLをエンコードする。
+     * {@link BrandedQrImageWriter} で中央ブランドバッジ入りQR（ECL=H）としてフロントエンドの招待URLをエンコードする。
      *
      * @param tokenStr トークン文字列
      * @param size     QR画像サイズ（px）。null の場合はデフォルト300
@@ -380,20 +372,7 @@ public class InviteService {
 
         String inviteUrl = baseUrl + "/invite/" + tokenStr;
 
-        try {
-            Map<EncodeHintType, Object> hints = new EnumMap<>(EncodeHintType.class);
-            hints.put(EncodeHintType.CHARACTER_SET, "UTF-8");
-            hints.put(EncodeHintType.MARGIN, 1);
-
-            QRCodeWriter writer = new QRCodeWriter();
-            BitMatrix matrix = writer.encode(inviteUrl, BarcodeFormat.QR_CODE, qrSize, qrSize, hints);
-
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            MatrixToImageWriter.writeToStream(matrix, "PNG", out);
-            return out.toByteArray();
-        } catch (WriterException | IOException e) {
-            throw new IllegalStateException("QRコードの生成に失敗しました: " + tokenStr, e);
-        }
+        return brandedQrImageWriter.writePng(inviteUrl, qrSize);
     }
 
     /**

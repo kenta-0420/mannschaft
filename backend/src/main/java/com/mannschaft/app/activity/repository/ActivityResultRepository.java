@@ -81,7 +81,8 @@ public interface ActivityResultRepository extends JpaRepository<ActivityResultEn
                 END,
                 ar.scopeId,
                 ar.createdBy,
-                ar.visibility)
+                ar.visibility,
+                ar.status)
             FROM ActivityResultEntity ar
             WHERE ar.id IN :ids AND ar.deletedAt IS NULL
             """)

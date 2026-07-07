@@ -32384,6 +32384,38 @@
         }
       }
     },
+    "/api/v1/todos/{id}/restore": {
+      "post": {
+        "tags": [
+          "TODO（個人）"
+        ],
+        "summary": "個人TODO復元",
+        "operationId": "restorePersonalTodo",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "復元成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTodoResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/todos/{id}/link-schedule": {
       "post": {
         "tags": [
@@ -33730,6 +33762,46 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseTodoHandoffResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/todos/{id}/restore": {
+      "post": {
+        "tags": [
+          "TODO（チーム）"
+        ],
+        "summary": "TODO復元",
+        "operationId": "restoreTodo",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "復元成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTodoResponse"
                 }
               }
             }
@@ -59821,6 +59893,47 @@
         }
       }
     },
+    "/api/v1/organizations/{orgId}/todos/{id}/restore": {
+      "post": {
+        "tags": [
+          "TODO（組織）"
+        ],
+        "summary": "組織TODO復元",
+        "operationId": "restoreTodo_1",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "復元成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTodoResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{orgId}/todos/{id}/memos": {
       "get": {
         "tags": [
@@ -78671,6 +78784,38 @@
         }
       }
     },
+    "/api/v1/activities/{id}/publish": {
+      "post": {
+        "tags": [
+          "活動記録"
+        ],
+        "summary": "活動記録 公開",
+        "operationId": "publishActivity",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "公開成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseActivityResultEntity"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/activities/{id}/participants": {
       "post": {
         "tags": [
@@ -78859,6 +79004,56 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseActivityCommentResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/activities/draft": {
+      "post": {
+        "tags": [
+          "活動記録"
+        ],
+        "summary": "活動記録 下書き作成",
+        "operationId": "createDraftActivity",
+        "parameters": [
+          {
+            "name": "scope_type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scope_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDraftActivityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "作成成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseActivityResultEntity"
                 }
               }
             }
@@ -152413,6 +152608,9 @@
           "location": {
             "type": "string"
           },
+          "publishable": {
+            "type": "boolean"
+          },
           "scheduleId": {
             "type": "integer",
             "format": "int64"
@@ -152427,6 +152625,13 @@
               "TEAM",
               "ORGANIZATION",
               "COMMITTEE"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED"
             ]
           },
           "templateId": {
@@ -184467,6 +184672,49 @@
             "minLength": 0
           }
         }
+      },
+      "CreateDraftActivityRequest": {
+        "type": "object",
+        "properties": {
+          "activityDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "activityTimeEnd": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "activityTimeStart": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 10000,
+            "minLength": 0
+          },
+          "fieldValues": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object"
+            }
+          },
+          "templateId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "visibility": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "activityDate"
+        ]
       },
       "CreateActionMemoRequest": {
         "type": "object",

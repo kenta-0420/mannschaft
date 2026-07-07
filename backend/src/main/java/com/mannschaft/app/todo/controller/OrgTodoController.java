@@ -182,6 +182,21 @@ public class OrgTodoController {
     }
 
     /**
+     * 論理削除済みTODOを復元する。
+     */
+    @PostMapping("/{id}/restore")
+    @Operation(summary = "組織TODO復元")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "復元成功")
+    public ResponseEntity<ApiResponse<TodoResponse>> restoreTodo(
+            @PathVariable Long orgId,
+            @PathVariable Long id) {
+        // F02.3.1 後続 C-7: IDOR 対策（削除済み todo の scope 整合確認）
+        todoService.assertDeletedTodoScope(id, TodoScopeType.ORGANIZATION, orgId);
+        todoService.restoreTodo(id);
+        return ResponseEntity.ok(todoService.getTodo(id));
+    }
+
+    /**
      * TODOステータスを変更する。
      */
     @PatchMapping("/{id}/status")

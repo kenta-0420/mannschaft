@@ -366,6 +366,51 @@ public class TodoService {
     }
 
     /**
+     * 個人TODOを復元する（論理削除の取り消し）。担当者であることを検証する（IDOR対策）。
+     *
+     * <p>削除EP {@link #deletePersonalTodo(Long, Long)} と同じ認可境界を採用する。
+     * 他人の（担当者でない）TODOの復元要求は、他スコープでの ID 存在を漏らさないため
+     * {@link TodoErrorCode#TODO_NOT_FOUND}（404）で返す。</p>
+     *
+     * @param todoId Todo ID
+     * @param userId 操作ユーザーID
+     */
+    @Transactional
+    public void restorePersonalTodo(Long todoId, Long userId) {
+        // 担当者であることを検証（IDOR対策: 他人のTODOはNOT_FOUNDで返す）
+        boolean isAssignee = assigneeRepository.existsByTodoIdAndUserId(todoId, userId);
+        if (!isAssignee) {
+            throw new BusinessException(TodoErrorCode.TODO_NOT_FOUND);
+        }
+        restoreTodo(todoId);
+    }
+
+    /**
+     * 論理削除済みTODOを復元する。
+     *
+     * @param todoId Todo ID
+     */
+    @Transactional
+    public void restoreTodo(Long todoId) {
+        TodoEntity todo = findDeletedTodoOrThrow(todoId);
+        Long parentId = todo.getParentId();
+        todo.restore();
+        todoRepository.save(todo);
+
+        // プロジェクト進捗再計算
+        if (todo.getProjectId() != null) {
+            projectRepository.recalculateProgress(todo.getProjectId());
+        }
+
+        // 親TODO（自動モード）の進捗率再計算
+        if (parentId != null) {
+            todoProgressService.recalculateAfterChildChange(parentId);
+        }
+
+        log.info("TODO復元: id={}", todoId);
+    }
+
+    /**
      * TODOを部分更新する（PATCH）。
      * 個人TODOの担当者本人のみ更新可能。IDOR対策としてTODO_NOT_FOUNDで統一する。
      *
@@ -488,6 +533,36 @@ public class TodoService {
     public TodoEntity findTodoOrThrow(Long todoId) {
         return todoRepository.findByIdAndDeletedAtIsNull(todoId)
                 .orElseThrow(() -> new BusinessException(TodoErrorCode.TODO_NOT_FOUND));
+    }
+
+    /**
+     * 論理削除済みTODOを取得する。存在しない（未削除も含む）場合は TODO_NOT_FOUND をスローする。
+     * 復元（restore）専用ヘルパー。
+     */
+    public TodoEntity findDeletedTodoOrThrow(Long todoId) {
+        return todoRepository.findByIdAndDeletedAtIsNotNull(todoId)
+                .orElseThrow(() -> new BusinessException(TodoErrorCode.TODO_NOT_FOUND));
+    }
+
+    /**
+     * 復元対象の論理削除済み TODO について、path で指定された scope と一致することを検証する。
+     *
+     * <p>{@link #assertTodoScope(Long, TodoScopeType, Long)} の削除済み版。
+     * {@code /api/v1/teams/{teamId}/todos/{id}/restore} などで path scope と
+     * 削除済み todo の scope が不一致のとき、他スコープでの ID 存在を漏らさないため
+     * {@link TodoErrorCode#TODO_NOT_FOUND}（404）で返す。</p>
+     *
+     * @param todoId    検証する TODO の ID
+     * @param scopeType path のスコープ種別
+     * @param scopeId   path のスコープ ID
+     * @throws BusinessException 不一致 / 未削除 / 不存在のとき TODO_NOT_FOUND
+     */
+    public void assertDeletedTodoScope(Long todoId, TodoScopeType scopeType, Long scopeId) {
+        TodoEntity todo = findDeletedTodoOrThrow(todoId);
+        if (todo.getScopeType() != scopeType
+                || !java.util.Objects.equals(todo.getScopeId(), scopeId)) {
+            throw new BusinessException(TodoErrorCode.TODO_NOT_FOUND);
+        }
     }
 
     /**

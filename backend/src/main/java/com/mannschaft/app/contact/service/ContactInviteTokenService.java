@@ -1,11 +1,5 @@
 package com.mannschaft.app.contact.service;
 
-import com.google.zxing.BarcodeFormat;
-import com.google.zxing.EncodeHintType;
-import com.google.zxing.client.j2se.MatrixToImageWriter;
-import com.google.zxing.common.BitMatrix;
-import com.google.zxing.qrcode.QRCodeWriter;
-import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
@@ -17,6 +11,7 @@ import com.mannschaft.app.contact.dto.SendContactRequestResponse;
 import com.mannschaft.app.contact.entity.ContactInviteTokenEntity;
 import com.mannschaft.app.contact.repository.ContactInviteTokenRepository;
 import com.mannschaft.app.contact.repository.ContactRequestBlockRepository;
+import com.mannschaft.app.common.qr.BrandedQrImageWriter;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationService;
@@ -27,10 +22,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -51,6 +44,7 @@ public class ContactInviteTokenService {
     private final ContactRequestBlockRepository contactRequestBlockRepository;
     private final ContactService contactService;
     private final NotificationService notificationService;
+    private final BrandedQrImageWriter brandedQrImageWriter;
 
     /**
      * 招待トークンを発行する。
@@ -168,6 +162,7 @@ public class ContactInviteTokenService {
     /**
      * QRコード画像を生成する（PNG バイト配列）。
      * URLはサーバー側で組み立て、ユーザー入力値は含めない。
+     * {@link BrandedQrImageWriter} で中央ブランドバッジ入りQR（ECL=H固定）として生成する。
      */
     public byte[] generateQrCode(Long userId, String token, int size) {
         // オーナーチェック
@@ -179,15 +174,7 @@ public class ContactInviteTokenService {
         String inviteUrl = baseUrl + "/contact-invite/" + token;
 
         try {
-            QRCodeWriter writer = new QRCodeWriter();
-            Map<EncodeHintType, Object> hints = Map.of(
-                    EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.M,
-                    EncodeHintType.CHARACTER_SET, "UTF-8"
-            );
-            BitMatrix matrix = writer.encode(inviteUrl, BarcodeFormat.QR_CODE, size, size, hints);
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            MatrixToImageWriter.writeToStream(matrix, "PNG", out);
-            return out.toByteArray();
+            return brandedQrImageWriter.writePng(inviteUrl, size);
         } catch (Exception e) {
             log.error("QRコード生成失敗: token={}", token, e);
             throw new RuntimeException("QRコードの生成に失敗しました", e);

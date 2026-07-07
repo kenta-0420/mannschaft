@@ -152,6 +152,20 @@ public class PersonalTodoController {
     }
 
     /**
+     * 論理削除済みの個人TODOを復元する。
+     */
+    @PostMapping("/{id}/restore")
+    @Operation(summary = "個人TODO復元")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "復元成功")
+    public ResponseEntity<ApiResponse<TodoResponse>> restorePersonalTodo(@PathVariable Long id) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        // IDOR対策: path scope（PERSONAL）と削除済み todo の scope 整合確認
+        todoService.assertDeletedTodoScope(id, TodoScopeType.PERSONAL, null);
+        todoService.restorePersonalTodo(id, userId);
+        return ResponseEntity.ok(todoService.getTodo(id));
+    }
+
+    /**
      * 個人TODOを部分更新する（dueDate等）。
      */
     @PatchMapping("/{id}")
