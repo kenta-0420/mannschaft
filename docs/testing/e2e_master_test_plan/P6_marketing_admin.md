@@ -1,6 +1,6 @@
 # P6 マーケ・広告・配信・システム管理 E2E テスト法案
 
-> 対象: F09.2 / F09.17 / F09.11 / F09.7 / F09.6 / F09.18 / F09.8(+8.1) / F10.1/3/6/7 / F12.2 / F09.12
+> 対象: F09.2 / F09.17 / F09.11 / F09.7 / F09.19 / F09.6 / F09.18 / F09.8(+8.1) / F10.1/3/6/7 / F12.2 / F09.12
 > 凡例・テスト層は [README](./README.md) 参照。
 > ⚠️ **裏取り品質 △**: FE 実装を「UI確認必須」のまま残した箇所が多い。🟡 は実機 reachability で確定する。
 
@@ -27,6 +27,16 @@
 | **受信者3件通報→自動SUSPEND** | AdUserReportService | 🔴 UI導線要確認 |
 | GDPR自己データ削除(冪等) | AdDataDeletionService | 🟡 |
 
+### F09.19 広告枠サービング・ハイブリッド購入（設計 2026-07-07・未実装）
+| 機能要素 | BE | 判定 |
+|---|---|---|
+| 運用型キャンペーンCRUD/状態遷移/審査(-operational) | AdvertiserAdCampaignController(新設予定) | 🔴 設計のみ（F09.19.1） |
+| サービング `/spotlight/content|view|visit`（中立命名・割当4段階・count=2重複回避） | SpotlightServingService(新設予定) | 🔴 設計のみ（F09.19.2） |
+| 日次集計バッチ→ad_daily_stats→月次請求（金額一気通貫） | AdDailyStatsAggregationBatchService(新設予定) | 🔴 設計のみ（F09.19.3/.8） |
+| SpotlightSlot 2ウィジェット/IN_FEED差込/広告ラベル/非表示導線 | FE SpotlightSlot.vue(新設予定) | 🔴 設計のみ（F09.19.4） |
+| F09.11系scope化（チーム請求/与信/レポート/シミュレーター） | scope化コントローラ対(新設予定) | 🔴 設計のみ（F09.19.5/.6） |
+| 通報の運用型対応（3件自動PAUSE） | V145.001+API拡張 | 🔴 設計のみ（F09.19.9・別実装弾） |
+
 ### F09.6/F09.18/F09.8/F10.x
 - F09.6 DM配信(即時/予約)/配信対象プレビュー/開封トラッキング/クーポン手入力 = 🟢/🟡
 - **F09.18 メール配信基盤(outbox)** = Phase 18-a 設計、保証付き非同期/指数バックオフ/DEAD_LETTER。BE 実装確認要(メモリでは Phase18 完了系の記録あり=要突合)
@@ -42,6 +52,8 @@
 - **[F09.17-E02]** 年齢セグメント+フリークエンシーキャップ: 月内3配信成功→4件目 402(週3上限)、`user_ad_delivery_counters`=3。（§3 user_ad_delivery_counters）★Valkey週境界
 - **[F09.17-E03]** 受信者通報→3件で自動SUSPEND→`ad_messaging_campaigns.status=SUSPENDED`+監査ログ AD_CAMPAIGN_SUSPENDED_AUTO。（§3 ad_user_reports/§1）
 - **[F09.11-E01]** 広告主登録(PENDING)→SYSTEM_ADMIN承認(ACTIVE/Stripe Customer)→配信→月次バッチで請求書(DRAFT→ISSUED)→PDF DL。（§4）
+- **[F09.19-E01]** 運用型一気通貫: 広告主登録→承認→キャンペーン作成(unit_price_snapshot)→クリエイティブ入稿→双方審査承認→受信者ダッシュボードに SpotlightSlot 表示→view/visit 計上→日次集計(手動実行)→ad_daily_stats→月次請求金額反映。（F09.19 §16 F09.19.8）
+- **[F09.19-E02]** 予約バナー意味論: F09.17 BANNER 予約→`ad_banner_deliveries.served_at IS NULL`→serve+view で充足→BillingBridge が未表示予約を課金しない。（F09.19 §7.4）
 
 ---
 
@@ -53,6 +65,9 @@
 | F09.18 メール outbox(送信予約/指数バックオフ/DEAD_LETTER) | 🟡 BE 実装状態を Phase18 記録と突合 |
 | F09.17 unsubscribe 周期トークン(token_version) | 🟡 設定変更後リンク失効 E2E |
 | F10.3 メール outbox 操作監査ログ SYSTEM_ADMIN 画面 | 🟡 |
+| admin 孤立ページ: `/admin/ad-rate-cards` `/admin/ad-credit-limit-requests` `/admin/affiliate-settings` がナビ未接続（直URLのみ） | 🔴 F09.19.7 でナビ接続予定 |
+| F09.17 ウィザード推定リーチが FE ダミー値（preview API コントローラ未実装） | 🔴 F09.19.7 で実結線予定 |
+| BANNER チャネルの掲載面（表示コンポーネント）不在＝出稿→掲載ループ未完 | 🔴 F09.19.2/.4 で充填予定 |
 
 ---
 
