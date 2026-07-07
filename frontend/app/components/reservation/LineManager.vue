@@ -8,6 +8,7 @@ const props = defineProps<{
 const { t } = useI18n()
 const reservationApi = useReservationApi()
 const notification = useNotification()
+const confirm = useConfirm()
 // 多重防御（defense-in-depth）: 親タブの v-if に加え、破壊的操作ボタンを本コンポーネントでも
 // ロールで制御する。BE が本防御線だが、別画面から再利用された際の誤表示を防ぐ。
 const { isAdmin, loadPermissions } = useRoleAccess('team', computed(() => props.teamId))
@@ -56,11 +57,24 @@ async function save() {
   catch { notification.error(t('reservation.message.line_save_failed')) }
 }
 
-async function remove(lineId: number) {
-  if (!confirm(t('reservation.dialog.line_delete_confirm'))) return
-  await reservationApi.deleteLine(props.teamId, lineId)
-  notification.success(t('reservation.message.line_delete_success'))
-  await loadLines()
+// 削除確認は既存の ReservationList.cancel() と同一パターン（PrimeVue ConfirmDialog）に合わせる。
+// ネイティブ confirm() は改行やアイコンを表現できず、新仕様（テンプレ停止＋未来枠 purge）の
+// 注意文言を十分に伝えられないため置き換える。
+function remove(lineId: number) {
+  confirm.require({
+    // ガイド文言（新仕様の説明）を先に伝え、確認の問いかけを最後に置く（settings.delete_account 系と同じ順序規約）。
+    message: `${t('reservation.line.delete_guide')} ${t('reservation.dialog.line_delete_confirm')}`,
+    header: t('reservation.dialog.title'),
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: t('reservation.button.delete_line'),
+    rejectLabel: t('reservation.button.cancel'),
+    acceptClass: 'p-button-danger',
+    accept: async () => {
+      await reservationApi.deleteLine(props.teamId, lineId)
+      notification.success(t('reservation.message.line_delete_success'))
+      await loadLines()
+    },
+  })
 }
 
 onMounted(async () => {
@@ -71,6 +85,7 @@ onMounted(async () => {
 
 <template>
   <div>
+    <ConfirmDialog />
     <div class="mb-4 flex items-center justify-between">
       <h3 class="text-lg font-semibold">{{ t('reservation.line_manage_title') }}</h3>
       <Button v-if="isAdmin" :label="t('reservation.button.add_line')" icon="pi pi-plus" size="small" @click="openCreate" />

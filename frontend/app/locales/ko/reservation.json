@@ -217,7 +217,8 @@
       "cancel_reservation": "취소하기",
       "back": "돌아가기",
       "go_to_line_manage": "예약 대상 관리로 이동",
-      "manage_slots": "시간대 관리"
+      "manage_slots": "시간대 관리",
+      "delete_line": "삭제"
     },
     "dialog": {
       "title": "확인",
@@ -277,6 +278,9 @@
       }
     },
     "line_manage_title": "예약 대상 관리",
+    "line": {
+      "delete_guide": "삭제하면 이 라인의 슬롯 템플릿이 중지되고, 예약이 없는 미래 슬롯은 자동으로 삭제됩니다. 유효한 예약이 있는 경우 먼저 변경/취소해 주세요."
+    },
     "settings": {
       "advanced": {
         "title": "고급 설정"

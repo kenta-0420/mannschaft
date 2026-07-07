@@ -217,7 +217,8 @@
       "cancel_reservation": "Cancelar",
       "back": "Volver",
       "go_to_line_manage": "Ir a gestionar objetivos de reserva",
-      "manage_slots": "Gestionar franjas"
+      "manage_slots": "Gestionar franjas",
+      "delete_line": "Eliminar"
     },
     "dialog": {
       "title": "Confirmar",
@@ -277,6 +278,9 @@
       }
     },
     "line_manage_title": "Gestión de elementos reservables",
+    "line": {
+      "delete_guide": "Al eliminarlo, se detendrá la plantilla de franjas de esta línea y las franjas futuras sin reservas se eliminarán automáticamente. Si hay reservas activas, cámbielas de fecha o cancélelas primero."
+    },
     "settings": {
       "advanced": {
         "title": "Configuración avanzada"

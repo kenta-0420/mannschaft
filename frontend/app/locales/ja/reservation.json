@@ -217,7 +217,8 @@
       "cancel_reservation": "キャンセルする",
       "back": "戻る",
       "go_to_line_manage": "予約対象の管理へ",
-      "manage_slots": "枠を管理する"
+      "manage_slots": "枠を管理する",
+      "delete_line": "削除する"
     },
     "dialog": {
       "title": "確認",
@@ -277,6 +278,9 @@
       }
     },
     "line_manage_title": "予約対象の管理",
+    "line": {
+      "delete_guide": "削除すると、このラインの枠テンプレートは停止し、予約のない未来の枠は自動削除されます。有効な予約がある場合は先に振替/キャンセルしてください。"
+    },
     "settings": {
       "advanced": {
         "title": "詳細設定"

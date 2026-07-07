@@ -78,6 +78,10 @@ function selectSlot(slot: ReservationSlotResponse) {
 
 watch([selectedDate, selectedLineId], loadSlots)
 onMounted(async () => { await loadLines(); await loadSlots() })
+
+// 予約直後に親（TeamReservationsPanel）から枠の空き状況を再読込させるための公開メソッド。
+// 既存の MatchRequestList 等と同一パターン（defineExpose({ refresh })＋親は ref 経由で呼ぶ）。
+defineExpose({ refresh: loadSlots })
 </script>
 
 <template>
