@@ -24,6 +24,14 @@ public interface TodoRepository extends JpaRepository<TodoEntity, Long> {
     Optional<TodoEntity> findByIdAndDeletedAtIsNull(Long id);
 
     /**
+     * IDで論理削除済み（deleted_at IS NOT NULL）のTODOを取得する。
+     *
+     * <p>復元（restore）処理専用。通常の finder は deleted_at IS NULL のみを返すため、
+     * 論理削除済み行を掘り起こすには本メソッドを使う。</p>
+     */
+    Optional<TodoEntity> findByIdAndDeletedAtIsNotNull(Long id);
+
+    /**
      * スコープ別のTODO一覧を取得する（論理削除除外）。
      */
     Page<TodoEntity> findByScopeTypeAndScopeIdAndDeletedAtIsNull(

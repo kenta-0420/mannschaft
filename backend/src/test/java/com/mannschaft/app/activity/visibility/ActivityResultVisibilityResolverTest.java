@@ -204,6 +204,57 @@ class ActivityResultVisibilityResolverTest {
     }
 
     // ========================================================================
+    // DRAFT status（AC-10 F06.4 下書き対応）
+    // ========================================================================
+
+    @Test
+    @DisplayName("AC-10 DRAFT は作成者本人には可視（メンバーでなくても）")
+    void draft_authorAllowed() {
+        // author = 42L の DRAFT。閲覧者も 42L（作成者本人）
+        ActivityResultVisibilityProjection p = draft(1L, "TEAM", 100L, 42L);
+        when(repository.findVisibilityProjectionsByIdIn(List.of(1L))).thenReturn(List.of(p));
+        when(membershipBatchQueryService.snapshotForUser(eq(42L), any(), any()))
+                .thenReturn(UserScopeRoleSnapshot.empty());
+
+        assertThat(resolver.canView(1L, 42L)).isTrue();
+    }
+
+    @Test
+    @DisplayName("AC-10 DRAFT は作成者でないメンバーには不可視 / DenyReason=NOT_OWNER")
+    void draft_nonAuthorMemberDenied() {
+        // author = 999L の DRAFT。閲覧者 42L はチームメンバーだが作成者ではない
+        ActivityResultVisibilityProjection p = draft(1L, "TEAM", 100L, 999L);
+        ScopeKey teamScope = new ScopeKey("TEAM", 100L);
+        UserScopeRoleSnapshot snapshot = new UserScopeRoleSnapshot(
+                false,
+                Map.of(teamScope, "MEMBER"),
+                Map.of(),
+                Set.of(),
+                Set.of());
+
+        when(repository.findVisibilityProjectionsByIdIn(List.of(1L))).thenReturn(List.of(p));
+        when(membershipBatchQueryService.snapshotForUser(eq(42L), any(), any()))
+                .thenReturn(snapshot);
+
+        assertThat(resolver.canView(1L, 42L)).isFalse();
+
+        VisibilityDecision decision = resolver.decide(1L, 42L);
+        assertThat(decision.allowed()).isFalse();
+        assertThat(decision.denyReason()).isEqualTo(DenyReason.NOT_OWNER);
+    }
+
+    @Test
+    @DisplayName("AC-10 DRAFT は SystemAdmin には可視")
+    void draft_systemAdminAllowed() {
+        ActivityResultVisibilityProjection p = draft(1L, "TEAM", 100L, 999L);
+        when(repository.findVisibilityProjectionsByIdIn(List.of(1L))).thenReturn(List.of(p));
+        when(membershipBatchQueryService.snapshotForUser(eq(1L), any(), any()))
+                .thenReturn(UserScopeRoleSnapshot.forSystemAdmin());
+
+        assertThat(resolver.canView(1L, 1L)).isTrue();
+    }
+
+    // ========================================================================
     // SystemAdmin 高速パス（§15 D-13）
     // ========================================================================
 
@@ -387,15 +438,24 @@ class ActivityResultVisibilityResolverTest {
     // ヘルパ — Projection 生成
     // ========================================================================
 
-    /** PUBLIC な Projection を生成。 */
+    /** PUBLIC かつ PUBLISHED な Projection を生成。 */
     private static ActivityResultVisibilityProjection pub(Long id, String scopeType, Long scopeId, Long authorUserId) {
         return new ActivityResultVisibilityProjection(
-                id, scopeType, scopeId, authorUserId, ActivityVisibility.PUBLIC);
+                id, scopeType, scopeId, authorUserId, ActivityVisibility.PUBLIC,
+                com.mannschaft.app.activity.ActivityStatus.PUBLISHED);
     }
 
-    /** MEMBERS_ONLY な Projection を生成。 */
+    /** MEMBERS_ONLY かつ PUBLISHED な Projection を生成。 */
     private static ActivityResultVisibilityProjection members(Long id, String scopeType, Long scopeId, Long authorUserId) {
         return new ActivityResultVisibilityProjection(
-                id, scopeType, scopeId, authorUserId, ActivityVisibility.MEMBERS_ONLY);
+                id, scopeType, scopeId, authorUserId, ActivityVisibility.MEMBERS_ONLY,
+                com.mannschaft.app.activity.ActivityStatus.PUBLISHED);
+    }
+
+    /** MEMBERS_ONLY かつ DRAFT な Projection を生成（作成者のみ可視）。 */
+    private static ActivityResultVisibilityProjection draft(Long id, String scopeType, Long scopeId, Long authorUserId) {
+        return new ActivityResultVisibilityProjection(
+                id, scopeType, scopeId, authorUserId, ActivityVisibility.MEMBERS_ONLY,
+                com.mannschaft.app.activity.ActivityStatus.DRAFT);
     }
 }

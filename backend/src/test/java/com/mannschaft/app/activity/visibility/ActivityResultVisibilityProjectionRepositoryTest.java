@@ -83,6 +83,9 @@ class ActivityResultVisibilityProjectionRepositoryTest extends AbstractMySqlInte
         assertThat(orgMem.scopeId()).isEqualTo(500L);
         assertThat(orgMem.authorUserId()).isEqualTo(888L);
         assertThat(orgMem.visibility()).isEqualTo(ActivityVisibility.MEMBERS_ONLY);
+
+        // F06.4 下書き対応: status も Projection に載る（既定 PUBLISHED）
+        assertThat(teamPub.status()).isEqualTo(com.mannschaft.app.activity.ActivityStatus.PUBLISHED);
     }
 
     @Test

@@ -4,6 +4,7 @@ import com.mannschaft.app.activity.ActivityScopeType;
 import com.mannschaft.app.activity.dto.ActivityParticipantResponse;
 import com.mannschaft.app.activity.dto.AddParticipantsRequest;
 import com.mannschaft.app.activity.dto.CreateActivityRequest;
+import com.mannschaft.app.activity.dto.CreateDraftActivityRequest;
 import com.mannschaft.app.activity.dto.DuplicateActivityRequest;
 import com.mannschaft.app.activity.dto.RemoveParticipantsRequest;
 import com.mannschaft.app.activity.dto.UpdateActivityRequest;
@@ -83,6 +84,36 @@ public class ActivityController {
         ActivityResultEntity response = activityService.createActivity(
                 SecurityUtils.getCurrentUserId(), ActivityScopeType.valueOf(scopeType), scopeId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
+
+    /**
+     * 下書き（DRAFT）活動記録を作成する（F06.4 下書き対応）。
+     *
+     * <p>AC-8: title + activityDate のみの最小項目で作成可能。DRAFT は作成者のみ閲覧可。</p>
+     */
+    @PostMapping("/draft")
+    @Operation(summary = "活動記録 下書き作成")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
+    public ResponseEntity<ApiResponse<ActivityResultEntity>> createDraftActivity(
+            @RequestParam("scope_type") String scopeType,
+            @RequestParam("scope_id") Long scopeId,
+            @Valid @RequestBody CreateDraftActivityRequest request) {
+        ActivityResultEntity response = activityService.createDraftActivity(
+                SecurityUtils.getCurrentUserId(), ActivityScopeType.valueOf(scopeType), scopeId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
+
+    /**
+     * 下書き活動記録を公開する（DRAFT → PUBLISHED）。
+     *
+     * <p>AC-9: 既に PUBLISHED のものを publish すると 400。</p>
+     */
+    @PostMapping("/{id}/publish")
+    @Operation(summary = "活動記録 公開")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "公開成功")
+    public ResponseEntity<ApiResponse<ActivityResultEntity>> publishActivity(@PathVariable Long id) {
+        ActivityResultEntity response = activityService.publishActivity(id, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**

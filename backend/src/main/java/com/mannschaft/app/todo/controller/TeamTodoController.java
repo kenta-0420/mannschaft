@@ -169,6 +169,22 @@ public class TeamTodoController {
     }
 
     /**
+     * 論理削除済みTODOを復元する。
+     */
+    @PostMapping("/{id}/restore")
+    @Operation(summary = "TODO復元")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "復元成功")
+    public ResponseEntity<ApiResponse<TodoResponse>> restoreTodo(
+            @PathVariable String teamId,
+            @PathVariable Long id) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        // F02.3.1 後続 C-7: IDOR 対策（削除済み todo の scope 整合確認）
+        todoService.assertDeletedTodoScope(id, TodoScopeType.TEAM, internalTeamId);
+        todoService.restoreTodo(id);
+        return ResponseEntity.ok(todoService.getTodo(id));
+    }
+
+    /**
      * TODOステータスを変更する。
      */
     @PatchMapping("/{id}/status")
