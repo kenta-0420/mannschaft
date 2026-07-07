@@ -229,6 +229,8 @@
       "hint_brightness": "将屏幕亮度调至最大会更容易读取",
       "close": "关闭",
       "reload": "重新加载",
+      "prev_card": "上一张卡片",
+      "next_card": "下一张卡片",
       "biometric_required": "开始展示模式需要认证",
       "biometric_failed": "认证失败",
       "no_cards": "此群组没有卡片",
