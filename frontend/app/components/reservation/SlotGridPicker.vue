@@ -253,6 +253,10 @@ onMounted(async () => {
   await loadLines()
   await loadGrid()
 })
+
+// 予約直後に親（TeamReservationsPanel）からグリッドの空き状況を再読込させるための公開メソッド。
+// 既存の MatchRequestList 等と同一パターン（defineExpose({ refresh })＋親は ref 経由で呼ぶ）。
+defineExpose({ refresh: loadGrid })
 </script>
 
 <template>

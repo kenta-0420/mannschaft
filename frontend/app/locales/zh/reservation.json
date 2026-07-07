@@ -217,7 +217,8 @@
       "cancel_reservation": "取消预约",
       "back": "返回",
       "go_to_line_manage": "前往预约对象管理",
-      "manage_slots": "管理时段"
+      "manage_slots": "管理时段",
+      "delete_line": "删除"
     },
     "dialog": {
       "title": "确认",
@@ -277,6 +278,9 @@
       }
     },
     "line_manage_title": "预约对象管理",
+    "line": {
+      "delete_guide": "删除后，该对象的时段模板将停止使用，且没有预约的未来时段将被自动删除。如果存在有效预约，请先进行改期或取消。"
+    },
     "settings": {
       "advanced": {
         "title": "高级设置"

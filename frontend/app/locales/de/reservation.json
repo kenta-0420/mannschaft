@@ -217,7 +217,8 @@
       "cancel_reservation": "Stornieren",
       "back": "Zurück",
       "go_to_line_manage": "Zu Reservierungsziele verwalten",
-      "manage_slots": "Zeitfenster verwalten"
+      "manage_slots": "Zeitfenster verwalten",
+      "delete_line": "Löschen"
     },
     "dialog": {
       "title": "Bestätigen",
@@ -277,6 +278,9 @@
       }
     },
     "line_manage_title": "Verwaltung buchbarer Elemente",
+    "line": {
+      "delete_guide": "Beim Löschen wird die Zeitfenster-Vorlage dieser Linie gestoppt, und zukünftige Zeitfenster ohne Reservierungen werden automatisch entfernt. Falls aktive Reservierungen bestehen, verschieben oder stornieren Sie diese bitte zuerst."
+    },
     "settings": {
       "advanced": {
         "title": "Erweiterte Einstellungen"
