@@ -239,7 +239,8 @@ class ReservationServiceTest {
             ReservationEntity entity = createReservationEntity();
             Page<ReservationEntity> page = new PageImpl<>(List.of(entity));
             ReservationResponse response = createReservationResponse();
-            given(reservationRepository.findByTeamIdOrderByBookedAtDesc(TEAM_ID, pageable)).willReturn(page);
+            given(reservationRepository.findByTeamIdAndIsGroupPrimaryTrueOrderByBookedAtDesc(TEAM_ID, pageable))
+                    .willReturn(page);
             given(reservationMapper.toReservationResponse(entity)).willReturn(response);
 
             // When
@@ -247,7 +248,7 @@ class ReservationServiceTest {
 
             // Then
             assertThat(result.getContent()).hasSize(1);
-            verify(reservationRepository).findByTeamIdOrderByBookedAtDesc(TEAM_ID, pageable);
+            verify(reservationRepository).findByTeamIdAndIsGroupPrimaryTrueOrderByBookedAtDesc(TEAM_ID, pageable);
         }
 
         @Test
@@ -258,7 +259,7 @@ class ReservationServiceTest {
             ReservationEntity entity = createReservationEntity();
             Page<ReservationEntity> page = new PageImpl<>(List.of(entity));
             ReservationResponse response = createReservationResponse();
-            given(reservationRepository.findByTeamIdAndStatusOrderByBookedAtDesc(
+            given(reservationRepository.findByTeamIdAndStatusAndIsGroupPrimaryTrueOrderByBookedAtDesc(
                     TEAM_ID, ReservationStatus.PENDING, pageable)).willReturn(page);
             given(reservationMapper.toReservationResponse(entity)).willReturn(response);
 
@@ -267,7 +268,7 @@ class ReservationServiceTest {
 
             // Then
             assertThat(result.getContent()).hasSize(1);
-            verify(reservationRepository).findByTeamIdAndStatusOrderByBookedAtDesc(
+            verify(reservationRepository).findByTeamIdAndStatusAndIsGroupPrimaryTrueOrderByBookedAtDesc(
                     TEAM_ID, ReservationStatus.PENDING, pageable);
         }
     }
@@ -1250,7 +1251,8 @@ class ReservationServiceTest {
             // Given
             List<ReservationEntity> entities = List.of(createReservationEntity());
             List<ReservationResponse> responses = List.of(createReservationResponse());
-            given(reservationRepository.findByUserIdOrderByBookedAtDesc(USER_ID)).willReturn(entities);
+            given(reservationRepository.findByUserIdAndIsGroupPrimaryTrueOrderByBookedAtDesc(USER_ID))
+                    .willReturn(entities);
             given(reservationMapper.toReservationResponseList(entities)).willReturn(responses);
 
             // When
@@ -1320,11 +1322,11 @@ class ReservationServiceTest {
         @DisplayName("正常系: チームの予約統計が正しく集計される")
         void 統計取得_正常() {
             // Given
-            given(reservationRepository.countByTeamIdAndStatus(TEAM_ID, ReservationStatus.PENDING)).willReturn(5L);
-            given(reservationRepository.countByTeamIdAndStatus(TEAM_ID, ReservationStatus.CONFIRMED)).willReturn(10L);
-            given(reservationRepository.countByTeamIdAndStatus(TEAM_ID, ReservationStatus.CANCELLED)).willReturn(2L);
-            given(reservationRepository.countByTeamIdAndStatus(TEAM_ID, ReservationStatus.COMPLETED)).willReturn(20L);
-            given(reservationRepository.countByTeamIdAndStatus(TEAM_ID, ReservationStatus.NO_SHOW)).willReturn(1L);
+            given(reservationRepository.countByTeamIdAndStatusAndIsGroupPrimaryTrue(TEAM_ID, ReservationStatus.PENDING)).willReturn(5L);
+            given(reservationRepository.countByTeamIdAndStatusAndIsGroupPrimaryTrue(TEAM_ID, ReservationStatus.CONFIRMED)).willReturn(10L);
+            given(reservationRepository.countByTeamIdAndStatusAndIsGroupPrimaryTrue(TEAM_ID, ReservationStatus.CANCELLED)).willReturn(2L);
+            given(reservationRepository.countByTeamIdAndStatusAndIsGroupPrimaryTrue(TEAM_ID, ReservationStatus.COMPLETED)).willReturn(20L);
+            given(reservationRepository.countByTeamIdAndStatusAndIsGroupPrimaryTrue(TEAM_ID, ReservationStatus.NO_SHOW)).willReturn(1L);
 
             // When
             ReservationStatsResponse result = service.getStats(TEAM_ID);

@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * <b>group_id / menu_id / is_group_primary 列を持たない既存の予約行を持つ MySQL に対し、
- * V144（reservations への予約グループ ALTER）を含む全マイグレーションがクラッシュせず成功し、
+ * V145（reservations への予約グループ ALTER）を含む全マイグレーションがクラッシュせず成功し、
  * 既存行が {@code group_id=NULL / menu_id=NULL / is_group_primary=TRUE} で充足されること</b>
  * を検証する番人テスト（F03.4.3 §7・既存データ番人）。
  *
@@ -38,11 +38,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @EnabledIf("com.mannschaft.app.reservation.migration.FlywayExistingDataReservationGroupMigrationTest#isDockerAvailable")
-@DisplayName("Flyway 既存データ reservations group_id/menu_id/is_group_primary 追加（V144）番人テスト")
+@DisplayName("Flyway 既存データ reservations group_id/menu_id/is_group_primary 追加（V145）番人テスト")
 class FlywayExistingDataReservationGroupMigrationTest {
 
-    /** V144 の直前バージョン（観測時点の main 最大）。ここまで適用してから旧スキーマの予約行をシードする。 */
-    private static final String PRE_V144_TARGET = "143.001";
+    /** V145 の直前バージョン（グループ ALTER の直前・V144 は event_checkins の別番）（観測時点の main 最大）。ここまで適用してから旧スキーマの予約行をシードする。 */
+    private static final String PRE_GROUP_ALTER_TARGET = "143.001";
 
     @SuppressWarnings("resource")
     private static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0")
@@ -71,14 +71,14 @@ class FlywayExistingDataReservationGroupMigrationTest {
     }
 
     @Test
-    @DisplayName("既存予約行ありのDBでV144が安全に適用され既存行はNULL/TRUEフォールバックで通過する")
-    void 既存データを持つDBでV144が安全に適用される() throws Exception {
-        // given: V144 の直前まで適用 ＝ reservations に group_id / menu_id / is_group_primary 列が無い状態
+    @DisplayName("既存予約行ありのDBでV145が安全に適用され既存行はNULL/TRUEフォールバックで通過する")
+    void 既存データを持つDBでV145が安全に適用される() throws Exception {
+        // given: V143 まで適用（V145 未適用）＝ reservations に group_id / menu_id / is_group_primary 列が無い状態
         Flyway pre = Flyway.configure()
                 .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
                 .locations("classpath:db/migration")
                 .outOfOrder(false)
-                .target(MigrationVersion.fromVersion(PRE_V144_TARGET))
+                .target(MigrationVersion.fromVersion(PRE_GROUP_ALTER_TARGET))
                 .load();
         MigrateResult preResult = pre.migrate();
         assertThat(preResult.success).as("V143.001 までの適用が成功すること").isTrue();
@@ -87,9 +87,9 @@ class FlywayExistingDataReservationGroupMigrationTest {
                 MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())) {
 
             assertThat(columnExists(conn, "reservations", "group_id"))
-                    .as("V144 前は group_id 列が存在しないこと").isFalse();
+                    .as("V145 前は group_id 列が存在しないこと").isFalse();
             assertThat(columnExists(conn, "reservations", "is_group_primary"))
-                    .as("V144 前は is_group_primary 列が存在しないこと").isFalse();
+                    .as("V145 前は is_group_primary 列が存在しないこと").isFalse();
 
             // 旧スキーマの予約行をシードする（論理削除済みも含む・FK 都合で line/slot を先に用意）
             try (Statement st = conn.createStatement()) {
@@ -104,7 +104,7 @@ class FlywayExistingDataReservationGroupMigrationTest {
             }
         }
 
-        // when: 残りのマイグレーション（V144 含む）を適用する
+        // when: 残りのマイグレーション（V144 event_checkins・V145 グループ ALTER 含む）を適用する
         Flyway rest = Flyway.configure()
                 .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
                 .locations("classpath:db/migration")
@@ -113,7 +113,7 @@ class FlywayExistingDataReservationGroupMigrationTest {
         MigrateResult restResult = rest.migrate();
 
         // then: 成功し、列・FK・インデックス・既存行フォールバックが期待どおり
-        assertThat(restResult.success).as("V144 を含む残りのマイグレーションが成功すること").isTrue();
+        assertThat(restResult.success).as("V145 を含む残りのマイグレーションが成功すること").isTrue();
 
         try (Connection conn = DriverManager.getConnection(
                 MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())) {

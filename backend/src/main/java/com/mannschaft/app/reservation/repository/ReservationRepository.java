@@ -23,26 +23,29 @@ import java.util.UUID;
 public interface ReservationRepository extends JpaRepository<ReservationEntity, Long> {
 
     /**
-     * チームの予約をステータス指定でページング取得する。
+     * チームの予約をステータス指定でページング取得する（代表行のみ・F03.4.3 §5.6 #10）。
+     *
+     * <p>グループの兄弟行を N 行並べず「グループ=1 件」で返すため {@code is_group_primary = TRUE} に絞る。
+     * 単枠予約（group_id NULL）は常に TRUE のため従来どおり全件現れる（挙動後退ゼロ）。</p>
      */
-    Page<ReservationEntity> findByTeamIdAndStatusOrderByBookedAtDesc(
+    Page<ReservationEntity> findByTeamIdAndStatusAndIsGroupPrimaryTrueOrderByBookedAtDesc(
             Long teamId, ReservationStatus status, Pageable pageable);
 
     /**
-     * チームの予約をページング取得する。
+     * チームの予約をページング取得する（代表行のみ・F03.4.3 §5.6 #10）。
      */
-    Page<ReservationEntity> findByTeamIdOrderByBookedAtDesc(Long teamId, Pageable pageable);
+    Page<ReservationEntity> findByTeamIdAndIsGroupPrimaryTrueOrderByBookedAtDesc(Long teamId, Pageable pageable);
 
     /**
-     * ユーザーの予約をステータス指定で取得する。
+     * ユーザーの予約をステータス指定で取得する（代表行のみ・F03.4.3 §5.6 #10）。
      */
-    List<ReservationEntity> findByUserIdAndStatusOrderByBookedAtDesc(
+    List<ReservationEntity> findByUserIdAndStatusAndIsGroupPrimaryTrueOrderByBookedAtDesc(
             Long userId, ReservationStatus status);
 
     /**
-     * ユーザーの予約一覧を取得する。
+     * ユーザーの予約一覧を取得する（代表行のみ・F03.4.3 §5.6 #10）。
      */
-    List<ReservationEntity> findByUserIdOrderByBookedAtDesc(Long userId);
+    List<ReservationEntity> findByUserIdAndIsGroupPrimaryTrueOrderByBookedAtDesc(Long userId);
 
     /**
      * IDとチームIDで予約を取得する。
@@ -109,16 +112,17 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
             @Param("statuses") List<ReservationStatus> statuses);
 
     /**
-     * チームの予約統計: ステータス別件数を取得する。
+     * チームの予約統計: ステータス別件数を取得する（代表行のみ・F03.4.3 §5.6 #4。
+     * グループ=1 予約で数え、兄弟行による件数水増しを防ぐ）。
      */
-    long countByTeamIdAndStatus(Long teamId, ReservationStatus status);
+    long countByTeamIdAndStatusAndIsGroupPrimaryTrue(Long teamId, ReservationStatus status);
 
     /**
      * F10.1.1 / P3b: 指定チームの「指定時刻以降に作成された」指定ステータス予約の件数を取得する
-     * （管理者レンズ ⑤ ADMIN_TEAM_ALERT の「新規予約」用・本日 CONFIRMED）。
+     * （管理者レンズ ⑤ ADMIN_TEAM_ALERT の「新規予約」用・本日 CONFIRMED。代表行のみ・F03.4.3 §5.6 #4）。
      * {@code @SQLRestriction("deleted_at IS NULL")} により論理削除済みは自動除外される。
      */
-    long countByTeamIdAndStatusAndCreatedAtGreaterThanEqual(
+    long countByTeamIdAndStatusAndIsGroupPrimaryTrueAndCreatedAtGreaterThanEqual(
             Long teamId, ReservationStatus status, LocalDateTime createdAtFrom);
 
     /**
@@ -140,6 +144,8 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
     @Query("SELECT r FROM ReservationEntity r, ReservationSlotEntity s " +
             "WHERE r.reservationSlotId = s.id " +
             "AND r.userId = :userId AND r.status = 'CONFIRMED' " +
+            // F03.4.3 §5.6 #10: グループは代表行 1 件に折りたたむ（単枠は常に TRUE で従来どおり）
+            "AND r.isGroupPrimary = TRUE " +
             "AND (s.slotDate > :today OR (s.slotDate = :today AND s.startTime >= :nowTime)) " +
             "ORDER BY s.slotDate ASC, s.startTime ASC")
     List<ReservationEntity> findUpcomingByUserId(
@@ -148,9 +154,9 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
             @Param("nowTime") LocalTime nowTime);
 
     /**
-     * 指定期間内のチームの予約件数を取得する。
+     * 指定期間内のチームの予約件数を取得する（代表行のみ・F03.4.3 §5.6 #4）。
      */
-    long countByTeamIdAndBookedAtBetween(Long teamId, LocalDateTime from, LocalDateTime to);
+    long countByTeamIdAndIsGroupPrimaryTrueAndBookedAtBetween(Long teamId, LocalDateTime from, LocalDateTime to);
 
     /**
      * F10.1.1 / P3b Wave2: 指定チームの「指定ステータス群」かつ「booked_at が半開区間 [from, to) 内」の
@@ -161,6 +167,8 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
      */
     @Query("SELECT COUNT(r) FROM ReservationEntity r " +
             "WHERE r.teamId = :teamId AND r.status IN :statuses " +
+            // F03.4.3 §5.6 #4: グループ=1 予約で数える（代表行絞り）
+            "AND r.isGroupPrimary = TRUE " +
             "AND r.bookedAt >= :from AND r.bookedAt < :to")
     long countByTeamIdAndStatusInAndBookedAtRange(
             @Param("teamId") Long teamId,
@@ -186,6 +194,7 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
             "WHERE r.team_id IN (:teamIds) " +
             "AND r.status = 'CONFIRMED' " +
             "AND r.created_at >= :todayStart " +
+            "AND r.is_group_primary = TRUE " + // F03.4.3 §5.6 #4: グループ=1 予約で数える
             "AND r.deleted_at IS NULL " +
             "GROUP BY r.team_id",
             nativeQuery = true)
@@ -202,6 +211,7 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
             "SELECT r.team_id, COUNT(*) as cnt FROM reservations r " +
             "WHERE r.team_id IN (:teamIds) " +
             "AND r.status = 'PENDING' " +
+            "AND r.is_group_primary = TRUE " + // F03.4.3 §5.6 #4: グループ=1 予約で数える
             "AND r.deleted_at IS NULL " +
             "GROUP BY r.team_id",
             nativeQuery = true)
