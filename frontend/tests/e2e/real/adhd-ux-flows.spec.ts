@@ -575,7 +575,8 @@ test.describe('フローC: 二段公開（AC-17, 18）', () => {
 
     if (!hasBtnVisible) {
       // isMember が false（権限不足）の可能性を診断
-      const roleRes = await page.request.get(`${API_BASE}/api/v1/me/permissions?scope_type=TEAM&scope_id=${team.id}`)
+      // 実際のEPは /api/v1/teams/{slug}/me/permissions
+      const roleRes = await page.request.get(`${API_BASE}/api/v1/teams/${team.slug}/me/permissions`)
       console.log(`[C-2] ロール取得: ${roleRes.status()}`)
       if (roleRes.ok()) {
         const roleBody = await roleRes.json() as { data?: { roleName?: string } }
