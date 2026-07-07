@@ -103817,7 +103817,7 @@
         "tags": [
           "予約スロット管理"
         ],
-        "summary": "空きグリッド（複数予約対象）",
+        "summary": "空きグリッド（複数予約対象・ライン軸/日付レンジ/メニューフィルター対応）",
         "operationId": "getGrid",
         "parameters": [
           {
@@ -103832,10 +103832,54 @@
           {
             "name": "date",
             "in": "query",
-            "required": true,
+            "description": "単日指定（from/to とは排他。どちらかの指定が必須）",
+            "required": false,
             "schema": {
               "type": "string",
               "format": "date"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "日付レンジ開始日（to と両方指定・最大7日・date とは排他）",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "日付レンジ終了日",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "axis",
+            "in": "query",
+            "description": "列軸（既定 STAFF）",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "STAFF",
+                "LINE"
+              ]
+            }
+          },
+          {
+            "name": "menuId",
+            "in": "query",
+            "description": "メニューフィルター（axis\u003dLINE のときのみ有効）",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
             }
           },
           {
@@ -196094,12 +196138,19 @@
               "$ref": "#/components/schemas/GridCellDto"
             }
           },
+          "lineId": {
+            "type": "integer",
+            "format": "int64"
+          },
           "lineIds": {
             "type": "array",
             "items": {
               "type": "integer",
               "format": "int64"
             }
+          },
+          "lineName": {
+            "type": "string"
           },
           "staffName": {
             "type": "string"
@@ -196110,7 +196161,7 @@
           }
         }
       },
-      "ReservationGridResponse": {
+      "GridDayDto": {
         "type": "object",
         "properties": {
           "columns": {
@@ -196122,6 +196173,53 @@
           "date": {
             "type": "string",
             "format": "date"
+          }
+        }
+      },
+      "GridMetaDto": {
+        "type": "object",
+        "properties": {
+          "cellMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "menuId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "menuName": {
+            "type": "string"
+          },
+          "requiredCellCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ReservationGridResponse": {
+        "type": "object",
+        "properties": {
+          "axis": {
+            "type": "string"
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GridColumnDto"
+            }
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GridDayDto"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/GridMetaDto"
           }
         }
       },
