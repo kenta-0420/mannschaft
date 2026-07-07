@@ -1130,7 +1130,8 @@
           "i18n": "6 languages supported",
           "encryption": "Encrypted communication & data",
           "gdpr": "GDPR compliant",
-          "watch": "Watching over children & elderly family"
+          "watch": "Watching over children & elderly family",
+          "safety": "Emergency group safety check"
         }
       }
     }

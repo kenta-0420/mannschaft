@@ -1130,7 +1130,8 @@
           "i18n": "6 Sprachen",
           "encryption": "Verschlüsselte Kommunikation & Daten",
           "gdpr": "DSGVO-konform",
-          "watch": "Begleitung von Kindern & älteren Angehörigen"
+          "watch": "Begleitung von Kindern & älteren Angehörigen",
+          "safety": "Notfall-Sammelabfrage zur Sicherheit"
         }
       }
     }

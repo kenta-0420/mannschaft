@@ -1130,7 +1130,8 @@
           "i18n": "6 idiomas",
           "encryption": "Comunicación y datos cifrados",
           "gdpr": "Conforme al RGPD",
-          "watch": "Supervisión de niños y familiares mayores"
+          "watch": "Supervisión de niños y familiares mayores",
+          "safety": "Comprobación de seguridad colectiva en emergencias"
         }
       }
     }
