@@ -62,6 +62,12 @@ class ReservationGridServiceTest {
     private NameResolverService nameResolverService;
     @Mock
     private ReservationViewAccessGuard viewAccessGuard;
+    // F03.4.4（メニューフィルター）でコンストラクタに追加された依存。本テストの staff 軸パスでは未使用
+    // （機械的な引数追加のみ・アサーション変更ゼロ — 設計書 H-1 の許容範囲）。
+    @Mock
+    private com.mannschaft.app.reservation.repository.ReservationMenuRepository menuRepository;
+    @Mock
+    private com.mannschaft.app.reservation.repository.ReservationMenuLineRepository menuLineRepository;
 
     /** overlap 判定は純ロジック＝空き枠除外/作成拒否と同一ユーティリティを共有（別実装厳禁）。 */
     private final ReservationUnavailabilityChecker unavailabilityChecker = new ReservationUnavailabilityChecker();
@@ -72,7 +78,8 @@ class ReservationGridServiceTest {
     void setUp() {
         service = new ReservationGridService(
                 slotRepository, lineRepository, blockedTimeRepository,
-                unavailabilityChecker, nameResolverService, viewAccessGuard);
+                unavailabilityChecker, nameResolverService, viewAccessGuard,
+                menuRepository, menuLineRepository);
         // 既定: ブロックなし・ラインなし・氏名解決は空（各テストで上書き）。
         given(blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(TEAM_ID, DATE))
                 .willReturn(List.of());

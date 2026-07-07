@@ -9,6 +9,8 @@ import com.mannschaft.app.reservation.dto.UpdateSlotRequest;
 import com.mannschaft.app.reservation.service.ReservationGridService;
 import com.mannschaft.app.reservation.service.ReservationSlotService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 import com.mannschaft.app.common.SecurityUtils;
 
 /**
@@ -71,22 +74,36 @@ public class TeamReservationSlotController {
     }
 
     /**
-     * 複数予約対象の空きグリッドを取得する（機能C・§4.C）。
+     * 複数予約対象の空きグリッドを取得する（機能C・§4.C / F03.4.4 §4.1 拡張）。
      *
-     * <p>列＝予約対象（スタッフ・共通）、各セル＝時間帯の状態。単日（{@code date}）のみ。
-     * 認可は {@code @PreAuthorize} では表現せず（会員/公開ユーザーが使うため {@code isScopeAdmin} を付けない）、
+     * <p>列＝予約対象（スタッフ・共通。{@code axis=LINE} 時はライン・共通）、各セル＝時間帯の状態。
+     * 単日（{@code date}）または日付レンジ（{@code from}/{@code to}・最大7日・{@code days[]} 応答）。
+     * <b>{@code date} は F03.4.4 で {@code required=false} 化</b>し、「{@code date} XOR
+     * ({@code from},{@code to})」の排他は Service 層で明示検証する（バインド段階の
+     * {@code MissingServletRequestParameterException} に任せない — B3。検証位置・文言の一元管理）。</p>
+     *
+     * <p>認可は {@code @PreAuthorize} では表現せず（会員/公開ユーザーが使うため {@code isScopeAdmin} を付けない）、
      * Service 層（{@link ReservationGridService}）で予約閲覧の view ゲート（会員 or 公開）を適用する。
      * 未認証は認証層で 401、非会員かつ非公開は 403（RESERVATION_021）。</p>
      */
     @GetMapping("/grid")
-    @Operation(summary = "空きグリッド（複数予約対象）")
+    @Operation(summary = "空きグリッド（複数予約対象・ライン軸/日付レンジ/メニューフィルター対応）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ReservationGridResponse>> getGrid(
             @PathVariable Long teamId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @Parameter(description = "単日指定（from/to とは排他。どちらかの指定が必須）")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @Parameter(description = "日付レンジ開始日（to と両方指定・最大7日・date とは排他）")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @Parameter(description = "日付レンジ終了日")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @Parameter(description = "列軸（既定 STAFF）", schema = @Schema(allowableValues = {"STAFF", "LINE"}))
+            @RequestParam(required = false) String axis,
+            @Parameter(description = "メニューフィルター（axis=LINE のときのみ有効）")
+            @RequestParam(required = false) UUID menuId,
             @RequestParam(required = false) List<Long> staffUserIds) {
-        ReservationGridResponse response =
-                gridService.getGrid(teamId, SecurityUtils.getCurrentUserId(), date, staffUserIds);
+        ReservationGridResponse response = gridService.getGrid(
+                teamId, SecurityUtils.getCurrentUserId(), date, from, to, axis, menuId, staffUserIds);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
