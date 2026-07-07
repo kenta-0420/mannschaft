@@ -607,7 +607,8 @@
       "not_consecutive": "Die ausgewählten Zeitfenster sind nicht aufeinanderfolgend oder stimmen nicht mit dem Ziel überein",
       "size_exceeded": "Eine Buchungsgruppe kann maximal 16 Zeitfenster umfassen",
       "row_locked": "Dies ist eine Sammelbuchung. Bitte als Gruppe verwalten",
-      "deadline_passed": "Die Stornofrist ist abgelaufen, eine Stornierung ist nicht mehr möglich"
+      "deadline_passed": "Die Stornofrist ist abgelaufen, eine Stornierung ist nicht mehr möglich",
+      "own_overlap": "Sie haben bereits eine andere Buchung im ausgewählten Zeitfenster. Bitte prüfen Sie die Uhrzeit"
     },
     "team_guide": {
       "title": "So funktionieren Reservierungen",

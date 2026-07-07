@@ -4,6 +4,7 @@ import { flushPromises } from '@vue/test-utils'
 import { ref } from 'vue'
 import TeamReservationsPanel from '~/components/reservation/TeamReservationsPanel.vue'
 import ReservationForm from '~/components/reservation/ReservationForm.vue'
+import ReservationList from '~/components/reservation/ReservationList.vue'
 import SlotMatrixPicker from '~/components/reservation/SlotMatrixPicker.vue'
 import SlotPicker from '~/components/reservation/SlotPicker.vue'
 import SlotGridPicker from '~/components/reservation/SlotGridPicker.vue'
@@ -21,6 +22,9 @@ import SlotGridPicker from '~/components/reservation/SlotGridPicker.vue'
  *   AC-1: reserved emit 後、SlotPicker の枠再取得（getSlots）が再実行される
  *   AC-2: reserved emit 後、ReservationList の一覧再取得（listMyReservations）が再実行される
  *   AC-3（F03.4.4 追加）: 表示選好 localStorage が未設定の場合、既定タブは SlotMatrixPicker（マトリックス）
+ *   AC-5（第二弾実機E2E発見バグの根治・#2179逆方向）: ReservationList の changed emit 後、
+ *     SlotPicker の枠再取得（getSlots）が再実行される。一覧タブでの承認/却下/キャンセルが
+ *     予約するタブの空き表示に反映されない実バグ（一覧→枠表示の逆方向が未結線）を根治する。
  *
  * 注: useRoleAccess を isAdmin=false/isAdminOrDeputy=false に固定し、ADMIN限定タブ
  *     （ライン管理・緊急休業）を DOM に出さない（v-if で最初から存在しないため mount 不要）。
@@ -143,5 +147,25 @@ describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
     await flushPromises()
 
     expect(mockListMyReservations.mock.calls.length).toBeGreaterThan(listCallsBefore)
+  })
+
+  it('AC-5: ReservationList の changed emit で枠(SlotPicker)の再読込が発火する（一覧→枠表示の逆方向結線）', async () => {
+    // AC-1/2 と同じ理由で SlotPicker を実マウントさせる（既定は matrix のため list へ切替）。
+    localStorage.setItem('mannschaft.reservation.bookDisplayMode', 'list')
+    const wrapper = await mountSuspended(TeamReservationsPanel, {
+      props: { teamId: 'team-slug' },
+    })
+    await flushPromises()
+
+    const slotsCallsBefore = mockGetSlots.mock.calls.length
+    expect(slotsCallsBefore).toBeGreaterThan(0)
+
+    // ReservationList は TabPanels 非 lazy のため一覧タブが非アクティブでも実マウント済み。
+    const list = wrapper.findComponent(ReservationList)
+    expect(list.exists()).toBe(true)
+    await list.vm.$emit('changed')
+    await flushPromises()
+
+    expect(mockGetSlots.mock.calls.length).toBeGreaterThan(slotsCallsBefore)
   })
 })

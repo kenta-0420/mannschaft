@@ -273,8 +273,5 @@ onMounted(load)
         />
       </template>
     </Dialog>
-
-    <!-- 削除確認ダイアログ -->
-    <ConfirmDialog />
   </div>
 </template>

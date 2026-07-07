@@ -65,7 +65,6 @@ onMounted(load)
 
 <template>
   <div>
-    <ConfirmDialog />
     <div class="mb-4 flex items-center justify-between">
       <h3 class="text-lg font-semibold">シフト表</h3>
       <Button

@@ -256,6 +256,5 @@ onMounted(loadInitial)
       v-model:visible="reportModalVisible"
       :campaign-id="reportCampaignId"
     />
-    <ConfirmDialog />
   </div>
 </template>
