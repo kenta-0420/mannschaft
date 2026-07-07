@@ -84,6 +84,14 @@ public class AuthTokenRotationService {
      */
     @Transactional
     public ApiResponse<TokenResponse> refreshAccessToken(String rawRefreshToken, String deviceFingerprint) {
+        // 0. null / 空白トークンの即時拒否。
+        //    refresh_token Cookie 欠落時は Controller から null が渡る。ここでガードしないと
+        //    直後の hashToken(null) が NPE を投げ、GlobalExceptionHandler で COMMON_999（500）になる。
+        //    「無効なリフレッシュトークン」の意味論に沿う AUTH_007（Severity.WARN = 400）を返す。
+        if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
+            throw new BusinessException(AuthErrorCode.AUTH_007);
+        }
+
         // 1. SHA-256ハッシュ化 → 悲観ロック付きで取得（同一トークンの並行 refresh を DB 行ロックで直列化）
         String tokenHash = authTokenService.hashToken(rawRefreshToken);
         RefreshTokenEntity existingToken = refreshTokenRepository.findByTokenHashForUpdate(tokenHash)
