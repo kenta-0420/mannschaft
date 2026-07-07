@@ -9,11 +9,28 @@ const { isAdmin, isAdminOrDeputy, isMember, roleName, loadPermissions } = useRol
 const activeTab = ref(0)
 /** 使い方ガイドモーダルの表示状態。 */
 const showGuide = ref(false)
-/** 予約タブの表示切替: リスト（既存 SlotPicker）／グリッド（機能C SlotGridPicker）。 */
-const bookDisplayMode = ref<'list' | 'grid'>('list')
+
+type BookDisplayMode = 'list' | 'grid' | 'matrix'
+/** 表示選好の localStorage キー（ADHD配慮: 毎回選ばせない・F03.4.4 §5.4）。 */
+const BOOK_DISPLAY_MODE_STORAGE_KEY = 'mannschaft.reservation.bookDisplayMode'
+
+/** 予約タブの表示切替: マトリックス（既定・機能H SlotMatrixPicker）／グリッド（機能C）／リスト（既存 SlotPicker）。 */
+const bookDisplayMode = ref<BookDisplayMode>(loadStoredBookDisplayMode())
+
+function loadStoredBookDisplayMode(): BookDisplayMode {
+  if (!import.meta.client) return 'matrix'
+  const stored = localStorage.getItem(BOOK_DISPLAY_MODE_STORAGE_KEY)
+  return stored === 'list' || stored === 'grid' || stored === 'matrix' ? stored : 'matrix'
+}
+
+watch(bookDisplayMode, (mode) => {
+  if (import.meta.client) localStorage.setItem(BOOK_DISPLAY_MODE_STORAGE_KEY, mode)
+})
+
 const bookDisplayOptions = computed(() => [
-  { label: t('reservation.grid.display_toggle.list'), value: 'list' as const },
-  { label: t('reservation.grid.display_toggle.grid'), value: 'grid' as const },
+  { label: t('reservation.matrix.view_matrix'), value: 'matrix' as const },
+  { label: t('reservation.matrix.view_staff_grid'), value: 'grid' as const },
+  { label: t('reservation.matrix.view_list'), value: 'list' as const },
 ])
 const showBookDialog = ref(false)
 const selectedSlot = ref({ slotId: 0, lineId: 0, lineName: '', date: '', startTime: '', endTime: '' })
@@ -22,6 +39,7 @@ const selectedSlot = ref({ slotId: 0, lineId: 0, lineName: '', date: '', startTi
 type Refreshable = { refresh: () => void | Promise<void> }
 const slotPickerRef = ref<Refreshable | null>(null)
 const slotGridPickerRef = ref<Refreshable | null>(null)
+const slotMatrixPickerRef = ref<Refreshable | null>(null)
 const reservationListRef = ref<Refreshable | null>(null)
 
 /** 詳細設定アコーディオンの開閉状態（初期 collapsed） */
@@ -66,6 +84,7 @@ async function loadReservationSettings() {
 function onReserved() {
   slotPickerRef.value?.refresh()
   slotGridPickerRef.value?.refresh()
+  slotMatrixPickerRef.value?.refresh()
   reservationListRef.value?.refresh()
 }
 
@@ -147,8 +166,17 @@ onMounted(async () => {
                 :allow-empty="false"
               />
             </div>
+            <SlotMatrixPicker
+              v-if="bookDisplayMode === 'matrix'"
+              ref="slotMatrixPickerRef"
+              :team-id="props.teamId"
+              :is-admin="isAdmin"
+              @slot-selected="onSlotSelected"
+              @manage-lines="activeTab = 2"
+              @reserved="onReserved"
+            />
             <SlotGridPicker
-              v-if="bookDisplayMode === 'grid'"
+              v-else-if="bookDisplayMode === 'grid'"
               ref="slotGridPickerRef"
               :team-id="props.teamId"
               :is-admin="isAdmin"

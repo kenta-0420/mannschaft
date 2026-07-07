@@ -92,30 +92,50 @@ function onPage(e: { page: number }) {
   }
 }
 
-// 承認 = PENDING→CONFIRMED（BE: POST /reservations/{id}/confirm）
-async function approve(id: number) {
-  await reservationApi.confirmReservation(props.teamId, id)
+// 承認 = PENDING→CONFIRMED（BE: POST /reservations/{id}/confirm）。
+// グループ所属行（data.group が非null）への単票操作は 400=RESERVATION_042 で拒否されるため、
+// グループAPI（POST /reservation-groups/{groupId}/confirm）へ回す（F03.4.3 §4 既存資産棚卸し#9）。
+async function approve(data: ReservationResponse) {
+  if (data.group?.groupId) {
+    await reservationApi.confirmGroup(props.teamId, data.group.groupId)
+  }
+  else {
+    await reservationApi.confirmReservation(props.teamId, data.id!)
+  }
   notification.success(t('reservation.message.confirm_success'))
   await loadReservations()
 }
 
-// 却下 = 管理者キャンセル（BE: POST /reservations/{id}/cancel、理由付き）
-async function reject(id: number) {
-  await reservationApi.cancelReservation(props.teamId, id, t('reservation.message.reject_reason'))
+// 却下 = 管理者キャンセル（BE: POST /reservations/{id}/cancel、理由付き）。グループ行は同様にグループAPIへ。
+async function reject(data: ReservationResponse) {
+  if (data.group?.groupId) {
+    await reservationApi.cancelGroup(props.teamId, data.group.groupId, t('reservation.message.reject_reason'))
+  }
+  else {
+    await reservationApi.cancelReservation(props.teamId, data.id!, t('reservation.message.reject_reason'))
+  }
   notification.success(t('reservation.message.reject_success'))
   await loadReservations()
 }
 
-async function cancel(id: number) {
+async function cancel(data: ReservationResponse) {
+  const isGroup = !!data.group?.groupId
   confirm.require({
-    message: t('reservation.dialog.cancel_confirm'),
+    message: isGroup
+      ? t('reservation.group.cancel_confirm', { n: data.group?.groupSize ?? 1 })
+      : t('reservation.dialog.cancel_confirm'),
     header: t('reservation.dialog.title'),
     icon: 'pi pi-exclamation-triangle',
     acceptLabel: t('reservation.button.cancel_reservation'),
     rejectLabel: t('reservation.button.back'),
     acceptClass: 'p-button-danger',
     accept: async () => {
-      await reservationApi.cancelReservation(props.teamId, id)
+      if (isGroup) {
+        await reservationApi.cancelGroup(props.teamId, data.group!.groupId!)
+      }
+      else {
+        await reservationApi.cancelReservation(props.teamId, data.id!)
+      }
       notification.success(t('reservation.message.cancel_success'))
       await loadReservations()
     },
@@ -143,11 +163,18 @@ defineExpose({ refresh: loadReservations })
       <Select v-model="statusFilter" :options="statusOptions" option-label="label" option-value="value" class="w-40" />
     </div>
     <DataTable :value="displayedReservations" :loading="loading" :lazy="mode === 'team'" paginator :rows="20" :total-records="mode === 'team' ? totalRecords : undefined" data-key="id" row-hover @page="onPage">
-      <Column :header="t('reservation.column.datetime')" style="width: 160px">
+      <Column :header="t('reservation.column.datetime')" style="width: 200px">
         <template #body="{ data }">
           <div class="text-sm">
             <p class="font-medium">{{ data.slot?.slotDate }}</p>
-            <p class="text-surface-500">{{ data.slot?.startTime }} - {{ data.slot?.endTime }}</p>
+            <p class="text-surface-500">
+              {{ data.slot?.startTime }} - {{ data.group?.groupEndTime ?? data.slot?.endTime }}
+            </p>
+            <!-- F03.4.3 §5.6#10: グループ予約はメニュー名・枠数を併記（単枠は group=null） -->
+            <p v-if="data.group" class="mt-0.5 text-xs text-primary">
+              <i class="pi pi-link mr-1" />{{ data.group.menuName ?? t('reservation.group.title') }}
+              ・{{ t('reservation.group.slot_count', { n: data.group.groupSize ?? 1 }) }}
+            </p>
           </div>
         </template>
       </Column>
@@ -165,10 +192,10 @@ defineExpose({ refresh: loadReservations })
       <Column v-if="canManage" :header="t('reservation.column.action')" style="width: 150px">
         <template #body="{ data }">
           <div v-if="data.status?.status === 'PENDING'" class="flex gap-1">
-            <Button icon="pi pi-check" severity="success" text rounded size="small" @click="approve(data.id)" />
-            <Button icon="pi pi-times" severity="danger" text rounded size="small" @click="reject(data.id)" />
+            <Button icon="pi pi-check" severity="success" text rounded size="small" @click="approve(data)" />
+            <Button icon="pi pi-times" severity="danger" text rounded size="small" @click="reject(data)" />
           </div>
-          <Button v-else-if="data.status?.status === 'CONFIRMED'" icon="pi pi-ban" text rounded size="small" severity="secondary" @click="cancel(data.id)" />
+          <Button v-else-if="data.status?.status === 'CONFIRMED'" icon="pi pi-ban" text rounded size="small" severity="secondary" @click="cancel(data)" />
         </template>
       </Column>
       <template #empty>
