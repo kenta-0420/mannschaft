@@ -148796,7 +148796,9 @@
         "type": "object",
         "properties": {
           "altText": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
           },
           "destinationUrl": {
             "type": "string",
@@ -148805,7 +148807,9 @@
           },
           "height": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "maximum": 65535,
+            "minimum": 0
           },
           "imageUrl": {
             "type": "string",
@@ -148829,7 +148833,9 @@
           },
           "width": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "maximum": 65535,
+            "minimum": 0
           }
         }
       },
@@ -174430,7 +174436,9 @@
         "type": "object",
         "properties": {
           "altText": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
           },
           "destinationUrl": {
             "type": "string",
@@ -174439,7 +174447,9 @@
           },
           "height": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "maximum": 65535,
+            "minimum": 0
           },
           "imageUrl": {
             "type": "string",
@@ -174463,7 +174473,9 @@
           },
           "width": {
             "type": "integer",
-            "format": "int32"
+            "format": "int32",
+            "maximum": 65535,
+            "minimum": 0
           }
         },
         "required": [
