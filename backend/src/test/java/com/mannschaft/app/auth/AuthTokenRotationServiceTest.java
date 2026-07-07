@@ -300,6 +300,41 @@ class AuthTokenRotationServiceTest {
     }
 
     @Nested
+    @DisplayName("AC-10: null / 空白トークンの即時拒否")
+    class NullOrBlankToken {
+
+        @Test
+        @DisplayName("AC-10a: rawRefreshToken が null の場合は NPE でなく AUTH_007 の BusinessException")
+        void ac10a_null_rawToken_throws_auth007() {
+            // When / Then: Cookie 無し（null）はハッシュ化に到達する前に AUTH_007 を投げるべき
+            assertThatThrownBy(() -> authTokenRotationService.refreshAccessToken(null, null))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_007"));
+        }
+
+        @Test
+        @DisplayName("AC-10b: rawRefreshToken が空文字の場合は AUTH_007 の BusinessException")
+        void ac10b_blank_rawToken_throws_auth007() {
+            // When / Then: でたらめ Cookie（空文字）は AUTH_007 を投げるべき
+            assertThatThrownBy(() -> authTokenRotationService.refreshAccessToken("", null))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_007"));
+        }
+
+        @Test
+        @DisplayName("AC-10c: rawRefreshToken が空白文字のみの場合は AUTH_007 の BusinessException")
+        void ac10c_whitespace_rawToken_throws_auth007() {
+            // When / Then: スペースのみのトークンも AUTH_007 を投げるべき
+            assertThatThrownBy(() -> authTokenRotationService.refreshAccessToken("   ", null))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("AUTH_007"));
+        }
+    }
+
+    @Nested
     @DisplayName("正常系 回帰")
     class NormalRegression {
 

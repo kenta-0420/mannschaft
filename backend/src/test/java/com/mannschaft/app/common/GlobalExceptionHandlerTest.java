@@ -16,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.MessageSource;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -26,6 +27,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 import java.util.Set;
@@ -311,6 +313,30 @@ class GlobalExceptionHandlerTest {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
             assertThat(response.getBody()).isNotNull();
             assertThat(response.getBody().getError().getCode()).isEqualTo("COMMON_999");
+        }
+    }
+
+    // ========================================
+    // handleNoResourceFound
+    // ========================================
+
+    @Nested
+    @DisplayName("HandleNoResourceFound")
+    class HandleNoResourceFound {
+
+        @Test
+        @DisplayName("未マップパスへのリクエストが 404 NOT_FOUND + COMMON_005 で返る")
+        void noResourceFound_returns404WithCommon005() {
+            // Given
+            NoResourceFoundException ex = new NoResourceFoundException(HttpMethod.GET, "/api/v1/zzz-not-exists");
+
+            // When
+            ResponseEntity<ErrorResponse> response = globalExceptionHandler.handleNoResourceFound(ex, null);
+
+            // Then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getError().getCode()).isEqualTo("COMMON_005");
         }
     }
 
@@ -801,6 +827,24 @@ class GlobalExceptionHandlerTest {
             GlobalExceptionHandler unwired = new GlobalExceptionHandler(messageSource);
             ResponseEntity<ErrorResponse> resp = unwired.handleUnexpectedException(new RuntimeException("x"));
             assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+        @Test
+        @DisplayName("handleNoResourceFound: 404 NOT_FOUND が返り recordBackendException は呼ばれない")
+        void noResourceFound_isNotRecorded() {
+            ErrorReportService service = mock(ErrorReportService.class);
+            GlobalExceptionHandler handler = newHandlerWith(service, mock(ErrorReportNotifier.class));
+
+            NoResourceFoundException ex = new NoResourceFoundException(HttpMethod.GET, "/api/v1/zzz-not-exists");
+            HttpServletRequest req = mock(HttpServletRequest.class);
+
+            ResponseEntity<ErrorResponse> resp = handler.handleNoResourceFound(ex, req);
+
+            assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(resp.getBody()).isNotNull();
+            assertThat(resp.getBody().getError().getCode()).isEqualTo("COMMON_005");
+            // エラー集約へ通報しない（ノイズ根絶）
+            verify(service, never()).recordBackendException(any(), any(HttpServletRequest.class), any());
         }
 
         @Test
