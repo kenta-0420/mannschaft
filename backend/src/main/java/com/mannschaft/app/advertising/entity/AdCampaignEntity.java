@@ -51,6 +51,22 @@ public class AdCampaignEntity extends BaseEntity {
 
     private LocalDate endDate;
 
+    // ─── F09.19.1 運用型 CRUD 対応列（V144.002。骨格 — 業務ロジックは出陣で実装） ───
+
+    /** ad_rate_cards.id（同一 advertising ドメインのため FK 可）。 */
+    private Long rateCardId;
+
+    /** 申込時単価スナップショット（円）。作成時に確定・DRAFT の rateCardId 変更時のみ再確定。 */
+    @Column(precision = 10, scale = 4)
+    private BigDecimal unitPriceSnapshot;
+
+    /** 直近の審査差戻し理由。reject 時 SET・再 submit 時 NULL クリア。 */
+    @Column(length = 500)
+    private String rejectReason;
+
+    /** 通報 3 件による自動停止時刻（F09.19.9 実装まで常に NULL）。 */
+    private java.time.LocalDateTime reportSuspendedAt;
+
     public enum CampaignStatus {
         DRAFT, PENDING_REVIEW, ACTIVE, PAUSED, ENDED
     }

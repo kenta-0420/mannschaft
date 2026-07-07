@@ -435,6 +435,45 @@ class GlobalExceptionHandlerTest {
         }
 
         @Test
+        @DisplayName("F09.19.1 AC-1.5/1.4: AD_027（状態遷移違反・編集不可）は個別マッピングで 409 Conflict になる")
+        void resolveHttpStatus_AD_027_409() {
+            // 状態遷移違反・編集不可状態・編集不可フィールドの変更（F09.19 §15）。
+            // Severity.WARN 既定（400）のため ERROR_CODE_STATUS_MAP で 409 に上書きが必要。
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.advertising.AdvertisingErrorCode.AD_027);
+
+            assertThat(result).isEqualTo(HttpStatus.CONFLICT);
+        }
+
+        @Test
+        @DisplayName("F09.19: AD_029（visit/click IP レート制限）は個別マッピングで 429 TooManyRequests になる")
+        void resolveHttpStatus_AD_029_429() {
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.advertising.AdvertisingErrorCode.AD_029);
+
+            assertThat(result).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        }
+
+        @Test
+        @DisplayName("F09.19: AD_033（通報自動停止中の resume 拒否）は個別マッピングで 403 Forbidden になる")
+        void resolveHttpStatus_AD_033_403() {
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.advertising.AdvertisingErrorCode.AD_033);
+
+            assertThat(result).isEqualTo(HttpStatus.FORBIDDEN);
+        }
+
+        @Test
+        @DisplayName("F09.19.1 AC-1.12: AD_034（参照中の料金カード削除拒否）は個別マッピングで 409 Conflict になる")
+        void resolveHttpStatus_AD_034_409() {
+            // FK violation 500 回帰防御（F09.19 §5.2 V144.002）。
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.advertising.AdvertisingErrorCode.AD_034);
+
+            assertThat(result).isEqualTo(HttpStatus.CONFLICT);
+        }
+
+        @Test
         @DisplayName("F03.4 バグ#5: 臨時休業の日付・時刻範囲不正も入力不正なので 400 BadRequest になる")
         void resolveHttpStatus_INVALID_CLOSURE_RANGES_400() {
             assertThat(globalExceptionHandler.resolveHttpStatus(

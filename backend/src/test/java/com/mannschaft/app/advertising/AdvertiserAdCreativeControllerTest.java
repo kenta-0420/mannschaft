@@ -49,7 +49,8 @@ class AdvertiserAdCreativeControllerTest {
         return new AdCreativeResponse(
                 adId, CAMPAIGN_ID, "テスト広告",
                 "https://example.com/image.png", "https://example.com/landing",
-                status, LocalDateTime.now(), LocalDateTime.now());
+                status, LocalDateTime.now(), LocalDateTime.now(),
+                null, null, null, null);
     }
 
     @Nested
@@ -61,7 +62,8 @@ class AdvertiserAdCreativeControllerTest {
         void 作成_正常() {
             // Given
             CreateAdCreativeRequest req = new CreateAdCreativeRequest(
-                    "テスト広告", "https://example.com/image.png", "https://example.com/landing");
+                    "テスト広告", "https://example.com/image.png", "https://example.com/landing",
+                    null, null, null, null);
             AdCreativeResponse response = buildResponse(AD_ID, "DRAFT");
 
             try (MockedStatic<SecurityUtils> utils = mockStatic(SecurityUtils.class)) {
@@ -114,11 +116,12 @@ class AdvertiserAdCreativeControllerTest {
         void 更新_正常() {
             // Given
             UpdateAdCreativeRequest req = new UpdateAdCreativeRequest(
-                    "新しいタイトル", null, null);
+                    "新しいタイトル", null, null, null, null, null, null);
             AdCreativeResponse response = new AdCreativeResponse(
                     AD_ID, CAMPAIGN_ID, "新しいタイトル",
                     "https://example.com/image.png", "https://example.com/landing",
-                    "DRAFT", LocalDateTime.now(), LocalDateTime.now());
+                    "DRAFT", LocalDateTime.now(), LocalDateTime.now(),
+                    null, null, null, null);
 
             try (MockedStatic<SecurityUtils> utils = mockStatic(SecurityUtils.class)) {
                 utils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);

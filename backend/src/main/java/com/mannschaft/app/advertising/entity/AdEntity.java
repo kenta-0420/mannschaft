@@ -41,6 +41,23 @@ public class AdEntity extends BaseEntity {
     @Builder.Default
     private AdStatus status = AdStatus.DRAFT;
 
+    // ─── F09.19.1 placement + バナー表示属性（V144.001。骨格 — 業務ロジックは出陣で実装） ───
+
+    /** 掲載面（AdPlacement）。クリエイティブはサイズが placement 依存のため ads 単位。 */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private com.mannschaft.app.advertising.AdPlacement placement;
+
+    /** バナー幅 px（NULL: FE の placement 既定サイズ）。 */
+    private Integer width;
+
+    /** バナー高さ px。 */
+    private Integer height;
+
+    /** 代替テキスト（NULL: title を代用）。 */
+    @Column(length = 200)
+    private String altText;
+
     public enum AdStatus {
         DRAFT, ACTIVE, PAUSED, ENDED
     }

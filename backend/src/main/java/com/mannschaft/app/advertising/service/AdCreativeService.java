@@ -159,7 +159,12 @@ public class AdCreativeService {
                 entity.getDestinationUrl(),
                 entity.getStatus().name(),
                 entity.getCreatedAt(),
-                entity.getUpdatedAt()
+                entity.getUpdatedAt(),
+                // F09.19.1 拡張（骨格）: 保存ロジックは出陣で実装するため現状は Entity 値の素通し
+                entity.getPlacement(),
+                entity.getWidth(),
+                entity.getHeight(),
+                entity.getAltText()
         );
     }
 }
