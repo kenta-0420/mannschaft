@@ -1,6 +1,10 @@
 // バックエンドのネスト化された予約 Response DTO に対応した手動型。
 // 真実のソースは frontend/app/types/generated/index.ts（openapi-typescript 自動生成）。
 // 当ファイルは生成型のスキーマと厳密一致させること（フィールドは BE 同様すべて optional）。
+import type { components } from '~/types/generated'
+
+/** F03.4.3 §5.6#10: 一覧応答へ additive 追加されたグループ要約（単枠予約は null）。生成型を単一ソースにする。 */
+export type GroupSummaryDto = components['schemas']['GroupSummaryDto']
 
 export type ReservationStatus =
   | 'PENDING'
@@ -64,6 +68,8 @@ export interface ReservationResponse {
   cancellation?: CancellationDto
   notes?: NotesDto
   audit?: ReservationAuditDto
+  /** グループ予約（F03.4.3）の要約。単枠予約は null（additive・既存契約不変）。 */
+  group?: GroupSummaryDto
 }
 
 // === ReservationSlotResponse（予約枠。ReservationResponse とは別物）===

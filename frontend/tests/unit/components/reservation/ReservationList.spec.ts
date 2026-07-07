@@ -16,18 +16,28 @@ import ReservationList from '~/components/reservation/ReservationList.vue'
  */
 const mockListMyReservations = vi.fn()
 const mockListReservations = vi.fn()
+const mockConfirmReservation = vi.fn()
+const mockCancelReservation = vi.fn()
+const mockConfirmGroup = vi.fn()
+const mockCancelGroup = vi.fn()
 
 vi.mock('~/composables/useReservationApi', () => ({
   useReservationApi: () => ({
     listMyReservations: mockListMyReservations,
     listReservations: mockListReservations,
-    confirmReservation: vi.fn(),
-    cancelReservation: vi.fn(),
+    confirmReservation: mockConfirmReservation,
+    cancelReservation: mockCancelReservation,
+    confirmGroup: mockConfirmGroup,
+    cancelGroup: mockCancelGroup,
   }),
 }))
 
+let confirmAcceptCallback: (() => void | Promise<void>) | null = null
 mockNuxtImport('useNotification', () => () => ({ success: vi.fn(), error: vi.fn(), warn: vi.fn() }))
-mockNuxtImport('useConfirm', () => () => ({ require: vi.fn(), close: vi.fn() }))
+mockNuxtImport('useConfirm', () => () => ({
+  require: (opts: { accept: () => void | Promise<void> }) => { confirmAcceptCallback = opts.accept },
+  close: vi.fn(),
+}))
 
 // BE /reservations/my は ApiResponse<List> ＝ { data: [...] }。meta フィールドは存在しない。
 const myReservation = {
@@ -40,6 +50,11 @@ const myReservation = {
 beforeEach(() => {
   mockListMyReservations.mockReset()
   mockListReservations.mockReset()
+  mockConfirmReservation.mockReset()
+  mockCancelReservation.mockReset()
+  mockConfirmGroup.mockReset()
+  mockCancelGroup.mockReset()
+  confirmAcceptCallback = null
 })
 
 describe('ReservationList.vue（mine モード）', () => {
@@ -70,5 +85,117 @@ describe('ReservationList.vue（mine モード）', () => {
     await new Promise((r) => setTimeout(r, 0))
 
     expect(wrapper.html()).not.toContain('他人ダミー氏名')
+  })
+})
+
+/**
+ * F03.4.3 §5.6#10 / 本タスク項目4 — 一覧のグループ表示＋グループ行の操作ルーティング。
+ *
+ * 観点:
+ *   GROUP-001: group（GroupSummaryDto）が非null の行はメニュー名・枠数を併記する
+ *   GROUP-002: グループ行のキャンセル確定は cancelGroup を呼ぶ（cancelReservation ではない。
+ *              単票キャンセルは 400=RESERVATION_042 で拒否されるため）
+ *   GROUP-003: グループ行の承認/却下（PENDING）は confirmGroup/cancelGroup を呼ぶ
+ *   GROUP-004: 単枠（group=null）は従来どおり confirmReservation/cancelReservation を呼ぶ
+ */
+const groupedConfirmed = {
+  id: 10,
+  slot: { slotDate: '2026-07-10', startTime: '10:00', endTime: '10:30', lineName: '席1' },
+  status: { status: 'CONFIRMED' },
+  identifier: { userName: '予約者A' },
+  group: { groupId: 'grp-uuid-1', groupSize: 2, groupEndTime: '11:00', menuName: 'カット' },
+}
+
+const groupedPending = {
+  id: 11,
+  slot: { slotDate: '2026-07-11', startTime: '10:00', endTime: '10:30', lineName: '席1' },
+  status: { status: 'PENDING' },
+  identifier: { userName: '予約者B' },
+  group: { groupId: 'grp-uuid-2', groupSize: 3, groupEndTime: '11:30', menuName: 'カラー' },
+}
+
+const singleConfirmed = {
+  id: 12,
+  slot: { slotDate: '2026-07-12', startTime: '09:00', endTime: '09:30', lineName: '席2' },
+  status: { status: 'CONFIRMED' },
+  identifier: { userName: '予約者C' },
+  group: null,
+}
+
+describe('ReservationList.vue（グループ予約の表示・操作ルーティング）', () => {
+  it('GROUP-001: グループ行はメニュー名・枠数を併記し、終了時刻はグループ末尾時刻を表示する', async () => {
+    mockListReservations.mockResolvedValue({ data: [groupedConfirmed], meta: { totalElements: 1 } })
+
+    const wrapper = await mountSuspended(ReservationList, {
+      props: { teamId: 'team-slug', canManage: true, mode: 'team' as const },
+    })
+    await new Promise(r => setTimeout(r, 0))
+
+    const html = wrapper.html()
+    expect(html).toContain('カット')
+    expect(html).toContain('11:00') // group.groupEndTime（単枠の slot.endTime=10:30 ではない）
+  })
+
+  it('GROUP-002: CONFIRMED グループ行のキャンセルは cancelGroup を呼ぶ（cancelReservation は呼ばない）', async () => {
+    mockListReservations.mockResolvedValue({ data: [groupedConfirmed], meta: { totalElements: 1 } })
+
+    const wrapper = await mountSuspended(ReservationList, {
+      props: { teamId: 'team-slug', canManage: true, mode: 'team' as const },
+    })
+    await new Promise(r => setTimeout(r, 0))
+
+    const cancelBtn = wrapper.findAll('button').find(b => b.find('.pi-ban').exists())
+    expect(cancelBtn).toBeTruthy()
+    await cancelBtn!.trigger('click')
+
+    expect(confirmAcceptCallback).toBeTruthy()
+    await confirmAcceptCallback!()
+
+    expect(mockCancelGroup).toHaveBeenCalledWith('team-slug', 'grp-uuid-1')
+    expect(mockCancelReservation).not.toHaveBeenCalled()
+  })
+
+  it('GROUP-003: PENDING グループ行の承認/却下は confirmGroup/cancelGroup を呼ぶ', async () => {
+    mockListReservations.mockResolvedValue({ data: [groupedPending], meta: { totalElements: 1 } })
+
+    const wrapper = await mountSuspended(ReservationList, {
+      props: { teamId: 'team-slug', canManage: true, mode: 'team' as const },
+    })
+    await new Promise(r => setTimeout(r, 0))
+
+    const approveBtn = wrapper.findAll('button').find(b => b.find('.pi-check').exists())
+    expect(approveBtn).toBeTruthy()
+    await approveBtn!.trigger('click')
+    await new Promise(r => setTimeout(r, 0))
+
+    expect(mockConfirmGroup).toHaveBeenCalledWith('team-slug', 'grp-uuid-2')
+    expect(mockConfirmReservation).not.toHaveBeenCalled()
+
+    const rejectBtn = wrapper.findAll('button').find(b => b.find('.pi-times').exists())
+    expect(rejectBtn).toBeTruthy()
+    await rejectBtn!.trigger('click')
+    await new Promise(r => setTimeout(r, 0))
+
+    expect(mockCancelGroup).toHaveBeenCalledWith('team-slug', 'grp-uuid-2', expect.any(String))
+    expect(mockCancelReservation).not.toHaveBeenCalled()
+  })
+
+  it('GROUP-004: 単枠（group=null）は従来どおり confirmReservation/cancelReservation を呼ぶ', async () => {
+    mockListReservations.mockResolvedValue({ data: [singleConfirmed], meta: { totalElements: 1 } })
+
+    const wrapper = await mountSuspended(ReservationList, {
+      props: { teamId: 'team-slug', canManage: true, mode: 'team' as const },
+    })
+    await new Promise(r => setTimeout(r, 0))
+
+    const cancelBtn = wrapper.findAll('button').find(b => b.find('.pi-ban').exists())
+    expect(cancelBtn).toBeTruthy()
+    await cancelBtn!.trigger('click')
+
+    expect(confirmAcceptCallback).toBeTruthy()
+    await confirmAcceptCallback!()
+
+    expect(mockCancelReservation).toHaveBeenCalledWith('team-slug', 12)
+    expect(mockCancelGroup).not.toHaveBeenCalled()
   })
 })

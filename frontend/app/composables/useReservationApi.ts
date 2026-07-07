@@ -10,7 +10,15 @@ type ReservationLineResponse = components['schemas']['ReservationLineResponse']
 type BusinessHourResponse = components['schemas']['BusinessHourResponse']
 type BusinessHoursUpdateRequest = components['schemas']['BusinessHoursUpdateRequest']
 // 機能C（複数予約対象の空きグリッド）は BE #2112 で grid API を追加済み。
+// F03.4.4（機能H・#2189）で axis=LINE・from/to レンジ・menuId フィルターへ拡張済み（後方互換）。
 type ReservationGridResponse = components['schemas']['ReservationGridResponse']
+/** グリッドの列軸。既定 STAFF（従来動作）／LINE（列=予約対象）。 */
+export type GridAxis = 'STAFF' | 'LINE'
+// F03.4.3（機能G・予約グループ・#2190）は BE で CRUD API を追加済み。
+type CreateReservationGroupRequest = components['schemas']['CreateReservationGroupRequest']
+type ReservationGroupResponse = components['schemas']['ReservationGroupResponse']
+type CancelReservationGroupRequest = components['schemas']['CancelReservationGroupRequest']
+type ReservationGroupCancelResponse = components['schemas']['ReservationGroupCancelResponse']
 // 機能D（予約通知メール宛先）は BE #2110 でフリーミアム件数ゲート付きの CRUD を追加済み。
 type NotificationRecipientListResponse = components['schemas']['NotificationRecipientListResponse']
 type NotificationRecipientResponse = components['schemas']['NotificationRecipientResponse']
@@ -135,11 +143,19 @@ export function useReservationApi() {
   }
 
   // 機能C: 複数予約対象の空きグリッド（列=予約対象／セル=時間帯 state）。
-  // BE: GET /reservation-slots/grid は date（単日・必須）＋ staffUserIds（CSV・任意）。
-  // 週表示は FE がこの単日 API を7日分呼び出して構成する（レスポンスDTOは2次元を保つ）。
-  async function getSlotGrid(teamId: string, params: { date: string; staffUserIds?: number[] }) {
+  // BE: GET /reservation-slots/grid は date（単日）または from/to（レンジ・最大7日・排他）＋
+  // axis（STAFF既定/LINE）＋ menuId（axis=LINE時のみ）＋ staffUserIds（CSV・任意）。
+  // F03.4.4（機能H）で axis=LINE・from/to レンジ・menuId フィルターへ拡張（既存 date 単日呼びは無変更で後方互換）。
+  async function getSlotGrid(
+    teamId: string,
+    params: { date?: string; from?: string; to?: string; axis?: GridAxis; menuId?: string; staffUserIds?: number[] },
+  ) {
     const query = new URLSearchParams()
-    query.set('date', params.date)
+    if (params.date) query.set('date', params.date)
+    if (params.from) query.set('from', params.from)
+    if (params.to) query.set('to', params.to)
+    if (params.axis) query.set('axis', params.axis)
+    if (params.menuId) query.set('menuId', params.menuId)
     if (params.staffUserIds && params.staffUserIds.length > 0) {
       query.set('staffUserIds', params.staffUserIds.join(','))
     }
@@ -201,6 +217,40 @@ export function useReservationApi() {
 
   async function markNoShow(teamId: string, reservationId: number) {
     return api(`${base(teamId)}/reservations/${reservationId}/no-show`, { method: 'POST' })
+  }
+
+  // === 予約グループ（F03.4.3・機能G）===
+  // マトリックスUI（F03.4.4）のメニュー選択→連続枠確保からのみ呼ばれる。単枠（N=1・メニューなし）は
+  // 従来どおり createReservation を使う（グループAPIは使わない。§5.3 の確定フロー）。
+  async function createGroup(teamId: string, body: CreateReservationGroupRequest) {
+    return api<{ data: ReservationGroupResponse }>(`${base(teamId)}/reservation-groups`, {
+      method: 'POST',
+      body,
+    })
+  }
+
+  async function getGroup(teamId: string, groupId: string) {
+    return api<{ data: ReservationGroupResponse }>(`${base(teamId)}/reservation-groups/${groupId}`)
+  }
+
+  /**
+   * グループ全枠の一括キャンセル。グループ所属行（group_id 非 null）への単票キャンセルは
+   * 400=RESERVATION_042 で拒否されるため、一覧（ReservationList）はグループ行の操作を必ずこちらへ回す。
+   */
+  async function cancelGroup(teamId: string, groupId: string, cancelReason?: string) {
+    const body: CancelReservationGroupRequest = { cancelReason: cancelReason ?? undefined }
+    return api<{ data: ReservationGroupCancelResponse }>(
+      `${base(teamId)}/reservation-groups/${groupId}/cancel`,
+      { method: 'POST', body },
+    )
+  }
+
+  /** グループ全枠の手動承認（PENDING→CONFIRMED）。理由は cancelGroup と同じく単票 400=042 回避。 */
+  async function confirmGroup(teamId: string, groupId: string) {
+    return api<{ data: ReservationGroupResponse }>(
+      `${base(teamId)}/reservation-groups/${groupId}/confirm`,
+      { method: 'POST' },
+    )
   }
 
   async function updateAdminNote(teamId: string, reservationId: number, body: { note: string }) {
@@ -461,6 +511,10 @@ export function useReservationApi() {
     completeReservation,
     rescheduleReservation,
     markNoShow,
+    createGroup,
+    getGroup,
+    cancelGroup,
+    confirmGroup,
     updateAdminNote,
     listReminders,
     createReminder,

@@ -4,6 +4,9 @@ import { flushPromises } from '@vue/test-utils'
 import { ref } from 'vue'
 import TeamReservationsPanel from '~/components/reservation/TeamReservationsPanel.vue'
 import ReservationForm from '~/components/reservation/ReservationForm.vue'
+import SlotMatrixPicker from '~/components/reservation/SlotMatrixPicker.vue'
+import SlotPicker from '~/components/reservation/SlotPicker.vue'
+import SlotGridPicker from '~/components/reservation/SlotGridPicker.vue'
 
 /**
  * TeamReservationsPanel.vue ユニットテスト — 予約直後の再読込結線ガード（実機E2E発見バグの根治）
@@ -17,14 +20,19 @@ import ReservationForm from '~/components/reservation/ReservationForm.vue'
  * 観点（AC 対応）:
  *   AC-1: reserved emit 後、SlotPicker の枠再取得（getSlots）が再実行される
  *   AC-2: reserved emit 後、ReservationList の一覧再取得（listMyReservations）が再実行される
+ *   AC-3（F03.4.4 追加）: 表示選好 localStorage が未設定の場合、既定タブは SlotMatrixPicker（マトリックス）
  *
  * 注: useRoleAccess を isAdmin=false/isAdminOrDeputy=false に固定し、ADMIN限定タブ
  *     （ライン管理・緊急休業）を DOM に出さない（v-if で最初から存在しないため mount 不要）。
- *     bookDisplayMode は既定 'list' のため SlotPicker のみが枠表示として実マウントされる。
+ *     AC-1/2 は SlotPicker 固有の再読込結線を検証する観点のため、localStorage に
+ *     表示選好 'list' を事前設定して SlotPicker を実マウントさせる（F03.4.4 で既定が
+ *     'matrix' へ変わったため。§5.4 の localStorage 記憶方針に基づく明示的な選好切替）。
  */
 const mockGetReservationSettings = vi.fn()
 const mockGetLines = vi.fn()
 const mockGetSlots = vi.fn()
+const mockGetSlotGrid = vi.fn()
+const mockGetMenus = vi.fn()
 const mockListMyReservations = vi.fn()
 const mockCreateReservation = vi.fn()
 
@@ -33,6 +41,8 @@ vi.mock('~/composables/useReservationApi', () => ({
     getReservationSettings: mockGetReservationSettings,
     getLines: mockGetLines,
     getSlots: mockGetSlots,
+    getSlotGrid: mockGetSlotGrid,
+    getMenus: mockGetMenus,
     listMyReservations: mockListMyReservations,
     createReservation: mockCreateReservation,
   }),
@@ -60,17 +70,25 @@ beforeEach(() => {
   mockGetReservationSettings.mockReset()
   mockGetLines.mockReset()
   mockGetSlots.mockReset()
+  mockGetSlotGrid.mockReset()
+  mockGetMenus.mockReset()
   mockListMyReservations.mockReset()
   mockCreateReservation.mockReset()
+  localStorage.clear()
 
   mockGetReservationSettings.mockResolvedValue({ data: { allowPublicReservation: true } })
   mockGetLines.mockResolvedValue({ data: [activeLine] })
   mockGetSlots.mockResolvedValue({ data: [availableSlot] })
+  mockGetSlotGrid.mockResolvedValue({ data: { axis: 'LINE', days: [] } })
+  mockGetMenus.mockResolvedValue({ data: [] })
   mockListMyReservations.mockResolvedValue({ data: [] })
 })
 
 describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
   it('AC-1/2: ReservationForm の reserved emit で枠(SlotPicker)・一覧(ReservationList)が再読込される', async () => {
+    // F03.4.4 で既定タブが matrix へ変わったため、本 AC は SlotPicker 固有の結線検証を
+    // 継続するために表示選好を明示的に 'list' へ切り替える。
+    localStorage.setItem('mannschaft.reservation.bookDisplayMode', 'list')
     const wrapper = await mountSuspended(TeamReservationsPanel, {
       props: { teamId: 'team-slug' },
     })
@@ -94,6 +112,36 @@ describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
     // emit 後にそれぞれ最低1回追加で呼ばれていること = @reserved が正しく結線され
     // 枠(SlotPicker)・一覧(ReservationList)の再読込がトリガーされたことの証跡。
     expect(mockGetSlots.mock.calls.length).toBeGreaterThan(slotsCallsBefore)
+    expect(mockListMyReservations.mock.calls.length).toBeGreaterThan(listCallsBefore)
+  })
+
+  it('AC-3（F03.4.4）: 表示選好が未設定なら既定タブは SlotMatrixPicker（マトリックス）で、grid/list はマウントされない', async () => {
+    const wrapper = await mountSuspended(TeamReservationsPanel, {
+      props: { teamId: 'team-slug' },
+    })
+    await flushPromises()
+
+    expect(wrapper.findComponent(SlotMatrixPicker).exists()).toBe(true)
+    expect(wrapper.findComponent(SlotPicker).exists()).toBe(false)
+    expect(wrapper.findComponent(SlotGridPicker).exists()).toBe(false)
+    // マトリックスは axis=LINE のレンジ呼びでグリッドAPIを叩く（機能C の date 単日呼びとは別経路）
+    expect(mockGetSlotGrid).toHaveBeenCalled()
+  })
+
+  it('AC-4（F03.4.4）: SlotMatrixPicker の reserved emit で一覧(ReservationList)が再読込される', async () => {
+    const wrapper = await mountSuspended(TeamReservationsPanel, {
+      props: { teamId: 'team-slug' },
+    })
+    await flushPromises()
+
+    const listCallsBefore = mockListMyReservations.mock.calls.length
+    expect(listCallsBefore).toBeGreaterThan(0)
+
+    const matrix = wrapper.findComponent(SlotMatrixPicker)
+    expect(matrix.exists()).toBe(true)
+    await matrix.vm.$emit('reserved')
+    await flushPromises()
+
     expect(mockListMyReservations.mock.calls.length).toBeGreaterThan(listCallsBefore)
   })
 })
