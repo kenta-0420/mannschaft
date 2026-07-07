@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 import java.util.Map;
@@ -88,6 +89,8 @@ public class GlobalExceptionHandler {
             Map.entry(CommonErrorCode.COMMON_000.getCode(), HttpStatus.UNAUTHORIZED),
             Map.entry(CommonErrorCode.COMMON_002.getCode(), HttpStatus.FORBIDDEN),
             Map.entry(CommonErrorCode.COMMON_003.getCode(), HttpStatus.CONFLICT),
+            // 未マップAPIパス・staticリソース不在は 404（Severity.WARN デフォルト 400 を上書き）
+            Map.entry(CommonErrorCode.COMMON_005.getCode(), HttpStatus.NOT_FOUND),
             // F15.4 Phase 5-α: 店舗詳細 Public API（IDOR対策で 404）
             Map.entry("TEAM_001", HttpStatus.NOT_FOUND),
             // F19.1 公開ページ Public API（IDOR / レート制限）
@@ -913,6 +916,24 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.METHOD_NOT_ALLOWED)
                 .body(ErrorResponse.of(CommonErrorCode.COMMON_004));
+    }
+
+    /**
+     * 未マップAPIパスや static リソース不在（Spring Boot 3.x の
+     * {@link NoResourceFoundException}）。
+     *
+     * <p>Spring Boot 3.x では、ディスパッチャが一致するハンドラを見つけられない場合に
+     * {@code NoResourceFoundException} が投げられる。デフォルトでは catch-all
+     * {@link #handleUnexpectedException} に落ちて 500 + HIGH 記録されてしまうため、
+     * 明示的に 404 NOT_FOUND へマッピングし、エラー集約へは記録しない。</p>
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResourceFound(NoResourceFoundException ex,
+                                                               HttpServletRequest request) {
+        log.debug("リソース未検出: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ErrorResponse.of(CommonErrorCode.COMMON_005));
     }
 
     /**
