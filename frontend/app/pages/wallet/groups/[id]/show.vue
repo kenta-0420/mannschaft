@@ -286,8 +286,11 @@ onBeforeUnmount(() => {
       :load-error="loadError"
       :biometric-failed="biometricFailed"
       :total="total"
+      :current-index="currentIndex"
       :current-card="currentCard"
       @reload="reload"
+      @prev="previousCard"
+      @next="nextCard"
     />
 
     <!-- 下部ヒント + 進捗 + 再読み込み -->

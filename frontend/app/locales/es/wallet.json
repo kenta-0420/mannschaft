@@ -229,6 +229,8 @@
       "hint_brightness": "Ajuste el brillo al máximo para una mejor lectura",
       "close": "Cerrar",
       "reload": "Recargar",
+      "prev_card": "Tarjeta anterior",
+      "next_card": "Siguiente tarjeta",
       "biometric_required": "Se requiere autenticación para iniciar el modo de presentación",
       "biometric_failed": "Autenticación fallida",
       "no_cards": "Este grupo no tiene tarjetas",
