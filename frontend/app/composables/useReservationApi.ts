@@ -15,9 +15,30 @@ type NotificationRecipientListResponse = components['schemas']['NotificationReci
 type NotificationRecipientResponse = components['schemas']['NotificationRecipientResponse']
 type CreateNotificationRecipientRequest = components['schemas']['CreateNotificationRecipientRequest']
 type UpdateNotificationRecipientRequest = components['schemas']['UpdateNotificationRecipientRequest']
+// 機能E（予約メニュー）は BE #2160 で CRUD API を追加済み（F03.4.1）。
+type ReservationMenuResponse = components['schemas']['ReservationMenuResponse']
+type CreateReservationMenuRequest = components['schemas']['CreateReservationMenuRequest']
+type UpdateReservationMenuRequest = components['schemas']['UpdateReservationMenuRequest']
+type ReservationMenuDeleteResponse = components['schemas']['ReservationMenuDeleteResponse']
+// 週間テンプレート・一括生成は BE #2161 で追加済み（F03.4.2）。
+type SlotTemplateResponse = components['schemas']['SlotTemplateResponse']
+type SlotTemplateListResponse = components['schemas']['SlotTemplateListResponse']
+type CreateSlotTemplateRequest = components['schemas']['CreateSlotTemplateRequest']
+type UpdateSlotTemplateRequest = components['schemas']['UpdateSlotTemplateRequest']
+type DeleteSlotTemplateResponse = components['schemas']['DeleteSlotTemplateResponse']
+type GenerateSlotsRequest = components['schemas']['GenerateSlotsRequest']
+type GenerateSlotsResponse = components['schemas']['GenerateSlotsResponse']
 
 /** 予約不可枠の対象軸（機能B）。MVP で enforce するのは TEAM / STAFF の2軸。 */
 export type BlockedResourceType = NonNullable<BlockedTimeRequest['resourceType']>
+
+/**
+ * 週間テンプレートの曜日コード（3文字大文字 'MON'..'SUN'）。
+ * BE の専用 enum `ReservationDayOfWeek` に対応する。'MONDAY' 等のフルネームは
+ * デシリアライズ失敗で 400 になるため、FE から送る値は必ずこの3文字表記にすること
+ * （写経元 ScheduleEventRecurrenceInput.vue の曜日トグルは 'MONDAY' フルネームを emit するため注意）。
+ */
+export type ReservationDayOfWeekCode = NonNullable<CreateSlotTemplateRequest['dayOfWeek']>
 
 export function useReservationApi() {
   const api = useApi()
@@ -321,6 +342,70 @@ export function useReservationApi() {
     })
   }
 
+  // === Reservation Menus（機能E・F03.4.1）===
+  // ADMIN+ の CRUD 3本 + 会員/公開向け GET。lineIds は「空配列=全ライン提供可」。
+  async function getMenus(teamId: string) {
+    return api<{ data: ReservationMenuResponse[] }>(`${base(teamId)}/reservation-menus`)
+  }
+
+  async function createMenu(teamId: string, body: CreateReservationMenuRequest) {
+    return api<{ data: ReservationMenuResponse }>(`${base(teamId)}/reservation-menus`, {
+      method: 'POST',
+      body,
+    })
+  }
+
+  async function updateMenu(teamId: string, menuId: string, body: UpdateReservationMenuRequest) {
+    return api<{ data: ReservationMenuResponse }>(`${base(teamId)}/reservation-menus/${menuId}`, {
+      method: 'PATCH',
+      body,
+    })
+  }
+
+  async function deleteMenu(teamId: string, menuId: string) {
+    return api<{ data: ReservationMenuDeleteResponse }>(`${base(teamId)}/reservation-menus/${menuId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  // === 週間テンプレート・一括生成（F03.4.2）===
+  // 全5本 ADMIN+ の self-gate。dayOfWeek は必ず 3文字大文字（'MON'..'SUN'）で送ること。
+  async function getSlotTemplates(teamId: string) {
+    return api<{ data: SlotTemplateListResponse }>(`${base(teamId)}/reservation-slot-templates`)
+  }
+
+  async function createSlotTemplate(teamId: string, body: CreateSlotTemplateRequest) {
+    return api<{ data: SlotTemplateResponse }>(`${base(teamId)}/reservation-slot-templates`, {
+      method: 'POST',
+      body,
+    })
+  }
+
+  async function updateSlotTemplate(teamId: string, templateId: string, body: UpdateSlotTemplateRequest) {
+    return api<{ data: SlotTemplateResponse }>(
+      `${base(teamId)}/reservation-slot-templates/${templateId}`,
+      { method: 'PATCH', body },
+    )
+  }
+
+  async function deleteSlotTemplate(teamId: string, templateId: string) {
+    return api<{ data: DeleteSlotTemplateResponse }>(
+      `${base(teamId)}/reservation-slot-templates/${templateId}`,
+      { method: 'DELETE' },
+    )
+  }
+
+  /**
+   * チームの active テンプレ全件を対象に、明日〜horizon（既定28日先）までの枠を一括生成する（冪等）。
+   * 429（RESERVATION_044）はレートリミット超過。呼び出し元でトースト表示すること。
+   */
+  async function generateSlotsFromTemplates(teamId: string, body: GenerateSlotsRequest) {
+    return api<{ data: GenerateSlotsResponse }>(
+      `${base(teamId)}/reservation-slot-templates/generate`,
+      { method: 'POST', body },
+    )
+  }
+
   // === My Reservations ===
   // BE: GET /reservations/my は ApiResponse<List<ReservationResponse>> ＝ { data: [...] } を返す。
   // meta（ページング情報）は無く、status/page/size クエリも受け付けない（全件返却）。
@@ -382,6 +467,15 @@ export function useReservationApi() {
     createNotificationRecipient,
     updateNotificationRecipient,
     deleteNotificationRecipient,
+    getMenus,
+    createMenu,
+    updateMenu,
+    deleteMenu,
+    getSlotTemplates,
+    createSlotTemplate,
+    updateSlotTemplate,
+    deleteSlotTemplate,
+    generateSlotsFromTemplates,
     listMyReservations,
     listUpcomingReservations,
     cancelMyReservation,
