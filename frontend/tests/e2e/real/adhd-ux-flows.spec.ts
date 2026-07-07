@@ -62,7 +62,7 @@ async function setupApiBridge(page: Page): Promise<void> {
       const fetchRes = await fetch(url, {
         method,
         headers,
-        body: body ?? undefined,
+        body: body ?? null,
       })
       const resBody = await fetchRes.arrayBuffer()
       const resHeaders: Record<string, string> = {}
@@ -460,7 +460,7 @@ test.describe('フローC: 二段公開（AC-17, 18）', () => {
     if (!teams || teams.length === 0) return null
     // fc-u-18 優先
     const fcU18 = teams.find((t) => t.slug === 'fc-u-18')
-    return fcU18 ?? teams[0]
+    return fcU18 ?? teams[0] ?? null
   }
 
   test('C-1: 活動記録をDRAFTで作成し、一覧でDRAFTバッジを確認し、publishでPUBLISHEDになる（API + UI）', async ({ page }) => {
