@@ -116,6 +116,7 @@
         "linkTooltip": "Betreuungsansicht öffnen (nur Ansicht)",
         "readonlyNotice": "Diese Ansicht ist nur zur Anzeige. Aktionen oder Antworten sind hier nicht möglich.",
         "loadError": "Betreuungsdaten konnten nicht geladen werden",
+        "retryButton": "Erneut versuchen",
         "sections": {
           "schedules": {
             "title": "Anstehende Termine",
