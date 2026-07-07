@@ -180,11 +180,10 @@ onMounted(fetchTokens)
           <span><i class="pi pi-calendar mr-1" />{{ formatExpiry(token) }}</span>
         </div>
         <div class="mt-2 flex items-center gap-2">
-          <img
-            :src="token.qrCodeUrl"
-            :alt="t('contact_invite.list.qr_alt')"
-            class="h-16 w-16 rounded border border-surface-300"
-          >
+          <QrCodeImage
+            :value="token.inviteUrl"
+            :size="64"
+          />
           <span class="text-xs text-gray-400">{{ t('contact_invite.list.qr_hint') }}</span>
         </div>
       </div>
