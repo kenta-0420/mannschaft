@@ -13,6 +13,7 @@
 
 - ✅ `.claude/worktrees/agent-xxxxx/` 配下 → そのまま作業してよい
 - ❌ `C:/Claude/mannschaft` 直下 → **作業を中断し、殿に報告する**
+  - ただし「大名システム活用ルール」の**例外**節（軽い対話への回答・1〜2ファイル限定でコミットしない確認・ドキュメント軽微追記・worktree管理操作）に該当する場合はこの限りではない
 
 自分が並行出陣中のエージェントかどうかに関わらず、本陣で直接コーディング・コミットすることは禁止。
 
@@ -216,7 +217,7 @@
 - **メインの作業ディレクトリ `C:\Claude\mannschaft` で大規模実装を直接行うこと**（並列セッションとの HEAD 衝突を防ぐため、必ず大名システム経由で worktree 隔離する）
 - **対処療法でバグを切り抜けること**（障害対応の原則を参照）
 - TypeScript の `any` 使用（原則禁止）
-- `types/generated/` への直接編集（未導入だが、今後導入した場合も自動生成ファイルは手動編集禁止）
+- `types/generated/` への直接編集（openapi-typescript による自動生成。手動編集禁止・再生成は `cd frontend && npm run generate:types`）
 - UIへの文字列直書き（i18nルール参照）
 - 複雑な型パズル（Conditional Types のネスト、Template Literal Types の乱用）
 - **本陣（`C:\Claude\mannschaft` 直下）での commit**（pre-commit フックで機械的に拒否。worktree を使うこと）
@@ -297,7 +298,7 @@ rmdir .claude/worktrees/agent-* 2>/dev/null || true
 
 - **進行中の agent の worktree は絶対に削除しない**。`git worktree list` の出力で他に動いている agent がないか確認してから削除すること
 - 削除前に **当該 worktree の変更がメインリポに統合されているか** を必ず確認する。未マージの commit を消すと作業が失われる
-- メインリポ (`D:\mannschaft`) を間違って削除しないこと（`grep "agent-"` で必ず agent の worktree のみに絞る）
+- メインリポ (`C:\Claude\mannschaft`) を間違って削除しないこと（`grep "agent-"` で必ず agent の worktree のみに絞る）
 
 ---
 
