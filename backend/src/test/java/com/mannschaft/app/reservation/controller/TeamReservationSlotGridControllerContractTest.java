@@ -110,6 +110,16 @@ class TeamReservationSlotGridControllerContractTest {
             return new AccessGuard(accessControlService);
         }
 
+        /**
+         * Service 層の BusinessException（COMMON_001＋fieldErrors）を契約どおり 400 の
+         * ErrorResponse へ写像するために本体の advice を最小コンテキストへ載せる（B3 観測点）。
+         */
+        @Bean
+        com.mannschaft.app.common.GlobalExceptionHandler globalExceptionHandler(
+                org.springframework.context.MessageSource messageSource) {
+            return new com.mannschaft.app.common.GlobalExceptionHandler(messageSource);
+        }
+
         // ── SecurityConfig のフィルタチェーンが要求する Filter 群（既存契約テストと同一） ──
 
         @Bean

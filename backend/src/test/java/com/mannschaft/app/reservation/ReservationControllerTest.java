@@ -381,15 +381,18 @@ class ReservationControllerTest {
                                 .date(date)
                                 .columns(List.of())
                                 .build();
-                given(gridService.getGrid(TEAM_ID, USER_ID, date, staffUserIds)).willReturn(grid);
+                // F03.4.4 で Controller は拡張シグネチャ（from/to/axis/menuId 追加）へ委譲する。
+                // 従来呼び（date 単独）は追加パラメータすべて null（機械的な引数追加のみ・アサーション変更ゼロ）。
+                given(gridService.getGrid(TEAM_ID, USER_ID, date, null, null, null, null, staffUserIds))
+                        .willReturn(grid);
 
                 ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.ReservationGridResponse>> result =
-                        controller.getGrid(TEAM_ID, date, staffUserIds);
+                        controller.getGrid(TEAM_ID, date, null, null, null, null, staffUserIds);
 
                 assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
                 assertThat(result.getBody().getData().getDate()).isEqualTo(date);
                 // コントローラは SecurityUtils の userId を Service へ委譲する（view ゲートの主体）。
-                verify(gridService).getGrid(TEAM_ID, USER_ID, date, staffUserIds);
+                verify(gridService).getGrid(TEAM_ID, USER_ID, date, null, null, null, null, staffUserIds);
             }
         }
 
