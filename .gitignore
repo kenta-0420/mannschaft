@@ -62,3 +62,7 @@ infra/terraform/envs/*/prod.tfvars
 # C11: bootstrap の tfvars にはアカウントID・メールアドレス等が入るため除外
 # bootstrap/README.md §2 が「gitignore 済み」と謳う通りに実装
 infra/terraform/bootstrap/terraform.tfvars
+
+# Claude Code マシンローカル設定（許可リスト等。コミット禁止 — 2026-07-08 鍵混入事故の再発防止）
+.claude/settings.local.json
+frontend/.claude/settings.local.json
