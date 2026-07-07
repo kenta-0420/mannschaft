@@ -18,6 +18,12 @@ const bookDisplayOptions = computed(() => [
 const showBookDialog = ref(false)
 const selectedSlot = ref({ slotId: 0, lineId: 0, lineName: '', date: '', startTime: '', endTime: '' })
 
+/** 予約直後の再読込用 ref。既存 MatchRequestList 等と同一パターン（defineExpose({ refresh })）。 */
+type Refreshable = { refresh: () => void | Promise<void> }
+const slotPickerRef = ref<Refreshable | null>(null)
+const slotGridPickerRef = ref<Refreshable | null>(null)
+const reservationListRef = ref<Refreshable | null>(null)
+
 /** 詳細設定アコーディオンの開閉状態（初期 collapsed） */
 const advancedSettingsValue = ref<string | null>(null)
 
@@ -50,6 +56,17 @@ async function loadReservationSettings() {
   finally {
     settingsLoading.value = false
   }
+}
+
+/**
+ * 予約確定直後（ReservationForm の @reserved）に、表示中の枠（空き状況）と予約一覧を再読込する。
+ * 再読込を怠ると「予約確定→ダイアログを閉じても枠が空きありのまま／一覧に反映されない」というズレが
+ * 再読込（タブ切替やページ再訪）まで残ってしまうため、ここで能動的に再読込する（根治治療）。
+ */
+function onReserved() {
+  slotPickerRef.value?.refresh()
+  slotGridPickerRef.value?.refresh()
+  reservationListRef.value?.refresh()
 }
 
 function onSlotSelected(
@@ -132,6 +149,7 @@ onMounted(async () => {
             </div>
             <SlotGridPicker
               v-if="bookDisplayMode === 'grid'"
+              ref="slotGridPickerRef"
               :team-id="props.teamId"
               :is-admin="isAdmin"
               @slot-selected="onSlotSelected"
@@ -139,6 +157,7 @@ onMounted(async () => {
             />
             <SlotPicker
               v-else
+              ref="slotPickerRef"
               :team-id="props.teamId"
               :is-admin="isAdmin"
               @slot-selected="onSlotSelected"
@@ -160,12 +179,14 @@ onMounted(async () => {
         <TabPanel :value="1">
           <ReservationList
             v-if="isAdminOrDeputy"
+            ref="reservationListRef"
             :team-id="props.teamId"
             :can-manage="true"
             mode="team"
           />
           <ReservationList
             v-else
+            ref="reservationListRef"
             :team-id="props.teamId"
             :can-manage="false"
             mode="mine"
@@ -275,6 +296,7 @@ onMounted(async () => {
       :date="selectedSlot.date"
       :start-time="selectedSlot.startTime"
       :end-time="selectedSlot.endTime"
+      @reserved="onReserved"
     />
 
     <TeamReservationGuideModal v-model:visible="showGuide" :is-admin="isAdmin" />

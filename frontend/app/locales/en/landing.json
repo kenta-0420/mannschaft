@@ -371,7 +371,10 @@
             "title": "Article 4 (Use by Minors)",
             "content": [
               "Minors shall obtain the consent of a legal representative (parent or guardian) before using the Service. Registration by a person under 18 becomes effective only once linkage with the legal representative’s account (approval of consent) is completed, and the Service may not be used until such linkage is completed. The Company may request confirmation of consent where necessary.",
-              "Where a school or other organization creates a Team and uses the Service with the participation of children or students, the Administrator of that Team is responsible for obtaining the necessary consents and taking other appropriate measures. The handling of minors’ personal data is governed by the Privacy Policy."
+              "Where a school or other organization creates a Team and uses the Service with the participation of children or students, the Administrator of that Team is responsible for obtaining the necessary consents and taking other appropriate measures. The handling of minors’ personal data is governed by the Privacy Policy.",
+              "For a child who is under 18 and of elementary school age or younger (in the Japanese school-age system, until the last day of the school year in which the child turns 12), the legal representative (parent or guardian) may, by the method prescribed by the Company, view and watch over the child’s schedule, attendance, affiliations, and notices from the Company, and may also perform, on the child’s behalf, the payment of membership fees and other operations within the scope displayed by the Company within the Service.",
+              "The authority to watch over and to act by proxy under the preceding paragraph automatically terminates on the first day (April 1) of the school year in which the child enters junior high school.",
+              "The legal representative shall be responsible for the results of any proxy operations that the legal representative performs, and the Company shall not be responsible for the results of such proxy operations except in cases of the Company’s intentional misconduct or gross negligence."
             ]
           },
           {
@@ -559,7 +562,7 @@
         "section12_title": "Article 12: International Data Transfers",
         "section12_content": "The Service uses AWS, Cloudflare, and other providers headquartered in the United States, so your personal information may be transferred to and stored outside Japan.\n\nFor data of EU/EEA residents, transfers are made under Standard Contractual Clauses (SCCs) pursuant to GDPR Art. 46, or other appropriate safeguards.",
         "section13_title": "Article 13: Minors' Personal Information",
-        "section13_content": "Minors may use the Service in accordance with Article 4 of the Terms of Service: the prior consent of a legal representative (parent or guardian) and linkage with the guardian’s account (approval of consent) are required.\n\n- We do not deliver targeted advertising to users under 18\n- If we learn that the Service is being used without the consent of a legal representative, we may suspend use or take other appropriate measures\n- Date of birth collected at registration is used solely for age verification; only age groups (e.g., 20s, 30s) are used for ad targeting",
+        "section13_content": "Minors may use the Service in accordance with Article 4 of the Terms of Service: the prior consent of a legal representative (parent or guardian) and linkage with the guardian’s account (approval of consent) are required.\n\n- We do not deliver targeted advertising to users under 18\n- If we learn that the Service is being used without the consent of a legal representative, we may suspend use or take other appropriate measures\n- Date of birth collected at registration is used solely for age verification; only age groups (e.g., 20s, 30s) are used for ad targeting\n\nFor a child of elementary school age or younger (in the Japanese school-age system, until the last day of the school year in which the child turns 12), the legal representative (parent or guardian) may view and watch over the child’s schedule, attendance, affiliations, and notices from the Company, and may perform, on the child’s behalf, the payment of membership fees and other operations within the scope displayed by the Company within the Service (Article 4 of the Terms of Service). For this watching-over and proxy operation, we disclose the child’s personal data to the legal representative to the extent necessary for the purpose of the watching-over and proxy operation. This authority automatically terminates on the first day (April 1) of the school year in which the child enters junior high school.",
         "section14_title": "Article 14: Changes to This Policy",
         "section14_content": "We may update this Policy from time to time in response to legal changes or service updates.\n\n- Material changes (new purposes, new data collection, new third-party sharing, etc.) will be notified in advance via in-service notice or email\n- Minor changes will be indicated by updating the \"Last Updated\" date on this page\n- Your continued use of the Service after any revision constitutes your acceptance of the updated Policy",
         "section15_title": "Article 15: Contact Us",
@@ -889,8 +892,14 @@
             "a": "Send us a request via the contact form. Mannschaft is a growing platform that adds features based on user feedback."
           },
           "8": {
-            "q": "Can children use it?",
-            "a": "Users under 18 can use the service only after linking to a parent (legal guardian) account and receiving their consent approval. The service cannot be used until linking is complete. See Article 4 of the Terms of Service for details."
+            "q": "Can people under 18 use it?",
+            "a": "Users under 18 can use the service only after linking to a parent (legal guardian) account and receiving their consent approval. The service cannot be used until linking is complete. In particular, children of elementary-school age or younger (before entering junior high school) are covered by \"Watch Mode\", in which a parent can view their schedules, attendance, memberships, and announcements to keep an eye on them and pay membership fees on their behalf (this ends automatically when the child enters junior high school).",
+            "a_terms_note": "See {link} for details.",
+            "a_terms_link": "Article 4 of the Terms of Service"
+          },
+          "9": {
+            "q": "Can I keep an eye on an elderly family member?",
+            "a": "Yes. With the consent of the person or their family, you can register a \"watcher\", and their family is automatically notified of attendance, arrival, and departure at events, as well as an absence alert when someone who is expected to attend cannot be confirmed as having arrived. There is no automatic registration based on age; it is always set up based on the consent of the person and their family."
           }
         },
         "retro_hint": "🎮 Sometimes the screen goes retro… maybe?",
@@ -1120,7 +1129,9 @@
           "auth": "Two-factor auth & passkeys",
           "i18n": "6 languages supported",
           "encryption": "Encrypted communication & data",
-          "gdpr": "GDPR compliant"
+          "gdpr": "GDPR compliant",
+          "watch": "Watching over children & elderly family",
+          "safety": "Emergency group safety check"
         }
       }
     }

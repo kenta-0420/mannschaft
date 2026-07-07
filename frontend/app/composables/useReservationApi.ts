@@ -8,6 +8,7 @@ type BlockedTimeResponse = components['schemas']['BlockedTimeResponse']
 type BlockedTimeImpactResponse = components['schemas']['BlockedTimeImpactResponse']
 type ReservationLineResponse = components['schemas']['ReservationLineResponse']
 type BusinessHourResponse = components['schemas']['BusinessHourResponse']
+type BusinessHoursUpdateRequest = components['schemas']['BusinessHoursUpdateRequest']
 // 機能C（複数予約対象の空きグリッド）は BE #2112 で grid API を追加済み。
 type ReservationGridResponse = components['schemas']['ReservationGridResponse']
 // 機能D（予約通知メール宛先）は BE #2110 でフリーミアム件数ゲート付きの CRUD を追加済み。
@@ -39,6 +40,18 @@ export type BlockedResourceType = NonNullable<BlockedTimeRequest['resourceType']
  * （写経元 ScheduleEventRecurrenceInput.vue の曜日トグルは 'MONDAY' フルネームを emit するため注意）。
  */
 export type ReservationDayOfWeekCode = NonNullable<CreateSlotTemplateRequest['dayOfWeek']>
+
+/**
+ * 営業時間一括更新の1曜日分入力。BE `BusinessHoursUpdateRequest.hours[]`（= `{hours:[...]}` でラップ）と
+ * 揃える。dayOfWeek は `ReservationDayOfWeekCode`（3文字大文字 'MON'..'SUN'）を使う。
+ * isClosed ではなく isOpen（BE の実フィールド名）で表現する点に注意。
+ */
+export interface BusinessHoursUpdateHourInput {
+  dayOfWeek: ReservationDayOfWeekCode
+  isOpen: boolean
+  openTime?: string
+  closeTime?: string
+}
 
 export function useReservationApi() {
   const api = useApi()
@@ -237,16 +250,14 @@ export function useReservationApi() {
     return api<{ data: BusinessHourResponse[] }>(`${base(teamId)}/reservation-settings/business-hours`)
   }
 
-  async function updateBusinessHours(
-    teamId: string,
-    body: Array<{
-      dayOfWeek: number
-      openTime: string | null
-      closeTime: string | null
-      isClosed: boolean
-    }>,
-  ) {
-    return api(`${base(teamId)}/reservation-settings/business-hours`, { method: 'PUT', body })
+  async function updateBusinessHours(teamId: string, hours: BusinessHoursUpdateHourInput[]) {
+    // BE DTO は配列直渡しではなく { hours: [...] } でラップし、dayOfWeek は3文字大文字（'MON'..'SUN'）、
+    // 開閉フラグは isOpen（isClosed ではない）。生成型 BusinessHoursUpdateRequest と構造一致させる。
+    const body: BusinessHoursUpdateRequest = { hours }
+    return api<{ data: BusinessHourResponse[] }>(`${base(teamId)}/reservation-settings/business-hours`, {
+      method: 'PUT',
+      body,
+    })
   }
 
   // BE: GET /reservation-settings/blocked-times は from/to（取得期間。ISO DATE）が必須クエリ。

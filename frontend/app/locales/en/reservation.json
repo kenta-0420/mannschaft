@@ -217,7 +217,8 @@
       "cancel_reservation": "Cancel",
       "back": "Back",
       "go_to_line_manage": "Go to manage reservation targets",
-      "manage_slots": "Manage slots"
+      "manage_slots": "Manage slots",
+      "delete_line": "Delete"
     },
     "dialog": {
       "title": "Confirm",
@@ -277,6 +278,9 @@
       }
     },
     "line_manage_title": "Bookable Item Management",
+    "line": {
+      "delete_guide": "Deleting this will stop the slot template for this line, and any future slots without reservations will be removed automatically. If there are active reservations, please reschedule or cancel them first."
+    },
     "settings": {
       "advanced": {
         "title": "Advanced Settings"

@@ -130,6 +130,10 @@ watch(statusFilter, () => {
   }
 })
 onMounted(loadReservations)
+
+// 予約直後に親（TeamReservationsPanel）から一覧を再読込させるための公開メソッド。
+// 既存の MatchRequestList 等と同一パターン（defineExpose({ refresh })＋親は ref 経由で呼ぶ）。
+defineExpose({ refresh: loadReservations })
 </script>
 
 <template>
