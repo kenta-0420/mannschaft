@@ -22,7 +22,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * <b>F09.19.1 既存データ番人テスト（V144.003）</b>:
  * {@code ad_messaging_campaign_channels} に既存 BANNER チャネル行がある MySQL に対し、
- * placement 列追加マイグレーション（V144.003 目安 — 採番はマージ時に確定）を含む全マイグレーションが
+ * placement 列追加マイグレーション（実ファイル
+ * {@code V144.20260707124157__add_placement_to_ad_messaging_campaign_channels.sql}。
+ * minor はタイムスタンプ命名規約 §18 = FlywayTimestampNamingGuardTest 準拠）を含む全マイグレーションが
  * クラッシュせず適用でき、<b>既存 BANNER 行が UPDATE で 'DASHBOARD_TILE' に backfill されてから
  * CHECK 制約（channel_type='BANNER' → placement 非 NULL）が追加される</b>ことを検証する
  * （正本 F09.19 §5.2 V144.003 / feedback_flyway_existing_data_check_drop:
@@ -31,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>{@code FlywayFromScratchMigrationTest}（空 DB）では BANNER 行が 0 件のため
  * 「既存行が CHECK 違反でマイグレーション失敗する」退行を見逃す。本テストは
  * <b>V143.001（本書執筆時点の origin/main 最大）まで適用 → placement 列がまだ無い状態で
- * BANNER チャネル行をシード → 残りのマイグレーション（V144.003 含む）を適用</b>
+ * BANNER チャネル行をシード → 残りのマイグレーション（V144.20260707124157 含む）を適用</b>
  * という既存データ経路を再現する。</p>
  *
  * <p>方針は {@code FlywayExistingDataActivityStatusMigrationTest} を踏襲し、Spring コンテキストを
@@ -117,7 +119,7 @@ class FlywayExistingDataAdMessagingChannelPlacementMigrationTest {
             st.execute("SET FOREIGN_KEY_CHECKS = 1");
         }
 
-        // when: 残りのマイグレーション（placement 列追加 = V144.003 目安を含む）を適用
+        // when: 残りのマイグレーション（placement 列追加 = V144.20260707124157 を含む）を適用
         Flyway rest = Flyway.configure()
                 .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
                 .locations("classpath:db/migration")
@@ -133,7 +135,7 @@ class FlywayExistingDataAdMessagingChannelPlacementMigrationTest {
                 MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())) {
 
             assertThat(columnExists(conn, "ad_messaging_campaign_channels", "placement"))
-                    .as("placement 列が追加されていること（V144.003 目安）").isTrue();
+                    .as("placement 列が追加されていること（V144.20260707124157）").isTrue();
 
             // 既存 BANNER 行が DASHBOARD_TILE で backfill されている
             assertThat(scalarString(conn,
