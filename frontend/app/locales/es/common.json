@@ -2012,5 +2012,9 @@
         "step4": "Haz clic en 'Guardar Configuración'"
       }
     }
+  },
+  "comingSoon": {
+    "title": "Próximamente",
+    "description": "Esta función está actualmente en desarrollo. Por favor, vuelva más tarde."
   }
 }

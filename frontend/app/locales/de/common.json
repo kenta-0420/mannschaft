@@ -2012,5 +2012,9 @@
         "step4": "Klicken Sie auf 'Einstellungen speichern'"
       }
     }
+  },
+  "comingSoon": {
+    "title": "Demnächst verfügbar",
+    "description": "Diese Funktion befindet sich derzeit in der Entwicklung. Bitte schauen Sie später wieder vorbei."
   }
 }
