@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const { t } = useI18n()
 
-const faqIds = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+const faqIds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 </script>
 
 <template>
@@ -32,7 +32,7 @@ const faqIds = [0, 1, 2, 3, 4, 5, 6, 7, 8]
         </p>
       </div>
 
-      <!-- FAQ（アコーディオン閉状態で9件・シンプルさは維持） -->
+      <!-- FAQ（アコーディオン閉状態で10件・シンプルさは維持） -->
       <div class="mt-14 text-left">
         <h3 class="mb-4 text-center text-lg font-bold text-surface-800 dark:text-surface-100">
           {{ t('landing.v2.cta.faq_heading') }}

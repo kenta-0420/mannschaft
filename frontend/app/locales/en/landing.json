@@ -889,8 +889,12 @@
             "a": "Send us a request via the contact form. Mannschaft is a growing platform that adds features based on user feedback."
           },
           "8": {
-            "q": "Can children use it?",
-            "a": "Users under 18 can use the service only after linking to a parent (legal guardian) account and receiving their consent approval. The service cannot be used until linking is complete. See Article 4 of the Terms of Service for details."
+            "q": "Can people under 18 use it?",
+            "a": "Users under 18 can use the service only after linking to a parent (legal guardian) account and receiving their consent approval. The service cannot be used until linking is complete. In particular, children of elementary-school age or younger (before entering junior high school) are covered by \"Watch Mode\", in which a parent can view their schedules, attendance, memberships, and announcements to keep an eye on them and pay membership fees on their behalf (this ends automatically when the child enters junior high school). See Article 4 of the Terms of Service for details."
+          },
+          "9": {
+            "q": "Can I keep an eye on an elderly family member?",
+            "a": "Yes. With the consent of the person or their family, you can register a \"watcher\", and their family is automatically notified of attendance, arrival, and departure at events, as well as an absence alert when someone who is expected to attend cannot be confirmed as having arrived. There is no automatic registration based on age; it is always set up based on the consent of the person and their family."
           }
         },
         "retro_hint": "🎮 Sometimes the screen goes retro… maybe?",
@@ -1120,7 +1124,8 @@
           "auth": "Two-factor auth & passkeys",
           "i18n": "6 languages supported",
           "encryption": "Encrypted communication & data",
-          "gdpr": "GDPR compliant"
+          "gdpr": "GDPR compliant",
+          "watch": "Watching over children & elderly family"
         }
       }
     }

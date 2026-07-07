@@ -889,8 +889,12 @@
             "a": "Schick uns deinen Wunsch über das Kontaktformular. Mannschaft ist eine wachsende Plattform, die Funktionen nach dem Feedback der Nutzer ergänzt."
           },
           "8": {
-            "q": "Können auch Kinder es nutzen?",
-            "a": "Personen unter 18 Jahren können den Dienst erst nutzen, nachdem sie mit dem Konto eines Elternteils (gesetzlichen Vertreters) verknüpft wurden und dessen Einwilligung erhalten haben. Bis zum Abschluss der Verknüpfung ist die Nutzung nicht möglich. Einzelheiten finden Sie in Artikel 4 der Nutzungsbedingungen."
+            "q": "Können auch Personen unter 18 Jahren es nutzen?",
+            "a": "Personen unter 18 Jahren können den Dienst erst nutzen, nachdem sie mit dem Konto eines Elternteils (gesetzlichen Vertreters) verknüpft wurden und dessen Einwilligung erhalten haben. Bis zum Abschluss der Verknüpfung ist die Nutzung nicht möglich. Insbesondere Kinder im Grundschulalter oder jünger (vor dem Eintritt in die Mittelschule) fallen unter den „Begleitmodus“, bei dem ein Elternteil ihre Termine, Anwesenheit, Zugehörigkeiten und Ankündigungen einsehen kann, um sie zu begleiten, und Mitgliedsbeiträge in ihrem Namen bezahlen kann (dies endet automatisch mit dem Eintritt in die Mittelschule). Einzelheiten finden Sie in Artikel 4 der Nutzungsbedingungen."
+          },
+          "9": {
+            "q": "Kann ich ein älteres Familienmitglied im Blick behalten?",
+            "a": "Ja. Mit der Einwilligung der Person oder ihrer Familie können Sie eine „begleitende Person“ registrieren, und ihre Familie wird automatisch über Anwesenheit, Ankunft und Verlassen bei Veranstaltungen sowie über eine Abwesenheitswarnung benachrichtigt, wenn jemand, der teilnehmen soll, nicht als angekommen bestätigt werden kann. Es gibt keine automatische Registrierung nach Alter; sie erfolgt stets auf Grundlage der Einwilligung der Person und ihrer Familie."
           }
         },
         "retro_hint": "🎮 Manchmal wird der Bildschirm retro … vielleicht?",
@@ -1120,7 +1124,8 @@
           "auth": "Zwei-Faktor-Auth & Passkeys",
           "i18n": "6 Sprachen",
           "encryption": "Verschlüsselte Kommunikation & Daten",
-          "gdpr": "DSGVO-konform"
+          "gdpr": "DSGVO-konform",
+          "watch": "Begleitung von Kindern & älteren Angehörigen"
         }
       }
     }

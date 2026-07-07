@@ -889,8 +889,12 @@
             "a": "Envíanos tu petición por el formulario de contacto. Mannschaft es una plataforma en crecimiento que añade funciones según las opiniones de sus usuarios."
           },
           "8": {
-            "q": "¿Pueden usarlo los menores?",
-            "a": "Los menores de 18 años solo pueden usar el servicio tras vincularse con la cuenta de un progenitor (representante legal) y recibir la aprobación de su consentimiento. No es posible usar el servicio hasta completar la vinculación. Consulta el artículo 4 de los Términos del servicio para más detalles."
+            "q": "¿Pueden usarlo los menores de 18 años?",
+            "a": "Los menores de 18 años solo pueden usar el servicio tras vincularse con la cuenta de un progenitor (representante legal) y recibir la aprobación de su consentimiento. No es posible usar el servicio hasta completar la vinculación. En particular, los niños de primaria o menores (antes de entrar en secundaria) están cubiertos por el «modo de supervisión», en el que un progenitor puede ver sus horarios, asistencia, pertenencias y avisos para supervisarlos y pagar las cuotas en su nombre (esto finaliza automáticamente al entrar en secundaria). Consulta el artículo 4 de los Términos del servicio para más detalles."
+          },
+          "9": {
+            "q": "¿Puedo cuidar de un familiar mayor?",
+            "a": "Sí. Con el consentimiento de la persona o de su familia, puedes registrar a un «supervisor», y su familia recibe avisos automáticos de la asistencia, la llegada y la salida en los eventos, así como una alerta de ausencia cuando alguien que se espera que asista no puede confirmarse como presente. No hay registro automático por edad; siempre se configura con el consentimiento de la persona y de su familia."
           }
         },
         "retro_hint": "🎮 A veces la pantalla se vuelve retro… ¿tal vez?",
@@ -1120,7 +1124,8 @@
           "auth": "Autenticación en dos pasos y passkeys",
           "i18n": "6 idiomas",
           "encryption": "Comunicación y datos cifrados",
-          "gdpr": "Conforme al RGPD"
+          "gdpr": "Conforme al RGPD",
+          "watch": "Supervisión de niños y familiares mayores"
         }
       }
     }
