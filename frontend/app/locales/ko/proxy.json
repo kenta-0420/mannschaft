@@ -116,6 +116,7 @@
         "linkTooltip": "돌봄 보기 화면 열기（열람 전용）",
         "readonlyNotice": "이 화면은 열람 전용입니다. 조작이나 응답은 할 수 없습니다.",
         "loadError": "돌봄 데이터를 가져오지 못했습니다",
+        "retryButton": "다시 시도",
         "sections": {
           "schedules": {
             "title": "다가오는 일정",
