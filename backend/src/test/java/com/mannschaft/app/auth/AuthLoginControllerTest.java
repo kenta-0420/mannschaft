@@ -10,6 +10,7 @@ import com.mannschaft.app.auth.dto.MessageResponse;
 import com.mannschaft.app.auth.dto.RegisterRequest;
 import com.mannschaft.app.auth.dto.TokenResponse;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.auth.AuthErrorCode;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
@@ -323,6 +324,19 @@ class AuthLoginControllerTest {
                 .andExpect(cookie().value("refresh_token", "new-refresh-token"))
                 .andExpect(cookie().httpOnly("refresh_token", true))
                 .andExpect(cookie().maxAge("refresh_token", 604800));
+    }
+
+    @Test
+    @DisplayName("POST /refresh — Cookie 無し（null）: 400 + AUTH_007 を返す（NPE→500 根治）")
+    void refresh_noCookie_returns400WithAuth007() throws Exception {
+        // Given: Cookie が存在しない場合、AuthService は AUTH_007 の BusinessException を投げる（実装後）
+        given(authService.refreshAccessToken(any(), any()))
+                .willThrow(new BusinessException(AuthErrorCode.AUTH_007));
+
+        // When / Then: Cookie なしでアクセス → 400 + AUTH_007
+        mockMvc.perform(post("/api/v1/auth/refresh"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("AUTH_007"));
     }
 
     // ──────────────────────────────────────────────
