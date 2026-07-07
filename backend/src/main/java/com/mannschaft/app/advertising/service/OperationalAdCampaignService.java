@@ -9,12 +9,13 @@ import com.mannschaft.app.advertising.entity.AdCampaignEntity.CampaignStatus;
 import com.mannschaft.app.advertising.entity.AdRateCardEntity;
 import com.mannschaft.app.advertising.repository.AdCampaignRepository;
 import com.mannschaft.app.advertising.repository.AdRateCardRepository;
-import com.mannschaft.app.advertising.repository.AdvertiserAccountRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.membership.domain.ScopeType;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -26,6 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -53,9 +56,11 @@ public class OperationalAdCampaignService {
 
     private static final int MAX_PAGE_SIZE = 100;
 
+    /** 監査ログ metadata（{@code {"campaignId":..,"reason":..}}）の JSON 化用。 */
+    private static final ObjectMapper AUDIT_METADATA_MAPPER = new ObjectMapper();
+
     private final AdCampaignRepository adCampaignRepository;
     private final AdRateCardRepository adRateCardRepository;
-    private final AdvertiserAccountRepository advertiserAccountRepository;
     private final AuditLogService auditLogService;
     private final Clock clock;
 
@@ -108,12 +113,18 @@ public class OperationalAdCampaignService {
         AdCampaignEntity campaign = findScoped(scopeId, campaignId);
         switch (campaign.getStatus()) {
             case DRAFT -> {
-                // DRAFT は全フィールド編集可。rateCardId 変更で snapshot 再確定。
+                // DRAFT は全フィールド編集可。バリデーション（AD_030/031/028）は常に実施し、
+                // unit_price_snapshot の再確定は「rateCardId が変更された場合のみ」行う
+                // （正本 §6.5。同一カードのまま料金改定があっても申込時凍結価格を維持する）。
                 AdRateCardEntity card = validateAndResolveRateCard(
                         request.pricingModel(), request.dailyBudget(),
                         request.startDate(), request.endDate(), request.rateCardId());
+                boolean rateCardChanged = !Objects.equals(request.rateCardId(), campaign.getRateCardId());
+                BigDecimal snapshot = rateCardChanged
+                        ? card.getUnitPrice()
+                        : campaign.getUnitPriceSnapshot();
                 campaign.applyDraftEdit(request.name(), request.pricingModel(), request.dailyBudget(),
-                        request.startDate(), request.endDate(), request.rateCardId(), card.getUnitPrice());
+                        request.startDate(), request.endDate(), request.rateCardId(), snapshot);
             }
             case PAUSED -> {
                 // PAUSED は name/dailyBudget/endDate のみ可。pricingModel/rateCardId/startDate の変更は AD_027。
@@ -136,7 +147,8 @@ public class OperationalAdCampaignService {
         AdCampaignEntity campaign = findScoped(scopeId, campaignId);
         requireStatus(campaign, CampaignStatus.DRAFT);
         campaign.submitForReview();
-        recordAudit(AUDIT_SUBMITTED, userId, campaign.getAdvertiserOrganizationId());
+        recordAudit(AUDIT_SUBMITTED, userId, campaign.getAdvertiserOrganizationId(),
+                auditMetadata(campaign.getId(), null));
         return toResponse(campaign);
     }
 
@@ -146,7 +158,8 @@ public class OperationalAdCampaignService {
         AdCampaignEntity campaign = findScoped(scopeId, campaignId);
         requireStatus(campaign, CampaignStatus.ACTIVE);
         campaign.pause();
-        recordAudit(AUDIT_PAUSED, userId, campaign.getAdvertiserOrganizationId());
+        recordAudit(AUDIT_PAUSED, userId, campaign.getAdvertiserOrganizationId(),
+                auditMetadata(campaign.getId(), null));
         return toResponse(campaign);
     }
 
@@ -159,7 +172,8 @@ public class OperationalAdCampaignService {
             throw new BusinessException(AdvertisingErrorCode.AD_033);
         }
         campaign.resume();
-        recordAudit(AUDIT_RESUMED, userId, campaign.getAdvertiserOrganizationId());
+        recordAudit(AUDIT_RESUMED, userId, campaign.getAdvertiserOrganizationId(),
+                auditMetadata(campaign.getId(), null));
         return toResponse(campaign);
     }
 
@@ -171,7 +185,8 @@ public class OperationalAdCampaignService {
             throw new BusinessException(AdvertisingErrorCode.AD_027);
         }
         campaign.end();
-        recordAudit(AUDIT_ENDED, userId, campaign.getAdvertiserOrganizationId());
+        recordAudit(AUDIT_ENDED, userId, campaign.getAdvertiserOrganizationId(),
+                auditMetadata(campaign.getId(), null));
         return toResponse(campaign);
     }
 
@@ -194,7 +209,8 @@ public class OperationalAdCampaignService {
         AdCampaignEntity campaign = findById(campaignId);
         requireStatus(campaign, CampaignStatus.PENDING_REVIEW);
         campaign.approve();
-        recordAudit(AUDIT_APPROVED, adminUserId, campaign.getAdvertiserOrganizationId());
+        recordAudit(AUDIT_APPROVED, adminUserId, campaign.getAdvertiserOrganizationId(),
+                auditMetadata(campaign.getId(), null));
         return toResponse(campaign);
     }
 
@@ -204,7 +220,8 @@ public class OperationalAdCampaignService {
         AdCampaignEntity campaign = findById(campaignId);
         requireStatus(campaign, CampaignStatus.PENDING_REVIEW);
         campaign.reject(reason);
-        recordAudit(AUDIT_REJECTED, adminUserId, campaign.getAdvertiserOrganizationId());
+        recordAudit(AUDIT_REJECTED, adminUserId, campaign.getAdvertiserOrganizationId(),
+                auditMetadata(campaign.getId(), reason));
         return toResponse(campaign);
     }
 
@@ -292,9 +309,27 @@ public class OperationalAdCampaignService {
         return PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "createdAt"));
     }
 
-    private void recordAudit(String eventType, Long userId, Long organizationId) {
+    private void recordAudit(String eventType, Long userId, Long organizationId, String metadata) {
         // fire-and-forget（AuditLogService.record は @Async・独立トランザクション）
-        auditLogService.record(eventType, userId, null, null, organizationId, null, null, null, null);
+        auditLogService.record(eventType, userId, null, null, organizationId, null, null, null, metadata);
+    }
+
+    /**
+     * 監査ログ metadata JSON を構築する（正本 §6.5: reject は理由を記録）。
+     * 全イベントで {@code campaignId} を、reject では {@code reason} も含める。
+     */
+    private String auditMetadata(Long campaignId, String reason) {
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("campaignId", campaignId);
+        if (reason != null) {
+            meta.put("reason", reason);
+        }
+        try {
+            return AUDIT_METADATA_MAPPER.writeValueAsString(meta);
+        } catch (JsonProcessingException e) {
+            // 監査ログは fire-and-forget のため metadata 生成失敗でも主処理は止めない
+            return "{\"campaignId\":" + campaignId + "}";
+        }
     }
 
     private PagedResponse<OperationalCampaignResponse> toPaged(

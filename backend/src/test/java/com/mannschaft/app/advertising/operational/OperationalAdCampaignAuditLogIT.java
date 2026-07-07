@@ -129,6 +129,8 @@ class OperationalAdCampaignAuditLogIT extends AbstractMySqlIntegrationTest {
         adminController.reject(campaignId, new RejectOperationalCampaignRequest("素材が規約違反"));
 
         assertAuditEventRecorded("OPERATIONAL_CAMPAIGN_REJECTED", orgId);
+        // 正本 §6.5 / AC-1.11: 差戻し理由と campaignId が metadata に永続化されること
+        assertRejectMetadataRecorded(orgId, campaignId, "素材が規約違反");
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -147,6 +149,26 @@ class OperationalAdCampaignAuditLogIT extends AbstractMySqlIntegrationTest {
             assertThat(recorded)
                     .as("audit_logs に " + eventType + " が organizationId=" + organizationId + " で記録されること")
                     .isTrue();
+        });
+    }
+
+    /** reject 監査ログの metadata に campaignId と差戻し理由が JSON で残ることを検証する。 */
+    private void assertRejectMetadataRecorded(Long organizationId, Long campaignId, String reason) {
+        Awaitility.await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            TransactionTemplate newTx = new TransactionTemplate(txManager);
+            newTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            String metadata = newTx.execute(status ->
+                    auditLogRepository.findAll().stream()
+                            .filter(log -> "OPERATIONAL_CAMPAIGN_REJECTED".equals(log.getEventType())
+                                    && organizationId.equals(log.getOrganizationId()))
+                            .map(log -> log.getMetadata())
+                            .findFirst()
+                            .orElse(null));
+            assertThat(metadata)
+                    .as("reject の監査 metadata に理由と campaignId が記録されること（正本 §6.5）")
+                    .isNotNull()
+                    .contains(reason)
+                    .contains(String.valueOf(campaignId));
         });
     }
 

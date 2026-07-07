@@ -7,10 +7,8 @@ import com.mannschaft.app.advertising.dto.OperationalCampaignResponse;
 import com.mannschaft.app.advertising.entity.AdCampaignEntity;
 import com.mannschaft.app.advertising.entity.AdCampaignEntity.CampaignStatus;
 import com.mannschaft.app.advertising.entity.AdRateCardEntity;
-import com.mannschaft.app.advertising.entity.AdvertiserAccountEntity;
 import com.mannschaft.app.advertising.repository.AdCampaignRepository;
 import com.mannschaft.app.advertising.repository.AdRateCardRepository;
-import com.mannschaft.app.advertising.repository.AdvertiserAccountRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -64,7 +62,6 @@ class OperationalAdCampaignServiceTest {
     private static final Long CAMPAIGN_ID = 45L;
     private static final Long RATE_CARD_ID = 3L;
     private static final Long RATE_CARD_2_ID = 4L;
-    private static final Long ADVERTISER_ACCOUNT_ID = 7L;
 
     private static final BigDecimal UNIT_PRICE = new BigDecimal("500.0000");
     private static final BigDecimal UNIT_PRICE_2 = new BigDecimal("800.0000");
@@ -75,8 +72,6 @@ class OperationalAdCampaignServiceTest {
     @Mock
     private AdRateCardRepository adRateCardRepository;
     @Mock
-    private AdvertiserAccountRepository advertiserAccountRepository;
-    @Mock
     private AuditLogService auditLogService;
 
     private OperationalAdCampaignService service;
@@ -84,13 +79,10 @@ class OperationalAdCampaignServiceTest {
     @BeforeEach
     void setUp() {
         service = new OperationalAdCampaignService(
-                adCampaignRepository, adRateCardRepository, advertiserAccountRepository,
-                auditLogService, FIXED_CLOCK);
+                adCampaignRepository, adRateCardRepository, auditLogService, FIXED_CLOCK);
 
         given(adRateCardRepository.findById(RATE_CARD_ID)).willReturn(Optional.of(rateCard(RATE_CARD_ID, UNIT_PRICE)));
         given(adRateCardRepository.findById(RATE_CARD_2_ID)).willReturn(Optional.of(rateCard(RATE_CARD_2_ID, UNIT_PRICE_2)));
-        given(advertiserAccountRepository.findById(ADVERTISER_ACCOUNT_ID))
-                .willReturn(Optional.of(advertiserAccount()));
         given(adCampaignRepository.save(any(AdCampaignEntity.class)))
                 .willAnswer(inv -> inv.getArgument(0));
     }
@@ -440,17 +432,6 @@ class OperationalAdCampaignServiceTest {
                 .effectiveFrom(TODAY.minusDays(30))
                 .effectiveUntil(null)
                 .createdBy(ADMIN_USER_ID)
-                .build();
-    }
-
-    private AdvertiserAccountEntity advertiserAccount() {
-        return AdvertiserAccountEntity.builder()
-                .id(ADVERTISER_ACCOUNT_ID)
-                .scopeType(ScopeType.ORGANIZATION)
-                .scopeId(ORG_ID)
-                .status(com.mannschaft.app.advertising.AdvertiserAccountStatus.ACTIVE)
-                .companyName("テスト広告主")
-                .contactEmail("ads@example.com")
                 .build();
     }
 }
