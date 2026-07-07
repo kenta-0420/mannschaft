@@ -2012,5 +2012,9 @@
         "step4": "Click 'Save Settings'"
       }
     }
+  },
+  "comingSoon": {
+    "title": "Coming Soon",
+    "description": "This feature is currently under development. Please check back later."
   }
 }
