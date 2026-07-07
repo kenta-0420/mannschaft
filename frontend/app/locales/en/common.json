@@ -545,7 +545,11 @@
       "deleteConfirm": "Delete this TODO? This cannot be undone.",
       "sortLabel": "Sort by",
       "sortRecent": "Newest",
-      "sortPriority": "Priority"
+      "sortPriority": "Priority",
+      "deletedToast": "TODO deleted",
+      "restoredToast": "TODO restored",
+      "deleteFailed": "Failed to delete",
+      "restoreFailed": "Could not undo"
     },
     "field": {
       "status": "Status",
@@ -1740,7 +1744,9 @@
       "KB_PAGE": "KB",
       "BLOG_AUTHOR": "Author",
       "VILLAGE": "Village"
-    }
+    },
+    "restoredToast": "Restored to favorites",
+    "restoreFailed": "Could not undo"
   },
   "succession": {
     "legalFilings": {

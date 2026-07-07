@@ -16,6 +16,8 @@ const emit = defineEmits<{
 
 const todoApi = useTodoApi()
 const notification = useNotification()
+const { showUndoToast } = useUndoToast()
+const { t } = useI18n()
 const { userTimezone } = useDatetime()
 
 /** Wave 1 DTO刷新: ネスト構造 */
@@ -118,15 +120,29 @@ async function onBulkStatusChange(status: string) {
   catch { notification.error('一括変更に失敗しました') }
 }
 
+// ADHD 配慮 AC-16: 確認ダイアログを廃止し、即時削除 + Undo Toast に置換する。
+// TODO は論理削除（soft delete）なので、Undo で restore EP を叩けば一覧に復活する。
 async function onDelete(todoId: number) {
-  if (!confirm('このTODOを削除しますか？')) return
   try {
     await todoApi.deleteTodo(props.scopeType, props.scopeId, todoId)
-    notification.success('TODOを削除しました')
     await loadTodos()
     emit('refresh')
+    showUndoToast({
+      summary: t('todo.list.deletedToast'),
+      undoLabel: t('button.undo'),
+      severity: 'info',
+      onUndo: async () => {
+        try {
+          await todoApi.restoreTodo(props.scopeType, props.scopeId, todoId)
+          notification.success(t('todo.list.restoredToast'))
+          await loadTodos()
+          emit('refresh')
+        }
+        catch { notification.error(t('todo.list.restoreFailed')) }
+      },
+    })
   }
-  catch { notification.error('削除に失敗しました') }
+  catch { notification.error(t('todo.list.deleteFailed')) }
 }
 
 function onPage(event: { page: number; rows: number }) {

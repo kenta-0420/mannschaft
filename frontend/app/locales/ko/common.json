@@ -545,7 +545,11 @@
       "deleteConfirm": "이 할 일을 삭제하시겠습니까？삭제 후에는 복구할 수 없습니다。",
       "sortLabel": "정렬 기준",
       "sortRecent": "최신순",
-      "sortPriority": "우선순위순"
+      "sortPriority": "우선순위순",
+      "deletedToast": "TODO를 삭제했습니다",
+      "restoredToast": "TODO를 복원했습니다",
+      "deleteFailed": "삭제에 실패했습니다",
+      "restoreFailed": "실행 취소할 수 없습니다"
     },
     "field": {
       "status": "상태",
@@ -1740,7 +1744,9 @@
       "KB_PAGE": "KB",
       "BLOG_AUTHOR": "작성자",
       "VILLAGE": "마을"
-    }
+    },
+    "restoredToast": "즐겨찾기로 복원했습니다",
+    "restoreFailed": "실행 취소할 수 없습니다"
   },
   "succession": {
     "legalFilings": {

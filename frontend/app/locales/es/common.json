@@ -545,7 +545,11 @@
       "deleteConfirm": "¿Eliminar este TODO? Esta acción no se puede deshacer.",
       "sortLabel": "Ordenar por",
       "sortRecent": "Más reciente",
-      "sortPriority": "Prioridad"
+      "sortPriority": "Prioridad",
+      "deletedToast": "TODO eliminado",
+      "restoredToast": "TODO restaurado",
+      "deleteFailed": "Error al eliminar",
+      "restoreFailed": "No se pudo deshacer"
     },
     "field": {
       "status": "Estado",
@@ -1740,7 +1744,9 @@
       "KB_PAGE": "KB",
       "BLOG_AUTHOR": "Autor",
       "VILLAGE": "Aldea"
-    }
+    },
+    "restoredToast": "Restaurado a favoritos",
+    "restoreFailed": "No se pudo deshacer"
   },
   "succession": {
     "legalFilings": {

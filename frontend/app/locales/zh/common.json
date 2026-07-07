@@ -545,7 +545,11 @@
       "deleteConfirm": "确认删除此待办事项？删除后无法恢复。",
       "sortLabel": "排序方式",
       "sortRecent": "最新",
-      "sortPriority": "优先级"
+      "sortPriority": "优先级",
+      "deletedToast": "已删除待办",
+      "restoredToast": "已恢复待办",
+      "deleteFailed": "删除失败",
+      "restoreFailed": "无法撤销"
     },
     "field": {
       "status": "状态",
@@ -1740,7 +1744,9 @@
       "KB_PAGE": "知识库",
       "BLOG_AUTHOR": "作者",
       "VILLAGE": "村"
-    }
+    },
+    "restoredToast": "已恢复收藏",
+    "restoreFailed": "无法撤销"
   },
   "succession": {
     "legalFilings": {

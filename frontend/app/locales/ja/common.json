@@ -545,7 +545,11 @@
       "deleteConfirm": "このTODOを削除しますか？削除後は元に戻せません。",
       "sortLabel": "並び順",
       "sortRecent": "新着順",
-      "sortPriority": "優先度順"
+      "sortPriority": "優先度順",
+      "deletedToast": "TODOを削除しました",
+      "restoredToast": "TODOを元に戻しました",
+      "deleteFailed": "削除に失敗しました",
+      "restoreFailed": "元に戻せませんでした"
     },
     "field": {
       "status": "ステータス",
@@ -1740,7 +1744,9 @@
       "KB_PAGE": "KB",
       "BLOG_AUTHOR": "著者",
       "VILLAGE": "村"
-    }
+    },
+    "restoredToast": "お気に入りに戻しました",
+    "restoreFailed": "元に戻せませんでした"
   },
   "succession": {
     "legalFilings": {
