@@ -893,7 +893,9 @@
           },
           "8": {
             "q": "Can people under 18 use it?",
-            "a": "Users under 18 can use the service only after linking to a parent (legal guardian) account and receiving their consent approval. The service cannot be used until linking is complete. In particular, children of elementary-school age or younger (before entering junior high school) are covered by \"Watch Mode\", in which a parent can view their schedules, attendance, memberships, and announcements to keep an eye on them and pay membership fees on their behalf (this ends automatically when the child enters junior high school). See Article 4 of the Terms of Service for details."
+            "a": "Users under 18 can use the service only after linking to a parent (legal guardian) account and receiving their consent approval. The service cannot be used until linking is complete. In particular, children of elementary-school age or younger (before entering junior high school) are covered by \"Watch Mode\", in which a parent can view their schedules, attendance, memberships, and announcements to keep an eye on them and pay membership fees on their behalf (this ends automatically when the child enters junior high school).",
+            "a_terms_note": "See {link} for details.",
+            "a_terms_link": "Article 4 of the Terms of Service"
           },
           "9": {
             "q": "Can I keep an eye on an elderly family member?",

@@ -51,6 +51,15 @@ const faqIds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
             </summary>
             <p class="mt-2.5 text-sm leading-relaxed text-surface-500">
               {{ t(`landing.v2.cta.faq.${id}.a`) }}
+              <template v-if="id === 8">
+                <i18n-t keypath="landing.v2.cta.faq.8.a_terms_note" tag="span" scope="global">
+                  <template #link>
+                    <NuxtLink to="/terms#terms-sec-4" class="font-medium text-primary hover:underline">
+                      {{ t('landing.v2.cta.faq.8.a_terms_link') }}
+                    </NuxtLink>
+                  </template>
+                </i18n-t>
+              </template>
             </p>
           </details>
         </div>

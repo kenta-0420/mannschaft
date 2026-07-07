@@ -893,7 +893,9 @@
           },
           "8": {
             "q": "¿Pueden usarlo los menores de 18 años?",
-            "a": "Los menores de 18 años solo pueden usar el servicio tras vincularse con la cuenta de un progenitor (representante legal) y recibir la aprobación de su consentimiento. No es posible usar el servicio hasta completar la vinculación. En particular, los niños de primaria o menores (antes de entrar en secundaria) están cubiertos por el «modo de supervisión», en el que un progenitor puede ver sus horarios, asistencia, pertenencias y avisos para supervisarlos y pagar las cuotas en su nombre (esto finaliza automáticamente al entrar en secundaria). Consulta el artículo 4 de los Términos del servicio para más detalles."
+            "a": "Los menores de 18 años solo pueden usar el servicio tras vincularse con la cuenta de un progenitor (representante legal) y recibir la aprobación de su consentimiento. No es posible usar el servicio hasta completar la vinculación. En particular, los niños de primaria o menores (antes de entrar en secundaria) están cubiertos por el «modo de supervisión», en el que un progenitor puede ver sus horarios, asistencia, pertenencias y avisos para supervisarlos y pagar las cuotas en su nombre (esto finaliza automáticamente al entrar en secundaria).",
+            "a_terms_note": "Consulta {link} para más detalles.",
+            "a_terms_link": "el artículo 4 de los Términos del servicio"
           },
           "9": {
             "q": "¿Puedo cuidar de un familiar mayor?",
