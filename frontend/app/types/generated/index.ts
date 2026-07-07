@@ -8568,6 +8568,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/reservation-groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 予約グループ作成 */
+        post: operations["createGroup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/reservation-groups/{groupId}/no-show": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 予約グループ ノーショー */
+        post: operations["markGroupNoShow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/reservation-groups/{groupId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 予約グループ確定 */
+        post: operations["confirmGroup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/reservation-groups/{groupId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 予約グループ完了 */
+        post: operations["completeGroup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/reservation-groups/{groupId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 予約グループ一括キャンセル */
+        post: operations["cancelGroup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/repair-plan/terms": {
         parameters: {
             query?: never;
@@ -13905,7 +13990,7 @@ export interface paths {
          * グループ作成
          * @description 規約同意 + 50 個上限チェック + 20 枚上限チェック + IDOR 検証後にグループを保存する。監査ログ POINT_CARD_GROUP_CREATED を 1 件記録する。
          */
-        post: operations["createGroup"];
+        post: operations["createGroup_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -19254,7 +19339,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** セクション作成 */
-        post: operations["createGroup_1"];
+        post: operations["createGroup_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -30161,6 +30246,23 @@ export interface paths {
         };
         /** 予約不可枠 登録前の影響プレビュー */
         get: operations["getBlockedTimeImpact"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/reservation-groups/{groupId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 予約グループ詳細 */
+        get: operations["getGroup"];
         put?: never;
         post?: never;
         delete?: never;
@@ -52532,6 +52634,15 @@ export interface components {
             cancelledAt?: string;
             cancelledBy?: string;
         };
+        GroupSummaryDto: {
+            /** @example 14:30:00 */
+            groupEndTime?: string;
+            /** Format: uuid */
+            groupId?: string;
+            /** Format: int32 */
+            groupSize?: number;
+            menuName?: string;
+        };
         NotesDto: {
             adminNote?: string;
             userNote?: string;
@@ -52556,6 +52667,7 @@ export interface components {
         ReservationResponse: {
             audit?: components["schemas"]["ReservationAuditDto"];
             cancellation?: components["schemas"]["CancellationDto"];
+            group?: components["schemas"]["GroupSummaryDto"];
             /** Format: int64 */
             id?: number;
             identifier?: components["schemas"]["ReservationIdentifierDto"];
@@ -52890,6 +53002,78 @@ export interface components {
             meta?: components["schemas"]["LineMetaDto"];
             /** Format: int64 */
             teamId?: number;
+        };
+        CreateReservationGroupRequest: {
+            /** Format: int64 */
+            lineId: number;
+            /** Format: uuid */
+            menuId?: string;
+            slotIds?: number[];
+            userNote?: string;
+        };
+        ApiResponseReservationGroupResponse: {
+            data?: components["schemas"]["ReservationGroupResponse"];
+        };
+        ReservationGroupItemDto: {
+            /** @example 14:30:00 */
+            endTime?: string;
+            isGroupPrimary?: boolean;
+            /** Format: int64 */
+            reservationId?: number;
+            /** Format: int64 */
+            slotId?: number;
+            /** @example 14:30:00 */
+            startTime?: string;
+        };
+        ReservationGroupResponse: {
+            /** Format: date-time */
+            bookedAt?: string;
+            cancelReason?: string;
+            /** Format: date-time */
+            cancelledAt?: string;
+            cancelledBy?: string;
+            /** Format: date-time */
+            confirmedAt?: string;
+            /** @example 14:30:00 */
+            endTime?: string;
+            /** Format: uuid */
+            groupId?: string;
+            /** Format: int64 */
+            lineId?: number;
+            lineName?: string;
+            /** Format: uuid */
+            menuId?: string;
+            menuName?: string;
+            price?: number;
+            reservations?: components["schemas"]["ReservationGroupItemDto"][];
+            /** Format: int32 */
+            slotCount?: number;
+            /** Format: date */
+            slotDate?: string;
+            /** @example 14:30:00 */
+            startTime?: string;
+            status?: string;
+            /** Format: int64 */
+            teamId?: number;
+            /** Format: int64 */
+            userId?: number;
+            userNote?: string;
+        };
+        CancelReservationGroupRequest: {
+            cancelReason?: string;
+        };
+        ApiResponseReservationGroupCancelResponse: {
+            data?: components["schemas"]["ReservationGroupCancelResponse"];
+        };
+        ReservationGroupCancelResponse: {
+            /** Format: date-time */
+            cancelledAt?: string;
+            cancelledBy?: string;
+            /** Format: int32 */
+            cancelledCount?: number;
+            /** Format: uuid */
+            groupId?: string;
+            status?: string;
         };
         ApiResponseTermDto: {
             data?: components["schemas"]["TermDto"];
@@ -94807,6 +94991,128 @@ export interface operations {
             };
         };
     };
+    createGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateReservationGroupRequest"];
+            };
+        };
+        responses: {
+            /** @description 作成成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReservationGroupResponse"];
+                };
+            };
+        };
+    };
+    markGroupNoShow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                groupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description マーク成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReservationGroupResponse"];
+                };
+            };
+        };
+    };
+    confirmGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                groupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 確定成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReservationGroupResponse"];
+                };
+            };
+        };
+    };
+    completeGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                groupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 完了成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReservationGroupResponse"];
+                };
+            };
+        };
+    };
+    cancelGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                groupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CancelReservationGroupRequest"];
+            };
+        };
+        responses: {
+            /** @description キャンセル成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReservationGroupCancelResponse"];
+                };
+            };
+        };
+    };
     listTerms: {
         parameters: {
             query?: never;
@@ -105166,7 +105472,7 @@ export interface operations {
             };
         };
     };
-    createGroup: {
+    createGroup_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -115559,7 +115865,7 @@ export interface operations {
             };
         };
     };
-    createGroup_1: {
+    createGroup_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -135137,6 +135443,29 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseBlockedTimeImpactResponse"];
+                };
+            };
+        };
+    };
+    getGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                groupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReservationGroupResponse"];
                 };
             };
         };
