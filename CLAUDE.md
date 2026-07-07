@@ -177,7 +177,7 @@
 - 大規模作業は `git worktree add` で物理的にディレクトリを隔離してから着手する（大名システム必須ルール参照）
 - コミットメッセージは日本語で要約を記載（例: `機能追加: ユーザー認証APIの実装`）
 - 完了後はPRを作成してCIが合格してから `main` へマージ
-- **Flyway 採番**: 新規 migration の major は「origin/main 全体の最大 major + 1」を使う（詳細: `backend/.claudecode.md` §18）
+- **Flyway 採番**: `V{major}.{yyyyMMddHHmmss}__{説明}.sql`。major は「origin/main 全体の最大 major + 1」・**minor はタイムスタンプ必須（連番 `.001` 等は禁止・番人テスト `FlywayTimestampNamingGuardTest` が機械的に拒否）**。タイムスタンプは `date -u '+%Y%m%d%H%M%S'` で採る（詳細: `backend/.claudecode.md` §18）
 
 ---
 
