@@ -1,14 +1,22 @@
 package com.mannschaft.app.reservation.service;
 
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.ErrorResponse;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.reservation.GridAxis;
 import com.mannschaft.app.reservation.GridCellState;
+import com.mannschaft.app.reservation.ReservationErrorCode;
 import com.mannschaft.app.reservation.SlotStatus;
 import com.mannschaft.app.reservation.dto.ReservationGridResponse;
 import com.mannschaft.app.reservation.entity.ReservationBlockedTimeEntity;
 import com.mannschaft.app.reservation.entity.ReservationLineEntity;
+import com.mannschaft.app.reservation.entity.ReservationMenuEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import com.mannschaft.app.reservation.repository.ReservationBlockedTimeRepository;
 import com.mannschaft.app.reservation.repository.ReservationLineRepository;
+import com.mannschaft.app.reservation.repository.ReservationMenuLineRepository;
+import com.mannschaft.app.reservation.repository.ReservationMenuRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +29,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -47,12 +56,20 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class ReservationGridService {
 
+    /** 1 セルの分数（固定 30・F03.4.4 §4.1 meta.cellMinutes）。 */
+    private static final int CELL_MINUTES = 30;
+
+    /** 日付レンジの最大日数（7 日。8 日以上は 400 — 応答サイズ上限の担保・F03.4.4 §4.1）。 */
+    private static final int MAX_RANGE_DAYS = 7;
+
     private final ReservationSlotRepository slotRepository;
     private final ReservationLineRepository lineRepository;
     private final ReservationBlockedTimeRepository blockedTimeRepository;
     private final ReservationUnavailabilityChecker unavailabilityChecker;
     private final NameResolverService nameResolverService;
     private final ReservationViewAccessGuard viewAccessGuard;
+    private final ReservationMenuRepository menuRepository;
+    private final ReservationMenuLineRepository menuLineRepository;
 
     /**
      * 指定日の空きグリッドを構築する。
@@ -91,9 +108,12 @@ public class ReservationGridService {
                     .filter(s -> staffKey.equals(s.getStaffUserId()))
                     .map(s -> toCell(s, blocks))
                     .toList();
+            // staff 軸列は lineId/lineName を持たない（F03.4.4 契約: axis=STAFF では常に null）。
             columns.add(new ReservationGridResponse.GridColumnDto(
                     staffKey,
                     staffNames.get(staffKey),
+                    null,
+                    null,
                     lineIdsByStaff.getOrDefault(staffKey, List.of()),
                     cells));
         }
@@ -105,13 +125,37 @@ public class ReservationGridService {
                     .map(s -> toCell(s, blocks))
                     .toList();
             // 共通列は staffUserId=null・氏名 null（FE が i18n ラベルで描画）・lineIds は常に空。
-            columns.add(new ReservationGridResponse.GridColumnDto(null, null, List.of(), commonCells));
+            columns.add(new ReservationGridResponse.GridColumnDto(null, null, null, null, List.of(), commonCells));
         }
 
         return ReservationGridResponse.builder()
                 .date(date)
                 .columns(columns)
+                .axis(GridAxis.STAFF.name())
                 .build();
+    }
+
+    /**
+     * 拡張グリッド取得（F03.4.4 §4.1: ライン軸・日付レンジ・メニューフィルター）。
+     *
+     * <p>パラメータ検証（{@code date} XOR {@code from/to}・axis・menuId 併用可否）は
+     * <b>認可判定の後</b>に Service 層で行う（§6: パラメータは認可判定に影響しない。
+     * 検証位置と文言を Service 層に一元管理する — B3）。</p>
+     *
+     * @param teamId       チームID
+     * @param userId       閲覧ユーザーID（view ゲート用）
+     * @param date         単日指定（{@code from/to} と XOR）
+     * @param from         レンジ開始日（{@code to} と両方指定・最大7日）
+     * @param to           レンジ終了日
+     * @param axisParam    列軸（{@code "STAFF"} 既定 / {@code "LINE"}。不正値は 400）
+     * @param menuId       メニューフィルター（{@code axis=LINE} のときのみ有効。他チーム・不存在は 404）
+     * @param staffUserIds 列に並べる予約対象（axis=STAFF のときのみ意味を持つ）
+     * @return グリッドレスポンス（単日: {@code date}/{@code columns}・レンジ: {@code days[]}）
+     */
+    public ReservationGridResponse getGrid(
+            Long teamId, Long userId, LocalDate date, LocalDate from, LocalDate to,
+            String axisParam, UUID menuId, List<Long> staffUserIds) {
+        throw new UnsupportedOperationException("F03.4.4 未実装（試練red）");
     }
 
     /**
