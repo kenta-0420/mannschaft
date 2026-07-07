@@ -240,6 +240,63 @@ public enum ReservationErrorCode implements ErrorCode {
      */
     SLOT_LINE_MISMATCH("RESERVATION_038", "選択した枠とラインが一致しません", Severity.WARN),
 
+    // ===== F03.4.3 機能G: 予約グループ（複数枠・連続枠予約 / v2 第二弾）=====
+
+    /**
+     * グループ内のいずれかの枠が満席/CLOSED で確保失敗（リソース競合・409）。
+     *
+     * <p>F03.4.3 §5.2: 確保は {@code incrementBookedCountIfAvailable} のリポジトリ直呼び×N
+     * （slotId 昇順・確保 UPDATE → INSERT の順）。0 行更新 = 確保失敗で本コードを throw し、
+     * {@code @Transactional} が先行確保分も含めて全ロールバックする（部分成功禁止）。
+     * SLOT_FULL(004・400) ではなく本コード（409）を使い「グループの一部枠が確保できなかった」ことを
+     * FE が区別する（§5.2 の 4）。稀な InnoDB デッドロック
+     * （{@code PessimisticLockingFailureException}）も同じ「選び直し」契約として本コードへマップする（§5.2）。
+     * {@code GlobalExceptionHandler} の個別マッピングで HTTP 409。</p>
+     */
+    GROUP_SLOT_UNAVAILABLE("RESERVATION_039",
+            "選択した枠のいずれかが確保できませんでした。空き状況を更新して選び直してください", Severity.WARN),
+
+    /**
+     * 予約グループ不存在・権限なし（存在秘匿・404）。
+     *
+     * <p>F03.4.3 §4/§6: 存在しない / 他チーム / 他人（非 ADMIN）の groupId はすべて本コードで
+     * 404 に統一する（UUID 列挙攻撃に対して存在自体を隠す IDOR 秘匿）。
+     * {@code GlobalExceptionHandler} の個別マッピングで HTTP 404。</p>
+     */
+    GROUP_NOT_FOUND("RESERVATION_040", "予約グループが見つかりません", Severity.WARN),
+
+    /**
+     * グループ枠数上限（16 枠）超過（入力不正なので 400）。
+     *
+     * <p>F03.4.3 §5.2-e: {@code 1 <= slotIds.length <= 16}。17 枠以上の指定は買い占め防止の観点から拒否する。
+     * Severity.WARN のため既定マッピングで 400（個別 map 不要）。</p>
+     */
+    GROUP_SIZE_EXCEEDED("RESERVATION_041", "予約グループは最大16枠までです", Severity.WARN),
+
+    /**
+     * グループ所属行への単票操作の拒否（入力不正なので 400）。
+     *
+     * <p>F03.4.3 §4: グループ所属行（{@code group_id IS NOT NULL}）への単票状態遷移 API
+     * （cancel/confirm/complete/no-show/reschedule）は部分遷移によるグループ状態の分裂・
+     * booked_count 不整合を構造的に防ぐため全行で拒否する。非代表行へのメモ更新
+     * （admin-note）も一覧に浮上せず事実上消失するため拒否する（代表行のみ許可）。
+     * Severity.WARN のため既定マッピングで 400。</p>
+     */
+    GROUP_ROW_DIRECT_OPERATION_NOT_ALLOWED("RESERVATION_042",
+            "この予約はグループの一部です。グループ単位で操作してください", Severity.WARN),
+
+    /**
+     * <b>予約時</b>に選択メニューが対象ラインで提供されていない（入力不正なので 400）。
+     *
+     * <p>F03.4.3 §5.2-f: {@code reservation_menu_lines} が 1 件以上列挙されているメニューで、
+     * 列挙に {@code request.lineId} が含まれない場合（0 件 = 全ライン可）。
+     * F03.4.1 の 035（メニュー<b>定義時</b>の lineIds 不正）とは発生文脈・利用者・FE 導線が
+     * 異なるため別コードに分離する（意味衝突回避・精査第1パス指摘12）。
+     * Severity.WARN のため既定マッピングで 400。</p>
+     */
+    GROUP_MENU_LINE_NOT_OFFERED("RESERVATION_043",
+            "選択したメニューはこの予約対象では提供されていません", Severity.WARN),
+
     /**
      * 一括生成（generate）のレートリミット超過（429 Too Many Requests）。
      *

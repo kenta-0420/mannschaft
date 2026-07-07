@@ -97,6 +97,10 @@ class ReservationServiceTest {
     private final com.mannschaft.app.reservation.service.ReservationUnavailabilityChecker unavailabilityChecker =
             new com.mannschaft.app.reservation.service.ReservationUnavailabilityChecker();
 
+    /** F03.4.3: 一覧のグループ要約一括解決（本テストの対象外のため mock。既定は空 Map）。 */
+    @Mock
+    private com.mannschaft.app.reservation.service.ReservationGroupSummaryResolver groupSummaryResolver;
+
     private ReservationService service;
 
     // ========================================
@@ -130,7 +134,8 @@ class ReservationServiceTest {
         service = new ReservationService(
                 reservationRepository, slotRepository, lineRepository, slotService, reservationMapper,
                 nameResolverService, eventPublisher, accessControlService, viewAccessGuard,
-                reservationPolicyService, blockedTimeRepository, unavailabilityChecker, FIXED_CLOCK);
+                reservationPolicyService, blockedTimeRepository, unavailabilityChecker,
+                groupSummaryResolver, FIXED_CLOCK);
 
         given(slotRepository.findById(any())).willReturn(Optional.empty());
         given(lineRepository.findById(any())).willReturn(Optional.empty());
@@ -141,6 +146,8 @@ class ReservationServiceTest {
         given(nameResolverService.resolveUserFullNames(org.mockito.ArgumentMatchers.anyCollection()))
                 .willReturn(java.util.Map.of(USER_ID, "山田 太郎"));
         given(nameResolverService.resolveUserFullName(any(Long.class))).willReturn("山田 太郎");
+        // F03.4.3: 一覧のグループ要約は本テストの対象外（既定は空 Map = 単枠のみ）。
+        given(groupSummaryResolver.resolve(anyList())).willReturn(java.util.Map.of());
         // 予約認可ゲートの既定スタブ: view ガードは既定で通過（何もしない mock）＝予約可。
         // 認可固有のテストでは各 @Test 内で assertCanView を throw に上書きする。
         // 承認モード解決の既定スタブ: MANUAL（＝PENDING 維持・自動確定しない）。
@@ -164,7 +171,8 @@ class ReservationServiceTest {
         service = new ReservationService(
                 reservationRepository, slotRepository, lineRepository, slotService, reservationMapper,
                 nameResolverService, eventPublisher, accessControlService, viewAccessGuard,
-                reservationPolicyService, blockedTimeRepository, unavailabilityChecker, fixed);
+                reservationPolicyService, blockedTimeRepository, unavailabilityChecker,
+                groupSummaryResolver, fixed);
     }
 
     private ReservationEntity createReservationEntity() {

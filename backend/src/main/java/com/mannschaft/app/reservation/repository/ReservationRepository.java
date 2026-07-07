@@ -12,8 +12,10 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * 予約リポジトリ。
@@ -46,6 +48,25 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
      * IDとチームIDで予約を取得する。
      */
     Optional<ReservationEntity> findByIdAndTeamId(Long id, Long teamId);
+
+    // ===== F03.4.3 機能G: 予約グループ（案(b) 兄弟行方式）=====
+
+    /**
+     * グループの兄弟行をチームスコープで取得する（F03.4.3 §5.1。
+     * 他チームの groupId は空 → 404 = RESERVATION_040 で存在秘匿）。
+     */
+    List<ReservationEntity> findByGroupIdAndTeamIdOrderById(UUID groupId, Long teamId);
+
+    /**
+     * 複数グループの「枠数・末尾枠終了時刻」を 1 クエリで集約する
+     * （一覧の {@code GroupSummaryDto} 一括解決・N+1 回避・F03.4.3 §5.6 #10）。
+     *
+     * @return {@code [groupId(UUID), count(Long), maxEndTime(LocalTime)]} の配列リスト
+     */
+    @Query("SELECT r.groupId, COUNT(r), MAX(s.endTime) FROM ReservationEntity r, ReservationSlotEntity s "
+            + "WHERE r.reservationSlotId = s.id AND r.groupId IN :groupIds "
+            + "GROUP BY r.groupId")
+    List<Object[]> aggregateGroupSummaries(@Param("groupIds") Collection<UUID> groupIds);
 
     /**
      * IDとユーザーIDで予約を取得する。

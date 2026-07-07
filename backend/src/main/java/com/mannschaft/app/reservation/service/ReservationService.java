@@ -73,6 +73,8 @@ public class ReservationService {
     private final ReservationBlockedTimeRepository blockedTimeRepository;
     /** 機能B: 予約不可枠の overlap 判定を共有する単一ユーティリティ（§5.B）。 */
     private final ReservationUnavailabilityChecker unavailabilityChecker;
+    /** F03.4.3: 一覧のグループ要約（GroupSummaryDto）を一括解決するコンポーネント（§5.6 #10）。 */
+    private final ReservationGroupSummaryResolver groupSummaryResolver;
     private final Clock clock;
 
     /**

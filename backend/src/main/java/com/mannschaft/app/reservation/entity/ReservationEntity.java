@@ -40,6 +40,36 @@ public class ReservationEntity extends BaseEntity {
     @Column(nullable = false)
     private Long userId;
 
+    /**
+     * 予約グループID（F03.4.3 機能G・案(b) 兄弟行方式）。
+     *
+     * <p><b>NULL = 単枠予約 = 既存互換</b>。アプリ層で UUIDv7 を採番する論理グループで、
+     * 専用親テーブルは持たない（§3.1/§3.2）。同一 group_id の兄弟行は
+     * {@code team_id}/{@code user_id}/{@code line_id}/{@code menu_id}/{@code status} が全行同値。</p>
+     */
+    @Column(name = "group_id")
+    private java.util.UUID groupId;
+
+    /**
+     * 選択メニューID（F03.4.3・FK → reservation_menus ON DELETE RESTRICT）。
+     *
+     * <p>NULL = メニュー未使用（単枠・自由グループ）。メニュー名の履歴解決（G-14）は
+     * {@code findByIdIncludingDeleted} 経由で削除済みメニューからも行う。</p>
+     */
+    @Column(name = "menu_id")
+    private java.util.UUID menuId;
+
+    /**
+     * グループ代表行フラグ（F03.4.3 §3.2）。
+     *
+     * <p>単枠予約（group_id NULL）は常に TRUE。グループでは先頭枠（最小 slot_date + start_time）の
+     * 行のみ TRUE（不変条件: 同一グループにちょうど 1 行）。一覧・統計の重複計上防止（§5.6）と
+     * イベント一本化（§5.5）の基準になる。</p>
+     */
+    @Column(name = "is_group_primary", nullable = false)
+    @Builder.Default
+    private Boolean isGroupPrimary = true;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default

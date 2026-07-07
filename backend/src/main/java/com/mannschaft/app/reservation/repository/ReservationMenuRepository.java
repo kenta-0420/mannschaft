@@ -55,4 +55,11 @@ public interface ReservationMenuRepository extends JpaRepository<ReservationMenu
      */
     @Query(value = "SELECT * FROM reservation_menus WHERE id = :id", nativeQuery = true)
     Optional<ReservationMenuEntity> findByIdIncludingDeleted(@Param("id") UUID id);
+
+    /**
+     * 論理削除済みを含めて ID 群で一括解決する（{@code @SQLRestriction} 迂回のネイティブクエリ・
+     * F03.4.3 一覧の {@code GroupSummaryDto.menuName} 一括解決・N+1 回避・G-14）。
+     */
+    @Query(value = "SELECT * FROM reservation_menus WHERE id IN (:ids)", nativeQuery = true)
+    List<ReservationMenuEntity> findAllByIdIncludingDeleted(@Param("ids") java.util.Collection<UUID> ids);
 }
