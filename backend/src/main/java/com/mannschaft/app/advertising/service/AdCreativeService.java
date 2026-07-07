@@ -38,6 +38,10 @@ public class AdCreativeService {
                 .title(request.title())
                 .imageUrl(request.imageUrl())
                 .destinationUrl(request.destinationUrl())
+                .placement(request.placement())
+                .width(request.width())
+                .height(request.height())
+                .altText(request.altText())
                 .build();
         AdEntity saved = adEntityRepository.save(entity);
         return toResponse(saved);
@@ -57,7 +61,8 @@ public class AdCreativeService {
         if (entity.getStatus() == AdEntity.AdStatus.ENDED) {
             throw new BusinessException(AdvertisingErrorCode.AD_025);
         }
-        entity.updateCreative(request.title(), request.imageUrl(), request.destinationUrl());
+        entity.updateCreative(request.title(), request.imageUrl(), request.destinationUrl(),
+                request.placement(), request.width(), request.height(), request.altText());
         return toResponse(entity);
     }
 

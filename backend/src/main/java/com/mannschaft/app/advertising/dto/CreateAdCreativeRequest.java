@@ -1,6 +1,7 @@
 package com.mannschaft.app.advertising.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.hibernate.validator.constraints.URL;
 
@@ -25,6 +26,7 @@ public record CreateAdCreativeRequest(
         // ─── F09.19.1 拡張（骨格）。placement は必須（欠落 400）— バリデーションは出陣で付与 ───
 
         /** 掲載面。必須（F09.19 §5.2 V144.001）。 */
+        @NotNull
         com.mannschaft.app.advertising.AdPlacement placement,
 
         /** バナー幅 px（任意）。 */

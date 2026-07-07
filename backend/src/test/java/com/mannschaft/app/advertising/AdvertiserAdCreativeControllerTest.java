@@ -4,6 +4,8 @@ import com.mannschaft.app.advertising.controller.AdvertiserAdCreativeController;
 import com.mannschaft.app.advertising.dto.AdCreativeResponse;
 import com.mannschaft.app.advertising.dto.CreateAdCreativeRequest;
 import com.mannschaft.app.advertising.dto.UpdateAdCreativeRequest;
+import com.mannschaft.app.advertising.entity.AdCampaignEntity;
+import com.mannschaft.app.advertising.repository.AdCampaignRepository;
 import com.mannschaft.app.advertising.service.AdCreativeService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
@@ -19,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
@@ -37,6 +40,9 @@ class AdvertiserAdCreativeControllerTest {
     @Mock
     private AccessControlService accessControlService;
 
+    @Mock
+    private AdCampaignRepository adCampaignRepository;
+
     @InjectMocks
     private AdvertiserAdCreativeController controller;
 
@@ -44,6 +50,14 @@ class AdvertiserAdCreativeControllerTest {
     private static final Long ORG_ID = 100L;
     private static final Long CAMPAIGN_ID = 10L;
     private static final Long AD_ID = 1L;
+
+    /** F09.19.1 帰属検証（IDOR 対策）用: campaignId が当該組織に帰属する状態をスタブする。 */
+    private void stubCampaignBelongsToOrg() {
+        AdCampaignEntity campaign = AdCampaignEntity.builder()
+                .advertiserOrganizationId(ORG_ID)
+                .build();
+        given(adCampaignRepository.findById(CAMPAIGN_ID)).willReturn(Optional.of(campaign));
+    }
 
     private AdCreativeResponse buildResponse(Long adId, String status) {
         return new AdCreativeResponse(
@@ -69,6 +83,7 @@ class AdvertiserAdCreativeControllerTest {
             try (MockedStatic<SecurityUtils> utils = mockStatic(SecurityUtils.class)) {
                 utils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
                 doNothing().when(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+                stubCampaignBelongsToOrg();
                 given(adCreativeService.create(CAMPAIGN_ID, req)).willReturn(response);
 
                 // When
@@ -96,6 +111,7 @@ class AdvertiserAdCreativeControllerTest {
             try (MockedStatic<SecurityUtils> utils = mockStatic(SecurityUtils.class)) {
                 utils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
                 doNothing().when(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+                stubCampaignBelongsToOrg();
                 given(adCreativeService.findByCampaignId(CAMPAIGN_ID)).willReturn(responses);
 
                 // When
@@ -126,6 +142,7 @@ class AdvertiserAdCreativeControllerTest {
             try (MockedStatic<SecurityUtils> utils = mockStatic(SecurityUtils.class)) {
                 utils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
                 doNothing().when(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+                stubCampaignBelongsToOrg();
                 given(adCreativeService.update(AD_ID, CAMPAIGN_ID, req)).willReturn(response);
 
                 // When
@@ -148,6 +165,7 @@ class AdvertiserAdCreativeControllerTest {
             try (MockedStatic<SecurityUtils> utils = mockStatic(SecurityUtils.class)) {
                 utils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
                 doNothing().when(accessControlService).checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+                stubCampaignBelongsToOrg();
                 doNothing().when(adCreativeService).delete(AD_ID, CAMPAIGN_ID);
 
                 // When

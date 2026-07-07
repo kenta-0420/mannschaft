@@ -9,8 +9,6 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.experimental.SuperBuilder;
-import lombok.Builder;
-import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -64,8 +62,11 @@ public class AdEntity extends BaseEntity {
 
     /**
      * クリエイティブ情報を更新する。null の場合は現在の値を保持する。
+     * placement / width / height / altText も null なら変更なし（F09.19.1 §5.2）。
      */
-    public void updateCreative(String title, String imageUrl, String destinationUrl) {
+    public void updateCreative(String title, String imageUrl, String destinationUrl,
+                               com.mannschaft.app.advertising.AdPlacement placement,
+                               Integer width, Integer height, String altText) {
         if (title != null) {
             this.title = title;
         }
@@ -74,6 +75,18 @@ public class AdEntity extends BaseEntity {
         }
         if (destinationUrl != null) {
             this.destinationUrl = destinationUrl;
+        }
+        if (placement != null) {
+            this.placement = placement;
+        }
+        if (width != null) {
+            this.width = width;
+        }
+        if (height != null) {
+            this.height = height;
+        }
+        if (altText != null) {
+            this.altText = altText;
         }
     }
 
