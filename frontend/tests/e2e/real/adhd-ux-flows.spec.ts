@@ -58,11 +58,14 @@ async function setupApiBridge(page: Page): Promise<void> {
     }
 
     try {
-      const body = req.postDataBuffer()
+      // postData() は文字列を返す（JSON ボディ等に使用）
+      // バイナリの場合は postDataBuffer() を使うが、fetch の型定義の制約で
+      // Buffer を直接渡せないため文字列（postData）を使う
+      const bodyText = req.postData()
       const fetchRes = await fetch(url, {
         method,
         headers,
-        body: body ?? null,
+        body: bodyText ?? undefined,
       })
       const resBody = await fetchRes.arrayBuffer()
       const resHeaders: Record<string, string> = {}
