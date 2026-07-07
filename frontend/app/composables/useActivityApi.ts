@@ -6,6 +6,21 @@ import type {
   CreateActivityRequestBody,
 } from '~/types/activity'
 
+/**
+ * DRAFT 作成リクエストボディ（最小: タイトル + 活動日のみ必須）。
+ * BE {@code CreateDraftActivityRequest} に対応。テンプレ・カスタムフィールドは後付け可。
+ */
+export interface CreateDraftActivityRequestBody {
+  title: string
+  activityDate: string
+  templateId?: number
+  description?: string
+  activityTimeStart?: string
+  activityTimeEnd?: string
+  visibility?: string
+  fieldValues?: Record<string, Record<string, never>>
+}
+
 export function useActivityApi() {
   const api = useApi()
 
@@ -52,6 +67,36 @@ export function useActivityApi() {
     return api<{ data: ActivityRecordResponse }>(`/api/v1/activities/${id}`, {
       method: 'PUT',
       body,
+    })
+  }
+
+  /**
+   * 活動記録を DRAFT として作成する（タイトル + 活動日のみで最小保存）。
+   *
+   * BE {@code POST /api/v1/activities/draft?scope_type=...&scope_id=...} に対応。
+   * scope_type / scope_id はクエリパラメータ、body は {@code CreateDraftActivityRequest}。
+   * テンプレ・カスタムフィールドは後付けで更新できる。
+   */
+  async function createDraftActivity(
+    scopeType: 'TEAM' | 'ORGANIZATION',
+    scopeId: number,
+    body: CreateDraftActivityRequestBody,
+  ) {
+    const qs = buildQuery({ scope_type: scopeType, scope_id: scopeId })
+    return api<{ data: ActivityRecordResponse }>(`/api/v1/activities/draft?${qs}`, {
+      method: 'POST',
+      body,
+    })
+  }
+
+  /**
+   * DRAFT 状態の活動記録を公開する。
+   *
+   * BE {@code POST /api/v1/activities/{id}/publish} に対応。リクエストボディは不要。
+   */
+  async function publishActivity(id: number) {
+    return api<{ data: ActivityRecordResponse }>(`/api/v1/activities/${id}/publish`, {
+      method: 'POST',
     })
   }
 
@@ -182,6 +227,8 @@ export function useActivityApi() {
     getActivities,
     getActivity,
     createActivity,
+    createDraftActivity,
+    publishActivity,
     updateActivity,
     deleteActivity,
     getTemplates,

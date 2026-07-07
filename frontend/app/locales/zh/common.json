@@ -1635,7 +1635,25 @@
       "saveError": "添加活动记录失败",
       "submit": "添加",
       "scopeResolveError": "无法确定目标",
-      "templatesLoadError": "获取模板失败"
+      "templatesLoadError": "获取模板失败",
+      "draftHint": "只需填写标题和活动日期即可保存草稿。模板和自定义字段可以之后添加。",
+      "saveDraft": "保存草稿",
+      "draftSaved": "草稿已保存",
+      "draftRestored": "已恢复上次输入",
+      "draftSuccess": "已保存为草稿"
+    },
+    "statusLabel": {
+      "DRAFT": "草稿",
+      "PUBLISHED": "已发布"
+    },
+    "list": {
+      "filterAll": "全部",
+      "filterDraft": "草稿",
+      "editDraft": "编辑并发布"
+    },
+    "publish": {
+      "success": "活动记录已发布",
+      "error": "发布失败"
     },
     "guide": {
       "title": "活动记录使用指南",

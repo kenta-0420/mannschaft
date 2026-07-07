@@ -107,8 +107,37 @@ function emptyForm(): MeetupFormState {
 const showCreateDialog = ref(false)
 const createForm = ref<MeetupFormState>(emptyForm())
 
+// === useFormDraft（ADHD配慮・寄合作成の自動保存）===
+const authStore = useAuthStore()
+const meetupDraftKey = computed(
+  () => `meetup-create-draft-${authStore.currentUser?.id ?? 'guest'}-${villageId.value}`,
+)
+const meetupFormSnapshot = computed<MeetupFormState>(() => ({
+  title: createForm.value.title,
+  description: createForm.value.description,
+  venue: createForm.value.venue,
+  // candidateDates は配列なのでシャローコピー
+  candidateDates: [...createForm.value.candidateDates.map(d => ({ ...d }))],
+}))
+const { clear: clearMeetupDraft, restore: restoreMeetupDraft } = useFormDraft<MeetupFormState>(
+  meetupDraftKey.value,
+  { source: meetupFormSnapshot, debounceMs: 1000 },
+)
+
 function openCreateDialog() {
   createForm.value = emptyForm()
+  // 下書き復元
+  const saved = restoreMeetupDraft()
+  if (saved) {
+    createForm.value = {
+      title: saved.title ?? '',
+      description: saved.description ?? '',
+      venue: saved.venue ?? '',
+      candidateDates: saved.candidateDates?.length
+        ? saved.candidateDates
+        : emptyForm().candidateDates,
+    }
+  }
   showCreateDialog.value = true
 }
 
@@ -140,6 +169,7 @@ async function submitCreate() {
   }
   try {
     await villageApi.createMeetup(villageId.value, body)
+    clearMeetupDraft()
     showCreateDialog.value = false
     success(t('village.meetup.saveSuccess'))
     await loadMeetups()

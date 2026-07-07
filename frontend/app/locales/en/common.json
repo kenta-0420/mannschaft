@@ -1635,7 +1635,25 @@
       "saveError": "Failed to add activity record",
       "submit": "Add",
       "scopeResolveError": "Failed to identify the target",
-      "templatesLoadError": "Failed to load templates"
+      "templatesLoadError": "Failed to load templates",
+      "draftHint": "You can save a draft with just a title and activity date. Templates and custom fields can be added later.",
+      "saveDraft": "Save Draft",
+      "draftSaved": "Draft saved",
+      "draftRestored": "Previous input restored",
+      "draftSuccess": "Saved as draft"
+    },
+    "statusLabel": {
+      "DRAFT": "Draft",
+      "PUBLISHED": "Published"
+    },
+    "list": {
+      "filterAll": "All",
+      "filterDraft": "Draft",
+      "editDraft": "Edit & Publish"
+    },
+    "publish": {
+      "success": "Activity record published",
+      "error": "Failed to publish"
     },
     "guide": {
       "title": "How to Use Activity Records",

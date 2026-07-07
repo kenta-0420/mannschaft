@@ -1635,7 +1635,25 @@
       "saveError": "Fehler beim Hinzufügen des Aktivitätsprotokolls",
       "submit": "Hinzufügen",
       "scopeResolveError": "Ziel konnte nicht ermittelt werden",
-      "templatesLoadError": "Fehler beim Laden der Vorlagen"
+      "templatesLoadError": "Fehler beim Laden der Vorlagen",
+      "draftHint": "Du kannst einen Entwurf nur mit einem Titel und Aktivitätsdatum speichern. Vorlagen und benutzerdefinierte Felder können später hinzugefügt werden.",
+      "saveDraft": "Entwurf speichern",
+      "draftSaved": "Entwurf gespeichert",
+      "draftRestored": "Vorherige Eingabe wiederhergestellt",
+      "draftSuccess": "Als Entwurf gespeichert"
+    },
+    "statusLabel": {
+      "DRAFT": "Entwurf",
+      "PUBLISHED": "Veröffentlicht"
+    },
+    "list": {
+      "filterAll": "Alle",
+      "filterDraft": "Entwurf",
+      "editDraft": "Bearbeiten und veröffentlichen"
+    },
+    "publish": {
+      "success": "Aktivitätsprotokoll veröffentlicht",
+      "error": "Fehler beim Veröffentlichen"
     },
     "guide": {
       "title": "So verwendest du Aktivitätsprotokolle",

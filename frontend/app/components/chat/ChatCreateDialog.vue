@@ -37,6 +37,34 @@ const description = ref('')
 const isPrivate = ref(false)
 const submitting = ref(false)
 
+// === useFormDraft（ADHD配慮・Zimmer作成フォームの自動保存）===
+// teamId / organizationId が変わるとキーも変わるのでフォームスコープ分離される
+const zimmerDraftKey = computed(() => {
+  const scope = props.teamId
+    ? `team-${props.teamId}`
+    : props.organizationId
+      ? `org-${props.organizationId}`
+      : 'global'
+  return `zimmer-create-draft-${authStore.currentUser?.id ?? 'guest'}-${scope}`
+})
+
+interface ZimmerDraftShape {
+  name: string
+  description: string
+  isPrivate: boolean
+}
+
+const zimmerFormSnapshot = computed<ZimmerDraftShape>(() => ({
+  name: name.value,
+  description: description.value,
+  isPrivate: isPrivate.value,
+}))
+
+const { clear: clearZimmerDraft, restore: restoreZimmerDraft } = useFormDraft<ZimmerDraftShape>(
+  zimmerDraftKey.value,
+  { source: zimmerFormSnapshot, debounceMs: 1000, autoRestore: false },
+)
+
 const chatTypeLabel = computed(() =>
   contact.selected.value.length <= 1 ? 'Kabine(DM)' : 'Zimmer(部屋)',
 )
@@ -118,6 +146,7 @@ async function onSubmitZimmer() {
       isPrivate: isPrivate.value,
       memberIds: zimmer.selected.value.map((m) => m.userId),
     })
+    clearZimmerDraft()
     notification.success('Zimmer(部屋)を作成しました')
     visible.value = false
     name.value = ''
@@ -140,6 +169,13 @@ watch(visible, (v) => {
     activeTab.value = 0
     contact.reset()
     zimmer.reset()
+    // Zimmer下書き復元
+    const saved = restoreZimmerDraft()
+    if (saved) {
+      name.value = saved.name ?? ''
+      description.value = saved.description ?? ''
+      isPrivate.value = saved.isPrivate ?? false
+    }
   }
 })
 </script>
