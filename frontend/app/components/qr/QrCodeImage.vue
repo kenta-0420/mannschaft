@@ -86,6 +86,87 @@ watch(
 )
 
 /**
+ * SVG 文字列から一辺の長さ（ユーザー単位）を取得する。
+ * qrcode ライブラリの SVG は `viewBox="0 0 W W"` 形式（W=モジュール数+2×margin）。
+ * viewBox が取得できない場合は width/height 属性にフォールバックする。
+ * いずれも取得できなければ null（呼び出し側でバッジ注入を断念しフォールバックする）。
+ */
+function extractSvgUnitSize(svg: string): number | null {
+  const patterns = [
+    /viewBox="0\s+0\s+([\d.]+)\s+[\d.]+"/,
+    /\swidth="([\d.]+)"/,
+    /\sheight="([\d.]+)"/,
+  ]
+  for (const pattern of patterns) {
+    const raw = svg.match(pattern)?.[1]
+    if (raw === undefined) continue
+    const n = Number.parseFloat(raw)
+    if (!Number.isNaN(n) && n > 0) return n
+  }
+  return null
+}
+
+/** SVG テキストノードに埋め込む前に XML 特殊文字をエスケープする。 */
+function escapeXmlText(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+/**
+ * エクスポート（ダウンロード等）用に、画面表示の中央ブランドバッジ（HTMLオーバーレイ）と
+ * 同等の見た目を SVG ネイティブの `<rect>`＋`<text>` として rawSvg に埋め込んで返す。
+ *
+ * <p>画面表示側（テンプレートの `.qr-code-image__badge` span オーバーレイ）は本関数と
+ * 完全に独立しており、一切変更しない。本関数はエクスポート専用の別経路。</p>
+ *
+ * <p>座標はすべて SVG の viewBox ユーザー単位で計算し、画面表示の badgeStyle の
+ * 比率（fontSize=size*0.052 等）に合わせている。</p>
+ */
+function buildBadgedSvg(rawSvg: string): string {
+  if (!rawSvg || !props.centerLabel) return rawSvg
+
+  const w = extractSvgUnitSize(rawSvg)
+  if (w === null) {
+    console.warn('[qr/QrCodeImage] SVG の viewBox/width が取得できないため、エクスポート用バッジ埋め込みを断念しました（QR本体はそのまま出力します）')
+    return rawSvg
+  }
+
+  const fontSize = w * 0.052
+  const padX = w * 0.05
+  const padY = w * 0.04
+  const textW = fontSize * 0.6 * props.centerLabel.length
+  const badgeW = Math.min(textW + padX * 2, w * 0.46)
+  const badgeH = fontSize + padY * 2
+  const cx = w / 2
+  const cy = w / 2 + badgeH * 0.1
+  const rx = w * 0.05
+  const strokeW = Math.max(w * 0.009, w / 160)
+  const rectX = cx - badgeW / 2
+  const rectY = cy - badgeH / 2
+  // テキストが badgeW をはみ出さないよう textLength で安全に収める（安全マージン込み）。
+  const safeTextLength = Math.max(Math.min(textW, badgeW - padX * 1.2), 0)
+
+  const round = (n: number): string => (Math.round(n * 1000) / 1000).toString()
+
+  const badgeMarkup = [
+    `<rect x="${round(rectX)}" y="${round(rectY)}" width="${round(badgeW)}" height="${round(badgeH)}" `
+    + `rx="${round(rx)}" ry="${round(rx)}" fill="#ffffff" stroke="${props.frameColor}" stroke-width="${round(strokeW)}"/>`,
+    `<text x="${round(cx)}" y="${round(cy)}" fill="${props.frameColor}" font-family="sans-serif" font-weight="700" `
+    + `font-size="${round(fontSize)}" text-anchor="middle" dominant-baseline="central" `
+    + `textLength="${round(safeTextLength)}" lengthAdjust="spacingAndGlyphs">${escapeXmlText(props.centerLabel)}</text>`,
+  ].join('')
+
+  const closeTagIndex = rawSvg.lastIndexOf('</svg>')
+  if (closeTagIndex === -1) {
+    console.warn('[qr/QrCodeImage] </svg> が見つからないため、エクスポート用バッジ埋め込みを断念しました（QR本体はそのまま出力します）')
+    return rawSvg
+  }
+  return rawSvg.slice(0, closeTagIndex) + badgeMarkup + rawSvg.slice(closeTagIndex)
+}
+
+/**
  * 中央ブランドバッジの寸法を size に比例させるインラインスタイル。
  * scoped CSS で固定 px にすると小さい QR で比率が崩れるため、
  * フォント・パディング・縁取り幅・角丸・白ハローをすべて size 連動にする。
@@ -107,11 +188,13 @@ const badgeStyle = computed(() => {
 
 /**
  * 親コンポーネントが現在描画中の QR SVG マークアップを取得できるよう公開する。
- * 用途: SVG ダウンロード等（バッジ span は含まない純粋な QR モジュール SVG）。
- * 未描画時は空文字を返す。
+ * 用途: SVG ダウンロード等。画面表示の中央バッジは HTML オーバーレイのため生の
+ * qrSvg には含まれないが、ここでは {@link buildBadgedSvg} により
+ * バッジ相当の `<rect>`＋`<text>` を埋め込んだ SVG を返す（centerLabel が空文字の場合は
+ * 埋め込まず生 SVG のまま返す）。未描画時は空文字を返す。
  */
 defineExpose({
-  getSvg: (): string => qrSvg.value,
+  getSvg: (): string => buildBadgedSvg(qrSvg.value),
 })
 </script>
 
