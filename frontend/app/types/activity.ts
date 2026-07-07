@@ -12,6 +12,8 @@ export interface ActivityRecordResponse {
   participantCount: number
   customFields: Array<{ fieldId: number; fieldName: string; fieldType: string; value: string | null }>
   isPublic: boolean
+  /** 活動記録のステータス。BE 追加（隊乙 #2143）で DRAFT / PUBLISHED の2値 */
+  status?: 'DRAFT' | 'PUBLISHED'
   createdBy: { id: number; displayName: string } | null
   createdAt: string
   updatedAt: string

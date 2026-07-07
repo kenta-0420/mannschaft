@@ -1,13 +1,19 @@
 <script setup lang="ts">
-// 活動記録 作成ダイアログ（「記録を追加」フロー）
-// - テンプレ必須: テンプレ未作成なら入力フォームを出さず作成導線を案内する
-// - 選択テンプレの fields[] を fieldType 別に動的描画（値は fieldKey をキーに保持）
-// - 送信: scope_type/scope_id はクエリ・body は CreateActivityRequest（useActivityApi.createActivity）
+// 活動記録 作成ダイアログ（ADHD配慮・二段フロー対応）
+//
+// 二段フロー: タイトル + 活動日のみで DRAFT 作成 → 詳細画面で詳細記入 → 公開
+// BE CreateDraftActivityRequest は title + activityDate のみで最小保存が可能。
+// テンプレ・カスタムフィールドは後付けで更新できる。
+// useFormDraft で入力途中を localStorage に自動保存し、ダイアログを閉じても復元する。
+//
+// 従来の全項目一括保存フロー（テンプレ+フィールド+即PUBLISHED）も維持する。
+// フッターに「下書き保存」「追加」の2ボタンを設ける。
 import type {
   ActivityTemplate,
   ActivityTemplateField,
   CreateActivityRequestBody,
 } from '~/types/activity'
+import type { CreateDraftActivityRequestBody } from '~/composables/useActivityApi'
 import {
   buildActivityFieldValues,
   canSubmitActivity,
@@ -28,9 +34,10 @@ const visible = defineModel<boolean>('visible', { required: true })
 const emit = defineEmits<{ created: [] }>()
 
 const { t } = useI18n()
-const { getTemplates, createActivity } = useActivityApi()
+const { getTemplates, createActivity, createDraftActivity } = useActivityApi()
 const { resolveScopeId } = useActivityScopeId()
 const { success: showSuccess, error: showError } = useNotification()
+const authStore = useAuthStore()
 
 // === 状態 ===
 const loadingTemplates = ref(false)
@@ -77,6 +84,41 @@ const canSubmit = computed(() =>
   }),
 )
 
+/** タイトル + 活動日のみで DRAFT 作成可能かどうか */
+const canSaveDraft = computed(() => title.value.trim().length > 0 && activityDate.value !== null)
+
+// === useFormDraft（ADHD配慮・自動保存）===
+// キーにuserId・scopeType・scopeIdを含めてスコープ間の衝突を防ぐ
+const draftKey = computed(
+  () =>
+    `activity-create-draft-${authStore.currentUser?.id ?? 'guest'}-${props.scopeType}-${props.scopeId}`,
+)
+
+interface ActivityDraftShape {
+  title: string
+  activityDate: string | null
+  description: string
+  visibility: 'PUBLIC' | 'MEMBERS_ONLY'
+  selectedTemplateId: number | null
+}
+
+// source にフォーム全体の computed を渡して自動保存
+const formSnapshot = computed<ActivityDraftShape>(() => ({
+  title: title.value,
+  activityDate: activityDate.value ? activityDate.value.toISOString() : null,
+  description: description.value,
+  visibility: visibility.value,
+  selectedTemplateId: selectedTemplateId.value,
+}))
+
+const { clear: clearDraft, restore: restoreDraft, savedFlash } = useFormDraft<ActivityDraftShape>(
+  draftKey.value,
+  { source: formSnapshot, debounceMs: 1000, flashMs: 2000 },
+)
+
+// 復元済みフラッシュ（ダイアログを開いた直後に1回だけ復元トースト表示）
+const restoredFlash = ref(false)
+
 // === open 時のロード ===
 async function loadTemplates() {
   loadingTemplates.value = true
@@ -119,13 +161,51 @@ function resetForm() {
 }
 
 watch(visible, (val) => {
-  if (val) {
-    resetForm()
-    loadTemplates()
+  if (!val) return
+  resetForm()
+  loadTemplates()
+  // ダイアログが開くたびに下書き復元を試みる
+  const saved = restoreDraft()
+  if (saved) {
+    title.value = saved.title ?? ''
+    activityDate.value = saved.activityDate ? new Date(saved.activityDate) : null
+    description.value = saved.description ?? ''
+    visibility.value = saved.visibility ?? 'MEMBERS_ONLY'
+    // savedのselectedTemplateIdはテンプレートロード完了後に適用
+    // （loadTemplatesが非同期なため、ロード完了watchで適用する）
+    restoredFlash.value = true
+    setTimeout(() => {
+      restoredFlash.value = false
+    }, 3000)
   }
 })
 
-// === 送信 ===
+// === 下書き保存（DRAFT作成）===
+async function saveDraft() {
+  if (!canSaveDraft.value || resolvedScopeId.value === null) return
+  submitting.value = true
+  try {
+    const body: CreateDraftActivityRequestBody = {
+      title: title.value.trim(),
+      activityDate: toYmd(activityDate.value!),
+      templateId: selectedTemplateId.value ?? undefined,
+      description: description.value.trim() || undefined,
+      visibility: visibility.value,
+    }
+    await createDraftActivity(props.scopeType, resolvedScopeId.value, body)
+    clearDraft()
+    showSuccess(t('activity.create.draftSuccess'))
+    visible.value = false
+    await nextTick()
+    emit('created')
+  } catch {
+    showError(t('activity.create.saveError'))
+  } finally {
+    submitting.value = false
+  }
+}
+
+// === 送信（全項目入力後・即PUBLISHED作成）===
 async function submit() {
   if (!canSubmit.value || resolvedScopeId.value === null || selectedTemplateId.value === null) return
   submitting.value = true
@@ -140,6 +220,7 @@ async function submit() {
       fieldValues: buildActivityFieldValues(templateFields.value, fieldInputs.value),
     }
     await createActivity(props.scopeType, resolvedScopeId.value, body)
+    clearDraft()
     success = true
   } catch {
     // 失敗時はダイアログを維持し入力を保持する（症状を握りつぶさず明示）
@@ -192,10 +273,36 @@ async function submit() {
 
       <!-- 入力フォーム -->
       <template v-else>
+        <!-- 復元フラッシュ -->
+        <div
+          v-if="restoredFlash"
+          class="flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700 dark:bg-blue-900/30 dark:text-blue-200"
+          data-testid="activity-draft-restored-flash"
+        >
+          <i class="pi pi-history" />
+          {{ t('activity.create.draftRestored') }}
+        </div>
+
+        <!-- 下書き保存済みフラッシュ -->
+        <div
+          v-if="savedFlash"
+          class="flex items-center gap-2 rounded-lg bg-surface-50 px-3 py-2 text-xs text-surface-500 dark:bg-surface-800 dark:text-surface-400"
+          data-testid="activity-draft-saved-flash"
+        >
+          <i class="pi pi-save" />
+          {{ t('activity.create.draftSaved') }}
+        </div>
+
+        <!-- ADHD配慮ヒント: タイトル+日付だけで保存できる旨を案内 -->
+        <div class="flex items-start gap-2 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-600 dark:bg-blue-900/20 dark:text-blue-300">
+          <i class="pi pi-lightbulb mt-0.5 shrink-0" />
+          <span>{{ t('activity.create.draftHint') }}</span>
+        </div>
+
         <!-- テンプレ選択 -->
         <div>
           <label class="mb-1 block text-sm font-medium">
-            {{ t('activity.create.templateLabel') }} <span class="text-red-500">*</span>
+            {{ t('activity.create.templateLabel') }}
           </label>
           <Select
             v-model="selectedTemplateId"
@@ -208,35 +315,35 @@ async function submit() {
           />
         </div>
 
+        <!-- タイトル -->
+        <div>
+          <label class="mb-1 block text-sm font-medium">
+            {{ t('activity.create.titleLabel') }} <span class="text-red-500">*</span>
+          </label>
+          <InputText
+            v-model="title"
+            class="w-full"
+            maxlength="200"
+            :placeholder="t('activity.create.titlePlaceholder')"
+            data-testid="activity-title-input"
+          />
+        </div>
+
+        <!-- 活動日 -->
+        <div>
+          <label class="mb-1 block text-sm font-medium">
+            {{ t('activity.create.dateLabel') }} <span class="text-red-500">*</span>
+          </label>
+          <DatePicker
+            v-model="activityDate"
+            class="w-full"
+            date-format="yy/mm/dd"
+            show-icon
+            data-testid="activity-date-input"
+          />
+        </div>
+
         <template v-if="selectedTemplate">
-          <!-- タイトル -->
-          <div>
-            <label class="mb-1 block text-sm font-medium">
-              {{ t('activity.create.titleLabel') }} <span class="text-red-500">*</span>
-            </label>
-            <InputText
-              v-model="title"
-              class="w-full"
-              maxlength="200"
-              :placeholder="t('activity.create.titlePlaceholder')"
-              data-testid="activity-title-input"
-            />
-          </div>
-
-          <!-- 活動日 -->
-          <div>
-            <label class="mb-1 block text-sm font-medium">
-              {{ t('activity.create.dateLabel') }} <span class="text-red-500">*</span>
-            </label>
-            <DatePicker
-              v-model="activityDate"
-              class="w-full"
-              date-format="yy/mm/dd"
-              show-icon
-              data-testid="activity-date-input"
-            />
-          </div>
-
           <!-- 公開範囲 -->
           <div>
             <label class="mb-1 block text-sm font-medium">{{ t('activity.create.visibilityLabel') }}</label>
@@ -320,7 +427,7 @@ async function submit() {
       </template>
     </div>
 
-    <template v-if="templates.length > 0 && !loadingTemplates" #footer>
+    <template v-if="!loadingTemplates && templates.length > 0" #footer>
       <Button
         :label="t('button.cancel')"
         text
@@ -328,6 +435,18 @@ async function submit() {
         :disabled="submitting"
         @click="visible = false"
       />
+      <!-- 下書き保存: タイトル + 活動日のみで可 -->
+      <Button
+        :label="t('activity.create.saveDraft')"
+        icon="pi pi-save"
+        severity="secondary"
+        outlined
+        :loading="submitting"
+        :disabled="!canSaveDraft"
+        data-testid="activity-save-draft"
+        @click="saveDraft"
+      />
+      <!-- 追加（全項目入力後・即PUBLISHED） -->
       <Button
         :label="t('activity.create.submit')"
         icon="pi pi-check"

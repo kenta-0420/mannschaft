@@ -19,6 +19,7 @@ const { handleApiError, getFieldErrors } = useErrorHandler()
 const { getPrefectures, getCities } = useMatchingApi()
 const { checkTeamSlugAvailable } = useTeamApi()
 const { checkOrganizationSlugAvailable } = useOrganizationApi()
+const authStore = useAuthStore()
 const submitting = ref(false)
 const fieldErrors = ref<Record<string, string>>({})
 
@@ -86,6 +87,58 @@ const form = ref({
 })
 
 const { t } = useI18n()
+
+// === useFormDraft（ADHD配慮・チーム/組織作成フォームの自動保存）===
+// entityTypeをキーに含めることでチーム・組織の下書きを分離する
+const entityDraftKey = computed(
+  () => `entity-create-draft-${authStore.currentUser?.id ?? 'guest'}-${props.entityType}`,
+)
+
+interface EntityDraftShape {
+  name: string
+  nameKana: string
+  nickname1: string
+  description: string
+  visibility: string
+  supporterEnabled: boolean
+  template: string
+  orgType: string
+}
+
+const entityFormSnapshot = computed<EntityDraftShape>(() => ({
+  name: form.value.name,
+  nameKana: form.value.nameKana,
+  nickname1: form.value.nickname1,
+  description: form.value.description,
+  visibility: form.value.visibility,
+  supporterEnabled: form.value.supporterEnabled,
+  template: form.value.template,
+  orgType: form.value.orgType,
+}))
+
+const { clear: clearEntityDraft, restore: restoreEntityDraft } = useFormDraft<EntityDraftShape>(
+  entityDraftKey.value,
+  { source: entityFormSnapshot, debounceMs: 1000, autoRestore: false },
+)
+
+// ダイアログが開いたときに下書きを復元する
+watch(
+  () => props.visible,
+  (nowVisible) => {
+    if (!nowVisible) return
+    const saved = restoreEntityDraft()
+    if (saved) {
+      form.value.name = saved.name ?? ''
+      form.value.nameKana = saved.nameKana ?? ''
+      form.value.nickname1 = saved.nickname1 ?? ''
+      form.value.description = saved.description ?? ''
+      form.value.visibility = saved.visibility ?? 'PUBLIC'
+      form.value.supporterEnabled = saved.supporterEnabled ?? false
+      form.value.template = saved.template ?? 'OTHER'
+      form.value.orgType = saved.orgType ?? 'OTHER'
+    }
+  },
+)
 
 // === slug（村方式: ユーザーが任意入力。空欄なら BE が名前から自動生成） ===
 const slug = ref('')
@@ -268,6 +321,7 @@ async function submit() {
       method: 'POST',
       body,
     })
+    clearEntityDraft()
     notification.success(`${isTeam.value ? 'チーム' : '組織'}を作成しました`)
     emit('created', response.data)
     emit('update:visible', false)

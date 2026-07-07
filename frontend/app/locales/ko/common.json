@@ -1639,7 +1639,25 @@
       "saveError": "활동 기록 추가에 실패했습니다",
       "submit": "추가",
       "scopeResolveError": "대상을 확인하지 못했습니다",
-      "templatesLoadError": "템플릿을 불러오지 못했습니다"
+      "templatesLoadError": "템플릿을 불러오지 못했습니다",
+      "draftHint": "제목과 활동 날짜만 입력해도 임시 저장할 수 있습니다. 템플릿과 커스텀 항목은 나중에 추가할 수 있습니다.",
+      "saveDraft": "임시 저장",
+      "draftSaved": "임시 저장되었습니다",
+      "draftRestored": "이전 입력 내용을 복원했습니다",
+      "draftSuccess": "임시 저장으로 저장했습니다"
+    },
+    "statusLabel": {
+      "DRAFT": "임시저장",
+      "PUBLISHED": "공개됨"
+    },
+    "list": {
+      "filterAll": "전체",
+      "filterDraft": "임시저장",
+      "editDraft": "편집하여 공개"
+    },
+    "publish": {
+      "success": "활동 기록을 공개했습니다",
+      "error": "공개에 실패했습니다"
     },
     "guide": {
       "title": "활동 기록 사용 방법",

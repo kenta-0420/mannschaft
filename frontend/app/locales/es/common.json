@@ -1639,7 +1639,25 @@
       "saveError": "Error al agregar el registro de actividad",
       "submit": "Agregar",
       "scopeResolveError": "No se pudo identificar el destino",
-      "templatesLoadError": "Error al cargar las plantillas"
+      "templatesLoadError": "Error al cargar las plantillas",
+      "draftHint": "Puedes guardar un borrador solo con un título y la fecha de actividad. Las plantillas y campos personalizados se pueden añadir después.",
+      "saveDraft": "Guardar borrador",
+      "draftSaved": "Borrador guardado",
+      "draftRestored": "Entrada anterior restaurada",
+      "draftSuccess": "Guardado como borrador"
+    },
+    "statusLabel": {
+      "DRAFT": "Borrador",
+      "PUBLISHED": "Publicado"
+    },
+    "list": {
+      "filterAll": "Todos",
+      "filterDraft": "Borrador",
+      "editDraft": "Editar y publicar"
+    },
+    "publish": {
+      "success": "Registro de actividad publicado",
+      "error": "Error al publicar"
     },
     "guide": {
       "title": "Cómo usar los registros de actividad",

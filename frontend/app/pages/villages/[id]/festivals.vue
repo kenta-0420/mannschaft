@@ -127,9 +127,25 @@ const showEditDialog = ref(false)
 const editForm = ref<FestivalFormState>(emptyForm())
 const editTargetId = ref<string | null>(null)
 
+// === useFormDraft（ADHD配慮・フェスティバル作成の自動保存）===
+const authStore = useAuthStore()
+const festivalDraftKey = computed(
+  () => `festival-create-draft-${authStore.currentUser?.id ?? 'guest'}-${villageId.value}`,
+)
+const festivalFormSnapshot = computed<FestivalFormState>(() => ({ ...createForm.value }))
+const { clear: clearFestivalDraft, restore: restoreFestivalDraft } = useFormDraft<FestivalFormState>(
+  festivalDraftKey.value,
+  { source: festivalFormSnapshot, debounceMs: 1000 },
+)
+
 function openCreateDialog() {
   createForm.value = emptyForm()
   createPostingIdentity.value = null
+  // 下書き復元
+  const saved = restoreFestivalDraft()
+  if (saved) {
+    createForm.value = { ...emptyForm(), ...saved }
+  }
   showCreateDialog.value = true
 }
 
@@ -165,6 +181,7 @@ async function submitCreate() {
   }
   try {
     await villageApi.createFestival(villageId.value, body)
+    clearFestivalDraft()
     showCreateDialog.value = false
     success(t('village.festival.saveSuccess'))
     await loadFestivals()
