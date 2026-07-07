@@ -7,7 +7,41 @@
     "back_to_memo": "Back to Action Memo",
     "closing_link": "Close out today",
     "weekly_link": "Weekly summary",
-    "tags_link": "Tag management"
+    "tags_link": "Tag management",
+    "date_picker_label": "Select date",
+    "back_to_today": "Back to today",
+    "selected_date_memos": "Memos for {date}"
+  },
+  "guide": {
+    "title": "How to use Action Memo",
+    "description": "Record what you're doing right now and review your daily actions. Designed with minimal friction for ADHD.",
+    "record": {
+      "title": "Record a memo",
+      "body": "A short sentence is enough. You can add details later. Track category, duration, and more.",
+      "steps": {
+        "step1": "Type what you were just doing in the input field",
+        "step2": "Press Enter or click 'Record' to save",
+        "step3": "Use advanced fields to add time, progress, or team sharing"
+      }
+    },
+    "past": {
+      "title": "View past memos",
+      "body": "Use the date picker to review past records. 'Back to today' takes you back instantly.",
+      "steps": {
+        "step1": "Select a date using the date picker",
+        "step2": "View all memos from that day",
+        "step3": "Click 'Back to today' to return to today's memos"
+      }
+    },
+    "review": {
+      "title": "Review & reflect",
+      "body": "Use weekly summaries and end-of-day review to check your actions, mood, and TODOs.",
+      "steps": {
+        "step1": "Open 'Weekly summary' to see charts for the past 7 days",
+        "step2": "Use 'Close out today' to reflect and set tomorrow's TODOs",
+        "step3": "Organize your frequently used categories with tag management"
+      }
+    }
   },
   "mood": {
     "great": "Great",
