@@ -42,6 +42,8 @@ public interface ReservationMapper {
     List<ReservationSlotResponse> toSlotResponseList(List<ReservationSlotEntity> entities);
 
     @Mapping(target = "slot", ignore = true)
+    // F03.4.3: group（予約グループ要約）は代表行の兄弟行集約が必要なため Service 層が一括解決して後付けする（ここでは null）。
+    @Mapping(target = "group", ignore = true)
     @Mapping(target = "identifier", expression = "java(new com.mannschaft.app.reservation.dto.ReservationResponse.ReservationIdentifierDto(entity.getReservationSlotId(), entity.getLineId(), entity.getTeamId(), entity.getUserId(), null))")
     @Mapping(target = "status", expression = "java(new com.mannschaft.app.reservation.dto.ReservationResponse.ReservationStatusDto(entity.getStatus() != null ? entity.getStatus().name() : null, entity.getBookedAt(), entity.getConfirmedAt(), entity.getCompletedAt()))")
     @Mapping(target = "cancellation", expression = "java(new com.mannschaft.app.reservation.dto.ReservationResponse.CancellationDto(entity.getCancelledAt(), entity.getCancelReason(), entity.getCancelledBy() != null ? entity.getCancelledBy().name() : null))")

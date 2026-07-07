@@ -73,6 +73,8 @@ public class ReservationService {
     private final ReservationBlockedTimeRepository blockedTimeRepository;
     /** 機能B: 予約不可枠の overlap 判定を共有する単一ユーティリティ（§5.B）。 */
     private final ReservationUnavailabilityChecker unavailabilityChecker;
+    /** F03.4.3: 一覧のグループ要約（GroupSummaryDto）を一括解決するコンポーネント（§5.6 #10）。 */
+    private final ReservationGroupSummaryResolver groupSummaryResolver;
     private final Clock clock;
 
     /**
@@ -84,12 +86,14 @@ public class ReservationService {
      * @return 予約レスポンスのページ
      */
     public Page<ReservationResponse> listTeamReservations(Long teamId, String status, Pageable pageable) {
+        // F03.4.3 §5.6 #10: グループは代表行 1 件に折りたたむ（単枠は is_group_primary=TRUE で従来どおり）。
         Page<ReservationEntity> page;
         if (status != null) {
             ReservationStatus reservationStatus = ReservationStatus.valueOf(status);
-            page = reservationRepository.findByTeamIdAndStatusOrderByBookedAtDesc(teamId, reservationStatus, pageable);
+            page = reservationRepository.findByTeamIdAndStatusAndIsGroupPrimaryTrueOrderByBookedAtDesc(
+                    teamId, reservationStatus, pageable);
         } else {
-            page = reservationRepository.findByTeamIdOrderByBookedAtDesc(teamId, pageable);
+            page = reservationRepository.findByTeamIdAndIsGroupPrimaryTrueOrderByBookedAtDesc(teamId, pageable);
         }
         return new PageImpl<>(enrichList(page.getContent()), pageable, page.getTotalElements());
     }
@@ -220,6 +224,7 @@ public class ReservationService {
     @Transactional
     public ReservationResponse confirmReservation(Long teamId, Long reservationId) {
         ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
+        assertNotGroupRow(entity);
 
         if (!entity.isConfirmable()) {
             throw new BusinessException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
@@ -248,6 +253,7 @@ public class ReservationService {
     @Transactional
     public ReservationResponse cancelByAdmin(Long teamId, Long reservationId, CancelReservationRequest request) {
         ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
+        assertNotGroupRow(entity);
 
         if (!entity.isCancellable()) {
             throw new BusinessException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
@@ -275,6 +281,7 @@ public class ReservationService {
     public ReservationResponse cancelByUser(Long userId, Long reservationId, CancelReservationRequest request) {
         ReservationEntity entity = reservationRepository.findByIdAndUserId(reservationId, userId)
                 .orElseThrow(() -> new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND));
+        assertNotGroupRow(entity);
 
         if (!entity.isCancellable()) {
             throw new BusinessException(ReservationErrorCode.INVALID_RESERVATION_STATUS);
@@ -318,6 +325,7 @@ public class ReservationService {
     @Transactional
     public ReservationResponse completeReservation(Long teamId, Long reservationId) {
         ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
+        assertNotGroupRow(entity);
         entity.complete();
         ReservationEntity saved = reservationRepository.save(entity);
         log.info("予約完了: teamId={}, reservationId={}", teamId, reservationId);
@@ -334,6 +342,7 @@ public class ReservationService {
     @Transactional
     public ReservationResponse markNoShow(Long teamId, Long reservationId) {
         ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
+        assertNotGroupRow(entity);
         entity.noShow();
         ReservationEntity saved = reservationRepository.save(entity);
         log.info("予約ノーショー: teamId={}, reservationId={}", teamId, reservationId);
@@ -351,6 +360,7 @@ public class ReservationService {
     @Transactional
     public ReservationResponse rescheduleReservation(Long teamId, Long reservationId, RescheduleRequest request) {
         ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
+        assertNotGroupRow(entity);
 
         ReservationSlotEntity oldSlot = slotService.getSlotEntity(entity.getReservationSlotId());
         slotService.decrementAndReopen(oldSlot);
@@ -379,6 +389,11 @@ public class ReservationService {
     @Transactional
     public ReservationResponse updateAdminNote(Long teamId, Long reservationId, AdminNoteRequest request) {
         ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
+        // F03.4.3 §4: 非代表行のメモは一覧（代表行のみ返す）に浮上せず事実上消失するため 400=042 で拒否する。
+        // 代表行への更新は許可（グループのメモは代表行に集約）。
+        if (entity.getGroupId() != null && !Boolean.TRUE.equals(entity.getIsGroupPrimary())) {
+            throw new BusinessException(ReservationErrorCode.GROUP_ROW_DIRECT_OPERATION_NOT_ALLOWED);
+        }
         entity.updateAdminNote(request.getNote());
         ReservationEntity saved = reservationRepository.save(entity);
         log.info("管理者メモ更新: teamId={}, reservationId={}", teamId, reservationId);
@@ -404,7 +419,9 @@ public class ReservationService {
      * @return 予約レスポンスリスト
      */
     public List<ReservationResponse> listMyReservations(Long userId) {
-        List<ReservationEntity> reservations = reservationRepository.findByUserIdOrderByBookedAtDesc(userId);
+        // F03.4.3 §5.6 #10: グループは代表行 1 件に折りたたむ。
+        List<ReservationEntity> reservations =
+                reservationRepository.findByUserIdAndIsGroupPrimaryTrueOrderByBookedAtDesc(userId);
         return enrichList(reservations);
     }
 
@@ -430,11 +447,12 @@ public class ReservationService {
      * @return 予約統計レスポンス
      */
     public ReservationStatsResponse getStats(Long teamId) {
-        long pending = reservationRepository.countByTeamIdAndStatus(teamId, ReservationStatus.PENDING);
-        long confirmed = reservationRepository.countByTeamIdAndStatus(teamId, ReservationStatus.CONFIRMED);
-        long cancelled = reservationRepository.countByTeamIdAndStatus(teamId, ReservationStatus.CANCELLED);
-        long completed = reservationRepository.countByTeamIdAndStatus(teamId, ReservationStatus.COMPLETED);
-        long noShow = reservationRepository.countByTeamIdAndStatus(teamId, ReservationStatus.NO_SHOW);
+        // F03.4.3 §5.6 #4: 「グループ=1予約」で数える（代表行絞り。単枠は常に TRUE のため従来どおり）。
+        long pending = reservationRepository.countByTeamIdAndStatusAndIsGroupPrimaryTrue(teamId, ReservationStatus.PENDING);
+        long confirmed = reservationRepository.countByTeamIdAndStatusAndIsGroupPrimaryTrue(teamId, ReservationStatus.CONFIRMED);
+        long cancelled = reservationRepository.countByTeamIdAndStatusAndIsGroupPrimaryTrue(teamId, ReservationStatus.CANCELLED);
+        long completed = reservationRepository.countByTeamIdAndStatusAndIsGroupPrimaryTrue(teamId, ReservationStatus.COMPLETED);
+        long noShow = reservationRepository.countByTeamIdAndStatusAndIsGroupPrimaryTrue(teamId, ReservationStatus.NO_SHOW);
         long total = pending + confirmed + cancelled + completed + noShow;
 
         return new ReservationStatsResponse(total, pending, confirmed, cancelled, completed, noShow);
@@ -456,6 +474,20 @@ public class ReservationService {
                 slotStartAt,
                 slot.getTitle()
         ));
+    }
+
+    /**
+     * グループ所属行への単票状態遷移を 400 = RESERVATION_042 で拒否する（F03.4.3 §4 / §5.1）。
+     *
+     * <p>部分キャンセル・部分承認による booked_count 不整合とグループ状態の分裂を構造的に防ぐ。
+     * 対象 6 メソッド: cancelByUser / cancelByAdmin / confirmReservation / completeReservation /
+     * markNoShow / rescheduleReservation。グループ操作は {@link ReservationGroupService} の
+     * 一括 API で行う。単票 GET（読み取り）は全行許可のためガードしない。</p>
+     */
+    private void assertNotGroupRow(ReservationEntity entity) {
+        if (entity.getGroupId() != null) {
+            throw new BusinessException(ReservationErrorCode.GROUP_ROW_DIRECT_OPERATION_NOT_ALLOWED);
+        }
     }
 
     /**
@@ -491,12 +523,16 @@ public class ReservationService {
                 .map(ReservationEntity::getUserId)
                 .collect(Collectors.toSet());
         Map<Long, String> userNames = nameResolverService.resolveUserFullNames(userIds);
+        // F03.4.3 §5.6 #10: グループ所属行にはグループ要約（枠数・末尾終了時刻・メニュー名）を後付けする。
+        Map<Long, ReservationResponse.GroupSummaryDto> groupSummaries = groupSummaryResolver.resolve(entities);
         return entities.stream()
-                .map(e -> withUserName(
-                        reservationMapper.toReservationResponse(
-                                e, slots.get(e.getReservationSlotId()), lines.get(e.getLineId())),
-                        e.getUserId(),
-                        userNames.getOrDefault(e.getUserId(), "不明なユーザー")))
+                .map(e -> withGroupSummary(
+                        withUserName(
+                                reservationMapper.toReservationResponse(
+                                        e, slots.get(e.getReservationSlotId()), lines.get(e.getLineId())),
+                                e.getUserId(),
+                                userNames.getOrDefault(e.getUserId(), "不明なユーザー")),
+                        groupSummaryFor(groupSummaries, e)))
                 .toList();
     }
 
@@ -510,8 +546,35 @@ public class ReservationService {
         ReservationSlotEntity slot = slotRepository.findById(entity.getReservationSlotId()).orElse(null);
         ReservationLineEntity line = lineRepository.findById(entity.getLineId()).orElse(null);
         String userName = nameResolverService.resolveUserFullName(entity.getUserId());
-        return withUserName(reservationMapper.toReservationResponse(entity, slot, line),
+        ReservationResponse response = withUserName(
+                reservationMapper.toReservationResponse(entity, slot, line),
                 entity.getUserId(), userName);
+        // F03.4.3 §5.6 #10: グループ所属行にはグループ要約を後付けする（単枠は null 維持）。
+        return withGroupSummary(response,
+                groupSummaryFor(groupSummaryResolver.resolve(List.of(entity)), entity));
+    }
+
+    /**
+     * グループ要約マップから該当エントリを null 安全に引く
+     * （未採番 ID の場合 {@code Map.of()} は {@code get(null)} で NPE を投げるため明示ガード）。
+     */
+    private ReservationResponse.GroupSummaryDto groupSummaryFor(
+            Map<Long, ReservationResponse.GroupSummaryDto> summaries, ReservationEntity entity) {
+        if (entity.getId() == null || summaries.isEmpty()) {
+            return null;
+        }
+        return summaries.get(entity.getId());
+    }
+
+    /**
+     * グループ要約を後付けする（null の場合は元のレスポンスをそのまま返す＝単枠の既存契約不変）。
+     */
+    private ReservationResponse withGroupSummary(
+            ReservationResponse response, ReservationResponse.GroupSummaryDto group) {
+        if (group == null) {
+            return response;
+        }
+        return response.toBuilder().group(group).build();
     }
 
     /**

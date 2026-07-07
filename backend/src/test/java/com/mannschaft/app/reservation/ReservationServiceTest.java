@@ -97,6 +97,10 @@ class ReservationServiceTest {
     private final com.mannschaft.app.reservation.service.ReservationUnavailabilityChecker unavailabilityChecker =
             new com.mannschaft.app.reservation.service.ReservationUnavailabilityChecker();
 
+    /** F03.4.3: 一覧のグループ要約一括解決（本テストの対象外のため mock。既定は空 Map）。 */
+    @Mock
+    private com.mannschaft.app.reservation.service.ReservationGroupSummaryResolver groupSummaryResolver;
+
     private ReservationService service;
 
     // ========================================
@@ -130,7 +134,8 @@ class ReservationServiceTest {
         service = new ReservationService(
                 reservationRepository, slotRepository, lineRepository, slotService, reservationMapper,
                 nameResolverService, eventPublisher, accessControlService, viewAccessGuard,
-                reservationPolicyService, blockedTimeRepository, unavailabilityChecker, FIXED_CLOCK);
+                reservationPolicyService, blockedTimeRepository, unavailabilityChecker,
+                groupSummaryResolver, FIXED_CLOCK);
 
         given(slotRepository.findById(any())).willReturn(Optional.empty());
         given(lineRepository.findById(any())).willReturn(Optional.empty());
@@ -141,6 +146,8 @@ class ReservationServiceTest {
         given(nameResolverService.resolveUserFullNames(org.mockito.ArgumentMatchers.anyCollection()))
                 .willReturn(java.util.Map.of(USER_ID, "山田 太郎"));
         given(nameResolverService.resolveUserFullName(any(Long.class))).willReturn("山田 太郎");
+        // F03.4.3: 一覧のグループ要約は本テストの対象外（既定は空 Map = 単枠のみ）。
+        given(groupSummaryResolver.resolve(anyList())).willReturn(java.util.Map.of());
         // 予約認可ゲートの既定スタブ: view ガードは既定で通過（何もしない mock）＝予約可。
         // 認可固有のテストでは各 @Test 内で assertCanView を throw に上書きする。
         // 承認モード解決の既定スタブ: MANUAL（＝PENDING 維持・自動確定しない）。
@@ -164,7 +171,8 @@ class ReservationServiceTest {
         service = new ReservationService(
                 reservationRepository, slotRepository, lineRepository, slotService, reservationMapper,
                 nameResolverService, eventPublisher, accessControlService, viewAccessGuard,
-                reservationPolicyService, blockedTimeRepository, unavailabilityChecker, fixed);
+                reservationPolicyService, blockedTimeRepository, unavailabilityChecker,
+                groupSummaryResolver, fixed);
     }
 
     private ReservationEntity createReservationEntity() {
@@ -231,7 +239,8 @@ class ReservationServiceTest {
             ReservationEntity entity = createReservationEntity();
             Page<ReservationEntity> page = new PageImpl<>(List.of(entity));
             ReservationResponse response = createReservationResponse();
-            given(reservationRepository.findByTeamIdOrderByBookedAtDesc(TEAM_ID, pageable)).willReturn(page);
+            given(reservationRepository.findByTeamIdAndIsGroupPrimaryTrueOrderByBookedAtDesc(TEAM_ID, pageable))
+                    .willReturn(page);
             given(reservationMapper.toReservationResponse(entity)).willReturn(response);
 
             // When
@@ -239,7 +248,7 @@ class ReservationServiceTest {
 
             // Then
             assertThat(result.getContent()).hasSize(1);
-            verify(reservationRepository).findByTeamIdOrderByBookedAtDesc(TEAM_ID, pageable);
+            verify(reservationRepository).findByTeamIdAndIsGroupPrimaryTrueOrderByBookedAtDesc(TEAM_ID, pageable);
         }
 
         @Test
@@ -250,7 +259,7 @@ class ReservationServiceTest {
             ReservationEntity entity = createReservationEntity();
             Page<ReservationEntity> page = new PageImpl<>(List.of(entity));
             ReservationResponse response = createReservationResponse();
-            given(reservationRepository.findByTeamIdAndStatusOrderByBookedAtDesc(
+            given(reservationRepository.findByTeamIdAndStatusAndIsGroupPrimaryTrueOrderByBookedAtDesc(
                     TEAM_ID, ReservationStatus.PENDING, pageable)).willReturn(page);
             given(reservationMapper.toReservationResponse(entity)).willReturn(response);
 
@@ -259,7 +268,7 @@ class ReservationServiceTest {
 
             // Then
             assertThat(result.getContent()).hasSize(1);
-            verify(reservationRepository).findByTeamIdAndStatusOrderByBookedAtDesc(
+            verify(reservationRepository).findByTeamIdAndStatusAndIsGroupPrimaryTrueOrderByBookedAtDesc(
                     TEAM_ID, ReservationStatus.PENDING, pageable);
         }
     }
@@ -1242,7 +1251,8 @@ class ReservationServiceTest {
             // Given
             List<ReservationEntity> entities = List.of(createReservationEntity());
             List<ReservationResponse> responses = List.of(createReservationResponse());
-            given(reservationRepository.findByUserIdOrderByBookedAtDesc(USER_ID)).willReturn(entities);
+            given(reservationRepository.findByUserIdAndIsGroupPrimaryTrueOrderByBookedAtDesc(USER_ID))
+                    .willReturn(entities);
             given(reservationMapper.toReservationResponseList(entities)).willReturn(responses);
 
             // When
@@ -1312,11 +1322,11 @@ class ReservationServiceTest {
         @DisplayName("正常系: チームの予約統計が正しく集計される")
         void 統計取得_正常() {
             // Given
-            given(reservationRepository.countByTeamIdAndStatus(TEAM_ID, ReservationStatus.PENDING)).willReturn(5L);
-            given(reservationRepository.countByTeamIdAndStatus(TEAM_ID, ReservationStatus.CONFIRMED)).willReturn(10L);
-            given(reservationRepository.countByTeamIdAndStatus(TEAM_ID, ReservationStatus.CANCELLED)).willReturn(2L);
-            given(reservationRepository.countByTeamIdAndStatus(TEAM_ID, ReservationStatus.COMPLETED)).willReturn(20L);
-            given(reservationRepository.countByTeamIdAndStatus(TEAM_ID, ReservationStatus.NO_SHOW)).willReturn(1L);
+            given(reservationRepository.countByTeamIdAndStatusAndIsGroupPrimaryTrue(TEAM_ID, ReservationStatus.PENDING)).willReturn(5L);
+            given(reservationRepository.countByTeamIdAndStatusAndIsGroupPrimaryTrue(TEAM_ID, ReservationStatus.CONFIRMED)).willReturn(10L);
+            given(reservationRepository.countByTeamIdAndStatusAndIsGroupPrimaryTrue(TEAM_ID, ReservationStatus.CANCELLED)).willReturn(2L);
+            given(reservationRepository.countByTeamIdAndStatusAndIsGroupPrimaryTrue(TEAM_ID, ReservationStatus.COMPLETED)).willReturn(20L);
+            given(reservationRepository.countByTeamIdAndStatusAndIsGroupPrimaryTrue(TEAM_ID, ReservationStatus.NO_SHOW)).willReturn(1L);
 
             // When
             ReservationStatsResponse result = service.getStats(TEAM_ID);

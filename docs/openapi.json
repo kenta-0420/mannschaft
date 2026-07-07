@@ -1027,6 +1027,10 @@
       "description": "F09.3 チームサブリース管理"
     },
     {
+      "name": "予約グループ",
+      "description": "F03.4.3 複数枠・連続枠予約（メニュー起点の一括確保）"
+    },
+    {
       "name": "ダッシュボード村フィード (F17.1)",
       "description": "Phase 1: ピン村横断のタイムライン・井戸端集約"
     },
@@ -37443,6 +37447,221 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/reservation-groups": {
+      "post": {
+        "tags": [
+          "予約グループ"
+        ],
+        "summary": "予約グループ作成",
+        "operationId": "createGroup",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReservationGroupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "作成成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseReservationGroupResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/reservation-groups/{groupId}/no-show": {
+      "post": {
+        "tags": [
+          "予約グループ"
+        ],
+        "summary": "予約グループ ノーショー",
+        "operationId": "markGroupNoShow",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "マーク成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseReservationGroupResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/reservation-groups/{groupId}/confirm": {
+      "post": {
+        "tags": [
+          "予約グループ"
+        ],
+        "summary": "予約グループ確定",
+        "operationId": "confirmGroup",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "確定成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseReservationGroupResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/reservation-groups/{groupId}/complete": {
+      "post": {
+        "tags": [
+          "予約グループ"
+        ],
+        "summary": "予約グループ完了",
+        "operationId": "completeGroup",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "完了成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseReservationGroupResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/reservation-groups/{groupId}/cancel": {
+      "post": {
+        "tags": [
+          "予約グループ"
+        ],
+        "summary": "予約グループ一括キャンセル",
+        "operationId": "cancelGroup",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelReservationGroupRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "キャンセル成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseReservationGroupCancelResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/repair-plan/terms": {
       "get": {
         "tags": [
@@ -54194,7 +54413,7 @@
         ],
         "summary": "グループ作成",
         "description": "規約同意 + 50 個上限チェック + 20 枚上限チェック + IDOR 検証後にグループを保存する。監査ログ POINT_CARD_GROUP_CREATED を 1 件記録する。",
-        "operationId": "createGroup",
+        "operationId": "createGroup_1",
         "requestBody": {
           "content": {
             "application/json": {
@@ -71706,7 +71925,7 @@
           "コルクボードセクション"
         ],
         "summary": "セクション作成",
-        "operationId": "createGroup_1",
+        "operationId": "createGroup_2",
         "parameters": [
           {
             "name": "boardId",
@@ -104035,6 +104254,47 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseBlockedTimeImpactResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/reservation-groups/{groupId}": {
+      "get": {
+        "tags": [
+          "予約グループ"
+        ],
+        "summary": "予約グループ詳細",
+        "operationId": "getGroup",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "groupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseReservationGroupResponse"
                 }
               }
             }
@@ -160208,6 +160468,26 @@
           }
         }
       },
+      "GroupSummaryDto": {
+        "type": "object",
+        "properties": {
+          "groupEndTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "groupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "groupSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "menuName": {
+            "type": "string"
+          }
+        }
+      },
       "NotesDto": {
         "type": "object",
         "properties": {
@@ -160264,6 +160544,9 @@
           },
           "cancellation": {
             "$ref": "#/components/schemas/CancellationDto"
+          },
+          "group": {
+            "$ref": "#/components/schemas/GroupSummaryDto"
           },
           "id": {
             "type": "integer",
@@ -161101,6 +161384,189 @@
           "teamId": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "CreateReservationGroupRequest": {
+        "type": "object",
+        "properties": {
+          "lineId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "menuId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slotIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "maxItems": 16,
+            "minItems": 0
+          },
+          "userNote": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "lineId"
+        ]
+      },
+      "ApiResponseReservationGroupResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ReservationGroupResponse"
+          }
+        }
+      },
+      "ReservationGroupItemDto": {
+        "type": "object",
+        "properties": {
+          "endTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "isGroupPrimary": {
+            "type": "boolean"
+          },
+          "reservationId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "slotId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "startTime": {
+            "type": "string",
+            "example": "14:30:00"
+          }
+        }
+      },
+      "ReservationGroupResponse": {
+        "type": "object",
+        "properties": {
+          "bookedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cancelReason": {
+            "type": "string"
+          },
+          "cancelledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cancelledBy": {
+            "type": "string"
+          },
+          "confirmedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "groupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lineId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lineName": {
+            "type": "string"
+          },
+          "menuId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "menuName": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "reservations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReservationGroupItemDto"
+            }
+          },
+          "slotCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "slotDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "startTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "status": {
+            "type": "string"
+          },
+          "teamId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "userNote": {
+            "type": "string"
+          }
+        }
+      },
+      "CancelReservationGroupRequest": {
+        "type": "object",
+        "properties": {
+          "cancelReason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          }
+        }
+      },
+      "ApiResponseReservationGroupCancelResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ReservationGroupCancelResponse"
+          }
+        }
+      },
+      "ReservationGroupCancelResponse": {
+        "type": "object",
+        "properties": {
+          "cancelledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cancelledBy": {
+            "type": "string"
+          },
+          "cancelledCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "groupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string"
           }
         }
       },

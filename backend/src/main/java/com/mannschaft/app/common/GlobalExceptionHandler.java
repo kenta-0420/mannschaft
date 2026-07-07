@@ -749,6 +749,11 @@ public class GlobalExceptionHandler {
             // F03.4.2 機能F 週間テンプレート: 不在（IDOR 秘匿含む）→ 404、generate レート制限 → 429、
             // ライン削除ガード（active 予約あり）→ 409。037（上限500行）/038（ライン不一致）は WARN 既定の 400。
             Map.entry("RESERVATION_036", HttpStatus.NOT_FOUND),              // TEMPLATE_NOT_FOUND
+            // F03.4.3 機能G 予約グループ: 確保失敗（満席/CLOSED・全ロールバック済み）→ 409、
+            // グループ不在（IDOR 秘匿含む）→ 404。041（枠数上限）/042（単票操作拒否）/043（提供不可ライン）は
+            // WARN 既定の 400 のまま（個別 map 不要）。
+            Map.entry("RESERVATION_039", HttpStatus.CONFLICT),               // GROUP_SLOT_UNAVAILABLE
+            Map.entry("RESERVATION_040", HttpStatus.NOT_FOUND),              // GROUP_NOT_FOUND
             Map.entry("RESERVATION_044", HttpStatus.TOO_MANY_REQUESTS),      // TEMPLATE_GENERATE_RATE_LIMITED
             Map.entry("RESERVATION_045", HttpStatus.CONFLICT),               // LINE_HAS_ACTIVE_RESERVATIONS
             // F06.5 アクティブリコール学習（IDOR 対策で 404、上限/範囲外は 400、楽観排他/マスク中編集/再輸出は 409）
