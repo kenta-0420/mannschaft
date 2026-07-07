@@ -336,7 +336,7 @@ class AuthLoginControllerTest {
         // When / Then: Cookie なしでアクセス → 400 + AUTH_007
         mockMvc.perform(post("/api/v1/auth/refresh"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errorCode").value("AUTH_007"));
+                .andExpect(jsonPath("$.error.code").value("AUTH_007"));
     }
 
     // ──────────────────────────────────────────────
