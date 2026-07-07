@@ -887,6 +887,10 @@
           "7": {
             "q": "¿Y si falta una función que quiero?",
             "a": "Envíanos tu petición por el formulario de contacto. Mannschaft es una plataforma en crecimiento que añade funciones según las opiniones de sus usuarios."
+          },
+          "8": {
+            "q": "¿Pueden usarlo los menores?",
+            "a": "Los menores de 18 años solo pueden usar el servicio tras vincularse con la cuenta de un progenitor (representante legal) y recibir la aprobación de su consentimiento. No es posible usar el servicio hasta completar la vinculación. Consulta el artículo 4 de los Términos del servicio para más detalles."
           }
         },
         "retro_hint": "🎮 A veces la pantalla se vuelve retro… ¿tal vez?",
@@ -1107,6 +1111,16 @@
           "desktop_step3": "O elige “Instalar aplicación” en el menú",
           "desktop_step4": "Haz clic en “Instalar” para terminar",
           "close": "Cerrar"
+        }
+      },
+      "trust": {
+        "heading": "Nuestro compromiso con la seguridad",
+        "badges": {
+          "minor": "Vínculo parental obligatorio para menores de 18",
+          "auth": "Autenticación en dos pasos y passkeys",
+          "i18n": "6 idiomas",
+          "encryption": "Comunicación y datos cifrados",
+          "gdpr": "Conforme al RGPD"
         }
       }
     }
