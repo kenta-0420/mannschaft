@@ -315,7 +315,6 @@ onMounted(loadPreferences)
       </div>
     </div>
 
-    <ConfirmDialog />
     <AdPreferencesGuideModal v-model:visible="showGuide" />
   </div>
 </template>

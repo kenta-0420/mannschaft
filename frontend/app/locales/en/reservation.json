@@ -607,7 +607,8 @@
       "not_consecutive": "The selected slots aren't consecutive or don't match the target",
       "size_exceeded": "A booking group can have at most 16 slots",
       "row_locked": "This is a group booking. Please manage it as a group",
-      "deadline_passed": "The cancellation deadline has passed, so this can't be cancelled"
+      "deadline_passed": "The cancellation deadline has passed, so this can't be cancelled",
+      "own_overlap": "You already have another booking in the selected time slot. Please check the time"
     },
     "team_guide": {
       "title": "How reservations work",

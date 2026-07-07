@@ -607,7 +607,8 @@
       "not_consecutive": "Las franjas seleccionadas no son consecutivas o no coinciden con el objetivo",
       "size_exceeded": "Un grupo de reserva puede tener como máximo 16 franjas",
       "row_locked": "Esta es una reserva en grupo. Gestiónala como grupo",
-      "deadline_passed": "Se pasó el plazo de cancelación, no se puede cancelar"
+      "deadline_passed": "Se pasó el plazo de cancelación, no se puede cancelar",
+      "own_overlap": "Ya tienes otra reserva en la franja horaria seleccionada. Revisa el horario"
     },
     "team_guide": {
       "title": "Cómo funcionan las reservas",

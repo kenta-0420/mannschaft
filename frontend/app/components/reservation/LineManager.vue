@@ -85,7 +85,6 @@ onMounted(async () => {
 
 <template>
   <div>
-    <ConfirmDialog />
     <div class="mb-4 flex items-center justify-between">
       <h3 class="text-lg font-semibold">{{ t('reservation.line_manage_title') }}</h3>
       <Button v-if="isAdmin" :label="t('reservation.button.add_line')" icon="pi pi-plus" size="small" @click="openCreate" />

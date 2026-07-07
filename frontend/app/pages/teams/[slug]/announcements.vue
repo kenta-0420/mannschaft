@@ -176,8 +176,6 @@ function onDeleteConfirm(id: number) {
       </div>
     </div>
 
-    <ConfirmDialog />
-
     <!-- F08.9 P4b: ペイウォールモーダル -->
     <Dialog
       v-model:visible="paywallModalVisible"

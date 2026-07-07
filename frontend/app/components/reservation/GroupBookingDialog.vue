@@ -234,6 +234,11 @@ async function confirm() {
         // 提供不可ライン。共通枠列のライン選択へ戻す（プレビューに留まる）。
         lineWarning.value = t('reservation.menu.line_not_available')
         break
+      case 'RESERVATION_013':
+        // 自分の予約済み枠を含む重複（DUPLICATE_RESERVATION）。選択し直しを促すためプレビューに留まる
+        // （039/038/009 のような「状況が変わった」ケースと異なり、選択自体の見直しが必要なため）。
+        notification.error(t('reservation.group.own_overlap'))
+        break
       case 'RESERVATION_009':
         notification.error(t('reservation.matrix.slot_unavailable_conflict'))
         emit('reserved')

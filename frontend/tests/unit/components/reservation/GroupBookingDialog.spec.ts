@@ -12,7 +12,8 @@ import { buildTimeHeader, alignRowToHeader, type MatrixCellInput } from '~/utils
  *   AC-2: ＋30分延長ボタンの disabled 反映（次セル無し/非AVAILABLE/上限16）
  *   AC-3: N=1・メニューなしの確定は createReservation を呼ぶ（グループAPIではない・単枠フロー完全互換）
  *   AC-4: N>=2 の確定は createGroup を slotIds 昇順（時間昇順）で呼ぶ
- *   AC-5: エラーコード別の表示分岐（039=conflict_retry+reserved emit / 043=line_not_available で留まる）
+ *   AC-5: エラーコード別の表示分岐（039=conflict_retry+reserved emit / 043=line_not_available で留まる /
+ *         013=own_overlap専用文言でプレビューに留まる。第二弾実機E2E発見バグの根治）
  *
  * 注: テスト環境の既定ロケールは en。Dialog は Teleport で document.body にレンダリングされる。
  */
@@ -233,6 +234,31 @@ describe('GroupBookingDialog.vue', () => {
     await flush()
 
     // プレビューに留まる（確定ボタンがまだ存在する＝閉じていない）
+    expect(findByTestId('group-confirm')).not.toBeNull()
+    expect(wrapper.emitted('reserved')).toBeFalsy()
+  })
+
+  it('AC-5c: 409=RESERVATION_013（自分の予約済み枠と重複）は専用文言でエラー表示しプレビューに留まる（reserved は emit しない）', async () => {
+    mockCreateGroup.mockRejectedValue({ data: { error: { code: 'RESERVATION_013' } } })
+    const wrapper = await mountSuspended(GroupBookingDialog, {
+      props: {
+        visible: true,
+        teamId: 'team-slug',
+        lines: [{ id: 1, name: '席1' }],
+        menus: [cutMenu],
+        context: buildContext(),
+      },
+    })
+    await flush()
+
+    findByTestId<HTMLButtonElement>('group-menu-option-menu-cut')!.click()
+    await flush()
+    findByTestId<HTMLButtonElement>('group-confirm')!.click()
+    await flush()
+
+    // 汎用「予約に失敗しました」(reserve_failed) ではなく own_overlap 専用文言でエラー表示する。
+    expect(mockNotifyError).toHaveBeenCalledWith('You already have another booking in the selected time slot. Please check the time')
+    // プレビューに留まる（確定ボタンがまだ存在する＝閉じていない）。039/038/009 と異なり選択し直しを促す。
     expect(findByTestId('group-confirm')).not.toBeNull()
     expect(wrapper.emitted('reserved')).toBeFalsy()
   })

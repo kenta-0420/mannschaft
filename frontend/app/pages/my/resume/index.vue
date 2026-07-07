@@ -219,7 +219,5 @@ onMounted(fetchResumes)
         />
       </template>
     </Dialog>
-
-    <ConfirmDialog />
   </div>
 </template>

@@ -264,7 +264,5 @@ onMounted(() => {
         </div>
       </SectionCard>
     </div>
-
-    <ConfirmDialog />
   </div>
 </template>

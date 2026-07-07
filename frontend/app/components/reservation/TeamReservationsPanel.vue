@@ -88,6 +88,18 @@ function onReserved() {
   reservationListRef.value?.refresh()
 }
 
+/**
+ * 予約一覧タブでの操作（承認/却下/キャンセル、ReservationList の @changed）直後に、
+ * 予約するタブ（マトリックス/グリッド/リスト）の空き表示を再読込する（#2179「予約→一覧」の逆方向）。
+ * 一覧タブが非アクティブでも各 Picker はマウント済み（TabPanels 非 lazy）のため refresh は常に有効。
+ * ReservationList 自身は既に loadReservations() 済みのため reservationListRef は対象外。
+ */
+function onSlotsChanged() {
+  slotPickerRef.value?.refresh()
+  slotGridPickerRef.value?.refresh()
+  slotMatrixPickerRef.value?.refresh()
+}
+
 function onSlotSelected(
   slotId: number,
   lineId: number,
@@ -211,6 +223,7 @@ onMounted(async () => {
             :team-id="props.teamId"
             :can-manage="true"
             mode="team"
+            @changed="onSlotsChanged"
           />
           <ReservationList
             v-else
@@ -218,6 +231,7 @@ onMounted(async () => {
             :team-id="props.teamId"
             :can-manage="false"
             mode="mine"
+            @changed="onSlotsChanged"
           />
         </TabPanel>
 

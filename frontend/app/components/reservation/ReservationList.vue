@@ -12,6 +12,13 @@ const props = withDefaults(defineProps<{
   mode?: 'team' | 'mine'
 }>(), { mode: 'team' })
 
+/**
+ * 一覧操作（承認/却下/キャンセル）成功時に emit する。#2179 で結線した「予約→枠表示」の
+ * 逆方向（一覧操作→予約するタブの枠表示 refresh）を成立させるため、親（TeamReservationsPanel）
+ * が SlotMatrixPicker/SlotGridPicker/SlotPicker の refresh をトリガーできるようにする。
+ */
+const emit = defineEmits<{ changed: [] }>()
+
 const { t } = useI18n()
 const reservationApi = useReservationApi()
 const notification = useNotification()
@@ -104,6 +111,7 @@ async function approve(data: ReservationResponse) {
   }
   notification.success(t('reservation.message.confirm_success'))
   await loadReservations()
+  emit('changed')
 }
 
 // 却下 = 管理者キャンセル（BE: POST /reservations/{id}/cancel、理由付き）。グループ行は同様にグループAPIへ。
@@ -116,6 +124,7 @@ async function reject(data: ReservationResponse) {
   }
   notification.success(t('reservation.message.reject_success'))
   await loadReservations()
+  emit('changed')
 }
 
 async function cancel(data: ReservationResponse) {
@@ -138,6 +147,7 @@ async function cancel(data: ReservationResponse) {
       }
       notification.success(t('reservation.message.cancel_success'))
       await loadReservations()
+      emit('changed')
     },
   })
 }
@@ -158,7 +168,6 @@ defineExpose({ refresh: loadReservations })
 
 <template>
   <div>
-    <ConfirmDialog />
     <div class="mb-4">
       <Select v-model="statusFilter" :options="statusOptions" option-label="label" option-value="value" class="w-40" />
     </div>

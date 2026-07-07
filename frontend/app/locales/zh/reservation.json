@@ -607,7 +607,8 @@
       "not_consecutive": "所选时段不连续，或与预约对象不一致",
       "size_exceeded": "一组预约最多16个时段",
       "row_locked": "这是一笔整批预约，请以整批为单位进行操作",
-      "deadline_passed": "已超过取消截止时间，无法取消"
+      "deadline_passed": "已超过取消截止时间，无法取消",
+      "own_overlap": "所选时间段与您的其他预约重叠，请确认时间段"
     },
     "team_guide": {
       "title": "预约使用说明",
