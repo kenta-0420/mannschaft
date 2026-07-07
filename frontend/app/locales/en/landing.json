@@ -371,7 +371,10 @@
             "title": "Article 4 (Use by Minors)",
             "content": [
               "Minors shall obtain the consent of a legal representative (parent or guardian) before using the Service. Registration by a person under 18 becomes effective only once linkage with the legal representative’s account (approval of consent) is completed, and the Service may not be used until such linkage is completed. The Company may request confirmation of consent where necessary.",
-              "Where a school or other organization creates a Team and uses the Service with the participation of children or students, the Administrator of that Team is responsible for obtaining the necessary consents and taking other appropriate measures. The handling of minors’ personal data is governed by the Privacy Policy."
+              "Where a school or other organization creates a Team and uses the Service with the participation of children or students, the Administrator of that Team is responsible for obtaining the necessary consents and taking other appropriate measures. The handling of minors’ personal data is governed by the Privacy Policy.",
+              "For a child who is under 18 and of elementary school age or younger (in the Japanese school-age system, until the last day of the school year in which the child turns 12), the legal representative (parent or guardian) may, by the method prescribed by the Company, view and watch over the child’s schedule, attendance, affiliations, and notices from the Company, and may also perform, on the child’s behalf, the payment of membership fees and other operations within the scope displayed by the Company within the Service.",
+              "The authority to watch over and to act by proxy under the preceding paragraph automatically terminates on the first day (April 1) of the school year in which the child enters junior high school.",
+              "The legal representative shall be responsible for the results of any proxy operations that the legal representative performs, and the Company shall not be responsible for the results of such proxy operations except in cases of the Company’s intentional misconduct or gross negligence."
             ]
           },
           {
@@ -890,7 +893,9 @@
           },
           "8": {
             "q": "Can people under 18 use it?",
-            "a": "Users under 18 can use the service only after linking to a parent (legal guardian) account and receiving their consent approval. The service cannot be used until linking is complete. In particular, children of elementary-school age or younger (before entering junior high school) are covered by \"Watch Mode\", in which a parent can view their schedules, attendance, memberships, and announcements to keep an eye on them and pay membership fees on their behalf (this ends automatically when the child enters junior high school). See Article 4 of the Terms of Service for details."
+            "a": "Users under 18 can use the service only after linking to a parent (legal guardian) account and receiving their consent approval. The service cannot be used until linking is complete. In particular, children of elementary-school age or younger (before entering junior high school) are covered by \"Watch Mode\", in which a parent can view their schedules, attendance, memberships, and announcements to keep an eye on them and pay membership fees on their behalf (this ends automatically when the child enters junior high school).",
+            "a_terms_note": "See {link} for details.",
+            "a_terms_link": "Article 4 of the Terms of Service"
           },
           "9": {
             "q": "Can I keep an eye on an elderly family member?",
@@ -1125,7 +1130,8 @@
           "i18n": "6 languages supported",
           "encryption": "Encrypted communication & data",
           "gdpr": "GDPR compliant",
-          "watch": "Watching over children & elderly family"
+          "watch": "Watching over children & elderly family",
+          "safety": "Emergency group safety check"
         }
       }
     }

@@ -8,6 +8,7 @@ const { t } = useI18n()
 // encryption: 通信・データの暗号化
 // gdpr : GDPR 対応（退会時の匿名化・データエクスポート）
 // watch: 子ども（見守りモード）・高齢の家族（ケアリンク）の見守り。年齢による自動発動はせず同意にもとづく
+// safety: 災害・緊急時の一斉安否確認（GPS付き・強制モーダル表示。F03.6 緊急安否確認）
 const badges = [
   { key: 'minor', icon: 'pi pi-users' },
   { key: 'auth', icon: 'pi pi-lock' },
@@ -15,6 +16,7 @@ const badges = [
   { key: 'encryption', icon: 'pi pi-shield' },
   { key: 'gdpr', icon: 'pi pi-verified' },
   { key: 'watch', icon: 'pi pi-eye' },
+  { key: 'safety', icon: 'pi pi-exclamation-triangle' },
 ]
 </script>
 

@@ -371,7 +371,10 @@
             "title": "Artikel 4 (Nutzung durch Minderjährige)",
             "content": [
               "Minderjährige holen vor der Nutzung des Dienstes die Zustimmung eines gesetzlichen Vertreters (Eltern oder Erziehungsberechtigte) ein. Die Registrierung von Personen unter 18 Jahren wird erst wirksam, wenn die Verknüpfung mit dem Konto des gesetzlichen Vertreters (Bestätigung der Zustimmung) abgeschlossen ist; bis dahin kann der Dienst nicht genutzt werden. Das Unternehmen kann bei Bedarf einen Nachweis der Zustimmung verlangen.",
-              "Erstellt eine Schule oder andere Einrichtung ein Team und nutzt den Dienst unter Beteiligung von Kindern oder Schülern, ist der Administrator dieses Teams für die Einholung der erforderlichen Zustimmungen und sonstige geeignete Maßnahmen verantwortlich. Für personenbezogene Daten Minderjähriger gilt die Datenschutzerklärung."
+              "Erstellt eine Schule oder andere Einrichtung ein Team und nutzt den Dienst unter Beteiligung von Kindern oder Schülern, ist der Administrator dieses Teams für die Einholung der erforderlichen Zustimmungen und sonstige geeignete Maßnahmen verantwortlich. Für personenbezogene Daten Minderjähriger gilt die Datenschutzerklärung.",
+              "Für ein Kind unter 18 Jahren, das im Grundschulalter oder jünger ist (im japanischen Schulaltersystem bis zum letzten Tag des Schuljahres, in dem das Kind 12 Jahre alt wird), kann der gesetzliche Vertreter (Elternteil oder Erziehungsberechtigter) nach dem vom Unternehmen vorgeschriebenen Verfahren die Termine, die Anwesenheit, die Zugehörigkeiten und die Mitteilungen des Unternehmens des Kindes einsehen und begleiten sowie im Namen des Kindes die Zahlung von Mitgliedsbeiträgen und weitere Vorgänge innerhalb des vom Unternehmen im Dienst angezeigten Umfangs vornehmen.",
+              "Die Befugnis zur Begleitung und zur Vornahme von Vorgängen im Namen des Kindes nach dem vorstehenden Absatz endet automatisch am ersten Tag (1. April) des Schuljahres, in dem das Kind die Mittelschule beginnt.",
+              "Der gesetzliche Vertreter ist für die Ergebnisse der von ihm im Namen des Kindes vorgenommenen Vorgänge verantwortlich; das Unternehmen haftet für die Ergebnisse solcher Vorgänge nicht, außer im Falle von Vorsatz oder grober Fahrlässigkeit des Unternehmens."
             ]
           },
           {
@@ -890,7 +893,9 @@
           },
           "8": {
             "q": "Können auch Personen unter 18 Jahren es nutzen?",
-            "a": "Personen unter 18 Jahren können den Dienst erst nutzen, nachdem sie mit dem Konto eines Elternteils (gesetzlichen Vertreters) verknüpft wurden und dessen Einwilligung erhalten haben. Bis zum Abschluss der Verknüpfung ist die Nutzung nicht möglich. Insbesondere Kinder im Grundschulalter oder jünger (vor dem Eintritt in die Mittelschule) fallen unter den „Begleitmodus“, bei dem ein Elternteil ihre Termine, Anwesenheit, Zugehörigkeiten und Ankündigungen einsehen kann, um sie zu begleiten, und Mitgliedsbeiträge in ihrem Namen bezahlen kann (dies endet automatisch mit dem Eintritt in die Mittelschule). Einzelheiten finden Sie in Artikel 4 der Nutzungsbedingungen."
+            "a": "Personen unter 18 Jahren können den Dienst erst nutzen, nachdem sie mit dem Konto eines Elternteils (gesetzlichen Vertreters) verknüpft wurden und dessen Einwilligung erhalten haben. Bis zum Abschluss der Verknüpfung ist die Nutzung nicht möglich. Insbesondere Kinder im Grundschulalter oder jünger (vor dem Eintritt in die Mittelschule) fallen unter den „Begleitmodus“, bei dem ein Elternteil ihre Termine, Anwesenheit, Zugehörigkeiten und Ankündigungen einsehen kann, um sie zu begleiten, und Mitgliedsbeiträge in ihrem Namen bezahlen kann (dies endet automatisch mit dem Eintritt in die Mittelschule).",
+            "a_terms_note": "Einzelheiten finden Sie in {link}.",
+            "a_terms_link": "Artikel 4 der Nutzungsbedingungen"
           },
           "9": {
             "q": "Kann ich ein älteres Familienmitglied im Blick behalten?",
@@ -1125,7 +1130,8 @@
           "i18n": "6 Sprachen",
           "encryption": "Verschlüsselte Kommunikation & Daten",
           "gdpr": "DSGVO-konform",
-          "watch": "Begleitung von Kindern & älteren Angehörigen"
+          "watch": "Begleitung von Kindern & älteren Angehörigen",
+          "safety": "Notfall-Sammelabfrage zur Sicherheit"
         }
       }
     }

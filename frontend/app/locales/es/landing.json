@@ -371,7 +371,10 @@
             "title": "Artículo 4 (Uso por menores)",
             "content": [
               "Los menores de edad obtendrán previamente el consentimiento de su representante legal (padres o tutores) para usar el Servicio. El registro de una persona menor de 18 años solo surte efecto una vez completada la vinculación con la cuenta del representante legal (aprobación del consentimiento), y el Servicio no podrá utilizarse hasta que dicha vinculación se complete. La Compañía podrá solicitar la confirmación del consentimiento cuando sea necesario.",
-              "Cuando un colegio u otra entidad cree un Equipo y utilice el Servicio con participación de niños o alumnos, el Administrador de dicho Equipo será responsable de obtener los consentimientos necesarios y de adoptar las demás medidas apropiadas. El tratamiento de los datos personales de menores se rige por la Política de Privacidad."
+              "Cuando un colegio u otra entidad cree un Equipo y utilice el Servicio con participación de niños o alumnos, el Administrador de dicho Equipo será responsable de obtener los consentimientos necesarios y de adoptar las demás medidas apropiadas. El tratamiento de los datos personales de menores se rige por la Política de Privacidad.",
+              "Respecto de un menor de 18 años que curse educación primaria o inferior (en el sistema de edad escolar japonés, hasta el último día del año escolar en que el menor cumple 12 años), el representante legal (padre, madre o tutor) podrá, por el método que la Compañía establezca, consultar y supervisar el calendario, la asistencia, las afiliaciones y los avisos de la Compañía del menor, y también realizar, en nombre del menor, el pago de cuotas de membresía y otras operaciones dentro del alcance que la Compañía muestre en el Servicio.",
+              "La facultad de supervisión y de actuación en representación conforme al párrafo anterior finalizará automáticamente el primer día (1 de abril) del año escolar en que el menor ingrese a la escuela secundaria.",
+              "El representante legal será responsable de los resultados de las operaciones que realice en representación del menor, y la Compañía no será responsable de los resultados de dichas operaciones salvo en casos de dolo o culpa grave de la Compañía."
             ]
           },
           {
@@ -890,7 +893,9 @@
           },
           "8": {
             "q": "¿Pueden usarlo los menores de 18 años?",
-            "a": "Los menores de 18 años solo pueden usar el servicio tras vincularse con la cuenta de un progenitor (representante legal) y recibir la aprobación de su consentimiento. No es posible usar el servicio hasta completar la vinculación. En particular, los niños de primaria o menores (antes de entrar en secundaria) están cubiertos por el «modo de supervisión», en el que un progenitor puede ver sus horarios, asistencia, pertenencias y avisos para supervisarlos y pagar las cuotas en su nombre (esto finaliza automáticamente al entrar en secundaria). Consulta el artículo 4 de los Términos del servicio para más detalles."
+            "a": "Los menores de 18 años solo pueden usar el servicio tras vincularse con la cuenta de un progenitor (representante legal) y recibir la aprobación de su consentimiento. No es posible usar el servicio hasta completar la vinculación. En particular, los niños de primaria o menores (antes de entrar en secundaria) están cubiertos por el «modo de supervisión», en el que un progenitor puede ver sus horarios, asistencia, pertenencias y avisos para supervisarlos y pagar las cuotas en su nombre (esto finaliza automáticamente al entrar en secundaria).",
+            "a_terms_note": "Consulta {link} para más detalles.",
+            "a_terms_link": "el artículo 4 de los Términos del servicio"
           },
           "9": {
             "q": "¿Puedo cuidar de un familiar mayor?",
@@ -1125,7 +1130,8 @@
           "i18n": "6 idiomas",
           "encryption": "Comunicación y datos cifrados",
           "gdpr": "Conforme al RGPD",
-          "watch": "Supervisión de niños y familiares mayores"
+          "watch": "Supervisión de niños y familiares mayores",
+          "safety": "Comprobación de seguridad colectiva en emergencias"
         }
       }
     }
