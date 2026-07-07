@@ -22,13 +22,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * <b>AC-7 既存データ番人テスト</b>:
  * status 列を持たない既存の {@code activity_results} 行を持つ MySQL に対し、
- * V141.001（status 列追加 + PUBLISHED backfill）を含む全マイグレーションが
+ * V143.001（status 列追加 + PUBLISHED backfill）を含む全マイグレーションが
  * クラッシュせず、<b>既存行がすべて PUBLISHED になる</b>ことを検証する。
  *
  * <p>{@code FlywayFromScratchMigrationTest}（空 DB）では activity_results が 0 行のため
  * backfill が 0 行となり「既存データが下書き扱いで消える」退行を見逃す。本テストは
  * <b>V140.001 まで適用 → status 列がまだ無い状態で activity_results 行をシード →
- * 残りのマイグレーション（V141.001 含む）を適用</b> という既存データ経路を再現する。</p>
+ * 残りのマイグレーション（V143.001 含む）を適用</b> という既存データ経路を再現する。</p>
  *
  * <p>方針は {@code FlywayExistingDataTeamVisibilityMigrationTest} を踏襲し、Spring コンテキストを
  * 起動せず Testcontainers の実 MySQL 8.0 に {@link Flyway} を Java API で直接実行する。
@@ -36,11 +36,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @EnabledIf("com.mannschaft.app.activity.migration.FlywayExistingDataActivityStatusMigrationTest#isDockerAvailable")
-@DisplayName("Flyway 既存データ activity_results status 移行（V141.001）番人テスト")
+@DisplayName("Flyway 既存データ activity_results status 移行（V143.001）番人テスト")
 class FlywayExistingDataActivityStatusMigrationTest {
 
-    /** V141.001 の直前バージョン。ここまで適用してから status 列の無い既存行をシードする。 */
-    private static final String PRE_V141_TARGET = "140.001";
+    /** V143.001 の直前バージョン。ここまで適用してから status 列の無い既存行をシードする。 */
+    private static final String PRE_V143_TARGET = "140.001";
 
     @SuppressWarnings("resource")
     private static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0")
@@ -69,14 +69,14 @@ class FlywayExistingDataActivityStatusMigrationTest {
     }
 
     @Test
-    @DisplayName("AC-7 status列の無い既存activity_results行がV141適用後に全てPUBLISHEDになる")
-    void 既存activity行がV141適用後に全てPUBLISHED() throws Exception {
-        // given: V141.001 の直前（V140.001）まで適用 ＝ activity_results に status 列がまだ無い状態
+    @DisplayName("AC-7 status列の無い既存activity_results行がV143適用後に全てPUBLISHEDになる")
+    void 既存activity行がV143適用後に全てPUBLISHED() throws Exception {
+        // given: V143.001 の直前（V140.001）まで適用 ＝ activity_results に status 列がまだ無い状態
         Flyway pre = Flyway.configure()
                 .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
                 .locations("classpath:db/migration")
                 .outOfOrder(false)
-                .target(MigrationVersion.fromVersion(PRE_V141_TARGET))
+                .target(MigrationVersion.fromVersion(PRE_V143_TARGET))
                 .load();
         MigrateResult preResult = pre.migrate();
         assertThat(preResult.success).as("V140.001 までの適用が成功すること").isTrue();
@@ -101,7 +101,7 @@ class FlywayExistingDataActivityStatusMigrationTest {
             st.executeUpdate(insertActivity(3, true));
         }
 
-        // when: 残りのマイグレーション（V141.001 含む）を適用する。
+        // when: 残りのマイグレーション（V143.001 含む）を適用する。
         Flyway rest = Flyway.configure()
                 .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
                 .locations("classpath:db/migration")
@@ -110,14 +110,14 @@ class FlywayExistingDataActivityStatusMigrationTest {
         MigrateResult restResult = rest.migrate();
 
         // then: 成功し、既存の全行（論理削除含む）が PUBLISHED になっている
-        assertThat(restResult.success).as("V141.001 を含む残りのマイグレーションが成功すること").isTrue();
+        assertThat(restResult.success).as("V143.001 を含む残りのマイグレーションが成功すること").isTrue();
 
         try (Connection conn = DriverManager.getConnection(
                 MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())) {
 
             // status 列が追加されている
             assertThat(columnExists(conn, "activity_results", "status"))
-                    .as("V141.001 適用後は status 列が存在すること").isTrue();
+                    .as("V143.001 適用後は status 列が存在すること").isTrue();
 
             // 既存 3 行（論理削除含む）が全て PUBLISHED
             assertThat(countByStatus(conn, "PUBLISHED"))
