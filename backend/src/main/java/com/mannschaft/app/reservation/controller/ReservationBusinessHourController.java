@@ -19,6 +19,7 @@ import com.mannschaft.app.reservation.service.ReservationBusinessHourService;
 import com.mannschaft.app.reservation.service.ReservationPolicyService;
 import com.mannschaft.app.reservation.service.ReservationSlotTemplateService;
 import com.mannschaft.app.reservation.service.ReservationTeamSettingService;
+import com.mannschaft.app.reservation.service.SlotGenerationPartialException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -107,7 +108,13 @@ public class ReservationBusinessHourController {
             GenerateSlotsResponse generation =
                     templateService.generateForDaysOfWeek(teamId, outcome.changedDays(), userId);
             return SlotGenerationResultDto.of(generation);
+        } catch (SlotGenerationPartialException partial) {
+            // 先行チャンクはコミット済み。その実件数を failed=true とともに正直に報告する（§3.1 契約・0で握り潰さない）。
+            log.error("営業時間保存後の同期自動生成が部分失敗（コミット済み分は永続化済み・翌日次バッチが残りを自己修復）: "
+                    + "teamId={}, changedDays={}", teamId, outcome.changedDays(), partial);
+            return SlotGenerationResultDto.ofPartialFailure(partial.getAccumulated());
         } catch (Exception e) {
+            // 1 チャンクもコミット前の失敗（真に 0 件）。
             log.error("営業時間保存後の同期自動生成に失敗（保存は成立・翌日次バッチが自己修復）: "
                     + "teamId={}, changedDays={}", teamId, outcome.changedDays(), e);
             return SlotGenerationResultDto.ofFailure();

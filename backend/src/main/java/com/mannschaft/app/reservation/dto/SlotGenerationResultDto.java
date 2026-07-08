@@ -28,10 +28,25 @@ public record SlotGenerationResultDto(
     }
 
     /**
-     * 生成失敗時: {@code failed=true}。保存は成立済みのため呼び出し側は HTTP 200 系で返し、
-     * FE はエラートーストで正直に報告する（症状を隠さない・§3.1）。
+     * 生成が 1 チャンクもコミットする前に失敗した時（真に 0 件）: 全カウント 0＋{@code failed=true}。
+     * 保存は成立済みのため呼び出し側は HTTP 200 系で返し、FE はエラートーストで正直に報告する（症状を隠さない・§3.1）。
      */
     public static SlotGenerationResultDto ofFailure() {
         return new SlotGenerationResultDto(0, 0, 0, 0, true);
+    }
+
+    /**
+     * 生成が<b>1 つ以上の日付チャンクをコミットした後で</b>失敗した時（部分実行）:
+     * <b>コミット済み分の実カウント</b>＋{@code failed=true}（F03.4.5 §3.1 契約）。
+     * 途中失敗でも先行チャンクは永続化済みのため、その実件数を正直に報告する
+     * （0 件で報告するとトーストが嘘になり症状の黙殺になる）。
+     */
+    public static SlotGenerationResultDto ofPartialFailure(GenerateSlotsResponse accumulated) {
+        return new SlotGenerationResultDto(
+                accumulated.getGeneratedCount(),
+                accumulated.getSkippedExistingCount(),
+                accumulated.getSkippedClosedDayCount(),
+                accumulated.getSkippedOutsideHoursCount(),
+                true);
     }
 }

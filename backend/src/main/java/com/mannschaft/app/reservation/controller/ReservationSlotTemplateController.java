@@ -13,6 +13,7 @@ import com.mannschaft.app.reservation.dto.SlotTemplateResponse;
 import com.mannschaft.app.reservation.dto.SlotTemplateSaveResponse;
 import com.mannschaft.app.reservation.dto.UpdateSlotTemplateRequest;
 import com.mannschaft.app.reservation.service.ReservationSlotTemplateService;
+import com.mannschaft.app.reservation.service.SlotGenerationPartialException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -111,7 +112,13 @@ public class ReservationSlotTemplateController {
         try {
             GenerateSlotsResponse generation = templateService.generateForTemplate(teamId, templateId, userId);
             return SlotGenerationResultDto.of(generation);
+        } catch (SlotGenerationPartialException partial) {
+            // 先行チャンクはコミット済み。その実件数を failed=true とともに正直に報告する（§3.1 契約・0で握り潰さない）。
+            log.error("テンプレ保存後の同期自動生成が部分失敗（コミット済み分は永続化済み・翌日次バッチが残りを自己修復）: "
+                    + "teamId={}, templateId={}", teamId, templateId, partial);
+            return SlotGenerationResultDto.ofPartialFailure(partial.getAccumulated());
         } catch (Exception e) {
+            // 1 チャンクもコミット前の失敗（真に 0 件）。
             log.error("テンプレ保存後の同期自動生成に失敗（保存は成立・翌日次バッチが自己修復）: "
                     + "teamId={}, templateId={}", teamId, templateId, e);
             return SlotGenerationResultDto.ofFailure();

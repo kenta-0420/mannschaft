@@ -309,6 +309,29 @@ class ReservationSlotTemplateControllerContractTest {
                 .andExpect(jsonPath("$.data.generation.failed").value(true));
     }
 
+    @Test
+    @WithMockUser(username = "100", roles = "MEMBER")
+    @DisplayName("S-3(部分失敗): 先行チャンクcommit後に失敗しても 201＋generation.failed=true＋コミット済み件数(>0)を報告する")
+    void admin_createTemplate_partialGenerationFailure_reportsCommittedCounts() throws Exception {
+        stubAsAdmin();
+        given(templateService.createTemplate(eq(TEAM_ID), any(), any())).willReturn(sampleTemplateResponse());
+        // 生成が 12 件コミット後に失敗した状態を注入（真の 0 ではない）
+        given(templateService.generateForTemplate(eq(TEAM_ID), any(), any()))
+                .willThrow(new com.mannschaft.app.reservation.service.SlotGenerationPartialException(
+                        GenerateSlotsResponse.builder().generatedCount(12).skippedExistingCount(3).build(),
+                        new RuntimeException("チャンク途中でDB断")));
+
+        mockMvc.perform(post(TEMPLATES_PATH)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_TEMPLATE_BODY))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.generation.failed").value(true))
+                // コミット済み分の実件数を報告する（0 で握り潰さない・§3.1 契約）
+                .andExpect(jsonPath("$.data.generation.generatedCount").value(12))
+                .andExpect(jsonPath("$.data.generation.skippedExistingCount").value(3));
+    }
+
     // ────────────────────────────────────────────────────────────
     // F03.4.5 §3.3.2: 臨時営業（generate-single-day）認可・契約
     // ────────────────────────────────────────────────────────────

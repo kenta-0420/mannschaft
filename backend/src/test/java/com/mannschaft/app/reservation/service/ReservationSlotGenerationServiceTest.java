@@ -559,6 +559,30 @@ class ReservationSlotGenerationServiceTest {
         }
 
         @Test
+        @DisplayName("S-3/S-6③: 先行チャンクをコミット後に失敗すると SlotGenerationPartialException にコミット済み件数が保持される（0で握り潰さない）")
+        void 生成_部分失敗はコミット済み件数を例外に保持する() {
+            // Given: MON テンプレ 10:00-10:30（1セル/日）。horizon [7/6,8/2] に月曜4回=4チャンク（各1 INSERT）。
+            //        3チャンク目（3番目の月曜）で INSERT が例外を投げる → 先行2チャンクはコミット済み。
+            given(businessHourRepository.findByTeamIdOrderByIdAsc(TEAM_ID))
+                    .willReturn(List.of(openMonday(LocalTime.of(9, 0), LocalTime.of(18, 0))));
+            given(slotRepository.insertGeneratedCellIgnoreDuplicate(
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .willReturn(1)
+                    .willReturn(1)
+                    .willThrow(new RuntimeException("3チャンク目でDB接続断"));
+
+            // When / Then: 部分失敗例外にコミット済み2件が載る（真の0ではない）
+            assertThatThrownBy(() -> service.generateForTemplate(TEAM_ID,
+                    monTemplate(LocalTime.of(10, 0), LocalTime.of(10, 30)), USER_ID))
+                    .isInstanceOf(SlotGenerationPartialException.class)
+                    .satisfies(e -> {
+                        GenerateSlotsResponse acc = ((SlotGenerationPartialException) e).getAccumulated();
+                        assertThat(acc.getGeneratedCount()).isEqualTo(2);
+                        assertThat(acc.getHorizonTo()).isEqualTo(LocalDate.of(2026, 8, 2));
+                    });
+        }
+
+        @Test
         @DisplayName("S-6②: 空のテンプレ群（変更曜日にテンプレなし）は生成 0・INSERT 0（horizon 情報は返す）")
         void 複数テンプレ生成_空は生成なし() {
             // When

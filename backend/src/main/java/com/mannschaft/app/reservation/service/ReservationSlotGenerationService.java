@@ -321,7 +321,8 @@ public class ReservationSlotGenerationService {
             existingCells.add(cellKey((UUID) key[0], (LocalDate) key[1], (LocalTime) key[2]));
         }
 
-        Counts counts = new Counts();
+        // コミット済みチャンクぶんの累計（部分失敗時に SlotGenerationPartialException で報告する・§3.1 契約）。
+        Counts committed = new Counts();
         for (LocalDate date = horizonFrom; !date.isAfter(horizonTo); date = date.plusDays(1)) {
             LocalDate currentDate = date;
             // ★表現一致（B1）: date からの導出は必ず正準の3文字大文字（MON..SUN）へ変換してから突合する
@@ -333,18 +334,36 @@ public class ReservationSlotGenerationService {
             if (dayTemplates.isEmpty()) {
                 continue;
             }
-            // 日付単位のチャンク tx（1日 = 最大 480 INSERT = 1 tx・§5.2）
-            chunkTransactionTemplate.executeWithoutResult(status ->
-                    generateForDate(teamId, currentDate, dow, dayTemplates,
-                            businessHours.get(dow.name()), existingCells, createdBy, counts, skipBusinessHours));
+            // 日付単位のチャンク tx（1日 = 最大 480 INSERT = 1 tx・§5.2）。
+            // カウントは<b>チャンクローカル</b>に取り、tx コミット成功後に committed へ合算する。
+            // チャンク tx が失敗して rollback された場合、そのチャンクの件数は committed に含めない
+            // （在庫が DB にコミットされていないため・§3.1「カウントはコミット済みチャンク分」）。
+            Counts chunkCounts = new Counts();
+            try {
+                chunkTransactionTemplate.executeWithoutResult(status ->
+                        generateForDate(teamId, currentDate, dow, dayTemplates,
+                                businessHours.get(dow.name()), existingCells, createdBy, chunkCounts,
+                                skipBusinessHours));
+            } catch (RuntimeException chunkFailure) {
+                // 先行チャンクは既にコミット済み。その実件数を例外に載せて上位（保存フローのコントローラ）が
+                // トーストに正直な件数を出せるようにする（0 件で握り潰さない＝症状の黙殺を避ける・根治原則）。
+                throw new SlotGenerationPartialException(
+                        buildResponse(committed, horizonFrom, horizonTo), chunkFailure);
+            }
+            committed.add(chunkCounts);
         }
+        return buildResponse(committed, horizonFrom, horizonTo);
+    }
+
+    /** 累計カウント＋horizon から生成結果 DTO を組み立てる。 */
+    private static GenerateSlotsResponse buildResponse(Counts counts, LocalDate from, LocalDate to) {
         return GenerateSlotsResponse.builder()
                 .generatedCount(counts.generated)
                 .skippedExistingCount(counts.skippedExisting)
                 .skippedClosedDayCount(counts.skippedClosedDay)
                 .skippedOutsideHoursCount(counts.skippedOutsideHours)
-                .horizonFrom(horizonFrom)
-                .horizonTo(horizonTo)
+                .horizonFrom(from)
+                .horizonTo(to)
                 .build();
     }
 
@@ -455,5 +474,13 @@ public class ReservationSlotGenerationService {
         private int skippedExisting;
         private int skippedClosedDay;
         private int skippedOutsideHours;
+
+        /** チャンク tx コミット成功後に、そのチャンクの件数を累計へ合算する。 */
+        private void add(Counts other) {
+            this.generated += other.generated;
+            this.skippedExisting += other.skippedExisting;
+            this.skippedClosedDay += other.skippedClosedDay;
+            this.skippedOutsideHours += other.skippedOutsideHours;
+        }
     }
 }

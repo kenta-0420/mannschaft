@@ -609,6 +609,35 @@ class ReservationControllerTest {
         }
 
         @Test
+        @DisplayName("S-6③(部分失敗): 営業時間PUTで生成が先行チャンクcommit後に失敗しても 200＋generation.failed=true＋コミット済み件数(>0)")
+        void 営業時間一括更新_部分失敗はコミット済み件数を報告() {
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                BusinessHoursUpdateRequest request = new BusinessHoursUpdateRequest(List.of());
+                given(businessHourService.updateBusinessHours(TEAM_ID, request))
+                        .willReturn(new com.mannschaft.app.reservation.dto.BusinessHoursUpdateOutcome(
+                                List.of(createBusinessHourResponse()),
+                                java.util.Set.of(com.mannschaft.app.reservation.ReservationDayOfWeek.MON)));
+                // 生成が 8 件コミット後に失敗（真の 0 ではない）
+                given(templateService.generateForDaysOfWeek(
+                        org.mockito.ArgumentMatchers.eq(TEAM_ID), org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.any()))
+                        .willThrow(new com.mannschaft.app.reservation.service.SlotGenerationPartialException(
+                                com.mannschaft.app.reservation.dto.GenerateSlotsResponse.builder()
+                                        .generatedCount(8).build(),
+                                new RuntimeException("チャンク途中でDB断")));
+
+                ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.BusinessHoursSaveResponse>> result =
+                        controller.updateBusinessHours(TEAM_ID, request);
+
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData().generation().failed()).isTrue();
+                // コミット済み分の実件数を報告する（0 で握り潰さない・§3.1 契約）
+                assertThat(result.getBody().getData().generation().generatedCount()).isEqualTo(8);
+            }
+        }
+
+        @Test
         @DisplayName("ブロック時間一覧取得_正常_200返却")
         void ブロック時間一覧取得_正常_200返却() {
             LocalDate from = LocalDate.now();
