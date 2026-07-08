@@ -332,13 +332,14 @@ class SpotlightContentServingIT extends AbstractSpotlightIT {
         }
 
         @Test
-        @DisplayName("ac2_11: 未認証 → 401（COMMON_000）")
+        @DisplayName("ac2_11: 未認証 → 401（@PreAuthorize(isAuthenticated) が拒否）")
         void ac2_11_未認証は401() {
             clearAuthentication();
+            // /spotlight/content は認証必須（§6.2・§11）。メソッドセキュリティ層で拒否され、
+            // Spring Security の AuthenticationException（→ 401）に解決される。
             assertThatThrownBy(() -> controller.content(TILE, 1, "PERSONAL", null, null, null, "ja"))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode().getCode())
-                            .as("未認証は COMMON_000 → 401").isEqualTo("COMMON_000"));
+                    .as("未認証は 401 相当のセキュリティ例外で拒否される")
+                    .isInstanceOf(org.springframework.security.core.AuthenticationException.class);
         }
     }
 }
