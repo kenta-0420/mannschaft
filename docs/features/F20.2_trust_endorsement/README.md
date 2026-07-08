@@ -1,6 +1,6 @@
 # F20.2 団体認証「信頼の輪」— 信任（Trust Endorsement）
 
-> **ステータス**: 🟡 設計中（精査待ち）
+> **ステータス**: 🟢 設計完了（要裁可論点 §11 のマスター裁可待ち）
 > **最終更新**: 2026-07-08
 > **対象ドメイン（バックエンド）**: `com.mannschaft.app.trust`（新設）
 > **対象パッケージ（フロントエンド）**: `frontend/app/pages/trust/**`（新設）/ `frontend/app/components/trust/**`（新設）

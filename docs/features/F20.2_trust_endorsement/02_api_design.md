@@ -1,6 +1,6 @@
 # F20.2 信任（信頼の輪）— 02. API設計
 
-> **ステータス**: 🟡 設計中（精査待ち）
+> **ステータス**: 🟢 設計完了（要裁可論点 §11 のマスター裁可待ち）
 > 親: [README.md](README.md) ／ 関連: [01_data_model.md](01_data_model.md) / [03_security.md](03_security.md)
 
 ---
