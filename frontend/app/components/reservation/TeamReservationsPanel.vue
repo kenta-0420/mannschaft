@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import type { ReservationSettingsResponse } from '~/types/reservation'
+import type { ReservationSettingsResponse, ReservationLineResponse } from '~/types/reservation'
+import type { components } from '~/types/generated'
+
+type ReservationMenuResponse = components['schemas']['ReservationMenuResponse']
+type SlotTemplateResponse = components['schemas']['SlotTemplateResponse']
 
 const props = defineProps<{ teamId: string }>()
 
@@ -44,6 +48,21 @@ const reservationListRef = ref<Refreshable | null>(null)
 
 /** 詳細設定アコーディオンの開閉状態（初期 collapsed） */
 const advancedSettingsValue = ref<string | null>(null)
+
+/**
+ * 「予約対象の管理」タブ内セクション（ライン/メニュー/週間テンプレート/枠管理）のアコーディオン開閉状態。
+ * 初期は全閉（ADHD配慮=脳内摩擦削減。F03.4.5 §UX改善5点の2)）。multiple=true のため配列で複数開閉を保持する。
+ */
+const managementAccordionValue = ref<string[]>([])
+
+/** アコーディオン件数バッジ用の子コンポーネント参照（既存 FriendFolderList/friend-folders.vue と同一パターン）。 */
+const lineManagerRef = ref<{ refresh: () => Promise<void>; items: ReservationLineResponse[] } | null>(null)
+const menuManagerRef = ref<{ refresh: () => Promise<void>; items: ReservationMenuResponse[] } | null>(null)
+const slotTemplateManagerRef = ref<{ refresh: () => Promise<void>; items: SlotTemplateResponse[] } | null>(null)
+
+const lineCount = computed(() => lineManagerRef.value?.items?.length ?? 0)
+const menuCount = computed(() => menuManagerRef.value?.items?.length ?? 0)
+const templateCount = computed(() => slotTemplateManagerRef.value?.items?.length ?? 0)
 
 // === 予約設定（PUBLIC許可フラグ） ===
 const reservationSettings = ref<ReservationSettingsResponse | null>(null)
@@ -158,7 +177,9 @@ onMounted(async () => {
     <Tabs v-model:value="activeTab">
       <TabList>
         <Tab :value="0">{{ t('reservation.tab.book') }}</Tab>
-        <Tab :value="1">{{ t('reservation.tab.list') }}</Tab>
+        <!-- 非管理者（SUPPORTER含む）は「自分の予約」に改名（表示のみ・認可挙動は不変）。
+             管理者/副管理者（mode=team）は従来通り「予約一覧」。 -->
+        <Tab :value="1">{{ isAdminOrDeputy ? t('reservation.tab.list') : t('reservation.tab.my_reservations') }}</Tab>
         <Tab v-if="isAdmin" :value="2">{{ t('reservation.tab.line_manage') }}</Tab>
         <Tab v-if="isAdminOrDeputy" :value="3">{{ t('reservation.tab.emergency_closure') }}</Tab>
       </TabList>
@@ -189,31 +210,35 @@ onMounted(async () => {
                 :allow-empty="false"
               />
             </div>
-            <SlotMatrixPicker
-              v-if="bookDisplayMode === 'matrix'"
-              ref="slotMatrixPickerRef"
-              :team-id="props.teamId"
-              :is-admin="isAdmin"
-              @slot-selected="onSlotSelected"
-              @manage-lines="activeTab = 2"
-              @reserved="onReserved"
-            />
-            <SlotGridPicker
-              v-else-if="bookDisplayMode === 'grid'"
-              ref="slotGridPickerRef"
-              :team-id="props.teamId"
-              :is-admin="isAdmin"
-              @slot-selected="onSlotSelected"
-              @manage-lines="activeTab = 2"
-            />
-            <SlotPicker
-              v-else
-              ref="slotPickerRef"
-              :team-id="props.teamId"
-              :is-admin="isAdmin"
-              @slot-selected="onSlotSelected"
-              @manage-lines="activeTab = 2"
-            />
+            <!-- 表示切替の再マウント/再取得を防ぐ KeepAlive（状態・スクロール位置・取得済みデータを保持）。
+                 各 Picker の ref/emit 結線（onReserved 等）は KeepAlive 配下でも維持される。 -->
+            <KeepAlive>
+              <SlotMatrixPicker
+                v-if="bookDisplayMode === 'matrix'"
+                ref="slotMatrixPickerRef"
+                :team-id="props.teamId"
+                :is-admin="isAdmin"
+                @slot-selected="onSlotSelected"
+                @manage-lines="activeTab = 2"
+                @reserved="onReserved"
+              />
+              <SlotGridPicker
+                v-else-if="bookDisplayMode === 'grid'"
+                ref="slotGridPickerRef"
+                :team-id="props.teamId"
+                :is-admin="isAdmin"
+                @slot-selected="onSlotSelected"
+                @manage-lines="activeTab = 2"
+              />
+              <SlotPicker
+                v-else
+                ref="slotPickerRef"
+                :team-id="props.teamId"
+                :is-admin="isAdmin"
+                @slot-selected="onSlotSelected"
+                @manage-lines="activeTab = 2"
+              />
+            </KeepAlive>
           </template>
           <div v-else class="rounded-lg border border-surface-200 p-6 text-center dark:border-surface-700">
             <i class="pi pi-lock mb-3 block text-3xl text-surface-400" />
@@ -248,22 +273,56 @@ onMounted(async () => {
 
         <!-- ライン管理タブ（ADMIN限定）+ メニュー管理 + 週間テンプレート + 枠管理 + 詳細設定アコーディオン -->
         <TabPanel v-if="isAdmin" :value="2">
-          <LineManager :team-id="props.teamId" />
+          <!-- 管理セクション群（初期は全閉・ADHD配慮で脳内摩擦削減。件数バッジ付き） -->
+          <!-- 注意: AccordionContent に lazy を付けると閉状態の子が非マウントになり、件数バッジ（子の defineExpose({ items }) 参照）が機能しなくなる。常時マウント前提のため lazy 禁止 -->
+          <Accordion v-model:value="managementAccordionValue" multiple>
+            <AccordionPanel value="lines">
+              <AccordionHeader>
+                <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
+                  {{ t('reservation.management.section_count', { label: t('reservation.line_manage_title'), n: lineCount }) }}
+                </span>
+              </AccordionHeader>
+              <AccordionContent>
+                <LineManager ref="lineManagerRef" :team-id="props.teamId" />
+              </AccordionContent>
+            </AccordionPanel>
 
-          <!-- メニュー管理セクション（機能E・F03.4.1） -->
-          <div class="mt-6">
-            <MenuManager :team-id="props.teamId" />
-          </div>
+            <!-- メニュー管理セクション（機能E・F03.4.1） -->
+            <AccordionPanel value="menus">
+              <AccordionHeader>
+                <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
+                  {{ t('reservation.management.section_count', { label: t('reservation.menu.title'), n: menuCount }) }}
+                </span>
+              </AccordionHeader>
+              <AccordionContent>
+                <MenuManager ref="menuManagerRef" :team-id="props.teamId" />
+              </AccordionContent>
+            </AccordionPanel>
 
-          <!-- 週間テンプレート管理セクション（F03.4.2） -->
-          <div class="mt-6">
-            <SlotTemplateManager :team-id="props.teamId" />
-          </div>
+            <!-- 週間テンプレート管理セクション（F03.4.2） -->
+            <AccordionPanel value="templates">
+              <AccordionHeader>
+                <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
+                  {{ t('reservation.management.section_count', { label: t('reservation.template.title'), n: templateCount }) }}
+                </span>
+              </AccordionHeader>
+              <AccordionContent>
+                <SlotTemplateManager ref="slotTemplateManagerRef" :team-id="props.teamId" />
+              </AccordionContent>
+            </AccordionPanel>
 
-          <!-- 枠（Slot）管理セクション -->
-          <div class="mt-6">
-            <SlotManager :team-id="props.teamId" />
-          </div>
+            <!-- 枠（Slot）管理セクション。日付フィルター済み一覧のため件数バッジは付けない（全体件数と誤認させないため） -->
+            <AccordionPanel value="slots">
+              <AccordionHeader>
+                <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
+                  {{ t('reservation.slot_manager.title') }}
+                </span>
+              </AccordionHeader>
+              <AccordionContent>
+                <SlotManager :team-id="props.teamId" />
+              </AccordionContent>
+            </AccordionPanel>
+          </Accordion>
 
           <!-- 詳細設定（ADMIN限定・既定 collapsed）-->
           <div class="mt-6">

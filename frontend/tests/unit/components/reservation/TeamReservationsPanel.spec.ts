@@ -52,11 +52,25 @@ vi.mock('~/composables/useReservationApi', () => ({
   }),
 }))
 
+// 管理タブ（TabPanel value=2）配下の EmergencyClosureForm が実網羅通信を試みないよう最小スタブ化する
+// （TabPanels は非 lazy のため isAdmin/isAdminOrDeputy=true では実マウントされる）。
+vi.mock('~/composables/useEmergencyClosureApi', () => ({
+  useEmergencyClosureApi: () => ({
+    resolveTeamId: vi.fn().mockResolvedValue(null),
+    previewClosure: vi.fn().mockResolvedValue({ data: [] }),
+    sendClosure: vi.fn().mockResolvedValue({ data: {} }),
+    listClosures: vi.fn().mockResolvedValue({ data: [] }),
+  }),
+}))
+
+/** useRoleAccess のロールを動的に切り替えるための可変オブジェクト（AC-6/AC-7 で admin=true に上書きする）。 */
+const roleOverride = { isAdmin: false, isAdminOrDeputy: false, roleName: 'MEMBER' }
+
 mockNuxtImport('useRoleAccess', () => () => ({
-  isAdmin: ref(false),
-  isAdminOrDeputy: ref(false),
+  isAdmin: ref(roleOverride.isAdmin),
+  isAdminOrDeputy: ref(roleOverride.isAdminOrDeputy),
   isMember: ref(true),
-  roleName: ref('MEMBER'),
+  roleName: ref(roleOverride.roleName),
   loadPermissions: vi.fn().mockResolvedValue({ ok: true }),
 }))
 
@@ -86,6 +100,11 @@ beforeEach(() => {
   mockGetSlotGrid.mockResolvedValue({ data: { axis: 'LINE', days: [] } })
   mockGetMenus.mockResolvedValue({ data: [] })
   mockListMyReservations.mockResolvedValue({ data: [] })
+
+  // 既定は非管理者（MEMBER）。admin タブ構成を検証するテストのみ個別に上書きする。
+  roleOverride.isAdmin = false
+  roleOverride.isAdminOrDeputy = false
+  roleOverride.roleName = 'MEMBER'
 })
 
 describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
@@ -167,5 +186,85 @@ describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
     await flushPromises()
 
     expect(mockGetSlots.mock.calls.length).toBeGreaterThan(slotsCallsBefore)
+  })
+
+  it('AC-6（UX改善5点の5）: 非管理者（MEMBER）はタブが「予約する」「自分の予約」の2つのみで、ラベルは自分の予約', async () => {
+    // beforeEach 既定（isAdmin=false, isAdminOrDeputy=false, roleName=MEMBER）のまま
+    const wrapper = await mountSuspended(TeamReservationsPanel, {
+      props: { teamId: 'team-slug' },
+    })
+    await flushPromises()
+
+    const tabs = wrapper.findAll('[role="tab"]')
+    expect(tabs).toHaveLength(2)
+    expect(tabs[0]!.text()).toBe('Book')
+    expect(tabs[1]!.text()).toBe('My Reservations')
+  })
+
+  it('AC-6b: SUPPORTER も非管理者側としてタブが2つのみ', async () => {
+    roleOverride.isAdmin = false
+    roleOverride.isAdminOrDeputy = false
+    roleOverride.roleName = 'SUPPORTER'
+    const wrapper = await mountSuspended(TeamReservationsPanel, {
+      props: { teamId: 'team-slug' },
+    })
+    await flushPromises()
+
+    const tabs = wrapper.findAll('[role="tab"]')
+    expect(tabs).toHaveLength(2)
+    expect(tabs[1]!.text()).toBe('My Reservations')
+  })
+
+  it('AC-7（UX改善5点の5・認可挙動不変の確認）: 管理者はタブが4つ（予約する/予約一覧/予約対象の管理/緊急休業）で不変', async () => {
+    roleOverride.isAdmin = true
+    roleOverride.isAdminOrDeputy = true
+    roleOverride.roleName = 'ADMIN'
+    const wrapper = await mountSuspended(TeamReservationsPanel, {
+      props: { teamId: 'team-slug' },
+    })
+    await flushPromises()
+
+    const tabs = wrapper.findAll('[role="tab"]')
+    expect(tabs).toHaveLength(4)
+    expect(tabs[0]!.text()).toBe('Book')
+    // 管理者/副管理者（mode=team）はラベル改名の対象外で従来の「予約一覧」のまま
+    expect(tabs[1]!.text()).toBe('Reservations')
+    expect(tabs[2]!.text()).toBe('Manage Bookable Items')
+    expect(tabs[3]!.text()).toBe('緊急休業')
+  })
+
+  it('AC-8（UX改善5点の3）: 表示切替（マトリックス→リスト→マトリックス）で KeepAlive によりコンポーネントが破棄されず、復帰時はサイレント再取得のみ走る', async () => {
+    const wrapper = await mountSuspended(TeamReservationsPanel, {
+      props: { teamId: 'team-slug' },
+    })
+    await flushPromises()
+
+    expect(wrapper.findComponent(SlotMatrixPicker).exists()).toBe(true)
+    const matrixGridCallsBefore = mockGetSlotGrid.mock.calls.length
+    // getMenus は SlotMatrixPicker の onMounted のみが呼ぶ → 再mountの検出器として使う
+    const menusCallsBefore = mockGetMenus.mock.calls.length
+    expect(matrixGridCallsBefore).toBeGreaterThan(0)
+    expect(menusCallsBefore).toBeGreaterThan(0)
+
+    // マトリックス → リストへ切替（v-model の SelectButton 経由ではなく直接 ref を操作して検証する）
+    const selectButton = wrapper.findComponent({ name: 'SelectButton' })
+    expect(selectButton.exists()).toBe(true)
+    await selectButton.vm.$emit('update:modelValue', 'list')
+    await flushPromises()
+
+    expect(wrapper.findComponent(SlotPicker).exists()).toBe(true)
+    expect(wrapper.findComponent(SlotMatrixPicker).exists()).toBe(false)
+
+    // リスト → マトリックスへ戻す。
+    await selectButton.vm.$emit('update:modelValue', 'matrix')
+    await flushPromises()
+
+    expect(wrapper.findComponent(SlotMatrixPicker).exists()).toBe(true)
+    // 破棄されていない証跡: 再mountなら onMounted の loadMenus が再実行されるはずだが、増えていない
+    expect(mockGetMenus.mock.calls.length).toBe(menusCallsBefore)
+    // 復帰時のデータ鮮度確保: onActivated のサイレント再取得（loadGrid silent）がちょうど1回走る
+    expect(mockGetSlotGrid.mock.calls.length).toBe(matrixGridCallsBefore + 1)
+    // サイレント＝skeleton へ切り替わらない（loading を立てない）ため、マトリックス本体は表示されたまま
+    expect(wrapper.findComponent(SlotMatrixPicker).findAllComponents({ name: 'Skeleton' })).toHaveLength(0)
   })
 })

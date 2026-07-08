@@ -12,7 +12,8 @@ import SlotMatrixPicker from '~/components/reservation/SlotMatrixPicker.vue'
  *   AC-2: 予約対象ゼロは対象作成の空状態を表示する
  *   AC-3: 30分セル（span=1・AVAILABLE）クリックでメニュー選択ダイアログが開く（GroupBookingDialog）
  *   AC-4: 長尺手動枠（span>1・colspan跨ぎ描画）クリックは slotSelected を emit する（グループダイアログを開かない）
- *   AC-5: モバイル規約: 横スクロールコンテナに overscroll-x-contain が付与される
+ *   AC-5: モバイル規約: 縦横スクロールコンテナに overscroll-contain が付与される（UX改善5点の4で縦横統合）
+ *   AC-6: 時間ヘッダ行 sticky top・左上交差セル両軸 sticky（UX改善5点の4・マトリックス時間ヘッダsticky化）
  *
  * 注: テスト環境の既定ロケールは en。日付依存の flaky を避けるため、返す日は常に「明日」にする
  *     （isPastCell の過去判定に一切かからない・実行時刻に依存しない）。
@@ -153,7 +154,7 @@ describe('SlotMatrixPicker.vue', () => {
     expect(findByTestId('group-no-menu')).toBeNull()
   })
 
-  it('AC-5: 横スクロールコンテナに overscroll-x-contain が付与される（縦→横ホイール変換は実装しない）', async () => {
+  it('AC-5: 縦横スクロールコンテナに overscroll-contain が付与される（縦→横ホイール変換は実装しない。UX改善5点の4で縦スクロールも同一コンテナに統合）', async () => {
     mockGetLines.mockResolvedValue({ data: [activeLine] })
     mockGetSlotGrid.mockResolvedValue(gridResponseWithCells())
 
@@ -162,6 +163,24 @@ describe('SlotMatrixPicker.vue', () => {
     })
     await flush()
 
-    expect(wrapper.html()).toContain('overscroll-x-contain')
+    expect(wrapper.html()).toContain('overscroll-contain')
+  })
+
+  it('AC-6（UX改善5点の4）: 時間ヘッダ行が sticky top、左上の交差セルが両軸 sticky で higher z-index を持つ', async () => {
+    mockGetLines.mockResolvedValue({ data: [activeLine] })
+    mockGetSlotGrid.mockResolvedValue(gridResponseWithCells())
+
+    const wrapper = await mountSuspended(SlotMatrixPicker, {
+      props: { teamId: 'team-slug', isAdmin: false },
+    })
+    await flush()
+
+    const html = wrapper.html()
+    // 左上コーナー: 左右上下の両軸 sticky（left-0 と top-0 の両方）で最前面（z-20）
+    expect(html).toMatch(/sticky left-0 top-0 z-20/)
+    // 時間ヘッダセル: 上方向 sticky（top-0）
+    expect(html).toMatch(/sticky top-0 z-10/)
+    // 左の行ヘッダ列（日付×予約対象）は既存どおり left-0 sticky を維持
+    expect(html).toMatch(/sticky left-0 z-10/)
   })
 })

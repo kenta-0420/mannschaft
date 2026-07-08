@@ -158,9 +158,13 @@ async function loadMenus() {
   menus.value = (res.data ?? []).filter(m => m.isActive !== false)
 }
 
-async function loadGrid() {
+/**
+ * グリッド取得。`silent: true` は KeepAlive 復帰時のサイレント再取得用で、loading フラグを
+ * 立てない（skeleton へ切り替わらない＝表示中のマトリックスを保持したまま裏でデータだけ更新する）。
+ */
+async function loadGrid(opts?: { silent?: boolean }) {
   if (!weekStart.value) return
-  loading.value = true
+  if (!opts?.silent) loading.value = true
   errorMsg.value = ''
   refreshClock()
   try {
@@ -181,7 +185,7 @@ async function loadGrid() {
     errorMsg.value = t('reservation.grid.load_error')
   }
   finally {
-    loading.value = false
+    if (!opts?.silent) loading.value = false
   }
 }
 
@@ -291,7 +295,8 @@ function gridStyle(headerLength: number): string {
   return `grid-template-columns: minmax(7rem, auto) repeat(${headerLength}, minmax(3.5rem, 1fr));`
 }
 
-watch([weekStart, filterMenuId], loadGrid)
+// loadGrid が opts 引数を持つため、watch コールバックの (newVal, oldVal) が誤って渡らないようラップする
+watch([weekStart, filterMenuId], () => loadGrid())
 
 onMounted(async () => {
   thisWeek()
@@ -299,8 +304,20 @@ onMounted(async () => {
   await loadGrid()
 })
 
+// KeepAlive 配下（TeamReservationsPanel の表示切替）での復帰時にサイレント再取得し、
+// 表示保持（チラつきなし）とデータ鮮度を両立する。onActivated は初回 mount 直後にも
+// 1回発火するため、onMounted 経路との二重fetchをフラグでガードする。
+let initialActivationDone = false
+onActivated(() => {
+  if (!initialActivationDone) {
+    initialActivationDone = true
+    return
+  }
+  void loadGrid({ silent: true })
+})
+
 // 予約直後に親から再読込させるための公開メソッド（既存パターン踏襲・defineExpose({ refresh })）
-defineExpose({ refresh: loadGrid })
+defineExpose({ refresh: () => loadGrid() })
 </script>
 
 <template>
@@ -363,17 +380,18 @@ defineExpose({ refresh: loadGrid })
       {{ errorMsg }}
     </Message>
 
-    <!-- マトリックス本体（横スクロール・overscroll-x-contain・行ヘッダ sticky） -->
-    <div v-else class="overflow-x-auto overscroll-x-contain">
+    <!-- マトリックス本体（縦横スクロール・overscroll-contain・時間ヘッダ行 sticky top・行ヘッダ列 sticky left）。
+         縦スクロールを本コンテナ内に閉じ込める（max-h + overflow-auto）ことで sticky top を確実に効かせる。 -->
+    <div v-else class="max-h-[65vh] overflow-auto overscroll-contain">
       <div class="inline-grid min-w-full gap-1" :style="gridStyle(header.length)">
-        <!-- ヘッダー行: 左上コーナー + 時間見出し -->
-        <div class="sticky left-0 z-10 flex items-center justify-center bg-surface-0 p-2 text-xs font-semibold text-surface-500 dark:bg-surface-900">
+        <!-- ヘッダー行: 左上コーナー（両軸 sticky・最前面）+ 時間見出し（sticky top） -->
+        <div class="sticky left-0 top-0 z-20 flex items-center justify-center bg-surface-0 p-2 text-xs font-semibold text-surface-500 dark:bg-surface-900">
           {{ t('reservation.matrix.date_line_header') }}
         </div>
         <div
           v-for="(h, hi) in header"
           :key="`h-${hi}`"
-          class="flex items-center justify-center rounded-md bg-surface-100 p-2 text-center text-xs font-semibold text-surface-700 dark:bg-surface-800 dark:text-surface-200"
+          class="sticky top-0 z-10 flex items-center justify-center rounded-md bg-surface-100 p-2 text-center text-xs font-semibold text-surface-700 dark:bg-surface-800 dark:text-surface-200"
         >
           {{ h.label }}
         </div>
