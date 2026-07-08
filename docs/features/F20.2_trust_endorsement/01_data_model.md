@@ -201,7 +201,7 @@ CREATE TABLE trust_endorsements (
     granted_by_user_id    BIGINT UNSIGNED NULL     COMMENT '付与操作者（endorser管理者・論理参照）',
     revoked_at            DATETIME        NULL     COMMENT '無効化日時（NULL=有効な信任）',
     revoked_by_user_id    BIGINT UNSIGNED NULL     COMMENT '取消操作者（論理参照）',
-    revoke_reason         VARCHAR(24)     NULL     COMMENT 'MANUAL/ENDORSER_REVOKED/OPERATOR',
+    revoke_reason         VARCHAR(24)     NULL     COMMENT 'MANUAL/ENDORSER_REVOKED/ENDORSER_DELETED/OPERATOR',
     active_uniq_key       BINARY(16) AS (IF(revoked_at IS NULL,
                               UNHEX('00000000000000000000000000000000'), id)) STORED
                           COMMENT '有効信任の一意化キー（有効時は固定値・無効化後はidで衝突回避）',
@@ -213,7 +213,7 @@ CREATE TABLE trust_endorsements (
     CONSTRAINT chk_te_no_self CHECK (
         NOT (endorser_scope_kind = endorsee_scope_kind AND endorser_scope_id = endorsee_scope_id)),
     CONSTRAINT chk_te_revoke_reason CHECK (
-        revoke_reason IS NULL OR revoke_reason IN ('MANUAL','ENDORSER_REVOKED','OPERATOR')),
+        revoke_reason IS NULL OR revoke_reason IN ('MANUAL','ENDORSER_REVOKED','ENDORSER_DELETED','OPERATOR')),
     UNIQUE KEY uk_te_active (endorser_scope_kind, endorser_scope_id,
                             endorsee_scope_kind, endorsee_scope_id, active_uniq_key),
     INDEX idx_te_endorsee (endorsee_scope_kind, endorsee_scope_id, revoked_at),
@@ -306,7 +306,7 @@ erDiagram
         BIGINT endorsee_scope_id "論理参照"
         DATETIME granted_at "年間集計軸"
         DATETIME revoked_at "NULL=有効"
-        VARCHAR24 revoke_reason "MANUAL/ENDORSER_REVOKED/OPERATOR"
+        VARCHAR24 revoke_reason "MANUAL/ENDORSER_REVOKED/ENDORSER_DELETED/OPERATOR"
     }
 
     trust_endorsements }o..|| trust_certifications : "endorsee 集計で state 導出（論理参照・FKなし）"

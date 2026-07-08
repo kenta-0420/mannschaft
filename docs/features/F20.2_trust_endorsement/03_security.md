@@ -95,7 +95,7 @@
 - **trust ドメイン独自の可視性述語（`teams.visibility='PUBLIC'` の直接 WHERE 等）を書かない**（`feedback_visibility_bypass_f00_audit`・漏洩源になる）。
 - 信任関係一覧の**相手方**が PRIVATE 団体の場合: 信任関係自体は「双方のプロフィールに公開」が要件のため相手方の**団体名と認証マーク**は返すが、`counterpartPublicSlug` は相手方が F00 可視（PUBLIC）のときのみ返す（PRIVATE 団体への公開ページリンクを作らない・02 §6.2）。
 
-> ⚠️ **要精査注記**: 「PRIVATE 団体が信任関係に載ることで団体名が未ログインに露出する」点は、要件「信任関係は双方のプロフィールに公開」から導いた帰結である。PRIVATE 団体は通常 F19.1 で団体名も非公開のため、**厳密には矛盾がありうる**。安全側の代替案 =「PRIVATE 団体が当事者の信任は、当該 PRIVATE 団体側のページ（ログイン済みメンバー向け）でのみ表示し、公開面では相手方一覧から除外する」。本設計は**安全側の代替案を既定**とし、公開面の incoming/outgoing 一覧は「相手方が F00 可視である信任のみ」を返す（件数 `validEndorsementCount` は全件のまま）。→ 精査時に確定すること（README §11 要裁可論点に準ずる実装判断）。
+> **確定既定（§11-7(b)）**: 「PRIVATE 団体が信任関係に載ると団体名が未ログインに露出する」点は、要件「信任関係は双方のプロフィールに公開」と F19.1 の非公開原則が衝突しうる。**本設計は安全側 §11-7(b) を確定既定とする（マスター裁可待ち）**: 公開面の incoming/outgoing 一覧は「相手方が viewer から F00 可視である信任のみ」を返し、PRIVATE 団体を相手とする信任は公開面の一覧から除外する（当該 PRIVATE 団体側のログイン済みメンバー向け画面では表示可）。件数 `validEndorsementCount` は除外に関わらず**全件のまま**カウントする（README §11-7・AC-24・[02 §6.2](02_api_design.md)）。
 
 ### 4.2 公開 DTO の禁則フィールド（CI 契約テストで機械確認）
 
@@ -117,7 +117,7 @@ email / 氏名等の個人 PII 全般（本機能は団体単位・個人情報�
 |---|---|---|
 | `trust_endorsements`（信任台帳） | **匿名化せず保持**（監査・統計証跡）。`granted_by_user_id`/`revoked_by_user_id` は論理参照のみで、操作者の PII は user 側の退会匿名化で消える（CLAUDE.md 原則 4・user_id 残置） | 匿名化しない |
 | `trust_certifications` | 団体の属性であり個人 PII を含まない。保持 | — |
-| 団体（TEAM/ORG）の削除・アーカイブ | 認証行・信任行は**物理保持**（クロスドメイン CASCADE なし・原則 2）。公開 API は F00 ゲートで削除済み団体を 404 秘匿。削除団体が endorser の有効信任は**確定仕様として無効化する**（README §5.1 T12・AC-27）: 既存の `TeamDeletedEvent`/`OrganizationDeletedEvent`（origin/main 実在・削除フローが発火済み）を trust 側リスナで購読し、outgoing 有効信任を `revoke_reason='ENDORSER_DELETED'` で無効化＋被信任先を再計算（1 段・[02 §5.4](02_api_design.md)）。放置すると「削除済み団体の信任」が有効件数に残り続け認証の実体が崩れる（症状を隠さない） | — |
+| 団体（TEAM/ORG）の削除・アーカイブ | 認証行・信任行は**物理保持**（クロスドメイン CASCADE なし・原則 2）。公開 API は F00 ゲートで削除済み団体を 404 秘匿。削除団体が endorser の有効信任は**確定仕様として無効化する**（README §5.1 T12・AC-27）: 既存の `TeamDeletedEvent`/`OrganizationDeletedEvent`（origin/main 実在・削除フローが発火済み）を trust 側リスナで購読し、outgoing 有効信任を `revoke_reason='ENDORSER_DELETED'` で無効化＋被信任先を再計算（1 段・[02 §5.4](02_api_design.md)）。**耐障害性**: このカスケードは通知（ベストエフォート）と別格で、AFTER_COMMIT リスナ失敗による残留を**日次整合バッチ `TrustConsistencyBatch` の「孤児信任検出・修復」条件（§8・02 §5.4.1）で補償**する。放置すると「削除済み団体の信任」が有効件数に残り続け認証の実体が崩れる（症状を隠さない） | — |
 
 ---
 
@@ -152,7 +152,7 @@ email / 氏名等の個人 PII 全般（本機能は団体単位・個人情報�
 - **課金との分離**: trust ドメインは payment/billing/entitlement のどの Service も**呼ばない**（README §1.3-4）。ArchUnit で `trust` → `payment|billing|entitlement` 依存禁止を番人化することを推奨。
 - **状態遷移の唯一入口**: `state` の変更は `TrustCertificationService.recalculateState`／運営操作メソッドのみ（Controller や他ドメインから Entity の setter を直接叩かない）。
 - **通知はベストエフォート**: 通知送信失敗で信任 tx をロールバックしない（AFTER_COMMIT＋REQUIRES_NEW・02 §9）。失敗はログ＋メトリクスで可視化（握り潰さない）。
-- **`valid_endorsement_count` の整合バッチ**: 日次で `trust_endorsements` の実集計と突合し、ドリフトはアラート（自動修復してよいが必ず記録・01 §3.1）。
+- **整合バッチ `TrustConsistencyBatch`（日次・二条件）**: (a) **孤児信任の検出・修復** — 有効信任（`revoked_at IS NULL`）のうち endorser が team/org 側で削除済みのもの（削除カスケードのリスナ失敗による残留・02 §5.4.1）を `revoke_reason='ENDORSER_DELETED'` で無効化し endorsee を再計算。(b) **`valid_endorsement_count` ドリフト検出** — `trust_endorsements` の実集計と突合。いずれもアラート付きで記録（自動修復してよいが必ず記録・01 §3.1・症状を隠さない）。削除カスケードは通知（ベストエフォート）と別格で、この補償経路により最終的な整合を保証する。
 - **入力検証**: `scopeKind` は enum バインドで不正値を 400/422 に（文字列比較を散在させず `TrustScopeKind` へ変換して扱う）。
 
 ---

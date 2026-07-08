@@ -17,7 +17,7 @@
 | `TrustEligibilityService` | 信任資格の最低条件判定（README §3.3・設立/メンバー数/年間上限） |
 | `TrustCertificationQueryService` | 読み取り（認証状態・信任一覧・`isCertified()` F20.1 フック・README §7） |
 | `TrustScopeResolver` | scope 所有権検証（IDOR 対策）・`TEAM/ORG → memberships.scope_type` マッピング（README §1.4） |
-| `TrustBadgeVisibility` | `isBadgeVisible(state)` ヘルパ（`CERTIFIED`/`UNDER_REVIEW` → true・README §6） |
+| `TrustBadgeVisibility` | `isBadgeVisible(state)`（`CERTIFIED`/`UNDER_REVIEW` → true・README §6）＋ **`publicState(state)`**（公開 DTO 用に `UNDER_REVIEW`→`CERTIFIED` に丸める・値域 3 値・§6.1・[03 §4.2](03_security.md)）を一元提供 |
 | `TrustErrorCode` | エラーコード enum（§8） |
 
 ---
@@ -132,18 +132,25 @@ Path param のみ: `endorsementId`（UUID）。Body なし。
 
 ```
 @Transactional
-1. endorsement を id で取得（無し or 既に revoked_at セット済み → TRUST_008（409 ALREADY_REVOKED。存在しない ID は TRUST_007/404））
-2. 認可: requireScopeAdmin(currentUserId, endorsement.endorserScopeKind, endorsement.endorserScopeId)
-     不許可 → TRUST_009（403）／無関係 scope は TRUST_007（404 秘匿）
-3. endorsement.revoked_at=now, revoked_by_user_id=currentUserId, revoke_reason='MANUAL'
-4. endorsee の trust_certifications 行を FOR UPDATE → recalculateState（§5.1）:
+1. endorsement を id で取得
+     - 非存在 ID → TRUST_007（404 秘匿・存在を漏らさない）
+2. 認可（存在オラクル封鎖のため状態判定より前に置く・03 §3.2）:
+     requireScopeAdmin(currentUserId, endorsement.endorserScopeKind, endorsement.endorserScopeId)
+     - 無権限（操作者が当該 endorser 団体の ADMIN でない）→ 一律 TRUST_007（404 秘匿）
+       （※ endorsement は viewer に紐づかない他団体資産のため、権限差分を漏らさず 404 に統一する）
+3. 状態判定（認可を通過した後にのみ実行）:
+     - endorsement.revoked_at が既セット（存在するが取消済み）→ TRUST_008（409 ALREADY_REVOKED・AC-32）
+4. endorsement.revoked_at=now, revoked_by_user_id=currentUserId, revoke_reason='MANUAL'
+5. endorsee の trust_certifications 行を FOR UPDATE → recalculateState（§5.1）:
      CERTIFIED かつ非アンカー かつ n < T → UNDER_REVIEW（under_review_since=now・T6・マーク維持）
      CERTIFIED（アンカー）→ 不変（A2）
      UNCERTIFIED → 不変（T8）
      それ以外 → 不変（T7）
-5. 通知イベント（AFTER_COMMIT）: 降格時 TrustCertificationStateChangedEvent（UNDER_REVIEW）
-6. 監査ログ: TRUST_ENDORSEMENT_REVOKED（＋降格時 TRUST_STATE_CHANGED）
+6. 通知イベント（AFTER_COMMIT）: 降格時 TrustCertificationStateChangedEvent（UNDER_REVIEW）
+7. 監査ログ: TRUST_ENDORSEMENT_REVOKED（＋降格時 TRUST_STATE_CHANGED）
 ```
+
+> **返却コードの分離（自己矛盾の解消）**: 「非存在 ID」と「存在するが取消済み」を明確に分ける — **非存在 ID → `TRUST_007`（404 秘匿）／存在するが `revoked_at` 既セット → `TRUST_008`（409）**（AC-32 は後者に対応）。認可（手順 2）を状態判定（手順 3）より**前**に置き、無権限は状態を漏らさず一律 404 秘匿とする（§3.2 の 404 秘匿思想と整合）。
 
 ---
 
@@ -277,6 +284,18 @@ cascadeFromDeletedScope(kind, id, actorUserId):
 
 > 削除フロー側にイベント発火の追加実装は**不要**（`TeamDeletedEvent`/`OrganizationDeletedEvent` は既存の削除処理が既に発火している）。trust 側のリスナ追加のみで完結する。
 
+#### 5.4.1 カスケードの耐障害性（通知と別格・整合バッチで補償）
+
+信任カスケード（有効件数・認証状態の正しさに直結）は**通知（ベストエフォート）とは別格**に扱う。`AFTER_COMMIT`＋`REQUIRES_NEW` のリスナは、削除 tx コミット後にリスナが失敗すると「**削除済み団体の outgoing 有効信任が残留**」しうる（被信任先の有効件数が過大なまま＝認証の実体が崩れる）。これを次の二重防御で補償する:
+
+1. **一次経路**: `TrustEndorsementCascadeListener`（§5.4）。失敗時はログ＋メトリクス（握り潰さない）。トランザクショナル・アウトボックス方式（削除イベントをアウトボックス表に記録→ワーカーが冪等に消化）を採ってもよい（実装判断）。
+2. **補償経路（必須）**: 日次整合バッチ `TrustConsistencyBatch`（[03 §8](03_security.md)）に**新規検出条件**を追加する:
+   - **(a) 孤児信任の検出・修復**: `trust_endorsements` の有効行（`revoked_at IS NULL`）のうち、`endorser`（scope_kind+scope_id）が team/org 側で**削除済み**のもの → `revoke_reason='ENDORSER_DELETED'` で無効化し、当該 endorsee の状態を再計算する（一次経路の取りこぼしを回収）。
+   - **(b) `valid_endorsement_count` ドリフト検出**（既存条件）: 実集計との突合。
+   - 検出・修復はいずれもアラート付きで記録する（症状を隠さない・CLAUDE.md 根治原則）。
+
+> カスケードは冪等（既に `revoked_at` セット済みなら再無効化しない・再計算は現在の有効件数から決定論的）なので、一次経路と補償バッチが同じ削除を二重処理しても結果は同一。
+
 ---
 
 ## 6. 読み取り API
@@ -402,10 +421,10 @@ Response 200: `PagedResponse<TrustReviewQueueItem>`（`under_review_since` 昇�
 | `TRUST_004` | `ANNUAL_ENDORSEMENT_CAP_EXCEEDED` | 429 | WARN | 年間信任発行数の上限超過 | AC-07/08 |
 | `TRUST_005` | `DUPLICATE_ENDORSEMENT` | 409 | WARN | 重複信任（有効な同一 endorser→endorsee が既存） | AC-06 |
 | `TRUST_006` | `INVALID_SCOPE_KIND` | 422 | WARN | 対象スコープ不正（USER 等・TEAM/ORG 以外） | AC-11 |
-| `TRUST_007` | `TRUST_RESOURCE_NOT_FOUND` | 404 | WARN | 団体/信任/認証行が存在しない（または scope 不一致・F00 不可視の**秘匿 404**） | AC-12/13/23 |
-| `TRUST_008` | `ENDORSEMENT_ALREADY_REVOKED` | 409 | WARN | 既に取消済みの信任への取消要求 | — |
-| `TRUST_009` | `TRUST_FORBIDDEN` | 403 | WARN | 認可エラー（endorser 管理者でない・運営権限なし） | AC-12/13/21 |
-| `TRUST_010` | `INVALID_CERTIFICATION_STATE` | 409 | WARN | 状態不整合の運営操作（非 UNDER_REVIEW への approve/reject・REVOKED 二重化・非アンカー解除等） | — |
+| `TRUST_007` | `TRUST_RESOURCE_NOT_FOUND` | 404 | WARN | 団体/信任/認証行が存在しない（または scope 不一致・F00 不可視の**秘匿 404**・取消時の無権限秘匿・付与時の存在オラクル封鎖） | AC-12/13/23/34、存在オラクル（§2.3）、取消の非存在/無権限（§3.3） |
+| `TRUST_008` | `ENDORSEMENT_ALREADY_REVOKED` | 409 | WARN | 既に取消済みの信任への取消要求 | AC-32 |
+| `TRUST_009` | `TRUST_FORBIDDEN` | 403 | WARN | 認可エラー（endorser 管理者でない・運営権限なし。※対象の存在を漏らしてよい面での 403。取消 API は秘匿優先で 404=TRUST_007 を用いる・§3.3） | AC-12/13/21 |
+| `TRUST_010` | `INVALID_CERTIFICATION_STATE` | 409 | WARN | 状態不整合の運営操作（非 UNDER_REVIEW への approve/reject・REVOKED 二重化・非アンカー解除等） | AC-33/AC-30 |
 
 **GlobalExceptionHandler への追記（設計に含む）**:
 
