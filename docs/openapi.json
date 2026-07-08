@@ -55003,6 +55003,41 @@
         }
       }
     },
+    "/api/v1/page-views": {
+      "post": {
+        "tags": [
+          "アクセス解析ビーコン"
+        ],
+        "summary": "ページビュービーコン送信",
+        "description": "閲覧イベントを非同期で記録する。認証不要。",
+        "operationId": "receiveBeacon",
+        "parameters": [
+          {
+            "name": "mnsft_vid",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageViewBeaconRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/organizations": {
       "post": {
         "tags": [
@@ -110366,6 +110401,56 @@
         }
       }
     },
+    "/api/v1/teams/{slug}/analytics": {
+      "get": {
+        "tags": [
+          "チームアクセス解析"
+        ],
+        "summary": "チームアクセス解析取得",
+        "description": "チームの PV 集計を返す。メンバーのみ閲覧可。",
+        "operationId": "getAnalytics",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dateFrom",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "dateTo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageViewAnalyticsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{id}/payment-summary": {
       "get": {
         "tags": [
@@ -118076,6 +118161,56 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/AncestorsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{slug}/analytics": {
+      "get": {
+        "tags": [
+          "組織アクセス解析"
+        ],
+        "summary": "組織アクセス解析取得",
+        "description": "組織の PV 集計を返す。メンバーのみ閲覧可。",
+        "operationId": "getAnalytics_1",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dateFrom",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "dateTo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageViewAnalyticsResponse"
                 }
               }
             }
@@ -175003,6 +175138,52 @@
           }
         }
       },
+      "PageViewBeaconRequest": {
+        "type": "object",
+        "properties": {
+          "contentId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "contentType": {
+            "type": "string",
+            "enum": [
+              "ARTICLE",
+              "ACTIVITY",
+              "PAGE",
+              "TEAM"
+            ]
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "TEAM",
+              "ORGANIZATION"
+            ]
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 0,
+            "pattern": "^/(?![/\\\\])[^\\x00-\\x1F]*$"
+          }
+        },
+        "required": [
+          "contentId",
+          "contentType",
+          "scope",
+          "scopeId"
+        ]
+      },
       "CreateOrganizationRequest": {
         "type": "object",
         "properties": {
@@ -202494,6 +202675,119 @@
             "items": {
               "$ref": "#/components/schemas/BlockResponse"
             }
+          }
+        }
+      },
+      "ApiResponsePageViewAnalyticsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PageViewAnalyticsResponse"
+          }
+        }
+      },
+      "ContentRankingDto": {
+        "type": "object",
+        "properties": {
+          "contentId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "uniqueVisitors": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "url": {
+            "type": "string"
+          },
+          "views": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "DailyDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "uniqueVisitors": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "views": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "MonthlyDto": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "string"
+          },
+          "uniqueVisitors": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "views": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PageViewAnalyticsResponse": {
+        "type": "object",
+        "properties": {
+          "daily": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DailyDto"
+            }
+          },
+          "monthly": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MonthlyDto"
+            }
+          },
+          "summary": {
+            "$ref": "#/components/schemas/SummaryDto"
+          },
+          "topContent": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContentRankingDto"
+            }
+          }
+        }
+      },
+      "SummaryDto": {
+        "type": "object",
+        "properties": {
+          "guestViews": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "memberViews": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalViews": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "uniqueVisitors": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },

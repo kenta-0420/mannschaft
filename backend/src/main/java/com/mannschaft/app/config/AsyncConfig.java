@@ -1,6 +1,9 @@
 package com.mannschaft.app.config;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -94,6 +97,65 @@ public class AsyncConfig {
         executor.setQueueCapacity(500); // 100件バッチ × 6ドメイン = 600タスクに対応
         executor.setThreadNamePrefix("purge-");
         executor.setTaskDecorator(new MdcTaskDecorator());
+        executor.initialize();
+        return executor;
+    }
+
+    /**
+     * F10.8 アクセス解析 計測ビーコン専用スレッドプール。
+     *
+     * <p>計測ビーコン {@code POST /api/v1/page-views} の生ログ INSERT を担う
+     * {@link com.mannschaft.app.analytics.event.PageViewRecordListener} 専用プール。
+     * 監査ログ（{@code AuditLogEventListener} AFTER_COMMIT）と共用する {@code event-pool}（AbortPolicy 既定）から
+     * <b>物理分離</b>し、PV バースト時に監査ログ記録まで巻き添えで失敗するのを防ぐ（設計書 §5.1）。</p>
+     *
+     * <p><b>DiscardPolicy を明示採用</b>: PV は欠損許容（アクセスカウンター性質・課金/監査ではない）のため、
+     * 飽和時は静かに捨てる。既存プールは AbortPolicy 既定のため、本プールでは明示的に上書きする。
+     * ただし「静かな無効化にしない」方針（{@code docs/security/06 §4.3.1} のレートリミット fail-open 可視化に倣う）に沿い、
+     * 捨てた件数を Micrometer カウンタ {@code mannschaft.pageview.discarded} で可視化する。</p>
+     *
+     * <p>サイジング: corePoolSize=2 / maxPoolSize=8 / queueCapacity=500
+     * （SPA ユーザー 500 人同時閲覧分のバースト吸収を想定）。</p>
+     *
+     * <p><b>テスト時の差し替え</b>: {@code DiscardPolicy} + {@code Awaitility} の組み合わせでは
+     * 「タスクが捨てられた」ことを {@code Awaitility} が区別できず偽 green になりうるため、
+     * リスナーの結合テストでは非プロキシのリスナーを直接同期呼び出しするか、
+     * {@code SyncTaskExecutor} に差し替えて決定論化する（設計書 §2.4 / §5.1）。</p>
+     *
+     * <p><b>MeterRegistry は {@link ObjectProvider} で optional 解決する</b>:
+     * {@code @SpringBootTest(classes=...)} の narrowed context には Micrometer の
+     * {@code MeterRegistry} Bean が無いことがある。直接注入すると pool 生成が
+     * {@code UnsatisfiedDependencyException} で失敗し、無関係なテスト（narrowed context 全般）を
+     * 巻き添えにする。そのため {@code getIfAvailable()} で null 許容とし、レジストリが
+     * 無い場合は可視化カウンタの登録だけをスキップする（pool 生成は常に成功する）。
+     * 作法は {@code common.ratelimit.ValkeyRateLimiter} の
+     * {@code ObjectProvider<MeterRegistry>} に倣う。</p>
+     *
+     * @param meterRegistryProvider Discard 件数カウンタ登録用 Micrometer レジストリの optional プロバイダ
+     * @return page-view-pool エグゼキュータ
+     */
+    @Bean("page-view-pool")
+    public Executor pageViewPool(ObjectProvider<MeterRegistry> meterRegistryProvider) {
+        MeterRegistry meterRegistry = meterRegistryProvider.getIfAvailable();
+        // レジストリが利用可能なときだけ可視化カウンタを用意する（narrowed context では null 許容）。
+        Counter discardedCounter = meterRegistry == null ? null
+                : Counter.builder("mannschaft.pageview.discarded")
+                        .description("page-view-pool 飽和時に破棄されたページビュー計測タスク数（欠損許容・可視化目的）")
+                        .register(meterRegistry);
+
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(8);
+        executor.setQueueCapacity(500); // SPA ユーザー 500 人同時閲覧分のバースト吸収
+        executor.setThreadNamePrefix("page-view-");
+        executor.setTaskDecorator(new MdcTaskDecorator());
+        // DiscardPolicy 相当（飽和時は捨てる）＋捨てた数を可視化。既存プールは AbortPolicy 既定なので明示必須。
+        // カウンタが無い（レジストリ欠落）環境では捨てるだけで可視化はスキップする。
+        executor.setRejectedExecutionHandler((runnable, poolExecutor) -> {
+            if (discardedCounter != null) {
+                discardedCounter.increment();
+            }
+        });
         executor.initialize();
         return executor;
     }

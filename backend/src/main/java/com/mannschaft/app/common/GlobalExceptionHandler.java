@@ -785,7 +785,11 @@ public class GlobalExceptionHandler {
             Map.entry("REFLECTION_015", HttpStatus.BAD_REQUEST),          // DATE_RANGE_INVALID（期間幅 366 日超）
             // F02.12 Phase 4: Google Calendar Webhook 検証（Severity.WARN 既定 400 を上書き）
             Map.entry("GCAL_008", HttpStatus.NOT_FOUND),                  // GOOGLE_WEBHOOK_CHANNEL_NOT_FOUND → 404
-            Map.entry("GCAL_009", HttpStatus.FORBIDDEN)                   // GOOGLE_WEBHOOK_TOKEN_INVALID → 403
+            Map.entry("GCAL_009", HttpStatus.FORBIDDEN),                  // GOOGLE_WEBHOOK_TOKEN_INVALID → 403
+            // F10.8 チーム/組織アクセス解析（TEAMANALYTICS_xxx）
+            Map.entry("TEAMANALYTICS_001", HttpStatus.NOT_FOUND),         // 非メンバー/不在スコープ → 404（IDOR 秘匿）
+            Map.entry("TEAMANALYTICS_002", HttpStatus.BAD_REQUEST),       // 日付範囲不正（dateFrom > dateTo）→ 400
+            Map.entry("TEAMANALYTICS_003", HttpStatus.BAD_REQUEST)        // ビーコン body 不正（ENUM 外・絶対 URL 等）→ 400
     );
 
     /**
