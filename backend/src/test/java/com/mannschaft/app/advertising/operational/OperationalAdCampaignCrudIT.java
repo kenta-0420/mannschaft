@@ -240,16 +240,21 @@ class OperationalAdCampaignCrudIT extends AbstractMySqlIntegrationTest {
         void ac1_4_PAUSEDの許可フィールド変更はsnapshot不変() {
             Long campaignId = insertCampaign(orgAId, "編集テストPAUSED", "PAUSED", rateCardId, UNIT_PRICE);
 
+            // 「startDate 不変」の意図を厳密に表現するため、永続化済みの現 startDate を読み戻して再送する
+            // （日付を独立に再計算して一致を仮定しない = 日付境界フレーク根絶）。endDate も読み戻し値基準で組む。
+            LocalDate currentStartDate = controller.get(orgAId, campaignId).getData().startDate();
+            LocalDate newEndDate = currentStartDate.plusDays(59); // 開始日以降であればよい（endDate は等価比較の対象外）
+
             // 現値と同じ rateCardId / pricingModel / startDate のまま、name・dailyBudget・endDate のみ変更
             CreateOperationalCampaignRequest req = new CreateOperationalCampaignRequest(
                     "改名後キャンペーン", PricingModel.CPM, new BigDecimal("2000.00"),
-                    campaignStartDate(), LocalDate.now().plusDays(60), rateCardId);
+                    currentStartDate, newEndDate, rateCardId);
 
             OperationalCampaignResponse res = controller.update(orgAId, campaignId, req).getData();
 
             assertThat(res.name()).isEqualTo("改名後キャンペーン");
             assertThat(res.dailyBudget()).isEqualByComparingTo(new BigDecimal("2000.00"));
-            assertThat(res.endDate()).isEqualTo(LocalDate.now().plusDays(60));
+            assertThat(res.endDate()).isEqualTo(newEndDate);
             assertThat(res.unitPriceSnapshot())
                     .as("PAUSED 編集では snapshot 不変（resume 後の課金単価保証）")
                     .isEqualByComparingTo(UNIT_PRICE);
@@ -670,39 +675,51 @@ class OperationalAdCampaignCrudIT extends AbstractMySqlIntegrationTest {
         return ((Number) em.createNativeQuery("SELECT MAX(id) FROM ad_rate_cards").getSingleResult()).longValue();
     }
 
-    /** 運用型キャンペーンを直接挿入する（状態遷移・編集テストの前提行）。 */
+    /**
+     * 運用型キャンペーンを直接挿入する（状態遷移・編集テストの前提行）。
+     *
+     * <p>start_date / end_date は JVM の {@link LocalDate#now()} を bind する（MySQL {@code CURDATE()}
+     * を使わない）。理由: PAUSED 編集の不可変フィールドガードは {@code request.startDate} と
+     * 永続 {@code start_date} の完全一致を要求する。フィクスチャを {@code CURDATE()}（コンテナ TZ = UTC）で、
+     * リクエストを JVM {@code LocalDate.now()}（マシン TZ）で作ると、日付境界（TZ 差・深夜跨ぎ）で
+     * 両者が 1 日ズレて偽 AD_027 になる間欠失敗が起きる。日付源を JVM に統一して根絶する。</p>
+     */
     private Long insertCampaign(Long orgId, String name, String status, Long cardId, BigDecimal snapshot) {
         em.createNativeQuery(
                         "INSERT INTO ad_campaigns (advertiser_organization_id, name, status, pricing_model, "
                                 + "daily_budget, start_date, end_date, rate_card_id, unit_price_snapshot, "
                                 + "created_at, updated_at) "
                                 + "VALUES (:oid, :name, :status, 'CPM', :budget, "
-                                + "DATE_ADD(CURDATE(), INTERVAL 1 DAY), DATE_ADD(CURDATE(), INTERVAL 30 DAY), "
+                                + ":startDate, :endDate, "
                                 + ":cardId, :snapshot, NOW(), NOW())")
                 .setParameter("oid", orgId)
                 .setParameter("name", name)
                 .setParameter("status", status)
                 .setParameter("budget", MIN_DAILY_BUDGET)
+                .setParameter("startDate", LocalDate.now().plusDays(1))
+                .setParameter("endDate", LocalDate.now().plusDays(30))
                 .setParameter("cardId", cardId)
                 .setParameter("snapshot", snapshot)
                 .executeUpdate();
         return ((Number) em.createNativeQuery("SELECT MAX(id) FROM ad_campaigns").getSingleResult()).longValue();
     }
 
-    /** created_at を秒オフセットで指定してキャンペーンを挿入する（一覧の並び順検証用）。 */
+    /** created_at を秒オフセットで指定してキャンペーンを挿入する（一覧の並び順検証用）。start_date は JVM 日付を bind。 */
     private Long insertCampaignWithCreatedAtOffset(Long orgId, String name, String status, int secondsOffset) {
         em.createNativeQuery(
                         "INSERT INTO ad_campaigns (advertiser_organization_id, name, status, pricing_model, "
                                 + "daily_budget, start_date, end_date, rate_card_id, unit_price_snapshot, "
                                 + "created_at, updated_at) "
                                 + "VALUES (:oid, :name, :status, 'CPM', :budget, "
-                                + "DATE_ADD(CURDATE(), INTERVAL 1 DAY), DATE_ADD(CURDATE(), INTERVAL 30 DAY), "
+                                + ":startDate, :endDate, "
                                 + ":cardId, :snapshot, "
                                 + "DATE_ADD(NOW(), INTERVAL " + secondsOffset + " SECOND), NOW())")
                 .setParameter("oid", orgId)
                 .setParameter("name", name)
                 .setParameter("status", status)
                 .setParameter("budget", MIN_DAILY_BUDGET)
+                .setParameter("startDate", LocalDate.now().plusDays(1))
+                .setParameter("endDate", LocalDate.now().plusDays(30))
                 .setParameter("cardId", rateCardId)
                 .setParameter("snapshot", UNIT_PRICE)
                 .executeUpdate();
