@@ -264,7 +264,8 @@
       "template_update_success": "Plantilla actualizada",
       "template_delete_success": "Plantilla eliminada",
       "template_save_failed": "Error al guardar",
-      "template_load_failed": "Error al cargar las plantillas"
+      "template_load_failed": "Error al cargar las plantillas",
+      "cancel_deadline_passed": "El plazo de cancelación ha pasado, por lo que no se pudo cancelar esta reserva. Si necesitas cambiarla, contacta con un administrador del equipo"
     },
     "empty": {
       "no_reservations": "No hay reservas",
@@ -619,46 +620,93 @@
     "team_guide": {
       "title": "Cómo funcionan las reservas",
       "help_button": "Cómo usar",
-      "admin": {
-        "lines_title": "1. Crear objetivos de reserva",
-        "lines_steps": {
-          "0": "Abre la pestaña \"Gestionar objetivos de reserva\".",
-          "1": "Usa \"Añadir objetivo de reserva\" para registrar personal, mostradores u otros objetivos reservables.",
-          "2": "Sin un objetivo de reserva, no aparecen franjas en la pantalla \"Reservar\" del usuario."
+      "event_link": "Ver convocatorias de eventos",
+      "book": {
+        "matrix_title": "Cómo leer la matriz",
+        "matrix_steps": {
+          "0": "Las filas son \"fecha × objetivo de reserva\" y las columnas son \"hora\".",
+          "1": "Colores: verde = disponible / gris = reservado / rayas diagonales = no disponible / gris claro = cerrado."
         },
-        "slots_title": "2. Crear franjas de reserva",
-        "slots_steps": {
-          "0": "En la misma pestaña \"Gestionar objetivos de reserva\", pulsa \"Añadir franja\".",
-          "1": "Configura la fecha, la hora de inicio/fin y el aforo, y guarda.",
-          "2": "Las franjas guardadas aparecen en la pantalla \"Reservar\" del usuario."
+        "filter_title": "Filtrar por menú",
+        "filter_steps": {
+          "0": "Con el filtro \"Menú\" de arriba se resalta automáticamente el número de franjas que necesita ese menú.",
+          "1": "Sin un menú, puedes reservar franjas de 30 minutos una por una."
         },
-        "publish_title": "3. Decidir quién puede reservar",
-        "publish_steps": {
-          "0": "En ajustes avanzados \"Reservas públicas\", elige solo para miembros o abierto al público.",
-          "1": "Configura el modo de aprobación como confirmación automática o aprobación manual."
+        "flow_title": "Flujo de la reserva",
+        "flow_steps": {
+          "0": "Pulsa una celda \"Disponible\" (verde).",
+          "1": "Al elegir un menú se agrupan automáticamente las franjas necesarias (este paso se salta si ya hay un filtro de menú aplicado).",
+          "2": "Pulsa \"+30 min\" si quieres alargar el tiempo.",
+          "3": "Revisa la fecha y los detalles, rellena \"Notas (opcional)\" y pulsa \"Confirmar esta reserva\" para terminar."
         },
-        "manage_title": "Revisar reservas y cierres de emergencia",
-        "manage_steps": {
-          "0": "La pestaña \"Reservas\" permite revisar, aprobar y cancelar las reservas de todo el equipo.",
-          "1": "Para cierres imprevistos, usa la pestaña \"Cierre de emergencia\" para cerrar un periodo y notificar a los afectados a la vez."
+        "conflict_title": "Cuando está completo o hay un conflicto",
+        "conflict_steps": {
+          "0": "Las celdas grises (reservado, cerrado o no disponible) no se pueden seleccionar. Elige otra hora u objetivo.",
+          "1": "Si alguien reserva la misma franja justo antes de que confirmes, verás un error y la pantalla se actualizará automáticamente con la disponibilidad más reciente. Vuelve a elegir una franja libre."
         }
       },
-      "member": {
-        "book_title": "Cómo reservar",
-        "book_steps": {
-          "0": "Elige una fecha y un objetivo de reserva para ver las franjas libres de ese día.",
-          "1": "Elige una franja \"Disponible\", revisa los detalles y reserva."
+      "list": {
+        "admin_overview_title": "Ver las reservas de todo el equipo",
+        "admin_overview_steps": {
+          "0": "Puedes filtrar por estado (pendiente, aprobada, cancelada, completada, no presentado).",
+          "1": "Las \"reservas de grupo\" con varias franjas aparecen en una sola fila que muestra el número de franjas."
         },
-        "status_title": "Cómo leer el estado",
+        "admin_manage_title": "Aprobar, rechazar y cancelar",
+        "admin_manage_steps": {
+          "0": "En equipos con aprobación manual, aprueba o rechaza las reservas pendientes.",
+          "1": "También puedes cancelar reservas confirmadas. Las reservas de grupo se gestionan como grupo.",
+          "2": "Estas acciones actualizan al instante la disponibilidad en la pestaña \"Reservar\"."
+        },
+        "member_mine_title": "Consultar tus propias reservas",
+        "member_mine_steps": {
+          "0": "Aquí solo aparecen tus reservas (nunca se muestran las de otros miembros).",
+          "1": "Puedes filtrarlas por estado."
+        },
+        "member_cancel_title": "Cancelar",
+        "member_cancel_steps": {
+          "0": "Pulsa \"Cancelar\" en la fila de la reserva que quieras anular y confirma pulsando \"Cancelar\" de nuevo en la pantalla de confirmación.",
+          "1": "Pasado el plazo de cancelación se muestra un error y no podrás cancelarla tú mismo; contacta con un administrador del equipo si necesitas un cambio."
+        }
+      },
+      "line_manage": {
+        "setup1_title": "1. Crear objetivos de reserva",
+        "setup1_steps": {
+          "0": "Usa \"Añadir objetivo de reserva\" en la parte superior de esta pestaña para registrar asientos, personal o mostradores reservables.",
+          "1": "Sin un objetivo de reserva, la pestaña \"Reservar\" no muestra nada a los miembros."
+        },
+        "setup2_title": "2. Crear menús",
+        "setup2_steps": {
+          "0": "En \"Gestionar menús\" de abajo, registra menús con una duración (en unidades de 30 minutos).",
+          "1": "Para limitar un menú a objetivos concretos, elige \"Solo objetivos de reserva seleccionados\" en \"Elemento reservable\" y selecciónalos (por defecto se ofrece en todos)."
+        },
+        "setup3_title": "3. Crear una plantilla semanal",
+        "setup3_steps": {
+          "0": "En \"Plantilla semanal\" de abajo, define el día de la semana, la franja horaria y el aforo; esa franja es, en la práctica, tu horario de apertura.",
+          "1": "Tras guardar, pulsa \"Crear franjas ahora\" para tener disponibles de inmediato las franjas más próximas.",
+          "2": "Aunque no lo hagas, las franjas se siguen extendiendo automáticamente cada día a partir de mañana, sin necesidad de ninguna acción."
+        },
+        "daily_title": "Funcionamiento diario",
+        "daily_steps": {
+          "0": "Una vez configurada la plantilla semanal, las franjas se extienden automáticamente cada día, así que normalmente no hay que hacer nada.",
+          "1": "Edita la plantilla semanal solo cuando quieras cambiar el día o la franja horaria."
+        },
+        "exception_title": "Casos excepcionales",
+        "exception_steps": {
+          "0": "Para añadir o cambiar franjas solo un día concreto, usa \"Gestionar franjas\" de abajo para crear, editar o cerrar franjas individuales.",
+          "1": "Para bloquear un rango horario concreto, usa \"Franjas no disponibles\" en los ajustes avanzados.",
+          "2": "Al eliminar un objetivo de reserva se detiene su plantilla y se eliminan automáticamente sus franjas futuras sin reservas. Si aún tiene reservas activas, reasígnalas o cancélalas antes."
+        }
+      },
+      "emergency_closure": {
+        "send_title": "Qué ocurre al enviarlo",
+        "send_steps": {
+          "0": "Todas las personas con una reserva en el periodo/franja afectados reciben un correo y una notificación en la app sobre el cierre.",
+          "1": "Al marcar \"Cancelar reservas afectadas\" también se cancelan automáticamente las reservas del periodo afectado."
+        },
+        "status_title": "Cómo leer el estado de confirmación",
         "status_steps": {
-          "0": "\"Pendiente\" ... a la espera de la aprobación del administrador.",
-          "1": "\"Aprobada\" ... tu reserva está confirmada.",
-          "2": "\"Completada\" ... la visita ha finalizado."
-        },
-        "cancel_title": "Cómo cancelar",
-        "cancel_steps": {
-          "0": "Abre tu reserva desde la pestaña \"Reservas\".",
-          "1": "Si estás dentro del plazo de cancelación, usa \"Cancelar\" para anularla."
+          "0": "Abre el historial de envíos para ver, en tiempo real, quién ha confirmado (leído) el aviso.",
+          "1": "El texto \"n/m confirmadas\" significa que n de m destinatarios han confirmado."
         }
       }
     }

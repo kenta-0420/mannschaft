@@ -190,6 +190,17 @@ onMounted(async () => {
             <Skeleton height="4rem" width="100%" />
           </div>
           <template v-else-if="canBook">
+            <!-- イベント募集への導線（結線なし・NuxtLinkのみ。F03.4.5 §UX第三弾第一波） -->
+            <div class="mb-3 flex justify-end">
+              <NuxtLink
+                :to="`/teams/${props.teamId}/events`"
+                class="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                data-testid="reservation-event-link"
+              >
+                <i class="pi pi-calendar" aria-hidden="true" />
+                {{ t('reservation.team_guide.event_link') }}
+              </NuxtLink>
+            </div>
             <div class="mb-3 flex justify-end">
               <SelectButton
                 v-model="bookDisplayMode"
@@ -400,6 +411,11 @@ onMounted(async () => {
       @reserved="onReserved"
     />
 
-    <TeamReservationGuideModal v-model:visible="showGuide" :is-admin="isAdmin" />
+    <TeamReservationGuideModal
+      v-model:visible="showGuide"
+      :is-admin="isAdmin"
+      :is-admin-or-deputy="isAdminOrDeputy"
+      :active-tab="activeTab"
+    />
   </div>
 </template>
