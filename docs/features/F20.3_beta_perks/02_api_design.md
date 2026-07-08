@@ -213,7 +213,7 @@ public class BetaPerkPurgeEventListener {
     @TransactionalEventListener(phase = AFTER_COMMIT)
     @Transactional(propagation = REQUIRES_NEW)   // feedback_transactional_event_listener_requires_new
     public void onAccountPurged(AccountPurgedEvent ev) {
-        betaGrantService.revokeAllForUser(ev.userId(), RevokeReason.WITHDRAWAL);  // grant＋entitlements 失効
+        betaGrantService.revokeAllForUser(ev.getUserId(), RevokeReason.WITHDRAWAL);  // grant＋entitlements 失効（AccountPurgedEvent は class＝Lombok getter）
     }
     // WithdrawalCancelledEvent は購読不要（猶予中に権利を維持しているため何もしない）
 }
@@ -239,6 +239,36 @@ POST /api/v1/page-views
 
 - 集計: ベータ中は生ログのアドホック集計（`WHERE content_type='FEATURE' GROUP BY scope_type, scope_id, title`）。`title` に INDEX が無いためフルパーティションスキャンになるが、**月次パーティション×ベータ規模（第 4 段階 1 万人）では許容**。恒常ダッシュボード化（専用集計テーブル・BE 二重記録）は Phase 2（F20.1 将来拡張）。
 - USER スコープの機能利用は F10.8 が TEAM/ORGANIZATION スコープのみ対応のため**計測対象外**（第一弾の割り切り・Phase 2 の BE 記録で回収）。
+
+---
+
+## 6.5 通知の API 面確定（C・NotificationType 実値 × 文言キー 1:1）
+
+アプリ内通知は origin/main 実在の **`NotificationHelper.notify(...)`** を使う。実シグネチャ（実物照合済み）:
+
+```java
+// 単一ユーザー（本人向け）
+notificationHelper.notify(
+    Long userId, String notificationType, String title, String body,   // ★title/body は解決済み String
+    String sourceType, Long sourceId,
+    NotificationScopeType scopeType, Long scopeId,
+    String actionUrl, Long actorId);
+// 複数ユーザー（運営向け等）は notifyAll(List<Long> userIds, String notificationType, ...) を使う
+```
+
+- **`notificationType` は `NotificationType` enum の `name()` 文字列**（VARCHAR 永続化・後方互換）。ベータ特典・org_type 用の値は**既存 enum に無いため新値を追加**する（実装スコープ・notification ドメイン作業）。
+- **`title`/`body` は i18n キーではなく `MessageSource` で解決した String を渡す**（`ConfirmableNotificationService.send` と同様）。文言キーは `messages*.properties` 6 言語。
+
+| notificationType（新値・要追加） | 用途 | 文言キー（messages*.properties・title/body） | priority |
+|---|---|---|---|
+| `BETA_PERK_GRANTED` | 特典付与（本人・§3） | `notification.beta_perk.granted.{title,body.individual\|body.teamOrg}` | NORMAL |
+| `BETA_PERK_REVOKED` | 特典取消（本人・§4.2） | `notification.beta_perk.revoked.{title,body}` | HIGH |
+| `BETA_PERK_EXTENDED` | 期間延長（本人・§4.3） | `notification.beta_perk.extended.{title,body}` | NORMAL |
+| `BETA_PERK_REVIEW_FLAGGED` | 審査フラグ設定（運営向け・§5・notifyAll） | `notification.beta_perk.review_flagged.operations` | NORMAL |
+| `ORG_TYPE_AUTO_UPDATED` | org_type 自動営利化（org ADMIN・F20.1 02 §7.2） | `notification.billing.org_type_auto_updated.{title,body}` | — (confirmable・HIGH) |
+| `ORG_TYPE_REVIEW_REQUESTED` | 区分確認要請（org ADMIN・F20.1 02 §7.2） | `notification.billing.org_type_review_requested.{title,body}` | — (confirmable・HIGH) |
+
+> `ORG_TYPE_*` は F20.1 側で **`ConfirmableNotificationService.send`（確認必須通知）** を使うため `NotificationType` enum ではなく確認通知の title/body として渡す（enum 追加は不要・messages キーのみ）。`BETA_PERK_*` は通常通知（`NotificationHelper.notify`）ゆえ enum 新値が必要。**この enum 追加は notification ドメイン作業として軍議のタスク分解に含める**。
 
 ---
 

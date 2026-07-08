@@ -180,7 +180,7 @@
 |---|---|---|
 | **個人 activeDays の計測源** | F10.8 は USER スコープ非対応（§7）。`audit_logs` の `LOGIN_SUCCESS` を第一候補に日別在籍を数える経路を確定する | `min_active_days=NULL` で `membershipTenureDays` のみで自動付与（02 §2・§3） |
 | **F10.8 content type enum への `FEATURE` 追加** | enum 名は F10.8 実装時に確定（§7）。TEAM/ORG 利用の傾向計測用 | F10.8 実装完了まで機能利用計測は保留（自動付与判定には不使用ゆえブロックしない） |
-| **ベータ称号の scope 取り扱い（B-5）** | §4 の sentinel scope 方針を gamification 実装と突き合わせて確定 | 特典付与自体はバッジ授与に依存しない（授与失敗は補助チャネルとして握って継続・付与本体は成立） |
+| **ベータ称号の scope 取り扱い（B-5・F）** | **実装着手前に gamification ドメインを grep**（`findBy...ScopeTypeAndScopeId` 系クエリ・バッジ数上限制約 `GAMIFICATION_*` の有無）して sentinel scope（`PLATFORM`/`0`）の可否を確定する。sentinel が波及するなら別方式（例: badges を使わず billing 独自の称号表示）を検討 | 特典付与自体はバッジ授与に依存しない（授与失敗は補助チャネルとして握って継続・付与本体＝entitlements 発行は成立）。主フロー非依存ゆえ🟢を阻害しない |
 
 ---
 
