@@ -150,20 +150,23 @@ MANUAL（シスアド手動）                                        review_rea
 
 ---
 
-## 5. 称号バッジのシード（F04.7 流用・DDL ではなくデータ）
+## 5. 称号バッジのシード（F04.7 流用・DDL ではなくデータ・実 enum 照合済み）
 
-`badges` へ system badge 1 行を Flyway シード（`V11.053__create_badges.sql` 方式・INSERT のみ）:
+`badges` へ system badge 1 行を Flyway シード（`V11.053__create_badges.sql` 様式・INSERT のみ）。**`badge_type` に enum 新値は足さない**（`BadgeType` の実値は `{STANDARD, MILESTONE, SPECIAL}` のみ・README §4 で訂正済み）。ベータ称号は `badge_type='SPECIAL'` の badges **行**として識別する。
 
-| 列 | 値 |
-|---|---|
-| `badge_type` | `'BETA_TESTER'`（**enum 新値**。`badge_type` は VARCHAR(30)・アプリ enum への値追加のみで DDL 不要） |
-| `is_system` | `TRUE`（論理削除不可の system badge） |
-| `condition_type` | `'MANUAL'`（自動条件エンジンの対象外＝本機能のバッチ/API が授与） |
-| `icon_emoji` | `'🚀'`（仮・FE 確認で確定） |
-| `name` ほか表示列 | i18n キー運用が badges 側に無い場合は日本語直値＋各言語は F04.7 の既存表示機構に従う（実装時に badges の表示列構造へ追従） |
+| 列 | 値 | 備考 |
+|---|---|---|
+| `scope_type` | `'PLATFORM'`（sentinel・**要裁可 B-5**） | NOT NULL。プラットフォーム横断 badge の前例なし → sentinel で置く方針。実装前に gamification の scope クエリ影響を確認 |
+| `scope_id` | `0`（sentinel） | NOT NULL |
+| `name` | `'ベータテスター'`（表示は i18n・04 §3 `betaPerks.badge.name`） | VARCHAR(100) |
+| `badge_type` | `'SPECIAL'`（**実 enum 値**・VARCHAR(50)） | `BadgeType.SPECIAL` |
+| `condition_type` | `'MANUAL'`（実在・自動条件エンジン対象外＝本機能のバッチ/API が授与） | VARCHAR(50) |
+| `is_system` | `1`（TINYINT・論理削除不可の system badge） | |
+| `is_active` | `1` | |
+| `icon_emoji` | `'🚀'`（仮・FE 確認で確定・VARCHAR(10)） | |
 
-- 授与は `user_badges` INSERT（`awarded_by='SYSTEM'`・`period_label='BETA_PHASE_1'〜'BETA_PHASE_4'`）。`uq_ub_badge_user_period (badge_id, user_id, period_label)` が同フェーズ二重授与を物理防止（AC-11）。
-- **1 スコープ最大 50 バッジ制約**（F04.7）: system badge はプラットフォーム badge であり団体スコープの上限を消費しない想定だが、**実装時に badges のスコープ列構造を確認**し、上限カウント対象なら除外条件を badge 側実装に追加する（既存機構を壊さない・要実装時確認として明記）。
+- 授与は `user_badges` INSERT（`awarded_by='SYSTEM'`・`period_label='BETA_PHASE_1'〜'BETA_PHASE_4'`・VARCHAR(20) に収まる）。`uq_ub_badge_user_period (badge_id, user_id, period_label)` が同フェーズ二重授与を物理防止（AC-11）。
+- **50 バッジ上限・scope クエリへの波及（B-5・実装前確定）**: badges は本来チーム/組織スコープの機構であり、sentinel PLATFORM scope で置くと既存の `findBy...ScopeTypeAndScopeId` 系クエリ・50 バッジ上限カウント・表示各所に波及しうる。**実装前に gamification ドメインの scope 取り扱いを再確認**し、上限カウント対象なら除外条件を追加する（既存機構を壊さない）。バッジ授与の失敗は特典付与本体をロールバックせず補助チャネルとして握って継続する（付与＝entitlements 発行が本体）。
 
 ---
 
@@ -175,9 +178,9 @@ MANUAL（シスアド手動）                                        review_rea
 |---|---|
 | `V146.<ts6>__create_beta_grants.sql` | `beta_grants`（§1） |
 | `V146.<ts7>__create_beta_perk_criteria.sql` | `beta_perk_criteria`＋初期シード 8 行（§2） |
-| `V146.<ts8>__seed_beta_tester_badge.sql` | `badges` へ `BETA_TESTER` system badge 1 行（§5・INSERT のみ） |
+| `V146.<ts8>__seed_beta_tester_badge.sql` | `badges` へベータテスター system badge 1 行（`badge_type='SPECIAL'`・scope=PLATFORM/0・§5・INSERT のみ） |
 
-- **既存データ番人テストの要否**: 既存テーブルへの ALTER なし・CHECK 追加なし（新規 CREATE＋INSERT のみ）→ **不要**。`badges` への INSERT は `badge_type` 重複時に一意衝突しない設計か（badges の UNIQUE 構成）を実装時に確認し、**冪等 INSERT**（`WHERE NOT EXISTS`）とする。
+- **既存データ番人テストの要否**: 既存テーブルへの ALTER なし・CHECK 追加なし（新規 CREATE＋INSERT のみ）→ **不要**。`badges` に UNIQUE 制約は無い（`INDEX idx_b_scope_active` のみ・実確認）ため、シードは `INSERT ... WHERE NOT EXISTS (SELECT 1 FROM badges WHERE scope_type='PLATFORM' AND scope_id=0 AND name='ベータテスター')` で**冪等**にする（from-scratch 番人テストで二重挿入を防ぐ）。
 - F10.8 `content_type` への `FEATURE` 追加は **DDL 不要**（`VARCHAR(20)`・DB CHECK なし・アプリ enum 追加のみ。README §7）。
 
 ---
@@ -197,9 +200,14 @@ memberships（left_at IS NULL）─(読取)─ 人数スナップショット・
 
 ---
 
-## 8. GDPR・退会・非機能
+## 8. GDPR・退会・非機能（イベント駆動・退会猶予との整合）
 
-- **退会（INDIVIDUAL）**: `UserWithdrawalService` のトランザクション内で grant を `revoked_at`（`revoke_reason='WITHDRAWAL'`・`revoked_by=NULL`）＋entitlements revoke（AC-19。F08.9 §6 の退会時アトミック失効と同型）。`beta_grants` 行自体は**統計価値のため保持**（scope_id は匿名化方針に従い残置・PII 非含有）。
+- **退会はイベント駆動（実在の仕組みに合わせる）**: `UserWithdrawalService` は**架空**（存在しない）。origin/main の実体は `WithdrawalRequestedEvent`（退会申請＝猶予期間開始）→ 猶予後の物理削除で `AccountPurgedEvent`（`AccountPurgeService` バッチが発火・各ドメインの `*PurgeEventListener` が非同期処理）というイベント駆動である（`AuditLogEventListener`/`WithdrawalStripeHandler`/`GdprPurgeAuditBatchService` が前例）。本機能も **billing.beta ドメインに `BetaPerkPurgeEventListener`（`@TransactionalEventListener` / `@Async`・REQUIRES_NEW）を新設**して購読する。
+- **退会猶予との整合（M-5・revoke は終端で復活不可のため）**:
+  - **`WithdrawalRequestedEvent`（申請・猶予開始）受信時は grant を revoke しない**（revoke は終端で退会撤回時に復活できない）。猶予中は権利を維持する。個人特典の**新規自動付与のみ抑止**（退会申請中ユーザーは自動付与バッチの対象から除外・02 §3）。
+  - **`WithdrawalCancelledEvent`（退会撤回）受信時**: 何もしない（grant は維持されたまま＝自動付与対象へ復帰）。
+  - **`AccountPurgedEvent`（退会確定・物理削除）受信時**: 当該ユーザーの INDIVIDUAL grant を `revoked_at`（`revoke_reason='WITHDRAWAL'`・`revoked_by=NULL`）＋由来 entitlements を revoke する（この時点なら撤回窓は既に閉じており復活不可で問題ない・AC-19）。CLAUDE.md PII 二段モデルの「猶予対象（強匿名化・30 日）」側に整合。
+  - `beta_grants` 行自体は**統計価値のため保持**（scope_id は匿名化方針に従い残置・`criteria_snapshot` は集計値のみで PII 非含有）。
 - **チーム/組織の解散**: TEAM_ORG grant は scope 消滅で実質失効（isEntitled の scope が消える）。grant 行は履歴として残す（明示 revoke はバッチ掃き取り・二重防御）。
 - **シャーディング**: F20.1 と同一方針（TEAM/ORG 行は `organization_id`・USER 行は NULL でユーザー系シャード・[F20.1 01 §8](../F20.1_entitlement_billing/01_data_model.md)）。`beta_grants` は低頻度書き込み（付与時のみ）でスケール懸念なし。
 - **後方互換**: 既存テーブルへの変更ゼロ（badges への INSERT のみ）。F04.7・F10.8 の既存挙動を変えない。
