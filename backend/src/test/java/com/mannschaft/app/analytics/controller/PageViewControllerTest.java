@@ -1,6 +1,7 @@
 package com.mannschaft.app.analytics.controller;
 
 import com.mannschaft.app.analytics.service.PageViewRecordingService;
+import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.security.AccessGuard;
 import com.mannschaft.app.proxy.ProxyInputContext;
@@ -51,6 +52,10 @@ class PageViewControllerTest {
     private PageViewRecordingService pageViewRecordingService;
 
     // @WebMvcTest コンテキスト共通の依存解決用
+    // SecurityConfig が組み込む JwtAuthenticationFilter は AuthTokenService を要求するため、
+    // 既存の動く @WebMvcTest（PublicEventControllerTest / PublicFaqControllerTest）と同様に mock 供給する。
+    @MockitoBean
+    private AuthTokenService authTokenService;
     @MockitoBean
     private UserLocaleCache userLocaleCache;
     @MockitoBean

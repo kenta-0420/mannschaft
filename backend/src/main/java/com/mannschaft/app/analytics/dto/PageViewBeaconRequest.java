@@ -54,7 +54,9 @@ public class PageViewBeaconRequest {
     @NotBlank
     @Size(max = 512)
     @Pattern(
-            regexp = "^/[^\\x00-\\x1F]*$",
+            // 先頭は単一の / のみ許可。2 文字目に / や \ が来るプロトコル相対 URL（//example.com、/\example.com）は
+            // オープンリダイレクト源になるため拒否する（AC-22）。以降は制御文字を含まない任意文字列。
+            regexp = "^/(?![/\\\\])[^\\x00-\\x1F]*$",
             message = "url はアプリ内相対パス（/ 始まり）である必要があります"
     )
     private String url;
