@@ -37,14 +37,34 @@
 
 ## 3. 認可マトリクス
 
+### 3.0 認可の実装型（実在パターンの逐語・取り違え禁止）
+
+- **per-scope 管理者判定**は既存のガード Bean `@Component("accessGuard")`（`common.security.AccessGuard`・`AccessControlService` 委譲・null/非認証は false）を `@PreAuthorize` の SpEL から呼ぶ:
+
+```java
+// 信任の付与（endorser 側 scope の管理者であること）— scopeKind で SpEL を分岐せず、
+// Controller で TrustScopeKind → 'TEAM' / 'ORGANIZATION' 文字列リテラルに解決してから判定する。
+// isScopeAdmin = SYSTEM_ADMIN or 当該 scope の ADMIN/DEPUTY_ADMIN を内包
+@PreAuthorize("@accessGuard.isScopeAdmin(authentication, #request.endorserScopeId, 'TEAM')")        // TEAM の場合
+@PreAuthorize("@accessGuard.isScopeAdmin(authentication, #request.endorserScopeId, 'ORGANIZATION')") // ORG の場合
+
+// 運営 API（アンカー付与・REVOKE・再審査キュー）
+@PreAuthorize("hasRole('SYSTEM_ADMIN')")
+```
+
+- `scopeType` は SpEL **文字列リテラル `'TEAM'` / `'ORGANIZATION'`**（`'ORG'` ではない・README §1.4 のマッピング表を厳守）。
+- リクエスト DTO の `endorserScopeKind` により判定 scopeType が動的に変わるため、実装は (a) `@PreAuthorize` を使わず Service 冒頭で `TrustScopeResolver.requireScopeAdmin()`（内部で `accessGuard.isScopeAdmin` 相当を kind 別に呼び分け）とするか、(b) TEAM/ORG で Controller メソッドを分ける。**推奨 (a)**（エンドポイントを増やさない・kind→scopeType 解決を `TrustScopeResolver` に一元化）。
+- 厳格版 `isScopeStrictAdmin`（DEPUTY_ADMIN 除外）・メンバー判定 `isScopeMember` も存在するが、本機能の信任操作は **`isScopeAdmin`（DEPUTY_ADMIN 含む）**でよい（信任は団体の対外行為だが破壊的操作ではない。厳格版が必要とマスターが判断すれば差し替えは 1 箇所）。
+- **IDOR 封鎖の一般形**: 子リソース ID（`endorsementId` 等）を受ける API は、**パス変数の ID をそのまま信頼せず、Service 層で子リソースから所属 scope ID を解決し、その scope に対してロール判定**する（§3.1）。
+
 | 操作 | 認可主体 | 実装方針 |
 |---|---|---|
-| 信任の付与（#1） | **endorser 団体の scope ADMIN** | `TrustScopeResolver.requireScopeAdmin(currentUserId, endorserScopeKind, endorserScopeId)` → 内部で `AccessControlService.checkAdminOrAbove(userId, scopeId, scopeType)`。TEAM は `scopeType="TEAM"`・ORG は `scopeType="ORGANIZATION"`（**取り違え禁止**・README §1.4） |
-| 信任の取消（#2） | **当該信任の endorser 団体の scope ADMIN** | endorsement 行から endorser scope を引いて所有権検証（リクエスト値でなく**DB の値**で検証） |
-| 資格事前確認（#5） | 対象団体の scope ADMIN | 同上 |
+| 信任の付与（#1） | **endorser 団体の scope ADMIN** | `TrustScopeResolver.requireScopeAdmin(authentication, endorserScopeKind, endorserScopeId)` → 内部で `accessGuard.isScopeAdmin(authentication, scopeId, 'TEAM'|'ORGANIZATION')`（§3.0）。**endorsee は存在検証のみ**（endorsee 側の同意フローは設けない＝要裁可論点・§9） |
+| 信任の取消（#2） | **当該信任の endorser 団体の scope ADMIN** | `endorsementId` から **DB の endorser scope を解決**して所有権検証（IDOR 一般形・リクエスト値を信頼しない） |
+| 資格事前確認（#5） | 対象団体の scope ADMIN | `isScopeAdmin`（§3.0） |
 | 認証状態取得（#3） | 公開（未ログイン可） | F00 可視性ゲート（§4）・PRIVATE は 404 秘匿 |
 | 信任関係一覧（#4） | 公開（未ログイン可） | 同上。管理者向け拡張項目（`endorsementId`）は endorser ADMIN 認証時のみ（02 §6.2） |
-| アンカー付与/解除（#6/#7） | **SYSTEM_ADMIN のみ** | `@PreAuthorize("hasRole('SYSTEM_ADMIN')")`（PLATFORM 運営ロール） |
+| アンカー付与/解除（#6/#7） | **SYSTEM_ADMIN のみ** | `@PreAuthorize("hasRole('SYSTEM_ADMIN')")`（クラスレベル・既存 SystemAdmin 系と同型） |
 | REVOKE（#8） | SYSTEM_ADMIN のみ | 同上・`reason` 必須・監査ログ必須 |
 | 再審査キュー/OK/NG（#9〜#11） | SYSTEM_ADMIN のみ | 同上 |
 
@@ -135,11 +155,22 @@ email / 氏名等の個人 PII 全般（本機能は団体単位・個人情報�
 
 ---
 
-## 9. 未解決事項（解決方針付き）
+## 9. 未解決事項（解決方針付き）とステータス確定条件
+
+### 9.1 未解決事項
 
 - [x] 信任リングの構造的阻止 → 「信任元は CERTIFIED のみ」＋アンカー起点（§1・README §3.1）
-- [x] scopeId 詐称 IDOR → 所有権検証必須＋404 秘匿＋契約テスト（§3.1）
+- [x] scopeId 詐称 IDOR → 所有権検証必須（`accessGuard.isScopeAdmin`・子リソースは DB から scope 解決）＋404 秘匿＋契約テスト（§3.0/§3.1）
 - [x] 連鎖剥奪の暴走 → 1 段制限＋UNDER_REVIEW 留め（README §3.7）
 - [x] 削除済み団体の信任残留 → 削除イベント購読で outgoing 無効化（§5）
+- [x] 通知種別 → 通常通知（F04.9 確認必須通知は不使用・被信任側に確認義務動作がないため。README §8 に根拠明記）
+- [ ] **endorsee 側の同意（受任の承諾）フローの要否** → 既定=**設けない**（信任は endorser の一方向の対外表明・endorsee は存在検証のみ・§3 マトリクス）。ただし「望まない団体から公開の信任を張られる」レピュテーション懸念があるため、代替案=「endorsee 管理者が特定の信任を自団体の公開面から非表示にできる opt-out」を将来拡張点として残す。**要裁可**（README §11 に準ずる） |
 - [ ] **PRIVATE 団体が当事者の信任の公開範囲** → 既定=安全側（相手方が F00 可視の信任のみ公開面に出す・件数は全件）。精査で確定（§4.1 要精査注記）
 - [ ] **`UNDER_REVIEW` 団体の信任発行可否** → 推奨 (b) 発行不可（README §11-3・マスター裁可待ち）
+
+### 9.2 ステータス確定条件（🟡→🟢 にするための関門）
+
+- [ ] README §11 の要裁可論点（11-1〜11-5）＋本書 §9.1 の [ ] 3 件（endorsee 同意・PRIVATE 公開範囲・UNDER_REVIEW 発行可否）にマスター御裁可が出て設計へ反映されている
+- [ ] 認可が実在パターン（`accessGuard.isScopeAdmin` / `hasRole('SYSTEM_ADMIN')`）の逐語で記述され、userID→scopeId 流用がないことを精査で確認（§3.0/§3.1）
+- [ ] DB 原則適合（01 §8）・F00 経由の可視性（§4）・公開 DTO 禁則（§4.2）が精査で確認されている
+- [ ] エラーコード採番（`TRUST_0xx`）と Flyway 版番号（`V146` 仮）がマージ時に origin/main と再照合される注記が残っている（02 §8 / 01 §5）
