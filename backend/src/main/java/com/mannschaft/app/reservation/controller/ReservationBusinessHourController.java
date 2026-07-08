@@ -14,6 +14,7 @@ import com.mannschaft.app.reservation.dto.ReservationSettingsResponse;
 import com.mannschaft.app.reservation.dto.SlotGenerationResultDto;
 import com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest;
 import com.mannschaft.app.reservation.entity.ReservationPolicyEntity;
+import com.mannschaft.app.reservation.entity.ReservationTeamSettingEntity;
 import com.mannschaft.app.reservation.service.ReservationBusinessHourService;
 import com.mannschaft.app.reservation.service.ReservationPolicyService;
 import com.mannschaft.app.reservation.service.ReservationSlotTemplateService;
@@ -196,7 +197,9 @@ public class ReservationBusinessHourController {
      * 予約設定（チームポリシー）を取得する。
      *
      * <p>2 つの別テーブル（{@code reservation_team_settings}・{@code reservation_policies}）を
-     * 1 レスポンスに統合して返す。policy レコードが存在しないチームは既定値（AUTO / 24 / "24,1"）を返す。</p>
+     * 1 レスポンスに統合して返す。policy レコードが存在しないチームは既定値（AUTO / 24 / "24,1"）を、
+     * team_setting レコードが存在しないチームは既定値（allowPublicReservation=false /
+     * resourceNameType=DEFAULT / resourceNameCustom=null・F03.4.5 §5）を返す。</p>
      */
     @GetMapping
     @Operation(summary = "予約設定（チームポリシー）取得")
@@ -204,15 +207,17 @@ public class ReservationBusinessHourController {
     public ResponseEntity<ApiResponse<ReservationSettingsResponse>> getSettings(
             @PathVariable Long teamId) {
         boolean hasBusinessHours = businessHourService.hasBusinessHours(teamId);
-        boolean allowPublicReservation = teamSettingService.isAllowPublic(teamId);
+        ReservationTeamSettingEntity teamSetting = teamSettingService.getOrDefault(teamId);
         ReservationPolicyEntity policy = policyService.getOrDefault(teamId);
         ReservationSettingsResponse settings = ReservationSettingsResponse.builder()
                 .teamId(teamId)
                 .hasBusinessHours(hasBusinessHours)
-                .allowPublicReservation(allowPublicReservation)
+                .allowPublicReservation(teamSetting.isAllowPublicReservation())
                 .approvalMode(policy.getApprovalMode())
                 .cancelDeadlineHours(policy.getCancelDeadlineHours())
                 .remindBeforeHours(policy.getRemindBeforeHours())
+                .resourceNameType(teamSetting.getResourceNameType())
+                .resourceNameCustom(teamSetting.getResourceNameCustom())
                 .build();
         return ResponseEntity.ok(ApiResponse.of(settings));
     }
@@ -227,6 +232,9 @@ public class ReservationBusinessHourController {
      *       true にするとログイン済みであればチーム所属者でなくても予約できるようになる（裏設定）。</li>
      *   <li>{@code approvalMode} / {@code cancelDeadlineHours} / {@code remindBeforeHours}
      *       … {@code reservation_policies} を upsert 更新。</li>
+     *   <li>{@code resourceNameType} / {@code resourceNameCustom} … {@code reservation_team_settings}
+     *       の呼称カラムを upsert 更新（F03.4.5 §5）。CUSTOM 必須検証・CUSTOM 以外への NULL 正規化は
+     *       {@code ReservationTeamSettingService#updateResourceName} が担う。</li>
      * </ul>
      */
     @PatchMapping
@@ -249,6 +257,11 @@ public class ReservationBusinessHourController {
                     request.getApprovalMode(),
                     request.getCancelDeadlineHours(),
                     request.getRemindBeforeHours());
+        }
+        // 予約対象の呼称（reservation_team_settings）の upsert。両方 null なら据え置き（F03.4.5 §5）。
+        if (request.getResourceNameType() != null || request.getResourceNameCustom() != null) {
+            teamSettingService.updateResourceName(
+                    teamId, request.getResourceNameType(), request.getResourceNameCustom());
         }
         // 更新後の統合状態を返す（GET と同形）。
         return getSettings(teamId);

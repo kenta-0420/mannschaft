@@ -666,11 +666,22 @@ class ReservationControllerTest {
             verify(businessHourService).deleteBlockedTime(TEAM_ID, blockedId);
         }
 
+        /** テスト用の team_setting 既定値エンティティ（allowPublicReservation=false / resourceNameType=DEFAULT）。 */
+        private com.mannschaft.app.reservation.entity.ReservationTeamSettingEntity defaultTeamSetting() {
+            return com.mannschaft.app.reservation.entity.ReservationTeamSettingEntity.builder()
+                    .teamId(TEAM_ID)
+                    .build();
+        }
+
         @Test
         @DisplayName("予約設定取得_正常_200返却_公開フラグ含む")
         void 予約設定概要取得_正常_200返却() {
             given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(true);
-            given(teamSettingService.isAllowPublic(TEAM_ID)).willReturn(true);
+            given(teamSettingService.getOrDefault(TEAM_ID)).willReturn(
+                    com.mannschaft.app.reservation.entity.ReservationTeamSettingEntity.builder()
+                            .teamId(TEAM_ID)
+                            .allowPublicReservation(true)
+                            .build());
             given(policyService.getOrDefault(TEAM_ID)).willReturn(defaultPolicy());
 
             ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.ReservationSettingsResponse>> result =
@@ -687,7 +698,7 @@ class ReservationControllerTest {
         @DisplayName("予約設定取得_policy無し_既定値AUTO/24/24,1を返す")
         void 予約設定取得_policy無し_既定値() {
             given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(false);
-            given(teamSettingService.isAllowPublic(TEAM_ID)).willReturn(false);
+            given(teamSettingService.getOrDefault(TEAM_ID)).willReturn(defaultTeamSetting());
             // getOrDefault は policy 無しでも既定値の未永続エンティティを返す。
             given(policyService.getOrDefault(TEAM_ID)).willReturn(defaultPolicy());
 
@@ -701,13 +712,33 @@ class ReservationControllerTest {
         }
 
         @Test
-        @DisplayName("予約設定更新_公開フラグのみ_upsert委譲_policyは触らない")
+        @DisplayName("予約設定取得_team_setting無し_既定値resourceNameType=DEFAULT_customはnullを返す")
+        void 予約設定取得_呼称既定値() {
+            given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(false);
+            given(teamSettingService.getOrDefault(TEAM_ID)).willReturn(defaultTeamSetting());
+            given(policyService.getOrDefault(TEAM_ID)).willReturn(defaultPolicy());
+
+            ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.ReservationSettingsResponse>> result =
+                    controller.getSettings(TEAM_ID);
+
+            com.mannschaft.app.reservation.dto.ReservationSettingsResponse data = result.getBody().getData();
+            assertThat(data.getResourceNameType())
+                    .isEqualTo(com.mannschaft.app.reservation.ReservationResourceNameType.DEFAULT);
+            assertThat(data.getResourceNameCustom()).isNull();
+        }
+
+        @Test
+        @DisplayName("予約設定更新_公開フラグのみ_upsert委譲_policyと呼称は触らない")
         void 予約公開設定更新_正常_200返却() {
             com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest request =
                     new com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest(
-                            true, null, null, null);
+                            true, null, null, null, null, null);
             given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(false);
-            given(teamSettingService.isAllowPublic(TEAM_ID)).willReturn(true);
+            given(teamSettingService.getOrDefault(TEAM_ID)).willReturn(
+                    com.mannschaft.app.reservation.entity.ReservationTeamSettingEntity.builder()
+                            .teamId(TEAM_ID)
+                            .allowPublicReservation(true)
+                            .build());
             given(policyService.getOrDefault(TEAM_ID)).willReturn(defaultPolicy());
 
             ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.ReservationSettingsResponse>> result =
@@ -719,6 +750,9 @@ class ReservationControllerTest {
             // policy フィールドが全て null なので updatePolicy は呼ばれない（据え置き）。
             org.mockito.Mockito.verify(policyService, org.mockito.Mockito.never())
                     .updatePolicy(any(), any(), any(), any());
+            // 呼称フィールドが全て null なので updateResourceName は呼ばれない（据え置き）。
+            org.mockito.Mockito.verify(teamSettingService, org.mockito.Mockito.never())
+                    .updateResourceName(any(), any(), any());
         }
 
         @Test
@@ -726,9 +760,9 @@ class ReservationControllerTest {
         void 予約設定更新_ポリシー更新_委譲() {
             com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest request =
                     new com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest(
-                            null, com.mannschaft.app.reservation.ApprovalMode.MANUAL, 48, "72,24,1");
+                            null, com.mannschaft.app.reservation.ApprovalMode.MANUAL, 48, "72,24,1", null, null);
             given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(false);
-            given(teamSettingService.isAllowPublic(TEAM_ID)).willReturn(false);
+            given(teamSettingService.getOrDefault(TEAM_ID)).willReturn(defaultTeamSetting());
             given(policyService.getOrDefault(TEAM_ID)).willReturn(
                     com.mannschaft.app.reservation.entity.ReservationPolicyEntity.builder()
                             .teamId(TEAM_ID)
@@ -751,6 +785,41 @@ class ReservationControllerTest {
             org.mockito.Mockito.verify(teamSettingService, org.mockito.Mockito.never())
                     .updateAllowPublic(org.mockito.ArgumentMatchers.anyLong(),
                             org.mockito.ArgumentMatchers.anyBoolean());
+            // 呼称フィールドも null なので updateResourceName は呼ばれない。
+            org.mockito.Mockito.verify(teamSettingService, org.mockito.Mockito.never())
+                    .updateResourceName(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("予約設定更新_呼称指定_updateResourceNameへ委譲しGETに反映")
+        void 予約設定更新_呼称更新_委譲() {
+            com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest request =
+                    new com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest(
+                            null, null, null, null,
+                            com.mannschaft.app.reservation.ReservationResourceNameType.SEAT, null);
+            given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(false);
+            given(policyService.getOrDefault(TEAM_ID)).willReturn(defaultPolicy());
+            given(teamSettingService.getOrDefault(TEAM_ID)).willReturn(
+                    com.mannschaft.app.reservation.entity.ReservationTeamSettingEntity.builder()
+                            .teamId(TEAM_ID)
+                            .resourceNameType(com.mannschaft.app.reservation.ReservationResourceNameType.SEAT)
+                            .build());
+
+            ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.ReservationSettingsResponse>> result =
+                    controller.updateReservationSetting(TEAM_ID, request);
+
+            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+            com.mannschaft.app.reservation.dto.ReservationSettingsResponse data = result.getBody().getData();
+            assertThat(data.getResourceNameType())
+                    .isEqualTo(com.mannschaft.app.reservation.ReservationResourceNameType.SEAT);
+            verify(teamSettingService).updateResourceName(
+                    TEAM_ID, com.mannschaft.app.reservation.ReservationResourceNameType.SEAT, null);
+            // allow_public/policy は触らない。
+            org.mockito.Mockito.verify(teamSettingService, org.mockito.Mockito.never())
+                    .updateAllowPublic(org.mockito.ArgumentMatchers.anyLong(),
+                            org.mockito.ArgumentMatchers.anyBoolean());
+            org.mockito.Mockito.verify(policyService, org.mockito.Mockito.never())
+                    .updatePolicy(any(), any(), any(), any());
         }
 
         @Test

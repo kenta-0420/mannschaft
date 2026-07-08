@@ -62378,6 +62378,17 @@ export interface components {
              * @example 24,1
              */
             remindBeforeHours?: string;
+            /**
+             * @description 自由入力の呼称（CUSTOM 選択時のみ有効・30文字以内 / null=据え置き）
+             * @example 施術台
+             */
+            resourceNameCustom?: string;
+            /**
+             * @description 予約対象の呼称プリセット（null=据え置き）
+             * @example SEAT
+             * @enum {string}
+             */
+            resourceNameType?: "DEFAULT" | "STAFF" | "SEAT" | "COURT" | "BED" | "LANE" | "CUSTOM";
         };
         ApiResponseReservationSettingsResponse: {
             data?: components["schemas"]["ReservationSettingsResponse"];
@@ -62411,6 +62422,17 @@ export interface components {
              * @example 24,1
              */
             remindBeforeHours?: string;
+            /**
+             * @description 自由入力の呼称（resourceNameType=CUSTOM のときのみ非 null）
+             * @example 施術台
+             */
+            resourceNameCustom?: string;
+            /**
+             * @description 予約対象の呼称プリセット。DEFAULT=未設定（従来の『予約対象』表示）
+             * @example SEAT
+             * @enum {string}
+             */
+            resourceNameType?: "DEFAULT" | "STAFF" | "SEAT" | "COURT" | "BED" | "LANE" | "CUSTOM";
             /**
              * Format: int64
              * @description チームID
