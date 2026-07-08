@@ -117,11 +117,13 @@ isEntitled(scopeKind, scopeId, featureKey, now):
 ### 3.3 営利/非営利（org_type のイベント駆動是正）
 
 - 自己申告区分は既存 `organizations.org_type`（V9.091 で ENUM 化・実 enum 値は `GOVERNMENT / MUNICIPALITY / COMPANY / HOSPITAL / ASSOCIATION / SCHOOL / NPO / COMMUNITY / OTHER`）。
-- **非営利系 org_type のスコープが REVENUE 機能を有効化**（PLAN 契約に REVENUE 機能が含まれる／ADDON で REVENUE 機能を契約）した瞬間、billing ドメインが **`RevenueFeatureActivatedEvent`** を発火し、**organization ドメインのリスナー**が org_type を営利（`COMPANY`）へ更新＋ **F04.9 確認必須通知**を org ADMIN へ送る。**クロスドメイン直接 UPDATE 禁止・イベント駆動**（02 §7）。
+- **非営利系 org_type のスコープが REVENUE 機能を「商用行動」で有効化**した瞬間、billing ドメインが **`RevenueFeatureActivatedEvent`** を発火し、**organization ドメインのリスナー**が org_type を営利（`COMPANY`）へ更新＋ **F04.9 確認必須通知**を org ADMIN へ送る。**クロスドメイン直接 UPDATE 禁止・イベント駆動**（02 §7）。
+- **★発火は「団体自身の商用行動」に限る（H-5）**: 発火するのは **PLAN 契約購入・ADDON 契約購入**（対象に REVENUE 機能を含む）のみ。**ベータ特典の付与（`source_kind=BETA_GRANT`）・シスアド手動付与は発火しない**（運営が無償で配る行為であり団体の商用行動ではない。NPO にベータ特典を配っただけで org_type が COMPANY に自動変異してはならない）。発火点×org_type の全分岐は 02 §7.0 のマトリクス、否定 AC は §5 AC-22b。
 - 自動更新の対象 org_type は **`NPO` / `ASSOCIATION` / `COMMUNITY` / `OTHER`** を推奨既定とし、公共系（`GOVERNMENT` / `MUNICIPALITY` / `SCHOOL` / `HOSPITAL`）は自動更新せず**通知＋運営レビューのみ**（市役所が COMPANY になるのは不合理）→ **§8 要裁可論点 R-1**。
 - **チームの区分は所属組織に従う**: チーム↔組織は `team_org_memberships`（V2.011・多対多・`status ∈ {PENDING, ACTIVE}`）。判定は「**ACTIVE な所属組織のうち 1 つでも営利（`COMPANY`）なら営利扱い**、全所属が非営利なら非営利扱い」。
 - **無所属チーム**（`team_org_memberships` に ACTIVE 行が無いチーム）: `teams` テーブルに区分列は**存在しない**（V2.004 実確認）。**非営利扱いを既定**とし、REVENUE 機能は区分問わず有料のため悪用余地は INTERNAL 無料枠のみ → 列追加はしない推奨 → **§8 要裁可論点 R-2**。
-- チーム経由（TEAM スコープ）の REVENUE 有効化では、所属組織の org_type は**自動更新せず**、所属 ACTIVE 組織の ADMIN へ確認必須通知のみ（1 チームの行動で組織全体の区分を書き換えない）→ **§8 要裁可論点 R-1 に内包**。
+- チーム経由（TEAM スコープ）の REVENUE 有効化では、所属組織の org_type は**自動更新せず**、**所属する全 ACTIVE 組織の ADMIN へ確認必須通知のみ**（1 チームの行動で組織全体の区分を書き換えない）→ **§8 要裁可論点 R-1 に内包**。
+  - **通知先を「全 ACTIVE 親組織」とする正当化（L-4）**: チームは多対多で複数組織に所属しうる（`team_org_memberships`）。どの親組織にとっても「傘下チームが収益機能を使い始めた」ことは区分見直しの判断材料になるため、**ACTIVE な全親組織の ADMIN に通知**する（漏らさない）。過剰通知の懸念はあるが、REVENUE 有効化はチーム単位で頻度が低く、確認必須通知（F04.9）は受信者が確認すれば消えるため負荷は限定的。絞り込み（例: 主所属組織のみ）は誤って営利判断の機会を逃すリスクの方が大きいと評価し、全 ACTIVE 親組織を既定とする（R-1 で運用調整可）。
 
 ### 3.4 BE ゲート `EntitlementGuard`
 
@@ -219,13 +221,21 @@ entitlementGuard.require(EntitlementScopeKind.TEAM, teamId,
 | AC-13 | 境界 | 無所属チーム（`team_org_memberships` に ACTIVE 行なし）は非営利扱いで判定される（R-2 御裁可後に確定） |
 | AC-14 | 後方互換 | 既存 `team_subscriptions`（`status=ACTIVE` かつ `planType<>FREE`）を持つチームは、移行後も `hasPaidPlan=true` |
 | AC-15 | 後方互換 | 予約通知宛先 4 件目追加は、無権利チームで従来どおり `RESERVATION_029`・**HTTP 402** |
-| AC-16 | 正常 | 契約取消（revoke）後、キャッシュ evict により**次のリクエストから** `isEntitled=false`（最悪 TTL 60 秒以内） |
+| AC-16 | 正常 | 契約取消（revoke）時、当該 scope の権利キャッシュ **evict が呼ばれる**（観測点＝evict 呼び出しの実行。TTL 失効の時間依存観測は行わず、キャッシュミス後 `isEntitled=false` を別途単体テストで検証・M-9） |
 | AC-17 | 異常 | SYSTEM_ADMIN 以外が plans/feature_catalog/price_bands の CRUD API を呼ぶ → 403 |
 | AC-18 | 異常 | `feature_catalog` に存在しない feature_key の `require` → 拒否（403）＋ WARN ログ（fail-safe） |
 | AC-19 | 正常 | プラン変更（BASIC→FULL・FULL→BASIC）: 旧契約由来 entitlements が `revoked_at` で無効化され、新プラン分が発行される。ダウングレードで対象外になった機能は即 false |
 | AC-20 | 正常 | 契約解約 → 当該契約由来の全 entitlements が revoke され、対象機能が 402 に戻る |
 | AC-21 | 異常 | 同一（scope×feature×source_kind×source_ref×valid_from）の重複 INSERT → UNIQUE 制約違反として 409 |
-| AC-22 | 境界 | TEAM スコープの REVENUE 有効化では所属組織の org_type は更新されず、所属 ACTIVE 組織の ADMIN へ通知のみ |
+| AC-22 | 境界 | TEAM スコープの REVENUE 有効化（PLAN/ADDON 契約）では所属組織の org_type は更新されず、**所属する全 ACTIVE 組織**の ADMIN へ通知のみ |
+| AC-22b | 異常（否定・H-5） | **NPO 組織にベータ特典（BETA_GRANT）を付与しても `RevenueFeatureActivatedEvent` は発火せず org_type は変化しない**（運営の無償配布は商用行動ではない） |
+| AC-23 | 正常（M-2） | 権利サマリ `GET .../entitlements` の `entitledFeatures` が、FREE 掲載機能（`sourceKind=FREE`）・非営利無料枠（`NONPROFIT_FREE`）を virtual 合成し、**一覧の feature_key 集合＝`isEntitled=true` の集合**に一致する（UI「利用できる機能」と BE 判定の齟齬ゼロ） |
+| AC-24 | 境界 | 既に `COMPANY` の組織が REVENUE 契約 → org_type は変化せず通知もしない（冪等） |
+| AC-25 | 境界 | INTERNAL 機能のみの PLAN/ADDON 契約 → `RevenueFeatureActivatedEvent` は不発火 |
+| AC-26 | 異常（否定・H-5） | シスアド手動付与で REVENUE 機能を付けても org_type は変化しない（運営操作は商用行動ではない） |
+| AC-27 | 境界 | USER スコープの REVENUE 契約は org 区分に影響しない（イベント不発火） |
+| AC-28 | 正常（H-1） | 同一スコープへの ACTIVE PLAN 契約の**並行 2 リクエスト**は、`active_contract_pointers` の UNIQUE により 1 件のみ成功・他は `ENTITLEMENT_006` 409（TOCTOU 二重契約が作れない） |
+| AC-29 | 正常（M-5） | 退会申請（猶予中）では契約・entitlements は revoke されず権利維持。退会確定（purge）で失効。撤回時は権利維持のまま |
 
 ---
 
@@ -253,7 +263,7 @@ entitlementGuard.require(EntitlementScopeKind.TEAM, teamId,
 
 | # | 論点 | 選択肢 | 推奨 |
 |---|---|---|---|
-| **R-1** | org_type 自動更新の対象範囲 | (a) `COMPANY` 以外すべて自動更新／(b) `NPO`・`ASSOCIATION`・`COMMUNITY`・`OTHER` のみ自動更新、公共系（`GOVERNMENT`/`MUNICIPALITY`/`SCHOOL`/`HOSPITAL`）は通知＋運営レビューのみ | **(b)**。市役所・学校が COMPANY に自動変異するのは不合理。公共系の REVENUE 利用は運営が個別確認する |
+| **R-1** | org_type 自動更新の対象範囲＋**誤変異のロールバック経路（M-3）** | (a) `COMPANY` 以外すべて自動更新／(b) `NPO`・`ASSOCIATION`・`COMMUNITY`・`OTHER` のみ自動更新、公共系（`GOVERNMENT`/`MUNICIPALITY`/`SCHOOL`/`HOSPITAL`）は通知＋運営レビューのみ。**加えて、自動変異は取り消せること**（異議申し立て時に運営が `COMPANY`→元 org_type へ差し戻す運営 API `POST /api/v1/system-admin/organizations/{orgId}/org-type-revert`＋監査。billing はイベントで通知するだけで org_type の権威は organization ドメイン＝差し戻しも同ドメインの操作） | **(b)＋ロールバック経路あり**。市役所・学校が COMPANY に自動変異するのは不合理。誤変異は運営差し戻しで回復可能にし、確認必須通知に「区分が違う場合はお問い合わせください」の異議導線を含める |
 | **R-2** | 無所属チームの営利/非営利区分の持ち方 | (a) `teams` に区分列を追加／(b) billing ドメイン側に scope 区分テーブルを新設／(c) **列追加なし**・「ACTIVE 所属組織から都度導出、無所属は非営利扱い」 | **(c)**。REVENUE 機能は区分問わず有料のため悪用余地は INTERNAL 無料枠のみで小さい。列追加は実需が出てから（YAGNI） |
 | **R-3** | BASIC プランの機能構成・想定価格 | 機構は本設計で完成。構成・価格は運用データ待ち | ベータ計測（F20.3 §7）後に決定。設計は NULL 可で先行 |
 | **R-4** | ORG 契約の配下チーム展開（組織一括契約でチームスコープにも効かせるか） | (a) 展開しない（本設計）／(b) `plan_features` 側に展開フラグ | **(a)** で出荷し、実需で (b) を Phase 2 検討 |
