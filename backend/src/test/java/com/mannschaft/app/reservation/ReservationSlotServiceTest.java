@@ -87,7 +87,8 @@ class ReservationSlotServiceTest {
         // @InjectMocks は Clock を mock で埋めてしまい LocalDate.now(clock) が NPE になるため、
         // 固定 Clock を明示注入してサービスを生成する。
         service = new ReservationSlotService(slotRepository, reservationRepository, reservationMapper,
-                blockedTimeRepository, unavailabilityChecker, lineRepository, FIXED_CLOCK);
+                blockedTimeRepository, unavailabilityChecker, lineRepository, FIXED_CLOCK,
+                org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
     }
 
     private ReservationSlotEntity createSlotEntity() {

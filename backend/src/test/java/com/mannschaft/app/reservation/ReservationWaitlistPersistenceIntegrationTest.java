@@ -5,9 +5,11 @@ import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.reservation.dto.CreateReservationRequest;
 import com.mannschaft.app.reservation.dto.WaitlistCountResponse;
 import com.mannschaft.app.reservation.dto.WaitlistEntryResponse;
+import com.mannschaft.app.reservation.entity.ReservationLineEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import com.mannschaft.app.reservation.entity.ReservationTeamSettingEntity;
 import com.mannschaft.app.reservation.entity.ReservationWaitlistEntryEntity;
+import com.mannschaft.app.reservation.repository.ReservationLineRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import com.mannschaft.app.reservation.repository.ReservationTeamSettingRepository;
 import com.mannschaft.app.reservation.repository.ReservationWaitlistEntryRepository;
@@ -51,6 +53,8 @@ class ReservationWaitlistPersistenceIntegrationTest extends AbstractMySqlIntegra
     private ReservationWaitlistEntryRepository waitlistRepository;
     @Autowired
     private ReservationSlotRepository slotRepository;
+    @Autowired
+    private ReservationLineRepository lineRepository;
     @Autowired
     private ReservationTeamSettingRepository teamSettingRepository;
     @Autowired
@@ -175,13 +179,16 @@ class ReservationWaitlistPersistenceIntegrationTest extends AbstractMySqlIntegra
     void 予約成立でCONVERTED() {
         Long teamId = 970007L;
         seedPublicTeam(teamId);
+        // reservations.line_id は NOT NULL のため予約対象ラインをシードし、リクエストに指定する。
+        Long lineId = lineRepository.save(ReservationLineEntity.builder()
+                .teamId(teamId).name("席1").isActive(true).build()).getId();
         // capacity 1・他ユーザーが予約して FULL 化 → A が待ち登録。
         Long slotId = seedSlot(teamId, FUTURE, LocalTime.of(16, 0), SlotStatus.AVAILABLE, 1, 0);
         Long booker = 970701L;
         Long waiterA = 970702L;
 
         var created = reservationService.createReservation(teamId, booker,
-                new CreateReservationRequest(slotId, null, null));
+                new CreateReservationRequest(slotId, lineId, null));
         assertThat(slotRepository.findById(slotId).orElseThrow().getSlotStatus()).isEqualTo(SlotStatus.FULL);
 
         waitlistService.register(teamId, slotId, waiterA);
@@ -192,7 +199,7 @@ class ReservationWaitlistPersistenceIntegrationTest extends AbstractMySqlIntegra
                 new com.mannschaft.app.reservation.dto.CancelReservationRequest("空いた"));
         assertThat(slotRepository.findById(slotId).orElseThrow().getSlotStatus()).isEqualTo(SlotStatus.AVAILABLE);
 
-        reservationService.createReservation(teamId, waiterA, new CreateReservationRequest(slotId, null, null));
+        reservationService.createReservation(teamId, waiterA, new CreateReservationRequest(slotId, lineId, null));
         assertThat(waitlistRepository.existsBySlotIdAndUserIdAndStatus(slotId, waiterA, WaitlistStatus.WAITING)).isFalse();
         assertThat(waitlistRepository.findByUserIdAndStatusOrderByCreatedAtDesc(waiterA, WaitlistStatus.CONVERTED))
                 .hasSize(1);
