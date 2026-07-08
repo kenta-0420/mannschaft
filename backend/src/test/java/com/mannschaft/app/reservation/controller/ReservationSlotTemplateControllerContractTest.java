@@ -52,6 +52,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -83,6 +84,7 @@ class ReservationSlotTemplateControllerContractTest {
 
     private static final String TEMPLATES_PATH = "/api/v1/teams/" + TEAM_ID + "/reservation-slot-templates";
     private static final String GENERATE_PATH = TEMPLATES_PATH + "/generate";
+    private static final String GENERATE_SINGLE_DAY_PATH = TEMPLATES_PATH + "/generate-single-day";
     private static final String SLOTS_PATH = "/api/v1/teams/" + TEAM_ID + "/reservation-slots";
 
     private static final String VALID_TEMPLATE_BODY = """
@@ -271,16 +273,141 @@ class ReservationSlotTemplateControllerContractTest {
 
     @Test
     @WithMockUser(username = "100", roles = "MEMBER")
-    @DisplayName("F-1/F-13: ADMIN（isScopeAdmin=true）が POST /reservation-slot-templates → 201（認可通過）")
+    @DisplayName("F-1/F-13: ADMIN（isScopeAdmin=true）が POST /reservation-slot-templates → 201（認可通過・保存＝自動生成）")
     void admin_createTemplate_created() throws Exception {
         stubAsAdmin();
         given(templateService.createTemplate(eq(TEAM_ID), any(), any())).willReturn(sampleTemplateResponse());
+        given(templateService.generateForTemplate(eq(TEAM_ID), any(), any()))
+                .willReturn(GenerateSlotsResponse.builder().generatedCount(24).build());
 
         mockMvc.perform(post(TEMPLATES_PATH)
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID_TEMPLATE_BODY))
-                .andExpect(status().isCreated());
+                .andExpect(status().isCreated())
+                // 応答は SlotTemplateSaveResponse（template＋generation）— §3.1 契約
+                .andExpect(jsonPath("$.data.template.dayOfWeek").value("MON"))
+                .andExpect(jsonPath("$.data.generation.generatedCount").value(24))
+                .andExpect(jsonPath("$.data.generation.failed").value(false));
+    }
+
+    @Test
+    @WithMockUser(username = "100", roles = "MEMBER")
+    @DisplayName("S-3: 生成段で例外が発生してもテンプレ保存は成立し 201＋generation.failed=true で返る（保存を壊さない）")
+    void admin_createTemplate_generationFailure_stillSaved() throws Exception {
+        stubAsAdmin();
+        given(templateService.createTemplate(eq(TEAM_ID), any(), any())).willReturn(sampleTemplateResponse());
+        given(templateService.generateForTemplate(eq(TEAM_ID), any(), any()))
+                .willThrow(new RuntimeException("生成段でDB接続断"));
+
+        mockMvc.perform(post(TEMPLATES_PATH)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_TEMPLATE_BODY))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.template.dayOfWeek").value("MON"))
+                .andExpect(jsonPath("$.data.generation.failed").value(true));
+    }
+
+    @Test
+    @WithMockUser(username = "100", roles = "MEMBER")
+    @DisplayName("S-3(部分失敗): 先行チャンクcommit後に失敗しても 201＋generation.failed=true＋コミット済み件数(>0)を報告する")
+    void admin_createTemplate_partialGenerationFailure_reportsCommittedCounts() throws Exception {
+        stubAsAdmin();
+        given(templateService.createTemplate(eq(TEAM_ID), any(), any())).willReturn(sampleTemplateResponse());
+        // 生成が 12 件コミット後に失敗した状態を注入（真の 0 ではない）
+        given(templateService.generateForTemplate(eq(TEAM_ID), any(), any()))
+                .willThrow(new com.mannschaft.app.reservation.service.SlotGenerationPartialException(
+                        GenerateSlotsResponse.builder().generatedCount(12).skippedExistingCount(3).build(),
+                        new RuntimeException("チャンク途中でDB断")));
+
+        mockMvc.perform(post(TEMPLATES_PATH)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_TEMPLATE_BODY))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.generation.failed").value(true))
+                // コミット済み分の実件数を報告する（0 で握り潰さない・§3.1 契約）
+                .andExpect(jsonPath("$.data.generation.generatedCount").value(12))
+                .andExpect(jsonPath("$.data.generation.skippedExistingCount").value(3));
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // F03.4.5 §3.3.2: 臨時営業（generate-single-day）認可・契約
+    // ────────────────────────────────────────────────────────────
+
+    @Test
+    @WithMockUser(username = "200", roles = "MEMBER")
+    @DisplayName("S-8: MEMBER が POST /generate-single-day → 403（管理者ゲート実発火）")
+    void member_generateSingleDay_forbidden() throws Exception {
+        stubAsMember();
+
+        mockMvc.perform(post(GENERATE_SINGLE_DAY_PATH)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"date\":\"2099-01-01\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "100", roles = "MEMBER")
+    @DisplayName("S-8: ADMIN が POST /generate-single-day → 200（認可通過・sourceDayOfWeek 省略可）")
+    void admin_generateSingleDay_ok() throws Exception {
+        stubAsAdmin();
+        given(templateService.generateSingleDay(eq(TEAM_ID), any(), any()))
+                .willReturn(GenerateSlotsResponse.builder().generatedCount(6).build());
+
+        mockMvc.perform(post(GENERATE_SINGLE_DAY_PATH)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"date\":\"2099-01-01\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.generatedCount").value(6));
+    }
+
+    @Test
+    @WithMockUser(username = "100", roles = "MEMBER")
+    @DisplayName("S-8: generate-single-day の date 欠落は Bean Validation で 400")
+    void generateSingleDay_missingDate_badRequest() throws Exception {
+        stubAsAdmin();
+
+        mockMvc.perform(post(GENERATE_SINGLE_DAY_PATH)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "100", roles = "MEMBER")
+    @DisplayName("S-8: generate-single-day の sourceDayOfWeek=MONDAY（フルネーム）は Jackson enum デシリアライズ失敗で 400")
+    void generateSingleDay_invalidSourceDay_badRequest() throws Exception {
+        stubAsAdmin();
+
+        mockMvc.perform(post(GENERATE_SINGLE_DAY_PATH)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"date\":\"2099-01-01\",\"sourceDayOfWeek\":\"MONDAY\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // S-5: generate API の deprecate（残置＋@Deprecated）
+    // ────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("S-5: POST /generate は @Deprecated かつ @Operation(deprecated=true) が付与され API として残置される")
+    void generate_isDeprecated() throws Exception {
+        java.lang.reflect.Method generate = ReservationSlotTemplateController.class.getMethod(
+                "generate", Long.class,
+                com.mannschaft.app.reservation.dto.GenerateSlotsRequest.class);
+        org.assertj.core.api.Assertions.assertThat(generate.isAnnotationPresent(Deprecated.class))
+                .as("@Deprecated が付与されている").isTrue();
+        io.swagger.v3.oas.annotations.Operation op =
+                generate.getAnnotation(io.swagger.v3.oas.annotations.Operation.class);
+        org.assertj.core.api.Assertions.assertThat(op).isNotNull();
+        org.assertj.core.api.Assertions.assertThat(op.deprecated())
+                .as("@Operation(deprecated=true)（OpenAPI deprecated:true）").isTrue();
     }
 
     @Test

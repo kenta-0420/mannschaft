@@ -7524,7 +7524,7 @@
         "tags": [
           "予約設定管理"
         ],
-        "summary": "営業時間一括更新",
+        "summary": "営業時間一括更新（保存＝変更曜日の同期自動生成）",
         "operationId": "updateBusinessHours",
         "parameters": [
           {
@@ -7553,7 +7553,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListBusinessHourResponse"
+                  "$ref": "#/components/schemas/ApiResponseBusinessHoursSaveResponse"
                 }
               }
             }
@@ -37231,7 +37231,7 @@
         "tags": [
           "予約枠週間テンプレート"
         ],
-        "summary": "週間テンプレート作成",
+        "summary": "週間テンプレート作成（保存＝同期自動生成）",
         "operationId": "createTemplate_3",
         "parameters": [
           {
@@ -37260,7 +37260,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseSlotTemplateResponse"
+                  "$ref": "#/components/schemas/ApiResponseSlotTemplateSaveResponse"
                 }
               }
             }
@@ -37273,7 +37273,7 @@
         "tags": [
           "予約枠週間テンプレート"
         ],
-        "summary": "週間テンプレート一括生成",
+        "summary": "週間テンプレート一括生成（非推奨: 保存＝自動生成へ移行）",
         "operationId": "generate_1",
         "parameters": [
           {
@@ -37291,6 +37291,49 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/GenerateSlotsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "生成成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGenerateSlotsResponse"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/api/v1/teams/{teamId}/reservation-slot-templates/generate-single-day": {
+      "post": {
+        "tags": [
+          "予約枠週間テンプレート"
+        ],
+        "summary": "臨時営業（単日テンプレ適用）",
+        "operationId": "generateSingleDay",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateSingleDayRequest"
               }
             }
           },
@@ -83673,7 +83716,7 @@
         "tags": [
           "予約枠週間テンプレート"
         ],
-        "summary": "週間テンプレート更新",
+        "summary": "週間テンプレート更新（保存＝同期自動生成）",
         "operationId": "updateTemplate_10",
         "parameters": [
           {
@@ -83711,7 +83754,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseSlotTemplateResponse"
+                  "$ref": "#/components/schemas/ApiResponseSlotTemplateSaveResponse"
                 }
               }
             }
@@ -141231,14 +141274,11 @@
           "hours"
         ]
       },
-      "ApiResponseListBusinessHourResponse": {
+      "ApiResponseBusinessHoursSaveResponse": {
         "type": "object",
         "properties": {
           "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/BusinessHourResponse"
-            }
+            "$ref": "#/components/schemas/BusinessHoursSaveResponse"
           }
         }
       },
@@ -141258,6 +141298,20 @@
           }
         }
       },
+      "BusinessHoursSaveResponse": {
+        "type": "object",
+        "properties": {
+          "generation": {
+            "$ref": "#/components/schemas/SlotGenerationResultDto"
+          },
+          "hours": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BusinessHourResponse"
+            }
+          }
+        }
+      },
       "BusinessStatusDto": {
         "type": "object",
         "properties": {
@@ -141274,6 +141328,30 @@
           "openTime": {
             "type": "string",
             "example": "14:30:00"
+          }
+        }
+      },
+      "SlotGenerationResultDto": {
+        "type": "object",
+        "properties": {
+          "failed": {
+            "type": "boolean"
+          },
+          "generatedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skippedClosedDayCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skippedExistingCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skippedOutsideHoursCount": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -161742,11 +161820,11 @@
           "startTime"
         ]
       },
-      "ApiResponseSlotTemplateResponse": {
+      "ApiResponseSlotTemplateSaveResponse": {
         "type": "object",
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/SlotTemplateResponse"
+            "$ref": "#/components/schemas/SlotTemplateSaveResponse"
           }
         }
       },
@@ -161815,6 +161893,17 @@
           }
         }
       },
+      "SlotTemplateSaveResponse": {
+        "type": "object",
+        "properties": {
+          "generation": {
+            "$ref": "#/components/schemas/SlotGenerationResultDto"
+          },
+          "template": {
+            "$ref": "#/components/schemas/SlotTemplateResponse"
+          }
+        }
+      },
       "GenerateSlotsRequest": {
         "type": "object",
         "properties": {
@@ -161862,6 +161951,30 @@
             "format": "int32"
           }
         }
+      },
+      "GenerateSingleDayRequest": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "sourceDayOfWeek": {
+            "type": "string",
+            "enum": [
+              "MON",
+              "TUE",
+              "WED",
+              "THU",
+              "FRI",
+              "SAT",
+              "SUN"
+            ]
+          }
+        },
+        "required": [
+          "date"
+        ]
       },
       "BlockedTimeRequest": {
         "type": "object",
@@ -197662,6 +197775,17 @@
           "totalTemplates": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "ApiResponseListBusinessHourResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BusinessHourResponse"
+            }
           }
         }
       },
