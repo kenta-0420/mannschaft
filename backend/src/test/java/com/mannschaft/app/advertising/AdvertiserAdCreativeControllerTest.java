@@ -5,11 +5,14 @@ import com.mannschaft.app.advertising.dto.AdCreativeResponse;
 import com.mannschaft.app.advertising.dto.CreateAdCreativeRequest;
 import com.mannschaft.app.advertising.dto.UpdateAdCreativeRequest;
 import com.mannschaft.app.advertising.entity.AdCampaignEntity;
+import com.mannschaft.app.advertising.entity.AdvertiserAccountEntity;
 import com.mannschaft.app.advertising.repository.AdCampaignRepository;
+import com.mannschaft.app.advertising.repository.AdvertiserAccountRepository;
 import com.mannschaft.app.advertising.service.AdCreativeService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.membership.domain.ScopeType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -43,18 +46,32 @@ class AdvertiserAdCreativeControllerTest {
     @Mock
     private AdCampaignRepository adCampaignRepository;
 
+    @Mock
+    private AdvertiserAccountRepository advertiserAccountRepository;
+
     @InjectMocks
     private AdvertiserAdCreativeController controller;
 
     private static final Long USER_ID = 1L;
     private static final Long ORG_ID = 100L;
+    private static final Long ACCOUNT_ID = 77L;
     private static final Long CAMPAIGN_ID = 10L;
     private static final Long AD_ID = 1L;
 
-    /** F09.19.1 帰属検証（IDOR 対策）用: campaignId が当該組織に帰属する状態をスタブする。 */
+    /**
+     * F09.19.1 帰属検証（IDOR 対策）用: campaignId が当該組織の広告主アカウントに帰属する状態をスタブする。
+     * F09.19.5: 帰属は advertiser_account_id 直結で判定するため、組織 → アカウント解決も併せて stub する。
+     */
     private void stubCampaignBelongsToOrg() {
+        AdvertiserAccountEntity account = AdvertiserAccountEntity.builder()
+                .id(ACCOUNT_ID)
+                .scopeType(ScopeType.ORGANIZATION)
+                .scopeId(ORG_ID)
+                .build();
+        given(advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(ScopeType.ORGANIZATION, ORG_ID))
+                .willReturn(Optional.of(account));
         AdCampaignEntity campaign = AdCampaignEntity.builder()
-                .advertiserOrganizationId(ORG_ID)
+                .advertiserAccountId(ACCOUNT_ID)
                 .build();
         given(adCampaignRepository.findById(CAMPAIGN_ID)).willReturn(Optional.of(campaign));
     }

@@ -52,7 +52,7 @@ public class CampaignPerformanceService {
         AdvertiserAccountEntity account = advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(ScopeType.ORGANIZATION, organizationId)
                 .orElseThrow(() -> new BusinessException(AdvertisingErrorCode.AD_005));
 
-        List<AdCampaignEntity> campaigns = adCampaignRepository.findByAdvertiserOrganizationId(organizationId);
+        List<AdCampaignEntity> campaigns = adCampaignRepository.findByAdvertiserAccountId(account.getId());
 
         LocalDate now = LocalDate.now();
         LocalDate monthStart = now.withDayOfMonth(1);
@@ -129,7 +129,15 @@ public class CampaignPerformanceService {
      */
     public CampaignPerformanceResponse getPerformance(Long campaignId, Long organizationId,
                                                        LocalDate from, LocalDate to) {
-        AdCampaignEntity campaign = findCampaignWithAuth(campaignId, organizationId);
+        return getPerformance(campaignId, ScopeType.ORGANIZATION, organizationId, from, to);
+    }
+
+    /**
+     * キャンペーン別パフォーマンスを取得する（scope 化。F09.19.5: org/team 両対応）。
+     */
+    public CampaignPerformanceResponse getPerformance(Long campaignId, ScopeType scopeType, Long scopeId,
+                                                       LocalDate from, LocalDate to) {
+        AdCampaignEntity campaign = findCampaignWithAuth(campaignId, scopeType, scopeId);
         List<AdDailyStatsEntity> stats = adDailyStatsRepository.findByCampaignIdAndDateBetween(campaignId, from, to);
 
         long totalImpressions = stats.stream().mapToLong(AdDailyStatsEntity::getImpressions).sum();
@@ -248,9 +256,16 @@ public class CampaignPerformanceService {
     }
 
     private AdCampaignEntity findCampaignWithAuth(Long campaignId, Long organizationId) {
+        return findCampaignWithAuth(campaignId, ScopeType.ORGANIZATION, organizationId);
+    }
+
+    private AdCampaignEntity findCampaignWithAuth(Long campaignId, ScopeType scopeType, Long scopeId) {
+        AdvertiserAccountEntity account = advertiserAccountRepository
+                .findByScopeTypeAndScopeIdAndDeletedAtIsNull(scopeType, scopeId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_002));
         AdCampaignEntity campaign = adCampaignRepository.findById(campaignId)
                 .orElseThrow(() -> new BusinessException(AdvertisingErrorCode.AD_005));
-        if (!campaign.getAdvertiserOrganizationId().equals(organizationId)) {
+        if (!campaign.getAdvertiserAccountId().equals(account.getId())) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
         return campaign;

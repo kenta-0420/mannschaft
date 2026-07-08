@@ -86,8 +86,9 @@ public class MonthlyInvoiceBatchService {
             return;
         }
 
-        // キャンペーン取得 (scope_id = organization_id または team_id)
-        List<AdCampaignEntity> campaigns = adCampaignRepository.findByAdvertiserOrganizationId(account.getScopeId());
+        // キャンペーン取得（F09.19.5: advertiser_account_id 直結。従来は account.getScopeId() を
+        // advertiser_organization_id に流用しており TEAM 広告主のキャンペーンが 1 件も載らないバグがあった）
+        List<AdCampaignEntity> campaigns = adCampaignRepository.findByAdvertiserAccountId(account.getId());
         if (campaigns.isEmpty()) return;
 
         List<Long> campaignIds = campaigns.stream().map(AdCampaignEntity::getId).toList();
