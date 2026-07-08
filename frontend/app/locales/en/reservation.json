@@ -258,7 +258,8 @@
       "template_update_success": "Template updated",
       "template_delete_success": "Template deleted",
       "template_save_failed": "Failed to save",
-      "template_load_failed": "Failed to load templates"
+      "template_load_failed": "Failed to load templates",
+      "cancel_deadline_passed": "The cancellation deadline has passed, so this reservation could not be cancelled. If you need to change it, please contact a team administrator"
     },
     "empty": {
       "no_reservations": "No reservations",
@@ -618,30 +619,30 @@
         "matrix_title": "Reading the matrix",
         "matrix_steps": {
           "0": "Rows are \"date × reservation target\", columns are \"time\".",
-          "1": "Colors: green = available / gray = booked / diagonal stripes = unavailable / pale gray = closed."
+          "1": "Colors: green \"Available\" = bookable / \"Booked\" = taken / diagonal stripes = \"Unavailable\" / pale gray = \"Closed\"."
         },
         "filter_title": "Filter by menu",
         "filter_steps": {
-          "0": "Use the \"Menu\" filter at the top to highlight the exact number of slots that menu needs.",
+          "0": "Use the menu filter at the top to highlight the exact number of slots that menu needs.",
           "1": "Without a menu, you can book single 30-minute slots one at a time."
         },
         "flow_title": "Booking flow",
         "flow_steps": {
-          "0": "Press an open (green) cell.",
+          "0": "Press an \"Available\" (green) cell.",
           "1": "Choosing a menu automatically groups the required number of slots (skipped automatically if a menu filter is already applied).",
           "2": "Press \"+30 min\" if you want to extend the time.",
-          "3": "Review the date/details, add a note, and press \"Confirm\" to finish."
+          "3": "Review the date/details, fill in \"Notes (optional)\", and press \"Confirm this booking\" to finish."
         },
         "conflict_title": "When it's full or conflicts",
         "conflict_steps": {
-          "0": "Gray cells (booked, closed, or unavailable) can't be selected. Choose another time or target.",
+          "0": "Gray cells (\"Booked\", \"Closed\", or \"Unavailable\") can't be selected. Choose another time or target.",
           "1": "If someone else takes the same slot right before you confirm, you'll see an error and the screen auto-refreshes to the latest availability. Please choose an open slot again."
         }
       },
       "list": {
         "admin_overview_title": "Viewing the whole team's reservations",
         "admin_overview_steps": {
-          "0": "Filter by status (pending, approved, cancelled, completed, no-show).",
+          "0": "Filter by status (pending, approved, cancelled, completed, no show).",
           "1": "Multi-slot \"group bookings\" appear as a single row that shows the slot count."
         },
         "admin_manage_title": "Approve, reject, and cancel",
@@ -657,8 +658,8 @@
         },
         "member_cancel_title": "Cancelling",
         "member_cancel_steps": {
-          "0": "Within the cancellation deadline, open a reservation and use \"Cancel\" to withdraw it.",
-          "1": "Past the deadline you can't cancel it yourself — contact an administrator."
+          "0": "Press \"Cancel\" on the reservation row you want to withdraw, then press \"Cancel\" again on the confirmation screen.",
+          "1": "Past the cancellation deadline an error is shown and you can't cancel it yourself — contact a team administrator if you need a change."
         }
       },
       "line_manage": {
@@ -670,7 +671,7 @@
         "setup2_title": "2. Create menus",
         "setup2_steps": {
           "0": "In \"Manage menus\" below, register menus with a duration (in 30-minute units).",
-          "1": "To limit a menu to specific targets, pick them under \"Available targets\" (leave unset to offer it on every target)."
+          "1": "To limit a menu to specific targets, choose \"Only selected reservation targets\" under \"Bookable Item\" and pick them (the default offers it on every target)."
         },
         "setup3_title": "3. Create a weekly template",
         "setup3_steps": {
@@ -694,7 +695,7 @@
         "send_title": "What happens when you send it",
         "send_steps": {
           "0": "Everyone with a reservation in the affected period/time range gets an email and in-app notification about the closure.",
-          "1": "Enabling \"Cancel reservations\" also automatically cancels the affected reservations."
+          "1": "Checking \"Cancel affected reservations\" also automatically cancels the reservations in the affected period."
         },
         "status_title": "Reading the confirmation status",
         "status_steps": {

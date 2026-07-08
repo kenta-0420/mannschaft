@@ -258,7 +258,8 @@
       "template_update_success": "Vorlage aktualisiert",
       "template_delete_success": "Vorlage gelöscht",
       "template_save_failed": "Speichern fehlgeschlagen",
-      "template_load_failed": "Vorlagen konnten nicht geladen werden"
+      "template_load_failed": "Vorlagen konnten nicht geladen werden",
+      "cancel_deadline_passed": "Die Stornofrist ist abgelaufen, daher konnte diese Reservierung nicht storniert werden. Wenden Sie sich bei Änderungsbedarf an einen Team-Administrator"
     },
     "empty": {
       "no_reservations": "Keine Reservierungen",
@@ -627,10 +628,10 @@
         },
         "flow_title": "Ablauf der Buchung",
         "flow_steps": {
-          "0": "Klicke auf ein freies (grünes) Feld.",
+          "0": "Klicke auf ein \"Verfügbar\"-Feld (grün).",
           "1": "Bei der Wahl eines Menüs werden die benötigten Zeitfenster automatisch gruppiert (dieser Schritt entfällt, wenn bereits ein Menüfilter aktiv ist).",
-          "2": "Klicke auf \"+30 Min\", wenn du die Zeit verlängern möchtest.",
-          "3": "Prüfe Datum und Details, füge eine Notiz hinzu und klicke auf \"Bestätigen\", um die Buchung abzuschließen."
+          "2": "Klicke auf \"+30 Min.\", wenn du die Zeit verlängern möchtest.",
+          "3": "Prüfe Datum und Details, fülle \"Notizen (optional)\" aus und klicke auf \"Diese Buchung bestätigen\", um die Buchung abzuschließen."
         },
         "conflict_title": "Bei Vollbelegung oder Konflikten",
         "conflict_steps": {
@@ -657,8 +658,8 @@
         },
         "member_cancel_title": "Stornieren",
         "member_cancel_steps": {
-          "0": "Innerhalb der Stornofrist öffnest du die Reservierung und stornierst sie mit \"Stornieren\".",
-          "1": "Nach Ablauf der Frist kannst du selbst nicht mehr stornieren — wende dich an einen Administrator."
+          "0": "Klicke in der Zeile der Reservierung auf \"Stornieren\" und bestätige im Bestätigungsdialog erneut mit \"Stornieren\".",
+          "1": "Nach Ablauf der Stornofrist erscheint ein Fehler und du kannst selbst nicht mehr stornieren — wende dich bei Änderungsbedarf an einen Team-Administrator."
         }
       },
       "line_manage": {
@@ -670,7 +671,7 @@
         "setup2_title": "2. Menüs erstellen",
         "setup2_steps": {
           "0": "Registriere unten unter \"Menüs verwalten\" Menüs mit einer Dauer (in 30-Minuten-Schritten).",
-          "1": "Um ein Menü auf bestimmte Ziele zu beschränken, wähle sie unter \"Verfügbare Ziele\" aus (leer lassen, um es für alle anzubieten)."
+          "1": "Um ein Menü auf bestimmte Ziele zu beschränken, wähle unter \"Buchbares Element\" die Option \"Nur ausgewählte Reservierungsziele\" und wähle sie aus (standardmäßig wird es für alle angeboten)."
         },
         "setup3_title": "3. Eine Wochenvorlage erstellen",
         "setup3_steps": {
@@ -694,7 +695,7 @@
         "send_title": "Was beim Senden passiert",
         "send_steps": {
           "0": "Alle Personen mit einer Reservierung im betroffenen Zeitraum/Zeitfenster erhalten eine E-Mail und eine In-App-Benachrichtigung über die Schließung.",
-          "1": "Wenn \"Reservierungen stornieren\" aktiviert ist, werden die betroffenen Reservierungen ebenfalls automatisch storniert."
+          "1": "Wenn \"Betroffene Reservierungen stornieren\" angehakt ist, werden die Reservierungen im betroffenen Zeitraum ebenfalls automatisch storniert."
         },
         "status_title": "Den Bestätigungsstatus lesen",
         "status_steps": {

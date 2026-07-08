@@ -258,7 +258,8 @@
       "template_update_success": "Plantilla actualizada",
       "template_delete_success": "Plantilla eliminada",
       "template_save_failed": "Error al guardar",
-      "template_load_failed": "Error al cargar las plantillas"
+      "template_load_failed": "Error al cargar las plantillas",
+      "cancel_deadline_passed": "El plazo de cancelación ha pasado, por lo que no se pudo cancelar esta reserva. Si necesitas cambiarla, contacta con un administrador del equipo"
     },
     "empty": {
       "no_reservations": "No hay reservas",
@@ -627,10 +628,10 @@
         },
         "flow_title": "Flujo de la reserva",
         "flow_steps": {
-          "0": "Pulsa una celda libre (verde).",
+          "0": "Pulsa una celda \"Disponible\" (verde).",
           "1": "Al elegir un menú se agrupan automáticamente las franjas necesarias (este paso se salta si ya hay un filtro de menú aplicado).",
           "2": "Pulsa \"+30 min\" si quieres alargar el tiempo.",
-          "3": "Revisa la fecha y los detalles, añade una nota y pulsa \"Confirmar\" para terminar."
+          "3": "Revisa la fecha y los detalles, rellena \"Notas (opcional)\" y pulsa \"Confirmar esta reserva\" para terminar."
         },
         "conflict_title": "Cuando está completo o hay un conflicto",
         "conflict_steps": {
@@ -657,8 +658,8 @@
         },
         "member_cancel_title": "Cancelar",
         "member_cancel_steps": {
-          "0": "Dentro del plazo de cancelación, abre la reserva y usa \"Cancelar\" para anularla.",
-          "1": "Pasado el plazo no podrás cancelarla tú mismo; contacta con un administrador."
+          "0": "Pulsa \"Cancelar\" en la fila de la reserva que quieras anular y confirma pulsando \"Cancelar\" de nuevo en la pantalla de confirmación.",
+          "1": "Pasado el plazo de cancelación se muestra un error y no podrás cancelarla tú mismo; contacta con un administrador del equipo si necesitas un cambio."
         }
       },
       "line_manage": {
@@ -670,7 +671,7 @@
         "setup2_title": "2. Crear menús",
         "setup2_steps": {
           "0": "En \"Gestionar menús\" de abajo, registra menús con una duración (en unidades de 30 minutos).",
-          "1": "Para limitar un menú a objetivos concretos, selecciónalos en \"Objetivos disponibles\" (déjalo vacío para ofrecerlo en todos)."
+          "1": "Para limitar un menú a objetivos concretos, elige \"Solo objetivos de reserva seleccionados\" en \"Elemento reservable\" y selecciónalos (por defecto se ofrece en todos)."
         },
         "setup3_title": "3. Crear una plantilla semanal",
         "setup3_steps": {
@@ -694,7 +695,7 @@
         "send_title": "Qué ocurre al enviarlo",
         "send_steps": {
           "0": "Todas las personas con una reserva en el periodo/franja afectados reciben un correo y una notificación en la app sobre el cierre.",
-          "1": "Al activar \"Cancelar reservas\" también se cancelan automáticamente las reservas afectadas."
+          "1": "Al marcar \"Cancelar reservas afectadas\" también se cancelan automáticamente las reservas del periodo afectado."
         },
         "status_title": "Cómo leer el estado de confirmación",
         "status_steps": {
