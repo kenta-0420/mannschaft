@@ -2013,6 +2013,33 @@
       }
     }
   },
+  "analytics": {
+    "title": "アクセス解析",
+    "loadError": "アクセス解析データの取得に失敗しました",
+    "empty": "まだアクセスデータがありません",
+    "summary": {
+      "totalViews": "総 PV",
+      "uniqueVisitors": "ユニーク訪問者",
+      "memberViews": "メンバー閲覧",
+      "guestViews": "ゲスト閲覧"
+    },
+    "export": "データエクスポート",
+    "topContent": {
+      "title": "人気コンテンツ",
+      "empty": "データがありません"
+    },
+    "chart": {
+      "views": "ページビュー",
+      "daily": "日別",
+      "monthly": "月別",
+      "toggle": "表示切替",
+      "recentDays": "直近30日間のアクセス統計",
+      "monthlyTrend": "月間推移のアクセス統計"
+    },
+    "period": {
+      "allTime": "全期間"
+    }
+  },
   "comingSoon": {
     "title": "準備中",
     "description": "この機能は現在準備中です。もうしばらくお待ちください。"

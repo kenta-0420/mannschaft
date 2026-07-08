@@ -2013,6 +2013,33 @@
       }
     }
   },
+  "analytics": {
+    "title": "访问分析",
+    "loadError": "获取访问分析数据失败",
+    "empty": "暂无访问数据",
+    "summary": {
+      "totalViews": "总 PV",
+      "uniqueVisitors": "独立访客",
+      "memberViews": "成员浏览",
+      "guestViews": "访客浏览"
+    },
+    "export": "导出数据",
+    "topContent": {
+      "title": "热门内容",
+      "empty": "暂无数据"
+    },
+    "chart": {
+      "views": "页面浏览量",
+      "daily": "按日",
+      "monthly": "按月",
+      "toggle": "切换显示",
+      "recentDays": "最近30天的访问统计",
+      "monthlyTrend": "月度访问趋势统计"
+    },
+    "period": {
+      "allTime": "全部时间"
+    }
+  },
   "comingSoon": {
     "title": "即将推出",
     "description": "此功能目前正在开发中。请稍后再来查看。"

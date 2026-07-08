@@ -2013,6 +2013,33 @@
       }
     }
   },
+  "analytics": {
+    "title": "Análisis de Acceso",
+    "loadError": "No se pudieron cargar los datos de análisis de acceso",
+    "empty": "Todavía no hay datos de acceso",
+    "summary": {
+      "totalViews": "PV Total",
+      "uniqueVisitors": "Visitantes Únicos",
+      "memberViews": "Vistas de Miembros",
+      "guestViews": "Vistas de Invitados"
+    },
+    "export": "Exportar Datos",
+    "topContent": {
+      "title": "Contenido Popular",
+      "empty": "No hay datos disponibles"
+    },
+    "chart": {
+      "views": "Páginas Vistas",
+      "daily": "Diario",
+      "monthly": "Mensual",
+      "toggle": "Cambiar Vista",
+      "recentDays": "Estadísticas de acceso de los últimos 30 días",
+      "monthlyTrend": "Estadísticas de tendencia de acceso mensual"
+    },
+    "period": {
+      "allTime": "Todo el Tiempo"
+    }
+  },
   "comingSoon": {
     "title": "Próximamente",
     "description": "Esta función está actualmente en desarrollo. Por favor, vuelva más tarde."
