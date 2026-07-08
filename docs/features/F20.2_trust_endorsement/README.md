@@ -183,6 +183,8 @@
 - アンカー付与・解除は運営 API（SYSTEM_ADMIN）でのみ可能（[02 §6](02_api_design.md)）。
 - アンカーは「信任を発行できる最初の認証済み団体」として機能し、そこから信任が外へ伸びて他団体が `CERTIFIED` になっていく。
 
+> ⚠️ **アンカー付与＝即・信任発行可、ではない（誤読防止）**: アンカー付与が免除するのは §3.3 の**条件 1（`state=CERTIFIED` であること）のみ**。**信任を発行する（endorse する）には、アンカー団体であっても残る 3 条件 — 設立 N ヶ月（既定 6ヶ月）経過・`established_date_precision` 非 NULL・アクティブ DISTINCT メンバー M 人（既定 5 人）以上・年間発行上限内 — を別途満たす必要がある**。アンカー付与直後に信任 API を叩いても、設立日未登録やメンバー不足だと `TRUST_003`（資格未達）で拒否される。実機 E2E の初期データは §10.1 の seed レシピに従ってこの 3 条件も満たすこと（AC-09/10 の裏返し）。
+
 ### 3.7 REVOKED の連鎖（1 段まで・厳密定義）
 
 団体 X が運営操作で `REVOKED` になったとき:
@@ -344,6 +346,30 @@ F20.1（権利・課金）で「非営利区分に大きな優遇を付ける」
 | **P4** | 認証マーク UI・i18n | **S** | P3 | 認証マークコンポーネント・信任関係公開表示・団体管理者の信任付与/取消 UI・運営レビューキュー UI・`trust.json` 6 言語 |
 
 > 新規ドメイン: `trust`。改修: `notification`（受任/認証/降格の通常通知）・`publicview`/マッチング/`advertising`（認証マーク表示の消費）。F00 可視性は**再利用のみ**。
+
+### 10.1 実機 E2E 前提データ（最小 seed レシピ）— 鶏卵問題の解
+
+**AC-01（3 件の信任で `CERTIFIED`）を実 DB で一気通貫する**ために必要な初期データと投入順序。信頼グラフは「未認証だけでは誰も信任できない」ため、**最初の `CERTIFIED` を運営がアンカーで作る**ことで鶏卵問題を解く。
+
+**登場団体（例）**: アンカー 3 団体 `A1/A2/A3`（ORG または TEAM）＋ 被認証対象 `X`（未認証）。各団体に ADMIN ユーザー 1 名。
+
+**① 各団体の資格データ（アンカー 3 団体は信任を発行するため §3.3 の全条件を満たす）**:
+- `established_date` = 今日から**6 ヶ月より前**（例 `2024-01-15`）・`established_date_precision = 'FULL'`（NULL・YEAR は資格未達になりうるので E2E は FULL 固定）。※アンカーでもこの条件は免除されない（§3.6 警告）。
+- **アクティブ DISTINCT メンバー 5 人以上**: `memberships` に `scope_type`（ORG=`ORGANIZATION`/TEAM=`TEAM`）＋`scope_id`＋`user_id`（5 人分・重複しない user）＋`left_at = NULL`（在籍）の行を各アンカー団体に 5 行以上投入。`countActiveDistinctUsersByScope` は DISTINCT user なので**別々の user_id** にすること（同一 user の複数行は 1 と数える）。
+- 被認証対象 `X` は資格条件不要（信任を**受ける**側は条件なし）。
+
+**② アンカー付与（SYSTEM_ADMIN 操作・最初の CERTIFIED を作る）**:
+- SYSTEM_ADMIN の JWT で `POST /api/v1/system-admin/trust/anchors` を `A1/A2/A3` に対し 3 回呼ぶ → 各々 `is_anchor=TRUE`・`state=CERTIFIED`（AC-20）。これで A1〜A3 は「認証済みかつ資格 3 条件も満たす」信任発行可能団体になる。
+
+**③ 各アンカー団体 ADMIN の JWT 取得**:
+- `A1/A2/A3` それぞれの ADMIN ユーザーで通常ログイン（`POST /api/v1/auth/login` 等・既存認証フロー）し JWT を取得。E2E 実行は各団体 ADMIN のトークンで endorser 操作を行う（scopeId 所有権検証を満たすため・[03 §3](03_security.md)）。
+
+**④ 信任付与を 3 回（認証遷移の観測）**:
+- `A1` ADMIN の JWT で `POST /api/v1/trust/endorsements`（endorser=A1, endorsee=X）→ X は `UNCERTIFIED`（有効 1 件・T1）。
+- `A2` ADMIN で同（endorser=A2）→ X `UNCERTIFIED`（2 件・AC-02 で遷移しないことを確認）。
+- `A3` ADMIN で同（endorser=A3）→ **X が `CERTIFIED` に遷移**（3 件目・AC-01/03）。`GET /api/v1/trust/certifications?scopeKind=..&scopeId=X` で `badgeVisible=true`・`certifiedAt` 記録を観測。
+
+> **落とし穴チェックリスト（E2E 前）**: (1) established_date が 6 ヶ月以内だと `TRUST_003`。(2) memberships が 5 人未満／同一 user 重複だと `TRUST_003`（DISTINCT 5 人）。(3) endorser の JWT が別団体 ADMIN だと `TRUST_007/009`（IDOR ガード）。(4) アンカー未付与のまま信任すると `TRUST_001`（信任元未認証）。(5) endorsee=USER や自己信任は `TRUST_006`/`TRUST_002`。実 seed は本レシピの ①→②→③→④ の順で投入する。
 
 ---
 
