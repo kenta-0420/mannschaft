@@ -761,6 +761,10 @@ public class GlobalExceptionHandler {
             Map.entry("RESERVATION_040", HttpStatus.NOT_FOUND),              // GROUP_NOT_FOUND
             Map.entry("RESERVATION_044", HttpStatus.TOO_MANY_REQUESTS),      // TEMPLATE_GENERATE_RATE_LIMITED
             Map.entry("RESERVATION_045", HttpStatus.CONFLICT),               // LINE_HAS_ACTIVE_RESERVATIONS
+            // F03.4.5 §6.1 キャンセル待ち（048/049 は既定 400・046→404・047→409・050→429）
+            Map.entry("RESERVATION_046", HttpStatus.NOT_FOUND),              // WAITLIST_ENTRY_NOT_FOUND（IDOR 秘匿）
+            Map.entry("RESERVATION_047", HttpStatus.CONFLICT),               // WAITLIST_ALREADY_REGISTERED
+            Map.entry("RESERVATION_050", HttpStatus.TOO_MANY_REQUESTS),      // WAITLIST_RATE_LIMITED
             // F06.5 アクティブリコール学習（IDOR 対策で 404、上限/範囲外は 400、楽観排他/マスク中編集/再輸出は 409）
             Map.entry("REFLECTION_001", HttpStatus.NOT_FOUND),              // NOT_FOUND（他人所有も IDOR 対策で 404）
             Map.entry("REFLECTION_002", HttpStatus.BAD_REQUEST),           // THEME_LIMIT_EXCEEDED

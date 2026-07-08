@@ -13,9 +13,11 @@ import com.mannschaft.app.reservation.entity.ReservationBlockedTimeEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import com.mannschaft.app.reservation.repository.ReservationBlockedTimeRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
+import com.mannschaft.app.reservation.event.ReservationSlotReopenedEvent;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,6 +46,8 @@ public class ReservationSlotService {
     private final com.mannschaft.app.reservation.repository.ReservationLineRepository lineRepository;
     /** 過去日判定の基準時刻（チーム TZ は将来拡張。現状はシステム既定 Clock）。テストは固定 Clock を注入する。 */
     private final Clock clock;
+    /** F03.4.5 §6.1: 満席→空き復帰時にキャンセル待ち一斉通知を起動するためのイベント発行者。 */
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * スロット削除ガードで「予約が紐づいている」と見なす active ステータス。
@@ -323,7 +327,17 @@ public class ReservationSlotService {
      */
     @Transactional
     public void decrementAndReopen(ReservationSlotEntity entity) {
+        // 満席（FULL）だった枠は decrement で必ず AVAILABLE へ復帰する（capacity - 1 < capacity）。
+        // 「満席→空きに転じた瞬間」だけを検出してキャンセル待ち一斉通知を起動する（F03.4.5 §6.1）。
+        // entity は呼出元が同一 tx 内で取得した鮮度のため slot_status は減算前の実状態を表す。
+        boolean wasFull = entity.getSlotStatus() == SlotStatus.FULL;
         slotRepository.decrementBookedCountAndReopen(entity.getId());
+        if (wasFull) {
+            // AFTER_COMMIT リスナー（ReservationWaitlistNotificationEventListener）が購読する。
+            // 単枠/グループ/リスケ/緊急休業の全キャンセル経路がこの単一点を通るため通知漏れがない。
+            // グループ一括キャンセルは枠ごとに本メソッドが呼ばれるため枠単位で 1 イベント（重複なし）。
+            eventPublisher.publishEvent(new ReservationSlotReopenedEvent(entity.getTeamId(), entity.getId()));
+        }
     }
 
     /**
