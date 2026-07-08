@@ -127,8 +127,20 @@ email / 氏名等の個人 PII 全般（本機能は団体単位・個人情報�
 |---|---|---|
 | 信任付与（#1） | 10 req/hour/user | 年間上限（TRUST_004）とは別に API 連打・総当り endorsee 探索を抑止 |
 | 信任取消（#2） | 10 req/hour/user | 付与⇄取消の振動（フラッピング）で通知・キューを荒らす攻撃の抑止 |
-| 認証状態取得/一覧（#3/#4・公開） | 60 req/min/IP | 未ログイン公開 API のスクレイピング抑止（F19.1 公開系と同水準・既存の公開 API レートリミッタ機構を流用） |
+| 認証状態取得/一覧（#3/#4・公開） | 60 req/min/IP | 未ログイン公開 API のスクレイピング抑止（F19.1 公開系と同水準） |
 | 運営 API | なし（SYSTEM_ADMIN のみ） | 運営操作を阻害しない |
+
+### 6.1 実結線（origin/main `common.ratelimit` 機構）
+
+既存のレート制限基盤（`common.ratelimit`）を流用する。実クラスは以下:
+
+- **`AbstractRateLimitFilter`**（`OncePerRequestFilter` ベース・パス/メソッドで対象判定→キー導出→`ValkeyRateLimiter` 判定→超過は 429）。trust 用に `TrustRateLimitFilter extends AbstractRateLimitFilter` を新設し、対象パスと `RateLimitRule`（窓・上限）を定義する。
+- **`ValkeyRateLimiter`**: Valkey（Redis 互換・スライディング/固定窓のカウンタ）バックエンド。**Valkey 依存**（本番・E2E とも Valkey 稼働が前提。未起動だとフィルタが素通り or フェイルする挙動は既存機構の設定に従う）。
+- **`RateLimitRule`**: 窓長・上限・キー種別を保持する値。付与/取消は `RateLimitRule(window=1h, limit=10, keyType=USER)`、公開 GET は `RateLimitRule(window=1min, limit=60, keyType=IP)` を登録。
+- **キー導出**:
+  - 付与（#1）/取消（#2）= **認証ユーザー ID キー**（`userId` を rate-limit キーに含める。認証必須エンドポイントのため IP でなく user 単位で正確に制限）。
+  - 公開 GET（#3/#4）= **クライアント IP キー**（未ログインで userId が無いため。`X-Forwarded-For` の信頼は既存フィルタの IP 解決規約に従う）。
+- 429 応答は既存の `RateLimitResult`／グローバルハンドラの 429 表現に合わせる（trust 独自のエラーコードは作らず既存の Too Many Requests 表現を使う）。超過は握り潰さず 429 で明示（症状を隠さない）。
 
 ---
 

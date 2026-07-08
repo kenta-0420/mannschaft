@@ -20,6 +20,13 @@
 | `TrustBadgeVisibility` | `isBadgeVisible(state)`（`CERTIFIED`/`UNDER_REVIEW` → true・README §6）＋ **`publicState(state)`**（公開 DTO 用に `UNDER_REVIEW`→`CERTIFIED` に丸める・値域 3 値・§6.1・[03 §4.2](03_security.md)）を一元提供 |
 | `TrustErrorCode` | エラーコード enum（§8） |
 
+### 0.1 日時シリアライズ規約（全 DTO 共通・origin/main 実設定に準拠）
+
+- **DB 保存は `LocalDateTime`（UTC）**（Entity 列・01 §3）。応答 DTO も `LocalDateTime` フィールドで保持する。
+- **JSON シリアライズは既定 Jackson 設定（`config/JacksonConfig.java`）に従う**（trust 独自の `@JsonFormat` を付けない）。実設定は `WRITE_DATES_AS_TIMESTAMPS` 無効＋`JavaTimeModule`＋**`LocalDateTimeTimezoneSerializer`（`LocalDateTime` をリクエスト元ユーザーの TZ に変換して出力）**。したがって `LocalDateTime` は**数値でなく、ユーザー TZ に変換された offset 付き ISO-8601 文字列**で返る（例: JST ユーザーには `"2026-07-08T12:00:00+09:00"`・別 TZ ユーザーにはその TZ のオフセット）。
+- 本設計の応答例に現れる `+09:00` はこの既定設定で JST ユーザーが受け取る形（**固定 offset を約束するものではなく viewer TZ 依存**）。API 契約テストは「ISO-8601 文字列で offset 付き・`WRITE_DATES_AS_TIMESTAMPS` 無効」を検証し、offset 値そのものは viewer TZ 前提で確認する。
+- **公開 API（#3/#4・未ログイン）**は viewer TZ が取れないため既定 TZ（UTC 相当 or アプリ既定）で出力される（`LocalDateTimeTimezoneSerializer` の未認証時フォールバックに従う・独自分岐を作らない）。
+
 ---
 
 ## 1. エンドポイント一覧
@@ -72,7 +79,7 @@
 | `endorseeScopeKind` | String | 不可 | | `"ORG"` |
 | `endorseeScopeId` | Long | 不可 | | `45` |
 | `endorseeName` | String | 不可 | 信任先団体名（表示用） | `"県サッカー協会"` |
-| `grantedAt` | OffsetDateTime | 不可 | 付与日時 | `"2026-07-08T12:00:00+09:00"` |
+| `grantedAt` | LocalDateTime（§0.1） | 不可 | 付与日時 | `"2026-07-08T12:00:00+09:00"` |
 | `endorseeState` | String（enum） | 不可 | 付与後の endorsee の状態（3 件目なら `CERTIFIED`） | `"CERTIFIED"` |
 | `endorseeValidEndorsementCount` | Integer | 不可 | 付与後の有効信任件数 | `3` |
 
@@ -124,7 +131,7 @@ Path param のみ: `endorsementId`（UUID）。Body なし。
 | フィールド | 型 | null | 説明 | 例 |
 |---|---|---|---|---|
 | `endorsementId` | UUID(String) | 不可 | 取消した信任 ID | `"018f6a2e-..."` |
-| `revokedAt` | OffsetDateTime | 不可 | 取消日時 | `"2026-07-08T12:34:56+09:00"` |
+| `revokedAt` | LocalDateTime（§0.1） | 不可 | 取消日時 | `"2026-07-08T12:34:56+09:00"` |
 | `endorseeState` | String（enum） | 不可 | 取消後の endorsee の状態（降格すれば `UNDER_REVIEW`） | `"UNDER_REVIEW"` |
 | `endorseeValidEndorsementCount` | Integer | 不可 | 取消後の有効信任件数 | `2` |
 
@@ -290,7 +297,7 @@ cascadeFromDeletedScope(kind, id, actorUserId):
 
 1. **一次経路**: `TrustEndorsementCascadeListener`（§5.4）。失敗時はログ＋メトリクス（握り潰さない）。トランザクショナル・アウトボックス方式（削除イベントをアウトボックス表に記録→ワーカーが冪等に消化）を採ってもよい（実装判断）。
 2. **補償経路（必須）**: 日次整合バッチ `TrustConsistencyBatch`（[03 §8](03_security.md)）に**新規検出条件**を追加する:
-   - **(a) 孤児信任の検出・修復**: `trust_endorsements` の有効行（`revoked_at IS NULL`）のうち、`endorser`（scope_kind+scope_id）が team/org 側で**削除済み**のもの → `revoke_reason='ENDORSER_DELETED'` で無効化し、当該 endorsee の状態を再計算する（一次経路の取りこぼしを回収）。
+   - **(a) 孤児信任の検出・修復**: `trust_endorsements` の有効行（`revoked_at IS NULL`）のうち、`endorser`（scope_kind+scope_id）が team/org 側で**削除済み**のもの → `revoke_reason='ENDORSER_DELETED'` で無効化し、当該 endorsee の状態を再計算する（一次経路の取りこぼしを回収）。**削除済み判定は team/org の読み取り Service（例 `TeamQueryService.existsActive(id)` / `OrganizationQueryService`）経由で行う**（`teams`/`organizations` を trust から直接 JOIN しない・クロスドメイン FK/直接参照禁止・原則 1／原則 5）。
    - **(b) `valid_endorsement_count` ドリフト検出**（既存条件）: 実集計との突合。
    - 検出・修復はいずれもアラート付きで記録する（症状を隠さない・CLAUDE.md 根治原則）。
 
@@ -313,7 +320,7 @@ cascadeFromDeletedScope(kind, id, actorUserId):
 | `state` | String（enum） | 不可 | **公開用に丸めた状態**: `UNDER_REVIEW` は **`CERTIFIED` として返す**（値域は `UNCERTIFIED`/`CERTIFIED`/`REVOKED` の 3 値。丸めは `TrustBadgeVisibility.publicState(state)` に一元化） | `"CERTIFIED"` |
 | `badgeVisible` | Boolean | 不可 | 認証マーク表示可否（`CERTIFIED`/`UNDER_REVIEW`=true・`TrustBadgeVisibility` 一元判定） | `true` |
 | `isAnchor` | Boolean | 不可 | アンカーか（公開情報・アンカーは運営認証の証） | `false` |
-| `certifiedAt` | OffsetDateTime | 可 | 初回認証日時（未認証は null） | `"2026-07-01T09:00:00+09:00"` |
+| `certifiedAt` | LocalDateTime（§0.1） | 可 | 初回認証日時（未認証は null） | `"2026-07-01T09:00:00+09:00"` |
 | `validEndorsementCount` | Integer | 不可 | 有効な incoming 信任件数 | `3` |
 
 > - **公開 DTO は `UNDER_REVIEW` を生値で返さない**（返すと「UNDER_REVIEW は外形上 CERTIFIED と同一」の目標を破り、外部から再審査中の団体を識別できてしまう）。**生 state（4 値）は当該団体管理者向け（管理タブ・04 §4）と運営向け（§7.4）の認証済み DTO 限定**（[03 §4.2](03_security.md)）。
@@ -323,12 +330,16 @@ cascadeFromDeletedScope(kind, id, actorUserId):
 
 **処理**: §6.1 と同じ F00 可視性ゲート（`ContentVisibilityChecker.canView`）→ 有効信任（`revoked_at IS NULL`）のみ返す。**公開面（未ログイン/非関係者）は「相手方が viewer から F00 可視である信任」のみを一覧に含める**（安全側既定・[03 §4.1](03_security.md)・README §11-7。件数 `validEndorsementCount` は全件のまま）。相手方団体名は team/org 読み取り Service で解決し、`counterpartPublicSlug` は相手方が PUBLIC のときのみ返す。
 
+- **`direction` クエリパラメータ（`INCOMING` / `OUTGOING` / `BOTH`）は任意。省略時の既定は `BOTH`**（enum バインド・不正値は 400）。
+
 **Response 200（`TrustEndorsementListResponse`）**
+
+> **配列契約（確定）**: `incoming` / `outgoing` は**常にレスポンスに存在し**、`direction` で対象外にした方向・該当データが無い方向は**空配列 `[]` を返す（`null` にしない）**。これにより FE は方向に関わらず `res.incoming` / `res.outgoing` を無条件で反復でき、null チェックが不要（`feedback_async_ordered_list_gate_render` の描画ゲートとも整合）。例: `direction=INCOMING` でも `outgoing: []` を返す。
 
 | フィールド | 型 | null | 説明 |
 |---|---|---|---|
-| `incoming` | List\<`TrustEndorsementPublicItem`\> | 不可（空可） | この団体を信任している団体（`direction` に応じ省略可） |
-| `outgoing` | List\<`TrustEndorsementPublicItem`\> | 不可（空可） | この団体が信任している団体 |
+| `incoming` | List\<`TrustEndorsementPublicItem`\> | **不可（常に存在・空時 `[]`）** | この団体を信任している団体（`direction=OUTGOING` 指定時は `[]`） |
+| `outgoing` | List\<`TrustEndorsementPublicItem`\> | **不可（常に存在・空時 `[]`）** | この団体が信任している団体（`direction=INCOMING` 指定時は `[]`） |
 
 `TrustEndorsementPublicItem`:
 
@@ -339,7 +350,7 @@ cascadeFromDeletedScope(kind, id, actorUserId):
 | `counterpartName` | String | 不可 | 相手方団体名 | `"県サッカー協会"` |
 | `counterpartBadgeVisible` | Boolean | 不可 | 相手方の認証マーク表示可否 | `true` |
 | `counterpartPublicSlug` | String | 可 | 相手方の公開ページ slug（PUBLIC 団体のみ・PRIVATE は null） | `"pref-fa"` |
-| `grantedAt` | OffsetDateTime | 不可 | 信任日時 | `"2026-06-01T10:00:00+09:00"` |
+| `grantedAt` | LocalDateTime（§0.1） | 不可 | 信任日時 | `"2026-06-01T10:00:00+09:00"` |
 
 > `endorsementId`・操作者 user_id は公開 DTO に**含めない**（取消 UI は管理者向け一覧 #5 系画面で別途 ID を得る。公開面には識別子を最小化）。管理者向けには同エンドポイントを認証付きで呼んだ場合のみ `endorsementId` を追加した `TrustEndorsementAdminItem` を返す（endorser ADMIN 判定・[03 §3](03_security.md)）。
 
@@ -396,8 +407,8 @@ Response 200: `PagedResponse<TrustReviewQueueItem>`（`under_review_since` 昇�
 | `scopeKind` / `scopeId` | String / Long | 不可 | 対象団体 |
 | `name` | String | 不可 | 団体名 |
 | `validEndorsementCount` | Integer | 不可 | 現在の有効信任件数 |
-| `certifiedAt` | OffsetDateTime | 不可 | 初回認証日時 |
-| `underReviewSince` | OffsetDateTime | 不可 | キュー投入日時 |
+| `certifiedAt` | LocalDateTime（§0.1） | 不可 | 初回認証日時 |
+| `underReviewSince` | LocalDateTime（§0.1） | 不可 | キュー投入日時 |
 | `incomingEndorsers` | List\<`TrustScopeRef`\> | 不可 | 現在の有効信任元（レビュー材料） |
 
 ### 7.5 再審査 OK/NG `POST .../review-queue/{certificationId}/approve` / `/reject`

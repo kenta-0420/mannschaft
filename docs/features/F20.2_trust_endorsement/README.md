@@ -67,7 +67,7 @@
 > 本機能の `scope_kind` は payment 準拠で `TEAM` / `ORG` の 2 値だが、`memberships.scope_type`（`com.mannschaft.app.membership.domain.ScopeType`）は **`TEAM` / `ORGANIZATION`** の 2 値である（`ORG` ではなく `ORGANIZATION`）。アクティブメンバー数のカウント（資格判定 §3.3）で `memberships` を引く際は必ず以下でマッピングすること:
 > - `scope_kind = 'TEAM'` → `scope_type = 'TEAM'`（1:1）
 > - `scope_kind = 'ORG'` → `scope_type = 'ORGANIZATION'`（**文字列不一致に注意**）
-> 変換ロジックは `TrustScopeResolver` 等 1 箇所に集約し、文字列直比較を散在させない。
+> 変換ロジックは `TrustScopeResolver` 等 1 箇所に集約し、文字列直比較を散在させない。`ScopeType` は完全修飾名 **`com.mannschaft.app.membership.domain.ScopeType`** を用いる（`recruitment` 等に同名 enum が別ドメインで存在しうるため import trap を避け、`TrustScopeResolver` 実装でも完全修飾で参照する）。
 
 ---
 
@@ -238,8 +238,8 @@
 - **AC-22**（運営・再審査キュー）: SYSTEM_ADMIN が再審査キュー API を呼ぶと `state=UNDER_REVIEW` の団体一覧が返る。再審査 OK で `CERTIFIED` に復帰、NG で `REVOKED` にできる。
 - **AC-23**（公開表示・認証状態取得）: 未ログインユーザーが認証状態取得 API を呼ぶと、対象団体が PUBLIC のとき**公開用に丸めた state**（`UNDER_REVIEW` は `CERTIFIED` として返す・[02 §6.1](02_api_design.md)）と `badgeVisible` が返り、PRIVATE 団体は F00 経由で 404 秘匿になる。生の `UNDER_REVIEW` は当該団体管理者・運営向け DTO でのみ観測できる。
 - **AC-24**（公開表示・信任関係一覧）: 未ログインユーザーが信任関係一覧 API を呼ぶと、対象団体が誰を信任し（outgoing）・誰から信任されているか（incoming）の双方が公開される（信任関係は双方のプロフィールに公開）。**ただし公開面に載るのは相手方が viewer から F00 可視である信任に限る**（PRIVATE 団体を相手とする信任は公開一覧から除外・安全側既定 §11-7(b)）。**件数 `validEndorsementCount` は除外に関わらず全件をカウント**する（[02 §6.2](02_api_design.md)・[03 §4.1](03_security.md)）。
-- **AC-25**（通知・付与）: X が 3 件目の信任で `CERTIFIED` になったとき、X の団体管理者に「認証済みになった」通知が届く（通常通知）。信任を受けた（1〜2 件目）時点でも X 管理者へ通常通知が届く。
-- **AC-26**（通知・降格）: X が `UNDER_REVIEW` に遷移したとき、X の団体管理者に「信任状況に変化があった」通常通知が届く（確認必須通知は使わない・§8）。
+- **AC-25**（通知・付与）: X が 3 件目の信任で `CERTIFIED` になったとき、X の各団体 ADMIN の `user_id` を宛先に `notifications` テーブルへ `notification_type='TRUST_CERTIFIED'` 行が INSERT される（観測点＝当該行の存在）。1〜2 件目の受任時は `notification_type='TRUST_ENDORSED'` 行が INSERT される（§8・通常通知・F04.9 不使用）。
+- **AC-26**（通知・降格）: X が `UNDER_REVIEW` に遷移したとき、X の各団体 ADMIN 宛に `notifications` テーブルへ `notification_type='TRUST_UNDER_REVIEW'` 行が INSERT される（観測点＝当該行の存在。確認必須通知は使わない・§8）。
 - **AC-30**（運営・アンカー解除・A3）: SYSTEM_ADMIN がアンカー解除 API を呼ぶと対象の `is_anchor=FALSE` になり、通常団体として再評価される（有効信任 3 件以上なら `CERTIFIED` 維持・3 未満なら `UNDER_REVIEW`。API 応答の `state` と DB で観測）。非アンカー団体への解除は `TRUST_010`（409）。
 - **AC-31**（運営・アンカーへの REVOKE・A4）: アンカー団体（`is_anchor=TRUE`）にも REVOKE は有効で、`state=REVOKED`・認証マーク非表示になり、outgoing 信任の全無効化＋1 段連鎖（§3.7）が実行される。
 - **AC-33**（異常・運営操作の状態不整合）: `UNDER_REVIEW` でない団体への再審査 approve/reject、既に `REVOKED` の団体への再 REVOKE は `TRUST_010`（409）で拒否され、状態は変化しない。
@@ -311,16 +311,19 @@ F20.1（権利・課金）で「非営利区分に大きな優遇を付ける」
 
 ## 8. 通知（既存機構の指定）
 
-信任付与／`UNDER_REVIEW` 遷移で被信任団体の管理者へ通知する。**確認必須通知（F04.9 `ConfirmableNotificationService`）は使わず、通常通知（`notification` ドメインの `NotificationEntity`・`actionUrl`）を使う**。
+信任付与／`UNDER_REVIEW` 遷移で被信任団体の管理者へ通知する。**確認必須通知（F04.9 `ConfirmableNotificationService`）は使わず、通常通知を使う**。
 
-| イベント | 通知種別 | 宛先 | 文言（i18n キー） | 理由 |
-|---|---|---|---|---|
-| 信任受任（1〜2 件目） | 通常通知 | 被信任団体の ADMIN 群 | `trust.notify.endorsed` | 情報提供のみ・確認義務なし |
-| 認証達成（3 件目・`CERTIFIED`） | 通常通知 | 同上 | `trust.notify.certified` | 情報提供・祝意 |
-| `UNDER_REVIEW` 遷移 | 通常通知 | 同上 | `trust.notify.underReview` | **被信任側に確認義務動作がない**（マーク維持で運営が審査する）ため確認必須通知は過剰 |
-| 認証回復（`CERTIFIED` 復帰） | 通常通知 | 同上 | `trust.notify.recertified` | 情報提供 |
+**実チャネル（origin/main 実物）**: 既存 `notification` ドメインの **`NotificationHelper.notify(userId, notificationType, title, body, ...)`**（内部で `NotificationService.createNotification` → `notifications` テーブルに 1 行 INSERT）を用いる。`notificationType` は **`NotificationType` enum（`notification/NotificationType.java`）に新規値を追加**して渡す（現状 `SCHEDULE_CREATED`/`MEMBER_JOINED`/`SYSTEM_NOTICE` 等が存在・末尾に trust 系を追加）。`actionUrl`（`NotificationEntity.actionUrl`・String）には信任管理タブへの route（例 `/trust/manage/{scopeKind}/{scopeId}`）を入れる。宛先 `userId` は被信任団体の ADMIN 群（`memberships` 等から解決）。サーバサイド i18n（title/body）は既存通知の解決機構に従う（trust 独自機構を作らない）。
+
+| イベント | 追加する `NotificationType` | 宛先 | actionUrl | i18n（title/body キー） | 理由 |
+|---|---|---|---|---|---|
+| 信任受任（1〜2 件目） | `TRUST_ENDORSED` | 被信任団体の ADMIN 群 | `/trust/manage/{kind}/{id}` | `trust.notify.endorsed` | 情報提供のみ・確認義務なし |
+| 認証達成（3 件目・`CERTIFIED`） | `TRUST_CERTIFIED` | 同上 | 同上 | `trust.notify.certified` | 情報提供・祝意 |
+| `UNDER_REVIEW` 遷移 | `TRUST_UNDER_REVIEW` | 同上 | 同上 | `trust.notify.underReview` | **被信任側に確認義務動作がない**（マーク維持で運営が審査）ため確認必須通知は過剰 |
+| 認証回復（`CERTIFIED` 復帰） | `TRUST_RECERTIFIED` | 同上 | 同上 | `trust.notify.recertified` | 情報提供 |
 
 > **F04.9 を使わない根拠**: `ConfirmableNotificationService` は「受信者が確認/期限内アクションを取る必要がある」通知（協会請求の支払い等）向け。信任・降格は被信任側にアクションを要求しない（運営がレビューする）ため、通常通知で足りる（過剰設計を避ける）。運営レビューキューは通知ではなく専用 API（[02 §6](02_api_design.md)）で扱う。
+> **E2E 観測点**: 通知の検証は `notifications` テーブルに `notification_type='TRUST_CERTIFIED'`（等）かつ `user_id`=対象 ADMIN の行が INSERT されていることで行う（AC-25/26）。通知はベストエフォート（AFTER_COMMIT・失敗で信任 tx をロールバックしない）。
 
 ---
 
