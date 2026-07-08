@@ -45,6 +45,8 @@ class ReservationSettingsValidationTest {
     private ReservationTeamSettingService teamSettingService;
     @Mock
     private ReservationPolicyService policyService;
+    @Mock
+    private com.mannschaft.app.reservation.service.ReservationSlotTemplateService templateService;
 
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -57,7 +59,7 @@ class ReservationSettingsValidationTest {
         objectMapper.findAndRegisterModules();
         MessageSource ms = new StaticMessageSource();
         ReservationBusinessHourController controller = new ReservationBusinessHourController(
-                businessHourService, teamSettingService, policyService);
+                businessHourService, teamSettingService, policyService, templateService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .setControllerAdvice(new GlobalExceptionHandler(ms))

@@ -62,13 +62,22 @@ public interface ReservationSlotRepository extends JpaRepository<ReservationSlot
             @Param("teamId") Long teamId, @Param("from") LocalDate from, @Param("to") LocalDate to);
 
     /**
-     * テンプレートが生成したセルの最終日を導出する（日次バッチの差分レンジ計算・F03.4.2 §5.4）。
+     * テンプレートが生成したセルの最終日を<b>horizon 上限でクランプして</b>導出する
+     * （日次バッチの差分レンジ計算・F03.4.2 §5.4 追補 / F03.4.5 §3.4）。
      *
      * <p>専用カラムは持たず生成実績そのものを正とする（二重管理しない）。生成実績ゼロ（新規テンプレ）は
      * {@code null}。導出が並行 generate とズレても冪等キー（§5.3）が二重生成を最終防御するため安全。</p>
+     *
+     * <p><b>クランプの根拠（F03.4.5 §3.4/S-8③）</b>: 臨時営業（{@code generate-single-day}・最大 +90日）が
+     * horizon（tomorrow+27）の<b>外</b>に {@code template_id} 付きセルを作ると、素の {@code MAX(slot_date)} では
+     * ウォーターマークが跳ねて差分レンジが恒久に空になり、当該テンプレの通常週次枠が最大 2 ヶ月未生成になる。
+     * {@code slot_date <= :maxDate}（= tomorrow+27）で絞ることで horizon 外セルを無視し、通常の週次生成が
+     * 欠落しないようにする。horizon 内生成はクランプ後も従来どおりウォーターマークを前進させ末尾 1 日へ収束する。</p>
      */
-    @Query("SELECT MAX(s.slotDate) FROM ReservationSlotEntity s WHERE s.templateId = :templateId")
-    LocalDate findMaxGeneratedSlotDateByTemplateId(@Param("templateId") java.util.UUID templateId);
+    @Query("SELECT MAX(s.slotDate) FROM ReservationSlotEntity s "
+            + "WHERE s.templateId = :templateId AND s.slotDate <= :maxDate")
+    LocalDate findMaxGeneratedSlotDateByTemplateIdClamped(
+            @Param("templateId") java.util.UUID templateId, @Param("maxDate") LocalDate maxDate);
 
     /**
      * テンプレートが生成した枠数を数える（テンプレ物理削除時の {@code orphanedSlotCount}・F03.4.2 §4）。
