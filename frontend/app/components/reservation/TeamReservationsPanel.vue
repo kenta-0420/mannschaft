@@ -263,6 +263,7 @@ onMounted(async () => {
         <!-- ライン管理タブ（ADMIN限定）+ メニュー管理 + 週間テンプレート + 枠管理 + 詳細設定アコーディオン -->
         <TabPanel v-if="isAdmin" :value="2">
           <!-- 管理セクション群（初期は全閉・ADHD配慮で脳内摩擦削減。件数バッジ付き） -->
+          <!-- 注意: AccordionContent に lazy を付けると閉状態の子が非マウントになり、件数バッジ（子の defineExpose({ items }) 参照）が機能しなくなる。常時マウント前提のため lazy 禁止 -->
           <Accordion v-model:value="managementAccordionValue" multiple>
             <AccordionPanel value="lines">
               <AccordionHeader>

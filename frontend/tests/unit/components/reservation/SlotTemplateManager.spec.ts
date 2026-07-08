@@ -316,4 +316,50 @@ describe('SlotTemplateManager.vue', () => {
     await flush()
     expect(findByTestId<HTMLButtonElement>('template-save')!.disabled).toBe(true)
   })
+
+  it('AC-7（検分指摘）: 複数曜日の部分失敗（2件目で失敗）— 一覧を実状態へ同期し、成功曜日は選択から除去され失敗曜日のみ残る', async () => {
+    mockGetSlotTemplates.mockResolvedValue({
+      data: { templates: [], meta: { totalTemplates: 0, limit: 500 } },
+    })
+    // 1件目（MON）成功 → 2件目（WED）が RESERVATION_037（上限500行）で失敗する部分失敗シナリオ
+    mockCreateSlotTemplate
+      .mockResolvedValueOnce({ data: { id: 'tpl-1' } })
+      .mockRejectedValueOnce({ data: { error: { code: 'RESERVATION_037' } } })
+
+    const wrapper = await mountSuspended(SlotTemplateManager, {
+      props: { teamId: 'team-slug' },
+    })
+    await flush()
+
+    await wrapper.find('[data-testid="template-add"]').trigger('click')
+    await flush()
+    const monBtn = document.body.querySelector<HTMLButtonElement>('[data-day="MON"]')!
+    const wedBtn = document.body.querySelector<HTMLButtonElement>('[data-day="WED"]')!
+    monBtn.click()
+    await flush()
+    wedBtn.click()
+    await flush()
+
+    const getTemplatesCallsBefore = mockGetSlotTemplates.mock.calls.length
+    findByTestId<HTMLButtonElement>('template-save')!.click()
+    await flush()
+
+    // 選択順どおり2回呼ばれ、2回目で中断（3回目は呼ばれない）
+    expect(mockCreateSlotTemplate).toHaveBeenCalledTimes(2)
+    // (a) catch経路でも loadTemplates が再実行され、一覧が実状態（成功分のみ作成済み）へ同期される
+    expect(mockGetSlotTemplates.mock.calls.length).toBeGreaterThan(getTemplatesCallsBefore)
+    // (b) 成功済み MON は選択から除去・失敗した WED のみ選択が残る
+    //     （ダイアログは開いたままなので、そのまま再試行しても MON を重複作成しない）
+    expect(monBtn.className).not.toContain('bg-primary')
+    expect(wedBtn.className).toContain('bg-primary')
+    // ダイアログは閉じずに再試行可能（保存ボタンが残存し enabled）
+    const saveBtn = findByTestId<HTMLButtonElement>('template-save')
+    expect(saveBtn).not.toBeNull()
+    expect(saveBtn!.disabled).toBe(false)
+    // (c) 部分成功（1/2件作成済み）の warn トーストと、RESERVATION_037 のエラートーストの両方を伝達
+    expect(mockNotifyWarn).toHaveBeenCalled()
+    expect(mockNotifyError).toHaveBeenCalled()
+    // 全滅ではないので成功トーストは出さない
+    expect(mockNotifySuccess).not.toHaveBeenCalled()
+  })
 })

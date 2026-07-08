@@ -158,9 +158,13 @@ async function loadMenus() {
   menus.value = (res.data ?? []).filter(m => m.isActive !== false)
 }
 
-async function loadGrid() {
+/**
+ * グリッド取得。`silent: true` は KeepAlive 復帰時のサイレント再取得用で、loading フラグを
+ * 立てない（skeleton へ切り替わらない＝表示中のマトリックスを保持したまま裏でデータだけ更新する）。
+ */
+async function loadGrid(opts?: { silent?: boolean }) {
   if (!weekStart.value) return
-  loading.value = true
+  if (!opts?.silent) loading.value = true
   errorMsg.value = ''
   refreshClock()
   try {
@@ -181,7 +185,7 @@ async function loadGrid() {
     errorMsg.value = t('reservation.grid.load_error')
   }
   finally {
-    loading.value = false
+    if (!opts?.silent) loading.value = false
   }
 }
 
@@ -291,7 +295,8 @@ function gridStyle(headerLength: number): string {
   return `grid-template-columns: minmax(7rem, auto) repeat(${headerLength}, minmax(3.5rem, 1fr));`
 }
 
-watch([weekStart, filterMenuId], loadGrid)
+// loadGrid が opts 引数を持つため、watch コールバックの (newVal, oldVal) が誤って渡らないようラップする
+watch([weekStart, filterMenuId], () => loadGrid())
 
 onMounted(async () => {
   thisWeek()
@@ -299,8 +304,20 @@ onMounted(async () => {
   await loadGrid()
 })
 
+// KeepAlive 配下（TeamReservationsPanel の表示切替）での復帰時にサイレント再取得し、
+// 表示保持（チラつきなし）とデータ鮮度を両立する。onActivated は初回 mount 直後にも
+// 1回発火するため、onMounted 経路との二重fetchをフラグでガードする。
+let initialActivationDone = false
+onActivated(() => {
+  if (!initialActivationDone) {
+    initialActivationDone = true
+    return
+  }
+  void loadGrid({ silent: true })
+})
+
 // 予約直後に親から再読込させるための公開メソッド（既存パターン踏襲・defineExpose({ refresh })）
-defineExpose({ refresh: loadGrid })
+defineExpose({ refresh: () => loadGrid() })
 </script>
 
 <template>

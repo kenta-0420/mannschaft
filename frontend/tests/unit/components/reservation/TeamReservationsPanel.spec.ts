@@ -233,15 +233,18 @@ describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
     expect(tabs[3]!.text()).toBe('緊急休業')
   })
 
-  it('AC-8（UX改善5点の3）: 表示切替（マトリックス→リスト→マトリックス）で KeepAlive によりコンポーネントが破棄されない', async () => {
+  it('AC-8（UX改善5点の3）: 表示切替（マトリックス→リスト→マトリックス）で KeepAlive によりコンポーネントが破棄されず、復帰時はサイレント再取得のみ走る', async () => {
     const wrapper = await mountSuspended(TeamReservationsPanel, {
       props: { teamId: 'team-slug' },
     })
     await flushPromises()
 
     expect(wrapper.findComponent(SlotMatrixPicker).exists()).toBe(true)
-    const matrixCallsBeforeSwitch = mockGetSlotGrid.mock.calls.length
-    expect(matrixCallsBeforeSwitch).toBeGreaterThan(0)
+    const matrixGridCallsBefore = mockGetSlotGrid.mock.calls.length
+    // getMenus は SlotMatrixPicker の onMounted のみが呼ぶ → 再mountの検出器として使う
+    const menusCallsBefore = mockGetMenus.mock.calls.length
+    expect(matrixGridCallsBefore).toBeGreaterThan(0)
+    expect(menusCallsBefore).toBeGreaterThan(0)
 
     // マトリックス → リストへ切替（v-model の SelectButton 経由ではなく直接 ref を操作して検証する）
     const selectButton = wrapper.findComponent({ name: 'SelectButton' })
@@ -252,11 +255,16 @@ describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
     expect(wrapper.findComponent(SlotPicker).exists()).toBe(true)
     expect(wrapper.findComponent(SlotMatrixPicker).exists()).toBe(false)
 
-    // リスト → マトリックスへ戻す。KeepAlive によりマトリックスは再取得（loadGrid）されないはず。
+    // リスト → マトリックスへ戻す。
     await selectButton.vm.$emit('update:modelValue', 'matrix')
     await flushPromises()
 
     expect(wrapper.findComponent(SlotMatrixPicker).exists()).toBe(true)
-    expect(mockGetSlotGrid.mock.calls.length).toBe(matrixCallsBeforeSwitch)
+    // 破棄されていない証跡: 再mountなら onMounted の loadMenus が再実行されるはずだが、増えていない
+    expect(mockGetMenus.mock.calls.length).toBe(menusCallsBefore)
+    // 復帰時のデータ鮮度確保: onActivated のサイレント再取得（loadGrid silent）がちょうど1回走る
+    expect(mockGetSlotGrid.mock.calls.length).toBe(matrixGridCallsBefore + 1)
+    // サイレント＝skeleton へ切り替わらない（loading を立てない）ため、マトリックス本体は表示されたまま
+    expect(wrapper.findComponent(SlotMatrixPicker).findAllComponents({ name: 'Skeleton' })).toHaveLength(0)
   })
 })

@@ -234,15 +234,40 @@ async function save() {
     }
     else {
       // 選択曜日ぶん createSlotTemplate を順に呼び、曜日ごとのテンプレ行に展開する（DDL/API変更なし）
-      for (const day of selectedDays.value) {
-        await reservationApi.createSlotTemplate(props.teamId, {
-          ...base,
-          dayOfWeek: day,
-          ...(form.value.lineId === COMMON_LINE ? {} : { lineId: form.value.lineId }),
-        })
+      const total = selectedDays.value.length
+      const succeeded: ReservationDayOfWeekCode[] = []
+      try {
+        for (const day of selectedDays.value) {
+          await reservationApi.createSlotTemplate(props.teamId, {
+            ...base,
+            dayOfWeek: day,
+            ...(form.value.lineId === COMMON_LINE ? {} : { lineId: form.value.lineId }),
+          })
+          succeeded.push(day)
+        }
       }
-      if (selectedDays.value.length > 1) {
-        notification.success(t('reservation.message.template_create_success_multi', { n: selectedDays.value.length }))
+      catch (err) {
+        // 部分失敗の根治処理（RESERVATION_037 上限到達の途中失敗が現実的な発生経路）:
+        // (1) 成功済み曜日を選択から除去 — ダイアログを開いたまま再試行しても成功分を再作成して
+        //     重複行＋「今すぐ枠を作成」での枠二重生成にならないようにする（失敗曜日のみ残す）
+        // (2) 部分成功（{succeeded}/{total}件作成済み・残りは失敗）を warn トーストで伝達
+        // (3) 一覧を実状態（成功分のみ作成済み）へ同期
+        selectedDays.value = selectedDays.value.filter(d => !succeeded.includes(d))
+        if (succeeded.length > 0) {
+          notification.warn(
+            t('reservation.template.title'),
+            t('reservation.message.template_create_partial', { succeeded: succeeded.length, total }),
+          )
+          // 成功分のテンプレは存在するため、反映には「今すぐ枠を作成」が必要なことを案内する
+          showRegenerateGuide.value = true
+        }
+        notifySaveError(err)
+        await loadTemplates()
+        // ダイアログは閉じない（失敗曜日のみ選択された状態で再試行できる）
+        return
+      }
+      if (total > 1) {
+        notification.success(t('reservation.message.template_create_success_multi', { n: total }))
       }
       else {
         notification.success(t('reservation.message.template_create_success'))
@@ -254,7 +279,9 @@ async function save() {
     await loadTemplates()
   }
   catch (err) {
+    // 編集（PATCH）失敗経路。エラー通知に加え、一覧を実状態へ同期しておく（検分指摘 (a)）
     notifySaveError(err)
+    await loadTemplates()
   }
   finally {
     saving.value = false

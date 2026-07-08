@@ -260,6 +260,7 @@
       "menu_load_failed": "Menüs konnten nicht geladen werden",
       "template_create_success": "Vorlage erstellt",
       "template_create_success_multi": "{n} Vorlagen erstellt",
+      "template_create_partial": "{succeeded}/{total} Vorlagen erstellt; der Rest ist fehlgeschlagen",
       "template_update_success": "Vorlage aktualisiert",
       "template_delete_success": "Vorlage gelöscht",
       "template_save_failed": "Speichern fehlgeschlagen",
