@@ -9,8 +9,6 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.experimental.SuperBuilder;
-import lombok.Builder;
-import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -41,14 +39,34 @@ public class AdEntity extends BaseEntity {
     @Builder.Default
     private AdStatus status = AdStatus.DRAFT;
 
+    // ─── F09.19.1 placement + バナー表示属性（V144.001。骨格 — 業務ロジックは出陣で実装） ───
+
+    /** 掲載面（AdPlacement）。クリエイティブはサイズが placement 依存のため ads 単位。 */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private com.mannschaft.app.advertising.AdPlacement placement;
+
+    /** バナー幅 px（NULL: FE の placement 既定サイズ）。 */
+    private Integer width;
+
+    /** バナー高さ px。 */
+    private Integer height;
+
+    /** 代替テキスト（NULL: title を代用）。 */
+    @Column(length = 200)
+    private String altText;
+
     public enum AdStatus {
         DRAFT, ACTIVE, PAUSED, ENDED
     }
 
     /**
      * クリエイティブ情報を更新する。null の場合は現在の値を保持する。
+     * placement / width / height / altText も null なら変更なし（F09.19.1 §5.2）。
      */
-    public void updateCreative(String title, String imageUrl, String destinationUrl) {
+    public void updateCreative(String title, String imageUrl, String destinationUrl,
+                               com.mannschaft.app.advertising.AdPlacement placement,
+                               Integer width, Integer height, String altText) {
         if (title != null) {
             this.title = title;
         }
@@ -57,6 +75,18 @@ public class AdEntity extends BaseEntity {
         }
         if (destinationUrl != null) {
             this.destinationUrl = destinationUrl;
+        }
+        if (placement != null) {
+            this.placement = placement;
+        }
+        if (width != null) {
+            this.width = width;
+        }
+        if (height != null) {
+            this.height = height;
+        }
+        if (altText != null) {
+            this.altText = altText;
         }
     }
 
