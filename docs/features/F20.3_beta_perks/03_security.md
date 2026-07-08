@@ -1,0 +1,99 @@
+# F20.3 — 03 セキュリティ
+
+> **ステータス**: 🟡 設計中（精査待ち）
+> 認可基盤は F20.1 03 と同じ `@accessGuard` パターン（`docs/security/03_role_authority_model.md`）を用いる。横断方針は [docs/security/README.md](../../security/README.md)。
+
+---
+
+## 1. 認可マトリクス
+
+| 操作 | 許可される主体 | 検証（`@PreAuthorize` レベル） |
+|---|---|---|
+| 自分の特典・充足状況照会（`GET /me/beta-perks`） | 本人 | 認証のみ（scopeId を受けない・本人固定） |
+| チーム/組織の特典照会 | 当該スコープのメンバー以上 | `@accessGuard.isScopeMember(authentication, #teamId, 'TEAM')` / `@accessGuard.isScopeMember(authentication, #orgId, 'ORGANIZATION')` |
+| 付与・取消・延長・審査・候補一覧・条件マスタ CRUD | SYSTEM_ADMIN のみ | `@PreAuthorize("hasRole('SYSTEM_ADMIN')")`（全運用 EP） |
+| 自動付与 | システム（日次バッチ）のみ | API 経由なし（`@SchedulerLock` バッチ） |
+| review_flag 自動設定 | システム（イベントリスナー）のみ | API 経由なし |
+
+- **チーム ADMIN にも付与系操作を許可しない**（特典は運営からの供与であり団体側の自己操作対象ではない。団体側は照会のみ）。
+- **バッジ授与は本機能のサービス経由のみ**（F04.7 の手動授与 API `POST /badges/{id}/award` を BETA_TESTER に流用しない運用ルール。system badge の授与経路を一本化し、`awarded_by='SYSTEM'` の意味を保つ）。
+
+---
+
+## 2. IDOR 対策
+
+F20.1 03 §2 の原則（`getCurrentUserId()` の scopeId 流用禁止・子リソースからのスコープ解決・`findByIdAndXxx` 物理封鎖）を全面適用したうえで、本機能固有の点:
+
+1. **`/me/beta-perks` は scopeId をリクエストから受けない**（本人固定）。`eligibility` の評価対象も常に本人（他人の活動実績・充足状況は**いかなる形でも返さない**・AC-17。「あのユーザーはあと何日で特典か」はソーシャルエンジニアリング/売買の材料になる）。
+2. チーム/組織照会はメンバー限定（横断列挙防止）。**`review_flag`/`review_reason`/`criteria_snapshot` は運用 EP 以外で返さない**（§3）。
+3. シスアド EP の `{grantId}` は UUID 直指定だが SYSTEM_ADMIN 限定のため列挙リスクなし。それでも `GRANT_NOT_FOUND`(404) で存在秘匿を統一。
+
+---
+
+## 3. 審査情報の秘匿
+
+- `review_flag` 立ての事実・理由は**対象団体・本人に通知しない**（審査中に売買行為者へ「検知された」ことを教えない）。利用者向けレスポンス（02 §1）から review 系フィールドを除外。
+- 審査の結果**取消に至った場合のみ**、取消通知（理由は規約条項の一般文言・04 §2）を送る。
+- 運営向け通知（flag 設定時）は SYSTEM_ADMIN のみ。
+
+---
+
+## 4. アカウント売買対策の設計位置づけ（再掲・正準）
+
+| 層 | 実装 | 限界の明示 |
+|---|---|---|
+| 主防壁 | 個人特典 `scope_kind='USER'` 限定（DB CHECK `chk_bg_kind_scope`）＝買っても団体課金に充当不可 | 個人利用目的の売買は残るが経済価値が小さい |
+| 規約 | 譲渡・売買・貸与禁止＋違反時取消（第 17 条＋新設特典条項・README §5） | 事後対応（発見ベース） |
+| 検知 | オーナー変更イベント → review_flag（02 §5）。`SUSPECTED_TRANSFER` は将来の検知拡張の予約値（メール変更＋パスワード変更の短期連続等・本設計では実装しない） | **検知は保険であり主防壁ではない**。誤検知前提で「フラグ＝停止ではない」（AC-08） |
+
+- **フラグ中も権利は有効のまま**（無実の団体の業務を止めない）。停止（revoke）は人間（運営）の判断のみで発生する。
+
+---
+
+## 5. 監査ログ
+
+| イベント | 記録先 | 内容 |
+|---|---|---|
+| 付与（自動/手動） | `audit_logs`（`BETA_GRANT_ISSUED`） | grant_kind/phase/scope・criteria_snapshot・granted_by（SYSTEM/シスアド）・skipCriteriaCheck の別 |
+| 取消 | `audit_logs`（`BETA_GRANT_REVOKED`）＋`beta_grants.revoked_*` | 理由・操作者 |
+| 延長 | `audit_logs`（`BETA_GRANT_EXTENDED`） | 旧/新 valid_until |
+| review_flag 設定/解決 | `audit_logs`（`BETA_GRANT_REVIEW_FLAGGED`/`_RESOLVED`） | 理由・解決者（再フラグ履歴はここが真実源・01 §1 設計判断 5） |
+| 例外付与（skipCriteriaCheck=true） | `audit_logs` | 明示フラグ＋note 必須（運用ガイドラインで note 空を禁止） |
+
+---
+
+## 6. レート制限・濫用対策
+
+- `GET /me/beta-perks` の `eligibility` 評価は F10.8 生ログの集計を伴うため、**ユーザー単位で結果を短期キャッシュ**（Valkey・TTL 10 分・キー `betaPerk:eligibility:{userId}`）。リロード連打で集計クエリを乱発させない。
+- 自動付与バッチはページング＋`@SchedulerLock`（多重起動防止）。1 万人規模（第 4 段階）で 1 走査が現実時間で終わることを P2 実装時に計測（`page_view_logs` 集計はユーザー毎ではなく**ウィンドウ内の一括 GROUP BY で先読み**する実装ノートを付す）。
+- シスアド EP は audit_logs 記録のみ（専用レート制限なし）。
+
+---
+
+## 7. GDPR・退会
+
+- 退会時: 本人の INDIVIDUAL grant を `revoke(reason='WITHDRAWAL')`＋entitlements 失効（`UserWithdrawalService` トランザクション内・AC-19・01 §8）。
+- `beta_grants` は統計価値のため行を保持（scope_id 参照のみで PII 非含有・匿名化方針と整合）。`criteria_snapshot` は活動集計値のみで PII を含まない。
+- バッジ（`user_badges`）は F04.7 の退会時方針に従う（本機能で特則を作らない）。
+- 区分は**即時消去（弱匿名化）側**（金銭記録なし・復旧不要）。
+
+---
+
+## 8. 文言統制（法的リスク）
+
+- **「永久」「一生」「無期限保証」の語を UI・通知・規約・設計書で禁止**。個人特典の期間表現は常に i18n キー `billing.manage.noExpiry`（「サービス提供期間中無償」）を参照する（直書き禁止と二重で統制・AC-13）。
+- 検分時に `grep -r "永久" frontend/app/locales backend/src/main/resources/messages*` を実施する（トレーサビリティ照合の機械的チェック項目）。
+
+---
+
+## 9. ステータス確定条件（未解決 → 確定）
+
+本設計を 🟢 確定とするための残点（README §9 と対応）:
+
+| # | 残点 | 確定条件 |
+|---|---|---|
+| B-1 | 規約改訂（特典専用条項の新設） | 条文案のマスター承認→`landing.json` 6 言語反映（実装をブロックしない: 第 17 条が一般受け皿として現行でも譲渡禁止を担保） |
+| B-2 | 2 年後更新の運用方式 | マスター御裁可（推奨: シスアド一括延長のみ・自動更新しない） |
+| B-3 | 取消時のバッジ剥奪 | マスター御裁可（推奨: 剥奪しない） |
+| B-4 | オーナー変更イベントの有無・新設 | 実装時に team ドメインの既存イベントを確認。無ければ最小 publish 新設（それまで手動 flag-review が代替経路＝ブロックしない） |
+| —  | F10.8 実装（activeDays 指標・FEATURE ビーコン） | F10.8 の実装完了（それまで criteria の min_active_days=NULL 運用で自動付与は成立・ブロックしない） |
