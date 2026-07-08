@@ -58,12 +58,14 @@
 
 | メトリクス | 定義（正準） | データソース |
 |---|---|---|
-| `activeDays` | 評価ウィンドウ内のアクティブ日数 = `COUNT(DISTINCT DATE(viewed_at))`（本人の閲覧ビーコン） | F10.8 `page_view_logs`（`user_id = 対象`） |
-| `membershipTenureDays` | 最古の有効所属からの経過日数（`memberships.joined_at` 最小値・`left_at IS NULL` 行のみ） | `memberships` |
-| `activeMemberCount`（TEAM_ORG のみ） | アクティブ人数（`left_at IS NULL` カウント・F20.1 01 §3.4） | `memberships` |
+| `activeDays` | 評価ウィンドウ内のアクティブ日数 = **`COUNT(DISTINCT DATE(created_at))`**（本人のログイン成功ログ） | **`audit_logs` の `LOGIN_SUCCESS`**（`AuditEventType.LOGIN_SUCCESS`・`user_id = 対象`・月次パーティション）。※F10.8 `page_view_logs` は **TEAM/ORGANIZATION スコープ限定で USER を持たない**ため使えない（§7・§9.1 で確定）。「閲覧ビーコン」は本メトリクスの源ではない |
+| `membershipTenureDays` | **INDIVIDUAL=本人の最古有効所属 `memberships.joined_at` 最小値（`left_at IS NULL` 行）からの経過日数** ／ **TEAM_ORG=スコープ自体の作成日（`teams.created_at`/`organizations.created_at`）からの経過日数**（02 §2 と両建て一致） | `memberships`（INDIVIDUAL）／`teams`・`organizations`（TEAM_ORG） |
+| `activeMembers`（TEAM_ORG のみ） | アクティブ人数（`countActiveDistinctUsersByScope`・DISTINCT user・F20.1 01 §3.4） | `memberships` |
 
-- 閾値（例: `activeDays >= 14`／`membershipTenureDays >= 30`／`activeMemberCount >= 5`）はマスタ `beta_perk_criteria`（beta_phase×grant_kind ごと）に保持し、シスアドが運用変更できる。
+- 閾値（例: `activeDays >= 14`／`membershipTenureDays >= 30`／`activeMembers >= 5`）はマスタ `beta_perk_criteria`（beta_phase×grant_kind ごと）に保持し、シスアドが運用変更できる。
 - 判定時の**実測値と閾値を `beta_grants.criteria_snapshot`（JSON）に焼き付け**る（後から「何を満たして付与されたか」を監査可能に・遡及不能）。
+
+> **★自動付与の本番有効化条件（③・「参加しただけでは付与しない」主原則の担保）**: `membershipTenureDays`（在籍日数）だけで自動付与すると「在籍 30 日の完全無活動ユーザー」に付与され得て、主原則違反かつ売買対策の前提（活動実績）が崩れる。よって **`activeDays` 計測源（`audit_logs` LOGIN_SUCCESS）の結線を自動付与バッチ本番有効化の前提条件**とする。**`min_active_days=NULL`（activeDays 未計測）のまま自動付与バッチを本番有効化しない** — その tenure-only 期間は**シスアド審査付きの手動付与のみ**で運用する（02 §3・§9 実装前確定条件）。
 
 ---
 
@@ -85,7 +87,7 @@
   - `user_badges`: `period_label VARCHAR(20)`／`awarded_by VARCHAR(20) NOT NULL`／`UNIQUE uq_ub_badge_user_period (badge_id, user_id, period_label)`。
 - **本機能の追加方針（enum に新値を足さない）**: `badge_type` は**種別カテゴリ**であり個別バッジ識別子ではないため、ベータテスター称号は **`badge_type='SPECIAL'`・`is_system=TRUE`・`condition_type='MANUAL'`** の badges 行を 1 つ Flyway シードする（`V11.053` の様式・01 §5）。バッジの識別は行そのもの（`id`/`name`）で行い、**`BadgeType` enum は変更しない**。
 - **フェーズ別の称号は `user_badges.period_label = 'BETA_PHASE_1'〜'BETA_PHASE_4'`** で区別（バッジ行は 1 つ・`uq_ub_badge_user_period` がフェーズ別の重複授与を物理防止）。`period_label` は VARCHAR(20) ゆえ `BETA_PHASE_4`（12 文字）は収まる。
-- **⚠️ scope NOT NULL 制約の未決点（実装前確定条件・要裁可 B-5）**: `badges.scope_type`/`scope_id` は **NOT NULL** であり、既存 badges はチーム/組織のゲーミフィケーションに紐づく。**プラットフォーム横断の system badge を置く前例（scope 無し）は origin/main に存在しない**。ベータ称号は全ユーザー共通のためスコープに属さない。→ **sentinel scope（`scope_type='PLATFORM'`・`scope_id=0`）で 1 行シードし、授与/表示経路をこの sentinel に対応させる**方針を推奨するが、gamification の既存クエリ（`findBy...ScopeTypeAndScopeId`）・50 バッジ上限カウント・表示の各所への波及があるため、**実装前に gamification ドメインの scope 取り扱いを再確認して確定**する（B-5・§9）。
+- **⚠️ scope NOT NULL 制約の未決点（実装前確定条件・要裁可 B-5）**: `badges.scope_type`/`scope_id` は **NOT NULL** であり、既存 badges はチーム/組織のゲーミフィケーションに紐づく。**プラットフォーム横断の system badge を置く前例（scope 無し）は origin/main に存在しない**。ベータ称号は全ユーザー共通のためスコープに属さない。→ **sentinel scope（`scope_type='PLATFORM'`・`scope_id=0`）で 1 行シードし、授与/表示経路をこの sentinel に対応させる**方針を推奨するが、gamification の既存クエリ（`findBy...ScopeTypeAndScopeId`）・表示各所への波及があるため、**実装前に gamification ドメインの scope 取り扱いを再確認して確定**する（B-5・§9）。（※「1 スコープ 50 バッジ上限」に相当する制約は origin/main で**実在未確認**のため、波及懸念としては断定しない。実在するのはカスタムルール上限等の別制約であり、実装前に該当上限の有無を調査する。）
 - 授与タイミング: 個人特典の付与成功と同時（`awarded_by='SYSTEM'`）。バッジは特典取消後も**剥奪しない**（活動実績の称号であり権利ではない・要裁可論点 B-3）。
 
 ---
