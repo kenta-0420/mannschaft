@@ -2,7 +2,7 @@
 
 > **ステータス**: 🟡 設計中（精査待ち）
 > **最終更新**: 2026-07-08
-> **関連**: [F20.3 ベータ特典](../F20.3_beta_perks/README.md)（`source_kind=BETA_GRANT` の発行元）／ [F22.1 統一決済プラットフォーム](../F22.1_market/payment/README.md)（Phase 2 実決済レール）／ [F08.9 会員決済](../F08.9_membership_billing_paywall/README.md)（**逆向きの課金**・混同禁止 §4.5）／ [F12.2 フィーチャーフラグ](../F12.2_feature_flag.md)（**意味論が別**・§4.4）／ [F09.19 広告実用化](../F09.19_advertising_practical/README.md)（有料プラン広告非表示の結線先）
+> **関連**: [F20.3 ベータ特典](../F20.3_beta_perks/README.md)（`source_kind=BETA_GRANT` の発行元）／ [F22.1 統一決済プラットフォーム](../F22.1_market/payment/README.md)（Phase 2 実決済レール）／ [F08.9 会員決済](../F08.9_membership_billing_paywall/README.md)（**逆向きの課金**・混同禁止 §4.5）／ [F12.2 フィーチャーフラグ](../F12.2_feature_flag.md)（**意味論が別**・§4.4）／ [F09.19 広告配信](../F09.19_ad_slot_serving.md)（有料プラン広告非表示の結線先・同 §7.5）
 
 ---
 
@@ -172,7 +172,7 @@ entitlementGuard.require(EntitlementScopeKind.TEAM, teamId,
 |---|---|---|---|
 | 1 | `template/ModuleService` | `module.getRequiresPaidPlan() && !teamPlanService.hasPaidPlan(teamId)` → `TMPL_004`。**組織側カタログは常に `hasPaidPlan(false)` 固定・requiresPaidPlan チェックなし** | feature_key **`template.premium_modules`**。`EntitlementGuard.require(TEAM, teamId, ...)` へ置換（Expand 期は hasPaidPlan のままで挙動同一）。組織側は現行どおり非対象（変更しない） |
 | 2 | 予約 `ReservationNotificationRecipientService` | `count >= FREE_RECIPIENT_LIMIT(3) && !hasPaidPlan(teamId)` → `RESERVATION_029`（`ERROR_CODE_STATUS_MAP` で **402**） | feature_key **`reservation.notification_recipients_extended`**。エラーコード・402 は不変（後方互換・AC-15） |
-| 3 | 広告 F09.19 有料プラン広告非表示（F09.19 README §27） | 設計上 `hasPaidPlan` 参照（実装未着手） | feature_key **`ads.hide`**。F09.19 実装時から `isEntitled` を直接使う（二度手間回避） |
+| 3 | 広告 F09.19 有料プラン広告非表示（F09.19 §7.5「有料プランゲート・BE 判定」） | 設計上 `TeamPlanService.hasPaidPlan(teamId)` を既存メソッドのまま使用（BE 実装は進行中） | feature_key **`ads.hide`**。Expand 期は hasPaidPlan の OR 委譲で挙動同一・Migrate 期に `isEntitled` 直接参照へ置換 |
 
 ### 4.3 F22.1 決済レール（Phase 2 で利用・本設計は PSP 非依存）
 

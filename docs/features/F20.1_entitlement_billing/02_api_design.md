@@ -280,7 +280,7 @@ GET                 /api/v1/system-admin/billing/contracts?scopeKind=&scopeId=&s
 |---|---|---|
 | `ModuleService.toggleTeamModule` | `module.getRequiresPaidPlan() && !teamPlanService.hasPaidPlan(teamId)` → `TMPL_004` | `if (module.getRequiresPaidPlan()) entitlementGuard.require(TEAM, teamId, FeatureKeys.TEMPLATE_PREMIUM_MODULES)`（エラーは ENTITLEMENT_003=402 へ変更**しない**。既存 `TMPL_004` を維持するため `isEntitled` を if 判定で使い既存例外を投げる＝FE 後方互換） |
 | `ReservationNotificationRecipientService.addRecipient` | `count >= FREE_RECIPIENT_LIMIT && !teamPlanService.hasPaidPlan(teamId)` → `RESERVATION_029`(402) | `count >= FREE_RECIPIENT_LIMIT && !entitlementQueryService.isEntitled(TEAM, teamId, FeatureKeys.RESERVATION_NOTIFICATION_RECIPIENTS_EXTENDED)` → **`RESERVATION_029`(402) を不変で維持**（AC-15） |
-| F09.19 広告非表示 | （実装未着手） | 広告配信判定で `isEntitled(scope..., FeatureKeys.ADS_HIDE)` を直接使用 |
+| F09.19 広告非表示（F09.19 §7.5） | `TeamPlanService.hasPaidPlan(teamId)` を既存メソッドのまま使用（BE ゲートは F09.19.2 系で実装進行中） | Expand 期は hasPaidPlan の OR 委譲で挙動同一。Migrate 期に広告配信判定で `isEntitled(scope..., FeatureKeys.ADS_HIDE)` を直接使用へ置換 |
 
 > **置換の原則**: 既存エラーコード・HTTP ステータス・FE 文言は**変えない**。変えるのは判定の内部実装のみ（Expand 期は hasPaidPlan の OR 委譲だけで挙動同一・置換は Migrate 期）。
 
