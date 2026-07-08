@@ -236,6 +236,7 @@ entitlementGuard.require(EntitlementScopeKind.TEAM, teamId,
 | AC-27 | 境界 | USER スコープの REVENUE 契約は org 区分に影響しない（イベント不発火） |
 | AC-28 | 正常（H-1） | 同一スコープへの ACTIVE PLAN 契約の**並行 2 リクエスト**は、`active_contract_pointers` の UNIQUE により 1 件のみ成功・他は `ENTITLEMENT_006` 409（TOCTOU 二重契約が作れない） |
 | AC-29 | 正常（M-5） | 退会申請（猶予中）では契約・entitlements は revoke されず権利維持。退会確定（purge）で失効。撤回時は権利維持のまま |
+| AC-30 | 境界（L2） | 契約作成の**完全同時再送**では冪等キー check-then-set の非原子により片方が `active_contract_pointers` UNIQUE で `ENTITLEMENT_006`(409) になる。二重契約・二重発行は生じない（FE は 409 を「契約済み」として再取得） |
 
 ---
 

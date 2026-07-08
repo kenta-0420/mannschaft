@@ -387,7 +387,7 @@ team_org_memberships（status=ACTIVE）─(論理・読取のみ)─ チーム�
 - `entitlements`/`billing_contracts` は**契約記録**ゆえ物理削除しない（論理削除・匿名化方針）。
 - **退会はイベント駆動**（M-4）: `UserWithdrawalService`（架空）ではなく、origin/main 実在の `WithdrawalRequestedEvent`（申請・猶予開始）／`AccountPurgedEvent`（物理削除・`AccountPurgeService` バッチ発火・各ドメイン `*PurgeEventListener`）を購読する。billing ドメインに **`BillingPurgeEventListener`（`@TransactionalEventListener`・REQUIRES_NEW）** を新設。
 - **退会猶予との整合**（M-5・revoke は終端で復活不可）:
-  - **申請（猶予開始）時**: USER スコープの契約・entitlements を revoke **しない**（撤回で復活できないため権利を維持）。
+  - **申請（猶予開始）時**: USER スコープの契約・entitlements を revoke **しない**（撤回で復活できないため権利を維持）。`BillingPurgeEventListener` は `WithdrawalRequestedEvent` を**明示的に no-op で受ける**（何もしないことを 1 メソッドで表明・将来「猶予中は機能を一時抑止する」等の拡張余地を残すフック点・L5）。
   - **撤回（`WithdrawalCancelledEvent`）時**: 何もしない（権利維持のまま）。
   - **確定（`AccountPurgedEvent`）時**: USER スコープの ACTIVE 契約を `CANCELLED`＋`active_contract_pointers` 削除＋由来 entitlements revoke（撤回窓は閉じており復活不可で問題ない）。
 - `created_by`/`revoked_by` は監査用 userId 論理参照で PII 非含有（表示名は都度解決・退会後は匿名表示）。
