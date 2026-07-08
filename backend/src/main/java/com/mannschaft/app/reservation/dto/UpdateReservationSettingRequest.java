@@ -1,10 +1,12 @@
 package com.mannschaft.app.reservation.dto;
 
 import com.mannschaft.app.reservation.ApprovalMode;
+import com.mannschaft.app.reservation.ReservationResourceNameType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -17,6 +19,9 @@ import lombok.RequiredArgsConstructor;
  *   <li>{@code allowPublicReservation} … {@code reservation_team_settings.allow_public_reservation} を更新</li>
  *   <li>{@code approvalMode} / {@code cancelDeadlineHours} / {@code remindBeforeHours}
  *       … {@code reservation_policies} を upsert 更新</li>
+ *   <li>{@code resourceNameType} / {@code resourceNameCustom} … {@code reservation_team_settings} の
+ *       呼称カラムを更新（F03.4.5 §5）。反映後のタイプが {@code CUSTOM} 以外なら custom は
+ *       NULL へ正規化・{@code CUSTOM} なら custom 非空必須（Service 層で検証）</li>
  * </ul>
  *
  * <p>入力検証（Bean Validation・400）:</p>
@@ -24,6 +29,8 @@ import lombok.RequiredArgsConstructor;
  *   <li>{@code approvalMode} … enum 値（AUTO/MANUAL）以外は Jackson のバインドで弾かれる（400）</li>
  *   <li>{@code cancelDeadlineHours} … 0〜8760（最大 1 年）の範囲</li>
  *   <li>{@code remindBeforeHours} … 正の整数のカンマ区切り（CSV of positive ints）</li>
+ *   <li>{@code resourceNameType} … enum 値以外は Jackson のバインドで弾かれる（400）</li>
+ *   <li>{@code resourceNameCustom} … 30 文字以内（UI 幅由来。超過は 400）</li>
  * </ul>
  */
 @Getter
@@ -51,4 +58,21 @@ public class UpdateReservationSettingRequest {
     @Schema(description = "リマインド送信タイミング（予約開始の何時間前か）の CSV 文字列（null=据え置き）",
             example = "24,1", nullable = true)
     private final String remindBeforeHours;
+
+    /**
+     * 予約対象の呼称プリセット（DEFAULT/STAFF/SEAT/COURT/BED/LANE/CUSTOM / null=据え置き）。
+     * enum 以外は 400。{@code CUSTOM} を指定する場合は {@code resourceNameCustom} も合わせて指定すること
+     * （反映後に custom が空だと 400）。
+     */
+    @Schema(description = "予約対象の呼称プリセット（null=据え置き）", example = "SEAT", nullable = true)
+    private final ReservationResourceNameType resourceNameType;
+
+    /**
+     * 自由入力の呼称（{@code resourceNameType=CUSTOM} のときのみ有効・30文字以内 / null=据え置き）。
+     * 反映後のタイプが {@code CUSTOM} 以外の場合はサービス層で常に NULL へ正規化される。
+     */
+    @Size(max = 30, message = "resourceNameCustom は30文字以内で指定してください")
+    @Schema(description = "自由入力の呼称（CUSTOM 選択時のみ有効・30文字以内 / null=据え置き）",
+            example = "施術台", nullable = true)
+    private final String resourceNameCustom;
 }
