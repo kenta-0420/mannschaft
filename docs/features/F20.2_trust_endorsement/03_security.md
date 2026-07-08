@@ -61,7 +61,7 @@
 
 | 操作 | 認可主体 | 実装方針 |
 |---|---|---|
-| 信任の付与（#1） | **endorser 団体の scope ADMIN** | `TrustScopeResolver.requireScopeAdmin(authentication, endorserScopeKind, endorserScopeId)` → 内部で `accessGuard.isScopeAdmin(authentication, scopeId, 'TEAM'|'ORGANIZATION')`（§3.0）。**endorsee は「操作者から F00 可視」の場合のみ許可**（`ContentVisibilityChecker.canView`・不在・不可視は同一応答 `TRUST_007` で存在オラクル封鎖・02 §2.3。endorsee 側の同意フローは設けない＝要裁可論点・§9） |
+| 信任の付与（#1） | **endorser 団体の scope ADMIN** | `TrustScopeResolver.requireScopeAdmin(authentication, endorserScopeKind, endorserScopeId)` → 内部で `accessGuard.isScopeAdmin(authentication, scopeId, 'TEAM'|'ORGANIZATION')`（§3.0）。**endorsee は「操作者から F00 可視」の場合のみ許可**（`ContentVisibilityChecker.canView`・不在・不可視は同一応答 `TRUST_007` で存在オラクル封鎖・02 §2.3。endorsee 側の同意フローは設けない＝マスター御裁可済 §11-6(a)・§9.1） |
 | 信任の取消（#2） | **当該信任の endorser 団体の scope ADMIN** | `endorsementId` から **DB の endorser scope を解決**して所有権検証（IDOR 一般形・リクエスト値を信頼しない） |
 | 資格事前確認（#5） | 対象団体の scope ADMIN | `isScopeAdmin`（§3.0） |
 | 認証状態取得（#3） | 公開（未ログイン可） | F00 可視性ゲート（§4）・PRIVATE は 404 秘匿 |
