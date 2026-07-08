@@ -181,10 +181,9 @@ CREATE TABLE active_contract_pointers (
     contract_kind VARCHAR(8) NOT NULL COMMENT 'PLAN / ADDON',
     addon_feature_key VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'ADDON のとき対象 feature_key。PLAN のとき空文字（UNIQUE を1本化するため NULL でなく '''' 固定）',
     contract_id BINARY(16) NOT NULL COMMENT '現在アクティブな billing_contracts.id（論理参照・切替時に UPDATE）',
-    organization_id BIGINT UNSIGNED NULL COMMENT 'テナント（billing_contracts と同値）',
+    organization_id BIGINT UNSIGNED NULL COMMENT 'テナント（billing_contracts と同値・参考列。検索はスロットキーで行う）',
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
-    deleted_at DATETIME(6) NULL COMMENT '基底要求の保持列（解約時は行を DELETE するため通常未使用）',
     PRIMARY KEY (id),
     UNIQUE KEY uk_acp_slot (scope_kind, scope_id, contract_kind, addon_feature_key),
     KEY idx_acp_contract (contract_id),
@@ -194,13 +193,19 @@ CREATE TABLE active_contract_pointers (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='アクティブ契約ポインタ（一意性のDB担保・履歴はbilling_contracts）';
 ```
 
+> **⚠️ 本表は「論理削除（`deleted_at`）」規約の意図的な例外（①・実装トラップ）**: 解約時に `uk_acp_slot` スロットを**解放**して再契約を可能にするには、行を**物理 DELETE** しなければならない。**`deleted_at` セット（論理削除）で解約を書くと、行が残ったまま UNIQUE が効き続け、再契約が誤って `ENTITLEMENT_006`(409) で弾かれる**。そのため:
+> - 本表は **`deleted_at` 列を持たない**（`billing_contracts`/`entitlements` の保持列規約に**倣わない**）。「アクティブなポインタだけを持つ現在状態表」であり、履歴・監査は `billing_contracts`（append-only・論理削除保持）が担う。
+> - Repository は **`AbstractTenantAwareRepository` を継承しない**（同基底は `...DeletedAtIsNull` 派生と `deleted_at` 列を前提とし、物理 DELETE 運用と噛み合わない）。**素の `JpaRepository<ActiveContractPointerEntity, UUID>`** とし、検索はテナントでなく**スロットキー**で行う。専用メソッドを明示:
+>   - `Optional<ActiveContractPointerEntity> findBySlot(String scopeKind, Long scopeId, String contractKind, String addonFeatureKey)`
+>   - `@Modifying int hardDeleteBySlot(String scopeKind, Long scopeId, String contractKind, String addonFeatureKey)`（**物理 DELETE**・戻り値で削除件数を検証）
+> - Entity は `UuidV7Entity` 継承（`id` のみ）＋`created_at`/`updated_at` 自前定義。`deleted_at`/`@SQLRestriction` は付けない。
+
 **運用（擬似・02 §3.1 と対応）**:
 - 契約作成: `billing_contracts` に ACTIVE 行を INSERT ＋ `active_contract_pointers` に INSERT。**`uk_acp_slot` が二重契約の並行 INSERT を物理拒否**（`DataIntegrityViolationException` → `ENTITLEMENT_006` 409）。TOCTOU レースはここで閉じる。
 - プラン変更（切替）: `active_contract_pointers` の **`contract_id` を UPDATE**（旧契約 CANCELLED＋新契約 ACTIVE と同一トランザクション）。ポインタ行は増やさず付け替えるだけ。
-- 解約: `active_contract_pointers` の該当行を **DELETE**（billing_contracts は CANCELLED で残す）。次回契約時に再 INSERT 可能になる。
+- 解約: `hardDeleteBySlot(...)` で該当行を**物理 DELETE**（billing_contracts は CANCELLED で残す）。次回契約時に再 INSERT 可能になる。
 
 **採用理由（`SELECT ... FOR UPDATE` 案との比較）**: 悲観ロック案は「スコープ単位のロック行」を別途要し、契約の無いスコープには初回ロック対象が無く（挿入意図ロックの取り回しが複雑）、ロック粒度・デッドロックの検討が要る。**UNIQUE 制約は初回契約から一貫して効き、実装が単純で、`fee_policies`/`membership_subscriptions` 等の既存「UNIQUE で冪等担保」パターンと同型**であるため本案を採る（memory の UNIQUE 冪等前例に整合）。
-- Repository: `ActiveContractPointerRepository extends AbstractTenantAwareRepository<..., UUID>`。
 
 ### 3.2 `entitlements`（中核・権利の真実源）
 
