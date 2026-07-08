@@ -5,6 +5,7 @@ import com.mannschaft.app.reservation.dto.BlockedTimeRequest;
 import com.mannschaft.app.reservation.dto.BlockedTimeResponse;
 import com.mannschaft.app.reservation.dto.BusinessHourEntry;
 import com.mannschaft.app.reservation.dto.BusinessHourResponse;
+import com.mannschaft.app.reservation.dto.BusinessHoursUpdateOutcome;
 import com.mannschaft.app.reservation.dto.BusinessHoursUpdateRequest;
 import com.mannschaft.app.reservation.entity.ReservationBlockedTimeEntity;
 import com.mannschaft.app.reservation.entity.ReservationBusinessHourEntity;
@@ -157,10 +158,10 @@ class ReservationBusinessHourServiceTest {
             given(reservationMapper.toBusinessHourResponseList(any())).willReturn(List.of(response));
 
             // When
-            List<BusinessHourResponse> result = service.updateBusinessHours(TEAM_ID, request);
+            BusinessHoursUpdateOutcome result = service.updateBusinessHours(TEAM_ID, request);
 
             // Then
-            assertThat(result).hasSize(1);
+            assertThat(result.hours()).hasSize(1);
             verify(businessHourRepository).save(existingEntity);
         }
 
@@ -190,10 +191,11 @@ class ReservationBusinessHourServiceTest {
             given(reservationMapper.toBusinessHourResponseList(any())).willReturn(List.of(response));
 
             // When
-            List<BusinessHourResponse> result = service.updateBusinessHours(TEAM_ID, request);
+            BusinessHoursUpdateOutcome result = service.updateBusinessHours(TEAM_ID, request);
 
-            // Then
-            assertThat(result).hasSize(1);
+            // Then: 新規行は変更扱い（生成対象）。TUE が changedDays に含まれる。
+            assertThat(result.hours()).hasSize(1);
+            assertThat(result.changedDays()).containsExactly(ReservationDayOfWeek.TUE);
             verify(businessHourRepository).save(any(ReservationBusinessHourEntity.class));
         }
 
@@ -235,11 +237,57 @@ class ReservationBusinessHourServiceTest {
             given(reservationMapper.toBusinessHourResponseList(any())).willReturn(List.of(response));
 
             // When
-            List<BusinessHourResponse> result = service.updateBusinessHours(TEAM_ID, request);
+            BusinessHoursUpdateOutcome result = service.updateBusinessHours(TEAM_ID, request);
 
             // Then
-            assertThat(result).hasSize(1);
-            assertThat(result.get(0).getBusinessStatus().isOpen()).isFalse();
+            assertThat(result.hours()).hasSize(1);
+            assertThat(result.hours().get(0).getBusinessStatus().isOpen()).isFalse();
+        }
+
+        @Test
+        @DisplayName("S-6②: 変更のなかった曜日は changedDays に含めない（差分生成 scope の観測点）")
+        void 営業時間更新_無変更曜日は差分に含めない() {
+            // Given: 現行 MON 10:00-19:00 と<b>完全一致</b>する PUT（isOpen/open/close すべて不変）
+            ReservationBusinessHourEntity existing = ReservationBusinessHourEntity.builder()
+                    .teamId(TEAM_ID).dayOfWeek("MON").isOpen(true)
+                    .openTime(LocalTime.of(10, 0)).closeTime(LocalTime.of(19, 0)).build();
+            BusinessHourEntry entry = new BusinessHourEntry(
+                    "MON", true, LocalTime.of(10, 0), LocalTime.of(19, 0));
+            BusinessHoursUpdateRequest request = new BusinessHoursUpdateRequest(List.of(entry));
+            given(businessHourRepository.findByTeamIdAndDayOfWeek(TEAM_ID, "MON"))
+                    .willReturn(Optional.of(existing));
+            given(businessHourRepository.save(existing)).willReturn(existing);
+            given(reservationMapper.toBusinessHourResponseList(any()))
+                    .willReturn(List.of(createBusinessHourResponse()));
+
+            // When
+            BusinessHoursUpdateOutcome result = service.updateBusinessHours(TEAM_ID, request);
+
+            // Then: 差分なし → changedDays 空（当該曜日の生成は走らない）
+            assertThat(result.changedDays()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("S-6②: 時間帯を変更した曜日のみ changedDays に入る（拡大の自動追い付き対象）")
+        void 営業時間更新_変更曜日のみ差分に入る() {
+            // Given: 現行 MON 10:00-18:00 → PUT で 9:00-18:00 に拡大（open_time 変更）
+            ReservationBusinessHourEntity existing = ReservationBusinessHourEntity.builder()
+                    .teamId(TEAM_ID).dayOfWeek("MON").isOpen(true)
+                    .openTime(LocalTime.of(10, 0)).closeTime(LocalTime.of(18, 0)).build();
+            BusinessHourEntry entry = new BusinessHourEntry(
+                    "MON", true, LocalTime.of(9, 0), LocalTime.of(18, 0));
+            BusinessHoursUpdateRequest request = new BusinessHoursUpdateRequest(List.of(entry));
+            given(businessHourRepository.findByTeamIdAndDayOfWeek(TEAM_ID, "MON"))
+                    .willReturn(Optional.of(existing));
+            given(businessHourRepository.save(existing)).willReturn(existing);
+            given(reservationMapper.toBusinessHourResponseList(any()))
+                    .willReturn(List.of(createBusinessHourResponse()));
+
+            // When
+            BusinessHoursUpdateOutcome result = service.updateBusinessHours(TEAM_ID, request);
+
+            // Then
+            assertThat(result.changedDays()).containsExactly(ReservationDayOfWeek.MON);
         }
     }
 

@@ -392,7 +392,7 @@ class ReservationSlotGenerationServiceTest {
             given(templateRepository.findByTeamIdAndIsActiveTrue(TEAM_ID)).willReturn(List.of(sunTpl));
             given(businessHourRepository.findByTeamIdOrderByIdAsc(TEAM_ID))
                     .willReturn(List.of(openDay("SUN", LocalTime.of(9, 0), LocalTime.of(18, 0))));
-            given(slotRepository.findMaxGeneratedSlotDateByTemplateId(TEMPLATE_ID))
+            given(slotRepository.findMaxGeneratedSlotDateByTemplateIdClamped(eq(TEMPLATE_ID), any()))
                     .willReturn(LocalDate.of(2026, 8, 1));
 
             // When
@@ -412,7 +412,7 @@ class ReservationSlotGenerationServiceTest {
                     .willReturn(List.of(monTemplate(LocalTime.of(10, 0), LocalTime.of(10, 30))));
             given(businessHourRepository.findByTeamIdOrderByIdAsc(TEAM_ID))
                     .willReturn(List.of(openMonday(LocalTime.of(9, 0), LocalTime.of(18, 0))));
-            given(slotRepository.findMaxGeneratedSlotDateByTemplateId(TEMPLATE_ID))
+            given(slotRepository.findMaxGeneratedSlotDateByTemplateIdClamped(eq(TEMPLATE_ID), any()))
                     .willReturn(LocalDate.of(2026, 7, 6));
 
             // When
@@ -433,7 +433,8 @@ class ReservationSlotGenerationServiceTest {
                     .willReturn(List.of(monTemplate(LocalTime.of(10, 0), LocalTime.of(10, 30))));
             given(businessHourRepository.findByTeamIdOrderByIdAsc(TEAM_ID))
                     .willReturn(List.of(openMonday(LocalTime.of(9, 0), LocalTime.of(18, 0))));
-            given(slotRepository.findMaxGeneratedSlotDateByTemplateId(TEMPLATE_ID)).willReturn(null);
+            given(slotRepository.findMaxGeneratedSlotDateByTemplateIdClamped(eq(TEMPLATE_ID), any()))
+                    .willReturn(null);
 
             // When
             GenerateSlotsResponse result = service.generateDiffForTeam(TEAM_ID);
@@ -450,7 +451,7 @@ class ReservationSlotGenerationServiceTest {
                     .willReturn(List.of(monTemplate(LocalTime.of(10, 0), LocalTime.of(10, 30))));
             given(businessHourRepository.findByTeamIdOrderByIdAsc(TEAM_ID))
                     .willReturn(List.of(openMonday(LocalTime.of(9, 0), LocalTime.of(18, 0))));
-            given(slotRepository.findMaxGeneratedSlotDateByTemplateId(TEMPLATE_ID))
+            given(slotRepository.findMaxGeneratedSlotDateByTemplateIdClamped(eq(TEMPLATE_ID), any()))
                     .willReturn(LocalDate.of(2026, 8, 2));
 
             // When
@@ -471,6 +472,240 @@ class ReservationSlotGenerationServiceTest {
             // When / Then: 手動 generate（F-14 の 400）と異なりバッチは例外にしない
             GenerateSlotsResponse result = service.generateDiffForTeam(TEAM_ID);
             assertThat(result.getGeneratedCount()).isZero();
+        }
+
+        @Test
+        @DisplayName("S-8③: 差分レンジの MAX 導出は horizon 上限（tomorrow+27=8/2）でクランプして問い合わせる（臨時営業の汚染を無効化）")
+        void 差分生成_ウォーターマークはhorizon上限でクランプ問い合わせ() {
+            // Given: MON テンプレ。horizon 外（+40日）に臨時営業でセルがあっても、クランプ問い合わせなら無視される。
+            given(templateRepository.findByTeamIdAndIsActiveTrue(TEAM_ID))
+                    .willReturn(List.of(monTemplate(LocalTime.of(10, 0), LocalTime.of(10, 30))));
+            given(businessHourRepository.findByTeamIdOrderByIdAsc(TEAM_ID))
+                    .willReturn(List.of(openMonday(LocalTime.of(9, 0), LocalTime.of(18, 0))));
+            // クランプ問い合わせ（<= 8/2）は horizon 内の最終月曜 7/6 を返す（horizon 外の +40日は数えない）
+            ArgumentCaptor<LocalDate> maxDateCaptor = ArgumentCaptor.forClass(LocalDate.class);
+            given(slotRepository.findMaxGeneratedSlotDateByTemplateIdClamped(eq(TEMPLATE_ID), any()))
+                    .willReturn(LocalDate.of(2026, 7, 6));
+
+            // When
+            GenerateSlotsResponse result = service.generateDiffForTeam(TEAM_ID);
+
+            // Then: クランプ境界 = horizon 末尾 8/2（tomorrow+27）で問い合わせ、週次枠 7/13,7/20,7/27 が生成される
+            verify(slotRepository).findMaxGeneratedSlotDateByTemplateIdClamped(eq(TEMPLATE_ID), maxDateCaptor.capture());
+            assertThat(maxDateCaptor.getValue()).isEqualTo(LocalDate.of(2026, 8, 2));
+            assertThat(result.getGeneratedCount()).isEqualTo(3);
+        }
+    }
+
+    // ========================================
+    // F03.4.5 §3.1: テンプレ保存＝同期自動生成（単一/複数テンプレ scope）
+    // ========================================
+
+    @Nested
+    @DisplayName("generateForTemplate / generateForTemplates（F03.4.5 §3.1 S-1/S-2）")
+    class GenerateForTemplate {
+
+        @Test
+        @DisplayName("S-1: 単一テンプレ（MON 10:00-13:00）は horizon 28日 [7/6, 8/2] の月曜4回ぶん 24 セルを生成する")
+        void 単一テンプレ生成_horizon28日() {
+            // Given
+            ReservationSlotTemplateEntity tpl = monTemplate(LocalTime.of(10, 0), LocalTime.of(13, 0));
+            given(businessHourRepository.findByTeamIdOrderByIdAsc(TEAM_ID))
+                    .willReturn(List.of(openMonday(LocalTime.of(9, 0), LocalTime.of(18, 0))));
+
+            // When
+            GenerateSlotsResponse result = service.generateForTemplate(TEAM_ID, tpl, USER_ID);
+
+            // Then: 6セル × 月曜4回（7/6,7/13,7/20,7/27）= 24。horizon = [7/6, 8/2]
+            assertThat(result.getGeneratedCount()).isEqualTo(24);
+            assertThat(result.getHorizonFrom()).isEqualTo(TOMORROW);
+            assertThat(result.getHorizonTo()).isEqualTo(LocalDate.of(2026, 8, 2));
+        }
+
+        @Test
+        @DisplayName("S-2: 単一テンプレ scope — 生成時にチーム全テンプレを走査しない（当該テンプレのみが対象）")
+        void 単一テンプレ生成_scopeは当該テンプレのみ() {
+            // Given
+            ReservationSlotTemplateEntity tpl = monTemplate(LocalTime.of(10, 0), LocalTime.of(13, 0));
+            given(businessHourRepository.findByTeamIdOrderByIdAsc(TEAM_ID))
+                    .willReturn(List.of(openMonday(LocalTime.of(9, 0), LocalTime.of(18, 0))));
+
+            // When
+            service.generateForTemplate(TEAM_ID, tpl, USER_ID);
+
+            // Then: チーム全 active テンプレの走査は行わない（generate 全域とは別経路）
+            verify(templateRepository, never()).findByTeamIdAndIsActiveTrue(any());
+        }
+
+        @Test
+        @DisplayName("S-2: 複数テンプレ scope（営業時間変更差分）は渡されたテンプレ群のみ生成する")
+        void 複数テンプレ生成_渡された分のみ() {
+            // Given: MON と TUE の 2 テンプレ（各 1 セル）
+            ReservationSlotTemplateEntity mon = monTemplate(LocalTime.of(10, 0), LocalTime.of(10, 30));
+            ReservationSlotTemplateEntity tue = ReservationSlotTemplateEntity.builder()
+                    .teamId(TEAM_ID).lineId(LINE_ID).dayOfWeek(ReservationDayOfWeek.TUE)
+                    .startTime(LocalTime.of(10, 0)).endTime(LocalTime.of(10, 30)).capacity(1).build();
+            tue.setId(UUID.randomUUID());
+            given(businessHourRepository.findByTeamIdOrderByIdAsc(TEAM_ID))
+                    .willReturn(List.of(
+                            openDay("MON", LocalTime.of(9, 0), LocalTime.of(18, 0)),
+                            openDay("TUE", LocalTime.of(9, 0), LocalTime.of(18, 0))));
+
+            // When
+            GenerateSlotsResponse result = service.generateForTemplates(TEAM_ID, List.of(mon, tue), USER_ID);
+
+            // Then: [7/6,8/2] に月曜4回＋火曜4回 = 8 セル
+            assertThat(result.getGeneratedCount()).isEqualTo(8);
+        }
+
+        @Test
+        @DisplayName("S-6②: 空のテンプレ群（変更曜日にテンプレなし）は生成 0・INSERT 0（horizon 情報は返す）")
+        void 複数テンプレ生成_空は生成なし() {
+            // When
+            GenerateSlotsResponse result = service.generateForTemplates(TEAM_ID, List.of(), USER_ID);
+
+            // Then
+            assertThat(result.getGeneratedCount()).isZero();
+            assertThat(result.getHorizonTo()).isEqualTo(LocalDate.of(2026, 8, 2));
+            verify(slotRepository, never()).insertGeneratedCellIgnoreDuplicate(
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        }
+    }
+
+    // ========================================
+    // F03.4.5 §3.3.2: 臨時営業（単日テンプレ適用）
+    // ========================================
+
+    @Nested
+    @DisplayName("generateSingleDay（F03.4.5 §3.3.2 S-8）")
+    class GenerateSingleDay {
+
+        private ReservationSlotTemplateEntity tueTemplate(LocalTime start, LocalTime end) {
+            ReservationSlotTemplateEntity e = ReservationSlotTemplateEntity.builder()
+                    .teamId(TEAM_ID).lineId(LINE_ID).dayOfWeek(ReservationDayOfWeek.TUE)
+                    .startTime(start).endTime(end).capacity(1).build();
+            e.setId(UUID.randomUUID());
+            return e;
+        }
+
+        @Test
+        @DisplayName("S-8①: 定休日（火曜）に単日適用すると営業時間チェックなしで火曜テンプレ構成のセルが生成される")
+        void 臨時営業_営業時間チェックなしで生成() {
+            // Given: 火曜（7/7）テンプレ 10:00-12:00（4セル）。business_hours はシードしない（定休相当）。
+            given(templateRepository.findByTeamIdAndIsActiveTrue(TEAM_ID))
+                    .willReturn(List.of(tueTemplate(LocalTime.of(10, 0), LocalTime.of(12, 0))));
+
+            // When: sourceDayOfWeek 省略 → date(7/7=火曜) の実曜日を使用
+            GenerateSlotsResponse result = service.generateSingleDay(
+                    TEAM_ID, LocalDate.of(2026, 7, 7), null, USER_ID);
+
+            // Then: 営業時間なしでも 4 セル生成・closed/outside は 0・horizon は単日
+            assertThat(result.getGeneratedCount()).isEqualTo(4);
+            assertThat(result.getSkippedClosedDayCount()).isZero();
+            assertThat(result.getSkippedOutsideHoursCount()).isZero();
+            assertThat(result.getHorizonFrom()).isEqualTo(LocalDate.of(2026, 7, 7));
+            assertThat(result.getHorizonTo()).isEqualTo(LocalDate.of(2026, 7, 7));
+            List<InsertedCell> cells = captureInsertedCells(4);
+            assertThat(cells.get(0).slotDate()).isEqualTo(LocalDate.of(2026, 7, 7));
+        }
+
+        @Test
+        @DisplayName("S-8①: sourceDayOfWeek=MON 指定で日曜に月曜ダイヤが適用される")
+        void 臨時営業_source曜日指定() {
+            // Given: 月曜テンプレ 10:00-11:00（2セル）。date=7/12（日曜）に MON ダイヤを適用。
+            given(templateRepository.findByTeamIdAndIsActiveTrue(TEAM_ID))
+                    .willReturn(List.of(monTemplate(LocalTime.of(10, 0), LocalTime.of(11, 0))));
+
+            // When
+            GenerateSlotsResponse result = service.generateSingleDay(
+                    TEAM_ID, LocalDate.of(2026, 7, 12), ReservationDayOfWeek.MON, USER_ID);
+
+            // Then: 日曜 7/12 に月曜ダイヤの 2 セルが生成される
+            assertThat(result.getGeneratedCount()).isEqualTo(2);
+            List<InsertedCell> cells = captureInsertedCells(2);
+            assertThat(cells.get(0).slotDate()).isEqualTo(LocalDate.of(2026, 7, 12));
+        }
+
+        @Test
+        @DisplayName("S-8②: 同一日への再実行は冪等（既存セルは skippedExistingCount のみ増え枠は増えない）")
+        void 臨時営業_冪等() {
+            // Given: 火曜テンプレ 10:00-11:00（2セル）。対象日のセルが既に存在する（先読みヒット）。
+            ReservationSlotTemplateEntity tue = tueTemplate(LocalTime.of(10, 0), LocalTime.of(11, 0));
+            given(templateRepository.findByTeamIdAndIsActiveTrue(TEAM_ID)).willReturn(List.of(tue));
+            given(slotRepository.findGeneratedCellKeysByTeamIdAndSlotDateBetween(eq(TEAM_ID), any(), any()))
+                    .willReturn(List.of(
+                            new Object[]{tue.getId(), LocalDate.of(2026, 7, 7), LocalTime.of(10, 0)},
+                            new Object[]{tue.getId(), LocalDate.of(2026, 7, 7), LocalTime.of(10, 30)}));
+
+            // When
+            GenerateSlotsResponse result = service.generateSingleDay(
+                    TEAM_ID, LocalDate.of(2026, 7, 7), null, USER_ID);
+
+            // Then
+            assertThat(result.getGeneratedCount()).isZero();
+            assertThat(result.getSkippedExistingCount()).isEqualTo(2);
+            verify(slotRepository, never()).insertGeneratedCellIgnoreDuplicate(
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("S-8②: 当日・過去日は 400=RESERVATION_023（PAST_DATE_SLOT）")
+        void 臨時営業_当日過去は400() {
+            // 当日（2026-07-05）
+            assertThatThrownBy(() -> service.generateSingleDay(TEAM_ID, LocalDate.of(2026, 7, 5), null, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode().getCode())
+                            .isEqualTo("RESERVATION_023"));
+            // 過去（2026-07-04）
+            assertThatThrownBy(() -> service.generateSingleDay(TEAM_ID, LocalDate.of(2026, 7, 4), null, USER_ID))
+                    .isInstanceOf(BusinessException.class);
+        }
+
+        @Test
+        @DisplayName("S-8②: 91日以降（今日+91日）は汎用 400（horizon 外の遠未来生成を防ぐ）")
+        void 臨時営業_91日以降は400() {
+            // 今日 2026-07-05 + 91日 = 2026-10-04
+            assertThatThrownBy(() -> service.generateSingleDay(
+                    TEAM_ID, LocalDate.of(2026, 7, 5).plusDays(91), null, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode().getCode())
+                            .isEqualTo("COMMON_001"));
+        }
+
+        @Test
+        @DisplayName("S-8②: 90日ちょうど（境界内）は対象曜日テンプレがあれば通る")
+        void 臨時営業_90日境界は許可() {
+            // 今日 + 90日 = 2026-10-03（土曜）。SAT テンプレを用意。
+            ReservationSlotTemplateEntity sat = ReservationSlotTemplateEntity.builder()
+                    .teamId(TEAM_ID).lineId(LINE_ID).dayOfWeek(ReservationDayOfWeek.SAT)
+                    .startTime(LocalTime.of(10, 0)).endTime(LocalTime.of(10, 30)).capacity(1).build();
+            sat.setId(UUID.randomUUID());
+            given(templateRepository.findByTeamIdAndIsActiveTrue(TEAM_ID)).willReturn(List.of(sat));
+            LocalDate target = LocalDate.of(2026, 7, 5).plusDays(90);
+
+            // When / Then: 例外にならず生成される
+            GenerateSlotsResponse result = service.generateSingleDay(TEAM_ID, target, null, USER_ID);
+            assertThat(result.getGeneratedCount()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("S-8②: 対象曜日の active テンプレが 0 件なら 400（状態検証）")
+        void 臨時営業_対象曜日テンプレ0件は400() {
+            // Given: 火曜テンプレがない
+            given(templateRepository.findByTeamIdAndIsActiveTrue(TEAM_ID)).willReturn(List.of());
+
+            // When / Then
+            assertThatThrownBy(() -> service.generateSingleDay(TEAM_ID, LocalDate.of(2026, 7, 7), null, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> {
+                        BusinessException be = (BusinessException) e;
+                        assertThat(be.getErrorCode().getCode()).isEqualTo("COMMON_001");
+                        assertThat(be.getFieldErrors())
+                                .anySatisfy(fe -> assertThat(fe.getMessage())
+                                        .contains("この曜日のテンプレートがありません"));
+                    });
+            verify(slotRepository, never()).insertGeneratedCellIgnoreDuplicate(
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
         }
     }
 }
