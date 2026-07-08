@@ -1,7 +1,8 @@
 # F20.1 — 02 API設計
 
-> **ステータス**: 🟢 設計完了（マスター御裁可済・実装待ち）
-> 権利判定（`isEntitled`/`EntitlementGuard`）・プランカタログ・契約/アドオン・シスアド CRUD・org_type イベントを定義する。認可の詳細は [03_security](03_security.md)、DDL は [01_data_model](01_data_model.md)。
+> **ステータス**: 🟢 設計完了（マスター御裁可済・実装待ち／営利自動切替・オーナー変更は Phase 2 保留）
+> **⚠️ Phase 2 保留（マスター 2026-07-08）**: §7 の org_type イベント（営利自動切替）は初期スコープ外（README §3.3・冒頭 Phase 2 保留ブロック）。権利判定・契約/アドオン・シスアド CRUD は初期スコープに残る。
+> 権利判定（`isEntitled`/`EntitlementGuard`）・プランカタログ・契約/アドオン・シスアド CRUD・org_type イベント（**§7・Phase 2 保留**）を定義する。認可の詳細は [03_security](03_security.md)、DDL は [01_data_model](01_data_model.md)。
 
 ---
 
@@ -201,7 +202,7 @@ POST /api/v1/organizations/{orgId}/billing/contracts     # ORG スコープ
 | `planKey` | string | PLAN 時✔ | `"FULL"` | `plans.enabled=true` に実在。無ければ `ENTITLEMENT_001` 404 |
 | `featureKey` | string | ADDON 時✔ | `"ads.hide"` | `feature_catalog.enabled=true` かつ `addon_available=true`。無ければ `ENTITLEMENT_002` 404／addon 不可は `ENTITLEMENT_008` 422 |
 
-> ADDON 契約も同型（`active_contract_pointers` に `contract_kind='ADDON'`・`addon_feature_key=featureKey` で INSERT。`uk_acp_slot` が同一 scope×feature の二重 ADDON を物理拒否＝`ENTITLEMENT_006` 409）。REVENUE な feature の ADDON 契約は §7 イベントを発火（`sourceKind=ADDON`）。
+> ADDON 契約も同型（`active_contract_pointers` に `contract_kind='ADDON'`・`addon_feature_key=featureKey` で INSERT。`uk_acp_slot` が同一 scope×feature の二重 ADDON を物理拒否＝`ENTITLEMENT_006` 409）。REVENUE な feature の ADDON 契約は §7 イベントを発火（`sourceKind=ADDON`）**【Phase 2 保留・初期スコープでは発火しない】**（§7 冒頭）。
 
 処理（PLAN の場合・擬似コード）:
 
@@ -223,8 +224,9 @@ createPlanContract(scopeKind, scopeId, planKey, operatorUserId, idempotencyKey):
                           source_ref_id=contract.id, valid_from=now, valid_until=NULL)
   evictEntitlementCache(scopeKind, scopeId); evictCache("teamPlan", scopeId if TEAM)
   # ★H-5: BETA_GRANT はここを通らない（発行は F20.3 の付与サービス）。REVENUE イベントは「契約＝商用行動」でのみ発火（§7）
-  if plan_features(planKey) に category=REVENUE の機能が含まれる:
-      publishRevenueFeatureActivatedEvent(scopeKind, scopeId, revenueFeatureKeys, sourceKind=PLAN)   # §7
+  # 【Phase 2 保留】↓の営利自動切替イベント発火は初期スコープ外（README §3.3・§7 冒頭）。初期は発火しない＝org_type 自己申告のまま
+  if plan_features(planKey) に category=REVENUE の機能が含まれる:      # 【Phase 2】
+      publishRevenueFeatureActivatedEvent(scopeKind, scopeId, revenueFeatureKeys, sourceKind=PLAN)   # §7【Phase 2】
   return ContractResponse
 ```
 
@@ -316,7 +318,9 @@ GET                 /api/v1/system-admin/billing/contracts?scopeKind=&scopeId=&s
 
 ---
 
-## 7. org_type イベント（営利/非営利の是正・クロスドメイン）
+## 7. org_type イベント（営利/非営利の是正・クロスドメイン）【Phase 2 保留・初期スコープ外】
+
+> **【Phase 2 保留】この節（§7 全体＝`RevenueFeatureActivatedEvent` 発火・org_type 自動更新リスナー・確認必須通知・発火点マトリクス・organization/audit ドメイン結線）は営利自動切替に属し、初期実装スコープ外**（マスター 2026-07-08・README 冒頭 Phase 2 保留ブロック／README §3.3）。**理由**=価格は機能の性質に付く設計ゆえ org_type は課金額を変えず自動補正の価値が低い／非営利優遇は信任（F20.2）で担保／機械的な営利認定の法的・心理的リスク。**初期スコープでは org_type は自己申告のまま自動変異せず、契約サービスは本イベントを発火しない**（下記 §3.1 疑似コードの `publishRevenueFeatureActivatedEvent` 呼び出しは Phase 2 で有効化）。設計は Phase 2 でそのまま使うため温存する。関連 AC（AC-11/12/22/22b/24/25/26/27）は README で `[P2]` タグ付き＝初期試練対象外。
 
 ### 7.1 イベント定義（billing 発火）
 
@@ -427,7 +431,7 @@ public class OrgTypeAutoUpgradeListener {
 - **TEAM→組織 ID 解決は `TeamOrgMembershipRepository.findActiveOrganizationIdsByTeamId(teamId)`（status='ACTIVE'）を新設**（`team_org_memberships` 実在テーブル V2.011）。
 - 通知文言キー（`notification.billing.org_type_*`）は BE `messages*.properties` 6 言語に追加（04 §3）。**この分岐（自動更新対象 org_type 集合・ロールバック）は README §8 R-1 = マスター御裁可済 (b)（2026-07-08）**: 自動更新は {NPO, ASSOCIATION, COMMUNITY, OTHER} のみ・公共系は不変で通知＋運営レビュー。上記擬似コードがその確定仕様。
 
-> **⚠️ 実装スコープ注記（B・軍議で足軽担当に含める）**: 本結線は **2 設計書（billing.beta）の外＝organization/notification/audit ドメインへの実装を要求**する: (1) `OrganizationEntity.updateOrgType` ＋ ロールバック API（R-1）、(2) `TeamOrgMembershipRepository.findActiveOrganizationIdsByTeamId`、(3) 監査アクション `ORG_TYPE_AUTO_UPDATED`/`ORG_TYPE_REVIEW_REQUESTED`/`ORG_TYPE_REVERTED`、(4) `messages*.properties` の通知文言 6 言語。**軍議のタスク分解で足軽の担当範囲にこれらを明示的に含めること**（billing ドメインだけ実装して結線先が無い、を防ぐ）。README §4.2 の実装スコープ表にも反映。
+> **⚠️ 実装スコープ注記（B・軍議で足軽担当に含める）【Phase 2 保留】**: 本結線は **2 設計書（billing.beta）の外＝organization/notification/audit ドメインへの実装を要求**する: (1) `OrganizationEntity.updateOrgType` ＋ ロールバック API（R-1）、(2) `TeamOrgMembershipRepository.findActiveOrganizationIdsByTeamId`、(3) 監査アクション `ORG_TYPE_AUTO_UPDATED`/`ORG_TYPE_REVIEW_REQUESTED`/`ORG_TYPE_REVERTED`、(4) `messages*.properties` の通知文言 6 言語。**これらは営利自動切替に属し初期スコープ外＝Phase 2 で実装する**（マスター 2026-07-08・README §3.3/§4.6）。Phase 2 の軍議のタスク分解で足軽の担当範囲に含める（billing ドメインだけ実装して結線先が無い、を防ぐ）。README §4.6 の実装スコープ表にも反映。
 
 ---
 

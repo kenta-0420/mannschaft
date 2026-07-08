@@ -1,8 +1,23 @@
 # F20.1 課金・エンタイトルメント基盤（プラン提示 × feature_key 単位の権利管理）
 
-> **ステータス**: 🟢 設計完了（マスター御裁可済・実装待ち）
+> **ステータス**: 🟢 設計完了（マスター御裁可済・実装待ち／営利自動切替・オーナー変更は Phase 2 保留）
 > **最終更新**: 2026-07-08
 > **関連**: [F20.3 ベータ特典](../F20.3_beta_perks/README.md)（`source_kind=BETA_GRANT` の発行元）／ [F22.1 統一決済プラットフォーム](../F22.1_market/payment/README.md)（Phase 2 実決済レール）／ [F08.9 会員決済](../F08.9_membership_billing_paywall/README.md)（**逆向きの課金**・混同禁止 §4.5）／ [F12.2 フィーチャーフラグ](../F12.2_feature_flag.md)（**意味論が別**・§4.4）／ [F09.19 広告配信](../F09.19_ad_slot_serving.md)（有料プラン広告非表示の結線先・同 §7.5）
+
+---
+
+## ⚠️⚠️ Phase 2 保留（マスター決定 2026-07-08）— 初期実装スコープ外 ⚠️⚠️
+
+> **収益化は進めるが急ぎではない。以下 2 機能は「初期実装スコープから外し Phase 2 へ保留」する**（設計内容は削除せず本書に温存＝将来そのまま使う。スコープのみ移動）。核となる収益化（プリセット＝3プラン提示＋アドオン・エンタイトルメント判定・スコープ別 BE ゲート・信任〔F20.2〕・ベータ特典〔F20.3〕の付与/判定）は**初期スコープに残す**。
+
+| Phase 2 保留機能 | 本書での該当箇所 | 初期スコープでの代替 |
+|---|---|---|
+| **営利自動切替（本書 F20.1）**: 非営利宣言団体が REVENUE 機能を契約したとき `org_type` を `COMPANY` へ自動変異させる仕組み一式（`RevenueFeatureActivatedEvent` 発火・org_type 自動更新・確認必須通知・誤変異の運営差し戻し API・監査 `ORG_TYPE_AUTO_UPDATED`/`ORG_TYPE_REVERTED`・R-1 の自動判定ロジック） | §2.1・§3.3・§4.6・§5 AC-11/12/22/22b/24/25/26/27・§6・§8 R-1・02 §7・03 §1/§7/§9・01 §ER・04 §orgType | **`org_type` は自己申告のまま**（利用者が申告・自動変異しない）。REVENUE 機能は営利/非営利を問わず有料ゆえ課金は破綻しない。将来 Phase 2 で「収益機能を有効化した非営利宣言団体を**運営レビューのキューに積むソフトなシグナル**（自動変異しない）」として再設計する余地を残す |
+| **team オーナー変更イベント（[F20.3](../F20.3_beta_perks/README.md) B-4）** | F20.3 側で保留（本書は依存しない） | 当面は**規約第 17 条（権利義務譲渡禁止）＋手動の再審査**で足りる |
+
+**保留理由（営利自動切替）**: 価格は「**機能の性質**」に付ける設計（収益機能は営利/非営利問わず有料）ゆえ `org_type` は課金額を変えず、ラベル自動補正の価値が低い。非営利優遇は**信任（F20.2）で担保**する設計であり、自己申告ラベルに優遇をぶら下げていない。加えてクロスドメイン結線（billing→organization）と「団体を機械的に営利認定する」法的・心理的リスクが割に合わない。
+
+**核フローの非依存（確認済み）**: エンタイトルメント判定（`isEntitled`/`EntitlementGuard`）・契約/アドオン・プラン提示・シスアド CRUD・信任（F20.2）・ベータ特典の付与/判定は、**営利自動切替にも team オーナー変更イベントにも一切依存しない**。両機能を Phase 2 に送っても初期スコープは完結する（§6 ロードマップ・§4.6 参照）。
 
 ---
 
@@ -53,11 +68,12 @@ Mannschaft の SaaS 課金（**運営 → 団体/個人**）の基盤を定義�
 - [ ] BE ゲート `EntitlementGuard.require(...)`（未充足 402/403・Valkey キャッシュ）
 - [ ] プラン提示レイヤー（`plans`/`plan_features`/`plan_price_bands`/`feature_catalog`・シスアド CRUD）
 - [ ] 契約機構 `billing_contracts`（PLAN/ADDON・ベータ中は決済なしで契約状態のみ管理）
-- [ ] 営利/非営利のイベント駆動是正（非営利 org_type × REVENUE 機能有効化 → org_type 更新＋確認必須通知）
+- [ ] ~~営利/非営利のイベント駆動是正（非営利 org_type × REVENUE 機能有効化 → org_type 更新＋確認必須通知）~~ → **【Phase 2 保留】初期スコープ外**（§3.3・冒頭 Phase 2 保留ブロック）。初期は org_type 自己申告のまま自動変異しない
 - [ ] 既存 `TeamPlanService.hasPaidPlan` の内部委譲移行（結線先 3 箇所・§4.1）
 - [ ] i18n 6言語（`billing.json` 新設）
 
 ### 2.2 対象外（out・別フェーズ/別機能）
+- [ ] **営利自動切替（org_type 自動変異一式）** → **Phase 2 保留**（マスター 2026-07-08・冒頭 Phase 2 保留ブロック／§3.3）。初期は org_type 自己申告のまま。結線先（organization/notification/audit ドメイン）も初期スコープでは不要
 - [ ] **実決済（PSP 連携・請求・領収書）** → Phase 2。F22.1 Connect レール（自社受取ゆえ素 Checkout の可能性含め Phase 2 軍議で確定）
 - [ ] ベータ特典の付与条件判定・beta_grants → [F20.3](../F20.3_beta_perks/README.md)
 - [ ] 会費徴収（チーム→メンバー） → F08.9（逆向きの課金・§4.5）
@@ -114,9 +130,11 @@ isEntitled(scopeKind, scopeId, featureKey, now):
 - チーム/組織の価格は**アクティブ人数バンド**（`plan_price_bands`）で変動する機構を持つ。バンド割り・各バンド単価は**マスタデータ**（実額未定・NULL 可）。人数の数え方の正準は **`memberships` の `left_at IS NULL` の行数**（F20.3 のスナップショットと同一定義・01 §3.4）。
 - `feature_catalog.category` は **`INTERNAL`（内向き機能・無料枠を広く取る方針）／`REVENUE`（収益機能＝スコープの区分を問わず有料）** の 2 値。非営利無料枠は `free_for_nonprofit` フラグ（機構）で表現し、初期値は現行課金挙動を壊さない（01 §2.1 シード）。
 
-### 3.3 営利/非営利（org_type のイベント駆動是正）
+### 3.3 営利/非営利（org_type のイベント駆動是正）【Phase 2 保留・初期スコープ外】
 
-- 自己申告区分は既存 `organizations.org_type`（V9.091 で ENUM 化・実 enum 値は `GOVERNMENT / MUNICIPALITY / COMPANY / HOSPITAL / ASSOCIATION / SCHOOL / NPO / COMMUNITY / OTHER`）。
+> **【Phase 2 保留】この節の仕組み一式（`RevenueFeatureActivatedEvent` 発火・org_type 自動更新・確認必須通知・公共系の自動判定・差し戻し）は初期実装スコープ外**（マスター 2026-07-08）。**理由**=価格は機能の性質に付く設計ゆえ org_type は課金額を変えず、ラベル自動補正の価値が低い／非営利優遇は信任（F20.2）で担保する／クロスドメイン結線と機械的な営利認定の法的・心理的リスクが割に合わない。**初期スコープでは `org_type` は自己申告のまま自動変異しない**（REVENUE 機能は区分問わず有料ゆえ課金は成立する）。以下の設計は Phase 2 でそのまま使うため温存する。
+
+- 自己申告区分は既存 `organizations.org_type`（V9.091 で ENUM 化・実 enum 値は `GOVERNMENT / MUNICIPALITY / COMPANY / HOSPITAL / ASSOCIATION / SCHOOL / NPO / COMMUNITY / OTHER`）。**初期スコープはこの自己申告値を読むだけで、自動では書き換えない**（以下の自動更新記述はすべて Phase 2）。
 - **非営利系 org_type のスコープが REVENUE 機能を「商用行動」で有効化**した瞬間、billing ドメインが **`RevenueFeatureActivatedEvent`** を発火し、**organization ドメインのリスナー**が org_type を営利（`COMPANY`）へ更新＋ **F04.9 確認必須通知**を org ADMIN へ送る。**クロスドメイン直接 UPDATE 禁止・イベント駆動**（02 §7）。
 - **★発火は「団体自身の商用行動」に限る（H-5）**: 発火するのは **PLAN 契約購入・ADDON 契約購入**（対象に REVENUE 機能を含む）のみ。**ベータ特典の付与（`source_kind=BETA_GRANT`）・シスアド手動付与は発火しない**（運営が無償で配る行為であり団体の商用行動ではない。NPO にベータ特典を配っただけで org_type が COMPANY に自動変異してはならない）。発火点×org_type の全分岐は 02 §7.0 のマトリクス、否定 AC は §5 AC-22b。
 - 自動更新の対象 org_type は **`NPO` / `ASSOCIATION` / `COMMUNITY` / `OTHER`** を推奨既定とし、公共系（`GOVERNMENT` / `MUNICIPALITY` / `SCHOOL` / `HOSPITAL`）は自動更新せず**通知＋運営レビューのみ**（市役所が COMPANY になるのは不合理）→ **§8 R-1=マスター御裁可済(b)（2026-07-08）**。
@@ -200,7 +218,9 @@ entitlementGuard.require(EntitlementScopeKind.TEAM, teamId,
 
 ### 4.6 実装スコープ注記（billing 外ドメインへの要求・軍議で足軽担当に含める）
 
-org_type イベント結線（§3.3・02 §7.2）は **billing.beta ドメインの外**に実装を要求する。軍議のタスク分解で**足軽の担当範囲に明示的に含める**こと（billing だけ実装して結線先が無い状態を防ぐ）:
+> **【Phase 2 保留】以下の org_type 結線（organization/notification/audit ドメイン）は初期スコープでは不要**（マスター 2026-07-08・§3.3）。初期は org_type 自己申告のまま自動変異しないため、これらの新設物（`updateOrgType`・差し戻し API・`findActiveOrganizationIdsByTeamId`・監査アクション・通知文言）は **Phase 2 で実装する**。初期スコープの軍議・試練の対象からは外す。設計は Phase 2 のため温存する。
+
+org_type イベント結線（§3.3・02 §7.2）は **billing.beta ドメインの外**に実装を要求する（**Phase 2**）。Phase 2 の軍議のタスク分解で**足軽の担当範囲に明示的に含める**こと（billing だけ実装して結線先が無い状態を防ぐ）:
 
 | # | ドメイン | 要求物（origin/main 実物照合済み） |
 |---|---|---|
@@ -216,6 +236,7 @@ org_type イベント結線（§3.3・02 §7.2）は **billing.beta ドメイン
 ## 5. 受け入れ条件（AC）
 
 > `/試練` はこの表から red テストを起こす。番号は本設計内で恒久（追補は末尾連番）。
+> **【Phase 2 タグ】** `[P2]` を付した AC（org_type 自動変異・確認通知・不発火の否定 AC を検証するもの＝AC-11/12/22/22b/24/25/26/27）は**営利自動切替に属し初期スコープの試練対象外**（マスター 2026-07-08・§3.3）。初期スコープの試練は `[P2]` 以外の AC（エンタイトルメント判定・契約・後方互換・IDOR 等）から起こす。`[P2]` の AC は Phase 2 実装時に有効化する（設計は温存）。
 
 | # | 区分 | 誰が・何をしたら・どうなる（観測可能） |
 |---|---|---|
@@ -229,8 +250,8 @@ org_type イベント結線（§3.3・02 §7.2）は **billing.beta ドメイン
 | AC-08 | 境界 | `valid_from` が未来の行は false |
 | AC-09 | 異常 | ガード未充足時、アドオン購入可能な機能は **HTTP 402**＋購入導線情報、購入不可（スコープ不適合等）は **HTTP 403** |
 | AC-10 | 異常 | チーム T1 の ADMIN が **T2 の scopeId を指定した契約 API** を呼ぶ → **403**（scopeId 所有権検証・IDOR） |
-| AC-11 | 正常 | 非営利 org_type（例 `NPO`）の組織 O の ADMIN が REVENUE 機能を含む契約を有効化 → `RevenueFeatureActivatedEvent` 発火 → **O の org_type が `COMPANY` へ更新**され、O の ADMIN へ**確認必須通知（F04.9）**が届く |
-| AC-12 | 境界 | 公共系 org_type（`GOVERNMENT`/`MUNICIPALITY`/`SCHOOL`/`HOSPITAL`）の組織が REVENUE 機能を有効化 → org_type は**更新されず**、確認必須通知＋運営レビュー記録のみ（R-1 御裁可後に確定） |
+| AC-11 | 正常 `[P2]` | **【Phase 2】**非営利 org_type（例 `NPO`）の組織 O の ADMIN が REVENUE 機能を含む契約を有効化 → `RevenueFeatureActivatedEvent` 発火 → **O の org_type が `COMPANY` へ更新**され、O の ADMIN へ**確認必須通知（F04.9）**が届く（初期スコープでは org_type は自己申告のまま不変） |
+| AC-12 | 境界 `[P2]` | **【Phase 2】**公共系 org_type（`GOVERNMENT`/`MUNICIPALITY`/`SCHOOL`/`HOSPITAL`）の組織が REVENUE 機能を有効化 → org_type は**更新されず**、確認必須通知＋運営レビュー記録のみ（R-1 御裁可後に確定） |
 | AC-13 | 境界 | 無所属チーム（`team_org_memberships` に ACTIVE 行なし）は非営利扱いで判定される（R-2 御裁可後に確定） |
 | AC-14 | 後方互換 | 既存 `team_subscriptions`（`status=ACTIVE` かつ `planType<>FREE`）を持つチームは、移行後も `hasPaidPlan=true` |
 | AC-15 | 後方互換 | 予約通知宛先 4 件目追加は、無権利チームで従来どおり `RESERVATION_029`・**HTTP 402** |
@@ -240,13 +261,13 @@ org_type イベント結線（§3.3・02 §7.2）は **billing.beta ドメイン
 | AC-19 | 正常 | プラン変更（BASIC→FULL・FULL→BASIC）: 旧契約由来 entitlements が `revoked_at` で無効化され、新プラン分が発行される。ダウングレードで対象外になった機能は即 false |
 | AC-20 | 正常 | 契約解約 → 当該契約由来の全 entitlements が revoke され、対象機能が 402 に戻る |
 | AC-21 | 異常 | 同一（scope×feature×source_kind×source_ref×valid_from）の重複 INSERT → UNIQUE 制約違反として 409 |
-| AC-22 | 境界 | TEAM スコープの REVENUE 有効化（PLAN/ADDON 契約）では所属組織の org_type は更新されず、**所属する全 ACTIVE 組織**の ADMIN へ通知のみ |
-| AC-22b | 異常（否定・H-5） | **NPO 組織にベータ特典（BETA_GRANT）を付与しても `RevenueFeatureActivatedEvent` は発火せず org_type は変化しない**（運営の無償配布は商用行動ではない） |
+| AC-22 | 境界 `[P2]` | **【Phase 2】**TEAM スコープの REVENUE 有効化（PLAN/ADDON 契約）では所属組織の org_type は更新されず、**所属する全 ACTIVE 組織**の ADMIN へ通知のみ |
+| AC-22b | 異常（否定・H-5）`[P2]` | **【Phase 2】NPO 組織にベータ特典（BETA_GRANT）を付与しても `RevenueFeatureActivatedEvent` は発火せず org_type は変化しない**（運営の無償配布は商用行動ではない） |
 | AC-23 | 正常（M-2） | 権利サマリ `GET .../entitlements` の `entitledFeatures` が、FREE 掲載機能（`sourceKind=FREE`）・非営利無料枠（`NONPROFIT_FREE`）を virtual 合成し、**一覧の feature_key 集合＝`isEntitled=true` の集合**に一致する（UI「利用できる機能」と BE 判定の齟齬ゼロ） |
-| AC-24 | 境界 | 既に `COMPANY` の組織が REVENUE 契約 → org_type は変化せず通知もしない（冪等） |
-| AC-25 | 境界 | INTERNAL 機能のみの PLAN/ADDON 契約 → `RevenueFeatureActivatedEvent` は不発火 |
-| AC-26 | 異常（否定・H-5） | シスアド手動付与で REVENUE 機能を付けても org_type は変化しない（運営操作は商用行動ではない） |
-| AC-27 | 境界 | USER スコープの REVENUE 契約は org 区分に影響しない（イベント不発火） |
+| AC-24 | 境界 `[P2]` | **【Phase 2】**既に `COMPANY` の組織が REVENUE 契約 → org_type は変化せず通知もしない（冪等） |
+| AC-25 | 境界 `[P2]` | **【Phase 2】**INTERNAL 機能のみの PLAN/ADDON 契約 → `RevenueFeatureActivatedEvent` は不発火 |
+| AC-26 | 異常（否定・H-5）`[P2]` | **【Phase 2】**シスアド手動付与で REVENUE 機能を付けても org_type は変化しない（運営操作は商用行動ではない） |
+| AC-27 | 境界 `[P2]` | **【Phase 2】**USER スコープの REVENUE 契約は org 区分に影響しない（イベント不発火） |
 | AC-28 | 正常（H-1） | 同一スコープへの ACTIVE PLAN 契約の**並行 2 リクエスト**は、`active_contract_pointers` の UNIQUE により 1 件のみ成功・他は `ENTITLEMENT_006` 409（TOCTOU 二重契約が作れない） |
 | AC-29 | 正常（M-5） | 退会申請（猶予中）では契約・entitlements は revoke されず権利維持。退会確定（purge）で失効。撤回時は権利維持のまま |
 | AC-30 | 境界（L2） | 契約作成の**完全同時再送**では冪等キー check-then-set の非原子により片方が `active_contract_pointers` UNIQUE で `ENTITLEMENT_006`(409) になる。二重契約・二重発行は生じない（FE は 409 を「契約済み」として再取得） |
@@ -257,10 +278,11 @@ org_type イベント結線（§3.3・02 §7.2）は **billing.beta ドメイン
 
 | 段 | 名称 | 規模 | 依存 | 主要成果 |
 |---|---|---|---|---|
-| **P1** | エンタイトルメント機構＋プラン提示＋結線 | **L** | なし | 全テーブル・`isEntitled`/`EntitlementGuard`・シスアド CRUD・`hasPaidPlan` Expand 委譲・org_type イベント・i18n |
+| **P1** | エンタイトルメント機構＋プラン提示＋結線 | **L** | なし | 全テーブル・`isEntitled`/`EntitlementGuard`・シスアド CRUD・`hasPaidPlan` Expand 委譲・i18n（**org_type イベント〔営利自動切替〕は含めない＝Phase 2 保留**・§3.3） |
 | **P2** | ベータ特典接続 | **M** | P1・F20.3 | `source_kind=BETA_GRANT` の発行・取消（F20.3 が主管） |
 | **P3** | FE 課金 UI | **M** | P1 | プラン一覧・ペイウォールモーダル・課金管理画面（04） |
-| **Phase 2** | 実決済（PSP 連携） | **L** | P1〜P3・ベータ価格確定 | `billing_contracts` へ PSP 列 Expand・請求・領収書・F22.1 連携可否確定（**別軍議**） |
+| **Phase 2a** | 営利自動切替（org_type 自動変異一式） | **M** | P1・organization/notification/audit ドメイン | `RevenueFeatureActivatedEvent`・org_type 自動更新・確認必須通知・差し戻し API・監査・R-1 自動判定（§3.3・02 §7・**別軍議**）。または「運営レビューのキューに積むソフトなシグナル」への再設計 |
+| **Phase 2b** | 実決済（PSP 連携） | **L** | P1〜P3・ベータ価格確定 | `billing_contracts` へ PSP 列 Expand・請求・領収書・F22.1 連携可否確定（**別軍議**） |
 
 > BE/API はテスト先行（memory `feedback_test_first_be_api`）: 軍議 AC → `/試練` red → `/出陣` green → `/検分` 照合。
 
@@ -279,7 +301,7 @@ org_type イベント結線（§3.3・02 §7.2）は **billing.beta ドメイン
 
 | # | 論点 | 選択肢 | **御裁可済（2026-07-08）** |
 |---|---|---|---|
-| **R-1** | org_type 自動更新の対象範囲＋**誤変異のロールバック経路（M-3）** | (a) `COMPANY` 以外すべて自動更新／(b) `NPO`・`ASSOCIATION`・`COMMUNITY`・`OTHER` のみ自動更新、公共系（`GOVERNMENT`/`MUNICIPALITY`/`SCHOOL`/`HOSPITAL`）は通知＋運営レビューのみ＋差し戻し | **✅ (b) 確定**。NPO・任意団体等のみ自動で営利切替、公共系（学校・市役所等）は自動変異せず通知＋運営レビュー＋差し戻し。差し戻しは運営 API `POST /api/v1/system-admin/organizations/{orgId}/org-type-revert`＋監査（org_type の権威は organization ドメイン）。確認必須通知に「区分が違う場合はお問い合わせください」の異議導線を含める |
+| **R-1** `[P2]` | org_type 自動更新の対象範囲＋**誤変異のロールバック経路（M-3）** | (a) `COMPANY` 以外すべて自動更新／(b) `NPO`・`ASSOCIATION`・`COMMUNITY`・`OTHER` のみ自動更新、公共系（`GOVERNMENT`/`MUNICIPALITY`/`SCHOOL`/`HOSPITAL`）は通知＋運営レビューのみ＋差し戻し | **✅ (b) 確定**（**この自動判定ロジック自体が営利自動切替＝Phase 2 保留のため、R-1 のスコープ判定は Phase 2 実装時に適用する**・§3.3・冒頭 Phase 2 保留ブロック）。NPO・任意団体等のみ自動で営利切替、公共系（学校・市役所等）は自動変異せず通知＋運営レビュー＋差し戻し。差し戻しは運営 API `POST /api/v1/system-admin/organizations/{orgId}/org-type-revert`＋監査（org_type の権威は organization ドメイン）。確認必須通知に「区分が違う場合はお問い合わせください」の異議導線を含める |
 | **R-2** | 無所属チームの営利/非営利区分の持ち方 | (a) `teams` に区分列を追加／(b) billing ドメイン側に scope 区分テーブルを新設／(c) **列追加なし**・「ACTIVE 所属組織から都度導出、無所属は非営利扱い」 | **✅ (c) 確定**。列追加なし・都度導出・無所属=非営利扱い。REVENUE 機能は区分問わず有料のため悪用余地は INTERNAL 無料枠のみで小さい（YAGNI） |
 | **R-3** | BASIC プランの機能構成・想定価格 | 機構は本設計で完成。構成・価格は運用データ待ち | 🕒 ベータ計測（F20.3 §7）後に決定（実装ブロックせず・設計は NULL 可で先行） |
 | **R-4** | ORG 契約の配下チーム展開（組織一括契約でチームスコープにも効かせるか） | (a) 展開しない（本設計）／(b) `plan_features` 側に展開フラグ | **✅ (a) 確定**。展開しない。実需が出れば (b) を Phase 2 で検討 |

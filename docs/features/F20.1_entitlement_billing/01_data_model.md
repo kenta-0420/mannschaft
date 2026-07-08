@@ -1,6 +1,7 @@
 # F20.1 — 01 データモデル
 
-> **ステータス**: 🟢 設計完了（マスター御裁可済・実装待ち）
+> **ステータス**: 🟢 設計完了（マスター御裁可済・実装待ち／営利自動切替・オーナー変更は Phase 2 保留）
+> **⚠️ Phase 2 保留（マスター 2026-07-08）**: 営利自動切替（org_type 自動更新）は初期スコープ外（README §3.3）。本書の中核テーブル（`entitlements`/`billing_contracts`/`feature_catalog`/`plans`/`plan_features`/`plan_price_bands`）は初期スコープに残る。ER 図の `organizations.org_type ◀ イベント` の結線のみ Phase 2。
 > [README](README.md) の中核モデル（feature_key エンタイトルメント／プラン提示レイヤー／契約機構）を DB に落とす。
 
 ---
@@ -335,7 +336,7 @@ beta_grants（F20.3・UUIDv7）
   └─(論理: source_ref_id)─ entitlements（source_kind=BETA_GRANT）
 
 entitlements.scope_id ─(論理)─ users / teams / organizations（クロスドメイン・FKなし）
-organizations.org_type ◀─(イベント: RevenueFeatureActivatedEvent・クロスドメイン直接 UPDATE 禁止)─ billing
+organizations.org_type ◀─(イベント: RevenueFeatureActivatedEvent・クロスドメイン直接 UPDATE 禁止)─ billing  【Phase 2 保留・営利自動切替・初期スコープでは結線しない】
 memberships（left_at IS NULL）─(論理・読取のみ)─ アクティブ人数解決
 team_org_memberships（status=ACTIVE）─(論理・読取のみ)─ チームの営利/非営利導出
 ```
