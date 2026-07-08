@@ -10,7 +10,7 @@
 - **新規ドメイン `com.mannschaft.app.trust` に閉じる**。`team`/`organization`/`membership` からは **ID 論理参照のみ**（`scope_kind`＋`scope_id`）。**クロスドメイン FK は張らない**（CLAUDE.md 原則 1）。
 - **新規テーブルは全て `UuidV7Entity` 継承（`id BINARY(16)`）**（CLAUDE.md 原則 6）。
 - **CASCADE は trust ドメイン内のみ**。本設計では 2 テーブル間に FK/CASCADE を張らない（`trust_endorsements` は監査証跡として `trust_certifications` の状態に依存せず不変保持する。集計は論理参照 SELECT で行う）。
-- **テナントスコープ**: `trust_certifications`/`trust_endorsements` は `organization_id` を保持し `AbstractTenantAwareRepository` を実装（CLAUDE.md 原則 7）。TEAM/ORG 両対応のため `scope_kind`＋`scope_id` 派生 finder（`escrow_transactions` 前例と同型）を採る。**シャーディングの正直な注記**: 本機能の主クエリ（incoming 有効件数・年間発行数）は `scope_kind`＋`scope_id` 主導のため、`organization_id` シャーディングでは被覆されない（endorser と endorsee の org は異なりうる）。分散化時は scope キーでのルーティングまたはグローバルセカンダリインデックスが別途必要（README §9）。`organization_id` はテナント集計・原則 7 準拠のために保持する。
+- **テナントスコープ**: `trust_certifications`/`trust_endorsements` は `organization_id` を保持する（CLAUDE.md 原則 7）。ただし**論理削除を使わない監査台帳のため `deleted_at` 列を持たず、`AbstractTenantAwareRepository` は継承せず素の `JpaRepository`＋`findByOrganizationId(Long)` 派生 finder で絞り込む**（継承すると基底の `deletedAt` 要求で起動時 PropertyReferenceException・§6 の警告）。`escrow_transactions`（`organization_id` 有・`deleted_at` 無で素の `JpaRepository`＋`findByOrganizationId` を採る）と同型。TEAM/ORG 両対応のため `scope_kind`＋`scope_id` 派生 finder を用いる。**シャーディングの正直な注記**: 本機能の主クエリ（incoming 有効件数・年間発行数）は `scope_kind`＋`scope_id` 主導のため、`organization_id` シャーディングでは被覆されない（endorser と endorsee の org は異なりうる）。分散化時は scope キーでのルーティングまたはグローバルセカンダリインデックスが別途必要（README §9）。`organization_id` はテナント集計・原則 7 準拠のために保持する。
 - **スコープ種別**: payment `ScopeKind{USER,TEAM,ORG}` 準拠。本機能は **TEAM/ORG のみ**（`scope_kind` の CHECK で USER を拒否・§3.1/§3.2）。membership カウント時の `TEAM/ORG → TEAM/ORGANIZATION` マッピングは [README §1.4](README.md) を厳守。
 - **enum は DB 側 VARCHAR + CHECK 制約**（既存 payment/visibility ドメインと整合・拡張容易性）。Java 側は enum で表現し `@Enumerated(EnumType.STRING)` または VARCHAR マッピング。
 - **`@Query` 内コメント厳禁**（JPQL/native query 内に SQL コメントを書かない・パース不整合回避）。
@@ -258,18 +258,23 @@ public class TrustEndorsementEntity extends UuidV7Entity {
 }
 ```
 
-Repository（テナント対応・原則 7）:
+Repository（**素の `JpaRepository`＋`organization_id` 派生 finder**・原則 7 は列保持で充足）:
+
+> ⚠️ **`AbstractTenantAwareRepository` を継承してはならない（起動時 PropertyReferenceException 回避）**
+> `AbstractTenantAwareRepository` の派生メソッド（`findByOrganizationIdAndDeletedAtIsNull` 等）は Entity に **`deletedAt` プロパティを要求**する。本機能の 2 テーブルは**論理削除を使わない監査台帳**（取消行は `revoked_at` で無効化しつつ可視保持・§1/§8）で `deleted_at` 列を持たないため、継承すると Spring Data がクエリ導出時に `deletedAt` を解決できず**起動時 `PropertyReferenceException` でコンテキストが立ち上がらない**（UT はモックで緑のまま＝**UT 緑・実機全 E2E 即死**）。
+> **origin/main 前例**: `EscrowTransactionRepository` は `organization_id` を持つが `deleted_at` 無しのため **素の `JpaRepository<EscrowTransactionEntity, UUID>`＋`findByOrganizationId(Long)`** で実装している（一方 `deleted_at` を持つ `ConnectAccountRepository`/`FeeRecoveryBalanceRepository` は `AbstractTenantAwareRepository` を継承）。本機能は前者（EscrowTransaction）に倣う。
 
 ```java
-// organization_id を持つため AbstractTenantAwareRepository を継承
+// 素の JpaRepository を継承（AbstractTenantAwareRepository は使わない・上記警告）
 public interface TrustCertificationRepository
-        extends AbstractTenantAwareRepository<TrustCertificationEntity, UUID> {
+        extends JpaRepository<TrustCertificationEntity, UUID> {
     Optional<TrustCertificationEntity> findByScopeKindAndScopeId(String scopeKind, Long scopeId);
     List<TrustCertificationEntity> findByStateOrderByUnderReviewSinceAsc(String state); // 再審査キュー
+    List<TrustCertificationEntity> findByOrganizationId(Long organizationId);           // テナント絞り込み（原則7・EscrowTransaction 前例）
 }
 
 public interface TrustEndorsementRepository
-        extends AbstractTenantAwareRepository<TrustEndorsementEntity, UUID> {
+        extends JpaRepository<TrustEndorsementEntity, UUID> {
     long countByEndorseeScopeKindAndEndorseeScopeIdAndRevokedAtIsNull(String kind, Long id); // 有効 n
     long countByEndorserScopeKindAndEndorserScopeIdAndRevokedAtIsNullAndGrantedAtAfter(
         String kind, Long id, LocalDateTime since);                                        // 年間発行数
@@ -279,6 +284,7 @@ public interface TrustEndorsementRepository
         String kind, Long id);   // REVOKE 連鎖で無効化する対象（outgoing 有効信任）
     List<TrustEndorsementEntity> findByEndorseeScopeKindAndEndorseeScopeIdAndRevokedAtIsNull(
         String kind, Long id);   // incoming 公開一覧
+    List<TrustEndorsementEntity> findByOrganizationId(Long organizationId);                // テナント絞り込み（原則7）
 }
 ```
 
@@ -327,6 +333,6 @@ erDiagram
 | 4. 退会時匿名化 | ✅ `granted_by_user_id`/`revoked_by_user_id` は論理参照（退会時 user 側匿名化で PII は消える）・信任台帳は統計/監査価値のため保持（[03 §5](03_security.md)） |
 | 5. @Transactional ドメイン内 | ✅ `trust` ドメイン内に閉じる。membership カウント・team/org 存在確認は読み取り Service 経由・通知は ApplicationEvent（[02 §7](02_api_design.md)） |
 | 6. 新規テーブル UUIDv7 | ✅ `trust_certifications`/`trust_endorsements` とも `UuidV7Entity`（BINARY(16)） |
-| 7. テナント Repository | ✅ 両テーブル `organization_id` 保持・`AbstractTenantAwareRepository` 実装（※主クエリは scope キー主導のため分散時は scope ルーティング/グローバルセカンダリが別途必要・§1） |
+| 7. テナント Repository | ✅（**`AbstractTenantAwareRepository` は非継承**）両テーブル `organization_id` 列を保持し、**素の `JpaRepository`＋`findByOrganizationId(Long)` 派生 finder** で絞り込む。**非継承の理由＝本機能は論理削除を使わない監査台帳で `deleted_at` 列を持たず、基底の派生メソッドが要求する `deletedAt` プロパティを満たせない（継承すると起動時 PropertyReferenceException で全 E2E 即死）**。origin/main の `EscrowTransactionRepository`（同じく `organization_id` 有・`deleted_at` 無）が素の `JpaRepository`＋`findByOrganizationId` で実装している前例に倣う。原則 7 の意図（`organization_id` 列をシャードキー系の絞り込み軸として保持）は列保持＋派生 finder で充足（§6）。※主クエリは scope キー主導のため分散時は scope ルーティング/グローバルセカンダリが別途必要（§1）。 |
 
 > **マスタ例外・シングルトン例外には該当しない**: 両テーブルとも団体ごと・信任ごとに行が増える運用データ（テナントスコープ）であり、原則 6（UUIDv7）を適用する。
