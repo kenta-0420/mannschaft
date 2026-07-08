@@ -129,7 +129,7 @@
 | AC-16 | 異常 | `grant_kind=INDIVIDUAL` × `scope_kind≠USER`（または TEAM_ORG × USER）の付与 → **422 `BETA_PERK_007`** |
 | AC-17 | 正常 | 本人が `GET /me/beta-perks` で自分の特典・充足状況（実測値/閾値）を確認できる。**他人の特典は見えない** |
 | AC-18 | 異常 | 一般ユーザーがシスアド運用 API（付与・取消・審査）を呼ぶ → 403 |
-| AC-19 | 正常 | 個人特典保持者の退会 → grant は revoke され entitlements も失効（`UserWithdrawalService` 内・宙ぶらりんを残さない） |
+| AC-19 | 正常 | 個人特典保持者の退会**確定（purge）** → `AccountPurgedEvent` 受信で grant は revoke され entitlements も失効（申請・猶予中は revoke されず権利維持・撤回で復帰。§8） |
 | AC-20 | 境界 | 審査解決（問題なし） → `review_flag=false`・`review_resolved_at/by` 記録・権利は連続して有効 |
 
 ---

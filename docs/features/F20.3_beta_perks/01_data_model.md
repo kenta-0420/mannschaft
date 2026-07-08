@@ -114,7 +114,9 @@ grantBetaPerk(grantKind, betaPhase, scopeKind, scopeId, operator|SYSTEM):
         valid_until = NULL                          （INDIVIDUAL・「サービス提供期間中無償」）
                     | granted_at + 2年               （TEAM_ORG・下限。AC-04）
         organization_id = beta_grants と同値
-  # 3) 称号バッジ（INDIVIDUAL のみ・§5）／ 4) 通知 ／ 5) キャッシュ evict（F20.1 02 §8）
+  # 3) 称号バッジ（INDIVIDUAL のみ・§5）／ 4) 通知 ／ 5) キャッシュ evict（F20.1 02 §8・scope 単位）
+  # ★H-5: RevenueFeatureActivatedEvent は発火しない（付与は運営の無償配布で団体の商用行動ではない）。
+  #        REVENUE 機能を含む FULL 構成を渡しても org_type は変化させない（F20.1 02 §7・AC-22b 否定）。
 ```
 
 - **取消**: `beta_grants.revoked_at/revoked_by/revoke_reason` セット＋ `entitlements WHERE source_kind='BETA_GRANT' AND source_ref_id=:grantId AND revoked_at IS NULL` を全件 revoke（同一トランザクション・AC-09）。
