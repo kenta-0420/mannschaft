@@ -1,6 +1,6 @@
 # F20.2 信任（信頼の輪）— 02. API設計
 
-> **ステータス**: 🟢 設計完了（要裁可論点 §11 のマスター裁可待ち）
+> **ステータス**: 🟢 設計完了（マスター御裁可済・実装待ち）
 > 親: [README.md](README.md) ／ 関連: [01_data_model.md](01_data_model.md) / [03_security.md](03_security.md)
 
 ---
@@ -98,7 +98,7 @@
          → 不在・削除済み・「endorser 管理者（操作者）から不可視」のいずれも**同一応答 TRUST_007（404）**
            （実在チェックだけにすると PRIVATE 団体の ID 総当り列挙オラクルになる・README §11-6 関連脅威）
 3. endorser 資格判定（TrustEligibilityService.checkEligibility・§4）:
-     - state != CERTIFIED（is_anchor 含む・UNDER_REVIEW は不可＝README §11-3 推奨(b)）→ TRUST_001（422）
+     - state != CERTIFIED（is_anchor 含む・UNDER_REVIEW は不可＝README §11-3 御裁可済(b)）→ TRUST_001（422）
      - 設立 N ヶ月未達 or established_date/precision NULL → TRUST_003（422・details に不足条件）
      - アクティブメンバー M 人未満 → TRUST_003（422）
      - 年間発行数 >= cap（直近12ヶ月・revoked_at IS NULL の COUNT・README §3.5 案B）→ TRUST_004（429）
@@ -169,7 +169,7 @@ Path param のみ: `endorsementId`（UUID）。Body なし。
 checkEligibility(endorserScopeKind, endorserScopeId, clock):
   cert = trust_certifications.findByScope(endorser)          // 無ければ UNCERTIFIED 扱い
   if cert == null || cert.state != CERTIFIED:
-      return NG(TRUST_001)                                    // UNDER_REVIEW も不可（README §11-3 (b)）
+      return NG(TRUST_001)                                    // UNDER_REVIEW も不可（README §11-3 御裁可済(b)）
 
   // 設立 N ヶ月（precision 保守側丸め・README §3.4）
   (estDate, precision) = loadEstablished(endorser)            // teams/organizations の established_date(+precision)

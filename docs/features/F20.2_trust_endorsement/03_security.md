@@ -1,6 +1,6 @@
 # F20.2 信任（信頼の輪）— 03. セキュリティ
 
-> **ステータス**: 🟢 設計完了（要裁可論点 §11 のマスター裁可待ち）
+> **ステータス**: 🟢 設計完了（マスター御裁可済・実装待ち）
 > 親: [README.md](README.md) ／ 関連: [01_data_model.md](01_data_model.md) / [02_api_design.md](02_api_design.md)
 > 参照: `docs/security/README.md` / `docs/security/01_authorization_baseline.md` / `docs/security/03_role_authority_model.md`
 
@@ -178,13 +178,13 @@ email / 氏名等の個人 PII 全般（本機能は団体単位・個人情報�
 - [x] 連鎖剥奪の暴走 → 1 段制限＋UNDER_REVIEW 留め（README §3.7）
 - [x] 削除済み団体の信任残留 → 削除イベント購読で outgoing 無効化（§5）
 - [x] 通知種別 → 通常通知（F04.9 確認必須通知は不使用・被信任側に確認義務動作がないため。README §8 に根拠明記）
-- [ ] **endorsee 側の同意（受任の承諾）フローの要否** → 既定=**設けない**（信任は endorser の一方向の対外表明・endorsee は「操作者から F00 可視」検証のみ＝存在オラクル封鎖・§1/§3 マトリクス・02 §2.3）。ただし「望まない団体から公開の信任を張られる」レピュテーション懸念があるため、代替案=「endorsee 管理者が特定の信任を自団体の公開面から非表示にできる opt-out」を将来拡張点として残す。**要裁可**（README §11-6） |
-- [ ] **PRIVATE 団体が当事者の信任の公開範囲** → 既定=安全側（相手方が F00 可視の信任のみ公開面に出す・件数は全件）。精査で確定（§4.1 要精査注記）
-- [ ] **`UNDER_REVIEW` 団体の信任発行可否** → 推奨 (b) 発行不可（README §11-3・マスター裁可待ち）
+- [x] **endorsee 側の同意（受任の承諾）フローの要否** → **マスター御裁可済（2026-07-08・README §11-6＝(a)＋(c)将来拡張）**: 同意フローは設けない（信任は endorser の一方向の対外表明・endorsee は「操作者から F00 可視」検証のみ＝存在オラクル封鎖・§1/§3 マトリクス・02 §2.3）。公開面 opt-out（(c)）は将来拡張点として温存
+- [x] **PRIVATE 団体が当事者の信任の公開範囲** → **マスター御裁可済（2026-07-08・README §11-7＝(b)安全側）**: 相手方が F00 可視の信任のみ公開面に出す・件数 `validEndorsementCount` は全件（§4.1）
+- [x] **`UNDER_REVIEW` 団体の信任発行可否** → **マスター御裁可済（2026-07-08・README §11-3＝(b)発行不可）**: 発行資格は `state=CERTIFIED` 厳密一致のみ
 
-### 9.2 ステータス確定条件（🟡→🟢 にするための関門）
+### 9.2 ステータス確定条件（🟢 設計完了の関門・すべて充足）
 
-- [ ] README §11 の要裁可論点（11-1〜11-5）＋本書 §9.1 の [ ] 3 件（endorsee 同意・PRIVATE 公開範囲・UNDER_REVIEW 発行可否）にマスター御裁可が出て設計へ反映されている
-- [ ] 認可が実在パターン（`accessGuard.isScopeAdmin` / `hasRole('SYSTEM_ADMIN')`）の逐語で記述され、userID→scopeId 流用がないことを精査で確認（§3.0/§3.1）
-- [ ] DB 原則適合（01 §8）・F00 経由の可視性（§4）・公開 DTO 禁則（§4.2）が精査で確認されている
-- [ ] エラーコード採番（`TRUST_0xx`）と Flyway 版番号（`V146` 仮）がマージ時に origin/main と再照合される注記が残っている（02 §8 / 01 §5）
+- [x] README §11 の 7 論点（11-1〜11-7）にマスター御裁可（2026-07-08）が出て設計へ反映済み（README §11・本書 §9.1）
+- [x] 認可が実在パターン（`accessGuard.isScopeAdmin` / `hasRole('SYSTEM_ADMIN')`）の逐語で記述され、userID→scopeId 流用がないことを精査で確認（§3.0/§3.1）
+- [x] DB 原則適合（01 §8・`AbstractTenantAwareRepository` 非継承の EscrowTransaction 前例準拠）・F00 経由の可視性（§4・`ContentVisibilityChecker`）・公開 DTO 禁則（§4.2）を精査で確認
+- [x] エラーコード採番（`TRUST_0xx`）と Flyway 版番号（`V146` 仮）はマージ時に origin/main と再照合する注記を残置（02 §8 / 01 §5）
