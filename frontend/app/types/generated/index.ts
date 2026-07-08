@@ -14182,6 +14182,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/page-views": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * ページビュービーコン送信
+         * @description 閲覧イベントを非同期で記録する。認証不要。
+         */
+        post: operations["receiveBeacon"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations": {
         parameters: {
             query?: never;
@@ -32453,6 +32473,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{slug}/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * チームアクセス解析取得
+         * @description チームの PV 集計を返す。メンバーのみ閲覧可。
+         */
+        get: operations["getAnalytics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{id}/payment-summary": {
         parameters: {
             query?: never;
@@ -35781,6 +35821,26 @@ export interface paths {
          * @description 対象組織の上位組織チェーンを root から直近の親の順に返す。max-depth (default 5) を超える場合は途中で打ち切り、meta.truncated=true を立てる。
          */
         get: operations["getAncestors"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{slug}/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 組織アクセス解析取得
+         * @description 組織の PV 集計を返す。メンバーのみ閲覧可。
+         */
+        get: operations["getAnalytics_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -57751,6 +57811,18 @@ export interface components {
         ApproveConsentRequest: {
             token?: string;
         };
+        PageViewBeaconRequest: {
+            /** Format: int64 */
+            contentId: number;
+            /** @enum {string} */
+            contentType: "ARTICLE" | "ACTIVITY" | "PAGE" | "TEAM";
+            /** @enum {string} */
+            scope: "TEAM" | "ORGANIZATION";
+            /** Format: int64 */
+            scopeId: number;
+            title?: string;
+            url?: string;
+        };
         CreateOrganizationRequest: {
             city?: string;
             name?: string;
@@ -67599,6 +67671,50 @@ export interface components {
         };
         ApiResponseListBlockResponse: {
             data?: components["schemas"]["BlockResponse"][];
+        };
+        ApiResponsePageViewAnalyticsResponse: {
+            data?: components["schemas"]["PageViewAnalyticsResponse"];
+        };
+        ContentRankingDto: {
+            /** Format: int64 */
+            contentId?: number;
+            contentType?: string;
+            title?: string;
+            /** Format: int64 */
+            uniqueVisitors?: number;
+            url?: string;
+            /** Format: int64 */
+            views?: number;
+        };
+        DailyDto: {
+            date?: string;
+            /** Format: int64 */
+            uniqueVisitors?: number;
+            /** Format: int64 */
+            views?: number;
+        };
+        MonthlyDto: {
+            month?: string;
+            /** Format: int64 */
+            uniqueVisitors?: number;
+            /** Format: int64 */
+            views?: number;
+        };
+        PageViewAnalyticsResponse: {
+            daily?: components["schemas"]["DailyDto"][];
+            monthly?: components["schemas"]["MonthlyDto"][];
+            summary?: components["schemas"]["SummaryDto"];
+            topContent?: components["schemas"]["ContentRankingDto"][];
+        };
+        SummaryDto: {
+            /** Format: int64 */
+            guestViews?: number;
+            /** Format: int64 */
+            memberViews?: number;
+            /** Format: int64 */
+            totalViews?: number;
+            /** Format: int64 */
+            uniqueVisitors?: number;
         };
         ApiResponsePaymentSummaryResponse: {
             data?: components["schemas"]["PaymentSummaryResponse"];
@@ -106021,6 +106137,30 @@ export interface operations {
             };
         };
     };
+    receiveBeacon: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                mnsft_vid?: string;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PageViewBeaconRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     createOrganization: {
         parameters: {
             query?: never;
@@ -138878,6 +139018,31 @@ export interface operations {
             };
         };
     };
+    getAnalytics: {
+        parameters: {
+            query?: {
+                dateFrom?: string;
+                dateTo?: string;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePageViewAnalyticsResponse"];
+                };
+            };
+        };
+    };
     getPaymentSummary: {
         parameters: {
             query?: never;
@@ -143355,6 +143520,31 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["AncestorsResponse"];
+                };
+            };
+        };
+    };
+    getAnalytics_1: {
+        parameters: {
+            query?: {
+                dateFrom?: string;
+                dateTo?: string;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePageViewAnalyticsResponse"];
                 };
             };
         };
