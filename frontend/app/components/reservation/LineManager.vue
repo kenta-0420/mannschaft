@@ -81,6 +81,9 @@ onMounted(async () => {
   await loadPermissions()
   await loadLines()
 })
+
+// 親（TeamReservationsPanel）のアコーディオン件数バッジ用（既存 FriendFolderList 等と同一パターン）。
+defineExpose({ refresh: loadLines, items: lines })
 </script>
 
 <template>

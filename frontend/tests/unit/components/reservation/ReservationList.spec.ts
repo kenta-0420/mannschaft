@@ -18,6 +18,7 @@ const mockListMyReservations = vi.fn()
 const mockListReservations = vi.fn()
 const mockConfirmReservation = vi.fn()
 const mockCancelReservation = vi.fn()
+const mockCancelMyReservation = vi.fn()
 const mockConfirmGroup = vi.fn()
 const mockCancelGroup = vi.fn()
 
@@ -27,16 +28,25 @@ vi.mock('~/composables/useReservationApi', () => ({
     listReservations: mockListReservations,
     confirmReservation: mockConfirmReservation,
     cancelReservation: mockCancelReservation,
+    cancelMyReservation: mockCancelMyReservation,
     confirmGroup: mockConfirmGroup,
     cancelGroup: mockCancelGroup,
   }),
 }))
 
 let confirmAcceptCallback: (() => void | Promise<void>) | null = null
-mockNuxtImport('useNotification', () => () => ({ success: vi.fn(), error: vi.fn(), warn: vi.fn() }))
+const mockNotifySuccess = vi.fn()
+const mockNotifyError = vi.fn()
+mockNuxtImport('useNotification', () => () => ({ success: mockNotifySuccess, error: mockNotifyError, warn: vi.fn() }))
 mockNuxtImport('useConfirm', () => () => ({
   require: (opts: { accept: () => void | Promise<void> }) => { confirmAcceptCallback = opts.accept },
   close: vi.fn(),
+}))
+const mockHandleApiError = vi.fn()
+mockNuxtImport('useErrorHandler', () => () => ({
+  resolveMessage: (code: string) => code,
+  handleApiError: mockHandleApiError,
+  handleError: mockHandleApiError,
 }))
 
 // BE /reservations/my は ApiResponse<List> ＝ { data: [...] }。meta フィールドは存在しない。
@@ -52,8 +62,12 @@ beforeEach(() => {
   mockListReservations.mockReset()
   mockConfirmReservation.mockReset()
   mockCancelReservation.mockReset()
+  mockCancelMyReservation.mockReset()
   mockConfirmGroup.mockReset()
   mockCancelGroup.mockReset()
+  mockNotifySuccess.mockReset()
+  mockNotifyError.mockReset()
+  mockHandleApiError.mockReset()
   confirmAcceptCallback = null
 })
 
@@ -197,5 +211,114 @@ describe('ReservationList.vue（グループ予約の表示・操作ルーティ
 
     expect(mockCancelReservation).toHaveBeenCalledWith('team-slug', 12)
     expect(mockCancelGroup).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * 本人自己キャンセル（mine モード）— 検分で発見された機能穴の根治ガード。
+ *
+ * 背景: BE には本人キャンセル API（POST /api/v1/reservations/{id}/cancel = cancelByUser・
+ * 期限 026 ガード。グループは cancelGroup が「本人=締切内/ADMIN=常時」を許可）が実在するのに、
+ * FE の mine モード（canManage=false）は操作列ごと非表示でキャンセル手段が存在しなかった。
+ * 本スイートは mine モードのキャンセル UI 結線を固定し、操作列非表示への後退を防ぐ。
+ *
+ * 観点:
+ *   MYCANCEL-001: mine モードで PENDING/CONFIRMED 行にキャンセルボタンが表示され、
+ *                 CANCELLED 行には表示されない
+ *   MYCANCEL-002: 単枠行は cancelMyReservation（共通API・cancelByUser）を呼ぶ
+ *                 （team スコープの cancelReservation は管理者専用のため呼ばない）。
+ *                 グループ行は cancelGroup を呼ぶ（単票は 400=RESERVATION_042 のため）
+ *   MYCANCEL-003: 期限超過（RESERVATION_026）はエラーを握りつぶさず、
+ *                 丁寧な文言（cancel_deadline_passed）で通知する
+ */
+const myPending = {
+  id: 20,
+  slot: { slotDate: '2026-07-15', startTime: '09:00', endTime: '09:30', lineName: '席1' },
+  status: { status: 'PENDING' },
+  group: null,
+}
+
+const myCancelled = {
+  id: 21,
+  slot: { slotDate: '2026-07-16', startTime: '09:00', endTime: '09:30', lineName: '席1' },
+  status: { status: 'CANCELLED' },
+  group: null,
+}
+
+const myGroupConfirmed = {
+  id: 22,
+  slot: { slotDate: '2026-07-17', startTime: '10:00', endTime: '10:30', lineName: '席1' },
+  status: { status: 'CONFIRMED' },
+  group: { groupId: 'grp-uuid-mine', groupSize: 2, groupEndTime: '11:00', menuName: 'カット' },
+}
+
+describe('ReservationList.vue（mine モード・本人自己キャンセル）', () => {
+  it('MYCANCEL-001: PENDING/CONFIRMED 行にキャンセルボタンが出て、CANCELLED 行には出ない', async () => {
+    mockListMyReservations.mockResolvedValue({ data: [myPending, myReservation, myCancelled] })
+
+    const wrapper = await mountSuspended(ReservationList, {
+      props: { teamId: 'team-slug', canManage: false, mode: 'mine' as const },
+    })
+    await new Promise(r => setTimeout(r, 0))
+
+    // PENDING(1件) + CONFIRMED(1件) = 2つ。CANCELLED 行には出ない。
+    const cancelButtons = wrapper.findAll('[data-testid="my-reservation-cancel"]')
+    expect(cancelButtons.length).toBe(2)
+  })
+
+  it('MYCANCEL-002: 単枠行は cancelMyReservation・グループ行は cancelGroup を呼ぶ（team用cancelReservationは呼ばない）', async () => {
+    mockCancelMyReservation.mockResolvedValue({})
+    mockCancelGroup.mockResolvedValue({ data: {} })
+    mockListMyReservations.mockResolvedValue({ data: [myPending, myGroupConfirmed] })
+
+    const wrapper = await mountSuspended(ReservationList, {
+      props: { teamId: 'team-slug', canManage: false, mode: 'mine' as const },
+    })
+    await new Promise(r => setTimeout(r, 0))
+
+    const cancelButtons = wrapper.findAll('[data-testid="my-reservation-cancel"]')
+    expect(cancelButtons.length).toBe(2)
+
+    // 単枠行（myPending・id=20）: 共通API cancelMyReservation（引数は reservationId のみ）
+    await cancelButtons[0]!.trigger('click')
+    expect(confirmAcceptCallback).toBeTruthy()
+    await confirmAcceptCallback!()
+    expect(mockCancelMyReservation).toHaveBeenCalledWith(20)
+
+    // グループ行（myGroupConfirmed）: グループAPI cancelGroup
+    confirmAcceptCallback = null
+    await cancelButtons[1]!.trigger('click')
+    expect(confirmAcceptCallback).toBeTruthy()
+    await confirmAcceptCallback!()
+    expect(mockCancelGroup).toHaveBeenCalledWith('team-slug', 'grp-uuid-mine')
+
+    // 管理者専用の team スコープ cancelReservation は一切呼ばれない
+    expect(mockCancelReservation).not.toHaveBeenCalled()
+  })
+
+  it('MYCANCEL-003: 期限超過（RESERVATION_026）は cancel_deadline_passed の丁寧な文言で通知する', async () => {
+    mockCancelMyReservation.mockRejectedValue({
+      data: { error: { code: 'RESERVATION_026' } },
+    })
+    mockListMyReservations.mockResolvedValue({ data: [myPending] })
+
+    const wrapper = await mountSuspended(ReservationList, {
+      props: { teamId: 'team-slug', canManage: false, mode: 'mine' as const },
+    })
+    await new Promise(r => setTimeout(r, 0))
+
+    const cancelBtn = wrapper.find('[data-testid="my-reservation-cancel"]')
+    expect(cancelBtn.exists()).toBe(true)
+    await cancelBtn.trigger('click')
+    expect(confirmAcceptCallback).toBeTruthy()
+    await confirmAcceptCallback!()
+
+    // 026 は専用文言（テスト環境の既定ロケールは en）。成功トーストは出ず、
+    // 汎用ハンドラ（handleApiError）にも回さない。
+    expect(mockNotifyError).toHaveBeenCalledTimes(1)
+    const message = String(mockNotifyError.mock.calls[0]?.[0] ?? '')
+    expect(message).toContain('cancellation deadline has passed')
+    expect(mockNotifySuccess).not.toHaveBeenCalled()
+    expect(mockHandleApiError).not.toHaveBeenCalled()
   })
 })

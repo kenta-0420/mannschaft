@@ -3,6 +3,7 @@ package com.mannschaft.app.reservation.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.GlobalExceptionHandler;
 import com.mannschaft.app.reservation.entity.ReservationPolicyEntity;
+import com.mannschaft.app.reservation.entity.ReservationTeamSettingEntity;
 import com.mannschaft.app.reservation.service.ReservationBusinessHourService;
 import com.mannschaft.app.reservation.service.ReservationPolicyService;
 import com.mannschaft.app.reservation.service.ReservationTeamSettingService;
@@ -44,6 +45,8 @@ class ReservationSettingsValidationTest {
     private ReservationTeamSettingService teamSettingService;
     @Mock
     private ReservationPolicyService policyService;
+    @Mock
+    private com.mannschaft.app.reservation.service.ReservationSlotTemplateService templateService;
 
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -56,14 +59,15 @@ class ReservationSettingsValidationTest {
         objectMapper.findAndRegisterModules();
         MessageSource ms = new StaticMessageSource();
         ReservationBusinessHourController controller = new ReservationBusinessHourController(
-                businessHourService, teamSettingService, policyService);
+                businessHourService, teamSettingService, policyService, templateService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .setControllerAdvice(new GlobalExceptionHandler(ms))
                 .build();
         // 正常系（getSettings の再取得）が呼ばれても落ちないよう既定 stub を用意（lenient）。
         lenient().when(businessHourService.hasBusinessHours(anyLong())).thenReturn(false);
-        lenient().when(teamSettingService.isAllowPublic(anyLong())).thenReturn(false);
+        lenient().when(teamSettingService.getOrDefault(anyLong())).thenReturn(
+                ReservationTeamSettingEntity.builder().teamId(TEAM_ID).build());
         lenient().when(policyService.getOrDefault(anyLong())).thenReturn(
                 ReservationPolicyEntity.builder().teamId(TEAM_ID).build());
     }
@@ -124,6 +128,55 @@ class ReservationSettingsValidationTest {
         mockMvc.perform(patch(PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"approvalMode\":\"MANUAL\",\"cancelDeadlineHours\":48,\"remindBeforeHours\":\"72,24,1\"}"))
+                .andExpect(status().isOk());
+    }
+
+    // ========================================
+    // 呼称設定（F03.4.5 §5）の Bean Validation
+    // ========================================
+
+    @Test
+    @DisplayName("不正な呼称プリセット_400")
+    void 不正な呼称プリセット_400() throws Exception {
+        // enum 以外の値は Jackson バインドで弾かれ 400。
+        mockMvc.perform(patch(PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"resourceNameType\":\"INVALID_TYPE\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("自由入力呼称_31文字_400")
+    void 自由入力呼称_31文字_400() throws Exception {
+        String tooLong = "あ".repeat(31);
+        mockMvc.perform(patch(PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"resourceNameType\":\"CUSTOM\",\"resourceNameCustom\":\"" + tooLong + "\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("自由入力呼称_30文字_境界正常_200")
+    void 自由入力呼称_30文字_境界正常_200() throws Exception {
+        String exactly30 = "あ".repeat(30);
+        given(teamSettingService.updateResourceName(anyLong(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
+                .willReturn(ReservationTeamSettingEntity.builder().teamId(TEAM_ID).build());
+        mockMvc.perform(patch(PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"resourceNameType\":\"CUSTOM\",\"resourceNameCustom\":\"" + exactly30 + "\"}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("呼称プリセット_プリセット指定のみ_正常_200")
+    void 呼称プリセット_プリセット指定のみ_正常_200() throws Exception {
+        given(teamSettingService.updateResourceName(anyLong(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
+                .willReturn(ReservationTeamSettingEntity.builder().teamId(TEAM_ID).build());
+        mockMvc.perform(patch(PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"resourceNameType\":\"SEAT\"}"))
                 .andExpect(status().isOk());
     }
 }

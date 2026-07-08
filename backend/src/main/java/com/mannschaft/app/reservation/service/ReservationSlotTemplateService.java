@@ -12,6 +12,7 @@ import com.mannschaft.app.reservation.ReservationDayOfWeek;
 import com.mannschaft.app.reservation.ReservationErrorCode;
 import com.mannschaft.app.reservation.dto.CreateSlotTemplateRequest;
 import com.mannschaft.app.reservation.dto.DeleteSlotTemplateResponse;
+import com.mannschaft.app.reservation.dto.GenerateSingleDayRequest;
 import com.mannschaft.app.reservation.dto.GenerateSlotsRequest;
 import com.mannschaft.app.reservation.dto.GenerateSlotsResponse;
 import com.mannschaft.app.reservation.dto.SlotTemplateListResponse;
@@ -35,6 +36,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -222,7 +224,12 @@ public class ReservationSlotTemplateService {
      *
      * <p>propagation=SUPPORTS: 生成は generation service 内の日付チャンク tx（REQUIRES_NEW）で行うため、
      * ここで読み取り専用 tx を張らない（クラス既定の readOnly tx が長時間コネクションを掴むのを避ける）。</p>
+     *
+     * @deprecated F03.4.5 §3.1: テンプレ保存＝同期自動生成の採用により「今すぐ枠を作成」UI は撤去された。
+     *     本 API は生成型を参照する既存クライアント・E2E・運用リカバリ（バッチ障害時の手動追い付き）用に
+     *     互換維持で残置する（OpenAPI {@code deprecated: true}）。削除は将来の別 PR・要裁可（§14）。
      */
+    @Deprecated(since = "F03.4.5")
     @Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
     public GenerateSlotsResponse generate(Long teamId, GenerateSlotsRequest request, Long userId) {
         RateLimitResult rate = rateLimiter.tryConsume(
@@ -238,6 +245,88 @@ public class ReservationSlotTemplateService {
                         response.getGeneratedCount(), response.getSkippedExistingCount(),
                         response.getSkippedClosedDayCount(), response.getSkippedOutsideHoursCount(),
                         response.getHorizonFrom(), response.getHorizonTo()));
+        return response;
+    }
+
+    /**
+     * テンプレ保存＝同期自動生成の外側ファサード（F03.4.5 §3.1）。
+     *
+     * <p><b>tx 境界の要（S-3b の番人）</b>: {@code propagation=SUPPORTS} で新規 tx を張らず
+     * （保存 tx は呼び出し前に既にコミット済み）、生成本体（{@code ReservationSlotGenerationService}）の
+     * 日付チャンク tx（REQUIRES_NEW）へ委譲する。<b>保存 tx の内側から呼んではならない</b>
+     * （FK {@code fk_rs_template} の未コミット親行を参照して自己デッドロックする・§3.1 の⚠罠）。
+     * コントローラは {@code createTemplate}/{@code updateTemplate}（{@code @Transactional}）の
+     * 完了後に本メソッドを呼ぶ。</p>
+     *
+     * <p><b>レートリミット対象外</b>（§3.1）: 保存操作そのものが頻度の自然な上限で、単一テンプレ scope＋冪等の
+     * ため暴走しない。無効化されたテンプレ（{@code isActive=false}）は生成対象外として空カウントを返す
+     * （§3.1「無効化は以後生成されないだけ」）。</p>
+     *
+     * @param teamId     チームID
+     * @param templateId 保存されたテンプレ ID
+     * @param userId     実行者
+     * @return 生成結果カウント
+     */
+    @Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+    public GenerateSlotsResponse generateForTemplate(Long teamId, UUID templateId, Long userId) {
+        ReservationSlotTemplateEntity template = findTemplateOrThrow(teamId, templateId);
+        if (!Boolean.TRUE.equals(template.getIsActive())) {
+            // 無効テンプレは生成しない（空カウント・horizon 情報付き）。
+            return generationService.generateForTemplates(teamId, List.of(), userId);
+        }
+        return generationService.generateForTemplate(teamId, template, userId);
+    }
+
+    /**
+     * 営業時間 PUT の変更曜日差分生成の外側ファサード（F03.4.5 §3.2）。
+     *
+     * <p>指定曜日の active テンプレのみを対象に horizon 28 日を生成する（INSERT 量を全テンプレ方式の
+     * 約 1/7〜2/7 に抑える）。tx 境界は {@link #generateForTemplate} と同一規約（SUPPORTS・保存 tx 外側）。</p>
+     *
+     * @param teamId チームID
+     * @param days   変更のあった曜日集合（空なら生成なし）
+     * @param userId 実行者
+     * @return 生成結果カウント
+     */
+    @Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+    public GenerateSlotsResponse generateForDaysOfWeek(Long teamId, Set<ReservationDayOfWeek> days, Long userId) {
+        if (days == null || days.isEmpty()) {
+            return generationService.generateForTemplates(teamId, List.of(), userId);
+        }
+        List<ReservationSlotTemplateEntity> templates = templateRepository.findByTeamIdAndIsActiveTrue(teamId)
+                .stream()
+                .filter(t -> days.contains(t.getDayOfWeek()))
+                .toList();
+        return generationService.generateForTemplates(teamId, templates, userId);
+    }
+
+    /**
+     * 臨時営業（単日テンプレ適用・F03.4.5 §3.3.2 generate-single-day）。
+     *
+     * <p>既存 generate と同一 zone のレートリミット（1 チーム 2 回/分・RESERVATION_044 再利用）を共有する
+     * （同種の生成資源保護・別 zone にする理由がない）。生成本体（営業時間チェック省略・単日）へ委譲し、
+     * 監査ログに記録する。tx 境界は generate と同一（SUPPORTS・チャンク tx は REQUIRES_NEW）。</p>
+     *
+     * @param teamId  チームID
+     * @param request 臨時営業リクエスト（date・sourceDayOfWeek）
+     * @param userId  実行者
+     * @return 生成結果カウント
+     */
+    @Transactional(propagation = Propagation.SUPPORTS, readOnly = true)
+    public GenerateSlotsResponse generateSingleDay(Long teamId, GenerateSingleDayRequest request, Long userId) {
+        RateLimitResult rate = rateLimiter.tryConsume(
+                GENERATE_RATE_ZONE, "team:" + teamId, GENERATE_RATE_LIMIT, GENERATE_RATE_WINDOW);
+        if (!rate.allowed()) {
+            throw new BusinessException(ReservationErrorCode.TEMPLATE_GENERATE_RATE_LIMITED);
+        }
+        GenerateSlotsResponse response = generationService.generateSingleDay(
+                teamId, request.getDate(), request.getSourceDayOfWeek(), userId);
+        recordAudit("RESERVATION_TEMPLATE_SINGLE_DAY_GENERATED", userId, teamId, null,
+                String.format("{\"date\":\"%s\",\"sourceDayOfWeek\":\"%s\",\"generated\":%d,"
+                                + "\"skippedExisting\":%d}",
+                        request.getDate(),
+                        request.getSourceDayOfWeek() != null ? request.getSourceDayOfWeek().name() : "AUTO",
+                        response.getGeneratedCount(), response.getSkippedExistingCount()));
         return response;
     }
 
