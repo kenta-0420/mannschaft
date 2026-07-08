@@ -312,7 +312,7 @@ class ReservationWaitlistServiceTest {
                 .teamId(TEAM_ID).slotId(SLOT_ID).userId(901L).status(WaitlistStatus.WAITING).build();
         ReservationWaitlistEntryEntity e2 = ReservationWaitlistEntryEntity.builder()
                 .teamId(TEAM_ID).slotId(SLOT_ID).userId(902L).status(WaitlistStatus.WAITING).build();
-        when(waitlistRepository.findBySlotIdAndStatus(SLOT_ID, WaitlistStatus.WAITING)).thenReturn(List.of(e1, e2));
+        when(waitlistRepository.findBySlotIdAndStatusForUpdate(SLOT_ID, WaitlistStatus.WAITING)).thenReturn(List.of(e1, e2));
 
         service.notifySlotReopened(TEAM_ID, SLOT_ID);
 
@@ -337,7 +337,7 @@ class ReservationWaitlistServiceTest {
         ReservationWaitlistEntryEntity stale = ReservationWaitlistEntryEntity.builder()
                 .teamId(TEAM_ID).slotId(SLOT_ID).userId(902L).status(WaitlistStatus.WAITING)
                 .notifiedAt(now.minusMinutes(90)).build();
-        when(waitlistRepository.findBySlotIdAndStatus(SLOT_ID, WaitlistStatus.WAITING))
+        when(waitlistRepository.findBySlotIdAndStatusForUpdate(SLOT_ID, WaitlistStatus.WAITING))
                 .thenReturn(List.of(recent, stale));
 
         service.notifySlotReopened(TEAM_ID, SLOT_ID);
@@ -355,7 +355,7 @@ class ReservationWaitlistServiceTest {
         service.notifySlotReopened(TEAM_ID, SLOT_ID);
         verify(notificationHelper, never()).notify(anyLong(), anyString(), any(NotificationPriority.class),
                 anyString(), anyString(), anyString(), anyLong(), any(), anyLong(), anyString(), any());
-        verify(waitlistRepository, never()).findBySlotIdAndStatus(anyLong(), any());
+        verify(waitlistRepository, never()).findBySlotIdAndStatusForUpdate(anyLong(), any());
     }
 
     // ────────────────────────────────────────────────────────────
