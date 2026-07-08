@@ -187893,6 +187893,27 @@
             "description": "リマインド送信タイミング（予約開始の何時間前か）の CSV 文字列（null\u003d据え置き）",
             "example": "24,1",
             "pattern": "^[1-9][0-9]*(,[1-9][0-9]*)*$"
+          },
+          "resourceNameCustom": {
+            "type": "string",
+            "description": "自由入力の呼称（CUSTOM 選択時のみ有効・30文字以内 / null\u003d据え置き）",
+            "example": "施術台",
+            "maxLength": 30,
+            "minLength": 0
+          },
+          "resourceNameType": {
+            "type": "string",
+            "description": "予約対象の呼称プリセット（null\u003d据え置き）",
+            "enum": [
+              "DEFAULT",
+              "STAFF",
+              "SEAT",
+              "COURT",
+              "BED",
+              "LANE",
+              "CUSTOM"
+            ],
+            "example": "SEAT"
           }
         }
       },
@@ -187937,6 +187958,25 @@
             "type": "string",
             "description": "リマインド送信タイミング（予約開始の何時間前か）の CSV 文字列",
             "example": "24,1"
+          },
+          "resourceNameCustom": {
+            "type": "string",
+            "description": "自由入力の呼称（resourceNameType\u003dCUSTOM のときのみ非 null）",
+            "example": "施術台"
+          },
+          "resourceNameType": {
+            "type": "string",
+            "description": "予約対象の呼称プリセット。DEFAULT\u003d未設定（従来の『予約対象』表示）",
+            "enum": [
+              "DEFAULT",
+              "STAFF",
+              "SEAT",
+              "COURT",
+              "BED",
+              "LANE",
+              "CUSTOM"
+            ],
+            "example": "SEAT"
           },
           "teamId": {
             "type": "integer",
