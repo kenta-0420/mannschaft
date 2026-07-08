@@ -327,6 +327,10 @@ function onToggleScope(value: string) {
   withScopeLoading(() => toggleScope(value))
 }
 
+function onMultiSelectChange(vals: string[]) {
+  withScopeLoading(() => { selectedScopes.value = vals })
+}
+
 async function onTabChange(tab: CalendarTab) {
   activeTab.value = tab
   if (tab === 'gantt') {
@@ -463,7 +467,7 @@ onMounted(() => {
                 selected-items-label="{0}件選択中"
                 class="text-xs"
                 style="min-width: 180px"
-                @update:model-value="(vals: string[]) => withScopeLoading(() => { selectedScopes.value = vals })"
+                @update:model-value="onMultiSelectChange"
               />
             </div>
           </div>
