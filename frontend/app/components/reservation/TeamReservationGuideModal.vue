@@ -23,9 +23,14 @@ const TAB_LABEL_KEYS: Record<number, string> = {
   3: 'reservation.tab.emergency_closure',
 }
 
-/** モーダルのヘッダーに「予約の使い方（現在のタブ名）」を表示し、どのタブの説明かを明確にする。 */
+/**
+ * モーダルのヘッダーに「予約の使い方（現在のタブ名）」を表示し、どのタブの説明かを明確にする。
+ * タブ1 は #2198 で非管理者向けに「自分の予約」へ改名されたため、Panel のタブ表記と同じ条件で出し分ける。
+ */
 const headerLabel = computed(() => {
-  const tabKey = TAB_LABEL_KEYS[props.activeTab] ?? 'reservation.tab.book'
+  const tabKey = props.activeTab === 1 && !props.isAdminOrDeputy
+    ? 'reservation.tab.my_reservations'
+    : (TAB_LABEL_KEYS[props.activeTab] ?? 'reservation.tab.book')
   return `${t('reservation.team_guide.title')}（${t(tabKey)}）`
 })
 </script>
