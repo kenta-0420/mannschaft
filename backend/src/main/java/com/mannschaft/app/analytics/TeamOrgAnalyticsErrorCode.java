@@ -32,11 +32,19 @@ public enum TeamOrgAnalyticsErrorCode implements ErrorCode {
      * ではなく 404 を返し、集計データの存在（＝そのスコープが計測対象として稼働している事実）を秘匿する
      * （設計書 §3.3 の設計判断）。存在しない slug も同じ 404 に写像し、両者を攻撃者が区別できないようにする。</p>
      */
-    TEAMANALYTICS_001("TEAMANALYTICS_001", "指定されたスコープのアクセス解析は取得できません", Severity.WARN);
+    TEAMANALYTICS_001("TEAMANALYTICS_001", "指定されたスコープのアクセス解析は取得できません", Severity.WARN),
 
-    // 参が追記予定（設計書 §6）:
-    // TEAMANALYTICS_002("TEAMANALYTICS_002", "開始日は終了日より前に指定してください", Severity.WARN); // 400
-    // TEAMANALYTICS_003("TEAMANALYTICS_003", "計測ビーコンのリクエストが不正です", Severity.WARN);       // 400
+    /**
+     * 日付範囲不正（dateFrom > dateTo）。HTTP 400 で返す（設計書 §6・AC-11）。
+     * GlobalExceptionHandler#ERROR_CODE_STATUS_MAP に BAD_REQUEST を登録済み。
+     */
+    TEAMANALYTICS_002("TEAMANALYTICS_002", "開始日は終了日より前に指定してください", Severity.WARN),
+
+    /**
+     * 計測ビーコンリクエスト不正（ENUM 外・url 絶対 URL 等）。HTTP 400 で返す（設計書 §6・AC-04・AC-22）。
+     * GlobalExceptionHandler#ERROR_CODE_STATUS_MAP に BAD_REQUEST を登録済み。
+     */
+    TEAMANALYTICS_003("TEAMANALYTICS_003", "計測ビーコンのリクエストが不正です", Severity.WARN);
 
     private final String code;
     private final String message;
