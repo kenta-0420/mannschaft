@@ -46,6 +46,11 @@ public class EntitlementQueryService {
                 && scopeClassificationService.isNonProfitScope(scopeKind, scopeId)) {
             return true;                                // 非営利無料枠（機構・初期値は全 FALSE）
         }
+        // ★isNonProfitScope の scope 別分岐（E）:
+        //   USER  → 常に false（個人に営利/非営利の区分は無い。将来も個人無料枠は free_for_nonprofit では表現しない）
+        //   ORG   → organizations.org_type が非営利系（NPO/ASSOCIATION/COMMUNITY/OTHER のうち R-1 で確定した集合）
+        //   TEAM  → 所属 ACTIVE 組織のいずれかが非営利なら非営利扱い（無所属チームは非営利扱い・README §3.3 / R-2）
+        //   初期は free_for_nonprofit 全 FALSE ゆえ本分岐は初期 E2E で到達しないが、USER 既定 false を明示して将来の詰まりを予防。
         return entitlementRepository.existsActive(scopeKind.name(), scopeId, featureKey, now);
         // 01 §3.3 の判定クエリ（半開区間 [valid_from, valid_until)・revoked_at IS NULL）
     }
@@ -347,30 +352,82 @@ public record RevenueFeatureActivatedEvent(
 | **シスアド手動付与** | 手動 | 任意 | 任意 | **イベント不発火・org_type 不変** | AC-26 |
 | PLAN/ADDON 契約購入（REVENUE 含む） | PLAN/ADDON | USER | — | 個人は org 区分に影響しない（不発火） | AC-27 |
 
-### 7.2 リスナー処理（organization ドメイン・擬似コード）
+### 7.2 リスナー処理（organization ドメイン・実シグネチャで焼き込み・B）
 
-```
-onRevenueFeatureActivated(event):
-  orgIds = resolveTargetOrganizations(event.scopeKind, event.scopeId)
-    # ORG  → [scopeId]
-    # TEAM → team_org_memberships WHERE team_id=scopeId AND status='ACTIVE' の organization_id 全件
-    # USER → []（個人の REVENUE 契約は組織区分に影響しない）
-  for orgId in orgIds:
-    org = organizationRepository.findById(orgId)
-    if org.orgType == COMPANY: continue                    # 既に営利
-    if event.scopeKind == ORG and org.orgType in {NPO, ASSOCIATION, COMMUNITY, OTHER}:
-        org.updateOrgType(COMPANY)                          # 自動更新（organization ドメイン内の正規メソッド・直接 UPDATE 禁止の原則充足）
-        auditLog(ORG_TYPE_AUTO_UPDATED, orgId, from, to, trigger=event)
-        confirmableNotificationService.send(orgAdminUserIds(orgId),
-            title/body = i18n "billing.orgType.autoUpdated.*")   # F04.9 確認必須通知（AC-11）
-    else:
-        # 公共系（GOVERNMENT/MUNICIPALITY/SCHOOL/HOSPITAL）または TEAM 経由 → 自動更新しない（AC-12/22・README R-1）
-        confirmableNotificationService.send(orgAdminUserIds(orgId),
-            title/body = i18n "billing.orgType.reviewRequested.*")
-        operationsReviewLog(orgId, event)                   # 運営レビュー記録（audit_logs）
+> リスナーは **organization ドメイン**に置く（billing は org_type を直接触らない・イベント経由・原則1/5）。宛先解決・通知は **origin/main 実在 API** を使う（下記は実シグネチャに合わせた擬似コード）。
+
+```java
+@Component
+@RequiredArgsConstructor
+public class OrgTypeAutoUpgradeListener {
+    private final OrganizationRepository organizationRepository;
+    private final TeamOrgMembershipRepository teamOrgMembershipRepository;
+    private final UserRoleRepository userRoleRepository;              // 実在: findAdminUserIdsByOrganizationId
+    private final ConfirmableNotificationService confirmableNotificationService;
+    private final MessageSource messageSource;                       // messages*.properties を String 解決
+    private final AuditLogService auditLogService;
+
+    @TransactionalEventListener(phase = AFTER_COMMIT)
+    @Transactional(propagation = REQUIRES_NEW)                       // feedback_transactional_event_listener_requires_new
+    public void onRevenueFeatureActivated(RevenueFeatureActivatedEvent ev) {
+        List<Long> orgIds = switch (ev.scopeKind()) {
+            case ORG  -> List.of(ev.scopeId());
+            case TEAM -> teamOrgMembershipRepository.findActiveOrganizationIdsByTeamId(ev.scopeId()); // status='ACTIVE'
+            case USER -> List.of();                                  // 個人の REVENUE 契約は組織区分に影響しない
+        };
+        for (Long orgId : orgIds) {
+            OrganizationEntity org = organizationRepository.findById(orgId).orElse(null);
+            if (org == null || org.getOrgType() == OrgType.COMPANY) continue;   // 既に営利は何もしない（AC-24）
+            List<Long> adminIds = userRoleRepository.findAdminUserIdsByOrganizationId(orgId);  // 実在メソッド
+            if (adminIds.isEmpty()) continue;                        // 宛先ゼロは通知不能（send が SEND_FAILED を投げるため事前ガード）
+            boolean autoUpgrade = ev.scopeKind() == EntitlementScopeKind.ORG
+                    && EnumSet.of(OrgType.NPO, OrgType.ASSOCIATION, OrgType.COMMUNITY, OrgType.OTHER).contains(org.getOrgType());
+            if (autoUpgrade) {
+                OrgType from = org.getOrgType();
+                org.updateOrgType(OrgType.COMPANY);                  // ★organization ドメインに【新設】するメソッド（下記注記）
+                auditLogService.record("ORG_TYPE_AUTO_UPDATED", orgId, Map.of("from", from, "to", "COMPANY", "trigger", ev.revenueFeatureKeys()));
+                send(adminIds, orgId, "notification.billing.org_type_auto_updated.title",
+                                       "notification.billing.org_type_auto_updated.body");
+            } else {
+                // 公共系（GOVERNMENT/MUNICIPALITY/SCHOOL/HOSPITAL）または TEAM 経由 → 更新せず通知＋運営レビュー（AC-12/22・R-1）
+                auditLogService.record("ORG_TYPE_REVIEW_REQUESTED", orgId, Map.of("trigger", ev.revenueFeatureKeys()));
+                send(adminIds, orgId, "notification.billing.org_type_review_requested.title",
+                                       "notification.billing.org_type_review_requested.body");
+            }
+        }
+    }
+
+    private void send(List<Long> adminIds, Long orgId, String titleKey, String bodyKey) {
+        // ★ConfirmableNotificationService.send の実在 overload（title/body は解決済み String を渡す）:
+        //   send(ScopeType scopeType, Long scopeId, String title, String body,
+        //        ConfirmableNotificationPriority priority, LocalDateTime deadlineAt,
+        //        Integer firstReminderMinutes, Integer secondReminderMinutes,
+        //        String actionUrl, Long templateId, Long createdByUserId, List<Long> recipientUserIds)
+        Locale ja = Locale.JAPANESE;
+        confirmableNotificationService.send(
+            ScopeType.ORGANIZATION, orgId,
+            messageSource.getMessage(titleKey, null, ja),            // ← keys ではなく解決済み文字列を渡す
+            messageSource.getMessage(bodyKey, null, ja),
+            ConfirmableNotificationPriority.HIGH,
+            LocalDateTime.now().plusDays(14),                        // deadlineAt（区分確認の期限・運用値）
+            null, null,                                              // reminder は scope 設定の default に委譲
+            "/organizations/" + orgId + "/settings",                // actionUrl（区分確認導線）
+            null,                                                    // templateId 不要
+            null,                                                    // createdByUserId=システム
+            adminIds);
+    }
+}
 ```
 
-- 通知文言キーは 04 §3。**この分岐（自動更新対象の org_type 集合）は README §8 R-1 の御裁可で確定**する（本擬似コードは推奨案 (b)）。
+**実物照合で確定した点（B）**:
+- **`OrganizationEntity.updateOrgType(OrgType)` は origin/main に存在しない → organization ドメインに【新設】する**。billing からの直接 UPDATE は禁止（原則1）、本メソッドは organization ドメイン内の自 Entity 更新として新設し、リスナーもロールバック API（R-1・03 §7 `ORG_TYPE_REVERTED`）も同ドメインに置く。
+- **宛先は実在の `userRoleRepository.findAdminUserIdsByOrganizationId(orgId)`**（role ドメイン・`NotificationCreditService`/`TeamPaymentAdvanceService` 等で使用実績）。
+- **`ConfirmableNotificationService.send(...)` は title/body を「解決済み String」で受ける**（i18n キーではなく `MessageSource` で解決してから渡す）。実在 overload は上記 12 引数版（`ScopeType`/`ConfirmableNotificationPriority`/`recipientUserIds` 等）。宛先ゼロは `SEND_FAILED` を投げるため事前に空チェック（`payment_requests` の `PAYMENT_REQUEST_NO_RECIPIENTS` と同様の配慮）。
+- **`ORG_TYPE_AUTO_UPDATED`・`ORG_TYPE_REVIEW_REQUESTED`・`ORG_TYPE_REVERTED` は監査アクション名**（`audit_logs` の action 文字列。既存の `AuditEventType` enum に無ければ**追加が必要**＝organization/audit ドメイン側作業）。
+- **TEAM→組織 ID 解決は `TeamOrgMembershipRepository.findActiveOrganizationIdsByTeamId(teamId)`（status='ACTIVE'）を新設**（`team_org_memberships` 実在テーブル V2.011）。
+- 通知文言キー（`notification.billing.org_type_*`）は BE `messages*.properties` 6 言語に追加（04 §3）。**この分岐（自動更新対象 org_type 集合・ロールバック）は README §8 R-1 の御裁可で確定**（本擬似コードは推奨案 (b)）。
+
+> **⚠️ 実装スコープ注記（B・軍議で足軽担当に含める）**: 本結線は **2 設計書（billing.beta）の外＝organization/notification/audit ドメインへの実装を要求**する: (1) `OrganizationEntity.updateOrgType` ＋ ロールバック API（R-1）、(2) `TeamOrgMembershipRepository.findActiveOrganizationIdsByTeamId`、(3) 監査アクション `ORG_TYPE_AUTO_UPDATED`/`ORG_TYPE_REVIEW_REQUESTED`/`ORG_TYPE_REVERTED`、(4) `messages*.properties` の通知文言 6 言語。**軍議のタスク分解で足軽の担当範囲にこれらを明示的に含めること**（billing ドメインだけ実装して結線先が無い、を防ぐ）。README §4.2 の実装スコープ表にも反映。
 
 ---
 
@@ -378,14 +435,15 @@ onRevenueFeatureActivated(event):
 
 | キャッシュ | value / key | TTL | evict |
 |---|---|---|---|
-| 権利判定 | `entitlement:check` / `{scopeKind.name()}:{scopeId}:{featureKey}` | **60 秒**（`RedisConfig.cacheManager` に個別登録） | **scope 単位のキー evict を第一**とする（M-8）。1 スコープの契約変更は当該 `{scopeKind}:{scopeId}:*` のみ削除（feature_key を列挙して個別 evict、または scope プレフィックスの `SCAN`+DEL）。**`allEntries=true` の全消しは日次付与バッチ（1 万件）でサンダリングヘッドを招くため使わない** |
+| 権利判定 | `entitlement:check` / `{scopeKind.name()}:{scopeId}:{featureKey}` | **60 秒**（`RedisConfig.cacheManager` に個別登録） | **個別キー evict の 1 方式に確定**（A）。契約/付与/取消サービスが**発行/取消した feature_key 集合を戻り値で返し**、その集合ぶんだけ `key = scopeKind.name()+":"+scopeId+":"+featureKey` を組み立てて `cacheManager.getCache("entitlement:check").evict(key)` を呼ぶ。**`SCAN`+DEL 案・`@CacheEvict` のプレフィックス一括・`allEntries=true` は不採用**（Redis の `@CacheEvict` はプレフィックス一括削除不可・全消しは日次付与バッチ 1 万件でサンダリングヘッド）|
 | 有料プラン互換 | `teamPlan` / `#teamId`（既存・変更しない） | 既定 30 分 | 上記と同時に `@CacheEvict(value="teamPlan", key="#scopeId")`（TEAM スコープ変更時） |
 | 非営利判定 | `billing:nonprofit` / `{scopeKind.name()}:{scopeId}` | 10 分 | org_type 変更イベントで evict |
 | マスタ | `billing:catalog`（プラン一覧の組み立て結果） | 10 分 | シスアド CRUD 時に evict |
 
 - キーの enum は必ず `name()` で String 化（Valkey 直列化事故防止・memory `feedback_cacheable_enum_key_redis`）。
-- **日次付与バッチの evict（M-8）**: F20.3 の自動付与バッチは**付与済みユーザーを skip**（新規付与分のみ処理）し、**各ユーザーの scope キー evict は付与時に個別実行**（当該ユーザー分のみ）。バッチ完了時の全消し（`allEntries`）はしない。1 万件でも「新規付与された分の scope キーだけ」を触るためサンダリングヘッドを避ける。
-- **取消の反映保証**: scope キー evict を必ず実行（AC-16 の観測点＝**evict 呼び出しの実行**）。evict 漏れがあっても TTL 60 秒で自然収束するが、TTL 依存の観測は非決定的なので**テストは「evict が呼ばれたこと」を検証**し、TTL 失効は別途単体テストで確認する（M-9・03 §5）。
+- **evict する feature_key 集合の確定（A）**: 契約作成/変更/取消・付与/取消の各サービスは処理結果として**「発行または取消した feature_key の集合」を返し**、呼び出し側（または同サービス内）がその集合の各キーを個別 evict する。集合は: PLAN 契約＝`plan_features(planKey)`／ADDON＝`{featureKey}`／プラン変更＝旧プラン ∪ 新プランの feature_key／ベータ付与/取消＝`granted_feature_keys`。**AC-16 の観測点「evict 呼び出しの実行」は、この集合ぶんの `evict(key)` が呼ばれたことを指す**（集合が確定しているため検証可能）。
+- **日次付与バッチの evict（M-8）**: F20.3 の自動付与バッチは**付与済みユーザーを skip**（新規付与分のみ処理）し、付与時に当該ユーザーの `granted_feature_keys` ぶんだけ個別 evict する（当該ユーザー分のみ）。バッチ完了時の全消し（`allEntries`）はしない。
+- **取消の反映保証**: 上記個別 evict を必ず実行（AC-16）。evict 漏れがあっても TTL 60 秒で自然収束するが、TTL 依存の観測は非決定的なので**テストは「evict が呼ばれたこと」を検証**し、TTL 失効は別途単体テストで確認する（M-9・03 §5）。
 
 ---
 

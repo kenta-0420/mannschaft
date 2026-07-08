@@ -198,6 +198,19 @@ entitlementGuard.require(EntitlementScopeKind.TEAM, teamId,
 - F08.9 は「**チームがメンバーから徴収**する」課金（払い手≠受益者・受取人は第三者＝Connect レール）。
 - 本 F20.1 は「**運営が団体/個人へ SaaS 課金**する」（受取人は Mannschaft 自社）。**向きが逆**であり、テーブル・サービス・用語を混ぜない。`member_payments`/`payment_items` を本機能で参照・拡張してはならない。
 
+### 4.6 実装スコープ注記（billing 外ドメインへの要求・軍議で足軽担当に含める）
+
+org_type イベント結線（§3.3・02 §7.2）は **billing.beta ドメインの外**に実装を要求する。軍議のタスク分解で**足軽の担当範囲に明示的に含める**こと（billing だけ実装して結線先が無い状態を防ぐ）:
+
+| # | ドメイン | 要求物（origin/main 実物照合済み） |
+|---|---|---|
+| 1 | organization | `OrganizationEntity.updateOrgType(OrgType)` を**新設**（現在 grep で不在）＋誤変異ロールバック API `POST /system-admin/organizations/{orgId}/org-type-revert`（R-1・03 §7） |
+| 2 | team | `TeamOrgMembershipRepository.findActiveOrganizationIdsByTeamId(teamId)` を**新設**（status='ACTIVE'・`team_org_memberships` V2.011） |
+| 3 | audit | 監査アクション `ORG_TYPE_AUTO_UPDATED` / `ORG_TYPE_REVIEW_REQUESTED` / `ORG_TYPE_REVERTED`（`AuditEventType` に無ければ追加） |
+| 4 | notification（messages） | `messages*.properties` 6 言語に `notification.billing.org_type_auto_updated.*` / `org_type_review_requested.*` |
+
+> 宛先は既存 `userRoleRepository.findAdminUserIdsByOrganizationId(orgId)`・通知は既存 `ConfirmableNotificationService.send(...)`（実 overload・02 §7.2）を**再利用**（新設不要）。
+
 ---
 
 ## 5. 受け入れ条件（AC）
