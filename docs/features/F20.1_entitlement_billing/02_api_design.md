@@ -11,7 +11,7 @@
 - レスポンス封筒: `ApiResponse<T>`（既存規約）
 - 日時は ISO-8601（`2026-07-08T12:00:00`）。金額は円整数（JPY 固定）。
 - `scopeKind` の API 表現は文字列 `"USER" | "TEAM" | "ORG"`（payment `ScopeKind` と同値）。
-- ベータ中（Phase 1）は**決済を伴わない**ため冪等キーは不要。Phase 2（PSP 連携）で `Idempotency-Key` ヘッダを導入する。
+- **契約作成/変更 API は Phase 1 から `Idempotency-Key` ヘッダ必須**（M-1）: 決済は無くても**権利発行の二重押下**を防ぐため。サーバは同一キーの再送を検出したら既存結果を返す（Valkey に `billing:idem:{userId}:{key}` を短期保存＝最初の応答の contractId を保持し、TTL 24 時間）。一意性の DB 担保は `active_contract_pointers`（01 §3.1.1）、二重送信の吸収は本冪等キー、最終 backstop は `uk_ent_grant` の 3 層（01 §3.2 設計判断 2）。
 - **Controller の認可は `@PreAuthorize` を入口に置く**（03 §2 の逐語パターン）。
 
 ---
@@ -154,8 +154,14 @@ GET /api/v1/organizations/{orgId}/entitlements    # ORG スコープ
 | `activeAddons` | `ActiveContract[]`（`featureKey` 付き） | 不可（空配列可） | — |
 | `entitledFeatures` | `EntitledFeature[]` | 不可 | — |
 | `entitledFeatures[].featureKey` | string | 不可 | `"ads.hide"` |
-| `entitledFeatures[].sourceKind` | string | 不可 | `"PLAN"` \| `"ADDON"` \| `"BETA_GRANT"` |
-| `entitledFeatures[].validUntil` | string(ISO-8601) | **可**（無期限） | `"2028-07-01T00:00:00"` |
+| `entitledFeatures[].sourceKind` | string | 不可 | `"PLAN"` \| `"ADDON"` \| `"BETA_GRANT"` \| **`"FREE"`** \| **`"NONPROFIT_FREE"`** |
+| `entitledFeatures[].validUntil` | string(ISO-8601) | **可**（無期限・virtual は常に null） | `"2028-07-01T00:00:00"` |
+
+**virtual feature の合成（M-2・UI と `isEntitled` の一致）**: `entitledFeatures` は `entitlements` 行だけを返すと、**FREE プラン掲載機能**（契約行なし）と**非営利無料枠**（`free_for_nonprofit=true`）が UI の「利用できる機能」に現れず、`isEntitled=true` なのに一覧に出ない不整合が生じる。これを防ぐため、サマリ生成は次を**合成**する:
+- entitlements 行由来（`sourceKind ∈ {PLAN, ADDON, BETA_GRANT}`・`validUntil` は行の値）
+- **FREE 掲載機能を `sourceKind="FREE"`・`validUntil=null` の virtual エントリとして追加**（`plan_features('FREE')` 全件）
+- スコープが非営利かつ `free_for_nonprofit=true` の機能を **`sourceKind="NONPROFIT_FREE"`・`validUntil=null`** の virtual エントリとして追加
+- feature_key で重複排除（実 entitlement を virtual より優先）。これで**「利用できる機能」一覧＝`isEntitled=true` となる feature_key 集合**が保証される（AC-23）。
 
 ### 2.3 単一機能の判定（FE ゲート補助・BE が正）
 
@@ -189,23 +195,30 @@ POST /api/v1/organizations/{orgId}/billing/contracts     # ORG スコープ
 | `planKey` | string | PLAN 時✔ | `"FULL"` | `plans.enabled=true` に実在。無ければ `ENTITLEMENT_001` 404 |
 | `featureKey` | string | ADDON 時✔ | `"ads.hide"` | `feature_catalog.enabled=true` かつ `addon_available=true`。無ければ `ENTITLEMENT_002` 404／addon 不可は `ENTITLEMENT_008` 422 |
 
+> ADDON 契約も同型（`active_contract_pointers` に `contract_kind='ADDON'`・`addon_feature_key=featureKey` で INSERT。`uk_acp_slot` が同一 scope×feature の二重 ADDON を物理拒否＝`ENTITLEMENT_006` 409）。REVENUE な feature の ADDON 契約は §7 イベントを発火（`sourceKind=ADDON`）。
+
 処理（PLAN の場合・擬似コード）:
 
 ```
 @Transactional
-createPlanContract(scopeKind, scopeId, planKey, operatorUserId):
-  assertScopeOwnership(...)                                   # @PreAuthorize 済みだが Service 層でも再検証（二重防御）
-  if exists ACTIVE PLAN contract for (scopeKind, scopeId): throw ENTITLEMENT_006  # 409
-  memberCount = activeMemberCount(scopeKind, scopeId)          # 01 §3.4（USER=1）
+createPlanContract(scopeKind, scopeId, planKey, operatorUserId, idempotencyKey):
+  if idempotencyKey seen (billing:idem): return 既存結果                         # M-1 二重送信の吸収
+  assertScopeOwnership(...)                                   # @PreAuthorize 済みだが Service 層でも再検証（二重防御・03 §2）
+  memberCount = activeMemberCount(scopeKind, scopeId)          # 01 §3.4 の既存メソッド再利用（USER=1）
   band = resolveBand(planKey, scopeKind, memberCount)          # TEAM/ORG のみ。バンド未定義なら NULL
   contract = INSERT billing_contracts(PLAN, planKey, status=ACTIVE,
              member_count_snapshot, band_no_snapshot, price_jpy_snapshot=NULL(ベータ), contracted_at=now)
+  try:
+      INSERT active_contract_pointers(scopeKind, scopeId, PLAN, addon_feature_key='', contract_id=contract.id)
+  catch DataIntegrityViolationException (uk_acp_slot):        # H-1 TOCTOU 二重契約を DB が物理拒否
+      throw ENTITLEMENT_006                                    # 409（アプリ層 exists チェックのレースを閉じる）
   for featureKey in plan_features(planKey):
       INSERT entitlements(scopeKind, scopeId, featureKey, source_kind=PLAN,
                           source_ref_id=contract.id, valid_from=now, valid_until=NULL)
   evictEntitlementCache(scopeKind, scopeId); evictCache("teamPlan", scopeId if TEAM)
+  # ★H-5: BETA_GRANT はここを通らない（発行は F20.3 の付与サービス）。REVENUE イベントは「契約＝商用行動」でのみ発火（§7）
   if plan_features(planKey) に category=REVENUE の機能が含まれる:
-      publishRevenueFeatureActivatedEvent(scopeKind, scopeId, revenueFeatureKeys)   # §7
+      publishRevenueFeatureActivatedEvent(scopeKind, scopeId, revenueFeatureKeys, sourceKind=PLAN)   # §7
   return ContractResponse
 ```
 
@@ -235,7 +248,7 @@ DELETE /api/v1/organizations/{orgId}/billing/contracts/{contractId}
       （不一致は ENTITLEMENT_007 404 秘匿・IDOR 03 §2）
 ```
 
-- 処理: `status=CANCELLED`＋`cancelled_at=now`、由来 entitlements を全件 `revoked_at=now, revoked_by=操作者` に（同一トランザクション・AC-20）。キャッシュ evict。
+- 処理: `status=CANCELLED`＋`cancelled_at=now`、**`active_contract_pointers` の該当行を DELETE**（一意スロットを解放・次回契約を可能に）、由来 entitlements を全件 `revoked_at=now, revoked_by=操作者` に（同一トランザクション・AC-20）。scope キャッシュ evict（M-8）。
 - ベータ中は**即時解約**（無償ゆえ期末概念なし）。Phase 2 で期末解約（`cancel_at_period_end` 相当）へ拡張（注記のみ）。
 - 既に CANCELLED → `ENTITLEMENT_011` 409。
 
@@ -247,7 +260,7 @@ Body: { "planKey": "FULL" }         # me / organizations も同型
 認可: §3.1 と同一
 ```
 
-- 処理: 単一トランザクションで「旧契約 CANCELLED＋由来 entitlements revoke → 新契約 ACTIVE＋新 entitlements 発行」（AC-19）。同一 planKey への変更は `ENTITLEMENT_006` 409。
+- 処理: 単一トランザクションで「旧契約 CANCELLED＋由来 entitlements revoke → 新契約 ACTIVE＋新 entitlements 発行 → **`active_contract_pointers.contract_id` を新契約へ UPDATE**（ポインタは付け替えるだけで行を増やさない）」（AC-19）。同一 planKey への変更は `ENTITLEMENT_006` 409。
 - ダウングレード（FULL→BASIC）で対象外となった機能は即 false（キャッシュ evict 込み）。
 
 ---
@@ -302,16 +315,35 @@ GET                 /api/v1/system-admin/billing/contracts?scopeKind=&scopeId=&s
 ### 7.1 イベント定義（billing 発火）
 
 ```java
-/** REVENUE 機能が有効化された（billing ドメイン発火・organization ドメインが購読） */
+/** スコープ自身の商用行動で REVENUE 機能が有効化された（billing 発火・organization 購読） */
 public record RevenueFeatureActivatedEvent(
         EntitlementScopeKind scopeKind,   // 有効化したスコープ
         Long scopeId,
         List<String> revenueFeatureKeys,  // 有効化された REVENUE 機能（category=REVENUE のみ）
+        String sourceKind,                // "PLAN" | "ADDON"（商用行動の別。BETA_GRANT は含めない）
         Long operatorUserId) {}
 ```
 
-- 発火点: PLAN 契約・ADDON 契約・シスアド手動付与・ベータ特典発行（F20.3）のうち、**発行対象に `category=REVENUE` の feature_key が 1 つ以上含まれる**場合。
-- 発火はコミット後（`@TransactionalEventListener(phase = AFTER_COMMIT)` で購読・リスナー側処理は **`@Transactional(propagation = REQUIRES_NEW)`**。memory `feedback_transactional_event_listener_requires_new`）。
+**★発火点の再定義（H-5・営利誤認定の是正）**: マスター要求の原意は「**団体自身の商用行動**で営利区分へ切替」である。よって発火は**スコープ自身が REVENUE 機能を能動的に取得した場合に限る**:
+
+- **発火する**: **PLAN 契約購入**・**ADDON 契約購入**のうち、対象に `category=REVENUE` の feature_key が 1 つ以上含まれる場合（＝スコープが自らの意思で有料の収益機能を契約した＝商用行動）。将来の実収益行動（ペイウォール開設等）も同カテゴリ。
+- **発火しない（除外）**:
+  - **`source_kind=BETA_GRANT`（ベータ特典の付与）**: 運営が**無償で配る**行為であり団体の商用行動ではない。NPO にベータ特典を配っただけで org_type が COMPANY に変異してはならない（**AC-22b 否定 AC**）。F20.3 の付与サービスは本イベントを**発火しない**（§3.1 擬似コードのコメント参照・F20.3 01 §3 発行規約にも「REVENUE イベント非発火」と明記）。
+  - **シスアド手動付与（`ManualGrantRequest`）**: 運営操作であり団体の商用行動ではない → **発火しない**（サポート対応で REVENUE 機能を付けても営利変異させない）。
+- 発火はコミット後（`@TransactionalEventListener(phase = AFTER_COMMIT)`・リスナーは **`@Transactional(propagation = REQUIRES_NEW)`**・memory `feedback_transactional_event_listener_requires_new`）。
+
+#### 7.0 発火点 × org_type 分岐マトリクス（M-19 統合・検証可能化）
+
+| 起点 | source_kind | scopeKind | 対象 org_type | 結果 | AC |
+|---|---|---|---|---|---|
+| PLAN/ADDON 契約購入（REVENUE 含む） | PLAN/ADDON | ORG | `NPO`/`ASSOCIATION`/`COMMUNITY`/`OTHER` | org_type→`COMPANY`＋確認必須通知 | AC-11 |
+| PLAN/ADDON 契約購入（REVENUE 含む） | PLAN/ADDON | ORG | `GOVERNMENT`/`MUNICIPALITY`/`SCHOOL`/`HOSPITAL` | 更新せず・通知＋運営レビュー | AC-12 |
+| PLAN/ADDON 契約購入（REVENUE 含む） | PLAN/ADDON | ORG | `COMPANY` | 何もしない（既に営利） | AC-24 |
+| PLAN/ADDON 契約購入（REVENUE 含む） | PLAN/ADDON | TEAM | 所属 ACTIVE 組織 | 組織 org_type は更新せず・所属組織 ADMIN へ通知のみ | AC-22 |
+| PLAN/ADDON 契約購入（INTERNAL のみ） | PLAN/ADDON | 任意 | 任意 | イベント不発火（REVENUE 無し） | AC-25 |
+| **ベータ特典付与** | **BETA_GRANT** | 任意 | 任意 | **イベント不発火・org_type 不変** | **AC-22b（否定）** |
+| **シスアド手動付与** | 手動 | 任意 | 任意 | **イベント不発火・org_type 不変** | AC-26 |
+| PLAN/ADDON 契約購入（REVENUE 含む） | PLAN/ADDON | USER | — | 個人は org 区分に影響しない（不発火） | AC-27 |
 
 ### 7.2 リスナー処理（organization ドメイン・擬似コード）
 
@@ -344,13 +376,14 @@ onRevenueFeatureActivated(event):
 
 | キャッシュ | value / key | TTL | evict |
 |---|---|---|---|
-| 権利判定 | `entitlement:check` / `{scopeKind.name()}:{scopeId}:{featureKey}` | **60 秒**（`RedisConfig.cacheManager` に個別登録） | 契約作成/解約/変更・手動付与・ベータ付与/取消時に `allEntries=true`（変更頻度が低くキー列挙が煩雑なため全消しで単純化） |
+| 権利判定 | `entitlement:check` / `{scopeKind.name()}:{scopeId}:{featureKey}` | **60 秒**（`RedisConfig.cacheManager` に個別登録） | **scope 単位のキー evict を第一**とする（M-8）。1 スコープの契約変更は当該 `{scopeKind}:{scopeId}:*` のみ削除（feature_key を列挙して個別 evict、または scope プレフィックスの `SCAN`+DEL）。**`allEntries=true` の全消しは日次付与バッチ（1 万件）でサンダリングヘッドを招くため使わない** |
 | 有料プラン互換 | `teamPlan` / `#teamId`（既存・変更しない） | 既定 30 分 | 上記と同時に `@CacheEvict(value="teamPlan", key="#scopeId")`（TEAM スコープ変更時） |
 | 非営利判定 | `billing:nonprofit` / `{scopeKind.name()}:{scopeId}` | 10 分 | org_type 変更イベントで evict |
 | マスタ | `billing:catalog`（プラン一覧の組み立て結果） | 10 分 | シスアド CRUD 時に evict |
 
 - キーの enum は必ず `name()` で String 化（Valkey 直列化事故防止・memory `feedback_cacheable_enum_key_redis`）。
-- **取消の反映保証**: evict 漏れがあっても TTL 60 秒で自然収束（AC-16 の観測可能な上限）。
+- **日次付与バッチの evict（M-8）**: F20.3 の自動付与バッチは**付与済みユーザーを skip**（新規付与分のみ処理）し、**各ユーザーの scope キー evict は付与時に個別実行**（当該ユーザー分のみ）。バッチ完了時の全消し（`allEntries`）はしない。1 万件でも「新規付与された分の scope キーだけ」を触るためサンダリングヘッドを避ける。
+- **取消の反映保証**: scope キー evict を必ず実行（AC-16 の観測点＝**evict 呼び出しの実行**）。evict 漏れがあっても TTL 60 秒で自然収束するが、TTL 依存の観測は非決定的なので**テストは「evict が呼ばれたこと」を検証**し、TTL 失効は別途単体テストで確認する（M-9・03 §5）。
 
 ---
 
