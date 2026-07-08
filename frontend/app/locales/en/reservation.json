@@ -168,9 +168,13 @@
     "tab": {
       "book": "Book",
       "list": "Reservations",
+      "my_reservations": "My Reservations",
       "line_manage": "Manage Bookable Items",
       "emergency_closure": "緊急休業",
       "team_page": "Reservations"
+    },
+    "management": {
+      "section_count": "{label} ({n})"
     },
     "column": {
       "datetime": "Date & Time",
@@ -255,6 +259,8 @@
       "menu_save_failed": "Failed to save",
       "menu_load_failed": "Failed to load menus",
       "template_create_success": "Template created",
+      "template_create_success_multi": "{n} templates created",
+      "template_create_partial": "{succeeded}/{total} templates created; the rest failed",
       "template_update_success": "Template updated",
       "template_delete_success": "Template deleted",
       "template_save_failed": "Failed to save",

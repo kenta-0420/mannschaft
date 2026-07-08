@@ -168,9 +168,13 @@
     "tab": {
       "book": "予約する",
       "list": "予約一覧",
+      "my_reservations": "自分の予約",
       "line_manage": "予約対象の管理",
       "emergency_closure": "緊急休業",
       "team_page": "予約"
+    },
+    "management": {
+      "section_count": "{label} ({n})"
     },
     "column": {
       "datetime": "日時",
@@ -255,6 +259,8 @@
       "menu_save_failed": "保存に失敗しました",
       "menu_load_failed": "メニューの取得に失敗しました",
       "template_create_success": "テンプレートを作成しました",
+      "template_create_success_multi": "{n}件のテンプレートを作成しました",
+      "template_create_partial": "{succeeded}/{total}件のテンプレートを作成済み・残りは失敗しました",
       "template_update_success": "テンプレートを更新しました",
       "template_delete_success": "テンプレートを削除しました",
       "template_save_failed": "保存に失敗しました",
