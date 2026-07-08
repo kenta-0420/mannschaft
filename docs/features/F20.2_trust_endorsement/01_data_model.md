@@ -10,7 +10,7 @@
 - **新規ドメイン `com.mannschaft.app.trust` に閉じる**。`team`/`organization`/`membership` からは **ID 論理参照のみ**（`scope_kind`＋`scope_id`）。**クロスドメイン FK は張らない**（CLAUDE.md 原則 1）。
 - **新規テーブルは全て `UuidV7Entity` 継承（`id BINARY(16)`）**（CLAUDE.md 原則 6）。
 - **CASCADE は trust ドメイン内のみ**。本設計では 2 テーブル間に FK/CASCADE を張らない（`trust_endorsements` は監査証跡として `trust_certifications` の状態に依存せず不変保持する。集計は論理参照 SELECT で行う）。
-- **テナントスコープ**: `trust_certifications`/`trust_endorsements` は `organization_id` を保持し `AbstractTenantAwareRepository` を実装（CLAUDE.md 原則 7・シャードキー候補）。TEAM/ORG 両対応のため `scope_kind`＋`scope_id` 派生 finder（`escrow_transactions` 前例と同型）を採る。
+- **テナントスコープ**: `trust_certifications`/`trust_endorsements` は `organization_id` を保持し `AbstractTenantAwareRepository` を実装（CLAUDE.md 原則 7）。TEAM/ORG 両対応のため `scope_kind`＋`scope_id` 派生 finder（`escrow_transactions` 前例と同型）を採る。**シャーディングの正直な注記**: 本機能の主クエリ（incoming 有効件数・年間発行数）は `scope_kind`＋`scope_id` 主導のため、`organization_id` シャーディングでは被覆されない（endorser と endorsee の org は異なりうる）。分散化時は scope キーでのルーティングまたはグローバルセカンダリインデックスが別途必要（README §9）。`organization_id` はテナント集計・原則 7 準拠のために保持する。
 - **スコープ種別**: payment `ScopeKind{USER,TEAM,ORG}` 準拠。本機能は **TEAM/ORG のみ**（`scope_kind` の CHECK で USER を拒否・§3.1/§3.2）。membership カウント時の `TEAM/ORG → TEAM/ORGANIZATION` マッピングは [README §1.4](README.md) を厳守。
 - **enum は DB 側 VARCHAR + CHECK 制約**（既存 payment/visibility ドメインと整合・拡張容易性）。Java 側は enum で表現し `@Enumerated(EnumType.STRING)` または VARCHAR マッピング。
 - **`@Query` 内コメント厳禁**（JPQL/native query 内に SQL コメントを書かない・パース不整合回避）。
@@ -39,7 +39,7 @@
 | `id` | BINARY(16) | NO | (UUIDv7) | PK |
 | `scope_kind` | VARCHAR(4) | NO | — | `TEAM` / `ORG`（認証対象の種別・payment `ScopeKind` 準拠・USER 不可） |
 | `scope_id` | BIGINT UNSIGNED | NO | — | 対象団体 ID（TEAM=teams.id / ORG=organizations.id）。**論理参照（FK なし）** |
-| `organization_id` | BIGINT UNSIGNED | YES | NULL | テナント絞り込み用（ORG は自 org、TEAM は所属組織を記録・シャードキー候補） |
+| `organization_id` | BIGINT UNSIGNED | YES | NULL | テナント絞り込み用（ORG は自 org、TEAM は所属組織を記録。※主クエリは scope キー主導のためシャードキーとしては機能しない・§1） |
 | `state` | VARCHAR(16) | NO | `'UNCERTIFIED'` | `UNCERTIFIED` / `CERTIFIED` / `UNDER_REVIEW` / `REVOKED`（§4・状態機械 README §5） |
 | `is_anchor` | BOOLEAN | NO | FALSE | 運営付与のアンカー（初期認証・信任数非依存で `CERTIFIED` 維持・README §3.6） |
 | `certified_at` | DATETIME | YES | NULL | 初回に `CERTIFIED` へ到達した日時（UTC）。回復（`UNDER_REVIEW→CERTIFIED`）では上書きしない（初回到達を保持） |
@@ -77,12 +77,12 @@ INDEX idx_tc_under_review (state, under_review_since) -- キューのソート�
 | `endorser_scope_id` | BIGINT UNSIGNED | NO | — | 信任元団体 ID（論理参照） |
 | `endorsee_scope_kind` | VARCHAR(4) | NO | — | 信任先の種別 `TEAM` / `ORG`（USER 不可） |
 | `endorsee_scope_id` | BIGINT UNSIGNED | NO | — | 信任先団体 ID（論理参照） |
-| `organization_id` | BIGINT UNSIGNED | YES | NULL | テナント絞り込み（信任元の組織・シャードキー候補） |
+| `organization_id` | BIGINT UNSIGNED | YES | NULL | テナント絞り込み（信任元の組織。※主クエリは scope キー主導のためシャードキーとしては機能しない・§1） |
 | `granted_at` | DATETIME | NO | CURRENT_TIMESTAMP | 信任付与日時（UTC）。年間発行数の集計軸 |
 | `granted_by_user_id` | BIGINT UNSIGNED | YES | NULL | 付与操作者（endorser 団体の管理者・論理参照・監査） |
 | `revoked_at` | DATETIME | YES | NULL | 無効化日時（UTC）。NULL = **有効な信任**。取消／信任元 REVOKE で set |
 | `revoked_by_user_id` | BIGINT UNSIGNED | YES | NULL | 取消操作者（endorser 管理者 or 運営・論理参照・監査） |
-| `revoke_reason` | VARCHAR(24) | YES | NULL | `MANUAL`（endorser の任意取消）/ `ENDORSER_REVOKED`（信任元が REVOKED になった連鎖・README §3.7）/ `OPERATOR`（運営操作） |
+| `revoke_reason` | VARCHAR(24) | YES | NULL | `MANUAL`（endorser の任意取消）/ `ENDORSER_REVOKED`（信任元が REVOKED になった連鎖・README §3.7）/ `ENDORSER_DELETED`（信任元団体の削除カスケード・README §5.1 T12）/ `OPERATOR`（運営操作） |
 | `created_at` | DATETIME | NO | CURRENT_TIMESTAMP | |
 | `updated_at` | DATETIME | NO | CURRENT_TIMESTAMP ON UPDATE | |
 
@@ -94,7 +94,7 @@ CONSTRAINT chk_te_endorsee_kind CHECK (endorsee_scope_kind IN ('TEAM','ORG'))
 CONSTRAINT chk_te_no_self CHECK (
     NOT (endorser_scope_kind = endorsee_scope_kind AND endorser_scope_id = endorsee_scope_id))
 CONSTRAINT chk_te_revoke_reason CHECK (
-    revoke_reason IS NULL OR revoke_reason IN ('MANUAL','ENDORSER_REVOKED','OPERATOR'))
+    revoke_reason IS NULL OR revoke_reason IN ('MANUAL','ENDORSER_REVOKED','ENDORSER_DELETED','OPERATOR'))
 
 -- 重複信任の禁止（有効な endorser→endorsee は 1 件のみ）。README §3.1 / AC-06
 -- MySQL は filtered unique 非対応のため、生成列で「有効時のみ一意・無効化後は再付与可」を表現する。
@@ -141,6 +141,7 @@ INDEX idx_te_org (organization_id)
 |---|---|
 | `MANUAL` | endorser 団体管理者による任意取消（AC-14） |
 | `ENDORSER_REVOKED` | 信任元が `REVOKED` になった連鎖での無効化（README §3.7・AC-15） |
+| `ENDORSER_DELETED` | 信任元団体の削除カスケードでの無効化（README §5.1 T12・AC-27・[02 §5.4](02_api_design.md)） |
 | `OPERATOR` | 運営による直接無効化 |
 
 ---
@@ -167,7 +168,7 @@ CREATE TABLE trust_certifications (
     id                       BINARY(16)      NOT NULL,
     scope_kind               VARCHAR(4)      NOT NULL COMMENT '認証対象種別 TEAM/ORG（payment ScopeKind準拠・USER不可）',
     scope_id                 BIGINT UNSIGNED NOT NULL COMMENT '対象団体ID（論理参照・FKなし）',
-    organization_id          BIGINT UNSIGNED NULL     COMMENT 'テナント絞り込み（シャードキー候補）',
+    organization_id          BIGINT UNSIGNED NULL     COMMENT 'テナント絞り込み（主クエリはscopeキー主導・§1）',
     state                    VARCHAR(16)     NOT NULL DEFAULT 'UNCERTIFIED' COMMENT 'UNCERTIFIED/CERTIFIED/UNDER_REVIEW/REVOKED',
     is_anchor                BOOLEAN         NOT NULL DEFAULT FALSE COMMENT '運営付与アンカー（信任数非依存でCERTIFIED維持）',
     certified_at             DATETIME        NULL     COMMENT '初回CERTIFIED到達日時（回復で上書きしない）',
@@ -195,7 +196,7 @@ CREATE TABLE trust_endorsements (
     endorser_scope_id     BIGINT UNSIGNED NOT NULL COMMENT '信任元団体ID（論理参照）',
     endorsee_scope_kind   VARCHAR(4)      NOT NULL COMMENT '信任先種別 TEAM/ORG',
     endorsee_scope_id     BIGINT UNSIGNED NOT NULL COMMENT '信任先団体ID（論理参照）',
-    organization_id       BIGINT UNSIGNED NULL     COMMENT 'テナント絞り込み（信任元組織・シャードキー候補）',
+    organization_id       BIGINT UNSIGNED NULL     COMMENT 'テナント絞り込み（信任元組織・主クエリはscopeキー主導・§1）',
     granted_at            DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '信任付与日時（年間発行数の集計軸）',
     granted_by_user_id    BIGINT UNSIGNED NULL     COMMENT '付与操作者（endorser管理者・論理参照）',
     revoked_at            DATETIME        NULL     COMMENT '無効化日時（NULL=有効な信任）',
@@ -326,6 +327,6 @@ erDiagram
 | 4. 退会時匿名化 | ✅ `granted_by_user_id`/`revoked_by_user_id` は論理参照（退会時 user 側匿名化で PII は消える）・信任台帳は統計/監査価値のため保持（[03 §5](03_security.md)） |
 | 5. @Transactional ドメイン内 | ✅ `trust` ドメイン内に閉じる。membership カウント・team/org 存在確認は読み取り Service 経由・通知は ApplicationEvent（[02 §7](02_api_design.md)） |
 | 6. 新規テーブル UUIDv7 | ✅ `trust_certifications`/`trust_endorsements` とも `UuidV7Entity`（BINARY(16)） |
-| 7. テナント Repository | ✅ 両テーブル `organization_id` 保持・`AbstractTenantAwareRepository` 実装（シャードキー候補） |
+| 7. テナント Repository | ✅ 両テーブル `organization_id` 保持・`AbstractTenantAwareRepository` 実装（※主クエリは scope キー主導のため分散時は scope ルーティング/グローバルセカンダリが別途必要・§1） |
 
 > **マスタ例外・シングルトン例外には該当しない**: 両テーブルとも団体ごと・信任ごとに行が増える運用データ（テナントスコープ）であり、原則 6（UUIDv7）を適用する。

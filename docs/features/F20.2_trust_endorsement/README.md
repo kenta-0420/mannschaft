@@ -85,6 +85,7 @@
 - [ ] 信任関係の双方公開（誰が誰を信任しているか）
 - [ ] 運営 API（アンカー付与・REVOKE・再審査キュー・再審査からの認証復帰）
 - [ ] 信任付与／`UNDER_REVIEW` 遷移時の通知（既存 notification ドメイン）
+- [ ] **団体削除時の信任カスケード**（削除団体の outgoing 有効信任を無効化＋被信任先の有効数再計算・1 段。`TeamDeletedEvent`/`OrganizationDeletedEvent` 購読・[02 §5.4](02_api_design.md)・AC-27）
 - [ ] 監査ログ（信任付与・取消・REVOKE・アンカー付与・状態遷移）
 
 ### 2.2 対象外（out）
@@ -95,6 +96,7 @@
 - [ ] 信任の重み付け・スコアリング（1 信任 = 1 票・重み無し）
 - [ ] 認証マークの外部埋め込みウィジェット（v2 以降）
 - [ ] 信任元の匿名化（信任関係は公開が前提）
+- [ ] **信任の依頼フロー**（未認証団体が認証済み団体へ「信任してほしい」と依頼する導線）— 本機能スコープ外。信任は endorser 側の自発的操作のみとし、依頼・招待の導線は将来拡張点として記録する
 - [ ] 厳密な非巡回（acyclicity）検証（**要裁可論点 §11-1**・既定は「信任元は認証済み」不変条件のみで未認証リングを阻止）
 
 ---
@@ -142,7 +144,7 @@
 |---|---|---|---|
 | **認証済みであること** | — | `trust_certifications.state = 'CERTIFIED'`（`is_anchor` 含む） | 未認証は信任できない（一方向グラフ・§3.1） |
 | **設立から N ヶ月経過** | `min-established-months = 6` | `established_date`（V3.132 org / V3.133 team）＋精度考慮（§3.4）で判定 | 即席団体による信任乱発を防ぐ |
-| **アクティブメンバー M 人以上** | `min-active-members = 5` | `memberships` の `scope_type`＋`scope_id`＋`left_at IS NULL` を count（§1.4 マッピング） | 実体のある団体に限定 |
+| **アクティブメンバー M 人以上** | `min-active-members = 5` | 既存 `MembershipRepository.countActiveDistinctUsersByScope(ScopeType, scopeId)` を再利用（**新規 count メソッドを作らない**）。「アクティブ」＝**在籍（`left_at IS NULL`）ベースの DISTINCT ユーザー数**（同一 user の複数行を二重計上しない・role_kind 横断）。`users.status` との連動は行わない（同メソッドの JavaDoc どおり user ドメインに委ね、membership から users を直接参照しない）。scope_type は §1.4 マッピング | 実体のある団体に限定 |
 | **年間信任発行数の上限** | `annual-endorsement-cap = 10` | 直近 12 ヶ月に当該 endorser が発行した有効信任の件数（§3.5） | 単一団体による信任の希釈・買収的発行を防ぐ |
 
 > 閾値は「安全側の既定」を置き、運用で緩める前提。値は本設計の推奨であり、**マスター確定値ではない**（§11-2 要裁可）。
@@ -201,11 +203,11 @@
 - **AC-01**（正常・認証遷移）: 認証済み団体 A・B・C がそれぞれ未認証団体 X を信任し、**3 件目（C）の有効信任が付与された時点**で X の `state` が `UNCERTIFIED` から `CERTIFIED` に遷移し、`certified_at` が記録される。
 - **AC-02**（境界・2 件では遷移しない）: A・B の 2 件のみ信任した時点では X は `UNCERTIFIED` のまま（`certified_at` は NULL）。
 - **AC-03**（境界・ちょうど 3 件で遷移）: 3 件目の付与トランザクション内で `CERTIFIED` に遷移する（4 件目以降の付与では状態は変わらず `CERTIFIED` を維持）。
-- **AC-04**（異常・信任元未認証）: 未認証（`UNCERTIFIED`／`UNDER_REVIEW` 以外は不可・`state≠CERTIFIED`）団体が信任 API を呼ぶと `TRUST_001`（信任元未認証・422）で拒否され、`trust_endorsements` に行が作られない。
+- **AC-04**（異常・信任元未認証）: `state = CERTIFIED`（アンカー含む）**でない**団体（`UNCERTIFIED`・`UNDER_REVIEW`・`REVOKED` のいずれか）が信任 API を呼ぶと `TRUST_001`（信任元未認証・422）で拒否され、`trust_endorsements` に行が作られない。
 - **AC-05**（異常・自己信任）: 団体 A が自団体 A を信任しようとすると `TRUST_002`（自己信任・422）で拒否される。
 - **AC-06**（異常・重複信任）: 既に A→X の有効信任がある状態で再度 A→X を付与しようとすると `TRUST_005`（重複信任・409）で拒否される（DB UNIQUE でも二重防御）。
 - **AC-07**（異常・年間上限超過）: A が直近 12 ヶ月に上限（既定 10）件の有効信任を発行済みの状態で 11 件目を付与しようとすると `TRUST_004`（年間上限超過・429）で拒否される。
-- **AC-08**（境界・上限ちょうど）: A の直近 12 ヶ月の有効信任が 9 件のとき 10 件目は成功し、その直後 11 件目は `TRUST_004`。1 件取消して 9 件に戻せば再び 1 件付与できる。
+- **AC-08**（境界・上限ちょうど）: **Clock 固定下で**、A の直近 12 ヶ月の有効信任が 9 件のとき 10 件目は成功し、その直後 11 件目は `TRUST_004`。1 件取消して 9 件に戻せば再び 1 件付与できる（年間上限系は Clock 注入で時刻を制御できる統合テストで担保・[02 §10](02_api_design.md)）。
 - **AC-09**（異常・資格未達・設立）: 設立 N ヶ月未満（または `established_date`/`precision` が NULL）の認証済み団体が信任しようとすると `TRUST_003`（資格未達・422）で拒否される。
 - **AC-10**（異常・資格未達・人数）: アクティブメンバーが M 人未満の認証済み団体が信任しようとすると `TRUST_003` で拒否される。
 - **AC-11**（異常・対象スコープ不正）: `scope_kind=USER` を信任元または信任先に指定すると `TRUST_006`（対象スコープ不正・422）で拒否される。
@@ -220,18 +222,26 @@
 - **AC-17**（正常・回復）: `UNDER_REVIEW` の X が新たに認証済み団体 D から信任を受け有効信任が 3 件に回復すると、X は自動で `CERTIFIED` に戻る（`certified_at` は最初の到達時刻を保持）。
 - **AC-18**（正常・取消で完全未認証化はしない）: 一度も `CERTIFIED` に到達していない X の有効信任が 3→2 になっても X は `UNDER_REVIEW` にならず `UNCERTIFIED`（そもそも `CERTIFIED` 未到達なので降格対象外）。
 - **AC-19**（境界・アンカーは降格しない）: `is_anchor=TRUE` の団体は受けている有効信任が 0 件でも `CERTIFIED` を維持し `UNDER_REVIEW` に落ちない。
+- **AC-27**（団体削除カスケード・T12）: 認証済み団体 A が削除（`TeamDeletedEvent`/`OrganizationDeletedEvent`）されると、A が発行していた有効信任がすべて無効化され（DB: 各行の `revoked_at` NOT NULL・`revoke_reason='ENDORSER_DELETED'`）、A から信任を受けていた X の有効信任が 3 未満になった場合 X の `state` が `UNDER_REVIEW` に再計算される（連鎖 1 段・AC-16 と同じ停止規則）。
+- **AC-28**（境界・T5）: `UNDER_REVIEW` の X（有効 1 件）が新たに 1 件の信任を受けても計 2 件（3 未満）なら X は `UNDER_REVIEW` のまま（DB: 信任行は増える・`state` 不変・通知は受任通知のみ）。
+- **AC-29**（境界・T7・4→3 では降格しない）: 有効信任 4 件で `CERTIFIED` の X から 1 件が取り消され 3 件になっても X は `CERTIFIED` のまま（`state` 不変）。さらに 1 件取り消され 2 件になった時点で初めて `UNDER_REVIEW` に遷移する（AC-14）。
+- **AC-32**（異常・取消の冪等）: 既に取消済み（`revoked_at` NOT NULL）の信任に再度取消 API を呼ぶと `TRUST_008`（409）で拒否され、DB 状態は変化しない。
 
 ### 4.3 運営 API・公開表示
 
 - **AC-20**（運営・アンカー付与）: SYSTEM_ADMIN がアンカー付与 API を呼ぶと対象団体の `is_anchor=TRUE`・`state=CERTIFIED`・`certified_at` が記録され、以後その団体は信任を発行できる。
 - **AC-21**（運営・REVOKE）: SYSTEM_ADMIN が REVOKE API を呼ぶと対象の `state=REVOKED`・認証マーク非表示になり、§3.7 の連鎖処理が実行される。非 SYSTEM_ADMIN は 403。
 - **AC-22**（運営・再審査キュー）: SYSTEM_ADMIN が再審査キュー API を呼ぶと `state=UNDER_REVIEW` の団体一覧が返る。再審査 OK で `CERTIFIED` に復帰、NG で `REVOKED` にできる。
-- **AC-23**（公開表示・認証状態取得）: 未ログインユーザーが認証状態取得 API を呼ぶと、対象団体が PUBLIC のとき `state`（`CERTIFIED`/`UNDER_REVIEW` は認証マーク表示扱い）が返り、PRIVATE 団体は F00 経由で 404 秘匿になる。
+- **AC-23**（公開表示・認証状態取得）: 未ログインユーザーが認証状態取得 API を呼ぶと、対象団体が PUBLIC のとき**公開用に丸めた state**（`UNDER_REVIEW` は `CERTIFIED` として返す・[02 §6.1](02_api_design.md)）と `badgeVisible` が返り、PRIVATE 団体は F00 経由で 404 秘匿になる。生の `UNDER_REVIEW` は当該団体管理者・運営向け DTO でのみ観測できる。
 - **AC-24**（公開表示・信任関係一覧）: 未ログインユーザーが信任関係一覧 API を呼ぶと、対象団体が誰を信任し（outgoing）・誰から信任されているか（incoming）の双方が公開される（信任関係は双方のプロフィールに公開）。
 - **AC-25**（通知・付与）: X が 3 件目の信任で `CERTIFIED` になったとき、X の団体管理者に「認証済みになった」通知が届く（通常通知）。信任を受けた（1〜2 件目）時点でも X 管理者へ通常通知が届く。
 - **AC-26**（通知・降格）: X が `UNDER_REVIEW` に遷移したとき、X の団体管理者に「信任状況に変化があった」通常通知が届く（確認必須通知は使わない・§8）。
+- **AC-30**（運営・アンカー解除・A3）: SYSTEM_ADMIN がアンカー解除 API を呼ぶと対象の `is_anchor=FALSE` になり、通常団体として再評価される（有効信任 3 件以上なら `CERTIFIED` 維持・3 未満なら `UNDER_REVIEW`。API 応答の `state` と DB で観測）。非アンカー団体への解除は `TRUST_010`（409）。
+- **AC-31**（運営・アンカーへの REVOKE・A4）: アンカー団体（`is_anchor=TRUE`）にも REVOKE は有効で、`state=REVOKED`・認証マーク非表示になり、outgoing 信任の全無効化＋1 段連鎖（§3.7）が実行される。
+- **AC-33**（異常・運営操作の状態不整合）: `UNDER_REVIEW` でない団体への再審査 approve/reject、既に `REVOKED` の団体への再 REVOKE は `TRUST_010`（409）で拒否され、状態は変化しない。
+- **AC-34**（資格事前確認）: endorser 団体の管理者が資格確認 API（[02 §4.2](02_api_design.md)）を呼ぶと、資格を満たす場合 `eligible=true` と年間発行残数が返り、未達の場合 `eligible=false` と未達理由（`blockingReasons`）の全列挙が返る（API 応答で観測）。非管理者は 403／無関係 scope は 404。
 
-> 試練（テスト先行）では AC-01〜26 を BE ドメイン UT ＋ API 契約テストの red として起こす（`feedback_test_first_be_api`）。特に AC-02/03/08（境界）、AC-04〜11（異常）、AC-15/16（連鎖 1 段）を落としてはならない。
+> 試練（テスト先行）では AC-01〜34 を BE ドメイン UT ＋ API 契約テストの red として起こす（`feedback_test_first_be_api`）。特に AC-02/03/08/28/29（境界）、AC-04〜11/32/33（異常）、AC-15/16/27（連鎖 1 段・削除カスケード）を落としてはならない。
 
 ---
 
@@ -254,6 +264,7 @@
 | T9 | 運営 REVOKE | `CERTIFIED`/`UNDER_REVIEW`/`UNCERTIFIED` | — | `REVOKED` | 認証マーク非表示・当該団体の outgoing 信任を全無効化 → §3.7 連鎖（1 段）・監査ログ |
 | T10 | 運営 再審査 OK | `UNDER_REVIEW` | — | `CERTIFIED` | 再審査解除・キューから除去・監査ログ（`n < T` でも運営裁量で復帰可） |
 | T11 | 運営 再審査 NG | `UNDER_REVIEW` | — | `REVOKED` | T9 と同じ副作用 |
+| T12 | **団体削除**（`TeamDeletedEvent`/`OrganizationDeletedEvent` 購読・[02 §5.4](02_api_design.md)） | any | — | （認証行は現状態のまま・団体自体が F00 不可視化） | 当該団体の **outgoing 有効信任を全無効化**（`revoke_reason='ENDORSER_DELETED'`）→ 被信任先の有効数再計算（`CERTIFIED` かつ非アンカーで `n < T` なら `UNDER_REVIEW`・連鎖 1 段）・監査ログ |
 
 ### 5.2 アンカー団体（`is_anchor=TRUE`）
 
@@ -269,7 +280,7 @@
 ## 6. F00 可視性基盤・公開表示
 
 - 認証状態・信任関係の公開可否は、対象団体（TEAM/ORG）の `visibility`（PUBLIC/PRIVATE）に従い、**F00 `AbstractContentVisibilityResolver` の PUBLIC 分岐**を経由して判定する。独自述語を作らない（`feedback_visibility_bypass_f00_audit`）。
-- 実装は F19.1 が繰り上げ実装した `PublicTeamVisibilityResolver` / `PublicOrganizationVisibilityResolver`（`ReferenceType.TEAM`/`ORGANIZATION`）を再利用し、認証状態取得・信任関係一覧の公開クエリは「対象 scope が PUBLIC で可視」を先に確認してから認証情報を返す（[03 §4](03_security.md)）。
+- 実装は F00 のファサード **`ContentVisibilityChecker.canView(ReferenceType.TEAM | ReferenceType.ORGANIZATION, scopeId, viewerUserIdOrNull)`** を呼ぶ（未ログインは `userId=null`）。実体は既存の `TeamVisibilityResolver`（`team.visibility`）/ `OrganizationVisibilityResolver`（`organization.visibility`）で、`ContentVisibilityChecker` が `ReferenceType` でディスパッチする。認証状態取得・信任関係一覧の公開クエリは「対象 scope が可視」を先に確認してから認証情報を返す（[03 §4](03_security.md)）。※F19.1 の `IdentityVisibilityResolver` は**投稿者識別（氏名・アバター）の段階開示用で別物**・本機能では使わない。
 - 認証マークの表示先（読み取り専用の消費側）:
 
 | 表示先 | 参照する状態 | 備考 |
@@ -290,6 +301,7 @@ F20.1（権利・課金）で「非営利区分に大きな優遇を付ける」
 - F20.1 は本サービスを**参照するだけ**で、本機能は F20.1 の存在を前提としない（`trust` ドメインは `entitlement`/`billing` ドメインに依存しない・一方向）。
 - F20.1_entitlement_billing は**並行作成中**のため、本設計はパス参照（`docs/features/F20.1_entitlement_billing/`）に留め、結線・DTO 共有はしない。
 - 本フックは「認証を課金の割引条件に使う」ものであって「課金で認証を買う」ものではない（§1.3-4 無料原則を侵さない）。
+- **F20.3（ベータ特典）との依存方向も同じ**: trust は F20.3 に依存しない。F20.3 側が `TrustCertificationQueryService.isCertified(...)` を参照する（依存は常に 外部ドメイン → trust の一方向）。
 
 ---
 
@@ -314,7 +326,7 @@ F20.1（権利・課金）で「非営利区分に大きな優遇を付ける」
 - **年間上限の集計**は `idx_te_endorser_granted (endorser_scope_kind, endorser_scope_id, granted_at)` で被覆し、ローリング 12 ヶ月分の COUNT を数十行スキャンに収める（§3.5）。
 - **公開表示のキャッシュ**: 認証マーク表示は読み取り頻度が高い。`state` を短 TTL（例 60 秒）でキャッシュし、状態遷移時にイベント（`TrustCertificationStateChangedEvent`）でキャッシュ無効化する。`@Cacheable` を使う場合は enum キーを String 化（`feedback_cacheable_enum_key_redis`）。
 - **REVOKE 連鎖は 1 段・有界**: 連鎖を 1 段に制限（§3.7）することで、単一 REVOKE の処理量は「X の outgoing 信任数 + その被信任先の再評価」に有界化され、グラフ全体を巻き込むカスケードを防ぐ。
-- **UUIDv7 主キー・テナント列**: 新規テーブルは UUIDv7（原則 6）。`trust_certifications`/`trust_endorsements` は `organization_id` を持ち `AbstractTenantAwareRepository` を実装（原則 7・シャードキー候補）。TEAM/ORG 両対応のため scope 派生 finder（escrow_transactions 前例の `scope_kind`＋`scope_id` 解決方式）を採る（[01 §3](01_data_model.md)）。
+- **UUIDv7 主キー・テナント列**: 新規テーブルは UUIDv7（原則 6）。`trust_certifications`/`trust_endorsements` は `organization_id` を持ち `AbstractTenantAwareRepository` を実装（原則 7）。TEAM/ORG 両対応のため scope 派生 finder（escrow_transactions 前例の `scope_kind`＋`scope_id` 解決方式）を採る（[01 §3](01_data_model.md)）。**シャーディングについて正直な注記**: 本機能の主クエリ（incoming 有効件数・年間発行数の集計）は `scope_kind`＋`scope_id` 主導で走るため、`organization_id` をシャードキーにしても被覆されない（scope の org は endorser/endorsee で異なりうる）。分散化時は **scope キーでのルーティング、またはグローバルセカンダリインデックス（scope→シャードの対応表）が別途必要**であり、「organization_id シャーディングで自動的に shard-friendly」とは主張しない。`organization_id` はテナント集計・原則 7 準拠のために保持する。
 
 ---
 
@@ -344,7 +356,7 @@ F20.1（権利・課金）で「非営利区分に大きな優遇を付ける」
 | **11-3** | **`UNDER_REVIEW` 団体は信任を発行できるか** | (a) `UNDER_REVIEW` も「認証済み扱い」で信任発行可（マーク表示中のため）／(b) `UNDER_REVIEW` は信任発行不可（`state=CERTIFIED` 厳密一致のみ発行可） | **(b) 推奨**。信任発行資格（§3.3）は `state=CERTIFIED`（＋アンカー）厳密一致とし、`UNDER_REVIEW`（信頼が揺らいでいる団体）には新規信任を発行させない。ただし §3.7 の連鎖で `UNDER_REVIEW` に落ちた団体が**過去に発行した**信任は 1 段制限で無効化しない（既存の被信任先は守る）。この非対称を README §3.7／状態遷移表に明記済 |
 | **11-4** | **閾値 T=3 の変更可能性** | 確定値 3・ただし定数化 | **確定（3）＋定数化**（`mannschaft.trust.certification-threshold=3`）。運用変更の余地のみ残す |
 | **11-5** | **1 団体が受けられる信任の上限（incoming 側）** | (a) 無制限（多いほど信頼が厚い）／(b) 表示上は 3 で頭打ち | **(a) 推奨**（incoming は無制限・件数は信頼の厚みとして公開表示。上限は発行側（outgoing）の年間上限のみ） |
-| **11-6** | **endorsee 側の同意（受任の承諾）フローの要否** | (a) 同意不要（信任は endorser の一方向の対外表明・endorsee は存在検証のみ）／(b) endorsee 管理者の承諾を経て有効化／(c) (a)＋endorsee が特定の信任を自団体公開面から非表示にできる opt-out | **(a) 推奨・(c) を将来拡張点**。同意フローは付与の摩擦を上げ「信頼の輪」の自然拡大を阻害する。ただし「望まない団体から公開の信任を張られる」レピュテーション懸念は残るため opt-out を拡張点として温存（[03 §9.1](03_security.md)） |
+| **11-6** | **endorsee 側の同意（受任の承諾）フローの要否** | (a) 同意不要（信任は endorser の一方向の対外表明・endorsee は存在検証のみ）／(b) endorsee 管理者の承諾を経て有効化／(c) (a)＋endorsee が特定の信任を自団体公開面から非表示にできる opt-out | **(a) 推奨・(c) を将来拡張点**。同意フローは付与の摩擦を上げ「信頼の輪」の自然拡大を阻害する。ただし「望まない団体から公開の信任を張られる」レピュテーション懸念は残るため opt-out を拡張点として温存（[03 §9.1](03_security.md)）。**関連脅威=存在オラクル**: 付与時の endorsee 検証を「実在すれば OK」にすると PRIVATE 団体の ID 総当り列挙に使われるため、(a) でも endorsee は「endorser 管理者から F00 可視」の場合のみ許可し、不可視・不在を同一応答 `TRUST_007` に統一する（[03 §3](03_security.md)・[02 §2.3](02_api_design.md)） |
 | **11-7** | **PRIVATE 団体が当事者の信任の公開範囲** | (a) 要件どおり全公開（PRIVATE 団体名が公開面に露出）／(b) 安全側＝相手方が F00 可視（PUBLIC）の信任のみ公開面に出す（件数は全件） | **(b) 推奨・設計既定**（F19.1 の非公開原則と矛盾させない・[03 §4.1](03_security.md)） |
 
 > 要裁可論点（11-1〜11-7）はいずれも**設計内に選択肢＋推奨を明示**した。実装着手（試練→出陣）前にマスター御裁可を得ること。11-2 の既定値は config 外部化により後から無停止で調整できるため、暫定値で試練を書き始めてよい。
@@ -356,3 +368,4 @@ F20.1（権利・課金）で「非営利区分に大きな優遇を付ける」
 | 日付 | 内容 |
 |---|---|
 | 2026-07-08 | 初版起草。マスター合意済み要求仕様（呼称「信任」確定・NG語・閾値 3・一方向 DAG・アンカー・資格条件・状態機械・REVOKED 連鎖 1 段・公開表示 F00 経由・課金分離・F20.1 フック）を反映。origin/main 実物（F00 `AbstractContentVisibilityResolver`・payment `ScopeKind`・`UuidV7Entity`・`MembershipEntity`・V3.132/V3.133 `established_date`・F19.1 公開可視性）を一次ソースに設計。受け入れ条件 AC-01〜26・状態遷移表・要裁可論点 11-1〜11-5 を明示。ステータス 🟡 設計中（精査待ち） |
+| 2026-07-08 | **精査第1パス反映**。(重大) 公開ゲートを実在の `ContentVisibilityChecker.canView(ReferenceType.TEAM|ORGANIZATION, scopeId, userIdOrNull)` へ差し替え（架空の PublicTeam/OrganizationVisibilityResolver を排除・§6/02 §6.1/03 §4.1）／アクティブメンバー数を既存 `MembershipRepository.countActiveDistinctUsersByScope` 再利用（在籍 DISTINCT・users.status 非連動）に確定（§3.3/02 §4.1）／団体削除カスケードをスコープ(in)・状態遷移 T12・AC-27・02 §5.4（`TeamDeletedEvent`/`OrganizationDeletedEvent` 実名）へ正式化。(中位) 公開 DTO の `UNDER_REVIEW` 丸め（02 §6.1/03 §4.2）・信任付与時の endorsee F00 可視性検証で存在オラクル封鎖（02 §2.3/03 §3）・シャード記述の正直化（§9/01 §1）・取消確認文言の通知矛盾修正（04 §6.2）・F20.3 依存方向の明記（§7）。(低) AC-04 平叙化・AC-08 Clock 固定明記・信任依頼フローをスコープ外に明記（§2.2）。AC-27〜34 追加（T5/T7/A3/A4/TRUST_008/TRUST_010/eligibility/アンカー解除）。`revoke_reason` に `ENDORSER_DELETED` 追加。要裁可論点（§11）は不変 |

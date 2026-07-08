@@ -86,7 +86,10 @@
 2. 入力検証:
      - scope_kind が TEAM/ORG 以外（USER 等）→ TRUST_006（422）
      - endorser == endorsee（kind と id が両方一致）→ TRUST_002（422）
-     - endorsee 団体の実在確認（teams/organizations を deleted_at IS NULL で lookup）→ 不在は TRUST_007（404）
+     - endorsee の実在＋F00 可視性確認（存在オラクル封鎖・03 §3）:
+         ContentVisibilityChecker.canView(ReferenceType.TEAM|ORGANIZATION, endorseeScopeId, currentUserId)
+         → 不在・削除済み・「endorser 管理者（操作者）から不可視」のいずれも**同一応答 TRUST_007（404）**
+           （実在チェックだけにすると PRIVATE 団体の ID 総当り列挙オラクルになる・README §11-6 関連脅威）
 3. endorser 資格判定（TrustEligibilityService.checkEligibility・§4）:
      - state != CERTIFIED（is_anchor 含む・UNDER_REVIEW は不可＝README §11-3 推奨(b)）→ TRUST_001（422）
      - 設立 N ヶ月未達 or established_date/precision NULL → TRUST_003（422・details に不足条件）
@@ -165,9 +168,12 @@ checkEligibility(endorserScopeKind, endorserScopeId, clock):
   if effective.plusMonths(minEstablishedMonths) > today(clock):
       return NG(TRUST_003, reason=ESTABLISHED_TOO_RECENT)
 
-  // アクティブメンバー M 人（README §1.4 マッピング厳守）
-  scopeType = (endorserScopeKind == ORG) ? "ORGANIZATION" : "TEAM"
-  activeCount = memberships.countByScopeTypeAndScopeIdAndLeftAtIsNull(scopeType, endorserScopeId)
+  // アクティブメンバー M 人（README §1.4 マッピング厳守・§3.3）
+  // 既存 MembershipRepository.countActiveDistinctUsersByScope を再利用（新規 count メソッドを作らない）。
+  // 「アクティブ」= 在籍（left_at IS NULL）ベースの DISTINCT user 数（同一 user の複数行を二重計上しない・
+  //  role_kind 横断）。users.status との連動は行わない（実装 JavaDoc どおり user ドメインに委ねる）。
+  scopeType = (endorserScopeKind == ORG) ? ScopeType.ORGANIZATION : ScopeType.TEAM
+  activeCount = membershipRepository.countActiveDistinctUsersByScope(scopeType, endorserScopeId)
   if activeCount < minActiveMembers:
       return NG(TRUST_003, reason=INSUFFICIENT_ACTIVE_MEMBERS)
 
@@ -242,31 +248,61 @@ revoke(scope, reason, operatorUserId):
   4. 監査ログ・通知イベント（X 管理者へ REVOKED・各 y 管理者へ UNDER_REVIEW 変化）
 ```
 
+### 5.4 団体削除カスケード（T12・AC-27・イベント購読）
+
+団体（TEAM/ORG）の削除フローが発火する**実在のイベント**を trust ドメインが購読し、削除団体の outgoing 有効信任を無効化する（README §5.1 T12・[03 §5](03_security.md)）。
+
+- **購読イベント（origin/main 実在確認済・2026-07-08）**:
+  - `com.mannschaft.app.team.event.TeamDeletedEvent`（フィールド: `userId`=削除者・`teamId`）
+  - `com.mannschaft.app.organization.event.OrganizationDeletedEvent`（同型）
+- リスナ: `TrustEndorsementCascadeListener`（`@TransactionalEventListener(phase = AFTER_COMMIT)` ＋ `@Transactional(propagation = REQUIRES_NEW)`・`feedback_transactional_event_listener_requires_new`。削除 tx に trust 処理を巻き込まない・原則 5）。
+
+```
+@TransactionalEventListener(AFTER_COMMIT) + REQUIRES_NEW
+onTeamDeleted(TeamDeletedEvent ev):   cascadeFromDeletedScope(TEAM, ev.teamId, ev.userId)
+onOrganizationDeleted(...):           cascadeFromDeletedScope(ORG, ev.organizationId, ev.userId)
+
+cascadeFromDeletedScope(kind, id, actorUserId):
+  1. outgoing = trust_endorsements.findByEndorserAndRevokedAtIsNull(kind, id)
+     for e in outgoing:
+        e.revoked_at=now; e.revoked_by_user_id=actorUserId; e.revoke_reason='ENDORSER_DELETED'
+  2. affected = outgoing.map(endorsee).distinct()
+     for y in affected:                       // §5.3 と同じ 1 段制限・ロック順序（(kind,id) 昇順）
+        yCert = FOR UPDATE(y); recalculateState(yCert)   // n<T なら UNDER_REVIEW（AC-27）
+  3. 削除団体自身の trust_certifications 行は現状態のまま残す（団体は F00 不可視化されるため公開面には出ない・
+     監査証跡として保持）。incoming（削除団体が受けていた信任）は endorser 側の有効 outgoing として残るが、
+     公開一覧は F00 可視性フィルタ（§6.2）で削除団体を表示しない
+  4. 監査ログ: TRUST_ENDORSEMENT_REVOKED（ENDORSER_DELETED）×件数 ＋ 各 y の TRUST_STATE_CHANGED
+```
+
+> 削除フロー側にイベント発火の追加実装は**不要**（`TeamDeletedEvent`/`OrganizationDeletedEvent` は既存の削除処理が既に発火している）。trust 側のリスナ追加のみで完結する。
+
 ---
 
 ## 6. 読み取り API
 
 ### 6.1 認証状態取得 `GET /api/v1/trust/certifications?scopeKind=TEAM&scopeId=123`（公開）
 
-**処理**: ① 対象 scope の実在＋F00 可視性確認（`PublicTeamVisibilityResolver`/`PublicOrganizationVisibilityResolver.canView(scopeId, viewerUserIdOrNull)`・不可視は TRUST_007/404 秘匿）→ ② `trust_certifications` を SELECT（行が無ければ `UNCERTIFIED` を合成して返す）。
+**処理**: ① 対象 scope の実在＋F00 可視性確認（**`ContentVisibilityChecker.canView(ReferenceType.TEAM | ReferenceType.ORGANIZATION, scopeId, viewerUserIdOrNull)`**・未ログインは `userId=null`・不可視は TRUST_007/404 秘匿。実体は既存 `TeamVisibilityResolver`/`OrganizationVisibilityResolver` へのディスパッチ）→ ② `trust_certifications` を SELECT（行が無ければ `UNCERTIFIED` を合成して返す）→ ③ **公開 DTO では state を丸める**（下記）。
 
-**Response 200（`TrustCertificationResponse`）**
+**Response 200（`TrustCertificationResponse`・公開用）**
 
 | フィールド | 型 | null | 説明 | 例 |
 |---|---|---|---|---|
 | `scopeKind` | String | 不可 | | `"TEAM"` |
 | `scopeId` | Long | 不可 | | `123` |
-| `state` | String（enum 4 値） | 不可 | 認証状態 | `"CERTIFIED"` |
+| `state` | String（enum） | 不可 | **公開用に丸めた状態**: `UNDER_REVIEW` は **`CERTIFIED` として返す**（値域は `UNCERTIFIED`/`CERTIFIED`/`REVOKED` の 3 値。丸めは `TrustBadgeVisibility.publicState(state)` に一元化） | `"CERTIFIED"` |
 | `badgeVisible` | Boolean | 不可 | 認証マーク表示可否（`CERTIFIED`/`UNDER_REVIEW`=true・`TrustBadgeVisibility` 一元判定） | `true` |
 | `isAnchor` | Boolean | 不可 | アンカーか（公開情報・アンカーは運営認証の証） | `false` |
 | `certifiedAt` | OffsetDateTime | 可 | 初回認証日時（未認証は null） | `"2026-07-01T09:00:00+09:00"` |
 | `validEndorsementCount` | Integer | 不可 | 有効な incoming 信任件数 | `3` |
 
-> `UNDER_REVIEW`/`REVOKED` の内部事情（`under_review_since`/`revoke_reason` 等）は**公開 DTO に含めない**（[03 §4](03_security.md) 禁則）。
+> - **公開 DTO は `UNDER_REVIEW` を生値で返さない**（返すと「UNDER_REVIEW は外形上 CERTIFIED と同一」の目標を破り、外部から再審査中の団体を識別できてしまう）。**生 state（4 値）は当該団体管理者向け（管理タブ・04 §4）と運営向け（§7.4）の認証済み DTO 限定**（[03 §4.2](03_security.md)）。
+> - `UNDER_REVIEW`/`REVOKED` の内部事情（`under_review_since`/`revoke_reason` 等）は公開 DTO に含めない（[03 §4](03_security.md) 禁則）。
 
 ### 6.2 信任関係一覧 `GET /api/v1/trust/endorsements?scopeKind=&scopeId=&direction=INCOMING|OUTGOING|BOTH`（公開）
 
-**処理**: §6.1 と同じ F00 可視性ゲート → 有効信任（`revoked_at IS NULL`）のみ返す。相手方団体名は team/org 読み取り Service で解決（PRIVATE 団体が相手の場合も**団体名と認証状態のみ**返し、リンクは F19.1 公開ページが存在する場合のみ・[03 §4](03_security.md)）。
+**処理**: §6.1 と同じ F00 可視性ゲート（`ContentVisibilityChecker.canView`）→ 有効信任（`revoked_at IS NULL`）のみ返す。**公開面（未ログイン/非関係者）は「相手方が viewer から F00 可視である信任」のみを一覧に含める**（安全側既定・[03 §4.1](03_security.md)・README §11-7。件数 `validEndorsementCount` は全件のまま）。相手方団体名は team/org 読み取り Service で解決し、`counterpartPublicSlug` は相手方が PUBLIC のときのみ返す。
 
 **Response 200（`TrustEndorsementListResponse`）**
 
@@ -400,10 +436,11 @@ Map.entry("TRUST_010", HttpStatus.CONFLICT)
 
 ## 10. テスト方針（試練・test-first 先行）
 
-- **状態遷移**: AC-01〜03（2 件で不変・3 件目で CERTIFIED・4 件目で不変）・AC-14（取消で UNDER_REVIEW・マーク維持）・AC-17（回復で CERTIFIED・certified_at 不変）・AC-18（未到達は降格対象外）・AC-19（アンカー不降格）。
-- **資格・異常系**: AC-04（TRUST_001）・AC-05（TRUST_002・DB CHECK も）・AC-06（TRUST_005・並行 INSERT の UNIQUE も）・AC-07/08（TRUST_004・境界 9→10→11）・AC-09/10（TRUST_003・precision=YEAR/NULL の保守側丸め境界: `established_date=2026-01-01, precision=YEAR` は 2026-12-31 起点）・AC-11（TRUST_006）。
-- **連鎖**: AC-15（REVOKE→outgoing 全無効化→被信任先 UNDER_REVIEW）・AC-16（1 段停止＝孫は不変）。
-- **認可（契約テスト）**: AC-12/13（非管理者 403・無関係 scope 404 秘匿・scopeId 詐称 IDOR）・AC-21（非 SYSTEM_ADMIN 403）・AC-23（PRIVATE 団体の認証状態は未ログインに 404）。
+- **状態遷移**: AC-01〜03（2 件で不変・3 件目で CERTIFIED・4 件目で不変）・AC-14（取消で UNDER_REVIEW・マーク維持）・AC-17（回復で CERTIFIED・certified_at 不変）・AC-18（未到達は降格対象外）・AC-19（アンカー不降格）・**AC-28（T5: UNDER_REVIEW で 3 未満のままなら不変）**・**AC-29（T7: 4→3 では降格しない・3→2 で降格）**。
+- **アンカー**: AC-20（付与 A1）・**AC-30（解除 A3: n≥T で CERTIFIED 維持／n<T で UNDER_REVIEW・非アンカーへの解除は TRUST_010）**・**AC-31（A4: アンカーへの REVOKE 有効・連鎖実行）**。
+- **資格・異常系**: AC-04（TRUST_001・state=CERTIFIED 以外の 3 状態を各々検証）・AC-05（TRUST_002・DB CHECK も）・AC-06（TRUST_005・並行 INSERT の UNIQUE も）・AC-07/08（TRUST_004・**Clock 固定の統合テスト**で境界 9→10→11・ローリング 12 ヶ月窓は Clock 注入で時刻制御）・AC-09/10（TRUST_003・precision=YEAR/NULL の保守側丸め境界: `established_date=2026-01-01, precision=YEAR` は 2026-12-31 起点・人数は `countActiveDistinctUsersByScope` の DISTINCT 挙動＝同一 user 複数行を 1 と数える）・AC-11（TRUST_006）・**AC-32（TRUST_008: 取消済みへの再取消は 409・状態不変）**・**AC-33（TRUST_010: 非 UNDER_REVIEW への approve/reject・REVOKED 二重化は 409）**。
+- **連鎖**: AC-15（REVOKE→outgoing 全無効化→被信任先 UNDER_REVIEW）・AC-16（1 段停止＝孫は不変）・**AC-27（団体削除: `TeamDeletedEvent`/`OrganizationDeletedEvent` 発火→outgoing が `revoke_reason='ENDORSER_DELETED'` で無効化→被信任先の state 再計算・§5.4）**。
+- **認可（契約テスト）**: AC-12/13（非管理者 403・無関係 scope 404 秘匿・scopeId 詐称 IDOR）・AC-21（非 SYSTEM_ADMIN 403）・AC-23（PRIVATE 団体の認証状態は未ログインに 404）・**AC-34（eligibility API: eligible/blockingReasons 全列挙・非管理者 403/404）**・**存在オラクル（付与時: 不在 endorsee と endorser から不可視の PRIVATE endorsee が同一応答 TRUST_007 であること・§2.3）**。
 - **並行**: 同一 endorsee への並行 3 件目付与で CERTIFIED 遷移がちょうど 1 回（FOR UPDATE 直列化）。
-- **公開 DTO 禁則**: 公開レスポンスに `under_review_since`/`revoke_reason`/`granted_by_user_id`/`endorsementId` を含まないこと（[03 §4](03_security.md)）。
-- ポートは `@SpringBootTest(webEnvironment = RANDOM_PORT)` + Testcontainers 自動採番（ポート固定禁止）。
+- **公開 DTO 禁則**: 公開レスポンスに `under_review_since`/`revoke_reason`/`granted_by_user_id`/`endorsementId` を含まないこと。**公開 `state` に `UNDER_REVIEW` の生値が現れないこと**（`UNDER_REVIEW` の団体で公開 API が `CERTIFIED` を返すことを検証・§6.1）（[03 §4](03_security.md)）。
+- ポートは `@SpringBootTest(webEnvironment = RANDOM_PORT)` + Testcontainers 自動採番（ポート固定禁止）。年間上限・設立判定など時間依存テストはすべて `Clock` 注入で決定論化する。

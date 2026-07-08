@@ -15,6 +15,8 @@
 | **scopeId 詐称（IDOR）** | 他団体の `endorserScopeId` を詐称して当該団体名義の信任を発行 | **scope 所有権検証必須**（§3）・404 秘匿 |
 | **認証マークの信頼毀損** | REVOKED 団体・未認証団体がマークを表示 | 表示判定を `TrustBadgeVisibility` に一元化（README §6）・状態は BE がゲート（FE 判定に頼らない） |
 | **非公開団体の情報漏洩** | PRIVATE 団体の存在・認証状態・信任関係が公開 API から漏れる | F00 可視性ゲート＋404 秘匿（§4） |
+| **存在オラクル（ID 列挙）** | 信任付与 API の endorsee 検証応答の違い（不在=404 / 実在 PRIVATE=別応答）を悪用し、PRIVATE 団体の ID を総当りで列挙する | 付与時の endorsee 検証は **F00 可視性で行い**、不在・削除済み・不可視を**同一応答 `TRUST_007`（404）に統一**（§3・02 §2.3・README §11-6 関連脅威） |
+| **再審査中の外部識別** | 公開 API の生 `state` から `UNDER_REVIEW`（信頼が揺らいでいる団体）を外部が識別 | 公開 DTO は `UNDER_REVIEW` を `CERTIFIED` に**丸めて返す**（§4.2・02 §6.1） |
 | **運営 API の悪用** | 一般ユーザー/テナント管理者がアンカー付与・REVOKE | `@PreAuthorize("hasRole('SYSTEM_ADMIN')")`（§3）＋監査ログ |
 
 ---
@@ -59,7 +61,7 @@
 
 | 操作 | 認可主体 | 実装方針 |
 |---|---|---|
-| 信任の付与（#1） | **endorser 団体の scope ADMIN** | `TrustScopeResolver.requireScopeAdmin(authentication, endorserScopeKind, endorserScopeId)` → 内部で `accessGuard.isScopeAdmin(authentication, scopeId, 'TEAM'|'ORGANIZATION')`（§3.0）。**endorsee は存在検証のみ**（endorsee 側の同意フローは設けない＝要裁可論点・§9） |
+| 信任の付与（#1） | **endorser 団体の scope ADMIN** | `TrustScopeResolver.requireScopeAdmin(authentication, endorserScopeKind, endorserScopeId)` → 内部で `accessGuard.isScopeAdmin(authentication, scopeId, 'TEAM'|'ORGANIZATION')`（§3.0）。**endorsee は「操作者から F00 可視」の場合のみ許可**（`ContentVisibilityChecker.canView`・不在・不可視は同一応答 `TRUST_007` で存在オラクル封鎖・02 §2.3。endorsee 側の同意フローは設けない＝要裁可論点・§9） |
 | 信任の取消（#2） | **当該信任の endorser 団体の scope ADMIN** | `endorsementId` から **DB の endorser scope を解決**して所有権検証（IDOR 一般形・リクエスト値を信頼しない） |
 | 資格事前確認（#5） | 対象団体の scope ADMIN | `isScopeAdmin`（§3.0） |
 | 認証状態取得（#3） | 公開（未ログイン可） | F00 可視性ゲート（§4）・PRIVATE は 404 秘匿 |
@@ -89,7 +91,7 @@
 
 ### 4.1 F00 ゲート（独自述語を作らない）
 
-- 公開 API（#3/#4）は、認証情報を返す**前**に対象 scope の可視性を F00 で判定する: `PublicTeamVisibilityResolver.canView(teamId, viewerUserIdOrNull)` / `PublicOrganizationVisibilityResolver.canView(orgId, ...)`（F19.1 で実装済・`ReferenceType.TEAM`/`ORGANIZATION`）。
+- 公開 API（#3/#4）は、認証情報を返す**前**に対象 scope の可視性を F00 で判定する: **`ContentVisibilityChecker.canView(ReferenceType.TEAM | ReferenceType.ORGANIZATION, scopeId, viewerUserIdOrNull)`**（未ログインは `userId=null`）。実体は既存の `TeamVisibilityResolver` / `OrganizationVisibilityResolver` へ `ReferenceType` でディスパッチされる（`ContentVisibilityChecker` がファサード）。※F19.1 の `IdentityVisibilityResolver` は投稿者識別（氏名・アバター段階開示）用で**本機能では使わない**（別物）。
 - **trust ドメイン独自の可視性述語（`teams.visibility='PUBLIC'` の直接 WHERE 等）を書かない**（`feedback_visibility_bypass_f00_audit`・漏洩源になる）。
 - 信任関係一覧の**相手方**が PRIVATE 団体の場合: 信任関係自体は「双方のプロフィールに公開」が要件のため相手方の**団体名と認証マーク**は返すが、`counterpartPublicSlug` は相手方が F00 可視（PUBLIC）のときのみ返す（PRIVATE 団体への公開ページリンクを作らない・02 §6.2）。
 
@@ -105,7 +107,7 @@ endorsementId（公開面）/ organization_id（テナント内部値）/
 email / 氏名等の個人 PII 全般（本機能は団体単位・個人情報を返す面がない）
 ```
 
-- `state=REVOKED`/`UNDER_REVIEW` の**理由・経緯は公開しない**（`badgeVisible` の boolean と state 値のみ）。`UNDER_REVIEW` は外形上「認証済み表示維持」であり、公開面で「再審査中」と示す必要はない（**マークの見た目は CERTIFIED と同一**・04 §2）。→ ただし state 値自体は #3 で返るため、FE 公開面では `badgeVisible` のみを使い state を表示文言化しない（i18n にも公開向け「再審査中」文言を作らない）。
+- `state=REVOKED`/`UNDER_REVIEW` の**理由・経緯は公開しない**。さらに **公開 DTO は `UNDER_REVIEW` の生値を返さず `CERTIFIED` に丸める**（`TrustBadgeVisibility.publicState(state)` に一元化・値域は `UNCERTIFIED`/`CERTIFIED`/`REVOKED` の 3 値・02 §6.1）。生 state（4 値）は**当該団体管理者向け（04 §4 管理タブ）と運営向け（02 §7.4）の認証済み DTO 限定**。これにより `UNDER_REVIEW` は外形上 `CERTIFIED` と完全同一になり、外部から再審査中の団体を識別できない（**マークの見た目も CERTIFIED と同一**・04 §2。i18n にも公開向け「再審査中」文言を作らない）。
 
 ---
 
@@ -115,7 +117,7 @@ email / 氏名等の個人 PII 全般（本機能は団体単位・個人情報�
 |---|---|---|
 | `trust_endorsements`（信任台帳） | **匿名化せず保持**（監査・統計証跡）。`granted_by_user_id`/`revoked_by_user_id` は論理参照のみで、操作者の PII は user 側の退会匿名化で消える（CLAUDE.md 原則 4・user_id 残置） | 匿名化しない |
 | `trust_certifications` | 団体の属性であり個人 PII を含まない。保持 | — |
-| 団体（TEAM/ORG）の削除・アーカイブ | 認証行・信任行は**物理保持**（クロスドメイン CASCADE なし・原則 2）。公開 API は F00 ゲートで削除済み団体を 404 秘匿。削除団体が endorser の有効信任は**運営 REVOKE と同型の無効化を行うか**が論点 → **既定: 団体削除イベント（既存の team/org 削除フロー）を購読し、当該団体の outgoing 有効信任を `revoke_reason='OPERATOR'` で無効化＋被信任先を再計算（1 段）**。放置すると「削除済み団体の信任」が有効件数に残り続け認証の実体が崩れる（症状を隠さない） | — |
+| 団体（TEAM/ORG）の削除・アーカイブ | 認証行・信任行は**物理保持**（クロスドメイン CASCADE なし・原則 2）。公開 API は F00 ゲートで削除済み団体を 404 秘匿。削除団体が endorser の有効信任は**確定仕様として無効化する**（README §5.1 T12・AC-27）: 既存の `TeamDeletedEvent`/`OrganizationDeletedEvent`（origin/main 実在・削除フローが発火済み）を trust 側リスナで購読し、outgoing 有効信任を `revoke_reason='ENDORSER_DELETED'` で無効化＋被信任先を再計算（1 段・[02 §5.4](02_api_design.md)）。放置すると「削除済み団体の信任」が有効件数に残り続け認証の実体が崩れる（症状を隠さない） | — |
 
 ---
 
@@ -164,7 +166,7 @@ email / 氏名等の個人 PII 全般（本機能は団体単位・個人情報�
 - [x] 連鎖剥奪の暴走 → 1 段制限＋UNDER_REVIEW 留め（README §3.7）
 - [x] 削除済み団体の信任残留 → 削除イベント購読で outgoing 無効化（§5）
 - [x] 通知種別 → 通常通知（F04.9 確認必須通知は不使用・被信任側に確認義務動作がないため。README §8 に根拠明記）
-- [ ] **endorsee 側の同意（受任の承諾）フローの要否** → 既定=**設けない**（信任は endorser の一方向の対外表明・endorsee は存在検証のみ・§3 マトリクス）。ただし「望まない団体から公開の信任を張られる」レピュテーション懸念があるため、代替案=「endorsee 管理者が特定の信任を自団体の公開面から非表示にできる opt-out」を将来拡張点として残す。**要裁可**（README §11 に準ずる） |
+- [ ] **endorsee 側の同意（受任の承諾）フローの要否** → 既定=**設けない**（信任は endorser の一方向の対外表明・endorsee は「操作者から F00 可視」検証のみ＝存在オラクル封鎖・§1/§3 マトリクス・02 §2.3）。ただし「望まない団体から公開の信任を張られる」レピュテーション懸念があるため、代替案=「endorsee 管理者が特定の信任を自団体の公開面から非表示にできる opt-out」を将来拡張点として残す。**要裁可**（README §11-6） |
 - [ ] **PRIVATE 団体が当事者の信任の公開範囲** → 既定=安全側（相手方が F00 可視の信任のみ公開面に出す・件数は全件）。精査で確定（§4.1 要精査注記）
 - [ ] **`UNDER_REVIEW` 団体の信任発行可否** → 推奨 (b) 発行不可（README §11-3・マスター裁可待ち）
 
