@@ -31,7 +31,7 @@ public class MyReservationWaitlistController {
      * 自分のキャンセル待ち一覧を取得する（枠情報同梱・新しい順）。
      */
     @GetMapping
-    @Operation(summary = "自分のキャンセル待ち一覧")
+    @Operation(operationId = "listMyWaitlist", summary = "自分のキャンセル待ち一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<WaitlistEntryResponse>>> listMine() {
         List<WaitlistEntryResponse> response =

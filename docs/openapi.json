@@ -303,6 +303,10 @@
       "description": "F03.5 シフト枠のCRUD・一括操作"
     },
     {
+      "name": "予約管理",
+      "description": "F03.4.5 キャンセル待ち（本人）"
+    },
+    {
       "name": "タイムライン投稿",
       "description": "F04.1 タイムライン投稿CRUD"
     },
@@ -1009,6 +1013,10 @@
     {
       "name": "マッチングレビュー",
       "description": "F08.1 マッチングレビュー投稿・取得"
+    },
+    {
+      "name": "予約管理",
+      "description": "F03.4.5 キャンセル待ち"
     },
     {
       "name": "QR会員証",
@@ -37019,6 +37027,79 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/reservation-slots/{slotId}/waitlist": {
+      "post": {
+        "tags": [
+          "予約管理"
+        ],
+        "summary": "キャンセル待ち登録",
+        "operationId": "joinWaitlist",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "slotId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "登録成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseWaitlistEntryResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "予約管理"
+        ],
+        "summary": "キャンセル待ち取消（本人）",
+        "operationId": "leaveWaitlist",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "slotId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "取消成功"
           }
         }
       }
@@ -101660,6 +101741,27 @@
         }
       }
     },
+    "/api/v1/users/me/reservation-waitlist": {
+      "get": {
+        "tags": [
+          "予約管理"
+        ],
+        "summary": "自分のキャンセル待ち一覧",
+        "operationId": "listMyWaitlist",
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListWaitlistEntryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/users/me/promotions": {
       "get": {
         "tags": [
@@ -104449,6 +104551,47 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseReservationStatsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/reservation-slots/{slotId}/waitlist/count": {
+      "get": {
+        "tags": [
+          "予約管理"
+        ],
+        "summary": "キャンセル待ち件数（ADMIN）",
+        "operationId": "getWaitlistCount",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "slotId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseWaitlistCountResponse"
                 }
               }
             }
@@ -161477,6 +161620,53 @@
           }
         }
       },
+      "ApiResponseWaitlistEntryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/WaitlistEntryResponse"
+          }
+        }
+      },
+      "WaitlistEntryResponse": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slotDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "slotId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "slotTitle": {
+            "type": "string"
+          },
+          "startTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "status": {
+            "type": "string"
+          },
+          "teamId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "CloseSlotRequest": {
         "type": "object",
         "properties": {
@@ -194580,6 +194770,17 @@
           }
         }
       },
+      "ApiResponseListWaitlistEntryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WaitlistEntryResponse"
+            }
+          }
+        }
+      },
       "PagedResponseUserPromotionResponse": {
         "type": "object",
         "properties": {
@@ -197234,6 +197435,27 @@
             "items": {
               "$ref": "#/components/schemas/ReservationSlotResponse"
             }
+          }
+        }
+      },
+      "ApiResponseWaitlistCountResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/WaitlistCountResponse"
+          }
+        }
+      },
+      "WaitlistCountResponse": {
+        "type": "object",
+        "properties": {
+          "slotId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "waitingCount": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },

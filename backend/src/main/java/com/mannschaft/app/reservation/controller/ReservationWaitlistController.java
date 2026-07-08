@@ -37,7 +37,7 @@ public class ReservationWaitlistController {
      * 満席枠へキャンセル待ちを登録する（会員/公開）。
      */
     @PostMapping
-    @Operation(summary = "キャンセル待ち登録")
+    @Operation(operationId = "joinWaitlist", summary = "キャンセル待ち登録")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "登録成功")
     public ResponseEntity<ApiResponse<WaitlistEntryResponse>> register(
             @PathVariable Long teamId,
@@ -54,7 +54,7 @@ public class ReservationWaitlistController {
      * 自分の WAITING が無ければ 404。</p>
      */
     @DeleteMapping
-    @Operation(summary = "キャンセル待ち取消（本人）")
+    @Operation(operationId = "leaveWaitlist", summary = "キャンセル待ち取消（本人）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "取消成功")
     public ResponseEntity<Void> cancel(
             @PathVariable Long teamId,
@@ -70,7 +70,7 @@ public class ReservationWaitlistController {
      * Service 層で slot を {@code findByIdAndTeamId} 解決し他チームは 404 秘匿。</p>
      */
     @GetMapping("/count")
-    @Operation(summary = "キャンセル待ち件数（ADMIN）")
+    @Operation(operationId = "getWaitlistCount", summary = "キャンセル待ち件数（ADMIN）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<WaitlistCountResponse>> count(
