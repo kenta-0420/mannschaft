@@ -1,6 +1,6 @@
 # F20.1 — 02 API設計
 
-> **ステータス**: 🟡 設計中（精査待ち）
+> **ステータス**: 🟢 設計完了（要裁可論点 R/B のマスター裁可待ち）
 > 権利判定（`isEntitled`/`EntitlementGuard`）・プランカタログ・契約/アドオン・シスアド CRUD・org_type イベントを定義する。認可の詳細は [03_security](03_security.md)、DDL は [01_data_model](01_data_model.md)。
 
 ---

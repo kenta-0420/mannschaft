@@ -1,6 +1,6 @@
 # F20.3 — 01 データモデル
 
-> **ステータス**: 🟡 設計中（精査待ち）
+> **ステータス**: 🟢 設計完了（要裁可論点 R/B のマスター裁可待ち）
 > [README](README.md) の特典モデルを DB に落とす。権利の実体は F20.1 `entitlements`（[F20.1 01 §3.2](../F20.1_entitlement_billing/01_data_model.md)）であり、本書は**付与メタ（`beta_grants`）と付与条件マスタ（`beta_perk_criteria`）**のみを定義する。
 
 ---

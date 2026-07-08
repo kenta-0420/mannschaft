@@ -1,6 +1,6 @@
 # F20.3 — 03 セキュリティ
 
-> **ステータス**: 🟡 設計中（精査待ち）
+> **ステータス**: 🟢 設計完了（要裁可論点 R/B のマスター裁可待ち）
 > 認可基盤は F20.1 03 と同じ `@accessGuard` パターン（`docs/security/03_role_authority_model.md`）を用いる。横断方針は [docs/security/README.md](../../security/README.md)。
 
 ---

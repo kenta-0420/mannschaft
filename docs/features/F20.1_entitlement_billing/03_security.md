@@ -1,6 +1,6 @@
 # F20.1 — 03 セキュリティ
 
-> **ステータス**: 🟡 設計中（精査待ち）
+> **ステータス**: 🟢 設計完了（要裁可論点 R/B のマスター裁可待ち）
 > 認可基盤は `@EnableMethodSecurity`＋`@accessGuard`（`docs/security/03_role_authority_model.md`）を再利用。横断方針は [docs/security/README.md](../../security/README.md) に従う。ベータ中（Phase 1）は決済なし＝PCI 論点なし（Phase 2 で F22.1/決済系の規約を適用）。
 
 ---
