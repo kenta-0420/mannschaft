@@ -215,6 +215,9 @@ onMounted(async () => {
   await loadPermissions()
   await Promise.all([loadMenus(), loadLines()])
 })
+
+// 親（TeamReservationsPanel）のアコーディオン件数バッジ用（既存 FriendFolderList 等と同一パターン）。
+defineExpose({ refresh: loadMenus, items: menus })
 </script>
 
 <template>

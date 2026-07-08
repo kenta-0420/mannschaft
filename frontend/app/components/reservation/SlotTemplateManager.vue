@@ -63,7 +63,6 @@ const generateWeeks = ref(4)
 
 interface TemplateForm {
   lineId: number
-  dayOfWeek: ReservationDayOfWeekCode | null
   startTime: string
   endTime: string
   capacity: number
@@ -73,7 +72,6 @@ interface TemplateForm {
 function defaultForm(): TemplateForm {
   return {
     lineId: COMMON_LINE,
-    dayOfWeek: null,
     startTime: '09:00',
     endTime: '10:00',
     capacity: 1,
@@ -82,6 +80,13 @@ function defaultForm(): TemplateForm {
 }
 
 const form = ref<TemplateForm>(defaultForm())
+
+/**
+ * 曜日トグルの選択状態。
+ * 新規作成時は複数選択可（選択曜日ぶん createSlotTemplate を順に呼び曜日ごとのテンプレ行に展開する）。
+ * 編集時は既存行単位のまま単一曜日（toggleDay が選択を1件に固定する）。
+ */
+const selectedDays = ref<ReservationDayOfWeekCode[]>([])
 
 /** 30分刻みの時刻オプション（00:00〜23:30） */
 const timeOptions = computed(() => {
@@ -113,7 +118,7 @@ const timeRangeValid = computed(() =>
 
 const saveDisabled = computed(() =>
   saving.value
-  || form.value.dayOfWeek == null
+  || selectedDays.value.length === 0
   || !timeRangeValid.value
   || form.value.capacity < 1
   || form.value.capacity > 99,
@@ -131,8 +136,19 @@ function dayLabel(code?: string | null): string {
   return opt ? t(opt.labelKey) : (code ?? '')
 }
 
-function selectDay(day: ReservationDayOfWeekCode) {
-  form.value.dayOfWeek = day
+/**
+ * 曜日トグルのクリック処理。
+ * 編集時は既存行単位のまま（クリックした曜日1件に固定・現行維持）。
+ * 新規作成時は複数選択可（トグル式のON/OFF）。
+ */
+function toggleDay(day: ReservationDayOfWeekCode) {
+  if (editingTemplate.value) {
+    selectedDays.value = [day]
+    return
+  }
+  const idx = selectedDays.value.indexOf(day)
+  if (idx >= 0) selectedDays.value.splice(idx, 1)
+  else selectedDays.value.push(day)
 }
 
 async function loadTemplates() {
@@ -163,6 +179,7 @@ async function loadLines() {
 function openCreate() {
   editingTemplate.value = null
   form.value = defaultForm()
+  selectedDays.value = []
   showDialog.value = true
 }
 
@@ -170,12 +187,13 @@ function openEdit(template: SlotTemplateResponse) {
   editingTemplate.value = template
   form.value = {
     lineId: template.lineId ?? COMMON_LINE,
-    dayOfWeek: DAY_OPTIONS.find(d => d.value === template.dayOfWeek)?.value ?? null,
     startTime: toHm(template.startTime),
     endTime: toHm(template.endTime),
     capacity: template.capacity ?? 1,
     isActive: template.isActive ?? true,
   }
+  const day = DAY_OPTIONS.find(d => d.value === template.dayOfWeek)?.value
+  selectedDays.value = day ? [day] : []
   showDialog.value = true
 }
 
@@ -190,20 +208,23 @@ function notifySaveError(err: unknown) {
 }
 
 async function save() {
-  if (saveDisabled.value || form.value.dayOfWeek == null) return
+  if (saveDisabled.value || selectedDays.value.length === 0) return
   saving.value = true
   // dayOfWeek は必ず3文字大文字（'MON'..'SUN'）。時刻は既存 SlotFormDialog と同じ HH:mm:00。
   const base = {
-    dayOfWeek: form.value.dayOfWeek,
     startTime: `${form.value.startTime}:00`,
     endTime: `${form.value.endTime}:00`,
     capacity: form.value.capacity,
   }
   try {
     if (editingTemplate.value?.id) {
+      // 編集は既存行単位のまま単一曜日（selectedDays は toggleDay により常に1件に固定される）
+      const day = selectedDays.value[0]
+      if (!day) return
       // PATCH: 共通枠へ戻す場合は clearLineId で明示（null 据え置きと区別）
       await reservationApi.updateSlotTemplate(props.teamId, editingTemplate.value.id, {
         ...base,
+        dayOfWeek: day,
         ...(form.value.lineId === COMMON_LINE
           ? { clearLineId: true }
           : { lineId: form.value.lineId }),
@@ -212,11 +233,45 @@ async function save() {
       notification.success(t('reservation.message.template_update_success'))
     }
     else {
-      await reservationApi.createSlotTemplate(props.teamId, {
-        ...base,
-        ...(form.value.lineId === COMMON_LINE ? {} : { lineId: form.value.lineId }),
-      })
-      notification.success(t('reservation.message.template_create_success'))
+      // 選択曜日ぶん createSlotTemplate を順に呼び、曜日ごとのテンプレ行に展開する（DDL/API変更なし）
+      const total = selectedDays.value.length
+      const succeeded: ReservationDayOfWeekCode[] = []
+      try {
+        for (const day of selectedDays.value) {
+          await reservationApi.createSlotTemplate(props.teamId, {
+            ...base,
+            dayOfWeek: day,
+            ...(form.value.lineId === COMMON_LINE ? {} : { lineId: form.value.lineId }),
+          })
+          succeeded.push(day)
+        }
+      }
+      catch (err) {
+        // 部分失敗の根治処理（RESERVATION_037 上限到達の途中失敗が現実的な発生経路）:
+        // (1) 成功済み曜日を選択から除去 — ダイアログを開いたまま再試行しても成功分を再作成して
+        //     重複行＋「今すぐ枠を作成」での枠二重生成にならないようにする（失敗曜日のみ残す）
+        // (2) 部分成功（{succeeded}/{total}件作成済み・残りは失敗）を warn トーストで伝達
+        // (3) 一覧を実状態（成功分のみ作成済み）へ同期
+        selectedDays.value = selectedDays.value.filter(d => !succeeded.includes(d))
+        if (succeeded.length > 0) {
+          notification.warn(
+            t('reservation.template.title'),
+            t('reservation.message.template_create_partial', { succeeded: succeeded.length, total }),
+          )
+          // 成功分のテンプレは存在するため、反映には「今すぐ枠を作成」が必要なことを案内する
+          showRegenerateGuide.value = true
+        }
+        notifySaveError(err)
+        await loadTemplates()
+        // ダイアログは閉じない（失敗曜日のみ選択された状態で再試行できる）
+        return
+      }
+      if (total > 1) {
+        notification.success(t('reservation.message.template_create_success_multi', { n: total }))
+      }
+      else {
+        notification.success(t('reservation.message.template_create_success'))
+      }
     }
     showDialog.value = false
     // 保存 → 生成は別操作。反映には「今すぐ枠を作成」が必要なことを案内する（§5.4 regenerate_guide 統合）
@@ -224,7 +279,9 @@ async function save() {
     await loadTemplates()
   }
   catch (err) {
+    // 編集（PATCH）失敗経路。エラー通知に加え、一覧を実状態へ同期しておく（検分指摘 (a)）
     notifySaveError(err)
+    await loadTemplates()
   }
   finally {
     saving.value = false
@@ -290,6 +347,9 @@ onMounted(async () => {
   await loadPermissions()
   await Promise.all([loadTemplates(), loadLines()])
 })
+
+// 親（TeamReservationsPanel）のアコーディオン件数バッジ用（既存 FriendFolderList 等と同一パターン）。
+defineExpose({ refresh: loadTemplates, items: templates })
 </script>
 
 <template>
@@ -402,7 +462,8 @@ onMounted(async () => {
           />
         </div>
 
-        <!-- 曜日トグル（見た目は ScheduleEventRecurrenceInput 写経・value は 'MON' 形式） -->
+        <!-- 曜日トグル（見た目は ScheduleEventRecurrenceInput 写経・value は 'MON' 形式）。
+             新規作成時は複数選択可（選択曜日ぶん展開して作成）、編集時は既存行単位のまま単一選択。 -->
         <div>
           <label class="mb-1 block text-sm font-medium">
             {{ t('reservation.template.day_of_week') }} <span class="text-red-500">*</span>
@@ -414,15 +475,15 @@ onMounted(async () => {
               type="button"
               :data-day="d.value"
               class="h-8 w-8 rounded-full text-xs font-medium border transition-colors"
-              :class="form.dayOfWeek === d.value
+              :class="selectedDays.includes(d.value)
                 ? 'bg-primary text-white border-primary'
                 : 'border-surface-300 dark:border-surface-600 text-surface-600 dark:text-surface-300 hover:border-primary'"
-              @click="selectDay(d.value)"
+              @click="toggleDay(d.value)"
             >
               {{ t(d.labelKey) }}
             </button>
           </div>
-          <p v-if="form.dayOfWeek == null" class="mt-1 text-xs text-surface-500">
+          <p v-if="selectedDays.length === 0" class="mt-1 text-xs text-surface-500">
             {{ t('reservation.template.error.day_required') }}
           </p>
         </div>
