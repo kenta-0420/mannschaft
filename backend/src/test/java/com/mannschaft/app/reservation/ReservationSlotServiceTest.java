@@ -959,7 +959,7 @@ class ReservationSlotServiceTest {
     class DecrementAndReopen {
 
         @Test
-        @DisplayName("正常系: アトミックなデクリメント＋AVAILABLE 復帰 UPDATE が呼ばれる")
+        @DisplayName("正常系: デクリメント → reopen 専用 UPDATE の順で呼ばれる（発火判定はDB遷移事実）")
         void デクリメント() {
             // Given
             ReservationSlotEntity entity = createSlotEntity();
@@ -967,8 +967,9 @@ class ReservationSlotServiceTest {
             // When
             service.decrementAndReopen(entity);
 
-            // Then: 満席解消＋空き復帰を 1 SQL で行うアトミック UPDATE が呼ばれる
-            verify(slotRepository).decrementBookedCountAndReopen(any());
+            // Then: booked_count 減算 → FULL→AVAILABLE 遷移ゲート（affected-rows）の 2 段で呼ばれる（F03.4.5 §6.1 根治）
+            verify(slotRepository).decrementBookedCount(any());
+            verify(slotRepository).reopenSlotIfFull(any());
         }
     }
 }

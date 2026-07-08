@@ -24,6 +24,7 @@ import java.time.LocalTime;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * {@link ReservationSlotService#decrementAndReopen} が満席→空き復帰時にのみ
@@ -63,19 +64,28 @@ class ReservationSlotServiceReopenEventTest {
                 unavailabilityChecker, lineRepository, Clock.systemUTC(), eventPublisher);
     }
 
-    private ReservationSlotEntity slot(SlotStatus status) {
+    /**
+     * 発火判定は in-memory スナップショットに依存しないため、entity の status は任意（あえて AVAILABLE で作る）。
+     * これにより「DB が遷移を起こしたか（reopenSlotIfFull の戻り値）」だけがゲートであることを固定する。
+     */
+    private ReservationSlotEntity slot() {
         return ReservationSlotEntity.builder()
                 .id(SLOT_ID).teamId(TEAM_ID)
                 .slotDate(LocalDate.of(2026, 8, 1)).startTime(LocalTime.of(10, 0)).endTime(LocalTime.of(10, 30))
-                .capacity(1).slotStatus(status).build();
+                .capacity(2).slotStatus(SlotStatus.AVAILABLE).build();
     }
 
     @Test
-    @DisplayName("満席（FULL）枠の decrement は空き復帰イベントを発行する")
-    void 満席枠でイベント発行() {
-        service.decrementAndReopen(slot(SlotStatus.FULL));
+    @DisplayName("reopenSlotIfFull が 1（DB で FULL→AVAILABLE 遷移）を返したときだけイベントを発行する")
+    void DB遷移ありでイベント発行() {
+        when(slotRepository.reopenSlotIfFull(SLOT_ID)).thenReturn(1);
 
-        verify(slotRepository).decrementBookedCountAndReopen(SLOT_ID);
+        // entity の in-memory status は AVAILABLE（スナップショットに依存しないことの確認）
+        service.decrementAndReopen(slot());
+
+        // デクリメント → reopen の順で呼ばれる
+        verify(slotRepository).decrementBookedCount(SLOT_ID);
+        verify(slotRepository).reopenSlotIfFull(SLOT_ID);
         ArgumentCaptor<ReservationSlotReopenedEvent> captor =
                 ArgumentCaptor.forClass(ReservationSlotReopenedEvent.class);
         verify(eventPublisher).publishEvent(captor.capture());
@@ -84,11 +94,14 @@ class ReservationSlotServiceReopenEventTest {
     }
 
     @Test
-    @DisplayName("満席でない（AVAILABLE）枠の decrement はイベントを発行しない")
-    void 満席でない枠はイベント無し() {
-        service.decrementAndReopen(slot(SlotStatus.AVAILABLE));
+    @DisplayName("reopenSlotIfFull が 0（遷移なし）のときはイベントを発行しない")
+    void DB遷移なしでイベント無し() {
+        when(slotRepository.reopenSlotIfFull(SLOT_ID)).thenReturn(0);
 
-        verify(slotRepository).decrementBookedCountAndReopen(SLOT_ID);
+        service.decrementAndReopen(slot());
+
+        verify(slotRepository).decrementBookedCount(SLOT_ID);
+        verify(slotRepository).reopenSlotIfFull(SLOT_ID);
         verify(eventPublisher, never())
                 .publishEvent(org.mockito.ArgumentMatchers.any(ReservationSlotReopenedEvent.class));
     }
