@@ -23,6 +23,7 @@ const { t } = useI18n()
 const reservationApi = useReservationApi()
 const notification = useNotification()
 const confirm = useConfirm()
+const { handleApiError } = useErrorHandler()
 
 const reservations = ref<ReservationResponse[]>([])
 const totalRecords = ref(0)
@@ -152,6 +153,60 @@ async function cancel(data: ReservationResponse) {
   })
 }
 
+/** BE エラー応答から RESERVATION_xxx コードを取り出す（GroupBookingDialog と同じ抽出パターン）。 */
+function extractErrorCode(error: unknown): string | undefined {
+  const apiError = error as { data?: { error?: { code?: string } } }
+  return apiError?.data?.error?.code
+}
+
+/**
+ * 本人キャンセル（mine モード・PENDING/CONFIRMED 行）。
+ *
+ * - 単枠行: 共通 API POST /api/v1/reservations/{id}/cancel（`cancelByUser`。team スコープの
+ *   cancelReservation は @PreAuthorize isScopeAdmin の管理者専用のため使えない）
+ * - グループ行: cancelGroup（BE は「本人=締切内 / ADMIN=常時」を Service 層で判定。
+ *   グループ所属行への単票キャンセルは 400=RESERVATION_042 で拒否されるため必ずこちらへ回す）
+ *
+ * キャンセル期限の判定は BE が権威（FE での事前判定はしない）。期限超過は
+ * 400=RESERVATION_026 で返るため、丁寧な文言（cancel_deadline_passed）で案内する。
+ */
+async function cancelMine(data: ReservationResponse) {
+  const isGroup = !!data.group?.groupId
+  confirm.require({
+    message: isGroup
+      ? t('reservation.group.cancel_confirm', { n: data.group?.groupSize ?? 1 })
+      : t('reservation.dialog.cancel_confirm'),
+    header: t('reservation.dialog.title'),
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: t('reservation.button.cancel_reservation'),
+    rejectLabel: t('reservation.button.back'),
+    acceptClass: 'p-button-danger',
+    accept: async () => {
+      try {
+        if (isGroup) {
+          await reservationApi.cancelGroup(props.teamId, data.group!.groupId!)
+        }
+        else {
+          await reservationApi.cancelMyReservation(data.id!)
+        }
+        notification.success(t('reservation.message.cancel_success'))
+        await loadReservations()
+        emit('changed')
+      }
+      catch (err) {
+        // 期限超過（026）は「なぜできないか＋次にどうするか」を丁寧に案内する。
+        // それ以外は共通ハンドラへ（握りつぶさない）。
+        if (extractErrorCode(err) === 'RESERVATION_026') {
+          notification.error(t('reservation.message.cancel_deadline_passed'))
+        }
+        else {
+          handleApiError(err)
+        }
+      }
+    },
+  })
+}
+
 watch(statusFilter, () => {
   // team はサーバー再取得。mine はクライアント側フィルタ（displayedReservations）が反応するため再取得不要。
   if (props.mode === 'team') {
@@ -198,13 +253,29 @@ defineExpose({ refresh: loadReservations })
           <Tag :value="statusLabel(data.status?.status)" :severity="statusSeverity[data.status?.status] ?? 'secondary'" rounded />
         </template>
       </Column>
-      <Column v-if="canManage" :header="t('reservation.column.action')" style="width: 150px">
+      <!-- 操作列: 管理者は承認/却下/キャンセル、mine モードは本人キャンセル（PENDING/CONFIRMED）。
+           mine は API 段階で自分の予約しか返らないため他人予約への越権 UI にはならない。
+           最終的な操作可否（期限含む）は BE が判定する。 -->
+      <Column v-if="canManage || mode === 'mine'" :header="t('reservation.column.action')" style="width: 150px">
         <template #body="{ data }">
-          <div v-if="data.status?.status === 'PENDING'" class="flex gap-1">
-            <Button icon="pi pi-check" severity="success" text rounded size="small" @click="approve(data)" />
-            <Button icon="pi pi-times" severity="danger" text rounded size="small" @click="reject(data)" />
-          </div>
-          <Button v-else-if="data.status?.status === 'CONFIRMED'" icon="pi pi-ban" text rounded size="small" severity="secondary" @click="cancel(data)" />
+          <template v-if="canManage">
+            <div v-if="data.status?.status === 'PENDING'" class="flex gap-1">
+              <Button icon="pi pi-check" severity="success" text rounded size="small" @click="approve(data)" />
+              <Button icon="pi pi-times" severity="danger" text rounded size="small" @click="reject(data)" />
+            </div>
+            <Button v-else-if="data.status?.status === 'CONFIRMED'" icon="pi pi-ban" text rounded size="small" severity="secondary" @click="cancel(data)" />
+          </template>
+          <Button
+            v-else-if="data.status?.status === 'PENDING' || data.status?.status === 'CONFIRMED'"
+            icon="pi pi-ban"
+            :label="t('reservation.button.cancel_reservation')"
+            text
+            size="small"
+            severity="secondary"
+            :aria-label="t('reservation.button.cancel_reservation')"
+            data-testid="my-reservation-cancel"
+            @click="cancelMine(data)"
+          />
         </template>
       </Column>
       <template #empty>

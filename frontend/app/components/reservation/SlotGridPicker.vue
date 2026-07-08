@@ -217,9 +217,13 @@ async function loadLines() {
     .map(l => ({ id: l.id ?? 0, name: l.meta?.name ?? '' }))
 }
 
-async function loadGrid() {
+/**
+ * グリッド取得。`silent: true` は KeepAlive 復帰時のサイレント再取得用で、loading フラグを
+ * 立てない（skeleton へ切り替わらない＝表示中のグリッドを保持したまま裏でデータだけ更新する）。
+ */
+async function loadGrid(opts?: { silent?: boolean }) {
   if (!selectedDate.value) return
-  loading.value = true
+  if (!opts?.silent) loading.value = true
   errorMsg.value = ''
   try {
     const start = dayjs(selectedDate.value).tz(userTimezone.value)
@@ -236,7 +240,7 @@ async function loadGrid() {
     errorMsg.value = t('reservation.grid.load_error')
   }
   finally {
-    loading.value = false
+    if (!opts?.silent) loading.value = false
   }
 }
 
@@ -248,15 +252,28 @@ function dayLabel(date: string): string {
   return dayjs(date).format('YYYY/MM/DD (ddd)')
 }
 
-watch([selectedDate, viewMode], loadGrid)
+// loadGrid が opts 引数を持つため、watch コールバックの (newVal, oldVal) が誤って渡らないようラップする
+watch([selectedDate, viewMode], () => loadGrid())
 onMounted(async () => {
   await loadLines()
   await loadGrid()
 })
 
+// KeepAlive 配下（TeamReservationsPanel の表示切替）での復帰時にサイレント再取得し、
+// 表示保持（チラつきなし）とデータ鮮度を両立する。onActivated は初回 mount 直後にも
+// 1回発火するため、onMounted 経路との二重fetchをフラグでガードする。
+let initialActivationDone = false
+onActivated(() => {
+  if (!initialActivationDone) {
+    initialActivationDone = true
+    return
+  }
+  void loadGrid({ silent: true })
+})
+
 // 予約直後に親（TeamReservationsPanel）からグリッドの空き状況を再読込させるための公開メソッド。
 // 既存の MatchRequestList 等と同一パターン（defineExpose({ refresh })＋親は ref 経由で呼ぶ）。
-defineExpose({ refresh: loadGrid })
+defineExpose({ refresh: () => loadGrid() })
 </script>
 
 <template>
