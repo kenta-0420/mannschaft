@@ -94,12 +94,17 @@ public class BetaPerkEligibilityService {
 ```
 
 - **AND 判定・境界は「以上」**（`actual >= required`）。指標が 1 つも定義されない criteria はマスタ CRUD で保存不可（`BETA_PERK_009`・01 §2）。
+- **新設サービス（L4・実装者向けシグネチャ明示）**:
+  - `LoginActivityQueryService.countDistinctActiveDays(Long userId, LocalDateTime since) : long` — `audit_logs` の `LOGIN_SUCCESS` を `SELECT COUNT(DISTINCT DATE(created_at)) WHERE user_id=:userId AND event_type='LOGIN_SUCCESS' AND created_at >= :since` で数える（billing.beta ドメインに新設・audit ドメインの Repository を read-only 参照 or 専用クエリメソッド追加）。**個人の activeDays 唯一の源**（F10.8 は USER 非対応・README §7）。
+  - `MembershipQueryService.tenureDays(EntitlementScopeKind, Long scopeId, LocalDateTime now) : long` — INDIVIDUAL=本人の最古有効所属 `joined_at`（`left_at IS NULL`）／TEAM_ORG=`teams`/`organizations.created_at` からの経過日数（README §2 両建て）。
+  - `MembershipQueryService.activeMemberCount(...)` は F20.1 01 §3.4 の `countActiveDistinctUsersByScope` 再利用（新規メソッドを足さない）。
 
 ---
 
 ## 3. 自動付与バッチ（個人特典・P2）
 
 - `BetaPerkAutoGrantBatchService`・**毎日 04:00 JST**（`@Scheduled(cron="0 0 4 * * *", zone="Asia/Tokyo")`）・`@SchedulerLock` 多重起動防止・`Clock` 注入・ページング走査（F08.9 の進学予告バッチと同型の作法）。
+- **★本番有効化の前提条件（③・活動実績の担保）**: 対象フェーズの `beta_perk_criteria.min_active_days` が **NULL（activeDays 未計測）の間はバッチを本番有効化しない**（tenure-only では無活動ユーザーに付与され主原則違反・README §2）。`activeDays` 計測源（`LoginActivityQueryService`・§2）の結線後に `min_active_days` を設定してから本番有効化する。それまでの付与は**シスアド審査付き手動付与のみ**（§4.1・`skipCriteriaCheck` は使わず criteria 充足を審査で確認）。運用フラグ `mannschaft.beta.auto-grant.enabled`（既定 false）でバッチ実行自体をゲートする。
 - 処理（擬似コード）:
 
 ```
