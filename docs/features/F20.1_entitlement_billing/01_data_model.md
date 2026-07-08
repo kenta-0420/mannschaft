@@ -24,7 +24,8 @@
 | `plans` | `plan_key`（自然キー） | マスタ例外 | 3 プランの提示定義 |
 | `plan_features` | (`plan_key`,`feature_key`) 複合自然キー | マスタ例外 | プラン→機能の展開表 |
 | `plan_price_bands` | (`plan_key`,`scope_kind`,`band_no`) 複合自然キー | マスタ例外 | 人数バンド別単価（機構のみ・実額 NULL 可） |
-| `billing_contracts` | `BINARY(16)` UUIDv7 | 業務 | PLAN/ADDON 契約行（entitlements の発行元） |
+| `billing_contracts` | `BINARY(16)` UUIDv7 | 業務 | PLAN/ADDON 契約行（entitlements の発行元・履歴 append-only） |
+| `active_contract_pointers` | `BINARY(16)` UUIDv7 | 業務 | アクティブ契約の一意性 DB 担保（H-1・§3.1.1） |
 | `entitlements` | `BINARY(16)` UUIDv7 | 業務 | **権利の真実源**（1 行=1 スコープ×1 機能×1 発行元） |
 
 > `beta_grants`（`source_kind=BETA_GRANT` の発行元）は [F20.3 01_data_model](../F20.3_beta_perks/01_data_model.md) で定義（同一 billing ドメイン・サブパッケージ `billing.beta`）。
@@ -164,9 +165,42 @@ CREATE TABLE billing_contracts (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='PLAN/ADDON 契約（entitlements の発行元・PSP 非依存）';
 ```
 
-- **「アクティブな PLAN 契約は 1 スコープ 1 本」**はアプリ層で保証（`status=ACTIVE AND contract_kind='PLAN'` の行が既に在れば `ENTITLEMENT_006` 409。UNIQUE で表現しない理由: `status` を含む UNIQUE は CANCELLED の再契約履歴を壊すため）。ADDON は（scope×feature_key）で同様にアプリ層一意。
+- **契約の一意性は DB で保証する**（アプリ層 exists チェックだけでは TOCTOU レースで二重契約が作れるため）。§3.1.1 の「アクティブ契約ポインタ表」で物理担保する。`billing_contracts` 自体は**契約履歴（append-only）**として全行を残す（`status` を含む UNIQUE は CANCELLED→再契約の履歴を壊すので張らない）。
 - **Phase 2 Expand 予定列**（本設計では作らない・注記のみ）: `psp_customer_ref` / `psp_subscription_ref` / `current_period_end` 等。
 - Repository: `BillingContractRepository extends AbstractTenantAwareRepository<BillingContractEntity, UUID>`（`organization_id` NULL 許容＋`deleted_at` 保持で適用・escrow 前例・§0）。
+
+### 3.1.1 `active_contract_pointers`（契約一意性の DB バックストップ・H-1）
+
+「アクティブな PLAN 契約は 1 スコープ 1 本」「アクティブな ADDON は 1 スコープ×1 feature_key」を**DB の UNIQUE で物理担保**する二層構造。履歴（何度契約/解約したか）は `billing_contracts` に残し、**現在アクティブなポインタ**だけを本表が持つ。
+
+```sql
+CREATE TABLE active_contract_pointers (
+    id BINARY(16) NOT NULL COMMENT 'UUIDv7',
+    scope_kind VARCHAR(8) NOT NULL COMMENT 'USER / TEAM / ORG',
+    scope_id BIGINT UNSIGNED NOT NULL COMMENT '論理参照',
+    contract_kind VARCHAR(8) NOT NULL COMMENT 'PLAN / ADDON',
+    addon_feature_key VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'ADDON のとき対象 feature_key。PLAN のとき空文字（UNIQUE を1本化するため NULL でなく '''' 固定）',
+    contract_id BINARY(16) NOT NULL COMMENT '現在アクティブな billing_contracts.id（論理参照・切替時に UPDATE）',
+    organization_id BIGINT UNSIGNED NULL COMMENT 'テナント（billing_contracts と同値）',
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    deleted_at DATETIME(6) NULL COMMENT '基底要求の保持列（解約時は行を DELETE するため通常未使用）',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_acp_slot (scope_kind, scope_id, contract_kind, addon_feature_key),
+    KEY idx_acp_contract (contract_id),
+    KEY idx_acp_org (organization_id),
+    CONSTRAINT chk_acp_scope_kind CHECK (scope_kind IN ('USER','TEAM','ORG')),
+    CONSTRAINT chk_acp_contract_kind CHECK (contract_kind IN ('PLAN','ADDON'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='アクティブ契約ポインタ（一意性のDB担保・履歴はbilling_contracts）';
+```
+
+**運用（擬似・02 §3.1 と対応）**:
+- 契約作成: `billing_contracts` に ACTIVE 行を INSERT ＋ `active_contract_pointers` に INSERT。**`uk_acp_slot` が二重契約の並行 INSERT を物理拒否**（`DataIntegrityViolationException` → `ENTITLEMENT_006` 409）。TOCTOU レースはここで閉じる。
+- プラン変更（切替）: `active_contract_pointers` の **`contract_id` を UPDATE**（旧契約 CANCELLED＋新契約 ACTIVE と同一トランザクション）。ポインタ行は増やさず付け替えるだけ。
+- 解約: `active_contract_pointers` の該当行を **DELETE**（billing_contracts は CANCELLED で残す）。次回契約時に再 INSERT 可能になる。
+
+**採用理由（`SELECT ... FOR UPDATE` 案との比較）**: 悲観ロック案は「スコープ単位のロック行」を別途要し、契約の無いスコープには初回ロック対象が無く（挿入意図ロックの取り回しが複雑）、ロック粒度・デッドロックの検討が要る。**UNIQUE 制約は初回契約から一貫して効き、実装が単純で、`fee_policies`/`membership_subscriptions` 等の既存「UNIQUE で冪等担保」パターンと同型**であるため本案を採る（memory の UNIQUE 冪等前例に整合）。
+- Repository: `ActiveContractPointerRepository extends AbstractTenantAwareRepository<..., UUID>`。
 
 ### 3.2 `entitlements`（中核・権利の真実源）
 
@@ -199,7 +233,7 @@ CREATE TABLE entitlements (
 **設計判断（README の「精査の上確定」を確定）**:
 
 1. **`source_ref_id` は NOT NULL**。すべての entitlement は発行元行（契約 or ベータ付与）を必ず持つ（シスアド手動付与も `billing_contracts` に契約行を起こしてから発行する）。これにより MySQL の「UNIQUE は NULL を distinct 扱いする」問題を回避し、UNIQUE 制約が実効になる。
-2. **UNIQUE キーに `valid_from` を含める**: F20.3 のチーム/組織特典は「2 年後の更新を**新しい entitlement 行の追加**で表現」する（同一 source_ref から複数期間の行が生じる）ため、（scope×feature×source×ref）だけでは更新行が弾かれる。`valid_from` を含めた 6 列 UNIQUE で「同一発行元から同一開始時刻の二重発行」のみを物理的に防ぐ（冪等の backstop。業務上の重複防止はアプリ層が一次防御・§7）。
+2. **UNIQUE キーに `valid_from` を含める（限界を明示）**: F20.3 のチーム/組織特典は「2 年後の更新を**新しい entitlement 行の追加**で表現」する（同一 source_ref から複数期間の行が生じる）ため、（scope×feature×source×ref）だけでは更新行が弾かれる。`valid_from` を含めた 6 列 UNIQUE は「同一発行元から**同一開始時刻**の二重発行」しか防げず、`valid_from=now()` で発行する通常契約では実効性がほぼ無い（M-1 指摘）。**役割分担を明確化する**: (a) **アクティブ契約の一意性 = `active_contract_pointers` の UNIQUE（§3.1.1）が一次防御**、(b) **クライアント二重送信 = 契約作成 API の冪等トークン（`Idempotency-Key` ヘッダ・02 §0/§3.1・Phase 1 から必須）**、(c) `uk_ent_grant` は「同時刻の完全二重 INSERT」への最終 backstop（AC-21）。この 3 層で TOCTOU・二重押下・多重発行を塞ぐ。
 3. **参照系 INDEX**: `idx_ent_lookup (scope_kind, scope_id, feature_key, valid_until)` が `isEntitled` の実行計画を担う（等値 3 列＋範囲 1 列）。`revoked_at` は選択率が低く INDEX に含めない。
 4. **監査列**: `revoked_by` を追加（README の列定義＋監査要件。取消は運営操作・解約・退会処理のいずれかで、非否認のため操作者を残す）。
 5. **DATETIME(6)**: README 指定どおりマイクロ秒精度（境界テスト AC-06 の「valid_until ちょうど」を秒精度の丸めで曖昧にしない）。
@@ -220,18 +254,18 @@ WHERE e.scope_kind = :scopeKind        -- enum は name() で String 化（feedb
   AND (e.valid_until IS NULL OR :now < e.valid_until);   -- 半開区間 [from, until)
 ```
 
-### 3.4 アクティブ人数の数え方（正準・F20.3 と共通）
+### 3.4 アクティブ人数の数え方（正準・既存メソッド再利用・F20.3 と共通）
+
+**独自 `COUNT(*)` を書かない**（M-6）。origin/main 実在の **`MembershipRepository.countActiveDistinctUsersByScope(ScopeType, Long)`** を再利用する（実 JPQL: `SELECT COUNT(DISTINCT m.userId) FROM MembershipEntity m WHERE m.scopeType = :scopeType AND m.scopeId = :scopeId AND m.leftAt IS NULL`）。**DISTINCT user_id** ゆえ、1 ユーザーが複数 membership 行を持っても二重計上しない（`COUNT(*)` だと過大になる）。F20.2 も同メソッド再利用で整合させる。
 
 ```
 activeMemberCount(scopeKind, scopeId):
-  TEAM → SELECT COUNT(*) FROM memberships
-          WHERE scope_type='TEAM' AND scope_id=:scopeId AND left_at IS NULL
-  ORG  → SELECT COUNT(*) FROM memberships
-          WHERE scope_type='ORGANIZATION' AND scope_id=:scopeId AND left_at IS NULL
+  TEAM → membershipRepository.countActiveDistinctUsersByScope(ScopeType.TEAM, scopeId)
+  ORG  → membershipRepository.countActiveDistinctUsersByScope(ScopeType.ORGANIZATION, scopeId)
   USER → 常に 1
 ```
 
-> `memberships` は多態 1 表（`scope_type ∈ {ORGANIZATION, TEAM}`・`role_kind ∈ {MEMBER, SUPPORTER}`・実コード確認済）。**SUPPORTER も頭数に含める**（バンドは「アクティブに関与する人数」の近似。除外が必要ならベータ計測後の運用判断・マスタ側で調整可能な設計にはしない＝数え方は 1 定義に固定して曖昧さを排除）。
+> `memberships` は多態 1 表（`scope_type ∈ {ORGANIZATION, TEAM}`・`role_kind ∈ {MEMBER, SUPPORTER}`・実コード確認済）。上記メソッドは `role_kind` を問わない総数（SUPPORTER も含む・ADMIN/DEPUTY も MEMBER 行を持つため含まれる）。**バンドの頭数はこの 1 定義に固定**して曖昧さを排除する（SUPPORTER 除外が必要ならベータ計測後の運用判断で別メソッドへ切替）。
 
 ---
 
@@ -289,7 +323,8 @@ plans ──(FK/CASCADE)── plan_features            ┐ マスタ（自然�
   └──(FK/CASCADE)── plan_price_bands            │
 feature_catalog（plan_features とは論理整合）    ┘
 
-billing_contracts（UUIDv7・PLAN/ADDON 契約）
+billing_contracts（UUIDv7・PLAN/ADDON 契約・履歴 append-only）
+  ├─(論理: contract_id)─ active_contract_pointers（UUIDv7・uk_acp_slot でアクティブ一意を DB 担保）
   └─(論理: source_ref_id)─ entitlements（UUIDv7・権利の真実源）
 beta_grants（F20.3・UUIDv7）
   └─(論理: source_ref_id)─ entitlements（source_kind=BETA_GRANT）
@@ -332,7 +367,7 @@ team_org_memberships（status=ACTIVE）─(論理・読取のみ)─ チーム�
 | 版（仮） | 内容 |
 |---|---|
 | `V146.<ts1>__create_billing_master_tables.sql` | `feature_catalog` / `plans` / `plan_features` / `plan_price_bands` |
-| `V146.<ts2>__create_billing_contracts.sql` | `billing_contracts` |
+| `V146.<ts2>__create_billing_contracts.sql` | `billing_contracts`＋`active_contract_pointers`（§3.1.1・一意性 DB 担保） |
 | `V146.<ts3>__create_entitlements.sql` | `entitlements` |
 | `V146.<ts4>__seed_billing_master.sql` | §2 の初期シード（プラン 3 行・feature 6 行・plan_features・バンド例示行） |
 | `V146.<ts5>__bridge_team_subscriptions_to_entitlements.sql` | §5 ブリッジ（冪等 INSERT...SELECT・対象 0 件でも成功） |
@@ -342,9 +377,13 @@ team_org_memberships（status=ACTIVE）─(論理・読取のみ)─ チーム�
 
 ---
 
-## 10. GDPR・退会
+## 10. GDPR・退会（イベント駆動・実在の仕組みに準拠）
 
-- `entitlements`/`billing_contracts` は**契約記録**ゆえ物理削除しない（論理削除・匿名化方針）。ユーザー退会時:
-  - USER スコープの ACTIVE 契約を `CANCELLED`＋由来 entitlements を revoke（`UserWithdrawalService` のトランザクション内・F08.9 §6 の退会時アトミック失効と同型）。
-  - `created_by`/`revoked_by` は監査用の userId 論理参照であり PII を含まない（表示名は都度解決・退会後は匿名表示）。
-- 退会区分は**猶予対象（強匿名化・30 日）側に置かない**: 契約の失効はサービス提供義務の解消であり即時に行う（通知設定と同じ「即時消去（弱匿名化）」区分。CLAUDE.md PII 二段モデル参照。金銭記録が生じる Phase 2 では保持義務を再整理）。
+- `entitlements`/`billing_contracts` は**契約記録**ゆえ物理削除しない（論理削除・匿名化方針）。
+- **退会はイベント駆動**（M-4）: `UserWithdrawalService`（架空）ではなく、origin/main 実在の `WithdrawalRequestedEvent`（申請・猶予開始）／`AccountPurgedEvent`（物理削除・`AccountPurgeService` バッチ発火・各ドメイン `*PurgeEventListener`）を購読する。billing ドメインに **`BillingPurgeEventListener`（`@TransactionalEventListener`・REQUIRES_NEW）** を新設。
+- **退会猶予との整合**（M-5・revoke は終端で復活不可）:
+  - **申請（猶予開始）時**: USER スコープの契約・entitlements を revoke **しない**（撤回で復活できないため権利を維持）。
+  - **撤回（`WithdrawalCancelledEvent`）時**: 何もしない（権利維持のまま）。
+  - **確定（`AccountPurgedEvent`）時**: USER スコープの ACTIVE 契約を `CANCELLED`＋`active_contract_pointers` 削除＋由来 entitlements revoke（撤回窓は閉じており復活不可で問題ない）。
+- `created_by`/`revoked_by` は監査用 userId 論理参照で PII 非含有（表示名は都度解決・退会後は匿名表示）。
+- 区分は CLAUDE.md PII 二段モデルの**猶予対象（強匿名化・30 日）側の purge タイミングで失効**（退会撤回窓を尊重）。金銭記録が生じる Phase 2 では保持義務を再整理する。
