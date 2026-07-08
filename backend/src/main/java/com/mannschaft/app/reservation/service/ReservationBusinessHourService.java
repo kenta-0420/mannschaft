@@ -4,6 +4,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.reservation.ReservationBlockedResourceType;
+import com.mannschaft.app.reservation.ReservationDayOfWeek;
 import com.mannschaft.app.reservation.ReservationErrorCode;
 import com.mannschaft.app.reservation.ReservationMapper;
 import com.mannschaft.app.reservation.ReservationStatus;
@@ -12,6 +13,7 @@ import com.mannschaft.app.reservation.dto.BlockedTimeRequest;
 import com.mannschaft.app.reservation.dto.BlockedTimeResponse;
 import com.mannschaft.app.reservation.dto.BusinessHourEntry;
 import com.mannschaft.app.reservation.dto.BusinessHourResponse;
+import com.mannschaft.app.reservation.dto.BusinessHoursUpdateOutcome;
 import com.mannschaft.app.reservation.dto.BusinessHoursUpdateRequest;
 import com.mannschaft.app.reservation.entity.ReservationBlockedTimeEntity;
 import com.mannschaft.app.reservation.entity.ReservationBusinessHourEntity;
@@ -30,8 +32,11 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -70,15 +75,22 @@ public class ReservationBusinessHourService {
     }
 
     /**
-     * チームの営業時間設定を一括更新する。
+     * チームの営業時間設定を一括更新し、<b>今回変更のあった曜日</b>を返す（F03.4.5 §3.2）。
+     *
+     * <p>保存前に現行値と突合し、{@code isOpen}/{@code openTime}/{@code closeTime} のいずれかが変わった曜日
+     * （＋新規行）を {@code changedDays} に集める。コントローラはこの差分を使い、保存 tx コミット後・
+     * {@code @Transactional} の外側で「変更曜日の active テンプレのみ」を horizon 28 日生成する
+     * （INSERT 量の抑制・§3.2）。営業時間の縮小方向は遡及 CLOSE しない（スコープ外）が、拡大方向は
+     * {@code skippedOutsideHoursCount} に落ちていたセルが自動生成で埋まる。</p>
      *
      * @param teamId  チームID
      * @param request 更新リクエスト
-     * @return 更新された営業時間レスポンスリスト
+     * @return 更新後の営業時間一覧＋変更曜日集合
      */
     @Transactional
-    public List<BusinessHourResponse> updateBusinessHours(Long teamId, BusinessHoursUpdateRequest request) {
+    public BusinessHoursUpdateOutcome updateBusinessHours(Long teamId, BusinessHoursUpdateRequest request) {
         List<ReservationBusinessHourEntity> result = new ArrayList<>();
+        Set<ReservationDayOfWeek> changedDays = new LinkedHashSet<>();
 
         for (BusinessHourEntry entry : request.getHours()) {
             if (entry.getIsOpen() && entry.getOpenTime() != null && entry.getCloseTime() != null
@@ -86,25 +98,56 @@ public class ReservationBusinessHourService {
                 throw new BusinessException(ReservationErrorCode.INVALID_TIME_RANGE);
             }
 
-            ReservationBusinessHourEntity entity = businessHourRepository
-                    .findByTeamIdAndDayOfWeek(teamId, entry.getDayOfWeek())
-                    .map(existing -> {
-                        existing.updateHours(entry.getIsOpen(), entry.getOpenTime(), entry.getCloseTime());
-                        return existing;
-                    })
-                    .orElseGet(() -> ReservationBusinessHourEntity.builder()
-                            .teamId(teamId)
-                            .dayOfWeek(entry.getDayOfWeek())
-                            .isOpen(entry.getIsOpen())
-                            .openTime(entry.getOpenTime())
-                            .closeTime(entry.getCloseTime())
-                            .build());
+            Optional<ReservationBusinessHourEntity> existingOpt =
+                    businessHourRepository.findByTeamIdAndDayOfWeek(teamId, entry.getDayOfWeek());
+            boolean changed;
+            ReservationBusinessHourEntity entity;
+            if (existingOpt.isPresent()) {
+                ReservationBusinessHourEntity existing = existingOpt.get();
+                // 保存（mutate）前に現行値と突合して差分判定する。
+                changed = !Objects.equals(existing.getIsOpen(), entry.getIsOpen())
+                        || !Objects.equals(existing.getOpenTime(), entry.getOpenTime())
+                        || !Objects.equals(existing.getCloseTime(), entry.getCloseTime());
+                existing.updateHours(entry.getIsOpen(), entry.getOpenTime(), entry.getCloseTime());
+                entity = existing;
+            } else {
+                // 新規行は「変更あり」として生成対象にする（初回設定で枠を埋める・§3.2 初回体験）。
+                changed = true;
+                entity = ReservationBusinessHourEntity.builder()
+                        .teamId(teamId)
+                        .dayOfWeek(entry.getDayOfWeek())
+                        .isOpen(entry.getIsOpen())
+                        .openTime(entry.getOpenTime())
+                        .closeTime(entry.getCloseTime())
+                        .build();
+            }
 
             result.add(businessHourRepository.save(entity));
+
+            if (changed) {
+                ReservationDayOfWeek dow = parseDayOrNull(entry.getDayOfWeek());
+                if (dow != null) {
+                    changedDays.add(dow);
+                }
+            }
         }
 
-        log.info("営業時間更新: teamId={}, entries={}", teamId, request.getHours().size());
-        return reservationMapper.toBusinessHourResponseList(result);
+        log.info("営業時間更新: teamId={}, entries={}, changedDays={}",
+                teamId, request.getHours().size(), changedDays);
+        return new BusinessHoursUpdateOutcome(
+                reservationMapper.toBusinessHourResponseList(result), changedDays);
+    }
+
+    /**
+     * 営業時間の曜日文字列（VARCHAR(3) MON..SUN）を enum へ安全変換する。
+     * 想定外の値（テンプレ突合対象にならない）は {@code null} を返し、生成対象から除外する。
+     */
+    private ReservationDayOfWeek parseDayOrNull(String dayOfWeek) {
+        try {
+            return ReservationDayOfWeek.valueOf(dayOfWeek);
+        } catch (IllegalArgumentException | NullPointerException e) {
+            return null;
+        }
     }
 
     /**

@@ -168,9 +168,13 @@
     "tab": {
       "book": "Book",
       "list": "Reservations",
+      "my_reservations": "My Reservations",
       "line_manage": "Manage Bookable Items",
       "emergency_closure": "緊急休業",
       "team_page": "Reservations"
+    },
+    "management": {
+      "section_count": "{label} ({n})"
     },
     "column": {
       "datetime": "Date & Time",
@@ -255,10 +259,13 @@
       "menu_save_failed": "Failed to save",
       "menu_load_failed": "Failed to load menus",
       "template_create_success": "Template created",
+      "template_create_success_multi": "{n} templates created",
+      "template_create_partial": "{succeeded}/{total} templates created; the rest failed",
       "template_update_success": "Template updated",
       "template_delete_success": "Template deleted",
       "template_save_failed": "Failed to save",
-      "template_load_failed": "Failed to load templates"
+      "template_load_failed": "Failed to load templates",
+      "cancel_deadline_passed": "The cancellation deadline has passed, so this reservation could not be cancelled. If you need to change it, please contact a team administrator"
     },
     "empty": {
       "no_reservations": "No reservations",
@@ -613,46 +620,93 @@
     "team_guide": {
       "title": "How reservations work",
       "help_button": "How to use",
-      "admin": {
-        "lines_title": "1. Create reservation targets",
-        "lines_steps": {
-          "0": "Open the \"Manage reservation targets\" tab.",
-          "1": "Use \"Add reservation target\" to register staff, counters, or other bookable targets.",
-          "2": "Without a reservation target, no slots appear on the member's \"Reserve\" screen."
+      "event_link": "See event recruiting",
+      "book": {
+        "matrix_title": "Reading the matrix",
+        "matrix_steps": {
+          "0": "Rows are \"date × reservation target\", columns are \"time\".",
+          "1": "Colors: green \"Available\" = bookable / \"Booked\" = taken / diagonal stripes = \"Unavailable\" / pale gray = \"Closed\"."
         },
-        "slots_title": "2. Create reservation slots",
-        "slots_steps": {
-          "0": "In the same \"Manage reservation targets\" tab, press \"Add slot\".",
-          "1": "Set the date, start/end time, and capacity, then save.",
-          "2": "The saved slots appear on the member's \"Reserve\" screen."
+        "filter_title": "Filter by menu",
+        "filter_steps": {
+          "0": "Use the menu filter at the top to highlight the exact number of slots that menu needs.",
+          "1": "Without a menu, you can book single 30-minute slots one at a time."
         },
-        "publish_title": "3. Decide who can book",
-        "publish_steps": {
-          "0": "In advanced settings \"Public reservations\", choose members-only or open to the public.",
-          "1": "Set the approval mode to auto-confirm or manual approval."
+        "flow_title": "Booking flow",
+        "flow_steps": {
+          "0": "Press an \"Available\" (green) cell.",
+          "1": "Choosing a menu automatically groups the required number of slots (skipped automatically if a menu filter is already applied).",
+          "2": "Press \"+30 min\" if you want to extend the time.",
+          "3": "Review the date/details, fill in \"Notes (optional)\", and press \"Confirm this booking\" to finish."
         },
-        "manage_title": "Check reservations & emergency closures",
-        "manage_steps": {
-          "0": "The \"Reservations\" tab lets you review, approve, and cancel the whole team's reservations.",
-          "1": "For sudden closures, use the \"Emergency closure\" tab to close a period and notify affected people at once."
+        "conflict_title": "When it's full or conflicts",
+        "conflict_steps": {
+          "0": "Gray cells (\"Booked\", \"Closed\", or \"Unavailable\") can't be selected. Choose another time or target.",
+          "1": "If someone else takes the same slot right before you confirm, you'll see an error and the screen auto-refreshes to the latest availability. Please choose an open slot again."
         }
       },
-      "member": {
-        "book_title": "How to book",
-        "book_steps": {
-          "0": "Choose a date and reservation target to see the open slots for that day.",
-          "1": "Pick an \"Available\" slot, review the details, and book."
+      "list": {
+        "admin_overview_title": "Viewing the whole team's reservations",
+        "admin_overview_steps": {
+          "0": "Filter by status (pending, approved, cancelled, completed, no show).",
+          "1": "Multi-slot \"group bookings\" appear as a single row that shows the slot count."
         },
-        "status_title": "Reading the status",
+        "admin_manage_title": "Approve, reject, and cancel",
+        "admin_manage_steps": {
+          "0": "In teams with manual approval, approve or reject pending reservations.",
+          "1": "Confirmed reservations can also be cancelled. Group bookings are managed as a group.",
+          "2": "These actions instantly update availability on the \"Reserve\" tab."
+        },
+        "member_mine_title": "Checking your own reservations",
+        "member_mine_steps": {
+          "0": "Only your own reservations appear here (other members' reservations are never shown).",
+          "1": "Filter by status to check them."
+        },
+        "member_cancel_title": "Cancelling",
+        "member_cancel_steps": {
+          "0": "Press \"Cancel\" on the reservation row you want to withdraw, then press \"Cancel\" again on the confirmation screen.",
+          "1": "Past the cancellation deadline an error is shown and you can't cancel it yourself — contact a team administrator if you need a change."
+        }
+      },
+      "line_manage": {
+        "setup1_title": "1. Create reservation targets",
+        "setup1_steps": {
+          "0": "Use \"Add reservation target\" at the top of this tab to register seats, staff, or counters that can be booked.",
+          "1": "Without a reservation target, the \"Reserve\" tab shows nothing to members."
+        },
+        "setup2_title": "2. Create menus",
+        "setup2_steps": {
+          "0": "In \"Manage menus\" below, register menus with a duration (in 30-minute units).",
+          "1": "To limit a menu to specific targets, choose \"Only selected reservation targets\" under \"Bookable Item\" and pick them (the default offers it on every target)."
+        },
+        "setup3_title": "3. Create a weekly template",
+        "setup3_steps": {
+          "0": "In \"Weekly template\" below, set the day of week, time range, and capacity — this time range is effectively your business hours.",
+          "1": "After saving, press \"Create slots now\" to make the nearest slots available immediately.",
+          "2": "If you skip that, slots are still extended automatically every day from tomorrow on — no action needed."
+        },
+        "daily_title": "Day-to-day operation",
+        "daily_steps": {
+          "0": "Once the weekly template is set up, slots keep extending automatically every day, so there's normally nothing to do.",
+          "1": "Edit the weekly template only when you want to change the day or time range."
+        },
+        "exception_title": "Exceptions",
+        "exception_steps": {
+          "0": "To add or change slots for a single day only, use \"Manage slots\" below to create, edit, or close individual slots.",
+          "1": "To block a specific time range from being booked, use \"Unavailable ranges\" in advanced settings.",
+          "2": "Deleting a reservation target stops its template and auto-deletes its future slots with no reservations. If it still has active reservations, reassign or cancel them first."
+        }
+      },
+      "emergency_closure": {
+        "send_title": "What happens when you send it",
+        "send_steps": {
+          "0": "Everyone with a reservation in the affected period/time range gets an email and in-app notification about the closure.",
+          "1": "Checking \"Cancel affected reservations\" also automatically cancels the reservations in the affected period."
+        },
+        "status_title": "Reading the confirmation status",
         "status_steps": {
-          "0": "\"Pending\" ... awaiting administrator approval.",
-          "1": "\"Approved\" ... your reservation is confirmed.",
-          "2": "\"Completed\" ... the visit has finished."
-        },
-        "cancel_title": "How to cancel",
-        "cancel_steps": {
-          "0": "Open your reservation from the \"Reservations\" tab.",
-          "1": "If within the cancellation deadline, use \"Cancel\" to withdraw it."
+          "0": "Open the send history to see, in real time, who has confirmed (read) the notice.",
+          "1": "The \"n/m confirmed\" display means n out of m recipients have confirmed."
         }
       }
     }
