@@ -3,6 +3,7 @@ package com.mannschaft.app.config;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.MDC;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -121,14 +122,26 @@ public class AsyncConfig {
      * リスナーの結合テストでは非プロキシのリスナーを直接同期呼び出しするか、
      * {@code SyncTaskExecutor} に差し替えて決定論化する（設計書 §2.4 / §5.1）。</p>
      *
-     * @param meterRegistry Discard 件数カウンタ登録用の Micrometer レジストリ
+     * <p><b>MeterRegistry は {@link ObjectProvider} で optional 解決する</b>:
+     * {@code @SpringBootTest(classes=...)} の narrowed context には Micrometer の
+     * {@code MeterRegistry} Bean が無いことがある。直接注入すると pool 生成が
+     * {@code UnsatisfiedDependencyException} で失敗し、無関係なテスト（narrowed context 全般）を
+     * 巻き添えにする。そのため {@code getIfAvailable()} で null 許容とし、レジストリが
+     * 無い場合は可視化カウンタの登録だけをスキップする（pool 生成は常に成功する）。
+     * 作法は {@code common.ratelimit.ValkeyRateLimiter} の
+     * {@code ObjectProvider<MeterRegistry>} に倣う。</p>
+     *
+     * @param meterRegistryProvider Discard 件数カウンタ登録用 Micrometer レジストリの optional プロバイダ
      * @return page-view-pool エグゼキュータ
      */
     @Bean("page-view-pool")
-    public Executor pageViewPool(MeterRegistry meterRegistry) {
-        Counter discardedCounter = Counter.builder("mannschaft.pageview.discarded")
-                .description("page-view-pool 飽和時に破棄されたページビュー計測タスク数（欠損許容・可視化目的）")
-                .register(meterRegistry);
+    public Executor pageViewPool(ObjectProvider<MeterRegistry> meterRegistryProvider) {
+        MeterRegistry meterRegistry = meterRegistryProvider.getIfAvailable();
+        // レジストリが利用可能なときだけ可視化カウンタを用意する（narrowed context では null 許容）。
+        Counter discardedCounter = meterRegistry == null ? null
+                : Counter.builder("mannschaft.pageview.discarded")
+                        .description("page-view-pool 飽和時に破棄されたページビュー計測タスク数（欠損許容・可視化目的）")
+                        .register(meterRegistry);
 
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(2);
@@ -137,7 +150,12 @@ public class AsyncConfig {
         executor.setThreadNamePrefix("page-view-");
         executor.setTaskDecorator(new MdcTaskDecorator());
         // DiscardPolicy 相当（飽和時は捨てる）＋捨てた数を可視化。既存プールは AbortPolicy 既定なので明示必須。
-        executor.setRejectedExecutionHandler((runnable, poolExecutor) -> discardedCounter.increment());
+        // カウンタが無い（レジストリ欠落）環境では捨てるだけで可視化はスキップする。
+        executor.setRejectedExecutionHandler((runnable, poolExecutor) -> {
+            if (discardedCounter != null) {
+                discardedCounter.increment();
+            }
+        });
         executor.initialize();
         return executor;
     }

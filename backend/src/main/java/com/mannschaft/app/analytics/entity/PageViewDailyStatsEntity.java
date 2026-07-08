@@ -1,7 +1,7 @@
 package com.mannschaft.app.analytics.entity;
 
 import com.mannschaft.app.analytics.PageViewScopeType;
-import com.mannschaft.app.common.BaseEntity;
+import com.mannschaft.app.common.entity.UuidV7Entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -20,7 +20,11 @@ import java.time.LocalDate;
  *
  * <p>日次バッチが前日分を集計して「1 スコープ 1 日 1 行」で upsert する。
  * 手本は {@code analytics_daily_users}（V10.069 の {@code UNIQUE KEY(date)}）を
- * 「スコープ×日付」に拡張したもの。{@code BaseEntity}（{@code BIGINT}/IDENTITY）を継承する。</p>
+ * 「スコープ×日付」に拡張したもの。主キーは {@link UuidV7Entity} を継承し UUIDv7
+ * （{@code BINARY(16)}）とする（CLAUDE.md「DB 設計の原則 #6」— 新規テーブルは UUIDv7。
+ * 手本の {@code analytics_daily_*} は規約導入前の major<70 なので BIGINT のまま対象外だが、
+ * 本テーブル V146（major>=70）は原則 #6 の対象。scope×日で行が増える将来の
+ * {@code organization_id} シャーディング候補であり、マスタ/シングルトン例外にも該当しない）。</p>
  *
  * <p>{@code UNIQUE KEY uk_pvds_scope_date (scope_type, scope_id, date)} により
  * 冪等な upsert を保証する。クロスドメイン FK は張らない（CLAUDE.md 原則 1）。</p>
@@ -30,7 +34,7 @@ import java.time.LocalDate;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SuperBuilder(toBuilder = true)
-public class PageViewDailyStatsEntity extends BaseEntity {
+public class PageViewDailyStatsEntity extends UuidV7Entity {
 
     /** スコープ種別（{@code TEAM} / {@code ORGANIZATION}）。 */
     @Enumerated(EnumType.STRING)

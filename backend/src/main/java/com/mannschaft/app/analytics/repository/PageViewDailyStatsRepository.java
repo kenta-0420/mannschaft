@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * ページビュー日次集計リポジトリ（F10.8 アクセス解析）。
@@ -18,7 +19,7 @@ import java.util.List;
  * {@code (scope_type, scope_id)} でスコープ絞りしたうえで日付範囲を読む（{@code daily}）。
  * {@code monthly} / {@code summary} はアプリ層で集約する（設計書 §4.3）。</p>
  */
-public interface PageViewDailyStatsRepository extends JpaRepository<PageViewDailyStatsEntity, Long> {
+public interface PageViewDailyStatsRepository extends JpaRepository<PageViewDailyStatsEntity, UUID> {
 
     /**
      * バッチ冪等用: 指定スコープ・指定日の既存集計行を削除する
