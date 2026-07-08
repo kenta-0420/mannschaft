@@ -225,12 +225,14 @@ const selectedCreateScope = computed(
 
 // 上部セレクト変更でカレンダー表示を絞り込む（ガントタブ表示中は再読み込みも行う）
 watch(createScopeKey, (key) => {
-  if (key === 'personal') {
-    selectedScopes.value = [PERSONAL_KEY]
-  } else {
-    selectedScopes.value = [PERSONAL_KEY, key]
-  }
-  // スコープ変更時はキャッシュを破棄して再取得
+  withScopeLoading(() => {
+    if (key === 'personal') {
+      selectedScopes.value = [PERSONAL_KEY]
+    } else {
+      selectedScopes.value = [PERSONAL_KEY, key]
+    }
+  })
+  // スコープ変更時はキャッシュを破棄して再取得（ガントビューのみ）
   if (activeTab.value === 'gantt') {
     ganttCache.clear()
     ganttKey.value++
@@ -310,6 +312,19 @@ async function loadGantt() {
 
   // 表示後に前後2か月をバックグラウンドでプリフェッチ
   prefetchAdjacentMonths(year, month)
+}
+
+async function withScopeLoading(fn: () => void) {
+  calendarLoading.value = true
+  await nextTick()
+  await new Promise<void>(resolve => setTimeout(resolve, 0))
+  fn()
+  await nextTick()
+  calendarLoading.value = false
+}
+
+function onToggleScope(value: string) {
+  withScopeLoading(() => toggleScope(value))
 }
 
 async function onTabChange(tab: CalendarTab) {
@@ -430,7 +445,7 @@ onMounted(() => {
                   :class="selectedScopes.includes(sc.value)
                     ? 'border-primary text-primary bg-primary/10'
                     : 'border-surface-300 text-surface-400'"
-                  @click="toggleScope(sc.value)"
+                  @click="onToggleScope(sc.value)"
                 >
                   {{ sc.label }}
                 </button>
@@ -439,7 +454,7 @@ onMounted(() => {
               <!-- 6件以上: MultiSelect ドロップダウン -->
               <MultiSelect
                 v-else
-                v-model="multiSelectScopes"
+                :model-value="multiSelectScopes"
                 :options="allScopeOptions"
                 option-label="label"
                 option-value="value"
@@ -448,6 +463,7 @@ onMounted(() => {
                 selected-items-label="{0}件選択中"
                 class="text-xs"
                 style="min-width: 180px"
+                @update:model-value="(vals: string[]) => withScopeLoading(() => { selectedScopes.value = vals })"
               />
             </div>
           </div>
