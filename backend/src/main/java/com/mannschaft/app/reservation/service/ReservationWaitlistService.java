@@ -261,8 +261,10 @@ public class ReservationWaitlistService {
             // 枠が消えた / まだ空いていない（CLOSED 化された等）→ 通知しない。
             return;
         }
+        // 追加防御: WAITING 行を悲観ロック（FOR UPDATE）で掴んでから notified_at 抑制判定＋更新を原子化する。
+        // これにより万一イベントが並行で複数回起動しても「両方が notified_at=NULL を読んで二重 push」を封じる。
         List<ReservationWaitlistEntryEntity> waiting =
-                waitlistRepository.findBySlotIdAndStatus(slotId, WaitlistStatus.WAITING);
+                waitlistRepository.findBySlotIdAndStatusForUpdate(slotId, WaitlistStatus.WAITING);
         if (waiting.isEmpty()) {
             return;
         }

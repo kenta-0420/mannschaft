@@ -2,7 +2,9 @@ package com.mannschaft.app.reservation.repository;
 
 import com.mannschaft.app.reservation.WaitlistStatus;
 import com.mannschaft.app.reservation.entity.ReservationWaitlistEntryEntity;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -45,6 +47,20 @@ public interface ReservationWaitlistEntryRepository
      * 枠の指定状態のエントリ一覧（空き通知の宛先列挙）。
      */
     List<ReservationWaitlistEntryEntity> findBySlotIdAndStatus(Long slotId, WaitlistStatus status);
+
+    /**
+     * 枠の指定状態のエントリ一覧を<b>悲観ロック（{@code FOR UPDATE}）付き</b>で取得する（空き通知の並行安全化）。
+     *
+     * <p>F03.4.5 §6.1 の追加防御: 空き通知（{@code notifySlotReopened}）が万一並行で複数回起動されても、
+     * WAITING 行を排他ロックで掴んでから {@code notified_at} 抑制判定＋更新を原子的に行うことで、
+     * 「両方が {@code notified_at=NULL} を読んで二重 push」を封じる（イベントは発火ゲートで既に 1 回化されるが、
+     * 抑制判定の並行安全も固める）。呼び出しは {@code @Transactional} 下で行うこと（ロック保持の前提）。</p>
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT w FROM ReservationWaitlistEntryEntity w "
+            + "WHERE w.slotId = :slotId AND w.status = :status")
+    List<ReservationWaitlistEntryEntity> findBySlotIdAndStatusForUpdate(
+            @Param("slotId") Long slotId, @Param("status") WaitlistStatus status);
 
     /**
      * ユーザーの指定状態のエントリ一覧（本人の待ち一覧・新しい順）。

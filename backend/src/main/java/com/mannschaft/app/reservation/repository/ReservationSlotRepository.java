@@ -151,24 +151,51 @@ public interface ReservationSlotRepository extends JpaRepository<ReservationSlot
     int incrementBookedCountIfAvailable(@Param("slotId") Long slotId);
 
     /**
-     * 予約数を -1 し、満席（FULL）が解消されたら AVAILABLE へ復帰させる<b>アトミック UPDATE</b>（キャンセル時）。
+     * 予約数を -1 する<b>アトミック UPDATE</b>（キャンセル時・下限 0 クランプ）。ステータスは変更しない。
      *
-     * <p>{@code booked_count} は 0 未満にならないよう下限 0 でクランプする。
-     * {@code slot_status = 'FULL'} かつ {@code booked_count - 1 < capacity} の場合のみ {@code 'AVAILABLE'} へ戻す
-     * （CLOSED＝スタッフ操作による受付終了は据え置く）。</p>
+     * <p>F03.4.5 §6.1 の lost wakeup / 二重発火根治のため、従来「デクリメント＋AVAILABLE 復帰」を
+     * 1 SQL で行っていた {@code decrementBookedCountAndReopen} を<b>分離</b>した。本メソッドは
+     * {@code booked_count} の減算のみを担い、FULL→AVAILABLE 遷移は {@link #reopenSlotIfFull(Long)} が
+     * 担う。呼び出しは必ず「デクリメント → reopen」の順で行う（reopen は減算後の {@code booked_count} を見て
+     * 遷移可否を判定するため）。</p>
      *
      * @param slotId 予約枠ID
      * @return 更新行数
      */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
-    // increment 同様、slot_status の CASE を booked_count 減算より前に置き、CASE が更新前の
-    // booked_count（と slot_status）を読むようにする。満席枠が定員未満へ戻れば AVAILABLE に復帰する。
     @Query(value = "UPDATE reservation_slots "
-            + "SET slot_status = CASE WHEN slot_status = 'FULL' AND booked_count - 1 < capacity "
-            + "                       THEN 'AVAILABLE' ELSE slot_status END, "
-            + "    booked_count = CASE WHEN booked_count > 0 THEN booked_count - 1 ELSE 0 END "
+            + "SET booked_count = CASE WHEN booked_count > 0 THEN booked_count - 1 ELSE 0 END "
             + "WHERE id = :slotId "
             + "  AND deleted_at IS NULL",
             nativeQuery = true)
-    int decrementBookedCountAndReopen(@Param("slotId") Long slotId);
+    int decrementBookedCount(@Param("slotId") Long slotId);
+
+    /**
+     * 満席（FULL）枠が定員未満になっていれば AVAILABLE へ復帰させ、<b>実際に遷移を起こしたか</b>を返す
+     * （F03.4.5 §6.1・キャンセル待ち通知の発火ゲート）。
+     *
+     * <p><b>なぜ affected-rows でゲートするか（根治の核心）:</b> 従来はイベント発火可否を
+     * サービス層の in-memory スナップショット（{@code entity.getSlotStatus()==FULL}）で判定していたが、
+     * 実際の FULL→AVAILABLE 遷移は DB の UPDATE が確定させるため、両者が乖離すると
+     * (A) 通知漏れ（lost wakeup: スナップショットが AVAILABLE でも DB が FULL→AVAILABLE 遷移）や
+     * (B) 二重発火（capacity≥2 で複数 tx が wasFull=true）が起きる。
+     * 本 UPDATE は {@code WHERE slot_status='FULL'} を直列化ガードとし、<b>遷移を起こした唯一の tx だけ</b>が
+     * 1 を返す（行ロックにより並行 tx は逐次化され、後続は既に AVAILABLE を見て 0 を返す）。
+     * 呼び出し側は戻り値が 1 のときだけ {@code ReservationSlotReopenedEvent} を発行する。</p>
+     *
+     * <p>{@code booked_count < capacity} 条件により、デクリメント後も定員に満たない場合のみ復帰する。
+     * CLOSED（スタッフ操作による受付終了）は {@code slot_status='FULL'} 条件で対象外となり据え置かれる。</p>
+     *
+     * @param slotId 予約枠ID
+     * @return 1 = FULL→AVAILABLE 遷移を起こした / 0 = 遷移なし（既に AVAILABLE・CLOSED・まだ定員以上 等）
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "UPDATE reservation_slots "
+            + "SET slot_status = 'AVAILABLE' "
+            + "WHERE id = :slotId "
+            + "  AND slot_status = 'FULL' "
+            + "  AND booked_count < capacity "
+            + "  AND deleted_at IS NULL",
+            nativeQuery = true)
+    int reopenSlotIfFull(@Param("slotId") Long slotId);
 }
