@@ -86,7 +86,7 @@ assertScopeReadable(caller, scopeKind, scopeId):
 
 ## 5. キャッシュと取消の整合
 
-- 判定キャッシュ TTL 60 秒＋変更時 evict（02 §8）。**取消後も最大 60 秒は旧判定が残る**ことを仕様として明示（AC-16）。攻撃視点では「取消直後の駆け込み利用」が 60 秒可能だが、ベータ（無償）・Phase 2（月額課金）のいずれでも実害は軽微と評価。決済と連動する厳密失効が必要になった場合（Phase 2）は、取消系のみ write-through（evict を必ず先行）＋短 TTL を再評価する。
+- 判定キャッシュ TTL 60 秒＋変更時 **scope 単位 evict**（02 §8・M-8）。**取消後も evict が確実に呼ばれる**ことを仕様の観測点とする（AC-16・M-9: テストは「evict 呼び出しの実行」を検証し、TTL 依存の時間観測は非決定的ゆえ CI に載せない。キャッシュミス後の `isEntitled=false` は別途単体テストで確認）。攻撃視点の「取消直後の駆け込み利用」は evict が即時なので実質発生せず（evict 失敗時のみ最大 TTL 60 秒）、ベータ（無償）・Phase 2（月額課金）いずれでも実害は軽微。決済連動の厳密失効が要る場合（Phase 2）は取消系のみ write-through＋短 TTL を再評価。
 - **fail-safe**: カタログ不整合（feature_key 不明・enabled=false）は**拒否側**に倒す（02 §1.1・症状を隠さず WARN ログ）。
 
 ---
@@ -107,13 +107,14 @@ assertScopeReadable(caller, scopeKind, scopeId):
 | 手動付与（シスアド） | `audit_logs` | シスアド userId・対象 scope・理由 note |
 | entitlement 取消 | `entitlements.revoked_by`＋`audit_logs` | 取消者・由来（解約/退会/運営） |
 | org_type 自動更新 | `audit_logs`（`ORG_TYPE_AUTO_UPDATED`） | from/to・トリガーイベント内容（02 §7.2） |
+| org_type 差し戻し（誤変異回復・M-3） | `audit_logs`（`ORG_TYPE_REVERTED`） | 運営操作者・from(`COMPANY`)/to(元区分)・異議理由（R-1 ロールバック API） |
 | 運営レビュー要請（公共系/TEAM 経由） | `audit_logs` | 対象 org・トリガー |
 
 ---
 
 ## 8. GDPR・退会
 
-- 退会時: USER スコープの ACTIVE 契約を CANCELLED＋entitlements revoke（`UserWithdrawalService` トランザクション内・01 §10）。**即時消去（弱匿名化）区分**（再設定で復旧可能な契約状態・PII を含まない）。
+- 退会は**イベント駆動**（M-4・01 §10）: `WithdrawalRequestedEvent`（申請・猶予開始）／`AccountPurgedEvent`（確定）を `BillingPurgeEventListener` が購読。**申請時は revoke せず権利維持**（撤回で復活不可のため・M-5）、**確定（purge）時に** USER スコープの ACTIVE 契約 CANCELLED＋pointer 削除＋entitlements revoke。撤回時は権利維持のまま。
 - `created_by`/`revoked_by` は userId 論理参照のみで PII 非含有。表示は都度解決（退会者は匿名表示）。
 - ベータ中は金銭記録が発生しないため会計保持義務なし。Phase 2 で決済記録の保持期間を F08.9 §6 と同型で再整理する。
 
@@ -125,7 +126,7 @@ assertScopeReadable(caller, scopeKind, scopeId):
 
 | # | 残点 | 確定条件 |
 |---|---|---|
-| R-1 | org_type 自動更新の対象範囲（公共系の扱い・TEAM 経由の扱い） | マスター御裁可（推奨: 自動更新は ORG 自身の有効化×{NPO, ASSOCIATION, COMMUNITY, OTHER} のみ） |
+| R-1 | org_type 自動更新の対象範囲（公共系の扱い・TEAM 経由の扱い）＋誤変異ロールバック（M-3） | マスター御裁可（推奨: 自動更新は ORG 自身の商用行動×{NPO, ASSOCIATION, COMMUNITY, OTHER} のみ・BETA_GRANT/手動付与は不発火・誤変異は運営差し戻し API で回復可能） |
 | R-2 | 無所属チームの区分の持ち方 | マスター御裁可（推奨: 列追加なし・都度導出・無所属=非営利扱い） |
 | R-3 | BASIC プランの構成・価格 | ベータ計測後の運用決定（設計は NULL 可で先行・ブロックしない） |
 | R-4 | ORG 契約の配下チーム展開 | マスター御裁可（推奨: 展開しない・Phase 2 で再評価） |
