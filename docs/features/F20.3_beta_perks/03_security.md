@@ -70,19 +70,23 @@ F20.1 03 §2 の原則（`getCurrentUserId()` の scopeId 流用禁止・子リ�
 
 ---
 
-## 7. GDPR・退会
+## 7. GDPR・退会（イベント駆動・猶予整合）
 
-- 退会時: 本人の INDIVIDUAL grant を `revoke(reason='WITHDRAWAL')`＋entitlements 失効（`UserWithdrawalService` トランザクション内・AC-19・01 §8）。
+- **イベント駆動**（実在の仕組み・01 §8）: `UserWithdrawalService`（架空）ではなく、`WithdrawalRequestedEvent`（申請・猶予開始）／`AccountPurgedEvent`（物理削除）を `BetaPerkPurgeEventListener` が購読する（02 §5.1）。
+- **退会猶予との整合（M-5）**: 退会は撤回可能な猶予窓を持つのに、grant の revoke は終端で復活できない。よって:
+  - **申請（猶予開始）時**: grant を revoke **しない**（撤回で復活できないため）。新規自動付与のみ抑止（退会申請中を自動付与バッチ対象から除外）。
+  - **撤回時**: 何もしない（権利維持のまま自動付与対象へ復帰）。
+  - **確定（purge）時**: INDIVIDUAL grant を `revoke(reason='WITHDRAWAL')`＋entitlements 失効（撤回窓は閉じており復活不可で問題ない・AC-19）。
 - `beta_grants` は統計価値のため行を保持（scope_id 参照のみで PII 非含有・匿名化方針と整合）。`criteria_snapshot` は活動集計値のみで PII を含まない。
 - バッジ（`user_badges`）は F04.7 の退会時方針に従う（本機能で特則を作らない）。
-- 区分は**即時消去（弱匿名化）側**（金銭記録なし・復旧不要）。
+- 区分は CLAUDE.md PII 二段モデルの**猶予対象（強匿名化・30 日）側の purge タイミングで失効**（金銭記録はないが退会撤回窓を尊重するため即時消去側には置かない）。
 
 ---
 
 ## 8. 文言統制（法的リスク）
 
 - **「永久」「一生」「無期限保証」の語を UI・通知・規約・設計書で禁止**。個人特典の期間表現は常に i18n キー `billing.manage.noExpiry`（「サービス提供期間中無償」）を参照する（直書き禁止と二重で統制・AC-13）。
-- 検分時に `grep -r "永久" frontend/app/locales backend/src/main/resources/messages*` を実施する（トレーサビリティ照合の機械的チェック項目）。
+- 検分時に `grep -rn "永久" frontend/app/locales backend/src/main/resources/messages* docs/features/F20*` および `landing.json`（`frontend/app/locales/*/landing.json`）を実施する（トレーサビリティ照合の機械的チェック項目・AC-13）。
 
 ---
 
