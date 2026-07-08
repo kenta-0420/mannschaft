@@ -363,17 +363,18 @@ defineExpose({ refresh: loadGrid })
       {{ errorMsg }}
     </Message>
 
-    <!-- マトリックス本体（横スクロール・overscroll-x-contain・行ヘッダ sticky） -->
-    <div v-else class="overflow-x-auto overscroll-x-contain">
+    <!-- マトリックス本体（縦横スクロール・overscroll-contain・時間ヘッダ行 sticky top・行ヘッダ列 sticky left）。
+         縦スクロールを本コンテナ内に閉じ込める（max-h + overflow-auto）ことで sticky top を確実に効かせる。 -->
+    <div v-else class="max-h-[65vh] overflow-auto overscroll-contain">
       <div class="inline-grid min-w-full gap-1" :style="gridStyle(header.length)">
-        <!-- ヘッダー行: 左上コーナー + 時間見出し -->
-        <div class="sticky left-0 z-10 flex items-center justify-center bg-surface-0 p-2 text-xs font-semibold text-surface-500 dark:bg-surface-900">
+        <!-- ヘッダー行: 左上コーナー（両軸 sticky・最前面）+ 時間見出し（sticky top） -->
+        <div class="sticky left-0 top-0 z-20 flex items-center justify-center bg-surface-0 p-2 text-xs font-semibold text-surface-500 dark:bg-surface-900">
           {{ t('reservation.matrix.date_line_header') }}
         </div>
         <div
           v-for="(h, hi) in header"
           :key="`h-${hi}`"
-          class="flex items-center justify-center rounded-md bg-surface-100 p-2 text-center text-xs font-semibold text-surface-700 dark:bg-surface-800 dark:text-surface-200"
+          class="sticky top-0 z-10 flex items-center justify-center rounded-md bg-surface-100 p-2 text-center text-xs font-semibold text-surface-700 dark:bg-surface-800 dark:text-surface-200"
         >
           {{ h.label }}
         </div>

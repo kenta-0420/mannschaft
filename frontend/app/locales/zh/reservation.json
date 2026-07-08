@@ -168,9 +168,13 @@
     "tab": {
       "book": "预约",
       "list": "预约列表",
+      "my_reservations": "我的预约",
       "line_manage": "预约对象管理",
       "emergency_closure": "緊急休業",
       "team_page": "预约"
+    },
+    "management": {
+      "section_count": "{label} ({n})"
     },
     "column": {
       "datetime": "日期时间",
@@ -255,6 +259,7 @@
       "menu_save_failed": "保存失败",
       "menu_load_failed": "获取菜单失败",
       "template_create_success": "已创建模板",
+      "template_create_success_multi": "已创建{n}个模板",
       "template_update_success": "已更新模板",
       "template_delete_success": "已删除模板",
       "template_save_failed": "保存失败",

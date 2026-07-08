@@ -168,9 +168,13 @@
     "tab": {
       "book": "Reservar",
       "list": "Reservas",
+      "my_reservations": "Mis reservas",
       "line_manage": "Gestionar elementos reservables",
       "emergency_closure": "緊急休業",
       "team_page": "Reservas"
+    },
+    "management": {
+      "section_count": "{label} ({n})"
     },
     "column": {
       "datetime": "Fecha y hora",
@@ -255,6 +259,7 @@
       "menu_save_failed": "Error al guardar",
       "menu_load_failed": "Error al cargar los menús",
       "template_create_success": "Plantilla creada",
+      "template_create_success_multi": "Se crearon {n} plantillas",
       "template_update_success": "Plantilla actualizada",
       "template_delete_success": "Plantilla eliminada",
       "template_save_failed": "Error al guardar",
