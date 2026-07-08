@@ -4,6 +4,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.ErrorResponse;
 import com.mannschaft.app.reservation.ReservationDayOfWeek;
+import com.mannschaft.app.reservation.ReservationErrorCode;
 import com.mannschaft.app.reservation.dto.GenerateSlotsResponse;
 import com.mannschaft.app.reservation.entity.ReservationBusinessHourEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotTemplateEntity;
@@ -62,6 +63,18 @@ public class ReservationSlotGenerationService {
     /** 日次バッチの horizon 日数（tomorrow + 27 日 = rolling 28 日・§5.4）。 */
     private static final int BATCH_HORIZON_DAYS = 27;
 
+    /**
+     * テンプレ保存＝同期自動生成・営業時間変更差分生成の horizon 日数
+     * （tomorrow + 27 日 = rolling 28 日・F03.4.5 §3.1/§3.2）。日次バッチと同一 rolling horizon。
+     */
+    private static final int TEMPLATE_HORIZON_DAYS = 27;
+
+    /**
+     * 臨時営業（単日テンプレ適用・§3.3.2）の対象日上限（今日から 90 日以内）。
+     * horizon（28日）の外への遠未来生成を防ぐ意図的な別値（§12 horizon 一覧）。
+     */
+    private static final int SINGLE_DAY_MAX_AHEAD_DAYS = 90;
+
     /** 30 分セル（§5.2）。 */
     private static final int CELL_MINUTES = 30;
 
@@ -113,12 +126,131 @@ public class ReservationSlotGenerationService {
             fromByTemplate.put(template.getId(), tomorrow);
         }
         GenerateSlotsResponse response =
-                generateInternal(teamId, templates, fromByTemplate, tomorrow, horizonTo, createdBy);
+                generateInternal(teamId, templates, fromByTemplate, tomorrow, horizonTo, createdBy, false);
         log.info("週間テンプレート手動生成: teamId={}, weeks={}, generated={}, skippedExisting={}, "
                         + "skippedClosedDay={}, skippedOutsideHours={}",
                 teamId, effectiveWeeks, response.getGeneratedCount(), response.getSkippedExistingCount(),
                 response.getSkippedClosedDayCount(), response.getSkippedOutsideHoursCount());
         return response;
+    }
+
+    /**
+     * テンプレ保存＝同期自動生成（F03.4.5 §3.1）: <b>当該テンプレ 1 行のみ</b>を対象に
+     * horizon 28 日（{@code [tomorrow, tomorrow+27]}）を冪等生成する。
+     *
+     * <p>チーム全域 generate（最悪 13,440 INSERT）を CRUD 応答に載せず、単一テンプレ scope
+     * （最大 96 INSERT = 24セル × 同一曜日 4 回）に限定する。他テンプレの horizon 延伸は
+     * 日次バッチの責務のまま。<b>本メソッドは保存 tx コミット後・{@code @Transactional} の外側から
+     * 呼ぶこと</b>（保存 tx の内側から呼ぶと FK {@code fk_rs_template} の未コミット親行を
+     * REQUIRES_NEW チャンク tx が参照して自己デッドロックする・§3.1 の⚠罠）。</p>
+     *
+     * @param teamId    チームID
+     * @param template  対象テンプレ（保存済みの 1 行）
+     * @param createdBy 実行者（生成枠の created_by へ）
+     * @return 生成結果カウント
+     */
+    public GenerateSlotsResponse generateForTemplate(Long teamId, ReservationSlotTemplateEntity template,
+                                                     Long createdBy) {
+        return generateForTemplates(teamId, List.of(template), createdBy);
+    }
+
+    /**
+     * 複数テンプレ scope の同期自動生成（F03.4.5 §3.2）: 指定テンプレ群のみを対象に
+     * horizon 28 日を冪等生成する。営業時間 PUT の「変更のあった曜日の active テンプレ」生成に使う。
+     *
+     * <p>{@code templates} が空なら生成せず空カウントを返す（変更曜日にテンプレが無い正常ケース）。
+     * tx 境界は {@link #generateForTemplate} と同一規約（保存 tx コミット後・外側実行）。</p>
+     *
+     * @param teamId    チームID
+     * @param templates 対象テンプレ群（active 前提・呼び出し側でフィルタ済み）
+     * @param createdBy 実行者
+     * @return 生成結果カウント
+     */
+    public GenerateSlotsResponse generateForTemplates(Long teamId,
+                                                      List<ReservationSlotTemplateEntity> templates,
+                                                      Long createdBy) {
+        LocalDate tomorrow = LocalDate.now(clock).plusDays(1);
+        LocalDate horizonTo = tomorrow.plusDays(TEMPLATE_HORIZON_DAYS);
+        if (templates.isEmpty()) {
+            return emptyResponse(tomorrow, horizonTo);
+        }
+        Map<UUID, LocalDate> fromByTemplate = new HashMap<>();
+        for (ReservationSlotTemplateEntity template : templates) {
+            fromByTemplate.put(template.getId(), tomorrow);
+        }
+        GenerateSlotsResponse response =
+                generateInternal(teamId, templates, fromByTemplate, tomorrow, horizonTo, createdBy, false);
+        log.info("週間テンプレート同期自動生成: teamId={}, templateCount={}, generated={}, skippedExisting={}, "
+                        + "skippedClosedDay={}, skippedOutsideHours={}",
+                teamId, templates.size(), response.getGeneratedCount(), response.getSkippedExistingCount(),
+                response.getSkippedClosedDayCount(), response.getSkippedOutsideHoursCount());
+        return response;
+    }
+
+    /**
+     * 臨時営業（単日テンプレ適用・F03.4.5 §3.3.2）: 指定日に、指定曜日（省略時=実曜日）の
+     * active テンプレ構成で 30 分セルを一括生成する。<b>営業時間突合をスキップ</b>する
+     * （臨時営業は定休日/時間外が前提）。冪等キー {@code uq_rs_template_cell} がそのまま効き、
+     * 同一日への再実行はスキップされる。
+     *
+     * <p>§4 の定期予約不可枠・同日の全日休業があっても<b>生成はブロックしない</b>
+     * （生成する・runtime で落とすの一貫方針 §4.2/§3.3.2）。horizon 外（tomorrow+28〜+90日）にも
+     * {@code template_id} 付きセルを作れる唯一の経路だが、日次バッチのウォーターマークは horizon 上限で
+     * クランプ導出（{@link #generateDiffForTeam}）されるため通常の週次生成は欠落しない（§3.4/AC S-8③）。</p>
+     *
+     * @param teamId          チームID
+     * @param date            臨時営業する日（明日以降・今日から90日以内）
+     * @param sourceDayOfWeek 適用する曜日ダイヤ（null=date の実曜日）
+     * @param createdBy       実行者
+     * @return 生成結果カウント（営業時間チェックなしのため closed/outside 系は常に 0）
+     * @throws BusinessException 当日・過去日は 400=PAST_DATE_SLOT(023)・91日以降は汎用 400・対象曜日テンプレ 0 件は 400
+     */
+    public GenerateSlotsResponse generateSingleDay(Long teamId, LocalDate date,
+                                                   ReservationDayOfWeek sourceDayOfWeek, Long createdBy) {
+        LocalDate today = LocalDate.now(clock);
+        LocalDate tomorrow = today.plusDays(1);
+        if (date == null || date.isBefore(tomorrow)) {
+            // 当日・過去は「当日枠は手動作成の領分」原則と統一して 400=023 再利用（§3.3.2）。
+            throw new BusinessException(ReservationErrorCode.PAST_DATE_SLOT);
+        }
+        if (date.isAfter(today.plusDays(SINGLE_DAY_MAX_AHEAD_DAYS))) {
+            // horizon 外の遠未来生成を防ぐ（汎用 400・新規コードなし）。
+            throw new BusinessException(CommonErrorCode.COMMON_001, List.of(new ErrorResponse.FieldError(
+                    "date", "臨時営業は今日から90日以内の日付を指定してください")));
+        }
+        ReservationDayOfWeek sourceDow = sourceDayOfWeek != null ? sourceDayOfWeek : ReservationDayOfWeek.from(date);
+        List<ReservationSlotTemplateEntity> dayTemplates = templateRepository.findByTeamIdAndIsActiveTrue(teamId)
+                .stream()
+                .filter(tpl -> tpl.getDayOfWeek() == sourceDow)
+                .toList();
+        if (dayTemplates.isEmpty()) {
+            // 対象曜日に active テンプレが 1 行もない（状態検証・generate の 400 と同作法）。
+            throw new BusinessException(CommonErrorCode.COMMON_001, List.of(new ErrorResponse.FieldError(
+                    "templates", "この曜日のテンプレートがありません")));
+        }
+
+        // 冪等の先読み（対象日 1 日ぶん）。並行実行は INSERT IGNORE が最終防御（§5.3）。
+        Set<String> existingCells = new HashSet<>();
+        for (Object[] key : slotRepository.findGeneratedCellKeysByTeamIdAndSlotDateBetween(teamId, date, date)) {
+            existingCells.add(cellKey((UUID) key[0], (LocalDate) key[1], (LocalTime) key[2]));
+        }
+
+        Counts counts = new Counts();
+        LocalDate targetDate = date;
+        // 単日 = 1 チャンク tx（REQUIRES_NEW）。営業時間チェックはスキップ（skipBusinessHours=true）。
+        chunkTransactionTemplate.executeWithoutResult(status ->
+                generateForDate(teamId, targetDate, sourceDow, dayTemplates, null, existingCells, createdBy,
+                        counts, true));
+        log.info("臨時営業（単日テンプレ適用）: teamId={}, date={}, sourceDow={}, generated={}, skippedExisting={}",
+                teamId, date, sourceDow, counts.generated, counts.skippedExisting);
+        return GenerateSlotsResponse.builder()
+                .generatedCount(counts.generated)
+                .skippedExistingCount(counts.skippedExisting)
+                .skippedClosedDayCount(counts.skippedClosedDay)
+                .skippedOutsideHoursCount(counts.skippedOutsideHours)
+                .horizonFrom(date)
+                .horizonTo(date)
+                .build();
     }
 
     /**
@@ -145,13 +277,18 @@ public class ReservationSlotGenerationService {
 
         Map<UUID, LocalDate> fromByTemplate = new HashMap<>();
         for (ReservationSlotTemplateEntity template : templates) {
-            LocalDate lastGenerated = slotRepository.findMaxGeneratedSlotDateByTemplateId(template.getId());
+            // ★ウォーターマークのクランプ（F03.4.2 §5.4 追補・F03.4.5 §3.4/S-8③）:
+            //   臨時営業（generate-single-day・最大+90日）が horizon 外に template_id 付きセルを作ると、
+            //   素の MAX(slot_date) ではウォーターマークが跳ねて range が恒久に空 → 当該テンプレの通常週次枠が
+            //   最大2ヶ月未生成になる。MAX を horizon 上限（tomorrow+27）でクランプして根治する。
+            LocalDate lastGenerated =
+                    slotRepository.findMaxGeneratedSlotDateByTemplateIdClamped(template.getId(), horizonTo);
             LocalDate from = (lastGenerated == null) ? tomorrow : maxDate(tomorrow, lastGenerated.plusDays(1));
             // range が空（lastGeneratedDate >= horizon 末尾）のテンプレはスキップ（from を horizon 外へ）。
             fromByTemplate.put(template.getId(), from);
         }
         GenerateSlotsResponse response =
-                generateInternal(teamId, templates, fromByTemplate, tomorrow, horizonTo, null);
+                generateInternal(teamId, templates, fromByTemplate, tomorrow, horizonTo, null, false);
         log.info("週間テンプレート差分生成（バッチ）: teamId={}, generated={}, skippedExisting={}, "
                         + "skippedClosedDay={}, skippedOutsideHours={}",
                 teamId, response.getGeneratedCount(), response.getSkippedExistingCount(),
@@ -169,7 +306,8 @@ public class ReservationSlotGenerationService {
                                                    Map<UUID, LocalDate> fromByTemplate,
                                                    LocalDate horizonFrom,
                                                    LocalDate horizonTo,
-                                                   Long createdBy) {
+                                                   Long createdBy,
+                                                   boolean skipBusinessHours) {
         // 曜日 → 営業時間（行の無い曜日はキー欠損 = 営業時間未定義としてスキップ・F-7b）
         Map<String, ReservationBusinessHourEntity> businessHours = new HashMap<>();
         for (ReservationBusinessHourEntity hour : businessHourRepository.findByTeamIdOrderByIdAsc(teamId)) {
@@ -198,7 +336,7 @@ public class ReservationSlotGenerationService {
             // 日付単位のチャンク tx（1日 = 最大 480 INSERT = 1 tx・§5.2）
             chunkTransactionTemplate.executeWithoutResult(status ->
                     generateForDate(teamId, currentDate, dow, dayTemplates,
-                            businessHours.get(dow.name()), existingCells, createdBy, counts));
+                            businessHours.get(dow.name()), existingCells, createdBy, counts, skipBusinessHours));
         }
         return GenerateSlotsResponse.builder()
                 .generatedCount(counts.generated)
@@ -210,7 +348,12 @@ public class ReservationSlotGenerationService {
                 .build();
     }
 
-    /** 1 日分のセル生成（チャンク tx 内・§5.2 の内側ループ）。 */
+    /**
+     * 1 日分のセル生成（チャンク tx 内・§5.2 の内側ループ）。
+     *
+     * @param skipBusinessHours 臨時営業（§3.3.2）で {@code true}: 営業時間突合を丸ごとスキップし、
+     *                          定休日/時間外でも全セルを生成する（closed/outside 系カウントは加算しない）。
+     */
     private void generateForDate(Long teamId,
                                  LocalDate date,
                                  ReservationDayOfWeek dow,
@@ -218,15 +361,18 @@ public class ReservationSlotGenerationService {
                                  ReservationBusinessHourEntity businessHour,
                                  Set<String> existingCells,
                                  Long createdBy,
-                                 Counts counts) {
+                                 Counts counts,
+                                 boolean skipBusinessHours) {
         for (ReservationSlotTemplateEntity template : dayTemplates) {
             // ★営業時間の防御分岐（NPE 根絶・確定仕様・F-7b）:
             //   (1) 当該曜日の行が存在しない（新規チームは 0 行があり得る — 実測）
             //   (2) is_open=TRUE だが open_time / close_time が NULL（V3.063 実 DDL は時刻 NULL 許容）
             //   いずれも「営業時間が定義されていない日」として定休日と同列にスキップする。
             //   既定営業時間（9:00-18:00 等）へのフォールバック生成はしない。
-            if (businessHour == null || !Boolean.TRUE.equals(businessHour.getIsOpen())
-                    || businessHour.getOpenTime() == null || businessHour.getCloseTime() == null) {
+            //   ただし臨時営業（skipBusinessHours）は定休日/時間外が前提のため突合を丸ごと省く（§3.3.2）。
+            if (!skipBusinessHours
+                    && (businessHour == null || !Boolean.TRUE.equals(businessHour.getIsOpen())
+                    || businessHour.getOpenTime() == null || businessHour.getCloseTime() == null)) {
                 counts.skippedClosedDay += template.cellCount();
                 continue;
             }
@@ -235,8 +381,9 @@ public class ReservationSlotGenerationService {
                  cellStart = cellStart.plusMinutes(CELL_MINUTES)) {
                 LocalTime cellEnd = cellStart.plusMinutes(CELL_MINUTES);
                 // 境界: close_time ちょうどで終わるセルは生成される（セル全体が営業時間内 — F-7）
-                if (cellStart.isBefore(businessHour.getOpenTime())
-                        || cellEnd.isAfter(businessHour.getCloseTime())) {
+                if (!skipBusinessHours
+                        && (cellStart.isBefore(businessHour.getOpenTime())
+                        || cellEnd.isAfter(businessHour.getCloseTime()))) {
                     counts.skippedOutsideHours++;
                     continue;
                 }

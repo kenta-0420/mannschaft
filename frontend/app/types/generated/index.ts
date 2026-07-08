@@ -1042,7 +1042,7 @@ export interface paths {
         };
         /** 営業時間取得 */
         get: operations["getBusinessHours"];
-        /** 営業時間一括更新 */
+        /** 営業時間一括更新（保存＝変更曜日の同期自動生成） */
         put: operations["updateBusinessHours"];
         post?: never;
         delete?: never;
@@ -8487,7 +8487,7 @@ export interface paths {
         /** 週間テンプレート一覧 */
         get: operations["listTemplates_3"];
         put?: never;
-        /** 週間テンプレート作成 */
+        /** 週間テンプレート作成（保存＝同期自動生成） */
         post: operations["createTemplate_3"];
         delete?: never;
         options?: never;
@@ -8504,8 +8504,28 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 週間テンプレート一括生成 */
+        /**
+         * 週間テンプレート一括生成（非推奨: 保存＝自動生成へ移行）
+         * @deprecated
+         */
         post: operations["generate_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/reservation-slot-templates/generate-single-day": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 臨時営業（単日テンプレ適用） */
+        post: operations["generateSingleDay"];
         delete?: never;
         options?: never;
         head?: never;
@@ -23332,7 +23352,7 @@ export interface paths {
         delete: operations["deleteTemplate_10"];
         options?: never;
         head?: never;
-        /** 週間テンプレート更新 */
+        /** 週間テンプレート更新（保存＝同期自動生成） */
         patch: operations["updateTemplate_10"];
         trace?: never;
     };
@@ -45542,8 +45562,8 @@ export interface components {
         BusinessHoursUpdateRequest: {
             hours: components["schemas"]["BusinessHourEntry"][];
         };
-        ApiResponseListBusinessHourResponse: {
-            data?: components["schemas"]["BusinessHourResponse"][];
+        ApiResponseBusinessHoursSaveResponse: {
+            data?: components["schemas"]["BusinessHoursSaveResponse"];
         };
         BusinessHourResponse: {
             businessStatus?: components["schemas"]["BusinessStatusDto"];
@@ -45552,6 +45572,10 @@ export interface components {
             /** Format: int64 */
             teamId?: number;
         };
+        BusinessHoursSaveResponse: {
+            generation?: components["schemas"]["SlotGenerationResultDto"];
+            hours?: components["schemas"]["BusinessHourResponse"][];
+        };
         BusinessStatusDto: {
             /** @example 14:30:00 */
             closeTime?: string;
@@ -45559,6 +45583,17 @@ export interface components {
             isOpen?: boolean;
             /** @example 14:30:00 */
             openTime?: string;
+        };
+        SlotGenerationResultDto: {
+            failed?: boolean;
+            /** Format: int32 */
+            generatedCount?: number;
+            /** Format: int32 */
+            skippedClosedDayCount?: number;
+            /** Format: int32 */
+            skippedExistingCount?: number;
+            /** Format: int32 */
+            skippedOutsideHoursCount?: number;
         };
         UpdatePropertyListingRequest: {
             askingPrice?: number;
@@ -53002,8 +53037,8 @@ export interface components {
             startTime: string;
             title?: string;
         };
-        ApiResponseSlotTemplateResponse: {
-            data?: components["schemas"]["SlotTemplateResponse"];
+        ApiResponseSlotTemplateSaveResponse: {
+            data?: components["schemas"]["SlotTemplateSaveResponse"];
         };
         SlotTemplateResponse: {
             approvalMode?: string;
@@ -53033,6 +53068,10 @@ export interface components {
             /** Format: date-time */
             updatedAt?: string;
         };
+        SlotTemplateSaveResponse: {
+            generation?: components["schemas"]["SlotGenerationResultDto"];
+            template?: components["schemas"]["SlotTemplateResponse"];
+        };
         GenerateSlotsRequest: {
             /** Format: int32 */
             weeks?: number;
@@ -53053,6 +53092,12 @@ export interface components {
             skippedExistingCount?: number;
             /** Format: int32 */
             skippedOutsideHoursCount?: number;
+        };
+        GenerateSingleDayRequest: {
+            /** Format: date */
+            date: string;
+            /** @enum {string} */
+            sourceDayOfWeek?: "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
         };
         BlockedTimeRequest: {
             /** Format: date */
@@ -65828,6 +65873,9 @@ export interface components {
             /** Format: int64 */
             totalTemplates?: number;
         };
+        ApiResponseListBusinessHourResponse: {
+            data?: components["schemas"]["BusinessHourResponse"][];
+        };
         ApiResponseListBlockedTimeResponse: {
             data?: components["schemas"]["BlockedTimeResponse"][];
         };
@@ -77336,7 +77384,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListBusinessHourResponse"];
+                    "*/*": components["schemas"]["ApiResponseBusinessHoursSaveResponse"];
                 };
             };
         };
@@ -95046,7 +95094,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseSlotTemplateResponse"];
+                    "*/*": components["schemas"]["ApiResponseSlotTemplateSaveResponse"];
                 };
             };
         };
@@ -95063,6 +95111,32 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["GenerateSlotsRequest"];
+            };
+        };
+        responses: {
+            /** @description 生成成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseGenerateSlotsResponse"];
+                };
+            };
+        };
+    };
+    generateSingleDay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerateSingleDayRequest"];
             };
         };
         responses: {
@@ -123422,7 +123496,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseSlotTemplateResponse"];
+                    "*/*": components["schemas"]["ApiResponseSlotTemplateSaveResponse"];
                 };
             };
         };

@@ -557,6 +557,9 @@ class ReservationControllerTest {
         @Mock
         private com.mannschaft.app.reservation.service.ReservationPolicyService policyService;
 
+        @Mock
+        private com.mannschaft.app.reservation.service.ReservationSlotTemplateService templateService;
+
         @InjectMocks
         private ReservationBusinessHourController controller;
 
@@ -580,16 +583,29 @@ class ReservationControllerTest {
         }
 
         @Test
-        @DisplayName("営業時間一括更新_正常_200返却")
+        @DisplayName("営業時間一括更新_正常_200返却（BusinessHoursSaveResponse・生成カウント同梱）")
         void 営業時間一括更新_正常_200返却() {
-            BusinessHoursUpdateRequest request = new BusinessHoursUpdateRequest(List.of());
-            given(businessHourService.updateBusinessHours(TEAM_ID, request))
-                    .willReturn(List.of(createBusinessHourResponse()));
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                BusinessHoursUpdateRequest request = new BusinessHoursUpdateRequest(List.of());
+                given(businessHourService.updateBusinessHours(TEAM_ID, request))
+                        .willReturn(new com.mannschaft.app.reservation.dto.BusinessHoursUpdateOutcome(
+                                List.of(createBusinessHourResponse()),
+                                java.util.Set.of(com.mannschaft.app.reservation.ReservationDayOfWeek.MON)));
+                given(templateService.generateForDaysOfWeek(
+                        org.mockito.ArgumentMatchers.eq(TEAM_ID), org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.any()))
+                        .willReturn(com.mannschaft.app.reservation.dto.GenerateSlotsResponse.builder()
+                                .generatedCount(12).build());
 
-            ResponseEntity<ApiResponse<List<BusinessHourResponse>>> result =
-                    controller.updateBusinessHours(TEAM_ID, request);
+                ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.BusinessHoursSaveResponse>> result =
+                        controller.updateBusinessHours(TEAM_ID, request);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData().hours()).hasSize(1);
+                assertThat(result.getBody().getData().generation().generatedCount()).isEqualTo(12);
+                assertThat(result.getBody().getData().generation().failed()).isFalse();
+            }
         }
 
         @Test
