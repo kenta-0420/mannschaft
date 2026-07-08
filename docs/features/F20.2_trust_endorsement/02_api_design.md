@@ -391,7 +391,7 @@ Map.entry("TRUST_010", HttpStatus.CONFLICT)
 
 ## 9. 認可・冪等性の要点（詳細は 03）
 
-- **信任付与/取消の認可** = 「操作者が endorser 団体の scope ADMIN」: `AccessControlService.checkAdminOrAbove(userId, scopeId, scopeType)`（TEAM は `"TEAM"`・ORG は `"ORGANIZATION"` を渡す・**API を取り違えない**）。`endorserScopeId` はリクエスト値であり、**必ず所有権検証を通す**（`getCurrentUserId()` の値を scopeId に流用する誤りは IDOR 前科・`project_matching_authz_userid_as_teamid_idor`）。
+- **信任付与/取消の認可** = 「操作者が endorser 団体の scope ADMIN」: 既存ガード Bean `@Component("accessGuard")` の `isScopeAdmin(authentication, scopeId, scopeType)`（SYSTEM_ADMIN or 当該 scope の ADMIN/DEPUTY_ADMIN を内包・`AccessControlService` 委譲）を `TrustScopeResolver` 経由で kind 別に呼ぶ（TEAM は `'TEAM'`・ORG は `'ORGANIZATION'` を渡す・**取り違えない**・[03 §3.0](03_security.md)）。`endorserScopeId` はリクエスト値であり、**必ず所有権検証を通す**（`getCurrentUserId()` の値を scopeId に流用する誤りは IDOR 前科・`project_matching_authz_userid_as_teamid_idor`）。取消（#2）は `endorsementId` から **DB の endorser scope を解決**して判定する（子リソース ID を信頼しない一般形）。
 - **運営 API** = `@PreAuthorize("hasRole('SYSTEM_ADMIN')")`（クラスレベル・既存 SystemAdmin 系 Controller と同型）。
 - **冪等性**: 付与は DB 生成列 UNIQUE（`uk_te_active`）＋アプリ重複チェックの二重防御で「二重付与＝TRUST_005」。取消は `revoked_at` 既セットなら `TRUST_008`（再実行安全）。アンカー付与は冪等（既アンカーで 200 no-op）。状態遷移は endorsee 行 `FOR UPDATE` で直列化（§2.3）。
 - **通知**: 状態遷移・付与イベントは `@TransactionalEventListener(phase = AFTER_COMMIT)` ＋ 別 tx（`REQUIRES_NEW`・`feedback_transactional_event_listener_requires_new`）で notification ドメインへ渡す（trust の tx に notification を巻き込まない・原則 5）。
