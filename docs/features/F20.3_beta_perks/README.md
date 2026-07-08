@@ -79,10 +79,13 @@
 
 ## 4. 称号バッジ（F04.7 流用・新機構を作らない）
 
-- 既存 `badges` / `user_badges`（F04.7）に **system badge** を追加する。実在スキーマ確認済:
-  - `badges.is_system BOOLEAN NOT NULL DEFAULT FALSE`（system badge=TRUE・論理削除不可）／`badge_type VARCHAR(30)`（既存値 `PERFECT_ATTENDANCE`/`MVP`/`POST_MASTER`/`STREAK`/`CUSTOM`）／`condition_type` に `MANUAL` あり／`icon_emoji` あり。
-  - `user_badges`: `UNIQUE uq_ub_badge_user_period (badge_id, user_id, period_label)`／`awarded_by VARCHAR(20) DEFAULT 'SYSTEM'`（SYSTEM/ADMIN）／`period_label`（`ALL_TIME` 可）。
-- 本機能の追加: `badge_type` に新値 **`BETA_TESTER`** を追加し、system badge 1 行を Flyway シード（`V11.053__create_badges.sql` 方式・01 §5）。**フェーズ別の称号は `user_badges.period_label = 'BETA_PHASE_1'〜'BETA_PHASE_4'`** で区別する（バッジ行は 1 つ・UNIQUE がフェーズ別の重複授与を物理防止）。
+- 既存 `badges` / `user_badges`（F04.7）に **system badge** を追加する。**実在スキーマ（origin/main 実確認・2026-07-08）**:
+  - `badges`: `scope_type VARCHAR(50) NOT NULL`／`scope_id BIGINT UNSIGNED NOT NULL`／`name VARCHAR(100) NOT NULL`／`badge_type VARCHAR(50) NOT NULL`／`condition_type VARCHAR(50) NOT NULL`／`is_system TINYINT(1) DEFAULT 0`／`is_active TINYINT(1) DEFAULT 1`／`icon_emoji VARCHAR(10)`／論理削除 `deleted_at`。
+  - **`BadgeType` enum の実値は `{STANDARD, MILESTONE, SPECIAL}`**（`com.mannschaft.app.gamification.BadgeType`・実確認）。**`PERFECT_ATTENDANCE`/`MVP`/`POST_MASTER`/`STREAK`/`CUSTOM` は誤り（架空）だった** — 訂正する。`condition_type` の `MANUAL` は実在（正しい）。
+  - `user_badges`: `period_label VARCHAR(20)`／`awarded_by VARCHAR(20) NOT NULL`／`UNIQUE uq_ub_badge_user_period (badge_id, user_id, period_label)`。
+- **本機能の追加方針（enum に新値を足さない）**: `badge_type` は**種別カテゴリ**であり個別バッジ識別子ではないため、ベータテスター称号は **`badge_type='SPECIAL'`・`is_system=TRUE`・`condition_type='MANUAL'`** の badges 行を 1 つ Flyway シードする（`V11.053` の様式・01 §5）。バッジの識別は行そのもの（`id`/`name`）で行い、**`BadgeType` enum は変更しない**。
+- **フェーズ別の称号は `user_badges.period_label = 'BETA_PHASE_1'〜'BETA_PHASE_4'`** で区別（バッジ行は 1 つ・`uq_ub_badge_user_period` がフェーズ別の重複授与を物理防止）。`period_label` は VARCHAR(20) ゆえ `BETA_PHASE_4`（12 文字）は収まる。
+- **⚠️ scope NOT NULL 制約の未決点（実装前確定条件・要裁可 B-5）**: `badges.scope_type`/`scope_id` は **NOT NULL** であり、既存 badges はチーム/組織のゲーミフィケーションに紐づく。**プラットフォーム横断の system badge を置く前例（scope 無し）は origin/main に存在しない**。ベータ称号は全ユーザー共通のためスコープに属さない。→ **sentinel scope（`scope_type='PLATFORM'`・`scope_id=0`）で 1 行シードし、授与/表示経路をこの sentinel に対応させる**方針を推奨するが、gamification の既存クエリ（`findBy...ScopeTypeAndScopeId`）・50 バッジ上限カウント・表示の各所への波及があるため、**実装前に gamification ドメインの scope 取り扱いを再確認して確定**する（B-5・§9）。
 - 授与タイミング: 個人特典の付与成功と同時（`awarded_by='SYSTEM'`）。バッジは特典取消後も**剥奪しない**（活動実績の称号であり権利ではない・要裁可論点 B-3）。
 
 ---
@@ -118,9 +121,9 @@
 | AC-08 | 境界 | review_flag 中も `isEntitled` は **true のまま**（フラグは審査待ちであって停止ではない） |
 | AC-09 | 正常 | シスアドが取消（revoke） → `beta_grants.revoked_at`＋由来 entitlements 全件 revoke → 対象機能が即（キャッシュ evict 後）402 に戻る |
 | AC-10 | 異常 | 同一（scope×beta_phase）への二重付与 → **409 `BETA_PERK_002`** |
-| AC-11 | 正常 | 個人特典付与と同時に `user_badges` へ `BETA_TESTER` バッジ（`period_label='BETA_PHASE_{n}'`・`awarded_by='SYSTEM'`）が授与される。同フェーズ二重授与は UNIQUE で防止 |
+| AC-11 | 正常 | 個人特典付与と同時に `user_badges` へベータテスター system badge（`badge_type='SPECIAL'`・`period_label='BETA_PHASE_{n}'`・`awarded_by='SYSTEM'`）が授与される。同フェーズ二重授与は `uq_ub_badge_user_period` で防止 |
 | AC-12 | 正常 | ゲート通過した機能利用が F10.8 `page_view_logs` に `content_type='FEATURE'`・`title=feature_key` で記録される（§7） |
-| AC-13 | 文言 | 個人特典の UI/通知/設計書に「永久」の語が出現しない（表示は「サービス提供期間中無償」）。grep 検分対象 |
+| AC-13 | 文言 | 個人特典の UI/通知/設計書に「永久」の語が出現しない（表示は「サービス提供期間中無償」）。grep 検分対象＝`frontend/app/locales`・`backend/src/main/resources/messages*`・**`docs/features/F20*`**・**`landing.json`**（03 §8） |
 | AC-14 | 正常 | チーム特典の 2 年満了: 自動更新されず `valid_until` 到来で自然失効（`isEntitled=false`）。シスアドの延長操作で**新 entitlement 行**が発行され継続する |
 | AC-15 | 異常 | `beta_phase` に 1〜4 以外を指定 → **400 `BETA_PERK_004`** |
 | AC-16 | 異常 | `grant_kind=INDIVIDUAL` × `scope_kind≠USER`（または TEAM_ORG × USER）の付与 → **422 `BETA_PERK_007`** |
@@ -133,9 +136,15 @@
 
 ## 7. 計測（ベータ中の課金判断用データ・F10.8 最小連携）
 
-- **方式（1 つに確定）**: **FE ビーコン流用の最小連携**とする。F10.8 の収集 API `POST /api/v1/page-views`（既存・未認証許容・匿名 cookie `mnsft_vid`・`@Async("page-view-pool")`）の **`contentType` に 1 値 `FEATURE` を追加**する（許容外 400 `TEAMANALYTICS_003` の enum バインドに追加。`page_view_logs.content_type` は `VARCHAR(20)`・DB CHECK なしゆえ **DDL 不要**）。
-  - 送信規約: ゲート対象機能の利用成功時に FE が `{ scope, scopeId, contentType: 'FEATURE', contentId: 0, url: <発火元パス>, title: <feature_key> }` を送る（`content_id` は BIGINT のため **0 固定**・feature_key は `title` VARCHAR(255) に載せる。`PAGE` の `content_id=0` 既存前例に整合）。
-  - **根拠**: 利用イベント 1 種の追加で済み、収集・保持・パーティション・匿名化の基盤を再発明しない。FE ビーコンゆえの取りこぼし（広告ブロッカー等）は「課金判断の傾向データ」用途では許容。**BE 側二重記録（EntitlementGuard 通過時の正確な記録）は Phase 2 拡張**と位置づける。
+- **方式（TEAM/ORG 利用の傾向計測）**: **FE ビーコン流用の最小連携**とする。F10.8 の収集 API `POST /api/v1/page-views`（既存・未認証許容・匿名 cookie・`@Async`）の **content type に 1 値 `FEATURE` を追加**する（`page_view_logs.content_type` は `VARCHAR(20)`・DB CHECK なしゆえ **DDL 不要**。許容外 400 `TEAMANALYTICS_003` の enum バインドに 1 値追加）。
+  - **enum 名は未確定**: F10.8 設計書には content type を束ねる enum の**確定した名前が無い**（設計は列挙値のみ提示）。よって本書は enum 名を `PageViewContentType` と決め打ちせず、**「F10.8 実装時に命名される content type enum に `FEATURE` を 1 値追加する」**と記す（実装時に F10.8 側の実 enum 名へ合わせる）。
+  - 送信規約: ゲート対象機能の利用成功時に FE が `{ scope, scopeId, contentType: 'FEATURE', contentId: 0, url: <発火元パス>, title: <feature_key> }` を送る（`content_id` は BIGINT のため **0 固定**・feature_key は `title` に載せる。`PAGE` の `content_id=0` 既存前例に整合）。
+- **⚠️ 個人（USER）の activeDays は F10.8 では計測不能（実装前確定条件・§9）**: F10.8 の `page_view_logs.scope_type` は **`TEAM`/`ORGANIZATION` のみ**で **USER スコープを持たない**。よって個人特典の付与条件 `activeDays`（本人の閲覧日数）は F10.8 経由では**構造的に計測できない**。代替源として origin/main に実在するもの:
+  - **`users.last_login_at`（`UserEntity.lastLoginAt`・実在）** — 最終ログインのみで日別履歴は取れない（`activeDays` の近似には不十分）。
+  - **`audit_logs` の `LOGIN_SUCCESS`（`AuditEventType.LOGIN_SUCCESS`・実在・月次パーティション）** — 日別のログイン成功を `COUNT(DISTINCT DATE(created_at))` で数えられる＝**`activeDays` の実データ源として最有力**。
+  - **gamification `point_transactions` の `DAILY_LOGIN`（実在）** — 日次ログインポイントの付与履歴で日別在籍を代替できる。
+  - → **`activeDays` の計測経路（audit_logs LOGIN_SUCCESS を第一候補とする）を実装前に確定**する（§9 実装前確定条件）。それまでは `beta_perk_criteria.min_active_days=NULL` 運用で `membershipTenureDays` のみで自動付与を成立させる（02 §2・§3）。
+  - **根拠**: 利用イベント 1 種の追加で済み、収集・保持・パーティション・匿名化の基盤を再発明しない。FE ビーコンの取りこぼしは傾向データ用途で許容。BE 側の正確な二重記録は Phase 2 拡張。
 - **人数分布**: `beta_grants` のスナップショット＋`memberships` のアドホック集計で足りる（専用テーブルなし）。
 - **集計ダッシュボードは F20.1 側の将来拡張**（Phase 2）であり本設計では作らない。
 
@@ -161,6 +170,15 @@
 | **B-2** | チーム/組織特典の 2 年後更新の運用 | (a) シスアド一括延長操作のみ／(b) 自動更新オプトイン | **(a)**（「自動更新しない」がマスター確定事項。延長は都度アナウンス→一括操作） |
 | **B-3** | 特典取消時のバッジ剥奪 | (a) 剥奪しない／(b) 剥奪する | **(a)**（バッジは活動実績の称号で権利ではない。不正取得と断定された場合のみ手動剥奪を運用で許す） |
 | **B-4** | オーナー変更イベントの実装 | team ドメインに `TeamOwnershipTransferredEvent` が現存しない場合、新設 publish が必要 | team ドメイン側に最小のイベント publish を追加（クロスドメインはイベント駆動の原則どおり）。実装時に既存イベント有無を再確認 |
+| **B-5** | ベータ称号 system badge の scope 取り扱い（§4） | `badges.scope_type/scope_id` NOT NULL・プラットフォーム横断 badge の前例なし | sentinel scope（`PLATFORM`/`0`）で 1 行シード＋授与/表示経路対応を推奨。実装前に gamification の scope クエリ・50 バッジ上限・表示波及を再確認して確定 |
+
+### 9.1 実装前確定条件（設計はブロックしないが実装着手前に決める）
+
+| 条件 | 内容 | それまでの運用 |
+|---|---|---|
+| **個人 activeDays の計測源** | F10.8 は USER スコープ非対応（§7）。`audit_logs` の `LOGIN_SUCCESS` を第一候補に日別在籍を数える経路を確定する | `min_active_days=NULL` で `membershipTenureDays` のみで自動付与（02 §2・§3） |
+| **F10.8 content type enum への `FEATURE` 追加** | enum 名は F10.8 実装時に確定（§7）。TEAM/ORG 利用の傾向計測用 | F10.8 実装完了まで機能利用計測は保留（自動付与判定には不使用ゆえブロックしない） |
+| **ベータ称号の scope 取り扱い（B-5）** | §4 の sentinel scope 方針を gamification 実装と突き合わせて確定 | 特典付与自体はバッジ授与に依存しない（授与失敗は補助チャネルとして握って継続・付与本体は成立） |
 
 ---
 
