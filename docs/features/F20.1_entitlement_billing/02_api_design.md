@@ -1,6 +1,6 @@
 # F20.1 — 02 API設計
 
-> **ステータス**: 🟢 設計完了（要裁可論点 R/B のマスター裁可待ち）
+> **ステータス**: 🟢 設計完了（マスター御裁可済・実装待ち）
 > 権利判定（`isEntitled`/`EntitlementGuard`）・プランカタログ・契約/アドオン・シスアド CRUD・org_type イベントを定義する。認可の詳細は [03_security](03_security.md)、DDL は [01_data_model](01_data_model.md)。
 
 ---
@@ -425,7 +425,7 @@ public class OrgTypeAutoUpgradeListener {
 - **`ConfirmableNotificationService.send(...)` は title/body を「解決済み String」で受ける**（i18n キーではなく `MessageSource` で解決してから渡す）。実在 overload は上記 12 引数版（`ScopeType`/`ConfirmableNotificationPriority`/`recipientUserIds` 等）。宛先ゼロは `SEND_FAILED` を投げるため事前に空チェック（`payment_requests` の `PAYMENT_REQUEST_NO_RECIPIENTS` と同様の配慮）。
 - **`ORG_TYPE_AUTO_UPDATED`・`ORG_TYPE_REVIEW_REQUESTED`・`ORG_TYPE_REVERTED` は監査アクション名**（`audit_logs` の action 文字列。既存の `AuditEventType` enum に無ければ**追加が必要**＝organization/audit ドメイン側作業）。
 - **TEAM→組織 ID 解決は `TeamOrgMembershipRepository.findActiveOrganizationIdsByTeamId(teamId)`（status='ACTIVE'）を新設**（`team_org_memberships` 実在テーブル V2.011）。
-- 通知文言キー（`notification.billing.org_type_*`）は BE `messages*.properties` 6 言語に追加（04 §3）。**この分岐（自動更新対象 org_type 集合・ロールバック）は README §8 R-1 の御裁可で確定**（本擬似コードは推奨案 (b)）。
+- 通知文言キー（`notification.billing.org_type_*`）は BE `messages*.properties` 6 言語に追加（04 §3）。**この分岐（自動更新対象 org_type 集合・ロールバック）は README §8 R-1 = マスター御裁可済 (b)（2026-07-08）**: 自動更新は {NPO, ASSOCIATION, COMMUNITY, OTHER} のみ・公共系は不変で通知＋運営レビュー。上記擬似コードがその確定仕様。
 
 > **⚠️ 実装スコープ注記（B・軍議で足軽担当に含める）**: 本結線は **2 設計書（billing.beta）の外＝organization/notification/audit ドメインへの実装を要求**する: (1) `OrganizationEntity.updateOrgType` ＋ ロールバック API（R-1）、(2) `TeamOrgMembershipRepository.findActiveOrganizationIdsByTeamId`、(3) 監査アクション `ORG_TYPE_AUTO_UPDATED`/`ORG_TYPE_REVIEW_REQUESTED`/`ORG_TYPE_REVERTED`、(4) `messages*.properties` の通知文言 6 言語。**軍議のタスク分解で足軽の担当範囲にこれらを明示的に含めること**（billing ドメインだけ実装して結線先が無い、を防ぐ）。README §4.2 の実装スコープ表にも反映。
 

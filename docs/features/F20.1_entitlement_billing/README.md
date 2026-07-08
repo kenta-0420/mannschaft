@@ -1,6 +1,6 @@
 # F20.1 課金・エンタイトルメント基盤（プラン提示 × feature_key 単位の権利管理）
 
-> **ステータス**: 🟢 設計完了（要裁可論点 R/B のマスター裁可待ち）
+> **ステータス**: 🟢 設計完了（マスター御裁可済・実装待ち）
 > **最終更新**: 2026-07-08
 > **関連**: [F20.3 ベータ特典](../F20.3_beta_perks/README.md)（`source_kind=BETA_GRANT` の発行元）／ [F22.1 統一決済プラットフォーム](../F22.1_market/payment/README.md)（Phase 2 実決済レール）／ [F08.9 会員決済](../F08.9_membership_billing_paywall/README.md)（**逆向きの課金**・混同禁止 §4.5）／ [F12.2 フィーチャーフラグ](../F12.2_feature_flag.md)（**意味論が別**・§4.4）／ [F09.19 広告配信](../F09.19_ad_slot_serving.md)（有料プラン広告非表示の結線先・同 §7.5）
 
@@ -100,7 +100,7 @@ isEntitled(scopeKind, scopeId, featureKey, now):
 ```
 
 - **境界の正準**: 有効期間は半開区間 `[valid_from, valid_until)`。`now == valid_until` は **false**（AC-06）。
-- スコープをまたいだ継承はしない（ORG 契約が配下チームに自動で効く…等は**本設計では行わない**。組織一括契約は「ORG スコープの操作」にのみ効く。配下チームへの展開は将来拡張・§8 要裁可論点 R-4）。
+- スコープをまたいだ継承はしない（ORG 契約が配下チームに自動で効く…等は**本設計では行わない**。組織一括契約は「ORG スコープの操作」にのみ効く。配下チームへの展開は将来拡張・§8 R-4=御裁可済(a)＝展開しない）。
 
 ### 3.2 プラン提示レイヤー（表の顔）
 
@@ -119,10 +119,10 @@ isEntitled(scopeKind, scopeId, featureKey, now):
 - 自己申告区分は既存 `organizations.org_type`（V9.091 で ENUM 化・実 enum 値は `GOVERNMENT / MUNICIPALITY / COMPANY / HOSPITAL / ASSOCIATION / SCHOOL / NPO / COMMUNITY / OTHER`）。
 - **非営利系 org_type のスコープが REVENUE 機能を「商用行動」で有効化**した瞬間、billing ドメインが **`RevenueFeatureActivatedEvent`** を発火し、**organization ドメインのリスナー**が org_type を営利（`COMPANY`）へ更新＋ **F04.9 確認必須通知**を org ADMIN へ送る。**クロスドメイン直接 UPDATE 禁止・イベント駆動**（02 §7）。
 - **★発火は「団体自身の商用行動」に限る（H-5）**: 発火するのは **PLAN 契約購入・ADDON 契約購入**（対象に REVENUE 機能を含む）のみ。**ベータ特典の付与（`source_kind=BETA_GRANT`）・シスアド手動付与は発火しない**（運営が無償で配る行為であり団体の商用行動ではない。NPO にベータ特典を配っただけで org_type が COMPANY に自動変異してはならない）。発火点×org_type の全分岐は 02 §7.0 のマトリクス、否定 AC は §5 AC-22b。
-- 自動更新の対象 org_type は **`NPO` / `ASSOCIATION` / `COMMUNITY` / `OTHER`** を推奨既定とし、公共系（`GOVERNMENT` / `MUNICIPALITY` / `SCHOOL` / `HOSPITAL`）は自動更新せず**通知＋運営レビューのみ**（市役所が COMPANY になるのは不合理）→ **§8 要裁可論点 R-1**。
+- 自動更新の対象 org_type は **`NPO` / `ASSOCIATION` / `COMMUNITY` / `OTHER`** を推奨既定とし、公共系（`GOVERNMENT` / `MUNICIPALITY` / `SCHOOL` / `HOSPITAL`）は自動更新せず**通知＋運営レビューのみ**（市役所が COMPANY になるのは不合理）→ **§8 R-1=マスター御裁可済(b)（2026-07-08）**。
 - **チームの区分は所属組織に従う**: チーム↔組織は `team_org_memberships`（V2.011・多対多・`status ∈ {PENDING, ACTIVE}`）。判定は「**ACTIVE な所属組織のうち 1 つでも営利（`COMPANY`）なら営利扱い**、全所属が非営利なら非営利扱い」。
-- **無所属チーム**（`team_org_memberships` に ACTIVE 行が無いチーム）: `teams` テーブルに区分列は**存在しない**（V2.004 実確認）。**非営利扱いを既定**とし、REVENUE 機能は区分問わず有料のため悪用余地は INTERNAL 無料枠のみ → 列追加はしない推奨 → **§8 要裁可論点 R-2**。
-- チーム経由（TEAM スコープ）の REVENUE 有効化では、所属組織の org_type は**自動更新せず**、**所属する全 ACTIVE 組織の ADMIN へ確認必須通知のみ**（1 チームの行動で組織全体の区分を書き換えない）→ **§8 要裁可論点 R-1 に内包**。
+- **無所属チーム**（`team_org_memberships` に ACTIVE 行が無いチーム）: `teams` テーブルに区分列は**存在しない**（V2.004 実確認）。**非営利扱いを既定**とし、REVENUE 機能は区分問わず有料のため悪用余地は INTERNAL 無料枠のみ → 列追加はしない → **§8 R-2=マスター御裁可済(c)（2026-07-08）**。
+- チーム経由（TEAM スコープ）の REVENUE 有効化では、所属組織の org_type は**自動更新せず**、**所属する全 ACTIVE 組織の ADMIN へ確認必須通知のみ**（1 チームの行動で組織全体の区分を書き換えない）→ **§8 R-1=御裁可済(b) に内包**。
   - **通知先を「全 ACTIVE 親組織」とする正当化（L-4）**: チームは多対多で複数組織に所属しうる（`team_org_memberships`）。どの親組織にとっても「傘下チームが収益機能を使い始めた」ことは区分見直しの判断材料になるため、**ACTIVE な全親組織の ADMIN に通知**する（漏らさない）。過剰通知の懸念はあるが、REVENUE 有効化はチーム単位で頻度が低く、確認必須通知（F04.9）は受信者が確認すれば消えるため負荷は限定的。絞り込み（例: 主所属組織のみ）は誤って営利判断の機会を逃すリスクの方が大きいと評価し、全 ACTIVE 親組織を既定とする（R-1 で運用調整可）。
 
 ### 3.4 BE ゲート `EntitlementGuard`
@@ -273,14 +273,16 @@ org_type イベント結線（§3.3・02 §7.2）は **billing.beta ドメイン
 
 ---
 
-## 8. 要裁可論点（マスター御裁可待ち）
+## 8. 要裁可論点 → マスター御裁可済（2026-07-08）
 
-| # | 論点 | 選択肢 | 推奨 |
+> **2026-07-08 マスター御裁可**: R-1=(b)確定・R-2=(c)確定・R-4=(a)確定。R-3 は運用データ待ち（実装ブロックせず）。以下の「確定」列がマスター裁可の結果。
+
+| # | 論点 | 選択肢 | **御裁可済（2026-07-08）** |
 |---|---|---|---|
-| **R-1** | org_type 自動更新の対象範囲＋**誤変異のロールバック経路（M-3）** | (a) `COMPANY` 以外すべて自動更新／(b) `NPO`・`ASSOCIATION`・`COMMUNITY`・`OTHER` のみ自動更新、公共系（`GOVERNMENT`/`MUNICIPALITY`/`SCHOOL`/`HOSPITAL`）は通知＋運営レビューのみ。**加えて、自動変異は取り消せること**（異議申し立て時に運営が `COMPANY`→元 org_type へ差し戻す運営 API `POST /api/v1/system-admin/organizations/{orgId}/org-type-revert`＋監査。billing はイベントで通知するだけで org_type の権威は organization ドメイン＝差し戻しも同ドメインの操作） | **(b)＋ロールバック経路あり**。市役所・学校が COMPANY に自動変異するのは不合理。誤変異は運営差し戻しで回復可能にし、確認必須通知に「区分が違う場合はお問い合わせください」の異議導線を含める |
-| **R-2** | 無所属チームの営利/非営利区分の持ち方 | (a) `teams` に区分列を追加／(b) billing ドメイン側に scope 区分テーブルを新設／(c) **列追加なし**・「ACTIVE 所属組織から都度導出、無所属は非営利扱い」 | **(c)**。REVENUE 機能は区分問わず有料のため悪用余地は INTERNAL 無料枠のみで小さい。列追加は実需が出てから（YAGNI） |
-| **R-3** | BASIC プランの機能構成・想定価格 | 機構は本設計で完成。構成・価格は運用データ待ち | ベータ計測（F20.3 §7）後に決定。設計は NULL 可で先行 |
-| **R-4** | ORG 契約の配下チーム展開（組織一括契約でチームスコープにも効かせるか） | (a) 展開しない（本設計）／(b) `plan_features` 側に展開フラグ | **(a)** で出荷し、実需で (b) を Phase 2 検討 |
+| **R-1** | org_type 自動更新の対象範囲＋**誤変異のロールバック経路（M-3）** | (a) `COMPANY` 以外すべて自動更新／(b) `NPO`・`ASSOCIATION`・`COMMUNITY`・`OTHER` のみ自動更新、公共系（`GOVERNMENT`/`MUNICIPALITY`/`SCHOOL`/`HOSPITAL`）は通知＋運営レビューのみ＋差し戻し | **✅ (b) 確定**。NPO・任意団体等のみ自動で営利切替、公共系（学校・市役所等）は自動変異せず通知＋運営レビュー＋差し戻し。差し戻しは運営 API `POST /api/v1/system-admin/organizations/{orgId}/org-type-revert`＋監査（org_type の権威は organization ドメイン）。確認必須通知に「区分が違う場合はお問い合わせください」の異議導線を含める |
+| **R-2** | 無所属チームの営利/非営利区分の持ち方 | (a) `teams` に区分列を追加／(b) billing ドメイン側に scope 区分テーブルを新設／(c) **列追加なし**・「ACTIVE 所属組織から都度導出、無所属は非営利扱い」 | **✅ (c) 確定**。列追加なし・都度導出・無所属=非営利扱い。REVENUE 機能は区分問わず有料のため悪用余地は INTERNAL 無料枠のみで小さい（YAGNI） |
+| **R-3** | BASIC プランの機能構成・想定価格 | 機構は本設計で完成。構成・価格は運用データ待ち | 🕒 ベータ計測（F20.3 §7）後に決定（実装ブロックせず・設計は NULL 可で先行） |
+| **R-4** | ORG 契約の配下チーム展開（組織一括契約でチームスコープにも効かせるか） | (a) 展開しない（本設計）／(b) `plan_features` 側に展開フラグ | **✅ (a) 確定**。展開しない。実需が出れば (b) を Phase 2 で検討 |
 
 ---
 
