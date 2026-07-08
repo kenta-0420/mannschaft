@@ -69,9 +69,11 @@ public class BetaPerkEligibilityService {
                 .filter(BetaPerkCriteriaEntity::isEnabled)
                 .orElseThrow(() -> new BusinessException(BetaPerkErrorCode.CRITERIA_NOT_FOUND)); // 404
         List<MetricProgress> metrics = new ArrayList<>();
-        if (c.getMinActiveDays() != null) {          // F10.8 実装前は NULL 運用＝スキップ（README §8）
-            long actual = pageViewLogRepository.countDistinctActiveDays(
-                    resolveUserId(scopeKind, scopeId),           // INDIVIDUAL のみ。TEAM_ORG はこの指標を使わない
+        if (c.getMinActiveDays() != null) {          // 計測源が確定するまで NULL 運用＝スキップ（README §7・§9）
+            // ★USER の activeDays は F10.8 では取れない（TEAM/ORG 限定）。実装前確定条件で選ぶ計測源を呼ぶ。
+            //   第一候補: audit_logs の LOGIN_SUCCESS を COUNT(DISTINCT DATE(created_at)) で数える。
+            long actual = loginActivityQueryService.countDistinctActiveDays(  // 実装源は §9 で確定（audit_logs LOGIN_SUCCESS 等）
+                    resolveUserId(scopeKind, scopeId),                        // INDIVIDUAL のみ。TEAM_ORG はこの指標を使わない
                     now.minusDays(c.getEvaluationWindowDays()));
             metrics.add(new MetricProgress("activeDays", actual, c.getMinActiveDays()));
         }
@@ -101,7 +103,7 @@ public class BetaPerkEligibilityService {
 - 処理（擬似コード）:
 
 ```
-for user in activeUsers（ページング・退会/凍結除外）:
+for user in activeUsers（ページング・凍結除外・**退会申請中（WithdrawalRequestedEvent 受領〜猶予中）も除外**・01 §8）:
   if exists beta_grants(scope_kind='USER', scope_id=user.id, beta_phase=currentPhase): continue
   result = eligibilityService.evaluate(INDIVIDUAL, USER, user.id, currentPhase)
   if !result.eligible: continue
@@ -193,11 +195,33 @@ public void onOwnershipTransferred(TeamOwnershipTransferredEvent ev) {
 
 - 組織のオーナー変更も同型（`OrganizationOwnershipTransferredEvent`・存在有無を実装時確認）。イベントが未整備の間は**シスアド手動 flag-review が代替経路**（機能は塞がらない）。
 
+### 5.1 退会イベント購読（M-4/M-5・実在イベントに準拠）
+
+```java
+@Component
+public class BetaPerkPurgeEventListener {
+
+    // 退会申請（猶予開始）: 自動付与のみ抑止・revoke しない（撤回で復活できないため・01 §8）
+    // → 抑止は「自動付与バッチが退会申請中ユーザーを除外」で表現（本リスナーで grant 状態は変えない）
+
+    /** 退会確定（物理削除）: この時点で撤回窓は閉じており revoke してよい（AC-19） */
+    @TransactionalEventListener(phase = AFTER_COMMIT)
+    @Transactional(propagation = REQUIRES_NEW)   // feedback_transactional_event_listener_requires_new
+    public void onAccountPurged(AccountPurgedEvent ev) {
+        betaGrantService.revokeAllForUser(ev.userId(), RevokeReason.WITHDRAWAL);  // grant＋entitlements 失効
+    }
+    // WithdrawalCancelledEvent は購読不要（猶予中に権利を維持しているため何もしない）
+}
+```
+
+> `AccountPurgedEvent`・`WithdrawalRequestedEvent`・`WithdrawalCancelledEvent` は origin/main 実在（`gdpr`/`auth.event` パッケージ・`AccountPurgeService` バッチが発火）。**架空の `UserWithdrawalService`（トランザクション内アトミック失効）ではなくイベント駆動**に合わせる（`AuditLogEventListener`/`WithdrawalStripeHandler` 前例）。
+
 ---
 
 ## 6. F10.8 計測ビーコン（利用イベント 1 種・README §7 の確定方式）
 
-- F10.8 `PageViewContentType` enum（BE 側バインド）に **`FEATURE`** を 1 値追加（`page_view_logs.content_type` は VARCHAR(20)・DDL 不要）。
+- F10.8 の content type enum（BE 側バインド・**enum 名は F10.8 実装時に確定**＝設計書に確定名が無いため決め打ちしない・README §7）に **`FEATURE`** を 1 値追加（`page_view_logs.content_type` は VARCHAR(20)・DDL 不要）。
+- **個人（USER）の `activeDays` は F10.8 では取れない**（F10.8 は TEAM/ORGANIZATION スコープのみ）。個人特典の `activeDays` は `audit_logs` の `LOGIN_SUCCESS` を第一候補に別経路で数える（README §7・§9 実装前確定条件）。本ビーコンは TEAM/ORG の機能利用傾向の計測のみに用いる。
 - FE 送信規約（ゲート対象機能の**利用成功時**に送出。`useBilling` コンポーザブルに共通化）:
 
 ```jsonc
