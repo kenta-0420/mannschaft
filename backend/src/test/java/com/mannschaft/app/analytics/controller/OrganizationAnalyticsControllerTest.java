@@ -5,6 +5,7 @@ import com.mannschaft.app.analytics.TeamOrgAnalyticsErrorCode;
 import com.mannschaft.app.analytics.service.PageViewAnalyticsAccessGuard;
 import com.mannschaft.app.analytics.service.PageViewAnalyticsService;
 import com.mannschaft.app.analytics.service.PageViewAnalyticsService.AnalyticsResult;
+import com.mannschaft.app.analytics.service.PageViewAnalyticsService.ContentStat;
 import com.mannschaft.app.analytics.service.PageViewAnalyticsService.DailyStat;
 import com.mannschaft.app.analytics.service.PageViewAnalyticsService.MonthlyStat;
 import com.mannschaft.app.analytics.service.PageViewAnalyticsService.SummaryStat;
@@ -94,7 +95,11 @@ class OrganizationAnalyticsControllerTest {
         List<MonthlyStat> monthly = List.of(
                 new MonthlyStat(YearMonth.of(2026, 7), 200L, 100L)
         );
-        return new AnalyticsResult(summary, daily, monthly);
+        List<ContentStat> topContent = List.of(
+                new ContentStat("PAGE", 0L, "組織トップ", "/organizations/my-org", 120L, 70L),
+                new ContentStat("ARTICLE", 3L, "組織のお知らせ", "/organizations/my-org/articles/3", 30L, 20L)
+        );
+        return new AnalyticsResult(summary, daily, monthly, topContent);
     }
 
     // ─── AC-08/AC-17: 200 + 全フィールド非 null ───────────────────────
@@ -159,11 +164,11 @@ class OrganizationAnalyticsControllerTest {
                 .andExpect(status().isOk());
     }
 
-    // ─── AC-15: topContent 常に空配列 ─────────────────────────────────
+    // ─── AC-P2-8: topContent は第 2 弾で実データ配列を返す ───────────────
 
     @Test
-    @DisplayName("AC-15: topContent は第 1 弾では常に空配列 []")
-    void getAnalytics_topContent_isEmptyArray() throws Exception {
+    @DisplayName("AC-P2-8: topContent は第 2 弾では実データ配列（全フィールド）で返る")
+    void getAnalytics_topContent_returnsRealData() throws Exception {
         given(organizationService.resolveOrgId(SLUG)).willReturn(ORG_ID);
         given(analyticsService.getAnalytics(any(), any(), isNull(), isNull()))
                 .willReturn(mockResult());
@@ -171,7 +176,13 @@ class OrganizationAnalyticsControllerTest {
         mockMvc.perform(get("/api/v1/organizations/{slug}/analytics", SLUG))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.topContent").isArray())
-                .andExpect(jsonPath("$.data.topContent", hasSize(0)));
+                .andExpect(jsonPath("$.data.topContent", hasSize(2)))
+                .andExpect(jsonPath("$.data.topContent[0].contentType").value("PAGE"))
+                .andExpect(jsonPath("$.data.topContent[0].contentId").value(0))
+                .andExpect(jsonPath("$.data.topContent[0].title").value("組織トップ"))
+                .andExpect(jsonPath("$.data.topContent[0].url").value("/organizations/my-org"))
+                .andExpect(jsonPath("$.data.topContent[0].views").value(120))
+                .andExpect(jsonPath("$.data.topContent[0].uniqueVisitors").value(70));
     }
 
     // ─── AC-16: 日付フォーマット ─────────────────────────────────────

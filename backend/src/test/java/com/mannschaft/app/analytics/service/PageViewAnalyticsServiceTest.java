@@ -115,5 +115,21 @@ class PageViewAnalyticsServiceTest extends AbstractMySqlIntegrationTest {
         assertThat(result.summary().uniqueVisitors()).isZero();
         assertThat(result.daily()).isNotNull().isEmpty();
         assertThat(result.monthly()).isNotNull().isEmpty();
+        assertThat(result.topContent()).isNotNull().isEmpty();
+    }
+
+    @Test
+    @DisplayName("AC-P2-1/8: topContent は生ログ集計で実データ（ARTICLE/1・views 5・unique 4）を返す")
+    void getAnalytics_topContent_realData() {
+        // seed() は ARTICLE/contentId=1 のログを 5 件（user10x2, g1, user11, g2）投入している。
+        PageViewAnalyticsService.AnalyticsResult result =
+                analyticsService.getAnalytics(PageViewScopeType.TEAM, TEAM_ID, null, null);
+
+        assertThat(result.topContent()).hasSize(1);
+        PageViewAnalyticsService.ContentStat top = result.topContent().get(0);
+        assertThat(top.contentType()).isEqualTo("ARTICLE");
+        assertThat(top.contentId()).isEqualTo(1L);
+        assertThat(top.views()).isEqualTo(5L);
+        assertThat(top.uniqueVisitors()).isEqualTo(4L);
     }
 }
