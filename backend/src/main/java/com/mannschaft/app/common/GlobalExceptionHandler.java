@@ -118,6 +118,7 @@ public class GlobalExceptionHandler {
             Map.entry("AD_029", HttpStatus.TOO_MANY_REQUESTS), // visit/click の IP レート制限 → 429
             Map.entry("AD_033", HttpStatus.FORBIDDEN),         // 通報自動停止中の resume 拒否 → 403
             Map.entry("AD_034", HttpStatus.CONFLICT),          // 参照中料金カードの削除拒否 → 409
+            Map.entry("AD_035", HttpStatus.NOT_FOUND),         // serve 証跡なし / deliveryId 帰属不一致 → 404
             // F09.17 メッセージ型キャンペーン (DRAFT CRUD)
             Map.entry("AD_CAMPAIGN_NOT_FOUND", HttpStatus.NOT_FOUND),
             Map.entry("AD_CAMPAIGN_INVALID_STATE", HttpStatus.CONFLICT),

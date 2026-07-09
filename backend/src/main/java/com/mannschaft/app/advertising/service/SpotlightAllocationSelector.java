@@ -1,7 +1,11 @@
 package com.mannschaft.app.advertising.service;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * F09.19.2 割当ロジックの純粋関数部（正本 §7.2）。
@@ -45,7 +49,12 @@ public final class SpotlightAllocationSelector {
      * @return 順位付け済みリスト（先頭が最優先）
      */
     public List<Candidate> rankOperational(List<Candidate> operational) {
-        throw new UnsupportedOperationException("F09.19.2 未実装（試練 red）");
+        // (1) 本日消化率 昇順 → (2) campaign.id 昇順 で完全一意に定まる（正本 §7.2 STEP 2 順位付け）。
+        List<Candidate> ranked = new ArrayList<>(operational);
+        ranked.sort(Comparator
+                .comparing((Candidate c) -> c.spendRatio() == null ? BigDecimal.ZERO : c.spendRatio())
+                .thenComparing(c -> c.campaignId() == null ? Long.MAX_VALUE : c.campaignId()));
+        return ranked;
     }
 
     /**
@@ -58,7 +67,13 @@ public final class SpotlightAllocationSelector {
      * @return 選択された ads.id
      */
     public Long pickCreativeByRoundRobin(List<Long> creativeIdsAsc, long rrValue) {
-        throw new UnsupportedOperationException("F09.19.2 未実装（試練 red）");
+        if (creativeIdsAsc == null || creativeIdsAsc.isEmpty()) {
+            throw new IllegalArgumentException("creativeIdsAsc は非空である必要があります");
+        }
+        int n = creativeIdsAsc.size();
+        // rrValue は Valkey INCR の現在値。負値もあり得ないが Math.floorMod で常に [0, n) に収める。
+        int idx = (int) Math.floorMod(rrValue, (long) n);
+        return creativeIdsAsc.get(idx);
     }
 
     /**
@@ -74,7 +89,82 @@ public final class SpotlightAllocationSelector {
      * @return 選択された候補（長さ 0〜count）
      */
     public List<Candidate> selectWithCount(List<Candidate> ranked, int count) {
-        throw new UnsupportedOperationException("F09.19.2 未実装（試練 red）");
+        List<Candidate> result = new ArrayList<>();
+        if (ranked == null || ranked.isEmpty() || count <= 0) {
+            return result;
+        }
+        Set<Long> usedCreatives = new HashSet<>();
+        Set<Long> usedAdvertisers = new HashSet<>();
+        Set<String> usedProviders = new HashSet<>();
+
+        // 第 1 パス（厳格）: 規則 a（同一クリエイティブ禁止）+ b（同一広告主禁止）+ c（同一 provider 禁止）。
+        for (Candidate c : ranked) {
+            if (result.size() >= count) {
+                break;
+            }
+            if (violatesCreative(c, usedCreatives)) {
+                continue;
+            }
+            if ("HOUSE".equals(c.source()) && c.advertiserAccountId() != null
+                    && usedAdvertisers.contains(c.advertiserAccountId())) {
+                continue; // 規則 b
+            }
+            if (violatesProvider(c, usedProviders)) {
+                continue;
+            }
+            accept(result, usedCreatives, usedAdvertisers, usedProviders, c);
+        }
+
+        // 第 2 パス（緩和）: 規則 b のみ緩和（全候補が同一広告主の場合など）。a / c は緩和しない。
+        if (result.size() < count) {
+            for (Candidate c : ranked) {
+                if (result.size() >= count) {
+                    break;
+                }
+                if (containsIdentity(result, c)) {
+                    continue;
+                }
+                if (violatesCreative(c, usedCreatives)) {
+                    continue; // 規則 a は絶対
+                }
+                if (violatesProvider(c, usedProviders)) {
+                    continue; // 規則 c は緩和しない
+                }
+                accept(result, usedCreatives, usedAdvertisers, usedProviders, c);
+            }
+        }
+        return result;
+    }
+
+    private static boolean violatesCreative(Candidate c, Set<Long> usedCreatives) {
+        return c.creativeId() != null && usedCreatives.contains(c.creativeId());
+    }
+
+    private static boolean violatesProvider(Candidate c, Set<String> usedProviders) {
+        return "AFFILIATE".equals(c.source()) && c.provider() != null && usedProviders.contains(c.provider());
+    }
+
+    private static boolean containsIdentity(List<Candidate> result, Candidate c) {
+        for (Candidate r : result) {
+            if (r == c) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void accept(List<Candidate> result, Set<Long> usedCreatives, Set<Long> usedAdvertisers,
+                               Set<String> usedProviders, Candidate c) {
+        result.add(c);
+        if (c.creativeId() != null) {
+            usedCreatives.add(c.creativeId());
+        }
+        if (c.advertiserAccountId() != null) {
+            usedAdvertisers.add(c.advertiserAccountId());
+        }
+        if (c.provider() != null) {
+            usedProviders.add(c.provider());
+        }
     }
 
     private SpotlightAllocationSelector() {

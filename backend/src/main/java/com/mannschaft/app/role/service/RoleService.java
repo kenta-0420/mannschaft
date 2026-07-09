@@ -242,6 +242,21 @@ public class RoleService {
     }
 
     /**
+     * 指定組織に所属する（user_roles で organization_id が一致する）チーム ID 一覧を返す。
+     *
+     * <p>他ドメイン（例: advertising の広告非表示ゲート F09.19.2）が {@code role} ドメインの
+     * {@code UserRoleRepository} を直接注入することを避けるための Service 経路（D-3 ArchUnit 準拠:
+     * {@code @Transactional} クラスは別ドメイン Repository に直接依存しない）。プリミティブ
+     * （{@code List<Long>}）のみを返し Entity を漏らさない。</p>
+     *
+     * @param organizationId 対象組織 ID
+     * @return 当該組織配下のチーム ID 一覧
+     */
+    public List<Long> getTeamIdsByOrganizationId(Long organizationId) {
+        return userRoleRepository.findTeamIdsByOrganizationId(organizationId);
+    }
+
+    /**
      * ユーザーの有効権限リストを解決する。
      * ロール由来 + 権限グループ由来の統合リスト。
      *

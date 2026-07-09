@@ -113,7 +113,18 @@ public enum AdvertisingErrorCode implements ErrorCode {
     AD_033("AD_033", "通報により停止中のため、この操作は実行できません", Severity.WARN),
 
     /** 運用型キャンペーンから参照中の料金カード削除拒否（HTTP 409。FK violation 500 回帰防御） */
-    AD_034("AD_034", "この料金カードは運用型キャンペーンから参照されているため削除できません", Severity.WARN);
+    AD_034("AD_034", "この料金カードは運用型キャンペーンから参照されているため削除できません", Severity.WARN),
+
+    /**
+     * サービング計測の証跡不整合（HTTP 404）。F09.19.2 §6.3/§6.4/§11。
+     *
+     * <p>serve 証跡（{@code mannschaft:ad:serve-token}）が存在しない creative への view/visit、
+     * および他ユーザーの {@code ad_banner_deliveries} を指定した帰属不一致のいずれも、対象不在として
+     * 404 で隠蔽する（存在有無を晒さない）。正本 §15 は専用コードを与えていないため本弾で新規採番した。
+     * <b>マージ時は origin/main の {@code AdvertisingErrorCode} 最大値（本実装時点 AD_034）を再確認し、
+     * 衝突があれば繰り上げること。</b></p>
+     */
+    AD_035("AD_035", "対象の広告が見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;

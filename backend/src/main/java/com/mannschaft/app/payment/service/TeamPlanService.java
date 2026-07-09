@@ -28,4 +28,35 @@ public class TeamPlanService {
     public boolean hasPaidPlan(Long teamId) {
         return teamSubscriptionRepository.hasActivePaidPlan(teamId);
     }
+
+    /**
+     * 指定チーム群のいずれかが有料プラン（ACTIVE かつ FREE 以外）を持つか判定する（F09.19.2 PERSONAL ゲート）。
+     *
+     * <p>キャッシュしない（サブスク状態変更を即時反映するため。広告非表示ゲートは判定材料の鮮度を優先する）。</p>
+     *
+     * @param teamIds 判定対象チーム ID 群（空なら false）
+     * @return いずれか 1 件以上が有料なら true
+     */
+    public boolean hasAnyActivePaidPlan(java.util.Collection<Long> teamIds) {
+        if (teamIds == null || teamIds.isEmpty()) {
+            return false;
+        }
+        return teamSubscriptionRepository.existsActivePaidPlanByTeamIds(teamIds);
+    }
+
+    /**
+     * 指定チーム群のいずれかが ORGANIZATION プラン（ACTIVE）を持つか判定する（F09.19.2 ORGANIZATION ゲート）。
+     *
+     * <p>組織自体のサブスクリプションは存在しないため、配下チームの {@code plan_type='ORGANIZATION'} で判定する。
+     * キャッシュしない（同上）。</p>
+     *
+     * @param teamIds 組織配下のチーム ID 群（空なら false）
+     * @return いずれか 1 件以上が ORGANIZATION プラン ACTIVE なら true
+     */
+    public boolean hasActiveOrganizationPlan(java.util.Collection<Long> teamIds) {
+        if (teamIds == null || teamIds.isEmpty()) {
+            return false;
+        }
+        return teamSubscriptionRepository.existsActiveOrganizationPlanByTeamIds(teamIds);
+    }
 }
