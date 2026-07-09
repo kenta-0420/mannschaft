@@ -1,6 +1,7 @@
 # F20.3 — 01 データモデル
 
-> **ステータス**: 🟢 設計完了（マスター御裁可済・実装待ち）
+> **ステータス**: 🟢 設計完了（マスター御裁可済・実装待ち／営利自動切替・オーナー変更は Phase 2 保留）
+> **⚠️ Phase 2 保留（マスター 2026-07-08）**: team オーナー変更の**自動イベント**購読（B-4）は初期スコープ外（README 冒頭 Phase 2 保留ブロック）。`beta_grants`・`review_flag` 列・`review_reason='MANUAL'`（手動フラグ）・審査解決フローは初期スコープに残る。`review_reason='OWNER_CHANGED'`（自動起点）は Phase 2。
 > [README](README.md) の特典モデルを DB に落とす。権利の実体は F20.1 `entitlements`（[F20.1 01 §3.2](../F20.1_entitlement_billing/01_data_model.md)）であり、本書は**付与メタ（`beta_grants`）と付与条件マスタ（`beta_perk_criteria`）**のみを定義する。
 
 ---
@@ -130,7 +131,7 @@ grantBetaPerk(grantKind, betaPhase, scopeKind, scopeId, operator|SYSTEM):
 
 ```
 （付与）──▶ 有効（revoked_at IS NULL）
-   有効 ──(オーナー変更イベント / シスアド手動 / 検知)──▶ 有効＋review_flag=true（権利は有効のまま・AC-08）
+   有効 ──(シスアド手動 flag-review〔初期スコープ〕 / オーナー変更イベント〔Phase 2 保留・B-4〕 / 検知)──▶ 有効＋review_flag=true（権利は有効のまま・AC-08）
    有効＋review ──(審査: 問題なし resolve)──▶ 有効（review_flag=false・resolved_at/by 記録・AC-20）
    有効／有効＋review ──(取消 revoke)──▶ 取消（終端・entitlements 同時 revoke・AC-09）
    有効（TEAM_ORG）──(valid_until 到来・entitlements 側で自然失効)──▶ 満了（grant 行は有効のまま履歴として残る。延長で復活可・AC-14）
@@ -142,9 +143,9 @@ grantBetaPerk(grantKind, betaPhase, scopeKind, scopeId, operator|SYSTEM):
 ### 4.2 review_flag フロー（運営運用）
 
 ```
-OWNER_CHANGED（自動: チームオーナー変更イベント・02 §5）
+OWNER_CHANGED（自動: チームオーナー変更イベント・02 §5）【Phase 2 保留・B-4】
 SUSPECTED_TRANSFER（自動: 将来の検知拡張用の予約値）      →  review_flag=true
-MANUAL（シスアド手動）                                        review_reason / review_flagged_at
+MANUAL（シスアド手動 flag-review・初期スコープ）              review_reason / review_flagged_at
         │
         ├─ 問題なし → resolve（フラグ解除・権利連続）
         └─ 違反確認 → revoke（revoke_reason='ACCOUNT_TRANSFER' 等）→ 権利即失効
@@ -195,7 +196,7 @@ beta_grants（UUIDv7・付与メタ）
   ├─(論理: source_ref_id)─ entitlements（F20.1・source_kind=BETA_GRANT・権利実体）
   ├─(論理: scope_id)─ users / teams / organizations（クロスドメイン・FKなし）
   ├─(論理)─ user_badges（F04.7・BETA_TESTER・period_label=BETA_PHASE_n）
-  └─(イベント購読)─ TeamOwnershipTransferredEvent（team ドメイン → review_flag・B-4）
+  └─(イベント購読)─ TeamOwnershipTransferredEvent（team ドメイン → review_flag・B-4）【Phase 2 保留・初期スコープでは購読しない】
 page_view_logs（F10.8・content_type='FEATURE'・title=feature_key）─ 計測（README §7）
 memberships（left_at IS NULL）─(読取)─ 人数スナップショット・tenure 判定
 ```

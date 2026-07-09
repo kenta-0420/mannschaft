@@ -1,6 +1,7 @@
 # F20.1 — 03 セキュリティ
 
-> **ステータス**: 🟢 設計完了（マスター御裁可済・実装待ち）
+> **ステータス**: 🟢 設計完了（マスター御裁可済・実装待ち／営利自動切替・オーナー変更は Phase 2 保留）
+> **⚠️ Phase 2 保留（マスター 2026-07-08）**: 営利自動切替（org_type 自動更新・確認通知・差し戻し API・監査 `ORG_TYPE_*`）は初期スコープ外（README §3.3・冒頭 Phase 2 保留ブロック）。本書の org_type 関連の認可・監査記述はすべて Phase 2。
 > 認可基盤は `@EnableMethodSecurity`＋`@accessGuard`（`docs/security/03_role_authority_model.md`）を再利用。横断方針は [docs/security/README.md](../../security/README.md) に従う。ベータ中（Phase 1）は決済なし＝PCI 論点なし（Phase 2 で F22.1/決済系の規約を適用）。
 
 ---
@@ -15,7 +16,7 @@
 | 契約作成/解約/変更（TEAM/ORG） | 当該スコープの ADMIN（DEPUTY_ADMIN 含む） | `@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')` / `@accessGuard.isScopeAdmin(authentication, #orgId, 'ORGANIZATION')` |
 | 契約作成/解約/変更（USER） | 本人 | `/me/...` パス＝`SecurityUtils.getCurrentUserId()` 固定（scopeId を受けない） |
 | マスタ CRUD・手動付与・契約横断検索 | SYSTEM_ADMIN | `@PreAuthorize("hasRole('SYSTEM_ADMIN')")` |
-| org_type 自動更新 | システム（イベントリスナー）のみ | API 経由の直接更新は organization ドメイン既存 API の認可に従う（billing からは**イベントのみ**・直接 UPDATE 禁止） |
+| org_type 自動更新 **【Phase 2 保留】** | システム（イベントリスナー）のみ | **営利自動切替に属し初期スコープ外**（マスター 2026-07-08・README §3.3）。Phase 2 で実装。API 経由の直接更新は organization ドメイン既存 API の認可に従う（billing からは**イベントのみ**・直接 UPDATE 禁止） |
 
 - `@accessGuard.isScopeAdmin(...)` は **SYSTEM_ADMIN または当該 scope の ADMIN/DEPUTY_ADMIN** を許可する実在パターン（scopeType は SpEL 文字列リテラル `'TEAM'` / `'ORGANIZATION'`）。厳格版 `isScopeStrictAdmin`（DEPUTY 除外）は本機能では使わない（契約操作は DEPUTY_ADMIN にも許可＝モジュール ON/OFF と同等の運用権限とみなす）。
 - `isAdmin` 常時 true 等の負論理・独自可視性述語を禁止（memory `feedback_visibility_bypass_f00_audit`）。
@@ -106,9 +107,9 @@ assertScopeReadable(caller, scopeKind, scopeId):
 | 契約作成/解約/変更 | `audit_logs` | 操作者・scope・plan/feature・スナップショット値 |
 | 手動付与（シスアド） | `audit_logs` | シスアド userId・対象 scope・理由 note |
 | entitlement 取消 | `entitlements.revoked_by`＋`audit_logs` | 取消者・由来（解約/退会/運営） |
-| org_type 自動更新 | `audit_logs`（`ORG_TYPE_AUTO_UPDATED`） | from/to・トリガーイベント内容（02 §7.2） |
-| org_type 差し戻し（誤変異回復・M-3） | `audit_logs`（`ORG_TYPE_REVERTED`） | 運営操作者・from(`COMPANY`)/to(元区分)・異議理由（R-1 ロールバック API） |
-| 運営レビュー要請（公共系/TEAM 経由） | `audit_logs` | 対象 org・トリガー |
+| org_type 自動更新 **【Phase 2】** | `audit_logs`（`ORG_TYPE_AUTO_UPDATED`） | from/to・トリガーイベント内容（02 §7.2）。**営利自動切替＝Phase 2 保留**（README §3.3） |
+| org_type 差し戻し（誤変異回復・M-3）**【Phase 2】** | `audit_logs`（`ORG_TYPE_REVERTED`） | 運営操作者・from(`COMPANY`)/to(元区分)・異議理由（R-1 ロールバック API）。**Phase 2 保留** |
+| 運営レビュー要請（公共系/TEAM 経由）**【Phase 2】** | `audit_logs` | 対象 org・トリガー。**Phase 2 保留** |
 
 ---
 
@@ -126,9 +127,10 @@ assertScopeReadable(caller, scopeKind, scopeId):
 
 | # | 論点 | **御裁可済（2026-07-08）** |
 |---|---|---|
-| R-1 | org_type 自動更新の対象範囲（公共系の扱い・TEAM 経由の扱い）＋誤変異ロールバック（M-3） | **✅ 確定**: 自動更新は ORG 自身の商用行動×{NPO, ASSOCIATION, COMMUNITY, OTHER} のみ・公共系は不変で通知＋運営レビュー・BETA_GRANT/手動付与は不発火・誤変異は運営差し戻し API（`ORG_TYPE_REVERTED`）で回復 |
+| R-1 **`[P2]`** | org_type 自動更新の対象範囲（公共系の扱い・TEAM 経由の扱い）＋誤変異ロールバック（M-3） | **✅ 確定**（**この自動判定ロジック自体が営利自動切替＝Phase 2 保留のため、R-1 のスコープ判定は Phase 2 実装時に適用**・README §3.3）: 自動更新は ORG 自身の商用行動×{NPO, ASSOCIATION, COMMUNITY, OTHER} のみ・公共系は不変で通知＋運営レビュー・BETA_GRANT/手動付与は不発火・誤変異は運営差し戻し API（`ORG_TYPE_REVERTED`）で回復 |
 | R-2 | 無所属チームの区分の持ち方 | **✅ 確定**: 列追加なし・都度導出・無所属=非営利扱い |
 | R-3 | BASIC プランの構成・価格 | 🕒 ベータ計測後の運用決定（設計は NULL 可で先行・実装ブロックせず） |
 | R-4 | ORG 契約の配下チーム展開 | **✅ 確定**: 展開しない・Phase 2 で再評価 |
 
 > R-1/R-2/R-4 は御裁可済み（イベントリスナーの分岐・判定サービスの導出ロジックが確定）。R-3 のみ運用データ待ちだが実装をブロックしない（マスタデータの後入れ）。
+> **【Phase 2 保留】R-1（org_type 自動更新＝営利自動切替）は初期スコープ外**（マスター 2026-07-08・README §3.3）。裁可内容は確定済みだが実装は Phase 2。R-2/R-4 は初期スコープの判定サービスに残る（無所属チーム＝非営利扱いの都度導出・配下チーム非展開は org_type を読むだけで自動変異には依存しない）。

@@ -9,6 +9,8 @@ const props = defineProps<{
   monthly: MonthlyPageView[]
 }>()
 
+const { t } = useI18n()
+
 const viewMode = ref<'daily' | 'monthly'>('daily')
 const chartCanvas = ref<HTMLCanvasElement | null>(null)
 let chartInstance: ChartJS | null = null
@@ -17,7 +19,7 @@ const dailyChartData = computed(() => ({
   labels: props.daily.map(d => d.date),
   datasets: [
     {
-      label: 'ページビュー',
+      label: t('analytics.chart.views'),
       data: props.daily.map(d => d.views),
       borderColor: '#6366f1',
       backgroundColor: 'rgba(99, 102, 241, 0.1)',
@@ -25,7 +27,7 @@ const dailyChartData = computed(() => ({
       tension: 0.3,
     },
     {
-      label: 'ユニーク訪問者',
+      label: t('analytics.summary.uniqueVisitors'),
       data: props.daily.map(d => d.uniqueVisitors),
       borderColor: '#22c55e',
       backgroundColor: 'rgba(34, 197, 94, 0.1)',
@@ -39,12 +41,12 @@ const monthlyChartData = computed(() => ({
   labels: props.monthly.map(m => m.month),
   datasets: [
     {
-      label: 'ページビュー',
+      label: t('analytics.chart.views'),
       data: props.monthly.map(m => m.views),
       backgroundColor: '#6366f1',
     },
     {
-      label: 'ユニーク訪問者',
+      label: t('analytics.summary.uniqueVisitors'),
       data: props.monthly.map(m => m.uniqueVisitors),
       backgroundColor: '#22c55e',
     },
@@ -57,6 +59,17 @@ const chartOptions = {
   plugins: { legend: { position: 'top' as const } },
   scales: { y: { beginAtZero: true } },
 }
+
+const viewModeOptions = computed(() => [
+  { label: t('analytics.chart.daily'), value: 'daily' },
+  { label: t('analytics.chart.monthly'), value: 'monthly' },
+])
+
+const chartFooterText = computed(() =>
+  viewMode.value === 'daily'
+    ? t('analytics.chart.recentDays')
+    : t('analytics.chart.monthlyTrend'),
+)
 
 function renderChart() {
   if (!chartCanvas.value) return
@@ -77,15 +90,16 @@ onUnmounted(() => chartInstance?.destroy())
     <div class="mb-4 flex justify-end">
       <SelectButton
         v-model="viewMode"
-        :options="[{ label: '日別', value: 'daily' }, { label: '月別', value: 'monthly' }]"
+        :options="viewModeOptions"
         option-label="label"
         option-value="value"
+        :aria-label="$t('analytics.chart.toggle')"
       />
     </div>
     <div class="h-80">
       <canvas ref="chartCanvas" />
       <p class="mt-2 text-center text-xs text-surface-500">
-        {{ viewMode === 'daily' ? '直近30日間' : '月間推移' }}のアクセス統計
+        {{ chartFooterText }}
       </p>
     </div>
   </div>

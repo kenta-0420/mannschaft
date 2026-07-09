@@ -761,6 +761,10 @@ public class GlobalExceptionHandler {
             Map.entry("RESERVATION_040", HttpStatus.NOT_FOUND),              // GROUP_NOT_FOUND
             Map.entry("RESERVATION_044", HttpStatus.TOO_MANY_REQUESTS),      // TEMPLATE_GENERATE_RATE_LIMITED
             Map.entry("RESERVATION_045", HttpStatus.CONFLICT),               // LINE_HAS_ACTIVE_RESERVATIONS
+            // F03.4.5 §6.1 キャンセル待ち（048/049 は既定 400・046→404・047→409・050→429）
+            Map.entry("RESERVATION_046", HttpStatus.NOT_FOUND),              // WAITLIST_ENTRY_NOT_FOUND（IDOR 秘匿）
+            Map.entry("RESERVATION_047", HttpStatus.CONFLICT),               // WAITLIST_ALREADY_REGISTERED
+            Map.entry("RESERVATION_050", HttpStatus.TOO_MANY_REQUESTS),      // WAITLIST_RATE_LIMITED
             // F06.5 アクティブリコール学習（IDOR 対策で 404、上限/範囲外は 400、楽観排他/マスク中編集/再輸出は 409）
             Map.entry("REFLECTION_001", HttpStatus.NOT_FOUND),              // NOT_FOUND（他人所有も IDOR 対策で 404）
             Map.entry("REFLECTION_002", HttpStatus.BAD_REQUEST),           // THEME_LIMIT_EXCEEDED
@@ -781,7 +785,11 @@ public class GlobalExceptionHandler {
             Map.entry("REFLECTION_015", HttpStatus.BAD_REQUEST),          // DATE_RANGE_INVALID（期間幅 366 日超）
             // F02.12 Phase 4: Google Calendar Webhook 検証（Severity.WARN 既定 400 を上書き）
             Map.entry("GCAL_008", HttpStatus.NOT_FOUND),                  // GOOGLE_WEBHOOK_CHANNEL_NOT_FOUND → 404
-            Map.entry("GCAL_009", HttpStatus.FORBIDDEN)                   // GOOGLE_WEBHOOK_TOKEN_INVALID → 403
+            Map.entry("GCAL_009", HttpStatus.FORBIDDEN),                  // GOOGLE_WEBHOOK_TOKEN_INVALID → 403
+            // F10.8 チーム/組織アクセス解析（TEAMANALYTICS_xxx）
+            Map.entry("TEAMANALYTICS_001", HttpStatus.NOT_FOUND),         // 非メンバー/不在スコープ → 404（IDOR 秘匿）
+            Map.entry("TEAMANALYTICS_002", HttpStatus.BAD_REQUEST),       // 日付範囲不正（dateFrom > dateTo）→ 400
+            Map.entry("TEAMANALYTICS_003", HttpStatus.BAD_REQUEST)        // ビーコン body 不正（ENUM 外・絶対 URL 等）→ 400
     );
 
     /**

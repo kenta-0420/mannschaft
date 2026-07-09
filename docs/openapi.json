@@ -303,6 +303,10 @@
       "description": "F03.5 シフト枠のCRUD・一括操作"
     },
     {
+      "name": "予約管理",
+      "description": "F03.4.5 キャンセル待ち（本人）"
+    },
+    {
       "name": "タイムライン投稿",
       "description": "F04.1 タイムライン投稿CRUD"
     },
@@ -1009,6 +1013,10 @@
     {
       "name": "マッチングレビュー",
       "description": "F08.1 マッチングレビュー投稿・取得"
+    },
+    {
+      "name": "予約管理",
+      "description": "F03.4.5 キャンセル待ち"
     },
     {
       "name": "QR会員証",
@@ -7516,7 +7524,7 @@
         "tags": [
           "予約設定管理"
         ],
-        "summary": "営業時間一括更新",
+        "summary": "営業時間一括更新（保存＝変更曜日の同期自動生成）",
         "operationId": "updateBusinessHours",
         "parameters": [
           {
@@ -7545,7 +7553,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListBusinessHourResponse"
+                  "$ref": "#/components/schemas/ApiResponseBusinessHoursSaveResponse"
                 }
               }
             }
@@ -37111,6 +37119,79 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/reservation-slots/{slotId}/waitlist": {
+      "post": {
+        "tags": [
+          "予約管理"
+        ],
+        "summary": "キャンセル待ち登録",
+        "operationId": "joinWaitlist",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "slotId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "登録成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseWaitlistEntryResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "予約管理"
+        ],
+        "summary": "キャンセル待ち取消（本人）",
+        "operationId": "leaveWaitlist",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "slotId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "取消成功"
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/reservation-slots/{slotId}/reopen": {
       "post": {
         "tags": [
@@ -37238,7 +37319,7 @@
         "tags": [
           "予約枠週間テンプレート"
         ],
-        "summary": "週間テンプレート作成",
+        "summary": "週間テンプレート作成（保存＝同期自動生成）",
         "operationId": "createTemplate_3",
         "parameters": [
           {
@@ -37267,7 +37348,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseSlotTemplateResponse"
+                  "$ref": "#/components/schemas/ApiResponseSlotTemplateSaveResponse"
                 }
               }
             }
@@ -37280,7 +37361,7 @@
         "tags": [
           "予約枠週間テンプレート"
         ],
-        "summary": "週間テンプレート一括生成",
+        "summary": "週間テンプレート一括生成（非推奨: 保存＝自動生成へ移行）",
         "operationId": "generate_1",
         "parameters": [
           {
@@ -37298,6 +37379,49 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/GenerateSlotsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "生成成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseGenerateSlotsResponse"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
+      }
+    },
+    "/api/v1/teams/{teamId}/reservation-slot-templates/generate-single-day": {
+      "post": {
+        "tags": [
+          "予約枠週間テンプレート"
+        ],
+        "summary": "臨時営業（単日テンプレ適用）",
+        "operationId": "generateSingleDay",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateSingleDayRequest"
               }
             }
           },
@@ -55228,6 +55352,41 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/page-views": {
+      "post": {
+        "tags": [
+          "アクセス解析ビーコン"
+        ],
+        "summary": "ページビュービーコン送信",
+        "description": "閲覧イベントを非同期で記録する。認証不要。",
+        "operationId": "receiveBeacon",
+        "parameters": [
+          {
+            "name": "mnsft_vid",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageViewBeaconRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -83945,7 +84104,7 @@
         "tags": [
           "予約枠週間テンプレート"
         ],
-        "summary": "週間テンプレート更新",
+        "summary": "週間テンプレート更新（保存＝同期自動生成）",
         "operationId": "updateTemplate_10",
         "parameters": [
           {
@@ -83983,7 +84142,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseSlotTemplateResponse"
+                  "$ref": "#/components/schemas/ApiResponseSlotTemplateSaveResponse"
                 }
               }
             }
@@ -102013,6 +102172,27 @@
         }
       }
     },
+    "/api/v1/users/me/reservation-waitlist": {
+      "get": {
+        "tags": [
+          "予約管理"
+        ],
+        "summary": "自分のキャンセル待ち一覧",
+        "operationId": "listMyWaitlist",
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListWaitlistEntryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/users/me/promotions": {
       "get": {
         "tags": [
@@ -104802,6 +104982,47 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseReservationStatsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/reservation-slots/{slotId}/waitlist/count": {
+      "get": {
+        "tags": [
+          "予約管理"
+        ],
+        "summary": "キャンセル待ち件数（ADMIN）",
+        "operationId": "getWaitlistCount",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "slotId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseWaitlistCountResponse"
                 }
               }
             }
@@ -110699,6 +110920,56 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseFollowStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{slug}/analytics": {
+      "get": {
+        "tags": [
+          "チームアクセス解析"
+        ],
+        "summary": "チームアクセス解析取得",
+        "description": "チームの PV 集計を返す。メンバーのみ閲覧可。",
+        "operationId": "getAnalytics",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dateFrom",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "dateTo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageViewAnalyticsResponse"
                 }
               }
             }
@@ -118416,6 +118687,56 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/AncestorsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{slug}/analytics": {
+      "get": {
+        "tags": [
+          "組織アクセス解析"
+        ],
+        "summary": "組織アクセス解析取得",
+        "description": "組織の PV 集計を返す。メンバーのみ閲覧可。",
+        "operationId": "getAnalytics_1",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dateFrom",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "dateTo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageViewAnalyticsResponse"
                 }
               }
             }
@@ -141614,14 +141935,11 @@
           "hours"
         ]
       },
-      "ApiResponseListBusinessHourResponse": {
+      "ApiResponseBusinessHoursSaveResponse": {
         "type": "object",
         "properties": {
           "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/BusinessHourResponse"
-            }
+            "$ref": "#/components/schemas/BusinessHoursSaveResponse"
           }
         }
       },
@@ -141641,6 +141959,20 @@
           }
         }
       },
+      "BusinessHoursSaveResponse": {
+        "type": "object",
+        "properties": {
+          "generation": {
+            "$ref": "#/components/schemas/SlotGenerationResultDto"
+          },
+          "hours": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BusinessHourResponse"
+            }
+          }
+        }
+      },
       "BusinessStatusDto": {
         "type": "object",
         "properties": {
@@ -141657,6 +141989,30 @@
           "openTime": {
             "type": "string",
             "example": "14:30:00"
+          }
+        }
+      },
+      "SlotGenerationResultDto": {
+        "type": "object",
+        "properties": {
+          "failed": {
+            "type": "boolean"
+          },
+          "generatedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skippedClosedDayCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skippedExistingCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skippedOutsideHoursCount": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -162003,6 +162359,53 @@
           }
         }
       },
+      "ApiResponseWaitlistEntryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/WaitlistEntryResponse"
+          }
+        }
+      },
+      "WaitlistEntryResponse": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slotDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "slotId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "slotTitle": {
+            "type": "string"
+          },
+          "startTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "status": {
+            "type": "string"
+          },
+          "teamId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "CloseSlotRequest": {
         "type": "object",
         "properties": {
@@ -162078,11 +162481,11 @@
           "startTime"
         ]
       },
-      "ApiResponseSlotTemplateResponse": {
+      "ApiResponseSlotTemplateSaveResponse": {
         "type": "object",
         "properties": {
           "data": {
-            "$ref": "#/components/schemas/SlotTemplateResponse"
+            "$ref": "#/components/schemas/SlotTemplateSaveResponse"
           }
         }
       },
@@ -162151,6 +162554,17 @@
           }
         }
       },
+      "SlotTemplateSaveResponse": {
+        "type": "object",
+        "properties": {
+          "generation": {
+            "$ref": "#/components/schemas/SlotGenerationResultDto"
+          },
+          "template": {
+            "$ref": "#/components/schemas/SlotTemplateResponse"
+          }
+        }
+      },
       "GenerateSlotsRequest": {
         "type": "object",
         "properties": {
@@ -162198,6 +162612,30 @@
             "format": "int32"
           }
         }
+      },
+      "GenerateSingleDayRequest": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "sourceDayOfWeek": {
+            "type": "string",
+            "enum": [
+              "MON",
+              "TUE",
+              "WED",
+              "THU",
+              "FRI",
+              "SAT",
+              "SUN"
+            ]
+          }
+        },
+        "required": [
+          "date"
+        ]
       },
       "BlockedTimeRequest": {
         "type": "object",
@@ -175225,6 +175663,52 @@
             "minLength": 1
           }
         }
+      },
+      "PageViewBeaconRequest": {
+        "type": "object",
+        "properties": {
+          "contentId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "contentType": {
+            "type": "string",
+            "enum": [
+              "ARTICLE",
+              "ACTIVITY",
+              "PAGE",
+              "TEAM"
+            ]
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "TEAM",
+              "ORGANIZATION"
+            ]
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 512,
+            "minLength": 0,
+            "pattern": "^/(?![/\\\\])[^\\x00-\\x1F]*$"
+          }
+        },
+        "required": [
+          "contentId",
+          "contentType",
+          "scope",
+          "scopeId"
+        ]
       },
       "CreateOrganizationRequest": {
         "type": "object",
@@ -195146,6 +195630,17 @@
           }
         }
       },
+      "ApiResponseListWaitlistEntryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WaitlistEntryResponse"
+            }
+          }
+        }
+      },
       "PagedResponseUserPromotionResponse": {
         "type": "object",
         "properties": {
@@ -197803,6 +198298,27 @@
           }
         }
       },
+      "ApiResponseWaitlistCountResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/WaitlistCountResponse"
+          }
+        }
+      },
+      "WaitlistCountResponse": {
+        "type": "object",
+        "properties": {
+          "slotId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "waitingCount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "ApiResponseReservationGridResponse": {
         "type": "object",
         "properties": {
@@ -197966,6 +198482,17 @@
           "totalTemplates": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "ApiResponseListBusinessHourResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BusinessHourResponse"
+            }
           }
         }
       },
@@ -202841,6 +203368,119 @@
             "items": {
               "$ref": "#/components/schemas/BlockResponse"
             }
+          }
+        }
+      },
+      "ApiResponsePageViewAnalyticsResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PageViewAnalyticsResponse"
+          }
+        }
+      },
+      "ContentRankingDto": {
+        "type": "object",
+        "properties": {
+          "contentId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "uniqueVisitors": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "url": {
+            "type": "string"
+          },
+          "views": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "DailyDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "uniqueVisitors": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "views": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "MonthlyDto": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "string"
+          },
+          "uniqueVisitors": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "views": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PageViewAnalyticsResponse": {
+        "type": "object",
+        "properties": {
+          "daily": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DailyDto"
+            }
+          },
+          "monthly": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MonthlyDto"
+            }
+          },
+          "summary": {
+            "$ref": "#/components/schemas/SummaryDto"
+          },
+          "topContent": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContentRankingDto"
+            }
+          }
+        }
+      },
+      "SummaryDto": {
+        "type": "object",
+        "properties": {
+          "guestViews": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "memberViews": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalViews": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "uniqueVisitors": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },

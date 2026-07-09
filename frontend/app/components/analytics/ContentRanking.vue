@@ -18,9 +18,9 @@ const typeIcon = (type: string) => {
 
 <template>
   <div>
-    <h3 class="mb-3 text-sm font-medium">人気コンテンツ</h3>
+    <h3 class="mb-3 text-sm font-medium">{{ $t('analytics.topContent.title') }}</h3>
     <div v-if="rankings.length === 0" class="py-4 text-center text-sm text-surface-500">
-      データがありません
+      {{ $t('analytics.topContent.empty') }}
     </div>
     <div v-else class="space-y-2">
       <NuxtLink

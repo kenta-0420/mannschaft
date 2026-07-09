@@ -1,6 +1,7 @@
 # F20.3 — 03 セキュリティ
 
-> **ステータス**: 🟢 設計完了（マスター御裁可済・実装待ち）
+> **ステータス**: 🟢 設計完了（マスター御裁可済・実装待ち／営利自動切替・オーナー変更は Phase 2 保留）
+> **⚠️ Phase 2 保留（マスター 2026-07-08）**: オーナー変更**自動イベント**による review_flag（B-4）は初期スコープ外（README §3・冒頭 Phase 2 保留ブロック）。初期は手動 `flag-review` で立てる。review_flag の秘匿・IDOR・売買対策の主防壁（USER スコープ限定）は初期スコープに残る。
 > 認可基盤は F20.1 03 と同じ `@accessGuard` パターン（`docs/security/03_role_authority_model.md`）を用いる。横断方針は [docs/security/README.md](../../security/README.md)。
 
 ---
@@ -13,7 +14,8 @@
 | チーム/組織の特典照会 | 当該スコープのメンバー以上 | `@accessGuard.isScopeMember(authentication, #teamId, 'TEAM')` / `@accessGuard.isScopeMember(authentication, #orgId, 'ORGANIZATION')` |
 | 付与・取消・延長・審査・候補一覧・条件マスタ CRUD | SYSTEM_ADMIN のみ | `@PreAuthorize("hasRole('SYSTEM_ADMIN')")`（全運用 EP） |
 | 自動付与 | システム（日次バッチ）のみ | API 経由なし（`@SchedulerLock` バッチ） |
-| review_flag 自動設定 | システム（イベントリスナー）のみ | API 経由なし |
+| review_flag 手動設定（`flag-review`・初期スコープ） | SYSTEM_ADMIN | 運用 API（02 §4） |
+| review_flag 自動設定（オーナー変更イベント）**【Phase 2 保留】** | システム（イベントリスナー）のみ | **初期スコープ外**（B-4・README §3）。API 経由なし。Phase 2 で実装 |
 
 - **チーム ADMIN にも付与系操作を許可しない**（特典は運営からの供与であり団体側の自己操作対象ではない。団体側は照会のみ）。
 - **バッジ授与は本機能のサービス経由のみ**（F04.7 の手動授与 API `POST /badges/{id}/award` を BETA_TESTER に流用しない運用ルール。system badge の授与経路を一本化し、`awarded_by='SYSTEM'` の意味を保つ）。
@@ -44,7 +46,7 @@ F20.1 03 §2 の原則（`getCurrentUserId()` の scopeId 流用禁止・子リ�
 |---|---|---|
 | 主防壁 | 個人特典 `scope_kind='USER'` 限定（DB CHECK `chk_bg_kind_scope`）＝買っても団体課金に充当不可 | 個人利用目的の売買は残るが経済価値が小さい |
 | 規約 | 譲渡・売買・貸与禁止＋違反時取消（第 17 条＋新設特典条項・README §5） | 事後対応（発見ベース） |
-| 検知 | オーナー変更イベント → review_flag（02 §5）。`SUSPECTED_TRANSFER` は将来の検知拡張の予約値（メール変更＋パスワード変更の短期連続等・本設計では実装しない） | **検知は保険であり主防壁ではない**。誤検知前提で「フラグ＝停止ではない」（AC-08） |
+| 検知 | オーナー変更イベント → review_flag（02 §5）**【自動イベントは Phase 2 保留・B-4。初期は手動 flag-review】**。`SUSPECTED_TRANSFER` は将来の検知拡張の予約値（メール変更＋パスワード変更の短期連続等・本設計では実装しない） | **検知は保険であり主防壁ではない**。誤検知前提で「フラグ＝停止ではない」（AC-08） |
 
 - **フラグ中も権利は有効のまま**（無実の団体の業務を止めない）。停止（revoke）は人間（運営）の判断のみで発生する。
 
@@ -99,6 +101,6 @@ F20.1 03 §2 の原則（`getCurrentUserId()` の scopeId 流用禁止・子リ�
 | B-1 | 規約改訂（特典専用条項の新設） | **✅ 確定**: 条文は**別 PR で起草**→マスター承認後に `landing.json` 6 言語反映。第 17 条が一般受け皿ゆえ本実装は非ブロック |
 | B-2 | 2 年後更新の運用方式 | **✅ (a) 確定**: シスアド一括延長のみ・自動更新しない |
 | B-3 | 取消時のバッジ剥奪 | **✅ (a) 確定**: 剥奪しない（不正取得断定時のみ手動剥奪） |
-| B-4 | オーナー変更イベントの有無・新設 | **✅ 新設確定**: team ドメインに最小 publish を新設。それまで手動 flag-review が代替（ブロックしない・実装時に既存確認） |
+| B-4 `[P2]` | オーナー変更イベントの有無・新設 | **✅ 新設確定 → 2026-07-08 マスター決定で Phase 2 保留（初期スコープ外）**（README 冒頭 Phase 2 保留ブロック）: team ドメインに最小 publish を新設するのは Phase 2。**初期は規約第 17 条＋手動 flag-review が代替**（ブロックしない・実装時に既存確認） |
 | B-5 | ベータ称号 system badge の scope | 🔧 **実装前確定条件として残置**（御裁可）: gamification grep で sentinel scope 可否確定（主フロー非依存・§F20.3 README §9.1） |
 | —  | F10.8 実装（activeDays 指標・FEATURE ビーコン） | 🕒 F10.8 実装完了まで `min_active_days=NULL` 運用で自動付与本番有効化せず手動審査のみ（ブロックしない・README §2） |

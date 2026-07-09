@@ -148,6 +148,18 @@ class AuthorizationIntegrationTest {
                     mock(org.springframework.beans.factory.ObjectProvider.class);
             return new AdPublicEndpointRateLimitFilter(rateLimiterProvider);
         }
+        /**
+         * F10.8: SecurityConfig が要求する {@link com.mannschaft.app.analytics.filter.PageViewBeaconRateLimitFilter} の
+         * 本物インスタンス（判定に使う ValkeyRateLimiter は mock 供給）。既存 AdPublicEndpointRateLimitFilter と同型。
+         */
+        @Bean
+        @SuppressWarnings("unchecked")
+        com.mannschaft.app.analytics.filter.PageViewBeaconRateLimitFilter pageViewBeaconRateLimitFilter() {
+            org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.common.ratelimit.ValkeyRateLimiter> rateLimiterProvider =
+                    org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
+            return new com.mannschaft.app.analytics.filter.PageViewBeaconRateLimitFilter(rateLimiterProvider);
+        }
+
 
         /** Valkey 化第二陣B: ValkeyRateLimiter は空 Provider（素通し）。addFilterAfter 登録方式は不変。 */
         @Bean

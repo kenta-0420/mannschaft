@@ -2013,6 +2013,33 @@
       }
     }
   },
+  "analytics": {
+    "title": "Access Analytics",
+    "loadError": "Failed to load access analytics data",
+    "empty": "No access data yet",
+    "summary": {
+      "totalViews": "Total PV",
+      "uniqueVisitors": "Unique Visitors",
+      "memberViews": "Member Views",
+      "guestViews": "Guest Views"
+    },
+    "export": "Export Data",
+    "topContent": {
+      "title": "Popular Content",
+      "empty": "No data available"
+    },
+    "chart": {
+      "views": "Page Views",
+      "daily": "Daily",
+      "monthly": "Monthly",
+      "toggle": "Toggle View",
+      "recentDays": "Access statistics for the last 30 days",
+      "monthlyTrend": "Monthly access trend statistics"
+    },
+    "period": {
+      "allTime": "All Time"
+    }
+  },
   "comingSoon": {
     "title": "Coming Soon",
     "description": "This feature is currently under development. Please check back later."

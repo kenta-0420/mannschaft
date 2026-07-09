@@ -2013,6 +2013,33 @@
       }
     }
   },
+  "analytics": {
+    "title": "Zugriffsanalyse",
+    "loadError": "Zugriffsanalysedaten konnten nicht geladen werden",
+    "empty": "Noch keine Zugriffsdaten vorhanden",
+    "summary": {
+      "totalViews": "Gesamt-PV",
+      "uniqueVisitors": "Eindeutige Besucher",
+      "memberViews": "Mitgliederaufrufe",
+      "guestViews": "Gastaufrufe"
+    },
+    "export": "Daten exportieren",
+    "topContent": {
+      "title": "Beliebte Inhalte",
+      "empty": "Keine Daten verfügbar"
+    },
+    "chart": {
+      "views": "Seitenaufrufe",
+      "daily": "Täglich",
+      "monthly": "Monatlich",
+      "toggle": "Ansicht wechseln",
+      "recentDays": "Zugriffsstatistiken der letzten 30 Tage",
+      "monthlyTrend": "Monatliche Zugriffstrendstatistiken"
+    },
+    "period": {
+      "allTime": "Gesamtzeitraum"
+    }
+  },
   "comingSoon": {
     "title": "Demnächst verfügbar",
     "description": "Diese Funktion befindet sich derzeit in der Entwicklung. Bitte schauen Sie später wieder vorbei."

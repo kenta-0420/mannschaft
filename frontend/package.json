@@ -87,7 +87,8 @@
     "otplib": "^13.4.0",
     "prettier": "^3.8.1",
     "vite": "^7.3.5",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.0",
+    "vue-tsc": "3.3.7"
   },
   "overrides": {
     "cac": "^6.7.14",
