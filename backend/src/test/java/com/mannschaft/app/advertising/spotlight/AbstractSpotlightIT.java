@@ -288,10 +288,12 @@ abstract class AbstractSpotlightIT extends AbstractMySqlIntegrationTest {
                 new java.math.BigDecimal("500.0000"));
         Long creativeId = insertCreative(creativeCampaign, "予約バナー", placement, "ACTIVE");
 
+        // ad_messaging_campaigns は V67.024〜026 で organization_id を撤廃し scope_type/scope_id へ移行済み。
+        // moderation_status/consumed_budget_yen/scheduled_timezone 等の他 NOT NULL 列は DDL DEFAULT を持つため省略可。
         em.createNativeQuery(
-                        "INSERT INTO ad_messaging_campaigns (id, advertiser_account_id, organization_id, name, "
+                        "INSERT INTO ad_messaging_campaigns (id, advertiser_account_id, scope_type, scope_id, name, "
                                 + "status, total_budget_yen, starts_at, ends_at, created_by_user_id, created_at, updated_at) "
-                                + "VALUES (UUID_TO_BIN(:cid), :aid, :oid, '予約キャンペーン', 'DELIVERING', 100000, "
+                                + "VALUES (UUID_TO_BIN(:cid), :aid, 'ORGANIZATION', :oid, '予約キャンペーン', 'DELIVERING', 100000, "
                                 + "DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 7 DAY), :creator, NOW(), NOW())")
                 .setParameter("cid", campaignUuid).setParameter("aid", advAccountId)
                 .setParameter("oid", orgId).setParameter("creator", creatorUserId)
