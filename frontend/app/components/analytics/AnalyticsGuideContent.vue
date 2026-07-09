@@ -101,7 +101,7 @@
       </div>
     </SectionCard>
 
-    <!-- セクション5: 人気コンテンツ（準備中） -->
+    <!-- セクション5: 人気コンテンツ -->
     <SectionCard>
       <div class="flex items-start gap-4">
         <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400">

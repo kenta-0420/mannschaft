@@ -25,7 +25,7 @@ const typeIcon = (type: string) => {
     <div v-else class="space-y-2">
       <NuxtLink
         v-for="(item, index) in rankings"
-        :key="item.contentId"
+        :key="`${item.contentType}-${item.contentId}`"
         :to="item.url"
         class="flex items-center gap-3 rounded-lg border border-surface-300 p-3 transition-shadow hover:shadow-sm dark:border-surface-600"
       >
