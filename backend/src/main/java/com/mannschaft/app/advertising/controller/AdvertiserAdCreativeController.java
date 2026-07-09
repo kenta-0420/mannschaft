@@ -4,9 +4,12 @@ import com.mannschaft.app.advertising.dto.AdCreativeResponse;
 import com.mannschaft.app.advertising.dto.CreateAdCreativeRequest;
 import com.mannschaft.app.advertising.dto.UpdateAdCreativeRequest;
 import com.mannschaft.app.advertising.entity.AdCampaignEntity;
+import com.mannschaft.app.advertising.entity.AdvertiserAccountEntity;
 import com.mannschaft.app.advertising.repository.AdCampaignRepository;
+import com.mannschaft.app.advertising.repository.AdvertiserAccountRepository;
 import com.mannschaft.app.advertising.service.AdCreativeService;
 import com.mannschaft.app.common.AccessControlService;
+import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
@@ -40,6 +43,7 @@ public class AdvertiserAdCreativeController {
     private final AdCreativeService adCreativeService;
     private final AccessControlService accessControlService;
     private final AdCampaignRepository adCampaignRepository;
+    private final AdvertiserAccountRepository advertiserAccountRepository;
 
     /**
      * ADMIN 以上であること、かつパス上の {@code campaignId} が当該組織の広告主に帰属することを検証する。
@@ -51,9 +55,12 @@ public class AdvertiserAdCreativeController {
     private void verifyCampaignAccess(Long organizationId, Long campaignId) {
         Long userId = SecurityUtils.getCurrentUserId();
         accessControlService.checkAdminOrAbove(userId, organizationId, "ORGANIZATION");
+        AdvertiserAccountEntity account = advertiserAccountRepository
+                .findByScopeTypeAndScopeIdAndDeletedAtIsNull(ScopeType.ORGANIZATION, organizationId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_002));
         AdCampaignEntity campaign = adCampaignRepository.findById(campaignId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_002));
-        if (!Objects.equals(campaign.getAdvertiserOrganizationId(), organizationId)) {
+        if (!Objects.equals(campaign.getAdvertiserAccountId(), account.getId())) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
     }

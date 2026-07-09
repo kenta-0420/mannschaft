@@ -7,8 +7,10 @@ import com.mannschaft.app.advertising.dto.OperationalCampaignResponse;
 import com.mannschaft.app.advertising.entity.AdCampaignEntity;
 import com.mannschaft.app.advertising.entity.AdCampaignEntity.CampaignStatus;
 import com.mannschaft.app.advertising.entity.AdRateCardEntity;
+import com.mannschaft.app.advertising.entity.AdvertiserAccountEntity;
 import com.mannschaft.app.advertising.repository.AdCampaignRepository;
 import com.mannschaft.app.advertising.repository.AdRateCardRepository;
+import com.mannschaft.app.advertising.repository.AdvertiserAccountRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
@@ -60,6 +62,7 @@ public class OperationalAdCampaignService {
     private static final ObjectMapper AUDIT_METADATA_MAPPER = new ObjectMapper();
 
     private final AdCampaignRepository adCampaignRepository;
+    private final AdvertiserAccountRepository advertiserAccountRepository;
     private final AdRateCardRepository adRateCardRepository;
     private final AuditLogService auditLogService;
     private final Clock clock;
@@ -76,8 +79,10 @@ public class OperationalAdCampaignService {
                 request.pricingModel(), request.dailyBudget(),
                 request.startDate(), request.endDate(), request.rateCardId());
 
+        Long advertiserAccountId = resolveAccountId(scopeType, scopeId);
+
         AdCampaignEntity entity = AdCampaignEntity.builder()
-                .advertiserOrganizationId(scopeId)
+                .advertiserAccountId(advertiserAccountId)
                 .name(request.name())
                 .status(CampaignStatus.DRAFT)
                 .pricingModel(request.pricingModel())
@@ -94,23 +99,24 @@ public class OperationalAdCampaignService {
     /** 一覧（status フィルタ・created_at DESC・PagedResponse 正準）。 */
     public PagedResponse<OperationalCampaignResponse> list(ScopeType scopeType, Long scopeId,
                                                            CampaignStatus status, int page, int size) {
+        Long advertiserAccountId = resolveAccountId(scopeType, scopeId);
         Pageable pageable = createdAtDescPageable(page, size);
         Page<AdCampaignEntity> result = (status == null)
-                ? adCampaignRepository.findByAdvertiserOrganizationId(scopeId, pageable)
-                : adCampaignRepository.findByAdvertiserOrganizationIdAndStatus(scopeId, status, pageable);
+                ? adCampaignRepository.findByAdvertiserAccountId(advertiserAccountId, pageable)
+                : adCampaignRepository.findByAdvertiserAccountIdAndStatus(advertiserAccountId, status, pageable);
         return toPaged(result, page, pageable.getPageSize());
     }
 
     /** 詳細。 */
     public OperationalCampaignResponse get(ScopeType scopeType, Long scopeId, Long campaignId) {
-        return toResponse(findScoped(scopeId, campaignId));
+        return toResponse(findScoped(scopeType, scopeId, campaignId));
     }
 
     /** 編集（DRAFT / PAUSED のみ。PUT 全フィールド送信）。 */
     @Transactional
     public OperationalCampaignResponse update(ScopeType scopeType, Long scopeId, Long campaignId,
                                               CreateOperationalCampaignRequest request) {
-        AdCampaignEntity campaign = findScoped(scopeId, campaignId);
+        AdCampaignEntity campaign = findScoped(scopeType, scopeId, campaignId);
         switch (campaign.getStatus()) {
             case DRAFT -> {
                 // DRAFT は全フィールド編集可。バリデーション（AD_030/031/028）は常に実施し、
@@ -144,10 +150,10 @@ public class OperationalAdCampaignService {
     /** DRAFT → PENDING_REVIEW（reject_reason NULL クリア + 監査ログ）。 */
     @Transactional
     public OperationalCampaignResponse submit(ScopeType scopeType, Long scopeId, Long campaignId, Long userId) {
-        AdCampaignEntity campaign = findScoped(scopeId, campaignId);
+        AdCampaignEntity campaign = findScoped(scopeType, scopeId, campaignId);
         requireStatus(campaign, CampaignStatus.DRAFT);
         campaign.submitForReview();
-        recordAudit(AUDIT_SUBMITTED, userId, campaign.getAdvertiserOrganizationId(),
+        recordAudit(AUDIT_SUBMITTED, userId, auditOrgId(scopeType, scopeId),
                 auditMetadata(campaign.getId(), null));
         return toResponse(campaign);
     }
@@ -155,10 +161,10 @@ public class OperationalAdCampaignService {
     /** ACTIVE → PAUSED。 */
     @Transactional
     public OperationalCampaignResponse pause(ScopeType scopeType, Long scopeId, Long campaignId, Long userId) {
-        AdCampaignEntity campaign = findScoped(scopeId, campaignId);
+        AdCampaignEntity campaign = findScoped(scopeType, scopeId, campaignId);
         requireStatus(campaign, CampaignStatus.ACTIVE);
         campaign.pause();
-        recordAudit(AUDIT_PAUSED, userId, campaign.getAdvertiserOrganizationId(),
+        recordAudit(AUDIT_PAUSED, userId, auditOrgId(scopeType, scopeId),
                 auditMetadata(campaign.getId(), null));
         return toResponse(campaign);
     }
@@ -166,13 +172,13 @@ public class OperationalAdCampaignService {
     /** PAUSED → ACTIVE。通報自動停止中（report_suspended_at 非 NULL）は 403 / AD_033。 */
     @Transactional
     public OperationalCampaignResponse resume(ScopeType scopeType, Long scopeId, Long campaignId, Long userId) {
-        AdCampaignEntity campaign = findScoped(scopeId, campaignId);
+        AdCampaignEntity campaign = findScoped(scopeType, scopeId, campaignId);
         requireStatus(campaign, CampaignStatus.PAUSED);
         if (campaign.getReportSuspendedAt() != null) {
             throw new BusinessException(AdvertisingErrorCode.AD_033);
         }
         campaign.resume();
-        recordAudit(AUDIT_RESUMED, userId, campaign.getAdvertiserOrganizationId(),
+        recordAudit(AUDIT_RESUMED, userId, auditOrgId(scopeType, scopeId),
                 auditMetadata(campaign.getId(), null));
         return toResponse(campaign);
     }
@@ -180,12 +186,12 @@ public class OperationalAdCampaignService {
     /** ACTIVE / PAUSED → ENDED（終端・不可逆）。 */
     @Transactional
     public OperationalCampaignResponse end(ScopeType scopeType, Long scopeId, Long campaignId, Long userId) {
-        AdCampaignEntity campaign = findScoped(scopeId, campaignId);
+        AdCampaignEntity campaign = findScoped(scopeType, scopeId, campaignId);
         if (campaign.getStatus() != CampaignStatus.ACTIVE && campaign.getStatus() != CampaignStatus.PAUSED) {
             throw new BusinessException(AdvertisingErrorCode.AD_027);
         }
         campaign.end();
-        recordAudit(AUDIT_ENDED, userId, campaign.getAdvertiserOrganizationId(),
+        recordAudit(AUDIT_ENDED, userId, auditOrgId(scopeType, scopeId),
                 auditMetadata(campaign.getId(), null));
         return toResponse(campaign);
     }
@@ -209,7 +215,7 @@ public class OperationalAdCampaignService {
         AdCampaignEntity campaign = findById(campaignId);
         requireStatus(campaign, CampaignStatus.PENDING_REVIEW);
         campaign.approve();
-        recordAudit(AUDIT_APPROVED, adminUserId, campaign.getAdvertiserOrganizationId(),
+        recordAudit(AUDIT_APPROVED, adminUserId, auditOrgIdFromCampaign(campaign),
                 auditMetadata(campaign.getId(), null));
         return toResponse(campaign);
     }
@@ -220,7 +226,7 @@ public class OperationalAdCampaignService {
         AdCampaignEntity campaign = findById(campaignId);
         requireStatus(campaign, CampaignStatus.PENDING_REVIEW);
         campaign.reject(reason);
-        recordAudit(AUDIT_REJECTED, adminUserId, campaign.getAdvertiserOrganizationId(),
+        recordAudit(AUDIT_REJECTED, adminUserId, auditOrgIdFromCampaign(campaign),
                 auditMetadata(campaign.getId(), reason));
         return toResponse(campaign);
     }
@@ -230,13 +236,41 @@ public class OperationalAdCampaignService {
     // ═══════════════════════════════════════════════════════════════════════
 
     /** scope に帰属するキャンペーンを取得する。不在・越境はいずれも 403（存在有無を問わず）。 */
-    private AdCampaignEntity findScoped(Long scopeId, Long campaignId) {
+    private AdCampaignEntity findScoped(ScopeType scopeType, Long scopeId, Long campaignId) {
+        Long advertiserAccountId = resolveAccountId(scopeType, scopeId);
         AdCampaignEntity campaign = adCampaignRepository.findById(campaignId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_002));
-        if (!Objects.equals(campaign.getAdvertiserOrganizationId(), scopeId)) {
+        if (!Objects.equals(campaign.getAdvertiserAccountId(), advertiserAccountId)) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
         return campaign;
+    }
+
+    /**
+     * scope（org/team）に対応する広告主アカウント id を解決する。
+     * Controller で ACTIVE 検証済みだが、不在は防御的に 403（COMMON_002）とする。
+     */
+    private Long resolveAccountId(ScopeType scopeType, Long scopeId) {
+        return advertiserAccountRepository
+                .findByScopeTypeAndScopeIdAndDeletedAtIsNull(scopeType, scopeId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_002))
+                .getId();
+    }
+
+    /** 監査ログの organization_id: scope が ORGANIZATION のときのみ scopeId、TEAM 等は null。 */
+    private Long auditOrgId(ScopeType scopeType, Long scopeId) {
+        return scopeType == ScopeType.ORGANIZATION ? scopeId : null;
+    }
+
+    /** SYSTEM_ADMIN 審査経路の監査ログ organization_id を、キャンペーンの広告主アカウントから解決する。 */
+    private Long auditOrgIdFromCampaign(AdCampaignEntity campaign) {
+        AdvertiserAccountEntity account = advertiserAccountRepository
+                .findById(campaign.getAdvertiserAccountId())
+                .orElse(null);
+        if (account == null || account.getScopeType() != ScopeType.ORGANIZATION) {
+            return null;
+        }
+        return account.getScopeId();
     }
 
     /** SYSTEM_ADMIN 審査用（scope 検証なし）。 */

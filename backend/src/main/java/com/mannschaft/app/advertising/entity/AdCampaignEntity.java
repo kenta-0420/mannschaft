@@ -26,8 +26,12 @@ import java.time.LocalDate;
 @SuperBuilder
 public class AdCampaignEntity extends BaseEntity {
 
+    /**
+     * advertiser_accounts.id（同一 advertising ドメインのため FK 可）。
+     * F09.19.5 で advertiser_organization_id 直結から付け替え（scope 化。org/team 両対応）。
+     */
     @Column(nullable = false)
-    private Long advertiserOrganizationId;
+    private Long advertiserAccountId;
 
     @Column(nullable = false, length = 200)
     private String name;

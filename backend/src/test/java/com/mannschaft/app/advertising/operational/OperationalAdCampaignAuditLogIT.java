@@ -64,6 +64,7 @@ class OperationalAdCampaignAuditLogIT extends AbstractMySqlIntegrationTest {
     private Long adminId;
     private Long sysAdminId;
     private Long rateCardId;
+    private Long accountId;
 
     @BeforeEach
     void setUp() {
@@ -76,7 +77,7 @@ class OperationalAdCampaignAuditLogIT extends AbstractMySqlIntegrationTest {
 
         insertUserRole(adminId, roleId("ADMIN"), orgId);
         insertUserRole(sysAdminId, roleId("SYSTEM_ADMIN"), null);
-        insertAdvertiserAccount(orgId, "監査ログ広告主");
+        accountId = insertAdvertiserAccount(orgId, "監査ログ広告主");
         rateCardId = insertRateCard();
 
         em.flush();
@@ -239,7 +240,7 @@ class OperationalAdCampaignAuditLogIT extends AbstractMySqlIntegrationTest {
                 .executeUpdate();
     }
 
-    private void insertAdvertiserAccount(Long orgId, String companyName) {
+    private Long insertAdvertiserAccount(Long orgId, String companyName) {
         em.createNativeQuery(
                         "INSERT INTO advertiser_accounts (scope_type, scope_id, status, company_name, "
                                 + "contact_email, billing_method, credit_limit, created_at, updated_at) "
@@ -248,6 +249,7 @@ class OperationalAdCampaignAuditLogIT extends AbstractMySqlIntegrationTest {
                 .setParameter("oid", orgId)
                 .setParameter("cn", companyName)
                 .executeUpdate();
+        return ((Number) em.createNativeQuery("SELECT MAX(id) FROM advertiser_accounts").getSingleResult()).longValue();
     }
 
     private Long insertRateCard() {
@@ -264,13 +266,13 @@ class OperationalAdCampaignAuditLogIT extends AbstractMySqlIntegrationTest {
 
     private Long insertCampaign(Long orgId, String name, String status) {
         em.createNativeQuery(
-                        "INSERT INTO ad_campaigns (advertiser_organization_id, name, status, pricing_model, "
+                        "INSERT INTO ad_campaigns (advertiser_account_id, name, status, pricing_model, "
                                 + "daily_budget, start_date, end_date, rate_card_id, unit_price_snapshot, "
                                 + "created_at, updated_at) "
-                                + "VALUES (:oid, :name, :status, 'CPM', 1000.00, "
+                                + "VALUES (:aid, :name, :status, 'CPM', 1000.00, "
                                 + "DATE_ADD(CURDATE(), INTERVAL 1 DAY), DATE_ADD(CURDATE(), INTERVAL 30 DAY), "
                                 + ":cardId, 500.0000, NOW(), NOW())")
-                .setParameter("oid", orgId)
+                .setParameter("aid", accountId)
                 .setParameter("name", name)
                 .setParameter("status", status)
                 .setParameter("cardId", rateCardId)

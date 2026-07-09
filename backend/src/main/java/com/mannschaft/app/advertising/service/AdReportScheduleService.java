@@ -31,10 +31,17 @@ public class AdReportScheduleService {
     private final ObjectMapper objectMapper;
 
     /**
-     * レポートスケジュール一覧を取得する。
+     * レポートスケジュール一覧を取得する（組織スコープ）。
      */
     public List<ReportScheduleResponse> findByOrganizationId(Long organizationId) {
-        AdvertiserAccountEntity account = advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(ScopeType.ORGANIZATION, organizationId)
+        return findByScope(ScopeType.ORGANIZATION, organizationId);
+    }
+
+    /**
+     * レポートスケジュール一覧を取得する（scope 化。F09.19.5: org/team 両対応）。
+     */
+    public List<ReportScheduleResponse> findByScope(ScopeType scopeType, Long scopeId) {
+        AdvertiserAccountEntity account = advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(AdvertisingErrorCode.AD_005));
         return adReportScheduleRepository.findByAdvertiserAccountId(account.getId()).stream()
                 .map(this::toResponse)

@@ -77,11 +77,11 @@ class AdvertiserAdCreativeIdorIT extends AbstractMySqlIntegrationTest {
         insertUserRole(adminAId, adminRoleId, orgAId);
         insertUserRole(adminBId, adminRoleId, orgBId);
 
-        insertAdvertiserAccount(orgAId, "IDOR組織A広告主");
-        insertAdvertiserAccount(orgBId, "IDOR組織B広告主");
+        Long accountAId = insertAdvertiserAccount(orgAId, "IDOR組織A広告主");
+        Long accountBId = insertAdvertiserAccount(orgBId, "IDOR組織B広告主");
 
-        campaignAId = insertCampaign(orgAId, "組織Aキャンペーン");
-        campaignBId = insertCampaign(orgBId, "組織Bキャンペーン");
+        campaignAId = insertCampaign(accountAId, "組織Aキャンペーン");
+        campaignBId = insertCampaign(accountBId, "組織Bキャンペーン");
         creativeBId = insertCreative(campaignBId, "組織Bの既存クリエイティブ");
 
         em.flush();
@@ -297,7 +297,7 @@ class AdvertiserAdCreativeIdorIT extends AbstractMySqlIntegrationTest {
                 .executeUpdate();
     }
 
-    private void insertAdvertiserAccount(Long orgId, String companyName) {
+    private Long insertAdvertiserAccount(Long orgId, String companyName) {
         em.createNativeQuery(
                         "INSERT INTO advertiser_accounts (scope_type, scope_id, status, company_name, "
                                 + "contact_email, billing_method, credit_limit, created_at, updated_at) "
@@ -306,16 +306,17 @@ class AdvertiserAdCreativeIdorIT extends AbstractMySqlIntegrationTest {
                 .setParameter("oid", orgId)
                 .setParameter("cn", companyName)
                 .executeUpdate();
+        return ((Number) em.createNativeQuery("SELECT MAX(id) FROM advertiser_accounts").getSingleResult()).longValue();
     }
 
-    private Long insertCampaign(Long orgId, String name) {
+    private Long insertCampaign(Long advertiserAccountId, String name) {
         em.createNativeQuery(
-                        "INSERT INTO ad_campaigns (advertiser_organization_id, name, status, pricing_model, "
+                        "INSERT INTO ad_campaigns (advertiser_account_id, name, status, pricing_model, "
                                 + "daily_budget, start_date, end_date, created_at, updated_at) "
-                                + "VALUES (:oid, :name, 'DRAFT', 'CPM', :budget, "
+                                + "VALUES (:aid, :name, 'DRAFT', 'CPM', :budget, "
                                 + "DATE_ADD(CURDATE(), INTERVAL 1 DAY), DATE_ADD(CURDATE(), INTERVAL 30 DAY), "
                                 + "NOW(), NOW())")
-                .setParameter("oid", orgId)
+                .setParameter("aid", advertiserAccountId)
                 .setParameter("name", name)
                 .setParameter("budget", new BigDecimal("1000.00"))
                 .executeUpdate();
