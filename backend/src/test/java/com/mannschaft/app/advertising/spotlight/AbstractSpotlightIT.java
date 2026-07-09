@@ -1,11 +1,13 @@
 package com.mannschaft.app.advertising.spotlight;
 
+import com.mannschaft.app.admin.service.FeatureFlagService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.time.Duration;
 import java.util.List;
@@ -39,11 +41,20 @@ abstract class AbstractSpotlightIT extends AbstractMySqlIntegrationTest {
     @PersistenceContext
     protected EntityManager em;
 
+    /**
+     * FEATURE_V9（広告プラットフォーム）機能フラグ。{@code serveContent} は FEATURE_V9_ENABLED 無効時に
+     * items:[] を返す（正本 §7.5 ゲート）。IT では常時有効化して配信ロジック本体を検証する。
+     * flag=false 経路を検証するテストは本 IT 群には無い（検証対象は配信 / 計測ロジック）。
+     */
+    @MockitoBean
+    protected FeatureFlagService featureFlagService;
+
     /** in-memory Valkey フェイクのバッキングストア（各テストで作り直す）。 */
     protected Map<String, String> redisStore;
 
     protected void setUpCommon() {
         wireInMemoryRedis();
+        lenient().when(featureFlagService.isEnabled("FEATURE_V9_ENABLED")).thenReturn(true);
         SecurityContextHolder.clearContext();
     }
 
@@ -162,9 +173,12 @@ abstract class AbstractSpotlightIT extends AbstractMySqlIntegrationTest {
     }
 
     protected Long insertTeam(String name) {
+        // ddl-auto=create のため slug（nullable=false・unique）/ member_count（nullable=false）を明示指定する。
         em.createNativeQuery(
-                        "INSERT INTO teams (name, visibility, supporter_enabled, version, created_at, updated_at) "
-                                + "VALUES (:name, 'PUBLIC', 1, 0, NOW(), NOW())")
+                        "INSERT INTO teams (name, slug, visibility, supporter_enabled, member_count, "
+                                + "version, created_at, updated_at) "
+                                + "VALUES (:name, CONCAT('t-', LEFT(REPLACE(UUID(),'-',''),8)), 'PUBLIC', 1, 0, "
+                                + "0, NOW(), NOW())")
                 .setParameter("name", name).executeUpdate();
         return ((Number) em.createNativeQuery("SELECT MAX(id) FROM teams").getSingleResult()).longValue();
     }
@@ -289,12 +303,15 @@ abstract class AbstractSpotlightIT extends AbstractMySqlIntegrationTest {
         Long creativeId = insertCreative(creativeCampaign, "予約バナー", placement, "ACTIVE");
 
         // ad_messaging_campaigns は V67.024〜026 で organization_id を撤廃し scope_type/scope_id へ移行済み。
-        // moderation_status/consumed_budget_yen/scheduled_timezone 等の他 NOT NULL 列は DDL DEFAULT を持つため省略可。
+        // IT スキーマは ddl-auto=create（エンティティ由来・DB DEFAULT 無し）のため、@PrePersist の Java 既定値は
+        // native INSERT では効かない。nullable=false 列（consumed_budget_yen/scheduled_timezone/moderation_status）を明示指定する。
         em.createNativeQuery(
                         "INSERT INTO ad_messaging_campaigns (id, advertiser_account_id, scope_type, scope_id, name, "
-                                + "status, total_budget_yen, starts_at, ends_at, created_by_user_id, created_at, updated_at) "
-                                + "VALUES (UUID_TO_BIN(:cid), :aid, 'ORGANIZATION', :oid, '予約キャンペーン', 'DELIVERING', 100000, "
-                                + "DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 7 DAY), :creator, NOW(), NOW())")
+                                + "status, total_budget_yen, consumed_budget_yen, starts_at, ends_at, "
+                                + "scheduled_timezone, moderation_status, created_by_user_id, created_at, updated_at) "
+                                + "VALUES (UUID_TO_BIN(:cid), :aid, 'ORGANIZATION', :oid, '予約キャンペーン', 'DELIVERING', 100000, 0, "
+                                + "DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 7 DAY), "
+                                + "'Asia/Tokyo', 'APPROVED', :creator, NOW(), NOW())")
                 .setParameter("cid", campaignUuid).setParameter("aid", advAccountId)
                 .setParameter("oid", orgId).setParameter("creator", creatorUserId)
                 .executeUpdate();
