@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * 組織アクセス解析ページ（F10.8 本実装）。
+ *
+ * エクスポートは F10.8 対象外（マスター御裁可 2026-07-08・§10.2-C）のため含めない。
+ */
 import type { AnalyticsResponse } from '~/types/analytics'
 
 definePageMeta({ layout: 'organization', middleware: 'auth' })
@@ -11,6 +16,7 @@ const { t } = useI18n()
 
 const data = ref<AnalyticsResponse | null>(null)
 const loading = ref(true)
+const showGuide = ref(false)
 
 async function loadData() {
   loading.value = true
@@ -27,10 +33,8 @@ onMounted(loadData)
 </script>
 
 <template>
-  <div class="mx-auto max-w-6xl">
-    <div class="mb-6">
-      <h1 class="text-2xl font-bold">{{ $t('analytics.title') }}</h1>
-    </div>
+  <div class="mx-auto max-w-6xl p-6">
+    <PageHeader :title="$t('analytics.title')" help @help="showGuide = true" />
 
     <!-- データエクスポートは F10.8 対象外（マスター御裁可 2026-07-08・§10.2-C）。
          BE エクスポート API 実装後に別 PR で再結線する。 -->
@@ -79,5 +83,8 @@ onMounted(loadData)
         <ContentRanking :rankings="data.topContent" />
       </SectionCard>
     </template>
+
+    <!-- 使い方説明モーダル -->
+    <AnalyticsGuideModal v-model:visible="showGuide" />
   </div>
 </template>
