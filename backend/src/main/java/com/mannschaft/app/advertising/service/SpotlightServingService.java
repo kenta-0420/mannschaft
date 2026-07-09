@@ -168,7 +168,9 @@ public class SpotlightServingService {
         }
         switch (scopeType) {
             case "TEAM":
-                return teamPlanService.hasPaidPlan(scopeId);
+                // 非キャッシュのフレッシュ判定（ORGANIZATION / PERSONAL と同様）。@Cacheable な hasPaidPlan は
+                // サブスク失効を即時反映できず広告非表示ゲートが stale 化する（§7.5 は鮮度優先）。
+                return teamPlanService.hasAnyActivePaidPlan(java.util.List.of(scopeId));
             case "ORGANIZATION":
                 List<Long> orgTeamIds = roleService.getTeamIdsByOrganizationId(scopeId);
                 return teamPlanService.hasActiveOrganizationPlan(orgTeamIds);
