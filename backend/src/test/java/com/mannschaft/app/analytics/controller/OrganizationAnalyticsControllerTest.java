@@ -49,7 +49,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>AC-09: 非メンバー → 404</li>
  *   <li>AC-11: dateFrom > dateTo → 400</li>
  *   <li>AC-12: 日付省略で正常 200</li>
- *   <li>AC-15: topContent 常に空配列</li>
+ *   <li>AC-P2-8: topContent 実データ配列（第 2 弾）</li>
  *   <li>AC-16: 日付フォーマット</li>
  *   <li>AC-17: 組織版がチーム版と同一構造で動作する</li>
  * </ul>

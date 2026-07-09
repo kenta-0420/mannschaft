@@ -47,7 +47,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>AC-09: 非メンバー（Guard が 404 投げる）→ 404</li>
  *   <li>AC-11: dateFrom > dateTo → 400</li>
  *   <li>AC-12: 日付省略で正常 200</li>
- *   <li>AC-15: topContent 常に空配列</li>
+ *   <li>AC-P2-8: topContent 実データ配列（第 2 弾）</li>
  *   <li>AC-16: daily[].date = "YYYY-MM-DD"、monthly[].month = "YYYY-MM" 形式</li>
  * </ul>
  */

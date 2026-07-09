@@ -6,6 +6,7 @@ import com.mannschaft.app.analytics.dto.PageViewAnalyticsResponse;
 import com.mannschaft.app.analytics.service.PageViewAnalyticsAccessGuard;
 import com.mannschaft.app.analytics.service.PageViewAnalyticsService;
 import com.mannschaft.app.analytics.service.PageViewAnalyticsService.AnalyticsResult;
+import com.mannschaft.app.analytics.service.PageViewAnalyticsService.ContentStat;
 import com.mannschaft.app.analytics.service.PageViewAnalyticsService.DailyStat;
 import com.mannschaft.app.analytics.service.PageViewAnalyticsService.MonthlyStat;
 import com.mannschaft.app.analytics.service.PageViewAnalyticsService.SummaryStat;
@@ -27,8 +28,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * 組織アクセス解析コントローラー（F10.8）。
@@ -97,12 +98,14 @@ public class OrganizationAnalyticsController {
 
     /**
      * Service のビューモデルから FE 契約 DTO へ変換する。
-     * topContent は第 1 弾では空配列（AC-15）。
+     * topContent は第 2 弾で実データ（人気コンテンツランキング）を返す（AC-P2-8）。
+     * FE 型は全フィールド非 null 契約のため、防御的に文字列は空文字へフォールバックする。
      */
     private PageViewAnalyticsResponse toResponse(AnalyticsResult result) {
         SummaryStat s = result.summary();
         List<DailyStat> daily = result.daily();
         List<MonthlyStat> monthly = result.monthly();
+        List<ContentStat> topContent = result.topContent();
 
         return PageViewAnalyticsResponse.builder()
                 .summary(PageViewAnalyticsResponse.SummaryDto.builder()
@@ -125,7 +128,16 @@ public class OrganizationAnalyticsController {
                                 .uniqueVisitors(m.uniqueVisitors())
                                 .build())
                         .toList())
-                .topContent(Collections.emptyList())
+                .topContent(topContent.stream()
+                        .map(c -> PageViewAnalyticsResponse.ContentRankingDto.builder()
+                                .contentType(Objects.requireNonNullElse(c.contentType(), ""))
+                                .contentId(c.contentId())
+                                .title(Objects.requireNonNullElse(c.title(), ""))
+                                .url(Objects.requireNonNullElse(c.url(), ""))
+                                .views(c.views())
+                                .uniqueVisitors(c.uniqueVisitors())
+                                .build())
+                        .toList())
                 .build();
     }
 }

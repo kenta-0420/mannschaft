@@ -19,8 +19,9 @@ import java.util.List;
 /**
  * ページビュー集計取得サービス（F10.8 アクセス解析・GET のデータ源）。
  *
- * <p>認可済みの scope（team / organization）について、指定期間の summary / daily / monthly を組み立てて返す
- * （設計書 §5.3）。topContent は<b>第1弾では常に空</b>（Controller が空配列にマップ・設計書 §1.5 / AC-15）。
+ * <p>認可済みの scope（team / organization）について、指定期間の summary / daily / monthly / topContent を
+ * 組み立てて返す（設計書 §5.3）。topContent（人気コンテンツランキング）は<b>第2弾で実データ</b>を
+ * 生ログ {@code page_view_logs} の {@code (content_type, content_id)} 集計から算出する。
  * 認可は本サービスに埋めず、Controller 入口で {@link PageViewAnalyticsAccessGuard} が行う
  * （共有メソッドにガードを付けない・既存戒め）。</p>
  *
@@ -45,6 +46,9 @@ public class PageViewAnalyticsService {
 
     /** 生ログ保持期間（月）。これ以内なら生ログ直接 DISTINCT で正確値を取れる（設計書 §9）。 */
     private static final int LOG_RETENTION_MONTHS = 13;
+
+    /** 人気コンテンツランキングの取得上限件数（第2弾・設計書 §5.3）。 */
+    private static final int TOP_CONTENT_LIMIT = 10;
 
     /** 全期間指定の下限日付（保持期間内で十分過去。生ログ直接集計の from に使う）。 */
     private static final LocalDate ALL_TIME_FROM = LocalDate.of(1970, 1, 1);
@@ -100,7 +104,33 @@ public class PageViewAnalyticsService {
                 scopeType, scopeId, scopeTypeName, from, to,
                 logFrom, logToExclusive, withinRetention);
 
-        return new AnalyticsResult(summary, daily, monthly);
+        List<ContentStat> topContent = buildTopContent(scopeTypeName, scopeId, logFrom, logToExclusive);
+
+        return new AnalyticsResult(summary, daily, monthly, topContent);
+    }
+
+    /**
+     * 人気コンテンツランキング（topContent）を組み立てる（第2弾）。
+     *
+     * <p>保持期間内の生ログ境界 {@code [logFrom, logToExclusive)} を {@code (content_type, content_id)}
+     * 別に集計し、views 降順の上位 {@link #TOP_CONTENT_LIMIT} 件を返す。生ログが空でも
+     * {@code findTopContent} は空リストを返し例外にならない（AC-P2-4）。</p>
+     */
+    private List<ContentStat> buildTopContent(
+            String scopeTypeName, Long scopeId, LocalDateTime logFrom, LocalDateTime logToExclusive) {
+        List<PageViewLogRepository.ContentRankingProjection> rows =
+                logRepository.findTopContent(scopeTypeName, scopeId, logFrom, logToExclusive, TOP_CONTENT_LIMIT);
+        List<ContentStat> topContent = new ArrayList<>(rows.size());
+        for (PageViewLogRepository.ContentRankingProjection row : rows) {
+            topContent.add(new ContentStat(
+                    row.getContentType(),
+                    row.getContentId(),
+                    row.getTitle(),
+                    row.getUrl(),
+                    row.getViews(),
+                    row.getUniqueVisitors()));
+        }
+        return topContent;
     }
 
     /**
@@ -157,16 +187,37 @@ public class PageViewAnalyticsService {
 
     /**
      * 集計結果（Service 層のビューモデル）。Controller が FE 契約 DTO
-     * （{@code AnalyticsResponse} / topContent 空配列）へマップする。全フィールド非 null。
+     * （{@code AnalyticsResponse}）へマップする。全フィールド非 null。
      *
-     * @param summary サマリ
-     * @param daily   日次配列（空配列可・非 null）
-     * @param monthly 月次配列（空配列可・非 null）
+     * @param summary    サマリ
+     * @param daily      日次配列（空配列可・非 null）
+     * @param monthly    月次配列（空配列可・非 null）
+     * @param topContent 人気コンテンツランキング（空配列可・非 null・第2弾で実データ）
      */
     public record AnalyticsResult(
             SummaryStat summary,
             List<DailyStat> daily,
-            List<MonthlyStat> monthly) {
+            List<MonthlyStat> monthly,
+            List<ContentStat> topContent) {
+    }
+
+    /**
+     * 人気コンテンツランキング 1 件（Controller が {@code ContentRankingDto} へマップする）。全フィールド非 null。
+     *
+     * @param contentType    閲覧対象種別（enum 名の文字列）
+     * @param contentId      閲覧対象 ID
+     * @param title          代表タイトル（最新 viewed_at の値）
+     * @param url            代表 URL（最新 viewed_at の値・アプリ内相対パス）
+     * @param views          期間内の総 PV
+     * @param uniqueVisitors 期間内のユニーク訪問者数
+     */
+    public record ContentStat(
+            String contentType,
+            long contentId,
+            String title,
+            String url,
+            long views,
+            long uniqueVisitors) {
     }
 
     /**
