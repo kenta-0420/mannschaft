@@ -686,10 +686,11 @@ class OperationalAdCampaignCrudIT extends AbstractMySqlIntegrationTest {
      */
     private Long insertCampaign(Long orgId, String name, String status, Long cardId, BigDecimal snapshot) {
         em.createNativeQuery(
-                        "INSERT INTO ad_campaigns (advertiser_organization_id, name, status, pricing_model, "
+                        "INSERT INTO ad_campaigns (advertiser_account_id, name, status, pricing_model, "
                                 + "daily_budget, start_date, end_date, rate_card_id, unit_price_snapshot, "
                                 + "created_at, updated_at) "
-                                + "VALUES (:oid, :name, :status, 'CPM', :budget, "
+                                + "VALUES ((SELECT id FROM advertiser_accounts WHERE scope_type='ORGANIZATION' "
+                                + "AND scope_id=:oid AND deleted_at IS NULL), :name, :status, 'CPM', :budget, "
                                 + ":startDate, :endDate, "
                                 + ":cardId, :snapshot, NOW(), NOW())")
                 .setParameter("oid", orgId)
@@ -707,10 +708,11 @@ class OperationalAdCampaignCrudIT extends AbstractMySqlIntegrationTest {
     /** created_at を秒オフセットで指定してキャンペーンを挿入する（一覧の並び順検証用）。start_date は JVM 日付を bind。 */
     private Long insertCampaignWithCreatedAtOffset(Long orgId, String name, String status, int secondsOffset) {
         em.createNativeQuery(
-                        "INSERT INTO ad_campaigns (advertiser_organization_id, name, status, pricing_model, "
+                        "INSERT INTO ad_campaigns (advertiser_account_id, name, status, pricing_model, "
                                 + "daily_budget, start_date, end_date, rate_card_id, unit_price_snapshot, "
                                 + "created_at, updated_at) "
-                                + "VALUES (:oid, :name, :status, 'CPM', :budget, "
+                                + "VALUES ((SELECT id FROM advertiser_accounts WHERE scope_type='ORGANIZATION' "
+                                + "AND scope_id=:oid AND deleted_at IS NULL), :name, :status, 'CPM', :budget, "
                                 + ":startDate, :endDate, "
                                 + ":cardId, :snapshot, "
                                 + "DATE_ADD(NOW(), INTERVAL " + secondsOffset + " SECOND), NOW())")

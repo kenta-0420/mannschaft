@@ -216,15 +216,16 @@ abstract class AbstractSpotlightIT extends AbstractMySqlIntegrationTest {
     /**
      * ACTIVE 運用型キャンペーンを挿入する（本日が [start, end] 内・単価スナップショット付き）。
      */
-    protected Long insertActiveOperationalCampaign(Long orgId, String name, String status,
+    protected Long insertActiveOperationalCampaign(Long advAccountId, String name, String status,
                                                    java.math.BigDecimal unitPriceSnapshot) {
+        // F09.19.5 で ad_campaigns は advertiser_account_id 直結へ移行済み（advertiser_organization_id 撤廃）。
         em.createNativeQuery(
-                        "INSERT INTO ad_campaigns (advertiser_organization_id, name, status, pricing_model, "
+                        "INSERT INTO ad_campaigns (advertiser_account_id, name, status, pricing_model, "
                                 + "daily_budget, start_date, end_date, unit_price_snapshot, created_at, updated_at) "
-                                + "VALUES (:oid, :name, :status, 'CPM', :budget, "
+                                + "VALUES (:aid, :name, :status, 'CPM', :budget, "
                                 + "DATE_SUB(CURDATE(), INTERVAL 1 DAY), DATE_ADD(CURDATE(), INTERVAL 30 DAY), "
                                 + ":snap, NOW(), NOW())")
-                .setParameter("oid", orgId).setParameter("name", name).setParameter("status", status)
+                .setParameter("aid", advAccountId).setParameter("name", name).setParameter("status", status)
                 .setParameter("budget", new java.math.BigDecimal("3000.00"))
                 .setParameter("snap", unitPriceSnapshot)
                 .executeUpdate();
@@ -251,7 +252,7 @@ abstract class AbstractSpotlightIT extends AbstractMySqlIntegrationTest {
      */
     protected Long insertServableHouseCandidate(Long orgId, Long advAccountId, String placement,
                                                 java.math.BigDecimal unitPriceSnapshot, String name) {
-        Long campaignId = insertActiveOperationalCampaign(orgId, name, "ACTIVE", unitPriceSnapshot);
+        Long campaignId = insertActiveOperationalCampaign(advAccountId, name, "ACTIVE", unitPriceSnapshot);
         return insertCreative(campaignId, name + "-creative", placement, "ACTIVE");
     }
 
@@ -298,7 +299,7 @@ abstract class AbstractSpotlightIT extends AbstractMySqlIntegrationTest {
         String deliveryUuid = UUID.randomUUID().toString();
 
         // BANNER クリエイティブ（ads）。予約バナーも ads を参照する
-        Long creativeCampaign = insertActiveOperationalCampaign(orgId, "予約用親", "ACTIVE",
+        Long creativeCampaign = insertActiveOperationalCampaign(advAccountId, "予約用親", "ACTIVE",
                 new java.math.BigDecimal("500.0000"));
         Long creativeId = insertCreative(creativeCampaign, "予約バナー", placement, "ACTIVE");
 

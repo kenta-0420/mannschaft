@@ -6,18 +6,25 @@ import com.mannschaft.app.reservation.dto.BlockedTimeImpactResponse;
 import com.mannschaft.app.reservation.dto.BlockedTimeRequest;
 import com.mannschaft.app.reservation.dto.BlockedTimeResponse;
 import com.mannschaft.app.reservation.dto.BusinessHourResponse;
+import com.mannschaft.app.reservation.dto.BusinessHoursSaveResponse;
+import com.mannschaft.app.reservation.dto.BusinessHoursUpdateOutcome;
 import com.mannschaft.app.reservation.dto.BusinessHoursUpdateRequest;
+import com.mannschaft.app.reservation.dto.GenerateSlotsResponse;
 import com.mannschaft.app.reservation.dto.ReservationSettingsResponse;
+import com.mannschaft.app.reservation.dto.SlotGenerationResultDto;
 import com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest;
 import com.mannschaft.app.reservation.entity.ReservationPolicyEntity;
 import com.mannschaft.app.reservation.entity.ReservationTeamSettingEntity;
 import com.mannschaft.app.reservation.service.ReservationBusinessHourService;
 import com.mannschaft.app.reservation.service.ReservationPolicyService;
+import com.mannschaft.app.reservation.service.ReservationSlotTemplateService;
 import com.mannschaft.app.reservation.service.ReservationTeamSettingService;
+import com.mannschaft.app.reservation.service.SlotGenerationPartialException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.HttpStatus;
@@ -41,6 +48,7 @@ import com.mannschaft.app.common.SecurityUtils;
 /**
  * 予約営業時間コントローラー。営業時間・ブロック時間・設定管理APIを提供する。
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/teams/{teamId}/reservation-settings")
 @Tag(name = "予約設定管理", description = "F03.4 営業時間・ブロック時間・設定管理")
@@ -50,6 +58,8 @@ public class ReservationBusinessHourController {
     private final ReservationBusinessHourService businessHourService;
     private final ReservationTeamSettingService teamSettingService;
     private final ReservationPolicyService policyService;
+    /** 営業時間変更差分の同期自動生成用（保存 tx 外側で呼ぶ・F03.4.5 §3.2）。 */
+    private final ReservationSlotTemplateService templateService;
 
 
     /**
@@ -65,17 +75,50 @@ public class ReservationBusinessHourController {
     }
 
     /**
-     * 営業時間設定を一括更新する。
+     * 営業時間設定を一括更新し、<b>変更のあった曜日の active テンプレ</b>を horizon 28 日まで
+     * 同期自動生成する（F03.4.5 §3.2）。応答は {@link BusinessHoursSaveResponse}（営業時間＋生成カウント）。
+     *
+     * <p>保存（{@code @Transactional} 内でコミット）→ その外側で生成、の順で実行する。営業時間の拡大で
+     * {@code skippedOutsideHoursCount} に落ちていたセルが自動的に埋まる。生成が失敗しても営業時間の保存は
+     * 成立済みのため HTTP 200 で返し、{@code generation.failed=true} で正直に報告する。GET は不変
+     * （{@code BusinessHourResponse[]}）で消費者 {@code ReservationUnavailabilityManager} に影響しない。</p>
      */
     @PutMapping("/business-hours")
-    @Operation(summary = "営業時間一括更新")
+    @Operation(summary = "営業時間一括更新（保存＝変更曜日の同期自動生成）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
-    public ResponseEntity<ApiResponse<List<BusinessHourResponse>>> updateBusinessHours(
+    public ResponseEntity<ApiResponse<BusinessHoursSaveResponse>> updateBusinessHours(
             @PathVariable Long teamId,
             @Valid @RequestBody BusinessHoursUpdateRequest request) {
-        List<BusinessHourResponse> hours = businessHourService.updateBusinessHours(teamId, request);
-        return ResponseEntity.ok(ApiResponse.of(hours));
+        Long userId = SecurityUtils.getCurrentUserId();
+        // ① 保存 tx をコミットさせる（@Transactional 内）＋変更曜日を検出
+        BusinessHoursUpdateOutcome outcome = businessHourService.updateBusinessHours(teamId, request);
+        // ② 保存 tx コミット後・@Transactional の外側で変更曜日差分を同期生成（§3.2 の tx 境界）
+        SlotGenerationResultDto generation = generateForChangedDays(teamId, outcome, userId);
+        return ResponseEntity.ok(ApiResponse.of(new BusinessHoursSaveResponse(outcome.hours(), generation)));
+    }
+
+    /**
+     * 変更曜日の同期自動生成を実行し、結果を包む（§3.2）。生成失敗は保存を壊さず {@code failed=true} で
+     * 正直に報告する（握りつぶさず {@code log.error}・翌朝の日次バッチが自己修復）。
+     */
+    private SlotGenerationResultDto generateForChangedDays(
+            Long teamId, BusinessHoursUpdateOutcome outcome, Long userId) {
+        try {
+            GenerateSlotsResponse generation =
+                    templateService.generateForDaysOfWeek(teamId, outcome.changedDays(), userId);
+            return SlotGenerationResultDto.of(generation);
+        } catch (SlotGenerationPartialException partial) {
+            // 先行チャンクはコミット済み。その実件数を failed=true とともに正直に報告する（§3.1 契約・0で握り潰さない）。
+            log.error("営業時間保存後の同期自動生成が部分失敗（コミット済み分は永続化済み・翌日次バッチが残りを自己修復）: "
+                    + "teamId={}, changedDays={}", teamId, outcome.changedDays(), partial);
+            return SlotGenerationResultDto.ofPartialFailure(partial.getAccumulated());
+        } catch (Exception e) {
+            // 1 チャンクもコミット前の失敗（真に 0 件）。
+            log.error("営業時間保存後の同期自動生成に失敗（保存は成立・翌日次バッチが自己修復）: "
+                    + "teamId={}, changedDays={}", teamId, outcome.changedDays(), e);
+            return SlotGenerationResultDto.ofFailure();
+        }
     }
 
     /**

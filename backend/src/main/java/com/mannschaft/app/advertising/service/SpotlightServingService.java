@@ -242,8 +242,7 @@ public class SpotlightServingService {
                                 + "FROM ads a "
                                 + "JOIN ad_campaigns c ON c.id = a.campaign_id AND c.status = 'ACTIVE' "
                                 + "  AND c.start_date <= :today AND (c.end_date IS NULL OR c.end_date >= :today) "
-                                + "JOIN advertiser_accounts acc ON acc.scope_type = 'ORGANIZATION' "
-                                + "  AND acc.scope_id = c.advertiser_organization_id "
+                                + "JOIN advertiser_accounts acc ON acc.id = c.advertiser_account_id "
                                 + "  AND acc.status = 'ACTIVE' AND acc.deleted_at IS NULL "
                                 + "WHERE a.status = 'ACTIVE' AND a.placement = :placement "
                                 + "ORDER BY c.id ASC, a.id ASC")

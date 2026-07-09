@@ -7,8 +7,10 @@ import com.mannschaft.app.advertising.dto.OperationalCampaignResponse;
 import com.mannschaft.app.advertising.entity.AdCampaignEntity;
 import com.mannschaft.app.advertising.entity.AdCampaignEntity.CampaignStatus;
 import com.mannschaft.app.advertising.entity.AdRateCardEntity;
+import com.mannschaft.app.advertising.entity.AdvertiserAccountEntity;
 import com.mannschaft.app.advertising.repository.AdCampaignRepository;
 import com.mannschaft.app.advertising.repository.AdRateCardRepository;
+import com.mannschaft.app.advertising.repository.AdvertiserAccountRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -57,6 +59,7 @@ class OperationalAdCampaignServiceTest {
     private static final LocalDate TODAY = LocalDate.now(FIXED_CLOCK);
 
     private static final Long ORG_ID = 100L;
+    private static final Long ACCOUNT_ID = 77L;
     private static final Long USER_ID = 1L;
     private static final Long ADMIN_USER_ID = 9L;
     private static final Long CAMPAIGN_ID = 45L;
@@ -70,6 +73,8 @@ class OperationalAdCampaignServiceTest {
     @Mock
     private AdCampaignRepository adCampaignRepository;
     @Mock
+    private AdvertiserAccountRepository advertiserAccountRepository;
+    @Mock
     private AdRateCardRepository adRateCardRepository;
     @Mock
     private AuditLogService auditLogService;
@@ -79,12 +84,26 @@ class OperationalAdCampaignServiceTest {
     @BeforeEach
     void setUp() {
         service = new OperationalAdCampaignService(
-                adCampaignRepository, adRateCardRepository, auditLogService, FIXED_CLOCK);
+                adCampaignRepository, advertiserAccountRepository, adRateCardRepository, auditLogService, FIXED_CLOCK);
+
+        // F09.19.5: scope（ORGANIZATION, ORG_ID）→ 広告主アカウント（id=ACCOUNT_ID）解決を stub
+        given(advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(ScopeType.ORGANIZATION, ORG_ID))
+                .willReturn(Optional.of(account()));
+        given(advertiserAccountRepository.findById(ACCOUNT_ID)).willReturn(Optional.of(account()));
 
         given(adRateCardRepository.findById(RATE_CARD_ID)).willReturn(Optional.of(rateCard(RATE_CARD_ID, UNIT_PRICE)));
         given(adRateCardRepository.findById(RATE_CARD_2_ID)).willReturn(Optional.of(rateCard(RATE_CARD_2_ID, UNIT_PRICE_2)));
         given(adCampaignRepository.save(any(AdCampaignEntity.class)))
                 .willAnswer(inv -> inv.getArgument(0));
+    }
+
+    /** scope=ORGANIZATION / scope_id=ORG_ID の広告主アカウント（id=ACCOUNT_ID）。 */
+    private AdvertiserAccountEntity account() {
+        return AdvertiserAccountEntity.builder()
+                .id(ACCOUNT_ID)
+                .scopeType(ScopeType.ORGANIZATION)
+                .scopeId(ORG_ID)
+                .build();
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -373,7 +392,7 @@ class OperationalAdCampaignServiceTest {
         // 差戻し済み（rejectReason あり）の DRAFT を再 submit
         AdCampaignEntity rejectedEntity = AdCampaignEntity.builder()
                 .id(CAMPAIGN_ID)
-                .advertiserOrganizationId(ORG_ID)
+                .advertiserAccountId(ACCOUNT_ID)
                 .name("差戻し済み")
                 .status(CampaignStatus.DRAFT)
                 .pricingModel(PricingModel.CPM)
@@ -411,7 +430,7 @@ class OperationalAdCampaignServiceTest {
     private AdCampaignEntity campaign(CampaignStatus status) {
         return AdCampaignEntity.builder()
                 .id(CAMPAIGN_ID)
-                .advertiserOrganizationId(ORG_ID)
+                .advertiserAccountId(ACCOUNT_ID)
                 .name("夏季キャンペーン")
                 .status(status)
                 .pricingModel(PricingModel.CPM)

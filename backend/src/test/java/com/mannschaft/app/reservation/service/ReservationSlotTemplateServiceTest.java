@@ -10,6 +10,7 @@ import com.mannschaft.app.reservation.ReservationDayOfWeek;
 import com.mannschaft.app.reservation.ReservationErrorCode;
 import com.mannschaft.app.reservation.dto.CreateSlotTemplateRequest;
 import com.mannschaft.app.reservation.dto.DeleteSlotTemplateResponse;
+import com.mannschaft.app.reservation.dto.GenerateSingleDayRequest;
 import com.mannschaft.app.reservation.dto.GenerateSlotsRequest;
 import com.mannschaft.app.reservation.dto.GenerateSlotsResponse;
 import com.mannschaft.app.reservation.dto.SlotTemplateResponse;
@@ -30,9 +31,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -479,6 +482,150 @@ class ReservationSlotTemplateServiceTest {
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ReservationErrorCode.TEMPLATE_GENERATE_RATE_LIMITED);
             verify(generationService, never()).generateForTeam(any(), any(), any());
+        }
+    }
+
+    // ========================================
+    // F03.4.5 §3.1: テンプレ保存＝同期自動生成のファサード（tx境界の外側）
+    // ========================================
+
+    @Nested
+    @DisplayName("generateForTemplate ファサード（F03.4.5 §3.1・S-3b tx境界）")
+    class GenerateForTemplateFacade {
+
+        @Test
+        @DisplayName("S-1: active テンプレは当該テンプレのみの生成へ委譲する（レートリミット非対象）")
+        void 保存後生成_activeは委譲() {
+            // Given
+            ReservationSlotTemplateEntity tpl = templateEntity(LINE_ID, ReservationDayOfWeek.MON,
+                    LocalTime.of(10, 0), LocalTime.of(13, 0));
+            given(templateRepository.findByIdAndTeamId(TEMPLATE_ID, TEAM_ID)).willReturn(Optional.of(tpl));
+            given(generationService.generateForTemplate(TEAM_ID, tpl, USER_ID))
+                    .willReturn(GenerateSlotsResponse.builder().generatedCount(24).build());
+
+            // When
+            GenerateSlotsResponse result = service.generateForTemplate(TEAM_ID, TEMPLATE_ID, USER_ID);
+
+            // Then: 単一テンプレ生成へ委譲。レートリミットは消費しない（保存が自然な頻度上限）。
+            assertThat(result.getGeneratedCount()).isEqualTo(24);
+            verify(generationService).generateForTemplate(TEAM_ID, tpl, USER_ID);
+            verify(rateLimiter, never()).tryConsume(anyString(), anyString(), anyInt(), any());
+        }
+
+        @Test
+        @DisplayName("S-3b: 無効化テンプレ（isActive=false）は生成しない（空委譲・以後生成されないだけ）")
+        void 保存後生成_無効テンプレは生成しない() {
+            // Given: isActive=false のテンプレ
+            ReservationSlotTemplateEntity inactive = ReservationSlotTemplateEntity.builder()
+                    .teamId(TEAM_ID).lineId(LINE_ID).dayOfWeek(ReservationDayOfWeek.MON)
+                    .startTime(LocalTime.of(10, 0)).endTime(LocalTime.of(13, 0)).isActive(false).build();
+            inactive.setId(TEMPLATE_ID);
+            given(templateRepository.findByIdAndTeamId(TEMPLATE_ID, TEAM_ID)).willReturn(Optional.of(inactive));
+            given(generationService.generateForTemplates(eq(TEAM_ID), eq(List.of()), eq(USER_ID)))
+                    .willReturn(GenerateSlotsResponse.builder().build());
+
+            // When
+            service.generateForTemplate(TEAM_ID, TEMPLATE_ID, USER_ID);
+
+            // Then: 単一テンプレ生成は呼ばず空委譲
+            verify(generationService, never()).generateForTemplate(any(), any(), any());
+            verify(generationService).generateForTemplates(eq(TEAM_ID), eq(List.of()), eq(USER_ID));
+        }
+
+        @Test
+        @DisplayName("IDOR: 他チーム/不存在の templateId は 404=RESERVATION_036")
+        void 保存後生成_不存在は404() {
+            given(templateRepository.findByIdAndTeamId(TEMPLATE_ID, TEAM_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.generateForTemplate(TEAM_ID, TEMPLATE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ReservationErrorCode.TEMPLATE_NOT_FOUND);
+        }
+    }
+
+    @Nested
+    @DisplayName("generateForDaysOfWeek ファサード（F03.4.5 §3.2・営業時間変更差分）")
+    class GenerateForDaysOfWeekFacade {
+
+        @Test
+        @DisplayName("S-6②: 変更曜日の active テンプレのみを対象に生成へ委譲する")
+        void 変更曜日生成_該当曜日のみ委譲() {
+            // Given: MON と TUE の active テンプレ。変更曜日は MON のみ。
+            ReservationSlotTemplateEntity mon = templateEntity(LINE_ID, ReservationDayOfWeek.MON,
+                    LocalTime.of(10, 0), LocalTime.of(11, 0));
+            ReservationSlotTemplateEntity tue = ReservationSlotTemplateEntity.builder()
+                    .teamId(TEAM_ID).lineId(LINE_ID).dayOfWeek(ReservationDayOfWeek.TUE)
+                    .startTime(LocalTime.of(10, 0)).endTime(LocalTime.of(11, 0)).build();
+            tue.setId(UUID.randomUUID());
+            given(templateRepository.findByTeamIdAndIsActiveTrue(TEAM_ID)).willReturn(List.of(mon, tue));
+            given(generationService.generateForTemplates(eq(TEAM_ID), any(), eq(USER_ID)))
+                    .willReturn(GenerateSlotsResponse.builder().build());
+
+            // When
+            service.generateForDaysOfWeek(TEAM_ID, Set.of(ReservationDayOfWeek.MON), USER_ID);
+
+            // Then: MON テンプレのみが生成対象（TUE は含めない）
+            ArgumentCaptor<List<ReservationSlotTemplateEntity>> captor = ArgumentCaptor.forClass(List.class);
+            verify(generationService).generateForTemplates(eq(TEAM_ID), captor.capture(), eq(USER_ID));
+            assertThat(captor.getValue()).containsExactly(mon);
+        }
+
+        @Test
+        @DisplayName("S-6②: 変更曜日が空なら生成しない（空委譲・テンプレ走査もしない）")
+        void 変更曜日生成_空は空委譲() {
+            given(generationService.generateForTemplates(eq(TEAM_ID), eq(List.of()), eq(USER_ID)))
+                    .willReturn(GenerateSlotsResponse.builder().build());
+
+            service.generateForDaysOfWeek(TEAM_ID, Set.of(), USER_ID);
+
+            verify(generationService).generateForTemplates(eq(TEAM_ID), eq(List.of()), eq(USER_ID));
+            verify(templateRepository, never()).findByTeamIdAndIsActiveTrue(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("generateSingleDay ファサード（F03.4.5 §3.3.2・レートリミット共有・監査）")
+    class GenerateSingleDayFacade {
+
+        @Test
+        @DisplayName("S-8: レートリミット内なら単日生成へ委譲し監査ログを記録する")
+        void 臨時営業_委譲と監査() {
+            // Given
+            given(rateLimiter.tryConsume(anyString(), anyString(), anyInt(), any()))
+                    .willReturn(new RateLimitResult(true, 2, 1, 0, 0));
+            LocalDate date = LocalDate.now().plusDays(7);
+            GenerateSlotsResponse expected = GenerateSlotsResponse.builder().generatedCount(6).build();
+            given(generationService.generateSingleDay(eq(TEAM_ID), eq(date), any(), eq(USER_ID)))
+                    .willReturn(expected);
+
+            // When
+            GenerateSlotsResponse result = service.generateSingleDay(
+                    TEAM_ID, new GenerateSingleDayRequest(date, ReservationDayOfWeek.MON), USER_ID);
+
+            // Then
+            assertThat(result.getGeneratedCount()).isEqualTo(6);
+            verify(generationService).generateSingleDay(eq(TEAM_ID), eq(date), eq(ReservationDayOfWeek.MON),
+                    eq(USER_ID));
+            verify(auditLogService).record(eq("RESERVATION_TEMPLATE_SINGLE_DAY_GENERATED"),
+                    eq(USER_ID), any(), eq(TEAM_ID), any(), any(), any(), any(), anyString());
+        }
+
+        @Test
+        @DisplayName("S-8: 既存 generate と同一 zone のレートリミット超過は RESERVATION_044（429・共有）")
+        void 臨時営業_レートリミット超過は044共有() {
+            // Given
+            given(rateLimiter.tryConsume(anyString(), anyString(), anyInt(), any()))
+                    .willReturn(new RateLimitResult(false, 2, 0, 0, 60));
+            LocalDate date = LocalDate.now().plusDays(7);
+
+            // When / Then: 既存 generate と同一 zone・同一エラーコードを共有する
+            assertThatThrownBy(() -> service.generateSingleDay(
+                    TEAM_ID, new GenerateSingleDayRequest(date, null), USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ReservationErrorCode.TEMPLATE_GENERATE_RATE_LIMITED);
+            verify(generationService, never()).generateSingleDay(any(), any(), any(), any());
         }
     }
 }

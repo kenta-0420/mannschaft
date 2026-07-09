@@ -2013,6 +2013,63 @@
       }
     }
   },
+  "analytics": {
+    "title": "Access Analytics",
+    "loadError": "Failed to load access analytics data",
+    "empty": "No access data yet",
+    "summary": {
+      "totalViews": "Total PV",
+      "uniqueVisitors": "Unique Visitors",
+      "memberViews": "Member Views",
+      "guestViews": "Guest Views"
+    },
+    "export": "Export Data",
+    "topContent": {
+      "title": "Popular Content",
+      "empty": "No data available"
+    },
+    "chart": {
+      "views": "Page Views",
+      "daily": "Daily",
+      "monthly": "Monthly",
+      "toggle": "Toggle View",
+      "recentDays": "Access statistics for the last 30 days",
+      "monthlyTrend": "Monthly access trend statistics"
+    },
+    "period": {
+      "allTime": "All Time"
+    },
+    "guide": {
+      "page_title": "How to Use Analytics",
+      "what": {
+        "title": "What is Analytics?",
+        "body": "Analytics lets you see how often your team or organization pages are being viewed. Use it to understand member and guest visit patterns and improve your content."
+      },
+      "metrics": {
+        "title": "Measured Data",
+        "total_views": "Total PV: Total number of times pages were displayed",
+        "unique_visitors": "Unique Visitors: Number of visitors excluding duplicates",
+        "member_views": "Member Views: Page views by members",
+        "guest_views": "Guest Views: Page views by guests (non-members)"
+      },
+      "timing": {
+        "title": "Data Update Timing",
+        "body": "Access data is aggregated in a daily batch. Same-day data is reflected the next morning. Since this is not real-time, access from the past few hours will appear the following day."
+      },
+      "chart": {
+        "title": "Reading the Chart",
+        "body": "You can switch the chart between \"Daily\" and \"Monthly\" views.",
+        "daily_title": "Daily Chart",
+        "daily_desc": "Shows daily page view trends for the past 30 days.",
+        "monthly_title": "Monthly Chart",
+        "monthly_desc": "Shows monthly aggregated values. Useful for understanding long-term trends."
+      },
+      "top_content": {
+        "title": "Popular Content (Coming in Phase 2)",
+        "body": "This feature will rank content by number of views. Currently under development. It will appear automatically once data is available."
+      }
+    }
+  },
   "comingSoon": {
     "title": "Coming Soon",
     "description": "This feature is currently under development. Please check back later."

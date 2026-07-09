@@ -92,6 +92,8 @@ public class ReservationGroupService {
     private final AccessControlService accessControlService;
     private final ApplicationEventPublisher eventPublisher;
     private final AuditLogService auditLogService;
+    /** F03.4.5 §6.1: 予約成立時に同一 (slot, user) のキャンセル待ちを CONVERTED へ消し込む。 */
+    private final ReservationWaitlistService waitlistService;
     /**
      * 作成トランザクションの明示境界（§5.2）。コミット時を含む
      * {@code PessimisticLockingFailureException}（InnoDB デッドロック等）を
@@ -264,6 +266,13 @@ public class ReservationGroupService {
             rows.forEach(ReservationEntity::confirm);
         }
         List<ReservationEntity> saved = reservationRepository.saveAll(rows);
+
+        // F03.4.5 §6.1: グループ成立時、各枠について同一 (slot, user) のキャンセル待ちを CONVERTED へ消し込む
+        // （同一 tx・reservation ドメイン内・べき等）。
+        for (ReservationSlotEntity slot : slots) {
+            waitlistService.markConvertedIfExists(slot.getId(), userId);
+        }
+
         ReservationEntity primary = saved.get(0);
         String displayTitle = menu != null ? menu.getName() : firstSlot.getTitle();
 

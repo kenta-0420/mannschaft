@@ -1,6 +1,7 @@
 # F20.3 — 02 API設計
 
-> **ステータス**: 🟢 設計完了（マスター御裁可済・実装待ち）
+> **ステータス**: 🟢 設計完了（マスター御裁可済・実装待ち／営利自動切替・オーナー変更は Phase 2 保留）
+> **⚠️ Phase 2 保留（マスター 2026-07-08）**: §5 のオーナー変更**自動イベント**購読（B-4）は初期スコープ外（README 冒頭 Phase 2 保留ブロック）。付与・取消・審査解決・照会 API とシスアド手動 `flag-review`（§4）は初期スコープに残る。
 > 付与・取消・審査・照会の API と活動実績評価の擬似コードを定義する。認可は [03_security](03_security.md)、DDL は [01_data_model](01_data_model.md)。権利判定 API は F20.1（`isEntitled`/check）を再利用し**本機能では作らない**。
 
 ---
@@ -180,10 +181,12 @@ GET/PUT /api/v1/system-admin/beta-perks/criteria/{betaPhase}/{grantKind}       #
 
 ---
 
-## 5. オーナー変更イベント購読（review_flag 自動化・P3）
+## 5. オーナー変更イベント購読（review_flag 自動化・P3）【Phase 2 保留・初期スコープ外】
+
+> **【Phase 2 保留】この節（§5＝`TeamOwnershipTransferredEvent`／`OrganizationOwnershipTransferredEvent` の発火＋購読リスナーによる `review_flag` 自動化）は初期実装スコープ外**（マスター 2026-07-08・README 冒頭 Phase 2 保留ブロック／README §3）。**理由**=転売対策の主防壁は「個人特典 USER スコープ限定」の構造であり、検知は保険にすぎない。専用の自動イベント新設（team/organization ドメインへのクロスドメイン要求）は割に合わないため保留。**初期スコープでは規約第 17 条＋シスアド手動 `flag-review`（§4）で `review_reason='MANUAL'` を立てて代替**する。設計は Phase 2 でそのまま使うため温存する。関連 AC-07 は README で `[P2]` タグ付き＝初期試練対象外。
 
 ```java
-/** team ドメイン発火（B-4: 現存しない場合は team 側に最小 publish を新設） */
+/** team ドメイン発火（B-4: 現存しない場合は team 側に最小 publish を新設）【Phase 2 保留】 */
 public record TeamOwnershipTransferredEvent(Long teamId, Long fromUserId, Long toUserId) {}
 
 @TransactionalEventListener(phase = AFTER_COMMIT)

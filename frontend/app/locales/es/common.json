@@ -2013,6 +2013,63 @@
       }
     }
   },
+  "analytics": {
+    "title": "Análisis de Acceso",
+    "loadError": "No se pudieron cargar los datos de análisis de acceso",
+    "empty": "Todavía no hay datos de acceso",
+    "summary": {
+      "totalViews": "PV Total",
+      "uniqueVisitors": "Visitantes Únicos",
+      "memberViews": "Vistas de Miembros",
+      "guestViews": "Vistas de Invitados"
+    },
+    "export": "Exportar Datos",
+    "topContent": {
+      "title": "Contenido Popular",
+      "empty": "No hay datos disponibles"
+    },
+    "chart": {
+      "views": "Páginas Vistas",
+      "daily": "Diario",
+      "monthly": "Mensual",
+      "toggle": "Cambiar Vista",
+      "recentDays": "Estadísticas de acceso de los últimos 30 días",
+      "monthlyTrend": "Estadísticas de tendencia de acceso mensual"
+    },
+    "period": {
+      "allTime": "Todo el Tiempo"
+    },
+    "guide": {
+      "page_title": "Cómo usar Analytics",
+      "what": {
+        "title": "¿Qué es Analytics?",
+        "body": "Analytics le permite ver cuántas veces se visualizan las páginas de su equipo u organización. Utilícelo para comprender los patrones de visita de miembros e invitados y mejorar su contenido."
+      },
+      "metrics": {
+        "title": "Datos medidos",
+        "total_views": "PV total: Número total de veces que se mostraron las páginas",
+        "unique_visitors": "Visitantes únicos: Número de visitantes sin duplicados",
+        "member_views": "Vistas de miembros: Vistas de página por miembros",
+        "guest_views": "Vistas de invitados: Vistas de página por invitados (no miembros)"
+      },
+      "timing": {
+        "title": "Tiempo de actualización de datos",
+        "body": "Los datos de acceso se agregan en un lote diario. Los datos del mismo día se reflejan a la mañana siguiente. Como no es en tiempo real, el acceso de las últimas horas aparecerá al día siguiente."
+      },
+      "chart": {
+        "title": "Cómo leer el gráfico",
+        "body": "Puede cambiar el gráfico entre vistas «Diaria» y «Mensual».",
+        "daily_title": "Gráfico diario",
+        "daily_desc": "Muestra las tendencias diarias de vistas de página en los últimos 30 días.",
+        "monthly_title": "Gráfico mensual",
+        "monthly_desc": "Muestra valores agregados mensuales. Útil para comprender tendencias a largo plazo."
+      },
+      "top_content": {
+        "title": "Contenido popular (Fase 2 en desarrollo)",
+        "body": "Esta función clasificará el contenido por número de vistas. Actualmente en desarrollo. Aparecerá automáticamente una vez que los datos estén disponibles."
+      }
+    }
+  },
   "comingSoon": {
     "title": "Próximamente",
     "description": "Esta función está actualmente en desarrollo. Por favor, vuelva más tarde."

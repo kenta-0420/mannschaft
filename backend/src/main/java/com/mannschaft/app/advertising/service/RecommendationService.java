@@ -55,8 +55,8 @@ public class RecommendationService {
             return List.of();
         }
 
-        List<AdCampaignEntity> campaigns = adCampaignRepository.findByAdvertiserOrganizationIdAndStatus(
-                organizationId, AdCampaignEntity.CampaignStatus.ACTIVE);
+        List<AdCampaignEntity> campaigns = adCampaignRepository.findByAdvertiserAccountIdAndStatus(
+                account.getId(), AdCampaignEntity.CampaignStatus.ACTIVE);
         if (campaigns.isEmpty()) {
             return List.of();
         }

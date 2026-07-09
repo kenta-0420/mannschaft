@@ -31,6 +31,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -144,11 +145,18 @@ public class AdvertiserDashboardController {
     }
 
     /**
-     * 広告主ダッシュボード概要を取得する。
+     * 広告主ダッシュボード概要を取得する（<b>非推奨</b>）。
+     *
+     * <p>F09.19.5: scope 化に伴い org/team 対の URL 体系（{@code /api/v1/{organizations|teams}/{id}/advertiser/...}）
+     * へ移行した。本エンドポイントは従来応答を維持したまま残置し、{@code Deprecation: true} /
+     * {@code Sunset} ヘッダを付与する（RFC 8594 / draft-dalal-deprecation-header）。</p>
      */
     @GetMapping("/overview")
-    public ApiResponse<AdvertiserOverviewResponse> overview(@RequestParam Long organizationId) {
+    public ApiResponse<AdvertiserOverviewResponse> overview(
+            @RequestParam Long organizationId, HttpServletResponse response) {
         verifyOrganizationAccess(organizationId);
+        response.setHeader("Deprecation", "true");
+        response.setHeader("Sunset", "Thu, 31 Dec 2026 23:59:59 GMT");
         return ApiResponse.of(campaignPerformanceService.getOverview(organizationId));
     }
 
