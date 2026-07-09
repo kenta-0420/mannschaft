@@ -1399,6 +1399,10 @@
       "description": "F07.4 自分のカルテ（共有されたもの）"
     },
     {
+      "name": "スポットライト配信",
+      "description": "F09.19.2 サービング・計測（中立命名）"
+    },
+    {
       "name": "モデレーション管理",
       "description": "F04.5 管理者向け通報レビュー"
     },
@@ -51030,6 +51034,90 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseEvaluationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/spotlight/{creativeId}/visit": {
+      "post": {
+        "tags": [
+          "スポットライト配信"
+        ],
+        "summary": "クリック計上",
+        "operationId": "visit",
+        "parameters": [
+          {
+            "name": "creativeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpotlightVisitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseSpotlightVisitResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/spotlight/{creativeId}/view": {
+      "post": {
+        "tags": [
+          "スポットライト配信"
+        ],
+        "summary": "インプレッション計上",
+        "operationId": "view",
+        "parameters": [
+          {
+            "name": "creativeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpotlightViewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseSpotlightViewResponse"
                 }
               }
             }
@@ -114233,6 +114321,87 @@
         }
       }
     },
+    "/api/v1/spotlight/content": {
+      "get": {
+        "tags": [
+          "スポットライト配信"
+        ],
+        "summary": "掲載面の広告候補を取得",
+        "operationId": "content",
+        "parameters": [
+          {
+            "name": "placement",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "scopeType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scopeId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "template",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "prefecture",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "locale",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseSpotlightContentResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/social/profiles/users/{userId}": {
       "get": {
         "tags": [
@@ -172346,6 +172515,83 @@
           }
         }
       },
+      "SpotlightVisitRequest": {
+        "type": "object",
+        "properties": {
+          "campaignId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "deliveryId": {
+            "type": "string"
+          },
+          "impressionId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "messagingCampaignId": {
+            "type": "string"
+          },
+          "placement": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseSpotlightVisitResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SpotlightVisitResponse"
+          }
+        }
+      },
+      "SpotlightVisitResponse": {
+        "type": "object",
+        "properties": {
+          "clickId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "SpotlightViewRequest": {
+        "type": "object",
+        "properties": {
+          "campaignId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "deliveryId": {
+            "type": "string"
+          },
+          "messagingCampaignId": {
+            "type": "string"
+          },
+          "placement": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseSpotlightViewResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SpotlightViewResponse"
+          }
+        }
+      },
+      "SpotlightViewResponse": {
+        "type": "object",
+        "properties": {
+          "duplicate": {
+            "type": "boolean"
+          },
+          "impressionId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "CreateProfileRequest": {
         "type": "object",
         "properties": {
@@ -207632,6 +207878,110 @@
             "items": {
               "$ref": "#/components/schemas/EvaluationResponse"
             }
+          }
+        }
+      },
+      "ApiResponseSpotlightContentResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SpotlightContentResponse"
+          }
+        }
+      },
+      "SpotlightAffiliateItem": {
+        "type": "object",
+        "properties": {
+          "affiliateUrl": {
+            "type": "string"
+          },
+          "altText": {
+            "type": "string"
+          },
+          "bannerImageUrl": {
+            "type": "string"
+          },
+          "height": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "SpotlightContentResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpotlightItem"
+            }
+          }
+        }
+      },
+      "SpotlightHouseItem": {
+        "type": "object",
+        "properties": {
+          "advertiserAccountId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "advertiserName": {
+            "type": "string"
+          },
+          "altText": {
+            "type": "string"
+          },
+          "campaignId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "creativeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "deliveryId": {
+            "type": "string"
+          },
+          "destinationUrl": {
+            "type": "string"
+          },
+          "height": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "imageUrl": {
+            "type": "string"
+          },
+          "messagingCampaignId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "SpotlightItem": {
+        "type": "object",
+        "properties": {
+          "affiliate": {
+            "$ref": "#/components/schemas/SpotlightAffiliateItem"
+          },
+          "house": {
+            "$ref": "#/components/schemas/SpotlightHouseItem"
+          },
+          "source": {
+            "type": "string"
           }
         }
       },

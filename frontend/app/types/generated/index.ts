@@ -12753,6 +12753,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/spotlight/{creativeId}/visit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** クリック計上 */
+        post: operations["visit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spotlight/{creativeId}/view": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** インプレッション計上 */
+        post: operations["view"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/social/profiles": {
         parameters: {
             query?: never;
@@ -34092,6 +34126,23 @@ export interface paths {
         };
         /** 生徒の出席要件評価一覧取得 */
         get: operations["getStudentEvaluations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spotlight/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 掲載面の広告候補を取得 */
+        get: operations["content"];
         put?: never;
         post?: never;
         delete?: never;
@@ -56881,6 +56932,37 @@ export interface components {
             /** Format: int64 */
             summaryId?: number;
         };
+        SpotlightVisitRequest: {
+            /** Format: int64 */
+            campaignId?: number;
+            deliveryId?: string;
+            /** Format: int64 */
+            impressionId?: number;
+            messagingCampaignId?: string;
+            placement?: string;
+        };
+        ApiResponseSpotlightVisitResponse: {
+            data?: components["schemas"]["SpotlightVisitResponse"];
+        };
+        SpotlightVisitResponse: {
+            /** Format: int64 */
+            clickId?: number;
+        };
+        SpotlightViewRequest: {
+            /** Format: int64 */
+            campaignId?: number;
+            deliveryId?: string;
+            messagingCampaignId?: string;
+            placement?: string;
+        };
+        ApiResponseSpotlightViewResponse: {
+            data?: components["schemas"]["SpotlightViewResponse"];
+        };
+        SpotlightViewResponse: {
+            duplicate?: boolean;
+            /** Format: int64 */
+            impressionId?: number;
+        };
         CreateProfileRequest: {
             avatarUrl?: string;
             bio?: string;
@@ -69607,6 +69689,46 @@ export interface components {
         };
         ApiResponseListEvaluationResponse: {
             data?: components["schemas"]["EvaluationResponse"][];
+        };
+        ApiResponseSpotlightContentResponse: {
+            data?: components["schemas"]["SpotlightContentResponse"];
+        };
+        SpotlightAffiliateItem: {
+            affiliateUrl?: string;
+            altText?: string;
+            bannerImageUrl?: string;
+            /** Format: int32 */
+            height?: number;
+            provider?: string;
+            /** Format: int32 */
+            width?: number;
+        };
+        SpotlightContentResponse: {
+            items?: components["schemas"]["SpotlightItem"][];
+        };
+        SpotlightHouseItem: {
+            /** Format: int64 */
+            advertiserAccountId?: number;
+            advertiserName?: string;
+            altText?: string;
+            /** Format: int64 */
+            campaignId?: number;
+            /** Format: int64 */
+            creativeId?: number;
+            deliveryId?: string;
+            destinationUrl?: string;
+            /** Format: int32 */
+            height?: number;
+            imageUrl?: string;
+            messagingCampaignId?: string;
+            title?: string;
+            /** Format: int32 */
+            width?: number;
+        };
+        SpotlightItem: {
+            affiliate?: components["schemas"]["SpotlightAffiliateItem"];
+            house?: components["schemas"]["SpotlightHouseItem"];
+            source?: string;
         };
         ApiResponseBoolean: {
             data?: boolean;
@@ -103905,6 +104027,58 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseEvaluationResponse"];
+                };
+            };
+        };
+    };
+    visit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                creativeId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SpotlightVisitRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseSpotlightVisitResponse"];
+                };
+            };
+        };
+    };
+    view: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                creativeId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SpotlightViewRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseSpotlightViewResponse"];
                 };
             };
         };
@@ -141587,6 +141761,34 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListEvaluationResponse"];
+                };
+            };
+        };
+    };
+    content: {
+        parameters: {
+            query: {
+                placement: string;
+                count?: number;
+                scopeType?: string;
+                scopeId?: number;
+                template?: string;
+                prefecture?: string;
+                locale?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseSpotlightContentResponse"];
                 };
             };
         };
