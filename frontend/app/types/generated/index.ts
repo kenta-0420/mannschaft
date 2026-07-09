@@ -8443,6 +8443,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/reservation-slots/{slotId}/waitlist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** キャンセル待ち登録 */
+        post: operations["joinWaitlist"];
+        /** キャンセル待ち取消（本人） */
+        delete: operations["leaveWaitlist"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/reservation-slots/{slotId}/reopen": {
         parameters: {
             query?: never;
@@ -29185,6 +29203,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/me/reservation-waitlist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 自分のキャンセル待ち一覧 */
+        get: operations["listMyWaitlist"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/me/promotions": {
         parameters: {
             query?: never;
@@ -30363,6 +30398,23 @@ export interface paths {
         };
         /** 予約統計 */
         get: operations["getStats_2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/reservation-slots/{slotId}/waitlist/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** キャンセル待ち件数（ADMIN） */
+        get: operations["getWaitlistCount"];
         put?: never;
         post?: never;
         delete?: never;
@@ -53075,6 +53127,27 @@ export interface components {
             note?: string;
             slotStatus?: string;
         };
+        ApiResponseWaitlistEntryResponse: {
+            data?: components["schemas"]["WaitlistEntryResponse"];
+        };
+        WaitlistEntryResponse: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** @example 14:30:00 */
+            endTime?: string;
+            /** Format: uuid */
+            id?: string;
+            /** Format: date */
+            slotDate?: string;
+            /** Format: int64 */
+            slotId?: number;
+            slotTitle?: string;
+            /** @example 14:30:00 */
+            startTime?: string;
+            status?: string;
+            /** Format: int64 */
+            teamId?: number;
+        };
         CloseSlotRequest: {
             reason?: string;
         };
@@ -64914,6 +64987,9 @@ export interface components {
             /** Format: int64 */
             userId?: number;
         };
+        ApiResponseListWaitlistEntryResponse: {
+            data?: components["schemas"]["WaitlistEntryResponse"][];
+        };
         PagedResponseUserPromotionResponse: {
             data?: components["schemas"]["UserPromotionResponse"][];
             meta?: components["schemas"]["PageMeta"];
@@ -65907,6 +65983,15 @@ export interface components {
         };
         ApiResponseListReservationSlotResponse: {
             data?: components["schemas"]["ReservationSlotResponse"][];
+        };
+        ApiResponseWaitlistCountResponse: {
+            data?: components["schemas"]["WaitlistCountResponse"];
+        };
+        WaitlistCountResponse: {
+            /** Format: int64 */
+            slotId?: number;
+            /** Format: int64 */
+            waitingCount?: number;
         };
         ApiResponseReservationGridResponse: {
             data?: components["schemas"]["ReservationGridResponse"];
@@ -95136,6 +95221,50 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["ApiResponseReservationSlotResponse"];
                 };
+            };
+        };
+    };
+    joinWaitlist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                slotId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 登録成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseWaitlistEntryResponse"];
+                };
+            };
+        };
+    };
+    leaveWaitlist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                slotId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取消成功 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -134467,6 +134596,26 @@ export interface operations {
             };
         };
     };
+    listMyWaitlist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListWaitlistEntryResponse"];
+                };
+            };
+        };
+    };
     listPromotions: {
         parameters: {
             query?: {
@@ -136074,6 +136223,29 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseReservationStatsResponse"];
+                };
+            };
+        };
+    };
+    getWaitlistCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                slotId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseWaitlistCountResponse"];
                 };
             };
         };

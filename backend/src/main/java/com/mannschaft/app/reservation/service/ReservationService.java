@@ -75,6 +75,8 @@ public class ReservationService {
     private final ReservationUnavailabilityChecker unavailabilityChecker;
     /** F03.4.3: 一覧のグループ要約（GroupSummaryDto）を一括解決するコンポーネント（§5.6 #10）。 */
     private final ReservationGroupSummaryResolver groupSummaryResolver;
+    /** F03.4.5 §6.1: 予約成立時に同一 (slot, user) のキャンセル待ちを CONVERTED へ消し込む。 */
+    private final ReservationWaitlistService waitlistService;
     private final Clock clock;
 
     /**
@@ -186,6 +188,10 @@ public class ReservationService {
 
         ReservationEntity saved = reservationRepository.save(entity);
         slotService.incrementAndCheckFull(slot);
+
+        // F03.4.5 §6.1: 予約成立時、同一 (slot, user) のキャンセル待ち WAITING を CONVERTED へ消し込む
+        // （同一 tx・reservation ドメイン内）。WAITING が無ければ何もしない（べき等）。
+        waitlistService.markConvertedIfExists(slot.getId(), userId);
 
         // 承認モードを解決する（枠値→チーム設定→AUTO の優先順で必ず非 null）。
         ApprovalMode mode = reservationPolicyService.resolveApprovalMode(teamId, slot);

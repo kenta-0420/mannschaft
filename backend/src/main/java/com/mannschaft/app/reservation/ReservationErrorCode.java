@@ -316,7 +316,57 @@ public enum ReservationErrorCode implements ErrorCode {
      * {@code GlobalExceptionHandler} の個別マッピングで 409。</p>
      */
     LINE_HAS_ACTIVE_RESERVATIONS("RESERVATION_045",
-            "このラインには有効な予約があります。先に振替またはキャンセルしてください", Severity.WARN);
+            "このラインには有効な予約があります。先に振替またはキャンセルしてください", Severity.WARN),
+
+    // ===== F03.4.5 §6.1 D群: キャンセル待ち（waitlist）=====
+    //
+    // 採番: enum 実物の現最大（RESERVATION_045）の次から連番で確定した（2026-07-08）。
+    // 設計書 §10 は 048〜053 を仮置きしていたが、§10 注記「D 群着手時に enum 実物の最大値から再採番」に
+    // 従い 046 起点で確定する（W2-4 が ErrorCode を追記する唯一の隊・マージ直前に再確認済み）。
+    // 052（RECURRING_RESERVATION_LIMIT_EXCEEDED）・053（RESERVATION_CREATE_RATE_LIMITED）は
+    // W2-5/W2-6 着手時にそれぞれ実物の最大値から再採番する。
+
+    /**
+     * キャンセル待ちエントリ不存在（本人取消の対象なし・IDOR 秘匿含む・404）。
+     *
+     * <p>§6.1/§7: 取消は (slot, 本人) で解決するため他人のエントリは構造的に掴めない。
+     * 自分の WAITING が無い場合も同一の 404 で秘匿する。{@code GlobalExceptionHandler} の個別マッピングで 404。</p>
+     */
+    WAITLIST_ENTRY_NOT_FOUND("RESERVATION_046", "キャンセル待ちが見つかりません", Severity.WARN),
+
+    /**
+     * 同一枠への二重登録（リソース競合・409）。
+     *
+     * <p>§6.1: {@code existsBySlotIdAndUserIdAndStatus(WAITING)} で事前に弾く。
+     * {@code GlobalExceptionHandler} の個別マッピングで 409。</p>
+     */
+    WAITLIST_ALREADY_REGISTERED("RESERVATION_047", "すでにキャンセル待ちに登録されています", Severity.WARN),
+
+    /**
+     * 満席でない枠へのキャンセル待ち登録（入力不正・400）。
+     *
+     * <p>§6.1: AVAILABLE 枠はそのまま予約すべきなので待ち登録を拒否する。
+     * Severity.WARN のため既定マッピングで 400（個別 map 不要）。</p>
+     */
+    WAITLIST_SLOT_NOT_FULL("RESERVATION_048", "空きがあるためそのまま予約してください", Severity.WARN),
+
+    /**
+     * キャンセル待ち上限超過（1 ユーザー同時 10 件 / 1 枠 50 件・入力上限超過・400）。
+     *
+     * <p>§6.1: Service 層で担保する。Severity.WARN のため既定マッピングで 400（個別 map 不要）。</p>
+     */
+    WAITLIST_LIMIT_EXCEEDED("RESERVATION_049",
+            "キャンセル待ちの登録上限に達しています", Severity.WARN),
+
+    /**
+     * キャンセル待ち登録のレートリミット超過（429 Too Many Requests）。
+     *
+     * <p>§6.4: 登録は zone {@code reservation-waitlist}（1 ユーザー 1 分 10 回）で保護する。
+     * 予約作成バケット（W2-6 で採番予定の 053）とは別 zone・別コード（登録は軽量操作のため
+     * 予約バケットを消費させない）。{@code GlobalExceptionHandler} の個別マッピングで 429。</p>
+     */
+    WAITLIST_RATE_LIMITED("RESERVATION_050",
+            "操作が早すぎます。1分ほど待ってからやり直してください", Severity.WARN);
 
     private final String code;
     private final String message;

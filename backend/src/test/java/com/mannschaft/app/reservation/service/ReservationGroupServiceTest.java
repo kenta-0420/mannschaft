@@ -163,7 +163,9 @@ class ReservationGroupServiceTest {
                 reservationRepository, slotRepository, slotService, lineRepository, menuRepository,
                 menuLineRepository, blockedTimeRepository, reminderRepository, viewAccessGuard,
                 reservationPolicyService, unavailabilityChecker, accessControlService, eventPublisher,
-                auditLogService, txTemplate, fixed);
+                auditLogService,
+                org.mockito.Mockito.mock(com.mannschaft.app.reservation.service.ReservationWaitlistService.class),
+                txTemplate, fixed);
     }
 
     // ========================================

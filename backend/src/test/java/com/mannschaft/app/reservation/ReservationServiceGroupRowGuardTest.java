@@ -101,7 +101,9 @@ class ReservationServiceGroupRowGuardTest {
                 reservationRepository, slotRepository, lineRepository, slotService, reservationMapper,
                 nameResolverService, eventPublisher, accessControlService, viewAccessGuard,
                 reservationPolicyService, blockedTimeRepository, unavailabilityChecker,
-                groupSummaryResolver, FIXED_CLOCK);
+                groupSummaryResolver,
+                org.mockito.Mockito.mock(com.mannschaft.app.reservation.service.ReservationWaitlistService.class),
+                FIXED_CLOCK);
 
         given(slotRepository.findById(any())).willReturn(Optional.of(slotEntity()));
         given(lineRepository.findById(any())).willReturn(Optional.empty());
