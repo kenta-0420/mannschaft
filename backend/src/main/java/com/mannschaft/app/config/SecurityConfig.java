@@ -356,6 +356,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/admin/age-group-settings/**").hasRole("SYSTEM_ADMIN")
                 // F01.10 履歴書・職務経歴書（本人のみ完全非公開・全エンドポイント認証必須）
                 .requestMatchers("/api/v1/resumes/**").authenticated()
+                // F09.19.2 スポットライト配信（サービング/計測。content|view|visit すべて認証必須。§6.1/§11）
+                .requestMatchers("/api/v1/spotlight/**").authenticated()
                 // Phase E: GDPR パージ状況管理 API（SYSTEM_ADMIN 限定）
                 .requestMatchers("/api/v1/system-admin/gdpr/**").hasRole("SYSTEM_ADMIN")
                 // 外部 webhook（署名検証で認証＝JWT 非依存。docs/security/01 §3.6）
