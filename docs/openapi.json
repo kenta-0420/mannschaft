@@ -55,6 +55,10 @@
       "description": "F09.17 Phase 11-a 受信者の広告受信設定"
     },
     {
+      "name": "システム管理 - 運用型キャンペーン審査",
+      "description": "F09.19 §6.1 運用型キャンペーンの審査キュー・詳細・承認/却下（SYSTEM_ADMIN 専用）"
+    },
+    {
       "name": "サービス履歴テンプレート",
       "description": "F07.1 テンプレートCRUD（チーム・組織）"
     },
@@ -89795,7 +89799,7 @@
     "/api/v1/system-admin/ad-campaigns-operational/{id}/reject": {
       "patch": {
         "tags": [
-          "system-admin-operational-ad-campaign-controller"
+          "システム管理 - 運用型キャンペーン審査"
         ],
         "operationId": "reject_6",
         "parameters": [
@@ -89836,7 +89840,7 @@
     "/api/v1/system-admin/ad-campaigns-operational/{id}/approve": {
       "patch": {
         "tags": [
-          "system-admin-operational-ad-campaign-controller"
+          "システム管理 - 運用型キャンペーン審査"
         ],
         "operationId": "approve_11",
         "parameters": [
@@ -113869,8 +113873,10 @@
     "/api/v1/system-admin/ad-campaigns-operational": {
       "get": {
         "tags": [
-          "system-admin-operational-ad-campaign-controller"
+          "システム管理 - 運用型キャンペーン審査"
         ],
+        "summary": "審査キュー一覧",
+        "description": "運用型キャンペーンを status フィルタ（既定 PENDING_REVIEW）・created_at DESC で取得する。",
         "operationId": "list_74",
         "parameters": [
           {
@@ -113917,6 +113923,39 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/PagedResponseOperationalCampaignResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/ad-campaigns-operational/{id}": {
+      "get": {
+        "tags": [
+          "システム管理 - 運用型キャンペーン審査"
+        ],
+        "summary": "審査詳細",
+        "description": "承認/却下判断に必要な広告主帰属（advertiserName / scope）とクリエイティブ一覧を含むキャンペーン詳細を返す。存在しない id は 404。",
+        "operationId": "detail_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseOperationalCampaignReviewDetailResponse"
                 }
               }
             }
@@ -207460,6 +207499,100 @@
           }
         }
       },
+      "ApiResponseOperationalCampaignReviewDetailResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/OperationalCampaignReviewDetailResponse"
+          }
+        }
+      },
+      "OperationalCampaignReviewDetailResponse": {
+        "type": "object",
+        "properties": {
+          "advertiserAccountId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "advertiserName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "creatives": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdCreativeResponse"
+            }
+          },
+          "dailyBudget": {
+            "type": "number"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "pricingModel": {
+            "type": "string",
+            "enum": [
+              "CPM",
+              "CPC"
+            ]
+          },
+          "rateCardId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "rejectReason": {
+            "type": "string"
+          },
+          "reportSuspendedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeType": {
+            "type": "string",
+            "enum": [
+              "ORGANIZATION",
+              "TEAM"
+            ]
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PENDING_REVIEW",
+              "ACTIVE",
+              "PAUSED",
+              "ENDED"
+            ]
+          },
+          "unitPriceSnapshot": {
+            "type": "number"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "ApiResponseListPresetResponse": {
         "type": "object",
         "properties": {
@@ -219168,6 +219301,10 @@
       "PublicRateCardResponse": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
           "label": {
             "type": "string"
           },

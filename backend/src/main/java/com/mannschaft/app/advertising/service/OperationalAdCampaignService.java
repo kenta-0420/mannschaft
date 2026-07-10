@@ -2,13 +2,17 @@ package com.mannschaft.app.advertising.service;
 
 import com.mannschaft.app.advertising.AdvertisingErrorCode;
 import com.mannschaft.app.advertising.PricingModel;
+import com.mannschaft.app.advertising.dto.AdCreativeResponse;
 import com.mannschaft.app.advertising.dto.CreateOperationalCampaignRequest;
 import com.mannschaft.app.advertising.dto.OperationalCampaignResponse;
+import com.mannschaft.app.advertising.dto.OperationalCampaignReviewDetailResponse;
 import com.mannschaft.app.advertising.entity.AdCampaignEntity;
 import com.mannschaft.app.advertising.entity.AdCampaignEntity.CampaignStatus;
+import com.mannschaft.app.advertising.entity.AdEntity;
 import com.mannschaft.app.advertising.entity.AdRateCardEntity;
 import com.mannschaft.app.advertising.entity.AdvertiserAccountEntity;
 import com.mannschaft.app.advertising.repository.AdCampaignRepository;
+import com.mannschaft.app.advertising.repository.AdEntityRepository;
 import com.mannschaft.app.advertising.repository.AdRateCardRepository;
 import com.mannschaft.app.advertising.repository.AdvertiserAccountRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
@@ -30,6 +34,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -64,6 +69,7 @@ public class OperationalAdCampaignService {
     private final AdCampaignRepository adCampaignRepository;
     private final AdvertiserAccountRepository advertiserAccountRepository;
     private final AdRateCardRepository adRateCardRepository;
+    private final AdEntityRepository adEntityRepository;
     private final AuditLogService auditLogService;
     private final Clock clock;
 
@@ -207,6 +213,27 @@ public class OperationalAdCampaignService {
                 ? adCampaignRepository.findAll(pageable)
                 : adCampaignRepository.findByStatus(status, pageable);
         return toPaged(result, page, pageable.getPageSize());
+    }
+
+    /**
+     * 審査詳細（F09.19.1b）。審査官が承認/却下を判断するため、キャンペーン本体に加えて
+     * 広告主帰属（advertiserAccountId / advertiserName / scopeType / scopeId）と
+     * クリエイティブ一覧を組み立てて返す。存在しない id は 404（AD_021）。
+     *
+     * <p>SYSTEM_ADMIN は全キャンペーンを閲覧できる（scope 越境 IDOR に該当しない）ため scope 検証は行わない。
+     * SYSTEM_ADMIN ガードは Controller 層および {@code /api/v1/system-admin/**} 一括ルールで担保する。</p>
+     */
+    public OperationalCampaignReviewDetailResponse getReviewDetail(Long campaignId) {
+        AdCampaignEntity campaign = findById(campaignId);
+        AdvertiserAccountEntity account = advertiserAccountRepository
+                .findById(campaign.getAdvertiserAccountId())
+                .orElseThrow(() -> new BusinessException(AdvertisingErrorCode.AD_005));
+        List<AdCreativeResponse> creatives = adEntityRepository
+                .findByCampaignId(campaign.getId())
+                .stream()
+                .map(this::toCreativeResponse)
+                .toList();
+        return toReviewDetailResponse(campaign, account, creatives);
     }
 
     /** PENDING_REVIEW → ACTIVE（監査ログ OPERATIONAL_CAMPAIGN_APPROVED）。 */
@@ -388,5 +415,46 @@ public class OperationalAdCampaignService {
                 c.getReportSuspendedAt(),
                 c.getCreatedAt(),
                 c.getUpdatedAt());
+    }
+
+    /** 審査詳細レスポンス（本体 + 広告主帰属 + クリエイティブ）を組み立てる（F09.19.1b）。 */
+    private OperationalCampaignReviewDetailResponse toReviewDetailResponse(
+            AdCampaignEntity c, AdvertiserAccountEntity account, List<AdCreativeResponse> creatives) {
+        return new OperationalCampaignReviewDetailResponse(
+                c.getId(),
+                c.getName(),
+                c.getStatus(),
+                c.getPricingModel(),
+                c.getDailyBudget(),
+                c.getStartDate(),
+                c.getEndDate(),
+                c.getRateCardId(),
+                c.getUnitPriceSnapshot(),
+                c.getRejectReason(),
+                c.getReportSuspendedAt(),
+                c.getCreatedAt(),
+                c.getUpdatedAt(),
+                account.getId(),
+                account.getCompanyName(),
+                account.getScopeType(),
+                account.getScopeId(),
+                creatives);
+    }
+
+    /** ads エンティティを AdCreativeResponse に変換する（AdCreativeService と同一の素通し規則）。 */
+    private AdCreativeResponse toCreativeResponse(AdEntity entity) {
+        return new AdCreativeResponse(
+                entity.getId(),
+                entity.getCampaignId(),
+                entity.getTitle(),
+                entity.getImageUrl(),
+                entity.getDestinationUrl(),
+                entity.getStatus().name(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt(),
+                entity.getPlacement(),
+                entity.getWidth(),
+                entity.getHeight(),
+                entity.getAltText());
     }
 }

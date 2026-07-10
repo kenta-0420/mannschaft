@@ -1,6 +1,7 @@
 package com.mannschaft.app.advertising.controller;
 
 import com.mannschaft.app.advertising.dto.OperationalCampaignResponse;
+import com.mannschaft.app.advertising.dto.OperationalCampaignReviewDetailResponse;
 import com.mannschaft.app.advertising.dto.RejectOperationalCampaignRequest;
 import com.mannschaft.app.advertising.entity.AdCampaignEntity.CampaignStatus;
 import com.mannschaft.app.advertising.service.OperationalAdCampaignService;
@@ -8,6 +9,8 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,6 +35,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/system-admin/ad-campaigns-operational")
 @RequiredArgsConstructor
+@Tag(name = "システム管理 - 運用型キャンペーン審査",
+        description = "F09.19 §6.1 運用型キャンペーンの審査キュー・詳細・承認/却下（SYSTEM_ADMIN 専用）")
 public class SystemAdminOperationalAdCampaignController {
 
     private final OperationalAdCampaignService operationalAdCampaignService;
@@ -45,12 +50,24 @@ public class SystemAdminOperationalAdCampaignController {
 
     /** 審査キュー（status フィルタ既定 PENDING_REVIEW）。 */
     @GetMapping
+    @Operation(summary = "審査キュー一覧",
+            description = "運用型キャンペーンを status フィルタ（既定 PENDING_REVIEW）・created_at DESC で取得する。")
     public PagedResponse<OperationalCampaignResponse> list(
             @RequestParam(required = false, defaultValue = "PENDING_REVIEW") CampaignStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         requireSystemAdmin();
         return operationalAdCampaignService.listForReview(status, page, size);
+    }
+
+    /** 審査詳細（広告主名・scope・クリエイティブ一覧つき。F09.19.1b）。存在しない id は 404。 */
+    @GetMapping("/{id}")
+    @Operation(summary = "審査詳細",
+            description = "承認/却下判断に必要な広告主帰属（advertiserName / scope）とクリエイティブ一覧を含む"
+                    + "キャンペーン詳細を返す。存在しない id は 404。")
+    public ApiResponse<OperationalCampaignReviewDetailResponse> detail(@PathVariable Long id) {
+        requireSystemAdmin();
+        return ApiResponse.of(operationalAdCampaignService.getReviewDetail(id));
     }
 
     /** PENDING_REVIEW → ACTIVE。 */
