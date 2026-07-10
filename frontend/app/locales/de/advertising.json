@@ -251,7 +251,13 @@
         "column_status": "Status",
         "auto_suspend_candidate": "Beschwerden-Häufung",
         "auto_suspend_candidate_tooltip": "Mehrere Beschwerden in kurzer Zeit – Kandidat für automatische Aussetzung.",
-        "go_campaign": "Zur Kampagne"
+        "go_campaign": "Zur Kampagne",
+        "type_messaging": "Nachricht",
+        "type_operational": "Betrieb",
+        "status_update_failed": "Statusaktualisierung fehlgeschlagen",
+        "mark_reviewing": "Als in Prüfung markieren",
+        "mark_resolved": "Als gelöst markieren",
+        "mark_dismissed": "Ablehnen"
       },
       "advertiser_campaign_report": {
         "title": "Kampagnen-Performance-Bericht",
