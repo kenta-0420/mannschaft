@@ -5,10 +5,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -99,7 +102,8 @@ public class BillingContractService {
             slotAddonKey = featureKey;
             planKey = null;
         } else {
-            throw new BusinessException(EntitlementErrorCode.INVALID_SCOPE_KIND);
+            // contractKind が PLAN/ADDON 以外（enum ゆえ現状到達しないが、API 層で文字列受けした場合の防御）。
+            throw new BusinessException(EntitlementErrorCode.INVALID_CONTRACT_KIND);
         }
 
         Integer memberCountSnapshot = null;
@@ -146,7 +150,7 @@ public class BillingContractService {
         issueEntitlements(scopeKind, scopeId, organizationId, grantedKeys,
                 toSourceKind(contractKind), saved.getId(), now);
 
-        cacheEvictor.evictScopeFeatures(scopeKind, scopeId, grantedKeys);
+        evictAfterCommit(scopeKind, scopeId, grantedKeys);
 
         return new ContractResult(saved.getId(), scopeKind, scopeId, contractKind, planKey, featureKey,
                 ContractStatus.ACTIVE, memberCountSnapshot, bandNoSnapshot, now,
@@ -183,7 +187,7 @@ public class BillingContractService {
                 scopeKind, scopeId, contract.getContractKind(), slotAddonKey);
 
         List<String> revokedKeys = revokeEntitlementsOfContract(contract, operatorUserId, now);
-        cacheEvictor.evictScopeFeatures(scopeKind, scopeId, revokedKeys);
+        evictAfterCommit(scopeKind, scopeId, revokedKeys);
 
         return new ContractResult(contract.getId(), scopeKind, scopeId, contract.getContractKind(),
                 contract.getPlanKey(), contract.getFeatureKey(), ContractStatus.CANCELLED,
@@ -263,7 +267,7 @@ public class BillingContractService {
         // 旧∪新 の feature_key を evict（ダウングレードで外れた機能を即 false に）。
         Set<String> affected = new LinkedHashSet<>(oldKeys);
         affected.addAll(newKeys);
-        cacheEvictor.evictScopeFeatures(scopeKind, scopeId, affected);
+        evictAfterCommit(scopeKind, scopeId, affected);
 
         return new ContractResult(savedNew.getId(), scopeKind, scopeId, ContractKind.PLAN, newPlanKey, null,
                 ContractStatus.ACTIVE, memberCountSnapshot, bandNoSnapshot, now,
@@ -273,6 +277,31 @@ public class BillingContractService {
     // ============================================================
     // 内部ヘルパ
     // ============================================================
+
+    /**
+     * キャッシュ evict を<b>トランザクション確定後（AFTER_COMMIT）</b>に実行する（設計書 02 §8・03 §5）。
+     *
+     * <p><b>なぜ commit 前に呼んではいけないか</b>: revoke/ダウングレードの書き込みがまだコミットされていない
+     * 時点で evict すると、evict と commit の隙に別スレッドの {@code isEntitled} がキャッシュミス→
+     * READ_COMMITTED 下で<b>未コミットの revoke が見えない DB</b> を読み→stale な {@code entitled=true} を
+     * 最大 TTL 秒（60 秒）再ポピュレートしてしまう（取消の即時反映というセキュリティ性質を弱める・
+     * memory {@code feedback_security_invalidation_rolled_back_by_same_tx_throw} の類型）。よって
+     * <b>コミット確定後にのみ evict</b> する（ロールバック時は {@code afterCommit} が呼ばれないため evict しない）。</p>
+     *
+     * <p>トランザクション同期が無い文脈（単体テスト等）では即時 evict にフォールバックする。</p>
+     */
+    private void evictAfterCommit(EntitlementScopeKind scopeKind, Long scopeId, Collection<String> featureKeys) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    cacheEvictor.evictScopeFeatures(scopeKind, scopeId, featureKeys);
+                }
+            });
+        } else {
+            cacheEvictor.evictScopeFeatures(scopeKind, scopeId, featureKeys);
+        }
+    }
 
     /** 子リソース（contractId）→ 所属スコープを解決し、パスのスコープと一致検証する（IDOR 二重防御・03 §2）。 */
     private BillingContractEntity loadContractInScope(

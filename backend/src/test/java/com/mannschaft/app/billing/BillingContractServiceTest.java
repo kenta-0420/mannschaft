@@ -264,6 +264,37 @@ class BillingContractServiceTest {
     }
 
     @Test
+    @DisplayName("evict は AFTER_COMMIT に遅延登録される（コミット前は evict しない・stale 再ポピュレート防止）")
+    void cancelContract_evictDeferredUntilAfterCommit() {
+        UUID cid = UUID.randomUUID();
+        BillingContractEntity contract = activeContract(cid, EntitlementScopeKind.TEAM, 10L, ContractKind.PLAN, "FULL");
+        given(billingContractRepository.findByIdAndDeletedAtIsNull(cid)).willReturn(Optional.of(contract));
+        EntitlementEntity e1 = EntitlementEntity.builder().scopeKind(EntitlementScopeKind.TEAM).scopeId(10L)
+                .featureKey(FeatureKeys.ADS_HIDE).sourceKind(EntitlementSourceKind.PLAN).sourceRefId(cid)
+                .validFrom(java.time.LocalDateTime.now()).build();
+        given(entitlementRepository.findBySourceKindAndSourceRefIdAndRevokedAtIsNull(EntitlementSourceKind.PLAN, cid))
+                .willReturn(List.of(e1));
+
+        // トランザクション同期を能動化（@Transactional 実行中を模擬）。
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        try {
+            service.cancelContract(EntitlementScopeKind.TEAM, 10L, cid, 7L);
+
+            // コミット前: evict はまだ呼ばれていない（遅延登録のみ）。
+            verify(cacheEvictor, never()).evictScopeFeatures(any(), any(), anyList());
+            var syncs = org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations();
+            assertThat(syncs).hasSize(1);
+
+            // コミット確定を模擬 → afterCommit で evict が走る。
+            syncs.forEach(org.springframework.transaction.support.TransactionSynchronization::afterCommit);
+            verify(cacheEvictor).evictScopeFeatures(eq(EntitlementScopeKind.TEAM), eq(10L),
+                    argThatContains(FeatureKeys.ADS_HIDE));
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
     @DisplayName("IDOR 二重防御: 他スコープの契約 ID は CONTRACT_NOT_FOUND（404 秘匿）")
     void cancelContract_wrongScope_throwsNotFound() {
         UUID cid = UUID.randomUUID();

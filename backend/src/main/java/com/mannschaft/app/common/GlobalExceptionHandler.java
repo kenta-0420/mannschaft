@@ -805,7 +805,8 @@ public class GlobalExceptionHandler {
             Map.entry("ENTITLEMENT_010", HttpStatus.BAD_REQUEST),         // PLAN_MASTER_VALIDATION_FAILED
             Map.entry("ENTITLEMENT_011", HttpStatus.CONFLICT),            // CONTRACT_NOT_CANCELLABLE
             Map.entry("ENTITLEMENT_012", HttpStatus.CONFLICT),            // PLAN_MASTER_IN_USE
-            Map.entry("ENTITLEMENT_013", HttpStatus.CONFLICT)             // DUPLICATE_ENTITLEMENT（uk_ent_grant）
+            Map.entry("ENTITLEMENT_013", HttpStatus.CONFLICT),            // DUPLICATE_ENTITLEMENT（uk_ent_grant）
+            Map.entry("ENTITLEMENT_014", HttpStatus.BAD_REQUEST)          // INVALID_CONTRACT_KIND（contractKind 不正）
     );
 
     /**

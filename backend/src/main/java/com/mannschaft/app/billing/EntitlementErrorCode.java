@@ -55,7 +55,16 @@ public enum EntitlementErrorCode implements ErrorCode {
     PLAN_MASTER_IN_USE("ENTITLEMENT_012", "参照中のマスタは削除できません", Severity.WARN),
 
     /** uk_ent_grant 違反（同一発行元×同時刻の二重発行・AC-21）→ 409。 */
-    DUPLICATE_ENTITLEMENT("ENTITLEMENT_013", "権利の二重発行が検出されました", Severity.WARN);
+    DUPLICATE_ENTITLEMENT("ENTITLEMENT_013", "権利の二重発行が検出されました", Severity.WARN),
+
+    /**
+     * contractKind が PLAN/ADDON 以外 → 400。
+     *
+     * <p>設計 02 §9 の一覧には contractKind 専用コードが無かったため本弾で追補採番した
+     * （{@code INVALID_SCOPE_KIND}=009 は「scopeKind 不正」の意味であり contractKind 不正には意味が
+     * 合わないため流用しない）。CreateContractRequest の {@code contractKind} 検証（02 §3.1）に対応する。</p>
+     */
+    INVALID_CONTRACT_KIND("ENTITLEMENT_014", "契約種別の指定が不正です", Severity.WARN);
 
     private final String code;
     private final String message;

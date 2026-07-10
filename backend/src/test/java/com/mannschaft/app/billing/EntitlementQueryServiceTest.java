@@ -103,6 +103,38 @@ class EntitlementQueryServiceTest {
     }
 
     @Test
+    @DisplayName("AC-02: チーム T1 の契約は同一 featureKey の別チーム T2 に漏れない（scopeId 隔離）")
+    void ac02_teamScopeIsolation() {
+        initService();
+        String key = FeatureKeys.ADS_HIDE;
+        given(featureCatalogRepository.findById(key)).willReturn(Optional.of(feature(key, true, false)));
+        given(planFeatureRepository.existsByPlanKeyAndFeatureKey(FeatureKeys.PLAN_FREE, key)).willReturn(false);
+        given(entitlementRepository.existsActiveGrant(eq(EntitlementScopeKind.TEAM), eq(1L), eq(key), any()))
+                .willReturn(true);   // T1 は契約あり
+        given(entitlementRepository.existsActiveGrant(eq(EntitlementScopeKind.TEAM), eq(2L), eq(key), any()))
+                .willReturn(false);  // T2 は無契約
+
+        assertThat(service.isEntitled(EntitlementScopeKind.TEAM, 1L, key)).isTrue();
+        assertThat(service.isEntitled(EntitlementScopeKind.TEAM, 2L, key)).isFalse();
+    }
+
+    @Test
+    @DisplayName("AC-03: USER 個人契約は同一 featureKey の所属 TEAM に充当されない（scopeKind 隔離）")
+    void ac03_userContractDoesNotApplyToTeam() {
+        initService();
+        String key = FeatureKeys.ADS_HIDE;
+        given(featureCatalogRepository.findById(key)).willReturn(Optional.of(feature(key, true, false)));
+        given(planFeatureRepository.existsByPlanKeyAndFeatureKey(FeatureKeys.PLAN_FREE, key)).willReturn(false);
+        given(entitlementRepository.existsActiveGrant(eq(EntitlementScopeKind.USER), eq(50L), eq(key), any()))
+                .willReturn(true);   // 個人 U=50 は契約あり
+        given(entitlementRepository.existsActiveGrant(eq(EntitlementScopeKind.TEAM), eq(7L), eq(key), any()))
+                .willReturn(false);  // U が所属する TEAM=7 には効かない
+
+        assertThat(service.isEntitled(EntitlementScopeKind.USER, 50L, key)).isTrue();
+        assertThat(service.isEntitled(EntitlementScopeKind.TEAM, 7L, key)).isFalse();
+    }
+
+    @Test
     @DisplayName("AC-05: FREE 掲載機能は契約ゼロのスコープでも true（existsActiveGrant を呼ばない）")
     void ac05_freePlanFeatureAlwaysTrue() {
         initService();
