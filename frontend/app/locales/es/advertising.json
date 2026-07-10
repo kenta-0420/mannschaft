@@ -251,7 +251,13 @@
         "column_status": "Estado",
         "auto_suspend_candidate": "Concentración de reportes",
         "auto_suspend_candidate_tooltip": "Se recibieron varios reportes en poco tiempo: candidata a suspensión automática.",
-        "go_campaign": "Ver detalle de la campaña"
+        "go_campaign": "Ver detalle de la campaña",
+        "type_messaging": "Mensajería",
+        "type_operational": "Operativo",
+        "status_update_failed": "Error al actualizar el estado",
+        "mark_reviewing": "Marcar en revisión",
+        "mark_resolved": "Marcar como resuelto",
+        "mark_dismissed": "Descartar"
       },
       "advertiser_campaign_report": {
         "title": "Informe de rendimiento de la campaña",

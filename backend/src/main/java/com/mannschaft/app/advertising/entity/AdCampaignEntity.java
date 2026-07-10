@@ -66,8 +66,15 @@ public class AdCampaignEntity extends BaseEntity {
     @Column(length = 500)
     private String rejectReason;
 
-    /** 通報 3 件による自動停止時刻（F09.19.9 実装まで常に NULL）。 */
+    /** 通報 3 件による自動停止時刻（F09.19.9）。非 NULL 中は広告主 resume を AD_033 で拒否する。 */
     private java.time.LocalDateTime reportSuspendedAt;
+
+    /**
+     * 通報自動停止が ACTIVE→PAUSED 遷移を行った場合 TRUE（F09.19.9・V151）。
+     * unsuspend 時に「自動停止で PAUSED になっていた場合のみ ACTIVE 復帰」を判定するために使う。
+     * 広告主が自ら pause 済みの campaign が自動停止された場合は FALSE のまま（unsuspend しても ACTIVE 復帰しない）。
+     */
+    private Boolean reportAutoPaused;
 
     public enum CampaignStatus {
         DRAFT, PENDING_REVIEW, ACTIVE, PAUSED, ENDED
@@ -124,5 +131,40 @@ public class AdCampaignEntity extends BaseEntity {
         this.name = name;
         this.dailyBudget = dailyBudget;
         this.endDate = endDate;
+    }
+
+    // ─── F09.19.9 通報自動停止 / 解除（状態ガード付き。V151） ───
+
+    /**
+     * 通報 3 件到達による自動停止を適用する（状態ガード）。
+     *
+     * <p>{@code report_suspended_at} を記録し、現 status が {@code ACTIVE} の場合のみ {@code PAUSED} へ遷移させて
+     * {@code report_auto_paused=TRUE} を立てる（unsuspend の ACTIVE 復帰判定用）。
+     * {@code PAUSED}（広告主自身の pause）/ {@code ENDED} / {@code DRAFT} / {@code PENDING_REVIEW} の場合は
+     * status を変更しない（ENDED 巻き戻し防御・不可逆不変条件）。冪等性は呼び出し側（既に停止中はスキップ）で担保する。</p>
+     *
+     * @param suspendedAt 停止時刻（Service の Clock 由来。TZ 一貫性のため引数化）
+     */
+    public void applyReportAutoStop(java.time.LocalDateTime suspendedAt) {
+        this.reportSuspendedAt = suspendedAt;
+        if (this.status == CampaignStatus.ACTIVE) {
+            this.status = CampaignStatus.PAUSED;
+            this.reportAutoPaused = Boolean.TRUE;
+        }
+    }
+
+    /**
+     * 通報自動停止を解除する（SYSTEM_ADMIN の unsuspend。§6.1）。
+     *
+     * <p>{@code report_suspended_at=NULL} に戻し、自動停止で {@code ACTIVE→PAUSED} 遷移していた場合
+     * （{@code report_auto_paused=TRUE}）のみ {@code ACTIVE} へ復帰させてフラグを倒す。
+     * 広告主自身が pause 済みだった campaign は PAUSED のまま維持する。</p>
+     */
+    public void unsuspendFromReport() {
+        this.reportSuspendedAt = null;
+        if (Boolean.TRUE.equals(this.reportAutoPaused)) {
+            this.status = CampaignStatus.ACTIVE;
+            this.reportAutoPaused = Boolean.FALSE;
+        }
     }
 }

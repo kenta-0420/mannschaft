@@ -251,7 +251,13 @@
         "column_status": "状态",
         "auto_suspend_candidate": "举报集中",
         "auto_suspend_candidate_tooltip": "短时间内收到多次举报，是自动停止的候选。",
-        "go_campaign": "查看广告活动详情"
+        "go_campaign": "查看广告活动详情",
+        "type_messaging": "消息型",
+        "type_operational": "运营型",
+        "status_update_failed": "状态更新失败",
+        "mark_reviewing": "标记为审查中",
+        "mark_resolved": "标记为已解决",
+        "mark_dismissed": "驳回"
       },
       "advertiser_campaign_report": {
         "title": "广告活动绩效报告",

@@ -251,7 +251,13 @@
         "column_status": "Status",
         "auto_suspend_candidate": "Reports burst",
         "auto_suspend_candidate_tooltip": "Multiple reports received in a short period — auto-suspend candidate.",
-        "go_campaign": "Open campaign"
+        "go_campaign": "Open campaign",
+        "type_messaging": "Messaging",
+        "type_operational": "Operational",
+        "status_update_failed": "Failed to update status",
+        "mark_reviewing": "Mark reviewing",
+        "mark_resolved": "Mark resolved",
+        "mark_dismissed": "Dismiss"
       },
       "advertiser_campaign_report": {
         "title": "Campaign performance report",
