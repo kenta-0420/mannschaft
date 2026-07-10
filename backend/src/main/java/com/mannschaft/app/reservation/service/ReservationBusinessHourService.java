@@ -385,17 +385,30 @@ public class ReservationBusinessHourService {
 
     /**
      * 提案された予約不可枠と overlap する active 予約を取得する（409 ガード・impact 共通の観測点）。
-     * 全日（start/end 両 NULL）は {@code [LocalTime.MIN, LocalTime.MAX]} に展開して「その日の全 slot」に一致させる。
+     *
+     * <p><b>全日（start/end 両 NULL）</b>はその日・その軸の全 slot に一致するため、時刻条件を一切使わない
+     * 専用クエリ {@link ReservationRepository#findActiveReservationsOnDate} で「その日の active 予約」を引く。
+     * かつては全日を {@code [LocalTime.MIN, LocalTime.MAX]} に展開して半開区間クエリに渡していたが、
+     * {@code reservation_slots.start_time}/{@code end_time} が MySQL の {@code TIME} 型（小数秒精度 0）で
+     * バインド値 {@code LocalTime.MAX}（{@code .999999999}）が秒に丸められ、実 DB で overlap 判定が破綻して
+     * 検出漏れ（impact 0 件・409 すり抜け）が起きていた（実機E2E発見バグ・2026-07-10 根治）。</p>
+     *
+     * <p><b>部分ブロック（時刻あり）</b>は従来どおり半開区間 overlap クエリ
+     * {@link ReservationRepository#findActiveReservationsOverlappingUnavailability} を維持する（回帰なし）。</p>
      */
     private List<ReservationEntity> findActiveOverlappingReservations(
             Long teamId, LocalDate date, ReservationBlockedResourceType type, Long resourceId,
             LocalTime startTime, LocalTime endTime) {
         // TEAM 軸は全 slot 対象（resourceId=null）、STAFF 軸は resourceId で絞る。
         Long queryResourceId = (type == ReservationBlockedResourceType.STAFF) ? resourceId : null;
-        LocalTime effectiveStart = startTime != null ? startTime : LocalTime.MIN;
-        LocalTime effectiveEnd = endTime != null ? endTime : LocalTime.MAX;
+        // 全日ブロック（両 NULL）は時刻トリックを使わず、日付＋軸一致でその日の active 予約を引く。
+        if (startTime == null && endTime == null) {
+            return reservationRepository.findActiveReservationsOnDate(
+                    teamId, date, queryResourceId, ACTIVE_STATUSES);
+        }
+        // 部分ブロックは半開区間 overlap で判定する（従来クエリ維持）。
         return reservationRepository.findActiveReservationsOverlappingUnavailability(
-                teamId, date, queryResourceId, effectiveStart, effectiveEnd, ACTIVE_STATUSES);
+                teamId, date, queryResourceId, startTime, endTime, ACTIVE_STATUSES);
     }
 
     /** 単一の予約不可枠を STAFF 時の担当スタッフ表示名（resourceName）付きで変換する。 */

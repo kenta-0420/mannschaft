@@ -573,15 +573,14 @@ class ReservationBusinessHourServiceTest {
         @Test
         @DisplayName("B-6: overlap する active 予約が存在すると RESERVATION_027（409）で拒否し blocked_times に書き込まない")
         void B6_409ガード() {
-            // Given: 全日 TEAM 枠 → [MIN, MAX] で query → active 予約 1 件ヒット。
+            // Given: 全日 TEAM 枠 → 時刻条件なしの findActiveReservationsOnDate で active 予約 1 件ヒット。
+            // （全日は LocalTime.MAX を使わない根治後の経路。実DBの TIME 型丸め問題を排除・2026-07-10）
             BlockedTimeRequest request = new BlockedTimeRequest(
                     LocalDate.of(2026, 4, 2), null, null, "臨時休業", null, null);
-            given(reservationRepository.findActiveReservationsOverlappingUnavailability(
+            given(reservationRepository.findActiveReservationsOnDate(
                     org.mockito.ArgumentMatchers.eq(TEAM_ID),
                     org.mockito.ArgumentMatchers.eq(LocalDate.of(2026, 4, 2)),
                     org.mockito.ArgumentMatchers.isNull(),
-                    org.mockito.ArgumentMatchers.eq(LocalTime.MIN),
-                    org.mockito.ArgumentMatchers.eq(LocalTime.MAX),
                     org.mockito.ArgumentMatchers.eq(ACTIVE)))
                     .willReturn(List.of(reservation(10L, 1L, 789L, ReservationStatus.CONFIRMED)));
 
@@ -599,9 +598,10 @@ class ReservationBusinessHourServiceTest {
         void B6_終端状態は登録可() {
             BlockedTimeRequest request = new BlockedTimeRequest(
                     LocalDate.of(2026, 4, 2), null, null, "臨時休業", null, null);
+            // 全日ブロックは時刻条件なしの findActiveReservationsOnDate を通る（根治後の経路）。
             // ACTIVE(PENDING/CONFIRMED) のクエリは 0 件（終端状態は observ 点である本クエリに含まれない）。
-            given(reservationRepository.findActiveReservationsOverlappingUnavailability(
-                    any(), any(), org.mockito.ArgumentMatchers.isNull(), any(), any(), any()))
+            given(reservationRepository.findActiveReservationsOnDate(
+                    any(), any(), org.mockito.ArgumentMatchers.isNull(), any()))
                     .willReturn(List.of());
             ReservationBlockedTimeEntity saved = createBlockedTimeEntity();
             given(blockedTimeRepository.save(any(ReservationBlockedTimeEntity.class))).willReturn(saved);

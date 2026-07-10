@@ -258,4 +258,40 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
             @Param("startTimeInclusive") LocalTime startTimeInclusive,
             @Param("endTimeExclusive") LocalTime endTimeExclusive,
             @Param("statuses") List<ReservationStatus> statuses);
+
+    /**
+     * 機能B（§5.B・§4.B）: <b>全日</b>予約不可枠と該当する active 予約を取得する（時刻条件なし）。
+     *
+     * <p>全日ブロック（{@code start/end 両 null}）は「その日・その軸の全 slot」に一致するため、
+     * 時間帯 overlap 判定を一切行わず {@code teamId × blockedDate × 対象軸 × status} だけで引く。</p>
+     *
+     * <h2>なぜ時刻条件付きクエリと分けるのか（実機E2E発見バグ・2026-07-10 根治）</h2>
+     * <p>従来は全日ブロックを {@code [LocalTime.MIN, LocalTime.MAX]} に展開して
+     * {@link #findActiveReservationsOverlappingUnavailability} の半開区間判定
+     * （{@code s.startTime < :endTimeExclusive}）に渡していた。だが {@code reservation_slots.start_time}
+     * /{@code end_time} は MySQL の {@code TIME} 型（<b>小数秒精度 0</b>）であり、
+     * バインドされた {@code LocalTime.MAX}（{@code 23:59:59.999999999}）が実 DB で秒に丸められ
+     * （繰り上がり）、{@code s.startTime < :endTimeExclusive} が全 slot で {@code false} になって
+     * <b>overlap を検出できない</b>（impact の affectedCount が常に 0・409 ガードすり抜け）バグがあった。
+     * 全日は時刻トリックを完全に排除し、日付＋軸一致だけで引くことで根治する。</p>
+     *
+     * <p>{@code ReservationEntity} / {@code ReservationSlotEntity} 双方の {@code @SQLRestriction}
+     * （{@code deleted_at IS NULL}）により論理削除済みは自動除外される。</p>
+     *
+     * @param teamId      チームID
+     * @param blockedDate 予約不可にしたい日（全日）
+     * @param resourceId  STAFF 軸のときの対象スタッフ user_id。TEAM 軸のときは null（全 slot）
+     * @param statuses    active とみなすステータス（PENDING / CONFIRMED）
+     * @return その日の全 slot に紐づく active 予約のリスト
+     */
+    @Query("SELECT r FROM ReservationEntity r, ReservationSlotEntity s " +
+            "WHERE r.reservationSlotId = s.id " +
+            "AND r.teamId = :teamId AND r.status IN :statuses " +
+            "AND s.slotDate = :blockedDate " +
+            "AND (:resourceId IS NULL OR s.staffUserId = :resourceId)")
+    List<ReservationEntity> findActiveReservationsOnDate(
+            @Param("teamId") Long teamId,
+            @Param("blockedDate") LocalDate blockedDate,
+            @Param("resourceId") Long resourceId,
+            @Param("statuses") List<ReservationStatus> statuses);
 }
