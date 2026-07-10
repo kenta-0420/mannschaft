@@ -1,5 +1,6 @@
 package com.mannschaft.app.config;
 
+import com.mannschaft.app.chat.ws.ChatChannelSubscriptionInterceptor;
 import com.mannschaft.app.match.live.MatchLiveSubscriptionInterceptor;
 import com.mannschaft.app.reservation.ws.EmergencyClosureSubscriptionInterceptor;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,10 @@ import java.util.Arrays;
  * <p>同様に {@link EmergencyClosureSubscriptionInterceptor} を認証インターセプタの後段に登録し、
  * F03.4+ 臨時休業確認状況トピック（{@code /topic/teams/{teamId}/emergency-closures/{closureId}/confirmations}）の
  * SUBSCRIBE 認可（当該チーム ADMIN 限定）を行う。</p>
+ *
+ * <p>さらに {@link ChatChannelSubscriptionInterceptor} を認証インターセプタの後段に登録し、
+ * チャットチャネルトピック（{@code /topic/channels/{channelId}}）の SUBSCRIBE 認可
+ * （チャネルメンバーシップ検査・非メンバー拒否）を行い、既存 IDOR を閉塞する（§2.6・AC-11）。</p>
  */
 @Configuration
 @EnableWebSocketMessageBroker
@@ -38,6 +43,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final WebSocketAuthChannelInterceptor authChannelInterceptor;
     private final MatchLiveSubscriptionInterceptor matchLiveSubscriptionInterceptor;
     private final EmergencyClosureSubscriptionInterceptor emergencyClosureSubscriptionInterceptor;
+    private final ChatChannelSubscriptionInterceptor chatChannelSubscriptionInterceptor;
 
     /**
      * WebSocket ハンドシェイクで許可するオリジン。{@code CorsConfig} と同じプロパティを使用し、
@@ -78,6 +84,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registration.interceptors(
                 authChannelInterceptor,
                 matchLiveSubscriptionInterceptor,
-                emergencyClosureSubscriptionInterceptor);
+                emergencyClosureSubscriptionInterceptor,
+                chatChannelSubscriptionInterceptor);
     }
 }
