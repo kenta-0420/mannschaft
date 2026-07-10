@@ -123,3 +123,18 @@ variable "pages_env_extra" {
   type        = map(string)
   default     = {}
 }
+
+# -----------------------------------------------------------------------------
+# WebSocket 外部ブローカー化（Valkey Pub/Sub relay）
+# -----------------------------------------------------------------------------
+# 設計: docs/architecture/websocket_external_broker_valkey.md §1.3・§8.6
+# 段階 1（desired_count=1 のまま relay ON で本番相当検証）で true に切替、
+# 段階 2（desired_count を 2 以上へ）でも true を維持する。
+# 適用前提（隊3ゲート）: ElastiCache 転送時暗号化（transit_encryption_enabled）が
+# 有効化済みであること（本モジュールでは常時 true・data module 参照）。
+
+variable "websocket_relay_enabled" {
+  description = "WebSocket 外部ブローカー化 relay の feature flag。既定 false（段階 1 着手時に tfvars で true に切替）"
+  type        = bool
+  default     = false
+}
