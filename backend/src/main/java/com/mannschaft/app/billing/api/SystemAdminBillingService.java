@@ -271,6 +271,9 @@ public class SystemAdminBillingService {
     // 契約横断検索
     // ============================================================
 
+    /** 契約横断検索の 1 ページ最大件数（無制限の巨大クエリを防ぐ・promotion 側 max50 に揃える）。 */
+    static final int MAX_PAGE_SIZE = 50;
+
     @Transactional(readOnly = true)
     public PagedContractResponse searchContracts(
             String scopeKindRaw, Long scopeId, String statusRaw, int page, int size) {
@@ -278,15 +281,18 @@ public class SystemAdminBillingService {
                 ? null : BillingApiSupport.parseScopeKind(scopeKindRaw);
         ContractStatus status = statusRaw == null || statusRaw.isBlank()
                 ? null : parseStatus(statusRaw);
+        // size は上限 MAX_PAGE_SIZE でキャップし、下限 1 を保証する（0/負値の IllegalArgument を防ぐ）。
+        int effectiveSize = Math.max(1, Math.min(size, MAX_PAGE_SIZE));
+        int effectivePage = Math.max(0, page);
         Page<BillingContractEntity> result = billingContractRepository
-                .searchContracts(scopeKind, scopeId, status, PageRequest.of(page, size));
+                .searchContracts(scopeKind, scopeId, status, PageRequest.of(effectivePage, effectiveSize));
         List<ContractResponse> content = result.getContent().stream()
                 .map(SystemAdminBillingService::toContractResponse)
                 .toList();
         return PagedContractResponse.builder()
                 .content(content)
-                .page(page)
-                .size(size)
+                .page(effectivePage)
+                .size(effectiveSize)
                 .totalElements(result.getTotalElements())
                 .build();
     }
