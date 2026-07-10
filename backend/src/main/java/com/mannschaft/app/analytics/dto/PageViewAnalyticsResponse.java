@@ -17,7 +17,7 @@ import java.util.List;
  *   <li>{@code summary} — {@link SummaryDto}（PV サマリ）</li>
  *   <li>{@code daily} — {@link DailyDto} の配列（日次推移。日付は "YYYY-MM-DD" 文字列）</li>
  *   <li>{@code monthly} — {@link MonthlyDto} の配列（月次推移。月は "YYYY-MM" 文字列）</li>
- *   <li>{@code topContent} — {@link ContentRankingDto} の配列（第 1 弾では常に空配列 {@code []}・AC-15）</li>
+ *   <li>{@code topContent} — {@link ContentRankingDto} の配列（第 2 弾で実データ・人気コンテンツランキング・AC-P2-8）</li>
  * </ul>
  */
 @Getter
@@ -36,7 +36,7 @@ public class PageViewAnalyticsResponse {
     private List<MonthlyDto> monthly;
 
     /**
-     * 人気コンテンツランキング（第 1 弾では常に空配列・非 null・AC-15）。
+     * 人気コンテンツランキング（第 2 弾で実データ・空配列可・非 null・AC-P2-8）。
      * FE 型 {@code ContentRanking[]} に対応。
      */
     private List<ContentRankingDto> topContent;
@@ -96,8 +96,7 @@ public class PageViewAnalyticsResponse {
     }
 
     /**
-     * 人気コンテンツランキング 1 件。FE 型 {@code ContentRanking} に対応。
-     * 第 1 弾では使用しないが、型互換のために定義する（第 2 弾で実装）。
+     * 人気コンテンツランキング 1 件。FE 型 {@code ContentRanking} に対応。全フィールド非 null（第 2 弾で実装）。
      */
     @Getter
     @Builder
