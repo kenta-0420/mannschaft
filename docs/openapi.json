@@ -1219,6 +1219,10 @@
       "description": "F02.5 行動メモ CRUD"
     },
     {
+      "name": "課金 - 契約",
+      "description": "F20.1 PLAN/ADDON 契約の作成・解約・変更"
+    },
+    {
       "name": "確認通知設定（組織）",
       "description": "F04.9 組織確認通知設定（リマインド・アラート閾値）"
     },
@@ -1461,6 +1465,10 @@
     {
       "name": "フレンド通知",
       "description": "F01.5 Phase 2 フレンドチーム通知送受信"
+    },
+    {
+      "name": "課金 - プランカタログ/判定",
+      "description": "F20.1 プランカタログ・単一機能判定"
     },
     {
       "name": "封緘解除申請（F09.15）",
@@ -1875,6 +1883,10 @@
       "description": "F12.3 データエクスポート・削除プレビュー"
     },
     {
+      "name": "システム管理 - 課金",
+      "description": "F20.1 プラン/機能マスタ CRUD・手動付与・契約検索（SYSTEM_ADMIN専用）"
+    },
+    {
       "name": "ワークフロー申請",
       "description": "F05.6 ワークフロー申請管理"
     },
@@ -2029,6 +2041,10 @@
     {
       "name": "チーム備品管理",
       "description": "F07.3 チーム備品CRUD・貸出・返却・消費・画像・QR"
+    },
+    {
+      "name": "課金 - 権利サマリ",
+      "description": "F20.1 スコープの権利サマリ"
     },
     {
       "name": "居住者管理（組織）",
@@ -11885,6 +11901,98 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/billing/contracts/{contractId}": {
+      "put": {
+        "tags": [
+          "課金 - 契約"
+        ],
+        "summary": "チームのプラン変更",
+        "description": "TEAM スコープ。ADMIN のみ。",
+        "operationId": "changeForTeam",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "contractId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingChangePlanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingContractResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "課金 - 契約"
+        ],
+        "summary": "チームの契約解約",
+        "description": "TEAM スコープ。ADMIN のみ。",
+        "operationId": "cancelForTeam",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "contractId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingContractResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/announcement-templates/{id}": {
       "put": {
         "tags": [
@@ -13871,6 +13979,346 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/billing/plans/{planKey}": {
+      "get": {
+        "tags": [
+          "システム管理 - 課金"
+        ],
+        "summary": "プラン詳細",
+        "description": "不在は 404（ENTITLEMENT_001）。",
+        "operationId": "getPlan",
+        "parameters": [
+          {
+            "name": "planKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingPlanAdminResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "システム管理 - 課金"
+        ],
+        "summary": "プラン更新",
+        "description": "不在は 404。",
+        "operationId": "updatePlan",
+        "parameters": [
+          {
+            "name": "planKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingPlanUpsertRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingPlanAdminResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "システム管理 - 課金"
+        ],
+        "summary": "プラン新規",
+        "description": "既存キーは 400（更新は PUT）。",
+        "operationId": "createPlan",
+        "parameters": [
+          {
+            "name": "planKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingPlanUpsertRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingPlanAdminResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "システム管理 - 課金"
+        ],
+        "summary": "プラン削除",
+        "description": "参照中（ACTIVE 契約・plan_features 登録）は 409（ENTITLEMENT_012）。",
+        "operationId": "deletePlan",
+        "parameters": [
+          {
+            "name": "planKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/billing/plans/{planKey}/price-bands": {
+      "put": {
+        "tags": [
+          "システム管理 - 課金"
+        ],
+        "summary": "人数バンド一括置換",
+        "description": "band_no 昇順・min\u003d前 max+1・最終のみ max\u003dnull 違反は 400。",
+        "operationId": "replacePriceBands",
+        "parameters": [
+          {
+            "name": "planKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingPriceBandsReplaceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/billing/plans/{planKey}/features": {
+      "put": {
+        "tags": [
+          "システム管理 - 課金"
+        ],
+        "summary": "プラン→機能一括置換",
+        "description": "実在しない機能キーは 400（ENTITLEMENT_010）。",
+        "operationId": "replacePlanFeatures",
+        "parameters": [
+          {
+            "name": "planKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingPlanFeaturesReplaceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/billing/features/{featureKey}": {
+      "get": {
+        "tags": [
+          "システム管理 - 課金"
+        ],
+        "summary": "機能詳細",
+        "description": "不在は 404（ENTITLEMENT_002）。",
+        "operationId": "getFeature",
+        "parameters": [
+          {
+            "name": "featureKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingFeatureAdminResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "システム管理 - 課金"
+        ],
+        "summary": "機能更新",
+        "description": "REVENUE×非営利無料は 400。不在は 404。",
+        "operationId": "updateFeature",
+        "parameters": [
+          {
+            "name": "featureKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingFeatureUpsertRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingFeatureAdminResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "システム管理 - 課金"
+        ],
+        "summary": "機能新規",
+        "description": "REVENUE×非営利無料は 400（ENTITLEMENT_010）。既存キーは 400。",
+        "operationId": "createFeature",
+        "parameters": [
+          {
+            "name": "featureKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingFeatureUpsertRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingFeatureAdminResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "システム管理 - 課金"
+        ],
+        "summary": "機能削除",
+        "description": "参照中は 409（ENTITLEMENT_012）。",
+        "operationId": "deleteFeature",
+        "parameters": [
+          {
+            "name": "featureKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -20988,6 +21436,98 @@
         }
       }
     },
+    "/api/v1/organizations/{orgId}/billing/contracts/{contractId}": {
+      "put": {
+        "tags": [
+          "課金 - 契約"
+        ],
+        "summary": "組織のプラン変更",
+        "description": "ORG スコープ。ADMIN のみ。",
+        "operationId": "changeForOrg",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "contractId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingChangePlanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingContractResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "課金 - 契約"
+        ],
+        "summary": "組織の契約解約",
+        "description": "ORG スコープ。ADMIN のみ。",
+        "operationId": "cancelForOrg",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "contractId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingContractResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{orgId}/announcement-templates/{id}": {
       "put": {
         "tags": [
@@ -22299,6 +22839,80 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponsePersonalSyncToggleResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/billing/contracts/{contractId}": {
+      "put": {
+        "tags": [
+          "課金 - 契約"
+        ],
+        "summary": "自分のプラン変更",
+        "description": "USER スコープ。",
+        "operationId": "changeForMe",
+        "parameters": [
+          {
+            "name": "contractId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingChangePlanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingContractResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "課金 - 契約"
+        ],
+        "summary": "自分の契約解約",
+        "description": "USER スコープ。",
+        "operationId": "cancelForMe",
+        "parameters": [
+          {
+            "name": "contractId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingContractResponse"
                 }
               }
             }
@@ -45979,6 +46593,57 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/billing/contracts": {
+      "post": {
+        "tags": [
+          "課金 - 契約"
+        ],
+        "summary": "チームの契約作成",
+        "description": "TEAM スコープ。ADMIN のみ。Idempotency-Key 必須。",
+        "operationId": "createForTeam_3",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingCreateContractRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingContractResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/attendance/transition-alerts/{alertId}/resolve": {
       "post": {
         "tags": [
@@ -50250,6 +50915,38 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/billing/grants": {
+      "post": {
+        "tags": [
+          "システム管理 - 課金"
+        ],
+        "summary": "手動付与",
+        "description": "契約行を作って発行（created_by\u003dシスアド・REVENUE イベント非発火）。",
+        "operationId": "grant_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingManualGrantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingContractResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -67210,6 +67907,57 @@
         }
       }
     },
+    "/api/v1/organizations/{orgId}/billing/contracts": {
+      "post": {
+        "tags": [
+          "課金 - 契約"
+        ],
+        "summary": "組織の契約作成",
+        "description": "ORG スコープ。ADMIN のみ。Idempotency-Key 必須。",
+        "operationId": "createForOrg_3",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingCreateContractRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingContractResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{orgId}/attendance-requirements": {
       "get": {
         "tags": [
@@ -69974,6 +70722,48 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseCareLinkResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/billing/contracts": {
+      "post": {
+        "tags": [
+          "課金 - 契約"
+        ],
+        "summary": "自分の契約作成",
+        "description": "USER スコープ。Idempotency-Key 必須。",
+        "operationId": "createForMe",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BillingCreateContractRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingContractResponse"
                 }
               }
             }
@@ -109101,6 +109891,39 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/entitlements": {
+      "get": {
+        "tags": [
+          "課金 - 権利サマリ"
+        ],
+        "summary": "チームの権利サマリ",
+        "description": "当該チームのメンバー以上が閲覧可。",
+        "operationId": "team",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingEntitlementSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/emergency-closures/{closureId}/confirmations": {
       "get": {
         "tags": [
@@ -112800,6 +113623,119 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponsePageOrganizationEntity"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/billing/plans": {
+      "get": {
+        "tags": [
+          "システム管理 - 課金"
+        ],
+        "summary": "プラン一覧",
+        "description": "enabled\u003dfalse 含む全件・sort_order 昇順。",
+        "operationId": "listPlans",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListBillingPlanAdminResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/billing/features": {
+      "get": {
+        "tags": [
+          "システム管理 - 課金"
+        ],
+        "summary": "機能一覧",
+        "description": "enabled\u003dfalse 含む全件・sort_order 昇順。",
+        "operationId": "listFeatures",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListBillingFeatureAdminResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system-admin/billing/contracts": {
+      "get": {
+        "tags": [
+          "システム管理 - 課金"
+        ],
+        "summary": "契約横断検索",
+        "description": "scopeKind / scopeId / status は任意フィルタ・contracted_at 降順。",
+        "operationId": "searchContracts",
+        "parameters": [
+          {
+            "name": "scopeKind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scopeId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingPagedContractResponse"
                 }
               }
             }
@@ -123556,6 +124492,39 @@
         }
       }
     },
+    "/api/v1/organizations/{orgId}/entitlements": {
+      "get": {
+        "tags": [
+          "課金 - 権利サマリ"
+        ],
+        "summary": "組織の権利サマリ",
+        "description": "当該組織のメンバー以上が閲覧可。",
+        "operationId": "organization",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingEntitlementSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{orgId}/direct-mails/{id}/stats": {
       "get": {
         "tags": [
@@ -126697,6 +127666,28 @@
         }
       }
     },
+    "/api/v1/me/entitlements": {
+      "get": {
+        "tags": [
+          "課金 - 権利サマリ"
+        ],
+        "summary": "自分の権利サマリ",
+        "description": "USER スコープ（scopeId\u003d本人固定）の契約・有効機能を返す。",
+        "operationId": "me_1",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingEntitlementSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/dashboard/timetable-today": {
       "get": {
         "tags": [
@@ -128212,7 +129203,7 @@
         ],
         "summary": "自分の代理状況",
         "description": "F03.10 §4.2: 委任者/代理人としての自分の代理状況を取得する",
-        "operationId": "me_1",
+        "operationId": "me_2",
         "parameters": [
           {
             "name": "eventId",
@@ -131062,6 +132053,77 @@
               "application/atom+xml": {
                 "schema": {
                   "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/billing/plans": {
+      "get": {
+        "tags": [
+          "課金 - プランカタログ/判定"
+        ],
+        "summary": "プランカタログ",
+        "description": "enabled なプラン・機能を sort_order 昇順で返す。",
+        "operationId": "plans",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingPlanCatalogResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/billing/entitlements/check": {
+      "get": {
+        "tags": [
+          "課金 - プランカタログ/判定"
+        ],
+        "summary": "単一機能の判定",
+        "description": "FE ゲート補助（BE が正）。呼び出し元のスコープ可読性を検証してから isEntitled を返す。",
+        "operationId": "check_1",
+        "parameters": [
+          {
+            "name": "scopeKind",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scopeId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "featureKey",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseBillingEntitlementCheckResponse"
                 }
               }
             }
@@ -146024,6 +147086,99 @@
           }
         }
       },
+      "BillingChangePlanRequest": {
+        "type": "object",
+        "description": "F20.1 プラン変更リクエスト",
+        "properties": {
+          "planKey": {
+            "type": "string",
+            "description": "変更後のプランキー",
+            "example": "FULL",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "planKey"
+        ]
+      },
+      "ApiResponseBillingContractResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BillingContractResponse"
+          }
+        }
+      },
+      "BillingContractResponse": {
+        "type": "object",
+        "description": "F20.1 契約操作のレスポンス",
+        "properties": {
+          "bandNoSnapshot": {
+            "type": "integer",
+            "format": "int32",
+            "description": "契約時バンド番号スナップショット",
+            "example": 2
+          },
+          "contractId": {
+            "type": "string",
+            "description": "契約 ID（UUID）"
+          },
+          "contractKind": {
+            "type": "string",
+            "description": "契約種別（PLAN / ADDON）",
+            "example": "PLAN"
+          },
+          "contractedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "契約日時（ISO-8601）"
+          },
+          "featureKey": {
+            "type": "string",
+            "description": "機能キー（PLAN 時 null）",
+            "example": "ads.hide"
+          },
+          "grantedFeatureKeys": {
+            "type": "array",
+            "description": "この契約で発行された機能キー集合",
+            "items": {
+              "type": "string"
+            }
+          },
+          "memberCountSnapshot": {
+            "type": "integer",
+            "format": "int32",
+            "description": "契約時アクティブ人数スナップショット（USER 時 null）",
+            "example": 34
+          },
+          "planKey": {
+            "type": "string",
+            "description": "プランキー（ADDON 時 null）",
+            "example": "FULL"
+          },
+          "priceJpySnapshot": {
+            "type": "integer",
+            "format": "int32",
+            "description": "契約時単価スナップショット（ベータ中 null＝無償）"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "スコープ ID",
+            "example": 123
+          },
+          "scopeKind": {
+            "type": "string",
+            "description": "スコープ種別（USER / TEAM / ORG）",
+            "example": "TEAM"
+          },
+          "status": {
+            "type": "string",
+            "description": "契約ステータス",
+            "example": "ACTIVE"
+          }
+        }
+      },
       "AnnouncementRangeTemplateRequest": {
         "type": "object",
         "properties": {
@@ -147880,6 +149035,256 @@
           "updatedBy": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "BillingPlanUpsertRequest": {
+        "type": "object",
+        "description": "F20.1 シスアド プランマスタ upsert",
+        "properties": {
+          "baseMonthlyPriceJpy": {
+            "type": "integer",
+            "format": "int32",
+            "example": 2000
+          },
+          "descriptionKey": {
+            "type": "string",
+            "example": "billing.plans.full.description",
+            "minLength": 1
+          },
+          "displayNameKey": {
+            "type": "string",
+            "example": "billing.plans.full.name",
+            "minLength": 1
+          },
+          "enabled": {
+            "type": "boolean",
+            "example": true
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32",
+            "example": 10
+          }
+        },
+        "required": [
+          "descriptionKey",
+          "displayNameKey"
+        ]
+      },
+      "ApiResponseBillingPlanAdminResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BillingPlanAdminResponse"
+          }
+        }
+      },
+      "BillingPlanAdminResponse": {
+        "type": "object",
+        "description": "F20.1 シスアド プランマスタ",
+        "properties": {
+          "baseMonthlyPriceJpy": {
+            "type": "integer",
+            "format": "int32",
+            "description": "基準月額（円）。未定は null",
+            "example": 2000
+          },
+          "descriptionKey": {
+            "type": "string",
+            "description": "説明 i18n キー"
+          },
+          "displayNameKey": {
+            "type": "string",
+            "description": "表示名 i18n キー"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "有効フラグ",
+            "example": true
+          },
+          "planKey": {
+            "type": "string",
+            "description": "プランキー（自然キー）",
+            "example": "FULL"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32",
+            "description": "表示順",
+            "example": 10
+          }
+        }
+      },
+      "BillingPriceBandInput": {
+        "type": "object",
+        "description": "F20.1 バンド 1 件の入力",
+        "properties": {
+          "bandNo": {
+            "type": "integer",
+            "format": "int32",
+            "example": 1
+          },
+          "maxMembers": {
+            "type": "integer",
+            "format": "int32",
+            "example": 20
+          },
+          "minMembers": {
+            "type": "integer",
+            "format": "int32",
+            "example": 1
+          },
+          "monthlyPriceJpy": {
+            "type": "integer",
+            "format": "int32",
+            "example": 3000
+          },
+          "scopeKind": {
+            "type": "string",
+            "example": "TEAM"
+          }
+        },
+        "required": [
+          "scopeKind"
+        ]
+      },
+      "BillingPriceBandsReplaceRequest": {
+        "type": "object",
+        "description": "F20.1 人数バンド一括置換",
+        "properties": {
+          "bands": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BillingPriceBandInput"
+            }
+          }
+        },
+        "required": [
+          "bands"
+        ]
+      },
+      "BillingPlanFeaturesReplaceRequest": {
+        "type": "object",
+        "description": "F20.1 プラン→機能一括置換",
+        "properties": {
+          "featureKeys": {
+            "type": "array",
+            "example": [
+              "ads.hide",
+              "template.premium_modules"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "featureKeys"
+        ]
+      },
+      "BillingFeatureUpsertRequest": {
+        "type": "object",
+        "description": "F20.1 シスアド 機能カタログ upsert",
+        "properties": {
+          "addonAvailable": {
+            "type": "boolean",
+            "example": true
+          },
+          "addonPriceJpy": {
+            "type": "integer",
+            "format": "int32",
+            "example": 300
+          },
+          "category": {
+            "type": "string",
+            "example": "INTERNAL",
+            "minLength": 1
+          },
+          "descriptionKey": {
+            "type": "string",
+            "minLength": 1
+          },
+          "displayNameKey": {
+            "type": "string",
+            "minLength": 1
+          },
+          "enabled": {
+            "type": "boolean",
+            "example": true
+          },
+          "freeForNonprofit": {
+            "type": "boolean",
+            "example": false
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32",
+            "example": 10
+          }
+        },
+        "required": [
+          "category",
+          "descriptionKey",
+          "displayNameKey"
+        ]
+      },
+      "ApiResponseBillingFeatureAdminResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BillingFeatureAdminResponse"
+          }
+        }
+      },
+      "BillingFeatureAdminResponse": {
+        "type": "object",
+        "description": "F20.1 シスアド 機能カタログ",
+        "properties": {
+          "addonAvailable": {
+            "type": "boolean",
+            "description": "アドオン単体契約可否",
+            "example": true
+          },
+          "addonPriceJpy": {
+            "type": "integer",
+            "format": "int32",
+            "description": "アドオン月額（円）。未定は null",
+            "example": 300
+          },
+          "category": {
+            "type": "string",
+            "description": "区分（INTERNAL / REVENUE）",
+            "example": "REVENUE"
+          },
+          "descriptionKey": {
+            "type": "string",
+            "description": "説明 i18n キー"
+          },
+          "displayNameKey": {
+            "type": "string",
+            "description": "表示名 i18n キー"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "有効フラグ",
+            "example": true
+          },
+          "featureKey": {
+            "type": "string",
+            "description": "機能キー（自然キー）",
+            "example": "ads.hide"
+          },
+          "freeForNonprofit": {
+            "type": "boolean",
+            "description": "非営利無料開放",
+            "example": false
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32",
+            "description": "表示順",
+            "example": 10
           }
         }
       },
@@ -168905,6 +170310,31 @@
           }
         }
       },
+      "BillingCreateContractRequest": {
+        "type": "object",
+        "description": "F20.1 契約作成リクエスト",
+        "properties": {
+          "contractKind": {
+            "type": "string",
+            "description": "契約種別（PLAN / ADDON）",
+            "example": "PLAN",
+            "minLength": 1
+          },
+          "featureKey": {
+            "type": "string",
+            "description": "機能キー（ADDON 時必須）",
+            "example": "ads.hide"
+          },
+          "planKey": {
+            "type": "string",
+            "description": "プランキー（PLAN 時必須）",
+            "example": "FULL"
+          }
+        },
+        "required": [
+          "contractKind"
+        ]
+      },
       "TransitionAlertResolveRequest": {
         "type": "object",
         "properties": {
@@ -171898,6 +173328,44 @@
             "type": "string"
           }
         }
+      },
+      "BillingManualGrantRequest": {
+        "type": "object",
+        "description": "F20.1 シスアド 手動付与",
+        "properties": {
+          "contractKind": {
+            "type": "string",
+            "example": "PLAN",
+            "minLength": 1
+          },
+          "featureKey": {
+            "type": "string",
+            "example": "ads.hide"
+          },
+          "note": {
+            "type": "string",
+            "example": "ベータ検証のため付与"
+          },
+          "planKey": {
+            "type": "string",
+            "example": "FULL"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64",
+            "example": 123
+          },
+          "scopeKind": {
+            "type": "string",
+            "example": "TEAM",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "contractKind",
+          "scopeId",
+          "scopeKind"
+        ]
       },
       "ApiResponseBatchTriggerResponse": {
         "type": "object",
@@ -201972,6 +203440,101 @@
           }
         }
       },
+      "ApiResponseBillingEntitlementSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BillingEntitlementSummaryResponse"
+          }
+        }
+      },
+      "BillingActiveContract": {
+        "type": "object",
+        "description": "F20.1 権利サマリ内のアクティブ契約",
+        "properties": {
+          "contractId": {
+            "type": "string",
+            "description": "契約 ID（UUID）",
+            "example": "0198aaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+          },
+          "contractedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "契約日時（ISO-8601）"
+          },
+          "featureKey": {
+            "type": "string",
+            "description": "機能キー（ADDON 契約時）。PLAN 時は null",
+            "example": "ads.hide"
+          },
+          "planKey": {
+            "type": "string",
+            "description": "プランキー（PLAN 契約時）。ADDON 時は null",
+            "example": "FULL"
+          },
+          "priceJpySnapshot": {
+            "type": "integer",
+            "format": "int32",
+            "description": "契約時単価スナップショット（円）。ベータ中は null（無償）"
+          }
+        }
+      },
+      "BillingEntitledFeature": {
+        "type": "object",
+        "description": "F20.1 利用できる 1 機能",
+        "properties": {
+          "featureKey": {
+            "type": "string",
+            "description": "機能キー",
+            "example": "ads.hide"
+          },
+          "sourceKind": {
+            "type": "string",
+            "description": "由来（PLAN / ADDON / BETA_GRANT / FREE / NONPROFIT_FREE）",
+            "example": "PLAN"
+          },
+          "validUntil": {
+            "type": "string",
+            "format": "date-time",
+            "description": "有効終了（ISO-8601）。無期限・virtual は null"
+          }
+        }
+      },
+      "BillingEntitlementSummaryResponse": {
+        "type": "object",
+        "description": "F20.1 スコープの権利サマリ",
+        "properties": {
+          "activeAddons": {
+            "type": "array",
+            "description": "現在アクティブな ADDON 契約一覧（空配列可）",
+            "items": {
+              "$ref": "#/components/schemas/BillingActiveContract"
+            }
+          },
+          "activePlan": {
+            "$ref": "#/components/schemas/BillingActiveContract",
+            "description": "現在アクティブな PLAN 契約。無契約は null"
+          },
+          "entitledFeatures": {
+            "type": "array",
+            "description": "利用できる機能一覧（isEntitled\u003dtrue の集合・virtual 合成込み）",
+            "items": {
+              "$ref": "#/components/schemas/BillingEntitledFeature"
+            }
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "スコープ ID",
+            "example": 123
+          },
+          "scopeKind": {
+            "type": "string",
+            "description": "スコープ種別（USER / TEAM / ORG）",
+            "example": "TEAM"
+          }
+        }
+      },
       "ApiResponseListEmergencyClosureResponse": {
         "type": "object",
         "properties": {
@@ -206646,6 +208209,67 @@
           "totalPages": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "ApiResponseListBillingPlanAdminResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BillingPlanAdminResponse"
+            }
+          }
+        }
+      },
+      "ApiResponseListBillingFeatureAdminResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BillingFeatureAdminResponse"
+            }
+          }
+        }
+      },
+      "ApiResponseBillingPagedContractResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BillingPagedContractResponse"
+          }
+        }
+      },
+      "BillingPagedContractResponse": {
+        "type": "object",
+        "description": "F20.1 シスアド 契約横断検索結果",
+        "properties": {
+          "content": {
+            "type": "array",
+            "description": "契約一覧（当該ページ）",
+            "items": {
+              "$ref": "#/components/schemas/BillingContractResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32",
+            "description": "現在ページ番号（0 始まり）",
+            "example": 0
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32",
+            "description": "ページサイズ",
+            "example": 20
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64",
+            "description": "総件数",
+            "example": 42
           }
         }
       },
@@ -219476,6 +221100,190 @@
           },
           "title": {
             "type": "string"
+          }
+        }
+      },
+      "ApiResponseBillingPlanCatalogResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BillingPlanCatalogResponse"
+          }
+        }
+      },
+      "BillingFeatureItem": {
+        "type": "object",
+        "description": "F20.1 機能カタログの 1 機能",
+        "properties": {
+          "addonAvailable": {
+            "type": "boolean",
+            "description": "アドオン単体契約が可能か",
+            "example": true
+          },
+          "addonPriceJpy": {
+            "type": "integer",
+            "format": "int32",
+            "description": "アドオン月額（円）。未定は null",
+            "example": 300
+          },
+          "category": {
+            "type": "string",
+            "description": "区分（INTERNAL / REVENUE）",
+            "example": "INTERNAL"
+          },
+          "descriptionKey": {
+            "type": "string",
+            "description": "説明の i18n キー"
+          },
+          "displayNameKey": {
+            "type": "string",
+            "description": "表示名の i18n キー"
+          },
+          "featureKey": {
+            "type": "string",
+            "description": "機能キー",
+            "example": "reservation.notification_recipients_extended"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32",
+            "description": "表示順（昇順）",
+            "example": 10
+          }
+        }
+      },
+      "BillingPlanCatalogResponse": {
+        "type": "object",
+        "description": "F20.1 プランカタログ（利用者向け・読み取り）",
+        "properties": {
+          "plans": {
+            "type": "array",
+            "description": "提示プラン一覧（sort_order 昇順・enabled のみ）",
+            "items": {
+              "$ref": "#/components/schemas/BillingPlanItem"
+            }
+          }
+        }
+      },
+      "BillingPlanItem": {
+        "type": "object",
+        "description": "F20.1 カタログ内の 1 プラン",
+        "properties": {
+          "baseMonthlyPriceJpy": {
+            "type": "integer",
+            "format": "int32",
+            "description": "基準月額（円）。未定は null（ベータ計測後に決定）",
+            "example": 2000
+          },
+          "descriptionKey": {
+            "type": "string",
+            "description": "説明の i18n キー",
+            "example": "billing.plans.full.description"
+          },
+          "displayNameKey": {
+            "type": "string",
+            "description": "表示名の i18n キー（FE が $t で解決）",
+            "example": "billing.plans.full.name"
+          },
+          "features": {
+            "type": "array",
+            "description": "このプランで解放される機能一覧",
+            "items": {
+              "$ref": "#/components/schemas/BillingFeatureItem"
+            }
+          },
+          "planKey": {
+            "type": "string",
+            "description": "プランキー（自然キー）",
+            "example": "FULL"
+          },
+          "priceBands": {
+            "type": "array",
+            "description": "人数バンド別単価（TEAM/ORG のみ・空配列可）",
+            "items": {
+              "$ref": "#/components/schemas/BillingPriceBand"
+            }
+          }
+        }
+      },
+      "BillingPriceBand": {
+        "type": "object",
+        "description": "F20.1 人数バンド別単価の 1 バンド",
+        "properties": {
+          "bandNo": {
+            "type": "integer",
+            "format": "int32",
+            "description": "バンド番号（1〜・昇順）",
+            "example": 2
+          },
+          "maxMembers": {
+            "type": "integer",
+            "format": "int32",
+            "description": "アクティブ人数上限（この値以下）。無制限は null",
+            "example": 50
+          },
+          "minMembers": {
+            "type": "integer",
+            "format": "int32",
+            "description": "アクティブ人数下限（この値以上）",
+            "example": 21
+          },
+          "monthlyPriceJpy": {
+            "type": "integer",
+            "format": "int32",
+            "description": "月額（円）。未定は null",
+            "example": 5000
+          },
+          "scopeKind": {
+            "type": "string",
+            "description": "スコープ種別（TEAM / ORG）",
+            "example": "TEAM"
+          }
+        }
+      },
+      "ApiResponseBillingEntitlementCheckResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BillingEntitlementCheckResponse"
+          }
+        }
+      },
+      "BillingEntitlementCheckResponse": {
+        "type": "object",
+        "description": "F20.1 単一機能の判定結果（表示出し分け専用）",
+        "properties": {
+          "addonPriceJpy": {
+            "type": "integer",
+            "format": "int32",
+            "description": "アドオン月額（円）。addon 不可・未定は null",
+            "example": 300
+          },
+          "entitled": {
+            "type": "boolean",
+            "description": "権利があるか（BE 判定と一致）",
+            "example": false
+          },
+          "featureKey": {
+            "type": "string",
+            "description": "判定した機能キー",
+            "example": "ads.hide"
+          },
+          "plansContaining": {
+            "type": "array",
+            "description": "この機能を掲載する購入可能プランのキー一覧（空配列可）",
+            "example": [
+              "BASIC",
+              "FULL"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "purchasable": {
+            "type": "boolean",
+            "description": "購入手段があるか（アドオン/有料プラン掲載）",
+            "example": true
           }
         }
       },
