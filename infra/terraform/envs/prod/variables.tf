@@ -88,6 +88,13 @@ variable "task_memory" {
   default     = 1024
 }
 
+variable "cloudflared_image" {
+  description = "cloudflared サイドカーのイメージ（固定タグ必須。:latest を prod に適用しない）。更新時は Docker Hub cloudflare/cloudflared で linux/arm64 対応の最新安定タグを確認してから上げる"
+  type        = string
+  # 2026-07-10 時点の最新安定タグ（linux/arm64 対応を Docker Hub で確認済み）
+  default = "cloudflare/cloudflared:2026.7.1"
+}
+
 # -----------------------------------------------------------------------------
 # 非秘密の実行時 env（上書き・追加用）
 # -----------------------------------------------------------------------------

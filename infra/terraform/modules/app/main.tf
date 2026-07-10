@@ -233,10 +233,10 @@ resource "aws_secretsmanager_secret" "app_keys" {
 
 # cloudflared サイドカーの Tunnel トークン（`cloudflared tunnel run` が TUNNEL_TOKEN で読む）。
 # 箱だけ Terraform 管理・値は手動投入（jwt-secret 等と同じ方針）。
-# 値は edge module の tunnel_token 出力（Cloudflare が発行）を運用者が put-secret-value で流し込む:
-#   terraform -chdir=infra/terraform/envs/prod output -raw cloudflared_tunnel_token
-#     | aws secretsmanager put-secret-value --secret-id "${prefix}/cloudflared-tunnel-token" --secret-string ...
-# 手順は infra/terraform/bootstrap/README.md §7-5 を参照。
+# 値は edge module の tunnel_token 出力（Cloudflare が発行）を変数に受けてから投入する:
+#   $t = terraform -chdir=infra/terraform/envs/prod output -raw cloudflared_tunnel_token
+#   aws secretsmanager put-secret-value --secret-id "<prefix>/cloudflared-tunnel-token" --secret-string $t
+# 詳細手順は infra/terraform/bootstrap/README.md §7-5 を参照。
 resource "aws_secretsmanager_secret" "cloudflared_tunnel_token" {
   name                    = "${var.prefix}/cloudflared-tunnel-token"
   description             = "Cloudflare Tunnel run token for the cloudflared ECS sidecar"

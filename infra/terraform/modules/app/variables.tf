@@ -43,9 +43,8 @@ variable "valkey_endpoint" {
 }
 
 variable "cloudflared_image" {
-  description = "cloudflared サイドカーのコンテナイメージ（linux/arm64 を含むマルチアーキイメージ）。安定運用のためタグ固定を推奨"
+  description = "cloudflared サイドカーのコンテナイメージ（linux/arm64 を含むマルチアーキイメージ）。:latest の暗黙利用を防ぐため default なし。呼び出し側で固定タグを明示すること（envs/prod/variables.tf の cloudflared_image 参照）"
   type        = string
-  default     = "cloudflare/cloudflared:latest"
 }
 
 variable "app_env" {

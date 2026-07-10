@@ -86,6 +86,7 @@ module "app" {
   app_env                   = local.app_env
   task_cpu                  = var.task_cpu
   task_memory               = var.task_memory
+  cloudflared_image         = var.cloudflared_image # 固定タグ（:latest を prod に持ち込まない）
 }
 
 # -----------------------------------------------------------------------------

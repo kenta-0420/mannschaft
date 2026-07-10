@@ -214,9 +214,43 @@ aws ecs update-service `
 
 > - 投入するまで cloudflared サイドカーは起動失敗を繰り返し、`/api/**`・`/ws` は不通のまま
 >   （Cloudflare Pages の FE 配信には影響しない）。
-> - 疎通確認: `curl https://<domain>/api/v1/...` が返ること、または Cloudflare ダッシュボード →
->   Zero Trust → Networks → Tunnels で当該トンネルが HEALTHY になっていること。
 > - トンネルを destroy/recreate した場合はトークンが変わるため、再投入 + 再デプロイが必要。
+
+**疎通確認（3 段階で必ず実施すること）:**
+
+```powershell
+# (1) トンネル自体の健全性:
+#     Cloudflare ダッシュボード → Zero Trust → Networks → Tunnels で HEALTHY であること
+
+# (2) /api が Origin Rule → Tunnel 経由で 200 を返すこと。
+#     必ずドメイン経由で確認する（Origin Rule を通らない経路では検証にならない）
+curl.exe -s -o NUL -w "%{http_code}" https://<domain>/api/actuator/health   # → 200
+
+# (3) /ws の WebSocket 実接続（101 Switching Protocols が返ること）
+#     wscat があれば: wscat -c wss://<domain>/ws
+#     curl の場合は Upgrade ヘッダ付きで確認:
+curl.exe -s -o NUL -w "%{http_code}" `
+  -H "Connection: Upgrade" -H "Upgrade: websocket" `
+  -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" `
+  https://<domain>/ws   # → 101
+```
+
+**予備案（(2)/(3) が通らない場合 — Origin Rule のオリジン上書きで Tunnel に抜けないケース）:**
+
+Origin Rule の origin 上書き（`origin.<domain>` → cfargotunnel への proxied CNAME）は
+apply 前未検証のため、万一トンネルへルーティングされない場合は **Host ベースの振り分け**へ切り替える
+（骨子のみ記録・実装は必要になった時点で行う）:
+
+1. Tunnel に public hostname `api.<domain>` を持たせる
+   — Terraform: `cloudflare_zero_trust_tunnel_cloudflared_config` の `ingress_rule` に
+   `hostname = "api.<domain>"` を追加し、`cloudflare_record` で `api.<domain>` →
+   `<tunnel_id>.cfargotunnel.com` の proxied CNAME を作成
+   （ダッシュボード: Zero Trust → Tunnels → Public Hostname から追加）
+2. Origin Rule の `action_parameters.origin.host` を `api.<domain>` へ変更
+   — リクエスト URL は `https://<domain>/api/**` のまま、オリジンだけ Host ごと差し替える
+   （必要なら Host ヘッダ書換ルールも併用）
+3. 最終手段: FE の `NUXT_PUBLIC_API_BASE` を `https://api.<domain>` に切り替えて直接叩く
+   — 同一オリジン構成が崩れ CORS / Cookie 設定の変更を伴うため、殿へ上申のうえで実施
 
 ## 8. state（terraform.tfstate）の扱い
 
