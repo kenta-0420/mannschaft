@@ -209,14 +209,18 @@ class AdDailyStatsAggregationIT extends AbstractSpotlightIT {
         em.createNativeQuery(sb.toString()).executeUpdate();
     }
 
-    /** F09.17 由来（campaign_id NULL / messaging_campaign_id 非 NULL）のインプレッションを 1 行挿入する。 */
+    /**
+     * F09.17 由来（campaign_id NULL / messaging_campaign_id 非 NULL）のインプレッションを 1 行挿入する。
+     *
+     * <p>運用型 imp/click 挿入（{@link #insertOperationalImpressions}）と同じ<b>インライン・リテラル</b>の
+     * native SQL で書く（名前付きパラメータ + LocalDateTime バインドの Hibernate native-query 経路を避け、
+     * 集計対象の運用型行挿入と実行経路を揃えて決定性を担保する）。値は全てテスト制御下でインジェクション余地なし。</p>
+     */
     private void insertMessagingImpression(Long adId, UUID messagingCampaignId, LocalDateTime at) {
         em.createNativeQuery(
                         "INSERT INTO ad_impressions (ad_id, campaign_id, messaging_campaign_id, occurred_at) "
-                                + "VALUES (:adId, NULL, UUID_TO_BIN(:mcId), :at)")
-                .setParameter("adId", adId)
-                .setParameter("mcId", messagingCampaignId.toString())
-                .setParameter("at", at)
+                                + "VALUES (" + adId + ", NULL, UUID_TO_BIN('" + messagingCampaignId + "'), '"
+                                + at.format(TS) + "')")
                 .executeUpdate();
     }
 
