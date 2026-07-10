@@ -358,7 +358,7 @@ onMounted(async () => {
               </AccordionContent>
             </AccordionPanel>
 
-            <!-- ⑤例外日カレンダー（F03.4.5 §3.3・骨格のみ。中身は第二隊が実装） -->
+            <!-- ⑤例外日カレンダー（F03.4.5 §3.3・W2-1第二隊で実装完了） -->
             <AccordionPanel value="exception_day">
               <AccordionHeader>
                 <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
@@ -366,7 +366,12 @@ onMounted(async () => {
                 </span>
               </AccordionHeader>
               <AccordionContent>
-                <ScheduleExceptionPanel :team-id="props.teamId" />
+                <ScheduleExceptionPanel
+                  :team-id="props.teamId"
+                  @goto-list="activeTab = 1"
+                  @goto-emergency-closure="activeTab = 3"
+                  @goto-book="activeTab = 0"
+                />
               </AccordionContent>
             </AccordionPanel>
           </Accordion>

@@ -7,16 +7,25 @@
  * 写経元: reservation-empty-onboarding-real.spec.ts（ログイン機構・CORS APIブリッジ・
  * 使い捨てチーム作成・予約モジュール有効化）。単一セッション設計・総当りログイン禁止。
  *
+ * 【F03.4.5 W2-1 追従（例外日カレンダー第二隊）】
+ *   「今すぐ枠を作成」ボタン・weeks Select は撤去され、テンプレ保存＝即同期自動生成に統合された
+ *   （SlotTemplateSaveResponse{ template, generation }・§3.1）。本 spec は旧UI（generate-now
+ *   testid・「テンプレートを保存しました。変更を反映するには『今すぐ枠を作成』を押してください」
+ *   トースト）を参照しており新設計で実走すると赤化するため、保存時自動生成トースト
+ *   （reservation.template.auto_generated=「保存し、{days}日先までの枠を{generated}件作成しました」）
+ *   に追従させた。冪等性検証は「今すぐ枠を作成」の再クリックが無くなったため、テンプレ編集
+ *   （PATCH・時刻不変）による再保存で generated=0 を確認する形に置き換えた。
+ *
  * シナリオ:
  *   0. 営業時間設定（UIなし→API PUT。全曜日 10:00-18:00。テンプレ生成の前提）
  *   1. ライン作成（UI・席A）
  *   2. メニュー作成（UI・カット 60分）→ 一覧表示・提供可否既定（全ライン）
- *   3. テンプレ作成（UI・席A・明日の曜日・10:00-12:00・capacity1）
- *   4. 「今すぐ枠を作成」→ 生成トースト（weeks=4 → 4セル×4回 = 16枠 期待）
- *   5. 「予約する」タブ → 明日に 10:00/10:30/11:00/11:30 の4枠表示
- *   6. 予約成立（ダイアログ→確定→一覧反映＋API裏取り=実DB書込）
- *   7. 冪等: 再generate → 0枠を作成・16枠は作成済み
- *   8. ライン削除新仕様（BE §5.5: テンプレ停止＋未来枠purge）を使い捨てラインBで確認
+ *   3. テンプレ作成（UI・席A・明日の曜日・10:00-12:00・capacity1）→ 保存時に同期自動生成
+ *      （4セル×4回 = 16枠 期待）
+ *   4. 「予約する」タブ → 明日に 10:00/10:30/11:00/11:30 の4枠表示
+ *   5. 予約成立（ダイアログ→確定→一覧反映＋API裏取り=実DB書込）
+ *   6. 冪等: テンプレ編集（時刻不変のPATCH）で再保存 → 0枠を作成（16枠は作成済みのため生成対象なし）
+ *   7. ライン削除新仕様（BE §5.5: テンプレ停止＋未来枠purge）を使い捨てラインBで確認
  */
 
 import {
@@ -330,7 +339,7 @@ test.describe('RSV-V2: メニュー管理＋週間テンプレート一括枠生
     await page.screenshot({ path: 'test-results/rsv-v2-03b-menu-list.png', fullPage: true })
   })
 
-  test('STEP-4: 週間テンプレート（席A・明日の曜日・10:00-12:00・定員1）をUIから作成できる', async ({
+  test('STEP-4:【核心】週間テンプレート（席A・明日の曜日・10:00-12:00・定員1）をUIから作成すると保存時に16枠が同期自動生成される', async ({
     page,
     tokens,
   }) => {
@@ -359,49 +368,27 @@ test.describe('RSV-V2: メニュー管理＋週間テンプレート一括枠生
     await page.screenshot({ path: 'test-results/rsv-v2-04a-template-dialog.png', fullPage: true })
     await page.getByTestId('template-save').click()
 
-    await expect(
-      page.getByText('テンプレートを作成しました'),
-      '作成成功トーストが出ること',
-    ).toBeVisible({ timeout: 10_000 })
-    await expect(
-      page.getByText('テンプレートを保存しました。変更を反映するには「今すぐ枠を作成」を押してください'),
-      'regenerate_guide（生成促し）が表示されること',
-    ).toBeVisible({ timeout: 10_000 })
+    // テンプレ保存＝同期自動生成（F03.4.5 §3.1）。「テンプレートを作成しました」の単独トーストは
+    // 廃止され、生成結果を同梱した auto_generated トースト1本に統合されている。
+    const resultToast = page.getByText(/保存し、28日先までの枠を\d+件作成しました/)
+    await expect(resultToast, '保存時自動生成の結果トーストが出ること').toBeVisible({ timeout: 20_000 })
+    const text = (await resultToast.textContent()) ?? ''
+    const m = text.match(/保存し、28日先までの枠を(\d+)件作成しました/)
+    const generated = Number(m?.[1] ?? -1)
+    console.log(`[STEP-4] 保存時自動生成結果: generated=${generated} (raw="${text}")`)
+    expect(generated, '生成0件は不合格（曜日コード/営業時間/日付範囲を疑う）').toBeGreaterThan(0)
+    expect(generated, '4セル×該当曜日4回=16枠').toBe(16)
+
     await expect(page.getByText('10:00 - 12:00')).toBeVisible()
+    await expect(
+      page.getByText('変更は保存時に自動反映されます（追加分のみ）'),
+      'regenerate_guide（自動反映の補足ガイド・改訂値）が表示されること',
+    ).toBeVisible({ timeout: 10_000 })
 
     await page.screenshot({ path: 'test-results/rsv-v2-04b-template-created.png', fullPage: true })
   })
 
-  test('STEP-5:【核心】「今すぐ枠を作成」で 16枠生成（4セル×4週）トーストが出る', async ({
-    page,
-    tokens,
-  }) => {
-    await gotoReservations(page, tokens)
-    await openManageTab(page)
-
-    const generateBtn = page.getByTestId('generate-now')
-    await expect(generateBtn, '「今すぐ枠を作成」ボタンが出ること').toBeVisible({
-      timeout: 15_000,
-    })
-    // weeks は既定 4 のまま実行（生成窓=明日〜28日 → 該当曜日4回 × 4セル = 16）
-    await generateBtn.click()
-
-    const resultToast = page.getByText(/\d+枠を作成・\d+枠は作成済み/)
-    await expect(resultToast, '生成結果トーストが出ること').toBeVisible({ timeout: 20_000 })
-    const text = (await resultToast.textContent()) ?? ''
-    const m = text.match(/(\d+)枠を作成・(\d+)枠は作成済み/)
-    const generated = Number(m?.[1] ?? -1)
-    const skipped = Number(m?.[2] ?? -1)
-    console.log(`[STEP-5] generate結果: generated=${generated} skipped=${skipped} (raw="${text}")`)
-
-    await page.screenshot({ path: 'test-results/rsv-v2-05-generate-toast.png', fullPage: true })
-
-    expect(generated, '生成0件は不合格（曜日コード/営業時間/日付範囲を疑う）').toBeGreaterThan(0)
-    expect(generated, '4セル×該当曜日4回=16枠').toBe(16)
-    expect(skipped, '初回生成でスキップは0のはず').toBe(0)
-  })
-
-  test('STEP-6: 「予約する」タブの明日に 10:00/10:30/11:00/11:30 の4枠が表示される', async ({
+  test('STEP-5: 「予約する」タブの明日に 10:00/10:30/11:00/11:30 の4枠が表示される', async ({
     page,
     tokens,
   }) => {
@@ -422,13 +409,13 @@ test.describe('RSV-V2: メニュー管理＋週間テンプレート一括枠生
       ).toBeVisible({ timeout: 15_000 })
     }
     const availableCount = await page.getByText('空きあり').count()
-    console.log(`[STEP-6] 空きあり枠数=${availableCount}`)
+    console.log(`[STEP-5] 空きあり枠数=${availableCount}`)
     expect(availableCount, '明日の枠は4件のはず').toBe(4)
 
-    await page.screenshot({ path: 'test-results/rsv-v2-06-slots-visible.png', fullPage: true })
+    await page.screenshot({ path: 'test-results/rsv-v2-05-slots-visible.png', fullPage: true })
   })
 
-  test('STEP-7: 枠を選んで予約が成立し、一覧と実DBに反映される', async ({
+  test('STEP-6: 枠を選んで予約が成立し、一覧と実DBに反映される', async ({
     page,
     tokens,
     request,
@@ -450,7 +437,7 @@ test.describe('RSV-V2: メニュー管理＋週間テンプレート一括枠生
     const dialog = page.getByRole('dialog', { name: '予約確認' })
     await expect(dialog, '予約確認ダイアログが開くこと').toBeVisible({ timeout: 10_000 })
     await expect(dialog.getByText('席A')).toBeVisible()
-    await page.screenshot({ path: 'test-results/rsv-v2-07a-reserve-dialog.png', fullPage: true })
+    await page.screenshot({ path: 'test-results/rsv-v2-06a-reserve-dialog.png', fullPage: true })
 
     await dialog.getByRole('button', { name: '予約する' }).click()
     await expect(
@@ -469,7 +456,7 @@ test.describe('RSV-V2: メニュー管理＋週間テンプレート一括枠生
       page.getByText('席A').filter({ visible: true }).first(),
       '予約一覧に席Aの予約が表示されること（ページ再読込後）',
     ).toBeVisible({ timeout: 15_000 })
-    await page.screenshot({ path: 'test-results/rsv-v2-07b-reservation-list.png', fullPage: true })
+    await page.screenshot({ path: 'test-results/rsv-v2-06b-reservation-list.png', fullPage: true })
 
     // 実DB裏取り: 管理者APIで予約一覧を取得し、明日の予約が1件存在すること
     const res = await request.get(
@@ -481,33 +468,41 @@ test.describe('RSV-V2: メニュー管理＋週間テンプレート一括枠生
     const list = Array.isArray(body)
       ? body
       : ((body as { content?: unknown[] })?.content ?? [])
-    console.log(`[STEP-7] 実DB予約件数(明日)=${list.length}`)
+    console.log(`[STEP-6] 実DB予約件数(明日)=${list.length}`)
     expect(list.length, '実DBに予約が書き込まれていること').toBeGreaterThanOrEqual(1)
   })
 
-  test('STEP-8: 冪等性 — 再generateで「0枠を作成・16枠は作成済み」', async ({ page, tokens }) => {
+  test('STEP-7: 冪等性 — テンプレ編集（時刻不変のPATCH）で再保存すると生成0件になる', async ({ page, tokens }) => {
+    // 「今すぐ枠を作成」ボタンは撤去済みのため、冪等性は「既存テンプレを時刻不変のまま編集保存する
+    // （PATCH → 同期自動生成が走るが対象セルは全て既存＝生成0件）」で検証する
+    // （F03.4.5 §3.1・W2-1追従）。
     await gotoReservations(page, tokens)
     await openManageTab(page)
 
-    const generateBtn = page.getByTestId('generate-now')
-    await expect(generateBtn).toBeVisible({ timeout: 15_000 })
-    await generateBtn.click()
+    const templateRow = page
+      .locator('div.flex.items-center', { has: page.getByText('10:00 - 12:00', { exact: true }) })
+      .first()
+    await expect(templateRow, '作成済みテンプレ行が表示されること').toBeVisible({ timeout: 15_000 })
+    await templateRow.locator('button:has(.pi-pencil)').click()
 
-    const resultToast = page.getByText(/\d+枠を作成・\d+枠は作成済み/)
-    await expect(resultToast, '再生成の結果トーストが出ること').toBeVisible({ timeout: 20_000 })
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible({ timeout: 10_000 })
+    // 時刻・曜日は変更せず保存のみ行う（PATCH は既存 dayOfWeek/startTime/endTime を維持）
+    await page.getByTestId('template-save').click()
+
+    const resultToast = page.getByText(/保存し、28日先までの枠を\d+件作成しました/)
+    await expect(resultToast, '再保存時の同期自動生成トーストが出ること').toBeVisible({ timeout: 20_000 })
     const text = (await resultToast.textContent()) ?? ''
-    const m = text.match(/(\d+)枠を作成・(\d+)枠は作成済み/)
+    const m = text.match(/保存し、28日先までの枠を(\d+)件作成しました/)
     const generated = Number(m?.[1] ?? -1)
-    const skipped = Number(m?.[2] ?? -1)
-    console.log(`[STEP-8] 再generate結果: generated=${generated} skipped=${skipped} (raw="${text}")`)
+    console.log(`[STEP-7] 再保存結果: generated=${generated} (raw="${text}")`)
 
-    await page.screenshot({ path: 'test-results/rsv-v2-08-idempotent-toast.png', fullPage: true })
+    await page.screenshot({ path: 'test-results/rsv-v2-07-idempotent-toast.png', fullPage: true })
 
-    expect(generated, '冪等: 2回目は生成0件').toBe(0)
-    expect(skipped, '冪等: 既存16枠がスキップされる').toBe(16)
+    expect(generated, '冪等: 時刻不変の再保存は生成0件（対象セルは全て既存のため）').toBe(0)
   })
 
-  test('STEP-9: ライン削除新仕様 — テンプレ停止＋予約なし未来枠purge（使い捨てラインB）', async ({
+  test('STEP-8: ライン削除新仕様 — テンプレ停止＋予約なし未来枠purge（使い捨てラインB）', async ({
     page,
     tokens,
     request,
@@ -543,7 +538,7 @@ test.describe('RSV-V2: メニュー管理＋週間テンプレート一括枠生
     })
     expect(slotRes.ok(), `席B枠作成失敗: ${slotRes.status()} ${await slotRes.text()}`).toBeTruthy()
     const slotB = (await slotRes.json()).data as { id: number }
-    console.log(`[STEP-9] 席B lineId=${lineB.id} tplId=${tplB.id} slotId=${slotB.id}`)
+    console.log(`[STEP-8] 席B lineId=${lineB.id} tplId=${tplB.id} slotId=${slotB.id}`)
 
     // UI からライン削除（新仕様: LineManager は window.confirm ではなく PrimeVue ConfirmDialog を使う。
     // 新仕様の説明（テンプレ停止＋未来枠purgeのガイド文言）が確認ダイアログに含まれることも確認する）
@@ -568,7 +563,7 @@ test.describe('RSV-V2: メニュー管理＋週間テンプレート一括枠生
       page.getByText('予約対象を削除しました'),
       '削除成功トーストが出ること',
     ).toBeVisible({ timeout: 15_000 })
-    await page.screenshot({ path: 'test-results/rsv-v2-09-line-deleted.png', fullPage: true })
+    await page.screenshot({ path: 'test-results/rsv-v2-08-line-deleted.png', fullPage: true })
 
     // 裏取り1: テンプレが is_active=false 化されている（テンプレ停止）
     const tplList = await request.get(
@@ -580,7 +575,7 @@ test.describe('RSV-V2: メニュー管理＋週間テンプレート一括枠生
       templates?: Array<{ id: string; isActive?: boolean; lineId?: number | null }>
     }).templates ?? []
     const tplBAfter = templates.find((t) => t.id === tplB.id)
-    console.log(`[STEP-9] 削除後テンプレB=${JSON.stringify(tplBAfter)}`)
+    console.log(`[STEP-8] 削除後テンプレB=${JSON.stringify(tplBAfter)}`)
     expect(tplBAfter?.isActive, 'ライン削除でテンプレが停止（isActive=false）されること').toBe(false)
 
     // 裏取り2: 予約なし未来枠が purge（論理削除）され、一覧から消えている
@@ -591,7 +586,7 @@ test.describe('RSV-V2: メニュー管理＋週間テンプレート一括枠生
     expect(slotList.ok()).toBeTruthy()
     const slots = (await slotList.json()).data as Array<{ id?: number }>
     const slotBAfter = slots.find((s) => s.id === slotB.id)
-    console.log(`[STEP-9] 削除後 席B枠の残存=${slotBAfter ? 'あり(NG)' : 'なし(purge済)'} 全枠数=${slots.length}`)
+    console.log(`[STEP-8] 削除後 席B枠の残存=${slotBAfter ? 'あり(NG)' : 'なし(purge済)'} 全枠数=${slots.length}`)
     expect(slotBAfter, '予約なし未来枠がpurgeされていること').toBeUndefined()
   })
 })
