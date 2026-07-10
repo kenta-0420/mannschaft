@@ -23,8 +23,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>{@link PageViewAnalyticsService#getAnalytics} が summary / daily / monthly を全フィールド非 null で
  * 組み立てること、期間省略時に全期間を返すこと（AC-12）、uniqueVisitors を生ログ直接 DISTINCT で
- * 正確に返すことを検証する（設計書 §5.3）。topContent は本サービスの責務外
- * （Controller が常に空配列にマップ・AC-15）のため本テストの対象外。</p>
+ * 正確に返すことを検証する（設計書 §5.3）。第 2 弾で追加した topContent（人気コンテンツランキング）の
+ * 実データ算出も本テストで検証する（AC-P2-1/8）。</p>
  */
 @DisplayName("PageView 集計取得サービス 結合テスト (F10.8)")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
@@ -115,5 +115,21 @@ class PageViewAnalyticsServiceTest extends AbstractMySqlIntegrationTest {
         assertThat(result.summary().uniqueVisitors()).isZero();
         assertThat(result.daily()).isNotNull().isEmpty();
         assertThat(result.monthly()).isNotNull().isEmpty();
+        assertThat(result.topContent()).isNotNull().isEmpty();
+    }
+
+    @Test
+    @DisplayName("AC-P2-1/8: topContent は生ログ集計で実データ（ARTICLE/1・views 5・unique 4）を返す")
+    void getAnalytics_topContent_realData() {
+        // seed() は ARTICLE/contentId=1 のログを 5 件（user10x2, g1, user11, g2）投入している。
+        PageViewAnalyticsService.AnalyticsResult result =
+                analyticsService.getAnalytics(PageViewScopeType.TEAM, TEAM_ID, null, null);
+
+        assertThat(result.topContent()).hasSize(1);
+        PageViewAnalyticsService.ContentStat top = result.topContent().get(0);
+        assertThat(top.contentType()).isEqualTo("ARTICLE");
+        assertThat(top.contentId()).isEqualTo(1L);
+        assertThat(top.views()).isEqualTo(5L);
+        assertThat(top.uniqueVisitors()).isEqualTo(4L);
     }
 }

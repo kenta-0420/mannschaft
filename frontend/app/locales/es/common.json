@@ -2065,8 +2065,8 @@
         "monthly_desc": "Muestra valores agregados mensuales. Útil para comprender tendencias a largo plazo."
       },
       "top_content": {
-        "title": "Contenido popular (Fase 2 en desarrollo)",
-        "body": "Esta función clasificará el contenido por número de vistas. Actualmente en desarrollo. Aparecerá automáticamente una vez que los datos estén disponibles."
+        "title": "Contenido popular",
+        "body": "Muestra un ranking del contenido según el número de vistas. Si aún no hay datos de acceso, se mostrará \"No hay datos disponibles\", y el ranking aparecerá automáticamente en cuanto se registren visitas."
       }
     }
   },

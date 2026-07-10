@@ -5,6 +5,7 @@ import com.mannschaft.app.analytics.TeamOrgAnalyticsErrorCode;
 import com.mannschaft.app.analytics.service.PageViewAnalyticsAccessGuard;
 import com.mannschaft.app.analytics.service.PageViewAnalyticsService;
 import com.mannschaft.app.analytics.service.PageViewAnalyticsService.AnalyticsResult;
+import com.mannschaft.app.analytics.service.PageViewAnalyticsService.ContentStat;
 import com.mannschaft.app.analytics.service.PageViewAnalyticsService.DailyStat;
 import com.mannschaft.app.analytics.service.PageViewAnalyticsService.MonthlyStat;
 import com.mannschaft.app.analytics.service.PageViewAnalyticsService.SummaryStat;
@@ -46,7 +47,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>AC-09: 非メンバー（Guard が 404 投げる）→ 404</li>
  *   <li>AC-11: dateFrom > dateTo → 400</li>
  *   <li>AC-12: 日付省略で正常 200</li>
- *   <li>AC-15: topContent 常に空配列</li>
+ *   <li>AC-P2-8: topContent 実データ配列（第 2 弾）</li>
  *   <li>AC-16: daily[].date = "YYYY-MM-DD"、monthly[].month = "YYYY-MM" 形式</li>
  * </ul>
  */
@@ -91,7 +92,11 @@ class TeamAnalyticsControllerTest {
         List<MonthlyStat> monthly = List.of(
                 new MonthlyStat(YearMonth.of(2026, 7), 100L, 50L)
         );
-        return new AnalyticsResult(summary, daily, monthly);
+        List<ContentStat> topContent = List.of(
+                new ContentStat("ARTICLE", 1L, "人気記事", "/teams/my-team/articles/1", 40L, 25L),
+                new ContentStat("ACTIVITY", 2L, "活動記録", "/teams/my-team/activities/2", 15L, 10L)
+        );
+        return new AnalyticsResult(summary, daily, monthly, topContent);
     }
 
     // ─── AC-08: 200 + 全フィールド非 null ─────────────────────────────
@@ -157,11 +162,11 @@ class TeamAnalyticsControllerTest {
                 .andExpect(status().isOk());
     }
 
-    // ─── AC-15: topContent 常に空配列 ─────────────────────────────────
+    // ─── AC-P2-8: topContent は第 2 弾で実データ配列を返す ───────────────
 
     @Test
-    @DisplayName("AC-15: topContent は第 1 弾では常に空配列 []")
-    void getAnalytics_topContent_isEmptyArray() throws Exception {
+    @DisplayName("AC-P2-8: topContent は第 2 弾では実データ配列（全フィールド）で返る")
+    void getAnalytics_topContent_returnsRealData() throws Exception {
         given(teamService.resolveTeamId(SLUG)).willReturn(TEAM_ID);
         given(analyticsService.getAnalytics(any(), any(), isNull(), isNull()))
                 .willReturn(mockResult());
@@ -169,7 +174,14 @@ class TeamAnalyticsControllerTest {
         mockMvc.perform(get("/api/v1/teams/{slug}/analytics", SLUG))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.topContent").isArray())
-                .andExpect(jsonPath("$.data.topContent", hasSize(0)));
+                .andExpect(jsonPath("$.data.topContent", hasSize(2)))
+                .andExpect(jsonPath("$.data.topContent[0].contentType").value("ARTICLE"))
+                .andExpect(jsonPath("$.data.topContent[0].contentId").value(1))
+                .andExpect(jsonPath("$.data.topContent[0].title").value("人気記事"))
+                .andExpect(jsonPath("$.data.topContent[0].url").value("/teams/my-team/articles/1"))
+                .andExpect(jsonPath("$.data.topContent[0].views").value(40))
+                .andExpect(jsonPath("$.data.topContent[0].uniqueVisitors").value(25))
+                .andExpect(jsonPath("$.data.topContent[1].contentType").value("ACTIVITY"));
     }
 
     // ─── AC-16: 日付フォーマット検証 ────────────────────────────────

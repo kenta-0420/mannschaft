@@ -2065,8 +2065,8 @@
         "monthly_desc": "Zeigt monatlich aggregierte Werte. Nützlich zum Verstehen langfristiger Trends."
       },
       "top_content": {
-        "title": "Beliebte Inhalte (Phase 2 in Entwicklung)",
-        "body": "Diese Funktion wird Inhalte nach Aufrufen bewerten. Derzeit in Entwicklung. Es wird automatisch angezeigt, sobald Daten verfügbar sind."
+        "title": "Beliebte Inhalte",
+        "body": "Zeigt eine Rangliste der Inhalte nach Anzahl der Aufrufe. Solange noch keine Zugriffsdaten vorliegen, wird \"Keine Daten verfügbar\" angezeigt. Die Rangliste erscheint automatisch, sobald Aufrufe erfasst wurden."
       }
     }
   },
