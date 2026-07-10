@@ -790,7 +790,23 @@ public class GlobalExceptionHandler {
             // F10.8 チーム/組織アクセス解析（TEAMANALYTICS_xxx）
             Map.entry("TEAMANALYTICS_001", HttpStatus.NOT_FOUND),         // 非メンバー/不在スコープ → 404（IDOR 秘匿）
             Map.entry("TEAMANALYTICS_002", HttpStatus.BAD_REQUEST),       // 日付範囲不正（dateFrom > dateTo）→ 400
-            Map.entry("TEAMANALYTICS_003", HttpStatus.BAD_REQUEST)        // ビーコン body 不正（ENUM 外・絶対 URL 等）→ 400
+            Map.entry("TEAMANALYTICS_003", HttpStatus.BAD_REQUEST),       // ビーコン body 不正（ENUM 外・絶対 URL 等）→ 400
+            // F20.1 課金・エンタイトルメント基盤（ENTITLEMENT_xxx・設計書 02 §9）。
+            // 402（支払えば解決）は 003 のみ。403 は 004/005。IDOR 秘匿は 007（404）。
+            Map.entry("ENTITLEMENT_001", HttpStatus.NOT_FOUND),           // PLAN_NOT_FOUND
+            Map.entry("ENTITLEMENT_002", HttpStatus.NOT_FOUND),           // FEATURE_NOT_FOUND
+            Map.entry("ENTITLEMENT_003", HttpStatus.PAYMENT_REQUIRED),    // FEATURE_NOT_ENTITLED（購入導線あり・RESERVATION_029 と同型）
+            Map.entry("ENTITLEMENT_004", HttpStatus.FORBIDDEN),           // FEATURE_FORBIDDEN_FOR_SCOPE
+            Map.entry("ENTITLEMENT_005", HttpStatus.FORBIDDEN),           // SCOPE_FORBIDDEN（IDOR）
+            Map.entry("ENTITLEMENT_006", HttpStatus.CONFLICT),            // CONTRACT_ALREADY_ACTIVE
+            Map.entry("ENTITLEMENT_007", HttpStatus.NOT_FOUND),           // CONTRACT_NOT_FOUND（スコープ不一致は 404 秘匿）
+            Map.entry("ENTITLEMENT_008", HttpStatus.UNPROCESSABLE_ENTITY),// ADDON_NOT_AVAILABLE
+            Map.entry("ENTITLEMENT_009", HttpStatus.BAD_REQUEST),         // INVALID_SCOPE_KIND
+            Map.entry("ENTITLEMENT_010", HttpStatus.BAD_REQUEST),         // PLAN_MASTER_VALIDATION_FAILED
+            Map.entry("ENTITLEMENT_011", HttpStatus.CONFLICT),            // CONTRACT_NOT_CANCELLABLE
+            Map.entry("ENTITLEMENT_012", HttpStatus.CONFLICT),            // PLAN_MASTER_IN_USE
+            Map.entry("ENTITLEMENT_013", HttpStatus.CONFLICT),            // DUPLICATE_ENTITLEMENT（uk_ent_grant）
+            Map.entry("ENTITLEMENT_014", HttpStatus.BAD_REQUEST)          // INVALID_CONTRACT_KIND（contractKind 不正）
     );
 
     /**

@@ -135,6 +135,11 @@ public class RedisConfig {
                 // 取りこぼし対策として短め（1分）の TTL を設定する（設計書 F12.5 §5.4）。
                 .withCacheConfiguration("active-incidents",
                         redisCacheConfiguration().entryTtl(Duration.ofMinutes(1)))
+                // F20.1 課金・エンタイトルメント: 権利判定キャッシュ（60秒TTL）。
+                // 契約/付与/取消時は EntitlementCacheEvictor が発行/取消 feature_key 集合を個別 evict する。
+                // 既定30分では取消反映が遅すぎるため短TTL。取りこぼしは60秒で自然収束（設計書 02 §8 / 01 §8）。
+                .withCacheConfiguration("entitlement:check",
+                        redisCacheConfiguration().entryTtl(Duration.ofSeconds(60)))
                 .build();
     }
 }
