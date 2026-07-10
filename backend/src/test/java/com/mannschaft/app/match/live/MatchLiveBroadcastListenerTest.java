@@ -69,6 +69,8 @@ class MatchLiveBroadcastListenerTest {
 
     private MatchLiveBroadcastListener listener;
 
+    private SimpleMeterRegistry meterRegistry;
+
     private final UUID matchId = UUID.randomUUID();
 
     /**
@@ -82,7 +84,8 @@ class MatchLiveBroadcastListenerTest {
         lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         lenient().when(valueOperations.increment(anyString())).thenAnswer(inv -> counter.incrementAndGet());
         lenient().when(redisTemplate.expire(anyString(), any(Duration.class))).thenReturn(true);
-        listener = new MatchLiveBroadcastListener(messagingTemplate, redisTemplate, new SimpleMeterRegistry());
+        meterRegistry = new SimpleMeterRegistry();
+        listener = new MatchLiveBroadcastListener(messagingTemplate, redisTemplate, meterRegistry);
     }
 
     // ============================================================
@@ -254,6 +257,8 @@ class MatchLiveBroadcastListenerTest {
 
             // 採番不能時はローカル独自採番で配り続けず、配信自体をスキップする（seq 汚染防止・HTTP 再取得へ委譲・§4.6）
             verify(messagingTemplate, never()).convertAndSend(any(String.class), any(Object.class));
+            // スキップは沈黙させず matchlive.serverseq.skipped に計上する（§4.6・症状の可視化）
+            assertThat(meterRegistry.counter("matchlive.serverseq.skipped").count()).isEqualTo(1.0d);
         }
     }
 

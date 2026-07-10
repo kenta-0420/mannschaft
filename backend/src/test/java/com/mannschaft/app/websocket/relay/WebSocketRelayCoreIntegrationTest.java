@@ -226,6 +226,75 @@ class WebSocketRelayCoreIntegrationTest {
     }
 
     @Test
+    @DisplayName("AC-6: user経路の再実行が生む未解決 /user/... メッセージ（(ii)型）はマーカー付きで、publisher が再publishしない")
+    void userReinjection_carriesMarker_andIsNotRepublished() throws Exception {
+        // クロスノード無限増幅を止める唯一の防壁の直接検証（§4.3/§4.4）:
+        // (ii) 未解決 /user/... は §4.2.1 の destination 判定では中継対象であり、
+        // originNodeId もホップ毎（再実行毎）に自ノード ID へ変わるため、マーカーだけがループを断つ。
+        long userId = 90777L;
+        String subDestination = "/queue/notifications";
+
+        // ノード B の subscriber（convertAndSendToUser の呼び出し内容を捕捉するため mock template を保持）
+        SimpMessagingTemplate messagingTemplateB = mock(SimpMessagingTemplate.class);
+        WebSocketRelaySubscriber subscriberB = new WebSocketRelaySubscriber(
+                NODE_B, objectMapper, mock(MessageChannel.class), messagingTemplateB, new SimpleMeterRegistry());
+        RedisMessageListenerContainer containerB = new RedisMessageListenerContainer();
+        containerB.setConnectionFactory(connectionFactory);
+        containerB.afterPropertiesSet();
+        containerB.addMessageListener(subscriberB, new ChannelTopic(WebSocketRelayConstants.CHANNEL_USER));
+        containerB.start();
+        startedContainers.add(containerB);
+
+        // ノード A 発の USER 封筒を Valkey user チャネルへ流す
+        String userEnvelope = objectMapper.writeValueAsString(new RelayEnvelope(
+                NODE_A,
+                WebSocketRelayConstants.MESSAGE_TYPE_USER,
+                subDestination,
+                String.valueOf(userId),
+                MimeTypeUtils.APPLICATION_JSON_VALUE,
+                java.util.Base64.getEncoder().encodeToString(
+                        "{\"type\":\"TEST\"}".getBytes(StandardCharsets.UTF_8))));
+        redisTemplate.convertAndSend(WebSocketRelayConstants.CHANNEL_USER, userEnvelope);
+
+        // (1) 再実行はヘッダ付きオーバーロードで行われ、ヘッダにリレーマーカーが載っていること（§4.3）
+        ArgumentCaptor<Object> payloadCaptor = ArgumentCaptor.forClass(Object.class);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<java.util.Map<String, Object>> headersCaptor =
+                ArgumentCaptor.forClass((Class<java.util.Map<String, Object>>) (Class<?>) java.util.Map.class);
+        verify(messagingTemplateB, timeout(3000)).convertAndSendToUser(
+                org.mockito.ArgumentMatchers.eq(String.valueOf(userId)),
+                org.mockito.ArgumentMatchers.eq(subDestination),
+                payloadCaptor.capture(),
+                headersCaptor.capture());
+        java.util.Map<String, Object> reinjectHeaders = headersCaptor.getValue();
+        assertThat(reinjectHeaders.get(WebSocketRelayConstants.RELAY_MARKER_HEADER))
+                .as("user再実行のヘッダにリレーマーカーが載ること（素の再実行禁止・§4.3/§4.4）")
+                .isEqualTo(Boolean.TRUE);
+
+        // (2) その再実行が brokerChannel に生む (ii) 型メッセージ（未解決 /user/... + マーカー）を
+        //     publisher が再 publish しないこと（マーカー判定が無限増幅を断つ防壁）
+        BlockingQueue<String> receivedUser = subscribeRaw(WebSocketRelayConstants.CHANNEL_USER);
+        BlockingQueue<String> receivedBroadcast = subscribeRaw(WebSocketRelayConstants.CHANNEL_BROADCAST);
+
+        SimpMessageHeaderAccessor accessor = SimpMessageHeaderAccessor.create(SimpMessageType.MESSAGE);
+        accessor.copyHeaders(reinjectHeaders); // 再実行ヘッダ（マーカー含む）をそのまま引き継ぐ
+        accessor.setDestination("/user/" + userId + subDestination);
+        accessor.setContentType(MimeTypeUtils.APPLICATION_JSON);
+        Message<byte[]> unresolvedUserMessage = MessageBuilder.createMessage(
+                objectMapper.writeValueAsBytes(payloadCaptor.getValue()), accessor.getMessageHeaders());
+
+        WebSocketRelayPublisher publisherB = newPublisher(NODE_B);
+        publisherB.relay(unresolvedUserMessage);
+
+        assertThat(receivedUser.poll(1500, TimeUnit.MILLISECONDS))
+                .as("マーカー付き (ii) 型メッセージは user チャネルへ再 publish されないこと（無限増幅防止・§4.4）")
+                .isNull();
+        assertThat(receivedBroadcast.poll(1000, TimeUnit.MILLISECONDS))
+                .as("broadcast チャネルへも流れないこと")
+                .isNull();
+    }
+
+    @Test
     @DisplayName("AC-6: publisher は解決済みユーザー宛（/queue/...-user*）を中継しない（§4.2.1(iii)・companion）")
     void publisher_ignoresResolvedUserDestination() throws Exception {
         BlockingQueue<String> received = subscribeRaw(WebSocketRelayConstants.CHANNEL_BROADCAST);
