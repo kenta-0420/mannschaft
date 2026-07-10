@@ -212,7 +212,8 @@ createContract(scopeKind, scopeId, request, operatorUserId, idempotencyKey):    
   priceJpy = BillingPriceResolver.resolveMonthlyPriceJpy(...)                    # ★D-4 価格解決
   #   PLAN・USER = plans.base_monthly_price_jpy / PLAN・TEAM|ORG = plan_price_bands のバンド価格優先（NULL は base）
   #   / ADDON = feature_catalog.addon_price_jpy
-  if priceJpy == NULL:  → 無償フロー（従来 P1・下記 @Transactional）             # AC-31・遡及なし（AC-40）
+  if priceJpy == NULL or priceJpy <= 0:  → 無償フロー（従来 P1・下記 @Transactional）  # AC-31・遡及なし（AC-40）
+  #   0 円以下は無償扱い（0 円サブスクの Checkout は成立しない・マスタ誤設定の防御）
   else:                 → 決済フロー（BillingCheckoutService.startPaidContract）  # AC-32
 
 【無償フロー（従来 P1・不変）】

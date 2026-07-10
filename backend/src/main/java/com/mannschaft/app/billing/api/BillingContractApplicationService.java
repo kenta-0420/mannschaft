@@ -75,10 +75,11 @@ public class BillingContractApplicationService {
 
         // D-4: 価格をマスタから解決。NULL=無償ワンクリック（即 ACTIVE＋発行）／非 NULL=Checkout 決済フロー
         // （PENDING＋entitlements 未発行・入金 webhook で ACTIVE 化）。既存無償契約には遡及しない。
+        // 0 円以下は無償扱い（0 円サブスクの Checkout は成立しない・マスタ誤設定の防御）。
         Integer priceJpy = priceResolver.resolveMonthlyPriceJpy(
                 scopeKind, scopeId, contractKind, request.planKey(), request.featureKey());
 
-        if (priceJpy == null) {
+        if (priceJpy == null || priceJpy <= 0) {
             // 無償フロー（P1 のまま）。
             ContractResult result = billingContractService.createContract(
                     scopeKind, scopeId, organizationId, contractKind,

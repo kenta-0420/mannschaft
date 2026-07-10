@@ -71,6 +71,9 @@ class BillingContractApplicationServiceTest {
     void create_firstTime_delegatesAndStores() {
         UUID id = UUID.randomUUID();
         given(idempotencyService.findStoredContractId(9L, "idem-1")).willReturn(null);
+        // D-4: 価格 NULL＝無償フロー（Mockito の Integer 既定値は 0＝決済フロー扱いになるため明示 null 指定）。
+        given(priceResolver.resolveMonthlyPriceJpy(
+                EntitlementScopeKind.USER, 9L, ContractKind.PLAN, "FULL", null)).willReturn(null);
         given(billingContractService.createContract(
                 eq(EntitlementScopeKind.USER), eq(9L), isNull(), eq(ContractKind.PLAN),
                 eq("FULL"), isNull(), eq(9L)))
@@ -114,6 +117,9 @@ class BillingContractApplicationServiceTest {
         UUID id = UUID.randomUUID();
         given(idempotencyService.findStoredContractId(9L, "idem-t")).willReturn(null);
         given(teamOrgMembershipQueryService.findActiveOrganizationIds(123L)).willReturn(List.of(77L, 88L));
+        // D-4: 価格 NULL＝無償フロー（明示 null 指定）。
+        given(priceResolver.resolveMonthlyPriceJpy(
+                EntitlementScopeKind.TEAM, 123L, ContractKind.PLAN, "FULL", null)).willReturn(null);
         given(billingContractService.createContract(
                 eq(EntitlementScopeKind.TEAM), eq(123L), eq(77L), eq(ContractKind.PLAN),
                 eq("FULL"), isNull(), eq(9L)))
@@ -132,6 +138,9 @@ class BillingContractApplicationServiceTest {
     void create_org_resolvesSelf() {
         UUID id = UUID.randomUUID();
         given(idempotencyService.findStoredContractId(9L, "idem-o")).willReturn(null);
+        // D-4: 価格 NULL＝無償フロー（明示 null 指定）。
+        given(priceResolver.resolveMonthlyPriceJpy(
+                EntitlementScopeKind.ORG, 55L, ContractKind.PLAN, "FULL", null)).willReturn(null);
         given(billingContractService.createContract(
                 eq(EntitlementScopeKind.ORG), eq(55L), eq(55L), eq(ContractKind.PLAN),
                 eq("FULL"), isNull(), eq(9L)))
