@@ -78,6 +78,8 @@ public class SpotlightServingService {
     private static final Duration RR_TTL = Duration.ofSeconds(172800);
     private static final int CLICK_RL_LIMIT = 10;
     private static final String DEDUPE_PENDING = "PENDING";
+    /** 予約鮮度しきい値（日）。§7.4・§16 AC-3.8: 14 日超過の未表示予約は serve 対象外。 */
+    private static final int RESERVATION_FRESHNESS_DAYS = 14;
 
     @PersistenceContext
     private EntityManager em;
@@ -204,10 +206,13 @@ public class SpotlightServingService {
                                 + "JOIN ads a ON a.id = ch.banner_creative_id "
                                 + "JOIN advertiser_accounts acc ON acc.id = mc.advertiser_account_id "
                                 + "WHERE bd.user_id = :userId AND bd.served_at IS NULL "
+                                // 予約鮮度（§7.4・§16 AC-3.8）: created_at から 14 日超過した予約は EXPIRED 扱いで serve 対象外。
+                                + "AND bd.created_at >= :cutoff "
                                 + "ORDER BY bd.created_at ASC")
                 .setParameter("placement", placement.name())
                 .setParameter("locale", locale)
                 .setParameter("userId", userId)
+                .setParameter("cutoff", java.time.LocalDateTime.now().minusDays(RESERVATION_FRESHNESS_DAYS))
                 .getResultList();
 
         for (Object[] r : rows) {

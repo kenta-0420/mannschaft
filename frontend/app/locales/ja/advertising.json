@@ -251,7 +251,13 @@
         "column_status": "状態",
         "auto_suspend_candidate": "通報集中",
         "auto_suspend_candidate_tooltip": "短期間に複数件の通報が集まったため、自動停止候補です。",
-        "go_campaign": "キャンペーン詳細へ"
+        "go_campaign": "キャンペーン詳細へ",
+        "type_messaging": "メッセージ型",
+        "type_operational": "運用型",
+        "status_update_failed": "状態の更新に失敗しました",
+        "mark_reviewing": "確認中にする",
+        "mark_resolved": "対応済みにする",
+        "mark_dismissed": "却下する"
       },
       "advertiser_campaign_report": {
         "title": "キャンペーン パフォーマンスレポート",
@@ -546,6 +552,154 @@
           "step2": "ページ右下の「保存」ボタンをクリックする",
           "step3": "「設定を保存しました」のメッセージが表示されれば完了"
         }
+      }
+    },
+    "operational_campaigns": {
+      "title": "バナー広告キャンペーン",
+      "entry_tile": {
+        "title": "バナー広告キャンペーン",
+        "description": "画像バナーを掲載面に配信する運用型キャンペーンを作成・管理します。"
+      },
+      "list": {
+        "description": "画像バナーの配信キャンペーンを作成し、審査・配信・停止を管理します。日予算は目安の上限です。",
+        "create_button": "新規作成",
+        "empty": "運用型キャンペーンはまだありません。最初のキャンペーンを作成しましょう。",
+        "no_end_date": "無期限",
+        "report_suspended_badge": "通報により停止中",
+        "reject_reason_label": "差戻し理由",
+        "link_creatives": "クリエイティブ",
+        "link_report": "レポート",
+        "tab": {
+          "all": "すべて",
+          "draft": "下書き",
+          "pending_review": "審査中",
+          "active": "配信中",
+          "paused": "一時停止",
+          "ended": "終了"
+        },
+        "col": {
+          "name": "キャンペーン名",
+          "status": "ステータス",
+          "pricing_model": "課金方式",
+          "daily_budget": "日予算",
+          "period": "掲載期間",
+          "unit_price": "単価",
+          "actions": "操作"
+        }
+      },
+      "status": {
+        "draft": "下書き",
+        "pending_review": "審査中",
+        "active": "配信中",
+        "paused": "一時停止",
+        "ended": "終了"
+      },
+      "actions": {
+        "submit": "審査に提出",
+        "pause": "一時停止",
+        "resume": "再開",
+        "end": "終了",
+        "edit": "編集"
+      },
+      "confirm": {
+        "submit": "このキャンペーンを審査に提出しますか？",
+        "pause": "このキャンペーンの配信を一時停止しますか？",
+        "resume": "このキャンペーンの配信を再開しますか？",
+        "end": "このキャンペーンを終了しますか？終了すると再開できません（不可逆）。"
+      },
+      "toast": {
+        "submit": "審査に提出しました",
+        "pause": "配信を一時停止しました",
+        "resume": "配信を再開しました",
+        "end": "キャンペーンを終了しました",
+        "created": "キャンペーンを作成しました",
+        "updated": "キャンペーンを更新しました"
+      },
+      "form": {
+        "create_title": "バナー広告キャンペーンの作成",
+        "edit_title": "バナー広告キャンペーンの編集",
+        "name": "キャンペーン名",
+        "pricing_model": "課金方式",
+        "rate_card": "料金カード",
+        "rate_card_placeholder": "料金カードを選択",
+        "no_rate_cards": "選択した課金方式に利用可能な料金カードがありません。",
+        "daily_budget": "日予算",
+        "min_daily_budget": "最低日予算",
+        "start_date": "掲載開始日",
+        "end_date": "掲載終了日",
+        "end_date_hint": "空欄の場合は無期限で掲載されます。",
+        "unit_cpm": "CPM",
+        "unit_cpc": "CPC",
+        "locked_when_paused": "一時停止中は変更できません。",
+        "daily_budget_notice": "日予算は消化の目安の上限です。厳密な上限保証ではなく、実測値に基づいて課金されます。",
+        "save": "保存",
+        "cancel": "キャンセル"
+      },
+      "errors": {
+        "load_failed": "キャンペーンの取得に失敗しました",
+        "save_failed": "保存に失敗しました",
+        "transition_failed": "操作に失敗しました",
+        "rate_cards_load_failed": "料金カードの取得に失敗しました",
+        "name_required": "キャンペーン名を入力してください",
+        "name_max": "キャンペーン名は200文字以内で入力してください",
+        "rate_card_required": "料金カードを選択してください",
+        "daily_budget_required": "日予算を入力してください",
+        "daily_budget_min": "日予算は最低日予算（{min}）以上にしてください",
+        "start_date_required": "掲載開始日を入力してください",
+        "start_in_past": "掲載開始日は本日以降にしてください",
+        "end_before_start": "掲載終了日は開始日以降にしてください"
+      },
+      "guide": {
+        "title": "バナー広告キャンペーンの使い方",
+        "what": {
+          "title": "バナー広告キャンペーンとは",
+          "body": "画像バナーを掲載面（ダッシュボードやフィード）に配信する運用型の広告です。課金方式（CPM/CPC）と料金カードを選んで日予算を設定し、審査を経て配信します。"
+        },
+        "flow": {
+          "title": "出稿の流れ",
+          "step1": "料金カードと日予算を指定してキャンペーンを作成（下書き）",
+          "step2": "クリエイティブ（画像バナー）を入稿",
+          "step3": "審査に提出（キャンペーンとクリエイティブの両方が承認されると配信対象）",
+          "step4": "配信開始。必要に応じて一時停止・再開・終了を操作"
+        },
+        "pricing": {
+          "title": "料金と日予算",
+          "body": "料金カードで単価（CPM=表示1000回あたり、CPC=クリック1回あたり）が決まります。作成時に単価が凍結されるため、以降の料金改定の影響を受けません。日予算は消化の目安の上限です。"
+        },
+        "status": {
+          "title": "状態と操作",
+          "body": "下書き→審査中→配信中→一時停止と遷移します。一時停止中は課金単価に関わる項目（課金方式・料金カード・開始日）を変更できません。終了すると再開できません。"
+        }
+      },
+      "review": {
+        "title": "運用型キャンペーン審査",
+        "description": "審査待ちのバナー広告キャンペーンを確認し、承認または差戻しを行います。",
+        "card_title": "運用型キャンペーン審査",
+        "card_description": "バナー広告キャンペーンの審査待ちを確認します。",
+        "pending_count": "審査待ち",
+        "open_queue": "審査キューを開く",
+        "open_detail": "詳細を確認",
+        "back_to_dashboard": "審査ダッシュボードへ戻る",
+        "empty": "審査待ちのキャンペーンはありません。",
+        "load_failed": "審査キューの取得に失敗しました",
+        "detail_load_failed": "審査詳細の取得に失敗しました",
+        "detail_title": "キャンペーン審査詳細",
+        "advertiser": "広告主",
+        "scope": "スコープ",
+        "scope_organization": "組織",
+        "scope_team": "チーム",
+        "unit_price": "単価",
+        "creatives": "クリエイティブ",
+        "no_creatives": "クリエイティブが入稿されていません。",
+        "approve": "承認",
+        "approve_confirm": "このキャンペーンを承認して配信可能にしますか？",
+        "approved_toast": "キャンペーンを承認しました",
+        "reject": "差戻し",
+        "reject_submit": "差戻す",
+        "reject_reason_label": "差戻し理由",
+        "reject_reason_placeholder": "差戻しの理由を入力してください（1〜500文字）",
+        "rejected_toast": "キャンペーンを差戻しました",
+        "action_failed": "操作に失敗しました"
       }
     }
   }
