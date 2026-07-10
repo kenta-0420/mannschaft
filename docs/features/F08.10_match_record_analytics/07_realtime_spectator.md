@@ -112,6 +112,7 @@ preSend (SUBSCRIBE フレーム):
 - **本番のマルチインスタンス展開**: SimpleBroker はインスタンスローカルのため、複数アプリインスタンスにまたがる購読者へは配信が届かない。本番で WS をスケールさせる場合は **Valkey（Redis Pub/Sub）リレー or 外部 STOMP ブローカー（RabbitMQ 等）**へ切替える（既存 `WebSocketConfig` のコメントにも「本番は Valkey 想定」とある）。**これは F08.10 単独ではなく WS 基盤全体の課題**であり、別途 WS ブローカー軍議（MEMORY: 本番移行 Phase3 WS ブローカー別軍議）で決定する。
   - **本機能の設計はブローカー差し替えに非依存**: 配信は `SimpMessagingTemplate.convertAndSend(destination, payload)` の抽象に閉じており、broker を SimpleBroker→外部ブローカーへ差し替えても本機能のコードは不変（`@TransactionalEventListener`→`convertAndSend` の構造はそのまま）。
 - **配信負荷**: 1 試合あたり観戦者数は限定的（チーム関係者中心）。差分配信（J.2.1）＋ペイロード最小化（J.3.3）で帯域を抑える。大規模公開試合（数千観戦者）は MVP 想定外（その場合は外部ブローカー＋ファンアウト最適化を別途）。
+- **【別軍議の正本】** 上記「WS 基盤全体の別軍議（本番移行 Phase3 WS ブローカー）」の設計書 = [`docs/architecture/websocket_external_broker_valkey.md`](../../architecture/websocket_external_broker_valkey.md)（A 案: SimpleBroker 維持 + Valkey Pub/Sub 中継。Principal 未配線の根治を含む。本機能の配信はこの中継の適用範囲に自動的に含まれる）。
 
 ---
 
