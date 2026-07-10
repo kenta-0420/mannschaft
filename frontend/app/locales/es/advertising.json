@@ -553,6 +553,154 @@
           "step3": "「設定を保存しました」のメッセージが表示されれば完了"
         }
       }
+    },
+    "operational_campaigns": {
+      "title": "Campañas de anuncios de banner",
+      "entry_tile": {
+        "title": "Campañas de anuncios de banner",
+        "description": "Crea y gestiona campañas operativas que muestran banners de imagen en los espacios publicitarios."
+      },
+      "list": {
+        "description": "Crea campañas de entrega de banners de imagen y gestiona la revisión, la entrega y la pausa. El presupuesto diario es un límite orientativo.",
+        "create_button": "Crear",
+        "empty": "Aún no hay campañas operativas. Crea tu primera campaña.",
+        "no_end_date": "Sin fecha de fin",
+        "report_suspended_badge": "Suspendida por denuncia",
+        "reject_reason_label": "Motivo de rechazo",
+        "link_creatives": "Creatividades",
+        "link_report": "Informe",
+        "tab": {
+          "all": "Todas",
+          "draft": "Borrador",
+          "pending_review": "En revisión",
+          "active": "Activa",
+          "paused": "Pausada",
+          "ended": "Finalizada"
+        },
+        "col": {
+          "name": "Nombre de campaña",
+          "status": "Estado",
+          "pricing_model": "Modelo de precios",
+          "daily_budget": "Presupuesto diario",
+          "period": "Periodo",
+          "unit_price": "Precio unitario",
+          "actions": "Acciones"
+        }
+      },
+      "status": {
+        "draft": "Borrador",
+        "pending_review": "En revisión",
+        "active": "Activa",
+        "paused": "Pausada",
+        "ended": "Finalizada"
+      },
+      "actions": {
+        "submit": "Enviar a revisión",
+        "pause": "Pausar",
+        "resume": "Reanudar",
+        "end": "Finalizar",
+        "edit": "Editar"
+      },
+      "confirm": {
+        "submit": "¿Enviar esta campaña a revisión?",
+        "pause": "¿Pausar la entrega de esta campaña?",
+        "resume": "¿Reanudar la entrega de esta campaña?",
+        "end": "¿Finalizar esta campaña? No se puede reanudar una vez finalizada (irreversible)."
+      },
+      "toast": {
+        "submit": "Enviada a revisión",
+        "pause": "Entrega pausada",
+        "resume": "Entrega reanudada",
+        "end": "Campaña finalizada",
+        "created": "Campaña creada",
+        "updated": "Campaña actualizada"
+      },
+      "form": {
+        "create_title": "Crear campaña de anuncios de banner",
+        "edit_title": "Editar campaña de anuncios de banner",
+        "name": "Nombre de campaña",
+        "pricing_model": "Modelo de precios",
+        "rate_card": "Tarjeta de tarifas",
+        "rate_card_placeholder": "Selecciona una tarjeta de tarifas",
+        "no_rate_cards": "No hay tarjetas de tarifas disponibles para el modelo de precios seleccionado.",
+        "daily_budget": "Presupuesto diario",
+        "min_daily_budget": "Presupuesto diario mínimo",
+        "start_date": "Fecha de inicio",
+        "end_date": "Fecha de fin",
+        "end_date_hint": "Déjalo en blanco para una duración indefinida.",
+        "unit_cpm": "CPM",
+        "unit_cpc": "CPC",
+        "locked_when_paused": "No se puede cambiar mientras está pausada.",
+        "daily_budget_notice": "El presupuesto diario es un límite orientativo para el ritmo. No es una garantía estricta; el cobro se basa en la entrega real medida.",
+        "save": "Guardar",
+        "cancel": "Cancelar"
+      },
+      "errors": {
+        "load_failed": "No se pudo cargar la campaña",
+        "save_failed": "No se pudo guardar",
+        "transition_failed": "La operación falló",
+        "rate_cards_load_failed": "No se pudieron cargar las tarjetas de tarifas",
+        "name_required": "Introduce un nombre de campaña",
+        "name_max": "El nombre de campaña debe tener 200 caracteres o menos",
+        "rate_card_required": "Selecciona una tarjeta de tarifas",
+        "daily_budget_required": "Introduce un presupuesto diario",
+        "daily_budget_min": "El presupuesto diario debe ser al menos el mínimo ({min})",
+        "start_date_required": "Introduce una fecha de inicio",
+        "start_in_past": "La fecha de inicio debe ser hoy o posterior",
+        "end_before_start": "La fecha de fin debe ser igual o posterior a la de inicio"
+      },
+      "guide": {
+        "title": "Cómo usar las campañas de anuncios de banner",
+        "what": {
+          "title": "¿Qué son las campañas de anuncios de banner?",
+          "body": "Anuncios operativos que muestran banners de imagen en espacios como paneles y feeds. Elige un modelo de precios (CPM/CPC) y una tarjeta de tarifas, define un presupuesto diario y entrega tras la revisión."
+        },
+        "flow": {
+          "title": "Flujo de publicación",
+          "step1": "Crea una campaña (borrador) con una tarjeta de tarifas y presupuesto diario",
+          "step2": "Envía las creatividades (banners de imagen)",
+          "step3": "Envía a revisión (tanto la campaña como las creatividades deben aprobarse para ser elegibles)",
+          "step4": "Comienza la entrega. Pausa, reanuda o finaliza según sea necesario"
+        },
+        "pricing": {
+          "title": "Precios y presupuesto diario",
+          "body": "La tarjeta de tarifas determina el precio unitario (CPM = por 1000 impresiones, CPC = por clic). El precio unitario se congela al crear, por lo que los cambios posteriores de tarifa no se aplican. El presupuesto diario es un límite orientativo para el ritmo."
+        },
+        "status": {
+          "title": "Estado y operaciones",
+          "body": "Las transiciones son Borrador -> En revisión -> Activa -> Pausada. Mientras está pausada, no se pueden cambiar los campos relacionados con la facturación (modelo de precios, tarjeta de tarifas, fecha de inicio). Las campañas finalizadas no se pueden reanudar."
+        }
+      },
+      "review": {
+        "title": "Revisión de campañas operativas",
+        "description": "Revisa las campañas de anuncios de banner pendientes y apruébalas o recházalas.",
+        "card_title": "Revisión de campañas operativas",
+        "card_description": "Consulta las campañas de anuncios de banner pendientes de revisión.",
+        "pending_count": "Pendientes",
+        "open_queue": "Abrir cola de revisión",
+        "open_detail": "Ver detalle",
+        "back_to_dashboard": "Volver al panel de revisión",
+        "empty": "No hay campañas pendientes de revisión.",
+        "load_failed": "No se pudo cargar la cola de revisión",
+        "detail_load_failed": "No se pudo cargar el detalle de revisión",
+        "detail_title": "Detalle de revisión de campaña",
+        "advertiser": "Anunciante",
+        "scope": "Ámbito",
+        "scope_organization": "Organización",
+        "scope_team": "Equipo",
+        "unit_price": "Precio unitario",
+        "creatives": "Creatividades",
+        "no_creatives": "No se han enviado creatividades.",
+        "approve": "Aprobar",
+        "approve_confirm": "¿Aprobar esta campaña y hacerla elegible para la entrega?",
+        "approved_toast": "Campaña aprobada",
+        "reject": "Rechazar",
+        "reject_submit": "Rechazar",
+        "reject_reason_label": "Motivo de rechazo",
+        "reject_reason_placeholder": "Introduce el motivo del rechazo (1-500 caracteres)",
+        "rejected_toast": "Campaña rechazada",
+        "action_failed": "La operación falló"
+      }
     }
   }
 }
