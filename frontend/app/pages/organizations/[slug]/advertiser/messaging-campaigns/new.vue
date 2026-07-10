@@ -138,8 +138,48 @@ const segments = ref<AdMessagingCampaignAudienceSegmentRequest[]>([])
 const preview = ref<AdCampaignPreviewResponse | null>(null)
 const previewLoading = ref(false)
 const submitting = ref(false)
+// F09.19.7 §10.2: Step3 完了時に DRAFT を自動保存し、その id で実 preview を取得する
+const draftCampaignId = ref<string | null>(null)
+const savingDraft = ref(false)
 
-function next() {
+/**
+ * DRAFT キャンペーン + チャネル + オーディエンスを保存する（冪等）。
+ * 既に保存済みなら既存 id を返す。
+ */
+async function saveDraft(): Promise<string | null> {
+  if (draftCampaignId.value) return draftCampaignId.value
+  savingDraft.value = true
+  try {
+    const payload: CreateAdMessagingCampaignRequest = {
+      name: basic.value.name,
+      totalBudgetYen: basic.value.totalBudgetYen,
+      startsAt: basic.value.startsAt,
+      endsAt: basic.value.endsAt,
+      scheduledTimezone: basic.value.scheduledTimezone,
+      frequencyCapOverride: basic.value.frequencyCapOverride ?? null,
+    }
+    const res = await api.createCampaign(scopeType, scopeId, payload)
+    const campaignId = res.data.id
+    for (const ch of channels.value) {
+      await api.createChannel(scopeType, scopeId, campaignId, ch)
+    }
+    if (segments.value.length > 0) {
+      await api.setAudience(scopeType, scopeId, campaignId, { segments: segments.value })
+    }
+    draftCampaignId.value = campaignId
+    toast.success(t('advertising.pages.advertiser_campaign_create.draft_saved'))
+    return campaignId
+  }
+  catch {
+    toast.error(t('advertising.advertiser_crud.errors.save_failed'))
+    return null
+  }
+  finally {
+    savingDraft.value = false
+  }
+}
+
+async function next() {
   if (step.value === 0) {
     if (!validateBasic()) return
   }
@@ -154,9 +194,15 @@ function next() {
       toast.warn(t('advertising.advertiser_crud.validation.at_least_one_segment'))
       return
     }
+    // Step3（オーディエンス）完了 → DRAFT 自動保存
+    const id = await saveDraft()
+    if (!id) return
   }
   if (step.value < 3) {
     step.value = (step.value + 1) as 0 | 1 | 2 | 3
+    if (step.value === 3) {
+      await fetchPreview()
+    }
   }
 }
 
@@ -169,31 +215,10 @@ function back() {
 async function submit() {
   submitting.value = true
   try {
-    const payload: CreateAdMessagingCampaignRequest = {
-      name: basic.value.name,
-      totalBudgetYen: basic.value.totalBudgetYen,
-      startsAt: basic.value.startsAt,
-      endsAt: basic.value.endsAt,
-      scheduledTimezone: basic.value.scheduledTimezone,
-      frequencyCapOverride: basic.value.frequencyCapOverride ?? null,
-    }
-    const res = await api.createCampaign(scopeType, scopeId, payload)
-    const campaignId = res.data.id
-
-    // チャネル登録
-    for (const ch of channels.value) {
-      await api.createChannel(scopeType, scopeId, campaignId, ch)
-    }
-    // オーディエンス
-    if (segments.value.length > 0) {
-      await api.setAudience(scopeType, scopeId, campaignId, { segments: segments.value })
-    }
-
-    toast.success(t('advertising.pages.advertiser_campaign_create.saved'))
+    // Step3 で DRAFT 保存済み。未保存（フォールバック）なら保存してから遷移する。
+    const campaignId = draftCampaignId.value ?? (await saveDraft())
+    if (!campaignId) return
     router.push(`/organizations/${orgSlug}/advertiser/messaging-campaigns/${campaignId}`)
-  }
-  catch {
-    toast.error(t('advertising.advertiser_crud.errors.save_failed'))
   }
   finally {
     submitting.value = false
@@ -201,14 +226,15 @@ async function submit() {
 }
 
 async function fetchPreview() {
-  // 既存 DRAFT が無いと preview は呼べないため、ウィザード段階では擬似値を表示
+  // F09.19.7 §10.2: 保存済み DRAFT に対して実 preview API（推定リーチ range/label）を呼ぶ
+  if (!draftCampaignId.value) return
   previewLoading.value = true
   try {
-    preview.value = {
-      range: 'UNDER_100',
-      label: '—',
-      channelCounts: {},
-    }
+    const res = await api.previewCampaign(scopeType, scopeId, draftCampaignId.value)
+    preview.value = res.data
+  }
+  catch {
+    toast.error(t('advertising.advertiser_crud.errors.save_failed'))
   }
   finally {
     previewLoading.value = false
