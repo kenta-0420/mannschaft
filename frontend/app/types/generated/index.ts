@@ -33945,7 +33945,31 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * 審査キュー一覧
+         * @description 運用型キャンペーンを status フィルタ（既定 PENDING_REVIEW）・created_at DESC で取得する。
+         */
         get: operations["list_74"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/ad-campaigns-operational/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 審査詳細
+         * @description 承認/却下判断に必要な広告主帰属（advertiserName / scope）とクリエイティブ一覧を含むキャンペーン詳細を返す。存在しない id は 404。
+         */
+        get: operations["detail_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -69556,6 +69580,41 @@ export interface components {
             /** @enum {string} */
             status?: "DRAFT" | "REVIEW" | "APPROVED" | "SCHEDULED" | "DELIVERING" | "PAUSED" | "COMPLETED" | "BLOCKED" | "CANCELLED";
         };
+        ApiResponseOperationalCampaignReviewDetailResponse: {
+            data?: components["schemas"]["OperationalCampaignReviewDetailResponse"];
+        };
+        OperationalCampaignReviewDetailResponse: {
+            /** Format: int64 */
+            advertiserAccountId?: number;
+            advertiserName?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            creatives?: components["schemas"]["AdCreativeResponse"][];
+            dailyBudget?: number;
+            /** Format: date */
+            endDate?: string;
+            /** Format: int64 */
+            id?: number;
+            name?: string;
+            /** @enum {string} */
+            pricingModel?: "CPM" | "CPC";
+            /** Format: int64 */
+            rateCardId?: number;
+            rejectReason?: string;
+            /** Format: date-time */
+            reportSuspendedAt?: string;
+            /** Format: int64 */
+            scopeId?: number;
+            /** @enum {string} */
+            scopeType?: "ORGANIZATION" | "TEAM";
+            /** Format: date */
+            startDate?: string;
+            /** @enum {string} */
+            status?: "DRAFT" | "PENDING_REVIEW" | "ACTIVE" | "PAUSED" | "ENDED";
+            unitPriceSnapshot?: number;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
         ApiResponseListPresetResponse: {
             data?: components["schemas"]["PresetResponse"][];
         };
@@ -73949,6 +74008,8 @@ export interface components {
             data?: components["schemas"]["PublicRateCardResponse"][];
         };
         PublicRateCardResponse: {
+            /** Format: int64 */
+            id?: number;
             label?: string;
             minDailyBudget?: number;
             /** @enum {string} */
@@ -141546,6 +141607,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PagedResponseOperationalCampaignResponse"];
+                };
+            };
+        };
+    };
+    detail_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOperationalCampaignReviewDetailResponse"];
                 };
             };
         };
