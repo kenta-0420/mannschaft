@@ -547,6 +547,154 @@
           "step3": "「設定を保存しました」のメッセージが表示されれば完了"
         }
       }
+    },
+    "operational_campaigns": {
+      "title": "Banner Ad Campaigns",
+      "entry_tile": {
+        "title": "Banner Ad Campaigns",
+        "description": "Create and manage operational campaigns that deliver image banners to ad placements."
+      },
+      "list": {
+        "description": "Create image banner delivery campaigns and manage review, delivery, and pausing. Daily budget is a soft cap.",
+        "create_button": "Create",
+        "empty": "No operational campaigns yet. Let's create your first campaign.",
+        "no_end_date": "No end date",
+        "report_suspended_badge": "Suspended by report",
+        "reject_reason_label": "Rejection reason",
+        "link_creatives": "Creatives",
+        "link_report": "Report",
+        "tab": {
+          "all": "All",
+          "draft": "Draft",
+          "pending_review": "In review",
+          "active": "Active",
+          "paused": "Paused",
+          "ended": "Ended"
+        },
+        "col": {
+          "name": "Campaign name",
+          "status": "Status",
+          "pricing_model": "Pricing model",
+          "daily_budget": "Daily budget",
+          "period": "Period",
+          "unit_price": "Unit price",
+          "actions": "Actions"
+        }
+      },
+      "status": {
+        "draft": "Draft",
+        "pending_review": "In review",
+        "active": "Active",
+        "paused": "Paused",
+        "ended": "Ended"
+      },
+      "actions": {
+        "submit": "Submit for review",
+        "pause": "Pause",
+        "resume": "Resume",
+        "end": "End",
+        "edit": "Edit"
+      },
+      "confirm": {
+        "submit": "Submit this campaign for review?",
+        "pause": "Pause delivery of this campaign?",
+        "resume": "Resume delivery of this campaign?",
+        "end": "End this campaign? It cannot be resumed once ended (irreversible)."
+      },
+      "toast": {
+        "submit": "Submitted for review",
+        "pause": "Delivery paused",
+        "resume": "Delivery resumed",
+        "end": "Campaign ended",
+        "created": "Campaign created",
+        "updated": "Campaign updated"
+      },
+      "form": {
+        "create_title": "Create banner ad campaign",
+        "edit_title": "Edit banner ad campaign",
+        "name": "Campaign name",
+        "pricing_model": "Pricing model",
+        "rate_card": "Rate card",
+        "rate_card_placeholder": "Select a rate card",
+        "no_rate_cards": "No rate cards available for the selected pricing model.",
+        "daily_budget": "Daily budget",
+        "min_daily_budget": "Minimum daily budget",
+        "start_date": "Start date",
+        "end_date": "End date",
+        "end_date_hint": "Leave blank to run indefinitely.",
+        "unit_cpm": "CPM",
+        "unit_cpc": "CPC",
+        "locked_when_paused": "Cannot be changed while paused.",
+        "daily_budget_notice": "The daily budget is a soft cap for pacing. It is not a strict guarantee; charges are based on actual measured delivery.",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "errors": {
+        "load_failed": "Failed to load campaign",
+        "save_failed": "Failed to save",
+        "transition_failed": "Operation failed",
+        "rate_cards_load_failed": "Failed to load rate cards",
+        "name_required": "Please enter a campaign name",
+        "name_max": "Campaign name must be 200 characters or fewer",
+        "rate_card_required": "Please select a rate card",
+        "daily_budget_required": "Please enter a daily budget",
+        "daily_budget_min": "Daily budget must be at least the minimum ({min})",
+        "start_date_required": "Please enter a start date",
+        "start_in_past": "Start date must be today or later",
+        "end_before_start": "End date must be on or after the start date"
+      },
+      "guide": {
+        "title": "How to use banner ad campaigns",
+        "what": {
+          "title": "What are banner ad campaigns?",
+          "body": "Operational ads that deliver image banners to placements such as dashboards and feeds. Choose a pricing model (CPM/CPC) and rate card, set a daily budget, and deliver after review."
+        },
+        "flow": {
+          "title": "Publishing flow",
+          "step1": "Create a campaign (draft) with a rate card and daily budget",
+          "step2": "Submit creatives (image banners)",
+          "step3": "Submit for review (both campaign and creatives must be approved to be eligible)",
+          "step4": "Delivery starts. Pause, resume, or end as needed"
+        },
+        "pricing": {
+          "title": "Pricing and daily budget",
+          "body": "The rate card determines the unit price (CPM = per 1000 impressions, CPC = per click). The unit price is frozen at creation, so later rate changes do not apply. The daily budget is a soft cap for pacing."
+        },
+        "status": {
+          "title": "Status and operations",
+          "body": "Transitions go Draft -> In review -> Active -> Paused. While paused, billing-related fields (pricing model, rate card, start date) cannot be changed. Ended campaigns cannot be resumed."
+        }
+      },
+      "review": {
+        "title": "Operational campaign review",
+        "description": "Review pending banner ad campaigns and approve or reject them.",
+        "card_title": "Operational campaign review",
+        "card_description": "Check banner ad campaigns awaiting review.",
+        "pending_count": "Pending",
+        "open_queue": "Open review queue",
+        "open_detail": "View detail",
+        "back_to_dashboard": "Back to review dashboard",
+        "empty": "No campaigns awaiting review.",
+        "load_failed": "Failed to load the review queue",
+        "detail_load_failed": "Failed to load review detail",
+        "detail_title": "Campaign review detail",
+        "advertiser": "Advertiser",
+        "scope": "Scope",
+        "scope_organization": "Organization",
+        "scope_team": "Team",
+        "unit_price": "Unit price",
+        "creatives": "Creatives",
+        "no_creatives": "No creatives have been submitted.",
+        "approve": "Approve",
+        "approve_confirm": "Approve this campaign and make it eligible for delivery?",
+        "approved_toast": "Campaign approved",
+        "reject": "Reject",
+        "reject_submit": "Reject",
+        "reject_reason_label": "Rejection reason",
+        "reject_reason_placeholder": "Enter the reason for rejection (1-500 characters)",
+        "rejected_toast": "Campaign rejected",
+        "action_failed": "Operation failed"
+      }
     }
   }
 }

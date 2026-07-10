@@ -547,6 +547,154 @@
           "step3": "「設定を保存しました」のメッセージが表示されれば完了"
         }
       }
+    },
+    "operational_campaigns": {
+      "title": "横幅广告活动",
+      "entry_tile": {
+        "title": "横幅广告活动",
+        "description": "创建和管理将图片横幅投放到广告位的运营型活动。"
+      },
+      "list": {
+        "description": "创建图片横幅投放活动，管理审核、投放和暂停。每日预算为参考上限。",
+        "create_button": "新建",
+        "empty": "还没有运营型活动。来创建第一个活动吧。",
+        "no_end_date": "无限期",
+        "report_suspended_badge": "因举报暂停",
+        "reject_reason_label": "退回原因",
+        "link_creatives": "素材",
+        "link_report": "报表",
+        "tab": {
+          "all": "全部",
+          "draft": "草稿",
+          "pending_review": "审核中",
+          "active": "投放中",
+          "paused": "暂停",
+          "ended": "结束"
+        },
+        "col": {
+          "name": "活动名称",
+          "status": "状态",
+          "pricing_model": "计费方式",
+          "daily_budget": "每日预算",
+          "period": "投放期间",
+          "unit_price": "单价",
+          "actions": "操作"
+        }
+      },
+      "status": {
+        "draft": "草稿",
+        "pending_review": "审核中",
+        "active": "投放中",
+        "paused": "暂停",
+        "ended": "结束"
+      },
+      "actions": {
+        "submit": "提交审核",
+        "pause": "暂停",
+        "resume": "恢复",
+        "end": "结束",
+        "edit": "编辑"
+      },
+      "confirm": {
+        "submit": "要将此活动提交审核吗？",
+        "pause": "要暂停此活动的投放吗？",
+        "resume": "要恢复此活动的投放吗？",
+        "end": "要结束此活动吗？结束后无法恢复（不可逆）。"
+      },
+      "toast": {
+        "submit": "已提交审核",
+        "pause": "已暂停投放",
+        "resume": "已恢复投放",
+        "end": "活动已结束",
+        "created": "活动已创建",
+        "updated": "活动已更新"
+      },
+      "form": {
+        "create_title": "创建横幅广告活动",
+        "edit_title": "编辑横幅广告活动",
+        "name": "活动名称",
+        "pricing_model": "计费方式",
+        "rate_card": "价目卡",
+        "rate_card_placeholder": "选择价目卡",
+        "no_rate_cards": "所选计费方式没有可用的价目卡。",
+        "daily_budget": "每日预算",
+        "min_daily_budget": "最低每日预算",
+        "start_date": "开始日期",
+        "end_date": "结束日期",
+        "end_date_hint": "留空则无限期投放。",
+        "unit_cpm": "CPM",
+        "unit_cpc": "CPC",
+        "locked_when_paused": "暂停期间无法更改。",
+        "daily_budget_notice": "每日预算是投放节奏的参考上限，并非严格保证；按实际测量的投放量计费。",
+        "save": "保存",
+        "cancel": "取消"
+      },
+      "errors": {
+        "load_failed": "获取活动失败",
+        "save_failed": "保存失败",
+        "transition_failed": "操作失败",
+        "rate_cards_load_failed": "获取价目卡失败",
+        "name_required": "请输入活动名称",
+        "name_max": "活动名称请控制在200字符以内",
+        "rate_card_required": "请选择价目卡",
+        "daily_budget_required": "请输入每日预算",
+        "daily_budget_min": "每日预算须不低于最低值（{min}）",
+        "start_date_required": "请输入开始日期",
+        "start_in_past": "开始日期须为今天或之后",
+        "end_before_start": "结束日期须不早于开始日期"
+      },
+      "guide": {
+        "title": "横幅广告活动使用说明",
+        "what": {
+          "title": "什么是横幅广告活动",
+          "body": "将图片横幅投放到仪表盘和信息流等广告位的运营型广告。选择计费方式（CPM/CPC）和价目卡，设置每日预算，经审核后投放。"
+        },
+        "flow": {
+          "title": "投放流程",
+          "step1": "指定价目卡和每日预算创建活动（草稿）",
+          "step2": "上传素材（图片横幅）",
+          "step3": "提交审核（活动和素材均需通过才可投放）",
+          "step4": "开始投放。可根据需要暂停、恢复或结束"
+        },
+        "pricing": {
+          "title": "计费与每日预算",
+          "body": "价目卡决定单价（CPM=每千次展示，CPC=每次点击）。创建时单价被锁定，之后的调价不受影响。每日预算是节奏参考上限。"
+        },
+        "status": {
+          "title": "状态与操作",
+          "body": "按 草稿→审核中→投放中→暂停 流转。暂停期间无法更改与计费相关的项目（计费方式、价目卡、开始日期）。结束后无法恢复。"
+        }
+      },
+      "review": {
+        "title": "运营型活动审核",
+        "description": "查看待审核的横幅广告活动，进行批准或退回。",
+        "card_title": "运营型活动审核",
+        "card_description": "查看待审核的横幅广告活动。",
+        "pending_count": "待审核",
+        "open_queue": "打开审核队列",
+        "open_detail": "查看详情",
+        "back_to_dashboard": "返回审核仪表盘",
+        "empty": "没有待审核的活动。",
+        "load_failed": "获取审核队列失败",
+        "detail_load_failed": "获取审核详情失败",
+        "detail_title": "活动审核详情",
+        "advertiser": "广告主",
+        "scope": "范围",
+        "scope_organization": "组织",
+        "scope_team": "团队",
+        "unit_price": "单价",
+        "creatives": "素材",
+        "no_creatives": "尚未上传素材。",
+        "approve": "批准",
+        "approve_confirm": "批准此活动并使其可投放？",
+        "approved_toast": "活动已批准",
+        "reject": "退回",
+        "reject_submit": "退回",
+        "reject_reason_label": "退回原因",
+        "reject_reason_placeholder": "请输入退回原因（1-500字符）",
+        "rejected_toast": "活动已退回",
+        "action_failed": "操作失败"
+      }
     }
   }
 }
