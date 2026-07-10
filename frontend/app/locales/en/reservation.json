@@ -258,10 +258,7 @@
       "menu_delete_success": "Menu deleted",
       "menu_save_failed": "Failed to save",
       "menu_load_failed": "Failed to load menus",
-      "template_create_success": "Template created",
-      "template_create_success_multi": "{n} templates created",
       "template_create_partial": "{succeeded}/{total} templates created; the rest failed",
-      "template_update_success": "Template updated",
       "template_delete_success": "Template deleted",
       "template_save_failed": "Failed to save",
       "template_load_failed": "Failed to load templates",
@@ -523,26 +520,43 @@
       "line": "Reservation target",
       "line_common": "Common slot",
       "capacity": "Capacity",
-      "staff": "Staff",
-      "staff_none": "No staff",
       "is_active": "Active",
       "cell_count": "{n} slots/day (30 min each)",
       "price": "Price (optional)",
       "slot_title": "Title (optional)",
       "generate": "Generate slots now",
-      "generate_weeks": "How many weeks ahead",
       "generate_result": "{generated} slots created, {skipped} already existed",
       "generate_rate_limited": "Please wait a moment before trying again (generation was run too recently)",
-      "generate_no_active_templates": "There are no active templates. Please create a template first",
-      "regenerate_guide": "Template saved. Click \"Generate slots now\" to apply the change",
+      "generate_no_active_templates": "There is no template for this day of week",
+      "regenerate_guide": "Changes take effect automatically when you save (newly added slots only). If you want existing unbooked slots to match the new settings, delete them and save again",
       "limit_reached": "You can register up to 500 templates",
       "empty_state": "No weekly templates registered yet",
-      "empty_state_hint": "Use \"Add template\" to set a day of week and time range, then generate slots in bulk",
+      "empty_state_hint": "Use \"Add template\" to set a day of week and time range — slots are created automatically as soon as you save",
       "error": {
         "day_required": "Please select a day of week",
         "time_range_invalid": "Start time must be before end time, in 30-minute increments"
       },
-      "generate_skipped_closed": "{n} slots were skipped because of closed days"
+      "generate_skipped_closed": "{n} slots were skipped because of closed days",
+      "auto_generated": "Saved. {generated} slots were created for the next {days} days",
+      "auto_generated_partial": "Slot creation failed for {failed} of {total} days (the saved days are still active)",
+      "need_business_hours_hint": "Please set business hours first",
+      "generated_zero_hint": "No slots were created (outside business hours or a closed day). Please check your business hours"
+    },
+    "business_hours": {
+      "title": "Business hours",
+      "day_open": "Open",
+      "save_success": "Saved. {generated} slots were updated",
+      "generating": "Updating slots…",
+      "generation_failed": "Business hours were saved, but the automatic slot update failed. It will catch up automatically tomorrow morning",
+      "shrink_note": "Already-created future slots for this day will remain as they are (they will not be closed retroactively). To permanently close a specific date, use \"Close this day\" in the exception day calendar"
+    },
+    "exception_day": {
+      "title": "Exception day calendar",
+      "coming_soon": "The exception day calendar is coming soon",
+      "coming_soon_hint": "You can set closures and special openings from \"Manually manage individual slots\" under Advanced settings below"
+    },
+    "slot_manage": {
+      "advanced_label": "Manually manage individual slots (exceptions)"
     },
     "grid": {
       "title": "Availability grid",
@@ -669,30 +683,35 @@
         }
       },
       "line_manage": {
-        "setup1_title": "1. Create reservation targets",
+        "setup0_title": "1. Set business hours",
+        "setup0_steps": {
+          "0": "In \"Business hours\" set the hours you're open for each day of the week. This is the foundation slots are built on.",
+          "1": "As soon as you save, slots for the next 28 days are created automatically."
+        },
+        "setup1_title": "2. Create reservation targets",
         "setup1_steps": {
           "0": "Use \"Add reservation target\" at the top of this tab to register seats, staff, or counters that can be booked.",
           "1": "Without a reservation target, the \"Reserve\" tab shows nothing to members."
         },
-        "setup2_title": "2. Create menus",
+        "setup2_title": "3. Create menus",
         "setup2_steps": {
           "0": "In \"Manage menus\" below, register menus with a duration (in 30-minute units).",
           "1": "To limit a menu to specific targets, choose \"Only selected reservation targets\" under \"Bookable Item\" and pick them (the default offers it on every target)."
         },
-        "setup3_title": "3. Create a weekly template",
+        "setup3_title": "4. Create a weekly schedule",
         "setup3_steps": {
-          "0": "In \"Weekly template\" below, set the day of week, time range, and capacity — this time range is effectively your business hours.",
-          "1": "After saving, press \"Create slots now\" to make the nearest slots available immediately.",
-          "2": "If you skip that, slots are still extended automatically every day from tomorrow on — no action needed."
+          "0": "In \"Weekly schedule\" below, set the day of week, time range, and capacity — slots are created automatically as long as it's within business hours.",
+          "1": "As soon as you save, slots for the next 28 days are created automatically.",
+          "2": "After that, slots keep extending automatically every day — no action needed."
         },
         "daily_title": "Day-to-day operation",
         "daily_steps": {
-          "0": "Once the weekly template is set up, slots keep extending automatically every day, so there's normally nothing to do.",
-          "1": "Edit the weekly template only when you want to change the day or time range."
+          "0": "Once the weekly schedule is set up, slots keep extending automatically every day, so there's normally nothing to do.",
+          "1": "Edit the weekly schedule only when you want to change the day or time range."
         },
         "exception_title": "Exceptions",
         "exception_steps": {
-          "0": "To add or change slots for a single day only, use \"Manage slots\" below to create, edit, or close individual slots.",
+          "0": "To add or change slots for a single day only, use \"Manually manage individual slots\" under Advanced settings to create, edit, or close individual slots (one-click closures/special openings from the exception day calendar are coming soon).",
           "1": "To block a specific time range from being booked, use \"Unavailable ranges\" in advanced settings.",
           "2": "Deleting a reservation target stops its template and auto-deletes its future slots with no reservations. If it still has active reservations, reassign or cancel them first."
         }

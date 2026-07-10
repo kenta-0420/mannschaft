@@ -258,10 +258,7 @@
       "menu_delete_success": "Menú eliminado",
       "menu_save_failed": "Error al guardar",
       "menu_load_failed": "Error al cargar los menús",
-      "template_create_success": "Plantilla creada",
-      "template_create_success_multi": "Se crearon {n} plantillas",
       "template_create_partial": "Se crearon {succeeded}/{total} plantillas; el resto falló",
-      "template_update_success": "Plantilla actualizada",
       "template_delete_success": "Plantilla eliminada",
       "template_save_failed": "Error al guardar",
       "template_load_failed": "Error al cargar las plantillas",
@@ -523,26 +520,43 @@
       "line": "Objetivo de reserva",
       "line_common": "Franja común",
       "capacity": "Aforo",
-      "staff": "Personal",
-      "staff_none": "Sin personal",
       "is_active": "Activo",
       "cell_count": "{n} franjas/día (30 min cada una)",
       "price": "Precio (opcional)",
       "slot_title": "Título (opcional)",
       "generate": "Generar franjas ahora",
-      "generate_weeks": "Cuántas semanas por adelantado",
       "generate_result": "{generated} franjas creadas, {skipped} ya existían",
       "generate_rate_limited": "Espera un momento antes de volver a intentarlo (la generación se ejecutó hace muy poco)",
-      "generate_no_active_templates": "No hay plantillas activas. Crea primero una plantilla",
-      "regenerate_guide": "Plantilla guardada. Pulsa \"Generar franjas ahora\" para aplicar el cambio",
+      "generate_no_active_templates": "No hay plantilla para este día de la semana",
+      "regenerate_guide": "Los cambios se aplican automáticamente al guardar (solo lo añadido). Si quieres que las franjas ya existentes sin reservar se ajusten a la nueva configuración, elimínalas y vuelve a guardar",
       "limit_reached": "Puedes registrar hasta 500 plantillas",
       "empty_state": "Aún no hay plantillas semanales registradas",
-      "empty_state_hint": "Usa \"Añadir plantilla\" para definir día y franja horaria y generar franjas en bloque",
+      "empty_state_hint": "Usa \"Añadir plantilla\" para definir día y franja horaria: las franjas se crean automáticamente al guardar",
       "error": {
         "day_required": "Selecciona un día de la semana",
         "time_range_invalid": "La hora de inicio debe ser anterior a la de fin, en intervalos de 30 minutos"
       },
-      "generate_skipped_closed": "{n} franjas se omitieron por días de cierre"
+      "generate_skipped_closed": "{n} franjas se omitieron por días de cierre",
+      "auto_generated": "Guardado. Se crearon {generated} franjas para los próximos {days} días",
+      "auto_generated_partial": "No se pudieron crear franjas en {failed} de {total} días (los días guardados siguen activos)",
+      "need_business_hours_hint": "Configura primero el horario comercial",
+      "generated_zero_hint": "No se creó ninguna franja (fuera del horario comercial o día de cierre). Revisa el horario comercial"
+    },
+    "business_hours": {
+      "title": "Horario comercial",
+      "day_open": "Abierto",
+      "save_success": "Guardado. Se actualizaron {generated} franjas",
+      "generating": "Actualizando franjas…",
+      "generation_failed": "El horario comercial se guardó, pero la actualización automática de franjas falló. Se completará automáticamente mañana por la mañana",
+      "shrink_note": "Las franjas futuras ya creadas para este día se mantendrán tal cual (no se cerrarán retroactivamente). Para cerrar permanentemente una fecha concreta, usa \"Cerrar este día\" en el calendario de días excepcionales"
+    },
+    "exception_day": {
+      "title": "Calendario de días excepcionales",
+      "coming_soon": "El calendario de días excepcionales estará disponible próximamente",
+      "coming_soon_hint": "Por ahora puedes configurar cierres y aperturas especiales desde \"Gestionar franjas individuales manualmente\" en Configuración avanzada, más abajo"
+    },
+    "slot_manage": {
+      "advanced_label": "Gestionar franjas individuales manualmente (excepciones)"
     },
     "grid": {
       "title": "Cuadrícula de disponibilidad",
@@ -669,30 +683,35 @@
         }
       },
       "line_manage": {
-        "setup1_title": "1. Crear objetivos de reserva",
+        "setup0_title": "1. Configurar el horario comercial",
+        "setup0_steps": {
+          "0": "En \"Horario comercial\" define las horas de apertura de cada día de la semana. Es la base sobre la que se generan las franjas.",
+          "1": "En cuanto guardes, se crearán automáticamente las franjas de los próximos 28 días."
+        },
+        "setup1_title": "2. Crear objetivos de reserva",
         "setup1_steps": {
           "0": "Usa \"Añadir objetivo de reserva\" en la parte superior de esta pestaña para registrar asientos, personal o mostradores reservables.",
           "1": "Sin un objetivo de reserva, la pestaña \"Reservar\" no muestra nada a los miembros."
         },
-        "setup2_title": "2. Crear menús",
+        "setup2_title": "3. Crear menús",
         "setup2_steps": {
           "0": "En \"Gestionar menús\" de abajo, registra menús con una duración (en unidades de 30 minutos).",
           "1": "Para limitar un menú a objetivos concretos, elige \"Solo objetivos de reserva seleccionados\" en \"Elemento reservable\" y selecciónalos (por defecto se ofrece en todos)."
         },
-        "setup3_title": "3. Crear una plantilla semanal",
+        "setup3_title": "4. Crear un horario semanal",
         "setup3_steps": {
-          "0": "En \"Plantilla semanal\" de abajo, define el día de la semana, la franja horaria y el aforo; esa franja es, en la práctica, tu horario de apertura.",
-          "1": "Tras guardar, pulsa \"Crear franjas ahora\" para tener disponibles de inmediato las franjas más próximas.",
-          "2": "Aunque no lo hagas, las franjas se siguen extendiendo automáticamente cada día a partir de mañana, sin necesidad de ninguna acción."
+          "0": "En \"Horario semanal\" de abajo, define el día de la semana, la franja horaria y el aforo: si está dentro del horario comercial, las franjas se crean automáticamente al guardar.",
+          "1": "En cuanto guardes, se crearán automáticamente las franjas de los próximos 28 días.",
+          "2": "Después, las franjas se siguen extendiendo automáticamente cada día, sin necesidad de ninguna acción."
         },
         "daily_title": "Funcionamiento diario",
         "daily_steps": {
-          "0": "Una vez configurada la plantilla semanal, las franjas se extienden automáticamente cada día, así que normalmente no hay que hacer nada.",
-          "1": "Edita la plantilla semanal solo cuando quieras cambiar el día o la franja horaria."
+          "0": "Una vez configurado el horario semanal, las franjas se extienden automáticamente cada día, así que normalmente no hay que hacer nada.",
+          "1": "Edita el horario semanal solo cuando quieras cambiar el día o la franja horaria."
         },
         "exception_title": "Casos excepcionales",
         "exception_steps": {
-          "0": "Para añadir o cambiar franjas solo un día concreto, usa \"Gestionar franjas\" de abajo para crear, editar o cerrar franjas individuales.",
+          "0": "Para añadir o cambiar franjas solo un día concreto, usa \"Gestionar franjas individuales manualmente\" en Configuración avanzada para crear, editar o cerrar franjas individuales (los cierres/aperturas especiales con un clic desde el calendario de días excepcionales llegarán próximamente).",
           "1": "Para bloquear un rango horario concreto, usa \"Franjas no disponibles\" en los ajustes avanzados.",
           "2": "Al eliminar un objetivo de reserva se detiene su plantilla y se eliminan automáticamente sus franjas futuras sin reservas. Si aún tiene reservas activas, reasígnalas o cancélalas antes."
         }

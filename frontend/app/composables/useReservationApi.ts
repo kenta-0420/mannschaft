@@ -30,13 +30,17 @@ type CreateReservationMenuRequest = components['schemas']['CreateReservationMenu
 type UpdateReservationMenuRequest = components['schemas']['UpdateReservationMenuRequest']
 type ReservationMenuDeleteResponse = components['schemas']['ReservationMenuDeleteResponse']
 // 週間テンプレート・一括生成は BE #2161 で追加済み（F03.4.2）。
-type SlotTemplateResponse = components['schemas']['SlotTemplateResponse']
 type SlotTemplateListResponse = components['schemas']['SlotTemplateListResponse']
 type CreateSlotTemplateRequest = components['schemas']['CreateSlotTemplateRequest']
 type UpdateSlotTemplateRequest = components['schemas']['UpdateSlotTemplateRequest']
 type DeleteSlotTemplateResponse = components['schemas']['DeleteSlotTemplateResponse']
 type GenerateSlotsRequest = components['schemas']['GenerateSlotsRequest']
 type GenerateSlotsResponse = components['schemas']['GenerateSlotsResponse']
+// F03.4.5 §3.1/§3.3.2（BE #2204）: テンプレ保存＝同期自動生成の統合レスポンス・単日テンプレ適用。
+type SlotTemplateSaveResponse = components['schemas']['SlotTemplateSaveResponse']
+type GenerateSingleDayRequest = components['schemas']['GenerateSingleDayRequest']
+// F03.4.5 §3.2（BE #2204）: 営業時間 PUT の保存＋同期自動生成の統合レスポンス（GET は BusinessHourResponse[] のまま不変）。
+type BusinessHoursSaveResponse = components['schemas']['BusinessHoursSaveResponse']
 
 /** 予約不可枠の対象軸（機能B）。MVP で enforce するのは TEAM / STAFF の2軸。 */
 export type BlockedResourceType = NonNullable<BlockedTimeRequest['resourceType']>
@@ -297,14 +301,19 @@ export function useReservationApi() {
   }
 
   async function getBusinessHours(teamId: string) {
+    // GET は F03.4.5 §3.2 で不変（BusinessHourResponse[] のまま）。PUT のみ応答型が変わる。
     return api<{ data: BusinessHourResponse[] }>(`${base(teamId)}/reservation-settings/business-hours`)
   }
 
+  /**
+   * 営業時間を一括更新する（ADMIN限定）。F03.4.5 §3.2: 保存＋「変更のあった曜日」の同期自動生成結果を
+   * `BusinessHoursSaveResponse{ hours, generation }` で受け取る（旧 `BusinessHourResponse[]` 直返しではない）。
+   */
   async function updateBusinessHours(teamId: string, hours: BusinessHoursUpdateHourInput[]) {
     // BE DTO は配列直渡しではなく { hours: [...] } でラップし、dayOfWeek は3文字大文字（'MON'..'SUN'）、
     // 開閉フラグは isOpen（isClosed ではない）。生成型 BusinessHoursUpdateRequest と構造一致させる。
     const body: BusinessHoursUpdateRequest = { hours }
-    return api<{ data: BusinessHourResponse[] }>(`${base(teamId)}/reservation-settings/business-hours`, {
+    return api<{ data: BusinessHoursSaveResponse }>(`${base(teamId)}/reservation-settings/business-hours`, {
       method: 'PUT',
       body,
     })
@@ -435,15 +444,21 @@ export function useReservationApi() {
     return api<{ data: SlotTemplateListResponse }>(`${base(teamId)}/reservation-slot-templates`)
   }
 
+  /**
+   * テンプレを作成する（ADMIN限定）。F03.4.5 §3.1: 保存＋当該テンプレの同期自動生成（horizon 28日）の
+   * 結果を `SlotTemplateSaveResponse{ template, generation }` で受け取る（旧 `SlotTemplateResponse`
+   * 単体返しではない。「今すぐ枠を作成」を押さずに枠が生成される契約）。
+   */
   async function createSlotTemplate(teamId: string, body: CreateSlotTemplateRequest) {
-    return api<{ data: SlotTemplateResponse }>(`${base(teamId)}/reservation-slot-templates`, {
+    return api<{ data: SlotTemplateSaveResponse }>(`${base(teamId)}/reservation-slot-templates`, {
       method: 'POST',
       body,
     })
   }
 
+  /** テンプレを部分更新する（ADMIN限定）。応答は createSlotTemplate と同型の SlotTemplateSaveResponse。 */
   async function updateSlotTemplate(teamId: string, templateId: string, body: UpdateSlotTemplateRequest) {
-    return api<{ data: SlotTemplateResponse }>(
+    return api<{ data: SlotTemplateSaveResponse }>(
       `${base(teamId)}/reservation-slot-templates/${templateId}`,
       { method: 'PATCH', body },
     )
@@ -463,6 +478,18 @@ export function useReservationApi() {
   async function generateSlotsFromTemplates(teamId: string, body: GenerateSlotsRequest) {
     return api<{ data: GenerateSlotsResponse }>(
       `${base(teamId)}/reservation-slot-templates/generate`,
+      { method: 'POST', body },
+    )
+  }
+
+  /**
+   * 臨時営業（単日テンプレ適用・F03.4.5 §3.3.2）: 指定日に、指定曜日ダイヤ（省略時=実曜日）の
+   * active テンプレ構成で枠を一括生成する（営業時間突合をスキップ・冪等）。
+   * 例外日カレンダー（⑤タブ・第二隊 W2-1 後段）から呼ばれる想定のため、ここでは API 結線のみ用意する。
+   */
+  async function generateSingleDaySlots(teamId: string, body: GenerateSingleDayRequest) {
+    return api<{ data: GenerateSlotsResponse }>(
+      `${base(teamId)}/reservation-slot-templates/generate-single-day`,
       { method: 'POST', body },
     )
   }
@@ -541,6 +568,7 @@ export function useReservationApi() {
     updateSlotTemplate,
     deleteSlotTemplate,
     generateSlotsFromTemplates,
+    generateSingleDaySlots,
     listMyReservations,
     listUpcomingReservations,
     cancelMyReservation,

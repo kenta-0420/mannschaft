@@ -59,10 +59,32 @@ const managementAccordionValue = ref<string[]>([])
 const lineManagerRef = ref<{ refresh: () => Promise<void>; items: ReservationLineResponse[] } | null>(null)
 const menuManagerRef = ref<{ refresh: () => Promise<void>; items: ReservationMenuResponse[] } | null>(null)
 const slotTemplateManagerRef = ref<{ refresh: () => Promise<void>; items: SlotTemplateResponse[] } | null>(null)
+const businessHoursManagerRef = ref<{ refresh: () => Promise<void> } | null>(null)
 
 const lineCount = computed(() => lineManagerRef.value?.items?.length ?? 0)
 const menuCount = computed(() => menuManagerRef.value?.items?.length ?? 0)
 const templateCount = computed(() => slotTemplateManagerRef.value?.items?.length ?? 0)
+
+/**
+ * ④週間スケジュールの空状態から「①営業時間を設定する」導線が押されたとき、
+ * 営業時間セクションを開いてスクロールする（F03.4.5 §3.2・S-11）。
+ */
+function openBusinessHoursSection() {
+  if (!managementAccordionValue.value.includes('business_hours')) {
+    managementAccordionValue.value = [...managementAccordionValue.value, 'business_hours']
+  }
+  if (import.meta.client) {
+    nextTick(() => {
+      document.getElementById('reservation-business-hours-section')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+}
+
+/** 営業時間の保存成功時に予約設定キャッシュ（hasBusinessHours）を最新化する。 */
+function onBusinessHoursSaved() {
+  void loadReservationSettings()
+}
 
 // === 予約設定（PUBLIC許可フラグ） ===
 const reservationSettings = ref<ReservationSettingsResponse | null>(null)
@@ -273,9 +295,29 @@ onMounted(async () => {
 
         <!-- ライン管理タブ（ADMIN限定）+ メニュー管理 + 週間テンプレート + 枠管理 + 詳細設定アコーディオン -->
         <TabPanel v-if="isAdmin" :value="2">
-          <!-- 管理セクション群（初期は全閉・ADHD配慮で脳内摩擦削減。件数バッジ付き） -->
+          <!-- 管理セクション群（初期は全閉・ADHD配慮で脳内摩擦削減。件数バッジ付き）
+               並び順は初期セットアップの思考順（F03.4.5 §3.2 確定）:
+               ①営業時間 → ②予約対象 → ③メニュー → ④週間スケジュール → ⑤例外日カレンダー → ⑥詳細設定（Accordion外・下部）。 -->
           <!-- 注意: AccordionContent に lazy を付けると閉状態の子が非マウントになり、件数バッジ（子の defineExpose({ items }) 参照）が機能しなくなる。常時マウント前提のため lazy 禁止 -->
           <Accordion v-model:value="managementAccordionValue" multiple>
+            <!-- ①営業時間（BusinessHoursManager・F03.4.5 §3.2 新設） -->
+            <AccordionPanel id="reservation-business-hours-section" value="business_hours">
+              <AccordionHeader>
+                <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
+                  {{ t('reservation.business_hours.title') }}
+                </span>
+              </AccordionHeader>
+              <AccordionContent>
+                <ReservationBusinessHoursManager
+                  ref="businessHoursManagerRef"
+                  :team-id="props.teamId"
+                  :disabled="!isAdmin"
+                  @saved="onBusinessHoursSaved"
+                />
+              </AccordionContent>
+            </AccordionPanel>
+
+            <!-- ②予約対象（LineManager） -->
             <AccordionPanel value="lines">
               <AccordionHeader>
                 <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
@@ -287,7 +329,7 @@ onMounted(async () => {
               </AccordionContent>
             </AccordionPanel>
 
-            <!-- メニュー管理セクション（機能E・F03.4.1） -->
+            <!-- ③メニュー管理セクション（機能E・F03.4.1） -->
             <AccordionPanel value="menus">
               <AccordionHeader>
                 <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
@@ -299,27 +341,32 @@ onMounted(async () => {
               </AccordionContent>
             </AccordionPanel>
 
-            <!-- 週間テンプレート管理セクション（F03.4.2） -->
-            <AccordionPanel value="templates">
+            <!-- ④週間スケジュール管理セクション（旧 SlotTemplateManager・F03.4.2/F03.4.5 §3.2） -->
+            <AccordionPanel value="weekly_schedule">
               <AccordionHeader>
                 <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
                   {{ t('reservation.management.section_count', { label: t('reservation.template.title'), n: templateCount }) }}
                 </span>
               </AccordionHeader>
               <AccordionContent>
-                <SlotTemplateManager ref="slotTemplateManagerRef" :team-id="props.teamId" />
+                <WeeklyScheduleManager
+                  ref="slotTemplateManagerRef"
+                  :team-id="props.teamId"
+                  :has-business-hours="reservationSettings?.hasBusinessHours ?? true"
+                  @focus-business-hours="openBusinessHoursSection"
+                />
               </AccordionContent>
             </AccordionPanel>
 
-            <!-- 枠（Slot）管理セクション。日付フィルター済み一覧のため件数バッジは付けない（全体件数と誤認させないため） -->
-            <AccordionPanel value="slots">
+            <!-- ⑤例外日カレンダー（F03.4.5 §3.3・骨格のみ。中身は第二隊が実装） -->
+            <AccordionPanel value="exception_day">
               <AccordionHeader>
                 <span class="text-sm font-medium text-surface-700 dark:text-surface-300">
-                  {{ t('reservation.slot_manager.title') }}
+                  {{ t('reservation.exception_day.title') }}
                 </span>
               </AccordionHeader>
               <AccordionContent>
-                <SlotManager :team-id="props.teamId" />
+                <ScheduleExceptionPanel :team-id="props.teamId" />
               </AccordionContent>
             </AccordionPanel>
           </Accordion>
@@ -385,6 +432,17 @@ onMounted(async () => {
                         :team-id="props.teamId"
                         :disabled="!isAdmin"
                       />
+                    </div>
+
+                    <Divider />
+
+                    <!-- 枠（Slot）個別管理（F03.4.5 §3.2: SlotManager をここへ格下げ移設。
+                         機能・APIは無変更。例外操作（臨時営業・当日枠・長尺枠）の正規手段として残す） -->
+                    <div>
+                      <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-surface-500">
+                        {{ t('reservation.slot_manage.advanced_label') }}
+                      </p>
+                      <SlotManager :team-id="props.teamId" />
                     </div>
                   </div>
                 </AccordionContent>

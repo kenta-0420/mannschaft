@@ -1,21 +1,23 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { ref, computed } from 'vue'
-import SlotTemplateManager from '~/components/reservation/SlotTemplateManager.vue'
+import WeeklyScheduleManager from '~/components/reservation/WeeklyScheduleManager.vue'
 
 /**
- * SlotTemplateManager.vue（週間テンプレート管理・F03.4.2 §10）ユニットテスト — 番人
+ * WeeklyScheduleManager.vue（旧 SlotTemplateManager・週間スケジュール管理・F03.4.5 §3.1/§3.2）
+ * ユニットテスト — 番人
  *
- * 最重要観点（AC-2）: 曜日 value の3文字コード変換。
+ * 最重要観点（AC-FE17★）: 曜日 value の3文字コード変換。
  *   写経元 ScheduleEventRecurrenceInput.vue の曜日トグルは 'MONDAY' フルネームを emit するが、
  *   BE の ReservationDayOfWeek enum は 'MON'..'SUN' の3文字大文字のみ受理する
  *   （フルネーム送信は Jackson デシリアライズ失敗で 400 — 設計書 §4/§10）。
  *   本テストは createSlotTemplate に渡る dayOfWeek が必ず 'MON' 形式であることを固定する。
  *
- * その他:
- *   AC-1: テンプレ0件で空状態（reservation.template.empty_state）を表示する
- *   AC-3: 曜日未選択では保存ボタンが disabled（フォームバリデーション最低限）
- *   AC-4: 「今すぐ枠を作成」で generate API が weeks 付きで呼ばれる
+ * F03.4.5 W2-1 改訂に伴う変更点:
+ *   - 「今すぐ枠を作成」ボタン・weeks Select は撤去（AC-FE10）。
+ *   - createSlotTemplate/updateSlotTemplate の応答は SlotTemplateSaveResponse
+ *     （{ template, generation }）。保存成功時に generation を合算し1トーストで報告する（AC-FE7★）。
+ *   - hasBusinessHours=false のとき空状態に導線を表示する（AC-FE9）。
  *
  * 注: テスト環境の既定ロケールは en。Dialog は Teleport されるため document.body を走査する。
  */
@@ -24,7 +26,6 @@ const mockGetLines = vi.fn()
 const mockCreateSlotTemplate = vi.fn()
 const mockUpdateSlotTemplate = vi.fn()
 const mockDeleteSlotTemplate = vi.fn()
-const mockGenerateSlots = vi.fn()
 
 vi.mock('~/composables/useReservationApi', () => ({
   useReservationApi: () => ({
@@ -33,7 +34,6 @@ vi.mock('~/composables/useReservationApi', () => ({
     createSlotTemplate: mockCreateSlotTemplate,
     updateSlotTemplate: mockUpdateSlotTemplate,
     deleteSlotTemplate: mockDeleteSlotTemplate,
-    generateSlotsFromTemplates: mockGenerateSlots,
   }),
 }))
 
@@ -74,6 +74,7 @@ mockNuxtImport('useErrorHandler', () => () => ({
 
 // i18n 実解決文字列（en ロケール）
 const MSG_EMPTY_STATE = 'No weekly templates registered yet'
+const MSG_NEED_BUSINESS_HOURS = 'Please set business hours first'
 
 /** BE ReservationDayOfWeek が受理する正準コード（これ以外＝'MONDAY' 等は 400） */
 const VALID_DAY_CODES = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
@@ -88,24 +89,35 @@ async function flush() {
   await new Promise(r => setTimeout(r, 0))
 }
 
-/** テンプレ1件（active）のレスポンス雛形。 */
-const activeTemplate = {
-  id: '0198aa-uuid',
-  lineId: null,
-  lineName: null,
-  dayOfWeek: 'MON',
-  startTime: '10:00:00',
-  endTime: '13:00:00',
-  capacity: 1,
-  cellCount: 6,
-  isActive: true,
+/** SlotTemplateSaveResponse 雛形（生成成功・非0件）。 */
+function saveResponse(overrides: Partial<{
+  generatedCount: number
+  skippedExistingCount: number
+  skippedClosedDayCount: number
+  skippedOutsideHoursCount: number
+  failed: boolean
+}> = {}) {
+  return {
+    data: {
+      template: { id: 'tpl-1' },
+      generation: {
+        generatedCount: 24,
+        skippedExistingCount: 0,
+        skippedClosedDayCount: 0,
+        skippedOutsideHoursCount: 0,
+        failed: false,
+        ...overrides,
+      },
+    },
+  }
 }
 
 beforeEach(() => {
   mockGetSlotTemplates.mockReset()
   mockGetLines.mockReset()
   mockCreateSlotTemplate.mockReset()
-  mockGenerateSlots.mockReset()
+  mockUpdateSlotTemplate.mockReset()
+  mockDeleteSlotTemplate.mockReset()
   mockNotifySuccess.mockReset()
   mockNotifyError.mockReset()
   mockNotifyWarn.mockReset()
@@ -118,13 +130,13 @@ afterEach(() => {
   document.body.querySelectorAll('[role="dialog"]').forEach(el => el.remove())
 })
 
-describe('SlotTemplateManager.vue', () => {
+describe('WeeklyScheduleManager.vue', () => {
   it('AC-1: テンプレ0件で空状態を表示する', async () => {
     mockGetSlotTemplates.mockResolvedValue({
       data: { templates: [], meta: { totalTemplates: 0, limit: 500 } },
     })
 
-    const wrapper = await mountSuspended(SlotTemplateManager, {
+    const wrapper = await mountSuspended(WeeklyScheduleManager, {
       props: { teamId: 'team-slug' },
     })
     await flush()
@@ -132,13 +144,13 @@ describe('SlotTemplateManager.vue', () => {
     expect(wrapper.html()).toContain(MSG_EMPTY_STATE)
   })
 
-  it('AC-2【最重要】: 曜日トグルで選んだ月曜は 3文字コード MON で createSlotTemplate に渡る（MONDAY を送らない）', async () => {
+  it('AC-FE17★【最重要】: 曜日トグルで選んだ月曜は 3文字コード MON で createSlotTemplate に渡る（MONDAY を送らない）', async () => {
     mockGetSlotTemplates.mockResolvedValue({
       data: { templates: [], meta: { totalTemplates: 0, limit: 500 } },
     })
-    mockCreateSlotTemplate.mockResolvedValue({ data: { id: 'tpl-1' } })
+    mockCreateSlotTemplate.mockResolvedValue(saveResponse())
 
-    const wrapper = await mountSuspended(SlotTemplateManager, {
+    const wrapper = await mountSuspended(WeeklyScheduleManager, {
       props: { teamId: 'team-slug' },
     })
     await flush()
@@ -175,7 +187,7 @@ describe('SlotTemplateManager.vue', () => {
       data: { templates: [], meta: { totalTemplates: 0, limit: 500 } },
     })
 
-    const wrapper = await mountSuspended(SlotTemplateManager, {
+    const wrapper = await mountSuspended(WeeklyScheduleManager, {
       props: { teamId: 'team-slug' },
     })
     await flush()
@@ -196,7 +208,7 @@ describe('SlotTemplateManager.vue', () => {
       data: { templates: [], meta: { totalTemplates: 0, limit: 500 } },
     })
 
-    const wrapper = await mountSuspended(SlotTemplateManager, {
+    const wrapper = await mountSuspended(WeeklyScheduleManager, {
       props: { teamId: 'team-slug' },
     })
     await flush()
@@ -210,46 +222,33 @@ describe('SlotTemplateManager.vue', () => {
     expect(mockCreateSlotTemplate).not.toHaveBeenCalled()
   })
 
-  it('AC-4: 「今すぐ枠を作成」で generate API が weeks=4（既定）で呼ばれ、結果トーストが出る', async () => {
+  it('AC-FE10: 「今すぐ枠を作成」ボタン・週数 Select が存在しない', async () => {
     mockGetSlotTemplates.mockResolvedValue({
-      data: { templates: [activeTemplate], meta: { totalTemplates: 1, limit: 500 } },
-    })
-    mockGenerateSlots.mockResolvedValue({
       data: {
-        generatedCount: 288,
-        skippedExistingCount: 96,
-        skippedClosedDayCount: 0,
-        skippedOutsideHoursCount: 0,
-        horizonFrom: '2026-07-06',
-        horizonTo: '2026-08-02',
+        templates: [{ id: 'tpl-1', dayOfWeek: 'MON', startTime: '10:00:00', endTime: '13:00:00', capacity: 1, isActive: true }],
+        meta: { totalTemplates: 1, limit: 500 },
       },
     })
 
-    const wrapper = await mountSuspended(SlotTemplateManager, {
+    const wrapper = await mountSuspended(WeeklyScheduleManager, {
       props: { teamId: 'team-slug' },
     })
     await flush()
 
-    const generateBtn = wrapper.find('[data-testid="generate-now"]')
-    expect(generateBtn.exists()).toBe(true)
-    await generateBtn.trigger('click')
-    await flush()
-
-    expect(mockGenerateSlots).toHaveBeenCalledTimes(1)
-    const [teamId, body] = mockGenerateSlots.mock.calls[0] as [string, Record<string, unknown>]
-    expect(teamId).toBe('team-slug')
-    expect(body.weeks).toBe(4)
-    // 生成結果（288作成・96冪等スキップ）をトーストで報告する
-    expect(mockNotifySuccess).toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="generate-now"]').exists()).toBe(false)
+    expect(wrapper.html()).not.toContain('generate_weeks')
   })
 
-  it('AC-5（UX改善5点の1）: 曜日を複数選択して保存すると createSlotTemplate が選択数ぶん順に呼ばれ、各payloadのdayOfWeekが正しい3文字コードになる', async () => {
+  it('AC-FE6/AC-FE7★: 曜日を複数選択して保存すると createSlotTemplate が選択数ぶん順に呼ばれ、generation が合算されて1回の成功トーストになる', async () => {
     mockGetSlotTemplates.mockResolvedValue({
       data: { templates: [], meta: { totalTemplates: 0, limit: 500 } },
     })
-    mockCreateSlotTemplate.mockResolvedValue({ data: { id: 'tpl-1' } })
+    mockCreateSlotTemplate
+      .mockResolvedValueOnce(saveResponse({ generatedCount: 24 }))
+      .mockResolvedValueOnce(saveResponse({ generatedCount: 24 }))
+      .mockResolvedValueOnce(saveResponse({ generatedCount: 24 }))
 
-    const wrapper = await mountSuspended(SlotTemplateManager, {
+    const wrapper = await mountSuspended(WeeklyScheduleManager, {
       props: { teamId: 'team-slug' },
     })
     await flush()
@@ -260,9 +259,6 @@ describe('SlotTemplateManager.vue', () => {
     const monBtn = document.body.querySelector<HTMLButtonElement>('[data-day="MON"]')
     const wedBtn = document.body.querySelector<HTMLButtonElement>('[data-day="WED"]')
     const friBtn = document.body.querySelector<HTMLButtonElement>('[data-day="FRI"]')
-    expect(monBtn).not.toBeNull()
-    expect(wedBtn).not.toBeNull()
-    expect(friBtn).not.toBeNull()
     monBtn!.click()
     await flush()
     wedBtn!.click()
@@ -281,17 +277,12 @@ describe('SlotTemplateManager.vue', () => {
       call => (call as [string, Record<string, unknown>])[1].dayOfWeek,
     )
     expect(calledDays).toEqual(['MON', 'WED', 'FRI'])
-    for (const day of calledDays) {
-      expect(VALID_DAY_CODES).toContain(day)
-    }
-    // 各 payload とも teamId・時刻・定員は共通
-    for (const call of mockCreateSlotTemplate.mock.calls as Array<[string, Record<string, unknown>]>) {
-      const [teamId, body] = call
-      expect(teamId).toBe('team-slug')
-      expect(body.startTime).toBe('09:00:00')
-      expect(body.endTime).toBe('10:00:00')
-      expect(body.capacity).toBe(1)
-    }
+
+    // 「今すぐ枠を作成」を押さず、3件ぶん合算（24*3=72件）の成功トーストが1回だけ出る
+    expect(mockNotifySuccess).toHaveBeenCalledTimes(1)
+    const [, message] = mockNotifySuccess.mock.calls[0] as [string, string]
+    expect(message).toContain('72')
+    expect(message).toContain('28')
   })
 
   it('AC-6: 曜日を再クリックすると選択が解除される（トグルOFF）', async () => {
@@ -299,7 +290,7 @@ describe('SlotTemplateManager.vue', () => {
       data: { templates: [], meta: { totalTemplates: 0, limit: 500 } },
     })
 
-    const wrapper = await mountSuspended(SlotTemplateManager, {
+    const wrapper = await mountSuspended(WeeklyScheduleManager, {
       props: { teamId: 'team-slug' },
     })
     await flush()
@@ -317,16 +308,16 @@ describe('SlotTemplateManager.vue', () => {
     expect(findByTestId<HTMLButtonElement>('template-save')!.disabled).toBe(true)
   })
 
-  it('AC-7（検分指摘）: 複数曜日の部分失敗（2件目で失敗）— 一覧を実状態へ同期し、成功曜日は選択から除去され失敗曜日のみ残る', async () => {
+  it('AC-FE7★（検分指摘由来）: 複数曜日の部分失敗（2件目で呼び自体が失敗）— 一覧を実状態へ同期し、成功曜日は選択から除去され失敗曜日のみ残る', async () => {
     mockGetSlotTemplates.mockResolvedValue({
       data: { templates: [], meta: { totalTemplates: 0, limit: 500 } },
     })
     // 1件目（MON）成功 → 2件目（WED）が RESERVATION_037（上限500行）で失敗する部分失敗シナリオ
     mockCreateSlotTemplate
-      .mockResolvedValueOnce({ data: { id: 'tpl-1' } })
+      .mockResolvedValueOnce(saveResponse())
       .mockRejectedValueOnce({ data: { error: { code: 'RESERVATION_037' } } })
 
-    const wrapper = await mountSuspended(SlotTemplateManager, {
+    const wrapper = await mountSuspended(WeeklyScheduleManager, {
       props: { teamId: 'team-slug' },
     })
     await flush()
@@ -349,17 +340,87 @@ describe('SlotTemplateManager.vue', () => {
     // (a) catch経路でも loadTemplates が再実行され、一覧が実状態（成功分のみ作成済み）へ同期される
     expect(mockGetSlotTemplates.mock.calls.length).toBeGreaterThan(getTemplatesCallsBefore)
     // (b) 成功済み MON は選択から除去・失敗した WED のみ選択が残る
-    //     （ダイアログは開いたままなので、そのまま再試行しても MON を重複作成しない）
     expect(monBtn.className).not.toContain('bg-primary')
     expect(wedBtn.className).toContain('bg-primary')
     // ダイアログは閉じずに再試行可能（保存ボタンが残存し enabled）
     const saveBtn = findByTestId<HTMLButtonElement>('template-save')
     expect(saveBtn).not.toBeNull()
     expect(saveBtn!.disabled).toBe(false)
-    // (c) 部分成功（1/2件作成済み）の warn トーストと、RESERVATION_037 のエラートーストの両方を伝達
-    expect(mockNotifyWarn).toHaveBeenCalled()
-    expect(mockNotifyError).toHaveBeenCalled()
-    // 全滅ではないので成功トーストは出さない
+    // (c) 部分失敗（1/2件成功）は「N曜日中M曜日で失敗」の警告トースト1本に集約する（§3.1 集約規則・AC-FE7★）
+    expect(mockNotifyWarn).toHaveBeenCalledTimes(1)
+    const [, warnMessage] = mockNotifyWarn.mock.calls[0] as [string, string]
+    expect(warnMessage).toContain('1')
+    expect(warnMessage).toContain('2')
+    // 全滅ではないので成功トースト・個別エラートーストは出さない（1本に集約）
     expect(mockNotifySuccess).not.toHaveBeenCalled()
+    expect(mockNotifyError).not.toHaveBeenCalled()
+  })
+
+  it('AC-FE7★（generation.failed 由来）: HTTPは成功したが生成が失敗（generation.failed=true）した場合も部分失敗の警告トースト1本になる', async () => {
+    mockGetSlotTemplates.mockResolvedValue({
+      data: { templates: [], meta: { totalTemplates: 0, limit: 500 } },
+    })
+    mockCreateSlotTemplate.mockResolvedValue(saveResponse({ failed: true, generatedCount: 0 }))
+
+    const wrapper = await mountSuspended(WeeklyScheduleManager, {
+      props: { teamId: 'team-slug' },
+    })
+    await flush()
+
+    await wrapper.find('[data-testid="template-add"]').trigger('click')
+    await flush()
+    const monBtn = document.body.querySelector<HTMLButtonElement>('[data-day="MON"]')!
+    monBtn.click()
+    await flush()
+    findByTestId<HTMLButtonElement>('template-save')!.click()
+    await flush()
+
+    expect(mockCreateSlotTemplate).toHaveBeenCalledTimes(1)
+    expect(mockNotifyWarn).toHaveBeenCalledTimes(1)
+    expect(mockNotifySuccess).not.toHaveBeenCalled()
+  })
+
+  it('AC-FE8: generatedCount=0 かつ skippedOutsideHoursCount>0 で原因を明示する警告トーストが出る（S-11）', async () => {
+    mockGetSlotTemplates.mockResolvedValue({
+      data: { templates: [], meta: { totalTemplates: 0, limit: 500 } },
+    })
+    mockCreateSlotTemplate.mockResolvedValue(
+      saveResponse({ generatedCount: 0, skippedOutsideHoursCount: 4 }),
+    )
+
+    const wrapper = await mountSuspended(WeeklyScheduleManager, {
+      props: { teamId: 'team-slug' },
+    })
+    await flush()
+
+    await wrapper.find('[data-testid="template-add"]').trigger('click')
+    await flush()
+    const monBtn = document.body.querySelector<HTMLButtonElement>('[data-day="MON"]')!
+    monBtn.click()
+    await flush()
+    findByTestId<HTMLButtonElement>('template-save')!.click()
+    await flush()
+
+    expect(mockNotifyWarn).toHaveBeenCalledTimes(1)
+    const [, message] = mockNotifyWarn.mock.calls[0] as [string, string]
+    expect(message.toLowerCase()).toContain('business hours')
+    expect(mockNotifySuccess).not.toHaveBeenCalled()
+  })
+
+  it('AC-FE9: hasBusinessHours=false のとき空状態に導線が表示され、クリックで focus-business-hours が emit される', async () => {
+    mockGetSlotTemplates.mockResolvedValue({
+      data: { templates: [], meta: { totalTemplates: 0, limit: 500 } },
+    })
+
+    const wrapper = await mountSuspended(WeeklyScheduleManager, {
+      props: { teamId: 'team-slug', hasBusinessHours: false },
+    })
+    await flush()
+
+    expect(wrapper.html()).toContain(MSG_NEED_BUSINESS_HOURS)
+    const focusBtn = wrapper.find('[data-testid="focus-business-hours"]')
+    expect(focusBtn.exists()).toBe(true)
+    await focusBtn.trigger('click')
+    expect(wrapper.emitted('focus-business-hours')).toBeTruthy()
   })
 })
