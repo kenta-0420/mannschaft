@@ -189,7 +189,7 @@
     },
     "field": {
       "date": "Date",
-      "line": "Bookable Item",
+      "line": "{resourceName}",
       "name": "Name",
       "description": "Description",
       "display_order": "Display Order",
@@ -580,7 +580,7 @@
     },
     "grid": {
       "title": "Availability grid",
-      "help": "Rows are time slots and columns are reservation targets. Tap a green \"Open\" cell to book. Grey or hatched cells cannot be booked. Use the \"Week\" tab to view seven days at once.",
+      "help": "Rows are time slots and columns are {resourceName}. Tap a green \"Open\" cell to book. Grey or hatched cells cannot be booked. Use the \"Week\" tab to view seven days at once.",
       "display_toggle": {
         "list": "List view",
         "grid": "Grid view"
@@ -631,7 +631,7 @@
       "view_staff_grid": "Staff grid view",
       "date_line_header": "Date / {resourceName}",
       "help_toggle": "How to use this",
-      "help_body": "Tap an open (green) time slot, then choose a menu — the required number of slots is selected automatically. Use \"+30 min\" to add more. If you pick a shared slot, choose which target to book it for.",
+      "help_body": "Tap an open (green) time slot, then choose a menu — the required number of slots is selected automatically. Use \"+30 min\" to add more. If you pick a shared slot, choose which {resourceName} to book it for.",
       "slot_unavailable_conflict": "This time slot isn't accepting bookings right now. Please try another time"
     },
     "group": {

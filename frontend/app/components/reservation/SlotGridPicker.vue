@@ -332,7 +332,7 @@ defineExpose({
     <div class="rounded-lg bg-surface-50 p-3 text-xs text-surface-600 dark:bg-surface-800 dark:text-surface-300">
       <p class="flex items-start gap-1.5">
         <i class="pi pi-info-circle mt-0.5" />
-        <span>{{ t('reservation.grid.help') }}</span>
+        <span>{{ t('reservation.grid.help', { resourceName }) }}</span>
       </p>
       <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1">
         <span class="flex items-center gap-1"><span class="inline-block size-3 rounded-sm border border-surface-200 text-green-600 dark:border-surface-600"><i class="pi pi-check text-[8px]" /></span>{{ t('reservation.grid.state.available') }}</span>

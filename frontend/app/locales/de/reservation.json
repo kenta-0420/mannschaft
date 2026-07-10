@@ -189,7 +189,7 @@
     },
     "field": {
       "date": "Datum",
-      "line": "Buchbares Element",
+      "line": "{resourceName}",
       "name": "Name",
       "description": "Beschreibung",
       "display_order": "Anzeigereihenfolge",
@@ -580,7 +580,7 @@
     },
     "grid": {
       "title": "Verfügbarkeitsraster",
-      "help": "Zeilen sind Zeitfenster, Spalten sind Reservierungsziele. Tippe auf eine grüne Zelle „Frei\", um zu buchen. Graue oder schraffierte Zellen können nicht gebucht werden. Über den Tab „Woche\" siehst du sieben Tage auf einmal.",
+      "help": "Zeilen sind Zeitfenster, Spalten sind {resourceName}. Tippe auf eine grüne Zelle „Frei\", um zu buchen. Graue oder schraffierte Zellen können nicht gebucht werden. Über den Tab „Woche\" siehst du sieben Tage auf einmal.",
       "display_toggle": {
         "list": "Listenansicht",
         "grid": "Rasteransicht"
@@ -631,7 +631,7 @@
       "view_staff_grid": "Rasteransicht nach Mitarbeiter",
       "date_line_header": "Datum / {resourceName}",
       "help_toggle": "Anleitung anzeigen",
-      "help_body": "Tippen Sie auf ein freies (grünes) Zeitfenster und wählen Sie ein Menü — die benötigte Anzahl an Zeitfenstern wird automatisch ausgewählt. Mit „+30 Min.“ können Sie weitere hinzufügen. Bei einem gemeinsamen Zeitfenster wählen Sie das gewünschte Ziel aus.",
+      "help_body": "Tippen Sie auf ein freies (grünes) Zeitfenster und wählen Sie ein Menü — die benötigte Anzahl an Zeitfenstern wird automatisch ausgewählt. Mit „+30 Min.“ können Sie weitere hinzufügen. Bei einem gemeinsamen Zeitfenster wählen Sie das gewünschte Element ({resourceName}) aus.",
       "slot_unavailable_conflict": "Dieses Zeitfenster nimmt derzeit keine Buchungen an. Bitte eine andere Uhrzeit versuchen"
     },
     "group": {

@@ -189,7 +189,7 @@
     },
     "field": {
       "date": "日期",
-      "line": "预约对象",
+      "line": "{resourceName}",
       "name": "名称",
       "description": "说明",
       "display_order": "显示顺序",
@@ -580,7 +580,7 @@
     },
     "grid": {
       "title": "空位表格",
-      "help": "纵向为时间段，横向为预约对象。点按绿色“空位”即可预约。灰色或斜线格无法预约。使用“周”标签可一次查看七天。",
+      "help": "纵向为时间段，横向为{resourceName}。点按绿色“空位”即可预约。灰色或斜线格无法预约。使用“周”标签可一次查看七天。",
       "display_toggle": {
         "list": "列表视图",
         "grid": "表格视图"
@@ -631,7 +631,7 @@
       "view_staff_grid": "按员工分栏视图",
       "date_line_header": "日期・{resourceName}",
       "help_toggle": "查看使用说明",
-      "help_body": "点击空闲（绿色）时段，选择菜单后会自动选中所需的时段数。可使用「+30分钟」继续延长。若选择的是共用时段，请选择要预约的对象。",
+      "help_body": "点击空闲（绿色）时段，选择菜单后会自动选中所需的时段数。可使用「+30分钟」继续延长。若选择的是共用时段，请选择要预约的{resourceName}。",
       "slot_unavailable_conflict": "该时段目前不接受预约，请尝试其他时间"
     },
     "group": {

@@ -18,6 +18,9 @@ const { t } = useI18n()
 const reservationApi = useReservationApi()
 const { userTimezone } = useDatetime()
 
+/** 呼称の動的差し込み（F03.4.5 §5.2）: ライン選択ラベルに使う。 */
+const { resourceName, load: loadResourceName } = useResourceName(computed(() => props.teamId))
+
 interface LineOption { id: number; name: string }
 
 const lines = ref<LineOption[]>([])
@@ -84,7 +87,7 @@ function selectSlot(slot: ReservationSlotResponse) {
 
 // loadSlots が opts 引数を持つため、watch コールバックの (newVal, oldVal) が誤って渡らないようラップする
 watch([selectedDate, selectedLineId], () => loadSlots())
-onMounted(async () => { await loadLines(); await loadSlots() })
+onMounted(async () => { await Promise.all([loadLines(), loadResourceName()]); await loadSlots() })
 
 // KeepAlive 配下（TeamReservationsPanel の表示切替）での復帰時にサイレント再取得し、
 // 表示保持（チラつきなし）とデータ鮮度を両立する。onActivated は初回 mount 直後にも
@@ -111,7 +114,7 @@ defineExpose({ refresh: () => loadSlots() })
         <DatePicker v-model="selectedDate" date-format="yy/mm/dd" class="w-full" show-icon />
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium">{{ t('reservation.field.line') }}</label>
+        <label class="mb-1 block text-sm font-medium">{{ t('reservation.field.line', { resourceName }) }}</label>
         <Select
           v-model="selectedLineId"
           :options="lines"
