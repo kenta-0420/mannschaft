@@ -8,7 +8,7 @@ import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.common.visibility.RolePriority;
 import com.mannschaft.app.membership.domain.ScopeType;
-import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.schedule.GoogleCalendarErrorCode;
 import com.mannschaft.app.schedule.MinViewRole;
 import com.mannschaft.app.schedule.dto.CalendarSyncSettingsResponse;
@@ -61,7 +61,7 @@ public class GoogleCalendarService {
     private final GoogleApiClient googleApiClient;
     private final StringRedisTemplate redisTemplate;
     private final GoogleCalendarWebhookService webhookService;
-    private final MembershipRepository membershipRepository;
+    private final MembershipService membershipService;
     private final ContentVisibilityChecker contentVisibilityChecker;
     private final AccessControlService accessControlService;
 
@@ -552,7 +552,7 @@ public class GoogleCalendarService {
      * 非メンバーは存在秘匿のため {@link GoogleCalendarErrorCode#CALENDAR_SYNC_SCOPE_NOT_FOUND}（→404）を送出する。
      */
     private void validateActiveMembership(Long userId, ScopeType scopeType, Long scopeId) {
-        if (!membershipRepository.existsActiveByUserAndScope(userId, scopeType, scopeId)) {
+        if (!membershipService.isActiveMember(userId, scopeType, scopeId)) {
             throw new BusinessException(GoogleCalendarErrorCode.CALENDAR_SYNC_SCOPE_NOT_FOUND);
         }
     }
