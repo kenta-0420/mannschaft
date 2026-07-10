@@ -1,5 +1,8 @@
 package com.mannschaft.app.template;
 
+import com.mannschaft.app.billing.EntitlementQueryService;
+import com.mannschaft.app.billing.EntitlementScopeKind;
+import com.mannschaft.app.billing.FeatureKeys;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.payment.service.TeamPlanService;
@@ -38,6 +41,7 @@ import java.util.stream.IntStream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -73,6 +77,9 @@ class ModuleServiceTest {
 
     @Mock
     private TeamPlanService teamPlanService;
+
+    @Mock
+    private EntitlementQueryService entitlementQueryService;
 
     @InjectMocks
     private ModuleService moduleService;
@@ -432,15 +439,16 @@ class ModuleServiceTest {
         }
 
         @Test
-        @DisplayName("有効化_有料プラン必須で未契約_TMPL004例外")
+        @DisplayName("AC-C3: 有料モジュールを無権利チームで有効化_TMPL004例外（維持）")
         void 有効化_有料プラン必須で未契約_TMPL004例外() {
-            // Given
+            // Given: F20.1 で有料判定を isEntitled(TEAM, premium) に置換。無権利=false → 従来どおり TMPL_004。
             ModuleDefinitionEntity module = createPaidModule();
             given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.of(module));
             given(moduleLevelAvailabilityRepository.findByModuleIdAndLevel(
                     module.getId(), ModuleLevelAvailabilityEntity.Level.TEAM))
                     .willReturn(Optional.empty());
-            given(teamPlanService.hasPaidPlan(TEAM_ID)).willReturn(false);
+            given(entitlementQueryService.isEntitled(EntitlementScopeKind.TEAM, TEAM_ID,
+                    FeatureKeys.TEMPLATE_PREMIUM_MODULES)).willReturn(false);
 
             ToggleModuleRequest request = new ToggleModuleRequest(MODULE_ID, true);
 
@@ -449,6 +457,59 @@ class ModuleServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TMPL_004"));
+        }
+
+        @Test
+        @DisplayName("AC-C3: 有料モジュールを premium entitlement 保持チームで有効化_成功")
+        void 有効化_premium権利あり_成功() {
+            // Given: premium entitlement 保持（既存有料チームはブリッジで保持）→ 通過。
+            ModuleDefinitionEntity module = createPaidModule();
+            given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.of(module));
+            given(moduleLevelAvailabilityRepository.findByModuleIdAndLevel(
+                    module.getId(), ModuleLevelAvailabilityEntity.Level.TEAM))
+                    .willReturn(Optional.empty());
+            given(entitlementQueryService.isEntitled(EntitlementScopeKind.TEAM, TEAM_ID,
+                    FeatureKeys.TEMPLATE_PREMIUM_MODULES)).willReturn(true);
+            given(teamEnabledModuleRepository.findByTeamId(TEAM_ID)).willReturn(List.of());
+            given(teamEnabledModuleRepository.findByTeamIdAndModuleId(TEAM_ID, MODULE_ID))
+                    .willReturn(Optional.empty());
+            given(teamEnabledModuleRepository.save(any(TeamEnabledModuleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            ToggleModuleRequest request = new ToggleModuleRequest(MODULE_ID, true);
+
+            // When
+            moduleService.toggleTeamModule(TEAM_ID, request, USER_ID);
+
+            // Then: 例外なく有効化される。
+            verify(teamEnabledModuleRepository).save(any(TeamEnabledModuleEntity.class));
+        }
+
+        @Test
+        @DisplayName("AC-C4: premium 付与のみで有効化成功・hasPaidPlan は参照しない")
+        void 有効化_premium付与のみ成功_hasPaidPlan不参照() {
+            // Given: ゲートは isEntitled のみで判定し、旧 teamPlanService.hasPaidPlan には依存しない。
+            ModuleDefinitionEntity module = createPaidModule();
+            given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.of(module));
+            given(moduleLevelAvailabilityRepository.findByModuleIdAndLevel(
+                    module.getId(), ModuleLevelAvailabilityEntity.Level.TEAM))
+                    .willReturn(Optional.empty());
+            given(entitlementQueryService.isEntitled(EntitlementScopeKind.TEAM, TEAM_ID,
+                    FeatureKeys.TEMPLATE_PREMIUM_MODULES)).willReturn(true);
+            given(teamEnabledModuleRepository.findByTeamId(TEAM_ID)).willReturn(List.of());
+            given(teamEnabledModuleRepository.findByTeamIdAndModuleId(TEAM_ID, MODULE_ID))
+                    .willReturn(Optional.empty());
+            given(teamEnabledModuleRepository.save(any(TeamEnabledModuleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            ToggleModuleRequest request = new ToggleModuleRequest(MODULE_ID, true);
+
+            // When
+            moduleService.toggleTeamModule(TEAM_ID, request, USER_ID);
+
+            // Then
+            verify(teamEnabledModuleRepository).save(any(TeamEnabledModuleEntity.class));
+            verify(teamPlanService, never()).hasPaidPlan(anyLong());
         }
 
         @Test
@@ -918,6 +979,34 @@ class ModuleServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TMPL_003"));
+        }
+
+        @Test
+        @DisplayName("AC-C5: 組織側は requiresPaidPlan 判定を持たない（有料モジュールでも entitlement 未参照で有効化成功・無改変）")
+        void 有効化_有料モジュールでも組織は有料判定なし_成功() {
+            // Given: 組織側 toggleOrganizationModule は結線対象外。requiresPaidPlan=true でも
+            // TMPL_004 を投げず、entitlementQueryService.isEntitled も一切参照しないことを保証する。
+            ModuleDefinitionEntity module = createPaidModule();
+            given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.of(module));
+            given(moduleLevelAvailabilityRepository.findByModuleIdAndLevel(
+                    module.getId(), ModuleLevelAvailabilityEntity.Level.ORGANIZATION))
+                    .willReturn(Optional.empty());
+            given(organizationEnabledModuleRepository.countByOrganizationIdAndIsEnabledTrue(ORG_ID))
+                    .willReturn(0L);
+            given(organizationEnabledModuleRepository.findByOrganizationIdAndModuleId(ORG_ID, MODULE_ID))
+                    .willReturn(Optional.empty());
+            given(organizationEnabledModuleRepository.save(any(OrganizationEnabledModuleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            ToggleModuleRequest request = new ToggleModuleRequest(MODULE_ID, true);
+
+            // When
+            moduleService.toggleOrganizationModule(ORG_ID, request, USER_ID);
+
+            // Then: 例外なく有効化され、entitlement 判定は呼ばれない。
+            verify(organizationEnabledModuleRepository).save(any(OrganizationEnabledModuleEntity.class));
+            verify(entitlementQueryService, never())
+                    .isEntitled(any(EntitlementScopeKind.class), anyLong(), any(String.class));
         }
     }
 

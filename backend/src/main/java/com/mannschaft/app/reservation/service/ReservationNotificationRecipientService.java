@@ -1,5 +1,8 @@
 package com.mannschaft.app.reservation.service;
 
+import com.mannschaft.app.billing.EntitlementQueryService;
+import com.mannschaft.app.billing.EntitlementScopeKind;
+import com.mannschaft.app.billing.FeatureKeys;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.payment.service.TeamPlanService;
 import com.mannschaft.app.reservation.ReservationErrorCode;
@@ -33,8 +36,14 @@ import java.util.UUID;
  * <p><b>登録時ゲート方針</b>: 有料→無料ダウングレードでも登録済み宛先は剥奪しない
  * （既に登録済みの4件目以降もそのまま全件送出される）。件数ゲートは追加時のみ効く。</p>
  *
- * <p>{@code TeamPlanService.hasPaidPlan} は payment ドメインのサービス呼び出し（越境規制外・
- * 既存 {@code ModuleService} と同様）。</p>
+ * <p>F20.1: 4 件目以降ゲート（RESERVATION_029）の有料判定は
+ * {@link EntitlementQueryService#isEntitled}（feature_key=
+ * {@code reservation.notification_recipients_extended}）に置換済み。
+ * 既存有料チームは後方互換ブリッジ（team_subscriptions ACTIVE → FULL 契約 → plan_features 全キー）で
+ * extended entitlement を保持するため機能は失われない。エラーコード・HTTP ステータス（402）は不変。</p>
+ *
+ * <p>{@code TeamPlanService.hasPaidPlan} は一覧表示の {@code hasPaidPlan} フラグ（表示互換）でのみ使用。
+ * billing / payment ドメインのサービス呼び出しは越境規制外（service 参照は許容・D-3）。</p>
  */
 @Slf4j
 @Service
@@ -50,6 +59,7 @@ public class ReservationNotificationRecipientService {
 
     private final ReservationNotificationRecipientRepository recipientRepository;
     private final TeamPlanService teamPlanService;
+    private final EntitlementQueryService entitlementQueryService;
 
     /**
      * チームの宛先一覧＋フリーミアム状態を返す。
@@ -96,8 +106,9 @@ public class ReservationNotificationRecipientService {
         if (count >= MAX_RECIPIENT_LIMIT) {
             throw new BusinessException(ReservationErrorCode.NOTIFY_RECIPIENT_LIMIT_EXCEEDED);
         }
-        // (2) 無料プランで 4 件目以降 → 402。
-        if (count >= FREE_RECIPIENT_LIMIT && !teamPlanService.hasPaidPlan(teamId)) {
+        // (2) 無料プランで 4 件目以降 → 402（F20.1: 有料判定を isEntitled に置換・エラーコードは不変）。
+        if (count >= FREE_RECIPIENT_LIMIT && !entitlementQueryService.isEntitled(
+                EntitlementScopeKind.TEAM, teamId, FeatureKeys.RESERVATION_NOTIFICATION_RECIPIENTS_EXTENDED)) {
             throw new BusinessException(ReservationErrorCode.NOTIFY_RECIPIENT_PAID_PLAN_REQUIRED);
         }
         // (3) 同一チームで email 重複 → 409（アプリ層の事前チェック）。

@@ -1,5 +1,8 @@
 package com.mannschaft.app.reservation.service;
 
+import com.mannschaft.app.billing.EntitlementQueryService;
+import com.mannschaft.app.billing.EntitlementScopeKind;
+import com.mannschaft.app.billing.FeatureKeys;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.payment.service.TeamPlanService;
 import com.mannschaft.app.reservation.ReservationErrorCode;
@@ -24,6 +27,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -54,6 +58,9 @@ class ReservationNotificationRecipientServiceTest {
     @Mock
     private TeamPlanService teamPlanService;
 
+    @Mock
+    private EntitlementQueryService entitlementQueryService;
+
     @InjectMocks
     private ReservationNotificationRecipientService service;
 
@@ -79,10 +86,12 @@ class ReservationNotificationRecipientServiceTest {
         }
 
         @Test
-        @DisplayName("D-3: 無料プランで3件登録済み → 4件目は RESERVATION_029（402）")
+        @DisplayName("AC-15/D-3: 無権利チームで3件登録済み → 4件目は RESERVATION_029（402）維持")
         void 無料4件目は402() {
+            // F20.1: 有料判定を isEntitled(TEAM, extended) に置換。無権利=false → 従来どおり 402。
             when(recipientRepository.countByTeamId(TEAM_ID)).thenReturn(3L);
-            when(teamPlanService.hasPaidPlan(TEAM_ID)).thenReturn(false);
+            when(entitlementQueryService.isEntitled(EntitlementScopeKind.TEAM, TEAM_ID,
+                    FeatureKeys.RESERVATION_NOTIFICATION_RECIPIENTS_EXTENDED)).thenReturn(false);
 
             assertThatThrownBy(() -> service.addRecipient(TEAM_ID, req("a@example.com", true), CREATED_BY))
                     .isInstanceOf(BusinessException.class)
@@ -93,16 +102,34 @@ class ReservationNotificationRecipientServiceTest {
         }
 
         @Test
-        @DisplayName("有料プランで3件登録済み → 4件目は登録できる（有料は10件まで）")
-        void 有料4件目可() {
+        @DisplayName("AC-C1: extended entitlement 保持チームで3件登録済み → 4件目は登録できる（有料は10件まで）")
+        void extended権利で4件目可() {
+            // extended entitlement 保持（既存有料チームはブリッジで FULL 契約→plan_features 全キーを持つ）→ 通過。
             when(recipientRepository.countByTeamId(TEAM_ID)).thenReturn(3L);
-            when(teamPlanService.hasPaidPlan(TEAM_ID)).thenReturn(true);
+            when(entitlementQueryService.isEntitled(EntitlementScopeKind.TEAM, TEAM_ID,
+                    FeatureKeys.RESERVATION_NOTIFICATION_RECIPIENTS_EXTENDED)).thenReturn(true);
             when(recipientRepository.existsByTeamIdAndEmail(TEAM_ID, "a@example.com")).thenReturn(false);
             when(recipientRepository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
 
             service.addRecipient(TEAM_ID, req("a@example.com", true), CREATED_BY);
 
             verify(recipientRepository).saveAndFlush(any());
+        }
+
+        @Test
+        @DisplayName("AC-C2: extended 付与のみ（team_subscriptions なし）でも4件目は成功・hasPaidPlan は参照しない")
+        void extended付与のみで4件目可_hasPaidPlan不参照() {
+            // ゲートは isEntitled のみで判定し、旧 teamPlanService.hasPaidPlan には依存しないことを保証する。
+            when(recipientRepository.countByTeamId(TEAM_ID)).thenReturn(3L);
+            when(entitlementQueryService.isEntitled(EntitlementScopeKind.TEAM, TEAM_ID,
+                    FeatureKeys.RESERVATION_NOTIFICATION_RECIPIENTS_EXTENDED)).thenReturn(true);
+            when(recipientRepository.existsByTeamIdAndEmail(TEAM_ID, "a@example.com")).thenReturn(false);
+            when(recipientRepository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
+
+            service.addRecipient(TEAM_ID, req("a@example.com", true), CREATED_BY);
+
+            verify(recipientRepository).saveAndFlush(any());
+            verify(teamPlanService, never()).hasPaidPlan(anyLong());
         }
 
         @Test
