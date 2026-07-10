@@ -16,11 +16,21 @@ import java.util.Arrays;
 /**
  * WebSocket (STOMP) 設定。リアルタイム通知・チャットメッセージ配信に使用する。
  *
- * <p>開発環境ではSimpleBrokerを使用し、本番環境ではValkey（Redis互換）を
- * メッセージブローカーとして使用する想定。</p>
+ * <p>ブローカーは全環境で各ノード内の SimpleBroker。マルチノード配信は
+ * {@code com.mannschaft.app.websocket.relay} の <b>Valkey Pub/Sub 中継（relay）</b>が担う
+ * （feature flag {@code mannschaft.websocket.relay.enabled}・既定 OFF。
+ * 設計書: docs/architecture/websocket_external_broker_valkey.md）。</p>
+ *
+ * <p><b>ブローカー設定の一本化（同設計書 §2.1）</b>: 同一コンテキストの全
+ * {@code WebSocketMessageBrokerConfigurer} は単一の {@code MessageBrokerRegistry} に
+ * マージされるため、{@code enableSimpleBroker}・{@code setApplicationDestinationPrefixes}・
+ * {@code setUserDestinationPrefix} の宣言は<b>本クラスのみ</b>で行う
+ * （{@code SignageWebSocketConfig} はエンドポイント登録のみ。二重宣言すると順序依存で
+ * {@code /queue} が脱落しユーザー宛配信が全滅する — red テストで実証済み）。</p>
  *
  * <p>{@link WebSocketAuthChannelInterceptor} を inbound チャンネルに登録し、
- * STOMP CONNECT フレームの JWT 検証を行う。</p>
+ * STOMP CONNECT フレームの JWT 検証と STOMP Principal 確立（{@code SimpUserRegistry} 登録・
+ * 同設計書 §2.3）を行う。</p>
  *
  * <p>さらに {@link MatchLiveSubscriptionInterceptor} を<b>認証インターセプタの後段</b>に登録し、
  * F08.10 ライブ観戦トピック（{@code /topic/matches/{matchId}/live}）の SUBSCRIBE 認可を行う
