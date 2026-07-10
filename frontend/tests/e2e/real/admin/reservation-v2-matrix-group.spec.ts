@@ -314,7 +314,30 @@ test.describe('RSV-V2b: マトリックスUI＋グループ予約（実機一気
     const manageTab = page.getByRole('tab', { name: '予約対象の管理' })
     await expect(manageTab).toBeVisible({ timeout: 20_000 })
     await manageTab.click()
-    await expect(page.getByRole('button', { name: '予約対象を追加' })).toBeVisible({ timeout: 15_000 })
+    // 【F03.4.5 §3.2 タブ6段再編・第一隊 c043bd9e8 追従】
+    // 「予約対象の管理」タブの中身は Accordion 化され、初期は全閉（ADHD配慮）。
+    // タブ切替直後に見えるのは各セクションのヘッダーボタンのみで、「予約対象を追加」等の
+    // 中身ボタンはセクションを展開するまで現れない。
+    await expect(
+      page.getByRole('button', { name: /^予約対象の管理(\s*\(\d+\))?$/ }),
+      '予約対象の管理セクションのヘッダーが表示されること',
+    ).toBeVisible({ timeout: 15_000 })
+  }
+
+  /**
+   * 管理タブ内 Accordion セクションを展開する（初期は全閉のため必須）。
+   * ヘッダー文言は section_count で「{label} ({n})」形式（例外日カレンダー/営業時間は件数無し）。
+   */
+  async function openAccordionSection(page: Page, labelPrefix: string): Promise<void> {
+    const header = page.getByRole('button', {
+      name: new RegExp(`^${labelPrefix}(\\s*\\(\\d+\\))?$`),
+    })
+    await expect(header, `${labelPrefix} セクションのヘッダーが表示されること`).toBeVisible({
+      timeout: 15_000,
+    })
+    if ((await header.getAttribute('aria-expanded')) !== 'true') {
+      await header.click()
+    }
   }
 
   test('STEP-1: ライン「席A」・メニュー「カット・60分」・テンプレ(10:00-13:00)を作成し枠を生成する', async ({
@@ -322,6 +345,7 @@ test.describe('RSV-V2b: マトリックスUI＋グループ予約（実機一気
   }) => {
     await gotoReservations(page, tokens)
     await openManageTab(page)
+    await openAccordionSection(page, '予約対象の管理')
 
     // ライン作成
     await page.getByRole('button', { name: '予約対象を追加' }).click()
@@ -333,6 +357,7 @@ test.describe('RSV-V2b: マトリックスUI＋グループ予約（実機一気
     await expect(page.getByText('席A').first()).toBeVisible({ timeout: 10_000 })
 
     // メニュー作成
+    await openAccordionSection(page, 'メニュー管理')
     await page.getByTestId('menu-add').click()
     dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible({ timeout: 10_000 })
@@ -350,6 +375,7 @@ test.describe('RSV-V2b: マトリックスUI＋グループ予約（実機一気
     await page.reload({ waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
     await openManageTab(page)
+    await openAccordionSection(page, '週間テンプレート')
 
     // テンプレ作成: 席A・明日の曜日・10:00-13:00・定員1
     await page.getByTestId('template-add').click()
