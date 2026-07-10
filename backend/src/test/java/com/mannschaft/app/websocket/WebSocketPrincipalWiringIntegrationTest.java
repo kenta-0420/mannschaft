@@ -52,11 +52,18 @@ import static org.assertj.core.api.Assertions.assertThat;
  * </ol>
  *
  * <h3>原因の切り分け（憶測修正禁止・§7.2）</h3>
- * <p>まず「{@code /queue} プレフィックスがブローカーに登録済み」を独立にアサートし（green のはず）、
- * §2.1 の {@code configureMessageBroker} 順序依存が red の原因<b>ではない</b>ことを固定する。その上でユーザー宛配信の
- * red を Principal 未配線<b>単独</b>に帰着させる。</p>
+ * <p>まず「{@code /queue} プレフィックスがブローカーに登録済み」を独立にアサートし、
+ * §2.1 の {@code configureMessageBroker} 順序依存が red の原因かどうかを切り分ける。その上でユーザー宛配信の
+ * red を評価する。</p>
  *
- * <p>出陣（隊 1）で CONNECT 時に {@link StompPrincipal} を {@code setUser} すると、両アサートが green 化する。</p>
+ * <p><b>【実証所見・隊 1 への申し送り】</b> 本 red テストの初回実走で、この切り分けアサートが<b>実際に失敗</b>した
+ * （ブローカー登録プレフィックスが {@code ["/topic"]} のみで {@code /queue} が欠落）。すなわち設計 §2.1 が「潜在的脆弱性」と
+ * 警告した {@code configureMessageBroker} 二重呼び出しの順序依存は<b>実在</b>し、少なくとも本ブート順序では
+ * {@code SignageWebSocketConfig}（{@code /topic} のみ）が後勝ちして {@code /queue} がブローカーから落ちている。
+ * この状態では Principal 配線以前に {@code convertAndSendToUser}（{@code /queue} 宛）が構造的に成立しない。
+ * 出陣（隊 1）は §2.1 のブローカー設定を {@code WebSocketConfig} へ<b>一本化</b>（{@code SignageWebSocketConfig} から
+ * {@code configureMessageBroker} 削除）した上で、§2.3 の {@link StompPrincipal} {@code setUser} を行うこと。
+ * 両者が揃って初めて本テストの全アサートが green 化する。</p>
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
