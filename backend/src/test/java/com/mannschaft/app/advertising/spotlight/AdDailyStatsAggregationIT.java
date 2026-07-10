@@ -13,7 +13,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,7 +36,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("F09.19.3 日次集計バッチ IT")
 class AdDailyStatsAggregationIT extends AbstractSpotlightIT {
 
-    private static final DateTimeFormatter TS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final String TILE = "DASHBOARD_TILE";
 
     @Autowired
@@ -181,46 +179,51 @@ class AdDailyStatsAggregationIT extends AbstractSpotlightIT {
         return ((Number) em.createNativeQuery("SELECT MAX(id) FROM ad_campaigns").getSingleResult()).longValue();
     }
 
-    /** 運用型インプレッション（campaign_id 非 NULL）を count 行まとめて INSERT する。 */
+    // occurred_at は必ず LocalDateTime パラメータ（:at）で bind する。
+    // 集計クエリ（AdImpressionRepository.aggregateOperationalByCampaignAndAd）は窓 :start/:end を
+    // LocalDateTime で bind しており、MySQL Connector/J は接続 TZ で変換する。fixture 側を TZ ナイーブな
+    // 文字列リテラルで INSERT すると変換されず、CI（JVM=JST / Testcontainer=UTC）で -9h ずれて実効窓が
+    // [前日15:00, 当日15:00) となり、15:00 の行が排他上限に一致して集計 0 行になる（.1 で根治済の同型 TZ バグ）。
+    // 参照: memory「MySQL UTC vs JVM JST・AD 系 IT フィクスチャは JVM bind で作れ」。
+
+    /** 運用型インプレッション（campaign_id 非 NULL）を count 行まとめて INSERT する（occurred_at は :at bind）。 */
     private void insertOperationalImpressions(Long adId, Long campaignId, LocalDateTime at, int count) {
-        String ts = at.format(TS);
         StringBuilder sb = new StringBuilder(
                 "INSERT INTO ad_impressions (ad_id, campaign_id, occurred_at) VALUES ");
         for (int i = 0; i < count; i++) {
             if (i > 0) {
                 sb.append(',');
             }
-            sb.append('(').append(adId).append(',').append(campaignId).append(",'").append(ts).append("')");
+            // ad_id / campaign_id は整数リテラル（TZ 無関係）・occurred_at は名前付き param :at を再利用。
+            sb.append('(').append(adId).append(',').append(campaignId).append(",:at)");
         }
-        em.createNativeQuery(sb.toString()).executeUpdate();
+        em.createNativeQuery(sb.toString()).setParameter("at", at).executeUpdate();
     }
 
-    /** 運用型クリック（campaign_id 非 NULL）を count 行まとめて INSERT する。 */
+    /** 運用型クリック（campaign_id 非 NULL）を count 行まとめて INSERT する（occurred_at は :at bind）。 */
     private void insertOperationalClicks(Long adId, Long campaignId, LocalDateTime at, int count) {
-        String ts = at.format(TS);
         StringBuilder sb = new StringBuilder(
                 "INSERT INTO ad_clicks (ad_id, campaign_id, occurred_at) VALUES ");
         for (int i = 0; i < count; i++) {
             if (i > 0) {
                 sb.append(',');
             }
-            sb.append('(').append(adId).append(',').append(campaignId).append(",'").append(ts).append("')");
+            sb.append('(').append(adId).append(',').append(campaignId).append(",:at)");
         }
-        em.createNativeQuery(sb.toString()).executeUpdate();
+        em.createNativeQuery(sb.toString()).setParameter("at", at).executeUpdate();
     }
 
     /**
      * F09.17 由来（campaign_id NULL / messaging_campaign_id 非 NULL）のインプレッションを 1 行挿入する。
      *
-     * <p>運用型 imp/click 挿入（{@link #insertOperationalImpressions}）と同じ<b>インライン・リテラル</b>の
-     * native SQL で書く（名前付きパラメータ + LocalDateTime バインドの Hibernate native-query 経路を避け、
-     * 集計対象の運用型行挿入と実行経路を揃えて決定性を担保する）。値は全てテスト制御下でインジェクション余地なし。</p>
+     * <p>occurred_at は運用型行と同じく LocalDateTime param（:at）で bind し、集計クエリ窓と TZ 経路を揃える。
+     * messaging 行は campaign_id NULL で集計除外されるため直接の TZ 影響は無いが、整合のため bind に統一する。</p>
      */
     private void insertMessagingImpression(Long adId, UUID messagingCampaignId, LocalDateTime at) {
         em.createNativeQuery(
                         "INSERT INTO ad_impressions (ad_id, campaign_id, messaging_campaign_id, occurred_at) "
-                                + "VALUES (" + adId + ", NULL, UUID_TO_BIN('" + messagingCampaignId + "'), '"
-                                + at.format(TS) + "')")
+                                + "VALUES (" + adId + ", NULL, UUID_TO_BIN('" + messagingCampaignId + "'), :at)")
+                .setParameter("at", at)
                 .executeUpdate();
     }
 
