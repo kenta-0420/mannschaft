@@ -25,7 +25,7 @@ async function loadInvoices() {
   try {
     const params: Record<string, string> = {}
     if (statusFilter.value) params.status = statusFilter.value
-    const res = await advertiserApi.getInvoices(orgSlug, params)
+    const res = await advertiserApi.getInvoices('ORGANIZATION', orgSlug, params)
     invoices.value = res.data
   }
   catch { invoices.value = [] }

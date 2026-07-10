@@ -473,9 +473,13 @@
       "title": "팀 광고주 관리",
       "description": "팀 단위로 메시지형 광고 캠페인을 생성·게재합니다.",
       "nav": {
-        "messaging_campaigns_description": "팀 멤버를 대상으로 한 메시지형 광고 캠페인을 생성합니다."
+        "messaging_campaigns_description": "팀 멤버를 대상으로 한 메시지형 광고 캠페인을 생성합니다.",
+        "register": "광고주 등록",
+        "invoices": "청구서",
+        "report_schedules": "정기 리포트",
+        "credit_limit_requests": "여신 한도 신청",
+        "rate_simulator": "요금 시뮬레이터"
       },
-      "future_features_notice": "청구서 관리·신용 한도 신청·정기 보고서는 향후 단계에서 지원할 예정입니다.",
       "register": {
         "title": "광고주 등록",
         "submit": "등록 신청",
@@ -487,6 +491,27 @@
         "billing_invoice": "청구서 납부",
         "success_message": "광고주 등록을 신청했습니다. 심사 후 이용하실 수 있습니다.",
         "error_message": "등록에 실패했습니다"
+      },
+      "invoices": {
+        "title": "청구서",
+        "write_ops_notice": "청구서 상세 보기・PDF 다운로드는 현재 조직판에서만 이용하실 수 있습니다."
+      },
+      "credit_limit_requests": {
+        "title": "여신 한도 증액 신청",
+        "write_ops_notice": "신규 신청은 현재 조직판에서만 이용하실 수 있습니다."
+      },
+      "report_schedules": {
+        "title": "정기 리포트",
+        "write_ops_notice": "정기 리포트 신규 작성・삭제는 현재 조직판에서만 이용하실 수 있습니다."
+      },
+      "rate_simulator": {
+        "title": "요금 시뮬레이터"
+      },
+      "campaign_detail": {
+        "back_label": "대시보드로 돌아가기",
+        "fallback_title": "캠페인 상세",
+        "empty_message": "캠페인 데이터를 가져올 수 없습니다.",
+        "extra_ops_notice": "크리에이티브 비교・분석・CSV 내보내기는 현재 조직판에서만 이용하실 수 있습니다."
       }
     },
     "settings_ad_preferences_guide": {

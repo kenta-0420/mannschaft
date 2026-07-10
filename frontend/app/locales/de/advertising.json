@@ -473,9 +473,13 @@
       "title": "Team-Werbetreibende verwalten",
       "description": "Erstellen und schalten Sie nachrichtenbasierte Werbekampagnen auf Teamebene.",
       "nav": {
-        "messaging_campaigns_description": "Erstellen Sie nachrichtenbasierte Werbekampagnen für Teammitglieder."
+        "messaging_campaigns_description": "Erstellen Sie nachrichtenbasierte Werbekampagnen für Teammitglieder.",
+        "register": "Werbetreibenden-Registrierung",
+        "invoices": "Rechnungen",
+        "report_schedules": "Wiederkehrende Berichte",
+        "credit_limit_requests": "Kreditlimit-Anfragen",
+        "rate_simulator": "Tarifsimulator"
       },
-      "future_features_notice": "Rechnungsverwaltung, Kreditlimitanträge und regelmäßige Berichte werden in einer zukünftigen Phase unterstützt.",
       "register": {
         "title": "Werbetreibender registrieren",
         "submit": "Antrag einreichen",
@@ -487,6 +491,27 @@
         "billing_invoice": "Auf Rechnung",
         "success_message": "Ihr Antrag wurde eingereicht. Nach der Prüfung können Sie den Dienst nutzen.",
         "error_message": "Registrierung fehlgeschlagen"
+      },
+      "invoices": {
+        "title": "Rechnungen",
+        "write_ops_notice": "Rechnungsdetails und PDF-Download sind derzeit nur in der Organisationsversion verfügbar."
+      },
+      "credit_limit_requests": {
+        "title": "Kreditlimit-Erhöhungsanfragen",
+        "write_ops_notice": "Neue Anfragen sind derzeit nur in der Organisationsversion verfügbar."
+      },
+      "report_schedules": {
+        "title": "Wiederkehrende Berichte",
+        "write_ops_notice": "Das Erstellen und Löschen wiederkehrender Berichte ist derzeit nur in der Organisationsversion verfügbar."
+      },
+      "rate_simulator": {
+        "title": "Tarifsimulator"
+      },
+      "campaign_detail": {
+        "back_label": "Zurück zum Dashboard",
+        "fallback_title": "Kampagnendetails",
+        "empty_message": "Kampagnendaten konnten nicht abgerufen werden.",
+        "extra_ops_notice": "Creative-Vergleich, Aufschlüsselung und CSV-Export sind derzeit nur in der Organisationsversion verfügbar."
       }
     },
     "settings_ad_preferences_guide": {

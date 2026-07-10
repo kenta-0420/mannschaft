@@ -24,7 +24,7 @@ async function submit() {
   if (!form.value.companyName || !form.value.contactEmail) return
   submitting.value = true
   try {
-    await advertiserApi.register(orgSlug, form.value)
+    await advertiserApi.register('ORGANIZATION', orgSlug, form.value)
     success('広告主登録を申請しました。審査後に利用開始できます。')
     router.push(`/organizations/${orgSlug}/advertiser`)
   }

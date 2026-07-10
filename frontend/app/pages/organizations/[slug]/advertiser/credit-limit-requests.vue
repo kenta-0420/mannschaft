@@ -16,7 +16,7 @@ const form = ref({ requestedLimit: 0, reason: '' })
 async function load() {
   loading.value = true
   try {
-    const res = await advertiserApi.getCreditLimitRequests(orgSlug)
+    const res = await advertiserApi.getCreditLimitRequests('ORGANIZATION', orgSlug)
     requests.value = res.data
   }
   catch { requests.value = [] }

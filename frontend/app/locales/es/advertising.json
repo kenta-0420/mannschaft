@@ -473,9 +473,13 @@
       "title": "Gestión de anunciantes del equipo",
       "description": "Crea y entrega campañas publicitarias de tipo mensaje a nivel de equipo.",
       "nav": {
-        "messaging_campaigns_description": "Crea campañas publicitarias de tipo mensaje dirigidas a los miembros del equipo."
+        "messaging_campaigns_description": "Crea campañas publicitarias de tipo mensaje dirigidas a los miembros del equipo.",
+        "register": "Registro de anunciante",
+        "invoices": "Facturas",
+        "report_schedules": "Informes periódicos",
+        "credit_limit_requests": "Solicitudes de límite de crédito",
+        "rate_simulator": "Simulador de tarifas"
       },
-      "future_features_notice": "La gestión de facturas, solicitudes de límite de crédito e informes periódicos se admitirán en una fase futura.",
       "register": {
         "title": "Registro de anunciante",
         "submit": "Enviar solicitud",
@@ -487,6 +491,27 @@
         "billing_invoice": "Pago por factura",
         "success_message": "Se ha enviado la solicitud de registro. Podrás comenzar a usar el servicio tras la revisión.",
         "error_message": "Error al registrar"
+      },
+      "invoices": {
+        "title": "Facturas",
+        "write_ops_notice": "Los detalles de la factura y la descarga de PDF solo están disponibles actualmente en la versión de organización."
+      },
+      "credit_limit_requests": {
+        "title": "Solicitudes de aumento de límite de crédito",
+        "write_ops_notice": "Las nuevas solicitudes solo están disponibles actualmente en la versión de organización."
+      },
+      "report_schedules": {
+        "title": "Informes periódicos",
+        "write_ops_notice": "La creación y eliminación de informes periódicos solo está disponible actualmente en la versión de organización."
+      },
+      "rate_simulator": {
+        "title": "Simulador de tarifas"
+      },
+      "campaign_detail": {
+        "back_label": "Volver al panel",
+        "fallback_title": "Detalles de la campaña",
+        "empty_message": "No se pudieron obtener los datos de la campaña.",
+        "extra_ops_notice": "La comparación de creatividades, el desglose y la exportación a CSV solo están disponibles actualmente en la versión de organización."
       }
     },
     "settings_ad_preferences_guide": {

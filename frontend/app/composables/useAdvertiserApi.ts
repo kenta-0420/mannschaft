@@ -30,34 +30,62 @@ import type {
   CreateAdCreativeRequest,
   UpdateAdCreativeRequest,
   AdCreativeStatus,
+  ScopeType,
 } from '~/types/advertiser'
+
+interface PageMeta {
+  totalElements: number
+  page: number
+  size: number
+  totalPages: number
+}
+
+interface PagedEnvelope<T> {
+  data: T[]
+  meta: PageMeta
+}
 
 export function useAdvertiserApi() {
   const api = useApi()
 
-  // ─── 広告主向け API ───
+  // ─── 広告主向け API（org/team 両対応。F09.19.6 で scope 化） ───
 
-  async function register(organizationId: string, body: RegisterAdvertiserRequest) {
+  /**
+   * 広告主アカウントを新規登録する。
+   *
+   * org は旧 `/api/v1/advertiser/register?organizationId=` （F09.19.5 でも scope 化されず残置）、
+   * team は `/api/v1/teams/{teamId}/advertiser/register`（F09.17 Phase 11-d-4 で新設済み）と
+   * URL 体系が異なるため、内部で分岐する。
+   */
+  async function register(scopeType: ScopeType, scopeId: string, body: RegisterAdvertiserRequest) {
+    if (scopeType === 'TEAM') {
+      return api<{ data: AdvertiserAccountResponse }>(`/api/v1/teams/${scopeId}/advertiser/register`, {
+        method: 'POST',
+        body,
+      })
+    }
     return api<{ data: AdvertiserAccountResponse }>('/api/v1/advertiser/register', {
       method: 'POST',
-      params: { organizationId },
+      params: { organizationId: scopeId },
       body,
     })
   }
 
-  async function registerTeam(teamId: string, body: RegisterAdvertiserRequest) {
-    return api<{ data: AdvertiserAccountResponse }>(`/api/v1/teams/${teamId}/advertiser/register`, {
-      method: 'POST',
-      body,
-    })
-  }
-
+  /**
+   * 広告主アカウント取得（ORGANIZATION scope のみ）。
+   *
+   * F09.19.5 では scope 化されず、`/api/v1/advertiser/account` が
+   * `@RequestParam Long organizationId` 固定のまま残置されている
+   * （{@code AdvertiserDashboardController}）。TEAM scope 用のアカウント参照 API は
+   * バックエンド未実装のため、team ページからは呼び出さないこと（F09.19.6 では未対応）。
+   */
   async function getAccount(organizationId: string) {
     return api<{ data: AdvertiserAccountResponse }>('/api/v1/advertiser/account', {
       params: { organizationId },
     })
   }
 
+  /** 広告主アカウント更新（ORGANIZATION scope のみ。getAccount と同じ理由でTEAM未対応）。 */
   async function updateAccount(organizationId: string, body: UpdateAdvertiserAccountRequest) {
     return api<{ data: AdvertiserAccountResponse }>('/api/v1/advertiser/account', {
       method: 'PATCH',
@@ -66,6 +94,7 @@ export function useAdvertiserApi() {
     })
   }
 
+  /** ダッシュボード概況（ORGANIZATION scope のみ。TEAM未対応・BE未実装）。 */
   async function getOverview(organizationId: string) {
     return api<{ data: AdvertiserOverviewResponse }>('/api/v1/advertiser/overview', {
       params: { organizationId },
@@ -91,25 +120,46 @@ export function useAdvertiserApi() {
     })
   }
 
-  // Performance
-  async function getCampaignPerformance(campaignId: number, organizationId: string, from: string, to: string) {
+  // ─── Performance（org/team 両対応。F09.19.5 で team scope の performance のみ新設済み） ───
+
+  /**
+   * キャンペーン別パフォーマンス。org は旧 `/api/v1/advertiser/campaigns/{id}/performance`、
+   * team は `/api/v1/teams/{teamId}/advertiser/campaigns/{id}/performance`
+   * （{@link TeamAdvertiserDashboardController}。F09.19.5 AC-5.2）に振り分ける。
+   */
+  async function getCampaignPerformance(scopeType: ScopeType, scopeId: string, campaignId: number, from: string, to: string) {
+    if (scopeType === 'TEAM') {
+      return api<{ data: CampaignPerformanceResponse }>(
+        `/api/v1/teams/${scopeId}/advertiser/campaigns/${campaignId}/performance`,
+        { params: { from, to } },
+      )
+    }
     return api<{ data: CampaignPerformanceResponse }>(`/api/v1/advertiser/campaigns/${campaignId}/performance`, {
-      params: { organizationId, from, to },
+      params: { organizationId: scopeId, from, to },
     })
   }
 
+  /**
+   * クリエイティブ比較（ORGANIZATION scope のみ）。
+   *
+   * F09.19.5 で team 向けの `/api/v1/teams/{teamId}/advertiser/campaigns/{id}/creatives`
+   * は新設されなかった（{@code CampaignPerformanceService.getCreativeComparison} に
+   * scope 引数オーバーロードが存在しない）。TEAM scope からは呼び出さないこと（F09.19.6 では未対応）。
+   */
   async function getCreativeComparison(campaignId: number, organizationId: string, from: string, to: string) {
     return api<{ data: CreativeComparisonResponse }>(`/api/v1/advertiser/campaigns/${campaignId}/creatives`, {
       params: { organizationId, from, to },
     })
   }
 
+  /** ブレイクダウン（ORGANIZATION scope のみ。getCreativeComparison と同じ理由でTEAM未対応）。 */
   async function getBreakdown(campaignId: number, organizationId: string, from: string, to: string, breakdownBy?: string) {
     return api<{ data: BreakdownResponse }>(`/api/v1/advertiser/campaigns/${campaignId}/breakdown`, {
       params: { organizationId, from, to, breakdownBy },
     })
   }
 
+  /** CSV エクスポート（ORGANIZATION scope のみ。TEAM未対応・BE未実装）。 */
   async function exportCampaignCsv(campaignId: number, organizationId: string, from: string, to: string) {
     return api(`/api/v1/advertiser/campaigns/${campaignId}/export`, {
       params: { organizationId, from, to },
@@ -117,19 +167,39 @@ export function useAdvertiserApi() {
     }) as Promise<Blob>
   }
 
-  // Invoices
-  async function getInvoices(organizationId: string, params?: { status?: InvoiceStatus; page?: number; size?: number }) {
-    return api<{ data: InvoiceSummaryResponse[]; meta: { totalElements: number; page: number; size: number; totalPages: number } }>('/api/v1/advertiser/invoices', {
-      params: { organizationId, ...params },
+  // ─── Invoices（一覧のみ org/team 両対応。詳細・PDF は ORGANIZATION scope のみ） ───
+
+  /**
+   * 請求書一覧。org は旧 `/api/v1/advertiser/invoices`、team は
+   * `/api/v1/teams/{teamId}/advertiser/invoices`（PagedResponse。F09.19.5 AC-5.2）に振り分ける。
+   * 応答形式はいずれも `{ data: InvoiceSummaryResponse[]; meta: {...} }` で同一。
+   */
+  async function getInvoices(scopeType: ScopeType, scopeId: string, params?: { status?: InvoiceStatus; page?: number; size?: number }) {
+    if (scopeType === 'TEAM') {
+      return api<PagedEnvelope<InvoiceSummaryResponse>>(`/api/v1/teams/${scopeId}/advertiser/invoices`, {
+        params,
+      })
+    }
+    return api<PagedEnvelope<InvoiceSummaryResponse>>('/api/v1/advertiser/invoices', {
+      params: { organizationId: scopeId, ...params },
     })
   }
 
+  /**
+   * 請求書詳細（ORGANIZATION scope のみ）。
+   *
+   * team 向けの `GET /api/v1/teams/{teamId}/advertiser/invoices/{id}` は F09.19.5 で
+   * 新設されなかった（{@link TeamAdvertiserDashboardController} は一覧のみ）。
+   * サービス層の {@code AdInvoiceService.getDetail(invoiceId, advertiserAccountId)} 自体は
+   * scope 非依存だが、コントローラー未実装のため TEAM scope からは呼び出さないこと（F09.19.6 では未対応）。
+   */
   async function getInvoiceDetail(invoiceId: number, organizationId: string) {
     return api<{ data: InvoiceDetailResponse }>(`/api/v1/advertiser/invoices/${invoiceId}`, {
       params: { organizationId },
     })
   }
 
+  /** 請求書 PDF ダウンロード（ORGANIZATION scope のみ。getInvoiceDetail と同じ理由でTEAM未対応）。 */
   async function downloadInvoicePdf(invoiceId: number, organizationId: string) {
     return api(`/api/v1/advertiser/invoices/${invoiceId}/pdf`, {
       params: { organizationId },
@@ -137,13 +207,28 @@ export function useAdvertiserApi() {
     }) as Promise<Blob>
   }
 
-  // Report Schedules
-  async function getReportSchedules(organizationId: string) {
+  // ─── Report Schedules（一覧のみ org/team 両対応。作成・削除は ORGANIZATION scope のみ） ───
+
+  /**
+   * 定期レポートスケジュール一覧。org は旧 `/api/v1/advertiser/report-schedules`、team は
+   * `/api/v1/teams/{teamId}/advertiser/report-schedules`（F09.19.5 AC-5.2）に振り分ける。
+   */
+  async function getReportSchedules(scopeType: ScopeType, scopeId: string) {
+    if (scopeType === 'TEAM') {
+      return api<{ data: ReportScheduleResponse[] }>(`/api/v1/teams/${scopeId}/advertiser/report-schedules`)
+    }
     return api<{ data: ReportScheduleResponse[] }>('/api/v1/advertiser/report-schedules', {
-      params: { organizationId },
+      params: { organizationId: scopeId },
     })
   }
 
+  /**
+   * レポートスケジュール作成（ORGANIZATION scope のみ）。
+   *
+   * {@code AdReportScheduleService.create(organizationId, ...)} が ScopeType.ORGANIZATION に
+   * 固定されたままで、team 向けの POST エンドポイントも未実装。TEAM scope からは呼び出さないこと
+   * （F09.19.6 では未対応）。
+   */
   async function createReportSchedule(organizationId: string, body: CreateReportScheduleRequest) {
     return api<{ data: ReportScheduleResponse }>('/api/v1/advertiser/report-schedules', {
       method: 'POST',
@@ -152,6 +237,7 @@ export function useAdvertiserApi() {
     })
   }
 
+  /** レポートスケジュール削除（ORGANIZATION scope のみ。createReportSchedule と同じ理由でTEAM未対応）。 */
   async function deleteReportSchedule(id: number, organizationId: string) {
     return api(`/api/v1/advertiser/report-schedules/${id}`, {
       method: 'DELETE',
@@ -159,7 +245,15 @@ export function useAdvertiserApi() {
     })
   }
 
-  // Credit Limit Requests
+  // ─── Credit Limit Requests（一覧のみ org/team 両対応。作成は ORGANIZATION scope のみ） ───
+
+  /**
+   * 与信枠増額申請（ORGANIZATION scope のみ）。
+   *
+   * {@code AdCreditLimitRequestService.create(organizationId, ...)} が ScopeType.ORGANIZATION に
+   * 固定されたままで、team 向けの POST エンドポイントも未実装。TEAM scope からは呼び出さないこと
+   * （F09.19.6 では未対応）。
+   */
   async function createCreditLimitRequest(organizationId: string, body: CreateCreditLimitRequest) {
     return api<{ data: CreditLimitRequestResponse }>('/api/v1/advertiser/credit-limit-requests', {
       method: 'POST',
@@ -168,13 +262,25 @@ export function useAdvertiserApi() {
     })
   }
 
-  async function getCreditLimitRequests(organizationId: string) {
+  /**
+   * 与信枠増額申請の履歴一覧。org は旧 `/api/v1/advertiser/credit-limit-requests`、team は
+   * `/api/v1/teams/{teamId}/advertiser/credit-limit-requests`（F09.19.5 AC-5.2）に振り分ける。
+   */
+  async function getCreditLimitRequests(scopeType: ScopeType, scopeId: string) {
+    if (scopeType === 'TEAM') {
+      return api<{ data: CreditLimitRequestResponse[] }>(`/api/v1/teams/${scopeId}/advertiser/credit-limit-requests`)
+    }
     return api<{ data: CreditLimitRequestResponse[] }>('/api/v1/advertiser/credit-limit-requests', {
-      params: { organizationId },
+      params: { organizationId: scopeId },
     })
   }
 
-  // ─── 広告主向け クリエイティブ API ───
+  // ─── 広告主向け クリエイティブ API（ORGANIZATION scope のみ） ───
+  //
+  // {@link AdvertiserAdCreativeController} は
+  // `/api/v1/organizations/{organizationId}/advertiser/ad-campaigns/{campaignId}/creatives`
+  // に固定されており、team 向けの対称エンドポイントは F09.19.5 でも新設されなかった。
+  // TEAM scope からは呼び出さないこと（F09.19.6 では未対応。creatives/index.vue の team 版は未実装）。
 
   async function createCreative(organizationId: string, campaignId: number, body: CreateAdCreativeRequest) {
     return api<{ data: AdCreativeResponse }>(
@@ -295,7 +401,6 @@ export function useAdvertiserApi() {
   return {
     // Advertiser
     register,
-    registerTeam,
     getAccount,
     updateAccount,
     getOverview,

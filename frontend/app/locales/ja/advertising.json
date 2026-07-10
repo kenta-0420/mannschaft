@@ -473,9 +473,13 @@
       "title": "チーム広告主管理",
       "description": "チーム単位でメッセージ型広告キャンペーンを作成・配信します。",
       "nav": {
-        "messaging_campaigns_description": "チームのメンバーに向けたメッセージ型広告キャンペーンを作成します。"
+        "messaging_campaigns_description": "チームのメンバーに向けたメッセージ型広告キャンペーンを作成します。",
+        "register": "広告主登録",
+        "invoices": "請求書",
+        "report_schedules": "定期レポート",
+        "credit_limit_requests": "与信枠申請",
+        "rate_simulator": "料金シミュレーター"
       },
-      "future_features_notice": "請求書管理・与信枠申請・定期レポートは将来の Phase で対応予定です。",
       "register": {
         "title": "広告主登録",
         "submit": "登録申請",
@@ -487,6 +491,27 @@
         "billing_invoice": "請求書払い",
         "success_message": "広告主登録を申請しました。審査後に利用開始できます。",
         "error_message": "登録に失敗しました"
+      },
+      "invoices": {
+        "title": "請求書",
+        "write_ops_notice": "請求書の詳細表示・PDFダウンロードは、現在組織版でのみご利用いただけます。"
+      },
+      "credit_limit_requests": {
+        "title": "与信枠 増額申請",
+        "write_ops_notice": "新規の増額申請は、現在組織版でのみご利用いただけます。"
+      },
+      "report_schedules": {
+        "title": "定期レポート",
+        "write_ops_notice": "定期レポートの新規作成・削除は、現在組織版でのみご利用いただけます。"
+      },
+      "rate_simulator": {
+        "title": "料金シミュレーター"
+      },
+      "campaign_detail": {
+        "back_label": "ダッシュボードに戻る",
+        "fallback_title": "キャンペーン詳細",
+        "empty_message": "キャンペーンデータを取得できませんでした。",
+        "extra_ops_notice": "クリエイティブ比較・ブレイクダウン・CSVエクスポートは、現在組織版でのみご利用いただけます。"
       }
     },
     "settings_ad_preferences_guide": {

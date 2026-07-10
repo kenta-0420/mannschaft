@@ -24,7 +24,7 @@ const frequencyOptions = [
 async function load() {
   loading.value = true
   try {
-    const res = await advertiserApi.getReportSchedules(orgSlug)
+    const res = await advertiserApi.getReportSchedules('ORGANIZATION', orgSlug)
     schedules.value = res.data
   }
   catch { schedules.value = [] }

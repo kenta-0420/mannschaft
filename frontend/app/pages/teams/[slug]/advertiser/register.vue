@@ -31,7 +31,7 @@ async function submit() {
   if (!form.value.companyName || !form.value.contactEmail) return
   submitting.value = true
   try {
-    await advertiserApi.registerTeam(teamSlug, form.value)
+    await advertiserApi.register('TEAM', teamSlug, form.value)
     toast.success(t('advertising.teams_page.register.success_message'))
     router.push(`/teams/${teamSlug}/advertiser`)
   }

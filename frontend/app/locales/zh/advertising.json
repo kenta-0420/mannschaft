@@ -473,9 +473,13 @@
       "title": "团队广告主管理",
       "description": "以团队为单位创建和投放消息型广告活动。",
       "nav": {
-        "messaging_campaigns_description": "为团队成员创建消息型广告活动。"
+        "messaging_campaigns_description": "为团队成员创建消息型广告活动。",
+        "register": "广告主注册",
+        "invoices": "发票",
+        "report_schedules": "定期报告",
+        "credit_limit_requests": "与信额度申请",
+        "rate_simulator": "费率模拟器"
       },
-      "future_features_notice": "发票管理・与信额度申请・定期报告将在未来阶段支持。",
       "register": {
         "title": "广告主注册",
         "submit": "提交申请",
@@ -487,6 +491,27 @@
         "billing_invoice": "发票支付",
         "success_message": "已提交广告主注册申请，审核后即可使用。",
         "error_message": "注册失败"
+      },
+      "invoices": {
+        "title": "发票",
+        "write_ops_notice": "发票详情查看・PDF下载目前仅支持组织版。"
+      },
+      "credit_limit_requests": {
+        "title": "与信额度增额申请",
+        "write_ops_notice": "新增申请目前仅支持组织版。"
+      },
+      "report_schedules": {
+        "title": "定期报告",
+        "write_ops_notice": "定期报告的新建・删除目前仅支持组织版。"
+      },
+      "rate_simulator": {
+        "title": "费率模拟器"
+      },
+      "campaign_detail": {
+        "back_label": "返回仪表盘",
+        "fallback_title": "活动详情",
+        "empty_message": "无法获取活动数据。",
+        "extra_ops_notice": "创意对比・细分・CSV导出目前仅支持组织版。"
       }
     },
     "settings_ad_preferences_guide": {

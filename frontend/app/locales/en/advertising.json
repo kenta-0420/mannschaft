@@ -473,9 +473,13 @@
       "title": "Team advertiser management",
       "description": "Create and deliver messaging-type ad campaigns at the team level.",
       "nav": {
-        "messaging_campaigns_description": "Create messaging-type ad campaigns targeted to team members."
+        "messaging_campaigns_description": "Create messaging-type ad campaigns targeted to team members.",
+        "register": "Advertiser registration",
+        "invoices": "Invoices",
+        "report_schedules": "Recurring reports",
+        "credit_limit_requests": "Credit limit requests",
+        "rate_simulator": "Rate simulator"
       },
-      "future_features_notice": "Invoices, credit limit requests, and recurring reports will be supported in a future phase.",
       "register": {
         "title": "Advertiser registration",
         "submit": "Submit application",
@@ -487,6 +491,27 @@
         "billing_invoice": "Invoice",
         "success_message": "Your application has been submitted. You can start using the service after review.",
         "error_message": "Registration failed"
+      },
+      "invoices": {
+        "title": "Invoices",
+        "write_ops_notice": "Invoice details and PDF download are currently only available in the organization version."
+      },
+      "credit_limit_requests": {
+        "title": "Credit limit increase requests",
+        "write_ops_notice": "Submitting new requests is currently only available in the organization version."
+      },
+      "report_schedules": {
+        "title": "Recurring reports",
+        "write_ops_notice": "Creating and deleting recurring reports is currently only available in the organization version."
+      },
+      "rate_simulator": {
+        "title": "Rate simulator"
+      },
+      "campaign_detail": {
+        "back_label": "Back to dashboard",
+        "fallback_title": "Campaign details",
+        "empty_message": "Could not retrieve campaign data.",
+        "extra_ops_notice": "Creative comparison, breakdown, and CSV export are currently only available in the organization version."
       }
     },
     "settings_ad_preferences_guide": {
