@@ -16,7 +16,6 @@ import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.entity.UserGoogleCalendarConnectionEntity;
 import com.mannschaft.app.schedule.entity.UserScheduleGoogleEventEntity;
 import com.mannschaft.app.schedule.event.ScheduleCreatedEvent;
-import com.mannschaft.app.schedule.listener.GoogleCalendarEventListener;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.schedule.repository.UserCalendarSyncSettingRepository;
 import com.mannschaft.app.schedule.repository.UserGoogleCalendarConnectionRepository;
