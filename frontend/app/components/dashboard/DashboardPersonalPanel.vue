@@ -6,9 +6,10 @@
  * - 既存 dashboard.vue の中身をそのまま内包（要件 3・widget 構成は F02.2 のまま不変）。
  * - 対象3-B: 18ウィジェットを useDashboardWidgets('personal') 経由で DB 永続化（並び替え・表示制御）。
  * - FamilyHub / AdminBusinessAlert は条件付き固定パネル（v-if）として並び替え対象外。
- * - 広告（AmazonAd / RakutenAd）は末尾固定・非表示不可・並び替え対象外。
+ * - 広告（Spotlight 掲載面）は末尾固定・非表示不可・並び替え対象外。
  * - マイカレンダーは PERSONAL_DATA_WIDGET_KEYS に含めて lg:col-span-2 で横広描画。
  */
+import type { SpotlightItem } from '~/composables/useSpotlightApi'
 const authStore = useAuthStore()
 const teamStore = useTeamStore()
 const orgStore = useOrganizationStore()
@@ -49,12 +50,28 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+  // 広告掲載面は非必須のため loading ゲートとは独立に取得する（失敗してもページを止めない）。
+  void loadSpotlight()
 })
 
 // 個人ダッシュボードウィジェット（DB 永続化・対象3-B）
 const { sortedWidgets, visibleWidgets, isVisible, toggleWidget, reorder } = useDashboardWidgets(
   'personal',
 )
+
+// ── F09.19.4 Spotlight 掲載面（DASHBOARD_TILE・末尾固定 2 枠） ──────────────
+// 親パネルが 1 回だけ count=2 で取得し items[0]→Primary・items[1]→Secondary に配る。
+// PERSONAL スコープのため scopeId は付与しない（有料プランゲート等の判定は BE が行う）。
+// spotlightPrimary/Secondary は v-for 外の固定 order-last 描画であり、
+// KEYS/linkTo には登録しない（結線パリティ規約 project_dashboard_personal_panel_widget_wiring_parity は本 2 枠に非適用）。
+const spotlightApi = useSpotlightApi()
+const spotlightItems = ref<SpotlightItem[]>([])
+
+async function loadSpotlight() {
+  spotlightItems.value = await spotlightApi.fetchContent('DASHBOARD_TILE', 2, {
+    scopeType: 'PERSONAL',
+  })
+}
 
 // ドラッグ&ドロップ状態
 const dragIndex = ref<number | null>(null)
@@ -407,9 +424,21 @@ function onDragEnd() {
           <WidgetAdminBusinessAlert />
         </div>
 
-        <!-- 広告タイル（非表示不可・常に最後・並び替え対象外） -->
-        <WidgetAmazonAd key="amazon-ad" class="order-last" scope-type="personal" />
-        <WidgetRakutenAd key="rakuten-ad" class="order-last" scope-type="personal" />
+        <!-- 広告タイル（Spotlight 掲載面・非表示不可・常に最後・並び替え対象外） -->
+        <!-- 候補なしは枠ごと非表示（items.length=1→Secondary 非描画・0→両方非描画）。スケルトンも確保しない（末尾のため CLS 許容）。 -->
+        <!-- key は placement 値ベース（spotlight-primary/spotlight-secondary）。KEYS/linkTo には登録しない固定描画。 -->
+        <WidgetSpotlightPrimary
+          v-if="spotlightItems[0]"
+          key="spotlight-primary"
+          class="order-last"
+          :item="spotlightItems[0]"
+        />
+        <WidgetSpotlightSecondary
+          v-if="spotlightItems[1]"
+          key="spotlight-secondary"
+          class="order-last"
+          :item="spotlightItems[1]"
+        />
       </TransitionGroup>
 
       <!-- チームを探す / チームを作る -->

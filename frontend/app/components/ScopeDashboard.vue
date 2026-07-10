@@ -1,10 +1,17 @@
 <script setup lang="ts">
 import type { ViewerRole, WidgetVisibilitySetting } from '~/types/dashboard'
+import type { SpotlightItem, SpotlightScopeType } from '~/composables/useSpotlightApi'
 
 const props = withDefaults(
   defineProps<{
     scopeType: 'personal' | 'team' | 'organization'
     scopeId?: string
+    /**
+     * F09.19.4 Spotlight 掲載面用のスコープ数値 ID（BE は scopeId に Long を要求する）。
+     * team は数値 BIGINT の文字列（team.id）、organization は現状 UUID public_id のため
+     * 数値化できない（数値化できないスコープでは掲載面を取得しない・後述コメント参照）。
+     */
+    scopeNumericId?: string
     scopeName?: string
     scopeTemplate?: string
     viewerRole?: ViewerRole
@@ -13,6 +20,7 @@ const props = withDefaults(
   }>(),
   {
     scopeId: undefined,
+    scopeNumericId: undefined,
     scopeName: undefined,
     scopeTemplate: undefined,
     viewerRole: undefined,
@@ -51,6 +59,44 @@ onMounted(() => {
   if (import.meta.client && localStorage.getItem(publicHintStorageKey.value) === '1') {
     publicHintDismissed.value = true
   }
+})
+
+// ── F09.19.4 Spotlight 掲載面（DASHBOARD_TILE・末尾固定 2 枠） ──────────────
+// 親が 1 回だけ count=2 で取得し items[0]→Primary・items[1]→Secondary に配る。
+// spotlightPrimary/Secondary は v-for 外の固定 order-last 描画であり KEYS/linkTo には登録しない
+// （結線パリティ規約 project_dashboard_personal_panel_widget_wiring_parity は本 2 枠に非適用）。
+// scopeId には数値 ID が必須（BE Long）。organization は現状 UUID public_id しか FE に無いため
+// 数値化できず、その場合は掲載面を取得しない（誤った ID を送らない）。team は team.id が数値文字列。
+const spotlightApi = useSpotlightApi()
+const spotlightItems = ref<SpotlightItem[]>([])
+
+const spotlightScopeType = computed<SpotlightScopeType>(() => {
+  if (props.scopeType === 'team') return 'TEAM'
+  if (props.scopeType === 'organization') return 'ORGANIZATION'
+  return 'PERSONAL'
+})
+
+const spotlightScopeId = computed<number | undefined>(() => {
+  if (props.scopeNumericId == null || props.scopeNumericId === '') return undefined
+  const n = Number(props.scopeNumericId)
+  return Number.isFinite(n) ? n : undefined
+})
+
+async function loadSpotlight() {
+  // TEAM / ORGANIZATION は数値 scopeId が無いと BE が 400 を返すため取得を見送る。
+  if (spotlightScopeId.value == null) {
+    spotlightItems.value = []
+    return
+  }
+  spotlightItems.value = await spotlightApi.fetchContent('DASHBOARD_TILE', 2, {
+    scopeType: spotlightScopeType.value,
+    scopeId: spotlightScopeId.value,
+    template: props.scopeTemplate,
+  })
+}
+
+onMounted(() => {
+  void loadSpotlight()
 })
 
 const showConfig = ref(false)
@@ -398,19 +444,20 @@ function onDragEnd() {
         </template>
       </DashboardWidgetCard>
 
-      <!-- Amazon広告タイル (非表示不可・常に最後) -->
-      <WidgetAmazonAd
-        key="amazon-ad"
+      <!-- 広告タイル（Spotlight 掲載面・非表示不可・常に最後・並び替え対象外） -->
+      <!-- 候補なしは枠ごと非表示（items.length=1→Secondary 非描画・0→両方非描画）。スケルトンも確保しない（末尾のため CLS 許容）。 -->
+      <!-- key は placement 値ベース。KEYS/linkTo には登録しない固定描画。 -->
+      <WidgetSpotlightPrimary
+        v-if="spotlightItems[0]"
+        key="spotlight-primary"
         class="order-last"
-        :scope-type="scopeType"
-        :scope-template="scopeTemplate"
+        :item="spotlightItems[0]"
       />
-      <!-- 楽天広告タイル (非表示不可・常に最後) -->
-      <WidgetRakutenAd
-        key="rakuten-ad"
+      <WidgetSpotlightSecondary
+        v-if="spotlightItems[1]"
+        key="spotlight-secondary"
         class="order-last"
-        :scope-type="scopeType"
-        :scope-template="scopeTemplate"
+        :item="spotlightItems[1]"
       />
     </TransitionGroup>
 

@@ -1,6 +1,24 @@
 {
   "advertising": {
     "ad_label": "広告",
+    "spotlight": {
+      "hide_advertiser": "この広告主を非表示",
+      "hide_advertiser_done": "この広告主の広告を非表示にしました",
+      "report": "通報",
+      "upgrade_cta": "広告なしで使う →",
+      "affiliate_default": {
+        "amazon": {
+          "title": "チーム用品をAmazonで",
+          "description": "活動に役立つアイテムをまとめてお得に揃えましょう。",
+          "cta": "今すぐチェック"
+        },
+        "rakuten": {
+          "title": "チーム用品を楽天で",
+          "description": "活動に役立つアイテムをポイントを活かしてお得に揃えましょう。",
+          "cta": "楽天でチェック"
+        }
+      }
+    },
     "status": {
       "draft": "下書き",
       "review": "審査中",

@@ -1,6 +1,24 @@
 {
   "advertising": {
     "ad_label": "Anzeige",
+    "spotlight": {
+      "hide_advertiser": "Diesen Werbetreibenden ausblenden",
+      "hide_advertiser_done": "Anzeigen dieses Werbetreibenden sind jetzt ausgeblendet",
+      "report": "Melden",
+      "upgrade_cta": "Ohne Werbung nutzen →",
+      "affiliate_default": {
+        "amazon": {
+          "title": "Teamausstattung bei Amazon",
+          "description": "Besorge alles, was dein Team braucht, zu guten Preisen.",
+          "cta": "Jetzt ansehen"
+        },
+        "rakuten": {
+          "title": "Teamausstattung bei Rakuten",
+          "description": "Decke dich mit dem Nötigsten ein und sammle dabei Punkte.",
+          "cta": "Bei Rakuten ansehen"
+        }
+      }
+    },
     "status": {
       "draft": "Entwurf",
       "review": "In Prüfung",

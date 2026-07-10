@@ -11,6 +11,7 @@
  * 権限: チームメンバー以上（middleware: auth で保護）
  */
 import type { GateCheckResponse } from '~/types/payment'
+import type { SpotlightItem } from '~/composables/useSpotlightApi'
 
 definePageMeta({ layout: 'team', middleware: 'auth' })
 
@@ -36,6 +37,62 @@ const { checkAccess } = useContentGateApi()
 
 const confirmDialog = useConfirm()
 
+// ── F09.19.4 IN_FEED 掲載面（お知らせフィード内に 1 ページ 1 枠） ──────────────
+// 非 pinned 3 件目の直後に 1 枠だけ差し込む。ANNOUNCEMENT 広告カード（isAdvertisement）の
+// 直前直後は避け、該当時は次のアイテム後ろへ繰り下げる（設計 §8.3）。
+const spotlightApi = useSpotlightApi()
+const spotlightItems = ref<SpotlightItem[]>([])
+
+async function loadSpotlight() {
+  // scopeId には数値のチーム ID が必要。フィード項目の scopeId が数値のチーム ID（BE の Long）。
+  const numericTeamId = feed.value[0]?.scopeId
+  if (numericTeamId == null) {
+    spotlightItems.value = []
+    return
+  }
+  const n = Number(numericTeamId)
+  if (!Number.isFinite(n)) {
+    spotlightItems.value = []
+    return
+  }
+  spotlightItems.value = await spotlightApi.fetchContent('IN_FEED', 1, {
+    scopeType: 'TEAM',
+    scopeId: n,
+  })
+}
+
+/**
+ * IN_FEED 枠を差し込むフラット配列インデックス（この位置のアイテムの「直前」に描画）。
+ * 差し込まない場合は -1。
+ */
+const spotlightInsertIndex = computed<number>(() => {
+  if (spotlightItems.value.length === 0) return -1
+  const items = feed.value
+  const pinnedCount = items.filter((i) => i.isPinned).length
+  const nonPinnedCount = items.length - pinnedCount
+  // 非 pinned が 3 件未満なら差し込まない
+  if (nonPinnedCount < 3) return -1
+  // 非 pinned 3 件目（0-based フラットインデックス）の直後を初期候補にする
+  let pos = pinnedCount + 2 + 1
+  // ANNOUNCEMENT 広告カードの直前直後を避けて繰り下げる
+  while (pos <= items.length) {
+    const before = items[pos - 1]
+    const after = pos < items.length ? items[pos] : null
+    const beforeIsAd = before?.isAdvertisement === true
+    const afterIsAd = after?.isAdvertisement === true
+    if (!beforeIsAd && !afterIsAd) return pos
+    pos += 1
+  }
+  return -1
+})
+
+/** CLS 防止用の固定枠スタイル（既定 96px・応答に高さがあれば優先）。 */
+const spotlightInfeedStyle = computed(() => {
+  const item = spotlightItems.value[0]
+  const h = item?.house?.height ?? item?.affiliate?.height
+  return { minHeight: `${h && h > 0 ? h : 96}px` }
+})
+
 // ── ペイウォールモーダル状態 ──────────────────────────────────
 const paywallModalVisible = ref(false)
 const paywallGateLoading = ref(false)
@@ -45,6 +102,8 @@ const paywallPendingUrl = ref<string | null>(null)
 onMounted(async () => {
   await loadPermissions()
   await fetchFeed({ limit: 20 })
+  // 掲載面はフィード取得後（scopeId 確定後）に非同期取得する（失敗してもフィードは止めない）。
+  void loadSpotlight()
 })
 
 /** 次のページを読み込む */
@@ -152,15 +211,24 @@ function onDeleteConfirm(id: number) {
     <div v-else>
       <SectionCard>
         <div role="list" class="divide-y divide-surface-100 dark:divide-surface-700">
-          <AnnouncementItem
-            v-for="item in feed"
-            :key="item.id"
-            :item="item"
-            :show-pin-control="isAdmin"
-            @click="onItemClick"
-            @pin="onTogglePin"
-            @delete="onDeleteConfirm"
-          />
+          <template v-for="(item, idx) in feed" :key="item.id">
+            <AnnouncementItem
+              :item="item"
+              :show-pin-control="isAdmin"
+              @click="onItemClick"
+              @pin="onTogglePin"
+              @delete="onDeleteConfirm"
+            />
+            <!-- IN_FEED 掲載面（非 pinned 3 件目直後・1 ページ 1 枠・CLS 防止の固定枠） -->
+            <div
+              v-if="idx === spotlightInsertIndex - 1 && spotlightItems[0]"
+              class="spotlight-infeed py-2"
+              data-testid="spotlight-infeed"
+              :style="spotlightInfeedStyle"
+            >
+              <SpotlightSlot :item="spotlightItems[0]" placement="IN_FEED" />
+            </div>
+          </template>
         </div>
       </SectionCard>
 
