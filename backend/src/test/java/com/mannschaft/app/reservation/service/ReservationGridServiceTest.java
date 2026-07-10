@@ -219,11 +219,13 @@ class ReservationGridServiceTest {
         assertThat(columnOf(grid, STAFF_A).cells().get(0).state()).isEqualTo(GridCellState.BOOKED);
 
         // レコードコンポーネント名を検査：user/name/reservation/note を含む PII フィールドが存在しないこと。
+        // unavailableReason は「公開定期予約不可枠の事由ラベル」（is_public=TRUE 限定・業務ラベル・W2-2）で
+        // 予約者 PII を含まない（reason_no_pii ガイドで個人名混入を防止）。許可リストに追加し PII 語検査は維持する。
         List<String> componentNames = java.util.Arrays.stream(
                         ReservationGridResponse.GridCellDto.class.getRecordComponents())
                 .map(RecordComponent::getName).toList();
         assertThat(componentNames)
-                .containsExactlyInAnyOrder("slotId", "startTime", "endTime", "state", "price");
+                .containsExactlyInAnyOrder("slotId", "startTime", "endTime", "state", "price", "unavailableReason");
         assertThat(componentNames).noneMatch(n -> {
             String lower = n.toLowerCase();
             return lower.contains("user") || lower.contains("name")

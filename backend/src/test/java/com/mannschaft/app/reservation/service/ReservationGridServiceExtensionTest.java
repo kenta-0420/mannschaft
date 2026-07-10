@@ -544,8 +544,9 @@ class ReservationGridServiceExtensionTest {
     @DisplayName("H-6: 新設 DTO（GridColumnDto/GridDayDto/GridMetaDto）と GridCellDto に予約者 PII フィールドが構造的に不在")
     void H6_PII構造非搭載() {
         // GridCellDto: 既存 C-4 と同一の完全一致検査（フィールド増減の番人）。
+        // unavailableReason は公開定期予約不可枠の事由ラベル（is_public 限定・業務ラベル・W2-2）で予約者 PII を含まない。
         assertThat(componentNames(ReservationGridResponse.GridCellDto.class))
-                .containsExactlyInAnyOrder("slotId", "startTime", "endTime", "state", "price");
+                .containsExactlyInAnyOrder("slotId", "startTime", "endTime", "state", "price", "unavailableReason");
         // GridColumnDto: 許容フィールドの完全一致（staffName は列見出しでありセル単位の予約者 PII ではない）。
         assertThat(componentNames(ReservationGridResponse.GridColumnDto.class))
                 .containsExactlyInAnyOrder("staffUserId", "staffName", "lineId", "lineName", "lineIds", "cells");
