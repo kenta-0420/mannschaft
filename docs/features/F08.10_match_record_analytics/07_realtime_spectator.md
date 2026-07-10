@@ -113,6 +113,7 @@ preSend (SUBSCRIBE フレーム):
   - **本機能の設計はブローカー差し替えに非依存**: 配信は `SimpMessagingTemplate.convertAndSend(destination, payload)` の抽象に閉じており、broker を SimpleBroker→外部ブローカーへ差し替えても本機能のコードは不変（`@TransactionalEventListener`→`convertAndSend` の構造はそのまま）。
 - **配信負荷**: 1 試合あたり観戦者数は限定的（チーム関係者中心）。差分配信（J.2.1）＋ペイロード最小化（J.3.3）で帯域を抑える。大規模公開試合（数千観戦者）は MVP 想定外（その場合は外部ブローカー＋ファンアウト最適化を別途）。
 - **【別軍議の正本】** 上記「WS 基盤全体の別軍議（本番移行 Phase3 WS ブローカー）」の設計書 = [`docs/architecture/websocket_external_broker_valkey.md`](../../architecture/websocket_external_broker_valkey.md)（A 案: SimpleBroker 維持 + Valkey Pub/Sub 中継。Principal 未配線の根治を含む。本機能の配信はこの中継の適用範囲に自動的に含まれる）。
+- **【serverSeq のマルチノード対応】** J.2.1 の `serverSeq`（現行はノードローカル `AtomicLong`）は、マルチノード化時に **Valkey INCR によるノード横断の単調採番へ昇格**する（単調性破綻＝ J.4 スナップショット再取得のスラッシングを根治。同設計書 §4.6 が正本）。
 
 ---
 
