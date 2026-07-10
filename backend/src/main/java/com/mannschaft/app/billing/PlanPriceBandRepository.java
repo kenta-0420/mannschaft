@@ -14,4 +14,7 @@ public interface PlanPriceBandRepository extends JpaRepository<PlanPriceBandEnti
     /** 指定プラン×スコープ種別のバンド一覧を band_no 昇順で取得する（単価解決に使用）。 */
     List<PlanPriceBandEntity> findByPlanKeyAndScopeKindOrderByBandNoAsc(
             String planKey, PlanPriceBandScopeKind scopeKind);
+
+    /** 指定プランの全バンド（シスアド 一括置換の削除対象抽出に使用）。 */
+    List<PlanPriceBandEntity> findByPlanKey(String planKey);
 }

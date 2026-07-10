@@ -2,13 +2,16 @@ package com.mannschaft.app.advertising.service;
 
 import com.mannschaft.app.advertising.AdvertisingErrorCode;
 import com.mannschaft.app.advertising.PricingModel;
+import com.mannschaft.app.advertising.dto.AdCreativeResponse;
 import com.mannschaft.app.advertising.dto.CreateOperationalCampaignRequest;
 import com.mannschaft.app.advertising.dto.OperationalCampaignResponse;
+import com.mannschaft.app.advertising.dto.OperationalCampaignReviewDetailResponse;
 import com.mannschaft.app.advertising.entity.AdCampaignEntity;
 import com.mannschaft.app.advertising.entity.AdCampaignEntity.CampaignStatus;
 import com.mannschaft.app.advertising.entity.AdRateCardEntity;
 import com.mannschaft.app.advertising.entity.AdvertiserAccountEntity;
 import com.mannschaft.app.advertising.repository.AdCampaignRepository;
+import com.mannschaft.app.advertising.repository.AdEntityRepository;
 import com.mannschaft.app.advertising.repository.AdRateCardRepository;
 import com.mannschaft.app.advertising.repository.AdvertiserAccountRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
@@ -29,6 +32,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -77,6 +81,8 @@ class OperationalAdCampaignServiceTest {
     @Mock
     private AdRateCardRepository adRateCardRepository;
     @Mock
+    private AdEntityRepository adEntityRepository;
+    @Mock
     private AuditLogService auditLogService;
 
     private OperationalAdCampaignService service;
@@ -84,7 +90,8 @@ class OperationalAdCampaignServiceTest {
     @BeforeEach
     void setUp() {
         service = new OperationalAdCampaignService(
-                adCampaignRepository, advertiserAccountRepository, adRateCardRepository, auditLogService, FIXED_CLOCK);
+                adCampaignRepository, advertiserAccountRepository, adRateCardRepository,
+                adEntityRepository, auditLogService, FIXED_CLOCK);
 
         // F09.19.5: scope（ORGANIZATION, ORG_ID）→ 広告主アカウント（id=ACCOUNT_ID）解決を stub
         given(advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(ScopeType.ORGANIZATION, ORG_ID))
@@ -413,8 +420,88 @@ class OperationalAdCampaignServiceTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════
+    // AC-1b.2 / AC-1b.3 審査詳細（F09.19.1b 契約補完）
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("AC-1b 審査詳細（広告主帰属 + クリエイティブ）")
+    class Ac1b_ReviewDetail {
+
+        @Test
+        @DisplayName("ac1b_2: 審査詳細が広告主帰属（advertiserName/scope）とクリエイティブ一覧を組み立てて返す")
+        void ac1b_2_審査詳細が広告主帰属とクリエイティブを返す() {
+            stubCampaignLookup(campaign(CampaignStatus.PENDING_REVIEW));
+            given(advertiserAccountRepository.findById(ACCOUNT_ID))
+                    .willReturn(Optional.of(namedAccount("株式会社テスト広告")));
+            given(adEntityRepository.findByCampaignId(CAMPAIGN_ID)).willReturn(List.of(
+                    creative(11L, "素材A", "IN_FEED"),
+                    creative(12L, "素材B", "SIDEBAR_RIGHT")));
+
+            OperationalCampaignReviewDetailResponse detail = service.getReviewDetail(CAMPAIGN_ID);
+
+            assertThat(detail.id()).isEqualTo(CAMPAIGN_ID);
+            assertThat(detail.advertiserAccountId()).isEqualTo(ACCOUNT_ID);
+            assertThat(detail.advertiserName()).isEqualTo("株式会社テスト広告");
+            assertThat(detail.scopeType()).isEqualTo(ScopeType.ORGANIZATION);
+            assertThat(detail.scopeId()).isEqualTo(ORG_ID);
+            assertThat(detail.creatives()).hasSize(2);
+            assertThat(detail.creatives()).extracting(AdCreativeResponse::id)
+                    .containsExactly(11L, 12L);
+            assertThat(detail.creatives().get(0).title()).isEqualTo("素材A");
+            assertThat(detail.creatives().get(0).status()).isEqualTo("ACTIVE");
+        }
+
+        @Test
+        @DisplayName("ac1b_2: クリエイティブ 0 件でも creatives は空配列（null ではない）")
+        void ac1b_2_クリエイティブゼロは空配列() {
+            stubCampaignLookup(campaign(CampaignStatus.PENDING_REVIEW));
+            given(advertiserAccountRepository.findById(ACCOUNT_ID))
+                    .willReturn(Optional.of(namedAccount("広告主")));
+            given(adEntityRepository.findByCampaignId(CAMPAIGN_ID)).willReturn(List.of());
+
+            OperationalCampaignReviewDetailResponse detail = service.getReviewDetail(CAMPAIGN_ID);
+
+            assertThat(detail.creatives()).isNotNull().isEmpty();
+        }
+
+        @Test
+        @DisplayName("ac1b_3: 存在しないキャンペーン id の審査詳細 → AD_021（404 に解決）")
+        void ac1b_3_存在しないidはAD_021() {
+            given(adCampaignRepository.findById(CAMPAIGN_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.getReviewDetail(CAMPAIGN_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(AdvertisingErrorCode.AD_021));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
     // ヘルパー
     // ═════════════════════════════════════════════════════════════════════
+
+    /** company_name つきの広告主アカウント（審査詳細の advertiserName 検証用）。 */
+    private AdvertiserAccountEntity namedAccount(String companyName) {
+        return AdvertiserAccountEntity.builder()
+                .id(ACCOUNT_ID)
+                .scopeType(ScopeType.ORGANIZATION)
+                .scopeId(ORG_ID)
+                .companyName(companyName)
+                .build();
+    }
+
+    /** クリエイティブ（ads）エンティティ。status は ACTIVE 固定（レスポンスの name() 変換確認用）。 */
+    private com.mannschaft.app.advertising.entity.AdEntity creative(Long id, String title, String placement) {
+        return com.mannschaft.app.advertising.entity.AdEntity.builder()
+                .id(id)
+                .campaignId(CAMPAIGN_ID)
+                .title(title)
+                .imageUrl("https://example.com/" + id + ".png")
+                .destinationUrl("https://landing.example.com/" + id)
+                .status(com.mannschaft.app.advertising.entity.AdEntity.AdStatus.ACTIVE)
+                .placement(com.mannschaft.app.advertising.AdPlacement.valueOf(placement))
+                .build();
+    }
 
     /** 実装がどの取得経路（findById / findByIdAnd…）を採っても効くよう findById を基本線でスタブする。 */
     private void stubCampaignLookup(AdCampaignEntity entity) {

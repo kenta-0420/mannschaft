@@ -53,7 +53,7 @@ async function load() {
     if (filterStatus.value) params.status = filterStatus.value
     const res = await systemAdminAdApi.listUserReports(params)
     reports.value = res.data
-    totalElements.value = res.meta.totalElements
+    totalElements.value = res.meta.total ?? res.meta.totalElements ?? 0
   } catch {
     notification.error(t('advertising.pages.system_admin_dashboard.load_failed'))
   } finally {
@@ -73,8 +73,29 @@ function onPage(event: { page: number; rows: number }) {
   load()
 }
 
-function goCampaign(campaignId: string) {
-  router.push(`/system-admin/advertising/moderation-queue/${campaignId}`)
+function goCampaign(row: AdUserReport) {
+  // メッセージ型（UUID）は審査キュー詳細へ、運用型（数値）は運用型審査キューへ遷移する。
+  if (row.campaignId) {
+    router.push(`/system-admin/advertising/moderation-queue/${row.campaignId}`)
+  } else if (row.operationalCampaignId != null) {
+    router.push('/system-admin/advertising/operational-queue')
+  }
+}
+
+/** 種別・ID 表示（メッセージ型 = UUID 先頭 8 桁、運用型 = #数値）。 */
+function targetLabel(row: AdUserReport): string {
+  if (row.campaignId) return `${row.campaignId.slice(0, 8)}…`
+  if (row.operationalCampaignId != null) return `#${row.operationalCampaignId}`
+  return '-'
+}
+
+async function changeStatus(row: AdUserReport, status: AdUserReport['status']) {
+  try {
+    await systemAdminAdApi.updateUserReportStatus(row.id, status)
+    await load()
+  } catch {
+    notification.error(t('advertising.pages.system_admin_user_reports.status_update_failed'))
+  }
 }
 
 function rowClasses(row: AdUserReport): string {
@@ -169,8 +190,15 @@ function rowClasses(row: AdUserReport): string {
         >
           <template #body="{ data }: { data: AdUserReport }">
             <div class="flex items-center gap-2">
+              <Tag
+                :value="data.campaignId
+                  ? t('advertising.pages.system_admin_user_reports.type_messaging')
+                  : t('advertising.pages.system_admin_user_reports.type_operational')"
+                severity="secondary"
+                data-testid="report-type-badge"
+              />
               <code class="text-xs text-surface-700 dark:text-surface-200">
-                {{ data.campaignId.slice(0, 8) }}…
+                {{ targetLabel(data) }}
               </code>
               <Tag
                 v-if="data.autoSuspendCandidate"
@@ -208,14 +236,44 @@ function rowClasses(row: AdUserReport): string {
         </Column>
         <Column>
           <template #body="{ data }: { data: AdUserReport }">
-            <Button
-              size="small"
-              :label="t('advertising.pages.system_admin_user_reports.go_campaign')"
-              icon="pi pi-arrow-right"
-              icon-pos="right"
-              severity="secondary"
-              @click="goCampaign(data.campaignId)"
-            />
+            <div class="flex flex-wrap items-center gap-2">
+              <Button
+                v-if="data.status === 'NEW'"
+                size="small"
+                :label="t('advertising.pages.system_admin_user_reports.mark_reviewing')"
+                severity="secondary"
+                outlined
+                data-testid="mark-reviewing"
+                @click="changeStatus(data, 'REVIEWING')"
+              />
+              <Button
+                v-if="data.status === 'REVIEWING'"
+                size="small"
+                :label="t('advertising.pages.system_admin_user_reports.mark_resolved')"
+                severity="success"
+                outlined
+                data-testid="mark-resolved"
+                @click="changeStatus(data, 'RESOLVED')"
+              />
+              <Button
+                v-if="data.status === 'REVIEWING'"
+                size="small"
+                :label="t('advertising.pages.system_admin_user_reports.mark_dismissed')"
+                severity="secondary"
+                outlined
+                data-testid="mark-dismissed"
+                @click="changeStatus(data, 'DISMISSED')"
+              />
+              <Button
+                size="small"
+                :label="t('advertising.pages.system_admin_user_reports.go_campaign')"
+                icon="pi pi-arrow-right"
+                icon-pos="right"
+                severity="secondary"
+                text
+                @click="goCampaign(data)"
+              />
+            </div>
           </template>
         </Column>
       </DataTable>

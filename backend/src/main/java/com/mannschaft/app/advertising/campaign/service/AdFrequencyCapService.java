@@ -173,10 +173,69 @@ public class AdFrequencyCapService {
     }
 
     /**
-     * DECR 実行。上限超過時のロールバック専用。例外を握り潰さず呼び出し元に伝播する。
+     * DECR 実行。上限超過時のロールバック専用（直前に INCR 済みで値 ≥ 1 が保証される文脈でのみ使用）。
+     * 例外を握り潰さず呼び出し元に伝播する。
      */
     void decrementSafely(String key) {
         redisTemplate.opsForValue().decrement(key);
+    }
+
+    /**
+     * F09.19.3 §10.4 / §16 AC-3.8: 0 未満禁止のデクリメント。
+     *
+     * <p>GET して値が正のときのみ DECR する。キー不在（TTL 失効 or 未消費）や値 ≤ 0 は no-op とし、
+     * カウンタが負値に落ちないことを保証する。予約 EXPIRED による FreqCap 返却で使用する。</p>
+     */
+    void decrementIfPositive(String key) {
+        String raw = redisTemplate.opsForValue().get(key);
+        if (raw == null) {
+            return; // 失効済み or 未消費 → 安全な no-op（冪等）
+        }
+        long current;
+        try {
+            current = Long.parseLong(raw);
+        } catch (NumberFormatException e) {
+            log.warn("フリークエンシーキャップ: カウンタが数値でない key={} value={}", key, raw);
+            return;
+        }
+        if (current > 0) {
+            redisTemplate.opsForValue().decrement(key);
+        }
+    }
+
+    /**
+     * F09.19.3 §10.4 / §16 AC-3.8: 予約枠のロールバック（FreqCap 返却）。
+     *
+     * <p>予約 EXPIRED（{@code served_at IS NULL} のまま 14 日超過）時に、<b>予約の消費週</b>の
+     * total キー・per-advertiser キーを 0 未満禁止で 1 ずつ返却する。
+     * FreqCap キーは週境界 TTL（最大 7 日）で、14 日後の EXPIRED 発火時に現在週キーを DECR すると
+     * <b>別週の生きた消費カウンタを誤って減らす</b>ため、必ず消費週（{@code consumptionWeekStart}）を対象にする。
+     * 消費週キーが既に TTL 失効していれば両キーとも no-op（＝安全・冪等）。</p>
+     *
+     * @param userId               ユーザー ID（必須）
+     * @param advertiserAccountId  広告主アカウント ID（必須）
+     * @param consumptionWeekStart 予約を消費した週の月曜（ユーザー TZ）
+     */
+    public void releaseSlot(Long userId, Long advertiserAccountId, LocalDate consumptionWeekStart) {
+        if (userId == null || advertiserAccountId == null || consumptionWeekStart == null) {
+            throw new IllegalArgumentException("userId, advertiserAccountId, consumptionWeekStart は必須です");
+        }
+        String totalKey = buildTotalKey(userId, consumptionWeekStart);
+        String perAdvKey = buildPerAdvertiserKey(advertiserAccountId, userId, consumptionWeekStart);
+        decrementIfPositive(totalKey);
+        decrementIfPositive(perAdvKey);
+        log.debug("フリークエンシーキャップ返却 userId={} advertiser={} weekStart={}",
+                userId, advertiserAccountId, consumptionWeekStart);
+    }
+
+    /**
+     * 指定日を含む週の月曜（週開始）を返す。予約 {@code created_at} から消費週を求めるのに使う。
+     */
+    public static LocalDate weekStartOf(LocalDate date) {
+        if (date.getDayOfWeek() == DayOfWeek.MONDAY) {
+            return date;
+        }
+        return date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
     }
 
     /**

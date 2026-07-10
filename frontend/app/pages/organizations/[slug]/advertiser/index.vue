@@ -129,6 +129,12 @@ onMounted(load)
             <p class="text-sm">{{ $t('advertising.advertiser_crud.nav.messaging_campaigns') }}</p>
           </div>
         </NuxtLink>
+        <NuxtLink :to="`/organizations/${orgSlug}/advertiser/operational-campaigns`">
+          <div class="cursor-pointer rounded-lg border border-surface-300 p-3 text-center transition hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-700" data-testid="operational-campaigns-tile">
+            <i class="pi pi-megaphone mb-2 text-2xl text-primary" />
+            <p class="text-sm">{{ $t('advertising.operational_campaigns.entry_tile.title') }}</p>
+          </div>
+        </NuxtLink>
         <NuxtLink :to="`/organizations/${orgSlug}/advertiser/invoices`">
           <div class="cursor-pointer rounded-lg border border-surface-300 p-3 text-center transition hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-700">
             <i class="pi pi-file-edit mb-2 text-2xl text-primary" />
