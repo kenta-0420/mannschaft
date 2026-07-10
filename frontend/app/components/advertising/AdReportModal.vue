@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { AdReportReason } from '~/types/adPreferences'
+import type { AdChannelType } from '~/types/adMessagingCampaign'
 
 /**
  * F09.17 / F09.19.9 広告通報モーダル
@@ -17,6 +18,8 @@ const props = defineProps<{
   campaignId?: string | null
   /** 運用型キャンペーン ID（数値）。メッセージ型通報時は未指定 */
   operationalCampaignId?: number | null
+  /** 通報元チャネル（既定 BANNER。アナウンス広告の通報などは 'ANNOUNCEMENT' を渡す） */
+  channelType?: AdChannelType
 }>()
 
 const emit = defineEmits<{
@@ -66,7 +69,7 @@ async function handleSubmit() {
     await deliveriesApi.createReport({
       campaignId: props.campaignId ?? undefined,
       operationalCampaignId: props.operationalCampaignId ?? undefined,
-      channelType: 'BANNER',
+      channelType: props.channelType ?? 'BANNER',
       reasonCode: selectedReason.value,
       comment: detail.value.trim() || null,
     })
