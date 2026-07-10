@@ -86,6 +86,9 @@ class ReservationGridServiceExtensionTest {
     @Mock
     private ReservationBlockedTimeRepository blockedTimeRepository;
     @Mock
+    private com.mannschaft.app.reservation.repository.ReservationRecurringBlockedTimeRepository
+            recurringBlockedTimeRepository;
+    @Mock
     private NameResolverService nameResolverService;
     @Mock
     private ReservationViewAccessGuard viewAccessGuard;
@@ -102,16 +105,18 @@ class ReservationGridServiceExtensionTest {
     @BeforeEach
     void setUp() {
         service = new ReservationGridService(
-                slotRepository, lineRepository, blockedTimeRepository,
+                slotRepository, lineRepository, blockedTimeRepository, recurringBlockedTimeRepository,
                 unavailabilityChecker, nameResolverService, viewAccessGuard,
                 menuRepository, menuLineRepository);
-        // 既定: slot/ブロック/ライン/menu_lines なし・氏名解決は空（各テストで上書き）。
+        // 既定: slot/ブロック/定期ルール/ライン/menu_lines なし・氏名解決は空（各テストで上書き）。
         given(slotRepository.findByTeamIdAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
                 any(), any(), any())).willReturn(List.of());
         given(blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(any(), any()))
                 .willReturn(List.of());
         given(blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(
                 any(), any(), any())).willReturn(List.of());
+        given(recurringBlockedTimeRepository.findByTeamIdAndIsActiveTrue(any()))
+                .willReturn(List.of());
         given(lineRepository.findByTeamIdAndIsActiveTrueOrderByDisplayOrderAsc(TEAM_ID))
                 .willReturn(List.of());
         given(nameResolverService.resolveUserFullNames(anyCollection())).willReturn(Map.of());
